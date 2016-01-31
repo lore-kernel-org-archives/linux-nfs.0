@@ -1,162 +1,78 @@
-Return-Path: nfsv4-bounces@ietf.org
-Message-Id: <201601220309.u0M39sdb023656@d03av04.boulder.ibm.com>
-In-Reply-To: <569FBD77.3070407@oracle.com>
-To: Rob Thurlow <robert.thurlow@oracle.com>
-From: "Marc Eshel" <eshel@us.ibm.com>
-Date: Thu, 21 Jan 2016 19:09:48 -0800
-References: <5665C502.8040508@oracle.com> <569FBD77.3070407@oracle.com>
-Cc: Bill Baker <bill.baker@oracle.com>, tina.hartshorn@oracle.com,
-        linux-nfs@vger.kernel.org, nfsv4@ietf.org
-Subject: Re: [nfsv4] Talks at Connectathon 2016
-List-Unsubscribe: <https://www.ietf.org/mailman/options/nfsv4>,
- <mailto:nfsv4-request@ietf.org?subject=unsubscribe>
-List-Archive: <https://mailarchive.ietf.org/arch/browse/nfsv4/>
-List-Post: <mailto:nfsv4@ietf.org>
-List-Help: <mailto:nfsv4-request@ietf.org?subject=help>
-List-Subscribe: <https://www.ietf.org/mailman/listinfo/nfsv4>,
- <mailto:nfsv4-request@ietf.org?subject=subscribe>
-Content-Type: multipart/mixed; boundary="===============4947341865793912177=="
-Errors-To: nfsv4-bounces@ietf.org
-Sender: "nfsv4" <nfsv4-bounces@ietf.org>
+Return-Path: <linux-nfs-owner@vger.kernel.org>
+Received: from mail-pa0-f65.google.com ([209.85.220.65]:34620 "EHLO
+	mail-pa0-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754564AbcAaKkx (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 31 Jan 2016 05:40:53 -0500
+Received: by mail-pa0-f65.google.com with SMTP id yy13so5813702pab.1
+        for <linux-nfs@vger.kernel.org>; Sun, 31 Jan 2016 02:40:53 -0800 (PST)
+Subject: Re: [PATCH 4/5] NFSv4.x: Fix wraparound issues when validing the
+ callback sequence id
+To: Trond Myklebust <trond.myklebust@primarydata.com>,
+        linux-nfs@vger.kernel.org
+References: <1453730956-5325-1-git-send-email-trond.myklebust@primarydata.com>
+ <1453730956-5325-2-git-send-email-trond.myklebust@primarydata.com>
+ <1453730956-5325-3-git-send-email-trond.myklebust@primarydata.com>
+ <1453730956-5325-4-git-send-email-trond.myklebust@primarydata.com>
+ <1453730956-5325-5-git-send-email-trond.myklebust@primarydata.com>
+From: Kinglong Mee <kinglongmee@gmail.com>
+Message-ID: <56ADE4A4.9060604@gmail.com>
+Date: Sun, 31 Jan 2016 18:40:36 +0800
 MIME-Version: 1.0
+In-Reply-To: <1453730956-5325-5-git-send-email-trond.myklebust@primarydata.com>
+Content-Type: text/plain; charset=windows-1252
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---===============4947341865793912177==
-Content-Type: multipart/alternative;
- boundary="=_alternative 0011601B88257F42_="
 
---=_alternative 0011601B88257F42_=
-Content-Transfer-Encoding: base64
-Content-Type: text/plain; charset="UTF-8"
+On 1/25/2016 22:09, Trond Myklebust wrote:
+> We need to make sure that we don't allow args->csa_sequenceid == 0.
+> 
+> Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+> ---
+>  fs/nfs/callback_proc.c | 43 +++++++++++++++++--------------------------
+>  1 file changed, 17 insertions(+), 26 deletions(-)
+... snip ...
+> @@ -486,6 +476,13 @@ __be32 nfs4_callback_sequence(struct cb_sequenceargs *args,
+>  		goto out_unlock;
+>  	}
+>  
+> +	status = validate_seqid(tbl, slot, args);
+> +	if (status)
+> +		goto out_unlock;
 
-TWFub2ogYW5kIEkgY2FuIHByZXNlbnQgYW5kIHVwZGF0ZSBvbiB0aGUgTkZTIHhhdHRyIHByb2dy
-ZXNzLCBub3cgdGhhdCBpdCANCmlzIGEgd29ya2luZyBncm91cCBkcmFmdCBhbmQgZGVzY3JpYmUg
-b3VyIGN1cnJlbnQgaW1wbGFudGF0aW9uLCBtYXliZSBldmVuIA0KZ2l2ZSBhIGRlbW8uDQpNYXJj
-Lg0KDQoNCg0KDQpGcm9tOiAgIFJvYiBUaHVybG93IDxyb2JlcnQudGh1cmxvd0BvcmFjbGUuY29t
-Pg0KVG86ICAgICBCaWxsIEJha2VyIDxiaWxsLmJha2VyQG9yYWNsZS5jb20+LCBuZnN2NEBpZXRm
-Lm9yZw0KQ2M6ICAgICB0aW5hLmhhcnRzaG9ybkBvcmFjbGUuY29tLCBsaW51eC1uZnNAdmdlci5r
-ZXJuZWwub3JnDQpEYXRlOiAgIDAxLzIwLzIwMTYgMDk6MTEgQU0NClN1YmplY3Q6ICAgICAgICBb
-bmZzdjRdIFRhbGtzIGF0IENvbm5lY3RhdGhvbiAyMDE2DQpTZW50IGJ5OiAgICAgICAgIm5mc3Y0
-IiA8bmZzdjQtYm91bmNlc0BpZXRmLm9yZz4NCg0KDQoNCk9uIDEyLzcvMTUgMTA6NDIgQU0sIEJp
-bGwgQmFrZXIgd3JvdGU6DQoNCj4gT3JhY2xlIHdpbGwgYmUgaG9zdGluZyBDb25uZWN0YXRob24g
-MjAxNiwgcnVubmluZw0KPiBmcm9tIDIvMjkvMjAxNiB0aHJ1IDMvNC8yMDE2Lg0KPg0KPiBJJ3Zl
-IHVwZGF0ZWQgdGhlIHdlYnNpdGUsIGh0dHA6Ly93d3cuY29ubmVjdGF0aG9uLmluZm8NCg0KR3Jl
-ZXRpbmdzLCBwcmVzZW50ZXJzISAgSeKAmW0gb3JnYW5pemluZyB0aGUgQ29ubmVjdGF0aG9uIHRh
-bGtzIGFnYWluDQpmb3IgQ29ubmVjdGF0aG9uIDIwMTYuDQoNClVubGlrZSB0aGUgdGVzdGluZyBm
-bG9vciwgdGhlc2UgdGFsa3MgYXJlIG9wZW4gdG8gdGhlIHB1YmxpYywgYW5kIHdpbGwNCmJlIGhl
-bGQgaW4gdGhlIHVwc3RhaXJzIGNvbmZlcmVuY2Ugcm9vbSBpbiB0aGUgTWVsbG9uIEF1ZGl0b3Jp
-dW0sIGFzIGluDQp5ZWFycyBwYXN0LiAgVGhlIHRhbGtzIHdpbGwgYmUgaGVsZCBvbiBUdWVzZGF5
-IGFuZCBUaHVyc2RheSBhZnRlcm5vb25zDQpkdXJpbmcgQ29ubmVjdGF0aG9uLiAgQXBwcm9wcmlh
-dGUgdG9waWNzIGFyZSB0ZWNobmljYWwgdGFsa3Mgb24gYXJlYXMNCnRoYXQgYXJlIG9mIGJyb2Fk
-IGludGVyZXN0IHRvIHRoZSBORlMgY29tbXVuaXR5Lg0KDQpJZiB5b3UgYXJlIGludGVyZXN0ZWQg
-aW4gcHJlc2VudGluZyBhIHRhbGssIHBsZWFzZSBzZW5kIG1lOg0KDQogICBvICBBIHByZXNlbnRh
-dGlvbiB0aXRsZQ0KICAgbyAgQSAyLTQgc2VudGVuY2UgYWJzdHJhY3Qgb2YgdGhlIHByZXNlbnRh
-dGlvbg0KICAgbyAgVGhlIG5hbWUgYW5kIGUtbWFpbCBhZGRyZXNzZXMgb2YgYWxsIHByZXNlbnRl
-cnMuICBJIHdpbGwgbm90IHNoYXJlIA0KdGhlc2Ugd2l0aCBhbnlvbmUNCiAgIG8gIEhvdyBsb25n
-IHlvdSBuZWVkOiB0eXBpY2FsbHkgMzAgb3IgNjAgbWludXRlcw0KICAgbyAgRXhwZWN0ZWQgYXVk
-aWVuY2UgKFNtYWxsL01lZGl1bS9MYXJnZSkNCg0KQSBWR0Egb3ZlcmhlYWQgcHJvamVjdG9yIGlz
-IGF2YWlsYWJsZS4NCg0KSW4gYWRkaXRpb24gdG8gcHJlc2VudGF0aW9ucyBieSBpbmRpdmlkdWFs
-cywgd2UgaGF2ZSBzcGFjZSBmb3Ig4oCcYmlyZHMgb2YgDQphIGZlYXRoZXLigJ0gc2Vzc2lvbnMg
-d2hlcmUgd2UgY2FuIGhvbGQgZ3JvdXAgZGlzY3Vzc2lvbiBvbiB0b3BpY3MgDQpyZWxldmFudCB0
-byBvdXIgY29tbXVuaXR5LiAgVGhlc2Ugc2Vzc2lvbnMgY291bGQgYmUgaGVsZCBkdXJpbmcgb25l
-IG9yDQptb3JlIG9mIHRoZSBub3JtYWwgdGFsayBzbG90cywgb3IgY291bGQgcG9zc2libHkgYmUg
-c2NoZWR1bGVkIGZvcg0KV2VkbmVzZGF5IGFmdGVybm9vbiBpbiBhIHNtYWxsZXIgbG9jYXRpb24u
-ICBUaGV5IHdvdWxkIGFsc28gYmUgb3Blbg0KdG8gdGhlIHB1YmxpYy4gIFNvbWUgaW5pdGlhbCBp
-ZGVhcyBmb3IgQk9GIHNlc3Npb25zIGluY2x1ZGU6DQoNCiAgIG8gIE5GUyBUZXN0aW5nIChhIHBl
-cmVubmlhbCBmYXZvcml0ZSkNCiAgIG8gIE5GUy9LZXJiZXJvcyAoZXNwZWNpYWxseSBlYXNlIG9m
-IHVzZSkNCiAgIG8gIE5GUy9SRE1BDQogICBvICBSUENTRUNfR1NTdjMNCg0KUGxlYXNlIGdpdmUg
-dGhlc2UgYSArMSBhbmQvb3Igc2VuZCBvdGhlciBzdWdnZXN0aW9ucy4NCg0KQSBzY2hlZHVsZSBv
-ZiB0YWxrcyBhbmQgQk9GIHNlc3Npb25zIHdpbGwgYmUgcG9zdGVkIG9uIHRoZSANCnd3dy5jb25u
-ZWN0YXRob24uaW5mbyB3ZWIgc2l0ZSBhcyB3ZSBnZXQgY2xvc2VyIHRvIHRoZSBldmVudC4NCg0K
-VGhhbmtzLA0KUm9iIFRodXJsb3cNCg0KX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19f
-X19fX19fX19fX19fX18NCm5mc3Y0IG1haWxpbmcgbGlzdA0KbmZzdjRAaWV0Zi5vcmcNCmh0dHBz
-Oi8vd3d3LmlldGYub3JnL21haWxtYW4vbGlzdGluZm8vbmZzdjQNCg0KDQoNCg0KDQo=
+For NFS4ERR_RETRY_UNCACHED_REP error, nfs should initialize
+cb_sequenceres information, but goto out_unlock will skip it.
 
---=_alternative 0011601B88257F42_=
-Content-Transfer-Encoding: base64
-Content-Type: text/html; charset="UTF-8"
+thanks,
+Kinglong Mee
 
-PG1ldGEgaHR0cC1lcXVpdj0iQ29udGVudC1UeXBlIiBjb250ZW50PSJ0ZXh0L2h0bWw7IGNoYXJz
-ZXQ9dXRmLTgiPjxmb250IHNpemU9IjIiIGZhY2U9InNhbnMtc2VyaWYiPk1hbm9qIGFuZCBJIGNh
-biBwcmVzZW50IGFuZCB1cGRhdGUgb24gdGhlDQpORlMgeGF0dHIgcHJvZ3Jlc3MsIG5vdyB0aGF0
-IGl0IGlzIGEgd29ya2luZyBncm91cCBkcmFmdCBhbmQgZGVzY3JpYmUgb3VyDQpjdXJyZW50IGlt
-cGxhbnRhdGlvbiwgbWF5YmUgZXZlbiBnaXZlIGEgZGVtby48L2ZvbnQ+PGJyPjxmb250IHNpemU9
-IjIiIGZhY2U9InNhbnMtc2VyaWYiPk1hcmMuPC9mb250Pjxicj48YnI+PGJyPjxicj48YnI+PGZv
-bnQgc2l6ZT0iMSIgY29sb3I9IiM1ZjVmNWYiIGZhY2U9InNhbnMtc2VyaWYiPkZyb206ICZuYnNw
-OyAmbmJzcDsgJm5ic3A7DQombmJzcDs8L2ZvbnQ+PGZvbnQgc2l6ZT0iMSIgZmFjZT0ic2Fucy1z
-ZXJpZiI+Um9iIFRodXJsb3cgJmx0O3JvYmVydC50aHVybG93QG9yYWNsZS5jb20mZ3Q7PC9mb250
-Pjxicj48Zm9udCBzaXplPSIxIiBjb2xvcj0iIzVmNWY1ZiIgZmFjZT0ic2Fucy1zZXJpZiI+VG86
-ICZuYnNwOyAmbmJzcDsgJm5ic3A7DQombmJzcDs8L2ZvbnQ+PGZvbnQgc2l6ZT0iMSIgZmFjZT0i
-c2Fucy1zZXJpZiI+QmlsbCBCYWtlciAmbHQ7YmlsbC5iYWtlckBvcmFjbGUuY29tJmd0OywNCm5m
-c3Y0QGlldGYub3JnPC9mb250Pjxicj48Zm9udCBzaXplPSIxIiBjb2xvcj0iIzVmNWY1ZiIgZmFj
-ZT0ic2Fucy1zZXJpZiI+Q2M6ICZuYnNwOyAmbmJzcDsgJm5ic3A7DQombmJzcDs8L2ZvbnQ+PGZv
-bnQgc2l6ZT0iMSIgZmFjZT0ic2Fucy1zZXJpZiI+dGluYS5oYXJ0c2hvcm5Ab3JhY2xlLmNvbSwN
-CmxpbnV4LW5mc0B2Z2VyLmtlcm5lbC5vcmc8L2ZvbnQ+PGJyPjxmb250IHNpemU9IjEiIGNvbG9y
-PSIjNWY1ZjVmIiBmYWNlPSJzYW5zLXNlcmlmIj5EYXRlOiAmbmJzcDsgJm5ic3A7ICZuYnNwOw0K
-Jm5ic3A7PC9mb250Pjxmb250IHNpemU9IjEiIGZhY2U9InNhbnMtc2VyaWYiPjAxLzIwLzIwMTYg
-MDk6MTEgQU08L2ZvbnQ+PGJyPjxmb250IHNpemU9IjEiIGNvbG9yPSIjNWY1ZjVmIiBmYWNlPSJz
-YW5zLXNlcmlmIj5TdWJqZWN0OiAmbmJzcDsgJm5ic3A7DQombmJzcDsgJm5ic3A7PC9mb250Pjxm
-b250IHNpemU9IjEiIGZhY2U9InNhbnMtc2VyaWYiPltuZnN2NF0gVGFsa3MNCmF0IENvbm5lY3Rh
-dGhvbiAyMDE2PC9mb250Pjxicj48Zm9udCBzaXplPSIxIiBjb2xvcj0iIzVmNWY1ZiIgZmFjZT0i
-c2Fucy1zZXJpZiI+U2VudCBieTogJm5ic3A7ICZuYnNwOw0KJm5ic3A7ICZuYnNwOzwvZm9udD48
-Zm9udCBzaXplPSIxIiBmYWNlPSJzYW5zLXNlcmlmIj4mcXVvdDtuZnN2NCZxdW90Ow0KJmx0O25m
-c3Y0LWJvdW5jZXNAaWV0Zi5vcmcmZ3Q7PC9mb250Pjxicj48aHIgbm9zaGFkZT0iIj48YnI+PGJy
-Pjxicj48dHQ+PGZvbnQgc2l6ZT0iMiI+T24gMTIvNy8xNSAxMDo0MiBBTSwgQmlsbCBCYWtlciB3
-cm90ZTo8YnI+PGJyPiZndDsgT3JhY2xlIHdpbGwgYmUgaG9zdGluZyBDb25uZWN0YXRob24gMjAx
-NiwgcnVubmluZzxicj4mZ3Q7IGZyb20gMi8yOS8yMDE2IHRocnUgMy80LzIwMTYuPGJyPiZndDs8
-YnI+Jmd0OyBJJ3ZlIHVwZGF0ZWQgdGhlIHdlYnNpdGUsIDwvZm9udD48L3R0PjxhIGhyZWY9Imh0
-dHA6Ly93d3cuY29ubmVjdGF0aG9uLmluZm8vIj48dHQ+PGZvbnQgc2l6ZT0iMiI+aHR0cDovL3d3
-dy5jb25uZWN0YXRob24uaW5mbzwvZm9udD48L3R0PjwvYT48dHQ+PGZvbnQgc2l6ZT0iMiI+PGJy
-Pjxicj5HcmVldGluZ3MsIHByZXNlbnRlcnMhICZuYnNwO0nigJltIG9yZ2FuaXppbmcgdGhlIENv
-bm5lY3RhdGhvbiB0YWxrcyBhZ2Fpbjxicj5mb3IgQ29ubmVjdGF0aG9uIDIwMTYuPGJyPjxicj5V
-bmxpa2UgdGhlIHRlc3RpbmcgZmxvb3IsIHRoZXNlIHRhbGtzIGFyZSBvcGVuIHRvIHRoZSBwdWJs
-aWMsIGFuZCB3aWxsPGJyPmJlIGhlbGQgaW4gdGhlIHVwc3RhaXJzIGNvbmZlcmVuY2Ugcm9vbSBp
-biB0aGUgTWVsbG9uIEF1ZGl0b3JpdW0sIGFzIGluPGJyPnllYXJzIHBhc3QuICZuYnNwO1RoZSB0
-YWxrcyB3aWxsIGJlIGhlbGQgb24gVHVlc2RheSBhbmQgVGh1cnNkYXkgYWZ0ZXJub29uczxicj5k
-dXJpbmcgQ29ubmVjdGF0aG9uLiAmbmJzcDtBcHByb3ByaWF0ZSB0b3BpY3MgYXJlIHRlY2huaWNh
-bCB0YWxrcyBvbiBhcmVhczxicj50aGF0IGFyZSBvZiBicm9hZCBpbnRlcmVzdCB0byB0aGUgTkZT
-IGNvbW11bml0eS48YnI+PGJyPklmIHlvdSBhcmUgaW50ZXJlc3RlZCBpbiBwcmVzZW50aW5nIGEg
-dGFsaywgcGxlYXNlIHNlbmQgbWU6PGJyPjxicj4gJm5ic3A7IG8gJm5ic3A7QSBwcmVzZW50YXRp
-b24gdGl0bGU8YnI+ICZuYnNwOyBvICZuYnNwO0EgMi00IHNlbnRlbmNlIGFic3RyYWN0IG9mIHRo
-ZSBwcmVzZW50YXRpb248YnI+ICZuYnNwOyBvICZuYnNwO1RoZSBuYW1lIGFuZCBlLW1haWwgYWRk
-cmVzc2VzIG9mIGFsbCBwcmVzZW50ZXJzLiAmbmJzcDtJDQp3aWxsIG5vdCBzaGFyZSA8YnI+dGhl
-c2Ugd2l0aCBhbnlvbmU8YnI+ICZuYnNwOyBvICZuYnNwO0hvdyBsb25nIHlvdSBuZWVkOiB0eXBp
-Y2FsbHkgMzAgb3IgNjAgbWludXRlczxicj4gJm5ic3A7IG8gJm5ic3A7RXhwZWN0ZWQgYXVkaWVu
-Y2UgKFNtYWxsL01lZGl1bS9MYXJnZSk8YnI+PGJyPkEgVkdBIG92ZXJoZWFkIHByb2plY3RvciBp
-cyBhdmFpbGFibGUuPGJyPjxicj5JbiBhZGRpdGlvbiB0byBwcmVzZW50YXRpb25zIGJ5IGluZGl2
-aWR1YWxzLCB3ZSBoYXZlIHNwYWNlIGZvciDigJxiaXJkcw0Kb2YgPGJyPmEgZmVhdGhlcuKAnSBz
-ZXNzaW9ucyB3aGVyZSB3ZSBjYW4gaG9sZCBncm91cCBkaXNjdXNzaW9uIG9uIHRvcGljcyA8YnI+
-cmVsZXZhbnQgdG8gb3VyIGNvbW11bml0eS4gJm5ic3A7VGhlc2Ugc2Vzc2lvbnMgY291bGQgYmUg
-aGVsZCBkdXJpbmcgb25lDQpvcjxicj5tb3JlIG9mIHRoZSBub3JtYWwgdGFsayBzbG90cywgb3Ig
-Y291bGQgcG9zc2libHkgYmUgc2NoZWR1bGVkIGZvcjxicj5XZWRuZXNkYXkgYWZ0ZXJub29uIGlu
-IGEgc21hbGxlciBsb2NhdGlvbi4gJm5ic3A7VGhleSB3b3VsZCBhbHNvIGJlIG9wZW48YnI+dG8g
-dGhlIHB1YmxpYy4gJm5ic3A7U29tZSBpbml0aWFsIGlkZWFzIGZvciBCT0Ygc2Vzc2lvbnMgaW5j
-bHVkZTo8YnI+PGJyPiAmbmJzcDsgbyAmbmJzcDtORlMgVGVzdGluZyAoYSBwZXJlbm5pYWwgZmF2
-b3JpdGUpPGJyPiAmbmJzcDsgbyAmbmJzcDtORlMvS2VyYmVyb3MgKGVzcGVjaWFsbHkgZWFzZSBv
-ZiB1c2UpPGJyPiAmbmJzcDsgbyAmbmJzcDtORlMvUkRNQTxicj4gJm5ic3A7IG8gJm5ic3A7UlBD
-U0VDX0dTU3YzPGJyPjxicj5QbGVhc2UgZ2l2ZSB0aGVzZSBhICYjNDM7MSBhbmQvb3Igc2VuZCBv
-dGhlciBzdWdnZXN0aW9ucy48YnI+PGJyPkEgc2NoZWR1bGUgb2YgdGFsa3MgYW5kIEJPRiBzZXNz
-aW9ucyB3aWxsIGJlIHBvc3RlZCBvbiB0aGUgPGJyPjwvZm9udD48L3R0PjxhIGhyZWY9Ind3dy5j
-b25uZWN0YXRob24uaW5mbyI+PHR0Pjxmb250IHNpemU9IjIiPnd3dy5jb25uZWN0YXRob24uaW5m
-bzwvZm9udD48L3R0PjwvYT48dHQ+PGZvbnQgc2l6ZT0iMiI+d2ViIHNpdGUgYXMgd2UgZ2V0IGNs
-b3NlciB0byB0aGUgZXZlbnQuPGJyPjxicj5UaGFua3MsPGJyPlJvYiBUaHVybG93PGJyPjxicj5f
-X19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fXzxicj5uZnN2NCBt
-YWlsaW5nIGxpc3Q8YnI+bmZzdjRAaWV0Zi5vcmc8YnI+PC9mb250PjwvdHQ+PGEgaHJlZj0iaHR0
-cHM6Ly93d3cuaWV0Zi5vcmcvbWFpbG1hbi9saXN0aW5mby9uZnN2NCI+PHR0Pjxmb250IHNpemU9
-IjIiPmh0dHBzOi8vd3d3LmlldGYub3JnL21haWxtYW4vbGlzdGluZm8vbmZzdjQ8L2ZvbnQ+PC90
-dD48L2E+PHR0Pjxmb250IHNpemU9IjIiPjxicj48YnI+PC9mb250PjwvdHQ+PGJyPjxicj48YnI+
-DQo=
-
---=_alternative 0011601B88257F42_=--
-
---===============4947341865793912177==
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
-
-_______________________________________________
-nfsv4 mailing list
-nfsv4@ietf.org
-https://www.ietf.org/mailman/listinfo/nfsv4
-
---===============4947341865793912177==--
+> +
+> +	cps->slotid = args->csa_slotid;
+> +	tbl->highest_used_slotid = args->csa_slotid;
+> +
+>  	memcpy(&res->csr_sessionid, &args->csa_sessionid,
+>  	       sizeof(res->csr_sessionid));
+>  	res->csr_sequenceid = args->csa_sequenceid;
+> @@ -493,12 +490,6 @@ __be32 nfs4_callback_sequence(struct cb_sequenceargs *args,
+>  	res->csr_highestslotid = tbl->server_highest_slotid;
+>  	res->csr_target_highestslotid = tbl->target_highest_slotid;
+>  
+> -	status = validate_seqid(tbl, args);
+> -	if (status)
+> -		goto out_unlock;
+> -
+> -	cps->slotid = args->csa_slotid;
+> -
+>  	/* The ca_maxresponsesize_cached is 0 with no DRC */
+>  	if (args->csa_cachethis != 0)
+>  		return htonl(NFS4ERR_REP_TOO_BIG_TO_CACHE);
+> @@ -518,7 +509,7 @@ __be32 nfs4_callback_sequence(struct cb_sequenceargs *args,
+>  	 * If CB_SEQUENCE returns an error, then the state of the slot
+>  	 * (sequence ID, cached reply) MUST NOT change.
+>  	 */
+> -	slot->seq_nr++;
+> +	slot->seq_nr = args->csa_sequenceid;
+>  out_unlock:
+>  	spin_unlock(&tbl->slot_tbl_lock);
+>  
+> 
