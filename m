@@ -1,57 +1,80 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f171.google.com ([209.85.223.171]:34795 "EHLO
-	mail-io0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752487AbcBARV6 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 1 Feb 2016 12:21:58 -0500
-Received: by mail-io0-f171.google.com with SMTP id 9so86110308iom.1
-        for <linux-nfs@vger.kernel.org>; Mon, 01 Feb 2016 09:21:58 -0800 (PST)
+Received: from mail-io0-f174.google.com ([209.85.223.174]:32807 "EHLO
+	mail-io0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752487AbcBARV5 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 1 Feb 2016 12:21:57 -0500
+Received: by mail-io0-f174.google.com with SMTP id f81so164354061iof.0
+        for <linux-nfs@vger.kernel.org>; Mon, 01 Feb 2016 09:21:56 -0800 (PST)
 From: Trond Myklebust <trond.myklebust@primarydata.com>
 To: linux-nfs@vger.kernel.org
-Subject: [RFC PATCH v3 01/13] SUNRPC: Remove unused function rpc_task_reset_client
-Date: Mon,  1 Feb 2016 12:21:05 -0500
-Message-Id: <1454347277-10997-2-git-send-email-trond.myklebust@primarydata.com>
-In-Reply-To: <1454347277-10997-1-git-send-email-trond.myklebust@primarydata.com>
-References: <1454347277-10997-1-git-send-email-trond.myklebust@primarydata.com>
+Subject: [RFC PATCH v3 00/13] Basic multipathing support and demonstrator
+Date: Mon,  1 Feb 2016 12:21:04 -0500
+Message-Id: <1454347277-10997-1-git-send-email-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
----
- include/linux/sunrpc/clnt.h | 1 -
- net/sunrpc/clnt.c           | 8 --------
- 2 files changed, 9 deletions(-)
+Hi all,
 
-diff --git a/include/linux/sunrpc/clnt.h b/include/linux/sunrpc/clnt.h
-index 131032f15cc1..0c5c2cbe96c9 100644
---- a/include/linux/sunrpc/clnt.h
-+++ b/include/linux/sunrpc/clnt.h
-@@ -139,7 +139,6 @@ struct rpc_clnt *rpc_create_xprt(struct rpc_create_args *args,
- 					struct rpc_xprt *xprt);
- struct rpc_clnt	*rpc_bind_new_program(struct rpc_clnt *,
- 				const struct rpc_program *, u32);
--void rpc_task_reset_client(struct rpc_task *task, struct rpc_clnt *clnt);
- struct rpc_clnt *rpc_clone_client(struct rpc_clnt *);
- struct rpc_clnt *rpc_clone_client_set_auth(struct rpc_clnt *,
- 				rpc_authflavor_t);
-diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
-index b7f21044f4d8..2b4ad7aa40c6 100644
---- a/net/sunrpc/clnt.c
-+++ b/net/sunrpc/clnt.c
-@@ -900,14 +900,6 @@ void rpc_task_set_client(struct rpc_task *task, struct rpc_clnt *clnt)
- 	}
- }
- 
--void rpc_task_reset_client(struct rpc_task *task, struct rpc_clnt *clnt)
--{
--	rpc_task_release_client(task);
--	rpc_task_set_client(task, clnt);
--}
--EXPORT_SYMBOL_GPL(rpc_task_reset_client);
--
--
- static void
- rpc_task_set_rpc_message(struct rpc_task *task, const struct rpc_message *msg)
- {
+The following patchset is intended as an RFC to demonstrate how we could
+implement multipathing in NFS.
+It adds basic support for attaching multiple RPC transports to a client,
+an embryonic policy mechanism for switching tasks across those transports
+(with a round-robin policy implementation), as well as helpers to allow
+iteration of tasks across all tranports (for instance in order to
+support NFSv4.1's BIND_CONN_TO_SESSION).
+
+A lot of polish and finishing touches are missing. For instance, I have yet
+to add support in debugfs for these transports, and there is no support
+for mounting with NFSv4.1 session trunking. However there is a demonstrator
+that implements pNFS multipathing over NFSv3. Adding support for NFSv4.1
+requires that you call EXCHANGE_ID to allow verification of the
+major/minor server and scopeid fields, which should not be too hard.
+
+More to come, but in the meantime, comments are welcome...
+
+Cheers
+  Trond
+
+--------------
+v2 & v3: Fix up kbuild warnings
+
+Trond Myklebust (13):
+  SUNRPC: Remove unused function rpc_task_reset_client
+  SUNRPC: Reorder rpc_task to put waitqueue related info in same
+    cachelines
+  SUNRPC: Uninline xprt_get(); It isn't performance critical.
+  SUNRPC: Make freeing of struct xprt rcu-safe
+  SUNRPC: Add a structure to track multiple transports
+  SUNRPC: Make rpc_clnt store the multipath iterators
+  SUNRPC: Use the multipath iterator to assign a transport to each task
+  SUNRPC: Allow caller to specify the transport to use
+  SUNRPC: Add a helper to apply a function to all the rpc_clnt's
+    transports
+  SUNRPC: Make NFS swap work with multipath
+  NFSv4.1: nfs4_proc_bind_conn_to_session must iterate over all
+    connections
+  SUNRPC: Allow addition of new transports to a struct rpc_clnt
+  pnfs/NFSv4.1: Add multipath capabilities to pNFS flexfiles servers
+    over NFSv3
+
+ fs/nfs/nfs4proc.c                    |  51 +++-
+ fs/nfs/pnfs_nfs.c                    |  16 +-
+ include/linux/sunrpc/clnt.h          |  18 +-
+ include/linux/sunrpc/sched.h         |  32 +--
+ include/linux/sunrpc/xprt.h          |  22 +-
+ include/linux/sunrpc/xprtmultipath.h |  69 +++++
+ net/sunrpc/Makefile                  |   3 +-
+ net/sunrpc/auth_gss/auth_gss.c       |   4 +-
+ net/sunrpc/clnt.c                    | 326 ++++++++++++++++++------
+ net/sunrpc/rpcb_clnt.c               |  10 +-
+ net/sunrpc/sched.c                   |   2 +
+ net/sunrpc/xprt.c                    |  42 ++--
+ net/sunrpc/xprtmultipath.c           | 473 +++++++++++++++++++++++++++++++++++
+ net/sunrpc/xprtsock.c                |   4 +-
+ 14 files changed, 938 insertions(+), 134 deletions(-)
+ create mode 100644 include/linux/sunrpc/xprtmultipath.h
+ create mode 100644 net/sunrpc/xprtmultipath.c
+
 -- 
 2.5.0
 
