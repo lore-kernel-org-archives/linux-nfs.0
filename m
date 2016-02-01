@@ -1,61 +1,109 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from p3plsmtpa08-01.prod.phx3.secureserver.net ([173.201.193.102]:51061
-	"EHLO p3plsmtpa08-01.prod.phx3.secureserver.net" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S932185AbcBAWBp (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 1 Feb 2016 17:01:45 -0500
-Subject: Re: [RFC PATCH v3 00/13] Basic multipathing support and demonstrator
-To: Trond Myklebust <trond.myklebust@primarydata.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>
-References: <1454347277-10997-1-git-send-email-trond.myklebust@primarydata.com>
- <20160201204825.GD5499@fieldses.org>
- <CAHQdGtSYnL905dj=P_HDdgXPHgrFWEzFnzFu54SjaHEP=UpREQ@mail.gmail.com>
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-From: Tom Talpey <tom@talpey.com>
-Message-ID: <56AFD431.4050004@talpey.com>
-Date: Mon, 1 Feb 2016 16:54:57 -0500
+Received: from mx1.redhat.com ([209.132.183.28]:39522 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754291AbcBAWxZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 1 Feb 2016 17:53:25 -0500
+Subject: Re: [Linux-cachefs] [PATCH 1/2] cachefilesd can spin when disk space
+ is short.
+To: David Howells <dhowells@redhat.com>, linux-cachefs@redhat.com
+References: <20160125164111.9466.79976.stgit@warthog.procyon.org.uk>
+ <20160125164930.9670.46763.stgit@warthog.procyon.org.uk>
+Cc: linux-nfs@vger.kernel.org, neilb@suse.de, linux-fsdevel@vger.kernel.org,
+        jlayton@poochiereds.net
+From: John Snow <jsnow@redhat.com>
+Message-ID: <56AFE1E2.9060203@redhat.com>
+Date: Mon, 1 Feb 2016 17:53:22 -0500
 MIME-Version: 1.0
-In-Reply-To: <CAHQdGtSYnL905dj=P_HDdgXPHgrFWEzFnzFu54SjaHEP=UpREQ@mail.gmail.com>
-Content-Type: text/plain; charset=utf-8; format=flowed
+In-Reply-To: <20160125164930.9670.46763.stgit@warthog.procyon.org.uk>
+Content-Type: text/plain; charset=windows-1252
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 2/1/2016 4:12 PM, Trond Myklebust wrote:
-> On Mon, Feb 1, 2016 at 3:48 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
->>
->> On Mon, Feb 01, 2016 at 12:21:04PM -0500, Trond Myklebust wrote:
->>> The following patchset is intended as an RFC to demonstrate how we could
->>> implement multipathing in NFS.
->>> It adds basic support for attaching multiple RPC transports to a client,
->>> an embryonic policy mechanism for switching tasks across those transports
->>> (with a round-robin policy implementation),...
->>
->> Since your prototype is doing round-robin per task, I assume the
->> motivating problem is that you don't want to waste bandwidth when
->> there's multiple links available.  Is that right, or is there some other
->> goal you have in mind?
->>
->
-> I did round-robin simply because it is easy to do, and because server
-> vendors have been asking for it. That said, the policy is readily
-> pluggable, and it should be straightforward to add path failover,
-> should you want to.
 
-I think servers probably want load balancing, which is not quite the
-same thing as round robin. When we implemented mulitchannel in SMB3,
-we quickly discovered many issues at scale, especially when network
-links introduced additional variance. We eventually settled on a
-selection method that attempted to balance outstanding queue depth,
-as well as round robining.
 
-Do you plan to support links of different speed or other characteristics
-e.g. mixing TCP and RDMA? That introduces a number of other issues; in
-SMB3 we simply avoid ever doing those. Channel selection can also be
-used to tune multiprocessor affinity. There were Storage Developer
-Conference talks back in 2012 and maybe 2013 that discussed the approaches.
+On 01/25/2016 11:49 AM, David Howells wrote:
+> From: NeilBrown <neilb@suse.de>
+> 
+> When cachefilesd finds that it needs to cull, but that culling doesn't
+> achieve anything, it sets an alarm to wake it in 30 seconds to try again.
+> But as read_cache_state() will detect that culling is still needed, it will
+> immediately try again anyway.
+> 
+> This results in 100% cpu usage of no value.
+> 
+> This patch causes culling to be blocked until the 30 second alarm goes off.
+> 
+> It also changes the test to decide whether to enter poll() after blocking
+> signals to test exactly those values that might be changed by a signal.
+> Testing these is important, testing anything else is pointless.
+> 
+> Signed-off-by: NeilBrown <neilb@suse.de>
+> Signed-off-by: David Howells <dhowells@redhat.com>
 
-You may also want to talk to the Samba folks, who are implementing SMB3
-multichannel (server) recently, and may have insight to share.
+Reviewed-by: John Snow <jsnow@redhat.com>
 
-All that said, it's great to see this.
+> ---
+> 
+>  cachefilesd.c |    9 ++++++---
+>  1 file changed, 6 insertions(+), 3 deletions(-)
+> 
+> diff --git a/cachefilesd.c b/cachefilesd.c
+> index 6658ba5..eaa1bb0 100644
+> --- a/cachefilesd.c
+> +++ b/cachefilesd.c
+> @@ -99,6 +99,7 @@ static struct object **cullready;
+>  static unsigned nr_in_build_table;
+>  static unsigned nr_in_ready_table;
+>  static int ncullable;
+> +static bool cull_delayed;
+>  
+>  
+>  static const char *configfile = "/etc/cachefilesd.conf";
+> @@ -246,6 +247,7 @@ static void sigio(int sig)
+>  static void sigalrm(int sig)
+>  {
+>  	jumpstart_scan = true;
+> +	cull_delayed = false;
+>  }
+>  
+>  /*****************************************************************************/
+> @@ -613,11 +615,11 @@ static void cachefilesd(void)
+>  
+>  		/* sleep without racing on reap and cull with the signal
+>  		 * handlers */
+> -		if (!scan && !reap && !cull) {
+> +		if (!scan && !reap && !(cull && !cull_delayed)) {
+>  			if (sigprocmask(SIG_BLOCK, &sigs, &osigs) < 0)
+>  				oserror("Unable to block signals");
+>  
+> -			if (!reap && !cull) {
+> +			if (!reap && !stop && !jumpstart_scan) {
+>  				if (ppoll(pollfds, 1, NULL, &osigs) < 0 &&
+>  				    errno != EINTR)
+>  					oserror("Unable to suspend process");
+> @@ -644,7 +646,7 @@ static void cachefilesd(void)
+>  			if (cull) {
+>  				if (nr_in_ready_table > 0)
+>  					cull_objects();
+> -				else if (nr_in_build_table == 0)
+> +				else if (nr_in_build_table == 0 && !cull_delayed)
+>  					jumpstart_scan = true;
+>  			}
+>  
+> @@ -1364,6 +1366,7 @@ static void decant_cull_table(void)
+>  
+>  	/* if nothing there, scan again in a short while */
+>  	if (nr_in_build_table == 0) {
+> +		cull_delayed = true;
+>  		signal(SIGALRM, sigalrm);
+>  		alarm(30);
+>  		return;
+> 
+> --
+> Linux-cachefs mailing list
+> Linux-cachefs@redhat.com
+> https://www.redhat.com/mailman/listinfo/linux-cachefs
+> 
 
-Tom.
+-- 
+—js
