@@ -1,220 +1,189 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ig0-f175.google.com ([209.85.213.175]:37155 "EHLO
-	mail-ig0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S933143AbcBAPXZ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 1 Feb 2016 10:23:25 -0500
-Received: by mail-ig0-f175.google.com with SMTP id 5so13792270igt.0
-        for <linux-nfs@vger.kernel.org>; Mon, 01 Feb 2016 07:23:24 -0800 (PST)
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: linux-nfs@vger.kernel.org
-Subject: [RFC PATCH v2 12/13] SUNRPC: Allow addition of new transports to a struct rpc_clnt
-Date: Mon,  1 Feb 2016 10:22:34 -0500
-Message-Id: <1454340155-7670-13-git-send-email-trond.myklebust@primarydata.com>
-In-Reply-To: <1454340155-7670-12-git-send-email-trond.myklebust@primarydata.com>
-References: <1454340155-7670-1-git-send-email-trond.myklebust@primarydata.com>
- <1454340155-7670-2-git-send-email-trond.myklebust@primarydata.com>
- <1454340155-7670-3-git-send-email-trond.myklebust@primarydata.com>
- <1454340155-7670-4-git-send-email-trond.myklebust@primarydata.com>
- <1454340155-7670-5-git-send-email-trond.myklebust@primarydata.com>
- <1454340155-7670-6-git-send-email-trond.myklebust@primarydata.com>
- <1454340155-7670-7-git-send-email-trond.myklebust@primarydata.com>
- <1454340155-7670-8-git-send-email-trond.myklebust@primarydata.com>
- <1454340155-7670-9-git-send-email-trond.myklebust@primarydata.com>
- <1454340155-7670-10-git-send-email-trond.myklebust@primarydata.com>
- <1454340155-7670-11-git-send-email-trond.myklebust@primarydata.com>
- <1454340155-7670-12-git-send-email-trond.myklebust@primarydata.com>
+Received: from mx1.redhat.com ([209.132.183.28]:58109 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752369AbcBAQnG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 1 Feb 2016 11:43:06 -0500
+Subject: [PATCH] CacheFiles: Provide read-and-reset release counters for
+ cachefilesd
+From: David Howells <dhowells@redhat.com>
+To: viro@zeniv.linux.org.uk
+Cc: dhowells@redhat.com, linux-fsdevel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, linux-cachefs@redhat.com
+Date: Mon, 01 Feb 2016 16:43:04 +0000
+Message-ID: <20160201164304.9867.40456.stgit@warthog.procyon.org.uk>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Add a function to allow creation and addition of a new transport
-to an existing rpc_clnt
+Provide read-and-reset objects- and blocks-released counters for cachefilesd
+to use to work out whether there's anything new that can be culled.
 
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+One of the problems cachefilesd has is that if all the objects in the cache
+are pinned by inodes lying dormant in the kernel inode cache, there isn't
+anything for it to cull.  In such a case, it just spins around walking the
+filesystem tree and scanning for something to cull.  This eats up a lot of
+CPU time.
+
+By telling cachefilesd if there have been any releases, the daemon can
+sleep until there is the possibility of something to do.
+
+cachefilesd finds this information by the following means:
+
+ (1) When the control fd is read, the kernel presents a list of values of
+     interest.  "freleased=N" and "breleased=N" are added to this list to
+     indicate the number of files released and number of blocks released
+     since the last read call.  At this point the counters are reset.
+
+ (2) POLLIN is signalled if the number of files released becomes greater
+     than 0.
+
+Note that by 'released' it just means that the kernel has released its
+interest in those files for the moment, not necessarily that the files
+should be deleted from the cache.
+
+Signed-off-by: David Howells <dhowells@redhat.com>
+Reviewed-by: Steve Dickson <steved@redhat.com>
 ---
- include/linux/sunrpc/clnt.h |  11 ++++
- net/sunrpc/clnt.c           | 133 +++++++++++++++++++++++++++++++++++++++++++-
- 2 files changed, 142 insertions(+), 2 deletions(-)
 
-diff --git a/include/linux/sunrpc/clnt.h b/include/linux/sunrpc/clnt.h
-index d6510f64a361..9a7ddbaf116e 100644
---- a/include/linux/sunrpc/clnt.h
-+++ b/include/linux/sunrpc/clnt.h
-@@ -186,6 +186,17 @@ int 		rpc_clnt_iterate_for_each_xprt(struct rpc_clnt *clnt,
- 			int (*fn)(struct rpc_clnt *, struct rpc_xprt *, void *),
- 			void *data);
+ fs/cachefiles/daemon.c    |   13 ++++++++++---
+ fs/cachefiles/interface.c |   11 ++---------
+ fs/cachefiles/internal.h  |    4 ++++
+ fs/cachefiles/namei.c     |   28 +++++++++++++++++++++++-----
+ 4 files changed, 39 insertions(+), 17 deletions(-)
+
+diff --git a/fs/cachefiles/daemon.c b/fs/cachefiles/daemon.c
+index 452e98dd7560..1ee54ffd3a24 100644
+--- a/fs/cachefiles/daemon.c
++++ b/fs/cachefiles/daemon.c
+@@ -162,6 +162,8 @@ static ssize_t cachefiles_daemon_read(struct file *file, char __user *_buffer,
+ 				      size_t buflen, loff_t *pos)
+ {
+ 	struct cachefiles_cache *cache = file->private_data;
++	unsigned long long b_released;
++	unsigned f_released;
+ 	char buffer[256];
+ 	int n;
  
-+int 		rpc_clnt_test_and_add_xprt(struct rpc_clnt *clnt,
-+			struct rpc_xprt_switch *xps,
-+			struct rpc_xprt *xprt,
-+			void *dummy);
-+int		rpc_clnt_add_xprt(struct rpc_clnt *, struct xprt_create *,
-+			int (*setup)(struct rpc_clnt *,
-+				struct rpc_xprt_switch *,
-+				struct rpc_xprt *,
-+				void *),
-+			void *data);
-+
- const char *rpc_proc_name(const struct rpc_task *task);
- #endif /* __KERNEL__ */
- #endif /* _LINUX_SUNRPC_CLNT_H */
-diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
-index e19cac509cec..748846909919 100644
---- a/net/sunrpc/clnt.c
-+++ b/net/sunrpc/clnt.c
-@@ -2490,7 +2490,10 @@ static int rpc_ping(struct rpc_clnt *clnt)
- 	return err;
+@@ -174,6 +176,8 @@ static ssize_t cachefiles_daemon_read(struct file *file, char __user *_buffer,
+ 	cachefiles_has_space(cache, 0, 0);
+ 
+ 	/* summarise */
++	f_released = atomic_xchg(&cache->f_released, 0);
++	b_released = atomic_long_xchg(&cache->b_released, 0);
+ 	clear_bit(CACHEFILES_STATE_CHANGED, &cache->flags);
+ 
+ 	n = snprintf(buffer, sizeof(buffer),
+@@ -183,15 +187,18 @@ static ssize_t cachefiles_daemon_read(struct file *file, char __user *_buffer,
+ 		     " fstop=%llx"
+ 		     " brun=%llx"
+ 		     " bcull=%llx"
+-		     " bstop=%llx",
++		     " bstop=%llx"
++		     " freleased=%x"
++		     " breleased=%llx",
+ 		     test_bit(CACHEFILES_CULLING, &cache->flags) ? '1' : '0',
+ 		     (unsigned long long) cache->frun,
+ 		     (unsigned long long) cache->fcull,
+ 		     (unsigned long long) cache->fstop,
+ 		     (unsigned long long) cache->brun,
+ 		     (unsigned long long) cache->bcull,
+-		     (unsigned long long) cache->bstop
+-		     );
++		     (unsigned long long) cache->bstop,
++		     f_released,
++		     b_released);
+ 
+ 	if (n > buflen)
+ 		return -EMSGSIZE;
+diff --git a/fs/cachefiles/interface.c b/fs/cachefiles/interface.c
+index afa023dded5b..ee0cb116ff40 100644
+--- a/fs/cachefiles/interface.c
++++ b/fs/cachefiles/interface.c
+@@ -291,15 +291,8 @@ static void cachefiles_drop_object(struct fscache_object *_object)
+ 	}
+ 
+ 	/* note that the object is now inactive */
+-	if (test_bit(CACHEFILES_OBJECT_ACTIVE, &object->flags)) {
+-		write_lock(&cache->active_lock);
+-		if (!test_and_clear_bit(CACHEFILES_OBJECT_ACTIVE,
+-					&object->flags))
+-			BUG();
+-		rb_erase(&object->active_node, &cache->active_nodes);
+-		wake_up_bit(&object->flags, CACHEFILES_OBJECT_ACTIVE);
+-		write_unlock(&cache->active_lock);
+-	}
++	if (test_bit(CACHEFILES_OBJECT_ACTIVE, &object->flags))
++		cachefiles_mark_object_inactive(cache, object);
+ 
+ 	dput(object->dentry);
+ 	object->dentry = NULL;
+diff --git a/fs/cachefiles/internal.h b/fs/cachefiles/internal.h
+index 9c4b737a54df..2fcde1a34b7c 100644
+--- a/fs/cachefiles/internal.h
++++ b/fs/cachefiles/internal.h
+@@ -66,6 +66,8 @@ struct cachefiles_cache {
+ 	struct rb_root			active_nodes;	/* active nodes (can't be culled) */
+ 	rwlock_t			active_lock;	/* lock for active_nodes */
+ 	atomic_t			gravecounter;	/* graveyard uniquifier */
++	atomic_t			f_released;	/* number of objects released lately */
++	atomic_long_t			b_released;	/* number of blocks released lately */
+ 	unsigned			frun_percent;	/* when to stop culling (% files) */
+ 	unsigned			fcull_percent;	/* when to start culling (% files) */
+ 	unsigned			fstop_percent;	/* when to stop allocating (% files) */
+@@ -157,6 +159,8 @@ extern char *cachefiles_cook_key(const u8 *raw, int keylen, uint8_t type);
+ /*
+  * namei.c
+  */
++extern void cachefiles_mark_object_inactive(struct cachefiles_cache *cache,
++					    struct cachefiles_object *object);
+ extern int cachefiles_delete_object(struct cachefiles_cache *cache,
+ 				    struct cachefiles_object *object);
+ extern int cachefiles_walk_to_object(struct cachefiles_object *parent,
+diff --git a/fs/cachefiles/namei.c b/fs/cachefiles/namei.c
+index c4b893453e0e..1ad16ae7ab96 100644
+--- a/fs/cachefiles/namei.c
++++ b/fs/cachefiles/namei.c
+@@ -258,6 +258,28 @@ requeue:
  }
  
--struct rpc_task *rpc_call_null(struct rpc_clnt *clnt, struct rpc_cred *cred, int flags)
-+static
-+struct rpc_task *rpc_call_null_helper(struct rpc_clnt *clnt,
-+		struct rpc_xprt *xprt, struct rpc_cred *cred, int flags,
-+		const struct rpc_call_ops *ops, void *data)
- {
- 	struct rpc_message msg = {
- 		.rpc_proc = &rpcproc_null,
-@@ -2498,14 +2501,140 @@ struct rpc_task *rpc_call_null(struct rpc_clnt *clnt, struct rpc_cred *cred, int
- 	};
- 	struct rpc_task_setup task_setup_data = {
- 		.rpc_client = clnt,
-+		.rpc_xprt = xprt,
- 		.rpc_message = &msg,
--		.callback_ops = &rpc_default_ops,
-+		.callback_ops = (ops != NULL) ? ops : &rpc_default_ops,
-+		.callback_data = data,
- 		.flags = flags,
- 	};
-+
- 	return rpc_run_task(&task_setup_data);
- }
-+
-+struct rpc_task *rpc_call_null(struct rpc_clnt *clnt, struct rpc_cred *cred, int flags)
+ /*
++ * Mark an object as being inactive.
++ */
++void cachefiles_mark_object_inactive(struct cachefiles_cache *cache,
++				     struct cachefiles_object *object)
 +{
-+	return rpc_call_null_helper(clnt, NULL, cred, flags, NULL, NULL);
++	write_lock(&cache->active_lock);
++	rb_erase(&object->active_node, &cache->active_nodes);
++	clear_bit(CACHEFILES_OBJECT_ACTIVE, &object->flags);
++	write_unlock(&cache->active_lock);
++
++	wake_up_bit(&object->flags, CACHEFILES_OBJECT_ACTIVE);
++
++	/* This object can now be culled, so we need to let the daemon know
++	 * that there is something it can remove if it needs to.
++	 */
++	atomic_long_add(d_backing_inode(object->dentry)->i_blocks,
++			&cache->b_released);
++	if (atomic_inc_return(&cache->f_released))
++		cachefiles_state_changed(cache);
 +}
- EXPORT_SYMBOL_GPL(rpc_call_null);
++
++/*
+  * delete an object representation from the cache
+  * - file backed objects are unlinked
+  * - directory backed objects are stuffed into the graveyard for userspace to
+@@ -684,11 +706,7 @@ mark_active_timed_out:
  
-+struct rpc_cb_add_xprt_calldata {
-+	struct rpc_xprt_switch *xps;
-+	struct rpc_xprt *xprt;
-+};
-+
-+static void rpc_cb_add_xprt_done(struct rpc_task *task, void *calldata)
-+{
-+	struct rpc_cb_add_xprt_calldata *data = calldata;
-+
-+	if (task->tk_status == 0)
-+		rpc_xprt_switch_add_xprt(data->xps, data->xprt);
-+}
-+
-+static void rpc_cb_add_xprt_release(void *calldata)
-+{
-+	struct rpc_cb_add_xprt_calldata *data = calldata;
-+
-+	xprt_put(data->xprt);
-+	xprt_switch_put(data->xps);
-+	kfree(data);
-+}
-+
-+const static struct rpc_call_ops rpc_cb_add_xprt_call_ops = {
-+	.rpc_call_done = rpc_cb_add_xprt_done,
-+	.rpc_release = rpc_cb_add_xprt_release,
-+};
-+
-+/**
-+ * rpc_clnt_test_and_add_xprt - Test and add a new transport to a rpc_clnt
-+ * @clnt: pointer to struct rpc_clnt
-+ * @xps: pointer to struct rpc_xprt_switch,
-+ * @xprt: pointer struct rpc_xprt
-+ * @dummy: unused
-+ */
-+int rpc_clnt_test_and_add_xprt(struct rpc_clnt *clnt,
-+		struct rpc_xprt_switch *xps, struct rpc_xprt *xprt,
-+		void *dummy)
-+{
-+	struct rpc_cb_add_xprt_calldata *data;
-+	struct rpc_cred *cred;
-+	struct rpc_task *task;
-+
-+	data = kmalloc(sizeof(*data), GFP_NOFS);
-+	if (!data)
-+		return -ENOMEM;
-+	data->xps = xprt_switch_get(xps);
-+	data->xprt = xprt_get(xprt);
-+
-+	cred = authnull_ops.lookup_cred(NULL, NULL, 0);
-+	task = rpc_call_null_helper(clnt, xprt, cred,
-+			RPC_TASK_SOFT|RPC_TASK_SOFTCONN|RPC_TASK_ASYNC,
-+			&rpc_cb_add_xprt_call_ops, data);
-+	put_rpccred(cred);
-+	if (IS_ERR(task))
-+		return PTR_ERR(task);
-+	rpc_put_task(task);
-+	return 1;
-+}
-+EXPORT_SYMBOL_GPL(rpc_clnt_test_and_add_xprt);
-+
-+/**
-+ * rpc_clnt_add_xprt - Add a new transport to a rpc_clnt
-+ * @clnt: pointer to struct rpc_clnt
-+ * @args: pointer to struct xprt_create
-+ * @setup: callback to test and/or set up the connection
-+ * @data: pointer to setup function data
-+ *
-+ * Creates a new transport using the parameters set in args and
-+ * adds it to clnt.
-+ * If ping is set, then test that connectivity succeeds before
-+ * adding the new transport.
-+ *
-+ */
-+int rpc_clnt_add_xprt(struct rpc_clnt *clnt,
-+		struct xprt_create *xprtargs,
-+		int (*setup)(struct rpc_clnt *,
-+			struct rpc_xprt_switch *,
-+			struct rpc_xprt *,
-+			void *),
-+		void *data)
-+{
-+	struct rpc_xprt_switch *xps;
-+	struct rpc_xprt *xprt;
-+	unsigned char resvport;
-+	int ret = 0;
-+
-+	rcu_read_lock();
-+	xps = xprt_switch_get(rcu_dereference(clnt->cl_xpi.xpi_xpswitch));
-+	xprt = xprt_iter_xprt(&clnt->cl_xpi);
-+	if (xps == NULL || xprt == NULL) {
-+		rcu_read_unlock();
-+		return -EAGAIN;
-+	}
-+	resvport = xprt->resvport;
-+	rcu_read_unlock();
-+
-+	xprt = xprt_create_transport(xprtargs);
-+	if (IS_ERR(xprt)) {
-+		ret = PTR_ERR(xprt);
-+		goto out_put_switch;
-+	}
-+	xprt->resvport = resvport;
-+
-+	rpc_xprt_switch_set_roundrobin(xps);
-+	if (setup) {
-+		ret = setup(clnt, xps, xprt, data);
-+		if (ret != 0)
-+			goto out_put_xprt;
-+	}
-+	rpc_xprt_switch_add_xprt(xps, xprt);
-+out_put_xprt:
-+	xprt_put(xprt);
-+out_put_switch:
-+	xprt_switch_put(xps);
-+	return ret;
-+}
-+EXPORT_SYMBOL_GPL(rpc_clnt_add_xprt);
-+
- #if IS_ENABLED(CONFIG_SUNRPC_DEBUG)
- static void rpc_show_header(void)
- {
--- 
-2.5.0
+ check_error:
+ 	_debug("check error %d", ret);
+-	write_lock(&cache->active_lock);
+-	rb_erase(&object->active_node, &cache->active_nodes);
+-	clear_bit(CACHEFILES_OBJECT_ACTIVE, &object->flags);
+-	wake_up_bit(&object->flags, CACHEFILES_OBJECT_ACTIVE);
+-	write_unlock(&cache->active_lock);
++	cachefiles_mark_object_inactive(cache, object);
+ release_dentry:
+ 	dput(object->dentry);
+ 	object->dentry = NULL;
 
