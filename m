@@ -1,16 +1,16 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f179.google.com ([209.85.223.179]:33263 "EHLO
-	mail-io0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753399AbcBAEl0 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 31 Jan 2016 23:41:26 -0500
-Received: by mail-io0-f179.google.com with SMTP id f81so144117502iof.0
-        for <linux-nfs@vger.kernel.org>; Sun, 31 Jan 2016 20:41:26 -0800 (PST)
+Received: from mail-io0-f178.google.com ([209.85.223.178]:33273 "EHLO
+	mail-io0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753074AbcBAEl1 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 31 Jan 2016 23:41:27 -0500
+Received: by mail-io0-f178.google.com with SMTP id f81so144117800iof.0
+        for <linux-nfs@vger.kernel.org>; Sun, 31 Jan 2016 20:41:27 -0800 (PST)
 From: Trond Myklebust <trond.myklebust@primarydata.com>
 To: linux-nfs@vger.kernel.org
-Subject: [RFC PATCH 10/13] SUNRPC: Make NFS swap work with multipath
-Date: Sun, 31 Jan 2016 23:40:27 -0500
-Message-Id: <1454301630-17358-11-git-send-email-trond.myklebust@primarydata.com>
-In-Reply-To: <1454301630-17358-10-git-send-email-trond.myklebust@primarydata.com>
+Subject: [RFC PATCH 11/13] NFSv4.1: nfs4_proc_bind_conn_to_session must iterate over all connections
+Date: Sun, 31 Jan 2016 23:40:28 -0500
+Message-Id: <1454301630-17358-12-git-send-email-trond.myklebust@primarydata.com>
+In-Reply-To: <1454301630-17358-11-git-send-email-trond.myklebust@primarydata.com>
 References: <1454301630-17358-1-git-send-email-trond.myklebust@primarydata.com>
  <1454301630-17358-2-git-send-email-trond.myklebust@primarydata.com>
  <1454301630-17358-3-git-send-email-trond.myklebust@primarydata.com>
@@ -21,100 +21,107 @@ References: <1454301630-17358-1-git-send-email-trond.myklebust@primarydata.com>
  <1454301630-17358-8-git-send-email-trond.myklebust@primarydata.com>
  <1454301630-17358-9-git-send-email-trond.myklebust@primarydata.com>
  <1454301630-17358-10-git-send-email-trond.myklebust@primarydata.com>
+ <1454301630-17358-11-git-send-email-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Use the new helper to ensure that nfs4_proc_bind_conn_to_session() is called
+for all connections.
+However ensure that we only set the backchannel flag for the connection
+pointed to by rpc_clnt->cl_xprt.
+
 Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
 ---
- net/sunrpc/clnt.c | 66 ++++++++++++++++++++-----------------------------------
- 1 file changed, 24 insertions(+), 42 deletions(-)
+ fs/nfs/nfs4proc.c | 51 ++++++++++++++++++++++++++++++++++++++++++++++++---
+ 1 file changed, 48 insertions(+), 3 deletions(-)
 
-diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
-index 56b9c1419765..3a4c00e683bd 100644
---- a/net/sunrpc/clnt.c
-+++ b/net/sunrpc/clnt.c
-@@ -2552,57 +2552,39 @@ void rpc_show_tasks(struct net *net)
- #endif
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 4bfc33ad0563..36471e013a73 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -6783,12 +6783,16 @@ nfs41_same_server_scope(struct nfs41_server_scope *a,
+ }
  
- #if IS_ENABLED(CONFIG_SUNRPC_SWAP)
-+static int
-+rpc_clnt_swap_activate_callback(struct rpc_clnt *clnt,
+ /*
+- * nfs4_proc_bind_conn_to_session()
++ * nfs4_proc_bind_one_conn_to_session()
+  *
+  * The 4.1 client currently uses the same TCP connection for the
+  * fore and backchannel.
+  */
+-int nfs4_proc_bind_conn_to_session(struct nfs_client *clp, struct rpc_cred *cred)
++static
++int nfs4_proc_bind_one_conn_to_session(struct rpc_clnt *clnt,
 +		struct rpc_xprt *xprt,
-+		void *dummy)
++		struct nfs_client *clp,
++		struct rpc_cred *cred)
+ {
+ 	int status;
+ 	struct nfs41_bind_conn_to_session_args args = {
+@@ -6803,6 +6807,13 @@ int nfs4_proc_bind_conn_to_session(struct nfs_client *clp, struct rpc_cred *cred
+ 		.rpc_resp = &res,
+ 		.rpc_cred = cred,
+ 	};
++	struct rpc_task_setup task_setup_data = {
++		.rpc_client = clnt,
++		.rpc_xprt = xprt,
++		.rpc_message = &msg,
++		.flags = RPC_TASK_TIMEOUT,
++	};
++	struct rpc_task *task;
+ 
+ 	dprintk("--> %s\n", __func__);
+ 
+@@ -6810,7 +6821,16 @@ int nfs4_proc_bind_conn_to_session(struct nfs_client *clp, struct rpc_cred *cred
+ 	if (!(clp->cl_session->flags & SESSION4_BACK_CHAN))
+ 		args.dir = NFS4_CDFC4_FORE;
+ 
+-	status = rpc_call_sync(clp->cl_rpcclient, &msg, RPC_TASK_TIMEOUT);
++	/* Do not set the backchannel flag unless this is clnt->cl_xprt */
++	if (xprt != rcu_access_pointer(clnt->cl_xprt))
++		args.dir = NFS4_CDFC4_FORE;
++
++	task = rpc_run_task(&task_setup_data);
++	if (!IS_ERR(task)) {
++		status = task->tk_status;
++		rpc_put_task(task);
++	} else
++		status = PTR_ERR(task);
+ 	trace_nfs4_bind_conn_to_session(clp, status);
+ 	if (status == 0) {
+ 		if (memcmp(res.sessionid.data,
+@@ -6837,6 +6857,31 @@ out:
+ 	return status;
+ }
+ 
++struct rpc_bind_conn_calldata {
++	struct nfs_client *clp;
++	struct rpc_cred *cred;
++};
++
++static int
++nfs4_proc_bind_conn_to_session_callback(struct rpc_clnt *clnt,
++		struct rpc_xprt *xprt,
++		void *calldata)
 +{
-+	return xprt_enable_swap(xprt);
++	struct rpc_bind_conn_calldata *p = calldata;
++
++	return nfs4_proc_bind_one_conn_to_session(clnt, xprt, p->clp, p->cred);
 +}
 +
- int
- rpc_clnt_swap_activate(struct rpc_clnt *clnt)
- {
--	int ret = 0;
--	struct rpc_xprt	*xprt;
--
--	if (atomic_inc_return(&clnt->cl_swapper) == 1) {
--retry:
--		rcu_read_lock();
--		xprt = xprt_get(rcu_dereference(clnt->cl_xprt));
--		rcu_read_unlock();
--		if (!xprt) {
--			/*
--			 * If we didn't get a reference, then we likely are
--			 * racing with a migration event. Wait for a grace
--			 * period and try again.
--			 */
--			synchronize_rcu();
--			goto retry;
--		}
--
--		ret = xprt_enable_swap(xprt);
--		xprt_put(xprt);
--	}
--	return ret;
-+	if (atomic_inc_return(&clnt->cl_swapper) == 1)
-+		return rpc_clnt_iterate_for_each_xprt(clnt,
-+				rpc_clnt_swap_activate_callback, NULL);
-+	return 0;
- }
- EXPORT_SYMBOL_GPL(rpc_clnt_swap_activate);
- 
-+static int
-+rpc_clnt_swap_deactivate_callback(struct rpc_clnt *clnt,
-+		struct rpc_xprt *xprt,
-+		void *dummy)
++int nfs4_proc_bind_conn_to_session(struct nfs_client *clp, struct rpc_cred *cred)
 +{
-+	xprt_disable_swap(xprt);
-+	return 0;
++	struct rpc_bind_conn_calldata data = {
++		.clp = clp,
++		.cred = cred,
++	};
++	return rpc_clnt_iterate_for_each_xprt(clp->cl_rpcclient,
++			nfs4_proc_bind_conn_to_session_callback, &data);
 +}
 +
- void
- rpc_clnt_swap_deactivate(struct rpc_clnt *clnt)
- {
--	struct rpc_xprt	*xprt;
--
--	if (atomic_dec_if_positive(&clnt->cl_swapper) == 0) {
--retry:
--		rcu_read_lock();
--		xprt = xprt_get(rcu_dereference(clnt->cl_xprt));
--		rcu_read_unlock();
--		if (!xprt) {
--			/*
--			 * If we didn't get a reference, then we likely are
--			 * racing with a migration event. Wait for a grace
--			 * period and try again.
--			 */
--			synchronize_rcu();
--			goto retry;
--		}
--
--		xprt_disable_swap(xprt);
--		xprt_put(xprt);
--	}
-+	if (atomic_dec_if_positive(&clnt->cl_swapper) == 0)
-+		rpc_clnt_iterate_for_each_xprt(clnt,
-+				rpc_clnt_swap_deactivate_callback, NULL);
- }
- EXPORT_SYMBOL_GPL(rpc_clnt_swap_deactivate);
- #endif /* CONFIG_SUNRPC_SWAP */
+ /*
+  * Minimum set of SP4_MACH_CRED operations from RFC 5661 in the enforce map
+  * and operations we'd like to see to enable certain features in the allow map
 -- 
 2.5.0
 
