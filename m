@@ -1,16 +1,16 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ig0-f181.google.com ([209.85.213.181]:37141 "EHLO
-	mail-ig0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S933009AbcBAPXX (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 1 Feb 2016 10:23:23 -0500
-Received: by mail-ig0-f181.google.com with SMTP id 5so13791805igt.0
-        for <linux-nfs@vger.kernel.org>; Mon, 01 Feb 2016 07:23:23 -0800 (PST)
+Received: from mail-ig0-f178.google.com ([209.85.213.178]:34483 "EHLO
+	mail-ig0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S933175AbcBAPX0 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 1 Feb 2016 10:23:26 -0500
+Received: by mail-ig0-f178.google.com with SMTP id ik10so38134528igb.1
+        for <linux-nfs@vger.kernel.org>; Mon, 01 Feb 2016 07:23:25 -0800 (PST)
 From: Trond Myklebust <trond.myklebust@primarydata.com>
 To: linux-nfs@vger.kernel.org
-Subject: [RFC PATCH v2 11/13] NFSv4.1: nfs4_proc_bind_conn_to_session must iterate over all connections
-Date: Mon,  1 Feb 2016 10:22:33 -0500
-Message-Id: <1454340155-7670-12-git-send-email-trond.myklebust@primarydata.com>
-In-Reply-To: <1454340155-7670-11-git-send-email-trond.myklebust@primarydata.com>
+Subject: [RFC PATCH v2 13/13] pnfs/NFSv4.1: Add multipath capabilities to pNFS flexfiles servers over NFSv3
+Date: Mon,  1 Feb 2016 10:22:35 -0500
+Message-Id: <1454340155-7670-14-git-send-email-trond.myklebust@primarydata.com>
+In-Reply-To: <1454340155-7670-13-git-send-email-trond.myklebust@primarydata.com>
 References: <1454340155-7670-1-git-send-email-trond.myklebust@primarydata.com>
  <1454340155-7670-2-git-send-email-trond.myklebust@primarydata.com>
  <1454340155-7670-3-git-send-email-trond.myklebust@primarydata.com>
@@ -22,106 +22,52 @@ References: <1454340155-7670-1-git-send-email-trond.myklebust@primarydata.com>
  <1454340155-7670-9-git-send-email-trond.myklebust@primarydata.com>
  <1454340155-7670-10-git-send-email-trond.myklebust@primarydata.com>
  <1454340155-7670-11-git-send-email-trond.myklebust@primarydata.com>
+ <1454340155-7670-12-git-send-email-trond.myklebust@primarydata.com>
+ <1454340155-7670-13-git-send-email-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Use the new helper to ensure that nfs4_proc_bind_conn_to_session() is called
-for all connections.
-However ensure that we only set the backchannel flag for the connection
-pointed to by rpc_clnt->cl_xprt.
+This adds multipathing to pNFS over NFSv3 as described in the flexfiles
+draft spec.
+Ideally, we'd like to do the same for pNFS files, but the NFSv4.1 protocol
+requires a call to EXCHANGE_ID in order to test that the connection can do
+session trunking.
 
 Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
 ---
- fs/nfs/nfs4proc.c | 51 ++++++++++++++++++++++++++++++++++++++++++++++++---
- 1 file changed, 48 insertions(+), 3 deletions(-)
+ fs/nfs/pnfs_nfs.c | 16 +++++++++++++---
+ 1 file changed, 13 insertions(+), 3 deletions(-)
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 4bfc33ad0563..36471e013a73 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -6783,12 +6783,16 @@ nfs41_same_server_scope(struct nfs41_server_scope *a,
- }
+diff --git a/fs/nfs/pnfs_nfs.c b/fs/nfs/pnfs_nfs.c
+index 81ac6480f9e7..4aaed890048f 100644
+--- a/fs/nfs/pnfs_nfs.c
++++ b/fs/nfs/pnfs_nfs.c
+@@ -606,12 +606,22 @@ static int _nfs4_pnfs_v3_ds_connect(struct nfs_server *mds_srv,
+ 		dprintk("%s: DS %s: trying address %s\n",
+ 			__func__, ds->ds_remotestr, da->da_remotestr);
  
- /*
-- * nfs4_proc_bind_conn_to_session()
-+ * nfs4_proc_bind_one_conn_to_session()
-  *
-  * The 4.1 client currently uses the same TCP connection for the
-  * fore and backchannel.
-  */
--int nfs4_proc_bind_conn_to_session(struct nfs_client *clp, struct rpc_cred *cred)
-+static
-+int nfs4_proc_bind_one_conn_to_session(struct rpc_clnt *clnt,
-+		struct rpc_xprt *xprt,
-+		struct nfs_client *clp,
-+		struct rpc_cred *cred)
- {
- 	int status;
- 	struct nfs41_bind_conn_to_session_args args = {
-@@ -6803,6 +6807,13 @@ int nfs4_proc_bind_conn_to_session(struct nfs_client *clp, struct rpc_cred *cred
- 		.rpc_resp = &res,
- 		.rpc_cred = cred,
- 	};
-+	struct rpc_task_setup task_setup_data = {
-+		.rpc_client = clnt,
-+		.rpc_xprt = xprt,
-+		.rpc_message = &msg,
-+		.flags = RPC_TASK_TIMEOUT,
-+	};
-+	struct rpc_task *task;
+-		clp = get_v3_ds_connect(mds_srv->nfs_client,
++		if (!IS_ERR(clp)) {
++			struct xprt_create xprt_args = {
++				.ident = XPRT_TRANSPORT_TCP,
++				.net = clp->cl_net,
++				.dstaddr = (struct sockaddr *)&da->da_addr,
++				.addrlen = da->da_addrlen,
++				.servername = clp->cl_hostname,
++			};
++			/* Add this address as an alias */
++			rpc_clnt_add_xprt(clp->cl_rpcclient, &xprt_args,
++					rpc_clnt_test_and_add_xprt, NULL);
++		} else
++			clp = get_v3_ds_connect(mds_srv->nfs_client,
+ 					(struct sockaddr *)&da->da_addr,
+ 					da->da_addrlen, IPPROTO_TCP,
+ 					timeo, retrans, au_flavor);
+-		if (!IS_ERR(clp))
+-			break;
+ 	}
  
- 	dprintk("--> %s\n", __func__);
- 
-@@ -6810,7 +6821,16 @@ int nfs4_proc_bind_conn_to_session(struct nfs_client *clp, struct rpc_cred *cred
- 	if (!(clp->cl_session->flags & SESSION4_BACK_CHAN))
- 		args.dir = NFS4_CDFC4_FORE;
- 
--	status = rpc_call_sync(clp->cl_rpcclient, &msg, RPC_TASK_TIMEOUT);
-+	/* Do not set the backchannel flag unless this is clnt->cl_xprt */
-+	if (xprt != rcu_access_pointer(clnt->cl_xprt))
-+		args.dir = NFS4_CDFC4_FORE;
-+
-+	task = rpc_run_task(&task_setup_data);
-+	if (!IS_ERR(task)) {
-+		status = task->tk_status;
-+		rpc_put_task(task);
-+	} else
-+		status = PTR_ERR(task);
- 	trace_nfs4_bind_conn_to_session(clp, status);
- 	if (status == 0) {
- 		if (memcmp(res.sessionid.data,
-@@ -6837,6 +6857,31 @@ out:
- 	return status;
- }
- 
-+struct rpc_bind_conn_calldata {
-+	struct nfs_client *clp;
-+	struct rpc_cred *cred;
-+};
-+
-+static int
-+nfs4_proc_bind_conn_to_session_callback(struct rpc_clnt *clnt,
-+		struct rpc_xprt *xprt,
-+		void *calldata)
-+{
-+	struct rpc_bind_conn_calldata *p = calldata;
-+
-+	return nfs4_proc_bind_one_conn_to_session(clnt, xprt, p->clp, p->cred);
-+}
-+
-+int nfs4_proc_bind_conn_to_session(struct nfs_client *clp, struct rpc_cred *cred)
-+{
-+	struct rpc_bind_conn_calldata data = {
-+		.clp = clp,
-+		.cred = cred,
-+	};
-+	return rpc_clnt_iterate_for_each_xprt(clp->cl_rpcclient,
-+			nfs4_proc_bind_conn_to_session_callback, &data);
-+}
-+
- /*
-  * Minimum set of SP4_MACH_CRED operations from RFC 5661 in the enforce map
-  * and operations we'd like to see to enable certain features in the allow map
+ 	if (IS_ERR(clp)) {
 -- 
 2.5.0
 
