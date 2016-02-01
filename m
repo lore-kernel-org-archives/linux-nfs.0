@@ -1,73 +1,51 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ig0-f175.google.com ([209.85.213.175]:34966 "EHLO
-	mail-ig0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753399AbcBAEla (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 31 Jan 2016 23:41:30 -0500
-Received: by mail-ig0-f175.google.com with SMTP id t15so26671681igr.0
-        for <linux-nfs@vger.kernel.org>; Sun, 31 Jan 2016 20:41:30 -0800 (PST)
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: linux-nfs@vger.kernel.org
-Subject: [RFC PATCH 13/13] pnfs/NFSv4.1: Add multipath capabilities to pNFS flexfiles servers over NFSv3
-Date: Sun, 31 Jan 2016 23:40:30 -0500
-Message-Id: <1454301630-17358-14-git-send-email-trond.myklebust@primarydata.com>
-In-Reply-To: <1454301630-17358-13-git-send-email-trond.myklebust@primarydata.com>
-References: <1454301630-17358-1-git-send-email-trond.myklebust@primarydata.com>
- <1454301630-17358-2-git-send-email-trond.myklebust@primarydata.com>
- <1454301630-17358-3-git-send-email-trond.myklebust@primarydata.com>
- <1454301630-17358-4-git-send-email-trond.myklebust@primarydata.com>
- <1454301630-17358-5-git-send-email-trond.myklebust@primarydata.com>
- <1454301630-17358-6-git-send-email-trond.myklebust@primarydata.com>
- <1454301630-17358-7-git-send-email-trond.myklebust@primarydata.com>
- <1454301630-17358-8-git-send-email-trond.myklebust@primarydata.com>
- <1454301630-17358-9-git-send-email-trond.myklebust@primarydata.com>
- <1454301630-17358-10-git-send-email-trond.myklebust@primarydata.com>
- <1454301630-17358-11-git-send-email-trond.myklebust@primarydata.com>
- <1454301630-17358-12-git-send-email-trond.myklebust@primarydata.com>
- <1454301630-17358-13-git-send-email-trond.myklebust@primarydata.com>
+Received: from mail-wm0-f42.google.com ([74.125.82.42]:35820 "EHLO
+	mail-wm0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752838AbcBAKgb (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 1 Feb 2016 05:36:31 -0500
+Received: by mail-wm0-f42.google.com with SMTP id r129so63263746wmr.0
+        for <linux-nfs@vger.kernel.org>; Mon, 01 Feb 2016 02:36:10 -0800 (PST)
+Subject: Re: [LSF/MM TOPIC/ATTEND] RDMA passive target
+To: Yigal Korman <yigal@plexistor.com>, Boaz Harrosh <boaz@plexistor.com>
+References: <06414D5A-0632-4C74-B76C-038093E8AED3@oracle.com>
+ <56A8F646.5020003@plexistor.com> <56A8FE10.7000309@dev.mellanox.co.il>
+ <56AE181A.8030908@plexistor.com>
+ <CACTTzNaOChdWN2eS9_kzv6HO_LVib-JVdkmeUn0LDe2eKxPEgA@mail.gmail.com>
+Cc: Chuck Lever <chuck.lever@oracle.com>, lsf-pc@lists.linux-foundation.org,
+        Dan Williams <dan.j.williams@intel.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        Linux RDMA Mailing List <linux-rdma@vger.kernel.org>,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>, Jan Kara <jack@suse.cz>,
+        Ric Wheeler <rwheeler@redhat.com>
+From: Sagi Grimberg <sagig@dev.mellanox.co.il>
+Message-ID: <56AF3516.8000909@dev.mellanox.co.il>
+Date: Mon, 1 Feb 2016 12:36:06 +0200
+MIME-Version: 1.0
+In-Reply-To: <CACTTzNaOChdWN2eS9_kzv6HO_LVib-JVdkmeUn0LDe2eKxPEgA@mail.gmail.com>
+Content-Type: text/plain; charset=utf-8; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This adds multipathing to pNFS over NFSv3 as described in the flexfiles
-draft spec.
-Ideally, we'd like to do the same for pNFS files, but the NFSv4.1 protocol
-requires a call to EXCHANGE_ID in order to test that the connection can do
-session trunking.
 
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
----
- fs/nfs/pnfs_nfs.c | 16 +++++++++++++---
- 1 file changed, 13 insertions(+), 3 deletions(-)
+>>>> The almost is because:
+>>>> 1. If the target is over a /dev/pmemX then all is fine we have 2M contiguous
+>>>>      memory blocks.
+>>>> 2. If the target is over an FS, we have a proposal pending for an falloc_2M_flag
+>>>>      to ask the FS for a contiguous 2M allocations only. If any of the 2M allocations
+>>>>      fail then return ENOSPC from falloc. This way we guaranty that each 2M block can be
+>>>>      mapped by a single RDAM handle.
+>>>
+>>> Umm, you don't need the 2M to be contiguous in order to represent them
+>>> as a single RDMA handle. If that was true iSER would have never worked.
+>>> Or I misunderstood what you meant...
+>>>
+>>
+>> OK I will let our RDMA guy Yigal Korman answer that, I guess you might be right.
+>
+> When Boaz says 'RDMA handle', he means the pair [rkey,remote_addr].
+> AFAIK the remote_addr describes a continuous memory space on the target.
+> So if you want to write to this 'handle' - it must be continuous.
+> Please correct me if I'm wrong.
 
-diff --git a/fs/nfs/pnfs_nfs.c b/fs/nfs/pnfs_nfs.c
-index 81ac6480f9e7..4aaed890048f 100644
---- a/fs/nfs/pnfs_nfs.c
-+++ b/fs/nfs/pnfs_nfs.c
-@@ -606,12 +606,22 @@ static int _nfs4_pnfs_v3_ds_connect(struct nfs_server *mds_srv,
- 		dprintk("%s: DS %s: trying address %s\n",
- 			__func__, ds->ds_remotestr, da->da_remotestr);
- 
--		clp = get_v3_ds_connect(mds_srv->nfs_client,
-+		if (!IS_ERR(clp)) {
-+			struct xprt_create xprt_args = {
-+				.ident = XPRT_TRANSPORT_TCP,
-+				.net = clp->cl_net,
-+				.dstaddr = (struct sockaddr *)&da->da_addr,
-+				.addrlen = da->da_addrlen,
-+				.servername = clp->cl_hostname,
-+			};
-+			/* Add this address as an alias */
-+			rpc_clnt_add_xprt(clp->cl_rpcclient, &xprt_args,
-+					rpc_clnt_test_and_add_xprt, NULL);
-+		} else
-+			clp = get_v3_ds_connect(mds_srv->nfs_client,
- 					(struct sockaddr *)&da->da_addr,
- 					da->da_addrlen, IPPROTO_TCP,
- 					timeo, retrans, au_flavor);
--		if (!IS_ERR(clp))
--			break;
- 	}
- 
- 	if (IS_ERR(clp)) {
--- 
-2.5.0
-
+OK, this is definitely wrong. But let's defer this discussion to another
+thread as it's not relevant to lsf folks...
