@@ -1,216 +1,260 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f169.google.com ([209.85.223.169]:35272 "EHLO
-	mail-io0-f169.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S933021AbcBAPXS (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 1 Feb 2016 10:23:18 -0500
-Received: by mail-io0-f169.google.com with SMTP id d63so143499700ioj.2
-        for <linux-nfs@vger.kernel.org>; Mon, 01 Feb 2016 07:23:18 -0800 (PST)
+Received: from mail-io0-f181.google.com ([209.85.223.181]:33492 "EHLO
+	mail-io0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S933009AbcBAPXT (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 1 Feb 2016 10:23:19 -0500
+Received: by mail-io0-f181.google.com with SMTP id f81so159991923iof.0
+        for <linux-nfs@vger.kernel.org>; Mon, 01 Feb 2016 07:23:19 -0800 (PST)
 From: Trond Myklebust <trond.myklebust@primarydata.com>
 To: linux-nfs@vger.kernel.org
-Subject: [RFC PATCH v2 06/13] SUNRPC: Make rpc_clnt store the multipath iterators
-Date: Mon,  1 Feb 2016 10:22:28 -0500
-Message-Id: <1454340155-7670-7-git-send-email-trond.myklebust@primarydata.com>
-In-Reply-To: <1454340155-7670-6-git-send-email-trond.myklebust@primarydata.com>
+Subject: [RFC PATCH v2 07/13] SUNRPC: Use the multipath iterator to assign a transport to each task
+Date: Mon,  1 Feb 2016 10:22:29 -0500
+Message-Id: <1454340155-7670-8-git-send-email-trond.myklebust@primarydata.com>
+In-Reply-To: <1454340155-7670-7-git-send-email-trond.myklebust@primarydata.com>
 References: <1454340155-7670-1-git-send-email-trond.myklebust@primarydata.com>
  <1454340155-7670-2-git-send-email-trond.myklebust@primarydata.com>
  <1454340155-7670-3-git-send-email-trond.myklebust@primarydata.com>
  <1454340155-7670-4-git-send-email-trond.myklebust@primarydata.com>
  <1454340155-7670-5-git-send-email-trond.myklebust@primarydata.com>
  <1454340155-7670-6-git-send-email-trond.myklebust@primarydata.com>
+ <1454340155-7670-7-git-send-email-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This is a pre-patch for the RPC multipath code. It sets up the storage in
-struct rpc_clnt for the multipath code.
-
 Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
 ---
- include/linux/sunrpc/clnt.h    |  2 ++
- net/sunrpc/auth_gss/auth_gss.c |  4 ++--
- net/sunrpc/clnt.c              | 32 +++++++++++++++++++++++++++++---
- net/sunrpc/rpcb_clnt.c         |  4 ++--
- 4 files changed, 35 insertions(+), 7 deletions(-)
+ include/linux/sunrpc/sched.h |  2 ++
+ net/sunrpc/clnt.c            | 38 ++++++++++++++++++++------------------
+ net/sunrpc/rpcb_clnt.c       |  6 ++----
+ net/sunrpc/xprt.c            | 14 +++-----------
+ net/sunrpc/xprtsock.c        |  4 +---
+ 5 files changed, 28 insertions(+), 36 deletions(-)
 
-diff --git a/include/linux/sunrpc/clnt.h b/include/linux/sunrpc/clnt.h
-index 0c5c2cbe96c9..1713e41d65ae 100644
---- a/include/linux/sunrpc/clnt.h
-+++ b/include/linux/sunrpc/clnt.h
-@@ -25,6 +25,7 @@
- #include <asm/signal.h>
- #include <linux/path.h>
- #include <net/ipv6.h>
-+#include <linux/sunrpc/xprtmultipath.h>
+diff --git a/include/linux/sunrpc/sched.h b/include/linux/sunrpc/sched.h
+index ee0fbcf9b02e..0b248e98ee3b 100644
+--- a/include/linux/sunrpc/sched.h
++++ b/include/linux/sunrpc/sched.h
+@@ -69,6 +69,8 @@ struct rpc_task {
+ 	const struct rpc_call_ops *tk_ops;	/* Caller callbacks */
  
- struct rpc_inode;
+ 	struct rpc_clnt *	tk_client;	/* RPC client */
++	struct rpc_xprt *	tk_xprt;	/* Transport */
++
+ 	struct rpc_rqst *	tk_rqstp;	/* RPC request */
  
-@@ -67,6 +68,7 @@ struct rpc_clnt {
- #if IS_ENABLED(CONFIG_SUNRPC_DEBUG)
- 	struct dentry		*cl_debugfs;	/* debugfs directory */
- #endif
-+	struct rpc_xprt_iter	cl_xpi;
- };
- 
- /*
-diff --git a/net/sunrpc/auth_gss/auth_gss.c b/net/sunrpc/auth_gss/auth_gss.c
-index 799e65b944b9..3ce391cb80c4 100644
---- a/net/sunrpc/auth_gss/auth_gss.c
-+++ b/net/sunrpc/auth_gss/auth_gss.c
-@@ -1181,12 +1181,12 @@ static struct rpc_auth *
- gss_create(struct rpc_auth_create_args *args, struct rpc_clnt *clnt)
- {
- 	struct gss_auth *gss_auth;
--	struct rpc_xprt *xprt = rcu_access_pointer(clnt->cl_xprt);
-+	struct rpc_xprt_switch *xps = rcu_access_pointer(clnt->cl_xpi.xpi_xpswitch);
- 
- 	while (clnt != clnt->cl_parent) {
- 		struct rpc_clnt *parent = clnt->cl_parent;
- 		/* Find the original parent for this transport */
--		if (rcu_access_pointer(parent->cl_xprt) != xprt)
-+		if (rcu_access_pointer(parent->cl_xpi.xpi_xpswitch) != xps)
- 			break;
- 		clnt = parent;
- 	}
+ 	struct workqueue_struct	*tk_workqueue;	/* Normally rpciod, but could
 diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
-index 2b4ad7aa40c6..625fb8a184c6 100644
+index 625fb8a184c6..8e46fa5a2ab1 100644
 --- a/net/sunrpc/clnt.c
 +++ b/net/sunrpc/clnt.c
-@@ -354,6 +354,7 @@ static void rpc_free_clid(struct rpc_clnt *clnt)
+@@ -894,6 +894,7 @@ EXPORT_SYMBOL_GPL(rpc_bind_new_program);
+ void rpc_task_release_client(struct rpc_task *task)
+ {
+ 	struct rpc_clnt *clnt = task->tk_client;
++	struct rpc_xprt *xprt = task->tk_xprt;
+ 
+ 	if (clnt != NULL) {
+ 		/* Remove from client task list */
+@@ -904,13 +905,22 @@ void rpc_task_release_client(struct rpc_task *task)
+ 
+ 		rpc_release_client(clnt);
+ 	}
++
++	if (xprt != NULL) {
++		task->tk_xprt = NULL;
++
++		xprt_put(xprt);
++	}
  }
  
- static struct rpc_clnt * rpc_new_client(const struct rpc_create_args *args,
-+		struct rpc_xprt_switch *xps,
- 		struct rpc_xprt *xprt,
- 		struct rpc_clnt *parent)
+ static
+ void rpc_task_set_client(struct rpc_task *task, struct rpc_clnt *clnt)
  {
-@@ -411,6 +412,8 @@ static struct rpc_clnt * rpc_new_client(const struct rpc_create_args *args,
- 	}
- 
- 	rpc_clnt_set_transport(clnt, xprt, timeout);
-+	xprt_iter_init(&clnt->cl_xpi, xps);
-+	xprt_switch_put(xps);
- 
- 	clnt->cl_rtt = &clnt->cl_rtt_default;
- 	rpc_init_rtt(&clnt->cl_rtt_default, clnt->cl_timeout->to_initval);
-@@ -438,6 +441,7 @@ out_no_clid:
- out_err:
- 	rpciod_down();
- out_no_rpciod:
-+	xprt_switch_put(xps);
- 	xprt_put(xprt);
- 	return ERR_PTR(err);
- }
-@@ -446,8 +450,13 @@ struct rpc_clnt *rpc_create_xprt(struct rpc_create_args *args,
- 					struct rpc_xprt *xprt)
- {
- 	struct rpc_clnt *clnt = NULL;
-+	struct rpc_xprt_switch *xps;
- 
--	clnt = rpc_new_client(args, xprt, NULL);
-+	xps = xprt_switch_alloc(xprt, GFP_KERNEL);
-+	if (xps == NULL)
-+		return ERR_PTR(-ENOMEM);
 +
-+	clnt = rpc_new_client(args, xps, xprt, NULL);
- 	if (IS_ERR(clnt))
- 		return clnt;
- 
-@@ -564,6 +573,7 @@ EXPORT_SYMBOL_GPL(rpc_create);
- static struct rpc_clnt *__rpc_clone_client(struct rpc_create_args *args,
- 					   struct rpc_clnt *clnt)
- {
-+	struct rpc_xprt_switch *xps;
- 	struct rpc_xprt *xprt;
- 	struct rpc_clnt *new;
- 	int err;
-@@ -571,13 +581,17 @@ static struct rpc_clnt *__rpc_clone_client(struct rpc_create_args *args,
- 	err = -ENOMEM;
- 	rcu_read_lock();
- 	xprt = xprt_get(rcu_dereference(clnt->cl_xprt));
-+	xps = xprt_switch_get(rcu_dereference(clnt->cl_xpi.xpi_xpswitch));
- 	rcu_read_unlock();
--	if (xprt == NULL)
-+	if (xprt == NULL || xps == NULL) {
-+		xprt_put(xprt);
-+		xprt_switch_put(xps);
- 		goto out_err;
-+	}
- 	args->servername = xprt->servername;
- 	args->nodename = clnt->cl_nodename;
- 
--	new = rpc_new_client(args, xprt, clnt);
-+	new = rpc_new_client(args, xps, xprt, clnt);
- 	if (IS_ERR(new)) {
- 		err = PTR_ERR(new);
- 		goto out_err;
-@@ -657,6 +671,7 @@ int rpc_switch_client_transport(struct rpc_clnt *clnt,
- {
- 	const struct rpc_timeout *old_timeo;
- 	rpc_authflavor_t pseudoflavor;
-+	struct rpc_xprt_switch *xps, *oldxps;
- 	struct rpc_xprt *xprt, *old;
- 	struct rpc_clnt *parent;
- 	int err;
-@@ -668,10 +683,17 @@ int rpc_switch_client_transport(struct rpc_clnt *clnt,
- 		return PTR_ERR(xprt);
+ 	if (clnt != NULL) {
+ 		rpc_task_release_client(task);
++		if (task->tk_xprt == NULL)
++			task->tk_xprt = xprt_iter_get_next(&clnt->cl_xpi);
+ 		task->tk_client = clnt;
+ 		atomic_inc(&clnt->cl_count);
+ 		if (clnt->cl_softrtry)
+@@ -2122,11 +2132,9 @@ call_timeout(struct rpc_task *task)
  	}
+ 	if (RPC_IS_SOFT(task)) {
+ 		if (clnt->cl_chatty) {
+-			rcu_read_lock();
+ 			printk(KERN_NOTICE "%s: server %s not responding, timed out\n",
+ 				clnt->cl_program->name,
+-				rcu_dereference(clnt->cl_xprt)->servername);
+-			rcu_read_unlock();
++				task->tk_xprt->servername);
+ 		}
+ 		if (task->tk_flags & RPC_TASK_TIMEOUT)
+ 			rpc_exit(task, -ETIMEDOUT);
+@@ -2138,11 +2146,9 @@ call_timeout(struct rpc_task *task)
+ 	if (!(task->tk_flags & RPC_CALL_MAJORSEEN)) {
+ 		task->tk_flags |= RPC_CALL_MAJORSEEN;
+ 		if (clnt->cl_chatty) {
+-			rcu_read_lock();
+ 			printk(KERN_NOTICE "%s: server %s not responding, still trying\n",
+ 			clnt->cl_program->name,
+-			rcu_dereference(clnt->cl_xprt)->servername);
+-			rcu_read_unlock();
++			task->tk_xprt->servername);
+ 		}
+ 	}
+ 	rpc_force_rebind(clnt);
+@@ -2172,11 +2178,9 @@ call_decode(struct rpc_task *task)
  
-+	xps = xprt_switch_alloc(xprt, GFP_KERNEL);
-+	if (xps == NULL) {
-+		xprt_put(xprt);
-+		return -ENOMEM;
-+	}
-+
- 	pseudoflavor = clnt->cl_auth->au_flavor;
- 
- 	old_timeo = clnt->cl_timeout;
- 	old = rpc_clnt_set_transport(clnt, xprt, timeout);
-+	oldxps = xprt_iter_xchg_switch(&clnt->cl_xpi, xps);
- 
- 	rpc_unregister_client(clnt);
- 	__rpc_clnt_remove_pipedir(clnt);
-@@ -697,14 +719,17 @@ int rpc_switch_client_transport(struct rpc_clnt *clnt,
- 	synchronize_rcu();
- 	if (parent != clnt)
- 		rpc_release_client(parent);
-+	xprt_switch_put(oldxps);
- 	xprt_put(old);
- 	dprintk("RPC:       replaced xprt for clnt %p\n", clnt);
- 	return 0;
- 
- out_revert:
-+	xps = xprt_iter_xchg_switch(&clnt->cl_xpi, oldxps);
- 	rpc_clnt_set_transport(clnt, old, old_timeo);
- 	clnt->cl_parent = parent;
- 	rpc_client_register(clnt, pseudoflavor, NULL);
-+	xprt_switch_put(xps);
- 	xprt_put(xprt);
- 	dprintk("RPC:       failed to switch xprt for clnt %p\n", clnt);
- 	return err;
-@@ -783,6 +808,7 @@ rpc_free_client(struct rpc_clnt *clnt)
- 	rpc_free_iostats(clnt->cl_metrics);
- 	clnt->cl_metrics = NULL;
- 	xprt_put(rcu_dereference_raw(clnt->cl_xprt));
-+	xprt_iter_destroy(&clnt->cl_xpi);
- 	rpciod_down();
- 	rpc_free_clid(clnt);
- 	kfree(clnt);
+ 	if (task->tk_flags & RPC_CALL_MAJORSEEN) {
+ 		if (clnt->cl_chatty) {
+-			rcu_read_lock();
+ 			printk(KERN_NOTICE "%s: server %s OK\n",
+ 				clnt->cl_program->name,
+-				rcu_dereference(clnt->cl_xprt)->servername);
+-			rcu_read_unlock();
++				task->tk_xprt->servername);
+ 		}
+ 		task->tk_flags &= ~RPC_CALL_MAJORSEEN;
+ 	}
+@@ -2330,11 +2334,9 @@ rpc_verify_header(struct rpc_task *task)
+ 			task->tk_action = call_bind;
+ 			goto out_retry;
+ 		case RPC_AUTH_TOOWEAK:
+-			rcu_read_lock();
+ 			printk(KERN_NOTICE "RPC: server %s requires stronger "
+ 			       "authentication.\n",
+-			       rcu_dereference(clnt->cl_xprt)->servername);
+-			rcu_read_unlock();
++			       task->tk_xprt->servername);
+ 			break;
+ 		default:
+ 			dprintk("RPC: %5u %s: unknown auth error: %x\n",
+@@ -2359,27 +2361,27 @@ rpc_verify_header(struct rpc_task *task)
+ 	case RPC_SUCCESS:
+ 		return p;
+ 	case RPC_PROG_UNAVAIL:
+-		dprintk_rcu("RPC: %5u %s: program %u is unsupported "
++		dprintk("RPC: %5u %s: program %u is unsupported "
+ 				"by server %s\n", task->tk_pid, __func__,
+ 				(unsigned int)clnt->cl_prog,
+-				rcu_dereference(clnt->cl_xprt)->servername);
++				task->tk_xprt->servername);
+ 		error = -EPFNOSUPPORT;
+ 		goto out_err;
+ 	case RPC_PROG_MISMATCH:
+-		dprintk_rcu("RPC: %5u %s: program %u, version %u unsupported "
++		dprintk("RPC: %5u %s: program %u, version %u unsupported "
+ 				"by server %s\n", task->tk_pid, __func__,
+ 				(unsigned int)clnt->cl_prog,
+ 				(unsigned int)clnt->cl_vers,
+-				rcu_dereference(clnt->cl_xprt)->servername);
++				task->tk_xprt->servername);
+ 		error = -EPROTONOSUPPORT;
+ 		goto out_err;
+ 	case RPC_PROC_UNAVAIL:
+-		dprintk_rcu("RPC: %5u %s: proc %s unsupported by program %u, "
++		dprintk("RPC: %5u %s: proc %s unsupported by program %u, "
+ 				"version %u on server %s\n",
+ 				task->tk_pid, __func__,
+ 				rpc_proc_name(task),
+ 				clnt->cl_prog, clnt->cl_vers,
+-				rcu_dereference(clnt->cl_xprt)->servername);
++				task->tk_xprt->servername);
+ 		error = -EOPNOTSUPP;
+ 		goto out_err;
+ 	case RPC_GARBAGE_ARGS:
 diff --git a/net/sunrpc/rpcb_clnt.c b/net/sunrpc/rpcb_clnt.c
-index cf5770d8f49a..44f025c150d8 100644
+index 44f025c150d8..5b30603596d0 100644
 --- a/net/sunrpc/rpcb_clnt.c
 +++ b/net/sunrpc/rpcb_clnt.c
-@@ -648,10 +648,10 @@ static struct rpc_task *rpcb_call_async(struct rpc_clnt *rpcb_clnt, struct rpcbi
- static struct rpc_clnt *rpcb_find_transport_owner(struct rpc_clnt *clnt)
- {
- 	struct rpc_clnt *parent = clnt->cl_parent;
--	struct rpc_xprt *xprt = rcu_dereference(clnt->cl_xprt);
-+	struct rpc_xprt_switch *xps = rcu_access_pointer(clnt->cl_xpi.xpi_xpswitch);
+@@ -683,11 +683,9 @@ void rpcb_getport_async(struct rpc_task *task)
+ 	int status;
  
- 	while (parent != clnt) {
--		if (rcu_dereference(parent->cl_xprt) != xprt)
-+		if (rcu_access_pointer(parent->cl_xpi.xpi_xpswitch) != xps)
- 			break;
- 		if (clnt->cl_autobind)
- 			break;
+ 	rcu_read_lock();
+-	do {
+-		clnt = rpcb_find_transport_owner(task->tk_client);
+-		xprt = xprt_get(rcu_dereference(clnt->cl_xprt));
+-	} while (xprt == NULL);
++	clnt = rpcb_find_transport_owner(task->tk_client);
+ 	rcu_read_unlock();
++	xprt = xprt_get(task->tk_xprt);
+ 
+ 	dprintk("RPC: %5u %s(%s, %u, %u, %d)\n",
+ 		task->tk_pid, __func__,
+diff --git a/net/sunrpc/xprt.c b/net/sunrpc/xprt.c
+index 323b332f8f7c..216a1385718a 100644
+--- a/net/sunrpc/xprt.c
++++ b/net/sunrpc/xprt.c
+@@ -1181,7 +1181,7 @@ EXPORT_SYMBOL_GPL(xprt_free);
+  */
+ void xprt_reserve(struct rpc_task *task)
+ {
+-	struct rpc_xprt	*xprt;
++	struct rpc_xprt *xprt = task->tk_xprt;
+ 
+ 	task->tk_status = 0;
+ 	if (task->tk_rqstp != NULL)
+@@ -1189,11 +1189,8 @@ void xprt_reserve(struct rpc_task *task)
+ 
+ 	task->tk_timeout = 0;
+ 	task->tk_status = -EAGAIN;
+-	rcu_read_lock();
+-	xprt = rcu_dereference(task->tk_client->cl_xprt);
+ 	if (!xprt_throttle_congested(xprt, task))
+ 		xprt->ops->alloc_slot(xprt, task);
+-	rcu_read_unlock();
+ }
+ 
+ /**
+@@ -1207,7 +1204,7 @@ void xprt_reserve(struct rpc_task *task)
+  */
+ void xprt_retry_reserve(struct rpc_task *task)
+ {
+-	struct rpc_xprt	*xprt;
++	struct rpc_xprt *xprt = task->tk_xprt;
+ 
+ 	task->tk_status = 0;
+ 	if (task->tk_rqstp != NULL)
+@@ -1215,10 +1212,7 @@ void xprt_retry_reserve(struct rpc_task *task)
+ 
+ 	task->tk_timeout = 0;
+ 	task->tk_status = -EAGAIN;
+-	rcu_read_lock();
+-	xprt = rcu_dereference(task->tk_client->cl_xprt);
+ 	xprt->ops->alloc_slot(xprt, task);
+-	rcu_read_unlock();
+ }
+ 
+ static inline __be32 xprt_alloc_xid(struct rpc_xprt *xprt)
+@@ -1265,11 +1259,9 @@ void xprt_release(struct rpc_task *task)
+ 
+ 	if (req == NULL) {
+ 		if (task->tk_client) {
+-			rcu_read_lock();
+-			xprt = rcu_dereference(task->tk_client->cl_xprt);
++			xprt = task->tk_xprt;
+ 			if (xprt->snd_task == task)
+ 				xprt_release_write(xprt, task);
+-			rcu_read_unlock();
+ 		}
+ 		return;
+ 	}
+diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
+index fde2138b81e7..65e759569e48 100644
+--- a/net/sunrpc/xprtsock.c
++++ b/net/sunrpc/xprtsock.c
+@@ -1844,9 +1844,7 @@ static int xs_bind(struct sock_xprt *transport, struct socket *sock)
+  */
+ static void xs_local_rpcbind(struct rpc_task *task)
+ {
+-	rcu_read_lock();
+-	xprt_set_bound(rcu_dereference(task->tk_client->cl_xprt));
+-	rcu_read_unlock();
++	xprt_set_bound(task->tk_xprt);
+ }
+ 
+ static void xs_local_set_port(struct rpc_xprt *xprt, unsigned short port)
 -- 
 2.5.0
 
