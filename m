@@ -1,16 +1,16 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f172.google.com ([209.85.223.172]:35374 "EHLO
-	mail-io0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752487AbcBARWJ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 1 Feb 2016 12:22:09 -0500
-Received: by mail-io0-f172.google.com with SMTP id d63so147886830ioj.2
-        for <linux-nfs@vger.kernel.org>; Mon, 01 Feb 2016 09:22:08 -0800 (PST)
+Received: from mail-ig0-f170.google.com ([209.85.213.170]:34591 "EHLO
+	mail-ig0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754044AbcBARWK (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 1 Feb 2016 12:22:10 -0500
+Received: by mail-ig0-f170.google.com with SMTP id ik10so40976234igb.1
+        for <linux-nfs@vger.kernel.org>; Mon, 01 Feb 2016 09:22:10 -0800 (PST)
 From: Trond Myklebust <trond.myklebust@primarydata.com>
 To: linux-nfs@vger.kernel.org
-Subject: [RFC PATCH v3 08/13] SUNRPC: Allow caller to specify the transport to use
-Date: Mon,  1 Feb 2016 12:21:12 -0500
-Message-Id: <1454347277-10997-9-git-send-email-trond.myklebust@primarydata.com>
-In-Reply-To: <1454347277-10997-8-git-send-email-trond.myklebust@primarydata.com>
+Subject: [RFC PATCH v3 09/13] SUNRPC: Add a helper to apply a function to all the rpc_clnt's transports
+Date: Mon,  1 Feb 2016 12:21:13 -0500
+Message-Id: <1454347277-10997-10-git-send-email-trond.myklebust@primarydata.com>
+In-Reply-To: <1454347277-10997-9-git-send-email-trond.myklebust@primarydata.com>
 References: <1454347277-10997-1-git-send-email-trond.myklebust@primarydata.com>
  <1454347277-10997-2-git-send-email-trond.myklebust@primarydata.com>
  <1454347277-10997-3-git-send-email-trond.myklebust@primarydata.com>
@@ -19,43 +19,96 @@ References: <1454347277-10997-1-git-send-email-trond.myklebust@primarydata.com>
  <1454347277-10997-6-git-send-email-trond.myklebust@primarydata.com>
  <1454347277-10997-7-git-send-email-trond.myklebust@primarydata.com>
  <1454347277-10997-8-git-send-email-trond.myklebust@primarydata.com>
+ <1454347277-10997-9-git-send-email-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This is needed in order to allow the NFSv4.1 backchannel and
-BIND_CONN_TO_SESSION function to work.
+Add a helper for tasks that require us to apply a function to all the
+transports in an rpc_clnt.
+An example of a usecase would be BIND_CONN_TO_SESSION, where we want
+to send one RPC call down each transport.
 
 Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
 ---
- include/linux/sunrpc/sched.h | 1 +
- net/sunrpc/sched.c           | 2 ++
- 2 files changed, 3 insertions(+)
+ include/linux/sunrpc/clnt.h |  4 ++++
+ net/sunrpc/clnt.c           | 49 +++++++++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 53 insertions(+)
 
-diff --git a/include/linux/sunrpc/sched.h b/include/linux/sunrpc/sched.h
-index 0b248e98ee3b..05a1809c44d9 100644
---- a/include/linux/sunrpc/sched.h
-+++ b/include/linux/sunrpc/sched.h
-@@ -103,6 +103,7 @@ struct rpc_call_ops {
- struct rpc_task_setup {
- 	struct rpc_task *task;
- 	struct rpc_clnt *rpc_client;
-+	struct rpc_xprt *rpc_xprt;
- 	const struct rpc_message *rpc_message;
- 	const struct rpc_call_ops *callback_ops;
- 	void *callback_data;
-diff --git a/net/sunrpc/sched.c b/net/sunrpc/sched.c
-index 73ad57a59989..fcfd48d263f6 100644
---- a/net/sunrpc/sched.c
-+++ b/net/sunrpc/sched.c
-@@ -909,6 +909,8 @@ static void rpc_init_task(struct rpc_task *task, const struct rpc_task_setup *ta
- 	/* Initialize workqueue for async tasks */
- 	task->tk_workqueue = task_setup_data->workqueue;
+diff --git a/include/linux/sunrpc/clnt.h b/include/linux/sunrpc/clnt.h
+index 1713e41d65ae..d6510f64a361 100644
+--- a/include/linux/sunrpc/clnt.h
++++ b/include/linux/sunrpc/clnt.h
+@@ -182,6 +182,10 @@ size_t		rpc_peeraddr(struct rpc_clnt *, struct sockaddr *, size_t);
+ const char	*rpc_peeraddr2str(struct rpc_clnt *, enum rpc_display_format_t);
+ int		rpc_localaddr(struct rpc_clnt *, struct sockaddr *, size_t);
  
-+	task->tk_xprt = xprt_get(task_setup_data->rpc_xprt);
++int 		rpc_clnt_iterate_for_each_xprt(struct rpc_clnt *clnt,
++			int (*fn)(struct rpc_clnt *, struct rpc_xprt *, void *),
++			void *data);
 +
- 	if (task->tk_ops->rpc_call_prepare != NULL)
- 		task->tk_action = rpc_prepare_task;
+ const char *rpc_proc_name(const struct rpc_task *task);
+ #endif /* __KERNEL__ */
+ #endif /* _LINUX_SUNRPC_CLNT_H */
+diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+index 8e46fa5a2ab1..7b4d9044cbbd 100644
+--- a/net/sunrpc/clnt.c
++++ b/net/sunrpc/clnt.c
+@@ -736,6 +736,55 @@ out_revert:
+ }
+ EXPORT_SYMBOL_GPL(rpc_switch_client_transport);
  
++static
++int rpc_clnt_xprt_iter_init(struct rpc_clnt *clnt, struct rpc_xprt_iter *xpi)
++{
++	struct rpc_xprt_switch *xps;
++
++	rcu_read_lock();
++	xps = xprt_switch_get(rcu_dereference(clnt->cl_xpi.xpi_xpswitch));
++	rcu_read_unlock();
++	if (xps == NULL)
++		return -EAGAIN;
++	xprt_iter_init_listall(xpi, xps);
++	xprt_switch_put(xps);
++	return 0;
++}
++
++/**
++ * rpc_clnt_iterate_for_each_xprt - Apply a function to all transports
++ * @clnt: pointer to client
++ * @fn: function to apply
++ * @data: void pointer to function data
++ *
++ * Iterates through the list of RPC transports currently attached to the
++ * client and applies the function fn(clnt, xprt, data).
++ *
++ * On error, the iteration stops, and the function returns the error value.
++ */
++int rpc_clnt_iterate_for_each_xprt(struct rpc_clnt *clnt,
++		int (*fn)(struct rpc_clnt *, struct rpc_xprt *, void *),
++		void *data)
++{
++	struct rpc_xprt_iter xpi;
++	int ret;
++
++	ret = rpc_clnt_xprt_iter_init(clnt, &xpi);
++	for (;;) {
++		struct rpc_xprt *xprt = xprt_iter_get_next(&xpi);
++
++		if (!xprt)
++			break;
++		ret = fn(clnt, xprt, data);
++		xprt_put(xprt);
++		if (ret < 0)
++			break;
++	}
++	xprt_iter_destroy(&xpi);
++	return ret;
++}
++EXPORT_SYMBOL_GPL(rpc_clnt_iterate_for_each_xprt);
++
+ /*
+  * Kill all tasks for the given client.
+  * XXX: kill their descendants as well?
 -- 
 2.5.0
 
