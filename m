@@ -1,16 +1,16 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f181.google.com ([209.85.223.181]:35551 "EHLO
-	mail-io0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753074AbcBAElX (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 31 Jan 2016 23:41:23 -0500
-Received: by mail-io0-f181.google.com with SMTP id d63so127547234ioj.2
-        for <linux-nfs@vger.kernel.org>; Sun, 31 Jan 2016 20:41:23 -0800 (PST)
+Received: from mail-io0-f169.google.com ([209.85.223.169]:33253 "EHLO
+	mail-io0-f169.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753074AbcBAElZ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 31 Jan 2016 23:41:25 -0500
+Received: by mail-io0-f169.google.com with SMTP id f81so144117182iof.0
+        for <linux-nfs@vger.kernel.org>; Sun, 31 Jan 2016 20:41:25 -0800 (PST)
 From: Trond Myklebust <trond.myklebust@primarydata.com>
 To: linux-nfs@vger.kernel.org
-Subject: [RFC PATCH 07/13] SUNRPC: Use the multipath iterator to assign a transport to each task
-Date: Sun, 31 Jan 2016 23:40:24 -0500
-Message-Id: <1454301630-17358-8-git-send-email-trond.myklebust@primarydata.com>
-In-Reply-To: <1454301630-17358-7-git-send-email-trond.myklebust@primarydata.com>
+Subject: [RFC PATCH 09/13] SUNRPC: Add a helper to apply a function to all the rpc_clnt's transports
+Date: Sun, 31 Jan 2016 23:40:26 -0500
+Message-Id: <1454301630-17358-10-git-send-email-trond.myklebust@primarydata.com>
+In-Reply-To: <1454301630-17358-9-git-send-email-trond.myklebust@primarydata.com>
 References: <1454301630-17358-1-git-send-email-trond.myklebust@primarydata.com>
  <1454301630-17358-2-git-send-email-trond.myklebust@primarydata.com>
  <1454301630-17358-3-git-send-email-trond.myklebust@primarydata.com>
@@ -18,243 +18,97 @@ References: <1454301630-17358-1-git-send-email-trond.myklebust@primarydata.com>
  <1454301630-17358-5-git-send-email-trond.myklebust@primarydata.com>
  <1454301630-17358-6-git-send-email-trond.myklebust@primarydata.com>
  <1454301630-17358-7-git-send-email-trond.myklebust@primarydata.com>
+ <1454301630-17358-8-git-send-email-trond.myklebust@primarydata.com>
+ <1454301630-17358-9-git-send-email-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Add a helper for tasks that require us to apply a function to all the
+transports in an rpc_clnt.
+An example of a usecase would be BIND_CONN_TO_SESSION, where we want
+to send one RPC call down each transport.
+
 Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
 ---
- include/linux/sunrpc/sched.h |  2 ++
- net/sunrpc/clnt.c            | 38 ++++++++++++++++++++------------------
- net/sunrpc/rpcb_clnt.c       |  6 ++----
- net/sunrpc/xprt.c            | 14 +++-----------
- net/sunrpc/xprtsock.c        |  4 +---
- 5 files changed, 28 insertions(+), 36 deletions(-)
+ include/linux/sunrpc/clnt.h |  4 ++++
+ net/sunrpc/clnt.c           | 49 +++++++++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 53 insertions(+)
 
-diff --git a/include/linux/sunrpc/sched.h b/include/linux/sunrpc/sched.h
-index ee0fbcf9b02e..0b248e98ee3b 100644
---- a/include/linux/sunrpc/sched.h
-+++ b/include/linux/sunrpc/sched.h
-@@ -69,6 +69,8 @@ struct rpc_task {
- 	const struct rpc_call_ops *tk_ops;	/* Caller callbacks */
+diff --git a/include/linux/sunrpc/clnt.h b/include/linux/sunrpc/clnt.h
+index 1713e41d65ae..d6510f64a361 100644
+--- a/include/linux/sunrpc/clnt.h
++++ b/include/linux/sunrpc/clnt.h
+@@ -182,6 +182,10 @@ size_t		rpc_peeraddr(struct rpc_clnt *, struct sockaddr *, size_t);
+ const char	*rpc_peeraddr2str(struct rpc_clnt *, enum rpc_display_format_t);
+ int		rpc_localaddr(struct rpc_clnt *, struct sockaddr *, size_t);
  
- 	struct rpc_clnt *	tk_client;	/* RPC client */
-+	struct rpc_xprt *	tk_xprt;	/* Transport */
++int 		rpc_clnt_iterate_for_each_xprt(struct rpc_clnt *clnt,
++			int (*fn)(struct rpc_clnt *, struct rpc_xprt *, void *),
++			void *data);
 +
- 	struct rpc_rqst *	tk_rqstp;	/* RPC request */
- 
- 	struct workqueue_struct	*tk_workqueue;	/* Normally rpciod, but could
+ const char *rpc_proc_name(const struct rpc_task *task);
+ #endif /* __KERNEL__ */
+ #endif /* _LINUX_SUNRPC_CLNT_H */
 diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
-index 625fb8a184c6..8e46fa5a2ab1 100644
+index 8e46fa5a2ab1..56b9c1419765 100644
 --- a/net/sunrpc/clnt.c
 +++ b/net/sunrpc/clnt.c
-@@ -894,6 +894,7 @@ EXPORT_SYMBOL_GPL(rpc_bind_new_program);
- void rpc_task_release_client(struct rpc_task *task)
- {
- 	struct rpc_clnt *clnt = task->tk_client;
-+	struct rpc_xprt *xprt = task->tk_xprt;
+@@ -736,6 +736,55 @@ out_revert:
+ }
+ EXPORT_SYMBOL_GPL(rpc_switch_client_transport);
  
- 	if (clnt != NULL) {
- 		/* Remove from client task list */
-@@ -904,13 +905,22 @@ void rpc_task_release_client(struct rpc_task *task)
- 
- 		rpc_release_client(clnt);
- 	}
++static
++int rpc_clnt_xprt_iter_init(struct rpc_clnt *clnt, struct rpc_xprt_iter *xpi)
++{
++	struct rpc_xprt_switch *xps;
 +
-+	if (xprt != NULL) {
-+		task->tk_xprt = NULL;
++	rcu_read_lock();
++	xps = xprt_switch_get(rcu_dereference(clnt->cl_xpi.xpi_xpswitch));
++	rcu_read_unlock();
++	if (xps == NULL)
++		return -EAGAIN;
++	xprt_iter_init_listall(xpi, xps);
++	xprt_switch_put(xps);
++	return 0;
++}
 +
++/**
++ * rpc_clnt_iterate_for_each_xprt - Apply a function to all transports
++ * @clnt - pointer to client
++ * @fn - function to apply
++ * @data - void pointer to function data
++ *
++ * Iterates through the list of RPC transports currently attached to the
++ * client and applies the function fn(clnt, xprt, data).
++ *
++ * On error, the iteration stops, and the function returns the error value.
++ */
++int rpc_clnt_iterate_for_each_xprt(struct rpc_clnt *clnt,
++		int (*fn)(struct rpc_clnt *, struct rpc_xprt *, void *),
++		void *data)
++{
++	struct rpc_xprt_iter xpi;
++	int ret;
++
++	ret = rpc_clnt_xprt_iter_init(clnt, &xpi);
++	for (;;) {
++		struct rpc_xprt *xprt = xprt_iter_get_next(&xpi);
++
++		if (!xprt)
++			break;
++		ret = fn(clnt, xprt, data);
 +		xprt_put(xprt);
++		if (ret < 0)
++			break;
 +	}
- }
- 
- static
- void rpc_task_set_client(struct rpc_task *task, struct rpc_clnt *clnt)
- {
++	xprt_iter_destroy(&xpi);
++	return ret;
++}
++EXPORT_SYMBOL_GPL(rpc_clnt_iterate_for_each_xprt);
 +
- 	if (clnt != NULL) {
- 		rpc_task_release_client(task);
-+		if (task->tk_xprt == NULL)
-+			task->tk_xprt = xprt_iter_get_next(&clnt->cl_xpi);
- 		task->tk_client = clnt;
- 		atomic_inc(&clnt->cl_count);
- 		if (clnt->cl_softrtry)
-@@ -2122,11 +2132,9 @@ call_timeout(struct rpc_task *task)
- 	}
- 	if (RPC_IS_SOFT(task)) {
- 		if (clnt->cl_chatty) {
--			rcu_read_lock();
- 			printk(KERN_NOTICE "%s: server %s not responding, timed out\n",
- 				clnt->cl_program->name,
--				rcu_dereference(clnt->cl_xprt)->servername);
--			rcu_read_unlock();
-+				task->tk_xprt->servername);
- 		}
- 		if (task->tk_flags & RPC_TASK_TIMEOUT)
- 			rpc_exit(task, -ETIMEDOUT);
-@@ -2138,11 +2146,9 @@ call_timeout(struct rpc_task *task)
- 	if (!(task->tk_flags & RPC_CALL_MAJORSEEN)) {
- 		task->tk_flags |= RPC_CALL_MAJORSEEN;
- 		if (clnt->cl_chatty) {
--			rcu_read_lock();
- 			printk(KERN_NOTICE "%s: server %s not responding, still trying\n",
- 			clnt->cl_program->name,
--			rcu_dereference(clnt->cl_xprt)->servername);
--			rcu_read_unlock();
-+			task->tk_xprt->servername);
- 		}
- 	}
- 	rpc_force_rebind(clnt);
-@@ -2172,11 +2178,9 @@ call_decode(struct rpc_task *task)
- 
- 	if (task->tk_flags & RPC_CALL_MAJORSEEN) {
- 		if (clnt->cl_chatty) {
--			rcu_read_lock();
- 			printk(KERN_NOTICE "%s: server %s OK\n",
- 				clnt->cl_program->name,
--				rcu_dereference(clnt->cl_xprt)->servername);
--			rcu_read_unlock();
-+				task->tk_xprt->servername);
- 		}
- 		task->tk_flags &= ~RPC_CALL_MAJORSEEN;
- 	}
-@@ -2330,11 +2334,9 @@ rpc_verify_header(struct rpc_task *task)
- 			task->tk_action = call_bind;
- 			goto out_retry;
- 		case RPC_AUTH_TOOWEAK:
--			rcu_read_lock();
- 			printk(KERN_NOTICE "RPC: server %s requires stronger "
- 			       "authentication.\n",
--			       rcu_dereference(clnt->cl_xprt)->servername);
--			rcu_read_unlock();
-+			       task->tk_xprt->servername);
- 			break;
- 		default:
- 			dprintk("RPC: %5u %s: unknown auth error: %x\n",
-@@ -2359,27 +2361,27 @@ rpc_verify_header(struct rpc_task *task)
- 	case RPC_SUCCESS:
- 		return p;
- 	case RPC_PROG_UNAVAIL:
--		dprintk_rcu("RPC: %5u %s: program %u is unsupported "
-+		dprintk("RPC: %5u %s: program %u is unsupported "
- 				"by server %s\n", task->tk_pid, __func__,
- 				(unsigned int)clnt->cl_prog,
--				rcu_dereference(clnt->cl_xprt)->servername);
-+				task->tk_xprt->servername);
- 		error = -EPFNOSUPPORT;
- 		goto out_err;
- 	case RPC_PROG_MISMATCH:
--		dprintk_rcu("RPC: %5u %s: program %u, version %u unsupported "
-+		dprintk("RPC: %5u %s: program %u, version %u unsupported "
- 				"by server %s\n", task->tk_pid, __func__,
- 				(unsigned int)clnt->cl_prog,
- 				(unsigned int)clnt->cl_vers,
--				rcu_dereference(clnt->cl_xprt)->servername);
-+				task->tk_xprt->servername);
- 		error = -EPROTONOSUPPORT;
- 		goto out_err;
- 	case RPC_PROC_UNAVAIL:
--		dprintk_rcu("RPC: %5u %s: proc %s unsupported by program %u, "
-+		dprintk("RPC: %5u %s: proc %s unsupported by program %u, "
- 				"version %u on server %s\n",
- 				task->tk_pid, __func__,
- 				rpc_proc_name(task),
- 				clnt->cl_prog, clnt->cl_vers,
--				rcu_dereference(clnt->cl_xprt)->servername);
-+				task->tk_xprt->servername);
- 		error = -EOPNOTSUPP;
- 		goto out_err;
- 	case RPC_GARBAGE_ARGS:
-diff --git a/net/sunrpc/rpcb_clnt.c b/net/sunrpc/rpcb_clnt.c
-index 44f025c150d8..5b30603596d0 100644
---- a/net/sunrpc/rpcb_clnt.c
-+++ b/net/sunrpc/rpcb_clnt.c
-@@ -683,11 +683,9 @@ void rpcb_getport_async(struct rpc_task *task)
- 	int status;
- 
- 	rcu_read_lock();
--	do {
--		clnt = rpcb_find_transport_owner(task->tk_client);
--		xprt = xprt_get(rcu_dereference(clnt->cl_xprt));
--	} while (xprt == NULL);
-+	clnt = rpcb_find_transport_owner(task->tk_client);
- 	rcu_read_unlock();
-+	xprt = xprt_get(task->tk_xprt);
- 
- 	dprintk("RPC: %5u %s(%s, %u, %u, %d)\n",
- 		task->tk_pid, __func__,
-diff --git a/net/sunrpc/xprt.c b/net/sunrpc/xprt.c
-index 323b332f8f7c..216a1385718a 100644
---- a/net/sunrpc/xprt.c
-+++ b/net/sunrpc/xprt.c
-@@ -1181,7 +1181,7 @@ EXPORT_SYMBOL_GPL(xprt_free);
-  */
- void xprt_reserve(struct rpc_task *task)
- {
--	struct rpc_xprt	*xprt;
-+	struct rpc_xprt *xprt = task->tk_xprt;
- 
- 	task->tk_status = 0;
- 	if (task->tk_rqstp != NULL)
-@@ -1189,11 +1189,8 @@ void xprt_reserve(struct rpc_task *task)
- 
- 	task->tk_timeout = 0;
- 	task->tk_status = -EAGAIN;
--	rcu_read_lock();
--	xprt = rcu_dereference(task->tk_client->cl_xprt);
- 	if (!xprt_throttle_congested(xprt, task))
- 		xprt->ops->alloc_slot(xprt, task);
--	rcu_read_unlock();
- }
- 
- /**
-@@ -1207,7 +1204,7 @@ void xprt_reserve(struct rpc_task *task)
-  */
- void xprt_retry_reserve(struct rpc_task *task)
- {
--	struct rpc_xprt	*xprt;
-+	struct rpc_xprt *xprt = task->tk_xprt;
- 
- 	task->tk_status = 0;
- 	if (task->tk_rqstp != NULL)
-@@ -1215,10 +1212,7 @@ void xprt_retry_reserve(struct rpc_task *task)
- 
- 	task->tk_timeout = 0;
- 	task->tk_status = -EAGAIN;
--	rcu_read_lock();
--	xprt = rcu_dereference(task->tk_client->cl_xprt);
- 	xprt->ops->alloc_slot(xprt, task);
--	rcu_read_unlock();
- }
- 
- static inline __be32 xprt_alloc_xid(struct rpc_xprt *xprt)
-@@ -1265,11 +1259,9 @@ void xprt_release(struct rpc_task *task)
- 
- 	if (req == NULL) {
- 		if (task->tk_client) {
--			rcu_read_lock();
--			xprt = rcu_dereference(task->tk_client->cl_xprt);
-+			xprt = task->tk_xprt;
- 			if (xprt->snd_task == task)
- 				xprt_release_write(xprt, task);
--			rcu_read_unlock();
- 		}
- 		return;
- 	}
-diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
-index fde2138b81e7..65e759569e48 100644
---- a/net/sunrpc/xprtsock.c
-+++ b/net/sunrpc/xprtsock.c
-@@ -1844,9 +1844,7 @@ static int xs_bind(struct sock_xprt *transport, struct socket *sock)
-  */
- static void xs_local_rpcbind(struct rpc_task *task)
- {
--	rcu_read_lock();
--	xprt_set_bound(rcu_dereference(task->tk_client->cl_xprt));
--	rcu_read_unlock();
-+	xprt_set_bound(task->tk_xprt);
- }
- 
- static void xs_local_set_port(struct rpc_xprt *xprt, unsigned short port)
+ /*
+  * Kill all tasks for the given client.
+  * XXX: kill their descendants as well?
 -- 
 2.5.0
 
