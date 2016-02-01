@@ -1,96 +1,77 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-pa0-f68.google.com ([209.85.220.68]:34610 "EHLO
-	mail-pa0-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S933239AbcBABjn (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 31 Jan 2016 20:39:43 -0500
-Received: by mail-pa0-f68.google.com with SMTP id yy13so6461114pab.1
-        for <linux-nfs@vger.kernel.org>; Sun, 31 Jan 2016 17:39:43 -0800 (PST)
-Subject: [PATCH v2] pnfs/blocklayout: fix a memeory leak when
- using,vmalloc_to_page
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-References: <201601312118.eeYQZfII%fengguang.wu@intel.com>
-Cc: kbuild test robot <lkp@intel.com>, kbuild-all@01.org,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        kinglongmee@gmail.com
-From: Kinglong Mee <kinglongmee@gmail.com>
-Message-ID: <56AEB751.9010201@gmail.com>
-Date: Mon, 1 Feb 2016 09:39:29 +0800
-MIME-Version: 1.0
-In-Reply-To: <201601312118.eeYQZfII%fengguang.wu@intel.com>
-Content-Type: text/plain; charset=windows-1252
+Received: from mail-io0-f170.google.com ([209.85.223.170]:34493 "EHLO
+	mail-io0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751848AbcBAElO (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 31 Jan 2016 23:41:14 -0500
+Received: by mail-io0-f170.google.com with SMTP id 9so65717509iom.1
+        for <linux-nfs@vger.kernel.org>; Sun, 31 Jan 2016 20:41:14 -0800 (PST)
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: linux-nfs@vger.kernel.org
+Subject: [RFC PATCH 00/13] Basic multipathing support and demonstrator
+Date: Sun, 31 Jan 2016 23:40:17 -0500
+Message-Id: <1454301630-17358-1-git-send-email-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-unreferenced object 0xffffc90000abf000 (size 16900):
-  comm "fsync02", pid 15765, jiffies 4297431627 (age 423.772s)
-  hex dump (first 32 bytes):
-    00 00 00 00 00 00 00 00 00 a0 c2 19 00 88 ff ff  ................
-    00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00  ................
-  backtrace:
-    [<ffffffff8174d54e>] kmemleak_alloc+0x4e/0xb0
-    [<ffffffff811b9b91>] __vmalloc_node_range+0x231/0x280
-    [<ffffffff811b9c2a>] __vmalloc+0x4a/0x50
-    [<ffffffffa02c9ec1>] ext_tree_prepare_commit+0x231/0x2e0 [blocklayoutdriver]
-    [<ffffffffa02c700e>] bl_prepare_layoutcommit+0xe/0x10 [blocklayoutdriver]
-    [<ffffffffa0596a6c>] pnfs_layoutcommit_inode+0x29c/0x330 [nfsv4]
-    [<ffffffffa0596b13>] pnfs_generic_sync+0x13/0x20 [nfsv4]
-    [<ffffffffa0585188>] nfs4_file_fsync+0x58/0x150 [nfsv4]
-    [<ffffffff81228e5b>] vfs_fsync_range+0x4b/0xb0
-    [<ffffffff81228f1d>] do_fsync+0x3d/0x70
-    [<ffffffff812291d0>] SyS_fsync+0x10/0x20
-    [<ffffffff81757def>] entry_SYSCALL_64_fastpath+0x12/0x76
-    [<ffffffffffffffff>] 0xffffffffffffffff
+Hi all,
 
-v2, add missing include header
+The following patchset is intended as an RFC to demonstrate how we could
+implement multipathing in NFS.
+It adds basic support for attaching multiple RPC transports to a client,
+an embryonic policy mechanism for switching tasks across those transports
+(with a round-robin policy implementation), as well as helpers to allow
+iteration of tasks across all tranports (for instance in order to
+support NFSv4.1's BIND_CONN_TO_SESSION).
 
-Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
----
- fs/nfs/blocklayout/extent_tree.c | 10 ++++++++--
- include/linux/nfs_xdr.h          |  1 +
- 2 files changed, 9 insertions(+), 2 deletions(-)
+A lot of polish and finishing touches are missing. For instance, I have yet
+to add support in debugfs for these transports, and there is no support
+for mounting with NFSv4.1 session trunking. However there is a demonstrator
+that implements pNFS multipathing over NFSv3. Adding support for NFSv4.1
+requires that you call EXCHANGE_ID to allow verification of the
+major/minor server and scopeid fields, which should not be too hard.
 
-diff --git a/fs/nfs/blocklayout/extent_tree.c b/fs/nfs/blocklayout/extent_tree.c
-index c59a59c..35ab51c 100644
---- a/fs/nfs/blocklayout/extent_tree.c
-+++ b/fs/nfs/blocklayout/extent_tree.c
-@@ -476,6 +476,7 @@ static void ext_tree_free_commitdata(struct nfs4_layoutcommit_args *arg,
- 
- 		for (i = 0; i < nr_pages; i++)
- 			put_page(arg->layoutupdate_pages[i]);
-+		vfree(arg->start_p);
- 		kfree(arg->layoutupdate_pages);
- 	} else {
- 		put_page(arg->layoutupdate_page);
-@@ -559,10 +560,15 @@ retry:
- 
- 	if (unlikely(arg->layoutupdate_pages != &arg->layoutupdate_page)) {
- 		void *p = start_p, *end = p + arg->layoutupdate_len;
-+		struct page *page = NULL;
- 		int i = 0;
- 
--		for ( ; p < end; p += PAGE_SIZE)
--			arg->layoutupdate_pages[i++] = vmalloc_to_page(p);
-+		arg->start_p = start_p;
-+		for ( ; p < end; p += PAGE_SIZE) {
-+			page = vmalloc_to_page(p);
-+			arg->layoutupdate_pages[i++] = page;
-+			get_page(page);
-+		}
- 	}
- 
- 	dprintk("%s found %zu ranges\n", __func__, count);
-diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-index 791098a..d320906 100644
---- a/include/linux/nfs_xdr.h
-+++ b/include/linux/nfs_xdr.h
-@@ -275,6 +275,7 @@ struct nfs4_layoutcommit_args {
- 	size_t layoutupdate_len;
- 	struct page *layoutupdate_page;
- 	struct page **layoutupdate_pages;
-+	__be32 *start_p;
- };
- 
- struct nfs4_layoutcommit_res {
+More to come, but in the meantime, comments are welcome...
+
+Cheers
+  Trond
+
+Trond Myklebust (13):
+  SUNRPC: Remove unused function rpc_task_reset_client
+  SUNRPC: Reorder rpc_task to put waitqueue related info in same
+    cachelines
+  SUNRPC: Uninline xprt_get(); It isn't performance critical.
+  SUNRPC: Make freeing of struct xprt rcu-safe
+  SUNRPC: Add a structure to track multiple transports
+  SUNRPC: Make rpc_clnt store the multipath iterators
+  SUNRPC: Use the multipath iterator to assign a transport to each task
+  SUNRPC: Allow caller to specify the transport to use
+  SUNRPC: Add a helper to apply a function to all the rpc_clnt's
+    transports
+  SUNRPC: Make NFS swap work with multipath
+  NFSv4.1: nfs4_proc_bind_conn_to_session must iterate over all
+    connections
+  SUNRPC: Allow addition of new transports to a struct rpc_clnt
+  pnfs/NFSv4.1: Add multipath capabilities to pNFS flexfiles servers
+    over NFSv3
+
+ fs/nfs/nfs4proc.c                    |  51 +++-
+ fs/nfs/pnfs_nfs.c                    |  16 +-
+ include/linux/sunrpc/clnt.h          |  18 +-
+ include/linux/sunrpc/sched.h         |  32 +--
+ include/linux/sunrpc/xprt.h          |  22 +-
+ include/linux/sunrpc/xprtmultipath.h |  69 +++++
+ net/sunrpc/Makefile                  |   3 +-
+ net/sunrpc/auth_gss/auth_gss.c       |   4 +-
+ net/sunrpc/clnt.c                    | 326 ++++++++++++++++++------
+ net/sunrpc/rpcb_clnt.c               |  10 +-
+ net/sunrpc/sched.c                   |   2 +
+ net/sunrpc/xprt.c                    |  42 ++--
+ net/sunrpc/xprtmultipath.c           | 473 +++++++++++++++++++++++++++++++++++
+ net/sunrpc/xprtsock.c                |   4 +-
+ 14 files changed, 938 insertions(+), 134 deletions(-)
+ create mode 100644 include/linux/sunrpc/xprtmultipath.h
+ create mode 100644 net/sunrpc/xprtmultipath.c
+
 -- 
 2.5.0
 
