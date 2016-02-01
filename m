@@ -1,129 +1,125 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f171.google.com ([209.85.223.171]:33168 "EHLO
-	mail-io0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752791AbcBAElR (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 31 Jan 2016 23:41:17 -0500
-Received: by mail-io0-f171.google.com with SMTP id f81so144114562iof.0
-        for <linux-nfs@vger.kernel.org>; Sun, 31 Jan 2016 20:41:16 -0800 (PST)
+Received: from mail-io0-f174.google.com ([209.85.223.174]:33178 "EHLO
+	mail-io0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752814AbcBAElS (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 31 Jan 2016 23:41:18 -0500
+Received: by mail-io0-f174.google.com with SMTP id f81so144114893iof.0
+        for <linux-nfs@vger.kernel.org>; Sun, 31 Jan 2016 20:41:17 -0800 (PST)
 From: Trond Myklebust <trond.myklebust@primarydata.com>
 To: linux-nfs@vger.kernel.org
-Subject: [RFC PATCH 02/13] SUNRPC: Reorder rpc_task to put waitqueue related info in same cachelines
-Date: Sun, 31 Jan 2016 23:40:19 -0500
-Message-Id: <1454301630-17358-3-git-send-email-trond.myklebust@primarydata.com>
-In-Reply-To: <1454301630-17358-2-git-send-email-trond.myklebust@primarydata.com>
+Subject: [RFC PATCH 03/13] SUNRPC: Uninline xprt_get(); It isn't performance critical.
+Date: Sun, 31 Jan 2016 23:40:20 -0500
+Message-Id: <1454301630-17358-4-git-send-email-trond.myklebust@primarydata.com>
+In-Reply-To: <1454301630-17358-3-git-send-email-trond.myklebust@primarydata.com>
 References: <1454301630-17358-1-git-send-email-trond.myklebust@primarydata.com>
  <1454301630-17358-2-git-send-email-trond.myklebust@primarydata.com>
+ <1454301630-17358-3-git-send-email-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Try to group all the data required by the waitqueues, their timers and timer
-callbacks into the same cachelines for performance. With this reordering,
-"pahole" reports the following structure on x86_64:
-
-struct rpc_task {
-        atomic_t                   tk_count;             /*     0     4 */
-        int                        tk_status;            /*     4     4 */
-        struct list_head           tk_task;              /*     8    16 */
-        void                       (*tk_callback)(struct rpc_task *); /*    24
-        void                       (*tk_action)(struct rpc_task *); /*    32
-        long unsigned int          tk_timeout;           /*    40     8 */
-        long unsigned int          tk_runstate;          /*    48     8 */
-        struct rpc_wait_queue *    tk_waitqueue;         /*    56     8 */
-        /* --- cacheline 1 boundary (64 bytes) --- */
-        union {
-                struct work_struct tk_work;              /*          64 */
-                struct rpc_wait    tk_wait;              /*          56 */
-        } u;                                             /*    64    64 */
-        /* --- cacheline 2 boundary (128 bytes) --- */
-        struct rpc_message         tk_msg;               /*   128    32 */
-        void *                     tk_calldata;          /*   160     8 */
-        const struct rpc_call_ops  * tk_ops;             /*   168     8 */
-        struct rpc_clnt *          tk_client;            /*   176     8 */
-        struct rpc_rqst *          tk_rqstp;             /*   184     8 */
-        /* --- cacheline 3 boundary (192 bytes) --- */
-        struct workqueue_struct *  tk_workqueue;         /*   192     8 */
-        ktime_t                    tk_start;             /*   200     8 */
-        pid_t                      tk_owner;             /*   208     4 */
-        short unsigned int         tk_flags;             /*   212     2 */
-        short unsigned int         tk_timeouts;          /*   214     2 */
-        short unsigned int         tk_pid;               /*   216     2 */
-        unsigned char              tk_priority:2;        /*   218: 6  1 */
-        unsigned char              tk_garb_retry:2;      /*   218: 4  1 */
-        unsigned char              tk_cred_retry:2;      /*   218: 2  1 */
-        unsigned char              tk_rebind_retry:2;    /*   218: 0  1 */
-
-        /* size: 224, cachelines: 4, members: 24 */
-        /* padding: 5 */
-        /* last cacheline: 32 bytes */
-};
-
-whereas on i386, it reports everything fitting into the 1st cacheline.
+Also allow callers to pass NULL arguments to xprt_get() and xprt_put().
 
 Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
 ---
- include/linux/sunrpc/sched.h | 29 +++++++++++++++--------------
- 1 file changed, 15 insertions(+), 14 deletions(-)
+ include/linux/sunrpc/xprt.h | 16 +++-------------
+ net/sunrpc/xprt.c           | 24 +++++++++++++++++++++---
+ 2 files changed, 24 insertions(+), 16 deletions(-)
 
-diff --git a/include/linux/sunrpc/sched.h b/include/linux/sunrpc/sched.h
-index d703f0ef37d8..ee0fbcf9b02e 100644
---- a/include/linux/sunrpc/sched.h
-+++ b/include/linux/sunrpc/sched.h
-@@ -42,40 +42,41 @@ struct rpc_wait {
-  */
- struct rpc_task {
- 	atomic_t		tk_count;	/* Reference count */
-+	int			tk_status;	/* result of last operation */
- 	struct list_head	tk_task;	/* global list of tasks */
--	struct rpc_clnt *	tk_client;	/* RPC client */
--	struct rpc_rqst *	tk_rqstp;	/* RPC request */
+diff --git a/include/linux/sunrpc/xprt.h b/include/linux/sunrpc/xprt.h
+index 69ef5b3ab038..1bdb59a2efe8 100644
+--- a/include/linux/sunrpc/xprt.h
++++ b/include/linux/sunrpc/xprt.h
+@@ -13,6 +13,7 @@
+ #include <linux/socket.h>
+ #include <linux/in.h>
+ #include <linux/ktime.h>
++#include <linux/kref.h>
+ #include <linux/sunrpc/sched.h>
+ #include <linux/sunrpc/xdr.h>
+ #include <linux/sunrpc/msg_prot.h>
+@@ -166,7 +167,7 @@ enum xprt_transports {
+ };
+ 
+ struct rpc_xprt {
+-	atomic_t		count;		/* Reference count */
++	struct kref		kref;		/* Reference count */
+ 	struct rpc_xprt_ops *	ops;		/* transport methods */
+ 
+ 	const struct rpc_timeout *timeout;	/* timeout parms */
+@@ -318,24 +319,13 @@ int			xprt_adjust_timeout(struct rpc_rqst *req);
+ void			xprt_release_xprt(struct rpc_xprt *xprt, struct rpc_task *task);
+ void			xprt_release_xprt_cong(struct rpc_xprt *xprt, struct rpc_task *task);
+ void			xprt_release(struct rpc_task *task);
++struct rpc_xprt *	xprt_get(struct rpc_xprt *xprt);
+ void			xprt_put(struct rpc_xprt *xprt);
+ struct rpc_xprt *	xprt_alloc(struct net *net, size_t size,
+ 				unsigned int num_prealloc,
+ 				unsigned int max_req);
+ void			xprt_free(struct rpc_xprt *);
+ 
+-/**
+- * xprt_get - return a reference to an RPC transport.
+- * @xprt: pointer to the transport
+- *
+- */
+-static inline struct rpc_xprt *xprt_get(struct rpc_xprt *xprt)
+-{
+-	if (atomic_inc_not_zero(&xprt->count))
+-		return xprt;
+-	return NULL;
+-}
 -
--	/*
--	 * RPC call state
--	 */
--	struct rpc_message	tk_msg;		/* RPC call info */
+ static inline __be32 *xprt_skip_transport_header(struct rpc_xprt *xprt, __be32 *p)
+ {
+ 	return p + xprt->tsh_size;
+diff --git a/net/sunrpc/xprt.c b/net/sunrpc/xprt.c
+index 37edea6fa92d..d8fd84c0cbba 100644
+--- a/net/sunrpc/xprt.c
++++ b/net/sunrpc/xprt.c
+@@ -1307,7 +1307,7 @@ void xprt_release(struct rpc_task *task)
  
- 	/*
- 	 * callback	to be executed after waking up
- 	 * action	next procedure for async tasks
--	 * tk_ops	caller callbacks
- 	 */
- 	void			(*tk_callback)(struct rpc_task *);
- 	void			(*tk_action)(struct rpc_task *);
--	const struct rpc_call_ops *tk_ops;
--	void *			tk_calldata;
+ static void xprt_init(struct rpc_xprt *xprt, struct net *net)
+ {
+-	atomic_set(&xprt->count, 1);
++	kref_init(&xprt->kref);
  
- 	unsigned long		tk_timeout;	/* timeout for rpc_sleep() */
- 	unsigned long		tk_runstate;	/* Task run status */
--	struct workqueue_struct	*tk_workqueue;	/* Normally rpciod, but could
--						 * be any workqueue
--						 */
+ 	spin_lock_init(&xprt->transport_lock);
+ 	spin_lock_init(&xprt->reserve_lock);
+@@ -1415,6 +1415,24 @@ static void xprt_destroy(struct rpc_xprt *xprt)
+ 	xprt->ops->destroy(xprt);
+ }
+ 
++static void xprt_destroy_kref(struct kref *kref)
++{
++	xprt_destroy(container_of(kref, struct rpc_xprt, kref));
++}
 +
- 	struct rpc_wait_queue 	*tk_waitqueue;	/* RPC wait queue we're on */
- 	union {
- 		struct work_struct	tk_work;	/* Async task work queue */
- 		struct rpc_wait		tk_wait;	/* RPC wait */
- 	} u;
- 
-+	/*
-+	 * RPC call state
-+	 */
-+	struct rpc_message	tk_msg;		/* RPC call info */
-+	void *			tk_calldata;	/* Caller private data */
-+	const struct rpc_call_ops *tk_ops;	/* Caller callbacks */
++/**
++ * xprt_get - return a reference to an RPC transport.
++ * @xprt: pointer to the transport
++ *
++ */
++struct rpc_xprt *xprt_get(struct rpc_xprt *xprt)
++{
++	if (xprt != NULL && kref_get_unless_zero(&xprt->kref))
++		return xprt;
++	return NULL;
++}
++EXPORT_SYMBOL_GPL(xprt_get);
 +
-+	struct rpc_clnt *	tk_client;	/* RPC client */
-+	struct rpc_rqst *	tk_rqstp;	/* RPC request */
-+
-+	struct workqueue_struct	*tk_workqueue;	/* Normally rpciod, but could
-+						 * be any workqueue
-+						 */
- 	ktime_t			tk_start;	/* RPC task init timestamp */
- 
- 	pid_t			tk_owner;	/* Process id for batching tasks */
--	int			tk_status;	/* result of last operation */
- 	unsigned short		tk_flags;	/* misc flags */
- 	unsigned short		tk_timeouts;	/* maj timeouts */
- 
+ /**
+  * xprt_put - release a reference to an RPC transport.
+  * @xprt: pointer to the transport
+@@ -1422,7 +1440,7 @@ static void xprt_destroy(struct rpc_xprt *xprt)
+  */
+ void xprt_put(struct rpc_xprt *xprt)
+ {
+-	if (atomic_dec_and_test(&xprt->count))
+-		xprt_destroy(xprt);
++	if (xprt != NULL)
++		kref_put(&xprt->kref, xprt_destroy_kref);
+ }
+ EXPORT_SYMBOL_GPL(xprt_put);
 -- 
 2.5.0
 
