@@ -1,58 +1,59 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:59536 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:52109 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752194AbcBCQap (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 3 Feb 2016 11:30:45 -0500
-Subject: Re: [Linux-cachefs] [PATCH 2/2] Suspend/resume culling based on
- recently released file/block counts
-To: David Howells <dhowells@redhat.com>
-References: <56AFEA5E.2080401@redhat.com>
- <20160125164111.9466.79976.stgit@warthog.procyon.org.uk>
- <20160125164937.9670.4281.stgit@warthog.procyon.org.uk>
- <20004.1454508072@warthog.procyon.org.uk>
-Cc: linux-cachefs@redhat.com, linux-nfs@vger.kernel.org, neilb@suse.de,
-        linux-fsdevel@vger.kernel.org, jlayton@poochiereds.net
-From: John Snow <jsnow@redhat.com>
-Message-ID: <56B22B34.2000306@redhat.com>
-Date: Wed, 3 Feb 2016 11:30:44 -0500
+	id S933278AbcBCRWu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 3 Feb 2016 12:22:50 -0500
+Received: from int-mx14.intmail.prod.int.phx2.redhat.com (int-mx14.intmail.prod.int.phx2.redhat.com [10.5.11.27])
+	by mx1.redhat.com (Postfix) with ESMTPS id 20952C076619
+	for <linux-nfs@vger.kernel.org>; Wed,  3 Feb 2016 17:22:50 +0000 (UTC)
+Received: from steved.boston.devel.redhat.com (vpn-56-187.rdu2.redhat.com [10.10.56.187])
+	by int-mx14.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id u13HMndc008724
+	for <linux-nfs@vger.kernel.org>; Wed, 3 Feb 2016 12:22:49 -0500
+From: Steve Dickson <SteveD@redhat.com>
+Subject: Monthly Linux NFS Town Hall meeting: Tomorrow - Thur Feb 4
+To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Message-ID: <56B23769.60309@RedHat.com>
+Date: Wed, 3 Feb 2016 12:22:49 -0500
 MIME-Version: 1.0
-In-Reply-To: <20004.1454508072@warthog.procyon.org.uk>
 Content-Type: text/plain; charset=windows-1252
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Hello,
 
+Happy New Year Everyone!!! :-) 
 
-On 02/03/2016 09:01 AM, David Howells wrote:
-> John Snow <jsnow@redhat.com> wrote:
-> 
->>> +			if (!*sp || !isspace(*sp) || b_thresh == 0)
->>> +				cfgerror("Invalid resume threshold (blocks)");
->>
->> Seems to me like we're mixing parsing errors with invalid configuration
->> error messages, but I'm just bike-shedding aboard the SS Howells.
-> 
-> How about this further modification?
-> 
-> -			if (!*sp || !isspace(*sp) || b_thresh == 0)
-> +			if (!*sp || !isspace(*sp))
-> +				cfgerror("Error parsing resume threshold (blocks)");
-> +			if (b_thresh == 0)
->  				cfgerror("Invalid resume threshold (blocks)");
->  			for (; isspace(*sp); sp++) {;}
->  
-> @@ -470,7 +472,9 @@ int main(int argc, char *argv[])
->  				f_thresh = ULLONG_MAX;
->  			} else {
->  				f_thresh = strtoul(sp, &sp, 10);
-> -				if (*sp || f_thresh == 0)
-> +				if (*sp)
-> +					cfgerror("Error parsing resume threshold (files)");
-> +				if (f_thresh == 0)
->  					cfgerror("Invalid resume threshold (files)");
-> 
-> David
-> 
+We have not had one of these for a while so lets see
+what everyone is up to... Plus we can talk about the
+upcoming Connectathon.
 
-I'm fine with either; I gave my R-B regardless. I'm fine with this
-change, too.
+The meeting will be tomorrow *Thur Feb 4* at 
+
+   *01:00 pm EST (10:00am PST)*
+
+The usual agenda will apply. The maintainers will give
+a quick status of what is happening in their worlds.
+
+Next we'll get updates from major contributors on what
+they have been doing and are planing on doing.
+  
+Finally, we'll open the floor to questions, comments, 
+concerns from the community.  
+
+Generally the meeting lasts between 30 to 45 mins, with 
+a very hard stop at 60mins. 
+
+Please feel to attend and participate!
+
+Again the Time: 10:00 am PST (01:00 pm EST)
+
+The call in numbers are:
+
+U.S. and Canada: (800) 451-8679
+World wide toll free numbers
+   https://www.intercallonline.com/listNumbersByCode.action?confCode=5642721552
+
+Conference code: 564.272.1552
+
+steved.
+
