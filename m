@@ -1,61 +1,75 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ig0-f170.google.com ([209.85.213.170]:38368 "EHLO
-	mail-ig0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752099AbcBBX4X (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 2 Feb 2016 18:56:23 -0500
-Received: by mail-ig0-f170.google.com with SMTP id mw1so23533656igb.1
-        for <linux-nfs@vger.kernel.org>; Tue, 02 Feb 2016 15:56:22 -0800 (PST)
-Message-ID: <1454457374.19556.1.camel@primarydata.com>
-Subject: [GIT PULL] Please pull NFS client bugfix+cleanup
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Linus Torvalds <torvalds@linux-foundation.org>
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>
-Date: Tue, 02 Feb 2016 18:56:14 -0500
-Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
+Received: from mx1.redhat.com ([209.132.183.28]:51600 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751308AbcBCL6r (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 3 Feb 2016 06:58:47 -0500
+Date: Wed, 3 Feb 2016 06:58:44 -0500 (EST)
+From: Benjamin Coddington <bcodding@redhat.com>
+To: Steve Dickson <SteveD@redhat.com>
+cc: Malahal Naineni <malahal@us.ibm.com>, linux-nfs@vger.kernel.org,
+        "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [PATCH] Ignore whitespace at the beginning of option tags
+In-Reply-To: <56B0CA44.40105@RedHat.com>
+Message-ID: <alpine.OSX.2.19.9992.1602030655230.16954@planck.local>
+References: <1454020727-1814-1-git-send-email-malahal@us.ibm.com> <56B0CA44.40105@RedHat.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Linus,
+On Tue, 2 Feb 2016, Steve Dickson wrote:
+>
+> On 01/28/2016 05:38 PM, Malahal Naineni wrote:
+> > The following should work now:
+> >
+> > [General]
+> > 	Domain = local.domain.edu
+> >
+> > Signed-off-by: Malahal Naineni <malahal@us.ibm.com>
+> > ---
+> >  cfg.c | 9 ++++++++-
+> Ok.. I give... :-) What is this patch relative to? There is
+> a conf_parse_line() in support/nfs/conffile.c but there
+> is no cfg.c file in nfs-utils... and this patch does
+> not apply...
 
-The following changes since commit 92e963f50fc74041b5e9e744c330dca48e04f08d:
+This is for libnfsidap..  cc-ing Bruce.
 
-  Linux 4.5-rc1 (2016-01-24 13:06:47 -0800)
+Ben
 
-are available in the git repository at:
-
-  git://git.linux-nfs.org/projects/trondmy/linux-nfs.git tags/nfs-for-4.5-3
-
-for you to fetch changes up to 2370abdab530718b61afc222c51901bdc2884ee2:
-
-  NFS: Cleanup - rename NFS_LAYOUT_RETURN_BEFORE_CLOSE (2016-01-27 20:40:05 -0500)
-
-Cheers,
-  Trond
-----------------------------------------------------------------
-NFS client bugfixe and cleanup for Linux 4.5
-
-Bugfix:
-- pNFS: Fix for missing layoutreturn calls
-
-Cleanup:
-- pNFS: rename NFS_LAYOUT_RETURN_BEFORE_CLOSE for code clarity
-
-----------------------------------------------------------------
-Trond Myklebust (2):
-      pNFS: Fix missing layoutreturn calls
-      NFS: Cleanup - rename NFS_LAYOUT_RETURN_BEFORE_CLOSE
-
- fs/nfs/flexfilelayout/flexfilelayout.c    |   2 +-
- fs/nfs/flexfilelayout/flexfilelayoutdev.c |   2 +-
- fs/nfs/pnfs.c                             | 122 ++++++++++++++----------------
- fs/nfs/pnfs.h                             |   4 +-
- 4 files changed, 62 insertions(+), 68 deletions(-)
--- 
-Trond Myklebust
-Linux NFS client maintainer, PrimaryData
-trond.myklebust@primarydata.com
-
-
-
+> >  1 file changed, 8 insertions(+), 1 deletion(-)
+> >
+> > diff --git a/cfg.c b/cfg.c
+> > index c615d24..e0ab839 100644
+> > --- a/cfg.c
+> > +++ b/cfg.c
+> > @@ -210,6 +210,7 @@ static void
+> >  conf_parse_line (int trans, char *line, size_t sz)
+> >  {
+> >    char *val;
+> > +  char *tag;
+> >    size_t i;
+> >    int j;
+> >    static char *section = 0;
+> > @@ -262,8 +263,14 @@ conf_parse_line (int trans, char *line, size_t sz)
+> >  	/* Skip trailing whitespace, if any */
+> >  	for (j = sz - (val - line) - 1; j > 0 && isspace (val[j]); j--)
+> >  	  val[j] = '\0';
+> > +
+> > +	/* Skip beginning white space */
+> > +	tag = line;
+> > +	while (isspace(*tag))
+> > +		tag++;
+> > +
+> >  	/* XXX Perhaps should we not ignore errors?  */
+> > -	conf_set (trans, section, line, val, 0, 0);
+> > +	conf_set (trans, section, tag, val, 0, 0);
+> >  	return;
+> >        }
+> >
+> >
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>
