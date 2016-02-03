@@ -1,75 +1,47 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:51600 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:58140 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751308AbcBCL6r (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 3 Feb 2016 06:58:47 -0500
-Date: Wed, 3 Feb 2016 06:58:44 -0500 (EST)
-From: Benjamin Coddington <bcodding@redhat.com>
-To: Steve Dickson <SteveD@redhat.com>
-cc: Malahal Naineni <malahal@us.ibm.com>, linux-nfs@vger.kernel.org,
-        "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH] Ignore whitespace at the beginning of option tags
-In-Reply-To: <56B0CA44.40105@RedHat.com>
-Message-ID: <alpine.OSX.2.19.9992.1602030655230.16954@planck.local>
-References: <1454020727-1814-1-git-send-email-malahal@us.ibm.com> <56B0CA44.40105@RedHat.com>
+	id S1751840AbcBCOBP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 3 Feb 2016 09:01:15 -0500
+From: David Howells <dhowells@redhat.com>
+In-Reply-To: <56AFEA5E.2080401@redhat.com>
+References: <56AFEA5E.2080401@redhat.com> <20160125164111.9466.79976.stgit@warthog.procyon.org.uk> <20160125164937.9670.4281.stgit@warthog.procyon.org.uk>
+To: John Snow <jsnow@redhat.com>
+Cc: dhowells@redhat.com, linux-cachefs@redhat.com, linux-nfs@vger.kernel.org,
+        neilb@suse.de, linux-fsdevel@vger.kernel.org, jlayton@poochiereds.net
+Subject: Re: [Linux-cachefs] [PATCH 2/2] Suspend/resume culling based on recently released file/block counts
 MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Content-Type: text/plain; charset="us-ascii"
+Date: Wed, 03 Feb 2016 14:01:12 +0000
+Message-ID: <20004.1454508072@warthog.procyon.org.uk>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 2 Feb 2016, Steve Dickson wrote:
->
-> On 01/28/2016 05:38 PM, Malahal Naineni wrote:
-> > The following should work now:
-> >
-> > [General]
-> > 	Domain = local.domain.edu
-> >
-> > Signed-off-by: Malahal Naineni <malahal@us.ibm.com>
-> > ---
-> >  cfg.c | 9 ++++++++-
-> Ok.. I give... :-) What is this patch relative to? There is
-> a conf_parse_line() in support/nfs/conffile.c but there
-> is no cfg.c file in nfs-utils... and this patch does
-> not apply...
+John Snow <jsnow@redhat.com> wrote:
 
-This is for libnfsidap..  cc-ing Bruce.
+> > +			if (!*sp || !isspace(*sp) || b_thresh == 0)
+> > +				cfgerror("Invalid resume threshold (blocks)");
+> 
+> Seems to me like we're mixing parsing errors with invalid configuration
+> error messages, but I'm just bike-shedding aboard the SS Howells.
 
-Ben
+How about this further modification?
 
-> >  1 file changed, 8 insertions(+), 1 deletion(-)
-> >
-> > diff --git a/cfg.c b/cfg.c
-> > index c615d24..e0ab839 100644
-> > --- a/cfg.c
-> > +++ b/cfg.c
-> > @@ -210,6 +210,7 @@ static void
-> >  conf_parse_line (int trans, char *line, size_t sz)
-> >  {
-> >    char *val;
-> > +  char *tag;
-> >    size_t i;
-> >    int j;
-> >    static char *section = 0;
-> > @@ -262,8 +263,14 @@ conf_parse_line (int trans, char *line, size_t sz)
-> >  	/* Skip trailing whitespace, if any */
-> >  	for (j = sz - (val - line) - 1; j > 0 && isspace (val[j]); j--)
-> >  	  val[j] = '\0';
-> > +
-> > +	/* Skip beginning white space */
-> > +	tag = line;
-> > +	while (isspace(*tag))
-> > +		tag++;
-> > +
-> >  	/* XXX Perhaps should we not ignore errors?  */
-> > -	conf_set (trans, section, line, val, 0, 0);
-> > +	conf_set (trans, section, tag, val, 0, 0);
-> >  	return;
-> >        }
-> >
-> >
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->
+-			if (!*sp || !isspace(*sp) || b_thresh == 0)
++			if (!*sp || !isspace(*sp))
++				cfgerror("Error parsing resume threshold (blocks)");
++			if (b_thresh == 0)
+ 				cfgerror("Invalid resume threshold (blocks)");
+ 			for (; isspace(*sp); sp++) {;}
+ 
+@@ -470,7 +472,9 @@ int main(int argc, char *argv[])
+ 				f_thresh = ULLONG_MAX;
+ 			} else {
+ 				f_thresh = strtoul(sp, &sp, 10);
+-				if (*sp || f_thresh == 0)
++				if (*sp)
++					cfgerror("Error parsing resume threshold (files)");
++				if (f_thresh == 0)
+ 					cfgerror("Invalid resume threshold (files)");
+
+David
