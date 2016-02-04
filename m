@@ -1,59 +1,51 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:52109 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S933278AbcBCRWu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 3 Feb 2016 12:22:50 -0500
-Received: from int-mx14.intmail.prod.int.phx2.redhat.com (int-mx14.intmail.prod.int.phx2.redhat.com [10.5.11.27])
-	by mx1.redhat.com (Postfix) with ESMTPS id 20952C076619
-	for <linux-nfs@vger.kernel.org>; Wed,  3 Feb 2016 17:22:50 +0000 (UTC)
-Received: from steved.boston.devel.redhat.com (vpn-56-187.rdu2.redhat.com [10.10.56.187])
-	by int-mx14.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id u13HMndc008724
-	for <linux-nfs@vger.kernel.org>; Wed, 3 Feb 2016 12:22:49 -0500
-From: Steve Dickson <SteveD@redhat.com>
-Subject: Monthly Linux NFS Town Hall meeting: Tomorrow - Thur Feb 4
-To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Message-ID: <56B23769.60309@RedHat.com>
-Date: Wed, 3 Feb 2016 12:22:49 -0500
+Received: from mail-lf0-f43.google.com ([209.85.215.43]:34082 "EHLO
+	mail-lf0-f43.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752533AbcBDRkH (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 4 Feb 2016 12:40:07 -0500
+Received: by mail-lf0-f43.google.com with SMTP id j78so41256286lfb.1
+        for <linux-nfs@vger.kernel.org>; Thu, 04 Feb 2016 09:40:06 -0800 (PST)
 MIME-Version: 1.0
-Content-Type: text/plain; charset=windows-1252
+Date: Thu, 4 Feb 2016 18:40:06 +0100
+Message-ID: <CAKbOo_KVR8F6Keqyzv_=Mv9CRvs_R0p5L3twRf8mT0s4ThsdBQ@mail.gmail.com>
+Subject: NFS4 recovery capabilities in failover clusters
+From: Matthias Eble <psychotrahe@gmail.com>
+To: linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hello,
+Hi all,
 
-Happy New Year Everyone!!! :-) 
+I've been trying to find out how I can build an HA (active/passive)
+NFS4 failover
+cluster with smooth failure recovery. After a takeover, or when
+clients return from isolation,
+D-state processes and stale handles, etc should be prevented.
+What I found were some linux-nfs wiki pages [1] about problems with recovery in
+the linux implementation, and some hints about nfs 4.1's transparent
+state migration.
 
-We have not had one of these for a while so lets see
-what everyone is up to... Plus we can talk about the
-upcoming Connectathon.
+What I couldn't find out is, how to actually use TSM, what it can do,
+and what it can't.
 
-The meeting will be tomorrow *Thur Feb 4* at 
+So I have two questions:
+* Have the issues mentioned in [1] been fixed and is the linux NFS4
+client/server
+  implementation currently able to provide solid recovery in a failover cluster?
+  Just mount FS on other node + virtual IP?
+* If so, do you have any hints, keywords, links etc with up-to-date information,
+  what needs to be done to make such a cluster/recovery as resilient
+as possible?
+  Is just syncing v4recovery enough?
 
-   *01:00 pm EST (10:00am PST)*
+I've tried to get some definitive information on the net, the results
+were either dated
+or incomplete. And I guess the RFC does not necessarily apply to the
+linux implementation, right?
 
-The usual agenda will apply. The maintainers will give
-a quick status of what is happening in their worlds.
+Any help is appreciated.
+Thanks for your time.
+Matthias
 
-Next we'll get updates from major contributors on what
-they have been doing and are planing on doing.
-  
-Finally, we'll open the floor to questions, comments, 
-concerns from the community.  
-
-Generally the meeting lasts between 30 to 45 mins, with 
-a very hard stop at 60mins. 
-
-Please feel to attend and participate!
-
-Again the Time: 10:00 am PST (01:00 pm EST)
-
-The call in numbers are:
-
-U.S. and Canada: (800) 451-8679
-World wide toll free numbers
-   https://www.intercallonline.com/listNumbersByCode.action?confCode=5642721552
-
-Conference code: 564.272.1552
-
-steved.
-
+[1] http://linux-nfs.org/wiki/index.php/NFS_Recovery_and_Client_Migration
