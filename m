@@ -1,59 +1,92 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-vk0-f53.google.com ([209.85.213.53]:36336 "EHLO
-	mail-vk0-f53.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750729AbcBFAUA (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 5 Feb 2016 19:20:00 -0500
-Received: by mail-vk0-f53.google.com with SMTP id c3so20215295vkb.3
-        for <linux-nfs@vger.kernel.org>; Fri, 05 Feb 2016 16:19:59 -0800 (PST)
+Received: from mail-ob0-f182.google.com ([209.85.214.182]:36529 "EHLO
+	mail-ob0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751168AbcBFBDF (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 5 Feb 2016 20:03:05 -0500
+Received: by mail-ob0-f182.google.com with SMTP id ba1so103776902obb.3
+        for <linux-nfs@vger.kernel.org>; Fri, 05 Feb 2016 17:03:04 -0800 (PST)
 MIME-Version: 1.0
-Date: Fri, 5 Feb 2016 16:19:59 -0800
-Message-ID: <CAOFvWm-ZTOhWN6Pa_CdVYMs9n2AsEjj7p9RAdqnrLJeH4JHFTw@mail.gmail.com>
-Subject: nfsd and containers
-From: =?UTF-8?Q?Kjetil_J=C3=B8rgensen?= <kjetil@medallia.com>
-To: linux-nfs@vger.kernel.org
+In-Reply-To: <1454706518-4641-5-git-send-email-andros@netapp.com>
+References: <1454706518-4641-1-git-send-email-andros@netapp.com>
+	<1454706518-4641-5-git-send-email-andros@netapp.com>
+Date: Fri, 5 Feb 2016 20:03:03 -0500
+Message-ID: <CAHQdGtQGPD_+=UH7Bq=jjQKehd+fTO=UCff6ne=F9BS-1e_bQw@mail.gmail.com>
+Subject: Re: [PATCH RFC Version 1 4/6] NFS session trunking support: add trunk
+ xprt to nfs4.1 mount
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: William Andros Adamson <andros@netapp.com>
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
 Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi,
+On Fri, Feb 5, 2016 at 4:08 PM,  <andros@netapp.com> wrote:
+> From: Andy Adamson <andros@netapp.com>
+>
+> Signed-off-by: Andy Adamson <andros@netapp.com>
+> ---
+>  fs/nfs/nfs4client.c        | 16 +++++++++++++++-
+>  net/sunrpc/xprtmultipath.c |  2 ++
+>  2 files changed, 17 insertions(+), 1 deletion(-)
+>
+> diff --git a/fs/nfs/nfs4client.c b/fs/nfs/nfs4client.c
+> index 5f20acf..6736805 100644
+> --- a/fs/nfs/nfs4client.c
+> +++ b/fs/nfs/nfs4client.c
+> @@ -412,8 +412,22 @@ struct nfs_client *nfs4_init_client(struct nfs_client *clp,
+>         if (error < 0)
+>                 goto error;
+>
+> -       if (clp != old)
+> +       if (clp != old) {
+> +               if (clp->cl_minorversion != 0) {
+> +                       struct rpc_xprt *add = clp->cl_rpcclient->cl_xprt;
+> +                       struct xprt_create xprt_args = {
+> +                               .ident = XPRT_TRANSPORT_TCP,
+> +                               .net = old->cl_net, /* clp->cl_net ??*/
 
-trying to fit everything into the same mold, we're trying to run the
-in-kernel "nfs server" inside of docker containers. It works great -
-with one exception, "unclean shutdown" of the container itself which
-leaves behind the knfsd threads, which holds on to references to i.e.
-the mount-namespace the filesystem it's exported lives within.
+We already know that old->cl_net == clp->cl_net. That has been
+established in nfs41_walk_client_list().
 
-We've done some patching of docker, so we use ceph rbd devices,
-mounted into the docker container, and a veth pair for networking. The
-"init" process in the docker containers pid-namespace has a notion of
-graceful shutdown, where echos 0 into /proc/fs/nfsd/threads.
+> +                               .dstaddr = (struct sockaddr *)&add->addr,
+> +                               .addrlen = add->addrlen,
+> +                               .servername = clp->cl_hostname,
+> +                       };
+> +                       /* Add this address as an alias */
+> +                       rpc_clnt_add_xprt(old->cl_rpcclient, &xprt_args,
+> +                                       rpc_clnt_test_and_add_xprt, NULL);
 
-In the case where the container init process gets an un-trappable
-signal, the kernel threads not really being part of the pid-namespace
-will be left behind, the knfsd threads holds on references to the
-mount-namespace, which leaves the filesystem mounted.
+You have to ascertain that the server supports session trunking before
+you can do this. nfs41_walk_client_list() establishes that 'old' and
+'clp' have the same owner major ID, but it does nothing to ensure that
+the minor IDs match, nor does it ensure that the scope is the same.
 
-Yes - we can from the outside signal the kernel NFSd threads which do
-let them terminate, but it's not ideal.
+> +               }
+>                 clp->cl_preserve_clid = true;
+> +       }
+>         nfs_put_client(clp);
+>         return old;
+>
+> diff --git a/net/sunrpc/xprtmultipath.c b/net/sunrpc/xprtmultipath.c
+> index 7be5bd2..f13419e 100644
+> --- a/net/sunrpc/xprtmultipath.c
+> +++ b/net/sunrpc/xprtmultipath.c
+> @@ -35,6 +35,8 @@ static void xprt_switch_add_xprt_locked(struct rpc_xprt_switch *xps,
+>         if (xps->xps_nxprts == 0)
+>                 xps->xps_net = xprt->xprt_net;
+>         xps->xps_nxprts++;
+> +       pr_info("RPC:  ADDED %s to xps %p xps_nxprts %d\n",
+> +               xprt->servername, xps, xps->xps_nxprts);
 
-A simple-ish test case: unshare -n -p -m -f --mount-proc -- /usr/sbin/rpc.nfsd
+Doesn't belong in this patch.
 
-Wishful thinking: the kernel nfsd threads that were spawned by
-rpc.nfsd goes away with the pid-namespace
-Actual outcome: the kernel nfsd threads sticks around until signalled
-
-The actual question(s):
-- Am I missing something ?
-- Is this folly, and should be abandoned post haste ? (In essence, go
-find a userspace nfs implementation)
-- In the case where this is folly but we still decide to plow ahead,
-is there any way I can determine which namespaces the kernel nfsd
-threads hold references to ? (Making killing signalling the "right"
-nfsd threads easier, as I lost my reference to the correct
-/proc/fs/nfsd with the process I had in the corresponding
-pid-namespace)
-
-Cheers,
--- 
-Kjetil Joergensen <kjetil@medallia.com>
-Medallia Inc
+>  }
+>
+>  /**
+> --
+> 1.8.3.1
+>
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
