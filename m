@@ -1,8 +1,11 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-wm0-f41.google.com ([74.125.82.41]:36581 "EHLO
-	mail-wm0-f41.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750980AbcBGQ2q (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 7 Feb 2016 11:28:46 -0500
+Received: from mail-wm0-f53.google.com ([74.125.82.53]:34810 "EHLO
+	mail-wm0-f53.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750980AbcBGQ3y (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 7 Feb 2016 11:29:54 -0500
+Subject: Re: RichACLs man-pages review
+To: Andreas Gruenbacher <agruenba@redhat.com>
+References: <56B770B6.7040803@gmail.com>
 Cc: mtk.manpages@gmail.com, "J. Bruce Fields" <bfields@fieldses.org>,
         linux-ext4@vger.kernel.org, xfs@oss.sgi.com,
         lkml <linux-kernel@vger.kernel.org>, linux-fsdevel@vger.kernel.org,
@@ -14,25 +17,187 @@ Cc: mtk.manpages@gmail.com, "J. Bruce Fields" <bfields@fieldses.org>,
         Trond Myklebust <trond.myklebust@primarydata.com>,
         Jeff Layton <jlayton@poochiereds.net>,
         Andreas Dilger <adilger@dilger.ca>
-To: Andreas Gruenbacher <agruenba@redhat.com>
 From: "Michael Kerrisk (man-pages)" <mtk.manpages@gmail.com>
-Subject: RichACLs man-pages review
-Message-ID: <56B770B6.7040803@gmail.com>
-Date: Sun, 7 Feb 2016 17:28:38 +0100
+Message-ID: <56B770FA.2050107@gmail.com>
+Date: Sun, 7 Feb 2016 17:29:46 +0100
 MIME-Version: 1.0
+In-Reply-To: <56B770B6.7040803@gmail.com>
 Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hello Andreas
+Hello Andreas,
 
-I've taken a look at the current drafts of the setrichacl(1), 
-getrichacl(1), and richacl(7) man pages, and will send comments
-as separate following mails.
+Here, some comments on the setrichacl(1) page.
+
+> .\"
+> .\" Richacl Manual Pages
+> .\"
+> .\" Copyright (C) 2015  Red Hat, Inc.
+> .\" Written by Andreas Gruenbacher <agruenba@redhat.com>
+> .\" This is free documentation; you can redistribute it and/or
+> .\" modify it under the terms of the GNU General Public License as
+> .\" published by the Free Software Foundation; either version 2 of
+> .\" the License, or (at your option) any later version.
+> .\"
+> .\" The GNU General Public License's references to "object code"
+> .\" and "executables" are to be interpreted as the output of any
+> .\" document formatting or typesetting system, including
+> .\" intermediate and printed output.
+> .\"
+> .\" This manual is distributed in the hope that it will be useful,
+> .\" but WITHOUT ANY WARRANTY; without even the implied warranty of
+> .\" MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+> .\" GNU General Public License for more details.
+> .\"
+> .\" You should have received a copy of the GNU General Public
+> .\" License along with this manual.  If not, see
+> .\" <http://www.gnu.org/licenses/>.
+> .\"
+> .TH SETRICHACL 7 2015-09-01 "Linux" "Rich Access Control Lists"
+> 
+> .SH NAME
+> setrichacl \- Set Rich Access Control Lists
+> 
+> .SH SYNOPSIS
+> .B setrichacl
+> .RI [ OPTION "]... [" FILE ]...
+
+In man-pages, at least, the convention is to use lower case for these
+pieces (and thus through the remainder of the page), so:
+
+> .RI [ option "]... [" file ]...
+
+> 
+> .SH DESCRIPTION
+> The setrichacl utility sets or modifies Rich Access Control Lists (richacls) of
+
+.BR setrichacl
+
+> files and directories.
+> 
+> The
+> .B \-m
+> and
+> .B \-s
+> options expect an ACL or parts of an ACL on the command line. The
+> .B \-M
+> and
+> .B \-S
+> options read an ACL or parts of an ACL from a file. In either case, the entry
+> format is described in section
+> .I TEXT FORM
+> of the richacl(7) manual page. The single-letter or long forms of flags and
+
+Use
+.BR richachl (7)
+for page cross references.
+
+> permissions can be mixed arbitrarily. Multiple entries are separated by
+> whitespace, newlines or commas.
+> 
+> Note that the order of ACL entries matters, and that changing the order may
+> grant different permissions.
+> 
+> The use of
+> .B deny
+> entries is discouraged. If
+> .B deny
+> entries are used, they should be placed ahead of
+> .B allow
+> entries for improved interoperability with Windows where possible.
+> 
+> When the file masks are not specified, they are computed automatically.
+> 
+> When the ACL to be set is simple enough that the traditional file permission
+> bits can express the same permissions, setrichacl instead only sets the file
+
+.BR setrichacl
+
+> permission bits. Minor differences that do not have an influence on the
+> permissions granted by the acl are not preserved.  When setrichacl's
+
+s/acl/ACL/
+
+.BR setrichacl 's
+
+> counterpart utility, getrichacl, is used on a file or directory that does not
+
+.BR getrichacl ,
+
+> have a richacl, it displays the access permissions defined by the file
+> permission bits as a richacl.
+> 
+> .SS Permissions
+> 
+> Setting ACLs or changing the file permission bits is allowed to the file owner,
+> to processes which have the write_acl permission, and to processes which have
+
+.B write_acl
+
+> the CAP_FOWNER capability.
+
+.B CAP_FOWNER
+
+> 
+> .SH OPTIONS
+> .TP
+> \-\-\fBmodify\fR \fIacl\fR, \fB\-m\fR \fIacl\fR
+> Modify the ACL of \fIFILE\fR by replacing existing entries with the entries in
+> \fIacl\fR, and adding all new entries. When the permissions of an entry are
+> empty, remove the entry.
+> .TP
+> \fB\-\-modify\-file\fR \fIacl_file\fR, \fB\-M\fR \fIacl_file\fR
+> Identical to \-\-modify, but read the ACL from \fIacl_file\fR instead. If the
+
+.B \-\-modify
+
+> file is \(lq\-\(rq, read from standard input.
+> .TP
+> \fB\-\-set\fR \fIacl\fR, \fB\-s\fR \fIacl\fR
+> Set the ACL of \fIFILE\fR to \fIacl\fR. Any previous ACL is replaced.
+> ACL entries are separated by whitespace, newlines, or commas.
+> .TP
+> \fB\-\-set\-file\fR \fIacl_file\fR, \fB\-S\fR \fIacl_file\fR
+> Identical to \-\-set, but read the ACL from \fIacl_file\fR instead. If the
+
+.BR \-\-set ,
+
+> file is \(lq\-\(rq, read from standard input.
+> .TP
+> \fB\-\-remove\fR, \fB\-b\fR
+> Remove all extended permissions and revert to the file permission bits only.
+> .TP
+> \fB\-\-version\fR, \fB\-v\fR
+> Display the version of setrichacl and exit.
+
+.BR setrichacl
+
+> .TP
+> \fB\-\-help\fR, \fB\-h\fR
+> Display command-line usage help text.
+> 
+> .\" .SH EXAMPLES
+
+Yes please!
+
+> .SH AUTHOR
+> Written by Andreas Grünbacher <agruenba@redhat.com>.
+> 
+> Please send your bug reports, suggested features and comments to the above address.
+> 
+> .SH CONFORMING TO
+> Rich Access Control Lists are Linux-specific.
+> 
+> .SH SEE ALSO
+> .BR getrichacl (1),
+> .BR richacl (7)
 
 Cheers,
 
 Michael
+
+
 
 -- 
 Michael Kerrisk
