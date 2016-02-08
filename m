@@ -1,63 +1,98 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx142.netapp.com ([216.240.21.19]:45657 "EHLO mx142.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932258AbcBHRtG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 8 Feb 2016 12:49:06 -0500
-From: "Adamson, Andy" <William.Adamson@netapp.com>
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-CC: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Received: from mail-oi0-f50.google.com ([209.85.218.50]:34024 "EHLO
+	mail-oi0-f50.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932354AbcBHSHl convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 8 Feb 2016 13:07:41 -0500
+Received: by mail-oi0-f50.google.com with SMTP id j125so478021oih.1
+        for <linux-nfs@vger.kernel.org>; Mon, 08 Feb 2016 10:07:41 -0800 (PST)
+MIME-Version: 1.0
+In-Reply-To: <A239ECE9-7327-40A0-BE48-F8DECA1914C9@netapp.com>
+References: <1454706518-4641-1-git-send-email-andros@netapp.com>
+	<1454706518-4641-7-git-send-email-andros@netapp.com>
+	<CAHQdGtS1+yQp1bPEHYt9Po7GNe7Hv2O4dtRSae-fTsKySv1v0A@mail.gmail.com>
+	<A239ECE9-7327-40A0-BE48-F8DECA1914C9@netapp.com>
+Date: Mon, 8 Feb 2016 13:07:40 -0500
+Message-ID: <CAHQdGtQAT9T-AanCuHA1JyndwO9jP_Bjcbq-usCnGohdtN1qyg@mail.gmail.com>
 Subject: Re: [PATCH RFC Version 1 6/6] NFS schedule bind_conn_to_session for
  new NFSv4.1 transport
-Date: Mon, 8 Feb 2016 17:48:55 +0000
-Message-ID: <A239ECE9-7327-40A0-BE48-F8DECA1914C9@netapp.com>
-References: <1454706518-4641-1-git-send-email-andros@netapp.com>
- <1454706518-4641-7-git-send-email-andros@netapp.com>
- <CAHQdGtS1+yQp1bPEHYt9Po7GNe7Hv2O4dtRSae-fTsKySv1v0A@mail.gmail.com>
-In-Reply-To: <CAHQdGtS1+yQp1bPEHYt9Po7GNe7Hv2O4dtRSae-fTsKySv1v0A@mail.gmail.com>
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: "Adamson, Andy" <William.Adamson@netapp.com>
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-DQo+IE9uIEZlYiA1LCAyMDE2LCBhdCA4OjA0IFBNLCBUcm9uZCBNeWtsZWJ1c3QgPHRyb25kLm15
-a2xlYnVzdEBwcmltYXJ5ZGF0YS5jb20+IHdyb3RlOg0KPiANCj4gT24gRnJpLCBGZWIgNSwgMjAx
-NiBhdCA0OjA4IFBNLCAgPGFuZHJvc0BuZXRhcHAuY29tPiB3cm90ZToNCj4+IEZyb206IEFuZHkg
-QWRhbXNvbiA8YW5kcm9zQG5ldGFwcC5jb20+DQo+PiANCj4+IENvbXBsZXRlIHNlc3Npb24gdHJ1
-bmtpbmcgd2l0aCB0aGUgQklORF9DT05OX1RPX1NFU1NJT04gY2FsbC4NCj4+IE5GUyBjbGVhbnVw
-IGFmdGVyIHNlc3Npb24gdHJ1bmtpbmcgdHJhbnNwb3J0IGFkZGVkDQo+PiANCj4+IFNpZ25lZC1v
-ZmYtYnk6IEFuZHkgQWRhbXNvbiA8YW5kcm9zQG5ldGFwcC5jb20+DQo+PiAtLS0NCj4+IGZzL25m
-cy9uZnM0Y2xpZW50LmMgfCAxMyArKysrKysrKysrKy0tDQo+PiAxIGZpbGUgY2hhbmdlZCwgMTEg
-aW5zZXJ0aW9ucygrKSwgMiBkZWxldGlvbnMoLSkNCj4+IA0KPj4gZGlmZiAtLWdpdCBhL2ZzL25m
-cy9uZnM0Y2xpZW50LmMgYi9mcy9uZnMvbmZzNGNsaWVudC5jDQo+PiBpbmRleCA2NzM2ODA1Li5i
-MDQyM2Y3IDEwMDY0NA0KPj4gLS0tIGEvZnMvbmZzL25mczRjbGllbnQuYw0KPj4gKysrIGIvZnMv
-bmZzL25mczRjbGllbnQuYw0KPj4gQEAgLTQyMyw4ICs0MjMsMTcgQEAgc3RydWN0IG5mc19jbGll
-bnQgKm5mczRfaW5pdF9jbGllbnQoc3RydWN0IG5mc19jbGllbnQgKmNscCwNCj4+ICAgICAgICAg
-ICAgICAgICAgICAgICAgICAgICAgICAuc2VydmVybmFtZSA9IGNscC0+Y2xfaG9zdG5hbWUsDQo+
-PiAgICAgICAgICAgICAgICAgICAgICAgIH07DQo+PiAgICAgICAgICAgICAgICAgICAgICAgIC8q
-IEFkZCB0aGlzIGFkZHJlc3MgYXMgYW4gYWxpYXMgKi8NCj4+IC0gICAgICAgICAgICAgICAgICAg
-ICAgIHJwY19jbG50X2FkZF94cHJ0KG9sZC0+Y2xfcnBjY2xpZW50LCAmeHBydF9hcmdzLA0KPj4g
-LSAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIHJwY19jbG50X3Rlc3RfYW5k
-X2FkZF94cHJ0LCBOVUxMKTsNCj4+ICsgICAgICAgICAgICAgICAgICAgICAgIGVycm9yID0gcnBj
-X2NsbnRfYWRkX3hwcnQob2xkLT5jbF9ycGNjbGllbnQsICZ4cHJ0X2FyZ3MsDQo+PiArICAgICAg
-ICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICBycGNfY2xudF90ZXN0X2FuZF9h
-ZGRfeHBydCwgTlVMTCk7DQo+PiArICAgICAgICAgICAgICAgICAgICAgICBpZiAoIWVycm9yKSB7
-DQo+PiArICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIG5mczRfc2NoZWR1bGVfc2Vzc2lv
-bl9yZWNvdmVyeShvbGQtPmNsX3Nlc3Npb24sDQo+PiArICAgICAgICAgICAgICAgICAgICAgICAg
-ICAgICAgICAgICAgICAgLU5GUzRFUlJfQ09OTl9OT1RfQk9VTkRfVE9fU0VTU0lPTik7DQo+PiAr
-DQo+PiArICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIC8qKiBDYW5jZWwgdGhlIDJuZCBt
-b3VudCAqLw0KPj4gKyAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICBwcl9pbmZvKCJORlM6
-ICBTZXNzaW9uIHRydW5rLiBDQU5DRUwgTU9VTlRcbiIpOw0KPj4gKyAgICAgICAgICAgICAgICAg
-ICAgICAgICAgICAgICBlcnJvciA9IC1FSU5WQUw7DQo+IA0KPiBZb3UgY2FuJ3QgZG8gdGhpcy4g
-V2hhdCBpZiB3ZSdyZSBub3QgbW91bnRpbmcgdGhlIHNhbWUgcGF0aD8NCg0KDQpUaGlzIGlzIHRo
-ZSBxdWVzdGlvbiBJIGFza2VkIGluIHRoZSBjb3ZlciBsZXR0ZXI6IElzIHVzaW5nIG1vdW50IGEg
-Z29vZCB3YXkgdG8gc2V0dXAgTkZTdjQuMSBzZXNzaW9uIHRydW5raW5nPw0KSG93IGRvIHlvdSBz
-ZWUgc2Vzc2lvbiB0cnVua2luZyBiZWluZyByZXF1ZXN0ZWQ/IElzIG1vdW50aW5nIHRoZSBleHBv
-cnQgcGF0aCBvbiB0aGUgc2VydmVyLCBidXQgYSBkaWZmZXJlbnQgbG9jYWwgbW91bnQgcG9pbnQg
-Z29vZCBlbm91Z2g/DQoNClRoYW5rcw0KDQrigJQ+QW5keQ0KDQo+IA0KPj4gKyAgICAgICAgICAg
-ICAgICAgICAgICAgICAgICAgICBnb3RvIGVycm9yOw0KPj4gKyAgICAgICAgICAgICAgICAgICAg
-ICAgfQ0KPj4gICAgICAgICAgICAgICAgfQ0KPj4gICAgICAgICAgICAgICAgY2xwLT5jbF9wcmVz
-ZXJ2ZV9jbGlkID0gdHJ1ZTsNCj4+ICAgICAgICB9DQo+PiAtLQ0KPj4gMS44LjMuMQ0KPj4gDQo+
-PiAtLQ0KPj4gVG8gdW5zdWJzY3JpYmUgZnJvbSB0aGlzIGxpc3Q6IHNlbmQgdGhlIGxpbmUgInVu
-c3Vic2NyaWJlIGxpbnV4LW5mcyIgaW4NCj4+IHRoZSBib2R5IG9mIGEgbWVzc2FnZSB0byBtYWpv
-cmRvbW9Admdlci5rZXJuZWwub3JnDQo+PiBNb3JlIG1ham9yZG9tbyBpbmZvIGF0ICBodHRwOi8v
-dmdlci5rZXJuZWwub3JnL21ham9yZG9tby1pbmZvLmh0bWwNCg0K
+On Mon, Feb 8, 2016 at 12:48 PM, Adamson, Andy
+<William.Adamson@netapp.com> wrote:
+>
+>
+> > On Feb 5, 2016, at 8:04 PM, Trond Myklebust <trond.myklebust@primarydata.com> wrote:
+> >
+> > On Fri, Feb 5, 2016 at 4:08 PM,  <andros@netapp.com> wrote:
+> >> From: Andy Adamson <andros@netapp.com>
+> >>
+> >> Complete session trunking with the BIND_CONN_TO_SESSION call.
+> >> NFS cleanup after session trunking transport added
+> >>
+> >> Signed-off-by: Andy Adamson <andros@netapp.com>
+> >> ---
+> >> fs/nfs/nfs4client.c | 13 +++++++++++--
+> >> 1 file changed, 11 insertions(+), 2 deletions(-)
+> >>
+> >> diff --git a/fs/nfs/nfs4client.c b/fs/nfs/nfs4client.c
+> >> index 6736805..b0423f7 100644
+> >> --- a/fs/nfs/nfs4client.c
+> >> +++ b/fs/nfs/nfs4client.c
+> >> @@ -423,8 +423,17 @@ struct nfs_client *nfs4_init_client(struct nfs_client *clp,
+> >>                                .servername = clp->cl_hostname,
+> >>                        };
+> >>                        /* Add this address as an alias */
+> >> -                       rpc_clnt_add_xprt(old->cl_rpcclient, &xprt_args,
+> >> -                                       rpc_clnt_test_and_add_xprt, NULL);
+> >> +                       error = rpc_clnt_add_xprt(old->cl_rpcclient, &xprt_args,
+> >> +                                            rpc_clnt_test_and_add_xprt, NULL);
+> >> +                       if (!error) {
+> >> +                               nfs4_schedule_session_recovery(old->cl_session,
+> >> +                                       -NFS4ERR_CONN_NOT_BOUND_TO_SESSION);
+> >> +
+> >> +                               /** Cancel the 2nd mount */
+> >> +                               pr_info("NFS:  Session trunk. CANCEL MOUNT\n");
+> >> +                               error = -EINVAL;
+> >
+> > You can't do this. What if we're not mounting the same path?
+>
+>
+> This is the question I asked in the cover letter: Is using mount a good way to setup NFSv4.1 session trunking?
+> How do you see session trunking being requested? Is mounting the export path on the server, but a different local mount point good enough?
+
+The "standard" way of doing it is to supply multiple hostnames, in other words:
+
+mount -t nfs foo,bar,baz:/export /mnt
+
+We can then either supply the network addresses for foo, bar and baz
+in the form of multiple 'addr=<address>' options (and possibly
+prefixed by 'proto=<netid>' if necessary), or we could have the DNS
+resolver do the translation for us.
+
+Cheers
+  Trond
+
+>
+> Thanks
+>
+> —>Andy
+>
+> >
+> >> +                               goto error;
+> >> +                       }
+> >>                }
+> >>                clp->cl_preserve_clid = true;
+> >>        }
+> >> --
+> >> 1.8.3.1
+> >>
+> >> --
+> >> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> >> the body of a message to majordomo@vger.kernel.org
+> >> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>
