@@ -1,14 +1,14 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f196.google.com ([209.85.223.196]:34433 "EHLO
-	mail-io0-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750866AbcBHRYd (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 8 Feb 2016 12:24:33 -0500
-Subject: [PATCH v2 1/9] svcrdma: Do not send XDR roundup bytes for a write
- chunk
+Received: from mail-ig0-f196.google.com ([209.85.213.196]:34801 "EHLO
+	mail-ig0-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750866AbcBHRYl (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 8 Feb 2016 12:24:41 -0500
+Subject: [PATCH v2 2/9] svcrdma: svc_rdma_post_recv() should close
+ connection on error
 From: Chuck Lever <chuck.lever@oracle.com>
 To: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Mon, 08 Feb 2016 12:24:31 -0500
-Message-ID: <20160208172430.13423.18896.stgit@klimt.1015granger.net>
+Date: Mon, 08 Feb 2016 12:24:39 -0500
+Message-ID: <20160208172439.13423.65592.stgit@klimt.1015granger.net>
 In-Reply-To: <20160208171756.13423.14384.stgit@klimt.1015granger.net>
 References: <20160208171756.13423.14384.stgit@klimt.1015granger.net>
 MIME-Version: 1.0
@@ -16,47 +16,118 @@ Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-When the Linux server writes an odd-length data item into a Write
-chunk, it finishes with XDR pad bytes. If the data item is smaller
-than the Write chunk, the pad bytes are written at the end of the
-data item, but still inside the chunk. That can expose these zero
-bytes to the RPC consumer on the client.
-
-XDR pad bytes are inserted in order to preserve the XDR alignment
-of the next XDR data item in an XDR stream. But Write chunks do not
-appear in the payload XDR stream, and only one data item is allowed
-in each chunk. So XDR padding is unneeded.
-
-Thus the server should not write XDR pad bytes in Write chunks.
-
-I believe this is not an operational problem. Short NFS READs that
-are returned in a Write chunk would be affected by this issue. But
-they happen only when the read request goes past the EOF. Those are
-zero bytes anyway, and there's no file data in the client's buffer
-past EOF.
-
-Otherwise, current NFS clients provide a separate extra segment for
-catching XDR padding. If an odd-size data item fills the chunk,
-then the XDR pad will be written to the extra segment.
+Clean up: Most svc_rdma_post_recv() call sites close the transport
+connection when a receive cannot be posted. Wrap that in a common
+helper.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 Reviewed-By: Devesh Sharma <devesh.sharma@broadcom.com>
 Tested-By: Devesh Sharma <devesh.sharma@broadcom.com>
 ---
- net/sunrpc/xprtrdma/svc_rdma_sendto.c |    2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ include/linux/sunrpc/svc_rdma.h            |    1 +
+ net/sunrpc/xprtrdma/svc_rdma_backchannel.c |   11 ++---------
+ net/sunrpc/xprtrdma/svc_rdma_recvfrom.c    |   10 +---------
+ net/sunrpc/xprtrdma/svc_rdma_sendto.c      |    7 +------
+ net/sunrpc/xprtrdma/svc_rdma_transport.c   |   15 +++++++++++++++
+ 5 files changed, 20 insertions(+), 24 deletions(-)
 
+diff --git a/include/linux/sunrpc/svc_rdma.h b/include/linux/sunrpc/svc_rdma.h
+index 5322fea..d8fc58d 100644
+--- a/include/linux/sunrpc/svc_rdma.h
++++ b/include/linux/sunrpc/svc_rdma.h
+@@ -234,6 +234,7 @@ extern int svc_rdma_send(struct svcxprt_rdma *, struct ib_send_wr *);
+ extern void svc_rdma_send_error(struct svcxprt_rdma *, struct rpcrdma_msg *,
+ 				enum rpcrdma_errcode);
+ extern int svc_rdma_post_recv(struct svcxprt_rdma *, gfp_t);
++extern int svc_rdma_repost_recv(struct svcxprt_rdma *, gfp_t);
+ extern int svc_rdma_create_listen(struct svc_serv *, int, struct sockaddr *);
+ extern struct svc_rdma_op_ctxt *svc_rdma_get_context(struct svcxprt_rdma *);
+ extern void svc_rdma_put_context(struct svc_rdma_op_ctxt *, int);
+diff --git a/net/sunrpc/xprtrdma/svc_rdma_backchannel.c b/net/sunrpc/xprtrdma/svc_rdma_backchannel.c
+index 65a7c23..4498eaf 100644
+--- a/net/sunrpc/xprtrdma/svc_rdma_backchannel.c
++++ b/net/sunrpc/xprtrdma/svc_rdma_backchannel.c
+@@ -111,16 +111,9 @@ static int svc_rdma_bc_sendto(struct svcxprt_rdma *rdma,
+ 	if (ret)
+ 		goto out_err;
+ 
+-	/* Post a recv buffer to handle the reply for this request. */
+-	ret = svc_rdma_post_recv(rdma, GFP_NOIO);
+-	if (ret) {
+-		pr_err("svcrdma: Failed to post bc receive buffer, err=%d.\n",
+-		       ret);
+-		pr_err("svcrdma: closing transport %p.\n", rdma);
+-		set_bit(XPT_CLOSE, &rdma->sc_xprt.xpt_flags);
+-		ret = -ENOTCONN;
++	ret = svc_rdma_repost_recv(rdma, GFP_NOIO);
++	if (ret)
+ 		goto out_err;
+-	}
+ 
+ 	ctxt = svc_rdma_get_context(rdma);
+ 	ctxt->pages[0] = virt_to_page(rqst->rq_buffer);
+diff --git a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
+index c8b8a8b..acf15b8 100644
+--- a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
++++ b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
+@@ -711,13 +711,5 @@ defer:
+ 	return 0;
+ 
+ repost:
+-	ret = svc_rdma_post_recv(rdma_xprt, GFP_KERNEL);
+-	if (ret) {
+-		pr_err("svcrdma: could not post a receive buffer, err=%d.\n",
+-		       ret);
+-		pr_err("svcrdma: closing transport %p.\n", rdma_xprt);
+-		set_bit(XPT_CLOSE, &rdma_xprt->sc_xprt.xpt_flags);
+-		ret = -ENOTCONN;
+-	}
+-	return ret;
++	return svc_rdma_repost_recv(rdma_xprt, GFP_KERNEL);
+ }
 diff --git a/net/sunrpc/xprtrdma/svc_rdma_sendto.c b/net/sunrpc/xprtrdma/svc_rdma_sendto.c
-index df57f3c..8591314 100644
+index 8591314..687a91afe 100644
 --- a/net/sunrpc/xprtrdma/svc_rdma_sendto.c
 +++ b/net/sunrpc/xprtrdma/svc_rdma_sendto.c
-@@ -308,7 +308,7 @@ static int send_write_chunks(struct svcxprt_rdma *xprt,
- 			     struct svc_rqst *rqstp,
- 			     struct svc_rdma_req_map *vec)
- {
--	u32 xfer_len = rqstp->rq_res.page_len + rqstp->rq_res.tail[0].iov_len;
-+	u32 xfer_len = rqstp->rq_res.page_len;
- 	int write_len;
- 	u32 xdr_off;
- 	int chunk_off;
+@@ -464,13 +464,8 @@ static int send_reply(struct svcxprt_rdma *rdma,
+ 	int pages;
+ 	int ret;
+ 
+-	/* Post a recv buffer to handle another request. */
+-	ret = svc_rdma_post_recv(rdma, GFP_KERNEL);
++	ret = svc_rdma_repost_recv(rdma, GFP_KERNEL);
+ 	if (ret) {
+-		printk(KERN_INFO
+-		       "svcrdma: could not post a receive buffer, err=%d."
+-		       "Closing transport %p.\n", ret, rdma);
+-		set_bit(XPT_CLOSE, &rdma->sc_xprt.xpt_flags);
+ 		svc_rdma_put_context(ctxt, 0);
+ 		return -ENOTCONN;
+ 	}
+diff --git a/net/sunrpc/xprtrdma/svc_rdma_transport.c b/net/sunrpc/xprtrdma/svc_rdma_transport.c
+index 5763825..03fdfce 100644
+--- a/net/sunrpc/xprtrdma/svc_rdma_transport.c
++++ b/net/sunrpc/xprtrdma/svc_rdma_transport.c
+@@ -722,6 +722,21 @@ int svc_rdma_post_recv(struct svcxprt_rdma *xprt, gfp_t flags)
+ 	return -ENOMEM;
+ }
+ 
++int svc_rdma_repost_recv(struct svcxprt_rdma *xprt, gfp_t flags)
++{
++	int ret = 0;
++
++	ret = svc_rdma_post_recv(xprt, flags);
++	if (ret) {
++		pr_err("svcrdma: could not post a receive buffer, err=%d.\n",
++		       ret);
++		pr_err("svcrdma: closing transport %p.\n", xprt);
++		set_bit(XPT_CLOSE, &xprt->sc_xprt.xpt_flags);
++		ret = -ENOTCONN;
++	}
++	return ret;
++}
++
+ /*
+  * This function handles the CONNECT_REQUEST event on a listening
+  * endpoint. It is passed the cma_id for the _new_ connection. The context in
 
