@@ -1,77 +1,106 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from userp1040.oracle.com ([156.151.31.81]:48094 "EHLO
-	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752462AbcBHUOQ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 8 Feb 2016 15:14:16 -0500
-Subject: Re: Talks at Connectathon 2016
-To: nfsv4@ietf.org
-References: <5665C502.8040508@oracle.com> <569FBD77.3070407@oracle.com>
-Cc: linux-nfs@vger.kernel.org
-From: Rob Thurlow <robert.thurlow@oracle.com>
-Message-ID: <56B8F6F5.70407@oracle.com>
-Date: Mon, 8 Feb 2016 13:13:41 -0700
+Received: from mx1.redhat.com ([209.132.183.28]:45438 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755446AbcBIQAw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 9 Feb 2016 11:00:52 -0500
+Subject: Re: [PATCH] Ignore whitespace at the beginning of option tags
+To: Benjamin Coddington <bcodding@redhat.com>, linux-nfs@vger.kernel.org,
+        "J. Bruce Fields" <bfields@fieldses.org>
+References: <1454020727-1814-1-git-send-email-malahal@us.ibm.com>
+ <56B0CA44.40105@RedHat.com>
+ <alpine.OSX.2.19.9992.1602030655230.16954@planck.local>
+ <20160204232956.GA1290@us.ibm.com>
+From: Steve Dickson <SteveD@redhat.com>
+Message-ID: <56BA0D32.7080209@RedHat.com>
+Date: Tue, 9 Feb 2016 11:00:50 -0500
 MIME-Version: 1.0
-In-Reply-To: <569FBD77.3070407@oracle.com>
-Content-Type: text/plain; charset=windows-1252; format=flowed
+In-Reply-To: <20160204232956.GA1290@us.ibm.com>
+Content-Type: text/plain; charset=windows-1252
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi folks,
 
-I don't have many talks yet, so I am shaking the bushes.  Getting
-your ideas out in front of other NFS experts has a lot of value,
-whether you have a novel idea or want to see more uniform behaviour
-between vendors.
 
-Oh, and it would probably also be good to remind you to register,
-too.  Testing your current code or code under development against
-other vendor's code at the show offers a much cheaper and faster
-way to find and resolve issues than waiting to see it at customer
-sites.  Remember that even if you haven't changed your code, others
-have.
+On 02/04/2016 06:29 PM, Malahal Naineni wrote:
+> Sorry Steve, Ben is right. It is based on
+> "git://git.linux-nfs.org/projects/steved/libnfsidmap.git"
+> 
+> Do I need to re-clone my repo with something else?
+No... You are good... Committed!
 
-Thanks,
-Rob T
+I'm thinking we should probably roll libnfsidmap into
+nfs-utils as a .a lib... The only binary using it,
+to my knowledge, is rpc.idmapd and I don't think
+we really want anybody else using it... 
 
-On 1/20/16 10:01 AM, Rob Thurlow wrote:
+Thoughts?
 
-> Greetings, presenters!  I’m organizing the Connectathon talks again
-> for Connectathon 2016.
->
-> Unlike the testing floor, these talks are open to the public, and will
-> be held in the upstairs conference room in the Mellon Auditorium, as in
-> years past.  The talks will be held on Tuesday and Thursday afternoons
-> during Connectathon.  Appropriate topics are technical talks on areas
-> that are of broad interest to the NFS community.
->
-> If you are interested in presenting a talk, please send me:
->
->    o  A presentation title
->    o  A 2-4 sentence abstract of the presentation
->    o  The name and e-mail addresses of all presenters.  I will not share
-> these with anyone
->    o  How long you need: typically 30 or 60 minutes
->    o  Expected audience (Small/Medium/Large)
->
-> A VGA overhead projector is available.
->
-> In addition to presentations by individuals, we have space for “birds of
-> a feather” sessions where we can hold group discussion on topics
-> relevant to our community.  These sessions could be held during one or
-> more of the normal talk slots, or could possibly be scheduled for
-> Wednesday afternoon in a smaller location.  They would also be open
-> to the public.  Some initial ideas for BOF sessions include:
->
->    o  NFS Testing (a perennial favorite)
->    o  NFS/Kerberos (especially ease of use)
->    o  NFS/RDMA
->    o  RPCSEC_GSSv3
->
-> Please give these a +1 and/or send other suggestions.
->
-> A schedule of talks and BOF sessions will be posted on the
-> www.connectathon.info web site as we get closer to the event.
->
-> Thanks,
-> Rob Thurlow
+steved.
+ 
 
+> 
+> Regards, Malahal.
+> 
+> Benjamin Coddington [bcodding@redhat.com] wrote:
+>> On Tue, 2 Feb 2016, Steve Dickson wrote:
+>>>
+>>> On 01/28/2016 05:38 PM, Malahal Naineni wrote:
+>>>> The following should work now:
+>>>>
+>>>> [General]
+>>>> 	Domain = local.domain.edu
+>>>>
+>>>> Signed-off-by: Malahal Naineni <malahal@us.ibm.com>
+>>>> ---
+>>>>  cfg.c | 9 ++++++++-
+>>> Ok.. I give... :-) What is this patch relative to? There is
+>>> a conf_parse_line() in support/nfs/conffile.c but there
+>>> is no cfg.c file in nfs-utils... and this patch does
+>>> not apply...
+>>
+>> This is for libnfsidap..  cc-ing Bruce.
+>>
+>> Ben
+>>
+>>>>  1 file changed, 8 insertions(+), 1 deletion(-)
+>>>>
+>>>> diff --git a/cfg.c b/cfg.c
+>>>> index c615d24..e0ab839 100644
+>>>> --- a/cfg.c
+>>>> +++ b/cfg.c
+>>>> @@ -210,6 +210,7 @@ static void
+>>>>  conf_parse_line (int trans, char *line, size_t sz)
+>>>>  {
+>>>>    char *val;
+>>>> +  char *tag;
+>>>>    size_t i;
+>>>>    int j;
+>>>>    static char *section = 0;
+>>>> @@ -262,8 +263,14 @@ conf_parse_line (int trans, char *line, size_t sz)
+>>>>  	/* Skip trailing whitespace, if any */
+>>>>  	for (j = sz - (val - line) - 1; j > 0 && isspace (val[j]); j--)
+>>>>  	  val[j] = '\0';
+>>>> +
+>>>> +	/* Skip beginning white space */
+>>>> +	tag = line;
+>>>> +	while (isspace(*tag))
+>>>> +		tag++;
+>>>> +
+>>>>  	/* XXX Perhaps should we not ignore errors?  */
+>>>> -	conf_set (trans, section, line, val, 0, 0);
+>>>> +	conf_set (trans, section, tag, val, 0, 0);
+>>>>  	return;
+>>>>        }
+>>>>
+>>>>
+>>> --
+>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>>> the body of a message to majordomo@vger.kernel.org
+>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>>>
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>>
+> 
