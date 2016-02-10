@@ -1,94 +1,69 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:52878 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752567AbcBJTeH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 10 Feb 2016 14:34:07 -0500
-Date: Wed, 10 Feb 2016 14:34:04 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: "Michael Kerrisk (man-pages)" <mtk.manpages@gmail.com>
-Cc: Andreas Gruenbacher <agruenba@redhat.com>, linux-ext4@vger.kernel.org,
-        xfs@oss.sgi.com, lkml <linux-kernel@vger.kernel.org>,
-        linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-cifs@vger.kernel.org, Linux API <linux-api@vger.kernel.org>,
-        Dave Chinner <david@fromorbit.com>,
-        Christoph Hellwig <hch@infradead.org>,
-        Anna Schumaker <anna.schumaker@netapp.com>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        Jeff Layton <jlayton@poochiereds.net>,
-        Andreas Dilger <adilger@dilger.ca>
-Subject: Re: richacl(7) man page review comments
-Message-ID: <20160210193404.GA13989@fieldses.org>
-References: <56B770B6.7040803@gmail.com>
- <56B77262.7090107@gmail.com>
-MIME-Version: 1.0
+Received: from userp1040.oracle.com ([156.151.31.81]:23267 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750759AbcBJVTW convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 10 Feb 2016 16:19:22 -0500
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <56B77262.7090107@gmail.com>
+Mime-Version: 1.0 (Mac OS X Mail 9.2 \(3112\))
+Subject: Re: Kernel crash in Centos 6.6
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <9eeh3fd9sbcxvpbtxeka4hci.1455121291462@email.android.com>
+Date: Wed, 10 Feb 2016 16:19:17 -0500
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Message-Id: <709CC9F2-40B0-45CB-BBB2-5DFC43A3AEC7@oracle.com>
+References: <9eeh3fd9sbcxvpbtxeka4hci.1455121291462@email.android.com>
+To: "fedele.stabile" <fedele.stabile@fis.unical.it>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sun, Feb 07, 2016 at 05:35:46PM +0100, Michael Kerrisk (man-pages) wrote:
-> > This permission is always implicitly granted.
-> > .HP
-> > .B write_attributes
-> > .RB ( A ):
-> > Change the times associated with a file or directory to an arbitrary value.
-> > This permission is always implicitly granted to the file owner.
-> > .HP
-> > .B read_acl
-> > .RB ( c ):
-> > Read the ACL of a file or directory. This permission is always
-> > implicitly granted.
-> > .HP
-> > .B write_acl
-> > .RB ( C ):
-> > Change the ACL or file mode of a file or directory.
-> > .HP
-> > .B write_owner
-> > .RB ( o ):
-> > Take ownership of a file or directory.  Change the owning group of a file or
-> > directory to a group of which the calling process is a member.
-> > .HP
-> > .B read_named_attrs
-> > .RB ( R ),
-> > .B write_named_attrs
-> > .RB ( W ),
-> > .B synchronize
-> > .RB ( S ),
-> > .B write_retention
-> > .RB ( e ),
-> > .B write_retention_hold
-> > .RB ( E ):
-> > These permissions can be stored, but do not have a local meaning.
+
+
+> On Feb 10, 2016, at 11:21 AM, fedele.stabile <fedele.stabile@fis.unical.it> wrote:
 > 
-> So, I thenk that a sentence here should explain why these permissions
-> exist. Is if for future extension, because they are meaningful in NFS,
-> or something else?
+> No, the client hangs and the only way to gain control is power cycle  of client. ...
 
-Yeah, "synchronize" is something only Windows clients care about, as I
-understand it.  The others are for NFS features that nobody has tried to
-implement yet.  It's useful to store those bits but they don't do
-anything at this point.  We could provie FC references, I guess, but
-it's probably not worth going into much detail about.
+File a bug with your distributor. They should be able to
+help you with triage steps.
 
-> > Automatic Inheritance allows permission changes to propagate from a directory
-> > to files and subdirectories inside that directory, recursively.  Carrying out
-> > this propagation of permissions is the responsibility of the process changing
-> > the directory permissions (usually, setrichacl(1)).
+
+> -------- Messaggio originale --------
+> Da: Chuck Lever <chuck.lever@oracle.com>
+> Data: 10/02/2016 16:28 (GMT+01:00)
+> A: fedele.stabile@fis.unical.it
+> Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+> Oggetto: Re: Kernel crash in Centos 6.6
 > 
-> I'm confused by the previous sentence. the feature is labeled "Automatic
-> Inheritance", implying that the user/process need do nothing. The next
-> sentence says "propagation ... is the responsibility of the process".
-> These two points seem contradictory. I think something more needs to be
-> said here.
+> Fedele-
+> 
+> > On Feb 10, 2016, at 7:07 AM, Fedele Stabile <fedele.stabile@fis.unical.it> wrote:
+> > 
+> > Hello all,
+> > I have a kernel crash when I mount an NFS volume using RDMA transport.
+> > On client and server is installed Centos 6.6 kernel 2.6.32
+> > -504.8.1.el6.x86_64
+> > I use nfs v4
+> > The client hangs if I execute 
+> > mount -t nfs -o rdma ib-server:/data /data
+> > Server and client are connected throw Infiniband network and Qlogic
+> > adapters.
+> 
+> I assume you mean that the mount command hangs, not that
+> the whole client deadlocks.
+> 
+> Add "port=20049" to the mount options.
+> 
+> 
+> --
+> Chuck Lever
+> 
+> 
+> 
+> 
+> 
 
-Yeah, the "automatic" name is probably misleading, but I think we're
-stuck with that name and just need to make the point a bit more
-forcefully.
+--
+Chuck Lever
 
-Userland utilities take responsibility for the actual recursive
-propagation of changes, all the kernel does is provide a few bits which
-help to do it correctly (e.g. to distinguish between ACEs that ewre
-inherited inherited (and can be blown away by propagation) and those
-that were added locally).
 
---b.
+
+
