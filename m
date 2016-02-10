@@ -1,26 +1,35 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from static-181-143-229-122.une.net.co ([181.143.229.122]:50085 "EHLO
-	ServProxy.localdomain" rhost-flags-OK-FAIL-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1751047AbcBJHwZ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 10 Feb 2016 02:52:25 -0500
-Received: from 181.143.229.122 (localhost.localdomain [127.0.0.1])
-	by ServProxy.localdomain (Postfix) with SMTP id C35611C732B
-	for <linux-nfs@vger.kernel.org>; Wed, 10 Feb 2016 10:11:19 -0500 (COT)
-Message-ID: <1FE4541F5286A96AB6B3FA45B1095CAF@vger.kernel.org>
-Reply-To: "linux-nfs@vger.kernel.org" <mnoskova760@gmail.com>
-From: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-To: <linux-nfs@vger.kernel.org>
-Subject: =?utf-8?Q?=D0=9A=D0=BB=D0=B8=D0=B5=D0=BD=D1=82=D1=81=D0?=
-	=?utf-8?Q?=BA=D0=B8=D0=B5_=D0=B1=D0=B0=D0=B7=D1=8B!_=D0?=
-	=?utf-8?Q?=A2=D0=B5=D0=BB=5CViber=5CWhatsapp=3A+791393935?=
-	=?utf-8?Q?06__Skype=3Aprodawez389__Email=3Amnoskova760=40?=
-	=?utf-8?Q?gmail=2Ecom_=D0=A3=D0=B7=D0=BD=D0=B0=D0=B9=D1?=
-	=?utf-8?Q?=82=D0=B5_=D0=BF=D0=BE=D0=B4=D1=80=D0=BE=D0=B1?=
-	=?utf-8?Q?=D0=BD=D0=B5=D0=B5!!!?=
-Date: Wed, 10 Feb 2016 13:13:48 +0600
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8";
+Received: from MG2.fis.unical.it ([192.167.201.9]:49505 "EHLO
+	MG2.fis.unical.it" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750760AbcBJMQ5 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 10 Feb 2016 07:16:57 -0500
+Received: from MG2.fis.unical.it (localhost.localdomain [127.0.0.1])
+	by localhost (Email Security Appliance) with SMTP id C912C358C8B9_6BB27FBB
+	for <linux-nfs@vger.kernel.org>; Wed, 10 Feb 2016 12:07:23 +0000 (GMT)
+Received: from MB.fis.unical.it (MB.fis.unical.it [192.167.201.16])
+	by MG2.fis.unical.it (Sophos Email Appliance) with ESMTP id 88EBF358C6C4_6BB27FBF
+	for <linux-nfs@vger.kernel.org>; Wed, 10 Feb 2016 12:07:23 +0000 (GMT)
+Message-ID: <1455106042.4536.21.camel@fis.unical.it>
+Subject: Kernel crash in Centos 6.6
+From: Fedele Stabile <fedele.stabile@fis.unical.it>
+Reply-To: fedele.stabile@fis.unical.it
+To: linux-nfs@vger.kernel.org
+Date: Wed, 10 Feb 2016 13:07:22 +0100
+Content-Type: text/plain; charset="UTF-8"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Клиентские базы! Тел\Viber\Whatsapp:+79139393506  Skype:prodawez389  Email:mnoskova760@gmail.com Узнайте подробнее!!!
+Hello all,
+I have a kernel crash when I mount an NFS volume using RDMA transport.
+On client and server is installed Centos 6.6 kernel 2.6.32
+-504.8.1.el6.x86_64
+I use nfs v4
+The client hangs if I execute 
+mount -t nfs -o rdma ib-server:/data /data
+Server and client are connected throw Infiniband network and Qlogic
+adapters.
+
+Can you help me?
+Fedele Stabile
+
