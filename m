@@ -1,13 +1,14 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ig0-f194.google.com ([209.85.213.194]:35226 "EHLO
+Received: from mail-ig0-f194.google.com ([209.85.213.194]:33061 "EHLO
 	mail-ig0-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751749AbcBLVG4 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 12 Feb 2016 16:06:56 -0500
-Subject: [PATCH v1 7/8] xprtrdma: Use an anonymous union in struct rpcrdma_mw
+	with ESMTP id S1751293AbcBLVHB (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 12 Feb 2016 16:07:01 -0500
+Subject: [PATCH v1 8/8] xprtrdma: Use new CQ API for RPC-over-RDMA client
+ send CQs
 From: Chuck Lever <chuck.lever@oracle.com>
 To: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Fri, 12 Feb 2016 16:06:51 -0500
-Message-ID: <20160212210651.5278.31825.stgit@manet.1015granger.net>
+Date: Fri, 12 Feb 2016 16:07:00 -0500
+Message-ID: <20160212210700.5278.71010.stgit@manet.1015granger.net>
 In-Reply-To: <20160212205107.5278.55938.stgit@manet.1015granger.net>
 References: <20160212205107.5278.55938.stgit@manet.1015granger.net>
 MIME-Version: 1.0
@@ -15,262 +16,420 @@ Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Clean up: Make code more readable.
+Calling ib_poll_cq() to sort through WCs during a completion is a
+common pattern amongst RDMA consumers. Since commit 14d3a3b2498e
+("IB: add a proper completion queue abstraction"), WC sorting can
+be handled by the IB core.
+
+By converting to this new API, xprtrdma is made a better neighbor to
+other RDMA consumers, as it allows the core to schedule the delivery
+of completions more fairly amongst all active consumers.
+
+Because each ib_cqe carries a pointer to a completion method, the
+core can now post its own operations on a consumer's QP, and handle
+the completions itself, without changes to the consumer.
+
+Send completions were previously handled entirely in the completion
+upcall handler. Thus IB_POLL_SOFTIRQ is a direct replacement for the
+current xprtrdma send code path.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- net/sunrpc/xprtrdma/fmr_ops.c   |   28 +++++++++++++-------------
- net/sunrpc/xprtrdma/frwr_ops.c  |   42 ++++++++++++++++++++-------------------
- net/sunrpc/xprtrdma/xprt_rdma.h |    2 +-
- 3 files changed, 36 insertions(+), 36 deletions(-)
+ net/sunrpc/xprtrdma/frwr_ops.c  |   99 +++++++++++++++++++++++++----------
+ net/sunrpc/xprtrdma/verbs.c     |  109 ++++++++-------------------------------
+ net/sunrpc/xprtrdma/xprt_rdma.h |   10 +---
+ 3 files changed, 94 insertions(+), 124 deletions(-)
 
-diff --git a/net/sunrpc/xprtrdma/fmr_ops.c b/net/sunrpc/xprtrdma/fmr_ops.c
-index c14f3a4..b289e10 100644
---- a/net/sunrpc/xprtrdma/fmr_ops.c
-+++ b/net/sunrpc/xprtrdma/fmr_ops.c
-@@ -80,13 +80,13 @@ fmr_op_init(struct rpcrdma_xprt *r_xprt)
- 		if (!r)
- 			goto out;
- 
--		r->r.fmr.physaddrs = kmalloc(RPCRDMA_MAX_FMR_SGES *
--					     sizeof(u64), GFP_KERNEL);
--		if (!r->r.fmr.physaddrs)
-+		r->fmr.physaddrs = kmalloc(RPCRDMA_MAX_FMR_SGES *
-+					   sizeof(u64), GFP_KERNEL);
-+		if (!r->fmr.physaddrs)
- 			goto out_free;
- 
--		r->r.fmr.fmr = ib_alloc_fmr(pd, mr_access_flags, &fmr_attr);
--		if (IS_ERR(r->r.fmr.fmr))
-+		r->fmr.fmr = ib_alloc_fmr(pd, mr_access_flags, &fmr_attr);
-+		if (IS_ERR(r->fmr.fmr))
- 			goto out_fmr_err;
- 
- 		list_add(&r->mw_list, &buf->rb_mws);
-@@ -95,9 +95,9 @@ fmr_op_init(struct rpcrdma_xprt *r_xprt)
- 	return 0;
- 
- out_fmr_err:
--	rc = PTR_ERR(r->r.fmr.fmr);
-+	rc = PTR_ERR(r->fmr.fmr);
- 	dprintk("RPC:       %s: ib_alloc_fmr status %i\n", __func__, rc);
--	kfree(r->r.fmr.physaddrs);
-+	kfree(r->fmr.physaddrs);
- out_free:
- 	kfree(r);
- out:
-@@ -109,7 +109,7 @@ __fmr_unmap(struct rpcrdma_mw *r)
- {
- 	LIST_HEAD(l);
- 
--	list_add(&r->r.fmr.fmr->list, &l);
-+	list_add(&r->fmr.fmr->list, &l);
- 	return ib_unmap_fmr(&l);
- }
- 
-@@ -148,7 +148,7 @@ fmr_op_map(struct rpcrdma_xprt *r_xprt, struct rpcrdma_mr_seg *seg,
- 		nsegs = RPCRDMA_MAX_FMR_SGES;
- 	for (i = 0; i < nsegs;) {
- 		rpcrdma_map_one(device, seg, direction);
--		mw->r.fmr.physaddrs[i] = seg->mr_dma;
-+		mw->fmr.physaddrs[i] = seg->mr_dma;
- 		len += seg->mr_len;
- 		++seg;
- 		++i;
-@@ -158,13 +158,13 @@ fmr_op_map(struct rpcrdma_xprt *r_xprt, struct rpcrdma_mr_seg *seg,
- 			break;
- 	}
- 
--	rc = ib_map_phys_fmr(mw->r.fmr.fmr, mw->r.fmr.physaddrs,
-+	rc = ib_map_phys_fmr(mw->fmr.fmr, mw->fmr.physaddrs,
- 			     i, seg1->mr_dma);
- 	if (rc)
- 		goto out_maperr;
- 
- 	seg1->rl_mw = mw;
--	seg1->mr_rkey = mw->r.fmr.fmr->rkey;
-+	seg1->mr_rkey = mw->fmr.fmr->rkey;
- 	seg1->mr_base = seg1->mr_dma + pageoff;
- 	seg1->mr_nsegs = i;
- 	seg1->mr_len = len;
-@@ -219,7 +219,7 @@ fmr_op_unmap_sync(struct rpcrdma_xprt *r_xprt, struct rpcrdma_req *req)
- 		seg = &req->rl_segments[i];
- 		mw = seg->rl_mw;
- 
--		list_add(&mw->r.fmr.fmr->list, &unmap_list);
-+		list_add(&mw->fmr.fmr->list, &unmap_list);
- 
- 		i += seg->mr_nsegs;
- 	}
-@@ -281,9 +281,9 @@ fmr_op_destroy(struct rpcrdma_buffer *buf)
- 	while (!list_empty(&buf->rb_all)) {
- 		r = list_entry(buf->rb_all.next, struct rpcrdma_mw, mw_all);
- 		list_del(&r->mw_all);
--		kfree(r->r.fmr.physaddrs);
-+		kfree(r->fmr.physaddrs);
- 
--		rc = ib_dealloc_fmr(r->r.fmr.fmr);
-+		rc = ib_dealloc_fmr(r->fmr.fmr);
- 		if (rc)
- 			dprintk("RPC:       %s: ib_dealloc_fmr failed %i\n",
- 				__func__, rc);
 diff --git a/net/sunrpc/xprtrdma/frwr_ops.c b/net/sunrpc/xprtrdma/frwr_ops.c
-index e165673..23382fa 100644
+index 23382fa..3040fda 100644
 --- a/net/sunrpc/xprtrdma/frwr_ops.c
 +++ b/net/sunrpc/xprtrdma/frwr_ops.c
-@@ -109,20 +109,20 @@ static void
- __frwr_recovery_worker(struct work_struct *work)
- {
- 	struct rpcrdma_mw *r = container_of(work, struct rpcrdma_mw,
--					    r.frmr.fr_work);
--	struct rpcrdma_xprt *r_xprt = r->r.frmr.fr_xprt;
-+					    frmr.fr_work);
-+	struct rpcrdma_xprt *r_xprt = r->frmr.fr_xprt;
- 	unsigned int depth = r_xprt->rx_ia.ri_max_frmr_depth;
- 	struct ib_pd *pd = r_xprt->rx_ia.ri_pd;
+@@ -244,39 +244,80 @@ frwr_op_maxpages(struct rpcrdma_xprt *r_xprt)
+ 		     rpcrdma_max_segments(r_xprt) * ia->ri_max_frmr_depth);
+ }
  
--	if (ib_dereg_mr(r->r.frmr.fr_mr))
-+	if (ib_dereg_mr(r->frmr.fr_mr))
- 		goto out_fail;
- 
--	r->r.frmr.fr_mr = ib_alloc_mr(pd, IB_MR_TYPE_MEM_REG, depth);
--	if (IS_ERR(r->r.frmr.fr_mr))
-+	r->frmr.fr_mr = ib_alloc_mr(pd, IB_MR_TYPE_MEM_REG, depth);
-+	if (IS_ERR(r->frmr.fr_mr))
- 		goto out_fail;
- 
- 	dprintk("RPC:       %s: recovered FRMR %p\n", __func__, r);
--	r->r.frmr.fr_state = FRMR_IS_INVALID;
-+	r->frmr.fr_state = FRMR_IS_INVALID;
- 	rpcrdma_put_mw(r_xprt, r);
- 	return;
- 
-@@ -137,15 +137,15 @@ out_fail:
+-/* If FAST_REG or LOCAL_INV failed, indicate the frmr needs
+- * to be reset.
++static void
++__frwr_sendcompletion_flush(struct ib_wc *wc, struct rpcrdma_frmr *frmr,
++			    const char *wr)
++{
++	frmr->fr_state = FRMR_IS_STALE;
++	if (wc->status != IB_WC_WR_FLUSH_ERR)
++		pr_err("RPC:       %s: %s %s (%u, vendor %u)\n",
++		       __func__, ib_wc_status_msg(wc->status),
++		       wr, wc->status, wc->vendor_err);
++}
++
++/**
++ * frwr_wc_fastreg - Invoked by RDMA provider for each polled FastReg WC
++ * @cq:	completion queue (ignored)
++ * @wc:	completed WR
+  *
+- * WARNING: Only wr_id and status are reliable at this point
++ * FastReg WRs are typically unsignaled, but flushed WRs still need to
++ * be handled.
+  */
  static void
- __frwr_queue_recovery(struct rpcrdma_mw *r)
+-__frwr_sendcompletion_flush(struct ib_wc *wc, struct rpcrdma_mw *r)
++frwr_wc_fastreg(struct ib_cq *cq, struct ib_wc *wc)
  {
--	INIT_WORK(&r->r.frmr.fr_work, __frwr_recovery_worker);
--	queue_work(frwr_recovery_wq, &r->r.frmr.fr_work);
-+	INIT_WORK(&r->frmr.fr_work, __frwr_recovery_worker);
-+	queue_work(frwr_recovery_wq, &r->frmr.fr_work);
+-	if (likely(wc->status == IB_WC_SUCCESS))
+-		return;
+-
+-	/* WARNING: Only wr_id and status are reliable at this point */
+-	r = (struct rpcrdma_mw *)(unsigned long)wc->wr_id;
+-	if (wc->status == IB_WC_WR_FLUSH_ERR)
+-		dprintk("RPC:       %s: frmr %p flushed\n", __func__, r);
+-	else
+-		pr_warn("RPC:       %s: frmr %p error, status %s (%d)\n",
+-			__func__, r, ib_wc_status_msg(wc->status), wc->status);
++	struct rpcrdma_frmr *frmr;
++	struct ib_cqe *cqe;
+ 
+-	r->frmr.fr_state = FRMR_IS_STALE;
++	/* WARNING: Only wr_cqe and status are reliable at this point */
++	if (wc->status != IB_WC_SUCCESS) {
++		cqe = wc->wr_cqe;
++		frmr = container_of(cqe, struct rpcrdma_frmr, fr_cqe);
++		__frwr_sendcompletion_flush(wc, frmr, "fastreg");
++	}
+ }
+ 
++/**
++ * frwr_wc_localinv - Invoked by RDMA provider for each polled LocalInv WC
++ * @cq:	completion queue (ignored)
++ * @wc:	completed WR
++ *
++ * LocalInv WRs are typically unsignaled, but flushed WRs still need to
++ * be handled.
++ */
+ static void
+-frwr_sendcompletion(struct ib_wc *wc)
++frwr_wc_localinv(struct ib_cq *cq, struct ib_wc *wc)
+ {
+-	struct rpcrdma_mw *r = (struct rpcrdma_mw *)(unsigned long)wc->wr_id;
+-	struct rpcrdma_frmr *f = &r->frmr;
++	struct rpcrdma_frmr *frmr;
++	struct ib_cqe *cqe;
+ 
+-	if (unlikely(wc->status != IB_WC_SUCCESS))
+-		__frwr_sendcompletion_flush(wc, r);
++	/* WARNING: Only wr_cqe and status are reliable at this point */
++	if (wc->status != IB_WC_SUCCESS) {
++		cqe = wc->wr_cqe;
++		frmr = container_of(cqe, struct rpcrdma_frmr, fr_cqe);
++		__frwr_sendcompletion_flush(wc, frmr, "localinv");
++	}
++}
+ 
+-	if (f->fr_waiter)
+-		complete(&f->fr_linv_done);
++/**
++ * frwr_wc_localinv - Invoked by RDMA provider for each polled LocalInv WC
++ * @cq:	completion queue (ignored)
++ * @wc:	completed WR
++ *
++ * Awaken anyone waiting for an MR to finish being fenced.
++ */
++static void
++frwr_wc_localinv_wake(struct ib_cq *cq, struct ib_wc *wc)
++{
++	struct rpcrdma_frmr *frmr;
++	struct ib_cqe *cqe;
++
++	/* WARNING: Only wr_cqe and status are reliable at this point */
++	cqe = wc->wr_cqe;
++	frmr = container_of(cqe, struct rpcrdma_frmr, fr_cqe);
++	if (wc->status != IB_WC_SUCCESS)
++		__frwr_sendcompletion_flush(wc, frmr, "localinv");
++	complete(&frmr->fr_linv_done);
  }
  
  static int
- __frwr_init(struct rpcrdma_mw *r, struct ib_pd *pd, struct ib_device *device,
- 	    unsigned int depth)
- {
--	struct rpcrdma_frmr *f = &r->r.frmr;
-+	struct rpcrdma_frmr *f = &r->frmr;
- 	int rc;
+@@ -313,7 +354,6 @@ frwr_op_init(struct rpcrdma_xprt *r_xprt)
  
- 	f->fr_mr = ib_alloc_mr(pd, IB_MR_TYPE_MEM_REG, depth);
-@@ -179,11 +179,11 @@ __frwr_release(struct rpcrdma_mw *r)
- {
- 	int rc;
- 
--	rc = ib_dereg_mr(r->r.frmr.fr_mr);
-+	rc = ib_dereg_mr(r->frmr.fr_mr);
- 	if (rc)
- 		dprintk("RPC:       %s: ib_dereg_mr status %i\n",
- 			__func__, rc);
--	kfree(r->r.frmr.sg);
-+	kfree(r->frmr.sg);
- }
- 
- static int
-@@ -263,14 +263,14 @@ __frwr_sendcompletion_flush(struct ib_wc *wc, struct rpcrdma_mw *r)
- 		pr_warn("RPC:       %s: frmr %p error, status %s (%d)\n",
- 			__func__, r, ib_wc_status_msg(wc->status), wc->status);
- 
--	r->r.frmr.fr_state = FRMR_IS_STALE;
-+	r->frmr.fr_state = FRMR_IS_STALE;
- }
- 
- static void
- frwr_sendcompletion(struct ib_wc *wc)
- {
- 	struct rpcrdma_mw *r = (struct rpcrdma_mw *)(unsigned long)wc->wr_id;
--	struct rpcrdma_frmr *f = &r->r.frmr;
-+	struct rpcrdma_frmr *f = &r->frmr;
- 
- 	if (unlikely(wc->status != IB_WC_SUCCESS))
- 		__frwr_sendcompletion_flush(wc, r);
-@@ -314,7 +314,7 @@ frwr_op_init(struct rpcrdma_xprt *r_xprt)
  		list_add(&r->mw_list, &buf->rb_mws);
  		list_add(&r->mw_all, &buf->rb_all);
- 		r->mw_sendcompletion = frwr_sendcompletion;
--		r->r.frmr.fr_xprt = r_xprt;
-+		r->frmr.fr_xprt = r_xprt;
+-		r->mw_sendcompletion = frwr_sendcompletion;
+ 		r->frmr.fr_xprt = r_xprt;
  	}
  
- 	return 0;
-@@ -347,8 +347,8 @@ frwr_op_map(struct rpcrdma_xprt *r_xprt, struct rpcrdma_mr_seg *seg,
- 		mw = rpcrdma_get_mw(r_xprt);
- 		if (!mw)
- 			return -ENOMEM;
--	} while (mw->r.frmr.fr_state != FRMR_IS_INVALID);
--	frmr = &mw->r.frmr;
-+	} while (mw->frmr.fr_state != FRMR_IS_INVALID);
-+	frmr = &mw->frmr;
+@@ -350,7 +390,6 @@ frwr_op_map(struct rpcrdma_xprt *r_xprt, struct rpcrdma_mr_seg *seg,
+ 	} while (mw->frmr.fr_state != FRMR_IS_INVALID);
+ 	frmr = &mw->frmr;
  	frmr->fr_state = FRMR_IS_VALID;
- 	frmr->fr_waiter = false;
+-	frmr->fr_waiter = false;
  	mr = frmr->fr_mr;
-@@ -434,7 +434,7 @@ static struct ib_send_wr *
- __frwr_prepare_linv_wr(struct rpcrdma_mr_seg *seg)
- {
- 	struct rpcrdma_mw *mw = seg->rl_mw;
--	struct rpcrdma_frmr *f = &mw->r.frmr;
-+	struct rpcrdma_frmr *f = &mw->frmr;
+ 	reg_wr = &frmr->fr_regwr;
+ 
+@@ -400,7 +439,8 @@ frwr_op_map(struct rpcrdma_xprt *r_xprt, struct rpcrdma_mr_seg *seg,
+ 
+ 	reg_wr->wr.next = NULL;
+ 	reg_wr->wr.opcode = IB_WR_REG_MR;
+-	reg_wr->wr.wr_id = (uintptr_t)mw;
++	frmr->fr_cqe.done = frwr_wc_fastreg;
++	reg_wr->wr.wr_cqe = &frmr->fr_cqe;
+ 	reg_wr->wr.num_sge = 0;
+ 	reg_wr->wr.send_flags = 0;
+ 	reg_wr->mr = mr;
+@@ -437,12 +477,12 @@ __frwr_prepare_linv_wr(struct rpcrdma_mr_seg *seg)
+ 	struct rpcrdma_frmr *f = &mw->frmr;
  	struct ib_send_wr *invalidate_wr;
  
- 	f->fr_waiter = false;
-@@ -455,7 +455,7 @@ __frwr_dma_unmap(struct rpcrdma_xprt *r_xprt, struct rpcrdma_mr_seg *seg,
- {
- 	struct ib_device *device = r_xprt->rx_ia.ri_device;
- 	struct rpcrdma_mw *mw = seg->rl_mw;
--	struct rpcrdma_frmr *f = &mw->r.frmr;
-+	struct rpcrdma_frmr *f = &mw->frmr;
- 
- 	seg->rl_mw = NULL;
- 
-@@ -504,7 +504,7 @@ frwr_op_unmap_sync(struct rpcrdma_xprt *r_xprt, struct rpcrdma_req *req)
- 
- 		i += seg->mr_nsegs;
- 	}
--	f = &seg->rl_mw->r.frmr;
-+	f = &seg->rl_mw->frmr;
- 
- 	/* Strong send queue ordering guarantees that when the
- 	 * last WR in the chain completes, all WRs in the chain
-@@ -549,7 +549,7 @@ frwr_op_unmap(struct rpcrdma_xprt *r_xprt, struct rpcrdma_mr_seg *seg)
- 	struct rpcrdma_mr_seg *seg1 = seg;
- 	struct rpcrdma_ia *ia = &r_xprt->rx_ia;
- 	struct rpcrdma_mw *mw = seg1->rl_mw;
--	struct rpcrdma_frmr *frmr = &mw->r.frmr;
-+	struct rpcrdma_frmr *frmr = &mw->frmr;
- 	struct ib_send_wr *invalidate_wr, *bad_wr;
- 	int rc, nsegs = seg->mr_nsegs;
- 
-@@ -557,7 +557,7 @@ frwr_op_unmap(struct rpcrdma_xprt *r_xprt, struct rpcrdma_mr_seg *seg)
- 
- 	seg1->rl_mw = NULL;
- 	frmr->fr_state = FRMR_IS_INVALID;
--	invalidate_wr = &mw->r.frmr.fr_invwr;
-+	invalidate_wr = &mw->frmr.fr_invwr;
+-	f->fr_waiter = false;
+ 	f->fr_state = FRMR_IS_INVALID;
+ 	invalidate_wr = &f->fr_invwr;
  
  	memset(invalidate_wr, 0, sizeof(*invalidate_wr));
- 	invalidate_wr->wr_id = (uintptr_t)mw;
+-	invalidate_wr->wr_id = (unsigned long)(void *)mw;
++	f->fr_cqe.done = frwr_wc_localinv;
++	invalidate_wr->wr_cqe = &f->fr_cqe;
+ 	invalidate_wr->opcode = IB_WR_LOCAL_INV;
+ 	invalidate_wr->ex.invalidate_rkey = f->fr_mr->rkey;
+ 
+@@ -511,7 +551,7 @@ frwr_op_unmap_sync(struct rpcrdma_xprt *r_xprt, struct rpcrdma_req *req)
+ 	 * are complete.
+ 	 */
+ 	f->fr_invwr.send_flags = IB_SEND_SIGNALED;
+-	f->fr_waiter = true;
++	f->fr_cqe.done = frwr_wc_localinv_wake;
+ 	init_completion(&f->fr_linv_done);
+ 	INIT_CQCOUNT(&r_xprt->rx_ep);
+ 
+@@ -560,7 +600,8 @@ frwr_op_unmap(struct rpcrdma_xprt *r_xprt, struct rpcrdma_mr_seg *seg)
+ 	invalidate_wr = &mw->frmr.fr_invwr;
+ 
+ 	memset(invalidate_wr, 0, sizeof(*invalidate_wr));
+-	invalidate_wr->wr_id = (uintptr_t)mw;
++	frmr->fr_cqe.done = frwr_wc_localinv;
++	invalidate_wr->wr_cqe = &frmr->fr_cqe;
+ 	invalidate_wr->opcode = IB_WR_LOCAL_INV;
+ 	invalidate_wr->ex.invalidate_rkey = frmr->fr_mr->rkey;
+ 	DECR_CQCOUNT(&r_xprt->rx_ep);
+diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
+index 53c30e2..2f38388 100644
+--- a/net/sunrpc/xprtrdma/verbs.c
++++ b/net/sunrpc/xprtrdma/verbs.c
+@@ -112,73 +112,22 @@ rpcrdma_qp_async_error_upcall(struct ib_event *event, void *context)
+ 	}
+ }
+ 
+-static void
+-rpcrdma_cq_async_error_upcall(struct ib_event *event, void *context)
+-{
+-	struct rpcrdma_ep *ep = context;
+-
+-	pr_err("RPC:       %s: %s on device %s ep %p\n",
+-	       __func__, ib_event_msg(event->event),
+-		event->device->name, context);
+-	if (ep->rep_connected == 1) {
+-		ep->rep_connected = -EIO;
+-		rpcrdma_conn_func(ep);
+-		wake_up_all(&ep->rep_connect_wait);
+-	}
+-}
+-
+-static void
+-rpcrdma_sendcq_process_wc(struct ib_wc *wc)
+-{
+-	/* WARNING: Only wr_id and status are reliable at this point */
+-	if (wc->wr_id == RPCRDMA_IGNORE_COMPLETION) {
+-		if (wc->status != IB_WC_SUCCESS &&
+-		    wc->status != IB_WC_WR_FLUSH_ERR)
+-			pr_err("RPC:       %s: SEND: %s\n",
+-			       __func__, ib_wc_status_msg(wc->status));
+-	} else {
+-		struct rpcrdma_mw *r;
+-
+-		r = (struct rpcrdma_mw *)(unsigned long)wc->wr_id;
+-		r->mw_sendcompletion(wc);
+-	}
+-}
+-
+-/* The common case is a single send completion is waiting. By
+- * passing two WC entries to ib_poll_cq, a return code of 1
+- * means there is exactly one WC waiting and no more. We don't
+- * have to invoke ib_poll_cq again to know that the CQ has been
+- * properly drained.
+- */
+-static void
+-rpcrdma_sendcq_poll(struct ib_cq *cq)
+-{
+-	struct ib_wc *pos, wcs[2];
+-	int count, rc;
+-
+-	do {
+-		pos = wcs;
+-
+-		rc = ib_poll_cq(cq, ARRAY_SIZE(wcs), pos);
+-		if (rc < 0)
+-			break;
+-
+-		count = rc;
+-		while (count-- > 0)
+-			rpcrdma_sendcq_process_wc(pos++);
+-	} while (rc == ARRAY_SIZE(wcs));
+-	return;
+-}
+-
+-/* Handle provider send completion upcalls.
++/**
++ * rpcrdma_wc_send - Invoked by RDMA provider for each polled Send WC
++ * @cq:	completion queue (ignored)
++ * @wc:	completed WR
++ *
++ * Send WRs are typically unsignaled, but flushed WRs still need to
++ * be handled.
+  */
+ static void
+-rpcrdma_sendcq_upcall(struct ib_cq *cq, void *cq_context)
++rpcrdma_wc_send(struct ib_cq *cq, struct ib_wc *wc)
+ {
+-	do {
+-		rpcrdma_sendcq_poll(cq);
+-	} while (ib_req_notify_cq(cq, IB_CQ_NEXT_COMP |
+-				  IB_CQ_REPORT_MISSED_EVENTS) > 0);
++	/* WARNING: Only wr_cqe and status are reliable at this point */
++	if (wc->status != IB_WC_SUCCESS && wc->status != IB_WC_WR_FLUSH_ERR)
++		pr_err("RPC:       %s: Send: %s (%u, vendor %u)\n",
++		       __func__, ib_wc_status_msg(wc->status),
++		       wc->status, wc->vendor_err);
+ }
+ 
+ static void
+@@ -269,8 +218,6 @@ rpcrdma_flush_cqs(struct rpcrdma_ep *ep)
+ 
+ 	while (ib_poll_cq(ep->rep_attr.recv_cq, 1, &wc) > 0)
+ 		rpcrdma_recvcq_process_wc(&wc);
+-	while (ib_poll_cq(ep->rep_attr.send_cq, 1, &wc) > 0)
+-		rpcrdma_sendcq_process_wc(&wc);
+ }
+ 
+ static int
+@@ -562,9 +509,8 @@ rpcrdma_ep_create(struct rpcrdma_ep *ep, struct rpcrdma_ia *ia,
+ 				struct rpcrdma_create_data_internal *cdata)
+ {
+ 	struct ib_cq *sendcq, *recvcq;
+-	struct ib_cq_init_attr cq_attr = {};
+ 	unsigned int max_qp_wr;
+-	int rc, err;
++	int rc;
+ 
+ 	if (ia->ri_device->attrs.max_sge < RPCRDMA_MAX_IOVS) {
+ 		dprintk("RPC:       %s: insufficient sge's available\n",
+@@ -616,9 +562,9 @@ rpcrdma_ep_create(struct rpcrdma_ep *ep, struct rpcrdma_ia *ia,
+ 	init_waitqueue_head(&ep->rep_connect_wait);
+ 	INIT_DELAYED_WORK(&ep->rep_connect_worker, rpcrdma_connect_worker);
+ 
+-	cq_attr.cqe = ep->rep_attr.cap.max_send_wr + 1;
+-	sendcq = ib_create_cq(ia->ri_device, rpcrdma_sendcq_upcall,
+-			      rpcrdma_cq_async_error_upcall, NULL, &cq_attr);
++	sendcq = ib_alloc_cq(ia->ri_device, NULL,
++			     ep->rep_attr.cap.max_send_wr + 1,
++			     0, IB_POLL_SOFTIRQ);
+ 	if (IS_ERR(sendcq)) {
+ 		rc = PTR_ERR(sendcq);
+ 		dprintk("RPC:       %s: failed to create send CQ: %i\n",
+@@ -626,13 +572,6 @@ rpcrdma_ep_create(struct rpcrdma_ep *ep, struct rpcrdma_ia *ia,
+ 		goto out1;
+ 	}
+ 
+-	rc = ib_req_notify_cq(sendcq, IB_CQ_NEXT_COMP);
+-	if (rc) {
+-		dprintk("RPC:       %s: ib_req_notify_cq failed: %i\n",
+-			__func__, rc);
+-		goto out2;
+-	}
+-
+ 	recvcq = ib_alloc_cq(ia->ri_device, NULL,
+ 			     ep->rep_attr.cap.max_recv_wr + 1,
+ 			     0, IB_POLL_SOFTIRQ);
+@@ -667,10 +606,7 @@ rpcrdma_ep_create(struct rpcrdma_ep *ep, struct rpcrdma_ia *ia,
+ 	return 0;
+ 
+ out2:
+-	err = ib_destroy_cq(sendcq);
+-	if (err)
+-		dprintk("RPC:       %s: ib_destroy_cq returned %i\n",
+-			__func__, err);
++	ib_free_cq(sendcq);
+ out1:
+ 	if (ia->ri_dma_mr)
+ 		ib_dereg_mr(ia->ri_dma_mr);
+@@ -706,11 +642,7 @@ rpcrdma_ep_destroy(struct rpcrdma_ep *ep, struct rpcrdma_ia *ia)
+ 	}
+ 
+ 	ib_free_cq(ep->rep_attr.recv_cq);
+-
+-	rc = ib_destroy_cq(ep->rep_attr.send_cq);
+-	if (rc)
+-		dprintk("RPC:       %s: ib_destroy_cq returned %i\n",
+-			__func__, rc);
++	ib_free_cq(ep->rep_attr.send_cq);
+ 
+ 	if (ia->ri_dma_mr) {
+ 		rc = ib_dereg_mr(ia->ri_dma_mr);
+@@ -889,6 +821,7 @@ rpcrdma_create_req(struct rpcrdma_xprt *r_xprt)
+ 	spin_lock(&buffer->rb_reqslock);
+ 	list_add(&req->rl_all, &buffer->rb_allreqs);
+ 	spin_unlock(&buffer->rb_reqslock);
++	req->rl_cqe.done = rpcrdma_wc_send;
+ 	req->rl_buffer = &r_xprt->rx_buf;
+ 	return req;
+ }
+@@ -1252,7 +1185,7 @@ rpcrdma_ep_post(struct rpcrdma_ia *ia,
+ 	}
+ 
+ 	send_wr.next = NULL;
+-	send_wr.wr_id = RPCRDMA_IGNORE_COMPLETION;
++	send_wr.wr_cqe = &req->rl_cqe;
+ 	send_wr.sg_list = iov;
+ 	send_wr.num_sge = req->rl_niovs;
+ 	send_wr.opcode = IB_WR_SEND;
 diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
-index 7d87cdc..4be4c9b 100644
+index 4be4c9b..fcfd4c0 100644
 --- a/net/sunrpc/xprtrdma/xprt_rdma.h
 +++ b/net/sunrpc/xprtrdma/xprt_rdma.h
-@@ -225,7 +225,7 @@ struct rpcrdma_mw {
+@@ -95,10 +95,6 @@ struct rpcrdma_ep {
+ #define INIT_CQCOUNT(ep) atomic_set(&(ep)->rep_cqcount, (ep)->rep_cqinit)
+ #define DECR_CQCOUNT(ep) atomic_sub_return(1, &(ep)->rep_cqcount)
+ 
+-/* Force completion handler to ignore the signal
+- */
+-#define RPCRDMA_IGNORE_COMPLETION	(0ULL)
+-
+ /* Pre-allocate extra Work Requests for handling backward receives
+  * and sends. This is a fixed value because the Work Queues are
+  * allocated when the forward channel is set up.
+@@ -205,11 +201,11 @@ struct rpcrdma_frmr {
+ 	struct scatterlist		*sg;
+ 	int				sg_nents;
+ 	struct ib_mr			*fr_mr;
++	struct ib_cqe			fr_cqe;
+ 	enum rpcrdma_frmr_state		fr_state;
++	struct completion		fr_linv_done;
+ 	struct work_struct		fr_work;
+ 	struct rpcrdma_xprt		*fr_xprt;
+-	bool				fr_waiter;
+-	struct completion		fr_linv_done;;
  	union {
+ 		struct ib_reg_wr	fr_regwr;
+ 		struct ib_send_wr	fr_invwr;
+@@ -226,7 +222,6 @@ struct rpcrdma_mw {
  		struct rpcrdma_fmr	fmr;
  		struct rpcrdma_frmr	frmr;
--	} r;
-+	};
- 	void			(*mw_sendcompletion)(struct ib_wc *);
+ 	};
+-	void			(*mw_sendcompletion)(struct ib_wc *);
  	struct list_head	mw_list;
  	struct list_head	mw_all;
+ };
+@@ -283,6 +278,7 @@ struct rpcrdma_req {
+ 	struct rpcrdma_mr_seg	rl_segments[RPCRDMA_MAX_SEGS];
+ 	struct rpc_task		*rl_task;
+ 
++	struct ib_cqe		rl_cqe;
+ 	struct list_head	rl_all;
+ 	bool			rl_backchannel;
+ };
 
