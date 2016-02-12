@@ -1,14 +1,13 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ig0-f193.google.com ([209.85.213.193]:35101 "EHLO
-	mail-ig0-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751067AbcBLVGE (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 12 Feb 2016 16:06:04 -0500
-Subject: [PATCH v1 1/8] xprtrdma: Segment head and tail XDR buffers on page
- boundaries
+Received: from mail-ig0-f194.google.com ([209.85.213.194]:36610 "EHLO
+	mail-ig0-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751067AbcBLVGN (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 12 Feb 2016 16:06:13 -0500
+Subject: [PATCH v1 2/8] xprtrdma: Invalidate memory when a signal is caught
 From: Chuck Lever <chuck.lever@oracle.com>
 To: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Fri, 12 Feb 2016 16:06:02 -0500
-Message-ID: <20160212210602.5278.57457.stgit@manet.1015granger.net>
+Date: Fri, 12 Feb 2016 16:06:10 -0500
+Message-ID: <20160212210610.5278.22489.stgit@manet.1015granger.net>
 In-Reply-To: <20160212205107.5278.55938.stgit@manet.1015granger.net>
 References: <20160212205107.5278.55938.stgit@manet.1015granger.net>
 MIME-Version: 1.0
@@ -16,119 +15,109 @@ Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-A single memory allocation is used for the pair of buffers wherein
-the RPC client builds an RPC call message and decodes its matching
-reply. These buffers are sized based on the maximum possible size
-of the RPC call and reply messages for the operation in progress.
+When a signal occurs during a synchronous RPC, the RPC scheduler
+causes the RPC task to exit immediately.
 
-This means that as the call buffer increases in size, the start of
-the reply buffer is pushed farther into the memory allocation.
+However, the RPC transaction is still running on the server, which
+may read arguments from the client or deliver a reply into client
+memory that is still registered.
 
-RPC requests are growing in size. It used to be that both the call
-and reply buffers fit inside a single page.
+Ensure that xprt_release() invalidates the signaled RPC's chunks
+and waits for the invalidation to complete in order to fence the
+memory from the server before the client re-allocates it.
 
-But these days, thanks to NFSv4 (and especially security labels in
-NFSv4.2) the maximum call and reply sizes are large. NFSv4.0 OPEN,
-for example, now requires a 6KB allocation for a pair of call and
-reply buffers, and NFSv4 LOOKUP is not far behind.
-
-As the maximum size of a call increases, the reply buffer is pushed
-far enough into the buffer's memory allocation that a page boundary
-can appear in the middle of it.
-
-When the maximum possible reply size is larger than the client's
-RDMA receive buffers (currently 1KB), the client has to register a
-Reply chunk for the server to RDMA Write the reply into.
-
-The logic in rpcrdma_convert_iovs() assumes that xdr_buf head and
-tail buffers would always be contained on a single page. It supplies
-just one segment for the head and one for the tail.
-
-FMR, for example, registers up to a page boundary (only a portion of
-the reply buffer in the OPEN case above). But without additional
-segments, it doesn't register the rest of the buffer.
-
-When the server tries to write the OPEN reply, the RDMA Write fails
-with a remote access error since the client registered only part of
-the Reply chunk.
-
-rpcrdma_convert_iovs() must split the XDR buffer into multiple
-segments, each of which are guaranteed not to contain a page
-boundary. That way fmr_op_map is given the proper number of segments
-to register the whole reply buffer.
+Note it should be safe to sleep in this case. An asynchronous
+RPC is never awoken by a signal.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- net/sunrpc/xprtrdma/rpc_rdma.c |   42 ++++++++++++++++++++++++++++++----------
- 1 file changed, 32 insertions(+), 10 deletions(-)
+ net/sunrpc/xprtrdma/transport.c |   41 ++++++++++++++++++++++++++++++++-------
+ net/sunrpc/xprtrdma/xprt_rdma.h |    1 +
+ 2 files changed, 35 insertions(+), 7 deletions(-)
 
-diff --git a/net/sunrpc/xprtrdma/rpc_rdma.c b/net/sunrpc/xprtrdma/rpc_rdma.c
-index 0f28f2d..add1f98 100644
---- a/net/sunrpc/xprtrdma/rpc_rdma.c
-+++ b/net/sunrpc/xprtrdma/rpc_rdma.c
-@@ -132,6 +132,33 @@ rpcrdma_tail_pullup(struct xdr_buf *buf)
- 	return tlen;
+diff --git a/net/sunrpc/xprtrdma/transport.c b/net/sunrpc/xprtrdma/transport.c
+index b1b009f..ceb7140 100644
+--- a/net/sunrpc/xprtrdma/transport.c
++++ b/net/sunrpc/xprtrdma/transport.c
+@@ -508,6 +508,7 @@ xprt_rdma_allocate(struct rpc_task *task, size_t size)
+ out:
+ 	dprintk("RPC:       %s: size %zd, request 0x%p\n", __func__, size, req);
+ 	req->rl_connect_cookie = 0;	/* our reserved value */
++	req->rl_task = task;
+ 	return req->rl_sendbuf->rg_base;
+ 
+ out_rdmabuf:
+@@ -555,6 +556,37 @@ out_fail:
+ 	return NULL;
  }
  
-+/* Split "vec" on page boundaries into segments. FMR registers pages,
-+ * not a byte range. Other modes coalesce these segments into a single
-+ * MR when they can.
++/* Invalidate registered memory still associated with this req.
++ *
++ * Normally, the RPC reply handler invalidates chunks.
++ *
++ * If we're here because a signal fired, this is an exiting
++ * synchronous RPC and the reply handler has not run, leaving
++ * the RPC's chunks registered. The server is still processing
++ * this RPC and can still read or update those chunks.
++ *
++ * Synchronously fence the chunks before this RPC terminates
++ * to ensure the server doesn't write into memory that has
++ * been reallocated.
 + */
-+static int
-+rpcrdma_convert_kvec(struct kvec *vec, struct rpcrdma_mr_seg *seg,
-+		     int n, int nsegs)
++static void xprt_rdma_free_chunks(struct rpcrdma_xprt *r_xprt,
++				  struct rpcrdma_req *req)
 +{
-+	size_t page_offset;
-+	u32 remaining;
-+	char *base;
++	unsigned int i;
 +
-+	base = vec->iov_base;
-+	page_offset = offset_in_page(base);
-+	remaining = vec->iov_len;
-+	while (remaining && n < nsegs) {
-+		seg[n].mr_page = NULL;
-+		seg[n].mr_offset = base;
-+		seg[n].mr_len = min_t(u32, PAGE_SIZE - page_offset, remaining);
-+		remaining -= seg[n].mr_len;
-+		base += seg[n].mr_len;
-+		++n;
-+		page_offset = 0;
++	if (!RPC_IS_ASYNC(req->rl_task)) {
++		r_xprt->rx_ia.ri_ops->ro_unmap_sync(r_xprt, req);
++		return;
 +	}
-+	return n;
++
++	pr_warn("rpcrdma: freeing async RPC task with registered chunks\n");
++	for (i = 0; req->rl_nchunks;) {
++		--req->rl_nchunks;
++		i += r_xprt->rx_ia.ri_ops->ro_unmap(r_xprt,
++						    &req->rl_segments[i]);
++	}
 +}
 +
  /*
-  * Chunk assembly from upper layer xdr_buf.
-  *
-@@ -150,11 +177,10 @@ rpcrdma_convert_iovs(struct xdr_buf *xdrbuf, unsigned int pos,
- 	int page_base;
- 	struct page **ppages;
+  * This function returns all RDMA resources to the pool.
+  */
+@@ -564,7 +596,6 @@ xprt_rdma_free(void *buffer)
+ 	struct rpcrdma_req *req;
+ 	struct rpcrdma_xprt *r_xprt;
+ 	struct rpcrdma_regbuf *rb;
+-	int i;
  
--	if (pos == 0 && xdrbuf->head[0].iov_len) {
--		seg[n].mr_page = NULL;
--		seg[n].mr_offset = xdrbuf->head[0].iov_base;
--		seg[n].mr_len = xdrbuf->head[0].iov_len;
--		++n;
-+	if (pos == 0) {
-+		n = rpcrdma_convert_kvec(&xdrbuf->head[0], seg, n, nsegs);
-+		if (n == nsegs)
-+			return -EIO;
- 	}
+ 	if (buffer == NULL)
+ 		return;
+@@ -578,12 +609,8 @@ xprt_rdma_free(void *buffer)
  
- 	len = xdrbuf->page_len;
-@@ -192,13 +218,9 @@ rpcrdma_convert_iovs(struct xdr_buf *xdrbuf, unsigned int pos,
- 		 * xdr pad bytes, saving the server an RDMA operation. */
- 		if (xdrbuf->tail[0].iov_len < 4 && xprt_rdma_pad_optimize)
- 			return n;
-+		n = rpcrdma_convert_kvec(&xdrbuf->tail[0], seg, n, nsegs);
- 		if (n == nsegs)
--			/* Tail remains, but we're out of segments */
- 			return -EIO;
--		seg[n].mr_page = NULL;
--		seg[n].mr_offset = xdrbuf->tail[0].iov_base;
--		seg[n].mr_len = xdrbuf->tail[0].iov_len;
--		++n;
- 	}
+ 	dprintk("RPC:       %s: called on 0x%p\n", __func__, req->rl_reply);
  
- 	return n;
+-	for (i = 0; req->rl_nchunks;) {
+-		--req->rl_nchunks;
+-		i += r_xprt->rx_ia.ri_ops->ro_unmap(r_xprt,
+-						    &req->rl_segments[i]);
+-	}
+-
++	if (req->rl_nchunks)
++		xprt_rdma_free_chunks(r_xprt, req);
+ 	rpcrdma_buffer_put(req);
+ }
+ 
+diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
+index 38fe11b..bf98c67 100644
+--- a/net/sunrpc/xprtrdma/xprt_rdma.h
++++ b/net/sunrpc/xprtrdma/xprt_rdma.h
+@@ -280,6 +280,7 @@ struct rpcrdma_req {
+ 	struct rpcrdma_regbuf	*rl_rdmabuf;
+ 	struct rpcrdma_regbuf	*rl_sendbuf;
+ 	struct rpcrdma_mr_seg	rl_segments[RPCRDMA_MAX_SEGS];
++	struct rpc_task		*rl_task;
+ 
+ 	struct list_head	rl_all;
+ 	bool			rl_backchannel;
 
