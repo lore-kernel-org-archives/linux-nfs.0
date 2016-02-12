@@ -1,13 +1,14 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f194.google.com ([209.85.223.194]:33756 "EHLO
+Received: from mail-io0-f194.google.com ([209.85.223.194]:35755 "EHLO
 	mail-io0-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751811AbcBLVGh (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 12 Feb 2016 16:06:37 -0500
-Subject: [PATCH v1 5/8] xprtrdma: Serialize credit accounting again
+	with ESMTP id S1751865AbcBLVGp (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 12 Feb 2016 16:06:45 -0500
+Subject: [PATCH v1 6/8] xprtrdma: Use new CQ API for RPC-over-RDMA client
+ receive CQs
 From: Chuck Lever <chuck.lever@oracle.com>
 To: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Fri, 12 Feb 2016 16:06:35 -0500
-Message-ID: <20160212210635.5278.72709.stgit@manet.1015granger.net>
+Date: Fri, 12 Feb 2016 16:06:43 -0500
+Message-ID: <20160212210643.5278.97996.stgit@manet.1015granger.net>
 In-Reply-To: <20160212205107.5278.55938.stgit@manet.1015granger.net>
 References: <20160212205107.5278.55938.stgit@manet.1015granger.net>
 MIME-Version: 1.0
@@ -15,122 +16,170 @@ Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Commit fe97b47cd623 ("xprtrdma: Use workqueue to process RPC/RDMA
-replies") replaced the reply tasklet with a workqueue that allows
-RPC replies to be processed in parallel. Thus the credit values in
-RPC-over-RDMA replies can applied in a different order than in
-which the server sent them.
+Calling ib_poll_cq() to sort through WCs during a completion is a
+common pattern amongst RDMA consumers. Since commit 14d3a3b2498e
+("IB: add a proper completion queue abstraction"), WC sorting can
+be handled by the IB core.
 
-To fix this, revert commit eba8ff660b2d ("xprtrdma: Move credit
-update to RPC reply handler"). Done by hand to accommodate code
-changes that have occurred since then.
+By converting to this new API, xprtrdma is made a better neighbor to
+other RDMA consumers, as it allows the core to schedule the delivery
+of completions more fairly amongst all active consumers.
 
-Fixes: fe97b47cd623 ("xprtrdma: Use workqueue to process . . .")
+Because each ib_cqe carries a pointer to a completion method, the
+core can now post its own operations on a consumer's QP, and handle
+the completions itself, without changes to the consumer.
+
+xprtrdma's receive processing is already handled in a worker thread,
+but there is some initial order-dependent processing that is done
+in the soft IRQ context before the worker thread is scheduled.
+IB_POLL_SOFTIRQ is a direct replacement for the current xprtrdma
+receive code path.
+
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- net/sunrpc/xprtrdma/rpc_rdma.c  |    9 +--------
- net/sunrpc/xprtrdma/verbs.c     |   27 ++++++++++++++++++++++++++-
+ net/sunrpc/xprtrdma/verbs.c     |   68 ++++++++++-----------------------------
  net/sunrpc/xprtrdma/xprt_rdma.h |    1 +
- 3 files changed, 28 insertions(+), 9 deletions(-)
+ 2 files changed, 19 insertions(+), 50 deletions(-)
 
-diff --git a/net/sunrpc/xprtrdma/rpc_rdma.c b/net/sunrpc/xprtrdma/rpc_rdma.c
-index c341225..0c45288 100644
---- a/net/sunrpc/xprtrdma/rpc_rdma.c
-+++ b/net/sunrpc/xprtrdma/rpc_rdma.c
-@@ -797,7 +797,6 @@ rpcrdma_reply_handler(struct rpcrdma_rep *rep)
- 	__be32 *iptr;
- 	int rdmalen, status, rmerr;
- 	unsigned long cwnd;
--	u32 credits;
- 
- 	dprintk("RPC:       %s: incoming rep %p\n", __func__, rep);
- 
-@@ -930,15 +929,9 @@ out:
- 	if (req->rl_nchunks)
- 		r_xprt->rx_ia.ri_ops->ro_unmap_sync(r_xprt, req);
- 
--	credits = be32_to_cpu(headerp->rm_credit);
--	if (credits == 0)
--		credits = 1;	/* don't deadlock */
--	else if (credits > r_xprt->rx_buf.rb_max_requests)
--		credits = r_xprt->rx_buf.rb_max_requests;
--
- 	spin_lock_bh(&xprt->transport_lock);
- 	cwnd = xprt->cwnd;
--	xprt->cwnd = credits << RPC_CWNDSHIFT;
-+	xprt->cwnd = atomic_read(&r_xprt->rx_buf.rb_credits) << RPC_CWNDSHIFT;
- 	if (xprt->cwnd > cwnd)
- 		xprt_release_rqst_cong(rqst->rq_task);
- 
 diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
-index 878f1bf..fc1ef5f 100644
+index fc1ef5f..53c30e2 100644
 --- a/net/sunrpc/xprtrdma/verbs.c
 +++ b/net/sunrpc/xprtrdma/verbs.c
-@@ -190,6 +190,28 @@ rpcrdma_receive_worker(struct work_struct *work)
- 	rpcrdma_reply_handler(rep);
- }
- 
-+/* Perform basic sanity checking to avoid using garbage
-+ * to update the credit grant value.
-+ */
-+static void
-+rpcrdma_update_granted_credits(struct rpcrdma_rep *rep)
-+{
-+	struct rpcrdma_msg *rmsgp = rdmab_to_msg(rep->rr_rdmabuf);
-+	struct rpcrdma_buffer *buffer = &rep->rr_rxprt->rx_buf;
-+	u32 credits;
-+
-+	if (rep->rr_len < RPCRDMA_HDRLEN_ERR)
-+		return;
-+
-+	credits = be32_to_cpu(rmsgp->rm_credit);
-+	if (credits == 0)
-+		credits = 1;	/* don't deadlock */
-+	else if (credits > buffer->rb_max_requests)
-+		credits = buffer->rb_max_requests;
-+
-+	atomic_set(&buffer->rb_credits, credits);
-+}
-+
+@@ -215,8 +215,9 @@ rpcrdma_update_granted_credits(struct rpcrdma_rep *rep)
  static void
  rpcrdma_recvcq_process_wc(struct ib_wc *wc)
  {
-@@ -211,7 +233,8 @@ rpcrdma_recvcq_process_wc(struct ib_wc *wc)
- 	ib_dma_sync_single_for_cpu(rep->rr_device,
- 				   rdmab_addr(rep->rr_rdmabuf),
- 				   rep->rr_len, DMA_FROM_DEVICE);
--	prefetch(rdmab_to_msg(rep->rr_rdmabuf));
-+
-+	rpcrdma_update_granted_credits(rep);
+-	struct rpcrdma_rep *rep =
+-			(struct rpcrdma_rep *)(unsigned long)wc->wr_id;
++	struct ib_cqe *cqe = wc->wr_cqe;
++	struct rpcrdma_rep *rep = container_of(cqe, struct rpcrdma_rep,
++					       rr_cqe);
  
- out_schedule:
- 	queue_work(rpcrdma_receive_wq, &rep->rr_work);
-@@ -330,6 +353,7 @@ rpcrdma_conn_upcall(struct rdma_cm_id *id, struct rdma_cm_event *event)
- connected:
- 		dprintk("RPC:       %s: %sconnected\n",
- 					__func__, connstate > 0 ? "" : "dis");
-+		atomic_set(&xprt->rx_buf.rb_credits, 1);
- 		ep->rep_connected = connstate;
- 		rpcrdma_conn_func(ep);
- 		wake_up_all(&ep->rep_connect_wait);
-@@ -943,6 +967,7 @@ rpcrdma_buffer_create(struct rpcrdma_xprt *r_xprt)
- 	buf->rb_max_requests = r_xprt->rx_data.max_requests;
- 	buf->rb_bc_srv_max_requests = 0;
- 	spin_lock_init(&buf->rb_lock);
-+	atomic_set(&buf->rb_credits, 1);
+ 	/* WARNING: Only wr_id and status are reliable at this point */
+ 	if (wc->status != IB_WC_SUCCESS)
+@@ -242,46 +243,23 @@ out_schedule:
  
- 	rc = ia->ri_ops->ro_init(r_xprt);
+ out_fail:
+ 	if (wc->status != IB_WC_WR_FLUSH_ERR)
+-		pr_err("RPC:       %s: rep %p: %s\n",
+-		       __func__, rep, ib_wc_status_msg(wc->status));
++		pr_err("RPC:       %s: Recv: %s (%u, vendor %u)\n",
++		       __func__, ib_wc_status_msg(wc->status),
++		       wc->status, wc->vendor_err);
+ 	rep->rr_len = RPCRDMA_BAD_LEN;
+ 	goto out_schedule;
+ }
+ 
+-/* The wc array is on stack: automatic memory is always CPU-local.
++/**
++ * rpcrdma_receive_wc - Invoked by RDMA provider for each polled Receive WC
++ * @cq:	completion queue (ignored)
++ * @wc:	completed WR
+  *
+- * struct ib_wc is 64 bytes, making the poll array potentially
+- * large. But this is at the bottom of the call chain. Further
+- * substantial work is done in another thread.
+- */
+-static void
+-rpcrdma_recvcq_poll(struct ib_cq *cq)
+-{
+-	struct ib_wc *pos, wcs[4];
+-	int count, rc;
+-
+-	do {
+-		pos = wcs;
+-
+-		rc = ib_poll_cq(cq, ARRAY_SIZE(wcs), pos);
+-		if (rc < 0)
+-			break;
+-
+-		count = rc;
+-		while (count-- > 0)
+-			rpcrdma_recvcq_process_wc(pos++);
+-	} while (rc == ARRAY_SIZE(wcs));
+-}
+-
+-/* Handle provider receive completion upcalls.
+  */
+ static void
+-rpcrdma_recvcq_upcall(struct ib_cq *cq, void *cq_context)
++rpcrdma_receive_wc(struct ib_cq *cq, struct ib_wc *wc)
+ {
+-	do {
+-		rpcrdma_recvcq_poll(cq);
+-	} while (ib_req_notify_cq(cq, IB_CQ_NEXT_COMP |
+-				  IB_CQ_REPORT_MISSED_EVENTS) > 0);
++	rpcrdma_recvcq_process_wc(wc);
+ }
+ 
+ static void
+@@ -655,9 +633,9 @@ rpcrdma_ep_create(struct rpcrdma_ep *ep, struct rpcrdma_ia *ia,
+ 		goto out2;
+ 	}
+ 
+-	cq_attr.cqe = ep->rep_attr.cap.max_recv_wr + 1;
+-	recvcq = ib_create_cq(ia->ri_device, rpcrdma_recvcq_upcall,
+-			      rpcrdma_cq_async_error_upcall, NULL, &cq_attr);
++	recvcq = ib_alloc_cq(ia->ri_device, NULL,
++			     ep->rep_attr.cap.max_recv_wr + 1,
++			     0, IB_POLL_SOFTIRQ);
+ 	if (IS_ERR(recvcq)) {
+ 		rc = PTR_ERR(recvcq);
+ 		dprintk("RPC:       %s: failed to create recv CQ: %i\n",
+@@ -665,14 +643,6 @@ rpcrdma_ep_create(struct rpcrdma_ep *ep, struct rpcrdma_ia *ia,
+ 		goto out2;
+ 	}
+ 
+-	rc = ib_req_notify_cq(recvcq, IB_CQ_NEXT_COMP);
+-	if (rc) {
+-		dprintk("RPC:       %s: ib_req_notify_cq failed: %i\n",
+-			__func__, rc);
+-		ib_destroy_cq(recvcq);
+-		goto out2;
+-	}
+-
+ 	ep->rep_attr.send_cq = sendcq;
+ 	ep->rep_attr.recv_cq = recvcq;
+ 
+@@ -735,10 +705,7 @@ rpcrdma_ep_destroy(struct rpcrdma_ep *ep, struct rpcrdma_ia *ia)
+ 		ia->ri_id->qp = NULL;
+ 	}
+ 
+-	rc = ib_destroy_cq(ep->rep_attr.recv_cq);
+-	if (rc)
+-		dprintk("RPC:       %s: ib_destroy_cq returned %i\n",
+-			__func__, rc);
++	ib_free_cq(ep->rep_attr.recv_cq);
+ 
+ 	rc = ib_destroy_cq(ep->rep_attr.send_cq);
  	if (rc)
+@@ -947,6 +914,7 @@ rpcrdma_create_rep(struct rpcrdma_xprt *r_xprt)
+ 	}
+ 
+ 	rep->rr_device = ia->ri_device;
++	rep->rr_cqe.done = rpcrdma_receive_wc;
+ 	rep->rr_rxprt = r_xprt;
+ 	INIT_WORK(&rep->rr_work, rpcrdma_receive_worker);
+ 	return rep;
+@@ -1322,7 +1290,7 @@ rpcrdma_ep_post_recv(struct rpcrdma_ia *ia,
+ 	int rc;
+ 
+ 	recv_wr.next = NULL;
+-	recv_wr.wr_id = (u64) (unsigned long) rep;
++	recv_wr.wr_cqe = &rep->rr_cqe;
+ 	recv_wr.sg_list = &rep->rr_rdmabuf->rg_iov;
+ 	recv_wr.num_sge = 1;
+ 
 diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
-index bf98c67..efd6fa7 100644
+index efd6fa7..7d87cdc 100644
 --- a/net/sunrpc/xprtrdma/xprt_rdma.h
 +++ b/net/sunrpc/xprtrdma/xprt_rdma.h
-@@ -312,6 +312,7 @@ struct rpcrdma_buffer {
- 	struct list_head	rb_send_bufs;
- 	struct list_head	rb_recv_bufs;
- 	u32			rb_max_requests;
-+	atomic_t		rb_credits;	/* most recent credit grant */
+@@ -171,6 +171,7 @@ rdmab_to_msg(struct rpcrdma_regbuf *rb)
+ struct rpcrdma_buffer;
  
- 	u32			rb_bc_srv_max_requests;
- 	spinlock_t		rb_reqslock;	/* protect rb_allreqs */
+ struct rpcrdma_rep {
++	struct ib_cqe		rr_cqe;
+ 	unsigned int		rr_len;
+ 	struct ib_device	*rr_device;
+ 	struct rpcrdma_xprt	*rr_rxprt;
 
