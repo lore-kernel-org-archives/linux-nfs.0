@@ -1,45 +1,89 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:44567 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751167AbcBMMyd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sat, 13 Feb 2016 07:54:33 -0500
-Received: from int-mx10.intmail.prod.int.phx2.redhat.com (int-mx10.intmail.prod.int.phx2.redhat.com [10.5.11.23])
-	by mx1.redhat.com (Postfix) with ESMTPS id 6164014A81
-	for <linux-nfs@vger.kernel.org>; Sat, 13 Feb 2016 12:54:33 +0000 (UTC)
-Received: from steved.boston.devel.redhat.com (vpn-56-162.rdu2.redhat.com [10.10.56.162])
-	by int-mx10.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id u1DCsWPb014005
-	for <linux-nfs@vger.kernel.org>; Sat, 13 Feb 2016 07:54:32 -0500
-From: Steve Dickson <steved@redhat.com>
-To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: [PATCH] nfsidmapd: allow the usage message to be displayed
-Date: Sat, 13 Feb 2016 07:54:31 -0500
-Message-Id: <1455368071-15198-1-git-send-email-steved@redhat.com>
+Received: from mail-pa0-f54.google.com ([209.85.220.54]:35671 "EHLO
+	mail-pa0-f54.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751453AbcBMNv6 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 13 Feb 2016 08:51:58 -0500
+Received: by mail-pa0-f54.google.com with SMTP id ho8so61653610pac.2
+        for <linux-nfs@vger.kernel.org>; Sat, 13 Feb 2016 05:51:58 -0800 (PST)
+To: Trond Myklebust <trond.myklebust@primarydata.com>
+Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        kinglongmee@gmail.com
+From: Kinglong Mee <kinglongmee@gmail.com>
+Subject: [PATCH] nfs/blocklayout: make sure making a aligned read request
+Message-ID: <56BF34E3.1020003@gmail.com>
+Date: Sat, 13 Feb 2016 21:51:31 +0800
+MIME-Version: 1.0
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-xlog_err() never returns. Change the xlog_err(),
-when invalid arguments are use, to xlog_warn()
-so the second xlog_warn, displaying the usage,
-will be called.
+Only treat write goes up to the inode size as aligned request,
+because it always write PAGE_CACHE_SIZE, but read a dynamic size.
 
-Signed-off-by: Steve Dickson <steved@redhat.com>
+Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
 ---
- utils/nfsidmap/nfsidmap.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ fs/nfs/blocklayout/blocklayout.c | 13 +++++++------
+ 1 file changed, 7 insertions(+), 6 deletions(-)
 
-diff --git a/utils/nfsidmap/nfsidmap.c b/utils/nfsidmap/nfsidmap.c
-index d980c68..2abefe9 100644
---- a/utils/nfsidmap/nfsidmap.c
-+++ b/utils/nfsidmap/nfsidmap.c
-@@ -430,7 +430,7 @@ int main(int argc, char **argv)
+diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
+index ddd0138..8bc870e 100644
+--- a/fs/nfs/blocklayout/blocklayout.c
++++ b/fs/nfs/blocklayout/blocklayout.c
+@@ -743,7 +743,7 @@ bl_set_layoutdriver(struct nfs_server *server, const struct nfs_fh *fh)
  
- 	xlog_stderr(verbose);
- 	if ((argc - optind) != 2) {
--		xlog_err("Bad arg count. Check /etc/request-key.conf");
-+		xlog_warn("Bad arg count. Check /etc/request-key.conf");
- 		xlog_warn(usage, progname);
- 		return EXIT_FAILURE;
+ static bool
+ is_aligned_req(struct nfs_pageio_descriptor *pgio,
+-		struct nfs_page *req, unsigned int alignment)
++		struct nfs_page *req, unsigned int alignment, bool is_write)
+ {
+ 	/*
+ 	 * Always accept buffered writes, higher layers take care of the
+@@ -758,7 +758,8 @@ is_aligned_req(struct nfs_pageio_descriptor *pgio,
+ 	if (IS_ALIGNED(req->wb_bytes, alignment))
+ 		return true;
+ 
+-	if (req_offset(req) + req->wb_bytes == i_size_read(pgio->pg_inode)) {
++	if (is_write &&
++	    (req_offset(req) + req->wb_bytes == i_size_read(pgio->pg_inode))) {
+ 		/*
+ 		 * If the write goes up to the inode size, just write
+ 		 * the full page.  Data past the inode size is
+@@ -775,7 +776,7 @@ is_aligned_req(struct nfs_pageio_descriptor *pgio,
+ static void
+ bl_pg_init_read(struct nfs_pageio_descriptor *pgio, struct nfs_page *req)
+ {
+-	if (!is_aligned_req(pgio, req, SECTOR_SIZE)) {
++	if (!is_aligned_req(pgio, req, SECTOR_SIZE, false)) {
+ 		nfs_pageio_reset_read_mds(pgio);
+ 		return;
  	}
+@@ -791,7 +792,7 @@ static size_t
+ bl_pg_test_read(struct nfs_pageio_descriptor *pgio, struct nfs_page *prev,
+ 		struct nfs_page *req)
+ {
+-	if (!is_aligned_req(pgio, req, SECTOR_SIZE))
++	if (!is_aligned_req(pgio, req, SECTOR_SIZE, false))
+ 		return 0;
+ 	return pnfs_generic_pg_test(pgio, prev, req);
+ }
+@@ -824,7 +825,7 @@ bl_pg_init_write(struct nfs_pageio_descriptor *pgio, struct nfs_page *req)
+ {
+ 	u64 wb_size;
+ 
+-	if (!is_aligned_req(pgio, req, PAGE_SIZE)) {
++	if (!is_aligned_req(pgio, req, PAGE_SIZE, true)) {
+ 		nfs_pageio_reset_write_mds(pgio);
+ 		return;
+ 	}
+@@ -846,7 +847,7 @@ static size_t
+ bl_pg_test_write(struct nfs_pageio_descriptor *pgio, struct nfs_page *prev,
+ 		 struct nfs_page *req)
+ {
+-	if (!is_aligned_req(pgio, req, PAGE_SIZE))
++	if (!is_aligned_req(pgio, req, PAGE_SIZE, true))
+ 		return 0;
+ 	return pnfs_generic_pg_test(pgio, prev, req);
+ }
 -- 
 2.5.0
 
