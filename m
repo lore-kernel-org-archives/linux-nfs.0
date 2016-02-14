@@ -1,18 +1,16 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-wm0-f53.google.com ([74.125.82.53]:38753 "EHLO
+Received: from mail-wm0-f53.google.com ([74.125.82.53]:33543 "EHLO
 	mail-wm0-f53.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751430AbcBNV1w (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 14 Feb 2016 16:27:52 -0500
-Subject: Re: richacl(7) man page review comments
+	with ESMTP id S1751432AbcBNV3P (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 14 Feb 2016 16:29:15 -0500
+Subject: Re: setrichacl(1) man page review comments
 To: Andreas Gruenbacher <agruenba@redhat.com>
-References: <56B770B6.7040803@gmail.com> <56B77262.7090107@gmail.com>
- <CAHc6FU5__xbKm4mg8+fK_ZW5ZYsDoQcYBBvQg573Eq4ERDsROw@mail.gmail.com>
+References: <56B770B6.7040803@gmail.com> <56B7716F.6060404@gmail.com>
 Cc: mtk.manpages@gmail.com, "J. Bruce Fields" <bfields@fieldses.org>,
-        linux-ext4 <linux-ext4@vger.kernel.org>,
-        XFS Developers <xfs@oss.sgi.com>, lkml <linux-kernel@vger.kernel.org>,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        linux-cifs@vger.kernel.org, Linux API <linux-api@vger.kernel.org>,
+        linux-ext4@vger.kernel.org, xfs@oss.sgi.com,
+        lkml <linux-kernel@vger.kernel.org>, linux-fsdevel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, linux-cifs@vger.kernel.org,
+        Linux API <linux-api@vger.kernel.org>,
         Dave Chinner <david@fromorbit.com>,
         Christoph Hellwig <hch@infradead.org>,
         Anna Schumaker <anna.schumaker@netapp.com>,
@@ -20,52 +18,168 @@ Cc: mtk.manpages@gmail.com, "J. Bruce Fields" <bfields@fieldses.org>,
         Jeff Layton <jlayton@poochiereds.net>,
         Andreas Dilger <adilger@dilger.ca>
 From: "Michael Kerrisk (man-pages)" <mtk.manpages@gmail.com>
-Message-ID: <56C0F150.60008@gmail.com>
-Date: Sun, 14 Feb 2016 22:27:44 +0100
+Message-ID: <56C0F1A5.9010109@gmail.com>
+Date: Sun, 14 Feb 2016 22:29:09 +0100
 MIME-Version: 1.0
-In-Reply-To: <CAHc6FU5__xbKm4mg8+fK_ZW5ZYsDoQcYBBvQg573Eq4ERDsROw@mail.gmail.com>
+In-Reply-To: <56B7716F.6060404@gmail.com>
 Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 02/12/2016 11:25 PM, Andreas Gruenbacher wrote:
-> Hi Michael,
-> 
-> On Sun, Feb 7, 2016 at 5:35 PM, Michael Kerrisk (man-pages)
-> <mtk.manpages@gmail.com> wrote:
->> Hi Andreas,
->>
->> I'll probably have quite a few more comments on this page as I get to
->> understand RichACLs better. Here's some comments from an initial
->> reading.
-> 
-> thanks a lot for all the feedback to the man-pages. I've more or less
-> made all the suggested changes but didn't get to adding examples yet
-> (that's not so easy).
-> 
-> The changes are here:
-> 
->   https://github.com/andreas-gruenbacher/richacl
+Hi Andreas,
 
-Thanks. I'll send a few further comments. But I hope to send
-more in the future.
+Here's a few more comments on the latest setrichacl(1)
+page that I pulled out of the git repo.
 
->> So, an initial comment. It seems to me to that this page (but
->> not setrichacl(1) and getrichacl(1)) should ultimately land in
->> man-pages (just like acl(7)), since we're talking about a kernel
->> feature. Make sense?
+> .\"
+> .\" RichACL Manual Pages
+> .\"
+> .\" Copyright (C) 2015,2016  Red Hat, Inc.
+> .\" Written by Andreas Gruenbacher <agruenba@redhat.com>
+> .\" This is free documentation; you can redistribute it and/or
+> .\" modify it under the terms of the GNU General Public License as
+> .\" published by the Free Software Foundation; either version 2 of
+> .\" the License, or (at your option) any later version.
+> .\"
+> .\" The GNU General Public License's references to "object code"
+> .\" and "executables" are to be interpreted as the output of any
+> .\" document formatting or typesetting system, including
+> .\" intermediate and printed output.
+> .\"
+> .\" This manual is distributed in the hope that it will be useful,
+> .\" but WITHOUT ANY WARRANTY; without even the implied warranty of
+> .\" MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+> .\" GNU General Public License for more details.
+> .\"
+> .\" You should have received a copy of the GNU General Public
+> .\" License along with this manual.  If not, see
+> .\" <http://www.gnu.org/licenses/>.
+> .\"
+> .TH SETRICHACL 7 2015-09-01 "Linux" "Rich Access Control Lists"
 > 
-> We could sure move acl(5) and richacl(7) there.
+> .SH NAME
+> setrichacl \- Set Rich Access Control Lists
+> 
+> .SH SYNOPSIS
+> .B setrichacl
+> .RI [ option "]... [" file ]...
+> 
+> .SH DESCRIPTION
+> The
+> .B setrichacl
+> utility sets or modifies Rich Access Control Lists (RichACLs) of files and
+> directories.
+> 
+> The
+> .B \-m
+> and
+> .B \-s
+> options expect an ACL or parts of an ACL on the command line. The
+> .B \-M
+> and
+> .B \-S
+> options read an ACL or parts of an ACL from a file. In either case, the entry
+> format is described in section
+> .I TEXT FORM
 
-We already have acl(5) (now "acl(7)" in man pages) ;-).
+.I Text form
+
+> of the
+> .BR richacl (7)
+> manual page. The single-letter or long forms of flags and permissions can be
+> mixed arbitrarily. Multiple entries are separated by whitespace, newlines or
+
+s/newlines/newlines,/
+
+(You already use the "Oxford comma" convention elsewhere, so be consistent.)
+
+
+> commas.
+> 
+> Note that the order of entries in a RichACL matters, and that reordering
+
+s/matters/is significant/
+
+> entries may change the permissions granted.
+> 
+> The use of
+> .B deny
+> entries is discouraged. If
+> .B deny
+> entries are used, they should be placed ahead of
+> .B allow
+> entries for improved interoperability with Windows where possible.
+> 
+> When the file masks are not specified, they are computed automatically.
+> 
+> When the ACL to be set is simple enough that the traditional file permission
+> bits can express the same permissions,
+> .B setrichacl
+> sets the file permission bits and removes the ACL. When
+> .BR setrichacl 's
+> counterpart utility,
+> .BR getrichacl (1),
+> is used on a file or directory that does not have a RichACL, it displays the
+> access permissions defined by the file permission bits as an ACL. This means
+> that for simple ACLs,
+> .B getrichacl
+> may display a slightly different ACL which is equivalent to the one that was
+> set with
+> .BR setrichacl .
+> 
+> .SS Permissions
+> 
+> Setting ACLs or changing the file permission bits is allowed to the file owner,
+> to processes which have the
+> .B write_acl
+> permission, and to processes which have the
+> .B CAP_FOWNER
+> capability.
+> 
+> .SH OPTIONS
+> .TP
+> \fB\-\-modify\fR \fIacl\fR, \fB\-m\fR \fIacl\fR
+> Modify the ACL of \fIfile\fR by replacing existing entries with the entries in
+> \fIacl\fR, and adding all new entries. When the permissions of an entry are
+> empty, remove the entry.
+> .TP
+> \fB\-\-modify\-file\fR \fIacl_file\fR, \fB\-M\fR \fIacl_file\fR
+> Identical to \fB\-\-modify\fR, but read the ACL from \fIacl_file\fR instead. If
+> the file is \(lq\-\(rq, read from standard input.
+> .TP
+> \fB\-\-set\fR \fIacl\fR, \fB\-s\fR \fIacl\fR
+> Set the ACL of \fIfile\fR to \fIacl\fR. Any previous ACL is replaced.
+> ACL entries are separated by whitespace, newlines, or commas.
+> .TP
+> \fB\-\-set\-file\fR \fIacl_file\fR, \fB\-S\fR \fIacl_file\fR
+> Identical to \fB\-\-set\fR, but read the ACL from \fIacl_file\fR instead. If
+> the file is \(lq\-\(rq, read from standard input.
+> .TP
+> \fB\-\-remove\fR, \fB\-b\fR
+> Remove all extended permissions and revert to the file permission bits only.
+> .TP
+> \fB\-\-version\fR, \fB\-v\fR
+> Display the version of
+> .B setrichacl
+> and exit.
+> .TP
+> \fB\-\-help\fR, \fB\-h\fR
+> Display command-line usage help text.
+> 
+> .\" .SH EXAMPLES
+> 
+> .SH AUTHOR
+> Written by Andreas Grünbacher <agruenba@redhat.com>.
+> 
+> Please send your bug reports, suggested features and comments to the above address.
+> 
+> .SH CONFORMING TO
+> Rich Access Control Lists are Linux-specific.
+> 
+> .SH SEE ALSO
+> .BR getrichacl (1),
+> .BR richacl (7)
 
 Cheers,
 
 Michael
-
-
-
--- 
-Michael Kerrisk
-Linux man-pages maintainer; http://www.kernel.org/doc/man-pages/
-Linux/UNIX System Programming Training: http://man7.org/training/
