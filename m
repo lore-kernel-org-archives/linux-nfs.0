@@ -1,11 +1,11 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-wm0-f53.google.com ([74.125.82.53]:33543 "EHLO
+Received: from mail-wm0-f53.google.com ([74.125.82.53]:36378 "EHLO
 	mail-wm0-f53.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751432AbcBNV3P (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 14 Feb 2016 16:29:15 -0500
-Subject: Re: setrichacl(1) man page review comments
+	with ESMTP id S1751723AbcBNVar (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 14 Feb 2016 16:30:47 -0500
+Subject: Re: getrichacl(1) man page review comments
 To: Andreas Gruenbacher <agruenba@redhat.com>
-References: <56B770B6.7040803@gmail.com> <56B7716F.6060404@gmail.com>
+References: <56B770B6.7040803@gmail.com> <56B77139.4080209@gmail.com>
 Cc: mtk.manpages@gmail.com, "J. Bruce Fields" <bfields@fieldses.org>,
         linux-ext4@vger.kernel.org, xfs@oss.sgi.com,
         lkml <linux-kernel@vger.kernel.org>, linux-fsdevel@vger.kernel.org,
@@ -18,18 +18,18 @@ Cc: mtk.manpages@gmail.com, "J. Bruce Fields" <bfields@fieldses.org>,
         Jeff Layton <jlayton@poochiereds.net>,
         Andreas Dilger <adilger@dilger.ca>
 From: "Michael Kerrisk (man-pages)" <mtk.manpages@gmail.com>
-Message-ID: <56C0F1A5.9010109@gmail.com>
-Date: Sun, 14 Feb 2016 22:29:09 +0100
+Message-ID: <56C0F1FF.3050003@gmail.com>
+Date: Sun, 14 Feb 2016 22:30:39 +0100
 MIME-Version: 1.0
-In-Reply-To: <56B7716F.6060404@gmail.com>
+In-Reply-To: <56B77139.4080209@gmail.com>
 Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 Hi Andreas,
 
-Here's a few more comments on the latest setrichacl(1)
-page that I pulled out of the git repo.
+Here's a few more comments on the current getrichacl(1) page
+that I fetched from the git repo.
 
 > .\"
 > .\" RichACL Manual Pages
@@ -55,118 +55,126 @@ page that I pulled out of the git repo.
 > .\" License along with this manual.  If not, see
 > .\" <http://www.gnu.org/licenses/>.
 > .\"
-> .TH SETRICHACL 7 2015-09-01 "Linux" "Rich Access Control Lists"
+> .TH GETRICHACL 7 2015-09-01 "Linux" "Rich Access Control Lists"
 > 
 > .SH NAME
-> setrichacl \- Set Rich Access Control Lists
+> getrichacl \- Get Rich Access Control Lists
 > 
 > .SH SYNOPSIS
-> .B setrichacl
+> .B getrichacl
 > .RI [ option "]... [" file ]...
 > 
 > .SH DESCRIPTION
-> The
-> .B setrichacl
-> utility sets or modifies Rich Access Control Lists (RichACLs) of files and
-> directories.
-> 
-> The
-> .B \-m
-> and
-> .B \-s
-> options expect an ACL or parts of an ACL on the command line. The
-> .B \-M
-> and
-> .B \-S
-> options read an ACL or parts of an ACL from a file. In either case, the entry
-> format is described in section
-> .I TEXT FORM
-
-.I Text form
-
-> of the
-> .BR richacl (7)
-> manual page. The single-letter or long forms of flags and permissions can be
-> mixed arbitrarily. Multiple entries are separated by whitespace, newlines or
-
-s/newlines/newlines,/
-
-(You already use the "Oxford comma" convention elsewhere, so be consistent.)
-
-
-> commas.
-> 
-> Note that the order of entries in a RichACL matters, and that reordering
-
-s/matters/is significant/
-
-> entries may change the permissions granted.
-> 
-> The use of
-> .B deny
-> entries is discouraged. If
-> .B deny
-> entries are used, they should be placed ahead of
-> .B allow
-> entries for improved interoperability with Windows where possible.
-> 
-> When the file masks are not specified, they are computed automatically.
-> 
-> When the ACL to be set is simple enough that the traditional file permission
-> bits can express the same permissions,
-> .B setrichacl
-> sets the file permission bits and removes the ACL. When
-> .BR setrichacl 's
-> counterpart utility,
-> .BR getrichacl (1),
-> is used on a file or directory that does not have a RichACL, it displays the
-> access permissions defined by the file permission bits as an ACL. This means
-> that for simple ACLs,
+> For each file,
 > .B getrichacl
-> may display a slightly different ACL which is equivalent to the one that was
-> set with
-> .BR setrichacl .
+> displays the file name and the file's Rich Access Control List (RichACL).
 > 
-> .SS Permissions
+> The output format of
+> .B getrichacl
+> is as follows:
+
+Add a blank line here.
+
+> .fam C
+> .RS
+> .nf
+>  1:  file:
+>  2:      flags:a
+>  3:      owner:rwp-------------::mask
+>  4:      group:r-p-------------::mask
+>  5:      other:r---------------::mask
+>  6:     owner@:rwp-------------::allow
+>  7:   user:foo:r-p-------------::allow
+>  8:     group@:r-p-------------::allow
+>  9:  group:bar:r-p-------------::allow
+> 10:  everyone@:r---------------::allow
+> 11:
+> .fi
+> .RE
+> .fam T
 > 
-> Setting ACLs or changing the file permission bits is allowed to the file owner,
-> to processes which have the
-> .B write_acl
-> permission, and to processes which have the
-> .B CAP_FOWNER
-> capability.
+> Line 1 contains the file name, followed by a colon.
+> 
+> Line 2 contains the ACL flags. This line is omitted if no flags are set.
+> 
+> Lines 3--5 indicate the owner, group, and other file masks, which are only
+> shown if the \fB\-\-raw\fR option is specified.
+> 
+> Lines 6--10 indicate different ACL entries for the file owner
+> .RB ( owner@ ),
+> user \fIfoo\fR, the owning group
+> .RB ( group@ ),
+> group \fIbar\fR, and for everyone
+> .RB ( everyone@ ).
+> 
+> A blank line follows at the end.
+> 
+> The default output format uses the single-letter forms of flags and
+> permissions, identifiers of ACL entries are right justified, permissions are
+> vertically aligned, and permissions which are always granted
+> .RB ( read_attributes ", " read_acl ", " synchronize )
+> are omitted. See the
+> .BR richacl (7)
+> manual page for the defined flags and permissions.
+> 
+> By default,
+> .B getrichacl
+> displays the effective permissions remaining after applying the file masks to
+> the ACL.  The file masks and underlying NFSv4 ACL can be displayed with the
+> \fB\-\-raw\fR option.
+> 
+> When
+> .B getrichacl
+> is used on a file that does not have a RichACL or on a filesystem that does not
+> support RichACLs,
+> .B getrichacl
+
+Replace the previous line with "it".
+
+> displays the access permissions defined by the traditional file permission bits
+> as a RichACL. When
+> .B getrichacl
+> is used on a file that has a POSIX ACL (see
+> .BR acl (5)),
+> it prints an error message.
 > 
 > .SH OPTIONS
 > .TP
-> \fB\-\-modify\fR \fIacl\fR, \fB\-m\fR \fIacl\fR
-> Modify the ACL of \fIfile\fR by replacing existing entries with the entries in
-> \fIacl\fR, and adding all new entries. When the permissions of an entry are
-> empty, remove the entry.
+> \fB\-\-long\fR, \fB\-l\fR
+> Display access masks and flags in their long form.
 > .TP
-> \fB\-\-modify\-file\fR \fIacl_file\fR, \fB\-M\fR \fIacl_file\fR
-> Identical to \fB\-\-modify\fR, but read the ACL from \fIacl_file\fR instead. If
-> the file is \(lq\-\(rq, read from standard input.
+> \fB\-\-full\fR
+> Also show permissions which are always implicitly allowed.
 > .TP
-> \fB\-\-set\fR \fIacl\fR, \fB\-s\fR \fIacl\fR
-> Set the ACL of \fIfile\fR to \fIacl\fR. Any previous ACL is replaced.
-> ACL entries are separated by whitespace, newlines, or commas.
+> \fB\-\-raw\fR
+> Show ACLs as stored on the file system, including the file masks. Implies
+> \fB\-\-full\fR.
 > .TP
-> \fB\-\-set\-file\fR \fIacl_file\fR, \fB\-S\fR \fIacl_file\fR
-> Identical to \fB\-\-set\fR, but read the ACL from \fIacl_file\fR instead. If
-> the file is \(lq\-\(rq, read from standard input.
+> \fB\-\-unaligned\fR
+> Do not align ACL entries or pad missing permissions with '-'.
 > .TP
-> \fB\-\-remove\fR, \fB\-b\fR
-> Remove all extended permissions and revert to the file permission bits only.
+> \fB\-\-numeric-ids\fR
+> Display numeric user and group IDs instead of names.
+> .TP
+> \fB\-\-access\fR [=\fIuser\fR[:\fIgroup\fR:...]}, \fB\-a\fR[\fIuser\fR[:\fIgroup\fR:...]}
+> Instead of showing the ACL, show which permissions the user running the command
+> has for the specified file(s).  When \fIuser\fR is specified, show which
+> permissions the specified user has instead.  If \fIuser\fR is followed by a
+> colon and a (possibly empty) list of groups, assume that \fIuser\fR is a member
+> in the specified groups; otherwise,
+> .BR getgrouplist (3)
+> is used to determine the groups \fIuser\fR is a member in.
+
+s/in/of/
+
 > .TP
 > \fB\-\-version\fR, \fB\-v\fR
 > Display the version of
-> .B setrichacl
+> .B getrichacl
 > and exit.
 > .TP
 > \fB\-\-help\fR, \fB\-h\fR
 > Display command-line usage help text.
-> 
-> .\" .SH EXAMPLES
 > 
 > .SH AUTHOR
 > Written by Andreas Grünbacher <agruenba@redhat.com>.
@@ -177,8 +185,8 @@ s/matters/is significant/
 > Rich Access Control Lists are Linux-specific.
 > 
 > .SH SEE ALSO
-> .BR getrichacl (1),
-> .BR richacl (7)
+> .BR richacl (7),
+> .BR setrichacl (1)
 
 Cheers,
 
