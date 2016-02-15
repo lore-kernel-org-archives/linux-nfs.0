@@ -1,57 +1,61 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ig0-f181.google.com ([209.85.213.181]:38612 "EHLO
-	mail-ig0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751178AbcBOPYC (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 15 Feb 2016 10:24:02 -0500
-Received: by mail-ig0-f181.google.com with SMTP id y8so56945888igp.1
-        for <linux-nfs@vger.kernel.org>; Mon, 15 Feb 2016 07:24:02 -0800 (PST)
-Subject: [PATCH] xprtrdma: rpcrdma_bc_receive_call() should init
- rq_private_buf.len
-From: Chuck Lever <chuck.lever@oracle.com>
-To: anna.schumaker@netapp.com
-Cc: linux-nfs@vger.kernel.org
-Date: Mon, 15 Feb 2016 10:23:59 -0500
-Message-ID: <20160215152040.22738.95129.stgit@manet.1015granger.net>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Received: from mail-ig0-f170.google.com ([209.85.213.170]:33015 "EHLO
+	mail-ig0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752469AbcBOSNq (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 15 Feb 2016 13:13:46 -0500
+Received: by mail-ig0-f170.google.com with SMTP id y8so80364000igp.0
+        for <linux-nfs@vger.kernel.org>; Mon, 15 Feb 2016 10:13:46 -0800 (PST)
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 1/2] pNFS: Fix pnfs_mark_matching_lsegs_return()
+Date: Mon, 15 Feb 2016 13:13:02 -0500
+Message-Id: <1455559983-11808-1-git-send-email-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Some NFSv4.1 OPEN requests were hanging waiting for the NFS server
-to finish recalling delegations. Turns out that each NFSv4.1 CB
-request on RDMA gets a GARBAGE_ARGS reply from the Linux client.
+We don't need to schedule a layoutreturn if the layout segment can
+be freed immediately.
 
-Commit 756b9b37cfb2e3dc added a line in bc_svc_process that
-overwrites the incoming rq_rcv_buf's length with the value in
-rq_private_buf.len. But rpcrdma_bc_receive_call() does not invoke
-xprt_complete_bc_request(), thus rq_private_buf.len is not
-initialized. svc_process_common() is invoked with a zero-length
-RPC message, and fails.
-
-Fixes: 756b9b37cfb2e3dc ('SUNRPC: Fix callback channel')
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
 ---
-Hi Anna-
+ fs/nfs/pnfs.c | 15 +++++++++++++--
+ 1 file changed, 13 insertions(+), 2 deletions(-)
 
-Commit 756b9b37cfb2e3dc in v4.5-rc1 introduced a behavior
-regression for NFSv4.1-over-RDMA. Would it be possible to merge
-this bug fix into 4.5-rc ?
-
-
- net/sunrpc/xprtrdma/backchannel.c |    2 ++
- 1 file changed, 2 insertions(+)
-
-diff --git a/net/sunrpc/xprtrdma/backchannel.c b/net/sunrpc/xprtrdma/backchannel.c
-index cc1251d..2dcd764 100644
---- a/net/sunrpc/xprtrdma/backchannel.c
-+++ b/net/sunrpc/xprtrdma/backchannel.c
-@@ -341,6 +341,8 @@ void rpcrdma_bc_receive_call(struct rpcrdma_xprt *r_xprt,
- 	rqst->rq_reply_bytes_recvd = 0;
- 	rqst->rq_bytes_sent = 0;
- 	rqst->rq_xid = headerp->rm_xid;
-+
-+	rqst->rq_private_buf.len = size;
- 	set_bit(RPC_BC_PA_IN_USE, &rqst->rq_bc_pa_state);
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index 482b6e94bb37..8d9fa4e40e89 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -1740,6 +1740,16 @@ pnfs_set_plh_return_iomode(struct pnfs_layout_hdr *lo, enum pnfs_iomode iomode)
+ 	lo->plh_return_iomode = iomode;
+ }
  
- 	buf = &rqst->rq_rcv_buf;
++/**
++ * pnfs_mark_matching_lsegs_return - Free or return matching layout segments
++ * @lo: pointer to layout header
++ * @tmp_list: list header to be used with pnfs_free_lseg_list()
++ * @return_range: describe layout segment ranges to be returned
++ *
++ * This function is mainly intended for use by layoutrecall. It attempts
++ * to free the layout segment immediately, or else to mark it for return
++ * as soon as its reference count drops to zero.
++ */
+ int
+ pnfs_mark_matching_lsegs_return(struct pnfs_layout_hdr *lo,
+ 				struct list_head *tmp_list,
+@@ -1762,10 +1772,11 @@ pnfs_mark_matching_lsegs_return(struct pnfs_layout_hdr *lo,
+ 				lseg, lseg->pls_range.iomode,
+ 				lseg->pls_range.offset,
+ 				lseg->pls_range.length);
++			if (mark_lseg_invalid(lseg, tmp_list))
++				continue;
++			remaining++;
+ 			set_bit(NFS_LSEG_LAYOUTRETURN, &lseg->pls_flags);
+ 			pnfs_set_plh_return_iomode(lo, return_range->iomode);
+-			if (!mark_lseg_invalid(lseg, tmp_list))
+-				remaining++;
+ 			set_bit(NFS_LAYOUT_RETURN_REQUESTED,
+ 					&lo->plh_flags);
+ 		}
+-- 
+2.5.0
 
