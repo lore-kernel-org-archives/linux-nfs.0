@@ -1,51 +1,42 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ig0-f170.google.com ([209.85.213.170]:35122 "EHLO
-	mail-ig0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752482AbcBOSNr (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 15 Feb 2016 13:13:47 -0500
-Received: by mail-ig0-f170.google.com with SMTP id hb3so57008441igb.0
-        for <linux-nfs@vger.kernel.org>; Mon, 15 Feb 2016 10:13:47 -0800 (PST)
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH 2/2] pNFS: Always set NFS_LAYOUT_RETURN_REQUESTED with lo->plh_return_iomode
-Date: Mon, 15 Feb 2016 13:13:03 -0500
-Message-Id: <1455559983-11808-2-git-send-email-trond.myklebust@primarydata.com>
-In-Reply-To: <1455559983-11808-1-git-send-email-trond.myklebust@primarydata.com>
-References: <1455559983-11808-1-git-send-email-trond.myklebust@primarydata.com>
+Received: from mx1.redhat.com ([209.132.183.28]:59876 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751374AbcBOT2n (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 15 Feb 2016 14:28:43 -0500
+From: Scott Mayhew <smayhew@redhat.com>
+To: trond.myklebust@primarydata.com
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH] auth_gss: fix panic in gss_pipe_downcall() in fips mode
+Date: Mon, 15 Feb 2016 14:28:41 -0500
+Message-Id: <1455564521-21927-1-git-send-email-smayhew@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-When setting the layout return mode, we must always also set the
-NFS_LAYOUT_RETURN_REQUESTED flag to ensure that we send a layoutreturn.
-Otherwise pnfs_error_mark_layout_for_return() could set the mode, but
-fail to send the layoutreturn because another is already in flight.
+md5 is disabled in fips mode, and attempting to import a gss context
+using md5 while in fips mode will result in crypto_alg_mod_lookup()
+returning -ENOENT, which will make its way back up to
+gss_pipe_downcall(), where the BUG() is triggered.  Handling the -ENOENT
+allows for a more graceful failure.
 
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+Signed-off-by: Scott Mayhew <smayhew@redhat.com>
 ---
- fs/nfs/pnfs.c | 3 +--
- 1 file changed, 1 insertion(+), 2 deletions(-)
+ net/sunrpc/auth_gss/auth_gss.c | 3 +++
+ 1 file changed, 3 insertions(+)
 
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index 8d9fa4e40e89..5064f23ca8cc 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -1738,6 +1738,7 @@ pnfs_set_plh_return_iomode(struct pnfs_layout_hdr *lo, enum pnfs_iomode iomode)
- 	if (lo->plh_return_iomode != 0)
- 		iomode = IOMODE_ANY;
- 	lo->plh_return_iomode = iomode;
-+	set_bit(NFS_LAYOUT_RETURN_REQUESTED, &lo->plh_flags);
- }
- 
- /**
-@@ -1777,8 +1778,6 @@ pnfs_mark_matching_lsegs_return(struct pnfs_layout_hdr *lo,
- 			remaining++;
- 			set_bit(NFS_LSEG_LAYOUTRETURN, &lseg->pls_flags);
- 			pnfs_set_plh_return_iomode(lo, return_range->iomode);
--			set_bit(NFS_LAYOUT_RETURN_REQUESTED,
--					&lo->plh_flags);
- 		}
- 	return remaining;
- }
+diff --git a/net/sunrpc/auth_gss/auth_gss.c b/net/sunrpc/auth_gss/auth_gss.c
+index 799e65b..c30fc3b 100644
+--- a/net/sunrpc/auth_gss/auth_gss.c
++++ b/net/sunrpc/auth_gss/auth_gss.c
+@@ -737,6 +737,9 @@ gss_pipe_downcall(struct file *filp, const char __user *src, size_t mlen)
+ 		case -ENOSYS:
+ 			gss_msg->msg.errno = -EAGAIN;
+ 			break;
++		case -ENOENT:
++			gss_msg->msg.errno = -EPROTONOSUPPORT;
++			break;
+ 		default:
+ 			printk(KERN_CRIT "%s: bad return from "
+ 				"gss_fill_context: %zd\n", __func__, err);
 -- 
-2.5.0
+2.4.3
 
