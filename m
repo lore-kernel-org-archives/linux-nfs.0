@@ -1,71 +1,88 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-yk0-f170.google.com ([209.85.160.170]:34186 "EHLO
-	mail-yk0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751471AbcBOObq (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 15 Feb 2016 09:31:46 -0500
-Received: by mail-yk0-f170.google.com with SMTP id u9so60732517ykd.1
-        for <linux-nfs@vger.kernel.org>; Mon, 15 Feb 2016 06:31:46 -0800 (PST)
-MIME-Version: 1.0
-In-Reply-To: <20160212205107.5278.55938.stgit@manet.1015granger.net>
-References: <20160212205107.5278.55938.stgit@manet.1015granger.net>
-From: Devesh Sharma <devesh.sharma@broadcom.com>
-Date: Mon, 15 Feb 2016 20:01:06 +0530
-Message-ID: <CANjDDBhmdJk8HeHhEQFaNRsUddBCnuncLNnJaFy5z+zvaFVa-A@mail.gmail.com>
-Subject: Re: [PATCH v1 0/8] NFS/RDMA client patches for v4.6
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: linux-rdma@vger.kernel.org,
+Received: from aserp1040.oracle.com ([141.146.126.69]:16678 "EHLO
+	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753299AbcBOOqt convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 15 Feb 2016 09:46:49 -0500
+Content-Type: text/plain; charset=windows-1252
+Mime-Version: 1.0 (Mac OS X Mail 9.2 \(3112\))
+Subject: Re: [PATCH nfs-utils] statd: Don't unregister statd service on failing to execute callout
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <56C1819C.7040908@lab.ntt.co.jp>
+Date: Mon, 15 Feb 2016 09:46:38 -0500
+Cc: Steve Dickson <steved@redhat.com>,
         Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=UTF-8
+Message-Id: <C6EECBAE-5C00-4E72-B708-7668372682B6@oracle.com>
+References: <1455259282-7237-1-git-send-email-makita.toshiaki@lab.ntt.co.jp> <989760D9-029D-43E2-ABA3-8DC9F579BE68@oracle.com> <56C1819C.7040908@lab.ntt.co.jp>
+To: Toshiaki Makita <makita.toshiaki@lab.ntt.co.jp>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-I shell test this series with ocrdma and update the testing status.
 
-Series Reviewed-by: Devesh Sharma <devesh.sharma@broadcom.com>
+> On Feb 15, 2016, at 2:43 AM, Toshiaki Makita <makita.toshiaki@lab.ntt.co.jp> wrote:
+> 
+> On 2016/02/13 0:40, Chuck Lever wrote:
+>> Hi-
+> 
+> Hi,
+> 
+>>> On Feb 12, 2016, at 1:41 AM, Toshiaki Makita <makita.toshiaki@lab.ntt.co.jp> wrote:
+>>> 
+>>> statd calls atexit(statd_unregister) to unregister statd service on exit,
+>>> which actually has a side-effect that ha_callout() unregisters statd
+>>> service even when the child callout process exits on execl() failure.
+>>> 
+>>> Certain clustering software's deployment script adds -H option with its
+>>> specified file non-existent, when it is configured not to use callout.
+>>> In other words, -H seems to be used no matter if callout is needed or not,
+>>> but when callout is unnecessary, the specified callout program is not
+>>> deployed.
+>>> This causes statd not to work once a lock is requested by its NFS client,
+>>> as execl() in ha_callout() results in ENOENT and exit() of the child
+>>> process calls exit-handler statd_unregister(). Eventually, the NFS client
+>>> gets stuck with messages "lockd: cannot monitor xxx" on the NFS server.
+>>> 
+>>> Although this may not be an expected way of using -H option, it would be
+>>> better if statd could continue to work even in that situation. Also,
+>>> execl() could fail for other reasons like ENFILE and EIO, where statd
+>>> service should not be unregistered as well.
+>>> Call _exit(), which does not call any exit-handlers, instead of exit() to
+>>> take care of those situations and make statd more reliable.
+>> 
+>> OK, but I think the explanation could be simpler? It doesn't
+>> seem like a matter of "it would be better if" but more like
+>> "a forked child must not unregister the statd RPC server."
+>> In other words, this seems like a real bug to me, not an
+>> enhancement.
+> 
+> Thank you for your feedback.
+> 
+> Here is a simpler one.
+> If it looks fine to you, I'll send v2 with your Reviewed-by.
 
-On Sat, Feb 13, 2016 at 2:35 AM, Chuck Lever <chuck.lever@oracle.com> wrote:
-> There continues to be some fallout from enabling NFSv4.1/RDMA, and
-> from converting the reply handler to use a work queue.  This series
-> includes some bug fixes for those issues.
->
-> Logic to handle the RPC-over-RDMA RDMA_ERROR message type is also
-> introduced into the RPC reply handler.
->
-> Also included is a patch set to convert xprtrdma to use the new core
-> CQ API.
->
-> Available in the "nfs-rdma-for-4.6" topic branch of this git repo:
->
-> git://git.linux-nfs.org/projects/cel/cel-2.6.git
->
-> Or for browsing:
->
-> http://git.linux-nfs.org/?p=cel/cel-2.6.git;a=log;h=refs/heads/nfs-rdma-for-4.6
->
->
-> Chuck Lever (8):
->       xprtrdma: Segment head and tail XDR buffers on page boundaries
->       xprtrdma: Invalidate memory when a signal is caught
->       rpcrdma: Add RPCRDMA_HDRLEN_ERR
->       xprtrdma: Properly handle RDMA_ERROR replies
->       xprtrdma: Serialize credit accounting again
->       xprtrdma: Use new CQ API for RPC-over-RDMA client receive CQs
->       xprtrdma: Use an anonymous union in struct rpcrdma_mw
->       xprtrdma: Use new CQ API for RPC-over-RDMA client send CQs
->
->
->  include/linux/sunrpc/rpc_rdma.h |   12 +-
->  net/sunrpc/xprtrdma/fmr_ops.c   |   28 +++---
->  net/sunrpc/xprtrdma/frwr_ops.c  |  137 ++++++++++++++++++---------
->  net/sunrpc/xprtrdma/rpc_rdma.c  |   89 +++++++++++++-----
->  net/sunrpc/xprtrdma/transport.c |   41 +++++++-
->  net/sunrpc/xprtrdma/verbs.c     |  198 ++++++++++++---------------------------
->  net/sunrpc/xprtrdma/xprt_rdma.h |   15 +--
->  7 files changed, 279 insertions(+), 241 deletions(-)
->
-> --
-> Chuck Lever
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-rdma" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Looks good, thanks for the update.
+
+
+> ---
+> 
+> -Although this may not be an expected way of using -H option, it would be
+> -better if statd could continue to work even in that situation. Also,
+> -execl() could fail for other reasons like ENFILE and EIO, where statd
+> -service should not be unregistered as well.
+> -Call _exit(), which does not call any exit-handlers, instead of exit() to
+> -take care of those situations and make statd more reliable.
+> 
+> +Also, execl() could fail for other reasons like ENFILE or EIO as well.
+> +
+> +A forked child must not unregister the statd RPC server, so use
+> +_exit(), which does not call any exit-handlers, instead of exit().
+> 
+> ---
+> Regards,
+> Toshiaki Makita
+
+--
+Chuck Lever
+
+
+
+
