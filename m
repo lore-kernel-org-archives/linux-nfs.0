@@ -1,79 +1,65 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from tama50.ecl.ntt.co.jp ([129.60.39.147]:56534 "EHLO
-	tama50.ecl.ntt.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751551AbcBOHof (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 15 Feb 2016 02:44:35 -0500
-Subject: Re: [PATCH nfs-utils] statd: Don't unregister statd service on
- failing to execute callout
-References: <1455259282-7237-1-git-send-email-makita.toshiaki@lab.ntt.co.jp>
- <989760D9-029D-43E2-ABA3-8DC9F579BE68@oracle.com>
-From: Toshiaki Makita <makita.toshiaki@lab.ntt.co.jp>
-Message-ID: <56C1819C.7040908@lab.ntt.co.jp>
-Date: Mon, 15 Feb 2016 16:43:24 +0900
+Received: from mail-wm0-f49.google.com ([74.125.82.49]:34284 "EHLO
+	mail-wm0-f49.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751182AbcBOKZT (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 15 Feb 2016 05:25:19 -0500
+Subject: Re: richacl(7) man page review comments
+To: Andreas Gruenbacher <agruenba@redhat.com>
+References: <56B770B6.7040803@gmail.com> <56B77262.7090107@gmail.com>
+ <CAHc6FU5__xbKm4mg8+fK_ZW5ZYsDoQcYBBvQg573Eq4ERDsROw@mail.gmail.com>
+ <56C0F150.60008@gmail.com>
+ <CAHc6FU49uRb11HhO655jimn_CzLrDyGHAB2iDAv92cftCCXkEA@mail.gmail.com>
+Cc: mtk.manpages@gmail.com, "J. Bruce Fields" <bfields@fieldses.org>,
+        linux-ext4 <linux-ext4@vger.kernel.org>,
+        XFS Developers <xfs@oss.sgi.com>, lkml <linux-kernel@vger.kernel.org>,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        linux-cifs@vger.kernel.org, Linux API <linux-api@vger.kernel.org>,
+        Dave Chinner <david@fromorbit.com>,
+        Christoph Hellwig <hch@infradead.org>,
+        Anna Schumaker <anna.schumaker@netapp.com>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        Jeff Layton <jlayton@poochiereds.net>,
+        Andreas Dilger <adilger@dilger.ca>
+From: "Michael Kerrisk (man-pages)" <mtk.manpages@gmail.com>
+Message-ID: <56C1A788.9020008@gmail.com>
+Date: Mon, 15 Feb 2016 11:25:12 +0100
 MIME-Version: 1.0
-In-Reply-To: <989760D9-029D-43E2-ABA3-8DC9F579BE68@oracle.com>
-Content-Type: text/plain; charset=windows-1252
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: Steve Dickson <steved@redhat.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+In-Reply-To: <CAHc6FU49uRb11HhO655jimn_CzLrDyGHAB2iDAv92cftCCXkEA@mail.gmail.com>
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 2016/02/13 0:40, Chuck Lever wrote:
-> Hi-
+Hi Andreas,
 
-Hi,
-
->> On Feb 12, 2016, at 1:41 AM, Toshiaki Makita <makita.toshiaki@lab.ntt.co.jp> wrote:
+On 02/15/2016 12:12 AM, Andreas Gruenbacher wrote:
+> On Sun, Feb 14, 2016 at 10:27 PM, Michael Kerrisk (man-pages)
+> <mtk.manpages@gmail.com> wrote:
+>> On 02/12/2016 11:25 PM, Andreas Gruenbacher wrote:
+>>> We could sure move acl(5) and richacl(7) there.
 >>
->> statd calls atexit(statd_unregister) to unregister statd service on exit,
->> which actually has a side-effect that ha_callout() unregisters statd
->> service even when the child callout process exits on execl() failure.
->>
->> Certain clustering software's deployment script adds -H option with its
->> specified file non-existent, when it is configured not to use callout.
->> In other words, -H seems to be used no matter if callout is needed or not,
->> but when callout is unnecessary, the specified callout program is not
->> deployed.
->> This causes statd not to work once a lock is requested by its NFS client,
->> as execl() in ha_callout() results in ENOENT and exit() of the child
->> process calls exit-handler statd_unregister(). Eventually, the NFS client
->> gets stuck with messages "lockd: cannot monitor xxx" on the NFS server.
->>
->> Although this may not be an expected way of using -H option, it would be
->> better if statd could continue to work even in that situation. Also,
->> execl() could fail for other reasons like ENFILE and EIO, where statd
->> service should not be unregistered as well.
->> Call _exit(), which does not call any exit-handlers, instead of exit() to
->> take care of those situations and make statd more reliable.
+>> We already have acl(5) (now "acl(7)" in man pages) ;-).
 > 
-> OK, but I think the explanation could be simpler? It doesn't
-> seem like a matter of "it would be better if" but more like
-> "a forked child must not unregister the statd RPC server."
-> In other words, this seems like a real bug to me, not an
-> enhancement.
+> Hmm, I can't find that page either in
+> git://git.kernel.org/pub/scm/docs/man-pages/man-pages or on
+> http://man7.org/. Are you sure you don't mean xattr.7 == attr.5 which
+> documents the xattr syscall interface?
 
-Thank you for your feedback.
+You're right. I was confusing with xattr(7). So, I think it might
+make some sense to eventually move both of these into man-pages (for 
+richacl(7), at least, it's probably worth delaying this for a bit), 
+since  they're describing kernel-user-space interfaces. I can see 
+counter-arguments too, such as these pages are closely related to 
+the corresponding user-space libraries you maintain. What do you
+think?
 
-Here is a simpler one.
-If it looks fine to you, I'll send v2 with your Reviewed-by.
+Thanks,
 
----
-
--Although this may not be an expected way of using -H option, it would be
--better if statd could continue to work even in that situation. Also,
--execl() could fail for other reasons like ENFILE and EIO, where statd
--service should not be unregistered as well.
--Call _exit(), which does not call any exit-handlers, instead of exit() to
--take care of those situations and make statd more reliable.
-
-+Also, execl() could fail for other reasons like ENFILE or EIO as well.
-+
-+A forked child must not unregister the statd RPC server, so use
-+_exit(), which does not call any exit-handlers, instead of exit().
-
----
-Regards,
-Toshiaki Makita
+Michael
 
 
+
+-- 
+Michael Kerrisk
+Linux man-pages maintainer; http://www.kernel.org/doc/man-pages/
+Linux/UNIX System Programming Training: http://man7.org/training/
