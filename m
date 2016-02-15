@@ -1,69 +1,145 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-wm0-f50.google.com ([74.125.82.50]:37211 "EHLO
-	mail-wm0-f50.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753231AbcBOOPs (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 15 Feb 2016 09:15:48 -0500
+Received: from mail-yw0-f172.google.com ([209.85.161.172]:34201 "EHLO
+	mail-yw0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751471AbcBOO2c (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 15 Feb 2016 09:28:32 -0500
+Received: by mail-yw0-f172.google.com with SMTP id h129so115725929ywb.1
+        for <linux-nfs@vger.kernel.org>; Mon, 15 Feb 2016 06:28:32 -0800 (PST)
 MIME-Version: 1.0
-Reply-To: mtk.manpages@gmail.com
-In-Reply-To: <CAHc6FU69k2uRXjSSS+9K0cXzFs74DPsz6DDv8GN=hmh7RpPA-Q@mail.gmail.com>
-References: <56B770B6.7040803@gmail.com> <56B77262.7090107@gmail.com>
- <CAHc6FU5__xbKm4mg8+fK_ZW5ZYsDoQcYBBvQg573Eq4ERDsROw@mail.gmail.com>
- <56C0F150.60008@gmail.com> <CAHc6FU49uRb11HhO655jimn_CzLrDyGHAB2iDAv92cftCCXkEA@mail.gmail.com>
- <56C1A788.9020008@gmail.com> <CAHc6FU69k2uRXjSSS+9K0cXzFs74DPsz6DDv8GN=hmh7RpPA-Q@mail.gmail.com>
-From: "Michael Kerrisk (man-pages)" <mtk.manpages@gmail.com>
-Date: Mon, 15 Feb 2016 15:15:27 +0100
-Message-ID: <CAKgNAki53C7bZyWFSQMD1ArCD9w2V9RH0MozCk99G1=PuUUy1g@mail.gmail.com>
-Subject: Re: richacl(7) man page review comments
-To: Andreas Gruenbacher <agruenba@redhat.com>
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-        linux-ext4 <linux-ext4@vger.kernel.org>,
-        XFS Developers <xfs@oss.sgi.com>, lkml <linux-kernel@vger.kernel.org>,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        linux-cifs@vger.kernel.org, Linux API <linux-api@vger.kernel.org>,
-        Dave Chinner <david@fromorbit.com>,
-        Christoph Hellwig <hch@infradead.org>,
-        Anna Schumaker <anna.schumaker@netapp.com>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        Jeff Layton <jlayton@poochiereds.net>,
-        Andreas Dilger <adilger@dilger.ca>
+In-Reply-To: <20160212210602.5278.57457.stgit@manet.1015granger.net>
+References: <20160212205107.5278.55938.stgit@manet.1015granger.net> <20160212210602.5278.57457.stgit@manet.1015granger.net>
+From: Devesh Sharma <devesh.sharma@broadcom.com>
+Date: Mon, 15 Feb 2016 19:57:52 +0530
+Message-ID: <CANjDDBi4ejPK21LsN21LcR2d6AVdsgw=G8pwWb1MLnmzDP8-0w@mail.gmail.com>
+Subject: Re: [PATCH v1 1/8] xprtrdma: Segment head and tail XDR buffers on
+ page boundaries
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: linux-rdma@vger.kernel.org,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
 Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 15 February 2016 at 12:35, Andreas Gruenbacher <agruenba@redhat.com> wrote:
-> On Mon, Feb 15, 2016 at 11:25 AM, Michael Kerrisk (man-pages)
-> <mtk.manpages@gmail.com> wrote:
->> You're right. I was confusing with xattr(7). So, I think it might
->> make some sense to eventually move both of these into man-pages (for
->> richacl(7), at least, it's probably worth delaying this for a bit),
->> since  they're describing kernel-user-space interfaces.
+Looks good.
+
+On Sat, Feb 13, 2016 at 2:36 AM, Chuck Lever <chuck.lever@oracle.com> wrote:
+> A single memory allocation is used for the pair of buffers wherein
+> the RPC client builds an RPC call message and decodes its matching
+> reply. These buffers are sized based on the maximum possible size
+> of the RPC call and reply messages for the operation in progress.
 >
-> Well, the actual user-space interface is xattrs in both cases.
-
-Yes, xattrs are the base of the framework, but I was using "interface"
-in a very broad way: ACLs and RichACLs are exposing kernel-defined
-policies and rules about file permissions to user space (much as say
-chmod(2) and the file mode bits). That's why it seems to make some
-sense to place those pages with the other pages that describe
-kernel-user-spaces interfaces. Plus, they'd now and then get some
-man-pages love :-).
-
->> I can see counter-arguments too, such as these pages are closely
->> related to the corresponding user-space libraries you maintain.
->> What do you think?
+> This means that as the call buffer increases in size, the start of
+> the reply buffer is pushed farther into the memory allocation.
 >
-> I would keep the man-pages where they are right now, but I don't have
-> a strong preference.
-
-I'd be happy to see acl(5) and eventually richacl(7) in man pages, but
-it's your call in the end, of course.
-
-Cheers,
-
-Michael
-
--- 
-Michael Kerrisk
-Linux man-pages maintainer; http://www.kernel.org/doc/man-pages/
-Linux/UNIX System Programming Training: http://man7.org/training/
+> RPC requests are growing in size. It used to be that both the call
+> and reply buffers fit inside a single page.
+>
+> But these days, thanks to NFSv4 (and especially security labels in
+> NFSv4.2) the maximum call and reply sizes are large. NFSv4.0 OPEN,
+> for example, now requires a 6KB allocation for a pair of call and
+> reply buffers, and NFSv4 LOOKUP is not far behind.
+>
+> As the maximum size of a call increases, the reply buffer is pushed
+> far enough into the buffer's memory allocation that a page boundary
+> can appear in the middle of it.
+>
+> When the maximum possible reply size is larger than the client's
+> RDMA receive buffers (currently 1KB), the client has to register a
+> Reply chunk for the server to RDMA Write the reply into.
+>
+> The logic in rpcrdma_convert_iovs() assumes that xdr_buf head and
+> tail buffers would always be contained on a single page. It supplies
+> just one segment for the head and one for the tail.
+>
+> FMR, for example, registers up to a page boundary (only a portion of
+> the reply buffer in the OPEN case above). But without additional
+> segments, it doesn't register the rest of the buffer.
+>
+> When the server tries to write the OPEN reply, the RDMA Write fails
+> with a remote access error since the client registered only part of
+> the Reply chunk.
+>
+> rpcrdma_convert_iovs() must split the XDR buffer into multiple
+> segments, each of which are guaranteed not to contain a page
+> boundary. That way fmr_op_map is given the proper number of segments
+> to register the whole reply buffer.
+>
+> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+> ---
+>  net/sunrpc/xprtrdma/rpc_rdma.c |   42 ++++++++++++++++++++++++++++++----------
+>  1 file changed, 32 insertions(+), 10 deletions(-)
+>
+> diff --git a/net/sunrpc/xprtrdma/rpc_rdma.c b/net/sunrpc/xprtrdma/rpc_rdma.c
+> index 0f28f2d..add1f98 100644
+> --- a/net/sunrpc/xprtrdma/rpc_rdma.c
+> +++ b/net/sunrpc/xprtrdma/rpc_rdma.c
+> @@ -132,6 +132,33 @@ rpcrdma_tail_pullup(struct xdr_buf *buf)
+>         return tlen;
+>  }
+>
+> +/* Split "vec" on page boundaries into segments. FMR registers pages,
+> + * not a byte range. Other modes coalesce these segments into a single
+> + * MR when they can.
+> + */
+> +static int
+> +rpcrdma_convert_kvec(struct kvec *vec, struct rpcrdma_mr_seg *seg,
+> +                    int n, int nsegs)
+> +{
+> +       size_t page_offset;
+> +       u32 remaining;
+> +       char *base;
+> +
+> +       base = vec->iov_base;
+> +       page_offset = offset_in_page(base);
+> +       remaining = vec->iov_len;
+> +       while (remaining && n < nsegs) {
+> +               seg[n].mr_page = NULL;
+> +               seg[n].mr_offset = base;
+> +               seg[n].mr_len = min_t(u32, PAGE_SIZE - page_offset, remaining);
+> +               remaining -= seg[n].mr_len;
+> +               base += seg[n].mr_len;
+> +               ++n;
+> +               page_offset = 0;
+> +       }
+> +       return n;
+> +}
+> +
+>  /*
+>   * Chunk assembly from upper layer xdr_buf.
+>   *
+> @@ -150,11 +177,10 @@ rpcrdma_convert_iovs(struct xdr_buf *xdrbuf, unsigned int pos,
+>         int page_base;
+>         struct page **ppages;
+>
+> -       if (pos == 0 && xdrbuf->head[0].iov_len) {
+> -               seg[n].mr_page = NULL;
+> -               seg[n].mr_offset = xdrbuf->head[0].iov_base;
+> -               seg[n].mr_len = xdrbuf->head[0].iov_len;
+> -               ++n;
+> +       if (pos == 0) {
+> +               n = rpcrdma_convert_kvec(&xdrbuf->head[0], seg, n, nsegs);
+> +               if (n == nsegs)
+> +                       return -EIO;
+>         }
+>
+>         len = xdrbuf->page_len;
+> @@ -192,13 +218,9 @@ rpcrdma_convert_iovs(struct xdr_buf *xdrbuf, unsigned int pos,
+>                  * xdr pad bytes, saving the server an RDMA operation. */
+>                 if (xdrbuf->tail[0].iov_len < 4 && xprt_rdma_pad_optimize)
+>                         return n;
+> +               n = rpcrdma_convert_kvec(&xdrbuf->tail[0], seg, n, nsegs);
+>                 if (n == nsegs)
+> -                       /* Tail remains, but we're out of segments */
+>                         return -EIO;
+> -               seg[n].mr_page = NULL;
+> -               seg[n].mr_offset = xdrbuf->tail[0].iov_base;
+> -               seg[n].mr_len = xdrbuf->tail[0].iov_len;
+> -               ++n;
+>         }
+>
+>         return n;
+>
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-rdma" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
