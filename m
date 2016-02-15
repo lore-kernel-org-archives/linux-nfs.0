@@ -1,61 +1,51 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ig0-f170.google.com ([209.85.213.170]:33015 "EHLO
+Received: from mail-ig0-f170.google.com ([209.85.213.170]:35122 "EHLO
 	mail-ig0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752469AbcBOSNq (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 15 Feb 2016 13:13:46 -0500
-Received: by mail-ig0-f170.google.com with SMTP id y8so80364000igp.0
-        for <linux-nfs@vger.kernel.org>; Mon, 15 Feb 2016 10:13:46 -0800 (PST)
+	with ESMTP id S1752482AbcBOSNr (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 15 Feb 2016 13:13:47 -0500
+Received: by mail-ig0-f170.google.com with SMTP id hb3so57008441igb.0
+        for <linux-nfs@vger.kernel.org>; Mon, 15 Feb 2016 10:13:47 -0800 (PST)
 From: Trond Myklebust <trond.myklebust@primarydata.com>
 To: linux-nfs@vger.kernel.org
-Subject: [PATCH 1/2] pNFS: Fix pnfs_mark_matching_lsegs_return()
-Date: Mon, 15 Feb 2016 13:13:02 -0500
-Message-Id: <1455559983-11808-1-git-send-email-trond.myklebust@primarydata.com>
+Subject: [PATCH 2/2] pNFS: Always set NFS_LAYOUT_RETURN_REQUESTED with lo->plh_return_iomode
+Date: Mon, 15 Feb 2016 13:13:03 -0500
+Message-Id: <1455559983-11808-2-git-send-email-trond.myklebust@primarydata.com>
+In-Reply-To: <1455559983-11808-1-git-send-email-trond.myklebust@primarydata.com>
+References: <1455559983-11808-1-git-send-email-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-We don't need to schedule a layoutreturn if the layout segment can
-be freed immediately.
+When setting the layout return mode, we must always also set the
+NFS_LAYOUT_RETURN_REQUESTED flag to ensure that we send a layoutreturn.
+Otherwise pnfs_error_mark_layout_for_return() could set the mode, but
+fail to send the layoutreturn because another is already in flight.
 
 Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
 ---
- fs/nfs/pnfs.c | 15 +++++++++++++--
- 1 file changed, 13 insertions(+), 2 deletions(-)
+ fs/nfs/pnfs.c | 3 +--
+ 1 file changed, 1 insertion(+), 2 deletions(-)
 
 diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index 482b6e94bb37..8d9fa4e40e89 100644
+index 8d9fa4e40e89..5064f23ca8cc 100644
 --- a/fs/nfs/pnfs.c
 +++ b/fs/nfs/pnfs.c
-@@ -1740,6 +1740,16 @@ pnfs_set_plh_return_iomode(struct pnfs_layout_hdr *lo, enum pnfs_iomode iomode)
+@@ -1738,6 +1738,7 @@ pnfs_set_plh_return_iomode(struct pnfs_layout_hdr *lo, enum pnfs_iomode iomode)
+ 	if (lo->plh_return_iomode != 0)
+ 		iomode = IOMODE_ANY;
  	lo->plh_return_iomode = iomode;
++	set_bit(NFS_LAYOUT_RETURN_REQUESTED, &lo->plh_flags);
  }
  
-+/**
-+ * pnfs_mark_matching_lsegs_return - Free or return matching layout segments
-+ * @lo: pointer to layout header
-+ * @tmp_list: list header to be used with pnfs_free_lseg_list()
-+ * @return_range: describe layout segment ranges to be returned
-+ *
-+ * This function is mainly intended for use by layoutrecall. It attempts
-+ * to free the layout segment immediately, or else to mark it for return
-+ * as soon as its reference count drops to zero.
-+ */
- int
- pnfs_mark_matching_lsegs_return(struct pnfs_layout_hdr *lo,
- 				struct list_head *tmp_list,
-@@ -1762,10 +1772,11 @@ pnfs_mark_matching_lsegs_return(struct pnfs_layout_hdr *lo,
- 				lseg, lseg->pls_range.iomode,
- 				lseg->pls_range.offset,
- 				lseg->pls_range.length);
-+			if (mark_lseg_invalid(lseg, tmp_list))
-+				continue;
-+			remaining++;
+ /**
+@@ -1777,8 +1778,6 @@ pnfs_mark_matching_lsegs_return(struct pnfs_layout_hdr *lo,
+ 			remaining++;
  			set_bit(NFS_LSEG_LAYOUTRETURN, &lseg->pls_flags);
  			pnfs_set_plh_return_iomode(lo, return_range->iomode);
--			if (!mark_lseg_invalid(lseg, tmp_list))
--				remaining++;
- 			set_bit(NFS_LAYOUT_RETURN_REQUESTED,
- 					&lo->plh_flags);
+-			set_bit(NFS_LAYOUT_RETURN_REQUESTED,
+-					&lo->plh_flags);
  		}
+ 	return remaining;
+ }
 -- 
 2.5.0
 
