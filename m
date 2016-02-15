@@ -1,17 +1,17 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-yk0-f170.google.com ([209.85.160.170]:33019 "EHLO
+Received: from mail-yk0-f170.google.com ([209.85.160.170]:34186 "EHLO
 	mail-yk0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753291AbcBOOam (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 15 Feb 2016 09:30:42 -0500
-Received: by mail-yk0-f170.google.com with SMTP id z13so60647556ykd.0
-        for <linux-nfs@vger.kernel.org>; Mon, 15 Feb 2016 06:30:42 -0800 (PST)
+	with ESMTP id S1751471AbcBOObq (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 15 Feb 2016 09:31:46 -0500
+Received: by mail-yk0-f170.google.com with SMTP id u9so60732517ykd.1
+        for <linux-nfs@vger.kernel.org>; Mon, 15 Feb 2016 06:31:46 -0800 (PST)
 MIME-Version: 1.0
-In-Reply-To: <20160212210651.5278.31825.stgit@manet.1015granger.net>
-References: <20160212205107.5278.55938.stgit@manet.1015granger.net> <20160212210651.5278.31825.stgit@manet.1015granger.net>
+In-Reply-To: <20160212205107.5278.55938.stgit@manet.1015granger.net>
+References: <20160212205107.5278.55938.stgit@manet.1015granger.net>
 From: Devesh Sharma <devesh.sharma@broadcom.com>
-Date: Mon, 15 Feb 2016 20:00:02 +0530
-Message-ID: <CANjDDBjh1V2qAwitwxk_P=dcHrX4rVrTEodSkOKrohS2sNymgg@mail.gmail.com>
-Subject: Re: [PATCH v1 7/8] xprtrdma: Use an anonymous union in struct rpcrdma_mw
+Date: Mon, 15 Feb 2016 20:01:06 +0530
+Message-ID: <CANjDDBhmdJk8HeHhEQFaNRsUddBCnuncLNnJaFy5z+zvaFVa-A@mail.gmail.com>
+Subject: Re: [PATCH v1 0/8] NFS/RDMA client patches for v4.6
 To: Chuck Lever <chuck.lever@oracle.com>
 Cc: linux-rdma@vger.kernel.org,
         Linux NFS Mailing List <linux-nfs@vger.kernel.org>
@@ -19,268 +19,52 @@ Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Looks good.
+I shell test this series with ocrdma and update the testing status.
 
-On Sat, Feb 13, 2016 at 2:36 AM, Chuck Lever <chuck.lever@oracle.com> wrote:
-> Clean up: Make code more readable.
+Series Reviewed-by: Devesh Sharma <devesh.sharma@broadcom.com>
+
+On Sat, Feb 13, 2016 at 2:35 AM, Chuck Lever <chuck.lever@oracle.com> wrote:
+> There continues to be some fallout from enabling NFSv4.1/RDMA, and
+> from converting the reply handler to use a work queue.  This series
+> includes some bug fixes for those issues.
 >
-> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-> ---
->  net/sunrpc/xprtrdma/fmr_ops.c   |   28 +++++++++++++-------------
->  net/sunrpc/xprtrdma/frwr_ops.c  |   42 ++++++++++++++++++++-------------------
->  net/sunrpc/xprtrdma/xprt_rdma.h |    2 +-
->  3 files changed, 36 insertions(+), 36 deletions(-)
+> Logic to handle the RPC-over-RDMA RDMA_ERROR message type is also
+> introduced into the RPC reply handler.
 >
-> diff --git a/net/sunrpc/xprtrdma/fmr_ops.c b/net/sunrpc/xprtrdma/fmr_ops.c
-> index c14f3a4..b289e10 100644
-> --- a/net/sunrpc/xprtrdma/fmr_ops.c
-> +++ b/net/sunrpc/xprtrdma/fmr_ops.c
-> @@ -80,13 +80,13 @@ fmr_op_init(struct rpcrdma_xprt *r_xprt)
->                 if (!r)
->                         goto out;
+> Also included is a patch set to convert xprtrdma to use the new core
+> CQ API.
 >
-> -               r->r.fmr.physaddrs = kmalloc(RPCRDMA_MAX_FMR_SGES *
-> -                                            sizeof(u64), GFP_KERNEL);
-> -               if (!r->r.fmr.physaddrs)
-> +               r->fmr.physaddrs = kmalloc(RPCRDMA_MAX_FMR_SGES *
-> +                                          sizeof(u64), GFP_KERNEL);
-> +               if (!r->fmr.physaddrs)
->                         goto out_free;
+> Available in the "nfs-rdma-for-4.6" topic branch of this git repo:
 >
-> -               r->r.fmr.fmr = ib_alloc_fmr(pd, mr_access_flags, &fmr_attr);
-> -               if (IS_ERR(r->r.fmr.fmr))
-> +               r->fmr.fmr = ib_alloc_fmr(pd, mr_access_flags, &fmr_attr);
-> +               if (IS_ERR(r->fmr.fmr))
->                         goto out_fmr_err;
+> git://git.linux-nfs.org/projects/cel/cel-2.6.git
 >
->                 list_add(&r->mw_list, &buf->rb_mws);
-> @@ -95,9 +95,9 @@ fmr_op_init(struct rpcrdma_xprt *r_xprt)
->         return 0;
+> Or for browsing:
 >
->  out_fmr_err:
-> -       rc = PTR_ERR(r->r.fmr.fmr);
-> +       rc = PTR_ERR(r->fmr.fmr);
->         dprintk("RPC:       %s: ib_alloc_fmr status %i\n", __func__, rc);
-> -       kfree(r->r.fmr.physaddrs);
-> +       kfree(r->fmr.physaddrs);
->  out_free:
->         kfree(r);
->  out:
-> @@ -109,7 +109,7 @@ __fmr_unmap(struct rpcrdma_mw *r)
->  {
->         LIST_HEAD(l);
+> http://git.linux-nfs.org/?p=cel/cel-2.6.git;a=log;h=refs/heads/nfs-rdma-for-4.6
 >
-> -       list_add(&r->r.fmr.fmr->list, &l);
-> +       list_add(&r->fmr.fmr->list, &l);
->         return ib_unmap_fmr(&l);
->  }
 >
-> @@ -148,7 +148,7 @@ fmr_op_map(struct rpcrdma_xprt *r_xprt, struct rpcrdma_mr_seg *seg,
->                 nsegs = RPCRDMA_MAX_FMR_SGES;
->         for (i = 0; i < nsegs;) {
->                 rpcrdma_map_one(device, seg, direction);
-> -               mw->r.fmr.physaddrs[i] = seg->mr_dma;
-> +               mw->fmr.physaddrs[i] = seg->mr_dma;
->                 len += seg->mr_len;
->                 ++seg;
->                 ++i;
-> @@ -158,13 +158,13 @@ fmr_op_map(struct rpcrdma_xprt *r_xprt, struct rpcrdma_mr_seg *seg,
->                         break;
->         }
+> Chuck Lever (8):
+>       xprtrdma: Segment head and tail XDR buffers on page boundaries
+>       xprtrdma: Invalidate memory when a signal is caught
+>       rpcrdma: Add RPCRDMA_HDRLEN_ERR
+>       xprtrdma: Properly handle RDMA_ERROR replies
+>       xprtrdma: Serialize credit accounting again
+>       xprtrdma: Use new CQ API for RPC-over-RDMA client receive CQs
+>       xprtrdma: Use an anonymous union in struct rpcrdma_mw
+>       xprtrdma: Use new CQ API for RPC-over-RDMA client send CQs
 >
-> -       rc = ib_map_phys_fmr(mw->r.fmr.fmr, mw->r.fmr.physaddrs,
-> +       rc = ib_map_phys_fmr(mw->fmr.fmr, mw->fmr.physaddrs,
->                              i, seg1->mr_dma);
->         if (rc)
->                 goto out_maperr;
 >
->         seg1->rl_mw = mw;
-> -       seg1->mr_rkey = mw->r.fmr.fmr->rkey;
-> +       seg1->mr_rkey = mw->fmr.fmr->rkey;
->         seg1->mr_base = seg1->mr_dma + pageoff;
->         seg1->mr_nsegs = i;
->         seg1->mr_len = len;
-> @@ -219,7 +219,7 @@ fmr_op_unmap_sync(struct rpcrdma_xprt *r_xprt, struct rpcrdma_req *req)
->                 seg = &req->rl_segments[i];
->                 mw = seg->rl_mw;
+>  include/linux/sunrpc/rpc_rdma.h |   12 +-
+>  net/sunrpc/xprtrdma/fmr_ops.c   |   28 +++---
+>  net/sunrpc/xprtrdma/frwr_ops.c  |  137 ++++++++++++++++++---------
+>  net/sunrpc/xprtrdma/rpc_rdma.c  |   89 +++++++++++++-----
+>  net/sunrpc/xprtrdma/transport.c |   41 +++++++-
+>  net/sunrpc/xprtrdma/verbs.c     |  198 ++++++++++++---------------------------
+>  net/sunrpc/xprtrdma/xprt_rdma.h |   15 +--
+>  7 files changed, 279 insertions(+), 241 deletions(-)
 >
-> -               list_add(&mw->r.fmr.fmr->list, &unmap_list);
-> +               list_add(&mw->fmr.fmr->list, &unmap_list);
->
->                 i += seg->mr_nsegs;
->         }
-> @@ -281,9 +281,9 @@ fmr_op_destroy(struct rpcrdma_buffer *buf)
->         while (!list_empty(&buf->rb_all)) {
->                 r = list_entry(buf->rb_all.next, struct rpcrdma_mw, mw_all);
->                 list_del(&r->mw_all);
-> -               kfree(r->r.fmr.physaddrs);
-> +               kfree(r->fmr.physaddrs);
->
-> -               rc = ib_dealloc_fmr(r->r.fmr.fmr);
-> +               rc = ib_dealloc_fmr(r->fmr.fmr);
->                 if (rc)
->                         dprintk("RPC:       %s: ib_dealloc_fmr failed %i\n",
->                                 __func__, rc);
-> diff --git a/net/sunrpc/xprtrdma/frwr_ops.c b/net/sunrpc/xprtrdma/frwr_ops.c
-> index e165673..23382fa 100644
-> --- a/net/sunrpc/xprtrdma/frwr_ops.c
-> +++ b/net/sunrpc/xprtrdma/frwr_ops.c
-> @@ -109,20 +109,20 @@ static void
->  __frwr_recovery_worker(struct work_struct *work)
->  {
->         struct rpcrdma_mw *r = container_of(work, struct rpcrdma_mw,
-> -                                           r.frmr.fr_work);
-> -       struct rpcrdma_xprt *r_xprt = r->r.frmr.fr_xprt;
-> +                                           frmr.fr_work);
-> +       struct rpcrdma_xprt *r_xprt = r->frmr.fr_xprt;
->         unsigned int depth = r_xprt->rx_ia.ri_max_frmr_depth;
->         struct ib_pd *pd = r_xprt->rx_ia.ri_pd;
->
-> -       if (ib_dereg_mr(r->r.frmr.fr_mr))
-> +       if (ib_dereg_mr(r->frmr.fr_mr))
->                 goto out_fail;
->
-> -       r->r.frmr.fr_mr = ib_alloc_mr(pd, IB_MR_TYPE_MEM_REG, depth);
-> -       if (IS_ERR(r->r.frmr.fr_mr))
-> +       r->frmr.fr_mr = ib_alloc_mr(pd, IB_MR_TYPE_MEM_REG, depth);
-> +       if (IS_ERR(r->frmr.fr_mr))
->                 goto out_fail;
->
->         dprintk("RPC:       %s: recovered FRMR %p\n", __func__, r);
-> -       r->r.frmr.fr_state = FRMR_IS_INVALID;
-> +       r->frmr.fr_state = FRMR_IS_INVALID;
->         rpcrdma_put_mw(r_xprt, r);
->         return;
->
-> @@ -137,15 +137,15 @@ out_fail:
->  static void
->  __frwr_queue_recovery(struct rpcrdma_mw *r)
->  {
-> -       INIT_WORK(&r->r.frmr.fr_work, __frwr_recovery_worker);
-> -       queue_work(frwr_recovery_wq, &r->r.frmr.fr_work);
-> +       INIT_WORK(&r->frmr.fr_work, __frwr_recovery_worker);
-> +       queue_work(frwr_recovery_wq, &r->frmr.fr_work);
->  }
->
->  static int
->  __frwr_init(struct rpcrdma_mw *r, struct ib_pd *pd, struct ib_device *device,
->             unsigned int depth)
->  {
-> -       struct rpcrdma_frmr *f = &r->r.frmr;
-> +       struct rpcrdma_frmr *f = &r->frmr;
->         int rc;
->
->         f->fr_mr = ib_alloc_mr(pd, IB_MR_TYPE_MEM_REG, depth);
-> @@ -179,11 +179,11 @@ __frwr_release(struct rpcrdma_mw *r)
->  {
->         int rc;
->
-> -       rc = ib_dereg_mr(r->r.frmr.fr_mr);
-> +       rc = ib_dereg_mr(r->frmr.fr_mr);
->         if (rc)
->                 dprintk("RPC:       %s: ib_dereg_mr status %i\n",
->                         __func__, rc);
-> -       kfree(r->r.frmr.sg);
-> +       kfree(r->frmr.sg);
->  }
->
->  static int
-> @@ -263,14 +263,14 @@ __frwr_sendcompletion_flush(struct ib_wc *wc, struct rpcrdma_mw *r)
->                 pr_warn("RPC:       %s: frmr %p error, status %s (%d)\n",
->                         __func__, r, ib_wc_status_msg(wc->status), wc->status);
->
-> -       r->r.frmr.fr_state = FRMR_IS_STALE;
-> +       r->frmr.fr_state = FRMR_IS_STALE;
->  }
->
->  static void
->  frwr_sendcompletion(struct ib_wc *wc)
->  {
->         struct rpcrdma_mw *r = (struct rpcrdma_mw *)(unsigned long)wc->wr_id;
-> -       struct rpcrdma_frmr *f = &r->r.frmr;
-> +       struct rpcrdma_frmr *f = &r->frmr;
->
->         if (unlikely(wc->status != IB_WC_SUCCESS))
->                 __frwr_sendcompletion_flush(wc, r);
-> @@ -314,7 +314,7 @@ frwr_op_init(struct rpcrdma_xprt *r_xprt)
->                 list_add(&r->mw_list, &buf->rb_mws);
->                 list_add(&r->mw_all, &buf->rb_all);
->                 r->mw_sendcompletion = frwr_sendcompletion;
-> -               r->r.frmr.fr_xprt = r_xprt;
-> +               r->frmr.fr_xprt = r_xprt;
->         }
->
->         return 0;
-> @@ -347,8 +347,8 @@ frwr_op_map(struct rpcrdma_xprt *r_xprt, struct rpcrdma_mr_seg *seg,
->                 mw = rpcrdma_get_mw(r_xprt);
->                 if (!mw)
->                         return -ENOMEM;
-> -       } while (mw->r.frmr.fr_state != FRMR_IS_INVALID);
-> -       frmr = &mw->r.frmr;
-> +       } while (mw->frmr.fr_state != FRMR_IS_INVALID);
-> +       frmr = &mw->frmr;
->         frmr->fr_state = FRMR_IS_VALID;
->         frmr->fr_waiter = false;
->         mr = frmr->fr_mr;
-> @@ -434,7 +434,7 @@ static struct ib_send_wr *
->  __frwr_prepare_linv_wr(struct rpcrdma_mr_seg *seg)
->  {
->         struct rpcrdma_mw *mw = seg->rl_mw;
-> -       struct rpcrdma_frmr *f = &mw->r.frmr;
-> +       struct rpcrdma_frmr *f = &mw->frmr;
->         struct ib_send_wr *invalidate_wr;
->
->         f->fr_waiter = false;
-> @@ -455,7 +455,7 @@ __frwr_dma_unmap(struct rpcrdma_xprt *r_xprt, struct rpcrdma_mr_seg *seg,
->  {
->         struct ib_device *device = r_xprt->rx_ia.ri_device;
->         struct rpcrdma_mw *mw = seg->rl_mw;
-> -       struct rpcrdma_frmr *f = &mw->r.frmr;
-> +       struct rpcrdma_frmr *f = &mw->frmr;
->
->         seg->rl_mw = NULL;
->
-> @@ -504,7 +504,7 @@ frwr_op_unmap_sync(struct rpcrdma_xprt *r_xprt, struct rpcrdma_req *req)
->
->                 i += seg->mr_nsegs;
->         }
-> -       f = &seg->rl_mw->r.frmr;
-> +       f = &seg->rl_mw->frmr;
->
->         /* Strong send queue ordering guarantees that when the
->          * last WR in the chain completes, all WRs in the chain
-> @@ -549,7 +549,7 @@ frwr_op_unmap(struct rpcrdma_xprt *r_xprt, struct rpcrdma_mr_seg *seg)
->         struct rpcrdma_mr_seg *seg1 = seg;
->         struct rpcrdma_ia *ia = &r_xprt->rx_ia;
->         struct rpcrdma_mw *mw = seg1->rl_mw;
-> -       struct rpcrdma_frmr *frmr = &mw->r.frmr;
-> +       struct rpcrdma_frmr *frmr = &mw->frmr;
->         struct ib_send_wr *invalidate_wr, *bad_wr;
->         int rc, nsegs = seg->mr_nsegs;
->
-> @@ -557,7 +557,7 @@ frwr_op_unmap(struct rpcrdma_xprt *r_xprt, struct rpcrdma_mr_seg *seg)
->
->         seg1->rl_mw = NULL;
->         frmr->fr_state = FRMR_IS_INVALID;
-> -       invalidate_wr = &mw->r.frmr.fr_invwr;
-> +       invalidate_wr = &mw->frmr.fr_invwr;
->
->         memset(invalidate_wr, 0, sizeof(*invalidate_wr));
->         invalidate_wr->wr_id = (uintptr_t)mw;
-> diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
-> index 7d87cdc..4be4c9b 100644
-> --- a/net/sunrpc/xprtrdma/xprt_rdma.h
-> +++ b/net/sunrpc/xprtrdma/xprt_rdma.h
-> @@ -225,7 +225,7 @@ struct rpcrdma_mw {
->         union {
->                 struct rpcrdma_fmr      fmr;
->                 struct rpcrdma_frmr     frmr;
-> -       } r;
-> +       };
->         void                    (*mw_sendcompletion)(struct ib_wc *);
->         struct list_head        mw_list;
->         struct list_head        mw_all;
->
+> --
+> Chuck Lever
 > --
 > To unsubscribe from this list: send the line "unsubscribe linux-rdma" in
 > the body of a message to majordomo@vger.kernel.org
