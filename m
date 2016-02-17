@@ -1,216 +1,230 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx141.netapp.com ([216.240.21.12]:40594 "EHLO mx141.netapp.com"
+Received: from fieldses.org ([173.255.197.46]:32954 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1422654AbcBQRtl (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 17 Feb 2016 12:49:41 -0500
-From: "Adamson, Andy" <William.Adamson@netapp.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: "Adamson, Andy" <William.Adamson@netapp.com>,
-        Martin Houry <martinhoury@gmail.com>,
+	id S1422746AbcBQSoJ convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 17 Feb 2016 13:44:09 -0500
+Date: Wed, 17 Feb 2016 13:44:06 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: "Adamson, Andy" <William.Adamson@netapp.com>
+Cc: Martin Houry <martinhoury@gmail.com>,
         "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
         Trond Myklebust <trond.myklebust@primarydata.com>
 Subject: Re: "Re: [PATCH RFC Version 1 0/6] Request for Comment: NFS4.1
  Session Trunking"
-Date: Wed, 17 Feb 2016 17:49:39 +0000
-Message-ID: <F2FB08E3-FAB6-4035-A85A-D70CF5387D30@netapp.com>
+Message-ID: <20160217184406.GE10401@fieldses.org>
 References: <CAEUt8V+L3hV1tQTzanVjGyZ1qoG8qJk7ZnS5HM1_3+Nc4mpO3A@mail.gmail.com>
  <F6DC5176-6340-4945-9EBD-537410882E1D@netapp.com>
  <20160217163451.GD10401@fieldses.org>
-In-Reply-To: <20160217163451.GD10401@fieldses.org>
-Content-Type: text/plain; charset="utf-8"
+ <F2FB08E3-FAB6-4035-A85A-D70CF5387D30@netapp.com>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=utf-8
+In-Reply-To: <F2FB08E3-FAB6-4035-A85A-D70CF5387D30@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-DQo+IE9uIEZlYiAxNywgMjAxNiwgYXQgMTE6MzQgQU0sIEouIEJydWNlIEZpZWxkcyA8YmZpZWxk
-c0BmaWVsZHNlcy5vcmc+IHdyb3RlOg0KPiANCj4gT24gV2VkLCBGZWIgMTcsIDIwMTYgYXQgMDI6
-NTA6NDRQTSArMDAwMCwgQWRhbXNvbiwgQW5keSB3cm90ZToNCj4+IA0KPj4+IE9uIEZlYiAxNywg
-MjAxNiwgYXQgNTozMSBBTSwgTWFydGluIEhvdXJ5IDxtYXJ0aW5ob3VyeUBnbWFpbC5jb20+IHdy
-b3RlOg0KPj4+IA0KPj4+IC0tLS0tIE9yaWdpbmFsIE1lc3NhZ2UgLS0tLS0NCj4+PiANCj4+Pj4g
-RnJvbTogYW5kcm9zQHh4eHh4eHh4eHgNCj4+Pj4gVG86ICJ0cm9uZCBteWtsZWJ1c3QiIDx0cm9u
-ZC5teWtsZWJ1c3RAeHh4eHh4eHh4eHh4eHh4Pg0KPj4+PiBDYzogbGludXgtbmZzQHh4eHh4eHh4
-eHh4eHh4eCwgIkFuZHkgQWRhbXNvbiIgPGFuZHJvc0B4eHh4eHh4eHh4Pg0KPj4+PiBTZW50OiBG
-cmlkYXksIEZlYnJ1YXJ5IDUsIDIwMTYgNDowODozMiBQTQ0KPj4+PiBTdWJqZWN0OiBbUEFUQ0gg
-UkZDIFZlcnNpb24gMSAwLzZdIFJlcXVlc3QgZm9yIENvbW1lbnQ6IE5GUzQuMSBTZXNzaW9uIFRy
-dW5raW5nDQo+Pj4+IA0KPj4+PiBGcm9tOiBBbmR5IEFkYW1zb24gPGFuZHJvc0B4eHh4eHh4eHh4
-Pg0KPj4+PiANCj4+Pj4gVGhpcyBlYXJseSBwYXRjaCBzZXQgaW1wbGVtZW50cyBORlN2NC4xIHNl
-c3Npb24gdHJ1bmtpbmcgdXRpbGl6aW5nIFRyb25kcw0KPj4+PiBtdWx0aXBhdGggZmVhdHVyZS4g
-IFRoaXMgd29ya3MgYWdhaW5zdCBhbiB1cHN0cmVhbSBsaW51eCBzZXJ2ZXIgd2l0aA0KPj4+PiB0
-d28gTklDcyBhcyB0aGUgRVhDSEFOR0VfSUQgaW5mbyBpcyB0aGUgc2FtZSBmb3IgYm90aCBOSUNz
-Lg0KPj4+PiANCj4+Pj4gVW5tb2RpZmllZCBjb2RlIHdpbGwgY3JlYXRlIGEgbmV3IG5mc19jbGll
-bnQgc3RydWN0dXJlIGZvciB0aGUgbW91bnQgYXMNCj4+Pj4gbmZzX21hdGNoX2NsaWVudCBmYWls
-cyBkdWUgdG8gdGhlIGRpZmZlcmVudCBmdWxsIHNlcnZlciBhZGRyZXNzLg0KPj4+PiBUdW5raW5n
-IGlzIGRldGVjdGVkIGJ5IGNvbXBhcmluZyB0aGUgZWlyX3NlcnZlcl9vd25lci5tYWpvci9taW5v
-ci9zY29wZQ0KPj4+PiBhbmQgdGhlIGVpcl9zZXJ2ZXJfaW1wbF9pZCB0byBhbiBleGlzdGluZyBt
-b3VudC4gV2hlbiB0cnVua2luZyBpcyBkZXRlY3RlZCwNCj4+Pj4gdGhlIDJuZCBtb3VudCBwb2lu
-dCB1c2VzIHRoZSBleGlzdGluZyAgKG5vdCBuZXcpIG5mc19jbGllbnQgZm9yIHRoZSBuZXcNCj4+
-Pj4gbW91bnQgcG9pbnQuDQo+Pj4+IA0KPj4+PiBXaGVuIHRydW5raW5nIGlzIGRldGVjdGVkLCB0
-aGlzIHBhdGNoIHNldCBhZGRzIGFuIHJwY194cHJ0IGZvciB0aGUgbmV3IHNlcnZlcg0KPj4+PiBh
-ZGRyZXNzIHRvIHRoZSBleGlzaXRpbmcgbW91bnQsIGNhbGxzIEJJTkRfQ09OTl9UT19TRVNTSU9O
-LCBhbmQgZGVzdHJveXMNCj4+Pj4gdGhlIG5ldyBjbGllbnRpZCAobm8gc2Vjb25kIG1vdW50KS4N
-Cj4+Pj4gDQo+Pj4+IFdlIHRoZW4gZ2V0IHJvdW5kIHJvYmluIHVzZSBvZiB0aGUgdHdvIE5JQ3Mg
-b2ZmIG9uZSBtb3VudCBwb2ludCBhbGwNCj4+Pj4gdXNpbmcgYSBzaW5nbGUgc2Vzc2lvbi4NCj4+
-Pj4gDQo+Pj4+IA0KPj4+PiBJcyB1c2luZyBtb3VudCBhIGdvb2Qgd2F5IHRvIHNldHVwIE5GU3Y0
-LjEgc2Vzc2lvbiB0cnVua2luZz8NCj4+Pj4gDQo+Pj4+IFRoZSBmaXJzdCB0d28gcGF0Y2hlcyBm
-aXggaXNzdWVzIHdpdGggdGhlIG11bHRpcGF0aCBjb2RlLg0KPj4+PiANCj4+Pj4gU1VOUlBDOiBh
-bGxvdyBycGNfeHBydF9zd2l0Y2hfYWRkX3hwcnQgdG8gYWRkIHhwcnRzIG9uIHRoZSBzYW1lIG5l
-dA0KPj4+PiAgIFRoaXMgcGF0Y2ggYWRkcyBhIGZsYWcgdG8gYWxsb3cgbXVsdGlwYXRoaW5nIHdp
-dGhpbiB0aGUgb3JpZ2lhbCBuZXQuDQo+Pj4+ICAgSSBkb24ndCB1bmRlcnN0YW5kIHdoeSB0aGlz
-IHdhcyBub3QgYWxsb3dlZCwgc28gSSBleHBlY3QgYSBkaWZmZXJlbnQNCj4+Pj4gICBzb2x1dGlv
-biBmb3IgdGhpcyBpc3N1ZS4NCj4+Pj4gDQo+Pj4+IA0KPj4+PiBDb21tZW50cyBwbGVhc2UuDQo+
-Pj4+IA0KPj4+PiBUaGFua3MNCj4+Pj4gDQo+Pj4+IC0tPkFuZHkNCj4+Pj4gDQo+Pj4+IEFuZHkg
-QWRhbXNvbiAoNik6DQo+Pj4+IFNVTlJQQyBmaXggcnBjX2NsbnRfYWRkX3hwcnQgc2V0dXAgcmV0
-dXJuDQo+Pj4+IFNVTlJQQyBmaXggcnBjX2NsbnRfeHBydF9pdGVyX2luaXQgaW5maW5pdGUgbG9v
-cA0KPj4+PiBTVU5SUEM6IGFsbG93IHJwY194cHJ0X3N3aXRjaF9hZGRfeHBydCB0byBhZGQgeHBy
-dHMgb24gdGhlIHNhbWUgbmV0DQo+Pj4+IE5GUyBzZXNzaW9uIHRydW5raW5nIHN1cHBvcnQ6IGFk
-ZCB0cnVuayB4cHJ0IHRvIG5mczQuMSBtb3VudA0KPj4+PiBORlMgYWRkIGNhbGxiYWNrX29wcyB0
-byBuZnM0X3Byb2NfYmluZF9jb25uX3RvX3Nlc3Npb25fY2FsbGJhY2sNCj4+Pj4gTkZTIHNjaGVk
-dWxlIGJpbmRfY29ubl90b19zZXNzaW9uIGZvciBuZXcgTkZTdjQuMSB0cmFuc3BvcnQNCj4+Pj4g
-DQo+Pj4+IGZzL25mcy9jbGllbnQuYyAgICAgICAgICAgICAgICAgICAgICB8ICAyICsrDQo+Pj4+
-IGZzL25mcy9uZnM0Y2xpZW50LmMgICAgICAgICAgICAgICAgICB8IDI5ICsrKysrKysrKysrKysr
-KysrKysrKysrKysrKy0tDQo+Pj4+IGZzL25mcy9uZnM0cHJvYy5jICAgICAgICAgICAgICAgICAg
-ICB8IDEwICsrKysrKysrKysNCj4+Pj4gaW5jbHVkZS9saW51eC9uZnNfZnNfc2IuaCAgICAgICAg
-ICAgIHwgIDEgKw0KPj4+PiBpbmNsdWRlL2xpbnV4L3N1bnJwYy9jbG50LmggICAgICAgICAgfCAg
-MSArDQo+Pj4+IGluY2x1ZGUvbGludXgvc3VucnBjL3hwcnRtdWx0aXBhdGguaCB8ICA2ICsrKysr
-LQ0KPj4+PiBuZXQvc3VucnBjL2NsbnQuYyAgICAgICAgICAgICAgICAgICAgfCAyMCArKysrKysr
-KysrKysrLS0tLS0tLQ0KPj4+PiBuZXQvc3VucnBjL3hwcnRtdWx0aXBhdGguYyAgICAgICAgICAg
-fCAzNQ0KPj4+PiArKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKystLQ0KPj4+PiA4IGZp
-bGVzIGNoYW5nZWQsIDkyIGluc2VydGlvbnMoKyksIDEyIGRlbGV0aW9ucygtKQ0KPj4+PiANCj4+
-Pj4gLS0NCj4+Pj4gMS44LjMuMQ0KPj4+PiANCj4+Pj4gLS0NCj4+Pj4gVG8gdW5zdWJzY3JpYmUg
-ZnJvbSB0aGlzIGxpc3Q6IHNlbmQgdGhlIGxpbmUgInVuc3Vic2NyaWJlIGxpbnV4LW5mcyIgaW4N
-Cj4+Pj4gdGhlIGJvZHkgb2YgYSBtZXNzYWdlIHRvIG1ham9yZG9tb0B4eHh4eHh4eHh4eHh4eHgN
-Cj4+Pj4gTW9yZSBtYWpvcmRvbW8gaW5mbyBhdCAgaHR0cDovL3ZnZXIua2VybmVsLm9yZy9tYWpv
-cmRvbW8taW5mby5odG1sDQo+Pj4+IA0KPj4+IA0KPj4+IFRyaWVkIGFuZCBhcHByb3ZlZCENCj4+
-IA0KPj4gVGhhbmtzIGZvciB0ZXN0aW5nLiBBcyBUcm9uZCBwb2ludGVkIG91dCwgdGhlIGNvcnJl
-Y3Qgd2F5IHRvIGluZGljYXRlIG11bHRpcGxlIGhvc3RuYW1lcyBpcyBvbiB0aGUgbW91bnQgY29t
-bWFuZCBsaW5lDQo+PiANCj4+IG1vdW50IC1vIG1pbm9ydmVyc2lvbj0xIGhvc3QxLGhvc3QyLOKA
-pixob3N0bjovPGV4cG9ydD4gIC88bW50ZGlyPg0KPj4gDQo+PiBJIGhhdmUgYSBuZXcgcGF0Y2gg
-c2V0IHRoYXQgaXMgd29ya2luZyBhbmQgdGhhdCBJIGFtIHRlc3RpbmcgYW5kIGNsZWFuaW5nIHVw
-IHRoYXQgYWRkcyBtdWx0aXBsZSBob3N0bmFtZSBzdXBwb3J0IHRvIG1vdW50Lm5mcyBmb3IgTkZT
-djQuMSwgYW5kIHRoYXQga2lja3Mgb2ZmIGFuIEVYQ0hBTkdFX0lEIGZvciBlYWNoIG11bHRpLWhv
-c3QgYWRkcmVzcy4gSWYgdGhlIEVYQ0hBTkdFX0lEIHN1Y2NlZWRzLCBhIEJJTkRfQ09OTl9UT19T
-RVNTSU9OIGlzIGFsc28gY2FsbGVkLg0KPiANCj4gSSdtIHN1cnByaXNlZCB0aGVyZSdzICBCSU5E
-X0NPTk5fVE9fU0VTU0lPTiBpbiB0aGUgY2FzZSBNYXJ0aW4ncw0KPiB0ZXN0aW5nLiAgSSBkaWRu
-J3QgdGhpbmsgaXQgd2FzIG5lY2Vzc2FyeSB1bmxlc3MgeW91IHdlcmUgdXNpbmcNCj4ga2VyYmVy
-b3MuICBNYXliZSBJJ20gZm9yZ2V0dGluZyBzb21lIHN1YnRsZXR54oCmLg0KDQpUaGUgZmlyc3Qg
-aG9zdCAoaG9zdDEgYWJvdmUpIGlzIHRoZSBtb3VudCBob3N0LiBFYWNoIGFkZGl0aW9uYWwgaG9z
-dCBpcyBhIG5ldyBjb25uZWN0aW9uLiBBbiBFWENIQU5HRV9JRCBpcyBzZW50IG9uIHRoZSBuZXcg
-Y29ubmVjdGlvbiwgYW5kIHRoZSByZXN1bHRhbnQgc2VydmVyc2NvcGUsIHNlcnZlciBvd25lciwg
-Y2xpZW50aWQsIGV0YyBmcm9tIHRoZSBuZXcgY29ubmVjdGlvbiBFWENIQU5HRV9JRCByZXBseSBp
-cyBjb21wYXJlZCB0byB0aGUgbW91bnQgZXhjaGFuZ2VfaWQgYXJncyBzdG9yZWQgaW4gdGhlIG5m
-c19jbGllbnQgc3RydWN0LiBJZiBpdCBwYXNzZXMgdGhlIHNlc3Npb24gdHJ1bmtpbmcgcmVxdWly
-ZW1lbnRzLCB0aGVuIHRoZSBjb25uZWN0aW9uIG5lZWRzIHRvIGJlIGJvdW5kIHRvIHRoZSBzZXNz
-aW9uIHRvIGVuYWJsZSBzZXNzaW9uIHRydW5raW5nLg0KDQrigJQ+QW5keQ0KDQpSRkM1NjYxIDIu
-MTAuNQ0K4oCm4oCmDQogU2Vzc2lvbiBUcnVua2luZy4gIElmIHRoZSBlaWFfY2xpZW50b3duZXIg
-YXJndW1lbnQgaXMgdGhlIHNhbWUgaW4gdHdvDQogICAgICBkaWZmZXJlbnQgRVhDSEFOR0VfSUQg
-cmVxdWVzdHMsIGFuZCB0aGUgZWlyX2NsaWVudGlkLA0KICAgICAgZWlyX3NlcnZlcl9vd25lci5z
-b19tYWpvcl9pZCwgZWlyX3NlcnZlcl9vd25lci5zb19taW5vcl9pZCwgYW5kDQogICAgICBlaXJf
-c2VydmVyX3Njb3BlIHJlc3VsdHMgbWF0Y2ggaW4gYm90aCBFWENIQU5HRV9JRCByZXN1bHRzLCB0
-aGVuDQogICAgICB0aGUgY2xpZW50IGlzIHBlcm1pdHRlZCB0byBwZXJmb3JtIHNlc3Npb24gdHJ1
-bmtpbmcuICBJZiB0aGUNCiAgICAgIGNsaWVudCBoYXMgbm8gc2Vzc2lvbiBtYXBwaW5nIHRvIHRo
-ZSB0dXBsZSBvZiBlaXJfY2xpZW50aWQsDQogICAgICBlaXJfc2VydmVyX293bmVyLnNvX21ham9y
-X2lkLCBlaXJfc2VydmVyX3Njb3BlLCBhbmQNCiAgICAgIGVpcl9zZXJ2ZXJfb3duZXIuc29fbWlu
-b3JfaWQsIHRoZW4gaXQgY3JlYXRlcyB0aGUgc2Vzc2lvbiB2aWEgYQ0KICAgICAgQ1JFQVRFX1NF
-U1NJT04gb3BlcmF0aW9uIG92ZXIgb25lIG9mIHRoZSBjb25uZWN0aW9ucywgd2hpY2gNCiAgICAg
-IGFzc29jaWF0ZXMgdGhlIGNvbm5lY3Rpb24gdG8gdGhlIHNlc3Npb24uICBJZiB0aGVyZSBpcyBh
-IHNlc3Npb24NCiAgICAgIGZvciB0aGUgdHVwbGUsIHRoZSBjbGllbnQgY2FuIHNlbmQgQklORF9D
-T05OX1RPX1NFU1NJT04gdG8NCiAgICAgIGFzc29jaWF0ZSB0aGUgY29ubmVjdGlvbiB0byB0aGUg
-c2Vzc2lvbi4NCg0KICAgICAgT2YgY291cnNlLCBpZiB0aGUgY2xpZW50IGRvZXMgbm90IGRlc2ly
-ZSB0byB1c2Ugc2Vzc2lvbiB0cnVua2luZywNCiAgICAgIGl0IGlzIG5vdCByZXF1aXJlZCB0byBk
-byBzby4gIEl0IGNhbiBpbnZva2UgQ1JFQVRFX1NFU1NJT04gb24gdGhlDQogICAgICBjb25uZWN0
-aW9uLiAgVGhpcyB3aWxsIHJlc3VsdCBpbiBjbGllbnQgSUQgdHJ1bmtpbmcgYXMgZGVzY3JpYmVk
-DQogICAgICBiZWxvdy4gIEl0IGNhbiBhbHNvIGRlY2lkZSB0byBkcm9wIHRoZSBjb25uZWN0aW9u
-IGlmIGl0IGRvZXMgbm90DQogICAgICBjaG9vc2UgdG8gdXNlIHRydW5raW5nLg0KPiANCj4gLS1i
-Lg0KPiANCj4+IA0KPj4g4oCUPkFuZHkNCj4+IA0KPj4gDQo+Pj4gDQo+Pj4gSGVyZSBpcyB0aGUg
-c3RlcHMgdG8gbWFrZSBpdCB3b3JrcyBmb3IgdGhvc2Ugd2hvIHdhbnRzIHRvIHRyeSBpdC4gOg0K
-Pj4+IA0KPj4+IFRlc3QgY29uZmlndXJhdGlvbiA6DQo+Pj4gDQo+Pj4gUnVubmluZyBTZXJ2ZXIg
-S2VybmVsIFZlcnNpb24gOiAzLjIuMA0KPj4+IFJ1bm5pbmcgQ2xpZW50IEtlcm5lbCBWZXJzaW9u
-IDogMy4yLjANCj4+PiBQYXRjaCBkZXBsb3ltZW50IENsaWVudCBLZXJuZWwgVmVyc2lvbiA6IDQu
-NS4wIHJjNCsNCj4+PiBEZWJpYW4gNy45DQo+Pj4gR05TMyAxLjQuMQ0KPj4+IFdpcmVzaGFyayAx
-LjEyLjMNCj4+PiBWaXJ0dWFsQm94IDUuMC4xNA0KPj4+IENsaWVudCBhbmQgU2VydmVyIGFyZSBW
-aXJ0dWFsYm94IFZNJ3MgY29uZWN0ZWQgZWFjaCBvdGhlciB3aXRoIGEgR05TMyBTd2l0Y2gNCj4+
-PiANCj4+PiBOTyBBVVRIRU5USUZJQ0FUSU9OIC0gdGhpcyBpcyBvbmx5IGZvciB0ZXN0IHB1cnBv
-c2UNCj4+PiANCj4+PiArLS0tLS0tLS0tLSsgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg
-ICAgICAgICAgICAgICAgKy0tLS0tLS0tLS0rDQo+Pj4gfCAgICAgICAgICB8IDE5Mi4xNjguMS4y
-IC8yNCArLS0tLS0tLS0tLSsgMTkyLjE2OC4xLjMgLzI0IHwgICAgICAgICAgfA0KPj4+IHwgICAg
-ICAgICAgKy0tLS0tLS0tLS0tLS0tLS0tKyAgICAgICAgICArLS0tLS0tLS0tLS0tLS0tLS0rICAg
-ICAgICAgIHwNCj4+PiB8ICBDbGllbnQgIHwgICAgICAgICAgICAgICAgIHwgIFN3aXRjaCAgfCAg
-ICAgICAgICAgICAgICAgfCAgU2VydmVyICB8DQo+Pj4gfCAgICAgICAgICArLS0tLS0tLS0tLS0t
-LS0tLS0rICAgICAgICAgICstLS0tLS0tLS0tLS0tLS0tLSsgICAgICAgICAgfA0KPj4+IHwgICAg
-ICAgICAgfCAxOTIuMTY4LjIuMjAvMjQgKy0tLS0tLS0tLS0rIDE5Mi4xNjguMi4zMCAvMjR8ICAg
-ICAgICAgIHwNCj4+PiArLS0tLS0tLS0tLSsgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg
-ICAgICAgICAgICAgICAgKy0tLS0tLS0tLS0rDQo+Pj4gDQo+Pj4gDQo+Pj4gU3RlcHMgOg0KPj4+
-IC0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
-LS0tLS0tLS0tLS0NCj4+PiBTZXJ2ZXIgTkZTNC4xIGNvbmZpZ3VyYXRpb24gOg0KPj4+IA0KPj4+
-IE1ha2Ugc3VyZSB5b3UgaGF2ZSBhbiBpbnRlcm5ldCBjb25uZWN0aW9uLg0KPj4+IA0KPj4+IENv
-bW1hbmRzIGFzc3VtaW5nIHlvdSBhcmUgcm9vdDoNCj4+PiANCj4+PiBhcHQtZ2V0IHVwZGF0ZSAm
-JiBhcHQtZ2V0IHVwZ3JhZGUNCj4+PiBhcHQtZ2V0IGluc3RhbGwgbmZzLWtlcm5lbC1zZXJ2ZXIN
-Cj4+PiBta2RpciBob21lL3Rlc3RuZnMNCj4+PiBjaG1vZCA3NzcgaG9tZS90ZXN0bmZzDQo+Pj4g
-bmFubyBldGMvZXhwb3J0cw0KPj4+ICNBZGQgdGhlc2UgbGluZSBpbiB0aGUgImV4cG9ydHMiIGZp
-bGUgdG8gc2V0IHRoZSAidGVzdG5mcyIgZm9sZGVyIGF2YWlsYWJsZQ0KPj4+ICAgL2hvbWUvdGVz
-dG5mcyAgICAxOTIuMTY4LjEuMihydyxzeW5jKQ0KPj4+ICAgL2hvbWUvdGVzdG5mcyAgICAxOTIu
-MTY4LjIuMjAocncsc3luYykNCj4+PiAjZW5kDQo+Pj4gDQo+Pj4gI0VuYWJsZSBORlN2NC4xDQo+
-Pj4gZXRjL2luaXQuZC9uZnMta2VybmVsLXNlcnZlciBzdG9wDQo+Pj4gbmFubyBwcm9jL2ZzL25m
-c2QvdmVyc2lvbnMNCj4+PiAjc2V0ICsyICszICs0IC00LjEgdG8gKzIgKzMgKzQgKzQuMQ0KPj4+
-IGV0Yy9pbml0LmQvbmZzLWtlcm5lbC1zZXJ2ZXIgc3RhcnQNCj4+PiANCj4+PiAjc2VydmVyIHJl
-YWR5DQo+Pj4gI2VuZCBzZXJ2ZXIgY29uZmlndXJhdGlvbg0KPj4+IC0tLS0tLS0tLS0tLS0tLS0t
-LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0NCj4+PiBD
-bGllbnQgTkZTNC4xIGNvbmZpZ3VyYXRpb24gOg0KPj4+IA0KPj4+IENvbW1hbmRzIGFzc3VtaW5n
-IHlvdSBhcmUgcm9vdDoNCj4+PiAjLS0tLS0tLS0tLS0tUHJlcGFyZSBuZXcgS2VybmVsIHdpdGgg
-bmV3IHBhdGNoZXMtLS0tLS0tLS0tDQo+Pj4gYXB0LWdldCBpbnN0YWxsIGxpYm5jdXJzZXM1LWRl
-diBnY2MgbWFrZSBnaXQgZXh1YmVyYW50LWN0YWdzIGJjIGxpYnNzbC1kZXYNCj4+PiBta2RpciBr
-ZXJuZWxzDQo+Pj4gY2Qga2VybmVscw0KPj4+IGdpdCBjbG9uZSBnaXQ6Ly9naXQua2VybmVsLm9y
-Zy9wdWIvc2NtL2xpbnV4L2tlcm5lbC9naXQvc3RhYmxlL2xpbnV4LXN0YWJsZS5naXQNCj4+PiAj
-aXQgdGFrZXMgYSB3aGlsZS4uLg0KPj4+IGNkIGxpbnV4LXN0YWJsZQ0KPj4+IGNwIC9ib290L2Nv
-bmZpZy1gdW5hbWUgLXJgKiAuY29uZmlnDQo+Pj4gI3RoZSAtajQgc3RhbmQgZm9yIDQgam9icyBy
-dW5uaW5nIGF0IHRoZSBzYW1lIHRpbWUsIGlkZWFsIGZvcg0KPj4+IG11bHRpLWNvcmUgcHJvY2Vz
-c29yLg0KPj4+IG1ha2UgLWo0DQo+Pj4gI0l0IHRha2VzIGEgd2hpbGUNCj4+PiANCj4+PiAjLS0t
-LS0tLS0tLS0tLS0tLS0tLS1JbnN0YWxsIHRoZSBwYXRjaGVzLS0tLS0tLS0tLS0tLS0tLS0tDQo+
-Pj4gYXB0LWdldCBpbnN0YWxsIHBhdGNoDQo+Pj4gY2QgLw0KPj4+IG1rZGlyIHBhdGNoDQo+Pj4g
-Y2QgcGF0Y2gNCj4+PiBta2RpciBycGNtdWx0aXBhdGhwYXRjaA0KPj4+IG1rZGlyIHNlc3Npb250
-cnVua2luZ3BhdGNoDQo+Pj4gI0dldCB0aGUgVHJvbmQgTXlrbGVidXN0J3MgcGF0Y2ggOg0KPj4+
-IGh0dHA6Ly93d3cuc3Bpbmljcy5uZXQvbGlzdHMvbGludXgtbmZzL21zZzU2MzY1Lmh0bWwNCj4+
-PiBuYW5vIHJwY211bHRpcGF0aHBhdGNoL3BhdGNoMS5wYXRjaA0KPj4+IC4NCj4+PiAuDQo+Pj4g
-Lg0KPj4+IG5hbm8gcnBjbXVsdGlwYXRocGF0Y2gvcGF0Y2gxMy5wYXRjaA0KPj4+ICNHZXQgdGhl
-IEFuZHkgQWRhbXNvbidzIHBhdGNoZXMgOg0KPj4+IGh0dHA6Ly93d3cuc3Bpbmljcy5uZXQvbGlz
-dHMvbGludXgtbmZzL21zZzU2NDM3Lmh0bWwNCj4+PiBuYW5vIHNlc3Npb250cnVua2luZ3BhdGNo
-L3BhdGNoMS5wYXRjaA0KPj4+IC4NCj4+PiAuDQo+Pj4gLg0KPj4+IG5hbm8gc2Vzc2lvbnRydW5r
-aW5ncGF0Y2gvcGF0Y2g2LnBhdGNoDQo+Pj4gDQo+Pj4gDQo+Pj4gY2QgLw0KPj4+IA0KPj4+ICNB
-cHBseSBycGMgbXVsdGlwYXRoIHBhdGNoDQo+Pj4gcGF0Y2ggLXAxIDwgcnBjbXVsdGlwYXRocGF0
-Y2gvcGF0Y2gxLnBhdGNoDQo+Pj4gcGF0Y2ggLXAxIDwgcnBjbXVsdGlwYXRocGF0Y2gvcGF0Y2gy
-LnBhdGNoDQo+Pj4gcGF0Y2ggLXAxIDwgcnBjbXVsdGlwYXRocGF0Y2gvcGF0Y2gzLnBhdGNoDQo+
-Pj4gcGF0Y2ggLXAxIDwgcnBjbXVsdGlwYXRocGF0Y2gvcGF0Y2g0LnBhdGNoDQo+Pj4gcGF0Y2gg
-LXAxIDwgcnBjbXVsdGlwYXRocGF0Y2gvcGF0Y2g1LnBhdGNoDQo+Pj4gcGF0Y2ggLXAxIDwgcnBj
-bXVsdGlwYXRocGF0Y2gvcGF0Y2g2LnBhdGNoDQo+Pj4gcGF0Y2ggLXAxIDwgcnBjbXVsdGlwYXRo
-cGF0Y2gvcGF0Y2g3LnBhdGNoDQo+Pj4gcGF0Y2ggLXAxIDwgcnBjbXVsdGlwYXRocGF0Y2gvcGF0
-Y2g4LnBhdGNoDQo+Pj4gcGF0Y2ggLXAxIDwgcnBjbXVsdGlwYXRocGF0Y2gvcGF0Y2g5LnBhdGNo
-DQo+Pj4gcGF0Y2ggLXAxIDwgcnBjbXVsdGlwYXRocGF0Y2gvcGF0Y2gxMC5wYXRjaA0KPj4+IHBh
-dGNoIC1wMSA8IHJwY211bHRpcGF0aHBhdGNoL3BhdGNoMTEucGF0Y2gNCj4+PiBwYXRjaCAtcDEg
-PCBycGNtdWx0aXBhdGhwYXRjaC9wYXRjaDEyLnBhdGNoDQo+Pj4gcGF0Y2ggLXAxIDwgcnBjbXVs
-dGlwYXRocGF0Y2gvcGF0Y2gxMy5wYXRjaA0KPj4+IA0KPj4+ICNBcHBseSBjbGllbnQgc2Vzc2lv
-biB0cnVua2luZyBwYXRjaGVzDQo+Pj4gcGF0Y2ggLXAxIDwgc2Vzc2lvbnRydW5raW5ncGF0Y2gv
-cGF0Y2gxLnBhdGNoDQo+Pj4gcGF0Y2ggLXAxIDwgc2Vzc2lvbnRydW5raW5ncGF0Y2gvcGF0Y2gy
-LnBhdGNoDQo+Pj4gcGF0Y2ggLXAxIDwgc2Vzc2lvbnRydW5raW5ncGF0Y2gvcGF0Y2gzLnBhdGNo
-DQo+Pj4gcGF0Y2ggLXAxIDwgc2Vzc2lvbnRydW5raW5ncGF0Y2gvcGF0Y2g0LnBhdGNoDQo+Pj4g
-cGF0Y2ggLXAxIDwgc2Vzc2lvbnRydW5raW5ncGF0Y2gvcGF0Y2g1LnBhdGNoDQo+Pj4gcGF0Y2gg
-LXAxIDwgc2Vzc2lvbnRydW5raW5ncGF0Y2gvcGF0Y2g2LnBhdGNoDQo+Pj4gDQo+Pj4gbWFrZSAt
-ajQNCj4+PiANCj4+PiAjSSBnb3QgYSBjb21waWxhdGlvbiBlcnJvciBpbiB0aGUgIm5ldC9zdW5y
-cGMveHBydG11bHRpcGF0aC5jIiBsaW5lIDIyMA0KPj4+ICNhdCBXUklURV9PTkNFKCZ4cGktPnhw
-aV9jdXJzb3IsTlVMTCk7DQo+Pj4gI2Vycm9yOiBsdmFsdWUgcmVxdWlyZWQgYXMgdW5hcnkg4oCY
-JuKAmSBvcGVyYW5kDQo+Pj4gI0kgcmVtb3ZlIHRoZSAiJiINCj4+PiANCj4+PiBtYWtlIC1qNCBN
-PW5ldC9zdW5ycGMNCj4+PiANCj4+PiBtYWtlIG1vZHVsZXNfaW5zdGFsbCBpbnN0YWxsDQo+Pj4g
-I3JlYm9vdCBhbmQgYm9vdCBvbiB0aGUgbmV3IGtlcm5lbCAod2l0aCBHUlVCKQ0KPj4+IA0KPj4+
-IA0KPj4+ICMtLS0tLS0tLS0tLS0tLS0tLS0tLU1vdW50LS0tLS0tLS0tLS0tLS0tLS0tLS0NCj4+
-PiBta2RpciB0ZXN0bW91bnQNCj4+PiBtb3VudCAtdG5mczQgLW9taW5vcnZlcnNpb249MSAxOTIu
-MTY4LjEuMzovaG9tZS90ZXN0bmZzIHRlc3Rtb3VudA0KPj4+IG1vdW50IC10bmZzNCAtb21pbm9y
-dmVyc2lvbj0xIDE5Mi4xNjguMi4zMDovaG9tZS90ZXN0bmZzIHRlc3Rtb3VudA0KPj4+IA0KPj4+
-ICNlbmQgY2xpZW50IGNvbmZpZ3VyYXRpb24NCj4+PiANCj4+PiBUaGUgcm91bmQtcm9iaW4gaW1w
-bGVtZW50YXRpb24gZGlzdHJpYnV0ZSBjb3JyZWN0bHkgdGhlIG9wZXJhdGlvbnMNCj4+PiBiZXR3
-ZWVuIHRoZSB0d28gaW50ZXJmYWNlcyBhbmQgdGhlIEJJTkRfQ09OTl9UT19TRVNTSU9OIHNlZW1z
-IHRvIHdvcmsuDQo+Pj4gDQo+Pj4gDQo+Pj4gSWYgeW91IGN1dCBhIGNhYmxlLCB0aGUgY2xpZW50
-IGNvbnRpbnVlIHRvIHNlbmQgbmZzIHBhY2tldHMgb24gaXQsIHNvDQo+Pj4geW91IGxvb3NlIG9u
-ZSBvcGVyYXRpb24gb24gdHdvLg0KPj4+IA0KPj4+IA0KPj4+IA0KPj4+IA0KPj4+IA0KPj4+IFRo
-YW5rcyB0byBodHRwOi8va2VybmVsbmV3Ymllcy5vcmcvLg0KPj4+IFRoYW5rcyB0byBUcm9uZCBN
-eWtsZWJ1c3QgYW5kIEFuZHkgQWRhbXNvbiBmb3IgdGhlIHBhdGNoZXMNCj4+IA0KPj4gTj8/Pz8/
-cj8/eT8/Pz9iP1g/P8endj9ePyneunsubj8rPz8/P3s/Pz8iPz9ebj9yPz8/ej8aPz9oPz8/Pz8m
-Pz8eP0c/Pz9oPwMoP+majj/domoiPz8aPxttPz8/Pz8/ej/elj8/P2Y/Pz9oPz8/fj9tDQoNCg==
+On Wed, Feb 17, 2016 at 05:49:39PM +0000, Adamson, Andy wrote:
+> On Feb 17, 2016, at 11:34 AM, J. Bruce Fields <bfields@fieldses.org> wrote:
+> > I'm surprised there's  BIND_CONN_TO_SESSION in the case Martin's
+> > testing.  I didn't think it was necessary unless you were using
+> > kerberos.  Maybe I'm forgetting some subtlety….
+> 
+> The first host (host1 above) is the mount host. Each additional host is a new connection. An EXCHANGE_ID is sent on the new connection, and the resultant serverscope, server owner, clientid, etc from the new connection EXCHANGE_ID reply is compared to the mount exchange_id args stored in the nfs_client struct. If it passes the session trunking requirements, then the connection needs to be bound to the session to enable session trunking.
+
+That all makes sense to me, but:
+
+	"If, when the client ID was created, the client opted for
+	SP4_NONE state protection, the client is not required to use
+	BIND_CONN_TO_SESSION to associate the connection with the
+	session, unless the client wishes to associate the connection
+	with the backchannel.  When SP4_NONE protection is used, simply
+	sending a COMPOUND request with a SEQUENCE operation is
+	sufficient to associate the connection with the session
+	specified in SEQUENCE."
+
+Well, but maybe that's academic, there's probably no harm in sending the
+BIND_CONN_TO_SESSION.
+
+--b.
+
+> 
+> —>Andy
+> 
+> RFC5661 2.10.5
+> ……
+>  Session Trunking.  If the eia_clientowner argument is the same in two
+>       different EXCHANGE_ID requests, and the eir_clientid,
+>       eir_server_owner.so_major_id, eir_server_owner.so_minor_id, and
+>       eir_server_scope results match in both EXCHANGE_ID results, then
+>       the client is permitted to perform session trunking.  If the
+>       client has no session mapping to the tuple of eir_clientid,
+>       eir_server_owner.so_major_id, eir_server_scope, and
+>       eir_server_owner.so_minor_id, then it creates the session via a
+>       CREATE_SESSION operation over one of the connections, which
+>       associates the connection to the session.  If there is a session
+>       for the tuple, the client can send BIND_CONN_TO_SESSION to
+>       associate the connection to the session.
+> 
+>       Of course, if the client does not desire to use session trunking,
+>       it is not required to do so.  It can invoke CREATE_SESSION on the
+>       connection.  This will result in client ID trunking as described
+>       below.  It can also decide to drop the connection if it does not
+>       choose to use trunking.
+> > 
+> > --b.
+> > 
+> >> 
+> >> —>Andy
+> >> 
+> >> 
+> >>> 
+> >>> Here is the steps to make it works for those who wants to try it. :
+> >>> 
+> >>> Test configuration :
+> >>> 
+> >>> Running Server Kernel Version : 3.2.0
+> >>> Running Client Kernel Version : 3.2.0
+> >>> Patch deployment Client Kernel Version : 4.5.0 rc4+
+> >>> Debian 7.9
+> >>> GNS3 1.4.1
+> >>> Wireshark 1.12.3
+> >>> VirtualBox 5.0.14
+> >>> Client and Server are Virtualbox VM's conected each other with a GNS3 Switch
+> >>> 
+> >>> NO AUTHENTIFICATION - this is only for test purpose
+> >>> 
+> >>> +----------+                                              +----------+
+> >>> |          | 192.168.1.2 /24 +----------+ 192.168.1.3 /24 |          |
+> >>> |          +-----------------+          +-----------------+          |
+> >>> |  Client  |                 |  Switch  |                 |  Server  |
+> >>> |          +-----------------+          +-----------------+          |
+> >>> |          | 192.168.2.20/24 +----------+ 192.168.2.30 /24|          |
+> >>> +----------+                                              +----------+
+> >>> 
+> >>> 
+> >>> Steps :
+> >>> -------------------------------------------------------------------
+> >>> Server NFS4.1 configuration :
+> >>> 
+> >>> Make sure you have an internet connection.
+> >>> 
+> >>> Commands assuming you are root:
+> >>> 
+> >>> apt-get update && apt-get upgrade
+> >>> apt-get install nfs-kernel-server
+> >>> mkdir home/testnfs
+> >>> chmod 777 home/testnfs
+> >>> nano etc/exports
+> >>> #Add these line in the "exports" file to set the "testnfs" folder available
+> >>>   /home/testnfs    192.168.1.2(rw,sync)
+> >>>   /home/testnfs    192.168.2.20(rw,sync)
+> >>> #end
+> >>> 
+> >>> #Enable NFSv4.1
+> >>> etc/init.d/nfs-kernel-server stop
+> >>> nano proc/fs/nfsd/versions
+> >>> #set +2 +3 +4 -4.1 to +2 +3 +4 +4.1
+> >>> etc/init.d/nfs-kernel-server start
+> >>> 
+> >>> #server ready
+> >>> #end server configuration
+> >>> -------------------------------------------------------------------
+> >>> Client NFS4.1 configuration :
+> >>> 
+> >>> Commands assuming you are root:
+> >>> #------------Prepare new Kernel with new patches----------
+> >>> apt-get install libncurses5-dev gcc make git exuberant-ctags bc libssl-dev
+> >>> mkdir kernels
+> >>> cd kernels
+> >>> git clone git://git.kernel.org/pub/scm/linux/kernel/git/stable/linux-stable.git
+> >>> #it takes a while...
+> >>> cd linux-stable
+> >>> cp /boot/config-`uname -r`* .config
+> >>> #the -j4 stand for 4 jobs running at the same time, ideal for
+> >>> multi-core processor.
+> >>> make -j4
+> >>> #It takes a while
+> >>> 
+> >>> #--------------------Install the patches------------------
+> >>> apt-get install patch
+> >>> cd /
+> >>> mkdir patch
+> >>> cd patch
+> >>> mkdir rpcmultipathpatch
+> >>> mkdir sessiontrunkingpatch
+> >>> #Get the Trond Myklebust's patch :
+> >>> http://www.spinics.net/lists/linux-nfs/msg56365.html
+> >>> nano rpcmultipathpatch/patch1.patch
+> >>> .
+> >>> .
+> >>> .
+> >>> nano rpcmultipathpatch/patch13.patch
+> >>> #Get the Andy Adamson's patches :
+> >>> http://www.spinics.net/lists/linux-nfs/msg56437.html
+> >>> nano sessiontrunkingpatch/patch1.patch
+> >>> .
+> >>> .
+> >>> .
+> >>> nano sessiontrunkingpatch/patch6.patch
+> >>> 
+> >>> 
+> >>> cd /
+> >>> 
+> >>> #Apply rpc multipath patch
+> >>> patch -p1 < rpcmultipathpatch/patch1.patch
+> >>> patch -p1 < rpcmultipathpatch/patch2.patch
+> >>> patch -p1 < rpcmultipathpatch/patch3.patch
+> >>> patch -p1 < rpcmultipathpatch/patch4.patch
+> >>> patch -p1 < rpcmultipathpatch/patch5.patch
+> >>> patch -p1 < rpcmultipathpatch/patch6.patch
+> >>> patch -p1 < rpcmultipathpatch/patch7.patch
+> >>> patch -p1 < rpcmultipathpatch/patch8.patch
+> >>> patch -p1 < rpcmultipathpatch/patch9.patch
+> >>> patch -p1 < rpcmultipathpatch/patch10.patch
+> >>> patch -p1 < rpcmultipathpatch/patch11.patch
+> >>> patch -p1 < rpcmultipathpatch/patch12.patch
+> >>> patch -p1 < rpcmultipathpatch/patch13.patch
+> >>> 
+> >>> #Apply client session trunking patches
+> >>> patch -p1 < sessiontrunkingpatch/patch1.patch
+> >>> patch -p1 < sessiontrunkingpatch/patch2.patch
+> >>> patch -p1 < sessiontrunkingpatch/patch3.patch
+> >>> patch -p1 < sessiontrunkingpatch/patch4.patch
+> >>> patch -p1 < sessiontrunkingpatch/patch5.patch
+> >>> patch -p1 < sessiontrunkingpatch/patch6.patch
+> >>> 
+> >>> make -j4
+> >>> 
+> >>> #I got a compilation error in the "net/sunrpc/xprtmultipath.c" line 220
+> >>> #at WRITE_ONCE(&xpi->xpi_cursor,NULL);
+> >>> #error: lvalue required as unary ‘&’ operand
+> >>> #I remove the "&"
+> >>> 
+> >>> make -j4 M=net/sunrpc
+> >>> 
+> >>> make modules_install install
+> >>> #reboot and boot on the new kernel (with GRUB)
+> >>> 
+> >>> 
+> >>> #--------------------Mount--------------------
+> >>> mkdir testmount
+> >>> mount -tnfs4 -ominorversion=1 192.168.1.3:/home/testnfs testmount
+> >>> mount -tnfs4 -ominorversion=1 192.168.2.30:/home/testnfs testmount
+> >>> 
+> >>> #end client configuration
+> >>> 
+> >>> The round-robin implementation distribute correctly the operations
+> >>> between the two interfaces and the BIND_CONN_TO_SESSION seems to work.
+> >>> 
+> >>> 
+> >>> If you cut a cable, the client continue to send nfs packets on it, so
+> >>> you loose one operation on two.
+> >>> 
+> >>> 
+> >>> 
+> >>> 
+> >>> 
+> >>> Thanks to http://kernelnewbies.org/.
+> >>> Thanks to Trond Myklebust and Andy Adamson for the patches
+> >> 
+> >> N?????r??y????b?X??ǧv?^?)޺{.n?+????{???"??^n?r???z???h?????&???G???h?(?階?ݢj"???m??????z?ޖ???f???h???~?m
+> 
