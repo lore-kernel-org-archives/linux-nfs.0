@@ -1,49 +1,87 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx144.netapp.com ([216.240.21.25]:22598 "EHLO mx144.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1423992AbcBQWfo (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 17 Feb 2016 17:35:44 -0500
-From: "Adamson, Andy" <William.Adamson@netapp.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: Chuck Lever <chuck.lever@oracle.com>,
-        "Adamson, Andy" <William.Adamson@netapp.com>,
+Received: from userp1040.oracle.com ([156.151.31.81]:43636 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1424233AbcBQWwW convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 17 Feb 2016 17:52:22 -0500
+Content-Type: text/plain; charset=utf-8
+Mime-Version: 1.0 (Mac OS X Mail 9.2 \(3112\))
+Subject: Re: "Re: [PATCH RFC Version 1 0/6] Request for Comment: NFS4.1 Session Trunking"
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <3B48A59F-638A-45C9-B2E4-2D65C00DE639@netapp.com>
+Date: Wed, 17 Feb 2016 17:52:03 -0500
+Cc: "J. Bruce Fields" <bfields@fieldses.org>,
         Martin Houry <martinhoury@gmail.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
         Trond Myklebust <trond.myklebust@primarydata.com>
-Subject: Re: "Re: [PATCH RFC Version 1 0/6] Request for Comment: NFS4.1
- Session Trunking"
-Date: Wed, 17 Feb 2016 22:35:43 +0000
-Message-ID: <3B48A59F-638A-45C9-B2E4-2D65C00DE639@netapp.com>
-References: <CAEUt8V+L3hV1tQTzanVjGyZ1qoG8qJk7ZnS5HM1_3+Nc4mpO3A@mail.gmail.com>
- <F6DC5176-6340-4945-9EBD-537410882E1D@netapp.com>
- <B10307D6-13C6-4A04-B3A9-B66C27F51E19@oracle.com>
- <20160217205929.GF10401@fieldses.org>
-In-Reply-To: <20160217205929.GF10401@fieldses.org>
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
+Message-Id: <B748F703-4298-4D1D-BACB-13B0560E5901@oracle.com>
+References: <CAEUt8V+L3hV1tQTzanVjGyZ1qoG8qJk7ZnS5HM1_3+Nc4mpO3A@mail.gmail.com> <F6DC5176-6340-4945-9EBD-537410882E1D@netapp.com> <B10307D6-13C6-4A04-B3A9-B66C27F51E19@oracle.com> <20160217205929.GF10401@fieldses.org> <3B48A59F-638A-45C9-B2E4-2D65C00DE639@netapp.com>
+To: "Adamson, Andy" <William.Adamson@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-DQo+IE9uIEZlYiAxNywgMjAxNiwgYXQgMzo1OSBQTSwgSi4gQnJ1Y2UgRmllbGRzIDxiZmllbGRz
-QGZpZWxkc2VzLm9yZz4gd3JvdGU6DQo+IA0KPiBPbiBXZWQsIEZlYiAxNywgMjAxNiBhdCAwMjow
-NjozNVBNIC0wNTAwLCBDaHVjayBMZXZlciB3cm90ZToNCj4+IA0KPj4+IE9uIEZlYiAxNywgMjAx
-NiwgYXQgOTo1MCBBTSwgQWRhbXNvbiwgQW5keQ0KPj4+IDxXaWxsaWFtLkFkYW1zb25AbmV0YXBw
-LmNvbT4gd3JvdGU6IFRoYW5rcyBmb3IgdGVzdGluZy4gQXMgVHJvbmQNCj4+PiBwb2ludGVkIG91
-dCwgdGhlIGNvcnJlY3Qgd2F5IHRvIGluZGljYXRlIG11bHRpcGxlIGhvc3RuYW1lcyBpcyBvbg0K
-Pj4+IHRoZSBtb3VudCBjb21tYW5kIGxpbmUNCj4+PiANCj4+PiBtb3VudCAtbyBtaW5vcnZlcnNp
-b249MSBob3N0MSxob3N0MizDouKCrMKmLGhvc3RuOi88ZXhwb3J0PiAgLzxtbnRkaXI+DQo+PiAN
-Cj4+IEl0IG1pZ2h0IGJlIG1vcmUgbmF0dXJhbCBmb3IgTkZTdjQueCB0byB1c2UgYSByZWZlcnJh
-bCBvciBhIHBORlMNCj4+IGxheW91dCBpbnN0ZWFkLiAgRG8geW91IHRoaW5rIHRoYXQncyBhIHZp
-YWJsZSBhcHByb2FjaD8NCj4gDQo+IFNlZW1zIGxpa2UgYW4gZWFzeSBhcHBsaWNhdGlvbiBmb3Ig
-ZnNfbG9jYXRpb25ze19pbmZvP30uICBJdCdkIG5lZWQNCj4gc2VydmVyIHN1cHBvcnQgdG9vLCBh
-bmQgSSB0aGluayB5b3UgcHJvYmFibHkgd2FudCB0aGlzIG1hbnVhbCBtZXRob2QgYXMNCj4gd2Vs
-bCBmb3Igbm93Lg0KDQpJIGFncmVlIHRoYXQgdGhlIG1hbnVhbCBtZXRob2QgaXMgdXNlZnVsIGFz
-IGl0IGFsbG93cyB0aGUgY2xpZW50IGFkbWluIHRvIGRlY2lkZSBpZiB0aGUgbW91bnQgcmVxdWly
-ZXMgc2Vzc2lvbiB0cnVua2luZy4NClRoZSBmc19sb2NhdGlvbnMgd291bGQgbmVlZCB0byBiZSBy
-ZXF1ZXN0ZWQgYnkgdGhlIGNsaWVudC4gSSBndWVzcyB3ZSByZXFlc3QgdGhlbSBhdCBldmVyeSBt
-b3VudOKApi4NCg0KPiANCj4gSSB3b25kZXIgaWYgdGhlIHNlcnZlciBjYW4gZWFzaWx5IGdlbmVy
-YXRlIGEgbGlzdCBvZiBJUCBhZGRyZXNzZXMgdG8NCj4gYWR2ZXJ0aXNlIGF1dG9tYXRpY2FsbHk/
-ICANCg0KWWVzIC0gZnNfbG9jYXRpb25zIQ0KDQrigJQ+QW5keQ0KDQo+IEluIHdoaWNoIGNhc2Ug
-dGhlIHdob2xlIHRoaW5nIHdvdWxkIGJlDQo+IHplcm8tY29uZmlndXJhdGlvbiwgd2hpY2ggd291
-bGQgYmUgbmljZS4NCj4gDQo+IHBORlMgc291bmRzIGxpa2Ugb3ZlcmtpbGwuDQo+IA0KPiAtLWIu
-DQoNCg==
+
+> On Feb 17, 2016, at 5:35 PM, Adamson, Andy <William.Adamson@netapp.com> wrote:
+> 
+> 
+>> On Feb 17, 2016, at 3:59 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
+>> 
+>> On Wed, Feb 17, 2016 at 02:06:35PM -0500, Chuck Lever wrote:
+>>> 
+>>>> On Feb 17, 2016, at 9:50 AM, Adamson, Andy
+>>>> <William.Adamson@netapp.com> wrote: Thanks for testing. As Trond
+>>>> pointed out, the correct way to indicate multiple hostnames is on
+>>>> the mount command line
+>>>> 
+>>>> mount -o minorversion=1 host1,host2,ÃĒâŽÂĶ,hostn:/<export>  /<mntdir>
+>>> 
+>>> It might be more natural for NFSv4.x to use a referral or a pNFS
+>>> layout instead.  Do you think that's a viable approach?
+>> 
+>> Seems like an easy application for fs_locations{_info?}.  It'd need
+>> server support too, and I think you probably want this manual method as
+>> well for now.
+> 
+> I agree that the manual method is useful as it allows the client admin to decide if the mount requires session trunking.
+
+Seems like the server admin is in a better position to know
+the locations of replicated data. The server can advertise
+the most up-to-date location information. More scalable
+than telling every client admin how to set this up.
+
+Adding this CLI to mount means it will be around a long time,
+so we'd better be sure we want to support it for that long.
+(Yes, I know, who is this "we").
+
+
+> The fs_locations would need to be requested by the client. I guess we reqest them at every mountâĶ.
+
+Yep, and fetch them again every so often. There's no real
+cache coherency protocol for this information. (That's
+where a pNFS layout might be more valuable).
+
+The Linux server should be able to advertise replicas using
+the replicas= export option.
+
+
+>> I wonder if the server can easily generate a list of IP addresses to
+>> advertise automatically?  
+> 
+> Yes - fs_locations!
+> 
+> â>Andy
+> 
+>> In which case the whole thing would be
+>> zero-configuration, which would be nice.
+>> 
+>> pNFS sounds like overkill.
+>> 
+>> --b.
+> 
+> N§ēæėrļyúčØbēXŽķĮ§vØ^)Þš{.nĮ+·Ĩ{ąû"Ø^nrĄöĶzËëhĻč­Ú&ĒøŪGŦéhŪ(­éÝĒj"úķm§ĸïęäzđÞāþfĢĒ·h§~m
+
+--
+Chuck Lever
+
+
+
+
