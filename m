@@ -1,265 +1,175 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from userp1040.oracle.com ([156.151.31.81]:49368 "EHLO
-	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1030209AbcBQTGp convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 17 Feb 2016 14:06:45 -0500
-Content-Type: text/plain;
-	charset=utf-8
-Mime-Version: 1.0 (1.0)
-Subject: Re: "Re: [PATCH RFC Version 1 0/6] Request for Comment: NFS4.1 Session Trunking"
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <F6DC5176-6340-4945-9EBD-537410882E1D@netapp.com>
-Date: Wed, 17 Feb 2016 14:06:35 -0500
-Cc: Martin Houry <martinhoury@gmail.com>,
+Received: from mx141.netapp.com ([216.240.21.12]:2837 "EHLO mx141.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1161663AbcBQT57 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 17 Feb 2016 14:57:59 -0500
+From: "Adamson, Andy" <William.Adamson@netapp.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: "Adamson, Andy" <William.Adamson@netapp.com>,
+        Martin Houry <martinhoury@gmail.com>,
         "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
         Trond Myklebust <trond.myklebust@primarydata.com>
-Message-Id: <B10307D6-13C6-4A04-B3A9-B66C27F51E19@oracle.com>
-References: <CAEUt8V+L3hV1tQTzanVjGyZ1qoG8qJk7ZnS5HM1_3+Nc4mpO3A@mail.gmail.com> <F6DC5176-6340-4945-9EBD-537410882E1D@netapp.com>
-To: "Adamson, Andy" <William.Adamson@netapp.com>
+Subject: Re: "Re: [PATCH RFC Version 1 0/6] Request for Comment: NFS4.1
+ Session Trunking"
+Date: Wed, 17 Feb 2016 19:57:58 +0000
+Message-ID: <DF7DF9E2-A263-4C75-AFEF-EEC6B45CE99C@netapp.com>
+References: <CAEUt8V+L3hV1tQTzanVjGyZ1qoG8qJk7ZnS5HM1_3+Nc4mpO3A@mail.gmail.com>
+ <F6DC5176-6340-4945-9EBD-537410882E1D@netapp.com>
+ <20160217163451.GD10401@fieldses.org>
+ <F2FB08E3-FAB6-4035-A85A-D70CF5387D30@netapp.com>
+ <20160217184406.GE10401@fieldses.org>
+In-Reply-To: <20160217184406.GE10401@fieldses.org>
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-> On Feb 17, 2016, at 9:50 AM, Adamson, Andy <William.Adamson@netapp.com> wrote:
-> 
-> 
->> On Feb 17, 2016, at 5:31 AM, Martin Houry <martinhoury@gmail.com> wrote:
->> 
->> ----- Original Message -----
->> 
->>> From: andros@xxxxxxxxxx
->>> To: "trond myklebust" <trond.myklebust@xxxxxxxxxxxxxxx>
->>> Cc: linux-nfs@xxxxxxxxxxxxxxx, "Andy Adamson" <andros@xxxxxxxxxx>
->>> Sent: Friday, February 5, 2016 4:08:32 PM
->>> Subject: [PATCH RFC Version 1 0/6] Request for Comment: NFS4.1 Session Trunking
->>> 
->>> From: Andy Adamson <andros@xxxxxxxxxx>
->>> 
->>> This early patch set implements NFSv4.1 session trunking utilizing Tronds
->>> multipath feature.  This works against an upstream linux server with
->>> two NICs as the EXCHANGE_ID info is the same for both NICs.
->>> 
->>> Unmodified code will create a new nfs_client structure for the mount as
->>> nfs_match_client fails due to the different full server address.
->>> Tunking is detected by comparing the eir_server_owner.major/minor/scope
->>> and the eir_server_impl_id to an existing mount. When trunking is detected,
->>> the 2nd mount point uses the existing  (not new) nfs_client for the new
->>> mount point.
->>> 
->>> When trunking is detected, this patch set adds an rpc_xprt for the new server
->>> address to the exisiting mount, calls BIND_CONN_TO_SESSION, and destroys
->>> the new clientid (no second mount).
->>> 
->>> We then get round robin use of the two NICs off one mount point all
->>> using a single session.
->>> 
->>> 
->>> Is using mount a good way to setup NFSv4.1 session trunking?
->>> 
->>> The first two patches fix issues with the multipath code.
->>> 
->>> SUNRPC: allow rpc_xprt_switch_add_xprt to add xprts on the same net
->>>   This patch adds a flag to allow multipathing within the origial net.
->>>   I don't understand why this was not allowed, so I expect a different
->>>   solution for this issue.
->>> 
->>> 
->>> Comments please.
->>> 
->>> Thanks
->>> 
->>> -->Andy
->>> 
->>> Andy Adamson (6):
->>> SUNRPC fix rpc_clnt_add_xprt setup return
->>> SUNRPC fix rpc_clnt_xprt_iter_init infinite loop
->>> SUNRPC: allow rpc_xprt_switch_add_xprt to add xprts on the same net
->>> NFS session trunking support: add trunk xprt to nfs4.1 mount
->>> NFS add callback_ops to nfs4_proc_bind_conn_to_session_callback
->>> NFS schedule bind_conn_to_session for new NFSv4.1 transport
->>> 
->>> fs/nfs/client.c                      |  2 ++
->>> fs/nfs/nfs4client.c                  | 29 +++++++++++++++++++++++++++--
->>> fs/nfs/nfs4proc.c                    | 10 ++++++++++
->>> include/linux/nfs_fs_sb.h            |  1 +
->>> include/linux/sunrpc/clnt.h          |  1 +
->>> include/linux/sunrpc/xprtmultipath.h |  6 +++++-
->>> net/sunrpc/clnt.c                    | 20 +++++++++++++-------
->>> net/sunrpc/xprtmultipath.c           | 35
->>> +++++++++++++++++++++++++++++++++--
->>> 8 files changed, 92 insertions(+), 12 deletions(-)
->>> 
->>> --
->>> 1.8.3.1
->>> 
->>> --
->>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->>> the body of a message to majordomo@xxxxxxxxxxxxxxx
->>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->> 
->> Tried and approved!
-> 
-> Thanks for testing. As Trond pointed out, the correct way to indicate multiple hostnames is on the mount command line
-> 
-> mount -o minorversion=1 host1,host2,â€¦,hostn:/<export>  /<mntdir>
-
-It might be more natural for NFSv4.x to use a referral or a pNFS layout instead.
-Do you think that's a viable approach?
-
-
-> I have a new patch set that is working and that I am testing and cleaning up that adds multiple hostname support to mount.nfs for NFSv4.1, and that kicks off an EXCHANGE_ID for each multi-host address. If the EXCHANGE_ID succeeds, a BIND_CONN_TO_SESSION is also called.
-> 
-> â€”>Andy
-> 
-> 
->> 
->> Here is the steps to make it works for those who wants to try it. :
->> 
->> Test configuration :
->> 
->> Running Server Kernel Version : 3.2.0
->> Running Client Kernel Version : 3.2.0
->> Patch deployment Client Kernel Version : 4.5.0 rc4+
->> Debian 7.9
->> GNS3 1.4.1
->> Wireshark 1.12.3
->> VirtualBox 5.0.14
->> Client and Server are Virtualbox VM's conected each other with a GNS3 Switch
->> 
->> NO AUTHENTIFICATION - this is only for test purpose
->> 
->> +----------+                                              +----------+
->> |          | 192.168.1.2 /24 +----------+ 192.168.1.3 /24 |          |
->> |          +-----------------+          +-----------------+          |
->> |  Client  |                 |  Switch  |                 |  Server  |
->> |          +-----------------+          +-----------------+          |
->> |          | 192.168.2.20/24 +----------+ 192.168.2.30 /24|          |
->> +----------+                                              +----------+
->> 
->> 
->> Steps :
->> -------------------------------------------------------------------
->> Server NFS4.1 configuration :
->> 
->> Make sure you have an internet connection.
->> 
->> Commands assuming you are root:
->> 
->> apt-get update && apt-get upgrade
->> apt-get install nfs-kernel-server
->> mkdir home/testnfs
->> chmod 777 home/testnfs
->> nano etc/exports
->> #Add these line in the "exports" file to set the "testnfs" folder available
->>   /home/testnfs    192.168.1.2(rw,sync)
->>   /home/testnfs    192.168.2.20(rw,sync)
->> #end
->> 
->> #Enable NFSv4.1
->> etc/init.d/nfs-kernel-server stop
->> nano proc/fs/nfsd/versions
->> #set +2 +3 +4 -4.1 to +2 +3 +4 +4.1
->> etc/init.d/nfs-kernel-server start
->> 
->> #server ready
->> #end server configuration
->> -------------------------------------------------------------------
->> Client NFS4.1 configuration :
->> 
->> Commands assuming you are root:
->> #------------Prepare new Kernel with new patches----------
->> apt-get install libncurses5-dev gcc make git exuberant-ctags bc libssl-dev
->> mkdir kernels
->> cd kernels
->> git clone git://git.kernel.org/pub/scm/linux/kernel/git/stable/linux-stable.git
->> #it takes a while...
->> cd linux-stable
->> cp /boot/config-`uname -r`* .config
->> #the -j4 stand for 4 jobs running at the same time, ideal for
->> multi-core processor.
->> make -j4
->> #It takes a while
->> 
->> #--------------------Install the patches------------------
->> apt-get install patch
->> cd /
->> mkdir patch
->> cd patch
->> mkdir rpcmultipathpatch
->> mkdir sessiontrunkingpatch
->> #Get the Trond Myklebust's patch :
->> http://www.spinics.net/lists/linux-nfs/msg56365.html
->> nano rpcmultipathpatch/patch1.patch
->> .
->> .
->> .
->> nano rpcmultipathpatch/patch13.patch
->> #Get the Andy Adamson's patches :
->> http://www.spinics.net/lists/linux-nfs/msg56437.html
->> nano sessiontrunkingpatch/patch1.patch
->> .
->> .
->> .
->> nano sessiontrunkingpatch/patch6.patch
->> 
->> 
->> cd /
->> 
->> #Apply rpc multipath patch
->> patch -p1 < rpcmultipathpatch/patch1.patch
->> patch -p1 < rpcmultipathpatch/patch2.patch
->> patch -p1 < rpcmultipathpatch/patch3.patch
->> patch -p1 < rpcmultipathpatch/patch4.patch
->> patch -p1 < rpcmultipathpatch/patch5.patch
->> patch -p1 < rpcmultipathpatch/patch6.patch
->> patch -p1 < rpcmultipathpatch/patch7.patch
->> patch -p1 < rpcmultipathpatch/patch8.patch
->> patch -p1 < rpcmultipathpatch/patch9.patch
->> patch -p1 < rpcmultipathpatch/patch10.patch
->> patch -p1 < rpcmultipathpatch/patch11.patch
->> patch -p1 < rpcmultipathpatch/patch12.patch
->> patch -p1 < rpcmultipathpatch/patch13.patch
->> 
->> #Apply client session trunking patches
->> patch -p1 < sessiontrunkingpatch/patch1.patch
->> patch -p1 < sessiontrunkingpatch/patch2.patch
->> patch -p1 < sessiontrunkingpatch/patch3.patch
->> patch -p1 < sessiontrunkingpatch/patch4.patch
->> patch -p1 < sessiontrunkingpatch/patch5.patch
->> patch -p1 < sessiontrunkingpatch/patch6.patch
->> 
->> make -j4
->> 
->> #I got a compilation error in the "net/sunrpc/xprtmultipath.c" line 220
->> #at WRITE_ONCE(&xpi->xpi_cursor,NULL);
->> #error: lvalue required as unary â€˜&â€™ operand
->> #I remove the "&"
->> 
->> make -j4 M=net/sunrpc
->> 
->> make modules_install install
->> #reboot and boot on the new kernel (with GRUB)
->> 
->> 
->> #--------------------Mount--------------------
->> mkdir testmount
->> mount -tnfs4 -ominorversion=1 192.168.1.3:/home/testnfs testmount
->> mount -tnfs4 -ominorversion=1 192.168.2.30:/home/testnfs testmount
->> 
->> #end client configuration
->> 
->> The round-robin implementation distribute correctly the operations
->> between the two interfaces and the BIND_CONN_TO_SESSION seems to work.
->> 
->> 
->> If you cut a cable, the client continue to send nfs packets on it, so
->> you loose one operation on two.
->> 
->> 
->> 
->> 
->> 
->> Thanks to http://kernelnewbies.org/.
->> Thanks to Trond Myklebust and Andy Adamson for the patches
-> 
-> N‹§²æìr¸›yúèšØb²X¬¶Ç§vØ^–)Þº{.nÇ+‰·¥Š{±û"žØ^n‡r¡ö¦zËëh™¨è­Ú&¢ø®G«éh®(­éšŽŠÝ¢j"ú¶m§ÿïêäz¹Þ–Šàþf£¢·hšˆ§~ˆmš
+DQo+IE9uIEZlYiAxNywgMjAxNiwgYXQgMTo0NCBQTSwgSi4gQnJ1Y2UgRmllbGRzIDxiZmllbGRz
+QGZpZWxkc2VzLm9yZz4gd3JvdGU6DQo+IA0KPiBPbiBXZWQsIEZlYiAxNywgMjAxNiBhdCAwNTo0
+OTozOVBNICswMDAwLCBBZGFtc29uLCBBbmR5IHdyb3RlOg0KPj4gT24gRmViIDE3LCAyMDE2LCBh
+dCAxMTozNCBBTSwgSi4gQnJ1Y2UgRmllbGRzIDxiZmllbGRzQGZpZWxkc2VzLm9yZz4gd3JvdGU6
+DQo+Pj4gSSdtIHN1cnByaXNlZCB0aGVyZSdzICBCSU5EX0NPTk5fVE9fU0VTU0lPTiBpbiB0aGUg
+Y2FzZSBNYXJ0aW4ncw0KPj4+IHRlc3RpbmcuICBJIGRpZG4ndCB0aGluayBpdCB3YXMgbmVjZXNz
+YXJ5IHVubGVzcyB5b3Ugd2VyZSB1c2luZw0KPj4+IGtlcmJlcm9zLiAgTWF5YmUgSSdtIGZvcmdl
+dHRpbmcgc29tZSBzdWJ0bGV0eeKApi4NCj4+IA0KPj4gVGhlIGZpcnN0IGhvc3QgKGhvc3QxIGFi
+b3ZlKSBpcyB0aGUgbW91bnQgaG9zdC4gRWFjaCBhZGRpdGlvbmFsIGhvc3QgaXMgYSBuZXcgY29u
+bmVjdGlvbi4gQW4gRVhDSEFOR0VfSUQgaXMgc2VudCBvbiB0aGUgbmV3IGNvbm5lY3Rpb24sIGFu
+ZCB0aGUgcmVzdWx0YW50IHNlcnZlcnNjb3BlLCBzZXJ2ZXIgb3duZXIsIGNsaWVudGlkLCBldGMg
+ZnJvbSB0aGUgbmV3IGNvbm5lY3Rpb24gRVhDSEFOR0VfSUQgcmVwbHkgaXMgY29tcGFyZWQgdG8g
+dGhlIG1vdW50IGV4Y2hhbmdlX2lkIGFyZ3Mgc3RvcmVkIGluIHRoZSBuZnNfY2xpZW50IHN0cnVj
+dC4gSWYgaXQgcGFzc2VzIHRoZSBzZXNzaW9uIHRydW5raW5nIHJlcXVpcmVtZW50cywgdGhlbiB0
+aGUgY29ubmVjdGlvbiBuZWVkcyB0byBiZSBib3VuZCB0byB0aGUgc2Vzc2lvbiB0byBlbmFibGUg
+c2Vzc2lvbiB0cnVua2luZy4NCj4gDQo+IFRoYXQgYWxsIG1ha2VzIHNlbnNlIHRvIG1lLCBidXQ6
+DQo+IA0KPiAJIklmLCB3aGVuIHRoZSBjbGllbnQgSUQgd2FzIGNyZWF0ZWQsIHRoZSBjbGllbnQg
+b3B0ZWQgZm9yDQo+IAlTUDRfTk9ORSBzdGF0ZSBwcm90ZWN0aW9uLCB0aGUgY2xpZW50IGlzIG5v
+dCByZXF1aXJlZCB0byB1c2UNCj4gCUJJTkRfQ09OTl9UT19TRVNTSU9OIHRvIGFzc29jaWF0ZSB0
+aGUgY29ubmVjdGlvbiB3aXRoIHRoZQ0KPiAJc2Vzc2lvbiwgdW5sZXNzIHRoZSBjbGllbnQgd2lz
+aGVzIHRvIGFzc29jaWF0ZSB0aGUgY29ubmVjdGlvbg0KPiAJd2l0aCB0aGUgYmFja2NoYW5uZWwu
+ICBXaGVuIFNQNF9OT05FIHByb3RlY3Rpb24gaXMgdXNlZCwgc2ltcGx5DQo+IAlzZW5kaW5nIGEg
+Q09NUE9VTkQgcmVxdWVzdCB3aXRoIGEgU0VRVUVOQ0Ugb3BlcmF0aW9uIGlzDQo+IAlzdWZmaWNp
+ZW50IHRvIGFzc29jaWF0ZSB0aGUgY29ubmVjdGlvbiB3aXRoIHRoZSBzZXNzaW9uDQo+IAlzcGVj
+aWZpZWQgaW4gU0VRVUVOQ0UuIg0KPiANCj4gV2VsbCwgYnV0IG1heWJlIHRoYXQncyBhY2FkZW1p
+YywgdGhlcmUncyBwcm9iYWJseSBubyBoYXJtIGluIHNlbmRpbmcgdGhlDQo+IEJJTkRfQ09OTl9U
+T19TRVNTSU9OLg0KDQpUaGF0IGFsc28gbWFrZXMgc2Vuc2UgdG8gbWUuIFRoZSBCSU5EX0NPTk5f
+VE9fU0VTU0lPTiBkb2VzIG1ha2UgaXQgcGVyZmVjdGx5IGNsZWFyIDpfDQoNCuKAlD5BbmR5DQo+
+IA0KPiAtLWIuDQo+IA0KPj4gDQo+PiDigJQ+QW5keQ0KPj4gDQo+PiBSRkM1NjYxIDIuMTAuNQ0K
+Pj4g4oCm4oCmDQo+PiBTZXNzaW9uIFRydW5raW5nLiAgSWYgdGhlIGVpYV9jbGllbnRvd25lciBh
+cmd1bWVudCBpcyB0aGUgc2FtZSBpbiB0d28NCj4+ICAgICAgZGlmZmVyZW50IEVYQ0hBTkdFX0lE
+IHJlcXVlc3RzLCBhbmQgdGhlIGVpcl9jbGllbnRpZCwNCj4+ICAgICAgZWlyX3NlcnZlcl9vd25l
+ci5zb19tYWpvcl9pZCwgZWlyX3NlcnZlcl9vd25lci5zb19taW5vcl9pZCwgYW5kDQo+PiAgICAg
+IGVpcl9zZXJ2ZXJfc2NvcGUgcmVzdWx0cyBtYXRjaCBpbiBib3RoIEVYQ0hBTkdFX0lEIHJlc3Vs
+dHMsIHRoZW4NCj4+ICAgICAgdGhlIGNsaWVudCBpcyBwZXJtaXR0ZWQgdG8gcGVyZm9ybSBzZXNz
+aW9uIHRydW5raW5nLiAgSWYgdGhlDQo+PiAgICAgIGNsaWVudCBoYXMgbm8gc2Vzc2lvbiBtYXBw
+aW5nIHRvIHRoZSB0dXBsZSBvZiBlaXJfY2xpZW50aWQsDQo+PiAgICAgIGVpcl9zZXJ2ZXJfb3du
+ZXIuc29fbWFqb3JfaWQsIGVpcl9zZXJ2ZXJfc2NvcGUsIGFuZA0KPj4gICAgICBlaXJfc2VydmVy
+X293bmVyLnNvX21pbm9yX2lkLCB0aGVuIGl0IGNyZWF0ZXMgdGhlIHNlc3Npb24gdmlhIGENCj4+
+ICAgICAgQ1JFQVRFX1NFU1NJT04gb3BlcmF0aW9uIG92ZXIgb25lIG9mIHRoZSBjb25uZWN0aW9u
+cywgd2hpY2gNCj4+ICAgICAgYXNzb2NpYXRlcyB0aGUgY29ubmVjdGlvbiB0byB0aGUgc2Vzc2lv
+bi4gIElmIHRoZXJlIGlzIGEgc2Vzc2lvbg0KPj4gICAgICBmb3IgdGhlIHR1cGxlLCB0aGUgY2xp
+ZW50IGNhbiBzZW5kIEJJTkRfQ09OTl9UT19TRVNTSU9OIHRvDQo+PiAgICAgIGFzc29jaWF0ZSB0
+aGUgY29ubmVjdGlvbiB0byB0aGUgc2Vzc2lvbi4NCj4+IA0KPj4gICAgICBPZiBjb3Vyc2UsIGlm
+IHRoZSBjbGllbnQgZG9lcyBub3QgZGVzaXJlIHRvIHVzZSBzZXNzaW9uIHRydW5raW5nLA0KPj4g
+ICAgICBpdCBpcyBub3QgcmVxdWlyZWQgdG8gZG8gc28uICBJdCBjYW4gaW52b2tlIENSRUFURV9T
+RVNTSU9OIG9uIHRoZQ0KPj4gICAgICBjb25uZWN0aW9uLiAgVGhpcyB3aWxsIHJlc3VsdCBpbiBj
+bGllbnQgSUQgdHJ1bmtpbmcgYXMgZGVzY3JpYmVkDQo+PiAgICAgIGJlbG93LiAgSXQgY2FuIGFs
+c28gZGVjaWRlIHRvIGRyb3AgdGhlIGNvbm5lY3Rpb24gaWYgaXQgZG9lcyBub3QNCj4+ICAgICAg
+Y2hvb3NlIHRvIHVzZSB0cnVua2luZy4NCj4+PiANCj4+PiAtLWIuDQo+Pj4gDQo+Pj4+IA0KPj4+
+PiDigJQ+QW5keQ0KPj4+PiANCj4+Pj4gDQo+Pj4+PiANCj4+Pj4+IEhlcmUgaXMgdGhlIHN0ZXBz
+IHRvIG1ha2UgaXQgd29ya3MgZm9yIHRob3NlIHdobyB3YW50cyB0byB0cnkgaXQuIDoNCj4+Pj4+
+IA0KPj4+Pj4gVGVzdCBjb25maWd1cmF0aW9uIDoNCj4+Pj4+IA0KPj4+Pj4gUnVubmluZyBTZXJ2
+ZXIgS2VybmVsIFZlcnNpb24gOiAzLjIuMA0KPj4+Pj4gUnVubmluZyBDbGllbnQgS2VybmVsIFZl
+cnNpb24gOiAzLjIuMA0KPj4+Pj4gUGF0Y2ggZGVwbG95bWVudCBDbGllbnQgS2VybmVsIFZlcnNp
+b24gOiA0LjUuMCByYzQrDQo+Pj4+PiBEZWJpYW4gNy45DQo+Pj4+PiBHTlMzIDEuNC4xDQo+Pj4+
+PiBXaXJlc2hhcmsgMS4xMi4zDQo+Pj4+PiBWaXJ0dWFsQm94IDUuMC4xNA0KPj4+Pj4gQ2xpZW50
+IGFuZCBTZXJ2ZXIgYXJlIFZpcnR1YWxib3ggVk0ncyBjb25lY3RlZCBlYWNoIG90aGVyIHdpdGgg
+YSBHTlMzIFN3aXRjaA0KPj4+Pj4gDQo+Pj4+PiBOTyBBVVRIRU5USUZJQ0FUSU9OIC0gdGhpcyBp
+cyBvbmx5IGZvciB0ZXN0IHB1cnBvc2UNCj4+Pj4+IA0KPj4+Pj4gKy0tLS0tLS0tLS0rICAgICAg
+ICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICstLS0tLS0tLS0tKw0KPj4+
+Pj4gfCAgICAgICAgICB8IDE5Mi4xNjguMS4yIC8yNCArLS0tLS0tLS0tLSsgMTkyLjE2OC4xLjMg
+LzI0IHwgICAgICAgICAgfA0KPj4+Pj4gfCAgICAgICAgICArLS0tLS0tLS0tLS0tLS0tLS0rICAg
+ICAgICAgICstLS0tLS0tLS0tLS0tLS0tLSsgICAgICAgICAgfA0KPj4+Pj4gfCAgQ2xpZW50ICB8
+ICAgICAgICAgICAgICAgICB8ICBTd2l0Y2ggIHwgICAgICAgICAgICAgICAgIHwgIFNlcnZlciAg
+fA0KPj4+Pj4gfCAgICAgICAgICArLS0tLS0tLS0tLS0tLS0tLS0rICAgICAgICAgICstLS0tLS0t
+LS0tLS0tLS0tLSsgICAgICAgICAgfA0KPj4+Pj4gfCAgICAgICAgICB8IDE5Mi4xNjguMi4yMC8y
+NCArLS0tLS0tLS0tLSsgMTkyLjE2OC4yLjMwIC8yNHwgICAgICAgICAgfA0KPj4+Pj4gKy0tLS0t
+LS0tLS0rICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICstLS0t
+LS0tLS0tKw0KPj4+Pj4gDQo+Pj4+PiANCj4+Pj4+IFN0ZXBzIDoNCj4+Pj4+IC0tLS0tLS0tLS0t
+LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0N
+Cj4+Pj4+IFNlcnZlciBORlM0LjEgY29uZmlndXJhdGlvbiA6DQo+Pj4+PiANCj4+Pj4+IE1ha2Ug
+c3VyZSB5b3UgaGF2ZSBhbiBpbnRlcm5ldCBjb25uZWN0aW9uLg0KPj4+Pj4gDQo+Pj4+PiBDb21t
+YW5kcyBhc3N1bWluZyB5b3UgYXJlIHJvb3Q6DQo+Pj4+PiANCj4+Pj4+IGFwdC1nZXQgdXBkYXRl
+ICYmIGFwdC1nZXQgdXBncmFkZQ0KPj4+Pj4gYXB0LWdldCBpbnN0YWxsIG5mcy1rZXJuZWwtc2Vy
+dmVyDQo+Pj4+PiBta2RpciBob21lL3Rlc3RuZnMNCj4+Pj4+IGNobW9kIDc3NyBob21lL3Rlc3Ru
+ZnMNCj4+Pj4+IG5hbm8gZXRjL2V4cG9ydHMNCj4+Pj4+ICNBZGQgdGhlc2UgbGluZSBpbiB0aGUg
+ImV4cG9ydHMiIGZpbGUgdG8gc2V0IHRoZSAidGVzdG5mcyIgZm9sZGVyIGF2YWlsYWJsZQ0KPj4+
+Pj4gIC9ob21lL3Rlc3RuZnMgICAgMTkyLjE2OC4xLjIocncsc3luYykNCj4+Pj4+ICAvaG9tZS90
+ZXN0bmZzICAgIDE5Mi4xNjguMi4yMChydyxzeW5jKQ0KPj4+Pj4gI2VuZA0KPj4+Pj4gDQo+Pj4+
+PiAjRW5hYmxlIE5GU3Y0LjENCj4+Pj4+IGV0Yy9pbml0LmQvbmZzLWtlcm5lbC1zZXJ2ZXIgc3Rv
+cA0KPj4+Pj4gbmFubyBwcm9jL2ZzL25mc2QvdmVyc2lvbnMNCj4+Pj4+ICNzZXQgKzIgKzMgKzQg
+LTQuMSB0byArMiArMyArNCArNC4xDQo+Pj4+PiBldGMvaW5pdC5kL25mcy1rZXJuZWwtc2VydmVy
+IHN0YXJ0DQo+Pj4+PiANCj4+Pj4+ICNzZXJ2ZXIgcmVhZHkNCj4+Pj4+ICNlbmQgc2VydmVyIGNv
+bmZpZ3VyYXRpb24NCj4+Pj4+IC0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
+LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0NCj4+Pj4+IENsaWVudCBORlM0LjEgY29uZmln
+dXJhdGlvbiA6DQo+Pj4+PiANCj4+Pj4+IENvbW1hbmRzIGFzc3VtaW5nIHlvdSBhcmUgcm9vdDoN
+Cj4+Pj4+ICMtLS0tLS0tLS0tLS1QcmVwYXJlIG5ldyBLZXJuZWwgd2l0aCBuZXcgcGF0Y2hlcy0t
+LS0tLS0tLS0NCj4+Pj4+IGFwdC1nZXQgaW5zdGFsbCBsaWJuY3Vyc2VzNS1kZXYgZ2NjIG1ha2Ug
+Z2l0IGV4dWJlcmFudC1jdGFncyBiYyBsaWJzc2wtZGV2DQo+Pj4+PiBta2RpciBrZXJuZWxzDQo+
+Pj4+PiBjZCBrZXJuZWxzDQo+Pj4+PiBnaXQgY2xvbmUgZ2l0Oi8vZ2l0Lmtlcm5lbC5vcmcvcHVi
+L3NjbS9saW51eC9rZXJuZWwvZ2l0L3N0YWJsZS9saW51eC1zdGFibGUuZ2l0DQo+Pj4+PiAjaXQg
+dGFrZXMgYSB3aGlsZS4uLg0KPj4+Pj4gY2QgbGludXgtc3RhYmxlDQo+Pj4+PiBjcCAvYm9vdC9j
+b25maWctYHVuYW1lIC1yYCogLmNvbmZpZw0KPj4+Pj4gI3RoZSAtajQgc3RhbmQgZm9yIDQgam9i
+cyBydW5uaW5nIGF0IHRoZSBzYW1lIHRpbWUsIGlkZWFsIGZvcg0KPj4+Pj4gbXVsdGktY29yZSBw
+cm9jZXNzb3IuDQo+Pj4+PiBtYWtlIC1qNA0KPj4+Pj4gI0l0IHRha2VzIGEgd2hpbGUNCj4+Pj4+
+IA0KPj4+Pj4gIy0tLS0tLS0tLS0tLS0tLS0tLS0tSW5zdGFsbCB0aGUgcGF0Y2hlcy0tLS0tLS0t
+LS0tLS0tLS0tLQ0KPj4+Pj4gYXB0LWdldCBpbnN0YWxsIHBhdGNoDQo+Pj4+PiBjZCAvDQo+Pj4+
+PiBta2RpciBwYXRjaA0KPj4+Pj4gY2QgcGF0Y2gNCj4+Pj4+IG1rZGlyIHJwY211bHRpcGF0aHBh
+dGNoDQo+Pj4+PiBta2RpciBzZXNzaW9udHJ1bmtpbmdwYXRjaA0KPj4+Pj4gI0dldCB0aGUgVHJv
+bmQgTXlrbGVidXN0J3MgcGF0Y2ggOg0KPj4+Pj4gaHR0cDovL3d3dy5zcGluaWNzLm5ldC9saXN0
+cy9saW51eC1uZnMvbXNnNTYzNjUuaHRtbA0KPj4+Pj4gbmFubyBycGNtdWx0aXBhdGhwYXRjaC9w
+YXRjaDEucGF0Y2gNCj4+Pj4+IC4NCj4+Pj4+IC4NCj4+Pj4+IC4NCj4+Pj4+IG5hbm8gcnBjbXVs
+dGlwYXRocGF0Y2gvcGF0Y2gxMy5wYXRjaA0KPj4+Pj4gI0dldCB0aGUgQW5keSBBZGFtc29uJ3Mg
+cGF0Y2hlcyA6DQo+Pj4+PiBodHRwOi8vd3d3LnNwaW5pY3MubmV0L2xpc3RzL2xpbnV4LW5mcy9t
+c2c1NjQzNy5odG1sDQo+Pj4+PiBuYW5vIHNlc3Npb250cnVua2luZ3BhdGNoL3BhdGNoMS5wYXRj
+aA0KPj4+Pj4gLg0KPj4+Pj4gLg0KPj4+Pj4gLg0KPj4+Pj4gbmFubyBzZXNzaW9udHJ1bmtpbmdw
+YXRjaC9wYXRjaDYucGF0Y2gNCj4+Pj4+IA0KPj4+Pj4gDQo+Pj4+PiBjZCAvDQo+Pj4+PiANCj4+
+Pj4+ICNBcHBseSBycGMgbXVsdGlwYXRoIHBhdGNoDQo+Pj4+PiBwYXRjaCAtcDEgPCBycGNtdWx0
+aXBhdGhwYXRjaC9wYXRjaDEucGF0Y2gNCj4+Pj4+IHBhdGNoIC1wMSA8IHJwY211bHRpcGF0aHBh
+dGNoL3BhdGNoMi5wYXRjaA0KPj4+Pj4gcGF0Y2ggLXAxIDwgcnBjbXVsdGlwYXRocGF0Y2gvcGF0
+Y2gzLnBhdGNoDQo+Pj4+PiBwYXRjaCAtcDEgPCBycGNtdWx0aXBhdGhwYXRjaC9wYXRjaDQucGF0
+Y2gNCj4+Pj4+IHBhdGNoIC1wMSA8IHJwY211bHRpcGF0aHBhdGNoL3BhdGNoNS5wYXRjaA0KPj4+
+Pj4gcGF0Y2ggLXAxIDwgcnBjbXVsdGlwYXRocGF0Y2gvcGF0Y2g2LnBhdGNoDQo+Pj4+PiBwYXRj
+aCAtcDEgPCBycGNtdWx0aXBhdGhwYXRjaC9wYXRjaDcucGF0Y2gNCj4+Pj4+IHBhdGNoIC1wMSA8
+IHJwY211bHRpcGF0aHBhdGNoL3BhdGNoOC5wYXRjaA0KPj4+Pj4gcGF0Y2ggLXAxIDwgcnBjbXVs
+dGlwYXRocGF0Y2gvcGF0Y2g5LnBhdGNoDQo+Pj4+PiBwYXRjaCAtcDEgPCBycGNtdWx0aXBhdGhw
+YXRjaC9wYXRjaDEwLnBhdGNoDQo+Pj4+PiBwYXRjaCAtcDEgPCBycGNtdWx0aXBhdGhwYXRjaC9w
+YXRjaDExLnBhdGNoDQo+Pj4+PiBwYXRjaCAtcDEgPCBycGNtdWx0aXBhdGhwYXRjaC9wYXRjaDEy
+LnBhdGNoDQo+Pj4+PiBwYXRjaCAtcDEgPCBycGNtdWx0aXBhdGhwYXRjaC9wYXRjaDEzLnBhdGNo
+DQo+Pj4+PiANCj4+Pj4+ICNBcHBseSBjbGllbnQgc2Vzc2lvbiB0cnVua2luZyBwYXRjaGVzDQo+
+Pj4+PiBwYXRjaCAtcDEgPCBzZXNzaW9udHJ1bmtpbmdwYXRjaC9wYXRjaDEucGF0Y2gNCj4+Pj4+
+IHBhdGNoIC1wMSA8IHNlc3Npb250cnVua2luZ3BhdGNoL3BhdGNoMi5wYXRjaA0KPj4+Pj4gcGF0
+Y2ggLXAxIDwgc2Vzc2lvbnRydW5raW5ncGF0Y2gvcGF0Y2gzLnBhdGNoDQo+Pj4+PiBwYXRjaCAt
+cDEgPCBzZXNzaW9udHJ1bmtpbmdwYXRjaC9wYXRjaDQucGF0Y2gNCj4+Pj4+IHBhdGNoIC1wMSA8
+IHNlc3Npb250cnVua2luZ3BhdGNoL3BhdGNoNS5wYXRjaA0KPj4+Pj4gcGF0Y2ggLXAxIDwgc2Vz
+c2lvbnRydW5raW5ncGF0Y2gvcGF0Y2g2LnBhdGNoDQo+Pj4+PiANCj4+Pj4+IG1ha2UgLWo0DQo+
+Pj4+PiANCj4+Pj4+ICNJIGdvdCBhIGNvbXBpbGF0aW9uIGVycm9yIGluIHRoZSAibmV0L3N1bnJw
+Yy94cHJ0bXVsdGlwYXRoLmMiIGxpbmUgMjIwDQo+Pj4+PiAjYXQgV1JJVEVfT05DRSgmeHBpLT54
+cGlfY3Vyc29yLE5VTEwpOw0KPj4+Pj4gI2Vycm9yOiBsdmFsdWUgcmVxdWlyZWQgYXMgdW5hcnkg
+4oCYJuKAmSBvcGVyYW5kDQo+Pj4+PiAjSSByZW1vdmUgdGhlICImIg0KPj4+Pj4gDQo+Pj4+PiBt
+YWtlIC1qNCBNPW5ldC9zdW5ycGMNCj4+Pj4+IA0KPj4+Pj4gbWFrZSBtb2R1bGVzX2luc3RhbGwg
+aW5zdGFsbA0KPj4+Pj4gI3JlYm9vdCBhbmQgYm9vdCBvbiB0aGUgbmV3IGtlcm5lbCAod2l0aCBH
+UlVCKQ0KPj4+Pj4gDQo+Pj4+PiANCj4+Pj4+ICMtLS0tLS0tLS0tLS0tLS0tLS0tLU1vdW50LS0t
+LS0tLS0tLS0tLS0tLS0tLS0NCj4+Pj4+IG1rZGlyIHRlc3Rtb3VudA0KPj4+Pj4gbW91bnQgLXRu
+ZnM0IC1vbWlub3J2ZXJzaW9uPTEgMTkyLjE2OC4xLjM6L2hvbWUvdGVzdG5mcyB0ZXN0bW91bnQN
+Cj4+Pj4+IG1vdW50IC10bmZzNCAtb21pbm9ydmVyc2lvbj0xIDE5Mi4xNjguMi4zMDovaG9tZS90
+ZXN0bmZzIHRlc3Rtb3VudA0KPj4+Pj4gDQo+Pj4+PiAjZW5kIGNsaWVudCBjb25maWd1cmF0aW9u
+DQo+Pj4+PiANCj4+Pj4+IFRoZSByb3VuZC1yb2JpbiBpbXBsZW1lbnRhdGlvbiBkaXN0cmlidXRl
+IGNvcnJlY3RseSB0aGUgb3BlcmF0aW9ucw0KPj4+Pj4gYmV0d2VlbiB0aGUgdHdvIGludGVyZmFj
+ZXMgYW5kIHRoZSBCSU5EX0NPTk5fVE9fU0VTU0lPTiBzZWVtcyB0byB3b3JrLg0KPj4+Pj4gDQo+
+Pj4+PiANCj4+Pj4+IElmIHlvdSBjdXQgYSBjYWJsZSwgdGhlIGNsaWVudCBjb250aW51ZSB0byBz
+ZW5kIG5mcyBwYWNrZXRzIG9uIGl0LCBzbw0KPj4+Pj4geW91IGxvb3NlIG9uZSBvcGVyYXRpb24g
+b24gdHdvLg0KPj4+Pj4gDQo+Pj4+PiANCj4+Pj4+IA0KPj4+Pj4gDQo+Pj4+PiANCj4+Pj4+IFRo
+YW5rcyB0byBodHRwOi8va2VybmVsbmV3Ymllcy5vcmcvLg0KPj4+Pj4gVGhhbmtzIHRvIFRyb25k
+IE15a2xlYnVzdCBhbmQgQW5keSBBZGFtc29uIGZvciB0aGUgcGF0Y2hlcw0KPj4+PiANCj4+Pj4g
+Tj8/Pz8/cj8/eT8/Pz9iP1g/P8endj9ePyneunsubj8rPz8/P3s/Pz8iPz9ebj9yPz8/ej8aPz9o
+Pz8/Pz8mPz8eP0c/Pz9oPwMoP+majj/domoiPz8aPxttPz8/Pz8/ej/elj8/P2Y/Pz9oPz8/fj9t
+DQo+PiANCg0K
