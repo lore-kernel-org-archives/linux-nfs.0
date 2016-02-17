@@ -1,252 +1,168 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from casper.infradead.org ([85.118.1.10]:56272 "EHLO
-	casper.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1423553AbcBQOsd (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 17 Feb 2016 09:48:33 -0500
-From: Christoph Hellwig <hch@lst.de>
-To: trond.myklebust@primarydata.com, Anna.Schumaker@netapp.com
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH] nfs4: fix stateid handling for the NFS v4.2 operations
-Date: Wed, 17 Feb 2016 15:48:28 +0100
-Message-Id: <1455720508-16713-1-git-send-email-hch@lst.de>
+Received: from mx141.netapp.com ([216.240.21.12]:62617 "EHLO mx141.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1423651AbcBQOup (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 17 Feb 2016 09:50:45 -0500
+From: "Adamson, Andy" <William.Adamson@netapp.com>
+To: Martin Houry <martinhoury@gmail.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        Trond Myklebust <trond.myklebust@primarydata.com>
+Subject: Re: "Re: [PATCH RFC Version 1 0/6] Request for Comment: NFS4.1
+ Session Trunking"
+Date: Wed, 17 Feb 2016 14:50:44 +0000
+Message-ID: <F6DC5176-6340-4945-9EBD-537410882E1D@netapp.com>
+References: <CAEUt8V+L3hV1tQTzanVjGyZ1qoG8qJk7ZnS5HM1_3+Nc4mpO3A@mail.gmail.com>
+In-Reply-To: <CAEUt8V+L3hV1tQTzanVjGyZ1qoG8qJk7ZnS5HM1_3+Nc4mpO3A@mail.gmail.com>
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The newly added NFS v4.2 operations (ALLOCATE, DEALLOCATE, SEEK and CLONE)
-use a helper called nfs42_set_rw_stateid to select a stateid that is sent
-to the server.  But they don't set the inode and state fields in the
-nfs4_exception structure, and this don't partake in the stateid recovery
-protocol.  Because of this they will simply return errors insted of trying
-to recover a stateid when the server return a BAD_STATEID error.
-
-Additionally CLONE has the problem that it operates on two files and thus
-two stateids, and thus needs to call the exception handler twice to
-recover stateids.
-
-While we're at it stop grabbing an addititional reference to the open
-context in all these operations - having the file open guarantees that
-the open context won't go away.
-
-All this can be produces with the generic/168 and generic/170 tests in
-xfstests which stress the CLONE stateid handling.
-
-Signed-off-by: Christoph Hellwig <hch@lst.de>
----
- fs/nfs/nfs42proc.c | 119 ++++++++++++++++++++++++++++++++++-------------------
- 1 file changed, 76 insertions(+), 43 deletions(-)
-
-diff --git a/fs/nfs/nfs42proc.c b/fs/nfs/nfs42proc.c
-index bd25dc7..7cb43b9 100644
---- a/fs/nfs/nfs42proc.c
-+++ b/fs/nfs/nfs42proc.c
-@@ -16,29 +16,8 @@
- 
- #define NFSDBG_FACILITY NFSDBG_PROC
- 
--static int nfs42_set_rw_stateid(nfs4_stateid *dst, struct file *file,
--				fmode_t fmode)
--{
--	struct nfs_open_context *open;
--	struct nfs_lock_context *lock;
--	int ret;
--
--	open = get_nfs_open_context(nfs_file_open_context(file));
--	lock = nfs_get_lock_context(open);
--	if (IS_ERR(lock)) {
--		put_nfs_open_context(open);
--		return PTR_ERR(lock);
--	}
--
--	ret = nfs4_set_rw_stateid(dst, open, lock, fmode);
--
--	nfs_put_lock_context(lock);
--	put_nfs_open_context(open);
--	return ret;
--}
--
- static int _nfs42_proc_fallocate(struct rpc_message *msg, struct file *filep,
--				 loff_t offset, loff_t len)
-+		struct nfs_lock_context *lock, loff_t offset, loff_t len)
- {
- 	struct inode *inode = file_inode(filep);
- 	struct nfs_server *server = NFS_SERVER(inode);
-@@ -56,7 +35,8 @@ static int _nfs42_proc_fallocate(struct rpc_message *msg, struct file *filep,
- 	msg->rpc_argp = &args;
- 	msg->rpc_resp = &res;
- 
--	status = nfs42_set_rw_stateid(&args.falloc_stateid, filep, FMODE_WRITE);
-+	status = nfs4_set_rw_stateid(&args.falloc_stateid, lock->open_context,
-+			lock, FMODE_WRITE);
- 	if (status)
- 		return status;
- 
-@@ -78,15 +58,26 @@ static int nfs42_proc_fallocate(struct rpc_message *msg, struct file *filep,
- {
- 	struct nfs_server *server = NFS_SERVER(file_inode(filep));
- 	struct nfs4_exception exception = { };
-+	struct nfs_lock_context *lock;
- 	int err;
- 
-+	lock = nfs_get_lock_context(nfs_file_open_context(filep));
-+	if (IS_ERR(lock))
-+		return PTR_ERR(lock);
-+
-+	exception.inode = file_inode(filep);
-+	exception.state = lock->open_context->state;
-+
- 	do {
--		err = _nfs42_proc_fallocate(msg, filep, offset, len);
--		if (err == -ENOTSUPP)
--			return -EOPNOTSUPP;
-+		err = _nfs42_proc_fallocate(msg, filep, lock, offset, len);
-+		if (err == -ENOTSUPP) {
-+			err = -EOPNOTSUPP;
-+			break;
-+		}
- 		err = nfs4_handle_exception(server, err, &exception);
- 	} while (exception.retry);
- 
-+	nfs_put_lock_context(lock);
- 	return err;
- }
- 
-@@ -135,7 +126,8 @@ int nfs42_proc_deallocate(struct file *filep, loff_t offset, loff_t len)
- 	return err;
- }
- 
--static loff_t _nfs42_proc_llseek(struct file *filep, loff_t offset, int whence)
-+static loff_t _nfs42_proc_llseek(struct file *filep,
-+		struct nfs_lock_context *lock, loff_t offset, int whence)
- {
- 	struct inode *inode = file_inode(filep);
- 	struct nfs42_seek_args args = {
-@@ -156,7 +148,8 @@ static loff_t _nfs42_proc_llseek(struct file *filep, loff_t offset, int whence)
- 	if (!nfs_server_capable(inode, NFS_CAP_SEEK))
- 		return -ENOTSUPP;
- 
--	status = nfs42_set_rw_stateid(&args.sa_stateid, filep, FMODE_READ);
-+	status = nfs4_set_rw_stateid(&args.sa_stateid, lock->open_context,
-+			lock, FMODE_READ);
- 	if (status)
- 		return status;
- 
-@@ -175,17 +168,28 @@ loff_t nfs42_proc_llseek(struct file *filep, loff_t offset, int whence)
- {
- 	struct nfs_server *server = NFS_SERVER(file_inode(filep));
- 	struct nfs4_exception exception = { };
-+	struct nfs_lock_context *lock;
- 	loff_t err;
- 
-+	lock = nfs_get_lock_context(nfs_file_open_context(filep));
-+	if (IS_ERR(lock))
-+		return PTR_ERR(lock);
-+
-+	exception.inode = file_inode(filep);
-+	exception.state = lock->open_context->state;
-+
- 	do {
--		err = _nfs42_proc_llseek(filep, offset, whence);
-+		err = _nfs42_proc_llseek(filep, lock, offset, whence);
- 		if (err >= 0)
- 			break;
--		if (err == -ENOTSUPP)
--			return -EOPNOTSUPP;
-+		if (err == -ENOTSUPP) {
-+			err = -EOPNOTSUPP;
-+			break;
-+		}
- 		err = nfs4_handle_exception(server, err, &exception);
- 	} while (exception.retry);
- 
-+	nfs_put_lock_context(lock);
- 	return err;
- }
- 
-@@ -298,8 +302,9 @@ int nfs42_proc_layoutstats_generic(struct nfs_server *server,
- }
- 
- static int _nfs42_proc_clone(struct rpc_message *msg, struct file *src_f,
--			     struct file *dst_f, loff_t src_offset,
--			     loff_t dst_offset, loff_t count)
-+		struct file *dst_f, struct nfs_lock_context *src_lock,
-+		struct nfs_lock_context *dst_lock, loff_t src_offset,
-+		loff_t dst_offset, loff_t count)
- {
- 	struct inode *src_inode = file_inode(src_f);
- 	struct inode *dst_inode = file_inode(dst_f);
-@@ -320,11 +325,13 @@ static int _nfs42_proc_clone(struct rpc_message *msg, struct file *src_f,
- 	msg->rpc_argp = &args;
- 	msg->rpc_resp = &res;
- 
--	status = nfs42_set_rw_stateid(&args.src_stateid, src_f, FMODE_READ);
-+	status = nfs4_set_rw_stateid(&args.src_stateid, src_lock->open_context,
-+			src_lock, FMODE_READ);
- 	if (status)
- 		return status;
- 
--	status = nfs42_set_rw_stateid(&args.dst_stateid, dst_f, FMODE_WRITE);
-+	status = nfs4_set_rw_stateid(&args.dst_stateid, dst_lock->open_context,
-+			dst_lock, FMODE_WRITE);
- 	if (status)
- 		return status;
- 
-@@ -349,22 +356,48 @@ int nfs42_proc_clone(struct file *src_f, struct file *dst_f,
- 	};
- 	struct inode *inode = file_inode(src_f);
- 	struct nfs_server *server = NFS_SERVER(file_inode(src_f));
--	struct nfs4_exception exception = { };
--	int err;
-+	struct nfs_lock_context *src_lock;
-+	struct nfs_lock_context *dst_lock;
-+	struct nfs4_exception src_exception = { };
-+	struct nfs4_exception dst_exception = { };
-+	int err, err2;
- 
- 	if (!nfs_server_capable(inode, NFS_CAP_CLONE))
- 		return -EOPNOTSUPP;
- 
-+	src_lock = nfs_get_lock_context(nfs_file_open_context(src_f));
-+	if (IS_ERR(src_lock))
-+		return PTR_ERR(src_lock);
-+
-+	src_exception.inode = file_inode(src_f);
-+	src_exception.state = src_lock->open_context->state;
-+
-+	dst_lock = nfs_get_lock_context(nfs_file_open_context(dst_f));
-+	if (IS_ERR(dst_lock)) {
-+		err = PTR_ERR(dst_lock);
-+		goto out_put_src_lock;
-+	}
-+		
-+	dst_exception.inode = file_inode(dst_f);
-+	dst_exception.state = dst_lock->open_context->state;
-+
- 	do {
--		err = _nfs42_proc_clone(&msg, src_f, dst_f, src_offset,
--					dst_offset, count);
-+		err = _nfs42_proc_clone(&msg, src_f, dst_f, src_lock, dst_lock,
-+					src_offset, dst_offset, count);
- 		if (err == -ENOTSUPP || err == -EOPNOTSUPP) {
- 			NFS_SERVER(inode)->caps &= ~NFS_CAP_CLONE;
--			return -EOPNOTSUPP;
-+			err = -EOPNOTSUPP;
-+			break;
- 		}
--		err = nfs4_handle_exception(server, err, &exception);
--	} while (exception.retry);
- 
--	return err;
-+		err2 = nfs4_handle_exception(server, err, &src_exception);
-+		err = nfs4_handle_exception(server, err, &dst_exception);
-+		if (!err)
-+			err = err2;
-+	} while (src_exception.retry || dst_exception.retry);
- 
-+	nfs_put_lock_context(dst_lock);
-+out_put_src_lock:
-+	nfs_put_lock_context(src_lock);
-+	return err;
- }
--- 
-2.1.4
-
+DQo+IE9uIEZlYiAxNywgMjAxNiwgYXQgNTozMSBBTSwgTWFydGluIEhvdXJ5IDxtYXJ0aW5ob3Vy
+eUBnbWFpbC5jb20+IHdyb3RlOg0KPiANCj4gLS0tLS0gT3JpZ2luYWwgTWVzc2FnZSAtLS0tLQ0K
+PiANCj4+IEZyb206IGFuZHJvc0B4eHh4eHh4eHh4DQo+PiBUbzogInRyb25kIG15a2xlYnVzdCIg
+PHRyb25kLm15a2xlYnVzdEB4eHh4eHh4eHh4eHh4eHg+DQo+PiBDYzogbGludXgtbmZzQHh4eHh4
+eHh4eHh4eHh4eCwgIkFuZHkgQWRhbXNvbiIgPGFuZHJvc0B4eHh4eHh4eHh4Pg0KPj4gU2VudDog
+RnJpZGF5LCBGZWJydWFyeSA1LCAyMDE2IDQ6MDg6MzIgUE0NCj4+IFN1YmplY3Q6IFtQQVRDSCBS
+RkMgVmVyc2lvbiAxIDAvNl0gUmVxdWVzdCBmb3IgQ29tbWVudDogTkZTNC4xIFNlc3Npb24gVHJ1
+bmtpbmcNCj4+IA0KPj4gRnJvbTogQW5keSBBZGFtc29uIDxhbmRyb3NAeHh4eHh4eHh4eD4NCj4+
+IA0KPj4gVGhpcyBlYXJseSBwYXRjaCBzZXQgaW1wbGVtZW50cyBORlN2NC4xIHNlc3Npb24gdHJ1
+bmtpbmcgdXRpbGl6aW5nIFRyb25kcw0KPj4gbXVsdGlwYXRoIGZlYXR1cmUuICBUaGlzIHdvcmtz
+IGFnYWluc3QgYW4gdXBzdHJlYW0gbGludXggc2VydmVyIHdpdGgNCj4+IHR3byBOSUNzIGFzIHRo
+ZSBFWENIQU5HRV9JRCBpbmZvIGlzIHRoZSBzYW1lIGZvciBib3RoIE5JQ3MuDQo+PiANCj4+IFVu
+bW9kaWZpZWQgY29kZSB3aWxsIGNyZWF0ZSBhIG5ldyBuZnNfY2xpZW50IHN0cnVjdHVyZSBmb3Ig
+dGhlIG1vdW50IGFzDQo+PiBuZnNfbWF0Y2hfY2xpZW50IGZhaWxzIGR1ZSB0byB0aGUgZGlmZmVy
+ZW50IGZ1bGwgc2VydmVyIGFkZHJlc3MuDQo+PiBUdW5raW5nIGlzIGRldGVjdGVkIGJ5IGNvbXBh
+cmluZyB0aGUgZWlyX3NlcnZlcl9vd25lci5tYWpvci9taW5vci9zY29wZQ0KPj4gYW5kIHRoZSBl
+aXJfc2VydmVyX2ltcGxfaWQgdG8gYW4gZXhpc3RpbmcgbW91bnQuIFdoZW4gdHJ1bmtpbmcgaXMg
+ZGV0ZWN0ZWQsDQo+PiB0aGUgMm5kIG1vdW50IHBvaW50IHVzZXMgdGhlIGV4aXN0aW5nICAobm90
+IG5ldykgbmZzX2NsaWVudCBmb3IgdGhlIG5ldw0KPj4gbW91bnQgcG9pbnQuDQo+PiANCj4+IFdo
+ZW4gdHJ1bmtpbmcgaXMgZGV0ZWN0ZWQsIHRoaXMgcGF0Y2ggc2V0IGFkZHMgYW4gcnBjX3hwcnQg
+Zm9yIHRoZSBuZXcgc2VydmVyDQo+PiBhZGRyZXNzIHRvIHRoZSBleGlzaXRpbmcgbW91bnQsIGNh
+bGxzIEJJTkRfQ09OTl9UT19TRVNTSU9OLCBhbmQgZGVzdHJveXMNCj4+IHRoZSBuZXcgY2xpZW50
+aWQgKG5vIHNlY29uZCBtb3VudCkuDQo+PiANCj4+IFdlIHRoZW4gZ2V0IHJvdW5kIHJvYmluIHVz
+ZSBvZiB0aGUgdHdvIE5JQ3Mgb2ZmIG9uZSBtb3VudCBwb2ludCBhbGwNCj4+IHVzaW5nIGEgc2lu
+Z2xlIHNlc3Npb24uDQo+PiANCj4+IA0KPj4gSXMgdXNpbmcgbW91bnQgYSBnb29kIHdheSB0byBz
+ZXR1cCBORlN2NC4xIHNlc3Npb24gdHJ1bmtpbmc/DQo+PiANCj4+IFRoZSBmaXJzdCB0d28gcGF0
+Y2hlcyBmaXggaXNzdWVzIHdpdGggdGhlIG11bHRpcGF0aCBjb2RlLg0KPj4gDQo+PiBTVU5SUEM6
+IGFsbG93IHJwY194cHJ0X3N3aXRjaF9hZGRfeHBydCB0byBhZGQgeHBydHMgb24gdGhlIHNhbWUg
+bmV0DQo+PiAgICBUaGlzIHBhdGNoIGFkZHMgYSBmbGFnIHRvIGFsbG93IG11bHRpcGF0aGluZyB3
+aXRoaW4gdGhlIG9yaWdpYWwgbmV0Lg0KPj4gICAgSSBkb24ndCB1bmRlcnN0YW5kIHdoeSB0aGlz
+IHdhcyBub3QgYWxsb3dlZCwgc28gSSBleHBlY3QgYSBkaWZmZXJlbnQNCj4+ICAgIHNvbHV0aW9u
+IGZvciB0aGlzIGlzc3VlLg0KPj4gDQo+PiANCj4+IENvbW1lbnRzIHBsZWFzZS4NCj4+IA0KPj4g
+VGhhbmtzDQo+PiANCj4+IC0tPkFuZHkNCj4+IA0KPj4gQW5keSBBZGFtc29uICg2KToNCj4+ICBT
+VU5SUEMgZml4IHJwY19jbG50X2FkZF94cHJ0IHNldHVwIHJldHVybg0KPj4gIFNVTlJQQyBmaXgg
+cnBjX2NsbnRfeHBydF9pdGVyX2luaXQgaW5maW5pdGUgbG9vcA0KPj4gIFNVTlJQQzogYWxsb3cg
+cnBjX3hwcnRfc3dpdGNoX2FkZF94cHJ0IHRvIGFkZCB4cHJ0cyBvbiB0aGUgc2FtZSBuZXQNCj4+
+ICBORlMgc2Vzc2lvbiB0cnVua2luZyBzdXBwb3J0OiBhZGQgdHJ1bmsgeHBydCB0byBuZnM0LjEg
+bW91bnQNCj4+ICBORlMgYWRkIGNhbGxiYWNrX29wcyB0byBuZnM0X3Byb2NfYmluZF9jb25uX3Rv
+X3Nlc3Npb25fY2FsbGJhY2sNCj4+ICBORlMgc2NoZWR1bGUgYmluZF9jb25uX3RvX3Nlc3Npb24g
+Zm9yIG5ldyBORlN2NC4xIHRyYW5zcG9ydA0KPj4gDQo+PiBmcy9uZnMvY2xpZW50LmMgICAgICAg
+ICAgICAgICAgICAgICAgfCAgMiArKw0KPj4gZnMvbmZzL25mczRjbGllbnQuYyAgICAgICAgICAg
+ICAgICAgIHwgMjkgKysrKysrKysrKysrKysrKysrKysrKysrKysrLS0NCj4+IGZzL25mcy9uZnM0
+cHJvYy5jICAgICAgICAgICAgICAgICAgICB8IDEwICsrKysrKysrKysNCj4+IGluY2x1ZGUvbGlu
+dXgvbmZzX2ZzX3NiLmggICAgICAgICAgICB8ICAxICsNCj4+IGluY2x1ZGUvbGludXgvc3VucnBj
+L2NsbnQuaCAgICAgICAgICB8ICAxICsNCj4+IGluY2x1ZGUvbGludXgvc3VucnBjL3hwcnRtdWx0
+aXBhdGguaCB8ICA2ICsrKysrLQ0KPj4gbmV0L3N1bnJwYy9jbG50LmMgICAgICAgICAgICAgICAg
+ICAgIHwgMjAgKysrKysrKysrKysrKy0tLS0tLS0NCj4+IG5ldC9zdW5ycGMveHBydG11bHRpcGF0
+aC5jICAgICAgICAgICB8IDM1DQo+PiArKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKyst
+LQ0KPj4gOCBmaWxlcyBjaGFuZ2VkLCA5MiBpbnNlcnRpb25zKCspLCAxMiBkZWxldGlvbnMoLSkN
+Cj4+IA0KPj4gLS0NCj4+IDEuOC4zLjENCj4+IA0KPj4gLS0NCj4+IFRvIHVuc3Vic2NyaWJlIGZy
+b20gdGhpcyBsaXN0OiBzZW5kIHRoZSBsaW5lICJ1bnN1YnNjcmliZSBsaW51eC1uZnMiIGluDQo+
+PiB0aGUgYm9keSBvZiBhIG1lc3NhZ2UgdG8gbWFqb3Jkb21vQHh4eHh4eHh4eHh4eHh4eA0KPj4g
+TW9yZSBtYWpvcmRvbW8gaW5mbyBhdCAgaHR0cDovL3ZnZXIua2VybmVsLm9yZy9tYWpvcmRvbW8t
+aW5mby5odG1sDQo+PiANCj4gDQo+IFRyaWVkIGFuZCBhcHByb3ZlZCENCg0KVGhhbmtzIGZvciB0
+ZXN0aW5nLiBBcyBUcm9uZCBwb2ludGVkIG91dCwgdGhlIGNvcnJlY3Qgd2F5IHRvIGluZGljYXRl
+IG11bHRpcGxlIGhvc3RuYW1lcyBpcyBvbiB0aGUgbW91bnQgY29tbWFuZCBsaW5lDQoNCm1vdW50
+IC1vIG1pbm9ydmVyc2lvbj0xIGhvc3QxLGhvc3QyLOKApixob3N0bjovPGV4cG9ydD4gIC88bW50
+ZGlyPg0KDQpJIGhhdmUgYSBuZXcgcGF0Y2ggc2V0IHRoYXQgaXMgd29ya2luZyBhbmQgdGhhdCBJ
+IGFtIHRlc3RpbmcgYW5kIGNsZWFuaW5nIHVwIHRoYXQgYWRkcyBtdWx0aXBsZSBob3N0bmFtZSBz
+dXBwb3J0IHRvIG1vdW50Lm5mcyBmb3IgTkZTdjQuMSwgYW5kIHRoYXQga2lja3Mgb2ZmIGFuIEVY
+Q0hBTkdFX0lEIGZvciBlYWNoIG11bHRpLWhvc3QgYWRkcmVzcy4gSWYgdGhlIEVYQ0hBTkdFX0lE
+IHN1Y2NlZWRzLCBhIEJJTkRfQ09OTl9UT19TRVNTSU9OIGlzIGFsc28gY2FsbGVkLg0KDQrigJQ+
+QW5keQ0KDQoNCj4gDQo+IEhlcmUgaXMgdGhlIHN0ZXBzIHRvIG1ha2UgaXQgd29ya3MgZm9yIHRo
+b3NlIHdobyB3YW50cyB0byB0cnkgaXQuIDoNCj4gDQo+IFRlc3QgY29uZmlndXJhdGlvbiA6DQo+
+IA0KPiBSdW5uaW5nIFNlcnZlciBLZXJuZWwgVmVyc2lvbiA6IDMuMi4wDQo+IFJ1bm5pbmcgQ2xp
+ZW50IEtlcm5lbCBWZXJzaW9uIDogMy4yLjANCj4gUGF0Y2ggZGVwbG95bWVudCBDbGllbnQgS2Vy
+bmVsIFZlcnNpb24gOiA0LjUuMCByYzQrDQo+IERlYmlhbiA3LjkNCj4gR05TMyAxLjQuMQ0KPiBX
+aXJlc2hhcmsgMS4xMi4zDQo+IFZpcnR1YWxCb3ggNS4wLjE0DQo+IENsaWVudCBhbmQgU2VydmVy
+IGFyZSBWaXJ0dWFsYm94IFZNJ3MgY29uZWN0ZWQgZWFjaCBvdGhlciB3aXRoIGEgR05TMyBTd2l0
+Y2gNCj4gDQo+IE5PIEFVVEhFTlRJRklDQVRJT04gLSB0aGlzIGlzIG9ubHkgZm9yIHRlc3QgcHVy
+cG9zZQ0KPiANCj4gKy0tLS0tLS0tLS0rICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg
+ICAgICAgICAgICAgICstLS0tLS0tLS0tKw0KPiB8ICAgICAgICAgIHwgMTkyLjE2OC4xLjIgLzI0
+ICstLS0tLS0tLS0tKyAxOTIuMTY4LjEuMyAvMjQgfCAgICAgICAgICB8DQo+IHwgICAgICAgICAg
+Ky0tLS0tLS0tLS0tLS0tLS0tKyAgICAgICAgICArLS0tLS0tLS0tLS0tLS0tLS0rICAgICAgICAg
+IHwNCj4gfCAgQ2xpZW50ICB8ICAgICAgICAgICAgICAgICB8ICBTd2l0Y2ggIHwgICAgICAgICAg
+ICAgICAgIHwgIFNlcnZlciAgfA0KPiB8ICAgICAgICAgICstLS0tLS0tLS0tLS0tLS0tLSsgICAg
+ICAgICAgKy0tLS0tLS0tLS0tLS0tLS0tKyAgICAgICAgICB8DQo+IHwgICAgICAgICAgfCAxOTIu
+MTY4LjIuMjAvMjQgKy0tLS0tLS0tLS0rIDE5Mi4xNjguMi4zMCAvMjR8ICAgICAgICAgIHwNCj4g
+Ky0tLS0tLS0tLS0rICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg
+ICstLS0tLS0tLS0tKw0KPiANCj4gDQo+IFN0ZXBzIDoNCj4gLS0tLS0tLS0tLS0tLS0tLS0tLS0t
+LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLQ0KPiBTZXJ2ZXIg
+TkZTNC4xIGNvbmZpZ3VyYXRpb24gOg0KPiANCj4gTWFrZSBzdXJlIHlvdSBoYXZlIGFuIGludGVy
+bmV0IGNvbm5lY3Rpb24uDQo+IA0KPiBDb21tYW5kcyBhc3N1bWluZyB5b3UgYXJlIHJvb3Q6DQo+
+IA0KPiBhcHQtZ2V0IHVwZGF0ZSAmJiBhcHQtZ2V0IHVwZ3JhZGUNCj4gYXB0LWdldCBpbnN0YWxs
+IG5mcy1rZXJuZWwtc2VydmVyDQo+IG1rZGlyIGhvbWUvdGVzdG5mcw0KPiBjaG1vZCA3NzcgaG9t
+ZS90ZXN0bmZzDQo+IG5hbm8gZXRjL2V4cG9ydHMNCj4gI0FkZCB0aGVzZSBsaW5lIGluIHRoZSAi
+ZXhwb3J0cyIgZmlsZSB0byBzZXQgdGhlICJ0ZXN0bmZzIiBmb2xkZXIgYXZhaWxhYmxlDQo+ICAg
+IC9ob21lL3Rlc3RuZnMgICAgMTkyLjE2OC4xLjIocncsc3luYykNCj4gICAgL2hvbWUvdGVzdG5m
+cyAgICAxOTIuMTY4LjIuMjAocncsc3luYykNCj4gI2VuZA0KPiANCj4gI0VuYWJsZSBORlN2NC4x
+DQo+IGV0Yy9pbml0LmQvbmZzLWtlcm5lbC1zZXJ2ZXIgc3RvcA0KPiBuYW5vIHByb2MvZnMvbmZz
+ZC92ZXJzaW9ucw0KPiAjc2V0ICsyICszICs0IC00LjEgdG8gKzIgKzMgKzQgKzQuMQ0KPiBldGMv
+aW5pdC5kL25mcy1rZXJuZWwtc2VydmVyIHN0YXJ0DQo+IA0KPiAjc2VydmVyIHJlYWR5DQo+ICNl
+bmQgc2VydmVyIGNvbmZpZ3VyYXRpb24NCj4gLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
+LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLQ0KPiBDbGllbnQgTkZTNC4xIGNv
+bmZpZ3VyYXRpb24gOg0KPiANCj4gQ29tbWFuZHMgYXNzdW1pbmcgeW91IGFyZSByb290Og0KPiAj
+LS0tLS0tLS0tLS0tUHJlcGFyZSBuZXcgS2VybmVsIHdpdGggbmV3IHBhdGNoZXMtLS0tLS0tLS0t
+DQo+IGFwdC1nZXQgaW5zdGFsbCBsaWJuY3Vyc2VzNS1kZXYgZ2NjIG1ha2UgZ2l0IGV4dWJlcmFu
+dC1jdGFncyBiYyBsaWJzc2wtZGV2DQo+IG1rZGlyIGtlcm5lbHMNCj4gY2Qga2VybmVscw0KPiBn
+aXQgY2xvbmUgZ2l0Oi8vZ2l0Lmtlcm5lbC5vcmcvcHViL3NjbS9saW51eC9rZXJuZWwvZ2l0L3N0
+YWJsZS9saW51eC1zdGFibGUuZ2l0DQo+ICNpdCB0YWtlcyBhIHdoaWxlLi4uDQo+IGNkIGxpbnV4
+LXN0YWJsZQ0KPiBjcCAvYm9vdC9jb25maWctYHVuYW1lIC1yYCogLmNvbmZpZw0KPiAjdGhlIC1q
+NCBzdGFuZCBmb3IgNCBqb2JzIHJ1bm5pbmcgYXQgdGhlIHNhbWUgdGltZSwgaWRlYWwgZm9yDQo+
+IG11bHRpLWNvcmUgcHJvY2Vzc29yLg0KPiBtYWtlIC1qNA0KPiAjSXQgdGFrZXMgYSB3aGlsZQ0K
+PiANCj4gIy0tLS0tLS0tLS0tLS0tLS0tLS0tSW5zdGFsbCB0aGUgcGF0Y2hlcy0tLS0tLS0tLS0t
+LS0tLS0tLQ0KPiBhcHQtZ2V0IGluc3RhbGwgcGF0Y2gNCj4gY2QgLw0KPiBta2RpciBwYXRjaA0K
+PiBjZCBwYXRjaA0KPiBta2RpciBycGNtdWx0aXBhdGhwYXRjaA0KPiBta2RpciBzZXNzaW9udHJ1
+bmtpbmdwYXRjaA0KPiAjR2V0IHRoZSBUcm9uZCBNeWtsZWJ1c3QncyBwYXRjaCA6DQo+IGh0dHA6
+Ly93d3cuc3Bpbmljcy5uZXQvbGlzdHMvbGludXgtbmZzL21zZzU2MzY1Lmh0bWwNCj4gbmFubyBy
+cGNtdWx0aXBhdGhwYXRjaC9wYXRjaDEucGF0Y2gNCj4gLg0KPiAuDQo+IC4NCj4gbmFubyBycGNt
+dWx0aXBhdGhwYXRjaC9wYXRjaDEzLnBhdGNoDQo+ICNHZXQgdGhlIEFuZHkgQWRhbXNvbidzIHBh
+dGNoZXMgOg0KPiBodHRwOi8vd3d3LnNwaW5pY3MubmV0L2xpc3RzL2xpbnV4LW5mcy9tc2c1NjQz
+Ny5odG1sDQo+IG5hbm8gc2Vzc2lvbnRydW5raW5ncGF0Y2gvcGF0Y2gxLnBhdGNoDQo+IC4NCj4g
+Lg0KPiAuDQo+IG5hbm8gc2Vzc2lvbnRydW5raW5ncGF0Y2gvcGF0Y2g2LnBhdGNoDQo+IA0KPiAN
+Cj4gY2QgLw0KPiANCj4gI0FwcGx5IHJwYyBtdWx0aXBhdGggcGF0Y2gNCj4gcGF0Y2ggLXAxIDwg
+cnBjbXVsdGlwYXRocGF0Y2gvcGF0Y2gxLnBhdGNoDQo+IHBhdGNoIC1wMSA8IHJwY211bHRpcGF0
+aHBhdGNoL3BhdGNoMi5wYXRjaA0KPiBwYXRjaCAtcDEgPCBycGNtdWx0aXBhdGhwYXRjaC9wYXRj
+aDMucGF0Y2gNCj4gcGF0Y2ggLXAxIDwgcnBjbXVsdGlwYXRocGF0Y2gvcGF0Y2g0LnBhdGNoDQo+
+IHBhdGNoIC1wMSA8IHJwY211bHRpcGF0aHBhdGNoL3BhdGNoNS5wYXRjaA0KPiBwYXRjaCAtcDEg
+PCBycGNtdWx0aXBhdGhwYXRjaC9wYXRjaDYucGF0Y2gNCj4gcGF0Y2ggLXAxIDwgcnBjbXVsdGlw
+YXRocGF0Y2gvcGF0Y2g3LnBhdGNoDQo+IHBhdGNoIC1wMSA8IHJwY211bHRpcGF0aHBhdGNoL3Bh
+dGNoOC5wYXRjaA0KPiBwYXRjaCAtcDEgPCBycGNtdWx0aXBhdGhwYXRjaC9wYXRjaDkucGF0Y2gN
+Cj4gcGF0Y2ggLXAxIDwgcnBjbXVsdGlwYXRocGF0Y2gvcGF0Y2gxMC5wYXRjaA0KPiBwYXRjaCAt
+cDEgPCBycGNtdWx0aXBhdGhwYXRjaC9wYXRjaDExLnBhdGNoDQo+IHBhdGNoIC1wMSA8IHJwY211
+bHRpcGF0aHBhdGNoL3BhdGNoMTIucGF0Y2gNCj4gcGF0Y2ggLXAxIDwgcnBjbXVsdGlwYXRocGF0
+Y2gvcGF0Y2gxMy5wYXRjaA0KPiANCj4gI0FwcGx5IGNsaWVudCBzZXNzaW9uIHRydW5raW5nIHBh
+dGNoZXMNCj4gcGF0Y2ggLXAxIDwgc2Vzc2lvbnRydW5raW5ncGF0Y2gvcGF0Y2gxLnBhdGNoDQo+
+IHBhdGNoIC1wMSA8IHNlc3Npb250cnVua2luZ3BhdGNoL3BhdGNoMi5wYXRjaA0KPiBwYXRjaCAt
+cDEgPCBzZXNzaW9udHJ1bmtpbmdwYXRjaC9wYXRjaDMucGF0Y2gNCj4gcGF0Y2ggLXAxIDwgc2Vz
+c2lvbnRydW5raW5ncGF0Y2gvcGF0Y2g0LnBhdGNoDQo+IHBhdGNoIC1wMSA8IHNlc3Npb250cnVu
+a2luZ3BhdGNoL3BhdGNoNS5wYXRjaA0KPiBwYXRjaCAtcDEgPCBzZXNzaW9udHJ1bmtpbmdwYXRj
+aC9wYXRjaDYucGF0Y2gNCj4gDQo+IG1ha2UgLWo0DQo+IA0KPiAjSSBnb3QgYSBjb21waWxhdGlv
+biBlcnJvciBpbiB0aGUgIm5ldC9zdW5ycGMveHBydG11bHRpcGF0aC5jIiBsaW5lIDIyMA0KPiAj
+YXQgV1JJVEVfT05DRSgmeHBpLT54cGlfY3Vyc29yLE5VTEwpOw0KPiAjZXJyb3I6IGx2YWx1ZSBy
+ZXF1aXJlZCBhcyB1bmFyeSDigJgm4oCZIG9wZXJhbmQNCj4gI0kgcmVtb3ZlIHRoZSAiJiINCj4g
+DQo+IG1ha2UgLWo0IE09bmV0L3N1bnJwYw0KPiANCj4gbWFrZSBtb2R1bGVzX2luc3RhbGwgaW5z
+dGFsbA0KPiAjcmVib290IGFuZCBib290IG9uIHRoZSBuZXcga2VybmVsICh3aXRoIEdSVUIpDQo+
+IA0KPiANCj4gIy0tLS0tLS0tLS0tLS0tLS0tLS0tTW91bnQtLS0tLS0tLS0tLS0tLS0tLS0tLQ0K
+PiBta2RpciB0ZXN0bW91bnQNCj4gbW91bnQgLXRuZnM0IC1vbWlub3J2ZXJzaW9uPTEgMTkyLjE2
+OC4xLjM6L2hvbWUvdGVzdG5mcyB0ZXN0bW91bnQNCj4gbW91bnQgLXRuZnM0IC1vbWlub3J2ZXJz
+aW9uPTEgMTkyLjE2OC4yLjMwOi9ob21lL3Rlc3RuZnMgdGVzdG1vdW50DQo+IA0KPiAjZW5kIGNs
+aWVudCBjb25maWd1cmF0aW9uDQo+IA0KPiBUaGUgcm91bmQtcm9iaW4gaW1wbGVtZW50YXRpb24g
+ZGlzdHJpYnV0ZSBjb3JyZWN0bHkgdGhlIG9wZXJhdGlvbnMNCj4gYmV0d2VlbiB0aGUgdHdvIGlu
+dGVyZmFjZXMgYW5kIHRoZSBCSU5EX0NPTk5fVE9fU0VTU0lPTiBzZWVtcyB0byB3b3JrLg0KPiAN
+Cj4gDQo+IElmIHlvdSBjdXQgYSBjYWJsZSwgdGhlIGNsaWVudCBjb250aW51ZSB0byBzZW5kIG5m
+cyBwYWNrZXRzIG9uIGl0LCBzbw0KPiB5b3UgbG9vc2Ugb25lIG9wZXJhdGlvbiBvbiB0d28uDQo+
+IA0KPiANCj4gDQo+IA0KPiANCj4gVGhhbmtzIHRvIGh0dHA6Ly9rZXJuZWxuZXdiaWVzLm9yZy8u
+DQo+IFRoYW5rcyB0byBUcm9uZCBNeWtsZWJ1c3QgYW5kIEFuZHkgQWRhbXNvbiBmb3IgdGhlIHBh
+dGNoZXMNCg0K
