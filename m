@@ -1,54 +1,87 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ob0-f176.google.com ([209.85.214.176]:35086 "EHLO
-	mail-ob0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S965013AbcBQXzo convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 17 Feb 2016 18:55:44 -0500
-Received: by mail-ob0-f176.google.com with SMTP id xk3so41118533obc.2
-        for <linux-nfs@vger.kernel.org>; Wed, 17 Feb 2016 15:55:44 -0800 (PST)
+Received: from mx2.suse.de ([195.135.220.15]:55595 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1424050AbcBRC7Y (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 17 Feb 2016 21:59:24 -0500
+From: NeilBrown <neilb@suse.com>
+To: Steve Dickson <SteveD@redhat.com>
+Date: Thu, 18 Feb 2016 13:59:17 +1100
+Subject: [PATCH] mount.nfs - hide EBUSY errors.
+cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Message-ID: <877fi2raey.fsf@notabene.neil.brown.name>
 MIME-Version: 1.0
-In-Reply-To: <B748F703-4298-4D1D-BACB-13B0560E5901@oracle.com>
-References: <CAEUt8V+L3hV1tQTzanVjGyZ1qoG8qJk7ZnS5HM1_3+Nc4mpO3A@mail.gmail.com>
-	<F6DC5176-6340-4945-9EBD-537410882E1D@netapp.com>
-	<B10307D6-13C6-4A04-B3A9-B66C27F51E19@oracle.com>
-	<20160217205929.GF10401@fieldses.org>
-	<3B48A59F-638A-45C9-B2E4-2D65C00DE639@netapp.com>
-	<B748F703-4298-4D1D-BACB-13B0560E5901@oracle.com>
-Date: Wed, 17 Feb 2016 18:55:43 -0500
-Message-ID: <CAHQdGtRO8e7LF_2E9hcSV90CsbbfkboX9VOUSiuQWRBs_EBGLA@mail.gmail.com>
-Subject: Re: "Re: [PATCH RFC Version 1 0/6] Request for Comment: NFS4.1
- Session Trunking"
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: "Adamson, Andy" <William.Adamson@netapp.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        Martin Houry <martinhoury@gmail.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=UTF-8
+Content-Type: multipart/signed; boundary="=-=-=";
+	micalg=pgp-sha256; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Feb 17, 2016 at 5:52 PM, Chuck Lever <chuck.lever@oracle.com> wrote:
->
->> On Feb 17, 2016, at 5:35 PM, Adamson, Andy <William.Adamson@netapp.com> wrote:
->> The fs_locations would need to be requested by the client. I guess we reqest them at every mountâ€Ķ.
->
-> Yep, and fetch them again every so often. There's no real
-> cache coherency protocol for this information. (That's
-> where a pNFS layout might be more valuable).
+--=-=-=
+Content-Type: text/plain
+Content-Transfer-Encoding: quoted-printable
 
-If your goal is to do session trunking, you only really need to check
-the fs_locations attribute on the root file system. (so
-GETROOTFH+GETATTR(fs_locations)). That's the natural place for a
-server to advertise its full set of IP addresses, and the session
-trunking protocol itself will allow you to winnow out any that might
-belong to a replica server.
 
-You might want to refresh that info whenever the connection goes away
-on one or more addresses without a reboot so you can detect when NICs
-are going away.
+Linux only returns EBUSY for a non-remount mount if the exact
+requested filesystem is already mounted.  Arguably this is not an
+error.
 
-Otherwise, polling every couple of hours or so for new NICs shouldn't
-be too burdensome...
+"mount -a" tries to see if each requested filesystem is already mounted.
+Sometimes it gets it wrong - e.g. hostname aliases can confuse it.
+So "mount -a" will report a failure "already mounted", which is
+wrong because it should filter those out.
 
-Cheers,
- Trond
+An easy fix it just to be silent about EBUSY.  As the requested
+result (a given filesystem being mounted at a given location) is in
+effect after the EBUSY return, we can just treat it as success.
+
+This removes the confusing "already mounted" errors.
+
+Signed-off-by: NeilBrown <neilb@suse.com>
+=2D--
+ utils/mount/stropts.c | 9 +++++++++
+ 1 file changed, 9 insertions(+)
+
+diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
+index 86829a902bfd..320dde2fab92 100644
+=2D-- a/utils/mount/stropts.c
++++ b/utils/mount/stropts.c
+@@ -960,6 +960,15 @@ static int nfsmount_fg(struct nfsmount_info *mi)
+ 		if (nfs_try_mount(mi))
+ 			return EX_SUCCESS;
+=20
++		if (errno =3D=3D EBUSY)
++			/* The only cause of EBUSY is if exactly the desired
++			 * filesystem is already mounted.  That can arguably
++			 * be seen as success.  "mount -a" tries to optimise
++			 * out this case but sometimes fails.  Help it out
++			 * by pretending everything is rosy
++			 */
++			return EX_SUCCESS;
++
+ 		if (nfs_is_permanent_error(errno))
+ 			break;
+=20
+=2D-=20
+2.7.1
+
+
+--=-=-=
+Content-Type: application/pgp-signature; name="signature.asc"
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v2
+
+iQIcBAEBCAAGBQJWxTOFAAoJEDnsnt1WYoG5BZcQAKuuKhQT9bTeG2KLr9blgTjy
+bh2xpS4aggpqcxaEXchunhVEK5k25RSqryyz1bVFXPakoWY9qJPhRXT9HinfLklS
+T1OwsVwt1w7oVNncYx2vkA9lRmwZscaUqad5qGO760dkjHsSvLWxA3RXkLi6bUng
+aMHO3HGjfJGTsL1q8IzBXuU+EKo7SVR+gOiwiCMxOG1O2WKKSnirGTd6XqRkQDPm
+yoe2EKWgPERkw6rinX8Ft7JRnItio2O3iz6msoEWNbcAcqKLG+wHSWxcMvPul68P
+c8DvnTjfObqv+WsaM9/b9YUOkx8aG+PnK4/h/51LpNTBDMTolFk73MiXAb3bgK53
+9hY2VHBz9/nSZXZg8RQ8Ba2olmFonUnGQJbb14ZTn3VjIUWuKHgPseORf9G8Z7tv
+8nYvTP9Smf00gykF0ZoPaZhiJr5iPGC9FYIyO1sb1q9KyGZRVJ5jg/NpBeAE3bd6
+4HDAmO0TCA/QHkSInRZ4wnsuza7I+sN8Mi/NmAdwSESF8JAuKdgNH2USUmej45w8
+FW67FW/iqyhpvyw5MJHMcnx21mvdpOL/Qc8b+0OM6t+IMESfAf+Cf9iWMtXGYQ9b
+i0CNOyO/PX4g8EFBq396eG6TKFkOhDEirrBayXn6Vk5m/sAfAU1Gp/YDa0Npqsll
+V0DfKVRU1N1ttGvJas3+
+=oj5S
+-----END PGP SIGNATURE-----
+--=-=-=--
