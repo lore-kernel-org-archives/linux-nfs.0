@@ -1,104 +1,138 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:33803 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1424396AbcBRGPS (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 18 Feb 2016 01:15:18 -0500
-From: NeilBrown <neilb@suse.com>
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-Date: Thu, 18 Feb 2016 17:15:09 +1100
-Cc: linux-nfs@vger.kernel.org, Takashi Iwai <tiwai@suse.com>
-Subject: Re: Concerns about SO_REUSEPORT usage in NFS client
-In-Reply-To: <87y4ct91mu.fsf@notabene.neil.brown.name>
-References: <87y4ct91mu.fsf@notabene.neil.brown.name>
-Message-ID: <87si0qpms2.fsf@notabene.neil.brown.name>
-MIME-Version: 1.0
-Content-Type: multipart/signed; boundary="=-=-=";
-	micalg=pgp-sha256; protocol="application/pgp-signature"
+Received: from out4-smtp.messagingengine.com ([66.111.4.28]:40759 "EHLO
+	out4-smtp.messagingengine.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1424013AbcBRGgf (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 18 Feb 2016 01:36:35 -0500
+Received: from compute4.internal (compute4.nyi.internal [10.202.2.44])
+	by mailout.nyi.internal (Postfix) with ESMTP id C535A21474
+	for <linux-nfs@vger.kernel.org>; Thu, 18 Feb 2016 01:36:34 -0500 (EST)
+Message-ID: <1455777387.3188.24.camel@themaw.net>
+Subject: Re: call_usermodehelper in containers
+From: Ian Kent <raven@themaw.net>
+To: Kamezawa Hiroyuki <kamezawa.hiroyu@jp.fujitsu.com>,
+        "Eric W. Biederman" <ebiederm@xmission.com>
+Cc: Oleg Nesterov <oleg@redhat.com>,
+        Stanislav Kinsbursky <skinsbursky@parallels.com>,
+        Jeff Layton <jlayton@redhat.com>, Greg KH <gregkh@linuxfoundation.org>,
+        linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, devel@openvz.org, bfields@fieldses.org,
+        bharrosh@panasas.com,
+        Linux Containers <containers@lists.linux-foundation.org>
+Date: Thu, 18 Feb 2016 14:36:27 +0800
+In-Reply-To: <56C53DE3.1070108@jp.fujitsu.com>
+References: <20131111071825.62da01d1@tlielax.poochiereds.net>
+	 <20131112004703.GB15377@kroah.com>
+	 <20131112061201.04cf25ab@tlielax.poochiereds.net>
+	 <528226EC.4050701@parallels.com>
+	 <20131112083043.0ab78e67@tlielax.poochiereds.net>
+	 <5285FA0A.2080802@parallels.com> <871u2incyo.fsf@xmission.com>
+	 <20131118172844.GA10005@redhat.com> <1455149857.2903.9.camel@themaw.net>
+	 <8737sq4teb.fsf@x220.int.ebiederm.org> <56C53DE3.1070108@jp.fujitsu.com>
+Content-Type: text/plain; charset="UTF-8"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---=-=-=
-Content-Type: text/plain
+On Thu, 2016-02-18 at 12:43 +0900, Kamezawa Hiroyuki wrote:
+> On 2016/02/18 11:57, Eric W. Biederman wrote:
+> > 
+> > Ccing The containers list because a related discussion is happening
+> > there
+> > and somehow this thread has never made it there.
+> > 
+> > Ian Kent <raven@themaw.net> writes:
+> > 
+> > > On Mon, 2013-11-18 at 18:28 +0100, Oleg Nesterov wrote:
+> > > > On 11/15, Eric W. Biederman wrote:
+> > > > > 
+> > > > > I don't understand that one.  Having a preforked thread with
+> > > > > the
+> > > > > proper
+> > > > > environment that can act like kthreadd in terms of spawning
+> > > > > user
+> > > > > mode
+> > > > > helpers works and is simple.
+> > > 
+> > > Forgive me replying to such an old thread but ...
+> > > 
+> > > After realizing workqueues can't be used to pre-create threads to
+> > > run
+> > > usermode helpers I've returned to look at this.
+> > 
+> > If someone can wind up with a good implementation I will be happy.
+> > 
+> > > > Can't we ask ->child_reaper to create the non-daemonized kernel
+> > > > thread
+> > > > with the "right" ->nsproxy, ->fs, etc?
+> > > 
+> > > Eric, do you think this approach would be sufficient too?
+> > > 
+> > > Probably wouldn't be quite right for user namespaces but should
+> > > provide
+> > > what's needed for other cases?
+> > > 
+> > > It certainly has the advantage of not having to maintain a plague
+> > > of
+> > > processes waiting around to execute helpers.
+> > 
+> > That certainly sounds attractive.  Especially for the case of
+> > everyone
+> > who wants to set a core pattern in a container.
+> > 
+> > I am fuzzy on all of the details right now, but what I do remember
+> > is
+> > that in the kernel the user mode helper concepts when they attempted
+> > to
+> > scrub a processes environment were quite error prone until we
+> > managed to
+> > get kthreadd(pid 2) on the scene which always had a clean
+> > environment.
+> > 
+> > If we are going to tie this kind of thing to the pid namespace I
+> > recommend simplying denying it if you are in a user namespace
+> > without
+> > an approrpriate pid namespace.  AKA simply not allowing thigns to be
+> > setup
+> > if current->pid_ns->user_ns != current->user_ns.
+> > 
+> Can't be handled by simple capability like CAP_SYS_USERMODEHELPER ?
+> 
+> User_ns check seems not to allow core-dump-cather in host will not
+> work if user_ns is used.
 
+I don't think so but I'm not sure.
 
-Hi Trond (or anyone),
- did you get a chance to look at this?
- It really seems that the SO_REUSEPORT solution has problems.
+The approach I was talking about assumes the init process of the caller
+(say within a container, corresponding to ->child_reaper) is an
+appropriate template for umh thread execution.
 
-Thanks,
-NeilBrown
+But I don't think that covers the case where unshare has created
+different namespaces, like a mount namespace for example.
 
-On Thu, Dec 17 2015, NeilBrown wrote:
+The current workqueue sub system can't be used to pre-create a thread to
+be used for umh execution so, either is needs changes or yet another
+mechanism needs to be implemented.
 
-> Hi Trond et al.
->
-> I have concerns about the new use of SO_REUSEPORT in the NFS client.
-> Partly this is a theoretical concern.  The documentation in socket(7)
-> talks about using this flag on UDP sockets and on TCP sockets in LISTEN
-> mode, but not about using it with connected TCP sockets.  So the NFS
-> usage isn't covered by the documentation ... maybe fixing the
-> documentation would relieve that concern.
->
-> But there is also a practical concern: it seems to sometime cause
-> failures.
-> This is reported here:
->     https://bugzilla.suse.com/show_bug.cgi?id=959216
->
-> I cannot reproduce exactly the same symptoms as described there but I
-> can get close. I:
->   - establish an NFSv3 mount to a server
->   - determine the port number used on the client side
->   - write numbers to /proc/sys/sunrpc/{min,max}_resvport which bracket
->     that port number in a range of 10 or so
->   - try to establish NFSv4 mounts in a loop (unmounting each time)
->
-> Then the mount will sometimes hang.
-> While it is hanging mount.nfs might be in permanently runnable and
-> "cat /proc/`pidof mount.nfs`/stack" can show:
->
-> [<ffffffff81001012>] ___preempt_schedule+0x12/0x14
-> [<ffffffffffffffff>] 0xffffffffffffffff
->
->
-> I've also sometime seen the stack trace mentioned in the bugzilla
->
-> [<ffffffffa030b469>] xprt_connect+0x119/0x170 [sunrpc]
-> [<ffffffffa0308c06>] call_connect+0x56/0xb0 [sunrpc]
-> [<ffffffffa0312212>] __rpc_execute+0x82/0x450 [sunrpc]
-> [<ffffffffa0314fda>] rpc_execute+0x5a/0xb0 [sunrpc]
-> ....
->
-> I typically see a 3 minute timeout before the mount fails with
->   mount.nfs: Connection timed out
->
-> My guess is that SO_REUSEPORT can allow the NFSv4 mount to use the same
-> connection that the NFSv3 mount is using, though over a different socket.
-> NFSv4 sends a request, the reply is received by the NFSv3 client's socket
-> which rejects it and the NFSv4 client keeps waiting.
->
-> I think that we can only continue to use SO_REUSEPORT if we find a way
-> to ensure that we don't re-use a currently active connection.
->
-> NeilBrown
+For uses other than core dumping capturing a reference to the struct pid
+of the environment init process and using that as an execution template
+should be sufficient and takes care of environment existence problems
+with some extra checks, not to mention eliminating the need for a
+potentially huge number of kernel threads needing to be created to
+provide execution templates.
 
---=-=-=
-Content-Type: application/pgp-signature; name="signature.asc"
+Where to store this and how to access it when needed is another problem.
 
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v2
+Not sure a usermode helper capability is the right thing either as I
+thought one important use of user namespaces was to allow unprivileged
+users to perform operations they otherwise can't.
 
-iQIcBAEBCAAGBQJWxWFtAAoJEDnsnt1WYoG5IX8P+gPEzFr09adGwjaT0VDILp4f
-C5LnDJp1pOvFZyB5pXwCtSmJMHF86hiJ5Ivlu43lLWdKlHuJJCUSxGTlEqmD9qHX
-lzdmm0ZYsbtE0sY4pvh0SJuak12NYIG6JCfDQzdpLmCkxeauwpzc01An3gHUU922
-+8H0DWAijQZgrwMPmjBXn8aW5qoCgFtgA8qjeXkUNisVqxZegfkyogKTo+RYYzNI
-qLG4XZqidKpiLxxDTSo+GAd/4barZi0dUvnwGzE947H/F4El/r/AReNzUSNCiOWs
-3qkhQPdlfoFW+AVAtSfU2v8KdgkYA63hP0PBBIVkKLOOe74sD00/SumO3iNa8cKV
-KpmzW0vO+cONl/qCwnHZgP7wn5u/78ECPdMZi4MofJRCyqSGJhe4wuhWKzJoKUAs
-ecGRMlJgYTGgvjzkcZvM44vIHiHSSZkztikCZ7mWSM6SiuGHI7Ju1dfZTEDq436K
-3AdtkYvx610LKAhWMRzZoop0Aj/oKSbz92rX7DH1MkBZ9sEL/ukPuKNzCgz1ETx4
-PfMtAzFPRLxM2G06eh3RmeUTChhclwmjBUcFBzyvXemEd73eCY50e6H5ic3wrue0
-qHu7hIFNaR+jiu5e82TN6Mg0suR4I0SBKw+NPZezRo9FK6c4GGQ5IafPmcFuXI+j
-FzWu3QbFNpPf8+PSCijc
-=kwdY
------END PGP SIGNATURE-----
---=-=-=--
+Maybe a CAP_SYS_USERNSCOREDUMP or similar would be sensible ....
+
+Still an appropriate execution template would be needed and IIUC we
+can't trust getting that from within a user created namespace
+environment.
+
+> 
+> Thanks,
+> -Kame
+> 
