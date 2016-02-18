@@ -1,14 +1,14 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ig0-f178.google.com ([209.85.213.178]:34209 "EHLO
-	mail-ig0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1946429AbcBRRaF (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 18 Feb 2016 12:30:05 -0500
-Subject: [PATCH v2 01/12] xprtrdma: rpcrdma_bc_receive_call() should init
- rq_private_buf.len
+Received: from mail-ig0-f174.google.com ([209.85.213.174]:38358 "EHLO
+	mail-ig0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1946429AbcBRRaN (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 18 Feb 2016 12:30:13 -0500
+Subject: [PATCH v2 02/12] xprtrdma: Clean up unused
+ RPCRDMA_INLINE_PAD_THRESH macro
 From: Chuck Lever <chuck.lever@oracle.com>
 To: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Thu, 18 Feb 2016 12:30:02 -0500
-Message-ID: <20160218173002.14009.22426.stgit@manet.1015granger.net>
+Date: Thu, 18 Feb 2016 12:30:11 -0500
+Message-ID: <20160218173011.14009.4267.stgit@manet.1015granger.net>
 In-Reply-To: <20160218172449.14009.47311.stgit@manet.1015granger.net>
 References: <20160218172449.14009.47311.stgit@manet.1015granger.net>
 MIME-Version: 1.0
@@ -16,34 +16,23 @@ Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Some NFSv4.1 OPEN requests were hanging waiting for the NFS server
-to finish recalling delegations. Turns out that each NFSv4.1 CB
-request on RDMA gets a GARBAGE_ARGS reply from the Linux client.
-
-Commit 756b9b37cfb2e3dc added a line in bc_svc_process that
-overwrites the incoming rq_rcv_buf's length with the value in
-rq_private_buf.len. But rpcrdma_bc_receive_call() does not invoke
-xprt_complete_bc_request(), thus rq_private_buf.len is not
-initialized. svc_process_common() is invoked with a zero-length
-RPC message, and fails.
-
-Fixes: 756b9b37cfb2e3dc ('SUNRPC: Fix callback channel')
+Fixes: b3221d6a53c4 ('xprtrdma: Remove logic that constructs...')
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- net/sunrpc/xprtrdma/backchannel.c |    2 ++
- 1 file changed, 2 insertions(+)
+ include/linux/sunrpc/xprtrdma.h |    2 --
+ 1 file changed, 2 deletions(-)
 
-diff --git a/net/sunrpc/xprtrdma/backchannel.c b/net/sunrpc/xprtrdma/backchannel.c
-index cc1251d..2dcd764 100644
---- a/net/sunrpc/xprtrdma/backchannel.c
-+++ b/net/sunrpc/xprtrdma/backchannel.c
-@@ -341,6 +341,8 @@ void rpcrdma_bc_receive_call(struct rpcrdma_xprt *r_xprt,
- 	rqst->rq_reply_bytes_recvd = 0;
- 	rqst->rq_bytes_sent = 0;
- 	rqst->rq_xid = headerp->rm_xid;
-+
-+	rqst->rq_private_buf.len = size;
- 	set_bit(RPC_BC_PA_IN_USE, &rqst->rq_bc_pa_state);
+diff --git a/include/linux/sunrpc/xprtrdma.h b/include/linux/sunrpc/xprtrdma.h
+index b7b279b..767190b 100644
+--- a/include/linux/sunrpc/xprtrdma.h
++++ b/include/linux/sunrpc/xprtrdma.h
+@@ -54,8 +54,6 @@
  
- 	buf = &rqst->rq_rcv_buf;
+ #define RPCRDMA_DEF_INLINE  (1024)	/* default inline max */
+ 
+-#define RPCRDMA_INLINE_PAD_THRESH  (512)/* payload threshold to pad (bytes) */
+-
+ /* Memory registration strategies, by number.
+  * This is part of a kernel / user space API. Do not remove. */
+ enum rpcrdma_memreg {
 
