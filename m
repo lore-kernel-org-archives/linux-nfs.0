@@ -1,58 +1,73 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:55090 "EHLO mx1.redhat.com"
+Received: from mx143.netapp.com ([216.240.21.24]:9167 "EHLO mx143.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1946936AbcBRSz5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 18 Feb 2016 13:55:57 -0500
-Received: from int-mx10.intmail.prod.int.phx2.redhat.com (int-mx10.intmail.prod.int.phx2.redhat.com [10.5.11.23])
-	by mx1.redhat.com (Postfix) with ESMTPS id 219AE821C3
-	for <linux-nfs@vger.kernel.org>; Thu, 18 Feb 2016 18:55:57 +0000 (UTC)
-From: Stefan Hajnoczi <stefanha@redhat.com>
-To: "J. Bruce Fields" <bfields@redhat.com>
-Cc: linux-nfs@vger.kernel.org, Stefan Hajnoczi <stefanha@redhat.com>
-Subject: [PATCH] sunrpc/cache: fix off-by-one in qword_get()
-Date: Thu, 18 Feb 2016 18:55:54 +0000
-Message-Id: <1455821754-24940-1-git-send-email-stefanha@redhat.com>
+	id S1946668AbcBRTlV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 18 Feb 2016 14:41:21 -0500
+From: "Adamson, Andy" <William.Adamson@netapp.com>
+To: Trond Myklebust <trond.myklebust@primarydata.com>
+CC: "J. Bruce Fields" <bfields@fieldses.org>,
+        Chuck Lever <chuck.lever@oracle.com>,
+        "Adamson, Andy" <William.Adamson@netapp.com>,
+        Martin Houry <martinhoury@gmail.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: "Re: [PATCH RFC Version 1 0/6] Request for Comment: NFS4.1
+ Session Trunking"
+Date: Thu, 18 Feb 2016 19:41:19 +0000
+Message-ID: <839836DE-11FD-4310-A76E-630548C0777B@netapp.com>
+References: <CAEUt8V+L3hV1tQTzanVjGyZ1qoG8qJk7ZnS5HM1_3+Nc4mpO3A@mail.gmail.com>
+ <F6DC5176-6340-4945-9EBD-537410882E1D@netapp.com>
+ <B10307D6-13C6-4A04-B3A9-B66C27F51E19@oracle.com>
+ <20160217205929.GF10401@fieldses.org>
+ <3B48A59F-638A-45C9-B2E4-2D65C00DE639@netapp.com>
+ <B748F703-4298-4D1D-BACB-13B0560E5901@oracle.com>
+ <CAHQdGtRO8e7LF_2E9hcSV90CsbbfkboX9VOUSiuQWRBs_EBGLA@mail.gmail.com>
+ <20160218141447.GB4256@fieldses.org>
+ <CAHQdGtRt-iuY-R3xQQyiXni=HD8DKzYX7pkaN=8xCuAWBeyOiw@mail.gmail.com>
+In-Reply-To: <CAHQdGtRt-iuY-R3xQQyiXni=HD8DKzYX7pkaN=8xCuAWBeyOiw@mail.gmail.com>
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The qword_get() function NUL-terminates its output buffer.  If the input
-string is in hex format \xXXXX... and the same length as the output
-buffer, there is an off-by-one:
-
-  int qword_get(char **bpp, char *dest, int bufsize)
-  {
-      ...
-      while (len < bufsize) {
-          ...
-          *dest++ = (h << 4) | l;
-          len++;
-      }
-      ...
-      *dest = '\0';
-      return len;
-  }
-
-This patch ensures the NUL terminator doesn't fall outside the output
-buffer.
-
-Signed-off-by: Stefan Hajnoczi <stefanha@redhat.com>
----
- net/sunrpc/cache.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
-
-diff --git a/net/sunrpc/cache.c b/net/sunrpc/cache.c
-index 2b32fd6..273bc3a 100644
---- a/net/sunrpc/cache.c
-+++ b/net/sunrpc/cache.c
-@@ -1225,7 +1225,7 @@ int qword_get(char **bpp, char *dest, int bufsize)
- 	if (bp[0] == '\\' && bp[1] == 'x') {
- 		/* HEX STRING */
- 		bp += 2;
--		while (len < bufsize) {
-+		while (len < bufsize - 1) {
- 			int h, l;
- 
- 			h = hex_to_bin(bp[0]);
--- 
-2.5.0
-
+DQo+IE9uIEZlYiAxOCwgMjAxNiwgYXQgMTozMiBQTSwgVHJvbmQgTXlrbGVidXN0IDx0cm9uZC5t
+eWtsZWJ1c3RAcHJpbWFyeWRhdGEuY29tPiB3cm90ZToNCj4gDQo+IE9uIFRodSwgRmViIDE4LCAy
+MDE2IGF0IDk6MTQgQU0sIEouIEJydWNlIEZpZWxkcyA8YmZpZWxkc0BmaWVsZHNlcy5vcmc+IHdy
+b3RlOg0KPj4gDQo+PiBPbiBXZWQsIEZlYiAxNywgMjAxNiBhdCAwNjo1NTo0M1BNIC0wNTAwLCBU
+cm9uZCBNeWtsZWJ1c3Qgd3JvdGU6DQo+Pj4gT24gV2VkLCBGZWIgMTcsIDIwMTYgYXQgNTo1MiBQ
+TSwgQ2h1Y2sgTGV2ZXIgPGNodWNrLmxldmVyQG9yYWNsZS5jb20+IHdyb3RlOg0KPj4+PiANCj4+
+Pj4+IE9uIEZlYiAxNywgMjAxNiwgYXQgNTozNSBQTSwgQWRhbXNvbiwgQW5keSA8V2lsbGlhbS5B
+ZGFtc29uQG5ldGFwcC5jb20+IHdyb3RlOg0KPj4+Pj4gVGhlIGZzX2xvY2F0aW9ucyB3b3VsZCBu
+ZWVkIHRvIGJlIHJlcXVlc3RlZCBieSB0aGUgY2xpZW50LiBJIGd1ZXNzIHdlIHJlcWVzdCB0aGVt
+IGF0IGV2ZXJ5IG1vdW50w6LigqzEti4NCj4+Pj4gDQo+Pj4+IFllcCwgYW5kIGZldGNoIHRoZW0g
+YWdhaW4gZXZlcnkgc28gb2Z0ZW4uIFRoZXJlJ3Mgbm8gcmVhbA0KPj4+PiBjYWNoZSBjb2hlcmVu
+Y3kgcHJvdG9jb2wgZm9yIHRoaXMgaW5mb3JtYXRpb24uIChUaGF0J3MNCj4+Pj4gd2hlcmUgYSBw
+TkZTIGxheW91dCBtaWdodCBiZSBtb3JlIHZhbHVhYmxlKS4NCj4+PiANCj4+PiBJZiB5b3VyIGdv
+YWwgaXMgdG8gZG8gc2Vzc2lvbiB0cnVua2luZywgeW91IG9ubHkgcmVhbGx5IG5lZWQgdG8gY2hl
+Y2sNCj4+PiB0aGUgZnNfbG9jYXRpb25zIGF0dHJpYnV0ZSBvbiB0aGUgcm9vdCBmaWxlIHN5c3Rl
+bS4gKHNvDQo+Pj4gR0VUUk9PVEZIK0dFVEFUVFIoZnNfbG9jYXRpb25zKSkuIFRoYXQncyB0aGUg
+bmF0dXJhbCBwbGFjZSBmb3IgYQ0KPj4+IHNlcnZlciB0byBhZHZlcnRpc2UgaXRzIGZ1bGwgc2V0
+IG9mIElQIGFkZHJlc3NlcywgYW5kIHRoZSBzZXNzaW9uDQo+Pj4gdHJ1bmtpbmcgcHJvdG9jb2wg
+aXRzZWxmIHdpbGwgYWxsb3cgeW91IHRvIHdpbm5vdyBvdXQgYW55IHRoYXQgbWlnaHQNCj4+PiBi
+ZWxvbmcgdG8gYSByZXBsaWNhIHNlcnZlci4NCj4+IA0KPj4gSSB3b3JyeSB0aGF0IHJvdW5kLXJv
+YmluIGNvdWxkIGJlaGF2ZSByZWFsbHkgYmFkbHkgaWYgdGhlIGNsaWVudCdzIHBhdGgNCj4+IHRv
+IHRoZSB0d28gSVAgYWRkcmVzc2VzIGhhdmUgZGlmZmVyZW50IHBlcmZvcm1hbmNlIGNoYXJhY3Rl
+cmlzdGljcy4gIEJ1dA0KPj4gYSBzZXJ2ZXIgc2hvdWxkIHByb2JhYmx5IHN0aWxsIGJlIGFsbG93
+ZWQgdG8gYWR2ZXJ0aXNlIHRob3NlIGFzIHJlcGxpY2FzDQo+PiAoZS5nLiAgbWF5YmUgYSBzbG93
+ZXIgaW50ZXJmYWNlIGlzIHVzYWJsZSBhcyBhIGZhbGxiYWNrPykuDQo+PiANCj4+IFNvIG1heWJl
+IHdlIHNob3VsZCBiZSBjYXJlZnVsIGFib3V0IG1ha2luZyB0aGlzIGF1dG9tYXRpYy4gIFVubGVz
+cyB0aGUNCj4+IGxvYWQtYmFsYW5jaW5nIGlzIGEgbGl0dGxlIHNtYXJ0ZXIgdGhhbiBwdXJlIHJv
+dW5kIHJvYmluLiAgT3IgdW5sZXNzIHdlDQo+PiBjYW4gZ2V0IHNvbWUgbW9yZSBmaW5lLWdyYWlu
+ZWQgaW5mb3JtYXRpb24gKG1heWJlIHNvbWVvbmUgY291bGQgdXNlDQo+PiBmc19sb2NhdGlvbl9p
+bmZvJ3MgcHJlZmVyZW5jZSBpbmZvcm1hdGlvbiBmb3IgdGhpcz8pLg0KPiANCj4gVGhlIG11bHRp
+cGF0aCBwb2xpY3kgaXMgcGx1Z2dhYmxlLiBJZiB5b3UgbmVlZCBzb21ldGhpbmcgbW9yZSBjbGV2
+ZXINCj4gdGhhbiByb3VuZCByb2JpbiwgdGhlbiBmZWVsIGZyZWUgdG8gcGxheS4gSG93ZXZlciBk
+byBub3RlIHRoYXQgZm9yDQo+IHBORlMgbXVsdGlwYXRoaW5nLCBib3RoIHRoZSBmaWxlcyBhbmQg
+ZmxleGZpbGVzIHNwZWNzIGFyZSBjbGVhciB0aGF0DQo+IHlvdSBzaG91bGQgbm90IG1peCBzbG93
+IGFuZCBmYXN0IHRyYW5zcG9ydHMuIEkgaW1hZ2luZSB5b3UgcHJvYmFibHkNCj4gd2FudCB0byBk
+byB0aGUgc2FtZSBmb3IgZnNfbG9jYXRpb25zLg0KPiANCj4gQXMgZm9yIGZzX2xvY2F0aW9uc19p
+bmZvLCBwbGVhc2Ugc2VlIEZTTEk0QlhfKFJFQUR8V1JJVEUpKFJBTkt8T1JERVIpLg0KDQpPSy4g
+SeKAmW0gdGVzdGluZyBzZXNzaW9uIHRydW5raW5nIHVzaW5nIG5ldyBtdWx0aXBsZSBob3N0bmFt
+ZSBtb3VudCBvcHRpb25zLiBJ4oCZbGwgc3VibWl0IGFub3RoZXIgUkZDIHBhdGNoc2V0Lg0KVGhl
+biwgY2F2ZWF0IHBhdGNoc2V0IHJlc3BvbnNlLCBJ4oCZbGwgc3dpdGNoIGZyb20gdGhlIG11bHRp
+cGxlIGhvc3RuYW1lIG1vdW50IG9wdGlvbnMgdG8gZnNfbG9jYXRpb25zX2luZm8NCg0K4oCUPkFu
+ZHkNCg0K
