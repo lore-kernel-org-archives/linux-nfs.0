@@ -1,162 +1,67 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:27109 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1423526AbcBRRxw convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 18 Feb 2016 12:53:52 -0500
-Content-Type: text/plain; charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 9.2 \(3112\))
-Subject: Re: [PATCH v3 02/10] nfsd: Lower NFSv4.1 callback message size limit
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <20160218174401.12825.46375.stgit@klimt.1015granger.net>
-Date: Thu, 18 Feb 2016 12:53:45 -0500
-Message-Id: <9F72A465-0160-4612-A1F3-69DB2B03547E@oracle.com>
-References: <20160218173840.12825.26769.stgit@klimt.1015granger.net> <20160218174401.12825.46375.stgit@klimt.1015granger.net>
-To: Linux RDMA Mailing List <linux-rdma@vger.kernel.org>,
+Received: from mail-ob0-f172.google.com ([209.85.214.172]:35384 "EHLO
+	mail-ob0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1426516AbcBRScq convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 18 Feb 2016 13:32:46 -0500
+Received: by mail-ob0-f172.google.com with SMTP id xk3so81344274obc.2
+        for <linux-nfs@vger.kernel.org>; Thu, 18 Feb 2016 10:32:45 -0800 (PST)
+MIME-Version: 1.0
+In-Reply-To: <20160218141447.GB4256@fieldses.org>
+References: <CAEUt8V+L3hV1tQTzanVjGyZ1qoG8qJk7ZnS5HM1_3+Nc4mpO3A@mail.gmail.com>
+	<F6DC5176-6340-4945-9EBD-537410882E1D@netapp.com>
+	<B10307D6-13C6-4A04-B3A9-B66C27F51E19@oracle.com>
+	<20160217205929.GF10401@fieldses.org>
+	<3B48A59F-638A-45C9-B2E4-2D65C00DE639@netapp.com>
+	<B748F703-4298-4D1D-BACB-13B0560E5901@oracle.com>
+	<CAHQdGtRO8e7LF_2E9hcSV90CsbbfkboX9VOUSiuQWRBs_EBGLA@mail.gmail.com>
+	<20160218141447.GB4256@fieldses.org>
+Date: Thu, 18 Feb 2016 13:32:45 -0500
+Message-ID: <CAHQdGtRt-iuY-R3xQQyiXni=HD8DKzYX7pkaN=8xCuAWBeyOiw@mail.gmail.com>
+Subject: Re: "Re: [PATCH RFC Version 1 0/6] Request for Comment: NFS4.1
+ Session Trunking"
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: Chuck Lever <chuck.lever@oracle.com>,
+        "Adamson, Andy" <William.Adamson@netapp.com>,
+        Martin Houry <martinhoury@gmail.com>,
         Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Thu, Feb 18, 2016 at 9:14 AM, J. Bruce Fields <bfields@fieldses.org> wrote:
+>
+> On Wed, Feb 17, 2016 at 06:55:43PM -0500, Trond Myklebust wrote:
+> > On Wed, Feb 17, 2016 at 5:52 PM, Chuck Lever <chuck.lever@oracle.com> wrote:
+> > >
+> > >> On Feb 17, 2016, at 5:35 PM, Adamson, Andy <William.Adamson@netapp.com> wrote:
+> > >> The fs_locations would need to be requested by the client. I guess we reqest them at every mountâ€Ķ.
+> > >
+> > > Yep, and fetch them again every so often. There's no real
+> > > cache coherency protocol for this information. (That's
+> > > where a pNFS layout might be more valuable).
+> >
+> > If your goal is to do session trunking, you only really need to check
+> > the fs_locations attribute on the root file system. (so
+> > GETROOTFH+GETATTR(fs_locations)). That's the natural place for a
+> > server to advertise its full set of IP addresses, and the session
+> > trunking protocol itself will allow you to winnow out any that might
+> > belong to a replica server.
+>
+> I worry that round-robin could behave really badly if the client's path
+> to the two IP addresses have different performance characteristics.  But
+> a server should probably still be allowed to advertise those as replicas
+> (e.g.  maybe a slower interface is usable as a fallback?).
+>
+> So maybe we should be careful about making this automatic.  Unless the
+> load-balancing is a little smarter than pure round robin.  Or unless we
+> can get some more fine-grained information (maybe someone could use
+> fs_location_info's preference information for this?).
 
-> On Feb 18, 2016, at 12:44 PM, Chuck Lever <chuck.lever@oracle.com> wrote:
-> 
-> The maximum size of a backchannel message on RPC-over-RDMA depends
-> on the connection's inline threshold. Today that threshold is
-> typically 1024 bytes, making the maximum message size 996 bytes.
-> 
-> The Linux server's CREATE_SESSION operation checks that the size
-> of callback Calls can be as large as 1044 bytes, to accommodate
-> RPCSEC_GSS. Thus CREATE_SESSION fails if a client advertises the
-> true message size maximum of 996 bytes.
-> 
-> But the server's backchannel currently does not support RPCSEC_GSS.
-> The actual maximum size it needs is much smaller. It is safe to
-> reduce the limit to enable NFSv4.1 on RDMA backchannel operation.
-> 
-> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-> ---
-> fs/nfsd/nfs4state.c         |   24 ++++++++++++++++--------
-> include/linux/sunrpc/auth.h |    7 +++++++
-> net/sunrpc/auth_null.c      |    4 ++--
-> net/sunrpc/auth_unix.c      |    6 ++----
-> 4 files changed, 27 insertions(+), 14 deletions(-)
-> 
-> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-> index c484a2b..0f56e57 100644
-> --- a/fs/nfsd/nfs4state.c
-> +++ b/fs/nfsd/nfs4state.c
-> @@ -2586,21 +2586,29 @@ static __be32 check_forechannel_attrs(struct nfsd4_channel_attrs *ca, struct nfs
-> 	return nfs_ok;
-> }
-> 
-> +/*
-> + * Server's NFSv4.1 backchannel support is AUTH_SYS-only for now.
-> + * These are based on similar macros in linux/sunrpc/msg_prot.h .
-> + */
-> +#define RPC_MAX_HEADER_WITH_AUTH_SYS \
-> +	(RPC_CALLHDRSIZE + 2 * (2 + UNX_CALLSLACK))
-> +
-> +#define RPC_MAX_REPHEADER_WITH_AUTH_SYS \
-> +	(RPC_REPHDRSIZE + (2 + NUL_REPLYSLACK))
-> +
-> #define NFSD_CB_MAX_REQ_SZ	((NFS4_enc_cb_recall_sz + \
-> -				 RPC_MAX_HEADER_WITH_AUTH) * sizeof(__be32))
-> +				 RPC_MAX_HEADER_WITH_AUTH_SYS) * sizeof(__be32))
-> #define NFSD_CB_MAX_RESP_SZ	((NFS4_dec_cb_recall_sz + \
-> -				 RPC_MAX_REPHEADER_WITH_AUTH) * sizeof(__be32))
-> +				 RPC_MAX_REPHEADER_WITH_AUTH_SYS) * \
-> +				 sizeof(__be32))
-> 
-> static __be32 check_backchannel_attrs(struct nfsd4_channel_attrs *ca)
-> {
-> 	ca->headerpadsz = 0;
-> 
-> -	/*
-> -	 * These RPC_MAX_HEADER macros are overkill, especially since we
-> -	 * don't even do gss on the backchannel yet.  But this is still
-> -	 * less than 1k.  Tighten up this estimate in the unlikely event
-> -	 * it turns out to be a problem for some client:
-> -	 */
-> +	pr_err("%s: NFSD_CB_MAX_REQ_SZ=%lu, NFSD_CB_MAX_RESP_SZ=%lu\n",
-> +		__func__, NFSD_CB_MAX_REQ_SZ, NFSD_CB_MAX_RESP_SZ);
-> +
+The multipath policy is pluggable. If you need something more clever
+than round robin, then feel free to play. However do note that for
+pNFS multipathing, both the files and flexfiles specs are clear that
+you should not mix slow and fast transports. I imagine you probably
+want to do the same for fs_locations.
 
-Oops, forgot to remove this pr_err. That will be gone in the
-next version of this patch.
-
-
-> 	if (ca->maxreq_sz < NFSD_CB_MAX_REQ_SZ)
-> 		return nfserr_toosmall;
-> 	if (ca->maxresp_sz < NFSD_CB_MAX_RESP_SZ)
-> diff --git a/include/linux/sunrpc/auth.h b/include/linux/sunrpc/auth.h
-> index 1ecf13e..6a241a2 100644
-> --- a/include/linux/sunrpc/auth.h
-> +++ b/include/linux/sunrpc/auth.h
-> @@ -21,10 +21,17 @@
-> #include <linux/utsname.h>
-> 
-> /*
-> + * Maximum size of AUTH_NONE authentication information, in XDR words.
-> + */
-> +#define NUL_CALLSLACK	(4)
-> +#define NUL_REPLYSLACK	(2)
-> +
-> +/*
->  * Size of the nodename buffer. RFC1831 specifies a hard limit of 255 bytes,
->  * but Linux hostnames are actually limited to __NEW_UTS_LEN bytes.
->  */
-> #define UNX_MAXNODENAME	__NEW_UTS_LEN
-> +#define UNX_CALLSLACK	(21 + XDR_QUADLEN(UNX_MAXNODENAME))
-> 
-> struct rpcsec_gss_info;
-> 
-> diff --git a/net/sunrpc/auth_null.c b/net/sunrpc/auth_null.c
-> index c2a2b58..8d9eb4d 100644
-> --- a/net/sunrpc/auth_null.c
-> +++ b/net/sunrpc/auth_null.c
-> @@ -113,8 +113,8 @@ const struct rpc_authops authnull_ops = {
-> 
-> static
-> struct rpc_auth null_auth = {
-> -	.au_cslack	= 4,
-> -	.au_rslack	= 2,
-> +	.au_cslack	= NUL_CALLSLACK,
-> +	.au_rslack	= NUL_REPLYSLACK,
-> 	.au_ops		= &authnull_ops,
-> 	.au_flavor	= RPC_AUTH_NULL,
-> 	.au_count	= ATOMIC_INIT(0),
-> diff --git a/net/sunrpc/auth_unix.c b/net/sunrpc/auth_unix.c
-> index 548240d..0d3dd36 100644
-> --- a/net/sunrpc/auth_unix.c
-> +++ b/net/sunrpc/auth_unix.c
-> @@ -23,8 +23,6 @@ struct unx_cred {
-> };
-> #define uc_uid			uc_base.cr_uid
-> 
-> -#define UNX_WRITESLACK		(21 + XDR_QUADLEN(UNX_MAXNODENAME))
-> -
-> #if IS_ENABLED(CONFIG_SUNRPC_DEBUG)
-> # define RPCDBG_FACILITY	RPCDBG_AUTH
-> #endif
-> @@ -228,8 +226,8 @@ const struct rpc_authops authunix_ops = {
-> 
-> static
-> struct rpc_auth		unix_auth = {
-> -	.au_cslack	= UNX_WRITESLACK,
-> -	.au_rslack	= 2,			/* assume AUTH_NULL verf */
-> +	.au_cslack	= UNX_CALLSLACK,
-> +	.au_rslack	= NUL_REPLYSLACK,
-> 	.au_ops		= &authunix_ops,
-> 	.au_flavor	= RPC_AUTH_UNIX,
-> 	.au_count	= ATOMIC_INIT(0),
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-rdma" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
---
-Chuck Lever
-
-
-
-
+As for fs_locations_info, please see FSLI4BX_(READ|WRITE)(RANK|ORDER).
