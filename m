@@ -1,13 +1,13 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ig0-f182.google.com ([209.85.213.182]:36126 "EHLO
-	mail-ig0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1425604AbcBRRbB (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 18 Feb 2016 12:31:01 -0500
-Subject: [PATCH v2 08/12] xprtrdma: Properly handle RDMA_ERROR replies
+Received: from mail-ig0-f173.google.com ([209.85.213.173]:34962 "EHLO
+	mail-ig0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1425165AbcBRRbJ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 18 Feb 2016 12:31:09 -0500
+Subject: [PATCH v2 09/12] xprtrdma: Serialize credit accounting again
 From: Chuck Lever <chuck.lever@oracle.com>
 To: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Thu, 18 Feb 2016 12:30:59 -0500
-Message-ID: <20160218173059.14009.32747.stgit@manet.1015granger.net>
+Date: Thu, 18 Feb 2016 12:31:08 -0500
+Message-ID: <20160218173108.14009.17985.stgit@manet.1015granger.net>
 In-Reply-To: <20160218172449.14009.47311.stgit@manet.1015granger.net>
 References: <20160218172449.14009.47311.stgit@manet.1015granger.net>
 MIME-Version: 1.0
@@ -15,145 +15,122 @@ Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-These are shorter than RPCRDMA_HDRLEN_MIN, and they need to
-complete the waiting RPC.
+Commit fe97b47cd623 ("xprtrdma: Use workqueue to process RPC/RDMA
+replies") replaced the reply tasklet with a workqueue that allows
+RPC replies to be processed in parallel. Thus the credit values in
+RPC-over-RDMA replies can be applied in a different order than in
+which the server sent them.
 
+To fix this, revert commit eba8ff660b2d ("xprtrdma: Move credit
+update to RPC reply handler"). Reverting is done by hand to
+accommodate code changes that have occurred since then.
+
+Fixes: fe97b47cd623 ("xprtrdma: Use workqueue to process . . .")
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- include/linux/sunrpc/rpc_rdma.h |   11 +++++---
- net/sunrpc/xprtrdma/rpc_rdma.c  |   51 +++++++++++++++++++++++++++++++++------
- 2 files changed, 49 insertions(+), 13 deletions(-)
+ net/sunrpc/xprtrdma/rpc_rdma.c  |    9 +--------
+ net/sunrpc/xprtrdma/verbs.c     |   27 ++++++++++++++++++++++++++-
+ net/sunrpc/xprtrdma/xprt_rdma.h |    1 +
+ 3 files changed, 28 insertions(+), 9 deletions(-)
 
-diff --git a/include/linux/sunrpc/rpc_rdma.h b/include/linux/sunrpc/rpc_rdma.h
-index 8c6d23c..3b1ff38 100644
---- a/include/linux/sunrpc/rpc_rdma.h
-+++ b/include/linux/sunrpc/rpc_rdma.h
-@@ -93,6 +93,12 @@ struct rpcrdma_msg {
- 			__be32 rm_pempty[3];	/* 3 empty chunk lists */
- 		} rm_padded;
- 
-+		struct {
-+			__be32 rm_err;
-+			__be32 rm_vers_low;
-+			__be32 rm_vers_high;
-+		} rm_error;
-+
- 		__be32 rm_chunks[0];	/* read, write and reply chunks */
- 
- 	} rm_body;
-@@ -109,11 +115,6 @@ enum rpcrdma_errcode {
- 	ERR_CHUNK = 2
- };
- 
--struct rpcrdma_err_vers {
--	uint32_t rdma_vers_low;	/* Version range supported by peer */
--	uint32_t rdma_vers_high;
--};
--
- enum rpcrdma_proc {
- 	RDMA_MSG = 0,		/* An RPC call or reply msg */
- 	RDMA_NOMSG = 1,		/* An RPC call or reply msg - separate body */
 diff --git a/net/sunrpc/xprtrdma/rpc_rdma.c b/net/sunrpc/xprtrdma/rpc_rdma.c
-index 0607391..35f8108 100644
+index 35f8108..888823b 100644
 --- a/net/sunrpc/xprtrdma/rpc_rdma.c
 +++ b/net/sunrpc/xprtrdma/rpc_rdma.c
-@@ -795,7 +795,7 @@ rpcrdma_reply_handler(struct rpcrdma_rep *rep)
- 	struct rpcrdma_xprt *r_xprt = rep->rr_rxprt;
- 	struct rpc_xprt *xprt = &r_xprt->rx_xprt;
+@@ -797,7 +797,6 @@ rpcrdma_reply_handler(struct rpcrdma_rep *rep)
  	__be32 *iptr;
--	int rdmalen, status;
-+	int rdmalen, status, rmerr;
+ 	int rdmalen, status, rmerr;
  	unsigned long cwnd;
- 	u32 credits;
+-	u32 credits;
  
-@@ -803,12 +803,10 @@ rpcrdma_reply_handler(struct rpcrdma_rep *rep)
+ 	dprintk("RPC:       %s: incoming rep %p\n", __func__, rep);
  
- 	if (rep->rr_len == RPCRDMA_BAD_LEN)
- 		goto out_badstatus;
--	if (rep->rr_len < RPCRDMA_HDRLEN_MIN)
-+	if (rep->rr_len < RPCRDMA_HDRLEN_ERR)
- 		goto out_shortreply;
+@@ -928,15 +927,9 @@ out:
+ 	if (req->rl_nchunks)
+ 		r_xprt->rx_ia.ri_ops->ro_unmap_sync(r_xprt, req);
  
- 	headerp = rdmab_to_msg(rep->rr_rdmabuf);
--	if (headerp->rm_vers != rpcrdma_version)
--		goto out_badversion;
- #if defined(CONFIG_SUNRPC_BACKCHANNEL)
- 	if (rpcrdma_is_bcall(headerp))
- 		goto out_bcall;
-@@ -838,6 +836,9 @@ rpcrdma_reply_handler(struct rpcrdma_rep *rep)
- 	req->rl_reply = rep;
- 	xprt->reestablish_timeout = 0;
- 
-+	if (headerp->rm_vers != rpcrdma_version)
-+		goto out_badversion;
-+
- 	/* check for expected message types */
- 	/* The order of some of these tests is important. */
- 	switch (headerp->rm_type) {
-@@ -898,6 +899,9 @@ rpcrdma_reply_handler(struct rpcrdma_rep *rep)
- 		status = rdmalen;
- 		break;
- 
-+	case rdma_error:
-+		goto out_rdmaerr;
-+
- badheader:
- 	default:
- 		dprintk("%s: invalid rpcrdma reply header (type %d):"
-@@ -913,6 +917,7 @@ badheader:
- 		break;
- 	}
- 
-+out:
- 	/* Invalidate and flush the data payloads before waking the
- 	 * waiting application. This guarantees the memory region is
- 	 * properly fenced from the server before the application
-@@ -955,13 +960,43 @@ out_bcall:
- 	return;
- #endif
- 
--out_shortreply:
--	dprintk("RPC:       %s: short/invalid reply\n", __func__);
--	goto repost;
+-	credits = be32_to_cpu(headerp->rm_credit);
+-	if (credits == 0)
+-		credits = 1;	/* don't deadlock */
+-	else if (credits > r_xprt->rx_buf.rb_max_requests)
+-		credits = r_xprt->rx_buf.rb_max_requests;
 -
-+/* If the incoming reply terminated a pending RPC, the next
-+ * RPC call will post a replacement receive buffer as it is
-+ * being marshaled.
-+ */
- out_badversion:
- 	dprintk("RPC:       %s: invalid version %d\n",
- 		__func__, be32_to_cpu(headerp->rm_vers));
-+	status = -EIO;
-+	r_xprt->rx_stats.bad_reply_count++;
-+	goto out;
-+
-+out_rdmaerr:
-+	rmerr = be32_to_cpu(headerp->rm_body.rm_error.rm_err);
-+	switch (rmerr) {
-+	case ERR_VERS:
-+		pr_err("%s: server reports header version error (%u-%u)\n",
-+		       __func__,
-+		       be32_to_cpu(headerp->rm_body.rm_error.rm_vers_low),
-+		       be32_to_cpu(headerp->rm_body.rm_error.rm_vers_high));
-+		break;
-+	case ERR_CHUNK:
-+		pr_err("%s: server reports header decoding error\n",
-+		       __func__);
-+		break;
-+	default:
-+		pr_err("%s: server reports unknown error %d\n",
-+		       __func__, rmerr);
-+	}
-+	status = -EREMOTEIO;
-+	r_xprt->rx_stats.bad_reply_count++;
-+	goto out;
-+
-+/* If no pending RPC transaction was matched, post a replacement
-+ * receive buffer before returning.
-+ */
-+out_shortreply:
-+	dprintk("RPC:       %s: short/invalid reply\n", __func__);
- 	goto repost;
+ 	spin_lock_bh(&xprt->transport_lock);
+ 	cwnd = xprt->cwnd;
+-	xprt->cwnd = credits << RPC_CWNDSHIFT;
++	xprt->cwnd = atomic_read(&r_xprt->rx_buf.rb_credits) << RPC_CWNDSHIFT;
+ 	if (xprt->cwnd > cwnd)
+ 		xprt_release_rqst_cong(rqst->rq_task);
  
- out_nomatch:
+diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
+index 878f1bf..fc1ef5f 100644
+--- a/net/sunrpc/xprtrdma/verbs.c
++++ b/net/sunrpc/xprtrdma/verbs.c
+@@ -190,6 +190,28 @@ rpcrdma_receive_worker(struct work_struct *work)
+ 	rpcrdma_reply_handler(rep);
+ }
+ 
++/* Perform basic sanity checking to avoid using garbage
++ * to update the credit grant value.
++ */
++static void
++rpcrdma_update_granted_credits(struct rpcrdma_rep *rep)
++{
++	struct rpcrdma_msg *rmsgp = rdmab_to_msg(rep->rr_rdmabuf);
++	struct rpcrdma_buffer *buffer = &rep->rr_rxprt->rx_buf;
++	u32 credits;
++
++	if (rep->rr_len < RPCRDMA_HDRLEN_ERR)
++		return;
++
++	credits = be32_to_cpu(rmsgp->rm_credit);
++	if (credits == 0)
++		credits = 1;	/* don't deadlock */
++	else if (credits > buffer->rb_max_requests)
++		credits = buffer->rb_max_requests;
++
++	atomic_set(&buffer->rb_credits, credits);
++}
++
+ static void
+ rpcrdma_recvcq_process_wc(struct ib_wc *wc)
+ {
+@@ -211,7 +233,8 @@ rpcrdma_recvcq_process_wc(struct ib_wc *wc)
+ 	ib_dma_sync_single_for_cpu(rep->rr_device,
+ 				   rdmab_addr(rep->rr_rdmabuf),
+ 				   rep->rr_len, DMA_FROM_DEVICE);
+-	prefetch(rdmab_to_msg(rep->rr_rdmabuf));
++
++	rpcrdma_update_granted_credits(rep);
+ 
+ out_schedule:
+ 	queue_work(rpcrdma_receive_wq, &rep->rr_work);
+@@ -330,6 +353,7 @@ rpcrdma_conn_upcall(struct rdma_cm_id *id, struct rdma_cm_event *event)
+ connected:
+ 		dprintk("RPC:       %s: %sconnected\n",
+ 					__func__, connstate > 0 ? "" : "dis");
++		atomic_set(&xprt->rx_buf.rb_credits, 1);
+ 		ep->rep_connected = connstate;
+ 		rpcrdma_conn_func(ep);
+ 		wake_up_all(&ep->rep_connect_wait);
+@@ -943,6 +967,7 @@ rpcrdma_buffer_create(struct rpcrdma_xprt *r_xprt)
+ 	buf->rb_max_requests = r_xprt->rx_data.max_requests;
+ 	buf->rb_bc_srv_max_requests = 0;
+ 	spin_lock_init(&buf->rb_lock);
++	atomic_set(&buf->rb_credits, 1);
+ 
+ 	rc = ia->ri_ops->ro_init(r_xprt);
+ 	if (rc)
+diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
+index 38fe11b..7bf6f43 100644
+--- a/net/sunrpc/xprtrdma/xprt_rdma.h
++++ b/net/sunrpc/xprtrdma/xprt_rdma.h
+@@ -311,6 +311,7 @@ struct rpcrdma_buffer {
+ 	struct list_head	rb_send_bufs;
+ 	struct list_head	rb_recv_bufs;
+ 	u32			rb_max_requests;
++	atomic_t		rb_credits;	/* most recent credit grant */
+ 
+ 	u32			rb_bc_srv_max_requests;
+ 	spinlock_t		rb_reqslock;	/* protect rb_allreqs */
 
