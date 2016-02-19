@@ -1,102 +1,70 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:29357 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757146AbcBRV3y convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 18 Feb 2016 16:29:54 -0500
-Content-Type: text/plain; charset=utf-8
-Mime-Version: 1.0 (Mac OS X Mail 9.2 \(3112\))
-Subject: Re: "Re: [PATCH RFC Version 1 0/6] Request for Comment: NFS4.1 Session Trunking"
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <20160218203915.GA7771@fieldses.org>
-Date: Thu, 18 Feb 2016 16:29:46 -0500
-Cc: "Adamson, Andy" <William.Adamson@netapp.com>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        Martin Houry <martinhoury@gmail.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <336DFCFA-5655-4CB1-82F2-9E3B17030094@oracle.com>
-References: <CAEUt8V+L3hV1tQTzanVjGyZ1qoG8qJk7ZnS5HM1_3+Nc4mpO3A@mail.gmail.com> <F6DC5176-6340-4945-9EBD-537410882E1D@netapp.com> <B10307D6-13C6-4A04-B3A9-B66C27F51E19@oracle.com> <20160217205929.GF10401@fieldses.org> <3B48A59F-638A-45C9-B2E4-2D65C00DE639@netapp.com> <B748F703-4298-4D1D-BACB-13B0560E5901@oracle.com> <CAHQdGtRO8e7LF_2E9hcSV90CsbbfkboX9VOUSiuQWRBs_EBGLA@mail.gmail.com> <20160218141447.GB4256@fieldses.org> <CAHQdGtRt-iuY-R3xQQyiXni=HD8DKzYX7pkaN=8xCuAWBeyOiw@mail.gmail.com> <839836DE-11FD-4310-A76E-630548C0777B@netapp.com> <20160218203915.GA7771@fieldses.org>
-To: "J. Bruce Fields" <bfields@fieldses.org>
+Received: from mgwym02.jp.fujitsu.com ([211.128.242.41]:30043 "EHLO
+	mgwym02.jp.fujitsu.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751308AbcBSDIt (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 18 Feb 2016 22:08:49 -0500
+Subject: Re: call_usermodehelper in containers
+To: "Eric W. Biederman" <ebiederm@xmission.com>, Ian Kent <raven@themaw.net>
+References: <20131111071825.62da01d1@tlielax.poochiereds.net>
+ <20131112004703.GB15377@kroah.com>
+ <20131112061201.04cf25ab@tlielax.poochiereds.net>
+ <528226EC.4050701@parallels.com>
+ <20131112083043.0ab78e67@tlielax.poochiereds.net>
+ <5285FA0A.2080802@parallels.com> <871u2incyo.fsf@xmission.com>
+ <20131118172844.GA10005@redhat.com> <1455149857.2903.9.camel@themaw.net>
+ <8737sq4teb.fsf@x220.int.ebiederm.org> <56C53DE3.1070108@jp.fujitsu.com>
+ <1455777387.3188.24.camel@themaw.net> <1455781033.2908.5.camel@themaw.net>
+ <87r3g9ychc.fsf@x220.int.ebiederm.org>
+Cc: Oleg Nesterov <oleg@redhat.com>,
+        Stanislav Kinsbursky <skinsbursky@parallels.com>,
+        Jeff Layton <jlayton@redhat.com>, Greg KH <gregkh@linuxfoundation.org>,
+        linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, devel@openvz.org, bfields@fieldses.org,
+        bharrosh@panasas.com,
+        Linux Containers <containers@lists.linux-foundation.org>
+From: Kamezawa Hiroyuki <kamezawa.hiroyu@jp.fujitsu.com>
+Message-ID: <56C68714.2000900@jp.fujitsu.com>
+Date: Fri, 19 Feb 2016 12:08:04 +0900
+MIME-Version: 1.0
+In-Reply-To: <87r3g9ychc.fsf@x220.int.ebiederm.org>
+Content-Type: text/plain; charset=iso-2022-jp
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-> On Feb 18, 2016, at 3:39 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
+On 2016/02/19 5:45, Eric W. Biederman wrote: 
+> Personally I am a fan of the don't be clever and capture a kernel thread
+> approach as it is very easy to see you what if any exploitation
+> opportunities there are.  The justifications for something more clever
+> is trickier.  Of course we do something that from this perspective would
+> be considered ``clever'' today with kthreadd and user mode helpers.
 > 
-> On Thu, Feb 18, 2016 at 07:41:19PM +0000, Adamson, Andy wrote:
->> 
->>> On Feb 18, 2016, at 1:32 PM, Trond Myklebust <trond.myklebust@primarydata.com> wrote:
->>> 
->>> On Thu, Feb 18, 2016 at 9:14 AM, J. Bruce Fields <bfields@fieldses.org> wrote:
->>>> 
->>>> On Wed, Feb 17, 2016 at 06:55:43PM -0500, Trond Myklebust wrote:
->>>>> On Wed, Feb 17, 2016 at 5:52 PM, Chuck Lever <chuck.lever@oracle.com> wrote:
->>>>>> 
->>>>>>> On Feb 17, 2016, at 5:35 PM, Adamson, Andy <William.Adamson@netapp.com> wrote:
->>>>>>> The fs_locations would need to be requested by the client. I guess we reqest them at every mountâ€Ķ.
->>>>>> 
->>>>>> Yep, and fetch them again every so often. There's no real
->>>>>> cache coherency protocol for this information. (That's
->>>>>> where a pNFS layout might be more valuable).
->>>>> 
->>>>> If your goal is to do session trunking, you only really need to check
->>>>> the fs_locations attribute on the root file system. (so
->>>>> GETROOTFH+GETATTR(fs_locations)). That's the natural place for a
->>>>> server to advertise its full set of IP addresses, and the session
->>>>> trunking protocol itself will allow you to winnow out any that might
->>>>> belong to a replica server.
->>>> 
->>>> I worry that round-robin could behave really badly if the client's path
->>>> to the two IP addresses have different performance characteristics.  But
->>>> a server should probably still be allowed to advertise those as replicas
->>>> (e.g.  maybe a slower interface is usable as a fallback?).
->>>> 
->>>> So maybe we should be careful about making this automatic.  Unless the
->>>> load-balancing is a little smarter than pure round robin.  Or unless we
->>>> can get some more fine-grained information (maybe someone could use
->>>> fs_location_info's preference information for this?).
->>> 
->>> The multipath policy is pluggable. If you need something more clever
->>> than round robin, then feel free to play. However do note that for
->>> pNFS multipathing, both the files and flexfiles specs are clear that
->>> you should not mix slow and fast transports. I imagine you probably
->>> want to do the same for fs_locations.
 
-Right, and barring the ability to mix TCP and RDMA transports,
-I think there's no reliable way either the client or the
-server can tell that any particular path has compromised
-performance. It's going to have to be up to administrators
-to make sure this is configured correctly, at least for now.
+I read old discussion....let me allow clarification  to create a helper kernel thread 
+to run usermodehelper with using kthreadd.
 
+0) define a trigger to create an independent usermodehelper environment for a container.
+   Option A) at creating some namespace (pid, uid, etc...)
+   Option B) at creating a new nsproxy
+   Option C).at a new systemcall is called or some sysctl, make_private_usermode_helper() or some,
+  
+  It's expected this should be triggered by init process of a container with some capability.
+  And scope of the effect should be defined. pid namespace ? nsporxy ? or new namespace ?
 
->>> As for fs_locations_info, please see FSLI4BX_(READ|WRITE)(RANK|ORDER).
->> 
->> OK. I’m testing session trunking using new multiple hostname mount options. I’ll submit another RFC patchset.
->> Then, caveat patchset response, I’ll switch from the multiple hostname mount options to fs_locations_info
-> 
-> You mean you want to remove support for the commandline list of
-> hostnames at that point?
-> 
-> I'd rather keep support for listing them on the commandline.  I think
-> the fs_locations_info is a little more complicated than I did at first
-> look.  (Among other things, it requires server support, and some thought
-> about how exactly to interpret that fs_locations_info preference
-> information.)
+1) create a helper thread.
+   task = kthread_create(kthread_work_fn, ?, ?, "usermodehelper")
+   switch task's nsproxy to current.(swtich_task_namespaces())
+   switch task's cgroups to current (cgroup_attach_task_all())
+   switch task's cred to current.
+   copy task's capability from current
+   (and any other ?)
+   wake_up_process()
+   
+   And create a link between kthread_wq and container.
 
-True; there's a reason I never got to implementing
-fs_locations_info on the Linux server for FedFS. There
-are sticky problems around the mountd upcall that is
-used to communicate this information to the kernel,
-for example.
+2) modify call_usermodehelper() to use kthread_worker
+....
 
-However, I don't agree that this is a good reason to
-go with multiple hostnames on the mount command line.
-I like Andy's plan to keep this CLI change out of the
-long term upstream code, but continue to use it for
-testing.
+It seems the problem is which object container private user mode helper should be tied to.
 
---
-Chuck Lever
-
-
-
-
+Regards,
+-Kame
