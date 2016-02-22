@@ -1,139 +1,76 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:35629 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752199AbcBVVCN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 22 Feb 2016 16:02:13 -0500
-From: Scott Mayhew <smayhew@redhat.com>
-To: dros@monkey.org
-Cc: linux-nfs@vger.kernel.org
-Subject: [nfsometer PATCH 2/2] trace.py: Add some more error handling to probe_mounts()
-Date: Mon, 22 Feb 2016 16:02:11 -0500
-Message-Id: <1456174931-61514-2-git-send-email-smayhew@redhat.com>
-In-Reply-To: <1456174931-61514-1-git-send-email-smayhew@redhat.com>
-References: <1456174931-61514-1-git-send-email-smayhew@redhat.com>
+Received: from mail-ig0-f172.google.com ([209.85.213.172]:38829 "EHLO
+	mail-ig0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752199AbcBVWv3 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 22 Feb 2016 17:51:29 -0500
+Received: by mail-ig0-f172.google.com with SMTP id y8so91294275igp.1
+        for <linux-nfs@vger.kernel.org>; Mon, 22 Feb 2016 14:51:29 -0800 (PST)
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 1/2] NFSv4.x/pnfs: Fix a race between layoutget and pnfs_destroy_layout
+Date: Mon, 22 Feb 2016 17:50:45 -0500
+Message-Id: <1456181446-14006-1-git-send-email-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-An nfsometer run can fail very early into the process due to things like
-directory permissions, kerberos creds, and root squashing.  Try to give
-the user some idea why the failure occurred instead of dumping a
-backtrace.
+If the server reboots while there is a layoutget outstanding, then
+the call to pnfs_choose_layoutget_stateid() will fail with an EAGAIN
+error, which causes an infinite loop in send_layoutget(). The reason
+why we never break out of the loop is that the layout 'plh_block_lgets'
+field is never cleared.
 
-Signed-off-by: Scott Mayhew <smayhew@redhat.com>
+Fix is to replace plh_block_lgets with NFS_LAYOUT_INVALID_STID, which
+can be reset after a new layoutget.
+
+Fixes: ab7d763e477c5 ("pNFS: Ensure nfs4_layoutget_prepare returns...")
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
 ---
- nfsometerlib/trace.py | 85 ++++++++++++++++++++++++++++++++++++++++++++++++++-
- 1 file changed, 84 insertions(+), 1 deletion(-)
+ fs/nfs/pnfs.c | 24 ++++++++++++++++++++++--
+ 1 file changed, 22 insertions(+), 2 deletions(-)
 
-diff --git a/nfsometerlib/trace.py b/nfsometerlib/trace.py
-index cd1d3c3..0ab9f85 100644
---- a/nfsometerlib/trace.py
-+++ b/nfsometerlib/trace.py
-@@ -20,6 +20,7 @@ import multiprocessing
- import signal
- import random
- import atexit
-+import pwd
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index 5064f23ca8cc..8a41538f1155 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -252,6 +252,27 @@ pnfs_put_layout_hdr(struct pnfs_layout_hdr *lo)
+ 	}
+ }
  
- from cmd import *
- from config import *
-@@ -517,6 +518,77 @@ def probe_detect(probe_trace_dir, mountopt):
- 
-     return detect
- 
-+def _is_auth_gss():
-+    lines = [ x.strip() for x in file('/proc/self/mountstats') ]
-+    mounted_on = ' mounted on %s with ' % MOUNTDIR
-+    start = -1
-+    end = -1
++/*
++ * Mark a pnfs_layout_hdr and all associated layout segments as invalid
++ *
++ * In order to continue using the pnfs_layout_hdr, a full recovery
++ * is required.
++ * Note that caller must hold inode->i_lock.
++ */
++static void
++pnfs_mark_layout_stateid_invalid(struct pnfs_layout_hdr *lo,
++		struct list_head *lseg_list)
++{
++	struct pnfs_layout_range range = {
++		.iomode = IOMODE_ANY,
++		.offset = 0,
++		.length = NFS4_MAX_UINT64,
++	};
 +
-+    for i, line in enumerate(lines):
-+        if line.find(mounted_on) >= 0:
-+            assert start == -1
-+            start = i
-+        elif start >= 0 and line.startswith('device '):
-+            assert end == -1
-+            end = i
++	set_bit(NFS_LAYOUT_INVALID_STID, &lo->plh_flags);
++	pnfs_mark_matching_lsegs_invalid(lo, lseg_list, &range);
++}
 +
-+    if end < 0:
-+        end = len(lines)
-+
-+    if start >= 0:
-+        lines = lines[start:end]
-+    else:
-+        return False
-+
-+    for line in lines:
-+        if line.startswith('sec:'):
-+            label, data = line.split(':')
-+            data = data.strip()
-+            if data.startswith('flavor=6'):
-+                return True
-+    return False
-+
-+def _has_creds():
-+    return os.stat(os.path.join(RUNNING_TRACE_DIR,
-+                                'klist_user.start')).st_size != 1
-+
-+def _has_tkt(server):
-+    princ = re.compile('nfs/' + server + '\S+$')
-+    lines = [ x.strip() for x in file(os.path.join(RUNNING_TRACE_DIR,
-+                                                   'klist_user.start')) ]
-+    for i, line in enumerate(lines):
-+        if re.search(princ, line):
-+            return True
-+    return False
-+
-+def _eperm_helper(opts):
-+    server, path = opts.serverpath.split(':')
-+    if _is_auth_gss():
-+        if _has_creds():
-+            if _has_tkt(server):
-+                info = str.format(
-+                    ' Check {:s} on {:s} and ensure user {:s} has the correct'
-+                    ' permission.', path, server,
-+                    pwd.getpwuid(os.getuid())[0])
-+            else:
-+                info = str.format(
-+                    ' No nfs service ticket for {:s} in user {:s}\'s'
-+                    ' credential cache.', server,
-+                    pwd.getpwuid(os.getuid())[0])
-+        else:
-+            info = str.format(
-+                ' User {:s} has no kerberos credentials.',
-+                pwd.getpwuid(os.getuid())[0])
-+    elif os.getuid() == 0:
-+        info = str.format(
-+            ' Check for root squashing in the export options for {:s} on'
-+            ' {:s}.', path, server)
-+    else:
-+       info = str.format(
-+            ' Check {:s} on {:s} and ensure user {:s} has the correct'
-+            ' permission.', path, server, pwd.getpwuid(os.getuid())[0])
-+    return info
-+
- #
- # public api commands
- #
-@@ -746,7 +818,18 @@ def probe_mounts(opts):
-         start(m, opts.serverpath, '__nfsometer-probe', [], [], is_probe=True)
-         fpath = os.path.join(RUNROOT, '__nfsometer-probe')
- 
--        cmd('mkdir -p "%s"' % RUNROOT)
-+        try:
-+            cmd('mkdir -p "%s"' % RUNROOT)
-+        except CmdErrorCode, e:
-+            msg = str.format('"mkdir -p {:s}" failed.', RUNROOT)
-+            # try to hint why it failed
-+            if e.code == errno.EPERM:
-+                msg += _eperm_helper(opts)
-+            else:
-+                msg += e.errstr
-+            warn(msg)
-+            # and bail out right now
-+            sys.exit(1)
- 
-         f = file(fpath, 'w+')
-         f.write('nfsometer probe to determine server features: %s' % m)
+ static int
+ pnfs_iomode_to_fail_bit(u32 iomode)
+ {
+@@ -554,9 +575,8 @@ pnfs_destroy_layout(struct nfs_inode *nfsi)
+ 	spin_lock(&nfsi->vfs_inode.i_lock);
+ 	lo = nfsi->layout;
+ 	if (lo) {
+-		lo->plh_block_lgets++; /* permanently block new LAYOUTGETs */
+-		pnfs_mark_matching_lsegs_invalid(lo, &tmp_list, NULL);
+ 		pnfs_get_layout_hdr(lo);
++		pnfs_mark_layout_stateid_invalid(lo, &tmp_list);
+ 		pnfs_layout_clear_fail_bit(lo, NFS_LAYOUT_RO_FAILED);
+ 		pnfs_layout_clear_fail_bit(lo, NFS_LAYOUT_RW_FAILED);
+ 		spin_unlock(&nfsi->vfs_inode.i_lock);
 -- 
-2.4.3
+2.5.0
 
