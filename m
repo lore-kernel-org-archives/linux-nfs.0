@@ -1,70 +1,43 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from userp1040.oracle.com ([156.151.31.81]:38167 "EHLO
+Received: from userp1040.oracle.com ([156.151.31.81]:39379 "EHLO
 	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750744AbcBVSdd (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 22 Feb 2016 13:33:33 -0500
+	with ESMTP id S1750937AbcBVSfL (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 22 Feb 2016 13:35:11 -0500
 Content-Type: text/plain; charset=us-ascii
 Mime-Version: 1.0 (Mac OS X Mail 9.2 \(3112\))
-Subject: Re: [PATCH] nfsd: use correct byte order on rdma port.
+Subject: Re: [PATCH v3 01/10] svcrdma: Do not write xdr_buf::tail in a Write chunk
 From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <1456164550-6369-1-git-send-email-steved@redhat.com>
-Date: Mon, 22 Feb 2016 13:33:17 -0500
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <34C24F04-CBFE-4226-8D7E-F4F526F1C661@oracle.com>
-References: <1456164550-6369-1-git-send-email-steved@redhat.com>
-To: Steve Dickson <SteveD@redhat.com>
+In-Reply-To: <20160222183211.GA22270@fieldses.org>
+Date: Mon, 22 Feb 2016 13:35:02 -0500
+Cc: linux-rdma@vger.kernel.org,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Message-Id: <EF7CD34B-53D8-4657-938C-F19DD5A5A666@oracle.com>
+References: <20160218173840.12825.26769.stgit@klimt.1015granger.net> <20160218174353.12825.14732.stgit@klimt.1015granger.net> <20160222183211.GA22270@fieldses.org>
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
-> On Feb 22, 2016, at 1:09 PM, Steve Dickson <SteveD@redhat.com> wrote:
+> On Feb 22, 2016, at 1:32 PM, bfields@fieldses.org wrote:
 > 
-> The returned port from getservbyname() is in
-> network order. Convert the port to host order
-> before writing it to the portlist file.
-
-Reviewed-by: Chuck Lever <chuck.lever@oracle.com>
-
-/etc/services has:
-
-nfsrdma    20049/tcp
-nfsrdma    20049/udp
-nfsrdma    20049/sctp
-
-which RFC 5666 defines, but I couldn't find in the
-IANA protocols registry.
-
- struct servent *sv = getservbyname("nfsrdma", "tcp");
-
-Is weird.
-
-
-> Reported-by: Chuck Lever <chuck.lever@oracle.com>
-> Signed-off-by: Steve Dickson <steved@redhat.com>
-> ---
-> utils/nfsd/nfssvc.c | 2 +-
-> 1 file changed, 1 insertion(+), 1 deletion(-)
+> On Thu, Feb 18, 2016 at 12:43:53PM -0500, Chuck Lever wrote:
+>> The fix is to send only the contents of the xdr_buf's page list in
+>> a Write chunk.
 > 
-> diff --git a/utils/nfsd/nfssvc.c b/utils/nfsd/nfssvc.c
-> index e8efd06..dcb430a 100644
-> --- a/utils/nfsd/nfssvc.c
-> +++ b/utils/nfsd/nfssvc.c
-> @@ -282,7 +282,7 @@ nfssvc_set_rdmaport(const char *port)
-> 	int fd;
+> This isn't quite right either.  A large-enough non-readlike reply will
+> use the page list if that's the only way to fit the reply.
 > 
-> 	if (sv)
-> -		nport = sv->s_port;
-> +		nport = ntohs(sv->s_port);
-> 	else {
-> 		char *ep;
-> 		nport = strtol(port, &ep, 10);
-> -- 
-> 2.5.0
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> You might be able to hit such cases, for example, using nfs4_getfacl on
+> a file with a sufficiently large ACL.
+
+Clients provide a write chunk only for READ and READLINK.
+No way to hit this with GETFACL unless the client is doing
+something wrong.
+
+Anyway, I've got another revision of this work coming, this
+time it should be a complete fix.
+
+Thanks as always for your careful review!
 
 --
 Chuck Lever
