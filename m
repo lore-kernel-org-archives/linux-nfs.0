@@ -1,90 +1,86 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f171.google.com ([209.85.223.171]:36677 "EHLO
-	mail-io0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754119AbcBWSd0 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 23 Feb 2016 13:33:26 -0500
-Received: by mail-io0-f171.google.com with SMTP id l127so221938018iof.3
-        for <linux-nfs@vger.kernel.org>; Tue, 23 Feb 2016 10:33:26 -0800 (PST)
-Message-ID: <1456252389.10002.1.camel@primarydata.com>
-Subject: [GIT PULL] Please pull NFS client fixes
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Linus Torvalds <torvalds@linux-foundation.org>
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>
-Date: Tue, 23 Feb 2016 13:33:09 -0500
-Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
+Received: from mail-vk0-f46.google.com ([209.85.213.46]:35490 "EHLO
+	mail-vk0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754081AbcBWTBV (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 23 Feb 2016 14:01:21 -0500
+Received: by mail-vk0-f46.google.com with SMTP id e6so170452733vkh.2
+        for <linux-nfs@vger.kernel.org>; Tue, 23 Feb 2016 11:01:20 -0800 (PST)
+MIME-Version: 1.0
+In-Reply-To: <CAHc6FU67LnV7-roofFe1y_uTfvgwonRZimyu7Wn1CDRzwHZJSw@mail.gmail.com>
+References: <56B770B6.7040803@gmail.com>
+	<56B77262.7090107@gmail.com>
+	<CAHc6FU5__xbKm4mg8+fK_ZW5ZYsDoQcYBBvQg573Eq4ERDsROw@mail.gmail.com>
+	<56C0F23C.7030902@gmail.com>
+	<CAHc6FU4CCrcrA6=oCiq2A5rGd9CCGELaTZq6tGpmd2jcV_Zp4A@mail.gmail.com>
+	<56CA2EEB.9080504@gmail.com>
+	<CAHc6FU46vO8NM3cvFH7b8X7U9R+m6wcYj8EQKVnSQkiY3Q051A@mail.gmail.com>
+	<56CC3B4A.7070204@gmail.com>
+	<CAHc6FU67LnV7-roofFe1y_uTfvgwonRZimyu7Wn1CDRzwHZJSw@mail.gmail.com>
+Date: Tue, 23 Feb 2016 20:01:20 +0100
+Message-ID: <CAHc6FU4FR577X=sZAPUXhCL4SUfrRYTHw9_byehZqwYyBOhQiA@mail.gmail.com>
+Subject: Re: richacl(7) man page review comments
+From: Andreas Gruenbacher <agruenba@redhat.com>
+To: "Michael Kerrisk (man-pages)" <mtk.manpages@gmail.com>
+Cc: "J. Bruce Fields" <bfields@fieldses.org>,
+        linux-ext4 <linux-ext4@vger.kernel.org>,
+        XFS Developers <xfs@oss.sgi.com>, lkml <linux-kernel@vger.kernel.org>,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        linux-cifs@vger.kernel.org, Linux API <linux-api@vger.kernel.org>,
+        Dave Chinner <david@fromorbit.com>,
+        Christoph Hellwig <hch@infradead.org>,
+        Anna Schumaker <anna.schumaker@netapp.com>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        Jeff Layton <jlayton@poochiereds.net>,
+        Andreas Dilger <adilger@dilger.ca>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Linus,
+On Tue, Feb 23, 2016 at 4:09 PM, Andreas Gruenbacher
+<agruenba@redhat.com> wrote:
+> Hi Michael,
+>
+> On Tue, Feb 23, 2016 at 11:58 AM, Michael Kerrisk (man-pages)
+> <mtk.manpages@gmail.com> wrote:
+>> On 02/22/2016 03:46 PM, Andreas Gruenbacher wrote:
+>>> On Sun, Feb 21, 2016 at 10:40 PM, Michael Kerrisk (man-pages) <mtk.manpages@gmail.com> wrote:
+>>>> I've once more pulled from the latest git; here's some more comments.
+>>>
+>>> thanks again. I've updated the repo with your changes.
+>>
+>> Next round :-). Just a few quick comments while I'm on a train ride.
+>
+> applied, thanks.
 
-The following changes since commit 388f7b1d6e8ca06762e2454d28d6c3c55ad0fe95:
+I've fixed the following additional problems:
 
-  Linux 4.5-rc3 (2016-02-07 15:38:30 -0800)
+> diff --git a/man/richacl.7 b/man/richacl.7
+> index acdff31..1c82644 100644
+> --- a/man/richacl.7
+> +++ b/man/richacl.7
+> @@ -30,10 +30,8 @@
+>  .SH NAME
+>  richacl \- Rich Access Control Lists
+>  .SH DESCRIPTION
+> -Rich Access Control Lists (RichACLs) are an extension of the POSIX file
+> -permission model (see
+> -.BR acl (5))
+> -to support
+> +Rich Access Control Lists (RichACLs) are an extension of the traditional POSIX
+> +file permission model to support
+>  .URL https://tools.ietf.org/rfc/rfc5661.txt "NFSv4 Access Control Lists"
+>  on local and remote-mounted filesystems.
 
-are available in the git repository at:
+RichACLs are an extension of the traditional POSIX file permission
+model, not of the POSIX ACL model.
 
-  git://git.linux-nfs.org/projects/trondmy/linux-nfs.git tags/nfs-for-4.5-4
+Unfortunately, there doesn't seem to be a man-page covering POSIX File
+Access Permissions as in Appendix A of
+http://www.bestbits.at/richacl/draft-gruenbacher-nfsv4-acls-in-posix-00.html.
 
-for you to fetch changes up to 9fd4b9fc7695a4da1363a0b439853f88fb6a034f:
+A lot of the gaps between paragraphs were wrong when rendered for printing.
 
-  NFSv4.x/pnfs: Fix a race between layoutget and bulk recalls (2016-02-22 17:46:34 -0500)
+The modification dates were outdated.
 
-----------------------------------------------------------------
-NFS client bugfixes for Linux 4.5
-
-Stable bugfixes:
-- Fix nfs_size_to_loff_t
-- NFSv4: Fix a dentry leak on alias use
-
-Other bugfixes:
-- Don't schedule a layoutreturn if the layout segment can be freed immediately.
-- Always set NFS_LAYOUT_RETURN_REQUESTED with lo->plh_return_iomode
-- rpcrdma_bc_receive_call() should init rq_private_buf.len
-- fix stateid handling for the NFS v4.2 operations
-- pnfs/blocklayout: fix a memeory leak when using,vmalloc_to_page
-- fix panic in gss_pipe_downcall() in fips mode
-- Fix a race between layoutget and pnfs_destroy_layout
-- Fix a race between layoutget and bulk recalls
-
-----------------------------------------------------------------
-Benjamin Coddington (1):
-      NFSv4: Fix a dentry leak on alias use
-
-Christoph Hellwig (2):
-      nfs: fix nfs_size_to_loff_t
-      nfs4: fix stateid handling for the NFS v4.2 operations
-
-Chuck Lever (1):
-      xprtrdma: rpcrdma_bc_receive_call() should init rq_private_buf.len
-
-Kinglong Mee (1):
-      pnfs/blocklayout: fix a memeory leak when using,vmalloc_to_page
-
-Scott Mayhew (1):
-      auth_gss: fix panic in gss_pipe_downcall() in fips mode
-
-Trond Myklebust (5):
-      pNFS: Fix pnfs_mark_matching_lsegs_return()
-      pNFS: Always set NFS_LAYOUT_RETURN_REQUESTED with lo->plh_return_iomode
-      Merge tag 'nfs-rdma-4.5-1' of git://git.linux-nfs.org/projects/anna/nfs-rdma
-      NFSv4.x/pnfs: Fix a race between layoutget and pnfs_destroy_layout
-      NFSv4.x/pnfs: Fix a race between layoutget and bulk recalls
-
- fs/nfs/blocklayout/extent_tree.c  |  10 +++-
- fs/nfs/nfs42proc.c                | 119 ++++++++++++++++++++++++--------------
- fs/nfs/nfs4proc.c                 |   4 +-
- fs/nfs/pnfs.c                     |  55 +++++++++++++-----
- include/linux/nfs_fs.h            |   4 +-
- include/linux/nfs_xdr.h           |   1 +
- net/sunrpc/auth_gss/auth_gss.c    |   2 +-
- net/sunrpc/xprtrdma/backchannel.c |   2 +
- 8 files changed, 131 insertions(+), 66 deletions(-)
--- 
-Trond Myklebust
-Linux NFS client maintainer, PrimaryData
-trond.myklebust@primarydata.com
-
-
-
+Andreas
