@@ -1,14 +1,14 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx144.netapp.com ([216.240.21.25]:61755 "EHLO mx144.netapp.com"
+Received: from mx143.netapp.com ([216.240.21.24]:58886 "EHLO mx143.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757007AbcBXR44 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 24 Feb 2016 12:56:56 -0500
+	id S1756250AbcBXR46 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 24 Feb 2016 12:56:58 -0500
 From: <andros@netapp.com>
 To: <trond.myklebust@primarydata.com>
 CC: <linux-nfs@vger.kernel.org>, Andy Adamson <andros@netapp.com>
-Subject: [PATCH Version 2 6/8] NFS refactor _nfs4_proc_exchange_id for session trunking
-Date: Wed, 24 Feb 2016 12:56:25 -0500
-Message-ID: <1456336587-17374-7-git-send-email-andros@netapp.com>
+Subject: [PATCH Version 2 8/8] NFS test and add multi-addrs for session trunking
+Date: Wed, 24 Feb 2016 12:56:27 -0500
+Message-ID: <1456336587-17374-9-git-send-email-andros@netapp.com>
 In-Reply-To: <1456336587-17374-1-git-send-email-andros@netapp.com>
 References: <1456336587-17374-1-git-send-email-andros@netapp.com>
 MIME-Version: 1.0
@@ -18,101 +18,159 @@ List-ID: <linux-nfs.vger.kernel.org>
 
 From: Andy Adamson <andros@netapp.com>
 
-Add an rpc_xprt parameter to test it's connection for session trunking
-
 Signed-off-by: Andy Adamson <andros@netapp.com>
 ---
- fs/nfs/nfs4proc.c | 34 ++++++++++++++++++++++++++++------
- 1 file changed, 28 insertions(+), 6 deletions(-)
+ fs/nfs/internal.h          |  2 ++
+ fs/nfs/nfs4client.c        | 39 +++++++++++++++++++++++++++++++++++++++
+ fs/nfs/nfs4proc.c          | 36 ++++++++++++++++++++++++++++++++++++
+ net/sunrpc/xprtmultipath.c |  3 +++
+ 4 files changed, 80 insertions(+)
 
+diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
+index e11056c..9322869 100644
+--- a/fs/nfs/internal.h
++++ b/fs/nfs/internal.h
+@@ -214,6 +214,8 @@ extern struct nfs_client *nfs3_set_ds_client(struct nfs_client *mds_clp,
+ 			const struct sockaddr *ds_addr, int ds_addrlen,
+ 			int ds_proto, unsigned int ds_timeo,
+ 			unsigned int ds_retrans, rpc_authflavor_t au_flavor);
++extern void nfs_try_multiaddr(struct nfs_parsed_mount_data *mnt,
++			struct rpc_clnt *clnt);
+ #ifdef CONFIG_PROC_FS
+ extern int __init nfs_fs_proc_init(void);
+ extern void nfs_fs_proc_exit(void);
+diff --git a/fs/nfs/nfs4client.c b/fs/nfs/nfs4client.c
+index 1606a14..1ec745a 100644
+--- a/fs/nfs/nfs4client.c
++++ b/fs/nfs/nfs4client.c
+@@ -1012,6 +1012,43 @@ out:
+ 	return error;
+ }
+ 
++/**
++ * Add rpc_xprts to an existing RPC client
++ */
++void nfs4_try_multiaddr(struct nfs_parsed_mount_data *mnt,
++			struct nfs_client *clp)
++{
++	struct multi_addr *multip = mnt->multiaddrs;
++	struct nfs4_add_xprt_data xprtdata = {
++		.clp = clp,
++	};
++	int i;
++
++	dprintk("NFS:   Try adding %u multi addrs\n", mnt->num_multi);
++
++	if (mnt->num_multi == 0)
++		return;
++
++	xprtdata.cred = nfs4_get_clid_cred(clp);
++
++	for (i = 0; i < mnt->num_multi; i++) {
++		struct xprt_create xprt_args = {
++			.ident = XPRT_TRANSPORT_TCP,
++			.net = mnt->net,
++			.dstaddr = (struct sockaddr *)&multip->addr,
++			.addrlen = multip->addrlen,
++			.servername = multip->hostname,
++		};
++		/* Add this address as an alias */
++		rpc_clnt_add_xprt(clp->cl_rpcclient, &xprt_args,
++				  nfs4_test_session_trunk_and_add_xprt,
++				  &xprtdata);
++		multip++;
++	}
++	if (xprtdata.cred)
++		put_rpccred(xprtdata.cred);
++}
++
+ /*
+  * Create a version 4 volume record
+  */
+@@ -1068,6 +1105,8 @@ static int nfs4_init_server(struct nfs_server *server,
+ 	error = nfs_init_server_rpcclient(server, &timeparms,
+ 					  data->selected_flavor);
+ 
++	if (!error)
++		nfs4_try_multiaddr(data, server->nfs_client);
+ error:
+ 	/* Done */
+ 	dprintk("<-- nfs4_init_server() = %d\n", error);
 diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index a298a51..aaaa5a4 100644
+index aaaa5a4..4a8a7a3 100644
 --- a/fs/nfs/nfs4proc.c
 +++ b/fs/nfs/nfs4proc.c
-@@ -7023,7 +7023,7 @@ static int nfs4_sp4_select_mode(struct nfs_client *clp,
-  * Wrapper for EXCHANGE_ID operation.
-  */
- static int _nfs4_proc_exchange_id(struct nfs_client *clp, struct rpc_cred *cred,
--	u32 sp4_how)
-+	u32 sp4_how, struct rpc_xprt *xprt)
- {
- 	nfs4_verifier verifier;
- 	struct nfs41_exchange_id_args args = {
-@@ -7048,6 +7048,18 @@ static int _nfs4_proc_exchange_id(struct nfs_client *clp, struct rpc_cred *cred,
- 		.rpc_resp = &res,
- 		.rpc_cred = cred,
- 	};
-+	struct rpc_task_setup task_setup_data = {
-+		.rpc_client = clp->cl_rpcclient,
-+		.rpc_xprt = xprt,
-+		.callback_ops = &nfs4_proc_default_ops,
-+		.rpc_message = &msg,
-+		.flags = RPC_TASK_TIMEOUT,
-+	};
-+	struct rpc_task *task;
-+
-+	/* Do not run exchange_id against the established mount connection */
-+	if (xprt && xprt == rcu_access_pointer(clp->cl_rpcclient->cl_xprt))
-+		return 1;
- 
- 	nfs4_init_boot_verifier(clp, &verifier);
- 
-@@ -7095,11 +7107,17 @@ static int _nfs4_proc_exchange_id(struct nfs_client *clp, struct rpc_cred *cred,
- 		goto out_impl_id;
- 	}
- 
--	status = rpc_call_sync(clp->cl_rpcclient, &msg, RPC_TASK_TIMEOUT);
-+	task = rpc_run_task(&task_setup_data);
-+	if (!IS_ERR(task)) {
-+		status = task->tk_status;
-+		rpc_put_task(task);
-+	} else
-+		status = PTR_ERR(task);
- 	trace_nfs4_exchange_id(clp, status);
- 	if (status == 0)
- 		status = nfs4_check_cl_exchange_flags(res.flags);
--
-+	if (xprt)
-+		goto session_trunk;
- 	if (status == 0)
- 		status = nfs4_sp4_select_mode(clp, &res.state_protect);
- 
-@@ -7137,7 +7155,6 @@ static int _nfs4_proc_exchange_id(struct nfs_client *clp, struct rpc_cred *cred,
- 			res.server_scope = NULL;
- 		}
- 	}
--
- out_impl_id:
- 	kfree(res.impl_id);
- out_server_scope:
-@@ -7153,6 +7170,11 @@ out:
- 			clp->cl_implid->date.nseconds);
- 	dprintk("NFS reply exchange_id: %d\n", status);
- 	return status;
-+
-+session_trunk:
-+	if (status == 0)
-+		status = nfs4_detect_session_trunking(clp, &res);
-+	goto out_impl_id;
+@@ -7206,6 +7206,42 @@ int nfs4_proc_exchange_id(struct nfs_client *clp, struct rpc_cred *cred)
+ 	return _nfs4_proc_exchange_id(clp, cred, SP4_NONE, NULL);
  }
  
- /*
-@@ -7175,13 +7197,13 @@ int nfs4_proc_exchange_id(struct nfs_client *clp, struct rpc_cred *cred)
- 	/* try SP4_MACH_CRED if krb5i/p	*/
- 	if (authflavor == RPC_AUTH_GSS_KRB5I ||
- 	    authflavor == RPC_AUTH_GSS_KRB5P) {
--		status = _nfs4_proc_exchange_id(clp, cred, SP4_MACH_CRED);
-+		status = _nfs4_proc_exchange_id(clp, cred, SP4_MACH_CRED, NULL);
- 		if (!status)
- 			return 0;
- 	}
- 
- 	/* try SP4_NONE */
--	return _nfs4_proc_exchange_id(clp, cred, SP4_NONE);
-+	return _nfs4_proc_exchange_id(clp, cred, SP4_NONE, NULL);
- }
- 
++/**
++ * nfs4_test_session_trunk_and_add_xprt - Test for session trunking with a
++ * synchronous exchange_id call, and add a new transport to the rpc_clnt
++ *
++ * @clnt: struct rpc_clnt to get new transport
++ * @xps:  the rpc_xprt_switch to hold the new transport
++ * @xprt: the rpc_xprt to test
++ * @data: call data for _nfs4_proc_exchange_id.
++ *
++ */
++int nfs4_test_session_trunk_and_add_xprt(struct rpc_clnt *clnt,
++					struct rpc_xprt_switch *xps,
++					struct rpc_xprt *xprt,
++					void *data)
++{
++	struct nfs4_add_xprt_data *xdata = (struct nfs4_add_xprt_data *)data;
++	u32 sp4_how;
++	int status;
++
++	sp4_how = (xdata->clp->cl_sp4_flags == 0 ? SP4_NONE : SP4_MACH_CRED);
++	dprintk("--> %s sp4_how %d\n", __func__, sp4_how);
++
++	/* Ensure these stick around for the rpc call */
++	xps = xprt_switch_get(xps);
++	xprt = xprt_get(xprt);
++
++	/* Sync call */
++	status = _nfs4_proc_exchange_id(xdata->clp, xdata->cred, sp4_how, xprt);
++
++	xprt_put(xprt);
++	xprt_switch_put(xps);
++
++	dprintk("<-- %s status %d\n", __func__, status);
++	return status;
++}
++
  static int _nfs4_proc_destroy_clientid(struct nfs_client *clp,
+ 		struct rpc_cred *cred)
+ {
+diff --git a/net/sunrpc/xprtmultipath.c b/net/sunrpc/xprtmultipath.c
+index e7fd769..360f64c 100644
+--- a/net/sunrpc/xprtmultipath.c
++++ b/net/sunrpc/xprtmultipath.c
+@@ -53,6 +53,7 @@ void rpc_xprt_switch_add_xprt(struct rpc_xprt_switch *xps,
+ 		xprt_switch_add_xprt_locked(xps, xprt);
+ 	spin_unlock(&xps->xps_lock);
+ }
++EXPORT_SYMBOL_GPL(rpc_xprt_switch_add_xprt);
+ 
+ static void xprt_switch_remove_xprt_locked(struct rpc_xprt_switch *xps,
+ 		struct rpc_xprt *xprt)
+@@ -145,6 +146,7 @@ struct rpc_xprt_switch *xprt_switch_get(struct rpc_xprt_switch *xps)
+ 		return xps;
+ 	return NULL;
+ }
++EXPORT_SYMBOL_GPL(xprt_switch_get);
+ 
+ /**
+  * xprt_switch_put - Release a reference to a rpc_xprt_switch
+@@ -157,6 +159,7 @@ void xprt_switch_put(struct rpc_xprt_switch *xps)
+ 	if (xps != NULL)
+ 		kref_put(&xps->xps_kref, xprt_switch_free);
+ }
++EXPORT_SYMBOL_GPL(xprt_switch_put);
+ 
+ /**
+  * rpc_xprt_switch_set_roundrobin - Set a round-robin policy on rpc_xprt_switch
 -- 
 1.8.3.1
 
