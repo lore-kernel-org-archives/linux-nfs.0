@@ -1,176 +1,101 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx143.netapp.com ([216.240.21.24]:58886 "EHLO mx143.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756250AbcBXR46 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 24 Feb 2016 12:56:58 -0500
-From: <andros@netapp.com>
-To: <trond.myklebust@primarydata.com>
-CC: <linux-nfs@vger.kernel.org>, Andy Adamson <andros@netapp.com>
-Subject: [PATCH Version 2 8/8] NFS test and add multi-addrs for session trunking
-Date: Wed, 24 Feb 2016 12:56:27 -0500
-Message-ID: <1456336587-17374-9-git-send-email-andros@netapp.com>
-In-Reply-To: <1456336587-17374-1-git-send-email-andros@netapp.com>
-References: <1456336587-17374-1-git-send-email-andros@netapp.com>
-MIME-Version: 1.0
-Content-Type: text/plain
+Received: from mail-yk0-f181.google.com ([209.85.160.181]:35184 "EHLO
+	mail-yk0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757288AbcBXU2f (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 24 Feb 2016 15:28:35 -0500
+Received: by mail-yk0-f181.google.com with SMTP id r207so13318253ykd.2
+        for <linux-nfs@vger.kernel.org>; Wed, 24 Feb 2016 12:28:35 -0800 (PST)
+From: Jeff Layton <jlayton@poochiereds.net>
+To: trond.myklebust@primarydata.com
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH] nfs4: nfs4_ff_layout_prepare_ds should return NULL if connection failed
+Date: Wed, 24 Feb 2016 15:28:29 -0500
+Message-Id: <1456345709-17606-1-git-send-email-jeff.layton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Andy Adamson <andros@netapp.com>
+I hit the following oops out of the blue while testing with flexfiles:
 
-Signed-off-by: Andy Adamson <andros@netapp.com>
+BUG: unable to handle kernel NULL pointer dereference at 00000000000000e8
+IP: [<ffffffffa048f6b8>] nfs4_ff_find_or_create_ds_client+0x48/0x50 [nfs_layout_flexfiles]
+PGD 44031067 PUD 5062d067 PMD 0
+Oops: 0000 [#1] SMP
+Modules linked in: nfsv3 nfs_layout_flexfiles tun rpcsec_gss_krb5 nfsv4 dns_resolver nfs fscache dcdbas nfsd auth_rpcgss nfs_acl lockd grace sunrpc ip6t_rpfilter ip6t_REJECT nf_reject_ipv6 xt_conntrack ebtable_nat ebtable_broute bridge stp llc ebtable_filter ebtables ip6table_nat nf_conntrack_ipv6 nf_defrag_ipv6 nf_nat_ipv6 ip6table_mangle ip6table_security ip6table_raw ip6table_filter ip6_tables iptable_nat nf_conntrack_ipv4 nf_defrag_ipv4 nf_nat_ipv4 nf_nat nf_conntrack iptable_mangle iptable_security iptable_raw bonding ipmi_devintf ipmi_msghandler snd_hda_codec_generic virtio_balloon ppdev snd_hda_intel snd_hda_controller snd_hda_codec iosf_mbi crct10dif_pclmul crc32_pclmul ghash_clmulni_intel snd_hda_core parport_pc snd_hwdep parport snd_seq snd_seq_device snd_pcm snd_timer acpi_cpufreq
+ snd soundcore i2c_piix4 xfs libcrc32c joydev virtio_net virtio_console qxl drm_kms_helper ttm crc32c_intel drm virtio_pci serio_raw ata_generic virtio_ring virtio pata_acpi
+CPU: 0 PID: 19138 Comm: test5 Not tainted 4.1.9-100.pd.90.el7.x86_64 #1
+Hardware name: QEMU Standard PC (i440FX + PIIX, 1996), BIOS 1.8.2-20150714_191134- 04/01/2014
+task: ffff88007b70cf00 ti: ffff88004cc44000 task.ti: ffff88004cc44000
+RIP: 0010:[<ffffffffa048f6b8>]  [<ffffffffa048f6b8>] nfs4_ff_find_or_create_ds_client+0x48/0x50 [nfs_layout_flexfiles]
+RSP: 0018:ffff88004cc47890  EFLAGS: 00010246
+RAX: 0000000000000003 RBX: ffff880050932300 RCX: ffff88006978f488
+RDX: 0000000000000000 RSI: 0000000000000000 RDI: ffff88003e0e8540
+RBP: ffff88004cc47908 R08: 0000000000000000 R09: 0000000000000000
+R10: ffff88007ff8c758 R11: 0000000000000005 R12: ffff88003e0e8540
+R13: 0000000000000000 R14: ffff88006978f488 R15: ffff88004431cc80
+FS:  00007fea40c7c740(0000) GS:ffff88007fc00000(0000) knlGS:0000000000000000
+CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
+CR2: 00000000000000e8 CR3: 0000000044318000 CR4: 00000000000406f0
+Stack:
+ ffffffffa048c934 ffff880050932310 0000000100000001 ffff88006978f510
+ ffff88006978f3c8 ffff88003e56cd90 ffff88004cc479d0 00000020a052aff0
+ 000000000004b000 ffff88004cc47908 ffff880050932300 ffff88004cc479d0
+Call Trace:
+ [<ffffffffa048c934>] ? ff_layout_write_pagelist+0x64/0x220 [nfs_layout_flexfiles]
+ [<ffffffffa057a3bf>] pnfs_generic_pg_writepages+0xaf/0x1b0 [nfsv4]
+ [<ffffffffa051ab57>] nfs_pageio_doio+0x27/0x60 [nfs]
+ [<ffffffffa051bfe4>] nfs_pageio_complete_mirror+0x54/0xa0 [nfs]
+ [<ffffffffa051c7ad>] nfs_pageio_complete+0x2d/0x90 [nfs]
+ [<ffffffffa052032d>] nfs_writepage_locked+0x8d/0xe0 [nfs]
+ [<ffffffff811e4630>] ? page_referenced_one+0x1a0/0x1a0
+ [<ffffffffa05210e7>] nfs_wb_single_page+0xf7/0x190 [nfs]
+ [<ffffffffa05108d1>] nfs_launder_page+0x41/0x90 [nfs]
+ [<ffffffff811b8930>] invalidate_inode_pages2_range+0x340/0x3a0
+ [<ffffffff811b89a7>] invalidate_inode_pages2+0x17/0x20
+ [<ffffffffa0513e1e>] nfs_release+0x9e/0xb0 [nfs]
+ [<ffffffffa050fa1d>] nfs_file_release+0x3d/0x60 [nfs]
+ [<ffffffff8122481c>] __fput+0xdc/0x1e0
+ [<ffffffff8122496e>] ____fput+0xe/0x10
+ [<ffffffff810bde67>] task_work_run+0xa7/0xe0
+ [<ffffffff810af735>] get_signal+0x565/0x600
+ [<ffffffff811a9815>] ? __filemap_fdatawrite_range+0x65/0x90
+ [<ffffffff810144a7>] do_signal+0x37/0x730
+ [<ffffffffa0569921>] ? nfs4_file_fsync+0x81/0x150 [nfsv4]
+ [<ffffffff81254dbb>] ? vfs_fsync_range+0x3b/0xb0
+ [<ffffffff811446a6>] ? __audit_syscall_exit+0x1e6/0x280
+ [<ffffffff81014bff>] do_notify_resume+0x5f/0xa0
+ [<ffffffff8178ec3c>] int_signal+0x12/0x17
+Code: 48 8b 40 70 8b 00 83 f8 03 74 20 83 f8 04 75 13 55 48 89 ce 48 89 d7 48 89 e5 e8 14 0f 0e 00 5d c3 66 90 0f 0b 66 0f 1f 44 00 00 <48> 8b 82 e8 00 00 00 c3 66 66 66 66 90 55 48 89 e5 41 57 41 56
+RIP  [<ffffffffa048f6b8>] nfs4_ff_find_or_create_ds_client+0x48/0x50 [nfs_layout_flexfiles]
+ RSP <ffff88004cc47890>
+CR2: 00000000000000e8
+
+When the DS connection attempt fails, nfs4_ff_layout_prepare_ds marks it
+for the error but then just returns the ds as if it were usable. The
+comments though say:
+
+  /* Upon return, either ds is connected, or ds is NULL */
+
+Ensure that we set the return pointer to NULL in the event that the
+connection attempt fails.
+
+Signed-off-by: Jeff Layton <jeff.layton@primarydata.com>
 ---
- fs/nfs/internal.h          |  2 ++
- fs/nfs/nfs4client.c        | 39 +++++++++++++++++++++++++++++++++++++++
- fs/nfs/nfs4proc.c          | 36 ++++++++++++++++++++++++++++++++++++
- net/sunrpc/xprtmultipath.c |  3 +++
- 4 files changed, 80 insertions(+)
+ fs/nfs/flexfilelayout/flexfilelayoutdev.c | 2 ++
+ 1 file changed, 2 insertions(+)
 
-diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
-index e11056c..9322869 100644
---- a/fs/nfs/internal.h
-+++ b/fs/nfs/internal.h
-@@ -214,6 +214,8 @@ extern struct nfs_client *nfs3_set_ds_client(struct nfs_client *mds_clp,
- 			const struct sockaddr *ds_addr, int ds_addrlen,
- 			int ds_proto, unsigned int ds_timeo,
- 			unsigned int ds_retrans, rpc_authflavor_t au_flavor);
-+extern void nfs_try_multiaddr(struct nfs_parsed_mount_data *mnt,
-+			struct rpc_clnt *clnt);
- #ifdef CONFIG_PROC_FS
- extern int __init nfs_fs_proc_init(void);
- extern void nfs_fs_proc_exit(void);
-diff --git a/fs/nfs/nfs4client.c b/fs/nfs/nfs4client.c
-index 1606a14..1ec745a 100644
---- a/fs/nfs/nfs4client.c
-+++ b/fs/nfs/nfs4client.c
-@@ -1012,6 +1012,43 @@ out:
- 	return error;
- }
- 
-+/**
-+ * Add rpc_xprts to an existing RPC client
-+ */
-+void nfs4_try_multiaddr(struct nfs_parsed_mount_data *mnt,
-+			struct nfs_client *clp)
-+{
-+	struct multi_addr *multip = mnt->multiaddrs;
-+	struct nfs4_add_xprt_data xprtdata = {
-+		.clp = clp,
-+	};
-+	int i;
-+
-+	dprintk("NFS:   Try adding %u multi addrs\n", mnt->num_multi);
-+
-+	if (mnt->num_multi == 0)
-+		return;
-+
-+	xprtdata.cred = nfs4_get_clid_cred(clp);
-+
-+	for (i = 0; i < mnt->num_multi; i++) {
-+		struct xprt_create xprt_args = {
-+			.ident = XPRT_TRANSPORT_TCP,
-+			.net = mnt->net,
-+			.dstaddr = (struct sockaddr *)&multip->addr,
-+			.addrlen = multip->addrlen,
-+			.servername = multip->hostname,
-+		};
-+		/* Add this address as an alias */
-+		rpc_clnt_add_xprt(clp->cl_rpcclient, &xprt_args,
-+				  nfs4_test_session_trunk_and_add_xprt,
-+				  &xprtdata);
-+		multip++;
-+	}
-+	if (xprtdata.cred)
-+		put_rpccred(xprtdata.cred);
-+}
-+
- /*
-  * Create a version 4 volume record
-  */
-@@ -1068,6 +1105,8 @@ static int nfs4_init_server(struct nfs_server *server,
- 	error = nfs_init_server_rpcclient(server, &timeparms,
- 					  data->selected_flavor);
- 
-+	if (!error)
-+		nfs4_try_multiaddr(data, server->nfs_client);
- error:
- 	/* Done */
- 	dprintk("<-- nfs4_init_server() = %d\n", error);
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index aaaa5a4..4a8a7a3 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -7206,6 +7206,42 @@ int nfs4_proc_exchange_id(struct nfs_client *clp, struct rpc_cred *cred)
- 	return _nfs4_proc_exchange_id(clp, cred, SP4_NONE, NULL);
- }
- 
-+/**
-+ * nfs4_test_session_trunk_and_add_xprt - Test for session trunking with a
-+ * synchronous exchange_id call, and add a new transport to the rpc_clnt
-+ *
-+ * @clnt: struct rpc_clnt to get new transport
-+ * @xps:  the rpc_xprt_switch to hold the new transport
-+ * @xprt: the rpc_xprt to test
-+ * @data: call data for _nfs4_proc_exchange_id.
-+ *
-+ */
-+int nfs4_test_session_trunk_and_add_xprt(struct rpc_clnt *clnt,
-+					struct rpc_xprt_switch *xps,
-+					struct rpc_xprt *xprt,
-+					void *data)
-+{
-+	struct nfs4_add_xprt_data *xdata = (struct nfs4_add_xprt_data *)data;
-+	u32 sp4_how;
-+	int status;
-+
-+	sp4_how = (xdata->clp->cl_sp4_flags == 0 ? SP4_NONE : SP4_MACH_CRED);
-+	dprintk("--> %s sp4_how %d\n", __func__, sp4_how);
-+
-+	/* Ensure these stick around for the rpc call */
-+	xps = xprt_switch_get(xps);
-+	xprt = xprt_get(xprt);
-+
-+	/* Sync call */
-+	status = _nfs4_proc_exchange_id(xdata->clp, xdata->cred, sp4_how, xprt);
-+
-+	xprt_put(xprt);
-+	xprt_switch_put(xps);
-+
-+	dprintk("<-- %s status %d\n", __func__, status);
-+	return status;
-+}
-+
- static int _nfs4_proc_destroy_clientid(struct nfs_client *clp,
- 		struct rpc_cred *cred)
- {
-diff --git a/net/sunrpc/xprtmultipath.c b/net/sunrpc/xprtmultipath.c
-index e7fd769..360f64c 100644
---- a/net/sunrpc/xprtmultipath.c
-+++ b/net/sunrpc/xprtmultipath.c
-@@ -53,6 +53,7 @@ void rpc_xprt_switch_add_xprt(struct rpc_xprt_switch *xps,
- 		xprt_switch_add_xprt_locked(xps, xprt);
- 	spin_unlock(&xps->xps_lock);
- }
-+EXPORT_SYMBOL_GPL(rpc_xprt_switch_add_xprt);
- 
- static void xprt_switch_remove_xprt_locked(struct rpc_xprt_switch *xps,
- 		struct rpc_xprt *xprt)
-@@ -145,6 +146,7 @@ struct rpc_xprt_switch *xprt_switch_get(struct rpc_xprt_switch *xps)
- 		return xps;
- 	return NULL;
- }
-+EXPORT_SYMBOL_GPL(xprt_switch_get);
- 
- /**
-  * xprt_switch_put - Release a reference to a rpc_xprt_switch
-@@ -157,6 +159,7 @@ void xprt_switch_put(struct rpc_xprt_switch *xps)
- 	if (xps != NULL)
- 		kref_put(&xps->xps_kref, xprt_switch_free);
- }
-+EXPORT_SYMBOL_GPL(xprt_switch_put);
- 
- /**
-  * rpc_xprt_switch_set_roundrobin - Set a round-robin policy on rpc_xprt_switch
+diff --git a/fs/nfs/flexfilelayout/flexfilelayoutdev.c b/fs/nfs/flexfilelayout/flexfilelayoutdev.c
+index eb370460ce20..add0e5a70bd6 100644
+--- a/fs/nfs/flexfilelayout/flexfilelayoutdev.c
++++ b/fs/nfs/flexfilelayout/flexfilelayoutdev.c
+@@ -418,6 +418,8 @@ nfs4_ff_layout_prepare_ds(struct pnfs_layout_segment *lseg, u32 ds_idx,
+ 				pnfs_error_mark_layout_for_return(ino, lseg);
+ 		} else
+ 			pnfs_error_mark_layout_for_return(ino, lseg);
++		ds = NULL;
++		goto out;
+ 	}
+ out_update_creds:
+ 	if (ff_layout_update_mirror_cred(mirror, ds))
 -- 
-1.8.3.1
+2.5.0
 
