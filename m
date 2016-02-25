@@ -1,52 +1,31 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.math.uh.edu ([129.7.128.33]:44054 "EHLO mx2.math.uh.edu"
+Received: from fieldses.org ([173.255.197.46]:46358 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758714AbcBXWJc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 24 Feb 2016 17:09:32 -0500
-Received: from epithumia.math.uh.edu ([129.7.128.2])
-	by mx2.math.uh.edu with esmtp (Exim 4.85)
-	(envelope-from <tibbs@math.uh.edu>)
-	id 1aYhDl-0000QN-IX
-	for linux-nfs@vger.kernel.org; Wed, 24 Feb 2016 15:43:46 -0600
-From: Jason L Tibbitts III <tibbs@math.uh.edu>
-To: linux-nfs@vger.kernel.org
-Subject: NFS: nfs4_reclaim_open_state: Lock reclaim failed! log spew
-Date: Wed, 24 Feb 2016 15:43:45 -0600
-Message-ID: <ufafuwhlr72.fsf@epithumia.math.uh.edu>
+	id S1754253AbcBYBRP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 24 Feb 2016 20:17:15 -0500
+Date: Wed, 24 Feb 2016 20:17:12 -0500
+To: Linus Torvalds <torvalds@linux-foundation.org>
+Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
+Subject: [GIT PULL] nfsd bugfix for 4.5
+Message-ID: <20160225011712.GA14213@fieldses.org>
 MIME-Version: 1.0
-Content-Type: text/plain
+Content-Type: text/plain; charset=us-ascii
+From: bfields@fieldses.org (J. Bruce Fields)
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-My NFS infrastructure has servers running current RHEL7.2 (mostly kernel
-3.10.0-327.4.5.el7 with a one-line patch needed to fix a soft lockup in
-nfs4_laundromat) and clients running current Fedora 23
-(4.3.5-300.fc23.x86_64).  Everything is mounted NFS4.1 with sec=krb5p.
+Please pull an nfsd bugfix for 4.5 from
 
-Occasionally a client will get into a state where it just hammers the
-server with network traffic, sometimes at full line rate, with:
+  git://linux-nfs.org/~bfields/linux.git tags/nfsd-4.5-1
 
-NFS: nfs4_reclaim_open_state: Lock reclaim failed!
+One fix for a bug that could cause a NULL write past the end of a buffer
+in case of unusually long writes to some system interfaces used by
+mountd and other nfs support utilities.
 
-spewed to the log about 500 times a second.  The load goes up quite a
-bit (to 5-7 or so).  The machine isn't doing anything and there isn't
-even a user logged in.  However, there are always a few user processes
-hanging around, usually kwin_x11 for whatever reason.  (My guess is
-because of a lock on ~/.Xauthority.)
+--b.
 
-When I kill those user processes, this is logged once:
+Stefan Hajnoczi (1):
+      sunrpc/cache: fix off-by-one in qword_get()
 
-NFS: nfs4_reclaim_open_state: unhandled error -10068
-
--10068 is NFS4ERR_RETRY_UNCACHED_REP.
-
-Unfortunately I did not grab any of that traffic (I just wanted it to
-stop).  This happens to me periodically so I'll be sure to do that when
-it hits again.
-
-One theory is that this is related to a user's kerberos ticket
-expiring.  I see some hits when I search for the line that's spewed, but
-they're either not recent or or weren't reproducible.  I don't find any
-hits for that specific unhandled error.
-
- - J<
+ net/sunrpc/cache.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
