@@ -1,61 +1,39 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from bombadil.infradead.org ([198.137.202.9]:38629 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751647AbcB2Nek (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 29 Feb 2016 08:34:40 -0500
-Date: Mon, 29 Feb 2016 05:34:39 -0800
-From: Christoph Hellwig <hch@infradead.org>
-To: Kinglong Mee <kinglongmee@gmail.com>
-Cc: Christoph Hellwig <hch@infradead.org>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] nfs/blocklayout: make sure making a aligned read request
-Message-ID: <20160229133439.GA4416@infradead.org>
-References: <56BF34E3.1020003@gmail.com>
- <20160229095756.GA19397@infradead.org>
- <56D432D5.7000905@gmail.com>
+Received: from webmail.cefet-rj.br ([200.9.149.52]:45365 "EHLO
+	webmail.cefet-rj.br" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752721AbcB2Ocx convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 29 Feb 2016 09:32:53 -0500
+Content-Type: text/plain; charset="iso-8859-1"
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <56D432D5.7000905@gmail.com>
+Subject: =?utf-8?q?INFORMA=C3=87=C3=83O_IMPORTANTE__RE=3A_Consultoria_de_Investime?=
+ =?utf-8?q?nto_em_sua_Localidade=2E?=
+To: Recipients <douglascontact6048@live.com>
+From: "Mr. DOUGLAS" <douglascontact6048@live.com>
+Date: Sun, 28 Feb 2016 04:41:40 -0800
+Reply-To: johnsondouglas8738@gmail.com
+Message-Id: <20160228134045.9C20C8FD726@webmail.cefet-rj.br>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Feb 29, 2016 at 08:00:21PM +0800, Kinglong Mee wrote:
-> On 2/29/2016 17:57, Christoph Hellwig wrote:
-> > On Sat, Feb 13, 2016 at 09:51:31PM +0800, Kinglong Mee wrote:
-> >> Only treat write goes up to the inode size as aligned request,
-> >> because it always write PAGE_CACHE_SIZE, but read a dynamic size.
-> > 
-> > Can you explain what the point is? 
-> 
-> I run ltp tests with read02 hang.
-> There seams a loop in block codes.
-> It is caused by passing an unaligned read to bio.
-> So this patch is out as making a aligned read request.
+Oi,
 
-Do you have any additional details?
+Temos planejado investir alguns fundos no seu país.
 
-> > We'll never use data pas the block size
-> > in the page cache, but per the block size requirement in the spec we must
-> > be able to read it.  This patch means we can't direct storage reads where
-> > we previously could, without any obvious upside.
-> 
-> bl_pg_init_read/bl_pg_test_read checks aligned base on SECTOR_SIZE.
-> bl_pg_init_write/bl_pg_test_write checks aligned base on PAGE_SIZE.
-> 
-> If according the codes, reads data per block size is okay.
-> 
-> But, there is a comment in bl_read_pagelist() as,
-> 
-> 250         isect = (sector_t) (f_offset >> SECTOR_SHIFT);
-> 251         /* Code assumes extents are page-aligned */
-> 252         for (i = pg_index; i < header->page_array.npages; i++) {
-> 253                 if (extent_length <= 0) {
-> 
-> I don't known the meaning of "extents are page-aligned", 
-> extent's start offset is aligned to page size?
-> or extent's start offset is aligned to page size and length
-> is equal to PAGE_SIZE too ?
+Responder se você estiver interessado.
 
-All of them should start aligned to PAGE_SIZE, and also have a length
-that is a multiple of PAGE_SIZE.
+Saudações,
+Sir Henry Neville Lindley Keswick
+Presidente da Jardine Matheson Holdings Ltd
+https://en.wikipedia.org/wiki/Keswick_family
+==================================================
+
+Hi friend,
+
+Our family is interested in investing funds in your locality.
+
+More information for you interest .
+
+Greetings,
+Sir Henry Neville Lindley Keswick
+Chairman of Jardine Matheson Holdings Ltd
+https://en.wikipedia.org/wiki/Keswick_family
