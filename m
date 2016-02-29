@@ -1,70 +1,472 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from casper.infradead.org ([85.118.1.10]:59835 "EHLO
+Received: from casper.infradead.org ([85.118.1.10]:59836 "EHLO
 	casper.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751261AbcB2NYL (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 29 Feb 2016 08:24:11 -0500
+	with ESMTP id S1751310AbcB2NYM (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 29 Feb 2016 08:24:12 -0500
 From: Christoph Hellwig <hch@lst.de>
 To: trond.myklebust@primarydata.com, bfields@fieldses.org
 Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH 1/3] nfs4.h: add SCSI layout defintions
-Date: Mon, 29 Feb 2016 14:24:05 +0100
-Message-Id: <1456752247-6549-2-git-send-email-hch@lst.de>
+Subject: [PATCH 2/3] nfs/blocklayout: add SCSI layout support
+Date: Mon, 29 Feb 2016 14:24:06 +0100
+Message-Id: <1456752247-6549-3-git-send-email-hch@lst.de>
 In-Reply-To: <1456752247-6549-1-git-send-email-hch@lst.de>
 References: <1456752247-6549-1-git-send-email-hch@lst.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Based on draft-ietf-nfsv4-scsi-layout-05 after the WG last call.
+This is a trivial extension to the block layout driver to support the
+new SCSI layouts draft.  There are three changes:
+
+ - device identifcation through the SCSI VPD page.  This allows us to
+   directly use the udev generated persistent device names instead of
+   requiring an expensive lookup by crawling every block device node
+   in /dev and reading a signature for it.
+ - use of SCSI persistent reservations to protect device access and
+   allow for robust fencing.  On the client sides this just means
+   registering and unregistering a server supplied key.
+ - an optimized LAYOUTCOMMIT payload that doesn't send unessecary
+   fields to the server.
 
 Signed-off-by: Christoph Hellwig <hch@lst.de>
 ---
- include/linux/nfs4.h | 19 +++++++++++++++++++
- 1 file changed, 19 insertions(+)
+ fs/nfs/blocklayout/blocklayout.c |  59 ++++++++++++++--
+ fs/nfs/blocklayout/blocklayout.h |  12 +++-
+ fs/nfs/blocklayout/dev.c         | 144 ++++++++++++++++++++++++++++++++++++++-
+ fs/nfs/blocklayout/extent_tree.c |  44 ++++++++----
+ 4 files changed, 236 insertions(+), 23 deletions(-)
 
-diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
-index d6f9b4e..0114334 100644
---- a/include/linux/nfs4.h
-+++ b/include/linux/nfs4.h
-@@ -529,6 +529,7 @@ enum pnfs_layouttype {
- 	LAYOUT_OSD2_OBJECTS = 2,
- 	LAYOUT_BLOCK_VOLUME = 3,
- 	LAYOUT_FLEX_FILES = 4,
-+	LAYOUT_SCSI = 5,
- 	LAYOUT_TYPE_MAX
+diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
+index ddd0138..b27c409 100644
+--- a/fs/nfs/blocklayout/blocklayout.c
++++ b/fs/nfs/blocklayout/blocklayout.c
+@@ -446,8 +446,8 @@ static void bl_free_layout_hdr(struct pnfs_layout_hdr *lo)
+ 	kfree(bl);
+ }
+ 
+-static struct pnfs_layout_hdr *bl_alloc_layout_hdr(struct inode *inode,
+-						   gfp_t gfp_flags)
++static struct pnfs_layout_hdr *__bl_alloc_layout_hdr(struct inode *inode,
++		gfp_t gfp_flags, bool is_scsi_layout)
+ {
+ 	struct pnfs_block_layout *bl;
+ 
+@@ -460,9 +460,22 @@ static struct pnfs_layout_hdr *bl_alloc_layout_hdr(struct inode *inode,
+ 	bl->bl_ext_ro = RB_ROOT;
+ 	spin_lock_init(&bl->bl_ext_lock);
+ 
++	bl->bl_scsi_layout = is_scsi_layout;
+ 	return &bl->bl_layout;
+ }
+ 
++static struct pnfs_layout_hdr *bl_alloc_layout_hdr(struct inode *inode,
++						   gfp_t gfp_flags)
++{
++	return __bl_alloc_layout_hdr(inode, gfp_flags, false);
++}
++
++static struct pnfs_layout_hdr *sl_alloc_layout_hdr(struct inode *inode,
++						   gfp_t gfp_flags)
++{
++	return __bl_alloc_layout_hdr(inode, gfp_flags, true);
++}
++
+ static void bl_free_lseg(struct pnfs_layout_segment *lseg)
+ {
+ 	dprintk("%s enter\n", __func__);
+@@ -888,22 +901,53 @@ static struct pnfs_layoutdriver_type blocklayout_type = {
+ 	.sync				= pnfs_generic_sync,
  };
  
-@@ -555,6 +556,7 @@ enum pnfs_block_volume_type {
- 	PNFS_BLOCK_VOLUME_SLICE		= 1,
- 	PNFS_BLOCK_VOLUME_CONCAT	= 2,
- 	PNFS_BLOCK_VOLUME_STRIPE	= 3,
-+	PNFS_BLOCK_VOLUME_SCSI		= 4,
++static struct pnfs_layoutdriver_type scsilayout_type = {
++	.id				= LAYOUT_SCSI,
++	.name				= "LAYOUT_SCSI",
++	.owner				= THIS_MODULE,
++	.flags				= PNFS_LAYOUTRET_ON_SETATTR |
++					  PNFS_READ_WHOLE_PAGE,
++	.read_pagelist			= bl_read_pagelist,
++	.write_pagelist			= bl_write_pagelist,
++	.alloc_layout_hdr		= sl_alloc_layout_hdr,
++	.free_layout_hdr		= bl_free_layout_hdr,
++	.alloc_lseg			= bl_alloc_lseg,
++	.free_lseg			= bl_free_lseg,
++	.return_range			= bl_return_range,
++	.prepare_layoutcommit		= bl_prepare_layoutcommit,
++	.cleanup_layoutcommit		= bl_cleanup_layoutcommit,
++	.set_layoutdriver		= bl_set_layoutdriver,
++	.alloc_deviceid_node		= bl_alloc_deviceid_node,
++	.free_deviceid_node		= bl_free_deviceid_node,
++	.pg_read_ops			= &bl_pg_read_ops,
++	.pg_write_ops			= &bl_pg_write_ops,
++	.sync				= pnfs_generic_sync,
++};
++
++
+ static int __init nfs4blocklayout_init(void)
+ {
+ 	int ret;
+ 
+ 	dprintk("%s: NFSv4 Block Layout Driver Registering...\n", __func__);
+ 
+-	ret = pnfs_register_layoutdriver(&blocklayout_type);
++	ret = bl_init_pipefs();
+ 	if (ret)
+ 		goto out;
+-	ret = bl_init_pipefs();
++
++	ret = pnfs_register_layoutdriver(&blocklayout_type);
+ 	if (ret)
+-		goto out_unregister;
++		goto out_cleanup_pipe;
++
++	ret = pnfs_register_layoutdriver(&scsilayout_type);
++	if (ret)
++		goto out_unregister_block;
+ 	return 0;
+ 
+-out_unregister:
++out_unregister_block:
+ 	pnfs_unregister_layoutdriver(&blocklayout_type);
++out_cleanup_pipe:
++	bl_cleanup_pipefs();
+ out:
+ 	return ret;
+ }
+@@ -913,8 +957,9 @@ static void __exit nfs4blocklayout_exit(void)
+ 	dprintk("%s: NFSv4 Block Layout Driver Unregistering...\n",
+ 	       __func__);
+ 
+-	bl_cleanup_pipefs();
++	pnfs_unregister_layoutdriver(&scsilayout_type);
+ 	pnfs_unregister_layoutdriver(&blocklayout_type);
++	bl_cleanup_pipefs();
+ }
+ 
+ MODULE_ALIAS("nfs-layouttype4-3");
+diff --git a/fs/nfs/blocklayout/blocklayout.h b/fs/nfs/blocklayout/blocklayout.h
+index c556640..6e9b470 100644
+--- a/fs/nfs/blocklayout/blocklayout.h
++++ b/fs/nfs/blocklayout/blocklayout.h
+@@ -55,7 +55,6 @@ struct pnfs_block_dev;
+  */
+ #define PNFS_BLOCK_UUID_LEN	128
+ 
+-
+ struct pnfs_block_volume {
+ 	enum pnfs_block_volume_type	type;
+ 	union {
+@@ -82,6 +81,13 @@ struct pnfs_block_volume {
+ 			u32		volumes_count;
+ 			u32		volumes[PNFS_BLOCK_MAX_DEVICES];
+ 		} stripe;
++		struct {
++			enum scsi_code_set		code_set;
++			enum scsi_designator_type	designator_type;
++			int				designator_len;
++			u8				designator[256];
++			u64				pr_key;
++		} scsi;
+ 	};
  };
  
- enum pnfs_block_extent_state {
-@@ -568,6 +570,23 @@ enum pnfs_block_extent_state {
- #define PNFS_BLOCK_EXTENT_SIZE \
- 	(7 * sizeof(__be32) + NFS4_DEVICEID4_SIZE)
+@@ -106,6 +112,9 @@ struct pnfs_block_dev {
+ 	struct block_device		*bdev;
+ 	u64				disk_offset;
  
-+/* on the wire size of a scsi commit range */
-+#define PNFS_SCSI_RANGE_SIZE \
-+	(4 * sizeof(__be32))
++	u64				pr_key;
++	bool				pr_registered;
 +
-+enum scsi_code_set {
-+	PS_CODE_SET_BINARY	= 1,
-+	PS_CODE_SET_ASCII	= 2,
-+	PS_CODE_SET_UTF8	= 3
-+};
+ 	bool (*map)(struct pnfs_block_dev *dev, u64 offset,
+ 			struct pnfs_block_dev_map *map);
+ };
+@@ -131,6 +140,7 @@ struct pnfs_block_layout {
+ 	struct rb_root		bl_ext_rw;
+ 	struct rb_root		bl_ext_ro;
+ 	spinlock_t		bl_ext_lock;   /* Protects list manipulation */
++	bool			bl_scsi_layout;
+ };
+ 
+ static inline struct pnfs_block_layout *
+diff --git a/fs/nfs/blocklayout/dev.c b/fs/nfs/blocklayout/dev.c
+index a861bbd..31b0f6b 100644
+--- a/fs/nfs/blocklayout/dev.c
++++ b/fs/nfs/blocklayout/dev.c
+@@ -1,11 +1,12 @@
+ /*
+- * Copyright (c) 2014 Christoph Hellwig.
++ * Copyright (c) 2014-2016 Christoph Hellwig.
+  */
+ #include <linux/sunrpc/svc.h>
+ #include <linux/blkdev.h>
+ #include <linux/nfs4.h>
+ #include <linux/nfs_fs.h>
+ #include <linux/nfs_xdr.h>
++#include <linux/pr.h>
+ 
+ #include "blocklayout.h"
+ 
+@@ -21,6 +22,17 @@ bl_free_device(struct pnfs_block_dev *dev)
+ 			bl_free_device(&dev->children[i]);
+ 		kfree(dev->children);
+ 	} else {
++		if (dev->pr_registered) {
++			const struct pr_ops *ops = 
++				dev->bdev->bd_disk->fops->pr_ops;
++			int error;
 +
-+enum scsi_designator_type {
-+	PS_DESIGNATOR_T10	= 1,
-+	PS_DESIGNATOR_EUI64	= 2,
-+	PS_DESIGNATOR_NAA	= 3,
-+	PS_DESIGNATOR_NAME	= 8
-+};
++			error = ops->pr_register(dev->bdev, dev->pr_key, 0,
++				false);
++			if (error)
++				pr_err("failed to unregister PR key.\n");
++		}
 +
- #define NFL4_UFLG_MASK			0x0000003F
- #define NFL4_UFLG_DENSE			0x00000001
- #define NFL4_UFLG_COMMIT_THRU_MDS	0x00000002
+ 		if (dev->bdev)
+ 			blkdev_put(dev->bdev, FMODE_READ | FMODE_WRITE);
+ 	}
+@@ -113,6 +125,24 @@ nfs4_block_decode_volume(struct xdr_stream *xdr, struct pnfs_block_volume *b)
+ 		for (i = 0; i < b->stripe.volumes_count; i++)
+ 			b->stripe.volumes[i] = be32_to_cpup(p++);
+ 		break;
++	case PNFS_BLOCK_VOLUME_SCSI:
++		p = xdr_inline_decode(xdr, 4 + 4 + 4);
++		if (!p)
++			return -EIO;
++		b->scsi.code_set = be32_to_cpup(p++);
++		b->scsi.designator_type = be32_to_cpup(p++);
++		b->scsi.designator_len = be32_to_cpup(p++);
++		p = xdr_inline_decode(xdr, b->scsi.designator_len);
++		if (!p)
++			return -EIO;
++		if (b->scsi.designator_len > 256)
++			return -EIO;
++		memcpy(&b->scsi.designator, p, b->scsi.designator_len);
++		p = xdr_inline_decode(xdr, 8);
++		if (!p)
++			return -EIO;
++		p = xdr_decode_hyper(p, &b->scsi.pr_key);
++		break;
+ 	default:
+ 		dprintk("unknown volume type!\n");
+ 		return -EIO;
+@@ -216,6 +246,116 @@ bl_parse_simple(struct nfs_server *server, struct pnfs_block_dev *d,
+ 	return 0;
+ }
+ 
++static bool
++bl_validate_designator(struct pnfs_block_volume *v)
++{
++	switch (v->scsi.designator_type) {
++	case PS_DESIGNATOR_EUI64:
++		if (v->scsi.code_set != PS_CODE_SET_BINARY)
++			return false;
++
++		if (v->scsi.designator_len != 8 &&
++		    v->scsi.designator_len != 10 &&
++		    v->scsi.designator_len != 16)
++			return false;
++
++		return true;
++	case PS_DESIGNATOR_NAA:
++		if (v->scsi.code_set != PS_CODE_SET_BINARY)
++			return false;
++
++		if (v->scsi.designator_len != 8 &&
++		    v->scsi.designator_len != 16)
++			return false;
++
++		return true;
++	case PS_DESIGNATOR_T10:
++	case PS_DESIGNATOR_NAME:
++		pr_err("pNFS: unsupported designator "
++			"(code set %d, type %d, len %d.\n",
++			v->scsi.code_set,
++			v->scsi.designator_type,
++			v->scsi.designator_len);
++		return false;
++	default:
++		pr_err("pNFS: invalid designator "
++			"(code set %d, type %d, len %d.\n",
++			v->scsi.code_set,
++			v->scsi.designator_type,
++			v->scsi.designator_len);
++		return false;
++	}
++}
++
++static int
++bl_parse_scsi(struct nfs_server *server, struct pnfs_block_dev *d,
++		struct pnfs_block_volume *volumes, int idx, gfp_t gfp_mask)
++{
++	struct pnfs_block_volume *v = &volumes[idx];
++	const struct pr_ops *ops;
++	const char *devname;
++	int error;
++
++	if (!bl_validate_designator(v))
++		return -EINVAL;
++
++	switch (v->scsi.designator_len) {
++	case 8:
++		devname = kasprintf(GFP_KERNEL, "/dev/disk/by-id/wwn-0x%8phN",
++				v->scsi.designator);
++		break;
++	case 12:
++		devname = kasprintf(GFP_KERNEL, "/dev/disk/by-id/wwn-0x%12phN",
++				v->scsi.designator);
++		break;
++	case 16:
++		devname = kasprintf(GFP_KERNEL, "/dev/disk/by-id/wwn-0x%16phN",
++				v->scsi.designator);
++		break;
++	default:
++		return -EINVAL;
++	}
++
++	d->bdev = blkdev_get_by_path(devname, FMODE_READ, NULL);
++	if (IS_ERR(d->bdev)) {
++		pr_warn("pNFS: failed to open device %s (%ld)\n",
++			devname, PTR_ERR(d->bdev));
++		kfree(devname);
++		return PTR_ERR(d->bdev);
++	}
++
++	kfree(devname);
++
++	d->len = i_size_read(d->bdev->bd_inode);
++	d->map = bl_map_simple;
++	d->pr_key = v->scsi.pr_key;
++
++	pr_info("pNFS: using block device %s (reservation key 0x%llx)\n",
++		d->bdev->bd_disk->disk_name, d->pr_key);
++
++	ops = d->bdev->bd_disk->fops->pr_ops;
++	if (!ops) {
++		pr_err("pNFS: block device %s does not support reservations.",
++				d->bdev->bd_disk->disk_name);
++		error = -EINVAL;
++		goto out_blkdev_put;
++	}
++
++	error = ops->pr_register(d->bdev, 0, d->pr_key, true);
++	if (error) {
++		pr_err("pNFS: failed to register key for block device %s.",
++				d->bdev->bd_disk->disk_name);
++		goto out_blkdev_put;
++	}
++
++	d->pr_registered = true;
++	return 0;
++
++out_blkdev_put:
++	blkdev_put(d->bdev, FMODE_READ);
++	return error;
++}
++
+ static int
+ bl_parse_slice(struct nfs_server *server, struct pnfs_block_dev *d,
+ 		struct pnfs_block_volume *volumes, int idx, gfp_t gfp_mask)
+@@ -303,6 +443,8 @@ bl_parse_deviceid(struct nfs_server *server, struct pnfs_block_dev *d,
+ 		return bl_parse_concat(server, d, volumes, idx, gfp_mask);
+ 	case PNFS_BLOCK_VOLUME_STRIPE:
+ 		return bl_parse_stripe(server, d, volumes, idx, gfp_mask);
++	case PNFS_BLOCK_VOLUME_SCSI:
++		return bl_parse_scsi(server, d, volumes, idx, gfp_mask);
+ 	default:
+ 		dprintk("unsupported volume type: %d\n", volumes[idx].type);
+ 		return -EIO;
+diff --git a/fs/nfs/blocklayout/extent_tree.c b/fs/nfs/blocklayout/extent_tree.c
+index c59a59c..df366fc 100644
+--- a/fs/nfs/blocklayout/extent_tree.c
++++ b/fs/nfs/blocklayout/extent_tree.c
+@@ -1,5 +1,5 @@
+ /*
+- * Copyright (c) 2014 Christoph Hellwig.
++ * Copyright (c) 2014-2016 Christoph Hellwig.
+  */
+ 
+ #include <linux/vmalloc.h>
+@@ -462,10 +462,12 @@ out:
+ 	return err;
+ }
+ 
+-static size_t ext_tree_layoutupdate_size(size_t count)
++static size_t ext_tree_layoutupdate_size(struct pnfs_block_layout *bl, size_t count)
+ {
+-	return sizeof(__be32) /* number of entries */ +
+-		PNFS_BLOCK_EXTENT_SIZE * count;
++	if (bl->bl_scsi_layout)
++		return sizeof(__be32) + PNFS_SCSI_RANGE_SIZE * count;
++	else
++		return sizeof(__be32) + PNFS_BLOCK_EXTENT_SIZE * count;
+ }
+ 
+ static void ext_tree_free_commitdata(struct nfs4_layoutcommit_args *arg,
+@@ -482,6 +484,23 @@ static void ext_tree_free_commitdata(struct nfs4_layoutcommit_args *arg,
+ 	}
+ }
+ 
++static __be32 *encode_block_extent(struct pnfs_block_extent *be, __be32 *p)
++{
++	p = xdr_encode_opaque_fixed(p, be->be_device->deviceid.data,
++			NFS4_DEVICEID4_SIZE);
++	p = xdr_encode_hyper(p, be->be_f_offset << SECTOR_SHIFT);
++	p = xdr_encode_hyper(p, be->be_length << SECTOR_SHIFT);
++	p = xdr_encode_hyper(p, 0LL);
++	*p++ = cpu_to_be32(PNFS_BLOCK_READWRITE_DATA);
++	return p;
++}
++
++static __be32 *encode_scsi_range(struct pnfs_block_extent *be, __be32 *p)
++{
++	p = xdr_encode_hyper(p, be->be_f_offset << SECTOR_SHIFT);
++	return xdr_encode_hyper(p, be->be_length << SECTOR_SHIFT);
++}
++
+ static int ext_tree_encode_commit(struct pnfs_block_layout *bl, __be32 *p,
+ 		size_t buffer_size, size_t *count)
+ {
+@@ -495,19 +514,16 @@ static int ext_tree_encode_commit(struct pnfs_block_layout *bl, __be32 *p,
+ 			continue;
+ 
+ 		(*count)++;
+-		if (ext_tree_layoutupdate_size(*count) > buffer_size) {
++		if (ext_tree_layoutupdate_size(bl, *count) > buffer_size) {
+ 			/* keep counting.. */
+ 			ret = -ENOSPC;
+ 			continue;
+ 		}
+ 
+-		p = xdr_encode_opaque_fixed(p, be->be_device->deviceid.data,
+-				NFS4_DEVICEID4_SIZE);
+-		p = xdr_encode_hyper(p, be->be_f_offset << SECTOR_SHIFT);
+-		p = xdr_encode_hyper(p, be->be_length << SECTOR_SHIFT);
+-		p = xdr_encode_hyper(p, 0LL);
+-		*p++ = cpu_to_be32(PNFS_BLOCK_READWRITE_DATA);
+-
++		if (bl->bl_scsi_layout)
++			p = encode_scsi_range(be, p);
++		else
++			p = encode_block_extent(be, p);
+ 		be->be_tag = EXTENT_COMMITTING;
+ 	}
+ 	spin_unlock(&bl->bl_ext_lock);
+@@ -536,7 +552,7 @@ retry:
+ 	if (unlikely(ret)) {
+ 		ext_tree_free_commitdata(arg, buffer_size);
+ 
+-		buffer_size = ext_tree_layoutupdate_size(count);
++		buffer_size = ext_tree_layoutupdate_size(bl, count);
+ 		count = 0;
+ 
+ 		arg->layoutupdate_pages =
+@@ -555,7 +571,7 @@ retry:
+ 	}
+ 
+ 	*start_p = cpu_to_be32(count);
+-	arg->layoutupdate_len = ext_tree_layoutupdate_size(count);
++	arg->layoutupdate_len = ext_tree_layoutupdate_size(bl, count);
+ 
+ 	if (unlikely(arg->layoutupdate_pages != &arg->layoutupdate_page)) {
+ 		void *p = start_p, *end = p + arg->layoutupdate_len;
 -- 
 2.1.4
 
