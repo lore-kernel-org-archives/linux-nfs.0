@@ -1,8 +1,8 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:54725 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:45551 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752202AbcB2IRj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 29 Feb 2016 03:17:39 -0500
+	id S1751992AbcB2IRg (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 29 Feb 2016 03:17:36 -0500
 From: Andreas Gruenbacher <agruenba@redhat.com>
 To: Alexander Viro <viro@zeniv.linux.org.uk>
 Cc: "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org,
@@ -14,205 +14,135 @@ Cc: "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org,
         Andreas Dilger <adilger.kernel@dilger.ca>,
         linux-fsdevel@vger.kernel.org, Jeff Layton <jlayton@poochiereds.net>,
         linux-ext4@vger.kernel.org, Anna Schumaker <anna.schumaker@netapp.com>
-Subject: [PATCH v18 02/22] vfs: Add MAY_CREATE_FILE and MAY_CREATE_DIR permission flags
-Date: Mon, 29 Feb 2016 09:17:07 +0100
-Message-Id: <1456733847-17982-3-git-send-email-agruenba@redhat.com>
+Subject: [PATCH v18 01/22] vfs: Add IS_ACL() and IS_RICHACL() tests
+Date: Mon, 29 Feb 2016 09:17:06 +0100
+Message-Id: <1456733847-17982-2-git-send-email-agruenba@redhat.com>
 In-Reply-To: <1456733847-17982-1-git-send-email-agruenba@redhat.com>
 References: <1456733847-17982-1-git-send-email-agruenba@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Richacls distinguish between creating non-directories and directories. To
-support that, add an isdir parameter to may_create(). When checking
-inode_permission() for create permission, pass in an additional
-MAY_CREATE_FILE or MAY_CREATE_DIR mask flag.
-
-Add may_replace() to allow checking for delete and create access when
-replacing an existing file in vfs_rename().
+The vfs does not apply the umask for file systems that support acls. The
+test used for this used to be called IS_POSIXACL(). Switch to a new
+IS_ACL() test to check for either posix acls or richacls instead. Add a new
+MS_RICHACL flag and IS_RICHACL() test for richacls alone. The IS_POSIXACL()
+test is still needed by nfsd.
 
 Signed-off-by: Andreas Gruenbacher <agruenba@redhat.com>
 Reviewed-by: J. Bruce Fields <bfields@redhat.com>
 Reviewed-by: Andreas Dilger <adilger@dilger.ca>
 ---
- fs/namei.c         | 49 +++++++++++++++++++++++++++++++++----------------
- include/linux/fs.h |  2 ++
- 2 files changed, 35 insertions(+), 16 deletions(-)
+ fs/Kconfig              |  3 +++
+ fs/namei.c              |  8 ++++----
+ include/linux/fs.h      | 12 ++++++++++++
+ include/uapi/linux/fs.h |  3 ++-
+ 4 files changed, 21 insertions(+), 5 deletions(-)
 
+diff --git a/fs/Kconfig b/fs/Kconfig
+index 9adee0d..f7b26f3 100644
+--- a/fs/Kconfig
++++ b/fs/Kconfig
+@@ -63,6 +63,9 @@ endif # BLOCK
+ config FS_POSIX_ACL
+ 	def_bool n
+ 
++config FS_RICHACL
++	def_bool n
++
+ config EXPORTFS
+ 	tristate
+ 
 diff --git a/fs/namei.c b/fs/namei.c
-index 5756c1a..ae30626 100644
+index f624d13..5756c1a 100644
 --- a/fs/namei.c
 +++ b/fs/namei.c
-@@ -453,7 +453,9 @@ static int sb_permission(struct super_block *sb, struct inode *inode, int mask)
-  * this, letting us set arbitrary permissions for filesystem access without
-  * changing the "normal" UIDs which are used for other things.
-  *
-- * When checking for MAY_APPEND, MAY_WRITE must also be set in @mask.
-+ * MAY_WRITE must be set in @mask whenever MAY_APPEND, MAY_CREATE_FILE, or
-+ * MAY_CREATE_DIR are set.  That way, file systems that don't support these
-+ * permissions will check for MAY_WRITE instead.
-  */
- int inode_permission(struct inode *inode, int mask)
- {
-@@ -2611,7 +2613,8 @@ EXPORT_SYMBOL(__check_sticky);
-  * 10. We don't allow removal of NFS sillyrenamed files; it's handled by
-  *     nfs_async_unlink().
-  */
--static int may_delete(struct inode *dir, struct dentry *victim, bool isdir)
-+static int may_delete_or_replace(struct inode *dir, struct dentry *victim,
-+				 bool isdir, int mask)
- {
- 	struct inode *inode = d_backing_inode(victim);
- 	int error;
-@@ -2623,7 +2626,7 @@ static int may_delete(struct inode *dir, struct dentry *victim, bool isdir)
- 	BUG_ON(victim->d_parent->d_inode != dir);
- 	audit_inode_child(dir, victim, AUDIT_TYPE_CHILD_DELETE);
- 
--	error = inode_permission(dir, MAY_WRITE | MAY_EXEC);
-+	error = inode_permission(dir, mask);
- 	if (error)
- 		return error;
- 	if (IS_APPEND(dir))
-@@ -2646,6 +2649,18 @@ static int may_delete(struct inode *dir, struct dentry *victim, bool isdir)
- 	return 0;
- }
- 
-+static int may_delete(struct inode *dir, struct dentry *victim, bool isdir)
-+{
-+	return may_delete_or_replace(dir, victim, isdir, MAY_WRITE | MAY_EXEC);
-+}
-+
-+static int may_replace(struct inode *dir, struct dentry *victim, bool isdir)
-+{
-+	int mask = isdir ? MAY_CREATE_DIR : MAY_CREATE_FILE;
-+
-+	return may_delete_or_replace(dir, victim, isdir, mask | MAY_WRITE | MAY_EXEC);
-+}
-+
- /*	Check whether we can create an object with dentry child in directory
-  *  dir.
-  *  1. We can't do it if child already exists (open has special treatment for
-@@ -2654,14 +2669,16 @@ static int may_delete(struct inode *dir, struct dentry *victim, bool isdir)
-  *  3. We should have write and exec permissions on dir
-  *  4. We can't do it if dir is immutable (done in permission())
-  */
--static inline int may_create(struct inode *dir, struct dentry *child)
-+static inline int may_create(struct inode *dir, struct dentry *child, bool isdir)
- {
-+	int mask = isdir ? MAY_CREATE_DIR : MAY_CREATE_FILE;
-+
- 	audit_inode_child(dir, child, AUDIT_TYPE_CHILD_CREATE);
- 	if (child->d_inode)
- 		return -EEXIST;
- 	if (IS_DEADDIR(dir))
- 		return -ENOENT;
--	return inode_permission(dir, MAY_WRITE | MAY_EXEC);
-+	return inode_permission(dir, MAY_WRITE | MAY_EXEC | mask);
- }
- 
- /*
-@@ -2711,7 +2728,7 @@ EXPORT_SYMBOL(unlock_rename);
- int vfs_create(struct inode *dir, struct dentry *dentry, umode_t mode,
- 		bool want_excl)
- {
--	int error = may_create(dir, dentry);
-+	int error = may_create(dir, dentry, false);
- 	if (error)
- 		return error;
- 
-@@ -3553,7 +3570,7 @@ EXPORT_SYMBOL(user_path_create);
- 
- int vfs_mknod(struct inode *dir, struct dentry *dentry, umode_t mode, dev_t dev)
- {
--	int error = may_create(dir, dentry);
-+	int error = may_create(dir, dentry, false);
- 
- 	if (error)
- 		return error;
-@@ -3645,7 +3662,7 @@ SYSCALL_DEFINE3(mknod, const char __user *, filename, umode_t, mode, unsigned, d
- 
- int vfs_mkdir(struct inode *dir, struct dentry *dentry, umode_t mode)
- {
--	int error = may_create(dir, dentry);
-+	int error = may_create(dir, dentry, true);
- 	unsigned max_links = dir->i_sb->s_max_links;
- 
- 	if (error)
-@@ -3726,7 +3743,7 @@ EXPORT_SYMBOL(dentry_unhash);
- 
- int vfs_rmdir(struct inode *dir, struct dentry *dentry)
- {
--	int error = may_delete(dir, dentry, 1);
-+	int error = may_delete(dir, dentry, true);
- 
- 	if (error)
- 		return error;
-@@ -3848,7 +3865,7 @@ SYSCALL_DEFINE1(rmdir, const char __user *, pathname)
- int vfs_unlink(struct inode *dir, struct dentry *dentry, struct inode **delegated_inode)
- {
- 	struct inode *target = dentry->d_inode;
--	int error = may_delete(dir, dentry, 0);
-+	int error = may_delete(dir, dentry, false);
- 
- 	if (error)
- 		return error;
-@@ -3982,7 +3999,7 @@ SYSCALL_DEFINE1(unlink, const char __user *, pathname)
- 
- int vfs_symlink(struct inode *dir, struct dentry *dentry, const char *oldname)
- {
--	int error = may_create(dir, dentry);
-+	int error = may_create(dir, dentry, false);
- 
- 	if (error)
- 		return error;
-@@ -4065,7 +4082,7 @@ int vfs_link(struct dentry *old_dentry, struct inode *dir, struct dentry *new_de
- 	if (!inode)
- 		return -ENOENT;
- 
--	error = may_create(dir, new_dentry);
-+	error = may_create(dir, new_dentry, false);
- 	if (error)
- 		return error;
- 
-@@ -4258,14 +4275,14 @@ int vfs_rename(struct inode *old_dir, struct dentry *old_dentry,
- 		return error;
- 
- 	if (!target) {
--		error = may_create(new_dir, new_dentry);
-+		error = may_create(new_dir, new_dentry, is_dir);
- 	} else {
- 		new_is_dir = d_is_dir(new_dentry);
- 
- 		if (!(flags & RENAME_EXCHANGE))
--			error = may_delete(new_dir, new_dentry, is_dir);
-+			error = may_replace(new_dir, new_dentry, is_dir);
- 		else
--			error = may_delete(new_dir, new_dentry, new_is_dir);
-+			error = may_replace(new_dir, new_dentry, new_is_dir);
+@@ -2856,7 +2856,7 @@ static int atomic_open(struct nameidata *nd, struct dentry *dentry,
  	}
- 	if (error)
- 		return error;
-@@ -4528,7 +4545,7 @@ SYSCALL_DEFINE2(rename, const char __user *, oldname, const char __user *, newna
  
- int vfs_whiteout(struct inode *dir, struct dentry *dentry)
- {
--	int error = may_create(dir, dentry);
-+	int error = may_create(dir, dentry, false);
- 	if (error)
- 		return error;
+ 	mode = op->mode;
+-	if ((open_flag & O_CREAT) && !IS_POSIXACL(dir))
++	if ((open_flag & O_CREAT) && !IS_ACL(dir))
+ 		mode &= ~current_umask();
  
+ 	excl = (open_flag & (O_EXCL | O_CREAT)) == (O_EXCL | O_CREAT);
+@@ -3040,7 +3040,7 @@ static int lookup_open(struct nameidata *nd, struct path *path,
+ 	/* Negative dentry, just create the file */
+ 	if (!dentry->d_inode && (op->open_flag & O_CREAT)) {
+ 		umode_t mode = op->mode;
+-		if (!IS_POSIXACL(dir->d_inode))
++		if (!IS_ACL(dir->d_inode))
+ 			mode &= ~current_umask();
+ 		/*
+ 		 * This write is needed to ensure that a
+@@ -3612,7 +3612,7 @@ retry:
+ 	if (IS_ERR(dentry))
+ 		return PTR_ERR(dentry);
+ 
+-	if (!IS_POSIXACL(path.dentry->d_inode))
++	if (!IS_ACL(path.dentry->d_inode))
+ 		mode &= ~current_umask();
+ 	error = security_path_mknod(&path, dentry, mode, dev);
+ 	if (error)
+@@ -3681,7 +3681,7 @@ retry:
+ 	if (IS_ERR(dentry))
+ 		return PTR_ERR(dentry);
+ 
+-	if (!IS_POSIXACL(path.dentry->d_inode))
++	if (!IS_ACL(path.dentry->d_inode))
+ 		mode &= ~current_umask();
+ 	error = security_path_mkdir(&path, dentry, mode);
+ 	if (!error)
 diff --git a/include/linux/fs.h b/include/linux/fs.h
-index f9d2b59..02e99d7 100644
+index ae68100..f9d2b59 100644
 --- a/include/linux/fs.h
 +++ b/include/linux/fs.h
-@@ -83,6 +83,8 @@ typedef void (dax_iodone_t)(struct buffer_head *bh_map, int uptodate);
- #define MAY_CHDIR		0x00000040
- /* called from RCU mode, don't block */
- #define MAY_NOT_BLOCK		0x00000080
-+#define MAY_CREATE_FILE		0x00000100
-+#define MAY_CREATE_DIR		0x00000200
+@@ -1804,6 +1804,12 @@ struct super_operations {
+ #define IS_IMMUTABLE(inode)	((inode)->i_flags & S_IMMUTABLE)
+ #define IS_POSIXACL(inode)	__IS_FLG(inode, MS_POSIXACL)
+ 
++#ifdef CONFIG_FS_RICHACL
++#define IS_RICHACL(inode)	__IS_FLG(inode, MS_RICHACL)
++#else
++#define IS_RICHACL(inode)	0
++#endif
++
+ #define IS_DEADDIR(inode)	((inode)->i_flags & S_DEAD)
+ #define IS_NOCMTIME(inode)	((inode)->i_flags & S_NOCMTIME)
+ #define IS_SWAPFILE(inode)	((inode)->i_flags & S_SWAPFILE)
+@@ -1817,6 +1823,12 @@ struct super_operations {
+ 				 (inode)->i_rdev == WHITEOUT_DEV)
  
  /*
-  * flags in file.f_mode.  Note that FMODE_READ and FMODE_WRITE must correspond
++ * IS_ACL() tells the VFS to not apply the umask
++ * and use check_acl for acl permission checks when defined.
++ */
++#define IS_ACL(inode)		__IS_FLG(inode, MS_POSIXACL | MS_RICHACL)
++
++/*
+  * Inode state bits.  Protected by inode->i_lock
+  *
+  * Three bits determine the dirty state of the inode, I_DIRTY_SYNC,
+diff --git a/include/uapi/linux/fs.h b/include/uapi/linux/fs.h
+index 149bec8..540dbef 100644
+--- a/include/uapi/linux/fs.h
++++ b/include/uapi/linux/fs.h
+@@ -120,7 +120,7 @@ struct inodes_stat_t {
+ #define MS_VERBOSE	32768	/* War is peace. Verbosity is silence.
+ 				   MS_VERBOSE is deprecated. */
+ #define MS_SILENT	32768
+-#define MS_POSIXACL	(1<<16)	/* VFS does not apply the umask */
++#define MS_POSIXACL	(1<<16)	/* Supports POSIX ACLs */
+ #define MS_UNBINDABLE	(1<<17)	/* change to unbindable */
+ #define MS_PRIVATE	(1<<18)	/* change to private */
+ #define MS_SLAVE	(1<<19)	/* change to slave */
+@@ -130,6 +130,7 @@ struct inodes_stat_t {
+ #define MS_I_VERSION	(1<<23) /* Update inode I_version field */
+ #define MS_STRICTATIME	(1<<24) /* Always perform atime updates */
+ #define MS_LAZYTIME	(1<<25) /* Update the on-disk [acm]times lazily */
++#define MS_RICHACL	(1<<26) /* Supports richacls */
+ 
+ /* These sb flags are internal to the kernel */
+ #define MS_NOSEC	(1<<28)
 -- 
 2.4.3
 
