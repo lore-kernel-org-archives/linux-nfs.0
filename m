@@ -1,72 +1,110 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:53056 "EHLO fieldses.org"
+Received: from fieldses.org ([173.255.197.46]:53136 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751066AbcCAUt3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 1 Mar 2016 15:49:29 -0500
-Date: Tue, 1 Mar 2016 15:49:27 -0500
+	id S1752803AbcCAWAz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 1 Mar 2016 17:00:55 -0500
+Date: Tue, 1 Mar 2016 17:00:52 -0500
 From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Christoph Hellwig <hch@lst.de>
-Cc: trond.myklebust@primarydata.com, linux-nfs@vger.kernel.org
-Subject: Re: pNFS SCSI layout support
-Message-ID: <20160301204927.GE23792@fieldses.org>
-References: <1456752247-6549-1-git-send-email-hch@lst.de>
- <20160301192408.GC23792@fieldses.org>
- <20160301203012.GA6033@lst.de>
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH v5 00/14] NFS/RDMA server patches for v4.6
+Message-ID: <20160301220052.GF23792@fieldses.org>
+References: <20160301180337.2492.4255.stgit@klimt.1015granger.net>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-In-Reply-To: <20160301203012.GA6033@lst.de>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20160301180337.2492.4255.stgit@klimt.1015granger.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Mar 01, 2016 at 09:30:12PM +0100, Christoph Hellwig wrote:
-> On Tue, Mar 01, 2016 at 02:24:08PM -0500, J. Bruce Fields wrote:
-> > I still wonder whether this is the best behavior.  How about also adding
-> > the ability to configure out the block layout?  I think we'd want to be
-> > sure it's completely off in production.
+On Tue, Mar 01, 2016 at 01:05:14PM -0500, Chuck Lever wrote:
+> Hi Bruce-
 > 
-> Being able to configure block layout eventually might be useful.  Do
-> you simply want separate compile time options?  It's not like a whole
-> lot of code will go away, it's mostly just entry points.
+> I think these are ready for linux-next.
 
-Yeah, I wasn't thinking about the size of the code so much as
-supportability.
+OK, applying for 4.6, thanks.
 
-> > Also todo?:
-> > 	- wireshark support
-> 
-> I've mostly stayed clear of wiresharė.
-
-No problem, just noting it so I don't forget.
-
-> > 	- testing, including of fencing and reboot recovery.
-> 
-> I've done a fair amount of testing, and the interesting part is
-> indeed fencing.  The normal path is not very different from the block
-> layout driver.
-> 
-> > 	(And:
-> > 	  currently I just share a file between two vm's to use as my
-> > 	  shared block device, I guess I'll need to set up a real SCSI
-> > 	  target instead.)
-> 
-> The in-kernel lio target will work just fine.  You can actually export
-> that directly to VMs using the vhost_scsi driver, but I've not tried
-> that option myself yet.
-> 
-> > I think there's not any additional documentation required--this is just
-> > like block layout but without the need to configure fencing.
-> 
-> Exactly.
-> 
-> > (Or do
-> > people need to do some additional configuration of the SCSI devices?  Or
-> > check the specs on their hardware to make sure it has support for the
-> > right features?)
-> 
-> Yes, the device needs to support persistent reservations.
-> 
-> I can write up a little blurb on that.
-
-OK, thanks.
+I still wonder whether the code makes incorrect assumptions about how
+the server xdr encoder uses the reply xdr_buf.  That might only affect
+clients which constructed rather strange compounds.  And shouldn't be
+made any worse by these patches.
 
 --b.
+
+> 
+> Two major changes: Finish server-side support for RDMA_ERROR type
+> messages, and convert the server's completion handlers to the new
+> core CQ API.
+> 
+> Also available in the "nfsd-rdma-for-4.6" topic branch of this git
+> repo:
+> 
+> git://git.linux-nfs.org/projects/cel/cel-2.6.git
+> 
+> Or for browsing:
+> 
+> http://git.linux-nfs.org/?p=cel/cel-2.6.git;a=log;h=refs/heads/nfsd-rdma-for-4.6
+> 
+> 
+> Changes since v4:
+> - Rebased on v4.5-rc6
+> - Replace confusing comments about NFSv4.1 over RDMA support
+> 
+> 
+> Changes since v3:
+> - Rebased on v4.5-rc5
+> - Completed fix for Write chunk XDR padding
+> - On error, svc_rdma_sendto() should close connection
+> 
+> 
+> Changes since v2:
+> - Rebased on v4.5-rc4
+> - checkpatch.pl passes
+> - Fix iWARP RDMA Read path regression
+> - Reduce NFSv4.1 CB message size maximum in CREATE_SESSION
+> - Another pass at fixing Write chunk XDR padding
+> - Various clean ups
+> 
+> 
+> Changes since v1:
+> - Rebased on v4.5-rc3
+> - Patch 02/10 (pre-allocate frmrs) dropped
+> - Patch 04/10 replaced with more surgical patch
+> - Refined reporting of flushed completions
+> - Function names of completion methods changed to match client's
+> new completion function naming convention
+> 
+> ---
+> 
+> Chuck Lever (14):
+>       nfsd: Update NFS server comments related to RDMA support
+>       svcrdma: Find client-provided write and reply chunks once per reply
+>       svcrdma: Do not write xdr_buf::tail in a Write chunk
+>       svcrdma: Do not send Write chunk XDR pad with inline content
+>       nfsd: Lower NFSv4.1 callback message size limit
+>       svcrdma: Close connection when a send error occurs
+>       svcrdma: svc_rdma_post_recv() should close connection on error
+>       rpcrdma: Add RPCRDMA_HDRLEN_ERR
+>       svcrdma: Make RDMA_ERROR messages work
+>       svcrdma: Use correct XID in error replies
+>       svcrdma: Hook up the logic to return ERR_CHUNK
+>       svcrdma: Remove close_out exit path
+>       svcrdma: Use new CQ API for RPC-over-RDMA server receive CQs
+>       svcrdma: Use new CQ API for RPC-over-RDMA server send CQs
+> 
+> 
+>  fs/nfsd/nfs4state.c                        |   26 +-
+>  fs/nfsd/nfs4xdr.c                          |    2 
+>  include/linux/sunrpc/auth.h                |    7 
+>  include/linux/sunrpc/rpc_rdma.h            |    1 
+>  include/linux/sunrpc/svc_rdma.h            |   20 +
+>  net/sunrpc/auth_null.c                     |    4 
+>  net/sunrpc/auth_unix.c                     |    6 
+>  net/sunrpc/xprtrdma/svc_rdma_backchannel.c |   17 -
+>  net/sunrpc/xprtrdma/svc_rdma_marshal.c     |   64 +++-
+>  net/sunrpc/xprtrdma/svc_rdma_recvfrom.c    |   60 ++--
+>  net/sunrpc/xprtrdma/svc_rdma_sendto.c      |  196 ++++++++----
+>  net/sunrpc/xprtrdma/svc_rdma_transport.c   |  445 +++++++++-------------------
+>  12 files changed, 393 insertions(+), 455 deletions(-)
+> 
+> --
+> Chuck Lever
