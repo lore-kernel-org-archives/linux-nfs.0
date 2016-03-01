@@ -1,75 +1,40 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from verein.lst.de ([213.95.11.211]:42314 "EHLO newverein.lst.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751056AbcCAUaO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 1 Mar 2016 15:30:14 -0500
-Date: Tue, 1 Mar 2016 21:30:12 +0100
-From: Christoph Hellwig <hch@lst.de>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: Christoph Hellwig <hch@lst.de>, trond.myklebust@primarydata.com,
-        linux-nfs@vger.kernel.org
-Subject: Re: pNFS SCSI layout support
-Message-ID: <20160301203012.GA6033@lst.de>
-References: <1456752247-6549-1-git-send-email-hch@lst.de> <20160301192408.GC23792@fieldses.org>
+Received: from mail-ob0-f176.google.com ([209.85.214.176]:33858 "EHLO
+	mail-ob0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752870AbcCAUqt (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 1 Mar 2016 15:46:49 -0500
+Received: by mail-ob0-f176.google.com with SMTP id ts10so178789659obc.1
+        for <linux-nfs@vger.kernel.org>; Tue, 01 Mar 2016 12:46:48 -0800 (PST)
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-In-Reply-To: <20160301192408.GC23792@fieldses.org>
+In-Reply-To: <1456855928-29913-4-git-send-email-rgoldwyn@suse.de>
+References: <1456855928-29913-1-git-send-email-rgoldwyn@suse.de>
+	<1456855928-29913-4-git-send-email-rgoldwyn@suse.de>
+Date: Tue, 1 Mar 2016 15:46:48 -0500
+Message-ID: <CAHQdGtRu2nd54+tKQLPp2tvf1MpKw4-X8ESqx-8W4_zAov7hFA@mail.gmail.com>
+Subject: Re: [PATCH 3/3] nfs: Store and use inode in nfs_open_context
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: Goldwyn Rodrigues <rgoldwyn@suse.de>
+Cc: miklos@szeredi.hu, linux-unionfs@vger.kernel.org,
+        Linux FS-devel Mailing List <linux-fsdevel@vger.kernel.org>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        Goldwyn Rodrigues <rgoldwyn@suse.com>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Mar 01, 2016 at 02:24:08PM -0500, J. Bruce Fields wrote:
-> If I understand correctly, you still require NFSEXP_PNFS (the "pnfs"
-> export option).  So, setting exporting with the "pnfs" option means
-> clients will see only one of block or SCSI layout support (or neither)
-> depending on what's possible, with preference for the SCSI layout.
+On Tue, Mar 1, 2016 at 1:12 PM, Goldwyn Rodrigues <rgoldwyn@suse.de> wrote:
+>
+> From: Goldwyn Rodrigues <rgoldwyn@suse.com>
+>
+> NFS translates the inode from the dentry and uses sb from the dentry
+> parameters. However, using NFS in conjunction with overlayfs, the inodes
+> associated with dentries may be associated with overlayfs as opposed
+> to NFS. So, store inode in nfs_open_context and use d_select_inode()
+> to translate dentry to inode.
 
-pnfs is supposed to enable any pnfs layout.  Currently only block
-is implemented, and with this patch the scsi layout as well.
+I don't see how this helps. The dentry and dentry->d_sb that are
+associated with the open context need to be NFS namespace objects,
+otherwise all sorts of things, ranging from inode lookup to NFSv4
+state recovery are going to break.
 
-The scsi layout will be exported if the device supports reservations
-and the file system supports block layout exports (SCSI layout is the
-same to the file system).  Otherwise the block layout is enabled if
-we're on a block device, and the file system supports block layout
-exports.
-
-> I still wonder whether this is the best behavior.  How about also adding
-> the ability to configure out the block layout?  I think we'd want to be
-> sure it's completely off in production.
-
-Being able to configure block layout eventually might be useful.  Do
-you simply want separate compile time options?  It's not like a whole
-lot of code will go away, it's mostly just entry points.
-
-> Also todo?:
-> 	- wireshark support
-
-I've mostly stayed clear of wiresharė.
-
-> 	- testing, including of fencing and reboot recovery.
-
-I've done a fair amount of testing, and the interesting part is
-indeed fencing.  The normal path is not very different from the block
-layout driver.
-
-> 	(And:
-> 	  currently I just share a file between two vm's to use as my
-> 	  shared block device, I guess I'll need to set up a real SCSI
-> 	  target instead.)
-
-The in-kernel lio target will work just fine.  You can actually export
-that directly to VMs using the vhost_scsi driver, but I've not tried
-that option myself yet.
-
-> I think there's not any additional documentation required--this is just
-> like block layout but without the need to configure fencing.
-
-Exactly.
-
-> (Or do
-> people need to do some additional configuration of the SCSI devices?  Or
-> check the specs on their hardware to make sure it has support for the
-> right features?)
-
-Yes, the device needs to support persistent reservations.
-
-I can write up a little blurb on that.
+Trond
