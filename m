@@ -1,86 +1,49 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:52042 "EHLO fieldses.org"
+Received: from mx1.math.uh.edu ([129.7.128.32]:56484 "EHLO mx1.math.uh.edu"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750942AbcCAAsq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 29 Feb 2016 19:48:46 -0500
-Date: Mon, 29 Feb 2016 19:48:44 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Jason L Tibbitts III <tibbs@math.uh.edu>
+	id S1751072AbcCAAxS (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 29 Feb 2016 19:53:18 -0500
+From: Jason L Tibbitts III <tibbs@math.uh.edu>
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Cc: linux-nfs@vger.kernel.org
 Subject: Re: NFS: nfs4_reclaim_open_state: Lock reclaim failed! log spew
-Message-ID: <20160301004844.GA11952@fieldses.org>
 References: <ufafuwhlr72.fsf@epithumia.math.uh.edu>
- <20160225195827.GC23315@fieldses.org>
- <ufaegbvdslg.fsf@epithumia.math.uh.edu>
+	<20160225195827.GC23315@fieldses.org>
+	<ufaegbvdslg.fsf@epithumia.math.uh.edu>
+	<20160301004844.GA11952@fieldses.org>
+Date: Mon, 29 Feb 2016 18:53:15 -0600
+In-Reply-To: <20160301004844.GA11952@fieldses.org> (J. Bruce Fields's message
+	of "Mon, 29 Feb 2016 19:48:44 -0500")
+Message-ID: <ufay4a3c938.fsf@epithumia.math.uh.edu>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <ufaegbvdslg.fsf@epithumia.math.uh.edu>
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Feb 29, 2016 at 05:06:35PM -0600, Jason L Tibbitts III wrote:
-> >>>>> "JBF" == J Bruce Fields <bfields@fieldses.org> writes:
-> 
-> >> Unfortunately I did not grab any of that traffic (I just wanted it to
-> >> stop).  This happens to me periodically so I'll be sure to do that
-> >> when it hits again.
-> 
-> JBF> OK, that'd be helpful.
-> 
-> I waited a bit and it's happened again from a few clients.  I captured
-> some traffic from one of them and it's just an endless stream of
-> Call/Reply:
-> 
->   8 0.002842000 172.21.86.135 -> 172.21.86.78 NFS 406 V4 Call
->   9 0.003493000 172.21.86.78 -> 172.21.86.135 NFS 518 V4 Reply (Call In  8)
->  10 0.003536000 172.21.86.135 -> 172.21.86.78 NFS 406 V4 Call
->  11 0.004168000 172.21.86.78 -> 172.21.86.135 NFS 518 V4 Reply (Call In 10)
->  12 0.004252000 172.21.86.135 -> 172.21.86.78 NFS 406 V4 Call
->  13 0.004854000 172.21.86.78 -> 172.21.86.135 NFS 518 V4 Reply (Call In 12)
->  14 0.004931000 172.21.86.135 -> 172.21.86.78 NFS 406 V4 Call
->  15 0.005613000 172.21.86.78 -> 172.21.86.135 NFS 518 V4 Reply (Call In 14)
-> 
-> 
-> Here's a call:
-> 
->         GSS Service: rpcsec_gss_svc_privacy (3)
+>>>>> "JBF" == J Bruce Fields <bfields@fieldses.org> writes:
 
-Argh, it's all encrypted, so we all we have to go on is the size of the
-request and reply:
+JBF> Argh, it's all encrypted, so we all we have to go on is the size of
+JBF> the request and reply:
 
-> GSS-Wrap
->     Length: 236
-...
-> And here's a reply:
-...
-> GSS-Wrap
->     Length: 392
+Yeah, I'm not sure how to get around that.  I know tshark can take a
+keytab, but the user's key is in the kernel keyring and I'm not at all
+sure how to dig it out (assuming I even can).  But if there's something
+I can do, I can try.
 
-Anyway, just knowing the error may be enough for us to work out the
-problem--I just need to dig a little more.
+I could switch to krb5i or plain krb for a while if that would be
+useful, except that the clients would prefer krb5p if it's exported, and
+if I stop exporting it then existing mounts break....  I'd have to
+schedule downtime and kick everyone off, which I could do if it would
+help.
 
-> The calls and replies all appear to be identical.  Sorry for the length
-> of those but I wouldn't want to trim anything that might be important.
-> 
-> JBF> Unfortunately what would probably be *most* helpful would be the
-> JBF> traffic that lead up to this--by the time the client and server get
-> JBF> into this loop the interesting problem may have already
-> JBF> happened--but just seeing the loop may be useful too.
-> 
-> Yeah, there's basically no chance of capturing that, and I have no way
-> to make it happen.  I can't just snarf all of the NFS traffic, and once
-> this starts it generates so many packets....
+JBF> The best you could do is capture all traffic and throw away all but
+JBF> the last few seconds (see the ring buffer stuff in tshark) and
+JBF> write a script that kills the capture as soon as it notices you've
+JBF> hit this condition.
 
-The best you could do is capture all traffic and throw away all but the
-last few seconds (see the ring buffer stuff in tshark) and write a
-script that kills the capture as soon as it notices you've hit this
-condition.  Anyway, possibly still impractical and not worth the trouble
-at this point anyway.
+If I knew how to detect the condition, though, I have a feeling that
+would be enough information to track down the bug anyway.
 
-> Note that this doesn't appear to be caused by something like a kerberos
-> ticket; the user last logged in well under the maximum ticket renewal
-> time, and SSSD has been dutifully renewing them.
+Also, I'd have to do this for a couple of hundred clients.  Ugh.
 
-OK, thanks.
-
---b.
+ - J<
