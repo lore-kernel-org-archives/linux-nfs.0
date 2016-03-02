@@ -1,301 +1,248 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mga01.intel.com ([192.55.52.88]:58126 "EHLO mga01.intel.com"
+Received: from smtp-o-1.desy.de ([131.169.56.154]:44970 "EHLO smtp-o-1.desy.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752873AbcCBMsy (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 2 Mar 2016 07:48:54 -0500
-Date: Wed, 2 Mar 2016 20:47:39 +0800
-From: kbuild test robot <lkp@intel.com>
-To: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
-Cc: kbuild-all@01.org, trond.myklebust@primarydata.com,
-        linux-nfs@vger.kernel.org, Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
-Subject: Re: [PATCH] pnfs support servers with multiple layout types
-Message-ID: <201603022028.aKNyWLPX%fengguang.wu@intel.com>
-MIME-Version: 1.0
-Content-Type: multipart/mixed; boundary="1yeeQ81UyVL57Vl7"
+	id S1750886AbcCBN6F (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 2 Mar 2016 08:58:05 -0500
+Received: from smtp-map-1.desy.de (smtp-map-1.desy.de [131.169.56.66])
+	by smtp-o-1.desy.de (DESY-O-1) with ESMTP id C18B9280A3C
+	for <linux-nfs@vger.kernel.org>; Wed,  2 Mar 2016 14:58:02 +0100 (CET)
+Received: from ZITSWEEP4.win.desy.de (zitsweep4.win.desy.de [131.169.97.98])
+	by smtp-map-1.desy.de (DESY_MAP_1) with ESMTP id B362013EAE
+	for <linux-nfs@vger.kernel.org>; Wed,  2 Mar 2016 14:58:02 +0100 (MET)
+From: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
+To: trond.myklebust@primarydata.com
+Cc: linux-nfs@vger.kernel.org, Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
+Subject: [PATCH] pnfs  support servers with multiple layout types
+Date: Wed,  2 Mar 2016 14:57:59 +0100
+Message-Id: <1456927079-4788-1-git-send-email-tigran.mkrtchyan@desy.de>
 In-Reply-To: <1456920492-22533-1-git-send-email-tigran.mkrtchyan@desy.de>
+References: <1456920492-22533-1-git-send-email-tigran.mkrtchyan@desy.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+current NFSv4.1/pNFS client assumes that MDS supports
+only one layout type. While it's true for most existing servers,
+nevertheless, this can be change in the near future.
 
---1yeeQ81UyVL57Vl7
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
+This patch is an attempt to multi layouttype MDS support. To make
+it possible for such servers to function with existing clients,
+server must always send default layout type first in the list. The
+client starts processing layout types starting from the second element
+and will fall back to the wfirst one, if none of presented types
+is supported.
 
-Hi Tigran,
+Testing done:
 
-[auto build test WARNING on v4.5-rc6]
-[also build test WARNING on next-20160302]
-[if your patch is applied to the wrong git tree, please drop us a note to help improving the system]
+  - started a server with nfs4_file and flex_file layout
+  - new kernel picked flexr_-file layout
+  - old complained about multiple layout types and proceeded  nfs4_file layout
 
-url:    https://github.com/0day-ci/linux/commits/Tigran-Mkrtchyan/pnfs-support-servers-with-multiple-layout-types/20160302-201105
-config: m68k-sun3_defconfig (attached as .config)
-reproduce:
-        wget https://git.kernel.org/cgit/linux/kernel/git/wfg/lkp-tests.git/plain/sbin/make.cross -O ~/bin/make.cross
-        chmod +x ~/bin/make.cross
-        # save the attached .config to linux build tree
-        make.cross ARCH=m68k 
-
-All warnings (new ones prefixed by >>):
-
-   fs/nfs/nfs4proc.c: In function 'nfs4_proc_fsinfo':
->> fs/nfs/nfs4proc.c:4232:3: warning: passing argument 3 of 'set_pnfs_layoutdriver' makes integer from pointer without a cast
-      set_pnfs_layoutdriver(server, fhandle, fsinfo->layouttype);
-      ^
-   In file included from fs/nfs/nfs4proc.c:64:0:
-   fs/nfs/pnfs.h:657:20: note: expected 'u32' but argument is of type '__u32 *'
-    static inline void set_pnfs_layoutdriver(struct nfs_server *s,
-                       ^
-
-vim +/set_pnfs_layoutdriver +4232 fs/nfs/nfs4proc.c
-
-83ca7f5a Chuck Lever     2013-03-16  4216  			break;
-83ca7f5a Chuck Lever     2013-03-16  4217  		}
-83ca7f5a Chuck Lever     2013-03-16  4218  		err = nfs4_handle_exception(server, err, &exception);
-^1da177e Linus Torvalds  2005-04-16  4219  	} while (exception.retry);
-^1da177e Linus Torvalds  2005-04-16  4220  	return err;
-^1da177e Linus Torvalds  2005-04-16  4221  }
-^1da177e Linus Torvalds  2005-04-16  4222  
-^1da177e Linus Torvalds  2005-04-16  4223  static int nfs4_proc_fsinfo(struct nfs_server *server, struct nfs_fh *fhandle, struct nfs_fsinfo *fsinfo)
-^1da177e Linus Torvalds  2005-04-16  4224  {
-e38eb650 Bryan Schumaker 2012-06-20  4225  	int error;
-e38eb650 Bryan Schumaker 2012-06-20  4226  
-0e574af1 Trond Myklebust 2005-10-27  4227  	nfs_fattr_init(fsinfo->fattr);
-e38eb650 Bryan Schumaker 2012-06-20  4228  	error = nfs4_do_fsinfo(server, fhandle, fsinfo);
-dc182549 Peng Tao        2012-08-24  4229  	if (error == 0) {
-dc182549 Peng Tao        2012-08-24  4230  		/* block layout checks this! */
-dc182549 Peng Tao        2012-08-24  4231  		server->pnfs_blksize = fsinfo->blksize;
-e38eb650 Bryan Schumaker 2012-06-20 @4232  		set_pnfs_layoutdriver(server, fhandle, fsinfo->layouttype);
-dc182549 Peng Tao        2012-08-24  4233  	}
-e38eb650 Bryan Schumaker 2012-06-20  4234  
-e38eb650 Bryan Schumaker 2012-06-20  4235  	return error;
-^1da177e Linus Torvalds  2005-04-16  4236  }
-^1da177e Linus Torvalds  2005-04-16  4237  
-^1da177e Linus Torvalds  2005-04-16  4238  static int _nfs4_proc_pathconf(struct nfs_server *server, struct nfs_fh *fhandle,
-^1da177e Linus Torvalds  2005-04-16  4239  		struct nfs_pathconf *pathconf)
-^1da177e Linus Torvalds  2005-04-16  4240  {
-
-:::::: The code at line 4232 was first introduced by commit
-:::::: e38eb6506ff426a2bb93433fecfcc863a95fcd03 NFS: set_pnfs_layoutdriver() from nfs4_proc_fsinfo()
-
-:::::: TO: Bryan Schumaker <bjschuma@netapp.com>
-:::::: CC: Trond Myklebust <Trond.Myklebust@netapp.com>
-
+Signed-off-by: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
 ---
-0-DAY kernel test infrastructure                Open Source Technology Center
-https://lists.01.org/pipermail/kbuild-all                   Intel Corporation
+ fs/nfs/client.c         |  2 +-
+ fs/nfs/nfs4xdr.c        | 23 ++++++++++-------------
+ fs/nfs/pnfs.c           | 45 ++++++++++++++++++++++++++++++++-------------
+ fs/nfs/pnfs.h           |  4 ++--
+ include/linux/nfs_xdr.h |  8 +++++++-
+ 5 files changed, 52 insertions(+), 30 deletions(-)
 
---1yeeQ81UyVL57Vl7
-Content-Type: application/octet-stream
-Content-Disposition: attachment; filename=".config.gz"
-Content-Transfer-Encoding: base64
+diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+index d6d5d2a..ec8e7db 100644
+--- a/fs/nfs/client.c
++++ b/fs/nfs/client.c
+@@ -787,7 +787,7 @@ int nfs_probe_fsinfo(struct nfs_server *server, struct nfs_fh *mntfh, struct nfs
+ 	}
+ 
+ 	fsinfo.fattr = fattr;
+-	fsinfo.layouttype = 0;
++	memset(fsinfo.layouttype, 0, sizeof(fsinfo.layouttype));
+ 	error = clp->rpc_ops->fsinfo(server, mntfh, &fsinfo);
+ 	if (error < 0)
+ 		goto out_error;
+diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+index 4e44412..ac8747b 100644
+--- a/fs/nfs/nfs4xdr.c
++++ b/fs/nfs/nfs4xdr.c
+@@ -4702,14 +4702,13 @@ static int decode_getfattr(struct xdr_stream *xdr, struct nfs_fattr *fattr,
+ }
+ 
+ /*
+- * Decode potentially multiple layout types. Currently we only support
+- * one layout driver per file system.
++ * Decode potentially multiple layout types.
+  */
+-static int decode_first_pnfs_layout_type(struct xdr_stream *xdr,
++static int decode_pnfs_layout_types(struct xdr_stream *xdr,
+ 					 uint32_t *layouttype)
+ {
+ 	__be32 *p;
+-	int num;
++	uint32_t num, i;
+ 
+ 	p = xdr_inline_decode(xdr, 4);
+ 	if (unlikely(!p))
+@@ -4718,18 +4717,17 @@ static int decode_first_pnfs_layout_type(struct xdr_stream *xdr,
+ 
+ 	/* pNFS is not supported by the underlying file system */
+ 	if (num == 0) {
+-		*layouttype = 0;
+ 		return 0;
+ 	}
+-	if (num > 1)
+-		printk(KERN_INFO "NFS: %s: Warning: Multiple pNFS layout "
+-			"drivers per filesystem not supported\n", __func__);
++	if (num > NFS_MAX_LAYOUT_TYPES)
++		printk(KERN_INFO "NFS: %s: Warning: Too many (%d) pNFS layout types\n", __func__, num);
+ 
+ 	/* Decode and set first layout type, move xdr->p past unused types */
+ 	p = xdr_inline_decode(xdr, num * 4);
+ 	if (unlikely(!p))
+ 		goto out_overflow;
+-	*layouttype = be32_to_cpup(p);
++	for(i = 0; i < num && i < NFS_MAX_LAYOUT_TYPES; i++)
++		layouttype[i] = be32_to_cpup(p++);
+ 	return 0;
+ out_overflow:
+ 	print_overflow_msg(__func__, xdr);
+@@ -4749,10 +4747,9 @@ static int decode_attr_pnfstype(struct xdr_stream *xdr, uint32_t *bitmap,
+ 	if (unlikely(bitmap[1] & (FATTR4_WORD1_FS_LAYOUT_TYPES - 1U)))
+ 		return -EIO;
+ 	if (bitmap[1] & FATTR4_WORD1_FS_LAYOUT_TYPES) {
+-		status = decode_first_pnfs_layout_type(xdr, layouttype);
++		status = decode_pnfs_layout_types(xdr, layouttype);
+ 		bitmap[1] &= ~FATTR4_WORD1_FS_LAYOUT_TYPES;
+-	} else
+-		*layouttype = 0;
++	}
+ 	return status;
+ }
+ 
+@@ -4833,7 +4830,7 @@ static int decode_fsinfo(struct xdr_stream *xdr, struct nfs_fsinfo *fsinfo)
+ 	status = decode_attr_time_delta(xdr, bitmap, &fsinfo->time_delta);
+ 	if (status != 0)
+ 		goto xdr_error;
+-	status = decode_attr_pnfstype(xdr, bitmap, &fsinfo->layouttype);
++	status = decode_attr_pnfstype(xdr, bitmap, fsinfo->layouttype);
+ 	if (status != 0)
+ 		goto xdr_error;
+ 
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index 2fa483e..6b3b67a 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -102,32 +102,51 @@ unset_pnfs_layoutdriver(struct nfs_server *nfss)
+  * Try to set the server's pnfs module to the pnfs layout type specified by id.
+  * Currently only one pNFS layout driver per filesystem is supported.
+  *
+- * @id layout type. Zero (illegal layout type) indicates pNFS not in use.
++ * @ids array of layout types supported by MDS.
+  */
+ void
+ set_pnfs_layoutdriver(struct nfs_server *server, const struct nfs_fh *mntfh,
+-		      u32 id)
++		      u32 *ids)
+ {
+ 	struct pnfs_layoutdriver_type *ld_type = NULL;
++	u32 id;
++	int i;
+ 
+-	if (id == 0)
+-		goto out_no_driver;
+ 	if (!(server->nfs_client->cl_exchange_flags &
+ 		 (EXCHGID4_FLAG_USE_NON_PNFS | EXCHGID4_FLAG_USE_PNFS_MDS))) {
+-		printk(KERN_ERR "NFS: %s: id %u cl_exchange_flags 0x%x\n",
+-			__func__, id, server->nfs_client->cl_exchange_flags);
++		printk(KERN_ERR "NFS: %s: cl_exchange_flags 0x%x\n",
++			__func__, server->nfs_client->cl_exchange_flags);
+ 		goto out_no_driver;
+ 	}
+-	ld_type = find_pnfs_driver(id);
+-	if (!ld_type) {
++	/*
++	 * If server supports more than one layout types.
++	 * By assuming, that server will put 'common default' as the first
++	 * entry, try all following entries ibefore and fall back to the default
++	 * if we did not found a matching one.
++	 */
++	for(i = 1; i < NFS_MAX_LAYOUT_TYPES && ids[i] != 0; i++) {
++		id = ids[i];
+ 		request_module("%s-%u", LAYOUT_NFSV4_1_MODULE_PREFIX, id);
+ 		ld_type = find_pnfs_driver(id);
+-		if (!ld_type) {
+-			dprintk("%s: No pNFS module found for %u.\n",
+-				__func__, id);
+-			goto out_no_driver;
+-		}
++		if(ld_type)
++			goto found_module;
++
++		dprintk("%s: No pNFS module found for %u.\n", __func__, id);
++	}
++
++	/*
++	 * no other layout types found. Try default one.
++	 */
++	id = ids[0];
++	request_module("%s-%u", LAYOUT_NFSV4_1_MODULE_PREFIX, id);
++	ld_type = find_pnfs_driver(id);
++
++	if (!ld_type) {
++		dprintk("%s: No pNFS module found for %u.\n", __func__, id);
++		goto out_no_driver;
+ 	}
++
++found_module:
+ 	server->pnfs_curr_ld = ld_type;
+ 	if (ld_type->set_layoutdriver
+ 	    && ld_type->set_layoutdriver(server, mntfh)) {
+diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+index 1ac1db5..bfb5f3f 100644
+--- a/fs/nfs/pnfs.h
++++ b/fs/nfs/pnfs.h
+@@ -234,7 +234,7 @@ void pnfs_get_layout_hdr(struct pnfs_layout_hdr *lo);
+ void pnfs_put_lseg(struct pnfs_layout_segment *lseg);
+ void pnfs_put_lseg_locked(struct pnfs_layout_segment *lseg);
+ 
+-void set_pnfs_layoutdriver(struct nfs_server *, const struct nfs_fh *, u32);
++void set_pnfs_layoutdriver(struct nfs_server *, const struct nfs_fh *, u32 *);
+ void unset_pnfs_layoutdriver(struct nfs_server *);
+ void pnfs_generic_pg_init_read(struct nfs_pageio_descriptor *, struct nfs_page *);
+ int pnfs_generic_pg_readpages(struct nfs_pageio_descriptor *desc);
+@@ -655,7 +655,7 @@ pnfs_wait_on_layoutreturn(struct inode *ino, struct rpc_task *task)
+ }
+ 
+ static inline void set_pnfs_layoutdriver(struct nfs_server *s,
+-					 const struct nfs_fh *mntfh, u32 id)
++					 const struct nfs_fh *mntfh, u32 *ids)
+ {
+ }
+ 
+diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+index d320906..e45bcb9 100644
+--- a/include/linux/nfs_xdr.h
++++ b/include/linux/nfs_xdr.h
+@@ -125,6 +125,12 @@ struct nfs_fattr {
+ 		| NFS_ATTR_FATTR_V4_SECURITY_LABEL)
+ 
+ /*
++ * Maximal number of supported layout drivers.
++ */
++#define NFS_MAX_LAYOUT_TYPES 8
++
++
++/*
+  * Info on the file system
+  */
+ struct nfs_fsinfo {
+@@ -139,7 +145,7 @@ struct nfs_fsinfo {
+ 	__u64			maxfilesize;
+ 	struct timespec		time_delta; /* server time granularity */
+ 	__u32			lease_time; /* in seconds */
+-	__u32			layouttype; /* supported pnfs layout driver */
++	__u32			layouttype[NFS_MAX_LAYOUT_TYPES]; /* supported pnfs layout driver */
+ 	__u32			blksize; /* preferred pnfs io block size */
+ 	__u32			clone_blksize; /* granularity of a CLONE operation */
+ };
+-- 
+2.5.0
 
-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
-hSrV/wPyiuzveq0AAA==
-
---1yeeQ81UyVL57Vl7--
