@@ -1,53 +1,34 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp-o-1.desy.de ([131.169.56.154]:53199 "EHLO smtp-o-1.desy.de"
+Received: from mx1.redhat.com ([209.132.183.28]:51075 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752674AbcCBTWe (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 2 Mar 2016 14:22:34 -0500
-Received: from smtp-map-1.desy.de (smtp-map-1.desy.de [131.169.56.66])
-	by smtp-o-1.desy.de (DESY-O-1) with ESMTP id BA0232807D9
-	for <linux-nfs@vger.kernel.org>; Wed,  2 Mar 2016 20:22:31 +0100 (CET)
-Received: from ZITSWEEP4.win.desy.de (zitsweep4.win.desy.de [131.169.97.98])
-	by smtp-map-1.desy.de (DESY_MAP_1) with ESMTP id A905A1408E
-	for <linux-nfs@vger.kernel.org>; Wed,  2 Mar 2016 20:22:31 +0100 (MET)
-Date: Wed, 2 Mar 2016 20:22:30 +0100 (CET)
-From: "Mkrtchyan, Tigran" <tigran.mkrtchyan@desy.de>
-To: Christoph Hellwig <hch@infradead.org>
-Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
-        linux-nfs@vger.kernel.org
-Message-ID: <369422940.2178430.1456946550539.JavaMail.zimbra@desy.de>
-In-Reply-To: <20160302163746.GA25527@infradead.org>
-References: <1456920492-22533-1-git-send-email-tigran.mkrtchyan@desy.de> <1456927079-4788-1-git-send-email-tigran.mkrtchyan@desy.de> <20160302163746.GA25527@infradead.org>
-Subject: Re: [PATCH] pnfs  support servers with multiple layout types
+	id S1752478AbcCBU4B (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 2 Mar 2016 15:56:01 -0500
+Received: from int-mx10.intmail.prod.int.phx2.redhat.com (int-mx10.intmail.prod.int.phx2.redhat.com [10.5.11.23])
+	by mx1.redhat.com (Postfix) with ESMTPS id B1EDFC0006F7
+	for <linux-nfs@vger.kernel.org>; Wed,  2 Mar 2016 20:56:00 +0000 (UTC)
+Received: from steved.boston.devel.redhat.com (vpn-62-237.rdu2.redhat.com [10.10.62.237])
+	by int-mx10.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id u22KtxrN026816
+	for <linux-nfs@vger.kernel.org>; Wed, 2 Mar 2016 15:56:00 -0500
+To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+From: Steve Dickson <SteveD@redhat.com>
+Subject: Monthly Linux NFS Town Hall meeting: Canceled
+Message-ID: <56D7535F.1040403@RedHat.com>
+Date: Wed, 2 Mar 2016 15:55:59 -0500
 MIME-Version: 1.0
 Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Hello,
 
+Tomorrow's Town Hall meeting is canceled due
+to the fact most of us are there at Connecathon...
 
------ Original Message -----
-> From: "Christoph Hellwig" <hch@infradead.org>
-> To: "Tigran Mkrtchyan" <tigran.mkrtchyan@desy.de>
-> Cc: "Trond Myklebust" <trond.myklebust@primarydata.com>, linux-nfs@vger.kernel.org
-> Sent: Wednesday, March 2, 2016 5:37:46 PM
-> Subject: Re: [PATCH] pnfs  support servers with multiple layout types
+We currently have the meeting on the first Thurday
+of the month... By all means that is changeable.
 
->> +	for(i = 0; i < num && i < NFS_MAX_LAYOUT_TYPES; i++)
->> +		layouttype[i] = be32_to_cpup(p++);
-> 
-> Can we use a bitmap and do something like
-> 
->	layouttype |= (1 << be32_to_cpup(p++));
-> 
+If there is a more convenient time and day, please 
+let me know.
 
-Sure, if we describe in spec that layout type must be power of two
-and max value is 32.
+steved.
 
-Tigran.
-
-> that's what I did for my unsubmitted patches to submit multiple
-> layouttypes in the Linux server..
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
