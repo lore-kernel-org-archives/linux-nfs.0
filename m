@@ -1,110 +1,237 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:53136 "EHLO fieldses.org"
+Received: from smtp-o-1.desy.de ([131.169.56.154]:48186 "EHLO smtp-o-1.desy.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752803AbcCAWAz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 1 Mar 2016 17:00:55 -0500
-Date: Tue, 1 Mar 2016 17:00:52 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v5 00/14] NFS/RDMA server patches for v4.6
-Message-ID: <20160301220052.GF23792@fieldses.org>
-References: <20160301180337.2492.4255.stgit@klimt.1015granger.net>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20160301180337.2492.4255.stgit@klimt.1015granger.net>
+	id S1751609AbcCBMIU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 2 Mar 2016 07:08:20 -0500
+Received: from smtp-map-1.desy.de (smtp-map-1.desy.de [131.169.56.66])
+	by smtp-o-1.desy.de (DESY-O-1) with ESMTP id 2665028019C
+	for <linux-nfs@vger.kernel.org>; Wed,  2 Mar 2016 13:08:18 +0100 (CET)
+Received: from ZITSWEEP2.win.desy.de (zitsweep2.win.desy.de [131.169.97.96])
+	by smtp-map-1.desy.de (DESY_MAP_1) with ESMTP id 0D8C813E8B
+	for <linux-nfs@vger.kernel.org>; Wed,  2 Mar 2016 13:08:17 +0100 (MET)
+From: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
+To: trond.myklebust@primarydata.com
+Cc: linux-nfs@vger.kernel.org, Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
+Subject: [PATCH] pnfs  support servers with multiple layout types
+Date: Wed,  2 Mar 2016 13:08:12 +0100
+Message-Id: <1456920492-22533-1-git-send-email-tigran.mkrtchyan@desy.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Mar 01, 2016 at 01:05:14PM -0500, Chuck Lever wrote:
-> Hi Bruce-
-> 
-> I think these are ready for linux-next.
+current NFSv4.1/pNFS client assumes that MDS supports
+only one layout type. While it's true for most existing servers,
+nevertheless, this can be change in the near future.
 
-OK, applying for 4.6, thanks.
+This patch is an attempt to multi layouttype MDS support. To make
+it possible for such servers to function with existing clients,
+server must always send default layout type first in the list. The
+client starts processing layout types starting from the second element
+and will fall back to the wfirst one, if none of presented types
+is supported.
 
-I still wonder whether the code makes incorrect assumptions about how
-the server xdr encoder uses the reply xdr_buf.  That might only affect
-clients which constructed rather strange compounds.  And shouldn't be
-made any worse by these patches.
+Testing done:
 
---b.
+  - started a server with nfs4_file and flex_file layout
+  - new kernel picked flexr_-file layout
+  - old complained about multiple layout types and proceeded  nfs4_file layout
 
-> 
-> Two major changes: Finish server-side support for RDMA_ERROR type
-> messages, and convert the server's completion handlers to the new
-> core CQ API.
-> 
-> Also available in the "nfsd-rdma-for-4.6" topic branch of this git
-> repo:
-> 
-> git://git.linux-nfs.org/projects/cel/cel-2.6.git
-> 
-> Or for browsing:
-> 
-> http://git.linux-nfs.org/?p=cel/cel-2.6.git;a=log;h=refs/heads/nfsd-rdma-for-4.6
-> 
-> 
-> Changes since v4:
-> - Rebased on v4.5-rc6
-> - Replace confusing comments about NFSv4.1 over RDMA support
-> 
-> 
-> Changes since v3:
-> - Rebased on v4.5-rc5
-> - Completed fix for Write chunk XDR padding
-> - On error, svc_rdma_sendto() should close connection
-> 
-> 
-> Changes since v2:
-> - Rebased on v4.5-rc4
-> - checkpatch.pl passes
-> - Fix iWARP RDMA Read path regression
-> - Reduce NFSv4.1 CB message size maximum in CREATE_SESSION
-> - Another pass at fixing Write chunk XDR padding
-> - Various clean ups
-> 
-> 
-> Changes since v1:
-> - Rebased on v4.5-rc3
-> - Patch 02/10 (pre-allocate frmrs) dropped
-> - Patch 04/10 replaced with more surgical patch
-> - Refined reporting of flushed completions
-> - Function names of completion methods changed to match client's
-> new completion function naming convention
-> 
-> ---
-> 
-> Chuck Lever (14):
->       nfsd: Update NFS server comments related to RDMA support
->       svcrdma: Find client-provided write and reply chunks once per reply
->       svcrdma: Do not write xdr_buf::tail in a Write chunk
->       svcrdma: Do not send Write chunk XDR pad with inline content
->       nfsd: Lower NFSv4.1 callback message size limit
->       svcrdma: Close connection when a send error occurs
->       svcrdma: svc_rdma_post_recv() should close connection on error
->       rpcrdma: Add RPCRDMA_HDRLEN_ERR
->       svcrdma: Make RDMA_ERROR messages work
->       svcrdma: Use correct XID in error replies
->       svcrdma: Hook up the logic to return ERR_CHUNK
->       svcrdma: Remove close_out exit path
->       svcrdma: Use new CQ API for RPC-over-RDMA server receive CQs
->       svcrdma: Use new CQ API for RPC-over-RDMA server send CQs
-> 
-> 
->  fs/nfsd/nfs4state.c                        |   26 +-
->  fs/nfsd/nfs4xdr.c                          |    2 
->  include/linux/sunrpc/auth.h                |    7 
->  include/linux/sunrpc/rpc_rdma.h            |    1 
->  include/linux/sunrpc/svc_rdma.h            |   20 +
->  net/sunrpc/auth_null.c                     |    4 
->  net/sunrpc/auth_unix.c                     |    6 
->  net/sunrpc/xprtrdma/svc_rdma_backchannel.c |   17 -
->  net/sunrpc/xprtrdma/svc_rdma_marshal.c     |   64 +++-
->  net/sunrpc/xprtrdma/svc_rdma_recvfrom.c    |   60 ++--
->  net/sunrpc/xprtrdma/svc_rdma_sendto.c      |  196 ++++++++----
->  net/sunrpc/xprtrdma/svc_rdma_transport.c   |  445 +++++++++-------------------
->  12 files changed, 393 insertions(+), 455 deletions(-)
-> 
-> --
-> Chuck Lever
+Signed-off-by: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
+---
+ fs/nfs/client.c         |  2 +-
+ fs/nfs/nfs4xdr.c        | 23 ++++++++++-------------
+ fs/nfs/pnfs.c           | 45 ++++++++++++++++++++++++++++++++-------------
+ fs/nfs/pnfs.h           |  2 +-
+ include/linux/nfs_xdr.h |  8 +++++++-
+ 5 files changed, 51 insertions(+), 29 deletions(-)
+
+diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+index d6d5d2a..ec8e7db 100644
+--- a/fs/nfs/client.c
++++ b/fs/nfs/client.c
+@@ -787,7 +787,7 @@ int nfs_probe_fsinfo(struct nfs_server *server, struct nfs_fh *mntfh, struct nfs
+ 	}
+ 
+ 	fsinfo.fattr = fattr;
+-	fsinfo.layouttype = 0;
++	memset(fsinfo.layouttype, 0, sizeof(fsinfo.layouttype));
+ 	error = clp->rpc_ops->fsinfo(server, mntfh, &fsinfo);
+ 	if (error < 0)
+ 		goto out_error;
+diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+index 4e44412..ac8747b 100644
+--- a/fs/nfs/nfs4xdr.c
++++ b/fs/nfs/nfs4xdr.c
+@@ -4702,14 +4702,13 @@ static int decode_getfattr(struct xdr_stream *xdr, struct nfs_fattr *fattr,
+ }
+ 
+ /*
+- * Decode potentially multiple layout types. Currently we only support
+- * one layout driver per file system.
++ * Decode potentially multiple layout types.
+  */
+-static int decode_first_pnfs_layout_type(struct xdr_stream *xdr,
++static int decode_pnfs_layout_types(struct xdr_stream *xdr,
+ 					 uint32_t *layouttype)
+ {
+ 	__be32 *p;
+-	int num;
++	uint32_t num, i;
+ 
+ 	p = xdr_inline_decode(xdr, 4);
+ 	if (unlikely(!p))
+@@ -4718,18 +4717,17 @@ static int decode_first_pnfs_layout_type(struct xdr_stream *xdr,
+ 
+ 	/* pNFS is not supported by the underlying file system */
+ 	if (num == 0) {
+-		*layouttype = 0;
+ 		return 0;
+ 	}
+-	if (num > 1)
+-		printk(KERN_INFO "NFS: %s: Warning: Multiple pNFS layout "
+-			"drivers per filesystem not supported\n", __func__);
++	if (num > NFS_MAX_LAYOUT_TYPES)
++		printk(KERN_INFO "NFS: %s: Warning: Too many (%d) pNFS layout types\n", __func__, num);
+ 
+ 	/* Decode and set first layout type, move xdr->p past unused types */
+ 	p = xdr_inline_decode(xdr, num * 4);
+ 	if (unlikely(!p))
+ 		goto out_overflow;
+-	*layouttype = be32_to_cpup(p);
++	for(i = 0; i < num && i < NFS_MAX_LAYOUT_TYPES; i++)
++		layouttype[i] = be32_to_cpup(p++);
+ 	return 0;
+ out_overflow:
+ 	print_overflow_msg(__func__, xdr);
+@@ -4749,10 +4747,9 @@ static int decode_attr_pnfstype(struct xdr_stream *xdr, uint32_t *bitmap,
+ 	if (unlikely(bitmap[1] & (FATTR4_WORD1_FS_LAYOUT_TYPES - 1U)))
+ 		return -EIO;
+ 	if (bitmap[1] & FATTR4_WORD1_FS_LAYOUT_TYPES) {
+-		status = decode_first_pnfs_layout_type(xdr, layouttype);
++		status = decode_pnfs_layout_types(xdr, layouttype);
+ 		bitmap[1] &= ~FATTR4_WORD1_FS_LAYOUT_TYPES;
+-	} else
+-		*layouttype = 0;
++	}
+ 	return status;
+ }
+ 
+@@ -4833,7 +4830,7 @@ static int decode_fsinfo(struct xdr_stream *xdr, struct nfs_fsinfo *fsinfo)
+ 	status = decode_attr_time_delta(xdr, bitmap, &fsinfo->time_delta);
+ 	if (status != 0)
+ 		goto xdr_error;
+-	status = decode_attr_pnfstype(xdr, bitmap, &fsinfo->layouttype);
++	status = decode_attr_pnfstype(xdr, bitmap, fsinfo->layouttype);
+ 	if (status != 0)
+ 		goto xdr_error;
+ 
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index 2fa483e..6b3b67a 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -102,32 +102,51 @@ unset_pnfs_layoutdriver(struct nfs_server *nfss)
+  * Try to set the server's pnfs module to the pnfs layout type specified by id.
+  * Currently only one pNFS layout driver per filesystem is supported.
+  *
+- * @id layout type. Zero (illegal layout type) indicates pNFS not in use.
++ * @ids array of layout types supported by MDS.
+  */
+ void
+ set_pnfs_layoutdriver(struct nfs_server *server, const struct nfs_fh *mntfh,
+-		      u32 id)
++		      u32 *ids)
+ {
+ 	struct pnfs_layoutdriver_type *ld_type = NULL;
++	u32 id;
++	int i;
+ 
+-	if (id == 0)
+-		goto out_no_driver;
+ 	if (!(server->nfs_client->cl_exchange_flags &
+ 		 (EXCHGID4_FLAG_USE_NON_PNFS | EXCHGID4_FLAG_USE_PNFS_MDS))) {
+-		printk(KERN_ERR "NFS: %s: id %u cl_exchange_flags 0x%x\n",
+-			__func__, id, server->nfs_client->cl_exchange_flags);
++		printk(KERN_ERR "NFS: %s: cl_exchange_flags 0x%x\n",
++			__func__, server->nfs_client->cl_exchange_flags);
+ 		goto out_no_driver;
+ 	}
+-	ld_type = find_pnfs_driver(id);
+-	if (!ld_type) {
++	/*
++	 * If server supports more than one layout types.
++	 * By assuming, that server will put 'common default' as the first
++	 * entry, try all following entries ibefore and fall back to the default
++	 * if we did not found a matching one.
++	 */
++	for(i = 1; i < NFS_MAX_LAYOUT_TYPES && ids[i] != 0; i++) {
++		id = ids[i];
+ 		request_module("%s-%u", LAYOUT_NFSV4_1_MODULE_PREFIX, id);
+ 		ld_type = find_pnfs_driver(id);
+-		if (!ld_type) {
+-			dprintk("%s: No pNFS module found for %u.\n",
+-				__func__, id);
+-			goto out_no_driver;
+-		}
++		if(ld_type)
++			goto found_module;
++
++		dprintk("%s: No pNFS module found for %u.\n", __func__, id);
++	}
++
++	/*
++	 * no other layout types found. Try default one.
++	 */
++	id = ids[0];
++	request_module("%s-%u", LAYOUT_NFSV4_1_MODULE_PREFIX, id);
++	ld_type = find_pnfs_driver(id);
++
++	if (!ld_type) {
++		dprintk("%s: No pNFS module found for %u.\n", __func__, id);
++		goto out_no_driver;
+ 	}
++
++found_module:
+ 	server->pnfs_curr_ld = ld_type;
+ 	if (ld_type->set_layoutdriver
+ 	    && ld_type->set_layoutdriver(server, mntfh)) {
+diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+index 1ac1db5..5d7d9e0 100644
+--- a/fs/nfs/pnfs.h
++++ b/fs/nfs/pnfs.h
+@@ -234,7 +234,7 @@ void pnfs_get_layout_hdr(struct pnfs_layout_hdr *lo);
+ void pnfs_put_lseg(struct pnfs_layout_segment *lseg);
+ void pnfs_put_lseg_locked(struct pnfs_layout_segment *lseg);
+ 
+-void set_pnfs_layoutdriver(struct nfs_server *, const struct nfs_fh *, u32);
++void set_pnfs_layoutdriver(struct nfs_server *, const struct nfs_fh *, u32 *);
+ void unset_pnfs_layoutdriver(struct nfs_server *);
+ void pnfs_generic_pg_init_read(struct nfs_pageio_descriptor *, struct nfs_page *);
+ int pnfs_generic_pg_readpages(struct nfs_pageio_descriptor *desc);
+diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+index d320906..e45bcb9 100644
+--- a/include/linux/nfs_xdr.h
++++ b/include/linux/nfs_xdr.h
+@@ -125,6 +125,12 @@ struct nfs_fattr {
+ 		| NFS_ATTR_FATTR_V4_SECURITY_LABEL)
+ 
+ /*
++ * Maximal number of supported layout drivers.
++ */
++#define NFS_MAX_LAYOUT_TYPES 8
++
++
++/*
+  * Info on the file system
+  */
+ struct nfs_fsinfo {
+@@ -139,7 +145,7 @@ struct nfs_fsinfo {
+ 	__u64			maxfilesize;
+ 	struct timespec		time_delta; /* server time granularity */
+ 	__u32			lease_time; /* in seconds */
+-	__u32			layouttype; /* supported pnfs layout driver */
++	__u32			layouttype[NFS_MAX_LAYOUT_TYPES]; /* supported pnfs layout driver */
+ 	__u32			blksize; /* preferred pnfs io block size */
+ 	__u32			clone_blksize; /* granularity of a CLONE operation */
+ };
+-- 
+2.5.0
+
