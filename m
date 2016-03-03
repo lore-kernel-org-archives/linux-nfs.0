@@ -1,34 +1,50 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:51075 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752478AbcCBU4B (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 2 Mar 2016 15:56:01 -0500
-Received: from int-mx10.intmail.prod.int.phx2.redhat.com (int-mx10.intmail.prod.int.phx2.redhat.com [10.5.11.23])
-	by mx1.redhat.com (Postfix) with ESMTPS id B1EDFC0006F7
-	for <linux-nfs@vger.kernel.org>; Wed,  2 Mar 2016 20:56:00 +0000 (UTC)
-Received: from steved.boston.devel.redhat.com (vpn-62-237.rdu2.redhat.com [10.10.62.237])
-	by int-mx10.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id u22KtxrN026816
-	for <linux-nfs@vger.kernel.org>; Wed, 2 Mar 2016 15:56:00 -0500
-To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-From: Steve Dickson <SteveD@redhat.com>
-Subject: Monthly Linux NFS Town Hall meeting: Canceled
-Message-ID: <56D7535F.1040403@RedHat.com>
-Date: Wed, 2 Mar 2016 15:55:59 -0500
+Received: from tama50.ecl.ntt.co.jp ([129.60.39.147]:40489 "EHLO
+	tama50.ecl.ntt.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754699AbcCCAUu (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 2 Mar 2016 19:20:50 -0500
+Subject: Re: [PATCH nfs-utils v2] statd: Don't unregister statd service on
+ failing to execute callout
+References: <1455582968-4474-1-git-send-email-makita.toshiaki@lab.ntt.co.jp>
+From: Toshiaki Makita <makita.toshiaki@lab.ntt.co.jp>
+Message-ID: <56D78348.2070205@lab.ntt.co.jp>
+Date: Thu, 3 Mar 2016 09:20:24 +0900
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
+In-Reply-To: <1455582968-4474-1-git-send-email-makita.toshiaki@lab.ntt.co.jp>
+Content-Type: text/plain; charset=iso-2022-jp
+To: Steve Dickson <steved@redhat.com>
+Cc: Chuck Lever <chuck.lever@oracle.com>, linux-nfs@vger.kernel.org
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hello,
+Hi Steve,
 
-Tomorrow's Town Hall meeting is canceled due
-to the fact most of us are there at Connecathon...
+On 2016/02/16 9:36, Toshiaki Makita wrote:
+> statd calls atexit(statd_unregister) to unregister statd service on exit,
+> which actually has a side-effect that ha_callout() unregisters statd
+> service even when the child callout process exits on execl() failure.
+> 
+> Certain clustering software's deployment script adds -H option with its
+> specified file non-existent, when it is configured not to use callout.
+> In other words, -H seems to be used no matter if callout is needed or not,
+> but when callout is unnecessary, the specified callout program is not
+> deployed.
+> This causes statd not to work once a lock is requested by its NFS client,
+> as execl() in ha_callout() results in ENOENT and exit() of the child
+> process calls exit-handler statd_unregister(). Eventually, the NFS client
+> gets stuck with messages "lockd: cannot monitor xxx" on the NFS server.
+> 
+> Also, execl() could fail for other reasons like ENFILE or EIO as well.
+> 
+> A forked child must not unregister the statd RPC server, so use
+> _exit(), which does not call any exit-handlers, instead of exit().
+> 
+> Signed-off-by: Toshiaki Makita <makita.toshiaki@lab.ntt.co.jp>
+> Reviewed-by: Chuck Lever <chuck.lever@oracle.com>
 
-We currently have the meeting on the first Thurday
-of the month... By all means that is changeable.
+Would you tell me the status of this patch?
 
-If there is a more convenient time and day, please 
-let me know.
+Regards,
+Toshiaki Makita
 
-steved.
 
