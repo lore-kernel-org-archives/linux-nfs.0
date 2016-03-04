@@ -1,66 +1,92 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ig0-f182.google.com ([209.85.213.182]:35692 "EHLO
-	mail-ig0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754888AbcCCTeb (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 3 Mar 2016 14:34:31 -0500
+Received: from mx2.suse.de ([195.135.220.15]:50440 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751008AbcCDGUX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 4 Mar 2016 01:20:23 -0500
+From: NeilBrown <neilb@suse.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Date: Fri, 04 Mar 2016 17:20:13 +1100
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH] sunrpc/cache: drop reference when sunrpc_cache_pipe_upcall()
+ detects a race
+Message-ID: <87y49ylq76.fsf@notabene.neil.brown.name>
 MIME-Version: 1.0
-In-Reply-To: <CAH2r5mtMDzqQZ0fyyHSxmyEcwWF+doXO+fPRtAwCgfPf=2ppMg@mail.gmail.com>
-References: <CAH2r5mtMDzqQZ0fyyHSxmyEcwWF+doXO+fPRtAwCgfPf=2ppMg@mail.gmail.com>
-From: Steve French <smfrench@gmail.com>
-Date: Thu, 3 Mar 2016 13:34:10 -0600
-Message-ID: <CAH2r5mt32xHqjGqjrKg0FnU+Wk3sELPLyoB4KP+WS2P1oe1Leg@mail.gmail.com>
-Subject: Fwd: xfstest groups for network file systems
-To: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "linux-cifs@vger.kernel.org" <linux-cifs@vger.kernel.org>,
-        samba-technical <samba-technical@lists.samba.org>
-Content-Type: text/plain; charset=UTF-8
+Content-Type: multipart/signed; boundary="=-=-=";
+	micalg=pgp-sha256; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-In experimenting with automating tests better for network file systems
-(NFS and CIFS/SMB3), I noticed that xfstest doesn't have test groups
-that help distinguish a good subset of tests to run over them.  My
-goal was to have an easy way to run:
-
-- a quick (under 15 minute) build verification test of SMB3 (and also
-similarly for NFSv4.2)
-- a full regression test of SMB3 (and also NFSv4.2) that runs all valid tests
-
-The existing test group "quick" has some tests that are quick only for
-a local filesystem and can be quite slow when run over a network.
-And there are few file system specific test groups (there is one for
-udf).
-
-I have a patch that adds a "cifs-quick" test group (can be changed to
-"smb3-quick" if anyone prefers that name since our goal is to test the
-more important, newer dialects) and a "cifs" (or "cifs-slow" or
-"cifs-full").  Similarly I have one for "nfs-quick"
-
-But before I submit there are two obvious questions:
-1) Should these test groups (in particular "cifs-quick" and
-"nfs-quick") include any tests that we know will fail today? (e.g.
-permissions errors that require adding a new feature to the smb3
-implementation in the kernel file system, or silly rename problems
-that are difficult to work around and have not been addressed in the
-kernel clients)
-
-2) Should we create additional test groups by dialect or target server
-(e.g. smb3-quick vs. cifs-quick vs. cifs-samba-quick vs. nfsv3-quick
-vs. nfsv4.2-quick)?  For example, some testcases will work over CIFS
-protocol but not over SMB3? or are valid (or will fail on only one
-dialect or for one serrver type e.g. for NFSv4.2 but not for NFSv3).
-For example there is one test that fails to Samba server (due to a
-negative time error) but works to Windows server targets, and there
-are tests which require fallocate so will fail to servers or server fs
-that don't implement punch hole, zero range etc.
-
---
-Thanks,
-
-Steve
+--=-=-=
+Content-Type: text/plain
+Content-Transfer-Encoding: quoted-printable
 
 
--- 
-Thanks,
+sunrpc_cache_pipe_upcall() can detect a race if CACHE_PENDING is no longer
+set.  In this case it aborts the queuing of the upcall.
+However it has already taken a new counted reference on "h" and
+doesn't "put" it, even though it frees the data structure holding the refer=
+ence.
 
-Steve
+So let's delay the "cache_get" until we know we need it.
+
+Fixes: f9e1aedc6c79 ("sunrpc/cache: remove races with queuing an upcall.")
+Signed-off-by: NeilBrown <neilb@suse.com>
+=2D--
+ net/sunrpc/cache.c | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
+
+I found this when I was looking for something else.  Testing hasn't
+shown a bug, and nor has it shown that this is bug-free.  But it looks
+right.
+
+NeilBrown
+
+
+diff --git a/net/sunrpc/cache.c b/net/sunrpc/cache.c
+index 273bc3a35425..008c25d1b9f9 100644
+=2D-- a/net/sunrpc/cache.c
++++ b/net/sunrpc/cache.c
+@@ -1182,14 +1182,14 @@ int sunrpc_cache_pipe_upcall(struct cache_detail *d=
+etail, struct cache_head *h)
+ 	}
+=20
+ 	crq->q.reader =3D 0;
+=2D	crq->item =3D cache_get(h);
+ 	crq->buf =3D buf;
+ 	crq->len =3D 0;
+ 	crq->readers =3D 0;
+ 	spin_lock(&queue_lock);
+=2D	if (test_bit(CACHE_PENDING, &h->flags))
++	if (test_bit(CACHE_PENDING, &h->flags)) {
++		crq->item =3D cache_get(h);
+ 		list_add_tail(&crq->q.list, &detail->queue);
+=2D	else
++	} else
+ 		/* Lost a race, no longer PENDING, so don't enqueue */
+ 		ret =3D -EAGAIN;
+ 	spin_unlock(&queue_lock);
+=2D-=20
+2.7.0
+
+
+--=-=-=
+Content-Type: application/pgp-signature; name="signature.asc"
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v2
+
+iQIcBAEBCAAGBQJW2SkdAAoJEDnsnt1WYoG56yMQAIfAQj/7f2QM5FQXrkeoKZfg
+i36uSlLNaAemFEeNm2YaWU9T/pxuyqPaSLaBUDwmxQGGAPRI4ReRlMbSx/M/mggw
+MDbSe1iJrMBhrkevrRE1Xpxavd1shE4B0u1pTtDMFHKhYV5xdPb+Gap4xuUxFoF+
+KeX4KgDyCVJ1JYmPSKpSlcgD5D3y8YQVYlNzZ6j9LRNJcMheMqWM/ZbzcnKADkwp
+lapRnhhDTCOwlLSpOpWRXdFvNJMTdBQCjvb2/ZpXf4ZtOsAKgJXHGYtOBOZHVU2O
+rgtfADTF3Ax2fv1VHQQ139XpWnLoJynGyiImTB/3mQBHOecbJQxIXkDtAIgeAD1C
+IV9g3FEazi1fflS5ogSTAn/QX4z1iolBEOK1Dkwsuv2+bbwVM55RuQV/ncFayPSL
+pdq7upGUbZGPtaOytKrrC9gLFMEQ+mi5EpohDpsZChfSZk+YtJ6S0noel2fdYf9/
+JvdyT1D1WtURmsoqdANLKVGPPvyQVXHWeBrCbBVZD5sj8qJCrh1BTruescCvk3mq
+W3PDeFLtwXr1HEUQBFPqSGugjW6+QQZDWMYxMgRDgdeZsWIjPIDuz7fiavJZi5oX
+nEQISE40aVqudcNw+MWx4CuerGF6g8dYz9LJP5SIhcaIN131O5819nepfISwLE5w
+JxztPoq6gVWpRCSIEq2N
+=cnUs
+-----END PGP SIGNATURE-----
+--=-=-=--
