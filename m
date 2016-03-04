@@ -1,39 +1,31 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-pf0-f194.google.com ([209.85.192.194]:33994 "EHLO
-	mail-pf0-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932250AbcCDQ1h (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 4 Mar 2016 11:27:37 -0500
-Subject: [PATCH v3 02/11] xprtrdma: Clean up physical_op_map()
-From: Chuck Lever <chuck.lever@oracle.com>
-To: anna.schumaker@netapp.com
-Cc: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Fri, 04 Mar 2016 11:27:35 -0500
-Message-ID: <20160304162735.13590.96884.stgit@oracle120-ib.cthon.org>
-In-Reply-To: <20160304162447.13590.9524.stgit@oracle120-ib.cthon.org>
-References: <20160304162447.13590.9524.stgit@oracle120-ib.cthon.org>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Received: from casper.infradead.org ([85.118.1.10]:46863 "EHLO
+	casper.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1759267AbcCDTqW (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 4 Mar 2016 14:46:22 -0500
+From: Christoph Hellwig <hch@lst.de>
+To: trond.myklebust@primarydata.com, bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org
+Subject: pNFS SCSI layout support V2
+Date: Fri,  4 Mar 2016 20:46:13 +0100
+Message-Id: <1457120777-30687-1-git-send-email-hch@lst.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-physical_op_unmap{_sync} don't use mr_nsegs, so don't bother to set
-it in physical_op_map.
+This series adds support the pNFS SCSI layout to both the NFS server
+and client.  It's a fairly simple extension to the existing block
+layout drivers, which relies on the Persistent Reservation API in
+the block layer merged a while ago.
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
- net/sunrpc/xprtrdma/physical_ops.c |    1 -
- 1 file changed, 1 deletion(-)
-
-diff --git a/net/sunrpc/xprtrdma/physical_ops.c b/net/sunrpc/xprtrdma/physical_ops.c
-index dbb302e..481b9b6 100644
---- a/net/sunrpc/xprtrdma/physical_ops.c
-+++ b/net/sunrpc/xprtrdma/physical_ops.c
-@@ -68,7 +68,6 @@ physical_op_map(struct rpcrdma_xprt *r_xprt, struct rpcrdma_mr_seg *seg,
- 	rpcrdma_map_one(ia->ri_device, seg, rpcrdma_data_dir(writing));
- 	seg->mr_rkey = ia->ri_dma_mr->rkey;
- 	seg->mr_base = seg->mr_dma;
--	seg->mr_nsegs = 1;
- 	return 1;
- }
+On the server side we will now always export SCSI devices a SCSI
+layout.  I though about allowing exports of multiple layour types
+for the same file system, but both the not really production ready
+nature of block layout fencing, and the horrors of passing options
+to NFS exports made me go with the simple way for now.
  
+
+Chances since V1:
+ - removed __exit annotation from bl_cleanup_pipefs
+ - introduced separate config options for each layout driver in nfsd
+ - added a file documentation the SCSI layout support
 
