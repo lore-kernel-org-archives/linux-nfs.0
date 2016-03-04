@@ -1,14 +1,14 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-pa0-f65.google.com ([209.85.220.65]:35224 "EHLO
-	mail-pa0-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1760205AbcCDQ2D (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 4 Mar 2016 11:28:03 -0500
-Subject: [PATCH v3 05/11] xprtrdma: Do not wait if ib_post_send() fails
+Received: from mail-pa0-f67.google.com ([209.85.220.67]:35247 "EHLO
+	mail-pa0-f67.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1760216AbcCDQ2N (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 4 Mar 2016 11:28:13 -0500
+Subject: [PATCH v3 06/11] rpcrdma: Add RPCRDMA_HDRLEN_ERR
 From: Chuck Lever <chuck.lever@oracle.com>
 To: anna.schumaker@netapp.com
 Cc: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Fri, 04 Mar 2016 11:28:01 -0500
-Message-ID: <20160304162801.13590.89343.stgit@oracle120-ib.cthon.org>
+Date: Fri, 04 Mar 2016 11:28:09 -0500
+Message-ID: <20160304162809.13590.25065.stgit@oracle120-ib.cthon.org>
 In-Reply-To: <20160304162447.13590.9524.stgit@oracle120-ib.cthon.org>
 References: <20160304162447.13590.9524.stgit@oracle120-ib.cthon.org>
 MIME-Version: 1.0
@@ -16,39 +16,28 @@ Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-If ib_post_send() in ro_unmap_sync() fails, the WRs have not been
-posted, no completions will fire, and wait_for_completion() will
-wait forever. Skip the wait in that case.
+Error headers are shorter than either RDMA_MSG or RDMA_NOMSG.
 
-To ensure the MRs are invalid, disconnect.
+Since HDRLEN_MIN is already used in several other places that would
+be annoying to change, add RPCRDMA_HDRLEN_ERR for the one or two
+spots where the shorter length is needed.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Reviewed-by: Devesh Sharma <devesh.sharma@broadcom.com>
 ---
- net/sunrpc/xprtrdma/frwr_ops.c |    6 +++++-
- 1 file changed, 5 insertions(+), 1 deletion(-)
+ include/linux/sunrpc/rpc_rdma.h |    1 +
+ 1 file changed, 1 insertion(+)
 
-diff --git a/net/sunrpc/xprtrdma/frwr_ops.c b/net/sunrpc/xprtrdma/frwr_ops.c
-index e165673..ecb005f 100644
---- a/net/sunrpc/xprtrdma/frwr_ops.c
-+++ b/net/sunrpc/xprtrdma/frwr_ops.c
-@@ -520,14 +520,18 @@ frwr_op_unmap_sync(struct rpcrdma_xprt *r_xprt, struct rpcrdma_req *req)
- 	 * unless ri_id->qp is a valid pointer.
- 	 */
- 	rc = ib_post_send(ia->ri_id->qp, invalidate_wrs, &bad_wr);
--	if (rc)
-+	if (rc) {
- 		pr_warn("%s: ib_post_send failed %i\n", __func__, rc);
-+		rdma_disconnect(ia->ri_id);
-+		goto unmap;
-+	}
+diff --git a/include/linux/sunrpc/rpc_rdma.h b/include/linux/sunrpc/rpc_rdma.h
+index f33c5a4..8c6d23c 100644
+--- a/include/linux/sunrpc/rpc_rdma.h
++++ b/include/linux/sunrpc/rpc_rdma.h
+@@ -102,6 +102,7 @@ struct rpcrdma_msg {
+  * Smallest RPC/RDMA header: rm_xid through rm_type, then rm_nochunks
+  */
+ #define RPCRDMA_HDRLEN_MIN	(sizeof(__be32) * 7)
++#define RPCRDMA_HDRLEN_ERR	(sizeof(__be32) * 5)
  
- 	wait_for_completion(&f->fr_linv_done);
- 
- 	/* ORDER: Now DMA unmap all of the req's MRs, and return
- 	 * them to the free MW list.
- 	 */
-+unmap:
- 	for (i = 0, nchunks = req->rl_nchunks; nchunks; nchunks--) {
- 		seg = &req->rl_segments[i];
- 
+ enum rpcrdma_errcode {
+ 	ERR_VERS = 1,
 
