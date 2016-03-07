@@ -1,51 +1,364 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mtareserve61.acsu.buffalo.edu ([128.205.6.126]:42967 "EHLO
-	mtareserve1.acsu.buffalo.edu" rhost-flags-OK-OK-OK-FAIL)
-	by vger.kernel.org with ESMTP id S1752681AbcCGQ1P (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 7 Mar 2016 11:27:15 -0500
-Received: from localmaile.acsu.buffalo.edu (localmaile.acsu.buffalo.edu [128.205.4.3])
-	by mtareserve1.acsu.buffalo.edu (Postfix) with ESMTP id BF01DD22290
-	for <linux-nfs@vger.kernel.org>; Mon,  7 Mar 2016 11:27:14 -0500 (EST)
-Received: from localmaile.acsu.buffalo.edu (localhost [127.0.0.1])
-	by localhost (Postfix) with SMTP id B2B76160071
-	for <linux-nfs@vger.kernel.org>; Mon,  7 Mar 2016 11:27:14 -0500 (EST)
-Received: from localmaile.acsu.buffalo.edu (localhost [127.0.0.1])
-	by localmaile.acsu.buffalo.edu (Postfix) with ESMTP id 864F7160082
-	for <linux-nfs@vger.kernel.org>; Mon,  7 Mar 2016 11:27:14 -0500 (EST)
-Received: from smtp.buffalo.edu (smtp3.acsu.buffalo.edu [128.205.5.226])
-	by localmaile.acsu.buffalo.edu (Prefixe) with ESMTP id 85029160071
-	for <linux-nfs@vger.kernel.org>; Mon,  7 Mar 2016 11:27:14 -0500 (EST)
-Received: from flyline.acsu.buffalo.edu (porkchopexpress.acsu.buffalo.edu [128.205.123.27])
-	by smtp.buffalo.edu (Postfix) with ESMTP id 80D81D5794B
-	for <linux-nfs@vger.kernel.org>; Mon,  7 Mar 2016 11:27:14 -0500 (EST)
-Message-ID: <56DDABE2.3040204@buffalo.edu>
-Date: Mon, 07 Mar 2016 11:27:14 -0500
-From: Mark Valites <mvalites@buffalo.edu>
+Received: from mail-io0-f180.google.com ([209.85.223.180]:34329 "EHLO
+	mail-io0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753366AbcCGSXn (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 7 Mar 2016 13:23:43 -0500
 MIME-Version: 1.0
-To: linux-nfs@vger.kernel.org
-Subject: Re: RH 7 nfs-utils update causes segfault
-References: <56DDA2C2.3010806@buffalo.edu> <alpine.OSX.2.19.9992.1603071059490.66950@dhcp0201.cthon.org>
-In-Reply-To: <alpine.OSX.2.19.9992.1603071059490.66950@dhcp0201.cthon.org>
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Date: Mon, 7 Mar 2016 15:23:42 -0300
+Message-ID: <CAOMZO5AAMuPTd63BS99waowH8n3caBeOaK-QWvUT4S-t8GpdFg@mail.gmail.com>
+Subject: NFS mount crashes on linux-next 20160307
+From: Fabio Estevam <festevam@gmail.com>
+To: trond.myklebust@primarydata.com
+Cc: "David S. Miller" <davem@davemloft.net>,
+        "netdev@vger.kernel.org" <netdev@vger.kernel.org>,
+        linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 03/07/2016 11:00 AM, Benjamin Coddington wrote:
+Hi,
 
-> Hey Mark, could it be this one?
->
-> https://bugzilla.redhat.com/show_bug.cgi?id=1313090
->
-> Ben
->
+Not able to NFS mount on a mx6sx-sdb board running linux-next 20160307:
 
-Doesn't look like it:
+[    6.618638] devtmpfs: mounted
+[    6.623340] Freeing unused kernel memory: 1024K (c0c00000 - c0d00000)
+[    6.899625] Unable to handle kernel NULL pointer dereference at
+virtual address 00000001
+[    6.907828] Unable to handle kernel NULL pointer dereference at
+virtual address 00000001
+[    6.907833] pgd = ee32c000
+[    6.907843] [00000001] *pgd=ae323831, *pte=00000000, *ppte=00000000
+[    6.907850] Internal error: Oops: 17 [#1] SMP ARM
+[    6.907856] Modules linked in:
+[    6.907865] CPU: 0 PID: 1 Comm: init Not tainted 4.5.0-rc6-next-20160307 #291
+[    6.907868] Hardware name: Freescale i.MX6 SoloX (Device Tree)
+[    6.907872] task: ef070000 ti: ef056000 task.ti: ef056000
+[    6.907883] PC is at kmem_cache_alloc+0x8c/0x174
+[    6.907887] LR is at kmem_cache_alloc+0x30/0x174
+[    6.907893] pc : [<c0209040>]    lr : [<c0208fe4>]    psr: 20000113
+[    6.907893] sp : ef0575b8  ip : 2eb52000  fp : ef0575f4
+[    6.907897] r10: eebd8400  r9 : c0d02b0c  r8 : ee327f00
+[    6.907900] r7 : ef0576b8  r6 : 02080020  r5 : 00000001  r4 : ef001f00
+[    6.907904] r3 : 00000000  r2 : ef056000  r1 : c0c78020  r0 : c0d02b0c
+[    6.907909] Flags: nzCv  IRQs on  FIQs on  Mode SVC_32  ISA ARM  Segment none
+[    6.907913] Control: 10c5387d  Table: ae32c04a  DAC: 00000051
+[    6.907917] Process init (pid: 1, stack limit = 0xef056210)
+[    6.907921] Stack: (0xef0575b8 to 0xef058000)
+[    6.907927] 75a0:
+    00000004 80000113
+[    6.907935] 75c0: c06ff7d8 00000000 eebd8400 c0990409 eebd8400
+ee327f5c ef0576b8 ee327f00
+[    6.907943] 75e0: ee31e010 eebd8400 ef05761c ef0575f8 c06ff7d8
+c0208fc0 ee327f00 eebd8400
+[    6.907951] 7600: ee327f5c ef0576b8 00000080 eebd8400 ef05762c
+ef057620 c07afecc c06ff7c0
+[    6.907959] 7620: ef057664 ef057630 c07b3994 c07afeb4 00000000
+00000000 c07b37e4 c07c5e4c
+[    6.907966] 7640: ee4619c0 ee4619c0 0000001c 00000000 c07c8a10
+000001a8 ef05772c ef057668
+[    6.907975] 7660: c07c8130 c07b37f0 ee31e028 00000002 c07c8a10
+5c2b03fe ef7c7480 ff7f374c
+[    6.907982] 7680: ee31e040 00000001 c0d02b0c ee31e010 ef0576fc
+00000004 ef0576c4 ef0576a8
+[    6.907989] 76a0: c07c7de4 c06e1760 00000000 00000000 00000000
+ee6e90c0 00000002 00000000
+[    6.907996] 76c0: 00000000 003a0000 00000000 00000000 00000000
+00000000 000002ff 00000000
+[    6.908003] 76e0: 00000000 16000000 000080fe 00000000 ff9f0402
+5c2b03fe 00000000 0000008f
+[    6.908010] 7700: eebd84d0 00000000 eeb6f8a8 ee4619c0 00000001
+00000000 c07c9eec eebd84d0
+[    6.908018] 7720: ef05775c ef057730 c07c8a10 c07c7e50 00000000
+00000001 eebd8400 00000001
+[    6.908025] 7740: c07c9eec 00000100 eebd8400 c0185e30 ef057774
+ef057760 c07c9f10 c07c8980
+[    6.908032] 7760: 00000000 ef057788 ef0577bc ef057778 c0185ea0
+c07c9ef8 00000001 00000000
+[    6.908039] 7780: c0185e30 00000200 c156db1c 00000000 00000000
+c0b7736c eebd84a0 ef7c44c0
+[    6.908047] 77a0: 00000200 00000000 c0d02100 eebd8400 ef057804
+ef0577c0 c01860dc c0185e3c
+[    6.908054] 77c0: ef056000 ef7c4af0 ef7c49fc ef7c48fc c0c736dc
+00000000 00000001 00000080
+[    6.908061] 77e0: c0d02084 00000001 c0d02080 00000001 00000100
+c0d02080 ef05784c ef057808
+[    6.908069] 7800: c01296f4 c0185f38 00000001 ef021060 00000001
+00404100 ffff8d83 0000000a
+[    6.908077] 7820: f080e100 00000000 c0d02b0c c0c736dc 00000000
+00000001 f080f100 ef008000
+[    6.908084] 7840: ef057864 ef057850 c0129bc8 c01295d0 f080e100
+00000000 ef05788c ef057868
+[    6.908091] 7860: c0175fa0 c0129b10 f080e100 f080e10c ef0578c0
+c0d02c70 c0d22340 000003eb
+[    6.908100] 7880: ef0578bc ef057890 c01015e4 c0175f38 ef070000
+c01744e8 20000113 ffffffff
+[    6.908107] 78a0: ef0578f4 0000005c 00000001 00000000 ef057964
+ef0578c0 c010c4b8 c01015a4
+[    6.908115] 78c0: c01744e0 00000001 ef056000 0000005c 20000113
+20000113 c15035e8 c153e610
+[    6.908122] 78e0: 0000005c 00000001 00000000 ef057964 ef057900
+ef057910 c016bde0 c01744e8
+[    6.908129] 7900: 20000113 ffffffff 00000051 c016bdd8 00000400
+ef057920 00000000 00000000
+[    6.908136] 7920: c0175044 00000001 00000000 20000113 000000ec
+00000000 00000001 00000001
+[    6.908143] 7940: c0d14c70 60000113 00000000 00000000 c1541062
+0000004c ef0579c4 ef057968
+[    6.908150] 7960: c0175044 c0173fb0 00000000 00000000 00000000
+00000000 c1541062 0000004c
+[    6.908157] 7980: 60000113 00000000 ef070020 00000000 00000000
+00000000 00000002 00000001
+[    6.908166] 79a0: 00000017 ee6eb200 ef057b28 00000001 00000014
+ee6eb254 ef0579dc ef0579c8
+[    6.908173] 79c0: c01752e8 c0174d3c c0ad3114 ef0579fc ef0579f4
+ef0579e0 c01c3d64 c01752c8
+[    6.908181] 79e0: ef057a04 ef0579fc ef057a1c ef057a08 c011cc10
+c01c3d30 c0ad3114 c0ad30e8
+[    6.908188] 7a00: 00000001 c0ad30e8 ef057b28 00000017 ef057a74
+ef057a20 c01174e8 c011cbdc
+[    6.908196] 7a20: 00000000 0000000c c154105c 00000000 c0e9e740
+ef0704a8 ef070000 00000000
+[    6.908203] 7a40: 00000000 00010000 c0169978 00000017 c0117238
+00000001 c0d08d74 ef057b28
+[    6.908211] 7a60: c0d02b0c 00000000 ef057b24 ef057a78 c0101378
+c0117244 ef070000 c0d2217c
+[    6.908218] 7a80: ef057b24 ef057a90 c0169978 c017e60c ef070000
+c0d2217c ef057b3c ef057aa8
+[    6.908226] 7aa0: 00000000 0000016d c154105c 000004c8 ef0704c8
+ef0704c8 ef070000 c0d2217c
+[    6.908233] 7ac0: 0050a170 00000000 c0169978 00000000 ef070000
+c0d2217c 0050a004 00000000
+[    6.908240] 7ae0: c0169978 00000000 00000000 0000016c c154105c
+00000001 c0e9e740 ef0704c8
+[    6.908247] 7b00: ef070000 c0209040 20000113 ffffffff ef057b5c
+c01d3c34 ef057bb4 ef057b28
+[    6.908254] 7b20: c010c42c c0101348 c0d02b0c c0c78020 ef056000
+00000000 ef001f00 00000001
+[    6.908263] 7b40: 02408000 ee325340 c01d3c34 c0d02b0c 00000000
+ef057bb4 2eb52000 ef057b78
+[    6.908270] 7b60: c02090a0 c0209040 20000113 ffffffff 00000051
+c08e1ae8 ef070000 c01d3c34
+[    6.908278] 7b80: c02fbe88 00000000 ef057bb4 effca5e0 effca5e0
+00000000 ee325340 c01d3c34
+[    6.908285] 7ba0: c155067c 00000000 ef057be4 ef057bb8 c02fbe88
+c0208fc0 00000000 effca5e0
+[    6.908293] 7bc0: eedea888 0016fd10 00000000 c01d3c34 40000113
+ef057c6c ef057c2c ef057be8
+[    6.908301] 7be0: c02fd2d8 c02fbe50 00001000 00000000 c01d3c34
+c01d556c ef057c2c ef057c08
+[    6.908308] 7c00: c01c6a78 effca5f4 ef057d20 eedea9b4 00000000
+00000200 effca5e0 00000100
+[    6.908316] 7c20: ef057c64 ef057c30 c01d3c34 c02fd1ec ef057c6c
+c02fd1e0 ef057c64 eedea888
+[    6.908323] 7c40: eedea9b4 c0d02b0c ef057c74 ef057d20 eedea9b4
+0000000e ef057cf4 ef057c68
+[    6.908330] 7c60: c02fdd54 c01d3b78 00000001 ef057c74 ee325340
+0000016c eedea888 c0914c14
+[    6.908337] 7c80: c0914c28 00000000 00000000 ef0704c8 c0914c40
+00000000 00000000 00000000
+[    6.908344] 7ca0: 00001000 00000001 ef057cac ef057cac ef057cac
+00000000 00000000 00001000
+[    6.908353] 7cc0: 00000000 60000112 00000000 00000000 00000062
+0000000f 00000062 effc9dc0
+[    6.908359] 7ce0: 0000000f 0000000f ef057d6c ef057cf8 c01d3f8c
+c02fdca8 00000000 00000000
+[    6.908367] 7d00: c01d3e80 00000000 a0000113 ee35fa00 eedea9b8
+0000016f 00000054 ef057d20
+[    6.908374] 7d20: effca7b4 effca614 ef057d28 ef057d28 ef057d30
+ef057d30 ef057d38 ef057d38
+[    6.908381] 7d40: 60000193 eedea888 c01ecdb0 eedea90c 0000005b
+0000005b 00000000 00000001
+[    6.908390] 7d60: ef057ddc ef057d70 c01c90d4 c01d3cc8 00000003
+00000000 c01ecdb0 effc9e20
+[    6.908397] 7d80: ef070020 ef03c430 ef070000 00000001 00000002
+ef0704c8 ef057dfc ee3293c8
+[    6.908404] 7da0: ef057de0 ee35fa00 eedea9b4 ef057db8 c016b338
+ee3293c8 ee32c000 000005b7
+[    6.908412] 7dc0: b6ed5000 0000005b 00000054 c0d06184 ef057e14
+ef057de0 c01ecdb0 c01c8c84
+[    6.908420] 7de0: 00000054 024200ca 0000005b b6ed5000 00000000
+00000000 c08e6a60 c016ebf0
+[    6.908427] 7e00: ee3293c8 ee32c000 ef057ea4 ef057e18 c01f0da4
+c01ecd58 00000000 ef057e54
+[    6.908435] 7e20: 60000113 c01172c0 0011f000 b6ed5604 00000000
+00000065 ee322000 ee322354
+[    6.908442] 7e40: ef03c420 00000354 00000054 000000d5 00000000
+c01172c0 00000054 024200ca
+[    6.908451] 7e60: 00000056 b6ed0000 ee6eb200 80000007 00000065
+ee322340 00000000 ef057fb0
+[    6.908458] 7e80: ef070000 ee6eb200 80000007 b6ed5604 00000054
+ee6eb254 ef057efc ef057ea8
+[    6.908465] 7ea0: c0117494 c01f06d0 ef057eec ef057eb8 c016b338
+c016934c 00000001 00000000
+[    6.908472] 7ec0: 00000000 00000000 00000000 00000000 0000004a
+00000007 c0117238 c0d08f74
+[    6.908481] 7ee0: b6ed5604 ef057fb0 00000000 b6fcb000 ef057fac
+ef057f00 c0101434 c0117244
+[    6.908488] 7f00: 00000000 c154c134 ef057f2c be9f1d14 00000051
+00000000 3cfb9000 be9f1d14
+[    6.908495] 7f20: 00000040 00000000 00000000 c013a320 9ab8b1ab
+00000001 00000006 3517f5ab
+[    6.908502] 7f40: 00000007 00002900 00000880 000002c0 3e375000
+3cfb9000 00000000 00000000
+[    6.908510] 7f60: 00000000 00000000 00000042 10000000 0fe38000
+00000001 00000000 00000000
+[    6.908517] 7f80: 00000000 0007d0a4 60000010 b6ed5604 60000010
+ffffffff 10c5387d 10c5387d
+[    6.908525] 7fa0: 00000000 ef057fb0 c010cad8 c0101404 00099e99
+000992ae 3e375000 00000000
+[    6.908532] 7fc0: be9f1f04 00000000 0000004a be9f1f04 000001d9
+00000000 b6fcb000 00000000
+[    6.908539] 7fe0: b6ed5604 be9f1c58 0007d0ac b6ed5604 60000010
+ffffffff 4932015b a8241202
+[    6.908542] Backtrace:
+[    6.908555] [<c0208fb4>] (kmem_cache_alloc) from [<c06ff7d8>]
+(dst_cow_metrics_generic+0x24/0xb8)
+[    6.908570]  r10:eebd8400 r9:ee31e010 r8:ee327f00 r7:ef0576b8
+r6:ee327f5c r5:eebd8400
+[    6.908576]  r4:c0990409
+[    6.908590] [<c06ff7b4>] (dst_cow_metrics_generic) from
+[<c07afecc>] (ipv6_cow_metrics+0x24/0x64)
+[    6.908604]  r10:eebd8400 r8:00000080 r7:ef0576b8 r6:ee327f5c
+r5:eebd8400 r4:ee327f00
+[    6.908616] [<c07afea8>] (ipv6_cow_metrics) from [<c07b3994>]
+(icmp6_dst_alloc+0x1b0/0x2b4)
+[    6.908629] [<c07b37e4>] (icmp6_dst_alloc) from [<c07c8130>]
+(mld_sendpack+0x2ec/0x70c)
+[    6.908643]  r8:000001a8 r7:c07c8a10 r6:00000000 r5:0000001c r4:ee4619c0
+[    6.908652] [<c07c7e44>] (mld_sendpack) from [<c07c8a10>]
+(mld_send_initial_cr.part.8+0x9c/0xb0)
+[    6.908666]  r10:eebd84d0 r9:c07c9eec r8:00000000 r7:00000001
+r6:ee4619c0 r5:eeb6f8a8
+[    6.908670]  r4:00000000
+[    6.908679] [<c07c8974>] (mld_send_initial_cr.part.8) from
+[<c07c9f10>] (mld_dad_timer_expire+0x24/0x90)
+[    6.908693]  r10:c0185e30 r8:eebd8400 r7:00000100 r6:c07c9eec
+r5:00000001 r4:eebd8400
+[    6.908705] [<c07c9eec>] (mld_dad_timer_expire) from [<c0185ea0>]
+(call_timer_fn+0x70/0xfc)
+[    6.908711]  r4:ef057788 r3:00000000
+[    6.908719] [<c0185e30>] (call_timer_fn) from [<c01860dc>]
+(run_timer_softirq+0x1b0/0x24c)
+[    6.908732]  r10:eebd8400 r8:c0d02100 r7:00000000 r6:00000200
+r5:ef7c44c0 r4:eebd84a0
+[    6.908745] [<c0185f2c>] (run_timer_softirq) from [<c01296f4>]
+(__do_softirq+0x130/0x2bc)
+[    6.908759]  r10:c0d02080 r9:00000100 r8:00000001 r7:c0d02080
+r6:00000001 r5:c0d02084
+[    6.908763]  r4:00000080
+[    6.908771] [<c01295c4>] (__do_softirq) from [<c0129bc8>]
+(irq_exit+0xc4/0x138)
+[    6.908784]  r10:ef008000 r9:f080f100 r8:00000001 r7:00000000
+r6:c0c736dc r5:c0d02b0c
+[    6.908788]  r4:00000000
+[    6.908801] [<c0129b04>] (irq_exit) from [<c0175fa0>]
+(__handle_domain_irq+0x74/0xe4)
+[    6.908808]  r4:00000000 r3:f080e100
+[    6.908816] [<c0175f2c>] (__handle_domain_irq) from [<c01015e4>]
+(gic_handle_irq+0x4c/0x9c)
+[    6.908831]  r10:000003eb r8:c0d22340 r7:c0d02c70 r6:ef0578c0
+r5:f080e10c r4:f080e100
+[    6.908838] [<c0101598>] (gic_handle_irq) from [<c010c4b8>]
+(__irq_svc+0x58/0x78)
+[    6.908842] Exception stack(0xef0578c0 to 0xef057908)
+[    6.908850] 78c0: c01744e0 00000001 ef056000 0000005c 20000113
+20000113 c15035e8 c153e610
+[    6.908857] 78e0: 0000005c 00000001 00000000 ef057964 ef057900
+ef057910 c016bde0 c01744e8
+[    6.908862] 7900: 20000113 ffffffff
+[    6.908876]  r10:00000000 r9:00000001 r8:0000005c r7:ef0578f4
+r6:ffffffff r5:20000113
+[    6.908882]  r4:c01744e8 r3:ef070000
+[    6.908892] [<c0173fa4>] (console_unlock) from [<c0175044>]
+(vprintk_emit+0x314/0x58c)
+[    6.908905]  r10:0000004c r9:c1541062 r8:00000000 r7:00000000
+r6:60000113 r5:c0d14c70
+[    6.908909]  r4:00000001
+[    6.908918] [<c0174d30>] (vprintk_emit) from [<c01752e8>]
+(vprintk_default+0x2c/0x34)
+[    6.908931]  r10:ee6eb254 r9:00000014 r8:00000001 r7:ef057b28
+r6:ee6eb200 r5:00000017
+[    6.908935]  r4:00000001
+[    6.908950] [<c01752bc>] (vprintk_default) from [<c01c3d64>]
+(printk+0x44/0x54)
+[    6.908961] [<c01c3d24>] (printk) from [<c011cc10>]
+(__do_kernel_fault.part.0+0x40/0x1f0)
+[    6.908971]  r3:c0ad30e8 r2:00000001 r1:c0ad30e8 r0:c0ad3114
+[    6.908981] [<c011cbd0>] (__do_kernel_fault.part.0) from
+[<c01174e8>] (do_page_fault+0x2b0/0x384)
+[    6.908989]  r7:00000017 r3:ef057b28
+[    6.908995] [<c0117238>] (do_page_fault) from [<c0101378>]
+(do_DataAbort+0x3c/0xbc)
+[    6.909009]  r10:00000000 r9:c0d02b0c r8:ef057b28 r7:c0d08d74
+r6:00000001 r5:c0117238
+[    6.909013]  r4:00000017
+[    6.909019] [<c010133c>] (do_DataAbort) from [<c010c42c>]
+(__dabt_svc+0x4c/0x80)
+[    6.909023] Exception stack(0xef057b28 to 0xef057b70)
+[    6.909029] 7b20:                   c0d02b0c c0c78020 ef056000
+00000000 ef001f00 00000001
+[    6.909037] 7b40: 02408000 ee325340 c01d3c34 c0d02b0c 00000000
+ef057bb4 2eb52000 ef057b78
+[    6.909042] 7b60: c02090a0 c0209040 20000113 ffffffff
+[    6.909056]  r8:c01d3c34 r7:ef057b5c r6:ffffffff r5:20000113 r4:c0209040
+[    6.909066] [<c0208fb4>] (kmem_cache_alloc) from [<c02fbe88>]
+(nfs_create_request+0x44/0x300)
+[    6.909081]  r10:00000000 r9:c155067c r8:c01d3c34 r7:ee325340
+r6:00000000 r5:effca5e0
+[    6.909085]  r4:effca5e0
+[    6.909095] [<c02fbe44>] (nfs_create_request) from [<c02fd2d8>]
+(readpage_async_filler+0xf8/0x214)
+[    6.909109]  r10:ef057c6c r9:40000113 r8:c01d3c34 r7:00000000
+r6:0016fd10 r5:eedea888
+[    6.909116]  r4:effca5e0 r3:00000000
+[    6.909131] [<c02fd1e0>] (readpage_async_filler) from [<c01d3c34>]
+(read_cache_pages+0xc8/0x150)
+[    6.909145]  r10:00000100 r9:effca5e0 r8:00000200 r7:00000000
+r6:eedea9b4 r5:ef057d20
+[    6.909150]  r4:effca5f4
+[    6.909160] [<c01d3b6c>] (read_cache_pages) from [<c02fdd54>]
+(nfs_readpages+0xb8/0x1b0)
+[    6.909173]  r10:0000000e r9:eedea9b4 r8:ef057d20 r7:ef057c74
+r6:c0d02b0c r5:eedea9b4
+[    6.909177]  r4:eedea888
+[    6.909187] [<c02fdc9c>] (nfs_readpages) from [<c01d3f8c>]
+(__do_page_cache_readahead+0x2d0/0x3d8)
+[    6.909199]  r8:0000000f r7:0000000f r6:effc9dc0 r5:00000062 r4:0000000f
+[    6.909207] [<c01d3cbc>] (__do_page_cache_readahead) from
+[<c01c90d4>] (filemap_fault+0x45c/0x750)
+[    6.909220]  r10:00000001 r9:00000000 r8:0000005b r7:0000005b
+r6:eedea90c r5:c01ecdb0
+[    6.909225]  r4:eedea888
+[    6.909235] [<c01c8c78>] (filemap_fault) from [<c01ecdb0>]
+(__do_fault+0x64/0xe0)
+[    6.909248]  r10:c0d06184 r9:00000054 r8:0000005b r7:b6ed5000
+r6:000005b7 r5:ee32c000
+[    6.909252]  r4:ee3293c8
+[    6.909261] [<c01ecd4c>] (__do_fault) from [<c01f0da4>]
+(handle_mm_fault+0x6e0/0xbc8)
+[    6.909267]  r5:ee32c000 r4:ee3293c8
+[    6.909276] [<c01f06c4>] (handle_mm_fault) from [<c0117494>]
+(do_page_fault+0x25c/0x384)
+[    6.909289]  r10:ee6eb254 r9:00000054 r8:b6ed5604 r7:80000007
+r6:ee6eb200 r5:ef070000
+[    6.909293]  r4:ef057fb0
+[    6.909300] [<c0117238>] (do_page_fault) from [<c0101434>]
+(do_PrefetchAbort+0x3c/0xa0)
+[    6.909313]  r10:b6fcb000 r9:00000000 r8:ef057fb0 r7:b6ed5604
+r6:c0d08f74 r5:c0117238
+[    6.909318]  r4:00000007
+[    6.909325] [<c01013f8>] (do_PrefetchAbort) from [<c010cad8>]
+(ret_from_exception+0x0/0x28)
+[    6.909329] Exception stack(0xef057fb0 to 0xef057ff8)
+[    6.909334] 7fa0:                                     00099e99
+000992ae 3e375000 00000000
+[    6.909342] 7fc0: be9f1f04 00000000 0000004a be9f1f04 000001d9
+00000000 b6fcb000 00000000
+[    6.909348] 7fe0: b6ed5604 be9f1c58 0007d0ac b6ed5604 60000010 ffffffff
+[    6.909361]  r8:10c5387d r7:10c5387d r6:ffffffff r5:60000010 r4:b6ed5604
+[    6.909368] Code: e791500c e3550000 0a000027 e5943014 (e795a003)
+[    6.909378] ---[ end trace c15a25bbc05da55a ]---
+[    6.909384] Kernel panic - not syncing: Fatal exception in interrupt
+[    8.292482] ---[ end Kernel panic - not syncing: Fatal exception in interrupt
 
-$ sudo restorecon -v /etc/krb5.keytab
-<no output>
-$ ls -laZ /etc/krb5.keytab
--rw-------. root root unconfined_u:object_r:krb5_keytab_t:s0 
-/etc/krb5.keytab
-
-I'd only had selinux in permissive mode, so I tried disabling it as 
-well, but that too unfortunately made no difference.
+Any ideas?
