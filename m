@@ -1,14 +1,14 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:41016 "EHLO fieldses.org"
+Received: from fieldses.org ([173.255.197.46]:41064 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751021AbcCHWHk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 8 Mar 2016 17:07:40 -0500
-Date: Tue, 8 Mar 2016 17:07:37 -0500
+	id S1750787AbcCHWJL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 8 Mar 2016 17:09:11 -0500
+Date: Tue, 8 Mar 2016 17:09:09 -0500
 From: "J. Bruce Fields" <bfields@fieldses.org>
 To: Christoph Hellwig <hch@lst.de>
 Cc: trond.myklebust@primarydata.com, linux-nfs@vger.kernel.org
 Subject: Re: [PATCH 2/4] nfs/blocklayout: add SCSI layout support
-Message-ID: <20160308220737.GA27006@fieldses.org>
+Message-ID: <20160308220909.GB27006@fieldses.org>
 References: <1457120777-30687-1-git-send-email-hch@lst.de>
  <1457120777-30687-3-git-send-email-hch@lst.de>
 MIME-Version: 1.0
@@ -16,12 +16,6 @@ Content-Type: text/plain; charset=us-ascii
 In-Reply-To: <1457120777-30687-3-git-send-email-hch@lst.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-
-Trond, OK if I take this through the nfsd tree?
-
-Or I'm OK with doing this however.
-
---b.
 
 On Fri, Mar 04, 2016 at 08:46:15PM +0100, Christoph Hellwig wrote:
 > This is a trivial extension to the block layout driver to support the
@@ -31,6 +25,12 @@ On Fri, Mar 04, 2016 at 08:46:15PM +0100, Christoph Hellwig wrote:
 >    directly use the udev generated persistent device names instead of
 >    requiring an expensive lookup by crawling every block device node
 >    in /dev and reading a signature for it.
+
+And looks like this means there's no change required to the userspace
+support code since it all happens in-kernel.
+
+--b.
+
 >  - use of SCSI persistent reservations to protect device access and
 >    allow for robust fencing.  On the client sides this just means
 >    registering and unregistering a server supplied key.
