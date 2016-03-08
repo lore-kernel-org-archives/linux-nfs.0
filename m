@@ -1,14 +1,14 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx142.netapp.com ([216.240.21.19]:15282 "EHLO mx142.netapp.com"
+Received: from mx141.netapp.com ([216.240.21.12]:13231 "EHLO mx141.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750888AbcCHV4F (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 8 Mar 2016 16:56:05 -0500
+	id S1750888AbcCHV4W (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 8 Mar 2016 16:56:22 -0500
 From: Anna Schumaker <Anna.Schumaker@netapp.com>
 To: <linux-nfs@vger.kernel.org>, <Trond.Myklebust@primarydata.com>,
         <bfields@fieldses.org>, <hch@infradead.org>
-Subject: [PATCH v3 3/3] NFSD: Implement the COPY call
-Date: Tue, 8 Mar 2016 16:55:57 -0500
-Message-ID: <1457474158-16050-4-git-send-email-Anna.Schumaker@Netapp.com>
+Subject: [PATCH v3 1/3] NFS: Add nfs_commit_file()
+Date: Tue, 8 Mar 2016 16:55:55 -0500
+Message-ID: <1457474158-16050-2-git-send-email-Anna.Schumaker@Netapp.com>
 In-Reply-To: <1457474158-16050-1-git-send-email-Anna.Schumaker@Netapp.com>
 References: <1457474158-16050-1-git-send-email-Anna.Schumaker@Netapp.com>
 MIME-Version: 1.0
@@ -16,342 +16,130 @@ Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Anna Schumaker <Anna.Schumaker@netapp.com>
+Copy will use this to set up a commit request for a generic range.  I
+don't want to allocate a new pagecache entry for the file, so I needed
+to change parts of the commit path to handle requests with a null
+wb_page.
 
-I only implemented the sync version of this call, since it's the
-easiest.  I can simply call vfs_copy_range() and have the vfs do the
-right thing for the filesystem being exported.
-
-Signed-off-by: Anna Schumaker <bjschuma@netapp.com>
---
-v3:
-- Check for copying beyond the end of the file
+Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
 ---
- fs/nfsd/nfs4proc.c | 98 ++++++++++++++++++++++++++++++++++++++++++++++++------
- fs/nfsd/nfs4xdr.c  | 63 +++++++++++++++++++++++++++++++++--
- fs/nfsd/vfs.c      |  6 ++++
- fs/nfsd/vfs.h      |  1 +
- fs/nfsd/xdr4.h     | 23 +++++++++++++
- 5 files changed, 178 insertions(+), 13 deletions(-)
+Checking for wb_page everywhere feels like a hack, but I don't really see
+any other way of doing this.  Suggestions welcome!
+---
+ fs/nfs/internal.h |  1 +
+ fs/nfs/pagelist.c |  6 ++++--
+ fs/nfs/write.c    | 41 +++++++++++++++++++++++++++++++++++++----
+ 3 files changed, 42 insertions(+), 6 deletions(-)
 
-diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-index 4cba786..0a1aa2f 100644
---- a/fs/nfsd/nfs4proc.c
-+++ b/fs/nfsd/nfs4proc.c
-@@ -1012,47 +1012,105 @@ nfsd4_write(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- }
+diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
+index 9a547aa..7a3778c 100644
+--- a/fs/nfs/internal.h
++++ b/fs/nfs/internal.h
+@@ -477,6 +477,7 @@ void nfs_mark_request_commit(struct nfs_page *req,
+ 			     u32 ds_commit_idx);
+ int nfs_write_need_commit(struct nfs_pgio_header *);
+ void nfs_writeback_update_inode(struct nfs_pgio_header *hdr);
++int nfs_commit_file(struct file *file, struct nfs_write_verifier *verf);
+ int nfs_generic_commit_list(struct inode *inode, struct list_head *head,
+ 			    int how, struct nfs_commit_info *cinfo);
+ void nfs_retry_commit(struct list_head *page_list,
+diff --git a/fs/nfs/pagelist.c b/fs/nfs/pagelist.c
+index 8ce4f61..c3c3555 100644
+--- a/fs/nfs/pagelist.c
++++ b/fs/nfs/pagelist.c
+@@ -341,8 +341,10 @@ nfs_create_request(struct nfs_open_context *ctx, struct page *page,
+ 	 * long write-back delay. This will be adjusted in
+ 	 * update_nfs_request below if the region is not locked. */
+ 	req->wb_page    = page;
+-	req->wb_index	= page_file_index(page);
+-	page_cache_get(page);
++	if (page) {
++		req->wb_index = page_file_index(page);
++		page_cache_get(page);
++	}
+ 	req->wb_offset  = offset;
+ 	req->wb_pgbase	= offset;
+ 	req->wb_bytes   = count;
+diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+index 5754835..a82765b9 100644
+--- a/fs/nfs/write.c
++++ b/fs/nfs/write.c
+@@ -737,7 +737,7 @@ static void nfs_inode_remove_request(struct nfs_page *req)
+ 		head = req->wb_head;
  
- static __be32
--nfsd4_clone(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
--		struct nfsd4_clone *clone)
-+nfsd4_verify_copy(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
-+		  stateid_t *src_stateid, struct file **src,
-+		  stateid_t *dst_stateid, struct file **dst)
+ 		spin_lock(&inode->i_lock);
+-		if (likely(!PageSwapCache(head->wb_page))) {
++		if (likely(head->wb_page && !PageSwapCache(head->wb_page))) {
+ 			set_page_private(head->wb_page, 0);
+ 			ClearPagePrivate(head->wb_page);
+ 			smp_mb__after_atomic();
+@@ -759,7 +759,8 @@ static void nfs_inode_remove_request(struct nfs_page *req)
+ static void
+ nfs_mark_request_dirty(struct nfs_page *req)
  {
--	struct file *src, *dst;
- 	__be32 status;
- 
- 	status = nfs4_preprocess_stateid_op(rqstp, cstate, &cstate->save_fh,
--					    &clone->cl_src_stateid, RD_STATE,
--					    &src, NULL);
-+					    src_stateid, RD_STATE, src, NULL);
- 	if (status) {
- 		dprintk("NFSD: %s: couldn't process src stateid!\n", __func__);
- 		goto out;
- 	}
- 
- 	status = nfs4_preprocess_stateid_op(rqstp, cstate, &cstate->current_fh,
--					    &clone->cl_dst_stateid, WR_STATE,
--					    &dst, NULL);
-+					    dst_stateid, WR_STATE, dst, NULL);
- 	if (status) {
- 		dprintk("NFSD: %s: couldn't process dst stateid!\n", __func__);
- 		goto out_put_src;
- 	}
- 
- 	/* fix up for NFS-specific error code */
--	if (!S_ISREG(file_inode(src)->i_mode) ||
--	    !S_ISREG(file_inode(dst)->i_mode)) {
-+	if (!S_ISREG(file_inode(*src)->i_mode) ||
-+	    !S_ISREG(file_inode(*dst)->i_mode)) {
- 		status = nfserr_wrong_type;
- 		goto out_put_dst;
- 	}
- 
-+out:
-+	return status;
-+out_put_dst:
-+	fput(*dst);
-+out_put_src:
-+	fput(*src);
-+	goto out;
-+}
-+
-+static __be32
-+nfsd4_clone(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
-+		struct nfsd4_clone *clone)
-+{
-+	struct file *src, *dst;
-+	__be32 status;
-+
-+	status = nfsd4_verify_copy(rqstp, cstate, &clone->cl_src_stateid, &src,
-+				   &clone->cl_dst_stateid, &dst);
-+	if (status)
-+		goto out;
-+
- 	status = nfsd4_clone_file_range(src, clone->cl_src_pos,
- 			dst, clone->cl_dst_pos, clone->cl_count);
- 
--out_put_dst:
- 	fput(dst);
--out_put_src:
- 	fput(src);
- out:
- 	return status;
+-	__set_page_dirty_nobuffers(req->wb_page);
++	if (req->wb_page)
++		__set_page_dirty_nobuffers(req->wb_page);
  }
  
- static __be32
-+nfsd4_copy(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
-+		struct nfsd4_copy *copy)
+ /*
+@@ -835,7 +836,8 @@ nfs_request_add_commit_list(struct nfs_page *req, struct nfs_commit_info *cinfo)
+ 	spin_lock(cinfo->lock);
+ 	nfs_request_add_commit_list_locked(req, &cinfo->mds->list, cinfo);
+ 	spin_unlock(cinfo->lock);
+-	nfs_mark_page_unstable(req->wb_page, cinfo);
++	if (req->wb_page)
++		nfs_mark_page_unstable(req->wb_page, cinfo);
+ }
+ EXPORT_SYMBOL_GPL(nfs_request_add_commit_list);
+ 
+@@ -1724,6 +1726,36 @@ nfs_commit_list(struct inode *inode, struct list_head *head, int how,
+ 	return -ENOMEM;
+ }
+ 
++int nfs_commit_file(struct file *file, struct nfs_write_verifier *verf)
 +{
-+	struct file *src, *dst;
-+	__be32 status;
-+	ssize_t bytes;
-+	loff_t max;
++	struct inode *inode = file_inode(file);
++	struct nfs_open_context *open;
++	struct nfs_commit_info cinfo;
++	struct nfs_page *req;
++	int ret;
 +
-+	status = nfsd4_verify_copy(rqstp, cstate, &copy->cp_src_stateid, &src,
-+				   &copy->cp_dst_stateid, &dst);
-+	if (status)
-+		goto out;
-+
-+	max = i_size_read(file_inode(src));
-+	if ((copy->cp_src_pos + copy->cp_count) > max) {
-+		status = nfserr_inval;
++	open = get_nfs_open_context(nfs_file_open_context(file));
++	req  = nfs_create_request(open, NULL, NULL, 0, i_size_read(inode));
++	if (!req) {
++		ret = -ENOMEM;
 +		goto out_put;
 +	}
 +
-+	bytes = nfsd_copy_range(src, copy->cp_src_pos, dst, copy->cp_dst_pos,
-+				copy->cp_count);
++	nfs_init_cinfo_from_inode(&cinfo, inode);
 +
-+	if (bytes < 0)
-+		status = nfserrno(bytes);
-+	else {
-+		copy->cp_res.wr_bytes_written = bytes;
-+		copy->cp_res.wr_stable_how = NFS_UNSTABLE;
-+		copy->cp_consecutive = 1;
-+		copy->cp_synchronous = 1;
-+		gen_boot_verifier(&copy->cp_res.wr_verifier, SVC_NET(rqstp));
-+		status = nfs_ok;
-+	}
++	memcpy(&req->wb_verf, verf, sizeof(struct nfs_write_verifier));
++	nfs_request_add_commit_list(req, &cinfo);
++	ret = nfs_commit_inode(inode, FLUSH_SYNC);
++	if (ret > 0)
++		ret = 0;
 +
++	nfs_free_request(req);
 +out_put:
-+	fput(src);
-+	fput(dst);
-+out:
-+	return status;
++	put_nfs_open_context(open);
++	return ret;
 +}
++EXPORT_SYMBOL_GPL(nfs_commit_file);
 +
-+static __be32
- nfsd4_fallocate(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 		struct nfsd4_fallocate *fallocate, int flags)
- {
-@@ -1966,6 +2024,18 @@ static inline u32 nfsd4_create_session_rsize(struct svc_rqst *rqstp, struct nfsd
- 		op_encode_channel_attrs_maxsz) * sizeof(__be32);
- }
- 
-+static inline u32 nfsd4_copy_rsize(struct svc_rqst *rqstp, struct nfsd4_op *op)
-+{
-+	return (op_encode_hdr_size +
-+		1 /* wr_callback */ +
-+		op_encode_stateid_maxsz /* wr_callback */ +
-+		2 /* wr_count */ +
-+		1 /* wr_committed */ +
-+		op_encode_verifier_maxsz +
-+		1 /* cr_consecutive */ +
-+		1 /* cr_synchronous */) * sizeof(__be32);
-+}
-+
- #ifdef CONFIG_NFSD_PNFS
  /*
-  * At this stage we don't really know what layout driver will handle the request,
-@@ -2328,6 +2398,12 @@ static struct nfsd4_operation nfsd4_ops[] = {
- 		.op_name = "OP_CLONE",
- 		.op_rsize_bop = (nfsd4op_rsize)nfsd4_only_status_rsize,
- 	},
-+	[OP_COPY] = {
-+		.op_func = (nfsd4op_func)nfsd4_copy,
-+		.op_flags = OP_MODIFIES_SOMETHING | OP_CACHEME,
-+		.op_name = "OP_COPY",
-+		.op_rsize_bop = (nfsd4op_rsize)nfsd4_copy_rsize,
-+	},
- 	[OP_SEEK] = {
- 		.op_func = (nfsd4op_func)nfsd4_seek,
- 		.op_name = "OP_SEEK",
-diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index d6ef095..2a73c7e 100644
---- a/fs/nfsd/nfs4xdr.c
-+++ b/fs/nfsd/nfs4xdr.c
-@@ -1694,6 +1694,30 @@ nfsd4_decode_clone(struct nfsd4_compoundargs *argp, struct nfsd4_clone *clone)
- }
+  * COMMIT call returned
+  */
+@@ -1748,7 +1780,8 @@ static void nfs_commit_release_pages(struct nfs_commit_data *data)
+ 	while (!list_empty(&data->pages)) {
+ 		req = nfs_list_entry(data->pages.next);
+ 		nfs_list_remove_request(req);
+-		nfs_clear_page_commit(req->wb_page);
++		if (req->wb_page)
++			nfs_clear_page_commit(req->wb_page);
  
- static __be32
-+nfsd4_decode_copy(struct nfsd4_compoundargs *argp, struct nfsd4_copy *copy)
-+{
-+	DECODE_HEAD;
-+	unsigned int tmp;
-+
-+	status = nfsd4_decode_stateid(argp, &copy->cp_src_stateid);
-+	if (status)
-+		return status;
-+	status = nfsd4_decode_stateid(argp, &copy->cp_dst_stateid);
-+	if (status)
-+		return status;
-+
-+	READ_BUF(8 + 8 + 8 + 4 + 4 + 4);
-+	p = xdr_decode_hyper(p, &copy->cp_src_pos);
-+	p = xdr_decode_hyper(p, &copy->cp_dst_pos);
-+	p = xdr_decode_hyper(p, &copy->cp_count);
-+	copy->cp_consecutive = be32_to_cpup(p++);
-+	copy->cp_synchronous = be32_to_cpup(p++);
-+	tmp = be32_to_cpup(p); /* Source server list not supported */
-+
-+	DECODE_TAIL;
-+}
-+
-+static __be32
- nfsd4_decode_seek(struct nfsd4_compoundargs *argp, struct nfsd4_seek *seek)
- {
- 	DECODE_HEAD;
-@@ -1793,7 +1817,7 @@ static nfsd4_dec nfsd4_dec_ops[] = {
- 
- 	/* new operations for NFSv4.2 */
- 	[OP_ALLOCATE]		= (nfsd4_dec)nfsd4_decode_fallocate,
--	[OP_COPY]		= (nfsd4_dec)nfsd4_decode_notsupp,
-+	[OP_COPY]		= (nfsd4_dec)nfsd4_decode_copy,
- 	[OP_COPY_NOTIFY]	= (nfsd4_dec)nfsd4_decode_notsupp,
- 	[OP_DEALLOCATE]		= (nfsd4_dec)nfsd4_decode_fallocate,
- 	[OP_IO_ADVISE]		= (nfsd4_dec)nfsd4_decode_notsupp,
-@@ -4203,6 +4227,41 @@ nfsd4_encode_layoutreturn(struct nfsd4_compoundres *resp, __be32 nfserr,
- #endif /* CONFIG_NFSD_PNFS */
- 
- static __be32
-+nfsd42_encode_write_res(struct nfsd4_compoundres *resp, struct nfsd42_write_res *write)
-+{
-+	__be32 *p;
-+
-+	p = xdr_reserve_space(&resp->xdr, 4 + 8 + 4 + NFS4_VERIFIER_SIZE);
-+	if (!p)
-+		return nfserr_resource;
-+
-+	*p++ = cpu_to_be32(0);
-+	p = xdr_encode_hyper(p, write->wr_bytes_written);
-+	*p++ = cpu_to_be32(write->wr_stable_how);
-+	p = xdr_encode_opaque_fixed(p, write->wr_verifier.data,
-+				    NFS4_VERIFIER_SIZE);
-+	return nfs_ok;
-+}
-+
-+static __be32
-+nfsd4_encode_copy(struct nfsd4_compoundres *resp, __be32 nfserr,
-+		  struct nfsd4_copy *copy)
-+{
-+	__be32 *p;
-+
-+	if (!nfserr) {
-+		nfserr = nfsd42_encode_write_res(resp, &copy->cp_res);
-+		if (nfserr)
-+			return nfserr;
-+
-+		p = xdr_reserve_space(&resp->xdr, 4 + 4);
-+		*p++ = cpu_to_be32(copy->cp_consecutive);
-+		*p++ = cpu_to_be32(copy->cp_synchronous);
-+	}
-+	return nfserr;
-+}
-+
-+static __be32
- nfsd4_encode_seek(struct nfsd4_compoundres *resp, __be32 nfserr,
- 		  struct nfsd4_seek *seek)
- {
-@@ -4301,7 +4360,7 @@ static nfsd4_enc nfsd4_enc_ops[] = {
- 
- 	/* NFSv4.2 operations */
- 	[OP_ALLOCATE]		= (nfsd4_enc)nfsd4_encode_noop,
--	[OP_COPY]		= (nfsd4_enc)nfsd4_encode_noop,
-+	[OP_COPY]		= (nfsd4_enc)nfsd4_encode_copy,
- 	[OP_COPY_NOTIFY]	= (nfsd4_enc)nfsd4_encode_noop,
- 	[OP_DEALLOCATE]		= (nfsd4_enc)nfsd4_encode_noop,
- 	[OP_IO_ADVISE]		= (nfsd4_enc)nfsd4_encode_noop,
-diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
-index 5d2a57e..28802a7 100644
---- a/fs/nfsd/vfs.c
-+++ b/fs/nfsd/vfs.c
-@@ -513,6 +513,12 @@ __be32 nfsd4_clone_file_range(struct file *src, u64 src_pos, struct file *dst,
- 			count));
- }
- 
-+ssize_t nfsd_copy_range(struct file *src, u64 src_pos, struct file *dst,
-+			u64 dst_pos, u64 count)
-+{
-+	return vfs_copy_file_range(src, src_pos, dst, dst_pos, count, 0);
-+}
-+
- __be32 nfsd4_vfs_fallocate(struct svc_rqst *rqstp, struct svc_fh *fhp,
- 			   struct file *file, loff_t offset, loff_t len,
- 			   int flags)
-diff --git a/fs/nfsd/vfs.h b/fs/nfsd/vfs.h
-index c11ba31..e36c497 100644
---- a/fs/nfsd/vfs.h
-+++ b/fs/nfsd/vfs.h
-@@ -93,6 +93,7 @@ __be32		nfsd_symlink(struct svc_rqst *, struct svc_fh *,
- 				struct svc_fh *res);
- __be32		nfsd_link(struct svc_rqst *, struct svc_fh *,
- 				char *, int, struct svc_fh *);
-+ssize_t		nfsd_copy_range(struct file *, u64, struct file *, u64, u64);
- __be32		nfsd_rename(struct svc_rqst *,
- 				struct svc_fh *, char *, int,
- 				struct svc_fh *, char *, int);
-diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
-index d955481..2cad349 100644
---- a/fs/nfsd/xdr4.h
-+++ b/fs/nfsd/xdr4.h
-@@ -500,6 +500,28 @@ struct nfsd4_clone {
- 	u64		cl_count;
- };
- 
-+struct nfsd42_write_res {
-+	u64			wr_bytes_written;
-+	u32			wr_stable_how;
-+	nfs4_verifier		wr_verifier;
-+};
-+
-+struct nfsd4_copy {
-+	/* request */
-+	stateid_t	cp_src_stateid;
-+	stateid_t	cp_dst_stateid;
-+	u64		cp_src_pos;
-+	u64		cp_dst_pos;
-+	u64		cp_count;
-+
-+	/* both */
-+	bool		cp_consecutive;
-+	bool		cp_synchronous;
-+
-+	/* response */
-+	struct nfsd42_write_res	cp_res;
-+};
-+
- struct nfsd4_seek {
- 	/* request */
- 	stateid_t	seek_stateid;
-@@ -565,6 +587,7 @@ struct nfsd4_op {
- 		struct nfsd4_fallocate		allocate;
- 		struct nfsd4_fallocate		deallocate;
- 		struct nfsd4_clone		clone;
-+		struct nfsd4_copy		copy;
- 		struct nfsd4_seek		seek;
- 	} u;
- 	struct nfs4_replay *			replay;
+ 		dprintk("NFS:       commit (%s/%llu %d@%lld)",
+ 			req->wb_context->dentry->d_sb->s_id,
 -- 
 2.7.2
 
