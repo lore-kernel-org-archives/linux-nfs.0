@@ -1,14 +1,14 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
 Received: from mx141.netapp.com ([216.240.21.12]:13231 "EHLO mx141.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750888AbcCHV4W (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	id S1750984AbcCHV4W (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
 	Tue, 8 Mar 2016 16:56:22 -0500
 From: Anna Schumaker <Anna.Schumaker@netapp.com>
 To: <linux-nfs@vger.kernel.org>, <Trond.Myklebust@primarydata.com>,
         <bfields@fieldses.org>, <hch@infradead.org>
-Subject: [PATCH v3 1/3] NFS: Add nfs_commit_file()
-Date: Tue, 8 Mar 2016 16:55:55 -0500
-Message-ID: <1457474158-16050-2-git-send-email-Anna.Schumaker@Netapp.com>
+Subject: [PATCH v3 4/3] vfs_copy_range() test program
+Date: Tue, 8 Mar 2016 16:55:58 -0500
+Message-ID: <1457474158-16050-5-git-send-email-Anna.Schumaker@Netapp.com>
 In-Reply-To: <1457474158-16050-1-git-send-email-Anna.Schumaker@Netapp.com>
 References: <1457474158-16050-1-git-send-email-Anna.Schumaker@Netapp.com>
 MIME-Version: 1.0
@@ -16,130 +16,78 @@ Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Copy will use this to set up a commit request for a generic range.  I
-don't want to allocate a new pagecache entry for the file, so I needed
-to change parts of the commit path to handle requests with a null
-wb_page.
-
-Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
+This is a simple C program that I used for calling the copy system call.
+Usage:  ./nfscopy /nfs/original.txt /nfs/copy.txt
 ---
-Checking for wb_page everywhere feels like a hack, but I don't really see
-any other way of doing this.  Suggestions welcome!
----
- fs/nfs/internal.h |  1 +
- fs/nfs/pagelist.c |  6 ++++--
- fs/nfs/write.c    | 41 +++++++++++++++++++++++++++++++++++++----
- 3 files changed, 42 insertions(+), 6 deletions(-)
+ nfscopy.c | 59 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 59 insertions(+)
+ create mode 100644 nfscopy.c
 
-diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
-index 9a547aa..7a3778c 100644
---- a/fs/nfs/internal.h
-+++ b/fs/nfs/internal.h
-@@ -477,6 +477,7 @@ void nfs_mark_request_commit(struct nfs_page *req,
- 			     u32 ds_commit_idx);
- int nfs_write_need_commit(struct nfs_pgio_header *);
- void nfs_writeback_update_inode(struct nfs_pgio_header *hdr);
-+int nfs_commit_file(struct file *file, struct nfs_write_verifier *verf);
- int nfs_generic_commit_list(struct inode *inode, struct list_head *head,
- 			    int how, struct nfs_commit_info *cinfo);
- void nfs_retry_commit(struct list_head *page_list,
-diff --git a/fs/nfs/pagelist.c b/fs/nfs/pagelist.c
-index 8ce4f61..c3c3555 100644
---- a/fs/nfs/pagelist.c
-+++ b/fs/nfs/pagelist.c
-@@ -341,8 +341,10 @@ nfs_create_request(struct nfs_open_context *ctx, struct page *page,
- 	 * long write-back delay. This will be adjusted in
- 	 * update_nfs_request below if the region is not locked. */
- 	req->wb_page    = page;
--	req->wb_index	= page_file_index(page);
--	page_cache_get(page);
-+	if (page) {
-+		req->wb_index = page_file_index(page);
-+		page_cache_get(page);
-+	}
- 	req->wb_offset  = offset;
- 	req->wb_pgbase	= offset;
- 	req->wb_bytes   = count;
-diff --git a/fs/nfs/write.c b/fs/nfs/write.c
-index 5754835..a82765b9 100644
---- a/fs/nfs/write.c
-+++ b/fs/nfs/write.c
-@@ -737,7 +737,7 @@ static void nfs_inode_remove_request(struct nfs_page *req)
- 		head = req->wb_head;
- 
- 		spin_lock(&inode->i_lock);
--		if (likely(!PageSwapCache(head->wb_page))) {
-+		if (likely(head->wb_page && !PageSwapCache(head->wb_page))) {
- 			set_page_private(head->wb_page, 0);
- 			ClearPagePrivate(head->wb_page);
- 			smp_mb__after_atomic();
-@@ -759,7 +759,8 @@ static void nfs_inode_remove_request(struct nfs_page *req)
- static void
- nfs_mark_request_dirty(struct nfs_page *req)
- {
--	__set_page_dirty_nobuffers(req->wb_page);
-+	if (req->wb_page)
-+		__set_page_dirty_nobuffers(req->wb_page);
- }
- 
- /*
-@@ -835,7 +836,8 @@ nfs_request_add_commit_list(struct nfs_page *req, struct nfs_commit_info *cinfo)
- 	spin_lock(cinfo->lock);
- 	nfs_request_add_commit_list_locked(req, &cinfo->mds->list, cinfo);
- 	spin_unlock(cinfo->lock);
--	nfs_mark_page_unstable(req->wb_page, cinfo);
-+	if (req->wb_page)
-+		nfs_mark_page_unstable(req->wb_page, cinfo);
- }
- EXPORT_SYMBOL_GPL(nfs_request_add_commit_list);
- 
-@@ -1724,6 +1726,36 @@ nfs_commit_list(struct inode *inode, struct list_head *head, int how,
- 	return -ENOMEM;
- }
- 
-+int nfs_commit_file(struct file *file, struct nfs_write_verifier *verf)
+diff --git a/nfscopy.c b/nfscopy.c
+new file mode 100644
+index 0000000..3417a14
+--- /dev/null
++++ b/nfscopy.c
+@@ -0,0 +1,59 @@
++#define _GNU_SOURCE
++#include <fcntl.h>
++#include <stdio.h>
++#include <stdlib.h>
++#include <sys/stat.h>
++#include <sys/syscall.h>
++#include <unistd.h>
++
++loff_t copy_file_range(int fd_in, loff_t *off_in, int fd_out,
++		       loff_t *off_out, size_t len, unsigned int flags)
 +{
-+	struct inode *inode = file_inode(file);
-+	struct nfs_open_context *open;
-+	struct nfs_commit_info cinfo;
-+	struct nfs_page *req;
-+	int ret;
++	return syscall(__NR_copy_file_range, fd_in, off_in, fd_out,
++		       off_out, len, flags);
++}
 +
-+	open = get_nfs_open_context(nfs_file_open_context(file));
-+	req  = nfs_create_request(open, NULL, NULL, 0, i_size_read(inode));
-+	if (!req) {
-+		ret = -ENOMEM;
-+		goto out_put;
++int main(int argc, char **argv)
++{
++	int fd_in, fd_out;
++	struct stat stat;
++	loff_t len, ret;
++	char buf[2];
++
++	if (argc != 3) {
++		fprintf(stderr, "Usage: %s <source> <destination>\n", argv[0]);
++		exit(EXIT_FAILURE);
 +	}
 +
-+	nfs_init_cinfo_from_inode(&cinfo, inode);
++	fd_in = open(argv[1], O_RDONLY);
++	if (fd_in == -1) {
++		perror("open (argv[1])");
++		exit(EXIT_FAILURE);
++	}
 +
-+	memcpy(&req->wb_verf, verf, sizeof(struct nfs_write_verifier));
-+	nfs_request_add_commit_list(req, &cinfo);
-+	ret = nfs_commit_inode(inode, FLUSH_SYNC);
-+	if (ret > 0)
-+		ret = 0;
++	if (fstat(fd_in, &stat) == -1) {
++		perror("fstat");
++		exit(EXIT_FAILURE);
++	}
++	len = stat.st_size;
 +
-+	nfs_free_request(req);
-+out_put:
-+	put_nfs_open_context(open);
-+	return ret;
++	fd_out = open(argv[2], O_CREAT|O_WRONLY|O_TRUNC, 0644);
++	if (fd_out == -1) {
++		perror("open (argv[2])");
++		exit(EXIT_FAILURE);
++	}
++
++	do {
++		ret = copy_file_range(fd_in, NULL, fd_out, NULL, len, 0);
++		if (ret == -1) {
++			perror("copy_file_range");
++			exit(EXIT_FAILURE);
++		}
++
++		len -= ret;
++	} while (len > 0);
++
++	close(fd_in);
++	close(fd_out);
++	exit(EXIT_SUCCESS);
 +}
-+EXPORT_SYMBOL_GPL(nfs_commit_file);
-+
- /*
-  * COMMIT call returned
-  */
-@@ -1748,7 +1780,8 @@ static void nfs_commit_release_pages(struct nfs_commit_data *data)
- 	while (!list_empty(&data->pages)) {
- 		req = nfs_list_entry(data->pages.next);
- 		nfs_list_remove_request(req);
--		nfs_clear_page_commit(req->wb_page);
-+		if (req->wb_page)
-+			nfs_clear_page_commit(req->wb_page);
- 
- 		dprintk("NFS:       commit (%s/%llu %d@%lld)",
- 			req->wb_context->dentry->d_sb->s_id,
 -- 
 2.7.2
 
