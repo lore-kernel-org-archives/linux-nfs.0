@@ -1,45 +1,27 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from casper.infradead.org ([85.118.1.10]:34716 "EHLO
-	casper.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753676AbcCIOnb (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 9 Mar 2016 09:43:31 -0500
+Received: from verein.lst.de ([213.95.11.211]:48534 "EHLO newverein.lst.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S933002AbcCIOsK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 9 Mar 2016 09:48:10 -0500
+Date: Wed, 9 Mar 2016 15:48:07 +0100
 From: Christoph Hellwig <hch@lst.de>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH] nfsd: block and scsi layout drivers need to depend on CONFIG_BLOCK
-Date: Wed,  9 Mar 2016 15:43:27 +0100
-Message-Id: <1457534607-6925-1-git-send-email-hch@lst.de>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: Christoph Hellwig <hch@lst.de>, trond.myklebust@primarydata.com,
+        linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 4/4] nfsd: add SCSI layout support
+Message-ID: <20160309144807.GA650@lst.de>
+References: <1457120777-30687-1-git-send-email-hch@lst.de> <1457120777-30687-5-git-send-email-hch@lst.de> <20160308221513.GC27006@fieldses.org>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20160308221513.GC27006@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Signed-off-by: Christoph Hellwig <hch@lst.de>
-Reported-by: Randy Dunlap <rdunlap@infradead.org>
----
- fs/nfsd/Kconfig | 4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
+> May as well document the server-side config there too, I guess; I'm
+> editing that like:
+> 
+> 	On {+a server built with CONFIG_NFSD_SCSI,+} the[-server,-] pNFS
+> 	SCSI volume support is
 
-diff --git a/fs/nfsd/Kconfig b/fs/nfsd/Kconfig
-index a30a313..c9f583d 100644
---- a/fs/nfsd/Kconfig
-+++ b/fs/nfsd/Kconfig
-@@ -88,7 +88,7 @@ config NFSD_PNFS
- 
- config NFSD_BLOCKLAYOUT
- 	bool "NFSv4.1 server support for pNFS block layouts"
--	depends on NFSD_V4
-+	depends on NFSD_V4 && BLOCK
- 	select NFSD_PNFS
- 	help
- 	  This option enables support for the exporting pNFS block layouts
-@@ -100,7 +100,7 @@ config NFSD_BLOCKLAYOUT
- 
- config NFSD_SCSILAYOUT
- 	bool "NFSv4.1 server support for pNFS SCSI layouts"
--	depends on NFSD_V4
-+	depends on NFSD_V4 && BLOCK
- 	select NFSD_PNFS
- 	help
- 	  This option enables support for the exporting pNFS SCSI layouts
--- 
-2.1.4
+Fine with me!
 
