@@ -1,56 +1,71 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx62.netapp.com ([216.240.31.182]:59697 "EHLO mx62.netapp.com"
+Received: from fieldses.org ([173.255.197.46]:54968 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752451AbcCKVUq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 11 Mar 2016 16:20:46 -0500
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-From: Anna Schumaker <Anna.Schumaker@netapp.com>
-Subject: [GIT PULL] Please pull NFSoRDMA client changes for 4.6
-Message-ID: <56E33462.6060003@Netapp.com>
-Date: Fri, 11 Mar 2016 16:10:58 -0500
+	id S1752700AbcCKWwt (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 11 Mar 2016 17:52:49 -0500
+Date: Fri, 11 Mar 2016 17:52:47 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Christoph Hellwig <hch@lst.de>
+Cc: trond.myklebust@primarydata.com, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 4/4] nfsd: add SCSI layout support
+Message-ID: <20160311225247.GA18755@fieldses.org>
+References: <1457120777-30687-1-git-send-email-hch@lst.de>
+ <1457120777-30687-5-git-send-email-hch@lst.de>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1457120777-30687-5-git-send-email-hch@lst.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Trond,
+On Fri, Mar 04, 2016 at 08:46:17PM +0100, Christoph Hellwig wrote:
+> This is a simple extension to the block layout driver to use SCSI
+> persistent reservations for access control and fencing, as well as
+> SCSI VPD pages for device identification.
+> 
+> For this we need to pass the nfs4_client to the proc_getdeviceinfo method
+> to generate the reservation key, and add a new fence_client method
+> to allow for fence actions in the layout driver.
+> 
+> Signed-off-by: Christoph Hellwig <hch@lst.de>
+> ---
+>  Documentation/filesystems/nfs/pnfs-scsi-server.txt |  22 ++
+>  fs/nfsd/Kconfig                                    |  13 +
+>  fs/nfsd/Makefile                                   |   1 +
+>  fs/nfsd/blocklayout.c                              | 298 ++++++++++++++++++---
+>  fs/nfsd/blocklayoutxdr.c                           |  65 ++++-
+>  fs/nfsd/blocklayoutxdr.h                           |  14 +
+>  fs/nfsd/nfs4layouts.c                              |  27 +-
+>  fs/nfsd/nfs4proc.c                                 |   6 +-
+>  fs/nfsd/pnfs.h                                     |   6 +
+>  fs/xfs/Makefile                                    |   1 +
+>  fs/xfs/xfs_pnfs.h                                  |   2 +-
+>  11 files changed, 407 insertions(+), 48 deletions(-)
+>  create mode 100644 Documentation/filesystems/nfs/pnfs-scsi-server.txt
+> 
+> diff --git a/Documentation/filesystems/nfs/pnfs-scsi-server.txt b/Documentation/filesystems/nfs/pnfs-scsi-server.txt
+> new file mode 100644
+> index 0000000..4150979
+> --- /dev/null
+> +++ b/Documentation/filesystems/nfs/pnfs-scsi-server.txt
+> @@ -665,7 +680,13 @@ nfsd4_cb_layout_done(struct nfsd4_callback *cb, struct rpc_task *task)
+>  		/*
+>  		 * Unknown error or non-responding client, we'll need to fence.
+>  		 */
+> -		nfsd4_cb_layout_fail(ls);
+> +		trace_layout_recall_fail(&ls->ls_stid.sc_stateid);
+> +
+> +		ops = nfsd4_layout_ops[ls->ls_layout_type];
+> +		if (ops->fence_client)
+> +			ops->fence_client(ls);
+> +		else
+> +			nfsd4_cb_layout_fail(ls);
+>  		return -1;
 
-The following changes since commit fc77dbd34c5c99bce46d40a2491937c3bcbd10af:
+I'm still not happy about this fencing on callback failure.  I think we
+discussed it before, but all I can find is a promise from me to finish
+some pynfs tests for the right behavior.  Which I haven't done.
 
-  Linux 4.5-rc6 (2016-02-28 08:41:20 -0800)
+I'd have to think through the failure scenarios to figure out how likely
+this is to bite us.
 
-are available in the git repository at:
-
-  git://git.linux-nfs.org/projects/anna/nfs-rdma.git tags/nfs-rdma-4.6
-
-for you to fetch changes up to 50340ef97f0ae41211084cbc23a629600918a2dd:
-
-  xprtrdma: Use new CQ API for RPC-over-RDMA client send CQs (2016-03-11 15:51:16 -0500)
-
-Thanks,
-Anna
-
-----------------------------------------------------------------
-Chuck Lever (11):
-      xprtrdma: Clean up unused RPCRDMA_INLINE_PAD_THRESH macro
-      xprtrdma: Clean up physical_op_map()
-      xprtrdma: Clean up dprintk format string containing a newline
-      xprtrdma: Segment head and tail XDR buffers on page boundaries
-      xprtrdma: Do not wait if ib_post_send() fails
-      rpcrdma: Add RPCRDMA_HDRLEN_ERR
-      xprtrdma: Properly handle RDMA_ERROR replies
-      xprtrdma: Serialize credit accounting again
-      xprtrdma: Use new CQ API for RPC-over-RDMA client receive CQs
-      xprtrdma: Use an anonymous union in struct rpcrdma_mw
-      xprtrdma: Use new CQ API for RPC-over-RDMA client send CQs
-
- include/linux/sunrpc/rpc_rdma.h    |  12 ++---
- include/linux/sunrpc/xprtrdma.h    |   2 -
- net/sunrpc/xprtrdma/fmr_ops.c      |  28 ++++++------
- net/sunrpc/xprtrdma/frwr_ops.c     | 143 ++++++++++++++++++++++++++++++++++++++---------------------
- net/sunrpc/xprtrdma/physical_ops.c |   1 -
- net/sunrpc/xprtrdma/rpc_rdma.c     | 108 ++++++++++++++++++++++++++++++++-------------
- net/sunrpc/xprtrdma/verbs.c        | 204 ++++++++++++++++++++++++++-----------------------------------------------------------
- net/sunrpc/xprtrdma/xprt_rdma.h    |  14 +++---
- 8 files changed, 259 insertions(+), 253 deletions(-)
+--b.
