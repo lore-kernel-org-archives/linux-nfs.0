@@ -1,113 +1,76 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-vk0-f49.google.com ([209.85.213.49]:36569 "EHLO
-	mail-vk0-f49.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932673AbcCKRDN (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 11 Mar 2016 12:03:13 -0500
-Received: by mail-vk0-f49.google.com with SMTP id c3so141299173vkb.3
-        for <linux-nfs@vger.kernel.org>; Fri, 11 Mar 2016 09:03:12 -0800 (PST)
-MIME-Version: 1.0
-In-Reply-To: <20160311141701.GE14808@infradead.org>
-References: <1456733847-17982-1-git-send-email-agruenba@redhat.com>
-	<1456733847-17982-19-git-send-email-agruenba@redhat.com>
-	<20160311141701.GE14808@infradead.org>
-Date: Fri, 11 Mar 2016 18:03:11 +0100
-Message-ID: <CAHc6FU7gH54C-hfV8VQzgpYv=PYNvpA9dc8stgVf2_khF7dUdg@mail.gmail.com>
-Subject: Re: [PATCH v18 18/22] richacl: xattr mapping functions
-From: Andreas Gruenbacher <agruenba@redhat.com>
-To: Christoph Hellwig <hch@infradead.org>
-Cc: Alexander Viro <viro@zeniv.linux.org.uk>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        "Theodore Ts'o" <tytso@mit.edu>, linux-cifs@vger.kernel.org,
-        Linux API <linux-api@vger.kernel.org>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        LKML <linux-kernel@vger.kernel.org>, XFS Developers <xfs@oss.sgi.com>,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        Jeff Layton <jlayton@poochiereds.net>,
-        linux-ext4 <linux-ext4@vger.kernel.org>,
-        Anna Schumaker <anna.schumaker@netapp.com>
-Content-Type: text/plain; charset=UTF-8
+Received: from userp1040.oracle.com ([156.151.31.81]:32842 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750819AbcCKSVT (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 11 Mar 2016 13:21:19 -0500
+From: Chuck Lever <chuck.lever@oracle.com>
+Content-Type: text/plain; charset=us-ascii
+Subject: NFSv4.1: LOCK races with returning a delegation
+Date: Fri, 11 Mar 2016 13:21:11 -0500
+Message-Id: <F530EBF6-F23B-41A7-AF4C-36141D691410@oracle.com>
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+To: Trond Myklebust <trond.myklebust@primarydata.com>,
+        "Anna Schumaker@netapp com" <Anna.Schumaker@netapp.com>
+Mime-Version: 1.0 (Mac OS X Mail 9.2 \(3112\))
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Mar 11, 2016 at 3:17 PM, Christoph Hellwig <hch@infradead.org> wrote:
->> +#include <linux/richacl_xattr.h>
->> +
->> +MODULE_LICENSE("GPL");
->
-> what's the point given that the code isn't even modolar?
+Hi-
 
-A leftover, removed now.
+We observed some behavior at Connectathon between a
+v4.5-rc6 Linux client and a prototype Solaris 12 server
+when using NFSv4.1 on TCP. Test is xfstests generic/089.
 
->> +static void
->> +fix_xattr_from_user(const char *kname, void *kvalue, size_t size)
->> +{
->> +     if (strncmp(kname, XATTR_SYSTEM_PREFIX, XATTR_SYSTEM_PREFIX_LEN))
->> +             return;
->> +     kname += XATTR_SYSTEM_PREFIX_LEN;
->> +     if (!strcmp(kname, XATTR_POSIX_ACL_ACCESS) ||
->> +         !strcmp(kname, XATTR_POSIX_ACL_DEFAULT))
->> +             posix_acl_fix_xattr_from_user(kvalue, size);
->> +}
->>
->>  /*
->>   * Extended attribute SET operations
->> @@ -329,9 +339,7 @@ setxattr(struct dentry *d, const char __user *name, const void __user *value,
->>                       error = -EFAULT;
->>                       goto out;
->>               }
->> -             if ((strcmp(kname, XATTR_NAME_POSIX_ACL_ACCESS) == 0) ||
->> -                 (strcmp(kname, XATTR_NAME_POSIX_ACL_DEFAULT) == 0))
->> -                     posix_acl_fix_xattr_from_user(kvalue, size);
->> +             fix_xattr_from_user(kname, kvalue, size);
->>       }
->>
->>       error = vfs_setxattr(d, kname, kvalue, size, flags);
->> @@ -396,6 +404,17 @@ SYSCALL_DEFINE5(fsetxattr, int, fd, const char __user *, name,
->>       return error;
->>  }
->>
->> +static void
->> +fix_xattr_to_user(const char *kname, void *kvalue, size_t size)
->> +{
->> +     if (strncmp(kname, XATTR_SYSTEM_PREFIX, XATTR_SYSTEM_PREFIX_LEN))
->> +             return;
->> +     kname += XATTR_SYSTEM_PREFIX_LEN;
->> +     if (!strcmp(kname, XATTR_POSIX_ACL_ACCESS) ||
->> +         !strcmp(kname, XATTR_POSIX_ACL_DEFAULT))
->> +             posix_acl_fix_xattr_to_user(kvalue, size);
->> +}
->> +
->>  /*
->>   * Extended attribute GET operations
->>   */
->> @@ -426,9 +445,7 @@ getxattr(struct dentry *d, const char __user *name, void __user *value,
->>
->>       error = vfs_getxattr(d, kname, kvalue, size);
->>       if (error > 0) {
->> -             if ((strcmp(kname, XATTR_NAME_POSIX_ACL_ACCESS) == 0) ||
->> -                 (strcmp(kname, XATTR_NAME_POSIX_ACL_DEFAULT) == 0))
->> -                     posix_acl_fix_xattr_to_user(kvalue, size);
->> +             fix_xattr_to_user(kname, kvalue, size);
->
-> I don't see how this is related to the rest of the patch.
+At an earlier point, the client has been granted a
+write delegation, denoted below by "state=w", and has
+closed the file.
 
-Indeed, this is unrelated now. I'll split it off.
+The sequence then observed on the wire is:
 
->> +++ b/include/linux/richacl_xattr.h
->
-> What's the point in splitting this from the richacl.h header?
->
-> Same for the uapi versions.
->
->> +struct richacl_xattr {
->> +     unsigned char   a_version;
->> +     unsigned char   a_flags;
->
-> Explicit __u8 for uapi headers, please.
+  C OPEN fh=A claim=DELEG_CUR_FH
+  C LOCK fh=A zero stateid
+  R OPEN NFS4_OK state=a
+  R LOCK NFS4ERR_BAD_STATEID
+  C TEST_STATEID state=a
+  R TEST_STATEID NFS4_OK
 
-Okay.
+    client reports "Lock reclaim failed!"
 
-Thanks,
-Andreas
+  C LOCK fh=A state=a
+  R LOCK NFS4_OK
+  C DELEGRETURN state=w
+  R DELEGRETURN NFS4_OK
+  C RENAME -> .nfsXXXXXXXXXX
+  R RENAME NFS4_OK
+
+I've reproduced the problem here at home. Sometimes
+the LOCK operation is emitted just _before_ the
+OPEN.
+
+There are two processes involved. One is attempting
+to lock the file. The other is attempting to unlink
+the same file while it is still open.
+
+I'm not sure why the client is emitting the LOCK
+operation at all, since it still holds a write
+delegation. The "Lock reclaim failed!" message
+seems to reflect this confusion: It expects to find
+and recover lock state, but there hasn't been a
+successful LOCK on that file yet.
+
+After browsing the code, I don't see any serialization
+between taking a lock and returning a delegation on
+the same file, but my understanding in this area comes
+up short.
+
+Is there a preferred way to serialize these two
+activities (like, a particular mutex that should be
+held) ?
+
+Thanks for any guidance!
+
+--
+Chuck Lever
+
+
+
