@@ -1,76 +1,110 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from userp1040.oracle.com ([156.151.31.81]:32842 "EHLO
-	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750819AbcCKSVT (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 11 Mar 2016 13:21:19 -0500
-From: Chuck Lever <chuck.lever@oracle.com>
-Content-Type: text/plain; charset=us-ascii
-Subject: NFSv4.1: LOCK races with returning a delegation
-Date: Fri, 11 Mar 2016 13:21:11 -0500
-Message-Id: <F530EBF6-F23B-41A7-AF4C-36141D691410@oracle.com>
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-To: Trond Myklebust <trond.myklebust@primarydata.com>,
-        "Anna Schumaker@netapp com" <Anna.Schumaker@netapp.com>
-Mime-Version: 1.0 (Mac OS X Mail 9.2 \(3112\))
+Received: from mail-ig0-f172.google.com ([209.85.213.172]:34432 "EHLO
+	mail-ig0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932397AbcCKUFh (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 11 Mar 2016 15:05:37 -0500
+MIME-Version: 1.0
+In-Reply-To: <CAHc6FU4t3yisCM=MXrHRmCja_A8eZOpVa1smJ0gUhv+vuUAuXA@mail.gmail.com>
+References: <1456733847-17982-1-git-send-email-agruenba@redhat.com>
+ <20160311140134.GA14808@infradead.org> <CAHc6FU4t3yisCM=MXrHRmCja_A8eZOpVa1smJ0gUhv+vuUAuXA@mail.gmail.com>
+From: Steve French <smfrench@gmail.com>
+Date: Fri, 11 Mar 2016 14:05:16 -0600
+Message-ID: <CAH2r5mv3OTmPOQBV7xc-uZmB0gWxykXOCEVOcybx3tbHiViTZg@mail.gmail.com>
+Subject: Re: [PATCH v18 00/22] Richacls (Core and Ext4)
+To: Andreas Gruenbacher <agruenba@redhat.com>
+Cc: Christoph Hellwig <hch@infradead.org>,
+        Alexander Viro <viro@zeniv.linux.org.uk>,
+        "J. Bruce Fields" <bfields@fieldses.org>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        "Theodore Ts'o" <tytso@mit.edu>,
+        "linux-cifs@vger.kernel.org" <linux-cifs@vger.kernel.org>,
+        Linux API <linux-api@vger.kernel.org>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        LKML <linux-kernel@vger.kernel.org>, XFS Developers <xfs@oss.sgi.com>,
+        Andreas Dilger <adilger.kernel@dilger.ca>,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        Jeff Layton <jlayton@poochiereds.net>,
+        linux-ext4 <linux-ext4@vger.kernel.org>,
+        Anna Schumaker <anna.schumaker@netapp.com>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi-
+On Fri, Mar 11, 2016 at 10:11 AM, Andreas Gruenbacher
+<agruenba@redhat.com> wrote:
+> On Fri, Mar 11, 2016 at 3:01 PM, Christoph Hellwig <hch@infradead.org> w
+> The model is designed specifically to be compliant with the POSIX
+> permission model. What assumptions are you talking about?
+>
+>> especially by adding allow and deny ACE at the same time.
+>
+> I remember from past discussions that a permission model like the
+> POSIX ACL model that doesn't have DENY ACEs would be more to your
+> liking. This argument is dead from the start though: NFSv4 ACLs
+> without DENY ACEs cannot represent basic file permissions like 0604
+> where the owning group has fewer permissions than others, for example
+> (see the richaclex(7) man page). We would end up with a permission
+> model that isn't even compatible with the traditional POSIX file
+> permission model, one which nobody else implements or cares about.
 
-We observed some behavior at Connectathon between a
-v4.5-rc6 Linux client and a prototype Solaris 12 server
-when using NFSv4.1 on TCP. Test is xfstests generic/089.
+NFSv4.1 (and later) and Samba's (and cifs.ko and NTFS-3g) ACL model are close
+enough that doing a common approach that helps all three seems
+very reasonable.
 
-At an earlier point, the client has been granted a
-write delegation, denoted below by "state=w", and has
-closed the file.
+A loosely related question is what can be done for tools around existing
+interfaces for ACLs.  I recently found out NTFS-3g has this xattr:
 
-The sequence then observed on the wire is:
+    static const char nf_ns_xattr_ntfs_acl[] = "system.ntfs_acl";
 
-  C OPEN fh=A claim=DELEG_CUR_FH
-  C LOCK fh=A zero stateid
-  R OPEN NFS4_OK state=a
-  R LOCK NFS4ERR_BAD_STATEID
-  C TEST_STATEID state=a
-  R TEST_STATEID NFS4_OK
+which allows you to query system.ntfs_acl xattr to get their full ACL
+(I hope) from NTFS but it hard to read without tools to parse
+the blobs better.  I was prototyping adding this to cifs.ko for
+the most current (SMB3 and later) protocol dialects at least
+to allow backup and debug tools to use this to get the actual
+ACL.   cifs.ko ACL should match almost exactly to NTFS-3g's but
+I wish I could find some tools that use this xattr so I could try
+comparing this with cacls.exe output and smbcacls (samba tool)
+for display detailed ACL information.  Any idea of disk management tools
+for dumping/viewing/editing ntfs ACLs on Linux for comparison?
 
-    client reports "Lock reclaim failed!"
+>> It also doesn't help with the issue that the main thing it's trying
+>> to be compatible with (Windows) actually uses a fundamentally different
+>> identifier to apply the ACLs to - as long as you're still limited
+>> to users and groups and not guids we'll still have that mapping problem
+>> anyway.
+>
+> Samba has been dealing with mapping between SIDs and UIDs/GIDs for a
+> long time, and it's working acceptably well.
+>
+> We could store SIDs in ACEs, but that wouldn't make the actual
+> problems go away: Files on Linux have an owner and an owning group
+> which are identitifed by UID/GID, whereas a file is owned by a SID
+> which can be either a user or a group in a SID world. Also, processes
+> on Linux have an owner and a list of groups which are identified by
+> UID/GID, so any SIDs stored in filesystems would never match a
+> process, anyway.
 
-  C LOCK fh=A state=a
-  R LOCK NFS4_OK
-  C DELEGRETURN state=w
-  R DELEGRETURN NFS4_OK
-  C RENAME -> .nfsXXXXXXXXXX
-  R RENAME NFS4_OK
+Samba's SID<->Username and SID<->UID mapping does work
+acceptably well, if a bit "over-configurable" ie with
+many choices for how it is done.
 
-I've reproduced the problem here at home. Sometimes
-the LOCK operation is emitted just _before_ the
-OPEN.
+ (the related RFC2307 mapping needed for mapping usernames
+to uids across an enterprise, which Samba's winbind can
+also do is helpful much more broadly - since, unlike a uid
+which is too small, the username in an NFS ACLs
+are basically a one to one mapping for Samba to SIDs (there
+are may samba vfs modules for different OS that already
+do this, including a one for an earlier version of Linux RichACLs)
 
-There are two processes involved. One is attempting
-to lock the file. The other is attempting to unlink
-the same file while it is still open.
+Sounds like I need to quickly rework the SMB3 ACL helper functions
+for cifs.ko
 
-I'm not sure why the client is emitting the LOCK
-operation at all, since it still holds a write
-delegation. The "Lock reclaim failed!" message
-seems to reflect this confusion: It expects to find
-and recover lock state, but there hasn't been a
-successful LOCK on that file yet.
-
-After browsing the code, I don't see any serialization
-between taking a lock and returning a delegation on
-the same file, but my understanding in this area comes
-up short.
-
-Is there a preferred way to serialize these two
-activities (like, a particular mutex that should be
-held) ?
-
-Thanks for any guidance!
-
---
-Chuck Lever
+Also do you know where is the current version of the corresponding
+vfs_richacl for
+Samba which works with the current RichACL format?
 
 
+-- 
+Thanks,
 
+Steve
