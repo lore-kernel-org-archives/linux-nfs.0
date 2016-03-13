@@ -1,28 +1,25 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-vk0-f53.google.com ([209.85.213.53]:34671 "EHLO
-	mail-vk0-f53.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754277AbcCMXCO (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 13 Mar 2016 19:02:14 -0400
-Received: by mail-vk0-f53.google.com with SMTP id e185so189500475vkb.1
-        for <linux-nfs@vger.kernel.org>; Sun, 13 Mar 2016 16:02:13 -0700 (PDT)
+Received: from mail-vk0-f41.google.com ([209.85.213.41]:36039 "EHLO
+	mail-vk0-f41.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754370AbcCMXIc (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 13 Mar 2016 19:08:32 -0400
+Received: by mail-vk0-f41.google.com with SMTP id c3so189553133vkb.3
+        for <linux-nfs@vger.kernel.org>; Sun, 13 Mar 2016 16:08:32 -0700 (PDT)
 MIME-Version: 1.0
-In-Reply-To: <20160311230254.GG2792@jra3>
+In-Reply-To: <20160311142719.GG14808@infradead.org>
 References: <1456733847-17982-1-git-send-email-agruenba@redhat.com>
-	<20160311140134.GA14808@infradead.org>
-	<CAHc6FU4t3yisCM=MXrHRmCja_A8eZOpVa1smJ0gUhv+vuUAuXA@mail.gmail.com>
-	<CAH2r5mv3OTmPOQBV7xc-uZmB0gWxykXOCEVOcybx3tbHiViTZg@mail.gmail.com>
-	<20160311230254.GG2792@jra3>
-Date: Mon, 14 Mar 2016 00:02:13 +0100
-Message-ID: <CAHc6FU5Bq9afVdNogc9DQYyyXwLfUopXW5ZnSuct3N+NvKW4Rg@mail.gmail.com>
-Subject: Re: [PATCH v18 00/22] Richacls (Core and Ext4)
+	<1456733847-17982-22-git-send-email-agruenba@redhat.com>
+	<20160311142719.GG14808@infradead.org>
+Date: Mon, 14 Mar 2016 00:08:31 +0100
+Message-ID: <CAHc6FU4TVKKYr-apCNTuR3aWAHpv7wZJ7ixePfy0Qt2VA49TZQ@mail.gmail.com>
+Subject: Re: [PATCH v18 21/22] ext4: Add richacl support
 From: Andreas Gruenbacher <agruenba@redhat.com>
-To: Jeremy Allison <jra@samba.org>
-Cc: Steve French <smfrench@gmail.com>, Christoph Hellwig <hch@infradead.org>,
-        Alexander Viro <viro@zeniv.linux.org.uk>,
+To: Christoph Hellwig <hch@infradead.org>
+Cc: Alexander Viro <viro@zeniv.linux.org.uk>,
+        "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
         "J. Bruce Fields" <bfields@fieldses.org>,
         Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        "Theodore Ts'o" <tytso@mit.edu>,
-        "linux-cifs@vger.kernel.org" <linux-cifs@vger.kernel.org>,
+        "Theodore Ts'o" <tytso@mit.edu>, linux-cifs@vger.kernel.org,
         Linux API <linux-api@vger.kernel.org>,
         Trond Myklebust <trond.myklebust@primarydata.com>,
         LKML <linux-kernel@vger.kernel.org>, XFS Developers <xfs@oss.sgi.com>,
@@ -35,37 +32,89 @@ Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sat, Mar 12, 2016 at 12:02 AM, Jeremy Allison <jra@samba.org> wrote:
-> On Fri, Mar 11, 2016 at 02:05:16PM -0600, Steve French wrote:
->> Sounds like I need to quickly rework the SMB3 ACL helper functions
->> for cifs.ko
->>
->> Also do you know where is the current version of the corresponding
->> vfs_richacl for
->> Samba which works with the current RichACL format?
+On Fri, Mar 11, 2016 at 3:27 PM, Christoph Hellwig <hch@infradead.org> wrote:
+>> +static inline int
+>> +ext4_acl_chmod(struct inode *inode, umode_t mode)
+>> +{
+>> +     if (IS_RICHACL(inode))
+>> +             return richacl_chmod(inode, inode->i_mode);
+>> +     return posix_acl_chmod(inode, inode->i_mode);
+>> +}
 >
-> I have a patch for a new vfs_richacl somewhere. I remember
-> sending it to Andreas for testing...
+> Thi isn't ext4-specific and potentially duplicated in every caller.
+> Please provide this as a common helper.
+>
+> Also while we're at it, the mode argument is ignore and the function
+> always uses inode->i_mode instead.
+>
+>> +ext4_get_richacl(struct inode *inode)
+>> +{
+>> +     const int name_index = EXT4_XATTR_INDEX_RICHACL;
+>> +     void *value = NULL;
+>> +     struct richacl *acl = NULL;
+>> +     int retval;
+>> +
+>> +     retval = ext4_xattr_get(inode, name_index, "", NULL, 0);
+>> +     if (retval > 0) {
+>> +             value = kmalloc(retval, GFP_NOFS);
+>> +             if (!value)
+>> +                     return ERR_PTR(-ENOMEM);
+>> +             retval = ext4_xattr_get(inode, name_index, "", value, retval);
+>> +     }
+>> +     if (retval > 0) {
+>> +             acl = richacl_from_xattr(&init_user_ns, value, retval);
+>> +             if (acl == ERR_PTR(-EINVAL))
+>> +                     acl = ERR_PTR(-EIO);
+>
+> Shouldn't richacl_from_xattr return the error pointer that ->get_richacl
+> callers expect?
 
-Ah, the patch was for testing, not resting ... how could I get that mixed up.
+The xattr representation is the same on disk and at the xattr syscall
+layer, and so richacl_from_xattr is used for converting into the
+in-memory representation in both cases. The error codes are not the
+same when a user supplies an invalid value via setxattr or NFS and
+when an invalid xattr is read from disk though. I'll add a parameter
+to richacl_from_xattr to make this more explicit.
 
-I've applied your patch to the latest master branch, made it compile
-again, and fixed a few obvious problems. The results I get with
-smbcacls look reasonable now.
+>> +static int
+>> +__ext4_set_richacl(handle_t *handle, struct inode *inode, struct richacl *acl)
+>> +{
+>> +     const int name_index = EXT4_XATTR_INDEX_RICHACL;
+>> +     umode_t mode = inode->i_mode;
+>> +     int retval, size;
+>> +     void *value;
+>> +
+>> +     if (richacl_equiv_mode(acl, &mode) == 0) {
+>> +             inode->i_ctime = ext4_current_time(inode);
+>> +             inode->i_mode = mode;
+>> +             ext4_mark_inode_dirty(handle, inode);
+>> +             return __ext4_remove_richacl(handle, inode);
+>> +     }
+>
+> Should this check for a NULL acl instead of special casing that
+> in ext4_set_richacl?
 
-The code is here:
-  https://github.com/andreas-gruenbacher/samba richacl
+I'm not sure I understand what you mean. When the
 
-I've used the following smb.conf:
-  [richacl]
-  comment = Richacl directory
-  path = /mnt/ext4
-  vfs objects = richacl
-  writeable = yes
-  browseable = yes
-
-Is there a particular reason why you didn't make vfs_richacl a
-dynamically loadable module?
-
-Thanks,
-Andreas
+>> +int
+>> +ext4_init_richacl(handle_t *handle, struct inode *inode, struct inode *dir)
+>> +{
+>> +     struct richacl *acl = richacl_create(&inode->i_mode, dir);
+>> +     int error;
+>> +
+>> +     error = PTR_ERR(acl);
+>> +     if (IS_ERR(acl))
+>> +             return error;
+>
+>         if (IS_ERR(acl))
+>                 return PTR_ERR(acl);
+>
+>> +     if (acl) {
+>> +             error = __ext4_set_richacl(handle, inode, acl);
+>> +             richacl_put(acl);
+>> +     }
+>
+> Shouldn't richacl_create return NULL if the ACL is equivalent to the
+> mode bits instead of letting every filesystem figure that out on it's
+> own?
+>
