@@ -1,17 +1,17 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-vk0-f41.google.com ([209.85.213.41]:36039 "EHLO
-	mail-vk0-f41.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754370AbcCMXIc (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 13 Mar 2016 19:08:32 -0400
-Received: by mail-vk0-f41.google.com with SMTP id c3so189553133vkb.3
-        for <linux-nfs@vger.kernel.org>; Sun, 13 Mar 2016 16:08:32 -0700 (PDT)
+Received: from mail-vk0-f46.google.com ([209.85.213.46]:32901 "EHLO
+	mail-vk0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754493AbcCMXt6 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 13 Mar 2016 19:49:58 -0400
+Received: by mail-vk0-f46.google.com with SMTP id k1so190366236vkb.0
+        for <linux-nfs@vger.kernel.org>; Sun, 13 Mar 2016 16:49:57 -0700 (PDT)
 MIME-Version: 1.0
 In-Reply-To: <20160311142719.GG14808@infradead.org>
 References: <1456733847-17982-1-git-send-email-agruenba@redhat.com>
 	<1456733847-17982-22-git-send-email-agruenba@redhat.com>
 	<20160311142719.GG14808@infradead.org>
-Date: Mon, 14 Mar 2016 00:08:31 +0100
-Message-ID: <CAHc6FU4TVKKYr-apCNTuR3aWAHpv7wZJ7ixePfy0Qt2VA49TZQ@mail.gmail.com>
+Date: Mon, 14 Mar 2016 00:49:57 +0100
+Message-ID: <CAHc6FU4trGRagkjJBA9Hf_fGfCrwhRRDkUbozRxk4E1O-CbXgw@mail.gmail.com>
 Subject: Re: [PATCH v18 21/22] ext4: Add richacl support
 From: Andreas Gruenbacher <agruenba@redhat.com>
 To: Christoph Hellwig <hch@infradead.org>
@@ -33,49 +33,6 @@ Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 On Fri, Mar 11, 2016 at 3:27 PM, Christoph Hellwig <hch@infradead.org> wrote:
->> +static inline int
->> +ext4_acl_chmod(struct inode *inode, umode_t mode)
->> +{
->> +     if (IS_RICHACL(inode))
->> +             return richacl_chmod(inode, inode->i_mode);
->> +     return posix_acl_chmod(inode, inode->i_mode);
->> +}
->
-> Thi isn't ext4-specific and potentially duplicated in every caller.
-> Please provide this as a common helper.
->
-> Also while we're at it, the mode argument is ignore and the function
-> always uses inode->i_mode instead.
->
->> +ext4_get_richacl(struct inode *inode)
->> +{
->> +     const int name_index = EXT4_XATTR_INDEX_RICHACL;
->> +     void *value = NULL;
->> +     struct richacl *acl = NULL;
->> +     int retval;
->> +
->> +     retval = ext4_xattr_get(inode, name_index, "", NULL, 0);
->> +     if (retval > 0) {
->> +             value = kmalloc(retval, GFP_NOFS);
->> +             if (!value)
->> +                     return ERR_PTR(-ENOMEM);
->> +             retval = ext4_xattr_get(inode, name_index, "", value, retval);
->> +     }
->> +     if (retval > 0) {
->> +             acl = richacl_from_xattr(&init_user_ns, value, retval);
->> +             if (acl == ERR_PTR(-EINVAL))
->> +                     acl = ERR_PTR(-EIO);
->
-> Shouldn't richacl_from_xattr return the error pointer that ->get_richacl
-> callers expect?
-
-The xattr representation is the same on disk and at the xattr syscall
-layer, and so richacl_from_xattr is used for converting into the
-in-memory representation in both cases. The error codes are not the
-same when a user supplies an invalid value via setxattr or NFS and
-when an invalid xattr is read from disk though. I'll add a parameter
-to richacl_from_xattr to make this more explicit.
-
 >> +static int
 >> +__ext4_set_richacl(handle_t *handle, struct inode *inode, struct richacl *acl)
 >> +{
@@ -94,7 +51,21 @@ to richacl_from_xattr to make this more explicit.
 > Should this check for a NULL acl instead of special casing that
 > in ext4_set_richacl?
 
-I'm not sure I understand what you mean. When the
+I'm not sure I understand what you mean. When iop->set_richacl is
+called with a richacl that is mode-equivalent, the file permission
+bits need to be updated and any existing acl needs to be removed.
+Doing this at the vfs level would result in two calls, iop->setattr
+and iop->set_richacl, which can cause problems. To remove an existing
+acl without setting the mode, set_richacl is called with a NULL
+richacl.
+
+__ext4_set_richacl() was split into __ext4_set_richacl() and
+__ext4_remove_richacl() to align with the xfs code due to the
+following comment from Dave Chinner:
+  http://oss.sgi.com/archives/xfs/2015-10/msg00354.html
+
+Diff here:
+  https://git.kernel.org/cgit/linux/kernel/git/agruen/linux-richacl.git/diff/fs/ext4/richacl.c?id=richacl-2015-10-16&id2=richacl-2015-10-12
 
 >> +int
 >> +ext4_init_richacl(handle_t *handle, struct inode *inode, struct inode *dir)
@@ -117,4 +88,8 @@ I'm not sure I understand what you mean. When the
 > Shouldn't richacl_create return NULL if the ACL is equivalent to the
 > mode bits instead of letting every filesystem figure that out on it's
 > own?
->
+
+Hm, that's what it does?
+
+Thanks,
+Andreas
