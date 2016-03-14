@@ -1,8 +1,8 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:39266 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:48801 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S965326AbcCNOzp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 14 Mar 2016 10:55:45 -0400
+	id S965284AbcCNOza (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 14 Mar 2016 10:55:30 -0400
 From: Andreas Gruenbacher <agruenba@redhat.com>
 To: Alexander Viro <viro@zeniv.linux.org.uk>
 Cc: Andreas Gruenbacher <agruenba@redhat.com>,
@@ -16,52 +16,135 @@ Cc: Andreas Gruenbacher <agruenba@redhat.com>,
         xfs@oss.sgi.com, linux-kernel@vger.kernel.org,
         linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
         linux-cifs@vger.kernel.org, linux-api@vger.kernel.org
-Subject: [PATCH v19 04/23] vfs: Make the inode passed to inode_change_ok non-const
-Date: Mon, 14 Mar 2016 15:55:03 +0100
-Message-Id: <1457967322-14886-5-git-send-email-agruenba@redhat.com>
-In-Reply-To: <1457967322-14886-1-git-send-email-agruenba@redhat.com>
-References: <1457967322-14886-1-git-send-email-agruenba@redhat.com>
+Subject: [PATCH v19 00/23] Richacls (Core and Ext4)
+Date: Mon, 14 Mar 2016 15:54:59 +0100
+Message-Id: <1457967322-14886-1-git-send-email-agruenba@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-We will need to call iop->permission and iop->get_acl from
-inode_change_ok() for additional permission checks, and both take a
-non-const inode.
+Al,
 
-Signed-off-by: Andreas Gruenbacher <agruenba@redhat.com>
-Reviewed-by: J. Bruce Fields <bfields@redhat.com>
-Reviewed-by: Andreas Dilger <adilger@dilger.ca>
----
- fs/attr.c          | 2 +-
- include/linux/fs.h | 2 +-
- 2 files changed, 2 insertions(+), 2 deletions(-)
+could you please merge the current richacl patch queue, up to and including
+the ext4 support?
 
-diff --git a/fs/attr.c b/fs/attr.c
-index 25b24d0..7ca7fa0 100644
---- a/fs/attr.c
-+++ b/fs/attr.c
-@@ -28,7 +28,7 @@
-  * Should be called as the first thing in ->setattr implementations,
-  * possibly after taking additional locks.
-  */
--int inode_change_ok(const struct inode *inode, struct iattr *attr)
-+int inode_change_ok(struct inode *inode, struct iattr *attr)
- {
- 	unsigned int ia_valid = attr->ia_valid;
- 
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index 97e34ba..efff04f 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -2908,7 +2908,7 @@ extern int buffer_migrate_page(struct address_space *,
- #define buffer_migrate_page NULL
- #endif
- 
--extern int inode_change_ok(const struct inode *, struct iattr *);
-+extern int inode_change_ok(struct inode *, struct iattr *);
- extern int inode_newsize_ok(const struct inode *, loff_t offset);
- extern void setattr_copy(struct inode *inode, const struct iattr *attr);
- 
+
+Changes since the last posting (https://lwn.net/Articles/677901/):
+
+ * richacl_from_xattr now takes an invalid_error parameter specifying
+   the error code to return when an xattr is invallid.  This allows to
+   better use this function when decoding an xattr stored on a filesystem
+   as well as when decoding a user-provided xattr.
+
+ * ext4_acl_chmod and xfs_acl_chmod have lost their mode parameter;
+   they have aready been using inode->i_mode instead of the parameter.
+
+ * Use __u8 instead of unsigned char in uapi headers.  Drop left-over
+   MODULE_LICENSE declarations.  Use IS_ERR_OR_NULL instead of IS_ERR in
+   ext4_init_richacl.
+
+ * Rebased on top of v4.5.
+
+
+The complete patch queue is available here:
+
+  git://git.kernel.org/pub/scm/linux/kernel/git/agruen/linux-richacl.git \
+        richacl-2016-03-14
+
+
+The richacl user-space utilitites, man pages, and test suite are available
+here:
+
+  https://github.com/andreas-gruenbacher/richacl
+
+
+Changes to other user-space packages for richacl:
+
+  https://github.com/andreas-gruenbacher/coreutils
+  https://github.com/andreas-gruenbacher/e2fsprogs
+  https://github.com/andreas-gruenbacher/samba
+  https://github.com/andreas-gruenbacher/xfsprogs-dev
+  https://github.com/andreas-gruenbacher/nfs-utils
+
+
+Please see the richacl homepage for more information:
+
+  http://www.bestbits.at/richacl/
+
+
+Thanks,
+Andreas
+
+Andreas Gruenbacher (21):
+  vfs: Add IS_ACL() and IS_RICHACL() tests
+  vfs: Add MAY_CREATE_FILE and MAY_CREATE_DIR permission flags
+  vfs: Add MAY_DELETE_SELF and MAY_DELETE_CHILD permission flags
+  vfs: Make the inode passed to inode_change_ok non-const
+  vfs: Add permission flags for setting file attributes
+  richacl: In-memory representation and helper functions
+  richacl: Permission mapping functions
+  richacl: Compute maximum file masks from an acl
+  richacl: Permission check algorithm
+  posix_acl: Unexport acl_by_type and make it static
+  posix_acl: Improve xattr fixup code
+  vfs: Cache base_acl objects in inodes
+  vfs: Add get_richacl and set_richacl inode operations
+  vfs: Cache richacl in struct inode
+  richacl: Update the file masks in chmod()
+  richacl: Check if an acl is equivalent to a file mode
+  richacl: Create-time inheritance
+  richacl: Automatic Inheritance
+  richacl: xattr mapping functions
+  richacl: Add richacl xattr handler
+  vfs: Add richacl permission checking
+
+Aneesh Kumar K.V (2):
+  ext4: Add richacl support
+  ext4: Add richacl feature flag
+
+ drivers/staging/lustre/lustre/llite/llite_lib.c |   2 +-
+ fs/Kconfig                                      |   3 +
+ fs/Makefile                                     |   2 +
+ fs/attr.c                                       |  81 +++-
+ fs/ext4/Kconfig                                 |  11 +
+ fs/ext4/Makefile                                |   1 +
+ fs/ext4/ext4.h                                  |   6 +-
+ fs/ext4/file.c                                  |   3 +
+ fs/ext4/ialloc.c                                |  11 +-
+ fs/ext4/inode.c                                 |  12 +-
+ fs/ext4/namei.c                                 |   5 +
+ fs/ext4/richacl.c                               | 137 ++++++
+ fs/ext4/richacl.h                               |  40 ++
+ fs/ext4/super.c                                 |  49 +-
+ fs/ext4/xattr.c                                 |   7 +
+ fs/f2fs/acl.c                                   |   4 +-
+ fs/inode.c                                      |  15 +-
+ fs/jffs2/acl.c                                  |  10 +-
+ fs/namei.c                                      | 118 ++++-
+ fs/posix_acl.c                                  |  50 +-
+ fs/richacl_base.c                               | 578 ++++++++++++++++++++++++
+ fs/richacl_inode.c                              | 333 ++++++++++++++
+ fs/richacl_xattr.c                              | 235 ++++++++++
+ fs/xattr.c                                      |  29 +-
+ include/linux/fs.h                              |  60 ++-
+ include/linux/posix_acl.h                       |  13 +-
+ include/linux/richacl.h                         | 208 +++++++++
+ include/linux/richacl_xattr.h                   |  31 ++
+ include/uapi/linux/Kbuild                       |   2 +
+ include/uapi/linux/fs.h                         |   3 +-
+ include/uapi/linux/richacl.h                    | 152 +++++++
+ include/uapi/linux/richacl_xattr.h              |  44 ++
+ include/uapi/linux/xattr.h                      |   2 +
+ 33 files changed, 2150 insertions(+), 107 deletions(-)
+ create mode 100644 fs/ext4/richacl.c
+ create mode 100644 fs/ext4/richacl.h
+ create mode 100644 fs/richacl_base.c
+ create mode 100644 fs/richacl_inode.c
+ create mode 100644 fs/richacl_xattr.c
+ create mode 100644 include/linux/richacl.h
+ create mode 100644 include/linux/richacl_xattr.h
+ create mode 100644 include/uapi/linux/richacl.h
+ create mode 100644 include/uapi/linux/richacl_xattr.h
+
 -- 
 2.5.0
 
