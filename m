@@ -1,45 +1,70 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:58838 "EHLO fieldses.org"
+Received: from mx144.netapp.com ([216.240.21.25]:17128 "EHLO mx144.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752015AbcCNSqW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 14 Mar 2016 14:46:22 -0400
-Date: Mon, 14 Mar 2016 14:46:21 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Sudip Mukherjee <sudipm.mukherjee@gmail.com>
-Cc: Jeff Layton <jlayton@poochiereds.net>, linux-kernel@vger.kernel.org,
-        linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] nfsd: recover: fix memory leak
-Message-ID: <20160314184621.GA20554@fieldses.org>
-References: <1457345403-7195-1-git-send-email-sudipm.mukherjee@gmail.com>
+	id S1754758AbcCNTAA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 14 Mar 2016 15:00:00 -0400
+From: Anna Schumaker <Anna.Schumaker@netapp.com>
+Subject: Re: [GIT PULL] Please pull NFSoRDMA client changes for 4.6
+To: Anna Schumaker <Anna.Schumaker@netapp.com>,
+        Trond Myklebust <trond.myklebust@primarydata.com>
+References: <56E33462.6060003@Netapp.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Message-ID: <56E70A29.8040301@Netapp.com>
+Date: Mon, 14 Mar 2016 14:59:53 -0400
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1457345403-7195-1-git-send-email-sudipm.mukherjee@gmail.com>
+In-Reply-To: <56E33462.6060003@Netapp.com>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Mar 07, 2016 at 03:40:03PM +0530, Sudip Mukherjee wrote:
-> nfsd4_cltrack_grace_start() will allocate the memory for grace_start but
-> when we returned due to error we missed freeing it.
+Ignore this, I just realized I forgot to add my signed-off-by lines.  I'll resend!
 
-Thanks, applying for 4.6.--b.
+Anna
 
+On 03/11/2016 04:10 PM, Anna Schumaker wrote:
+> Hi Trond,
 > 
-> Signed-off-by: Sudip Mukherjee <sudip.mukherjee@codethink.co.uk>
-> ---
->  fs/nfsd/nfs4recover.c | 1 +
->  1 file changed, 1 insertion(+)
+> The following changes since commit fc77dbd34c5c99bce46d40a2491937c3bcbd10af:
 > 
-> diff --git a/fs/nfsd/nfs4recover.c b/fs/nfsd/nfs4recover.c
-> index 195fe26..66eaeb1 100644
-> --- a/fs/nfsd/nfs4recover.c
-> +++ b/fs/nfsd/nfs4recover.c
-> @@ -1266,6 +1266,7 @@ nfsd4_umh_cltrack_init(struct net *net)
->  	/* XXX: The usermode helper s not working in container yet. */
->  	if (net != &init_net) {
->  		pr_warn("NFSD: attempt to initialize umh client tracking in a container ignored.\n");
-> +		kfree(grace_start);
->  		return -EINVAL;
->  	}
->  
-> -- 
-> 1.9.1
+>   Linux 4.5-rc6 (2016-02-28 08:41:20 -0800)
+> 
+> are available in the git repository at:
+> 
+>   git://git.linux-nfs.org/projects/anna/nfs-rdma.git tags/nfs-rdma-4.6
+> 
+> for you to fetch changes up to 50340ef97f0ae41211084cbc23a629600918a2dd:
+> 
+>   xprtrdma: Use new CQ API for RPC-over-RDMA client send CQs (2016-03-11 15:51:16 -0500)
+> 
+> Thanks,
+> Anna
+> 
+> ----------------------------------------------------------------
+> Chuck Lever (11):
+>       xprtrdma: Clean up unused RPCRDMA_INLINE_PAD_THRESH macro
+>       xprtrdma: Clean up physical_op_map()
+>       xprtrdma: Clean up dprintk format string containing a newline
+>       xprtrdma: Segment head and tail XDR buffers on page boundaries
+>       xprtrdma: Do not wait if ib_post_send() fails
+>       rpcrdma: Add RPCRDMA_HDRLEN_ERR
+>       xprtrdma: Properly handle RDMA_ERROR replies
+>       xprtrdma: Serialize credit accounting again
+>       xprtrdma: Use new CQ API for RPC-over-RDMA client receive CQs
+>       xprtrdma: Use an anonymous union in struct rpcrdma_mw
+>       xprtrdma: Use new CQ API for RPC-over-RDMA client send CQs
+> 
+>  include/linux/sunrpc/rpc_rdma.h    |  12 ++---
+>  include/linux/sunrpc/xprtrdma.h    |   2 -
+>  net/sunrpc/xprtrdma/fmr_ops.c      |  28 ++++++------
+>  net/sunrpc/xprtrdma/frwr_ops.c     | 143 ++++++++++++++++++++++++++++++++++++++---------------------
+>  net/sunrpc/xprtrdma/physical_ops.c |   1 -
+>  net/sunrpc/xprtrdma/rpc_rdma.c     | 108 ++++++++++++++++++++++++++++++++-------------
+>  net/sunrpc/xprtrdma/verbs.c        | 204 ++++++++++++++++++++++++++-----------------------------------------------------------
+>  net/sunrpc/xprtrdma/xprt_rdma.h    |  14 +++---
+>  8 files changed, 259 insertions(+), 253 deletions(-)
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
+
