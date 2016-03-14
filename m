@@ -1,43 +1,55 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:58938 "EHLO fieldses.org"
+Received: from fieldses.org ([173.255.197.46]:58988 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754554AbcCNUir (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 14 Mar 2016 16:38:47 -0400
-Date: Mon, 14 Mar 2016 16:38:46 -0400
+	id S1752817AbcCNVHB (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 14 Mar 2016 17:07:01 -0400
+Date: Mon, 14 Mar 2016 17:06:59 -0400
 From: "J. Bruce Fields" <bfields@fieldses.org>
 To: NeilBrown <neilb@suse.com>
 Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] sunrpc/cache: drop reference when
- sunrpc_cache_pipe_upcall() detects a race
-Message-ID: <20160314203846.GA22276@fieldses.org>
-References: <87y49ylq76.fsf@notabene.neil.brown.name>
+Subject: Re: [PATCH - nfsv4-acl-tools] nfs4_ace_from_string: ignore
+ inheritance ACEs on non-directories.
+Message-ID: <20160314210659.GB22276@fieldses.org>
+References: <8760xen4ph.fsf@notabene.neil.brown.name>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <87y49ylq76.fsf@notabene.neil.brown.name>
+In-Reply-To: <8760xen4ph.fsf@notabene.neil.brown.name>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Mar 04, 2016 at 05:20:13PM +1100, NeilBrown wrote:
+On Wed, Feb 24, 2016 at 02:54:18PM +1100, NeilBrown wrote:
 > 
-> sunrpc_cache_pipe_upcall() can detect a race if CACHE_PENDING is no longer
-> set.  In this case it aborts the queuing of the upcall.
-> However it has already taken a new counted reference on "h" and
-> doesn't "put" it, even though it frees the data structure holding the reference.
+> If you try to use
+>      nfs4_setfacl -R -a A:d:........   directory
 > 
-> So let's delay the "cache_get" until we know we need it.
+> to recursively set an inheritance ACE on all directories in a tree, it
+> will fail on the first non-directory as setting an inheritance ACE
+> there is not permitted (and as it aborts on the first sign of an error).
 > 
-> Fixes: f9e1aedc6c79 ("sunrpc/cache: remove races with queuing an upcall.")
+> So use the is_dir flag to avoid doing that, just as is done with the
+> DELETE_CHILD permission.
+> 
 > Signed-off-by: NeilBrown <neilb@suse.com>
 > ---
->  net/sunrpc/cache.c | 6 +++---
->  1 file changed, 3 insertions(+), 3 deletions(-)
 > 
-> I found this when I was looking for something else.  Testing hasn't
-> shown a bug, and nor has it shown that this is bug-free.  But it looks
-> right.
+> Hi Bruce,
+>  are you still maintaining nfsv4-acl-tools?  Last commit was over
+>  a year ago!! I guess that means it is nearly perfect :-)
 
-Sorry for the delay.  I agree, it seems simple enough; applying for
-4.6....
+Alas, it could probably use some love.  I'm hoping richacls take over,
+though.  Eventually.
+
+>  A customer came across this problem and it seems simple to fix,
+>  but if I'm missing something important, please let me know.
+
+I didn't trace carefully through the callers, but I suspect this'll also
+mean that nfs4_setfacl also silently discards inheritable ACEs in some
+cases where the user could know better, instead of erroring out?
+
+But, honestly, I'm not necessarily even sure which is the better
+behavior, and -R needs to work, so, applying.
+
+Futher patches, or volunteers for maintenance, welcome....
 
 --b.
 
@@ -45,30 +57,40 @@ Sorry for the delay.  I agree, it seems simple enough; applying for
 > NeilBrown
 > 
 > 
-> diff --git a/net/sunrpc/cache.c b/net/sunrpc/cache.c
-> index 273bc3a35425..008c25d1b9f9 100644
-> --- a/net/sunrpc/cache.c
-> +++ b/net/sunrpc/cache.c
-> @@ -1182,14 +1182,14 @@ int sunrpc_cache_pipe_upcall(struct cache_detail *detail, struct cache_head *h)
->  	}
->  
->  	crq->q.reader = 0;
-> -	crq->item = cache_get(h);
->  	crq->buf = buf;
->  	crq->len = 0;
->  	crq->readers = 0;
->  	spin_lock(&queue_lock);
-> -	if (test_bit(CACHE_PENDING, &h->flags))
-> +	if (test_bit(CACHE_PENDING, &h->flags)) {
-> +		crq->item = cache_get(h);
->  		list_add_tail(&crq->q.list, &detail->queue);
-> -	else
-> +	} else
->  		/* Lost a race, no longer PENDING, so don't enqueue */
->  		ret = -EAGAIN;
->  	spin_unlock(&queue_lock);
+>  libnfs4acl/nfs4_ace_from_string.c | 12 ++++++++----
+>  1 file changed, 8 insertions(+), 4 deletions(-)
+> 
+> diff --git a/libnfs4acl/nfs4_ace_from_string.c b/libnfs4acl/nfs4_ace_from_string.c
+> index 510ffee35d32..a7a30360d860 100644
+> --- a/libnfs4acl/nfs4_ace_from_string.c
+> +++ b/libnfs4acl/nfs4_ace_from_string.c
+> @@ -185,16 +185,20 @@ struct nfs4_ace * nfs4_ace_from_string(char *ace_buf, int is_dir)
+>  	for (buflen = strlen(field); buflen > 0; buflen--) {
+>  		switch (*field) {
+>  			case FLAG_FILE_INHERIT:
+> -				flags |= NFS4_ACE_FILE_INHERIT_ACE;
+> +				if (is_dir)
+> +					flags |= NFS4_ACE_FILE_INHERIT_ACE;
+>  				break;
+>  			case FLAG_DIR_INHERIT:
+> -				flags |= NFS4_ACE_DIRECTORY_INHERIT_ACE;
+> +				if (is_dir)
+> +					flags |= NFS4_ACE_DIRECTORY_INHERIT_ACE;
+>  				break;
+>  			case FLAG_NO_PROPAGATE_INHERIT:
+> -				flags |= NFS4_ACE_NO_PROPAGATE_INHERIT_ACE;
+> +				if (is_dir)
+> +					flags |= NFS4_ACE_NO_PROPAGATE_INHERIT_ACE;
+>  				break;
+>  			case FLAG_INHERIT_ONLY:
+> -				flags |= NFS4_ACE_INHERIT_ONLY_ACE;
+> +				if (is_dir)
+> +					flags |= NFS4_ACE_INHERIT_ONLY_ACE;
+>  				break;
+>  			case FLAG_SUCCESSFUL_ACCESS:
+>  				flags |= NFS4_ACE_SUCCESSFUL_ACCESS_ACE_FLAG;
 > -- 
-> 2.7.0
+> 2.7.1
 > 
 
 
