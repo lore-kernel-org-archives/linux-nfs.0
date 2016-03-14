@@ -1,8 +1,8 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:41053 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:49711 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S965489AbcCNO4X (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 14 Mar 2016 10:56:23 -0400
+	id S965414AbcCNO4P (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 14 Mar 2016 10:56:15 -0400
 From: Andreas Gruenbacher <agruenba@redhat.com>
 To: Alexander Viro <viro@zeniv.linux.org.uk>
 Cc: Andreas Gruenbacher <agruenba@redhat.com>,
@@ -16,43 +16,84 @@ Cc: Andreas Gruenbacher <agruenba@redhat.com>,
         xfs@oss.sgi.com, linux-kernel@vger.kernel.org,
         linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
         linux-cifs@vger.kernel.org, linux-api@vger.kernel.org
-Subject: [PATCH v19 13/23] vfs: Add get_richacl and set_richacl inode operations
-Date: Mon, 14 Mar 2016 15:55:12 +0100
-Message-Id: <1457967322-14886-14-git-send-email-agruenba@redhat.com>
+Subject: [PATCH v19 11/23] posix_acl: Improve xattr fixup code
+Date: Mon, 14 Mar 2016 15:55:10 +0100
+Message-Id: <1457967322-14886-12-git-send-email-agruenba@redhat.com>
 In-Reply-To: <1457967322-14886-1-git-send-email-agruenba@redhat.com>
 References: <1457967322-14886-1-git-send-email-agruenba@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-These operations are similar to the get_acl and set_acl operations for
-POSIX ACLs.  The distinction between access and default ACLs doesn't exist
-for richacls.
+Both XATTR_NAME_POSIX_ACL_ACCESS and XATTR_NAME_POSIX_ACL_DEFAULT have
+the same XATTR_SYSTEM_PREFIX prefix; don't check for the same prefix
+repeatedly.
 
 Signed-off-by: Andreas Gruenbacher <agruenba@redhat.com>
 ---
- include/linux/fs.h | 2 ++
- 1 file changed, 2 insertions(+)
+ fs/xattr.c | 29 +++++++++++++++++++++++------
+ 1 file changed, 23 insertions(+), 6 deletions(-)
 
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index 3db7729..e04dbb4 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -1682,6 +1682,7 @@ struct inode_operations {
- 	const char * (*get_link) (struct dentry *, struct inode *, struct delayed_call *);
- 	int (*permission) (struct inode *, int);
- 	struct posix_acl * (*get_acl)(struct inode *, int);
-+	struct richacl * (*get_richacl)(struct inode *);
+diff --git a/fs/xattr.c b/fs/xattr.c
+index 4861322..c364696 100644
+--- a/fs/xattr.c
++++ b/fs/xattr.c
+@@ -295,6 +295,16 @@ out:
+ }
+ EXPORT_SYMBOL_GPL(vfs_removexattr);
  
- 	int (*readlink) (struct dentry *, char __user *,int);
++static void
++fix_xattr_from_user(const char *kname, void *kvalue, size_t size)
++{
++	if (strncmp(kname, XATTR_SYSTEM_PREFIX, XATTR_SYSTEM_PREFIX_LEN))
++		return;
++	kname += XATTR_SYSTEM_PREFIX_LEN;
++	if (!strcmp(kname, XATTR_POSIX_ACL_ACCESS) ||
++	    !strcmp(kname, XATTR_POSIX_ACL_DEFAULT))
++		posix_acl_fix_xattr_from_user(kvalue, size);
++}
  
-@@ -1710,6 +1711,7 @@ struct inode_operations {
- 			   umode_t create_mode, int *opened);
- 	int (*tmpfile) (struct inode *, struct dentry *, umode_t);
- 	int (*set_acl)(struct inode *, struct posix_acl *, int);
-+	int (*set_richacl)(struct inode *, struct richacl *);
- } ____cacheline_aligned;
+ /*
+  * Extended attribute SET operations
+@@ -329,9 +339,7 @@ setxattr(struct dentry *d, const char __user *name, const void __user *value,
+ 			error = -EFAULT;
+ 			goto out;
+ 		}
+-		if ((strcmp(kname, XATTR_NAME_POSIX_ACL_ACCESS) == 0) ||
+-		    (strcmp(kname, XATTR_NAME_POSIX_ACL_DEFAULT) == 0))
+-			posix_acl_fix_xattr_from_user(kvalue, size);
++		fix_xattr_from_user(kname, kvalue, size);
+ 	}
  
- ssize_t rw_copy_check_uvector(int type, const struct iovec __user * uvector,
+ 	error = vfs_setxattr(d, kname, kvalue, size, flags);
+@@ -396,6 +404,17 @@ SYSCALL_DEFINE5(fsetxattr, int, fd, const char __user *, name,
+ 	return error;
+ }
+ 
++static void
++fix_xattr_to_user(const char *kname, void *kvalue, size_t size)
++{
++	if (strncmp(kname, XATTR_SYSTEM_PREFIX, XATTR_SYSTEM_PREFIX_LEN))
++		return;
++	kname += XATTR_SYSTEM_PREFIX_LEN;
++	if (!strcmp(kname, XATTR_POSIX_ACL_ACCESS) ||
++	    !strcmp(kname, XATTR_POSIX_ACL_DEFAULT))
++		posix_acl_fix_xattr_to_user(kvalue, size);
++}
++
+ /*
+  * Extended attribute GET operations
+  */
+@@ -426,9 +445,7 @@ getxattr(struct dentry *d, const char __user *name, void __user *value,
+ 
+ 	error = vfs_getxattr(d, kname, kvalue, size);
+ 	if (error > 0) {
+-		if ((strcmp(kname, XATTR_NAME_POSIX_ACL_ACCESS) == 0) ||
+-		    (strcmp(kname, XATTR_NAME_POSIX_ACL_DEFAULT) == 0))
+-			posix_acl_fix_xattr_to_user(kvalue, size);
++		fix_xattr_to_user(kname, kvalue, size);
+ 		if (size && copy_to_user(value, kvalue, error))
+ 			error = -EFAULT;
+ 	} else if (error == -ERANGE && size >= XATTR_SIZE_MAX) {
 -- 
 2.5.0
 
