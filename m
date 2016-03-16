@@ -1,49 +1,56 @@
-Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:52634 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S934845AbcCPSVc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 16 Mar 2016 14:21:32 -0400
-Subject: Re: [PATCH] mountd.man: Update to change -P option as an alias for -p
-To: Yongcheng Yang <yoyang@redhat.com>, linux-nfs@vger.kernel.org
-References: <1457667599-6880-1-git-send-email-yoyang@redhat.com>
-Cc: Yongcheng Yang <yongcheng.yang@gmail.com>
+Return-Path: <SteveD@redhat.com>
+Subject: Re: [PATCH - nfs-utils] systemd: ensure nfs-config service is re-run
+ as needed.
+To: NeilBrown <neilb@suse.com>
+References: <87fuvrfbof.fsf@notabene.neil.brown.name>
+Cc: Benjamin Coddington <bcodding@redhat.com>,
+        Linux NFS mailing list <linux-nfs@vger.kernel.org>
 From: Steve Dickson <SteveD@redhat.com>
-Message-ID: <56E9A42B.5040200@RedHat.com>
-Date: Wed, 16 Mar 2016 14:21:31 -0400
+Message-ID: <56E9A492.1090106@RedHat.com>
+Date: Wed, 16 Mar 2016 14:23:14 -0400
 MIME-Version: 1.0
-In-Reply-To: <1457667599-6880-1-git-send-email-yoyang@redhat.com>
+In-Reply-To: <87fuvrfbof.fsf@notabene.neil.brown.name>
 Content-Type: text/plain; charset=windows-1252
-Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
 
-On 03/10/2016 10:39 PM, Yongcheng Yang wrote:
-> From: Yongcheng Yang <yongcheng.yang@gmail.com>
+On 03/15/2016 09:34 PM, NeilBrown wrote:
 > 
-> Signed-off-by: Yongcheng Yang <yongcheng.yang@gmail.com>
-Committed... 
+> The nfs-config service translates distro-specific startup
+> configuration into "environment" variable read and used
+> by systemd unit files.
+> 
+> Currently it is only run once, so subsequent changes to the
+> distro-specific files do not take effect when an nfs service is
+> restarted.
+> 
+> If we change "RemainAfterExit=yes" to "RemainAfterExit=no" then the
+> service will be restarted before any dependant service is started, so
+> the environment file will always be up to date.
+> 
+> Reported-and-tested-by: Benjamin Coddington <bcodding@redhat.com>
+> Signed-off-by: NeilBrown <neilb@suse.com>
+Committed... Nice Work!!! 
 
 steved.
-
 > ---
->  utils/mountd/mountd.man | 5 +----
->  1 file changed, 1 insertion(+), 4 deletions(-)
+>  systemd/nfs-config.service | 6 +++++-
+>  1 file changed, 5 insertions(+), 1 deletion(-)
 > 
-> diff --git a/utils/mountd/mountd.man b/utils/mountd/mountd.man
-> index 7c5bfbe..66e3bba 100644
-> --- a/utils/mountd/mountd.man
-> +++ b/utils/mountd/mountd.man
-> @@ -115,10 +115,7 @@ must be invoked with the option
->  .B \-n " or " \-\-no-tcp
->  Don't advertise TCP for mount.
->  .TP
-> -.B \-P
-> -Ignored (compatibility with unfsd??).
-> -.TP
-> -.B \-p num " or " \-\-port num
-> +.B \-p num " or " \-P num " or " \-\-port num
->  Specifies the port number used for RPC listener sockets.
->  If this option is not specified,
->  .B rpc.mountd
+> diff --git a/systemd/nfs-config.service b/systemd/nfs-config.service
+> index 7f653058f424..e0a7f83314f5 100644
+> --- a/systemd/nfs-config.service
+> +++ b/systemd/nfs-config.service
+> @@ -5,5 +5,9 @@ DefaultDependencies=no
+>  
+>  [Service]
+>  Type=oneshot
+> -RemainAfterExit=yes
+> +# This service needs to run any time any nfs service
+> +# is started, so changes to local config files get
+> +# incorporated.  Having "RemainAfterExit=no" (the default)
+> +# ensures this happens.
+> +RemainAfterExit=no
+>  ExecStart=/usr/lib/systemd/scripts/nfs-utils_env.sh
 > 
