@@ -1,245 +1,89 @@
-Return-Path: <malahal@us.ibm.com>
-Date: Tue, 15 Mar 2016 18:33:37 -0500
-From: Malahal Naineni <malahal@us.ibm.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: Benjamin Coddington <bcodding@redhat.com>, steved@redhat.com,
-        linux-nfs@vger.kernel.org, neilb@suse.com
+Return-Path: <linux-nfs-owner@vger.kernel.org>
+Received: from mx1.redhat.com ([209.132.183.28]:37370 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751204AbcCPAQ3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 15 Mar 2016 20:16:29 -0400
+Date: Tue, 15 Mar 2016 20:16:26 -0400 (EDT)
+From: Benjamin Coddington <bcodding@redhat.com>
+To: NeilBrown <nfbrown@novell.com>
+cc: steved@redhat.com, linux-nfs@vger.kernel.org
 Subject: Re: [PATCH nfs-utils] systemd: remove the nfs-config service
-Message-ID: <20160315233337.GA3543@us.ibm.com>
-References: <dfec4f0fe32d23aff0ed608b8f2931059060479a.1457784247.git.bcodding@redhat.com>
- <20160315142432.GB419@fieldses.org>
+In-Reply-To: <87bn6fh0jh.fsf@notabene.neil.brown.name>
+Message-ID: <alpine.OSX.2.19.9992.1603152015540.11199@planck>
+References: <dfec4f0fe32d23aff0ed608b8f2931059060479a.1457784247.git.bcodding@redhat.com> <87h9g7h2ym.fsf@notabene.neil.brown.name> <alpine.OSX.2.19.9992.1603151706000.11199@planck> <87bn6fh0jh.fsf@notabene.neil.brown.name>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20160315142432.GB419@fieldses.org>
+Content-Type: text/plain; charset=US-ASCII
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Ben, if I understand, EnvironmentFile must be sourced after running
-ExecStartPre for this method to work, correct? I was planning on doing
-something like this for ganesha project but I couldn't find enough
-documentation that says this.
+> On Wed, Mar 16 2016, Benjamin Coddington wrote:
+>
+> > On Wed, 16 Mar 2016, NeilBrown wrote:
+> >
+> >> On Sat, Mar 12 2016, Benjamin Coddington wrote:
+> >>
+> >> > The nfs-config service exists to translate distro-specific startup
+> >> > configuration into the command line arguments used by systemd to start nfs
+> >> > utilities.  Unfortunately, it is not clear to most users that this service
+> >> > must be recycled every time startup configurations have been modified, as
+> >> > this requirement is a change for at least one distro.
+> >> >
+> >> > We can get rid of nfs-config by generating the startup arguments in an
+> >> > ExecStartPre option for each service that needs them.  We'll also have to
+> >> > break out the EnvironmentFile into a separate file for each service to
+> >> > avoid races overwriting this file.
+> >> >
+> >> > A distro taking this change should also modify their
+> >> > /usr/lib/systemd/scripts/nfs-utils_env.sh script to include the new
+> >> > EnvironmentFile location for each service.
+> >> >
+> >> > Signed-off-by: Benjamin Coddington <bcodding@redhat.com>
+> >>
+> >> I can't say I really like this, but it does make sense and solves a real
+> >> problem.
+> >> Maybe: I would never have written it myself, but I'm kind-a glad you did
+> >> :-)
+> >
+> > Which bits are unlikeable?  I am guessing that all these little intermediate
+> > files are the issue; that is what I hate.  I admit that it is a least-effort
+> > approach to fixing the problem.  What does the ideal fix look like to you?
+>
+> I don't like having multiple intermediate config files that are all
+> identical, and I don't like having to run the config script every time
+> any daemon is (re)started.
+>
+> I'm not sure what "ideal" would be.
+>
+> One improvement would be if systemd could be given an executable in
+> place of an environment file with the implication that it would run the
+> executable and read environment variables from the stdout.
+> That would remove the multiple config files.
+> It would still mean the script is run every time, but I could be
+> convinced that isn't so bad.
+>
+> An alternate idea is that maybe systemd could have a directive so that
+> in any transaction were "this" unit is started, "that" unit will also be
+> started.  Then we could replace "Wants=nfs-config.server" with
+> "Prepare=nfs-config.service" so if systemd ever needed to start any
+> nfs-related service, it would make preparations by first running
+> nfs-config.service - only once per transaction.
+>
+> But unless you want to hack on systemd, I think what you have is good
+> enough.
+>
+>
+> .... hmmm.  I wonder what would happen if we just removed
+> "RemainAfterExit=y" from nfs-config.service.  Would it cause things to
+> fail, or would it cause nfs-config.service to be run every time.
+>
+> Hey, that looks like it works!  Can you double check for me?
+> i.e. revert your patch, remove "RemainAfterExit=y" from
+> nfs-config.service, and then see if nfs-config.service gets run any time
+> any nfs server is started.
 
-Regards, Malahal.
+Yep.. that appears to work just fine.  Seems like a simpler solution than
+this change.  It appears to me ( from systemd.service(5) ) that systemd's
+state transitions for Type=Oneshot will avoid races that might overwrite the
+environment file.  Nice find!
 
-J. Bruce Fields [bfields@fieldses.org] wrote:
-> Also cc'ing Neil, as he added nfs-config originally.--b.
-> 
-> On Sat, Mar 12, 2016 at 07:05:48AM -0500, Benjamin Coddington wrote:
-> > The nfs-config service exists to translate distro-specific startup
-> > configuration into the command line arguments used by systemd to start nfs
-> > utilities.  Unfortunately, it is not clear to most users that this service
-> > must be recycled every time startup configurations have been modified, as
-> > this requirement is a change for at least one distro.
-> > 
-> > We can get rid of nfs-config by generating the startup arguments in an
-> > ExecStartPre option for each service that needs them.  We'll also have to
-> > break out the EnvironmentFile into a separate file for each service to
-> > avoid races overwriting this file.
-> > 
-> > A distro taking this change should also modify their
-> > /usr/lib/systemd/scripts/nfs-utils_env.sh script to include the new
-> > EnvironmentFile location for each service.
-> > 
-> > Signed-off-by: Benjamin Coddington <bcodding@redhat.com>
-> > ---
-> >  systemd/Makefile.am              |    1 -
-> >  systemd/README                   |    8 +++++---
-> >  systemd/nfs-blkmap.service       |    4 +++-
-> >  systemd/nfs-idmapd.service       |    7 +++----
-> >  systemd/nfs-mountd.service       |    7 +++----
-> >  systemd/nfs-server.service       |    7 +++----
-> >  systemd/rpc-gssd.service         |    7 +++----
-> >  systemd/rpc-statd-notify.service |    7 +++----
-> >  systemd/rpc-statd.service        |    7 +++----
-> >  systemd/rpc-svcgssd.service      |    7 +++----
-> >  10 files changed, 29 insertions(+), 33 deletions(-)
-> > 
-> > diff --git a/systemd/Makefile.am b/systemd/Makefile.am
-> > index 03f96e9..6f59dfc 100644
-> > --- a/systemd/Makefile.am
-> > +++ b/systemd/Makefile.am
-> > @@ -5,7 +5,6 @@ MAINTAINERCLEANFILES = Makefile.in
-> >  unit_files =  \
-> >      nfs-client.target \
-> >      \
-> > -    nfs-config.service \
-> >      nfs-mountd.service \
-> >      nfs-server.service \
-> >      nfs-utils.service \
-> > diff --git a/systemd/README b/systemd/README
-> > index bbd7790..1508ea7 100644
-> > --- a/systemd/README
-> > +++ b/systemd/README
-> > @@ -54,9 +54,11 @@ client and systemd cannot specify is two-pronged reverse dependency.
-> >  
-> >  Distro specific commandline configuration can be provided by
-> >  installing a script /usr/lib/systemd/scripts/nfs-utils_env.sh
-> > -This should write /run/sysconfig/nfs-utils based on configuration
-> > -information such as in /etc/sysconfig/nfs or /etc/defaults/nfs.
-> > -It is run once by nfs-config.service.
-> > +It will be provided the environment variable SERVICE with the short
-> > +name of the service being started, and should write
-> > +/run/sysconfig/nfs-utils-${SERVICE} based on configuration
-> > +information such as in /etc/sysconfig/nfs or /etc/defaults/nfs. It
-> > +is run just prior to starting each service.
-> >  
-> >  rpc.gssd and rpc.svcgssd are assumed to be needed if /etc/krb5.keytab
-> >  is present.
-> > diff --git a/systemd/nfs-blkmap.service b/systemd/nfs-blkmap.service
-> > index ddbf4e9..254b005 100644
-> > --- a/systemd/nfs-blkmap.service
-> > +++ b/systemd/nfs-blkmap.service
-> > @@ -10,7 +10,9 @@ PartOf=nfs-utils.service
-> >  [Service]
-> >  Type=forking
-> >  PIDFile=/var/run/blkmapd.pid
-> > -EnvironmentFile=-/run/sysconfig/nfs-utils
-> > +Environment="SERVICE=blkmapd"
-> > +EnvironmentFile=-/run/sysconfig/nfs-utils-blkmapd
-> > +ExecStartPre=-/usr/lib/systemd/scripts/nfs-utils_env.sh
-> >  ExecStart=/usr/sbin/blkmapd $BLKMAPDARGS
-> >  
-> >  [Install]
-> > diff --git a/systemd/nfs-idmapd.service b/systemd/nfs-idmapd.service
-> > index df3dd9d..f58a58d 100644
-> > --- a/systemd/nfs-idmapd.service
-> > +++ b/systemd/nfs-idmapd.service
-> > @@ -6,10 +6,9 @@ After=var-lib-nfs-rpc_pipefs.mount local-fs.target
-> >  
-> >  BindsTo=nfs-server.service
-> >  
-> > -Wants=nfs-config.service
-> > -After=nfs-config.service
-> > -
-> >  [Service]
-> > -EnvironmentFile=-/run/sysconfig/nfs-utils
-> > +Environment="SERVICE=idmapd"
-> > +EnvironmentFile=-/run/sysconfig/nfs-utils-idmapd
-> >  Type=forking
-> > +ExecStartPre=-/usr/lib/systemd/scripts/nfs-utils_env.sh
-> >  ExecStart=/usr/sbin/rpc.idmapd $RPCIDMAPDARGS
-> > diff --git a/systemd/nfs-mountd.service b/systemd/nfs-mountd.service
-> > index 8a39f3e..5392429 100644
-> > --- a/systemd/nfs-mountd.service
-> > +++ b/systemd/nfs-mountd.service
-> > @@ -6,10 +6,9 @@ After=proc-fs-nfsd.mount
-> >  After=network.target local-fs.target
-> >  BindsTo=nfs-server.service
-> >  
-> > -Wants=nfs-config.service
-> > -After=nfs-config.service
-> > -
-> >  [Service]
-> > -EnvironmentFile=-/run/sysconfig/nfs-utils
-> > +Environment="SERVICE=mountd"
-> > +EnvironmentFile=-/run/sysconfig/nfs-utils-mountd
-> >  Type=forking
-> > +ExecStartPre=-/usr/lib/systemd/scripts/nfs-utils_env.sh
-> >  ExecStart=/usr/sbin/rpc.mountd $RPCMOUNTDARGS
-> > diff --git a/systemd/nfs-server.service b/systemd/nfs-server.service
-> > index 317e5d6..493e41e 100644
-> > --- a/systemd/nfs-server.service
-> > +++ b/systemd/nfs-server.service
-> > @@ -18,14 +18,13 @@ After=rpc-gssd.service gssproxy.service rpc-svcgssd.service
-> >  # start/stop server before/after client
-> >  Before=remote-fs-pre.target
-> >  
-> > -Wants=nfs-config.service
-> > -After=nfs-config.service
-> > -
-> >  [Service]
-> > -EnvironmentFile=-/run/sysconfig/nfs-utils
-> > +Environment="SERVICE=nfsd"
-> > +EnvironmentFile=-/run/sysconfig/nfs-utils-nfsd
-> >  
-> >  Type=oneshot
-> >  RemainAfterExit=yes
-> > +ExecStartPre=-/usr/lib/systemd/scripts/nfs-utils_env.sh
-> >  ExecStartPre=/usr/sbin/exportfs -r
-> >  ExecStart=/usr/sbin/rpc.nfsd $RPCNFSDARGS
-> >  ExecStop=/usr/sbin/rpc.nfsd 0
-> > diff --git a/systemd/rpc-gssd.service b/systemd/rpc-gssd.service
-> > index d4a3819..f945661 100644
-> > --- a/systemd/rpc-gssd.service
-> > +++ b/systemd/rpc-gssd.service
-> > @@ -9,11 +9,10 @@ ConditionPathExists=/etc/krb5.keytab
-> >  
-> >  PartOf=nfs-utils.service
-> >  
-> > -Wants=nfs-config.service
-> > -After=nfs-config.service
-> > -
-> >  [Service]
-> > -EnvironmentFile=-/run/sysconfig/nfs-utils
-> > +Environment="SERVICE=gssd"
-> > +EnvironmentFile=-/run/sysconfig/nfs-utils-gssd
-> >  
-> >  Type=forking
-> > +ExecStartPre=-/usr/lib/systemd/scripts/nfs-utils_env.sh
-> >  ExecStart=/usr/sbin/rpc.gssd $GSSDARGS
-> > diff --git a/systemd/rpc-statd-notify.service b/systemd/rpc-statd-notify.service
-> > index 89ba36c..b33c92e 100644
-> > --- a/systemd/rpc-statd-notify.service
-> > +++ b/systemd/rpc-statd-notify.service
-> > @@ -10,10 +10,9 @@ After=nfs-server.service
-> >  
-> >  PartOf=nfs-utils.service
-> >  
-> > -Wants=nfs-config.service
-> > -After=nfs-config.service
-> > -
-> >  [Service]
-> > -EnvironmentFile=-/run/sysconfig/nfs-utils
-> > +Environment="SERVICE=sm-notify"
-> > +EnvironmentFile=-/run/sysconfig/nfs-utils-sm-notify
-> >  Type=forking
-> > +ExecStartPre=-/usr/lib/systemd/scripts/nfs-utils_env.sh
-> >  ExecStart=-/usr/sbin/sm-notify $SMNOTIFYARGS
-> > diff --git a/systemd/rpc-statd.service b/systemd/rpc-statd.service
-> > index f16ea42..1af3bc8 100644
-> > --- a/systemd/rpc-statd.service
-> > +++ b/systemd/rpc-statd.service
-> > @@ -7,11 +7,10 @@ After=network.target nss-lookup.target rpcbind.service
-> >  
-> >  PartOf=nfs-utils.service
-> >  
-> > -Wants=nfs-config.service
-> > -After=nfs-config.service
-> > -
-> >  [Service]
-> > -EnvironmentFile=-/run/sysconfig/nfs-utils
-> > +Environment="SERVICE=statd"
-> > +EnvironmentFile=-/run/sysconfig/nfs-utils-statd
-> >  Type=forking
-> >  PIDFile=/var/run/rpc.statd.pid
-> > +ExecStartPre=-/usr/lib/systemd/scripts/nfs-utils_env.sh
-> >  ExecStart=/usr/sbin/rpc.statd --no-notify $STATDARGS
-> > diff --git a/systemd/rpc-svcgssd.service b/systemd/rpc-svcgssd.service
-> > index 41177b6..ace6ec5 100644
-> > --- a/systemd/rpc-svcgssd.service
-> > +++ b/systemd/rpc-svcgssd.service
-> > @@ -11,10 +11,9 @@ ConditionPathExists=|!/run/gssproxy.pid
-> >  ConditionPathExists=|!/proc/net/rpc/use-gss-proxy
-> >  ConditionPathExists=/etc/krb5.keytab
-> >  
-> > -Wants=nfs-config.service
-> > -After=nfs-config.service
-> > -
-> >  [Service]
-> > -EnvironmentFile=-/run/sysconfig/nfs-utils
-> > +Environment="SERVICE=svcgssd"
-> > +EnvironmentFile=-/run/sysconfig/nfs-utils-svcgssd
-> >  Type=forking
-> > +ExecStartPre=-/usr/lib/systemd/scripts/nfs-utils_env.sh
-> >  ExecStart=/usr/sbin/rpc.svcgssd $SVCGSSDARGS
-> > -- 
-> > 1.7.1
-> > 
-> > --
-> > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> > the body of a message to majordomo@vger.kernel.org
-> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
+Ben
