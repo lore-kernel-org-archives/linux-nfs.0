@@ -1,8 +1,8 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:45071 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:52714 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S966914AbcCPWTc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 16 Mar 2016 18:19:32 -0400
+	id S966969AbcCPWTk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 16 Mar 2016 18:19:40 -0400
 From: Andreas Gruenbacher <agruenba@redhat.com>
 To: Alexander Viro <viro@zeniv.linux.org.uk>
 Cc: Andreas Gruenbacher <agruenba@redhat.com>,
@@ -16,149 +16,220 @@ Cc: Andreas Gruenbacher <agruenba@redhat.com>,
         xfs@oss.sgi.com, linux-kernel@vger.kernel.org,
         linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
         linux-cifs@vger.kernel.org, linux-api@vger.kernel.org
-Subject: [PATCH v20 05/23] vfs: Add permission flags for setting file attributes
-Date: Wed, 16 Mar 2016 23:18:45 +0100
-Message-Id: <1458166743-18488-6-git-send-email-agruenba@redhat.com>
+Subject: [PATCH v20 07/23] richacl: Permission mapping functions
+Date: Wed, 16 Mar 2016 23:18:47 +0100
+Message-Id: <1458166743-18488-8-git-send-email-agruenba@redhat.com>
 In-Reply-To: <1458166743-18488-1-git-send-email-agruenba@redhat.com>
 References: <1458166743-18488-1-git-send-email-agruenba@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Richacls support permissions that allow to take ownership of a file,
-change the file permissions, and set the file timestamps.  Support that
-by introducing new permission mask flags and by checking for those mask
-flags in inode_change_ok().
+We need to map from POSIX permissions to NFSv4 permissions when a
+chmod() is done, from NFSv4 permissions to POSIX permissions when an acl
+is set (which implicitly sets the file permission bits), and from the
+MAY_READ/MAY_WRITE/MAY_EXEC/MAY_APPEND flags to NFSv4 permissions when
+doing an access check in a richacl.
 
 Signed-off-by: Andreas Gruenbacher <agruenba@redhat.com>
 Reviewed-by: J. Bruce Fields <bfields@redhat.com>
 ---
- fs/attr.c          | 79 +++++++++++++++++++++++++++++++++++++++++++++---------
- include/linux/fs.h |  3 +++
- 2 files changed, 70 insertions(+), 12 deletions(-)
+ fs/richacl.c                 | 118 +++++++++++++++++++++++++++++++++++++++++++
+ include/linux/richacl.h      |   3 ++
+ include/uapi/linux/richacl.h |  44 ++++++++++++++++
+ 3 files changed, 165 insertions(+)
 
-diff --git a/fs/attr.c b/fs/attr.c
-index 7ca7fa0..2a8c49c 100644
---- a/fs/attr.c
-+++ b/fs/attr.c
-@@ -17,6 +17,65 @@
- #include <linux/ima.h>
- 
- /**
-+ * inode_extended_permission  -  permissions beyond read/write/execute
+diff --git a/fs/richacl.c b/fs/richacl.c
+index bcc6591..d0a4135 100644
+--- a/fs/richacl.c
++++ b/fs/richacl.c
+@@ -63,3 +63,121 @@ richace_copy(struct richace *to, const struct richace *from)
+ {
+ 	memcpy(to, from, sizeof(struct richace));
+ }
++
++/*
++ * richacl_mask_to_mode  -  compute the file permission bits from mask
++ * @mask:	%RICHACE_* permission mask
 + *
-+ * Check for permissions that only richacls can currently grant.
++ * Compute the file permission bits corresponding to a particular set of
++ * richacl permissions.
++ *
++ * See richacl_masks_to_mode().
 + */
-+static int inode_extended_permission(struct inode *inode, int mask)
++static int
++richacl_mask_to_mode(unsigned int mask)
 +{
-+	if (!IS_RICHACL(inode))
-+		return -EPERM;
-+	return inode_permission(inode, mask);
-+}
++	int mode = 0;
 +
-+static bool inode_uid_change_ok(struct inode *inode, kuid_t ia_uid)
-+{
-+	if (uid_eq(current_fsuid(), inode->i_uid) &&
-+	    uid_eq(ia_uid, inode->i_uid))
-+		return true;
-+	if (uid_eq(current_fsuid(), ia_uid) &&
-+	    inode_extended_permission(inode, MAY_TAKE_OWNERSHIP) == 0)
-+		return true;
-+	if (capable_wrt_inode_uidgid(inode, CAP_CHOWN))
-+		return true;
-+	return false;
-+}
++	if (mask & RICHACE_POSIX_MODE_READ)
++		mode |= S_IROTH;
++	if (mask & RICHACE_POSIX_MODE_WRITE)
++		mode |= S_IWOTH;
++	if (mask & RICHACE_POSIX_MODE_EXEC)
++		mode |= S_IXOTH;
 +
-+static bool inode_gid_change_ok(struct inode *inode, kgid_t ia_gid)
-+{
-+	int in_group = in_group_p(ia_gid);
-+	if (uid_eq(current_fsuid(), inode->i_uid) &&
-+	    (in_group || gid_eq(ia_gid, inode->i_gid)))
-+		return true;
-+	if (in_group && inode_extended_permission(inode, MAY_TAKE_OWNERSHIP) == 0)
-+		return true;
-+	if (capable_wrt_inode_uidgid(inode, CAP_CHOWN))
-+		return true;
-+	return false;
++	return mode;
 +}
 +
 +/**
-+ * inode_owner_permitted_or_capable
++ * richacl_masks_to_mode  -  compute file permission bits from file masks
 + *
-+ * Check for permissions implicitly granted to the owner, like MAY_CHMOD or
-+ * MAY_SET_TIMES.  Equivalent to inode_owner_or_capable for file systems
-+ * without support for those permissions.
++ * When setting a richacl, we set the file permission bits to indicate maximum
++ * permissions: for example, we set the Write permission when a mask contains
++ * RICHACE_APPEND_DATA even if it does not also contain RICHACE_WRITE_DATA.
++ *
++ * Permissions which are not in RICHACE_POSIX_MODE_READ,
++ * RICHACE_POSIX_MODE_WRITE, or RICHACE_POSIX_MODE_EXEC cannot be represented
++ * in the file permission bits.  Such permissions can still be effective, but
++ * not for new files or after a chmod(); they must be explicitly enabled in the
++ * richacl.
 + */
-+static bool inode_owner_permitted_or_capable(struct inode *inode, int mask)
++int
++richacl_masks_to_mode(const struct richacl *acl)
 +{
-+	struct user_namespace *ns;
++	return richacl_mask_to_mode(acl->a_owner_mask) << 6 |
++	       richacl_mask_to_mode(acl->a_group_mask) << 3 |
++	       richacl_mask_to_mode(acl->a_other_mask);
++}
++EXPORT_SYMBOL_GPL(richacl_masks_to_mode);
 +
-+	if (uid_eq(current_fsuid(), inode->i_uid))
-+		return true;
-+	if (inode_extended_permission(inode, mask) == 0)
-+		return true;
-+	ns = current_user_ns();
-+	if (ns_capable(ns, CAP_FOWNER) && kuid_has_mapping(ns, inode->i_uid))
-+		return true;
-+	return false;
++/**
++ * richacl_mode_to_mask  - compute a file mask from the lowest three mode bits
++ * @mode:	mode to convert to richacl permissions
++ *
++ * When the file permission bits of a file are set with chmod(), this specifies
++ * the maximum permissions that processes will get.  All permissions beyond
++ * that will be removed from the file masks, and become ineffective.
++ */
++unsigned int
++richacl_mode_to_mask(umode_t mode)
++{
++	unsigned int mask = 0;
++
++	if (mode & S_IROTH)
++		mask |= RICHACE_POSIX_MODE_READ;
++	if (mode & S_IWOTH)
++		mask |= RICHACE_POSIX_MODE_WRITE;
++	if (mode & S_IXOTH)
++		mask |= RICHACE_POSIX_MODE_EXEC;
++
++	return mask;
 +}
 +
 +/**
-  * inode_change_ok - check if attribute changes to an inode are allowed
-  * @inode:	inode to check
-  * @attr:	attributes to change
-@@ -47,22 +106,18 @@ int inode_change_ok(struct inode *inode, struct iattr *attr)
- 		return 0;
++ * richacl_want_to_mask  - convert the iop->permission want argument to a mask
++ * @want:	@want argument of the permission inode operation
++ *
++ * When checking for append, @want is (MAY_WRITE | MAY_APPEND).
++ *
++ * Richacls use the iop->may_create and iop->may_delete hooks which are used
++ * for checking if creating and deleting files is allowed.  These hooks do not
++ * use richacl_want_to_mask(), so we do not have to deal with mapping MAY_WRITE
++ * to RICHACE_ADD_FILE, RICHACE_ADD_SUBDIRECTORY, and RICHACE_DELETE_CHILD
++ * here.
++ */
++unsigned int
++richacl_want_to_mask(unsigned int want)
++{
++	unsigned int mask = 0;
++
++	if (want & MAY_READ)
++		mask |= RICHACE_READ_DATA;
++	if (want & MAY_DELETE_SELF)
++		mask |= RICHACE_DELETE;
++	if (want & MAY_TAKE_OWNERSHIP)
++		mask |= RICHACE_WRITE_OWNER;
++	if (want & MAY_CHMOD)
++		mask |= RICHACE_WRITE_ACL;
++	if (want & MAY_SET_TIMES)
++		mask |= RICHACE_WRITE_ATTRIBUTES;
++	if (want & MAY_EXEC)
++		mask |= RICHACE_EXECUTE;
++	/*
++	 * differentiate MAY_WRITE from these request
++	 */
++	if (want & (MAY_APPEND |
++		    MAY_CREATE_FILE | MAY_CREATE_DIR |
++		    MAY_DELETE_CHILD)) {
++		if (want & MAY_APPEND)
++			mask |= RICHACE_APPEND_DATA;
++		if (want & MAY_CREATE_FILE)
++			mask |= RICHACE_ADD_FILE;
++		if (want & MAY_CREATE_DIR)
++			mask |= RICHACE_ADD_SUBDIRECTORY;
++		if (want & MAY_DELETE_CHILD)
++			mask |= RICHACE_DELETE_CHILD;
++	} else if (want & MAY_WRITE)
++		mask |= RICHACE_WRITE_DATA;
++	return mask;
++}
++EXPORT_SYMBOL_GPL(richacl_want_to_mask);
+diff --git a/include/linux/richacl.h b/include/linux/richacl.h
+index edb8480..9102ef0 100644
+--- a/include/linux/richacl.h
++++ b/include/linux/richacl.h
+@@ -175,5 +175,8 @@ richace_is_same_identifier(const struct richace *a, const struct richace *b)
+ extern struct richacl *richacl_alloc(int, gfp_t);
+ extern struct richacl *richacl_clone(const struct richacl *, gfp_t);
+ extern void richace_copy(struct richace *, const struct richace *);
++extern int richacl_masks_to_mode(const struct richacl *);
++extern unsigned int richacl_mode_to_mask(umode_t);
++extern unsigned int richacl_want_to_mask(unsigned int);
  
- 	/* Make sure a caller can chown. */
--	if ((ia_valid & ATTR_UID) &&
--	    (!uid_eq(current_fsuid(), inode->i_uid) ||
--	     !uid_eq(attr->ia_uid, inode->i_uid)) &&
--	    !capable_wrt_inode_uidgid(inode, CAP_CHOWN))
--		return -EPERM;
-+	if (ia_valid & ATTR_UID)
-+		if (!inode_uid_change_ok(inode, attr->ia_uid))
-+			return -EPERM;
+ #endif /* __RICHACL_H */
+diff --git a/include/uapi/linux/richacl.h b/include/uapi/linux/richacl.h
+index 08856f8..1ed48ac 100644
+--- a/include/uapi/linux/richacl.h
++++ b/include/uapi/linux/richacl.h
+@@ -96,4 +96,48 @@
+ 	RICHACE_WRITE_OWNER |					\
+ 	RICHACE_SYNCHRONIZE )
  
- 	/* Make sure caller can chgrp. */
--	if ((ia_valid & ATTR_GID) &&
--	    (!uid_eq(current_fsuid(), inode->i_uid) ||
--	    (!in_group_p(attr->ia_gid) && !gid_eq(attr->ia_gid, inode->i_gid))) &&
--	    !capable_wrt_inode_uidgid(inode, CAP_CHOWN))
--		return -EPERM;
-+	if (ia_valid & ATTR_GID)
-+		if (!inode_gid_change_ok(inode, attr->ia_gid))
-+			return -EPERM;
- 
- 	/* Make sure a caller can chmod. */
- 	if (ia_valid & ATTR_MODE) {
--		if (!inode_owner_or_capable(inode))
-+		if (!inode_owner_permitted_or_capable(inode, MAY_CHMOD))
- 			return -EPERM;
- 		/* Also check the setgid bit! */
- 		if (!in_group_p((ia_valid & ATTR_GID) ? attr->ia_gid :
-@@ -73,7 +128,7 @@ int inode_change_ok(struct inode *inode, struct iattr *attr)
- 
- 	/* Check for setting the inode time. */
- 	if (ia_valid & (ATTR_MTIME_SET | ATTR_ATIME_SET | ATTR_TIMES_SET)) {
--		if (!inode_owner_or_capable(inode))
-+		if (!inode_owner_permitted_or_capable(inode, MAY_SET_TIMES))
- 			return -EPERM;
- 	}
- 
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index efff04f..0f560b7 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -87,6 +87,9 @@ typedef void (dax_iodone_t)(struct buffer_head *bh_map, int uptodate);
- #define MAY_CREATE_DIR		0x00000200
- #define MAY_DELETE_CHILD	0x00000400
- #define MAY_DELETE_SELF		0x00000800
-+#define MAY_TAKE_OWNERSHIP	0x00001000
-+#define MAY_CHMOD		0x00002000
-+#define MAY_SET_TIMES		0x00004000
- 
- /*
-  * flags in file.f_mode.  Note that FMODE_READ and FMODE_WRITE must correspond
++/*
++ * The POSIX permissions are supersets of the following richacl permissions:
++ *
++ *  - MAY_READ maps to READ_DATA or LIST_DIRECTORY, depending on the type
++ *    of the file system object.
++ *
++ *  - MAY_WRITE maps to WRITE_DATA or RICHACE_APPEND_DATA for files, and to
++ *    ADD_FILE, RICHACE_ADD_SUBDIRECTORY, or RICHACE_DELETE_CHILD for directories.
++ *
++ *  - MAY_EXECUTE maps to RICHACE_EXECUTE.
++ *
++ *  (Some of these richacl permissions have the same bit values.)
++ */
++#define RICHACE_POSIX_MODE_READ (			\
++		RICHACE_READ_DATA |			\
++		RICHACE_LIST_DIRECTORY)
++#define RICHACE_POSIX_MODE_WRITE (			\
++		RICHACE_WRITE_DATA |			\
++		RICHACE_ADD_FILE |			\
++		RICHACE_APPEND_DATA |			\
++		RICHACE_ADD_SUBDIRECTORY |		\
++		RICHACE_DELETE_CHILD)
++#define RICHACE_POSIX_MODE_EXEC RICHACE_EXECUTE
++#define RICHACE_POSIX_MODE_ALL (			\
++		RICHACE_POSIX_MODE_READ |		\
++		RICHACE_POSIX_MODE_WRITE |		\
++		RICHACE_POSIX_MODE_EXEC)
++
++/*
++ * These permissions are always allowed no matter what the acl says.
++ */
++#define RICHACE_POSIX_ALWAYS_ALLOWED (			\
++		RICHACE_SYNCHRONIZE |			\
++		RICHACE_READ_ATTRIBUTES |		\
++		RICHACE_READ_ACL)
++
++/*
++ * The owner is implicitly granted these permissions under POSIX.
++ */
++#define RICHACE_POSIX_OWNER_ALLOWED (			\
++		RICHACE_WRITE_ATTRIBUTES |		\
++		RICHACE_WRITE_OWNER |			\
++		RICHACE_WRITE_ACL)
++
+ #endif /* __UAPI_RICHACL_H */
 -- 
 2.5.0
 
