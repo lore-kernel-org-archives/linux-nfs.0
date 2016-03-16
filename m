@@ -1,117 +1,67 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:35017 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:39749 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753659AbcCPRgu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 16 Mar 2016 13:36:50 -0400
-Date: Wed, 16 Mar 2016 13:36:48 -0400 (EDT)
-From: Benjamin Coddington <bcodding@redhat.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-cc: Trond Myklebust <trond.myklebust@primarydata.com>,
-        Anna Schumaker <anna.schumaker@netapp.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] NFS: Retry a zero-length short read
-In-Reply-To: <20160316171857.GA12992@fieldses.org>
-Message-ID: <alpine.OSX.2.19.9992.1603161333260.11199@planck>
-References: <79adfc63f33887475f6a0f0eeaacd8b52b2ed12c.1458119750.git.bcodding@redhat.com> <CAHQdGtS4pViRyWc+K+CLhmGrt1ar5PRcMpURap2_x2B5QpU2Fw@mail.gmail.com> <alpine.OSX.2.19.9992.1603161016560.11199@planck> <CAHQdGtThhkdmiYUgbWq1Jz00K8CKtOsgfxJUADhHXe5d3ygrSQ@mail.gmail.com>
- <alpine.OSX.2.19.9992.1603161050370.11199@planck> <alpine.OSX.2.19.9992.1603161112440.11199@planck> <CAHQdGtTMOjr8SMKOpM2tg0meAAgfLjgbMb5KjGDRoxt7LnEADw@mail.gmail.com> <20160316171857.GA12992@fieldses.org>
+	id S1755137AbcCPSTO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 16 Mar 2016 14:19:14 -0400
+Subject: Re: [PATCH] mount.nfs - hide EBUSY errors.
+To: NeilBrown <neilb@suse.com>
+References: <877fi2raey.fsf@notabene.neil.brown.name>
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+From: Steve Dickson <SteveD@redhat.com>
+Message-ID: <56E9A3A0.40002@RedHat.com>
+Date: Wed, 16 Mar 2016 14:19:12 -0400
 MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+In-Reply-To: <877fi2raey.fsf@notabene.neil.brown.name>
+Content-Type: text/plain; charset=windows-1252
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, 16 Mar 2016, J. Bruce Fields wrote:
 
-> On Wed, Mar 16, 2016 at 12:22:22PM -0400, Trond Myklebust wrote:
-> > On Wed, Mar 16, 2016 at 11:20 AM, Benjamin Coddington
-> > <bcodding@redhat.com> wrote:
-> > > On Wed, 16 Mar 2016, Benjamin Coddington wrote:
-> > >
-> > >> On Wed, 16 Mar 2016, Trond Myklebust wrote:
-> > >>
-> > >> > On Wed, Mar 16, 2016 at 10:22 AM, Benjamin Coddington
-> > >> > <bcodding@redhat.com> wrote:
-> > >> > > On Wed, 16 Mar 2016, Trond Myklebust wrote:
-> > >> > >
-> > >> > >> On Wed, Mar 16, 2016 at 5:17 AM, Benjamin Coddington
-> > >> > >> <bcodding@redhat.com> wrote:
-> > >> > >> >
-> > >> > >> > A zero-length short read without eof should be retried rather than sending
-> > >> > >> > an error to the application.
-> > >> > >>
-> > >> > >>
-> > >> > >> In what situation would returning a 0 length read not be a bug? If the
-> > >> > >> server intended that we back off and retry, it has the alternative of
-> > >> > >> sending a JUKEBOX/DELAY error.
-> > >> > >
-> > >> > > If the server completes a local read but then another writer comes in and
-> > >> > > appends to the file before the server checks if it needs to set EOF, then
-> > >> > > the response might be 0 length without EOF set.
-> > >> >
-> > >> > Why isn't that EOF check done atomically with the read itself? This
-> > >> > still sounds like a server bug to me.
-> > >>
-> > >> I don't know -- I would guess because doing that atomically is harder than
-> > >> not, and I don't know where the RFCs say that a zero length response without
-> > >> eof is to be treated as an error or condition to be avoided.
-> > >>
-> > >> I'll look into that, and respond here.
-> > >
-> > > Indeed, it seems that it is more convenient for the linux server to send a
-> > > zero-length response without eof when the file grows.  It would probably be
-> > > more helpful if the server handled that case, but I think that 7530 states
-> > > that it doesn't have to handle that case.
-> >
-> > Here is what RFC5661 and RFC7530 say.
-> >
-> >    If the READ ended at the end-of-file (formally, in a correctly formed
-> >    READ request, if offset + count is equal to the size of the file), or
-> >    the READ request extends beyond the size of the file (if offset +
-> >    count is greater than the size of the file), eof is returned as TRUE;
-> >    otherwise, it is FALSE.  A successful READ of an empty file will
-> >    always return eof as TRUE.
-> >
-> > Here is what RFC1813 says:
-> >
-> >       eof
-> >          If the read ended at the end-of-file (formally, in a
-> >          correctly formed READ request, if READ3args.offset plus
-> >          READ3resok.count is equal to the size of the file), eof
-> >          is returned as TRUE; otherwise it is FALSE. A
-> >          successful READ of an empty file will always return eof
-> >          as TRUE.
-> >
-> > Where does it say that the eof determination is allowed to be
-> > non-atomic? Unlike structures such as change_info4, there isn't an
-> > "atomic" flag to allow the server to communicate to the client that it
-> > cannot rely on the eof flag. Since the determination is part of the
-> > same READ operation, you can't point to the "COMPOUNDS are not atomic"
-> > either.
->
-> I wonder why READ has eof at all, instead of adopting read()'s
-> convention that 0 means eof?
->
-> In any case, our server should be able to count on that convention
-> internally, so if getting a real "eof" out of the filesystem looks
-> daunting, why not for now just check for that case in
-> nfsd4_encode_readv()?:
 
-It's probably not really that daunting.  Couldn't we check to see if inode's
-size has increased, and if so do the read again?
+On 02/17/2016 09:59 PM, NeilBrown wrote:
+> 
+> Linux only returns EBUSY for a non-remount mount if the exact
+> requested filesystem is already mounted.  Arguably this is not an
+> error.
+> 
+> "mount -a" tries to see if each requested filesystem is already mounted.
+> Sometimes it gets it wrong - e.g. hostname aliases can confuse it.
+> So "mount -a" will report a failure "already mounted", which is
+> wrong because it should filter those out.
+> 
+> An easy fix it just to be silent about EBUSY.  As the requested
+> result (a given filesystem being mounted at a given location) is in
+> effect after the EBUSY return, we can just treat it as success.
+> 
+> This removes the confusing "already mounted" errors.
+> 
+> Signed-off-by: NeilBrown <neilb@suse.com>
+Committed... 
 
-The concept of READ and eof atomicity should also include a concept of a
-boundary or barrier.  The operation is atomic within what bound - the
-server's response processing or the underlying filesystem?
+steved.
 
-Ben
-
->
-> -	eof = (read->rd_offset + maxcount >=
-> +	eof = (maxcount == 0) || (read->rd_offset + maxcount >=
->  	       d_inode(read->rd_fhp->fh_dentry)->i_size);
->
->
-> (Actually, I'm not sure that's completely right: if 0-length read
-> requests are legal then we need to exclude that case.)
->
-> --b.
->
+> ---
+>  utils/mount/stropts.c | 9 +++++++++
+>  1 file changed, 9 insertions(+)
+> 
+> diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
+> index 86829a902bfd..320dde2fab92 100644
+> --- a/utils/mount/stropts.c
+> +++ b/utils/mount/stropts.c
+> @@ -960,6 +960,15 @@ static int nfsmount_fg(struct nfsmount_info *mi)
+>  		if (nfs_try_mount(mi))
+>  			return EX_SUCCESS;
+>  
+> +		if (errno == EBUSY)
+> +			/* The only cause of EBUSY is if exactly the desired
+> +			 * filesystem is already mounted.  That can arguably
+> +			 * be seen as success.  "mount -a" tries to optimise
+> +			 * out this case but sometimes fails.  Help it out
+> +			 * by pretending everything is rosy
+> +			 */
+> +			return EX_SUCCESS;
+> +
+>  		if (nfs_is_permanent_error(errno))
+>  			break;
+>  
+> 
