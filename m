@@ -1,62 +1,99 @@
-Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:53692 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S933932AbcCPBec (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 15 Mar 2016 21:34:32 -0400
-From: NeilBrown <neilb@suse.com>
-To: Steve Dickson <SteveD@redhat.com>
-Date: Wed, 16 Mar 2016 12:34:24 +1100
-Cc: Benjamin Coddington <bcodding@redhat.com>
-Subject: [PATCH - nfs-utils] systemd: ensure nfs-config service is re-run as needed.
-cc: Linux NFS mailing list <linux-nfs@vger.kernel.org>
-Message-ID: <87fuvrfbof.fsf@notabene.neil.brown.name>
+Return-Path: <nfbrown@novell.com>
+From: NeilBrown <nfbrown@novell.com>
+To: Benjamin Coddington <bcodding@redhat.com>
+Date: Wed, 16 Mar 2016 12:35:30 +1100
+Cc: steved@redhat.com, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH nfs-utils] systemd: remove the nfs-config service
+In-Reply-To: <alpine.OSX.2.19.9992.1603152015540.11199@planck>
+References: <dfec4f0fe32d23aff0ed608b8f2931059060479a.1457784247.git.bcodding@redhat.com> <87h9g7h2ym.fsf@notabene.neil.brown.name> <alpine.OSX.2.19.9992.1603151706000.11199@planck> <87bn6fh0jh.fsf@notabene.neil.brown.name> <alpine.OSX.2.19.9992.1603152015540.11199@planck>
+Message-ID: <87d1qvfbml.fsf@notabene.neil.brown.name>
 MIME-Version: 1.0
 Content-Type: multipart/signed; boundary="=-=-=";
 	micalg=pgp-sha256; protocol="application/pgp-signature"
-Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 --=-=-=
 Content-Type: text/plain
-Content-Transfer-Encoding: quoted-printable
 
+On Wed, Mar 16 2016, Benjamin Coddington wrote:
 
-The nfs-config service translates distro-specific startup
-configuration into "environment" variable read and used
-by systemd unit files.
+>> On Wed, Mar 16 2016, Benjamin Coddington wrote:
+>>
+>> > On Wed, 16 Mar 2016, NeilBrown wrote:
+>> >
+>> >> On Sat, Mar 12 2016, Benjamin Coddington wrote:
+>> >>
+>> >> > The nfs-config service exists to translate distro-specific startup
+>> >> > configuration into the command line arguments used by systemd to start nfs
+>> >> > utilities.  Unfortunately, it is not clear to most users that this service
+>> >> > must be recycled every time startup configurations have been modified, as
+>> >> > this requirement is a change for at least one distro.
+>> >> >
+>> >> > We can get rid of nfs-config by generating the startup arguments in an
+>> >> > ExecStartPre option for each service that needs them.  We'll also have to
+>> >> > break out the EnvironmentFile into a separate file for each service to
+>> >> > avoid races overwriting this file.
+>> >> >
+>> >> > A distro taking this change should also modify their
+>> >> > /usr/lib/systemd/scripts/nfs-utils_env.sh script to include the new
+>> >> > EnvironmentFile location for each service.
+>> >> >
+>> >> > Signed-off-by: Benjamin Coddington <bcodding@redhat.com>
+>> >>
+>> >> I can't say I really like this, but it does make sense and solves a real
+>> >> problem.
+>> >> Maybe: I would never have written it myself, but I'm kind-a glad you did
+>> >> :-)
+>> >
+>> > Which bits are unlikeable?  I am guessing that all these little intermediate
+>> > files are the issue; that is what I hate.  I admit that it is a least-effort
+>> > approach to fixing the problem.  What does the ideal fix look like to you?
+>>
+>> I don't like having multiple intermediate config files that are all
+>> identical, and I don't like having to run the config script every time
+>> any daemon is (re)started.
+>>
+>> I'm not sure what "ideal" would be.
+>>
+>> One improvement would be if systemd could be given an executable in
+>> place of an environment file with the implication that it would run the
+>> executable and read environment variables from the stdout.
+>> That would remove the multiple config files.
+>> It would still mean the script is run every time, but I could be
+>> convinced that isn't so bad.
+>>
+>> An alternate idea is that maybe systemd could have a directive so that
+>> in any transaction were "this" unit is started, "that" unit will also be
+>> started.  Then we could replace "Wants=nfs-config.server" with
+>> "Prepare=nfs-config.service" so if systemd ever needed to start any
+>> nfs-related service, it would make preparations by first running
+>> nfs-config.service - only once per transaction.
+>>
+>> But unless you want to hack on systemd, I think what you have is good
+>> enough.
+>>
+>>
+>> .... hmmm.  I wonder what would happen if we just removed
+>> "RemainAfterExit=y" from nfs-config.service.  Would it cause things to
+>> fail, or would it cause nfs-config.service to be run every time.
+>>
+>> Hey, that looks like it works!  Can you double check for me?
+>> i.e. revert your patch, remove "RemainAfterExit=y" from
+>> nfs-config.service, and then see if nfs-config.service gets run any time
+>> any nfs server is started.
+>
+> Yep.. that appears to work just fine.  Seems like a simpler solution than
+> this change.  It appears to me ( from systemd.service(5) ) that systemd's
+> state transitions for Type=Oneshot will avoid races that might overwrite the
+> environment file.  Nice find!
+>
 
-Currently it is only run once, so subsequent changes to the
-distro-specific files do not take effect when an nfs service is
-restarted.
+Great.  Thanks for testing and thanks for prodding me to explain
+myself.  Very happy with the outcome!
 
-If we change "RemainAfterExit=3Dyes" to "RemainAfterExit=3Dno" then the
-service will be restarted before any dependant service is started, so
-the environment file will always be up to date.
+I've posted a patch to Steve.
 
-Reported-and-tested-by: Benjamin Coddington <bcodding@redhat.com>
-Signed-off-by: NeilBrown <neilb@suse.com>
-=2D--
- systemd/nfs-config.service | 6 +++++-
- 1 file changed, 5 insertions(+), 1 deletion(-)
-
-diff --git a/systemd/nfs-config.service b/systemd/nfs-config.service
-index 7f653058f424..e0a7f83314f5 100644
-=2D-- a/systemd/nfs-config.service
-+++ b/systemd/nfs-config.service
-@@ -5,5 +5,9 @@ DefaultDependencies=3Dno
-=20
- [Service]
- Type=3Doneshot
-=2DRemainAfterExit=3Dyes
-+# This service needs to run any time any nfs service
-+# is started, so changes to local config files get
-+# incorporated.  Having "RemainAfterExit=3Dno" (the default)
-+# ensures this happens.
-+RemainAfterExit=3Dno
- ExecStart=3D/usr/lib/systemd/scripts/nfs-utils_env.sh
-=2D-=20
-2.7.2
-
+NeilBrown
 
 --=-=-=
 Content-Type: application/pgp-signature; name="signature.asc"
@@ -64,18 +101,18 @@ Content-Type: application/pgp-signature; name="signature.asc"
 -----BEGIN PGP SIGNATURE-----
 Version: GnuPG v2
 
-iQIcBAEBCAAGBQJW6LggAAoJEDnsnt1WYoG5ZXYP/Reo1qpCeeY8/2UfA6oYH+M1
-4mKaRKREHuDeEcN7ycFOUQ0+xpzI32RHF2cJDgBPkQ2SweIOrB4wMA9gRDgNmAS1
-Ve1IevgXz5lC0GreGZsTVhZNHv/KpfOlbRlkyR5NFSwY/TzVKnTCOO96le1qN2bm
-u6KbgNTmtlQr3YppxA18pCBpvH5UKPmTUG8Fwu0gsIJVV+gDZdmBxIrXjyXtFfVI
-0TGuL9yuoGoLHulWg1HlFYkh/kv4UWI0vobhvK587XLSuen4bRj8OQumCCTWR7KZ
-zphQfce25CRccUSdJHzL6wNjBINEhU8s743N8MbMdj2NYgmXrLPw9j1yaLTkICiD
-vlfqLOZKXRE/8OlhVt+YkWjp5uerJE4YlGgxZgqASSh7pri9vOnTFtpui9nPxxPM
-cliruMkU0RJDbJFtihUmWTU6Zx6dr/MnM0c953HMg4quZLsshUVEaQmbbslxIhVF
-Z54MfHlpr2I3J3JY/s51oMfSUBZVxLNujqINuJX4PKEtod9UKWxoo2RIngAjBgQj
-E7Rc50a7Yus3i7mM8OfrKUuhGQvKC4edp+2W0BfxrVyzb0S6eCOgS3hx401i9SgC
-d1KHhpFHxvdMlugNZE/bkeINqrCfVpzQOFn3fkShbF6LqNevRaIVU/Veha40vmsb
-mgBoXzvEiCoTajc9Sa82
-=aH5N
+iQIcBAEBCAAGBQJW6LhiAAoJEDnsnt1WYoG5g6YP/1i/6TNmo0Jx4NpdyFXcV21A
+XZgg07645VnwIaJ0X46+C5K17k6ssY+OCnxCcqXhINq4ro7+8TBRMuCP7uHV2DA0
+faxZAITixjJ+L9L88/jrVtbVF1t6XIqN6mzzGCxEdaZ2bGpbosdJ75rZui5VDm+9
+cnRjnZmQcgrnJ+iCayvuslKplRSTJwyCtlQjaPgVoq/xmIDN56DPK6uV5dNk1rMy
+ysZApp3BSTCvhG+/II18mjTxb8aav9dO/9ax83unwBxqdbv/IiMoBDamz4EttXsP
+6OkCRKJk2qJwO5XVqZ7WK2MAQr0+qFTbVeFb19agnfhHjDak0aHZqZ9tKQ6b9gM7
+rRfWCpTIwz/MXchz1p6aXRvkcepznITvyupby8pA2MAs4GfoIkXnbxioUmHqxiLF
+gJtkbiUXnu4wvcOYvMVVKnaMuCGT8S7exfsQjBT2YAodQOxgPDIGMpgeqtiMV6aP
+ie+2Grexd418/6cYtVKbzfeLRm0Ske4baLyvpadVxcJIGkXMxtxnH97d9ldjPONY
+iRUORKrYmCvlW9118559NPdOjJemvrniGCD0dQtbqXKJ9Zl12Z97mgVp8VKfvbqW
+qgLb7L5VfN/vEgUaEyhZokC8U1kNjs0kWF88myfa4MlMd/jhGkFvcgic4QkSJI9+
+cOO+0BU65JAYB5LNOeSj
+=IIl8
 -----END PGP SIGNATURE-----
 --=-=-=--
