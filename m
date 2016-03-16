@@ -1,50 +1,53 @@
-Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:48438 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755137AbcCPSTq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 16 Mar 2016 14:19:46 -0400
-Received: from int-mx14.intmail.prod.int.phx2.redhat.com (int-mx14.intmail.prod.int.phx2.redhat.com [10.5.11.27])
-	by mx1.redhat.com (Postfix) with ESMTPS id 17C9146213
-	for <linux-nfs@vger.kernel.org>; Wed, 16 Mar 2016 18:19:46 +0000 (UTC)
-Subject: Re: [PATCH] libexport.a: fix missing brace in host_ntop() fallback
-To: Stefan Hajnoczi <stefanha@redhat.com>, linux-nfs@vger.kernel.org
-References: <1455805236-30534-1-git-send-email-stefanha@redhat.com>
+Return-Path: <SteveD@redhat.com>
+Subject: Re: [PATCH] gssd: Fix inner-loop variable reuse
+To: Benjamin Coddington <bcodding@redhat.com>
+References: <7c093a92c6c61de8d4bf0f9620aea9ada789fe75.1456785264.git.bcodding@redhat.com>
+Cc: linux-nfs@vger.kernel.org
 From: Steve Dickson <SteveD@redhat.com>
-Message-ID: <56E9A3C1.10500@RedHat.com>
-Date: Wed, 16 Mar 2016 14:19:45 -0400
+Message-ID: <56E9A3DD.8050109@RedHat.com>
+Date: Wed, 16 Mar 2016 14:20:13 -0400
 MIME-Version: 1.0
-In-Reply-To: <1455805236-30534-1-git-send-email-stefanha@redhat.com>
+In-Reply-To: <7c093a92c6c61de8d4bf0f9620aea9ada789fe75.1456785264.git.bcodding@redhat.com>
 Content-Type: text/plain; charset=windows-1252
-Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
 
-On 02/18/2016 09:20 AM, Stefan Hajnoczi wrote:
-> An if statement has been missing a brace since host_ntop() was added in
-> commit 94ce1eb94babb4c587b2826452fb053cba745098 ("libexport.a: Add
-> helpers to manage DNS lookups").
+On 02/29/2016 05:36 PM, Benjamin Coddington wrote:
+> The var "i" is already in use iterating realmnames.
 > 
-> Signed-off-by: Stefan Hajnoczi <stefanha@redhat.com>
+> Signed-off-by: Benjamin Coddington <bcodding@redhat.com>
+> Fixes: "6597e391 gssd:  Don't assume the machine account will be in uppercase"
 Committed... 
 
 steved.
 
 > ---
->  support/export/hostname.c | 2 +-
->  1 file changed, 1 insertion(+), 1 deletion(-)
+>  utils/gssd/krb5_util.c |    6 +++---
+>  1 files changed, 3 insertions(+), 3 deletions(-)
 > 
-> diff --git a/support/export/hostname.c b/support/export/hostname.c
-> index 4daabe9..94e98a5 100644
-> --- a/support/export/hostname.c
-> +++ b/support/export/hostname.c
-> @@ -69,7 +69,7 @@ host_ntop(const struct sockaddr *sap, char *buf, const size_t buflen)
->  
->  	memset(buf, 0, buflen);
->  
-> -	if (sin->sin_family != AF_INET)
-> +	if (sin->sin_family != AF_INET) {
->  		(void)strncpy(buf, "bad family", buflen - 1);
->  		return buf;
->  	}
+> diff --git a/utils/gssd/krb5_util.c b/utils/gssd/krb5_util.c
+> index 8ef8184..8dc64fe 100644
+> --- a/utils/gssd/krb5_util.c
+> +++ b/utils/gssd/krb5_util.c
+> @@ -796,7 +796,7 @@ find_keytab_entry(krb5_context context, krb5_keytab kt, const char *tgtname,
+>  	char **realmnames = NULL;
+>  	char myhostname[NI_MAXHOST], targethostname[NI_MAXHOST];
+>  	char myhostad[NI_MAXHOST+1];
+> -	int i, j, retval;
+> +	int i, j, k, retval;
+>  	char *default_realm = NULL;
+>  	char *realm;
+>  	char *k5err = NULL;
+> @@ -941,8 +941,8 @@ find_keytab_entry(krb5_context context, krb5_keytab kt, const char *tgtname,
+>  				 * moving on to the svcname
+>  				 */
+>  				if (strcmp(svcnames[j],"$") == 0 && !tried_upper) {
+> -					for (i = 0; myhostad[i] != '$'; ++i) {
+> -						myhostad[i] = toupper(myhostad[i]);
+> +					for (k = 0; myhostad[k] != '$'; ++k) {
+> +						myhostad[k] = toupper(myhostad[k]);
+>  					}
+>  					j--;
+>  					tried_upper = 1;
 > 
