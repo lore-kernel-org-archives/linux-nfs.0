@@ -1,96 +1,59 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:47251 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([173.255.197.46]:33454 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752554AbcCPO4F (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 16 Mar 2016 10:56:05 -0400
-Date: Wed, 16 Mar 2016 10:56:02 -0400 (EDT)
-From: Benjamin Coddington <bcodding@redhat.com>
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-cc: Anna Schumaker <anna.schumaker@netapp.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] NFS: Retry a zero-length short read
-In-Reply-To: <CAHQdGtThhkdmiYUgbWq1Jz00K8CKtOsgfxJUADhHXe5d3ygrSQ@mail.gmail.com>
-Message-ID: <alpine.OSX.2.19.9992.1603161050370.11199@planck>
-References: <79adfc63f33887475f6a0f0eeaacd8b52b2ed12c.1458119750.git.bcodding@redhat.com> <CAHQdGtS4pViRyWc+K+CLhmGrt1ar5PRcMpURap2_x2B5QpU2Fw@mail.gmail.com> <alpine.OSX.2.19.9992.1603161016560.11199@planck>
- <CAHQdGtThhkdmiYUgbWq1Jz00K8CKtOsgfxJUADhHXe5d3ygrSQ@mail.gmail.com>
+	id S934826AbcCPPFN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 16 Mar 2016 11:05:13 -0400
+Date: Wed, 16 Mar 2016 11:05:10 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: William Dauchy <wdauchy@gmail.com>
+Cc: NeilBrown <neilb@suse.com>,
+        Linux NFS mailing list <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] sunrpc/cache: drop reference when
+ sunrpc_cache_pipe_upcall() detects a race
+Message-ID: <20160316150510.GE11520@fieldses.org>
+References: <87y49ylq76.fsf@notabene.neil.brown.name>
+ <20160314203846.GA22276@fieldses.org>
+ <CAJ75kXbNjwaf-QWQPq1=ooUxAPmA5qBEH9jGv+k92NEr-4eJXQ@mail.gmail.com>
+ <20160315131959.GA419@fieldses.org>
+ <87vb4nh406.fsf@notabene.neil.brown.name>
+ <CAJ75kXaWqMSgjp4U=M5Jz7VUXt_yJTo31MTQV0fh1R1TV9_W7Q@mail.gmail.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <CAJ75kXaWqMSgjp4U=M5Jz7VUXt_yJTo31MTQV0fh1R1TV9_W7Q@mail.gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, 16 Mar 2016, Trond Myklebust wrote:
+On Wed, Mar 16, 2016 at 08:31:03AM +0100, William Dauchy wrote:
+> Hi Bruce,
+> 
+> Thank you for your reply.
+> 
+> On Tue, Mar 15, 2016 at 9:37 PM, NeilBrown <neilb@suse.com> wrote:
+> > I agree that it isn't needed for stable - the race is tiny and the
+> > consequence of losing the race is that entries get stuck in the cache
+> > and possible an exported filesystem cannot be unmounted.
+> 
+> I believe in an industrial usage, this race will become more common;
 
-> On Wed, Mar 16, 2016 at 10:22 AM, Benjamin Coddington
-> <bcodding@redhat.com> wrote:
-> > On Wed, 16 Mar 2016, Trond Myklebust wrote:
-> >
-> >> On Wed, Mar 16, 2016 at 5:17 AM, Benjamin Coddington
-> >> <bcodding@redhat.com> wrote:
-> >> >
-> >> > A zero-length short read without eof should be retried rather than sending
-> >> > an error to the application.
-> >>
-> >>
-> >> In what situation would returning a 0 length read not be a bug? If the
-> >> server intended that we back off and retry, it has the alternative of
-> >> sending a JUKEBOX/DELAY error.
-> >
-> > If the server completes a local read but then another writer comes in and
-> > appends to the file before the server checks if it needs to set EOF, then
-> > the response might be 0 length without EOF set.
->
-> Why isn't that EOF check done atomically with the read itself? This
-> still sounds like a server bug to me.
+Why is that?
 
-I don't know -- I would guess because doing that atomically is harder than
-not, and I don't know where the RFCs say that a zero length response without
-eof is to be treated as an error or condition to be avoided.
+> moreover the consequence of an exported filesystem which can't be
+> unmounted is not something I can accept in some environment.
+> 
+> I accept your judgment about including it or not in -stable but I am
+> just complaining about the lack of further consideration for those
+> type of fixes in nfs generally speaking. In an industrial usage, we
+> are hitting races way more easily than in a normal usage; lost of them
+> are already fixed and we do backports ourself.
 
-I'll look into that, and respond here.
+Do you have a list?
 
-> > I'm also using https://tools.ietf.org/html/rfc7530#section-16.23.5 to guide
-> > how I think the client should behave; it says that the client should retry
-> > a short read without eof set.  I think that should include a response with
-> > 0 length.
+> We are at a point where
+> it becomes almost impossible to come with a proof and say "we are
+> hitting this race, and this patch fixes the issue, please backport in
+> -stable".
 
-Here's the verbatim from section 12.23.5:
+I don't expect *proof*, necessarily, but some sort of argument would be
+helpful.
 
-   If the server returns a "short read" (i.e., less data than requested
-   and eof is set to FALSE), the client should send another READ to get
-   the remaining data.  A server may return less data than requested
-   under several circumstances.  The file may have been truncated by
-   another client or perhaps on the server itself, changing the file
-   size from what the requesting client believes to be the case.  This
-   would reduce the actual amount of data available to the client.  It
-   is possible that the server reduces the transfer size and so returns
-   a short read result.  Server resource exhaustion may also result in a
-   short read.
-
-Ben
-
-> >> > Signed-off-by: Benjamin Coddington <bcodding@redhat.com>
-> >> > ---
-> >> >  fs/nfs/read.c |    5 -----
-> >> >  1 files changed, 0 insertions(+), 5 deletions(-)
-> >> >
-> >> > diff --git a/fs/nfs/read.c b/fs/nfs/read.c
-> >> > index eb31e23..7269d42 100644
-> >> > --- a/fs/nfs/read.c
-> >> > +++ b/fs/nfs/read.c
-> >> > @@ -244,11 +244,6 @@ static void nfs_readpage_retry(struct rpc_task *task,
-> >> >
-> >> >         /* This is a short read! */
-> >> >         nfs_inc_stats(hdr->inode, NFSIOS_SHORTREAD);
-> >> > -       /* Has the server at least made some progress? */
-> >> > -       if (resp->count == 0) {
-> >> > -               nfs_set_pgio_error(hdr, -EIO, argp->offset);
-> >> > -               return;
-> >> > -       }
-> >> >
-> >> >         /* For non rpc-based layout drivers, retry-through-MDS */
-> >> >         if (!task->tk_ops) {
-> >> > --
-> >> > 1.7.1
-> >> >
-> >>
->
+--b.
