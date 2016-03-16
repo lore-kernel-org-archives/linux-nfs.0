@@ -1,107 +1,127 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ob0-f177.google.com ([209.85.214.177]:35320 "EHLO
-	mail-ob0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752138AbcCPTlH (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 16 Mar 2016 15:41:07 -0400
-Received: by mail-ob0-f177.google.com with SMTP id fp4so61915360obb.2
-        for <linux-nfs@vger.kernel.org>; Wed, 16 Mar 2016 12:41:07 -0700 (PDT)
+Received: from mx1.redhat.com ([209.132.183.28]:32813 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755190AbcCPTqa (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 16 Mar 2016 15:46:30 -0400
+Date: Wed, 16 Mar 2016 15:46:28 -0400 (EDT)
+From: Benjamin Coddington <bcodding@redhat.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+cc: Trond Myklebust <trond.myklebust@primarydata.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] NFS: Retry a zero-length short read
+In-Reply-To: <20160316191503.GB12992@fieldses.org>
+Message-ID: <alpine.OSX.2.19.9992.1603161532220.11199@planck>
+References: <79adfc63f33887475f6a0f0eeaacd8b52b2ed12c.1458119750.git.bcodding@redhat.com> <CAHQdGtS4pViRyWc+K+CLhmGrt1ar5PRcMpURap2_x2B5QpU2Fw@mail.gmail.com> <alpine.OSX.2.19.9992.1603161016560.11199@planck> <CAHQdGtThhkdmiYUgbWq1Jz00K8CKtOsgfxJUADhHXe5d3ygrSQ@mail.gmail.com>
+ <alpine.OSX.2.19.9992.1603161050370.11199@planck> <alpine.OSX.2.19.9992.1603161112440.11199@planck> <CAHQdGtTMOjr8SMKOpM2tg0meAAgfLjgbMb5KjGDRoxt7LnEADw@mail.gmail.com> <20160316171857.GA12992@fieldses.org> <alpine.OSX.2.19.9992.1603161333260.11199@planck>
+ <20160316191503.GB12992@fieldses.org>
 MIME-Version: 1.0
-In-Reply-To: <56D58CAC.7010603@gmail.com>
-References: <56BF34E3.1020003@gmail.com>
-	<20160229095756.GA19397@infradead.org>
-	<56D432D5.7000905@gmail.com>
-	<20160229133439.GA4416@infradead.org>
-	<56D58CAC.7010603@gmail.com>
-Date: Wed, 16 Mar 2016 15:41:06 -0400
-Message-ID: <CAHQdGtQWxv1vzC_o8x3JSFyW3tMYihF1rcmFGBsGEpddLabejA@mail.gmail.com>
-Subject: Re: [PATCH] nfs/blocklayout: make sure making a aligned read request
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Kinglong Mee <kinglongmee@gmail.com>
-Cc: Christoph Hellwig <hch@infradead.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        Peng Tao <tao.peng@primarydata.com>
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Mar 1, 2016 at 7:35 AM, Kinglong Mee <kinglongmee@gmail.com> wrote:
-> Cc Peng Tao,
+> On Wed, Mar 16, 2016 at 01:36:48PM -0400, Benjamin Coddington wrote:
+> > On Wed, 16 Mar 2016, J. Bruce Fields wrote:
+> >
+> > > On Wed, Mar 16, 2016 at 12:22:22PM -0400, Trond Myklebust wrote:
+> > > > On Wed, Mar 16, 2016 at 11:20 AM, Benjamin Coddington
+> > > > <bcodding@redhat.com> wrote:
+> > > > > On Wed, 16 Mar 2016, Benjamin Coddington wrote:
+> > > > >
+> > > > >> On Wed, 16 Mar 2016, Trond Myklebust wrote:
+> > > > >>
+> > > > >> > On Wed, Mar 16, 2016 at 10:22 AM, Benjamin Coddington
+> > > > >> > <bcodding@redhat.com> wrote:
+> > > > >> > > On Wed, 16 Mar 2016, Trond Myklebust wrote:
+> > > > >> > >
+> > > > >> > >> On Wed, Mar 16, 2016 at 5:17 AM, Benjamin Coddington
+> > > > >> > >> <bcodding@redhat.com> wrote:
+> > > > >> > >> >
+> > > > >> > >> > A zero-length short read without eof should be retried rather than sending
+> > > > >> > >> > an error to the application.
+> > > > >> > >>
+> > > > >> > >>
+> > > > >> > >> In what situation would returning a 0 length read not be a bug? If the
+> > > > >> > >> server intended that we back off and retry, it has the alternative of
+> > > > >> > >> sending a JUKEBOX/DELAY error.
+> > > > >> > >
+> > > > >> > > If the server completes a local read but then another writer comes in and
+> > > > >> > > appends to the file before the server checks if it needs to set EOF, then
+> > > > >> > > the response might be 0 length without EOF set.
+> > > > >> >
+> > > > >> > Why isn't that EOF check done atomically with the read itself? This
+> > > > >> > still sounds like a server bug to me.
+> > > > >>
+> > > > >> I don't know -- I would guess because doing that atomically is harder than
+> > > > >> not, and I don't know where the RFCs say that a zero length response without
+> > > > >> eof is to be treated as an error or condition to be avoided.
+> > > > >>
+> > > > >> I'll look into that, and respond here.
+> > > > >
+> > > > > Indeed, it seems that it is more convenient for the linux server to send a
+> > > > > zero-length response without eof when the file grows.  It would probably be
+> > > > > more helpful if the server handled that case, but I think that 7530 states
+> > > > > that it doesn't have to handle that case.
+> > > >
+> > > > Here is what RFC5661 and RFC7530 say.
+> > > >
+> > > >    If the READ ended at the end-of-file (formally, in a correctly formed
+> > > >    READ request, if offset + count is equal to the size of the file), or
+> > > >    the READ request extends beyond the size of the file (if offset +
+> > > >    count is greater than the size of the file), eof is returned as TRUE;
+> > > >    otherwise, it is FALSE.  A successful READ of an empty file will
+> > > >    always return eof as TRUE.
+> > > >
+> > > > Here is what RFC1813 says:
+> > > >
+> > > >       eof
+> > > >          If the read ended at the end-of-file (formally, in a
+> > > >          correctly formed READ request, if READ3args.offset plus
+> > > >          READ3resok.count is equal to the size of the file), eof
+> > > >          is returned as TRUE; otherwise it is FALSE. A
+> > > >          successful READ of an empty file will always return eof
+> > > >          as TRUE.
+> > > >
+> > > > Where does it say that the eof determination is allowed to be
+> > > > non-atomic? Unlike structures such as change_info4, there isn't an
+> > > > "atomic" flag to allow the server to communicate to the client that it
+> > > > cannot rely on the eof flag. Since the determination is part of the
+> > > > same READ operation, you can't point to the "COMPOUNDS are not atomic"
+> > > > either.
+> > >
+> > > I wonder why READ has eof at all, instead of adopting read()'s
+> > > convention that 0 means eof?
+> > >
+> > > In any case, our server should be able to count on that convention
+> > > internally, so if getting a real "eof" out of the filesystem looks
+> > > daunting, why not for now just check for that case in
+> > > nfsd4_encode_readv()?:
+> >
+> > It's probably not really that daunting.  Couldn't we check to see if inode's
+> > size has increased, and if so do the read again?
 >
-> On 2/29/2016 21:34, Christoph Hellwig wrote:
->> On Mon, Feb 29, 2016 at 08:00:21PM +0800, Kinglong Mee wrote:
->>> On 2/29/2016 17:57, Christoph Hellwig wrote:
->>>> On Sat, Feb 13, 2016 at 09:51:31PM +0800, Kinglong Mee wrote:
->>>>> Only treat write goes up to the inode size as aligned request,
->>>>> because it always write PAGE_CACHE_SIZE, but read a dynamic size.
->>>>
->>>> Can you explain what the point is?
->>>
->>> I run ltp tests with read02 hang.
->>> There seams a loop in block codes.
->>> It is caused by passing an unaligned read to bio.
->>> So this patch is out as making a aligned read request.
->>
->> Do you have any additional details?
->
-> See the following comments.
->
->>
->>>> We'll never use data pas the block size
->>>> in the page cache, but per the block size requirement in the spec we must
->>>> be able to read it.  This patch means we can't direct storage reads where
->>>> we previously could, without any obvious upside.
->>>
->>> bl_pg_init_read/bl_pg_test_read checks aligned base on SECTOR_SIZE.
->>> bl_pg_init_write/bl_pg_test_write checks aligned base on PAGE_SIZE.
->>>
->>> If according the codes, reads data per block size is okay.
->>>
->>> But, there is a comment in bl_read_pagelist() as,
->>>
->>> 250         isect = (sector_t) (f_offset >> SECTOR_SHIFT);
->>> 251         /* Code assumes extents are page-aligned */
->>> 252         for (i = pg_index; i < header->page_array.npages; i++) {
->>> 253                 if (extent_length <= 0) {
->>>
->>> I don't known the meaning of "extents are page-aligned",
->>> extent's start offset is aligned to page size?
->>> or extent's start offset is aligned to page size and length
->>> is equal to PAGE_SIZE too ?
->>
->> All of them should start aligned to PAGE_SIZE, and also have a length
->> that is a multiple of PAGE_SIZE.
->
-> Commit f742dc4a3258 ("pnfsblock: fix non-aligned DIO read") has
-> change the aligned size to SECTOR_SIZE but the request is aligned.
->
-> +static bool
-> +is_aligned_req(struct nfs_page *req, unsigned int alignment)
-> +{
-> +       return IS_ALIGNED(req->wb_offset, alignment) &&
-> +              IS_ALIGNED(req->wb_bytes, alignment);
-> +}
->
-> Commit 3a6fd1f004fc ("pnfs/blocklayout: remove read-modify-write
->  handling in bl_write_pagelist") adds reading up to the inode size.
->
-> +       if (req_offset(req) + req->wb_bytes == i_size_read(pgio->pg_inode)) {
-> +               /*
-> +                * If the write goes up to the inode size, just write
-> +                * the full page.  Data past the inode size is
-> +                * guaranteed to be zeroed by the higher level client
-> +                * code, and this behaviour is mandated by RFC 5663
-> +                * section 2.3.2.
-> +                */
-> +               return true;
-> +       }
->
-> But the comments are about write request, without any read.
-> After that patch, the read request can be unaligned.
->
+> Does the client really have trouble with short reads in general, or only
+> with zero-length short reads?
 
-Christoph, does Kinglong's explanation satisfy your concerns, or are
-there still unresolved differences that should prevent me from taking
-this patch?
+Just the zero-length short read.
 
-Cheers
-  Trond
+> > The concept of READ and eof atomicity should also include a concept of a
+> > boundary or barrier.  The operation is atomic within what bound - the
+> > server's response processing or the underlying filesystem?
+>
+> Ideally the read data and eof both represent the same state of the file
+> with no file-modifying operations intervening between the two.
+>
+> I could come up with artificial examples that would allow clients to
+> detect that we don't meet this standard.  I can't think of one that
+> would occur in practice (may just be my lack of imagination).
+
+So, sounds like fixing this is a good idea on the server. I hope Trond will
+let us know if he still feels that the client ought not to be changed since
+it seems an easy enough fix to avoid a similar problem on another server.
+Perhaps there's a downside I'm not seeing on the client.  Or maybe the
+convention of read() returning 0 meaning eof is global enough to cause it to
+be acceptible behavior -- we really should treat a zero-length read response
+without eof as an error.  My lack of experience is showing..  :)
+
+Ben
