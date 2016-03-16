@@ -1,8 +1,8 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:52276 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:39785 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S966833AbcCPWT1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 16 Mar 2016 18:19:27 -0400
+	id S966164AbcCPWTP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 16 Mar 2016 18:19:15 -0400
 From: Andreas Gruenbacher <agruenba@redhat.com>
 To: Alexander Viro <viro@zeniv.linux.org.uk>
 Cc: Andreas Gruenbacher <agruenba@redhat.com>,
@@ -16,52 +16,135 @@ Cc: Andreas Gruenbacher <agruenba@redhat.com>,
         xfs@oss.sgi.com, linux-kernel@vger.kernel.org,
         linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
         linux-cifs@vger.kernel.org, linux-api@vger.kernel.org
-Subject: [PATCH v20 04/23] vfs: Make the inode passed to inode_change_ok non-const
-Date: Wed, 16 Mar 2016 23:18:44 +0100
-Message-Id: <1458166743-18488-5-git-send-email-agruenba@redhat.com>
+Subject: [PATCH v20 01/23] vfs: Add IS_ACL() and IS_RICHACL() tests
+Date: Wed, 16 Mar 2016 23:18:41 +0100
+Message-Id: <1458166743-18488-2-git-send-email-agruenba@redhat.com>
 In-Reply-To: <1458166743-18488-1-git-send-email-agruenba@redhat.com>
 References: <1458166743-18488-1-git-send-email-agruenba@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-We will need to call iop->permission and iop->get_acl from
-inode_change_ok() for additional permission checks, and both take a
-non-const inode.
+The vfs does not apply the umask for file systems that support acls. The
+test used for this used to be called IS_POSIXACL(). Switch to a new
+IS_ACL() test to check for either posix acls or richacls instead. Add a new
+MS_RICHACL flag and IS_RICHACL() test for richacls alone. The IS_POSIXACL()
+test is still needed by nfsd.
 
 Signed-off-by: Andreas Gruenbacher <agruenba@redhat.com>
 Reviewed-by: J. Bruce Fields <bfields@redhat.com>
 Reviewed-by: Andreas Dilger <adilger@dilger.ca>
 ---
- fs/attr.c          | 2 +-
- include/linux/fs.h | 2 +-
- 2 files changed, 2 insertions(+), 2 deletions(-)
+ fs/Kconfig              |  3 +++
+ fs/namei.c              |  8 ++++----
+ include/linux/fs.h      | 12 ++++++++++++
+ include/uapi/linux/fs.h |  3 ++-
+ 4 files changed, 21 insertions(+), 5 deletions(-)
 
-diff --git a/fs/attr.c b/fs/attr.c
-index 25b24d0..7ca7fa0 100644
---- a/fs/attr.c
-+++ b/fs/attr.c
-@@ -28,7 +28,7 @@
-  * Should be called as the first thing in ->setattr implementations,
-  * possibly after taking additional locks.
-  */
--int inode_change_ok(const struct inode *inode, struct iattr *attr)
-+int inode_change_ok(struct inode *inode, struct iattr *attr)
- {
- 	unsigned int ia_valid = attr->ia_valid;
+diff --git a/fs/Kconfig b/fs/Kconfig
+index 9adee0d..f7b26f3 100644
+--- a/fs/Kconfig
++++ b/fs/Kconfig
+@@ -63,6 +63,9 @@ endif # BLOCK
+ config FS_POSIX_ACL
+ 	def_bool n
  
++config FS_RICHACL
++	def_bool n
++
+ config EXPORTFS
+ 	tristate
+ 
+diff --git a/fs/namei.c b/fs/namei.c
+index 9c590e0..68e1056 100644
+--- a/fs/namei.c
++++ b/fs/namei.c
+@@ -2861,7 +2861,7 @@ static int atomic_open(struct nameidata *nd, struct dentry *dentry,
+ 	}
+ 
+ 	mode = op->mode;
+-	if ((open_flag & O_CREAT) && !IS_POSIXACL(dir))
++	if ((open_flag & O_CREAT) && !IS_ACL(dir))
+ 		mode &= ~current_umask();
+ 
+ 	excl = (open_flag & (O_EXCL | O_CREAT)) == (O_EXCL | O_CREAT);
+@@ -3045,7 +3045,7 @@ static int lookup_open(struct nameidata *nd, struct path *path,
+ 	/* Negative dentry, just create the file */
+ 	if (!dentry->d_inode && (op->open_flag & O_CREAT)) {
+ 		umode_t mode = op->mode;
+-		if (!IS_POSIXACL(dir->d_inode))
++		if (!IS_ACL(dir->d_inode))
+ 			mode &= ~current_umask();
+ 		/*
+ 		 * This write is needed to ensure that a
+@@ -3620,7 +3620,7 @@ retry:
+ 	if (IS_ERR(dentry))
+ 		return PTR_ERR(dentry);
+ 
+-	if (!IS_POSIXACL(path.dentry->d_inode))
++	if (!IS_ACL(path.dentry->d_inode))
+ 		mode &= ~current_umask();
+ 	error = security_path_mknod(&path, dentry, mode, dev);
+ 	if (error)
+@@ -3689,7 +3689,7 @@ retry:
+ 	if (IS_ERR(dentry))
+ 		return PTR_ERR(dentry);
+ 
+-	if (!IS_POSIXACL(path.dentry->d_inode))
++	if (!IS_ACL(path.dentry->d_inode))
+ 		mode &= ~current_umask();
+ 	error = security_path_mkdir(&path, dentry, mode);
+ 	if (!error)
 diff --git a/include/linux/fs.h b/include/linux/fs.h
-index 97e34ba..efff04f 100644
+index ae68100..f9d2b59 100644
 --- a/include/linux/fs.h
 +++ b/include/linux/fs.h
-@@ -2908,7 +2908,7 @@ extern int buffer_migrate_page(struct address_space *,
- #define buffer_migrate_page NULL
- #endif
+@@ -1804,6 +1804,12 @@ struct super_operations {
+ #define IS_IMMUTABLE(inode)	((inode)->i_flags & S_IMMUTABLE)
+ #define IS_POSIXACL(inode)	__IS_FLG(inode, MS_POSIXACL)
  
--extern int inode_change_ok(const struct inode *, struct iattr *);
-+extern int inode_change_ok(struct inode *, struct iattr *);
- extern int inode_newsize_ok(const struct inode *, loff_t offset);
- extern void setattr_copy(struct inode *inode, const struct iattr *attr);
++#ifdef CONFIG_FS_RICHACL
++#define IS_RICHACL(inode)	__IS_FLG(inode, MS_RICHACL)
++#else
++#define IS_RICHACL(inode)	0
++#endif
++
+ #define IS_DEADDIR(inode)	((inode)->i_flags & S_DEAD)
+ #define IS_NOCMTIME(inode)	((inode)->i_flags & S_NOCMTIME)
+ #define IS_SWAPFILE(inode)	((inode)->i_flags & S_SWAPFILE)
+@@ -1817,6 +1823,12 @@ struct super_operations {
+ 				 (inode)->i_rdev == WHITEOUT_DEV)
  
+ /*
++ * IS_ACL() tells the VFS to not apply the umask
++ * and use check_acl for acl permission checks when defined.
++ */
++#define IS_ACL(inode)		__IS_FLG(inode, MS_POSIXACL | MS_RICHACL)
++
++/*
+  * Inode state bits.  Protected by inode->i_lock
+  *
+  * Three bits determine the dirty state of the inode, I_DIRTY_SYNC,
+diff --git a/include/uapi/linux/fs.h b/include/uapi/linux/fs.h
+index 149bec8..540dbef 100644
+--- a/include/uapi/linux/fs.h
++++ b/include/uapi/linux/fs.h
+@@ -120,7 +120,7 @@ struct inodes_stat_t {
+ #define MS_VERBOSE	32768	/* War is peace. Verbosity is silence.
+ 				   MS_VERBOSE is deprecated. */
+ #define MS_SILENT	32768
+-#define MS_POSIXACL	(1<<16)	/* VFS does not apply the umask */
++#define MS_POSIXACL	(1<<16)	/* Supports POSIX ACLs */
+ #define MS_UNBINDABLE	(1<<17)	/* change to unbindable */
+ #define MS_PRIVATE	(1<<18)	/* change to private */
+ #define MS_SLAVE	(1<<19)	/* change to slave */
+@@ -130,6 +130,7 @@ struct inodes_stat_t {
+ #define MS_I_VERSION	(1<<23) /* Update inode I_version field */
+ #define MS_STRICTATIME	(1<<24) /* Always perform atime updates */
+ #define MS_LAZYTIME	(1<<25) /* Update the on-disk [acm]times lazily */
++#define MS_RICHACL	(1<<26) /* Supports richacls */
+ 
+ /* These sb flags are internal to the kernel */
+ #define MS_NOSEC	(1<<28)
 -- 
 2.5.0
 
