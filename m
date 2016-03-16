@@ -1,76 +1,47 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ig0-f172.google.com ([209.85.213.172]:35310 "EHLO
-	mail-ig0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751163AbcCPDkW (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 15 Mar 2016 23:40:22 -0400
+Received: from mail-lf0-f44.google.com ([209.85.215.44]:33104 "EHLO
+	mail-lf0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932113AbcCPHbZ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 16 Mar 2016 03:31:25 -0400
+Received: by mail-lf0-f44.google.com with SMTP id h198so12634611lfh.0
+        for <linux-nfs@vger.kernel.org>; Wed, 16 Mar 2016 00:31:24 -0700 (PDT)
 MIME-Version: 1.0
-In-Reply-To: <20160315071439.GE19747@infradead.org>
-References: <1456733847-17982-1-git-send-email-agruenba@redhat.com>
- <20160311140134.GA14808@infradead.org> <CAHc6FU4t3yisCM=MXrHRmCja_A8eZOpVa1smJ0gUhv+vuUAuXA@mail.gmail.com>
- <CAH2r5mv3OTmPOQBV7xc-uZmB0gWxykXOCEVOcybx3tbHiViTZg@mail.gmail.com> <20160315071439.GE19747@infradead.org>
-From: Steve French <smfrench@gmail.com>
-Date: Tue, 15 Mar 2016 22:40:00 -0500
-Message-ID: <CAH2r5ms+bQTQjL5DUz0v7vWhcaUr_ewvDcFiSasFNYphFdsf=Q@mail.gmail.com>
-Subject: Re: [PATCH v18 00/22] Richacls (Core and Ext4)
-To: Christoph Hellwig <hch@infradead.org>
-Cc: Andreas Gruenbacher <agruenba@redhat.com>,
-        Alexander Viro <viro@zeniv.linux.org.uk>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        "Theodore Ts'o" <tytso@mit.edu>,
-        "linux-cifs@vger.kernel.org" <linux-cifs@vger.kernel.org>,
-        Linux API <linux-api@vger.kernel.org>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        LKML <linux-kernel@vger.kernel.org>, XFS Developers <xfs@oss.sgi.com>,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        Jeff Layton <jlayton@poochiereds.net>,
-        linux-ext4 <linux-ext4@vger.kernel.org>,
-        Anna Schumaker <anna.schumaker@netapp.com>
+In-Reply-To: <87vb4nh406.fsf@notabene.neil.brown.name>
+References: <87y49ylq76.fsf@notabene.neil.brown.name> <20160314203846.GA22276@fieldses.org>
+ <CAJ75kXbNjwaf-QWQPq1=ooUxAPmA5qBEH9jGv+k92NEr-4eJXQ@mail.gmail.com>
+ <20160315131959.GA419@fieldses.org> <87vb4nh406.fsf@notabene.neil.brown.name>
+From: William Dauchy <wdauchy@gmail.com>
+Date: Wed, 16 Mar 2016 08:31:03 +0100
+Message-ID: <CAJ75kXaWqMSgjp4U=M5Jz7VUXt_yJTo31MTQV0fh1R1TV9_W7Q@mail.gmail.com>
+Subject: Re: [PATCH] sunrpc/cache: drop reference when sunrpc_cache_pipe_upcall()
+ detects a race
+To: NeilBrown <neilb@suse.com>
+Cc: "J. Bruce Fields" <bfields@fieldses.org>,
+        Linux NFS mailing list <linux-nfs@vger.kernel.org>
 Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Mar 15, 2016 at 2:14 AM, Christoph Hellwig <hch@infradead.org> wrote:
-> On Fri, Mar 11, 2016 at 02:05:16PM -0600, Steve French wrote:
->> A loosely related question is what can be done for tools around existing
->> interfaces for ACLs.  I recently found out NTFS-3g has this xattr:
->>
->>     static const char nf_ns_xattr_ntfs_acl[] = "system.ntfs_acl";
->>
->> which allows you to query system.ntfs_acl xattr to get their full ACL
->
-> Bah.  Filesystems really have no business exposing random system xattrs,
-> and we really need to add a filter to fs/xattr.c to not expose
-> arbitrary attrs ouside the user.* prefix.
+Hi Bruce,
 
-Hopefully we don't consider them random system xattrs, it is
-plausible that ntfs uses these for user space tools that I don't
-have.
+Thank you for your reply.
 
-At least for cifs.ko a similar subset (querying ACLs, streams and
-reparse info e.g.)
-to the ntfs set would be very helpful.  For example,
-Being able to query the actual ACL over the wire, is important for backup
-and for debug, the only question is whether to do it via an xattr (possibly
-being able to have some synergy with existing ntfs-3g tools) or an ioctl
-(since adding an NTFS specific syscall for a couple fs doesn't make sense).
+On Tue, Mar 15, 2016 at 9:37 PM, NeilBrown <neilb@suse.com> wrote:
+> I agree that it isn't needed for stable - the race is tiny and the
+> consequence of losing the race is that entries get stuck in the cache
+> and possible an exported filesystem cannot be unmounted.
 
+I believe in an industrial usage, this race will become more common;
+moreover the consequence of an exported filesystem which can't be
+unmounted is not something I can accept in some environment.
 
-For the specific example of the odd ntfs.streams.list xattr, I can see why
-they have it.  I would have mixed feelings about having no way to tell
-streams and EAs from each other
-since NTFS-3g displaying streams as xattrs and also Extended
-Attributes (EAs) as xattrs
-(and if they didn't have an additional xattr to list streams)
-without a way to tell the difference (at least a system xattr to list
-the alternate
-data streams is useful).   There is useful information in alternate data streams
-that backup (and debugging) programs need for some workloads,
-for example the origin (where internet explorer downloaded a file from)
-and file classification information.
-
+I accept your judgment about including it or not in -stable but I am
+just complaining about the lack of further consideration for those
+type of fixes in nfs generally speaking. In an industrial usage, we
+are hitting races way more easily than in a normal usage; lost of them
+are already fixed and we do backports ourself. We are at a point where
+it becomes almost impossible to come with a proof and say "we are
+hitting this race, and this patch fixes the issue, please backport in
+-stable".
 -- 
-Thanks,
-
-Steve
+William
