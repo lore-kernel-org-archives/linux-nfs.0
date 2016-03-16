@@ -1,80 +1,118 @@
-Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:40142 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S934328AbcCPSq4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 16 Mar 2016 14:46:56 -0400
-Date: Wed, 16 Mar 2016 14:46:55 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: Shirley Ma <shirley.ma@oracle.com>
-Cc: leon@leon.nu, Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        Anna Schumaker <schumakeranna@gmail.com>
-Subject: Re: [PATCH] nfs: add nfs IPv6 rdma6 mount option support
-Message-ID: <20160316184654.GA8506@pad.redhat.com>
-References: <56E9A650.7060409@oracle.com>
+Return-Path: <bfields@fieldses.org>
+Date: Wed, 16 Mar 2016 15:15:03 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Benjamin Coddington <bcodding@redhat.com>
+Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] NFS: Retry a zero-length short read
+Message-ID: <20160316191503.GB12992@fieldses.org>
+References: <79adfc63f33887475f6a0f0eeaacd8b52b2ed12c.1458119750.git.bcodding@redhat.com>
+ <CAHQdGtS4pViRyWc+K+CLhmGrt1ar5PRcMpURap2_x2B5QpU2Fw@mail.gmail.com>
+ <alpine.OSX.2.19.9992.1603161016560.11199@planck>
+ <CAHQdGtThhkdmiYUgbWq1Jz00K8CKtOsgfxJUADhHXe5d3ygrSQ@mail.gmail.com>
+ <alpine.OSX.2.19.9992.1603161050370.11199@planck>
+ <alpine.OSX.2.19.9992.1603161112440.11199@planck>
+ <CAHQdGtTMOjr8SMKOpM2tg0meAAgfLjgbMb5KjGDRoxt7LnEADw@mail.gmail.com>
+ <20160316171857.GA12992@fieldses.org>
+ <alpine.OSX.2.19.9992.1603161333260.11199@planck>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <56E9A650.7060409@oracle.com>
-Sender: linux-nfs-owner@vger.kernel.org
+In-Reply-To: <alpine.OSX.2.19.9992.1603161333260.11199@planck>
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Mar 16, 2016 at 11:30:40AM -0700, Shirley Ma wrote:
-> Add rdma6 option to support NFS/RDMA IPv6.
+On Wed, Mar 16, 2016 at 01:36:48PM -0400, Benjamin Coddington wrote:
+> On Wed, 16 Mar 2016, J. Bruce Fields wrote:
+> 
+> > On Wed, Mar 16, 2016 at 12:22:22PM -0400, Trond Myklebust wrote:
+> > > On Wed, Mar 16, 2016 at 11:20 AM, Benjamin Coddington
+> > > <bcodding@redhat.com> wrote:
+> > > > On Wed, 16 Mar 2016, Benjamin Coddington wrote:
+> > > >
+> > > >> On Wed, 16 Mar 2016, Trond Myklebust wrote:
+> > > >>
+> > > >> > On Wed, Mar 16, 2016 at 10:22 AM, Benjamin Coddington
+> > > >> > <bcodding@redhat.com> wrote:
+> > > >> > > On Wed, 16 Mar 2016, Trond Myklebust wrote:
+> > > >> > >
+> > > >> > >> On Wed, Mar 16, 2016 at 5:17 AM, Benjamin Coddington
+> > > >> > >> <bcodding@redhat.com> wrote:
+> > > >> > >> >
+> > > >> > >> > A zero-length short read without eof should be retried rather than sending
+> > > >> > >> > an error to the application.
+> > > >> > >>
+> > > >> > >>
+> > > >> > >> In what situation would returning a 0 length read not be a bug? If the
+> > > >> > >> server intended that we back off and retry, it has the alternative of
+> > > >> > >> sending a JUKEBOX/DELAY error.
+> > > >> > >
+> > > >> > > If the server completes a local read but then another writer comes in and
+> > > >> > > appends to the file before the server checks if it needs to set EOF, then
+> > > >> > > the response might be 0 length without EOF set.
+> > > >> >
+> > > >> > Why isn't that EOF check done atomically with the read itself? This
+> > > >> > still sounds like a server bug to me.
+> > > >>
+> > > >> I don't know -- I would guess because doing that atomically is harder than
+> > > >> not, and I don't know where the RFCs say that a zero length response without
+> > > >> eof is to be treated as an error or condition to be avoided.
+> > > >>
+> > > >> I'll look into that, and respond here.
+> > > >
+> > > > Indeed, it seems that it is more convenient for the linux server to send a
+> > > > zero-length response without eof when the file grows.  It would probably be
+> > > > more helpful if the server handled that case, but I think that 7530 states
+> > > > that it doesn't have to handle that case.
+> > >
+> > > Here is what RFC5661 and RFC7530 say.
+> > >
+> > >    If the READ ended at the end-of-file (formally, in a correctly formed
+> > >    READ request, if offset + count is equal to the size of the file), or
+> > >    the READ request extends beyond the size of the file (if offset +
+> > >    count is greater than the size of the file), eof is returned as TRUE;
+> > >    otherwise, it is FALSE.  A successful READ of an empty file will
+> > >    always return eof as TRUE.
+> > >
+> > > Here is what RFC1813 says:
+> > >
+> > >       eof
+> > >          If the read ended at the end-of-file (formally, in a
+> > >          correctly formed READ request, if READ3args.offset plus
+> > >          READ3resok.count is equal to the size of the file), eof
+> > >          is returned as TRUE; otherwise it is FALSE. A
+> > >          successful READ of an empty file will always return eof
+> > >          as TRUE.
+> > >
+> > > Where does it say that the eof determination is allowed to be
+> > > non-atomic? Unlike structures such as change_info4, there isn't an
+> > > "atomic" flag to allow the server to communicate to the client that it
+> > > cannot rely on the eof flag. Since the determination is part of the
+> > > same READ operation, you can't point to the "COMPOUNDS are not atomic"
+> > > either.
+> >
+> > I wonder why READ has eof at all, instead of adopting read()'s
+> > convention that 0 means eof?
+> >
+> > In any case, our server should be able to count on that convention
+> > internally, so if getting a real "eof" out of the filesystem looks
+> > daunting, why not for now just check for that case in
+> > nfsd4_encode_readv()?:
+> 
+> It's probably not really that daunting.  Couldn't we check to see if inode's
+> size has increased, and if so do the read again?
 
-This is client-side: cc'ing Trond and Anna.--b.
+Does the client really have trouble with short reads in general, or only
+with zero-length short reads?
 
-> 
-> Signed-off-by: Shirley Ma <shirley.ma@oracle.com>
-> ---
-> 
-> diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-> index f126828..62a55d0 100644
-> --- a/fs/nfs/super.c
-> +++ b/fs/nfs/super.c
-> @@ -191,6 +191,7 @@ static const match_table_t nfs_mount_option_tokens = {
->  
->  enum {
->  	Opt_xprt_udp, Opt_xprt_udp6, Opt_xprt_tcp, Opt_xprt_tcp6, Opt_xprt_rdma,
-> +	Opt_xprt_rdma6,
->  
->  	Opt_xprt_err
->  };
-> @@ -201,6 +202,7 @@ static const match_table_t nfs_xprt_protocol_tokens = {
->  	{ Opt_xprt_tcp, "tcp" },
->  	{ Opt_xprt_tcp6, "tcp6" },
->  	{ Opt_xprt_rdma, "rdma" },
-> +	{ Opt_xprt_rdma6, "rdma6" },
->  
->  	{ Opt_xprt_err, NULL }
->  };
-> @@ -1456,6 +1458,8 @@ static int nfs_parse_mount_options(char *raw,
->  				mnt->flags |= NFS_MOUNT_TCP;
->  				mnt->nfs_server.protocol = XPRT_TRANSPORT_TCP;
->  				break;
-> +			case Opt_xprt_rdma6:
-> +				protofamily = AF_INET6;
->  			case Opt_xprt_rdma:
->  				/* vector side protocols to TCP */
->  				mnt->flags |= NFS_MOUNT_TCP;
-> @@ -1490,6 +1494,8 @@ static int nfs_parse_mount_options(char *raw,
->  			case Opt_xprt_tcp:
->  				mnt->mount_server.protocol = XPRT_TRANSPORT_TCP;
->  				break;
-> +			case Opt_xprt_rdma6:
-> +				mountfamily = AF_INET6;
->  			case Opt_xprt_rdma: /* not used for side protocols */
->  			default:
->  				dfprintk(MOUNT, "NFS:   unrecognized "
-> diff --git a/include/linux/sunrpc/msg_prot.h b/include/linux/sunrpc/msg_prot.h
-> index 8073713..49b8433 100644
-> --- a/include/linux/sunrpc/msg_prot.h
-> +++ b/include/linux/sunrpc/msg_prot.h
-> @@ -149,6 +149,7 @@ typedef __be32	rpc_fraghdr;
->  #define RPCBIND_NETID_UDP	"udp"
->  #define RPCBIND_NETID_TCP	"tcp"
->  #define RPCBIND_NETID_RDMA	"rdma"
-> +#define RPCBIND_NETID_RDMA6	"rdma6"
->  #define RPCBIND_NETID_SCTP	"sctp"
->  #define RPCBIND_NETID_UDP6	"udp6"
->  #define RPCBIND_NETID_TCP6	"tcp6"
-> 
+> The concept of READ and eof atomicity should also include a concept of a
+> boundary or barrier.  The operation is atomic within what bound - the
+> server's response processing or the underlying filesystem?
+
+Ideally the read data and eof both represent the same state of the file
+with no file-modifying operations intervening between the two.
+
+I could come up with artificial examples that would allow clients to
+detect that we don't meet this standard.  I can't think of one that
+would occur in practice (may just be my lack of imagination).
+
+--b.
