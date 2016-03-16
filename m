@@ -1,8 +1,8 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:39822 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:35244 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S966164AbcCPWTX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 16 Mar 2016 18:19:23 -0400
+	id S967117AbcCPWUG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 16 Mar 2016 18:20:06 -0400
 From: Andreas Gruenbacher <agruenba@redhat.com>
 To: Alexander Viro <viro@zeniv.linux.org.uk>
 Cc: Andreas Gruenbacher <agruenba@redhat.com>,
@@ -16,93 +16,43 @@ Cc: Andreas Gruenbacher <agruenba@redhat.com>,
         xfs@oss.sgi.com, linux-kernel@vger.kernel.org,
         linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
         linux-cifs@vger.kernel.org, linux-api@vger.kernel.org
-Subject: [PATCH v20 03/23] vfs: Add MAY_DELETE_SELF and MAY_DELETE_CHILD permission flags
-Date: Wed, 16 Mar 2016 23:18:43 +0100
-Message-Id: <1458166743-18488-4-git-send-email-agruenba@redhat.com>
+Subject: [PATCH v20 13/23] vfs: Add get_richacl and set_richacl inode operations
+Date: Wed, 16 Mar 2016 23:18:53 +0100
+Message-Id: <1458166743-18488-14-git-send-email-agruenba@redhat.com>
 In-Reply-To: <1458166743-18488-1-git-send-email-agruenba@redhat.com>
 References: <1458166743-18488-1-git-send-email-agruenba@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Normally, deleting a file requires MAY_WRITE access to the parent
-directory.  With richacls, a file may be deleted with MAY_DELETE_CHILD access
-to the parent directory or with MAY_DELETE_SELF access to the file.
-
-To support that, pass the MAY_DELETE_CHILD mask flag to inode_permission()
-when checking for delete access inside a directory, and MAY_DELETE_SELF
-when checking for delete access to a file itelf.
-
-The MAY_DELETE_SELF permission overrides the sticky directory check.
+These operations are similar to the get_acl and set_acl operations for
+POSIX ACLs.  The distinction between access and default ACLs doesn't exist
+for richacls.
 
 Signed-off-by: Andreas Gruenbacher <agruenba@redhat.com>
-Reviewed-by: J. Bruce Fields <bfields@redhat.com>
 ---
- fs/namei.c         | 20 ++++++++++++--------
- include/linux/fs.h |  2 ++
- 2 files changed, 14 insertions(+), 8 deletions(-)
+ include/linux/fs.h | 2 ++
+ 1 file changed, 2 insertions(+)
 
-diff --git a/fs/namei.c b/fs/namei.c
-index 2092742..28707ae 100644
---- a/fs/namei.c
-+++ b/fs/namei.c
-@@ -453,9 +453,9 @@ static int sb_permission(struct super_block *sb, struct inode *inode, int mask)
-  * this, letting us set arbitrary permissions for filesystem access without
-  * changing the "normal" UIDs which are used for other things.
-  *
-- * MAY_WRITE must be set in @mask whenever MAY_APPEND, MAY_CREATE_FILE, or
-- * MAY_CREATE_DIR are set.  That way, file systems that don't support these
-- * permissions will check for MAY_WRITE instead.
-+ * MAY_WRITE must be set in @mask whenever MAY_APPEND, MAY_CREATE_FILE,
-+ * MAY_CREATE_DIR, or MAY_DELETE_CHILD are set.  That way, file systems that
-+ * don't support these permissions will check for MAY_WRITE instead.
-  */
- int inode_permission(struct inode *inode, int mask)
- {
-@@ -2631,14 +2631,18 @@ static int may_delete_or_replace(struct inode *dir, struct dentry *victim,
- 	BUG_ON(victim->d_parent->d_inode != dir);
- 	audit_inode_child(dir, victim, AUDIT_TYPE_CHILD_DELETE);
- 
--	error = inode_permission(dir, mask);
-+	error = inode_permission(dir, mask | MAY_WRITE | MAY_DELETE_CHILD);
-+	if (!error && check_sticky(dir, inode))
-+		error = -EPERM;
-+	if (error && IS_RICHACL(inode) &&
-+	    inode_permission(inode, MAY_DELETE_SELF) == 0 &&
-+	    inode_permission(dir, mask) == 0)
-+		error = 0;
- 	if (error)
- 		return error;
- 	if (IS_APPEND(dir))
- 		return -EPERM;
--
--	if (check_sticky(dir, inode) || IS_APPEND(inode) ||
--	    IS_IMMUTABLE(inode) || IS_SWAPFILE(inode))
-+	if (IS_APPEND(inode) || IS_IMMUTABLE(inode) || IS_SWAPFILE(inode))
- 		return -EPERM;
- 	if (isdir) {
- 		if (!d_is_dir(victim))
-@@ -2656,7 +2660,7 @@ static int may_delete_or_replace(struct inode *dir, struct dentry *victim,
- 
- static int may_delete(struct inode *dir, struct dentry *victim, bool isdir)
- {
--	return may_delete_or_replace(dir, victim, isdir, MAY_WRITE | MAY_EXEC);
-+	return may_delete_or_replace(dir, victim, isdir, MAY_EXEC);
- }
- 
- static int may_replace(struct inode *dir, struct dentry *victim, bool isdir)
 diff --git a/include/linux/fs.h b/include/linux/fs.h
-index 02e99d7..97e34ba 100644
+index 3db7729..e04dbb4 100644
 --- a/include/linux/fs.h
 +++ b/include/linux/fs.h
-@@ -85,6 +85,8 @@ typedef void (dax_iodone_t)(struct buffer_head *bh_map, int uptodate);
- #define MAY_NOT_BLOCK		0x00000080
- #define MAY_CREATE_FILE		0x00000100
- #define MAY_CREATE_DIR		0x00000200
-+#define MAY_DELETE_CHILD	0x00000400
-+#define MAY_DELETE_SELF		0x00000800
+@@ -1682,6 +1682,7 @@ struct inode_operations {
+ 	const char * (*get_link) (struct dentry *, struct inode *, struct delayed_call *);
+ 	int (*permission) (struct inode *, int);
+ 	struct posix_acl * (*get_acl)(struct inode *, int);
++	struct richacl * (*get_richacl)(struct inode *);
  
- /*
-  * flags in file.f_mode.  Note that FMODE_READ and FMODE_WRITE must correspond
+ 	int (*readlink) (struct dentry *, char __user *,int);
+ 
+@@ -1710,6 +1711,7 @@ struct inode_operations {
+ 			   umode_t create_mode, int *opened);
+ 	int (*tmpfile) (struct inode *, struct dentry *, umode_t);
+ 	int (*set_acl)(struct inode *, struct posix_acl *, int);
++	int (*set_richacl)(struct inode *, struct richacl *);
+ } ____cacheline_aligned;
+ 
+ ssize_t rw_copy_check_uvector(int type, const struct iovec __user * uvector,
 -- 
 2.5.0
 
