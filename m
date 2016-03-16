@@ -1,67 +1,50 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:39749 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:48438 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755137AbcCPSTO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 16 Mar 2016 14:19:14 -0400
-Subject: Re: [PATCH] mount.nfs - hide EBUSY errors.
-To: NeilBrown <neilb@suse.com>
-References: <877fi2raey.fsf@notabene.neil.brown.name>
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+	id S1755137AbcCPSTq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 16 Mar 2016 14:19:46 -0400
+Received: from int-mx14.intmail.prod.int.phx2.redhat.com (int-mx14.intmail.prod.int.phx2.redhat.com [10.5.11.27])
+	by mx1.redhat.com (Postfix) with ESMTPS id 17C9146213
+	for <linux-nfs@vger.kernel.org>; Wed, 16 Mar 2016 18:19:46 +0000 (UTC)
+Subject: Re: [PATCH] libexport.a: fix missing brace in host_ntop() fallback
+To: Stefan Hajnoczi <stefanha@redhat.com>, linux-nfs@vger.kernel.org
+References: <1455805236-30534-1-git-send-email-stefanha@redhat.com>
 From: Steve Dickson <SteveD@redhat.com>
-Message-ID: <56E9A3A0.40002@RedHat.com>
-Date: Wed, 16 Mar 2016 14:19:12 -0400
+Message-ID: <56E9A3C1.10500@RedHat.com>
+Date: Wed, 16 Mar 2016 14:19:45 -0400
 MIME-Version: 1.0
-In-Reply-To: <877fi2raey.fsf@notabene.neil.brown.name>
+In-Reply-To: <1455805236-30534-1-git-send-email-stefanha@redhat.com>
 Content-Type: text/plain; charset=windows-1252
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
 
-On 02/17/2016 09:59 PM, NeilBrown wrote:
+On 02/18/2016 09:20 AM, Stefan Hajnoczi wrote:
+> An if statement has been missing a brace since host_ntop() was added in
+> commit 94ce1eb94babb4c587b2826452fb053cba745098 ("libexport.a: Add
+> helpers to manage DNS lookups").
 > 
-> Linux only returns EBUSY for a non-remount mount if the exact
-> requested filesystem is already mounted.  Arguably this is not an
-> error.
-> 
-> "mount -a" tries to see if each requested filesystem is already mounted.
-> Sometimes it gets it wrong - e.g. hostname aliases can confuse it.
-> So "mount -a" will report a failure "already mounted", which is
-> wrong because it should filter those out.
-> 
-> An easy fix it just to be silent about EBUSY.  As the requested
-> result (a given filesystem being mounted at a given location) is in
-> effect after the EBUSY return, we can just treat it as success.
-> 
-> This removes the confusing "already mounted" errors.
-> 
-> Signed-off-by: NeilBrown <neilb@suse.com>
+> Signed-off-by: Stefan Hajnoczi <stefanha@redhat.com>
 Committed... 
 
 steved.
 
 > ---
->  utils/mount/stropts.c | 9 +++++++++
->  1 file changed, 9 insertions(+)
+>  support/export/hostname.c | 2 +-
+>  1 file changed, 1 insertion(+), 1 deletion(-)
 > 
-> diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
-> index 86829a902bfd..320dde2fab92 100644
-> --- a/utils/mount/stropts.c
-> +++ b/utils/mount/stropts.c
-> @@ -960,6 +960,15 @@ static int nfsmount_fg(struct nfsmount_info *mi)
->  		if (nfs_try_mount(mi))
->  			return EX_SUCCESS;
+> diff --git a/support/export/hostname.c b/support/export/hostname.c
+> index 4daabe9..94e98a5 100644
+> --- a/support/export/hostname.c
+> +++ b/support/export/hostname.c
+> @@ -69,7 +69,7 @@ host_ntop(const struct sockaddr *sap, char *buf, const size_t buflen)
 >  
-> +		if (errno == EBUSY)
-> +			/* The only cause of EBUSY is if exactly the desired
-> +			 * filesystem is already mounted.  That can arguably
-> +			 * be seen as success.  "mount -a" tries to optimise
-> +			 * out this case but sometimes fails.  Help it out
-> +			 * by pretending everything is rosy
-> +			 */
-> +			return EX_SUCCESS;
-> +
->  		if (nfs_is_permanent_error(errno))
->  			break;
+>  	memset(buf, 0, buflen);
 >  
+> -	if (sin->sin_family != AF_INET)
+> +	if (sin->sin_family != AF_INET) {
+>  		(void)strncpy(buf, "bad family", buflen - 1);
+>  		return buf;
+>  	}
 > 
