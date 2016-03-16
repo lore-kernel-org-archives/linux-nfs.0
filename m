@@ -1,56 +1,72 @@
-Return-Path: <SteveD@redhat.com>
-Subject: Re: [PATCH - nfs-utils] systemd: ensure nfs-config service is re-run
- as needed.
-To: NeilBrown <neilb@suse.com>
-References: <87fuvrfbof.fsf@notabene.neil.brown.name>
-Cc: Benjamin Coddington <bcodding@redhat.com>,
-        Linux NFS mailing list <linux-nfs@vger.kernel.org>
-From: Steve Dickson <SteveD@redhat.com>
-Message-ID: <56E9A492.1090106@RedHat.com>
-Date: Wed, 16 Mar 2016 14:23:14 -0400
+Return-Path: <linux-nfs-owner@vger.kernel.org>
+Received: from aserp1040.oracle.com ([141.146.126.69]:26121 "EHLO
+	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S934996AbcCPSau (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 16 Mar 2016 14:30:50 -0400
+Message-ID: <56E9A650.7060409@oracle.com>
+Date: Wed, 16 Mar 2016 11:30:40 -0700
+From: Shirley Ma <shirley.ma@oracle.com>
 MIME-Version: 1.0
-In-Reply-To: <87fuvrfbof.fsf@notabene.neil.brown.name>
-Content-Type: text/plain; charset=windows-1252
+To: Bruce Fields <bfields@redhat.com>, leon@leon.nu
+CC: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: [PATCH] nfs: add nfs IPv6 rdma6 mount option support
+Content-Type: text/plain; charset=utf-8
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Add rdma6 option to support NFS/RDMA IPv6.
 
+Signed-off-by: Shirley Ma <shirley.ma@oracle.com>
+---
 
-On 03/15/2016 09:34 PM, NeilBrown wrote:
-> 
-> The nfs-config service translates distro-specific startup
-> configuration into "environment" variable read and used
-> by systemd unit files.
-> 
-> Currently it is only run once, so subsequent changes to the
-> distro-specific files do not take effect when an nfs service is
-> restarted.
-> 
-> If we change "RemainAfterExit=yes" to "RemainAfterExit=no" then the
-> service will be restarted before any dependant service is started, so
-> the environment file will always be up to date.
-> 
-> Reported-and-tested-by: Benjamin Coddington <bcodding@redhat.com>
-> Signed-off-by: NeilBrown <neilb@suse.com>
-Committed... Nice Work!!! 
+diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+index f126828..62a55d0 100644
+--- a/fs/nfs/super.c
++++ b/fs/nfs/super.c
+@@ -191,6 +191,7 @@ static const match_table_t nfs_mount_option_tokens = {
+ 
+ enum {
+ 	Opt_xprt_udp, Opt_xprt_udp6, Opt_xprt_tcp, Opt_xprt_tcp6, Opt_xprt_rdma,
++	Opt_xprt_rdma6,
+ 
+ 	Opt_xprt_err
+ };
+@@ -201,6 +202,7 @@ static const match_table_t nfs_xprt_protocol_tokens = {
+ 	{ Opt_xprt_tcp, "tcp" },
+ 	{ Opt_xprt_tcp6, "tcp6" },
+ 	{ Opt_xprt_rdma, "rdma" },
++	{ Opt_xprt_rdma6, "rdma6" },
+ 
+ 	{ Opt_xprt_err, NULL }
+ };
+@@ -1456,6 +1458,8 @@ static int nfs_parse_mount_options(char *raw,
+ 				mnt->flags |= NFS_MOUNT_TCP;
+ 				mnt->nfs_server.protocol = XPRT_TRANSPORT_TCP;
+ 				break;
++			case Opt_xprt_rdma6:
++				protofamily = AF_INET6;
+ 			case Opt_xprt_rdma:
+ 				/* vector side protocols to TCP */
+ 				mnt->flags |= NFS_MOUNT_TCP;
+@@ -1490,6 +1494,8 @@ static int nfs_parse_mount_options(char *raw,
+ 			case Opt_xprt_tcp:
+ 				mnt->mount_server.protocol = XPRT_TRANSPORT_TCP;
+ 				break;
++			case Opt_xprt_rdma6:
++				mountfamily = AF_INET6;
+ 			case Opt_xprt_rdma: /* not used for side protocols */
+ 			default:
+ 				dfprintk(MOUNT, "NFS:   unrecognized "
+diff --git a/include/linux/sunrpc/msg_prot.h b/include/linux/sunrpc/msg_prot.h
+index 8073713..49b8433 100644
+--- a/include/linux/sunrpc/msg_prot.h
++++ b/include/linux/sunrpc/msg_prot.h
+@@ -149,6 +149,7 @@ typedef __be32	rpc_fraghdr;
+ #define RPCBIND_NETID_UDP	"udp"
+ #define RPCBIND_NETID_TCP	"tcp"
+ #define RPCBIND_NETID_RDMA	"rdma"
++#define RPCBIND_NETID_RDMA6	"rdma6"
+ #define RPCBIND_NETID_SCTP	"sctp"
+ #define RPCBIND_NETID_UDP6	"udp6"
+ #define RPCBIND_NETID_TCP6	"tcp6"
 
-steved.
-> ---
->  systemd/nfs-config.service | 6 +++++-
->  1 file changed, 5 insertions(+), 1 deletion(-)
-> 
-> diff --git a/systemd/nfs-config.service b/systemd/nfs-config.service
-> index 7f653058f424..e0a7f83314f5 100644
-> --- a/systemd/nfs-config.service
-> +++ b/systemd/nfs-config.service
-> @@ -5,5 +5,9 @@ DefaultDependencies=no
->  
->  [Service]
->  Type=oneshot
-> -RemainAfterExit=yes
-> +# This service needs to run any time any nfs service
-> +# is started, so changes to local config files get
-> +# incorporated.  Having "RemainAfterExit=no" (the default)
-> +# ensures this happens.
-> +RemainAfterExit=no
->  ExecStart=/usr/lib/systemd/scripts/nfs-utils_env.sh
-> 
