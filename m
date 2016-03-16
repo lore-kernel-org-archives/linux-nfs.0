@@ -1,118 +1,57 @@
-Return-Path: <nfbrown@novell.com>
-From: NeilBrown <nfbrown@novell.com>
-To: Benjamin Coddington <bcodding@redhat.com>
-Date: Wed, 16 Mar 2016 12:35:30 +1100
-Cc: steved@redhat.com, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH nfs-utils] systemd: remove the nfs-config service
-In-Reply-To: <alpine.OSX.2.19.9992.1603152015540.11199@planck>
-References: <dfec4f0fe32d23aff0ed608b8f2931059060479a.1457784247.git.bcodding@redhat.com> <87h9g7h2ym.fsf@notabene.neil.brown.name> <alpine.OSX.2.19.9992.1603151706000.11199@planck> <87bn6fh0jh.fsf@notabene.neil.brown.name> <alpine.OSX.2.19.9992.1603152015540.11199@planck>
-Message-ID: <87d1qvfbml.fsf@notabene.neil.brown.name>
+Return-Path: <linux-nfs-owner@vger.kernel.org>
+Received: from mail-ig0-f180.google.com ([209.85.213.180]:35407 "EHLO
+	mail-ig0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751235AbcCPD3F (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 15 Mar 2016 23:29:05 -0400
 MIME-Version: 1.0
-Content-Type: multipart/signed; boundary="=-=-=";
-	micalg=pgp-sha256; protocol="application/pgp-signature"
+In-Reply-To: <20160315201700.GA22945@sernet.de>
+References: <1456733847-17982-1-git-send-email-agruenba@redhat.com>
+ <20160311140134.GA14808@infradead.org> <CAHc6FU4t3yisCM=MXrHRmCja_A8eZOpVa1smJ0gUhv+vuUAuXA@mail.gmail.com>
+ <20160315071103.GC19747@infradead.org> <20160315154514.GB39038@jra3> <20160315201700.GA22945@sernet.de>
+From: Steve French <smfrench@gmail.com>
+Date: Tue, 15 Mar 2016 22:28:44 -0500
+Message-ID: <CAH2r5mt1SBnxnu=c8JGA1dmUUcHXG+wYXfWFQCcbC1tZT0BHpQ@mail.gmail.com>
+Subject: Re: [PATCH v18 00/22] Richacls (Core and Ext4)
+To: "Volker.Lendecke@sernet.de" <Volker.Lendecke@sernet.de>
+Cc: Cristoph Hellwig <hch@infradead.org>, Jeremy Allison <jra@samba.org>,
+        Andreas Gruenbacher <agruenba@redhat.com>,
+        Alexander Viro <viro@zeniv.linux.org.uk>,
+        "J. Bruce Fields" <bfields@fieldses.org>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        "Theodore Ts'o" <tytso@mit.edu>,
+        "linux-cifs@vger.kernel.org" <linux-cifs@vger.kernel.org>,
+        Linux API <linux-api@vger.kernel.org>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        LKML <linux-kernel@vger.kernel.org>, XFS Developers <xfs@oss.sgi.com>,
+        Andreas Dilger <adilger.kernel@dilger.ca>,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        Jeff Layton <jlayton@poochiereds.net>,
+        linux-ext4 <linux-ext4@vger.kernel.org>,
+        Anna Schumaker <anna.schumaker@netapp.com>
+Content-Type: text/plain; charset=UTF-8
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---=-=-=
-Content-Type: text/plain
-
-On Wed, Mar 16 2016, Benjamin Coddington wrote:
-
->> On Wed, Mar 16 2016, Benjamin Coddington wrote:
+On Tue, Mar 15, 2016 at 3:17 PM, Volker Lendecke
+<Volker.Lendecke@sernet.de> wrote:
+> On Tue, Mar 15, 2016 at 08:45:14AM -0700, Jeremy Allison wrote:
+>> On Tue, Mar 15, 2016 at 12:11:03AM -0700, Christoph Hellwig wrote:
+>> > People have long learned that we only have 'alloc' permissions.  Any
+>> > model that mixes allow and deny ACE is a mistake.
 >>
->> > On Wed, 16 Mar 2016, NeilBrown wrote:
->> >
->> >> On Sat, Mar 12 2016, Benjamin Coddington wrote:
->> >>
->> >> > The nfs-config service exists to translate distro-specific startup
->> >> > configuration into the command line arguments used by systemd to start nfs
->> >> > utilities.  Unfortunately, it is not clear to most users that this service
->> >> > must be recycled every time startup configurations have been modified, as
->> >> > this requirement is a change for at least one distro.
->> >> >
->> >> > We can get rid of nfs-config by generating the startup arguments in an
->> >> > ExecStartPre option for each service that needs them.  We'll also have to
->> >> > break out the EnvironmentFile into a separate file for each service to
->> >> > avoid races overwriting this file.
->> >> >
->> >> > A distro taking this change should also modify their
->> >> > /usr/lib/systemd/scripts/nfs-utils_env.sh script to include the new
->> >> > EnvironmentFile location for each service.
->> >> >
->> >> > Signed-off-by: Benjamin Coddington <bcodding@redhat.com>
->> >>
->> >> I can't say I really like this, but it does make sense and solves a real
->> >> problem.
->> >> Maybe: I would never have written it myself, but I'm kind-a glad you did
->> >> :-)
->> >
->> > Which bits are unlikeable?  I am guessing that all these little intermediate
->> > files are the issue; that is what I hate.  I admit that it is a least-effort
->> > approach to fixing the problem.  What does the ideal fix look like to you?
->>
->> I don't like having multiple intermediate config files that are all
->> identical, and I don't like having to run the config script every time
->> any daemon is (re)started.
->>
->> I'm not sure what "ideal" would be.
->>
->> One improvement would be if systemd could be given an executable in
->> place of an environment file with the implication that it would run the
->> executable and read environment variables from the stdout.
->> That would remove the multiple config files.
->> It would still mean the script is run every time, but I could be
->> convinced that isn't so bad.
->>
->> An alternate idea is that maybe systemd could have a directive so that
->> in any transaction were "this" unit is started, "that" unit will also be
->> started.  Then we could replace "Wants=nfs-config.server" with
->> "Prepare=nfs-config.service" so if systemd ever needed to start any
->> nfs-related service, it would make preparations by first running
->> nfs-config.service - only once per transaction.
->>
->> But unless you want to hack on systemd, I think what you have is good
->> enough.
->>
->>
->> .... hmmm.  I wonder what would happen if we just removed
->> "RemainAfterExit=y" from nfs-config.service.  Would it cause things to
->> fail, or would it cause nfs-config.service to be run every time.
->>
->> Hey, that looks like it works!  Can you double check for me?
->> i.e. revert your patch, remove "RemainAfterExit=y" from
->> nfs-config.service, and then see if nfs-config.service gets run any time
->> any nfs server is started.
+>> People can also learn and change though :-). One of the
+>> biggest complaints people deploying Samba on Linux have is the
+>> incompatible ACL models.
 >
-> Yep.. that appears to work just fine.  Seems like a simpler solution than
-> this change.  It appears to me ( from systemd.service(5) ) that systemd's
-> state transitions for Type=Oneshot will avoid races that might overwrite the
-> environment file.  Nice find!
->
+> Just to confirm: I see this a lot in the field. NFSv4 ACLs, while not a
+> perfect match for NTFS ACLs are a lot closer much more usable to people
+> who want to serve Windows clients.
 
-Great.  Thanks for testing and thanks for prodding me to explain
-myself.  Very happy with the outcome!
+Yes (and presumably Macs as well)
 
-I've posted a patch to Steve.
 
-NeilBrown
 
---=-=-=
-Content-Type: application/pgp-signature; name="signature.asc"
+-- 
+Thanks,
 
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v2
-
-iQIcBAEBCAAGBQJW6LhiAAoJEDnsnt1WYoG5g6YP/1i/6TNmo0Jx4NpdyFXcV21A
-XZgg07645VnwIaJ0X46+C5K17k6ssY+OCnxCcqXhINq4ro7+8TBRMuCP7uHV2DA0
-faxZAITixjJ+L9L88/jrVtbVF1t6XIqN6mzzGCxEdaZ2bGpbosdJ75rZui5VDm+9
-cnRjnZmQcgrnJ+iCayvuslKplRSTJwyCtlQjaPgVoq/xmIDN56DPK6uV5dNk1rMy
-ysZApp3BSTCvhG+/II18mjTxb8aav9dO/9ax83unwBxqdbv/IiMoBDamz4EttXsP
-6OkCRKJk2qJwO5XVqZ7WK2MAQr0+qFTbVeFb19agnfhHjDak0aHZqZ9tKQ6b9gM7
-rRfWCpTIwz/MXchz1p6aXRvkcepznITvyupby8pA2MAs4GfoIkXnbxioUmHqxiLF
-gJtkbiUXnu4wvcOYvMVVKnaMuCGT8S7exfsQjBT2YAodQOxgPDIGMpgeqtiMV6aP
-ie+2Grexd418/6cYtVKbzfeLRm0Ske4baLyvpadVxcJIGkXMxtxnH97d9ldjPONY
-iRUORKrYmCvlW9118559NPdOjJemvrniGCD0dQtbqXKJ9Zl12Z97mgVp8VKfvbqW
-qgLb7L5VfN/vEgUaEyhZokC8U1kNjs0kWF88myfa4MlMd/jhGkFvcgic4QkSJI9+
-cOO+0BU65JAYB5LNOeSj
-=IIl8
------END PGP SIGNATURE-----
---=-=-=--
+Steve
