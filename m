@@ -1,172 +1,66 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:51269 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S935174AbcCPP0W (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 16 Mar 2016 11:26:22 -0400
-Subject: Re: [PATCH 1/2] NFS parse NFSv4 multiple hostnames
-To: andros@netapp.com
-References: <1456336559-17334-1-git-send-email-andros@netapp.com>
- <1456336559-17334-2-git-send-email-andros@netapp.com>
-Cc: linux-nfs@vger.kernel.org
-From: Steve Dickson <SteveD@redhat.com>
-Message-ID: <56E97B1D.2030504@RedHat.com>
-Date: Wed, 16 Mar 2016 11:26:21 -0400
+Received: from mail-lb0-f169.google.com ([209.85.217.169]:33696 "EHLO
+	mail-lb0-f169.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S966715AbcCPPjQ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 16 Mar 2016 11:39:16 -0400
+Received: by mail-lb0-f169.google.com with SMTP id oe12so50720432lbc.0
+        for <linux-nfs@vger.kernel.org>; Wed, 16 Mar 2016 08:39:16 -0700 (PDT)
 MIME-Version: 1.0
-In-Reply-To: <1456336559-17334-2-git-send-email-andros@netapp.com>
-Content-Type: text/plain; charset=windows-1252
+In-Reply-To: <20160316150510.GE11520@fieldses.org>
+References: <87y49ylq76.fsf@notabene.neil.brown.name> <20160314203846.GA22276@fieldses.org>
+ <CAJ75kXbNjwaf-QWQPq1=ooUxAPmA5qBEH9jGv+k92NEr-4eJXQ@mail.gmail.com>
+ <20160315131959.GA419@fieldses.org> <87vb4nh406.fsf@notabene.neil.brown.name>
+ <CAJ75kXaWqMSgjp4U=M5Jz7VUXt_yJTo31MTQV0fh1R1TV9_W7Q@mail.gmail.com> <20160316150510.GE11520@fieldses.org>
+From: William Dauchy <wdauchy@gmail.com>
+Date: Wed, 16 Mar 2016 16:38:55 +0100
+Message-ID: <CAJ75kXZkt1rqZ9e9gBC1Feywr9w7Cuqscgd+6yWU5oqOmQvU+Q@mail.gmail.com>
+Subject: Re: [PATCH] sunrpc/cache: drop reference when sunrpc_cache_pipe_upcall()
+ detects a race
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: NeilBrown <neilb@suse.com>,
+        Linux NFS mailing list <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Hi Bruce,
 
+Thank your for your reply.
 
-On 02/24/2016 12:55 PM, andros@netapp.com wrote:
-> From: Andy Adamson <andros@netapp.com>
-> 
-> For NFSv4.x mounts
-> 
-> Signed-off-by: Andy Adamson <andros@netapp.com>
-> ---
->  utils/mount/parse_dev.c | 30 ++++++++++++++++++++----------
->  utils/mount/parse_dev.h |  2 +-
->  utils/mount/stropts.c   |  3 ++-
->  utils/mount/utils.c     |  2 +-
->  4 files changed, 24 insertions(+), 13 deletions(-)
-> 
-> diff --git a/utils/mount/parse_dev.c b/utils/mount/parse_dev.c
-> index 0d3bcb9..c5d2215 100644
-> --- a/utils/mount/parse_dev.c
-> +++ b/utils/mount/parse_dev.c
-> @@ -79,10 +79,10 @@ static int nfs_pdn_missing_brace_err(void)
->  /*
->   * Standard hostname:path format
->   */
-> -static int nfs_parse_simple_hostname(const char *dev,
-> -				     char **hostname, char **pathname)
-> +static int nfs_parse_simple_hostname(const char *dev, char **hostname,
-> +				     char **multinames, char **pathname)
->  {
-> -	size_t host_len, path_len;
-> +	size_t host_len, multi_len = 0, path_len;
->  	char *colon, *comma;
->  
->  	/* Must have a colon */
-> @@ -96,13 +96,15 @@ static int nfs_parse_simple_hostname(const char *dev,
->  		return nfs_pdn_hostname_too_long_err();
->  
->  	/* If there's a comma before the colon, take only the
-> -	 * first name in list */
-> +	 * first name in list as the hostname, the rest get stored in
-> +	 * the multinames. Note that NFS_MAXHOSTNAME limits the number
-> +	 * of multinames */
->  	comma = strchr(dev, ',');
->  	if (comma != NULL) {
->  		*comma = '\0';
->  		host_len = comma - dev;
-> -		nfs_error(_("%s: warning: multiple hostnames not supported"),
-> -				progname);
-> +		comma++;
-> +		multi_len = colon - comma;
->  	} else
->  
->  	colon++;
-> @@ -115,6 +117,11 @@ static int nfs_parse_simple_hostname(const char *dev,
->  		if (*hostname == NULL)
->  			return nfs_pdn_nomem_err();
->  	}
-> +	if (multinames && multi_len != 0) {
-> +		*multinames = strndup(comma, multi_len);
-> +		if (*multinames == NULL)
-> +			return nfs_pdn_nomem_err();
-> +	}
->  	if (pathname) {
->  		*pathname = strndup(colon, path_len);
->  		if (*pathname == NULL) {
-> @@ -196,11 +203,13 @@ static int nfs_parse_nfs_url(__attribute__((unused)) const char *dev,
->   * nfs_parse_devname - Determine the server's hostname by looking at "devname".
->   * @devname: pointer to mounted device name (first argument of mount command)
->   * @hostname: OUT: pointer to server's hostname
-> + * @multinames: OUT: pointer to comma separated multiple server interface names
->   * @pathname: OUT: pointer to export path on server
->   *
->   * Returns 1 if succesful, or zero if some error occurred.  On success,
-> - * @hostname and @pathname point to dynamically allocated buffers containing
-> - * the hostname of the server and the export pathname (both '\0'-terminated).
-> + * @hostname, @multinames, and @pathname point to dynamically allocated
-> + * buffers containing the hostname of the server, other multiple server
-> + * interfaces, and the export pathname (all '\0'-terminated).
->   *
->   * @hostname or @pathname may be NULL if caller doesn't want a copy of those
->   * parts of @devname.
-> @@ -208,7 +217,7 @@ static int nfs_parse_nfs_url(__attribute__((unused)) const char *dev,
->   * Note that this will not work if @devname is a wide-character string.
->   */
->  int nfs_parse_devname(const char *devname,
-> -		      char **hostname, char **pathname)
-> +		      char **hostname, char **multinames, char **pathname)
->  {
->  	char *dev;
->  	int result;
-> @@ -225,7 +234,8 @@ int nfs_parse_devname(const char *devname,
->  	else if (strncmp(dev, "nfs://", 6) == 0)
->  		result = nfs_parse_nfs_url(dev, hostname, pathname);
->  	else
-> -		result = nfs_parse_simple_hostname(dev, hostname, pathname);
-> +		result = nfs_parse_simple_hostname(dev, hostname, multinames,
-> +						   pathname);
->  
->  	free(dev);
->  	return result;
-> diff --git a/utils/mount/parse_dev.h b/utils/mount/parse_dev.h
-> index f9857bc..ef663f8 100644
-> --- a/utils/mount/parse_dev.h
-> +++ b/utils/mount/parse_dev.h
-> @@ -23,6 +23,6 @@
->  #ifndef __NFS_UTILS_PARSE_DEV_HEADER
->  #define __NFS_UTILS_PARSE_DEV_HEADER
->  
-> -extern int	nfs_parse_devname(const char *, char **, char **);
-> +extern int	nfs_parse_devname(const char *, char **, char **, char **);
->  
->  #endif	/* __NFS_UTILS_PARSE_DEV */
-> diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
-> index 86829a9..75646f6 100644
-> --- a/utils/mount/stropts.c
-> +++ b/utils/mount/stropts.c
-> @@ -83,6 +83,7 @@ struct nfsmount_info {
->  				*node,		/* mounted-on dir */
->  				*type;		/* "nfs" or "nfs4" */
->  	char			*hostname;	/* server's hostname */
-> +	char			*multinames;	/* more server interfaces */
->  	struct addrinfo		*address;	/* server's addresses */
->  
->  	struct mount_options	*options;	/* parsed mount options */
-> @@ -377,7 +378,7 @@ static int nfs_validate_options(struct nfsmount_info *mi)
->  	sa_family_t family;
->  	int error;
->  
-> -	if (!nfs_parse_devname(mi->spec, &mi->hostname, NULL))
-> +	if (!nfs_parse_devname(mi->spec, &mi->hostname, &mi->multinames,  NULL))
->  		return 0;
->  
->  	if (!nfs_nfs_proto_family(mi->options, &family))
-I understand how multinames is allocated, which looks fine,
-but I don't see how its used...
+On Wed, Mar 16, 2016 at 4:05 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
+> Why is that?
 
-What am I missing?
+It's indeed not really based on actual proof but based on the experience we had.
+Faced several bugs, and it appears we had less issues by backporting a
+few commits; e.g related to races, leaks, performances regressions. We
+did not spent enough time on it to actually show this commit was
+actually fixing an issue hit.
 
-steved.
+> Do you have a list?
 
-> diff --git a/utils/mount/utils.c b/utils/mount/utils.c
-> index 92662ed..2b6ee74 100644
-> --- a/utils/mount/utils.c
-> +++ b/utils/mount/utils.c
-> @@ -159,7 +159,7 @@ int nfs_umount23(const char *devname, char *string)
->  	struct mount_options *options;
->  	int result = EX_FAIL;
->  
-> -	if (!nfs_parse_devname(devname, &hostname, &dirname))
-> +	if (!nfs_parse_devname(devname, &hostname, NULL, &dirname))
->  		return EX_USAGE;
->  
->  	options = po_split(string);
-> 
+I am currently trying to switch from v3.14 to v4.1 (nfs client). So
+even know it is off topic, those I have in mind:
+0d2a970 SUNRPC: Fix a backchannel race
+6851447 SUNRPC: Fix a backchannel deadlock
+0993920 SUNRPC: Prevent SYN+SYNACK+RST storms
+03c78827 SUNRPC: Fix races between socket connection and destroy code
+a41cbe8 Failing to send a CLOSE if file is opened WRONLY and server
+reboots on a 4.x mount
+39d0d3b NFS: Fix a tracepoint NULL-pointer dereference
+5e99b53 nfs4: reset states to use open_stateid when returning
+delegation voluntarily
+e92c1e0 NFSv4: Fix a nograce recovery hang
+6b55970 nfs: Fix a memory leak when meeting an unsupported state protect
+
+I am probably wrong on most of them but we had better stability after
+applying them and I probably forgot some.
+
+> I don't expect *proof*, necessarily, but some sort of argument would be
+> helpful.
+
+In my environment, if I hit this race, it is not acceptable to not
+being able to unmount the filesystem.
+
+Thanks,
+-- 
+William
