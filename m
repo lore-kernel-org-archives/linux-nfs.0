@@ -1,83 +1,58 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:26239 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753066AbcCQOB6 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 17 Mar 2016 10:01:58 -0400
+Received: from mail-pf0-f176.google.com ([209.85.192.176]:34230 "EHLO
+	mail-pf0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S933075AbcCQQpt (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 17 Mar 2016 12:45:49 -0400
+Date: Thu, 17 Mar 2016 09:45:46 -0700
+From: Tejun Heo <tj@kernel.org>
+To: "David S. Miller" <davem@davemloft.net>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>,
+        Jeff Layton <jlayton@poochiereds.net>,
+        Anna Schumaker <anna.schumaker@netapp.com>
+Cc: netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, Amitoj Kaur Chawla <amitoj1606@gmail.com>,
+        kernel-team@fb.com, Johannes Weiner <hannes@cmpxchg.org>,
+        Johannes Berg <johannes@sipsolutions.net>,
+        Eva Rachel Retuya <eraretuya@gmail.com>,
+        Bhaktipriya Shridhar <bhaktipriya96@gmail.com>,
+        linux-wireless@vger.kernel.org
+Subject: [RFD] workqueue: WQ_MEM_RECLAIM usage in network drivers
+Message-ID: <20160317164546.GT21104@mtj.duckdns.org>
+MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 9.2 \(3112\))
-Subject: Re: [PATCH v2] svcrdma: add IPv6 support
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <20160317084210.GE25216@leon.nu>
-Date: Thu, 17 Mar 2016 10:01:50 -0400
-Cc: Shirley Ma <shirley.ma@oracle.com>,
-        Anna Schumaker <Anna.Schumaker@netapp.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        linux-rdma <linux-rdma@vger.kernel.org>,
-        Bruce Fields <bfields@fieldses.org>
-Message-Id: <9D93B217-3044-4404-8EB4-6CD0DD759642@oracle.com>
-References: <56E9A8DD.8030308@oracle.com> <20160317084210.GE25216@leon.nu>
-To: leon@leon.nu
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Server-side patch; cc-ing Bruce.
+Hello,
 
-> On Mar 17, 2016, at 4:42 AM, Leon Romanovsky <leon@leon.nu> wrote:
-> 
-> On Wed, Mar 16, 2016 at 11:41:33AM -0700, Shirley Ma wrote:
->> Add rdma6 option to support NFS/RDMA IPv6.
->> Allow both IPv4 and IPv6 to bind same port at the same time,
->> restricts use of the IPv6 socket to IPv6 communication.
->> 
->> Changes from v1:
->> - Check rdma_set_afonly return value (suggested by Leon Romanovsky)
-> 
-> Looks good to me.
-> Acked-by: Leon Romanovsky <leonro@mellanox.com>
-> 
-> Thanks.
-> 
->> 
->> Signed-off-by: Shirley Ma <shirley.ma@oracle.com>
->> ---
->> 
->> diff --git a/net/sunrpc/xprtrdma/svc_rdma_transport.c b/net/sunrpc/xprtrdma/svc_rdma_transport.c
->> --- a/net/sunrpc/xprtrdma/svc_rdma_transport.c
->> +++ b/net/sunrpc/xprtrdma/svc_rdma_transport.c
->> @@ -869,7 +869,7 @@ static struct svc_xprt *svc_rdma_create(struct svc_serv *serv,
->> 	int ret;
->> 
->> 	dprintk("svcrdma: Creating RDMA socket\n");
->> -	if (sa->sa_family != AF_INET) {
->> +	if ((sa->sa_family != AF_INET) && (sa->sa_family != AF_INET6)) {
-> 
->> 		dprintk("svcrdma: Address family %d is not supported.\n", sa->sa_family);
->> 		return ERR_PTR(-EAFNOSUPPORT);
->> 	}
->> @@ -885,6 +885,16 @@ static struct svc_xprt *svc_rdma_create(struct svc_serv *serv,
->> 		goto err0;
->> 	}
->> 
->> +	/* Allow both IPv4 and IPv6 sockets to bind a single port
->> +	 * at the same time.
->> +	 */
->> +#if IS_ENABLED(CONFIG_IPV6)
->> +	ret = rdma_set_afonly(listen_id, 1);
->> +	if (ret) {
->> +		dprintk("svcrdma: rdma_set_afonly failed = %d\n", ret);
->> +		goto err1;
->> +	}
->> +#endif
->> 	ret = rdma_bind_addr(listen_id, sa);
->> 	if (ret) {
->> 		dprintk("svcrdma: rdma_bind_addr failed = %d\n", ret);
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Years ago, workqueue got reimplemented to use common worker pools
+across different workqueues and a new set of more expressive workqueue
+creation APIs, alloc_*workqueue() were introduced.  The old
+create_*workqueue() became simple wrappers around alloc_*workqueue()
+with the most conservative parameters.  The plan has always been to
+examine each usage and convert to the new interface with parameters
+actually required for the use case.
 
---
-Chuck Lever
+One important flag to decide upon is WQ_MEM_RECLAIM, which declares
+that the workqueue may be depended upon during memory reclaim and thus
+must be able to make forward-progress even when further memory can't
+be allocated without reclaiming some.  Of the network drivers which
+already use alloc_*workqueue() interface, some specify this flag and
+I'm wondering what the guidelines should be here.
 
+* Are network devices expected to be able to serve as a part of
+  storage stack which is depended upon for memory reclamation?
 
+* If so, are all the pieces in place for that to work for all (or at
+  least most) network devices?  If it's only for a subset of NICs, how
+  can one tell whether a given driver needs forward progress guarantee
+  or not?
 
+* I assume that wireless drivers aren't and can't be used in this
+  fashion.  Is that a correction assumption?
+
+Thanks.
+
+-- 
+tejun
