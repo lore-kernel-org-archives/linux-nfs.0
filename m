@@ -1,101 +1,44 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:57083 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754710AbcCRGF1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 18 Mar 2016 02:05:27 -0400
-From: NeilBrown <neilb@suse.com>
-To: William Dauchy <wdauchy@gmail.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>
-Date: Fri, 18 Mar 2016 17:05:18 +1100
-Cc: Linux NFS mailing list <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] sunrpc/cache: drop reference when sunrpc_cache_pipe_upcall() detects a race
-In-Reply-To: <CAJ75kXZkt1rqZ9e9gBC1Feywr9w7Cuqscgd+6yWU5oqOmQvU+Q@mail.gmail.com>
-References: <87y49ylq76.fsf@notabene.neil.brown.name> <20160314203846.GA22276@fieldses.org> <CAJ75kXbNjwaf-QWQPq1=ooUxAPmA5qBEH9jGv+k92NEr-4eJXQ@mail.gmail.com> <20160315131959.GA419@fieldses.org> <87vb4nh406.fsf@notabene.neil.brown.name> <CAJ75kXaWqMSgjp4U=M5Jz7VUXt_yJTo31MTQV0fh1R1TV9_W7Q@mail.gmail.com> <20160316150510.GE11520@fieldses.org> <CAJ75kXZkt1rqZ9e9gBC1Feywr9w7Cuqscgd+6yWU5oqOmQvU+Q@mail.gmail.com>
-Message-ID: <87wpp0e2xt.fsf@notabene.neil.brown.name>
+Received: from mail-vk0-f50.google.com ([209.85.213.50]:33292 "EHLO
+	mail-vk0-f50.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754698AbcCRIsP (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 18 Mar 2016 04:48:15 -0400
+Received: by mail-vk0-f50.google.com with SMTP id k1so133407782vkb.0
+        for <linux-nfs@vger.kernel.org>; Fri, 18 Mar 2016 01:48:15 -0700 (PDT)
 MIME-Version: 1.0
-Content-Type: multipart/signed; boundary="=-=-=";
-	micalg=pgp-sha256; protocol="application/pgp-signature"
+In-Reply-To: <CAH2r5mu66qi=G6sMNQzS_Ciu9ctyS4Q+bKskVqk1Hj5_x7FWng@mail.gmail.com>
+References: <1458166743-18488-1-git-send-email-agruenba@redhat.com>
+	<CAH2r5mu66qi=G6sMNQzS_Ciu9ctyS4Q+bKskVqk1Hj5_x7FWng@mail.gmail.com>
+Date: Fri, 18 Mar 2016 09:48:14 +0100
+Message-ID: <CAHc6FU4ZQQ9qQH+_3cGTO3GjH4AEfgfYzezU5VMWHFG9C4MPEg@mail.gmail.com>
+Subject: Re: [PATCH v20 00/23] Richacls (Core and Ext4)
+From: Andreas Gruenbacher <agruenba@redhat.com>
+To: Steve French <smfrench@gmail.com>
+Cc: Alexander Viro <viro@zeniv.linux.org.uk>,
+        Christoph Hellwig <hch@infradead.org>, "Theodore Ts'o" <tytso@mit.edu>,
+        Andreas Dilger <adilger.kernel@dilger.ca>,
+        "J. Bruce Fields" <bfields@fieldses.org>,
+        Jeff Layton <jlayton@poochiereds.net>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>,
+        Dave Chinner <david@fromorbit.com>,
+        "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+        XFS Developers <xfs@oss.sgi.com>, LKML <linux-kernel@vger.kernel.org>,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "linux-cifs@vger.kernel.org" <linux-cifs@vger.kernel.org>,
+        "linux-api@vger.kernel.org" <linux-api@vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---=-=-=
-Content-Type: text/plain
-Content-Transfer-Encoding: quoted-printable
-
-On Thu, Mar 17 2016, William Dauchy wrote:
-
-> Hi Bruce,
+On Fri, Mar 18, 2016 at 6:20 AM, Steve French <smfrench@gmail.com> wrote:
+> Reviewing the current version of your patch series in your tree
+>  git://git.kernel.org/pub/scm/linux/kernel/git/agruen/linux-richacl.git \
+>         richacl-2016-03-16
 >
-> Thank your for your reply.
->
-> On Wed, Mar 16, 2016 at 4:05 PM, J. Bruce Fields <bfields@fieldses.org> w=
-rote:
->> Why is that?
->
-> It's indeed not really based on actual proof but based on the experience =
-we had.
-> Faced several bugs, and it appears we had less issues by backporting a
-> few commits; e.g related to races, leaks, performances regressions. We
-> did not spent enough time on it to actually show this commit was
-> actually fixing an issue hit.
->
->> Do you have a list?
->
-> I am currently trying to switch from v3.14 to v4.1 (nfs client). So
-> even know it is off topic, those I have in mind:
-> 0d2a970 SUNRPC: Fix a backchannel race
-> 6851447 SUNRPC: Fix a backchannel deadlock
-> 0993920 SUNRPC: Prevent SYN+SYNACK+RST storms
-> 03c78827 SUNRPC: Fix races between socket connection and destroy code
-> a41cbe8 Failing to send a CLOSE if file is opened WRONLY and server
-> reboots on a 4.x mount
-> 39d0d3b NFS: Fix a tracepoint NULL-pointer dereference
-> 5e99b53 nfs4: reset states to use open_stateid when returning
-> delegation voluntarily
-> e92c1e0 NFSv4: Fix a nograce recovery hang
-> 6b55970 nfs: Fix a memory leak when meeting an unsupported state protect
+> you can add my reviewed by to the following patches so far:
 
-Commit: 7632e465feb1 ("dcache: use IS_ROOT to decide where dentry is hashed=
-")
+Done, thanks.
 
-is my most recent complaint - it really should have been tagged for
-=2Dstable.  It is now in 3.12-stable, over 2 years later :-(
-
-NeilBrown
-
-
->
-> I am probably wrong on most of them but we had better stability after
-> applying them and I probably forgot some.
->
->> I don't expect *proof*, necessarily, but some sort of argument would be
->> helpful.
->
-> In my environment, if I hit this race, it is not acceptable to not
-> being able to unmount the filesystem.
->
-> Thanks,
-> --=20
-> William
-
---=-=-=
-Content-Type: application/pgp-signature; name="signature.asc"
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v2
-
-iQIcBAEBCAAGBQJW65qeAAoJEDnsnt1WYoG5rfoQAMQMj1uspYRZYbfUpV4kpRnK
-eji9ne8jTvooNBk2pnEuBuLYr57qHHXm1WrB9wwCVVfuEM0vnJ2YzvbWBwbk2gT2
-r+6z4nItkNpk9meLy4kfWYeaoaBDvgzrVpipYBXLaIolzwGAEzSOfyZy8/til/Dw
-YnfiUoYTEazNz9vx98XMGb+0MLu7IHyAI2ZlVPj21wsZfn4VFl8UQzRzx57xKdLQ
-0tRLi8R2qHKjD82Wq7zLgywnzvG7vFVnBmPMxa+1FTTFPLWu8uYIwY/ktQ4Z1QIl
-75V4fy0FGeDB2IQpdXCi7v11tImnIKiqEac7VGdQcJLvqR5OqnMi31yHDHP3/ydB
-L7+4eZjq5Lba5iLnixwzrSBOzpJ29qzE3NLmkm/T2D83s+6r/kM5L/hbxGm3aucg
-2ls/0UBX0ylxpA2ZejncoEM2XXChI8bEgdDkFRaBZ9U8TWiC3d05YyEiiu5zkeUT
-kUJzv6402YHq/rHpwWzdfVqVQkIJSv/agIV7MqY7TLBaanWtS8b+IZpFL/fwIxPa
-mSgZgnFWgnn+A4gRKrqJHGkJVb7MkUM75P/qoxg0QMPBYkuQ9NJbDbGFOynb4jgV
-PqwebZBj6Zo6kOKrEJeN82rmxJjrDmzS4B4emmG/T2e/8C9FE3uI3MRxPb7d/djJ
-YoGbymO7I3Dl1U6SBiri
-=c4IC
------END PGP SIGNATURE-----
---=-=-=--
+Andreas
