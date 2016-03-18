@@ -1,178 +1,65 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f193.google.com ([209.85.223.193]:32861 "EHLO
-	mail-io0-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753111AbcCRFVB (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 18 Mar 2016 01:21:01 -0400
-MIME-Version: 1.0
-In-Reply-To: <1458166743-18488-1-git-send-email-agruenba@redhat.com>
-References: <1458166743-18488-1-git-send-email-agruenba@redhat.com>
-From: Steve French <smfrench@gmail.com>
-Date: Fri, 18 Mar 2016 00:20:40 -0500
-Message-ID: <CAH2r5mu66qi=G6sMNQzS_Ciu9ctyS4Q+bKskVqk1Hj5_x7FWng@mail.gmail.com>
-Subject: Re: [PATCH v20 00/23] Richacls (Core and Ext4)
-To: Andreas Gruenbacher <agruenba@redhat.com>
-Cc: Alexander Viro <viro@zeniv.linux.org.uk>,
-        Christoph Hellwig <hch@infradead.org>, "Theodore Ts'o" <tytso@mit.edu>,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        Jeff Layton <jlayton@poochiereds.net>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        Anna Schumaker <anna.schumaker@netapp.com>,
-        Dave Chinner <david@fromorbit.com>,
-        "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-        XFS Developers <xfs@oss.sgi.com>, LKML <linux-kernel@vger.kernel.org>,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "linux-cifs@vger.kernel.org" <linux-cifs@vger.kernel.org>,
-        "linux-api@vger.kernel.org" <linux-api@vger.kernel.org>
-Content-Type: text/plain; charset=UTF-8
+Received: from relay6-d.mail.gandi.net ([217.70.183.198]:46827 "EHLO
+	relay6-d.mail.gandi.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755442AbcCRFza (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 18 Mar 2016 01:55:30 -0400
+Date: Fri, 18 Mar 2016 08:55:25 +0300
+From: Alexey Dvoichenkov <xale@hyperplane.net>
+To: Trond Myklebust <trond.myklebust@primarydata.com>
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>, spender@grsecurity.net
+Subject: Re: nfs_super_set_maxbytes patch
+Message-Id: <20160318085525.07dac0c5e437d577bb53f1f0@hyperplane.net>
+In-Reply-To: <CAHQdGtREL65zXvkdqJ8=hrSXWVyLBGCTAfdO02cXPsC6W26ZVQ@mail.gmail.com>
+References: <20160317141307.531709bf667a915973060eae@hyperplane.net>
+	<CAHQdGtREL65zXvkdqJ8=hrSXWVyLBGCTAfdO02cXPsC6W26ZVQ@mail.gmail.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Reviewing the current version of your patch series in your tree
- git://git.kernel.org/pub/scm/linux/kernel/git/agruen/linux-richacl.git \
-        richacl-2016-03-16
+On Thu, 17 Mar 2016 09:20:14 -0400
+Trond Myklebust <trond.myklebust@primarydata.com> wrote:
 
-you can add my reviewed by to the following patches so far:
-0001-vfs-Add-IS_ACL-and-IS_RICHACL-tests.patch
-0002-vfs-Add-MAY_CREATE_FILE-and-MAY_CREATE_DIR-permissio.patch
-0003-vfs-Add-MAY_DELETE_SELF-and-MAY_DELETE_CHILD-permiss.patch
-0004-vfs-Make-the-inode-passed-to-inode_change_ok-non-con.patch
-0005-vfs-Add-permission-flags-for-setting-file-attributes.patch
-0011-posix_acl-Improve-xattr-fixup-code.patch
-0013-vfs-Add-get_richacl-and-set_richacl-inode-operations.patch
-0024-xfs-Make-xfs_set_mode-non-static.patch
-0042-ext4-Don-t-allow-unmapped-identifiers-in-richacls.patch
-0043-xfs-Don-t-allow-unmapped-identifiers-in-richacls.patch
+> On Thu, Mar 17, 2016 at 7:13 AM, Alexey Dvoichenkov <xale@hyperplane.net> wrote:
+> > Hello. I've found a small bug in what appears to be the maximum file
+> > size handling code.
+> >
+> > The problem here, as far as I understand, is that casting from an
+> > unsigned type to a signed type, when the latter cannot represent the
+> > arithmetic value of the former, is UB. In practice, under the PaX size
+> > overflow protection, this code crashes when mounting from FreeBSD
+> > servers that send "all ones" in the size field.
+> >
+> > Not sure I'm doing things right with the list and I'm not subscribed, so
+> > please CC.
+> >
+> > The fix should look something like this:
+> >
+> > --- fs/nfs/internal.h.orig      2015-11-02 10:05:25.000000000 +1000
+> > +++ fs/nfs/internal.h   2016-01-02 03:19:04.599120855 +1000
+> > @@ -612,9 +612,9 @@
+> >  static inline
+> >  void nfs_super_set_maxbytes(struct super_block *sb, __u64 maxfilesize)
+> >  {
+> > +       if (maxfilesize > MAX_LFS_FILESIZE || maxfilesize == 0)
+> > +               maxfilesize = MAX_LFS_FILESIZE;
+> >         sb->s_maxbytes = (loff_t)maxfilesize;
+> > -       if (sb->s_maxbytes > MAX_LFS_FILESIZE || sb->s_maxbytes <= 0)
+> > -               sb->s_maxbytes = MAX_LFS_FILESIZE;
+> >  }
+> >
+> 
+> Why are we having to change _correct_ code in order to work with a
+> checking tool?
 
-Reviewed-by: Steve French <steve.french@primarydata.com>
+Well, as far as I understand the standard, this cast may result in
+undefined behaviour, which in my case it does. The fact that the code
+crashes only under PaX, but not when compiled "normally", is a
+compiler-dependent detail. So I'm not sure, in what sense is the code
+correct?
 
-On Wed, Mar 16, 2016 at 5:18 PM, Andreas Gruenbacher
-<agruenba@redhat.com> wrote:
-> Al,
->
-> here is a minor update to the richacl patches with some feedback from Christoph
-> incorporated.
->
-> Changes since the last posting (https://lkml.org/lkml/2016/3/14/503):
->
->  * Merge richacl_base.c and richacl_inode.c into richacl.c.
->
->  * Add linux/acl.h header including function acl_chmod.
->    Use it in richacl enabled filesystems.
->
->
-> The complete patch queue is available here:
->
->   git://git.kernel.org/pub/scm/linux/kernel/git/agruen/linux-richacl.git \
->         richacl-2016-03-16
->
->
-> The richacl user-space utilitites, man pages, and test suite are available
-> here:
->
->   https://github.com/andreas-gruenbacher/richacl
->
->
-> Changes to other user-space packages for richacl:
->
->   https://github.com/andreas-gruenbacher/coreutils
->   https://github.com/andreas-gruenbacher/e2fsprogs
->   https://github.com/andreas-gruenbacher/samba
->   https://github.com/andreas-gruenbacher/xfsprogs-dev
->   https://github.com/andreas-gruenbacher/nfs-utils
->
->
-> Please see the richacl homepage for more information:
->
->   http://www.bestbits.at/richacl/
->
->
-> Thanks,
-> Andreas
->
-> Andreas Gruenbacher (21):
->   vfs: Add IS_ACL() and IS_RICHACL() tests
->   vfs: Add MAY_CREATE_FILE and MAY_CREATE_DIR permission flags
->   vfs: Add MAY_DELETE_SELF and MAY_DELETE_CHILD permission flags
->   vfs: Make the inode passed to inode_change_ok non-const
->   vfs: Add permission flags for setting file attributes
->   richacl: In-memory representation and helper functions
->   richacl: Permission mapping functions
->   richacl: Compute maximum file masks from an acl
->   richacl: Permission check algorithm
->   posix_acl: Unexport acl_by_type and make it static
->   posix_acl: Improve xattr fixup code
->   vfs: Cache base_acl objects in inodes
->   vfs: Add get_richacl and set_richacl inode operations
->   vfs: Cache richacl in struct inode
->   richacl: Update the file masks in chmod()
->   richacl: Check if an acl is equivalent to a file mode
->   richacl: Create-time inheritance
->   richacl: Automatic Inheritance
->   richacl: xattr mapping functions
->   richacl: Add richacl xattr handler
->   vfs: Add richacl permission checking
->
-> Aneesh Kumar K.V (2):
->   ext4: Add richacl support
->   ext4: Add richacl feature flag
->
->  drivers/staging/lustre/lustre/llite/llite_lib.c |   2 +-
->  fs/Kconfig                                      |   3 +
->  fs/Makefile                                     |   1 +
->  fs/attr.c                                       |  81 ++-
->  fs/ext4/Kconfig                                 |  11 +
->  fs/ext4/Makefile                                |   1 +
->  fs/ext4/ext4.h                                  |   6 +-
->  fs/ext4/file.c                                  |   3 +
->  fs/ext4/ialloc.c                                |  11 +-
->  fs/ext4/inode.c                                 |   5 +-
->  fs/ext4/namei.c                                 |   5 +
->  fs/ext4/richacl.c                               | 137 ++++
->  fs/ext4/richacl.h                               |  40 ++
->  fs/ext4/super.c                                 |  49 +-
->  fs/ext4/xattr.c                                 |   7 +
->  fs/f2fs/acl.c                                   |   4 +-
->  fs/inode.c                                      |  15 +-
->  fs/jffs2/acl.c                                  |  10 +-
->  fs/namei.c                                      | 118 +++-
->  fs/posix_acl.c                                  |  50 +-
->  fs/richacl.c                                    | 889 ++++++++++++++++++++++++
->  fs/richacl_xattr.c                              | 235 +++++++
->  fs/xattr.c                                      |  29 +-
->  include/linux/acl.h                             |  15 +
->  include/linux/fs.h                              |  60 +-
->  include/linux/posix_acl.h                       |  13 +-
->  include/linux/richacl.h                         | 205 ++++++
->  include/linux/richacl_xattr.h                   |  31 +
->  include/uapi/linux/Kbuild                       |   2 +
->  include/uapi/linux/fs.h                         |   3 +-
->  include/uapi/linux/richacl.h                    | 152 ++++
->  include/uapi/linux/richacl_xattr.h              |  44 ++
->  include/uapi/linux/xattr.h                      |   2 +
->  33 files changed, 2131 insertions(+), 108 deletions(-)
->  create mode 100644 fs/ext4/richacl.c
->  create mode 100644 fs/ext4/richacl.h
->  create mode 100644 fs/richacl.c
->  create mode 100644 fs/richacl_xattr.c
->  create mode 100644 include/linux/acl.h
->  create mode 100644 include/linux/richacl.h
->  create mode 100644 include/linux/richacl_xattr.h
->  create mode 100644 include/uapi/linux/richacl.h
->  create mode 100644 include/uapi/linux/richacl_xattr.h
->
-> --
-> 2.5.0
->
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-cifs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+On the other hand, I understand it may be annoying to fix this sort of
+virtually harmless stuff. Then, perhaps, another reason to change it is
+that in practice people use GRSEC with NFS and things will break.
 
-
-
--- 
-Thanks,
-
-Steve
+-- AD
