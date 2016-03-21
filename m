@@ -1,48 +1,42 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:40544 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757902AbcCUUkm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 21 Mar 2016 16:40:42 -0400
-Date: Mon, 21 Mar 2016 16:40:41 -0400
-To: Richard Yao <ryao@gentoo.org>
-Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        Christoph Hellwig <hch@infradead.org>
-Subject: Re: Making an interface for alternative data streams
-Message-ID: <20160321204041.GA807@fieldses.org>
-References: <56F03945.40208@gentoo.org>
- <56F05745.50204@gentoo.org>
+Received: from dragon.async.com.br ([208.70.149.241]:37510 "EHLO
+	dragon.async.com.br" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754922AbcCUU4v (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 21 Mar 2016 16:56:51 -0400
+Date: Mon, 21 Mar 2016 17:56:38 -0300
+From: Christian Robottom Reis <kiko@acm.org>
+To: Jeff Layton <jlayton@poochiereds.net>
+Cc: NFS List <linux-nfs@vger.kernel.org>
+Subject: Re: Finding and breaking client locks
+Message-ID: <20160321205637.GB5118@async.com.br>
+References: <20160321143914.GA6397@anthem.async.com.br>
+ <20160321131906.05ec478b@tlielax.poochiereds.net>
+ <20160321175500.GA5118@async.com.br>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <56F05745.50204@gentoo.org>
-From: bfields@fieldses.org (J. Bruce Fields)
+In-Reply-To: <20160321175500.GA5118@async.com.br>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Mar 21, 2016 at 04:19:17PM -0400, Richard Yao wrote:
-> Maybe I should clarify that the idea is to allow read/write/list of
-> extended attributes via read/write/readdir so that those that want
-> extended attributes that are alternative data streams can have them. I
-> do not want to see extended attributes and alternative data streams be
-> different things.
+On Mon, Mar 21, 2016 at 02:55:00PM -0300, Christian Robottom Reis wrote:
+> > Alternately, there is the /proc/fs/nfsd/unlock_ip interface. Supposedly
+> > you can echo an address into there and it'll forcibly drop all of the
+> > locks that that that client holds. I've not used that so YMMV there.
+> 
+> Oh! That's a very interesting, and I now see it documented here:
+> 
+>     http://people.redhat.com/rpeterso/Patches/NFS/NLM/004.txt
 
-I think there are differences between the two that make this awkward.
-Does anyone actually use alternative data stream for anything that makes
-the effort worthwhile?
+On second look, I don't think that interface is meant to take a client
+IP, but rather a server IP:
 
-> Alternative data streams are in the NFSv4 specification, so I thought
-> that the developers of the NFS client driver would want something like
-> this.
+  "They are intended to allow admin or user mode script to release NLM
+   locks based on either a path name or a server in-bound ip address[...]"
 
-Somebody would have to make a convincing argument that it's worthwhile.
+That's why echoing the client IP makes no difference.
 
-Note there's also a proposal to add extended attributes to the NFSv4
-protocol:
-
-	https://tools.ietf.org/html/draft-ietf-nfsv4-xattrs-02
-
-That also has some more discussion of mismatches between the named- and
-extended- attribute interfaces:
-
-	https://tools.ietf.org/html/draft-ietf-nfsv4-xattrs-02#section-5
-
---b.
+I'm surprised -- so far I've found no facility for lock management
+server-side other than restarting the server.
+-- 
+Christian Robottom Reis | [+55 16] 3376 0125   | http://async.com.br/~kiko
+                        | [+55 16] 991 126 430 | http://launchpad.net/~kiko
