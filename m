@@ -1,125 +1,40 @@
-Return-Path: <bfields@fieldses.org>
-Date: Mon, 21 Mar 2016 17:36:55 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Benjamin Coddington <bcodding@redhat.com>
-Cc: Jeff Layton <jlayton@poochiereds.net>, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] nfsd: use short read rather than i_size to set eof
-Message-ID: <20160321213655.GB807@fieldses.org>
-References: <82e4c7a9756b21a4645421d04735ccf491b4296a.1458571329.git.bcodding@redhat.com>
+Return-Path: <linux-nfs-owner@vger.kernel.org>
+Received: from imap.thunk.org ([74.207.234.97]:44392 "EHLO imap.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750745AbcCUWgp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 21 Mar 2016 18:36:45 -0400
+Date: Mon, 21 Mar 2016 18:36:27 -0400
+From: "Theodore Ts'o" <tytso@mit.edu>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: Richard Yao <ryao@gentoo.org>, linux-nfs@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org, Christoph Hellwig <hch@infradead.org>
+Subject: Re: Making an interface for alternative data streams
+Message-ID: <20160321223627.GA12999@thunk.org>
+References: <56F03945.40208@gentoo.org>
+ <56F05745.50204@gentoo.org>
+ <20160321204041.GA807@fieldses.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <82e4c7a9756b21a4645421d04735ccf491b4296a.1458571329.git.bcodding@redhat.com>
+In-Reply-To: <20160321204041.GA807@fieldses.org>
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Mar 21, 2016 at 10:42:25AM -0400, Benjamin Coddington wrote:
-> Use the result of a local read to determine when to set the eof flag.  This
-> allows us to return the location of the end of the file atomically at the
-> time of the read.
-
-My only question is whether we should instead do something like:
-
-	eof = (res > cnt) || (offset + cnt >= i_size)
-
-That'd fix the reported bug without changing existing behavior
-otherwise.
-
-But maybe it's unlikely any client depends on existing behavior.
-
-The only test failure I'm seeing is on pynfs WRT13, which literally just
-checks that a 6-byte read of a 6-byte file returns with eof set.  The
-test is correct (the spec does clearly require eof to be set in that
-case), but maybe it's not important.
-
---b.
-
+On Mon, Mar 21, 2016 at 04:40:41PM -0400, J. Bruce Fields wrote:
+> On Mon, Mar 21, 2016 at 04:19:17PM -0400, Richard Yao wrote:
+> > Maybe I should clarify that the idea is to allow read/write/list of
+> > extended attributes via read/write/readdir so that those that want
+> > extended attributes that are alternative data streams can have them. I
+> > do not want to see extended attributes and alternative data streams be
+> > different things.
 > 
-> Signed-off-by: Benjamin Coddington <bcodding@redhat.com>
-> ---
->  fs/nfsd/nfs3proc.c |   10 ++++------
->  fs/nfsd/nfs4xdr.c  |    9 +++++----
->  2 files changed, 9 insertions(+), 10 deletions(-)
-> 
-> diff --git a/fs/nfsd/nfs3proc.c b/fs/nfsd/nfs3proc.c
-> index 7b755b7..6be6092 100644
-> --- a/fs/nfsd/nfs3proc.c
-> +++ b/fs/nfsd/nfs3proc.c
-> @@ -147,6 +147,7 @@ nfsd3_proc_read(struct svc_rqst *rqstp, struct nfsd3_readargs *argp,
->  {
->  	__be32	nfserr;
->  	u32	max_blocksize = svc_max_payload(rqstp);
-> +	unsigned long cnt = min(argp->count, max_blocksize);
->  
->  	dprintk("nfsd: READ(3) %s %lu bytes at %Lu\n",
->  				SVCFH_fmt(&argp->fh),
-> @@ -157,7 +158,7 @@ nfsd3_proc_read(struct svc_rqst *rqstp, struct nfsd3_readargs *argp,
->  	 * 1 (status) + 22 (post_op_attr) + 1 (count) + 1 (eof)
->  	 * + 1 (xdr opaque byte count) = 26
->  	 */
-> -	resp->count = min(argp->count, max_blocksize);
-> +	resp->count = cnt;
->  	svc_reserve_auth(rqstp, ((1 + NFS3_POST_OP_ATTR_WORDS + 3)<<2) + resp->count +4);
->  
->  	fh_copy(&resp->fh, &argp->fh);
-> @@ -165,11 +166,8 @@ nfsd3_proc_read(struct svc_rqst *rqstp, struct nfsd3_readargs *argp,
->  				  argp->offset,
->  			   	  rqstp->rq_vec, argp->vlen,
->  				  &resp->count);
-> -	if (nfserr == 0) {
-> -		struct inode	*inode = d_inode(resp->fh.fh_dentry);
-> -
-> -		resp->eof = (argp->offset + resp->count) >= inode->i_size;
-> -	}
-> +	if (nfserr == 0)
-> +		resp->eof = cnt > resp->count;
->  
->  	RETURN_STATUS(nfserr);
->  }
-> diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-> index d6ef095..2e14839 100644
-> --- a/fs/nfsd/nfs4xdr.c
-> +++ b/fs/nfsd/nfs4xdr.c
-> @@ -3362,6 +3362,7 @@ static __be32 nfsd4_encode_splice_read(
->  	struct xdr_stream *xdr = &resp->xdr;
->  	struct xdr_buf *buf = xdr->buf;
->  	u32 eof;
-> +	long len;
->  	int space_left;
->  	__be32 nfserr;
->  	__be32 *p = xdr->p - 2;
-> @@ -3370,6 +3371,7 @@ static __be32 nfsd4_encode_splice_read(
->  	if (xdr->end - xdr->p < 1)
->  		return nfserr_resource;
->  
-> +	len = maxcount;
->  	nfserr = nfsd_splice_read(read->rd_rqstp, file,
->  				  read->rd_offset, &maxcount);
->  	if (nfserr) {
-> @@ -3382,8 +3384,7 @@ static __be32 nfsd4_encode_splice_read(
->  		return nfserr;
->  	}
->  
-> -	eof = (read->rd_offset + maxcount >=
-> -	       d_inode(read->rd_fhp->fh_dentry)->i_size);
-> +	eof = len > maxcount;
->  
->  	*(p++) = htonl(eof);
->  	*(p++) = htonl(maxcount);
-> @@ -3453,14 +3454,14 @@ static __be32 nfsd4_encode_readv(struct nfsd4_compoundres *resp,
->  	}
->  	read->rd_vlen = v;
->  
-> +	len = maxcount;
->  	nfserr = nfsd_readv(file, read->rd_offset, resp->rqstp->rq_vec,
->  			read->rd_vlen, &maxcount);
->  	if (nfserr)
->  		return nfserr;
->  	xdr_truncate_encode(xdr, starting_len + 8 + ((maxcount+3)&~3));
->  
-> -	eof = (read->rd_offset + maxcount >=
-> -	       d_inode(read->rd_fhp->fh_dentry)->i_size);
-> +	eof = len > maxcount;
->  
->  	tmp = htonl(eof);
->  	write_bytes_to_xdr_buf(xdr->buf, starting_len    , &tmp, 4);
-> -- 
-> 1.7.1
+> I think there are differences between the two that make this awkward.
+> Does anyone actually use alternative data stream for anything that makes
+> the effort worthwhile?
+
+Windows malware authors *love* to use alternate data streams as a
+place to hide their malware where many security scanners weren't
+looking, and certainly most users won't find.
+
+Does that count?   :-)
+
+						- Ted
