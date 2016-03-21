@@ -1,54 +1,44 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ob0-f181.google.com ([209.85.214.181]:35227 "EHLO
-	mail-ob0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756044AbcCUP4X (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 21 Mar 2016 11:56:23 -0400
-Received: by mail-ob0-f181.google.com with SMTP id fp4so178314743obb.2
-        for <linux-nfs@vger.kernel.org>; Mon, 21 Mar 2016 08:56:23 -0700 (PDT)
+Received: from bombadil.infradead.org ([198.137.202.9]:42878 "EHLO
+	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756107AbcCUQJ1 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 21 Mar 2016 12:09:27 -0400
+Date: Mon, 21 Mar 2016 09:09:22 -0700
+From: Christoph Hellwig <hch@infradead.org>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: Christoph Hellwig <hch@infradead.org>,
+        Andreas Gruenbacher <agruenba@redhat.com>,
+        Alexander Viro <viro@zeniv.linux.org.uk>, linux-nfs@vger.kernel.org,
+        "Theodore Ts'o" <tytso@mit.edu>, linux-cifs@vger.kernel.org,
+        linux-api@vger.kernel.org,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        linux-kernel@vger.kernel.org, xfs@oss.sgi.com,
+        Andreas Dilger <adilger.kernel@dilger.ca>,
+        linux-fsdevel@vger.kernel.org, Jeff Layton <jlayton@poochiereds.net>,
+        linux-ext4@vger.kernel.org, Anna Schumaker <anna.schumaker@netapp.com>
+Subject: Re: [PATCH v18 19/22] richacl: Add richacl xattr handler
+Message-ID: <20160321160922.GA18734@infradead.org>
+References: <1456733847-17982-1-git-send-email-agruenba@redhat.com>
+ <1456733847-17982-20-git-send-email-agruenba@redhat.com>
+ <20160311141735.GF14808@infradead.org>
+ <20160311141905.GC13178@fieldses.org>
+ <20160315071014.GB19747@infradead.org>
+ <20160315210526.GC3658@fieldses.org>
 MIME-Version: 1.0
-In-Reply-To: <20160321144349.GA12804@lst.de>
-References: <CAPSG9dbOPRv_gM_w_Ys9fJ-fSPRnw+Rgb3yaaHVEqZ9YyDntzg@mail.gmail.com>
- <20160321144349.GA12804@lst.de>
-From: Nelson Elhage <nelhage@nelhage.com>
-Date: Mon, 21 Mar 2016 08:56:03 -0700
-Message-ID: <CAPSG9dZX45Uq07Xue55Aom3i-WyH9_SA_SKydBjsEX1Y14VwoA@mail.gmail.com>
-Subject: Re: NFSv3 may inappropriately return EPERM for fsetxattr
-To: Christoph Hellwig <hch@lst.de>
-Cc: linux-nfs@vger.kernel.org, Bruce Fields <bfields@fieldses.org>,
-        James Brown <jbrown@easypost.com>
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20160315210526.GC3658@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-That's correct. The other detail that seems to be important is that
-the user making the call must be different from the user owning the
-file. We've also been using user remapping on the server, so that
-non-xattr calls succeed in that configuration.
+On Tue, Mar 15, 2016 at 05:05:26PM -0400, J. Bruce Fields wrote:
+> > That people get confused between the attr used by the xattr syscall
+> > interface and the attr used to store things on disk or the protocol.
+> > This has happened every time we have non-native support, e.g. XFS, NFS,
+> > CIFS, ntfs, etc.  And it's only going to become worse.
+> 
+> How has that confusion caused problems in practice?
 
-The reproducer James added in the bugzilla is:
-
-(on machine with IP address 10.1.1.1)
-sudo mkdir /nfs_test
-sudo useradd -u 10000 test_user
-sudo chown test_user /nfs_test
-echo "/nfs_test 10.1.1.2(rw,all_squash,anonuid=10000)" | sudo tee -a
-/etc/exports
-sudo exportfs -a
-
-(on machine with IP address 10.1.1.2)
-sudo mkdir /nfs_test
-sudo mount -t nfs -o vers=3,noacl 10.1.1.1:/nfs_test /nfs_test
-touch /nfs_test/foo
-install -m 755 /nfs_test/foo /nfs_test/bar
-
-- Nelson
-
-On Mon, Mar 21, 2016 at 7:43 AM Christoph Hellwig <hch@lst.de> wrote:
->
-> Hi Nelson,
->
-> this was indeed most likely caused by my patch.  Just to narrow things
-> down can your clarify that the scenarious is that you have CONFIG_NFS_V3
-> set on your client, you're talking to a server not supporting ACLs
-> at all, and a tool trying to set an ACL is getting the wrong return
-> value?  If so I should be able to reproduce this locally.
+We had all kinds of bugs in this area that were only slowly uncovered.
+We also had all kind of privilegue escalations with (non-ACLs) xattrs
+as people never grasped the way different free-form namespaces have
+different permission checking.
