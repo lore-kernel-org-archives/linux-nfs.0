@@ -1,101 +1,87 @@
-Return-Path: <bfields@fieldses.org>
-Date: Tue, 22 Mar 2016 14:53:36 -0400
+Return-Path: <linux-nfs-owner@vger.kernel.org>
+Received: from fieldses.org ([173.255.197.46]:35724 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750858AbcCVS4B (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 22 Mar 2016 14:56:01 -0400
+Date: Tue, 22 Mar 2016 14:56:01 -0400
 From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Benjamin Coddington <bcodding@redhat.com>
-Cc: Jeff Layton <jlayton@poochiereds.net>, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v2] nfsd: use short read rather than i_size to set eof
-Message-ID: <20160322185336.GD4083@fieldses.org>
-References: <20160321213655.GB807@fieldses.org>
- <82e4c7a9756b21a4645421d04735ccf491b4296a.1458571329.git.bcodding@redhat.com>
- <a156abbff4553a431ebafd3b6b84a5eb7f7202c5.1458651136.git.bcodding@redhat.com>
- <20160322164624.GB4083@fieldses.org>
+To: Christoph Hellwig <hch@lst.de>
+Cc: trond.myklebust@primarydata.com, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 4/4] nfsd: add SCSI layout support
+Message-ID: <20160322185601.GE4083@fieldses.org>
+References: <1457120777-30687-1-git-send-email-hch@lst.de>
+ <1457120777-30687-5-git-send-email-hch@lst.de>
+ <20160317215218.GB27078@fieldses.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20160322164624.GB4083@fieldses.org>
+In-Reply-To: <20160317215218.GB27078@fieldses.org>
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Possibly overkill, but I think I'll fold in something like this if you
-don't see an objection.
+On Thu, Mar 17, 2016 at 05:52:18PM -0400, J. Bruce Fields wrote:
+> On Fri, Mar 04, 2016 at 08:46:17PM +0100, Christoph Hellwig wrote:
+> > +int
+> > +nfsd4_scsi_decode_layoutupdate(__be32 *p, u32 len, struct iomap **iomapp,
+> > +		u32 block_size)
+> > +{
+> > +	struct iomap *iomaps;
+> > +	u32 nr_iomaps, expected, i;
+> > +
+> > +	if (len < sizeof(u32)) {
+> > +		dprintk("%s: extent array too small: %u\n", __func__, len);
+> > +		return -EINVAL;
+> > +	}
+> > +
+> > +	nr_iomaps = be32_to_cpup(p++);
+> > +	expected = sizeof(__be32) + nr_iomaps * PNFS_SCSI_RANGE_SIZE;
+> > +	if (len != expected) {
+> 
+> You could add any multiple of 2^32/PNFS_SCSI_RANGE_SIZE to nr_iomaps and
+> still pass this check.  Then you'd probably fail the following kcalloc,
+> but best to be paranoid if this is from-the-wire data.
+> 
+> Maybe something like this?  (Untested)
+
+OK, I've added this, and also did some minor edits on your patches
+(comment typos, split out one bit of code movement into a separate
+patch).  Results in
+
+	git://linux-nfs.org/~bfields/linux.git for-next
+
+I'll send that along soon.
 
 --b.
 
-commit 58e18a2a14a0
-Author: J. Bruce Fields <bfields@redhat.com>
-Date:   Tue Mar 22 14:08:11 2016 -0400
-
-    nfsd: document read eof logic
-    
-    The choice of checks here is a little subtle, let's document this for
-    posterity.
-    
-    Signed-off-by: J. Bruce Fields <bfields@redhat.com>
-
-diff --git a/fs/nfsd/nfs3proc.c b/fs/nfsd/nfs3proc.c
-index 83c9abb33e8b..df0f0a86f21d 100644
---- a/fs/nfsd/nfs3proc.c
-+++ b/fs/nfsd/nfs3proc.c
-@@ -168,8 +168,7 @@ nfsd3_proc_read(struct svc_rqst *rqstp, struct nfsd3_readargs *argp,
- 				  &resp->count);
- 	if (nfserr == 0) {
- 		struct inode	*inode = d_inode(resp->fh.fh_dentry);
--		resp->eof = (cnt > resp->count) ||
--			((argp->offset + resp->count) >= inode->i_size);
-+		resp->eof = nfsd_eof_on_read(cnt, resp->count, argp->offset, inode->i_size);
- 	}
- 
- 	RETURN_STATUS(nfserr);
-diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index 90232bd7e498..9df898ba648f 100644
---- a/fs/nfsd/nfs4xdr.c
-+++ b/fs/nfsd/nfs4xdr.c
-@@ -3387,8 +3387,8 @@ static __be32 nfsd4_encode_splice_read(
- 		return nfserr;
- 	}
- 
--	eof = (len > maxcount) ||
--		((read->rd_offset + maxcount >= d_inode(read->rd_fhp->fh_dentry)->i_size));
-+	eof = nfsd_eof_on_read(len, maxcount, read->rd_offset,
-+				d_inode(read->rd_fhp->fh_dentry)->i_size);
- 
- 	*(p++) = htonl(eof);
- 	*(p++) = htonl(maxcount);
-@@ -3465,8 +3465,8 @@ static __be32 nfsd4_encode_readv(struct nfsd4_compoundres *resp,
- 		return nfserr;
- 	xdr_truncate_encode(xdr, starting_len + 8 + ((maxcount+3)&~3));
- 
--	eof = (len > maxcount) ||
--		((read->rd_offset + maxcount >= d_inode(read->rd_fhp->fh_dentry)->i_size));
-+	eof = nfsd_eof_on_read(len, maxcount, read->rd_offset,
-+				d_inode(read->rd_fhp->fh_dentry)->i_size);
- 
- 	tmp = htonl(eof);
- 	write_bytes_to_xdr_buf(xdr->buf, starting_len    , &tmp, 4);
-diff --git a/fs/nfsd/vfs.h b/fs/nfsd/vfs.h
-index c11ba316f23f..6244e073c137 100644
---- a/fs/nfsd/vfs.h
-+++ b/fs/nfsd/vfs.h
-@@ -139,4 +139,24 @@ static inline int nfsd_create_is_exclusive(int createmode)
- 	       || createmode == NFS4_CREATE_EXCLUSIVE4_1;
- }
- 
-+static inline bool nfsd_eof_on_read(long requested, long read,
-+				loff_t offset, loff_t size)
-+{
-+	/* We assume a short read means eof: */
-+	if (requested > read)
-+		return true;
-+	/*
-+	 * A non-short read might also reach end of file.  The spec
-+	 * still requires us to set eof in that case.
-+	 *
-+	 * Further operations may have modified the file size since
-+	 * the read, so the following check is not atomic with the read.
-+	 * The only case we've seen that cause a problem for a client
-+	 * is the case where the read returned a count of 0 without
-+	 * setting eof.  That case was fixed by the addition of the
-+	 * above check.
-+	 */
-+	return (offset + read >= size);
-+}
-+
- #endif /* LINUX_NFSD_VFS_H */
+> 
+> diff --git a/fs/nfsd/blocklayoutxdr.c b/fs/nfsd/blocklayoutxdr.c
+> index ca1883668810..6c3b316f932e 100644
+> --- a/fs/nfsd/blocklayoutxdr.c
+> +++ b/fs/nfsd/blocklayoutxdr.c
+> @@ -105,18 +105,22 @@ nfsd4_block_decode_layoutupdate(__be32 *p, u32 len, struct iomap **iomapp,
+>  		u32 block_size)
+>  {
+>  	struct iomap *iomaps;
+> -	u32 nr_iomaps, expected, i;
+> +	u32 nr_iomaps, i;
+>  
+>  	if (len < sizeof(u32)) {
+>  		dprintk("%s: extent array too small: %u\n", __func__, len);
+>  		return -EINVAL;
+>  	}
+> +	len -= sizeof(u32);
+> +	if (len % PNFS_BLOCK_EXTENT_SIZE) {
+> +		dprintk("%s: extent array invalid: %u\n", __func__, len);
+> +		return -EINVAL;
+> +	}
+>  
+>  	nr_iomaps = be32_to_cpup(p++);
+> -	expected = sizeof(__be32) + nr_iomaps * PNFS_BLOCK_EXTENT_SIZE;
+> -	if (len != expected) {
+> +	if (nr_iomaps != len / PNFS_BLOCK_EXTENT_SIZE) {
+>  		dprintk("%s: extent array size mismatch: %u/%u\n",
+> -			__func__, len, expected);
+> +			__func__, len, nr_iomaps);
+>  		return -EINVAL;
+>  	}
+>  
+> --b.
