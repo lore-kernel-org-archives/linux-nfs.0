@@ -1,87 +1,98 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:35724 "EHLO fieldses.org"
+Received: from mx143.netapp.com ([216.240.21.24]:29880 "EHLO mx143.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750858AbcCVS4B (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 22 Mar 2016 14:56:01 -0400
-Date: Tue, 22 Mar 2016 14:56:01 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Christoph Hellwig <hch@lst.de>
-Cc: trond.myklebust@primarydata.com, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 4/4] nfsd: add SCSI layout support
-Message-ID: <20160322185601.GE4083@fieldses.org>
-References: <1457120777-30687-1-git-send-email-hch@lst.de>
- <1457120777-30687-5-git-send-email-hch@lst.de>
- <20160317215218.GB27078@fieldses.org>
+	id S1750772AbcCVTiZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 22 Mar 2016 15:38:25 -0400
+From: Anna Schumaker <Anna.Schumaker@netapp.com>
+Subject: Re: [PATCH] nfs: add nfs IPv6 rdma6 mount option support
+To: Shirley Ma <shirley.ma@oracle.com>, Bruce Fields <bfields@redhat.com>,
+        <leon@leon.nu>
+References: <56E9A650.7060409@oracle.com>
+CC: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Message-ID: <56F19F28.9020504@Netapp.com>
+Date: Tue, 22 Mar 2016 15:38:16 -0400
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20160317215218.GB27078@fieldses.org>
+In-Reply-To: <56E9A650.7060409@oracle.com>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Mar 17, 2016 at 05:52:18PM -0400, J. Bruce Fields wrote:
-> On Fri, Mar 04, 2016 at 08:46:17PM +0100, Christoph Hellwig wrote:
-> > +int
-> > +nfsd4_scsi_decode_layoutupdate(__be32 *p, u32 len, struct iomap **iomapp,
-> > +		u32 block_size)
-> > +{
-> > +	struct iomap *iomaps;
-> > +	u32 nr_iomaps, expected, i;
-> > +
-> > +	if (len < sizeof(u32)) {
-> > +		dprintk("%s: extent array too small: %u\n", __func__, len);
-> > +		return -EINVAL;
-> > +	}
-> > +
-> > +	nr_iomaps = be32_to_cpup(p++);
-> > +	expected = sizeof(__be32) + nr_iomaps * PNFS_SCSI_RANGE_SIZE;
-> > +	if (len != expected) {
+Hi Shirley,
+
+Sorry for the delay in looking at this patch.  Comments are below:
+
+On 03/16/2016 02:30 PM, Shirley Ma wrote:
+> Add rdma6 option to support NFS/RDMA IPv6.
 > 
-> You could add any multiple of 2^32/PNFS_SCSI_RANGE_SIZE to nr_iomaps and
-> still pass this check.  Then you'd probably fail the following kcalloc,
-> but best to be paranoid if this is from-the-wire data.
+> Signed-off-by: Shirley Ma <shirley.ma@oracle.com>
+
+Can you add a little more to the patch description to describe when RDMA with IPv6 would be used?
+
+> ---
 > 
-> Maybe something like this?  (Untested)
+> diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+> index f126828..62a55d0 100644
+> --- a/fs/nfs/super.c
+> +++ b/fs/nfs/super.c
+> @@ -191,6 +191,7 @@ static const match_table_t nfs_mount_option_tokens = {
+>  
+>  enum {
+>  	Opt_xprt_udp, Opt_xprt_udp6, Opt_xprt_tcp, Opt_xprt_tcp6, Opt_xprt_rdma,
+> +	Opt_xprt_rdma6,
+>  
+>  	Opt_xprt_err
+>  };
+> @@ -201,6 +202,7 @@ static const match_table_t nfs_xprt_protocol_tokens = {
+>  	{ Opt_xprt_tcp, "tcp" },
+>  	{ Opt_xprt_tcp6, "tcp6" },
+>  	{ Opt_xprt_rdma, "rdma" },
+> +	{ Opt_xprt_rdma6, "rdma6" },
+>  
+>  	{ Opt_xprt_err, NULL }
+>  };
+> @@ -1456,6 +1458,8 @@ static int nfs_parse_mount_options(char *raw,
+>  				mnt->flags |= NFS_MOUNT_TCP;
+>  				mnt->nfs_server.protocol = XPRT_TRANSPORT_TCP;
+>  				break;
+> +			case Opt_xprt_rdma6:
+> +				protofamily = AF_INET6;
+>  			case Opt_xprt_rdma:
+>  				/* vector side protocols to TCP */
+>  				mnt->flags |= NFS_MOUNT_TCP;
+> @@ -1490,6 +1494,8 @@ static int nfs_parse_mount_options(char *raw,
+>  			case Opt_xprt_tcp:
+>  				mnt->mount_server.protocol = XPRT_TRANSPORT_TCP;
+>  				break;
+> +			case Opt_xprt_rdma6:
+> +				mountfamily = AF_INET6;
+>  			case Opt_xprt_rdma: /* not used for side protocols */
+                                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Do we need to be setting mountfamily here?  The comment next to Opt_xprt_rdma makes it sound like this code doesn't apply to RDMA.
 
-OK, I've added this, and also did some minor edits on your patches
-(comment typos, split out one bit of code movement into a separate
-patch).  Results in
+>  			default:
+>  				dfprintk(MOUNT, "NFS:   unrecognized "
+> diff --git a/include/linux/sunrpc/msg_prot.h b/include/linux/sunrpc/msg_prot.h
+> index 8073713..49b8433 100644
+> --- a/include/linux/sunrpc/msg_prot.h
+> +++ b/include/linux/sunrpc/msg_prot.h
+> @@ -149,6 +149,7 @@ typedef __be32	rpc_fraghdr;
+>  #define RPCBIND_NETID_UDP	"udp"
+>  #define RPCBIND_NETID_TCP	"tcp"
+>  #define RPCBIND_NETID_RDMA	"rdma"
+> +#define RPCBIND_NETID_RDMA6	"rdma6"
 
-	git://linux-nfs.org/~bfields/linux.git for-next
+This is defined right after tcp6, so we probably don't need it twice :).
 
-I'll send that along soon.
+Thanks,
+Anna
 
---b.
-
+>  #define RPCBIND_NETID_SCTP	"sctp"
+>  #define RPCBIND_NETID_UDP6	"udp6"
+>  #define RPCBIND_NETID_TCP6	"tcp6"
 > 
-> diff --git a/fs/nfsd/blocklayoutxdr.c b/fs/nfsd/blocklayoutxdr.c
-> index ca1883668810..6c3b316f932e 100644
-> --- a/fs/nfsd/blocklayoutxdr.c
-> +++ b/fs/nfsd/blocklayoutxdr.c
-> @@ -105,18 +105,22 @@ nfsd4_block_decode_layoutupdate(__be32 *p, u32 len, struct iomap **iomapp,
->  		u32 block_size)
->  {
->  	struct iomap *iomaps;
-> -	u32 nr_iomaps, expected, i;
-> +	u32 nr_iomaps, i;
->  
->  	if (len < sizeof(u32)) {
->  		dprintk("%s: extent array too small: %u\n", __func__, len);
->  		return -EINVAL;
->  	}
-> +	len -= sizeof(u32);
-> +	if (len % PNFS_BLOCK_EXTENT_SIZE) {
-> +		dprintk("%s: extent array invalid: %u\n", __func__, len);
-> +		return -EINVAL;
-> +	}
->  
->  	nr_iomaps = be32_to_cpup(p++);
-> -	expected = sizeof(__be32) + nr_iomaps * PNFS_BLOCK_EXTENT_SIZE;
-> -	if (len != expected) {
-> +	if (nr_iomaps != len / PNFS_BLOCK_EXTENT_SIZE) {
->  		dprintk("%s: extent array size mismatch: %u/%u\n",
-> -			__func__, len, expected);
-> +			__func__, len, nr_iomaps);
->  		return -EINVAL;
->  	}
->  
-> --b.
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
+
