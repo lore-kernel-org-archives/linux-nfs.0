@@ -1,75 +1,152 @@
-Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-yw0-f174.google.com ([209.85.161.174]:36535 "EHLO
-	mail-yw0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752480AbcCVQPp convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 22 Mar 2016 12:15:45 -0400
+Return-Path: <bfields@fieldses.org>
+Date: Tue, 22 Mar 2016 12:46:24 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Benjamin Coddington <bcodding@redhat.com>
+Cc: Jeff Layton <jlayton@poochiereds.net>, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH v2] nfsd: use short read rather than i_size to set eof
+Message-ID: <20160322164624.GB4083@fieldses.org>
+References: <20160321213655.GB807@fieldses.org>
+ <82e4c7a9756b21a4645421d04735ccf491b4296a.1458571329.git.bcodding@redhat.com>
+ <a156abbff4553a431ebafd3b6b84a5eb7f7202c5.1458651136.git.bcodding@redhat.com>
 MIME-Version: 1.0
-In-Reply-To: <56F0AC2A.30300@gentoo.org>
-References: <56F03945.40208@gentoo.org>
-	<56F05745.50204@gentoo.org>
-	<20160321204041.GA807@fieldses.org>
-	<20160321223627.GA12999@thunk.org>
-	<CALXu0UdPyhBpOb-q-jpVN55d5unAQYXQFSm7HgNKWBH0Q_-gmg@mail.gmail.com>
-	<20160322001255.GA2353@fieldses.org>
-	<009F3E87-7919-4774-9129-72DB08F76553@gentoo.org>
-	<56F0AC2A.30300@gentoo.org>
-Date: Tue, 22 Mar 2016 09:15:44 -0700
-Message-ID: <CACyXjPyYK0CggZNGfQQj6BBAfahU7PmVzwpzfeUqBannUTdhqA@mail.gmail.com>
-Subject: Re: Making an interface for alternative data streams
-From: Richard Sharpe <realrichardsharpe@gmail.com>
-To: Richard Yao <ryao@gentoo.org>
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-        Cedric Blancher <cedric.blancher@gmail.com>,
-        "Theodore Ts'o" <tytso@mit.edu>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        Christoph Hellwig <hch@infradead.org>,
-        Steve French <smfrench@gmail.com>
-Content-Type: text/plain; charset=UTF-8
-Sender: linux-nfs-owner@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <a156abbff4553a431ebafd3b6b84a5eb7f7202c5.1458651136.git.bcodding@redhat.com>
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Mar 21, 2016 at 7:21 PM, Richard Yao <ryao@gentoo.org> wrote:
-> On 03/21/2016 09:02 PM, Richard Yao wrote:
->>
->>> On Mar 21, 2016, at 8:12 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
->>>
->>>> On Mon, Mar 21, 2016 at 11:48:04PM +0100, Cedric Blancher wrote:
->>>> Old invalid argument, and Sophos and Symatec look there as well.
->>>>
->>>> If it was a bad idea, why has Linux fs attributes which are almost the
->>>> same as O_XATTR except that they use a custom api? Why does Macos have
->>>> alternate streams (called forks)? Why did Solaris adopt it long ago
->>>> (and still gets support questions about it - just saying before
->>>> someone argues that no one uses THAT)?
->>>
->>> Could you point us at some of those users?
->>
->> I am told that Samba users would love this functionality.
->
-> Someone pinged me in IRC to let me know that Steve French was talking
-> about this earlier this month:
->
->> Have there been any suggestions on how to list alternate data streams
->> on a file other than using a pseudo-xattr as ntfs-3g does (querying
->> xattr ntfs.streams.list - see http://linux.die.net/man/8/ntfs-3g)?
->
-> http://permalink.gmane.org/gmane.linux.kernel.cifs/11681
->
-> Windows appears to have name-value pair attributes and alternative data
-> streams in separate name-spaces simultaneously.
+On Tue, Mar 22, 2016 at 10:28:36AM -0400, Benjamin Coddington wrote:
+> On Mon, 21 Mar 2016, J. Bruce Fields wrote:
+> > On Mon, Mar 21, 2016 at 10:42:25AM -0400, Benjamin Coddington wrote:
+> > > Use the result of a local read to determine when to set the eof flag.
+> > > This
+> > > allows us to return the location of the end of the file atomically at
+> > > the
+> > > time of the read.
+> >
+> > My only question is whether we should instead do something like:
+> >
+> >   eof = (res > cnt) || (offset + cnt >= i_size)
+> 
+> Yes, let's do that.
+> 
+> > That'd fix the reported bug without changing existing behavior
+> > otherwise.
+> >
+> > But maybe it's unlikely any client depends on existing behavior.
+> >
+> > The only test failure I'm seeing is on pynfs WRT13, which literally just
+> > checks that a 6-byte read of a 6-byte file returns with eof set.  The
+> > test is correct (the spec does clearly require eof to be set in that
+> > case), but maybe it's not important.
+> 
+> The above change will fix this up and be correct in the absence of races
+> which saves the client from having to perform another full RPC just to
+> retrieve eof.
 
-And it is more convoluted than that. If you use reparse points on a
-file you cannot use name-value pair attributes (Windows Extended
-Attributes) and vice versa, because they overloaded one of the fields
-use to report on those things.
+Seems likely to be rare (and possibly papered over by caching--does the
+client even send a read if it would extend past the size returned from a
+recent getattr?).
 
-Of course, pretty much no one uses Windows Extended Attributes these
-days, I believe.
+But, this does seem like the most conservative approach for now.
+Applying.
 
-However, plenty of Samba users store Windows ACLs in Linux XATTRs ...
+Thanks!
 
--- 
-Regards,
-Richard Sharpe
-(何以解憂？唯有杜康。--曹操)
+--b.
+
+> This passes WRT13:
+> 
+> 8<------------------------------------------------------------------------
+> 
+> Use the result of a local read to determine when to set the eof flag.  This
+> allows us to return the location of the end of the file atomically at the
+> time of the read.
+> 
+> Signed-off-by: Benjamin Coddington <bcodding@redhat.com>
+> ---
+>  fs/nfsd/nfs3proc.c |    7 ++++---
+>  fs/nfsd/nfs4xdr.c  |   11 +++++++----
+>  2 files changed, 11 insertions(+), 7 deletions(-)
+> 
+> diff --git a/fs/nfsd/nfs3proc.c b/fs/nfsd/nfs3proc.c
+> index 7b755b7..83c9abb 100644
+> --- a/fs/nfsd/nfs3proc.c
+> +++ b/fs/nfsd/nfs3proc.c
+> @@ -147,6 +147,7 @@ nfsd3_proc_read(struct svc_rqst *rqstp, struct nfsd3_readargs *argp,
+>  {
+>  	__be32	nfserr;
+>  	u32	max_blocksize = svc_max_payload(rqstp);
+> +	unsigned long cnt = min(argp->count, max_blocksize);
+>  
+>  	dprintk("nfsd: READ(3) %s %lu bytes at %Lu\n",
+>  				SVCFH_fmt(&argp->fh),
+> @@ -157,7 +158,7 @@ nfsd3_proc_read(struct svc_rqst *rqstp, struct nfsd3_readargs *argp,
+>  	 * 1 (status) + 22 (post_op_attr) + 1 (count) + 1 (eof)
+>  	 * + 1 (xdr opaque byte count) = 26
+>  	 */
+> -	resp->count = min(argp->count, max_blocksize);
+> +	resp->count = cnt;
+>  	svc_reserve_auth(rqstp, ((1 + NFS3_POST_OP_ATTR_WORDS + 3)<<2) + resp->count +4);
+>  
+>  	fh_copy(&resp->fh, &argp->fh);
+> @@ -167,8 +168,8 @@ nfsd3_proc_read(struct svc_rqst *rqstp, struct nfsd3_readargs *argp,
+>  				  &resp->count);
+>  	if (nfserr == 0) {
+>  		struct inode	*inode = d_inode(resp->fh.fh_dentry);
+> -
+> -		resp->eof = (argp->offset + resp->count) >= inode->i_size;
+> +		resp->eof = (cnt > resp->count) ||
+> +			((argp->offset + resp->count) >= inode->i_size);
+>  	}
+>  
+>  	RETURN_STATUS(nfserr);
+> diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+> index d6ef095..1d26b2b 100644
+> --- a/fs/nfsd/nfs4xdr.c
+> +++ b/fs/nfsd/nfs4xdr.c
+> @@ -3362,6 +3362,7 @@ static __be32 nfsd4_encode_splice_read(
+>  	struct xdr_stream *xdr = &resp->xdr;
+>  	struct xdr_buf *buf = xdr->buf;
+>  	u32 eof;
+> +	long len;
+>  	int space_left;
+>  	__be32 nfserr;
+>  	__be32 *p = xdr->p - 2;
+> @@ -3370,6 +3371,7 @@ static __be32 nfsd4_encode_splice_read(
+>  	if (xdr->end - xdr->p < 1)
+>  		return nfserr_resource;
+>  
+> +	len = maxcount;
+>  	nfserr = nfsd_splice_read(read->rd_rqstp, file,
+>  				  read->rd_offset, &maxcount);
+>  	if (nfserr) {
+> @@ -3382,8 +3384,8 @@ static __be32 nfsd4_encode_splice_read(
+>  		return nfserr;
+>  	}
+>  
+> -	eof = (read->rd_offset + maxcount >=
+> -	       d_inode(read->rd_fhp->fh_dentry)->i_size);
+> +	eof = (len > maxcount) ||
+> +		((read->rd_offset + maxcount >= d_inode(read->rd_fhp->fh_dentry)->i_size));
+>  
+>  	*(p++) = htonl(eof);
+>  	*(p++) = htonl(maxcount);
+> @@ -3453,14 +3455,15 @@ static __be32 nfsd4_encode_readv(struct nfsd4_compoundres *resp,
+>  	}
+>  	read->rd_vlen = v;
+>  
+> +	len = maxcount;
+>  	nfserr = nfsd_readv(file, read->rd_offset, resp->rqstp->rq_vec,
+>  			read->rd_vlen, &maxcount);
+>  	if (nfserr)
+>  		return nfserr;
+>  	xdr_truncate_encode(xdr, starting_len + 8 + ((maxcount+3)&~3));
+>  
+> -	eof = (read->rd_offset + maxcount >=
+> -	       d_inode(read->rd_fhp->fh_dentry)->i_size);
+> +	eof = (len > maxcount) ||
+> +		((read->rd_offset + maxcount >= d_inode(read->rd_fhp->fh_dentry)->i_size));
+>  
+>  	tmp = htonl(eof);
+>  	write_bytes_to_xdr_buf(xdr->buf, starting_len    , &tmp, 4);
+> -- 
+> 1.7.1
