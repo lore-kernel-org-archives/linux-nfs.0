@@ -1,102 +1,116 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:35858 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:45181 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751041AbcCVUcF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 22 Mar 2016 16:32:05 -0400
-Date: Tue, 22 Mar 2016 16:32:04 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Richard Sharpe <realrichardsharpe@gmail.com>
-Cc: Richard Yao <ryao@gentoo.org>, Cedric Blancher <cedric.blancher@gmail.com>,
-        "Theodore Ts'o" <tytso@mit.edu>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        Christoph Hellwig <hch@infradead.org>,
-        Steve French <smfrench@gmail.com>
-Subject: Re: Making an interface for alternative data streams
-Message-ID: <20160322203204.GG4083@fieldses.org>
-References: <56F05745.50204@gentoo.org>
- <20160321204041.GA807@fieldses.org>
- <20160321223627.GA12999@thunk.org>
- <CALXu0UdPyhBpOb-q-jpVN55d5unAQYXQFSm7HgNKWBH0Q_-gmg@mail.gmail.com>
- <20160322001255.GA2353@fieldses.org>
- <009F3E87-7919-4774-9129-72DB08F76553@gentoo.org>
- <56F0AC2A.30300@gentoo.org>
- <CACyXjPyYK0CggZNGfQQj6BBAfahU7PmVzwpzfeUqBannUTdhqA@mail.gmail.com>
- <20160322200801.GF4083@fieldses.org>
- <CACyXjPwS2G3PJFB+A31AcF9MPzVHiEUW6BWuwAYqs3+7g9S=kA@mail.gmail.com>
+	id S1751249AbcCVUvv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 22 Mar 2016 16:51:51 -0400
+Date: Tue, 22 Mar 2016 16:51:47 -0400 (EDT)
+From: Benjamin Coddington <bcodding@redhat.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+cc: Jeff Layton <jlayton@poochiereds.net>, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH v2] nfsd: use short read rather than i_size to set eof
+In-Reply-To: <20160322185336.GD4083@fieldses.org>
+Message-ID: <alpine.OSX.2.19.9992.1603221645050.19930@planck>
+References: <20160321213655.GB807@fieldses.org> <82e4c7a9756b21a4645421d04735ccf491b4296a.1458571329.git.bcodding@redhat.com> <a156abbff4553a431ebafd3b6b84a5eb7f7202c5.1458651136.git.bcodding@redhat.com> <20160322164624.GB4083@fieldses.org>
+ <20160322185336.GD4083@fieldses.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <CACyXjPwS2G3PJFB+A31AcF9MPzVHiEUW6BWuwAYqs3+7g9S=kA@mail.gmail.com>
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Mar 22, 2016 at 01:13:49PM -0700, Richard Sharpe wrote:
-> On Tue, Mar 22, 2016 at 1:08 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
-> > On Tue, Mar 22, 2016 at 09:15:44AM -0700, Richard Sharpe wrote:
-> >> On Mon, Mar 21, 2016 at 7:21 PM, Richard Yao <ryao@gentoo.org> wrote:
-> >> > On 03/21/2016 09:02 PM, Richard Yao wrote:
-> >> >>
-> >> >>> On Mar 21, 2016, at 8:12 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
-> >> >>>
-> >> >>>> On Mon, Mar 21, 2016 at 11:48:04PM +0100, Cedric Blancher wrote:
-> >> >>>> Old invalid argument, and Sophos and Symatec look there as well.
-> >> >>>>
-> >> >>>> If it was a bad idea, why has Linux fs attributes which are almost the
-> >> >>>> same as O_XATTR except that they use a custom api? Why does Macos have
-> >> >>>> alternate streams (called forks)? Why did Solaris adopt it long ago
-> >> >>>> (and still gets support questions about it - just saying before
-> >> >>>> someone argues that no one uses THAT)?
-> >> >>>
-> >> >>> Could you point us at some of those users?
-> >> >>
-> >> >> I am told that Samba users would love this functionality.
-> >> >
-> >> > Someone pinged me in IRC to let me know that Steve French was talking
-> >> > about this earlier this month:
-> >> >
-> >> >> Have there been any suggestions on how to list alternate data streams
-> >> >> on a file other than using a pseudo-xattr as ntfs-3g does (querying
-> >> >> xattr ntfs.streams.list - see http://linux.die.net/man/8/ntfs-3g)?
-> >> >
-> >> > http://permalink.gmane.org/gmane.linux.kernel.cifs/11681
-> >> >
-> >> > Windows appears to have name-value pair attributes and alternative data
-> >> > streams in separate name-spaces simultaneously.
-> >>
-> >> And it is more convoluted than that. If you use reparse points on a
-> >> file you cannot use name-value pair attributes (Windows Extended
-> >> Attributes) and vice versa, because they overloaded one of the fields
-> >> use to report on those things.
-> >>
-> >> Of course, pretty much no one uses Windows Extended Attributes these
-> >> days, I believe.
-> >
-> > But you do see people using "named attributes"/"alternative data
-> > streams"?
-> >
-> > This comes up at the LSF/MM summit every now and then and Jeremy Allison
-> > inevitably says "hah, only malware writers use those", and that's the
-> > end of the discussion.  Sounds like Richard Yao has heard otherwise, but
-> > it'd be nice to have actual examples of users.
-> 
-> I have worked on three products that run on UNIX (one on FreeBSD, two
-> on Linux) that require Alternate Data Streams because customers demand
-> them. In each case we used Samba and its streams_depot VFS module. The
-> fact that Richard is discussing exposing streams in ZoL will be
-> interesting to some users, possibly especially to those Taiwanese
-> cheap NAS companies
+On Tue, 22 Mar 2016, J. Bruce Fields wrote:
 
-Any clues on where we might look for example end users?  (So, not Samba,
-or somebody else that's just passing along the interface, but an
-application that's actually consuming it?)
+> Possibly overkill, but I think I'll fold in something like this if you
+> don't see an objection.
 
-> Named Attributes are pretty rare these days. I think that only virus
-> checkers ever used them to store the fact that they had checked that
-> file.
+No objection.  To answer your earlier question (does the client even send a
+read if it would extend past the size returned from a recent getattr?):
 
-By the way, the language here cause me no end of confusion, because RFC
-3530 (NFSv4) uses "named attributes" to mean alternate data streams.  So
-I've tended to use "named" vs "extended" attributes to distinguish the
-two cases, whereas you seem to use them as synonyms.
+Looks to me (by testing with a server that never sets eof) the answer is no.
+The client won't issue reads beyond the end of the file.
 
---b.
+Also the previous patch's subject is now a little misleading.  Maybe
+s/rather than/as well as/ would do.
+
+Ben
+
+> commit 58e18a2a14a0
+> Author: J. Bruce Fields <bfields@redhat.com>
+> Date:   Tue Mar 22 14:08:11 2016 -0400
+>
+>     nfsd: document read eof logic
+>
+>     The choice of checks here is a little subtle, let's document this for
+>     posterity.
+>
+>     Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+>
+> diff --git a/fs/nfsd/nfs3proc.c b/fs/nfsd/nfs3proc.c
+> index 83c9abb33e8b..df0f0a86f21d 100644
+> --- a/fs/nfsd/nfs3proc.c
+> +++ b/fs/nfsd/nfs3proc.c
+> @@ -168,8 +168,7 @@ nfsd3_proc_read(struct svc_rqst *rqstp, struct nfsd3_readargs *argp,
+>  				  &resp->count);
+>  	if (nfserr == 0) {
+>  		struct inode	*inode = d_inode(resp->fh.fh_dentry);
+> -		resp->eof = (cnt > resp->count) ||
+> -			((argp->offset + resp->count) >= inode->i_size);
+> +		resp->eof = nfsd_eof_on_read(cnt, resp->count, argp->offset, inode->i_size);
+>  	}
+>
+>  	RETURN_STATUS(nfserr);
+> diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+> index 90232bd7e498..9df898ba648f 100644
+> --- a/fs/nfsd/nfs4xdr.c
+> +++ b/fs/nfsd/nfs4xdr.c
+> @@ -3387,8 +3387,8 @@ static __be32 nfsd4_encode_splice_read(
+>  		return nfserr;
+>  	}
+>
+> -	eof = (len > maxcount) ||
+> -		((read->rd_offset + maxcount >= d_inode(read->rd_fhp->fh_dentry)->i_size));
+> +	eof = nfsd_eof_on_read(len, maxcount, read->rd_offset,
+> +				d_inode(read->rd_fhp->fh_dentry)->i_size);
+>
+>  	*(p++) = htonl(eof);
+>  	*(p++) = htonl(maxcount);
+> @@ -3465,8 +3465,8 @@ static __be32 nfsd4_encode_readv(struct nfsd4_compoundres *resp,
+>  		return nfserr;
+>  	xdr_truncate_encode(xdr, starting_len + 8 + ((maxcount+3)&~3));
+>
+> -	eof = (len > maxcount) ||
+> -		((read->rd_offset + maxcount >= d_inode(read->rd_fhp->fh_dentry)->i_size));
+> +	eof = nfsd_eof_on_read(len, maxcount, read->rd_offset,
+> +				d_inode(read->rd_fhp->fh_dentry)->i_size);
+>
+>  	tmp = htonl(eof);
+>  	write_bytes_to_xdr_buf(xdr->buf, starting_len    , &tmp, 4);
+> diff --git a/fs/nfsd/vfs.h b/fs/nfsd/vfs.h
+> index c11ba316f23f..6244e073c137 100644
+> --- a/fs/nfsd/vfs.h
+> +++ b/fs/nfsd/vfs.h
+> @@ -139,4 +139,24 @@ static inline int nfsd_create_is_exclusive(int createmode)
+>  	       || createmode == NFS4_CREATE_EXCLUSIVE4_1;
+>  }
+>
+> +static inline bool nfsd_eof_on_read(long requested, long read,
+> +				loff_t offset, loff_t size)
+> +{
+> +	/* We assume a short read means eof: */
+> +	if (requested > read)
+> +		return true;
+> +	/*
+> +	 * A non-short read might also reach end of file.  The spec
+> +	 * still requires us to set eof in that case.
+> +	 *
+> +	 * Further operations may have modified the file size since
+> +	 * the read, so the following check is not atomic with the read.
+> +	 * The only case we've seen that cause a problem for a client
+> +	 * is the case where the read returned a count of 0 without
+> +	 * setting eof.  That case was fixed by the addition of the
+> +	 * above check.
+> +	 */
+> +	return (offset + read >= size);
+> +}
+> +
+>  #endif /* LINUX_NFSD_VFS_H */
+>
