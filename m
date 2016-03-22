@@ -1,62 +1,91 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp.gentoo.org ([140.211.166.183]:36466 "EHLO smtp.gentoo.org"
+Received: from smtp.gentoo.org ([140.211.166.183]:37654 "EHLO smtp.gentoo.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754062AbcCVCBk convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 21 Mar 2016 22:01:40 -0400
-Content-Type: text/plain;
-	charset=us-ascii
-Mime-Version: 1.0 (1.0)
+	id S1750852AbcCVCVo (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 21 Mar 2016 22:21:44 -0400
 Subject: Re: Making an interface for alternative data streams
-From: Richard Yao <ryao@gentoo.org>
-In-Reply-To: <20160321204041.GA807@fieldses.org>
-Date: Mon, 21 Mar 2016 22:01:35 -0400
-Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        Christoph Hellwig <hch@infradead.org>
-Message-Id: <34E9F5BC-E8D4-405E-926E-DF2058E31B5F@gentoo.org>
-References: <56F03945.40208@gentoo.org> <56F05745.50204@gentoo.org> <20160321204041.GA807@fieldses.org>
 To: "J. Bruce Fields" <bfields@fieldses.org>
+References: <56F03945.40208@gentoo.org> <56F05745.50204@gentoo.org>
+ <20160321204041.GA807@fieldses.org> <20160321223627.GA12999@thunk.org>
+ <CALXu0UdPyhBpOb-q-jpVN55d5unAQYXQFSm7HgNKWBH0Q_-gmg@mail.gmail.com>
+ <20160322001255.GA2353@fieldses.org>
+ <009F3E87-7919-4774-9129-72DB08F76553@gentoo.org>
+Cc: Cedric Blancher <cedric.blancher@gmail.com>,
+        "Theodore Ts'o" <tytso@mit.edu>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        Christoph Hellwig <hch@infradead.org>,
+        Steve French <smfrench@gmail.com>
+From: Richard Yao <ryao@gentoo.org>
+Message-ID: <56F0AC2A.30300@gentoo.org>
+Date: Mon, 21 Mar 2016 22:21:30 -0400
+MIME-Version: 1.0
+In-Reply-To: <009F3E87-7919-4774-9129-72DB08F76553@gentoo.org>
+Content-Type: multipart/signed; micalg=pgp-sha256;
+ protocol="application/pgp-signature";
+ boundary="6XkGA8xcGB8KRDp1rFRKsgo9FgV3vTMJk"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+This is an OpenPGP/MIME signed message (RFC 4880 and 3156)
+--6XkGA8xcGB8KRDp1rFRKsgo9FgV3vTMJk
+Content-Type: text/plain; charset=windows-1252
+Content-Transfer-Encoding: quoted-printable
 
-> On Mar 21, 2016, at 4:40 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
-> 
->> On Mon, Mar 21, 2016 at 04:19:17PM -0400, Richard Yao wrote:
->> Maybe I should clarify that the idea is to allow read/write/list of
->> extended attributes via read/write/readdir so that those that want
->> extended attributes that are alternative data streams can have them. I
->> do not want to see extended attributes and alternative data streams be
->> different things.
-> 
-> I think there are differences between the two that make this awkward.
-> Does anyone actually use alternative data stream for anything that makes
-> the effort worthwhile?
+On 03/21/2016 09:02 PM, Richard Yao wrote:
+>=20
+>> On Mar 21, 2016, at 8:12 PM, J. Bruce Fields <bfields@fieldses.org> wr=
+ote:
+>>
+>>> On Mon, Mar 21, 2016 at 11:48:04PM +0100, Cedric Blancher wrote:
+>>> Old invalid argument, and Sophos and Symatec look there as well.
+>>>
+>>> If it was a bad idea, why has Linux fs attributes which are almost th=
+e
+>>> same as O_XATTR except that they use a custom api? Why does Macos hav=
+e
+>>> alternate streams (called forks)? Why did Solaris adopt it long ago
+>>> (and still gets support questions about it - just saying before
+>>> someone argues that no one uses THAT)?
+>>
+>> Could you point us at some of those users?
+>=20
+> I am told that Samba users would love this functionality.
 
-For particularly large extended attributes, avoiding having to read the entire value into userspace, modify it and write it back is nice. I believe that XFS goes up to 64KB.
+Someone pinged me in IRC to let me know that Steve French was talking
+about this earlier this month:
 
-I have had multiple user inquiries regarding this each year. They tend to fall into two camps. One is the Samba camp while the other wants saner fsync semantics. When your disk format uses tar files for extended attributes, doing fsync either omits them or iterates through the extended attribute directory. Neither is very nice. At the moment, the answer in the driver that I develop is it works as long as they are not too big and a non-cross platform compatible option is enabled to store small ones the IRIX way that most in-tree file drivers use. Maybe the right answer is to make it user configurable, although having an interface that lets users target a specific extended attribute would be nice.
+> Have there been any suggestions on how to list alternate data streams
+> on a file other than using a pseudo-xattr as ntfs-3g does (querying
+> xattr ntfs.streams.list - see http://linux.die.net/man/8/ntfs-3g)?
 
-I already have the idea of implementing it through an ioctl without any changes to the VFS. I imagine if I do that userland software will begin adopting it and then people will start pinging other filesystem driver developers requesting support, like what happened with reflinks (although the majority of people using them seem to be using them in internal things that never see the light of day). At that point, we could be stuck with a  significant body of userland software that expects an interface that probably is less agreeable than what it would have been had people sat down to discuss it in the first place.
+http://permalink.gmane.org/gmane.linux.kernel.cifs/11681
 
->> Alternative data streams are in the NFSv4 specification, so I thought
->> that the developers of the NFS client driver would want something like
->> this.
-> 
-> Somebody would have to make a convincing argument that it's worthwhile.
-> 
-> Note there's also a proposal to add extended attributes to the NFSv4
-> protocol:
-> 
->    https://tools.ietf.org/html/draft-ietf-nfsv4-xattrs-02
+Windows appears to have name-value pair attributes and alternative data
+streams in separate name-spaces simultaneously.
 
-I had not known about that. If that happens and we start seeing separate namespaces, we will need alternative data streams from the perspective of being able to archive the contents of a file system on one POSIX system and restore it on another. There is just no way that userland tools like rsync would be able to keep treating the two as equivalent when separate namespaces come into play and migrating to Linux would guarantee data loss when both are in use.
 
-> That also has some more discussion of mismatches between the named- and
-> extended- attribute interfaces:
-> 
->    https://tools.ietf.org/html/draft-ietf-nfsv4-xattrs-02#section-5
+--6XkGA8xcGB8KRDp1rFRKsgo9FgV3vTMJk
+Content-Type: application/pgp-signature; name="signature.asc"
+Content-Description: OpenPGP digital signature
+Content-Disposition: attachment; filename="signature.asc"
 
-That describes the exact problems with the current approach in the ZoL driver.
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v2
 
-> 
-> --b.
+iQIcBAEBCAAGBQJW8KwvAAoJECDuEZm+6ExkTPAQAJriXKo8Ex5H1TSAGM+E9roi
+drlGqbIgCaPBAocUVWTp+oTUPoqzlZq8/NsQhAe8cKJhuTHReaU0bNAnzFVniRgx
+G80HyU7Cmd/mCDix42XhkvHbXR3j881F68D83OeA0651jOddWV6Z7govSwKv/uwO
+wZt6vYUWrjNgeAsGT8LvkQjZ+qC/hLCWJOAJWfG4HoDvkt429VgCjtnYXKGC9fX5
+5KGeg/JexcHywxeclYrsIX7HtiOorrkocRYwR7tuPC7dR009+sSlGjXcgf2UHQ9l
+8cJ/PzNIzO1i6xq5pqjNHsdsDeAhaB1cQKNiOG+7kJkzw/i/1jbZKkHQ0KwYHAOI
+RPsJlUlwkVIs+xwgQa9RDozt6tsqdZJMRaUBeldDjTQT0wIKPsI8SdDQdg8+7C7H
+QxiDIdelMZ9JgQPHsz2ctmEnocikt77jHqnyD/J2GVy6e0lLoXhu/orASXXixtS1
+yPb47fMDTn383KDWvRbDG8rk7eCSM9WQ6NN56abJrBrJWZ3bhG3gTDQk79dxAZjU
+f7RsmVYO8GBPLWrvGnRH1sKugkwy00xp92xpq/hSSgA2idyJQs07KB5+xmmjwxjy
+cNZnk0tCtxoPhso3u+dFB2DsJTH9RrSABHh5cki3o+RWqoidQO2QoWlH4E7Q0W6V
+jga5gxYJ9s620vpuupUq
+=nl65
+-----END PGP SIGNATURE-----
+
+--6XkGA8xcGB8KRDp1rFRKsgo9FgV3vTMJk--
