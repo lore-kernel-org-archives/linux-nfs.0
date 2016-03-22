@@ -1,98 +1,87 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx143.netapp.com ([216.240.21.24]:29880 "EHLO mx143.netapp.com"
+Received: from fieldses.org ([173.255.197.46]:35832 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750772AbcCVTiZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 22 Mar 2016 15:38:25 -0400
-From: Anna Schumaker <Anna.Schumaker@netapp.com>
-Subject: Re: [PATCH] nfs: add nfs IPv6 rdma6 mount option support
-To: Shirley Ma <shirley.ma@oracle.com>, Bruce Fields <bfields@redhat.com>,
-        <leon@leon.nu>
-References: <56E9A650.7060409@oracle.com>
-CC: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-ID: <56F19F28.9020504@Netapp.com>
-Date: Tue, 22 Mar 2016 15:38:16 -0400
+	id S1750772AbcCVUID (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 22 Mar 2016 16:08:03 -0400
+Date: Tue, 22 Mar 2016 16:08:01 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Richard Sharpe <realrichardsharpe@gmail.com>
+Cc: Richard Yao <ryao@gentoo.org>, Cedric Blancher <cedric.blancher@gmail.com>,
+        "Theodore Ts'o" <tytso@mit.edu>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        Christoph Hellwig <hch@infradead.org>,
+        Steve French <smfrench@gmail.com>
+Subject: Re: Making an interface for alternative data streams
+Message-ID: <20160322200801.GF4083@fieldses.org>
+References: <56F03945.40208@gentoo.org>
+ <56F05745.50204@gentoo.org>
+ <20160321204041.GA807@fieldses.org>
+ <20160321223627.GA12999@thunk.org>
+ <CALXu0UdPyhBpOb-q-jpVN55d5unAQYXQFSm7HgNKWBH0Q_-gmg@mail.gmail.com>
+ <20160322001255.GA2353@fieldses.org>
+ <009F3E87-7919-4774-9129-72DB08F76553@gentoo.org>
+ <56F0AC2A.30300@gentoo.org>
+ <CACyXjPyYK0CggZNGfQQj6BBAfahU7PmVzwpzfeUqBannUTdhqA@mail.gmail.com>
 MIME-Version: 1.0
-In-Reply-To: <56E9A650.7060409@oracle.com>
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain; charset=utf-8
+In-Reply-To: <CACyXjPyYK0CggZNGfQQj6BBAfahU7PmVzwpzfeUqBannUTdhqA@mail.gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Shirley,
-
-Sorry for the delay in looking at this patch.  Comments are below:
-
-On 03/16/2016 02:30 PM, Shirley Ma wrote:
-> Add rdma6 option to support NFS/RDMA IPv6.
+On Tue, Mar 22, 2016 at 09:15:44AM -0700, Richard Sharpe wrote:
+> On Mon, Mar 21, 2016 at 7:21 PM, Richard Yao <ryao@gentoo.org> wrote:
+> > On 03/21/2016 09:02 PM, Richard Yao wrote:
+> >>
+> >>> On Mar 21, 2016, at 8:12 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
+> >>>
+> >>>> On Mon, Mar 21, 2016 at 11:48:04PM +0100, Cedric Blancher wrote:
+> >>>> Old invalid argument, and Sophos and Symatec look there as well.
+> >>>>
+> >>>> If it was a bad idea, why has Linux fs attributes which are almost the
+> >>>> same as O_XATTR except that they use a custom api? Why does Macos have
+> >>>> alternate streams (called forks)? Why did Solaris adopt it long ago
+> >>>> (and still gets support questions about it - just saying before
+> >>>> someone argues that no one uses THAT)?
+> >>>
+> >>> Could you point us at some of those users?
+> >>
+> >> I am told that Samba users would love this functionality.
+> >
+> > Someone pinged me in IRC to let me know that Steve French was talking
+> > about this earlier this month:
+> >
+> >> Have there been any suggestions on how to list alternate data streams
+> >> on a file other than using a pseudo-xattr as ntfs-3g does (querying
+> >> xattr ntfs.streams.list - see http://linux.die.net/man/8/ntfs-3g)?
+> >
+> > http://permalink.gmane.org/gmane.linux.kernel.cifs/11681
+> >
+> > Windows appears to have name-value pair attributes and alternative data
+> > streams in separate name-spaces simultaneously.
 > 
-> Signed-off-by: Shirley Ma <shirley.ma@oracle.com>
-
-Can you add a little more to the patch description to describe when RDMA with IPv6 would be used?
-
-> ---
+> And it is more convoluted than that. If you use reparse points on a
+> file you cannot use name-value pair attributes (Windows Extended
+> Attributes) and vice versa, because they overloaded one of the fields
+> use to report on those things.
 > 
-> diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-> index f126828..62a55d0 100644
-> --- a/fs/nfs/super.c
-> +++ b/fs/nfs/super.c
-> @@ -191,6 +191,7 @@ static const match_table_t nfs_mount_option_tokens = {
->  
->  enum {
->  	Opt_xprt_udp, Opt_xprt_udp6, Opt_xprt_tcp, Opt_xprt_tcp6, Opt_xprt_rdma,
-> +	Opt_xprt_rdma6,
->  
->  	Opt_xprt_err
->  };
-> @@ -201,6 +202,7 @@ static const match_table_t nfs_xprt_protocol_tokens = {
->  	{ Opt_xprt_tcp, "tcp" },
->  	{ Opt_xprt_tcp6, "tcp6" },
->  	{ Opt_xprt_rdma, "rdma" },
-> +	{ Opt_xprt_rdma6, "rdma6" },
->  
->  	{ Opt_xprt_err, NULL }
->  };
-> @@ -1456,6 +1458,8 @@ static int nfs_parse_mount_options(char *raw,
->  				mnt->flags |= NFS_MOUNT_TCP;
->  				mnt->nfs_server.protocol = XPRT_TRANSPORT_TCP;
->  				break;
-> +			case Opt_xprt_rdma6:
-> +				protofamily = AF_INET6;
->  			case Opt_xprt_rdma:
->  				/* vector side protocols to TCP */
->  				mnt->flags |= NFS_MOUNT_TCP;
-> @@ -1490,6 +1494,8 @@ static int nfs_parse_mount_options(char *raw,
->  			case Opt_xprt_tcp:
->  				mnt->mount_server.protocol = XPRT_TRANSPORT_TCP;
->  				break;
-> +			case Opt_xprt_rdma6:
-> +				mountfamily = AF_INET6;
->  			case Opt_xprt_rdma: /* not used for side protocols */
-                                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-Do we need to be setting mountfamily here?  The comment next to Opt_xprt_rdma makes it sound like this code doesn't apply to RDMA.
+> Of course, pretty much no one uses Windows Extended Attributes these
+> days, I believe.
 
->  			default:
->  				dfprintk(MOUNT, "NFS:   unrecognized "
-> diff --git a/include/linux/sunrpc/msg_prot.h b/include/linux/sunrpc/msg_prot.h
-> index 8073713..49b8433 100644
-> --- a/include/linux/sunrpc/msg_prot.h
-> +++ b/include/linux/sunrpc/msg_prot.h
-> @@ -149,6 +149,7 @@ typedef __be32	rpc_fraghdr;
->  #define RPCBIND_NETID_UDP	"udp"
->  #define RPCBIND_NETID_TCP	"tcp"
->  #define RPCBIND_NETID_RDMA	"rdma"
-> +#define RPCBIND_NETID_RDMA6	"rdma6"
+But you do see people using "named attributes"/"alternative data
+streams"?
 
-This is defined right after tcp6, so we probably don't need it twice :).
+This comes up at the LSF/MM summit every now and then and Jeremy Allison
+inevitably says "hah, only malware writers use those", and that's the
+end of the discussion.  Sounds like Richard Yao has heard otherwise, but
+it'd be nice to have actual examples of users.
 
-Thanks,
-Anna
+--b.
 
->  #define RPCBIND_NETID_SCTP	"sctp"
->  #define RPCBIND_NETID_UDP6	"udp6"
->  #define RPCBIND_NETID_TCP6	"tcp6"
 > 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> However, plenty of Samba users store Windows ACLs in Linux XATTRs ...
 > 
-
+> -- 
+> Regards,
+> Richard Sharpe
+> (何以解憂？唯有杜康。--曹操)
