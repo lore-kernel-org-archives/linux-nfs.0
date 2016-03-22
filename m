@@ -1,119 +1,66 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:28104 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752388AbcCVVYQ convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 22 Mar 2016 17:24:16 -0400
+Received: from ipmail04.adl6.internode.on.net ([150.101.137.141]:62817 "EHLO
+	ipmail04.adl6.internode.on.net" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751383AbcCVV3e (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 22 Mar 2016 17:29:34 -0400
+Date: Wed, 23 Mar 2016 08:29:31 +1100
+From: Dave Chinner <david@fromorbit.com>
+To: Richard Yao <ryao@gentoo.org>
+Cc: "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org, Christoph Hellwig <hch@infradead.org>
+Subject: Re: Making an interface for alternative data streams
+Message-ID: <20160322212931.GQ11812@dastard>
+References: <56F03945.40208@gentoo.org>
+ <56F05745.50204@gentoo.org>
+ <20160321204041.GA807@fieldses.org>
+ <34E9F5BC-E8D4-405E-926E-DF2058E31B5F@gentoo.org>
+MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 9.2 \(3112\))
-Subject: Re: [PATCH] nfs: add nfs IPv6 rdma6 mount option support
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <56F19F28.9020504@Netapp.com>
-Date: Tue, 22 Mar 2016 17:24:05 -0400
-Cc: Shirley Ma <shirley.ma@oracle.com>, "J. Bruce Fields" <bfields@redhat.com>,
-        Leon Romanovsky <leon@leon.nu>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <D0E8CDCF-19AE-444D-87D6-4C2730318A1A@oracle.com>
-References: <56E9A650.7060409@oracle.com> <56F19F28.9020504@Netapp.com>
-To: Anna Schumaker <Anna.Schumaker@netapp.com>
+In-Reply-To: <34E9F5BC-E8D4-405E-926E-DF2058E31B5F@gentoo.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-> On Mar 22, 2016, at 3:38 PM, Anna Schumaker <Anna.Schumaker@netapp.com> wrote:
+On Mon, Mar 21, 2016 at 10:01:35PM -0400, Richard Yao wrote:
 > 
-> Hi Shirley,
+> > On Mar 21, 2016, at 4:40 PM, J. Bruce Fields
+> > <bfields@fieldses.org> wrote:
+> > 
+> >> On Mon, Mar 21, 2016 at 04:19:17PM -0400, Richard Yao wrote:
+> >> Maybe I should clarify that the idea is to allow
+> >> read/write/list of extended attributes via read/write/readdir
+> >> so that those that want extended attributes that are
+> >> alternative data streams can have them. I do not want to see
+> >> extended attributes and alternative data streams be different
+> >> things.
+> > 
+> > I think there are differences between the two that make this
+> > awkward.  Does anyone actually use alternative data stream for
+> > anything that makes the effort worthwhile?
 > 
-> Sorry for the delay in looking at this patch.  Comments are below:
-> 
-> On 03/16/2016 02:30 PM, Shirley Ma wrote:
->> Add rdma6 option to support NFS/RDMA IPv6.
->> 
->> Signed-off-by: Shirley Ma <shirley.ma@oracle.com>
-> 
-> Can you add a little more to the patch description to describe when RDMA with IPv6 would be used?
-> 
->> ---
->> 
->> diff --git a/fs/nfs/super.c b/fs/nfs/super.c
->> index f126828..62a55d0 100644
->> --- a/fs/nfs/super.c
->> +++ b/fs/nfs/super.c
->> @@ -191,6 +191,7 @@ static const match_table_t nfs_mount_option_tokens = {
->> 
->> enum {
->> 	Opt_xprt_udp, Opt_xprt_udp6, Opt_xprt_tcp, Opt_xprt_tcp6, Opt_xprt_rdma,
->> +	Opt_xprt_rdma6,
->> 
->> 	Opt_xprt_err
->> };
->> @@ -201,6 +202,7 @@ static const match_table_t nfs_xprt_protocol_tokens = {
->> 	{ Opt_xprt_tcp, "tcp" },
->> 	{ Opt_xprt_tcp6, "tcp6" },
->> 	{ Opt_xprt_rdma, "rdma" },
->> +	{ Opt_xprt_rdma6, "rdma6" },
->> 
->> 	{ Opt_xprt_err, NULL }
->> };
->> @@ -1456,6 +1458,8 @@ static int nfs_parse_mount_options(char *raw,
->> 				mnt->flags |= NFS_MOUNT_TCP;
->> 				mnt->nfs_server.protocol = XPRT_TRANSPORT_TCP;
->> 				break;
->> +			case Opt_xprt_rdma6:
->> +				protofamily = AF_INET6;
->> 			case Opt_xprt_rdma:
->> 				/* vector side protocols to TCP */
->> 				mnt->flags |= NFS_MOUNT_TCP;
->> @@ -1490,6 +1494,8 @@ static int nfs_parse_mount_options(char *raw,
->> 			case Opt_xprt_tcp:
->> 				mnt->mount_server.protocol = XPRT_TRANSPORT_TCP;
->> 				break;
->> +			case Opt_xprt_rdma6:
->> +				mountfamily = AF_INET6;
->> 			case Opt_xprt_rdma: /* not used for side protocols */
->                                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-> Do we need to be setting mountfamily here?  The comment next to Opt_xprt_rdma makes it sound like this code doesn't apply to RDMA.
+> For particularly large extended attributes, avoiding having to
+> read the entire value into userspace, modify it and write it back
+> is nice. I believe that XFS goes up to 64KB.
 
-I wondered this too.
+Sorry, but XFS xattrs are cannot be partially overwritten due to the
+write atomicity requirement of xattrs (i.e. either the entire change
+or none of the change is present after a crash). not to mention that
+we'd have to completely re-implement extended attributes in XFS to
+support them being used as ADS. That's simply not going to happen.
 
-But what's going on is that for NFSv3 on RDMA, when IPv6 is
-used for the main protocol, IPv6 needs to be used for the
-mount protocol as well, even though it is going over TCP.
+Extended attributes are *not data streams*. Stop trying to make them
+data streams - the APIs and the implementations in the fileystems
+are simply not designed to be used as seekable data streams.
 
+If you want additional seekable data streams, then come up with a
+filesystem namespace method of addressing these alternate data
+streams as *separate files containing data*. That's all an ADS is -
+a namespace hack to address multiple data files through a single
+file name. That's the problem that needs solving and it has nothing
+to do with xattrs.
 
->> 			default:
->> 				dfprintk(MOUNT, "NFS:   unrecognized "
->> diff --git a/include/linux/sunrpc/msg_prot.h b/include/linux/sunrpc/msg_prot.h
->> index 8073713..49b8433 100644
->> --- a/include/linux/sunrpc/msg_prot.h
->> +++ b/include/linux/sunrpc/msg_prot.h
->> @@ -149,6 +149,7 @@ typedef __be32	rpc_fraghdr;
->> #define RPCBIND_NETID_UDP	"udp"
->> #define RPCBIND_NETID_TCP	"tcp"
->> #define RPCBIND_NETID_RDMA	"rdma"
->> +#define RPCBIND_NETID_RDMA6	"rdma6"
-> 
-> This is defined right after tcp6, so we probably don't need it twice :).
-> 
-> Thanks,
-> Anna
-> 
->> #define RPCBIND_NETID_SCTP	"sctp"
->> #define RPCBIND_NETID_UDP6	"udp6"
->> #define RPCBIND_NETID_TCP6	"tcp6"
->> 
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->> 
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Cheers,
 
---
-Chuck Lever
-
-
-
+Dave.
+-- 
+Dave Chinner
+david@fromorbit.com
