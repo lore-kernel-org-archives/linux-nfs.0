@@ -1,119 +1,119 @@
-Return-Path: <bfields@fieldses.org>
-Date: Tue, 22 Mar 2016 17:22:11 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Benjamin Coddington <bcodding@redhat.com>
-Cc: Jeff Layton <jlayton@poochiereds.net>, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v2] nfsd: use short read rather than i_size to set eof
-Message-ID: <20160322212211.GJ4083@fieldses.org>
-References: <20160321213655.GB807@fieldses.org>
- <82e4c7a9756b21a4645421d04735ccf491b4296a.1458571329.git.bcodding@redhat.com>
- <a156abbff4553a431ebafd3b6b84a5eb7f7202c5.1458651136.git.bcodding@redhat.com>
- <20160322164624.GB4083@fieldses.org>
- <20160322185336.GD4083@fieldses.org>
- <alpine.OSX.2.19.9992.1603221645050.19930@planck>
-MIME-Version: 1.0
+Return-Path: <linux-nfs-owner@vger.kernel.org>
+Received: from aserp1040.oracle.com ([141.146.126.69]:28104 "EHLO
+	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752388AbcCVVYQ convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 22 Mar 2016 17:24:16 -0400
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <alpine.OSX.2.19.9992.1603221645050.19930@planck>
+Mime-Version: 1.0 (Mac OS X Mail 9.2 \(3112\))
+Subject: Re: [PATCH] nfs: add nfs IPv6 rdma6 mount option support
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <56F19F28.9020504@Netapp.com>
+Date: Tue, 22 Mar 2016 17:24:05 -0400
+Cc: Shirley Ma <shirley.ma@oracle.com>, "J. Bruce Fields" <bfields@redhat.com>,
+        Leon Romanovsky <leon@leon.nu>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Message-Id: <D0E8CDCF-19AE-444D-87D6-4C2730318A1A@oracle.com>
+References: <56E9A650.7060409@oracle.com> <56F19F28.9020504@Netapp.com>
+To: Anna Schumaker <Anna.Schumaker@netapp.com>
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Mar 22, 2016 at 04:51:47PM -0400, Benjamin Coddington wrote:
-> On Tue, 22 Mar 2016, J. Bruce Fields wrote:
-> 
-> > Possibly overkill, but I think I'll fold in something like this if you
-> > don't see an objection.
-> 
-> No objection.  To answer your earlier question (does the client even send a
-> read if it would extend past the size returned from a recent getattr?):
-> 
-> Looks to me (by testing with a server that never sets eof) the answer is no.
-> The client won't issue reads beyond the end of the file.
-> 
-> Also the previous patch's subject is now a little misleading.  Maybe
-> s/rather than/as well as/ would do.
 
-OK.--b.
+> On Mar 22, 2016, at 3:38 PM, Anna Schumaker <Anna.Schumaker@netapp.com> wrote:
+> 
+> Hi Shirley,
+> 
+> Sorry for the delay in looking at this patch.  Comments are below:
+> 
+> On 03/16/2016 02:30 PM, Shirley Ma wrote:
+>> Add rdma6 option to support NFS/RDMA IPv6.
+>> 
+>> Signed-off-by: Shirley Ma <shirley.ma@oracle.com>
+> 
+> Can you add a little more to the patch description to describe when RDMA with IPv6 would be used?
+> 
+>> ---
+>> 
+>> diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+>> index f126828..62a55d0 100644
+>> --- a/fs/nfs/super.c
+>> +++ b/fs/nfs/super.c
+>> @@ -191,6 +191,7 @@ static const match_table_t nfs_mount_option_tokens = {
+>> 
+>> enum {
+>> 	Opt_xprt_udp, Opt_xprt_udp6, Opt_xprt_tcp, Opt_xprt_tcp6, Opt_xprt_rdma,
+>> +	Opt_xprt_rdma6,
+>> 
+>> 	Opt_xprt_err
+>> };
+>> @@ -201,6 +202,7 @@ static const match_table_t nfs_xprt_protocol_tokens = {
+>> 	{ Opt_xprt_tcp, "tcp" },
+>> 	{ Opt_xprt_tcp6, "tcp6" },
+>> 	{ Opt_xprt_rdma, "rdma" },
+>> +	{ Opt_xprt_rdma6, "rdma6" },
+>> 
+>> 	{ Opt_xprt_err, NULL }
+>> };
+>> @@ -1456,6 +1458,8 @@ static int nfs_parse_mount_options(char *raw,
+>> 				mnt->flags |= NFS_MOUNT_TCP;
+>> 				mnt->nfs_server.protocol = XPRT_TRANSPORT_TCP;
+>> 				break;
+>> +			case Opt_xprt_rdma6:
+>> +				protofamily = AF_INET6;
+>> 			case Opt_xprt_rdma:
+>> 				/* vector side protocols to TCP */
+>> 				mnt->flags |= NFS_MOUNT_TCP;
+>> @@ -1490,6 +1494,8 @@ static int nfs_parse_mount_options(char *raw,
+>> 			case Opt_xprt_tcp:
+>> 				mnt->mount_server.protocol = XPRT_TRANSPORT_TCP;
+>> 				break;
+>> +			case Opt_xprt_rdma6:
+>> +				mountfamily = AF_INET6;
+>> 			case Opt_xprt_rdma: /* not used for side protocols */
+>                                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> Do we need to be setting mountfamily here?  The comment next to Opt_xprt_rdma makes it sound like this code doesn't apply to RDMA.
 
+I wondered this too.
+
+But what's going on is that for NFSv3 on RDMA, when IPv6 is
+used for the main protocol, IPv6 needs to be used for the
+mount protocol as well, even though it is going over TCP.
+
+
+>> 			default:
+>> 				dfprintk(MOUNT, "NFS:   unrecognized "
+>> diff --git a/include/linux/sunrpc/msg_prot.h b/include/linux/sunrpc/msg_prot.h
+>> index 8073713..49b8433 100644
+>> --- a/include/linux/sunrpc/msg_prot.h
+>> +++ b/include/linux/sunrpc/msg_prot.h
+>> @@ -149,6 +149,7 @@ typedef __be32	rpc_fraghdr;
+>> #define RPCBIND_NETID_UDP	"udp"
+>> #define RPCBIND_NETID_TCP	"tcp"
+>> #define RPCBIND_NETID_RDMA	"rdma"
+>> +#define RPCBIND_NETID_RDMA6	"rdma6"
 > 
-> Ben
+> This is defined right after tcp6, so we probably don't need it twice :).
 > 
-> > commit 58e18a2a14a0
-> > Author: J. Bruce Fields <bfields@redhat.com>
-> > Date:   Tue Mar 22 14:08:11 2016 -0400
-> >
-> >     nfsd: document read eof logic
-> >
-> >     The choice of checks here is a little subtle, let's document this for
-> >     posterity.
-> >
-> >     Signed-off-by: J. Bruce Fields <bfields@redhat.com>
-> >
-> > diff --git a/fs/nfsd/nfs3proc.c b/fs/nfsd/nfs3proc.c
-> > index 83c9abb33e8b..df0f0a86f21d 100644
-> > --- a/fs/nfsd/nfs3proc.c
-> > +++ b/fs/nfsd/nfs3proc.c
-> > @@ -168,8 +168,7 @@ nfsd3_proc_read(struct svc_rqst *rqstp, struct nfsd3_readargs *argp,
-> >  				  &resp->count);
-> >  	if (nfserr == 0) {
-> >  		struct inode	*inode = d_inode(resp->fh.fh_dentry);
-> > -		resp->eof = (cnt > resp->count) ||
-> > -			((argp->offset + resp->count) >= inode->i_size);
-> > +		resp->eof = nfsd_eof_on_read(cnt, resp->count, argp->offset, inode->i_size);
-> >  	}
-> >
-> >  	RETURN_STATUS(nfserr);
-> > diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-> > index 90232bd7e498..9df898ba648f 100644
-> > --- a/fs/nfsd/nfs4xdr.c
-> > +++ b/fs/nfsd/nfs4xdr.c
-> > @@ -3387,8 +3387,8 @@ static __be32 nfsd4_encode_splice_read(
-> >  		return nfserr;
-> >  	}
-> >
-> > -	eof = (len > maxcount) ||
-> > -		((read->rd_offset + maxcount >= d_inode(read->rd_fhp->fh_dentry)->i_size));
-> > +	eof = nfsd_eof_on_read(len, maxcount, read->rd_offset,
-> > +				d_inode(read->rd_fhp->fh_dentry)->i_size);
-> >
-> >  	*(p++) = htonl(eof);
-> >  	*(p++) = htonl(maxcount);
-> > @@ -3465,8 +3465,8 @@ static __be32 nfsd4_encode_readv(struct nfsd4_compoundres *resp,
-> >  		return nfserr;
-> >  	xdr_truncate_encode(xdr, starting_len + 8 + ((maxcount+3)&~3));
-> >
-> > -	eof = (len > maxcount) ||
-> > -		((read->rd_offset + maxcount >= d_inode(read->rd_fhp->fh_dentry)->i_size));
-> > +	eof = nfsd_eof_on_read(len, maxcount, read->rd_offset,
-> > +				d_inode(read->rd_fhp->fh_dentry)->i_size);
-> >
-> >  	tmp = htonl(eof);
-> >  	write_bytes_to_xdr_buf(xdr->buf, starting_len    , &tmp, 4);
-> > diff --git a/fs/nfsd/vfs.h b/fs/nfsd/vfs.h
-> > index c11ba316f23f..6244e073c137 100644
-> > --- a/fs/nfsd/vfs.h
-> > +++ b/fs/nfsd/vfs.h
-> > @@ -139,4 +139,24 @@ static inline int nfsd_create_is_exclusive(int createmode)
-> >  	       || createmode == NFS4_CREATE_EXCLUSIVE4_1;
-> >  }
-> >
-> > +static inline bool nfsd_eof_on_read(long requested, long read,
-> > +				loff_t offset, loff_t size)
-> > +{
-> > +	/* We assume a short read means eof: */
-> > +	if (requested > read)
-> > +		return true;
-> > +	/*
-> > +	 * A non-short read might also reach end of file.  The spec
-> > +	 * still requires us to set eof in that case.
-> > +	 *
-> > +	 * Further operations may have modified the file size since
-> > +	 * the read, so the following check is not atomic with the read.
-> > +	 * The only case we've seen that cause a problem for a client
-> > +	 * is the case where the read returned a count of 0 without
-> > +	 * setting eof.  That case was fixed by the addition of the
-> > +	 * above check.
-> > +	 */
-> > +	return (offset + read >= size);
-> > +}
-> > +
-> >  #endif /* LINUX_NFSD_VFS_H */
-> >
+> Thanks,
+> Anna
+> 
+>> #define RPCBIND_NETID_SCTP	"sctp"
+>> #define RPCBIND_NETID_UDP6	"udp6"
+>> #define RPCBIND_NETID_TCP6	"tcp6"
+>> 
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>> 
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+--
+Chuck Lever
+
+
+
