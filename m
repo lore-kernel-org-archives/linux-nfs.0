@@ -1,91 +1,141 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp.gentoo.org ([140.211.166.183]:37654 "EHLO smtp.gentoo.org"
+Received: from mx1.redhat.com ([209.132.183.28]:55846 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750852AbcCVCVo (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 21 Mar 2016 22:21:44 -0400
-Subject: Re: Making an interface for alternative data streams
-To: "J. Bruce Fields" <bfields@fieldses.org>
-References: <56F03945.40208@gentoo.org> <56F05745.50204@gentoo.org>
- <20160321204041.GA807@fieldses.org> <20160321223627.GA12999@thunk.org>
- <CALXu0UdPyhBpOb-q-jpVN55d5unAQYXQFSm7HgNKWBH0Q_-gmg@mail.gmail.com>
- <20160322001255.GA2353@fieldses.org>
- <009F3E87-7919-4774-9129-72DB08F76553@gentoo.org>
-Cc: Cedric Blancher <cedric.blancher@gmail.com>,
-        "Theodore Ts'o" <tytso@mit.edu>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        Christoph Hellwig <hch@infradead.org>,
-        Steve French <smfrench@gmail.com>
-From: Richard Yao <ryao@gentoo.org>
-Message-ID: <56F0AC2A.30300@gentoo.org>
-Date: Mon, 21 Mar 2016 22:21:30 -0400
-MIME-Version: 1.0
-In-Reply-To: <009F3E87-7919-4774-9129-72DB08F76553@gentoo.org>
-Content-Type: multipart/signed; micalg=pgp-sha256;
- protocol="application/pgp-signature";
- boundary="6XkGA8xcGB8KRDp1rFRKsgo9FgV3vTMJk"
+	id S1754003AbcCVO2i (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 22 Mar 2016 10:28:38 -0400
+From: Benjamin Coddington <bcodding@redhat.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>,
+        Jeff Layton <jlayton@poochiereds.net>
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH v2] nfsd: use short read rather than i_size to set eof
+Date: Tue, 22 Mar 2016 10:28:36 -0400
+Message-Id: <a156abbff4553a431ebafd3b6b84a5eb7f7202c5.1458651136.git.bcodding@redhat.com>
+In-Reply-To: <20160321213655.GB807@fieldses.org>
+References: <20160321213655.GB807@fieldses.org> <82e4c7a9756b21a4645421d04735ccf491b4296a.1458571329.git.bcodding@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This is an OpenPGP/MIME signed message (RFC 4880 and 3156)
---6XkGA8xcGB8KRDp1rFRKsgo9FgV3vTMJk
-Content-Type: text/plain; charset=windows-1252
-Content-Transfer-Encoding: quoted-printable
+On Mon, 21 Mar 2016, J. Bruce Fields wrote:
+> On Mon, Mar 21, 2016 at 10:42:25AM -0400, Benjamin Coddington wrote:
+> > Use the result of a local read to determine when to set the eof flag.
+> > This
+> > allows us to return the location of the end of the file atomically at
+> > the
+> > time of the read.
+>
+> My only question is whether we should instead do something like:
+>
+>   eof = (res > cnt) || (offset + cnt >= i_size)
 
-On 03/21/2016 09:02 PM, Richard Yao wrote:
->=20
->> On Mar 21, 2016, at 8:12 PM, J. Bruce Fields <bfields@fieldses.org> wr=
-ote:
->>
->>> On Mon, Mar 21, 2016 at 11:48:04PM +0100, Cedric Blancher wrote:
->>> Old invalid argument, and Sophos and Symatec look there as well.
->>>
->>> If it was a bad idea, why has Linux fs attributes which are almost th=
-e
->>> same as O_XATTR except that they use a custom api? Why does Macos hav=
-e
->>> alternate streams (called forks)? Why did Solaris adopt it long ago
->>> (and still gets support questions about it - just saying before
->>> someone argues that no one uses THAT)?
->>
->> Could you point us at some of those users?
->=20
-> I am told that Samba users would love this functionality.
+Yes, let's do that.
 
-Someone pinged me in IRC to let me know that Steve French was talking
-about this earlier this month:
+> That'd fix the reported bug without changing existing behavior
+> otherwise.
+>
+> But maybe it's unlikely any client depends on existing behavior.
+>
+> The only test failure I'm seeing is on pynfs WRT13, which literally just
+> checks that a 6-byte read of a 6-byte file returns with eof set.  The
+> test is correct (the spec does clearly require eof to be set in that
+> case), but maybe it's not important.
 
-> Have there been any suggestions on how to list alternate data streams
-> on a file other than using a pseudo-xattr as ntfs-3g does (querying
-> xattr ntfs.streams.list - see http://linux.die.net/man/8/ntfs-3g)?
+The above change will fix this up and be correct in the absence of races
+which saves the client from having to perform another full RPC just to
+retrieve eof.  This passes WRT13:
 
-http://permalink.gmane.org/gmane.linux.kernel.cifs/11681
+8<------------------------------------------------------------------------
 
-Windows appears to have name-value pair attributes and alternative data
-streams in separate name-spaces simultaneously.
+Use the result of a local read to determine when to set the eof flag.  This
+allows us to return the location of the end of the file atomically at the
+time of the read.
 
+Signed-off-by: Benjamin Coddington <bcodding@redhat.com>
+---
+ fs/nfsd/nfs3proc.c |    7 ++++---
+ fs/nfsd/nfs4xdr.c  |   11 +++++++----
+ 2 files changed, 11 insertions(+), 7 deletions(-)
 
---6XkGA8xcGB8KRDp1rFRKsgo9FgV3vTMJk
-Content-Type: application/pgp-signature; name="signature.asc"
-Content-Description: OpenPGP digital signature
-Content-Disposition: attachment; filename="signature.asc"
+diff --git a/fs/nfsd/nfs3proc.c b/fs/nfsd/nfs3proc.c
+index 7b755b7..83c9abb 100644
+--- a/fs/nfsd/nfs3proc.c
++++ b/fs/nfsd/nfs3proc.c
+@@ -147,6 +147,7 @@ nfsd3_proc_read(struct svc_rqst *rqstp, struct nfsd3_readargs *argp,
+ {
+ 	__be32	nfserr;
+ 	u32	max_blocksize = svc_max_payload(rqstp);
++	unsigned long cnt = min(argp->count, max_blocksize);
+ 
+ 	dprintk("nfsd: READ(3) %s %lu bytes at %Lu\n",
+ 				SVCFH_fmt(&argp->fh),
+@@ -157,7 +158,7 @@ nfsd3_proc_read(struct svc_rqst *rqstp, struct nfsd3_readargs *argp,
+ 	 * 1 (status) + 22 (post_op_attr) + 1 (count) + 1 (eof)
+ 	 * + 1 (xdr opaque byte count) = 26
+ 	 */
+-	resp->count = min(argp->count, max_blocksize);
++	resp->count = cnt;
+ 	svc_reserve_auth(rqstp, ((1 + NFS3_POST_OP_ATTR_WORDS + 3)<<2) + resp->count +4);
+ 
+ 	fh_copy(&resp->fh, &argp->fh);
+@@ -167,8 +168,8 @@ nfsd3_proc_read(struct svc_rqst *rqstp, struct nfsd3_readargs *argp,
+ 				  &resp->count);
+ 	if (nfserr == 0) {
+ 		struct inode	*inode = d_inode(resp->fh.fh_dentry);
+-
+-		resp->eof = (argp->offset + resp->count) >= inode->i_size;
++		resp->eof = (cnt > resp->count) ||
++			((argp->offset + resp->count) >= inode->i_size);
+ 	}
+ 
+ 	RETURN_STATUS(nfserr);
+diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+index d6ef095..1d26b2b 100644
+--- a/fs/nfsd/nfs4xdr.c
++++ b/fs/nfsd/nfs4xdr.c
+@@ -3362,6 +3362,7 @@ static __be32 nfsd4_encode_splice_read(
+ 	struct xdr_stream *xdr = &resp->xdr;
+ 	struct xdr_buf *buf = xdr->buf;
+ 	u32 eof;
++	long len;
+ 	int space_left;
+ 	__be32 nfserr;
+ 	__be32 *p = xdr->p - 2;
+@@ -3370,6 +3371,7 @@ static __be32 nfsd4_encode_splice_read(
+ 	if (xdr->end - xdr->p < 1)
+ 		return nfserr_resource;
+ 
++	len = maxcount;
+ 	nfserr = nfsd_splice_read(read->rd_rqstp, file,
+ 				  read->rd_offset, &maxcount);
+ 	if (nfserr) {
+@@ -3382,8 +3384,8 @@ static __be32 nfsd4_encode_splice_read(
+ 		return nfserr;
+ 	}
+ 
+-	eof = (read->rd_offset + maxcount >=
+-	       d_inode(read->rd_fhp->fh_dentry)->i_size);
++	eof = (len > maxcount) ||
++		((read->rd_offset + maxcount >= d_inode(read->rd_fhp->fh_dentry)->i_size));
+ 
+ 	*(p++) = htonl(eof);
+ 	*(p++) = htonl(maxcount);
+@@ -3453,14 +3455,15 @@ static __be32 nfsd4_encode_readv(struct nfsd4_compoundres *resp,
+ 	}
+ 	read->rd_vlen = v;
+ 
++	len = maxcount;
+ 	nfserr = nfsd_readv(file, read->rd_offset, resp->rqstp->rq_vec,
+ 			read->rd_vlen, &maxcount);
+ 	if (nfserr)
+ 		return nfserr;
+ 	xdr_truncate_encode(xdr, starting_len + 8 + ((maxcount+3)&~3));
+ 
+-	eof = (read->rd_offset + maxcount >=
+-	       d_inode(read->rd_fhp->fh_dentry)->i_size);
++	eof = (len > maxcount) ||
++		((read->rd_offset + maxcount >= d_inode(read->rd_fhp->fh_dentry)->i_size));
+ 
+ 	tmp = htonl(eof);
+ 	write_bytes_to_xdr_buf(xdr->buf, starting_len    , &tmp, 4);
+-- 
+1.7.1
 
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v2
-
-iQIcBAEBCAAGBQJW8KwvAAoJECDuEZm+6ExkTPAQAJriXKo8Ex5H1TSAGM+E9roi
-drlGqbIgCaPBAocUVWTp+oTUPoqzlZq8/NsQhAe8cKJhuTHReaU0bNAnzFVniRgx
-G80HyU7Cmd/mCDix42XhkvHbXR3j881F68D83OeA0651jOddWV6Z7govSwKv/uwO
-wZt6vYUWrjNgeAsGT8LvkQjZ+qC/hLCWJOAJWfG4HoDvkt429VgCjtnYXKGC9fX5
-5KGeg/JexcHywxeclYrsIX7HtiOorrkocRYwR7tuPC7dR009+sSlGjXcgf2UHQ9l
-8cJ/PzNIzO1i6xq5pqjNHsdsDeAhaB1cQKNiOG+7kJkzw/i/1jbZKkHQ0KwYHAOI
-RPsJlUlwkVIs+xwgQa9RDozt6tsqdZJMRaUBeldDjTQT0wIKPsI8SdDQdg8+7C7H
-QxiDIdelMZ9JgQPHsz2ctmEnocikt77jHqnyD/J2GVy6e0lLoXhu/orASXXixtS1
-yPb47fMDTn383KDWvRbDG8rk7eCSM9WQ6NN56abJrBrJWZ3bhG3gTDQk79dxAZjU
-f7RsmVYO8GBPLWrvGnRH1sKugkwy00xp92xpq/hSSgA2idyJQs07KB5+xmmjwxjy
-cNZnk0tCtxoPhso3u+dFB2DsJTH9RrSABHh5cki3o+RWqoidQO2QoWlH4E7Q0W6V
-jga5gxYJ9s620vpuupUq
-=nl65
------END PGP SIGNATURE-----
-
---6XkGA8xcGB8KRDp1rFRKsgo9FgV3vTMJk--
