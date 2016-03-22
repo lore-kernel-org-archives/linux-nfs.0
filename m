@@ -1,152 +1,150 @@
-Return-Path: <bfields@fieldses.org>
-Date: Tue, 22 Mar 2016 12:46:24 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Benjamin Coddington <bcodding@redhat.com>
-Cc: Jeff Layton <jlayton@poochiereds.net>, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v2] nfsd: use short read rather than i_size to set eof
-Message-ID: <20160322164624.GB4083@fieldses.org>
-References: <20160321213655.GB807@fieldses.org>
- <82e4c7a9756b21a4645421d04735ccf491b4296a.1458571329.git.bcodding@redhat.com>
- <a156abbff4553a431ebafd3b6b84a5eb7f7202c5.1458651136.git.bcodding@redhat.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <a156abbff4553a431ebafd3b6b84a5eb7f7202c5.1458651136.git.bcodding@redhat.com>
+Return-Path: <linux-nfs-owner@vger.kernel.org>
+Received: from mail-io0-f172.google.com ([209.85.223.172]:33276 "EHLO
+	mail-io0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750723AbcCVSg6 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 22 Mar 2016 14:36:58 -0400
+Received: by mail-io0-f172.google.com with SMTP id c63so72295384iof.0
+        for <linux-nfs@vger.kernel.org>; Tue, 22 Mar 2016 11:36:58 -0700 (PDT)
+Message-ID: <1458671795.3302.3.camel@primarydata.com>
+Subject: [GIT PULL] Please pull NFS client changes for Linux 4.6
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: Linus Torvalds <torvalds@linux-foundation.org>
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>
+Date: Tue, 22 Mar 2016 14:36:35 -0400
+Content-Type: text/plain; charset="UTF-8"
+Mime-Version: 1.0
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Mar 22, 2016 at 10:28:36AM -0400, Benjamin Coddington wrote:
-> On Mon, 21 Mar 2016, J. Bruce Fields wrote:
-> > On Mon, Mar 21, 2016 at 10:42:25AM -0400, Benjamin Coddington wrote:
-> > > Use the result of a local read to determine when to set the eof flag.
-> > > This
-> > > allows us to return the location of the end of the file atomically at
-> > > the
-> > > time of the read.
-> >
-> > My only question is whether we should instead do something like:
-> >
-> >   eof = (res > cnt) || (offset + cnt >= i_size)
-> 
-> Yes, let's do that.
-> 
-> > That'd fix the reported bug without changing existing behavior
-> > otherwise.
-> >
-> > But maybe it's unlikely any client depends on existing behavior.
-> >
-> > The only test failure I'm seeing is on pynfs WRT13, which literally just
-> > checks that a 6-byte read of a 6-byte file returns with eof set.  The
-> > test is correct (the spec does clearly require eof to be set in that
-> > case), but maybe it's not important.
-> 
-> The above change will fix this up and be correct in the absence of races
-> which saves the client from having to perform another full RPC just to
-> retrieve eof.
+Hi Linus,
 
-Seems likely to be rare (and possibly papered over by caching--does the
-client even send a read if it would extend past the size returned from a
-recent getattr?).
+The following changes since commit fc77dbd34c5c99bce46d40a2491937c3bcbd10af:
 
-But, this does seem like the most conservative approach for now.
-Applying.
+  Linux 4.5-rc6 (2016-02-28 08:41:20 -0800)
 
-Thanks!
+are available in the git repository at:
 
---b.
+  git://git.linux-nfs.org/projects/trondmy/linux-nfs.git tags/nfs-for-4.6-1
 
-> This passes WRT13:
-> 
-> 8<------------------------------------------------------------------------
-> 
-> Use the result of a local read to determine when to set the eof flag.  This
-> allows us to return the location of the end of the file atomically at the
-> time of the read.
-> 
-> Signed-off-by: Benjamin Coddington <bcodding@redhat.com>
-> ---
->  fs/nfsd/nfs3proc.c |    7 ++++---
->  fs/nfsd/nfs4xdr.c  |   11 +++++++----
->  2 files changed, 11 insertions(+), 7 deletions(-)
-> 
-> diff --git a/fs/nfsd/nfs3proc.c b/fs/nfsd/nfs3proc.c
-> index 7b755b7..83c9abb 100644
-> --- a/fs/nfsd/nfs3proc.c
-> +++ b/fs/nfsd/nfs3proc.c
-> @@ -147,6 +147,7 @@ nfsd3_proc_read(struct svc_rqst *rqstp, struct nfsd3_readargs *argp,
->  {
->  	__be32	nfserr;
->  	u32	max_blocksize = svc_max_payload(rqstp);
-> +	unsigned long cnt = min(argp->count, max_blocksize);
->  
->  	dprintk("nfsd: READ(3) %s %lu bytes at %Lu\n",
->  				SVCFH_fmt(&argp->fh),
-> @@ -157,7 +158,7 @@ nfsd3_proc_read(struct svc_rqst *rqstp, struct nfsd3_readargs *argp,
->  	 * 1 (status) + 22 (post_op_attr) + 1 (count) + 1 (eof)
->  	 * + 1 (xdr opaque byte count) = 26
->  	 */
-> -	resp->count = min(argp->count, max_blocksize);
-> +	resp->count = cnt;
->  	svc_reserve_auth(rqstp, ((1 + NFS3_POST_OP_ATTR_WORDS + 3)<<2) + resp->count +4);
->  
->  	fh_copy(&resp->fh, &argp->fh);
-> @@ -167,8 +168,8 @@ nfsd3_proc_read(struct svc_rqst *rqstp, struct nfsd3_readargs *argp,
->  				  &resp->count);
->  	if (nfserr == 0) {
->  		struct inode	*inode = d_inode(resp->fh.fh_dentry);
-> -
-> -		resp->eof = (argp->offset + resp->count) >= inode->i_size;
-> +		resp->eof = (cnt > resp->count) ||
-> +			((argp->offset + resp->count) >= inode->i_size);
->  	}
->  
->  	RETURN_STATUS(nfserr);
-> diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-> index d6ef095..1d26b2b 100644
-> --- a/fs/nfsd/nfs4xdr.c
-> +++ b/fs/nfsd/nfs4xdr.c
-> @@ -3362,6 +3362,7 @@ static __be32 nfsd4_encode_splice_read(
->  	struct xdr_stream *xdr = &resp->xdr;
->  	struct xdr_buf *buf = xdr->buf;
->  	u32 eof;
-> +	long len;
->  	int space_left;
->  	__be32 nfserr;
->  	__be32 *p = xdr->p - 2;
-> @@ -3370,6 +3371,7 @@ static __be32 nfsd4_encode_splice_read(
->  	if (xdr->end - xdr->p < 1)
->  		return nfserr_resource;
->  
-> +	len = maxcount;
->  	nfserr = nfsd_splice_read(read->rd_rqstp, file,
->  				  read->rd_offset, &maxcount);
->  	if (nfserr) {
-> @@ -3382,8 +3384,8 @@ static __be32 nfsd4_encode_splice_read(
->  		return nfserr;
->  	}
->  
-> -	eof = (read->rd_offset + maxcount >=
-> -	       d_inode(read->rd_fhp->fh_dentry)->i_size);
-> +	eof = (len > maxcount) ||
-> +		((read->rd_offset + maxcount >= d_inode(read->rd_fhp->fh_dentry)->i_size));
->  
->  	*(p++) = htonl(eof);
->  	*(p++) = htonl(maxcount);
-> @@ -3453,14 +3455,15 @@ static __be32 nfsd4_encode_readv(struct nfsd4_compoundres *resp,
->  	}
->  	read->rd_vlen = v;
->  
-> +	len = maxcount;
->  	nfserr = nfsd_readv(file, read->rd_offset, resp->rqstp->rq_vec,
->  			read->rd_vlen, &maxcount);
->  	if (nfserr)
->  		return nfserr;
->  	xdr_truncate_encode(xdr, starting_len + 8 + ((maxcount+3)&~3));
->  
-> -	eof = (read->rd_offset + maxcount >=
-> -	       d_inode(read->rd_fhp->fh_dentry)->i_size);
-> +	eof = (len > maxcount) ||
-> +		((read->rd_offset + maxcount >= d_inode(read->rd_fhp->fh_dentry)->i_size));
->  
->  	tmp = htonl(eof);
->  	write_bytes_to_xdr_buf(xdr->buf, starting_len    , &tmp, 4);
-> -- 
-> 1.7.1
+for you to fetch changes up to f35592a97460f57d1089fd674176e9f34ba311f2:
+
+  nfs/blocklayout: make sure making a aligned read request (2016-03-21 12:39:46 -0400)
+
+Cheers
+  Trond
+
+----------------------------------------------------------------
+NFS client updates for Linux 4.6
+
+Highlights include:
+
+Features:
+- Add support for multiple NFSv4.1 callbacks in flight
+- Initial patchset for RPC multipath support
+- Adapt RPC/RDMA to use the new completion queue API
+
+Bugfixes and cleanups:
+- nfs4: nfs4_ff_layout_prepare_ds should return NULL if connection failed
+- Cleanups to remove nfs_inode_dio_wait and nfs4_file_fsync
+- Fix RPC/RDMA credit accounting
+- Properly handle RDMA_ERROR replies
+- xprtrdma: Do not wait if ib_post_send() fails
+- xprtrdma: Segment head and tail XDR buffers on page boundaries
+- xprtrdma cleanups for dprintk, physical_op_map and unused macros
+
+----------------------------------------------------------------
+Andy Adamson (1):
+      NFS add callback_ops to nfs4_proc_bind_conn_to_session_callback
+
+Christoph Hellwig (2):
+      nfs: remove nfs4_file_fsync
+      nfs: remove nfs_inode_dio_wait
+
+Chuck Lever (11):
+      xprtrdma: Clean up unused RPCRDMA_INLINE_PAD_THRESH macro
+      xprtrdma: Clean up physical_op_map()
+      xprtrdma: Clean up dprintk format string containing a newline
+      xprtrdma: Segment head and tail XDR buffers on page boundaries
+      xprtrdma: Do not wait if ib_post_send() fails
+      rpcrdma: Add RPCRDMA_HDRLEN_ERR
+      xprtrdma: Properly handle RDMA_ERROR replies
+      xprtrdma: Serialize credit accounting again
+      xprtrdma: Use new CQ API for RPC-over-RDMA client receive CQs
+      xprtrdma: Use an anonymous union in struct rpcrdma_mw
+      xprtrdma: Use new CQ API for RPC-over-RDMA client send CQs
+
+Jeff Layton (1):
+      nfs4: nfs4_ff_layout_prepare_ds should return NULL if connection failed
+
+Kinglong Mee (1):
+      nfs/blocklayout: make sure making a aligned read request
+
+Trond Myklebust (22):
+      NFSv4.x: Remove hard coded slotids in callback channel
+      NFSv4.x: CB_SEQUENCE should return NFS4ERR_DELAY if still executing
+      NFSv4.x: Enforce the ca_maxresponsesize_cached on the back channel
+      NFSv4.x: Fix wraparound issues when validing the callback sequence id
+      NFSv4.x: Allow multiple callbacks in flight
+      SUNRPC: Remove unused function rpc_task_reset_client
+      SUNRPC: Reorder rpc_task to put waitqueue related info in same cachelines
+      SUNRPC: Uninline xprt_get(); It isn't performance critical.
+      SUNRPC: Make freeing of struct xprt rcu-safe
+      NFSv4.x: Fix NFS4ERR_RETRY_UNCACHED_REP in nfs4_callback_sequence
+      SUNRPC: Add a structure to track multiple transports
+      SUNRPC: Make rpc_clnt store the multipath iterators
+      SUNRPC: Use the multipath iterator to assign a transport to each task
+      SUNRPC: Allow caller to specify the transport to use
+      SUNRPC: Add a helper to apply a function to all the rpc_clnt's transports
+      SUNRPC: Make NFS swap work with multipath
+      NFSv4.1: nfs4_proc_bind_conn_to_session must iterate over all connections
+      SUNRPC: Allow addition of new transports to a struct rpc_clnt
+      pnfs/NFSv4.1: Add multipath capabilities to pNFS flexfiles servers over NFSv3
+      Merge branch 'nfsv41_cb'
+      Merge branch 'multipath'
+      Merge tag 'nfs-rdma-4.6-1' of git://git.linux-nfs.org/projects/anna/nfs-rdma
+
+ fs/nfs/blocklayout/blocklayout.c          |  13 +-
+ fs/nfs/callback.h                         |   3 +-
+ fs/nfs/callback_proc.c                    |  69 +++--
+ fs/nfs/callback_xdr.c                     |  12 +-
+ fs/nfs/file.c                             |  12 +-
+ fs/nfs/flexfilelayout/flexfilelayoutdev.c |   2 +
+ fs/nfs/inode.c                            |   2 +-
+ fs/nfs/internal.h                         |   6 +-
+ fs/nfs/nfs4file.c                         |  33 +--
+ fs/nfs/nfs4proc.c                         |  63 +++-
+ fs/nfs/nfs4session.c                      |  54 +++-
+ fs/nfs/nfs4session.h                      |   8 +
+ fs/nfs/pnfs_nfs.c                         |  16 +-
+ include/linux/sunrpc/clnt.h               |  18 +-
+ include/linux/sunrpc/rpc_rdma.h           |  12 +-
+ include/linux/sunrpc/sched.h              |  32 +-
+ include/linux/sunrpc/xprt.h               |  22 +-
+ include/linux/sunrpc/xprtmultipath.h      |  69 +++++
+ include/linux/sunrpc/xprtrdma.h           |   2 -
+ net/sunrpc/Makefile                       |   3 +-
+ net/sunrpc/auth_gss/auth_gss.c            |   4 +-
+ net/sunrpc/clnt.c                         | 328 ++++++++++++++++-----
+ net/sunrpc/rpcb_clnt.c                    |  10 +-
+ net/sunrpc/sched.c                        |   2 +
+ net/sunrpc/xprt.c                         |  42 ++-
+ net/sunrpc/xprtmultipath.c                | 475 ++++++++++++++++++++++++++++++
+ net/sunrpc/xprtrdma/fmr_ops.c             |  28 +-
+ net/sunrpc/xprtrdma/frwr_ops.c            | 143 +++++----
+ net/sunrpc/xprtrdma/physical_ops.c        |   1 -
+ net/sunrpc/xprtrdma/rpc_rdma.c            | 108 +++++--
+ net/sunrpc/xprtrdma/verbs.c               | 204 ++++---------
+ net/sunrpc/xprtrdma/xprt_rdma.h           |  14 +-
+ net/sunrpc/xprtsock.c                     |   4 +-
+ 33 files changed, 1327 insertions(+), 487 deletions(-)
+ create mode 100644 include/linux/sunrpc/xprtmultipath.h
+ create mode 100644 net/sunrpc/xprtmultipath.c
+
+-- 
+Trond Myklebust
+Linux NFS client maintainer, PrimaryData
+trond.myklebust@primarydata.com
+
+
+
