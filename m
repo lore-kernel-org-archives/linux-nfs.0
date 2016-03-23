@@ -1,116 +1,56 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from userp1040.oracle.com ([156.151.31.81]:18768 "EHLO
-	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751430AbcCWSEG (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 23 Mar 2016 14:04:06 -0400
-Message-ID: <56F2DA89.9040905@oracle.com>
-Date: Wed, 23 Mar 2016 11:03:53 -0700
-From: Shirley Ma <shirley.ma@oracle.com>
+Received: from r00tworld.com ([212.85.137.150]:41545 "EHLO r00tworld.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753534AbcCWSqa (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 23 Mar 2016 14:46:30 -0400
+From: "PaX Team" <pageexec@freemail.hu>
+To: Trond Myklebust <trond.myklebust@primarydata.com>,
+        Alexey Dvoichenkov <xale@hyperplane.net>
+Date: Wed, 23 Mar 2016 19:32:58 +0100
 MIME-Version: 1.0
-To: Chuck Lever <chuck.lever@oracle.com>,
-        Trond Myklebust <trond.myklebust@primarydata.com>
-CC: Anna Schumaker <Anna.Schumaker@netapp.com>,
-        "J. Bruce Fields" <bfields@redhat.com>, Leon Romanovsky <leon@leon.nu>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] nfs: add nfs IPv6 rdma6 mount option support
-References: <56E9A650.7060409@oracle.com> <56F19F28.9020504@Netapp.com> <D0E8CDCF-19AE-444D-87D6-4C2730318A1A@oracle.com> <CAHQdGtSBamfGKNHDztCwE5JQcwwAiw66KJ0NgsTuSffCOBtF6Q@mail.gmail.com> <9414CE65-D41C-4497-9111-BCAB54FB6C7B@oracle.com> <CAHQdGtRnQvbpMFLC0v=wLstfJXCCV02navQd3nneUkgdqdt9bA@mail.gmail.com> <4A9EA080-30CC-4DD8-9BD8-28D54F13C582@oracle.com>
-In-Reply-To: <4A9EA080-30CC-4DD8-9BD8-28D54F13C582@oracle.com>
-Content-Type: text/plain; charset=windows-1252
+Subject: Re: nfs_super_set_maxbytes patch
+Reply-to: pageexec@freemail.hu
+CC: Linux NFS Mailing List <linux-nfs@vger.kernel.org>, spender@grsecurity.net
+Message-ID: <56F2E15A.28679.B5D94B8@pageexec.freemail.hu>
+In-reply-to: <20160318085525.07dac0c5e437d577bb53f1f0@hyperplane.net>
+References: <20160317141307.531709bf667a915973060eae@hyperplane.net>, <CAHQdGtREL65zXvkdqJ8=hrSXWVyLBGCTAfdO02cXPsC6W26ZVQ@mail.gmail.com>, <20160318085525.07dac0c5e437d577bb53f1f0@hyperplane.net>
+Content-type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On 18 Mar 2016 at 8:55, Alexey Dvoichenkov wrote:
 
-On 03/22/2016 03:01 PM, Chuck Lever wrote:
+> On Thu, 17 Mar 2016 09:20:14 -0400
+> Trond Myklebust <trond.myklebust@primarydata.com> wrote:
 > 
->> On Mar 22, 2016, at 5:55 PM, Trond Myklebust <trond.myklebust@primarydata.com> wrote:
->>
->> On Tue, Mar 22, 2016 at 5:52 PM, Chuck Lever <chuck.lever@oracle.com> wrote:
->>>
->>>> On Mar 22, 2016, at 5:46 PM, Trond Myklebust <trond.myklebust@primarydata.com> wrote:
->>>>
->>>> On Tue, Mar 22, 2016 at 5:24 PM, Chuck Lever <chuck.lever@oracle.com> wrote:
->>>>>
->>>>>> On Mar 22, 2016, at 3:38 PM, Anna Schumaker <Anna.Schumaker@netapp.com> wrote:
->>>>>>
->>>>>> Hi Shirley,
->>>>>>
->>>>>> Sorry for the delay in looking at this patch.  Comments are below:
->>>>>>
->>>>>> On 03/16/2016 02:30 PM, Shirley Ma wrote:
->>>>>>> Add rdma6 option to support NFS/RDMA IPv6.
->>>>>>>
->>>>>>> Signed-off-by: Shirley Ma <shirley.ma@oracle.com>
->>>>>>
->>>>>> Can you add a little more to the patch description to describe when RDMA with IPv6 would be used?
->>>>>>
->>>>>>> ---
->>>>>>>
->>>>>>> diff --git a/fs/nfs/super.c b/fs/nfs/super.c
->>>>>>> index f126828..62a55d0 100644
->>>>>>> --- a/fs/nfs/super.c
->>>>>>> +++ b/fs/nfs/super.c
->>>>>>> @@ -191,6 +191,7 @@ static const match_table_t nfs_mount_option_tokens = {
->>>>>>>
->>>>>>> enum {
->>>>>>>    Opt_xprt_udp, Opt_xprt_udp6, Opt_xprt_tcp, Opt_xprt_tcp6, Opt_xprt_rdma,
->>>>>>> +    Opt_xprt_rdma6,
->>>>>>>
->>>>>>>    Opt_xprt_err
->>>>>>> };
->>>>>>> @@ -201,6 +202,7 @@ static const match_table_t nfs_xprt_protocol_tokens = {
->>>>>>>    { Opt_xprt_tcp, "tcp" },
->>>>>>>    { Opt_xprt_tcp6, "tcp6" },
->>>>>>>    { Opt_xprt_rdma, "rdma" },
->>>>>>> +    { Opt_xprt_rdma6, "rdma6" },
->>>>>>>
->>>>>>>    { Opt_xprt_err, NULL }
->>>>>>> };
->>>>>>> @@ -1456,6 +1458,8 @@ static int nfs_parse_mount_options(char *raw,
->>>>>>>                            mnt->flags |= NFS_MOUNT_TCP;
->>>>>>>                            mnt->nfs_server.protocol = XPRT_TRANSPORT_TCP;
->>>>>>>                            break;
->>>>>>> +                    case Opt_xprt_rdma6:
->>>>>>> +                            protofamily = AF_INET6;
->>>>>>>                    case Opt_xprt_rdma:
->>>>>>>                            /* vector side protocols to TCP */
->>>>>>>                            mnt->flags |= NFS_MOUNT_TCP;
->>>>>>> @@ -1490,6 +1494,8 @@ static int nfs_parse_mount_options(char *raw,
->>>>>>>                    case Opt_xprt_tcp:
->>>>>>>                            mnt->mount_server.protocol = XPRT_TRANSPORT_TCP;
->>>>>>>                            break;
->>>>>>> +                    case Opt_xprt_rdma6:
->>>>>>> +                            mountfamily = AF_INET6;
->>>>>>>                    case Opt_xprt_rdma: /* not used for side protocols */
->>>>>>                                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
->>>>>> Do we need to be setting mountfamily here?  The comment next to Opt_xprt_rdma makes it sound like this code doesn't apply to RDMA.
->>>>>
->>>>> I wondered this too.
->>>>>
->>>>> But what's going on is that for NFSv3 on RDMA, when IPv6 is
->>>>> used for the main protocol, IPv6 needs to be used for the
->>>>> mount protocol as well, even though it is going over TCP.
->>>>
->>>> It causes nfs_mount_parse_options to immediately stop further parsing
->>>> and return '0' == error encountered. The mount is supposed to fail in
->>>> that case.
->>>
->>> Ah, a break; is needed there too.
->>>
->>
->> I'm saying that makes no sense to allow "rdma6" here in the first
->> place, since we've already banned the use of "rdma" through that same
->> mechanism.
-> 
-> I see, this is the parsing logic just for "mountproto=".
-> 
-> This hunk should be dropped, and maybe the
-> "case Opt_xprt_rdma:" can be removed, too.
+> > > --- fs/nfs/internal.h.orig      2015-11-02 10:05:25.000000000 +1000
+> > > +++ fs/nfs/internal.h   2016-01-02 03:19:04.599120855 +1000
+> > > @@ -612,9 +612,9 @@
+> > >  static inline
+> > >  void nfs_super_set_maxbytes(struct super_block *sb, __u64 maxfilesize)
+> > >  {
+> > > +       if (maxfilesize > MAX_LFS_FILESIZE || maxfilesize == 0)
+> > > +               maxfilesize = MAX_LFS_FILESIZE;
+> > >         sb->s_maxbytes = (loff_t)maxfilesize;
+> > > -       if (sb->s_maxbytes > MAX_LFS_FILESIZE || sb->s_maxbytes <= 0)
+> > > -               sb->s_maxbytes = MAX_LFS_FILESIZE;
+> > >  }
+> > >
+> > 
+> > Why are we having to change _correct_ code in order to work with a
+> > checking tool?
 
-Thanks for the review. I will drop mountfamily option case.
- 
-> 
-> --
-> Chuck Lever
-> 
-> 
-> 
+first of all, it's correct in that it relies on implementation defined
+behaviour and not UB. C99 6.3.1.3 says:
+
+    Otherwise, the new type is signed and the value cannot be represented
+    in it; either the result is implementation-defined or an implementation-
+    defined signal is raised.
+
+it's still unfortunate of course as the reliance on the above is trivially
+avoidable (and would also satisfy the size overflow plugin which otherwise
+chooses the other possible behaviour). all that said, i think the bigger
+problem with this code pattern is that it's putting the cart before the
+horses so to speak, so it'd be better if it was changed for that reason
+alone.
+
