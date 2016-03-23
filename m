@@ -1,64 +1,66 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from ipmail04.adl6.internode.on.net ([150.101.137.141]:12671 "EHLO
-	ipmail04.adl6.internode.on.net" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1752712AbcCVWuV (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 22 Mar 2016 18:50:21 -0400
-Date: Wed, 23 Mar 2016 09:50:18 +1100
-From: Dave Chinner <david@fromorbit.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: Richard Yao <ryao@gentoo.org>, linux-nfs@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, Christoph Hellwig <hch@infradead.org>
-Subject: Re: Making an interface for alternative data streams
-Message-ID: <20160322225018.GV11812@dastard>
-References: <56F03945.40208@gentoo.org>
- <56F05745.50204@gentoo.org>
- <20160321204041.GA807@fieldses.org>
- <34E9F5BC-E8D4-405E-926E-DF2058E31B5F@gentoo.org>
- <20160322212931.GQ11812@dastard>
- <20160322215232.GK4083@fieldses.org>
+Received: from mail-io0-f175.google.com ([209.85.223.175]:34503 "EHLO
+	mail-io0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750717AbcCWENv (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 23 Mar 2016 00:13:51 -0400
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20160322215232.GK4083@fieldses.org>
+In-Reply-To: <20160322214255.GA10921@jra3>
+References: <56F03945.40208@gentoo.org> <56F05745.50204@gentoo.org>
+ <20160321204041.GA807@fieldses.org> <20160321223627.GA12999@thunk.org>
+ <CALXu0UdPyhBpOb-q-jpVN55d5unAQYXQFSm7HgNKWBH0Q_-gmg@mail.gmail.com>
+ <20160322001255.GA2353@fieldses.org> <009F3E87-7919-4774-9129-72DB08F76553@gentoo.org>
+ <56F0AC2A.30300@gentoo.org> <CACyXjPyYK0CggZNGfQQj6BBAfahU7PmVzwpzfeUqBannUTdhqA@mail.gmail.com>
+ <20160322200801.GF4083@fieldses.org> <20160322214255.GA10921@jra3>
+From: Steve French <smfrench@gmail.com>
+Date: Tue, 22 Mar 2016 23:13:31 -0500
+Message-ID: <CAH2r5mtoYNrjkJ+zCbx7Mif9d-+-P_uBmdQNDwLA57wW6t7L6Q@mail.gmail.com>
+Subject: Re: Making an interface for alternative data streams
+To: Jeremy Allison <jra@samba.org>
+Cc: "J. Bruce Fields" <bfields@fieldses.org>,
+        Richard Sharpe <realrichardsharpe@gmail.com>,
+        Richard Yao <ryao@gentoo.org>,
+        Cedric Blancher <cedric.blancher@gmail.com>,
+        "Theodore Ts'o" <tytso@mit.edu>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        Christoph Hellwig <hch@infradead.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Mar 22, 2016 at 05:52:32PM -0400, J. Bruce Fields wrote:
-> On Wed, Mar 23, 2016 at 08:29:31AM +1100, Dave Chinner wrote:
-> > If you want additional seekable data streams, then come up with a
-> > filesystem namespace method of addressing these alternate data
-> > streams as *separate files containing data*. That's all an ADS is -
-> > a namespace hack to address multiple data files through a single
-> > file name. That's the problem that needs solving and it has nothing
-> > to do with xattrs.
-> 
-> There was some thread about this years ago.  Looking... "silent semantic
-> changes with reiser4" or "possible design issues for hybrids" look like
-> the relevant threads.
+On Tue, Mar 22, 2016 at 4:42 PM, Jeremy Allison <jra@samba.org> wrote:
+> On Tue, Mar 22, 2016 at 04:08:01PM -0400, J. Bruce Fields wrote:
+>>
+>> But you do see people using "named attributes"/"alternative data
+>> streams"?
+>>
+>> This comes up at the LSF/MM summit every now and then and Jeremy Allison
+>> inevitably says "hah, only malware writers use those", and that's the
+>> end of the discussion.  Sounds like Richard Yao has heard otherwise, but
+>> it'd be nice to have actual examples of users.
 >
-> One good starting point might be:
-> 
-> 	http://mid.gmane.org/20040826212853.GA21964@parcelfarce.linux.theplanet.co.uk
-> 
-> Don't know how out of date that might be now.
+> The only use I know of other than malware writers is
+> the :Zone.Identifier stream used by Internet Explorer.
+>
+> http://woshub.com/how-windows-determines-that-the-file-has-been-downloaded-from-the-internet/
+>
+> Not sure if the new Microsoft browser still uses them
+> (I haven't used desktop Windows in over 10 years).
 
-Not sure it is the same issue - that looks like auto-bind-mount
-stuff. There are some relevant questions though, like "directory
-over file" semantics and implications...
+Yes, the browser still uses it (at least on the system I tried
+yesterday), and so do a few important subsystems (the file resource
+manager for example).  Presumably streams are used even more on Mac.
 
-But we have covered this ground before, and at LSF/MM summits, too.
-historically it has been made pretty clear that xattrs are not
-something that can be used for alternate data streams. I think ADS
-is primarily a namespace and API problem - that needs to be sorted
-out first, and then what filesytems need to implement will be
-obvious.
+I was experimenting with some patches in the last few weeks to list
+streams (either via an xattr as ntfs-3g does, but I am leaning toward
+an ioctl for cifs.ko).  They are needed for backup (at least), and not
+just for accessing Macs (which use resource forks extensively), but
+since Windows stores the zone identifier (where a file came from is
+stored when internet explorer downloads anything) in an alternate data
+stream, and also "FCI" (file classification information) is stored
+there.
 
-Perhaps overlayfs is a good place to start prototyping such
-functionality as there is an abstraction between the presented
-namespace and the underlying storage of the data....
-
-Cheers,
-
-Dave.
 -- 
-Dave Chinner
-david@fromorbit.com
+Thanks,
+
+Steve
