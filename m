@@ -1,75 +1,116 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f177.google.com ([209.85.223.177]:35659 "EHLO
-	mail-io0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756161AbcCWRRP (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 23 Mar 2016 13:17:15 -0400
+Received: from userp1040.oracle.com ([156.151.31.81]:18768 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751430AbcCWSEG (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 23 Mar 2016 14:04:06 -0400
+Message-ID: <56F2DA89.9040905@oracle.com>
+Date: Wed, 23 Mar 2016 11:03:53 -0700
+From: Shirley Ma <shirley.ma@oracle.com>
 MIME-Version: 1.0
-In-Reply-To: <20160323170145.GB4807@jra3>
-References: <CALXu0UdPyhBpOb-q-jpVN55d5unAQYXQFSm7HgNKWBH0Q_-gmg@mail.gmail.com>
- <20160322001255.GA2353@fieldses.org> <009F3E87-7919-4774-9129-72DB08F76553@gentoo.org>
- <56F0AC2A.30300@gentoo.org> <CACyXjPyYK0CggZNGfQQj6BBAfahU7PmVzwpzfeUqBannUTdhqA@mail.gmail.com>
- <20160322200801.GF4083@fieldses.org> <20160322214255.GA10921@jra3>
- <CAH2r5mtoYNrjkJ+zCbx7Mif9d-+-P_uBmdQNDwLA57wW6t7L6Q@mail.gmail.com>
- <CAH2r5murJ73bfoHWGTDPOBxud3E+rdzW00Snn-TZuc-iEtWgrw@mail.gmail.com>
- <CAH2r5muya2+hWQup99QcxKV9XE4T_pWW565+fqWeu1tAnXSxoQ@mail.gmail.com> <20160323170145.GB4807@jra3>
-From: Steve French <smfrench@gmail.com>
-Date: Wed, 23 Mar 2016 12:16:26 -0500
-Message-ID: <CAH2r5mup-VexTcwdRpdm4WSaaiDR5XnH6KtZ5xohHO_hDso-9w@mail.gmail.com>
-Subject: Re: Making an interface for alternative data streams
-To: Jeremy Allison <jra@samba.org>
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-        Richard Sharpe <realrichardsharpe@gmail.com>,
-        Richard Yao <ryao@gentoo.org>,
-        Cedric Blancher <cedric.blancher@gmail.com>,
-        "Theodore Ts'o" <tytso@mit.edu>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        Christoph Hellwig <hch@infradead.org>
-Content-Type: text/plain; charset=UTF-8
+To: Chuck Lever <chuck.lever@oracle.com>,
+        Trond Myklebust <trond.myklebust@primarydata.com>
+CC: Anna Schumaker <Anna.Schumaker@netapp.com>,
+        "J. Bruce Fields" <bfields@redhat.com>, Leon Romanovsky <leon@leon.nu>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] nfs: add nfs IPv6 rdma6 mount option support
+References: <56E9A650.7060409@oracle.com> <56F19F28.9020504@Netapp.com> <D0E8CDCF-19AE-444D-87D6-4C2730318A1A@oracle.com> <CAHQdGtSBamfGKNHDztCwE5JQcwwAiw66KJ0NgsTuSffCOBtF6Q@mail.gmail.com> <9414CE65-D41C-4497-9111-BCAB54FB6C7B@oracle.com> <CAHQdGtRnQvbpMFLC0v=wLstfJXCCV02navQd3nneUkgdqdt9bA@mail.gmail.com> <4A9EA080-30CC-4DD8-9BD8-28D54F13C582@oracle.com>
+In-Reply-To: <4A9EA080-30CC-4DD8-9BD8-28D54F13C582@oracle.com>
+Content-Type: text/plain; charset=windows-1252
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Mar 23, 2016 at 12:01 PM, Jeremy Allison <jra@samba.org> wrote:
-> On Wed, Mar 23, 2016 at 09:45:07AM -0500, Steve French wrote:
->> One of the arguments in favor of additional interfaces (ioctl or
->> openat) for accessing alternate data streams which may not be obvious
->> to Windows users is that while alternate data streams can be opened
->> just like regular files in Windows (and thus over SMB3 mounts), in
->> Linux it is hard to allow opening a stream and still support files
->> with the ':' (colon) character in their file name since colon is used
->> a separator for the stream name in Windows (and is a reserved
->> character), but is a valid character in POSIX.    When we use a cifs
->> or smb3 mount to Windows or Mac we typically map characters (into the
->> Unicode remap range just above 0xF000) like ':' the same way the Mac
->> does (and Windows services for Mac does as well).  This is enabled
->> with mount option "mapposix"
+
+On 03/22/2016 03:01 PM, Chuck Lever wrote:
+> 
+>> On Mar 22, 2016, at 5:55 PM, Trond Myklebust <trond.myklebust@primarydata.com> wrote:
 >>
->> So without an ioctl to query the stream contents (or a new syscall),
->> you have to choose whether to either allow : in a filename or allow
->> opening streams.
+>> On Tue, Mar 22, 2016 at 5:52 PM, Chuck Lever <chuck.lever@oracle.com> wrote:
+>>>
+>>>> On Mar 22, 2016, at 5:46 PM, Trond Myklebust <trond.myklebust@primarydata.com> wrote:
+>>>>
+>>>> On Tue, Mar 22, 2016 at 5:24 PM, Chuck Lever <chuck.lever@oracle.com> wrote:
+>>>>>
+>>>>>> On Mar 22, 2016, at 3:38 PM, Anna Schumaker <Anna.Schumaker@netapp.com> wrote:
+>>>>>>
+>>>>>> Hi Shirley,
+>>>>>>
+>>>>>> Sorry for the delay in looking at this patch.  Comments are below:
+>>>>>>
+>>>>>> On 03/16/2016 02:30 PM, Shirley Ma wrote:
+>>>>>>> Add rdma6 option to support NFS/RDMA IPv6.
+>>>>>>>
+>>>>>>> Signed-off-by: Shirley Ma <shirley.ma@oracle.com>
+>>>>>>
+>>>>>> Can you add a little more to the patch description to describe when RDMA with IPv6 would be used?
+>>>>>>
+>>>>>>> ---
+>>>>>>>
+>>>>>>> diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+>>>>>>> index f126828..62a55d0 100644
+>>>>>>> --- a/fs/nfs/super.c
+>>>>>>> +++ b/fs/nfs/super.c
+>>>>>>> @@ -191,6 +191,7 @@ static const match_table_t nfs_mount_option_tokens = {
+>>>>>>>
+>>>>>>> enum {
+>>>>>>>    Opt_xprt_udp, Opt_xprt_udp6, Opt_xprt_tcp, Opt_xprt_tcp6, Opt_xprt_rdma,
+>>>>>>> +    Opt_xprt_rdma6,
+>>>>>>>
+>>>>>>>    Opt_xprt_err
+>>>>>>> };
+>>>>>>> @@ -201,6 +202,7 @@ static const match_table_t nfs_xprt_protocol_tokens = {
+>>>>>>>    { Opt_xprt_tcp, "tcp" },
+>>>>>>>    { Opt_xprt_tcp6, "tcp6" },
+>>>>>>>    { Opt_xprt_rdma, "rdma" },
+>>>>>>> +    { Opt_xprt_rdma6, "rdma6" },
+>>>>>>>
+>>>>>>>    { Opt_xprt_err, NULL }
+>>>>>>> };
+>>>>>>> @@ -1456,6 +1458,8 @@ static int nfs_parse_mount_options(char *raw,
+>>>>>>>                            mnt->flags |= NFS_MOUNT_TCP;
+>>>>>>>                            mnt->nfs_server.protocol = XPRT_TRANSPORT_TCP;
+>>>>>>>                            break;
+>>>>>>> +                    case Opt_xprt_rdma6:
+>>>>>>> +                            protofamily = AF_INET6;
+>>>>>>>                    case Opt_xprt_rdma:
+>>>>>>>                            /* vector side protocols to TCP */
+>>>>>>>                            mnt->flags |= NFS_MOUNT_TCP;
+>>>>>>> @@ -1490,6 +1494,8 @@ static int nfs_parse_mount_options(char *raw,
+>>>>>>>                    case Opt_xprt_tcp:
+>>>>>>>                            mnt->mount_server.protocol = XPRT_TRANSPORT_TCP;
+>>>>>>>                            break;
+>>>>>>> +                    case Opt_xprt_rdma6:
+>>>>>>> +                            mountfamily = AF_INET6;
+>>>>>>>                    case Opt_xprt_rdma: /* not used for side protocols */
+>>>>>>                                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+>>>>>> Do we need to be setting mountfamily here?  The comment next to Opt_xprt_rdma makes it sound like this code doesn't apply to RDMA.
+>>>>>
+>>>>> I wondered this too.
+>>>>>
+>>>>> But what's going on is that for NFSv3 on RDMA, when IPv6 is
+>>>>> used for the main protocol, IPv6 needs to be used for the
+>>>>> mount protocol as well, even though it is going over TCP.
+>>>>
+>>>> It causes nfs_mount_parse_options to immediately stop further parsing
+>>>> and return '0' == error encountered. The mount is supposed to fail in
+>>>> that case.
+>>>
+>>> Ah, a break; is needed there too.
+>>>
 >>
->> There is some additional information on some of the more important
->> uses in Windows for alternate data streams at the end of the article
->> in this link: https://blogs.technet.microsoft.com/askcore/2013/03/24/alternate-data-streams-in-ntfs/
->
-> Sorry Steve, but none of the uses in there can be called "important".
->
-> I personally have an intense dislike for streams in a filesystem,
-> and was very disappointed when Microsoft re-added them to the
-> previously streamless ReFS (probably for backwards compatibility
-> stuff like this).
->
-> There's no way to transfer stream-riddled files over the Internet,
-> and the amount of code complexity we have in Samba having to deal
-> with them is nasty and has lead to more than one security hole in
-> the past.
->
-> Please don't add this to Linux.
+>> I'm saying that makes no sense to allow "rdma6" here in the first
+>> place, since we've already banned the use of "rdma" through that same
+>> mechanism.
+> 
+> I see, this is the parsing logic just for "mountproto=".
+> 
+> This hunk should be dropped, and maybe the
+> "case Opt_xprt_rdma:" can be removed, too.
 
-Well, I can avoid setting them, but I do have to be able to query them
-for backup.
-
--- 
-Thanks,
-
-Steve
+Thanks for the review. I will drop mountfamily option case.
+ 
+> 
+> --
+> Chuck Lever
+> 
+> 
+> 
