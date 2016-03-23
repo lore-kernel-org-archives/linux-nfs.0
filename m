@@ -1,12 +1,12 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:36904 "EHLO fieldses.org"
+Received: from hr2.samba.org ([144.76.82.148]:43844 "EHLO hr2.samba.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752415AbcCWPQL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 23 Mar 2016 11:16:11 -0400
-Date: Wed, 23 Mar 2016 11:16:08 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
+	id S1753045AbcCWRCJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 23 Mar 2016 13:02:09 -0400
+Date: Wed, 23 Mar 2016 10:01:45 -0700
+From: Jeremy Allison <jra@samba.org>
 To: Steve French <smfrench@gmail.com>
-Cc: Jeremy Allison <jra@samba.org>,
+Cc: "J. Bruce Fields" <bfields@fieldses.org>,
         Richard Sharpe <realrichardsharpe@gmail.com>,
         Richard Yao <ryao@gentoo.org>,
         Cedric Blancher <cedric.blancher@gmail.com>,
@@ -15,9 +15,9 @@ Cc: Jeremy Allison <jra@samba.org>,
         linux-fsdevel <linux-fsdevel@vger.kernel.org>,
         Christoph Hellwig <hch@infradead.org>
 Subject: Re: Making an interface for alternative data streams
-Message-ID: <20160323151608.GA13177@fieldses.org>
-References: <20160321223627.GA12999@thunk.org>
- <CALXu0UdPyhBpOb-q-jpVN55d5unAQYXQFSm7HgNKWBH0Q_-gmg@mail.gmail.com>
+Message-ID: <20160323170145.GB4807@jra3>
+Reply-To: Jeremy Allison <jra@samba.org>
+References: <CALXu0UdPyhBpOb-q-jpVN55d5unAQYXQFSm7HgNKWBH0Q_-gmg@mail.gmail.com>
  <20160322001255.GA2353@fieldses.org>
  <009F3E87-7919-4774-9129-72DB08F76553@gentoo.org>
  <56F0AC2A.30300@gentoo.org>
@@ -26,43 +26,45 @@ References: <20160321223627.GA12999@thunk.org>
  <20160322214255.GA10921@jra3>
  <CAH2r5mtoYNrjkJ+zCbx7Mif9d-+-P_uBmdQNDwLA57wW6t7L6Q@mail.gmail.com>
  <CAH2r5murJ73bfoHWGTDPOBxud3E+rdzW00Snn-TZuc-iEtWgrw@mail.gmail.com>
+ <CAH2r5muya2+hWQup99QcxKV9XE4T_pWW565+fqWeu1tAnXSxoQ@mail.gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <CAH2r5murJ73bfoHWGTDPOBxud3E+rdzW00Snn-TZuc-iEtWgrw@mail.gmail.com>
+In-Reply-To: <CAH2r5muya2+hWQup99QcxKV9XE4T_pWW565+fqWeu1tAnXSxoQ@mail.gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Mar 22, 2016 at 11:19:51PM -0500, Steve French wrote:
-> On Tue, Mar 22, 2016 at 11:13 PM, Steve French <smfrench@gmail.com> wrote:
-> > Yes, the browser still uses it (at least on the system I tried
-> > yesterday), and so do a few important subsystems (the file resource
-> > manager for example).  Presumably streams are used even more on Mac.
-> >
-> > I was experimenting with some patches in the last few weeks to list
-> > streams (either via an xattr as ntfs-3g does, but I am leaning toward
-> > an ioctl for cifs.ko).  They are needed for backup (at least), and not
-> > just for accessing Macs (which use resource forks extensively), but
-> > since Windows stores the zone identifier (where a file came from is
-> > stored when internet explorer downloads anything) in an alternate data
-> > stream, and also "FCI" (file classification information) is stored
-> > there.
+On Wed, Mar 23, 2016 at 09:45:07AM -0500, Steve French wrote:
+> One of the arguments in favor of additional interfaces (ioctl or
+> openat) for accessing alternate data streams which may not be obvious
+> to Windows users is that while alternate data streams can be opened
+> just like regular files in Windows (and thus over SMB3 mounts), in
+> Linux it is hard to allow opening a stream and still support files
+> with the ':' (colon) character in their file name since colon is used
+> a separator for the stream name in Windows (and is a reserved
+> character), but is a valid character in POSIX.    When we use a cifs
+> or smb3 mount to Windows or Mac we typically map characters (into the
+> Unicode remap range just above 0xF000) like ':' the same way the Mac
+> does (and Windows services for Mac does as well).  This is enabled
+> with mount option "mapposix"
+> 
+> So without an ioctl to query the stream contents (or a new syscall),
+> you have to choose whether to either allow : in a filename or allow
+> opening streams.
+> 
+> There is some additional information on some of the more important
+> uses in Windows for alternate data streams at the end of the article
+> in this link: https://blogs.technet.microsoft.com/askcore/2013/03/24/alternate-data-streams-in-ntfs/
 
-Sounds like there are important user, then.
+Sorry Steve, but none of the uses in there can be called "important".
 
-> I should also note that since SMB3 operations are handle based
-> (except open/create itself), I prefer using an ioctl rather than xattr
-> query to list streams.
+I personally have an intense dislike for streams in a filesystem,
+and was very disappointed when Microsoft re-added them to the
+previously streamless ReFS (probably for backwards compatibility
+stuff like this).
 
-So on Linux you'd want that ioctl to return a file descriptor for a
-given stream?
+There's no way to transfer stream-riddled files over the Internet,
+and the amount of code complexity we have in Samba having to deal
+with them is nasty and has lead to more than one security hole in
+the past.
 
-> In addition, by overlapping the alternate
-> data stream name space, with the EAs name space they are
-> harder to tell apart (xattrs are used less frequently on Windows
-> than in the past but they do show up from time to time,
-> e.g. in their Services for Unix).  Seems wrong to make it easy
-> to confuse streams and EAs (extended attributes).
-
-Sounds like everyone's agreed that the two should be kept distinct.
-
---b.
+Please don't add this to Linux.
