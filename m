@@ -1,56 +1,181 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from r00tworld.com ([212.85.137.150]:41545 "EHLO r00tworld.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753534AbcCWSqa (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 23 Mar 2016 14:46:30 -0400
-From: "PaX Team" <pageexec@freemail.hu>
-To: Trond Myklebust <trond.myklebust@primarydata.com>,
-        Alexey Dvoichenkov <xale@hyperplane.net>
-Date: Wed, 23 Mar 2016 19:32:58 +0100
-MIME-Version: 1.0
-Subject: Re: nfs_super_set_maxbytes patch
-Reply-to: pageexec@freemail.hu
-CC: Linux NFS Mailing List <linux-nfs@vger.kernel.org>, spender@grsecurity.net
-Message-ID: <56F2E15A.28679.B5D94B8@pageexec.freemail.hu>
-In-reply-to: <20160318085525.07dac0c5e437d577bb53f1f0@hyperplane.net>
-References: <20160317141307.531709bf667a915973060eae@hyperplane.net>, <CAHQdGtREL65zXvkdqJ8=hrSXWVyLBGCTAfdO02cXPsC6W26ZVQ@mail.gmail.com>, <20160318085525.07dac0c5e437d577bb53f1f0@hyperplane.net>
-Content-type: text/plain; charset=US-ASCII
+Received: from out1-smtp.messagingengine.com ([66.111.4.25]:40161 "EHLO
+	out1-smtp.messagingengine.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751448AbcCXHpx (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 24 Mar 2016 03:45:53 -0400
+Received: from compute4.internal (compute4.nyi.internal [10.202.2.44])
+	by mailout.nyi.internal (Postfix) with ESMTP id 6541A21CE9
+	for <linux-nfs@vger.kernel.org>; Thu, 24 Mar 2016 03:45:52 -0400 (EDT)
+Message-ID: <1458805544.3099.16.camel@themaw.net>
+Subject: Re: call_usermodehelper in containers
+From: Ian Kent <raven@themaw.net>
+To: Oleg Nesterov <oleg@redhat.com>,
+        "Eric W. Biederman" <ebiederm@xmission.com>
+Cc: Stanislav Kinsbursky <skinsbursky@parallels.com>,
+        Jeff Layton <jlayton@redhat.com>, Greg KH <gregkh@linuxfoundation.org>,
+        linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, devel@openvz.org, bfields@fieldses.org,
+        bharrosh@panasas.com
+Date: Thu, 24 Mar 2016 15:45:44 +0800
+In-Reply-To: <20131118172844.GA10005@redhat.com>
+References: <20131111071825.62da01d1@tlielax.poochiereds.net>
+	 <20131112004703.GB15377@kroah.com>
+	 <20131112061201.04cf25ab@tlielax.poochiereds.net>
+	 <528226EC.4050701@parallels.com>
+	 <20131112083043.0ab78e67@tlielax.poochiereds.net>
+	 <5285FA0A.2080802@parallels.com> <871u2incyo.fsf@xmission.com>
+	 <20131118172844.GA10005@redhat.com>
+Content-Type: text/plain; charset="UTF-8"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 18 Mar 2016 at 8:55, Alexey Dvoichenkov wrote:
-
-> On Thu, 17 Mar 2016 09:20:14 -0400
-> Trond Myklebust <trond.myklebust@primarydata.com> wrote:
-> 
-> > > --- fs/nfs/internal.h.orig      2015-11-02 10:05:25.000000000 +1000
-> > > +++ fs/nfs/internal.h   2016-01-02 03:19:04.599120855 +1000
-> > > @@ -612,9 +612,9 @@
-> > >  static inline
-> > >  void nfs_super_set_maxbytes(struct super_block *sb, __u64 maxfilesize)
-> > >  {
-> > > +       if (maxfilesize > MAX_LFS_FILESIZE || maxfilesize == 0)
-> > > +               maxfilesize = MAX_LFS_FILESIZE;
-> > >         sb->s_maxbytes = (loff_t)maxfilesize;
-> > > -       if (sb->s_maxbytes > MAX_LFS_FILESIZE || sb->s_maxbytes <= 0)
-> > > -               sb->s_maxbytes = MAX_LFS_FILESIZE;
-> > >  }
-> > >
+On Mon, 2013-11-18 at 18:28 +0100, Oleg Nesterov wrote:
+> On 11/15, Eric W. Biederman wrote:
 > > 
-> > Why are we having to change _correct_ code in order to work with a
-> > checking tool?
+> > I don't understand that one.  Having a preforked thread with the
+> > proper
+> > environment that can act like kthreadd in terms of spawning user
+> > mode
+> > helpers works and is simple.
+> 
+> Can't we ask ->child_reaper to create the non-daemonized kernel thread
+> with the "right" ->nsproxy, ->fs, etc?
+> 
+> IOW. Please the the "patch" below. It is obviously incomplete and
+> wrong,
+> and it can be more clear/clean. And probably we need another API. Just
+> to explain what I mean.
+> 
+> With this patch call_usermodehelper(..., UMH_IN_MY_NS) should do exec
+> from the caller's namespace.
 
-first of all, it's correct in that it relies on implementation defined
-behaviour and not UB. C99 6.3.1.3 says:
+Umm ... I don't think this can work.
 
-    Otherwise, the new type is signed and the value cannot be represented
-    in it; either the result is implementation-defined or an implementation-
-    defined signal is raised.
+I don't think it can be assumed that the init process of a container
+will behave like an init process.
 
-it's still unfortunate of course as the reliance on the above is trivially
-avoidable (and would also satisfy the size overflow plugin which otherwise
-chooses the other possible behaviour). all that said, i think the bigger
-problem with this code pattern is that it's putting the cart before the
-horses so to speak, so it'd be better if it was changed for that reason
-alone.
+If you try and do this with a Docker container that has /bin/bash as the
+init process signals never arrive and work doesn't start until some
+other signal arrives at which time it fails to create the kernel thread
+returning an error ERESTARTNOINTER (IIRC).
 
+In fact a number of other things relating to signalling processes to
+cleanly shutdown in a container suffer the same problem.
+
+I probably don't understand what's actually going on, this is just my
+impression of what I'm seeing.
+
+> 
+> Oleg.
+> ---
+> 
+> --- a/include/linux/kmod.h
+> +++ b/include/linux/kmod.h
+> @@ -24,6 +24,7 @@
+>  #include <linux/errno.h>
+>  #include <linux/compiler.h>
+>  #include <linux/workqueue.h>
+> +#include <linux/task_work.h>
+>  #include <linux/sysctl.h>
+>  
+>  #define KMOD_PATH_LEN 256
+> @@ -53,8 +54,14 @@ struct file;
+>  #define UMH_WAIT_PROC	2	/* wait for the process to
+> complete */
+>  #define UMH_KILLABLE	4	/* wait for EXEC/PROC killable
+> */
+>  
+> +// FIXME: IMH_* is not actually a mask
+> +#define UMH_IN_MY_NS	8
+> +
+>  struct subprocess_info {
+> -	struct work_struct work;
+> +	union {
+> +		struct work_struct work;
+> +		struct callback_head twork;
+> +	};
+>  	struct completion *complete;
+>  	char *path;
+>  	char **argv;
+> --- a/kernel/kmod.c
+> +++ b/kernel/kmod.c
+> @@ -541,7 +541,6 @@ struct subprocess_info
+> *call_usermodehelper_setup(char *path, char **argv,
+>  	if (!sub_info)
+>  		goto out;
+>  
+> -	INIT_WORK(&sub_info->work, __call_usermodehelper);
+>  	sub_info->path = path;
+>  	sub_info->argv = argv;
+>  	sub_info->envp = envp;
+> @@ -554,6 +553,24 @@ struct subprocess_info
+> *call_usermodehelper_setup(char *path, char **argv,
+>  }
+>  EXPORT_SYMBOL(call_usermodehelper_setup);
+>  
+> +static int call_call_usermodehelper(void *twork)
+> +{
+> +	struct subprocess_info *sub_info =
+> +		container_of(twork, struct subprocess_info, twork);
+> +
+> +	__call_usermodehelper(&sub_info->work);
+> +	do_exit(0);
+> +
+> +}
+> +
+> +static void fork_umh_helper(struct callback_head *twork)
+> +{
+> +	if (current->flags & PF_EXITING)
+> +		return;	// WRONG, FIXME
+> +
+> +	kernel_thread(call_call_usermodehelper, twork, SIGCHLD);
+> +}
+> +
+>  /**
+>   * call_usermodehelper_exec - start a usermode application
+>   * @sub_info: information about the subprocessa
+> @@ -570,6 +587,10 @@ int call_usermodehelper_exec(struct
+> subprocess_info *sub_info, int wait)
+>  {
+>  	DECLARE_COMPLETION_ONSTACK(done);
+>  	int retval = 0;
+> +	bool in_my_ns;
+> +
+> +	in_my_ns = wait & UMH_IN_MY_NS;
+> +	wait &= ~UMH_IN_MY_NS;
+>  
+>  	if (!sub_info->path) {
+>  		call_usermodehelper_freeinfo(sub_info);
+> @@ -594,7 +615,21 @@ int call_usermodehelper_exec(struct
+> subprocess_info *sub_info, int wait)
+>  	sub_info->complete = &done;
+>  	sub_info->wait = wait;
+>  
+> -	queue_work(khelper_wq, &sub_info->work);
+> +	if (likely(!in_my_ns)) {
+> +		INIT_WORK(&sub_info->work, __call_usermodehelper);
+> +		queue_work(khelper_wq, &sub_info->work);
+> +	} else {
+> +		// RACY, WRONG, ETC
+> +		struct task_struct *my_init =
+> task_active_pid_ns(current)->child_reaper;
+> +
+> +		init_task_work(&sub_info->twork, fork_umh_helper);
+> +		task_work_add(my_init, &sub_info->twork, false);
+> +
+> +		// until we have task_work_add_interruptibel()
+> +		do_send_sig_info(SIGCHLD, SEND_SIG_FORCED, my_init,
+> false);
+> +
+> +	}
+> +
+>  	if (wait == UMH_NO_WAIT)	/* task has freed sub_info */
+>  		goto unlock;
+>  
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux
+> -fsdevel" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
