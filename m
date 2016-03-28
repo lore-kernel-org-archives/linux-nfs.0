@@ -1,82 +1,88 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ig0-f195.google.com ([209.85.213.195]:33147 "EHLO
-	mail-ig0-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754562AbcC1PvU (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 28 Mar 2016 11:51:20 -0400
-Received: by mail-ig0-f195.google.com with SMTP id nt3so10430080igb.0
-        for <linux-nfs@vger.kernel.org>; Mon, 28 Mar 2016 08:51:19 -0700 (PDT)
-Received: from manet.1015granger.net ([2604:8800:100:81fc:ec4:7aff:fe6c:1dce])
-        by smtp.gmail.com with ESMTPSA id oq8sm4199817igb.7.2016.03.28.08.51.16
-        for <linux-nfs@vger.kernel.org>
-        (version=TLS1_2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128/128);
-        Mon, 28 Mar 2016 08:51:16 -0700 (PDT)
-Subject: [PATCH RFC] xprtrdma: Fix an LOCK/OPEN race when unlinking an open
- file
-From: Chuck Lever <chuck.lever@oracle.com>
-To: linux-nfs@vger.kernel.org
-Date: Mon, 28 Mar 2016 11:51:14 -0400
-Message-ID: <20160328155114.19702.71714.stgit@manet.1015granger.net>
+Received: from elasmtp-mealy.atl.sa.earthlink.net ([209.86.89.69]:34720 "EHLO
+	elasmtp-mealy.atl.sa.earthlink.net" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1753863AbcC1QN4 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 28 Mar 2016 12:13:56 -0400
+From: "Frank Filz" <ffilzlnx@mindspring.com>
+To: "'NeilBrown'" <neilb@suse.com>,
+        "'Linux NFS mailing list'" <linux-nfs@vger.kernel.org>
+References: <877fgnwkuv.fsf@notabene.neil.brown.name>
+In-Reply-To: <877fgnwkuv.fsf@notabene.neil.brown.name>
+Subject: RE: Should NLM resends change the xid ??
+Date: Mon, 28 Mar 2016 09:04:43 -0700
+Message-ID: <00a301d1890b$8b6ac190$a24044b0$@mindspring.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain;
+	charset="us-ascii"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-At Connectathon 2016, we found that recent upstream Linux clients
-would occasionally send a LOCK operation with a zero stateid. This
-appeared to happen in close proximity to another thread returning
-a delegation before unlinking the same file while it remained open.
+> I've always thought that NLM was a less-than-perfect locking protocol, but
+I
+> recently discovered as aspect of it that is worse than I imagined.
+> 
+> Suppose client-A holds a lock on some region of a file, and client-B makes
+a
+> non-blocking lock request for that region.
+> Now suppose as just before handling that request the lockd thread on the
+> server stalls - for example due to excessive memory pressure causing a
+> kmalloc to take 11 seconds (rare, but possible.  Such allocations never
+fail,
+> they just block until they can be served).
+> 
+> During this 11 seconds (say, at the 5 second mark), client-A releases the
+lock -
+> the UNLOCK request to the server queues up behind the non-blocking LOCK
+> from client-B
+> 
+> The default retry time for NLM in Linux is 10 seconds (even for TCP!) so
+NLM
+> on client-B resends the non-blocking LOCK request, and it queues up behind
+> the UNLOCK request.
+> 
+> Now finally the lockd thread gets some memory/CPU time and starts
+> handling requests:
+>  LOCK from client-B  - DENIED
+>  UNLOCK from client-A - OK
+>  LOCK from client-B - OK
+> 
+> Both replies to client-B have the same XID so client-B will believe
+whichever
+> one it gets first - DENIED.
+> 
+> So now we have the situation where client-B doesn't think it holds a lock,
+but
+> the server thinks it does.  This is not good.
+> 
+> I think this explains a locking problem that a customer is seeing.  The
+> application seems to busy-wait for the lock using non-blocking LOCK
+> requests.  Each LOCK request has a different 'svid' so I assume each comes
+> from a different process. If you busy-wait from the one process this
+problem
+> won't occur.
+> 
+> Having a reply-cache on the server lockd might help, but such things
+easily fill
+> up and cannot provide a guarantee.
+> 
+> Having a longer timeout on the client would probably help too.  At the
+very
+> least we should increase the maximum timeout beyond 20 seconds.
+> (assuming I reading the code correctly, the client resend timeout is based
+on
+> nlmsvc_timeout which is set from nlm_timeout which is restricted to the
+> range 3-20).
+> 
+> Forcing the xid to change on every retransmit (for NLM) would ensure that
+> we only accept the last reply, which I think is safe.
 
-Earlier, the client received a write delegation on this file and
-returned the open stateid. Now, as it is getting ready to unlink the
-file, it returns the write delegation. But there is still an open
-file descriptor on that file, so the client must OPEN the file
-again before it returns the delegation.
+That sounds like a good solution to me. Since the requests are non-blocking,
+each request should be considered separate from the others.
 
-Since commit 24311f884189 ('NFSv4: Recovery of recalled read
-delegations is broken'), nfs_open_delegation_recall() clears the
-NFS_DELEGATED_STATE flag _before_ it sends the OPEN. This allows a
-racing LOCK on the same inode to be put on the wire before the OPEN
-operation has returned a valid open stateid.
+Frank
 
-After the OPEN(CLAIM_DELEG_CUR_FH) returns, the client holds both
-a write delegation and a valid open stateid. It is safe to clear
-NFS_DELEGATED_STATE at that point, allowing fresh lock requests
-to go on the wire using the newly acquired open stateid.
 
-I'm not certain of this fix. nfs4_handle_delegation_recall_error()
-is called from both nfs_open_delegation_recall() and
-nfs_lock_delegation_recall(). Is it safe and correct to clear
-NFS_DELEGATED_STATE after success in both of these code paths?
-
-Fixes: 24311f884189 ('NFSv4: Recovery of recalled read ...')
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- fs/nfs/nfs4proc.c |    3 ++-
- 1 file changed, 2 insertions(+), 1 deletion(-)
-
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 01bef06..3ccdc76 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -1794,10 +1794,12 @@ static int nfs4_handle_delegation_recall_error(struct nfs_server *server, struct
- 		default:
- 			printk(KERN_ERR "NFS: %s: unhandled error "
- 					"%d.\n", __func__, err);
-+			break;
- 		case 0:
- 		case -ENOENT:
- 		case -EAGAIN:
- 		case -ESTALE:
-+			clear_bit(NFS_DELEGATED_STATE, &state->flags);
- 			break;
- 		case -NFS4ERR_BADSESSION:
- 		case -NFS4ERR_BADSLOT:
-@@ -1857,7 +1859,6 @@ int nfs4_open_delegation_recall(struct nfs_open_context *ctx,
- 	write_seqlock(&state->seqlock);
- 	nfs4_stateid_copy(&state->stateid, &state->open_stateid);
- 	write_sequnlock(&state->seqlock);
--	clear_bit(NFS_DELEGATED_STATE, &state->flags);
- 	switch (type & (FMODE_READ|FMODE_WRITE)) {
- 	case FMODE_READ|FMODE_WRITE:
- 	case FMODE_WRITE:
+This email has been checked for viruses by Avast antivirus software.
+https://www.avast.com/antivirus
 
