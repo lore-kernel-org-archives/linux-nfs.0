@@ -1,81 +1,99 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ig0-f195.google.com ([209.85.213.195]:33506 "EHLO
-	mail-ig0-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754065AbcC1VTJ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 28 Mar 2016 17:19:09 -0400
-Received: by mail-ig0-f195.google.com with SMTP id nt3so11734365igb.0
-        for <linux-nfs@vger.kernel.org>; Mon, 28 Mar 2016 14:19:08 -0700 (PDT)
-Received: from manet.1015granger.net ([2604:8800:100:81fc:ec4:7aff:fe6c:1dce])
-        by smtp.gmail.com with ESMTPSA id w129sm11127023iof.11.2016.03.28.14.19.07
-        for <linux-nfs@vger.kernel.org>
-        (version=TLS1_2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128/128);
-        Mon, 28 Mar 2016 14:19:07 -0700 (PDT)
-Subject: [PATCH RFCv2] NFS: Fix an LOCK/OPEN race when unlinking an open file
-From: Chuck Lever <chuck.lever@oracle.com>
-To: linux-nfs@vger.kernel.org
-Date: Mon, 28 Mar 2016 17:19:06 -0400
-Message-ID: <20160328211906.20739.10519.stgit@manet.1015granger.net>
+Received: from p3plsmtpa09-09.prod.phx3.secureserver.net ([173.201.193.238]:47054
+	"EHLO p3plsmtpa09-09.prod.phx3.secureserver.net" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1754750AbcC1WGR (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 28 Mar 2016 18:06:17 -0400
+Subject: Re: Should NLM resends change the xid ??
+To: Frank Filz <ffilzlnx@mindspring.com>, "'NeilBrown'" <neilb@suse.com>,
+        "'Linux NFS mailing list'" <linux-nfs@vger.kernel.org>
+References: <877fgnwkuv.fsf@notabene.neil.brown.name>
+ <00a301d1890b$8b6ac190$a24044b0$@mindspring.com>
+From: Tom Talpey <tom@talpey.com>
+Message-ID: <56F9A923.2060700@talpey.com>
+Date: Mon, 28 Mar 2016 17:58:59 -0400
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+In-Reply-To: <00a301d1890b$8b6ac190$a24044b0$@mindspring.com>
+Content-Type: text/plain; charset=windows-1252; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-At Connectathon 2016, we found that recent upstream Linux clients
-would occasionally send a LOCK operation with a zero stateid. This
-appeared to happen in close proximity to another thread returning
-a delegation before unlinking the same file while it remained open.
+On 3/28/2016 12:04 PM, Frank Filz wrote:
+>> I've always thought that NLM was a less-than-perfect locking protocol, but
+> I
+>> recently discovered as aspect of it that is worse than I imagined.
+>>
+>> Suppose client-A holds a lock on some region of a file, and client-B makes
+> a
+>> non-blocking lock request for that region.
+>> Now suppose as just before handling that request the lockd thread on the
+>> server stalls - for example due to excessive memory pressure causing a
+>> kmalloc to take 11 seconds (rare, but possible.  Such allocations never
+> fail,
+>> they just block until they can be served).
+>>
+>> During this 11 seconds (say, at the 5 second mark), client-A releases the
+> lock -
+>> the UNLOCK request to the server queues up behind the non-blocking LOCK
+>> from client-B
+>>
+>> The default retry time for NLM in Linux is 10 seconds (even for TCP!) so
+> NLM
+>> on client-B resends the non-blocking LOCK request, and it queues up behind
+>> the UNLOCK request.
+>>
+>> Now finally the lockd thread gets some memory/CPU time and starts
+>> handling requests:
+>>   LOCK from client-B  - DENIED
+>>   UNLOCK from client-A - OK
+>>   LOCK from client-B - OK
+>>
+>> Both replies to client-B have the same XID so client-B will believe
+> whichever
+>> one it gets first - DENIED.
+>>
+>> So now we have the situation where client-B doesn't think it holds a lock,
+> but
+>> the server thinks it does.  This is not good.
+>>
+>> I think this explains a locking problem that a customer is seeing.  The
+>> application seems to busy-wait for the lock using non-blocking LOCK
+>> requests.  Each LOCK request has a different 'svid' so I assume each comes
+>> from a different process. If you busy-wait from the one process this
+> problem
+>> won't occur.
+>>
+>> Having a reply-cache on the server lockd might help, but such things
+> easily fill
+>> up and cannot provide a guarantee.
+>>
+>> Having a longer timeout on the client would probably help too.  At the
+> very
+>> least we should increase the maximum timeout beyond 20 seconds.
+>> (assuming I reading the code correctly, the client resend timeout is based
+> on
+>> nlmsvc_timeout which is set from nlm_timeout which is restricted to the
+>> range 3-20).
+>>
+>> Forcing the xid to change on every retransmit (for NLM) would ensure that
+>> we only accept the last reply, which I think is safe.
+>
+> That sounds like a good solution to me. Since the requests are non-blocking,
+> each request should be considered separate from the others.
 
-Earlier, the client received a write delegation on this file and
-returned the open stateid. Now, as it is getting ready to unlink the
-file, it returns the write delegation. But there is still an open
-file descriptor on that file, so the client must OPEN the file
-again before it returns the delegation.
+I totally disagree. To issue a new XID contradicts the entire notion of
+"retransmit". It will badly break any hope of idempotency.
 
-To eliminate this race, serialize delegation return with the
-acquisition of a file lock on the same file. Adopt the same approach
-as is used in the unlock path.
+To me, there are two issues here:
+1) The client should not be retransmitting on an unbroken connection.
+2) The server should have a reply cache.
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
- fs/nfs/nfs4proc.c |    8 +++++++-
- 1 file changed, 7 insertions(+), 1 deletion(-)
+If both of those were true, this problem would not occur.
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 01bef06..dd435f4 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -6054,6 +6054,7 @@ static int nfs41_lock_expired(struct nfs4_state *state, struct file_lock *reques
- static int _nfs4_proc_setlk(struct nfs4_state *state, int cmd, struct file_lock *request)
- {
- 	struct nfs_inode *nfsi = NFS_I(state->inode);
-+	struct nfs4_state_owner *sp = state->owner;
- 	unsigned char fl_flags = request->fl_flags;
- 	int status = -ENOLCK;
- 
-@@ -6065,9 +6066,12 @@ static int _nfs4_proc_setlk(struct nfs4_state *state, int cmd, struct file_lock
- 	if (status != 0)
- 		goto out;
- 	request->fl_flags |= FL_ACCESS;
-+	mutex_lock(&sp->so_delegreturn_mutex);
- 	status = do_vfs_lock(state->inode, request);
--	if (status < 0)
-+	if (status < 0) {
-+		mutex_unlock(&sp->so_delegreturn_mutex);
- 		goto out;
-+	}
- 	down_read(&nfsi->rwsem);
- 	if (test_bit(NFS_DELEGATED_STATE, &state->flags)) {
- 		/* Yes: cache locks! */
-@@ -6075,9 +6079,11 @@ static int _nfs4_proc_setlk(struct nfs4_state *state, int cmd, struct file_lock
- 		request->fl_flags = fl_flags & ~FL_SLEEP;
- 		status = do_vfs_lock(state->inode, request);
- 		up_read(&nfsi->rwsem);
-+		mutex_unlock(&sp->so_delegreturn_mutex);
- 		goto out;
- 	}
- 	up_read(&nfsi->rwsem);
-+	mutex_unlock(&sp->so_delegreturn_mutex);
- 	status = _nfs4_do_setlk(state, cmd, request, NFS_LOCK_NEW);
- out:
- 	request->fl_flags = fl_flags;
+That said, if client B were to *drop the connection* and then *reissue*
+the lock with a new XID, there would be a chance of things working
+as desired.
+
+But this would still leave many existing NLM issues on the table. It's
+a pipe dream that NLM (and NSM) will truly support correct locking
+semantics in the face of transient errors.
 
