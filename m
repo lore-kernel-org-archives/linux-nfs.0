@@ -1,27 +1,57 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:43268 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751585AbcC1Xs2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 28 Mar 2016 19:48:28 -0400
-Date: Mon, 28 Mar 2016 19:48:25 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Christoph Hellwig <hch@lst.de>
-Cc: Geert Uytterhoeven <geert@linux-m68k.org>,
-        Jeff Layton <jlayton@poochiereds.net>, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-Subject: Re: [PATCH] nfds: Fix NFSD_MDS_PR_KEY on 32-bit by adding ULL postfix
-Message-ID: <20160328234825.GA27902@fieldses.org>
-References: <1458902831-24673-1-git-send-email-geert@linux-m68k.org>
- <20160325180422.GA15549@lst.de>
+Received: from zeniv.linux.org.uk ([195.92.253.2]:34701 "EHLO
+	ZenIV.linux.org.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752158AbcC2OCs (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Mar 2016 10:02:48 -0400
+Date: Tue, 29 Mar 2016 15:02:44 +0100
+From: Al Viro <viro@ZenIV.linux.org.uk>
+To: Arend Van Spriel <arend.vanspriel@broadcom.com>
+Cc: Junichi Nomura <j-nomura@ce.jp.nec.com>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: [REGRESSION 4.6-rc1] NFS mounts (using autofs) failing
+Message-ID: <20160329140244.GV17997@ZenIV.linux.org.uk>
+References: <56FA62FB.1080506@broadcom.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20160325180422.GA15549@lst.de>
+In-Reply-To: <56FA62FB.1080506@broadcom.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Mar 25, 2016 at 07:04:22PM +0100, Christoph Hellwig wrote:
-> Looks fine, thanks!
+On Tue, Mar 29, 2016 at 01:11:55PM +0200, Arend Van Spriel wrote:
+> Hi Al,
 > 
-> Reviewed-by: Christoph Hellwig <hch@lst.de>
+> Moved to 4.6-rc1 and found NFS mounts were failing moving to the new
+> kernel. The NFS mounts are done using autofs. Below is the bisect log
+> and attached the kernel .config file. Let me know if you need any other
+> information.
 
-Thanks, applying for 4.6.--b.
+AFAICS, it's the same one that got reported yesterday by Junichi Nomura.
+Folks, could you check if the delta below fixes it?
+
+diff --git a/fs/namei.c b/fs/namei.c
+index 3498d53..0d80c72 100644
+--- a/fs/namei.c
++++ b/fs/namei.c
+@@ -1740,15 +1740,17 @@ static int walk_component(struct nameidata *nd, int flags)
+ 					  nd->flags);
+ 		if (IS_ERR(path.dentry))
+ 			return PTR_ERR(path.dentry);
+-		if (unlikely(d_is_negative(path.dentry))) {
+-			dput(path.dentry);
+-			return -ENOENT;
+-		}
++
+ 		path.mnt = nd->path.mnt;
+ 		err = follow_managed(&path, nd);
+ 		if (unlikely(err < 0))
+ 			return err;
+ 
++		if (unlikely(d_is_negative(path.dentry))) {
++			path_to_nameidata(&path, nd);
++			return -ENOENT;
++		}
++
+ 		seq = 0;	/* we are already out of RCU mode */
+ 		inode = d_backing_inode(path.dentry);
+ 	}
