@@ -1,71 +1,50 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-wm0-f41.google.com ([74.125.82.41]:36088 "EHLO
-	mail-wm0-f41.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751990AbcC2TRK (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Mar 2016 15:17:10 -0400
-Received: by mail-wm0-f41.google.com with SMTP id 127so71429400wmu.1
-        for <linux-nfs@vger.kernel.org>; Tue, 29 Mar 2016 12:17:09 -0700 (PDT)
-Subject: Re: [REGRESSION 4.6-rc1] NFS mounts (using autofs) failing
-To: Al Viro <viro@ZenIV.linux.org.uk>
-References: <56FA62FB.1080506@broadcom.com>
- <20160329140244.GV17997@ZenIV.linux.org.uk>
-Cc: Junichi Nomura <j-nomura@ce.jp.nec.com>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-From: Arend van Spriel <arend.vanspriel@broadcom.com>
-Message-ID: <56FAD4B4.3070508@broadcom.com>
-Date: Tue, 29 Mar 2016 21:17:08 +0200
+Received: from mail-io0-f178.google.com ([209.85.223.178]:34418 "EHLO
+	mail-io0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753607AbcC2Try (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Mar 2016 15:47:54 -0400
+Received: by mail-io0-f178.google.com with SMTP id e3so38615085ioa.1
+        for <linux-nfs@vger.kernel.org>; Tue, 29 Mar 2016 12:47:54 -0700 (PDT)
 MIME-Version: 1.0
-In-Reply-To: <20160329140244.GV17997@ZenIV.linux.org.uk>
-Content-Type: text/plain; charset=windows-1252
+Date: Tue, 29 Mar 2016 15:47:53 -0400
+Message-ID: <CAN-5tyHEt93VxL2Ysikgn8iZ_auWEWGdGkZ94LMBOa62wHDWMA@mail.gmail.com>
+Subject: commit 7c2dad99d6 "Don't let the ctime override attribute barriers"
+From: Olga Kornievskaia <aglo@umich.edu>
+To: Trond Myklebust <trond.myklebust@primarydata.com>,
+        linux-nfs <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+I think that patch introduces a problem. Since the checking for the
+change in ctime was removed by the commit it leads to (improper) cache
+invalidation in NFSv3.
 
+Test is write 10240bytes to the server then read it. Expectation is
+not to see read on the wire. In the test the write is spread over
+3rpcs.
 
-On 29-03-16 16:02, Al Viro wrote:
-> On Tue, Mar 29, 2016 at 01:11:55PM +0200, Arend Van Spriel wrote:
->> Hi Al,
->>
->> Moved to 4.6-rc1 and found NFS mounts were failing moving to the new
->> kernel. The NFS mounts are done using autofs. Below is the bisect log
->> and attached the kernel .config file. Let me know if you need any other
->> information.
-> 
-> AFAICS, it's the same one that got reported yesterday by Junichi Nomura.
-> Folks, could you check if the delta below fixes it?
+On the 1nd reply
+fattr->gencount=33 nfsi->gencount=32 generation_counter=35
+On the 2nd reply
+fattr->gencount=34 nfsi->gencount=36 generation_counter=36
 
-Works for me so you may add
+In the code when processing 2nd reply,
+nfs_post_op_update_inode_force_wcc_locked() calls into
+nfs_inode_attrs_need_update() it determines that it doesn't need to
+update them (even though the size and the time have changed). so it
+doesn't call nfs_wcc_update_inode() so the inode->i_version doesn't
+get set to the ctime that was received in the 2nd reply.
 
-Tested-by: Arend van Spriel <arend@broadcom.com>
+On the 3rd reply
+fattr->gencount=37 nfsi->gencount=36 generation_counter=37
 
-Regards,
-Arend
+It leads to nfs_inode_attrs_need_update() returns 1 and in the
+nfs_update_inode() the difference in the ctimes leads to invalidation.
+fattr->gencount was update from nfs_writeback_update_node() ->
+nfs_post_op_update_inode_force_wcc() calling nfs_fattr_set_barrier().
 
-> diff --git a/fs/namei.c b/fs/namei.c
-> index 3498d53..0d80c72 100644
-> --- a/fs/namei.c
-> +++ b/fs/namei.c
-> @@ -1740,15 +1740,17 @@ static int walk_component(struct nameidata *nd, int flags)
->  					  nd->flags);
->  		if (IS_ERR(path.dentry))
->  			return PTR_ERR(path.dentry);
-> -		if (unlikely(d_is_negative(path.dentry))) {
-> -			dput(path.dentry);
-> -			return -ENOENT;
-> -		}
-> +
->  		path.mnt = nd->path.mnt;
->  		err = follow_managed(&path, nd);
->  		if (unlikely(err < 0))
->  			return err;
->  
-> +		if (unlikely(d_is_negative(path.dentry))) {
-> +			path_to_nameidata(&path, nd);
-> +			return -ENOENT;
-> +		}
-> +
->  		seq = 0;	/* we are already out of RCU mode */
->  		inode = d_backing_inode(path.dentry);
->  	}
-> 
+I'm not sure what appropriate values for "gencount" should have been.
+But if the check for nfs_ctime_need_update() was still there in
+nfs_inode_attrs_need_update() then the 2nd reply would have
+appropriately updated the i_version and not lead to invalidation.
