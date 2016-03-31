@@ -1,82 +1,112 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-oi0-f41.google.com ([209.85.218.41]:34050 "EHLO
-	mail-oi0-f41.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752237AbcC3XcH (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 30 Mar 2016 19:32:07 -0400
-Received: by mail-oi0-f41.google.com with SMTP id o62so37254264oig.1
-        for <linux-nfs@vger.kernel.org>; Wed, 30 Mar 2016 16:32:07 -0700 (PDT)
-MIME-Version: 1.0
-In-Reply-To: <CAN-5tyGdaQDNF3ALNNBCTmyxeb8n0VCg-4CiS0rLXM+tQbiRUA@mail.gmail.com>
-References: <CAN-5tyHEt93VxL2Ysikgn8iZ_auWEWGdGkZ94LMBOa62wHDWMA@mail.gmail.com>
-	<CAN-5tyHrYxT-V2fms9vga_Ed+bQ3E+xk7A8fK0N1xYEzm_HtNg@mail.gmail.com>
-	<CAHQdGtTxkUjQ+yLip_DrZB305U3NsZp8ZQ3VvkqgJhACPPM+Bg@mail.gmail.com>
-	<CAN-5tyGdaQDNF3ALNNBCTmyxeb8n0VCg-4CiS0rLXM+tQbiRUA@mail.gmail.com>
-Date: Wed, 30 Mar 2016 19:32:06 -0400
-Message-ID: <CAHQdGtRUFfHZCd3foKWY9nq7ULCSY=RWZM4tgQ3BsE3cnxYD3A@mail.gmail.com>
-Subject: Re: commit 7c2dad99d6 "Don't let the ctime override attribute barriers"
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Olga Kornievskaia <aglo@umich.edu>
-Cc: linux-nfs <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=UTF-8
+Received: from aserp1040.oracle.com ([141.146.126.69]:29531 "EHLO
+	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752980AbcCaBGc convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 30 Mar 2016 21:06:32 -0400
+Received: from aserv0022.oracle.com (aserv0022.oracle.com [141.146.126.234])
+	by aserp1040.oracle.com (Sentrion-MTA-4.3.2/Sentrion-MTA-4.3.2) with ESMTP id u2V16VgO010062
+	(version=TLSv1 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Thu, 31 Mar 2016 01:06:31 GMT
+Received: from userv0121.oracle.com (userv0121.oracle.com [156.151.31.72])
+	by aserv0022.oracle.com (8.13.8/8.13.8) with ESMTP id u2V16UBO016526
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Thu, 31 Mar 2016 01:06:31 GMT
+Received: from abhmp0008.oracle.com (abhmp0008.oracle.com [141.146.116.14])
+	by userv0121.oracle.com (8.13.8/8.13.8) with ESMTP id u2V16T7j007954
+	for <linux-nfs@vger.kernel.org>; Thu, 31 Mar 2016 01:06:30 GMT
+Content-Type: text/plain; charset=us-ascii
+Mime-Version: 1.0 (Mac OS X Mail 9.3 \(3124\))
+Subject: Re: [PATCH RFCv2] NFS: Fix an LOCK/OPEN race when unlinking an open file
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <20160328211906.20739.10519.stgit@manet.1015granger.net>
+Date: Wed, 30 Mar 2016 21:06:28 -0400
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Message-Id: <FE201995-97F7-4E4B-956B-F2BACAC94B0B@oracle.com>
+References: <20160328211906.20739.10519.stgit@manet.1015granger.net>
+To: Chuck Lever <chuck.lever@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Mar 30, 2016 at 5:51 PM, Olga Kornievskaia <aglo@umich.edu> wrote:
-> On Wed, Mar 30, 2016 at 5:45 PM, Trond Myklebust
-> <trond.myklebust@primarydata.com> wrote:
->> On Wed, Mar 30, 2016 at 5:02 PM, Olga Kornievskaia <aglo@umich.edu> wrote:
->>> On Tue, Mar 29, 2016 at 3:47 PM, Olga Kornievskaia <aglo@umich.edu> wrote:
->>>> I think that patch introduces a problem. Since the checking for the
->>>> change in ctime was removed by the commit it leads to (improper) cache
->>>> invalidation in NFSv3.
->>>>
->>>> Test is write 10240bytes to the server then read it. Expectation is
->>>> not to see read on the wire. In the test the write is spread over
->>>> 3rpcs.
->>>>
->>>> On the 1nd reply
->>>> fattr->gencount=33 nfsi->gencount=32 generation_counter=35
->>>> On the 2nd reply
->>>> fattr->gencount=34 nfsi->gencount=36 generation_counter=36
->>>>
->>>> In the code when processing 2nd reply,
->>>> nfs_post_op_update_inode_force_wcc_locked() calls into
->>>> nfs_inode_attrs_need_update() it determines that it doesn't need to
->>>> update them (even though the size and the time have changed). so it
->>>> doesn't call nfs_wcc_update_inode() so the inode->i_version doesn't
->>>> get set to the ctime that was received in the 2nd reply.
->>>>
->>>> On the 3rd reply
->>>> fattr->gencount=37 nfsi->gencount=36 generation_counter=37
->>>>
->>>> It leads to nfs_inode_attrs_need_update() returns 1 and in the
->>>> nfs_update_inode() the difference in the ctimes leads to invalidation.
->>>> fattr->gencount was update from nfs_writeback_update_node() ->
->>>> nfs_post_op_update_inode_force_wcc() calling nfs_fattr_set_barrier().
->>>>
->>>> I'm not sure what appropriate values for "gencount" should have been.
->>>> But if the check for nfs_ctime_need_update() was still there in
->>>> nfs_inode_attrs_need_update() then the 2nd reply would have
->>>> appropriately updated the i_version and not lead to invalidation.
->>>
->>> Would like to add that this problem is not seen against the Linux
->>> server because it doesn't send "before" attributes. So code doesn't
->>> set the "pre_change_attr" which later doesn't make what's stored in
->>> inode->i_version.
->>>
->>> The problem also not seen for v4 because pre_change_attr is not gotten
->>> from the "before" attributes but instead from the previous value in
->>> inode->i_version which is then compared to the itself.
->>>
->>> If reverting the problematic commit is not the solution, then how
->>> about ignoring the "before" ctime attributes sent by the server. This
->>> also helps with the out-of-order RPCs.
->>
->> Why bother doing that on the client? These attributes aren't mandatory
->> to send...
->>
->
-> Leads to poor client performances. Every large enough read invalidates
-> the cache so all the reads go to the server always.
 
-I'm saying why not just turn off the WCC functionality on the server then.
+> On Mar 28, 2016, at 5:19 PM, Chuck Lever <chuck.lever@oracle.com> wrote:
+> 
+> At Connectathon 2016, we found that recent upstream Linux clients
+> would occasionally send a LOCK operation with a zero stateid. This
+> appeared to happen in close proximity to another thread returning
+> a delegation before unlinking the same file while it remained open.
+> 
+> Earlier, the client received a write delegation on this file and
+> returned the open stateid. Now, as it is getting ready to unlink the
+> file, it returns the write delegation. But there is still an open
+> file descriptor on that file, so the client must OPEN the file
+> again before it returns the delegation.
+> 
+> To eliminate this race, serialize delegation return with the
+> acquisition of a file lock on the same file. Adopt the same approach
+> as is used in the unlock path.
+> 
+> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+> ---
+
+I see two new behaviors when this patch is applied:
+
+1. With NFSv4.0, the cthon04 lock test #7 hangs after
+"unlock region so child will unblock". ^C then unmount
+works as expected.
+
+2. With NFSv4.0, xfstests generic/089 fails because one
+of the three test processes is starved out of locking
+the test file (t_mtab). The test fails, there are no
+other hangs or error messages.
+
+I'm starting to look into the first issue.
+
+
+> fs/nfs/nfs4proc.c |    8 +++++++-
+> 1 file changed, 7 insertions(+), 1 deletion(-)
+> 
+> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+> index 01bef06..dd435f4 100644
+> --- a/fs/nfs/nfs4proc.c
+> +++ b/fs/nfs/nfs4proc.c
+> @@ -6054,6 +6054,7 @@ static int nfs41_lock_expired(struct nfs4_state *state, struct file_lock *reques
+> static int _nfs4_proc_setlk(struct nfs4_state *state, int cmd, struct file_lock *request)
+> {
+> 	struct nfs_inode *nfsi = NFS_I(state->inode);
+> +	struct nfs4_state_owner *sp = state->owner;
+> 	unsigned char fl_flags = request->fl_flags;
+> 	int status = -ENOLCK;
+> 
+> @@ -6065,9 +6066,12 @@ static int _nfs4_proc_setlk(struct nfs4_state *state, int cmd, struct file_lock
+> 	if (status != 0)
+> 		goto out;
+> 	request->fl_flags |= FL_ACCESS;
+> +	mutex_lock(&sp->so_delegreturn_mutex);
+> 	status = do_vfs_lock(state->inode, request);
+> -	if (status < 0)
+> +	if (status < 0) {
+> +		mutex_unlock(&sp->so_delegreturn_mutex);
+> 		goto out;
+> +	}
+> 	down_read(&nfsi->rwsem);
+> 	if (test_bit(NFS_DELEGATED_STATE, &state->flags)) {
+> 		/* Yes: cache locks! */
+> @@ -6075,9 +6079,11 @@ static int _nfs4_proc_setlk(struct nfs4_state *state, int cmd, struct file_lock
+> 		request->fl_flags = fl_flags & ~FL_SLEEP;
+> 		status = do_vfs_lock(state->inode, request);
+> 		up_read(&nfsi->rwsem);
+> +		mutex_unlock(&sp->so_delegreturn_mutex);
+> 		goto out;
+> 	}
+> 	up_read(&nfsi->rwsem);
+> +	mutex_unlock(&sp->so_delegreturn_mutex);
+> 	status = _nfs4_do_setlk(state, cmd, request, NFS_LOCK_NEW);
+> out:
+> 	request->fl_flags = fl_flags;
+> 
+
+--
+Chuck Lever
+
+
+
