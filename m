@@ -1,87 +1,130 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:46760 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752654AbcCaRyq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 31 Mar 2016 13:54:46 -0400
-Date: Thu, 31 Mar 2016 13:54:44 -0400
-To: NeilBrown <neilb@suse.com>
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: NFSv4.1 credential choice for the CLOSE operation
-Message-ID: <20160331175444.GC22462@fieldses.org>
-References: <87twjns6wf.fsf@notabene.neil.brown.name>
+Received: from elasmtp-curtail.atl.sa.earthlink.net ([209.86.89.64]:55911 "EHLO
+	elasmtp-curtail.atl.sa.earthlink.net" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1758524AbcCaUxh (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 31 Mar 2016 16:53:37 -0400
+From: "Frank Filz" <ffilzlnx@mindspring.com>
+To: "'NeilBrown'" <neilb@suse.com>, "'Jeff Layton'" <jlayton@poochierds.net>,
+        "'Christian Robottom Reis'" <kiko@acm.org>
+Cc: "'NFS List'" <linux-nfs@vger.kernel.org>
+References: <20160321143914.GA6397@anthem.async.com.br> <20160321131906.05ec478b@tlielax.poochiereds.net> <20160321175500.GA5118@async.com.br> <20160321205637.GB5118@async.com.br> <20160321172735.7936f1f0@tlielax.poochiereds.net> <87h9fns03o.fsf@notabene.neil.brown.name>
+In-Reply-To: <87h9fns03o.fsf@notabene.neil.brown.name>
+Subject: RE: Finding and breaking client locks
+Date: Thu, 31 Mar 2016 13:52:56 -0700
+Message-ID: <024101d18b8f$4e104b90$ea30e2b0$@mindspring.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <87twjns6wf.fsf@notabene.neil.brown.name>
-From: bfields@fieldses.org (J. Bruce Fields)
+Content-Type: text/plain;
+	charset="us-ascii"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Mar 31, 2016 at 01:44:32PM +1100, NeilBrown wrote:
-> In NFSv4.1 the client can request, in the EXCHANGE_ID operation,
-> permission to use machine credentials to validate a CLOSE operation.
-> When the server gives that permission, it does *not* include implicit
-> permission to use the machine credentials for the PUTFH operation which
-> must precede CLOSE in the same request.
+> On Tue, Mar 22 2016, Jeff Layton wrote:
 > 
-> At least, I cannot see that RFC5661 gives that implicit permission and a
-> customer has a server that doesn't give that permission.
-
-Ugh.  Yeah, the first section I thought to check was
-
-	http://tools.ietf.org/html/rfc5661#section-2.6.3
-
-which allows deferring checks until an operation following the putfh in
-some cases, but not in this case.  I haven't reviewed the state
-protection sections.
-
-It sounds like a protocol bug to me.
-
-I wonder why CLOSE takes a filehandle at all.  The server can look up
-the stateid without the filehandle.  And permissions to close should be
-deterined by who "owns" that open, not by file permissions.
-
---b.
-
+> > On Mon, 21 Mar 2016 17:56:38 -0300
+> > Christian Robottom Reis <kiko-HInyCGIudOg@public.gmane.org> wrote:
+> >
+> >> On Mon, Mar 21, 2016 at 02:55:00PM -0300, Christian Robottom Reis
+> wrote:
+> >> > > Alternately, there is the /proc/fs/nfsd/unlock_ip interface.
+> >> > > Supposedly you can echo an address into there and it'll forcibly
+> >> > > drop all of the locks that that that client holds. I've not used
+that so
+> YMMV there.
+> >> >
+> >> > Oh! That's a very interesting, and I now see it documented here:
+> >> >
+> >> >     http://people.redhat.com/rpeterso/Patches/NFS/NLM/004.txt
+> >>
+> >> On second look, I don't think that interface is meant to take a
+> >> client IP, but rather a server IP:
+> >>
+> >>   "They are intended to allow admin or user mode script to release NLM
+> >>    locks based on either a path name or a server in-bound ip
+address[...]"
+> >>
+> >> That's why echoing the client IP makes no difference.
+> >>
+> >> I'm surprised -- so far I've found no facility for lock management
+> >> server-side other than restarting the server.
+> >
+> > Ahh that's exactly right -- my bad. I had forgotten that the idea
+> > there was to use that for clustering.
+> >
+> > And you're also correct that there is currently no facility for
+> > administratively revoking locks. That's something that would be a nice
+> > to have, if someone wanted to propose a sane interface and mechanism
+> > for it.
 > 
-> So I conclude that it is only safe to use the machine credentials if
-> NFS_SP4_MACH_CRED_CLEANUP is set *and* the security tuple for the
-> machine credential is a tuple which is permitted for the file handle.
+> I was all set to give you an answer until I saw that word "sane"... nearly
+> scared me off, but I chose to persist.
 > 
-> So I came up with the following patch which I suspect is very wrong but
-> at least shows where I am looking.  And compiles :-)
+> You know this, but let me remind you and inform Christian.
 > 
-> Details of the problem situation is that even though kerberos is
-> configured and usable, the NFS client is mounting with sec=sys and the
-> server is exporting with a similar setting.
-> So kerberos is used to provide a machine credential and to validate
-> state management, but AUTH_SYS is used for all file accesses.
+> When an NFS client ("bob") asks the NFS server ("jane") to lock a file
+(the
+> first time), the kernel says to statd "Hey, Bob wants a lock.
+> Can you keep and eye on him and let me know when he reboots - when he
+> does I want to discard his locks".
 > 
-> In this context here is no *need* to use the machine credential to
-> validate CLOSE because AUTH_SYS credentials never expire.  But the linux
-> NFS client does anyway, and the server rejects the PUT_FH because it
-> wasn't authenticated with AUTH_SYS.
+> So statd on Jane talks to statd on Bob saying "Hey Bob, tell me if you
+ever
+> reboot - OK"?  Bob takes note of this request by writing "Jane" in
+> /var/lib/nfs/sm.
+
+Actually, Jane's statd and Bob's statd don't talk until one of them comes
+back up after reboot...
+
+The actual process is:
+
+1. application on Bob makes a lock request on a mount from jane
+2. Bob's lockd asks Bob's statd to record jane as a party of interest after
+reboot
+3. Bob's lockd requests lock from Jane's lockd
+4. Jane's lockd asks Jane's statd to record Bob as a party of interest after
+reboot 
+5. Jane's lockd completes lock request and responds to Bob's lockd
+6. Bob crashes
+7. Jane is oblivious to this crash for now...
+8. Bob restarts and Bob's statd NOW sends a message to Jane's statd that it
+rebooted
+9 Jane's statd notes that Jane's lockd took and interest in Bob, and passes
+on the fact that Bob rebooted
+10. Jane's lockd cleans up the lock
+
+> When Bob reboots, sm-notify sees "Jane" in /var/lib/nfs/sm and sends a
+> message to statd on Jane "Hey Jane, Bob just rebooted.  You're welcome".
 > 
-> Can anyone suggest what a better fix would be - or explain to me how I
-> have misread the RFC?
+> statd on Jane then tells the kernel "Bob rebooted" and the kernel drops
+all
+> those locks.
 > 
-> Thanks a lot,
+> And there, in that last step, we see the key.  It is already possible to
+tell the
+> kernel "drop all the locks held by Bob", you just have to say "Hey, I'm
+statd -
+> Bob rebooted".  Or maybe we could stay to statd "Hi Jane, this is Bob, I
+just
+> rebooted" - even though we aren't really Bob.
+
+Yes, either of those would work. I'm pretty sure there are tools out there
+that do this.
+
+What is sometimes more interesting to sysadmins is being able to free up a
+specific lock rather than ALL locks held by that client.
+
+> (Or we could just reboot Bob and let it do the talking).
+> 
+> I'd have to hunt through the statd code to figure out what is possible and
+> what is best.  It can't be too hard though.
+> 
+> Christian:  If the problem client actually comes back up (instead of
+staying
+> down) do the locks get drops as they should?
+> 
 > NeilBrown
-> 
-> 
-> diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
-> index 4afdee420d25..b1694890feb1 100644
-> --- a/fs/nfs/nfs4_fs.h
-> +++ b/fs/nfs/nfs4_fs.h
-> @@ -297,7 +297,9 @@ _nfs4_state_protect(struct nfs_client *clp, unsigned long sp4_mode,
->  	struct rpc_cred *newcred = NULL;
->  	rpc_authflavor_t flavor;
->  
-> -	if (test_bit(sp4_mode, &clp->cl_sp4_flags)) {
-> +	if (test_bit(sp4_mode, &clp->cl_sp4_flags) &&
-> +	    (*clntp)->cl_auth->au_flavor
-> +	    == clp->cl_rpcclient->cl_auth->au_flavor) {
->  		spin_lock(&clp->cl_lock);
->  		if (clp->cl_machine_cred != NULL)
->  			/* don't call get_rpccred on the machine cred -
 
+
+---
+This email has been checked for viruses by Avast antivirus software.
+https://www.avast.com/antivirus
 
