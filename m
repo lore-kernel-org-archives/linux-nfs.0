@@ -1,130 +1,92 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from elasmtp-curtail.atl.sa.earthlink.net ([209.86.89.64]:55911 "EHLO
-	elasmtp-curtail.atl.sa.earthlink.net" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1758524AbcCaUxh (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 31 Mar 2016 16:53:37 -0400
-From: "Frank Filz" <ffilzlnx@mindspring.com>
-To: "'NeilBrown'" <neilb@suse.com>, "'Jeff Layton'" <jlayton@poochierds.net>,
-        "'Christian Robottom Reis'" <kiko@acm.org>
-Cc: "'NFS List'" <linux-nfs@vger.kernel.org>
-References: <20160321143914.GA6397@anthem.async.com.br> <20160321131906.05ec478b@tlielax.poochiereds.net> <20160321175500.GA5118@async.com.br> <20160321205637.GB5118@async.com.br> <20160321172735.7936f1f0@tlielax.poochiereds.net> <87h9fns03o.fsf@notabene.neil.brown.name>
-In-Reply-To: <87h9fns03o.fsf@notabene.neil.brown.name>
-Subject: RE: Finding and breaking client locks
-Date: Thu, 31 Mar 2016 13:52:56 -0700
-Message-ID: <024101d18b8f$4e104b90$ea30e2b0$@mindspring.com>
+Received: from victor.provo.novell.com ([137.65.250.26]:52486 "EHLO
+	prv3-mh.provo.novell.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757395AbcCaWk1 (ORCPT
+	<rfc822;groupwise-linux-nfs@vger.kernel.org:0:0>);
+	Thu, 31 Mar 2016 18:40:27 -0400
+From: NeilBrown <nfbrown@novell.com>
+To: Trond Myklebust <trond.myklebust@primarydata.com>
+Date: Fri, 01 Apr 2016 09:40:13 +1100
+Cc: Christian Robottom Reis <kiko@acm.org>,
+        NFS List <linux-nfs@vger.kernel.org>
+Subject: Re: Finding and breaking client locks
+In-Reply-To: <CAHQdGtT+Uwj9zuX+KqB92sVjzcOChvOmr1UDN-ZMQdSURhvWwg@mail.gmail.com>
+References: <20160321143914.GA6397@anthem.async.com.br> <20160322005813.GA3378@anthem.async.com.br> <87io03s0ak.fsf@notabene.neil.brown.name> <CAHQdGtT+Uwj9zuX+KqB92sVjzcOChvOmr1UDN-ZMQdSURhvWwg@mail.gmail.com>
+Message-ID: <8737r6s242.fsf@notabene.neil.brown.name>
 MIME-Version: 1.0
-Content-Type: text/plain;
-	charset="us-ascii"
+Content-Type: multipart/signed; boundary="=-=-=";
+	micalg=pgp-sha256; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-> On Tue, Mar 22 2016, Jeff Layton wrote:
-> 
-> > On Mon, 21 Mar 2016 17:56:38 -0300
-> > Christian Robottom Reis <kiko-HInyCGIudOg@public.gmane.org> wrote:
-> >
-> >> On Mon, Mar 21, 2016 at 02:55:00PM -0300, Christian Robottom Reis
-> wrote:
-> >> > > Alternately, there is the /proc/fs/nfsd/unlock_ip interface.
-> >> > > Supposedly you can echo an address into there and it'll forcibly
-> >> > > drop all of the locks that that that client holds. I've not used
-that so
-> YMMV there.
-> >> >
-> >> > Oh! That's a very interesting, and I now see it documented here:
-> >> >
-> >> >     http://people.redhat.com/rpeterso/Patches/NFS/NLM/004.txt
-> >>
-> >> On second look, I don't think that interface is meant to take a
-> >> client IP, but rather a server IP:
-> >>
-> >>   "They are intended to allow admin or user mode script to release NLM
-> >>    locks based on either a path name or a server in-bound ip
-address[...]"
-> >>
-> >> That's why echoing the client IP makes no difference.
-> >>
-> >> I'm surprised -- so far I've found no facility for lock management
-> >> server-side other than restarting the server.
-> >
-> > Ahh that's exactly right -- my bad. I had forgotten that the idea
-> > there was to use that for clustering.
-> >
-> > And you're also correct that there is currently no facility for
-> > administratively revoking locks. That's something that would be a nice
-> > to have, if someone wanted to propose a sane interface and mechanism
-> > for it.
-> 
-> I was all set to give you an answer until I saw that word "sane"... nearly
-> scared me off, but I chose to persist.
-> 
-> You know this, but let me remind you and inform Christian.
-> 
-> When an NFS client ("bob") asks the NFS server ("jane") to lock a file
-(the
-> first time), the kernel says to statd "Hey, Bob wants a lock.
-> Can you keep and eye on him and let me know when he reboots - when he
-> does I want to discard his locks".
-> 
-> So statd on Jane talks to statd on Bob saying "Hey Bob, tell me if you
-ever
-> reboot - OK"?  Bob takes note of this request by writing "Jane" in
-> /var/lib/nfs/sm.
+--=-=-=
+Content-Type: text/plain
 
-Actually, Jane's statd and Bob's statd don't talk until one of them comes
-back up after reboot...
+On Fri, Apr 01 2016, Trond Myklebust wrote:
 
-The actual process is:
+> On Thu, Mar 31, 2016 at 1:07 AM, NeilBrown <nfbrown@novell.com> wrote:
+>>
+>> On Tue, Mar 22 2016, Christian Robottom Reis wrote:
+>>
+>> > On Mon, Mar 21, 2016 at 11:39:14AM -0300, Christian Robottom Reis wrote:
+>> >> indeed does not return any information pertaining NFS client locks, and
+>> >> I'm not clear whether /proc/locks (on the server side obviously) does or
+>> >> not.
+>> >
+>> > Somewhat OT, but I find it a PITA that /proc/locks gives inode numbers
+>> > that then need to be looked up individually. I have often been surprised
+>> > no tool exists to parse that and give you back a report of filenames, so
+>> > I just put together a small tool that just offloads the work to debugfs.
+>> >
+>> > I've attached it in case others might find it useful.
+>>
+>> Nice idea, though it only works with extXfs - better than nothing
+>> though.
+>>
+>> It would be really easy to do this in the kernel.
+>> I would be very much in favour of a /proc/locks-extended (or whatever)
+>> that provides the same information as /proc/locks, but in a format
+>> which includes full path name, process name, and - for nfs locks -
+>> client name etc.
+>
+> Why isn't the current interface sufficient? The 'lslocks' utility
+> appears quite capable of extracting the full path info.
+>
 
-1. application on Bob makes a lock request on a mount from jane
-2. Bob's lockd asks Bob's statd to record jane as a party of interest after
-reboot
-3. Bob's lockd requests lock from Jane's lockd
-4. Jane's lockd asks Jane's statd to record Bob as a party of interest after
-reboot 
-5. Jane's lockd completes lock request and responds to Bob's lockd
-6. Bob crashes
-7. Jane is oblivious to this crash for now...
-8. Bob restarts and Bob's statd NOW sends a message to Jane's statd that it
-rebooted
-9 Jane's statd notes that Jane's lockd took and interest in Bob, and passes
-on the fact that Bob rebooted
-10. Jane's lockd cleans up the lock
+I don't think I've come across 'lslocks' before - thanks.
+It does help a bit but when I run it, most of the "PATH" column is
+empty.
+Which is odd because I can fill in some of the blanks by cross
+referencing pid/inode from /proc/locks with inodes numbers from
+  ls -liL /proc/$PID/fd
 
-> When Bob reboots, sm-notify sees "Jane" in /var/lib/nfs/sm and sends a
-> message to statd on Jane "Hey Jane, Bob just rebooted.  You're welcome".
-> 
-> statd on Jane then tells the kernel "Bob rebooted" and the kernel drops
-all
-> those locks.
-> 
-> And there, in that last step, we see the key.  It is already possible to
-tell the
-> kernel "drop all the locks held by Bob", you just have to say "Hey, I'm
-statd -
-> Bob rebooted".  Or maybe we could stay to statd "Hi Jane, this is Bob, I
-just
-> rebooted" - even though we aren't really Bob.
+to get full names.
 
-Yes, either of those would work. I'm pretty sure there are tools out there
-that do this.
+Any way, you are right that more information is available if you are
+willing to hunt around, but not everything.  In particular, for locks
+held by lockd (or NFSv4 locks held by nfsd) it would be nice to know
+which client host it was held on behalf of.
 
-What is sometimes more interesting to sysadmins is being able to free up a
-specific lock rather than ALL locks held by that client.
+NeilBrown
 
-> (Or we could just reboot Bob and let it do the talking).
-> 
-> I'd have to hunt through the statd code to figure out what is possible and
-> what is best.  It can't be too hard though.
-> 
-> Christian:  If the problem client actually comes back up (instead of
-staying
-> down) do the locks get drops as they should?
-> 
-> NeilBrown
+--=-=-=
+Content-Type: application/pgp-signature; name="signature.asc"
 
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v2
 
----
-This email has been checked for viruses by Avast antivirus software.
-https://www.avast.com/antivirus
-
+iQIcBAEBCAAGBQJW/adNAAoJEDnsnt1WYoG5iLcP/1ouC8N7SOPX80XcirlPVNzg
+8+1Gy4t6yLAPaOkqQ2n7+BFOCditGOBLVu61DW3r5RrmEVp7Lfg9Yvg0lWcSviK+
+X0NccCCcSn91+lmAPfxHsrXgrRoImTUop/cflGMLJ5ysV8RQNKJp9dRnIFCfBp6d
+dp1yLJDkopM4EDUU6/gSm4iQaWoa5sQ7dADEVxzzchDAB6v3MgFDfUki8WYRWZSf
+6zzc5LN0Ib6s7V2If67kgBNk5O0lRlcTqGM956SxB9uYFnCBAD9sRbyZkH2eXkz3
+wvLC9IF5cdeoq56AOxZduYe/cODgDYV0iLAXsu+ECWhR/TVqcQIMU0m9DimNsbIR
+gthKAVVcLqc+pFVfK0qt2PsDuXvM1XJZyBPUJbqTyXVIsVYEByhy1d76jX7NadTf
+VoUA+uXW0PtpM5457qsf+oAYK5yh0vTVmhr46ZljqATxWRvuECeBf6eyOizwVKrp
+fWQQsQwF1cfZ0GZVu4GljN2Tcx0uK2mD0PW1e7MC/5ELI5mzqDLMfrV2twz1nJKn
+o3kHmiTz9d9RskykqhgO6rGpl4m/6hFk7IHoYKZODnWeaYGRETDc9ew6NHCo/Tz6
+oJBSN1FxQzQITZB9d3Y901n4zsM3LkNzUJhr8+VsUDYkRw2oMlu5w+kSgCVV1Ngy
+42tkjd6W1CnIpHmtLL9T
+=LKhP
+-----END PGP SIGNATURE-----
+--=-=-=--
