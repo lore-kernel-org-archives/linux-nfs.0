@@ -1,117 +1,71 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:55759 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:37691 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752250AbcDARRi (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	id S1752298AbcDARRi (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
 	Fri, 1 Apr 2016 13:17:38 -0400
 From: Benjamin Coddington <bcodding@redhat.com>
 To: Trond Myklebust <trond.myklebust@primarydata.com>,
         Anna Schumaker <anna.schumaker@netapp.com>,
         Jeff Layton <jlayton@poochiereds.net>
 Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH 3/3 V2] NFSv4: use OFD lock owners in lock state lookup
-Date: Fri,  1 Apr 2016 13:17:37 -0400
-Message-Id: <16d9bc94417c4b04167ac74b7d3f5a9f3deedee9.1459530606.git.bcodding@redhat.com>
-In-Reply-To: <cover.1459530606.git.bcodding@redhat.com>
-References: <cover.1459530606.git.bcodding@redhat.com>
-In-Reply-To: <cover.1459530606.git.bcodding@redhat.com>
-References: <cover.1459530606.git.bcodding@redhat.com>
+Subject: [PATCH 0/3 V2] Include OFD lock owners when looking up state
+Date: Fri,  1 Apr 2016 13:17:34 -0400
+Message-Id: <cover.1459530606.git.bcodding@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Now that our lock context contains owners for OFD locks we can use those
-owners to reference an appropriate nfs4_lock_state.
+The client sends IO only under the open stateid when using OFD (and flock)
+locking instead of the appropriate lock stateid because the nfs_lock_context
+only tracks POSIX lockowners, which is the reference to the process' file
+table.
 
-Signed-off-by: Benjamin Coddington <bcodding@redhat.com>
----
- fs/nfs/nfs4state.c |   21 ++++++++++++---------
- fs/nfs/pagelist.c  |    1 +
- fs/nfs/write.c     |    1 +
- 3 files changed, 14 insertions(+), 9 deletions(-)
+This is a problem for two reasons.  The first is that rfc7530,
+section-9.1.4.5 states that IO sent by an entity corresponding to the
+lock-owner which holds a byte-range lock should be sent under the lock
+stateid for that lock.  Otherwise, a server enforcing mandatory byte-range
+locking might reject that operation.  Secondly, not tracking OFD lock owners
+means that accounting for IO sent under those owners is broken.  That
+creates a problem for some work to guarantee an unlock will be sent after
+operations scheduled under a lock complete.
 
-diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
-index b7f4509..c602e8f 100644
---- a/fs/nfs/nfs4state.c
-+++ b/fs/nfs/nfs4state.c
-@@ -800,14 +800,16 @@ void nfs4_close_sync(struct nfs4_state *state, fmode_t fmode)
-  * that is compatible with current->files
-  */
- static struct nfs4_lock_state *
--__nfs4_find_lock_state(struct nfs4_state *state, fl_owner_t fl_owner)
-+__nfs4_find_lock_state(struct nfs4_state *state,
-+		const struct nfs_lockowner *lockowner)
- {
- 	struct nfs4_lock_state *pos;
- 	list_for_each_entry(pos, &state->lock_states, ls_locks) {
--		if (pos->ls_owner != fl_owner)
--			continue;
--		atomic_inc(&pos->ls_count);
--		return pos;
-+		if (pos->ls_owner == lockowner->l_owner_posix ||
-+			pos->ls_owner == lockowner->l_owner_ofd) {
-+			atomic_inc(&pos->ls_count);
-+			return pos;
-+		}
- 	}
- 	return NULL;
- }
-@@ -854,10 +856,13 @@ void nfs4_free_lock_state(struct nfs_server *server, struct nfs4_lock_state *lsp
- static struct nfs4_lock_state *nfs4_get_lock_state(struct nfs4_state *state, fl_owner_t owner)
- {
- 	struct nfs4_lock_state *lsp, *new = NULL;
-+	const struct nfs_lockowner lockowner = {
-+		.l_owner_posix = owner,
-+	};
- 	
- 	for(;;) {
- 		spin_lock(&state->state_lock);
--		lsp = __nfs4_find_lock_state(state, owner);
-+		lsp = __nfs4_find_lock_state(state, &lockowner);
- 		if (lsp != NULL)
- 			break;
- 		if (new != NULL) {
-@@ -942,7 +947,6 @@ static int nfs4_copy_lock_stateid(nfs4_stateid *dst,
- 		const struct nfs_lockowner *lockowner)
- {
- 	struct nfs4_lock_state *lsp;
--	fl_owner_t fl_owner;
- 	int ret = -ENOENT;
- 
- 
-@@ -952,9 +956,8 @@ static int nfs4_copy_lock_stateid(nfs4_stateid *dst,
- 	if (test_bit(LK_STATE_IN_USE, &state->flags) == 0)
- 		goto out;
- 
--	fl_owner = lockowner->l_owner_posix;
- 	spin_lock(&state->state_lock);
--	lsp = __nfs4_find_lock_state(state, fl_owner);
-+	lsp = __nfs4_find_lock_state(state, lockowner);
- 	if (lsp && test_bit(NFS_LOCK_LOST, &lsp->ls_flags))
- 		ret = -EIO;
- 	else if (lsp != NULL && test_bit(NFS_LOCK_INITIALIZED, &lsp->ls_flags) != 0) {
-diff --git a/fs/nfs/pagelist.c b/fs/nfs/pagelist.c
-index 2b28dff..3579638 100644
---- a/fs/nfs/pagelist.c
-+++ b/fs/nfs/pagelist.c
-@@ -859,6 +859,7 @@ static bool nfs_match_lock_context(const struct nfs_lock_context *l1,
- 		const struct nfs_lock_context *l2)
- {
- 	return l1->lockowner.l_owner_posix == l2->lockowner.l_owner_posix
-+		&& l1->lockowner.l_owner_ofd == l2->lockowner.l_owner_ofd
- 		&& l1->lockowner.l_pid == l2->lockowner.l_pid;
- }
- 
-diff --git a/fs/nfs/write.c b/fs/nfs/write.c
-index 935244c..2d01d6c 100644
---- a/fs/nfs/write.c
-+++ b/fs/nfs/write.c
-@@ -1162,6 +1162,7 @@ int nfs_flush_incompatible(struct file *file, struct page *page)
- 		    !(list_empty_careful(&flctx->flc_posix) &&
- 		      list_empty_careful(&flctx->flc_flock))) {
- 			do_flush |= l_ctx->lockowner.l_owner_posix != current->files
-+				|| l_ctx->lockowner.l_owner_ofd != file
- 				|| l_ctx->lockowner.l_pid != current->tgid;
- 		}
- 		nfs_release_request(req);
--- 
-1.7.1
+To fix this, this set starts tracking the OFD lock owner within the
+nfs_lock_context.  Unique nfs_lock_contexts are created on distinct
+combinations of current->files, struct file, and pid.  In order to do this,
+some re-arrangement of when to create or lookup the nfs_lock_context was
+needed since the struct file pointer must be included during that creation
+or lookup.
+
+It is possible for a process to hold both an OFD and a POSIX lock on a file
+as long as they do not conflict.  There would be two stateids that could be
+selected for IO operations on that file.  In that case only the first
+stateid found to match the current lock context will ever be used.  The
+result of this is that mixed OFD and POSIX locks within the same process on
+a server enforcing mandatory locking should be avoided.  The fix for this
+probably would require a byte-range lookup of stateid when scheduling an IO
+operation, and the ability to split IO that crossed lock ranges with
+different owners.
+
+Comments and critique is welcomed.
+
+V2: fix a rebase mistake that broke builds of 1/3 and 2/3.
+
+Benjamin Coddington (3):
+  NFS: add get_nfs_lock_context, find_nfs_lock_context
+  NFS: add OFD lock owners to nfs_lock_context
+  NFSv4: use OFD lock owners in lock state lookup
+
+ fs/nfs/direct.c          |    8 ++++----
+ fs/nfs/file.c            |    2 +-
+ fs/nfs/fscache-index.c   |    4 ++--
+ fs/nfs/fscache.h         |   12 ++++++------
+ fs/nfs/inode.c           |   32 ++++++++++++++++++++++----------
+ fs/nfs/nfs42proc.c       |    8 ++++----
+ fs/nfs/nfs4proc.c        |    3 ++-
+ fs/nfs/nfs4state.c       |   21 ++++++++++++---------
+ fs/nfs/pagelist.c        |   22 ++++++++--------------
+ fs/nfs/read.c            |   38 +++++++++++++++++++++++---------------
+ fs/nfs/write.c           |   17 ++++++++++-------
+ include/linux/nfs_fs.h   |    8 +++++---
+ include/linux/nfs_page.h |    2 +-
+ 13 files changed, 100 insertions(+), 77 deletions(-)
 
