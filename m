@@ -1,37 +1,84 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f179.google.com ([209.85.223.179]:33682 "EHLO
-	mail-io0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758815AbcDAO3L (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 1 Apr 2016 10:29:11 -0400
-Received: by mail-io0-f179.google.com with SMTP id a129so145288130ioe.0
+Received: from mail-io0-f180.google.com ([209.85.223.180]:33696 "EHLO
+	mail-io0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757295AbcDAO3M (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 1 Apr 2016 10:29:12 -0400
+Received: by mail-io0-f180.google.com with SMTP id a129so145288576ioe.0
         for <linux-nfs@vger.kernel.org>; Fri, 01 Apr 2016 07:29:11 -0700 (PDT)
 From: Weston Andros Adamson <dros@primarydata.com>
 To: trond.myklebust@primarydata.com
 Cc: linux-nfs@vger.kernel.org, Weston Andros Adamson <dros@primarydata.com>
-Subject: [PATCH 0/2] FlexFiles: too many bytes w/ direct+aio retried read
-Date: Fri,  1 Apr 2016 10:29:01 -0400
-Message-Id: <1459520943-5558-1-git-send-email-dros@primarydata.com>
+Subject: [PATCH 1/2] pnfs: set NFS_IOHDR_REDO in pnfs_read_resend_pnfs
+Date: Fri,  1 Apr 2016 10:29:02 -0400
+Message-Id: <1459520943-5558-2-git-send-email-dros@primarydata.com>
+In-Reply-To: <1459520943-5558-1-git-send-email-dros@primarydata.com>
+References: <1459520943-5558-1-git-send-email-dros@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Patch 1 fixes an issue seen when using libaio with directio where if a read
-is retried (ie due to recalled layout) we return too many bytes.
-Specifically, we returned a multiple of the read size.
+Like other resend paths, mark the (old) hdr as NFS_IOHDR_REDO. This
+ensures the hdr completion function will not count the (old) hdr
+as good bytes.
 
-To reproduce, run fio with ioengine=libaio and direct=1, then revoke the
-active layout. This should hit pretty easily.
+Also, vector the error back through the hdr->task.tk_status like other
+retry calls.
 
-Patch 2 should help notice similar issues elsewhere.
+This fixes a bug with the FlexFiles layout where libaio was reporting more
+bytes read than requested.
 
-Weston Andros Adamson (2):
-  pnfs: set NFS_IOHDR_REDO in pnfs_read_resend_pnfs
-  nfs: add debug to directio "good_bytes" counting
+Signed-off-by: Weston Andros Adamson <dros@primarydata.com>
+---
+ fs/nfs/pnfs.c | 13 ++++++++-----
+ fs/nfs/pnfs.h |  2 +-
+ 2 files changed, 9 insertions(+), 6 deletions(-)
 
- fs/nfs/direct.c |  7 +++++--
- fs/nfs/pnfs.c   | 13 ++++++++-----
- fs/nfs/pnfs.h   |  2 +-
- 3 files changed, 14 insertions(+), 8 deletions(-)
-
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index 2fa483e6dbe2..da90d665b01f 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -2143,12 +2143,15 @@ pnfs_try_to_read_data(struct nfs_pgio_header *hdr,
+ }
+ 
+ /* Resend all requests through pnfs. */
+-int pnfs_read_resend_pnfs(struct nfs_pgio_header *hdr)
++void pnfs_read_resend_pnfs(struct nfs_pgio_header *hdr)
+ {
+ 	struct nfs_pageio_descriptor pgio;
+ 
+-	nfs_pageio_init_read(&pgio, hdr->inode, false, hdr->completion_ops);
+-	return nfs_pageio_resend(&pgio, hdr);
++	if (!test_and_set_bit(NFS_IOHDR_REDO, &hdr->flags)) {
++		nfs_pageio_init_read(&pgio, hdr->inode, false,
++					hdr->completion_ops);
++		hdr->task.tk_status = nfs_pageio_resend(&pgio, hdr);
++	}
+ }
+ EXPORT_SYMBOL_GPL(pnfs_read_resend_pnfs);
+ 
+@@ -2162,8 +2165,8 @@ pnfs_do_read(struct nfs_pageio_descriptor *desc, struct nfs_pgio_header *hdr)
+ 
+ 	trypnfs = pnfs_try_to_read_data(hdr, call_ops, lseg);
+ 	if (trypnfs == PNFS_TRY_AGAIN)
+-		err = pnfs_read_resend_pnfs(hdr);
+-	if (trypnfs == PNFS_NOT_ATTEMPTED || err)
++		pnfs_read_resend_pnfs(hdr);
++	if (trypnfs == PNFS_NOT_ATTEMPTED || hdr->task.tk_status)
+ 		pnfs_read_through_mds(desc, hdr);
+ }
+ 
+diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+index 1ac1db5f6dad..7222d3a35439 100644
+--- a/fs/nfs/pnfs.h
++++ b/fs/nfs/pnfs.h
+@@ -282,7 +282,7 @@ int _pnfs_return_layout(struct inode *);
+ int pnfs_commit_and_return_layout(struct inode *);
+ void pnfs_ld_write_done(struct nfs_pgio_header *);
+ void pnfs_ld_read_done(struct nfs_pgio_header *);
+-int pnfs_read_resend_pnfs(struct nfs_pgio_header *);
++void pnfs_read_resend_pnfs(struct nfs_pgio_header *);
+ struct pnfs_layout_segment *pnfs_update_layout(struct inode *ino,
+ 					       struct nfs_open_context *ctx,
+ 					       loff_t pos,
 -- 
 2.6.4 (Apple Git-63)
 
