@@ -1,168 +1,329 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:43537 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:42405 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752218AbcDARRi (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 1 Apr 2016 13:17:38 -0400
-From: Benjamin Coddington <bcodding@redhat.com>
-To: Trond Myklebust <trond.myklebust@primarydata.com>,
-        Anna Schumaker <anna.schumaker@netapp.com>,
-        Jeff Layton <jlayton@poochiereds.net>
+	id S1752044AbcDARqu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 1 Apr 2016 13:46:50 -0400
+From: Dave Wysochanski <dwysocha@redhat.com>
+To: Trond Myklebust <trond.myklebust@primarydata.com>
 Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH 1/3 V2] NFS: add get_nfs_lock_context, find_nfs_lock_context
-Date: Fri,  1 Apr 2016 13:17:35 -0400
-Message-Id: <46fdbda936966a105e4c019226a41dacb3ae7948.1459530606.git.bcodding@redhat.com>
-In-Reply-To: <cover.1459530606.git.bcodding@redhat.com>
-References: <cover.1459530606.git.bcodding@redhat.com>
-In-Reply-To: <cover.1459530606.git.bcodding@redhat.com>
-References: <cover.1459530606.git.bcodding@redhat.com>
+Subject: [PATCH] NFS: Save struct inode * inside nfs_commit_info to clarify usage of i_lock
+Date: Fri,  1 Apr 2016 13:45:09 -0400
+Message-Id: <1459532709-2792-1-git-send-email-dwysocha@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Create a method for acquiring a nfs_lock_context reference which
-will be used later within fscache, and rename nfs_get_lock_context to
-nfs_find_lock_context to prepare it for finding or allocating a lock
-context based upon a file pointer.
+Commit ea2cf22 created nfs_commit_info and saved &inode->i_lock inside
+this NFS specific structure.  This obscures the usage of i_lock.
+Instead, save struct inode * so later it's clear the spinlock taken is
+i_lock.
 
-Signed-off-by: Benjamin Coddington <bcodding@redhat.com>
+Should be no functional change.
+
+Signed-off-by: Dave Wysochanski <dwysocha@redhat.com>
 ---
- fs/nfs/direct.c        |    4 ++--
- fs/nfs/file.c          |    2 +-
- fs/nfs/inode.c         |   11 +++++++++--
- fs/nfs/nfs42proc.c     |    8 ++++----
- fs/nfs/pagelist.c      |    2 +-
- include/linux/nfs_fs.h |    3 ++-
- 6 files changed, 19 insertions(+), 11 deletions(-)
+ fs/nfs/direct.c                        | 10 +++++-----
+ fs/nfs/filelayout/filelayout.c         |  4 ++--
+ fs/nfs/flexfilelayout/flexfilelayout.c |  4 ++--
+ fs/nfs/pnfs_nfs.c                      | 32 ++++++++++++++++----------------
+ fs/nfs/write.c                         | 16 ++++++++--------
+ include/linux/nfs_xdr.h                |  2 +-
+ 6 files changed, 34 insertions(+), 34 deletions(-)
 
 diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
-index 7a0cfd3..5f833fa 100644
+index 7a0cfd3..13d49d5 100644
 --- a/fs/nfs/direct.c
 +++ b/fs/nfs/direct.c
-@@ -596,7 +596,7 @@ ssize_t nfs_file_direct_read(struct kiocb *iocb, struct iov_iter *iter,
- 	dreq->bytes_left = count;
- 	dreq->io_start = pos;
- 	dreq->ctx = get_nfs_open_context(nfs_file_open_context(iocb->ki_filp));
--	l_ctx = nfs_get_lock_context(dreq->ctx);
-+	l_ctx = nfs_find_lock_context(dreq->ctx);
- 	if (IS_ERR(l_ctx)) {
- 		result = PTR_ERR(l_ctx);
- 		goto out_release;
-@@ -1029,7 +1029,7 @@ ssize_t nfs_file_direct_write(struct kiocb *iocb, struct iov_iter *iter)
- 	dreq->bytes_left = iov_iter_count(iter);
- 	dreq->io_start = pos;
- 	dreq->ctx = get_nfs_open_context(nfs_file_open_context(iocb->ki_filp));
--	l_ctx = nfs_get_lock_context(dreq->ctx);
-+	l_ctx = nfs_find_lock_context(dreq->ctx);
- 	if (IS_ERR(l_ctx)) {
- 		result = PTR_ERR(l_ctx);
- 		goto out_release;
-diff --git a/fs/nfs/file.c b/fs/nfs/file.c
-index 89bf093..2ad3bb6 100644
---- a/fs/nfs/file.c
-+++ b/fs/nfs/file.c
-@@ -756,7 +756,7 @@ do_unlk(struct file *filp, int cmd, struct file_lock *fl, int is_local)
- 	 */
- 	vfs_fsync(filp, 0);
- 
--	l_ctx = nfs_get_lock_context(nfs_file_open_context(filp));
-+	l_ctx = nfs_find_lock_context(nfs_file_open_context(filp));
- 	if (!IS_ERR(l_ctx)) {
- 		status = nfs_iocounter_wait(l_ctx);
- 		nfs_put_lock_context(l_ctx);
-diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
-index 33d18c4..b3bd033 100644
---- a/fs/nfs/inode.c
-+++ b/fs/nfs/inode.c
-@@ -725,7 +725,7 @@ static struct nfs_lock_context *__nfs_find_lock_context(struct nfs_open_context
- 	return NULL;
+@@ -275,7 +275,7 @@ static void nfs_direct_release_pages(struct page **pages, unsigned int npages)
+ void nfs_init_cinfo_from_dreq(struct nfs_commit_info *cinfo,
+ 			      struct nfs_direct_req *dreq)
+ {
+-	cinfo->lock = &dreq->inode->i_lock;
++	cinfo->inode = dreq->inode;
+ 	cinfo->mds = &dreq->mds_cinfo;
+ 	cinfo->ds = &dreq->ds_cinfo;
+ 	cinfo->dreq = dreq;
+@@ -632,13 +632,13 @@ nfs_direct_write_scan_commit_list(struct inode *inode,
+ 				  struct list_head *list,
+ 				  struct nfs_commit_info *cinfo)
+ {
+-	spin_lock(cinfo->lock);
++	spin_lock(&cinfo->inode->i_lock);
+ #ifdef CONFIG_NFS_V4_1
+ 	if (cinfo->ds != NULL && cinfo->ds->nwritten != 0)
+ 		NFS_SERVER(inode)->pnfs_curr_ld->recover_commit_reqs(list, cinfo);
+ #endif
+ 	nfs_scan_commit_list(&cinfo->mds->list, list, cinfo, 0);
+-	spin_unlock(cinfo->lock);
++	spin_unlock(&cinfo->inode->i_lock);
  }
  
--struct nfs_lock_context *nfs_get_lock_context(struct nfs_open_context *ctx)
-+struct nfs_lock_context *nfs_find_lock_context(struct nfs_open_context *ctx)
- {
- 	struct nfs_lock_context *res, *new = NULL;
- 	struct inode *inode = d_inode(ctx->dentry);
-@@ -751,7 +751,14 @@ struct nfs_lock_context *nfs_get_lock_context(struct nfs_open_context *ctx)
- 	kfree(new);
- 	return res;
+ static void nfs_direct_write_reschedule(struct nfs_direct_req *dreq)
+@@ -673,13 +673,13 @@ static void nfs_direct_write_reschedule(struct nfs_direct_req *dreq)
+ 		if (!nfs_pageio_add_request(&desc, req)) {
+ 			nfs_list_remove_request(req);
+ 			nfs_list_add_request(req, &failed);
+-			spin_lock(cinfo.lock);
++			spin_lock(&cinfo.inode->i_lock);
+ 			dreq->flags = 0;
+ 			if (desc.pg_error < 0)
+ 				dreq->error = desc.pg_error;
+ 			else
+ 				dreq->error = -EIO;
+-			spin_unlock(cinfo.lock);
++			spin_unlock(&cinfo.inode->i_lock);
+ 		}
+ 		nfs_release_request(req);
+ 	}
+diff --git a/fs/nfs/filelayout/filelayout.c b/fs/nfs/filelayout/filelayout.c
+index 3384dc8..3e50057 100644
+--- a/fs/nfs/filelayout/filelayout.c
++++ b/fs/nfs/filelayout/filelayout.c
+@@ -795,7 +795,7 @@ filelayout_alloc_commit_info(struct pnfs_layout_segment *lseg,
+ 		buckets[i].direct_verf.committed = NFS_INVALID_STABLE_HOW;
+ 	}
+ 
+-	spin_lock(cinfo->lock);
++	spin_lock(&cinfo->inode->i_lock);
+ 	if (cinfo->ds->nbuckets >= size)
+ 		goto out;
+ 	for (i = 0; i < cinfo->ds->nbuckets; i++) {
+@@ -811,7 +811,7 @@ filelayout_alloc_commit_info(struct pnfs_layout_segment *lseg,
+ 	swap(cinfo->ds->buckets, buckets);
+ 	cinfo->ds->nbuckets = size;
+ out:
+-	spin_unlock(cinfo->lock);
++	spin_unlock(&cinfo->inode->i_lock);
+ 	kfree(buckets);
+ 	return 0;
  }
--EXPORT_SYMBOL_GPL(nfs_get_lock_context);
-+EXPORT_SYMBOL_GPL(nfs_find_lock_context);
-+
-+struct nfs_lock_context *get_nfs_lock_context(struct nfs_lock_context *l_ctx)
-+{
-+	atomic_inc(&l_ctx->count);
-+	return l_ctx;
-+}
-+EXPORT_SYMBOL_GPL(get_nfs_lock_context);
+diff --git a/fs/nfs/flexfilelayout/flexfilelayout.c b/fs/nfs/flexfilelayout/flexfilelayout.c
+index 0cb1abd..3b398f7 100644
+--- a/fs/nfs/flexfilelayout/flexfilelayout.c
++++ b/fs/nfs/flexfilelayout/flexfilelayout.c
+@@ -745,7 +745,7 @@ ff_layout_alloc_commit_info(struct pnfs_layout_segment *lseg,
+ 	else {
+ 		int i;
  
- void nfs_put_lock_context(struct nfs_lock_context *l_ctx)
+-		spin_lock(cinfo->lock);
++		spin_lock(&cinfo->inode->i_lock);
+ 		if (cinfo->ds->nbuckets != 0)
+ 			kfree(buckets);
+ 		else {
+@@ -759,7 +759,7 @@ ff_layout_alloc_commit_info(struct pnfs_layout_segment *lseg,
+ 					NFS_INVALID_STABLE_HOW;
+ 			}
+ 		}
+-		spin_unlock(cinfo->lock);
++		spin_unlock(&cinfo->inode->i_lock);
+ 		return 0;
+ 	}
+ }
+diff --git a/fs/nfs/pnfs_nfs.c b/fs/nfs/pnfs_nfs.c
+index 4aaed89..d2a7c9f 100644
+--- a/fs/nfs/pnfs_nfs.c
++++ b/fs/nfs/pnfs_nfs.c
+@@ -61,7 +61,7 @@ EXPORT_SYMBOL_GPL(pnfs_generic_commit_release);
+ 
+ /* The generic layer is about to remove the req from the commit list.
+  * If this will make the bucket empty, it will need to put the lseg reference.
+- * Note this must be called holding the inode (/cinfo) lock
++ * Note this must be called holding i_lock
+  */
+ void
+ pnfs_generic_clear_request_commit(struct nfs_page *req,
+@@ -98,7 +98,7 @@ pnfs_generic_transfer_commit_list(struct list_head *src, struct list_head *dst,
+ 		if (!nfs_lock_request(req))
+ 			continue;
+ 		kref_get(&req->wb_kref);
+-		if (cond_resched_lock(cinfo->lock))
++		if (cond_resched_lock(&cinfo->inode->i_lock))
+ 			list_safe_reset_next(req, tmp, wb_list);
+ 		nfs_request_remove_commit_list(req, cinfo);
+ 		clear_bit(PG_COMMIT_TO_DS, &req->wb_flags);
+@@ -119,7 +119,7 @@ pnfs_generic_scan_ds_commit_list(struct pnfs_commit_bucket *bucket,
+ 	struct list_head *dst = &bucket->committing;
+ 	int ret;
+ 
+-	lockdep_assert_held(cinfo->lock);
++	lockdep_assert_held(&cinfo->inode->i_lock);
+ 	ret = pnfs_generic_transfer_commit_list(src, dst, cinfo, max);
+ 	if (ret) {
+ 		cinfo->ds->nwritten -= ret;
+@@ -142,7 +142,7 @@ int pnfs_generic_scan_commit_lists(struct nfs_commit_info *cinfo,
  {
-diff --git a/fs/nfs/nfs42proc.c b/fs/nfs/nfs42proc.c
-index dff8346..f9b0f25 100644
---- a/fs/nfs/nfs42proc.c
-+++ b/fs/nfs/nfs42proc.c
-@@ -61,7 +61,7 @@ static int nfs42_proc_fallocate(struct rpc_message *msg, struct file *filep,
- 	struct nfs_lock_context *lock;
- 	int err;
+ 	int i, rv = 0, cnt;
  
--	lock = nfs_get_lock_context(nfs_file_open_context(filep));
-+	lock = nfs_find_lock_context(nfs_file_open_context(filep));
- 	if (IS_ERR(lock))
- 		return PTR_ERR(lock);
+-	lockdep_assert_held(cinfo->lock);
++	lockdep_assert_held(&cinfo->inode->i_lock);
+ 	for (i = 0; i < cinfo->ds->nbuckets && max != 0; i++) {
+ 		cnt = pnfs_generic_scan_ds_commit_list(&cinfo->ds->buckets[i],
+ 						       cinfo, max);
+@@ -161,16 +161,16 @@ void pnfs_generic_recover_commit_reqs(struct list_head *dst,
+ 	struct pnfs_layout_segment *freeme;
+ 	int i;
  
-@@ -171,7 +171,7 @@ loff_t nfs42_proc_llseek(struct file *filep, loff_t offset, int whence)
- 	struct nfs_lock_context *lock;
- 	loff_t err;
+-	lockdep_assert_held(cinfo->lock);
++	lockdep_assert_held(&cinfo->inode->i_lock);
+ restart:
+ 	for (i = 0, b = cinfo->ds->buckets; i < cinfo->ds->nbuckets; i++, b++) {
+ 		if (pnfs_generic_transfer_commit_list(&b->written, dst,
+ 						      cinfo, 0)) {
+ 			freeme = b->wlseg;
+ 			b->wlseg = NULL;
+-			spin_unlock(cinfo->lock);
++			spin_unlock(&cinfo->inode->i_lock);
+ 			pnfs_put_lseg(freeme);
+-			spin_lock(cinfo->lock);
++			spin_lock(&cinfo->inode->i_lock);
+ 			goto restart;
+ 		}
+ 	}
+@@ -186,7 +186,7 @@ static void pnfs_generic_retry_commit(struct nfs_commit_info *cinfo, int idx)
+ 	LIST_HEAD(pages);
+ 	int i;
  
--	lock = nfs_get_lock_context(nfs_file_open_context(filep));
-+	lock = nfs_find_lock_context(nfs_file_open_context(filep));
- 	if (IS_ERR(lock))
- 		return PTR_ERR(lock);
+-	spin_lock(cinfo->lock);
++	spin_lock(&cinfo->inode->i_lock);
+ 	for (i = idx; i < fl_cinfo->nbuckets; i++) {
+ 		bucket = &fl_cinfo->buckets[i];
+ 		if (list_empty(&bucket->committing))
+@@ -194,12 +194,12 @@ static void pnfs_generic_retry_commit(struct nfs_commit_info *cinfo, int idx)
+ 		freeme = bucket->clseg;
+ 		bucket->clseg = NULL;
+ 		list_splice_init(&bucket->committing, &pages);
+-		spin_unlock(cinfo->lock);
++		spin_unlock(&cinfo->inode->i_lock);
+ 		nfs_retry_commit(&pages, freeme, cinfo, i);
+ 		pnfs_put_lseg(freeme);
+-		spin_lock(cinfo->lock);
++		spin_lock(&cinfo->inode->i_lock);
+ 	}
+-	spin_unlock(cinfo->lock);
++	spin_unlock(&cinfo->inode->i_lock);
+ }
  
-@@ -365,14 +365,14 @@ int nfs42_proc_clone(struct file *src_f, struct file *dst_f,
- 	if (!nfs_server_capable(inode, NFS_CAP_CLONE))
- 		return -EOPNOTSUPP;
+ static unsigned int
+@@ -238,11 +238,11 @@ void pnfs_fetch_commit_bucket_list(struct list_head *pages,
+ 	struct pnfs_commit_bucket *bucket;
  
--	src_lock = nfs_get_lock_context(nfs_file_open_context(src_f));
-+	src_lock = nfs_find_lock_context(nfs_file_open_context(src_f));
- 	if (IS_ERR(src_lock))
- 		return PTR_ERR(src_lock);
+ 	bucket = &cinfo->ds->buckets[data->ds_commit_index];
+-	spin_lock(cinfo->lock);
++	spin_lock(&cinfo->inode->i_lock);
+ 	list_splice_init(&bucket->committing, pages);
+ 	data->lseg = bucket->clseg;
+ 	bucket->clseg = NULL;
+-	spin_unlock(cinfo->lock);
++	spin_unlock(&cinfo->inode->i_lock);
  
- 	src_exception.inode = file_inode(src_f);
- 	src_exception.state = src_lock->open_context->state;
+ }
  
--	dst_lock = nfs_get_lock_context(nfs_file_open_context(dst_f));
-+	dst_lock = nfs_find_lock_context(nfs_file_open_context(dst_f));
- 	if (IS_ERR(dst_lock)) {
- 		err = PTR_ERR(dst_lock);
- 		goto out_put_src_lock;
-diff --git a/fs/nfs/pagelist.c b/fs/nfs/pagelist.c
-index 8ce4f61..b3e5366 100644
---- a/fs/nfs/pagelist.c
-+++ b/fs/nfs/pagelist.c
-@@ -329,7 +329,7 @@ nfs_create_request(struct nfs_open_context *ctx, struct page *page,
- 		return ERR_PTR(-ENOMEM);
+@@ -874,12 +874,12 @@ pnfs_layout_mark_request_commit(struct nfs_page *req,
+ 	struct list_head *list;
+ 	struct pnfs_commit_bucket *buckets;
  
- 	/* get lock context early so we can deal with alloc failures */
--	l_ctx = nfs_get_lock_context(ctx);
-+	l_ctx = nfs_find_lock_context(ctx);
- 	if (IS_ERR(l_ctx)) {
- 		nfs_page_free(req);
- 		return ERR_CAST(l_ctx);
-diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
-index 67300f8..8f11e2e 100644
---- a/include/linux/nfs_fs.h
-+++ b/include/linux/nfs_fs.h
-@@ -365,7 +365,8 @@ extern struct nfs_open_context *alloc_nfs_open_context(struct dentry *dentry, fm
- extern void nfs_inode_attach_open_context(struct nfs_open_context *ctx);
- extern void nfs_file_set_open_context(struct file *filp, struct nfs_open_context *ctx);
- extern void nfs_file_clear_open_context(struct file *flip);
--extern struct nfs_lock_context *nfs_get_lock_context(struct nfs_open_context *ctx);
-+extern struct nfs_lock_context *nfs_find_lock_context(struct nfs_open_context *ctx);
-+extern struct nfs_lock_context *get_nfs_lock_context(struct nfs_lock_context *l_ctx);
- extern void nfs_put_lock_context(struct nfs_lock_context *l_ctx);
- extern u64 nfs_compat_user_ino64(u64 fileid);
- extern void nfs_fattr_init(struct nfs_fattr *fattr);
+-	spin_lock(cinfo->lock);
++	spin_lock(&cinfo->inode->i_lock);
+ 	buckets = cinfo->ds->buckets;
+ 	list = &buckets[ds_commit_idx].written;
+ 	if (list_empty(list)) {
+ 		if (!pnfs_is_valid_lseg(lseg)) {
+-			spin_unlock(cinfo->lock);
++			spin_unlock(&cinfo->inode->i_lock);
+ 			cinfo->completion_ops->resched_write(cinfo, req);
+ 			return;
+ 		}
+@@ -896,7 +896,7 @@ pnfs_layout_mark_request_commit(struct nfs_page *req,
+ 	cinfo->ds->nwritten++;
+ 
+ 	nfs_request_add_commit_list_locked(req, list, cinfo);
+-	spin_unlock(cinfo->lock);
++	spin_unlock(&cinfo->inode->i_lock);
+ 	nfs_mark_page_unstable(req->wb_page, cinfo);
+ }
+ EXPORT_SYMBOL_GPL(pnfs_layout_mark_request_commit);
+diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+index 5754835..21753f8 100644
+--- a/fs/nfs/write.c
++++ b/fs/nfs/write.c
+@@ -804,7 +804,7 @@ nfs_page_search_commits_for_head_request_locked(struct nfs_inode *nfsi,
+  * number of outstanding requests requiring a commit as well as
+  * the MM page stats.
+  *
+- * The caller must hold the cinfo->lock, and the nfs_page lock.
++ * The caller must hold cinfo->inode->i_lock, and the nfs_page lock.
+  */
+ void
+ nfs_request_add_commit_list_locked(struct nfs_page *req, struct list_head *dst,
+@@ -832,9 +832,9 @@ EXPORT_SYMBOL_GPL(nfs_request_add_commit_list_locked);
+ void
+ nfs_request_add_commit_list(struct nfs_page *req, struct nfs_commit_info *cinfo)
+ {
+-	spin_lock(cinfo->lock);
++	spin_lock(&cinfo->inode->i_lock);
+ 	nfs_request_add_commit_list_locked(req, &cinfo->mds->list, cinfo);
+-	spin_unlock(cinfo->lock);
++	spin_unlock(&cinfo->inode->i_lock);
+ 	nfs_mark_page_unstable(req->wb_page, cinfo);
+ }
+ EXPORT_SYMBOL_GPL(nfs_request_add_commit_list);
+@@ -864,7 +864,7 @@ EXPORT_SYMBOL_GPL(nfs_request_remove_commit_list);
+ static void nfs_init_cinfo_from_inode(struct nfs_commit_info *cinfo,
+ 				      struct inode *inode)
+ {
+-	cinfo->lock = &inode->i_lock;
++	cinfo->inode = inode;
+ 	cinfo->mds = &NFS_I(inode)->commit_info;
+ 	cinfo->ds = pnfs_get_ds_info(inode);
+ 	cinfo->dreq = NULL;
+@@ -967,7 +967,7 @@ nfs_reqs_to_commit(struct nfs_commit_info *cinfo)
+ 	return cinfo->mds->ncommit;
+ }
+ 
+-/* cinfo->lock held by caller */
++/* cinfo->inode->i_lock held by caller */
+ int
+ nfs_scan_commit_list(struct list_head *src, struct list_head *dst,
+ 		     struct nfs_commit_info *cinfo, int max)
+@@ -979,7 +979,7 @@ nfs_scan_commit_list(struct list_head *src, struct list_head *dst,
+ 		if (!nfs_lock_request(req))
+ 			continue;
+ 		kref_get(&req->wb_kref);
+-		if (cond_resched_lock(cinfo->lock))
++		if (cond_resched_lock(&cinfo->inode->i_lock))
+ 			list_safe_reset_next(req, tmp, wb_list);
+ 		nfs_request_remove_commit_list(req, cinfo);
+ 		nfs_list_add_request(req, dst);
+@@ -1005,7 +1005,7 @@ nfs_scan_commit(struct inode *inode, struct list_head *dst,
+ {
+ 	int ret = 0;
+ 
+-	spin_lock(cinfo->lock);
++	spin_lock(&cinfo->inode->i_lock);
+ 	if (cinfo->mds->ncommit > 0) {
+ 		const int max = INT_MAX;
+ 
+@@ -1013,7 +1013,7 @@ nfs_scan_commit(struct inode *inode, struct list_head *dst,
+ 					   cinfo, max);
+ 		ret += pnfs_scan_commit_lists(inode, cinfo, max - ret);
+ 	}
+-	spin_unlock(cinfo->lock);
++	spin_unlock(&cinfo->inode->i_lock);
+ 	return ret;
+ }
+ 
+diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+index d320906..cb9982d 100644
+--- a/include/linux/nfs_xdr.h
++++ b/include/linux/nfs_xdr.h
+@@ -1431,7 +1431,7 @@ struct nfs_commit_completion_ops {
+ };
+ 
+ struct nfs_commit_info {
+-	spinlock_t			*lock;	/* inode->i_lock */
++	struct inode 			*inode;	/* Needed for inode->i_lock */
+ 	struct nfs_mds_commit_info	*mds;
+ 	struct pnfs_ds_commit_info	*ds;
+ 	struct nfs_direct_req		*dreq;	/* O_DIRECT request */
 -- 
-1.7.1
+2.5.5
 
