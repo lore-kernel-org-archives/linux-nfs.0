@@ -1,329 +1,223 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:42405 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752044AbcDARqu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 1 Apr 2016 13:46:50 -0400
-From: Dave Wysochanski <dwysocha@redhat.com>
+Received: from mail-io0-f171.google.com ([209.85.223.171]:33507 "EHLO
+	mail-io0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751210AbcDATij (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 1 Apr 2016 15:38:39 -0400
+Received: by mail-io0-f171.google.com with SMTP id a129so155006649ioe.0
+        for <linux-nfs@vger.kernel.org>; Fri, 01 Apr 2016 12:38:38 -0700 (PDT)
+MIME-Version: 1.0
+In-Reply-To: <CAN-5tyEn1Z46VX6JENoGmMMttNM9_TXyoZDfsT+OibhgY0A9hA@mail.gmail.com>
+References: <CAN-5tyHEt93VxL2Ysikgn8iZ_auWEWGdGkZ94LMBOa62wHDWMA@mail.gmail.com>
+	<CAN-5tyHrYxT-V2fms9vga_Ed+bQ3E+xk7A8fK0N1xYEzm_HtNg@mail.gmail.com>
+	<CAHQdGtTxkUjQ+yLip_DrZB305U3NsZp8ZQ3VvkqgJhACPPM+Bg@mail.gmail.com>
+	<CAN-5tyGdaQDNF3ALNNBCTmyxeb8n0VCg-4CiS0rLXM+tQbiRUA@mail.gmail.com>
+	<CAHQdGtRUFfHZCd3foKWY9nq7ULCSY=RWZM4tgQ3BsE3cnxYD3A@mail.gmail.com>
+	<CAN-5tyE9iyRCxMrX1=QkynmS9SEmM1ZSGB0wey7tsVnSYrfMcg@mail.gmail.com>
+	<CAHQdGtQjV2u+RrXiM6iKtz9in4zdDWDWi2gnj47-+WSdG=JKzw@mail.gmail.com>
+	<CAN-5tyE4OWJrBuP73tMab8NAy0_NzfZvVpSZQeSmpQ+qoDpcjQ@mail.gmail.com>
+	<CAHQdGtRPydhrqmqsxLSCAsYHS5iZ1FBO_7uthF_N43N+as2Brw@mail.gmail.com>
+	<CAN-5tyEn1Z46VX6JENoGmMMttNM9_TXyoZDfsT+OibhgY0A9hA@mail.gmail.com>
+Date: Fri, 1 Apr 2016 15:38:38 -0400
+Message-ID: <CAN-5tyHS6J=2gV0HoM67VhqF1i4JYoyH3XWnWW=7FDDxwfbvqg@mail.gmail.com>
+Subject: Re: commit 7c2dad99d6 "Don't let the ctime override attribute barriers"
+From: Olga Kornievskaia <aglo@umich.edu>
 To: Trond Myklebust <trond.myklebust@primarydata.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH] NFS: Save struct inode * inside nfs_commit_info to clarify usage of i_lock
-Date: Fri,  1 Apr 2016 13:45:09 -0400
-Message-Id: <1459532709-2792-1-git-send-email-dwysocha@redhat.com>
+Cc: linux-nfs <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Commit ea2cf22 created nfs_commit_info and saved &inode->i_lock inside
-this NFS specific structure.  This obscures the usage of i_lock.
-Instead, save struct inode * so later it's clear the spinlock taken is
-i_lock.
+On Thu, Mar 31, 2016 at 11:27 AM, Olga Kornievskaia <aglo@umich.edu> wrote:
+> On Thu, Mar 31, 2016 at 11:16 AM, Trond Myklebust
+> <trond.myklebust@primarydata.com> wrote:
+>> On Thu, Mar 31, 2016 at 10:36 AM, Olga Kornievskaia <aglo@umich.edu> wrote:
+>>> On Thu, Mar 31, 2016 at 10:21 AM, Trond Myklebust
+>>> <trond.myklebust@primarydata.com> wrote:
+>>>> On Thu, Mar 31, 2016 at 10:15 AM, Olga Kornievskaia <aglo@umich.edu> wrote:
+>>>>> On Wed, Mar 30, 2016 at 7:32 PM, Trond Myklebust
+>>>>> <trond.myklebust@primarydata.com> wrote:
+>>>>>> On Wed, Mar 30, 2016 at 5:51 PM, Olga Kornievskaia <aglo@umich.edu> wrote:
+>>>>>>> On Wed, Mar 30, 2016 at 5:45 PM, Trond Myklebust
+>>>>>>> <trond.myklebust@primarydata.com> wrote:
+>>>>>>>> On Wed, Mar 30, 2016 at 5:02 PM, Olga Kornievskaia <aglo@umich.edu> wrote:
+>>>>>>>>> On Tue, Mar 29, 2016 at 3:47 PM, Olga Kornievskaia <aglo@umich.edu> wrote:
+>>>>>>>>>> I think that patch introduces a problem. Since the checking for the
+>>>>>>>>>> change in ctime was removed by the commit it leads to (improper) cache
+>>>>>>>>>> invalidation in NFSv3.
+>>>>>>>>>>
+>>>>>>>>>> Test is write 10240bytes to the server then read it. Expectation is
+>>>>>>>>>> not to see read on the wire. In the test the write is spread over
+>>>>>>>>>> 3rpcs.
+>>>>>>>>>>
+>>>>>>>>>> On the 1nd reply
+>>>>>>>>>> fattr->gencount=33 nfsi->gencount=32 generation_counter=35
+>>>>>>>>>> On the 2nd reply
+>>>>>>>>>> fattr->gencount=34 nfsi->gencount=36 generation_counter=36
+>>>>>>>>>>
+>>>>>>>>>> In the code when processing 2nd reply,
+>>>>>>>>>> nfs_post_op_update_inode_force_wcc_locked() calls into
+>>>>>>>>>> nfs_inode_attrs_need_update() it determines that it doesn't need to
+>>>>>>>>>> update them (even though the size and the time have changed). so it
+>>>>>>>>>> doesn't call nfs_wcc_update_inode() so the inode->i_version doesn't
+>>>>>>>>>> get set to the ctime that was received in the 2nd reply.
+>>>>>>>>>>
+>>>>>>>>>> On the 3rd reply
+>>>>>>>>>> fattr->gencount=37 nfsi->gencount=36 generation_counter=37
+>>>>>>>>>>
+>>>>>>>>>> It leads to nfs_inode_attrs_need_update() returns 1 and in the
+>>>>>>>>>> nfs_update_inode() the difference in the ctimes leads to invalidation.
+>>>>>>>>>> fattr->gencount was update from nfs_writeback_update_node() ->
+>>>>>>>>>> nfs_post_op_update_inode_force_wcc() calling nfs_fattr_set_barrier().
+>>>>>>>>>>
+>>>>>>>>>> I'm not sure what appropriate values for "gencount" should have been.
+>>>>>>>>>> But if the check for nfs_ctime_need_update() was still there in
+>>>>>>>>>> nfs_inode_attrs_need_update() then the 2nd reply would have
+>>>>>>>>>> appropriately updated the i_version and not lead to invalidation.
+>>>>>>>>>
+>>>>>>>>> Would like to add that this problem is not seen against the Linux
+>>>>>>>>> server because it doesn't send "before" attributes. So code doesn't
+>>>>>>>>> set the "pre_change_attr" which later doesn't make what's stored in
+>>>>>>>>> inode->i_version.
+>>>>>>>>>
+>>>>>>>>> The problem also not seen for v4 because pre_change_attr is not gotten
+>>>>>>>>> from the "before" attributes but instead from the previous value in
+>>>>>>>>> inode->i_version which is then compared to the itself.
+>>>>>>>>>
+>>>>>>>>> If reverting the problematic commit is not the solution, then how
+>>>>>>>>> about ignoring the "before" ctime attributes sent by the server. This
+>>>>>>>>> also helps with the out-of-order RPCs.
+>>>>>>>>
+>>>>>>>> Why bother doing that on the client? These attributes aren't mandatory
+>>>>>>>> to send...
+>>>>>>>>
+>>>>>>>
+>>>>>>> Leads to poor client performances. Every large enough read invalidates
+>>>>>>> the cache so all the reads go to the server always.
+>>>>>>
+>>>>>> I'm saying why not just turn off the WCC functionality on the server then.
+>>>>>
+>>>>> One reasoning could be that providing cache consistency is client's
+>>>>> responsibility. Server only provides needed information.
+>>>>
+>>>> Sure, but the server is the single point of control for all clients.
+>>>
+>>> What about other client implementations that might use before attributes?
+>>>
+>>>>> While I can see that handling out-of-order RPCs might not be worth it
+>>>>> because hopefully it doesn't happen often but handling in order RPCs
+>>>>> and always invalidating the cache is a bug.
+>>>>
+>>>> We don't invalidate on in-order RPCs.
+>>>
+>>> Yes we do and that was the point of my initial post. The commit
+>>> introduced a regression.
+>>
+>> No we don't. If the RPC replies were received in the order in which
+>> they were processed on the server, then the WCC information would
+>> match what is currently in the client cache. Your patch turns off WCC
+>> processing on the client in order to avoid that ordering problem by
+>> having the client fill in WCC info that matches what is in its cache.
+>
+> The RPCs are returned in order.
+>
+> The problem is when the 2nd reply is gotten the attributes are not
+> updated. When the 3rd reply is processed it finds the attributes no
+> longer match.
+>
+> The attributes should have been updated. They would have been updated
+> if the patch was still present.
+>
+> Enabling the check lead to a problem Chuck reported. I'm reporting
+> that disabling it also leads to a problem.
+>
+> My proposal to turn off WCC was in attempt to solve the problem by
+> having something that also solves Chuck problem.
 
-Should be no functional change.
+Here's an annotated debugging info showing that attributes are not
+being updated due to barriers:
 
-Signed-off-by: Dave Wysochanski <dwysocha@redhat.com>
----
- fs/nfs/direct.c                        | 10 +++++-----
- fs/nfs/filelayout/filelayout.c         |  4 ++--
- fs/nfs/flexfilelayout/flexfilelayout.c |  4 ++--
- fs/nfs/pnfs_nfs.c                      | 32 ++++++++++++++++----------------
- fs/nfs/write.c                         | 16 ++++++++--------
- include/linux/nfs_xdr.h                |  2 +-
- 6 files changed, 34 insertions(+), 34 deletions(-)
+Please look for (***)  but it shows that
+gencounts are initialized for each of the 3 outgoing writes.
+when 1st reply is processed the fattr->gencount is less than inode's
+so the attributes are then updated.
+then the nfs_update_inode() bumps the inode's gencount to the next value. WHY??
+because the counter is bumped now when the 2nd reply is gotten the
+fattr->gencount is now less and attributes are not update.
+Now inode has outdated attributes!
 
-diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
-index 7a0cfd3..13d49d5 100644
---- a/fs/nfs/direct.c
-+++ b/fs/nfs/direct.c
-@@ -275,7 +275,7 @@ static void nfs_direct_release_pages(struct page **pages, unsigned int npages)
- void nfs_init_cinfo_from_dreq(struct nfs_commit_info *cinfo,
- 			      struct nfs_direct_req *dreq)
- {
--	cinfo->lock = &dreq->inode->i_lock;
-+	cinfo->inode = dreq->inode;
- 	cinfo->mds = &dreq->mds_cinfo;
- 	cinfo->ds = &dreq->ds_cinfo;
- 	cinfo->dreq = dreq;
-@@ -632,13 +632,13 @@ nfs_direct_write_scan_commit_list(struct inode *inode,
- 				  struct list_head *list,
- 				  struct nfs_commit_info *cinfo)
- {
--	spin_lock(cinfo->lock);
-+	spin_lock(&cinfo->inode->i_lock);
- #ifdef CONFIG_NFS_V4_1
- 	if (cinfo->ds != NULL && cinfo->ds->nwritten != 0)
- 		NFS_SERVER(inode)->pnfs_curr_ld->recover_commit_reqs(list, cinfo);
- #endif
- 	nfs_scan_commit_list(&cinfo->mds->list, list, cinfo, 0);
--	spin_unlock(cinfo->lock);
-+	spin_unlock(&cinfo->inode->i_lock);
- }
- 
- static void nfs_direct_write_reschedule(struct nfs_direct_req *dreq)
-@@ -673,13 +673,13 @@ static void nfs_direct_write_reschedule(struct nfs_direct_req *dreq)
- 		if (!nfs_pageio_add_request(&desc, req)) {
- 			nfs_list_remove_request(req);
- 			nfs_list_add_request(req, &failed);
--			spin_lock(cinfo.lock);
-+			spin_lock(&cinfo.inode->i_lock);
- 			dreq->flags = 0;
- 			if (desc.pg_error < 0)
- 				dreq->error = desc.pg_error;
- 			else
- 				dreq->error = -EIO;
--			spin_unlock(cinfo.lock);
-+			spin_unlock(&cinfo.inode->i_lock);
- 		}
- 		nfs_release_request(req);
- 	}
-diff --git a/fs/nfs/filelayout/filelayout.c b/fs/nfs/filelayout/filelayout.c
-index 3384dc8..3e50057 100644
---- a/fs/nfs/filelayout/filelayout.c
-+++ b/fs/nfs/filelayout/filelayout.c
-@@ -795,7 +795,7 @@ filelayout_alloc_commit_info(struct pnfs_layout_segment *lseg,
- 		buckets[i].direct_verf.committed = NFS_INVALID_STABLE_HOW;
- 	}
- 
--	spin_lock(cinfo->lock);
-+	spin_lock(&cinfo->inode->i_lock);
- 	if (cinfo->ds->nbuckets >= size)
- 		goto out;
- 	for (i = 0; i < cinfo->ds->nbuckets; i++) {
-@@ -811,7 +811,7 @@ filelayout_alloc_commit_info(struct pnfs_layout_segment *lseg,
- 	swap(cinfo->ds->buckets, buckets);
- 	cinfo->ds->nbuckets = size;
- out:
--	spin_unlock(cinfo->lock);
-+	spin_unlock(&cinfo->inode->i_lock);
- 	kfree(buckets);
- 	return 0;
- }
-diff --git a/fs/nfs/flexfilelayout/flexfilelayout.c b/fs/nfs/flexfilelayout/flexfilelayout.c
-index 0cb1abd..3b398f7 100644
---- a/fs/nfs/flexfilelayout/flexfilelayout.c
-+++ b/fs/nfs/flexfilelayout/flexfilelayout.c
-@@ -745,7 +745,7 @@ ff_layout_alloc_commit_info(struct pnfs_layout_segment *lseg,
- 	else {
- 		int i;
- 
--		spin_lock(cinfo->lock);
-+		spin_lock(&cinfo->inode->i_lock);
- 		if (cinfo->ds->nbuckets != 0)
- 			kfree(buckets);
- 		else {
-@@ -759,7 +759,7 @@ ff_layout_alloc_commit_info(struct pnfs_layout_segment *lseg,
- 					NFS_INVALID_STABLE_HOW;
- 			}
- 		}
--		spin_unlock(cinfo->lock);
-+		spin_unlock(&cinfo->inode->i_lock);
- 		return 0;
- 	}
- }
-diff --git a/fs/nfs/pnfs_nfs.c b/fs/nfs/pnfs_nfs.c
-index 4aaed89..d2a7c9f 100644
---- a/fs/nfs/pnfs_nfs.c
-+++ b/fs/nfs/pnfs_nfs.c
-@@ -61,7 +61,7 @@ EXPORT_SYMBOL_GPL(pnfs_generic_commit_release);
- 
- /* The generic layer is about to remove the req from the commit list.
-  * If this will make the bucket empty, it will need to put the lseg reference.
-- * Note this must be called holding the inode (/cinfo) lock
-+ * Note this must be called holding i_lock
-  */
- void
- pnfs_generic_clear_request_commit(struct nfs_page *req,
-@@ -98,7 +98,7 @@ pnfs_generic_transfer_commit_list(struct list_head *src, struct list_head *dst,
- 		if (!nfs_lock_request(req))
- 			continue;
- 		kref_get(&req->wb_kref);
--		if (cond_resched_lock(cinfo->lock))
-+		if (cond_resched_lock(&cinfo->inode->i_lock))
- 			list_safe_reset_next(req, tmp, wb_list);
- 		nfs_request_remove_commit_list(req, cinfo);
- 		clear_bit(PG_COMMIT_TO_DS, &req->wb_flags);
-@@ -119,7 +119,7 @@ pnfs_generic_scan_ds_commit_list(struct pnfs_commit_bucket *bucket,
- 	struct list_head *dst = &bucket->committing;
- 	int ret;
- 
--	lockdep_assert_held(cinfo->lock);
-+	lockdep_assert_held(&cinfo->inode->i_lock);
- 	ret = pnfs_generic_transfer_commit_list(src, dst, cinfo, max);
- 	if (ret) {
- 		cinfo->ds->nwritten -= ret;
-@@ -142,7 +142,7 @@ int pnfs_generic_scan_commit_lists(struct nfs_commit_info *cinfo,
- {
- 	int i, rv = 0, cnt;
- 
--	lockdep_assert_held(cinfo->lock);
-+	lockdep_assert_held(&cinfo->inode->i_lock);
- 	for (i = 0; i < cinfo->ds->nbuckets && max != 0; i++) {
- 		cnt = pnfs_generic_scan_ds_commit_list(&cinfo->ds->buckets[i],
- 						       cinfo, max);
-@@ -161,16 +161,16 @@ void pnfs_generic_recover_commit_reqs(struct list_head *dst,
- 	struct pnfs_layout_segment *freeme;
- 	int i;
- 
--	lockdep_assert_held(cinfo->lock);
-+	lockdep_assert_held(&cinfo->inode->i_lock);
- restart:
- 	for (i = 0, b = cinfo->ds->buckets; i < cinfo->ds->nbuckets; i++, b++) {
- 		if (pnfs_generic_transfer_commit_list(&b->written, dst,
- 						      cinfo, 0)) {
- 			freeme = b->wlseg;
- 			b->wlseg = NULL;
--			spin_unlock(cinfo->lock);
-+			spin_unlock(&cinfo->inode->i_lock);
- 			pnfs_put_lseg(freeme);
--			spin_lock(cinfo->lock);
-+			spin_lock(&cinfo->inode->i_lock);
- 			goto restart;
- 		}
- 	}
-@@ -186,7 +186,7 @@ static void pnfs_generic_retry_commit(struct nfs_commit_info *cinfo, int idx)
- 	LIST_HEAD(pages);
- 	int i;
- 
--	spin_lock(cinfo->lock);
-+	spin_lock(&cinfo->inode->i_lock);
- 	for (i = idx; i < fl_cinfo->nbuckets; i++) {
- 		bucket = &fl_cinfo->buckets[i];
- 		if (list_empty(&bucket->committing))
-@@ -194,12 +194,12 @@ static void pnfs_generic_retry_commit(struct nfs_commit_info *cinfo, int idx)
- 		freeme = bucket->clseg;
- 		bucket->clseg = NULL;
- 		list_splice_init(&bucket->committing, &pages);
--		spin_unlock(cinfo->lock);
-+		spin_unlock(&cinfo->inode->i_lock);
- 		nfs_retry_commit(&pages, freeme, cinfo, i);
- 		pnfs_put_lseg(freeme);
--		spin_lock(cinfo->lock);
-+		spin_lock(&cinfo->inode->i_lock);
- 	}
--	spin_unlock(cinfo->lock);
-+	spin_unlock(&cinfo->inode->i_lock);
- }
- 
- static unsigned int
-@@ -238,11 +238,11 @@ void pnfs_fetch_commit_bucket_list(struct list_head *pages,
- 	struct pnfs_commit_bucket *bucket;
- 
- 	bucket = &cinfo->ds->buckets[data->ds_commit_index];
--	spin_lock(cinfo->lock);
-+	spin_lock(&cinfo->inode->i_lock);
- 	list_splice_init(&bucket->committing, pages);
- 	data->lseg = bucket->clseg;
- 	bucket->clseg = NULL;
--	spin_unlock(cinfo->lock);
-+	spin_unlock(&cinfo->inode->i_lock);
- 
- }
- 
-@@ -874,12 +874,12 @@ pnfs_layout_mark_request_commit(struct nfs_page *req,
- 	struct list_head *list;
- 	struct pnfs_commit_bucket *buckets;
- 
--	spin_lock(cinfo->lock);
-+	spin_lock(&cinfo->inode->i_lock);
- 	buckets = cinfo->ds->buckets;
- 	list = &buckets[ds_commit_idx].written;
- 	if (list_empty(list)) {
- 		if (!pnfs_is_valid_lseg(lseg)) {
--			spin_unlock(cinfo->lock);
-+			spin_unlock(&cinfo->inode->i_lock);
- 			cinfo->completion_ops->resched_write(cinfo, req);
- 			return;
- 		}
-@@ -896,7 +896,7 @@ pnfs_layout_mark_request_commit(struct nfs_page *req,
- 	cinfo->ds->nwritten++;
- 
- 	nfs_request_add_commit_list_locked(req, list, cinfo);
--	spin_unlock(cinfo->lock);
-+	spin_unlock(&cinfo->inode->i_lock);
- 	nfs_mark_page_unstable(req->wb_page, cinfo);
- }
- EXPORT_SYMBOL_GPL(pnfs_layout_mark_request_commit);
-diff --git a/fs/nfs/write.c b/fs/nfs/write.c
-index 5754835..21753f8 100644
---- a/fs/nfs/write.c
-+++ b/fs/nfs/write.c
-@@ -804,7 +804,7 @@ nfs_page_search_commits_for_head_request_locked(struct nfs_inode *nfsi,
-  * number of outstanding requests requiring a commit as well as
-  * the MM page stats.
-  *
-- * The caller must hold the cinfo->lock, and the nfs_page lock.
-+ * The caller must hold cinfo->inode->i_lock, and the nfs_page lock.
-  */
- void
- nfs_request_add_commit_list_locked(struct nfs_page *req, struct list_head *dst,
-@@ -832,9 +832,9 @@ EXPORT_SYMBOL_GPL(nfs_request_add_commit_list_locked);
- void
- nfs_request_add_commit_list(struct nfs_page *req, struct nfs_commit_info *cinfo)
- {
--	spin_lock(cinfo->lock);
-+	spin_lock(&cinfo->inode->i_lock);
- 	nfs_request_add_commit_list_locked(req, &cinfo->mds->list, cinfo);
--	spin_unlock(cinfo->lock);
-+	spin_unlock(&cinfo->inode->i_lock);
- 	nfs_mark_page_unstable(req->wb_page, cinfo);
- }
- EXPORT_SYMBOL_GPL(nfs_request_add_commit_list);
-@@ -864,7 +864,7 @@ EXPORT_SYMBOL_GPL(nfs_request_remove_commit_list);
- static void nfs_init_cinfo_from_inode(struct nfs_commit_info *cinfo,
- 				      struct inode *inode)
- {
--	cinfo->lock = &inode->i_lock;
-+	cinfo->inode = inode;
- 	cinfo->mds = &NFS_I(inode)->commit_info;
- 	cinfo->ds = pnfs_get_ds_info(inode);
- 	cinfo->dreq = NULL;
-@@ -967,7 +967,7 @@ nfs_reqs_to_commit(struct nfs_commit_info *cinfo)
- 	return cinfo->mds->ncommit;
- }
- 
--/* cinfo->lock held by caller */
-+/* cinfo->inode->i_lock held by caller */
- int
- nfs_scan_commit_list(struct list_head *src, struct list_head *dst,
- 		     struct nfs_commit_info *cinfo, int max)
-@@ -979,7 +979,7 @@ nfs_scan_commit_list(struct list_head *src, struct list_head *dst,
- 		if (!nfs_lock_request(req))
- 			continue;
- 		kref_get(&req->wb_kref);
--		if (cond_resched_lock(cinfo->lock))
-+		if (cond_resched_lock(&cinfo->inode->i_lock))
- 			list_safe_reset_next(req, tmp, wb_list);
- 		nfs_request_remove_commit_list(req, cinfo);
- 		nfs_list_add_request(req, dst);
-@@ -1005,7 +1005,7 @@ nfs_scan_commit(struct inode *inode, struct list_head *dst,
- {
- 	int ret = 0;
- 
--	spin_lock(cinfo->lock);
-+	spin_lock(&cinfo->inode->i_lock);
- 	if (cinfo->mds->ncommit > 0) {
- 		const int max = INT_MAX;
- 
-@@ -1013,7 +1013,7 @@ nfs_scan_commit(struct inode *inode, struct list_head *dst,
- 					   cinfo, max);
- 		ret += pnfs_scan_commit_lists(inode, cinfo, max - ret);
- 	}
--	spin_unlock(cinfo->lock);
-+	spin_unlock(&cinfo->inode->i_lock);
- 	return ret;
- }
- 
-diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-index d320906..cb9982d 100644
---- a/include/linux/nfs_xdr.h
-+++ b/include/linux/nfs_xdr.h
-@@ -1431,7 +1431,7 @@ struct nfs_commit_completion_ops {
- };
- 
- struct nfs_commit_info {
--	spinlock_t			*lock;	/* inode->i_lock */
-+	struct inode 			*inode;	/* Needed for inode->i_lock */
- 	struct nfs_mds_commit_info	*mds;
- 	struct pnfs_ds_commit_info	*ds;
- 	struct nfs_direct_req		*dreq;	/* O_DIRECT request */
--- 
-2.5.5
+Then when 3rd reply is processed it finds mismatching attributes and
+invalidates the cache.
 
+
+Apr  1 15:14:42 compute kernel: AGLO: nfs_fattr_init initializing
+fattr=ffff88000a320f70 gencount=33
+
+Apr  1 15:14:42 compute kernel: NFS: initiated pgio call (req
+0:39/789905590, 4096 bytes @ offset 0)
+
+Apr  1 15:14:42 compute kernel: AGLO: nfs_fattr_init initializing
+fattr=ffff88000a3212f0 gencount=34
+
+Apr  1 15:14:42 compute kernel: NFS: initiated pgio call (req
+0:39/789905590, 4096 bytes @ offset 4096)
+
+Apr  1 15:14:42 compute kernel: AGLO: nfs_fattr_init initializing
+fattr=ffff88000a321670 gencount=35
+
+Apr  1 15:14:42 compute kernel: NFS: initiated pgio call (req
+0:39/789905590, 2048 bytes @ offset 8192)
+
+Apr  1 15:14:42 compute kernel: AGLO: decode_wcc_attr setting
+NFS_ATTR_FATTR_PRECHANGE for attr=ffff88000a320f70
+
+Apr  1 15:14:42 compute kernel: AGLO: decode_wcc_attr setting
+pre_change_attr 1567151659683131632 for attr=ffff88000a320f70
+
+Apr  1 15:14:42 compute kernel: NFS: nfs_pgio_result:    44, (status 4096)
+
+**** Apr  1 15:14:42 compute kernel: AGLO:
+[nfs_post_op_update_inode_force_wcc_locked+0x37/0x120 [nfs]]
+nfs_inode_attrs_need_update result=1 fattr=ffff88000a320f70
+fattr->gencount=33 nfsi->gencount=32 generation_count=35
+
+Apr  1 15:14:42 compute kernel: AGLO:
+[nfs_refresh_inode_locked+0x48/0x2b0 [nfs]]
+nfs_inode_attrs_need_update result=1 fattr=ffff88000a320f70
+fattr->gencount=33 nfsi->gencount=32 generation_count=35
+
+Apr  1 15:14:42 compute kernel: NFS: nfs_update_inode(0:39/789905590
+fh_crc=0x1699a74d ct=1 info=0x7febf)
+
+Apr  1 15:14:42 compute kernel: AGLO: nfs_wcc_update_inode
+i_version=1567151659683131632 pre_change_attr=1567151659683131632
+prechange=262144 change=131072 fattr=ffff88000a320f70
+
+Apr  1 15:14:42 compute kernel: AGLO: nfs_wcc_update_inode updating
+ctime to 1567151659694027632
+
+Apr  1 15:14:42 compute kernel: AGLO: nfs_update_inode inode
+version=1567151659694027632 and attr=1567151659694027632
+
+**** Apr  1 15:14:42 compute kernel: AGLO: nfs_update_inode updating
+inode gencount = 36
+
+Apr  1 15:14:42 compute kernel: AGLO: nfs3_write_done
+version=1567151659694027632 inode attr = 10240 received attr 4096
+
+Apr  1 15:14:42 compute kernel: AGLO: decode_wcc_attr setting
+NFS_ATTR_FATTR_PRECHANGE for attr=ffff88000a3212f0
+
+Apr  1 15:14:42 compute kernel: AGLO: decode_wcc_attr setting
+pre_change_attr 1567151659694027632 for attr=ffff88000a3212f0
+
+Apr  1 15:14:42 compute kernel: NFS: nfs_pgio_result:    45, (status 4096)
+
+**** Apr  1 15:14:42 compute kernel: AGLO:
+[nfs_post_op_update_inode_force_wcc_locked+0x37/0x120 [nfs]]
+nfs_inode_attrs_need_update result=0 fattr=ffff88000a3212f0
+fattr->gencount=34 nfsi->gencount=36 generation_count=36
+
+Apr  1 15:14:42 compute kernel: AGLO:
+[nfs_refresh_inode_locked+0x48/0x2b0 [nfs]]
+nfs_inode_attrs_need_update result=0 fattr=ffff88000a3212f0
+fattr->gencount=34 nfsi->gencount=36 generation_count=36
