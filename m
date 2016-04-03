@@ -1,75 +1,68 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from elhefe.marchingcubes.com ([173.255.211.175]:57984 "EHLO
-	mx.marchingcubes.net" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1750819AbcDCAG6 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 2 Apr 2016 20:06:58 -0400
-Received: from mx.marchingcubes.net (localhost [127.0.0.1])
-	by mx.marchingcubes.net (Postfix) with ESMTP id 164A71C6E8
-	for <linux-nfs@vger.kernel.org>; Sat,  2 Apr 2016 23:57:40 +0000 (UTC)
-Received: from [192.168.1.55] (172.100.69.111.dynamic.snap.net.nz [111.69.100.172])
-	by mx.marchingcubes.net (Postfix) with ESMTPSA id 289D91C6D9
-	for <linux-nfs@vger.kernel.org>; Sat,  2 Apr 2016 23:57:38 +0000 (UTC)
-From: Pete Black <pete@marchingcubes.com>
+Received: from fieldses.org ([173.255.197.46]:54278 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751120AbcDCANV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 2 Apr 2016 20:13:21 -0400
+Date: Sat, 2 Apr 2016 20:13:19 -0400
+To: Herbert Xu <herbert@gondor.apana.org.au>
+Cc: linux-nfs@vger.kernel.org, linux-crypto@vger.kernel.org
+Subject: nfs/krb5 crash on 4.6-rc1
+Message-ID: <20160403001319.GB12588@fieldses.org>
+MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Subject: Status of PNFS/XFS Block Server
-Message-Id: <261697B7-0C14-4CCF-AE34-A1E0B336C454@marchingcubes.com>
-Date: Sun, 3 Apr 2016 11:57:36 +1200
-To: linux-nfs@vger.kernel.org
-Mime-Version: 1.0 (Mac OS X Mail 9.3 \(3124\))
+From: bfields@fieldses.org (J. Bruce Fields)
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi There,
+As of 3b5cf20c "sunrpc: Use skcipher and ahash/shash", I get a NULL
+dereference in krb5_encrypt on an NFS server when a client attempts to
+mount using krb5.  I haven't tried to figure out what's going on beyond
+that....
 
-Apologies if this is the wrong place to provide this feedback/ask this question.
-
-I have been attempting to test out the PNFS block layout support, using NFS 4.1/pnfs, XFS filesystem and iSCSI.
-
-I created 4 virtual machines (using Virtualbox, and internal networking) and configured them as follows:
-
-All machines using Fedora 23 (4.4.6 kernel)
-
-DS - 192.168.50.20  running iSCSI tgtd, exporting a file-backed LUN of 1GB in size. Obviously this is tiny, and useless for production purposes.
-
-MDS - 192.168.50.10 running nfs-server, iscsid with the block device (/dev/sdb) available, and mounted on /mnt/xfs
-
-mount options:
-/dev/sdb /mnt/xfs xfs _netdev 0 0
-
-/etc/exports:
-/mnt/xfs 192.168.50.0/24(rw,pnfs)
-
-NFS Client 1 - 192.168.50.50  running iscsid, block device available as /dev/sdb and mounting the nfs share
-/etc/fstab:
-192.168.50.10:/mnt/xfs /mnt/pnfs_xfs nfs4 _netdev,v4.1 0 0
-
-NFS Client 2 - 192.168.50.51 running iscsid, block device available as /dev/sdb and mounting the nfs share
-/etc/fstab:
-192.168.50.10:/mnt/xfs /mnt/pnfs_xfs nfs4 _netdev,v4.1 0 0
+--b.
 
 
-server kernel logs have 'XFS (sdb): using experimental pNFS feature, use at your own risk', nfsstat on the clients reflects LAYOUTGET traffic, and basic file IO works fine from both clients - I can open, read and write files to the xfs filessytem via nfs, and everything seems to be consistent and correct so broadly speaking everything is working as it should.
-
-I am considering replicating this setup on real hardware and testing it for use in production, however I would like to know what, aside from a seeming lack of testing, is keeping this as experimental.
-
-I would also like to ask for some clarification on the client fencing script - there is reference on the available documentation to the fact that the nfs server will call /sbin/nfsd-recall-failed when it needs to fence a client, but it is very unclear to me what this script is expected to actually do in practice  - i.e. the current 'example' script on:
-
-http://git.linux-nfs.org/?p=bfields/linux.git;a=blob_plain;f=Documentation/filesystems/nfs/pnfs-block-server.txt
-
- seems to only place a log message in the MDS system log and nothing more - obviously it would be environment-specific, but is there anything else  such a script could or should be expected to do in a linux/iscsi environment such as my test rig?
-
-
-Thanks for any help you may be able to offer, and please let me know if there are better places to present these questions.
-
-
--Pete
-
-
-
-
-
-
-
-
-
+[   97.781559] IP: [<ffffffffa011d108>] krb5_encrypt+0x138/0x1f0 [rpcsec_gss_krb5]
+[   97.782100] PGD 0 
+[   97.782257] Oops: 0000 [#1] PREEMPT SMP 
+[   97.782646] Modules linked in: rpcsec_gss_krb5 nfsd auth_rpcgss oid_registry nfs_acl lockd grace sunrpc
+[   97.783709] CPU: 0 PID: 4415 Comm: nfsd Not tainted 4.6.0-rc1-00029-gc05c2ec #489
+[   97.784015] Hardware name: QEMU Standard PC (i440FX + PIIX, 1996), BIOS 1.8.2-20150714_191134- 04/01/2014
+[   97.784015] task: ffff8800783b85c0 ti: ffff8800783bc000 task.ti: ffff8800783bc000
+[   97.784015] RIP: 0010:[<ffffffffa011d108>]  [<ffffffffa011d108>] krb5_encrypt+0x138/0x1f0 [rpcsec_gss_krb5]
+[   97.784015] RSP: 0018:ffff8800783bf898  EFLAGS: 00010282
+[   97.784015] RAX: 0000000000000246 RBX: 1ffff1000f077f13 RCX: 0000000000000000
+[   97.784015] RDX: 00000000000000a0 RSI: ffffea0001af0502 RDI: ffff8800783bf898
+[   97.784015] RBP: ffff8800783bf950 R08: 0000000000000010 R09: ffff8800783bf908
+[   97.784015] R10: 0000000000000028 R11: ffff88007a53c000 R12: ffff8800783bf8f8
+[   97.784015] R13: ffff8800783bf898 R14: ffff8800783bf908 R15: ffff88007b2600a0
+[   97.784015] FS:  0000000000000000(0000) GS:ffff88007fc00000(0000) knlGS:0000000000000000
+[   97.784015] CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
+[   97.784015] CR2: 0000000000000226 CR3: 0000000002006000 CR4: 00000000000406f0
+[   97.784015] Stack:
+[   97.784015]  ffff880000000010 ffff8800783bf8f8 ffff8800783bf908 ffff8800783bf908
+[   97.784015]  0000000000000246 00000000024000c0 0000000000000000 0000000000000000
+[   97.784015]  0000000000000246 ffff880000000000 ffff88007c22e700 00000010783bf900
+[   97.784015] Call Trace:
+[   97.784015]  [<ffffffffa011e93f>] krb5_derive_key+0x27f/0x360 [rpcsec_gss_krb5]
+[   97.784015]  [<ffffffffa011aa02>] gss_import_sec_context_kerberos+0x852/0xd50 [rpcsec_gss_krb5]
+[   97.784015]  [<ffffffffa00a12ad>] gss_import_sec_context+0x7d/0xa0 [auth_rpcgss]
+[   97.784015]  [<ffffffffa00a211f>] gss_proxy_save_rsc+0x19f/0x230 [auth_rpcgss]
+[   97.784015]  [<ffffffffa00a2853>] svcauth_gss_proxy_init+0x4d3/0x630 [auth_rpcgss]
+[   97.784015]  [<ffffffffa00a2385>] ? svcauth_gss_proxy_init+0x5/0x630 [auth_rpcgss]
+[   97.784015]  [<ffffffffa00a4874>] svcauth_gss_accept+0x584/0xd40 [auth_rpcgss]
+[   97.784015]  [<ffffffffa00a47a4>] ? svcauth_gss_accept+0x4b4/0xd40 [auth_rpcgss]
+[   97.784015]  [<ffffffffa0019257>] svc_authenticate+0xf7/0x100 [sunrpc]
+[   97.784015]  [<ffffffffa001514d>] svc_process_common+0x1ed/0x630 [sunrpc]
+[   97.784015]  [<ffffffffa00156c5>] svc_process+0x135/0x390 [sunrpc]
+[   97.784015]  [<ffffffffa00b4811>] nfsd+0x181/0x280 [nfsd]
+[   97.784015]  [<ffffffffa00b4695>] ? nfsd+0x5/0x280 [nfsd]
+[   97.784015]  [<ffffffffa00b4690>] ? nfsd_destroy+0x190/0x190 [nfsd]
+[   97.784015]  [<ffffffff810a186f>] kthread+0xef/0x110
+[   97.784015]  [<ffffffff81ae00c2>] ret_from_fork+0x22/0x40
+[   97.784015]  [<ffffffff810a1780>] ?  kthread_create_on_node+0x200/0x200
+[   97.784015] Code: 38 00 00 00 00 00 00 00 c7 04 dd 48 00 00 00 00 00 00 00 44 89 04 dd 00 00 00 00 4c 89 34 dd 10 00 00 00 4c 89 34 dd 18 00 00 00 <ff> 50 e0 41 89 c4 48 8b 04 dd 40 00 00 00 4c 89 ef 8b 70 f4 48 
+[   97.784015] RIP  [<ffffffffa011d108>] krb5_encrypt+0x138/0x1f0 [rpcsec_gss_krb5]
+[   97.784015]  RSP <ffff8800783bf898>
+[   97.784015] CR2: 0000000000000226
 
