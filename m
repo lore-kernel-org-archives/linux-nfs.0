@@ -1,66 +1,68 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:43313 "EHLO
+Received: from aserp1040.oracle.com ([141.146.126.69]:47213 "EHLO
 	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751513AbcDDSJ0 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 4 Apr 2016 14:09:26 -0400
-Message-ID: <5702ADD0.1040501@oracle.com>
-Date: Mon, 04 Apr 2016 11:09:20 -0700
+	with ESMTP id S1754138AbcDDSPh (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 4 Apr 2016 14:15:37 -0400
+Message-ID: <5702AF3F.90500@oracle.com>
+Date: Mon, 04 Apr 2016 11:15:27 -0700
 From: Shirley Ma <shirley.ma@oracle.com>
 MIME-Version: 1.0
-To: Bruce Fields <bfields@fieldses.org>
-CC: Chuck Lever <chuck.lever@oracle.com>, leon@leon.nu,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+To: Anna Schumaker <Anna.Schumaker@netapp.com>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        Chuck Lever <Chuck.Lever@oracle.com>
+CC: Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
         linux-rdma <linux-rdma@vger.kernel.org>
-Subject: [PATCH v3] svcrdma: add IPv6 support
-References: <56E9A8DD.8030308@oracle.com> <20160317084210.GE25216@leon.nu> <9D93B217-3044-4404-8EB4-6CD0DD759642@oracle.com>
-In-Reply-To: <9D93B217-3044-4404-8EB4-6CD0DD759642@oracle.com>
-Content-Type: text/plain; charset=windows-1252
+Subject: [PATCH V2] nfs: add mount proto=rdma6 option for NFS/RDMA IPv6 addressing
+References: <56E9A650.7060409@oracle.com> <56F19F28.9020504@Netapp.com>
+In-Reply-To: <56F19F28.9020504@Netapp.com>
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Add rdma6 option to support NFS/RDMA IPv6 addressing.
-Allow both IPv4 and IPv6 to bind same port at the same time,
-restricts use of the IPv6 socket to IPv6 communication.
+RFC 5666: The "rdma" netid is to be used when IPv4 addressing
+is employed by the underlying transport, and "rdma6" for IPv6
+addressing.
+Add mount -o proto=rdma6 option to support NFS/RDMA IPv6 addressing.
 
 Changes from v1:
- - Check rdma_set_afonly return value (suggested by Leon Romanovsky)
-
-Changes from v2:
- - Acked-by: Leon Romanovsky <leonro@mellanox.com>
+ - Integrated comments from Chuck Level, Anna Schumaker, Trodt Myklebust
+ - Add a little more to the patch description to describe NFS/RDMA
+   IPv6 usage
+ - Removed duplicated rdma6 define
+ - Removed Opt_xprt_rdma mountfamily since this doesn't support 
 
 Signed-off-by: Shirley Ma <shirley.ma@oracle.com>
 ---
 
- net/sunrpc/xprtrdma/svc_rdma_transport.c | 12 +++++++++++-
- 1 file changed, 11 insertions(+), 1 deletion(-)
+ fs/nfs/super.c | 4 ++++
+ 1 file changed, 4 insertions(+)
 
-diff --git a/net/sunrpc/xprtrdma/svc_rdma_transport.c b/net/sunrpc/xprtrdma/svc_rdma_transport.c
-index 9066896..d2680b8 100644
---- a/net/sunrpc/xprtrdma/svc_rdma_transport.c
-+++ b/net/sunrpc/xprtrdma/svc_rdma_transport.c
-@@ -789,7 +789,7 @@ static struct svc_xprt *svc_rdma_create(struct svc_serv *serv,
- 	int ret;
+diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+index f126828..c884155 100644
+--- a/fs/nfs/super.c
++++ b/fs/nfs/super.c
+@@ -191,6 +191,7 @@ static const match_table_t nfs_mount_option_tokens = {
  
- 	dprintk("svcrdma: Creating RDMA socket\n");
--	if (sa->sa_family != AF_INET) {
-+	if ((sa->sa_family != AF_INET) && (sa->sa_family != AF_INET6)) {
- 		dprintk("svcrdma: Address family %d is not supported.\n", sa->sa_family);
- 		return ERR_PTR(-EAFNOSUPPORT);
- 	}
-@@ -805,6 +805,16 @@ static struct svc_xprt *svc_rdma_create(struct svc_serv *serv,
- 		goto err0;
- 	}
+ enum {
+ 	Opt_xprt_udp, Opt_xprt_udp6, Opt_xprt_tcp, Opt_xprt_tcp6, Opt_xprt_rdma,
++	Opt_xprt_rdma6,
  
-+	/* Allow both IPv4 and IPv6 sockets to bind a single port
-+	 * at the same time.
-+	 */
-+#if IS_ENABLED(CONFIG_IPV6)
-+	ret = rdma_set_afonly(listen_id, 1);
-+	if (ret) {
-+		dprintk("svcrdma: rdma_set_afonly failed = %d\n", ret);
-+		goto err1;
-+	}
-+#endif
- 	ret = rdma_bind_addr(listen_id, sa);
- 	if (ret) {
- 		dprintk("svcrdma: rdma_bind_addr failed = %d\n", ret);
+ 	Opt_xprt_err
+ };
+@@ -201,6 +202,7 @@ static const match_table_t nfs_xprt_protocol_tokens = {
+ 	{ Opt_xprt_tcp, "tcp" },
+ 	{ Opt_xprt_tcp6, "tcp6" },
+ 	{ Opt_xprt_rdma, "rdma" },
++	{ Opt_xprt_rdma6, "rdma6" },
+ 
+ 	{ Opt_xprt_err, NULL }
+ };
+@@ -1456,6 +1458,8 @@ static int nfs_parse_mount_options(char *raw,
+ 				mnt->flags |= NFS_MOUNT_TCP;
+ 				mnt->nfs_server.protocol = XPRT_TRANSPORT_TCP;
+ 				break;
++			case Opt_xprt_rdma6:
++				protofamily = AF_INET6;
+ 			case Opt_xprt_rdma:
+ 				/* vector side protocols to TCP */
+ 				mnt->flags |= NFS_MOUNT_TCP;
