@@ -1,61 +1,47 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:58134 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750750AbcDFUPr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 6 Apr 2016 16:15:47 -0400
-Received: from int-mx14.intmail.prod.int.phx2.redhat.com (int-mx14.intmail.prod.int.phx2.redhat.com [10.5.11.27])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
-	(No client certificate requested)
-	by mx1.redhat.com (Postfix) with ESMTPS id 6AEA9C057FAD
-	for <linux-nfs@vger.kernel.org>; Wed,  6 Apr 2016 20:15:47 +0000 (UTC)
-Received: from steved.boston.devel.redhat.com (vpn-53-54.rdu2.redhat.com [10.10.53.54])
-	by int-mx14.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id u36KFkfg004908
-	for <linux-nfs@vger.kernel.org>; Wed, 6 Apr 2016 16:15:47 -0400
-From: Steve Dickson <SteveD@redhat.com>
-Subject: Monthly Linux NFS Town Hall meeting: Tomorrow - Thur Apr 7
-To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Message-ID: <57056E72.104@RedHat.com>
-Date: Wed, 6 Apr 2016 16:15:46 -0400
-MIME-Version: 1.0
-Content-Type: text/plain; charset=windows-1252
+Received: from smtpfb1-g21.free.fr ([212.27.42.9]:59806 "EHLO
+	smtpfb1-g21.free.fr" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753157AbcDFXJe (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 6 Apr 2016 19:09:34 -0400
+Received: from smtp6-g21.free.fr (smtp6-g21.free.fr [212.27.42.6])
+	by smtpfb1-g21.free.fr (Postfix) with ESMTP id D571477CD53
+	for <linux-nfs@vger.kernel.org>; Thu,  7 Apr 2016 01:09:26 +0200 (CEST)
+Received: from desktop.geekdomain (unknown [78.218.216.2])
+	by smtp6-g21.free.fr (Postfix) with ESMTP id E8B3782257
+	for <linux-nfs@vger.kernel.org>; Thu,  7 Apr 2016 01:05:22 +0200 (CEST)
+Date: Thu, 7 Apr 2016 01:09:27 +0200
+From: YuGiOhJCJ Mailing-List <yugiohjcj-mailinglist@laposte.net>
+To: linux-nfs@vger.kernel.org
+Subject: Sometimes all the applications using sqlite do not work correctly
+Message-Id: <20160407010927.bf07f12fa3f62b1586dd11ad@laposte.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 Hello,
 
-We have not had one of these for a while so lets see
-what everyone is up to... 
+I am using nfs-utils-1.2.8 and sqlite-3.7.17 on Slackware 14.1.
+Sometimes, all the applications using sqlite do not work correctly.
 
-The meeting will be tomorrow *Thur Feb 4* at 
+These applications are:
+ * mozilla-firefox-44.0
+ * mumble-1.2.8
+ * xmoto-0.5.11
 
-   *01:00 pm EST (10:00am PST)*
+On mozilla-firefox, my bookmarks menu is empty.
+On mumble, my favorite server list is empty.
+On xmoto, the game could not run.
 
-The usual agenda will apply. The maintainers will give
-a quick status of what is happening in their worlds.
+All these applications at the same time do not work and I need to restart the NFS server in order to be able to use these programs.
 
-Next we'll get updates from major contributors on what
-they have been doing and are planing on doing.
-  
-Finally, we'll open the floor to questions, comments, 
-concerns from the community.  
+I don't know what could be the cause but I know that I have recently upgraded a lot of programs on my operating system (binutils-2.26, gcc-5.3.0, ...).
 
-Generally the meeting lasts between 30 to 45 mins, with 
-a very hard stop at 60mins. 
+I am using NFS since many years (at least 4) and I have never get troubles with my applications using sqlite.
 
-Please feel to attend and participate!
+So, I am wondering what happens.
 
-Again the Time: 10:00 am PST (01:00 pm EST)
+Should I rebuild nfs-utils?
 
-BlueJeans Video Link:
-    https://bluejeans.com/5642721552/
-
-The call in numbers are:
-
-U.S. and Canada: (800) 451-8679
-World wide toll free numbers
-   https://www.intercallonline.com/listNumbersByCode.action?confCode=5642721552
-
-Conference code: 564.272.1552
-
-steved.
-
+Thank you.
+Best regards.
