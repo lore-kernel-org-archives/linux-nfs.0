@@ -1,73 +1,90 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:37749 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([173.255.197.46]:59236 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756863AbcDGQvH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 7 Apr 2016 12:51:07 -0400
-Received: from int-mx14.intmail.prod.int.phx2.redhat.com (int-mx14.intmail.prod.int.phx2.redhat.com [10.5.11.27])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
-	(No client certificate requested)
-	by mx1.redhat.com (Postfix) with ESMTPS id 81ACC7AEBC
-	for <linux-nfs@vger.kernel.org>; Thu,  7 Apr 2016 16:50:52 +0000 (UTC)
-Received: from steved.boston.devel.redhat.com (steved.boston.devel.redhat.com [10.19.60.47])
-	by int-mx14.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id u37GoqCx010354
-	for <linux-nfs@vger.kernel.org>; Thu, 7 Apr 2016 12:50:52 -0400
-Subject: Re: Monthly Linux NFS Town Hall meeting: Tomorrow - Thur Apr 7
-To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-References: <57056E72.104@RedHat.com>
-From: Steve Dickson <SteveD@redhat.com>
-Message-ID: <57068FEB.6020706@RedHat.com>
-Date: Thu, 7 Apr 2016 12:50:51 -0400
+	id S1757066AbcDGQ7q (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 7 Apr 2016 12:59:46 -0400
+Date: Thu, 7 Apr 2016 12:59:41 -0400
+To: Pete Black <pete@marchingcubes.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: Status of PNFS/XFS Block Server
+Message-ID: <20160407165941.GA30676@fieldses.org>
+References: <261697B7-0C14-4CCF-AE34-A1E0B336C454@marchingcubes.com>
 MIME-Version: 1.0
-In-Reply-To: <57056E72.104@RedHat.com>
-Content-Type: text/plain; charset=windows-1252
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <261697B7-0C14-4CCF-AE34-A1E0B336C454@marchingcubes.com>
+From: bfields@fieldses.org (J. Bruce Fields)
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-FYI... This will be starting in 10mis... If interested.
+On Sun, Apr 03, 2016 at 11:57:36AM +1200, Pete Black wrote:
+> Hi There,
+> 
+> Apologies if this is the wrong place to provide this feedback/ask this question.
+> 
+> I have been attempting to test out the PNFS block layout support, using NFS 4.1/pnfs, XFS filesystem and iSCSI.
+> 
+> I created 4 virtual machines (using Virtualbox, and internal networking) and configured them as follows:
+> 
+> All machines using Fedora 23 (4.4.6 kernel)
+> 
+> DS - 192.168.50.20  running iSCSI tgtd, exporting a file-backed LUN of 1GB in size. Obviously this is tiny, and useless for production purposes.
+> 
+> MDS - 192.168.50.10 running nfs-server, iscsid with the block device (/dev/sdb) available, and mounted on /mnt/xfs
+> 
+> mount options:
+> /dev/sdb /mnt/xfs xfs _netdev 0 0
+> 
+> /etc/exports:
+> /mnt/xfs 192.168.50.0/24(rw,pnfs)
+> 
+> NFS Client 1 - 192.168.50.50  running iscsid, block device available as /dev/sdb and mounting the nfs share
+> /etc/fstab:
+> 192.168.50.10:/mnt/xfs /mnt/pnfs_xfs nfs4 _netdev,v4.1 0 0
+> 
+> NFS Client 2 - 192.168.50.51 running iscsid, block device available as /dev/sdb and mounting the nfs share
+> /etc/fstab:
+> 192.168.50.10:/mnt/xfs /mnt/pnfs_xfs nfs4 _netdev,v4.1 0 0
+> 
+> 
+> server kernel logs have 'XFS (sdb): using experimental pNFS feature, use at your own risk', nfsstat on the clients reflects LAYOUTGET traffic, and basic file IO works fine from both clients - I can open, read and write files to the xfs filessytem via nfs, and everything seems to be consistent and correct so broadly speaking everything is working as it should.
+> 
+> I am considering replicating this setup on real hardware and testing it for use in production, however I would like to know what, aside from a seeming lack of testing, is keeping this as experimental.
 
-steved.
+The block protocol itself has some inherent problems:
 
-On 04/06/2016 04:15 PM, Steve Dickson wrote:
-> Hello,
+	- lack of a common fencing method, leading to the fencing-script
+	  annoyance you've noted.
+	- addressing only by signatures (bits of data stored on the
+	  device itself), making device discovery inefficient (you have
+	  to check every device for the signature) and unreliable (e.g.
+	  a byte-for-byte copy of the data on another device will have
+	  the same signature).
+
+Christoph has addressed those with a new SCSI pNFS layout which should
+work fine on your setup:
+
+	http://marc.info/?l=linux-nfs&m=145712078417363
+
+All you should need is a new kernel built with NFSD_SCSILAYOUT.  "New"
+here means 4.6-rc1 or later, though.
+
+Alternatively, as long as you're still in testing and not production,
+you could ignore the fencing for now and continue with the block layout.
+As long as you don't need fencing, the two layout types (block and scsi)
+should work pretty much the same, so for example any performance results
+you get in the block case will probably still apply.  And the same
+hardware setup should work for both.
+
+We'll be interested in hearing any results, positive or negative.
+
+--b.
+
 > 
-> We have not had one of these for a while so lets see
-> what everyone is up to... 
+> I would also like to ask for some clarification on the client fencing script - there is reference on the available documentation to the fact that the nfs server will call /sbin/nfsd-recall-failed when it needs to fence a client, but it is very unclear to me what this script is expected to actually do in practice  - i.e. the current 'example' script on:
 > 
-> The meeting will be tomorrow *Thur Feb 4* at 
+> http://git.linux-nfs.org/?p=bfields/linux.git;a=blob_plain;f=Documentation/filesystems/nfs/pnfs-block-server.txt
 > 
->    *01:00 pm EST (10:00am PST)*
+>  seems to only place a log message in the MDS system log and nothing more - obviously it would be environment-specific, but is there anything else  such a script could or should be expected to do in a linux/iscsi environment such as my test rig?
 > 
-> The usual agenda will apply. The maintainers will give
-> a quick status of what is happening in their worlds.
 > 
-> Next we'll get updates from major contributors on what
-> they have been doing and are planing on doing.
->   
-> Finally, we'll open the floor to questions, comments, 
-> concerns from the community.  
-> 
-> Generally the meeting lasts between 30 to 45 mins, with 
-> a very hard stop at 60mins. 
-> 
-> Please feel to attend and participate!
-> 
-> Again the Time: 10:00 am PST (01:00 pm EST)
-> 
-> BlueJeans Video Link:
->     https://bluejeans.com/5642721552/
-> 
-> The call in numbers are:
-> 
-> U.S. and Canada: (800) 451-8679
-> World wide toll free numbers
->    https://www.intercallonline.com/listNumbersByCode.action?confCode=5642721552
-> 
-> Conference code: 564.272.1552
-> 
-> steved.
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
+> Thanks for any help you may be able to offer, and please let me know if there are better places to present these questions.
