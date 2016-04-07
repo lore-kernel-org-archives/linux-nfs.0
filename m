@@ -1,60 +1,40 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:59326 "EHLO fieldses.org"
+Received: from fieldses.org ([173.255.197.46]:59330 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756449AbcDGSOY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 7 Apr 2016 14:14:24 -0400
-Date: Thu, 7 Apr 2016 14:14:22 -0400
-To: YuGiOhJCJ Mailing-List <yugiohjcj-mailinglist@laposte.net>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: Sometimes all the applications using sqlite do not work correctly
-Message-ID: <20160407181422.GB30676@fieldses.org>
-References: <20160407010927.bf07f12fa3f62b1586dd11ad@laposte.net>
+	id S1757226AbcDGSQp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 7 Apr 2016 14:16:45 -0400
+Date: Thu, 7 Apr 2016 14:16:44 -0400
+To: Cedric Blancher <cedric.blancher@gmail.com>
+Cc: Martin Houry <martinhoury@gmail.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: Question : Compress files to send with NFS4.1
+Message-ID: <20160407181644.GC30676@fieldses.org>
+References: <CAEUt8VJhRXn7WT8f52Wyy8B7gAPZREK1J7miCY7Rt6z__CC5uQ@mail.gmail.com>
+ <CALXu0UfC3h2Rv4oQ9pSZLeMQJMqQu4zt2ywTBTMiWhmD9S6sfg@mail.gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20160407010927.bf07f12fa3f62b1586dd11ad@laposte.net>
+In-Reply-To: <CALXu0UfC3h2Rv4oQ9pSZLeMQJMqQu4zt2ywTBTMiWhmD9S6sfg@mail.gmail.com>
 From: bfields@fieldses.org (J. Bruce Fields)
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Apr 07, 2016 at 01:09:27AM +0200, YuGiOhJCJ Mailing-List wrote:
-> Hello,
+On Thu, Apr 07, 2016 at 04:06:11PM +0200, Cedric Blancher wrote:
+> On 7 April 2016 at 15:27, Martin Houry <martinhoury@gmail.com> wrote:
+> > Is NFS4.1 capable to compress files before sending them on the network
+> > and decompress them on the destination to speed up the file transfert?
 > 
-> I am using nfs-utils-1.2.8 and sqlite-3.7.17 on Slackware 14.1.
-> Sometimes, all the applications using sqlite do not work correctly.
-> 
-> These applications are:
->  * mozilla-firefox-44.0
->  * mumble-1.2.8
->  * xmoto-0.5.11
-> 
-> On mozilla-firefox, my bookmarks menu is empty.
-> On mumble, my favorite server list is empty.
-> On xmoto, the game could not run.
-> 
-> All these applications at the same time do not work and I need to restart the NFS server in order to be able to use these programs.
+> You can get that with IP tunnel compression. Trouble is, NFS
+> (v2/v3/v4; and younger protocol designers are even worse by telling
+> you 'dunno care about high latency [ > 4 sec roundtrip ] any more'
+> [yeah? wanna pester? old RFS and AFS did a better job...]) are highly
+> sensitive to latency, and like ssh the high latency causes more
+> trouble than its worth.
 
-So when the problem happens, restarting the server fixes the problem?
-
-> I don't know what could be the cause but I know that I have recently upgraded a lot of programs on my operating system (binutils-2.26, gcc-5.3.0, ...).
-
-It's probably the kernel version that's most important.  So it might be
-interesting to know what your kernel version was before and what it is
-now.
-
-Also: what's your NFS server?  Was it upgraded at the same time, or was
-only your client upgraded?
+The only feature the protocol has that's a little bit like compression
+is READ_PLUS (in 4.2), which can tell the client that a range of the
+file is a hole instead of returning all the zeroes.  You could think of
+that as a specialized kind of compression for sparse files.  Even there
+we've been having some trouble ensuring there aren't performance
+regressions.
 
 --b.
-
-> I am using NFS since many years (at least 4) and I have never get troubles with my applications using sqlite.
-> 
-> So, I am wondering what happens.
-> 
-> Should I rebuild nfs-utils?
-> 
-> Thank you.
-> Best regards.
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
