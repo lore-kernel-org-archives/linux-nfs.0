@@ -1,46 +1,73 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-pf0-f176.google.com ([209.85.192.176]:33338 "EHLO
-	mail-pf0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753999AbcDGOGM (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 7 Apr 2016 10:06:12 -0400
-Received: by mail-pf0-f176.google.com with SMTP id 184so56648359pff.0
-        for <linux-nfs@vger.kernel.org>; Thu, 07 Apr 2016 07:06:12 -0700 (PDT)
+Received: from mx1.redhat.com ([209.132.183.28]:37749 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756863AbcDGQvH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 7 Apr 2016 12:51:07 -0400
+Received: from int-mx14.intmail.prod.int.phx2.redhat.com (int-mx14.intmail.prod.int.phx2.redhat.com [10.5.11.27])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+	(No client certificate requested)
+	by mx1.redhat.com (Postfix) with ESMTPS id 81ACC7AEBC
+	for <linux-nfs@vger.kernel.org>; Thu,  7 Apr 2016 16:50:52 +0000 (UTC)
+Received: from steved.boston.devel.redhat.com (steved.boston.devel.redhat.com [10.19.60.47])
+	by int-mx14.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id u37GoqCx010354
+	for <linux-nfs@vger.kernel.org>; Thu, 7 Apr 2016 12:50:52 -0400
+Subject: Re: Monthly Linux NFS Town Hall meeting: Tomorrow - Thur Apr 7
+To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+References: <57056E72.104@RedHat.com>
+From: Steve Dickson <SteveD@redhat.com>
+Message-ID: <57068FEB.6020706@RedHat.com>
+Date: Thu, 7 Apr 2016 12:50:51 -0400
 MIME-Version: 1.0
-In-Reply-To: <CAEUt8VJhRXn7WT8f52Wyy8B7gAPZREK1J7miCY7Rt6z__CC5uQ@mail.gmail.com>
-References: <CAEUt8VJhRXn7WT8f52Wyy8B7gAPZREK1J7miCY7Rt6z__CC5uQ@mail.gmail.com>
-Date: Thu, 7 Apr 2016 16:06:11 +0200
-Message-ID: <CALXu0UfC3h2Rv4oQ9pSZLeMQJMqQu4zt2ywTBTMiWhmD9S6sfg@mail.gmail.com>
-Subject: Re: Question : Compress files to send with NFS4.1
-From: Cedric Blancher <cedric.blancher@gmail.com>
-To: Martin Houry <martinhoury@gmail.com>
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=UTF-8
+In-Reply-To: <57056E72.104@RedHat.com>
+Content-Type: text/plain; charset=windows-1252
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 7 April 2016 at 15:27, Martin Houry <martinhoury@gmail.com> wrote:
-> Is NFS4.1 capable to compress files before sending them on the network
-> and decompress them on the destination to speed up the file transfert?
+FYI... This will be starting in 10mis... If interested.
 
-You can get that with IP tunnel compression. Trouble is, NFS
-(v2/v3/v4; and younger protocol designers are even worse by telling
-you 'dunno care about high latency [ > 4 sec roundtrip ] any more'
-[yeah? wanna pester? old RFS and AFS did a better job...]) are highly
-sensitive to latency, and like ssh the high latency causes more
-trouble than its worth.
+steved.
 
-Ced
-
->
-> Kind regards,
-> Martin
+On 04/06/2016 04:15 PM, Steve Dickson wrote:
+> Hello,
+> 
+> We have not had one of these for a while so lets see
+> what everyone is up to... 
+> 
+> The meeting will be tomorrow *Thur Feb 4* at 
+> 
+>    *01:00 pm EST (10:00am PST)*
+> 
+> The usual agenda will apply. The maintainers will give
+> a quick status of what is happening in their worlds.
+> 
+> Next we'll get updates from major contributors on what
+> they have been doing and are planing on doing.
+>   
+> Finally, we'll open the floor to questions, comments, 
+> concerns from the community.  
+> 
+> Generally the meeting lasts between 30 to 45 mins, with 
+> a very hard stop at 60mins. 
+> 
+> Please feel to attend and participate!
+> 
+> Again the Time: 10:00 am PST (01:00 pm EST)
+> 
+> BlueJeans Video Link:
+>     https://bluejeans.com/5642721552/
+> 
+> The call in numbers are:
+> 
+> U.S. and Canada: (800) 451-8679
+> World wide toll free numbers
+>    https://www.intercallonline.com/listNumbersByCode.action?confCode=5642721552
+> 
+> Conference code: 564.272.1552
+> 
+> steved.
+> 
 > --
 > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
 > the body of a message to majordomo@vger.kernel.org
 > More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
-
-
--- 
-Cedric Blancher <cedric.blancher@gmail.com>
-Institute Pasteur
+> 
