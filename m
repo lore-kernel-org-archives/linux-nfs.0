@@ -1,54 +1,39 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:50976 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([173.255.197.46]:60426 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753056AbcDHSYT (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 8 Apr 2016 14:24:19 -0400
-Date: Fri, 8 Apr 2016 14:24:15 -0400 (EDT)
-From: Benjamin Coddington <bcodding@redhat.com>
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-cc: Christoph Hellwig <hch@infradead.org>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        Anna Schumaker <schumakeranna@gmail.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: hang on xfstests generic/074
-In-Reply-To: <CAHQdGtQdJPMYVd+FXQdvRgPfm_uuR69ArZRiCmVAvPngOohgGg@mail.gmail.com>
-Message-ID: <alpine.OSX.2.19.9992.1604081415100.38111@planck>
-References: <20150210154306.GF28949@fieldses.org> <20150211123448.GA30174@infradead.org> <alpine.OSX.2.19.9992.1604011055480.20689@planck> <CAHQdGtQdJPMYVd+FXQdvRgPfm_uuR69ArZRiCmVAvPngOohgGg@mail.gmail.com>
+	id S1757253AbcDHSlN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 8 Apr 2016 14:41:13 -0400
+Date: Fri, 8 Apr 2016 14:41:11 -0400
+To: Holger =?utf-8?Q?Hoffst=C3=A4tte?=
+	<holger.hoffstaette@googlemail.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: Strange "SECINFO: security flavor .." messages
+Message-ID: <20160408184111.GB25179@fieldses.org>
+References: <pan$2228f$c97142f2$8c4f16d6$23d82166@googlemail.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Content-Type: text/plain; charset=utf-8
+In-Reply-To: <pan$2228f$c97142f2$8c4f16d6$23d82166@googlemail.com>
+From: bfields@fieldses.org (J. Bruce Fields)
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, 1 Apr 2016, Trond Myklebust wrote:
+On Thu, Apr 07, 2016 at 10:38:55PM +0000, Holger Hoffstätte wrote:
+> Hi,
+> 
+> After restarting my server and a client re-automounts, I see the
+> following in the server's dmesg:
+> 
+> [  706.454187] NFS: SECINFO: security flavor 390003 is not supported
+> [  706.454621] NFS: SECINFO: security flavor 390004 is not supported
+> [  706.455057] NFS: SECINFO: security flavor 390005 is not supported
+> 
+> I've been completely unsuccessful in trying to discern what these
+> mean and how I can get rid of them; they don't seem to be harmful
+> since everything else works just fine, and has done so for years.
+> I think this started with NFS 4.2 not too long ago, but don't remember
+> for certain. The server exports several mounts, ext4 and xfs.
+> Clients use only NFS v4 via automount. All on 4.4.6.
 
-> On Fri, Apr 1, 2016 at 10:57 AM, Benjamin Coddington
-> <bcodding@redhat.com> wrote:
-> > On Wed, 11 Feb 2015, Christoph Hellwig wrote:
-> >
-> >> On Tue, Feb 10, 2015 at 10:43:06AM -0500, J. Bruce Fields wrote:
-> >> > I finally got around to running xfstests as part of my regular testing
-> >> > and ran across a reproduceable hang on generic/074:
-> >>
-> >> Yes, I reported this about half a year ago.  It was caused (or at least
-> >> unhidden) by commit 2aca5b869ace67a63aab895659e5dc14c33a4d6e ("SUNRPC:
-> >> Add missing support for RPC_CLNT_CREATE_NO_RETRANS_TIMEOUT"). Reverting
-> >> that commit fixes the issue for me.
-> >
-> > I just ran into this.
-> >
-> > Now that we have SO_REUSEPORT, can we get rid of
-> > RPC_CLNT_CREATE_NO_RETRANS_TIMEOUT?
->
-> They are unrelated.
->
-> If you are hitting this hang, then you have borked server that is
-> dropping NFSv4 RPC requests. The old behaviour of having the client
-> break the connection is not actually sanctioned by the NFSv4 protocol.
->
-> Cheers
->   Trond
-
-Ah, thanks for pointing that out.  It is a server bug, I think.  I'm trying
-to find out more, and I'll write about it under separate cover.
-
-Ben
+What does "exportfs -v" say?  What about "cat
+/proc/net/rpc/nfsd.export/content" right after the client's
+mount/remount?
