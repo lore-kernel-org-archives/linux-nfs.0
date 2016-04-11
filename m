@@ -1,186 +1,96 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ig0-f195.google.com ([209.85.213.195]:33207 "EHLO
-	mail-ig0-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750879AbcDKULv (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 11 Apr 2016 16:11:51 -0400
-Subject: [PATCH v1 12/18] xprtrdma: Reset MRs in frwr_op_unmap_sync()
+Received: from userp1040.oracle.com ([156.151.31.81]:51011 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750879AbcDKULx convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 11 Apr 2016 16:11:53 -0400
+Content-Type: text/plain; charset=us-ascii
+Mime-Version: 1.0 (Mac OS X Mail 9.3 \(3124\))
+Subject: Re: [PATCH v1 00/18] NFS/RDMA client patches for 4.7
 From: Chuck Lever <chuck.lever@oracle.com>
-To: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Mon, 11 Apr 2016 16:11:48 -0400
-Message-ID: <20160411201148.20531.46254.stgit@manet.1015granger.net>
 In-Reply-To: <20160411200323.20531.8893.stgit@manet.1015granger.net>
+Date: Mon, 11 Apr 2016 16:11:48 -0400
+Message-Id: <0CBC734B-4EBC-40E2-943C-DA8A92A9C70A@oracle.com>
 References: <20160411200323.20531.8893.stgit@manet.1015granger.net>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+To: linux-rdma <linux-rdma@vger.kernel.org>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-frwr_op_unmap_sync() is now invoked in a workqueue context, the same
-as __frwr_queue_recovery(). There's no need to defer MR reset if
-posting LOCAL_INV MRs fails.
 
-This means that even when ib_post_send() fails (which should occur
-very rarely) the invalidation and DMA unmapping steps are still done
-in the correct order.
+> On Apr 11, 2016, at 4:10 PM, Chuck Lever <chuck.lever@oracle.com> wrote:
+> 
+> One larger change: Attempt to fence memory regions after a signal
+> interrupts a synchronous RPC. This should prevent a server from
+> writing a reply into a client's memory after the memory has been
+> released.
+> 
+> In addition, the following changes and fixes:
+> 
+> - Use new ib_drain_qp() API
+> - Advertise max size of NFSv4.1 callbacks on RPC/RDMA
+> - Prevent overflowing the server's receive buffers
+> - Read list + Reply chunk (to support krb5i and krbp on RPC/RDMA)
+> - Detect connection loss sooner
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
- net/sunrpc/xprtrdma/frwr_ops.c |   98 ++++++++++++++++++++++++----------------
- 1 file changed, 60 insertions(+), 38 deletions(-)
+Forgot to add:
 
-diff --git a/net/sunrpc/xprtrdma/frwr_ops.c b/net/sunrpc/xprtrdma/frwr_ops.c
-index e1e6ac1..ce245dc 100644
---- a/net/sunrpc/xprtrdma/frwr_ops.c
-+++ b/net/sunrpc/xprtrdma/frwr_ops.c
-@@ -98,6 +98,32 @@ frwr_destroy_recovery_wq(void)
- 	destroy_workqueue(wq);
- }
- 
-+static int
-+__frwr_reset_mr(struct rpcrdma_ia *ia, struct rpcrdma_mw *r)
-+{
-+	struct rpcrdma_frmr *f = &r->frmr;
-+	int rc;
-+
-+	rc = ib_dereg_mr(f->fr_mr);
-+	if (rc) {
-+		pr_warn("rpcrdma: ib_dereg_mr status %d, frwr %p orphaned\n",
-+			rc, r);
-+		return rc;
-+	}
-+
-+	f->fr_mr = ib_alloc_mr(ia->ri_pd, IB_MR_TYPE_MEM_REG,
-+			       ia->ri_max_frmr_depth);
-+	if (IS_ERR(f->fr_mr)) {
-+		pr_warn("rpcrdma: ib_alloc_mr status %ld, frwr %p orphaned\n",
-+			PTR_ERR(f->fr_mr), r);
-+		return PTR_ERR(f->fr_mr);
-+	}
-+
-+	dprintk("RPC:       %s: recovered FRMR %p\n", __func__, r);
-+	f->fr_state = FRMR_IS_INVALID;
-+	return 0;
-+}
-+
- /* Deferred reset of a single FRMR. Generate a fresh rkey by
-  * replacing the MR.
-  *
-@@ -111,24 +137,15 @@ __frwr_recovery_worker(struct work_struct *work)
- 	struct rpcrdma_mw *r = container_of(work, struct rpcrdma_mw,
- 					    frmr.fr_work);
- 	struct rpcrdma_xprt *r_xprt = r->frmr.fr_xprt;
--	unsigned int depth = r_xprt->rx_ia.ri_max_frmr_depth;
--	struct ib_pd *pd = r_xprt->rx_ia.ri_pd;
--
--	if (ib_dereg_mr(r->frmr.fr_mr))
--		goto out_fail;
-+	struct rpcrdma_ia *ia = &r_xprt->rx_ia;
-+	int rc;
- 
--	r->frmr.fr_mr = ib_alloc_mr(pd, IB_MR_TYPE_MEM_REG, depth);
--	if (IS_ERR(r->frmr.fr_mr))
--		goto out_fail;
-+	rc = __frwr_reset_mr(ia, r);
-+	if (rc)
-+		return;
- 
--	dprintk("RPC:       %s: recovered FRMR %p\n", __func__, r);
--	r->frmr.fr_state = FRMR_IS_INVALID;
- 	rpcrdma_put_mw(r_xprt, r);
- 	return;
--
--out_fail:
--	pr_warn("RPC:       %s: FRMR %p unrecovered\n",
--		__func__, r);
- }
- 
- /* A broken MR was discovered in a context that can't sleep.
-@@ -490,24 +507,6 @@ __frwr_prepare_linv_wr(struct rpcrdma_mr_seg *seg)
- 	return invalidate_wr;
- }
- 
--static void
--__frwr_dma_unmap(struct rpcrdma_xprt *r_xprt, struct rpcrdma_mr_seg *seg,
--		 int rc)
--{
--	struct ib_device *device = r_xprt->rx_ia.ri_device;
--	struct rpcrdma_mw *mw = seg->rl_mw;
--	struct rpcrdma_frmr *f = &mw->frmr;
--
--	seg->rl_mw = NULL;
--
--	ib_dma_unmap_sg(device, f->fr_sg, f->fr_nents, f->fr_dir);
--
--	if (!rc)
--		rpcrdma_put_mw(r_xprt, mw);
--	else
--		__frwr_queue_recovery(mw);
--}
--
- /* Invalidate all memory regions that were registered for "req".
-  *
-  * Sleeps until it is safe for the host CPU to access the
-@@ -521,6 +520,7 @@ frwr_op_unmap_sync(struct rpcrdma_xprt *r_xprt, struct rpcrdma_req *req)
- 	struct rpcrdma_mr_seg *seg;
- 	unsigned int i, nchunks;
- 	struct rpcrdma_frmr *f;
-+	struct rpcrdma_mw *mw;
- 	int rc;
- 
- 	dprintk("RPC:       %s: req %p\n", __func__, req);
-@@ -561,11 +561,8 @@ frwr_op_unmap_sync(struct rpcrdma_xprt *r_xprt, struct rpcrdma_req *req)
- 	 * unless ri_id->qp is a valid pointer.
- 	 */
- 	rc = ib_post_send(ia->ri_id->qp, invalidate_wrs, &bad_wr);
--	if (rc) {
--		pr_warn("%s: ib_post_send failed %i\n", __func__, rc);
--		rdma_disconnect(ia->ri_id);
--		goto unmap;
--	}
-+	if (rc)
-+		goto reset_mrs;
- 
- 	wait_for_completion(&f->fr_linv_done);
- 
-@@ -575,14 +572,39 @@ frwr_op_unmap_sync(struct rpcrdma_xprt *r_xprt, struct rpcrdma_req *req)
- unmap:
- 	for (i = 0, nchunks = req->rl_nchunks; nchunks; nchunks--) {
- 		seg = &req->rl_segments[i];
-+		mw = seg->rl_mw;
-+		seg->rl_mw = NULL;
- 
--		__frwr_dma_unmap(r_xprt, seg, rc);
-+		ib_dma_unmap_sg(ia->ri_device, f->fr_sg, f->fr_nents,
-+				f->fr_dir);
-+		rpcrdma_put_mw(r_xprt, mw);
- 
- 		i += seg->mr_nsegs;
- 		seg->mr_nsegs = 0;
- 	}
- 
- 	req->rl_nchunks = 0;
-+	return;
-+
-+reset_mrs:
-+	pr_warn("%s: ib_post_send failed %i\n", __func__, rc);
-+
-+	/* Find and reset the MRs in the LOCAL_INV WRs that did not
-+	 * get posted. This is synchronous, and slow.
-+	 */
-+	for (i = 0, nchunks = req->rl_nchunks; nchunks; nchunks--) {
-+		seg = &req->rl_segments[i];
-+		mw = seg->rl_mw;
-+		f = &mw->frmr;
-+
-+		if (mw->frmr.fr_mr->rkey == bad_wr->ex.invalidate_rkey) {
-+			__frwr_reset_mr(ia, mw);
-+			bad_wr = bad_wr->next;
-+		}
-+
-+		i += seg->mr_nsegs;
-+	}
-+	goto unmap;
- }
- 
- /* Post a LOCAL_INV Work Request to prevent further remote access
+Available in the "nfs-rdma-for-4.7" topic branch of this git repo:
+
+git://git.linux-nfs.org/projects/cel/cel-2.6.git
+
+Or for browsing:
+
+http://git.linux-nfs.org/?p=cel/cel-2.6.git;a=log;h=refs/heads/nfs-rdma-for-4.7
+
+
+> ---
+> 
+> Chuck Lever (18):
+>      sunrpc: Advertise maximum backchannel payload size
+>      xprtrdma: Bound the inline threshold values
+>      xprtrdma: Limit number of RDMA segments in RPC-over-RDMA headers
+>      xprtrdma: Prevent inline overflow
+>      xprtrdma: Avoid using Write list for small NFS READ requests
+>      xprtrdma: Update comments in rpcrdma_marshal_req()
+>      xprtrdma: Allow Read list and Reply chunk simultaneously
+>      xprtrdma: Remove rpcrdma_create_chunks()
+>      xprtrdma: Use core ib_drain_qp() API
+>      xprtrdma: Rename rpcrdma_frwr::sg and sg_nents
+>      xprtrdma: Save I/O direction in struct rpcrdma_frwr
+>      xprtrdma: Reset MRs in frwr_op_unmap_sync()
+>      xprtrdma: Refactor the FRWR recovery worker
+>      xprtrdma: Move fr_xprt and fr_worker to struct rpcrdma_mw
+>      xprtrdma: Refactor __fmr_dma_unmap()
+>      xprtrdma: Add ro_unmap_safe memreg method
+>      xprtrdma: Remove ro_unmap() from all registration modes
+>      xprtrdma: Faster server reboot recovery
+> 
+> 
+> fs/nfs/nfs4proc.c                  |   10 -
+> include/linux/sunrpc/clnt.h        |    1 
+> include/linux/sunrpc/xprt.h        |    1 
+> include/linux/sunrpc/xprtrdma.h    |    4 
+> net/sunrpc/clnt.c                  |   17 +
+> net/sunrpc/xprtrdma/backchannel.c  |   16 +
+> net/sunrpc/xprtrdma/fmr_ops.c      |  134 +++++++--
+> net/sunrpc/xprtrdma/frwr_ops.c     |  214 ++++++++-------
+> net/sunrpc/xprtrdma/physical_ops.c |   39 ++-
+> net/sunrpc/xprtrdma/rpc_rdma.c     |  517 ++++++++++++++++++++++--------------
+> net/sunrpc/xprtrdma/transport.c    |   16 +
+> net/sunrpc/xprtrdma/verbs.c        |   91 ++----
+> net/sunrpc/xprtrdma/xprt_rdma.h    |   42 ++-
+> net/sunrpc/xprtsock.c              |    6 
+> 14 files changed, 674 insertions(+), 434 deletions(-)
+> 
+> --
+> Chuck Lever
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+--
+Chuck Lever
+
+
 
