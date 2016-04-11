@@ -1,882 +1,198 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp6-g21.free.fr ([212.27.42.6]:30887 "EHLO smtp6-g21.free.fr"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752873AbcDKTJp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 11 Apr 2016 15:09:45 -0400
-Date: Mon, 11 Apr 2016 21:09:39 +0200
-From: YuGiOhJCJ Mailing-List <yugiohjcj-mailinglist@laposte.net>
-To: YuGiOhJCJ Mailing-List <yugiohjcj-mailinglist@laposte.net>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: Sometimes all the applications using sqlite do not work
- correctly
-Message-Id: <20160411210939.447af7a06255f9ec8b491cc2@laposte.net>
-In-Reply-To: <20160408004839.247958f8c43329122b48d75f@laposte.net>
-References: <20160407010927.bf07f12fa3f62b1586dd11ad@laposte.net>
-	<20160407181422.GB30676@fieldses.org>
-	<20160408004839.247958f8c43329122b48d75f@laposte.net>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Received: from mail-ig0-f195.google.com ([209.85.213.195]:36364 "EHLO
+	mail-ig0-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754291AbcDKUKT (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 11 Apr 2016 16:10:19 -0400
+Subject: [PATCH v1 01/18] sunrpc: Advertise maximum backchannel payload size
+From: Chuck Lever <chuck.lever@oracle.com>
+To: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
+Date: Mon, 11 Apr 2016 16:10:16 -0400
+Message-ID: <20160411201016.20531.39229.stgit@manet.1015granger.net>
+In-Reply-To: <20160411200323.20531.8893.stgit@manet.1015granger.net>
+References: <20160411200323.20531.8893.stgit@manet.1015granger.net>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, 8 Apr 2016 00:48:39 +0200
-YuGiOhJCJ Mailing-List <yugiohjcj-mailinglist@laposte.net> wrote:
+RPC-over-RDMA transports have a limit on how large a backward
+direction (backchannel) RPC message can be. Ensure that the NFSv4.x
+CREATE_SESSION operation advertises this limit to servers.
 
-> > So when the problem happens, restarting the server fixes the problem?
-> 
-> Indeed, that's it.
-> 
-> > It's probably the kernel version that's most important.  So it might be
-> > interesting to know what your kernel version was before and what it is
-> > now.
-> 
-> My Linux kernel was 3.18.20 before and is still 3.18.20 now.
-> I have not changed of kernel since the problem happens.
-> 
-> > Also: what's your NFS server?  Was it upgraded at the same time, or was
-> > only your client upgraded?
-> 
-> I have not upgraded the server and not upgraded the client.
-> They are still the same: nfs-utils-1.2.8.
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
+ fs/nfs/nfs4proc.c                 |   10 ++++++----
+ include/linux/sunrpc/clnt.h       |    1 +
+ include/linux/sunrpc/xprt.h       |    1 +
+ net/sunrpc/clnt.c                 |   17 +++++++++++++++++
+ net/sunrpc/xprtrdma/backchannel.c |   16 ++++++++++++++++
+ net/sunrpc/xprtrdma/transport.c   |    1 +
+ net/sunrpc/xprtrdma/xprt_rdma.h   |    1 +
+ net/sunrpc/xprtsock.c             |    6 ++++++
+ 8 files changed, 49 insertions(+), 4 deletions(-)
 
-It happened again today.
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 327b8c3..01bef06 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -7351,9 +7351,11 @@ int nfs4_proc_get_lease_time(struct nfs_client *clp, struct nfs_fsinfo *fsinfo)
+  * always set csa_cachethis to FALSE because the current implementation
+  * of the back channel DRC only supports caching the CB_SEQUENCE operation.
+  */
+-static void nfs4_init_channel_attrs(struct nfs41_create_session_args *args)
++static void nfs4_init_channel_attrs(struct nfs41_create_session_args *args,
++				    struct rpc_clnt *clnt)
+ {
+ 	unsigned int max_rqst_sz, max_resp_sz;
++	unsigned int max_bc_payload = rpc_max_bc_payload(clnt);
+ 
+ 	max_rqst_sz = NFS_MAX_FILE_IO_SIZE + nfs41_maxwrite_overhead;
+ 	max_resp_sz = NFS_MAX_FILE_IO_SIZE + nfs41_maxread_overhead;
+@@ -7371,8 +7373,8 @@ static void nfs4_init_channel_attrs(struct nfs41_create_session_args *args)
+ 		args->fc_attrs.max_ops, args->fc_attrs.max_reqs);
+ 
+ 	/* Back channel attributes */
+-	args->bc_attrs.max_rqst_sz = PAGE_SIZE;
+-	args->bc_attrs.max_resp_sz = PAGE_SIZE;
++	args->bc_attrs.max_rqst_sz = max_bc_payload;
++	args->bc_attrs.max_resp_sz = max_bc_payload;
+ 	args->bc_attrs.max_resp_sz_cached = 0;
+ 	args->bc_attrs.max_ops = NFS4_MAX_BACK_CHANNEL_OPS;
+ 	args->bc_attrs.max_reqs = NFS41_BC_MAX_CALLBACKS;
+@@ -7476,7 +7478,7 @@ static int _nfs4_proc_create_session(struct nfs_client *clp,
+ 	};
+ 	int status;
+ 
+-	nfs4_init_channel_attrs(&args);
++	nfs4_init_channel_attrs(&args, clp->cl_rpcclient);
+ 	args.flags = (SESSION4_PERSIST | SESSION4_BACK_CHAN);
+ 
+ 	status = rpc_call_sync(session->clp->cl_rpcclient, &msg, RPC_TASK_TIMEOUT);
+diff --git a/include/linux/sunrpc/clnt.h b/include/linux/sunrpc/clnt.h
+index 9a7ddba..19c659d 100644
+--- a/include/linux/sunrpc/clnt.h
++++ b/include/linux/sunrpc/clnt.h
+@@ -176,6 +176,7 @@ void		rpc_setbufsize(struct rpc_clnt *, unsigned int, unsigned int);
+ int		rpc_protocol(struct rpc_clnt *);
+ struct net *	rpc_net_ns(struct rpc_clnt *);
+ size_t		rpc_max_payload(struct rpc_clnt *);
++size_t		rpc_max_bc_payload(struct rpc_clnt *);
+ unsigned long	rpc_get_timeout(struct rpc_clnt *clnt);
+ void		rpc_force_rebind(struct rpc_clnt *);
+ size_t		rpc_peeraddr(struct rpc_clnt *, struct sockaddr *, size_t);
+diff --git a/include/linux/sunrpc/xprt.h b/include/linux/sunrpc/xprt.h
+index fb0d212..5aa3834 100644
+--- a/include/linux/sunrpc/xprt.h
++++ b/include/linux/sunrpc/xprt.h
+@@ -142,6 +142,7 @@ struct rpc_xprt_ops {
+ 	int		(*bc_setup)(struct rpc_xprt *xprt,
+ 				    unsigned int min_reqs);
+ 	int		(*bc_up)(struct svc_serv *serv, struct net *net);
++	size_t		(*bc_maxpayload)(struct rpc_xprt *xprt);
+ 	void		(*bc_free_rqst)(struct rpc_rqst *rqst);
+ 	void		(*bc_destroy)(struct rpc_xprt *xprt,
+ 				      unsigned int max_reqs);
+diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+index 7e0c9bf..06b4df9 100644
+--- a/net/sunrpc/clnt.c
++++ b/net/sunrpc/clnt.c
+@@ -1414,6 +1414,23 @@ size_t rpc_max_payload(struct rpc_clnt *clnt)
+ EXPORT_SYMBOL_GPL(rpc_max_payload);
+ 
+ /**
++ * rpc_max_bc_payload - Get maximum backchannel payload size, in bytes
++ * @clnt: RPC client to query
++ */
++size_t rpc_max_bc_payload(struct rpc_clnt *clnt)
++{
++	struct rpc_xprt *xprt;
++	size_t ret;
++
++	rcu_read_lock();
++	xprt = rcu_dereference(clnt->cl_xprt);
++	ret = xprt->ops->bc_maxpayload(xprt);
++	rcu_read_unlock();
++	return ret;
++}
++EXPORT_SYMBOL_GPL(rpc_max_bc_payload);
++
++/**
+  * rpc_get_timeout - Get timeout for transport in units of HZ
+  * @clnt: RPC client to query
+  */
+diff --git a/net/sunrpc/xprtrdma/backchannel.c b/net/sunrpc/xprtrdma/backchannel.c
+index 2dcd764..87762d9 100644
+--- a/net/sunrpc/xprtrdma/backchannel.c
++++ b/net/sunrpc/xprtrdma/backchannel.c
+@@ -192,6 +192,22 @@ int xprt_rdma_bc_up(struct svc_serv *serv, struct net *net)
+ }
+ 
+ /**
++ * xprt_rdma_bc_maxpayload - Return maximum backchannel message size
++ * @xprt: transport
++ *
++ * Returns maximum size, in bytes, of a backchannel message
++ */
++size_t xprt_rdma_bc_maxpayload(struct rpc_xprt *xprt)
++{
++	struct rpcrdma_xprt *r_xprt = rpcx_to_rdmax(xprt);
++	struct rpcrdma_create_data_internal *cdata = &r_xprt->rx_data;
++	size_t maxmsg;
++
++	maxmsg = min_t(unsigned int, cdata->inline_rsize, cdata->inline_wsize);
++	return maxmsg - RPCRDMA_HDRLEN_MIN;
++}
++
++/**
+  * rpcrdma_bc_marshal_reply - Send backwards direction reply
+  * @rqst: buffer containing RPC reply data
+  *
+diff --git a/net/sunrpc/xprtrdma/transport.c b/net/sunrpc/xprtrdma/transport.c
+index b1b009f..9954342 100644
+--- a/net/sunrpc/xprtrdma/transport.c
++++ b/net/sunrpc/xprtrdma/transport.c
+@@ -707,6 +707,7 @@ static struct rpc_xprt_ops xprt_rdma_procs = {
+ #if defined(CONFIG_SUNRPC_BACKCHANNEL)
+ 	.bc_setup		= xprt_rdma_bc_setup,
+ 	.bc_up			= xprt_rdma_bc_up,
++	.bc_maxpayload		= xprt_rdma_bc_maxpayload,
+ 	.bc_free_rqst		= xprt_rdma_bc_free_rqst,
+ 	.bc_destroy		= xprt_rdma_bc_destroy,
+ #endif
+diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
+index 2ebc743..7723e5f 100644
+--- a/net/sunrpc/xprtrdma/xprt_rdma.h
++++ b/net/sunrpc/xprtrdma/xprt_rdma.h
+@@ -534,6 +534,7 @@ void xprt_rdma_cleanup(void);
+ #if defined(CONFIG_SUNRPC_BACKCHANNEL)
+ int xprt_rdma_bc_setup(struct rpc_xprt *, unsigned int);
+ int xprt_rdma_bc_up(struct svc_serv *, struct net *);
++size_t xprt_rdma_bc_maxpayload(struct rpc_xprt *);
+ int rpcrdma_bc_post_recv(struct rpcrdma_xprt *, unsigned int);
+ void rpcrdma_bc_receive_call(struct rpcrdma_xprt *, struct rpcrdma_rep *);
+ int rpcrdma_bc_marshal_reply(struct rpc_rqst *);
+diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
+index 65e7595..f1faf6b 100644
+--- a/net/sunrpc/xprtsock.c
++++ b/net/sunrpc/xprtsock.c
+@@ -1365,6 +1365,11 @@ static int xs_tcp_bc_up(struct svc_serv *serv, struct net *net)
+ 		return ret;
+ 	return 0;
+ }
++
++static size_t xs_tcp_bc_maxpayload(struct rpc_xprt *xprt)
++{
++	return PAGE_SIZE;
++}
+ #else
+ static inline int _xs_tcp_read_data(struct rpc_xprt *xprt,
+ 					struct xdr_skb_reader *desc)
+@@ -2660,6 +2665,7 @@ static struct rpc_xprt_ops xs_tcp_ops = {
+ #ifdef CONFIG_SUNRPC_BACKCHANNEL
+ 	.bc_setup		= xprt_setup_bc,
+ 	.bc_up			= xs_tcp_bc_up,
++	.bc_maxpayload		= xs_tcp_bc_maxpayload,
+ 	.bc_free_rqst		= xprt_free_bc_rqst,
+ 	.bc_destroy		= xprt_destroy_bc,
+ #endif
 
-Output on mumble:
-$ mumble 
-CELT bitstream 8000000b from libcelt0.so.0.7.0
-CELT bitstream 80000010 from libcelt0.so.0.11.0
-Locale is "en_US" (System: "en_US")
-TextToSpeech: Compiled without support for speech-dispatcher
-SQL Query failed "CREATE TABLE IF NOT EXISTS `servers` (`id` INTEGER PRIMARY KEY AUTOINCREMENT, `name` TEXT, `hostname` TEXT, `port` INTEGER DEFAULT 64738, `username` TEXT, `password` TEXT)" 
--1 "database is locked Unable to execute statement" 
-SQL Query failed "CREATE TABLE IF NOT EXISTS `comments` (`who` TEXT, `comment` BLOB, `seen` DATE)" 
--1 "database is locked Unable to execute statement" 
-SQL Query failed "CREATE UNIQUE INDEX IF NOT EXISTS `comments_comment` ON `comments`(`who`, `comment`)" 
--1 "database is locked Unable to execute statement" 
-SQL Query failed "CREATE INDEX IF NOT EXISTS `comments_seen` ON `comments`(`seen`)" 
--1 "database is locked Unable to execute statement" 
-SQL Query failed "CREATE TABLE IF NOT EXISTS `blobs` (`hash` TEXT, `data` BLOB, `seen` DATE)" 
--1 "database is locked Unable to execute statement" 
-SQL Query failed "CREATE UNIQUE INDEX IF NOT EXISTS `blobs_hash` ON `blobs`(`hash`)" 
--1 "database is locked Unable to execute statement" 
-SQL Query failed "CREATE INDEX IF NOT EXISTS `blobs_seen` ON `blobs`(`seen`)" 
--1 "database is locked Unable to execute statement" 
-SQL Query failed "CREATE TABLE IF NOT EXISTS `tokens` (`id` INTEGER PRIMARY KEY AUTOINCREMENT, `digest` BLOB, `token` TEXT)" 
--1 "database is locked Unable to execute statement" 
-SQL Query failed "CREATE INDEX IF NOT EXISTS `tokens_host_port` ON `tokens`(`digest`)" 
--1 "database is locked Unable to execute statement" 
-SQL Query failed "CREATE TABLE IF NOT EXISTS `shortcut` (`id` INTEGER PRIMARY KEY AUTOINCREMENT, `digest` BLOB, `shortcut` BLOB, `target` BLOB, `suppress` INTEGER)" 
--1 "database is locked Unable to execute statement" 
-SQL Query failed "CREATE INDEX IF NOT EXISTS `shortcut_host_port` ON `shortcut`(`digest`)" 
--1 "database is locked Unable to execute statement" 
-SQL Query failed "CREATE TABLE IF NOT EXISTS `udp` (`id` INTEGER PRIMARY KEY AUTOINCREMENT, `digest` BLOB)" 
--1 "database is locked Unable to execute statement" 
-SQL Query failed "CREATE UNIQUE INDEX IF NOT EXISTS `udp_host_port` ON `udp`(`digest`)" 
--1 "database is locked Unable to execute statement" 
-SQL Query failed "CREATE TABLE IF NOT EXISTS `cert` (`id` INTEGER PRIMARY KEY AUTOINCREMENT, `hostname` TEXT, `port` INTEGER, `digest` TEXT)" 
--1 "database is locked Unable to execute statement" 
-SQL Query failed "CREATE UNIQUE INDEX IF NOT EXISTS `cert_host_port` ON `cert`(`hostname`,`port`)" 
--1 "database is locked Unable to execute statement" 
-SQL Query failed "CREATE TABLE IF NOT EXISTS `friends` (`id` INTEGER PRIMARY KEY AUTOINCREMENT, `name` TEXT, `hash` TEXT)" 
--1 "database is locked Unable to execute statement" 
-SQL Query failed "CREATE UNIQUE INDEX IF NOT EXISTS `friends_name` ON `friends`(`name`)" 
--1 "database is locked Unable to execute statement" 
-SQL Query failed "CREATE UNIQUE INDEX IF NOT EXISTS `friends_hash` ON `friends`(`hash`)" 
--1 "database is locked Unable to execute statement" 
-SQL Query failed "CREATE TABLE IF NOT EXISTS `ignored` (`id` INTEGER PRIMARY KEY AUTOINCREMENT, `hash` TEXT)" 
--1 "database is locked Unable to execute statement" 
-SQL Query failed "CREATE UNIQUE INDEX IF NOT EXISTS `ignored_hash` ON `ignored`(`hash`)" 
--1 "database is locked Unable to execute statement" 
-SQL Query failed "CREATE TABLE IF NOT EXISTS `muted` (`id` INTEGER PRIMARY KEY AUTOINCREMENT, `hash` TEXT)" 
--1 "database is locked Unable to execute statement" 
-SQL Query failed "CREATE UNIQUE INDEX IF NOT EXISTS `muted_hash` ON `muted`(`hash`)" 
--1 "database is locked Unable to execute statement" 
-SQL Query failed "CREATE TABLE IF NOT EXISTS `pingcache` (`id` INTEGER PRIMARY KEY AUTOINCREMENT, `hostname` TEXT, `port` INTEGER, `ping` INTEGER)" 
--1 "database is locked Unable to execute statement" 
-SQL Query failed "CREATE UNIQUE INDEX IF NOT EXISTS `pingcache_host_port` ON `pingcache`(`hostname`,`port`)" 
--1 "database is locked Unable to execute statement" 
-SQL Query failed "DELETE FROM `comments` WHERE `seen` < datetime('now', '-1 years')" 
--1 "database is locked Unable to execute statement" 
-SQL Query failed "DELETE FROM `blobs` WHERE `seen` < datetime('now', '-1 months')" 
--1 "database is locked Unable to execute statement" 
-SQL Query failed "VACUUM" 
--1 "database is locked Unable to fetch row" 
-SQL Query failed "PRAGMA synchronous = OFF" 
--1 "database is locked Unable to execute statement" 
-SQL Query failed "PRAGMA journal_mode = TRUNCATE" 
--1 "database is locked Unable to execute statement" 
-Database SQLite: "3.7.17" 
-Overlay: Listening on "/home/yugiohjcj/.MumbleOverlayPipe" 
-GlobalShortcutX: /dev/input/event0: Speakup
-GlobalShortcutX: /dev/input/event12: Eee PC WMI hotkeys
-GlobalShortcutX: /dev/input/event13: Microsoft X-Box 360 pad
-GlobalShortcutX: /dev/input/event14: Logitech USB Optical Mouse
-GlobalShortcutX: /dev/input/event15: LITEON Technology USB Keyboard
-GlobalShortcutX: /dev/input/event6: Power Button
-GlobalShortcutX: /dev/input/event7: Power Button
-AudioInput: 40000 bits/s, 48000 hz, 480 sample
-ALSAAudioOutput: Initialized
-ALSAAudioInput: Initing audiocapture default.
-lock: No locks available
-ALSAAudioInput: Actual buffer 48000 hz, 1 channel 3840 samples [480 per period]
-AudioInput: Initialized mixer for 1 channel 48000 hz mic and 0 channel 48000 hz echo
-warning: The VAD has been replaced by a hack pending a complete rewrite
-lock: No locks available
-ALSAAudioOutput: ALSA reports 32 output channels. Clamping to 2.
-ALSAAudioOutput: Actual buffer 48000 hz, 2 channel 2881 samples [480 per period]
-ALSAAudioOutput: Initializing 2 channel, 48000 hz mixer
-AudioOutput: Initialized 2 channel 48000 hz mixer
-SQL Query failed "SELECT `name`, `hostname`, `port`, `username`, `password`, `url` FROM `servers` ORDER BY `name`" 
--1 "No query Unable to fetch row" 
-OSInfo: Failed to execute lsb_release
-SQL Query failed "SELECT `hostname`, `port`, `ping` FROM `pingcache`" 
--1 "No query Unable to fetch row" 
-SQL Query failed "DELETE FROM `servers`" 
--1 "No query Unable to fetch row" 
-SQL Query failed "DELETE FROM `pingcache`" 
--1 "No query Unable to fetch row" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-SQL Query failed "REPLACE INTO `pingcache` (`hostname`, `port`, `ping`) VALUES (?,?,?)" 
--1 " Parameter count mismatch" 
-ALSAAudioInput: Releasing ALSA Mic.
-ALSAAudioOutput: Destroyed
-SQL Query failed "PRAGMA journal_mode = DELETE" 
--1 "database is locked Unable to execute statement" 
-SQL Query failed "VACUUM" 
--1 "database is locked Unable to fetch row"
-
-Output on xmoto:
-$ xmoto 
-fatal exception : xmDb: database is locked
-
-No Output on firefox but I am unable to show bookmarks which means that there is a problem to access the sqlite database.
-
-I have just restarted the NFS server like that:
-$ bash /etc/rc.d/rc.nfsd restart
-
-And the client works now perfectly again with applications using sqlite.
-
-So I guess that there is a problem with the NFS server (not the client).
-Is there something I could check like processes running on the server when the problem happens?
-What information could be useful to understand what happens when I get the problem?
