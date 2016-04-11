@@ -1,103 +1,84 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ig0-f193.google.com ([209.85.213.193]:36101 "EHLO
-	mail-ig0-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752860AbcDKUMl (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 11 Apr 2016 16:12:41 -0400
-Subject: [PATCH v1 18/18] xprtrdma: Faster server reboot recovery
+Received: from mail-ig0-f195.google.com ([209.85.213.195]:34122 "EHLO
+	mail-ig0-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751427AbcDKUUZ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 11 Apr 2016 16:20:25 -0400
+Received: by mail-ig0-f195.google.com with SMTP id qu10so99501igc.1
+        for <linux-nfs@vger.kernel.org>; Mon, 11 Apr 2016 13:20:25 -0700 (PDT)
+Subject: [PATCH] NFS: Fix an LOCK/OPEN race when unlinking an open file
 From: Chuck Lever <chuck.lever@oracle.com>
-To: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Mon, 11 Apr 2016 16:12:39 -0400
-Message-ID: <20160411201239.20531.91129.stgit@manet.1015granger.net>
-In-Reply-To: <20160411200323.20531.8893.stgit@manet.1015granger.net>
-References: <20160411200323.20531.8893.stgit@manet.1015granger.net>
+To: trond.myklebust@primarydata.com, anna.schumaker@netapp.com
+Cc: linux-nfs@vger.kernel.org
+Date: Mon, 11 Apr 2016 16:20:22 -0400
+Message-ID: <20160411201733.20911.86904.stgit@manet.1015granger.net>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-In a cluster failover scenario, it is desirable for the client to
-attempt to reconnect quickly, as an alternate NFS server is already
-waiting to take over for the down server. The client can't see that
-a server IP address has moved to a new server until the existing
-connection is gone.
+At Connectathon 2016, we found that recent upstream Linux clients
+would occasionally send a LOCK operation with a zero stateid. This
+appeared to happen in close proximity to another thread returning
+a delegation before unlinking the same file while it remained open.
 
-For fabrics and devices where it is meaningful, set an upper bound
-on the amount of time before it is determined that a connection is
-no longer valid. This allows the RPC client to detect connection
-loss in a timely matter, then perform a fresh resolution of the
-server GUID in case it has changed (cluster failover).
+Earlier, the client received a write delegation on this file and
+returned the open stateid. Now, as it is getting ready to unlink the
+file, it returns the write delegation. But there is still an open
+file descriptor on that file, so the client must OPEN the file
+again before it returns the delegation.
 
+Since commit 24311f884189 ('NFSv4: Recovery of recalled read
+delegations is broken'), nfs_open_delegation_recall() clears the
+NFS_DELEGATED_STATE flag _before_ it sends the OPEN. This allows a
+racing LOCK on the same inode to be put on the wire before the OPEN
+operation has returned a valid open stateid.
+
+To eliminate this race, serialize delegation return with the
+acquisition of a file lock on the same file. Adopt the same approach
+as is used in the unlock path.
+
+Fixes: 24311f884189 ('NFSv4: Recovery of recalled read ... ')
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- net/sunrpc/xprtrdma/verbs.c |   28 ++++++++++++++++++++++++----
- 1 file changed, 24 insertions(+), 4 deletions(-)
+Hi-
 
-diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
-index b7a5bc1..5cc57fb 100644
---- a/net/sunrpc/xprtrdma/verbs.c
-+++ b/net/sunrpc/xprtrdma/verbs.c
-@@ -211,9 +211,10 @@ rpcrdma_conn_upcall(struct rdma_cm_id *id, struct rdma_cm_event *event)
- 	struct rpcrdma_ep *ep = &xprt->rx_ep;
- #if IS_ENABLED(CONFIG_SUNRPC_DEBUG)
- 	struct sockaddr *sap = (struct sockaddr *)&ep->rep_remote_addr;
--#endif
-+	u64 timeout;
- 	struct ib_qp_attr *attr = &ia->ri_qp_attr;
- 	struct ib_qp_init_attr *iattr = &ia->ri_qp_init_attr;
-+#endif
- 	int connstate = 0;
+This fix appears to be both safe and effective. Please consider
+it for v4.7 and for stable. Thanks!
+
+
+ fs/nfs/nfs4proc.c |    4 ++++
+ 1 file changed, 4 insertions(+)
+
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 01bef06..c40f1b6 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -6054,6 +6054,7 @@ static int nfs41_lock_expired(struct nfs4_state *state, struct file_lock *reques
+ static int _nfs4_proc_setlk(struct nfs4_state *state, int cmd, struct file_lock *request)
+ {
+ 	struct nfs_inode *nfsi = NFS_I(state->inode);
++	struct nfs4_state_owner *sp = state->owner;
+ 	unsigned char fl_flags = request->fl_flags;
+ 	int status = -ENOLCK;
  
- 	switch (event->event) {
-@@ -235,14 +236,23 @@ rpcrdma_conn_upcall(struct rdma_cm_id *id, struct rdma_cm_event *event)
- 		complete(&ia->ri_done);
- 		break;
- 	case RDMA_CM_EVENT_ESTABLISHED:
--		connstate = 1;
-+#if IS_ENABLED(CONFIG_SUNRPC_DEBUG)
-+		memset(attr, 0, sizeof(*attr));
- 		ib_query_qp(ia->ri_id->qp, attr,
--			    IB_QP_MAX_QP_RD_ATOMIC | IB_QP_MAX_DEST_RD_ATOMIC,
-+			    IB_QP_MAX_QP_RD_ATOMIC |
-+			    IB_QP_MAX_DEST_RD_ATOMIC |
-+			    IB_QP_TIMEOUT,
- 			    iattr);
- 		dprintk("RPC:       %s: %d responder resources"
- 			" (%d initiator)\n",
- 			__func__, attr->max_dest_rd_atomic,
- 			attr->max_rd_atomic);
-+		timeout = 4096 * (1ULL << attr->timeout);
-+		do_div(timeout, NSEC_PER_SEC);
-+		dprintk("RPC:       %s: retry timeout: %llu seconds\n",
-+			__func__, timeout);
-+#endif
-+		connstate = 1;
- 		goto connected;
- 	case RDMA_CM_EVENT_CONNECT_ERROR:
- 		connstate = -ENOTCONN;
-@@ -554,6 +564,7 @@ rpcrdma_ep_create(struct rpcrdma_ep *ep, struct rpcrdma_ia *ia,
- 	ep->rep_attr.recv_cq = recvcq;
- 
- 	/* Initialize cma parameters */
-+	memset(&ep->rep_remote_cma, 0, sizeof(ep->rep_remote_cma));
- 
- 	/* RPC/RDMA does not use private data */
- 	ep->rep_remote_cma.private_data = NULL;
-@@ -567,7 +578,16 @@ rpcrdma_ep_create(struct rpcrdma_ep *ep, struct rpcrdma_ia *ia,
- 		ep->rep_remote_cma.responder_resources =
- 						ia->ri_device->attrs.max_qp_rd_atom;
- 
--	ep->rep_remote_cma.retry_count = 7;
-+	/* Limit transport retries so client can detect server
-+	 * GID changes quickly. RPC layer handles re-establishing
-+	 * transport connection and retransmission.
-+	 */
-+	ep->rep_remote_cma.retry_count = 6;
-+
-+	/* RPC-over-RDMA handles its own flow control. In addition,
-+	 * make all RNR NAKs visible so we know that RPC-over-RDMA
-+	 * flow control is working correctly (no NAKs should be seen).
-+	 */
- 	ep->rep_remote_cma.flow_control = 0;
- 	ep->rep_remote_cma.rnr_retry_count = 0;
- 
+@@ -6068,6 +6069,7 @@ static int _nfs4_proc_setlk(struct nfs4_state *state, int cmd, struct file_lock
+ 	status = do_vfs_lock(state->inode, request);
+ 	if (status < 0)
+ 		goto out;
++	mutex_lock(&sp->so_delegreturn_mutex);
+ 	down_read(&nfsi->rwsem);
+ 	if (test_bit(NFS_DELEGATED_STATE, &state->flags)) {
+ 		/* Yes: cache locks! */
+@@ -6075,9 +6077,11 @@ static int _nfs4_proc_setlk(struct nfs4_state *state, int cmd, struct file_lock
+ 		request->fl_flags = fl_flags & ~FL_SLEEP;
+ 		status = do_vfs_lock(state->inode, request);
+ 		up_read(&nfsi->rwsem);
++		mutex_unlock(&sp->so_delegreturn_mutex);
+ 		goto out;
+ 	}
+ 	up_read(&nfsi->rwsem);
++	mutex_unlock(&sp->so_delegreturn_mutex);
+ 	status = _nfs4_do_setlk(state, cmd, request, NFS_LOCK_NEW);
+ out:
+ 	request->fl_flags = fl_flags;
 
