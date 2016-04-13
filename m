@@ -1,77 +1,90 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:38124 "EHLO fieldses.org"
+Received: from mx2.suse.de ([195.135.220.15]:55092 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754500AbcDMRol (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 13 Apr 2016 13:44:41 -0400
-Date: Wed, 13 Apr 2016 13:44:39 -0400
-To: YuGiOhJCJ Mailing-List <yugiohjcj-mailinglist@laposte.net>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: Sometimes all the applications using sqlite do not work correctly
-Message-ID: <20160413174439.GA2808@fieldses.org>
-References: <20160407010927.bf07f12fa3f62b1586dd11ad@laposte.net>
- <20160407181422.GB30676@fieldses.org>
- <20160408004839.247958f8c43329122b48d75f@laposte.net>
- <20160411210939.447af7a06255f9ec8b491cc2@laposte.net>
+	id S1751909AbcDMXd3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 13 Apr 2016 19:33:29 -0400
+Received: from relay2.suse.de (charybdis-ext.suse.de [195.135.220.254])
+	by mx2.suse.de (Postfix) with ESMTP id 8AF35ABB2
+	for <linux-nfs@vger.kernel.org>; Wed, 13 Apr 2016 23:33:26 +0000 (UTC)
+From: NeilBrown <neilb@suse.com>
+To: linux-nfs@vger.kernel.org
+Date: Thu, 14 Apr 2016 09:33:22 +1000
+Subject: AUTH_NONE at top of SECINFO_NONAME reply.
+Message-ID: <87k2k1jd8d.fsf@notabene.neil.brown.name>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20160411210939.447af7a06255f9ec8b491cc2@laposte.net>
-From: bfields@fieldses.org (J. Bruce Fields)
+Content-Type: multipart/signed; boundary="=-=-=";
+	micalg=pgp-sha256; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Apr 11, 2016 at 09:09:39PM +0200, YuGiOhJCJ Mailing-List wrote:
-> On Fri, 8 Apr 2016 00:48:39 +0200
-> YuGiOhJCJ Mailing-List <yugiohjcj-mailinglist@laposte.net> wrote:
-> 
-> > > So when the problem happens, restarting the server fixes the problem?
-> > 
-> > Indeed, that's it.
-> > 
-> > > It's probably the kernel version that's most important.  So it might be
-> > > interesting to know what your kernel version was before and what it is
-> > > now.
-> > 
-> > My Linux kernel was 3.18.20 before and is still 3.18.20 now.
-> > I have not changed of kernel since the problem happens.
-> > 
-> > > Also: what's your NFS server?  Was it upgraded at the same time, or was
-> > > only your client upgraded?
-> > 
-> > I have not upgraded the server and not upgraded the client.
-> > They are still the same: nfs-utils-1.2.8.
-> 
-> It happened again today.
-> 
-> Output on mumble:
-> $ mumble 
-> CELT bitstream 8000000b from libcelt0.so.0.7.0
-> CELT bitstream 80000010 from libcelt0.so.0.11.0
-> Locale is "en_US" (System: "en_US")
-> TextToSpeech: Compiled without support for speech-dispatcher
-> SQL Query failed "CREATE TABLE IF NOT EXISTS `servers` (`id` INTEGER PRIMARY KEY AUTOINCREMENT, `name` TEXT, `hostname` TEXT, `port` INTEGER DEFAULT 64738, `username` TEXT, `password` TEXT)" 
-...
-> ALSAAudioInput: Releasing ALSA Mic.
-> ALSAAudioOutput: Destroyed
-> SQL Query failed "PRAGMA journal_mode = DELETE" 
-> -1 "database is locked Unable to execute statement" 
-> SQL Query failed "VACUUM" 
-> -1 "database is locked Unable to fetch row"
-> 
-> Output on xmoto:
-> $ xmoto 
-> fatal exception : xmDb: database is locked
-> 
-> No Output on firefox but I am unable to show bookmarks which means that there is a problem to access the sqlite database.
-> 
-> I have just restarted the NFS server like that:
-> $ bash /etc/rc.d/rc.nfsd restart
-> 
-> And the client works now perfectly again with applications using sqlite.
-> 
-> So I guess that there is a problem with the NFS server (not the client).
-> Is there something I could check like processes running on the server when the problem happens?
-> What information could be useful to understand what happens when I get the problem?
+--=-=-=
+Content-Type: text/plain
 
-Are there any warnings in the client or server's logs?
 
---b.
+Hi,
+ I have an NFSv4.1 server (Netapp, don't know about version numbers)
+ which responds to
+    PUT_ROOTFH
+    SECINFO_NONAME
+
+with:
+
+flavor: AUTH_NULL (0)
+flavor: RPCSEC_GSS (6)
+    service: rpcsec_gss_svc_integrity (2)
+flavor: RPCSEC_GSS (6)
+    service: rpcsec_gss_svc_none (1)
+flavor: AUTH_UNIX (1)
+
+This causes the Linux client to use AUTH_NULL, which doesn't end well
+   Opcode: ACCESS (3), [Access Denied: RD LU MD XT DL]
+
+I suspect this is a server bug, because the first flavor is meant to be
+the most preferred.  However I wonder if there might be something else
+going on.
+
+1/ I note that for NFSv3 AUTH_NULL means something a bit different
+  in this context:
+
+	 * AUTH_NULL has a special meaning when it's in the server list - it
+	 * means that the server will ignore the rpc creds, so any flavor
+	 * can be used.
+
+  Is there any chance that servers might reasonably expect that
+  behavior for NFSv4.1 as well??
+
+2/ In the pseudo-root filesystem it might make sense to use AUTH_NULL,
+  providing something else is used when crossing in to another
+  filesystem.
+  Should the client send a new SECINFO when that happens (it may not
+  help in this case, I don't know) or is that really only needed when
+  NFS4ERR_WRONGSEC is returned?
+  It seems a bit asymmetric that SECINFO is use pro-actively at the start
+  of a session, but then only re-actively after that.
+
+Any thoughts?
+
+Thanks,
+NeilBrown
+
+--=-=-=
+Content-Type: application/pgp-signature; name="signature.asc"
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v2
+
+iQIcBAEBCAAGBQJXDtdCAAoJEDnsnt1WYoG5H6gQAJqLbEgxppcKmlwyRUQyB+H0
+dqKUHc3QTrRGW11wl3VjTwcxjJA2ODnjG80ZK2l0Ttw9mXFRyY/3JdGLWXfX0FNo
+TrMQeQD9ppVTOB9q3/0wp8+mX381BuaM5KejGs/Tp6zAeRFueofPVk15u0xDB5kv
+yymhu4K/8EJrMGJe9+nNskU2U4jpgwzbgR8sDGfhCYgoE4LVvMU7pk5kSSWOav9N
+UPcyQ+L0xbAyn62rlG4JpI0pImBP8Hm1itT21VXbEOj0Ofry4/adR/P0n+dnj4Bx
+MNeqlWNIfsLOU/KUPW/JNPCUe5lSWXfjCMPCN+fv6lP5iIZ0+8ZvGa8P2GNem5Qg
+fsUOEUT1jhDeA/Ixu5XYwTECGgxPo2ARp8MrRljyjjOynIy8dZdKihgI1mHgt28q
+D3m8JwjXJmzGVjZC9V6nzoMt66H/4j0aJfnU/gxKiZAtb/QeSq9YR5vhEmspd2hB
+yAl8u5H/IPFAGLf2P59CNSQC5/fbw6Pw7wBcvop33w45aFzTFnrp5ZnKDL1/+H+L
+oZm3P2aJ98NwT3KHGo10l+VELp1IK3QZ5Bs2voDX3cD+x9pt1BiL6fqP/zRPYj7H
+ZGZIwnGlfkEJO4mezfO1GFMOPqUdFGcZE4OvYFmGl8YUPQQz/CsTriNXYc7+j6jT
+N1+P+q9EcIxMTG2A4IV4
+=rfAj
+-----END PGP SIGNATURE-----
+--=-=-=--
