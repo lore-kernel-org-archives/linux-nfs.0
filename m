@@ -1,128 +1,137 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:39066 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753138AbcDNMrb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 14 Apr 2016 08:47:31 -0400
-Date: Thu, 14 Apr 2016 08:47:28 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: YuGiOhJCJ Mailing-List <yugiohjcj-mailinglist@laposte.net>
+Received: from mail-qg0-f46.google.com ([209.85.192.46]:33278 "EHLO
+	mail-qg0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752691AbcDNO3s (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 14 Apr 2016 10:29:48 -0400
+Received: by mail-qg0-f46.google.com with SMTP id j35so63812407qge.0
+        for <linux-nfs@vger.kernel.org>; Thu, 14 Apr 2016 07:29:48 -0700 (PDT)
+Message-ID: <1460644183.2913.2.camel@poochiereds.net>
+Subject: Re: [PATCH 6/8] nfs: have ff_layout_get_ds_cred take a reference to
+ the cred
+From: Jeff Layton <jlayton@poochiereds.net>
+To: trond.myklebust@primarydata.com
 Cc: linux-nfs@vger.kernel.org
-Subject: Re: Sometimes all the applications using sqlite do not work correctly
-Message-ID: <20160414124728.GA12667@fieldses.org>
-References: <20160407010927.bf07f12fa3f62b1586dd11ad@laposte.net>
- <20160407181422.GB30676@fieldses.org>
- <20160408004839.247958f8c43329122b48d75f@laposte.net>
- <20160411210939.447af7a06255f9ec8b491cc2@laposte.net>
- <20160413174439.GA2808@fieldses.org>
- <20160414061417.1cbbe93f9f070d57d1133f25@laposte.net>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-In-Reply-To: <20160414061417.1cbbe93f9f070d57d1133f25@laposte.net>
+Date: Thu, 14 Apr 2016 10:29:43 -0400
+In-Reply-To: <1460637425-1580-7-git-send-email-jeff.layton@primarydata.com>
+References: <1460637425-1580-1-git-send-email-jeff.layton@primarydata.com>
+	 <1460637425-1580-7-git-send-email-jeff.layton@primarydata.com>
+Content-Type: text/plain; charset="UTF-8"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Apr 14, 2016 at 06:14:17AM +0200, YuGiOhJCJ Mailing-List wrote:
-> On Wed, 13 Apr 2016 13:44:39 -0400
-> bfields@fieldses.org (J. Bruce Fields) wrote:
+On Thu, 2016-04-14 at 08:37 -0400, Jeff Layton wrote:
+> In later patches, we're going to want to allow the creds to be updated
+> when we get a new layout with updated creds. Have this function take
+> a reference to the cred that is later put once the call has been
+> dispatched.
 > 
-> > On Mon, Apr 11, 2016 at 09:09:39PM +0200, YuGiOhJCJ Mailing-List wrote:
-> > > On Fri, 8 Apr 2016 00:48:39 +0200
-> > > YuGiOhJCJ Mailing-List <yugiohjcj-mailinglist@laposte.net> wrote:
-> > > 
-> > > > > So when the problem happens, restarting the server fixes the problem?
-> > > > 
-> > > > Indeed, that's it.
-> > > > 
-> > > > > It's probably the kernel version that's most important.  So it might be
-> > > > > interesting to know what your kernel version was before and what it is
-> > > > > now.
-> > > > 
-> > > > My Linux kernel was 3.18.20 before and is still 3.18.20 now.
-> > > > I have not changed of kernel since the problem happens.
-> > > > 
-> > > > > Also: what's your NFS server?  Was it upgraded at the same time, or was
-> > > > > only your client upgraded?
-> > > > 
-> > > > I have not upgraded the server and not upgraded the client.
-> > > > They are still the same: nfs-utils-1.2.8.
-> > > 
-> > > It happened again today.
-> > > 
-> > > Output on mumble:
-> > > $ mumble 
-> > > CELT bitstream 8000000b from libcelt0.so.0.7.0
-> > > CELT bitstream 80000010 from libcelt0.so.0.11.0
-> > > Locale is "en_US" (System: "en_US")
-> > > TextToSpeech: Compiled without support for speech-dispatcher
-> > > SQL Query failed "CREATE TABLE IF NOT EXISTS `servers` (`id` INTEGER PRIMARY KEY AUTOINCREMENT, `name` TEXT, `hostname` TEXT, `port` INTEGER DEFAULT 64738, `username` TEXT, `password` TEXT)" 
-> > ...
-> > > ALSAAudioInput: Releasing ALSA Mic.
-> > > ALSAAudioOutput: Destroyed
-> > > SQL Query failed "PRAGMA journal_mode = DELETE" 
-> > > -1 "database is locked Unable to execute statement" 
-> > > SQL Query failed "VACUUM" 
-> > > -1 "database is locked Unable to fetch row"
-> > > 
-> > > Output on xmoto:
-> > > $ xmoto 
-> > > fatal exception : xmDb: database is locked
-> > > 
-> > > No Output on firefox but I am unable to show bookmarks which means that there is a problem to access the sqlite database.
-> > > 
-> > > I have just restarted the NFS server like that:
-> > > $ bash /etc/rc.d/rc.nfsd restart
-> > > 
-> > > And the client works now perfectly again with applications using sqlite.
-> > > 
-> > > So I guess that there is a problem with the NFS server (not the client).
-> > > Is there something I could check like processes running on the server when the problem happens?
-> > > What information could be useful to understand what happens when I get the problem?
-> > 
-> > Are there any warnings in the client or server's logs?
-> > 
-> > --b.
+> Also, prepare for this change by ensuring we follow RCU rules when
+> getting a reference to the cred as well.
 > 
-> I am not sure where all these logs are located.
+> Signed-off-by: Jeff Layton <jeff.layton@primarydata.com>
+> ---
+>  fs/nfs/flexfilelayout/flexfilelayout.c    |  9 ++++++---
+>  fs/nfs/flexfilelayout/flexfilelayoutdev.c | 30 ++++++++++++++++++++++++++----
+>  2 files changed, 32 insertions(+), 7 deletions(-)
+> 
+> diff --git a/fs/nfs/flexfilelayout/flexfilelayout.c b/fs/nfs/flexfilelayout/flexfilelayout.c
+> index 0cb1abd535e3..ba48fdf960e0 100644
+> --- a/fs/nfs/flexfilelayout/flexfilelayout.c
+> +++ b/fs/nfs/flexfilelayout/flexfilelayout.c
+> @@ -1737,7 +1737,7 @@ ff_layout_read_pagelist(struct nfs_pgio_header *hdr)
+>  			  vers == 3 ? &ff_layout_read_call_ops_v3 :
+>  				      &ff_layout_read_call_ops_v4,
+>  			  0, RPC_TASK_SOFTCONN);
+> -
+> +	put_rpccred(ds_cred);
+>  	return PNFS_ATTEMPTED;
+>  
+>  out_failed:
+> @@ -1798,6 +1798,7 @@ ff_layout_write_pagelist(struct nfs_pgio_header *hdr, int sync)
+>  			  vers == 3 ? &ff_layout_write_call_ops_v3 :
+>  				      &ff_layout_write_call_ops_v4,
+>  			  sync, RPC_TASK_SOFTCONN);
+> +	put_rpccred(ds_cred);
+>  	return PNFS_ATTEMPTED;
+>  }
+>  
+> @@ -1824,7 +1825,7 @@ static int ff_layout_initiate_commit(struct nfs_commit_data *data, int how)
+>  	struct rpc_clnt *ds_clnt;
+>  	struct rpc_cred *ds_cred;
+>  	u32 idx;
+> -	int vers;
+> +	int vers, ret;
+>  	struct nfs_fh *fh;
+>  
+>  	idx = calc_ds_index_from_commit(lseg, data->ds_commit_index);
+> @@ -1854,10 +1855,12 @@ static int ff_layout_initiate_commit(struct nfs_commit_data *data, int how)
+>  	if (fh)
+>  		data->args.fh = fh;
+>  
+> -	return nfs_initiate_commit(ds_clnt, data, ds->ds_clp->rpc_ops,
+> +	ret = nfs_initiate_commit(ds_clnt, data, ds->ds_clp->rpc_ops,
+>  				   vers == 3 ? &ff_layout_commit_call_ops_v3 :
+>  					       &ff_layout_commit_call_ops_v4,
+>  				   how, RPC_TASK_SOFTCONN);
+> +	put_rpccred(ds_cred);
+> +	return ret;
+>  out_err:
+>  	pnfs_generic_prepare_to_resend_writes(data);
+>  	pnfs_generic_commit_release(data);
+> diff --git a/fs/nfs/flexfilelayout/flexfilelayoutdev.c b/fs/nfs/flexfilelayout/flexfilelayoutdev.c
+> index a0dbf94d15ae..baee22929174 100644
+> --- a/fs/nfs/flexfilelayout/flexfilelayoutdev.c
+> +++ b/fs/nfs/flexfilelayout/flexfilelayoutdev.c
+> @@ -338,6 +338,25 @@ static int ff_layout_update_mirror_cred(struct nfs4_ff_layout_mirror *mirror,
+>  	return 0;
+>  }
+>  
+> +static struct rpc_cred *
+> +ff_layout_get_mirror_cred(struct nfs4_ff_layout_mirror *mirror, u32 iomode)
+> +{
+> +	struct rpc_cred *cred, **pcred;
+> +
+> +	pcred = &mirror->cred;
+> +
+> +	rcu_read_lock();
+> +	do {
+> +		cred = rcu_dereference(*pcred);
+> +		if (!cred)
+> +			break;
+> +
+> +		cred = get_rpccred_rcu(cred);
+> +	} while(!cred);
+> +	rcu_read_unlock();
+> +	return cred;
+> +}
+> +
+>  struct nfs_fh *
+>  nfs4_ff_layout_select_ds_fh(struct pnfs_layout_segment *lseg, u32 mirror_idx)
+>  {
+> @@ -435,10 +454,13 @@ ff_layout_get_ds_cred(struct pnfs_layout_segment *lseg, u32 ds_idx,
+>  	struct nfs4_ff_layout_mirror *mirror = FF_LAYOUT_COMP(lseg, ds_idx);
+>  	struct rpc_cred *cred;
+>  
+> -	if (mirror && mirror->cred)
+> -		cred = mirror->cred;
+> -	else
+> -		cred = mdscred;
+> +	if (mirror) {
+> +		cred = ff_layout_get_mirror_cred(mirror, lseg->pls_range.iomode);
+> +		if (!cred)
+> +			cred = get_rpccred(mdscred);
+> +	} else {
+> +		cred = get_rpccred(mdscred);
+> +	}
+>  	return cred;
+>  }
+>  
 
-The kernel logs are the most interesting.  You can get them from
-"dmesg", or they usually get dumped some place like /var/log/messages
-depending on distro.
+Oops, there's something missing in this patch. We need to fix the
+callers of ff_layout_get_ds_cred to check to see if they get a NULL
+pointer back. I'll fix that in the next version of the set.
 
---b.
+-- 
+Jeff Layton <jlayton@poochiereds.net>
 
-> I found the "/var/log/nfsd/" directory on the server but is is empty.
-> The script running the nfs server is here:
-> http://ftp.slackware.com/pub/slackware/slackware-14.1/source/n/nfs-utils/rc.nfsd
-> 
-> I see no options used for logs.
-> 
-> Reading the man of nfsd, I see these two options:
-> $ man nfsd
-> [...]
-> -d  or  --debug
->               enable logging of debugging messages
-> [...]
-> -s  or  --syslog
->               By default, rpc.nfsd logs error messages (and debug messages, if
->               enabled)  to  stderr.  This option makes rpc.nfsd log these mes‐
->               sages to syslog instead. Note  that  errors  encountered  during
->               option  processing  will still be logged to stderr regardless of
->               this option.
-> [...]
-> 
-> I guess I should replace in the script this line:
-> /usr/sbin/rpc.nfsd 8
-> by this line:
-> /usr/sbin/rpc.nfsd -ds 8
-> in order to see logs from the server.
-> 
-> Is it correct?
-> 
-> About the client logs, I have no idea how to activate them.
-> 
-> Any idea?
-> 
-> I saw that my server root partition was full (usage: 100%).
-> I removed some useless files in the /tmp directory and now I am not full anymore (usage: 98%).
-> Does NFS need a write access on the server in order to work correctly?
-> In this case, that could be a reason of my problem.
