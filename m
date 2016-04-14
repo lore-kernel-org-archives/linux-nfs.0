@@ -1,127 +1,151 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qg0-f44.google.com ([209.85.192.44]:35537 "EHLO
-	mail-qg0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932101AbcDNMhR (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 14 Apr 2016 08:37:17 -0400
-Received: by mail-qg0-f44.google.com with SMTP id f105so61700580qge.2
-        for <linux-nfs@vger.kernel.org>; Thu, 14 Apr 2016 05:37:17 -0700 (PDT)
+Received: from mail-qg0-f51.google.com ([209.85.192.51]:35546 "EHLO
+	mail-qg0-f51.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932125AbcDNMhT (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 14 Apr 2016 08:37:19 -0400
+Received: by mail-qg0-f51.google.com with SMTP id f105so61700991qge.2
+        for <linux-nfs@vger.kernel.org>; Thu, 14 Apr 2016 05:37:18 -0700 (PDT)
 From: Jeff Layton <jlayton@poochiereds.net>
 To: trond.myklebust@primarydata.com
 Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH 6/8] nfs: have ff_layout_get_ds_cred take a reference to the cred
-Date: Thu, 14 Apr 2016 08:37:03 -0400
-Message-Id: <1460637425-1580-7-git-send-email-jeff.layton@primarydata.com>
+Subject: [PATCH 8/8] nfs: have flexfiles mirror keep creds for both ro and rw layouts
+Date: Thu, 14 Apr 2016 08:37:05 -0400
+Message-Id: <1460637425-1580-9-git-send-email-jeff.layton@primarydata.com>
 In-Reply-To: <1460637425-1580-1-git-send-email-jeff.layton@primarydata.com>
 References: <1460637425-1580-1-git-send-email-jeff.layton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-In later patches, we're going to want to allow the creds to be updated
-when we get a new layout with updated creds. Have this function take
-a reference to the cred that is later put once the call has been
-dispatched.
+A mirror can be shared between multiple layouts, even with different
+iomodes. That makes stats gathering simpler, but it causes a problem
+when we get different creds in READ vs. RW layouts.
 
-Also, prepare for this change by ensuring we follow RCU rules when
-getting a reference to the cred as well.
+The current code drops the newer credentials onto the floor when this
+occurs. That's problematic when you fetch a READ layout first, and then
+a RW. If the READ layout doesn't have the correct creds to do a write,
+then writes will fail.
+
+We could just overwrite the READ credentials with the RW ones, but that
+would break the ability for the server to fence the layout for reads if
+things go awry. We need to be able to revert to the earlier READ creds
+if the RW layout is returned afterward.
+
+The simplest fix is to just keep two sets of creds per mirror. One for
+READ layouts and one for RW, and then use the appropriate set depending
+on the iomode of the layout segment.
+
+Also fix up some RCU nits that sparse found.
 
 Signed-off-by: Jeff Layton <jeff.layton@primarydata.com>
 ---
- fs/nfs/flexfilelayout/flexfilelayout.c    |  9 ++++++---
- fs/nfs/flexfilelayout/flexfilelayoutdev.c | 30 ++++++++++++++++++++++++++----
- 2 files changed, 32 insertions(+), 7 deletions(-)
+ fs/nfs/flexfilelayout/flexfilelayout.c    | 30 +++++++++++++++++++++++-------
+ fs/nfs/flexfilelayout/flexfilelayout.h    |  3 ++-
+ fs/nfs/flexfilelayout/flexfilelayoutdev.c |  7 +++++--
+ 3 files changed, 30 insertions(+), 10 deletions(-)
 
 diff --git a/fs/nfs/flexfilelayout/flexfilelayout.c b/fs/nfs/flexfilelayout/flexfilelayout.c
-index 0cb1abd535e3..ba48fdf960e0 100644
+index 6889df6b7dcc..aca15716ad1b 100644
 --- a/fs/nfs/flexfilelayout/flexfilelayout.c
 +++ b/fs/nfs/flexfilelayout/flexfilelayout.c
-@@ -1737,7 +1737,7 @@ ff_layout_read_pagelist(struct nfs_pgio_header *hdr)
- 			  vers == 3 ? &ff_layout_read_call_ops_v3 :
- 				      &ff_layout_read_call_ops_v4,
- 			  0, RPC_TASK_SOFTCONN);
--
-+	put_rpccred(ds_cred);
- 	return PNFS_ATTEMPTED;
+@@ -211,10 +211,16 @@ static struct nfs4_ff_layout_mirror *ff_layout_alloc_mirror(gfp_t gfp_flags)
  
- out_failed:
-@@ -1798,6 +1798,7 @@ ff_layout_write_pagelist(struct nfs_pgio_header *hdr, int sync)
- 			  vers == 3 ? &ff_layout_write_call_ops_v3 :
- 				      &ff_layout_write_call_ops_v4,
- 			  sync, RPC_TASK_SOFTCONN);
-+	put_rpccred(ds_cred);
- 	return PNFS_ATTEMPTED;
+ static void ff_layout_free_mirror(struct nfs4_ff_layout_mirror *mirror)
+ {
++	struct rpc_cred	*cred;
++
+ 	ff_layout_remove_mirror(mirror);
+ 	kfree(mirror->fh_versions);
+-	if (mirror->cred)
+-		put_rpccred(mirror->cred);
++	cred = rcu_dereference(mirror->ro_cred);
++	if (cred)
++		put_rpccred(cred);
++	cred = rcu_dereference(mirror->rw_cred);
++	if (cred)
++		put_rpccred(cred);
+ 	nfs4_ff_layout_put_deviceid(mirror->mirror_ds);
+ 	kfree(mirror);
  }
+@@ -408,7 +414,7 @@ ff_layout_alloc_lseg(struct pnfs_layout_hdr *lh,
+ 		struct nfs4_deviceid devid;
+ 		struct nfs4_deviceid_node *idnode;
+ 		struct auth_cred acred = {0};
+-		struct rpc_cred	*cred;
++		struct rpc_cred	__rcu *cred;
+ 		u32 ds_count, fh_count, id;
+ 		int j;
  
-@@ -1824,7 +1825,7 @@ static int ff_layout_initiate_commit(struct nfs_commit_data *data, int how)
- 	struct rpc_clnt *ds_clnt;
- 	struct rpc_cred *ds_cred;
- 	u32 idx;
--	int vers;
-+	int vers, ret;
- 	struct nfs_fh *fh;
+@@ -499,23 +505,33 @@ ff_layout_alloc_lseg(struct pnfs_layout_hdr *lh,
+ 		acred.gid = make_kgid(&init_user_ns, id);
  
- 	idx = calc_ds_index_from_commit(lseg, data->ds_commit_index);
-@@ -1854,10 +1855,12 @@ static int ff_layout_initiate_commit(struct nfs_commit_data *data, int how)
- 	if (fh)
- 		data->args.fh = fh;
+ 		/* find the cred for it */
+-		cred = rpc_lookup_generic_cred(&acred, 0, gfp_flags);
++		rcu_assign_pointer(cred, rpc_lookup_generic_cred(&acred, 0, gfp_flags));
+ 		if (IS_ERR(cred)) {
+ 			rc = PTR_ERR(cred);
+ 			goto out_err_free;
+ 		}
  
--	return nfs_initiate_commit(ds_clnt, data, ds->ds_clp->rpc_ops,
-+	ret = nfs_initiate_commit(ds_clnt, data, ds->ds_clp->rpc_ops,
- 				   vers == 3 ? &ff_layout_commit_call_ops_v3 :
- 					       &ff_layout_commit_call_ops_v4,
- 				   how, RPC_TASK_SOFTCONN);
-+	put_rpccred(ds_cred);
-+	return ret;
- out_err:
- 	pnfs_generic_prepare_to_resend_writes(data);
- 	pnfs_generic_commit_release(data);
+-		rcu_assign_pointer(fls->mirror_array[i]->cred, cred);
++		if (lgr->range.iomode == IOMODE_READ)
++			rcu_assign_pointer(fls->mirror_array[i]->ro_cred, cred);
++		else
++			rcu_assign_pointer(fls->mirror_array[i]->rw_cred, cred);
+ 
+ 		mirror = ff_layout_add_mirror(lh, fls->mirror_array[i]);
+ 		if (mirror != fls->mirror_array[i]) {
+ 			/* swap cred ptrs so free_mirror will clean up old */
+-			fls->mirror_array[i]->cred = xchg(&mirror->cred, cred);
++			if (lgr->range.iomode == IOMODE_READ) {
++				cred = xchg(&mirror->ro_cred, cred);
++				rcu_assign_pointer(fls->mirror_array[i]->ro_cred, cred);
++			} else {
++				cred = xchg(&mirror->rw_cred, cred);
++				rcu_assign_pointer(fls->mirror_array[i]->rw_cred, cred);
++			}
+ 			ff_layout_free_mirror(fls->mirror_array[i]);
+ 			fls->mirror_array[i] = mirror;
+ 		}
+ 
+-		dprintk("%s: uid %u gid %u\n", __func__,
++		dprintk("%s: iomode %s uid %u gid %u\n", __func__,
++			lgr->range.iomode == IOMODE_READ ? "READ" : "RW",
+ 			from_kuid(&init_user_ns, acred.uid),
+ 			from_kgid(&init_user_ns, acred.gid));
+ 	}
+diff --git a/fs/nfs/flexfilelayout/flexfilelayout.h b/fs/nfs/flexfilelayout/flexfilelayout.h
+index c29fc853ce74..1318c77aeb35 100644
+--- a/fs/nfs/flexfilelayout/flexfilelayout.h
++++ b/fs/nfs/flexfilelayout/flexfilelayout.h
+@@ -76,7 +76,8 @@ struct nfs4_ff_layout_mirror {
+ 	u32				fh_versions_cnt;
+ 	struct nfs_fh			*fh_versions;
+ 	nfs4_stateid			stateid;
+-	struct rpc_cred			*cred;
++	struct rpc_cred	__rcu		*ro_cred;
++	struct rpc_cred	__rcu		*rw_cred;
+ 	atomic_t			ref;
+ 	spinlock_t			lock;
+ 	struct nfs4_ff_layoutstat	read_stat;
 diff --git a/fs/nfs/flexfilelayout/flexfilelayoutdev.c b/fs/nfs/flexfilelayout/flexfilelayoutdev.c
-index a0dbf94d15ae..baee22929174 100644
+index 6ddd8a5c5ae0..56296f3df19c 100644
 --- a/fs/nfs/flexfilelayout/flexfilelayoutdev.c
 +++ b/fs/nfs/flexfilelayout/flexfilelayoutdev.c
-@@ -338,6 +338,25 @@ static int ff_layout_update_mirror_cred(struct nfs4_ff_layout_mirror *mirror,
- 	return 0;
- }
- 
-+static struct rpc_cred *
-+ff_layout_get_mirror_cred(struct nfs4_ff_layout_mirror *mirror, u32 iomode)
-+{
-+	struct rpc_cred *cred, **pcred;
-+
-+	pcred = &mirror->cred;
-+
-+	rcu_read_lock();
-+	do {
-+		cred = rcu_dereference(*pcred);
-+		if (!cred)
-+			break;
-+
-+		cred = get_rpccred_rcu(cred);
-+	} while(!cred);
-+	rcu_read_unlock();
-+	return cred;
-+}
-+
- struct nfs_fh *
- nfs4_ff_layout_select_ds_fh(struct pnfs_layout_segment *lseg, u32 mirror_idx)
+@@ -305,9 +305,12 @@ int ff_layout_track_ds_error(struct nfs4_flexfile_layout *flo,
+ static struct rpc_cred *
+ ff_layout_get_mirror_cred(struct nfs4_ff_layout_mirror *mirror, u32 iomode)
  {
-@@ -435,10 +454,13 @@ ff_layout_get_ds_cred(struct pnfs_layout_segment *lseg, u32 ds_idx,
- 	struct nfs4_ff_layout_mirror *mirror = FF_LAYOUT_COMP(lseg, ds_idx);
- 	struct rpc_cred *cred;
+-	struct rpc_cred *cred, **pcred;
++	struct rpc_cred *cred, __rcu **pcred;
  
--	if (mirror && mirror->cred)
--		cred = mirror->cred;
--	else
--		cred = mdscred;
-+	if (mirror) {
-+		cred = ff_layout_get_mirror_cred(mirror, lseg->pls_range.iomode);
-+		if (!cred)
-+			cred = get_rpccred(mdscred);
-+	} else {
-+		cred = get_rpccred(mdscred);
-+	}
- 	return cred;
- }
+-	pcred = &mirror->cred;
++	if (iomode == IOMODE_READ)
++		pcred = &mirror->ro_cred;
++	else
++		pcred = &mirror->rw_cred;
  
+ 	rcu_read_lock();
+ 	do {
 -- 
 2.5.5
 
