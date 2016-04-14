@@ -1,89 +1,120 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp.gentoo.org ([140.211.166.183]:53058 "EHLO smtp.gentoo.org"
+Received: from smtp6-g21.free.fr ([212.27.42.6]:4578 "EHLO smtp6-g21.free.fr"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751072AbcDNECm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 14 Apr 2016 00:02:42 -0400
-Received: from localhost.localdomain (localhost [127.0.0.1])
-	by smtp.gentoo.org (Postfix) with ESMTP id 8FAA2340DC2
-	for <linux-nfs@vger.kernel.org>; Thu, 14 Apr 2016 04:02:31 +0000 (UTC)
-From: Mike Frysinger <vapier@gentoo.org>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH nfs-utils] fix building w/newer C libraries
-Date: Thu, 14 Apr 2016 00:02:27 -0400
-Message-Id: <1460606547-3957-1-git-send-email-vapier@gentoo.org>
+	id S1750982AbcDNEOW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 14 Apr 2016 00:14:22 -0400
+Date: Thu, 14 Apr 2016 06:14:17 +0200
+From: YuGiOhJCJ Mailing-List <yugiohjcj-mailinglist@laposte.net>
+To: bfields@fieldses.org (J. Bruce Fields)
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: Sometimes all the applications using sqlite do not work
+ correctly
+Message-Id: <20160414061417.1cbbe93f9f070d57d1133f25@laposte.net>
+In-Reply-To: <20160413174439.GA2808@fieldses.org>
+References: <20160407010927.bf07f12fa3f62b1586dd11ad@laposte.net>
+	<20160407181422.GB30676@fieldses.org>
+	<20160408004839.247958f8c43329122b48d75f@laposte.net>
+	<20160411210939.447af7a06255f9ec8b491cc2@laposte.net>
+	<20160413174439.GA2808@fieldses.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Linux C libraries are moving away from implicitly including the header
-sys/sysmacros.h via sys/types.h.  We would like to do this for glibc
-now, but others (musl/etc...) have been doing it already.  This means
-any code using major/minor/makedevs functions will fail to build when
-they don't include that header.
+On Wed, 13 Apr 2016 13:44:39 -0400
+bfields@fieldses.org (J. Bruce Fields) wrote:
 
-Leverage the AC_HEADER_MAJOR macro that configure is already using to
-pull in the right header.
+> On Mon, Apr 11, 2016 at 09:09:39PM +0200, YuGiOhJCJ Mailing-List wrote:
+> > On Fri, 8 Apr 2016 00:48:39 +0200
+> > YuGiOhJCJ Mailing-List <yugiohjcj-mailinglist@laposte.net> wrote:
+> > 
+> > > > So when the problem happens, restarting the server fixes the problem?
+> > > 
+> > > Indeed, that's it.
+> > > 
+> > > > It's probably the kernel version that's most important.  So it might be
+> > > > interesting to know what your kernel version was before and what it is
+> > > > now.
+> > > 
+> > > My Linux kernel was 3.18.20 before and is still 3.18.20 now.
+> > > I have not changed of kernel since the problem happens.
+> > > 
+> > > > Also: what's your NFS server?  Was it upgraded at the same time, or was
+> > > > only your client upgraded?
+> > > 
+> > > I have not upgraded the server and not upgraded the client.
+> > > They are still the same: nfs-utils-1.2.8.
+> > 
+> > It happened again today.
+> > 
+> > Output on mumble:
+> > $ mumble 
+> > CELT bitstream 8000000b from libcelt0.so.0.7.0
+> > CELT bitstream 80000010 from libcelt0.so.0.11.0
+> > Locale is "en_US" (System: "en_US")
+> > TextToSpeech: Compiled without support for speech-dispatcher
+> > SQL Query failed "CREATE TABLE IF NOT EXISTS `servers` (`id` INTEGER PRIMARY KEY AUTOINCREMENT, `name` TEXT, `hostname` TEXT, `port` INTEGER DEFAULT 64738, `username` TEXT, `password` TEXT)" 
+> ...
+> > ALSAAudioInput: Releasing ALSA Mic.
+> > ALSAAudioOutput: Destroyed
+> > SQL Query failed "PRAGMA journal_mode = DELETE" 
+> > -1 "database is locked Unable to execute statement" 
+> > SQL Query failed "VACUUM" 
+> > -1 "database is locked Unable to fetch row"
+> > 
+> > Output on xmoto:
+> > $ xmoto 
+> > fatal exception : xmDb: database is locked
+> > 
+> > No Output on firefox but I am unable to show bookmarks which means that there is a problem to access the sqlite database.
+> > 
+> > I have just restarted the NFS server like that:
+> > $ bash /etc/rc.d/rc.nfsd restart
+> > 
+> > And the client works now perfectly again with applications using sqlite.
+> > 
+> > So I guess that there is a problem with the NFS server (not the client).
+> > Is there something I could check like processes running on the server when the problem happens?
+> > What information could be useful to understand what happens when I get the problem?
+> 
+> Are there any warnings in the client or server's logs?
+> 
+> --b.
 
-Signed-off-by: Mike Frysinger <vapier@gentoo.org>
----
- support/include/xcommon.h        | 6 ++++++
- support/nfs/nfsexport.c          | 1 +
- utils/blkmapd/device-discovery.c | 1 +
- utils/mountd/cache.c             | 1 +
- 4 files changed, 9 insertions(+)
+I am not sure where all these logs are located.
+I found the "/var/log/nfsd/" directory on the server but is is empty.
+The script running the nfs server is here:
+http://ftp.slackware.com/pub/slackware/slackware-14.1/source/n/nfs-utils/rc.nfsd
 
-diff --git a/support/include/xcommon.h b/support/include/xcommon.h
-index d1a4b18..23c9a13 100644
---- a/support/include/xcommon.h
-+++ b/support/include/xcommon.h
-@@ -17,6 +17,12 @@
- #include <stdlib.h>
- #include <string.h>
- 
-+#ifdef MAJOR_IN_MKDEV
-+#include <sys/mkdev.h>
-+#elif defined(MAJOR_IN_SYSMACROS)
-+#include <sys/sysmacros.h>
-+#endif
-+
- #define streq(s, t)	(strcmp ((s), (t)) == 0)
- 
- /* Functions in sundries.c that are used in mount.c and umount.c  */ 
-diff --git a/support/nfs/nfsexport.c b/support/nfs/nfsexport.c
-index afd7c90..4b13265 100644
---- a/support/nfs/nfsexport.c
-+++ b/support/nfs/nfsexport.c
-@@ -19,6 +19,7 @@
- 
- #include "nfslib.h"
- #include "misc.h"
-+#include "xcommon.h"
- 
- 	/* if /proc/net/rpc/... exists, then 
- 	 * write to it, as that interface is more stable.
-diff --git a/utils/blkmapd/device-discovery.c b/utils/blkmapd/device-discovery.c
-index b010628..052d582 100644
---- a/utils/blkmapd/device-discovery.c
-+++ b/utils/blkmapd/device-discovery.c
-@@ -51,6 +51,7 @@
- #include <libdevmapper.h>
- 
- #include "device-discovery.h"
-+#include "xcommon.h"
- 
- #define EVENT_SIZE (sizeof(struct inotify_event))
- #define EVENT_BUFSIZE (1024 * EVENT_SIZE)
-diff --git a/utils/mountd/cache.c b/utils/mountd/cache.c
-index 7847446..ec86a22 100644
---- a/utils/mountd/cache.c
-+++ b/utils/mountd/cache.c
-@@ -31,6 +31,7 @@
- #include "mountd.h"
- #include "fsloc.h"
- #include "pseudoflavors.h"
-+#include "xcommon.h"
- 
- #ifdef USE_BLKID
- #include "blkid/blkid.h"
--- 
-2.7.4
+I see no options used for logs.
 
+Reading the man of nfsd, I see these two options:
+$ man nfsd
+[...]
+-d  or  --debug
+              enable logging of debugging messages
+[...]
+-s  or  --syslog
+              By default, rpc.nfsd logs error messages (and debug messages, if
+              enabled)  to  stderr.  This option makes rpc.nfsd log these mes‐
+              sages to syslog instead. Note  that  errors  encountered  during
+              option  processing  will still be logged to stderr regardless of
+              this option.
+[...]
+
+I guess I should replace in the script this line:
+/usr/sbin/rpc.nfsd 8
+by this line:
+/usr/sbin/rpc.nfsd -ds 8
+in order to see logs from the server.
+
+Is it correct?
+
+About the client logs, I have no idea how to activate them.
+
+Any idea?
+
+I saw that my server root partition was full (usage: 100%).
+I removed some useless files in the /tmp directory and now I am not full anymore (usage: 98%).
+Does NFS need a write access on the server in order to work correctly?
+In this case, that could be a reason of my problem.
