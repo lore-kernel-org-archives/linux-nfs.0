@@ -1,56 +1,89 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from m50-133.163.com ([123.125.50.133]:51906 "EHLO m50-133.163.com"
+Received: from smtp.gentoo.org ([140.211.166.183]:53058 "EHLO smtp.gentoo.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753024AbcDNDKk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 13 Apr 2016 23:10:40 -0400
-From: zengzhaoxiu@163.com
-To: linux-kernel@vger.kernel.org
-Cc: Zhaoxiu Zeng <zhaoxiu.zeng@gmail.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        Jeff Layton <jlayton@poochiereds.net>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        Anna Schumaker <anna.schumaker@netapp.com>,
-        "David S. Miller" <davem@davemloft.net>,
-        Herbert Xu <herbert@gondor.apana.org.au>, linux-nfs@vger.kernel.org,
-        netdev@vger.kernel.org
-Subject: [PATCH V3 10/29] sunrpc: use parity8
-Date: Thu, 14 Apr 2016 11:08:57 +0800
-Message-Id: <1460603338-4955-1-git-send-email-zengzhaoxiu@163.com>
-In-Reply-To: <1460601525-3822-1-git-send-email-zengzhaoxiu@163.com>
-References: <1460601525-3822-1-git-send-email-zengzhaoxiu@163.com>
+	id S1751072AbcDNECm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 14 Apr 2016 00:02:42 -0400
+Received: from localhost.localdomain (localhost [127.0.0.1])
+	by smtp.gentoo.org (Postfix) with ESMTP id 8FAA2340DC2
+	for <linux-nfs@vger.kernel.org>; Thu, 14 Apr 2016 04:02:31 +0000 (UTC)
+From: Mike Frysinger <vapier@gentoo.org>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH nfs-utils] fix building w/newer C libraries
+Date: Thu, 14 Apr 2016 00:02:27 -0400
+Message-Id: <1460606547-3957-1-git-send-email-vapier@gentoo.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Zhaoxiu Zeng <zhaoxiu.zeng@gmail.com>
+Linux C libraries are moving away from implicitly including the header
+sys/sysmacros.h via sys/types.h.  We would like to do this for glibc
+now, but others (musl/etc...) have been doing it already.  This means
+any code using major/minor/makedevs functions will fail to build when
+they don't include that header.
 
-Signed-off-by: Zhaoxiu Zeng <zhaoxiu.zeng@gmail.com>
+Leverage the AC_HEADER_MAJOR macro that configure is already using to
+pull in the right header.
+
+Signed-off-by: Mike Frysinger <vapier@gentoo.org>
 ---
- net/sunrpc/auth_gss/gss_krb5_keys.c | 6 +-----
- 1 file changed, 1 insertion(+), 5 deletions(-)
+ support/include/xcommon.h        | 6 ++++++
+ support/nfs/nfsexport.c          | 1 +
+ utils/blkmapd/device-discovery.c | 1 +
+ utils/mountd/cache.c             | 1 +
+ 4 files changed, 9 insertions(+)
 
-diff --git a/net/sunrpc/auth_gss/gss_krb5_keys.c b/net/sunrpc/auth_gss/gss_krb5_keys.c
-index 8701331..c41b389 100644
---- a/net/sunrpc/auth_gss/gss_krb5_keys.c
-+++ b/net/sunrpc/auth_gss/gss_krb5_keys.c
-@@ -243,16 +243,12 @@ err_return:
- 	return ret;
- }
+diff --git a/support/include/xcommon.h b/support/include/xcommon.h
+index d1a4b18..23c9a13 100644
+--- a/support/include/xcommon.h
++++ b/support/include/xcommon.h
+@@ -17,6 +17,12 @@
+ #include <stdlib.h>
+ #include <string.h>
  
--#define smask(step) ((1<<step)-1)
--#define pstep(x, step) (((x)&smask(step))^(((x)>>step)&smask(step)))
--#define parity_char(x) pstep(pstep(pstep((x), 4), 2), 1)
--
- static void mit_des_fixup_key_parity(u8 key[8])
- {
- 	int i;
- 	for (i = 0; i < 8; i++) {
- 		key[i] &= 0xfe;
--		key[i] |= 1^parity_char(key[i]);
-+		key[i] |= !parity8(key[i]);
- 	}
- }
++#ifdef MAJOR_IN_MKDEV
++#include <sys/mkdev.h>
++#elif defined(MAJOR_IN_SYSMACROS)
++#include <sys/sysmacros.h>
++#endif
++
+ #define streq(s, t)	(strcmp ((s), (t)) == 0)
  
+ /* Functions in sundries.c that are used in mount.c and umount.c  */ 
+diff --git a/support/nfs/nfsexport.c b/support/nfs/nfsexport.c
+index afd7c90..4b13265 100644
+--- a/support/nfs/nfsexport.c
++++ b/support/nfs/nfsexport.c
+@@ -19,6 +19,7 @@
+ 
+ #include "nfslib.h"
+ #include "misc.h"
++#include "xcommon.h"
+ 
+ 	/* if /proc/net/rpc/... exists, then 
+ 	 * write to it, as that interface is more stable.
+diff --git a/utils/blkmapd/device-discovery.c b/utils/blkmapd/device-discovery.c
+index b010628..052d582 100644
+--- a/utils/blkmapd/device-discovery.c
++++ b/utils/blkmapd/device-discovery.c
+@@ -51,6 +51,7 @@
+ #include <libdevmapper.h>
+ 
+ #include "device-discovery.h"
++#include "xcommon.h"
+ 
+ #define EVENT_SIZE (sizeof(struct inotify_event))
+ #define EVENT_BUFSIZE (1024 * EVENT_SIZE)
+diff --git a/utils/mountd/cache.c b/utils/mountd/cache.c
+index 7847446..ec86a22 100644
+--- a/utils/mountd/cache.c
++++ b/utils/mountd/cache.c
+@@ -31,6 +31,7 @@
+ #include "mountd.h"
+ #include "fsloc.h"
+ #include "pseudoflavors.h"
++#include "xcommon.h"
+ 
+ #ifdef USE_BLKID
+ #include "blkid/blkid.h"
 -- 
-2.5.0
-
+2.7.4
 
