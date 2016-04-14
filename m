@@ -1,43 +1,33 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:56864 "EHLO mx1.redhat.com"
+Received: from plane.gmane.org ([80.91.229.3]:37852 "EHLO plane.gmane.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752490AbcDNS5y (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 14 Apr 2016 14:57:54 -0400
-Date: Thu, 14 Apr 2016 14:57:51 -0400 (EDT)
-From: Benjamin Coddington <bcodding@redhat.com>
-To: Olga Kornievskaia <aglo@umich.edu>
-cc: linux-nfs <linux-nfs@vger.kernel.org>
-Subject: Re: gssd and linux containers
-In-Reply-To: <CAN-5tyH-ATtHtWuw4t07DjZnnzOit=rQ=H0vq+W04gU=Ys=b+g@mail.gmail.com>
-Message-ID: <alpine.OSX.2.19.9992.1604141447230.55780@planck>
-References: <CAN-5tyH-ATtHtWuw4t07DjZnnzOit=rQ=H0vq+W04gU=Ys=b+g@mail.gmail.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+	id S1750705AbcDNTFH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 14 Apr 2016 15:05:07 -0400
+Received: from list by plane.gmane.org with local (Exim 4.69)
+	(envelope-from <glN-linux-nfs@m.gmane.org>)
+	id 1aqmZc-0002gV-RX
+	for linux-nfs@vger.kernel.org; Thu, 14 Apr 2016 21:05:05 +0200
+Received: from 209.117.222.196 ([209.117.222.196])
+        by main.gmane.org with esmtp (Gmexim 0.1 (Debian))
+        id 1AlnuQ-0007hv-00
+        for <linux-nfs@vger.kernel.org>; Thu, 14 Apr 2016 21:05:04 +0200
+Received: from ziemowit by 209.117.222.196 with local (Gmexim 0.1 (Debian))
+        id 1AlnuQ-0007hv-00
+        for <linux-nfs@vger.kernel.org>; Thu, 14 Apr 2016 21:05:04 +0200
+To: linux-nfs@vger.kernel.org
+From: Ziemowit PIerzycki <ziemowit@pierzycki.com>
+Subject: What is a 10.10.10.20-man process?
+Date: Thu, 14 Apr 2016 19:01:25 +0000 (UTC)
+Message-ID: <loom.20160414T205732-249@post.gmane.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 14 Apr 2016, Olga Kornievskaia wrote:
+I have a strange issue when NFS4 mounts to a Netapp filer freeze on my Linux 
+KVMs.  Looking over few things I noticed a process "10.10.10.20-man" is in D 
+state but I can't find anything information about it.  Mainly because 
+10.10.10.20 is the IP of the filer and searching for "-man" is too generic.
 
-> Hi folks,
->
-> Does somebody know if it's possible to do secure mounts within linux
-> containers? I seem to recall that gssd is not container-aware. Or is
-> container-magic makes it so that gssd runs per container and has its
-> own dedicated krb5.conf+keytab configurations?
->
-> Thank you.
+Why would this process be frozen?
 
-Hi Olga,
-
-As far as I know there's no good way to run multiple gssd inside containers.
-There's only one global upcall mechanism, so even if we could keep track of
-which container is doing IO, there doesn't exist a way to upcall to the
-appropriate gssd.  Additionally, containers are a collection of shared
-namespaces.  A gssd could share one or more of those namespaces with a
-process doing IO, so what sort of rules do we use to pick the right gssd?
-
-Ian Kent has led some discussion on solving this, and right now the thinking
-is to always upcall into whichever namespace collection created the mount,
-but the bet way to preserve those namespaces has not been agreed upon yet.
-
-Ben
