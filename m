@@ -1,58 +1,64 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qg0-f44.google.com ([209.85.192.44]:33828 "EHLO
-	mail-qg0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932076AbcDNMhN (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 14 Apr 2016 08:37:13 -0400
-Received: by mail-qg0-f44.google.com with SMTP id c6so61698499qga.1
-        for <linux-nfs@vger.kernel.org>; Thu, 14 Apr 2016 05:37:13 -0700 (PDT)
+Received: from mail-qg0-f49.google.com ([209.85.192.49]:35523 "EHLO
+	mail-qg0-f49.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755193AbcDNMhP (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 14 Apr 2016 08:37:15 -0400
+Received: by mail-qg0-f49.google.com with SMTP id f105so61699927qge.2
+        for <linux-nfs@vger.kernel.org>; Thu, 14 Apr 2016 05:37:14 -0700 (PDT)
 From: Jeff Layton <jlayton@poochiereds.net>
 To: trond.myklebust@primarydata.com
 Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH 1/8] sunrpc: allow generic_match to handle creds with NULL group_info ptr
-Date: Thu, 14 Apr 2016 08:36:58 -0400
-Message-Id: <1460637425-1580-2-git-send-email-jeff.layton@primarydata.com>
+Subject: [PATCH 3/8] sunrpc: add rpc_lookup_generic_cred
+Date: Thu, 14 Apr 2016 08:37:00 -0400
+Message-Id: <1460637425-1580-4-git-send-email-jeff.layton@primarydata.com>
 In-Reply-To: <1460637425-1580-1-git-send-email-jeff.layton@primarydata.com>
 References: <1460637425-1580-1-git-send-email-jeff.layton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This function seems to assume that the group_info is never NULL. If we
-fix it not to assume that then we should be able to avoid allocating
-group_info for flexfiles DS creds.
+From: Weston Andros Adamson <dros@primarydata.com>
+
+Add function rpc_lookup_generic_cred, which allows lookups of a generic
+credential that's not current_cred().
+
+[jlayton: add gfp_t parm]
 
 Signed-off-by: Jeff Layton <jeff.layton@primarydata.com>
 ---
- net/sunrpc/auth_generic.c | 9 ++++++---
- 1 file changed, 6 insertions(+), 3 deletions(-)
+ include/linux/sunrpc/auth.h | 1 +
+ net/sunrpc/auth_generic.c   | 7 +++++++
+ 2 files changed, 8 insertions(+)
 
+diff --git a/include/linux/sunrpc/auth.h b/include/linux/sunrpc/auth.h
+index 3b616aa7e4d2..16bd8f8fef8c 100644
+--- a/include/linux/sunrpc/auth.h
++++ b/include/linux/sunrpc/auth.h
+@@ -167,6 +167,7 @@ void 			rpc_destroy_authunix(void);
+ 
+ struct rpc_cred *	rpc_lookup_cred(void);
+ struct rpc_cred *	rpc_lookup_cred_nonblock(void);
++struct rpc_cred *	rpc_lookup_generic_cred(struct auth_cred *, int, gfp_t);
+ struct rpc_cred *	rpc_lookup_machine_cred(const char *service_name);
+ int			rpcauth_register(const struct rpc_authops *);
+ int			rpcauth_unregister(const struct rpc_authops *);
 diff --git a/net/sunrpc/auth_generic.c b/net/sunrpc/auth_generic.c
-index 41248b1820c7..0bb0d58f240b 100644
+index 774ea8a8f917..7a7da1f85f83 100644
 --- a/net/sunrpc/auth_generic.c
 +++ b/net/sunrpc/auth_generic.c
-@@ -151,7 +151,7 @@ static int
- generic_match(struct auth_cred *acred, struct rpc_cred *cred, int flags)
- {
- 	struct generic_cred *gcred = container_of(cred, struct generic_cred, gc_base);
--	int i;
-+	int i, gnum;
+@@ -38,6 +38,13 @@ struct rpc_cred *rpc_lookup_cred(void)
+ }
+ EXPORT_SYMBOL_GPL(rpc_lookup_cred);
  
- 	if (acred->machine_cred)
- 		return machine_cred_match(acred, gcred, flags);
-@@ -166,9 +166,12 @@ generic_match(struct auth_cred *acred, struct rpc_cred *cred, int flags)
- 		goto out_match;
- 
- 	/* Slow path... */
--	if (gcred->acred.group_info->ngroups != acred->group_info->ngroups)
-+	i = acred->group_info ? acred->group_info->ngroups : 0;
-+	gnum = gcred->acred.group_info ? gcred->acred.group_info->ngroups : 0;
++struct rpc_cred *
++rpc_lookup_generic_cred(struct auth_cred *acred, int flags, gfp_t gfp)
++{
++	return rpcauth_lookup_credcache(&generic_auth, acred, flags, gfp);
++}
++EXPORT_SYMBOL_GPL(rpc_lookup_generic_cred);
 +
-+	if (gnum != i)
- 		goto out_nomatch;
--	for (i = 0; i < gcred->acred.group_info->ngroups; i++) {
-+	for (i = 0; i < gnum; i++) {
- 		if (!gid_eq(GROUP_AT(gcred->acred.group_info, i),
- 				GROUP_AT(acred->group_info, i)))
- 			goto out_nomatch;
+ struct rpc_cred *rpc_lookup_cred_nonblock(void)
+ {
+ 	return rpcauth_lookupcred(&generic_auth, RPCAUTH_LOOKUP_RCU);
 -- 
 2.5.5
 
