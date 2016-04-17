@@ -1,68 +1,83 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp.gentoo.org ([140.211.166.183]:43650 "EHLO smtp.gentoo.org"
+Received: from smtp.gentoo.org ([140.211.166.183]:43720 "EHLO smtp.gentoo.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750976AbcDQQRJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 17 Apr 2016 12:17:09 -0400
-Date: Sun, 17 Apr 2016 12:17:08 -0400
+	id S1750976AbcDQQSP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 17 Apr 2016 12:18:15 -0400
+Date: Sun, 17 Apr 2016 12:18:13 -0400
 From: Mike Frysinger <vapier@gentoo.org>
 To: Felix Janda <felix.janda@posteo.de>
 Cc: libtirpc-devel@lists.sourceforge.net, linux-nfs@vger.kernel.org
-Subject: Re: [Libtirpc-devel] [PATCH 1/7] des_impl: Use bzero instead of
- __bzero
-Message-ID: <20160417161708.GF5369@vapier.lan>
-References: <20160417091004.GA2737@nyan>
+Subject: Re: [Libtirpc-devel] [PATCH 7/7] Deduplicate extern "C" blocks
+Message-ID: <20160417161813.GG5369@vapier.lan>
+References: <20160417091113.GF2737@nyan>
 MIME-Version: 1.0
 Content-Type: multipart/signed; micalg=pgp-sha256;
-	protocol="application/pgp-signature"; boundary="QXO0/MSS4VvK6f+D"
-In-Reply-To: <20160417091004.GA2737@nyan>
+	protocol="application/pgp-signature"; boundary="w/VI3ydZO+RcZ3Ux"
+In-Reply-To: <20160417091113.GF2737@nyan>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
---QXO0/MSS4VvK6f+D
+--w/VI3ydZO+RcZ3Ux
 Content-Type: text/plain; charset=utf-8
 Content-Disposition: inline
 Content-Transfer-Encoding: quoted-printable
 
-On 17 Apr 2016 11:10, Felix Janda wrote:
-> Fixes compilation error with musl libc:
+On 17 Apr 2016 11:11, Felix Janda wrote:
+> Signed-off-by: Felix Janda <felix.janda@posteo.de>
+> ---
+>  tirpc/rpc/auth.h      | 62 +++++++--------------------------------------=
+------
+>  tirpc/rpc/auth_des.h  | 14 +++++-------
+>  tirpc/rpc/clnt.h      | 50 +++++++----------------------------------
+>  tirpc/rpc/clnt_soc.h  | 27 +++++-----------------
+>  tirpc/rpc/des_crypt.h | 20 +++++------------
+>  tirpc/rpc/rpc.h       | 14 +++++-------
+>  tirpc/rpc/svc.h       | 55 ++++++---------------------------------------
+>  tirpc/rpc/svc_soc.h   | 38 +++++--------------------------
+>  tirpc/rpc/xdr.h       | 15 +++++--------
+>  9 files changed, 54 insertions(+), 241 deletions(-)
 >=20
-> .libs/libtirpc_la-des_impl.o: In function `_des_crypt':
-> src/des_impl.c:591: undefined reference to `__bzero'
->
-> --- a/src/des_impl.c
-> +++ b/src/des_impl.c
-> @@ -588,7 +588,7 @@ _des_crypt (char *buf, unsigned len, struct desparams=
- *desp)
->      }
->    tin0 =3D tin1 =3D tout0 =3D tout1 =3D xor0 =3D xor1 =3D 0;
->    tbuf[0] =3D tbuf[1] =3D 0;
-> -  __bzero (schedule, sizeof (schedule));
-> +  bzero (schedule, sizeof (schedule));
+> diff --git a/tirpc/rpc/auth.h b/tirpc/rpc/auth.h
+> index 5f8ea72..f743034 100644
+> --- a/tirpc/rpc/auth.h
+> +++ b/tirpc/rpc/auth.h
+> @@ -46,6 +46,10 @@
+>  #ifndef _TIRPC_AUTH_H
+>  #define  _TIRPC_AUTH_H
+> =20
+> +#ifdef __cplusplus
+> +extern "C" {
+> +#endif
+> +
+>  #include <rpc/xdr.h>
+>  #include <rpc/clnt_stat.h>
+>  #include <sys/socket.h>
 
-might as well convert to memset while you're at it since bzero is deprecated
+it isn't normal to wrap includes in extern C.  header files should only
+be wrapping their own local content.
 -mike
 
---QXO0/MSS4VvK6f+D
+--w/VI3ydZO+RcZ3Ux
 Content-Type: application/pgp-signature; name="signature.asc"
 Content-Description: Digital signature
 
 -----BEGIN PGP SIGNATURE-----
 Version: GnuPG v2
 
-iQIcBAEBCAAGBQJXE7cEAAoJEEFjO5/oN/WBJjIP/27/kdRoL1dKz2E2xajXKiHy
-mQa1vcAHCaZPyqVA5/T2TjTC3LHSHO+qb7wIx4xGcRqbfe7poUGF72n3KpfJJaEM
-0USfAIPF+oWgsNxKHNBuUbsglV+TS1NGoObbiu3IkcgnEXGijl+PohwdCuurJlF7
-J+J5k1rvQGPmY/P1doVsMqwnkuj+EElE1JKnXxLAG6gPSf5TLA+dXUFn6h6FIfLf
-KCzEymWGS+igCsiX1mgKt5IXRftr624vXvpvCnlm1GIQjnt0hNU9Bk3mtFjvNdDo
-V+mGXK2RK6D4qf9/k52UJO4DH5leBIve8rbmnOARTvPsFNbq71yckzxo2gHkB3Ea
-iBypGVPh2+apQriZZT4Ex0lh2heCda7LwBTLMzAoU3SGOHjMhvxo2V/Mg/r+78vF
-h9QtCZYAFAghd5l+Yk7wvYRqR9tg10x+IZX2gu3tnFzKGBN3sq4TUmRkhNzHx372
-b+8835S/VgzHFeKg6pR9mmRaq/fTMcMp5a9Dprcpic2Va5ISMWGmfnv4tjdhFLWy
-AODjVmyp3aNE+bmHSL7wdBV42d6dMrONUe09bHaHoi41nqwqsQHrxWXJUACkEgn1
-Dc/xzfyZzefxi3aeMYb/WHgZf1TLeqVVt3RftkS4PHybNFU38YA0ESsUwNDqmhlS
-cFyBGiZxs2VX9p3YU7Ut
-=XIVa
+iQIcBAEBCAAGBQJXE7dFAAoJEEFjO5/oN/WBP+4QAJi938JHRPDEaXhy3GJBKuuq
+170df0x2TmY0fag+pz42MBGdfHMakj/LIkxbXEwEG2MsaEywojm7gs+8FsktuCx5
+0EXoodCDB4Fe4iOetCk/bA5znKLk9B0/IBpnuLsDEAq3C0Rrfe12cPFKOX2Kcqhu
+Pf7QE+qZXzEDBGW3i3Lg0a4tXYvHY8lNFtn/nWtPsnmzrq0ubVKQYVmLvhiqXEbr
+rkVZGeBMXY0Nun2t2wWgE/hre25epTUJFkJmRunvHVd+lGwZbi1SdBd5FFAezB2X
+xrTmX9+RNGkrkW67XZeTBh5BGcgaXt3I1qMoNFG0gfvDtjnkUkyF8kQ4mWQMQzgn
+nsZpXZAOWaQUJ8NClssUNYYNScntM+iB4Ei2lPnLk4GHffen+z8hzPRtP3XMAlVo
+2Xh+jiLa7hiVijn8lpOJu+2AtW5qHAjOxJK3pi9hE7z0UtscoIzXbIzTbub4kC1/
+6q4IFjPC2O98IOYuA7CmyPruoYPGGxm0ed4BL6Ahd8IGWVCMJhLUp4UZaCMdktJo
+q2X88p4pK07sjPTC2MaxXpdqVk9ZQR6uLYY7anE6aZgYKoaqueTArrOM7odPGV4d
+ogFRYWIROQ9l4XCQ+rnanPYdTRtwxEuZ5EdUE7WbG4pPi0cdaK9c5/PPVMhi96AV
+GCewbqT+nyYD2AYwwkfh
+=Dqjk
 -----END PGP SIGNATURE-----
 
---QXO0/MSS4VvK6f+D--
+--w/VI3ydZO+RcZ3Ux--
