@@ -1,92 +1,68 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mout01.posteo.de ([185.67.36.65]:43161 "EHLO mout01.posteo.de"
+Received: from smtp.gentoo.org ([140.211.166.183]:43650 "EHLO smtp.gentoo.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751532AbcDQJM7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 17 Apr 2016 05:12:59 -0400
-Received: from dovecot03.posteo.de (dovecot03.posteo.de [172.16.0.13])
-	by mout01.posteo.de (Postfix) with ESMTPS id D4E0B20A0D
-	for <linux-nfs@vger.kernel.org>; Sun, 17 Apr 2016 11:12:57 +0200 (CEST)
-Date: Sun, 17 Apr 2016 11:12:19 +0200
-From: Felix Janda <felix.janda@posteo.de>
-To: libtirpc-devel@lists.sourceforge.net
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH 5/7] Delete unused epoll_sub.c
-Message-ID: <20160417091219.GA3299@nyan>
+	id S1750976AbcDQQRJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 17 Apr 2016 12:17:09 -0400
+Date: Sun, 17 Apr 2016 12:17:08 -0400
+From: Mike Frysinger <vapier@gentoo.org>
+To: Felix Janda <felix.janda@posteo.de>
+Cc: libtirpc-devel@lists.sourceforge.net, linux-nfs@vger.kernel.org
+Subject: Re: [Libtirpc-devel] [PATCH 1/7] des_impl: Use bzero instead of
+ __bzero
+Message-ID: <20160417161708.GF5369@vapier.lan>
+References: <20160417091004.GA2737@nyan>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
+Content-Type: multipart/signed; micalg=pgp-sha256;
+	protocol="application/pgp-signature"; boundary="QXO0/MSS4VvK6f+D"
+In-Reply-To: <20160417091004.GA2737@nyan>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Signed-off-by: Felix Janda <felix.janda@posteo.de>
----
- src/epoll_sub.c | 58 ---------------------------------------------------------
- 1 file changed, 58 deletions(-)
- delete mode 100644 src/epoll_sub.c
 
-diff --git a/src/epoll_sub.c b/src/epoll_sub.c
-deleted file mode 100644
-index 16583ba..0000000
---- a/src/epoll_sub.c
-+++ /dev/null
-@@ -1,58 +0,0 @@
--/*
-- * Copyright 2003 Niels Provos <provos@citi.umich.edu>
-- * All rights reserved.
-- *
-- * Redistribution and use in source and binary forms, with or without
-- * modification, are permitted provided that the following conditions
-- * are met:
-- * 1. Redistributions of source code must retain the above copyright
-- *    notice, this list of conditions and the following disclaimer.
-- * 2. Redistributions in binary form must reproduce the above copyright
-- *    notice, this list of conditions and the following disclaimer in the
-- *    documentation and/or other materials provided with the distribution.
-- * 3. The name of the author may not be used to endorse or promote products
-- *    derived from this software without specific prior written permission.
-- *
-- * THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
-- * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
-- * OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
-- * IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT,
-- * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
-- * NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
-- * DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
-- * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-- * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
-- * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-- */
--#include <stdint.h>
--
--#include <sys/param.h>
--#include <sys/types.h>
--#include <sys/syscall.h>
--#include <sys/epoll.h>
--#include <unistd.h>
--
--
--/*Paramètres du syscall - Attention spécifique hardware */
--#define __NR_epoll_create 254
--#define __NR_epoll_ctl	255
--#define __NR_epoll_wait	256
--
--int
--epoll_create(int size)
--{
--	return (syscall(__NR_epoll_create, size));
--}
--
--int
--epoll_ctl(int epfd, int op, int fd, struct epoll_event *event)
--{
--
--	return (syscall(__NR_epoll_ctl, epfd, op, fd, event));
--}
--
--int
--epoll_wait(int epfd, struct epoll_event *events, int maxevents, int timeout)
--{
--	return (syscall(__NR_epoll_wait, epfd, events, maxevents, timeout));
--}
--- 
-2.7.3
+--QXO0/MSS4VvK6f+D
+Content-Type: text/plain; charset=utf-8
+Content-Disposition: inline
+Content-Transfer-Encoding: quoted-printable
 
+On 17 Apr 2016 11:10, Felix Janda wrote:
+> Fixes compilation error with musl libc:
+>=20
+> .libs/libtirpc_la-des_impl.o: In function `_des_crypt':
+> src/des_impl.c:591: undefined reference to `__bzero'
+>
+> --- a/src/des_impl.c
+> +++ b/src/des_impl.c
+> @@ -588,7 +588,7 @@ _des_crypt (char *buf, unsigned len, struct desparams=
+ *desp)
+>      }
+>    tin0 =3D tin1 =3D tout0 =3D tout1 =3D xor0 =3D xor1 =3D 0;
+>    tbuf[0] =3D tbuf[1] =3D 0;
+> -  __bzero (schedule, sizeof (schedule));
+> +  bzero (schedule, sizeof (schedule));
+
+might as well convert to memset while you're at it since bzero is deprecated
+-mike
+
+--QXO0/MSS4VvK6f+D
+Content-Type: application/pgp-signature; name="signature.asc"
+Content-Description: Digital signature
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v2
+
+iQIcBAEBCAAGBQJXE7cEAAoJEEFjO5/oN/WBJjIP/27/kdRoL1dKz2E2xajXKiHy
+mQa1vcAHCaZPyqVA5/T2TjTC3LHSHO+qb7wIx4xGcRqbfe7poUGF72n3KpfJJaEM
+0USfAIPF+oWgsNxKHNBuUbsglV+TS1NGoObbiu3IkcgnEXGijl+PohwdCuurJlF7
+J+J5k1rvQGPmY/P1doVsMqwnkuj+EElE1JKnXxLAG6gPSf5TLA+dXUFn6h6FIfLf
+KCzEymWGS+igCsiX1mgKt5IXRftr624vXvpvCnlm1GIQjnt0hNU9Bk3mtFjvNdDo
+V+mGXK2RK6D4qf9/k52UJO4DH5leBIve8rbmnOARTvPsFNbq71yckzxo2gHkB3Ea
+iBypGVPh2+apQriZZT4Ex0lh2heCda7LwBTLMzAoU3SGOHjMhvxo2V/Mg/r+78vF
+h9QtCZYAFAghd5l+Yk7wvYRqR9tg10x+IZX2gu3tnFzKGBN3sq4TUmRkhNzHx372
+b+8835S/VgzHFeKg6pR9mmRaq/fTMcMp5a9Dprcpic2Va5ISMWGmfnv4tjdhFLWy
+AODjVmyp3aNE+bmHSL7wdBV42d6dMrONUe09bHaHoi41nqwqsQHrxWXJUACkEgn1
+Dc/xzfyZzefxi3aeMYb/WHgZf1TLeqVVt3RftkS4PHybNFU38YA0ESsUwNDqmhlS
+cFyBGiZxs2VX9p3YU7Ut
+=XIVa
+-----END PGP SIGNATURE-----
+
+--QXO0/MSS4VvK6f+D--
