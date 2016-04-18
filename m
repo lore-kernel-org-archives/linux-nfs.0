@@ -1,90 +1,46 @@
-Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:44136 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751509AbcDRS0f (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 18 Apr 2016 14:26:35 -0400
-Date: Mon, 18 Apr 2016 14:26:33 -0400
-To: NeilBrown <neilb@suse.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: AUTH_NONE at top of SECINFO_NONAME reply.
-Message-ID: <20160418182633.GA3193@fieldses.org>
-References: <87k2k1jd8d.fsf@notabene.neil.brown.name>
+Return-Path: <bfields@fieldses.org>
+Date: Mon, 18 Apr 2016 14:37:00 -0400
+To: Benjamin Coddington <bcodding@redhat.com>
+Cc: Olga Kornievskaia <aglo@umich.edu>, linux-nfs <linux-nfs@vger.kernel.org>
+Subject: Re: gssd and linux containers
+Message-ID: <20160418183700.GB3193@fieldses.org>
+References: <CAN-5tyH-ATtHtWuw4t07DjZnnzOit=rQ=H0vq+W04gU=Ys=b+g@mail.gmail.com>
+ <alpine.OSX.2.19.9992.1604141447230.55780@planck>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <87k2k1jd8d.fsf@notabene.neil.brown.name>
+In-Reply-To: <alpine.OSX.2.19.9992.1604141447230.55780@planck>
 From: bfields@fieldses.org (J. Bruce Fields)
-Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Apr 14, 2016 at 09:33:22AM +1000, NeilBrown wrote:
->  I have an NFSv4.1 server (Netapp, don't know about version numbers)
->  which responds to
->     PUT_ROOTFH
->     SECINFO_NONAME
+On Thu, Apr 14, 2016 at 02:57:51PM -0400, Benjamin Coddington wrote:
+> On Thu, 14 Apr 2016, Olga Kornievskaia wrote:
 > 
-> with:
+> > Hi folks,
+> >
+> > Does somebody know if it's possible to do secure mounts within linux
+> > containers? I seem to recall that gssd is not container-aware. Or is
+> > container-magic makes it so that gssd runs per container and has its
+> > own dedicated krb5.conf+keytab configurations?
+> >
+> > Thank you.
+
+On the server side it should work in theory, I don't know if anyone's
+tested it.  On the client side:
+
+> As far as I know there's no good way to run multiple gssd inside containers.
+> There's only one global upcall mechanism, so even if we could keep track of
+> which container is doing IO, there doesn't exist a way to upcall to the
+> appropriate gssd.  Additionally, containers are a collection of shared
+> namespaces.  A gssd could share one or more of those namespaces with a
+> process doing IO, so what sort of rules do we use to pick the right gssd?
 > 
-> flavor: AUTH_NULL (0)
-> flavor: RPCSEC_GSS (6)
->     service: rpcsec_gss_svc_integrity (2)
-> flavor: RPCSEC_GSS (6)
->     service: rpcsec_gss_svc_none (1)
-> flavor: AUTH_UNIX (1)
-> 
-> This causes the Linux client to use AUTH_NULL, which doesn't end well
->    Opcode: ACCESS (3), [Access Denied: RD LU MD XT DL]
-> 
-> I suspect this is a server bug, because the first flavor is meant to be
-> the most preferred.  However I wonder if there might be something else
-> going on.
-> 
-> 1/ I note that for NFSv3 AUTH_NULL means something a bit different
->   in this context:
-> 
-> 	 * AUTH_NULL has a special meaning when it's in the server list - it
-> 	 * means that the server will ignore the rpc creds, so any flavor
-> 	 * can be used.
-> 
->   Is there any chance that servers might reasonably expect that
->   behavior for NFSv4.1 as well??
+> Ian Kent has led some discussion on solving this, and right now the thinking
+> is to always upcall into whichever namespace collection created the mount,
+> but the bet way to preserve those namespaces has not been agreed upon yet.
 
-I'll admit it seems a trap for the unwary implementor, but I think this
-case is really clear:
-
-	http://tools.ietf.org/html/rfc5661#section-18.29.3
-
-	The result will contain an array that represents the security
-	mechanisms available, with an order corresponding to the
-	server's preferences, the most preferred being first in the
-	array.  The client is free to pick whatever security mechanism
-	it both desires and supports, or to pick in the server's
-	preference order the first one it supports.
-
-So we should be leaning on the server vendor to fix and/or explain
-what's going on there.
-
-> 2/ In the pseudo-root filesystem it might make sense to use AUTH_NULL,
->   providing something else is used when crossing in to another
->   filesystem.
-
-One thing that bugs me about that is that the client could have been fed
-forged replies while using AUTH_NULL, and after switching to, say,
-krb5i, it may still be depending on those results (e.g., the lookups
-that got you to that mountpoint), unless it's careful to recheck some
-things.
-
-There are probably assumptions under which that could still be useful,
-but it starts to feel a bit delicate.  Anyway, that's a bit of a derail:
-
->   Should the client send a new SECINFO when that happens (it may not
->   help in this case, I don't know) or is that really only needed when
->   NFS4ERR_WRONGSEC is returned?
->   It seems a bit asymmetric that SECINFO is use pro-actively at the start
->   of a session, but then only re-actively after that.
-
-Maybe.  I would have guessed that / is the point where you're most
-likely to guess the security flavor wrong.  I'm not sure it really
-matters which way you do it, though.  It's just one round trip plus or
-minus on each mountpoint.
+Isn't the client side still using the rpc_pipefs upcall?  That might
+still need containerization work.  But that's different than the problem
+Ian was looking at with running usermode helpers.  Making gssd work
+might be easier.
 
 --b.
