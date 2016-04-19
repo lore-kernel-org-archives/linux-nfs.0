@@ -1,72 +1,61 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from us-smtp-delivery-194.mimecast.com ([216.205.24.194]:26714 "EHLO
-	us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1752489AbcDSWPD (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 19 Apr 2016 18:15:03 -0400
-From: Trond Myklebust <trondmy@primarydata.com>
-To: NeilBrown <neilb@suse.com>, "J. Bruce Fields" <bfields@fieldses.org>,
+Received: from mx2.suse.de ([195.135.220.15]:56617 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752101AbcDSXNW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 19 Apr 2016 19:13:22 -0400
+From: NeilBrown <neilb@suse.com>
+To: Trond Myklebust <trondmy@primarydata.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>,
         Thomas Haynes <loghyr@primarydata.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Date: Wed, 20 Apr 2016 09:13:09 +1000
+Cc: "linux-nfs\@vger.kernel.org" <linux-nfs@vger.kernel.org>
 Subject: Re: AUTH_NONE at top of SECINFO_NONAME reply.
-Date: Tue, 19 Apr 2016 22:08:16 +0000
-Message-ID: <BCC7DC72-7B38-47C1-A26F-C52349EFD5C6@primarydata.com>
-References: <87k2k1jd8d.fsf@notabene.neil.brown.name>
- <20160418182633.GA3193@fieldses.org>
- <871t61i96f.fsf@notabene.neil.brown.name>
-In-Reply-To: <871t61i96f.fsf@notabene.neil.brown.name>
+In-Reply-To: <BCC7DC72-7B38-47C1-A26F-C52349EFD5C6@primarydata.com>
+References: <87k2k1jd8d.fsf@notabene.neil.brown.name> <20160418182633.GA3193@fieldses.org> <871t61i96f.fsf@notabene.neil.brown.name> <BCC7DC72-7B38-47C1-A26F-C52349EFD5C6@primarydata.com>
+Message-ID: <87fuuhyyyi.fsf@notabene.neil.brown.name>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+Content-Type: multipart/signed; boundary="=-=-=";
+	micalg=pgp-sha256; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-DQoNCg0KDQoNCk9uIDQvMTkvMTYsIDE3OjI0LCAiTmVpbEJyb3duIiA8bGludXgtbmZzLW93bmVy
-QHZnZXIua2VybmVsLm9yZyBvbiBiZWhhbGYgb2YgbmVpbGJAc3VzZS5jb20+IHdyb3RlOg0KDQo+
-T24gVHVlLCBBcHIgMTkgMjAxNiwgSi4gQnJ1Y2UgRmllbGRzIHdyb3RlOg0KPg0KPj4gT24gVGh1
-LCBBcHIgMTQsIDIwMTYgYXQgMDk6MzM6MjJBTSArMTAwMCwgTmVpbEJyb3duIHdyb3RlOg0KPj4+
-ICBJIGhhdmUgYW4gTkZTdjQuMSBzZXJ2ZXIgKE5ldGFwcCwgZG9uJ3Qga25vdyBhYm91dCB2ZXJz
-aW9uIG51bWJlcnMpDQo+Pj4gIHdoaWNoIHJlc3BvbmRzIHRvDQo+Pj4gICAgIFBVVF9ST09URkgN
-Cj4+PiAgICAgU0VDSU5GT19OT05BTUUNCj4+PiANCj4+PiB3aXRoOg0KPj4+IA0KPj4+IGZsYXZv
-cjogQVVUSF9OVUxMICgwKQ0KPj4+IGZsYXZvcjogUlBDU0VDX0dTUyAoNikNCj4+PiAgICAgc2Vy
-dmljZTogcnBjc2VjX2dzc19zdmNfaW50ZWdyaXR5ICgyKQ0KPj4+IGZsYXZvcjogUlBDU0VDX0dT
-UyAoNikNCj4+PiAgICAgc2VydmljZTogcnBjc2VjX2dzc19zdmNfbm9uZSAoMSkNCj4+PiBmbGF2
-b3I6IEFVVEhfVU5JWCAoMSkNCj4+PiANCj4+PiBUaGlzIGNhdXNlcyB0aGUgTGludXggY2xpZW50
-IHRvIHVzZSBBVVRIX05VTEwsIHdoaWNoIGRvZXNuJ3QgZW5kIHdlbGwNCj4+PiAgICBPcGNvZGU6
-IEFDQ0VTUyAoMyksIFtBY2Nlc3MgRGVuaWVkOiBSRCBMVSBNRCBYVCBETF0NCj4+PiANCj4+PiBJ
-IHN1c3BlY3QgdGhpcyBpcyBhIHNlcnZlciBidWcsIGJlY2F1c2UgdGhlIGZpcnN0IGZsYXZvciBp
-cyBtZWFudCB0byBiZQ0KPj4+IHRoZSBtb3N0IHByZWZlcnJlZC4gIEhvd2V2ZXIgSSB3b25kZXIg
-aWYgdGhlcmUgbWlnaHQgYmUgc29tZXRoaW5nIGVsc2UNCj4+PiBnb2luZyBvbi4NCj4+PiANCj4+
-PiAxLyBJIG5vdGUgdGhhdCBmb3IgTkZTdjMgQVVUSF9OVUxMIG1lYW5zIHNvbWV0aGluZyBhIGJp
-dCBkaWZmZXJlbnQNCj4+PiAgIGluIHRoaXMgY29udGV4dDoNCj4+PiANCj4+PiAJICogQVVUSF9O
-VUxMIGhhcyBhIHNwZWNpYWwgbWVhbmluZyB3aGVuIGl0J3MgaW4gdGhlIHNlcnZlciBsaXN0IC0g
-aXQNCj4+PiAJICogbWVhbnMgdGhhdCB0aGUgc2VydmVyIHdpbGwgaWdub3JlIHRoZSBycGMgY3Jl
-ZHMsIHNvIGFueSBmbGF2b3INCj4+PiAJICogY2FuIGJlIHVzZWQuDQo+Pj4gDQo+Pj4gICBJcyB0
-aGVyZSBhbnkgY2hhbmNlIHRoYXQgc2VydmVycyBtaWdodCByZWFzb25hYmx5IGV4cGVjdCB0aGF0
-DQo+Pj4gICBiZWhhdmlvciBmb3IgTkZTdjQuMSBhcyB3ZWxsPz8NCj4+DQo+PiBJJ2xsIGFkbWl0
-IGl0IHNlZW1zIGEgdHJhcCBmb3IgdGhlIHVud2FyeSBpbXBsZW1lbnRvciwgYnV0IEkgdGhpbmsg
-dGhpcw0KPj4gY2FzZSBpcyByZWFsbHkgY2xlYXI6DQo+Pg0KPj4gCWh0dHA6Ly90b29scy5pZXRm
-Lm9yZy9odG1sL3JmYzU2NjEjc2VjdGlvbi0xOC4yOS4zDQo+Pg0KPj4gCVRoZSByZXN1bHQgd2ls
-bCBjb250YWluIGFuIGFycmF5IHRoYXQgcmVwcmVzZW50cyB0aGUgc2VjdXJpdHkNCj4+IAltZWNo
-YW5pc21zIGF2YWlsYWJsZSwgd2l0aCBhbiBvcmRlciBjb3JyZXNwb25kaW5nIHRvIHRoZQ0KPj4g
-CXNlcnZlcidzIHByZWZlcmVuY2VzLCB0aGUgbW9zdCBwcmVmZXJyZWQgYmVpbmcgZmlyc3QgaW4g
-dGhlDQo+PiAJYXJyYXkuICBUaGUgY2xpZW50IGlzIGZyZWUgdG8gcGljayB3aGF0ZXZlciBzZWN1
-cml0eSBtZWNoYW5pc20NCj4+IAlpdCBib3RoIGRlc2lyZXMgYW5kIHN1cHBvcnRzLCBvciB0byBw
-aWNrIGluIHRoZSBzZXJ2ZXIncw0KPj4gCXByZWZlcmVuY2Ugb3JkZXIgdGhlIGZpcnN0IG9uZSBp
-dCBzdXBwb3J0cy4NCj4+DQo+PiBTbyB3ZSBzaG91bGQgYmUgbGVhbmluZyBvbiB0aGUgc2VydmVy
-IHZlbmRvciB0byBmaXggYW5kL29yIGV4cGxhaW4NCj4+IHdoYXQncyBnb2luZyBvbiB0aGVyZS4N
-Cj4NCj5UaGF0IHdhcyB0aGUgZGlyZWN0aW9uIEkgd2FzIGxlYW5pbmcsIGJ1dCBpdCBpcyBuaWNl
-IHRvIGhhdmUgaXQNCj5jb25maXJtZWQgLSBwYXJ0aWN1bGFybHkgZ2l2ZW4gdGhlIGludGVyZXN0
-aW5nIHJ1bGVzIHdpdGggTkZTdjMuDQo+DQo+TXkgY29sbGVhZ3VlIHN1YnNlcXVlbnRseSBkaXNj
-b3ZlcmVkIHRoYXQgdGhlcmUgd2VyZSBzZXR0aW5nIG9uIHRoZQ0KPk5ldGFwcCB3aGljaCBjb3Vs
-ZCBjaGFuZ2UgdGhlIGJlaGF2aW9yLiAgIEhlIGZpZGRsZWQgdGhpbmdzIGFuZCB0aGUNCj5wcm9i
-bGVtIHdlbnQgYXdheSwgYnV0IGhlIG5vdGVkOg0KPg0KPglPbiB0aGUgbmV0YXBwIHNpZGUsIEkg
-aGF2ZSB0aHJlZSBvZiB0aGVzZSBzZXR0aW5nczogcm9ydWxlLHJ3cnVsZSxzdXBlcnVzZXIsIGFu
-ZCBmb3INCj4JZWFjaCBvZiB0aGVzZSBJIGNhbiBzZXQNCj4JZnJvbSB0aGUgbGlzdDogImFueSAg
-IG5vbmUgIGtyYjUgIGtyYjVpIG50bG0gIHN5cyIuIFNvIHdpdGgNCj4JInJvPXN5cyxydz1ub25l
-LHN1cGVydXNlcj1hbnkiIEknbSBzdGlsbCBpbiB0aGUNCj4Jc2l0dWF0aW9uIHdoZXJlIEkgY2Fu
-IGdldCB0aGUgQVVUSF9OVUxMIGZpcnN0IC4uLg0KPg0KPigiQVVUSF9OVUxMIGZpcnN0IiBiZWlu
-ZyB0aGUgcHJvYmxlbWF0aWMgc2l0dWF0aW9uKS4NCj5JIHdvbmRlciBpZiAibm9uZSIgbWVhbnMg
-Im5vIGF1dGhlbnRpY2F0aW9uIG5lZWRlZCIgb3IgIm5vIGFjY2Vzcw0KPmdpdmVuIi4NCg0KQSBj
-ZXJ0YWluIHRob21hc0BuZXRhcHAuY29tIGV4cGxhaW5lZCB0aGUgYmVoYXZpb3VyIHRodXM6DQoN
-CiBodHRwczovL3d3dy5pZXRmLm9yZy9tYWlsLWFyY2hpdmUvd2ViL25mc3Y0L2N1cnJlbnQvbXNn
-MDk3NDMuaHRtbA0KDQpDaGVlcnMNCiAgVHJvbmQNCg==
+--=-=-=
+Content-Type: text/plain
 
+On Wed, Apr 20 2016, Trond Myklebust <trondmy@primarydata.com> wrote:
+
+> On 4/19/16, 17:24, "NeilBrown" <linux-nfs-owner@vger.kernel.org on behalf of neilb@suse.com> wrote:
+>
+>>I wonder if "none" means "no authentication needed" or "no access
+>>given".
+>
+> A certain thomas@netapp.com explained the behaviour thus:
+>
+>  https://www.ietf.org/mail-archive/web/nfsv4/current/msg09743.html
+>
+
+Ahhh, cool.  Thanks!
+
+NeilBrown
+
+--=-=-=
+Content-Type: application/pgp-signature; name="signature.asc"
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v2
+
+iQIcBAEBCAAGBQJXFruHAAoJEDnsnt1WYoG5PXEP/iW30TdfM09Kfb/MLj8sMO3g
+FSYVe10ISLnLZ6wXgJwFL9QjFCvhYm9VEtU9ka+oBarrj5qNqSPYFWyb1Q7xfoL8
+KD2wS9VFknXZqJN2bp8Ayy7s78Ey+f1cCii3I6UtnkHplSNI5sDyMH12Y+/9vnWM
+gq4wvxpwX4YYk7u/dLhMdztAVHKbXukni/elIEsmrLD6nj1CiuLcZWyZJ2DuVY9u
+Jm+XPxePuK4erFLHZVLXCMp7fmP1WLJC+BXKh/poOyrfOrjpBL24zFSe43fqrAFV
+p2KBtx/udNebVwg6e03kQbqm/RiPrEydx7qM31givDTnz0x+p6x+vWVzKXgbdbE6
+ad6Ew7/mqcFX/TG3oXsVVLI0lum2ZDFP/kegnkQh/TT+VmD78MQ+HTXLgYW4aho/
+VMkU7jakoxyyKr6FYROEfkfjeqZtGzaf/H/e4Kp8/TvXf/HBgCM+ZuHJtgueyV6s
+n99SDgfIsaMBCU+F+LRhnTew/fqjsYbDMERHcl8kCWKTcwQ49ofKYnLq2m1uEHn6
+pF43i9eJqVQMUD0dRxydrI70rp8YQUhFhlpwLtKkvObY/NtnO7OLtwK+jL3KjYqx
+yQSFjczfAeoCuJjql48Syp2nirmL1huPaHeDsjMuHBJjjD2rytWcvul8p4uLH72W
+A03q5OxK8GpzOYZUSVKv
+=/kCy
+-----END PGP SIGNATURE-----
+--=-=-=--
