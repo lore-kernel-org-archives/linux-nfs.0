@@ -1,118 +1,72 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:53602 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932903AbcDSVYc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 19 Apr 2016 17:24:32 -0400
-From: NeilBrown <neilb@suse.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Date: Wed, 20 Apr 2016 07:24:24 +1000
-Cc: linux-nfs@vger.kernel.org
+Received: from us-smtp-delivery-194.mimecast.com ([216.205.24.194]:26714 "EHLO
+	us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1752489AbcDSWPD (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 19 Apr 2016 18:15:03 -0400
+From: Trond Myklebust <trondmy@primarydata.com>
+To: NeilBrown <neilb@suse.com>, "J. Bruce Fields" <bfields@fieldses.org>,
+        Thomas Haynes <loghyr@primarydata.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
 Subject: Re: AUTH_NONE at top of SECINFO_NONAME reply.
-In-Reply-To: <20160418182633.GA3193@fieldses.org>
-References: <87k2k1jd8d.fsf@notabene.neil.brown.name> <20160418182633.GA3193@fieldses.org>
-Message-ID: <871t61i96f.fsf@notabene.neil.brown.name>
+Date: Tue, 19 Apr 2016 22:08:16 +0000
+Message-ID: <BCC7DC72-7B38-47C1-A26F-C52349EFD5C6@primarydata.com>
+References: <87k2k1jd8d.fsf@notabene.neil.brown.name>
+ <20160418182633.GA3193@fieldses.org>
+ <871t61i96f.fsf@notabene.neil.brown.name>
+In-Reply-To: <871t61i96f.fsf@notabene.neil.brown.name>
 MIME-Version: 1.0
-Content-Type: multipart/signed; boundary="=-=-=";
-	micalg=pgp-sha256; protocol="application/pgp-signature"
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---=-=-=
-Content-Type: text/plain
-Content-Transfer-Encoding: quoted-printable
+DQoNCg0KDQoNCk9uIDQvMTkvMTYsIDE3OjI0LCAiTmVpbEJyb3duIiA8bGludXgtbmZzLW93bmVy
+QHZnZXIua2VybmVsLm9yZyBvbiBiZWhhbGYgb2YgbmVpbGJAc3VzZS5jb20+IHdyb3RlOg0KDQo+
+T24gVHVlLCBBcHIgMTkgMjAxNiwgSi4gQnJ1Y2UgRmllbGRzIHdyb3RlOg0KPg0KPj4gT24gVGh1
+LCBBcHIgMTQsIDIwMTYgYXQgMDk6MzM6MjJBTSArMTAwMCwgTmVpbEJyb3duIHdyb3RlOg0KPj4+
+ICBJIGhhdmUgYW4gTkZTdjQuMSBzZXJ2ZXIgKE5ldGFwcCwgZG9uJ3Qga25vdyBhYm91dCB2ZXJz
+aW9uIG51bWJlcnMpDQo+Pj4gIHdoaWNoIHJlc3BvbmRzIHRvDQo+Pj4gICAgIFBVVF9ST09URkgN
+Cj4+PiAgICAgU0VDSU5GT19OT05BTUUNCj4+PiANCj4+PiB3aXRoOg0KPj4+IA0KPj4+IGZsYXZv
+cjogQVVUSF9OVUxMICgwKQ0KPj4+IGZsYXZvcjogUlBDU0VDX0dTUyAoNikNCj4+PiAgICAgc2Vy
+dmljZTogcnBjc2VjX2dzc19zdmNfaW50ZWdyaXR5ICgyKQ0KPj4+IGZsYXZvcjogUlBDU0VDX0dT
+UyAoNikNCj4+PiAgICAgc2VydmljZTogcnBjc2VjX2dzc19zdmNfbm9uZSAoMSkNCj4+PiBmbGF2
+b3I6IEFVVEhfVU5JWCAoMSkNCj4+PiANCj4+PiBUaGlzIGNhdXNlcyB0aGUgTGludXggY2xpZW50
+IHRvIHVzZSBBVVRIX05VTEwsIHdoaWNoIGRvZXNuJ3QgZW5kIHdlbGwNCj4+PiAgICBPcGNvZGU6
+IEFDQ0VTUyAoMyksIFtBY2Nlc3MgRGVuaWVkOiBSRCBMVSBNRCBYVCBETF0NCj4+PiANCj4+PiBJ
+IHN1c3BlY3QgdGhpcyBpcyBhIHNlcnZlciBidWcsIGJlY2F1c2UgdGhlIGZpcnN0IGZsYXZvciBp
+cyBtZWFudCB0byBiZQ0KPj4+IHRoZSBtb3N0IHByZWZlcnJlZC4gIEhvd2V2ZXIgSSB3b25kZXIg
+aWYgdGhlcmUgbWlnaHQgYmUgc29tZXRoaW5nIGVsc2UNCj4+PiBnb2luZyBvbi4NCj4+PiANCj4+
+PiAxLyBJIG5vdGUgdGhhdCBmb3IgTkZTdjMgQVVUSF9OVUxMIG1lYW5zIHNvbWV0aGluZyBhIGJp
+dCBkaWZmZXJlbnQNCj4+PiAgIGluIHRoaXMgY29udGV4dDoNCj4+PiANCj4+PiAJICogQVVUSF9O
+VUxMIGhhcyBhIHNwZWNpYWwgbWVhbmluZyB3aGVuIGl0J3MgaW4gdGhlIHNlcnZlciBsaXN0IC0g
+aXQNCj4+PiAJICogbWVhbnMgdGhhdCB0aGUgc2VydmVyIHdpbGwgaWdub3JlIHRoZSBycGMgY3Jl
+ZHMsIHNvIGFueSBmbGF2b3INCj4+PiAJICogY2FuIGJlIHVzZWQuDQo+Pj4gDQo+Pj4gICBJcyB0
+aGVyZSBhbnkgY2hhbmNlIHRoYXQgc2VydmVycyBtaWdodCByZWFzb25hYmx5IGV4cGVjdCB0aGF0
+DQo+Pj4gICBiZWhhdmlvciBmb3IgTkZTdjQuMSBhcyB3ZWxsPz8NCj4+DQo+PiBJJ2xsIGFkbWl0
+IGl0IHNlZW1zIGEgdHJhcCBmb3IgdGhlIHVud2FyeSBpbXBsZW1lbnRvciwgYnV0IEkgdGhpbmsg
+dGhpcw0KPj4gY2FzZSBpcyByZWFsbHkgY2xlYXI6DQo+Pg0KPj4gCWh0dHA6Ly90b29scy5pZXRm
+Lm9yZy9odG1sL3JmYzU2NjEjc2VjdGlvbi0xOC4yOS4zDQo+Pg0KPj4gCVRoZSByZXN1bHQgd2ls
+bCBjb250YWluIGFuIGFycmF5IHRoYXQgcmVwcmVzZW50cyB0aGUgc2VjdXJpdHkNCj4+IAltZWNo
+YW5pc21zIGF2YWlsYWJsZSwgd2l0aCBhbiBvcmRlciBjb3JyZXNwb25kaW5nIHRvIHRoZQ0KPj4g
+CXNlcnZlcidzIHByZWZlcmVuY2VzLCB0aGUgbW9zdCBwcmVmZXJyZWQgYmVpbmcgZmlyc3QgaW4g
+dGhlDQo+PiAJYXJyYXkuICBUaGUgY2xpZW50IGlzIGZyZWUgdG8gcGljayB3aGF0ZXZlciBzZWN1
+cml0eSBtZWNoYW5pc20NCj4+IAlpdCBib3RoIGRlc2lyZXMgYW5kIHN1cHBvcnRzLCBvciB0byBw
+aWNrIGluIHRoZSBzZXJ2ZXIncw0KPj4gCXByZWZlcmVuY2Ugb3JkZXIgdGhlIGZpcnN0IG9uZSBp
+dCBzdXBwb3J0cy4NCj4+DQo+PiBTbyB3ZSBzaG91bGQgYmUgbGVhbmluZyBvbiB0aGUgc2VydmVy
+IHZlbmRvciB0byBmaXggYW5kL29yIGV4cGxhaW4NCj4+IHdoYXQncyBnb2luZyBvbiB0aGVyZS4N
+Cj4NCj5UaGF0IHdhcyB0aGUgZGlyZWN0aW9uIEkgd2FzIGxlYW5pbmcsIGJ1dCBpdCBpcyBuaWNl
+IHRvIGhhdmUgaXQNCj5jb25maXJtZWQgLSBwYXJ0aWN1bGFybHkgZ2l2ZW4gdGhlIGludGVyZXN0
+aW5nIHJ1bGVzIHdpdGggTkZTdjMuDQo+DQo+TXkgY29sbGVhZ3VlIHN1YnNlcXVlbnRseSBkaXNj
+b3ZlcmVkIHRoYXQgdGhlcmUgd2VyZSBzZXR0aW5nIG9uIHRoZQ0KPk5ldGFwcCB3aGljaCBjb3Vs
+ZCBjaGFuZ2UgdGhlIGJlaGF2aW9yLiAgIEhlIGZpZGRsZWQgdGhpbmdzIGFuZCB0aGUNCj5wcm9i
+bGVtIHdlbnQgYXdheSwgYnV0IGhlIG5vdGVkOg0KPg0KPglPbiB0aGUgbmV0YXBwIHNpZGUsIEkg
+aGF2ZSB0aHJlZSBvZiB0aGVzZSBzZXR0aW5nczogcm9ydWxlLHJ3cnVsZSxzdXBlcnVzZXIsIGFu
+ZCBmb3INCj4JZWFjaCBvZiB0aGVzZSBJIGNhbiBzZXQNCj4JZnJvbSB0aGUgbGlzdDogImFueSAg
+IG5vbmUgIGtyYjUgIGtyYjVpIG50bG0gIHN5cyIuIFNvIHdpdGgNCj4JInJvPXN5cyxydz1ub25l
+LHN1cGVydXNlcj1hbnkiIEknbSBzdGlsbCBpbiB0aGUNCj4Jc2l0dWF0aW9uIHdoZXJlIEkgY2Fu
+IGdldCB0aGUgQVVUSF9OVUxMIGZpcnN0IC4uLg0KPg0KPigiQVVUSF9OVUxMIGZpcnN0IiBiZWlu
+ZyB0aGUgcHJvYmxlbWF0aWMgc2l0dWF0aW9uKS4NCj5JIHdvbmRlciBpZiAibm9uZSIgbWVhbnMg
+Im5vIGF1dGhlbnRpY2F0aW9uIG5lZWRlZCIgb3IgIm5vIGFjY2Vzcw0KPmdpdmVuIi4NCg0KQSBj
+ZXJ0YWluIHRob21hc0BuZXRhcHAuY29tIGV4cGxhaW5lZCB0aGUgYmVoYXZpb3VyIHRodXM6DQoN
+CiBodHRwczovL3d3dy5pZXRmLm9yZy9tYWlsLWFyY2hpdmUvd2ViL25mc3Y0L2N1cnJlbnQvbXNn
+MDk3NDMuaHRtbA0KDQpDaGVlcnMNCiAgVHJvbmQNCg==
 
-On Tue, Apr 19 2016, J. Bruce Fields wrote:
-
-> On Thu, Apr 14, 2016 at 09:33:22AM +1000, NeilBrown wrote:
->>  I have an NFSv4.1 server (Netapp, don't know about version numbers)
->>  which responds to
->>     PUT_ROOTFH
->>     SECINFO_NONAME
->>=20
->> with:
->>=20
->> flavor: AUTH_NULL (0)
->> flavor: RPCSEC_GSS (6)
->>     service: rpcsec_gss_svc_integrity (2)
->> flavor: RPCSEC_GSS (6)
->>     service: rpcsec_gss_svc_none (1)
->> flavor: AUTH_UNIX (1)
->>=20
->> This causes the Linux client to use AUTH_NULL, which doesn't end well
->>    Opcode: ACCESS (3), [Access Denied: RD LU MD XT DL]
->>=20
->> I suspect this is a server bug, because the first flavor is meant to be
->> the most preferred.  However I wonder if there might be something else
->> going on.
->>=20
->> 1/ I note that for NFSv3 AUTH_NULL means something a bit different
->>   in this context:
->>=20
->> 	 * AUTH_NULL has a special meaning when it's in the server list - it
->> 	 * means that the server will ignore the rpc creds, so any flavor
->> 	 * can be used.
->>=20
->>   Is there any chance that servers might reasonably expect that
->>   behavior for NFSv4.1 as well??
->
-> I'll admit it seems a trap for the unwary implementor, but I think this
-> case is really clear:
->
-> 	http://tools.ietf.org/html/rfc5661#section-18.29.3
->
-> 	The result will contain an array that represents the security
-> 	mechanisms available, with an order corresponding to the
-> 	server's preferences, the most preferred being first in the
-> 	array.  The client is free to pick whatever security mechanism
-> 	it both desires and supports, or to pick in the server's
-> 	preference order the first one it supports.
->
-> So we should be leaning on the server vendor to fix and/or explain
-> what's going on there.
-
-That was the direction I was leaning, but it is nice to have it
-confirmed - particularly given the interesting rules with NFSv3.
-
-My colleague subsequently discovered that there were setting on the
-Netapp which could change the behavior.   He fiddled things and the
-problem went away, but he noted:
-
-	On the netapp side, I have three of these settings: rorule,rwrule,superuse=
-r, and for
-	each of these I can set
-	from the list: "any   none  krb5  krb5i ntlm  sys". So with
-	"ro=3Dsys,rw=3Dnone,superuser=3Dany" I'm still in the
-	situation where I can get the AUTH_NULL first ...
-
-("AUTH_NULL first" being the problematic situation).
-I wonder if "none" means "no authentication needed" or "no access
-given".
-
-Still seems strange behavior for the server, but as it can be avoided it
-probably isn't worth any more consideration.
-
-Thanks a lot,
-
-NeilBrown
-
---=-=-=
-Content-Type: application/pgp-signature; name="signature.asc"
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v2
-
-iQIcBAEBCAAGBQJXFqIIAAoJEDnsnt1WYoG5Xg0QAL6fBOYwvmoodQ4/9NDmVFGX
-W15DfIX0Qd/7qcH3vuCPPeqN8VRQHW7dHZUF//F3EwNKami20xyz6u9TUl/txrV6
-13LYrZxa6TyqVRQS8yeBWkL5VwEi87Vbj+7ttK8BKTcrk5wXWRD9daUn/ecLO19L
-0qXHDOCX0+4aO0OuRyNyR0lC4TpTYNe3Qbvq78NRQsInYd0q6M51195a2H9pjzzW
-BFhYwE2YOso37MZkHMRI2VN+bLYdT0zrPGv4+cjT6JqJ50Djj1SwMXzZKtKPUczZ
-lL7Xqqo/WWXFj+osZnQ2kzT9jBv97b6wJl5oIX4AI6GN8fyBRxIaJ4l8pAFAgtHw
-LUO6A3iSQ1MdYaHXsKQO3lrh39yRNdPMaPXOhfIU0kcBB4vjFavjP3li0z4ulZlZ
-EpEryDRCfZOMtWnOTFWhTztYq7XKNTTO0dyzaTVOBk3jIK68z39QeXzoaYtWTK43
-GetFD0XrkeGpcLdlHL7g6DUIIgpUu0IvBfDl5um4Pblvj2XOzhWdNkRx9GO7UF4H
-MYUaOi9nRMJFrfbPc+eEIlTpRNLkhc5tZ6Wcqh9w9UaspL5ymlcEnmorjrJZVrk0
-gZMkrLBstpGKlSxrMyxUgYfR0ykKZpvJSMbhQM7hXGJFLDPnZ/4bF/MMz4naod95
-oOwfxAHyHCimyo9OjioE
-=14XA
------END PGP SIGNATURE-----
---=-=-=--
