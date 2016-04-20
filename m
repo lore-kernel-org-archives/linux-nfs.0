@@ -1,188 +1,92 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx144.netapp.com ([216.240.21.25]:58705 "EHLO mx144.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753386AbcDTOjl convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 20 Apr 2016 10:39:41 -0400
-From: "Adamson, Andy" <William.Adamson@netapp.com>
-To: Steve Dickson <SteveD@redhat.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 1/2] NFS parse NFSv4 multiple hostnames
-Date: Wed, 20 Apr 2016 14:39:35 +0000
-Message-ID: <1461163180130.82259@netapp.com>
-References: <1456336559-17334-1-git-send-email-andros@netapp.com>
- <1456336559-17334-2-git-send-email-andros@netapp.com>,<56E97B1D.2030504@RedHat.com>
-In-Reply-To: <56E97B1D.2030504@RedHat.com>
-Content-Type: text/plain; charset=US-ASCII
+Received: from mail-pa0-f52.google.com ([209.85.220.52]:33362 "EHLO
+	mail-pa0-f52.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751277AbcDTRme (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 20 Apr 2016 13:42:34 -0400
+Received: by mail-pa0-f52.google.com with SMTP id zm5so19906122pac.0
+        for <linux-nfs@vger.kernel.org>; Wed, 20 Apr 2016 10:42:33 -0700 (PDT)
+To: akpm@linux-foundation.org, sfr@canb.auug.org.au, hughd@google.com,
+        aryabinin@virtuozzo.com, trond.myklebust@primarydata.com,
+        anna.schumaker@netapp.com
+Cc: LKML <linux-kernel@vger.kernel.org>, linux-mm@kvack.org,
+        linux-nfs@vger.kernel.org, yang.shi@linaro.org
+From: "Shi, Yang" <yang.shi@linaro.org>
+Subject: [BUG linux-next] KASAN bug is raised on linux-next-20160414 with huge
+ tmpfs on
+Message-ID: <5717BF85.1090800@linaro.org>
+Date: Wed, 20 Apr 2016 10:42:29 -0700
 MIME-Version: 1.0
+Content-Type: text/plain; charset=utf-8; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Hi folks,
 
-________________________________________
-From: Steve Dickson <SteveD@redhat.com>
-Sent: Wednesday, March 16, 2016 11:26 AM
-To: Adamson, Andy
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 1/2] NFS parse NFSv4 multiple hostnames
+When I run the below test on my ARM64 machine with NFS mounted rootfs, I 
+got KASAN bug report. The test runs well if mnt is not mounted with 
+"huge=1".
 
-On 02/24/2016 12:55 PM, andros@netapp.com wrote:
-> From: Andy Adamson <andros@netapp.com>
->
-> For NFSv4.x mounts
->
-> Signed-off-by: Andy Adamson <andros@netapp.com>
-> ---
->  utils/mount/parse_dev.c | 30 ++++++++++++++++++++----------
->  utils/mount/parse_dev.h |  2 +-
->  utils/mount/stropts.c   |  3 ++-
->  utils/mount/utils.c     |  2 +-
->  4 files changed, 24 insertions(+), 13 deletions(-)
->
-> diff --git a/utils/mount/parse_dev.c b/utils/mount/parse_dev.c
-> index 0d3bcb9..c5d2215 100644
-> --- a/utils/mount/parse_dev.c
-> +++ b/utils/mount/parse_dev.c
-> @@ -79,10 +79,10 @@ static int nfs_pdn_missing_brace_err(void)
->  /*
->   * Standard hostname:path format
->   */
-> -static int nfs_parse_simple_hostname(const char *dev,
-> -                                  char **hostname, char **pathname)
-> +static int nfs_parse_simple_hostname(const char *dev, char **hostname,
-> +                                  char **multinames, char **pathname)
->  {
-> -     size_t host_len, path_len;
-> +     size_t host_len, multi_len = 0, path_len;
->       char *colon, *comma;
->
->       /* Must have a colon */
-> @@ -96,13 +96,15 @@ static int nfs_parse_simple_hostname(const char *dev,
->               return nfs_pdn_hostname_too_long_err();
->
->       /* If there's a comma before the colon, take only the
-> -      * first name in list */
-> +      * first name in list as the hostname, the rest get stored in
-> +      * the multinames. Note that NFS_MAXHOSTNAME limits the number
-> +      * of multinames */
->       comma = strchr(dev, ',');
->       if (comma != NULL) {
->               *comma = '\0';
->               host_len = comma - dev;
-> -             nfs_error(_("%s: warning: multiple hostnames not supported"),
-> -                             progname);
-> +             comma++;
-> +             multi_len = colon - comma;
->       } else
->
->       colon++;
-> @@ -115,6 +117,11 @@ static int nfs_parse_simple_hostname(const char *dev,
->               if (*hostname == NULL)
->                       return nfs_pdn_nomem_err();
->       }
-> +     if (multinames && multi_len != 0) {
-> +             *multinames = strndup(comma, multi_len);
-> +             if (*multinames == NULL)
-> +                     return nfs_pdn_nomem_err();
-> +     }
->       if (pathname) {
->               *pathname = strndup(colon, path_len);
->               if (*pathname == NULL) {
-> @@ -196,11 +203,13 @@ static int nfs_parse_nfs_url(__attribute__((unused)) const char *dev,
->   * nfs_parse_devname - Determine the server's hostname by looking at "devname".
->   * @devname: pointer to mounted device name (first argument of mount command)
->   * @hostname: OUT: pointer to server's hostname
-> + * @multinames: OUT: pointer to comma separated multiple server interface names
->   * @pathname: OUT: pointer to export path on server
->   *
->   * Returns 1 if succesful, or zero if some error occurred.  On success,
-> - * @hostname and @pathname point to dynamically allocated buffers containing
-> - * the hostname of the server and the export pathname (both '\0'-terminated).
-> + * @hostname, @multinames, and @pathname point to dynamically allocated
-> + * buffers containing the hostname of the server, other multiple server
-> + * interfaces, and the export pathname (all '\0'-terminated).
->   *
->   * @hostname or @pathname may be NULL if caller doesn't want a copy of those
->   * parts of @devname.
-> @@ -208,7 +217,7 @@ static int nfs_parse_nfs_url(__attribute__((unused)) const char *dev,
->   * Note that this will not work if @devname is a wide-character string.
->   */
->  int nfs_parse_devname(const char *devname,
-> -                   char **hostname, char **pathname)
-> +                   char **hostname, char **multinames, char **pathname)
->  {
->       char *dev;
->       int result;
-> @@ -225,7 +234,8 @@ int nfs_parse_devname(const char *devname,
->       else if (strncmp(dev, "nfs://", 6) == 0)
->               result = nfs_parse_nfs_url(dev, hostname, pathname);
->       else
-> -             result = nfs_parse_simple_hostname(dev, hostname, pathname);
-> +             result = nfs_parse_simple_hostname(dev, hostname, multinames,
-> +                                                pathname);
->
->       free(dev);
->       return result;
-> diff --git a/utils/mount/parse_dev.h b/utils/mount/parse_dev.h
-> index f9857bc..ef663f8 100644
-> --- a/utils/mount/parse_dev.h
-> +++ b/utils/mount/parse_dev.h
-> @@ -23,6 +23,6 @@
->  #ifndef __NFS_UTILS_PARSE_DEV_HEADER
->  #define __NFS_UTILS_PARSE_DEV_HEADER
->
-> -extern int   nfs_parse_devname(const char *, char **, char **);
-> +extern int   nfs_parse_devname(const char *, char **, char **, char **);
->
->  #endif       /* __NFS_UTILS_PARSE_DEV */
-> diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
-> index 86829a9..75646f6 100644
-> --- a/utils/mount/stropts.c
-> +++ b/utils/mount/stropts.c
-> @@ -83,6 +83,7 @@ struct nfsmount_info {
->                               *node,          /* mounted-on dir */
->                               *type;          /* "nfs" or "nfs4" */
->       char                    *hostname;      /* server's hostname */
-> +     char                    *multinames;    /* more server interfaces */
->       struct addrinfo         *address;       /* server's addresses */
->
->       struct mount_options    *options;       /* parsed mount options */
-> @@ -377,7 +378,7 @@ static int nfs_validate_options(struct nfsmount_info *mi)
->       sa_family_t family;
->       int error;
->
-> -     if (!nfs_parse_devname(mi->spec, &mi->hostname, NULL))
-> +     if (!nfs_parse_devname(mi->spec, &mi->hostname, &mi->multinames,  NULL))
->               return 0;
->
->       if (!nfs_nfs_proto_family(mi->options, &family))
-I understand how multinames is allocated, which looks fine,
-but I don't see how its used...
+# mount -t tmpfs -o huge=1 tmpfs /mnt
+# cp -a /opt/ltp /mnt/
 
-What am I missing?
+BUG: KASAN: use-after-free in nfs_readdir+0x2c4/0x848 at addr 
+ffff80000b7f4000
+Read of size 4 by task crond/446
+page:ffff7bffc02dfd00 count:2 mapcount:0 mapping:ffff80001c2cae98 index:0x0
+flags: 0x6c(referenced|uptodate|lru|active)
+page dumped because: kasan: bad access detected
+page->mem_cgroup:ffff80002402da80
+CPU: 0 PID: 446 Comm: crond Tainted: G        W 
+4.6.0-rc3-next-20160414-WR8.0.0.0_standard+ #13
+Hardware name: Freescale Layerscape 2085a RDB Board (DT)
+Call trace:
+[<ffff20000820bc90>] dump_backtrace+0x0/0x2b8
+[<ffff20000820bf6c>] show_stack+0x24/0x30
+[<ffff200008a28928>] dump_stack+0xb0/0xe8
+[<ffff2000084c2cf0>] kasan_report_error+0x518/0x5c0
+[<ffff2000084c32c0>] kasan_report+0x60/0x70
+[<ffff2000084c1854>] __asan_load4+0x64/0x80
+[<ffff20000868e1dc>] nfs_readdir+0x2c4/0x848
+[<ffff2000085189d8>] iterate_dir+0x120/0x1d8
+[<ffff2000085190dc>] SyS_getdents64+0xdc/0x170
+[<ffff200008204ee0>] __sys_trace_return+0x0/0x4
+Memory state around the buggy address:
+  ffff80000b7f3f00: ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
+  ffff80000b7f3f80: ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
+ >ffff80000b7f4000: ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
+                    ^
+  ffff80000b7f4080: ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
+  ffff80000b7f4100: ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
 
-Hi Steve
+BUG: KASAN: use-after-free in nfs_do_filldir+0x88/0x298 at addr 
+ffff80000b7f4000
+Read of size 4 by task crond/446
+page:ffff7bffc02dfd00 count:2 mapcount:0 mapping:ffff80001c2cae98 index:0x0
+flags: 0x6c(referenced|uptodate|lru|active)
+page dumped because: kasan: bad access detected
+page->mem_cgroup:ffff80002402da80
+CPU: 0 PID: 446 Comm: crond Tainted: G    B   W 
+4.6.0-rc3-next-20160414-WR8.0.0.0_standard+ #13
+Hardware name: Freescale Layerscape 2085a RDB Board (DT)
+Call trace:
+[<ffff20000820bc90>] dump_backtrace+0x0/0x2b8
+[<ffff20000820bf6c>] show_stack+0x24/0x30
+[<ffff200008a28928>] dump_stack+0xb0/0xe8
+[<ffff2000084c2cf0>] kasan_report_error+0x518/0x5c0
+[<ffff2000084c32c0>] kasan_report+0x60/0x70
+[<ffff2000084c1854>] __asan_load4+0x64/0x80
+[<ffff20000868cb98>] nfs_do_filldir+0x88/0x298
+[<ffff20000868e3a0>] nfs_readdir+0x488/0x848
+[<ffff2000085189d8>] iterate_dir+0x120/0x1d8
+[<ffff2000085190dc>] SyS_getdents64+0xdc/0x170
+[<ffff200008204ee0>] __sys_trace_return+0x0/0x4
+Memory state around the buggy address:
+  ffff80000b7f3f00: ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
+  ffff80000b7f3f80: ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
+ >ffff80000b7f4000: ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
+                    ^
+  ffff80000b7f4080: ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
+  ffff80000b7f4100: ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
 
-Sorry it took so long to respond. Back from leave of absence from left hip replacement!  Anyway, I'll be reviving the sessions trunking effort. I'm continuing to test and will put out a new version of this patch set.
-
-Here is how the multinames is used:
-
-The nfsmount_info struct which now contains the multinames field, is passed to the kernel (and becomes nfs_parsed_mount_data) which consumes the multinames.
-
--->Andy
-
-steved.
-
-> diff --git a/utils/mount/utils.c b/utils/mount/utils.c
-> index 92662ed..2b6ee74 100644
-> --- a/utils/mount/utils.c
-> +++ b/utils/mount/utils.c
-> @@ -159,7 +159,7 @@ int nfs_umount23(const char *devname, char *string)
->       struct mount_options *options;
->       int result = EX_FAIL;
->
-> -     if (!nfs_parse_devname(devname, &hostname, &dirname))
-> +     if (!nfs_parse_devname(devname, &hostname, NULL, &dirname))
->               return EX_USAGE;
->
->       options = po_split(string);
->
+Thanks,
+Yang
