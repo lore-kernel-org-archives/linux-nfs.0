@@ -1,46 +1,84 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx142.netapp.com ([216.240.21.19]:48594 "EHLO mx142.netapp.com"
+Received: from mx2.suse.de ([195.135.220.15]:49302 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751001AbcDTVVz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 20 Apr 2016 17:21:55 -0400
-From: Olga Kornievskaia <kolga@netapp.com>
-To: <steved@redhat.com>
-CC: <linux-nfs@vger.kernel.org>
-Subject: [RFC PATCH v2 0/3] adding pthread support to gssd
-Date: Wed, 20 Apr 2016 17:11:58 -0400
-Message-ID: <1461186721-64008-1-git-send-email-kolga@netapp.com>
+	id S1751760AbcDUX3r (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 21 Apr 2016 19:29:47 -0400
+From: NeilBrown <neilb@suse.com>
+To: Steve Dickson <SteveD@redhat.com>
+Date: Fri, 22 Apr 2016 09:29:39 +1000
+Subject: [PATCH/nfs-utils] mount: run START_STATD fully as root
+cc: NFS List <linux-nfs@vger.kernel.org>
+Message-ID: <87shyey1zw.fsf@notabene.neil.brown.name>
 MIME-Version: 1.0
-Content-Type: text/plain
+Content-Type: multipart/signed; boundary="=-=-=";
+	micalg=pgp-sha256; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Adding support for multi-threaded gssd and allow for parallel upcalls.
-For each upcall create a thread, detach to allow for automatic cleanup.
-Communicate location of credential cache with gss api function instead
-of an environmental variable. Use syscall api instead of libc setuid()
-to change user identity.
+--=-=-=
+Content-Type: text/plain
 
-Previously parent thread after detaching from child thread would call
-yield to let the child thread run and consume the event from the fd.
-Instead, use synchronization variables to signal parent after reading
-from fd and have parent thread wait for the event.
 
-Olga Kornievskaia (3):
-  gssd: use pthreads to handle upcalls
-  gssd: using syscalls directly to change thread's identity
-  gssd: always call gss_krb5_ccache_name
+If a "user" mount is the first NFSv3 mount, mount.nfs will be running
+setuid to root (with non-root as the real-uid) when it executes START_STATD.
 
- aclocal/libpthread.m4  | 13 ++++++++++
- configure.ac           |  3 +++
- utils/gssd/Makefile.am |  3 ++-
- utils/gssd/gssd.c      | 44 ++++++++++++++++++++++++++++++---
- utils/gssd/gssd.h      |  5 ++++
- utils/gssd/gssd_proc.c | 66 +++++++++++++++++++++++---------------------------
- utils/gssd/krb5_util.c | 59 ++++++++++----------------------------------
- utils/gssd/krb5_util.h |  1 -
- 8 files changed, 106 insertions(+), 88 deletions(-)
- create mode 100644 aclocal/libpthread.m4
+start-statd is a shell script and many shells refuse to run setuid,
+dropping privileges immediately.  This results in start-statd running
+as an unprivileged user and so statd fails to start.
 
--- 
-1.8.3.1
+To fix this, call "setuid(0)" to set real uid to zero.  Also call "setgid(0)"
+for consistency.
 
+The behaviour of a shell can often be affected by the environment,
+such as the "shell functions" that bash includes from the environment.
+To avoid the user being able to pass such environment to the shell,
+explicitly pass an empty environment.  The start-statd script explicitly
+sets the PATH which is all it really needs.
+
+Signed-off-by: NeilBrown <neilb@suse.com>
+
+diff --git a/utils/mount/network.c b/utils/mount/network.c
+index 7240ca7bcdc4..0d12613e86a4 100644
+--- a/utils/mount/network.c
++++ b/utils/mount/network.c
+@@ -795,6 +795,7 @@ int start_statd(void)
+ 		if (S_ISREG(stb.st_mode) && (stb.st_mode & S_IXUSR)) {
+ 			int cnt = STATD_TIMEOUT * 10;
+ 			int status = 0;
++			char * const envp[1] = { NULL };
+ 			const struct timespec ts = {
+ 				.tv_sec = 0,
+ 				.tv_nsec = 100000000,
+@@ -802,7 +803,9 @@ int start_statd(void)
+ 			pid_t pid = fork();
+ 			switch (pid) {
+ 			case 0: /* child */
+-				execl(START_STATD, START_STATD, NULL);
++				setgid(0);
++				setuid(0);
++				execle(START_STATD, START_STATD, NULL, envp);
+ 				exit(1);
+ 			case -1: /* error */
+ 				nfs_error(_("%s: fork failed: %s"),
+
+--=-=-=
+Content-Type: application/pgp-signature; name="signature.asc"
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v2
+
+iQIcBAEBCAAGBQJXGWJjAAoJEDnsnt1WYoG59GUQALRwmGTIWm0wUYf2XqTdBXky
+P8dYJIYbOl9EJbPdar3txnwsUOpcDKl2Uwl3TVMJ6QB6HOxY5k5Gge7FU9FRylf5
+eo28SWMlUDLx/vALcEytrZwqcBHzQmlpedhcDXwg83BHbwyj7kctdUvQn7Q3vGF3
+MddvN6OdKp1nPMzRdj7Yi5EGkPGIScELbPGRROgO73oDxbaOJ7Fl/lUPGzHJNX1f
+b/cTGh7gDquKo6zuu0LXmmXBSxsOBtHloAU2Vub8QKscBelsRIxiQKnZnH5gANXe
+2hudzOCTDKKsL7/yEzeSa9kWeKkhPJMBpRnr6hV3tUBdoVrjOqK0ns/e75aBgonj
+DicZgGkk0yTeEqOVdcRWCe9YXDRfvvIWoJu8djh+oYUY/eBnKtSXKqpYBNIhMeZj
+TdS68lEoQPzc4l9bIo44eMNN5slQbt5YmKcY85Y3mdxzMws0Q+lcX0Ty0gaHC+qe
+DGQQ6VIw4hMiKnOtCvHKVU/yaQLPPcAxvNp1TTJf86uymyHrkWxcTZ5HhJ2s69qv
+y2lN/DfUJyjn/hfkhfg8USkAgq1Khr+cTKDNzVNrcSzKWptS31CtS3c6BtV3X9rK
+55iCO4Z6fnjzAKY1qHue5gGACG2vi+YbaJOCQWDAnyJ1FfFIfrLEmQjs7ITbiYWS
+YurlP01Ir8IQY2jydenX
+=PRLx
+-----END PGP SIGNATURE-----
+--=-=-=--
