@@ -1,84 +1,77 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:49302 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751760AbcDUX3r (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 21 Apr 2016 19:29:47 -0400
-From: NeilBrown <neilb@suse.com>
-To: Steve Dickson <SteveD@redhat.com>
-Date: Fri, 22 Apr 2016 09:29:39 +1000
-Subject: [PATCH/nfs-utils] mount: run START_STATD fully as root
-cc: NFS List <linux-nfs@vger.kernel.org>
-Message-ID: <87shyey1zw.fsf@notabene.neil.brown.name>
-MIME-Version: 1.0
-Content-Type: multipart/signed; boundary="=-=-=";
-	micalg=pgp-sha256; protocol="application/pgp-signature"
+Received: from mail-qg0-f41.google.com ([209.85.192.41]:35168 "EHLO
+	mail-qg0-f41.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751485AbcDVAwJ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 21 Apr 2016 20:52:09 -0400
+Received: by mail-qg0-f41.google.com with SMTP id f74so48437712qge.2
+        for <linux-nfs@vger.kernel.org>; Thu, 21 Apr 2016 17:52:09 -0700 (PDT)
+From: Jeff Layton <jlayton@poochiereds.net>
+To: trond.myklebust@primarydata.com
+Cc: Anna Schumaker <Anna.Schumaker@netapp.com>, linux-nfs@vger.kernel.org
+Subject: [PATCH v2 0/7] nfs/sunrpc: fix flexfiles credential handling
+Date: Thu, 21 Apr 2016 20:51:53 -0400
+Message-Id: <1461286320-24601-1-git-send-email-jeff.layton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---=-=-=
-Content-Type: text/plain
+v2:
+- drop generic_match patch and add a shared group_info that we can
+  use in all acreds
+- fix error checking in ff_layout_get_ds_cred callers
+- use rcu_access_pointer instead of rcu_dereference in
+  ff_layout_free_mirror
 
+The way that credentials are handled in the flexfiles client is
+currently wrong. It only keeps one set of credentials per mirror object,
+but those objects can be shared between read and rw layout segments
+If the server hands out different credentials for read and rw layouts,
+then you can end up in a situation where the client will end up issuing
+writes with the wrong uid.
 
-If a "user" mount is the first NFSv3 mount, mount.nfs will be running
-setuid to root (with non-root as the real-uid) when it executes START_STATD.
+This is visible by simply mounting a server that does hand out different
+creds for ro vs. rw layouts, opening the file for read, then opening it
+for write, and then issuing a write. At that point, the DS write calls
+will fail with EACCES. The client will then re-fetch the layout, but the
+creds are not updated, so the writes still fail. The client is then
+stuck at that point. This problem also means that the client is unable
+to recover after a layout is fenced, since the creds are never updated.
 
-start-statd is a shell script and many shells refuse to run setuid,
-dropping privileges immediately.  This results in start-statd running
-as an unprivileged user and so statd fails to start.
+This patchset cleans up some ugliness in how flexfiles rpc_creds are
+handled, adds a place to keep ro and rw creds per mirror, and allows
+those creds to be updated when a LAYOUTGET response contains different
+ones.
 
-To fix this, call "setuid(0)" to set real uid to zero.  Also call "setgid(0)"
-for consistency.
+We start with a few sunrpc patches that lay the groundwork to allow the
+creds to be accessible via RCU and to fix up a current wart where we can
+end up doing a GFP_KERNEL allocation while in a possible memory reclaim
+scenario. The flexfiles code is then changed to allow the creds to be
+swapped out as credential updates come in. The users of those creds then
+ensure that they take references to them in case they are swapped out,
+and put those references after the calls are dispatched.
 
-The behaviour of a shell can often be affected by the environment,
-such as the "shell functions" that bash includes from the environment.
-To avoid the user being able to pass such environment to the shell,
-explicitly pass an empty environment.  The start-statd script explicitly
-sets the PATH which is all it really needs.
+I'd like to see this be considered for the 4.7 merge window.
 
-Signed-off-by: NeilBrown <neilb@suse.com>
+Jeff Layton (6):
+  sunrpc: plumb gfp_t parm into crcreate operation
+  sunrpc: add a get_rpccred_rcu inline
+  nfs: don't call nfs4_ff_layout_prepare_ds from ff_layout_get_ds_cred
+  nfs: have ff_layout_get_ds_cred take a reference to the cred
+  nfs: get a reference to the credential in ff_layout_alloc_lseg
+  nfs: have flexfiles mirror keep creds for both ro and rw layouts
 
-diff --git a/utils/mount/network.c b/utils/mount/network.c
-index 7240ca7bcdc4..0d12613e86a4 100644
---- a/utils/mount/network.c
-+++ b/utils/mount/network.c
-@@ -795,6 +795,7 @@ int start_statd(void)
- 		if (S_ISREG(stb.st_mode) && (stb.st_mode & S_IXUSR)) {
- 			int cnt = STATD_TIMEOUT * 10;
- 			int status = 0;
-+			char * const envp[1] = { NULL };
- 			const struct timespec ts = {
- 				.tv_sec = 0,
- 				.tv_nsec = 100000000,
-@@ -802,7 +803,9 @@ int start_statd(void)
- 			pid_t pid = fork();
- 			switch (pid) {
- 			case 0: /* child */
--				execl(START_STATD, START_STATD, NULL);
-+				setgid(0);
-+				setuid(0);
-+				execle(START_STATD, START_STATD, NULL, envp);
- 				exit(1);
- 			case -1: /* error */
- 				nfs_error(_("%s: fork failed: %s"),
+Weston Andros Adamson (1):
+  sunrpc: add rpc_lookup_generic_cred
 
---=-=-=
-Content-Type: application/pgp-signature; name="signature.asc"
+ fs/nfs/flexfilelayout/flexfilelayout.c    | 76 ++++++++++++++++++++++++------
+ fs/nfs/flexfilelayout/flexfilelayout.h    |  5 +-
+ fs/nfs/flexfilelayout/flexfilelayoutdev.c | 78 +++++++++++--------------------
+ include/linux/sunrpc/auth.h               | 23 ++++++++-
+ net/sunrpc/auth.c                         |  4 +-
+ net/sunrpc/auth_generic.c                 | 13 ++++--
+ net/sunrpc/auth_gss/auth_gss.c            |  6 +--
+ net/sunrpc/auth_unix.c                    |  6 +--
+ 8 files changed, 130 insertions(+), 81 deletions(-)
 
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v2
+-- 
+2.5.5
 
-iQIcBAEBCAAGBQJXGWJjAAoJEDnsnt1WYoG59GUQALRwmGTIWm0wUYf2XqTdBXky
-P8dYJIYbOl9EJbPdar3txnwsUOpcDKl2Uwl3TVMJ6QB6HOxY5k5Gge7FU9FRylf5
-eo28SWMlUDLx/vALcEytrZwqcBHzQmlpedhcDXwg83BHbwyj7kctdUvQn7Q3vGF3
-MddvN6OdKp1nPMzRdj7Yi5EGkPGIScELbPGRROgO73oDxbaOJ7Fl/lUPGzHJNX1f
-b/cTGh7gDquKo6zuu0LXmmXBSxsOBtHloAU2Vub8QKscBelsRIxiQKnZnH5gANXe
-2hudzOCTDKKsL7/yEzeSa9kWeKkhPJMBpRnr6hV3tUBdoVrjOqK0ns/e75aBgonj
-DicZgGkk0yTeEqOVdcRWCe9YXDRfvvIWoJu8djh+oYUY/eBnKtSXKqpYBNIhMeZj
-TdS68lEoQPzc4l9bIo44eMNN5slQbt5YmKcY85Y3mdxzMws0Q+lcX0Ty0gaHC+qe
-DGQQ6VIw4hMiKnOtCvHKVU/yaQLPPcAxvNp1TTJf86uymyHrkWxcTZ5HhJ2s69qv
-y2lN/DfUJyjn/hfkhfg8USkAgq1Khr+cTKDNzVNrcSzKWptS31CtS3c6BtV3X9rK
-55iCO4Z6fnjzAKY1qHue5gGACG2vi+YbaJOCQWDAnyJ1FfFIfrLEmQjs7ITbiYWS
-YurlP01Ir8IQY2jydenX
-=PRLx
------END PGP SIGNATURE-----
---=-=-=--
