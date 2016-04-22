@@ -1,151 +1,300 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qk0-f178.google.com ([209.85.220.178]:33368 "EHLO
-	mail-qk0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752307AbcDVAwR (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 21 Apr 2016 20:52:17 -0400
-Received: by mail-qk0-f178.google.com with SMTP id n63so33069282qkf.0
-        for <linux-nfs@vger.kernel.org>; Thu, 21 Apr 2016 17:52:16 -0700 (PDT)
-From: Jeff Layton <jlayton@poochiereds.net>
-To: trond.myklebust@primarydata.com
-Cc: Anna Schumaker <Anna.Schumaker@netapp.com>, linux-nfs@vger.kernel.org
-Subject: [PATCH v2 7/7] nfs: have flexfiles mirror keep creds for both ro and rw layouts
-Date: Thu, 21 Apr 2016 20:52:00 -0400
-Message-Id: <1461286320-24601-8-git-send-email-jeff.layton@primarydata.com>
-In-Reply-To: <1461286320-24601-1-git-send-email-jeff.layton@primarydata.com>
-References: <1461286320-24601-1-git-send-email-jeff.layton@primarydata.com>
+Received: from mx1.redhat.com ([209.132.183.28]:54254 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751219AbcDVSgZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 22 Apr 2016 14:36:25 -0400
+Subject: Re: [RFC PATCH v2 1/3] gssd: use pthreads to handle upcalls
+To: Olga Kornievskaia <kolga@netapp.com>
+References: <1461186721-64008-1-git-send-email-kolga@netapp.com>
+ <1461186721-64008-2-git-send-email-kolga@netapp.com>
+Cc: linux-nfs@vger.kernel.org
+From: Steve Dickson <SteveD@redhat.com>
+Message-ID: <571A6F27.9020706@RedHat.com>
+Date: Fri, 22 Apr 2016 14:36:23 -0400
+MIME-Version: 1.0
+In-Reply-To: <1461186721-64008-2-git-send-email-kolga@netapp.com>
+Content-Type: text/plain; charset=windows-1252
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-A mirror can be shared between multiple layouts, even with different
-iomodes. That makes stats gathering simpler, but it causes a problem
-when we get different creds in READ vs. RW layouts.
+Hello,
 
-The current code drops the newer credentials onto the floor when this
-occurs. That's problematic when you fetch a READ layout first, and then
-a RW. If the READ layout doesn't have the correct creds to do a write,
-then writes will fail.
+On 04/20/2016 05:11 PM, Olga Kornievskaia wrote:
+> Currently, to persevere global data over multiple mounts,
+> the root process does not fork when handling an upcall.
+> Instead on not-forking create a pthread to handle the
+> upcall since global data can be shared among threads.
+> 
+> Signed-off-by: Steve Dickson <steved@redhat.com>
+> Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
+> ---
+>  aclocal/libpthread.m4  | 13 +++++++++++++
+>  configure.ac           |  3 +++
+>  utils/gssd/Makefile.am |  3 ++-
+>  utils/gssd/gssd.c      | 44 ++++++++++++++++++++++++++++++++++++++++----
+>  utils/gssd/gssd.h      |  5 +++++
+>  utils/gssd/gssd_proc.c | 44 ++++++++++++--------------------------------
+>  utils/gssd/krb5_util.c |  3 +++
+>  7 files changed, 78 insertions(+), 37 deletions(-)
+>  create mode 100644 aclocal/libpthread.m4
+> 
+> diff --git a/aclocal/libpthread.m4 b/aclocal/libpthread.m4
+> new file mode 100644
+> index 0000000..e87d2a0
+> --- /dev/null
+> +++ b/aclocal/libpthread.m4
+> @@ -0,0 +1,13 @@
+> +dnl Checks for pthreads library and headers
+> +dnl
+> +AC_DEFUN([AC_LIBPTHREAD], [
+> +
+> +    dnl Check for library, but do not add -lpthreads to LIBS
+> +    AC_CHECK_LIB([pthread], [pthread_create], [LIBPTHREAD=-lpthread],
+> +                 [AC_MSG_ERROR([libpthread not found.])])
+> +  AC_SUBST(LIBPTHREAD)
+> +
+> +  AC_CHECK_HEADERS([pthread.h], ,
+> +                   [AC_MSG_ERROR([libpthread headers not found.])])
+> +
+> +])dnl
+> diff --git a/configure.ac b/configure.ac
+> index 25d2ba4..e0ecd61 100644
+> --- a/configure.ac
+> +++ b/configure.ac
+> @@ -385,6 +385,9 @@ if test "$enable_gss" = yes; then
+>    dnl Invoked after AC_KERBEROS_V5; AC_LIBRPCSECGSS needs to have KRBLIBS set
+>    AC_LIBRPCSECGSS
+>  
+> +  dnl Check for pthreads
+> +  AC_LIBPTHREAD
+> +
+>    dnl librpcsecgss already has a dependency on libgssapi,
+>    dnl but we need to make sure we get the right version
+>    if test "$enable_gss" = yes; then
+> diff --git a/utils/gssd/Makefile.am b/utils/gssd/Makefile.am
+> index cb040b3..3f5f59a 100644
+> --- a/utils/gssd/Makefile.am
+> +++ b/utils/gssd/Makefile.am
+> @@ -49,7 +49,8 @@ gssd_LDADD = \
+>  	$(RPCSECGSS_LIBS) \
+>  	$(KRBLIBS) \
+>  	$(GSSAPI_LIBS) \
+> -	$(LIBTIRPC)
+> +	$(LIBTIRPC) \
+> +	$(LIBPTHREAD)
+>  
+>  gssd_LDFLAGS = \
+>  	$(KRBLDFLAGS)
+> diff --git a/utils/gssd/gssd.c b/utils/gssd/gssd.c
+> index e7cb07f..a41b5ad 100644
+> --- a/utils/gssd/gssd.c
+> +++ b/utils/gssd/gssd.c
+> @@ -87,7 +87,9 @@ unsigned int  rpc_timeout = 5;
+>  char *preferred_realm = NULL;
+>  /* Avoid DNS reverse lookups on server names */
+>  static bool avoid_dns = true;
+> -
+> +int thread_started = false;
+> +pthread_mutex_t pmutex = PTHREAD_MUTEX_INITIALIZER;
+> +pthread_cond_t pcond = PTHREAD_COND_INITIALIZER;
+>  
+>  TAILQ_HEAD(topdir_list_head, topdir) topdir_list;
+>  
+> @@ -361,20 +363,54 @@ gssd_destroy_client(struct clnt_info *clp)
+>  
+>  static void gssd_scan(void);
+>  
+> +/* For each upcall create a thread, detach from the main process so that
+> + * resources are released back into the system without the need for a join.
+> + * We need to wait for the child thread to start and consume the event from
+> + * the file descriptor.
+> + */
+>  static void
+>  gssd_clnt_gssd_cb(int UNUSED(fd), short UNUSED(which), void *data)
+>  {
+>  	struct clnt_info *clp = data;
+> -
+> -	handle_gssd_upcall(clp);
+> +	pthread_t th;
+> +	int ret;
+> +
+> +	ret = pthread_create(&th, NULL, (void *)handle_gssd_upcall,
+> +				(void *)clp);
+> +	if (ret != 0) {
+> +		printerr(0, "ERROR: pthread_create failed: ret %d: %s\n",
+> +			 ret, strerror(errno));
+> +		return;
+> +	}
+> +	pthread_mutex_lock(&pmutex);
+> +	while(!thread_started)
+> +		pthread_cond_wait(&pcond, &pmutex);
+> +	thread_started = false;
+> +	pthread_mutex_unlock(&pmutex);
+> +	pthread_detach(th);
+This synchronization works! I'm no longer seeing any read errors.
+But I would like document what they are doing. 
 
-We could just overwrite the READ credentials with the RW ones, but that
-would break the ability for the server to fence the layout for reads if
-things go awry. We need to be able to revert to the earlier READ creds
-if the RW layout is returned afterward.
+So we don't have the same comments in two different
+places, I suggest you put all this calls in a macro, like
+wait_for_cthread() or something... whatever you thinks
+works..  
 
-The simplest fix is to just keep two sets of creds per mirror. One for
-READ layouts and one for RW, and then use the appropriate set depending
-on the iomode of the layout segment.
+Then where the macro is define you can document what is
+doing and way its needed... Plus this condenses 6
+lines into one (hopefully) meaningful line. 
 
-Also fix up some RCU nits that sparse found.
+>  }
+>  
+>  static void
+>  gssd_clnt_krb5_cb(int UNUSED(fd), short UNUSED(which), void *data)
+>  {
+>  	struct clnt_info *clp = data;
+> +	pthread_t th;
+> +	int ret;
+> +
+> +	ret = pthread_create(&th, NULL, (void *)handle_krb5_upcall,
+> +				(void *)clp);
+> +	if (ret != 0) {
+> +		printerr(0, "ERROR: pthread_create failed: ret %d: %s\n",
+> +			 ret, strerror(errno));
+> +		return;
+> +	}
+>  
+> -	handle_krb5_upcall(clp);
+> +	pthread_mutex_lock(&pmutex);
+> +	while(!thread_started)
+> +		pthread_cond_wait(&pcond, &pmutex);
+> +	thread_started = false;
+> +	pthread_mutex_unlock(&pmutex);
+> +	pthread_detach(th);
+The same macro here 
 
-Signed-off-by: Jeff Layton <jeff.layton@primarydata.com>
----
- fs/nfs/flexfilelayout/flexfilelayout.c    | 30 +++++++++++++++++++++++-------
- fs/nfs/flexfilelayout/flexfilelayout.h    |  3 ++-
- fs/nfs/flexfilelayout/flexfilelayoutdev.c |  7 +++++--
- 3 files changed, 30 insertions(+), 10 deletions(-)
+>  }
+>  
+>  static struct clnt_info *
+> diff --git a/utils/gssd/gssd.h b/utils/gssd/gssd.h
+> index c6937c5..565bce3 100644
+> --- a/utils/gssd/gssd.h
+> +++ b/utils/gssd/gssd.h
+> @@ -36,6 +36,7 @@
+>  #include <gssapi/gssapi.h>
+>  #include <event.h>
+>  #include <stdbool.h>
+> +#include <pthread.h>
+>  
+>  #ifndef GSSD_PIPEFS_DIR
+>  #define GSSD_PIPEFS_DIR		"/var/lib/nfs/rpc_pipefs"
+> @@ -61,6 +62,10 @@ extern int			root_uses_machine_creds;
+>  extern unsigned int 		context_timeout;
+>  extern unsigned int rpc_timeout;
+>  extern char			*preferred_realm;
+> +extern pthread_mutex_t ple_lock;
+> +extern pthread_cond_t pcond;
+> +extern pthread_mutex_t pmutex;
+> +extern int thread_started;
+>  
+>  struct clnt_info {
+>  	TAILQ_ENTRY(clnt_info)	list;
+> diff --git a/utils/gssd/gssd_proc.c b/utils/gssd/gssd_proc.c
+> index 1ef68d8..581a125 100644
+> --- a/utils/gssd/gssd_proc.c
+> +++ b/utils/gssd/gssd_proc.c
+> @@ -629,36 +629,6 @@ process_krb5_upcall(struct clnt_info *clp, uid_t uid, int fd, char *tgtname,
+>  	if (uid != 0 || (uid == 0 && root_uses_machine_creds == 0 &&
+>  				service == NULL)) {
+>  
+> -		/* already running as uid 0 */
+> -		if (uid == 0)
+> -			goto no_fork;
+> -
+> -		pid = fork();
+> -		switch(pid) {
+> -		case 0:
+> -			/* Child: fall through to rest of function */
+> -			childpid = getpid();
+> -			unsetenv("KRB5CCNAME");
+> -			printerr(2, "CHILD forked pid %d \n", childpid);
+> -			break;
+> -		case -1:
+> -			/* fork() failed! */
+> -			printerr(0, "WARNING: unable to fork() to handle"
+> -				"upcall: %s\n", strerror(errno));
+> -			return;
+> -		default:
+> -			/* Parent: just wait on child to exit and return */
+> -			do {
+> -				pid = wait(&err);
+> -			} while(pid == -1 && errno != -ECHILD);
+> -
+> -			if (WIFSIGNALED(err))
+> -				printerr(0, "WARNING: forked child was killed"
+> -					 "with signal %d\n", WTERMSIG(err));
+> -			return;
+> -		}
+> -no_fork:
+> -
+>  		auth = krb5_not_machine_creds(clp, uid, tgtname, &downcall_err,
+>  						&err, &rpc_clnt);
+>  		if (err)
+> @@ -739,8 +709,14 @@ void
+>  handle_krb5_upcall(struct clnt_info *clp)
+>  {
+>  	uid_t			uid;
+> -
+> -	if (read(clp->krb5_fd, &uid, sizeof(uid)) < (ssize_t)sizeof(uid)) {
+> +	int 			status;
+> +	
+> +	status = read(clp->krb5_fd, &uid, sizeof(uid)) < (ssize_t)sizeof(uid);
+> +	pthread_mutex_lock(&pmutex);
+> +	thread_started = true;
+> +	pthread_cond_signal(&pcond);
+> +	pthread_mutex_unlock(&pmutex);
+A second macro here like phone_home() 8-) That's a joke! :-)  
 
-diff --git a/fs/nfs/flexfilelayout/flexfilelayout.c b/fs/nfs/flexfilelayout/flexfilelayout.c
-index 19806caa8ff2..61b27d99df18 100644
---- a/fs/nfs/flexfilelayout/flexfilelayout.c
-+++ b/fs/nfs/flexfilelayout/flexfilelayout.c
-@@ -213,10 +213,16 @@ static struct nfs4_ff_layout_mirror *ff_layout_alloc_mirror(gfp_t gfp_flags)
- 
- static void ff_layout_free_mirror(struct nfs4_ff_layout_mirror *mirror)
- {
-+	struct rpc_cred	*cred;
-+
- 	ff_layout_remove_mirror(mirror);
- 	kfree(mirror->fh_versions);
--	if (mirror->cred)
--		put_rpccred(mirror->cred);
-+	cred = rcu_access_pointer(mirror->ro_cred);
-+	if (cred)
-+		put_rpccred(cred);
-+	cred = rcu_access_pointer(mirror->rw_cred);
-+	if (cred)
-+		put_rpccred(cred);
- 	nfs4_ff_layout_put_deviceid(mirror->mirror_ds);
- 	kfree(mirror);
- }
-@@ -410,7 +416,7 @@ ff_layout_alloc_lseg(struct pnfs_layout_hdr *lh,
- 		struct nfs4_deviceid devid;
- 		struct nfs4_deviceid_node *idnode;
- 		struct auth_cred acred = { .group_info = ff_zero_group };
--		struct rpc_cred	*cred;
-+		struct rpc_cred	__rcu *cred;
- 		u32 ds_count, fh_count, id;
- 		int j;
- 
-@@ -501,23 +507,33 @@ ff_layout_alloc_lseg(struct pnfs_layout_hdr *lh,
- 		acred.gid = make_kgid(&init_user_ns, id);
- 
- 		/* find the cred for it */
--		cred = rpc_lookup_generic_cred(&acred, 0, gfp_flags);
-+		rcu_assign_pointer(cred, rpc_lookup_generic_cred(&acred, 0, gfp_flags));
- 		if (IS_ERR(cred)) {
- 			rc = PTR_ERR(cred);
- 			goto out_err_free;
- 		}
- 
--		rcu_assign_pointer(fls->mirror_array[i]->cred, cred);
-+		if (lgr->range.iomode == IOMODE_READ)
-+			rcu_assign_pointer(fls->mirror_array[i]->ro_cred, cred);
-+		else
-+			rcu_assign_pointer(fls->mirror_array[i]->rw_cred, cred);
- 
- 		mirror = ff_layout_add_mirror(lh, fls->mirror_array[i]);
- 		if (mirror != fls->mirror_array[i]) {
- 			/* swap cred ptrs so free_mirror will clean up old */
--			fls->mirror_array[i]->cred = xchg(&mirror->cred, cred);
-+			if (lgr->range.iomode == IOMODE_READ) {
-+				cred = xchg(&mirror->ro_cred, cred);
-+				rcu_assign_pointer(fls->mirror_array[i]->ro_cred, cred);
-+			} else {
-+				cred = xchg(&mirror->rw_cred, cred);
-+				rcu_assign_pointer(fls->mirror_array[i]->rw_cred, cred);
-+			}
- 			ff_layout_free_mirror(fls->mirror_array[i]);
- 			fls->mirror_array[i] = mirror;
- 		}
- 
--		dprintk("%s: uid %u gid %u\n", __func__,
-+		dprintk("%s: iomode %s uid %u gid %u\n", __func__,
-+			lgr->range.iomode == IOMODE_READ ? "READ" : "RW",
- 			from_kuid(&init_user_ns, acred.uid),
- 			from_kgid(&init_user_ns, acred.gid));
- 	}
-diff --git a/fs/nfs/flexfilelayout/flexfilelayout.h b/fs/nfs/flexfilelayout/flexfilelayout.h
-index c29fc853ce74..1318c77aeb35 100644
---- a/fs/nfs/flexfilelayout/flexfilelayout.h
-+++ b/fs/nfs/flexfilelayout/flexfilelayout.h
-@@ -76,7 +76,8 @@ struct nfs4_ff_layout_mirror {
- 	u32				fh_versions_cnt;
- 	struct nfs_fh			*fh_versions;
- 	nfs4_stateid			stateid;
--	struct rpc_cred			*cred;
-+	struct rpc_cred	__rcu		*ro_cred;
-+	struct rpc_cred	__rcu		*rw_cred;
- 	atomic_t			ref;
- 	spinlock_t			lock;
- 	struct nfs4_ff_layoutstat	read_stat;
-diff --git a/fs/nfs/flexfilelayout/flexfilelayoutdev.c b/fs/nfs/flexfilelayout/flexfilelayoutdev.c
-index 6ddd8a5c5ae0..56296f3df19c 100644
---- a/fs/nfs/flexfilelayout/flexfilelayoutdev.c
-+++ b/fs/nfs/flexfilelayout/flexfilelayoutdev.c
-@@ -305,9 +305,12 @@ int ff_layout_track_ds_error(struct nfs4_flexfile_layout *flo,
- static struct rpc_cred *
- ff_layout_get_mirror_cred(struct nfs4_ff_layout_mirror *mirror, u32 iomode)
- {
--	struct rpc_cred *cred, **pcred;
-+	struct rpc_cred *cred, __rcu **pcred;
- 
--	pcred = &mirror->cred;
-+	if (iomode == IOMODE_READ)
-+		pcred = &mirror->ro_cred;
-+	else
-+		pcred = &mirror->rw_cred;
- 
- 	rcu_read_lock();
- 	do {
--- 
-2.5.5
+> +	if (status) {
+>  		printerr(0, "WARNING: failed reading uid from krb5 "
+>  			    "upcall pipe: %s\n", strerror(errno));
+>  		return;
+> @@ -765,6 +741,10 @@ handle_gssd_upcall(struct clnt_info *clp)
+>  	char			*enctypes = NULL;
+>  
+>  	lbuflen = read(clp->gssd_fd, lbuf, sizeof(lbuf));
+> +	pthread_mutex_lock(&pmutex);
+> +	thread_started = true;
+> +	pthread_cond_signal(&pcond);
+> +	pthread_mutex_unlock(&pmutex);
+The same second macro here as well...
 
+Nice work!!
+
+steved.
+
+>  	if (lbuflen <= 0 || lbuf[lbuflen-1] != '\n') {
+>  		printerr(0, "WARNING: handle_gssd_upcall: "
+>  			    "failed reading request\n");
+> diff --git a/utils/gssd/krb5_util.c b/utils/gssd/krb5_util.c
+> index 8ef8184..3328696 100644
+> --- a/utils/gssd/krb5_util.c
+> +++ b/utils/gssd/krb5_util.c
+> @@ -128,6 +128,7 @@
+>  
+>  /* Global list of principals/cache file names for machine credentials */
+>  struct gssd_k5_kt_princ *gssd_k5_kt_princ_list = NULL;
+> +pthread_mutex_t ple_lock = PTHREAD_MUTEX_INITIALIZER;
+>  
+>  #ifdef HAVE_SET_ALLOWABLE_ENCTYPES
+>  int limit_to_legacy_enctypes = 0;
+> @@ -586,10 +587,12 @@ get_ple_by_princ(krb5_context context, krb5_principal princ)
+>  
+>  	/* Need to serialize list if we ever become multi-threaded! */
+>  
+> +	pthread_mutex_lock(&ple_lock);
+>  	ple = find_ple_by_princ(context, princ);
+>  	if (ple == NULL) {
+>  		ple = new_ple(context, princ);
+>  	}
+> +	pthread_mutex_unlock(&ple_lock);
+>  
+>  	return ple;
+>  }
+> 
