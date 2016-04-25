@@ -1,75 +1,90 @@
-Return-Path: <bfields@fieldses.org>
-Date: Mon, 25 Apr 2016 16:10:02 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Benjamin Coddington <bcodding@redhat.com>
+Return-Path: <linux-nfs-owner@vger.kernel.org>
+Received: from mail-qk0-f179.google.com ([209.85.220.179]:33907 "EHLO
+	mail-qk0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S964800AbcDYUXQ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 25 Apr 2016 16:23:16 -0400
+Received: by mail-qk0-f179.google.com with SMTP id r184so67188420qkc.1
+        for <linux-nfs@vger.kernel.org>; Mon, 25 Apr 2016 13:23:16 -0700 (PDT)
+Message-ID: <1461615792.4288.31.camel@poochiereds.net>
+Subject: Re: [PATCH v3 2/3] gssd: using syscalls directly to change thread's
+ identity
+From: Jeff Layton <jlayton@poochiereds.net>
+To: Olga Kornievskaia <kolga@netapp.com>, steved@redhat.com
 Cc: linux-nfs@vger.kernel.org
-Subject: Re: nfsd delays between svc_recv and gss_check_seq_num
-Message-ID: <20160425201002.GA21879@fieldses.org>
-References: <alpine.OSX.2.19.9992.1604100724080.44797@planck>
- <20160425183802.GA20742@fieldses.org>
- <alpine.OSX.2.19.9992.1604251514050.84171@planck>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <alpine.OSX.2.19.9992.1604251514050.84171@planck>
+Date: Mon, 25 Apr 2016 16:23:12 -0400
+In-Reply-To: <1461603513-67523-3-git-send-email-kolga@netapp.com>
+References: <1461603513-67523-1-git-send-email-kolga@netapp.com>
+	 <1461603513-67523-3-git-send-email-kolga@netapp.com>
+Content-Type: text/plain; charset="UTF-8"
+Mime-Version: 1.0
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Apr 25, 2016 at 03:23:56PM -0400, Benjamin Coddington wrote:
-> On Mon, 25 Apr 2016, J. Bruce Fields wrote:
+On Mon, 2016-04-25 at 12:58 -0400, Olga Kornievskaia wrote:
+> For the threaded version we have to set uid,gid per thread instead
+> of per process. glibc setresuid() when called from a thread, it'll
+> send a signal to all other threads to synchronize the uid in all
+> other threads. To bypass this, we have to call syscall() directly.
 > 
-> > On Sun, Apr 10, 2016 at 07:44:45AM -0400, Benjamin Coddington wrote:
-> > > My client hangs on xfstests generic/074 on a krb5 mount, and I've found that
-> > > the linux server is silently discarding one or more RPCs because the GSS
-> > > sequence numbers are outside the sequence window.
-> > >
-> > > The reason is that sometimes one of the nfsd threads takes a long time
-> > > between receiving the RPC and then checking if the sequence is within the
-> > > window.  That delay allows the other nfsd threads to quickly move the window
-> > > forward out of range.
-> > >
-> > > If the server discards the RPC then that causes then the client to wait
-> > > forever for a response or until the connection is reset.
-> > >
-> > > By inserting tracepoints, I think I found two sources of delay:
-> > >
-> > >  1) gss_svc_searchbyctx() uses dup_to_netobj() which has a kmemdup with
-> > > GFP_KERNEL.  It does this because presumabely it doesn't know how big the
-> > > context handle should be.
-> > >
-> > >  2) gss_verify_mic() uses make_checksum() which eventually gets to
-> > > crypto_alloc_hash() with GFP_KERNEL.
-> > >
-> > > For the first delay, can we assume the context handles are all going to be
-> > > the same size?  It looks like the handle is assigned by the server, so it
-> > > seems like we should be able to know beforehand how large they are.
-> >
-> > It's assigned by the server, but I believe that happens in userland,
-> > either in svcgssd or gss-proxy.  On a quick look I can't find a limit
-> > other than the rpc-imposed limit of 400 bytes for an rpc credential.  So
-> > we'd need a documented agreement with svcgssd and gss-proxy for that.
-> > Probably easy for the former, not sure about the latter.
+> Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
+> Reviewed-by: Steve Dickson <steved@redhat.com>
+> ---
+>  utils/gssd/gssd_proc.c | 12 +++++++++---
+>  1 file changed, 9 insertions(+), 3 deletions(-)
 > 
-> OK, that gives me something to follow up.
+> diff --git a/utils/gssd/gssd_proc.c b/utils/gssd/gssd_proc.c
+> index e2e95dc..487a4f5 100644
+> --- a/utils/gssd/gssd_proc.c
+> +++ b/utils/gssd/gssd_proc.c
+> @@ -69,6 +69,7 @@
+>  #include 
+>  #include 
+>  #include 
+> +#include 
+>  
+>  #include "gssd.h"
+>  #include "err_util.h"
+> @@ -436,7 +437,7 @@ change_identity(uid_t uid)
+>  	struct passwd	*pw;
+>  
+>  	/* drop list of supplimentary groups first */
+> -	if (setgroups(0, NULL) != 0) {
+> +	if (syscall(SYS_setgroups, 0) != 0) {
+>  		printerr(0, "WARNING: unable to drop supplimentary groups!");
+>  		return errno;
+>  	}
+> @@ -457,7 +458,12 @@ change_identity(uid_t uid)
+>  	 * Switch the GIDs. Note that we leave the saved-set-gid alone in an
+>  	 * attempt to prevent attacks via ptrace()
+>  	 */
+> -	if (setresgid(pw->pw_gid, pw->pw_gid, -1) != 0) {
+> +	/* For the threaded version we have to set uid,gid per thread instead
+> +	 * of per process. glibc setresuid() when called from a thread, it'll
+> +	 * send a signal to all other threads to synchronize the uid in all
+> +	 * other threads. To bypass this, we have to call syscall() directly.
+> +	 */
+> +	if (syscall(SYS_setresgid, pw->pw_gid) != 0) {
+>  		printerr(0, "WARNING: failed to set gid to %u!\n", pw->pw_gid);
+>  		return errno;
+>  	}
+> @@ -466,7 +472,7 @@ change_identity(uid_t uid)
+>  	 * Switch UIDs, but leave saved-set-uid alone to prevent ptrace() by
+>  	 * other processes running with this uid.
+>  	 */
+> -	if (setresuid(uid, uid, -1) != 0) {
+> +	if (syscall(SYS_setresuid, uid) != 0) {
 
-Taking a look at the code....  That thing we're allocating is just a
-temporary way to pass in the handle that we're looking for, so why not
-just something like this?:
+That looks wrong. setresuid takes 3 arguments:
 
-diff --git a/net/sunrpc/auth_gss/svcauth_gss.c b/net/sunrpc/auth_gss/svcauth_gss.c
-index 1095be9c80ab..22886097d8ee 100644
---- a/net/sunrpc/auth_gss/svcauth_gss.c
-+++ b/net/sunrpc/auth_gss/svcauth_gss.c
-@@ -569,10 +569,9 @@ gss_svc_searchbyctx(struct cache_detail *cd, struct xdr_netobj *handle)
- 	struct rsc *found;
- 
- 	memset(&rsci, 0, sizeof(rsci));
--	if (dup_to_netobj(&rsci.handle, handle->data, handle->len))
--		return NULL;
-+	rsci.handle.data = handle->data;
-+	rsci.handle.len = handle->len;
- 	found = rsc_lookup(cd, &rsci);
--	rsc_free(&rsci);
- 	if (!found)
- 		return NULL;
- 	if (cache_check(cd, &found->h, NULL))
+    SYSCALL_DEFINE3(setresuid, uid_t, ruid, uid_t, euid, uid_t, suid)
 
---b.
+Ditto for setresgid above. syscall is a varargs function, so you really
+_must_ pass in the right number of args or you'll end up feeding it
+random junk in registers or off the stack. The compiler won't save you
+here...
+> 		printerr(0, "WARNING: Failed to setuid for user with
+uid %u\n",
+>  				uid);
+>  		return errno;
+-- 
+Jeff Layton <jlayton@poochiereds.net>
