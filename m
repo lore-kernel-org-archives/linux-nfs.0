@@ -1,103 +1,70 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f193.google.com ([209.85.223.193]:33282 "EHLO
-	mail-io0-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S933365AbcDYTXS (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 25 Apr 2016 15:23:18 -0400
-Subject: [PATCH v2 18/18] xprtrdma: Faster server reboot recovery
-From: Chuck Lever <chuck.lever@oracle.com>
-To: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Mon, 25 Apr 2016 15:23:15 -0400
-Message-ID: <20160425192315.3566.4175.stgit@manet.1015granger.net>
-In-Reply-To: <20160425185956.3566.64142.stgit@manet.1015granger.net>
-References: <20160425185956.3566.64142.stgit@manet.1015granger.net>
+Received: from mx1.redhat.com ([209.132.183.28]:38877 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S933233AbcDYTX7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 25 Apr 2016 15:23:59 -0400
+Date: Mon, 25 Apr 2016 15:23:56 -0400 (EDT)
+From: Benjamin Coddington <bcodding@redhat.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+cc: linux-nfs@vger.kernel.org
+Subject: Re: nfsd delays between svc_recv and gss_check_seq_num
+In-Reply-To: <20160425183802.GA20742@fieldses.org>
+Message-ID: <alpine.OSX.2.19.9992.1604251514050.84171@planck>
+References: <alpine.OSX.2.19.9992.1604100724080.44797@planck> <20160425183802.GA20742@fieldses.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-In a cluster failover scenario, it is desirable for the client to
-attempt to reconnect quickly, as an alternate NFS server is already
-waiting to take over for the down server. The client can't see that
-a server IP address has moved to a new server until the existing
-connection is gone.
+On Mon, 25 Apr 2016, J. Bruce Fields wrote:
 
-For fabrics and devices where it is meaningful, set an upper bound
-on the amount of time before it is determined that a connection is
-no longer valid. This allows the RPC client to detect connection
-loss in a timely matter, then perform a fresh resolution of the
-server GUID in case it has changed (cluster failover).
+> On Sun, Apr 10, 2016 at 07:44:45AM -0400, Benjamin Coddington wrote:
+> > My client hangs on xfstests generic/074 on a krb5 mount, and I've found that
+> > the linux server is silently discarding one or more RPCs because the GSS
+> > sequence numbers are outside the sequence window.
+> >
+> > The reason is that sometimes one of the nfsd threads takes a long time
+> > between receiving the RPC and then checking if the sequence is within the
+> > window.  That delay allows the other nfsd threads to quickly move the window
+> > forward out of range.
+> >
+> > If the server discards the RPC then that causes then the client to wait
+> > forever for a response or until the connection is reset.
+> >
+> > By inserting tracepoints, I think I found two sources of delay:
+> >
+> >  1) gss_svc_searchbyctx() uses dup_to_netobj() which has a kmemdup with
+> > GFP_KERNEL.  It does this because presumabely it doesn't know how big the
+> > context handle should be.
+> >
+> >  2) gss_verify_mic() uses make_checksum() which eventually gets to
+> > crypto_alloc_hash() with GFP_KERNEL.
+> >
+> > For the first delay, can we assume the context handles are all going to be
+> > the same size?  It looks like the handle is assigned by the server, so it
+> > seems like we should be able to know beforehand how large they are.
+>
+> It's assigned by the server, but I believe that happens in userland,
+> either in svcgssd or gss-proxy.  On a quick look I can't find a limit
+> other than the rpc-imposed limit of 400 bytes for an rpc credential.  So
+> we'd need a documented agreement with svcgssd and gss-proxy for that.
+> Probably easy for the former, not sure about the latter.
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
- net/sunrpc/xprtrdma/verbs.c |   28 ++++++++++++++++++++++++----
- 1 file changed, 24 insertions(+), 4 deletions(-)
+OK, that gives me something to follow up.
 
-diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
-index b7a5bc1..5cc57fb 100644
---- a/net/sunrpc/xprtrdma/verbs.c
-+++ b/net/sunrpc/xprtrdma/verbs.c
-@@ -211,9 +211,10 @@ rpcrdma_conn_upcall(struct rdma_cm_id *id, struct rdma_cm_event *event)
- 	struct rpcrdma_ep *ep = &xprt->rx_ep;
- #if IS_ENABLED(CONFIG_SUNRPC_DEBUG)
- 	struct sockaddr *sap = (struct sockaddr *)&ep->rep_remote_addr;
--#endif
-+	u64 timeout;
- 	struct ib_qp_attr *attr = &ia->ri_qp_attr;
- 	struct ib_qp_init_attr *iattr = &ia->ri_qp_init_attr;
-+#endif
- 	int connstate = 0;
- 
- 	switch (event->event) {
-@@ -235,14 +236,23 @@ rpcrdma_conn_upcall(struct rdma_cm_id *id, struct rdma_cm_event *event)
- 		complete(&ia->ri_done);
- 		break;
- 	case RDMA_CM_EVENT_ESTABLISHED:
--		connstate = 1;
-+#if IS_ENABLED(CONFIG_SUNRPC_DEBUG)
-+		memset(attr, 0, sizeof(*attr));
- 		ib_query_qp(ia->ri_id->qp, attr,
--			    IB_QP_MAX_QP_RD_ATOMIC | IB_QP_MAX_DEST_RD_ATOMIC,
-+			    IB_QP_MAX_QP_RD_ATOMIC |
-+			    IB_QP_MAX_DEST_RD_ATOMIC |
-+			    IB_QP_TIMEOUT,
- 			    iattr);
- 		dprintk("RPC:       %s: %d responder resources"
- 			" (%d initiator)\n",
- 			__func__, attr->max_dest_rd_atomic,
- 			attr->max_rd_atomic);
-+		timeout = 4096 * (1ULL << attr->timeout);
-+		do_div(timeout, NSEC_PER_SEC);
-+		dprintk("RPC:       %s: retry timeout: %llu seconds\n",
-+			__func__, timeout);
-+#endif
-+		connstate = 1;
- 		goto connected;
- 	case RDMA_CM_EVENT_CONNECT_ERROR:
- 		connstate = -ENOTCONN;
-@@ -554,6 +564,7 @@ rpcrdma_ep_create(struct rpcrdma_ep *ep, struct rpcrdma_ia *ia,
- 	ep->rep_attr.recv_cq = recvcq;
- 
- 	/* Initialize cma parameters */
-+	memset(&ep->rep_remote_cma, 0, sizeof(ep->rep_remote_cma));
- 
- 	/* RPC/RDMA does not use private data */
- 	ep->rep_remote_cma.private_data = NULL;
-@@ -567,7 +578,16 @@ rpcrdma_ep_create(struct rpcrdma_ep *ep, struct rpcrdma_ia *ia,
- 		ep->rep_remote_cma.responder_resources =
- 						ia->ri_device->attrs.max_qp_rd_atom;
- 
--	ep->rep_remote_cma.retry_count = 7;
-+	/* Limit transport retries so client can detect server
-+	 * GID changes quickly. RPC layer handles re-establishing
-+	 * transport connection and retransmission.
-+	 */
-+	ep->rep_remote_cma.retry_count = 6;
-+
-+	/* RPC-over-RDMA handles its own flow control. In addition,
-+	 * make all RNR NAKs visible so we know that RPC-over-RDMA
-+	 * flow control is working correctly (no NAKs should be seen).
-+	 */
- 	ep->rep_remote_cma.flow_control = 0;
- 	ep->rep_remote_cma.rnr_retry_count = 0;
- 
+> > For the second allocation -- I haven't thrown a lot of thought into what
+> > could be done to fix it.. seems a bit tricker.  I'll think about both of
+> > these a bit more, but I thought in the meantime to ask if anyone has
+> > thoughts about this problem.  Maybe we can to the sequence check before
+> > verify_mic -- but then a message that fails verification could flip the
+> > sequence bit..
+>
+> How much is this happening?  Could increase the sequence window?
 
+It happens once or twice each run.  I've seen the sequence check miss by
+several times the current sequence window size.  I don't think increasing
+the sequence window is a great fix because the delay waiting for an
+allocation is not well-bounded.  Different hardware or in other
+circumstances it could be quite a bit longer.
+
+Ben
