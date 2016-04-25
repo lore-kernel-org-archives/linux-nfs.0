@@ -1,14 +1,14 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ig0-f196.google.com ([209.85.213.196]:33321 "EHLO
+Received: from mail-ig0-f196.google.com ([209.85.213.196]:33425 "EHLO
 	mail-ig0-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S933412AbcDYTVO (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 25 Apr 2016 15:21:14 -0400
-Subject: [PATCH v2 03/18] xprtrdma: Limit number of RDMA segments in
- RPC-over-RDMA headers
+	with ESMTP id S933412AbcDYTVb (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 25 Apr 2016 15:21:31 -0400
+Subject: [PATCH v2 05/18] xprtrdma: Avoid using Write list for small NFS
+ READ requests
 From: Chuck Lever <chuck.lever@oracle.com>
 To: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Mon, 25 Apr 2016 15:21:12 -0400
-Message-ID: <20160425192112.3566.30703.stgit@manet.1015granger.net>
+Date: Mon, 25 Apr 2016 15:21:29 -0400
+Message-ID: <20160425192129.3566.16808.stgit@manet.1015granger.net>
 In-Reply-To: <20160425185956.3566.64142.stgit@manet.1015granger.net>
 References: <20160425185956.3566.64142.stgit@manet.1015granger.net>
 MIME-Version: 1.0
@@ -16,157 +16,53 @@ Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Send buffer space is shared between the RPC-over-RDMA header and
-an RPC message. A large RPC-over-RDMA header means less space is
-available for the associated RPC message, which then has to be
-moved via an RDMA Read or Write.
+Avoid the latency and interrupt overhead of registering a Write
+chunk when handling NFS READ requests of a few hundred bytes or
+less.
 
-As more segments are added to the chunk lists, the header increases
-in size.  Typical modern hardware needs only a few segments to
-convey the maximum payload size, but some devices and registration
-modes may need a lot of segments to convey data payload. Sometimes
-so many are needed that the remaining space in the Send buffer is
-not enough for the RPC message. Sending such a message usually
-fails.
+This change does not interoperate with Linux NFS/RDMA servers
+that do not have commit 9d11b51ce7c1 ('svcrdma: Fix send_reply()
+scatter/gather set-up'). Commit 9d11b51ce7c1 was introduced in v4.3,
+and is included in 4.2.y, 4.1.y, and 3.18.y.
 
-To ensure a transport can always make forward progress, cap the
-number of RDMA segments that are allowed in chunk lists. This
-prevents less-capable devices and memory registrations from
-consuming a large portion of the Send buffer by reducing the
-maximum data payload that can be conveyed with such devices.
+Oracle bug 22925946 has been filed to request that the above fix
+be included in the Oracle Linux UEK4 NFS/RDMA server.
 
-For now I choose an arbitrary maximum of 8 RDMA segments. This
-allows a maximum size RPC-over-RDMA header to fit nicely in the
-current 1024 byte inline threshold with over 700 bytes remaining
-for an inline RPC message.
+Red Hat bugzillas 1327280 and 1327554 have been filed to request
+that RHEL NFS/RDMA server backports include the above fix.
 
-The current maximum data payload of NFS READ or WRITE requests is
-one megabyte. To convey that payload on a client with 4KB pages,
-each chunk segment would need to handle 32 or more data pages. This
-is well within the capabilities of FMR. For physical registration,
-the maximum payload size on platforms with 4KB pages is reduced to
-32KB.
-
-For FRWR, a device's maximum page list depth would need to be at
-least 34 to support the maximum 1MB payload. A device with a smaller
-maximum page list depth means the maximum data payload is reduced
-when using that device.
+Workaround: Replace the "proto=rdma,port=20049" mount options
+with "proto=tcp" until commit 9d11b51ce7c1 is applied to your
+NFS server.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- net/sunrpc/xprtrdma/fmr_ops.c      |    2 +-
- net/sunrpc/xprtrdma/frwr_ops.c     |    2 +-
- net/sunrpc/xprtrdma/physical_ops.c |    2 +-
- net/sunrpc/xprtrdma/verbs.c        |   22 ----------------------
- net/sunrpc/xprtrdma/xprt_rdma.h    |   21 ++++++++++++++++++++-
- 5 files changed, 23 insertions(+), 26 deletions(-)
+ net/sunrpc/xprtrdma/rpc_rdma.c |    9 +++++----
+ 1 file changed, 5 insertions(+), 4 deletions(-)
 
-diff --git a/net/sunrpc/xprtrdma/fmr_ops.c b/net/sunrpc/xprtrdma/fmr_ops.c
-index b289e10..4aeb104 100644
---- a/net/sunrpc/xprtrdma/fmr_ops.c
-+++ b/net/sunrpc/xprtrdma/fmr_ops.c
-@@ -48,7 +48,7 @@ static size_t
- fmr_op_maxpages(struct rpcrdma_xprt *r_xprt)
- {
- 	return min_t(unsigned int, RPCRDMA_MAX_DATA_SEGS,
--		     rpcrdma_max_segments(r_xprt) * RPCRDMA_MAX_FMR_SGES);
-+		     RPCRDMA_MAX_HDR_SEGS * RPCRDMA_MAX_FMR_SGES);
- }
+diff --git a/net/sunrpc/xprtrdma/rpc_rdma.c b/net/sunrpc/xprtrdma/rpc_rdma.c
+index 205b81b..0105e65 100644
+--- a/net/sunrpc/xprtrdma/rpc_rdma.c
++++ b/net/sunrpc/xprtrdma/rpc_rdma.c
+@@ -539,15 +539,16 @@ rpcrdma_marshal_req(struct rpc_rqst *rqst)
+ 	/*
+ 	 * Chunks needed for results?
+ 	 *
+-	 * o Read ops return data as write chunk(s), header as inline.
+ 	 * o If the expected result is under the inline threshold, all ops
+ 	 *   return as inline.
++	 * o Large read ops return data as write chunk(s), header as
++	 *   inline.
+ 	 * o Large non-read ops return as a single reply chunk.
+ 	 */
+-	if (rqst->rq_rcv_buf.flags & XDRBUF_READ)
+-		wtype = rpcrdma_writech;
+-	else if (rpcrdma_results_inline(r_xprt, rqst))
++	if (rpcrdma_results_inline(r_xprt, rqst))
+ 		wtype = rpcrdma_noch;
++	else if (rqst->rq_rcv_buf.flags & XDRBUF_READ)
++		wtype = rpcrdma_writech;
+ 	else
+ 		wtype = rpcrdma_replych;
  
- static int
-diff --git a/net/sunrpc/xprtrdma/frwr_ops.c b/net/sunrpc/xprtrdma/frwr_ops.c
-index c250924..2f37598 100644
---- a/net/sunrpc/xprtrdma/frwr_ops.c
-+++ b/net/sunrpc/xprtrdma/frwr_ops.c
-@@ -243,7 +243,7 @@ frwr_op_maxpages(struct rpcrdma_xprt *r_xprt)
- 	struct rpcrdma_ia *ia = &r_xprt->rx_ia;
- 
- 	return min_t(unsigned int, RPCRDMA_MAX_DATA_SEGS,
--		     rpcrdma_max_segments(r_xprt) * ia->ri_max_frmr_depth);
-+		     RPCRDMA_MAX_HDR_SEGS * ia->ri_max_frmr_depth);
- }
- 
- static void
-diff --git a/net/sunrpc/xprtrdma/physical_ops.c b/net/sunrpc/xprtrdma/physical_ops.c
-index 481b9b6..e16ed54 100644
---- a/net/sunrpc/xprtrdma/physical_ops.c
-+++ b/net/sunrpc/xprtrdma/physical_ops.c
-@@ -47,7 +47,7 @@ static size_t
- physical_op_maxpages(struct rpcrdma_xprt *r_xprt)
- {
- 	return min_t(unsigned int, RPCRDMA_MAX_DATA_SEGS,
--		     rpcrdma_max_segments(r_xprt));
-+		     RPCRDMA_MAX_HDR_SEGS);
- }
- 
- static int
-diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
-index f5ed9f9..9f8d6c1 100644
---- a/net/sunrpc/xprtrdma/verbs.c
-+++ b/net/sunrpc/xprtrdma/verbs.c
-@@ -1271,25 +1271,3 @@ out_rc:
- 	rpcrdma_recv_buffer_put(rep);
- 	return rc;
- }
--
--/* How many chunk list items fit within our inline buffers?
-- */
--unsigned int
--rpcrdma_max_segments(struct rpcrdma_xprt *r_xprt)
--{
--	struct rpcrdma_create_data_internal *cdata = &r_xprt->rx_data;
--	int bytes, segments;
--
--	bytes = min_t(unsigned int, cdata->inline_wsize, cdata->inline_rsize);
--	bytes -= RPCRDMA_HDRLEN_MIN;
--	if (bytes < sizeof(struct rpcrdma_segment) * 2) {
--		pr_warn("RPC:       %s: inline threshold too small\n",
--			__func__);
--		return 0;
--	}
--
--	segments = 1 << (fls(bytes / sizeof(struct rpcrdma_segment)) - 1);
--	dprintk("RPC:       %s: max chunk list size = %d segments\n",
--		__func__, segments);
--	return segments;
--}
-diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
-index 7723e5f..0028748 100644
---- a/net/sunrpc/xprtrdma/xprt_rdma.h
-+++ b/net/sunrpc/xprtrdma/xprt_rdma.h
-@@ -144,6 +144,26 @@ rdmab_to_msg(struct rpcrdma_regbuf *rb)
- 
- #define RPCRDMA_DEF_GFP		(GFP_NOIO | __GFP_NOWARN)
- 
-+/* To ensure a transport can always make forward progress,
-+ * the number of RDMA segments allowed in header chunk lists
-+ * is capped at 8. This prevents less-capable devices and
-+ * memory registrations from overrunning the Send buffer
-+ * while building chunk lists.
-+ *
-+ * Elements of the Read list take up more room than the
-+ * Write list or Reply chunk. 8 read segments means the Read
-+ * list (or Write list or Reply chunk) cannot consume more
-+ * than
-+ *
-+ * ((8 + 2) * read segment size) + 1 XDR words, or 244 bytes.
-+ *
-+ * And the fixed part of the header is another 24 bytes.
-+ *
-+ * The smallest inline threshold is 1024 bytes, ensuring that
-+ * at least 750 bytes are available for RPC messages.
-+ */
-+#define RPCRDMA_MAX_HDR_SEGS	(8)
-+
- /*
-  * struct rpcrdma_rep -- this structure encapsulates state required to recv
-  * and complete a reply, asychronously. It needs several pieces of
-@@ -456,7 +476,6 @@ struct rpcrdma_regbuf *rpcrdma_alloc_regbuf(struct rpcrdma_ia *,
- void rpcrdma_free_regbuf(struct rpcrdma_ia *,
- 			 struct rpcrdma_regbuf *);
- 
--unsigned int rpcrdma_max_segments(struct rpcrdma_xprt *);
- int rpcrdma_ep_post_extra_recv(struct rpcrdma_xprt *, unsigned int);
- 
- int frwr_alloc_recovery_wq(void);
 
