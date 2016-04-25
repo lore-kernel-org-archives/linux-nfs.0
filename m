@@ -1,88 +1,82 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ig0-f195.google.com ([209.85.213.195]:33185 "EHLO
-	mail-ig0-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750749AbcDYTUt (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 25 Apr 2016 15:20:49 -0400
-Subject: [PATCH v2 00/18] NFS/RDMA client patches for v4.7
+Received: from mail-ig0-f194.google.com ([209.85.213.194]:33264 "EHLO
+	mail-ig0-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754539AbcDYTVG (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 25 Apr 2016 15:21:06 -0400
+Subject: [PATCH v2 02/18] xprtrdma: Bound the inline threshold values
 From: Chuck Lever <chuck.lever@oracle.com>
 To: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Mon, 25 Apr 2016 15:20:46 -0400
-Message-ID: <20160425185956.3566.64142.stgit@manet.1015granger.net>
+Date: Mon, 25 Apr 2016 15:21:03 -0400
+Message-ID: <20160425192103.3566.33960.stgit@manet.1015granger.net>
+In-Reply-To: <20160425185956.3566.64142.stgit@manet.1015granger.net>
+References: <20160425185956.3566.64142.stgit@manet.1015granger.net>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Second version of NFS/RDMA client patches proposed for merge into
-v4.7. Thanks in advance for any review comments!
+Currently the sysctls that allow setting the inline threshold allow
+any value to be set.
 
-Attempt to fence memory regions after a signal interrupts a
-synchronous RPC. This prevents a server from writing a reply into a
-client's memory after the memory has been released due to a signal.
+Small values only make the transport run slower. The default 1KB
+setting is as low as is reasonable. And the logic that decides how
+to divide a Send buffer between RPC-over-RDMA header and RPC message
+assumes (but does not check) that the lower bound is not crazy (say,
+57 bytes).
 
-Support providing a Read list and Reply chunk together in one RPC
-call. This is a pre-requisite for using krb5i or krb5p on RPC/RDMA.
+Send and receive buffers share a page with some control information.
+Values larger than about 3KB can't be supported, currently.
 
-In addition, the following changes and fixes are included:
-
-- Use new ib_drain_qp() API
-- Advertise max size of NFSv4.1 callbacks on RPC/RDMA
-- Prevent overflowing the server's receive buffers
-- Send small NFS WRITEs inline rather than using a Read chunk
-- Detect connection loss sooner
-
-
-Available in the "nfs-rdma-for-4.7" topic branch of this git repo:
-
-git://git.linux-nfs.org/projects/cel/cel-2.6.git
-
-Or for browsing:
-
-http://git.linux-nfs.org/?p=cel/cel-2.6.git;a=log;h=refs/heads/nfs-rdma-for-4.7
-
-
-Changes since v1:
-- Rebased on v4.6-rc5
-- Updated patch description for "Avoid using Write list for ..."
-
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
+ include/linux/sunrpc/xprtrdma.h |    4 +++-
+ net/sunrpc/xprtrdma/transport.c |    6 ++++++
+ 2 files changed, 9 insertions(+), 1 deletion(-)
 
-Chuck Lever (18):
-      sunrpc: Advertise maximum backchannel payload size
-      xprtrdma: Bound the inline threshold values
-      xprtrdma: Limit number of RDMA segments in RPC-over-RDMA headers
-      xprtrdma: Prevent inline overflow
-      xprtrdma: Avoid using Write list for small NFS READ requests
-      xprtrdma: Update comments in rpcrdma_marshal_req()
-      xprtrdma: Allow Read list and Reply chunk simultaneously
-      xprtrdma: Remove rpcrdma_create_chunks()
-      xprtrdma: Use core ib_drain_qp() API
-      xprtrdma: Rename rpcrdma_frwr::sg and sg_nents
-      xprtrdma: Save I/O direction in struct rpcrdma_frwr
-      xprtrdma: Reset MRs in frwr_op_unmap_sync()
-      xprtrdma: Refactor the FRWR recovery worker
-      xprtrdma: Move fr_xprt and fr_worker to struct rpcrdma_mw
-      xprtrdma: Refactor __fmr_dma_unmap()
-      xprtrdma: Add ro_unmap_safe memreg method
-      xprtrdma: Remove ro_unmap() from all registration modes
-      xprtrdma: Faster server reboot recovery
+diff --git a/include/linux/sunrpc/xprtrdma.h b/include/linux/sunrpc/xprtrdma.h
+index 767190b..39267dc 100644
+--- a/include/linux/sunrpc/xprtrdma.h
++++ b/include/linux/sunrpc/xprtrdma.h
+@@ -52,7 +52,9 @@
+ #define RPCRDMA_DEF_SLOT_TABLE	(128U)
+ #define RPCRDMA_MAX_SLOT_TABLE	(256U)
+ 
+-#define RPCRDMA_DEF_INLINE  (1024)	/* default inline max */
++#define RPCRDMA_MIN_INLINE  (1024)	/* min inline thresh */
++#define RPCRDMA_DEF_INLINE  (1024)	/* default inline thresh */
++#define RPCRDMA_MAX_INLINE  (3068)	/* max inline thresh */
+ 
+ /* Memory registration strategies, by number.
+  * This is part of a kernel / user space API. Do not remove. */
+diff --git a/net/sunrpc/xprtrdma/transport.c b/net/sunrpc/xprtrdma/transport.c
+index 9954342..16595ff 100644
+--- a/net/sunrpc/xprtrdma/transport.c
++++ b/net/sunrpc/xprtrdma/transport.c
+@@ -73,6 +73,8 @@ static unsigned int xprt_rdma_memreg_strategy = RPCRDMA_FRMR;
+ 
+ static unsigned int min_slot_table_size = RPCRDMA_MIN_SLOT_TABLE;
+ static unsigned int max_slot_table_size = RPCRDMA_MAX_SLOT_TABLE;
++static unsigned int min_inline_size = RPCRDMA_MIN_INLINE;
++static unsigned int max_inline_size = RPCRDMA_MAX_INLINE;
+ static unsigned int zero;
+ static unsigned int max_padding = PAGE_SIZE;
+ static unsigned int min_memreg = RPCRDMA_BOUNCEBUFFERS;
+@@ -96,6 +98,8 @@ static struct ctl_table xr_tunables_table[] = {
+ 		.maxlen		= sizeof(unsigned int),
+ 		.mode		= 0644,
+ 		.proc_handler	= proc_dointvec,
++		.extra1		= &min_inline_size,
++		.extra2		= &max_inline_size,
+ 	},
+ 	{
+ 		.procname	= "rdma_max_inline_write",
+@@ -103,6 +107,8 @@ static struct ctl_table xr_tunables_table[] = {
+ 		.maxlen		= sizeof(unsigned int),
+ 		.mode		= 0644,
+ 		.proc_handler	= proc_dointvec,
++		.extra1		= &min_inline_size,
++		.extra2		= &max_inline_size,
+ 	},
+ 	{
+ 		.procname	= "rdma_inline_write_padding",
 
-
- fs/nfs/nfs4proc.c                  |   10 -
- include/linux/sunrpc/clnt.h        |    1 
- include/linux/sunrpc/xprt.h        |    1 
- include/linux/sunrpc/xprtrdma.h    |    4 
- net/sunrpc/clnt.c                  |   17 +
- net/sunrpc/xprtrdma/backchannel.c  |   16 +
- net/sunrpc/xprtrdma/fmr_ops.c      |  134 +++++++--
- net/sunrpc/xprtrdma/frwr_ops.c     |  214 ++++++++-------
- net/sunrpc/xprtrdma/physical_ops.c |   39 ++-
- net/sunrpc/xprtrdma/rpc_rdma.c     |  517 ++++++++++++++++++++++--------------
- net/sunrpc/xprtrdma/transport.c    |   16 +
- net/sunrpc/xprtrdma/verbs.c        |   91 ++----
- net/sunrpc/xprtrdma/xprt_rdma.h    |   42 ++-
- net/sunrpc/xprtsock.c              |    6 
- 14 files changed, 674 insertions(+), 434 deletions(-)
-
---
-Chuck Lever
