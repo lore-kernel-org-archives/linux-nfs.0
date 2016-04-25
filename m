@@ -1,63 +1,73 @@
-Return-Path: <bfields@fieldses.org>
-Date: Mon, 25 Apr 2016 17:22:38 -0400
-To: Benjamin Coddington <bcodding@redhat.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: nfsd delays between svc_recv and gss_check_seq_num
-Message-ID: <20160425212238.GB21879@fieldses.org>
-References: <alpine.OSX.2.19.9992.1604100724080.44797@planck>
+Return-Path: <linux-nfs-owner@vger.kernel.org>
+Received: from mx142.netapp.com ([216.240.21.19]:38897 "EHLO mx142.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S964869AbcDYVec (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 25 Apr 2016 17:34:32 -0400
+From: "Kornievskaia, Olga" <Olga.Kornievskaia@netapp.com>
+To: Jeff Layton <jlayton@poochiereds.net>
+CC: "steved@redhat.com" <steved@redhat.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH v3 2/3] gssd: using syscalls directly to change thread's
+ identity
+Date: Mon, 25 Apr 2016 21:34:29 +0000
+Message-ID: <0A64C0BB-A140-42F0-8008-8675A4E94B9E@netapp.com>
+References: <1461603513-67523-1-git-send-email-kolga@netapp.com>
+ <1461603513-67523-3-git-send-email-kolga@netapp.com>
+ <1461615792.4288.31.camel@poochiereds.net>
+In-Reply-To: <1461615792.4288.31.camel@poochiereds.net>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <alpine.OSX.2.19.9992.1604100724080.44797@planck>
-From: bfields@fieldses.org (J. Bruce Fields)
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sun, Apr 10, 2016 at 07:44:45AM -0400, Benjamin Coddington wrote:
-> My client hangs on xfstests generic/074 on a krb5 mount, and I've found that
-> the linux server is silently discarding one or more RPCs because the GSS
-> sequence numbers are outside the sequence window.
-> 
-> The reason is that sometimes one of the nfsd threads takes a long time
-> between receiving the RPC and then checking if the sequence is within the
-> window.  That delay allows the other nfsd threads to quickly move the window
-> forward out of range.
-> 
-> If the server discards the RPC then that causes then the client to wait
-> forever for a response or until the connection is reset.
-> 
-> By inserting tracepoints, I think I found two sources of delay:
-> 
->  1) gss_svc_searchbyctx() uses dup_to_netobj() which has a kmemdup with
-> GFP_KERNEL.  It does this because presumabely it doesn't know how big the
-> context handle should be.
-> 
->  2) gss_verify_mic() uses make_checksum() which eventually gets to
-> crypto_alloc_hash() with GFP_KERNEL.
-> 
-> For the first delay, can we assume the context handles are all going to be
-> the same size?  It looks like the handle is assigned by the server, so it
-> seems like we should be able to know beforehand how large they are.
-> 
-> For the second allocation -- I haven't thrown a lot of thought into what
-> could be done to fix it.. seems a bit tricker.  I'll think about both of
-> these a bit more, but I thought in the meantime to ask if anyone has
-> thoughts about this problem.  Maybe we can to the sequence check before
-> verify_mic -- but then a message that fails verification could flip the
-> sequence bit..
-
-Yes.
-
-It would be better to allocate the crypto context at the time we create
-the gss context, instead of each time we need to use it.
-
-The problem is that we could then use that crypto context concurrently
-from multiple tasks.  And it could have some state--it did when we first
-wrote this code, at least.  But I'm sure we could work around that
-somehow if it were worth it.
-
-Looking at the code now--I don't think the original crypto api had this
-separate ahash_request_alloc step.  If all the state's in there, then we
-should be able to allocate the crypto_ahash once when we create the
-krb5_ctx, and then only need the ahash_request_alloc for each operation.
-Does that help?
-
---b.
+DQo+IE9uIEFwciAyNSwgMjAxNiwgYXQgNDoyMyBQTSwgSmVmZiBMYXl0b24gPGpsYXl0b25AcG9v
+Y2hpZXJlZHMubmV0PiB3cm90ZToNCj4gDQo+IE9uIE1vbiwgMjAxNi0wNC0yNSBhdCAxMjo1OCAt
+MDQwMCwgT2xnYSBLb3JuaWV2c2thaWEgd3JvdGU6DQo+PiBGb3IgdGhlIHRocmVhZGVkIHZlcnNp
+b24gd2UgaGF2ZSB0byBzZXQgdWlkLGdpZCBwZXIgdGhyZWFkIGluc3RlYWQNCj4+IG9mIHBlciBw
+cm9jZXNzLiBnbGliYyBzZXRyZXN1aWQoKSB3aGVuIGNhbGxlZCBmcm9tIGEgdGhyZWFkLCBpdCds
+bA0KPj4gc2VuZCBhIHNpZ25hbCB0byBhbGwgb3RoZXIgdGhyZWFkcyB0byBzeW5jaHJvbml6ZSB0
+aGUgdWlkIGluIGFsbA0KPj4gb3RoZXIgdGhyZWFkcy4gVG8gYnlwYXNzIHRoaXMsIHdlIGhhdmUg
+dG8gY2FsbCBzeXNjYWxsKCkgZGlyZWN0bHkuDQo+PiANCj4+IFNpZ25lZC1vZmYtYnk6IE9sZ2Eg
+S29ybmlldnNrYWlhIDxrb2xnYUBuZXRhcHAuY29tPg0KPj4gUmV2aWV3ZWQtYnk6IFN0ZXZlIERp
+Y2tzb24gPHN0ZXZlZEByZWRoYXQuY29tPg0KPj4gLS0tDQo+PiAgdXRpbHMvZ3NzZC9nc3NkX3By
+b2MuYyB8IDEyICsrKysrKysrKy0tLQ0KPj4gIDEgZmlsZSBjaGFuZ2VkLCA5IGluc2VydGlvbnMo
+KyksIDMgZGVsZXRpb25zKC0pDQo+PiANCj4+IGRpZmYgLS1naXQgYS91dGlscy9nc3NkL2dzc2Rf
+cHJvYy5jIGIvdXRpbHMvZ3NzZC9nc3NkX3Byb2MuYw0KPj4gaW5kZXggZTJlOTVkYy4uNDg3YTRm
+NSAxMDA2NDQNCj4+IC0tLSBhL3V0aWxzL2dzc2QvZ3NzZF9wcm9jLmMNCj4+ICsrKyBiL3V0aWxz
+L2dzc2QvZ3NzZF9wcm9jLmMNCj4+IEBAIC02OSw2ICs2OSw3IEBADQo+PiAgI2luY2x1ZGUgDQo+
+PiAgI2luY2x1ZGUgDQo+PiAgI2luY2x1ZGUgDQo+PiArI2luY2x1ZGUgDQo+PiAgDQo+PiAgI2lu
+Y2x1ZGUgImdzc2QuaCINCj4+ICAjaW5jbHVkZSAiZXJyX3V0aWwuaCINCj4+IEBAIC00MzYsNyAr
+NDM3LDcgQEAgY2hhbmdlX2lkZW50aXR5KHVpZF90IHVpZCkNCj4+ICAJc3RydWN0IHBhc3N3ZAkq
+cHc7DQo+PiAgDQo+PiAgCS8qIGRyb3AgbGlzdCBvZiBzdXBwbGltZW50YXJ5IGdyb3VwcyBmaXJz
+dCAqLw0KPj4gLQlpZiAoc2V0Z3JvdXBzKDAsIE5VTEwpICE9IDApIHsNCj4+ICsJaWYgKHN5c2Nh
+bGwoU1lTX3NldGdyb3VwcywgMCkgIT0gMCkgew0KPj4gIAkJcHJpbnRlcnIoMCwgIldBUk5JTkc6
+IHVuYWJsZSB0byBkcm9wIHN1cHBsaW1lbnRhcnkgZ3JvdXBzISIpOw0KPj4gIAkJcmV0dXJuIGVy
+cm5vOw0KPj4gIAl9DQo+PiBAQCAtNDU3LDcgKzQ1OCwxMiBAQCBjaGFuZ2VfaWRlbnRpdHkodWlk
+X3QgdWlkKQ0KPj4gIAkgKiBTd2l0Y2ggdGhlIEdJRHMuIE5vdGUgdGhhdCB3ZSBsZWF2ZSB0aGUg
+c2F2ZWQtc2V0LWdpZCBhbG9uZSBpbiBhbg0KPj4gIAkgKiBhdHRlbXB0IHRvIHByZXZlbnQgYXR0
+YWNrcyB2aWEgcHRyYWNlKCkNCj4+ICAJICovDQo+PiAtCWlmIChzZXRyZXNnaWQocHctPnB3X2dp
+ZCwgcHctPnB3X2dpZCwgLTEpICE9IDApIHsNCj4+ICsJLyogRm9yIHRoZSB0aHJlYWRlZCB2ZXJz
+aW9uIHdlIGhhdmUgdG8gc2V0IHVpZCxnaWQgcGVyIHRocmVhZCBpbnN0ZWFkDQo+PiArCSAqIG9m
+IHBlciBwcm9jZXNzLiBnbGliYyBzZXRyZXN1aWQoKSB3aGVuIGNhbGxlZCBmcm9tIGEgdGhyZWFk
+LCBpdCdsbA0KPj4gKwkgKiBzZW5kIGEgc2lnbmFsIHRvIGFsbCBvdGhlciB0aHJlYWRzIHRvIHN5
+bmNocm9uaXplIHRoZSB1aWQgaW4gYWxsDQo+PiArCSAqIG90aGVyIHRocmVhZHMuIFRvIGJ5cGFz
+cyB0aGlzLCB3ZSBoYXZlIHRvIGNhbGwgc3lzY2FsbCgpIGRpcmVjdGx5Lg0KPj4gKwkgKi8NCj4+
+ICsJaWYgKHN5c2NhbGwoU1lTX3NldHJlc2dpZCwgcHctPnB3X2dpZCkgIT0gMCkgew0KPj4gIAkJ
+cHJpbnRlcnIoMCwgIldBUk5JTkc6IGZhaWxlZCB0byBzZXQgZ2lkIHRvICV1IVxuIiwgcHctPnB3
+X2dpZCk7DQo+PiAgCQlyZXR1cm4gZXJybm87DQo+PiAgCX0NCj4+IEBAIC00NjYsNyArNDcyLDcg
+QEAgY2hhbmdlX2lkZW50aXR5KHVpZF90IHVpZCkNCj4+ICAJICogU3dpdGNoIFVJRHMsIGJ1dCBs
+ZWF2ZSBzYXZlZC1zZXQtdWlkIGFsb25lIHRvIHByZXZlbnQgcHRyYWNlKCkgYnkNCj4+ICAJICog
+b3RoZXIgcHJvY2Vzc2VzIHJ1bm5pbmcgd2l0aCB0aGlzIHVpZC4NCj4+ICAJICovDQo+PiAtCWlm
+IChzZXRyZXN1aWQodWlkLCB1aWQsIC0xKSAhPSAwKSB7DQo+PiArCWlmIChzeXNjYWxsKFNZU19z
+ZXRyZXN1aWQsIHVpZCkgIT0gMCkgew0KPiANCj4gVGhhdCBsb29rcyB3cm9uZy4gc2V0cmVzdWlk
+IHRha2VzIDMgYXJndW1lbnRzOg0KPiANCj4gICAgU1lTQ0FMTF9ERUZJTkUzKHNldHJlc3VpZCwg
+dWlkX3QsIHJ1aWQsIHVpZF90LCBldWlkLCB1aWRfdCwgc3VpZCkNCj4gDQo+IERpdHRvIGZvciBz
+ZXRyZXNnaWQgYWJvdmUuIHN5c2NhbGwgaXMgYSB2YXJhcmdzIGZ1bmN0aW9uLCBzbyB5b3UgcmVh
+bGx5DQo+IF9tdXN0XyBwYXNzIGluIHRoZSByaWdodCBudW1iZXIgb2YgYXJncyBvciB5b3UnbGwg
+ZW5kIHVwIGZlZWRpbmcgaXQNCj4gcmFuZG9tIGp1bmsgaW4gcmVnaXN0ZXJzIG9yIG9mZiB0aGUg
+c3RhY2suIFRoZSBjb21waWxlciB3b24ndCBzYXZlIHlvdQ0KPiBoZXJl4oCmDQoNClRoYW5rcyBK
+ZWZmLiBXaWxsIGZpeCB0aGF0LiBzZXRncm91cHMgdGFrZSAyIGFyZ3Mgc28gdGhhdCBzaG91bGQg
+YmUgZml4ZWQgdG9vLg0KDQoNCj4+ICAJCXByaW50ZXJyKDAsICJXQVJOSU5HOiBGYWlsZWQgdG8g
+c2V0dWlkIGZvciB1c2VyIHdpdGgNCj4gdWlkICV1XG4iLA0KPj4gIAkJCQl1aWQpOw0KPj4gIAkJ
+cmV0dXJuIGVycm5vOw0KPiAtLSANCj4gSmVmZiBMYXl0b24gPGpsYXl0b25AcG9vY2hpZXJlZHMu
+bmV0Pg0KDQo=
