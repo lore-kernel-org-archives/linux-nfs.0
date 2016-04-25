@@ -1,165 +1,286 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ig0-f194.google.com ([209.85.213.194]:35970 "EHLO
-	mail-ig0-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754393AbcDYQ4u (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 25 Apr 2016 12:56:50 -0400
-Received: by mail-ig0-f194.google.com with SMTP id c3so4428406igl.3
-        for <linux-nfs@vger.kernel.org>; Mon, 25 Apr 2016 09:56:50 -0700 (PDT)
+Received: from mx142.netapp.com ([216.240.21.19]:19274 "EHLO mx142.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S933131AbcDYQ6e (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 25 Apr 2016 12:58:34 -0400
+From: Olga Kornievskaia <kolga@netapp.com>
+To: <steved@redhat.com>
+CC: <linux-nfs@vger.kernel.org>
+Subject: [PATCH v3 1/3] gssd: use pthreads to handle upcalls
+Date: Mon, 25 Apr 2016 12:58:31 -0400
+Message-ID: <1461603513-67523-2-git-send-email-kolga@netapp.com>
+In-Reply-To: <1461603513-67523-1-git-send-email-kolga@netapp.com>
+References: <1461603513-67523-1-git-send-email-kolga@netapp.com>
 MIME-Version: 1.0
-In-Reply-To: <1461468267.12939.9.camel@poochiereds.net>
-References: <1461186721-64008-1-git-send-email-kolga@netapp.com>
-	<1461186721-64008-3-git-send-email-kolga@netapp.com>
-	<571A6FB0.8080709@RedHat.com>
-	<CAN-5tyH-JqHTnm+j0XG277qVQVbocR-j6MRn0aq9A8PLh_iMRg@mail.gmail.com>
-	<571BE5B0.4050608@RedHat.com>
-	<1461468267.12939.9.camel@poochiereds.net>
-Date: Mon, 25 Apr 2016 12:56:49 -0400
-Message-ID: <CAN-5tyEbOQoCEB0EDCXAi2BTdH-VCwfyipAqtAb61P8WxRJ9NA@mail.gmail.com>
-Subject: Re: [RFC PATCH v2 2/3] gssd: using syscalls directly to change
- thread's identity
-From: Olga Kornievskaia <aglo@umich.edu>
-To: Jeff Layton <jlayton@poochiereds.net>
-Cc: Steve Dickson <SteveD@redhat.com>, Jeff Layton <layton@primarydata.com>,
-        Olga Kornievskaia <kolga@netapp.com>,
-        linux-nfs <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sat, Apr 23, 2016 at 11:24 PM, Jeff Layton <jlayton@poochiereds.net> wrote:
-> On Sat, 2016-04-23 at 17:14 -0400, Steve Dickson wrote:
->>
->> On 04/22/2016 04:41 PM, Olga Kornievskaia wrote:
->> >
->> > On Fri, Apr 22, 2016 at 2:38 PM, Steve Dickson <SteveD@redhat.com>
->> > wrote:
->> > >
->> > >
->> > >
->> > > On 04/20/2016 05:12 PM, Olga Kornievskaia wrote:
->> > > >
->> > > > For the threaded version we have to set uid,gid per thread
->> > > > instead
->> > > > of per process. glibc setresuid() when called from a thread,
->> > > > it'll
->> > > > send a signal to all other threads to synchronize the uid in
->> > > > all
->> > > > other threads. To bypass this, we have to call syscall()
->> > > > directly.
->> > > >
->> > > > Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
->> > > > Reviewed-by: Steve Dickson <steved@redhat.com>
->> > > > ---
->> > > >  utils/gssd/gssd_proc.c | 10 ++++++++--
->> > > >  1 file changed, 8 insertions(+), 2 deletions(-)
->> > > >
->> > > > diff --git a/utils/gssd/gssd_proc.c b/utils/gssd/gssd_proc.c
->> > > > index 581a125..5d9a6db 100644
->> > > > --- a/utils/gssd/gssd_proc.c
->> > > > +++ b/utils/gssd/gssd_proc.c
->> > > > @@ -69,6 +69,7 @@
->> > > >  #include <netdb.h>
->> > > >  #include <sys/types.h>
->> > > >  #include <sys/wait.h>
->> > > > +#include <syscall.h>
->> > > >
->> > > >  #include "gssd.h"
->> > > >  #include "err_util.h"
->> > > > @@ -457,7 +458,12 @@ change_identity(uid_t uid)
->> > > >        * Switch the GIDs. Note that we leave the saved-set-gid
->> > > > alone in an
->> > > >        * attempt to prevent attacks via ptrace()
->> > > >        */
->> > > > -     if (setresgid(pw->pw_gid, pw->pw_gid, -1) != 0) {
->> > > > +     /* For the threaded version we have to set uid,gid per
->> > > > thread instead
->> > > > +      * of per process. glibc setresuid() when called from a
->> > > > thread, it'll
->> > > > +      * send a signal to all other threads to synchronize the
->> > > > uid in all
->> > > > +      * other threads. To bypass this, we have to call
->> > > > syscall() directly.
->> > > > +      */
->> > > > +     if (syscall(SYS_setresgid, pw->pw_gid) != 0) {
->> > > >               printerr(0, "WARNING: failed to set gid to
->> > > > %u!\n", pw->pw_gid);
->> > > >               return errno;
->> > > >       }
->> > > > @@ -466,7 +472,7 @@ change_identity(uid_t uid)
->> > > >        * Switch UIDs, but leave saved-set-uid alone to prevent
->> > > > ptrace() by
->> > > >        * other processes running with this uid.
->> > > >        */
->> > > > -     if (setresuid(uid, uid, -1) != 0) {
->> > > > +     if (syscall(SYS_setresuid, uid) != 0) {
->> > > >               printerr(0, "WARNING: Failed to setuid for user
->> > > > with uid %u\n",
->> > > >                               uid);
->> > > >               return errno;
->> > > >
->> > > We also have to do the same thing to the setgroups() call at the
->> > > top of change_identity(). So add the following diff to this
->> > > patch and we are good to go...
->> > >
->> > > diff --git a/utils/gssd/gssd_proc.c b/utils/gssd/gssd_proc.c
->> > > index e651d71..2f9f8ab 100644
->> > > --- a/utils/gssd/gssd_proc.c
->> > > +++ b/utils/gssd/gssd_proc.c
->> > > @@ -437,7 +437,7 @@ change_identity(uid_t uid)
->> > >         struct passwd   *pw;
->> > >
->> > >         /* drop list of supplimentary groups first */
->> > > -       if (setgroups(0, NULL) != 0) {
->> > > +       if (syscall(SYS_setgroups, 0) != 0) {
->> > >                 printerr(0, "WARNING: unable to drop
->> > > supplimentary groups!");
->> > >                 return errno;
->> > >         }
->> > >
->> > Do you know why we do this before getting the passwd entry?
->> It came in with commit 6b53fc9c which changed the way gssd
->> changed the uid/gid from Jeff Layton...
->>
->> Jeff, what was the thought behind dropping supplementary groups?
->> I believe it was some type of security thing.
->>
->
-> We do that so that the child doesn't run with supplementary groups from
-> the main process.
->
-> As to why we do that before getting the passwd entry instead of after?
-> No real reason for the order that I can recall. If you need to do it
-> after the pw entry, I don't think it'll matter.
->
-> That said, since this has to run as root anyway, I guess you could drop
-> the supplementary groups in the main process. Then all of the children
-> should get a zeroed out grouplist, and it's one less syscall...
+Currently, to persevere global data over multiple mounts,
+the root process does not fork when handling an upcall.
+Instead on not-forking create a pthread to handle the
+upcall since global data can be shared among threads.
 
-Thank Jeff, I thought that since we are setting the effective uid/gid
-of the process (or with the patches, thread), then the child process
-(thread) would have the supplementary groups associated with the given
-uid.
+Signed-off-by: Steve Dickson <steved@redhat.com>
+Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
+---
+ aclocal/libpthread.m4  | 13 +++++++++++++
+ configure.ac           |  3 +++
+ utils/gssd/Makefile.am |  3 ++-
+ utils/gssd/gssd.c      | 45 ++++++++++++++++++++++++++++++++++++++++-----
+ utils/gssd/gssd.h      |  5 +++++
+ utils/gssd/gssd_proc.c | 49 ++++++++++++++++++-------------------------------
+ utils/gssd/krb5_util.c |  3 +++
+ 7 files changed, 84 insertions(+), 37 deletions(-)
+ create mode 100644 aclocal/libpthread.m4
 
->> > Doing as you suggest causes problems as in it it fails to drop the
->> > supplementary groups.
->> hmm... what are you seeing that I'm not?
+diff --git a/aclocal/libpthread.m4 b/aclocal/libpthread.m4
+new file mode 100644
+index 0000000..e87d2a0
+--- /dev/null
++++ b/aclocal/libpthread.m4
+@@ -0,0 +1,13 @@
++dnl Checks for pthreads library and headers
++dnl
++AC_DEFUN([AC_LIBPTHREAD], [
++
++    dnl Check for library, but do not add -lpthreads to LIBS
++    AC_CHECK_LIB([pthread], [pthread_create], [LIBPTHREAD=-lpthread],
++                 [AC_MSG_ERROR([libpthread not found.])])
++  AC_SUBST(LIBPTHREAD)
++
++  AC_CHECK_HEADERS([pthread.h], ,
++                   [AC_MSG_ERROR([libpthread headers not found.])])
++
++])dnl
+diff --git a/configure.ac b/configure.ac
+index 25d2ba4..e0ecd61 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -385,6 +385,9 @@ if test "$enable_gss" = yes; then
+   dnl Invoked after AC_KERBEROS_V5; AC_LIBRPCSECGSS needs to have KRBLIBS set
+   AC_LIBRPCSECGSS
+ 
++  dnl Check for pthreads
++  AC_LIBPTHREAD
++
+   dnl librpcsecgss already has a dependency on libgssapi,
+   dnl but we need to make sure we get the right version
+   if test "$enable_gss" = yes; then
+diff --git a/utils/gssd/Makefile.am b/utils/gssd/Makefile.am
+index cb040b3..3f5f59a 100644
+--- a/utils/gssd/Makefile.am
++++ b/utils/gssd/Makefile.am
+@@ -49,7 +49,8 @@ gssd_LDADD = \
+ 	$(RPCSECGSS_LIBS) \
+ 	$(KRBLIBS) \
+ 	$(GSSAPI_LIBS) \
+-	$(LIBTIRPC)
++	$(LIBTIRPC) \
++	$(LIBPTHREAD)
+ 
+ gssd_LDFLAGS = \
+ 	$(KRBLDFLAGS)
+diff --git a/utils/gssd/gssd.c b/utils/gssd/gssd.c
+index e7cb07f..0b7ffca 100644
+--- a/utils/gssd/gssd.c
++++ b/utils/gssd/gssd.c
+@@ -87,7 +87,9 @@ unsigned int  rpc_timeout = 5;
+ char *preferred_realm = NULL;
+ /* Avoid DNS reverse lookups on server names */
+ static bool avoid_dns = true;
+-
++int thread_started = false;
++pthread_mutex_t pmutex = PTHREAD_MUTEX_INITIALIZER;
++pthread_cond_t pcond = PTHREAD_COND_INITIALIZER;
+ 
+ TAILQ_HEAD(topdir_list_head, topdir) topdir_list;
+ 
+@@ -361,20 +363,53 @@ gssd_destroy_client(struct clnt_info *clp)
+ 
+ static void gssd_scan(void);
+ 
++static void wait_for_child_and_detach(pthread_t th)
++{
++	pthread_mutex_lock(&pmutex);
++	while (!thread_started)
++		pthread_cond_wait(&pcond, &pmutex);
++	thread_started = false;
++	pthread_mutex_unlock(&pmutex);
++	pthread_detach(th);
++}
++
++/* For each upcall create a thread, detach from the main process so that
++ * resources are released back into the system without the need for a join.
++ * We need to wait for the child thread to start and consume the event from
++ * the file descriptor.
++ */
+ static void
+ gssd_clnt_gssd_cb(int UNUSED(fd), short UNUSED(which), void *data)
+ {
+ 	struct clnt_info *clp = data;
+-
+-	handle_gssd_upcall(clp);
++	pthread_t th;
++	int ret;
++
++	ret = pthread_create(&th, NULL, (void *)handle_gssd_upcall,
++				(void *)clp);
++	if (ret != 0) {
++		printerr(0, "ERROR: pthread_create failed: ret %d: %s\n",
++			 ret, strerror(errno));
++		return;
++	}
++	wait_for_child_and_detach(th);
+ }
+ 
+ static void
+ gssd_clnt_krb5_cb(int UNUSED(fd), short UNUSED(which), void *data)
+ {
+ 	struct clnt_info *clp = data;
+-
+-	handle_krb5_upcall(clp);
++	pthread_t th;
++	int ret;
++
++	ret = pthread_create(&th, NULL, (void *)handle_krb5_upcall,
++				(void *)clp);
++	if (ret != 0) {
++		printerr(0, "ERROR: pthread_create failed: ret %d: %s\n",
++			 ret, strerror(errno));
++		return;
++	}
++	wait_for_child_and_detach(th);
+ }
+ 
+ static struct clnt_info *
+diff --git a/utils/gssd/gssd.h b/utils/gssd/gssd.h
+index c6937c5..565bce3 100644
+--- a/utils/gssd/gssd.h
++++ b/utils/gssd/gssd.h
+@@ -36,6 +36,7 @@
+ #include <gssapi/gssapi.h>
+ #include <event.h>
+ #include <stdbool.h>
++#include <pthread.h>
+ 
+ #ifndef GSSD_PIPEFS_DIR
+ #define GSSD_PIPEFS_DIR		"/var/lib/nfs/rpc_pipefs"
+@@ -61,6 +62,10 @@ extern int			root_uses_machine_creds;
+ extern unsigned int 		context_timeout;
+ extern unsigned int rpc_timeout;
+ extern char			*preferred_realm;
++extern pthread_mutex_t ple_lock;
++extern pthread_cond_t pcond;
++extern pthread_mutex_t pmutex;
++extern int thread_started;
+ 
+ struct clnt_info {
+ 	TAILQ_ENTRY(clnt_info)	list;
+diff --git a/utils/gssd/gssd_proc.c b/utils/gssd/gssd_proc.c
+index 1ef68d8..e2e95dc 100644
+--- a/utils/gssd/gssd_proc.c
++++ b/utils/gssd/gssd_proc.c
+@@ -629,36 +629,6 @@ process_krb5_upcall(struct clnt_info *clp, uid_t uid, int fd, char *tgtname,
+ 	if (uid != 0 || (uid == 0 && root_uses_machine_creds == 0 &&
+ 				service == NULL)) {
+ 
+-		/* already running as uid 0 */
+-		if (uid == 0)
+-			goto no_fork;
+-
+-		pid = fork();
+-		switch(pid) {
+-		case 0:
+-			/* Child: fall through to rest of function */
+-			childpid = getpid();
+-			unsetenv("KRB5CCNAME");
+-			printerr(2, "CHILD forked pid %d \n", childpid);
+-			break;
+-		case -1:
+-			/* fork() failed! */
+-			printerr(0, "WARNING: unable to fork() to handle"
+-				"upcall: %s\n", strerror(errno));
+-			return;
+-		default:
+-			/* Parent: just wait on child to exit and return */
+-			do {
+-				pid = wait(&err);
+-			} while(pid == -1 && errno != -ECHILD);
+-
+-			if (WIFSIGNALED(err))
+-				printerr(0, "WARNING: forked child was killed"
+-					 "with signal %d\n", WTERMSIG(err));
+-			return;
+-		}
+-no_fork:
+-
+ 		auth = krb5_not_machine_creds(clp, uid, tgtname, &downcall_err,
+ 						&err, &rpc_clnt);
+ 		if (err)
+@@ -735,12 +705,28 @@ out_return_error:
+ 	goto out;
+ }
+ 
++/* signal to the parent thread that we have read from the file descriptor.
++ * it should allow the parent to proceed to poll on the descriptor for
++ * the next upcall from the kernel.
++ */
++static void
++signal_parent_event_consumed(void)
++{
++	pthread_mutex_lock(&pmutex);
++	thread_started = true;
++	pthread_cond_signal(&pcond);
++	pthread_mutex_unlock(&pmutex);
++}
++
+ void
+ handle_krb5_upcall(struct clnt_info *clp)
+ {
+ 	uid_t			uid;
++	int 			status;
+ 
+-	if (read(clp->krb5_fd, &uid, sizeof(uid)) < (ssize_t)sizeof(uid)) {
++	status = read(clp->krb5_fd, &uid, sizeof(uid)) < (ssize_t)sizeof(uid);
++	signal_parent_event_consumed();
++	if (status) {
+ 		printerr(0, "WARNING: failed reading uid from krb5 "
+ 			    "upcall pipe: %s\n", strerror(errno));
+ 		return;
+@@ -765,6 +751,7 @@ handle_gssd_upcall(struct clnt_info *clp)
+ 	char			*enctypes = NULL;
+ 
+ 	lbuflen = read(clp->gssd_fd, lbuf, sizeof(lbuf));
++	signal_parent_event_consumed();
+ 	if (lbuflen <= 0 || lbuf[lbuflen-1] != '\n') {
+ 		printerr(0, "WARNING: handle_gssd_upcall: "
+ 			    "failed reading request\n");
+diff --git a/utils/gssd/krb5_util.c b/utils/gssd/krb5_util.c
+index 8ef8184..3328696 100644
+--- a/utils/gssd/krb5_util.c
++++ b/utils/gssd/krb5_util.c
+@@ -128,6 +128,7 @@
+ 
+ /* Global list of principals/cache file names for machine credentials */
+ struct gssd_k5_kt_princ *gssd_k5_kt_princ_list = NULL;
++pthread_mutex_t ple_lock = PTHREAD_MUTEX_INITIALIZER;
+ 
+ #ifdef HAVE_SET_ALLOWABLE_ENCTYPES
+ int limit_to_legacy_enctypes = 0;
+@@ -586,10 +587,12 @@ get_ple_by_princ(krb5_context context, krb5_principal princ)
+ 
+ 	/* Need to serialize list if we ever become multi-threaded! */
+ 
++	pthread_mutex_lock(&ple_lock);
+ 	ple = find_ple_by_princ(context, princ);
+ 	if (ple == NULL) {
+ 		ple = new_ple(context, princ);
+ 	}
++	pthread_mutex_unlock(&ple_lock);
+ 
+ 	return ple;
+ }
+-- 
+1.8.3.1
 
-It was my bad. I decided to change the order of when the call is done
-(ie., doing it after the setting the uid and gid) and that causes an
-error. Perhaps it's becuase once the uid is changed to some user's
-uid, then that uid no longer has the ability to drop the supplementary
-groups.
-
-Going to send a new version of patches...
-
->>
->> steved.
->>
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs"
->> in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> --
-> Jeff Layton <jlayton@poochiereds.net>
->
