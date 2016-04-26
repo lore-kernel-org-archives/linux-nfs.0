@@ -1,73 +1,55 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx142.netapp.com ([216.240.21.19]:38897 "EHLO mx142.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S964869AbcDYVec (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 25 Apr 2016 17:34:32 -0400
-From: "Kornievskaia, Olga" <Olga.Kornievskaia@netapp.com>
-To: Jeff Layton <jlayton@poochiereds.net>
-CC: "steved@redhat.com" <steved@redhat.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH v3 2/3] gssd: using syscalls directly to change thread's
- identity
-Date: Mon, 25 Apr 2016 21:34:29 +0000
-Message-ID: <0A64C0BB-A140-42F0-8008-8675A4E94B9E@netapp.com>
-References: <1461603513-67523-1-git-send-email-kolga@netapp.com>
- <1461603513-67523-3-git-send-email-kolga@netapp.com>
- <1461615792.4288.31.camel@poochiereds.net>
-In-Reply-To: <1461615792.4288.31.camel@poochiereds.net>
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
+Received: from mail-wm0-f68.google.com ([74.125.82.68]:35175 "EHLO
+	mail-wm0-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752685AbcDZL4X (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 26 Apr 2016 07:56:23 -0400
+From: Michal Hocko <mhocko@kernel.org>
+To: <linux-mm@kvack.org>, <linux-fsdevel@vger.kernel.org>
+Cc: Andrew Morton <akpm@linux-foundation.org>,
+        Dave Chinner <david@fromorbit.com>, "Theodore Ts'o" <tytso@mit.edu>,
+        Chris Mason <clm@fb.com>, Jan Kara <jack@suse.cz>,
+        ceph-devel@vger.kernel.org, cluster-devel@redhat.com,
+        linux-nfs@vger.kernel.org, logfs@logfs.org, xfs@oss.sgi.com,
+        linux-ext4@vger.kernel.org, linux-btrfs@vger.kernel.org,
+        linux-mtd@lists.infradead.org, reiserfs-devel@vger.kernel.org,
+        linux-ntfs-dev@lists.sourceforge.net,
+        linux-f2fs-devel@lists.sourceforge.net, linux-afs@lists.infradead.org,
+        LKML <linux-kernel@vger.kernel.org>
+Subject: [PATCH 0/2] scop GFP_NOFS api
+Date: Tue, 26 Apr 2016 13:56:10 +0200
+Message-Id: <1461671772-1269-1-git-send-email-mhocko@kernel.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-DQo+IE9uIEFwciAyNSwgMjAxNiwgYXQgNDoyMyBQTSwgSmVmZiBMYXl0b24gPGpsYXl0b25AcG9v
-Y2hpZXJlZHMubmV0PiB3cm90ZToNCj4gDQo+IE9uIE1vbiwgMjAxNi0wNC0yNSBhdCAxMjo1OCAt
-MDQwMCwgT2xnYSBLb3JuaWV2c2thaWEgd3JvdGU6DQo+PiBGb3IgdGhlIHRocmVhZGVkIHZlcnNp
-b24gd2UgaGF2ZSB0byBzZXQgdWlkLGdpZCBwZXIgdGhyZWFkIGluc3RlYWQNCj4+IG9mIHBlciBw
-cm9jZXNzLiBnbGliYyBzZXRyZXN1aWQoKSB3aGVuIGNhbGxlZCBmcm9tIGEgdGhyZWFkLCBpdCds
-bA0KPj4gc2VuZCBhIHNpZ25hbCB0byBhbGwgb3RoZXIgdGhyZWFkcyB0byBzeW5jaHJvbml6ZSB0
-aGUgdWlkIGluIGFsbA0KPj4gb3RoZXIgdGhyZWFkcy4gVG8gYnlwYXNzIHRoaXMsIHdlIGhhdmUg
-dG8gY2FsbCBzeXNjYWxsKCkgZGlyZWN0bHkuDQo+PiANCj4+IFNpZ25lZC1vZmYtYnk6IE9sZ2Eg
-S29ybmlldnNrYWlhIDxrb2xnYUBuZXRhcHAuY29tPg0KPj4gUmV2aWV3ZWQtYnk6IFN0ZXZlIERp
-Y2tzb24gPHN0ZXZlZEByZWRoYXQuY29tPg0KPj4gLS0tDQo+PiAgdXRpbHMvZ3NzZC9nc3NkX3By
-b2MuYyB8IDEyICsrKysrKysrKy0tLQ0KPj4gIDEgZmlsZSBjaGFuZ2VkLCA5IGluc2VydGlvbnMo
-KyksIDMgZGVsZXRpb25zKC0pDQo+PiANCj4+IGRpZmYgLS1naXQgYS91dGlscy9nc3NkL2dzc2Rf
-cHJvYy5jIGIvdXRpbHMvZ3NzZC9nc3NkX3Byb2MuYw0KPj4gaW5kZXggZTJlOTVkYy4uNDg3YTRm
-NSAxMDA2NDQNCj4+IC0tLSBhL3V0aWxzL2dzc2QvZ3NzZF9wcm9jLmMNCj4+ICsrKyBiL3V0aWxz
-L2dzc2QvZ3NzZF9wcm9jLmMNCj4+IEBAIC02OSw2ICs2OSw3IEBADQo+PiAgI2luY2x1ZGUgDQo+
-PiAgI2luY2x1ZGUgDQo+PiAgI2luY2x1ZGUgDQo+PiArI2luY2x1ZGUgDQo+PiAgDQo+PiAgI2lu
-Y2x1ZGUgImdzc2QuaCINCj4+ICAjaW5jbHVkZSAiZXJyX3V0aWwuaCINCj4+IEBAIC00MzYsNyAr
-NDM3LDcgQEAgY2hhbmdlX2lkZW50aXR5KHVpZF90IHVpZCkNCj4+ICAJc3RydWN0IHBhc3N3ZAkq
-cHc7DQo+PiAgDQo+PiAgCS8qIGRyb3AgbGlzdCBvZiBzdXBwbGltZW50YXJ5IGdyb3VwcyBmaXJz
-dCAqLw0KPj4gLQlpZiAoc2V0Z3JvdXBzKDAsIE5VTEwpICE9IDApIHsNCj4+ICsJaWYgKHN5c2Nh
-bGwoU1lTX3NldGdyb3VwcywgMCkgIT0gMCkgew0KPj4gIAkJcHJpbnRlcnIoMCwgIldBUk5JTkc6
-IHVuYWJsZSB0byBkcm9wIHN1cHBsaW1lbnRhcnkgZ3JvdXBzISIpOw0KPj4gIAkJcmV0dXJuIGVy
-cm5vOw0KPj4gIAl9DQo+PiBAQCAtNDU3LDcgKzQ1OCwxMiBAQCBjaGFuZ2VfaWRlbnRpdHkodWlk
-X3QgdWlkKQ0KPj4gIAkgKiBTd2l0Y2ggdGhlIEdJRHMuIE5vdGUgdGhhdCB3ZSBsZWF2ZSB0aGUg
-c2F2ZWQtc2V0LWdpZCBhbG9uZSBpbiBhbg0KPj4gIAkgKiBhdHRlbXB0IHRvIHByZXZlbnQgYXR0
-YWNrcyB2aWEgcHRyYWNlKCkNCj4+ICAJICovDQo+PiAtCWlmIChzZXRyZXNnaWQocHctPnB3X2dp
-ZCwgcHctPnB3X2dpZCwgLTEpICE9IDApIHsNCj4+ICsJLyogRm9yIHRoZSB0aHJlYWRlZCB2ZXJz
-aW9uIHdlIGhhdmUgdG8gc2V0IHVpZCxnaWQgcGVyIHRocmVhZCBpbnN0ZWFkDQo+PiArCSAqIG9m
-IHBlciBwcm9jZXNzLiBnbGliYyBzZXRyZXN1aWQoKSB3aGVuIGNhbGxlZCBmcm9tIGEgdGhyZWFk
-LCBpdCdsbA0KPj4gKwkgKiBzZW5kIGEgc2lnbmFsIHRvIGFsbCBvdGhlciB0aHJlYWRzIHRvIHN5
-bmNocm9uaXplIHRoZSB1aWQgaW4gYWxsDQo+PiArCSAqIG90aGVyIHRocmVhZHMuIFRvIGJ5cGFz
-cyB0aGlzLCB3ZSBoYXZlIHRvIGNhbGwgc3lzY2FsbCgpIGRpcmVjdGx5Lg0KPj4gKwkgKi8NCj4+
-ICsJaWYgKHN5c2NhbGwoU1lTX3NldHJlc2dpZCwgcHctPnB3X2dpZCkgIT0gMCkgew0KPj4gIAkJ
-cHJpbnRlcnIoMCwgIldBUk5JTkc6IGZhaWxlZCB0byBzZXQgZ2lkIHRvICV1IVxuIiwgcHctPnB3
-X2dpZCk7DQo+PiAgCQlyZXR1cm4gZXJybm87DQo+PiAgCX0NCj4+IEBAIC00NjYsNyArNDcyLDcg
-QEAgY2hhbmdlX2lkZW50aXR5KHVpZF90IHVpZCkNCj4+ICAJICogU3dpdGNoIFVJRHMsIGJ1dCBs
-ZWF2ZSBzYXZlZC1zZXQtdWlkIGFsb25lIHRvIHByZXZlbnQgcHRyYWNlKCkgYnkNCj4+ICAJICog
-b3RoZXIgcHJvY2Vzc2VzIHJ1bm5pbmcgd2l0aCB0aGlzIHVpZC4NCj4+ICAJICovDQo+PiAtCWlm
-IChzZXRyZXN1aWQodWlkLCB1aWQsIC0xKSAhPSAwKSB7DQo+PiArCWlmIChzeXNjYWxsKFNZU19z
-ZXRyZXN1aWQsIHVpZCkgIT0gMCkgew0KPiANCj4gVGhhdCBsb29rcyB3cm9uZy4gc2V0cmVzdWlk
-IHRha2VzIDMgYXJndW1lbnRzOg0KPiANCj4gICAgU1lTQ0FMTF9ERUZJTkUzKHNldHJlc3VpZCwg
-dWlkX3QsIHJ1aWQsIHVpZF90LCBldWlkLCB1aWRfdCwgc3VpZCkNCj4gDQo+IERpdHRvIGZvciBz
-ZXRyZXNnaWQgYWJvdmUuIHN5c2NhbGwgaXMgYSB2YXJhcmdzIGZ1bmN0aW9uLCBzbyB5b3UgcmVh
-bGx5DQo+IF9tdXN0XyBwYXNzIGluIHRoZSByaWdodCBudW1iZXIgb2YgYXJncyBvciB5b3UnbGwg
-ZW5kIHVwIGZlZWRpbmcgaXQNCj4gcmFuZG9tIGp1bmsgaW4gcmVnaXN0ZXJzIG9yIG9mZiB0aGUg
-c3RhY2suIFRoZSBjb21waWxlciB3b24ndCBzYXZlIHlvdQ0KPiBoZXJl4oCmDQoNClRoYW5rcyBK
-ZWZmLiBXaWxsIGZpeCB0aGF0LiBzZXRncm91cHMgdGFrZSAyIGFyZ3Mgc28gdGhhdCBzaG91bGQg
-YmUgZml4ZWQgdG9vLg0KDQoNCj4+ICAJCXByaW50ZXJyKDAsICJXQVJOSU5HOiBGYWlsZWQgdG8g
-c2V0dWlkIGZvciB1c2VyIHdpdGgNCj4gdWlkICV1XG4iLA0KPj4gIAkJCQl1aWQpOw0KPj4gIAkJ
-cmV0dXJuIGVycm5vOw0KPiAtLSANCj4gSmVmZiBMYXl0b24gPGpsYXl0b25AcG9vY2hpZXJlZHMu
-bmV0Pg0KDQo=
+Hi,
+we have discussed this topic at LSF/MM this year. There was a general
+interest in the scope GFP_NOFS allocation context among some FS
+developers. For those who are not aware of the discussion or the issue
+I am trying to sort out (or at least start in that direction) please
+have a look at patch 1 which adds memalloc_nofs_{save,restore} api
+which basically copies what we have for the scope GFP_NOIO allocation
+context. I haven't converted any of the FS myself because that is way
+beyond my area of expertise but I would be happy to help with further
+changes on the MM front as well as in some more generic code paths.
+
+Dave had an idea on how to further improve the reclaim context to be
+less all-or-nothing wrt. GFP_NOFS. In short he was suggesting an opaque
+and FS specific cookie set in the FS allocation context and consumed
+by the FS reclaim context to allow doing some provably save actions
+that would be skipped due to GFP_NOFS normally.  I like this idea and
+I believe we can go that direction regardless of the approach taken here.
+Many filesystems simply need to cleanup their NOFS usage first before
+diving into a more complex changes.
+
+The patch 2 is a debugging aid which warns about explicit allocation
+requests from the scope context. This is should help to reduce the
+direct usage of the NOFS flags to bare minimum in favor of the scope
+API. It is not aimed to be merged upstream. I would hope Andrew took it
+into mmotm tree to give it linux-next exposure and allow developers to
+do further cleanups.  There is a new kernel command line parameter which
+has to be used for the debugging to be enabled.
+
+I think the GFP_NOIO should be seeing the same clean up.
+
+Any feedback is highly appreciated.
+
