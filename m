@@ -1,85 +1,82 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qk0-f177.google.com ([209.85.220.177]:33800 "EHLO
-	mail-qk0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752688AbcDZQvO (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 26 Apr 2016 12:51:14 -0400
-Received: by mail-qk0-f177.google.com with SMTP id r184so7921590qkc.1
-        for <linux-nfs@vger.kernel.org>; Tue, 26 Apr 2016 09:51:13 -0700 (PDT)
-Message-ID: <1461689470.4200.7.camel@poochiereds.net>
-Subject: Re: [PATCH v4 2/3] gssd: using syscalls directly to change thread's
- identity
-From: Jeff Layton <jlayton@poochiereds.net>
-To: Olga Kornievskaia <kolga@netapp.com>, steved@redhat.com
-Cc: linux-nfs@vger.kernel.org
-Date: Tue, 26 Apr 2016 12:51:10 -0400
-In-Reply-To: <1461677655-68294-3-git-send-email-kolga@netapp.com>
-References: <1461677655-68294-1-git-send-email-kolga@netapp.com>
-	 <1461677655-68294-3-git-send-email-kolga@netapp.com>
-Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
+Received: from userp1040.oracle.com ([156.151.31.81]:45848 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752014AbcDZRPp convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 26 Apr 2016 13:15:45 -0400
+Content-Type: text/plain; charset=windows-1252
+Mime-Version: 1.0 (Mac OS X Mail 9.3 \(3124\))
+Subject: Re: [PATCH v2 00/18] NFS/RDMA client patches for v4.7
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <571F9B0F.8050202@opengridcomputing.com>
+Date: Tue, 26 Apr 2016 13:15:40 -0400
+Cc: "linux-rdma@vger.kernel.org" <linux-rdma@vger.kernel.org>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Message-Id: <65970DB7-5F18-4C66-8698-C0A13F88F4E7@oracle.com>
+References: <20160425185956.3566.64142.stgit@manet.1015granger.net> <571F778B.5000306@opengridcomputing.com> <7580EA21-0782-470B-94FF-2B872A92B089@oracle.com> <571F9B0F.8050202@opengridcomputing.com>
+To: Steve Wise <swise@opengridcomputing.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 2016-04-26 at 09:34 -0400, Olga Kornievskaia wrote:
-> For the threaded version we have to set uid,gid per thread instead
-> of per process. glibc setresuid() when called from a thread, it'll
-> send a signal to all other threads to synchronize the uid in all
-> other threads. To bypass this, we have to call syscall() directly.
-> 
-> Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
-> Reviewed-by: Steve Dickson <steved@redhat.com>
-> ---
->  utils/gssd/gssd_proc.c | 12 +++++++++---
->  1 file changed, 9 insertions(+), 3 deletions(-)
-> 
-> diff --git a/utils/gssd/gssd_proc.c b/utils/gssd/gssd_proc.c
-> index e2e95dc..39c4b17 100644
-> --- a/utils/gssd/gssd_proc.c
-> +++ b/utils/gssd/gssd_proc.c
-> @@ -69,6 +69,7 @@
->  #include 
->  #include 
->  #include 
-> +#include 
->  
->  #include "gssd.h"
->  #include "err_util.h"
-> @@ -436,7 +437,7 @@ change_identity(uid_t uid)
->  	struct passwd	*pw;
->  
->  	/* drop list of supplimentary groups first */
-> -	if (setgroups(0, NULL) != 0) {
-> +	if (syscall(SYS_setgroups, 0, 0) != 0) {
->  		printerr(0, "WARNING: unable to drop supplimentary groups!");
->  		return errno;
->  	}
-> @@ -457,7 +458,12 @@ change_identity(uid_t uid)
->  	 * Switch the GIDs. Note that we leave the saved-set-gid alone in an
->  	 * attempt to prevent attacks via ptrace()
->  	 */
-> -	if (setresgid(pw->pw_gid, pw->pw_gid, -1) != 0) {
-> +	/* For the threaded version we have to set uid,gid per thread instead
-> +	 * of per process. glibc setresuid() when called from a thread, it'll
-> +	 * send a signal to all other threads to synchronize the uid in all
-> +	 * other threads. To bypass this, we have to call syscall() directly.
-> +	 */
-> +	if (syscall(SYS_setresgid, pw->pw_gid, -1, -1) != 0) {
->  		printerr(0, "WARNING: failed to set gid to %u!\n", pw->pw_gid);
->  		return errno;
->  	}
-> @@ -466,7 +472,7 @@ change_identity(uid_t uid)
->  	 * Switch UIDs, but leave saved-set-uid alone to prevent ptrace() by
->  	 * other processes running with this uid.
->  	 */
-> -	if (setresuid(uid, uid, -1) != 0) {
-> +	if (syscall(SYS_setresuid, uid, -1, -1) != 0) {
->  		printerr(0, "WARNING: Failed to setuid for user with uid %u\n",
->  				uid);
->  		return errno;
 
-Note that the old code set both real and effective uid/gid. Here you're
-changing it to just set the real uid. Is that change deliberate? I
-think you probably want to set the euid/egid as well.
+> On Apr 26, 2016, at 12:45 PM, Steve Wise <swise@opengridcomputing.com> wrote:
+> 
+> On 4/26/2016 9:57 AM, Chuck Lever wrote:
+>> 
+>>> On Apr 26, 2016, at 10:13 AM, Steve Wise <swise@opengridcomputing.com> wrote:
+>>> 
+>>> Hey Chuck, I'm testing this series on cxgb4.    I'm running 'iozone -a -+d -I' on a share and watching the server stats.  Are the starve numbers expected?
+>> 
+>> Yes, unless you're seeing much higher numbers than
+>> you used to.
+>> 
+>> 
+>>> Every 5.0s: for s in  /proc/sys/sunrpc/svc_rdma/rdma_* ; do echo -n "$(basename $s): "; cat $s; done                              Tue Apr 26 07:10:17 2016
+>>> 
+>>> rdma_stat_read: 379872
+>>> rdma_stat_recv: 498144
+>>> rdma_stat_rq_poll: 0
+>>> rdma_stat_rq_prod: 0
+>>> rdma_stat_rq_starve: 675564
+>> 
+>> This means work was enqueued on the svc_xprt, but by the
+>> time the upper layer invoked svc_rdma_recvfrom, the work
+>> was already handled by an earlier wake-up.
+>> 
+>> I'm not exactly sure why this happens, but it seems to be
+>> normal (if suboptimal).
+>> 
+>> 
+>>> rdma_stat_sq_poll: 0
+>>> rdma_stat_sq_prod: 0
+>>> rdma_stat_sq_starve: 1748000
+>> 
+>> No SQ space to post a Send, so the caller is put to sleep.
+>> 
+>> The server chronically underestimates the SQ depth, especially
+>> for FRWR. I haven't figured out a better way to estimate it.
+>> 
+>> But it's generally harmless, as there is a mechanism to put
+>> callers to sleep until there is space on the SQ.
+>> 
+> 
+> 
+> Thanks.
+> 
+> With this iw_cxgb4 drain fix applied:
+> 
+> [PATCH 3/3] iw_cxgb4: handing draining an idle qp
+> 
+> http://www.spinics.net/lists/linux-rdma/msg34927.html
+> 
+> The series tests good over cxgb4.
+> 
+> Tested-by: Steve Wise <swise@opengridcomputing.com>
 
--- 
-Jeff Layton <jlayton@poochiereds.net>
+Excellent. I will mark up my patch series with your
+Tested-by tag.
+
+--
+Chuck Lever
+
+
+
