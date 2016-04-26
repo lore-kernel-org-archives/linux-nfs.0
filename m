@@ -1,351 +1,158 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-wm0-f65.google.com ([74.125.82.65]:35192 "EHLO
-	mail-wm0-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752688AbcDZL4Y (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 26 Apr 2016 07:56:24 -0400
-From: Michal Hocko <mhocko@kernel.org>
-To: <linux-mm@kvack.org>, <linux-fsdevel@vger.kernel.org>
-Cc: Andrew Morton <akpm@linux-foundation.org>,
-        Dave Chinner <david@fromorbit.com>, "Theodore Ts'o" <tytso@mit.edu>,
-        Chris Mason <clm@fb.com>, Jan Kara <jack@suse.cz>,
-        ceph-devel@vger.kernel.org, cluster-devel@redhat.com,
-        linux-nfs@vger.kernel.org, logfs@logfs.org, xfs@oss.sgi.com,
-        linux-ext4@vger.kernel.org, linux-btrfs@vger.kernel.org,
-        linux-mtd@lists.infradead.org, reiserfs-devel@vger.kernel.org,
-        linux-ntfs-dev@lists.sourceforge.net,
-        linux-f2fs-devel@lists.sourceforge.net, linux-afs@lists.infradead.org,
-        LKML <linux-kernel@vger.kernel.org>, Michal Hocko <mhocko@suse.com>
-Subject: [PATCH 1/2] mm: add PF_MEMALLOC_NOFS
-Date: Tue, 26 Apr 2016 13:56:11 +0200
-Message-Id: <1461671772-1269-2-git-send-email-mhocko@kernel.org>
-In-Reply-To: <1461671772-1269-1-git-send-email-mhocko@kernel.org>
-References: <1461671772-1269-1-git-send-email-mhocko@kernel.org>
+Received: from mx142.netapp.com ([216.240.21.19]:46496 "EHLO mx142.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750835AbcDZNeQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 26 Apr 2016 09:34:16 -0400
+From: Olga Kornievskaia <kolga@netapp.com>
+To: <steved@redhat.com>
+CC: <linux-nfs@vger.kernel.org>
+Subject: [PATCH v4 3/3] gssd: always call gss_krb5_ccache_name
+Date: Tue, 26 Apr 2016 09:34:15 -0400
+Message-ID: <1461677655-68294-4-git-send-email-kolga@netapp.com>
+In-Reply-To: <1461677655-68294-1-git-send-email-kolga@netapp.com>
+References: <1461677655-68294-1-git-send-email-kolga@netapp.com>
+MIME-Version: 1.0
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Michal Hocko <mhocko@suse.com>
+Previously the location of the credential cache was passed in either
+using environment variable KRB5CCNAME or gss_krb5_ccache_name() if
+supported. For threaded-gssd, we can't use an environment variable
+as it's shared among all thread. Thus always use the api call.
 
-GFP_NOFS context is used for the following 4 reasons currently
-	- to prevent from deadlocks when the lock held by the allocation
-	  context would be needed during the memory reclaim
-	- to prevent from stack overflows during the reclaim because
-	  the allocation is performed from a deep context already
-	- to prevent lockups when the allocation context depends on
-	  other reclaimers to make a forward progress indirectly
-	- just in case because this would be safe from the fs POV
-
-Unfortunately overuse of this allocation context brings some problems
-to the MM. Memory reclaim is much weaker (especially during heavy FS
-metadata workloads), OOM killer cannot be invoked because the MM layer
-doesn't have enough information about how much memory is freeable by the
-FS layer.
-
-In many cases it is far from clear why the weaker context is even used
-and so it might be used unnecessarily. We would like to get rid of
-those as much as possible. One way to do that is to use the flag in the
-scopes rather than isolated cases. Such a scope is declared when really
-necessary, tracked per task and all the allocation requests from within
-the context will simply inherit the GFP_NOFS semantic.
-
-Not only this is easier to understand and maintain because there are
-much less problematic contexts than specific allocation requests, this
-also helps code paths where FS layer interacts with other layers (e.g.
-crypto, security modules, MM etc...) and there is no easy way to convey
-the allocation context between the layers.
-
-Introduce PF_MEMALLOC_NOFS task specific flag and memalloc_nofs_{save,restore}
-API to control the scope. This is basically copying
-memalloc_noio_{save,restore} API we have for other restricted allocation
-context GFP_NOIO.
-
-Xfs has already had a similar functionality as PF_FSTRANS so let's just
-give it a more generic name and make it usable for others as well and
-move the GFP_NOFS context tracking to the page allocator. Xfs has its
-own accessor functions but let's keep them for now to reduce this patch
-as minimum.
-
-This patch shouldn't introduce any functional changes. Xfs code paths
-preserve their semantic. kmem_flags_convert() doesn't need to evaluate
-the flag anymore because it is the page allocator to care about the
-flag. memalloc_noio_flags is renamed to current_gfp_context because it
-now cares about both PF_MEMALLOC_NOFS and PF_MEMALLOC_NOIO contexts.
-
-Let's hope that filesystems will drop direct GFP_NOFS (resp. ~__GFP_FS)
-usage as much and possible and only use a properly documented
-memalloc_nofs_{save,restore} checkpoints where they are appropriate.
-
-Signed-off-by: Michal Hocko <mhocko@suse.com>
+Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
+Reviewed-by: Steve Dickson <steved@redhat.com>
 ---
- fs/xfs/kmem.c             |  4 ++--
- fs/xfs/kmem.h             |  2 +-
- fs/xfs/libxfs/xfs_btree.c |  2 +-
- fs/xfs/xfs_aops.c         |  6 +++---
- fs/xfs/xfs_trans.c        | 12 ++++++------
- include/linux/gfp.h       |  8 ++++++++
- include/linux/sched.h     | 32 ++++++++++++++++++++++++++------
- mm/page_alloc.c           |  8 +++++---
- mm/vmscan.c               |  4 ++--
- 9 files changed, 54 insertions(+), 24 deletions(-)
+ utils/gssd/gssd_proc.c | 12 +++++++++--
+ utils/gssd/krb5_util.c | 56 +++++++++-----------------------------------------
+ utils/gssd/krb5_util.h |  1 -
+ 3 files changed, 20 insertions(+), 49 deletions(-)
 
-diff --git a/fs/xfs/kmem.c b/fs/xfs/kmem.c
-index 686ba6fb20dd..73f6ab59c664 100644
---- a/fs/xfs/kmem.c
-+++ b/fs/xfs/kmem.c
-@@ -80,13 +80,13 @@ kmem_zalloc_large(size_t size, xfs_km_flags_t flags)
- 	 * context via PF_MEMALLOC_NOIO to prevent memory reclaim re-entering
- 	 * the filesystem here and potentially deadlocking.
- 	 */
--	if ((current->flags & PF_FSTRANS) || (flags & KM_NOFS))
-+	if ((current->flags & PF_MEMALLOC_NOFS) || (flags & KM_NOFS))
- 		noio_flag = memalloc_noio_save();
- 
- 	lflags = kmem_flags_convert(flags);
- 	ptr = __vmalloc(size, lflags | __GFP_HIGHMEM | __GFP_ZERO, PAGE_KERNEL);
- 
--	if ((current->flags & PF_FSTRANS) || (flags & KM_NOFS))
-+	if ((current->flags & PF_MEMALLOC_NOFS) || (flags & KM_NOFS))
- 		memalloc_noio_restore(noio_flag);
- 
- 	return ptr;
-diff --git a/fs/xfs/kmem.h b/fs/xfs/kmem.h
-index d1c66e465ca5..b35688a54c9a 100644
---- a/fs/xfs/kmem.h
-+++ b/fs/xfs/kmem.h
-@@ -50,7 +50,7 @@ kmem_flags_convert(xfs_km_flags_t flags)
- 		lflags = GFP_ATOMIC | __GFP_NOWARN;
- 	} else {
- 		lflags = GFP_KERNEL | __GFP_NOWARN;
--		if ((current->flags & PF_FSTRANS) || (flags & KM_NOFS))
-+		if (flags & KM_NOFS)
- 			lflags &= ~__GFP_FS;
- 	}
- 
-diff --git a/fs/xfs/libxfs/xfs_btree.c b/fs/xfs/libxfs/xfs_btree.c
-index a0eb18ce3ad3..326566f4a131 100644
---- a/fs/xfs/libxfs/xfs_btree.c
-+++ b/fs/xfs/libxfs/xfs_btree.c
-@@ -2540,7 +2540,7 @@ xfs_btree_split_worker(
- 	struct xfs_btree_split_args	*args = container_of(work,
- 						struct xfs_btree_split_args, work);
- 	unsigned long		pflags;
--	unsigned long		new_pflags = PF_FSTRANS;
-+	unsigned long		new_pflags = PF_MEMALLOC_NOFS;
- 
- 	/*
- 	 * we are in a transaction context here, but may also be doing work
-diff --git a/fs/xfs/xfs_aops.c b/fs/xfs/xfs_aops.c
-index d12dfcfd0cc8..6d816ff0b763 100644
---- a/fs/xfs/xfs_aops.c
-+++ b/fs/xfs/xfs_aops.c
-@@ -124,7 +124,7 @@ xfs_setfilesize_trans_alloc(
- 	 * We hand off the transaction to the completion thread now, so
- 	 * clear the flag here.
- 	 */
--	current_restore_flags_nested(&tp->t_pflags, PF_FSTRANS);
-+	current_restore_flags_nested(&tp->t_pflags, PF_MEMALLOC_NOFS);
- 	return 0;
- }
- 
-@@ -169,7 +169,7 @@ xfs_setfilesize_ioend(
- 	 * thus we need to mark ourselves as being in a transaction manually.
- 	 * Similarly for freeze protection.
- 	 */
--	current_set_flags_nested(&tp->t_pflags, PF_FSTRANS);
-+	current_set_flags_nested(&tp->t_pflags, PF_MEMALLOC_NOFS);
- 	__sb_writers_acquired(VFS_I(ip)->i_sb, SB_FREEZE_FS);
- 
- 	/* we abort the update if there was an IO error */
-@@ -979,7 +979,7 @@ xfs_vm_writepage(
- 	 * Given that we do not allow direct reclaim to call us, we should
- 	 * never be called while in a filesystem transaction.
- 	 */
--	if (WARN_ON_ONCE(current->flags & PF_FSTRANS))
-+	if (WARN_ON_ONCE(current->flags & PF_MEMALLOC_NOFS))
- 		goto redirty;
- 
- 	/* Is this page beyond the end of the file? */
-diff --git a/fs/xfs/xfs_trans.c b/fs/xfs/xfs_trans.c
-index 748b16aff45a..1d247366c733 100644
---- a/fs/xfs/xfs_trans.c
-+++ b/fs/xfs/xfs_trans.c
-@@ -176,7 +176,7 @@ xfs_trans_reserve(
- 	bool		rsvd = (tp->t_flags & XFS_TRANS_RESERVE) != 0;
- 
- 	/* Mark this thread as being in a transaction */
--	current_set_flags_nested(&tp->t_pflags, PF_FSTRANS);
-+	current_set_flags_nested(&tp->t_pflags, PF_MEMALLOC_NOFS);
- 
- 	/*
- 	 * Attempt to reserve the needed disk blocks by decrementing
-@@ -186,7 +186,7 @@ xfs_trans_reserve(
- 	if (blocks > 0) {
- 		error = xfs_mod_fdblocks(tp->t_mountp, -((int64_t)blocks), rsvd);
- 		if (error != 0) {
--			current_restore_flags_nested(&tp->t_pflags, PF_FSTRANS);
-+			current_restore_flags_nested(&tp->t_pflags, PF_MEMALLOC_NOFS);
- 			return -ENOSPC;
+diff --git a/utils/gssd/gssd_proc.c b/utils/gssd/gssd_proc.c
+index 39c4b17..df2a72d 100644
+--- a/utils/gssd/gssd_proc.c
++++ b/utils/gssd/gssd_proc.c
+@@ -554,7 +554,15 @@ krb5_use_machine_creds(struct clnt_info *clp, uid_t uid, char *tgtname,
+ 			goto out;
  		}
- 		tp->t_blk_res += blocks;
-@@ -263,7 +263,7 @@ xfs_trans_reserve(
- 		tp->t_blk_res = 0;
- 	}
- 
--	current_restore_flags_nested(&tp->t_pflags, PF_FSTRANS);
-+	current_restore_flags_nested(&tp->t_pflags, PF_MEMALLOC_NOFS);
- 
- 	return error;
+ 		for (ccname = credlist; ccname && *ccname; ccname++) {
+-			gssd_setup_krb5_machine_gss_ccache(*ccname);
++			u_int min_stat;
++
++			if (gss_krb5_ccache_name(&min_stat, *ccname, NULL) !=
++					GSS_S_COMPLETE) {
++				printerr(1, "WARNING: gss_krb5_ccache_name "
++					 "with name '%s' failed (%s)\n",
++					 *ccname, error_message(min_stat));
++				continue;
++			}
+ 			if ((create_auth_rpc_client(clp, tgtname, rpc_clnt,
+ 						&auth, uid,
+ 						AUTHTYPE_KRB5,
+@@ -575,7 +583,7 @@ krb5_use_machine_creds(struct clnt_info *clp, uid_t uid, char *tgtname,
+ 					 "recreate cache for server %s\n",
+ 					clp->servername);
+ 			} else {
+-				printerr(1, "WARNING: Failed to create machine"
++				printerr(0, "ERROR: Failed to create machine"
+ 					 "krb5 context with any credentials"
+ 					 "cache for server %s\n",
+ 					clp->servername);
+diff --git a/utils/gssd/krb5_util.c b/utils/gssd/krb5_util.c
+index 3328696..7b74ab3 100644
+--- a/utils/gssd/krb5_util.c
++++ b/utils/gssd/krb5_util.c
+@@ -468,37 +468,6 @@ gssd_get_single_krb5_cred(krb5_context context,
  }
-@@ -921,7 +921,7 @@ __xfs_trans_commit(
  
- 	xfs_log_commit_cil(mp, tp, &commit_lsn, regrant);
- 
--	current_restore_flags_nested(&tp->t_pflags, PF_FSTRANS);
-+	current_restore_flags_nested(&tp->t_pflags, PF_MEMALLOC_NOFS);
- 	xfs_trans_free(tp);
- 
- 	/*
-@@ -951,7 +951,7 @@ __xfs_trans_commit(
- 		if (commit_lsn == -1 && !error)
- 			error = -EIO;
- 	}
--	current_restore_flags_nested(&tp->t_pflags, PF_FSTRANS);
-+	current_restore_flags_nested(&tp->t_pflags, PF_MEMALLOC_NOFS);
- 	xfs_trans_free_items(tp, NULLCOMMITLSN, !!error);
- 	xfs_trans_free(tp);
- 
-@@ -1005,7 +1005,7 @@ xfs_trans_cancel(
- 		xfs_log_done(mp, tp->t_ticket, NULL, false);
- 
- 	/* mark this thread as no longer being in a transaction */
--	current_restore_flags_nested(&tp->t_pflags, PF_FSTRANS);
-+	current_restore_flags_nested(&tp->t_pflags, PF_MEMALLOC_NOFS);
- 
- 	xfs_trans_free_items(tp, NULLCOMMITLSN, dirty);
- 	xfs_trans_free(tp);
-diff --git a/include/linux/gfp.h b/include/linux/gfp.h
-index 570383a41853..3ebdbdff44b4 100644
---- a/include/linux/gfp.h
-+++ b/include/linux/gfp.h
-@@ -210,8 +210,16 @@ struct vm_area_struct;
-  *
-  * GFP_NOIO will use direct reclaim to discard clean pages or slab pages
-  *   that do not require the starting of any physical IO.
-+ *   Please try to avoid using this flag directly and instead use
-+ *   memalloc_noio_{save,restore} to mark the whole scope which cannot
-+ *   perform any IO with a short explanation why. All allocation requests
-+ *   will inherit GFP_NOIO implicitly.
-  *
-  * GFP_NOFS will use direct reclaim but will not use any filesystem interfaces.
-+ *   Please try to avoid using this flag directly and instead use
-+ *   memalloc_nofs_{save,restore} to mark the whole scope which cannot/shouldn't
-+ *   recurse into the FS layer with a short explanation why. All allocation
-+ *   requests will inherit GFP_NOFS implicitly.
-  *
-  * GFP_USER is for userspace allocations that also need to be directly
-  *   accessibly by the kernel or hardware. It is typically used by hardware
-diff --git a/include/linux/sched.h b/include/linux/sched.h
-index acfc32b30704..e9521dc0475f 100644
---- a/include/linux/sched.h
-+++ b/include/linux/sched.h
-@@ -2102,9 +2102,9 @@ extern void thread_group_cputime_adjusted(struct task_struct *p, cputime_t *ut,
- #define PF_USED_ASYNC	0x00004000	/* used async_schedule*(), used by module init */
- #define PF_NOFREEZE	0x00008000	/* this thread should not be frozen */
- #define PF_FROZEN	0x00010000	/* frozen for system suspend */
--#define PF_FSTRANS	0x00020000	/* inside a filesystem transaction */
--#define PF_KSWAPD	0x00040000	/* I am kswapd */
--#define PF_MEMALLOC_NOIO 0x00080000	/* Allocating memory without IO involved */
-+#define PF_KSWAPD	0x00020000	/* I am kswapd */
-+#define PF_MEMALLOC_NOFS 0x00040000	/* All allocation requests will inherit GFP_NOFS */
-+#define PF_MEMALLOC_NOIO 0x00080000	/* All allocation requests will inherit GFP_NOIO */
- #define PF_LESS_THROTTLE 0x00100000	/* Throttle me less: I clean memory */
- #define PF_KTHREAD	0x00200000	/* I am a kernel thread */
- #define PF_RANDOMIZE	0x00400000	/* randomize virtual address space */
-@@ -2140,13 +2140,21 @@ extern void thread_group_cputime_adjusted(struct task_struct *p, cputime_t *ut,
- #define tsk_used_math(p) ((p)->flags & PF_USED_MATH)
- #define used_math() tsk_used_math(current)
- 
--/* __GFP_IO isn't allowed if PF_MEMALLOC_NOIO is set in current->flags
-- * __GFP_FS is also cleared as it implies __GFP_IO.
-+/*
-+ * Applies per-task gfp context to the given allocation flags.
-+ * PF_MEMALLOC_NOIO implies GFP_NOIO
-+ * PF_MEMALLOC_NOFS implies GFP_NOFS
+ /*
+- * Depending on the version of Kerberos, we either need to use
+- * a private function, or simply set the environment variable.
+- */
+-static void
+-gssd_set_krb5_ccache_name(char *ccname)
+-{
+-#ifdef USE_GSS_KRB5_CCACHE_NAME
+-	u_int	maj_stat, min_stat;
+-
+-	printerr(3, "using gss_krb5_ccache_name to select krb5 ccache %s\n",
+-		 ccname);
+-	maj_stat = gss_krb5_ccache_name(&min_stat, ccname, NULL);
+-	if (maj_stat != GSS_S_COMPLETE) {
+-		printerr(0, "WARNING: gss_krb5_ccache_name with "
+-			"name '%s' failed (%s)\n",
+-			ccname, error_message(min_stat));
+-	}
+-#else
+-	/*
+-	 * Set the KRB5CCNAME environment variable to tell the krb5 code
+-	 * which credentials cache to use.  (Instead of using the private
+-	 * function above for which there is no generic gssapi
+-	 * equivalent.)
+-	 */
+-	printerr(3, "using environment variable to select krb5 ccache %s\n",
+-		 ccname);
+-	setenv("KRB5CCNAME", ccname, 1);
+-#endif
+-}
+-
+-/*
+  * Given a principal, find a matching ple structure
   */
--static inline gfp_t memalloc_noio_flags(gfp_t flags)
-+static inline gfp_t current_gfp_context(gfp_t flags)
- {
-+	/*
-+	 * NOIO implies both NOIO and NOFS and it is a weaker context
-+	 * so always make sure it makes precendence
-+	 */
- 	if (unlikely(current->flags & PF_MEMALLOC_NOIO))
- 		flags &= ~(__GFP_IO | __GFP_FS);
-+	else if (unlikely(current->flags & PF_MEMALLOC_NOFS))
-+		flags &= ~__GFP_FS;
- 	return flags;
+ static struct gssd_k5_kt_princ *
+@@ -1094,6 +1063,7 @@ gssd_setup_krb5_user_gss_ccache(uid_t uid, char *servername, char *dirpattern)
+ 	const char		*cctype;
+ 	struct dirent		*d;
+ 	int			err, i, j;
++	u_int			maj_stat, min_stat;
+ 
+ 	printerr(3, "looking for client creds with uid %u for "
+ 		    "server %s in %s\n", uid, servername, dirpattern);
+@@ -1129,22 +1099,16 @@ gssd_setup_krb5_user_gss_ccache(uid_t uid, char *servername, char *dirpattern)
+ 
+ 	printerr(2, "using %s as credentials cache for client with "
+ 		    "uid %u for server %s\n", buf, uid, servername);
+-	gssd_set_krb5_ccache_name(buf);
+-	return 0;
+-}
+ 
+-/*
+- * Let the gss code know where to find the machine credentials ccache.
+- *
+- * Returns:
+- *	void
+- */
+-void
+-gssd_setup_krb5_machine_gss_ccache(char *ccname)
+-{
+-	printerr(2, "using %s as credentials cache for machine creds\n",
+-		 ccname);
+-	gssd_set_krb5_ccache_name(ccname);
++	printerr(3, "using gss_krb5_ccache_name to select krb5 ccache %s\n",
++		 buf);
++	maj_stat = gss_krb5_ccache_name(&min_stat, buf, NULL);
++	if (maj_stat != GSS_S_COMPLETE) {
++		printerr(0, "ERROR: unable to get user cred cache '%s' "
++			 "failed (%s)\n", buf, error_message(min_stat));
++		return maj_stat;
++	}
++	return 0;
  }
  
-@@ -2162,6 +2170,18 @@ static inline void memalloc_noio_restore(unsigned int flags)
- 	current->flags = (current->flags & ~PF_MEMALLOC_NOIO) | flags;
- }
- 
-+static inline unsigned int memalloc_nofs_save(void)
-+{
-+	unsigned int flags = current->flags & PF_MEMALLOC_NOFS;
-+	current->flags |= PF_MEMALLOC_NOFS;
-+	return flags;
-+}
-+
-+static inline void memalloc_nofs_restore(unsigned int flags)
-+{
-+	current->flags = (current->flags & ~PF_MEMALLOC_NOFS) | flags;
-+}
-+
- /* Per-process atomic flags. */
- #define PFA_NO_NEW_PRIVS 0	/* May not gain new privileges. */
- #define PFA_SPREAD_PAGE  1      /* Spread page cache over cpuset */
-diff --git a/mm/page_alloc.c b/mm/page_alloc.c
-index 0e2bb8f4ec0b..86bb5d6ddd7d 100644
---- a/mm/page_alloc.c
-+++ b/mm/page_alloc.c
-@@ -3801,10 +3801,12 @@ __alloc_pages_nodemask(gfp_t gfp_mask, unsigned int order,
- 		goto out;
- 
- 	/*
--	 * Runtime PM, block IO and its error handling path can deadlock
--	 * because I/O on the device might not complete.
-+	 * Apply scoped allocation constrains. This is mainly about
-+	 * GFP_NOFS resp. GFP_NOIO which has to be inherited for all
-+	 * allocation requests from a particular context which has
-+	 * been marked by memalloc_no{fs,io}_{save,restore}
- 	 */
--	alloc_mask = memalloc_noio_flags(gfp_mask);
-+	alloc_mask = current_gfp_context(gfp_mask);
- 	ac.spread_dirty_pages = false;
- 
- 	page = __alloc_pages_slowpath(alloc_mask, order, &ac);
-diff --git a/mm/vmscan.c b/mm/vmscan.c
-index c4a2f4512fca..cfb74de1efa3 100644
---- a/mm/vmscan.c
-+++ b/mm/vmscan.c
-@@ -2808,7 +2808,7 @@ unsigned long try_to_free_pages(struct zonelist *zonelist, int order,
- 	unsigned long nr_reclaimed;
- 	struct scan_control sc = {
- 		.nr_to_reclaim = SWAP_CLUSTER_MAX,
--		.gfp_mask = (gfp_mask = memalloc_noio_flags(gfp_mask)),
-+		.gfp_mask = (gfp_mask = current_gfp_context(gfp_mask)),
- 		.order = order,
- 		.nodemask = nodemask,
- 		.priority = DEF_PRIORITY,
-@@ -3656,7 +3656,7 @@ static int __zone_reclaim(struct zone *zone, gfp_t gfp_mask, unsigned int order)
- 	struct reclaim_state reclaim_state;
- 	struct scan_control sc = {
- 		.nr_to_reclaim = max(nr_pages, SWAP_CLUSTER_MAX),
--		.gfp_mask = (gfp_mask = memalloc_noio_flags(gfp_mask)),
-+		.gfp_mask = (gfp_mask = current_gfp_context(gfp_mask)),
- 		.order = order,
- 		.priority = ZONE_RECLAIM_PRIORITY,
- 		.may_writepage = !!(zone_reclaim_mode & RECLAIM_WRITE),
+ /*
+diff --git a/utils/gssd/krb5_util.h b/utils/gssd/krb5_util.h
+index a319588..d3b0777 100644
+--- a/utils/gssd/krb5_util.h
++++ b/utils/gssd/krb5_util.h
+@@ -27,7 +27,6 @@ int gssd_setup_krb5_user_gss_ccache(uid_t uid, char *servername,
+ 				     char *dirname);
+ int  gssd_get_krb5_machine_cred_list(char ***list);
+ void gssd_free_krb5_machine_cred_list(char **list);
+-void gssd_setup_krb5_machine_gss_ccache(char *servername);
+ void gssd_destroy_krb5_machine_creds(void);
+ int  gssd_refresh_krb5_machine_credential(char *hostname,
+ 					  struct gssd_k5_kt_princ *ple, 
 -- 
-2.8.0.rc3
+1.8.3.1
 
