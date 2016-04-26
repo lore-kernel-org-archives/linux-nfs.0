@@ -1,82 +1,57 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from userp1040.oracle.com ([156.151.31.81]:45848 "EHLO
-	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752014AbcDZRPp convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 26 Apr 2016 13:15:45 -0400
-Content-Type: text/plain; charset=windows-1252
-Mime-Version: 1.0 (Mac OS X Mail 9.3 \(3124\))
-Subject: Re: [PATCH v2 00/18] NFS/RDMA client patches for v4.7
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <571F9B0F.8050202@opengridcomputing.com>
-Date: Tue, 26 Apr 2016 13:15:40 -0400
-Cc: "linux-rdma@vger.kernel.org" <linux-rdma@vger.kernel.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <65970DB7-5F18-4C66-8698-C0A13F88F4E7@oracle.com>
-References: <20160425185956.3566.64142.stgit@manet.1015granger.net> <571F778B.5000306@opengridcomputing.com> <7580EA21-0782-470B-94FF-2B872A92B089@oracle.com> <571F9B0F.8050202@opengridcomputing.com>
-To: Steve Wise <swise@opengridcomputing.com>
+Received: from mx1.redhat.com ([209.132.183.28]:49770 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752432AbcDZR1F (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 26 Apr 2016 13:27:05 -0400
+Date: Tue, 26 Apr 2016 13:27:02 -0400 (EDT)
+From: Benjamin Coddington <bcodding@redhat.com>
+To: linux-nfs@vger.kernel.org
+cc: hch@lst.de
+Subject: blocklayoutdriver and page_cache_next_hole
+Message-ID: <alpine.OSX.2.19.9992.1604261302250.92748@planck>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+I'm doing some benchmarking on SCSI layout, and I ran into a case where
+bonnie++ seemingly stopped making forward progress.
 
-> On Apr 26, 2016, at 12:45 PM, Steve Wise <swise@opengridcomputing.com> wrote:
-> 
-> On 4/26/2016 9:57 AM, Chuck Lever wrote:
->> 
->>> On Apr 26, 2016, at 10:13 AM, Steve Wise <swise@opengridcomputing.com> wrote:
->>> 
->>> Hey Chuck, I'm testing this series on cxgb4.    I'm running 'iozone -a -+d -I' on a share and watching the server stats.  Are the starve numbers expected?
->> 
->> Yes, unless you're seeing much higher numbers than
->> you used to.
->> 
->> 
->>> Every 5.0s: for s in  /proc/sys/sunrpc/svc_rdma/rdma_* ; do echo -n "$(basename $s): "; cat $s; done                              Tue Apr 26 07:10:17 2016
->>> 
->>> rdma_stat_read: 379872
->>> rdma_stat_recv: 498144
->>> rdma_stat_rq_poll: 0
->>> rdma_stat_rq_prod: 0
->>> rdma_stat_rq_starve: 675564
->> 
->> This means work was enqueued on the svc_xprt, but by the
->> time the upper layer invoked svc_rdma_recvfrom, the work
->> was already handled by an earlier wake-up.
->> 
->> I'm not exactly sure why this happens, but it seems to be
->> normal (if suboptimal).
->> 
->> 
->>> rdma_stat_sq_poll: 0
->>> rdma_stat_sq_prod: 0
->>> rdma_stat_sq_starve: 1748000
->> 
->> No SQ space to post a Send, so the caller is put to sleep.
->> 
->> The server chronically underestimates the SQ depth, especially
->> for FRWR. I haven't figured out a better way to estimate it.
->> 
->> But it's generally harmless, as there is a mechanism to put
->> callers to sleep until there is space on the SQ.
->> 
-> 
-> 
-> Thanks.
-> 
-> With this iw_cxgb4 drain fix applied:
-> 
-> [PATCH 3/3] iw_cxgb4: handing draining an idle qp
-> 
-> http://www.spinics.net/lists/linux-rdma/msg34927.html
-> 
-> The series tests good over cxgb4.
-> 
-> Tested-by: Steve Wise <swise@opengridcomputing.com>
+bl_pg_init_write() wants to figure out how big the layout should be and uses
+page_cache_next_hole() pretty aggressively if the inode size isn't equal to
+the mapping.  Problem is that page_cache_next_hole() is fairly stupid about
+just walking through the page_cache radix tree by index.
 
-Excellent. I will mark up my patch series with your
-Tested-by tag.
+The end result is that for fairly large files (>4G) my machine spends all
+its time in __radix_tree_lookup(), and I might as well just use regular NFS.
 
---
-Chuck Lever
+Here's some bash I use to reproduce that problem (note the truncate is 4G +
+1):
 
+[root@gfs-a24c-02 local_spc4]# cat <(dd if=/dev/zero bs=1M count=4096) - > bar &
+[1] 2000
+4096+0 records in
+4096+0 records out
+4294967296 bytes (4.3 GB) copied, 10.7775 s, 399 MB/s
+[1]+  Stopped                 cat <(dd if=/dev/zero bs=1M count=4096) - > bar
+[root@gfs-a24c-02 local_spc4]# sync
+[root@gfs-a24c-02 local_spc4]# truncate -s 4294967297  bar
+[root@gfs-a24c-02 local_spc4]# dd if=/dev/zero of=bar bs=1M count=4096 conv=notrunc
+4096+0 records in
+4096+0 records out
+4294967296 bytes (4.3 GB) copied, 82.0328 s, 52.4 MB/s
 
+This performance problem gets far worse on larger address_maps..
 
+A couple of ways to fix spring to mind: make page_cache_next_hole() less
+stupid, or instead of trying to figure out what wb_size should be in
+pg_init, provide a way for pg_init to look up a matching lseg beforehand.
+Or maybe create a lsize parameter?
+
+I'm going to continue to flail around trying to determine the best way to
+fix this unless sound advice is offered.  I don't know enough about the page
+cache to make improvements to page_cache_next_hole(), nor have I any good
+estimate on the acceptability of the other two approaches.  Thanks for any
+input.
+
+Ben
