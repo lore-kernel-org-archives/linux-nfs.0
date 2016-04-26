@@ -1,70 +1,69 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:39033 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752528AbcDZU4s (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 26 Apr 2016 16:56:48 -0400
-Content-Type: text/plain; charset=windows-1252
-Mime-Version: 1.0 (Mac OS X Mail 9.3 \(3124\))
-Subject: Re: [PATCH v2 04/18] xprtrdma: Prevent inline overflow
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <571FD2B3.1010505@grimberg.me>
-Date: Tue, 26 Apr 2016 16:56:38 -0400
-Cc: linux-rdma <linux-rdma@vger.kernel.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <928930E0-0767-4BF4-A704-B4E46788820F@oracle.com>
-References: <20160425185956.3566.64142.stgit@manet.1015granger.net> <20160425192120.3566.99978.stgit@manet.1015granger.net> <571FC7A3.2010407@grimberg.me> <B6501EE8-870B-40C6-8F44-FA74308EC6E5@oracle.com> <571FD2B3.1010505@grimberg.me>
-To: Sagi Grimberg <sagi@grimberg.me>
+Received: from ipmail07.adl2.internode.on.net ([150.101.137.131]:8753 "EHLO
+	ipmail07.adl2.internode.on.net" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1752610AbcDZW7m (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 26 Apr 2016 18:59:42 -0400
+Date: Wed, 27 Apr 2016 08:58:45 +1000
+From: Dave Chinner <david@fromorbit.com>
+To: Michal Hocko <mhocko@kernel.org>
+Cc: linux-mm@kvack.org, linux-fsdevel@vger.kernel.org,
+        Andrew Morton <akpm@linux-foundation.org>,
+        "Theodore Ts'o" <tytso@mit.edu>, Chris Mason <clm@fb.com>,
+        Jan Kara <jack@suse.cz>, ceph-devel@vger.kernel.org,
+        cluster-devel@redhat.com, linux-nfs@vger.kernel.org, logfs@logfs.org,
+        xfs@oss.sgi.com, linux-ext4@vger.kernel.org,
+        linux-btrfs@vger.kernel.org, linux-mtd@lists.infradead.org,
+        reiserfs-devel@vger.kernel.org, linux-ntfs-dev@lists.sourceforge.net,
+        linux-f2fs-devel@lists.sourceforge.net, linux-afs@lists.infradead.org,
+        LKML <linux-kernel@vger.kernel.org>, Michal Hocko <mhocko@suse.com>
+Subject: Re: [PATCH 2/2] mm, debug: report when GFP_NO{FS,IO} is used
+ explicitly from memalloc_no{fs,io}_{save,restore} context
+Message-ID: <20160426225845.GF26977@dastard>
+References: <1461671772-1269-1-git-send-email-mhocko@kernel.org>
+ <1461671772-1269-3-git-send-email-mhocko@kernel.org>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1461671772-1269-3-git-send-email-mhocko@kernel.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-> On Apr 26, 2016, at 4:42 PM, Sagi Grimberg <sagi@grimberg.me> wrote:
+On Tue, Apr 26, 2016 at 01:56:12PM +0200, Michal Hocko wrote:
+> From: Michal Hocko <mhocko@suse.com>
 > 
+> THIS PATCH IS FOR TESTING ONLY AND NOT MEANT TO HIT LINUS TREE
 > 
->>>> When deciding whether to send a Call inline, rpcrdma_marshal_req
->>>> doesn't take into account header bytes consumed by chunk lists.
->>>> This results in Call messages on the wire that are sometimes larger
->>>> than the inline threshold.
->>> 
->>> I'm not sure I understand why you need to account the chunk list size
->>> when deciding on the inline data size., aren't chunk lists for remote
->>> access only?
->> 
->> The chunk lists and RPC message payload effectively
->> share the same 1024-byte buffer (it's two buffers
->> gathered, but the sum of the two buffer sizes has to
->> be less than 1025).
->> 
->> If the chunk lists are large, the RPC message size is
->> reduced.
->> 
+> It is desirable to reduce the direct GFP_NO{FS,IO} usage at minimum and
+> prefer scope usage defined by memalloc_no{fs,io}_{save,restore} API.
 > 
-> I'm effectively asking when will a chunk list and inline data
-> would appear in the same message?
-> 
-> Is it when we want to send the first X bytes inline and have the
-> remote read the rest Y-X bytes?
-> 
-> Sorry if this is completely basic, just trying to understand if you
-> really need that upper limit...
+> Let's help this process and add a debugging tool to catch when an
+> explicit allocation request for GFP_NO{FS,IO} is done from the scope
+> context. The printed stacktrace should help to identify the caller
+> and evaluate whether it can be changed to use a wider context or whether
+> it is called from another potentially dangerous context which needs
+> a scope protection as well.
 
-It's kind of subtle, actually.
+You're going to get a large number of these from XFS. There are call
+paths in XFs that get called both inside and outside transaction
+context, and many of them are marked with GFP_NOFS to prevent issues
+that have cropped up in the past.
 
-Consider the case when the ULP operation expects a
-large reply.
+Often these are to silence lockdep warnings (e.g. commit b17cb36
+("xfs: fix missing KM_NOFS tags to keep lockdep happy")) because
+lockdep gets very unhappy about the same functions being called with
+different reclaim contexts. e.g.  directory block mapping might
+occur from readdir (no transaction context) or within transactions
+(create/unlink). hence paths like this are tagged with GFP_NOFS to
+stop lockdep emitting false positive warnings....
 
-When there is a Reply chunk or Write list, the client
-provides those via chunk lists in the header of the
-Call message. Thus those chunk lists share the 1024
-bytes with the RPC Call message.
+Removing the GFP_NOFS flags in situations like this is simply going
+to restart the flood of false positive lockdep warnings we've
+silenced over the years, so perhaps lockdep needs to be made smarter
+as well...
 
-If the chunk lists plus the Call message don't fit
-inline, then the client will have to send the Call
-message in a Read chunk (RDMA_NOMSG).
+Cheers,
 
+Dave.
 
---
-Chuck Lever
-
-
-
+-- 
+Dave Chinner
+david@fromorbit.com
