@@ -1,78 +1,54 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-wm0-f65.google.com ([74.125.82.65]:33879 "EHLO
-	mail-wm0-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752427AbcDZUcD (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 26 Apr 2016 16:32:03 -0400
-Subject: Re: [PATCH v2 18/18] xprtrdma: Faster server reboot recovery
-To: Chuck Lever <chuck.lever@oracle.com>, linux-rdma@vger.kernel.org,
-        linux-nfs@vger.kernel.org
+Received: from mail-wm0-f67.google.com ([74.125.82.67]:36861 "EHLO
+	mail-wm0-f67.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753324AbcDZUdl (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 26 Apr 2016 16:33:41 -0400
+Subject: Re: [PATCH v2 13/18] xprtrdma: Refactor the FRWR recovery worker
+To: Chuck Lever <chuck.lever@oracle.com>
 References: <20160425185956.3566.64142.stgit@manet.1015granger.net>
- <20160425192315.3566.4175.stgit@manet.1015granger.net>
+ <20160425192234.3566.63698.stgit@manet.1015granger.net>
+ <571FCC8C.5040503@grimberg.me>
+ <CAED2A23-CCB8-4C26-B212-2A4699D6B024@oracle.com>
+Cc: linux-rdma@vger.kernel.org,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
 From: Sagi Grimberg <sagi@grimberg.me>
-Message-ID: <571FD03A.2020100@grimberg.me>
-Date: Tue, 26 Apr 2016 23:31:54 +0300
+Message-ID: <571FD0A1.90501@grimberg.me>
+Date: Tue, 26 Apr 2016 23:33:37 +0300
 MIME-Version: 1.0
-In-Reply-To: <20160425192315.3566.4175.stgit@manet.1015granger.net>
-Content-Type: text/plain; charset=utf-8; format=flowed
+In-Reply-To: <CAED2A23-CCB8-4C26-B212-2A4699D6B024@oracle.com>
+Content-Type: text/plain; charset=windows-1252; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
-> In a cluster failover scenario, it is desirable for the client to
-> attempt to reconnect quickly, as an alternate NFS server is already
-> waiting to take over for the down server. The client can't see that
-> a server IP address has moved to a new server until the existing
-> connection is gone.
->
-> For fabrics and devices where it is meaningful, set an upper bound
-> on the amount of time before it is determined that a connection is
-> no longer valid. This allows the RPC client to detect connection
-> loss in a timely matter, then perform a fresh resolution of the
-> server GUID in case it has changed (cluster failover).
->
-> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-> ---
->   net/sunrpc/xprtrdma/verbs.c |   28 ++++++++++++++++++++++++----
->   1 file changed, 24 insertions(+), 4 deletions(-)
->
-> diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
-> index b7a5bc1..5cc57fb 100644
-> --- a/net/sunrpc/xprtrdma/verbs.c
-> +++ b/net/sunrpc/xprtrdma/verbs.c
-> @@ -211,9 +211,10 @@ rpcrdma_conn_upcall(struct rdma_cm_id *id, struct rdma_cm_event *event)
->   	struct rpcrdma_ep *ep = &xprt->rx_ep;
->   #if IS_ENABLED(CONFIG_SUNRPC_DEBUG)
->   	struct sockaddr *sap = (struct sockaddr *)&ep->rep_remote_addr;
-> -#endif
-> +	u64 timeout;
->   	struct ib_qp_attr *attr = &ia->ri_qp_attr;
->   	struct ib_qp_init_attr *iattr = &ia->ri_qp_init_attr;
-> +#endif
->   	int connstate = 0;
->
->   	switch (event->event) {
-> @@ -235,14 +236,23 @@ rpcrdma_conn_upcall(struct rdma_cm_id *id, struct rdma_cm_event *event)
->   		complete(&ia->ri_done);
->   		break;
->   	case RDMA_CM_EVENT_ESTABLISHED:
-> -		connstate = 1;
-> +#if IS_ENABLED(CONFIG_SUNRPC_DEBUG)
-> +		memset(attr, 0, sizeof(*attr));
->   		ib_query_qp(ia->ri_id->qp, attr,
-> -			    IB_QP_MAX_QP_RD_ATOMIC | IB_QP_MAX_DEST_RD_ATOMIC,
-> +			    IB_QP_MAX_QP_RD_ATOMIC |
-> +			    IB_QP_MAX_DEST_RD_ATOMIC |
-> +			    IB_QP_TIMEOUT,
->   			    iattr);
->   		dprintk("RPC:       %s: %d responder resources"
->   			" (%d initiator)\n",
->   			__func__, attr->max_dest_rd_atomic,
->   			attr->max_rd_atomic);
-> +		timeout = 4096 * (1ULL << attr->timeout);
-> +		do_div(timeout, NSEC_PER_SEC);
-> +		dprintk("RPC:       %s: retry timeout: %llu seconds\n",
-> +			__func__, timeout);
-> +#endif
 
-Can you put the debug in a separate patch, at first glance I was
-confused how that helped reboot recovery...
+On 26/04/16 23:30, Chuck Lever wrote:
+>
+>> On Apr 26, 2016, at 4:16 PM, Sagi Grimberg <sagi@grimberg.me> wrote:
+>>
+>>
+>>> +static void
+>>> +__frwr_reset_and_unmap(struct rpcrdma_xprt *r_xprt, struct rpcrdma_mw *mw)
+>>> +{
+>>> +	struct rpcrdma_ia *ia = &r_xprt->rx_ia;
+>>> +	struct rpcrdma_frmr *f = &mw->frmr;
+>>> +	int rc;
+>>> +
+>>> +	rc = __frwr_reset_mr(ia, mw);
+>>> +	ib_dma_unmap_sg(ia->ri_device, f->fr_sg, f->fr_nents, f->fr_dir);
+>>> +	if (rc)
+>>> +		return;
+>>> +
+>>> +	rpcrdma_put_mw(r_xprt, mw);
+>>> +}
+>>> +
+>>
+>> If this is not being called from other sites I'd say just
+>> do it in __frwr_recovery_worker instead of having it just bouncing
+>> the call...
+>
+> It will be called from another site in 16/18.
+
+I see, alright then,
+
+Reviewed-by: Sagi Grimberg <sagi@grimberg.me>
