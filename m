@@ -1,181 +1,109 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx142.netapp.com ([216.240.21.19]:8559 "EHLO mx142.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:59846 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752670AbcD0PqQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 27 Apr 2016 11:46:16 -0400
-From: <andros@netapp.com>
-To: <trond.myklebust@primarydata.com>
-CC: <steved@redhat.com>, <linux-nfs@vger.kernel.org>,
-        Andy Adamson <andros@netapp.com>
-Subject: [PATCH Version 3 8/9] NFS test and add multi-addrs for session trunking
-Date: Wed, 27 Apr 2016 11:36:09 -0400
-Message-ID: <1461771370-16375-9-git-send-email-andros@netapp.com>
-In-Reply-To: <1461771370-16375-1-git-send-email-andros@netapp.com>
-References: <1461771370-16375-1-git-send-email-andros@netapp.com>
-MIME-Version: 1.0
-Content-Type: text/plain
+	id S1752244AbcD0P72 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 27 Apr 2016 11:59:28 -0400
+Received: from int-mx13.intmail.prod.int.phx2.redhat.com (int-mx13.intmail.prod.int.phx2.redhat.com [10.5.11.26])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+	(No client certificate requested)
+	by mx1.redhat.com (Postfix) with ESMTPS id 41DE7124573
+	for <linux-nfs@vger.kernel.org>; Wed, 27 Apr 2016 15:59:28 +0000 (UTC)
+Received: from steved.boston.devel.redhat.com (vpn-55-91.rdu2.redhat.com [10.10.55.91])
+	by int-mx13.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id u3RFxRlN032350
+	for <linux-nfs@vger.kernel.org>; Wed, 27 Apr 2016 11:59:27 -0400
+From: Steve Dickson <steved@redhat.com>
+To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: [PATCH] Remove rpcsecgss library support
+Date: Wed, 27 Apr 2016 11:59:26 -0400
+Message-Id: <1461772766-8901-1-git-send-email-steved@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Andy Adamson <andros@netapp.com>
+librpcsecgss has not been used in years
+so and there is no longer an upstream for
+it so the support for the library has
+been removed
 
-Signed-off-by: Andy Adamson <andros@netapp.com>
+Signed-off-by: Steve Dickson <steved@redhat.com>
 ---
- fs/nfs/nfs4_fs.h           |  5 +++++
- fs/nfs/nfs4client.c        | 39 +++++++++++++++++++++++++++++++++++++++
- fs/nfs/nfs4proc.c          | 37 +++++++++++++++++++++++++++++++++++++
- net/sunrpc/xprtmultipath.c |  3 +++
- 4 files changed, 84 insertions(+)
+ aclocal/librpcsecgss.m4 | 21 ---------------------
+ configure.ac            |  3 ---
+ utils/gssd/gssd.c       | 15 +++++----------
+ 3 files changed, 5 insertions(+), 34 deletions(-)
+ delete mode 100644 aclocal/librpcsecgss.m4
 
-diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
-index 4c21022..f496526 100644
---- a/fs/nfs/nfs4_fs.h
-+++ b/fs/nfs/nfs4_fs.h
-@@ -218,6 +218,11 @@ struct nfs4_add_xprt_data {
- 	struct nfs_client	*clp;
- 	struct rpc_cred		*cred;
- };
-+extern int nfs4_test_session_trunk_and_add_xprt(struct rpc_clnt *clnt,
-+						struct rpc_xprt_switch *xps,
-+						struct rpc_xprt *xprt,
-+						void *data);
-+
- extern const struct dentry_operations nfs4_dentry_operations;
+diff --git a/aclocal/librpcsecgss.m4 b/aclocal/librpcsecgss.m4
+deleted file mode 100644
+index e833141..0000000
+--- a/aclocal/librpcsecgss.m4
++++ /dev/null
+@@ -1,21 +0,0 @@
+-dnl Checks for rpcsecgss library and headers
+-dnl KRB5LIBS must be set before this function is invoked.
+-dnl
+-AC_DEFUN([AC_LIBRPCSECGSS], [
+-
+-  dnl libtirpc provides an rpcsecgss API
+-  if test "$enable_tirpc" = no; then
+-
+-    dnl Check for library, but do not add -lrpcsecgss to LIBS
+-    AC_CHECK_LIB([rpcsecgss], [authgss_create_default], [librpcsecgss=1],
+-                 [AC_MSG_ERROR([librpcsecgss not found.])])
+-
+-    AC_CHECK_LIB([rpcsecgss], [authgss_set_debug_level],
+-                 [AC_DEFINE([HAVE_AUTHGSS_SET_DEBUG_LEVEL], 1,
+-                 [Define to 1 if you have the `authgss_set_debug_level' function.])])
+-
+-    AC_DEFINE([HAVE_AUTHGSS_FREE_PRIVATE_DATA], 1,
+-	      [Define to 1 if your rpcsec library provides authgss_free_private_data,])
+-  fi
+-
+-])dnl
+diff --git a/configure.ac b/configure.ac
+index 25d2ba4..b87ee68 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -382,9 +382,6 @@ if test "$enable_gss" = yes; then
+   dnl Check for Kerberos V5
+   AC_KERBEROS_V5
  
- /* dir.c */
-diff --git a/fs/nfs/nfs4client.c b/fs/nfs/nfs4client.c
-index 2121c1f..c5cbf89 100644
---- a/fs/nfs/nfs4client.c
-+++ b/fs/nfs/nfs4client.c
-@@ -1041,6 +1041,43 @@ out:
- 	return error;
- }
+-  dnl Invoked after AC_KERBEROS_V5; AC_LIBRPCSECGSS needs to have KRBLIBS set
+-  AC_LIBRPCSECGSS
+-
+   dnl librpcsecgss already has a dependency on libgssapi,
+   dnl but we need to make sure we get the right version
+   if test "$enable_gss" = yes; then
+diff --git a/utils/gssd/gssd.c b/utils/gssd/gssd.c
+index 7ba27b1..810f872 100644
+--- a/utils/gssd/gssd.c
++++ b/utils/gssd/gssd.c
+@@ -866,21 +866,16 @@ main(int argc, char *argv[])
+ 		progname = argv[0];
  
-+/**
-+ * Add rpc_xprts to an existing RPC client
-+ */
-+void nfs4_try_multiaddr(struct nfs_parsed_mount_data *mnt,
-+			struct nfs_client *clp)
-+{
-+	struct multi_addr *multip = mnt->multiaddrs;
-+	struct nfs4_add_xprt_data xprtdata = {
-+		.clp = clp,
-+	};
-+	int i;
-+
-+	dprintk("NFS:   Try adding %u multi addrs\n", mnt->num_multi);
-+
-+	if (mnt->num_multi == 0)
-+		return;
-+
-+	xprtdata.cred = nfs4_get_clid_cred(clp);
-+
-+	for (i = 0; i < mnt->num_multi; i++) {
-+		struct xprt_create xprt_args = {
-+			.ident = XPRT_TRANSPORT_TCP,
-+			.net = mnt->net,
-+			.dstaddr = (struct sockaddr *)&multip->addr,
-+			.addrlen = multip->addrlen,
-+			.servername = multip->hostname,
-+		};
-+		/* Add this address as an alias */
-+		rpc_clnt_add_xprt(clp->cl_rpcclient, &xprt_args,
-+				  nfs4_test_session_trunk_and_add_xprt,
-+				  &xprtdata);
-+		multip++;
-+	}
-+	if (xprtdata.cred)
-+		put_rpccred(xprtdata.cred);
-+}
-+
- /*
-  * Create a version 4 volume record
-  */
-@@ -1097,6 +1134,8 @@ static int nfs4_init_server(struct nfs_server *server,
- 	error = nfs_init_server_rpcclient(server, &timeparms,
- 					  data->selected_flavor);
+ 	initerr(progname, verbosity, fg);
+-#ifdef HAVE_AUTHGSS_SET_DEBUG_LEVEL
+-	if (verbosity && rpc_verbosity == 0)
+-		rpc_verbosity = verbosity;
+-	authgss_set_debug_level(rpc_verbosity);
+-#elif HAVE_LIBTIRPC_SET_DEBUG
++#ifdef HAVE_LIBTIRPC_SET_DEBUG
+ 	/*
+-	 * Only set the libtirpc debug level if explicitly requested via -r...
+-	 * gssd is chatty enough as it is.
++	 * Only set the libtirpc debug level if explicitly requested via -r.
+ 	 */
+ 	if (rpc_verbosity > 0)
+ 		libtirpc_set_debug(progname, rpc_verbosity, fg);
+ #else
+-        if (rpc_verbosity > 0)
+-		printerr(0, "Warning: rpcsec_gss library does not "
+-			    "support setting debug level\n");
++	if (rpc_verbosity > 0)
++		printerr(0, "Warning: libtirpc does not "
++			    "support setting debug levels\n");
+ #endif
  
-+	if (!error)
-+		nfs4_try_multiaddr(data, server->nfs_client);
- error:
- 	/* Done */
- 	dprintk("<-- nfs4_init_server() = %d\n", error);
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 70537f0..934c668 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -7207,6 +7207,43 @@ int nfs4_proc_exchange_id(struct nfs_client *clp, struct rpc_cred *cred)
- 	return _nfs4_proc_exchange_id(clp, cred, SP4_NONE, NULL);
- }
- 
-+/**
-+ * nfs4_test_session_trunk_and_add_xprt - Test for session trunking with a
-+ * synchronous exchange_id call, and add a new transport to the rpc_clnt
-+ *
-+ * @clnt: struct rpc_clnt to get new transport
-+ * @xps:  the rpc_xprt_switch to hold the new transport
-+ * @xprt: the rpc_xprt to test
-+ * @data: call data for _nfs4_proc_exchange_id.
-+ *
-+ */
-+int nfs4_test_session_trunk_and_add_xprt(struct rpc_clnt *clnt,
-+					struct rpc_xprt_switch *xps,
-+					struct rpc_xprt *xprt,
-+					void *data)
-+{
-+	struct nfs4_add_xprt_data *xdata = (struct nfs4_add_xprt_data *)data;
-+	u32 sp4_how;
-+	int status;
-+
-+	sp4_how = (xdata->clp->cl_sp4_flags == 0 ? SP4_NONE : SP4_MACH_CRED);
-+
-+	/* Ensure these stick around for the rpc call */
-+	xps = xprt_switch_get(xps);
-+	xprt = xprt_get(xprt);
-+
-+	/* Sync call */
-+	status = _nfs4_proc_exchange_id(xdata->clp, xdata->cred, sp4_how, xprt);
-+
-+	xprt_put(xprt);
-+	xprt_switch_put(xps);
-+
-+	if (status)
-+		pr_info("NFS: mulitaddr %s establishment failed. status %d\n",
-+			xprt->address_strings[RPC_DISPLAY_ADDR], status);
-+	return status;
-+}
-+
- static int _nfs4_proc_destroy_clientid(struct nfs_client *clp,
- 		struct rpc_cred *cred)
- {
-diff --git a/net/sunrpc/xprtmultipath.c b/net/sunrpc/xprtmultipath.c
-index e7fd769..360f64c 100644
---- a/net/sunrpc/xprtmultipath.c
-+++ b/net/sunrpc/xprtmultipath.c
-@@ -53,6 +53,7 @@ void rpc_xprt_switch_add_xprt(struct rpc_xprt_switch *xps,
- 		xprt_switch_add_xprt_locked(xps, xprt);
- 	spin_unlock(&xps->xps_lock);
- }
-+EXPORT_SYMBOL_GPL(rpc_xprt_switch_add_xprt);
- 
- static void xprt_switch_remove_xprt_locked(struct rpc_xprt_switch *xps,
- 		struct rpc_xprt *xprt)
-@@ -145,6 +146,7 @@ struct rpc_xprt_switch *xprt_switch_get(struct rpc_xprt_switch *xps)
- 		return xps;
- 	return NULL;
- }
-+EXPORT_SYMBOL_GPL(xprt_switch_get);
- 
- /**
-  * xprt_switch_put - Release a reference to a rpc_xprt_switch
-@@ -157,6 +159,7 @@ void xprt_switch_put(struct rpc_xprt_switch *xps)
- 	if (xps != NULL)
- 		kref_put(&xps->xps_kref, xprt_switch_free);
- }
-+EXPORT_SYMBOL_GPL(xprt_switch_put);
- 
- /**
-  * rpc_xprt_switch_set_roundrobin - Set a round-robin policy on rpc_xprt_switch
+ 	if (gssd_check_mechs() != 0)
 -- 
-1.8.3.1
+2.5.0
 
