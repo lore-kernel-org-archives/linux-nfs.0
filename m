@@ -1,109 +1,117 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:59846 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752244AbcD0P72 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 27 Apr 2016 11:59:28 -0400
-Received: from int-mx13.intmail.prod.int.phx2.redhat.com (int-mx13.intmail.prod.int.phx2.redhat.com [10.5.11.26])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
-	(No client certificate requested)
-	by mx1.redhat.com (Postfix) with ESMTPS id 41DE7124573
-	for <linux-nfs@vger.kernel.org>; Wed, 27 Apr 2016 15:59:28 +0000 (UTC)
-Received: from steved.boston.devel.redhat.com (vpn-55-91.rdu2.redhat.com [10.10.55.91])
-	by int-mx13.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id u3RFxRlN032350
-	for <linux-nfs@vger.kernel.org>; Wed, 27 Apr 2016 11:59:27 -0400
-From: Steve Dickson <steved@redhat.com>
-To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: [PATCH] Remove rpcsecgss library support
-Date: Wed, 27 Apr 2016 11:59:26 -0400
-Message-Id: <1461772766-8901-1-git-send-email-steved@redhat.com>
+Received: from userp1040.oracle.com ([156.151.31.81]:22149 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753399AbcD0QAA convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 27 Apr 2016 12:00:00 -0400
+Content-Type: text/plain; charset=us-ascii
+Mime-Version: 1.0 (Mac OS X Mail 9.3 \(3124\))
+Subject: Removing NFS/RDMA client support for PHYSICAL memory registration
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <1B0B3E47-05C0-4134-B486-0869628B453C@oracle.com>
+Date: Wed, 27 Apr 2016 11:59:29 -0400
+Cc: linux-rdma@vger.kernel.org,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Message-Id: <C0D8DC78-C6AB-4926-AF27-5D51E16FD447@oracle.com>
+References: <20160425185956.3566.64142.stgit@manet.1015granger.net> <20160425192259.3566.58807.stgit@manet.1015granger.net> <571FCF03.4060406@grimberg.me> <1B0B3E47-05C0-4134-B486-0869628B453C@oracle.com>
+To: Sagi Grimberg <sagi@grimberg.me>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-librpcsecgss has not been used in years
-so and there is no longer an upstream for
-it so the support for the library has
-been removed
 
-Signed-off-by: Steve Dickson <steved@redhat.com>
----
- aclocal/librpcsecgss.m4 | 21 ---------------------
- configure.ac            |  3 ---
- utils/gssd/gssd.c       | 15 +++++----------
- 3 files changed, 5 insertions(+), 34 deletions(-)
- delete mode 100644 aclocal/librpcsecgss.m4
+> On Apr 26, 2016, at 4:44 PM, Chuck Lever <chuck.lever@oracle.com> wrote:
+> 
+>> 
+>> On Apr 26, 2016, at 4:26 PM, Sagi Grimberg <sagi@grimberg.me> wrote:
+>> 
+>> 
+>> 
+>> On 25/04/16 22:22, Chuck Lever wrote:
+>>> There needs to be a safe method of releasing registered memory
+>>> resources when an RPC terminates. Safe can mean a number of things:
+>>> 
+>>> + Doesn't have to sleep
+>>> 
+>>> + Doesn't rely on having a QP in RTS
+>>> 
+>>> ro_unmap_safe will be that safe method. It can be used in cases
+>>> where synchronous memory invalidation can deadlock, or needs to have
+>>> an active QP.
+>>> 
+>>> The important case is fencing an RPC's memory regions after it is
+>>> signaled (^C) and before it exits. If this is not done, there is a
+>>> window where the server can write an RPC reply into memory that the
+>>> client has released and re-used for some other purpose.
+>>> 
+>>> Note that this is a full solution for FRWR, but FMR and physical
+>>> still have some gaps where a particularly bad server can wreak
+>>> some havoc on the client. These gaps are not made worse by this
+>>> patch and are expected to be exceptionally rare and timing-based.
+>>> They are noted in documenting comments.
+>>> 
+>>> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 
-diff --git a/aclocal/librpcsecgss.m4 b/aclocal/librpcsecgss.m4
-deleted file mode 100644
-index e833141..0000000
---- a/aclocal/librpcsecgss.m4
-+++ /dev/null
-@@ -1,21 +0,0 @@
--dnl Checks for rpcsecgss library and headers
--dnl KRB5LIBS must be set before this function is invoked.
--dnl
--AC_DEFUN([AC_LIBRPCSECGSS], [
--
--  dnl libtirpc provides an rpcsecgss API
--  if test "$enable_tirpc" = no; then
--
--    dnl Check for library, but do not add -lrpcsecgss to LIBS
--    AC_CHECK_LIB([rpcsecgss], [authgss_create_default], [librpcsecgss=1],
--                 [AC_MSG_ERROR([librpcsecgss not found.])])
--
--    AC_CHECK_LIB([rpcsecgss], [authgss_set_debug_level],
--                 [AC_DEFINE([HAVE_AUTHGSS_SET_DEBUG_LEVEL], 1,
--                 [Define to 1 if you have the `authgss_set_debug_level' function.])])
--
--    AC_DEFINE([HAVE_AUTHGSS_FREE_PRIVATE_DATA], 1,
--	      [Define to 1 if your rpcsec library provides authgss_free_private_data,])
--  fi
--
--])dnl
-diff --git a/configure.ac b/configure.ac
-index 25d2ba4..b87ee68 100644
---- a/configure.ac
-+++ b/configure.ac
-@@ -382,9 +382,6 @@ if test "$enable_gss" = yes; then
-   dnl Check for Kerberos V5
-   AC_KERBEROS_V5
- 
--  dnl Invoked after AC_KERBEROS_V5; AC_LIBRPCSECGSS needs to have KRBLIBS set
--  AC_LIBRPCSECGSS
--
-   dnl librpcsecgss already has a dependency on libgssapi,
-   dnl but we need to make sure we get the right version
-   if test "$enable_gss" = yes; then
-diff --git a/utils/gssd/gssd.c b/utils/gssd/gssd.c
-index 7ba27b1..810f872 100644
---- a/utils/gssd/gssd.c
-+++ b/utils/gssd/gssd.c
-@@ -866,21 +866,16 @@ main(int argc, char *argv[])
- 		progname = argv[0];
- 
- 	initerr(progname, verbosity, fg);
--#ifdef HAVE_AUTHGSS_SET_DEBUG_LEVEL
--	if (verbosity && rpc_verbosity == 0)
--		rpc_verbosity = verbosity;
--	authgss_set_debug_level(rpc_verbosity);
--#elif HAVE_LIBTIRPC_SET_DEBUG
-+#ifdef HAVE_LIBTIRPC_SET_DEBUG
- 	/*
--	 * Only set the libtirpc debug level if explicitly requested via -r...
--	 * gssd is chatty enough as it is.
-+	 * Only set the libtirpc debug level if explicitly requested via -r.
- 	 */
- 	if (rpc_verbosity > 0)
- 		libtirpc_set_debug(progname, rpc_verbosity, fg);
- #else
--        if (rpc_verbosity > 0)
--		printerr(0, "Warning: rpcsec_gss library does not "
--			    "support setting debug level\n");
-+	if (rpc_verbosity > 0)
-+		printerr(0, "Warning: libtirpc does not "
-+			    "support setting debug levels\n");
- #endif
- 
- 	if (gssd_check_mechs() != 0)
--- 
-2.5.0
+[ snip ]
+
+>>> diff --git a/net/sunrpc/xprtrdma/physical_ops.c b/net/sunrpc/xprtrdma/physical_ops.c
+>>> index 2dc6ec2..95ef3a7 100644
+>>> --- a/net/sunrpc/xprtrdma/physical_ops.c
+>>> +++ b/net/sunrpc/xprtrdma/physical_ops.c
+>>> @@ -97,6 +97,25 @@ physical_op_unmap_sync(struct rpcrdma_xprt *r_xprt, struct rpcrdma_req *req)
+>>> 		rpcrdma_unmap_one(device, &req->rl_segments[i++]);
+>>> }
+>>> 
+>>> +/* Use a slow, safe mechanism to invalidate all memory regions
+>>> + * that were registered for "req".
+>>> + *
+>>> + * For physical memory registration, there is no good way to
+>>> + * fence a single MR that has been advertised to the server. The
+>>> + * client has already handed the server an R_key that cannot be
+>>> + * invalidated and is shared by all MRs on this connection.
+>>> + * Tearing down the PD might be the only safe choice, but it's
+>>> + * not clear that a freshly acquired DMA R_key would be different
+>>> + * than the one used by the PD that was just destroyed.
+>>> + * FIXME.
+>>> + */
+>>> +static void
+>>> +physical_op_unmap_safe(struct rpcrdma_xprt *r_xprt, struct rpcrdma_req *req,
+>>> +		       bool sync)
+>>> +{
+>>> +	physical_op_unmap_sync(r_xprt, req);
+>>> +}
+>>> +
+>> 
+>> So physical has no async mode?
+> 
+> Nope. There's no way to fence memory once a client has
+> exposed its whole-memory R_key.
+> 
+> The client could drop its connection and delete the PD.
+> 
+> 
+>> Is there a device that makes you resort to physical memreg?
+> 
+> I'm not aware of one.
+> 
+> 
+>> It's an awful lot of maintenance on what looks to be a esoteric (at
+>> best) code path.
+> 
+> It's never chosen by falling back to that mode.
+> 
+> physical has long been on the chopping block. Last time
+> I suggested removing it I got a complaint. But there's no
+> in-kernel device that requires this mode, so seems like
+> it should go sooner rather than later.
+
+I'm planning to add support for NFS/RDMA with Kerberos
+in v4.8. That seems like a very appropriate time to
+remove PHYSICAL, which is not secure.
+
+Is there any objection to removing PHYSICAL in v4.8?
+
+
+--
+Chuck Lever
+
+
 
