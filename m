@@ -1,91 +1,310 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx144.netapp.com ([216.240.21.25]:42865 "EHLO mx144.netapp.com"
+Received: from mx141.netapp.com ([216.240.21.12]:15100 "EHLO mx141.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753041AbcD0PBO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 27 Apr 2016 11:01:14 -0400
+	id S1750785AbcD0PQn convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 27 Apr 2016 11:16:43 -0400
 From: "Kornievskaia, Olga" <Olga.Kornievskaia@netapp.com>
-To: Jeff Layton <jlayton@poochiereds.net>
-CC: Olga Kornievskaia <aglo@umich.edu>, Steve Dickson <steved@redhat.com>,
-        linux-nfs <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH v4 2/3] gssd: using syscalls directly to change thread's
- identity
-Date: Wed, 27 Apr 2016 15:01:08 +0000
-Message-ID: <1F119572-BB46-4F78-88B6-E6ACD01ADA93@netapp.com>
-References: <1461677655-68294-1-git-send-email-kolga@netapp.com>
- <1461677655-68294-3-git-send-email-kolga@netapp.com>
- <1461689470.4200.7.camel@poochiereds.net>
- <CAN-5tyH_yHoRhkXegP4gQ0FS-C+Rmx7ziEiRd4+d7NkBDuR7Qw@mail.gmail.com>
- <1461766405.4403.3.camel@poochiereds.net>
-In-Reply-To: <1461766405.4403.3.camel@poochiereds.net>
-Content-Type: text/plain; charset="utf-8"
+To: Steve Dickson <SteveD@redhat.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH v3 1/3] gssd: use pthreads to handle upcalls
+Date: Wed, 27 Apr 2016 15:16:38 +0000
+Message-ID: <59AF3631-819C-42E5-AB0D-3483590E279D@netapp.com>
+References: <1461603513-67523-1-git-send-email-kolga@netapp.com>
+ <1461603513-67523-2-git-send-email-kolga@netapp.com>
+ <5720D2BA.5010400@RedHat.com>
+In-Reply-To: <5720D2BA.5010400@RedHat.com>
+Content-Type: text/plain; charset="Windows-1252"
 MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-DQo+IE9uIEFwciAyNywgMjAxNiwgYXQgMTA6MTMgQU0sIEplZmYgTGF5dG9uIDxqbGF5dG9uQHBv
-b2NoaWVyZWRzLm5ldD4gd3JvdGU6DQo+IA0KPiBPbiBXZWQsIDIwMTYtMDQtMjcgYXQgMTA6MDkg
-LTA0MDAsIE9sZ2EgS29ybmlldnNrYWlhIHdyb3RlOg0KPj4gT24gVHVlLCBBcHIgMjYsIDIwMTYg
-YXQgMTI6NTEgUE0sIEplZmYgTGF5dG9uIDxqbGF5dG9uQHBvb2NoaWVyZWRzLm5lDQo+PiB0PiB3
-cm90ZToNCj4+PiBPbiBUdWUsIDIwMTYtMDQtMjYgYXQgMDk6MzQgLTA0MDAsIE9sZ2EgS29ybmll
-dnNrYWlhIHdyb3RlOg0KPj4+PiBGb3IgdGhlIHRocmVhZGVkIHZlcnNpb24gd2UgaGF2ZSB0byBz
-ZXQgdWlkLGdpZCBwZXIgdGhyZWFkDQo+Pj4+IGluc3RlYWQNCj4+Pj4gb2YgcGVyIHByb2Nlc3Mu
-IGdsaWJjIHNldHJlc3VpZCgpIHdoZW4gY2FsbGVkIGZyb20gYSB0aHJlYWQsDQo+Pj4+IGl0J2xs
-DQo+Pj4+IHNlbmQgYSBzaWduYWwgdG8gYWxsIG90aGVyIHRocmVhZHMgdG8gc3luY2hyb25pemUg
-dGhlIHVpZCBpbiBhbGwNCj4+Pj4gb3RoZXIgdGhyZWFkcy4gVG8gYnlwYXNzIHRoaXMsIHdlIGhh
-dmUgdG8gY2FsbCBzeXNjYWxsKCkNCj4+Pj4gZGlyZWN0bHkuDQo+Pj4+IA0KPj4+PiBTaWduZWQt
-b2ZmLWJ5OiBPbGdhIEtvcm5pZXZza2FpYSA8a29sZ2FAbmV0YXBwLmNvbT4NCj4+Pj4gUmV2aWV3
-ZWQtYnk6IFN0ZXZlIERpY2tzb24gPHN0ZXZlZEByZWRoYXQuY29tPg0KPj4+PiAtLS0NCj4+Pj4g
-IHV0aWxzL2dzc2QvZ3NzZF9wcm9jLmMgfCAxMiArKysrKysrKystLS0NCj4+Pj4gIDEgZmlsZSBj
-aGFuZ2VkLCA5IGluc2VydGlvbnMoKyksIDMgZGVsZXRpb25zKC0pDQo+Pj4+IA0KPj4+PiBkaWZm
-IC0tZ2l0IGEvdXRpbHMvZ3NzZC9nc3NkX3Byb2MuYyBiL3V0aWxzL2dzc2QvZ3NzZF9wcm9jLmMN
-Cj4+Pj4gaW5kZXggZTJlOTVkYy4uMzljNGIxNyAxMDA2NDQNCj4+Pj4gLS0tIGEvdXRpbHMvZ3Nz
-ZC9nc3NkX3Byb2MuYw0KPj4+PiArKysgYi91dGlscy9nc3NkL2dzc2RfcHJvYy5jDQo+Pj4+IEBA
-IC02OSw2ICs2OSw3IEBADQo+Pj4+ICAjaW5jbHVkZQ0KPj4+PiAgI2luY2x1ZGUNCj4+Pj4gICNp
-bmNsdWRlDQo+Pj4+ICsjaW5jbHVkZQ0KPj4+PiANCj4+Pj4gICNpbmNsdWRlICJnc3NkLmgiDQo+
-Pj4+ICAjaW5jbHVkZSAiZXJyX3V0aWwuaCINCj4+Pj4gQEAgLTQzNiw3ICs0MzcsNyBAQCBjaGFu
-Z2VfaWRlbnRpdHkodWlkX3QgdWlkKQ0KPj4+PiAgICAgICBzdHJ1Y3QgcGFzc3dkICAgKnB3Ow0K
-Pj4+PiANCj4+Pj4gICAgICAgLyogZHJvcCBsaXN0IG9mIHN1cHBsaW1lbnRhcnkgZ3JvdXBzIGZp
-cnN0ICovDQo+Pj4+IC0gICAgIGlmIChzZXRncm91cHMoMCwgTlVMTCkgIT0gMCkgew0KPj4+PiAr
-ICAgICBpZiAoc3lzY2FsbChTWVNfc2V0Z3JvdXBzLCAwLCAwKSAhPSAwKSB7DQo+Pj4+ICAgICAg
-ICAgICAgICAgcHJpbnRlcnIoMCwgIldBUk5JTkc6IHVuYWJsZSB0byBkcm9wIHN1cHBsaW1lbnRh
-cnkNCj4+Pj4gZ3JvdXBzISIpOw0KPj4+PiAgICAgICAgICAgICAgIHJldHVybiBlcnJubzsNCj4+
-Pj4gICAgICAgfQ0KPj4+PiBAQCAtNDU3LDcgKzQ1OCwxMiBAQCBjaGFuZ2VfaWRlbnRpdHkodWlk
-X3QgdWlkKQ0KPj4+PiAgICAgICAgKiBTd2l0Y2ggdGhlIEdJRHMuIE5vdGUgdGhhdCB3ZSBsZWF2
-ZSB0aGUgc2F2ZWQtc2V0LWdpZA0KPj4+PiBhbG9uZSBpbiBhbg0KPj4+PiAgICAgICAgKiBhdHRl
-bXB0IHRvIHByZXZlbnQgYXR0YWNrcyB2aWEgcHRyYWNlKCkNCj4+Pj4gICAgICAgICovDQo+Pj4+
-IC0gICAgIGlmIChzZXRyZXNnaWQocHctPnB3X2dpZCwgcHctPnB3X2dpZCwgLTEpICE9IDApIHsN
-Cj4+Pj4gKyAgICAgLyogRm9yIHRoZSB0aHJlYWRlZCB2ZXJzaW9uIHdlIGhhdmUgdG8gc2V0IHVp
-ZCxnaWQgcGVyDQo+Pj4+IHRocmVhZCBpbnN0ZWFkDQo+Pj4+ICsgICAgICAqIG9mIHBlciBwcm9j
-ZXNzLiBnbGliYyBzZXRyZXN1aWQoKSB3aGVuIGNhbGxlZCBmcm9tIGENCj4+Pj4gdGhyZWFkLCBp
-dCdsbA0KPj4+PiArICAgICAgKiBzZW5kIGEgc2lnbmFsIHRvIGFsbCBvdGhlciB0aHJlYWRzIHRv
-IHN5bmNocm9uaXplIHRoZQ0KPj4+PiB1aWQgaW4gYWxsDQo+Pj4+ICsgICAgICAqIG90aGVyIHRo
-cmVhZHMuIFRvIGJ5cGFzcyB0aGlzLCB3ZSBoYXZlIHRvIGNhbGwgc3lzY2FsbCgpDQo+Pj4+IGRp
-cmVjdGx5Lg0KPj4+PiArICAgICAgKi8NCj4+Pj4gKyAgICAgaWYgKHN5c2NhbGwoU1lTX3NldHJl
-c2dpZCwgcHctPnB3X2dpZCwgLTEsIC0xKSAhPSAwKSB7DQo+Pj4+ICAgICAgICAgICAgICAgcHJp
-bnRlcnIoMCwgIldBUk5JTkc6IGZhaWxlZCB0byBzZXQgZ2lkIHRvICV1IVxuIiwNCj4+Pj4gcHct
-PnB3X2dpZCk7DQo+Pj4+ICAgICAgICAgICAgICAgcmV0dXJuIGVycm5vOw0KPj4+PiAgICAgICB9
-DQo+Pj4+IEBAIC00NjYsNyArNDcyLDcgQEAgY2hhbmdlX2lkZW50aXR5KHVpZF90IHVpZCkNCj4+
-Pj4gICAgICAgICogU3dpdGNoIFVJRHMsIGJ1dCBsZWF2ZSBzYXZlZC1zZXQtdWlkIGFsb25lIHRv
-IHByZXZlbnQNCj4+Pj4gcHRyYWNlKCkgYnkNCj4+Pj4gICAgICAgICogb3RoZXIgcHJvY2Vzc2Vz
-IHJ1bm5pbmcgd2l0aCB0aGlzIHVpZC4NCj4+Pj4gICAgICAgICovDQo+Pj4+IC0gICAgIGlmIChz
-ZXRyZXN1aWQodWlkLCB1aWQsIC0xKSAhPSAwKSB7DQo+Pj4+ICsgICAgIGlmIChzeXNjYWxsKFNZ
-U19zZXRyZXN1aWQsIHVpZCwgLTEsIC0xKSAhPSAwKSB7DQo+Pj4+ICAgICAgICAgICAgICAgcHJp
-bnRlcnIoMCwgIldBUk5JTkc6IEZhaWxlZCB0byBzZXR1aWQgZm9yIHVzZXINCj4+Pj4gd2l0aCB1
-aWQgJXVcbiIsDQo+Pj4+ICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIHVpZCk7DQo+Pj4+
-ICAgICAgICAgICAgICAgcmV0dXJuIGVycm5vOw0KPj4+IA0KPj4+IE5vdGUgdGhhdCB0aGUgb2xk
-IGNvZGUgc2V0IGJvdGggcmVhbCBhbmQgZWZmZWN0aXZlIHVpZC9naWQuIEhlcmUNCj4+PiB5b3Un
-cmUNCj4+PiBjaGFuZ2luZyBpdCB0byBqdXN0IHNldCB0aGUgcmVhbCB1aWQuIElzIHRoYXQgY2hh
-bmdlIGRlbGliZXJhdGU/IEkNCj4+PiB0aGluayB5b3UgcHJvYmFibHkgd2FudCB0byBzZXQgdGhl
-IGV1aWQvZWdpZCBhcyB3ZWxsLg0KPj4gDQo+PiBJdCB3YXMgYSB0eXBvIChjdGhvbiB0ZXN0cyBy
-YW4gZmluZSB0aG91Z2ggd2hpY2ggaXMgY29uZnVzaW5nIHNpbmNlDQo+PiBrZXJiZXJvcyBjb2Rl
-IGRvZXMgZ2V0ZXVpZCgpKS4gTm93IEknbSB0aGlua2luZyB0aGF0IGdpdmVuIHRoYXQgd2UNCj4+
-IGRvbid0IHRvdWNoIHNhdmVkIHVpZCwgcGVyaGFwcyB0aGUgY29kZSBzaG91bGQgY2FsbCBTWVNf
-c2V0cmV1aWQNCj4+IGluc3RlYWQgb2YgU1lTX3NldHJlc3VpZD8NCj4+IA0KPiANCj4gWWVzLCBn
-b29kIHBvaW50LiBFaXRoZXIgdGhhdCBvciBqdXN0IHNldCBhbGwgMyB0byAidWlkIiwgSSdkIHRo
-aW5rLg0KDQpUaGVyZSBpcyBhIGNvbW1lbnQgYWJvdmUgc2F5aW5nIGxlYXZpbmcgc2F2ZS1zZXQt
-dWlkIGFsb25lIHByZXZlbnRzIHB0cmFjZSBmcm9tIHRyYWNpbmcgdXM/IERvIHdlIHN0aWxsIGNh
-cmUgYWJvdXQgdGhpcz8gcHRyYWNlIHdpa2kgc2F5cyB0aGF0IGEga2VybmVsIGNhbiBiZSBwcmVj
-b25maWd1cmVkIHRvIHByZXZlbnQgcHRyYWNlIGZyb20gYXR0YWNoaW5nIHRvIGFueXRoaW5nIG90
-aGVyIHRoYW4gdGhlIHRyYWNlZCBwcm9jZXNz4oCZIHBhcmVudCAodGhhdCBzaG91bGQgYWRkcmVz
-cyB0aGUgY29tbWVudCkuDQoNCj4gDQo+IC0tIA0KPiBKZWZmIExheXRvbiA8amxheXRvbkBwb29j
-aGllcmVkcy5uZXQ+DQoNCg==
+
+> On Apr 27, 2016, at 10:54 AM, Steve Dickson <SteveD@redhat.com> wrote:
+> 
+> 
+> 
+> On 04/25/2016 12:58 PM, Olga Kornievskaia wrote:
+>> Currently, to persevere global data over multiple mounts,
+>> the root process does not fork when handling an upcall.
+>> Instead on not-forking create a pthread to handle the
+>> upcall since global data can be shared among threads.
+>> 
+>> Signed-off-by: Steve Dickson <steved@redhat.com>
+>> Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
+>> ---
+>> aclocal/libpthread.m4  | 13 +++++++++++++
+>> configure.ac           |  3 +++
+>> utils/gssd/Makefile.am |  3 ++-
+>> utils/gssd/gssd.c      | 45 ++++++++++++++++++++++++++++++++++++++++-----
+>> utils/gssd/gssd.h      |  5 +++++
+>> utils/gssd/gssd_proc.c | 49 ++++++++++++++++++-------------------------------
+>> utils/gssd/krb5_util.c |  3 +++
+>> 7 files changed, 84 insertions(+), 37 deletions(-)
+>> create mode 100644 aclocal/libpthread.m4
+>> 
+>> diff --git a/aclocal/libpthread.m4 b/aclocal/libpthread.m4
+>> new file mode 100644
+>> index 0000000..e87d2a0
+>> --- /dev/null
+>> +++ b/aclocal/libpthread.m4
+>> @@ -0,0 +1,13 @@
+>> +dnl Checks for pthreads library and headers
+>> +dnl
+>> +AC_DEFUN([AC_LIBPTHREAD], [
+>> +
+>> +    dnl Check for library, but do not add -lpthreads to LIBS
+>> +    AC_CHECK_LIB([pthread], [pthread_create], [LIBPTHREAD=-lpthread],
+>> +                 [AC_MSG_ERROR([libpthread not found.])])
+>> +  AC_SUBST(LIBPTHREAD)
+>> +
+>> +  AC_CHECK_HEADERS([pthread.h], ,
+>> +                   [AC_MSG_ERROR([libpthread headers not found.])])
+>> +
+>> +])dnl
+>> diff --git a/configure.ac b/configure.ac
+>> index 25d2ba4..e0ecd61 100644
+>> --- a/configure.ac
+>> +++ b/configure.ac
+>> @@ -385,6 +385,9 @@ if test "$enable_gss" = yes; then
+>>   dnl Invoked after AC_KERBEROS_V5; AC_LIBRPCSECGSS needs to have KRBLIBS set
+>>   AC_LIBRPCSECGSS
+>> 
+>> +  dnl Check for pthreads
+>> +  AC_LIBPTHREAD
+>> +
+>>   dnl librpcsecgss already has a dependency on libgssapi,
+>>   dnl but we need to make sure we get the right version
+>>   if test "$enable_gss" = yes; then
+>> diff --git a/utils/gssd/Makefile.am b/utils/gssd/Makefile.am
+>> index cb040b3..3f5f59a 100644
+>> --- a/utils/gssd/Makefile.am
+>> +++ b/utils/gssd/Makefile.am
+>> @@ -49,7 +49,8 @@ gssd_LDADD = \
+>> 	$(RPCSECGSS_LIBS) \
+>> 	$(KRBLIBS) \
+>> 	$(GSSAPI_LIBS) \
+>> -	$(LIBTIRPC)
+>> +	$(LIBTIRPC) \
+>> +	$(LIBPTHREAD)
+>> 
+>> gssd_LDFLAGS = \
+>> 	$(KRBLDFLAGS)
+>> diff --git a/utils/gssd/gssd.c b/utils/gssd/gssd.c
+>> index e7cb07f..0b7ffca 100644
+>> --- a/utils/gssd/gssd.c
+>> +++ b/utils/gssd/gssd.c
+>> @@ -87,7 +87,9 @@ unsigned int  rpc_timeout = 5;
+>> char *preferred_realm = NULL;
+>> /* Avoid DNS reverse lookups on server names */
+>> static bool avoid_dns = true;
+>> -
+>> +int thread_started = false;
+>> +pthread_mutex_t pmutex = PTHREAD_MUTEX_INITIALIZER;
+>> +pthread_cond_t pcond = PTHREAD_COND_INITIALIZER;
+>> 
+>> TAILQ_HEAD(topdir_list_head, topdir) topdir_list;
+>> 
+>> @@ -361,20 +363,53 @@ gssd_destroy_client(struct clnt_info *clp)
+>> 
+>> static void gssd_scan(void);
+>> 
+>> +static void wait_for_child_and_detach(pthread_t th)
+>> +{
+>> +	pthread_mutex_lock(&pmutex);
+>> +	while (!thread_started)
+>> +		pthread_cond_wait(&pcond, &pmutex);
+>> +	thread_started = false;
+>> +	pthread_mutex_unlock(&pmutex);
+>> +	pthread_detach(th);
+>> +}
+> I was just looking at this... does it make more sense to
+> make these types of routines inline instead of allocating
+> stack space on every call... 
+> 
+> With rpc.gssd, when running, is now involved every mount
+> (even sec=sys ones) so I'm wondering if inlining 4 new 
+> routines would buy us anything... 
+> 
+> One down fall with inline routines it makes more
+> difficult to debug from gdb breakpoint point of view.
+
+This doesn’t look like a function that we really need to step into, does it? I think inlining it would be ok.
+
+I think the biggest saving would be to take the next step and do the pool of threads that are pre-created (and thus not taking time to be allocated for each upcall). Then we need a way to make sure we cleanup any threads that might be hanging for whatever reason. 
+
+> 
+> steved. 
+>> +
+>> +/* For each upcall create a thread, detach from the main process so that
+>> + * resources are released back into the system without the need for a join.
+>> + * We need to wait for the child thread to start and consume the event from
+>> + * the file descriptor.
+>> + */
+>> static void
+>> gssd_clnt_gssd_cb(int UNUSED(fd), short UNUSED(which), void *data)
+>> {
+>> 	struct clnt_info *clp = data;
+>> -
+>> -	handle_gssd_upcall(clp);
+>> +	pthread_t th;
+>> +	int ret;
+>> +
+>> +	ret = pthread_create(&th, NULL, (void *)handle_gssd_upcall,
+>> +				(void *)clp);
+>> +	if (ret != 0) {
+>> +		printerr(0, "ERROR: pthread_create failed: ret %d: %s\n",
+>> +			 ret, strerror(errno));
+>> +		return;
+>> +	}
+>> +	wait_for_child_and_detach(th);
+>> }
+>> 
+>> static void
+>> gssd_clnt_krb5_cb(int UNUSED(fd), short UNUSED(which), void *data)
+>> {
+>> 	struct clnt_info *clp = data;
+>> -
+>> -	handle_krb5_upcall(clp);
+>> +	pthread_t th;
+>> +	int ret;
+>> +
+>> +	ret = pthread_create(&th, NULL, (void *)handle_krb5_upcall,
+>> +				(void *)clp);
+>> +	if (ret != 0) {
+>> +		printerr(0, "ERROR: pthread_create failed: ret %d: %s\n",
+>> +			 ret, strerror(errno));
+>> +		return;
+>> +	}
+>> +	wait_for_child_and_detach(th);
+>> }
+>> 
+>> static struct clnt_info *
+>> diff --git a/utils/gssd/gssd.h b/utils/gssd/gssd.h
+>> index c6937c5..565bce3 100644
+>> --- a/utils/gssd/gssd.h
+>> +++ b/utils/gssd/gssd.h
+>> @@ -36,6 +36,7 @@
+>> #include <gssapi/gssapi.h>
+>> #include <event.h>
+>> #include <stdbool.h>
+>> +#include <pthread.h>
+>> 
+>> #ifndef GSSD_PIPEFS_DIR
+>> #define GSSD_PIPEFS_DIR		"/var/lib/nfs/rpc_pipefs"
+>> @@ -61,6 +62,10 @@ extern int			root_uses_machine_creds;
+>> extern unsigned int 		context_timeout;
+>> extern unsigned int rpc_timeout;
+>> extern char			*preferred_realm;
+>> +extern pthread_mutex_t ple_lock;
+>> +extern pthread_cond_t pcond;
+>> +extern pthread_mutex_t pmutex;
+>> +extern int thread_started;
+>> 
+>> struct clnt_info {
+>> 	TAILQ_ENTRY(clnt_info)	list;
+>> diff --git a/utils/gssd/gssd_proc.c b/utils/gssd/gssd_proc.c
+>> index 1ef68d8..e2e95dc 100644
+>> --- a/utils/gssd/gssd_proc.c
+>> +++ b/utils/gssd/gssd_proc.c
+>> @@ -629,36 +629,6 @@ process_krb5_upcall(struct clnt_info *clp, uid_t uid, int fd, char *tgtname,
+>> 	if (uid != 0 || (uid == 0 && root_uses_machine_creds == 0 &&
+>> 				service == NULL)) {
+>> 
+>> -		/* already running as uid 0 */
+>> -		if (uid == 0)
+>> -			goto no_fork;
+>> -
+>> -		pid = fork();
+>> -		switch(pid) {
+>> -		case 0:
+>> -			/* Child: fall through to rest of function */
+>> -			childpid = getpid();
+>> -			unsetenv("KRB5CCNAME");
+>> -			printerr(2, "CHILD forked pid %d \n", childpid);
+>> -			break;
+>> -		case -1:
+>> -			/* fork() failed! */
+>> -			printerr(0, "WARNING: unable to fork() to handle"
+>> -				"upcall: %s\n", strerror(errno));
+>> -			return;
+>> -		default:
+>> -			/* Parent: just wait on child to exit and return */
+>> -			do {
+>> -				pid = wait(&err);
+>> -			} while(pid == -1 && errno != -ECHILD);
+>> -
+>> -			if (WIFSIGNALED(err))
+>> -				printerr(0, "WARNING: forked child was killed"
+>> -					 "with signal %d\n", WTERMSIG(err));
+>> -			return;
+>> -		}
+>> -no_fork:
+>> -
+>> 		auth = krb5_not_machine_creds(clp, uid, tgtname, &downcall_err,
+>> 						&err, &rpc_clnt);
+>> 		if (err)
+>> @@ -735,12 +705,28 @@ out_return_error:
+>> 	goto out;
+>> }
+>> 
+>> +/* signal to the parent thread that we have read from the file descriptor.
+>> + * it should allow the parent to proceed to poll on the descriptor for
+>> + * the next upcall from the kernel.
+>> + */
+>> +static void
+>> +signal_parent_event_consumed(void)
+>> +{
+>> +	pthread_mutex_lock(&pmutex);
+>> +	thread_started = true;
+>> +	pthread_cond_signal(&pcond);
+>> +	pthread_mutex_unlock(&pmutex);
+>> +}
+>> +
+>> void
+>> handle_krb5_upcall(struct clnt_info *clp)
+>> {
+>> 	uid_t			uid;
+>> +	int 			status;
+>> 
+>> -	if (read(clp->krb5_fd, &uid, sizeof(uid)) < (ssize_t)sizeof(uid)) {
+>> +	status = read(clp->krb5_fd, &uid, sizeof(uid)) < (ssize_t)sizeof(uid);
+>> +	signal_parent_event_consumed();
+>> +	if (status) {
+>> 		printerr(0, "WARNING: failed reading uid from krb5 "
+>> 			    "upcall pipe: %s\n", strerror(errno));
+>> 		return;
+>> @@ -765,6 +751,7 @@ handle_gssd_upcall(struct clnt_info *clp)
+>> 	char			*enctypes = NULL;
+>> 
+>> 	lbuflen = read(clp->gssd_fd, lbuf, sizeof(lbuf));
+>> +	signal_parent_event_consumed();
+>> 	if (lbuflen <= 0 || lbuf[lbuflen-1] != '\n') {
+>> 		printerr(0, "WARNING: handle_gssd_upcall: "
+>> 			    "failed reading request\n");
+>> diff --git a/utils/gssd/krb5_util.c b/utils/gssd/krb5_util.c
+>> index 8ef8184..3328696 100644
+>> --- a/utils/gssd/krb5_util.c
+>> +++ b/utils/gssd/krb5_util.c
+>> @@ -128,6 +128,7 @@
+>> 
+>> /* Global list of principals/cache file names for machine credentials */
+>> struct gssd_k5_kt_princ *gssd_k5_kt_princ_list = NULL;
+>> +pthread_mutex_t ple_lock = PTHREAD_MUTEX_INITIALIZER;
+>> 
+>> #ifdef HAVE_SET_ALLOWABLE_ENCTYPES
+>> int limit_to_legacy_enctypes = 0;
+>> @@ -586,10 +587,12 @@ get_ple_by_princ(krb5_context context, krb5_principal princ)
+>> 
+>> 	/* Need to serialize list if we ever become multi-threaded! */
+>> 
+>> +	pthread_mutex_lock(&ple_lock);
+>> 	ple = find_ple_by_princ(context, princ);
+>> 	if (ple == NULL) {
+>> 		ple = new_ple(context, princ);
+>> 	}
+>> +	pthread_mutex_unlock(&ple_lock);
+>> 
+>> 	return ple;
+>> }
+>> 
+
