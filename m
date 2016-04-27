@@ -1,94 +1,68 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:54408 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:54500 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752287AbcD0RdU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 27 Apr 2016 13:33:20 -0400
-Subject: Re: [PATCH nfs-utils] fix building w/newer C libraries
-To: Mike Frysinger <vapier@gentoo.org>, linux-nfs@vger.kernel.org
-References: <1460606547-3957-1-git-send-email-vapier@gentoo.org>
+	id S1752436AbcD0Rdz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 27 Apr 2016 13:33:55 -0400
+Subject: Re: [PATCH/nfs-utils] mount: run START_STATD fully as root
+To: NeilBrown <neilb@suse.com>
+References: <87shyey1zw.fsf@notabene.neil.brown.name>
+Cc: NFS List <linux-nfs@vger.kernel.org>
 From: Steve Dickson <SteveD@redhat.com>
-Message-ID: <5720F7DF.6070408@RedHat.com>
-Date: Wed, 27 Apr 2016 13:33:19 -0400
+Message-ID: <5720F801.5090700@RedHat.com>
+Date: Wed, 27 Apr 2016 13:33:53 -0400
 MIME-Version: 1.0
-In-Reply-To: <1460606547-3957-1-git-send-email-vapier@gentoo.org>
+In-Reply-To: <87shyey1zw.fsf@notabene.neil.brown.name>
 Content-Type: text/plain; charset=windows-1252
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
 
-On 04/14/2016 12:02 AM, Mike Frysinger wrote:
-> Linux C libraries are moving away from implicitly including the header
-> sys/sysmacros.h via sys/types.h.  We would like to do this for glibc
-> now, but others (musl/etc...) have been doing it already.  This means
-> any code using major/minor/makedevs functions will fail to build when
-> they don't include that header.
+On 04/21/2016 07:29 PM, NeilBrown wrote:
 > 
-> Leverage the AC_HEADER_MAJOR macro that configure is already using to
-> pull in the right header.
+> If a "user" mount is the first NFSv3 mount, mount.nfs will be running
+> setuid to root (with non-root as the real-uid) when it executes START_STATD.
 > 
-> Signed-off-by: Mike Frysinger <vapier@gentoo.org>
+> start-statd is a shell script and many shells refuse to run setuid,
+> dropping privileges immediately.  This results in start-statd running
+> as an unprivileged user and so statd fails to start.
+> 
+> To fix this, call "setuid(0)" to set real uid to zero.  Also call "setgid(0)"
+> for consistency.
+> 
+> The behaviour of a shell can often be affected by the environment,
+> such as the "shell functions" that bash includes from the environment.
+> To avoid the user being able to pass such environment to the shell,
+> explicitly pass an empty environment.  The start-statd script explicitly
+> sets the PATH which is all it really needs.
+> 
+> Signed-off-by: NeilBrown <neilb@suse.com>
 Committed... 
 
 steved.
-> ---
->  support/include/xcommon.h        | 6 ++++++
->  support/nfs/nfsexport.c          | 1 +
->  utils/blkmapd/device-discovery.c | 1 +
->  utils/mountd/cache.c             | 1 +
->  4 files changed, 9 insertions(+)
+
 > 
-> diff --git a/support/include/xcommon.h b/support/include/xcommon.h
-> index d1a4b18..23c9a13 100644
-> --- a/support/include/xcommon.h
-> +++ b/support/include/xcommon.h
-> @@ -17,6 +17,12 @@
->  #include <stdlib.h>
->  #include <string.h>
->  
-> +#ifdef MAJOR_IN_MKDEV
-> +#include <sys/mkdev.h>
-> +#elif defined(MAJOR_IN_SYSMACROS)
-> +#include <sys/sysmacros.h>
-> +#endif
-> +
->  #define streq(s, t)	(strcmp ((s), (t)) == 0)
->  
->  /* Functions in sundries.c that are used in mount.c and umount.c  */ 
-> diff --git a/support/nfs/nfsexport.c b/support/nfs/nfsexport.c
-> index afd7c90..4b13265 100644
-> --- a/support/nfs/nfsexport.c
-> +++ b/support/nfs/nfsexport.c
-> @@ -19,6 +19,7 @@
->  
->  #include "nfslib.h"
->  #include "misc.h"
-> +#include "xcommon.h"
->  
->  	/* if /proc/net/rpc/... exists, then 
->  	 * write to it, as that interface is more stable.
-> diff --git a/utils/blkmapd/device-discovery.c b/utils/blkmapd/device-discovery.c
-> index b010628..052d582 100644
-> --- a/utils/blkmapd/device-discovery.c
-> +++ b/utils/blkmapd/device-discovery.c
-> @@ -51,6 +51,7 @@
->  #include <libdevmapper.h>
->  
->  #include "device-discovery.h"
-> +#include "xcommon.h"
->  
->  #define EVENT_SIZE (sizeof(struct inotify_event))
->  #define EVENT_BUFSIZE (1024 * EVENT_SIZE)
-> diff --git a/utils/mountd/cache.c b/utils/mountd/cache.c
-> index 7847446..ec86a22 100644
-> --- a/utils/mountd/cache.c
-> +++ b/utils/mountd/cache.c
-> @@ -31,6 +31,7 @@
->  #include "mountd.h"
->  #include "fsloc.h"
->  #include "pseudoflavors.h"
-> +#include "xcommon.h"
->  
->  #ifdef USE_BLKID
->  #include "blkid/blkid.h"
+> diff --git a/utils/mount/network.c b/utils/mount/network.c
+> index 7240ca7bcdc4..0d12613e86a4 100644
+> --- a/utils/mount/network.c
+> +++ b/utils/mount/network.c
+> @@ -795,6 +795,7 @@ int start_statd(void)
+>  		if (S_ISREG(stb.st_mode) && (stb.st_mode & S_IXUSR)) {
+>  			int cnt = STATD_TIMEOUT * 10;
+>  			int status = 0;
+> +			char * const envp[1] = { NULL };
+>  			const struct timespec ts = {
+>  				.tv_sec = 0,
+>  				.tv_nsec = 100000000,
+> @@ -802,7 +803,9 @@ int start_statd(void)
+>  			pid_t pid = fork();
+>  			switch (pid) {
+>  			case 0: /* child */
+> -				execl(START_STATD, START_STATD, NULL);
+> +				setgid(0);
+> +				setuid(0);
+> +				execle(START_STATD, START_STATD, NULL, envp);
+>  				exit(1);
+>  			case -1: /* error */
+>  				nfs_error(_("%s: fork failed: %s"),
 > 
