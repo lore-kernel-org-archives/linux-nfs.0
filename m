@@ -1,293 +1,288 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:56223 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752973AbcD0RjK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 27 Apr 2016 13:39:10 -0400
-Subject: Re: [PATCH v5 1/3] gssd: use pthreads to handle upcalls
-To: Olga Kornievskaia <kolga@netapp.com>
-References: <1461776287-1427-1-git-send-email-kolga@netapp.com>
- <1461776287-1427-2-git-send-email-kolga@netapp.com>
-Cc: linux-nfs@vger.kernel.org
-From: Steve Dickson <SteveD@redhat.com>
-Message-ID: <5720F93D.1020303@RedHat.com>
-Date: Wed, 27 Apr 2016 13:39:09 -0400
-MIME-Version: 1.0
-In-Reply-To: <1461776287-1427-2-git-send-email-kolga@netapp.com>
-Content-Type: text/plain; charset=windows-1252
+Received: from mail-ig0-f196.google.com ([209.85.213.196]:36726 "EHLO
+	mail-ig0-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753697AbcD0RmE (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 27 Apr 2016 13:42:04 -0400
+Received: by mail-ig0-f196.google.com with SMTP id c3so7264667igl.3
+        for <linux-nfs@vger.kernel.org>; Wed, 27 Apr 2016 10:42:04 -0700 (PDT)
+Subject: Re: [PATCH 1.1/2] xfs: abstract PF_FSTRANS to PF_MEMALLOC_NOFS
+Mime-Version: 1.0 (Mac OS X Mail 9.3 \(3124\))
+Content-Type: multipart/signed; boundary="Apple-Mail=_E2A13889-F5F8-484A-9C14-046AD6B7906F"; protocol="application/pgp-signature"; micalg=pgp-sha256
+From: Andreas Dilger <adilger@dilger.ca>
+In-Reply-To: <1461758075-21815-1-git-send-email-mhocko@kernel.org>
+Date: Wed, 27 Apr 2016 11:41:51 -0600
+Cc: Linux MM <linux-mm@kvack.org>,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        Andrew Morton <akpm@linux-foundation.org>,
+        Dave Chinner <david@fromorbit.com>, "Theodore Ts'o" <tytso@mit.edu>,
+        Chris Mason <clm@fb.com>, Jan Kara <jack@suse.cz>,
+        ceph-devel@vger.kernel.org, cluster-devel <cluster-devel@redhat.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>, logfs@logfs.org,
+        XFS Developers <xfs@oss.sgi.com>, linux-ext4@vger.kernel.org,
+        linux-btrfs@vger.kernel.org, linux-mtd@lists.infradead.org,
+        reiserfs-devel@vger.kernel.org, linux-ntfs-dev@lists.sourceforge.net,
+        linux-f2fs-devel@lists.sourceforge.net, linux-afs@lists.infradead.org,
+        LKML <linux-kernel@vger.kernel.org>, Michal Hocko <mhocko@suse.com>
+Message-Id: <04798BA8-2157-4611-B4EA-B8BCBA88AEC3@dilger.ca>
+References: <1461671772-1269-2-git-send-email-mhocko@kernel.org> <1461758075-21815-1-git-send-email-mhocko@kernel.org>
+To: Michal Hocko <mhocko@kernel.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
+--Apple-Mail=_E2A13889-F5F8-484A-9C14-046AD6B7906F
+Content-Transfer-Encoding: quoted-printable
+Content-Type: text/plain;
+	charset=us-ascii
 
-On 04/27/2016 12:58 PM, Olga Kornievskaia wrote:
-> Currently, to persevere global data over multiple mounts,
-> the root process does not fork when handling an upcall.
-> Instead on not-forking create a pthread to handle the
-> upcall since global data can be shared among threads.
-> 
-> Signed-off-by: Steve Dickson <steved@redhat.com>
-> Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
+On Apr 27, 2016, at 5:54 AM, Michal Hocko <mhocko@kernel.org> wrote:
+>=20
+> From: Michal Hocko <mhocko@suse.com>
+>=20
+> xfs has defined PF_FSTRANS to declare a scope GFP_NOFS semantic quite
+> some time ago. We would like to make this concept more generic and use
+> it for other filesystems as well. Let's start by giving the flag a
+> more genric name PF_MEMALLOC_NOFS which is in line with an exiting
+> PF_MEMALLOC_NOIO already used for the same purpose for GFP_NOIO
+> contexts. Replace all PF_FSTRANS usage from the xfs code in the first
+> step before we introduce a full API for it as xfs uses the flag =
+directly
+> anyway.
+>=20
+> This patch doesn't introduce any functional change.
+>=20
+> Signed-off-by: Michal Hocko <mhocko@suse.com>
 > ---
->  aclocal/libpthread.m4  | 13 +++++++++++++
->  configure.ac           |  3 +++
->  utils/gssd/Makefile.am |  3 ++-
->  utils/gssd/gssd.c      | 45 ++++++++++++++++++++++++++++++++++++++++-----
->  utils/gssd/gssd.h      |  5 +++++
->  utils/gssd/gssd_proc.c | 49 ++++++++++++++++++-------------------------------
->  utils/gssd/krb5_util.c |  3 +++
->  7 files changed, 84 insertions(+), 37 deletions(-)
->  create mode 100644 aclocal/libpthread.m4
-> 
-> diff --git a/aclocal/libpthread.m4 b/aclocal/libpthread.m4
-> new file mode 100644
-> index 0000000..e87d2a0
-> --- /dev/null
-> +++ b/aclocal/libpthread.m4
-> @@ -0,0 +1,13 @@
-> +dnl Checks for pthreads library and headers
-> +dnl
-> +AC_DEFUN([AC_LIBPTHREAD], [
-> +
-> +    dnl Check for library, but do not add -lpthreads to LIBS
-> +    AC_CHECK_LIB([pthread], [pthread_create], [LIBPTHREAD=-lpthread],
-> +                 [AC_MSG_ERROR([libpthread not found.])])
-> +  AC_SUBST(LIBPTHREAD)
-> +
-> +  AC_CHECK_HEADERS([pthread.h], ,
-> +                   [AC_MSG_ERROR([libpthread headers not found.])])
-> +
-> +])dnl
-> diff --git a/configure.ac b/configure.ac
-> index 25d2ba4..e0ecd61 100644
-> --- a/configure.ac
-> +++ b/configure.ac
-> @@ -385,6 +385,9 @@ if test "$enable_gss" = yes; then
->    dnl Invoked after AC_KERBEROS_V5; AC_LIBRPCSECGSS needs to have KRBLIBS set
->    AC_LIBRPCSECGSS
->  
-> +  dnl Check for pthreads
-> +  AC_LIBPTHREAD
-> +
->    dnl librpcsecgss already has a dependency on libgssapi,
->    dnl but we need to make sure we get the right version
->    if test "$enable_gss" = yes; then
-> diff --git a/utils/gssd/Makefile.am b/utils/gssd/Makefile.am
-> index cb040b3..3f5f59a 100644
-> --- a/utils/gssd/Makefile.am
-> +++ b/utils/gssd/Makefile.am
-> @@ -49,7 +49,8 @@ gssd_LDADD = \
->  	$(RPCSECGSS_LIBS) \
->  	$(KRBLIBS) \
->  	$(GSSAPI_LIBS) \
-> -	$(LIBTIRPC)
-> +	$(LIBTIRPC) \
-> +	$(LIBPTHREAD)
->  
->  gssd_LDFLAGS = \
->  	$(KRBLDFLAGS)
-> diff --git a/utils/gssd/gssd.c b/utils/gssd/gssd.c
-> index e7cb07f..b676341 100644
-> --- a/utils/gssd/gssd.c
-> +++ b/utils/gssd/gssd.c
-> @@ -87,7 +87,9 @@ unsigned int  rpc_timeout = 5;
->  char *preferred_realm = NULL;
->  /* Avoid DNS reverse lookups on server names */
->  static bool avoid_dns = true;
-> -
-> +int thread_started = false;
-> +pthread_mutex_t pmutex = PTHREAD_MUTEX_INITIALIZER;
-> +pthread_cond_t pcond = PTHREAD_COND_INITIALIZER;
->  
->  TAILQ_HEAD(topdir_list_head, topdir) topdir_list;
->  
-> @@ -361,20 +363,53 @@ gssd_destroy_client(struct clnt_info *clp)
->  
->  static void gssd_scan(void);
->  
-> +static inline void wait_for_child_and_detach(pthread_t th)
-> +{
-> +	pthread_mutex_lock(&pmutex);
-> +	while (!thread_started)
-> +		pthread_cond_wait(&pcond, &pmutex);
-> +	thread_started = false;
-> +	pthread_mutex_unlock(&pmutex);
-> +	pthread_detach(th);
-> +}
-> +
-> +/* For each upcall create a thread, detach from the main process so that
-> + * resources are released back into the system without the need for a join.
-> + * We need to wait for the child thread to start and consume the event from
-> + * the file descriptor.
-> + */
->  static void
->  gssd_clnt_gssd_cb(int UNUSED(fd), short UNUSED(which), void *data)
->  {
->  	struct clnt_info *clp = data;
-> -
-> -	handle_gssd_upcall(clp);
-> +	pthread_t th;
-> +	int ret;
-> +
-> +	ret = pthread_create(&th, NULL, (void *)handle_gssd_upcall,
-> +				(void *)clp);
-> +	if (ret != 0) {
-> +		printerr(0, "ERROR: pthread_create failed: ret %d: %s\n",
-> +			 ret, strerror(errno));
-> +		return;
-> +	}
-> +	wait_for_child_and_detach(th);
->  }
->  
->  static void
->  gssd_clnt_krb5_cb(int UNUSED(fd), short UNUSED(which), void *data)
->  {
->  	struct clnt_info *clp = data;
-> -
-> -	handle_krb5_upcall(clp);
-> +	pthread_t th;
-> +	int ret;
-> +
-> +	ret = pthread_create(&th, NULL, (void *)handle_krb5_upcall,
-> +				(void *)clp);
-> +	if (ret != 0) {
-> +		printerr(0, "ERROR: pthread_create failed: ret %d: %s\n",
-> +			 ret, strerror(errno));
-> +		return;
-> +	}
-> +	wait_for_child_and_detach(th);
->  }
->  
->  static struct clnt_info *
-> diff --git a/utils/gssd/gssd.h b/utils/gssd/gssd.h
-> index c6937c5..565bce3 100644
-> --- a/utils/gssd/gssd.h
-> +++ b/utils/gssd/gssd.h
-> @@ -36,6 +36,7 @@
->  #include <gssapi/gssapi.h>
->  #include <event.h>
->  #include <stdbool.h>
-> +#include <pthread.h>
->  
->  #ifndef GSSD_PIPEFS_DIR
->  #define GSSD_PIPEFS_DIR		"/var/lib/nfs/rpc_pipefs"
-> @@ -61,6 +62,10 @@ extern int			root_uses_machine_creds;
->  extern unsigned int 		context_timeout;
->  extern unsigned int rpc_timeout;
->  extern char			*preferred_realm;
-> +extern pthread_mutex_t ple_lock;
-> +extern pthread_cond_t pcond;
-> +extern pthread_mutex_t pmutex;
-> +extern int thread_started;
->  
->  struct clnt_info {
->  	TAILQ_ENTRY(clnt_info)	list;
-> diff --git a/utils/gssd/gssd_proc.c b/utils/gssd/gssd_proc.c
-> index 1ef68d8..e2e95dc 100644
-> --- a/utils/gssd/gssd_proc.c
-> +++ b/utils/gssd/gssd_proc.c
-> @@ -629,36 +629,6 @@ process_krb5_upcall(struct clnt_info *clp, uid_t uid, int fd, char *tgtname,
->  	if (uid != 0 || (uid == 0 && root_uses_machine_creds == 0 &&
->  				service == NULL)) {
->  
-> -		/* already running as uid 0 */
-> -		if (uid == 0)
-> -			goto no_fork;
-> -
-> -		pid = fork();
-> -		switch(pid) {
-> -		case 0:
-> -			/* Child: fall through to rest of function */
-> -			childpid = getpid();
-> -			unsetenv("KRB5CCNAME");
-> -			printerr(2, "CHILD forked pid %d \n", childpid);
-> -			break;
-> -		case -1:
-> -			/* fork() failed! */
-> -			printerr(0, "WARNING: unable to fork() to handle"
-> -				"upcall: %s\n", strerror(errno));
-> -			return;
-> -		default:
-> -			/* Parent: just wait on child to exit and return */
-> -			do {
-> -				pid = wait(&err);
-> -			} while(pid == -1 && errno != -ECHILD);
-> -
-> -			if (WIFSIGNALED(err))
-> -				printerr(0, "WARNING: forked child was killed"
-> -					 "with signal %d\n", WTERMSIG(err));
-> -			return;
-> -		}
-> -no_fork:
-> -
->  		auth = krb5_not_machine_creds(clp, uid, tgtname, &downcall_err,
->  						&err, &rpc_clnt);
->  		if (err)
-> @@ -735,12 +705,28 @@ out_return_error:
->  	goto out;
->  }
->  
-> +/* signal to the parent thread that we have read from the file descriptor.
-> + * it should allow the parent to proceed to poll on the descriptor for
-> + * the next upcall from the kernel.
-> + */
-> +static void
-> +signal_parent_event_consumed(void)
-> +{
-> +	pthread_mutex_lock(&pmutex);
-> +	thread_started = true;
-> +	pthread_cond_signal(&pcond);
-> +	pthread_mutex_unlock(&pmutex);
-> +}
-> +
-Small nit... this should be a static inline void
-as well... I'll fix it... no need to repost...
+> Hi,
+> as suggested by Dave, I have split up [1] into two parts. The first =
+one
+> addes a new PF flag which is just an alias to the existing PF_FSTRANS
+> and does all the renaming and the second one to introduce the generic
+> API which only changes the bare minimum in the xfs proper.
+>=20
+> fs/xfs/kmem.c             |  4 ++--
+> fs/xfs/kmem.h             |  2 +-
+> fs/xfs/libxfs/xfs_btree.c |  2 +-
+> fs/xfs/xfs_aops.c         |  6 +++---
+> fs/xfs/xfs_trans.c        | 12 ++++++------
+> include/linux/sched.h     |  2 ++
+> 6 files changed, 15 insertions(+), 13 deletions(-)
+>=20
+> diff --git a/fs/xfs/kmem.c b/fs/xfs/kmem.c
+> index 686ba6fb20dd..73f6ab59c664 100644
+> --- a/fs/xfs/kmem.c
+> +++ b/fs/xfs/kmem.c
+> @@ -80,13 +80,13 @@ kmem_zalloc_large(size_t size, xfs_km_flags_t =
+flags)
+> 	 * context via PF_MEMALLOC_NOIO to prevent memory reclaim =
+re-entering
+> 	 * the filesystem here and potentially deadlocking.
+> 	 */
+> -	if ((current->flags & PF_FSTRANS) || (flags & KM_NOFS))
+> +	if ((current->flags & PF_MEMALLOC_NOFS) || (flags & KM_NOFS))
+> 		noio_flag =3D memalloc_noio_save();
+>=20
+> 	lflags =3D kmem_flags_convert(flags);
+> 	ptr =3D __vmalloc(size, lflags | __GFP_HIGHMEM | __GFP_ZERO, =
+PAGE_KERNEL);
+>=20
+> -	if ((current->flags & PF_FSTRANS) || (flags & KM_NOFS))
+> +	if ((current->flags & PF_MEMALLOC_NOFS) || (flags & KM_NOFS))
+> 		memalloc_noio_restore(noio_flag);
 
-steved.
+Not really the fault of this patch, but it brings this nasty bit of code =
+into
+the light.  Is all of this machinery still needed given that __vmalloc() =
+can
+accept GFP flags?  If yes, wouldn't it be better to fix __vmalloc() to =
+honor
+the GFP flags instead of working around it in the filesystem code?
 
->  void
->  handle_krb5_upcall(struct clnt_info *clp)
->  {
->  	uid_t			uid;
-> +	int 			status;
->  
-> -	if (read(clp->krb5_fd, &uid, sizeof(uid)) < (ssize_t)sizeof(uid)) {
-> +	status = read(clp->krb5_fd, &uid, sizeof(uid)) < (ssize_t)sizeof(uid);
-> +	signal_parent_event_consumed();
-> +	if (status) {
->  		printerr(0, "WARNING: failed reading uid from krb5 "
->  			    "upcall pipe: %s\n", strerror(errno));
->  		return;
-> @@ -765,6 +751,7 @@ handle_gssd_upcall(struct clnt_info *clp)
->  	char			*enctypes = NULL;
->  
->  	lbuflen = read(clp->gssd_fd, lbuf, sizeof(lbuf));
-> +	signal_parent_event_consumed();
->  	if (lbuflen <= 0 || lbuf[lbuflen-1] != '\n') {
->  		printerr(0, "WARNING: handle_gssd_upcall: "
->  			    "failed reading request\n");
-> diff --git a/utils/gssd/krb5_util.c b/utils/gssd/krb5_util.c
-> index 8ef8184..3328696 100644
-> --- a/utils/gssd/krb5_util.c
-> +++ b/utils/gssd/krb5_util.c
-> @@ -128,6 +128,7 @@
->  
->  /* Global list of principals/cache file names for machine credentials */
->  struct gssd_k5_kt_princ *gssd_k5_kt_princ_list = NULL;
-> +pthread_mutex_t ple_lock = PTHREAD_MUTEX_INITIALIZER;
->  
->  #ifdef HAVE_SET_ALLOWABLE_ENCTYPES
->  int limit_to_legacy_enctypes = 0;
-> @@ -586,10 +587,12 @@ get_ple_by_princ(krb5_context context, krb5_principal princ)
->  
->  	/* Need to serialize list if we ever become multi-threaded! */
->  
-> +	pthread_mutex_lock(&ple_lock);
->  	ple = find_ple_by_princ(context, princ);
->  	if (ple == NULL) {
->  		ple = new_ple(context, princ);
->  	}
-> +	pthread_mutex_unlock(&ple_lock);
->  
->  	return ple;
->  }
-> 
+Cheers, Andreas
+
+> 	return ptr;
+> diff --git a/fs/xfs/kmem.h b/fs/xfs/kmem.h
+> index d1c66e465ca5..0d83f332e5c2 100644
+> --- a/fs/xfs/kmem.h
+> +++ b/fs/xfs/kmem.h
+> @@ -50,7 +50,7 @@ kmem_flags_convert(xfs_km_flags_t flags)
+> 		lflags =3D GFP_ATOMIC | __GFP_NOWARN;
+> 	} else {
+> 		lflags =3D GFP_KERNEL | __GFP_NOWARN;
+> -		if ((current->flags & PF_FSTRANS) || (flags & KM_NOFS))
+> +		if ((current->flags & PF_MEMALLOC_NOFS) || (flags & =
+KM_NOFS))
+> 			lflags &=3D ~__GFP_FS;
+> 	}
+>=20
+> diff --git a/fs/xfs/libxfs/xfs_btree.c b/fs/xfs/libxfs/xfs_btree.c
+> index a0eb18ce3ad3..326566f4a131 100644
+> --- a/fs/xfs/libxfs/xfs_btree.c
+> +++ b/fs/xfs/libxfs/xfs_btree.c
+> @@ -2540,7 +2540,7 @@ xfs_btree_split_worker(
+> 	struct xfs_btree_split_args	*args =3D container_of(work,
+> 						struct =
+xfs_btree_split_args, work);
+> 	unsigned long		pflags;
+> -	unsigned long		new_pflags =3D PF_FSTRANS;
+> +	unsigned long		new_pflags =3D PF_MEMALLOC_NOFS;
+>=20
+> 	/*
+> 	 * we are in a transaction context here, but may also be doing =
+work
+> diff --git a/fs/xfs/xfs_aops.c b/fs/xfs/xfs_aops.c
+> index d12dfcfd0cc8..6d816ff0b763 100644
+> --- a/fs/xfs/xfs_aops.c
+> +++ b/fs/xfs/xfs_aops.c
+> @@ -124,7 +124,7 @@ xfs_setfilesize_trans_alloc(
+> 	 * We hand off the transaction to the completion thread now, so
+> 	 * clear the flag here.
+> 	 */
+> -	current_restore_flags_nested(&tp->t_pflags, PF_FSTRANS);
+> +	current_restore_flags_nested(&tp->t_pflags, PF_MEMALLOC_NOFS);
+> 	return 0;
+> }
+>=20
+> @@ -169,7 +169,7 @@ xfs_setfilesize_ioend(
+> 	 * thus we need to mark ourselves as being in a transaction =
+manually.
+> 	 * Similarly for freeze protection.
+> 	 */
+> -	current_set_flags_nested(&tp->t_pflags, PF_FSTRANS);
+> +	current_set_flags_nested(&tp->t_pflags, PF_MEMALLOC_NOFS);
+> 	__sb_writers_acquired(VFS_I(ip)->i_sb, SB_FREEZE_FS);
+>=20
+> 	/* we abort the update if there was an IO error */
+> @@ -979,7 +979,7 @@ xfs_vm_writepage(
+> 	 * Given that we do not allow direct reclaim to call us, we =
+should
+> 	 * never be called while in a filesystem transaction.
+> 	 */
+> -	if (WARN_ON_ONCE(current->flags & PF_FSTRANS))
+> +	if (WARN_ON_ONCE(current->flags & PF_MEMALLOC_NOFS))
+> 		goto redirty;
+>=20
+> 	/* Is this page beyond the end of the file? */
+> diff --git a/fs/xfs/xfs_trans.c b/fs/xfs/xfs_trans.c
+> index 748b16aff45a..1d247366c733 100644
+> --- a/fs/xfs/xfs_trans.c
+> +++ b/fs/xfs/xfs_trans.c
+> @@ -176,7 +176,7 @@ xfs_trans_reserve(
+> 	bool		rsvd =3D (tp->t_flags & XFS_TRANS_RESERVE) !=3D =
+0;
+>=20
+> 	/* Mark this thread as being in a transaction */
+> -	current_set_flags_nested(&tp->t_pflags, PF_FSTRANS);
+> +	current_set_flags_nested(&tp->t_pflags, PF_MEMALLOC_NOFS);
+>=20
+> 	/*
+> 	 * Attempt to reserve the needed disk blocks by decrementing
+> @@ -186,7 +186,7 @@ xfs_trans_reserve(
+> 	if (blocks > 0) {
+> 		error =3D xfs_mod_fdblocks(tp->t_mountp, =
+-((int64_t)blocks), rsvd);
+> 		if (error !=3D 0) {
+> -			current_restore_flags_nested(&tp->t_pflags, =
+PF_FSTRANS);
+> +			current_restore_flags_nested(&tp->t_pflags, =
+PF_MEMALLOC_NOFS);
+> 			return -ENOSPC;
+> 		}
+> 		tp->t_blk_res +=3D blocks;
+> @@ -263,7 +263,7 @@ xfs_trans_reserve(
+> 		tp->t_blk_res =3D 0;
+> 	}
+>=20
+> -	current_restore_flags_nested(&tp->t_pflags, PF_FSTRANS);
+> +	current_restore_flags_nested(&tp->t_pflags, PF_MEMALLOC_NOFS);
+>=20
+> 	return error;
+> }
+> @@ -921,7 +921,7 @@ __xfs_trans_commit(
+>=20
+> 	xfs_log_commit_cil(mp, tp, &commit_lsn, regrant);
+>=20
+> -	current_restore_flags_nested(&tp->t_pflags, PF_FSTRANS);
+> +	current_restore_flags_nested(&tp->t_pflags, PF_MEMALLOC_NOFS);
+> 	xfs_trans_free(tp);
+>=20
+> 	/*
+> @@ -951,7 +951,7 @@ __xfs_trans_commit(
+> 		if (commit_lsn =3D=3D -1 && !error)
+> 			error =3D -EIO;
+> 	}
+> -	current_restore_flags_nested(&tp->t_pflags, PF_FSTRANS);
+> +	current_restore_flags_nested(&tp->t_pflags, PF_MEMALLOC_NOFS);
+> 	xfs_trans_free_items(tp, NULLCOMMITLSN, !!error);
+> 	xfs_trans_free(tp);
+>=20
+> @@ -1005,7 +1005,7 @@ xfs_trans_cancel(
+> 		xfs_log_done(mp, tp->t_ticket, NULL, false);
+>=20
+> 	/* mark this thread as no longer being in a transaction */
+> -	current_restore_flags_nested(&tp->t_pflags, PF_FSTRANS);
+> +	current_restore_flags_nested(&tp->t_pflags, PF_MEMALLOC_NOFS);
+>=20
+> 	xfs_trans_free_items(tp, NULLCOMMITLSN, dirty);
+> 	xfs_trans_free(tp);
+> diff --git a/include/linux/sched.h b/include/linux/sched.h
+> index acfc32b30704..820db8f98bfc 100644
+> --- a/include/linux/sched.h
+> +++ b/include/linux/sched.h
+> @@ -2115,6 +2115,8 @@ extern void thread_group_cputime_adjusted(struct =
+task_struct *p, cputime_t *ut,
+> #define PF_FREEZER_SKIP	0x40000000	/* Freezer should not =
+count it as freezable */
+> #define PF_SUSPEND_TASK 0x80000000      /* this thread called =
+freeze_processes and should not be frozen */
+>=20
+> +#define PF_MEMALLOC_NOFS PF_FSTRANS	/* Transition to a more generic =
+GFP_NOFS scope semantic */
+> +
+> /*
+>  * Only the _current_ task can read/write to tsk->flags, but other
+>  * tasks can access tsk->flags in readonly mode for example
+> --
+> 2.8.0.rc3
+>=20
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" =
+in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+
+Cheers, Andreas
+
+
+
+
+
+
+--Apple-Mail=_E2A13889-F5F8-484A-9C14-046AD6B7906F
+Content-Transfer-Encoding: 7bit
+Content-Disposition: attachment;
+	filename=signature.asc
+Content-Type: application/pgp-signature;
+	name=signature.asc
+Content-Description: Message signed with OpenPGP using GPGMail
+
+-----BEGIN PGP SIGNATURE-----
+Comment: GPGTools - http://gpgtools.org
+
+iQIVAwUBVyD54HKl2rkXzB/gAQhFgA//ZYuehVpoM5drnP3bbKWtQjn+P6DN/JN+
+Tm6ZVTirAPubH6MoXJ2+c7UHpnxzIRKlauzLQkZih1i3oYUyC58bNJuSeJNmffsY
+QVqB/INiLvJhfSwzzUzJEAZBrrrMp5laltsy4fgc13GqRoeT4wY3IoTb4ZofuC9G
+ij6BiTMALIp6IkhPNk/9Ru5jBqWbcVTMHngMfeYrWRuzKOM7QO58ceqCYM4xsz7n
+QuH/685BricBeQYPxQXaaAM0Gh6LAUd4ctzWFBpJavT+oaJoG7/JLSTUoLU/2W0b
+pGJHCCWpY59eUz1AT13PGTYcCxo6+ta+PRtWX8qEuME5vrsCkfYgUHjkislp3avM
+dahSdlxRLo5Ji4kxUiKS9RATKRfh1G7ucKsUC+PIeaXjfQEGXaihjFFHj0ioHVtl
+vqVlOmxSCSXhwHbvLiwehrb2njBhtfTplbQ1YL370/c00tezhDbDMrp4q1GmuCGJ
+1ewQTTHhixNPogyV5ameP/4oq8CMCztnmGw65/54BCcORcOkgE4Vprwwvi+AOJP4
+DG5SdP+Sj4DdcOHI2MtDjvna9vGLbiINSsu76YPgltbvnQMqp+CUyK9qBoBsXNUi
+Aco5N8PaQWzKloGPDOeVzHdMBononKFf+4wtbaQ0kEUkX0bXdvkSJqxlDsK/6wnE
+05SCP6c8sd4=
+=dU5k
+-----END PGP SIGNATURE-----
+
+--Apple-Mail=_E2A13889-F5F8-484A-9C14-046AD6B7906F--
