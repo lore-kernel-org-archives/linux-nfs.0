@@ -1,310 +1,128 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx141.netapp.com ([216.240.21.12]:15100 "EHLO mx141.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:33253 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750785AbcD0PQn convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 27 Apr 2016 11:16:43 -0400
-From: "Kornievskaia, Olga" <Olga.Kornievskaia@netapp.com>
-To: Steve Dickson <SteveD@redhat.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH v3 1/3] gssd: use pthreads to handle upcalls
-Date: Wed, 27 Apr 2016 15:16:38 +0000
-Message-ID: <59AF3631-819C-42E5-AB0D-3483590E279D@netapp.com>
-References: <1461603513-67523-1-git-send-email-kolga@netapp.com>
- <1461603513-67523-2-git-send-email-kolga@netapp.com>
- <5720D2BA.5010400@RedHat.com>
-In-Reply-To: <5720D2BA.5010400@RedHat.com>
-Content-Type: text/plain; charset="Windows-1252"
+	id S1753247AbcD0PTY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 27 Apr 2016 11:19:24 -0400
+Subject: Re: [PATCH v4 2/3] gssd: using syscalls directly to change thread's
+ identity
+To: "Kornievskaia, Olga" <Olga.Kornievskaia@netapp.com>,
+        Jeff Layton <jlayton@poochiereds.net>
+References: <1461677655-68294-1-git-send-email-kolga@netapp.com>
+ <1461677655-68294-3-git-send-email-kolga@netapp.com>
+ <1461689470.4200.7.camel@poochiereds.net>
+ <CAN-5tyH_yHoRhkXegP4gQ0FS-C+Rmx7ziEiRd4+d7NkBDuR7Qw@mail.gmail.com>
+ <1461766405.4403.3.camel@poochiereds.net>
+ <1F119572-BB46-4F78-88B6-E6ACD01ADA93@netapp.com>
+Cc: Olga Kornievskaia <aglo@umich.edu>, linux-nfs <linux-nfs@vger.kernel.org>
+From: Steve Dickson <SteveD@redhat.com>
+Message-ID: <5720D879.3000305@RedHat.com>
+Date: Wed, 27 Apr 2016 11:19:21 -0400
 MIME-Version: 1.0
+In-Reply-To: <1F119572-BB46-4F78-88B6-E6ACD01ADA93@netapp.com>
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
-> On Apr 27, 2016, at 10:54 AM, Steve Dickson <SteveD@redhat.com> wrote:
-> 
-> 
-> 
-> On 04/25/2016 12:58 PM, Olga Kornievskaia wrote:
->> Currently, to persevere global data over multiple mounts,
->> the root process does not fork when handling an upcall.
->> Instead on not-forking create a pthread to handle the
->> upcall since global data can be shared among threads.
->> 
->> Signed-off-by: Steve Dickson <steved@redhat.com>
->> Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
->> ---
->> aclocal/libpthread.m4  | 13 +++++++++++++
->> configure.ac           |  3 +++
->> utils/gssd/Makefile.am |  3 ++-
->> utils/gssd/gssd.c      | 45 ++++++++++++++++++++++++++++++++++++++++-----
->> utils/gssd/gssd.h      |  5 +++++
->> utils/gssd/gssd_proc.c | 49 ++++++++++++++++++-------------------------------
->> utils/gssd/krb5_util.c |  3 +++
->> 7 files changed, 84 insertions(+), 37 deletions(-)
->> create mode 100644 aclocal/libpthread.m4
->> 
->> diff --git a/aclocal/libpthread.m4 b/aclocal/libpthread.m4
->> new file mode 100644
->> index 0000000..e87d2a0
->> --- /dev/null
->> +++ b/aclocal/libpthread.m4
->> @@ -0,0 +1,13 @@
->> +dnl Checks for pthreads library and headers
->> +dnl
->> +AC_DEFUN([AC_LIBPTHREAD], [
->> +
->> +    dnl Check for library, but do not add -lpthreads to LIBS
->> +    AC_CHECK_LIB([pthread], [pthread_create], [LIBPTHREAD=-lpthread],
->> +                 [AC_MSG_ERROR([libpthread not found.])])
->> +  AC_SUBST(LIBPTHREAD)
->> +
->> +  AC_CHECK_HEADERS([pthread.h], ,
->> +                   [AC_MSG_ERROR([libpthread headers not found.])])
->> +
->> +])dnl
->> diff --git a/configure.ac b/configure.ac
->> index 25d2ba4..e0ecd61 100644
->> --- a/configure.ac
->> +++ b/configure.ac
->> @@ -385,6 +385,9 @@ if test "$enable_gss" = yes; then
->>   dnl Invoked after AC_KERBEROS_V5; AC_LIBRPCSECGSS needs to have KRBLIBS set
->>   AC_LIBRPCSECGSS
->> 
->> +  dnl Check for pthreads
->> +  AC_LIBPTHREAD
->> +
->>   dnl librpcsecgss already has a dependency on libgssapi,
->>   dnl but we need to make sure we get the right version
->>   if test "$enable_gss" = yes; then
->> diff --git a/utils/gssd/Makefile.am b/utils/gssd/Makefile.am
->> index cb040b3..3f5f59a 100644
->> --- a/utils/gssd/Makefile.am
->> +++ b/utils/gssd/Makefile.am
->> @@ -49,7 +49,8 @@ gssd_LDADD = \
->> 	$(RPCSECGSS_LIBS) \
->> 	$(KRBLIBS) \
->> 	$(GSSAPI_LIBS) \
->> -	$(LIBTIRPC)
->> +	$(LIBTIRPC) \
->> +	$(LIBPTHREAD)
->> 
->> gssd_LDFLAGS = \
->> 	$(KRBLDFLAGS)
->> diff --git a/utils/gssd/gssd.c b/utils/gssd/gssd.c
->> index e7cb07f..0b7ffca 100644
->> --- a/utils/gssd/gssd.c
->> +++ b/utils/gssd/gssd.c
->> @@ -87,7 +87,9 @@ unsigned int  rpc_timeout = 5;
->> char *preferred_realm = NULL;
->> /* Avoid DNS reverse lookups on server names */
->> static bool avoid_dns = true;
->> -
->> +int thread_started = false;
->> +pthread_mutex_t pmutex = PTHREAD_MUTEX_INITIALIZER;
->> +pthread_cond_t pcond = PTHREAD_COND_INITIALIZER;
->> 
->> TAILQ_HEAD(topdir_list_head, topdir) topdir_list;
->> 
->> @@ -361,20 +363,53 @@ gssd_destroy_client(struct clnt_info *clp)
->> 
->> static void gssd_scan(void);
->> 
->> +static void wait_for_child_and_detach(pthread_t th)
->> +{
->> +	pthread_mutex_lock(&pmutex);
->> +	while (!thread_started)
->> +		pthread_cond_wait(&pcond, &pmutex);
->> +	thread_started = false;
->> +	pthread_mutex_unlock(&pmutex);
->> +	pthread_detach(th);
->> +}
-> I was just looking at this... does it make more sense to
-> make these types of routines inline instead of allocating
-> stack space on every call... 
-> 
-> With rpc.gssd, when running, is now involved every mount
-> (even sec=sys ones) so I'm wondering if inlining 4 new 
-> routines would buy us anything... 
-> 
-> One down fall with inline routines it makes more
-> difficult to debug from gdb breakpoint point of view.
 
-This doesn’t look like a function that we really need to step into, does it? I think inlining it would be ok.
+On 04/27/2016 11:01 AM, Kornievskaia, Olga wrote:
+> 
+>> On Apr 27, 2016, at 10:13 AM, Jeff Layton <jlayton@poochiereds.net> wrote:
+>>
+>> On Wed, 2016-04-27 at 10:09 -0400, Olga Kornievskaia wrote:
+>>> On Tue, Apr 26, 2016 at 12:51 PM, Jeff Layton <jlayton@poochiereds.ne
+>>> t> wrote:
+>>>> On Tue, 2016-04-26 at 09:34 -0400, Olga Kornievskaia wrote:
+>>>>> For the threaded version we have to set uid,gid per thread
+>>>>> instead
+>>>>> of per process. glibc setresuid() when called from a thread,
+>>>>> it'll
+>>>>> send a signal to all other threads to synchronize the uid in all
+>>>>> other threads. To bypass this, we have to call syscall()
+>>>>> directly.
+>>>>>
+>>>>> Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
+>>>>> Reviewed-by: Steve Dickson <steved@redhat.com>
+>>>>> ---
+>>>>>  utils/gssd/gssd_proc.c | 12 +++++++++---
+>>>>>  1 file changed, 9 insertions(+), 3 deletions(-)
+>>>>>
+>>>>> diff --git a/utils/gssd/gssd_proc.c b/utils/gssd/gssd_proc.c
+>>>>> index e2e95dc..39c4b17 100644
+>>>>> --- a/utils/gssd/gssd_proc.c
+>>>>> +++ b/utils/gssd/gssd_proc.c
+>>>>> @@ -69,6 +69,7 @@
+>>>>>  #include
+>>>>>  #include
+>>>>>  #include
+>>>>> +#include
+>>>>>
+>>>>>  #include "gssd.h"
+>>>>>  #include "err_util.h"
+>>>>> @@ -436,7 +437,7 @@ change_identity(uid_t uid)
+>>>>>       struct passwd   *pw;
+>>>>>
+>>>>>       /* drop list of supplimentary groups first */
+>>>>> -     if (setgroups(0, NULL) != 0) {
+>>>>> +     if (syscall(SYS_setgroups, 0, 0) != 0) {
+>>>>>               printerr(0, "WARNING: unable to drop supplimentary
+>>>>> groups!");
+>>>>>               return errno;
+>>>>>       }
+>>>>> @@ -457,7 +458,12 @@ change_identity(uid_t uid)
+>>>>>        * Switch the GIDs. Note that we leave the saved-set-gid
+>>>>> alone in an
+>>>>>        * attempt to prevent attacks via ptrace()
+>>>>>        */
+>>>>> -     if (setresgid(pw->pw_gid, pw->pw_gid, -1) != 0) {
+>>>>> +     /* For the threaded version we have to set uid,gid per
+>>>>> thread instead
+>>>>> +      * of per process. glibc setresuid() when called from a
+>>>>> thread, it'll
+>>>>> +      * send a signal to all other threads to synchronize the
+>>>>> uid in all
+>>>>> +      * other threads. To bypass this, we have to call syscall()
+>>>>> directly.
+>>>>> +      */
+>>>>> +     if (syscall(SYS_setresgid, pw->pw_gid, -1, -1) != 0) {
+>>>>>               printerr(0, "WARNING: failed to set gid to %u!\n",
+>>>>> pw->pw_gid);
+>>>>>               return errno;
+>>>>>       }
+>>>>> @@ -466,7 +472,7 @@ change_identity(uid_t uid)
+>>>>>        * Switch UIDs, but leave saved-set-uid alone to prevent
+>>>>> ptrace() by
+>>>>>        * other processes running with this uid.
+>>>>>        */
+>>>>> -     if (setresuid(uid, uid, -1) != 0) {
+>>>>> +     if (syscall(SYS_setresuid, uid, -1, -1) != 0) {
+>>>>>               printerr(0, "WARNING: Failed to setuid for user
+>>>>> with uid %u\n",
+>>>>>                               uid);
+>>>>>               return errno;
+>>>>
+>>>> Note that the old code set both real and effective uid/gid. Here
+>>>> you're
+>>>> changing it to just set the real uid. Is that change deliberate? I
+>>>> think you probably want to set the euid/egid as well.
+>>>
+>>> It was a typo (cthon tests ran fine though which is confusing since
+>>> kerberos code does geteuid()). Now I'm thinking that given that we
+>>> don't touch saved uid, perhaps the code should call SYS_setreuid
+>>> instead of SYS_setresuid?
+>>>
+>>
+>> Yes, good point. Either that or just set all 3 to "uid", I'd think.
+> 
+> There is a comment above saying leaving save-set-uid alone prevents ptrace from tracing us? 
+> Do we still care about this? ptrace wiki says that a kernel can be preconfigured to prevent 
+> ptrace from attaching to anything other than the traced processâ€™ parent (that should address the comment).
+I would guess not... 
 
-I think the biggest saving would be to take the next step and do the pool of threads that are pre-created (and thus not taking time to be allocated for each upcall). Then we need a way to make sure we cleanup any threads that might be hanging for whatever reason. 
+steved.
 
 > 
-> steved. 
->> +
->> +/* For each upcall create a thread, detach from the main process so that
->> + * resources are released back into the system without the need for a join.
->> + * We need to wait for the child thread to start and consume the event from
->> + * the file descriptor.
->> + */
->> static void
->> gssd_clnt_gssd_cb(int UNUSED(fd), short UNUSED(which), void *data)
->> {
->> 	struct clnt_info *clp = data;
->> -
->> -	handle_gssd_upcall(clp);
->> +	pthread_t th;
->> +	int ret;
->> +
->> +	ret = pthread_create(&th, NULL, (void *)handle_gssd_upcall,
->> +				(void *)clp);
->> +	if (ret != 0) {
->> +		printerr(0, "ERROR: pthread_create failed: ret %d: %s\n",
->> +			 ret, strerror(errno));
->> +		return;
->> +	}
->> +	wait_for_child_and_detach(th);
->> }
->> 
->> static void
->> gssd_clnt_krb5_cb(int UNUSED(fd), short UNUSED(which), void *data)
->> {
->> 	struct clnt_info *clp = data;
->> -
->> -	handle_krb5_upcall(clp);
->> +	pthread_t th;
->> +	int ret;
->> +
->> +	ret = pthread_create(&th, NULL, (void *)handle_krb5_upcall,
->> +				(void *)clp);
->> +	if (ret != 0) {
->> +		printerr(0, "ERROR: pthread_create failed: ret %d: %s\n",
->> +			 ret, strerror(errno));
->> +		return;
->> +	}
->> +	wait_for_child_and_detach(th);
->> }
->> 
->> static struct clnt_info *
->> diff --git a/utils/gssd/gssd.h b/utils/gssd/gssd.h
->> index c6937c5..565bce3 100644
->> --- a/utils/gssd/gssd.h
->> +++ b/utils/gssd/gssd.h
->> @@ -36,6 +36,7 @@
->> #include <gssapi/gssapi.h>
->> #include <event.h>
->> #include <stdbool.h>
->> +#include <pthread.h>
->> 
->> #ifndef GSSD_PIPEFS_DIR
->> #define GSSD_PIPEFS_DIR		"/var/lib/nfs/rpc_pipefs"
->> @@ -61,6 +62,10 @@ extern int			root_uses_machine_creds;
->> extern unsigned int 		context_timeout;
->> extern unsigned int rpc_timeout;
->> extern char			*preferred_realm;
->> +extern pthread_mutex_t ple_lock;
->> +extern pthread_cond_t pcond;
->> +extern pthread_mutex_t pmutex;
->> +extern int thread_started;
->> 
->> struct clnt_info {
->> 	TAILQ_ENTRY(clnt_info)	list;
->> diff --git a/utils/gssd/gssd_proc.c b/utils/gssd/gssd_proc.c
->> index 1ef68d8..e2e95dc 100644
->> --- a/utils/gssd/gssd_proc.c
->> +++ b/utils/gssd/gssd_proc.c
->> @@ -629,36 +629,6 @@ process_krb5_upcall(struct clnt_info *clp, uid_t uid, int fd, char *tgtname,
->> 	if (uid != 0 || (uid == 0 && root_uses_machine_creds == 0 &&
->> 				service == NULL)) {
->> 
->> -		/* already running as uid 0 */
->> -		if (uid == 0)
->> -			goto no_fork;
->> -
->> -		pid = fork();
->> -		switch(pid) {
->> -		case 0:
->> -			/* Child: fall through to rest of function */
->> -			childpid = getpid();
->> -			unsetenv("KRB5CCNAME");
->> -			printerr(2, "CHILD forked pid %d \n", childpid);
->> -			break;
->> -		case -1:
->> -			/* fork() failed! */
->> -			printerr(0, "WARNING: unable to fork() to handle"
->> -				"upcall: %s\n", strerror(errno));
->> -			return;
->> -		default:
->> -			/* Parent: just wait on child to exit and return */
->> -			do {
->> -				pid = wait(&err);
->> -			} while(pid == -1 && errno != -ECHILD);
->> -
->> -			if (WIFSIGNALED(err))
->> -				printerr(0, "WARNING: forked child was killed"
->> -					 "with signal %d\n", WTERMSIG(err));
->> -			return;
->> -		}
->> -no_fork:
->> -
->> 		auth = krb5_not_machine_creds(clp, uid, tgtname, &downcall_err,
->> 						&err, &rpc_clnt);
->> 		if (err)
->> @@ -735,12 +705,28 @@ out_return_error:
->> 	goto out;
->> }
->> 
->> +/* signal to the parent thread that we have read from the file descriptor.
->> + * it should allow the parent to proceed to poll on the descriptor for
->> + * the next upcall from the kernel.
->> + */
->> +static void
->> +signal_parent_event_consumed(void)
->> +{
->> +	pthread_mutex_lock(&pmutex);
->> +	thread_started = true;
->> +	pthread_cond_signal(&pcond);
->> +	pthread_mutex_unlock(&pmutex);
->> +}
->> +
->> void
->> handle_krb5_upcall(struct clnt_info *clp)
->> {
->> 	uid_t			uid;
->> +	int 			status;
->> 
->> -	if (read(clp->krb5_fd, &uid, sizeof(uid)) < (ssize_t)sizeof(uid)) {
->> +	status = read(clp->krb5_fd, &uid, sizeof(uid)) < (ssize_t)sizeof(uid);
->> +	signal_parent_event_consumed();
->> +	if (status) {
->> 		printerr(0, "WARNING: failed reading uid from krb5 "
->> 			    "upcall pipe: %s\n", strerror(errno));
->> 		return;
->> @@ -765,6 +751,7 @@ handle_gssd_upcall(struct clnt_info *clp)
->> 	char			*enctypes = NULL;
->> 
->> 	lbuflen = read(clp->gssd_fd, lbuf, sizeof(lbuf));
->> +	signal_parent_event_consumed();
->> 	if (lbuflen <= 0 || lbuf[lbuflen-1] != '\n') {
->> 		printerr(0, "WARNING: handle_gssd_upcall: "
->> 			    "failed reading request\n");
->> diff --git a/utils/gssd/krb5_util.c b/utils/gssd/krb5_util.c
->> index 8ef8184..3328696 100644
->> --- a/utils/gssd/krb5_util.c
->> +++ b/utils/gssd/krb5_util.c
->> @@ -128,6 +128,7 @@
->> 
->> /* Global list of principals/cache file names for machine credentials */
->> struct gssd_k5_kt_princ *gssd_k5_kt_princ_list = NULL;
->> +pthread_mutex_t ple_lock = PTHREAD_MUTEX_INITIALIZER;
->> 
->> #ifdef HAVE_SET_ALLOWABLE_ENCTYPES
->> int limit_to_legacy_enctypes = 0;
->> @@ -586,10 +587,12 @@ get_ple_by_princ(krb5_context context, krb5_principal princ)
->> 
->> 	/* Need to serialize list if we ever become multi-threaded! */
->> 
->> +	pthread_mutex_lock(&ple_lock);
->> 	ple = find_ple_by_princ(context, princ);
->> 	if (ple == NULL) {
->> 		ple = new_ple(context, princ);
->> 	}
->> +	pthread_mutex_unlock(&ple_lock);
->> 
->> 	return ple;
->> }
->> 
-
+>>
+>> -- 
+>> Jeff Layton <jlayton@poochiereds.net>
+> 
