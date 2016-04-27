@@ -1,66 +1,94 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:41173 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:54408 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752656AbcD0Rct (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 27 Apr 2016 13:32:49 -0400
-Received: from int-mx11.intmail.prod.int.phx2.redhat.com (int-mx11.intmail.prod.int.phx2.redhat.com [10.5.11.24])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
-	(No client certificate requested)
-	by mx1.redhat.com (Postfix) with ESMTPS id 6A3FE78225
-	for <linux-nfs@vger.kernel.org>; Wed, 27 Apr 2016 17:32:48 +0000 (UTC)
-Received: from steved.boston.devel.redhat.com (vpn-58-205.rdu2.redhat.com [10.10.58.205])
-	by int-mx11.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id u3RHWlpS011426
-	for <linux-nfs@vger.kernel.org>; Wed, 27 Apr 2016 13:32:48 -0400
-Subject: Re: [PATCH] Move nfs-utils_env.sh to a more appropriate directory
-To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-References: <1458414669-26671-1-git-send-email-steved@redhat.com>
+	id S1752287AbcD0RdU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 27 Apr 2016 13:33:20 -0400
+Subject: Re: [PATCH nfs-utils] fix building w/newer C libraries
+To: Mike Frysinger <vapier@gentoo.org>, linux-nfs@vger.kernel.org
+References: <1460606547-3957-1-git-send-email-vapier@gentoo.org>
 From: Steve Dickson <SteveD@redhat.com>
-Message-ID: <5720F7BF.2000504@RedHat.com>
-Date: Wed, 27 Apr 2016 13:32:47 -0400
+Message-ID: <5720F7DF.6070408@RedHat.com>
+Date: Wed, 27 Apr 2016 13:33:19 -0400
 MIME-Version: 1.0
-In-Reply-To: <1458414669-26671-1-git-send-email-steved@redhat.com>
+In-Reply-To: <1460606547-3957-1-git-send-email-vapier@gentoo.org>
 Content-Type: text/plain; charset=windows-1252
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
 
-On 03/19/2016 03:11 PM, Steve Dickson wrote:
-> Currently nfs-utils_env.sh is installed in a
-> directory that is own by systemd. They requested
-> via https://bugzilla.redhat.com/show_bug.cgi?id=1303113
-> to move the script into /usr/libexec/nfs-utils
+On 04/14/2016 12:02 AM, Mike Frysinger wrote:
+> Linux C libraries are moving away from implicitly including the header
+> sys/sysmacros.h via sys/types.h.  We would like to do this for glibc
+> now, but others (musl/etc...) have been doing it already.  This means
+> any code using major/minor/makedevs functions will fail to build when
+> they don't include that header.
 > 
-> Signed-off-by: Steve Dickson <steved@redhat.com>
+> Leverage the AC_HEADER_MAJOR macro that configure is already using to
+> pull in the right header.
+> 
+> Signed-off-by: Mike Frysinger <vapier@gentoo.org>
 Committed... 
 
 steved.
 > ---
->  systemd/README             | 2 +-
->  systemd/nfs-config.service | 2 +-
->  2 files changed, 2 insertions(+), 2 deletions(-)
+>  support/include/xcommon.h        | 6 ++++++
+>  support/nfs/nfsexport.c          | 1 +
+>  utils/blkmapd/device-discovery.c | 1 +
+>  utils/mountd/cache.c             | 1 +
+>  4 files changed, 9 insertions(+)
 > 
-> diff --git a/systemd/README b/systemd/README
-> index bbd7790..7c43df8 100644
-> --- a/systemd/README
-> +++ b/systemd/README
-> @@ -53,7 +53,7 @@ client and systemd cannot specify is two-pronged reverse dependency.
->  (i.e. stop this unit if none of these units are running)
+> diff --git a/support/include/xcommon.h b/support/include/xcommon.h
+> index d1a4b18..23c9a13 100644
+> --- a/support/include/xcommon.h
+> +++ b/support/include/xcommon.h
+> @@ -17,6 +17,12 @@
+>  #include <stdlib.h>
+>  #include <string.h>
 >  
->  Distro specific commandline configuration can be provided by
-> -installing a script /usr/lib/systemd/scripts/nfs-utils_env.sh
-> +installing a script /usr/libexec/nfs-utils/nfs-utils_env.sh
->  This should write /run/sysconfig/nfs-utils based on configuration
->  information such as in /etc/sysconfig/nfs or /etc/defaults/nfs.
->  It is run once by nfs-config.service.
-> diff --git a/systemd/nfs-config.service b/systemd/nfs-config.service
-> index 4b206b5..bd69e84 100644
-> --- a/systemd/nfs-config.service
-> +++ b/systemd/nfs-config.service
-> @@ -10,4 +10,4 @@ Type=oneshot
->  # incorporated.  Having "RemainAfterExit=no" (the default)
->  # ensures this happens.
->  RemainAfterExit=no
-> -ExecStart=/usr/lib/systemd/scripts/nfs-utils_env.sh
-> +ExecStart=/usr/libexec/nfs-utils/nfs-utils_env.sh
+> +#ifdef MAJOR_IN_MKDEV
+> +#include <sys/mkdev.h>
+> +#elif defined(MAJOR_IN_SYSMACROS)
+> +#include <sys/sysmacros.h>
+> +#endif
+> +
+>  #define streq(s, t)	(strcmp ((s), (t)) == 0)
+>  
+>  /* Functions in sundries.c that are used in mount.c and umount.c  */ 
+> diff --git a/support/nfs/nfsexport.c b/support/nfs/nfsexport.c
+> index afd7c90..4b13265 100644
+> --- a/support/nfs/nfsexport.c
+> +++ b/support/nfs/nfsexport.c
+> @@ -19,6 +19,7 @@
+>  
+>  #include "nfslib.h"
+>  #include "misc.h"
+> +#include "xcommon.h"
+>  
+>  	/* if /proc/net/rpc/... exists, then 
+>  	 * write to it, as that interface is more stable.
+> diff --git a/utils/blkmapd/device-discovery.c b/utils/blkmapd/device-discovery.c
+> index b010628..052d582 100644
+> --- a/utils/blkmapd/device-discovery.c
+> +++ b/utils/blkmapd/device-discovery.c
+> @@ -51,6 +51,7 @@
+>  #include <libdevmapper.h>
+>  
+>  #include "device-discovery.h"
+> +#include "xcommon.h"
+>  
+>  #define EVENT_SIZE (sizeof(struct inotify_event))
+>  #define EVENT_BUFSIZE (1024 * EVENT_SIZE)
+> diff --git a/utils/mountd/cache.c b/utils/mountd/cache.c
+> index 7847446..ec86a22 100644
+> --- a/utils/mountd/cache.c
+> +++ b/utils/mountd/cache.c
+> @@ -31,6 +31,7 @@
+>  #include "mountd.h"
+>  #include "fsloc.h"
+>  #include "pseudoflavors.h"
+> +#include "xcommon.h"
+>  
+>  #ifdef USE_BLKID
+>  #include "blkid/blkid.h"
 > 
