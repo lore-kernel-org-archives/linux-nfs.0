@@ -1,70 +1,97 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-wm0-f66.google.com ([74.125.82.66]:36124 "EHLO
-	mail-wm0-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752039AbcD0IDP (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 27 Apr 2016 04:03:15 -0400
-Date: Wed, 27 Apr 2016 10:03:11 +0200
-From: Michal Hocko <mhocko@kernel.org>
-To: Dave Chinner <david@fromorbit.com>
-Cc: linux-mm@kvack.org, linux-fsdevel@vger.kernel.org,
-        Andrew Morton <akpm@linux-foundation.org>,
-        "Theodore Ts'o" <tytso@mit.edu>, Chris Mason <clm@fb.com>,
-        Jan Kara <jack@suse.cz>, ceph-devel@vger.kernel.org,
-        cluster-devel@redhat.com, linux-nfs@vger.kernel.org, logfs@logfs.org,
-        xfs@oss.sgi.com, linux-ext4@vger.kernel.org,
-        linux-btrfs@vger.kernel.org, linux-mtd@lists.infradead.org,
-        reiserfs-devel@vger.kernel.org, linux-ntfs-dev@lists.sourceforge.net,
-        linux-f2fs-devel@lists.sourceforge.net, linux-afs@lists.infradead.org,
-        LKML <linux-kernel@vger.kernel.org>
-Subject: Re: [PATCH 2/2] mm, debug: report when GFP_NO{FS,IO} is used
- explicitly from memalloc_no{fs,io}_{save,restore} context
-Message-ID: <20160427080311.GC2179@dhcp22.suse.cz>
-References: <1461671772-1269-1-git-send-email-mhocko@kernel.org>
- <1461671772-1269-3-git-send-email-mhocko@kernel.org>
- <20160426225845.GF26977@dastard>
+Received: from mail-ig0-f195.google.com ([209.85.213.195]:36038 "EHLO
+	mail-ig0-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751967AbcD0OJa (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 27 Apr 2016 10:09:30 -0400
+Received: by mail-ig0-f195.google.com with SMTP id c3so6404904igl.3
+        for <linux-nfs@vger.kernel.org>; Wed, 27 Apr 2016 07:09:29 -0700 (PDT)
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20160426225845.GF26977@dastard>
+In-Reply-To: <1461689470.4200.7.camel@poochiereds.net>
+References: <1461677655-68294-1-git-send-email-kolga@netapp.com>
+	<1461677655-68294-3-git-send-email-kolga@netapp.com>
+	<1461689470.4200.7.camel@poochiereds.net>
+Date: Wed, 27 Apr 2016 10:09:29 -0400
+Message-ID: <CAN-5tyH_yHoRhkXegP4gQ0FS-C+Rmx7ziEiRd4+d7NkBDuR7Qw@mail.gmail.com>
+Subject: Re: [PATCH v4 2/3] gssd: using syscalls directly to change thread's identity
+From: Olga Kornievskaia <aglo@umich.edu>
+To: Jeff Layton <jlayton@poochiereds.net>
+Cc: Olga Kornievskaia <kolga@netapp.com>, Steve Dickson <steved@redhat.com>,
+        linux-nfs <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed 27-04-16 08:58:45, Dave Chinner wrote:
-> On Tue, Apr 26, 2016 at 01:56:12PM +0200, Michal Hocko wrote:
-> > From: Michal Hocko <mhocko@suse.com>
-> > 
-> > THIS PATCH IS FOR TESTING ONLY AND NOT MEANT TO HIT LINUS TREE
-> > 
-> > It is desirable to reduce the direct GFP_NO{FS,IO} usage at minimum and
-> > prefer scope usage defined by memalloc_no{fs,io}_{save,restore} API.
-> > 
-> > Let's help this process and add a debugging tool to catch when an
-> > explicit allocation request for GFP_NO{FS,IO} is done from the scope
-> > context. The printed stacktrace should help to identify the caller
-> > and evaluate whether it can be changed to use a wider context or whether
-> > it is called from another potentially dangerous context which needs
-> > a scope protection as well.
-> 
-> You're going to get a large number of these from XFS. There are call
-> paths in XFs that get called both inside and outside transaction
-> context, and many of them are marked with GFP_NOFS to prevent issues
-> that have cropped up in the past.
-> 
-> Often these are to silence lockdep warnings (e.g. commit b17cb36
-> ("xfs: fix missing KM_NOFS tags to keep lockdep happy")) because
-> lockdep gets very unhappy about the same functions being called with
-> different reclaim contexts. e.g.  directory block mapping might
-> occur from readdir (no transaction context) or within transactions
-> (create/unlink). hence paths like this are tagged with GFP_NOFS to
-> stop lockdep emitting false positive warnings....
+On Tue, Apr 26, 2016 at 12:51 PM, Jeff Layton <jlayton@poochiereds.net> wrote:
+> On Tue, 2016-04-26 at 09:34 -0400, Olga Kornievskaia wrote:
+>> For the threaded version we have to set uid,gid per thread instead
+>> of per process. glibc setresuid() when called from a thread, it'll
+>> send a signal to all other threads to synchronize the uid in all
+>> other threads. To bypass this, we have to call syscall() directly.
+>>
+>> Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
+>> Reviewed-by: Steve Dickson <steved@redhat.com>
+>> ---
+>>  utils/gssd/gssd_proc.c | 12 +++++++++---
+>>  1 file changed, 9 insertions(+), 3 deletions(-)
+>>
+>> diff --git a/utils/gssd/gssd_proc.c b/utils/gssd/gssd_proc.c
+>> index e2e95dc..39c4b17 100644
+>> --- a/utils/gssd/gssd_proc.c
+>> +++ b/utils/gssd/gssd_proc.c
+>> @@ -69,6 +69,7 @@
+>>  #include
+>>  #include
+>>  #include
+>> +#include
+>>
+>>  #include "gssd.h"
+>>  #include "err_util.h"
+>> @@ -436,7 +437,7 @@ change_identity(uid_t uid)
+>>       struct passwd   *pw;
+>>
+>>       /* drop list of supplimentary groups first */
+>> -     if (setgroups(0, NULL) != 0) {
+>> +     if (syscall(SYS_setgroups, 0, 0) != 0) {
+>>               printerr(0, "WARNING: unable to drop supplimentary groups!");
+>>               return errno;
+>>       }
+>> @@ -457,7 +458,12 @@ change_identity(uid_t uid)
+>>        * Switch the GIDs. Note that we leave the saved-set-gid alone in an
+>>        * attempt to prevent attacks via ptrace()
+>>        */
+>> -     if (setresgid(pw->pw_gid, pw->pw_gid, -1) != 0) {
+>> +     /* For the threaded version we have to set uid,gid per thread instead
+>> +      * of per process. glibc setresuid() when called from a thread, it'll
+>> +      * send a signal to all other threads to synchronize the uid in all
+>> +      * other threads. To bypass this, we have to call syscall() directly.
+>> +      */
+>> +     if (syscall(SYS_setresgid, pw->pw_gid, -1, -1) != 0) {
+>>               printerr(0, "WARNING: failed to set gid to %u!\n", pw->pw_gid);
+>>               return errno;
+>>       }
+>> @@ -466,7 +472,7 @@ change_identity(uid_t uid)
+>>        * Switch UIDs, but leave saved-set-uid alone to prevent ptrace() by
+>>        * other processes running with this uid.
+>>        */
+>> -     if (setresuid(uid, uid, -1) != 0) {
+>> +     if (syscall(SYS_setresuid, uid, -1, -1) != 0) {
+>>               printerr(0, "WARNING: Failed to setuid for user with uid %u\n",
+>>                               uid);
+>>               return errno;
+>
+> Note that the old code set both real and effective uid/gid. Here you're
+> changing it to just set the real uid. Is that change deliberate? I
+> think you probably want to set the euid/egid as well.
 
-I would much rather see lockdep being fixed than abusing GFP_NOFS to
-workaround its limitations. GFP_NOFS has a real consequences to the
-memory reclaim. I will go and check the commit you mentioned and try
-to understand why that is a problem. From what you described above
-I would like to get rid of exactly this kind of usage which is not
-really needed for the recursion protection.
+It was a typo (cthon tests ran fine though which is confusing since
+kerberos code does geteuid()). Now I'm thinking that given that we
+don't touch saved uid, perhaps the code should call SYS_setreuid
+instead of SYS_setresuid?
 
-Thanks!
--- 
-Michal Hocko
-SUSE Labs
+>
+> --
+> Jeff Layton <jlayton@poochiereds.net>
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
