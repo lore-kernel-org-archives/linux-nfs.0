@@ -1,15 +1,15 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx144.netapp.com ([216.240.21.25]:13162 "EHLO mx144.netapp.com"
+Received: from mx143.netapp.com ([216.240.21.24]:3483 "EHLO mx143.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753394AbcD0Pgq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 27 Apr 2016 11:36:46 -0400
+	id S1753574AbcD0Pgr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 27 Apr 2016 11:36:47 -0400
 From: <andros@netapp.com>
 To: <trond.myklebust@primarydata.com>
 CC: <steved@redhat.com>, <linux-nfs@vger.kernel.org>,
         Andy Adamson <andros@netapp.com>
-Subject: [PATCH Version 3 9/9] NFS add multiaddr to nfs_show_nfsv4_options
-Date: Wed, 27 Apr 2016 11:36:10 -0400
-Message-ID: <1461771370-16375-10-git-send-email-andros@netapp.com>
+Subject: [PATCH Version 3 3/9] NFS refactor nfs4_match_clientids
+Date: Wed, 27 Apr 2016 11:36:04 -0400
+Message-ID: <1461771370-16375-4-git-send-email-andros@netapp.com>
 In-Reply-To: <1461771370-16375-1-git-send-email-andros@netapp.com>
 References: <1461771370-16375-1-git-send-email-andros@netapp.com>
 MIME-Version: 1.0
@@ -19,61 +19,47 @@ List-ID: <linux-nfs.vger.kernel.org>
 
 From: Andy Adamson <andros@netapp.com>
 
+For session trunking, to compare nfs41_exchange_id_res with
+exiting nfs_client.
+
 Signed-off-by: Andy Adamson <andros@netapp.com>
 ---
- fs/nfs/super.c             | 24 ++++++++++++++++++++++++
- net/sunrpc/xprtmultipath.c |  1 +
- 2 files changed, 25 insertions(+)
+ fs/nfs/nfs4client.c | 10 +++++-----
+ 1 file changed, 5 insertions(+), 5 deletions(-)
 
-diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-index 70a4fda..1dc1e18 100644
---- a/fs/nfs/super.c
-+++ b/fs/nfs/super.c
-@@ -605,8 +605,32 @@ static void nfs_show_nfsv4_options(struct seq_file *m, struct nfs_server *nfss,
- 				    int showdefaults)
+diff --git a/fs/nfs/nfs4client.c b/fs/nfs/nfs4client.c
+index 10410e8..c9177a4 100644
+--- a/fs/nfs/nfs4client.c
++++ b/fs/nfs/nfs4client.c
+@@ -562,15 +562,15 @@ out:
+ /*
+  * Returns true if the client IDs match
+  */
+-static bool nfs4_match_clientids(struct nfs_client *a, struct nfs_client *b)
++static bool nfs4_match_clientids(u64 a, u64 b)
  {
- 	struct nfs_client *clp = nfss->nfs_client;
-+	struct rpc_clnt *clnt = clp->cl_rpcclient;
-+	struct rpc_xprt_switch *xps;
-+	struct rpc_xprt *pos;
-+	unsigned int nxprts;
- 
- 	seq_printf(m, ",clientaddr=%s", clp->cl_ipaddr);
-+	rcu_read_lock();
-+	xps = xprt_switch_get(rcu_dereference(clnt->cl_xpi.xpi_xpswitch));
-+	pos = xprt_iter_xprt(&clnt->cl_xpi);
-+	if (xps == NULL || pos == NULL)
-+		return;
-+	nxprts = xps->xps_nxprts;
-+	list_for_each_entry_rcu(pos, &xps->xps_xprt_list, xprt_switch) {
-+		if (nxprts == 0)
-+			break;
-+		if (pos->address_strings[RPC_DISPLAY_ADDR] == NULL)
-+			break;
-+		/* Do not display mount xprt as a multiaddr */
-+		if (pos == rcu_access_pointer(clp->cl_rpcclient->cl_xprt))
-+			continue;
-+		seq_printf(m, ",multiaddr=%s",
-+			pos->address_strings[RPC_DISPLAY_ADDR]);
-+		nxprts--;
-+	}
-+	rcu_read_unlock();
-+	xprt_switch_put(xps);
+-	if (a->cl_clientid != b->cl_clientid) {
++	if (a != b) {
+ 		dprintk("NFS: --> %s client ID %llx does not match %llx\n",
+-			__func__, a->cl_clientid, b->cl_clientid);
++			__func__, a, b);
+ 		return false;
+ 	}
+ 	dprintk("NFS: --> %s client ID %llx matches %llx\n",
+-		__func__, a->cl_clientid, b->cl_clientid);
++		__func__, a, b);
+ 	return true;
  }
- #else
- static void nfs_show_nfsv4_options(struct seq_file *m, struct nfs_server *nfss,
-diff --git a/net/sunrpc/xprtmultipath.c b/net/sunrpc/xprtmultipath.c
-index 360f64c..708c22a 100644
---- a/net/sunrpc/xprtmultipath.c
-+++ b/net/sunrpc/xprtmultipath.c
-@@ -403,6 +403,7 @@ struct rpc_xprt *xprt_iter_xprt(struct rpc_xprt_iter *xpi)
- 	WARN_ON_ONCE(!rcu_read_lock_held());
- 	return xprt_iter_ops(xpi)->xpi_xprt(xpi);
- }
-+EXPORT_SYMBOL_GPL(xprt_iter_xprt);
  
- static
- struct rpc_xprt *xprt_iter_get_helper(struct rpc_xprt_iter *xpi,
+@@ -650,7 +650,7 @@ int nfs41_walk_client_list(struct nfs_client *new,
+ 		if (pos->cl_cons_state != NFS_CS_READY)
+ 			continue;
+ 
+-		if (!nfs4_match_clientids(pos, new))
++		if (!nfs4_match_clientids(pos->cl_clientid, new->cl_clientid))
+ 			continue;
+ 
+ 		/*
 -- 
 1.8.3.1
 
