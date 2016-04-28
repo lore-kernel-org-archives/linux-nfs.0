@@ -1,14 +1,14 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f176.google.com ([209.85.223.176]:33318 "EHLO
-	mail-io0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752685AbcD1PPD (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 28 Apr 2016 11:15:03 -0400
-Subject: [PATCH 04/10] svcrdma: Remove superfluous line from
- rdma_read_chunks()
+Received: from mail-ig0-f176.google.com ([209.85.213.176]:38185 "EHLO
+	mail-ig0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752436AbcD1PPM (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 28 Apr 2016 11:15:12 -0400
+Subject: [PATCH 05/10] svcrdma: Post Receives only for forward channel
+ requests
 From: Chuck Lever <chuck.lever@oracle.com>
 To: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Thu, 28 Apr 2016 11:15:01 -0400
-Message-ID: <20160428151501.13068.1400.stgit@klimt.1015granger.net>
+Date: Thu, 28 Apr 2016 11:15:09 -0400
+Message-ID: <20160428151509.13068.89948.stgit@klimt.1015granger.net>
 In-Reply-To: <20160428150915.13068.94602.stgit@klimt.1015granger.net>
 References: <20160428150915.13068.94602.stgit@klimt.1015granger.net>
 MIME-Version: 1.0
@@ -16,29 +16,33 @@ Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Clean up: svc_rdma_get_read_chunk() already returns a pointer
-to the Read list. No need to set "ch" again to the value it
-already contains.
+Since backward direction support was added, the rq_depth was
+increased to accommodate both forward and backward Receives.
 
+But only forward Receives need to be posted after a connection
+has been accepted. Receives for backward replies are posted as
+needed by svc_rdma_bc_sendto().
+
+This doesn't break anything, but it means some resources are
+wasted.
+
+Fixes: 03fe9931536f ('svcrdma: Define maximum number of ...')
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- net/sunrpc/xprtrdma/svc_rdma_recvfrom.c |    4 +---
- 1 file changed, 1 insertion(+), 3 deletions(-)
+ net/sunrpc/xprtrdma/svc_rdma_transport.c |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
-index 234be9d..12e7899 100644
---- a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
-+++ b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
-@@ -447,10 +447,8 @@ static int rdma_read_chunks(struct svcxprt_rdma *xprt,
- 	head->arg.len = rqstp->rq_arg.len;
- 	head->arg.buflen = rqstp->rq_arg.buflen;
+diff --git a/net/sunrpc/xprtrdma/svc_rdma_transport.c b/net/sunrpc/xprtrdma/svc_rdma_transport.c
+index d2680b8..02a112c 100644
+--- a/net/sunrpc/xprtrdma/svc_rdma_transport.c
++++ b/net/sunrpc/xprtrdma/svc_rdma_transport.c
+@@ -1083,7 +1083,7 @@ static struct svc_xprt *svc_rdma_accept(struct svc_xprt *xprt)
+ 		newxprt->sc_dev_caps |= SVCRDMA_DEVCAP_READ_W_INV;
  
--	ch = (struct rpcrdma_read_chunk *)&rmsgp->rm_body.rm_chunks[0];
--	position = be32_to_cpu(ch->rc_position);
--
- 	/* RDMA_NOMSG: RDMA READ data should land just after RDMA RECV data */
-+	position = be32_to_cpu(ch->rc_position);
- 	if (position == 0) {
- 		head->arg.pages = &head->pages[0];
- 		page_offset = head->byte_len;
+ 	/* Post receive buffers */
+-	for (i = 0; i < newxprt->sc_rq_depth; i++) {
++	for (i = 0; i < newxprt->sc_max_requests; i++) {
+ 		ret = svc_rdma_post_recv(newxprt, GFP_KERNEL);
+ 		if (ret) {
+ 			dprintk("svcrdma: failure posting receive buffers\n");
 
