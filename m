@@ -1,128 +1,189 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:30017 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750932AbcD1OHG convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 28 Apr 2016 10:07:06 -0400
-Content-Type: text/plain; charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 9.3 \(3124\))
-Subject: Re: [PATCH] NFS: Fix an LOCK/OPEN race when unlinking an open file
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <dc46e09c-8c0c-6588-9a39-f65abd865079@Netapp.com>
-Date: Thu, 28 Apr 2016 10:06:54 -0400
-Cc: William Dauchy <wdauchy@gmail.com>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Olga Kornievskaia <aglo@umich.edu>
-Message-Id: <7655D216-7C44-41A6-A6BC-BD5E91E5FDB6@oracle.com>
-References: <20160411201733.20911.86904.stgit@manet.1015granger.net> <CAN-5tyERwuG2sdVOC+-oFjGQOyO-F_LwMW3DwXAXsGRDF4Xbhw@mail.gmail.com> <CAJ75kXbM1D=ZxLZXNxeF6ULnQAA8fq5f9QqBrR1fY+Y6ceuqjQ@mail.gmail.com> <dc46e09c-8c0c-6588-9a39-f65abd865079@Netapp.com>
-To: Anna Schumaker <Anna.Schumaker@netapp.com>
+Received: from mx143.netapp.com ([216.240.21.24]:51229 "EHLO mx143.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750809AbcD1OHR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 28 Apr 2016 10:07:17 -0400
+From: "Kornievskaia, Olga" <Olga.Kornievskaia@netapp.com>
+To: Jeff Layton <jlayton@poochiereds.net>
+CC: "steved@redhat.com" <steved@redhat.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH v5 1/3] gssd: use pthreads to handle upcalls
+Date: Thu, 28 Apr 2016 14:07:09 +0000
+Message-ID: <D2A86519-2118-4C46-BA57-572EC9E363F0@netapp.com>
+References: <1461776287-1427-1-git-send-email-kolga@netapp.com>
+ <1461776287-1427-2-git-send-email-kolga@netapp.com>
+ <1461849204.15736.8.camel@poochiereds.net>
+In-Reply-To: <1461849204.15736.8.camel@poochiereds.net>
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-> On Apr 28, 2016, at 9:13 AM, Anna Schumaker <Anna.Schumaker@netapp.com> wrote:
-> 
-> The patch looks pretty straightforward to me, and it sounds like it fixes a few problems that people are seeing.  One question (below):
-> 
-> On 04/28/2016 08:43 AM, William Dauchy wrote:
->> Hello Anna,
->> 
->> Could you have a look at this one please?
->> 
->> Thanks,
->> 
->> William
->> 
->> On Tue, Apr 26, 2016 at 4:24 PM, Olga Kornievskaia <aglo@umich.edu> wrote:
->>> I believe this patch also helps with a race between a LOCK and
->>> CB_RECALL. Application does a lock as the delegation is being
->>> recalled. The lock thread sees the delegated state and acquires a
->>> local lock. At the same time delegation doesn't see it the lock yet
->>> and returns the delegation. Application proceeds to do IO. It ends up
->>> using an open stateid for the IO (as there is no delegation stateid or
->>> lock stateid). The server is unaware of the lock so it can give that
->>> lock to somebody else. Yet this client thinks it has a local lock. It
->>> leads to inconsistent data between clients.
->>> 
->>> On Mon, Apr 11, 2016 at 4:20 PM, Chuck Lever <chuck.lever@oracle.com> wrote:
->>>> At Connectathon 2016, we found that recent upstream Linux clients
->>>> would occasionally send a LOCK operation with a zero stateid. This
->>>> appeared to happen in close proximity to another thread returning
->>>> a delegation before unlinking the same file while it remained open.
->>>> 
->>>> Earlier, the client received a write delegation on this file and
->>>> returned the open stateid. Now, as it is getting ready to unlink the
->>>> file, it returns the write delegation. But there is still an open
->>>> file descriptor on that file, so the client must OPEN the file
->>>> again before it returns the delegation.
->>>> 
->>>> Since commit 24311f884189 ('NFSv4: Recovery of recalled read
->>>> delegations is broken'), nfs_open_delegation_recall() clears the
->>>> NFS_DELEGATED_STATE flag _before_ it sends the OPEN. This allows a
->>>> racing LOCK on the same inode to be put on the wire before the OPEN
->>>> operation has returned a valid open stateid.
->>>> 
->>>> To eliminate this race, serialize delegation return with the
->>>> acquisition of a file lock on the same file. Adopt the same approach
->>>> as is used in the unlock path.
->>>> 
->>>> Fixes: 24311f884189 ('NFSv4: Recovery of recalled read ... ')
->>>> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
->>>> ---
->>>> Hi-
->>>> 
->>>> This fix appears to be both safe and effective. Please consider
->>>> it for v4.7 and for stable. Thanks!
->>>> 
->>>> 
->>>> fs/nfs/nfs4proc.c |    4 ++++
->>>> 1 file changed, 4 insertions(+)
->>>> 
->>>> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
->>>> index 01bef06..c40f1b6 100644
->>>> --- a/fs/nfs/nfs4proc.c
->>>> +++ b/fs/nfs/nfs4proc.c
->>>> @@ -6054,6 +6054,7 @@ static int nfs41_lock_expired(struct nfs4_state *state, struct file_lock *reques
->>>> static int _nfs4_proc_setlk(struct nfs4_state *state, int cmd, struct file_lock *request)
->>>> {
->>>>        struct nfs_inode *nfsi = NFS_I(state->inode);
->>>> +       struct nfs4_state_owner *sp = state->owner;
->>>>        unsigned char fl_flags = request->fl_flags;
->>>>        int status = -ENOLCK;
->>>> 
->>>> @@ -6068,6 +6069,7 @@ static int _nfs4_proc_setlk(struct nfs4_state *state, int cmd, struct file_lock
->>>>        status = do_vfs_lock(state->inode, request);
->>>>        if (status < 0)
->>>>                goto out;
->>>> +       mutex_lock(&sp->so_delegreturn_mutex);
-> 
-> From what I can tell, the first call to do_vfs_lock() in this function is used to test if we can take the lock locally.  Do we need to worry about this racing with delegreturn, too?
-
-When I included that call in the critical section,
-cthon04 locking tests deadlocked.
-
-
-> Thanks,
-> Anna
-> 
->>>>        down_read(&nfsi->rwsem);
->>>>        if (test_bit(NFS_DELEGATED_STATE, &state->flags)) {
->>>>                /* Yes: cache locks! */
->>>> @@ -6075,9 +6077,11 @@ static int _nfs4_proc_setlk(struct nfs4_state *state, int cmd, struct file_lock
->>>>                request->fl_flags = fl_flags & ~FL_SLEEP;
->>>>                status = do_vfs_lock(state->inode, request);
->>>>                up_read(&nfsi->rwsem);
->>>> +               mutex_unlock(&sp->so_delegreturn_mutex);
->>>>                goto out;
->>>>        }
->>>>        up_read(&nfsi->rwsem);
->>>> +       mutex_unlock(&sp->so_delegreturn_mutex);
->>>>        status = _nfs4_do_setlk(state, cmd, request, NFS_LOCK_NEW);
->>>> out:
->>>>        request->fl_flags = fl_flags;
-
---
-Chuck Lever
-
-
-
+DQo+IE9uIEFwciAyOCwgMjAxNiwgYXQgOToxMyBBTSwgSmVmZiBMYXl0b24gPGpsYXl0b25AcG9v
+Y2hpZXJlZHMubmV0PiB3cm90ZToNCj4gDQo+IE9uIFdlZCwgMjAxNi0wNC0yNyBhdCAxMjo1OCAt
+MDQwMCwgT2xnYSBLb3JuaWV2c2thaWEgd3JvdGU6DQo+PiBDdXJyZW50bHksIHRvIHBlcnNldmVy
+ZSBnbG9iYWwgZGF0YSBvdmVyIG11bHRpcGxlIG1vdW50cywNCj4+IHRoZSByb290IHByb2Nlc3Mg
+ZG9lcyBub3QgZm9yayB3aGVuIGhhbmRsaW5nIGFuIHVwY2FsbC4NCj4+IEluc3RlYWQgb24gbm90
+LWZvcmtpbmcgY3JlYXRlIGEgcHRocmVhZCB0byBoYW5kbGUgdGhlDQo+PiB1cGNhbGwgc2luY2Ug
+Z2xvYmFsIGRhdGEgY2FuIGJlIHNoYXJlZCBhbW9uZyB0aHJlYWRzLg0KPj4gDQo+PiBTaWduZWQt
+b2ZmLWJ5OiBTdGV2ZSBEaWNrc29uIDxzdGV2ZWRAcmVkaGF0LmNvbT4NCj4+IFNpZ25lZC1vZmYt
+Ynk6IE9sZ2EgS29ybmlldnNrYWlhIDxrb2xnYUBuZXRhcHAuY29tPg0KPj4gLS0tDQo+PiAgYWNs
+b2NhbC9saWJwdGhyZWFkLm00ICB8IDEzICsrKysrKysrKysrKysNCj4+ICBjb25maWd1cmUuYWMg
+ICAgICAgICAgIHwgIDMgKysrDQo+PiAgdXRpbHMvZ3NzZC9NYWtlZmlsZS5hbSB8ICAzICsrLQ0K
+Pj4gIHV0aWxzL2dzc2QvZ3NzZC5jICAgICAgfCA0NSArKysrKysrKysrKysrKysrKysrKysrKysr
+KysrKysrKysrKysrKysrLS0tLS0NCj4+ICB1dGlscy9nc3NkL2dzc2QuaCAgICAgIHwgIDUgKysr
+KysNCj4+ICB1dGlscy9nc3NkL2dzc2RfcHJvYy5jIHwgNDkgKysrKysrKysrKysrKysrKysrLS0t
+LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLQ0KPj4gIHV0aWxzL2dzc2Qva3JiNV91dGlsLmMg
+fCAgMyArKysNCj4+ICA3IGZpbGVzIGNoYW5nZWQsIDg0IGluc2VydGlvbnMoKyksIDM3IGRlbGV0
+aW9ucygtKQ0KPj4gIGNyZWF0ZSBtb2RlIDEwMDY0NCBhY2xvY2FsL2xpYnB0aHJlYWQubTQNCj4+
+IA0KPj4gZGlmZiAtLWdpdCBhL2FjbG9jYWwvbGlicHRocmVhZC5tNCBiL2FjbG9jYWwvbGlicHRo
+cmVhZC5tNA0KPj4gbmV3IGZpbGUgbW9kZSAxMDA2NDQNCj4+IGluZGV4IDAwMDAwMDAuLmU4N2Qy
+YTANCj4+IC0tLSAvZGV2L251bGwNCj4+ICsrKyBiL2FjbG9jYWwvbGlicHRocmVhZC5tNA0KPj4g
+QEAgLTAsMCArMSwxMyBAQA0KPj4gK2RubCBDaGVja3MgZm9yIHB0aHJlYWRzIGxpYnJhcnkgYW5k
+IGhlYWRlcnMNCj4+ICtkbmwNCj4+ICtBQ19ERUZVTihbQUNfTElCUFRIUkVBRF0sIFsNCj4+ICsN
+Cj4+ICsgICAgZG5sIENoZWNrIGZvciBsaWJyYXJ5LCBidXQgZG8gbm90IGFkZCAtbHB0aHJlYWRz
+IHRvIExJQlMNCj4+ICsgICAgQUNfQ0hFQ0tfTElCKFtwdGhyZWFkXSwgW3B0aHJlYWRfY3JlYXRl
+XSwgW0xJQlBUSFJFQUQ9LWxwdGhyZWFkXSwNCj4+ICsgICAgICAgICAgICAgICAgIFtBQ19NU0df
+RVJST1IoW2xpYnB0aHJlYWQgbm90IGZvdW5kLl0pXSkNCj4+ICsgIEFDX1NVQlNUKExJQlBUSFJF
+QUQpDQo+PiArDQo+PiArICBBQ19DSEVDS19IRUFERVJTKFtwdGhyZWFkLmhdLCAsDQo+PiArICAg
+ICAgICAgICAgICAgICAgIFtBQ19NU0dfRVJST1IoW2xpYnB0aHJlYWQgaGVhZGVycyBub3QgZm91
+bmQuXSldKQ0KPj4gKw0KPj4gK10pZG5sDQo+PiBkaWZmIC0tZ2l0IGEvY29uZmlndXJlLmFjIGIv
+Y29uZmlndXJlLmFjDQo+PiBpbmRleCAyNWQyYmE0Li5lMGVjZDYxIDEwMDY0NA0KPj4gLS0tIGEv
+Y29uZmlndXJlLmFjDQo+PiArKysgYi9jb25maWd1cmUuYWMNCj4+IEBAIC0zODUsNiArMzg1LDkg
+QEAgaWYgdGVzdCAiJGVuYWJsZV9nc3MiID0geWVzOyB0aGVuDQo+PiAgICBkbmwgSW52b2tlZCBh
+ZnRlciBBQ19LRVJCRVJPU19WNTsgQUNfTElCUlBDU0VDR1NTIG5lZWRzIHRvIGhhdmUgS1JCTElC
+UyBzZXQNCj4+ICAgIEFDX0xJQlJQQ1NFQ0dTUw0KPj4gIA0KPj4gKyAgZG5sIENoZWNrIGZvciBw
+dGhyZWFkcw0KPj4gKyAgQUNfTElCUFRIUkVBRA0KPj4gKw0KPj4gICAgZG5sIGxpYnJwY3NlY2dz
+cyBhbHJlYWR5IGhhcyBhIGRlcGVuZGVuY3kgb24gbGliZ3NzYXBpLA0KPj4gICAgZG5sIGJ1dCB3
+ZSBuZWVkIHRvIG1ha2Ugc3VyZSB3ZSBnZXQgdGhlIHJpZ2h0IHZlcnNpb24NCj4+ICAgIGlmIHRl
+c3QgIiRlbmFibGVfZ3NzIiA9IHllczsgdGhlbg0KPj4gZGlmZiAtLWdpdCBhL3V0aWxzL2dzc2Qv
+TWFrZWZpbGUuYW0gYi91dGlscy9nc3NkL01ha2VmaWxlLmFtDQo+PiBpbmRleCBjYjA0MGIzLi4z
+ZjVmNTlhIDEwMDY0NA0KPj4gLS0tIGEvdXRpbHMvZ3NzZC9NYWtlZmlsZS5hbQ0KPj4gKysrIGIv
+dXRpbHMvZ3NzZC9NYWtlZmlsZS5hbQ0KPj4gQEAgLTQ5LDcgKzQ5LDggQEAgZ3NzZF9MREFERCA9
+IFwNCj4+ICAJJChSUENTRUNHU1NfTElCUykgXA0KPj4gIAkkKEtSQkxJQlMpIFwNCj4+ICAJJChH
+U1NBUElfTElCUykgXA0KPj4gLQkkKExJQlRJUlBDKQ0KPj4gKwkkKExJQlRJUlBDKSBcDQo+PiAr
+CSQoTElCUFRIUkVBRCkNCj4+ICANCj4+ICBnc3NkX0xERkxBR1MgPSBcDQo+PiAgCSQoS1JCTERG
+TEFHUykNCj4+IGRpZmYgLS1naXQgYS91dGlscy9nc3NkL2dzc2QuYyBiL3V0aWxzL2dzc2QvZ3Nz
+ZC5jDQo+PiBpbmRleCBlN2NiMDdmLi5iNjc2MzQxIDEwMDY0NA0KPj4gLS0tIGEvdXRpbHMvZ3Nz
+ZC9nc3NkLmMNCj4+ICsrKyBiL3V0aWxzL2dzc2QvZ3NzZC5jDQo+PiBAQCAtODcsNyArODcsOSBA
+QCB1bnNpZ25lZCBpbnQgIHJwY190aW1lb3V0ID0gNTsNCj4+ICBjaGFyICpwcmVmZXJyZWRfcmVh
+bG0gPSBOVUxMOw0KPj4gIC8qIEF2b2lkIEROUyByZXZlcnNlIGxvb2t1cHMgb24gc2VydmVyIG5h
+bWVzICovDQo+PiAgc3RhdGljIGJvb2wgYXZvaWRfZG5zID0gdHJ1ZTsNCj4+IC0NCj4+ICtpbnQg
+dGhyZWFkX3N0YXJ0ZWQgPSBmYWxzZTsNCj4+ICtwdGhyZWFkX211dGV4X3QgcG11dGV4ID0gUFRI
+UkVBRF9NVVRFWF9JTklUSUFMSVpFUjsNCj4+ICtwdGhyZWFkX2NvbmRfdCBwY29uZCA9IFBUSFJF
+QURfQ09ORF9JTklUSUFMSVpFUjsNCj4+ICANCj4+ICBUQUlMUV9IRUFEKHRvcGRpcl9saXN0X2hl
+YWQsIHRvcGRpcikgdG9wZGlyX2xpc3Q7DQo+PiAgDQo+PiBAQCAtMzYxLDIwICszNjMsNTMgQEAg
+Z3NzZF9kZXN0cm95X2NsaWVudChzdHJ1Y3QgY2xudF9pbmZvICpjbHApDQo+PiAgDQo+PiAgc3Rh
+dGljIHZvaWQgZ3NzZF9zY2FuKHZvaWQpOw0KPj4gIA0KPj4gK3N0YXRpYyBpbmxpbmUgdm9pZCB3
+YWl0X2Zvcl9jaGlsZF9hbmRfZGV0YWNoKHB0aHJlYWRfdCB0aCkNCj4+ICt7DQo+PiArCXB0aHJl
+YWRfbXV0ZXhfbG9jaygmcG11dGV4KTsNCj4+ICsJd2hpbGUgKCF0aHJlYWRfc3RhcnRlZCkNCj4+
+ICsJCXB0aHJlYWRfY29uZF93YWl0KCZwY29uZCwgJnBtdXRleCk7DQo+PiArCXRocmVhZF9zdGFy
+dGVkID0gZmFsc2U7DQo+PiArCXB0aHJlYWRfbXV0ZXhfdW5sb2NrKCZwbXV0ZXgpOw0KPj4gKwlw
+dGhyZWFkX2RldGFjaCh0aCk7DQo+PiArfQ0KPj4gKw0KPj4gKy8qIEZvciBlYWNoIHVwY2FsbCBj
+cmVhdGUgYSB0aHJlYWQsIGRldGFjaCBmcm9tIHRoZSBtYWluIHByb2Nlc3Mgc28gdGhhdA0KPj4g
+KyAqIHJlc291cmNlcyBhcmUgcmVsZWFzZWQgYmFjayBpbnRvIHRoZSBzeXN0ZW0gd2l0aG91dCB0
+aGUgbmVlZCBmb3IgYSBqb2luLg0KPj4gKyAqIFdlIG5lZWQgdG8gd2FpdCBmb3IgdGhlIGNoaWxk
+IHRocmVhZCB0byBzdGFydCBhbmQgY29uc3VtZSB0aGUgZXZlbnQgZnJvbQ0KPj4gKyAqIHRoZSBm
+aWxlIGRlc2NyaXB0b3IuDQo+PiArICovDQo+PiAgc3RhdGljIHZvaWQNCj4+ICBnc3NkX2NsbnRf
+Z3NzZF9jYihpbnQgVU5VU0VEKGZkKSwgc2hvcnQgVU5VU0VEKHdoaWNoKSwgdm9pZCAqZGF0YSkN
+Cj4+ICB7DQo+PiAgCXN0cnVjdCBjbG50X2luZm8gKmNscCA9IGRhdGE7DQo+PiAtDQo+PiAtCWhh
+bmRsZV9nc3NkX3VwY2FsbChjbHApOw0KPj4gKwlwdGhyZWFkX3QgdGg7DQo+PiArCWludCByZXQ7
+DQo+PiArDQo+PiArCXJldCA9IHB0aHJlYWRfY3JlYXRlKCZ0aCwgTlVMTCwgKHZvaWQgKiloYW5k
+bGVfZ3NzZF91cGNhbGwsDQo+PiArCQkJCSh2b2lkICopY2xwKTsNCj4+ICsJaWYgKHJldCAhPSAw
+KSB7DQo+PiArCQlwcmludGVycigwLCAiRVJST1I6IHB0aHJlYWRfY3JlYXRlIGZhaWxlZDogcmV0
+ICVkOiAlc1xuIiwNCj4+ICsJCQkgcmV0LCBzdHJlcnJvcihlcnJubykpOw0KPj4gKwkJcmV0dXJu
+Ow0KPj4gKwl9DQo+PiArCXdhaXRfZm9yX2NoaWxkX2FuZF9kZXRhY2godGgpOw0KPj4gIH0NCj4+
+ICANCj4+ICBzdGF0aWMgdm9pZA0KPj4gIGdzc2RfY2xudF9rcmI1X2NiKGludCBVTlVTRUQoZmQp
+LCBzaG9ydCBVTlVTRUQod2hpY2gpLCB2b2lkICpkYXRhKQ0KPj4gIHsNCj4+ICAJc3RydWN0IGNs
+bnRfaW5mbyAqY2xwID0gZGF0YTsNCj4+IC0NCj4+IC0JaGFuZGxlX2tyYjVfdXBjYWxsKGNscCk7
+DQo+PiArCXB0aHJlYWRfdCB0aDsNCj4+ICsJaW50IHJldDsNCj4+ICsNCj4+ICsJcmV0ID0gcHRo
+cmVhZF9jcmVhdGUoJnRoLCBOVUxMLCAodm9pZCAqKWhhbmRsZV9rcmI1X3VwY2FsbCwNCj4+ICsJ
+CQkJKHZvaWQgKiljbHApOw0KPj4gKwlpZiAocmV0ICE9IDApIHsNCj4+ICsJCXByaW50ZXJyKDAs
+ICJFUlJPUjogcHRocmVhZF9jcmVhdGUgZmFpbGVkOiByZXQgJWQ6ICVzXG4iLA0KPj4gKwkJCSBy
+ZXQsIHN0cmVycm9yKGVycm5vKSk7DQo+PiArCQlyZXR1cm47DQo+PiArCX0NCj4+ICsJd2FpdF9m
+b3JfY2hpbGRfYW5kX2RldGFjaCh0aCk7DQo+PiAgfQ0KPj4gIA0KPj4gIHN0YXRpYyBzdHJ1Y3Qg
+Y2xudF9pbmZvICoNCj4+IGRpZmYgLS1naXQgYS91dGlscy9nc3NkL2dzc2QuaCBiL3V0aWxzL2dz
+c2QvZ3NzZC5oDQo+PiBpbmRleCBjNjkzN2M1Li41NjViY2UzIDEwMDY0NA0KPj4gLS0tIGEvdXRp
+bHMvZ3NzZC9nc3NkLmgNCj4+ICsrKyBiL3V0aWxzL2dzc2QvZ3NzZC5oDQo+PiBAQCAtMzYsNiAr
+MzYsNyBAQA0KPj4gICNpbmNsdWRlIA0KPj4gICNpbmNsdWRlIA0KPj4gICNpbmNsdWRlIA0KPj4g
+KyNpbmNsdWRlIA0KPj4gIA0KPj4gICNpZm5kZWYgR1NTRF9QSVBFRlNfRElSDQo+PiAgI2RlZmlu
+ZSBHU1NEX1BJUEVGU19ESVIJCSIvdmFyL2xpYi9uZnMvcnBjX3BpcGVmcyINCj4+IEBAIC02MSw2
+ICs2MiwxMCBAQCBleHRlcm4gaW50CQkJcm9vdF91c2VzX21hY2hpbmVfY3JlZHM7DQo+PiAgZXh0
+ZXJuIHVuc2lnbmVkIGludCAJCWNvbnRleHRfdGltZW91dDsNCj4+ICBleHRlcm4gdW5zaWduZWQg
+aW50IHJwY190aW1lb3V0Ow0KPj4gIGV4dGVybiBjaGFyCQkJKnByZWZlcnJlZF9yZWFsbTsNCj4+
+ICtleHRlcm4gcHRocmVhZF9tdXRleF90IHBsZV9sb2NrOw0KPj4gK2V4dGVybiBwdGhyZWFkX2Nv
+bmRfdCBwY29uZDsNCj4+ICtleHRlcm4gcHRocmVhZF9tdXRleF90IHBtdXRleDsNCj4+ICtleHRl
+cm4gaW50IHRocmVhZF9zdGFydGVkOw0KPj4gIA0KPj4gIHN0cnVjdCBjbG50X2luZm8gew0KPj4g
+IAlUQUlMUV9FTlRSWShjbG50X2luZm8pCWxpc3Q7DQo+PiBkaWZmIC0tZ2l0IGEvdXRpbHMvZ3Nz
+ZC9nc3NkX3Byb2MuYyBiL3V0aWxzL2dzc2QvZ3NzZF9wcm9jLmMNCj4+IGluZGV4IDFlZjY4ZDgu
+LmUyZTk1ZGMgMTAwNjQ0DQo+PiAtLS0gYS91dGlscy9nc3NkL2dzc2RfcHJvYy5jDQo+PiArKysg
+Yi91dGlscy9nc3NkL2dzc2RfcHJvYy5jDQo+PiBAQCAtNjI5LDM2ICs2MjksNiBAQCBwcm9jZXNz
+X2tyYjVfdXBjYWxsKHN0cnVjdCBjbG50X2luZm8gKmNscCwgdWlkX3QgdWlkLCBpbnQgZmQsIGNo
+YXIgKnRndG5hbWUsDQo+PiAgCWlmICh1aWQgIT0gMCB8fCAodWlkID09IDAgJiYgcm9vdF91c2Vz
+X21hY2hpbmVfY3JlZHMgPT0gMCAmJg0KPj4gIAkJCQlzZXJ2aWNlID09IE5VTEwpKSB7DQo+PiAg
+DQo+PiAtCQkvKiBhbHJlYWR5IHJ1bm5pbmcgYXMgdWlkIDAgKi8NCj4+IC0JCWlmICh1aWQgPT0g
+MCkNCj4+IC0JCQlnb3RvIG5vX2Zvcms7DQo+PiAtDQo+PiAtCQlwaWQgPSBmb3JrKCk7DQo+PiAt
+CQlzd2l0Y2gocGlkKSB7DQo+PiAtCQljYXNlIDA6DQo+PiAtCQkJLyogQ2hpbGQ6IGZhbGwgdGhy
+b3VnaCB0byByZXN0IG9mIGZ1bmN0aW9uICovDQo+PiAtCQkJY2hpbGRwaWQgPSBnZXRwaWQoKTsN
+Cj4+IC0JCQl1bnNldGVudigiS1JCNUNDTkFNRSIpOw0KPj4gLQkJCXByaW50ZXJyKDIsICJDSElM
+RCBmb3JrZWQgcGlkICVkIFxuIiwgY2hpbGRwaWQpOw0KPj4gLQkJCWJyZWFrOw0KPj4gLQkJY2Fz
+ZSAtMToNCj4+IC0JCQkvKiBmb3JrKCkgZmFpbGVkISAqLw0KPj4gLQkJCXByaW50ZXJyKDAsICJX
+QVJOSU5HOiB1bmFibGUgdG8gZm9yaygpIHRvIGhhbmRsZSINCj4+IC0JCQkJInVwY2FsbDogJXNc
+biIsIHN0cmVycm9yKGVycm5vKSk7DQo+PiAtCQkJcmV0dXJuOw0KPj4gLQkJZGVmYXVsdDoNCj4+
+IC0JCQkvKiBQYXJlbnQ6IGp1c3Qgd2FpdCBvbiBjaGlsZCB0byBleGl0IGFuZCByZXR1cm4gKi8N
+Cj4+IC0JCQlkbyB7DQo+PiAtCQkJCXBpZCA9IHdhaXQoJmVycik7DQo+PiAtCQkJfSB3aGlsZShw
+aWQgPT0gLTEgJiYgZXJybm8gIT0gLUVDSElMRCk7DQo+PiAtDQo+PiAtCQkJaWYgKFdJRlNJR05B
+TEVEKGVycikpDQo+PiAtCQkJCXByaW50ZXJyKDAsICJXQVJOSU5HOiBmb3JrZWQgY2hpbGQgd2Fz
+IGtpbGxlZCINCj4+IC0JCQkJCSAid2l0aCBzaWduYWwgJWRcbiIsIFdURVJNU0lHKGVycikpOw0K
+Pj4gLQkJCXJldHVybjsNCj4+IC0JCX0NCj4+IC1ub19mb3JrOg0KPj4gLQ0KPj4gIAkJYXV0aCA9
+IGtyYjVfbm90X21hY2hpbmVfY3JlZHMoY2xwLCB1aWQsIHRndG5hbWUsICZkb3duY2FsbF9lcnIs
+DQo+PiAgCQkJCQkJJmVyciwgJnJwY19jbG50KTsNCj4+ICAJCWlmIChlcnIpDQo+PiBAQCAtNzM1
+LDEyICs3MDUsMjggQEAgb3V0X3JldHVybl9lcnJvcjoNCj4+ICAJZ290byBvdXQ7DQo+PiAgfQ0K
+Pj4gIA0KPj4gKy8qIHNpZ25hbCB0byB0aGUgcGFyZW50IHRocmVhZCB0aGF0IHdlIGhhdmUgcmVh
+ZCBmcm9tIHRoZSBmaWxlIGRlc2NyaXB0b3IuDQo+PiArICogaXQgc2hvdWxkIGFsbG93IHRoZSBw
+YXJlbnQgdG8gcHJvY2VlZCB0byBwb2xsIG9uIHRoZSBkZXNjcmlwdG9yIGZvcg0KPj4gKyAqIHRo
+ZSBuZXh0IHVwY2FsbCBmcm9tIHRoZSBrZXJuZWwuDQo+PiArICovDQo+PiArc3RhdGljIHZvaWQN
+Cj4+ICtzaWduYWxfcGFyZW50X2V2ZW50X2NvbnN1bWVkKHZvaWQpDQo+PiArew0KPj4gKwlwdGhy
+ZWFkX211dGV4X2xvY2soJnBtdXRleCk7DQo+PiArCXRocmVhZF9zdGFydGVkID0gdHJ1ZTsNCj4+
+ICsJcHRocmVhZF9jb25kX3NpZ25hbCgmcGNvbmQpOw0KPj4gKwlwdGhyZWFkX211dGV4X3VubG9j
+aygmcG11dGV4KTsNCj4+ICt9DQo+PiArDQo+PiAgdm9pZA0KPj4gIGhhbmRsZV9rcmI1X3VwY2Fs
+bChzdHJ1Y3QgY2xudF9pbmZvICpjbHApDQo+PiAgew0KPj4gIAl1aWRfdAkJCXVpZDsNCj4+ICsJ
+aW50IAkJCXN0YXR1czsNCj4+ICANCj4+IC0JaWYgKHJlYWQoY2xwLT5rcmI1X2ZkLCAmdWlkLCBz
+aXplb2YodWlkKSkgPCAoc3NpemVfdClzaXplb2YodWlkKSkgew0KPj4gKwlzdGF0dXMgPSByZWFk
+KGNscC0+a3JiNV9mZCwgJnVpZCwgc2l6ZW9mKHVpZCkpIDwgKHNzaXplX3Qpc2l6ZW9mKHVpZCk7
+DQo+PiArCXNpZ25hbF9wYXJlbnRfZXZlbnRfY29uc3VtZWQoKTsNCj4+ICsJaWYgKHN0YXR1cykg
+ew0KPj4gIAkJcHJpbnRlcnIoMCwgIldBUk5JTkc6IGZhaWxlZCByZWFkaW5nIHVpZCBmcm9tIGty
+YjUgIg0KPj4gIAkJCSAgICAidXBjYWxsIHBpcGU6ICVzXG4iLCBzdHJlcnJvcihlcnJubykpOw0K
+Pj4gIAkJcmV0dXJuOw0KPj4gQEAgLTc2NSw2ICs3NTEsNyBAQCBoYW5kbGVfZ3NzZF91cGNhbGwo
+c3RydWN0IGNsbnRfaW5mbyAqY2xwKQ0KPj4gIAljaGFyCQkJKmVuY3R5cGVzID0gTlVMTDsNCj4+
+ICANCj4+ICAJbGJ1ZmxlbiA9IHJlYWQoY2xwLT5nc3NkX2ZkLCBsYnVmLCBzaXplb2YobGJ1Zikp
+Ow0KPj4gKwlzaWduYWxfcGFyZW50X2V2ZW50X2NvbnN1bWVkKCk7DQo+PiAgCWlmIChsYnVmbGVu
+IDw9IDAgfHwgbGJ1ZltsYnVmbGVuLTFdICE9ICdcbicpIHsNCj4+ICAJCXByaW50ZXJyKDAsICJX
+QVJOSU5HOiBoYW5kbGVfZ3NzZF91cGNhbGw6ICINCj4+ICAJCQkgICAgImZhaWxlZCByZWFkaW5n
+IHJlcXVlc3RcbiIpOw0KPj4gZGlmZiAtLWdpdCBhL3V0aWxzL2dzc2Qva3JiNV91dGlsLmMgYi91
+dGlscy9nc3NkL2tyYjVfdXRpbC5jDQo+PiBpbmRleCA4ZWY4MTg0Li4zMzI4Njk2IDEwMDY0NA0K
+Pj4gLS0tIGEvdXRpbHMvZ3NzZC9rcmI1X3V0aWwuYw0KPj4gKysrIGIvdXRpbHMvZ3NzZC9rcmI1
+X3V0aWwuYw0KPj4gQEAgLTEyOCw2ICsxMjgsNyBAQA0KPj4gIA0KPj4gIC8qIEdsb2JhbCBsaXN0
+IG9mIHByaW5jaXBhbHMvY2FjaGUgZmlsZSBuYW1lcyBmb3IgbWFjaGluZSBjcmVkZW50aWFscyAq
+Lw0KPj4gIHN0cnVjdCBnc3NkX2s1X2t0X3ByaW5jICpnc3NkX2s1X2t0X3ByaW5jX2xpc3QgPSBO
+VUxMOw0KPj4gK3B0aHJlYWRfbXV0ZXhfdCBwbGVfbG9jayA9IFBUSFJFQURfTVVURVhfSU5JVElB
+TElaRVI7DQo+PiAgDQo+PiAgI2lmZGVmIEhBVkVfU0VUX0FMTE9XQUJMRV9FTkNUWVBFUw0KPj4g
+IGludCBsaW1pdF90b19sZWdhY3lfZW5jdHlwZXMgPSAwOw0KPj4gQEAgLTU4NiwxMCArNTg3LDEy
+IEBAIGdldF9wbGVfYnlfcHJpbmMoa3JiNV9jb250ZXh0IGNvbnRleHQsIGtyYjVfcHJpbmNpcGFs
+IHByaW5jKQ0KPj4gIA0KPj4gIAkvKiBOZWVkIHRvIHNlcmlhbGl6ZSBsaXN0IGlmIHdlIGV2ZXIg
+YmVjb21lIG11bHRpLXRocmVhZGVkISAqLw0KPj4gIA0KPj4gKwlwdGhyZWFkX211dGV4X2xvY2so
+JnBsZV9sb2NrKTsNCj4+ICAJcGxlID0gZmluZF9wbGVfYnlfcHJpbmMoY29udGV4dCwgcHJpbmMp
+Ow0KPj4gIAlpZiAocGxlID09IE5VTEwpIHsNCj4+ICAJCXBsZSA9IG5ld19wbGUoY29udGV4dCwg
+cHJpbmMpOw0KPj4gIAl9DQo+PiArCXB0aHJlYWRfbXV0ZXhfdW5sb2NrKCZwbGVfbG9jayk7DQo+
+PiAgDQo+PiAgCXJldHVybiBwbGU7DQo+PiAgfQ0KPiANCj4gTG9va3MgZ29vZC4gT25lIHRoaW5n
+IHRoYXQgbWlnaHQgYmUgbmVhdCBhcyBhIGZvbGxvdyB1cCBpcyB0byBtYWtlIHRoZQ0KPiB0aHJl
+YWRfc3RhcnRlZCB2YXJpYWJsZSBhIHBlci1jbG50IHRoaW5nLiBJIGRvbid0IHRoaW5rIHRoZXJl
+J3MgYW55DQo+IHJlYXNvbiB0byBzZXJpYWxpemUgSS9PIHRvIGRpZmZlcmVudCBmZHMgdGhlcmUu
+DQoNClNpbmNlIHRoZXJlIGlzIG9ubHkgMSBtYWluIHRocmVhZCB0aGF0IHJlYWRzL2NyZWF0ZXMg
+dGhlIGV2ZW50IGZvciB0aGUgdGhyZWFkIHRvIGNvbnN1bWUgSSBkb27igJl0IHNlZSBob3cgd2Ug
+Y2FuIGhhdmUgbXVsdGlwbGUgdGhyZWFkcyBzdGFydGVkIHdpdGggZGlmZmVyZW50IGZkcy4gSnVz
+dCB0byBjbGFyaWZ5LCBtYWluIHRocmVhZCBvbmx5IHdhaXRzIGZvciB0aGUgdXBjYWxsIGluZm8g
+dG8gYmUgY29uc3VtZWQgZnJvbSB0aGUgZmQgbm90IGZvciB0aGUgcHJvY2VzcyBvZiB0aGUgdXBj
+YWxsLiBUaGVuLCBtdWx0aXBsZSB1cGNhbGxzIGNhbiBiZSBwcm9jZXNzaW5nIGF0IHRoZSBzYW1l
+IHRpbWUuDQoNCg0KPiANCj4gUmV2aWV3ZWQtYnk6IEplZmYgTGF5dG9uIDxqbGF5dG9uQHBvb2No
+aWVyZWRzLm5ldD4NCg0K
