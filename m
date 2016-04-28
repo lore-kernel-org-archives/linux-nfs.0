@@ -1,103 +1,159 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp.opengridcomputing.com ([72.48.136.20]:35551 "EHLO
-	smtp.opengridcomputing.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1752860AbcD1P7j convert rfc822-to-8bit
-	(ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 28 Apr 2016 11:59:39 -0400
-From: "Steve Wise" <swise@opengridcomputing.com>
-To: "'Chuck Lever'" <chuck.lever@oracle.com>, <linux-rdma@vger.kernel.org>,
-        <linux-nfs@vger.kernel.org>
-References: <20160428150915.13068.94602.stgit@klimt.1015granger.net> <20160428151550.13068.24199.stgit@klimt.1015granger.net>
-In-Reply-To: <20160428151550.13068.24199.stgit@klimt.1015granger.net>
-Subject: RE: [PATCH 10/10] svcrdma: Switch CQs from IB_POLL_SOFTIRQ to IB_POLL_WORKQUEUE
-Date: Thu, 28 Apr 2016 10:59:47 -0500
-Message-ID: <00ec01d1a166$fd134650$f739d2f0$@opengridcomputing.com>
-MIME-Version: 1.0
-Content-Type: text/plain;
-	charset="utf-8"
+Received: from userp1040.oracle.com ([156.151.31.81]:32315 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752967AbcD1QFa convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 28 Apr 2016 12:05:30 -0400
+Content-Type: text/plain; charset=us-ascii
+Mime-Version: 1.0 (Mac OS X Mail 9.3 \(3124\))
+Subject: Re: [PATCH] NFS: Fix an LOCK/OPEN race when unlinking an open file
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <CAN-5tyHeiiO4VJ-_ayiuZQhtM0v-eH42yN8R8e-4D9WCmrKy3w@mail.gmail.com>
+Date: Thu, 28 Apr 2016 12:05:17 -0400
+Cc: Anna Schumaker <Anna.Schumaker@netapp.com>,
+        William Dauchy <wdauchy@gmail.com>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Message-Id: <F42CA24A-0D0A-4ED3-91E3-DC1BE4EA393A@oracle.com>
+References: <20160411201733.20911.86904.stgit@manet.1015granger.net> <CAN-5tyERwuG2sdVOC+-oFjGQOyO-F_LwMW3DwXAXsGRDF4Xbhw@mail.gmail.com> <CAJ75kXbM1D=ZxLZXNxeF6ULnQAA8fq5f9QqBrR1fY+Y6ceuqjQ@mail.gmail.com> <dc46e09c-8c0c-6588-9a39-f65abd865079@Netapp.com> <7655D216-7C44-41A6-A6BC-BD5E91E5FDB6@oracle.com> <f737a7da-5815-a0b7-a8aa-2e2d043ff20a@Netapp.com> <CAN-5tyHeiiO4VJ-_ayiuZQhtM0v-eH42yN8R8e-4D9WCmrKy3w@mail.gmail.com>
+To: Olga Kornievskaia <aglo@umich.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
+> On Apr 28, 2016, at 11:56 AM, Olga Kornievskaia <aglo@umich.edu> wrote:
+> 
+> Chuck or Anna,
+> 
+> If the patch is accepted, do you mind expanding the commit message to
+> include the wording about the LOCK and CB_RECALL race (so that it's
+> documented to look back into it).
 
-> -----Original Message-----
-> From: linux-rdma-owner@vger.kernel.org [mailto:linux-rdma-
-> owner@vger.kernel.org] On Behalf Of Chuck Lever
-> Sent: Thursday, April 28, 2016 10:16 AM
-> To: linux-rdma@vger.kernel.org; linux-nfs@vger.kernel.org
-> Subject: [PATCH 10/10] svcrdma: Switch CQs from IB_POLL_SOFTIRQ to
-> IB_POLL_WORKQUEUE
-> 
-> Spread NFSD completion handling across CPUs, and replace
-> BH-friendly spin locking with plain spin locks.
-> 
-> iozone -i0 -i1 -s128m -y1k -az -I -N
-> 
-> Microseconds/op Mode. Output is in microseconds per operation.
-> 
-> Before:
->               KB  reclen   write rewrite    read    reread
->           131072       1      51      51       43       43
->           131072       2      53      52       42       43
->           131072       4      53      52       43       43
->           131072       8      55      54       44       44
->           131072      16      62      59       49       47
->           131072      32      72      69       53       53
->           131072      64      92      87       66       66
->           131072     128     144     130       94       93
->           131072     256     225     216      146      145
->           131072     512     485     474      251      251
->           131072    1024     573     540      514      512
->           131072    2048    1007     941      624      618
->           131072    4096    1672    1699      976      969
->           131072    8192    3179    3158     1660     1649
->           131072   16384    5836    5659     3062     3041
-> 
-> After:
->               KB  reclen   write rewrite    read    reread
->           131072       1      54      54       43       43
->           131072       2      55      55       43       43
->           131072       4      56      57       44       45
->           131072       8      59      58       45       45
->           131072      16      64      62       47       47
->           131072      32      76      74       54       54
->           131072      64      96      91       67       66
->           131072     128     148     133       97       97
->           131072     256     229     227      148      147
->           131072     512     488     445      252      255
->           131072    1024     582     534      511      540
->           131072    2048     998     988      614      620
->           131072    4096    1685    1679      946      965
->           131072    8192    3113    3048     1650     1644
->           131072   16384    6010    5745     3046     3053
-> 
-> NFS READ is roughly the same, NFS WRITE is marginally worse.
-> 
-> Before:
-> GETATTR:
-> 	242 ops (0%)
-> 	avg bytes sent per op: 127
-> 	avg bytes received per op: 112
-> 	backlog wait: 0.000000
->  	RTT: 0.041322
->  	total execute time: 0.049587 (milliseconds)
-> 
-> After:
-> GETATTR:
-> 	242 ops (0%)
-> 	avg bytes sent per op: 127
-> 	avg bytes received per op: 112
-> 	backlog wait: 0.000000
->  	RTT: 0.045455
->  	total execute time: 0.053719 (milliseconds)
-> 
-> Small op latency increased by 4usec.
-> 
+Anna's choice.
 
 
-Hey Chuck, in what scenario or under what type of load do you expect this change to help performance?  I guess it would help as you scale out the number of clients and thus the number of CQs in use?   Do you do any measurements along these lines?
+> On Thu, Apr 28, 2016 at 10:09 AM, Anna Schumaker
+> <Anna.Schumaker@netapp.com> wrote:
+>> On 04/28/2016 10:06 AM, Chuck Lever wrote:
+>>> 
+>>>> On Apr 28, 2016, at 9:13 AM, Anna Schumaker <Anna.Schumaker@netapp.com> wrote:
+>>>> 
+>>>> The patch looks pretty straightforward to me, and it sounds like it fixes a few problems that people are seeing.  One question (below):
+>>>> 
+>>>> On 04/28/2016 08:43 AM, William Dauchy wrote:
+>>>>> Hello Anna,
+>>>>> 
+>>>>> Could you have a look at this one please?
+>>>>> 
+>>>>> Thanks,
+>>>>> 
+>>>>> William
+>>>>> 
+>>>>> On Tue, Apr 26, 2016 at 4:24 PM, Olga Kornievskaia <aglo@umich.edu> wrote:
+>>>>>> I believe this patch also helps with a race between a LOCK and
+>>>>>> CB_RECALL. Application does a lock as the delegation is being
+>>>>>> recalled. The lock thread sees the delegated state and acquires a
+>>>>>> local lock. At the same time delegation doesn't see it the lock yet
+>>>>>> and returns the delegation. Application proceeds to do IO. It ends up
+>>>>>> using an open stateid for the IO (as there is no delegation stateid or
+>>>>>> lock stateid). The server is unaware of the lock so it can give that
+>>>>>> lock to somebody else. Yet this client thinks it has a local lock. It
+>>>>>> leads to inconsistent data between clients.
+>>>>>> 
+>>>>>> On Mon, Apr 11, 2016 at 4:20 PM, Chuck Lever <chuck.lever@oracle.com> wrote:
+>>>>>>> At Connectathon 2016, we found that recent upstream Linux clients
+>>>>>>> would occasionally send a LOCK operation with a zero stateid. This
+>>>>>>> appeared to happen in close proximity to another thread returning
+>>>>>>> a delegation before unlinking the same file while it remained open.
+>>>>>>> 
+>>>>>>> Earlier, the client received a write delegation on this file and
+>>>>>>> returned the open stateid. Now, as it is getting ready to unlink the
+>>>>>>> file, it returns the write delegation. But there is still an open
+>>>>>>> file descriptor on that file, so the client must OPEN the file
+>>>>>>> again before it returns the delegation.
+>>>>>>> 
+>>>>>>> Since commit 24311f884189 ('NFSv4: Recovery of recalled read
+>>>>>>> delegations is broken'), nfs_open_delegation_recall() clears the
+>>>>>>> NFS_DELEGATED_STATE flag _before_ it sends the OPEN. This allows a
+>>>>>>> racing LOCK on the same inode to be put on the wire before the OPEN
+>>>>>>> operation has returned a valid open stateid.
+>>>>>>> 
+>>>>>>> To eliminate this race, serialize delegation return with the
+>>>>>>> acquisition of a file lock on the same file. Adopt the same approach
+>>>>>>> as is used in the unlock path.
+>>>>>>> 
+>>>>>>> Fixes: 24311f884189 ('NFSv4: Recovery of recalled read ... ')
+>>>>>>> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+>>>>>>> ---
+>>>>>>> Hi-
+>>>>>>> 
+>>>>>>> This fix appears to be both safe and effective. Please consider
+>>>>>>> it for v4.7 and for stable. Thanks!
+>>>>>>> 
+>>>>>>> 
+>>>>>>> fs/nfs/nfs4proc.c |    4 ++++
+>>>>>>> 1 file changed, 4 insertions(+)
+>>>>>>> 
+>>>>>>> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+>>>>>>> index 01bef06..c40f1b6 100644
+>>>>>>> --- a/fs/nfs/nfs4proc.c
+>>>>>>> +++ b/fs/nfs/nfs4proc.c
+>>>>>>> @@ -6054,6 +6054,7 @@ static int nfs41_lock_expired(struct nfs4_state *state, struct file_lock *reques
+>>>>>>> static int _nfs4_proc_setlk(struct nfs4_state *state, int cmd, struct file_lock *request)
+>>>>>>> {
+>>>>>>>       struct nfs_inode *nfsi = NFS_I(state->inode);
+>>>>>>> +       struct nfs4_state_owner *sp = state->owner;
+>>>>>>>       unsigned char fl_flags = request->fl_flags;
+>>>>>>>       int status = -ENOLCK;
+>>>>>>> 
+>>>>>>> @@ -6068,6 +6069,7 @@ static int _nfs4_proc_setlk(struct nfs4_state *state, int cmd, struct file_lock
+>>>>>>>       status = do_vfs_lock(state->inode, request);
+>>>>>>>       if (status < 0)
+>>>>>>>               goto out;
+>>>>>>> +       mutex_lock(&sp->so_delegreturn_mutex);
+>>>> 
+>>>> From what I can tell, the first call to do_vfs_lock() in this function is used to test if we can take the lock locally.  Do we need to worry about this racing with delegreturn, too?
+>>> 
+>>> When I included that call in the critical section,
+>>> cthon04 locking tests deadlocked.
+>> 
+>> Got it.  Thanks for checking!
+>> 
+>> Anna
+>> 
+>>> 
+>>> 
+>>>> Thanks,
+>>>> Anna
+>>>> 
+>>>>>>>       down_read(&nfsi->rwsem);
+>>>>>>>       if (test_bit(NFS_DELEGATED_STATE, &state->flags)) {
+>>>>>>>               /* Yes: cache locks! */
+>>>>>>> @@ -6075,9 +6077,11 @@ static int _nfs4_proc_setlk(struct nfs4_state *state, int cmd, struct file_lock
+>>>>>>>               request->fl_flags = fl_flags & ~FL_SLEEP;
+>>>>>>>               status = do_vfs_lock(state->inode, request);
+>>>>>>>               up_read(&nfsi->rwsem);
+>>>>>>> +               mutex_unlock(&sp->so_delegreturn_mutex);
+>>>>>>>               goto out;
+>>>>>>>       }
+>>>>>>>       up_read(&nfsi->rwsem);
+>>>>>>> +       mutex_unlock(&sp->so_delegreturn_mutex);
+>>>>>>>       status = _nfs4_do_setlk(state, cmd, request, NFS_LOCK_NEW);
+>>>>>>> out:
+>>>>>>>       request->fl_flags = fl_flags;
+>>> 
+>>> --
+>>> Chuck Lever
+>>> 
+>>> 
+>>> 
+>> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
-Stevo
+--
+Chuck Lever
 
 
 
