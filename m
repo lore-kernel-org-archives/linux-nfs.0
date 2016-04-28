@@ -1,85 +1,168 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qg0-f51.google.com ([209.85.192.51]:33197 "EHLO
-	mail-qg0-f51.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752171AbcD1NOc (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 28 Apr 2016 09:14:32 -0400
-Received: by mail-qg0-f51.google.com with SMTP id f92so29447790qgf.0
-        for <linux-nfs@vger.kernel.org>; Thu, 28 Apr 2016 06:14:31 -0700 (PDT)
-Message-ID: <1461849269.15736.9.camel@poochiereds.net>
-Subject: Re: [PATCH v5 2/3] gssd: using syscalls directly to change thread's
- identity
+Received: from mail-qg0-f47.google.com ([209.85.192.47]:36618 "EHLO
+	mail-qg0-f47.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751829AbcD1NTu (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 28 Apr 2016 09:19:50 -0400
+Received: by mail-qg0-f47.google.com with SMTP id d90so29472744qgd.3
+        for <linux-nfs@vger.kernel.org>; Thu, 28 Apr 2016 06:19:50 -0700 (PDT)
+Message-ID: <1461849587.15736.12.camel@poochiereds.net>
+Subject: Re: [PATCH v5 3/3] gssd: always call gss_krb5_ccache_name
 From: Jeff Layton <jlayton@poochiereds.net>
 To: Olga Kornievskaia <kolga@netapp.com>, steved@redhat.com
 Cc: linux-nfs@vger.kernel.org
-Date: Thu, 28 Apr 2016 09:14:29 -0400
-In-Reply-To: <1461776287-1427-3-git-send-email-kolga@netapp.com>
+Date: Thu, 28 Apr 2016 09:19:47 -0400
+In-Reply-To: <1461776287-1427-4-git-send-email-kolga@netapp.com>
 References: <1461776287-1427-1-git-send-email-kolga@netapp.com>
-	 <1461776287-1427-3-git-send-email-kolga@netapp.com>
+	 <1461776287-1427-4-git-send-email-kolga@netapp.com>
 Content-Type: text/plain; charset="UTF-8"
 Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 On Wed, 2016-04-27 at 12:58 -0400, Olga Kornievskaia wrote:
-> For the threaded version we have to set uid,gid per thread instead
-> of per process. glibc setresuid() when called from a thread, it'll
-> send a signal to all other threads to synchronize the uid in all
-> other threads. To bypass this, we have to call syscall() directly.
+> Previously the location of the credential cache was passed in either
+> using environment variable KRB5CCNAME or gss_krb5_ccache_name() if
+> supported. For threaded-gssd, we can't use an environment variable
+> as it's shared among all thread. Thus always use the api call.
 > 
 > Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
 > Reviewed-by: Steve Dickson <steved@redhat.com>
 > ---
->  utils/gssd/gssd_proc.c | 19 +++++++++----------
->  1 file changed, 9 insertions(+), 10 deletions(-)
+>  utils/gssd/gssd_proc.c | 12 +++++++++--
+>  utils/gssd/krb5_util.c | 56 +++++++++-----------------------------------------
+>  utils/gssd/krb5_util.h |  1 -
+>  3 files changed, 20 insertions(+), 49 deletions(-)
 > 
 > diff --git a/utils/gssd/gssd_proc.c b/utils/gssd/gssd_proc.c
-> index e2e95dc..de8dc07 100644
+> index de8dc07..14298d0 100644
 > --- a/utils/gssd/gssd_proc.c
 > +++ b/utils/gssd/gssd_proc.c
-> @@ -69,6 +69,7 @@
->  #include 
->  #include 
->  #include 
-> +#include 
->  
->  #include "gssd.h"
->  #include "err_util.h"
-> @@ -436,7 +437,7 @@ change_identity(uid_t uid)
->  	struct passwd	*pw;
->  
->  	/* drop list of supplimentary groups first */
-> -	if (setgroups(0, NULL) != 0) {
-> +	if (syscall(SYS_setgroups, 0, 0) != 0) {
->  		printerr(0, "WARNING: unable to drop supplimentary groups!");
->  		return errno;
->  	}
-> @@ -453,20 +454,18 @@ change_identity(uid_t uid)
+> @@ -547,7 +547,15 @@ krb5_use_machine_creds(struct clnt_info *clp, uid_t uid, char *tgtname,
+>  			goto out;
 >  		}
->  	}
+>  		for (ccname = credlist; ccname && *ccname; ccname++) {
+> -			gssd_setup_krb5_machine_gss_ccache(*ccname);
+> +			u_int min_stat;
+> +
+> +			if (gss_krb5_ccache_name(&min_stat, *ccname, NULL) !=
+> +					GSS_S_COMPLETE) {
+> +				printerr(1, "WARNING: gss_krb5_ccache_name "
+> +					 "with name '%s' failed (%s)\n",
+> +					 *ccname, error_message(min_stat));
+> +				continue;
+> +			}
+>  			if ((create_auth_rpc_client(clp, tgtname, rpc_clnt,
+>  						&auth, uid,
+>  						AUTHTYPE_KRB5,
+> @@ -568,7 +576,7 @@ krb5_use_machine_creds(struct clnt_info *clp, uid_t uid, char *tgtname,
+>  					 "recreate cache for server %s\n",
+>  					clp->servername);
+>  			} else {
+> -				printerr(1, "WARNING: Failed to create machine"
+> +				printerr(0, "ERROR: Failed to create machine"
+>  					 "krb5 context with any credentials"
+>  					 "cache for server %s\n",
+>  					clp->servername);
+> diff --git a/utils/gssd/krb5_util.c b/utils/gssd/krb5_util.c
+> index 3328696..7b74ab3 100644
+> --- a/utils/gssd/krb5_util.c
+> +++ b/utils/gssd/krb5_util.c
+> @@ -468,37 +468,6 @@ gssd_get_single_krb5_cred(krb5_context context,
+>  }
 >  
+>  /*
+> - * Depending on the version of Kerberos, we either need to use
+> - * a private function, or simply set the environment variable.
+> - */
+> -static void
+> -gssd_set_krb5_ccache_name(char *ccname)
+> -{
+> -#ifdef USE_GSS_KRB5_CCACHE_NAME
+> -	u_int	maj_stat, min_stat;
+> -
+> -	printerr(3, "using gss_krb5_ccache_name to select krb5 ccache %s\n",
+> -		 ccname);
+> -	maj_stat = gss_krb5_ccache_name(&min_stat, ccname, NULL);
+> -	if (maj_stat != GSS_S_COMPLETE) {
+> -		printerr(0, "WARNING: gss_krb5_ccache_name with "
+> -			"name '%s' failed (%s)\n",
+> -			ccname, error_message(min_stat));
+> -	}
+> -#else
 > -	/*
-> -	 * Switch the GIDs. Note that we leave the saved-set-gid alone in an
-> -	 * attempt to prevent attacks via ptrace()
-> +	/* Switch the UIDs and GIDs. */
-> +	/* For the threaded version we have to set uid,gid per thread instead
-> +	 * of per process. glibc setresuid() when called from a thread, it'll
-> +	 * send a signal to all other threads to synchronize the uid in all
-> +	 * other threads. To bypass this, we have to call syscall() directly.
->  	 */
-> -	if (setresgid(pw->pw_gid, pw->pw_gid, -1) != 0) {
-> +	if (syscall(SYS_setresgid, pw->pw_gid, pw->pw_gid, pw->pw_gid) != 0) {
->  		printerr(0, "WARNING: failed to set gid to %u!\n", pw->pw_gid);
->  		return errno;
->  	}
->  
-> -	/*
-> -	 * Switch UIDs, but leave saved-set-uid alone to prevent ptrace() by
-> -	 * other processes running with this uid.
+> -	 * Set the KRB5CCNAME environment variable to tell the krb5 code
+> -	 * which credentials cache to use.  (Instead of using the private
+> -	 * function above for which there is no generic gssapi
+> -	 * equivalent.)
 > -	 */
-> -	if (setresuid(uid, uid, -1) != 0) {
-> +	if (syscall(SYS_setresuid, uid, uid, uid) != 0) {
->  		printerr(0, "WARNING: Failed to setuid for user with uid %u\n",
->  				uid);
->  		return errno;
+> -	printerr(3, "using environment variable to select krb5 ccache %s\n",
+> -		 ccname);
+> -	setenv("KRB5CCNAME", ccname, 1);
+> -#endif
+> -}
+> -
+> -/*
+>   * Given a principal, find a matching ple structure
+>   */
+>  static struct gssd_k5_kt_princ *
+> @@ -1094,6 +1063,7 @@ gssd_setup_krb5_user_gss_ccache(uid_t uid, char *servername, char *dirpattern)
+>  	const char		*cctype;
+>  	struct dirent		*d;
+>  	int			err, i, j;
+> +	u_int			maj_stat, min_stat;
+>  
+>  	printerr(3, "looking for client creds with uid %u for "
+>  		    "server %s in %s\n", uid, servername, dirpattern);
+> @@ -1129,22 +1099,16 @@ gssd_setup_krb5_user_gss_ccache(uid_t uid, char *servername, char *dirpattern)
+>  
+>  	printerr(2, "using %s as credentials cache for client with "
+>  		    "uid %u for server %s\n", buf, uid, servername);
+> -	gssd_set_krb5_ccache_name(buf);
+> -	return 0;
+> -}
+>  
+> -/*
+> - * Let the gss code know where to find the machine credentials ccache.
+> - *
+> - * Returns:
+> - *	void
+> - */
+> -void
+> -gssd_setup_krb5_machine_gss_ccache(char *ccname)
+> -{
+> -	printerr(2, "using %s as credentials cache for machine creds\n",
+> -		 ccname);
+> -	gssd_set_krb5_ccache_name(ccname);
+> +	printerr(3, "using gss_krb5_ccache_name to select krb5 ccache %s\n",
+> +		 buf);
+> +	maj_stat = gss_krb5_ccache_name(&min_stat, buf, NULL);
+> +	if (maj_stat != GSS_S_COMPLETE) {
+> +		printerr(0, "ERROR: unable to get user cred cache '%s' "
+> +			 "failed (%s)\n", buf, error_message(min_stat));
+> +		return maj_stat;
+> +	}
+> +	return 0;
+>  }
+>  
+>  /*
+> diff --git a/utils/gssd/krb5_util.h b/utils/gssd/krb5_util.h
+> index a319588..d3b0777 100644
+> --- a/utils/gssd/krb5_util.h
+> +++ b/utils/gssd/krb5_util.h
+> @@ -27,7 +27,6 @@ int gssd_setup_krb5_user_gss_ccache(uid_t uid, char *servername,
+>  				     char *dirname);
+>  int  gssd_get_krb5_machine_cred_list(char ***list);
+>  void gssd_free_krb5_machine_cred_list(char **list);
+> -void gssd_setup_krb5_machine_gss_ccache(char *servername);
+>  void gssd_destroy_krb5_machine_creds(void);
+>  int  gssd_refresh_krb5_machine_credential(char *hostname,
+>  					  struct gssd_k5_kt_princ *ple, 
+
+Looks fine to me, but I wonder why this env var frobbing is there. Did
+old MIT krb5 libs lack that function? In any case, they seem to have it
+now, so I'm fine with this.
+
+Also, I think you can probably remove USE_GSS_KRB5_CCACHE_NAME
+altogether as I don't think it'll be used after this patch.
 
 Reviewed-by: Jeff Layton <jlayton@poochiereds.net>
