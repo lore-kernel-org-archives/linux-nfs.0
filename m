@@ -1,125 +1,139 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx142.netapp.com ([216.240.21.19]:59720 "EHLO mx142.netapp.com"
+Received: from mx142.netapp.com ([216.240.21.19]:37473 "EHLO mx142.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751539AbcD1OLO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 28 Apr 2016 10:11:14 -0400
-From: "Kornievskaia, Olga" <Olga.Kornievskaia@netapp.com>
-To: Jeff Layton <jlayton@poochiereds.net>
-CC: "steved@redhat.com" <steved@redhat.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH v5 3/3] gssd: always call gss_krb5_ccache_name
-Date: Thu, 28 Apr 2016 14:11:05 +0000
-Message-ID: <E04BBC00-5923-411B-8025-A662D94D0CDF@netapp.com>
-References: <1461776287-1427-1-git-send-email-kolga@netapp.com>
- <1461776287-1427-4-git-send-email-kolga@netapp.com>
- <1461849587.15736.12.camel@poochiereds.net>
-In-Reply-To: <1461849587.15736.12.camel@poochiereds.net>
-Content-Type: text/plain; charset="utf-8"
+	id S1751539AbcD1OTL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 28 Apr 2016 10:19:11 -0400
+Subject: Re: [PATCH] NFS: Fix an LOCK/OPEN race when unlinking an open file
+To: Chuck Lever <chuck.lever@oracle.com>
+References: <20160411201733.20911.86904.stgit@manet.1015granger.net>
+ <CAN-5tyERwuG2sdVOC+-oFjGQOyO-F_LwMW3DwXAXsGRDF4Xbhw@mail.gmail.com>
+ <CAJ75kXbM1D=ZxLZXNxeF6ULnQAA8fq5f9QqBrR1fY+Y6ceuqjQ@mail.gmail.com>
+ <dc46e09c-8c0c-6588-9a39-f65abd865079@Netapp.com>
+ <7655D216-7C44-41A6-A6BC-BD5E91E5FDB6@oracle.com>
+CC: William Dauchy <wdauchy@gmail.com>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        Olga Kornievskaia <aglo@umich.edu>
+From: Anna Schumaker <Anna.Schumaker@netapp.com>
+Message-ID: <f737a7da-5815-a0b7-a8aa-2e2d043ff20a@Netapp.com>
+Date: Thu, 28 Apr 2016 10:09:31 -0400
 MIME-Version: 1.0
+In-Reply-To: <7655D216-7C44-41A6-A6BC-BD5E91E5FDB6@oracle.com>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-DQo+IE9uIEFwciAyOCwgMjAxNiwgYXQgOToxOSBBTSwgSmVmZiBMYXl0b24gPGpsYXl0b25AcG9v
-Y2hpZXJlZHMubmV0PiB3cm90ZToNCj4gDQo+IE9uIFdlZCwgMjAxNi0wNC0yNyBhdCAxMjo1OCAt
-MDQwMCwgT2xnYSBLb3JuaWV2c2thaWEgd3JvdGU6DQo+PiBQcmV2aW91c2x5IHRoZSBsb2NhdGlv
-biBvZiB0aGUgY3JlZGVudGlhbCBjYWNoZSB3YXMgcGFzc2VkIGluIGVpdGhlcg0KPj4gdXNpbmcg
-ZW52aXJvbm1lbnQgdmFyaWFibGUgS1JCNUNDTkFNRSBvciBnc3Nfa3JiNV9jY2FjaGVfbmFtZSgp
-IGlmDQo+PiBzdXBwb3J0ZWQuIEZvciB0aHJlYWRlZC1nc3NkLCB3ZSBjYW4ndCB1c2UgYW4gZW52
-aXJvbm1lbnQgdmFyaWFibGUNCj4+IGFzIGl0J3Mgc2hhcmVkIGFtb25nIGFsbCB0aHJlYWQuIFRo
-dXMgYWx3YXlzIHVzZSB0aGUgYXBpIGNhbGwuDQo+PiANCj4+IFNpZ25lZC1vZmYtYnk6IE9sZ2Eg
-S29ybmlldnNrYWlhIDxrb2xnYUBuZXRhcHAuY29tPg0KPj4gUmV2aWV3ZWQtYnk6IFN0ZXZlIERp
-Y2tzb24gPHN0ZXZlZEByZWRoYXQuY29tPg0KPj4gLS0tDQo+PiAgdXRpbHMvZ3NzZC9nc3NkX3By
-b2MuYyB8IDEyICsrKysrKysrKy0tDQo+PiAgdXRpbHMvZ3NzZC9rcmI1X3V0aWwuYyB8IDU2ICsr
-KysrKysrKy0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tDQo+PiAgdXRp
-bHMvZ3NzZC9rcmI1X3V0aWwuaCB8ICAxIC0NCj4+ICAzIGZpbGVzIGNoYW5nZWQsIDIwIGluc2Vy
-dGlvbnMoKyksIDQ5IGRlbGV0aW9ucygtKQ0KPj4gDQo+PiBkaWZmIC0tZ2l0IGEvdXRpbHMvZ3Nz
-ZC9nc3NkX3Byb2MuYyBiL3V0aWxzL2dzc2QvZ3NzZF9wcm9jLmMNCj4+IGluZGV4IGRlOGRjMDcu
-LjE0Mjk4ZDAgMTAwNjQ0DQo+PiAtLS0gYS91dGlscy9nc3NkL2dzc2RfcHJvYy5jDQo+PiArKysg
-Yi91dGlscy9nc3NkL2dzc2RfcHJvYy5jDQo+PiBAQCAtNTQ3LDcgKzU0NywxNSBAQCBrcmI1X3Vz
-ZV9tYWNoaW5lX2NyZWRzKHN0cnVjdCBjbG50X2luZm8gKmNscCwgdWlkX3QgdWlkLCBjaGFyICp0
-Z3RuYW1lLA0KPj4gIAkJCWdvdG8gb3V0Ow0KPj4gIAkJfQ0KPj4gIAkJZm9yIChjY25hbWUgPSBj
-cmVkbGlzdDsgY2NuYW1lICYmICpjY25hbWU7IGNjbmFtZSsrKSB7DQo+PiAtCQkJZ3NzZF9zZXR1
-cF9rcmI1X21hY2hpbmVfZ3NzX2NjYWNoZSgqY2NuYW1lKTsNCj4+ICsJCQl1X2ludCBtaW5fc3Rh
-dDsNCj4+ICsNCj4+ICsJCQlpZiAoZ3NzX2tyYjVfY2NhY2hlX25hbWUoJm1pbl9zdGF0LCAqY2Nu
-YW1lLCBOVUxMKSAhPQ0KPj4gKwkJCQkJR1NTX1NfQ09NUExFVEUpIHsNCj4+ICsJCQkJcHJpbnRl
-cnIoMSwgIldBUk5JTkc6IGdzc19rcmI1X2NjYWNoZV9uYW1lICINCj4+ICsJCQkJCSAid2l0aCBu
-YW1lICclcycgZmFpbGVkICglcylcbiIsDQo+PiArCQkJCQkgKmNjbmFtZSwgZXJyb3JfbWVzc2Fn
-ZShtaW5fc3RhdCkpOw0KPj4gKwkJCQljb250aW51ZTsNCj4+ICsJCQl9DQo+PiAgCQkJaWYgKChj
-cmVhdGVfYXV0aF9ycGNfY2xpZW50KGNscCwgdGd0bmFtZSwgcnBjX2NsbnQsDQo+PiAgCQkJCQkJ
-JmF1dGgsIHVpZCwNCj4+ICAJCQkJCQlBVVRIVFlQRV9LUkI1LA0KPj4gQEAgLTU2OCw3ICs1NzYs
-NyBAQCBrcmI1X3VzZV9tYWNoaW5lX2NyZWRzKHN0cnVjdCBjbG50X2luZm8gKmNscCwgdWlkX3Qg
-dWlkLCBjaGFyICp0Z3RuYW1lLA0KPj4gIAkJCQkJICJyZWNyZWF0ZSBjYWNoZSBmb3Igc2VydmVy
-ICVzXG4iLA0KPj4gIAkJCQkJY2xwLT5zZXJ2ZXJuYW1lKTsNCj4+ICAJCQl9IGVsc2Ugew0KPj4g
-LQkJCQlwcmludGVycigxLCAiV0FSTklORzogRmFpbGVkIHRvIGNyZWF0ZSBtYWNoaW5lIg0KPj4g
-KwkJCQlwcmludGVycigwLCAiRVJST1I6IEZhaWxlZCB0byBjcmVhdGUgbWFjaGluZSINCj4+ICAJ
-CQkJCSAia3JiNSBjb250ZXh0IHdpdGggYW55IGNyZWRlbnRpYWxzIg0KPj4gIAkJCQkJICJjYWNo
-ZSBmb3Igc2VydmVyICVzXG4iLA0KPj4gIAkJCQkJY2xwLT5zZXJ2ZXJuYW1lKTsNCj4+IGRpZmYg
-LS1naXQgYS91dGlscy9nc3NkL2tyYjVfdXRpbC5jIGIvdXRpbHMvZ3NzZC9rcmI1X3V0aWwuYw0K
-Pj4gaW5kZXggMzMyODY5Ni4uN2I3NGFiMyAxMDA2NDQNCj4+IC0tLSBhL3V0aWxzL2dzc2Qva3Ji
-NV91dGlsLmMNCj4+ICsrKyBiL3V0aWxzL2dzc2Qva3JiNV91dGlsLmMNCj4+IEBAIC00NjgsMzcg
-KzQ2OCw2IEBAIGdzc2RfZ2V0X3NpbmdsZV9rcmI1X2NyZWQoa3JiNV9jb250ZXh0IGNvbnRleHQs
-DQo+PiAgfQ0KPj4gIA0KPj4gIC8qDQo+PiAtICogRGVwZW5kaW5nIG9uIHRoZSB2ZXJzaW9uIG9m
-IEtlcmJlcm9zLCB3ZSBlaXRoZXIgbmVlZCB0byB1c2UNCj4+IC0gKiBhIHByaXZhdGUgZnVuY3Rp
-b24sIG9yIHNpbXBseSBzZXQgdGhlIGVudmlyb25tZW50IHZhcmlhYmxlLg0KPj4gLSAqLw0KPj4g
-LXN0YXRpYyB2b2lkDQo+PiAtZ3NzZF9zZXRfa3JiNV9jY2FjaGVfbmFtZShjaGFyICpjY25hbWUp
-DQo+PiAtew0KPj4gLSNpZmRlZiBVU0VfR1NTX0tSQjVfQ0NBQ0hFX05BTUUNCj4+IC0JdV9pbnQJ
-bWFqX3N0YXQsIG1pbl9zdGF0Ow0KPj4gLQ0KPj4gLQlwcmludGVycigzLCAidXNpbmcgZ3NzX2ty
-YjVfY2NhY2hlX25hbWUgdG8gc2VsZWN0IGtyYjUgY2NhY2hlICVzXG4iLA0KPj4gLQkJIGNjbmFt
-ZSk7DQo+PiAtCW1hal9zdGF0ID0gZ3NzX2tyYjVfY2NhY2hlX25hbWUoJm1pbl9zdGF0LCBjY25h
-bWUsIE5VTEwpOw0KPj4gLQlpZiAobWFqX3N0YXQgIT0gR1NTX1NfQ09NUExFVEUpIHsNCj4+IC0J
-CXByaW50ZXJyKDAsICJXQVJOSU5HOiBnc3Nfa3JiNV9jY2FjaGVfbmFtZSB3aXRoICINCj4+IC0J
-CQkibmFtZSAnJXMnIGZhaWxlZCAoJXMpXG4iLA0KPj4gLQkJCWNjbmFtZSwgZXJyb3JfbWVzc2Fn
-ZShtaW5fc3RhdCkpOw0KPj4gLQl9DQo+PiAtI2Vsc2UNCj4+IC0JLyoNCj4+IC0JICogU2V0IHRo
-ZSBLUkI1Q0NOQU1FIGVudmlyb25tZW50IHZhcmlhYmxlIHRvIHRlbGwgdGhlIGtyYjUgY29kZQ0K
-Pj4gLQkgKiB3aGljaCBjcmVkZW50aWFscyBjYWNoZSB0byB1c2UuICAoSW5zdGVhZCBvZiB1c2lu
-ZyB0aGUgcHJpdmF0ZQ0KPj4gLQkgKiBmdW5jdGlvbiBhYm92ZSBmb3Igd2hpY2ggdGhlcmUgaXMg
-bm8gZ2VuZXJpYyBnc3NhcGkNCj4+IC0JICogZXF1aXZhbGVudC4pDQo+PiAtCSAqLw0KPj4gLQlw
-cmludGVycigzLCAidXNpbmcgZW52aXJvbm1lbnQgdmFyaWFibGUgdG8gc2VsZWN0IGtyYjUgY2Nh
-Y2hlICVzXG4iLA0KPj4gLQkJIGNjbmFtZSk7DQo+PiAtCXNldGVudigiS1JCNUNDTkFNRSIsIGNj
-bmFtZSwgMSk7DQo+PiAtI2VuZGlmDQo+PiAtfQ0KPj4gLQ0KPj4gLS8qDQo+PiAgICogR2l2ZW4g
-YSBwcmluY2lwYWwsIGZpbmQgYSBtYXRjaGluZyBwbGUgc3RydWN0dXJlDQo+PiAgICovDQo+PiAg
-c3RhdGljIHN0cnVjdCBnc3NkX2s1X2t0X3ByaW5jICoNCj4+IEBAIC0xMDk0LDYgKzEwNjMsNyBA
-QCBnc3NkX3NldHVwX2tyYjVfdXNlcl9nc3NfY2NhY2hlKHVpZF90IHVpZCwgY2hhciAqc2VydmVy
-bmFtZSwgY2hhciAqZGlycGF0dGVybikNCj4+ICAJY29uc3QgY2hhcgkJKmNjdHlwZTsNCj4+ICAJ
-c3RydWN0IGRpcmVudAkJKmQ7DQo+PiAgCWludAkJCWVyciwgaSwgajsNCj4+ICsJdV9pbnQJCQlt
-YWpfc3RhdCwgbWluX3N0YXQ7DQo+PiAgDQo+PiAgCXByaW50ZXJyKDMsICJsb29raW5nIGZvciBj
-bGllbnQgY3JlZHMgd2l0aCB1aWQgJXUgZm9yICINCj4+ICAJCSAgICAic2VydmVyICVzIGluICVz
-XG4iLCB1aWQsIHNlcnZlcm5hbWUsIGRpcnBhdHRlcm4pOw0KPj4gQEAgLTExMjksMjIgKzEwOTks
-MTYgQEAgZ3NzZF9zZXR1cF9rcmI1X3VzZXJfZ3NzX2NjYWNoZSh1aWRfdCB1aWQsIGNoYXIgKnNl
-cnZlcm5hbWUsIGNoYXIgKmRpcnBhdHRlcm4pDQo+PiAgDQo+PiAgCXByaW50ZXJyKDIsICJ1c2lu
-ZyAlcyBhcyBjcmVkZW50aWFscyBjYWNoZSBmb3IgY2xpZW50IHdpdGggIg0KPj4gIAkJICAgICJ1
-aWQgJXUgZm9yIHNlcnZlciAlc1xuIiwgYnVmLCB1aWQsIHNlcnZlcm5hbWUpOw0KPj4gLQlnc3Nk
-X3NldF9rcmI1X2NjYWNoZV9uYW1lKGJ1Zik7DQo+PiAtCXJldHVybiAwOw0KPj4gLX0NCj4+ICAN
-Cj4+IC0vKg0KPj4gLSAqIExldCB0aGUgZ3NzIGNvZGUga25vdyB3aGVyZSB0byBmaW5kIHRoZSBt
-YWNoaW5lIGNyZWRlbnRpYWxzIGNjYWNoZS4NCj4+IC0gKg0KPj4gLSAqIFJldHVybnM6DQo+PiAt
-ICoJdm9pZA0KPj4gLSAqLw0KPj4gLXZvaWQNCj4+IC1nc3NkX3NldHVwX2tyYjVfbWFjaGluZV9n
-c3NfY2NhY2hlKGNoYXIgKmNjbmFtZSkNCj4+IC17DQo+PiAtCXByaW50ZXJyKDIsICJ1c2luZyAl
-cyBhcyBjcmVkZW50aWFscyBjYWNoZSBmb3IgbWFjaGluZSBjcmVkc1xuIiwNCj4+IC0JCSBjY25h
-bWUpOw0KPj4gLQlnc3NkX3NldF9rcmI1X2NjYWNoZV9uYW1lKGNjbmFtZSk7DQo+PiArCXByaW50
-ZXJyKDMsICJ1c2luZyBnc3Nfa3JiNV9jY2FjaGVfbmFtZSB0byBzZWxlY3Qga3JiNSBjY2FjaGUg
-JXNcbiIsDQo+PiArCQkgYnVmKTsNCj4+ICsJbWFqX3N0YXQgPSBnc3Nfa3JiNV9jY2FjaGVfbmFt
-ZSgmbWluX3N0YXQsIGJ1ZiwgTlVMTCk7DQo+PiArCWlmIChtYWpfc3RhdCAhPSBHU1NfU19DT01Q
-TEVURSkgew0KPj4gKwkJcHJpbnRlcnIoMCwgIkVSUk9SOiB1bmFibGUgdG8gZ2V0IHVzZXIgY3Jl
-ZCBjYWNoZSAnJXMnICINCj4+ICsJCQkgImZhaWxlZCAoJXMpXG4iLCBidWYsIGVycm9yX21lc3Nh
-Z2UobWluX3N0YXQpKTsNCj4+ICsJCXJldHVybiBtYWpfc3RhdDsNCj4+ICsJfQ0KPj4gKwlyZXR1
-cm4gMDsNCj4+ICB9DQo+PiAgDQo+PiAgLyoNCj4+IGRpZmYgLS1naXQgYS91dGlscy9nc3NkL2ty
-YjVfdXRpbC5oIGIvdXRpbHMvZ3NzZC9rcmI1X3V0aWwuaA0KPj4gaW5kZXggYTMxOTU4OC4uZDNi
-MDc3NyAxMDA2NDQNCj4+IC0tLSBhL3V0aWxzL2dzc2Qva3JiNV91dGlsLmgNCj4+ICsrKyBiL3V0
-aWxzL2dzc2Qva3JiNV91dGlsLmgNCj4+IEBAIC0yNyw3ICsyNyw2IEBAIGludCBnc3NkX3NldHVw
-X2tyYjVfdXNlcl9nc3NfY2NhY2hlKHVpZF90IHVpZCwgY2hhciAqc2VydmVybmFtZSwNCj4+ICAJ
-CQkJICAgICBjaGFyICpkaXJuYW1lKTsNCj4+ICBpbnQgIGdzc2RfZ2V0X2tyYjVfbWFjaGluZV9j
-cmVkX2xpc3QoY2hhciAqKipsaXN0KTsNCj4+ICB2b2lkIGdzc2RfZnJlZV9rcmI1X21hY2hpbmVf
-Y3JlZF9saXN0KGNoYXIgKipsaXN0KTsNCj4+IC12b2lkIGdzc2Rfc2V0dXBfa3JiNV9tYWNoaW5l
-X2dzc19jY2FjaGUoY2hhciAqc2VydmVybmFtZSk7DQo+PiAgdm9pZCBnc3NkX2Rlc3Ryb3lfa3Ji
-NV9tYWNoaW5lX2NyZWRzKHZvaWQpOw0KPj4gIGludCAgZ3NzZF9yZWZyZXNoX2tyYjVfbWFjaGlu
-ZV9jcmVkZW50aWFsKGNoYXIgKmhvc3RuYW1lLA0KPj4gIAkJCQkJICBzdHJ1Y3QgZ3NzZF9rNV9r
-dF9wcmluYyAqcGxlLCANCj4gDQo+IExvb2tzIGZpbmUgdG8gbWUsIGJ1dCBJIHdvbmRlciB3aHkg
-dGhpcyBlbnYgdmFyIGZyb2JiaW5nIGlzIHRoZXJlLiBEaWQNCj4gb2xkIE1JVCBrcmI1IGxpYnMg
-bGFjayB0aGF0IGZ1bmN0aW9uPyBJbiBhbnkgY2FzZSwgdGhleSBzZWVtIHRvIGhhdmUgaXQNCj4g
-bm93LCBzbyBJJ20gZmluZSB3aXRoIHRoaXMuDQoNCkNvcnJlY3QgcHJpb3IgdG8gc29tZSB2ZXJz
-aW9uIHRoZXJlIHdhcyBubyBzdWNoIGZ1bmN0aW9uIHRoZXJlLiANCg0KPiBBbHNvLCBJIHRoaW5r
-IHlvdSBjYW4gcHJvYmFibHkgcmVtb3ZlIFVTRV9HU1NfS1JCNV9DQ0FDSEVfTkFNRQ0KPiBhbHRv
-Z2V0aGVyIGFzIEkgZG9uJ3QgdGhpbmsgaXQnbGwgYmUgdXNlZCBhZnRlciB0aGlzIHBhdGNoLg0K
-DQpJIHRoaW5rIGl0IGlzIHJlbW92ZWTigKYgOi0vIGdyZXAgZm9yIENDTkFNRSBjb21lcyB1cCBl
-bXB0eS4NCg0KPiANCj4gUmV2aWV3ZWQtYnk6IEplZmYgTGF5dG9uIDxqbGF5dG9uQHBvb2NoaWVy
-ZWRzLm5ldD4NCg0K
+On 04/28/2016 10:06 AM, Chuck Lever wrote:
+> 
+>> On Apr 28, 2016, at 9:13 AM, Anna Schumaker <Anna.Schumaker@netapp.com> wrote:
+>>
+>> The patch looks pretty straightforward to me, and it sounds like it fixes a few problems that people are seeing.  One question (below):
+>>
+>> On 04/28/2016 08:43 AM, William Dauchy wrote:
+>>> Hello Anna,
+>>>
+>>> Could you have a look at this one please?
+>>>
+>>> Thanks,
+>>>
+>>> William
+>>>
+>>> On Tue, Apr 26, 2016 at 4:24 PM, Olga Kornievskaia <aglo@umich.edu> wrote:
+>>>> I believe this patch also helps with a race between a LOCK and
+>>>> CB_RECALL. Application does a lock as the delegation is being
+>>>> recalled. The lock thread sees the delegated state and acquires a
+>>>> local lock. At the same time delegation doesn't see it the lock yet
+>>>> and returns the delegation. Application proceeds to do IO. It ends up
+>>>> using an open stateid for the IO (as there is no delegation stateid or
+>>>> lock stateid). The server is unaware of the lock so it can give that
+>>>> lock to somebody else. Yet this client thinks it has a local lock. It
+>>>> leads to inconsistent data between clients.
+>>>>
+>>>> On Mon, Apr 11, 2016 at 4:20 PM, Chuck Lever <chuck.lever@oracle.com> wrote:
+>>>>> At Connectathon 2016, we found that recent upstream Linux clients
+>>>>> would occasionally send a LOCK operation with a zero stateid. This
+>>>>> appeared to happen in close proximity to another thread returning
+>>>>> a delegation before unlinking the same file while it remained open.
+>>>>>
+>>>>> Earlier, the client received a write delegation on this file and
+>>>>> returned the open stateid. Now, as it is getting ready to unlink the
+>>>>> file, it returns the write delegation. But there is still an open
+>>>>> file descriptor on that file, so the client must OPEN the file
+>>>>> again before it returns the delegation.
+>>>>>
+>>>>> Since commit 24311f884189 ('NFSv4: Recovery of recalled read
+>>>>> delegations is broken'), nfs_open_delegation_recall() clears the
+>>>>> NFS_DELEGATED_STATE flag _before_ it sends the OPEN. This allows a
+>>>>> racing LOCK on the same inode to be put on the wire before the OPEN
+>>>>> operation has returned a valid open stateid.
+>>>>>
+>>>>> To eliminate this race, serialize delegation return with the
+>>>>> acquisition of a file lock on the same file. Adopt the same approach
+>>>>> as is used in the unlock path.
+>>>>>
+>>>>> Fixes: 24311f884189 ('NFSv4: Recovery of recalled read ... ')
+>>>>> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+>>>>> ---
+>>>>> Hi-
+>>>>>
+>>>>> This fix appears to be both safe and effective. Please consider
+>>>>> it for v4.7 and for stable. Thanks!
+>>>>>
+>>>>>
+>>>>> fs/nfs/nfs4proc.c |    4 ++++
+>>>>> 1 file changed, 4 insertions(+)
+>>>>>
+>>>>> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+>>>>> index 01bef06..c40f1b6 100644
+>>>>> --- a/fs/nfs/nfs4proc.c
+>>>>> +++ b/fs/nfs/nfs4proc.c
+>>>>> @@ -6054,6 +6054,7 @@ static int nfs41_lock_expired(struct nfs4_state *state, struct file_lock *reques
+>>>>> static int _nfs4_proc_setlk(struct nfs4_state *state, int cmd, struct file_lock *request)
+>>>>> {
+>>>>>        struct nfs_inode *nfsi = NFS_I(state->inode);
+>>>>> +       struct nfs4_state_owner *sp = state->owner;
+>>>>>        unsigned char fl_flags = request->fl_flags;
+>>>>>        int status = -ENOLCK;
+>>>>>
+>>>>> @@ -6068,6 +6069,7 @@ static int _nfs4_proc_setlk(struct nfs4_state *state, int cmd, struct file_lock
+>>>>>        status = do_vfs_lock(state->inode, request);
+>>>>>        if (status < 0)
+>>>>>                goto out;
+>>>>> +       mutex_lock(&sp->so_delegreturn_mutex);
+>>
+>> From what I can tell, the first call to do_vfs_lock() in this function is used to test if we can take the lock locally.  Do we need to worry about this racing with delegreturn, too?
+> 
+> When I included that call in the critical section,
+> cthon04 locking tests deadlocked.
+
+Got it.  Thanks for checking!
+
+Anna
+
+> 
+> 
+>> Thanks,
+>> Anna
+>>
+>>>>>        down_read(&nfsi->rwsem);
+>>>>>        if (test_bit(NFS_DELEGATED_STATE, &state->flags)) {
+>>>>>                /* Yes: cache locks! */
+>>>>> @@ -6075,9 +6077,11 @@ static int _nfs4_proc_setlk(struct nfs4_state *state, int cmd, struct file_lock
+>>>>>                request->fl_flags = fl_flags & ~FL_SLEEP;
+>>>>>                status = do_vfs_lock(state->inode, request);
+>>>>>                up_read(&nfsi->rwsem);
+>>>>> +               mutex_unlock(&sp->so_delegreturn_mutex);
+>>>>>                goto out;
+>>>>>        }
+>>>>>        up_read(&nfsi->rwsem);
+>>>>> +       mutex_unlock(&sp->so_delegreturn_mutex);
+>>>>>        status = _nfs4_do_setlk(state, cmd, request, NFS_LOCK_NEW);
+>>>>> out:
+>>>>>        request->fl_flags = fl_flags;
+> 
+> --
+> Chuck Lever
+> 
+> 
+> 
+
