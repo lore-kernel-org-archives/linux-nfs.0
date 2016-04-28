@@ -1,187 +1,255 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ig0-f193.google.com ([209.85.213.193]:36032 "EHLO
-	mail-ig0-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751731AbcD1Rku (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 28 Apr 2016 13:40:50 -0400
-Received: by mail-ig0-f193.google.com with SMTP id c3so12437391igl.3
-        for <linux-nfs@vger.kernel.org>; Thu, 28 Apr 2016 10:40:50 -0700 (PDT)
+Received: from mx142.netapp.com ([216.240.21.19]:52225 "EHLO mx142.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752685AbcD1Uh0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 28 Apr 2016 16:37:26 -0400
+Subject: Re: [PATCH v2 6/7] nfs: get a reference to the credential in
+ ff_layout_alloc_lseg
+To: Jeff Layton <jlayton@poochiereds.net>, <trond.myklebust@primarydata.com>
+References: <1461286320-24601-1-git-send-email-jeff.layton@primarydata.com>
+ <1461286320-24601-7-git-send-email-jeff.layton@primarydata.com>
+CC: <linux-nfs@vger.kernel.org>
+From: Anna Schumaker <Anna.Schumaker@netapp.com>
+Message-ID: <32c5353e-2229-5d95-8161-bdc7f6cb85c1@Netapp.com>
+Date: Thu, 28 Apr 2016 16:37:21 -0400
 MIME-Version: 1.0
-In-Reply-To: <7ae5ae32-7721-fa8e-9b07-e7b705f85863@Netapp.com>
-References: <20160411201733.20911.86904.stgit@manet.1015granger.net>
-	<CAN-5tyERwuG2sdVOC+-oFjGQOyO-F_LwMW3DwXAXsGRDF4Xbhw@mail.gmail.com>
-	<CAJ75kXbM1D=ZxLZXNxeF6ULnQAA8fq5f9QqBrR1fY+Y6ceuqjQ@mail.gmail.com>
-	<dc46e09c-8c0c-6588-9a39-f65abd865079@Netapp.com>
-	<7655D216-7C44-41A6-A6BC-BD5E91E5FDB6@oracle.com>
-	<f737a7da-5815-a0b7-a8aa-2e2d043ff20a@Netapp.com>
-	<CAN-5tyHeiiO4VJ-_ayiuZQhtM0v-eH42yN8R8e-4D9WCmrKy3w@mail.gmail.com>
-	<F42CA24A-0D0A-4ED3-91E3-DC1BE4EA393A@oracle.com>
-	<7ae5ae32-7721-fa8e-9b07-e7b705f85863@Netapp.com>
-Date: Thu, 28 Apr 2016 13:40:49 -0400
-Message-ID: <CAN-5tyGvnZJivfsmOEFsG5Gs3o2WoPFf_K8MN6F2+nF3hhNQqA@mail.gmail.com>
-Subject: Re: [PATCH] NFS: Fix an LOCK/OPEN race when unlinking an open file
-From: Olga Kornievskaia <aglo@umich.edu>
-To: Anna Schumaker <Anna.Schumaker@netapp.com>
-Cc: Chuck Lever <chuck.lever@oracle.com>, William Dauchy <wdauchy@gmail.com>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=UTF-8
+In-Reply-To: <1461286320-24601-7-git-send-email-jeff.layton@primarydata.com>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Apr 28, 2016 at 1:22 PM, Anna Schumaker
-<Anna.Schumaker@netapp.com> wrote:
-> On 04/28/2016 12:05 PM, Chuck Lever wrote:
->>
->>> On Apr 28, 2016, at 11:56 AM, Olga Kornievskaia <aglo@umich.edu> wrote:
->>>
->>> Chuck or Anna,
->>>
->>> If the patch is accepted, do you mind expanding the commit message to
->>> include the wording about the LOCK and CB_RECALL race (so that it's
->>> documented to look back into it).
->>
->> Anna's choice.
->
-> Sounds like a good idea.  Is there any particular wording that you want?  If not, then I can try to base something off of your email from Tuesday (4/26).
+Hi Jeff,
 
-No particular wording. Could be as little as: "helps with LOCK and
-CB_RECALL race" or could include my explanation of what happens from
-Tuesday.
+It looks like this patch removes the mirror->uid and mirror->gid parameters that your earlier patch (nfs: don't match flexfiles mirrors that have different creds) makes use of.  Should that patch be updated, or does this series make that patch obsolete?
 
->
-> Anna
->
->>
->>
->>> On Thu, Apr 28, 2016 at 10:09 AM, Anna Schumaker
->>> <Anna.Schumaker@netapp.com> wrote:
->>>> On 04/28/2016 10:06 AM, Chuck Lever wrote:
->>>>>
->>>>>> On Apr 28, 2016, at 9:13 AM, Anna Schumaker <Anna.Schumaker@netapp.com> wrote:
->>>>>>
->>>>>> The patch looks pretty straightforward to me, and it sounds like it fixes a few problems that people are seeing.  One question (below):
->>>>>>
->>>>>> On 04/28/2016 08:43 AM, William Dauchy wrote:
->>>>>>> Hello Anna,
->>>>>>>
->>>>>>> Could you have a look at this one please?
->>>>>>>
->>>>>>> Thanks,
->>>>>>>
->>>>>>> William
->>>>>>>
->>>>>>> On Tue, Apr 26, 2016 at 4:24 PM, Olga Kornievskaia <aglo@umich.edu> wrote:
->>>>>>>> I believe this patch also helps with a race between a LOCK and
->>>>>>>> CB_RECALL. Application does a lock as the delegation is being
->>>>>>>> recalled. The lock thread sees the delegated state and acquires a
->>>>>>>> local lock. At the same time delegation doesn't see it the lock yet
->>>>>>>> and returns the delegation. Application proceeds to do IO. It ends up
->>>>>>>> using an open stateid for the IO (as there is no delegation stateid or
->>>>>>>> lock stateid). The server is unaware of the lock so it can give that
->>>>>>>> lock to somebody else. Yet this client thinks it has a local lock. It
->>>>>>>> leads to inconsistent data between clients.
->>>>>>>>
->>>>>>>> On Mon, Apr 11, 2016 at 4:20 PM, Chuck Lever <chuck.lever@oracle.com> wrote:
->>>>>>>>> At Connectathon 2016, we found that recent upstream Linux clients
->>>>>>>>> would occasionally send a LOCK operation with a zero stateid. This
->>>>>>>>> appeared to happen in close proximity to another thread returning
->>>>>>>>> a delegation before unlinking the same file while it remained open.
->>>>>>>>>
->>>>>>>>> Earlier, the client received a write delegation on this file and
->>>>>>>>> returned the open stateid. Now, as it is getting ready to unlink the
->>>>>>>>> file, it returns the write delegation. But there is still an open
->>>>>>>>> file descriptor on that file, so the client must OPEN the file
->>>>>>>>> again before it returns the delegation.
->>>>>>>>>
->>>>>>>>> Since commit 24311f884189 ('NFSv4: Recovery of recalled read
->>>>>>>>> delegations is broken'), nfs_open_delegation_recall() clears the
->>>>>>>>> NFS_DELEGATED_STATE flag _before_ it sends the OPEN. This allows a
->>>>>>>>> racing LOCK on the same inode to be put on the wire before the OPEN
->>>>>>>>> operation has returned a valid open stateid.
->>>>>>>>>
->>>>>>>>> To eliminate this race, serialize delegation return with the
->>>>>>>>> acquisition of a file lock on the same file. Adopt the same approach
->>>>>>>>> as is used in the unlock path.
->>>>>>>>>
->>>>>>>>> Fixes: 24311f884189 ('NFSv4: Recovery of recalled read ... ')
->>>>>>>>> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
->>>>>>>>> ---
->>>>>>>>> Hi-
->>>>>>>>>
->>>>>>>>> This fix appears to be both safe and effective. Please consider
->>>>>>>>> it for v4.7 and for stable. Thanks!
->>>>>>>>>
->>>>>>>>>
->>>>>>>>> fs/nfs/nfs4proc.c |    4 ++++
->>>>>>>>> 1 file changed, 4 insertions(+)
->>>>>>>>>
->>>>>>>>> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
->>>>>>>>> index 01bef06..c40f1b6 100644
->>>>>>>>> --- a/fs/nfs/nfs4proc.c
->>>>>>>>> +++ b/fs/nfs/nfs4proc.c
->>>>>>>>> @@ -6054,6 +6054,7 @@ static int nfs41_lock_expired(struct nfs4_state *state, struct file_lock *reques
->>>>>>>>> static int _nfs4_proc_setlk(struct nfs4_state *state, int cmd, struct file_lock *request)
->>>>>>>>> {
->>>>>>>>>       struct nfs_inode *nfsi = NFS_I(state->inode);
->>>>>>>>> +       struct nfs4_state_owner *sp = state->owner;
->>>>>>>>>       unsigned char fl_flags = request->fl_flags;
->>>>>>>>>       int status = -ENOLCK;
->>>>>>>>>
->>>>>>>>> @@ -6068,6 +6069,7 @@ static int _nfs4_proc_setlk(struct nfs4_state *state, int cmd, struct file_lock
->>>>>>>>>       status = do_vfs_lock(state->inode, request);
->>>>>>>>>       if (status < 0)
->>>>>>>>>               goto out;
->>>>>>>>> +       mutex_lock(&sp->so_delegreturn_mutex);
->>>>>>
->>>>>> From what I can tell, the first call to do_vfs_lock() in this function is used to test if we can take the lock locally.  Do we need to worry about this racing with delegreturn, too?
->>>>>
->>>>> When I included that call in the critical section,
->>>>> cthon04 locking tests deadlocked.
->>>>
->>>> Got it.  Thanks for checking!
->>>>
->>>> Anna
->>>>
->>>>>
->>>>>
->>>>>> Thanks,
->>>>>> Anna
->>>>>>
->>>>>>>>>       down_read(&nfsi->rwsem);
->>>>>>>>>       if (test_bit(NFS_DELEGATED_STATE, &state->flags)) {
->>>>>>>>>               /* Yes: cache locks! */
->>>>>>>>> @@ -6075,9 +6077,11 @@ static int _nfs4_proc_setlk(struct nfs4_state *state, int cmd, struct file_lock
->>>>>>>>>               request->fl_flags = fl_flags & ~FL_SLEEP;
->>>>>>>>>               status = do_vfs_lock(state->inode, request);
->>>>>>>>>               up_read(&nfsi->rwsem);
->>>>>>>>> +               mutex_unlock(&sp->so_delegreturn_mutex);
->>>>>>>>>               goto out;
->>>>>>>>>       }
->>>>>>>>>       up_read(&nfsi->rwsem);
->>>>>>>>> +       mutex_unlock(&sp->so_delegreturn_mutex);
->>>>>>>>>       status = _nfs4_do_setlk(state, cmd, request, NFS_LOCK_NEW);
->>>>>>>>> out:
->>>>>>>>>       request->fl_flags = fl_flags;
->>>>>
->>>>> --
->>>>> Chuck Lever
->>>>>
->>>>>
->>>>>
->>>>
->>> --
->>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->>> the body of a message to majordomo@vger.kernel.org
->>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->>
->> --
->> Chuck Lever
->>
->>
->>
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->>
->
+Thanks,
+Anna
+
+On 04/21/2016 08:51 PM, Jeff Layton wrote:
+> We're just as likely to have allocation problems here as we would if we
+> delay looking up the credential like we currently do. Fix the code to
+> get a rpc_cred reference early, as soon as the mirror is set up.
+> 
+> This allows us to eliminate the mirror early if there is a problem
+> getting an rpc credential. This also allows us to drop the uid/gid
+> from the layout_mirror struct as well.
+> 
+> In the event that we find an existing mirror where this one would go, we
+> swap in the new creds unconditionally, and drop the reference to the old
+> one.
+> 
+> Note that the old ff_layout_update_mirror_cred function wouldn't set
+> this pointer unless the DS version was 3, but we don't know what the DS
+> version is at this point. I'm a little unclear on why it did that as you
+> still need creds to talk to v4 servers as well. I have the code set
+> it regardless of the DS version here.
+> 
+> Also note the change to using generic creds instead of calling
+> lookup_cred directly. With that change, we also need to populate the
+> group_info pointer in the acred as some functions expect that to never
+> be NULL. Instead of allocating one every time however, we can allocate
+> one when the module is loaded and share it since the group_info is
+> refcounted.
+> 
+> Signed-off-by: Jeff Layton <jeff.layton@primarydata.com>
+> ---
+>  fs/nfs/flexfilelayout/flexfilelayout.c    | 41 ++++++++++++++++++++++-----
+>  fs/nfs/flexfilelayout/flexfilelayout.h    |  2 --
+>  fs/nfs/flexfilelayout/flexfilelayoutdev.c | 47 ++-----------------------------
+>  3 files changed, 36 insertions(+), 54 deletions(-)
+> 
+> diff --git a/fs/nfs/flexfilelayout/flexfilelayout.c b/fs/nfs/flexfilelayout/flexfilelayout.c
+> index 432d5b0009c7..19806caa8ff2 100644
+> --- a/fs/nfs/flexfilelayout/flexfilelayout.c
+> +++ b/fs/nfs/flexfilelayout/flexfilelayout.c
+> @@ -26,6 +26,8 @@
+>  
+>  #define FF_LAYOUT_POLL_RETRY_MAX     (15*HZ)
+>  
+> +static struct group_info	*ff_zero_group;
+> +
+>  static struct pnfs_layout_hdr *
+>  ff_layout_alloc_layout_hdr(struct inode *inode, gfp_t gfp_flags)
+>  {
+> @@ -407,8 +409,9 @@ ff_layout_alloc_lseg(struct pnfs_layout_hdr *lh,
+>  		struct nfs4_ff_layout_mirror *mirror;
+>  		struct nfs4_deviceid devid;
+>  		struct nfs4_deviceid_node *idnode;
+> -		u32 ds_count;
+> -		u32 fh_count;
+> +		struct auth_cred acred = { .group_info = ff_zero_group };
+> +		struct rpc_cred	*cred;
+> +		u32 ds_count, fh_count, id;
+>  		int j;
+>  
+>  		rc = -EIO;
+> @@ -484,24 +487,39 @@ ff_layout_alloc_lseg(struct pnfs_layout_hdr *lh,
+>  		fls->mirror_array[i]->fh_versions_cnt = fh_count;
+>  
+>  		/* user */
+> -		rc = decode_name(&stream, &fls->mirror_array[i]->uid);
+> +		rc = decode_name(&stream, &id);
+>  		if (rc)
+>  			goto out_err_free;
+>  
+> +		acred.uid = make_kuid(&init_user_ns, id);
+> +
+>  		/* group */
+> -		rc = decode_name(&stream, &fls->mirror_array[i]->gid);
+> +		rc = decode_name(&stream, &id);
+>  		if (rc)
+>  			goto out_err_free;
+>  
+> +		acred.gid = make_kgid(&init_user_ns, id);
+> +
+> +		/* find the cred for it */
+> +		cred = rpc_lookup_generic_cred(&acred, 0, gfp_flags);
+> +		if (IS_ERR(cred)) {
+> +			rc = PTR_ERR(cred);
+> +			goto out_err_free;
+> +		}
+> +
+> +		rcu_assign_pointer(fls->mirror_array[i]->cred, cred);
+> +
+>  		mirror = ff_layout_add_mirror(lh, fls->mirror_array[i]);
+>  		if (mirror != fls->mirror_array[i]) {
+> +			/* swap cred ptrs so free_mirror will clean up old */
+> +			fls->mirror_array[i]->cred = xchg(&mirror->cred, cred);
+>  			ff_layout_free_mirror(fls->mirror_array[i]);
+>  			fls->mirror_array[i] = mirror;
+>  		}
+>  
+> -		dprintk("%s: uid %d gid %d\n", __func__,
+> -			fls->mirror_array[i]->uid,
+> -			fls->mirror_array[i]->gid);
+> +		dprintk("%s: uid %u gid %u\n", __func__,
+> +			from_kuid(&init_user_ns, acred.uid),
+> +			from_kgid(&init_user_ns, acred.gid));
+>  	}
+>  
+>  	p = xdr_inline_decode(&stream, 4);
+> @@ -2226,6 +2244,11 @@ static int __init nfs4flexfilelayout_init(void)
+>  {
+>  	printk(KERN_INFO "%s: NFSv4 Flexfile Layout Driver Registering...\n",
+>  	       __func__);
+> +	if (!ff_zero_group) {
+> +		ff_zero_group = groups_alloc(0);
+> +		if (!ff_zero_group)
+> +			return -ENOMEM;
+> +	}
+>  	return pnfs_register_layoutdriver(&flexfilelayout_type);
+>  }
+>  
+> @@ -2234,6 +2257,10 @@ static void __exit nfs4flexfilelayout_exit(void)
+>  	printk(KERN_INFO "%s: NFSv4 Flexfile Layout Driver Unregistering...\n",
+>  	       __func__);
+>  	pnfs_unregister_layoutdriver(&flexfilelayout_type);
+> +	if (ff_zero_group) {
+> +		put_group_info(ff_zero_group);
+> +		ff_zero_group = NULL;
+> +	}
+>  }
+>  
+>  MODULE_ALIAS("nfs-layouttype4-4");
+> diff --git a/fs/nfs/flexfilelayout/flexfilelayout.h b/fs/nfs/flexfilelayout/flexfilelayout.h
+> index dd353bb7dc0a..c29fc853ce74 100644
+> --- a/fs/nfs/flexfilelayout/flexfilelayout.h
+> +++ b/fs/nfs/flexfilelayout/flexfilelayout.h
+> @@ -76,8 +76,6 @@ struct nfs4_ff_layout_mirror {
+>  	u32				fh_versions_cnt;
+>  	struct nfs_fh			*fh_versions;
+>  	nfs4_stateid			stateid;
+> -	u32				uid;
+> -	u32				gid;
+>  	struct rpc_cred			*cred;
+>  	atomic_t			ref;
+>  	spinlock_t			lock;
+> diff --git a/fs/nfs/flexfilelayout/flexfilelayoutdev.c b/fs/nfs/flexfilelayout/flexfilelayoutdev.c
+> index baee22929174..6ddd8a5c5ae0 100644
+> --- a/fs/nfs/flexfilelayout/flexfilelayoutdev.c
+> +++ b/fs/nfs/flexfilelayout/flexfilelayoutdev.c
+> @@ -302,42 +302,6 @@ int ff_layout_track_ds_error(struct nfs4_flexfile_layout *flo,
+>  	return 0;
+>  }
+>  
+> -/* currently we only support AUTH_NONE and AUTH_SYS */
+> -static rpc_authflavor_t
+> -nfs4_ff_layout_choose_authflavor(struct nfs4_ff_layout_mirror *mirror)
+> -{
+> -	if (mirror->uid == (u32)-1)
+> -		return RPC_AUTH_NULL;
+> -	return RPC_AUTH_UNIX;
+> -}
+> -
+> -/* fetch cred for NFSv3 DS */
+> -static int ff_layout_update_mirror_cred(struct nfs4_ff_layout_mirror *mirror,
+> -				      struct nfs4_pnfs_ds *ds)
+> -{
+> -	if (ds->ds_clp && !mirror->cred &&
+> -	    mirror->mirror_ds->ds_versions[0].version == 3) {
+> -		struct rpc_auth *auth = ds->ds_clp->cl_rpcclient->cl_auth;
+> -		struct rpc_cred *cred;
+> -		struct auth_cred acred = {
+> -			.uid = make_kuid(&init_user_ns, mirror->uid),
+> -			.gid = make_kgid(&init_user_ns, mirror->gid),
+> -		};
+> -
+> -		/* AUTH_NULL ignores acred */
+> -		cred = auth->au_ops->lookup_cred(auth, &acred, 0);
+> -		if (IS_ERR(cred)) {
+> -			dprintk("%s: lookup_cred failed with %ld\n",
+> -				__func__, PTR_ERR(cred));
+> -			return PTR_ERR(cred);
+> -		} else {
+> -			if (cmpxchg(&mirror->cred, NULL, cred))
+> -				put_rpccred(cred);
+> -		}
+> -	}
+> -	return 0;
+> -}
+> -
+>  static struct rpc_cred *
+>  ff_layout_get_mirror_cred(struct nfs4_ff_layout_mirror *mirror, u32 iomode)
+>  {
+> @@ -386,7 +350,6 @@ nfs4_ff_layout_prepare_ds(struct pnfs_layout_segment *lseg, u32 ds_idx,
+>  	struct inode *ino = lseg->pls_layout->plh_inode;
+>  	struct nfs_server *s = NFS_SERVER(ino);
+>  	unsigned int max_payload;
+> -	rpc_authflavor_t flavor;
+>  
+>  	if (!ff_layout_mirror_valid(lseg, mirror)) {
+>  		pr_err_ratelimited("NFS: %s: No data server for offset index %d\n",
+> @@ -402,9 +365,7 @@ nfs4_ff_layout_prepare_ds(struct pnfs_layout_segment *lseg, u32 ds_idx,
+>  	/* matching smp_wmb() in _nfs4_pnfs_v3/4_ds_connect */
+>  	smp_rmb();
+>  	if (ds->ds_clp)
+> -		goto out_update_creds;
+> -
+> -	flavor = nfs4_ff_layout_choose_authflavor(mirror);
+> +		goto out;
+>  
+>  	/* FIXME: For now we assume the server sent only one version of NFS
+>  	 * to use for the DS.
+> @@ -413,7 +374,7 @@ nfs4_ff_layout_prepare_ds(struct pnfs_layout_segment *lseg, u32 ds_idx,
+>  			     dataserver_retrans,
+>  			     mirror->mirror_ds->ds_versions[0].version,
+>  			     mirror->mirror_ds->ds_versions[0].minor_version,
+> -			     flavor);
+> +			     RPC_AUTH_UNIX);
+>  
+>  	/* connect success, check rsize/wsize limit */
+>  	if (ds->ds_clp) {
+> @@ -438,11 +399,7 @@ nfs4_ff_layout_prepare_ds(struct pnfs_layout_segment *lseg, u32 ds_idx,
+>  		} else
+>  			pnfs_error_mark_layout_for_return(ino, lseg);
+>  		ds = NULL;
+> -		goto out;
+>  	}
+> -out_update_creds:
+> -	if (ff_layout_update_mirror_cred(mirror, ds))
+> -		ds = NULL;
+>  out:
+>  	return ds;
+>  }
+> 
+
