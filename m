@@ -1,41 +1,80 @@
-Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-wm0-f51.google.com ([74.125.82.51]:35111 "EHLO
-	mail-wm0-f51.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750923AbcD1K7i (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 28 Apr 2016 06:59:38 -0400
-Subject: Re: Removing NFS/RDMA client support for PHYSICAL memory registration
-To: Chuck Lever <chuck.lever@oracle.com>
-References: <20160425185956.3566.64142.stgit@manet.1015granger.net>
- <20160425192259.3566.58807.stgit@manet.1015granger.net>
- <571FCF03.4060406@grimberg.me>
- <1B0B3E47-05C0-4134-B486-0869628B453C@oracle.com>
- <C0D8DC78-C6AB-4926-AF27-5D51E16FD447@oracle.com>
-Cc: linux-rdma@vger.kernel.org,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-From: Sagi Grimberg <sagi@grimberg.me>
-Message-ID: <5721ED15.7030206@grimberg.me>
-Date: Thu, 28 Apr 2016 13:59:33 +0300
+Return-Path: <SteveD@redhat.com>
+Subject: Re: [PATCH nfs-utils] mount.nfs: skip server address resolution on
+ remount
+To: Benjamin Coddington <bcodding@redhat.com>
+References: <83c9ef2c8e6c5ece11791e5c39609a1db9f716de.1459967426.git.bcodding@redhat.com>
+Cc: Chuck Lever <chuck.lever@oracle.com>, linux-nfs@vger.kernel.org
+From: Steve Dickson <SteveD@redhat.com>
+Message-ID: <5721FF10.2050208@RedHat.com>
+Date: Thu, 28 Apr 2016 08:16:16 -0400
 MIME-Version: 1.0
-In-Reply-To: <C0D8DC78-C6AB-4926-AF27-5D51E16FD447@oracle.com>
-Content-Type: text/plain; charset=windows-1252; format=flowed
-Sender: linux-nfs-owner@vger.kernel.org
+In-Reply-To: <83c9ef2c8e6c5ece11791e5c39609a1db9f716de.1459967426.git.bcodding@redhat.com>
+Content-Type: text/plain; charset=windows-1252
 List-ID: <linux-nfs.vger.kernel.org>
 
 
->>> It's an awful lot of maintenance on what looks to be a esoteric (at
->>> best) code path.
->>
->> It's never chosen by falling back to that mode.
->>
->> physical has long been on the chopping block. Last time
->> I suggested removing it I got a complaint. But there's no
->> in-kernel device that requires this mode, so seems like
->> it should go sooner rather than later.
->
-> I'm planning to add support for NFS/RDMA with Kerberos
-> in v4.8. That seems like a very appropriate time to
-> remove PHYSICAL, which is not secure.
->
-> Is there any objection to removing PHYSICAL in v4.8?
 
-Please do :)
+On 04/06/2016 02:30 PM, Benjamin Coddington wrote:
+> A remount might fail if name resolution returns a different server address,
+> as might occur if there are multiple name records for the server.  Since we
+> cannot change the server's address on a remount anyway, skip the lookup and
+> remove any set addresses in the options.
+> 
+> Signed-off-by: Benjamin Coddington <bcodding@redhat.com>
+Committed... 
+
+steved.
+> ---
+>  utils/mount/stropts.c |   31 ++++++++++++++++++++-----------
+>  1 files changed, 20 insertions(+), 11 deletions(-)
+> 
+> diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
+> index 86829a9..634b58c 100644
+> --- a/utils/mount/stropts.c
+> +++ b/utils/mount/stropts.c
+> @@ -383,13 +383,26 @@ static int nfs_validate_options(struct nfsmount_info *mi)
+>  	if (!nfs_nfs_proto_family(mi->options, &family))
+>  		return 0;
+>  
+> -	hint.ai_family = (int)family;
+> -	error = getaddrinfo(mi->hostname, NULL, &hint, &mi->address);
+> -	if (error != 0) {
+> -		nfs_error(_("%s: Failed to resolve server %s: %s"),
+> -			progname, mi->hostname, gai_strerror(error));
+> -		mi->address = NULL;
+> -		return 0;
+> +	/*
+> +	 * A remount is not going to be able to change the server's address,
+> +	 * nor should we try to resolve another address for the server as we
+> +	 * may end up with a different address.
+> +	 */
+> +	if (mi->flags & MS_REMOUNT) {
+> +		po_remove_all(mi->options, "addr");
+> +	} else {
+> +		hint.ai_family = (int)family;
+> +		error = getaddrinfo(mi->hostname, NULL, &hint, &mi->address);
+> +		if (error != 0) {
+> +			nfs_error(_("%s: Failed to resolve server %s: %s"),
+> +				progname, mi->hostname, gai_strerror(error));
+> +			mi->address = NULL;
+> +			return 0;
+> +		}
+> +
+> +		if (!nfs_append_addr_option(mi->address->ai_addr,
+> +						mi->address->ai_addrlen, mi->options))
+> +			return 0;
+>  	}
+>  
+>  	if (!nfs_set_version(mi))
+> @@ -398,10 +411,6 @@ static int nfs_validate_options(struct nfsmount_info *mi)
+>  	if (!nfs_append_sloppy_option(mi->options))
+>  		return 0;
+>  
+> -	if (!nfs_append_addr_option(mi->address->ai_addr,
+> -					mi->address->ai_addrlen, mi->options))
+> -		return 0;
+> -
+>  	return 1;
+>  }
+>  
+> 
