@@ -1,59 +1,66 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f176.google.com ([209.85.223.176]:32978 "EHLO
+Received: from mail-io0-f176.google.com ([209.85.223.176]:34126 "EHLO
 	mail-io0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752340AbcD1POa (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 28 Apr 2016 11:14:30 -0400
-Subject: [PATCH 00/10] NFS/RDMA server updates proposed for v4.7
+	with ESMTP id S1752205AbcD1POj (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 28 Apr 2016 11:14:39 -0400
+Subject: [PATCH 01/10] svcrdma: Support IPv6 with NFS/RDMA
 From: Chuck Lever <chuck.lever@oracle.com>
 To: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Thu, 28 Apr 2016 11:14:27 -0400
-Message-ID: <20160428150915.13068.94602.stgit@klimt.1015granger.net>
+Date: Thu, 28 Apr 2016 11:14:36 -0400
+Message-ID: <20160428151436.13068.28389.stgit@klimt.1015granger.net>
+In-Reply-To: <20160428150915.13068.94602.stgit@klimt.1015granger.net>
+References: <20160428150915.13068.94602.stgit@klimt.1015granger.net>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Shirley's server-side IPv6 patch, a number of minor fixes and
-clean-ups found during code review, and one experimental patch.
+From: Shirley Ma <shirley.ma@oracle.com>
 
-The last patch in the series changes the server's send CQ and
-receive CQ from soft IRQ to workqueue. There is a measurable
-performance degradation documented in the patch description.
-Maybe I've missed something? But for now this patch is for
-review and discussion only.
+Allow both IPv4 and IPv6 to bind same port at the same time,
+restricts use of the IPv6 socket to IPv6 communication.
 
-Available in the "nfsd-rdma-for-4.7" topic branch of this git repo:
+Changes from v1:
+ - Check rdma_set_afonly return value (suggested by Leon Romanovsky)
 
-git://git.linux-nfs.org/projects/cel/cel-2.6.git
+Changes from v2:
+ - Acked-by: Leon Romanovsky <leonro@mellanox.com>
 
-Or for browsing:
-
-http://git.linux-nfs.org/?p=cel/cel-2.6.git;a=log;h=refs/heads/nfsd-rdma-for-4.7
-
+Signed-off-by: Shirley Ma <shirley.ma@oracle.com>
+Acked-by: Leon Romanovsky <leonro@mellanox.com>
+Reviewed-by: Chuck Lever <chuck.lever@oracle.com>
 ---
+ net/sunrpc/xprtrdma/svc_rdma_transport.c |   12 +++++++++++-
+ 1 file changed, 11 insertions(+), 1 deletion(-)
 
-Chuck Lever (9):
-      svcrdma: Do not add XDR padding to xdr_buf page vector
-      svcrdma: svc_rdma_put_context() is invoked twice in Send error path
-      svcrdma: Remove superfluous line from rdma_read_chunks()
-      svcrdma: Post Receives only for forward channel requests
-      svcrdma: Drain QP before freeing svcrdma_xprt
-      svcrdma: Eliminate code duplication in svc_rdma_recvfrom()
-      svcrdma: Generalize svc_rdma_xdr_decode_req()
-      svcrdma: Simplify the check for backward direction replies
-      svcrdma: Switch CQs from IB_POLL_SOFTIRQ to IB_POLL_WORKQUEUE
+diff --git a/net/sunrpc/xprtrdma/svc_rdma_transport.c b/net/sunrpc/xprtrdma/svc_rdma_transport.c
+index 9066896..d2680b8 100644
+--- a/net/sunrpc/xprtrdma/svc_rdma_transport.c
++++ b/net/sunrpc/xprtrdma/svc_rdma_transport.c
+@@ -789,7 +789,7 @@ static struct svc_xprt *svc_rdma_create(struct svc_serv *serv,
+ 	int ret;
+ 
+ 	dprintk("svcrdma: Creating RDMA socket\n");
+-	if (sa->sa_family != AF_INET) {
++	if ((sa->sa_family != AF_INET) && (sa->sa_family != AF_INET6)) {
+ 		dprintk("svcrdma: Address family %d is not supported.\n", sa->sa_family);
+ 		return ERR_PTR(-EAFNOSUPPORT);
+ 	}
+@@ -805,6 +805,16 @@ static struct svc_xprt *svc_rdma_create(struct svc_serv *serv,
+ 		goto err0;
+ 	}
+ 
++	/* Allow both IPv4 and IPv6 sockets to bind a single port
++	 * at the same time.
++	 */
++#if IS_ENABLED(CONFIG_IPV6)
++	ret = rdma_set_afonly(listen_id, 1);
++	if (ret) {
++		dprintk("svcrdma: rdma_set_afonly failed = %d\n", ret);
++		goto err1;
++	}
++#endif
+ 	ret = rdma_bind_addr(listen_id, sa);
+ 	if (ret) {
+ 		dprintk("svcrdma: rdma_bind_addr failed = %d\n", ret);
 
-Shirley Ma (1):
-      svcrdma: Support IPv6 with NFS/RDMA
-
-
- fs/nfsd/nfs3xdr.c                        |    2 -
- include/linux/sunrpc/svc_rdma.h          |    2 -
- net/sunrpc/xprtrdma/svc_rdma_marshal.c   |   31 +++++++++----
- net/sunrpc/xprtrdma/svc_rdma_recvfrom.c  |   71 +++++++++---------------------
- net/sunrpc/xprtrdma/svc_rdma_sendto.c    |   28 +++++-------
- net/sunrpc/xprtrdma/svc_rdma_transport.c |   43 ++++++++++++------
- 6 files changed, 85 insertions(+), 92 deletions(-)
-
---
-Chuck Lever
