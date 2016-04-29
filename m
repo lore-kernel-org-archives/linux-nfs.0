@@ -1,68 +1,164 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qg0-f44.google.com ([209.85.192.44]:35149 "EHLO
-	mail-qg0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752599AbcD2KwH (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 29 Apr 2016 06:52:07 -0400
-Received: by mail-qg0-f44.google.com with SMTP id f74so40898361qge.2
-        for <linux-nfs@vger.kernel.org>; Fri, 29 Apr 2016 03:52:06 -0700 (PDT)
-Message-ID: <1461927124.32715.4.camel@poochiereds.net>
-Subject: Re: [PATCH] nfs: don't match flexfiles mirrors that have different
- creds
-From: Jeff Layton <jlayton@poochiereds.net>
-To: trond.myklebust@primarydata.com
-Cc: linux-nfs@vger.kernel.org, Anna Schumaker <Anna.Schumaker@netapp.com>
-Date: Fri, 29 Apr 2016 06:52:04 -0400
-In-Reply-To: <1460210433-20435-1-git-send-email-jeff.layton@primarydata.com>
-References: <1460210433-20435-1-git-send-email-jeff.layton@primarydata.com>
-Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
+Received: from mail-wm0-f68.google.com ([74.125.82.68]:33687 "EHLO
+	mail-wm0-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752176AbcD2MEW (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 29 Apr 2016 08:04:22 -0400
+Date: Fri, 29 Apr 2016 14:04:18 +0200
+From: Michal Hocko <mhocko@kernel.org>
+To: NeilBrown <mr@neil.brown.name>
+Cc: linux-mm@kvack.org, linux-fsdevel@vger.kernel.org,
+        Andrew Morton <akpm@linux-foundation.org>,
+        Dave Chinner <david@fromorbit.com>, "Theodore Ts'o" <tytso@mit.edu>,
+        Chris Mason <clm@fb.com>, Jan Kara <jack@suse.cz>,
+        ceph-devel@vger.kernel.org, cluster-devel@redhat.com,
+        linux-nfs@vger.kernel.org, logfs@logfs.org, xfs@oss.sgi.com,
+        linux-ext4@vger.kernel.org, linux-btrfs@vger.kernel.org,
+        linux-mtd@lists.infradead.org, reiserfs-devel@vger.kernel.org,
+        linux-ntfs-dev@lists.sourceforge.net,
+        linux-f2fs-devel@lists.sourceforge.net, linux-afs@lists.infradead.org,
+        LKML <linux-kernel@vger.kernel.org>
+Subject: Re: [PATCH 0/2] scop GFP_NOFS api
+Message-ID: <20160429120418.GK21977@dhcp22.suse.cz>
+References: <1461671772-1269-1-git-send-email-mhocko@kernel.org>
+ <8737q5ugcx.fsf@notabene.neil.brown.name>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <8737q5ugcx.fsf@notabene.neil.brown.name>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sat, 2016-04-09 at 10:00 -0400, Jeff Layton wrote:
-> When we're comparing mirrors to avoid adding duplicates to the to the
-> list, we must also consider the creds when comparing them. Otherwise,
-> mirrors that differ only by the credential will be improperly merged.
+On Fri 29-04-16 15:35:42, NeilBrown wrote:
+> On Tue, Apr 26 2016, Michal Hocko wrote:
 > 
-> This is a problem if the client does a LAYOUTGET for a READ layout
-> first and then one for a RW, and the server sends a layout with a
-> non-usable uid for the READ layout. The RW mirror entry will get
-> dropped on the second layoutget as the client thinks the mirror is
-> identical to the one from the first. Then, when it goes to do a
-> WRITE, it ends up using the creds from the READ layout and the write
-> fails with EACCES.
+> > Hi,
+> > we have discussed this topic at LSF/MM this year. There was a general
+> > interest in the scope GFP_NOFS allocation context among some FS
+> > developers. For those who are not aware of the discussion or the issue
+> > I am trying to sort out (or at least start in that direction) please
+> > have a look at patch 1 which adds memalloc_nofs_{save,restore} api
+> > which basically copies what we have for the scope GFP_NOIO allocation
+> > context. I haven't converted any of the FS myself because that is way
+> > beyond my area of expertise but I would be happy to help with further
+> > changes on the MM front as well as in some more generic code paths.
+> >
+> > Dave had an idea on how to further improve the reclaim context to be
+> > less all-or-nothing wrt. GFP_NOFS. In short he was suggesting an opaque
+> > and FS specific cookie set in the FS allocation context and consumed
+> > by the FS reclaim context to allow doing some provably save actions
+> > that would be skipped due to GFP_NOFS normally.  I like this idea and
+> > I believe we can go that direction regardless of the approach taken here.
+> > Many filesystems simply need to cleanup their NOFS usage first before
+> > diving into a more complex changes.>
 > 
-> Another possibility is to allow the RW segment to supersede the READ
-> one. The problem there is that the RW layout is returned, then the
-> client will still end up using the creds in the RW layout, which may
-> not be correct.
-> 
-> Signed-off-by: Jeff Layton <jeff.layton@primarydata.com>
-> ---
->  fs/nfs/flexfilelayout/flexfilelayout.c | 2 ++
->  1 file changed, 2 insertions(+)
-> 
-> diff --git a/fs/nfs/flexfilelayout/flexfilelayout.c b/fs/nfs/flexfilelayout/flexfilelayout.c
-> index 0cb1abd535e3..5d0789a41bc2 100644
-> --- a/fs/nfs/flexfilelayout/flexfilelayout.c
-> +++ b/fs/nfs/flexfilelayout/flexfilelayout.c
-> @@ -172,6 +172,8 @@ ff_layout_add_mirror(struct pnfs_layout_hdr *lo,
->  			continue;
->  		if (!ff_mirror_match_fh(mirror, pos))
->  			continue;
-> +		if (mirror->uid != pos->uid || mirror->gid != pos->gid)
-> +			continue;
->  		if (atomic_inc_not_zero(&pos->ref)) {
->  			spin_unlock(&inode->i_lock);
->  			return pos;
+> This strikes me as over-engineering to work around an unnecessarily
+> burdensome interface.... but without details it is hard to be certain.
+>
+> Exactly what things happen in "FS reclaim context" which may, or may
+> not, be safe depending on the specific FS allocation context?  Do they
+> need to happen at all?
 
-Self-NAK on this patch. As Trond pointed out to me in a private
-conversation, we rely on this merging to handle layout stats correctly.
-The patchset I sent with the cover letter below should supersede this
-patch.
+Let me quote Dave Chinner from one of the emails discussed at LSFMM
+mailing list:
+: IMO, making GFP_NOFS "better" cannot be done with context-less flags
+: being passed through reclaim. If we want to prevent the recursive
+: self-deadlock case in an optimal manner, then we need to be able to
+: pass state down to reclaim so that page writeback and the shrinkers
+: can determine if they are likely to deadlock.
+: 
+: IOWs, I think we should stop thinking of GFP_NOFS as a *global*
+: directive to avoid recursion under any circumstance and instead
+: start thinking about it as a mechanism to avoid recursion in
+: specific reclaim contexts.
+: 
+: Something as simple as adding an opaque cookie (e.g. can hold a
+: superblock or inode pointer) to check against in writeback and
+: subsystem shrinkers would result in the vast majority of GFP_NOFS
+: contexts being able to reclaim from everything but the one context
+: that we *might* deadlock against.
+: 
+: e.g, if we then also check the PF_FSTRANS flag in XFS, we'll
+: still be able to reclaim clean inodes, buffers and write back
+: dirty pages that don't require transactions to complete under "don't
+: recurse" situations because we know it's transactions that we could
+: deadlock on in the direct reclaim context.
+: 
+: Note that this information could be added to the writeback_control
+: for page writeback, and it could be passed directly to shrinkers
+: in the shrink_control structures. The allocation paths might be a
+: little harder, but I suspect using the task struct for passing this
+: information into direct reclaim might be the easiest approach...
 
-	[PATCH v2 0/7] nfs/sunrpc: fix flexfiles credential handling
+> My research suggests that for most filesystems the only thing that
+> happens in reclaim context that is at all troublesome is the final
+> 'evict()' on an inode.  This needs to flush out dirty pages and sync the
+> inode to storage.  Some time ago we moved most dirty-page writeout out
+> of the reclaim context and into kswapd.  I think this was an excellent
+> advance in simplicity.
+> If we could similarly move evict() into kswapd (and I believe we can)
+> then most file systems would do nothing in reclaim context that
+> interferes with allocation context.
+> 
+> The exceptions include:
+>  - nfs and any filesystem using fscache can block for up to 1 second
+>    in ->releasepage().  They used to block waiting for some IO, but that
+>    caused deadlocks and wasn't really needed.  I left the timeout because
+>    it seemed likely that some throttling would help.  I suspect that a
+>    careful analysis will show that there is sufficient throttling
+>    elsewhere.
+> 
+>  - xfs_qm_shrink_scan is nearly unique among shrinkers in that it waits
+>    for IO so it can free some quotainfo things.  If it could be changed
+>    to just schedule the IO without waiting for it then I think this
+>    would be safe to be called in any FS allocation context.  It already
+>    uses a 'trylock' in xfs_dqlock_nowait() to avoid deadlocking
+>    if the lock is held.
+> 
+> I think you/we would end up with a much simpler system if instead of
+> focussing on the places where GFP_NOFS is used, we focus on places where
+> __GFP_FS is tested, and try to remove them.
+
+One think I have learned is that shrinkers can be really complex and
+getting rid of GFP_NOFS will be really hard so I would really like to
+start the easiest way possible and remove the direct usage and replace
+it by scope one which would at least _explain_ why it is needed. I think
+this is a reasonable _first_ step and a large step ahead because we have
+a good chance to get rid of a large number of those which were used
+"just because I wasn't sure and this should be safe, right?". I wouldn't
+be surprised if we end up with a very small number of both scope and
+direct usage in the end.
+
+I would also like to revisit generic inode/dentry shrinker and see
+whether it could be more __GFP_FS friendly. As you say many FS might
+even not depend on some FS internal locks so pushing GFP_FS check down
+the layers might make a lot of sense and allow to clean some [id]cache
+even for __GFP_FS context.
+
+> If we get rid of enough of them the remainder could just use __GFP_IO.
+> 
+> > The patch 2 is a debugging aid which warns about explicit allocation
+> > requests from the scope context. This is should help to reduce the
+> > direct usage of the NOFS flags to bare minimum in favor of the scope
+> > API. It is not aimed to be merged upstream. I would hope Andrew took it
+> > into mmotm tree to give it linux-next exposure and allow developers to
+> > do further cleanups.  There is a new kernel command line parameter which
+> > has to be used for the debugging to be enabled.
+> >
+> > I think the GFP_NOIO should be seeing the same clean up.
+> 
+> I think you are suggesting that use of GFP_NOIO should (largely) be
+> deprecated in favour of memalloc_noio_save().  I think I agree.
+
+Yes that was the idea.
+
+> Could we go a step further and deprecate GFP_ATOMIC in favour of some
+> in_atomic() test?  Maybe that is going too far.
+
+I am not really sure we need that and some GFP_NOWAIT usage is deliberate
+to perform an optimistic allocation with another fallback (e.g. higher order
+for performance reasons with single page fallback). So I think that nowait
+is a slightly different thing.
 
 Thanks!
 -- 
-Jeff Layton <jlayton@poochiereds.net>
+Michal Hocko
+SUSE Labs
