@@ -1,107 +1,65 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:58570 "EHLO fieldses.org"
+Received: from mx142.netapp.com ([216.240.21.19]:62252 "EHLO mx142.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752327AbcD2UDJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 29 Apr 2016 16:03:09 -0400
-Date: Fri, 29 Apr 2016 16:03:07 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Anna Schumaker <Anna.Schumaker@netapp.com>
-Cc: Chuck Lever <chuck.lever@oracle.com>, Steve Dickson <SteveD@redhat.com>,
-        "Adamson, Andy" <William.Adamson@netapp.com>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH Version 3 0/2] Add multihostname support for NFSv4.1,2
-Message-ID: <20160429200307.GC6035@fieldses.org>
-References: <1461771407-16423-1-git-send-email-andros@netapp.com>
- <57236BB6.50103@RedHat.com>
- <1461940027554.14958@netapp.com>
- <572373BE.4000201@RedHat.com>
- <986CAF0C-495D-4085-A078-6B6A65CCB686@oracle.com>
- <20160429180532.GB6035@fieldses.org>
- <e0eaf201-e09b-04e9-ad33-aef12a5be4ba@Netapp.com>
+	id S1752379AbcD2UmU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 29 Apr 2016 16:42:20 -0400
+From: Anna Schumaker <Anna.Schumaker@netapp.com>
+To: <linux-nfs@vger.kernel.org>, <Trond.Myklebust@primarydata.com>,
+        <bfields@fieldses.org>, <hch@infradead.org>
+Subject: [PATCH v4 0/3] NFSv4.2: Add support for the COPY operation
+Date: Fri, 29 Apr 2016 16:42:09 -0400
+Message-ID: <1461962533-26534-1-git-send-email-Anna.Schumaker@Netapp.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <e0eaf201-e09b-04e9-ad33-aef12a5be4ba@Netapp.com>
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Apr 29, 2016 at 03:39:35PM -0400, Anna Schumaker wrote:
-> On 04/29/2016 02:05 PM, J. Bruce Fields wrote:
-> > On Fri, Apr 29, 2016 at 11:24:30AM -0400, Chuck Lever wrote:
-> >>
-> >>> On Apr 29, 2016, at 10:46 AM, Steve Dickson <SteveD@redhat.com> wrote:
-> >>>
-> >>>
-> >>>
-> >>> On 04/29/2016 10:27 AM, Adamson, Andy wrote:
-> >>>> Hi Steve
-> >>>>
-> >>>> Yes, if we decide to keep the multiple hostname option, then a man page update is required. I don't think we have a consensus on using the multiple hostname mount option as a CLI to express session trunking addresses. Chuck Lever made some good points around not using multiple hostnames:
-> >>>>
-> >>>> ---- From Chuck: ----
-> >>>> - client admins can specify arbitrary hostnames on the command line; hostnames
-> >>>> for instance that correspond to some other server.
-> >>>>
-> >>>> - network conditions can change at anytime, making
-> >>>> the original set of trunks lop-sided, or some trunks
-> >>>> may become unreachable. What if the server reboots
-> >>>> with new i/f's or with one or more removed? The
-> >>>> client would likely have to remount in these cases
-> >>>> to adapt to network configuration changes.
-> >>>>
-> >>>> - multiple hostnames could be nailed into
-> >>>> /etc/fstab on potentially hundreds of clients. When
-> >>>> server or network configuration changes, there would
-> >>>> have to be a manual change on all these clients.
-> >>>> ----------
-> >>>>
-> >>>> What do you think? Should we keep the multiple hostname CLI as one method of expressing session trunking addresses?
-> >>> I would think so...
-> >>
-> >> I don't believe a mount CLI is an obvious good choice.
-> >>
-> >> The client and server should provide some indication
-> >> to each other that session trunking is supported. The
-> >> server should provide the proper configuration
-> >> parameters, which can change even while a client has
-> >> mounted the server.
-> >>
-> >> That's why I favor having the client perform a
-> >> GETATTR(fs_locations) on the server's pseudofs, via
-> >> which the server provides the correct addresses to
-> >> use. The client can poll for changes in the address
-> >> list on a regular basis.
-> >>
-> >> Please, let's automate this instead of having to
-> >> nail one more wonky feature into the mount CLI?
-> > 
-> > Yeah, I guess that makes sense.
-> > 
-> > My worries from the previous thread were that the fs_locations and
-> > fs_locations_info don't *really* give enough information to guarantee
-> > that trunking will be an improvement.
-> > 
-> > But I'd guess those cases aren't common (maybe fs_locations use isn't
-> > even that common).  Still, might want a way to opt out.
-> > 
-> > Maybe it would be worth documenting what the automatic probing does so
-> > that servers know how to influence it if desired.
-> 
-> Would it make sense to add configuration options to /etc/exports to set up how the server handles this?
+These patches add client and server support for the NFS v4.2 COPY operation,
+and make use of the new copy_file_range() system call.
 
-We have the "replicas=" option that'll allow you to set the fs_locations
-list.
+Changes in v4:
+- Rename nfsd_copy_range() -> nfsd_copy_file_range() to match clone
+- Remove extra size checks that are handled by the VFS
 
-If we wanted a "turn off session trunking at the server" switch, that'd
-need code.  Maybe it would advertise a different minor identifier per
-interface in that case?  Or you could allow finer-grained configuration
-of minor numbers from userspace if we wanted to.  We could also
-implement fs_locations_info, though it doesn't really seemed designed to
-communicate this kind of information.
+Still missing:
+- xfstests unit tests
 
-Not really knowing what people might want to do this, I'm inclined to
-leave things as is and wait to see what's needed.  "replicas=" is
-probably good enough for now on the server side, and maybe some simple
-switch on the client side would be useful.
 
---b.
+Questions, comments, and other testing ideas would be greatly appreciated!
+
+Thanks,
+Anna
+
+
+*** BLURB HERE ***
+
+Anna Schumaker (4):
+  NFS: Add nfs_commit_file()
+  NFS: Add COPY nfs operation
+  NFSD: Implement the COPY call
+  vfs_copy_range() test program
+
+ fs/nfs/internal.h         |   1 +
+ fs/nfs/nfs42.h            |   1 +
+ fs/nfs/nfs42proc.c        | 105 +++++++++++++++++++++++++++++++++
+ fs/nfs/nfs42xdr.c         | 146 ++++++++++++++++++++++++++++++++++++++++++++++
+ fs/nfs/nfs4file.c         |  23 ++++++++
+ fs/nfs/nfs4proc.c         |   1 +
+ fs/nfs/nfs4xdr.c          |   1 +
+ fs/nfs/pagelist.c         |   6 +-
+ fs/nfs/write.c            |  41 +++++++++++--
+ fs/nfsd/nfs4proc.c        |  90 ++++++++++++++++++++++++----
+ fs/nfsd/nfs4xdr.c         |  63 +++++++++++++++++++-
+ fs/nfsd/vfs.c             |   6 ++
+ fs/nfsd/vfs.h             |   2 +
+ fs/nfsd/xdr4.h            |  23 ++++++++
+ include/linux/nfs4.h      |   1 +
+ include/linux/nfs_fs_sb.h |   1 +
+ include/linux/nfs_xdr.h   |  26 +++++++++
+ nfscopy.c                 |  59 +++++++++++++++++++
+ 18 files changed, 577 insertions(+), 19 deletions(-)
+ create mode 100644 nfscopy.c
+
+-- 
+2.8.0
+
