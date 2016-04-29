@@ -1,111 +1,333 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:38564 "EHLO mx1.redhat.com"
+Received: from mx144.netapp.com ([216.240.21.25]:55071 "EHLO mx144.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752776AbcD2M5j (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 29 Apr 2016 08:57:39 -0400
-Subject: [RFC][PATCH 0/6] Enhanced file stat system call
-From: David Howells <dhowells@redhat.com>
-To: linux-fsdevel@vger.kernel.org
-Cc: linux-afs@vger.kernel.org, linux-nfs@vger.kernel.org,
-        samba-technical@lists.samba.org, linux-kernel@vger.kernel.org,
-        dhowells@redhat.com, linux-ext4@vger.kernel.org
-Date: Fri, 29 Apr 2016 13:57:36 +0100
-Message-ID: <20160429125736.23636.47874.stgit@warthog.procyon.org.uk>
+	id S1753785AbcD2M6f (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 29 Apr 2016 08:58:35 -0400
+From: Anna Schumaker <Anna.Schumaker@netapp.com>
+Subject: Re: [PATCH v2 6/7] nfs: get a reference to the credential in
+ ff_layout_alloc_lseg
+To: Jeff Layton <jlayton@poochiereds.net>,
+        Anna Schumaker <Anna.Schumaker@netapp.com>,
+        <trond.myklebust@primarydata.com>
+References: <1461286320-24601-1-git-send-email-jeff.layton@primarydata.com>
+ <1461286320-24601-7-git-send-email-jeff.layton@primarydata.com>
+ <32c5353e-2229-5d95-8161-bdc7f6cb85c1@Netapp.com>
+ <1461926989.32715.1.camel@poochiereds.net>
+CC: <linux-nfs@vger.kernel.org>
+Message-ID: <0dda2df0-5c46-1f7a-8ed2-21acc0e0f84a@Netapp.com>
+Date: Fri, 29 Apr 2016 08:58:28 -0400
 MIME-Version: 1.0
+In-Reply-To: <1461926989.32715.1.camel@poochiereds.net>
 Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On 04/29/2016 06:49 AM, Jeff Layton wrote:
+> Oh! The original patch should be dropped. I should have sent a self-NAK 
+> on it before. I'll do that now...
 
-Implement a new system call to provide enhanced file stats.  The patches can
-be found here:
+Great, thanks!
 
-	http://git.kernel.org/cgit/linux/kernel/git/dhowells/linux-fs.git/log/?h=xstat
+Anna
 
-
-===========
-DESCRIPTION
-===========
-
-The first patch provides this new system call:
-
-	long ret = statx(int dfd,
-			 const char *filename,
-			 unsigned atflag,
-			 unsigned mask,
-			 struct statx *buffer);
-
-This is an enhanced file stat function that provides a number of useful
-features, in summary:
-
- (1) More information: creation time, data version number, inode generation
-     number and flags.  A subset of these is available through a number of
-     filesystems (such as CIFS, NFS, AFS, Ext4 and BTRFS).
-
- (2) Lightweight stat (AT_NO_ATTR_SYNC): Ask for just those details of
-     interest, and allow a network fs to approximate anything not of
-     interest, without going to the server.
-
- (3) Heavyweight stat (AT_FORCE_ATTR_SYNC): Force a network fs to flush
-     buffers and go to the server, even if it thinks its cached attributes
-     are up to date.
-
- (4) Allow the filesystem to indicate what it can/cannot provide: A
-     filesystem can now say it doesn't support a standard stat feature if
-     that isn't available.
-
- (5) Make the fields a consistent size on all arches, and make them large.
-
- (6) Can be extended by using more request flags and using up the padding
-     space in the statx struct.
-
-Note that no lstat() equivalent is required as that can be implemented
-through statx() with atflag == 0.  There is also no fstat() equivalent as
-that can be implemented through statx() with filename == NULL and the
-relevant fd passed as dfd.
-
-
-=======
-TESTING
-=======
-
-A test program is added into samples/statx/ by the first patch.
-
-David
----
-David Howells (6):
-      statx: Add a system call to make enhanced file info available
-      statx: AFS: Return enhanced file attributes
-      statx: Ext4: Return enhanced file attributes
-      statx: NFS: Return enhanced file attributes
-      statx: Make windows attributes available for CIFS, NTFS and FAT to use
-      statx: CIFS: Return enhanced attributes
-
-
- arch/x86/entry/syscalls/syscall_32.tbl |    1 
- arch/x86/entry/syscalls/syscall_64.tbl |    1 
- fs/afs/inode.c                         |   24 ++-
- fs/cifs/cifsfs.h                       |    4 
- fs/cifs/cifsglob.h                     |    8 +
- fs/cifs/dir.c                          |    2 
- fs/cifs/inode.c                        |  117 +++++++++---
- fs/exportfs/expfs.c                    |    4 
- fs/ext4/ext4.h                         |    2 
- fs/ext4/file.c                         |    2 
- fs/ext4/inode.c                        |   30 +++
- fs/ext4/namei.c                        |    2 
- fs/ext4/symlink.c                      |    2 
- fs/nfs/inode.c                         |   41 ++++
- fs/stat.c                              |  306 +++++++++++++++++++++++++++++---
- include/linux/fs.h                     |    5 -
- include/linux/stat.h                   |   15 +-
- include/linux/syscalls.h               |    4 
- include/uapi/linux/fcntl.h             |    2 
- include/uapi/linux/stat.h              |  135 ++++++++++++++
- samples/Makefile                       |    2 
- samples/statx/Makefile                 |   10 +
- samples/statx/test-statx.c             |  274 +++++++++++++++++++++++++++++
- 23 files changed, 910 insertions(+), 83 deletions(-)
- create mode 100644 samples/statx/Makefile
- create mode 100644 samples/statx/test-statx.c
+> 
+> Thanks,
+> Jeff
+> 
+> On Thu, 2016-04-28 at 16:37 -0400, Anna Schumaker wrote:
+>> Hi Jeff,
+>>
+>> It looks like this patch removes the mirror->uid and mirror->gid
+>> parameters that your earlier patch (nfs: don't match flexfiles
+>> mirrors that have different creds) makes use of.  Should that patch
+>> be updated, or does this series make that patch obsolete?
+>>
+>> Thanks,
+>> Anna
+>>
+>> On 04/21/2016 08:51 PM, Jeff Layton wrote:
+>>> We're just as likely to have allocation problems here as we would
+>>> if we
+>>> delay looking up the credential like we currently do. Fix the code
+>>> to
+>>> get a rpc_cred reference early, as soon as the mirror is set up.
+>>>
+>>> This allows us to eliminate the mirror early if there is a problem
+>>> getting an rpc credential. This also allows us to drop the uid/gid
+>>> from the layout_mirror struct as well.
+>>>
+>>> In the event that we find an existing mirror where this one would
+>>> go, we
+>>> swap in the new creds unconditionally, and drop the reference to
+>>> the old
+>>> one.
+>>>
+>>> Note that the old ff_layout_update_mirror_cred function wouldn't
+>>> set
+>>> this pointer unless the DS version was 3, but we don't know what
+>>> the DS
+>>> version is at this point. I'm a little unclear on why it did that
+>>> as you
+>>> still need creds to talk to v4 servers as well. I have the code set
+>>> it regardless of the DS version here.
+>>>
+>>> Also note the change to using generic creds instead of calling
+>>> lookup_cred directly. With that change, we also need to populate
+>>> the
+>>> group_info pointer in the acred as some functions expect that to
+>>> never
+>>> be NULL. Instead of allocating one every time however, we can
+>>> allocate
+>>> one when the module is loaded and share it since the group_info is
+>>> refcounted.
+>>>
+>>> Signed-off-by: Jeff Layton <jeff.layton@primarydata.com>
+>>> ---
+>>>  fs/nfs/flexfilelayout/flexfilelayout.c    | 41
+>>> ++++++++++++++++++++++-----
+>>>  fs/nfs/flexfilelayout/flexfilelayout.h    |  2 --
+>>>  fs/nfs/flexfilelayout/flexfilelayoutdev.c | 47 ++-----------------
+>>> ------------
+>>>  3 files changed, 36 insertions(+), 54 deletions(-)
+>>>
+>>> diff --git a/fs/nfs/flexfilelayout/flexfilelayout.c
+>>> b/fs/nfs/flexfilelayout/flexfilelayout.c
+>>> index 432d5b0009c7..19806caa8ff2 100644
+>>> --- a/fs/nfs/flexfilelayout/flexfilelayout.c
+>>> +++ b/fs/nfs/flexfilelayout/flexfilelayout.c
+>>> @@ -26,6 +26,8 @@
+>>>  
+>>>  #define FF_LAYOUT_POLL_RETRY_MAX     (15*HZ)
+>>>  
+>>> +static struct group_info	*ff_zero_group;
+>>> +
+>>>  static struct pnfs_layout_hdr *
+>>>  ff_layout_alloc_layout_hdr(struct inode *inode, gfp_t gfp_flags)
+>>>  {
+>>> @@ -407,8 +409,9 @@ ff_layout_alloc_lseg(struct pnfs_layout_hdr
+>>> *lh,
+>>>  		struct nfs4_ff_layout_mirror *mirror;
+>>>  		struct nfs4_deviceid devid;
+>>>  		struct nfs4_deviceid_node *idnode;
+>>> -		u32 ds_count;
+>>> -		u32 fh_count;
+>>> +		struct auth_cred acred = { .group_info =
+>>> ff_zero_group };
+>>> +		struct rpc_cred	*cred;
+>>> +		u32 ds_count, fh_count, id;
+>>>  		int j;
+>>>  
+>>>  		rc = -EIO;
+>>> @@ -484,24 +487,39 @@ ff_layout_alloc_lseg(struct pnfs_layout_hdr
+>>> *lh,
+>>>  		fls->mirror_array[i]->fh_versions_cnt = fh_count;
+>>>  
+>>>  		/* user */
+>>> -		rc = decode_name(&stream, &fls->mirror_array[i]-
+>>>> uid);
+>>> +		rc = decode_name(&stream, &id);
+>>>  		if (rc)
+>>>  			goto out_err_free;
+>>>  
+>>> +		acred.uid = make_kuid(&init_user_ns, id);
+>>> +
+>>>  		/* group */
+>>> -		rc = decode_name(&stream, &fls->mirror_array[i]-
+>>>> gid);
+>>> +		rc = decode_name(&stream, &id);
+>>>  		if (rc)
+>>>  			goto out_err_free;
+>>>  
+>>> +		acred.gid = make_kgid(&init_user_ns, id);
+>>> +
+>>> +		/* find the cred for it */
+>>> +		cred = rpc_lookup_generic_cred(&acred, 0,
+>>> gfp_flags);
+>>> +		if (IS_ERR(cred)) {
+>>> +			rc = PTR_ERR(cred);
+>>> +			goto out_err_free;
+>>> +		}
+>>> +
+>>> +		rcu_assign_pointer(fls->mirror_array[i]->cred,
+>>> cred);
+>>> +
+>>>  		mirror = ff_layout_add_mirror(lh, fls-
+>>>> mirror_array[i]);
+>>>  		if (mirror != fls->mirror_array[i]) {
+>>> +			/* swap cred ptrs so free_mirror will
+>>> clean up old */
+>>> +			fls->mirror_array[i]->cred = xchg(&mirror-
+>>>> cred, cred);
+>>>  			ff_layout_free_mirror(fls-
+>>>> mirror_array[i]);
+>>>  			fls->mirror_array[i] = mirror;
+>>>  		}
+>>>  
+>>> -		dprintk("%s: uid %d gid %d\n", __func__,
+>>> -			fls->mirror_array[i]->uid,
+>>> -			fls->mirror_array[i]->gid);
+>>> +		dprintk("%s: uid %u gid %u\n", __func__,
+>>> +			from_kuid(&init_user_ns, acred.uid),
+>>> +			from_kgid(&init_user_ns, acred.gid));
+>>>  	}
+>>>  
+>>>  	p = xdr_inline_decode(&stream, 4);
+>>> @@ -2226,6 +2244,11 @@ static int __init
+>>> nfs4flexfilelayout_init(void)
+>>>  {
+>>>  	printk(KERN_INFO "%s: NFSv4 Flexfile Layout Driver
+>>> Registering...\n",
+>>>  	       __func__);
+>>> +	if (!ff_zero_group) {
+>>> +		ff_zero_group = groups_alloc(0);
+>>> +		if (!ff_zero_group)
+>>> +			return -ENOMEM;
+>>> +	}
+>>>  	return pnfs_register_layoutdriver(&flexfilelayout_type);
+>>>  }
+>>>  
+>>> @@ -2234,6 +2257,10 @@ static void __exit
+>>> nfs4flexfilelayout_exit(void)
+>>>  	printk(KERN_INFO "%s: NFSv4 Flexfile Layout Driver
+>>> Unregistering...\n",
+>>>  	       __func__);
+>>>  	pnfs_unregister_layoutdriver(&flexfilelayout_type);
+>>> +	if (ff_zero_group) {
+>>> +		put_group_info(ff_zero_group);
+>>> +		ff_zero_group = NULL;
+>>> +	}
+>>>  }
+>>>  
+>>>  MODULE_ALIAS("nfs-layouttype4-4");
+>>> diff --git a/fs/nfs/flexfilelayout/flexfilelayout.h
+>>> b/fs/nfs/flexfilelayout/flexfilelayout.h
+>>> index dd353bb7dc0a..c29fc853ce74 100644
+>>> --- a/fs/nfs/flexfilelayout/flexfilelayout.h
+>>> +++ b/fs/nfs/flexfilelayout/flexfilelayout.h
+>>> @@ -76,8 +76,6 @@ struct nfs4_ff_layout_mirror {
+>>>  	u32				fh_versions_cnt;
+>>>  	struct nfs_fh			*fh_versions;
+>>>  	nfs4_stateid			stateid;
+>>> -	u32				uid;
+>>> -	u32				gid;
+>>>  	struct rpc_cred			*cred;
+>>>  	atomic_t			ref;
+>>>  	spinlock_t			lock;
+>>> diff --git a/fs/nfs/flexfilelayout/flexfilelayoutdev.c
+>>> b/fs/nfs/flexfilelayout/flexfilelayoutdev.c
+>>> index baee22929174..6ddd8a5c5ae0 100644
+>>> --- a/fs/nfs/flexfilelayout/flexfilelayoutdev.c
+>>> +++ b/fs/nfs/flexfilelayout/flexfilelayoutdev.c
+>>> @@ -302,42 +302,6 @@ int ff_layout_track_ds_error(struct
+>>> nfs4_flexfile_layout *flo,
+>>>  	return 0;
+>>>  }
+>>>  
+>>> -/* currently we only support AUTH_NONE and AUTH_SYS */
+>>> -static rpc_authflavor_t
+>>> -nfs4_ff_layout_choose_authflavor(struct nfs4_ff_layout_mirror
+>>> *mirror)
+>>> -{
+>>> -	if (mirror->uid == (u32)-1)
+>>> -		return RPC_AUTH_NULL;
+>>> -	return RPC_AUTH_UNIX;
+>>> -}
+>>> -
+>>> -/* fetch cred for NFSv3 DS */
+>>> -static int ff_layout_update_mirror_cred(struct
+>>> nfs4_ff_layout_mirror *mirror,
+>>> -				      struct nfs4_pnfs_ds *ds)
+>>> -{
+>>> -	if (ds->ds_clp && !mirror->cred &&
+>>> -	    mirror->mirror_ds->ds_versions[0].version == 3) {
+>>> -		struct rpc_auth *auth = ds->ds_clp->cl_rpcclient-
+>>>> cl_auth;
+>>> -		struct rpc_cred *cred;
+>>> -		struct auth_cred acred = {
+>>> -			.uid = make_kuid(&init_user_ns, mirror-
+>>>> uid),
+>>> -			.gid = make_kgid(&init_user_ns, mirror-
+>>>> gid),
+>>> -		};
+>>> -
+>>> -		/* AUTH_NULL ignores acred */
+>>> -		cred = auth->au_ops->lookup_cred(auth, &acred, 0);
+>>> -		if (IS_ERR(cred)) {
+>>> -			dprintk("%s: lookup_cred failed with
+>>> %ld\n",
+>>> -				__func__, PTR_ERR(cred));
+>>> -			return PTR_ERR(cred);
+>>> -		} else {
+>>> -			if (cmpxchg(&mirror->cred, NULL, cred))
+>>> -				put_rpccred(cred);
+>>> -		}
+>>> -	}
+>>> -	return 0;
+>>> -}
+>>> -
+>>>  static struct rpc_cred *
+>>>  ff_layout_get_mirror_cred(struct nfs4_ff_layout_mirror *mirror,
+>>> u32 iomode)
+>>>  {
+>>> @@ -386,7 +350,6 @@ nfs4_ff_layout_prepare_ds(struct
+>>> pnfs_layout_segment *lseg, u32 ds_idx,
+>>>  	struct inode *ino = lseg->pls_layout->plh_inode;
+>>>  	struct nfs_server *s = NFS_SERVER(ino);
+>>>  	unsigned int max_payload;
+>>> -	rpc_authflavor_t flavor;
+>>>  
+>>>  	if (!ff_layout_mirror_valid(lseg, mirror)) {
+>>>  		pr_err_ratelimited("NFS: %s: No data server for
+>>> offset index %d\n",
+>>> @@ -402,9 +365,7 @@ nfs4_ff_layout_prepare_ds(struct
+>>> pnfs_layout_segment *lseg, u32 ds_idx,
+>>>  	/* matching smp_wmb() in _nfs4_pnfs_v3/4_ds_connect */
+>>>  	smp_rmb();
+>>>  	if (ds->ds_clp)
+>>> -		goto out_update_creds;
+>>> -
+>>> -	flavor = nfs4_ff_layout_choose_authflavor(mirror);
+>>> +		goto out;
+>>>  
+>>>  	/* FIXME: For now we assume the server sent only one
+>>> version of NFS
+>>>  	 * to use for the DS.
+>>> @@ -413,7 +374,7 @@ nfs4_ff_layout_prepare_ds(struct
+>>> pnfs_layout_segment *lseg, u32 ds_idx,
+>>>  			     dataserver_retrans,
+>>>  			     mirror->mirror_ds-
+>>>> ds_versions[0].version,
+>>>  			     mirror->mirror_ds-
+>>>> ds_versions[0].minor_version,
+>>> -			     flavor);
+>>> +			     RPC_AUTH_UNIX);
+>>>  
+>>>  	/* connect success, check rsize/wsize limit */
+>>>  	if (ds->ds_clp) {
+>>> @@ -438,11 +399,7 @@ nfs4_ff_layout_prepare_ds(struct
+>>> pnfs_layout_segment *lseg, u32 ds_idx,
+>>>  		} else
+>>>  			pnfs_error_mark_layout_for_return(ino,
+>>> lseg);
+>>>  		ds = NULL;
+>>> -		goto out;
+>>>  	}
+>>> -out_update_creds:
+>>> -	if (ff_layout_update_mirror_cred(mirror, ds))
+>>> -		ds = NULL;
+>>>  out:
+>>>  	return ds;
+>>>  }
+>>>
+>>
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-nfs"
+>> in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
 
