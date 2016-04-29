@@ -1,205 +1,178 @@
-Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-wm0-f67.google.com ([74.125.82.67]:35533 "EHLO
-	mail-wm0-f67.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752211AbcD0Lyt (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 27 Apr 2016 07:54:49 -0400
-From: Michal Hocko <mhocko@kernel.org>
-To: <linux-mm@kvack.org>, <linux-fsdevel@vger.kernel.org>
-Cc: Andrew Morton <akpm@linux-foundation.org>,
-        Dave Chinner <david@fromorbit.com>, "Theodore Ts'o" <tytso@mit.edu>,
-        Chris Mason <clm@fb.com>, Jan Kara <jack@suse.cz>,
-        ceph-devel@vger.kernel.org, cluster-devel@redhat.com,
-        linux-nfs@vger.kernel.org, logfs@logfs.org, xfs@oss.sgi.com,
-        linux-ext4@vger.kernel.org, linux-btrfs@vger.kernel.org,
-        linux-mtd@lists.infradead.org, reiserfs-devel@vger.kernel.org,
-        linux-ntfs-dev@lists.sourceforge.net,
-        linux-f2fs-devel@lists.sourceforge.net, linux-afs@lists.infradead.org,
-        LKML <linux-kernel@vger.kernel.org>, Michal Hocko <mhocko@suse.com>
-Subject: [PATCH 1.1/2] xfs: abstract PF_FSTRANS to PF_MEMALLOC_NOFS
-Date: Wed, 27 Apr 2016 13:54:34 +0200
-Message-Id: <1461758075-21815-1-git-send-email-mhocko@kernel.org>
-In-Reply-To: <1461671772-1269-2-git-send-email-mhocko@kernel.org>
-References: <1461671772-1269-2-git-send-email-mhocko@kernel.org>
+Return-Path: <linux-nfs-owner@vger.kernel.org>
+Received: from mail-io0-f169.google.com ([209.85.223.169]:36071 "EHLO
+	mail-io0-f169.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750800AbcD2XSl (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 29 Apr 2016 19:18:41 -0400
+MIME-Version: 1.0
+Date: Fri, 29 Apr 2016 20:18:40 -0300
+Message-ID: <CAOMZO5D9dTFRbT0CMOdM3aGb1cLd+n8udQQH0K=onZ7Z-4onmw@mail.gmail.com>
+Subject: Cannot use NFS with linux-next 20160429
+From: Fabio Estevam <festevam@gmail.com>
+To: Trond Myklebust <trond.myklebust@primarydata.com>
+Cc: "netdev@vger.kernel.org" <netdev@vger.kernel.org>,
+        linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Michal Hocko <mhocko@suse.com>
-
-xfs has defined PF_FSTRANS to declare a scope GFP_NOFS semantic quite
-some time ago. We would like to make this concept more generic and use
-it for other filesystems as well. Let's start by giving the flag a
-more genric name PF_MEMALLOC_NOFS which is in line with an exiting
-PF_MEMALLOC_NOIO already used for the same purpose for GFP_NOIO
-contexts. Replace all PF_FSTRANS usage from the xfs code in the first
-step before we introduce a full API for it as xfs uses the flag directly
-anyway.
-
-This patch doesn't introduce any functional change.
-
-Signed-off-by: Michal Hocko <mhocko@suse.com>
----
 Hi,
-as suggested by Dave, I have split up [1] into two parts. The first one
-addes a new PF flag which is just an alias to the existing PF_FSTRANS
-and does all the renaming and the second one to introduce the generic
-API which only changes the bare minimum in the xfs proper.
 
- fs/xfs/kmem.c             |  4 ++--
- fs/xfs/kmem.h             |  2 +-
- fs/xfs/libxfs/xfs_btree.c |  2 +-
- fs/xfs/xfs_aops.c         |  6 +++---
- fs/xfs/xfs_trans.c        | 12 ++++++------
- include/linux/sched.h     |  2 ++
- 6 files changed, 15 insertions(+), 13 deletions(-)
+NFS is not working on a imx6q-sabresd board running linux-next 20160429:
 
-diff --git a/fs/xfs/kmem.c b/fs/xfs/kmem.c
-index 686ba6fb20dd..73f6ab59c664 100644
---- a/fs/xfs/kmem.c
-+++ b/fs/xfs/kmem.c
-@@ -80,13 +80,13 @@ kmem_zalloc_large(size_t size, xfs_km_flags_t flags)
- 	 * context via PF_MEMALLOC_NOIO to prevent memory reclaim re-entering
- 	 * the filesystem here and potentially deadlocking.
- 	 */
--	if ((current->flags & PF_FSTRANS) || (flags & KM_NOFS))
-+	if ((current->flags & PF_MEMALLOC_NOFS) || (flags & KM_NOFS))
- 		noio_flag = memalloc_noio_save();
- 
- 	lflags = kmem_flags_convert(flags);
- 	ptr = __vmalloc(size, lflags | __GFP_HIGHMEM | __GFP_ZERO, PAGE_KERNEL);
- 
--	if ((current->flags & PF_FSTRANS) || (flags & KM_NOFS))
-+	if ((current->flags & PF_MEMALLOC_NOFS) || (flags & KM_NOFS))
- 		memalloc_noio_restore(noio_flag);
- 
- 	return ptr;
-diff --git a/fs/xfs/kmem.h b/fs/xfs/kmem.h
-index d1c66e465ca5..0d83f332e5c2 100644
---- a/fs/xfs/kmem.h
-+++ b/fs/xfs/kmem.h
-@@ -50,7 +50,7 @@ kmem_flags_convert(xfs_km_flags_t flags)
- 		lflags = GFP_ATOMIC | __GFP_NOWARN;
- 	} else {
- 		lflags = GFP_KERNEL | __GFP_NOWARN;
--		if ((current->flags & PF_FSTRANS) || (flags & KM_NOFS))
-+		if ((current->flags & PF_MEMALLOC_NOFS) || (flags & KM_NOFS))
- 			lflags &= ~__GFP_FS;
- 	}
- 
-diff --git a/fs/xfs/libxfs/xfs_btree.c b/fs/xfs/libxfs/xfs_btree.c
-index a0eb18ce3ad3..326566f4a131 100644
---- a/fs/xfs/libxfs/xfs_btree.c
-+++ b/fs/xfs/libxfs/xfs_btree.c
-@@ -2540,7 +2540,7 @@ xfs_btree_split_worker(
- 	struct xfs_btree_split_args	*args = container_of(work,
- 						struct xfs_btree_split_args, work);
- 	unsigned long		pflags;
--	unsigned long		new_pflags = PF_FSTRANS;
-+	unsigned long		new_pflags = PF_MEMALLOC_NOFS;
- 
- 	/*
- 	 * we are in a transaction context here, but may also be doing work
-diff --git a/fs/xfs/xfs_aops.c b/fs/xfs/xfs_aops.c
-index d12dfcfd0cc8..6d816ff0b763 100644
---- a/fs/xfs/xfs_aops.c
-+++ b/fs/xfs/xfs_aops.c
-@@ -124,7 +124,7 @@ xfs_setfilesize_trans_alloc(
- 	 * We hand off the transaction to the completion thread now, so
- 	 * clear the flag here.
- 	 */
--	current_restore_flags_nested(&tp->t_pflags, PF_FSTRANS);
-+	current_restore_flags_nested(&tp->t_pflags, PF_MEMALLOC_NOFS);
- 	return 0;
- }
- 
-@@ -169,7 +169,7 @@ xfs_setfilesize_ioend(
- 	 * thus we need to mark ourselves as being in a transaction manually.
- 	 * Similarly for freeze protection.
- 	 */
--	current_set_flags_nested(&tp->t_pflags, PF_FSTRANS);
-+	current_set_flags_nested(&tp->t_pflags, PF_MEMALLOC_NOFS);
- 	__sb_writers_acquired(VFS_I(ip)->i_sb, SB_FREEZE_FS);
- 
- 	/* we abort the update if there was an IO error */
-@@ -979,7 +979,7 @@ xfs_vm_writepage(
- 	 * Given that we do not allow direct reclaim to call us, we should
- 	 * never be called while in a filesystem transaction.
- 	 */
--	if (WARN_ON_ONCE(current->flags & PF_FSTRANS))
-+	if (WARN_ON_ONCE(current->flags & PF_MEMALLOC_NOFS))
- 		goto redirty;
- 
- 	/* Is this page beyond the end of the file? */
-diff --git a/fs/xfs/xfs_trans.c b/fs/xfs/xfs_trans.c
-index 748b16aff45a..1d247366c733 100644
---- a/fs/xfs/xfs_trans.c
-+++ b/fs/xfs/xfs_trans.c
-@@ -176,7 +176,7 @@ xfs_trans_reserve(
- 	bool		rsvd = (tp->t_flags & XFS_TRANS_RESERVE) != 0;
- 
- 	/* Mark this thread as being in a transaction */
--	current_set_flags_nested(&tp->t_pflags, PF_FSTRANS);
-+	current_set_flags_nested(&tp->t_pflags, PF_MEMALLOC_NOFS);
- 
- 	/*
- 	 * Attempt to reserve the needed disk blocks by decrementing
-@@ -186,7 +186,7 @@ xfs_trans_reserve(
- 	if (blocks > 0) {
- 		error = xfs_mod_fdblocks(tp->t_mountp, -((int64_t)blocks), rsvd);
- 		if (error != 0) {
--			current_restore_flags_nested(&tp->t_pflags, PF_FSTRANS);
-+			current_restore_flags_nested(&tp->t_pflags, PF_MEMALLOC_NOFS);
- 			return -ENOSPC;
- 		}
- 		tp->t_blk_res += blocks;
-@@ -263,7 +263,7 @@ xfs_trans_reserve(
- 		tp->t_blk_res = 0;
- 	}
- 
--	current_restore_flags_nested(&tp->t_pflags, PF_FSTRANS);
-+	current_restore_flags_nested(&tp->t_pflags, PF_MEMALLOC_NOFS);
- 
- 	return error;
- }
-@@ -921,7 +921,7 @@ __xfs_trans_commit(
- 
- 	xfs_log_commit_cil(mp, tp, &commit_lsn, regrant);
- 
--	current_restore_flags_nested(&tp->t_pflags, PF_FSTRANS);
-+	current_restore_flags_nested(&tp->t_pflags, PF_MEMALLOC_NOFS);
- 	xfs_trans_free(tp);
- 
- 	/*
-@@ -951,7 +951,7 @@ __xfs_trans_commit(
- 		if (commit_lsn == -1 && !error)
- 			error = -EIO;
- 	}
--	current_restore_flags_nested(&tp->t_pflags, PF_FSTRANS);
-+	current_restore_flags_nested(&tp->t_pflags, PF_MEMALLOC_NOFS);
- 	xfs_trans_free_items(tp, NULLCOMMITLSN, !!error);
- 	xfs_trans_free(tp);
- 
-@@ -1005,7 +1005,7 @@ xfs_trans_cancel(
- 		xfs_log_done(mp, tp->t_ticket, NULL, false);
- 
- 	/* mark this thread as no longer being in a transaction */
--	current_restore_flags_nested(&tp->t_pflags, PF_FSTRANS);
-+	current_restore_flags_nested(&tp->t_pflags, PF_MEMALLOC_NOFS);
- 
- 	xfs_trans_free_items(tp, NULLCOMMITLSN, dirty);
- 	xfs_trans_free(tp);
-diff --git a/include/linux/sched.h b/include/linux/sched.h
-index acfc32b30704..820db8f98bfc 100644
---- a/include/linux/sched.h
-+++ b/include/linux/sched.h
-@@ -2115,6 +2115,8 @@ extern void thread_group_cputime_adjusted(struct task_struct *p, cputime_t *ut,
- #define PF_FREEZER_SKIP	0x40000000	/* Freezer should not count it as freezable */
- #define PF_SUSPEND_TASK 0x80000000      /* this thread called freeze_processes and should not be frozen */
- 
-+#define PF_MEMALLOC_NOFS PF_FSTRANS	/* Transition to a more generic GFP_NOFS scope semantic */
-+
- /*
-  * Only the _current_ task can read/write to tsk->flags, but other
-  * tasks can access tsk->flags in readonly mode for example
--- 
-2.8.0.rc3
+[   15.753317]   #0: wm8962-audio
+[   15.759437] Root-NFS: no NFS server address
+[   15.763649] VFS: Unable to mount root fs via NFS, trying floppy.
+[   15.774223] VFS: Cannot open root device "nfs" or
+unknown-block(2,0): error -6
+[   15.781540] Please append a correct "root=" boot option; here are
+the available partitions:
+[   15.790145] 0100           65536 ram0  (driver?)
+[   15.794837] 0101           65536 ram1  (driver?)
+[   15.799576] 0102           65536 ram2  (driver?)
+[   15.804262] 0103           65536 ram3  (driver?)
+[   15.809023] 0104           65536 ram4  (driver?)
+[   15.813710] 0105           65536 ram5  (driver?)
+[   15.818392] 0106           65536 ram6  (driver?)
+[   15.823121] 0107           65536 ram7  (driver?)
+[   15.827804] 0108           65536 ram8  (driver?)
+[   15.832531] 0109           65536 ram9  (driver?)
+[   15.837213] 010a           65536 ram10  (driver?)
+[   15.841989] 010b           65536 ram11  (driver?)
+[   15.846729] 010c           65536 ram12  (driver?)
+[   15.851491] 010d           65536 ram13  (driver?)
+[   15.856228] 010e           65536 ram14  (driver?)
+[   15.860992] 010f           65536 ram15  (driver?)
+[   15.865742] 1f00            4096 mtdblock0  (driver?)
+[   15.870853] b300         3872256 mmcblk1  driver: mmcblk
+[   15.876199] b308         7757824 mmcblk2  driver: mmcblk
+[   15.881570] b320             128 mmcblk2rpmb  (driver?)
+[   15.886830] b318            1024 mmcblk2boot1  (driver?)
+[   15.892201] b310            1024 mmcblk2boot0  (driver?)
+[   15.897541] Kernel panic - not syncing: VFS: Unable to mount root
+fs on unknown-block(2,0)
+[   15.905978] CPU0: stopping
+[   15.908704] CPU: 0 PID: 0 Comm: swapper/0 Not tainted
+4.6.0-rc5-next-20160429 #349
+[   15.916284] Hardware name: Freescale i.MX6 Quad/DualLite (Device Tree)
+[   15.922818] Backtrace:
+[   15.925316] [<c010b6f8>] (dump_backtrace) from [<c010b894>]
+(show_stack+0x18/0x1c)
+[   15.932893]  r6:60000193 r5:ffffffff r4:00000000 r3:00000000
+[   15.938649] [<c010b87c>] (show_stack) from [<c03df190>]
+(dump_stack+0xb0/0xe8)
+[   15.945889] [<c03df0e0>] (dump_stack) from [<c010edec>]
+(handle_IPI+0x174/0x1a4)
+[   15.953292]  r8:c0d01f08 r7:c0c746ec r6:00000000 r5:c0d02b10
+r4:00000000 r3:c0d05e80
+[   15.961147] [<c010ec78>] (handle_IPI) from [<c0101618>]
+(gic_handle_irq+0x8c/0x9c)
+[   15.968722]  r8:c0d21f80 r7:c0d02c58 r6:c0d01f08 r5:f400010c
+r4:f4000100 r3:00000c04
+[   15.976573] [<c010158c>] (gic_handle_irq) from [<c010c4b8>]
+(__irq_svc+0x58/0x78)
+[   15.984065] Exception stack(0xc0d01f08 to 0xc0d01f50)
+[   15.989129] 1f00:                   00000001 00000001 00000000
+c011b920 00000000 c0d02984
+[   15.997318] 1f20: 00000000 00000000 c0c757b8 c0d029d8 c0d029d0
+c0d01f64 c0d01f28 c0d01f58
+[   16.005505] 1f40: c016d120 c01089e0 20000013 ffffffff
+[   16.010563]  r10:c0d029d0 r9:c0d029d8 r8:c0c757b8 r7:c0d01f3c
+r6:ffffffff r5:20000013
+[   16.018495]  r4:c01089e0 r3:c0d05e80
+[   16.022130] [<c01089b8>] (arch_cpu_idle) from [<c01661a0>]
+(default_idle_call+0x28/0x38)
+[   16.030236] [<c0166178>] (default_idle_call) from [<c0166378>]
+(cpu_startup_entry+0x1c8/0x24c)
+[   16.038864] [<c01661b0>] (cpu_startup_entry) from [<c08edd78>]
+(rest_init+0x12c/0x16c)
+[   16.046788]  r7:c0c5da48 r3:00000000
+[   16.050417] [<c08edc4c>] (rest_init) from [<c0c00cbc>]
+(start_kernel+0x340/0x3b0)
+[   16.057906]  r5:ffffffff r4:c0d6e050
+[   16.061532] [<c0c0097c>] (start_kernel) from [<1000807c>] (0x1000807c)
+[   16.068067]  r10:00000000 r8:1000406a r7:c0d0780c r6:c0c5da44
+r5:c0d0296c r4:c0d6e294
+[   16.076002] CPU2: stopping
+[   16.078725] CPU: 2 PID: 0 Comm: swapper/2 Not tainted
+4.6.0-rc5-next-20160429 #349
+[   16.086302] Hardware name: Freescale i.MX6 Quad/DualLite (Device Tree)
+[   16.092836] Backtrace:
+[   16.095320] [<c010b6f8>] (dump_backtrace) from [<c010b894>]
+(show_stack+0x18/0x1c)
+[   16.102897]  r6:60000193 r5:ffffffff r4:00000000 r3:00000000
+[   16.108646] [<c010b87c>] (show_stack) from [<c03df190>]
+(dump_stack+0xb0/0xe8)
+[   16.115883] [<c03df0e0>] (dump_stack) from [<c010edec>]
+(handle_IPI+0x174/0x1a4)
+[   16.123286]  r8:ef0a5f58 r7:c0c746ec r6:00000000 r5:c0d02b10
+r4:00000002 r3:ef0a8000
+[   16.131138] [<c010ec78>] (handle_IPI) from [<c0101618>]
+(gic_handle_irq+0x8c/0x9c)
+[   16.138713]  r8:c0d21f80 r7:c0d02c58 r6:ef0a5f58 r5:f400010c
+r4:f4000100 r3:00000c04
+[   16.146562] [<c010158c>] (gic_handle_irq) from [<c010c4b8>]
+(__irq_svc+0x58/0x78)
+[   16.154052] Exception stack(0xef0a5f58 to 0xef0a5fa0)
+[   16.159112] 5f40:
+    00000001 00000001
+[   16.167301] 5f60: 00000000 c011b920 00000000 c0d02984 00000000
+00000000 c0c757b8 c0d029d8
+[   16.175489] 5f80: c0d029d0 ef0a5fb4 ef0a5f78 ef0a5fa8 c016d120
+c01089e0 20000013 ffffffff
+[   16.183672]  r10:c0d029d0 r9:c0d029d8 r8:c0c757b8 r7:ef0a5f8c
+r6:ffffffff r5:20000013
+[   16.191601]  r4:c01089e0 r3:ef0a8000
+[   16.195230] [<c01089b8>] (arch_cpu_idle) from [<c01661a0>]
+(default_idle_call+0x28/0x38)
+[   16.203334] [<c0166178>] (default_idle_call) from [<c0166378>]
+(cpu_startup_entry+0x1c8/0x24c)
+[   16.211959] [<c01661b0>] (cpu_startup_entry) from [<c010ea14>]
+(secondary_start_kernel+0x130/0x154)
+[   16.221010]  r7:c0d6e388 r3:00000004
+[   16.224633] [<c010e8e4>] (secondary_start_kernel) from [<101016cc>]
+(0x101016cc)
+[   16.232035]  r5:00000051 r4:3f08806a
+[   16.235656] CPU1: stopping
+[   16.238378] CPU: 1 PID: 0 Comm: swapper/1 Not tainted
+4.6.0-rc5-next-20160429 #349
+[   16.245954] Hardware name: Freescale i.MX6 Quad/DualLite (Device Tree)
+[   16.252487] Backtrace:
+[   16.254970] [<c010b6f8>] (dump_backtrace) from [<c010b894>]
+(show_stack+0x18/0x1c)
+[   16.262545]  r6:60000193 r5:ffffffff r4:00000000 r3:00000000
+[   16.268291] [<c010b87c>] (show_stack) from [<c03df190>]
+(dump_stack+0xb0/0xe8)
+[   16.275529] [<c03df0e0>] (dump_stack) from [<c010edec>]
+(handle_IPI+0x174/0x1a4)
+[   16.282931]  r8:ef0a3f58 r7:c0c746ec r6:00000000 r5:c0d02b10
+r4:00000001 r3:ef076c00
+[   16.290777] [<c010ec78>] (handle_IPI) from [<c0101618>]
+(gic_handle_irq+0x8c/0x9c)
+[   16.298353]  r8:c0d21f80 r7:c0d02c58 r6:ef0a3f58 r5:f400010c
+r4:f4000100 r3:00000c04
+[   16.306199] [<c010158c>] (gic_handle_irq) from [<c010c4b8>]
+(__irq_svc+0x58/0x78)
+[   16.313688] Exception stack(0xef0a3f58 to 0xef0a3fa0)
+[   16.318747] 3f40:
+    00000001 00000001
+[   16.326935] 3f60: 00000000 c011b920 00000000 c0d02984 00000000
+00000000 c0c757b8 c0d029d8
+[   16.335123] 3f80: c0d029d0 ef0a3fb4 ef0a3f78 ef0a3fa8 c016d120
+c01089e0 20000013 ffffffff
+[   16.343304]  r10:c0d029d0 r9:c0d029d8 r8:c0c757b8 r7:ef0a3f8c
+r6:ffffffff r5:20000013
+[   16.351230]  r4:c01089e0 r3:ef076c00
+[   16.354856] [<c01089b8>] (arch_cpu_idle) from [<c01661a0>]
+(default_idle_call+0x28/0x38)
+[   16.362961] [<c0166178>] (default_idle_call) from [<c0166378>]
+(cpu_startup_entry+0x1c8/0x24c)
+[   16.371585] [<c01661b0>] (cpu_startup_entry) from [<c010ea14>]
+(secondary_start_kernel+0x130/0x154)
+[   16.380635]  r7:c0d6e388 r3:00000002
+[   16.384256] [<c010e8e4>] (secondary_start_kernel) from [<101016cc>]
+(0x101016cc)
+[   16.391657]  r5:00000051 r4:3f08806a
+[   16.395300] ---[ end Kernel panic - not syncing: VFS: Unable to
+mount root fs on unknown-block(2,0)
 
+Any ideas? Thanks
