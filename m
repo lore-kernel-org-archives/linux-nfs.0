@@ -1,63 +1,68 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:48843 "EHLO mx1.redhat.com"
+Received: from mx144.netapp.com ([216.240.21.25]:22129 "EHLO mx144.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752928AbcD2PJc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 29 Apr 2016 11:09:32 -0400
-Received: from int-mx14.intmail.prod.int.phx2.redhat.com (int-mx14.intmail.prod.int.phx2.redhat.com [10.5.11.27])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
-	(No client certificate requested)
-	by mx1.redhat.com (Postfix) with ESMTPS id BB1D9345599
-	for <linux-nfs@vger.kernel.org>; Fri, 29 Apr 2016 15:09:31 +0000 (UTC)
-Subject: Re: [nfs-utils PATCH] exportfs: add the debug option
-To: Scott Mayhew <smayhew@redhat.com>
-References: <1461936356-26727-1-git-send-email-smayhew@redhat.com>
-Cc: linux-nfs@vger.kernel.org
-From: Steve Dickson <SteveD@redhat.com>
-Message-ID: <5723792A.8020408@RedHat.com>
-Date: Fri, 29 Apr 2016 11:09:30 -0400
+	id S1752819AbcD2PJe convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 29 Apr 2016 11:09:34 -0400
+From: "Adamson, Andy" <William.Adamson@netapp.com>
+To: Steve Dickson <SteveD@redhat.com>,
+        "trond.myklebust@primarydata.com" <trond.myklebust@primarydata.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH Version 3 0/2] Add multihostname support for NFSv4.1,2
+Date: Fri, 29 Apr 2016 15:09:31 +0000
+Message-ID: <1461942572296.96251@netapp.com>
+References: <1461771407-16423-1-git-send-email-andros@netapp.com>
+ <57236BB6.50103@RedHat.com>
+ <1461940027554.14958@netapp.com>,<572373BE.4000201@RedHat.com>
+In-Reply-To: <572373BE.4000201@RedHat.com>
+Content-Type: text/plain; charset=US-ASCII
 MIME-Version: 1.0
-In-Reply-To: <1461936356-26727-1-git-send-email-smayhew@redhat.com>
-Content-Type: text/plain; charset=windows-1252
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+> mount -o v4.1 server1,server2,server3:/export /mnt
+>
+> server1 would be tried, if that fails server2 would be tried?
 
+That is not the way this feature was coded. Currently, server1 is tried. If server1 fails, the mount fails. If server1 succeeds then server2,server3.. are tried as session trunking addrs.
 
-On 04/29/2016 09:25 AM, Scott Mayhew wrote:
-> Since calling xlog(D_GENERAL) will cause exportfs to exit with a status
-> of 1, there really should be a way to see those messages for debugging
-> purposes.
-> 
-> Signed-off-by: Scott Mayhew <smayhew@redhat.com>
-> ---
->  utils/exportfs/exportfs.c | 5 ++++-
->  1 file changed, 4 insertions(+), 1 deletion(-)
-> 
-> diff --git a/utils/exportfs/exportfs.c b/utils/exportfs/exportfs.c
-> index a9151ff..a5eb156 100644
-> --- a/utils/exportfs/exportfs.c
-> +++ b/utils/exportfs/exportfs.c
-> @@ -108,11 +108,14 @@ main(int argc, char **argv)
->  	xlog_stderr(1);
->  	xlog_syslog(0);
->  
-> -	while ((c = getopt(argc, argv, "afhio:ruvs")) != EOF) {
-> +	while ((c = getopt(argc, argv, "ad:fhio:ruvs")) != EOF) {
->  		switch(c) {
->  		case 'a':
->  			f_all = 1;
->  			break;
-> +		case 'd':
-> +			xlog_sconfig(optarg, 1);
-> +			break;
-I'm all for doing this but there needs to be an
-usage() update and man page update. For the man
-page update, just rip the verbiage out of the
-mountd man page since they are the same.
+I can of course change this to the behavior you described.
+
+-->Andy
+________________________________________
+From: Steve Dickson <SteveD@redhat.com>
+Sent: Friday, April 29, 2016 10:46 AM
+To: Adamson, Andy; trond.myklebust@primarydata.com
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH Version 3 0/2] Add multihostname support for NFSv4.1,2
+
+On 04/29/2016 10:27 AM, Adamson, Andy wrote:
+> Hi Steve
+>
+> Yes, if we decide to keep the multiple hostname option, then a man page update is required. I don't think we have a consensus on using the multiple hostname mount option as a CLI to express session trunking addresses. Chuck Lever made some good points around not using multiple hostnames:
+>
+> ---- From Chuck: ----
+> - client admins can specify arbitrary hostnames on the command line; hostnames
+> for instance that correspond to some other server.
+>
+> - network conditions can change at anytime, making
+> the original set of trunks lop-sided, or some trunks
+> may become unreachable. What if the server reboots
+> with new i/f's or with one or more removed? The
+> client would likely have to remount in these cases
+> to adapt to network configuration changes.
+>
+> - multiple hostnames could be nailed into
+> /etc/fstab on potentially hundreds of clients. When
+> server or network configuration changes, there would
+> have to be a manual change on all these clients.
+> ----------
+>
+> What do you think? Should we keep the multiple hostname CLI as one method of expressing session trunking addresses?
+I would think so... Just to put some context into this... We are talking
+about:
+
+mount -o v4.1 server1,server2,server3:/export /mnt
+
+server1 would be tried, if that fails server2 would be tried?
 
 steved.
- 
->  		case 'f':
->  			force_flush = 1;
->  			break;
-> 
