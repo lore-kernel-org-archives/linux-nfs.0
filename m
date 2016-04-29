@@ -1,91 +1,118 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx141.netapp.com ([216.240.21.12]:14710 "EHLO mx141.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:51246 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753421AbcD2O1J convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 29 Apr 2016 10:27:09 -0400
-From: "Adamson, Andy" <William.Adamson@netapp.com>
-To: Steve Dickson <SteveD@redhat.com>,
-        "trond.myklebust@primarydata.com" <trond.myklebust@primarydata.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH Version 3 0/2] Add multihostname support for NFSv4.1,2
-Date: Fri, 29 Apr 2016 14:27:06 +0000
-Message-ID: <1461940027554.14958@netapp.com>
-References: <1461771407-16423-1-git-send-email-andros@netapp.com>,<57236BB6.50103@RedHat.com>
-In-Reply-To: <57236BB6.50103@RedHat.com>
-Content-Type: text/plain; charset=US-ASCII
+	id S1752950AbcD2OfX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 29 Apr 2016 10:35:23 -0400
+Received: from int-mx10.intmail.prod.int.phx2.redhat.com (int-mx10.intmail.prod.int.phx2.redhat.com [10.5.11.23])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+	(No client certificate requested)
+	by mx1.redhat.com (Postfix) with ESMTPS id 165928E3E5
+	for <linux-nfs@vger.kernel.org>; Fri, 29 Apr 2016 14:35:23 +0000 (UTC)
+Received: from steved.boston.devel.redhat.com (vpn-48-209.rdu2.redhat.com [10.10.48.209])
+	by int-mx10.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id u3TEZMpk003784
+	for <linux-nfs@vger.kernel.org>; Fri, 29 Apr 2016 10:35:22 -0400
+Subject: Re: [PATCH] Remove rpcsecgss library support
+To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+References: <1461772766-8901-1-git-send-email-steved@redhat.com>
+From: Steve Dickson <SteveD@redhat.com>
+Message-ID: <5723712A.6070004@RedHat.com>
+Date: Fri, 29 Apr 2016 10:35:22 -0400
 MIME-Version: 1.0
+In-Reply-To: <1461772766-8901-1-git-send-email-steved@redhat.com>
+Content-Type: text/plain; charset=windows-1252
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Steve
 
-Yes, if we decide to keep the multiple hostname option, then a man page update is required. I don't think we have a consensus on using the multiple hostname mount option as a CLI to express session trunking addresses. Chuck Lever made some good points around not using multiple hostnames:
 
----- From Chuck: ----
-- client admins can specify arbitrary hostnames on the command line; hostnames
-for instance that correspond to some other server.
-
-- network conditions can change at anytime, making
-the original set of trunks lop-sided, or some trunks
-may become unreachable. What if the server reboots
-with new i/f's or with one or more removed? The
-client would likely have to remount in these cases
-to adapt to network configuration changes.
-
-- multiple hostnames could be nailed into
-/etc/fstab on potentially hundreds of clients. When
-server or network configuration changes, there would
-have to be a manual change on all these clients.
-----------
-
-What do you think? Should we keep the multiple hostname CLI as one method of expressing session trunking addresses?
-
--->Andy
-________________________________________
-From: Steve Dickson <SteveD@redhat.com>
-Sent: Friday, April 29, 2016 10:12 AM
-To: Adamson, Andy; trond.myklebust@primarydata.com
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH Version 3 0/2] Add multihostname support for NFSv4.1,2
-
-Hey Andy,
-
-On 04/27/2016 11:36 AM, andros@netapp.com wrote:
-> From: Andy Adamson <andros@netapp.com>
->
-> RFC patchset
->
-> Main question: Do we want to use multiple hostnames on the mount command to
->    communicate the NFSv4.1 session trunking addresses, or only use (yet
->    to be coded) fs_locations_info?
->
-> The multiple hostnames on the mount command are added to a new multiaddr
-> option and passed to the kernel for consumption.
-Should there be some type of man page update talking about his new option
-and how to used it?
+On 04/27/2016 11:59 AM, Steve Dickson wrote:
+> librpcsecgss has not been used in years
+> so and there is no longer an upstream for
+> it so the support for the library has
+> been removed
+> 
+> Signed-off-by: Steve Dickson <steved@redhat.com>
+Committed... 
 
 steved.
 
->
-> This code requires the kernel "Version 3 NFSV4.1,2 session trunking"
-> patch set.
->
-> If we want to keep the multiple hostnames on the mount command method of
-> expressing NFSv4.1 session trunking addresses, we should fix this:
->
-> - v3 mounts with multiple hostnames succeeds but adds an mtab dev entry that
-> omits the ":/<exported dir> and so prints a warning at umount.
-> - need to update the manpage
->
-> -->Andy
->
-> Andy Adamson (2):
->   NFS parse NFSv4 multiple hostnames
->   NFS add multiaddr mount option
->
->  utils/mount/parse_dev.c | 30 +++++++++++++++--------
->  utils/mount/parse_dev.h |  2 +-
->  utils/mount/stropts.c   | 63 ++++++++++++++++++++++++++++++++++++++++++++++++-
->  utils/mount/utils.c     |  2 +-
->  4 files changed, 84 insertions(+), 13 deletions(-)
->
+> ---
+>  aclocal/librpcsecgss.m4 | 21 ---------------------
+>  configure.ac            |  3 ---
+>  utils/gssd/gssd.c       | 15 +++++----------
+>  3 files changed, 5 insertions(+), 34 deletions(-)
+>  delete mode 100644 aclocal/librpcsecgss.m4
+> 
+> diff --git a/aclocal/librpcsecgss.m4 b/aclocal/librpcsecgss.m4
+> deleted file mode 100644
+> index e833141..0000000
+> --- a/aclocal/librpcsecgss.m4
+> +++ /dev/null
+> @@ -1,21 +0,0 @@
+> -dnl Checks for rpcsecgss library and headers
+> -dnl KRB5LIBS must be set before this function is invoked.
+> -dnl
+> -AC_DEFUN([AC_LIBRPCSECGSS], [
+> -
+> -  dnl libtirpc provides an rpcsecgss API
+> -  if test "$enable_tirpc" = no; then
+> -
+> -    dnl Check for library, but do not add -lrpcsecgss to LIBS
+> -    AC_CHECK_LIB([rpcsecgss], [authgss_create_default], [librpcsecgss=1],
+> -                 [AC_MSG_ERROR([librpcsecgss not found.])])
+> -
+> -    AC_CHECK_LIB([rpcsecgss], [authgss_set_debug_level],
+> -                 [AC_DEFINE([HAVE_AUTHGSS_SET_DEBUG_LEVEL], 1,
+> -                 [Define to 1 if you have the `authgss_set_debug_level' function.])])
+> -
+> -    AC_DEFINE([HAVE_AUTHGSS_FREE_PRIVATE_DATA], 1,
+> -	      [Define to 1 if your rpcsec library provides authgss_free_private_data,])
+> -  fi
+> -
+> -])dnl
+> diff --git a/configure.ac b/configure.ac
+> index 25d2ba4..b87ee68 100644
+> --- a/configure.ac
+> +++ b/configure.ac
+> @@ -382,9 +382,6 @@ if test "$enable_gss" = yes; then
+>    dnl Check for Kerberos V5
+>    AC_KERBEROS_V5
+>  
+> -  dnl Invoked after AC_KERBEROS_V5; AC_LIBRPCSECGSS needs to have KRBLIBS set
+> -  AC_LIBRPCSECGSS
+> -
+>    dnl librpcsecgss already has a dependency on libgssapi,
+>    dnl but we need to make sure we get the right version
+>    if test "$enable_gss" = yes; then
+> diff --git a/utils/gssd/gssd.c b/utils/gssd/gssd.c
+> index 7ba27b1..810f872 100644
+> --- a/utils/gssd/gssd.c
+> +++ b/utils/gssd/gssd.c
+> @@ -866,21 +866,16 @@ main(int argc, char *argv[])
+>  		progname = argv[0];
+>  
+>  	initerr(progname, verbosity, fg);
+> -#ifdef HAVE_AUTHGSS_SET_DEBUG_LEVEL
+> -	if (verbosity && rpc_verbosity == 0)
+> -		rpc_verbosity = verbosity;
+> -	authgss_set_debug_level(rpc_verbosity);
+> -#elif HAVE_LIBTIRPC_SET_DEBUG
+> +#ifdef HAVE_LIBTIRPC_SET_DEBUG
+>  	/*
+> -	 * Only set the libtirpc debug level if explicitly requested via -r...
+> -	 * gssd is chatty enough as it is.
+> +	 * Only set the libtirpc debug level if explicitly requested via -r.
+>  	 */
+>  	if (rpc_verbosity > 0)
+>  		libtirpc_set_debug(progname, rpc_verbosity, fg);
+>  #else
+> -        if (rpc_verbosity > 0)
+> -		printerr(0, "Warning: rpcsec_gss library does not "
+> -			    "support setting debug level\n");
+> +	if (rpc_verbosity > 0)
+> +		printerr(0, "Warning: libtirpc does not "
+> +			    "support setting debug levels\n");
+>  #endif
+>  
+>  	if (gssd_check_mechs() != 0)
+> 
