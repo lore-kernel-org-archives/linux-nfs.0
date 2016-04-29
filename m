@@ -1,17 +1,16 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:58387 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:60992 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752873AbcD2M6Q (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 29 Apr 2016 08:58:16 -0400
-Subject: [PATCH 5/6] statx: Make windows attributes available for CIFS,
- NTFS and FAT to use
+	id S1753649AbcD2M6B (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 29 Apr 2016 08:58:01 -0400
+Subject: [PATCH 3/6] statx: Ext4: Return enhanced file attributes
 From: David Howells <dhowells@redhat.com>
 To: linux-fsdevel@vger.kernel.org
 Cc: linux-afs@vger.kernel.org, linux-nfs@vger.kernel.org,
         samba-technical@lists.samba.org, linux-kernel@vger.kernel.org,
         dhowells@redhat.com, linux-ext4@vger.kernel.org
-Date: Fri, 29 Apr 2016 13:58:14 +0100
-Message-ID: <20160429125813.23636.49830.stgit@warthog.procyon.org.uk>
+Date: Fri, 29 Apr 2016 13:57:59 +0100
+Message-ID: <20160429125759.23636.10635.stgit@warthog.procyon.org.uk>
 In-Reply-To: <20160429125736.23636.47874.stgit@warthog.procyon.org.uk>
 References: <20160429125736.23636.47874.stgit@warthog.procyon.org.uk>
 MIME-Version: 1.0
@@ -19,158 +18,153 @@ Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Make windows attributes available for CIFS, NTFS and FAT to use in the
-statx struct.  The attribute flags map directly by value to those in the
-CIFS PDU flags.  Some of these bits can also be used by JFS, UFS and HPFS.
+Return enhanced file attributes from the Ext4 filesystem.  This includes
+the following:
 
-The statx struct acquires:
+ (1) The inode creation time (i_crtime) as i_btime, setting STATX_BTIME.
 
-	__u32	st_win_attrs;
+ (2) The inode i_version as st_version if a file with I_VERSION set or a
+     directory, setting STATX_VERSION.
 
-The value in this is present if STATX_WIN_ATTRS is set.
+ (3) FS_xxx_FL flags are returned as for ioctl(FS_IOC_GETFLAGS), setting
+     STATX_IOC_FLAGS.
 
-The defined flags in this are:
+This requires that all ext4 inodes have a getattr call, not just some of
+them, so to this end, split the ext4_getattr() function and only call part
+of it where appropriate.
 
-	STATX_WIN_ATTR_READONLY
-	STATX_WIN_ATTR_HIDDEN
-	STATX_WIN_ATTR_SYSTEM
-	STATX_WIN_ATTR_DIRECTORY
-	STATX_WIN_ATTR_ARCHIVE
-	STATX_WIN_ATTR_NORMAL
-	STATX_WIN_ATTR_TEMPORARY
-	STATX_WIN_ATTR_SPARSE_FILE
-	STATX_WIN_ATTR_REPARSE_POINT
-	STATX_WIN_ATTR_COMPRESSED
-	STATX_WIN_ATTR_OFFLINE
-	STATX_WIN_ATTR_NOT_CONTENT_INDEXED
-	STATX_WIN_ATTR_ENCRYPTED
-	STATX_WIN_ATTR_INTEGRITY_STREAM
-	STATX_WIN_ATTR_NO_SCRUB_DATA
+Example output:
+
+	[root@andromeda ~]# ./samples/statx/test-statx /usr
+	statx(/usr) = 0
+	results=37ef
+	  Size: 4096            Blocks: 16         IO Block: 4096    directory
+	Device: 08:02           Inode: 1572865     Links: 14
+	Access: (0755/drwxr-xr-x)  Uid:     0   Gid:     0
+	Access: 2015-11-03 16:12:30.000000000+0000
+	Modify: 2013-10-18 15:29:18.000000000+0100
+	Change: 2013-10-18 15:29:18.000000000+0100
+	Data version: 2fh
+	Inode flags: 00000000 (-------- -------- -------- --------)
+	IO-blocksize: blksize=4096
 
 Signed-off-by: David Howells <dhowells@redhat.com>
 ---
 
- fs/stat.c                  |    5 ++++-
- include/uapi/linux/stat.h  |   30 ++++++++++++++++++++++++++++--
- samples/statx/test-statx.c |   31 +++++++++++++++++++++++++++++++
- 3 files changed, 63 insertions(+), 3 deletions(-)
+ fs/ext4/ext4.h    |    2 ++
+ fs/ext4/file.c    |    2 +-
+ fs/ext4/inode.c   |   30 +++++++++++++++++++++++++++---
+ fs/ext4/namei.c   |    2 ++
+ fs/ext4/symlink.c |    2 ++
+ 5 files changed, 34 insertions(+), 4 deletions(-)
 
-diff --git a/fs/stat.c b/fs/stat.c
-index c2f8370dab13..1552bff154e6 100644
---- a/fs/stat.c
-+++ b/fs/stat.c
-@@ -83,6 +83,7 @@ int vfs_xgetattr_nosec(struct path *path, struct kstat *stat)
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 349afebe21ee..2f25eaa63f39 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -2549,6 +2549,8 @@ extern int  ext4_getattr(struct vfsmount *mnt, struct dentry *dentry,
+ 				struct kstat *stat);
+ extern void ext4_evict_inode(struct inode *);
+ extern void ext4_clear_inode(struct inode *);
++extern int  ext4_file_getattr(struct vfsmount *mnt, struct dentry *dentry,
++			      struct kstat *stat);
+ extern int  ext4_sync_inode(handle_t *, struct inode *);
+ extern void ext4_dirty_inode(struct inode *, int);
+ extern int ext4_change_inode_journal_flag(struct inode *, int);
+diff --git a/fs/ext4/file.c b/fs/ext4/file.c
+index fa2208bae2e1..45c7b8644d0e 100644
+--- a/fs/ext4/file.c
++++ b/fs/ext4/file.c
+@@ -715,7 +715,7 @@ const struct file_operations ext4_file_operations = {
  
- 	stat->result_mask = 0;
- 	stat->information = 0;
-+	stat->win_attrs = 0;
- 	if (inode->i_op->getattr)
- 		return inode->i_op->getattr(path->mnt, path->dentry, stat);
- 
-@@ -643,7 +644,9 @@ static long statx_set_result(struct kstat *stat, struct statx __user *buffer)
- 	    __put_user(stat->blocks,		&buffer->st_blocks	) ||
- 	    __put_user(stat->version,		&buffer->st_version	) ||
- 	    __put_user(stat->gen,		&buffer->st_gen		) ||
--	    __clear_user(&buffer->__spare1, sizeof(buffer->__spare1)))
-+	    __put_user(stat->win_attrs,		&buffer->st_win_attrs	) ||
-+	    __clear_user(&buffer->__spare1,
-+			 sizeof(buffer->__spare1) + sizeof(buffer->__spare2)))
- 		return -EFAULT;
- 
- 	return 0;
-diff --git a/include/uapi/linux/stat.h b/include/uapi/linux/stat.h
-index 55ce6607dab6..64729b0785bf 100644
---- a/include/uapi/linux/stat.h
-+++ b/include/uapi/linux/stat.h
-@@ -106,7 +106,10 @@ struct statx {
- 	__u32	st_dev_major;	/* ID of device containing file [uncond] */
- 	__u32	st_dev_minor;
- 	/* 0x80 */
--	__u64	__spare1[16];	/* Spare space for future expansion */
-+	__u32	st_win_attrs;	/* Windows file attributes */
-+	__u32	__spare1[3];
-+	/* 0x90 */
-+	__u64	__spare2[14];	/* Spare space for future expansion */
- 	/* 0x100 */
- };
- 
-@@ -133,7 +136,8 @@ struct statx {
- #define STATX_BTIME		0x00000800U	/* Want/got st_btime */
- #define STATX_VERSION		0x00001000U	/* Want/got st_version */
- #define STATX_GEN		0x00002000U	/* Want/got st_gen */
--#define STATX_ALL_STATS		0x00003fffU	/* All supported stats */
-+#define STATX_WIN_ATTRS		0x00004000U	/* Want/got st_win_attrs */
-+#define STATX_ALL_STATS		0x00007fffU	/* All supported stats */
- 
- /*
-  * Flags to be found in st_information
-@@ -151,4 +155,26 @@ struct statx {
- #define STATX_INFO_AUTODIR		0x00000040U /* Dir provides unlisted automounts */
- #define STATX_INFO_NONSYSTEM_OWNERSHIP	0x00000080U /* File has non-system ownership details */
- 
-+/*
-+ * Flags to be found in st_win_attrs.
-+ *
-+ * These give information about the state of a file on a Windows filesystem
-+ * (such as. FAT, NTFS, CIFS).  These values are borrowed from the CIFS fs.
-+ */
-+#define STATX_WIN_ATTR_READONLY			0x00000001
-+#define STATX_WIN_ATTR_HIDDEN			0x00000002
-+#define STATX_WIN_ATTR_SYSTEM			0x00000004
-+#define STATX_WIN_ATTR_DIRECTORY		0x00000010
-+#define STATX_WIN_ATTR_ARCHIVE			0x00000020
-+#define STATX_WIN_ATTR_NORMAL			0x00000080
-+#define STATX_WIN_ATTR_TEMPORARY		0x00000100
-+#define STATX_WIN_ATTR_SPARSE_FILE		0x00000200
-+#define STATX_WIN_ATTR_REPARSE_POINT		0x00000400
-+#define STATX_WIN_ATTR_COMPRESSED		0x00000800
-+#define STATX_WIN_ATTR_OFFLINE			0x00001000
-+#define STATX_WIN_ATTR_NOT_CONTENT_INDEXED	0x00002000
-+#define STATX_WIN_ATTR_ENCRYPTED		0x00004000
-+#define STATX_WIN_ATTR_INTEGRITY_STREAM		0x00008000
-+#define STATX_WIN_ATTR_NO_SCRUB_DATA		0x00020000
+ const struct inode_operations ext4_file_inode_operations = {
+ 	.setattr	= ext4_setattr,
+-	.getattr	= ext4_getattr,
++	.getattr	= ext4_file_getattr,
+ 	.setxattr	= generic_setxattr,
+ 	.getxattr	= generic_getxattr,
+ 	.listxattr	= ext4_listxattr,
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 981a1fc30eaa..309b6cff8afc 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -5100,11 +5100,35 @@ err_out:
+ int ext4_getattr(struct vfsmount *mnt, struct dentry *dentry,
+ 		 struct kstat *stat)
+ {
+-	struct inode *inode;
+-	unsigned long long delalloc_blocks;
++	struct inode *inode = d_inode(dentry);
++	struct ext4_inode *raw_inode;
++	struct ext4_inode_info *ei = EXT4_I(inode);
 +
- #endif /* _UAPI_LINUX_STAT_H */
-diff --git a/samples/statx/test-statx.c b/samples/statx/test-statx.c
-index 38ef23c12e7d..86eac7d16c32 100644
---- a/samples/statx/test-statx.c
-+++ b/samples/statx/test-statx.c
-@@ -134,6 +134,37 @@ static void dump_statx(struct statx *stx)
- 	if (stx->st_mask & STATX_GEN)
- 		printf("Inode gen   : %xh\n", stx->st_gen);
- 
-+	if (stx->st_mask & STATX_WIN_ATTRS) {
-+		unsigned char bits;
-+		int loop, byte;
++	stat->result_mask |= STATX_GEN;
++	stat->gen = inode->i_generation;
 +
-+		static char wattr_representation[32 + 1] =
-+			/* STATX_WIN_ATTR_ flags: */
-+			"????????"	/* 31-24	0x00000000-ff000000 */
-+			"??????N?"	/* 23-16	0x00000000-00ff0000 */
-+			"ieNocrst"	/* 15- 8	0x00000000-0000ff00 */
-+			"n?Ad?SHR"	/*  7- 0	0x00000000-000000ff */
-+			;
-+
-+		printf("Win attrs  : %08llx (",
-+		       (unsigned long long)stx->st_win_attrs);
-+		for (byte = 32 - 8; byte >= 0; byte -= 8) {
-+			bits = stx->st_win_attrs >> byte;
-+			for (loop = 7; loop >= 0; loop--) {
-+				int bit = byte + loop;
-+
-+				if (bits & 0x80)
-+					putchar(wattr_representation[31 - bit]);
-+				else
-+					putchar('-');
-+				bits <<= 1;
-+			}
-+			if (byte)
-+				putchar(' ');
-+		}
-+		printf(")\n");
++	if (EXT4_FITS_IN_INODE(raw_inode, ei, i_crtime)) {
++		stat->result_mask |= STATX_BTIME;
++		stat->btime.tv_sec = ei->i_crtime.tv_sec;
++		stat->btime.tv_nsec = ei->i_crtime.tv_nsec;
 +	}
 +
- 	if (stx->st_information) {
- 		unsigned char bits;
- 		int loop, byte;
++	if (S_ISDIR(inode->i_mode) || IS_I_VERSION(inode)) {
++		stat->result_mask |= STATX_VERSION;
++		stat->version = inode->i_version;
++	}
+ 
+-	inode = d_inode(dentry);
+ 	generic_fillattr(inode, stat);
++	return 0;
++}
++
++int ext4_file_getattr(struct vfsmount *mnt, struct dentry *dentry,
++		      struct kstat *stat)
++{
++	struct inode *inode = dentry->d_inode;
++	u64 delalloc_blocks;
++
++	ext4_getattr(mnt, dentry, stat);
+ 
+ 	/*
+ 	 * If there is inline data in the inode, the inode will normally not
+diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
+index 48e4b8907826..9b5fdc971e22 100644
+--- a/fs/ext4/namei.c
++++ b/fs/ext4/namei.c
+@@ -3882,6 +3882,7 @@ const struct inode_operations ext4_dir_inode_operations = {
+ 	.tmpfile	= ext4_tmpfile,
+ 	.rename2	= ext4_rename2,
+ 	.setattr	= ext4_setattr,
++	.getattr	= ext4_getattr,
+ 	.setxattr	= generic_setxattr,
+ 	.getxattr	= generic_getxattr,
+ 	.listxattr	= ext4_listxattr,
+@@ -3893,6 +3894,7 @@ const struct inode_operations ext4_dir_inode_operations = {
+ 
+ const struct inode_operations ext4_special_inode_operations = {
+ 	.setattr	= ext4_setattr,
++	.getattr	= ext4_getattr,
+ 	.setxattr	= generic_setxattr,
+ 	.getxattr	= generic_getxattr,
+ 	.listxattr	= ext4_listxattr,
+diff --git a/fs/ext4/symlink.c b/fs/ext4/symlink.c
+index 75ed5c2f0c16..54015f3d7516 100644
+--- a/fs/ext4/symlink.c
++++ b/fs/ext4/symlink.c
+@@ -105,6 +105,7 @@ const struct inode_operations ext4_symlink_inode_operations = {
+ 	.readlink	= generic_readlink,
+ 	.get_link	= page_get_link,
+ 	.setattr	= ext4_setattr,
++	.getattr	= ext4_getattr,
+ 	.setxattr	= generic_setxattr,
+ 	.getxattr	= generic_getxattr,
+ 	.listxattr	= ext4_listxattr,
+@@ -115,6 +116,7 @@ const struct inode_operations ext4_fast_symlink_inode_operations = {
+ 	.readlink	= generic_readlink,
+ 	.get_link	= simple_get_link,
+ 	.setattr	= ext4_setattr,
++	.getattr	= ext4_getattr,
+ 	.setxattr	= generic_setxattr,
+ 	.getxattr	= generic_getxattr,
+ 	.listxattr	= ext4_listxattr,
 
