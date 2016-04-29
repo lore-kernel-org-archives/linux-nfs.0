@@ -1,333 +1,376 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx144.netapp.com ([216.240.21.25]:55071 "EHLO mx144.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:59097 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753785AbcD2M6f (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 29 Apr 2016 08:58:35 -0400
-From: Anna Schumaker <Anna.Schumaker@netapp.com>
-Subject: Re: [PATCH v2 6/7] nfs: get a reference to the credential in
- ff_layout_alloc_lseg
-To: Jeff Layton <jlayton@poochiereds.net>,
-        Anna Schumaker <Anna.Schumaker@netapp.com>,
-        <trond.myklebust@primarydata.com>
-References: <1461286320-24601-1-git-send-email-jeff.layton@primarydata.com>
- <1461286320-24601-7-git-send-email-jeff.layton@primarydata.com>
- <32c5353e-2229-5d95-8161-bdc7f6cb85c1@Netapp.com>
- <1461926989.32715.1.camel@poochiereds.net>
-CC: <linux-nfs@vger.kernel.org>
-Message-ID: <0dda2df0-5c46-1f7a-8ed2-21acc0e0f84a@Netapp.com>
-Date: Fri, 29 Apr 2016 08:58:28 -0400
+	id S1753746AbcD2M6Y (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 29 Apr 2016 08:58:24 -0400
+Subject: [PATCH 6/6] statx: CIFS: Return enhanced attributes
+From: David Howells <dhowells@redhat.com>
+To: linux-fsdevel@vger.kernel.org
+Cc: linux-afs@vger.kernel.org, linux-nfs@vger.kernel.org,
+        samba-technical@lists.samba.org, linux-kernel@vger.kernel.org,
+        dhowells@redhat.com, linux-ext4@vger.kernel.org
+Date: Fri, 29 Apr 2016 13:58:21 +0100
+Message-ID: <20160429125821.23636.24489.stgit@warthog.procyon.org.uk>
+In-Reply-To: <20160429125736.23636.47874.stgit@warthog.procyon.org.uk>
+References: <20160429125736.23636.47874.stgit@warthog.procyon.org.uk>
 MIME-Version: 1.0
-In-Reply-To: <1461926989.32715.1.camel@poochiereds.net>
 Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 04/29/2016 06:49 AM, Jeff Layton wrote:
-> Oh! The original patch should be dropped. I should have sent a self-NAK 
-> on it before. I'll do that now...
+Return enhanced attributes from the CIFS filesystem.  This includes the
+following:
 
-Great, thanks!
+ (1) Return the file creation time as btime.  We assume that the creation
+     time won't change over the life of the inode.
 
-Anna
+ (2) Set STATX_INFO_AUTOMOUNT on referral/submount directories.
 
-> 
-> Thanks,
-> Jeff
-> 
-> On Thu, 2016-04-28 at 16:37 -0400, Anna Schumaker wrote:
->> Hi Jeff,
->>
->> It looks like this patch removes the mirror->uid and mirror->gid
->> parameters that your earlier patch (nfs: don't match flexfiles
->> mirrors that have different creds) makes use of.  Should that patch
->> be updated, or does this series make that patch obsolete?
->>
->> Thanks,
->> Anna
->>
->> On 04/21/2016 08:51 PM, Jeff Layton wrote:
->>> We're just as likely to have allocation problems here as we would
->>> if we
->>> delay looking up the credential like we currently do. Fix the code
->>> to
->>> get a rpc_cred reference early, as soon as the mirror is set up.
->>>
->>> This allows us to eliminate the mirror early if there is a problem
->>> getting an rpc credential. This also allows us to drop the uid/gid
->>> from the layout_mirror struct as well.
->>>
->>> In the event that we find an existing mirror where this one would
->>> go, we
->>> swap in the new creds unconditionally, and drop the reference to
->>> the old
->>> one.
->>>
->>> Note that the old ff_layout_update_mirror_cred function wouldn't
->>> set
->>> this pointer unless the DS version was 3, but we don't know what
->>> the DS
->>> version is at this point. I'm a little unclear on why it did that
->>> as you
->>> still need creds to talk to v4 servers as well. I have the code set
->>> it regardless of the DS version here.
->>>
->>> Also note the change to using generic creds instead of calling
->>> lookup_cred directly. With that change, we also need to populate
->>> the
->>> group_info pointer in the acred as some functions expect that to
->>> never
->>> be NULL. Instead of allocating one every time however, we can
->>> allocate
->>> one when the module is loaded and share it since the group_info is
->>> refcounted.
->>>
->>> Signed-off-by: Jeff Layton <jeff.layton@primarydata.com>
->>> ---
->>>  fs/nfs/flexfilelayout/flexfilelayout.c    | 41
->>> ++++++++++++++++++++++-----
->>>  fs/nfs/flexfilelayout/flexfilelayout.h    |  2 --
->>>  fs/nfs/flexfilelayout/flexfilelayoutdev.c | 47 ++-----------------
->>> ------------
->>>  3 files changed, 36 insertions(+), 54 deletions(-)
->>>
->>> diff --git a/fs/nfs/flexfilelayout/flexfilelayout.c
->>> b/fs/nfs/flexfilelayout/flexfilelayout.c
->>> index 432d5b0009c7..19806caa8ff2 100644
->>> --- a/fs/nfs/flexfilelayout/flexfilelayout.c
->>> +++ b/fs/nfs/flexfilelayout/flexfilelayout.c
->>> @@ -26,6 +26,8 @@
->>>  
->>>  #define FF_LAYOUT_POLL_RETRY_MAX     (15*HZ)
->>>  
->>> +static struct group_info	*ff_zero_group;
->>> +
->>>  static struct pnfs_layout_hdr *
->>>  ff_layout_alloc_layout_hdr(struct inode *inode, gfp_t gfp_flags)
->>>  {
->>> @@ -407,8 +409,9 @@ ff_layout_alloc_lseg(struct pnfs_layout_hdr
->>> *lh,
->>>  		struct nfs4_ff_layout_mirror *mirror;
->>>  		struct nfs4_deviceid devid;
->>>  		struct nfs4_deviceid_node *idnode;
->>> -		u32 ds_count;
->>> -		u32 fh_count;
->>> +		struct auth_cred acred = { .group_info =
->>> ff_zero_group };
->>> +		struct rpc_cred	*cred;
->>> +		u32 ds_count, fh_count, id;
->>>  		int j;
->>>  
->>>  		rc = -EIO;
->>> @@ -484,24 +487,39 @@ ff_layout_alloc_lseg(struct pnfs_layout_hdr
->>> *lh,
->>>  		fls->mirror_array[i]->fh_versions_cnt = fh_count;
->>>  
->>>  		/* user */
->>> -		rc = decode_name(&stream, &fls->mirror_array[i]-
->>>> uid);
->>> +		rc = decode_name(&stream, &id);
->>>  		if (rc)
->>>  			goto out_err_free;
->>>  
->>> +		acred.uid = make_kuid(&init_user_ns, id);
->>> +
->>>  		/* group */
->>> -		rc = decode_name(&stream, &fls->mirror_array[i]-
->>>> gid);
->>> +		rc = decode_name(&stream, &id);
->>>  		if (rc)
->>>  			goto out_err_free;
->>>  
->>> +		acred.gid = make_kgid(&init_user_ns, id);
->>> +
->>> +		/* find the cred for it */
->>> +		cred = rpc_lookup_generic_cred(&acred, 0,
->>> gfp_flags);
->>> +		if (IS_ERR(cred)) {
->>> +			rc = PTR_ERR(cred);
->>> +			goto out_err_free;
->>> +		}
->>> +
->>> +		rcu_assign_pointer(fls->mirror_array[i]->cred,
->>> cred);
->>> +
->>>  		mirror = ff_layout_add_mirror(lh, fls-
->>>> mirror_array[i]);
->>>  		if (mirror != fls->mirror_array[i]) {
->>> +			/* swap cred ptrs so free_mirror will
->>> clean up old */
->>> +			fls->mirror_array[i]->cred = xchg(&mirror-
->>>> cred, cred);
->>>  			ff_layout_free_mirror(fls-
->>>> mirror_array[i]);
->>>  			fls->mirror_array[i] = mirror;
->>>  		}
->>>  
->>> -		dprintk("%s: uid %d gid %d\n", __func__,
->>> -			fls->mirror_array[i]->uid,
->>> -			fls->mirror_array[i]->gid);
->>> +		dprintk("%s: uid %u gid %u\n", __func__,
->>> +			from_kuid(&init_user_ns, acred.uid),
->>> +			from_kgid(&init_user_ns, acred.gid));
->>>  	}
->>>  
->>>  	p = xdr_inline_decode(&stream, 4);
->>> @@ -2226,6 +2244,11 @@ static int __init
->>> nfs4flexfilelayout_init(void)
->>>  {
->>>  	printk(KERN_INFO "%s: NFSv4 Flexfile Layout Driver
->>> Registering...\n",
->>>  	       __func__);
->>> +	if (!ff_zero_group) {
->>> +		ff_zero_group = groups_alloc(0);
->>> +		if (!ff_zero_group)
->>> +			return -ENOMEM;
->>> +	}
->>>  	return pnfs_register_layoutdriver(&flexfilelayout_type);
->>>  }
->>>  
->>> @@ -2234,6 +2257,10 @@ static void __exit
->>> nfs4flexfilelayout_exit(void)
->>>  	printk(KERN_INFO "%s: NFSv4 Flexfile Layout Driver
->>> Unregistering...\n",
->>>  	       __func__);
->>>  	pnfs_unregister_layoutdriver(&flexfilelayout_type);
->>> +	if (ff_zero_group) {
->>> +		put_group_info(ff_zero_group);
->>> +		ff_zero_group = NULL;
->>> +	}
->>>  }
->>>  
->>>  MODULE_ALIAS("nfs-layouttype4-4");
->>> diff --git a/fs/nfs/flexfilelayout/flexfilelayout.h
->>> b/fs/nfs/flexfilelayout/flexfilelayout.h
->>> index dd353bb7dc0a..c29fc853ce74 100644
->>> --- a/fs/nfs/flexfilelayout/flexfilelayout.h
->>> +++ b/fs/nfs/flexfilelayout/flexfilelayout.h
->>> @@ -76,8 +76,6 @@ struct nfs4_ff_layout_mirror {
->>>  	u32				fh_versions_cnt;
->>>  	struct nfs_fh			*fh_versions;
->>>  	nfs4_stateid			stateid;
->>> -	u32				uid;
->>> -	u32				gid;
->>>  	struct rpc_cred			*cred;
->>>  	atomic_t			ref;
->>>  	spinlock_t			lock;
->>> diff --git a/fs/nfs/flexfilelayout/flexfilelayoutdev.c
->>> b/fs/nfs/flexfilelayout/flexfilelayoutdev.c
->>> index baee22929174..6ddd8a5c5ae0 100644
->>> --- a/fs/nfs/flexfilelayout/flexfilelayoutdev.c
->>> +++ b/fs/nfs/flexfilelayout/flexfilelayoutdev.c
->>> @@ -302,42 +302,6 @@ int ff_layout_track_ds_error(struct
->>> nfs4_flexfile_layout *flo,
->>>  	return 0;
->>>  }
->>>  
->>> -/* currently we only support AUTH_NONE and AUTH_SYS */
->>> -static rpc_authflavor_t
->>> -nfs4_ff_layout_choose_authflavor(struct nfs4_ff_layout_mirror
->>> *mirror)
->>> -{
->>> -	if (mirror->uid == (u32)-1)
->>> -		return RPC_AUTH_NULL;
->>> -	return RPC_AUTH_UNIX;
->>> -}
->>> -
->>> -/* fetch cred for NFSv3 DS */
->>> -static int ff_layout_update_mirror_cred(struct
->>> nfs4_ff_layout_mirror *mirror,
->>> -				      struct nfs4_pnfs_ds *ds)
->>> -{
->>> -	if (ds->ds_clp && !mirror->cred &&
->>> -	    mirror->mirror_ds->ds_versions[0].version == 3) {
->>> -		struct rpc_auth *auth = ds->ds_clp->cl_rpcclient-
->>>> cl_auth;
->>> -		struct rpc_cred *cred;
->>> -		struct auth_cred acred = {
->>> -			.uid = make_kuid(&init_user_ns, mirror-
->>>> uid),
->>> -			.gid = make_kgid(&init_user_ns, mirror-
->>>> gid),
->>> -		};
->>> -
->>> -		/* AUTH_NULL ignores acred */
->>> -		cred = auth->au_ops->lookup_cred(auth, &acred, 0);
->>> -		if (IS_ERR(cred)) {
->>> -			dprintk("%s: lookup_cred failed with
->>> %ld\n",
->>> -				__func__, PTR_ERR(cred));
->>> -			return PTR_ERR(cred);
->>> -		} else {
->>> -			if (cmpxchg(&mirror->cred, NULL, cred))
->>> -				put_rpccred(cred);
->>> -		}
->>> -	}
->>> -	return 0;
->>> -}
->>> -
->>>  static struct rpc_cred *
->>>  ff_layout_get_mirror_cred(struct nfs4_ff_layout_mirror *mirror,
->>> u32 iomode)
->>>  {
->>> @@ -386,7 +350,6 @@ nfs4_ff_layout_prepare_ds(struct
->>> pnfs_layout_segment *lseg, u32 ds_idx,
->>>  	struct inode *ino = lseg->pls_layout->plh_inode;
->>>  	struct nfs_server *s = NFS_SERVER(ino);
->>>  	unsigned int max_payload;
->>> -	rpc_authflavor_t flavor;
->>>  
->>>  	if (!ff_layout_mirror_valid(lseg, mirror)) {
->>>  		pr_err_ratelimited("NFS: %s: No data server for
->>> offset index %d\n",
->>> @@ -402,9 +365,7 @@ nfs4_ff_layout_prepare_ds(struct
->>> pnfs_layout_segment *lseg, u32 ds_idx,
->>>  	/* matching smp_wmb() in _nfs4_pnfs_v3/4_ds_connect */
->>>  	smp_rmb();
->>>  	if (ds->ds_clp)
->>> -		goto out_update_creds;
->>> -
->>> -	flavor = nfs4_ff_layout_choose_authflavor(mirror);
->>> +		goto out;
->>>  
->>>  	/* FIXME: For now we assume the server sent only one
->>> version of NFS
->>>  	 * to use for the DS.
->>> @@ -413,7 +374,7 @@ nfs4_ff_layout_prepare_ds(struct
->>> pnfs_layout_segment *lseg, u32 ds_idx,
->>>  			     dataserver_retrans,
->>>  			     mirror->mirror_ds-
->>>> ds_versions[0].version,
->>>  			     mirror->mirror_ds-
->>>> ds_versions[0].minor_version,
->>> -			     flavor);
->>> +			     RPC_AUTH_UNIX);
->>>  
->>>  	/* connect success, check rsize/wsize limit */
->>>  	if (ds->ds_clp) {
->>> @@ -438,11 +399,7 @@ nfs4_ff_layout_prepare_ds(struct
->>> pnfs_layout_segment *lseg, u32 ds_idx,
->>>  		} else
->>>  			pnfs_error_mark_layout_for_return(ino,
->>> lseg);
->>>  		ds = NULL;
->>> -		goto out;
->>>  	}
->>> -out_update_creds:
->>> -	if (ff_layout_update_mirror_cred(mirror, ds))
->>> -		ds = NULL;
->>>  out:
->>>  	return ds;
->>>  }
->>>
->>
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs"
->> in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
+ (3) Unset STATX_INO if we made up the inode number and didn't get it from
+     the server.
+
+ (4) Unset STATX_[UG]ID if we are either returning values passed to mount
+     and/or the server doesn't return them.
+
+ (5) Set STATX_WIN_ATTRS and return windows attributes in st_win_attrs.
+
+ (6) Set certain STATX_INFO_xxx to reflect a number of Windows file
+     attributes:
+
+	ATTR_TEMPORARY	-> STATX_INFO_TEMPORARY;
+	ATTR_ENCRYPTED	-> STATX_INFO_ENCRYPTED;
+
+ (7) Set STATX_INFO_REMOTE on all files fetched by CIFS.
+
+ (8) Set STATX_INFO_NONSYSTEM_OWNERSHIP on all files as they all have
+     Windows ownership details too.
+
+Furthermore, what cifs_getattr() does can be controlled as follows:
+
+ (1) If AT_NO_ATTR_SYNC is indicated then this will suppress the flushing
+     of outstanding writes and the rereading of the inode's attributes with
+     the server as detailed below.
+
+ (2) Otherwise:
+
+     (a) If AT_FORCE_ATTR_SYNC is indicated, or mtime, ctime or size are
+     	 requested then the outstanding writes will be written to the
+     	 server first.
+
+     (b) The inode's attributes will be reread from the server:
+
+     	 (i) if AT_FORCE_ATTR_SYNC is indicated;
+
+        (ii) if the cached attributes have expired;
+
+       (iii) extra attributes are requested that aren't normally stored.
+
+If the inode isn't synchronised, then the cached attributes will be used -
+even if expired - without reference to the server.  Some attributes may be
+unavailable that would otherwise be provided.
+
+Note that cifs_revalidate_dentry() will issue an extra operation to get the
+FILE_ALL_INFO in addition to the FILE_UNIX_BASIC_INFO if it needs to
+collect creation time and attributes on behalf of cifs_getattr().
+
+[NOTE: THIS PATCH IS UNTESTED!]
+
+Signed-off-by: David Howells <dhowells@redhat.com>
+---
+
+ fs/cifs/cifsfs.h   |    4 +-
+ fs/cifs/cifsglob.h |    8 ++++
+ fs/cifs/dir.c      |    2 -
+ fs/cifs/inode.c    |  117 ++++++++++++++++++++++++++++++++++++++++------------
+ 4 files changed, 101 insertions(+), 30 deletions(-)
+
+diff --git a/fs/cifs/cifsfs.h b/fs/cifs/cifsfs.h
+index 83aac8ba50b0..304f4567d207 100644
+--- a/fs/cifs/cifsfs.h
++++ b/fs/cifs/cifsfs.h
+@@ -67,9 +67,9 @@ extern int cifs_rmdir(struct inode *, struct dentry *);
+ extern int cifs_rename2(struct inode *, struct dentry *, struct inode *,
+ 			struct dentry *, unsigned int);
+ extern int cifs_revalidate_file_attr(struct file *filp);
+-extern int cifs_revalidate_dentry_attr(struct dentry *);
++extern int cifs_revalidate_dentry_attr(struct dentry *, bool, bool);
+ extern int cifs_revalidate_file(struct file *filp);
+-extern int cifs_revalidate_dentry(struct dentry *);
++extern int cifs_revalidate_dentry(struct dentry *, bool, bool);
+ extern int cifs_invalidate_mapping(struct inode *inode);
+ extern int cifs_revalidate_mapping(struct inode *inode);
+ extern int cifs_zap_mapping(struct inode *inode);
+diff --git a/fs/cifs/cifsglob.h b/fs/cifs/cifsglob.h
+index f2cc0b3d1af7..3225b16f7522 100644
+--- a/fs/cifs/cifsglob.h
++++ b/fs/cifs/cifsglob.h
+@@ -1166,7 +1166,11 @@ struct cifsInodeInfo {
+ 	unsigned long flags;
+ 	spinlock_t writers_lock;
+ 	unsigned int writers;		/* Number of writers on this inode */
++	bool btime_valid:1;		/* stored creation time is valid */
++	bool uid_faked:1;		/* true if i_uid is faked */
++	bool gid_faked:1;		/* true if i_gid is faked */
+ 	unsigned long time;		/* jiffies of last update of inode */
++	struct timespec btime;		/* creation time */
+ 	u64  server_eof;		/* current file size on server -- protected by i_lock */
+ 	u64  uniqueid;			/* server inode number */
+ 	u64  createtime;		/* creation time on server */
+@@ -1379,6 +1383,9 @@ struct dfs_info3_param {
+ #define CIFS_FATTR_NEED_REVAL		0x4
+ #define CIFS_FATTR_INO_COLLISION	0x8
+ #define CIFS_FATTR_UNKNOWN_NLINK	0x10
++#define CIFS_FATTR_WINATTRS_VALID	0x20	/* T if cf_btime and cf_cifsattrs valid */
++#define CIFS_FATTR_UID_FAKED		0x40	/* T if cf_uid is faked */
++#define CIFS_FATTR_GID_FAKED		0x80	/* T if cf_gid is faked */
+ 
+ struct cifs_fattr {
+ 	u32		cf_flags;
+@@ -1396,6 +1403,7 @@ struct cifs_fattr {
+ 	struct timespec	cf_atime;
+ 	struct timespec	cf_mtime;
+ 	struct timespec	cf_ctime;
++	struct timespec	cf_btime;
+ };
+ 
+ static inline void free_dfs_info_param(struct dfs_info3_param *param)
+diff --git a/fs/cifs/dir.c b/fs/cifs/dir.c
+index c3eb998a99bd..4984f04b0677 100644
+--- a/fs/cifs/dir.c
++++ b/fs/cifs/dir.c
+@@ -792,7 +792,7 @@ cifs_d_revalidate(struct dentry *direntry, unsigned int flags)
+ 		return -ECHILD;
+ 
+ 	if (d_really_is_positive(direntry)) {
+-		if (cifs_revalidate_dentry(direntry))
++		if (cifs_revalidate_dentry(direntry, false, false))
+ 			return 0;
+ 		else {
+ 			/*
+diff --git a/fs/cifs/inode.c b/fs/cifs/inode.c
+index 5f9ad5c42180..dc1814b70c81 100644
+--- a/fs/cifs/inode.c
++++ b/fs/cifs/inode.c
+@@ -166,13 +166,21 @@ cifs_fattr_to_inode(struct inode *inode, struct cifs_fattr *fattr)
+ 	cifs_nlink_fattr_to_inode(inode, fattr);
+ 	inode->i_uid = fattr->cf_uid;
+ 	inode->i_gid = fattr->cf_gid;
++	if (fattr->cf_flags & CIFS_FATTR_UID_FAKED)
++		cifs_i->uid_faked = true;
++	if (fattr->cf_flags & CIFS_FATTR_GID_FAKED)
++		cifs_i->gid_faked = true;
+ 
+ 	/* if dynperm is set, don't clobber existing mode */
+ 	if (inode->i_state & I_NEW ||
+ 	    !(cifs_sb->mnt_cifs_flags & CIFS_MOUNT_DYNPERM))
+ 		inode->i_mode = fattr->cf_mode;
+ 
+-	cifs_i->cifsAttrs = fattr->cf_cifsattrs;
++	if (fattr->cf_flags & CIFS_FATTR_WINATTRS_VALID) {
++		cifs_i->cifsAttrs = fattr->cf_cifsattrs;
++		cifs_i->btime = fattr->cf_btime;
++		cifs_i->btime_valid = true;
++	}
+ 
+ 	if (fattr->cf_flags & CIFS_FATTR_NEED_REVAL)
+ 		cifs_i->time = 0;
+@@ -284,18 +292,22 @@ cifs_unix_basic_to_fattr(struct cifs_fattr *fattr, FILE_UNIX_BASIC_INFO *info,
+ 		u64 id = le64_to_cpu(info->Uid);
+ 		if (id < ((uid_t)-1)) {
+ 			kuid_t uid = make_kuid(&init_user_ns, id);
+-			if (uid_valid(uid))
++			if (uid_valid(uid)) {
+ 				fattr->cf_uid = uid;
++				fattr->cf_flags |= CIFS_FATTR_UID_FAKED;
++			}
+ 		}
+ 	}
+-	
++
+ 	fattr->cf_gid = cifs_sb->mnt_gid;
+ 	if (!(cifs_sb->mnt_cifs_flags & CIFS_MOUNT_OVERR_GID)) {
+ 		u64 id = le64_to_cpu(info->Gid);
+ 		if (id < ((gid_t)-1)) {
+ 			kgid_t gid = make_kgid(&init_user_ns, id);
+-			if (gid_valid(gid))
++			if (gid_valid(gid)) {
+ 				fattr->cf_gid = gid;
++				fattr->cf_flags |= CIFS_FATTR_GID_FAKED;
++			}
+ 		}
+ 	}
+ 
+@@ -324,7 +336,8 @@ cifs_create_dfs_fattr(struct cifs_fattr *fattr, struct super_block *sb)
+ 	fattr->cf_ctime = CURRENT_TIME;
+ 	fattr->cf_mtime = CURRENT_TIME;
+ 	fattr->cf_nlink = 2;
+-	fattr->cf_flags |= CIFS_FATTR_DFS_REFERRAL;
++	fattr->cf_flags |= CIFS_FATTR_DFS_REFERRAL |
++		CIFS_FATTR_UID_FAKED | CIFS_FATTR_GID_FAKED;
+ }
+ 
+ static int
+@@ -590,6 +603,7 @@ cifs_all_info_to_fattr(struct cifs_fattr *fattr, FILE_ALL_INFO *info,
+ 	struct cifs_tcon *tcon = cifs_sb_master_tcon(cifs_sb);
+ 
+ 	memset(fattr, 0, sizeof(*fattr));
++	fattr->cf_flags = CIFS_FATTR_WINATTRS_VALID;
+ 	fattr->cf_cifsattrs = le32_to_cpu(info->Attributes);
+ 	if (info->DeletePending)
+ 		fattr->cf_flags |= CIFS_FATTR_DELETE_PENDING;
+@@ -601,6 +615,7 @@ cifs_all_info_to_fattr(struct cifs_fattr *fattr, FILE_ALL_INFO *info,
+ 
+ 	fattr->cf_ctime = cifs_NTtimeToUnix(info->ChangeTime);
+ 	fattr->cf_mtime = cifs_NTtimeToUnix(info->LastWriteTime);
++	fattr->cf_btime = cifs_NTtimeToUnix(info->CreationTime);
+ 
+ 	if (adjust_tz) {
+ 		fattr->cf_ctime.tv_sec += tcon->ses->server->timeAdj;
+@@ -1907,7 +1922,8 @@ int cifs_revalidate_file_attr(struct file *filp)
+ 	return rc;
+ }
+ 
+-int cifs_revalidate_dentry_attr(struct dentry *dentry)
++int cifs_revalidate_dentry_attr(struct dentry *dentry,
++				bool want_extra_bits, bool force)
+ {
+ 	unsigned int xid;
+ 	int rc = 0;
+@@ -1918,7 +1934,7 @@ int cifs_revalidate_dentry_attr(struct dentry *dentry)
+ 	if (inode == NULL)
+ 		return -ENOENT;
+ 
+-	if (!cifs_inode_needs_reval(inode))
++	if (!force && !cifs_inode_needs_reval(inode))
+ 		return rc;
+ 
+ 	xid = get_xid();
+@@ -1935,9 +1951,12 @@ int cifs_revalidate_dentry_attr(struct dentry *dentry)
+ 		 full_path, inode, inode->i_count.counter,
+ 		 dentry, dentry->d_time, jiffies);
+ 
+-	if (cifs_sb_master_tcon(CIFS_SB(sb))->unix_ext)
++	if (cifs_sb_master_tcon(CIFS_SB(sb))->unix_ext) {
+ 		rc = cifs_get_inode_info_unix(&inode, full_path, sb, xid);
+-	else
++		if (rc != 0)
++			goto out;
++	}
++	if (!cifs_sb_master_tcon(CIFS_SB(sb))->unix_ext || want_extra_bits)
+ 		rc = cifs_get_inode_info(&inode, full_path, NULL, sb,
+ 					 xid, NULL);
+ 
+@@ -1960,12 +1979,13 @@ int cifs_revalidate_file(struct file *filp)
+ }
+ 
+ /* revalidate a dentry's inode attributes */
+-int cifs_revalidate_dentry(struct dentry *dentry)
++int cifs_revalidate_dentry(struct dentry *dentry,
++			   bool want_extra_bits, bool force)
+ {
+ 	int rc;
+ 	struct inode *inode = d_inode(dentry);
+ 
+-	rc = cifs_revalidate_dentry_attr(dentry);
++	rc = cifs_revalidate_dentry_attr(dentry, want_extra_bits, force);
+ 	if (rc)
+ 		return rc;
+ 
+@@ -1978,28 +1998,62 @@ int cifs_getattr(struct vfsmount *mnt, struct dentry *dentry,
+ 	struct cifs_sb_info *cifs_sb = CIFS_SB(dentry->d_sb);
+ 	struct cifs_tcon *tcon = cifs_sb_master_tcon(cifs_sb);
+ 	struct inode *inode = d_inode(dentry);
++	struct cifsInodeInfo *cifs_i = CIFS_I(inode);
++	bool force = stat->query_flags & AT_FORCE_ATTR_SYNC;
++	bool want_extra_bits = false;
++	u32 info;
++	u32 attrs;
+ 	int rc;
+ 
+-	/*
+-	 * We need to be sure that all dirty pages are written and the server
+-	 * has actual ctime, mtime and file length.
+-	 */
+-	if (!CIFS_CACHE_READ(CIFS_I(inode)) && inode->i_mapping &&
+-	    inode->i_mapping->nrpages != 0) {
+-		rc = filemap_fdatawait(inode->i_mapping);
+-		if (rc) {
+-			mapping_set_error(inode->i_mapping, rc);
+-			return rc;
++	if (cifs_i->uid_faked)
++		stat->request_mask &= ~STATX_UID;
++	if (cifs_i->gid_faked)
++		stat->request_mask &= ~STATX_GID;
++
++	if ((stat->request_mask & STATX_BTIME && !cifs_i->btime_valid) ||
++	    stat->request_mask & STATX_WIN_ATTRS)
++		want_extra_bits = force = true;
++
++	if (!(stat->query_flags & AT_NO_ATTR_SYNC)) {
++		/* Unless we're explicitly told not to sync, we need to be sure
++		 * that all dirty pages are written and the server has actual
++		 * ctime, mtime and file length.
++		 */
++		bool flush = force;
++
++		if (stat->request_mask &
++		    (STATX_CTIME | STATX_MTIME | STATX_SIZE))
++			flush = true;
++
++		if (flush &&
++		    !CIFS_CACHE_READ(CIFS_I(inode)) && inode->i_mapping &&
++		    inode->i_mapping->nrpages != 0) {
++			rc = filemap_fdatawait(inode->i_mapping);
++			if (rc) {
++				mapping_set_error(inode->i_mapping, rc);
++				return rc;
++			}
+ 		}
+-	}
+ 
+-	rc = cifs_revalidate_dentry_attr(dentry);
+-	if (rc)
+-		return rc;
++		rc = cifs_revalidate_dentry(dentry, want_extra_bits, force);
++		if (rc)
++			return rc;
++	}
+ 
+ 	generic_fillattr(inode, stat);
+ 	stat->blksize = CIFS_MAX_MSGSIZE;
+-	stat->ino = CIFS_I(inode)->uniqueid;
++
++	info = STATX_INFO_REMOTE | STATX_INFO_NONSYSTEM_OWNERSHIP;
++
++	if (cifs_i->btime_valid) {
++		stat->btime = cifs_i->btime;
++		stat->result_mask |= STATX_BTIME;
++	}
++
++	/* We don't promise an inode number if we made one up */
++	stat->ino = cifs_i->uniqueid;
++	if (!(cifs_sb->mnt_cifs_flags & CIFS_MOUNT_SERVER_INUM))
++		stat->result_mask &= ~STATX_INO;
+ 
+ 	/*
+ 	 * If on a multiuser mount without unix extensions or cifsacl being
+@@ -2013,8 +2067,17 @@ int cifs_getattr(struct vfsmount *mnt, struct dentry *dentry,
+ 			stat->uid = current_fsuid();
+ 		if (!(cifs_sb->mnt_cifs_flags & CIFS_MOUNT_OVERR_GID))
+ 			stat->gid = current_fsgid();
++		stat->result_mask &= ~(STATX_UID | STATX_GID);
+ 	}
+-	return rc;
++
++	attrs = cifs_i->cifsAttrs;
++	stat->win_attrs = attrs;
++	if (attrs & ATTR_TEMPORARY)	info |= STATX_INFO_TEMPORARY;
++	if (attrs & ATTR_ENCRYPTED)	info |= STATX_INFO_ENCRYPTED;
++	stat->information |= info;
++	stat->result_mask |= STATX_WIN_ATTRS;
++
++	return 0;
+ }
+ 
+ static int cifs_truncate_page(struct address_space *mapping, loff_t from)
 
