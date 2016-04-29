@@ -1,14 +1,26 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:42043 "EHLO mx2.suse.de"
+Received: from neil.brown.name ([103.29.64.221]:35314 "EHLO neil.brown.name"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751932AbcD2C7P (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 28 Apr 2016 22:59:15 -0400
-From: NeilBrown <neilb@suse.com>
-To: Steve Dickson <SteveD@redhat.com>
-Date: Fri, 29 Apr 2016 12:59:07 +1000
-Cc: NFS List <linux-nfs@vger.kernel.org>
-Subject: [PATCH nfs-utils] systemd unit files: fix up dependencies on rpcbind.
-Message-ID: <8760v1unlw.fsf@notabene.neil.brown.name>
+	id S1752636AbcD2GM5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 29 Apr 2016 02:12:57 -0400
+From: NeilBrown <mr@neil.brown.name>
+To: Michal Hocko <mhocko@kernel.org>, linux-mm@kvack.org,
+        linux-fsdevel@vger.kernel.org
+Date: Fri, 29 Apr 2016 15:35:42 +1000
+Cc: Andrew Morton <akpm@linux-foundation.org>,
+        Dave Chinner <david@fromorbit.com>, "Theodore Ts'o" <tytso@mit.edu>,
+        Chris Mason <clm@fb.com>, Jan Kara <jack@suse.cz>,
+        ceph-devel@vger.kernel.org, cluster-devel@redhat.com,
+        linux-nfs@vger.kernel.org, logfs@logfs.org, xfs@oss.sgi.com,
+        linux-ext4@vger.kernel.org, linux-btrfs@vger.kernel.org,
+        linux-mtd@lists.infradead.org, reiserfs-devel@vger.kernel.org,
+        linux-ntfs-dev@lists.sourceforge.net,
+        linux-f2fs-devel@lists.sourceforge.net, linux-afs@lists.infradead.org,
+        LKML <linux-kernel@vger.kernel.org>
+Subject: Re: [PATCH 0/2] scop GFP_NOFS api
+In-Reply-To: <1461671772-1269-1-git-send-email-mhocko@kernel.org>
+References: <1461671772-1269-1-git-send-email-mhocko@kernel.org>
+Message-ID: <8737q5ugcx.fsf@notabene.neil.brown.name>
 MIME-Version: 1.0
 Content-Type: multipart/signed; boundary="=-=-=";
 	micalg=pgp-sha256; protocol="application/pgp-signature"
@@ -17,127 +29,91 @@ List-ID: <linux-nfs.vger.kernel.org>
 
 --=-=-=
 Content-Type: text/plain
-Content-Transfer-Encoding: quoted-printable
 
+On Tue, Apr 26 2016, Michal Hocko wrote:
 
-The dependencies on rpcbind have been changed a few times and I think
-they are still wrong.  So I'll go into some detail to justify this change.
+> Hi,
+> we have discussed this topic at LSF/MM this year. There was a general
+> interest in the scope GFP_NOFS allocation context among some FS
+> developers. For those who are not aware of the discussion or the issue
+> I am trying to sort out (or at least start in that direction) please
+> have a look at patch 1 which adds memalloc_nofs_{save,restore} api
+> which basically copies what we have for the scope GFP_NOIO allocation
+> context. I haven't converted any of the FS myself because that is way
+> beyond my area of expertise but I would be happy to help with further
+> changes on the MM front as well as in some more generic code paths.
+>
+> Dave had an idea on how to further improve the reclaim context to be
+> less all-or-nothing wrt. GFP_NOFS. In short he was suggesting an opaque
+> and FS specific cookie set in the FS allocation context and consumed
+> by the FS reclaim context to allow doing some provably save actions
+> that would be skipped due to GFP_NOFS normally.  I like this idea and
+> I believe we can go that direction regardless of the approach taken here.
+> Many filesystems simply need to cleanup their NOFS usage first before
+> diving into a more complex changes.>
 
-Firstly: rpcbind.target rpcbind.socket or rpcbind.service?
+This strikes me as over-engineering to work around an unnecessarily
+burdensome interface.... but without details it is hard to be certain.
 
-The systemd documentation talks about targets as "synchronization
-points" and likens them to SysV init run levels.  Run levels are about
-ordering but not dependencies.
+Exactly what things happen in "FS reclaim context" which may, or may
+not, be safe depending on the specific FS allocation context?  Do they
+need to happen at all?
 
-The systemd.special man page describes rpcbind.target as intended
-explicitly for ordering sysvinit scripts, with "After=3D" dependencies.
+My research suggests that for most filesystems the only thing that
+happens in reclaim context that is at all troublesome is the final
+'evict()' on an inode.  This needs to flush out dirty pages and sync the
+inode to storage.  Some time ago we moved most dirty-page writeout out
+of the reclaim context and into kswapd.  I think this was an excellent
+advance in simplicity.
+If we could similarly move evict() into kswapd (and I believe we can)
+then most file systems would do nothing in reclaim context that
+interferes with allocation context.
 
-So while I think it is valid to use rpcbind.target for ordering
-(before/after) it shouldn't be used for dependencies (Wants/Requires).
-The rpcbind.target file included in systemd does not "Require" the
-actual service, so requiring rpcbind.target itself is pointless.
+The exceptions include:
+ - nfs and any filesystem using fscache can block for up to 1 second
+   in ->releasepage().  They used to block waiting for some IO, but that
+   caused deadlocks and wasn't really needed.  I left the timeout because
+   it seemed likely that some throttling would help.  I suspect that a
+   careful analysis will show that there is sufficient throttling
+   elsewhere.
 
-I think we shouldn't use rpcbind.target at all.  Leave it for sysvinit
-synchronization.
+ - xfs_qm_shrink_scan is nearly unique among shrinkers in that it waits
+   for IO so it can free some quotainfo things.  If it could be changed
+   to just schedule the IO without waiting for it then I think this
+   would be safe to be called in any FS allocation context.  It already
+   uses a 'trylock' in xfs_dqlock_nowait() to avoid deadlocking
+   if the lock is held.
 
-So: .socket or .service?
+I think you/we would end up with a much simpler system if instead of
+focussing on the places where GFP_NOFS is used, we focus on places where
+__GFP_FS is tested, and try to remove them.  If we get rid of enough of
+them the remainder could just use __GFP_IO.
 
-I think nfs only needs the socket to be active.  On first connection
-the service will be started.  But nfs does not need to wait for the
-service to start, only the socket.  So I think we should exclusively
-use rpcbind.socket.
+> The patch 2 is a debugging aid which warns about explicit allocation
+> requests from the scope context. This is should help to reduce the
+> direct usage of the NOFS flags to bare minimum in favor of the scope
+> API. It is not aimed to be merged upstream. I would hope Andrew took it
+> into mmotm tree to give it linux-next exposure and allow developers to
+> do further cleanups.  There is a new kernel command line parameter which
+> has to be used for the debugging to be enabled.
+>
+> I think the GFP_NOIO should be seeing the same clean up.
 
-Next: Wants or Requires.
+I think you are suggesting that use of GFP_NOIO should (largely) be
+deprecated in favour of memalloc_noio_save().  I think I agree.
+Could we go a step further and deprecate GFP_ATOMIC in favour of some
+in_atomic() test?  Maybe that is going too far.
 
-rpc.statd definitely Requires rpcbind.  It needs to register to be
-useful, and without rpcbind it cannot register.
+Thanks,
+NeilBrown
 
-nfs-server does not necesarily require rpcbind.  Specifically if
-configured for NFSv4 only, nfs-server will work quite happily without
-rpcbind.
-
-Someone with an NFSv4 only setup who wants rpcbind to not run can use
-  systemctl mask rpcbind.socket
-to ensure it never runs.
-So nfs-server should only "Wants: rpcbind.socket".
-I think
- Commit: 4fabfcd08206 ("systemd: Decouple the starting and stopping of rpcb=
-ind/nfs-server")
-should have changed "Requires" to "Wants" rather than "server" to "target"
-to fix the dependency problem.
-
-Finally: After?
-
-It only makes sense to declare an ordering relation as "After:"
-something that will actually be started.  If "foo.service" is not part
-of the systemd transaction, then "After: foo.service" has no effect.
-So having:
-  Requires: rpcbind.target
-  After: rpcbind.socket
-
-doesn't make much sense unless there is some relationship between
-rpcbind.target and rpcbind.socket, and there is no general guarantee
-of that (though what individual distros do, I don't know).
-So the "After" should match the "Wants" or "Requires".
-
-It might make sense to
-  Requires: rpcbind.socket
-  After: rpcbind.target
-
-as it is reasonable to assume that rpcbind.target will be ordered with
-rpcbind.socket, but as we can use rpcbind.socket explictly, that is
-clearer.
-
-So my conclusion is that nfs-server should:
-  Wants: rpcbind.socket
-  After: rpcbind.socket
-
-and rpc-statd should
-  Requires: rpcbind.socket
-  After: rpcbind.socket
-
-which is what this patch puts into effect.
-
-Signed-off-by: NeilBrown <neilb@suse.com>
-
-diff --git a/systemd/nfs-server.service b/systemd/nfs-server.service
-index 317e5d689767..2ccdc6344cd5 100644
-=2D-- a/systemd/nfs-server.service
-+++ b/systemd/nfs-server.service
-@@ -1,13 +1,14 @@
- [Unit]
- Description=3DNFS server and services
- DefaultDependencies=3Dno
-=2DRequires=3D network.target proc-fs-nfsd.mount rpcbind.target
-+Requires=3D network.target proc-fs-nfsd.mount
- Requires=3D nfs-mountd.service
-+Wants=3Drpcbind.socket
- Wants=3Drpc-statd.service nfs-idmapd.service
- Wants=3Drpc-statd-notify.service
-=20
- After=3D local-fs.target
-=2DAfter=3D network.target proc-fs-nfsd.mount rpcbind.service nfs-mountd.se=
-rvice
-+After=3D network.target proc-fs-nfsd.mount rpcbind.socket nfs-mountd.servi=
-ce
- After=3D nfs-idmapd.service rpc-statd.service
- Before=3D rpc-statd-notify.service
-=20
-diff --git a/systemd/rpc-statd.service b/systemd/rpc-statd.service
-index f16ea425dc77..a02f5c41a424 100644
-=2D-- a/systemd/rpc-statd.service
-+++ b/systemd/rpc-statd.service
-@@ -2,8 +2,8 @@
- Description=3DNFS status monitor for NFSv2/3 locking.
- DefaultDependencies=3Dno
- Conflicts=3Dumount.target
-=2DRequires=3Dnss-lookup.target rpcbind.target
-=2DAfter=3Dnetwork.target nss-lookup.target rpcbind.service
-+Requires=3Dnss-lookup.target rpcbind.socket
-+After=3Dnetwork.target nss-lookup.target rpcbind.socket
-=20
- PartOf=3Dnfs-utils.service
-=20
+>
+> Any feedback is highly appreciated.
+>
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-btrfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
 --=-=-=
 Content-Type: application/pgp-signature; name="signature.asc"
@@ -145,18 +121,18 @@ Content-Type: application/pgp-signature; name="signature.asc"
 -----BEGIN PGP SIGNATURE-----
 Version: GnuPG v2
 
-iQIcBAEBCAAGBQJXIs37AAoJEDnsnt1WYoG5XL4QAIdN2D1NdNdnSmloTF3Mz+OP
-VMXzH2a2i23mgzXP47V5mT557UIH2/tLRtbQNSxckjdwbo56EU9N6yg6VVloKhhS
-f+4QkklzCkxukvqaRsA4avNfGuB5WE4BFeSG41qQFaBSe3+1MA7yZZoCddhdUet0
-GkF02gUbEoFru3gMfJOdoSquPmONRVSATSSrVW66AMQQMprQ2cHId01Twtto2spx
-EKO7MUcaPl3MgTOJZSbkBgVNky2azdX7VUURdFO6zdT9AFucrce7U4L3oOJ2RSSA
-Zl8qJO6XHpczEQTQZMAy4hkiESXEXGMlaBGAkiy3VQLogEgbT0vNR1IFRCgw3ih7
-+EDiejoiz5c344dgx9d94fRV7+wnmxflnSgKi/mE4wwZu0MZYxJgSvYtLtVQIOh6
-8TsY6JHGvTLtbqfkAoxB3BBjEGy8vlZcvighHsFIoRqvmeJV4ocT0UoSY/Yzxymx
-Uo+5HF1ziyKIK74IwvFRioGWR1ev5Ut8oJ1TxumwhrIP3stlJ015XIHBiolqNxf6
-aSjsFi9mssS+sEmvK6fvm/aX3UYGNXU4oqQMpz2PH/C1yX/xAUKr9ap+xrEg58XG
-NmjphhUbFHVfXkpmybgFotN5IpBCnGZcJw+ghoYsLdJBweHQu6PuY885WSEy2H/K
-fJA4DSuQ0KLdTxuuqmFX
-=8ldy
+iQIcBAEBCAAGBQJXIvKuAAoJEDnsnt1WYoG5yYcQALVBjDFPD7k40UTzmu/EpZtF
+q5uzTpP8A/Uhy4k8kJnHF9JhXwHlKXxKiFSTavyZqxE8LjmJwZOyB3hdg5boVQ1C
+43ZKUpSd2i8BwIBZ1Ld37W9UEtT1owibqaY9KyOxetBk8wsZQoXks7XLQ+i8SMp1
+lGQJwbykXBPfLzlBTV02QstA++bpwdFqFyxL9DTtYF8e9BbhC3iwFS2t/dwj17Uo
+3WNu8OaXzYvf71uYTs2khlrKx3PQvKuUBLG30XGy1Lk/SF+lYlGtnrT0+wyWpSlR
+gzU7KXJjF1Mw7snb/JncOARDJJvHC3IUaaJy9GG8cLBY6j9sPAnoAGeKEtEXeSUC
+B2CUXkPS3n1Ejr0r5WhrLl8jO5oMIV6vZ/kDRFhEQt/gj0H5Zv0heQtp/DkgtFox
+mvBUH7cf2sqb9gabXGcm+5M9/yyqU1NzNR+8f+QCm2PrX9kzYKNExYc7Yx23KpWc
+BzT6Nzf62/nkhDHOzD50MMFFf5jWS0jWDS4uHx4KiG1JvKjRL6MW5GG1qNxQ+D8a
+kuzPKy/mMh7uppGOV4gxCdOQ04zyWfabzzcU5jM9WJeaXeZoDb6mOTJ6NSueUTBf
+nd3LnYoXc9LVTr4q9C4IerVNsjU2ZNTE/Nw2Sb+RLqEEBh5QpOITGYITS0aPK9fT
+AHBilQxky11eQicGLpS3
+=gouN
 -----END PGP SIGNATURE-----
 --=-=-=--
