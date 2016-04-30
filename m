@@ -1,178 +1,161 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f169.google.com ([209.85.223.169]:36071 "EHLO
-	mail-io0-f169.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750800AbcD2XSl (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 29 Apr 2016 19:18:41 -0400
+Received: from ipmail06.adl6.internode.on.net ([150.101.137.145]:53234 "EHLO
+	ipmail06.adl6.internode.on.net" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1752203AbcD3ALq (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 29 Apr 2016 20:11:46 -0400
+Date: Sat, 30 Apr 2016 10:11:38 +1000
+From: Dave Chinner <david@fromorbit.com>
+To: NeilBrown <mr@neil.brown.name>
+Cc: Michal Hocko <mhocko@kernel.org>, linux-mm@kvack.org,
+        linux-fsdevel@vger.kernel.org,
+        Andrew Morton <akpm@linux-foundation.org>,
+        "Theodore Ts'o" <tytso@mit.edu>, Chris Mason <clm@fb.com>,
+        Jan Kara <jack@suse.cz>, ceph-devel@vger.kernel.org,
+        cluster-devel@redhat.com, linux-nfs@vger.kernel.org, logfs@logfs.org,
+        xfs@oss.sgi.com, linux-ext4@vger.kernel.org,
+        linux-btrfs@vger.kernel.org, linux-mtd@lists.infradead.org,
+        reiserfs-devel@vger.kernel.org, linux-ntfs-dev@lists.sourceforge.net,
+        linux-f2fs-devel@lists.sourceforge.net, linux-afs@lists.infradead.org,
+        LKML <linux-kernel@vger.kernel.org>
+Subject: Re: [PATCH 0/2] scop GFP_NOFS api
+Message-ID: <20160430001138.GO26977@dastard>
+References: <1461671772-1269-1-git-send-email-mhocko@kernel.org>
+ <8737q5ugcx.fsf@notabene.neil.brown.name>
 MIME-Version: 1.0
-Date: Fri, 29 Apr 2016 20:18:40 -0300
-Message-ID: <CAOMZO5D9dTFRbT0CMOdM3aGb1cLd+n8udQQH0K=onZ7Z-4onmw@mail.gmail.com>
-Subject: Cannot use NFS with linux-next 20160429
-From: Fabio Estevam <festevam@gmail.com>
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-Cc: "netdev@vger.kernel.org" <netdev@vger.kernel.org>,
-        linux-nfs@vger.kernel.org
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <8737q5ugcx.fsf@notabene.neil.brown.name>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi,
+On Fri, Apr 29, 2016 at 03:35:42PM +1000, NeilBrown wrote:
+> On Tue, Apr 26 2016, Michal Hocko wrote:
+> 
+> > Hi,
+> > we have discussed this topic at LSF/MM this year. There was a general
+> > interest in the scope GFP_NOFS allocation context among some FS
+> > developers. For those who are not aware of the discussion or the issue
+> > I am trying to sort out (or at least start in that direction) please
+> > have a look at patch 1 which adds memalloc_nofs_{save,restore} api
+> > which basically copies what we have for the scope GFP_NOIO allocation
+> > context. I haven't converted any of the FS myself because that is way
+> > beyond my area of expertise but I would be happy to help with further
+> > changes on the MM front as well as in some more generic code paths.
+> >
+> > Dave had an idea on how to further improve the reclaim context to be
+> > less all-or-nothing wrt. GFP_NOFS. In short he was suggesting an opaque
+> > and FS specific cookie set in the FS allocation context and consumed
+> > by the FS reclaim context to allow doing some provably save actions
+> > that would be skipped due to GFP_NOFS normally.  I like this idea and
+> > I believe we can go that direction regardless of the approach taken here.
+> > Many filesystems simply need to cleanup their NOFS usage first before
+> > diving into a more complex changes.>
+> 
+> This strikes me as over-engineering to work around an unnecessarily
+> burdensome interface.... but without details it is hard to be certain.
+> 
+> Exactly what things happen in "FS reclaim context" which may, or may
+> not, be safe depending on the specific FS allocation context?  Do they
+> need to happen at all?
+> 
+> My research suggests that for most filesystems the only thing that
+> happens in reclaim context that is at all troublesome is the final
+> 'evict()' on an inode.  This needs to flush out dirty pages and sync the
+> inode to storage.  Some time ago we moved most dirty-page writeout out
+> of the reclaim context and into kswapd.  I think this was an excellent
+> advance in simplicity.
 
-NFS is not working on a imx6q-sabresd board running linux-next 20160429:
+No, we didn't move dirty page writeout to kswapd - we moved it back
+to the background writeback threads where it can be done
+efficiently.  kswapd should almost never do single page writeback
+because of how inefficient it is from an IO perspective, even though
+it can. i.e. if we are doing any significant amount of dirty page
+writeback from memory reclaim (direct, kswapd or otherwise) then
+we've screwed something up.
 
-[   15.753317]   #0: wm8962-audio
-[   15.759437] Root-NFS: no NFS server address
-[   15.763649] VFS: Unable to mount root fs via NFS, trying floppy.
-[   15.774223] VFS: Cannot open root device "nfs" or
-unknown-block(2,0): error -6
-[   15.781540] Please append a correct "root=" boot option; here are
-the available partitions:
-[   15.790145] 0100           65536 ram0  (driver?)
-[   15.794837] 0101           65536 ram1  (driver?)
-[   15.799576] 0102           65536 ram2  (driver?)
-[   15.804262] 0103           65536 ram3  (driver?)
-[   15.809023] 0104           65536 ram4  (driver?)
-[   15.813710] 0105           65536 ram5  (driver?)
-[   15.818392] 0106           65536 ram6  (driver?)
-[   15.823121] 0107           65536 ram7  (driver?)
-[   15.827804] 0108           65536 ram8  (driver?)
-[   15.832531] 0109           65536 ram9  (driver?)
-[   15.837213] 010a           65536 ram10  (driver?)
-[   15.841989] 010b           65536 ram11  (driver?)
-[   15.846729] 010c           65536 ram12  (driver?)
-[   15.851491] 010d           65536 ram13  (driver?)
-[   15.856228] 010e           65536 ram14  (driver?)
-[   15.860992] 010f           65536 ram15  (driver?)
-[   15.865742] 1f00            4096 mtdblock0  (driver?)
-[   15.870853] b300         3872256 mmcblk1  driver: mmcblk
-[   15.876199] b308         7757824 mmcblk2  driver: mmcblk
-[   15.881570] b320             128 mmcblk2rpmb  (driver?)
-[   15.886830] b318            1024 mmcblk2boot1  (driver?)
-[   15.892201] b310            1024 mmcblk2boot0  (driver?)
-[   15.897541] Kernel panic - not syncing: VFS: Unable to mount root
-fs on unknown-block(2,0)
-[   15.905978] CPU0: stopping
-[   15.908704] CPU: 0 PID: 0 Comm: swapper/0 Not tainted
-4.6.0-rc5-next-20160429 #349
-[   15.916284] Hardware name: Freescale i.MX6 Quad/DualLite (Device Tree)
-[   15.922818] Backtrace:
-[   15.925316] [<c010b6f8>] (dump_backtrace) from [<c010b894>]
-(show_stack+0x18/0x1c)
-[   15.932893]  r6:60000193 r5:ffffffff r4:00000000 r3:00000000
-[   15.938649] [<c010b87c>] (show_stack) from [<c03df190>]
-(dump_stack+0xb0/0xe8)
-[   15.945889] [<c03df0e0>] (dump_stack) from [<c010edec>]
-(handle_IPI+0x174/0x1a4)
-[   15.953292]  r8:c0d01f08 r7:c0c746ec r6:00000000 r5:c0d02b10
-r4:00000000 r3:c0d05e80
-[   15.961147] [<c010ec78>] (handle_IPI) from [<c0101618>]
-(gic_handle_irq+0x8c/0x9c)
-[   15.968722]  r8:c0d21f80 r7:c0d02c58 r6:c0d01f08 r5:f400010c
-r4:f4000100 r3:00000c04
-[   15.976573] [<c010158c>] (gic_handle_irq) from [<c010c4b8>]
-(__irq_svc+0x58/0x78)
-[   15.984065] Exception stack(0xc0d01f08 to 0xc0d01f50)
-[   15.989129] 1f00:                   00000001 00000001 00000000
-c011b920 00000000 c0d02984
-[   15.997318] 1f20: 00000000 00000000 c0c757b8 c0d029d8 c0d029d0
-c0d01f64 c0d01f28 c0d01f58
-[   16.005505] 1f40: c016d120 c01089e0 20000013 ffffffff
-[   16.010563]  r10:c0d029d0 r9:c0d029d8 r8:c0c757b8 r7:c0d01f3c
-r6:ffffffff r5:20000013
-[   16.018495]  r4:c01089e0 r3:c0d05e80
-[   16.022130] [<c01089b8>] (arch_cpu_idle) from [<c01661a0>]
-(default_idle_call+0x28/0x38)
-[   16.030236] [<c0166178>] (default_idle_call) from [<c0166378>]
-(cpu_startup_entry+0x1c8/0x24c)
-[   16.038864] [<c01661b0>] (cpu_startup_entry) from [<c08edd78>]
-(rest_init+0x12c/0x16c)
-[   16.046788]  r7:c0c5da48 r3:00000000
-[   16.050417] [<c08edc4c>] (rest_init) from [<c0c00cbc>]
-(start_kernel+0x340/0x3b0)
-[   16.057906]  r5:ffffffff r4:c0d6e050
-[   16.061532] [<c0c0097c>] (start_kernel) from [<1000807c>] (0x1000807c)
-[   16.068067]  r10:00000000 r8:1000406a r7:c0d0780c r6:c0c5da44
-r5:c0d0296c r4:c0d6e294
-[   16.076002] CPU2: stopping
-[   16.078725] CPU: 2 PID: 0 Comm: swapper/2 Not tainted
-4.6.0-rc5-next-20160429 #349
-[   16.086302] Hardware name: Freescale i.MX6 Quad/DualLite (Device Tree)
-[   16.092836] Backtrace:
-[   16.095320] [<c010b6f8>] (dump_backtrace) from [<c010b894>]
-(show_stack+0x18/0x1c)
-[   16.102897]  r6:60000193 r5:ffffffff r4:00000000 r3:00000000
-[   16.108646] [<c010b87c>] (show_stack) from [<c03df190>]
-(dump_stack+0xb0/0xe8)
-[   16.115883] [<c03df0e0>] (dump_stack) from [<c010edec>]
-(handle_IPI+0x174/0x1a4)
-[   16.123286]  r8:ef0a5f58 r7:c0c746ec r6:00000000 r5:c0d02b10
-r4:00000002 r3:ef0a8000
-[   16.131138] [<c010ec78>] (handle_IPI) from [<c0101618>]
-(gic_handle_irq+0x8c/0x9c)
-[   16.138713]  r8:c0d21f80 r7:c0d02c58 r6:ef0a5f58 r5:f400010c
-r4:f4000100 r3:00000c04
-[   16.146562] [<c010158c>] (gic_handle_irq) from [<c010c4b8>]
-(__irq_svc+0x58/0x78)
-[   16.154052] Exception stack(0xef0a5f58 to 0xef0a5fa0)
-[   16.159112] 5f40:
-    00000001 00000001
-[   16.167301] 5f60: 00000000 c011b920 00000000 c0d02984 00000000
-00000000 c0c757b8 c0d029d8
-[   16.175489] 5f80: c0d029d0 ef0a5fb4 ef0a5f78 ef0a5fa8 c016d120
-c01089e0 20000013 ffffffff
-[   16.183672]  r10:c0d029d0 r9:c0d029d8 r8:c0c757b8 r7:ef0a5f8c
-r6:ffffffff r5:20000013
-[   16.191601]  r4:c01089e0 r3:ef0a8000
-[   16.195230] [<c01089b8>] (arch_cpu_idle) from [<c01661a0>]
-(default_idle_call+0x28/0x38)
-[   16.203334] [<c0166178>] (default_idle_call) from [<c0166378>]
-(cpu_startup_entry+0x1c8/0x24c)
-[   16.211959] [<c01661b0>] (cpu_startup_entry) from [<c010ea14>]
-(secondary_start_kernel+0x130/0x154)
-[   16.221010]  r7:c0d6e388 r3:00000004
-[   16.224633] [<c010e8e4>] (secondary_start_kernel) from [<101016cc>]
-(0x101016cc)
-[   16.232035]  r5:00000051 r4:3f08806a
-[   16.235656] CPU1: stopping
-[   16.238378] CPU: 1 PID: 0 Comm: swapper/1 Not tainted
-4.6.0-rc5-next-20160429 #349
-[   16.245954] Hardware name: Freescale i.MX6 Quad/DualLite (Device Tree)
-[   16.252487] Backtrace:
-[   16.254970] [<c010b6f8>] (dump_backtrace) from [<c010b894>]
-(show_stack+0x18/0x1c)
-[   16.262545]  r6:60000193 r5:ffffffff r4:00000000 r3:00000000
-[   16.268291] [<c010b87c>] (show_stack) from [<c03df190>]
-(dump_stack+0xb0/0xe8)
-[   16.275529] [<c03df0e0>] (dump_stack) from [<c010edec>]
-(handle_IPI+0x174/0x1a4)
-[   16.282931]  r8:ef0a3f58 r7:c0c746ec r6:00000000 r5:c0d02b10
-r4:00000001 r3:ef076c00
-[   16.290777] [<c010ec78>] (handle_IPI) from [<c0101618>]
-(gic_handle_irq+0x8c/0x9c)
-[   16.298353]  r8:c0d21f80 r7:c0d02c58 r6:ef0a3f58 r5:f400010c
-r4:f4000100 r3:00000c04
-[   16.306199] [<c010158c>] (gic_handle_irq) from [<c010c4b8>]
-(__irq_svc+0x58/0x78)
-[   16.313688] Exception stack(0xef0a3f58 to 0xef0a3fa0)
-[   16.318747] 3f40:
-    00000001 00000001
-[   16.326935] 3f60: 00000000 c011b920 00000000 c0d02984 00000000
-00000000 c0c757b8 c0d029d8
-[   16.335123] 3f80: c0d029d0 ef0a3fb4 ef0a3f78 ef0a3fa8 c016d120
-c01089e0 20000013 ffffffff
-[   16.343304]  r10:c0d029d0 r9:c0d029d8 r8:c0c757b8 r7:ef0a3f8c
-r6:ffffffff r5:20000013
-[   16.351230]  r4:c01089e0 r3:ef076c00
-[   16.354856] [<c01089b8>] (arch_cpu_idle) from [<c01661a0>]
-(default_idle_call+0x28/0x38)
-[   16.362961] [<c0166178>] (default_idle_call) from [<c0166378>]
-(cpu_startup_entry+0x1c8/0x24c)
-[   16.371585] [<c01661b0>] (cpu_startup_entry) from [<c010ea14>]
-(secondary_start_kernel+0x130/0x154)
-[   16.380635]  r7:c0d6e388 r3:00000002
-[   16.384256] [<c010e8e4>] (secondary_start_kernel) from [<101016cc>]
-(0x101016cc)
-[   16.391657]  r5:00000051 r4:3f08806a
-[   16.395300] ---[ end Kernel panic - not syncing: VFS: Unable to
-mount root fs on unknown-block(2,0)
+> If we could similarly move evict() into kswapd (and I believe we can)
+> then most file systems would do nothing in reclaim context that
+> interferes with allocation context.
 
-Any ideas? Thanks
+When lots of GFP_NOFS allocation is being done, this already
+happens. The shrinkers that can't run due to context accumulate the
+work on the shrinker structure, and when the shrinker can next run
+(e.g. run from kswapd) it runs all the deferred work from GFP_NOFS
+reclaim contexts.
+
+IOWs, we already move shrinker work from direct reclaim to kswapd
+when appropriate.
+
+> The exceptions include:
+>  - nfs and any filesystem using fscache can block for up to 1 second
+>    in ->releasepage().  They used to block waiting for some IO, but that
+>    caused deadlocks and wasn't really needed.  I left the timeout because
+>    it seemed likely that some throttling would help.  I suspect that a
+>    careful analysis will show that there is sufficient throttling
+>    elsewhere.
+> 
+>  - xfs_qm_shrink_scan is nearly unique among shrinkers in that it waits
+>    for IO so it can free some quotainfo things. 
+
+No it's not. evict() can block on IO - waiting for data or inode
+writeback to complete, or even for filesystems to run transactions
+on the inode. Hence the superblock shrinker can and does block in
+inode cache reclaim.
+
+Indeed, blocking the superblock shrinker in reclaim is a key part of
+balancing inode cache pressure in XFS. If the shrinker starts
+hitting dirty inodes, it blocks on cleaning them, thereby slowing
+the rate of allocation to that which inodes can be cleaned and
+reclaimed. There are also background threads that walk ahead freeing
+clean inodes, but we have to throttle direct reclaim in this manner
+otherwise the allocation pressure vastly outweighs the ability to
+reclaim inodes. if we don't balance this, inode allocation triggers
+the OOM killer because reclaim keeps reporting "no progress being
+made" because dirty inodes are skipped. BY blocking on such inodes,
+the shrinker makes progress (slowly) and reclaim sees that memory is
+being freed and so continues without invoking the OOM killer...
+
+>    If it could be changed
+>    to just schedule the IO without waiting for it then I think this
+>    would be safe to be called in any FS allocation context.  It already
+>    uses a 'trylock' in xfs_dqlock_nowait() to avoid deadlocking
+>    if the lock is held.
+
+We could, but then we have the same problem as the inode cache -
+there's no indication of progress going back to the memory reclaim
+subsystem, nor is reclaim able to throttle memory allocation back to
+the rate at which reclaim is making progress.
+
+There's feedback loops all throughout the XFS reclaim code - it's
+designed specifically that way - I made changes to the shrinker
+infrastructure years ago to enable this. It's no different to the
+dirty page throttling that was done at roughly the same time -
+that's also one big feedback loop controlled by the rate at which
+pages can be cleaned. Indeed, it was designed was based on the same
+premise as all the XFS shrinker code: in steady state conditions
+we can't allocate a resource faster than we can reclaim it, so we
+need to make reclaim as efficient at possible...
+
+> I think you/we would end up with a much simpler system if instead of
+> focussing on the places where GFP_NOFS is used, we focus on places where
+> __GFP_FS is tested, and try to remove them.  If we get rid of enough of
+> them the remainder could just use __GFP_IO.
+
+The problem with this is that a single kswapd thread can't keep up
+with all of the allocation pressure that occurs. e.g. a 20-core
+intel CPU with local memory will be seen as a single node and so
+will have a single kswapd thread to do reclaim. There's a massive
+imbalance between maximum reclaim rate and maximum allocation rate
+in situations like this. If we want memory reclaim to run faster,
+we to be able to do more work *now*, not defer it to a context with
+limited execution resources.
+
+i.e. IMO deferring more work to a single reclaim thread per node is
+going to limit memory reclaim scalability and performance, not
+improve it.
+
+Cheers,
+
+Dave.
+-- 
+Dave Chinner
+david@fromorbit.com
