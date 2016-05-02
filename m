@@ -1,202 +1,238 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f195.google.com ([209.85.223.195]:34357 "EHLO
-	mail-io0-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755269AbcEBWs4 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 2 May 2016 18:48:56 -0400
-Received: by mail-io0-f195.google.com with SMTP id d62so524257iof.1
-        for <linux-nfs@vger.kernel.org>; Mon, 02 May 2016 15:48:55 -0700 (PDT)
-Subject: Re: [PATCH 4/6] statx: NFS: Return enhanced file attributes
+Received: from mail-ig0-f193.google.com ([209.85.213.193]:34736 "EHLO
+	mail-ig0-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755254AbcEBWwR (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 2 May 2016 18:52:17 -0400
+Received: by mail-ig0-f193.google.com with SMTP id qu10so571520igc.1
+        for <linux-nfs@vger.kernel.org>; Mon, 02 May 2016 15:52:17 -0700 (PDT)
+Subject: Re: [PATCH 5/6] statx: Make windows attributes available for CIFS, NTFS and FAT to use
 Mime-Version: 1.0 (Mac OS X Mail 9.3 \(3124\))
-Content-Type: multipart/signed; boundary="Apple-Mail=_C94E8197-945C-4983-883F-2667C3339B99"; protocol="application/pgp-signature"; micalg=pgp-sha256
+Content-Type: multipart/signed; boundary="Apple-Mail=_DBB7F1D5-A7F9-4A1E-B40E-918CCDED7C1F"; protocol="application/pgp-signature"; micalg=pgp-sha256
 From: Andreas Dilger <adilger@dilger.ca>
-In-Reply-To: <20160429125806.23636.51590.stgit@warthog.procyon.org.uk>
-Date: Mon, 2 May 2016 16:48:50 -0600
+In-Reply-To: <20160429125813.23636.49830.stgit@warthog.procyon.org.uk>
+Date: Mon, 2 May 2016 16:52:12 -0600
 Cc: linux-fsdevel@vger.kernel.org, linux-afs@vger.kernel.org,
         linux-nfs@vger.kernel.org, samba-technical@lists.samba.org,
         linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org
-Message-Id: <CA657A25-B00C-47BC-B9BB-DF6C22B6D5CF@dilger.ca>
-References: <20160429125736.23636.47874.stgit@warthog.procyon.org.uk> <20160429125806.23636.51590.stgit@warthog.procyon.org.uk>
+Message-Id: <D21EA8F8-0A7A-4275-8D4C-E9CFCC2A7293@dilger.ca>
+References: <20160429125736.23636.47874.stgit@warthog.procyon.org.uk> <20160429125813.23636.49830.stgit@warthog.procyon.org.uk>
 To: David Howells <dhowells@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
---Apple-Mail=_C94E8197-945C-4983-883F-2667C3339B99
+--Apple-Mail=_DBB7F1D5-A7F9-4A1E-B40E-918CCDED7C1F
 Content-Transfer-Encoding: quoted-printable
 Content-Type: text/plain;
 	charset=us-ascii
 
 On Apr 29, 2016, at 6:58 AM, David Howells <dhowells@redhat.com> wrote:
 >=20
-> Return enhanced file atrributes from the NFS filesystem.  This =
-includes the
-> following:
->=20
-> (1) The change attribute as st_version if NFSv4.
->=20
-> (2) STATX_INFO_AUTOMOUNT and STATX_INFO_FABRICATED are set on referral =
-or
->     submount directories that are automounted upon.  NFS shows one
->     directory with a different FSID, but the local filesystem has two: =
+> Make windows attributes available for CIFS, NTFS and FAT to use in the
+> statx struct.  The attribute flags map directly by value to those in =
 the
->     mountpoint directory and the root of the filesystem mounted upon =
-it.
+> CIFS PDU flags.  Some of these bits can also be used by JFS, UFS and =
+HPFS.
 >=20
-> (3) STATX_INFO_REMOTE is set on files acquired over NFS.
+> The statx struct acquires:
 >=20
-> (4) STATX_IOC_FLAGS is set and if the atime is unavailable on a file,
->     st_ioc_flags will have FL_NOATIME_FL set in it.
+> 	__u32	st_win_attrs;
 
-This is not implemented in this patch, and should removed from the =
-commit
-message.  The generic_fillattr() change in [1/6] will clear the =
-STATX_ATIME
-flag if IS_NOATIME() is true, so maybe that is enough for what you =
-intended?
+It seems some of these flags are duplicated with the st_information =
+field,
+and some are duplicate with FS_IOC_GETFLAGS values, and returning the =
+same
+information in multiple ways is confusing.
+
+If these flags are part of the CIFS protocol, and are directly usable by
+Samba then I can understand we wouldn't want to change them once in the
+kernel and then convert them back in userspace, but I'm a bit reluctant
+to have flags only for CIFS/NTFS/FAT that might also be useful for other =
+filesystems.  Would we want to be able to get translated st_win_attrs
+flags in ext4 attrs when it is being exported by Samba?
+
+> The value in this is present if STATX_WIN_ATTRS is set.
+>=20
+> The defined flags in this are:
+>=20
+> 	STATX_WIN_ATTR_READONLY
+> 	STATX_WIN_ATTR_HIDDEN
+> 	STATX_WIN_ATTR_SYSTEM
+> 	STATX_WIN_ATTR_DIRECTORY
+
+How does this differ from (st_mode & S_IFMT) =3D=3D S_IFDIR)?
+
+> 	STATX_WIN_ATTR_ARCHIVE
+> 	STATX_WIN_ATTR_NORMAL
+
+How does this differ from (st_mode & S_IFMT) =3D=3D S_IFREG)?
+
+> 	STATX_WIN_ATTR_TEMPORARY
+
+How does this differ from STATX_INFO_TEMPORARY?
+
+> 	STATX_WIN_ATTR_SPARSE_FILE
+> 	STATX_WIN_ATTR_REPARSE_POINT
+> 	STATX_WIN_ATTR_COMPRESSED
+> 	STATX_WIN_ATTR_OFFLINE
+> 	STATX_WIN_ATTR_NOT_CONTENT_INDEXED
+> 	STATX_WIN_ATTR_ENCRYPTED
+
+How does this differ from STATX_INFO_ENCRYPTED?
 
 Cheers, Andreas
 
-> Furthermore, what nfs_getattr() does can be controlled as follows:
->=20
-> (1) If AT_NO_ATTR_SYNC is indicated then this will suppress the =
-flushing
->     of outstanding writes and the rereading of the inode's attributes =
-with
->     the server as detailed below.
->=20
-> (2) Otherwise:
->=20
->     (a) If AT_FORCE_ATTR_SYNC is indicated, or mtime, ctime or
->     	 data_version (NFSv4 only) are requested then the outstanding
->     	 writes will be written to the server first.
->=20
->     (b) The inode's attributes will be reread from the server:
->=20
->     	 (i) if AT_FORCE_ATTR_SYNC is indicated;
->=20
->        (ii) if atime is requested (and atime updating is not =
-suppressed by
->     	     a mount flag); or
->=20
->       (iii) if the cached attributes have expired;
->=20
-> If the inode isn't synchronised, then the cached attributes will be =
-used -
-> even if expired - without reference to the server.
->=20
-> Example output:
->=20
-> 	[root@andromeda ~]# ./samples/statx/test-statx /warthog/
-> 	statx(/warthog/) =3D 0
-> 	results=3D37ef
-> 	  Size: 4096            Blocks: 8          IO Block: 1048576  =
-directory
-> 	Device: 00:26           Inode: 2           Links: 122
-> 	Access: (3777/drwxrwxrwx)  Uid:     0   Gid:  4041
-> 	Access: 2015-10-30 16:15:41.730925545+0000
-> 	Modify: 2015-10-07 10:33:19.896108112+0100
-> 	Change: 2015-10-07 10:33:19.896108112+0100
-> 	Data version: 5614e6df35698650h
-> 	Inode flags: 00000000 (-------- -------- -------- --------)
-> 	Information: 00000010 (-------- -------- -------- ---r----)
-> 	IO-blocksize: blksize=3D1048576
->=20
-> Note that the NFS4 protocol potentially provides a creation time that =
-could
-> be passed through this interface and system, hidden and archive values =
-that
-> could be passed as IOC flags.  There is also a backup time that could =
-be
-> added.
+> 	STATX_WIN_ATTR_INTEGRITY_STREAM
+> 	STATX_WIN_ATTR_NO_SCRUB_DATA
 >=20
 > Signed-off-by: David Howells <dhowells@redhat.com>
 > ---
 >=20
-> fs/nfs/inode.c |   41 ++++++++++++++++++++++++++++++++++-------
-> 1 file changed, 34 insertions(+), 7 deletions(-)
+> fs/stat.c                  |    5 ++++-
+> include/uapi/linux/stat.h  |   30 ++++++++++++++++++++++++++++--
+> samples/statx/test-statx.c |   31 +++++++++++++++++++++++++++++++
+> 3 files changed, 63 insertions(+), 3 deletions(-)
 >=20
-> diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
-> index 738c84a42eb0..8637236bca0c 100644
-> --- a/fs/nfs/inode.c
-> +++ b/fs/nfs/inode.c
-> @@ -655,12 +655,23 @@ static bool nfs_need_revalidate_inode(struct =
-inode *inode)
-> int nfs_getattr(struct vfsmount *mnt, struct dentry *dentry, struct =
+> diff --git a/fs/stat.c b/fs/stat.c
+> index c2f8370dab13..1552bff154e6 100644
+> --- a/fs/stat.c
+> +++ b/fs/stat.c
+> @@ -83,6 +83,7 @@ int vfs_xgetattr_nosec(struct path *path, struct =
 kstat *stat)
-> {
-> 	struct inode *inode =3D d_inode(dentry);
-> -	int need_atime =3D NFS_I(inode)->cache_validity & =
-NFS_INO_INVALID_ATIME;
-> +	bool force_sync =3D stat->query_flags & AT_FORCE_ATTR_SYNC;
-> +	bool suppress_sync =3D stat->query_flags & AT_NO_ATTR_SYNC;
-> +	bool need_atime =3D NFS_I(inode)->cache_validity & =
-NFS_INO_INVALID_ATIME;
-> 	int err =3D 0;
 >=20
-> 	trace_nfs_getattr_enter(inode);
-> -	/* Flush out writes to the server in order to update c/mtime.  =
+> 	stat->result_mask =3D 0;
+> 	stat->information =3D 0;
+> +	stat->win_attrs =3D 0;
+> 	if (inode->i_op->getattr)
+> 		return inode->i_op->getattr(path->mnt, path->dentry, =
+stat);
+>=20
+> @@ -643,7 +644,9 @@ static long statx_set_result(struct kstat *stat, =
+struct statx __user *buffer)
+> 	    __put_user(stat->blocks,		&buffer->st_blocks	=
+) ||
+> 	    __put_user(stat->version,		&buffer->st_version	=
+) ||
+> 	    __put_user(stat->gen,		&buffer->st_gen		=
+) ||
+> -	    __clear_user(&buffer->__spare1, sizeof(buffer->__spare1)))
+> +	    __put_user(stat->win_attrs,		&buffer->st_win_attrs	=
+) ||
+> +	    __clear_user(&buffer->__spare1,
+> +			 sizeof(buffer->__spare1) + =
+sizeof(buffer->__spare2)))
+> 		return -EFAULT;
+>=20
+> 	return 0;
+> diff --git a/include/uapi/linux/stat.h b/include/uapi/linux/stat.h
+> index 55ce6607dab6..64729b0785bf 100644
+> --- a/include/uapi/linux/stat.h
+> +++ b/include/uapi/linux/stat.h
+> @@ -106,7 +106,10 @@ struct statx {
+> 	__u32	st_dev_major;	/* ID of device containing file [uncond] =
 */
-> -	if (S_ISREG(inode->i_mode)) {
-> +
-> +	if (NFS_SERVER(inode)->nfs_client->rpc_ops->version < 4)
-> +		stat->request_mask &=3D ~STATX_VERSION;
-> +
-> +	/* Flush out writes to the server in order to update c/mtime or =
-data
-> +	 * version if the user wants them.
-> +	 */
-> +	if (S_ISREG(inode->i_mode) && !suppress_sync &&
-> +	    (force_sync || (stat->request_mask &
-> +			    (STATX_MTIME | STATX_CTIME | =
-STATX_VERSION)))
-> +	    ) {
-> 		inode_lock(inode);
-> 		err =3D nfs_sync_inode(inode);
-> 		inode_unlock(inode);
-> @@ -677,11 +688,13 @@ int nfs_getattr(struct vfsmount *mnt, struct =
-dentry *dentry, struct kstat *stat)
-> 	 *  - NFS never sets MS_NOATIME or MS_NODIRATIME so there is
-> 	 *    no point in checking those.
-> 	 */
-> - 	if ((mnt->mnt_flags & MNT_NOATIME) ||
-> - 	    ((mnt->mnt_flags & MNT_NODIRATIME) && =
-S_ISDIR(inode->i_mode)))
-> -		need_atime =3D 0;
-> +	if (!(stat->request_mask & STATX_ATIME) ||
-> +	    (mnt->mnt_flags & MNT_NOATIME) ||
-> +	    ((mnt->mnt_flags & MNT_NODIRATIME) && =
-S_ISDIR(inode->i_mode)))
-> +		need_atime =3D false;
+> 	__u32	st_dev_minor;
+> 	/* 0x80 */
+> -	__u64	__spare1[16];	/* Spare space for future expansion */
+> +	__u32	st_win_attrs;	/* Windows file attributes */
+> +	__u32	__spare1[3];
+> +	/* 0x90 */
+> +	__u64	__spare2[14];	/* Spare space for future expansion */
+> 	/* 0x100 */
+> };
 >=20
-> -	if (need_atime || nfs_need_revalidate_inode(inode)) {
-> +	if (!suppress_sync &&
-> +	    (force_sync || need_atime || =
-nfs_need_revalidate_inode(inode))) {
-> 		struct nfs_server *server =3D NFS_SERVER(inode);
+> @@ -133,7 +136,8 @@ struct statx {
+> #define STATX_BTIME		0x00000800U	/* Want/got st_btime */
+> #define STATX_VERSION		0x00001000U	/* Want/got st_version =
+*/
+> #define STATX_GEN		0x00002000U	/* Want/got st_gen */
+> -#define STATX_ALL_STATS		0x00003fffU	/* All supported =
+stats */
+> +#define STATX_WIN_ATTRS		0x00004000U	/* Want/got =
+st_win_attrs */
+> +#define STATX_ALL_STATS		0x00007fffU	/* All supported =
+stats */
 >=20
-> 		if (server->caps & NFS_CAP_READDIRPLUS)
-> @@ -694,6 +707,20 @@ int nfs_getattr(struct vfsmount *mnt, struct =
-dentry *dentry, struct kstat *stat)
-> 		if (S_ISDIR(inode->i_mode))
-> 			stat->blksize =3D NFS_SERVER(inode)->dtsize;
-> 	}
+> /*
+>  * Flags to be found in st_information
+> @@ -151,4 +155,26 @@ struct statx {
+> #define STATX_INFO_AUTODIR		0x00000040U /* Dir provides =
+unlisted automounts */
+> #define STATX_INFO_NONSYSTEM_OWNERSHIP	0x00000080U /* File has =
+non-system ownership details */
+>=20
+> +/*
+> + * Flags to be found in st_win_attrs.
+> + *
+> + * These give information about the state of a file on a Windows =
+filesystem
+> + * (such as. FAT, NTFS, CIFS).  These values are borrowed from the =
+CIFS fs.
+> + */
+> +#define STATX_WIN_ATTR_READONLY			0x00000001
+> +#define STATX_WIN_ATTR_HIDDEN			0x00000002
+> +#define STATX_WIN_ATTR_SYSTEM			0x00000004
+> +#define STATX_WIN_ATTR_DIRECTORY		0x00000010
+> +#define STATX_WIN_ATTR_ARCHIVE			0x00000020
+> +#define STATX_WIN_ATTR_NORMAL			0x00000080
+> +#define STATX_WIN_ATTR_TEMPORARY		0x00000100
+> +#define STATX_WIN_ATTR_SPARSE_FILE		0x00000200
+> +#define STATX_WIN_ATTR_REPARSE_POINT		0x00000400
+> +#define STATX_WIN_ATTR_COMPRESSED		0x00000800
+> +#define STATX_WIN_ATTR_OFFLINE			0x00001000
+> +#define STATX_WIN_ATTR_NOT_CONTENT_INDEXED	0x00002000
+> +#define STATX_WIN_ATTR_ENCRYPTED		0x00004000
+> +#define STATX_WIN_ATTR_INTEGRITY_STREAM		0x00008000
+> +#define STATX_WIN_ATTR_NO_SCRUB_DATA		0x00020000
 > +
-> +	generic_fillattr(inode, stat);
-> +	stat->ino =3D nfs_compat_user_ino64(NFS_FILEID(inode));
+> #endif /* _UAPI_LINUX_STAT_H */
+> diff --git a/samples/statx/test-statx.c b/samples/statx/test-statx.c
+> index 38ef23c12e7d..86eac7d16c32 100644
+> --- a/samples/statx/test-statx.c
+> +++ b/samples/statx/test-statx.c
+> @@ -134,6 +134,37 @@ static void dump_statx(struct statx *stx)
+> 	if (stx->st_mask & STATX_GEN)
+> 		printf("Inode gen   : %xh\n", stx->st_gen);
+>=20
+> +	if (stx->st_mask & STATX_WIN_ATTRS) {
+> +		unsigned char bits;
+> +		int loop, byte;
 > +
-> +	if (stat->request_mask & STATX_VERSION) {
-> +		stat->version =3D inode->i_version;
-> +		stat->result_mask |=3D STATX_VERSION;
+> +		static char wattr_representation[32 + 1] =3D
+> +			/* STATX_WIN_ATTR_ flags: */
+> +			"????????"	/* 31-24	=
+0x00000000-ff000000 */
+> +			"??????N?"	/* 23-16	=
+0x00000000-00ff0000 */
+> +			"ieNocrst"	/* 15- 8	=
+0x00000000-0000ff00 */
+> +			"n?Ad?SHR"	/*  7- 0	=
+0x00000000-000000ff */
+> +			;
+> +
+> +		printf("Win attrs  : %08llx (",
+> +		       (unsigned long long)stx->st_win_attrs);
+> +		for (byte =3D 32 - 8; byte >=3D 0; byte -=3D 8) {
+> +			bits =3D stx->st_win_attrs >> byte;
+> +			for (loop =3D 7; loop >=3D 0; loop--) {
+> +				int bit =3D byte + loop;
+> +
+> +				if (bits & 0x80)
+> +					putchar(wattr_representation[31 =
+- bit]);
+> +				else
+> +					putchar('-');
+> +				bits <<=3D 1;
+> +			}
+> +			if (byte)
+> +				putchar(' ');
+> +		}
+> +		printf(")\n");
 > +	}
 > +
-> +	if (IS_AUTOMOUNT(inode))
-> +		stat->information |=3D STATX_INFO_FABRICATED;
-> +
-> +	stat->information |=3D STATX_INFO_REMOTE;
-> +
-> out:
-> 	trace_nfs_getattr_exit(inode, err);
-> 	return err;
+> 	if (stx->st_information) {
+> 		unsigned char bits;
+> 		int loop, byte;
 >=20
 > --
 > To unsubscribe from this list: send the line "unsubscribe linux-ext4" =
@@ -212,7 +248,7 @@ Cheers, Andreas
 
 
 
---Apple-Mail=_C94E8197-945C-4983-883F-2667C3339B99
+--Apple-Mail=_DBB7F1D5-A7F9-4A1E-B40E-918CCDED7C1F
 Content-Transfer-Encoding: 7bit
 Content-Disposition: attachment;
 	filename=signature.asc
@@ -223,19 +259,19 @@ Content-Description: Message signed with OpenPGP using GPGMail
 -----BEGIN PGP SIGNATURE-----
 Comment: GPGTools - http://gpgtools.org
 
-iQIVAwUBVyfZU3Kl2rkXzB/gAQg1FQ/9G+MJXA56XOofCpLrTnAMUP0qGU9WpyvE
-NsBJbAouHFbI+jA35V4tOS6cp8vtl8njNl0QLUxNR9AupUk8F2oB1JzO7vLtU7yw
-L1w2uybtO7jIAZIp+aICUclaTjEPa8FK9CVfRoTEjJL9utCmuMoFiWd2wEcwpEAa
-vqGCJWYf2ERhelP/rKxyD3yrtuAEl+7DHMKtwHITUnkEr/eQH8FatO1cLPe9ULJV
-JX1P74fTnBgwTGTVddcsbXsCeuoHL6lpzh5iJZNhhJpq+AVAQcrHzGxNsIiFTfmj
-JCe+ovH+SSVvwe0HleGE3HYuPxXojXAtuI9FRpP+Wn9fsrw0S/cUMpsVajMk9nhz
-/i4TGJV3rnFwvxGNgHnRAy40NXmyJgHzw0QhimZcNqVbcgZhMEqPENqt5eLQbB97
-4pDQoqOXqMb26n6MQdMz9OZt0mDtOHldJuxy1ZEd5FTMuzPZ4E+lOerqGxOylQBF
-476reffwmek/EBercN+Xayjt5xH1qp05QVndd+CO/07LrGoW4u9GyFft2tGfz9Yj
-BNwRDSfr7hZIcUIafgMfxVOqcXwaRkIpRcJAv3nOjUQ/6wd888+LdVxr9VHh9ukb
-VPqyg1dV2K54LBP3KMba8g+VOEDmaTP/UDP0eGH+XPCDpTWFijl8qbbYRTrPtgY9
-EhwvHVxYY1o=
-=eAGq
+iQIVAwUBVyfaHHKl2rkXzB/gAQjOmg//X8Uk8jcMk6Azbc0W5XItlYzjlrefkhSt
+4wfqxBaD8MWBIdfCu+8tKrHf5TEH9rUhooHEyLxDOdcucQwCDgCQ/3F5m8rxVCUH
+Yn4twP0SE2tleD/iB/jlnq00QTHqXFA5KVac2+0CSiQplxFa+IKrDH4sRrd+ZI1/
+09D0+vvjwFXsFOusP2xFnbVYnL3Ks40Vvhtb5svIkslFP4KnV3NjEyl/s4XrZhEr
+uESsuGQC8xdUEDqduLFfxXUyjaeqHVPfYeV7mf0yCTmiJ2hlrZ7+y3BizYAhVJ6E
+gx7cuOsIUAZI68SuIDFlw7iQ+KTzhEq6uwfPGEQ1XG4XvlaspwEL6BGUu3oQXoUC
+VwAGwBZFuC/Zn2+Vk1nBr//p1Gdtgsc7q2h625PXUjlEiKA+2SNaBTxbebTEERPm
+LkAMkaMPwuiBMKlIs1VhNSrHo7ZN7MzygOekm7uCX0OCGLMqOQ1VBYLPMuJWB81J
+5eq9gu5ipQseRqTFOVVnBaXUf80CPOIRzyX5J7jOcXWgLmGeT3R/noCQCyMZ9v/z
+eia/GccBmzcgiVuxByR2CbBDT0hRfw4UyLOcsgvcC3G2NzQK7exUa0vLUbTCBvXV
+itdWIWVOwjjk1LpfwL1fbYaWL24HylPCAtt3rOAh5OfE/IY3buRvkKYJOEUNaqvm
+zDNdBYYGSRM=
+=D4vw
 -----END PGP SIGNATURE-----
 
---Apple-Mail=_C94E8197-945C-4983-883F-2667C3339B99--
+--Apple-Mail=_DBB7F1D5-A7F9-4A1E-B40E-918CCDED7C1F--
