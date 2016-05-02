@@ -1,113 +1,170 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ig0-f193.google.com ([209.85.213.193]:34843 "EHLO
-	mail-ig0-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754680AbcEBUIF (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 2 May 2016 16:08:05 -0400
-MIME-Version: 1.0
-In-Reply-To: <20160502102248.18755.qmail@ns.horizon.com>
-References: <20160502102016.17936.qmail@ns.horizon.com>
-	<20160502102248.18755.qmail@ns.horizon.com>
-Date: Mon, 2 May 2016 13:08:03 -0700
-Message-ID: <CA+55aFyPMrAWqMaA013ZQA0TULtdTXbUh4rgUurMLu40TastuA@mail.gmail.com>
-Subject: Re: [PATCH 2/2] <linux/hash.h>: Fix hash_64()'s horrible collision problem
-From: Linus Torvalds <torvalds@linux-foundation.org>
-To: George Spelvin <linux@horizon.com>
-Cc: Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
-        Thomas Gleixner <tglx@linutronix.de>,
-        Bruce Fields <bfields@fieldses.org>,
-        Eric Dumazet <eric.dumazet@gmail.com>,
-        Jeff Layton <jlayton@poochiereds.net>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Rik van Riel <riel@redhat.com>
-Content-Type: multipart/mixed; boundary=047d7bd7528cd8c0ee0531e18c2b
+Received: from ns.horizon.com ([71.41.210.147]:44035 "HELO ns.horizon.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with SMTP
+	id S1755061AbcEBU0j (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 2 May 2016 16:26:39 -0400
+Date: 2 May 2016 16:26:37 -0400
+Message-ID: <20160502202637.13861.qmail@ns.horizon.com>
+From: "George Spelvin" <linux@horizon.com>
+To: linux@horizon.com, torvalds@linux-foundation.org
+Subject: Re: [PATCH 1/2] <linux/hash.h>: Make hash_64(), hash_ptr() return 32 bits
+Cc: bfields@fieldses.org, eric.dumazet@gmail.com, jlayton@poochiereds.net,
+        linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        riel@redhat.com, tglx@linutronix.de
+In-Reply-To: <CA+55aFx2O-ptJa2Xt4mYUbO-b0z9XSf-wEw97Gyj1h3porFC_g@mail.gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---047d7bd7528cd8c0ee0531e18c2b
-Content-Type: text/plain; charset=UTF-8
+Linus wrote:
+> I really think that we should *not* convuse those two odd svcauth.h
+> users with the whole hash_32/64 thing.
+>
+> I think  hash_str/hash_mem should be moved to lib/hash.c, and they
+> just shouldn't use "hash_long()" at all, except at the very end (they
+> currently have a very odd way of doing "every <n> bytes _and_ at the
+> end".
 
-On Mon, May 2, 2016 at 3:22 AM, George Spelvin <linux@horizon.com> wrote:
-> hash_64() was using a low-bit-weight multiplier, which resulted in
-> very bad mixing of the high bits of the input.  In particular,
-> page-aligned pointers (low 12 bits not used) were a disaster,
+Moving them is fine.  I have no problem with that, except that I agree
+that merging them with the fs/namei.c hashes would be even better.
 
-So I did just a minimal for fro 4.6 (and back-porting), which took
-just the constants and made _only_ the 64-bit architevture case use
-this improved constant for hash_64.
+But the hash_long it not odd at all.  They're using it as the mix function
+between adding words.  Like hash_name() uses "hash = (hash + a) * 9".
 
-In other words, people who use "hash_long()" or use "hash_64()" on
-64-bit architectures will get the improvements, but if you use
-hash_64() on a 32-bit architecture you'll conteinue to see the old
-behavior.
+So it's
 
-Quite frankly, looking at some of the explicit hash_64() users, they
-seem to be a big dubious anyway. And it won't make things *worse* for
-them.
+	x = (first 8 bytes of string)
+	x = __hash64(x);
+	x ^= (next 8 bytes of string)
+	x = __hash64(x);
+	... repeat ...
+	x ^= (last 1..8 bytes of string)
+	return __hash64(x);
 
-So that simple "just use multiplication unconditionally on 64-bit, and
-use the better constant" should fix the actual _practical_ problems
-that we've seen. And it shouldn't have any negative consequences,
-since as you say, 64-bit architectures universally do have a
-multiplier.
+It's a quite reasonable mix function.  One multiply (4 cycles or so) per
+8 bytes.  It's definitely swamped by the byte-at-a-time string loading.
 
-The bigger changes will have to be for 4.7 by now, I think.
+(The one peculiar thing is that the "last 1..8 bytes of string" is, due
+to the way it's shiften into an accumulator, actually the last 8 bytes,
+which may include some previously-hashed bytes.  But that has nothing
+to do with the mixing.)
 
-                     Linus
 
---047d7bd7528cd8c0ee0531e18c2b
-Content-Type: text/plain; charset=US-ASCII; name="patch.diff"
-Content-Disposition: attachment; filename="patch.diff"
-Content-Transfer-Encoding: base64
-X-Attachment-Id: f_inqfu3kd0
+But... the fundamental reason I didn't was that this is late -rc.
+I'm trying to fix a *bug* tglx found, not add risk and delay with a much
+more ambitious patch series.
 
-RnJvbSA2ODlkZTFkNmNhOTViM2I1YmQ4ZWU0NDY4NjNiZjgxYTQ4ODNlYTI1IE1vbiBTZXAgMTcg
-MDA6MDA6MDAgMjAwMQpGcm9tOiBMaW51cyBUb3J2YWxkcyA8dG9ydmFsZHNAbGludXgtZm91bmRh
-dGlvbi5vcmc+CkRhdGU6IE1vbiwgMiBNYXkgMjAxNiAxMjo0Njo0MiAtMDcwMApTdWJqZWN0OiBb
-UEFUQ0hdIE1pbmltYWwgZml4LXVwIG9mIGJhZCBoYXNoaW5nIGJlaGF2aW9yIG9mIGhhc2hfNjQo
-KQoKVGhpcyBpcyBhIGZhaXJseSBtaW5pbWFsIGZpeHVwIHRvIHRoZSBob3JyaWJseSBiYWQgYmVo
-YXZpb3Igb2YgaGFzaF82NCgpCndpdGggY2VydGFpbiBpbnB1dCBwYXR0ZXJucy4KCkluIHBhcnRp
-Y3VsYXIsIGJlY2F1c2UgdGhlIG11bHRpcGxpY2F0aXZlIHZhbHVlIHVzZWQgZm9yIHRoZSA2NC1i
-aXQgaGFzaAp3YXMgaW50ZW50aW9uYWxseSBiaXQtc3BhcnNlIChzbyB0aGF0IHRoZSBtdWx0aXBs
-eSBjb3VsZCBiZSBkb25lIHdpdGgKc2hpZnRzIGFuZCBhZGRzIG9uIGFyY2hpdGVjdHVyZXMgd2l0
-aG91dCBoYXJkd2FyZSBtdWx0aXBsaWVycyksIHNvbWUKYml0cyBkaWQgbm90IGdldCBzcHJlYWQg
-b3V0IHZlcnkgbXVjaC4gIEluIHBhcnRpY3VsYXIsIGNlcnRhaW4gZmFpcmx5CmNvbW1vbiBiaXQg
-cmFuZ2VzIGluIHRoZSBpbnB1dCAocm91Z2hseSBiaXRzIDEyLTIwOiBjb21tb25seSB3aXRoIHRo
-ZQptb3N0IGluZm9ybWF0aW9uIGluIHRoZW0gd2hlbiB5b3UgaGFzaCB0aGluZ3MgbGlrZSBieXRl
-IG9mZnNldHMgaW4gZmlsZXMKb3IgbWVtb3J5IHRoYXQgaGF2ZSBibG9jayBmYWN0b3JzIHRoYXQg
-bWVhbiB0aGF0IHRoZSBsb3cgYml0cyBhcmUgb2Z0ZW4KemVybykgd291bGQgbm90IG5lY2Vzc2Fy
-aWx5IHNob3cgdXAgbXVjaCBpbiB0aGUgcmVzdWx0LgoKVGhlcmUncyBhIGJpZ2dlciBwYXRjaC1z
-ZXJpZXMgYnJld2luZyB0byBmaXggdXAgdGhpbmdzIG1vcmUgY29tcGxldGVseSwKYnV0IHRoaXMg
-aXMgdGhlIGZhaXJseSBtaW5pbWFsIGZpeCBmb3IgdGhlIDY0LWJpdCBoYXNoaW5nIHByb2JsZW0u
-ICBJdApzaW1wbHkgcGlja3MgYSBtdWNoIGJldHRlciBjb25zdGFudCBtdWx0aXBsaWVyLCBzcHJl
-YWRpbmcgdGhlIGJpdHMgb3V0IGEKbG90IGJldHRlci4KCk5PVEUhIEZvciAzMi1iaXQgYXJjaGl0
-ZWN0dXJlcywgdGhlIGJhZCBvbGQgaGFzaF82NCgpIHJlbWFpbnMgdGhlIHNhbWUKZm9yIG5vdywg
-c2luY2UgNjQtYml0IG11bHRpcGxpZXMgYXJlIGV4cGVuc2l2ZS4gIFRoZSBiaWdnZXIgaGFzaGlu
-ZwpjbGVhbnVwIHdpbGwgcmVwbGFjZSB0aGUgMzItYml0IGNhc2Ugd2l0aCBzb21ldGhpbmcgYmV0
-dGVyLgoKVGhlIG5ldyBjb25zdGFudHMgd2VyZSBwaWNrZWQgYnkgR2VvcmdlIFNwZWx2aW4gd2hv
-IHdyb3RlIHRoYXQgYmlnZ2VyCmNsZWFudXAgc2VyaWVzLiAgSSBqdXN0IHBpY2tlZCBvdXQgdGhl
-IGNvbnN0YW50cyBhbmQgcGFydCBvZiB0aGUgY29tbWVudApmcm9tIHRoYXQgc2VyaWVzLgoKQ2M6
-IHN0YWJsZUB2Z2VyLmtlcm5lbC5vcmcKQ2M6IEdlb3JnZSBTcGVsdmluIDxsaW51eEBob3Jpem9u
-LmNvbT4KQ2M6IFRob21hcyBHbGVpeG5lciA8dGdseEBsaW51dHJvbml4LmRlPgpTaWduZWQtb2Zm
-LWJ5OiBMaW51cyBUb3J2YWxkcyA8dG9ydmFsZHNAbGludXgtZm91bmRhdGlvbi5vcmc+CgpkaWZm
-IC0tZ2l0IGEvaW5jbHVkZS9saW51eC9oYXNoLmggYi9pbmNsdWRlL2xpbnV4L2hhc2guaAppbmRl
-eCAxYWZkZTQ3ZTE1MjguLjc5YzUyZmE4MWNhYyAxMDA2NDQKLS0tIGEvaW5jbHVkZS9saW51eC9o
-YXNoLmgKKysrIGIvaW5jbHVkZS9saW51eC9oYXNoLmgKQEAgLTMyLDEyICszMiwyOCBAQAogI2Vy
-cm9yIFdvcmRzaXplIG5vdCAzMiBvciA2NAogI2VuZGlmCiAKKy8qCisgKiBUaGUgYWJvdmUgcHJp
-bWVzIGFyZSBhY3RpdmVseSBiYWQgZm9yIGhhc2hpbmcsIHNpbmNlIHRoZXkgYXJlCisgKiB0b28g
-c3BhcnNlLiBUaGUgMzItYml0IG9uZSBpcyBtb3N0bHkgb2ssIHRoZSA2NC1iaXQgb25lIGNhdXNl
-cworICogcmVhbCBwcm9ibGVtcy4gQmVzaWRlcywgdGhlICJwcmltZSIgcGFydCBpcyBwb2ludGxl
-c3MgZm9yIHRoZQorICogbXVsdGlwbGljYXRpdmUgaGFzaC4KKyAqCisgKiBBbHRob3VnaCBhIHJh
-bmRvbSBvZGQgbnVtYmVyIHdpbGwgZG8sIGl0IHR1cm5zIG91dCB0aGF0IHRoZSBnb2xkZW4KKyAq
-IHJhdGlvIHBoaSA9IChzcXJ0KDUpLTEpLzIsIG9yIGl0cyBuZWdhdGl2ZSwgaGFzIHBhcnRpY3Vs
-YXJseSBuaWNlCisgKiBwcm9wZXJ0aWVzLgorICoKKyAqIFRoZXNlIGFyZSB0aGUgbmVnYXRpdmUs
-ICgxIC0gcGhpKSA9IChwaGleMikgPSAoMyAtIHNxcnQoNSkpLzIuCisgKiAoU2VlIEtudXRoIHZv
-bCAzLCBzZWN0aW9uIDYuNCwgZXhlcmNpc2UgOS4pCisgKi8KKyNkZWZpbmUgR09MREVOX1JBVElP
-XzMyIDB4NjFDODg2NDcKKyNkZWZpbmUgR09MREVOX1JBVElPXzY0IDB4NjFDODg2NDY4MEI1ODNF
-QnVsbAorCiBzdGF0aWMgX19hbHdheXNfaW5saW5lIHU2NCBoYXNoXzY0KHU2NCB2YWwsIHVuc2ln
-bmVkIGludCBiaXRzKQogewogCXU2NCBoYXNoID0gdmFsOwogCi0jaWYgZGVmaW5lZChDT05GSUdf
-QVJDSF9IQVNfRkFTVF9NVUxUSVBMSUVSKSAmJiBCSVRTX1BFUl9MT05HID09IDY0Ci0JaGFzaCA9
-IGhhc2ggKiBHT0xERU5fUkFUSU9fUFJJTUVfNjQ7CisjaWYgQklUU19QRVJfTE9ORyA9PSA2NAor
-CWhhc2ggPSBoYXNoICogR09MREVOX1JBVElPXzY0OwogI2Vsc2UKIAkvKiAgU2lnaCwgZ2NjIGNh
-bid0IG9wdGltaXNlIHRoaXMgYWxvbmUgbGlrZSBpdCBkb2VzIGZvciAzMiBiaXRzLiAqLwogCXU2
-NCBuID0gaGFzaDsK
---047d7bd7528cd8c0ee0531e18c2b--
+This is a related but separate issue that can be addressed separately.
+
+> In particular, the hashing in the *middle* is very different from the
+> hashing at the end.
+>
+> At the end, you need to make sure the lower bits get spread out
+> particularly to the upper bits, since you're going to shift things
+> down.
+>
+> But in the middle, you just want to spread the bits out (and in
+> particular, destroy any byte-per-byte patterns that it build it in
+> between).
+
+Yes, in the middle you have a full width hash to spread the bits among,
+while at the end you have to "concentrate" the hash value in a few bits.
+The latter is a more difficult task and might be slower.
+
+But there's nothing really *wrong* with using the same mix operation
+both places if it's both good enough and fast enough.
+
+In particualr, if you're loading the string a word at a time, you need
+a much better mixing function than if you're processing it byte at a time.
+
+> Quite frankly, I think those functions should just use something like
+> the FNV hash (or Jenkins hash), and then maybe use "hash_long()" at
+> the *end* to shift the result down to "bits".
+
+It *is* the FNV hash!  More specifically, FNV-1a done a word at a time;
+doing it byte at a time like most implementations would result in 8
+times as many multiplies and be slower.
+
+The only difference is the exact multiplier.  The published FNV-1
+uses a low-bit-weight multiplier.  Since this is being done a word
+at a time, I think the stronger multiplier is worth it.
+
+Jenkins hash is (if you have a HW multiplier) slower.  Better mixing,
+so adding a multiply at the end would be redundant.
+
+> I don't want to make our <linux/hash.h> odder just because of two
+> entirely broken users.
+
+> That said, I actually think hash_str() should be killed entirely.
+> Better just use what we use for pathnames: full_name_hash() (which
+> gets a pointer and length) and hash_name (which gets the string).
+
+I was thinking the exact same thing.  Repeated grepping over the kernel
+tree for "hash_*" functions showed me just how many there are in various
+places, and combining some would be a good idea.
+
+For example, partial_name_hash() is still used in many places
+even if the word-at-a-time code is used in namei.c.
+
+> Those functions do the "word-at-a-time" optimization, and they should
+> do a good enough job. If they aren't, we should fix them, because they
+> are a hell of a lot more important than anything that the svcauth code
+> does.
+
+Okay, let me list the problems...
+
+1) hash_name() stops at a slash or a nul.  hash_str() only looks
+   for a nul.  Should I add a third variant?  Should that go in fs/namei,
+   or should the whole pole be moved elsewhere?
+
+2) Some places need the length *and* the hash.  Calling strlen() and then
+   full_name_hash() somewhat defeats the purpose of word-at-a-time access.
+   hash_name returns both jammed into a 64-bit word.  Is that a good
+   interface in general?
+
+   Myself, I think the length should be computed at copy_from_user()
+   time and I'd like to look at each such call site and understand why
+   it *doesn't* have the length ready.  But that's a lot of work.
+
+3) They do particularly crappy mixing.  See that "RFC PATCH 4/2" I posted
+   that because I couldn't stand how bad it was.
+
+   If you don't have word at a time, the partial_name_hash() is decent,
+   but the word-at-a-time mixes by multiplying by 9.  So the hashes
+   of the strings "1.......0" and "0.......9" are identical. 
+
+   (I assume this was chosen as the best available one-instruction (LEA)
+   mix operation due to an obsessive interest in speed in the dcache.)
+
+   More crappy mixing is the final folding.  On a 64-bit machine, the
+   high and low 32 bits are just XORed together.  So the hashes of
+   "deadbeef" and "beefdead" are identical.
+
+   I agree we should be very careful of the mixing function, since it's
+   the only thing limiting loop cycle time.  The has_zero hackery has a
+   cricital path about 6 cycles long, but they're independent per loop
+   and a sufficiently aggressive OOO machine could pipeline them.
+
+   (If you have a particular cycle count budget in mind, I can come up with
+   something.)
+
+4) They don't do a final mix.  Again, obsessive interest in speed when
+   you're storing the whole 32 bits and comparing that.  For applications
+   that use only a few bits of hash index and need the entropy
+   "concentrated", should this be done outside?
+
+Basicaly, I can understand why someone might prefer a stronger hash
+for less speed-critical applications.
+
+
+I agree that we should ideally have just two string hash functions for
+general kernel use (plus any imposed by ecternal standards like file
+systems or ELF).
+
+One is the dcache hash, for applications where collision DoS attacks are
+not expected and is optimized strongly for speed.
+
+A second, something like SipHash, for applcations which require
+sollision resistance against malicious attackers.
+
+But achieving that ideal is a project of significant size.
+There are a lot of corner cases to worry about.
