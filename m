@@ -1,240 +1,211 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f193.google.com ([209.85.223.193]:34949 "EHLO
-	mail-io0-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754859AbcEBVIv convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 2 May 2016 17:08:51 -0400
-Received: by mail-io0-f193.google.com with SMTP id u185so376660iod.2
-        for <linux-nfs@vger.kernel.org>; Mon, 02 May 2016 14:08:51 -0700 (PDT)
-Content-Type: text/plain; charset=utf-8
-Mime-Version: 1.0 (Mac OS X Mail 9.3 \(3124\))
-Subject: Re: blocked on the spin lock
-From: Weston Andros Adamson <dros@monkey.org>
-In-Reply-To: <1264524839.11600209.1462219635088.JavaMail.zimbra@desy.de>
-Date: Mon, 2 May 2016 17:08:48 -0400
-Cc: linux-nfs list <linux-nfs@vger.kernel.org>,
-        Steve Dickson <steved@redhat.com>,
-        William Andros Adamson <william.adamson@netapp.com>
-Message-Id: <AC7B8856-9451-43F0-A960-BDFD2D27B3A0@monkey.org>
-References: <148899538.11512158.1462174191227.JavaMail.zimbra@desy.de> <65246751-DEBE-4B05-BBAD-4E3CE6589442@monkey.org> <1264524839.11600209.1462219635088.JavaMail.zimbra@desy.de>
-To: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
+Received: from mail-ig0-f196.google.com ([209.85.213.196]:35937 "EHLO
+	mail-ig0-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755180AbcEBVTk (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 2 May 2016 17:19:40 -0400
+MIME-Version: 1.0
+In-Reply-To: <20160502202637.13861.qmail@ns.horizon.com>
+References: <CA+55aFx2O-ptJa2Xt4mYUbO-b0z9XSf-wEw97Gyj1h3porFC_g@mail.gmail.com>
+	<20160502202637.13861.qmail@ns.horizon.com>
+Date: Mon, 2 May 2016 14:19:39 -0700
+Message-ID: <CA+55aFx441ZBAj6DUXVqEOzBjh9v32F1r2rD-PF2BRpA92fFkg@mail.gmail.com>
+Subject: Re: [PATCH 1/2] <linux/hash.h>: Make hash_64(), hash_ptr() return 32 bits
+From: Linus Torvalds <torvalds@linux-foundation.org>
+To: George Spelvin <linux@horizon.com>
+Cc: Bruce Fields <bfields@fieldses.org>, Eric Dumazet <eric.dumazet@gmail.com>,
+        Jeff Layton <jlayton@poochiereds.net>,
+        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        Rik van Riel <riel@redhat.com>, Thomas Gleixner <tglx@linutronix.de>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Mon, May 2, 2016 at 1:26 PM, George Spelvin <linux@horizon.com> wrote:
+>
+> But the hash_long it not odd at all.  They're using it as the mix function
+> between adding words.  Like hash_name() uses "hash = (hash + a) * 9".
+
+Right. But there is no reason to think that that should be the same
+thing as the final hash.
+
+In fact, there are many reasons to think it should *not*.
+
+The final hash is different.
+
+It's duifferent not just because it wants to concentrate the bits at
+the highb end (which the middle hash does not), but it's different
+exactly because the whole calling convention is different: the final
+hash returns a "small" value (in your version an "u32"), while the
+hash in the middle very much does not.
+
+So thinking that they are somehow related is wrong. It screws up
+hash.h, and incorrectly conflates this middle hash_mix() thing with
+the final has_32/64() thing.
+
+> It's a quite reasonable mix function.  One multiply (4 cycles or so) per
+> 8 bytes.  It's definitely swamped by the byte-at-a-time string loading.
+
+.. but it's not. Exactly because of the above.
+
+Make it be a "hash_mix()" function. Make it use the multiply, by all
+means. Same multiplier, even. BUT IT IS STILL NOT THE SAME FUNCTION,
+for the above reason. One wants to return "u32", the other does not.
+
+Really.
+
+> But... the fundamental reason I didn't was that this is late -rc.
+> I'm trying to fix a *bug* tglx found, not add risk and delay with a much
+> more ambitious patch series.
+
+Oh, this late in the rc we're not doing _any_ of this. I sent out my
+suggested "late in the rc and for stable" patch that fixes the
+practical problem we have, that has nothing to do with cleaning things
+up.
+
+> It *is* the FNV hash!  More specifically, FNV-1a done a word at a time;
+> doing it byte at a time like most implementations would result in 8
+> times as many multiplies and be slower.
+
+I refuse to call that shit "word at a time".
+
+It's "byte at a time with a slow conditional that will screw up your
+branch predictor and a multiply in the middle".
+
+A compiler might be able to turn it into some disgusting unrolled
+thing that avoids some of the problems, but at no point is that a good
+thing.
+
+I seriously think that it would be
+
+ (a) more readable
+
+ (b) have a better mix function
+
+if it was just kept as a byte-at-a-time thing entirely with the
+per-byte mixing thing done better than just "shift by 8 bits".
+
+And then at the end you could do a single hash_long().
+
+That horrible svc thing needs to go.
+
+It's alll pretty moot, since we have a reasonable version that
+actually does do work-at-a-time.
+
+That can be improved too, I'm sure, but that svcauth garbage should
+just be thrown out.
+
+> The only difference is the exact multiplier.  The published FNV-1
+> uses a low-bit-weight multiplier.  Since this is being done a word
+> at a time, I think the stronger multiplier is worth it.
+
+.. Considering that the "word-at-a-time" is likely *slower* than doing
+it a byte-at-a-time the way it has been encoded, I'm not in the least
+convinced.
+
+> For example, partial_name_hash() is still used in many places
+> even if the word-at-a-time code is used in namei.c.
+
+Those places aren't actually all that performance-critical. They
+really don't matter.
 
 
-> On May 2, 2016, at 4:07 PM, Mkrtchyan, Tigran <tigran.mkrtchyan@desy.de> wrote:
-> 
-> Hi Dros,
-> 
-> as you can see from the stack trace, this is NFSv3.
+> Okay, let me list the problems...
+>
+> 1) hash_name() stops at a slash or a nul.  hash_str() only looks
+>    for a nul.  Should I add a third variant?  Should that go in fs/namei,
+>    or should the whole pole be moved elsewhere?
 
-Oh, I didn't notice that! 
+We'll never get rid of "hash_name()", it not only has that '/' case,
+it's also inlined for a reason. You'd copy it without the magic for
+'/' and turn that into str_hash() for others to use.
 
-> For now, it happened only once. May be there is some change with
-> our workflow. I will let you know, if we see it again.
+full_name_hash() can presumably be used pretty much as-is as mem_hash().
 
-OK. If you do, try applying that patch set and see if it’s still reproducible.
+> 2) Some places need the length *and* the hash.  Calling strlen() and then
+>    full_name_hash() somewhat defeats the purpose of word-at-a-time access.
+>    hash_name returns both jammed into a 64-bit word.  Is that a good
+>    interface in general?
 
--dros
+Hmm. We actually have that exact case in the dentry code and
+hash_name(), except we handle it by doing that "hashlen" thing that
+contains both the length and the hash in one 64-bit thing.
 
-> 
-> 
-> Thanks,
->   Tigran.
-> 
-> ----- Original Message -----
->> From: "Weston Andros Adamson" <dros@monkey.org>
->> To: "Tigran Mkrtchyan" <tigran.mkrtchyan@desy.de>
->> Cc: "linux-nfs list" <linux-nfs@vger.kernel.org>, "Steve Dickson" <steved@redhat.com>, "Andy Adamson"
->> <william.adamson@netapp.com>
->> Sent: Monday, May 2, 2016 3:30:29 PM
->> Subject: Re: blocked on the spin lock
-> 
->>> On May 2, 2016, at 3:29 AM, Mkrtchyan, Tigran <tigran.mkrtchyan@desy.de> wrote:
->>> 
->>> 
->>> 
->>> Hi Dros et. al.
->>> 
->>> We have seen the following stack trace on one of out systems:
->>> 
->>> 
->>> Apr 28 22:09:51 bird510 kernel: BUG: soft lockup - CPU#7 stuck for 67s!
->>> [tee:13755]
->>> Apr 28 22:09:51 bird510 kernel: Modules linked in: ipmi_devintf dell_rbu
->>> nfs_layout_nfsv41_files fuse nfs lockd fscache auth_rpcgss nfs_acl vfat fat
->>> usb_storage mpt3sas mpt2sas raid_class mptctl openafs(P)(U) autofs4 sunrpc
->>> cpufreq_ondemand acpi_cpufreq freq_table mperf sg joy
->>> dev power_meter acpi_ipmi ipmi_si ipmi_msghandler iTCO_wdt iTCO_vendor_support
->>> bnx2 microcode dcdbas lpc_ich mfd_core i7core_edac edac_core shpchp ext4 jbd2
->>> mbcache sd_mod crc_t10dif mptsas mptscsih mptbase scsi_transport_sas mlx4_ib
->>> ib_sa ib_mad ib_core ib_addr ipv6 mlx4_en p
->>> tp pps_core mlx4_core dm_mirror dm_region_hash dm_log dm_mod [last unloaded:
->>> ipmi_devintf]
->>> Apr 28 22:09:51 bird510 kernel: CPU 7
->>> Apr 28 22:09:51 bird510 kernel: Modules linked in: ipmi_devintf dell_rbu
->>> nfs_layout_nfsv41_files fuse nfs lockd fscache auth_rpcgss nfs_acl vfat fat
->>> usb_storage mpt3sas mpt2sas raid_class mptctl openafs(P)(U) autofs4 sunrpc
->>> cpufreq_ondemand acpi_cpufreq freq_table mperf sg joy
->>> dev power_meter acpi_ipmi ipmi_si ipmi_msghandler iTCO_wdt iTCO_vendor_support
->>> bnx2 microcode dcdbas lpc_ich mfd_core i7core_edac edac_core shpchp ext4 jbd2
->>> mbcache sd_mod crc_t10dif mptsas mptscsih mptbase scsi_transport_sas mlx4_ib
->>> ib_sa ib_mad ib_core ib_addr ipv6 mlx4_en p
->>> tp pps_core mlx4_core dm_mirror dm_region_hash dm_log dm_mod [last unloaded:
->>> ipmi_devintf]
->>> Apr 28 22:09:51 bird510 kernel:
->>> Apr 28 22:09:51 bird510 kernel: Pid: 13755, comm: tee Tainted: P           --
->>> ------------    2.6.32-573.12.1.el6.x86_64 #1 Dell Inc. PowerEdge M610/0N582M
->>> Apr 28 22:09:51 bird510 kernel: RIP: 0010:[<ffffffff8153bde1>]
->>> [<ffffffff8153bde1>] _spin_lock+0x21/0x30
->>> Apr 28 22:09:51 bird510 kernel: RSP: 0018:ffff8803528179c8  EFLAGS: 00000297
->>> Apr 28 22:09:51 bird510 kernel: RAX: 00000000000003b1 RBX: ffff8803528179c8 RCX:
->>> 0000000000000000
->>> Apr 28 22:09:51 bird510 kernel: RDX: 00000000000003b0 RSI: ffff880159aeb820 RDI:
->>> ffff880159aeb8d0
->>> Apr 28 22:09:51 bird510 kernel: RBP: ffffffff8100bc0e R08: ffff880352817af0 R09:
->>> 0000000000000002
->>> Apr 28 22:09:51 bird510 kernel: R10: ffffea0008efc428 R11: 0000000000000003 R12:
->>> 0000000000000001
->>> Apr 28 22:09:51 bird510 kernel: R13: 001310facb5806bd R14: 0000000000000000 R15:
->>> 0000000000000000
->>> Apr 28 22:09:51 bird510 kernel: FS:  00007f3e78118700(0000)
->>> GS:ffff880028260000(0000) knlGS:0000000000000000
->>> Apr 28 22:09:51 bird510 kernel: CS:  0010 DS: 0000 ES: 0000 CR0:
->>> 000000008005003b
->>> Apr 28 22:09:51 bird510 kernel: CR2: 00007fefa21ff000 CR3: 0000000352959000 CR4:
->>> 00000000000007e0
->>> Apr 28 22:09:51 bird510 kernel: DR0: 0000000000000000 DR1: 0000000000000000 DR2:
->>> 0000000000000000
->>> Apr 28 22:09:51 bird510 kernel: DR3: 0000000000000000 DR6: 00000000ffff0ff0 DR7:
->>> 0000000000000400
->>> Apr 28 22:09:51 bird510 kernel: Process tee (pid: 13755, threadinfo
->>> ffff880352814000, task ffff880636064ab0)
->>> Apr 28 22:09:51 bird510 kernel: Stack:
->>> Apr 28 22:09:51 bird510 kernel: ffff880352817a18 ffffffffa0490dc1
->>> ffff880159aeb8d0 ffff880159aeb770
->>> Apr 28 22:09:51 bird510 kernel: <d> 0000000000000000 0000000000000000
->>> ffffffffa04bd040 ffffffffa048f39a
->>> Apr 28 22:09:51 bird510 kernel: <d> ffff8803378761c0 ffffea000a13dcc0
->>> ffff880352817a48 ffffffffa0490ec8
->>> Apr 28 22:09:51 bird510 kernel: Call Trace:
->>> Apr 28 22:09:51 bird510 kernel: [<ffffffffa0490dc1>] ?
->>> nfs_clear_request_commit+0xa1/0xf0 [nfs]
->>> Apr 28 22:09:51 bird510 kernel: [<ffffffffa048f39a>] ?
->>> nfs_page_find_request_locked+0x2a/0x40 [nfs]
->>> Apr 28 22:09:51 bird510 kernel: [<ffffffffa0490ec8>] ?
->>> nfs_wb_page_cancel+0xb8/0xf0 [nfs]
->>> Apr 28 22:09:51 bird510 kernel: [<ffffffffa047e4f7>] ?
->>> nfs_invalidate_page+0x47/0x80 [nfs]
->>> Apr 28 22:09:51 bird510 kernel: [<ffffffff8113edb5>] ?
->>> do_invalidatepage+0x25/0x30
->>> Apr 28 22:09:51 bird510 kernel: [<ffffffff8113f0d2>] ?
->>> truncate_inode_page+0xa2/0xc0
->>> Apr 28 22:09:51 bird510 kernel: [<ffffffff8113f47f>] ?
->>> truncate_inode_pages_range+0x16f/0x500
->>> Apr 28 22:09:51 bird510 kernel: [<ffffffff81129cd7>] ?
->>> mempool_free_slab+0x17/0x20
->>> Apr 28 22:09:51 bird510 kernel: [<ffffffff8113f8a5>] ?
->>> truncate_inode_pages+0x15/0x20
->>> Apr 28 22:09:51 bird510 kernel: [<ffffffff8113f8ff>] ?
->>> truncate_pagecache+0x4f/0x70
->>> Apr 28 22:09:51 bird510 kernel: [<ffffffffa0480eb9>] ?
->>> nfs_setattr_update_inode+0xb9/0x150 [nfs]
->>> Apr 28 22:09:51 bird510 kernel: [<ffffffffa0493a6b>] ?
->>> nfs3_proc_setattr+0xdb/0x120 [nfs]
->>> Apr 28 22:09:51 bird510 kernel: [<ffffffffa048f6b3>] ? nfs_wb_all+0x43/0x50
->>> [nfs]
->>> Apr 28 22:09:51 bird510 kernel: [<ffffffffa0482610>] ? nfs_setattr+0xf0/0x170
->>> [nfs]
->>> Apr 28 22:09:51 bird510 kernel: [<ffffffff811b1118>] ? notify_change+0x168/0x340
->>> Apr 28 22:09:51 bird510 kernel: [<ffffffffa0480de8>] ? nfs_open+0x78/0x90 [nfs]
->>> Apr 28 22:09:51 bird510 kernel: [<ffffffff8118fcb4>] ? do_truncate+0x64/0xa0
->>> Apr 28 22:09:51 bird510 kernel: [<ffffffff81232b9f>] ?
->>> security_inode_permission+0x1f/0x30
->>> Apr 28 22:09:51 bird510 kernel: [<ffffffff811a4fc1>] ? do_filp_open+0x861/0xd20
->>> Apr 28 22:09:51 bird510 kernel: [<ffffffff8129df8a>] ?
->>> strncpy_from_user+0x4a/0x90
->>> Apr 28 22:09:51 bird510 kernel: [<ffffffff811b1ff2>] ? alloc_fd+0x92/0x160
->>> Apr 28 22:09:51 bird510 kernel: [<ffffffff8118e967>] ? do_sys_open+0x67/0x130
->>> Apr 28 22:09:51 bird510 kernel: [<ffffffff8118ea70>] ? sys_open+0x20/0x30
->>> Apr 28 22:09:51 bird510 kernel: [<ffffffff8100b0d2>] ?
->>> system_call_fastpath+0x16/0x1b
->>> Apr 28 22:09:51 bird510 kernel: Code: 01 74 05 e8 52 1c d6 ff c9 c3 55 48 89 e5
->>> 0f 1f 44 00 00 b8 00 00 01 00 f0 0f c1 07 0f b7 d0 c1 e8 10 39 c2 74 0e f3 90
->>> 0f b7 17 <eb> f5 83 3f 00 75 f4 eb df c9 c3 0f 1f 40 00 55 48 89 e5 0f 1f
->>> Apr 28 22:09:51 bird510 kernel: Call Trace:
->>> Apr 28 22:09:51 bird510 kernel: [<ffffffffa0490dc1>] ?
->>> nfs_clear_request_commit+0xa1/0xf0 [nfs]
->>> Apr 28 22:09:51 bird510 kernel: [<ffffffffa048f39a>] ?
->>> nfs_page_find_request_locked+0x2a/0x40 [nfs]
->>> Apr 28 22:09:51 bird510 kernel: [<ffffffffa0490ec8>] ?
->>> nfs_wb_page_cancel+0xb8/0xf0 [nfs]
->>> Apr 28 22:09:51 bird510 kernel: [<ffffffffa047e4f7>] ?
->>> nfs_invalidate_page+0x47/0x80 [nfs]
->>> Apr 28 22:09:51 bird510 kernel: [<ffffffff8113edb5>] ?
->>> do_invalidatepage+0x25/0x30
->>> Apr 28 22:09:51 bird510 kernel: [<ffffffff8113f0d2>] ?
->>> truncate_inode_page+0xa2/0xc0
->>> Apr 28 22:09:51 bird510 kernel: [<ffffffff8113f47f>] ?
->>> truncate_inode_pages_range+0x16f/0x500
->>> Apr 28 22:09:51 bird510 kernel: [<ffffffff81129cd7>] ?
->>> mempool_free_slab+0x17/0x20
->>> Apr 28 22:09:51 bird510 kernel: [<ffffffff8113f8a5>] ?
->>> truncate_inode_pages+0x15/0x20
->>> Apr 28 22:09:51 bird510 kernel: [<ffffffff8113f8ff>] ?
->>> truncate_pagecache+0x4f/0x70
->>> Apr 28 22:09:51 bird510 kernel: [<ffffffffa0480eb9>] ?
->>> nfs_setattr_update_inode+0xb9/0x150 [nfs]
->>> Apr 28 22:09:51 bird510 kernel: [<ffffffffa0493a6b>] ?
->>> nfs3_proc_setattr+0xdb/0x120 [nfs]
->>> Apr 28 22:09:51 bird510 kernel: [<ffffffffa048f6b3>] ? nfs_wb_all+0x43/0x50
->>> [nfs]
->>> Apr 28 22:09:51 bird510 kernel: [<ffffffffa0482610>] ? nfs_setattr+0xf0/0x170
->>> [nfs]
->>> Apr 28 22:09:51 bird510 kernel: [<ffffffff811b1118>] ? notify_change+0x168/0x340
->>> Apr 28 22:09:51 bird510 kernel: [<ffffffffa0480de8>] ? nfs_open+0x78/0x90 [nfs]
->>> Apr 28 22:09:51 bird510 kernel: [<ffffffff8118fcb4>] ? do_truncate+0x64/0xa0
->>> Apr 28 22:09:51 bird510 kernel: [<ffffffff81232b9f>] ?
->>> security_inode_permission+0x1f/0x30
->>> Apr 28 22:09:51 bird510 kernel: [<ffffffff811a4fc1>] ? do_filp_open+0x861/0xd20
->>> Apr 28 22:09:51 bird510 kernel: [<ffffffff8129df8a>] ?
->>> strncpy_from_user+0x4a/0x90
->>> Apr 28 22:09:51 bird510 kernel: [<ffffffff811b1ff2>] ? alloc_fd+0x92/0x160
->>> Apr 28 22:09:51 bird510 kernel: [<ffffffff8118e967>] ? do_sys_open+0x67/0x130
->>> Apr 28 22:09:51 bird510 kernel: [<ffffffff8118ea70>] ? sys_open+0x20/0x30
->>> Apr 28 22:09:51 bird510 kernel: [<ffffffff8100b0d2>] ?
->>> system_call_fastpath+0x16/0x1b
->>> 
->>> 
->>> 
->>> 
->>> The questionable spin lock was remove by commit 411a99adf. Is there was a
->>> problem?
->>> Do we need a packport in RHEL kernel?
->>> 
->>> Thanks a lot,
->>>  Tigran.
->>> 
->> 
->> Hey Tigran,
->> 
->> It’s been a while since I looked at this, so I don’t know off the top of my
->> head, but IIRC the patch series that 411a99adf is part of are some important
->> bug fixes to the effort to split sub-page regions:
->> 
->> 411a99adffb4 nfs: clear_request_commit while holding i_lock
->> e6cf82d1830f pnfs: add pnfs_put_lseg_async
->> 02d1426c7053 pnfs: find swapped pages on pnfs commit lists too
->> b412ddf0661e nfs: fix comment and add warn_on for PG_INODE_REF
->> e7029206ff43 nfs: check wait_on_bit_lock err in page_group_lock
->> 
->> Also, if you are using the pnfs_nfs commit path, there are several recent fixes
->> that are pretty important. Until recently, the only server to do NFS backed
->> pnfs did only STABLE writes, so that stuff was pretty much untested…
->> 
->> In fact, I have a patch to post today that fixes a problem in the commit path,
->> although it probably isn’t an issue in RHEL as it was a regression introduced
->> by a recent patch.
->> 
->> -dros
+Maybe we could expose that kind of interface, even if it's pretty ugly.
 
+>    Myself, I think the length should be computed at copy_from_user()
+>    time and I'd like to look at each such call site and understand why
+>    it *doesn't* have the length ready.  But that's a lot of work.
+
+If it's copied from user space, we already do have the length.
+
+You do realize that pathnames are different from pretty much every
+other case in the kernel? There's a reason pathnames have their own
+logic. The string length is very different from the component length,
+and it turns out that component length and hash is generally critical.
+
+> 3) They do particularly crappy mixing.  See that "RFC PATCH 4/2" I posted
+>    that because I couldn't stand how bad it was.
+>
+>    If you don't have word at a time, the partial_name_hash() is decent,
+>    but the word-at-a-time mixes by multiplying by 9.  So the hashes
+>    of the strings "1.......0" and "0.......9" are identical.
+>
+>    (I assume this was chosen as the best available one-instruction (LEA)
+>    mix operation due to an obsessive interest in speed in the dcache.)
+
+The thing is, a lot of people tend to optimize performance (and
+behavior) for large strings.
+
+For path components, the most common lengths are less than a single
+8-byte word! That "mixing" function almost doesn't matter, because the
+case that matters the most (by far) are strings that fit in one or
+_maybe_ two words.
+
+Yes, things are slowly moving towards longer pathnames, but even with
+long filenames, most component names are the directory entries that
+still tend to be shorter. We still have the old 3-letter ones close to
+the root, of course, but the statistics are still pretty heavily
+skewed to <15 characters especially if you look at directory names.
+
+So for pathnames, the mixing in the middle has tended to not be
+_nearly_ as important as the final mix, for the simple reason that it
+happens maybe once, often not at all.
+
+>    More crappy mixing is the final folding.  On a 64-bit machine, the
+>    high and low 32 bits are just XORed together.  So the hashes of
+>    "deadbeef" and "beefdead" are identical.
+
+Hmm? It uses "fold_hash()", which definitely doesn't do that.
+
+Are you still looking at partial_name_hash() and friends? Don't. They
+are garbage. They are used for things like case-insensitive
+filesystems etc.
+
+>    (If you have a particular cycle count budget in mind, I can come up with
+>    something.)
+
+The real issue I had in fs/namei.c is that link_path_walk() and
+__d_lookup_rcu() are literally _the_ hottest functions in the kernel
+under a few (common) loads, and for code generation things like
+register pressure ends up mattering.
+
+The reason that "hash_len" is a single 64-bit field rather than two
+32-bit fields, for example, is that that way it takes on _register_
+when we do the has lookup. Some of that code was tuned to inline - and
+_not_ inline in particular patterns.
+
+Now, some of that tuning may have bitrotted, of course, so I'm not
+saying it's necessarily doing great now. But some of that code was
+tuned to not need a stack frame etc.
+
+> 4) They don't do a final mix.  Again, obsessive interest in speed when
+>    you're storing the whole 32 bits and comparing that.  For applications
+>    that use only a few bits of hash index and need the entropy
+>    "concentrated", should this be done outside?
+
+I think the caller should do it, yes. There's a difference between
+"calculate a hash for a string" and "turn that hash into a hashtable
+lookup".
+
+               Linus
