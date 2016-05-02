@@ -1,14 +1,14 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f194.google.com ([209.85.223.194]:35281 "EHLO
+Received: from mail-io0-f194.google.com ([209.85.223.194]:35382 "EHLO
 	mail-io0-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755060AbcEBSlt (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 2 May 2016 14:41:49 -0400
-Subject: [PATCH v3 11/20] xprtrdma: Use core ib_drain_qp() API
+	with ESMTP id S932097AbcEBSmG (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 2 May 2016 14:42:06 -0400
+Subject: [PATCH v3 13/20] xprtrdma: Save I/O direction in struct rpcrdma_frwr
 From: Chuck Lever <chuck.lever@oracle.com>
 To: anna.schumaker@netapp.com
 Cc: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Mon, 02 May 2016 14:41:47 -0400
-Message-ID: <20160502184147.10798.39729.stgit@manet.1015granger.net>
+Date: Mon, 02 May 2016 14:42:04 -0400
+Message-ID: <20160502184204.10798.65595.stgit@manet.1015granger.net>
 In-Reply-To: <20160502183144.10798.99847.stgit@manet.1015granger.net>
 References: <20160502183144.10798.99847.stgit@manet.1015granger.net>
 MIME-Version: 1.0
@@ -16,122 +16,69 @@ Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Clean up: Replace rpcrdma_flush_cqs() and rpcrdma_clean_cqs() with
-the new ib_drain_qp() API.
+Move the the I/O direction field from rpcrdma_mr_seg into the
+rpcrdma_frmr.
+
+This makes it possible to DMA-unmap the frwr long after an RPC has
+exited and its rpcrdma_mr_seg array has been released and re-used.
+This might occur if an RPC times out while waiting for a new
+connection to be established.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-Reviewed-By: Leon Romanovsky <leonro@mellanox.com>
 Tested-by: Steve Wise <swise@opengridcomputing.com>
-Reviewed-by: Sagi Grimberg <sagi@grimberg.me>
 ---
- net/sunrpc/xprtrdma/verbs.c |   41 ++++++-----------------------------------
- 1 file changed, 6 insertions(+), 35 deletions(-)
+ net/sunrpc/xprtrdma/frwr_ops.c  |    6 +++---
+ net/sunrpc/xprtrdma/xprt_rdma.h |    1 +
+ 2 files changed, 4 insertions(+), 3 deletions(-)
 
-diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
-index 9f8d6c1..b7a5bc1 100644
---- a/net/sunrpc/xprtrdma/verbs.c
-+++ b/net/sunrpc/xprtrdma/verbs.c
-@@ -203,15 +203,6 @@ out_fail:
- 	goto out_schedule;
- }
- 
--static void
--rpcrdma_flush_cqs(struct rpcrdma_ep *ep)
--{
--	struct ib_wc wc;
--
--	while (ib_poll_cq(ep->rep_attr.recv_cq, 1, &wc) > 0)
--		rpcrdma_receive_wc(NULL, &wc);
--}
--
- static int
- rpcrdma_conn_upcall(struct rdma_cm_id *id, struct rdma_cm_event *event)
- {
-@@ -374,23 +365,6 @@ out:
- }
- 
- /*
-- * Drain any cq, prior to teardown.
-- */
--static void
--rpcrdma_clean_cq(struct ib_cq *cq)
--{
--	struct ib_wc wc;
--	int count = 0;
--
--	while (1 == ib_poll_cq(cq, 1, &wc))
--		++count;
--
--	if (count)
--		dprintk("RPC:       %s: flushed %d events (last 0x%x)\n",
--			__func__, count, wc.opcode);
--}
--
--/*
-  * Exported functions.
-  */
- 
-@@ -515,7 +489,7 @@ rpcrdma_ep_create(struct rpcrdma_ep *ep, struct rpcrdma_ia *ia,
- 			__func__);
- 		return -ENOMEM;
+diff --git a/net/sunrpc/xprtrdma/frwr_ops.c b/net/sunrpc/xprtrdma/frwr_ops.c
+index 7c22e9e..e1e6ac1 100644
+--- a/net/sunrpc/xprtrdma/frwr_ops.c
++++ b/net/sunrpc/xprtrdma/frwr_ops.c
+@@ -416,6 +416,7 @@ frwr_op_map(struct rpcrdma_xprt *r_xprt, struct rpcrdma_mr_seg *seg,
+ 			break;
  	}
--	max_qp_wr = ia->ri_device->attrs.max_qp_wr - RPCRDMA_BACKWARD_WRS;
-+	max_qp_wr = ia->ri_device->attrs.max_qp_wr - RPCRDMA_BACKWARD_WRS - 1;
+ 	frmr->fr_nents = i;
++	frmr->fr_dir = direction;
  
- 	/* check provider's send/recv wr limits */
- 	if (cdata->max_requests > max_qp_wr)
-@@ -526,11 +500,13 @@ rpcrdma_ep_create(struct rpcrdma_ep *ep, struct rpcrdma_ia *ia,
- 	ep->rep_attr.srq = NULL;
- 	ep->rep_attr.cap.max_send_wr = cdata->max_requests;
- 	ep->rep_attr.cap.max_send_wr += RPCRDMA_BACKWARD_WRS;
-+	ep->rep_attr.cap.max_send_wr += 1;	/* drain cqe */
- 	rc = ia->ri_ops->ro_open(ia, ep, cdata);
+ 	dma_nents = ib_dma_map_sg(device, frmr->fr_sg, frmr->fr_nents, direction);
+ 	if (!dma_nents) {
+@@ -455,7 +456,6 @@ frwr_op_map(struct rpcrdma_xprt *r_xprt, struct rpcrdma_mr_seg *seg,
  	if (rc)
- 		return rc;
- 	ep->rep_attr.cap.max_recv_wr = cdata->max_requests;
- 	ep->rep_attr.cap.max_recv_wr += RPCRDMA_BACKWARD_WRS;
-+	ep->rep_attr.cap.max_recv_wr += 1;	/* drain cqe */
- 	ep->rep_attr.cap.max_send_sge = RPCRDMA_MAX_IOVS;
- 	ep->rep_attr.cap.max_recv_sge = 1;
- 	ep->rep_attr.cap.max_inline_data = 0;
-@@ -622,13 +598,8 @@ rpcrdma_ep_destroy(struct rpcrdma_ep *ep, struct rpcrdma_ia *ia)
+ 		goto out_senderr;
  
- 	cancel_delayed_work_sync(&ep->rep_connect_worker);
+-	seg1->mr_dir = direction;
+ 	seg1->rl_mw = mw;
+ 	seg1->mr_rkey = mr->rkey;
+ 	seg1->mr_base = mr->iova;
+@@ -500,7 +500,7 @@ __frwr_dma_unmap(struct rpcrdma_xprt *r_xprt, struct rpcrdma_mr_seg *seg,
  
--	if (ia->ri_id->qp)
--		rpcrdma_ep_disconnect(ep, ia);
--
--	rpcrdma_clean_cq(ep->rep_attr.recv_cq);
--	rpcrdma_clean_cq(ep->rep_attr.send_cq);
--
- 	if (ia->ri_id->qp) {
-+		rpcrdma_ep_disconnect(ep, ia);
- 		rdma_destroy_qp(ia->ri_id);
- 		ia->ri_id->qp = NULL;
- 	}
-@@ -659,7 +630,6 @@ retry:
- 		dprintk("RPC:       %s: reconnecting...\n", __func__);
+ 	seg->rl_mw = NULL;
  
- 		rpcrdma_ep_disconnect(ep, ia);
--		rpcrdma_flush_cqs(ep);
+-	ib_dma_unmap_sg(device, f->fr_sg, f->fr_nents, seg->mr_dir);
++	ib_dma_unmap_sg(device, f->fr_sg, f->fr_nents, f->fr_dir);
  
- 		xprt = container_of(ia, struct rpcrdma_xprt, rx_ia);
- 		id = rpcrdma_create_id(xprt, ia,
-@@ -785,7 +755,6 @@ rpcrdma_ep_disconnect(struct rpcrdma_ep *ep, struct rpcrdma_ia *ia)
- {
- 	int rc;
+ 	if (!rc)
+ 		rpcrdma_put_mw(r_xprt, mw);
+@@ -611,7 +611,7 @@ frwr_op_unmap(struct rpcrdma_xprt *r_xprt, struct rpcrdma_mr_seg *seg)
+ 	invalidate_wr->ex.invalidate_rkey = frmr->fr_mr->rkey;
+ 	DECR_CQCOUNT(&r_xprt->rx_ep);
  
--	rpcrdma_flush_cqs(ep);
- 	rc = rdma_disconnect(ia->ri_id);
- 	if (!rc) {
- 		/* returns without wait if not connected */
-@@ -797,6 +766,8 @@ rpcrdma_ep_disconnect(struct rpcrdma_ep *ep, struct rpcrdma_ia *ia)
- 		dprintk("RPC:       %s: rdma_disconnect %i\n", __func__, rc);
- 		ep->rep_connected = rc;
- 	}
-+
-+	ib_drain_qp(ia->ri_id->qp);
- }
- 
- struct rpcrdma_req *
+-	ib_dma_unmap_sg(ia->ri_device, frmr->fr_sg, frmr->fr_nents, seg1->mr_dir);
++	ib_dma_unmap_sg(ia->ri_device, frmr->fr_sg, frmr->fr_nents, frmr->fr_dir);
+ 	read_lock(&ia->ri_qplock);
+ 	rc = ib_post_send(ia->ri_id->qp, invalidate_wr, &bad_wr);
+ 	read_unlock(&ia->ri_qplock);
+diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
+index 612e3de..b5793cb 100644
+--- a/net/sunrpc/xprtrdma/xprt_rdma.h
++++ b/net/sunrpc/xprtrdma/xprt_rdma.h
+@@ -224,6 +224,7 @@ enum rpcrdma_frmr_state {
+ struct rpcrdma_frmr {
+ 	struct scatterlist		*fr_sg;
+ 	int				fr_nents;
++	enum dma_data_direction		fr_dir;
+ 	struct ib_mr			*fr_mr;
+ 	struct ib_cqe			fr_cqe;
+ 	enum rpcrdma_frmr_state		fr_state;
 
