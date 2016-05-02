@@ -1,82 +1,143 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:41463 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:60191 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752211AbcEBOy2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 2 May 2016 10:54:28 -0400
-Received: from int-mx10.intmail.prod.int.phx2.redhat.com (int-mx10.intmail.prod.int.phx2.redhat.com [10.5.11.23])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
-	(No client certificate requested)
-	by mx1.redhat.com (Postfix) with ESMTPS id E7FDF80085
-	for <linux-nfs@vger.kernel.org>; Mon,  2 May 2016 14:54:27 +0000 (UTC)
-Subject: Re: [nfs-utils PATCH v2] exportfs: add the debug option
-To: Scott Mayhew <smayhew@redhat.com>
-References: <1461946437-2740-1-git-send-email-smayhew@redhat.com>
-Cc: linux-nfs@vger.kernel.org
+	id S1752045AbcEBOzR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 2 May 2016 10:55:17 -0400
+Subject: Re: [PATCH nfs-utils] systemd unit files: fix up dependencies on
+ rpcbind.
+To: NeilBrown <neilb@suse.com>
+References: <8760v1unlw.fsf@notabene.neil.brown.name>
+Cc: NFS List <linux-nfs@vger.kernel.org>
 From: Steve Dickson <SteveD@redhat.com>
-Message-ID: <57276A23.7080404@RedHat.com>
-Date: Mon, 2 May 2016 10:54:27 -0400
+Message-ID: <57276A54.1070304@RedHat.com>
+Date: Mon, 2 May 2016 10:55:16 -0400
 MIME-Version: 1.0
-In-Reply-To: <1461946437-2740-1-git-send-email-smayhew@redhat.com>
+In-Reply-To: <8760v1unlw.fsf@notabene.neil.brown.name>
 Content-Type: text/plain; charset=windows-1252
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
 
-On 29/04/16 12:13, Scott Mayhew wrote:
-> Since calling xlog(D_GENERAL) will cause exportfs to exit with a status
-> of 1, there really should be a way to see those messages for debugging
-> purposes.
+On 28/04/16 22:59, NeilBrown wrote:
 > 
-> Signed-off-by: Scott Mayhew <smayhew@redhat.com>
-Committed... 
+> The dependencies on rpcbind have been changed a few times and I think
+> they are still wrong.  So I'll go into some detail to justify this change.
+> 
+> Firstly: rpcbind.target rpcbind.socket or rpcbind.service?
+> 
+> The systemd documentation talks about targets as "synchronization
+> points" and likens them to SysV init run levels.  Run levels are about
+> ordering but not dependencies.
+> 
+> The systemd.special man page describes rpcbind.target as intended
+> explicitly for ordering sysvinit scripts, with "After=" dependencies.
+> 
+> So while I think it is valid to use rpcbind.target for ordering
+> (before/after) it shouldn't be used for dependencies (Wants/Requires).
+> The rpcbind.target file included in systemd does not "Require" the
+> actual service, so requiring rpcbind.target itself is pointless.
+> 
+> I think we shouldn't use rpcbind.target at all.  Leave it for sysvinit
+> synchronization.
+> 
+> So: .socket or .service?
+> 
+> I think nfs only needs the socket to be active.  On first connection
+> the service will be started.  But nfs does not need to wait for the
+> service to start, only the socket.  So I think we should exclusively
+> use rpcbind.socket.
+> 
+> Next: Wants or Requires.
+> 
+> rpc.statd definitely Requires rpcbind.  It needs to register to be
+> useful, and without rpcbind it cannot register.
+> 
+> nfs-server does not necesarily require rpcbind.  Specifically if
+> configured for NFSv4 only, nfs-server will work quite happily without
+> rpcbind.
+> 
+> Someone with an NFSv4 only setup who wants rpcbind to not run can use
+>   systemctl mask rpcbind.socket
+> to ensure it never runs.
+> So nfs-server should only "Wants: rpcbind.socket".
+> I think
+>  Commit: 4fabfcd08206 ("systemd: Decouple the starting and stopping of rpcbind/nfs-server")
+> should have changed "Requires" to "Wants" rather than "server" to "target"
+> to fix the dependency problem.
+> 
+> Finally: After?
+> 
+> It only makes sense to declare an ordering relation as "After:"
+> something that will actually be started.  If "foo.service" is not part
+> of the systemd transaction, then "After: foo.service" has no effect.
+> So having:
+>   Requires: rpcbind.target
+>   After: rpcbind.socket
+> 
+> doesn't make much sense unless there is some relationship between
+> rpcbind.target and rpcbind.socket, and there is no general guarantee
+> of that (though what individual distros do, I don't know).
+> So the "After" should match the "Wants" or "Requires".
+> 
+> It might make sense to
+>   Requires: rpcbind.socket
+>   After: rpcbind.target
+> 
+> as it is reasonable to assume that rpcbind.target will be ordered with
+> rpcbind.socket, but as we can use rpcbind.socket explictly, that is
+> clearer.
+> 
+> So my conclusion is that nfs-server should:
+>   Wants: rpcbind.socket
+>   After: rpcbind.socket
+> 
+> and rpc-statd should
+>   Requires: rpcbind.socket
+>   After: rpcbind.socket
+> 
+> which is what this patch puts into effect.
+Thanks for making sense of this.... Committed... 
 
 steved.
-> ---
->  utils/exportfs/exportfs.c   | 7 +++++--
->  utils/exportfs/exportfs.man | 3 +++
->  2 files changed, 8 insertions(+), 2 deletions(-)
+
 > 
-> diff --git a/utils/exportfs/exportfs.c b/utils/exportfs/exportfs.c
-> index a9151ff..5db348b 100644
-> --- a/utils/exportfs/exportfs.c
-> +++ b/utils/exportfs/exportfs.c
-> @@ -108,11 +108,14 @@ main(int argc, char **argv)
->  	xlog_stderr(1);
->  	xlog_syslog(0);
+> Signed-off-by: NeilBrown <neilb@suse.com>
+> 
+> diff --git a/systemd/nfs-server.service b/systemd/nfs-server.service
+> index 317e5d689767..2ccdc6344cd5 100644
+> --- a/systemd/nfs-server.service
+> +++ b/systemd/nfs-server.service
+> @@ -1,13 +1,14 @@
+>  [Unit]
+>  Description=NFS server and services
+>  DefaultDependencies=no
+> -Requires= network.target proc-fs-nfsd.mount rpcbind.target
+> +Requires= network.target proc-fs-nfsd.mount
+>  Requires= nfs-mountd.service
+> +Wants=rpcbind.socket
+>  Wants=rpc-statd.service nfs-idmapd.service
+>  Wants=rpc-statd-notify.service
 >  
-> -	while ((c = getopt(argc, argv, "afhio:ruvs")) != EOF) {
-> +	while ((c = getopt(argc, argv, "ad:fhio:ruvs")) != EOF) {
->  		switch(c) {
->  		case 'a':
->  			f_all = 1;
->  			break;
-> +		case 'd':
-> +			xlog_sconfig(optarg, 1);
-> +			break;
->  		case 'f':
->  			force_flush = 1;
->  			break;
-> @@ -878,6 +881,6 @@ error(nfs_export *exp, int err)
->  static void
->  usage(const char *progname, int n)
->  {
-> -	fprintf(stderr, "usage: %s [-afhioruvs] [host:/path]\n", progname);
-> +	fprintf(stderr, "usage: %s [-adfhioruvs] [host:/path]\n", progname);
->  	exit(n);
->  }
-> diff --git a/utils/exportfs/exportfs.man b/utils/exportfs/exportfs.man
-> index 75d952a..fdf9260 100644
-> --- a/utils/exportfs/exportfs.man
-> +++ b/utils/exportfs/exportfs.man
-> @@ -88,6 +88,9 @@ appropriate export entry for the host given in
->  to be added to the kernel's export table.
->  .SH OPTIONS
->  .TP
-> +.B \-d kind " or " \-\-debug kind
-> +Turn on debugging. Valid kinds are: all, auth, call, general and parse.
-> +.TP
->  .B -a
->  Export or unexport all directories.
->  .TP
+>  After= local-fs.target
+> -After= network.target proc-fs-nfsd.mount rpcbind.service nfs-mountd.service
+> +After= network.target proc-fs-nfsd.mount rpcbind.socket nfs-mountd.service
+>  After= nfs-idmapd.service rpc-statd.service
+>  Before= rpc-statd-notify.service
+>  
+> diff --git a/systemd/rpc-statd.service b/systemd/rpc-statd.service
+> index f16ea425dc77..a02f5c41a424 100644
+> --- a/systemd/rpc-statd.service
+> +++ b/systemd/rpc-statd.service
+> @@ -2,8 +2,8 @@
+>  Description=NFS status monitor for NFSv2/3 locking.
+>  DefaultDependencies=no
+>  Conflicts=umount.target
+> -Requires=nss-lookup.target rpcbind.target
+> -After=network.target nss-lookup.target rpcbind.service
+> +Requires=nss-lookup.target rpcbind.socket
+> +After=network.target nss-lookup.target rpcbind.socket
+>  
+>  PartOf=nfs-utils.service
+>  
 > 
