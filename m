@@ -1,14 +1,15 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ig0-f195.google.com ([209.85.213.195]:35923 "EHLO
-	mail-ig0-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932097AbcEBSmX (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 2 May 2016 14:42:23 -0400
-Subject: [PATCH v3 15/20] xprtrdma: Refactor the FRWR recovery worker
+Received: from mail-ig0-f194.google.com ([209.85.213.194]:35972 "EHLO
+	mail-ig0-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932097AbcEBSmb (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 2 May 2016 14:42:31 -0400
+Subject: [PATCH v3 16/20] xprtrdma: Move fr_xprt and fr_worker to struct
+ rpcrdma_mw
 From: Chuck Lever <chuck.lever@oracle.com>
 To: anna.schumaker@netapp.com
 Cc: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Mon, 02 May 2016 14:42:21 -0400
-Message-ID: <20160502184221.10798.36610.stgit@manet.1015granger.net>
+Date: Mon, 02 May 2016 14:42:29 -0400
+Message-ID: <20160502184229.10798.4635.stgit@manet.1015granger.net>
 In-Reply-To: <20160502183144.10798.99847.stgit@manet.1015granger.net>
 References: <20160502183144.10798.99847.stgit@manet.1015granger.net>
 MIME-Version: 1.0
@@ -16,65 +17,76 @@ Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Maintain the order of invalidation and DMA unmapping when doing
-a background MR reset.
+In a subsequent patch, the fr_xprt and fr_worker fields will be
+needed by another memory registration mode. Move them into the
+generic rpcrdma_mw structure that wraps struct rpcrdma_frmr.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 Tested-by: Steve Wise <swise@opengridcomputing.com>
 Reviewed-by: Sagi Grimberg <sagi@grimberg.me>
 ---
- net/sunrpc/xprtrdma/frwr_ops.c |   25 ++++++++++++++++---------
- 1 file changed, 16 insertions(+), 9 deletions(-)
+ net/sunrpc/xprtrdma/frwr_ops.c  |   10 +++++-----
+ net/sunrpc/xprtrdma/xprt_rdma.h |    4 ++--
+ 2 files changed, 7 insertions(+), 7 deletions(-)
 
 diff --git a/net/sunrpc/xprtrdma/frwr_ops.c b/net/sunrpc/xprtrdma/frwr_ops.c
-index ce245dc..4e0a5c1 100644
+index 4e0a5c1..1251a1d 100644
 --- a/net/sunrpc/xprtrdma/frwr_ops.c
 +++ b/net/sunrpc/xprtrdma/frwr_ops.c
-@@ -124,6 +124,21 @@ __frwr_reset_mr(struct rpcrdma_ia *ia, struct rpcrdma_mw *r)
- 	return 0;
- }
- 
-+static void
-+__frwr_reset_and_unmap(struct rpcrdma_xprt *r_xprt, struct rpcrdma_mw *mw)
-+{
-+	struct rpcrdma_ia *ia = &r_xprt->rx_ia;
-+	struct rpcrdma_frmr *f = &mw->frmr;
-+	int rc;
-+
-+	rc = __frwr_reset_mr(ia, mw);
-+	ib_dma_unmap_sg(ia->ri_device, f->fr_sg, f->fr_nents, f->fr_dir);
-+	if (rc)
-+		return;
-+
-+	rpcrdma_put_mw(r_xprt, mw);
-+}
-+
- /* Deferred reset of a single FRMR. Generate a fresh rkey by
-  * replacing the MR.
-  *
-@@ -136,15 +151,8 @@ __frwr_recovery_worker(struct work_struct *work)
+@@ -150,9 +150,9 @@ static void
+ __frwr_recovery_worker(struct work_struct *work)
  {
  	struct rpcrdma_mw *r = container_of(work, struct rpcrdma_mw,
- 					    frmr.fr_work);
--	struct rpcrdma_xprt *r_xprt = r->frmr.fr_xprt;
--	struct rpcrdma_ia *ia = &r_xprt->rx_ia;
--	int rc;
--
--	rc = __frwr_reset_mr(ia, r);
--	if (rc)
--		return;
+-					    frmr.fr_work);
++					    mw_work);
  
--	rpcrdma_put_mw(r_xprt, r);
-+	__frwr_reset_and_unmap(r->frmr.fr_xprt, r);
+-	__frwr_reset_and_unmap(r->frmr.fr_xprt, r);
++	__frwr_reset_and_unmap(r->mw_xprt, r);
  	return;
  }
  
-@@ -483,7 +491,6 @@ frwr_op_map(struct rpcrdma_xprt *r_xprt, struct rpcrdma_mr_seg *seg,
- 
- out_senderr:
- 	dprintk("RPC:       %s: ib_post_send status %i\n", __func__, rc);
--	ib_dma_unmap_sg(device, frmr->fr_sg, dma_nents, direction);
- 	__frwr_queue_recovery(mw);
- 	return rc;
+@@ -162,8 +162,8 @@ __frwr_recovery_worker(struct work_struct *work)
+ static void
+ __frwr_queue_recovery(struct rpcrdma_mw *r)
+ {
+-	INIT_WORK(&r->frmr.fr_work, __frwr_recovery_worker);
+-	queue_work(frwr_recovery_wq, &r->frmr.fr_work);
++	INIT_WORK(&r->mw_work, __frwr_recovery_worker);
++	queue_work(frwr_recovery_wq, &r->mw_work);
  }
+ 
+ static int
+@@ -378,9 +378,9 @@ frwr_op_init(struct rpcrdma_xprt *r_xprt)
+ 			return rc;
+ 		}
+ 
++		r->mw_xprt = r_xprt;
+ 		list_add(&r->mw_list, &buf->rb_mws);
+ 		list_add(&r->mw_all, &buf->rb_all);
+-		r->frmr.fr_xprt = r_xprt;
+ 	}
+ 
+ 	return 0;
+diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
+index b5793cb..97c90a8 100644
+--- a/net/sunrpc/xprtrdma/xprt_rdma.h
++++ b/net/sunrpc/xprtrdma/xprt_rdma.h
+@@ -229,8 +229,6 @@ struct rpcrdma_frmr {
+ 	struct ib_cqe			fr_cqe;
+ 	enum rpcrdma_frmr_state		fr_state;
+ 	struct completion		fr_linv_done;
+-	struct work_struct		fr_work;
+-	struct rpcrdma_xprt		*fr_xprt;
+ 	union {
+ 		struct ib_reg_wr	fr_regwr;
+ 		struct ib_send_wr	fr_invwr;
+@@ -247,6 +245,8 @@ struct rpcrdma_mw {
+ 		struct rpcrdma_fmr	fmr;
+ 		struct rpcrdma_frmr	frmr;
+ 	};
++	struct work_struct	mw_work;
++	struct rpcrdma_xprt	*mw_xprt;
+ 	struct list_head	mw_list;
+ 	struct list_head	mw_all;
+ };
 
