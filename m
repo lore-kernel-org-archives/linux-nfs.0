@@ -1,14 +1,14 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ig0-f193.google.com ([209.85.213.193]:34652 "EHLO
-	mail-ig0-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754894AbcEBSll (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 2 May 2016 14:41:41 -0400
-Subject: [PATCH v3 10/20] xprtrdma: Remove rpcrdma_create_chunks()
+Received: from mail-io0-f194.google.com ([209.85.223.194]:35281 "EHLO
+	mail-io0-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755060AbcEBSlt (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 2 May 2016 14:41:49 -0400
+Subject: [PATCH v3 11/20] xprtrdma: Use core ib_drain_qp() API
 From: Chuck Lever <chuck.lever@oracle.com>
 To: anna.schumaker@netapp.com
 Cc: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Mon, 02 May 2016 14:41:39 -0400
-Message-ID: <20160502184139.10798.92147.stgit@manet.1015granger.net>
+Date: Mon, 02 May 2016 14:41:47 -0400
+Message-ID: <20160502184147.10798.39729.stgit@manet.1015granger.net>
 In-Reply-To: <20160502183144.10798.99847.stgit@manet.1015granger.net>
 References: <20160502183144.10798.99847.stgit@manet.1015granger.net>
 MIME-Version: 1.0
@@ -16,175 +16,122 @@ Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-rpcrdma_create_chunks() has been replaced, and can be removed.
+Clean up: Replace rpcrdma_flush_cqs() and rpcrdma_clean_cqs() with
+the new ib_drain_qp() API.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Reviewed-By: Leon Romanovsky <leonro@mellanox.com>
 Tested-by: Steve Wise <swise@opengridcomputing.com>
 Reviewed-by: Sagi Grimberg <sagi@grimberg.me>
 ---
- net/sunrpc/xprtrdma/rpc_rdma.c |  151 ----------------------------------------
- 1 file changed, 151 deletions(-)
+ net/sunrpc/xprtrdma/verbs.c |   41 ++++++-----------------------------------
+ 1 file changed, 6 insertions(+), 35 deletions(-)
 
-diff --git a/net/sunrpc/xprtrdma/rpc_rdma.c b/net/sunrpc/xprtrdma/rpc_rdma.c
-index e80f43d..9ebaf79 100644
---- a/net/sunrpc/xprtrdma/rpc_rdma.c
-+++ b/net/sunrpc/xprtrdma/rpc_rdma.c
-@@ -285,157 +285,6 @@ rpcrdma_convert_iovs(struct xdr_buf *xdrbuf, unsigned int pos,
- 	return n;
+diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
+index 9f8d6c1..b7a5bc1 100644
+--- a/net/sunrpc/xprtrdma/verbs.c
++++ b/net/sunrpc/xprtrdma/verbs.c
+@@ -203,15 +203,6 @@ out_fail:
+ 	goto out_schedule;
  }
  
--/*
-- * Create read/write chunk lists, and reply chunks, for RDMA
-- *
-- *   Assume check against THRESHOLD has been done, and chunks are required.
-- *   Assume only encoding one list entry for read|write chunks. The NFSv3
-- *     protocol is simple enough to allow this as it only has a single "bulk
-- *     result" in each procedure - complicated NFSv4 COMPOUNDs are not. (The
-- *     RDMA/Sessions NFSv4 proposal addresses this for future v4 revs.)
-- *
-- * When used for a single reply chunk (which is a special write
-- * chunk used for the entire reply, rather than just the data), it
-- * is used primarily for READDIR and READLINK which would otherwise
-- * be severely size-limited by a small rdma inline read max. The server
-- * response will come back as an RDMA Write, followed by a message
-- * of type RDMA_NOMSG carrying the xid and length. As a result, reply
-- * chunks do not provide data alignment, however they do not require
-- * "fixup" (moving the response to the upper layer buffer) either.
-- *
-- * Encoding key for single-list chunks (HLOO = Handle32 Length32 Offset64):
-- *
-- *  Read chunklist (a linked list):
-- *   N elements, position P (same P for all chunks of same arg!):
-- *    1 - PHLOO - 1 - PHLOO - ... - 1 - PHLOO - 0
-- *
-- *  Write chunklist (a list of (one) counted array):
-- *   N elements:
-- *    1 - N - HLOO - HLOO - ... - HLOO - 0
-- *
-- *  Reply chunk (a counted array):
-- *   N elements:
-- *    1 - N - HLOO - HLOO - ... - HLOO
-- *
-- * Returns positive RPC/RDMA header size, or negative errno.
-- */
--
--static ssize_t
--rpcrdma_create_chunks(struct rpc_rqst *rqst, struct xdr_buf *target,
--		struct rpcrdma_msg *headerp, enum rpcrdma_chunktype type)
+-static void
+-rpcrdma_flush_cqs(struct rpcrdma_ep *ep)
 -{
--	struct rpcrdma_req *req = rpcr_to_rdmar(rqst);
--	struct rpcrdma_xprt *r_xprt = rpcx_to_rdmax(rqst->rq_xprt);
--	int n, nsegs, nchunks = 0;
--	unsigned int pos;
--	struct rpcrdma_mr_seg *seg = req->rl_segments;
--	struct rpcrdma_read_chunk *cur_rchunk = NULL;
--	struct rpcrdma_write_array *warray = NULL;
--	struct rpcrdma_write_chunk *cur_wchunk = NULL;
--	__be32 *iptr = headerp->rm_body.rm_chunks;
--	int (*map)(struct rpcrdma_xprt *, struct rpcrdma_mr_seg *, int, bool);
+-	struct ib_wc wc;
 -
--	if (type == rpcrdma_readch || type == rpcrdma_areadch) {
--		/* a read chunk - server will RDMA Read our memory */
--		cur_rchunk = (struct rpcrdma_read_chunk *) iptr;
--	} else {
--		/* a write or reply chunk - server will RDMA Write our memory */
--		*iptr++ = xdr_zero;	/* encode a NULL read chunk list */
--		if (type == rpcrdma_replych)
--			*iptr++ = xdr_zero;	/* a NULL write chunk list */
--		warray = (struct rpcrdma_write_array *) iptr;
--		cur_wchunk = (struct rpcrdma_write_chunk *) (warray + 1);
--	}
--
--	if (type == rpcrdma_replych || type == rpcrdma_areadch)
--		pos = 0;
--	else
--		pos = target->head[0].iov_len;
--
--	nsegs = rpcrdma_convert_iovs(target, pos, type, seg, RPCRDMA_MAX_SEGS);
--	if (nsegs < 0)
--		return nsegs;
--
--	map = r_xprt->rx_ia.ri_ops->ro_map;
--	do {
--		n = map(r_xprt, seg, nsegs, cur_wchunk != NULL);
--		if (n <= 0)
--			goto out;
--		if (cur_rchunk) {	/* read */
--			cur_rchunk->rc_discrim = xdr_one;
--			/* all read chunks have the same "position" */
--			cur_rchunk->rc_position = cpu_to_be32(pos);
--			cur_rchunk->rc_target.rs_handle =
--						cpu_to_be32(seg->mr_rkey);
--			cur_rchunk->rc_target.rs_length =
--						cpu_to_be32(seg->mr_len);
--			xdr_encode_hyper(
--					(__be32 *)&cur_rchunk->rc_target.rs_offset,
--					seg->mr_base);
--			dprintk("RPC:       %s: read chunk "
--				"elem %d@0x%llx:0x%x pos %u (%s)\n", __func__,
--				seg->mr_len, (unsigned long long)seg->mr_base,
--				seg->mr_rkey, pos, n < nsegs ? "more" : "last");
--			cur_rchunk++;
--			r_xprt->rx_stats.read_chunk_count++;
--		} else {		/* write/reply */
--			cur_wchunk->wc_target.rs_handle =
--						cpu_to_be32(seg->mr_rkey);
--			cur_wchunk->wc_target.rs_length =
--						cpu_to_be32(seg->mr_len);
--			xdr_encode_hyper(
--					(__be32 *)&cur_wchunk->wc_target.rs_offset,
--					seg->mr_base);
--			dprintk("RPC:       %s: %s chunk "
--				"elem %d@0x%llx:0x%x (%s)\n", __func__,
--				(type == rpcrdma_replych) ? "reply" : "write",
--				seg->mr_len, (unsigned long long)seg->mr_base,
--				seg->mr_rkey, n < nsegs ? "more" : "last");
--			cur_wchunk++;
--			if (type == rpcrdma_replych)
--				r_xprt->rx_stats.reply_chunk_count++;
--			else
--				r_xprt->rx_stats.write_chunk_count++;
--			r_xprt->rx_stats.total_rdma_request += seg->mr_len;
--		}
--		nchunks++;
--		seg   += n;
--		nsegs -= n;
--	} while (nsegs);
--
--	/* success. all failures return above */
--	req->rl_nchunks = nchunks;
--
--	/*
--	 * finish off header. If write, marshal discrim and nchunks.
--	 */
--	if (cur_rchunk) {
--		iptr = (__be32 *) cur_rchunk;
--		*iptr++ = xdr_zero;	/* finish the read chunk list */
--		*iptr++ = xdr_zero;	/* encode a NULL write chunk list */
--		*iptr++ = xdr_zero;	/* encode a NULL reply chunk */
--	} else {
--		warray->wc_discrim = xdr_one;
--		warray->wc_nchunks = cpu_to_be32(nchunks);
--		iptr = (__be32 *) cur_wchunk;
--		if (type == rpcrdma_writech) {
--			*iptr++ = xdr_zero; /* finish the write chunk list */
--			*iptr++ = xdr_zero; /* encode a NULL reply chunk */
--		}
--	}
--
--	/*
--	 * Return header size.
--	 */
--	return (unsigned char *)iptr - (unsigned char *)headerp;
--
--out:
--	for (pos = 0; nchunks--;)
--		pos += r_xprt->rx_ia.ri_ops->ro_unmap(r_xprt,
--						      &req->rl_segments[pos]);
--	return n;
+-	while (ib_poll_cq(ep->rep_attr.recv_cq, 1, &wc) > 0)
+-		rpcrdma_receive_wc(NULL, &wc);
 -}
 -
- static inline __be32 *
- xdr_encode_rdma_segment(__be32 *iptr, struct rpcrdma_mr_seg *seg)
+ static int
+ rpcrdma_conn_upcall(struct rdma_cm_id *id, struct rdma_cm_event *event)
  {
+@@ -374,23 +365,6 @@ out:
+ }
+ 
+ /*
+- * Drain any cq, prior to teardown.
+- */
+-static void
+-rpcrdma_clean_cq(struct ib_cq *cq)
+-{
+-	struct ib_wc wc;
+-	int count = 0;
+-
+-	while (1 == ib_poll_cq(cq, 1, &wc))
+-		++count;
+-
+-	if (count)
+-		dprintk("RPC:       %s: flushed %d events (last 0x%x)\n",
+-			__func__, count, wc.opcode);
+-}
+-
+-/*
+  * Exported functions.
+  */
+ 
+@@ -515,7 +489,7 @@ rpcrdma_ep_create(struct rpcrdma_ep *ep, struct rpcrdma_ia *ia,
+ 			__func__);
+ 		return -ENOMEM;
+ 	}
+-	max_qp_wr = ia->ri_device->attrs.max_qp_wr - RPCRDMA_BACKWARD_WRS;
++	max_qp_wr = ia->ri_device->attrs.max_qp_wr - RPCRDMA_BACKWARD_WRS - 1;
+ 
+ 	/* check provider's send/recv wr limits */
+ 	if (cdata->max_requests > max_qp_wr)
+@@ -526,11 +500,13 @@ rpcrdma_ep_create(struct rpcrdma_ep *ep, struct rpcrdma_ia *ia,
+ 	ep->rep_attr.srq = NULL;
+ 	ep->rep_attr.cap.max_send_wr = cdata->max_requests;
+ 	ep->rep_attr.cap.max_send_wr += RPCRDMA_BACKWARD_WRS;
++	ep->rep_attr.cap.max_send_wr += 1;	/* drain cqe */
+ 	rc = ia->ri_ops->ro_open(ia, ep, cdata);
+ 	if (rc)
+ 		return rc;
+ 	ep->rep_attr.cap.max_recv_wr = cdata->max_requests;
+ 	ep->rep_attr.cap.max_recv_wr += RPCRDMA_BACKWARD_WRS;
++	ep->rep_attr.cap.max_recv_wr += 1;	/* drain cqe */
+ 	ep->rep_attr.cap.max_send_sge = RPCRDMA_MAX_IOVS;
+ 	ep->rep_attr.cap.max_recv_sge = 1;
+ 	ep->rep_attr.cap.max_inline_data = 0;
+@@ -622,13 +598,8 @@ rpcrdma_ep_destroy(struct rpcrdma_ep *ep, struct rpcrdma_ia *ia)
+ 
+ 	cancel_delayed_work_sync(&ep->rep_connect_worker);
+ 
+-	if (ia->ri_id->qp)
+-		rpcrdma_ep_disconnect(ep, ia);
+-
+-	rpcrdma_clean_cq(ep->rep_attr.recv_cq);
+-	rpcrdma_clean_cq(ep->rep_attr.send_cq);
+-
+ 	if (ia->ri_id->qp) {
++		rpcrdma_ep_disconnect(ep, ia);
+ 		rdma_destroy_qp(ia->ri_id);
+ 		ia->ri_id->qp = NULL;
+ 	}
+@@ -659,7 +630,6 @@ retry:
+ 		dprintk("RPC:       %s: reconnecting...\n", __func__);
+ 
+ 		rpcrdma_ep_disconnect(ep, ia);
+-		rpcrdma_flush_cqs(ep);
+ 
+ 		xprt = container_of(ia, struct rpcrdma_xprt, rx_ia);
+ 		id = rpcrdma_create_id(xprt, ia,
+@@ -785,7 +755,6 @@ rpcrdma_ep_disconnect(struct rpcrdma_ep *ep, struct rpcrdma_ia *ia)
+ {
+ 	int rc;
+ 
+-	rpcrdma_flush_cqs(ep);
+ 	rc = rdma_disconnect(ia->ri_id);
+ 	if (!rc) {
+ 		/* returns without wait if not connected */
+@@ -797,6 +766,8 @@ rpcrdma_ep_disconnect(struct rpcrdma_ep *ep, struct rpcrdma_ia *ia)
+ 		dprintk("RPC:       %s: rdma_disconnect %i\n", __func__, rc);
+ 		ep->rep_connected = rc;
+ 	}
++
++	ib_drain_qp(ia->ri_id->qp);
+ }
+ 
+ struct rpcrdma_req *
 
