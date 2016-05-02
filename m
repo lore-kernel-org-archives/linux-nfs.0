@@ -1,59 +1,85 @@
-Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:35868 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753822AbcEaSbx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 31 May 2016 14:31:53 -0400
-Subject: Re: Configuring fs_locations on Linux upstream server pseudo fs for
- session trunking
-To: "J. Bruce Fields" <bfields@fieldses.org>,
-        Andy Adamson <androsadamson@gmail.com>
-References: <04273F60-806B-4E12-B097-388C346F2DED@oracle.com>
- <40E6E131-029E-4337-A235-B1DB5CA687AA@netapp.com>
- <20160525184837.GA15210@fieldses.org>
- <9614D777-9C75-4FBB-BD06-4EC366273B49@oracle.com>
- <CAHVgHyVEx1fUP36tHaB-uBMJmC3gqCeQ5PSgaHm9XrAWQqerqw@mail.gmail.com>
- <20160526152253.GC21450@fieldses.org>
-Cc: Chuck Lever <chuck.lever@oracle.com>,
-        "Adamson, Andy" <William.Adamson@netapp.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-From: Steve Dickson <SteveD@redhat.com>
-Message-ID: <e8d92a6e-6a02-03e2-1dca-c733f31e1715@RedHat.com>
-Date: Tue, 31 May 2016 14:31:51 -0400
+Return-Path: nfsv4-bounces@ietf.org
+From: "Adamson, Andy" <William.Adamson@netapp.com>
+To: "nfsv4@ietf.org" <nfsv4@ietf.org>
+Date: Mon, 2 May 2016 16:27:25 +0000
+Message-ID: <1462206447487.96866@netapp.com>
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: [nfsv4] Announcing the June 2016 BAT in Ann Arbor
+List-Unsubscribe: <https://www.ietf.org/mailman/options/nfsv4>,
+ <mailto:nfsv4-request@ietf.org?subject=unsubscribe>
+List-Archive: <https://mailarchive.ietf.org/arch/browse/nfsv4/>
+List-Post: <mailto:nfsv4@ietf.org>
+List-Help: <mailto:nfsv4-request@ietf.org?subject=help>
+List-Subscribe: <https://www.ietf.org/mailman/listinfo/nfsv4>,
+ <mailto:nfsv4-request@ietf.org?subject=subscribe>
+Content-Type: multipart/mixed; boundary="===============0011649513387800516=="
+Errors-To: nfsv4-bounces@ietf.org
+Sender: "nfsv4" <nfsv4-bounces@ietf.org>
 MIME-Version: 1.0
-In-Reply-To: <20160526152253.GC21450@fieldses.org>
-Content-Type: text/plain; charset=utf-8
-Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 05/26/2016 11:22 AM, J. Bruce Fields wrote:
->>>>> Idea 1: extra syntax in /etc/exports
->>>> > >>
->>>> > >> It's not really export-specific information.  I wonder if it'd be better
->>>> > >> to pass it on the rpc.nfsd commandline?
->>>> > >>
->>>> > >>       rpc.nfsd --multipath-set="192.168.0.1,192.168.0.2"
->>>> > >>
->>>> > >> (and then that can be configured in /etc/sysconfig/nfs or whatever)?
->> > 
->> > Is this (the rpc.nfsd command line and /etc/sysconfig/nfs entry) the
->> > preferred way?
->> > Is /etc/sysconfig/nfs read upon reboot?
-Again, I think this is just globing new stuff on old stuff... 
+--===============0011649513387800516==
+Content-Language: en-US
+Content-Type: multipart/alternative;
+ boundary="_000_146220644748796866netappcom_"
 
-I'm just thinking having new commands to manage new technology
-better direction. 
-  
-> Yes.  (Well, the details are distribution-dependent, I think it's up to
-> the /usr/lib/systemd/scripts/nfs-utils_env.sh script referenced in
-> nfs-utils/systemd/nfs-config.service.)
-These new command could have their very own system start up scripts
+--_000_146220644748796866netappcom_
+Content-Type: text/plain; charset="iso-8859-1"
+Content-Transfer-Encoding: quoted-printable
 
-> 
-> The annoying thing about putting it on the rpc.nfsd commandline is that
-> it's mountd, not nfsd, that manages the NFSv4 pseudofs, and would be
-> responsible for cooking up the fs_locations info.
-I agree with this... structurally this just seems wrong.
-
-steved. 
+Netapp and Primarydata are co-hosting the June NFSv4 bakeathon once again i=
+n Ann Arbor June 13th through June 17th.
 
 
+For registration and other details, please see:
+
+
+http://nfsv4bat.org/Events/2016/June/BAT/index.html?
+
+
+-->Andy
+
+--_000_146220644748796866netappcom_
+Content-Type: text/html; charset="iso-8859-1"
+Content-Transfer-Encoding: quoted-printable
+
+<html><head>
+<meta http-equiv=3D"Content-Type" content=3D"text/html; charset=3Diso-8859-=
+1">
+<style type=3D"text/css" style=3D"display:none"><!-- p { margin-top: 0px; m=
+argin-bottom: 0px; }--></style>
+</head>
+<body dir=3D"ltr" style=3D"font-size:12pt;color:#000000;background-color:#F=
+FFFFF;font-family:Calibri,Arial,Helvetica,sans-serif;">
+<p class=3D"p1">Netapp and Primarydata are co-hosting the June NFSv4 bakeat=
+hon once again in Ann Arbor June 13th through June 17th.&nbsp;<br>
+</p>
+<p class=3D"p1"><br>
+</p>
+<p class=3D"p1">For registration and other details, please see:<br>
+</p>
+<p class=3D"p1"><br>
+</p>
+<p><a href=3D"http://nfsv4bat.org/Events/2016/June/BAT/index.html">http://n=
+fsv4bat.org/Events/2016/June/BAT/index.html</a>&#8203;<br>
+</p>
+<p><br>
+</p>
+<p>--&gt;Andy<br>
+</p>
+</body>
+</html>
+
+--_000_146220644748796866netappcom_--
+
+--===============0011649513387800516==
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
+
+_______________________________________________
+nfsv4 mailing list
+nfsv4@ietf.org
+https://www.ietf.org/mailman/listinfo/nfsv4
+
+--===============0011649513387800516==--
