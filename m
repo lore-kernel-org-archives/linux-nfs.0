@@ -1,14 +1,14 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f193.google.com ([209.85.223.193]:33997 "EHLO
-	mail-io0-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755115AbcEBSl6 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 2 May 2016 14:41:58 -0400
-Subject: [PATCH v3 12/20] xprtrdma: Rename rpcrdma_frwr::sg and sg_nents
+Received: from mail-ig0-f194.google.com ([209.85.213.194]:35866 "EHLO
+	mail-ig0-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932097AbcEBSmQ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 2 May 2016 14:42:16 -0400
+Subject: [PATCH v3 14/20] xprtrdma: Reset MRs in frwr_op_unmap_sync()
 From: Chuck Lever <chuck.lever@oracle.com>
 To: anna.schumaker@netapp.com
 Cc: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Mon, 02 May 2016 14:41:56 -0400
-Message-ID: <20160502184155.10798.10426.stgit@manet.1015granger.net>
+Date: Mon, 02 May 2016 14:42:12 -0400
+Message-ID: <20160502184212.10798.28783.stgit@manet.1015granger.net>
 In-Reply-To: <20160502183144.10798.99847.stgit@manet.1015granger.net>
 References: <20160502183144.10798.99847.stgit@manet.1015granger.net>
 MIME-Version: 1.0
@@ -16,142 +16,174 @@ Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Clean up: Follow same naming convention as other fields in struct
-rpcrdma_frwr.
+frwr_op_unmap_sync() is now invoked in a workqueue context, the same
+as __frwr_queue_recovery(). There's no need to defer MR reset if
+posting LOCAL_INV MRs fails.
+
+This means that even when ib_post_send() fails (which should occur
+very rarely) the invalidation and DMA unmapping steps are still done
+in the correct order.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 Tested-by: Steve Wise <swise@opengridcomputing.com>
 Reviewed-by: Sagi Grimberg <sagi@grimberg.me>
 ---
- net/sunrpc/xprtrdma/frwr_ops.c  |   36 ++++++++++++++++++------------------
- net/sunrpc/xprtrdma/xprt_rdma.h |    4 ++--
- 2 files changed, 20 insertions(+), 20 deletions(-)
+ net/sunrpc/xprtrdma/frwr_ops.c |   98 ++++++++++++++++++++++++----------------
+ 1 file changed, 60 insertions(+), 38 deletions(-)
 
 diff --git a/net/sunrpc/xprtrdma/frwr_ops.c b/net/sunrpc/xprtrdma/frwr_ops.c
-index 41e02e7..7c22e9e 100644
+index e1e6ac1..ce245dc 100644
 --- a/net/sunrpc/xprtrdma/frwr_ops.c
 +++ b/net/sunrpc/xprtrdma/frwr_ops.c
-@@ -152,11 +152,11 @@ __frwr_init(struct rpcrdma_mw *r, struct ib_pd *pd, struct ib_device *device,
- 	if (IS_ERR(f->fr_mr))
- 		goto out_mr_err;
- 
--	f->sg = kcalloc(depth, sizeof(*f->sg), GFP_KERNEL);
--	if (!f->sg)
-+	f->fr_sg = kcalloc(depth, sizeof(*f->fr_sg), GFP_KERNEL);
-+	if (!f->fr_sg)
- 		goto out_list_err;
- 
--	sg_init_table(f->sg, depth);
-+	sg_init_table(f->fr_sg, depth);
- 
- 	init_completion(&f->fr_linv_done);
- 
-@@ -185,7 +185,7 @@ __frwr_release(struct rpcrdma_mw *r)
- 	if (rc)
- 		dprintk("RPC:       %s: ib_dereg_mr status %i\n",
- 			__func__, rc);
--	kfree(r->frmr.sg);
-+	kfree(r->frmr.fr_sg);
+@@ -98,6 +98,32 @@ frwr_destroy_recovery_wq(void)
+ 	destroy_workqueue(wq);
  }
  
- static int
-@@ -399,12 +399,12 @@ frwr_op_map(struct rpcrdma_xprt *r_xprt, struct rpcrdma_mr_seg *seg,
++static int
++__frwr_reset_mr(struct rpcrdma_ia *ia, struct rpcrdma_mw *r)
++{
++	struct rpcrdma_frmr *f = &r->frmr;
++	int rc;
++
++	rc = ib_dereg_mr(f->fr_mr);
++	if (rc) {
++		pr_warn("rpcrdma: ib_dereg_mr status %d, frwr %p orphaned\n",
++			rc, r);
++		return rc;
++	}
++
++	f->fr_mr = ib_alloc_mr(ia->ri_pd, IB_MR_TYPE_MEM_REG,
++			       ia->ri_max_frmr_depth);
++	if (IS_ERR(f->fr_mr)) {
++		pr_warn("rpcrdma: ib_alloc_mr status %ld, frwr %p orphaned\n",
++			PTR_ERR(f->fr_mr), r);
++		return PTR_ERR(f->fr_mr);
++	}
++
++	dprintk("RPC:       %s: recovered FRMR %p\n", __func__, r);
++	f->fr_state = FRMR_IS_INVALID;
++	return 0;
++}
++
+ /* Deferred reset of a single FRMR. Generate a fresh rkey by
+  * replacing the MR.
+  *
+@@ -111,24 +137,15 @@ __frwr_recovery_worker(struct work_struct *work)
+ 	struct rpcrdma_mw *r = container_of(work, struct rpcrdma_mw,
+ 					    frmr.fr_work);
+ 	struct rpcrdma_xprt *r_xprt = r->frmr.fr_xprt;
+-	unsigned int depth = r_xprt->rx_ia.ri_max_frmr_depth;
+-	struct ib_pd *pd = r_xprt->rx_ia.ri_pd;
+-
+-	if (ib_dereg_mr(r->frmr.fr_mr))
+-		goto out_fail;
++	struct rpcrdma_ia *ia = &r_xprt->rx_ia;
++	int rc;
  
- 	for (i = 0; i < nsegs;) {
- 		if (seg->mr_page)
--			sg_set_page(&frmr->sg[i],
-+			sg_set_page(&frmr->fr_sg[i],
- 				    seg->mr_page,
- 				    seg->mr_len,
- 				    offset_in_page(seg->mr_offset));
- 		else
--			sg_set_buf(&frmr->sg[i], seg->mr_offset,
-+			sg_set_buf(&frmr->fr_sg[i], seg->mr_offset,
- 				   seg->mr_len);
+-	r->frmr.fr_mr = ib_alloc_mr(pd, IB_MR_TYPE_MEM_REG, depth);
+-	if (IS_ERR(r->frmr.fr_mr))
+-		goto out_fail;
++	rc = __frwr_reset_mr(ia, r);
++	if (rc)
++		return;
  
- 		++seg;
-@@ -415,25 +415,25 @@ frwr_op_map(struct rpcrdma_xprt *r_xprt, struct rpcrdma_mr_seg *seg,
- 		    offset_in_page((seg-1)->mr_offset + (seg-1)->mr_len))
- 			break;
- 	}
--	frmr->sg_nents = i;
-+	frmr->fr_nents = i;
- 
--	dma_nents = ib_dma_map_sg(device, frmr->sg, frmr->sg_nents, direction);
-+	dma_nents = ib_dma_map_sg(device, frmr->fr_sg, frmr->fr_nents, direction);
- 	if (!dma_nents) {
- 		pr_err("RPC:       %s: failed to dma map sg %p sg_nents %u\n",
--		       __func__, frmr->sg, frmr->sg_nents);
-+		       __func__, frmr->fr_sg, frmr->fr_nents);
- 		return -ENOMEM;
- 	}
- 
--	n = ib_map_mr_sg(mr, frmr->sg, frmr->sg_nents, PAGE_SIZE);
--	if (unlikely(n != frmr->sg_nents)) {
-+	n = ib_map_mr_sg(mr, frmr->fr_sg, frmr->fr_nents, PAGE_SIZE);
-+	if (unlikely(n != frmr->fr_nents)) {
- 		pr_err("RPC:       %s: failed to map mr %p (%u/%u)\n",
--		       __func__, frmr->fr_mr, n, frmr->sg_nents);
-+		       __func__, frmr->fr_mr, n, frmr->fr_nents);
- 		rc = n < 0 ? n : -EINVAL;
- 		goto out_senderr;
- 	}
- 
- 	dprintk("RPC:       %s: Using frmr %p to map %u segments (%u bytes)\n",
--		__func__, mw, frmr->sg_nents, mr->length);
-+		__func__, mw, frmr->fr_nents, mr->length);
- 
- 	key = (u8)(mr->rkey & 0x000000FF);
- 	ib_update_fast_reg_key(mr, ++key);
-@@ -459,14 +459,14 @@ frwr_op_map(struct rpcrdma_xprt *r_xprt, struct rpcrdma_mr_seg *seg,
- 	seg1->rl_mw = mw;
- 	seg1->mr_rkey = mr->rkey;
- 	seg1->mr_base = mr->iova;
--	seg1->mr_nsegs = frmr->sg_nents;
-+	seg1->mr_nsegs = frmr->fr_nents;
- 	seg1->mr_len = mr->length;
- 
--	return frmr->sg_nents;
-+	return frmr->fr_nents;
- 
- out_senderr:
- 	dprintk("RPC:       %s: ib_post_send status %i\n", __func__, rc);
--	ib_dma_unmap_sg(device, frmr->sg, dma_nents, direction);
-+	ib_dma_unmap_sg(device, frmr->fr_sg, dma_nents, direction);
- 	__frwr_queue_recovery(mw);
- 	return rc;
+-	dprintk("RPC:       %s: recovered FRMR %p\n", __func__, r);
+-	r->frmr.fr_state = FRMR_IS_INVALID;
+ 	rpcrdma_put_mw(r_xprt, r);
+ 	return;
+-
+-out_fail:
+-	pr_warn("RPC:       %s: FRMR %p unrecovered\n",
+-		__func__, r);
  }
-@@ -500,7 +500,7 @@ __frwr_dma_unmap(struct rpcrdma_xprt *r_xprt, struct rpcrdma_mr_seg *seg,
  
- 	seg->rl_mw = NULL;
+ /* A broken MR was discovered in a context that can't sleep.
+@@ -490,24 +507,6 @@ __frwr_prepare_linv_wr(struct rpcrdma_mr_seg *seg)
+ 	return invalidate_wr;
+ }
  
--	ib_dma_unmap_sg(device, f->sg, f->sg_nents, seg->mr_dir);
-+	ib_dma_unmap_sg(device, f->fr_sg, f->fr_nents, seg->mr_dir);
+-static void
+-__frwr_dma_unmap(struct rpcrdma_xprt *r_xprt, struct rpcrdma_mr_seg *seg,
+-		 int rc)
+-{
+-	struct ib_device *device = r_xprt->rx_ia.ri_device;
+-	struct rpcrdma_mw *mw = seg->rl_mw;
+-	struct rpcrdma_frmr *f = &mw->frmr;
+-
+-	seg->rl_mw = NULL;
+-
+-	ib_dma_unmap_sg(device, f->fr_sg, f->fr_nents, f->fr_dir);
+-
+-	if (!rc)
+-		rpcrdma_put_mw(r_xprt, mw);
+-	else
+-		__frwr_queue_recovery(mw);
+-}
+-
+ /* Invalidate all memory regions that were registered for "req".
+  *
+  * Sleeps until it is safe for the host CPU to access the
+@@ -521,6 +520,7 @@ frwr_op_unmap_sync(struct rpcrdma_xprt *r_xprt, struct rpcrdma_req *req)
+ 	struct rpcrdma_mr_seg *seg;
+ 	unsigned int i, nchunks;
+ 	struct rpcrdma_frmr *f;
++	struct rpcrdma_mw *mw;
+ 	int rc;
  
- 	if (!rc)
- 		rpcrdma_put_mw(r_xprt, mw);
-@@ -611,7 +611,7 @@ frwr_op_unmap(struct rpcrdma_xprt *r_xprt, struct rpcrdma_mr_seg *seg)
- 	invalidate_wr->ex.invalidate_rkey = frmr->fr_mr->rkey;
- 	DECR_CQCOUNT(&r_xprt->rx_ep);
+ 	dprintk("RPC:       %s: req %p\n", __func__, req);
+@@ -561,11 +561,8 @@ frwr_op_unmap_sync(struct rpcrdma_xprt *r_xprt, struct rpcrdma_req *req)
+ 	 * unless ri_id->qp is a valid pointer.
+ 	 */
+ 	rc = ib_post_send(ia->ri_id->qp, invalidate_wrs, &bad_wr);
+-	if (rc) {
+-		pr_warn("%s: ib_post_send failed %i\n", __func__, rc);
+-		rdma_disconnect(ia->ri_id);
+-		goto unmap;
+-	}
++	if (rc)
++		goto reset_mrs;
  
--	ib_dma_unmap_sg(ia->ri_device, frmr->sg, frmr->sg_nents, seg1->mr_dir);
-+	ib_dma_unmap_sg(ia->ri_device, frmr->fr_sg, frmr->fr_nents, seg1->mr_dir);
- 	read_lock(&ia->ri_qplock);
- 	rc = ib_post_send(ia->ri_id->qp, invalidate_wr, &bad_wr);
- 	read_unlock(&ia->ri_qplock);
-diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
-index 61999b6..612e3de 100644
---- a/net/sunrpc/xprtrdma/xprt_rdma.h
-+++ b/net/sunrpc/xprtrdma/xprt_rdma.h
-@@ -222,8 +222,8 @@ enum rpcrdma_frmr_state {
- };
+ 	wait_for_completion(&f->fr_linv_done);
  
- struct rpcrdma_frmr {
--	struct scatterlist		*sg;
--	int				sg_nents;
-+	struct scatterlist		*fr_sg;
-+	int				fr_nents;
- 	struct ib_mr			*fr_mr;
- 	struct ib_cqe			fr_cqe;
- 	enum rpcrdma_frmr_state		fr_state;
+@@ -575,14 +572,39 @@ frwr_op_unmap_sync(struct rpcrdma_xprt *r_xprt, struct rpcrdma_req *req)
+ unmap:
+ 	for (i = 0, nchunks = req->rl_nchunks; nchunks; nchunks--) {
+ 		seg = &req->rl_segments[i];
++		mw = seg->rl_mw;
++		seg->rl_mw = NULL;
+ 
+-		__frwr_dma_unmap(r_xprt, seg, rc);
++		ib_dma_unmap_sg(ia->ri_device, f->fr_sg, f->fr_nents,
++				f->fr_dir);
++		rpcrdma_put_mw(r_xprt, mw);
+ 
+ 		i += seg->mr_nsegs;
+ 		seg->mr_nsegs = 0;
+ 	}
+ 
+ 	req->rl_nchunks = 0;
++	return;
++
++reset_mrs:
++	pr_warn("%s: ib_post_send failed %i\n", __func__, rc);
++
++	/* Find and reset the MRs in the LOCAL_INV WRs that did not
++	 * get posted. This is synchronous, and slow.
++	 */
++	for (i = 0, nchunks = req->rl_nchunks; nchunks; nchunks--) {
++		seg = &req->rl_segments[i];
++		mw = seg->rl_mw;
++		f = &mw->frmr;
++
++		if (mw->frmr.fr_mr->rkey == bad_wr->ex.invalidate_rkey) {
++			__frwr_reset_mr(ia, mw);
++			bad_wr = bad_wr->next;
++		}
++
++		i += seg->mr_nsegs;
++	}
++	goto unmap;
+ }
+ 
+ /* Post a LOCAL_INV Work Request to prevent further remote access
 
