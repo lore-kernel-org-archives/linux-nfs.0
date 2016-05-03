@@ -1,184 +1,142 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f178.google.com ([209.85.223.178]:36809 "EHLO
-	mail-io0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751061AbcECTht (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 3 May 2016 15:37:49 -0400
-MIME-Version: 1.0
-In-Reply-To: <13CA7D80-3F3D-4D92-9E52-1434BD8047DE@oracle.com>
-References: <CAOMZO5D9dTFRbT0CMOdM3aGb1cLd+n8udQQH0K=onZ7Z-4onmw@mail.gmail.com>
-	<13CA7D80-3F3D-4D92-9E52-1434BD8047DE@oracle.com>
-Date: Tue, 3 May 2016 16:37:47 -0300
-Message-ID: <CAOMZO5CMu=VbPn_n+ttK_pJUS+VoQueYQiyiMTCTR11FDeCWFg@mail.gmail.com>
-Subject: Re: Cannot use NFS with linux-next 20160429
-From: Fabio Estevam <festevam@gmail.com>
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
-        "netdev@vger.kernel.org" <netdev@vger.kernel.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=UTF-8
+Received: from mail-ig0-f194.google.com ([209.85.213.194]:34896 "EHLO
+	mail-ig0-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751766AbcECTjT (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 3 May 2016 15:39:19 -0400
+Received: by mail-ig0-f194.google.com with SMTP id jn6so302622igb.2
+        for <linux-nfs@vger.kernel.org>; Tue, 03 May 2016 12:39:19 -0700 (PDT)
+From: Weston Andros Adamson <dros@monkey.org>
+To: trond.myklebust@primarydata.com
+Cc: linux-nfs@vger.kernel.org, Weston Andros Adamson <dros@primarydata.com>
+Subject: [PATCH] nfs: avoid race that crashes nfs_init_commit
+Date: Tue,  3 May 2016 15:39:14 -0400
+Message-Id: <1462304354-5195-1-git-send-email-dros@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Chuck,
+Since the patch "NFS: Allow multiple commit requests in flight per file"
+we can run multiple simultaneous commits on the same inode.  This
+introduced a race over collecting pages to commit that made it possible
+to call nfs_init_commit() with an empty list - which causes crashes like
+the one below.
 
-On Sun, May 1, 2016 at 4:52 PM, Chuck Lever <chuck.lever@oracle.com> wrote:
-> Hi Fabio-
->
->> On Apr 29, 2016, at 7:18 PM, Fabio Estevam <festevam@gmail.com> wrote:
->>
->> Hi,
->>
->> NFS is not working on a imx6q-sabresd board running linux-next 20160429:
->>
->> [   15.753317]   #0: wm8962-audio
->> [   15.759437] Root-NFS: no NFS server address
->
-> At a glance, that looks like the NFSROOT mount options are
-> invalid? First, confirm what is specified on the kernel
-> cmdline.
+The fix is to catch this race and avoid calling nfs_init_commit and
+initiate_commit when there is no work to do.
 
-Yes, the kernel command line is correct.
+Here is the crash:
 
->
-> I'm not aware of any recent changes to NFSROOT. Often
-> these NFSROOT problems turn out to be related to churn in
-> the underlying Ethernet drivers or the generic code that
-> handles mounting the root filesystem at boot time.
+[600522.076832] BUG: unable to handle kernel NULL pointer dereference at 0000000000000040
+[600522.078475] IP: [<ffffffffa0479e72>] nfs_init_commit+0x22/0x130 [nfs]
+[600522.078745] PGD 4272b1067 PUD 4272cb067 PMD 0
+[600522.078972] Oops: 0000 [#1] SMP
+[600522.079204] Modules linked in: nfsv3 nfs_layout_flexfiles rpcsec_gss_krb5 nfsv4 dns_resolver nfs fscache dcdbas ip6t_rpfilter ip6t_REJECT nf_reject_ipv6 xt_conntrack ebtable_nat ebtable_broute bridge stp llc ebtable_filter ebtables ip6table_nat nf_conntrack_ipv6 nf_defrag_ipv6 nf_nat_ipv6 ip6table_mangle ip6table_security ip6table_raw ip6table_filter ip6_tables iptable_nat nf_conntrack_ipv4 nf_defrag_ipv4 nf_nat_ipv4 nf_nat nf_conntrack iptable_mangle iptable_security iptable_raw vmw_vsock_vmci_transport vsock bonding ipmi_devintf ipmi_msghandler coretemp crct10dif_pclmul crc32_pclmul ghash_clmulni_intel ppdev vmw_balloon parport_pc parport acpi_cpufreq vmw_vmci i2c_piix4 shpchp nfsd auth_rpcgss nfs_acl lockd grace sunrpc xfs libcrc32c vmwgfx drm_kms_helper ttm drm crc32c_intel serio_raw vmxnet3
+[600522.081380]  vmw_pvscsi ata_generic pata_acpi
+[600522.081809] CPU: 3 PID: 15667 Comm: /usr/bin/python Not tainted 4.1.9-100.pd.88.el7.x86_64 #1
+[600522.082281] Hardware name: VMware, Inc. VMware Virtual Platform/440BX Desktop Reference Platform, BIOS 6.00 09/30/2014
+[600522.082814] task: ffff8800bbbfa780 ti: ffff88042ae84000 task.ti: ffff88042ae84000
+[600522.083378] RIP: 0010:[<ffffffffa0479e72>]  [<ffffffffa0479e72>] nfs_init_commit+0x22/0x130 [nfs]
+[600522.083973] RSP: 0018:ffff88042ae87438  EFLAGS: 00010246
+[600522.084571] RAX: 0000000000000000 RBX: ffff880003485e40 RCX: ffff88042ae87588
+[600522.085188] RDX: 0000000000000000 RSI: ffff88042ae874b0 RDI: ffff880003485e40
+[600522.085756] RBP: ffff88042ae87448 R08: ffff880003486010 R09: ffff88042ae874b0
+[600522.086332] R10: 0000000000000000 R11: 0000000000000005 R12: ffff88042ae872d0
+[600522.086905] R13: ffff88042ae874b0 R14: ffff880003485e40 R15: ffff88042704c840
+[600522.087484] FS:  00007f4728ff2740(0000) GS:ffff88043fd80000(0000) knlGS:0000000000000000
+[600522.088070] CS:  0010 DS: 0000 ES: 0000 CR0: 000000008005003b
+[600522.088663] CR2: 0000000000000040 CR3: 000000042b6aa000 CR4: 00000000001406e0
+[600522.089327] Stack:
+[600522.089926]  0000000000000001 ffff88042ae87588 ffff88042ae874f8 ffffffffa04f09fa
+[600522.090549]  0000000000017840 0000000000017840 ffff88042ae87588 ffff8803258d9930
+[600522.091169]  ffff88042ae87578 ffffffffa0563d80 0000000000000000 ffff88042704c840
+[600522.091789] Call Trace:
+[600522.092420]  [<ffffffffa04f09fa>] pnfs_generic_commit_pagelist+0x1da/0x320 [nfsv4]
+[600522.093052]  [<ffffffffa0563d80>] ? ff_layout_commit_prepare_v3+0x30/0x30 [nfs_layout_flexfiles]
+[600522.093696]  [<ffffffffa0562645>] ff_layout_commit_pagelist+0x15/0x20 [nfs_layout_flexfiles]
+[600522.094359]  [<ffffffffa047bc78>] nfs_generic_commit_list+0xe8/0x120 [nfs]
+[600522.095032]  [<ffffffffa047bd6a>] nfs_commit_inode+0xba/0x110 [nfs]
+[600522.095719]  [<ffffffffa046ac54>] nfs_release_page+0x44/0xd0 [nfs]
+[600522.096410]  [<ffffffff811a8122>] try_to_release_page+0x32/0x50
+[600522.097109]  [<ffffffff811bd4f1>] shrink_page_list+0x961/0xb30
+[600522.097812]  [<ffffffff811bdced>] shrink_inactive_list+0x1cd/0x550
+[600522.098530]  [<ffffffff811bea65>] shrink_lruvec+0x635/0x840
+[600522.099250]  [<ffffffff811bed60>] shrink_zone+0xf0/0x2f0
+[600522.099974]  [<ffffffff811bf312>] do_try_to_free_pages+0x192/0x470
+[600522.100709]  [<ffffffff811bf6ca>] try_to_free_pages+0xda/0x170
+[600522.101464]  [<ffffffff811b2198>] __alloc_pages_nodemask+0x588/0x970
+[600522.102235]  [<ffffffff811fbbd5>] alloc_pages_vma+0xb5/0x230
+[600522.103000]  [<ffffffff813a1589>] ? cpumask_any_but+0x39/0x50
+[600522.103774]  [<ffffffff811d6115>] wp_page_copy.isra.55+0x95/0x490
+[600522.104558]  [<ffffffff810e3438>] ? __wake_up+0x48/0x60
+[600522.105357]  [<ffffffff811d7d3b>] do_wp_page+0xab/0x4f0
+[600522.106137]  [<ffffffff810a1bbb>] ? release_task+0x36b/0x470
+[600522.106902]  [<ffffffff8126dbd7>] ? eventfd_ctx_read+0x67/0x1c0
+[600522.107659]  [<ffffffff811da2a8>] handle_mm_fault+0xc78/0x1900
+[600522.108431]  [<ffffffff81067ef1>] __do_page_fault+0x181/0x420
+[600522.109173]  [<ffffffff811446a6>] ? __audit_syscall_exit+0x1e6/0x280
+[600522.109893]  [<ffffffff810681c0>] do_page_fault+0x30/0x80
+[600522.110594]  [<ffffffff81024f36>] ? syscall_trace_leave+0xc6/0x120
+[600522.111288]  [<ffffffff81790a58>] page_fault+0x28/0x30
+[600522.111947] Code: 5d c3 0f 1f 80 00 00 00 00 0f 1f 44 00 00 55 4c 8d 87 d0 01 00 00 48 89 e5 53 48 89 fb 48 83 ec 08 4c 8b 0e 49 8b 41 18 4c 39 ce <48> 8b 40 40 4c 8b 50 30 74 24 48 8b 87 d0 01 00 00 48 8b 7e 08
+[600522.113343] RIP  [<ffffffffa0479e72>] nfs_init_commit+0x22/0x130 [nfs]
+[600522.114003]  RSP <ffff88042ae87438>
+[600522.114636] CR2: 0000000000000040
 
-Today's next shows some different info:
+Signed-off-by: Weston Andros Adamson <dros@primarydata.com>
+---
+ fs/nfs/pnfs_nfs.c | 17 +++++++++++++++++
+ fs/nfs/write.c    |  4 ++++
+ 2 files changed, 21 insertions(+)
 
-[    7.606456]   #0: wm8962-audio
-[    7.672659] VFS: Mounted root (nfs filesystem) readonly on device 0:14.
-[    7.680860] devtmpfs: mounted
-[    7.685664] Freeing unused kernel memory: 1024K (c0c00000 - c0d00000)
-[    7.871481]
-[    7.873004] =================================
-[    7.877381] [ INFO: inconsistent lock state ]
-[    7.881760] 4.6.0-rc6-next-20160503-00002-g51d9962 #351 Not tainted
-[    7.888043] ---------------------------------
-[    7.892419] inconsistent {IN-SOFTIRQ-W} -> {SOFTIRQ-ON-W} usage.
-[    7.898449] kworker/0:1H/179 [HC0[0]:SC0[0]:HE1:SE1] takes:
-[    7.904040]  (&syncp->seq#5){+.?...}, at: [<c0752328>] tcp_ack+0x134/0x129c
-[    7.911166] {IN-SOFTIRQ-W} state was registered at:
-[    7.916061]   [<c016cc68>] lock_acquire+0x78/0x98
-[    7.920816]   [<c074ccbc>] tcp_snd_una_update+0x64/0xa8
-[    7.926092]   [<c0752328>] tcp_ack+0x134/0x129c
-[    7.930668]   [<c0755de8>] tcp_rcv_state_process+0x814/0xfc8
-[    7.936375]   [<c075e800>] tcp_v4_do_rcv+0x64/0x1c8
-[    7.941305]   [<c07616c8>] tcp_v4_rcv+0xf00/0xfbc
-[    7.946057]   [<c07374cc>] ip_local_deliver_finish+0xd4/0x550
-[    7.951859]   [<c0737bc4>] ip_local_deliver+0xcc/0xdc
-[    7.956957]   [<c0736d78>] ip_rcv_finish+0xc4/0x744
-[    7.961881]   [<c073809c>] ip_rcv+0x4c8/0x7a8
-[    7.966284]   [<c06fa448>] __netif_receive_skb_core+0x514/0x8ec
-[    7.972251]   [<c06ff854>] __netif_receive_skb+0x2c/0x8c
-[    7.977614]   [<c06ffb50>] netif_receive_skb_internal+0x7c/0x1f0
-[    7.983666]   [<c0700e38>] napi_gro_receive+0x88/0xdc
-[    7.988764]   [<c058fb4c>] fec_enet_rx_napi+0x390/0x9c8
-[    7.994036]   [<c0700724>] net_rx_action+0x148/0x344
-[    7.999046]   [<c012996c>] __do_softirq+0x130/0x2bc
-[    8.003976]   [<c0129e40>] irq_exit+0xc4/0x138
-[    8.008466]   [<c0177920>] __handle_domain_irq+0x74/0xe4
-[    8.013838]   [<c01015d8>] gic_handle_irq+0x4c/0x9c
-[    8.018763]   [<c010c4b8>] __irq_svc+0x58/0x78
-[    8.023251]   [<c08f7db8>] _raw_spin_unlock_irq+0x30/0x34
-[    8.028710]   [<c014a03c>] finish_task_switch+0xcc/0x274
-[    8.034072]   [<c08f2728>] __schedule+0x23c/0x6f8
-[    8.038823]   [<c08f2d0c>] schedule+0x3c/0xa0
-[    8.043224]   [<c08f2f74>] schedule_preempt_disabled+0x10/0x14
-[    8.049103]   [<c01663b0>] cpu_startup_entry+0x1f4/0x24c
-[    8.054468]   [<c08f070c>] rest_init+0x12c/0x16c
-[    8.059130]   [<c0c00cbc>] start_kernel+0x340/0x3b0
-[    8.064059]   [<1000807c>] 0x1000807c
-[    8.067767] irq event stamp: 3601
-[    8.071099] hardirqs last  enabled at (3601): [<c08f7d74>]
-_raw_spin_unlock_irqrestore+0x38/0x4c
-[    8.079936] hardirqs last disabled at (3600): [<c08f7728>]
-_raw_spin_lock_irqsave+0x24/0x54
-[    8.088336] softirqs last  enabled at (3598): [<c06e9754>]
-__release_sock+0x3c/0x124
-[    8.096128] softirqs last disabled at (3596): [<c06e985c>]
-release_sock+0x20/0xa4
-[    8.103654]
-[    8.103654] other info that might help us debug this:
-[    8.110202]  Possible unsafe locking scenario:
-[    8.110202]
-[    8.116140]        CPU0
-[    8.118601]        ----
-[    8.121062]   lock(&syncp->seq#5);
-[    8.124547]   <Interrupt>
-[    8.127182]     lock(&syncp->seq#5);
-[    8.130838]
-[    8.130838]  *** DEADLOCK ***
-[    8.130838]
-[    8.136785] 3 locks held by kworker/0:1H/179:
-[    8.141157]  #0:  ("rpciod"){.+.+.+}, at: [<c013e478>]
-process_one_work+0x128/0x410
-[    8.148965]  #1:  ((&task->u.tk_work)){+.+.+.}, at: [<c013e478>]
-process_one_work+0x128/0x410
-[    8.157630]  #2:  (sk_lock-AF_INET-RPC){+.+...}, at: [<c074af70>]
-tcp_sendmsg+0x24/0xb5c
-[    8.165859]
-[    8.165859] stack backtrace:
-[    8.170247] CPU: 0 PID: 179 Comm: kworker/0:1H Not tainted
-4.6.0-rc6-next-20160503-00002-g51d9962 #351
-[    8.179572] Hardware name: Freescale i.MX6 Quad/DualLite (Device Tree)
-[    8.186137] Workqueue: rpciod rpc_async_schedule
-[    8.190791] Backtrace:
-[    8.193307] [<c010b6f8>] (dump_backtrace) from [<c010b894>]
-(show_stack+0x18/0x1c)
-[    8.200894]  r6:60000193 r5:ffffffff r4:00000000 r3:eebdc800
-[    8.206692] [<c010b87c>] (show_stack) from [<c03dfbf4>]
-(dump_stack+0xb0/0xe8)
-[    8.213961] [<c03dfb44>] (dump_stack) from [<c01c72d4>]
-(print_usage_bug+0x268/0x2dc)
-[    8.221809]  r8:00000004 r7:eebdcd00 r6:eebdc800 r5:c0ae4bbc
-r4:c0ec6054 r3:eebdc800
-[    8.229712] [<c01c706c>] (print_usage_bug) from [<c016ace0>]
-(mark_lock+0x29c/0x6b0)
-[    8.237472]  r10:c016a1c8 r8:00000004 r7:eebdc800 r6:00001054
-r5:eebdcd00 r4:00000006
-[    8.245456] [<c016aa44>] (mark_lock) from [<c016b644>]
-(__lock_acquire+0x550/0x17c8)
-[    8.253216]  r10:c0d21d9c r9:000002be r8:c0e97784 r7:eebdc800
-r6:c153a09c r5:eebdcd00
-[    8.261188]  r4:00000003 r3:00000001
-[    8.264837] [<c016b0f4>] (__lock_acquire) from [<c016cc68>]
-(lock_acquire+0x78/0x98)
-[    8.272598]  r10:00000001 r9:c0752328 r8:2d738f6b r7:00000001
-r6:c0752328 r5:60000113
-[    8.280568]  r4:00000000
-[    8.283155] [<c016cbf0>] (lock_acquire) from [<c074ccbc>]
-(tcp_snd_una_update+0x64/0xa8)
-[    8.291261]  r7:00000000 r6:ee6b9500 r5:ee6b9500 r4:ee6b99cc
-[    8.297050] [<c074cc58>] (tcp_snd_una_update) from [<c0752328>]
-(tcp_ack+0x134/0x129c)
-[    8.304984]  r10:ee6b9570 r9:ee42f9c0 r8:2d738f6b r7:c0d02100
-r6:00000002 r5:ee6b9500
-[    8.312956]  r4:00000002
-[    8.315542] [<c07521f4>] (tcp_ack) from [<c0754c08>]
-(tcp_rcv_established+0x140/0x774)
-[    8.323477]  r10:ee6b9570 r9:ee42f9c0 r8:c0d6bfb3 r7:c155a080
-r6:ee6e9a62 r5:ee42f9c0
-[    8.331448]  r4:ee6b9500
-[    8.334039] [<c0754ac8>] (tcp_rcv_established) from [<c075e8fc>]
-(tcp_v4_do_rcv+0x160/0x1c8)
-[    8.342494]  r8:c0d6bfb3 r7:c155a080 r6:eea79600 r5:ee6b9500 r4:ee42f9c0
-[    8.349348] [<c075e79c>] (tcp_v4_do_rcv) from [<c06e97ac>]
-(__release_sock+0x94/0x124)
-[    8.357281]  r6:00000000 r5:ee6b9500 r4:00000000 r3:c075e79c
-[    8.363065] [<c06e9718>] (__release_sock) from [<c06e9870>]
-(release_sock+0x34/0xa4)
-[    8.370825]  r10:ee6b9500 r9:ee6c1ce4 r8:00000000 r7:00000080
-r6:c074b1f0 r5:ee6b9570
-[    8.378797]  r4:ee6b9500 r3:ee42f9c0
-[    8.382448] [<c06e983c>] (release_sock) from [<c074b1f0>]
-(tcp_sendmsg+0x2a4/0xb5c)
-[    8.390122]  r6:00000080 r5:ee6b9500 r4:ee6c2000 r3:00000015
-[    8.395922] [<c074af4c>] (tcp_sendmsg) from [<c077a824>]
-(inet_sendmsg+0x128/0x200)
-[    8.403596]  r10:c0d6c136 r9:ee6a4000 r8:ee6c1ce4 r7:00000080
-r6:00000000 r5:c0d6c136
-[    8.411565]  r4:ee6b9500
-[    8.414161] [<c077a6fc>] (inet_sendmsg) from [<c06e41ec>]
-(sock_sendmsg+0x1c/0x2c)
+diff --git a/fs/nfs/pnfs_nfs.c b/fs/nfs/pnfs_nfs.c
+index 4aaed890048f..befde63026a6 100644
+--- a/fs/nfs/pnfs_nfs.c
++++ b/fs/nfs/pnfs_nfs.c
+@@ -280,6 +280,14 @@ pnfs_generic_commit_pagelist(struct inode *inode, struct list_head *mds_pages,
+ 	list_for_each_entry_safe(data, tmp, &list, pages) {
+ 		list_del_init(&data->pages);
+ 		if (data->ds_commit_index < 0) {
++			/* another commit raced with us */
++			if (list_empty(mds_pages)) {
++				if (atomic_dec_and_test(&cinfo->mds->rpcs_out))
++					wake_up_atomic_t(&cinfo->mds->rpcs_out);
++				nfs_commitdata_release(data);
++				continue;
++			}
++
+ 			nfs_init_commit(data, mds_pages, NULL, cinfo);
+ 			nfs_initiate_commit(NFS_CLIENT(inode), data,
+ 					    NFS_PROTO(data->inode),
+@@ -288,6 +296,15 @@ pnfs_generic_commit_pagelist(struct inode *inode, struct list_head *mds_pages,
+ 			LIST_HEAD(pages);
+ 
+ 			pnfs_fetch_commit_bucket_list(&pages, data, cinfo);
++
++			/* another commit raced with us */
++			if (list_empty(&pages)) {
++				if (atomic_dec_and_test(&cinfo->mds->rpcs_out))
++					wake_up_atomic_t(&cinfo->mds->rpcs_out);
++				nfs_commitdata_release(data);
++				continue;
++			}
++
+ 			nfs_init_commit(data, &pages, data->lseg, cinfo);
+ 			initiate_commit(data, how);
+ 		}
+diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+index 5f4fd53e5764..f5e613395fc2 100644
+--- a/fs/nfs/write.c
++++ b/fs/nfs/write.c
+@@ -1709,6 +1709,10 @@ nfs_commit_list(struct inode *inode, struct list_head *head, int how,
+ {
+ 	struct nfs_commit_data	*data;
+ 
++	/* another commit raced with us */
++	if (list_empty(head))
++		return 0;
++
+ 	data = nfs_commitdata_alloc();
+ 
+ 	if (!data)
+-- 
+2.6.4 (Apple Git-63)
+
