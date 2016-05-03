@@ -1,140 +1,127 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from neil.brown.name ([103.29.64.221]:46879 "EHLO neil.brown.name"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756345AbcECX0s (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 3 May 2016 19:26:48 -0400
-From: NeilBrown <mr@neil.brown.name>
-To: Michal Hocko <mhocko@kernel.org>
-Date: Wed, 04 May 2016 09:26:15 +1000
-Cc: linux-mm@kvack.org, linux-fsdevel@vger.kernel.org,
-        Andrew Morton <akpm@linux-foundation.org>,
-        Dave Chinner <david@fromorbit.com>, "Theodore Ts'o" <tytso@mit.edu>,
-        Chris Mason <clm@fb.com>, Jan Kara <jack@suse.cz>,
-        ceph-devel@vger.kernel.org, cluster-devel@redhat.com,
-        linux-nfs@vger.kernel.org, logfs@logfs.org, xfs@oss.sgi.com,
-        linux-ext4@vger.kernel.org, linux-btrfs@vger.kernel.org,
-        linux-mtd@lists.infradead.org, reiserfs-devel@vger.kernel.org,
-        linux-ntfs-dev@lists.sourceforge.net,
-        linux-f2fs-devel@lists.sourceforge.net, linux-afs@lists.infradead.org,
-        LKML <linux-kernel@vger.kernel.org>
-Subject: Re: [PATCH 0/2] scop GFP_NOFS api
-In-Reply-To: <20160503151312.GA4470@dhcp22.suse.cz>
-References: <1461671772-1269-1-git-send-email-mhocko@kernel.org> <8737q5ugcx.fsf@notabene.neil.brown.name> <20160429120418.GK21977@dhcp22.suse.cz> <87twiiu5gs.fsf@notabene.neil.brown.name> <20160503151312.GA4470@dhcp22.suse.cz>
-Message-ID: <87futyd8q0.fsf@notabene.neil.brown.name>
-MIME-Version: 1.0
-Content-Type: multipart/signed; boundary="=-=-=";
-	micalg=pgp-sha256; protocol="application/pgp-signature"
+Received: from mail-pf0-f176.google.com ([209.85.192.176]:36256 "EHLO
+	mail-pf0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756295AbcECX4I (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 3 May 2016 19:56:08 -0400
+Message-ID: <1462319763.5535.329.camel@edumazet-glaptop3.roam.corp.google.com>
+Subject: [PATCH net-next] tcp: fix lockdep splat in tcp_snd_una_update()
+From: Eric Dumazet <eric.dumazet@gmail.com>
+To: Francois Romieu <romieu@fr.zoreil.com>, David Miller <davem@davemloft.net>
+Cc: Fabio Estevam <festevam@gmail.com>, Eric Dumazet <edumazet@google.com>,
+        Chuck Lever <chuck.lever@oracle.com>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        "netdev@vger.kernel.org" <netdev@vger.kernel.org>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Date: Tue, 03 May 2016 16:56:03 -0700
+In-Reply-To: <1462314901.5535.316.camel@edumazet-glaptop3.roam.corp.google.com>
+References: <20160503223149.GA19739@electric-eye.fr.zoreil.com>
+	 <1462314901.5535.316.camel@edumazet-glaptop3.roam.corp.google.com>
+Content-Type: text/plain; charset="UTF-8"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---=-=-=
-Content-Type: text/plain
-Content-Transfer-Encoding: quoted-printable
+From: Eric Dumazet <edumazet@google.com>
 
-On Wed, May 04 2016, Michal Hocko wrote:
+tcp_snd_una_update() and tcp_rcv_nxt_update() call
+u64_stats_update_begin() either from process context or BH handler.
 
-> Hi,
->
-> On Sun 01-05-16 07:55:31, NeilBrown wrote:
-> [...]
->> One particular problem with your process-context idea is that it isn't
->> inherited across threads.
->> Steve Whitehouse's example in gfs shows how allocation dependencies can
->> even cross into user space.
->
-> Hmm, I am still not sure I understand that example completely but making
-> a dependency between direct reclaim and userspace can hardly work.
+This triggers a lockdep splat on 32bit & SMP builds.
 
-No it can't.  Specifically: if direct reclaim blocks on user-space that
-must be a problem.
-I think the point of this example is that some filesystem things can
-block on user-space in ways that are very hard to encode in with flags
-as they are multi-level indirect.
-So the conclusion (my conclusion) is that direct reclaim mustn't block.
+We could add u64_stats_update_begin_bh() variant but this would
+slow down 32bit builds with useless local_disable_bh() and
+local_enable_bh() pairs, since we own the socket lock at this point.
 
-When I was working on deadlock avoidance in loop-back NFS I went down
-the path of adding GFP flags and extended the PF_FSTRANS flag and got it
-working (think) but no-one liked it.  It was way too intrusive.
+I add sock_owned_by_me() helper to have proper lockdep support
+even on 64bit builds, and new u64_stats_update_begin_raw()
+and u64_stats_update_end_raw methods.
 
-Some how I landed on the idea of making nfs_release_page non blocking
-and everything suddenly became much much simpler.  Problems evaporated.
+Fixes: c10d9310edf5 ("tcp: do not assume TCP code is non preemptible")
+Reported-by: Fabio Estevam <festevam@gmail.com>
+Diagnosed-by: Francois Romieu <romieu@fr.zoreil.com>
+Signed-off-by: Eric Dumazet <edumazet@google.com>
+---
+ include/linux/u64_stats_sync.h |   14 ++++++++++++++
+ include/net/sock.h             |    7 ++++++-
+ net/ipv4/tcp_input.c           |   10 ++++++----
+ 3 files changed, 26 insertions(+), 5 deletions(-)
 
-NFS has a distinct advantage here.  The "Close-to-open" cache semantic
-means that all dirty pages must be flushed on last close.  So when
-=2D>evict_inode is finally called there is nothing much to do - just free
-everything up.  So I could fix NFS without worrying about (or even
-noticing) evict_inode.
+diff --git a/include/linux/u64_stats_sync.h b/include/linux/u64_stats_sync.h
+index df89c9bcba7db8dbde3bbf2b99f9af6ed562b112..d3a2bb712af3b9613b98ef9c3219f8dcd31568a5 100644
+--- a/include/linux/u64_stats_sync.h
++++ b/include/linux/u64_stats_sync.h
+@@ -89,6 +89,20 @@ static inline void u64_stats_update_end(struct u64_stats_sync *syncp)
+ #endif
+ }
+ 
++static inline void u64_stats_update_begin_raw(struct u64_stats_sync *syncp)
++{
++#if BITS_PER_LONG==32 && defined(CONFIG_SMP)
++	raw_write_seqcount_begin(&syncp->seq);
++#endif
++}
++
++static inline void u64_stats_update_end_raw(struct u64_stats_sync *syncp)
++{
++#if BITS_PER_LONG==32 && defined(CONFIG_SMP)
++	raw_write_seqcount_end(&syncp->seq);
++#endif
++}
++
+ static inline unsigned int u64_stats_fetch_begin(const struct u64_stats_sync *syncp)
+ {
+ #if BITS_PER_LONG==32 && defined(CONFIG_SMP)
+diff --git a/include/net/sock.h b/include/net/sock.h
+index 45f5b492c65883cd22e2f615e019fe0d0ba31167..c9c8b19df27c558354687119db60c0716909ea3f 100644
+--- a/include/net/sock.h
++++ b/include/net/sock.h
+@@ -1421,11 +1421,16 @@ static inline void unlock_sock_fast(struct sock *sk, bool slow)
+  * accesses from user process context.
+  */
+ 
+-static inline bool sock_owned_by_user(const struct sock *sk)
++static inline void sock_owned_by_me(const struct sock *sk)
+ {
+ #ifdef CONFIG_LOCKDEP
+ 	WARN_ON_ONCE(!lockdep_sock_is_held(sk) && debug_locks);
+ #endif
++}
++
++static inline bool sock_owned_by_user(const struct sock *sk)
++{
++	sock_owned_by_me(sk);
+ 	return sk->sk_lock.owned;
+ }
+ 
+diff --git a/net/ipv4/tcp_input.c b/net/ipv4/tcp_input.c
+index 6171f92be0903f5a5d17f027dbe6b31829bcc043..a914e0607895dd9321559f93c1008f8de13b73ad 100644
+--- a/net/ipv4/tcp_input.c
++++ b/net/ipv4/tcp_input.c
+@@ -3355,9 +3355,10 @@ static void tcp_snd_una_update(struct tcp_sock *tp, u32 ack)
+ {
+ 	u32 delta = ack - tp->snd_una;
+ 
+-	u64_stats_update_begin(&tp->syncp);
++	sock_owned_by_me((struct sock *)tp);
++	u64_stats_update_begin_raw(&tp->syncp);
+ 	tp->bytes_acked += delta;
+-	u64_stats_update_end(&tp->syncp);
++	u64_stats_update_end_raw(&tp->syncp);
+ 	tp->snd_una = ack;
+ }
+ 
+@@ -3366,9 +3367,10 @@ static void tcp_rcv_nxt_update(struct tcp_sock *tp, u32 seq)
+ {
+ 	u32 delta = seq - tp->rcv_nxt;
+ 
+-	u64_stats_update_begin(&tp->syncp);
++	sock_owned_by_me((struct sock *)tp);
++	u64_stats_update_begin_raw(&tp->syncp);
+ 	tp->bytes_received += delta;
+-	u64_stats_update_end(&tp->syncp);
++	u64_stats_update_end_raw(&tp->syncp);
+ 	tp->rcv_nxt = seq;
+ }
+ 
 
 
-> Especially when the direct reclaim might be sitting on top of hard to
-> guess pile of locks. So unless I've missed anything what Steve has
-> described is a clear NOFS context.
->
->> A more localized one that I have seen is that NFSv4 sometimes needs to
->> start up a state-management thread (particularly if the server
->> restarted).
->> It uses kthread_run(), which doesn't actually create the thread but asks
->> kthreadd to do it.  If NFS writeout is waiting for state management it
->> would need to make sure that kthreadd runs in allocation context to
->> avoid deadlock.
->> I feel that I've forgotten some important detail here and this might
->> have been fixed somehow, but the point still stands that the allocation
->> context can cross from thread to thread and can effectively become
->> anything and everything.
->
-> Not sure I understand your point here but relying on kthread_run
-> from GFP_NOFS context has always been deadlock prone with or without
-> scope GFP_NOFS semantic so I am not really sure I see your point
-> here. Similarly relying on a work item which doesn't have a dedicated
-> WQ_MEM_RECLAIM WQ is deadlock prone.  You simply shouldn't do that.
-
-The point is really that saying "You shouldn't do that" isn't much good
-when "that" is exactly what the fs developer wants to do and it seems to
-work and never triggers a warning.
-
-You can create lots of rules about what is or is not allowed, or
-you can make everything that it not explicit forbidden (ideally at
-compile time but possibly at runtime with might_sleep or lockdep),
-permitted.
-
-I prefer the latter.
-
->
->> It is OK to wait for memory to be freed.  It is not OK to wait for any
->> particular piece of memory to be freed because you don't always know who
->> is waiting for you, or who you really are waiting on to free that
->> memory.
->>=20
->> Whenever trying to free memory I think you need to do best-effort
->> without blocking.
->
-> I agree with that. Or at least you have to wait on something that is
-> _guaranteed_ to make a forward progress. I am not really that sure this
-> is easy to achieve with the current code base.
-
-I accept that it isn't "easy".  But I claim that it isn't particularly
-difficult either.
-
-NeilBrown
-
---=-=-=
-Content-Type: application/pgp-signature; name="signature.asc"
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v2
-
-iQIcBAEBCAAGBQJXKTOXAAoJEDnsnt1WYoG5eugQALaVi36cVlv3XUWoqQkoecRW
-Sh+gP4igqZwrsa+rKJ6N0SAKf2Ckg5hRnQ8pXs4gg+k8AtoQpEjRNqt0W6uCrMVz
-foj53Bwv0C/QYJiFUWxT+ExaA/iBp35HUkNpJZifwL5YYsWL1mRvVV4FINA5VpTV
-tSIAAIEM955RacQYX77m523pkH5oh4/SaZowW6u0sBi0jUCD1KsrD156mV61ah6L
-HCOzm1mMSaAxjDvFzu1dA2yz7Kjq5spqHZyYO47N+7ice7b0QHfvqFMS8beX2zzT
-5DMis1MWLrZOUhw6yej+hW3aQO9Ch1hOwRRu9E49T32FWuh9qEo9Ia79it6OI4/1
-xBCpqkhToiBDioB4H1NtF45qwEa8m4dyMYBGUfKyop8JlaUS/foMaK8uHS0xG1MO
-LICkLC7y/7l/N3GNQ1Ia3bLFdQJmHdOpZO1NbzlIbWMC9sV3r6KdlCeLoBC7GvF8
-eM8tAM4W4dXOSK/JMz/nsRXBCXvQgT1L9eXvwrKFmEkVGyXWGA+th3fCCexKNUP6
-ab5aas5pj9AseznwfOP3EYEhLRvPKSP8qeu6Wkezodwi/LIjb8v+Y9h96a46FbkA
-viFdp7ZWP/nQ3wQ4g0T89RdIX9zY8Xv+8yNbKaxmL4B6L5nI4mer4XaV63V36Qge
-/NBmt+ZGgYKghbndVHaz
-=zENk
------END PGP SIGNATURE-----
---=-=-=--
