@@ -1,240 +1,241 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from ns.horizon.com ([71.41.210.147]:61407 "HELO ns.horizon.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with SMTP
-	id S932771AbcECB7E (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 2 May 2016 21:59:04 -0400
-Date: 2 May 2016 21:59:01 -0400
-Message-ID: <20160503015901.2865.qmail@ns.horizon.com>
-From: "George Spelvin" <linux@horizon.com>
-To: linux@horizon.com, torvalds@linux-foundation.org
+Received: from mail-io0-f193.google.com ([209.85.223.193]:34454 "EHLO
+	mail-io0-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755238AbcECDBp (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 2 May 2016 23:01:45 -0400
+MIME-Version: 1.0
+In-Reply-To: <20160503015901.2865.qmail@ns.horizon.com>
+References: <CA+55aFx441ZBAj6DUXVqEOzBjh9v32F1r2rD-PF2BRpA92fFkg@mail.gmail.com>
+	<20160503015901.2865.qmail@ns.horizon.com>
+Date: Mon, 2 May 2016 20:01:44 -0700
+Message-ID: <CA+55aFxAiPXFjmDEUN-G2E+FyaXjh6uDjGLXL3nyrkSvf2wF+g@mail.gmail.com>
 Subject: Re: [PATCH 1/2] <linux/hash.h>: Make hash_64(), hash_ptr() return 32 bits
-Cc: bfields@fieldses.org, eric.dumazet@gmail.com, jlayton@poochiereds.net,
-        linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        riel@redhat.com, tglx@linutronix.de
-In-Reply-To: <CA+55aFx441ZBAj6DUXVqEOzBjh9v32F1r2rD-PF2BRpA92fFkg@mail.gmail.com>
+From: Linus Torvalds <torvalds@linux-foundation.org>
+To: George Spelvin <linux@horizon.com>
+Cc: Bruce Fields <bfields@fieldses.org>, Eric Dumazet <eric.dumazet@gmail.com>,
+        Jeff Layton <jlayton@poochiereds.net>,
+        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        Rik van Riel <riel@redhat.com>, Thomas Gleixner <tglx@linutronix.de>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-> Right. But there is no reason to think that that should be the same
-> thing as the final hash.
-
-Your logic is absolutely correct.  I agree with you.  The two operations
-have different purposes, and should be thought of differently.
-
-HOWEVER, if you can find one operation which is good enough to
-serve both purposes, that's not evidence of incompetence.
-
-I'm not saying hash_str is anything wonderful.  Just that it's not a
-complete disaster.  (As a hash function.  Your comments about its
-performance are addressed below.)
-
-It's frankly a lot *better* than the hash computed by namei.c.
-That one *is* perilously close to a complete disaster.
-
-
-The main problem with the multiplicative hash (which describes both
-hash_str() and hash_name()) is that input bits can only affect higher
-state bits.  The lsbit of the 64-bit state is just the XOR of all the
-input lsbits.  The lsbyte depends only on the lsbytes.
-
-But that's not a disaster.  In hash_str(), we throw away the lsbits
-at the end so their imperfect mixing doesn't matter.
-
-What's bad is that the msbits of the inputs can only affect the
-msbits of the hash.  The msbits of the inputs are just XORed together
-into the msbit of the hash.  It's fundamentally impossible for
-such a hash to detect any 2-bit change to the msbits of the input.
-
-That said, you're right that most names aren't long enough (16 bytes on
-little-endian) to *have* a second msbit to worry about.
-
-> I refuse to call that shit "word at a time".
+On Mon, May 2, 2016 at 6:59 PM, George Spelvin <linux@horizon.com> wrote:
 >
-> It's "byte at a time with a slow conditional that will screw up your
-> branch predictor and a multiply in the middle".
+> AFAICT, none of the string-hash functions outside of fs/ are
+> on particularly hot paths.  The goal is deleting redundant code.
 
-The *hashing* is word at a time.  The *fetching* is done byte at a time
-and I agree that it doesn't qualify in any way at all.
+Yes, agreed.
 
-But yeah, your point about the branch predictor penalty being worse than
-the 7 saved multiplies is well taken.
-
-Rule #1 of performane: Avoid lock contention at any cost.
-Rule #2 of performane: Avoid cache misses unless it conflicts with #1.
-(Rule 2a: Cache bouncing is a paritucularly permicious form of cache missing.)
-(Rule 2b: Locking, even uncontended, tends to cause cache bouncing.)
-Rule #3 of performance: Avoid unpredictable branches.
-
->> For example, partial_name_hash() is still used in many places
->> even if the word-at-a-time code is used in namei.c.
-
-> Those places aren't actually all that performance-critical.  They
-> really don't matter.
-
-AFAICT, none of the string-hash functions outside of fs/ are
-on particularly hot paths.  The goal is deleting redundant code.
-
-> We'll never get rid of "hash_name()", it not only has that '/' case,
-> it's also inlined for a reason. You'd copy it without the magic for
-> '/' and turn that into str_hash() for others to use.
+>> We'll never get rid of "hash_name()", it not only has that '/' case,
+>> it's also inlined for a reason. You'd copy it without the magic for
+>> '/' and turn that into str_hash() for others to use.
+>>
+>> full_name_hash() can presumably be used pretty much as-is as mem_hash().
 >
-> full_name_hash() can presumably be used pretty much as-is as mem_hash().
-
-That part is obvious. I was just caught between two unpleasant
-possibiites:
-
-- Placing a str_hash() helper function in the middle of fs/namei.c which
-  nothing in fs/namei.c actually calls, or
-- Copying it to some outside file and then having to keep the
-  two in sync.
-
-Thinking about the function comments on each, the first seems less
-embarrasing to write.
-
-> Maybe we could expose that kind of interface, even if it's pretty ugly.
-
-Yeah, that's pretty much what I thought.  I just hoped you had some
-brilliant idea for avoiding it.
-
-> The thing is, a lot of people tend to optimize performance (and
-> behavior) for large strings.
+> That part is obvious. I was just caught between two unpleasant
+> possibiites:
 >
-> For path components, the most common lengths are less than a single
-> 8-byte word! That "mixing" function almost doesn't matter, because the
->  case that matters the most (by far) are strings that fit in one or
-> _maybe_ two words.
+> - Placing a str_hash() helper function in the middle of fs/namei.c which
+>   nothing in fs/namei.c actually calls, or
+> - Copying it to some outside file and then having to keep the
+>   two in sync.
 
-I'll remember that next time I look up
-.git/objects/69/466b786e99a0a2d86f0cb99e0f4bb61588d13c
+So I don't think the "keep the two in sync" is necessarily all that problematic.
 
-:-)
+The word-at-a-time logic _used_ to be very specific to the name_hash()
+code, but it got made generic enough over a few iterations that it's
+actually a fairly reasonable pattern now.
 
-But yes, it makes your point about pathname components.
-The first three are all a single word.
+So the code loop ends up being really not very complex:
 
-I just worry with people having directories full of PHP state
-cookies.
+        const struct word_at_a_time constants = WORD_AT_A_TIME_CONSTANTS;
 
-> Hmm? It uses "fold_hash()", which definitely doesn't do that.
+        hash = a = 0;
+        len = -sizeof(unsigned long);
+        do {
+                hash = (hash + a) * 9;
+                len += sizeof(unsigned long);
+                a = load_unaligned_zeropad(name+len);
+                b = a ^ REPEAT_BYTE('/');
+        } while (!(has_zero(a, &adata, &constants) | has_zero(b,
+&bdata, &constants)));
 
-Mea culpa; that's a side effect of repeately grepping the kernel.
-There was a *different* hash folding function in some other source file
-elsewhere that did that, and I got the two mixed up in my memory.
+and with your suggested "hash_mix()" function (may I suggest we just
+make it take both the old hash and the new value as two separate
+arguments, and it can choose how to mix them), there remains pretty
+much nothing to keep in sync.
 
-The word-at-a-time one does "hash_64(x)", which doesn't have that problem.
+Yes, there's the tail part, but that ends up being pretty simple too.
 
-(Maybe it was the IP checksum folding?)
+The non-path-component case (so checking only for an ending NUL
+character, not the '/') ends up being exactly the same, except all the
+'b' logic goes away, so you end up with
 
->>    (If you have a particular cycle count budget in mind, I can come up with
->>    something.)
+        hash = a = 0;
+        len = -sizeof(unsigned long);
+        do {
+                hash = hash_mix(hash, a);
+                len += sizeof(unsigned long);
+                a = load_unaligned_zeropad(name+len);
+        } while (!has_zero(a, &adata, &constants));
 
-> The real issue I had in fs/namei.c is that link_path_walk() and
-> __d_lookup_rcu() are literally _the_ hottest functions in the kernel
-> under a few (common) loads, and for code generation things like
-> register pressure ends up mattering.
-> 
-> The reason that "hash_len" is a single 64-bit field rather than two
-> 32-bit fields, for example, is that that way it takes on _register_
-> when we do the has lookup. Some of that code was tuned to inline - and
-> _not_ inline in particular patterns.
-> 
-> Now, some of that tuning may have bitrotted, of course, so I'm not
-> saying it's necessarily doing great now. But some of that code was
-> tuned to not need a stack frame etc.
+which really seems to not be a pain. Very simple, in fact. There's
+hardly any code left to keep in sync: any tweaking of the hash would
+happen by tweaking the hash_mix()
 
-Yes, and it's hard to make a general purpose helper out of code
-that's tuned to piano wire tension like that.
+The tail part would presumably be:
 
-I was thinking about very fast hash functions (2 or 3 cycles
-per word), and the obvious solution is to use a second register.
+        adata = prep_zero_mask(a, adata, &constants);
 
-As you pointed out above, the mixing function can take advantage of an
-internal state which is larger than the final state, so the easy way to
-minimize collisions without very expensive state mixing between words
-is to give the bits more room to spread out.
+        mask = create_zero_mask(adata | bdata);
+        return hash_mix(hash, a & zero_bytemask(mask));
 
-I was playing with the idea of an ARX structure like the "Speck" block
-cipher (https://en.wikipedia.org/wiki/Speck_%28cipher%29):
+and you're done (or we could perhaps decide that the last mix is fine
+just doing a single add? We will have mixed up all previous hash
+values, so that last "hash_mix()" might just be a simple addition).
 
-	h1 ^= a;
-	h2 ^= h1; h1 = ROTL(h1, K);
-	h1 += h2; h2 *= 9;
+Yes, if we want to return some mix of the length and the hash, we'd
+have to play those hashlen games, but I suspect the only case that
+*really* cares deeply about that is the dentry hash case, and we'd
+just keep it separate.
 
-The "h2 *= 9" replaces "ROTL(h2, 3)" in Speck, achieves a little more
-mixing, is one cycle on most machines, and is probably supported by
-more functional units than a general barrel shift.
+In other words, I think just the addition of your "hash_mix()" helper
+is enough to abstract things out enough that there really is nothing
+left but tying all those pieces together, and no maintenance burden
+from having "two copies" of that tying-togetherness.
 
-It's only one more cycle on the critical path than the current
-"hash = (hash + a) * 9"... but it's one more register.
+>> For path components, the most common lengths are less than a single
+>> 8-byte word! That "mixing" function almost doesn't matter, because the
+>>  case that matters the most (by far) are strings that fit in one or
+>> _maybe_ two words.
+>
+> I'll remember that next time I look up
+> .git/objects/69/466b786e99a0a2d86f0cb99e0f4bb61588d13c
+>
+> :-)
 
+Yes, they happen, but when people have pathnames like that, your
+hashing function generally isn't going to much matter.
 
-> I think the caller should do it, yes. There's a difference between
-> "calculate a hash for a string" and "turn that hash into a hashtable
-> lookup".
+Except you absolutely want to avoid 8-bit and 4-bit boundaries when
+mixing. The "*9" we have now does that, we had a *11 in an earlier
+incarnation (but that was coupled with shifting right too - I think
+our old hash remains in the partial_name_hash())
 
-Makes sense, thanks.
+I do agree that it's not a great hash mixing function, but I don't
+think it's been particularly problematic either. I did run my whole
+filesystem through the hash at some point just to verify, and the
+statistics seemed fairly balanced.
 
-Another thing worth doing is having a slightly less thorough folding
-function than hash64(x, 32).  (x >> 32) + (uint32)x * CONSTANT does
-just as well if you're keeping all 32 bits.
+But yes, I think your hash_mix() function is likely a noticeable
+improvement from a hashing standpoint.  And while it may not be all
+that noticeable for path components that are usually pretty short, if
+we extend this code to be a generic string hash then the whole "three
+characters is the most common component length" argument gores away ;)
 
-This is hasically the first half of my 32-bit hash_64().  Then if you
-want less than 32 bits, you can do a second hash_32() on the result.
+> I was playing with the idea of an ARX structure like the "Speck" block
+> cipher (https://en.wikipedia.org/wiki/Speck_%28cipher%29):
+>
+>         h1 ^= a;
+>         h2 ^= h1; h1 = ROTL(h1, K);
+>         h1 += h2; h2 *= 9;
+>
+> The "h2 *= 9" replaces "ROTL(h2, 3)" in Speck, achieves a little more
+> mixing, is one cycle on most machines, and is probably supported by
+> more functional units than a general barrel shift.
+>
+> It's only one more cycle on the critical path than the current
+> "hash = (hash + a) * 9"... but it's one more register.
 
-> Anyway, I suspect that your mixing function changes should be fine.
-> That link_path_walk() is important, but a couple of shifts and xors
-> shouldn't kill it.
+Try it.
 
-Actually, that code
-1) Uses an extra register for a shift temporary anyway, and
-2) Has a 6-cycle critical path, which is pretty borderline.
+I wouldn't worry too much about 32-bit x86 any more (we want ti to not
+suck horribly, but it's not the primary target for anybody who cares
+about best performance) any more. But x86-64 code generation is worth
+looking at. The register pressure issue is still real, but it's not
+quite as bad as the old 32-bit code.
 
-The ARX code above seems like a more efficient use of two registers.
+The other main architectures that it would be good to verify are ok
+are ARMv8 and powerpc.
 
-(It's also conveniently nonlinear, so if we want, feeding a salt into
-h2 makes it less utterly trivial to force collisions.)
+> P.S. Here's a way to improve partial_name_hash on x86.
+> Compare the assembly for
+>
+> unsigned long
+> pnh1(unsigned long c, unsigned long prevhash)
+> {
+>         return (prevhash + (c << 4) + (c >> 4)) * 11;
+> }
+>
+> pnh1:
+>         movl    %eax, %ecx
+>         shrl    $4, %eax
+>         sall    $4, %ecx
+>         addl    %ecx, %eax
+>         addl    %eax, %edx
+>         leal    (%edx,%edx,4), %eax
+>         leal    (%edx,%eax,2), %eax
+>         ret
+>
+> unsigned long
+> pnh2(unsigned long c, unsigned long prevhash)
+> {
+>         prevhash += c <<= 4;
+>         prevhash += c >> 8;
+>         return prevhash * 11;
+> }
+>
+> pnh2:
+>         sall    $4, %eax
+>         addl    %eax, %edx
+>         shrl    $8, %eax
+>         addl    %eax, %edx
+>         leal    (%edx,%edx,4), %eax
+>         leal    (%edx,%eax,2), %eax
+>         ret
+>
+> pnh1 doesn't know that "c" is really only 8 bits and so it doesn't need
+> to copy it to another register to compute the two shifted forms.
 
-I'll play with that for a bit.  Thank you for mentioning those critical
-functions; I'll check the x86 code generation for them to make sure it
-doesn't get worse.
+Well, if I cared about the partial_name_hash() (which I don't), I'd
+suggest you just convince the compiler to generate
 
+  rolb $4,%al
 
+instead of two shifts, and just be done with it.
 
-P.S. Here's a way to improve partial_name_hash on x86.
-Compare the assembly for
+You might find that you end up with partial register write stalls,
+though, so you might have to add a "movzbq %al,%rax" to get around
+those.
 
-unsigned long
-pnh1(unsigned long c, unsigned long prevhash)
-{
-        return (prevhash + (c << 4) + (c >> 4)) * 11;
-}
+In fact, it looks like you can get gcc to generate that code:
 
-pnh1:
-	movl    %eax, %ecx
-        shrl    $4, %eax
-        sall    $4, %ecx
-        addl    %ecx, %eax
-        addl    %eax, %edx
-        leal    (%edx,%edx,4), %eax
-        leal    (%edx,%eax,2), %eax
+    unsigned long pnh3(unsigned char c, unsigned long prevhash)
+    {
+        c = (c << 4) | (c >> 4);
+        return (prevhash + c)*11;
+    }
+
+generates
+
+    pnh3:
+        rolb $4, %dil
+        movzbl %dil, %edi
+        addq %rdi, %rsi
+        leaq (%rsi,%rsi,4), %rax
+        leaq (%rsi,%rax,2), %rax
         ret
 
-unsigned long
-pnh2(unsigned long c, unsigned long prevhash)
-{
-        prevhash += c <<= 4;
-        prevhash += c >> 8;
-        return prevhash * 11;
-}
+which is one instruction less than your pnh2, but should perform even
+better because I think "movzbl" ends up being done as a rename and
+mask in the microarchitecture - without any actual ALU costs or added
+latency.
 
-pnh2:
-        sall    $4, %eax
-        addl    %eax, %edx
-        shrl    $8, %eax
-        addl    %eax, %edx
-        leal    (%edx,%edx,4), %eax
-        leal    (%edx,%eax,2), %eax
-        ret
+But I suspect it can be a bit fragile to get gcc to actually generate
+that rotate instruction. I could easily see that being inlined, and
+than the pattern that turns into a rotate instruction gets perturbed
+enough that gcc no longer generates the rot..
 
-pnh1 doesn't know that "c" is really only 8 bits and so it doesn't need
-to copy it to another register to compute the two shifted forms.
+                  Linus
