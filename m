@@ -1,33 +1,54 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from us-smtp-delivery-194.mimecast.com ([63.128.21.194]:28691 "EHLO
-	us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1755635AbcECSsK (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 3 May 2016 14:48:10 -0400
-From: Trond Myklebust <trondmy@primarydata.com>
-To: Anna Schumaker <Anna.Schumaker@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 1/2] NFS: Call nfs4_state_protect{_write}() from the NFSv4
- module
-Date: Tue, 3 May 2016 18:41:48 +0000
-Message-ID: <769B6D28-ABED-4E6A-B59C-2044911E8D99@primarydata.com>
-References: <1462300182-24738-1-git-send-email-Anna.Schumaker@Netapp.com>
-In-Reply-To: <1462300182-24738-1-git-send-email-Anna.Schumaker@Netapp.com>
+Received: from fieldses.org ([173.255.197.46]:36284 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751510AbcECTQG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 3 May 2016 15:16:06 -0400
+Date: Tue, 3 May 2016 15:16:02 -0400
+To: Trond Myklebust <trond.myklebust@primarydata.com>,
+        Anna Schumaker <schumakeranna@gmail.com>
+Cc: linux-nfs@vger.kernel.org, "Eric W. Biederman" <ebiederm@redhat.com>
+Subject: [PATCH] nfs: don't share mounts between network namespaces
+Message-ID: <20160503191602.GA17518@fieldses.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=us-ascii
+From: bfields@fieldses.org (J. Bruce Fields)
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-DQoNCg0KDQoNCk9uIDUvMy8xNiwgMTQ6MjksICJBbm5hIFNjaHVtYWtlciIgPEFubmEuU2NodW1h
-a2VyQG5ldGFwcC5jb20+IHdyb3RlOg0KDQo+VGhlIGdlbmVyaWMgY2xpZW50IGRvZXNuJ3QgbmVl
-ZCB0byBrbm93IGFib3V0IHRoZXNlIGNhbGxzLCBhbmQgd2UgY2FuDQo+aGFuZGxlIHRoZW0gZnJv
-bSB0aGUgd3JpdGUgYW5kIGNvbW1pdCBzZXR1cCBmdW5jdGlvbnMgZWFzaWx5IGVub3VnaC4NCg0K
-DQpOb3QgcmVhbGx5LiBXaGF0IHdlIGFjdHVhbGx5IHdhbnQgaXMgdG8gbW92ZSB0aGVtIGludG8g
-bmZzNF9zZXRfcndfc3RhdGVpZCgpIHNvIHRoYXQgd2UgY2FuIGFsd2F5cyBjaG9vc2UgdGhlIGFw
-cHJvcHJpYXRlIGNyZWRlbnRpYWwgdGhhdCBtYXRjaGVzIHRoZSBzdGF0ZWlkLiBJbiBwYXJ0aWN1
-bGFyLCBpZiB0aGUgc2VydmVyIHNldHMgRVhDSEdJRDRfRkxBR19CSU5EX1BSSU5DX1NUQVRFSUQs
-IHRoZW4gd2Ugd2FudCB0byB1c2UgdGhlIGNyZWRlbnRpYWwgdGhhdCB3YXMgdXNlZCB0byBvYnRh
-aW4gdGhlIGRlbGVnYXRpb24gaWYgaXQgaXMgc3RpbGwgdmFsaWQuDQoNCknigJl2ZSBzdGFydGVk
-IHRoYXQgd29yayBpbiBhIHByaXZhdGUgYnJhbmNoIHRoYXQgSSBjYW4gcHVibGlzaCBzb29uLCBJ
-IGhvcGUuDQoNCi0tLQ0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50YWlu
-ZXIsIFByaW1hcnlEYXRhDQp0cm9uZC5teWtsZWJ1c3RAcHJpbWFyeWRhdGEuY29tDQo=
+From: "J. Bruce Fields" <bfields@redhat.com>
+
+There's no guarantee that an IP address in a different network namespace
+actually represents the same endpoint.
+
+Also, if we allow unprivileged nfs mounts some day then this might allow
+an unprivileged user in another network namespace to misdirect somebody
+else's nfs mounts.
+
+If sharing between containers is really what's wanted then that could
+still be arranged explicitly, for example with bind mounts.
+
+Reported-by: "Eric W. Biederman" <ebiederm@redhat.com>
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ fs/nfs/super.c | 5 +++++
+ 1 file changed, 5 insertions(+)
+
+diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+index f1268280244e..ff537a205188 100644
+--- a/fs/nfs/super.c
++++ b/fs/nfs/super.c
+@@ -2408,6 +2408,11 @@ static int nfs_compare_super_address(struct nfs_server *server1,
+ 				     struct nfs_server *server2)
+ {
+ 	struct sockaddr *sap1, *sap2;
++	struct rpc_xprt *xprt1 = server1->client->cl_xprt;
++	struct rpc_xprt *xprt2 = server2->client->cl_xprt;
++
++	if (!net_eq(xprt1->xprt_net, xprt2->xprt_net))
++		return 0;
+ 
+ 	sap1 = (struct sockaddr *)&server1->nfs_client->cl_addr;
+ 	sap2 = (struct sockaddr *)&server2->nfs_client->cl_addr;
+-- 
+2.5.5
 
