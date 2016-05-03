@@ -1,277 +1,240 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ig0-f193.google.com ([209.85.213.193]:34736 "EHLO
-	mail-ig0-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755254AbcEBWwR (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 2 May 2016 18:52:17 -0400
-Received: by mail-ig0-f193.google.com with SMTP id qu10so571520igc.1
-        for <linux-nfs@vger.kernel.org>; Mon, 02 May 2016 15:52:17 -0700 (PDT)
-Subject: Re: [PATCH 5/6] statx: Make windows attributes available for CIFS, NTFS and FAT to use
-Mime-Version: 1.0 (Mac OS X Mail 9.3 \(3124\))
-Content-Type: multipart/signed; boundary="Apple-Mail=_DBB7F1D5-A7F9-4A1E-B40E-918CCDED7C1F"; protocol="application/pgp-signature"; micalg=pgp-sha256
-From: Andreas Dilger <adilger@dilger.ca>
-In-Reply-To: <20160429125813.23636.49830.stgit@warthog.procyon.org.uk>
-Date: Mon, 2 May 2016 16:52:12 -0600
-Cc: linux-fsdevel@vger.kernel.org, linux-afs@vger.kernel.org,
-        linux-nfs@vger.kernel.org, samba-technical@lists.samba.org,
-        linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org
-Message-Id: <D21EA8F8-0A7A-4275-8D4C-E9CFCC2A7293@dilger.ca>
-References: <20160429125736.23636.47874.stgit@warthog.procyon.org.uk> <20160429125813.23636.49830.stgit@warthog.procyon.org.uk>
-To: David Howells <dhowells@redhat.com>
+Received: from ns.horizon.com ([71.41.210.147]:61407 "HELO ns.horizon.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with SMTP
+	id S932771AbcECB7E (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 2 May 2016 21:59:04 -0400
+Date: 2 May 2016 21:59:01 -0400
+Message-ID: <20160503015901.2865.qmail@ns.horizon.com>
+From: "George Spelvin" <linux@horizon.com>
+To: linux@horizon.com, torvalds@linux-foundation.org
+Subject: Re: [PATCH 1/2] <linux/hash.h>: Make hash_64(), hash_ptr() return 32 bits
+Cc: bfields@fieldses.org, eric.dumazet@gmail.com, jlayton@poochiereds.net,
+        linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        riel@redhat.com, tglx@linutronix.de
+In-Reply-To: <CA+55aFx441ZBAj6DUXVqEOzBjh9v32F1r2rD-PF2BRpA92fFkg@mail.gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+> Right. But there is no reason to think that that should be the same
+> thing as the final hash.
 
---Apple-Mail=_DBB7F1D5-A7F9-4A1E-B40E-918CCDED7C1F
-Content-Transfer-Encoding: quoted-printable
-Content-Type: text/plain;
-	charset=us-ascii
+Your logic is absolutely correct.  I agree with you.  The two operations
+have different purposes, and should be thought of differently.
 
-On Apr 29, 2016, at 6:58 AM, David Howells <dhowells@redhat.com> wrote:
->=20
-> Make windows attributes available for CIFS, NTFS and FAT to use in the
-> statx struct.  The attribute flags map directly by value to those in =
-the
-> CIFS PDU flags.  Some of these bits can also be used by JFS, UFS and =
-HPFS.
->=20
-> The statx struct acquires:
->=20
-> 	__u32	st_win_attrs;
+HOWEVER, if you can find one operation which is good enough to
+serve both purposes, that's not evidence of incompetence.
 
-It seems some of these flags are duplicated with the st_information =
-field,
-and some are duplicate with FS_IOC_GETFLAGS values, and returning the =
-same
-information in multiple ways is confusing.
+I'm not saying hash_str is anything wonderful.  Just that it's not a
+complete disaster.  (As a hash function.  Your comments about its
+performance are addressed below.)
 
-If these flags are part of the CIFS protocol, and are directly usable by
-Samba then I can understand we wouldn't want to change them once in the
-kernel and then convert them back in userspace, but I'm a bit reluctant
-to have flags only for CIFS/NTFS/FAT that might also be useful for other =
-filesystems.  Would we want to be able to get translated st_win_attrs
-flags in ext4 attrs when it is being exported by Samba?
-
-> The value in this is present if STATX_WIN_ATTRS is set.
->=20
-> The defined flags in this are:
->=20
-> 	STATX_WIN_ATTR_READONLY
-> 	STATX_WIN_ATTR_HIDDEN
-> 	STATX_WIN_ATTR_SYSTEM
-> 	STATX_WIN_ATTR_DIRECTORY
-
-How does this differ from (st_mode & S_IFMT) =3D=3D S_IFDIR)?
-
-> 	STATX_WIN_ATTR_ARCHIVE
-> 	STATX_WIN_ATTR_NORMAL
-
-How does this differ from (st_mode & S_IFMT) =3D=3D S_IFREG)?
-
-> 	STATX_WIN_ATTR_TEMPORARY
-
-How does this differ from STATX_INFO_TEMPORARY?
-
-> 	STATX_WIN_ATTR_SPARSE_FILE
-> 	STATX_WIN_ATTR_REPARSE_POINT
-> 	STATX_WIN_ATTR_COMPRESSED
-> 	STATX_WIN_ATTR_OFFLINE
-> 	STATX_WIN_ATTR_NOT_CONTENT_INDEXED
-> 	STATX_WIN_ATTR_ENCRYPTED
-
-How does this differ from STATX_INFO_ENCRYPTED?
-
-Cheers, Andreas
-
-> 	STATX_WIN_ATTR_INTEGRITY_STREAM
-> 	STATX_WIN_ATTR_NO_SCRUB_DATA
->=20
-> Signed-off-by: David Howells <dhowells@redhat.com>
-> ---
->=20
-> fs/stat.c                  |    5 ++++-
-> include/uapi/linux/stat.h  |   30 ++++++++++++++++++++++++++++--
-> samples/statx/test-statx.c |   31 +++++++++++++++++++++++++++++++
-> 3 files changed, 63 insertions(+), 3 deletions(-)
->=20
-> diff --git a/fs/stat.c b/fs/stat.c
-> index c2f8370dab13..1552bff154e6 100644
-> --- a/fs/stat.c
-> +++ b/fs/stat.c
-> @@ -83,6 +83,7 @@ int vfs_xgetattr_nosec(struct path *path, struct =
-kstat *stat)
->=20
-> 	stat->result_mask =3D 0;
-> 	stat->information =3D 0;
-> +	stat->win_attrs =3D 0;
-> 	if (inode->i_op->getattr)
-> 		return inode->i_op->getattr(path->mnt, path->dentry, =
-stat);
->=20
-> @@ -643,7 +644,9 @@ static long statx_set_result(struct kstat *stat, =
-struct statx __user *buffer)
-> 	    __put_user(stat->blocks,		&buffer->st_blocks	=
-) ||
-> 	    __put_user(stat->version,		&buffer->st_version	=
-) ||
-> 	    __put_user(stat->gen,		&buffer->st_gen		=
-) ||
-> -	    __clear_user(&buffer->__spare1, sizeof(buffer->__spare1)))
-> +	    __put_user(stat->win_attrs,		&buffer->st_win_attrs	=
-) ||
-> +	    __clear_user(&buffer->__spare1,
-> +			 sizeof(buffer->__spare1) + =
-sizeof(buffer->__spare2)))
-> 		return -EFAULT;
->=20
-> 	return 0;
-> diff --git a/include/uapi/linux/stat.h b/include/uapi/linux/stat.h
-> index 55ce6607dab6..64729b0785bf 100644
-> --- a/include/uapi/linux/stat.h
-> +++ b/include/uapi/linux/stat.h
-> @@ -106,7 +106,10 @@ struct statx {
-> 	__u32	st_dev_major;	/* ID of device containing file [uncond] =
-*/
-> 	__u32	st_dev_minor;
-> 	/* 0x80 */
-> -	__u64	__spare1[16];	/* Spare space for future expansion */
-> +	__u32	st_win_attrs;	/* Windows file attributes */
-> +	__u32	__spare1[3];
-> +	/* 0x90 */
-> +	__u64	__spare2[14];	/* Spare space for future expansion */
-> 	/* 0x100 */
-> };
->=20
-> @@ -133,7 +136,8 @@ struct statx {
-> #define STATX_BTIME		0x00000800U	/* Want/got st_btime */
-> #define STATX_VERSION		0x00001000U	/* Want/got st_version =
-*/
-> #define STATX_GEN		0x00002000U	/* Want/got st_gen */
-> -#define STATX_ALL_STATS		0x00003fffU	/* All supported =
-stats */
-> +#define STATX_WIN_ATTRS		0x00004000U	/* Want/got =
-st_win_attrs */
-> +#define STATX_ALL_STATS		0x00007fffU	/* All supported =
-stats */
->=20
-> /*
->  * Flags to be found in st_information
-> @@ -151,4 +155,26 @@ struct statx {
-> #define STATX_INFO_AUTODIR		0x00000040U /* Dir provides =
-unlisted automounts */
-> #define STATX_INFO_NONSYSTEM_OWNERSHIP	0x00000080U /* File has =
-non-system ownership details */
->=20
-> +/*
-> + * Flags to be found in st_win_attrs.
-> + *
-> + * These give information about the state of a file on a Windows =
-filesystem
-> + * (such as. FAT, NTFS, CIFS).  These values are borrowed from the =
-CIFS fs.
-> + */
-> +#define STATX_WIN_ATTR_READONLY			0x00000001
-> +#define STATX_WIN_ATTR_HIDDEN			0x00000002
-> +#define STATX_WIN_ATTR_SYSTEM			0x00000004
-> +#define STATX_WIN_ATTR_DIRECTORY		0x00000010
-> +#define STATX_WIN_ATTR_ARCHIVE			0x00000020
-> +#define STATX_WIN_ATTR_NORMAL			0x00000080
-> +#define STATX_WIN_ATTR_TEMPORARY		0x00000100
-> +#define STATX_WIN_ATTR_SPARSE_FILE		0x00000200
-> +#define STATX_WIN_ATTR_REPARSE_POINT		0x00000400
-> +#define STATX_WIN_ATTR_COMPRESSED		0x00000800
-> +#define STATX_WIN_ATTR_OFFLINE			0x00001000
-> +#define STATX_WIN_ATTR_NOT_CONTENT_INDEXED	0x00002000
-> +#define STATX_WIN_ATTR_ENCRYPTED		0x00004000
-> +#define STATX_WIN_ATTR_INTEGRITY_STREAM		0x00008000
-> +#define STATX_WIN_ATTR_NO_SCRUB_DATA		0x00020000
-> +
-> #endif /* _UAPI_LINUX_STAT_H */
-> diff --git a/samples/statx/test-statx.c b/samples/statx/test-statx.c
-> index 38ef23c12e7d..86eac7d16c32 100644
-> --- a/samples/statx/test-statx.c
-> +++ b/samples/statx/test-statx.c
-> @@ -134,6 +134,37 @@ static void dump_statx(struct statx *stx)
-> 	if (stx->st_mask & STATX_GEN)
-> 		printf("Inode gen   : %xh\n", stx->st_gen);
->=20
-> +	if (stx->st_mask & STATX_WIN_ATTRS) {
-> +		unsigned char bits;
-> +		int loop, byte;
-> +
-> +		static char wattr_representation[32 + 1] =3D
-> +			/* STATX_WIN_ATTR_ flags: */
-> +			"????????"	/* 31-24	=
-0x00000000-ff000000 */
-> +			"??????N?"	/* 23-16	=
-0x00000000-00ff0000 */
-> +			"ieNocrst"	/* 15- 8	=
-0x00000000-0000ff00 */
-> +			"n?Ad?SHR"	/*  7- 0	=
-0x00000000-000000ff */
-> +			;
-> +
-> +		printf("Win attrs  : %08llx (",
-> +		       (unsigned long long)stx->st_win_attrs);
-> +		for (byte =3D 32 - 8; byte >=3D 0; byte -=3D 8) {
-> +			bits =3D stx->st_win_attrs >> byte;
-> +			for (loop =3D 7; loop >=3D 0; loop--) {
-> +				int bit =3D byte + loop;
-> +
-> +				if (bits & 0x80)
-> +					putchar(wattr_representation[31 =
-- bit]);
-> +				else
-> +					putchar('-');
-> +				bits <<=3D 1;
-> +			}
-> +			if (byte)
-> +				putchar(' ');
-> +		}
-> +		printf(")\n");
-> +	}
-> +
-> 	if (stx->st_information) {
-> 		unsigned char bits;
-> 		int loop, byte;
->=20
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" =
-in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+It's frankly a lot *better* than the hash computed by namei.c.
+That one *is* perilously close to a complete disaster.
 
 
-Cheers, Andreas
+The main problem with the multiplicative hash (which describes both
+hash_str() and hash_name()) is that input bits can only affect higher
+state bits.  The lsbit of the 64-bit state is just the XOR of all the
+input lsbits.  The lsbyte depends only on the lsbytes.
+
+But that's not a disaster.  In hash_str(), we throw away the lsbits
+at the end so their imperfect mixing doesn't matter.
+
+What's bad is that the msbits of the inputs can only affect the
+msbits of the hash.  The msbits of the inputs are just XORed together
+into the msbit of the hash.  It's fundamentally impossible for
+such a hash to detect any 2-bit change to the msbits of the input.
+
+That said, you're right that most names aren't long enough (16 bytes on
+little-endian) to *have* a second msbit to worry about.
+
+> I refuse to call that shit "word at a time".
+>
+> It's "byte at a time with a slow conditional that will screw up your
+> branch predictor and a multiply in the middle".
+
+The *hashing* is word at a time.  The *fetching* is done byte at a time
+and I agree that it doesn't qualify in any way at all.
+
+But yeah, your point about the branch predictor penalty being worse than
+the 7 saved multiplies is well taken.
+
+Rule #1 of performane: Avoid lock contention at any cost.
+Rule #2 of performane: Avoid cache misses unless it conflicts with #1.
+(Rule 2a: Cache bouncing is a paritucularly permicious form of cache missing.)
+(Rule 2b: Locking, even uncontended, tends to cause cache bouncing.)
+Rule #3 of performance: Avoid unpredictable branches.
+
+>> For example, partial_name_hash() is still used in many places
+>> even if the word-at-a-time code is used in namei.c.
+
+> Those places aren't actually all that performance-critical.  They
+> really don't matter.
+
+AFAICT, none of the string-hash functions outside of fs/ are
+on particularly hot paths.  The goal is deleting redundant code.
+
+> We'll never get rid of "hash_name()", it not only has that '/' case,
+> it's also inlined for a reason. You'd copy it without the magic for
+> '/' and turn that into str_hash() for others to use.
+>
+> full_name_hash() can presumably be used pretty much as-is as mem_hash().
+
+That part is obvious. I was just caught between two unpleasant
+possibiites:
+
+- Placing a str_hash() helper function in the middle of fs/namei.c which
+  nothing in fs/namei.c actually calls, or
+- Copying it to some outside file and then having to keep the
+  two in sync.
+
+Thinking about the function comments on each, the first seems less
+embarrasing to write.
+
+> Maybe we could expose that kind of interface, even if it's pretty ugly.
+
+Yeah, that's pretty much what I thought.  I just hoped you had some
+brilliant idea for avoiding it.
+
+> The thing is, a lot of people tend to optimize performance (and
+> behavior) for large strings.
+>
+> For path components, the most common lengths are less than a single
+> 8-byte word! That "mixing" function almost doesn't matter, because the
+>  case that matters the most (by far) are strings that fit in one or
+> _maybe_ two words.
+
+I'll remember that next time I look up
+.git/objects/69/466b786e99a0a2d86f0cb99e0f4bb61588d13c
+
+:-)
+
+But yes, it makes your point about pathname components.
+The first three are all a single word.
+
+I just worry with people having directories full of PHP state
+cookies.
+
+> Hmm? It uses "fold_hash()", which definitely doesn't do that.
+
+Mea culpa; that's a side effect of repeately grepping the kernel.
+There was a *different* hash folding function in some other source file
+elsewhere that did that, and I got the two mixed up in my memory.
+
+The word-at-a-time one does "hash_64(x)", which doesn't have that problem.
+
+(Maybe it was the IP checksum folding?)
+
+>>    (If you have a particular cycle count budget in mind, I can come up with
+>>    something.)
+
+> The real issue I had in fs/namei.c is that link_path_walk() and
+> __d_lookup_rcu() are literally _the_ hottest functions in the kernel
+> under a few (common) loads, and for code generation things like
+> register pressure ends up mattering.
+> 
+> The reason that "hash_len" is a single 64-bit field rather than two
+> 32-bit fields, for example, is that that way it takes on _register_
+> when we do the has lookup. Some of that code was tuned to inline - and
+> _not_ inline in particular patterns.
+> 
+> Now, some of that tuning may have bitrotted, of course, so I'm not
+> saying it's necessarily doing great now. But some of that code was
+> tuned to not need a stack frame etc.
+
+Yes, and it's hard to make a general purpose helper out of code
+that's tuned to piano wire tension like that.
+
+I was thinking about very fast hash functions (2 or 3 cycles
+per word), and the obvious solution is to use a second register.
+
+As you pointed out above, the mixing function can take advantage of an
+internal state which is larger than the final state, so the easy way to
+minimize collisions without very expensive state mixing between words
+is to give the bits more room to spread out.
+
+I was playing with the idea of an ARX structure like the "Speck" block
+cipher (https://en.wikipedia.org/wiki/Speck_%28cipher%29):
+
+	h1 ^= a;
+	h2 ^= h1; h1 = ROTL(h1, K);
+	h1 += h2; h2 *= 9;
+
+The "h2 *= 9" replaces "ROTL(h2, 3)" in Speck, achieves a little more
+mixing, is one cycle on most machines, and is probably supported by
+more functional units than a general barrel shift.
+
+It's only one more cycle on the critical path than the current
+"hash = (hash + a) * 9"... but it's one more register.
+
+
+> I think the caller should do it, yes. There's a difference between
+> "calculate a hash for a string" and "turn that hash into a hashtable
+> lookup".
+
+Makes sense, thanks.
+
+Another thing worth doing is having a slightly less thorough folding
+function than hash64(x, 32).  (x >> 32) + (uint32)x * CONSTANT does
+just as well if you're keeping all 32 bits.
+
+This is hasically the first half of my 32-bit hash_64().  Then if you
+want less than 32 bits, you can do a second hash_32() on the result.
+
+> Anyway, I suspect that your mixing function changes should be fine.
+> That link_path_walk() is important, but a couple of shifts and xors
+> shouldn't kill it.
+
+Actually, that code
+1) Uses an extra register for a shift temporary anyway, and
+2) Has a 6-cycle critical path, which is pretty borderline.
+
+The ARX code above seems like a more efficient use of two registers.
+
+(It's also conveniently nonlinear, so if we want, feeding a salt into
+h2 makes it less utterly trivial to force collisions.)
+
+I'll play with that for a bit.  Thank you for mentioning those critical
+functions; I'll check the x86 code generation for them to make sure it
+doesn't get worse.
 
 
 
+P.S. Here's a way to improve partial_name_hash on x86.
+Compare the assembly for
 
+unsigned long
+pnh1(unsigned long c, unsigned long prevhash)
+{
+        return (prevhash + (c << 4) + (c >> 4)) * 11;
+}
 
+pnh1:
+	movl    %eax, %ecx
+        shrl    $4, %eax
+        sall    $4, %ecx
+        addl    %ecx, %eax
+        addl    %eax, %edx
+        leal    (%edx,%edx,4), %eax
+        leal    (%edx,%eax,2), %eax
+        ret
 
---Apple-Mail=_DBB7F1D5-A7F9-4A1E-B40E-918CCDED7C1F
-Content-Transfer-Encoding: 7bit
-Content-Disposition: attachment;
-	filename=signature.asc
-Content-Type: application/pgp-signature;
-	name=signature.asc
-Content-Description: Message signed with OpenPGP using GPGMail
+unsigned long
+pnh2(unsigned long c, unsigned long prevhash)
+{
+        prevhash += c <<= 4;
+        prevhash += c >> 8;
+        return prevhash * 11;
+}
 
------BEGIN PGP SIGNATURE-----
-Comment: GPGTools - http://gpgtools.org
+pnh2:
+        sall    $4, %eax
+        addl    %eax, %edx
+        shrl    $8, %eax
+        addl    %eax, %edx
+        leal    (%edx,%edx,4), %eax
+        leal    (%edx,%eax,2), %eax
+        ret
 
-iQIVAwUBVyfaHHKl2rkXzB/gAQjOmg//X8Uk8jcMk6Azbc0W5XItlYzjlrefkhSt
-4wfqxBaD8MWBIdfCu+8tKrHf5TEH9rUhooHEyLxDOdcucQwCDgCQ/3F5m8rxVCUH
-Yn4twP0SE2tleD/iB/jlnq00QTHqXFA5KVac2+0CSiQplxFa+IKrDH4sRrd+ZI1/
-09D0+vvjwFXsFOusP2xFnbVYnL3Ks40Vvhtb5svIkslFP4KnV3NjEyl/s4XrZhEr
-uESsuGQC8xdUEDqduLFfxXUyjaeqHVPfYeV7mf0yCTmiJ2hlrZ7+y3BizYAhVJ6E
-gx7cuOsIUAZI68SuIDFlw7iQ+KTzhEq6uwfPGEQ1XG4XvlaspwEL6BGUu3oQXoUC
-VwAGwBZFuC/Zn2+Vk1nBr//p1Gdtgsc7q2h625PXUjlEiKA+2SNaBTxbebTEERPm
-LkAMkaMPwuiBMKlIs1VhNSrHo7ZN7MzygOekm7uCX0OCGLMqOQ1VBYLPMuJWB81J
-5eq9gu5ipQseRqTFOVVnBaXUf80CPOIRzyX5J7jOcXWgLmGeT3R/noCQCyMZ9v/z
-eia/GccBmzcgiVuxByR2CbBDT0hRfw4UyLOcsgvcC3G2NzQK7exUa0vLUbTCBvXV
-itdWIWVOwjjk1LpfwL1fbYaWL24HylPCAtt3rOAh5OfE/IY3buRvkKYJOEUNaqvm
-zDNdBYYGSRM=
-=D4vw
------END PGP SIGNATURE-----
-
---Apple-Mail=_DBB7F1D5-A7F9-4A1E-B40E-918CCDED7C1F--
+pnh1 doesn't know that "c" is really only 8 bits and so it doesn't need
+to copy it to another register to compute the two shifted forms.
