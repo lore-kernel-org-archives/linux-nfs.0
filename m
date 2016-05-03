@@ -1,80 +1,33 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx144.netapp.com ([216.240.21.25]:37072 "EHLO mx144.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S933947AbcECS3r (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 3 May 2016 14:29:47 -0400
-From: Anna Schumaker <Anna.Schumaker@netapp.com>
-To: <Trond.Myklebust@primarydata.com>, <linux-nfs@vger.kernel.org>
-CC: <Anna.Schumaker@netapp.com>
-Subject: [PATCH 2/2] NFS: Merge _nfs4_state_protect() and nfs4_state_protect()
-Date: Tue, 3 May 2016 14:29:42 -0400
-Message-ID: <1462300182-24738-2-git-send-email-Anna.Schumaker@Netapp.com>
-In-Reply-To: <1462300182-24738-1-git-send-email-Anna.Schumaker@Netapp.com>
+Received: from us-smtp-delivery-194.mimecast.com ([63.128.21.194]:28691 "EHLO
+	us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1755635AbcECSsK (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 3 May 2016 14:48:10 -0400
+From: Trond Myklebust <trondmy@primarydata.com>
+To: Anna Schumaker <Anna.Schumaker@netapp.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 1/2] NFS: Call nfs4_state_protect{_write}() from the NFSv4
+ module
+Date: Tue, 3 May 2016 18:41:48 +0000
+Message-ID: <769B6D28-ABED-4E6A-B59C-2044911E8D99@primarydata.com>
 References: <1462300182-24738-1-git-send-email-Anna.Schumaker@Netapp.com>
+In-Reply-To: <1462300182-24738-1-git-send-email-Anna.Schumaker@Netapp.com>
 MIME-Version: 1.0
-Content-Type: text/plain
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-We can have nfs4_state_protect() do the work directly, rather than
-passing through the arguments without adding or modifying anything.
-
-Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
----
- fs/nfs/nfs4_fs.h | 25 +++++++++----------------
- 1 file changed, 9 insertions(+), 16 deletions(-)
-
-diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
-index 4afdee4..7eba033 100644
---- a/fs/nfs/nfs4_fs.h
-+++ b/fs/nfs/nfs4_fs.h
-@@ -290,9 +290,15 @@ is_ds_client(struct nfs_client *clp)
- 	return clp->cl_exchange_flags & EXCHGID4_FLAG_USE_PNFS_DS;
- }
- 
-+/*
-+ * Function responsible for determining if an rpc_message should use the
-+ * machine cred under SP4_MACH_CRED and if so switching the credential and
-+ * authflavor (using the nfs_client's rpc_clnt which will be krb5i/p).
-+ * Should be called before rpc_call_sync/rpc_call_async.
-+ */
- static inline bool
--_nfs4_state_protect(struct nfs_client *clp, unsigned long sp4_mode,
--		    struct rpc_clnt **clntp, struct rpc_message *msg)
-+nfs4_state_protect(struct nfs_client *clp, unsigned long sp4_mode,
-+		   struct rpc_clnt **clntp, struct rpc_message *msg)
- {
- 	struct rpc_cred *newcred = NULL;
- 	rpc_authflavor_t flavor;
-@@ -317,19 +323,6 @@ _nfs4_state_protect(struct nfs_client *clp, unsigned long sp4_mode,
- }
- 
- /*
-- * Function responsible for determining if an rpc_message should use the
-- * machine cred under SP4_MACH_CRED and if so switching the credential and
-- * authflavor (using the nfs_client's rpc_clnt which will be krb5i/p).
-- * Should be called before rpc_call_sync/rpc_call_async.
-- */
--static inline void
--nfs4_state_protect(struct nfs_client *clp, unsigned long sp4_mode,
--		   struct rpc_clnt **clntp, struct rpc_message *msg)
--{
--	_nfs4_state_protect(clp, sp4_mode, clntp, msg);
--}
--
--/*
-  * Special wrapper to nfs4_state_protect for write.
-  * If WRITE can use machine cred but COMMIT cannot, make sure all writes
-  * that use machine cred use NFS_FILE_SYNC.
-@@ -338,7 +331,7 @@ static inline void
- nfs4_state_protect_write(struct nfs_client *clp, struct rpc_clnt **clntp,
- 			 struct rpc_message *msg, struct nfs_pgio_header *hdr)
- {
--	if (_nfs4_state_protect(clp, NFS_SP4_MACH_CRED_WRITE, clntp, msg) &&
-+	if (nfs4_state_protect(clp, NFS_SP4_MACH_CRED_WRITE, clntp, msg) &&
- 	    !test_bit(NFS_SP4_MACH_CRED_COMMIT, &clp->cl_sp4_flags))
- 		hdr->args.stable = NFS_FILE_SYNC;
- }
--- 
-2.8.2
+DQoNCg0KDQoNCk9uIDUvMy8xNiwgMTQ6MjksICJBbm5hIFNjaHVtYWtlciIgPEFubmEuU2NodW1h
+a2VyQG5ldGFwcC5jb20+IHdyb3RlOg0KDQo+VGhlIGdlbmVyaWMgY2xpZW50IGRvZXNuJ3QgbmVl
+ZCB0byBrbm93IGFib3V0IHRoZXNlIGNhbGxzLCBhbmQgd2UgY2FuDQo+aGFuZGxlIHRoZW0gZnJv
+bSB0aGUgd3JpdGUgYW5kIGNvbW1pdCBzZXR1cCBmdW5jdGlvbnMgZWFzaWx5IGVub3VnaC4NCg0K
+DQpOb3QgcmVhbGx5LiBXaGF0IHdlIGFjdHVhbGx5IHdhbnQgaXMgdG8gbW92ZSB0aGVtIGludG8g
+bmZzNF9zZXRfcndfc3RhdGVpZCgpIHNvIHRoYXQgd2UgY2FuIGFsd2F5cyBjaG9vc2UgdGhlIGFw
+cHJvcHJpYXRlIGNyZWRlbnRpYWwgdGhhdCBtYXRjaGVzIHRoZSBzdGF0ZWlkLiBJbiBwYXJ0aWN1
+bGFyLCBpZiB0aGUgc2VydmVyIHNldHMgRVhDSEdJRDRfRkxBR19CSU5EX1BSSU5DX1NUQVRFSUQs
+IHRoZW4gd2Ugd2FudCB0byB1c2UgdGhlIGNyZWRlbnRpYWwgdGhhdCB3YXMgdXNlZCB0byBvYnRh
+aW4gdGhlIGRlbGVnYXRpb24gaWYgaXQgaXMgc3RpbGwgdmFsaWQuDQoNCknigJl2ZSBzdGFydGVk
+IHRoYXQgd29yayBpbiBhIHByaXZhdGUgYnJhbmNoIHRoYXQgSSBjYW4gcHVibGlzaCBzb29uLCBJ
+IGhvcGUuDQoNCi0tLQ0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50YWlu
+ZXIsIFByaW1hcnlEYXRhDQp0cm9uZC5teWtsZWJ1c3RAcHJpbWFyeWRhdGEuY29tDQo=
 
