@@ -1,78 +1,33 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx142.netapp.com ([216.240.21.19]:44336 "EHLO mx142.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:60821 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752124AbcEDS16 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 4 May 2016 14:27:58 -0400
-Subject: Re: [PATCH] xprtrdma: Remove qplock
-To: Chuck Lever <chuck.lever@oracle.com>
-References: <20160504144108.15760.95228.stgit@manet.1015granger.net>
-CC: <linux-rdma@vger.kernel.org>, <linux-nfs@vger.kernel.org>
-From: Anna Schumaker <Anna.Schumaker@netapp.com>
-Message-ID: <42a5d6b3-b861-2af3-7ab8-d09bda142923@Netapp.com>
-Date: Wed, 4 May 2016 14:27:54 -0400
+	id S1753191AbcEDWVK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 4 May 2016 18:21:10 -0400
+Received: from int-mx09.intmail.prod.int.phx2.redhat.com (int-mx09.intmail.prod.int.phx2.redhat.com [10.5.11.22])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+	(No client certificate requested)
+	by mx1.redhat.com (Postfix) with ESMTPS id A85453DD47
+	for <linux-nfs@vger.kernel.org>; Wed,  4 May 2016 22:21:09 +0000 (UTC)
+Received: from steved.boston.devel.redhat.com (vpn-48-71.rdu2.redhat.com [10.10.48.71])
+	by int-mx09.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id u44ML9S3019455
+	for <linux-nfs@vger.kernel.org>; Wed, 4 May 2016 18:21:09 -0400
+From: Steve Dickson <SteveD@redhat.com>
+Subject: Monthly Linux NFS Town Hall meeting: Canceled
+To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Message-ID: <716ce8b8-3bb4-bbff-6402-5f27308619a6@RedHat.com>
+Date: Wed, 4 May 2016 18:21:08 -0400
 MIME-Version: 1.0
-In-Reply-To: <20160504144108.15760.95228.stgit@manet.1015granger.net>
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 05/04/2016 10:41 AM, Chuck Lever wrote:
-> Clean up.
-> 
-> After "xprtrdma: Remove ro_unmap() from all registration modes",
-> there are no longer any sites that take rpcrdma_ia::qplock for read.
-> The one site that takes it for write is always single-threaded. It
-> is safe to remove it.
-> 
-> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-> ---
-> Hi Anna-
-> 
-> One more simple clean up for 4.7?
+Hello,
 
-Sure, it looks okay to me.
+Tomorrow's Town Hall meeting is canceled due
+to the fact I'm traveling... 
 
-Anna
+Actually I'll be traveling for while so my responses
+might be a bit delayed... even more than usual! ;-)  
 
-> 
->  net/sunrpc/xprtrdma/verbs.c     |    3 ---
->  net/sunrpc/xprtrdma/xprt_rdma.h |    1 -
->  2 files changed, 4 deletions(-)
-> 
-> diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
-> index be66f65..b044d98a 100644
-> --- a/net/sunrpc/xprtrdma/verbs.c
-> +++ b/net/sunrpc/xprtrdma/verbs.c
-> @@ -433,7 +433,6 @@ rpcrdma_ia_open(struct rpcrdma_xprt *xprt, struct sockaddr *addr, int memreg)
->  	dprintk("RPC:       %s: memory registration strategy is '%s'\n",
->  		__func__, ia->ri_ops->ro_displayname);
->  
-> -	rwlock_init(&ia->ri_qplock);
->  	return 0;
->  
->  out3:
-> @@ -672,10 +671,8 @@ retry:
->  			goto out;
->  		}
->  
-> -		write_lock(&ia->ri_qplock);
->  		old = ia->ri_id;
->  		ia->ri_id = id;
-> -		write_unlock(&ia->ri_qplock);
->  
->  		rdma_destroy_qp(old);
->  		rpcrdma_destroy_id(old);
-> diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
-> index 512bbdc..95cdc66 100644
-> --- a/net/sunrpc/xprtrdma/xprt_rdma.h
-> +++ b/net/sunrpc/xprtrdma/xprt_rdma.h
-> @@ -65,7 +65,6 @@
->   */
->  struct rpcrdma_ia {
->  	const struct rpcrdma_memreg_ops	*ri_ops;
-> -	rwlock_t		ri_qplock;
->  	struct ib_device	*ri_device;
->  	struct rdma_cm_id 	*ri_id;
->  	struct ib_pd		*ri_pd;
-> 
+steved.
 
