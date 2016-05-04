@@ -1,172 +1,347 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ig0-f196.google.com ([209.85.213.196]:33099 "EHLO
-	mail-ig0-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751032AbcEDNYd convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 4 May 2016 09:24:33 -0400
-Received: by mail-ig0-f196.google.com with SMTP id rc4so5985053igc.0
-        for <linux-nfs@vger.kernel.org>; Wed, 04 May 2016 06:24:33 -0700 (PDT)
-Content-Type: text/plain; charset=utf-8
-Mime-Version: 1.0 (Mac OS X Mail 9.3 \(3124\))
-Subject: Re: [PATCH] nfs: avoid race that crashes nfs_init_commit
-From: Weston Andros Adamson <dros@monkey.org>
-In-Reply-To: <0f3f766f-0fc4-6451-20f7-00e5e721ed49@Netapp.com>
-Date: Wed, 4 May 2016 09:24:30 -0400
-Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
-        linux-nfs list <linux-nfs@vger.kernel.org>
-Message-Id: <CA46281F-F835-4C3D-A1E2-B408FE74B311@monkey.org>
-References: <1462304354-5195-1-git-send-email-dros@primarydata.com> <0f3f766f-0fc4-6451-20f7-00e5e721ed49@Netapp.com>
-To: Anna Schumaker <Anna.Schumaker@netapp.com>
+Received: from mx1.redhat.com ([209.132.183.28]:57431 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750883AbcEDN2A (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 4 May 2016 09:28:00 -0400
+Subject: Re: [PATCH 2/2] gssd: move read of upcall into main thread
+To: Olga Kornievskaia <kolga@netapp.com>
+References: <1462286792-8889-1-git-send-email-kolga@netapp.com>
+ <1462286792-8889-2-git-send-email-kolga@netapp.com>
+Cc: linux-nfs@vger.kernel.org
+From: Steve Dickson <SteveD@redhat.com>
+Message-ID: <50edf6a8-4d4c-07d5-af0a-363ac66dbfa5@RedHat.com>
+Date: Wed, 4 May 2016 09:27:58 -0400
+MIME-Version: 1.0
+In-Reply-To: <1462286792-8889-2-git-send-email-kolga@netapp.com>
+Content-Type: text/plain; charset=windows-1252
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+One very small nit... 
 
-> On May 4, 2016, at 9:14 AM, Anna Schumaker <Anna.Schumaker@netapp.com> wrote:
+On 05/03/2016 10:46 AM, Olga Kornievskaia wrote:
+> This patch moves reading of the upcall information from the child thread
+> into the main thread. It removes the need to synchronize between the
+> parent and child thread before processing upcall. Also it creates the thread
+> in a detached state.
 > 
-> Hi Dros,
+> Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
+> ---
+>  utils/gssd/gssd.c      | 95 +++++++++++++++++++++++++++++++++++---------------
+>  utils/gssd/gssd.h      | 13 +++++--
+>  utils/gssd/gssd_proc.c | 73 +++++++++++---------------------------
+>  3 files changed, 98 insertions(+), 83 deletions(-)
 > 
-> On 05/03/2016 03:39 PM, Weston Andros Adamson wrote:
->> Since the patch "NFS: Allow multiple commit requests in flight per file"
->> we can run multiple simultaneous commits on the same inode.  This
->> introduced a race over collecting pages to commit that made it possible
->> to call nfs_init_commit() with an empty list - which causes crashes like
->> the one below.
->> 
->> The fix is to catch this race and avoid calling nfs_init_commit and
->> initiate_commit when there is no work to do.
->> 
->> Here is the crash:
->> 
->> [600522.076832] BUG: unable to handle kernel NULL pointer dereference at 0000000000000040
->> [600522.078475] IP: [<ffffffffa0479e72>] nfs_init_commit+0x22/0x130 [nfs]
->> [600522.078745] PGD 4272b1067 PUD 4272cb067 PMD 0
->> [600522.078972] Oops: 0000 [#1] SMP
->> [600522.079204] Modules linked in: nfsv3 nfs_layout_flexfiles rpcsec_gss_krb5 nfsv4 dns_resolver nfs fscache dcdbas ip6t_rpfilter ip6t_REJECT nf_reject_ipv6 xt_conntrack ebtable_nat ebtable_broute bridge stp llc ebtable_filter ebtables ip6table_nat nf_conntrack_ipv6 nf_defrag_ipv6 nf_nat_ipv6 ip6table_mangle ip6table_security ip6table_raw ip6table_filter ip6_tables iptable_nat nf_conntrack_ipv4 nf_defrag_ipv4 nf_nat_ipv4 nf_nat nf_conntrack iptable_mangle iptable_security iptable_raw vmw_vsock_vmci_transport vsock bonding ipmi_devintf ipmi_msghandler coretemp crct10dif_pclmul crc32_pclmul ghash_clmulni_intel ppdev vmw_balloon parport_pc parport acpi_cpufreq vmw_vmci i2c_piix4 shpchp nfsd auth_rpcgss nfs_acl lockd grace sunrpc xfs libcrc32c vmwgfx drm_kms_helper ttm drm crc32c_intel serio_raw vmxnet3
->> [600522.081380]  vmw_pvscsi ata_generic pata_acpi
->> [600522.081809] CPU: 3 PID: 15667 Comm: /usr/bin/python Not tainted 4.1.9-100.pd.88.el7.x86_64 #1
->> [600522.082281] Hardware name: VMware, Inc. VMware Virtual Platform/440BX Desktop Reference Platform, BIOS 6.00 09/30/2014
->> [600522.082814] task: ffff8800bbbfa780 ti: ffff88042ae84000 task.ti: ffff88042ae84000
->> [600522.083378] RIP: 0010:[<ffffffffa0479e72>]  [<ffffffffa0479e72>] nfs_init_commit+0x22/0x130 [nfs]
->> [600522.083973] RSP: 0018:ffff88042ae87438  EFLAGS: 00010246
->> [600522.084571] RAX: 0000000000000000 RBX: ffff880003485e40 RCX: ffff88042ae87588
->> [600522.085188] RDX: 0000000000000000 RSI: ffff88042ae874b0 RDI: ffff880003485e40
->> [600522.085756] RBP: ffff88042ae87448 R08: ffff880003486010 R09: ffff88042ae874b0
->> [600522.086332] R10: 0000000000000000 R11: 0000000000000005 R12: ffff88042ae872d0
->> [600522.086905] R13: ffff88042ae874b0 R14: ffff880003485e40 R15: ffff88042704c840
->> [600522.087484] FS:  00007f4728ff2740(0000) GS:ffff88043fd80000(0000) knlGS:0000000000000000
->> [600522.088070] CS:  0010 DS: 0000 ES: 0000 CR0: 000000008005003b
->> [600522.088663] CR2: 0000000000000040 CR3: 000000042b6aa000 CR4: 00000000001406e0
->> [600522.089327] Stack:
->> [600522.089926]  0000000000000001 ffff88042ae87588 ffff88042ae874f8 ffffffffa04f09fa
->> [600522.090549]  0000000000017840 0000000000017840 ffff88042ae87588 ffff8803258d9930
->> [600522.091169]  ffff88042ae87578 ffffffffa0563d80 0000000000000000 ffff88042704c840
->> [600522.091789] Call Trace:
->> [600522.092420]  [<ffffffffa04f09fa>] pnfs_generic_commit_pagelist+0x1da/0x320 [nfsv4]
->> [600522.093052]  [<ffffffffa0563d80>] ? ff_layout_commit_prepare_v3+0x30/0x30 [nfs_layout_flexfiles]
->> [600522.093696]  [<ffffffffa0562645>] ff_layout_commit_pagelist+0x15/0x20 [nfs_layout_flexfiles]
->> [600522.094359]  [<ffffffffa047bc78>] nfs_generic_commit_list+0xe8/0x120 [nfs]
->> [600522.095032]  [<ffffffffa047bd6a>] nfs_commit_inode+0xba/0x110 [nfs]
->> [600522.095719]  [<ffffffffa046ac54>] nfs_release_page+0x44/0xd0 [nfs]
->> [600522.096410]  [<ffffffff811a8122>] try_to_release_page+0x32/0x50
->> [600522.097109]  [<ffffffff811bd4f1>] shrink_page_list+0x961/0xb30
->> [600522.097812]  [<ffffffff811bdced>] shrink_inactive_list+0x1cd/0x550
->> [600522.098530]  [<ffffffff811bea65>] shrink_lruvec+0x635/0x840
->> [600522.099250]  [<ffffffff811bed60>] shrink_zone+0xf0/0x2f0
->> [600522.099974]  [<ffffffff811bf312>] do_try_to_free_pages+0x192/0x470
->> [600522.100709]  [<ffffffff811bf6ca>] try_to_free_pages+0xda/0x170
->> [600522.101464]  [<ffffffff811b2198>] __alloc_pages_nodemask+0x588/0x970
->> [600522.102235]  [<ffffffff811fbbd5>] alloc_pages_vma+0xb5/0x230
->> [600522.103000]  [<ffffffff813a1589>] ? cpumask_any_but+0x39/0x50
->> [600522.103774]  [<ffffffff811d6115>] wp_page_copy.isra.55+0x95/0x490
->> [600522.104558]  [<ffffffff810e3438>] ? __wake_up+0x48/0x60
->> [600522.105357]  [<ffffffff811d7d3b>] do_wp_page+0xab/0x4f0
->> [600522.106137]  [<ffffffff810a1bbb>] ? release_task+0x36b/0x470
->> [600522.106902]  [<ffffffff8126dbd7>] ? eventfd_ctx_read+0x67/0x1c0
->> [600522.107659]  [<ffffffff811da2a8>] handle_mm_fault+0xc78/0x1900
->> [600522.108431]  [<ffffffff81067ef1>] __do_page_fault+0x181/0x420
->> [600522.109173]  [<ffffffff811446a6>] ? __audit_syscall_exit+0x1e6/0x280
->> [600522.109893]  [<ffffffff810681c0>] do_page_fault+0x30/0x80
->> [600522.110594]  [<ffffffff81024f36>] ? syscall_trace_leave+0xc6/0x120
->> [600522.111288]  [<ffffffff81790a58>] page_fault+0x28/0x30
->> [600522.111947] Code: 5d c3 0f 1f 80 00 00 00 00 0f 1f 44 00 00 55 4c 8d 87 d0 01 00 00 48 89 e5 53 48 89 fb 48 83 ec 08 4c 8b 0e 49 8b 41 18 4c 39 ce <48> 8b 40 40 4c 8b 50 30 74 24 48 8b 87 d0 01 00 00 48 8b 7e 08
->> [600522.113343] RIP  [<ffffffffa0479e72>] nfs_init_commit+0x22/0x130 [nfs]
->> [600522.114003]  RSP <ffff88042ae87438>
->> [600522.114636] CR2: 0000000000000040
->> 
->> Signed-off-by: Weston Andros Adamson <dros@primarydata.com>
->> ---
->> fs/nfs/pnfs_nfs.c | 17 +++++++++++++++++
->> fs/nfs/write.c    |  4 ++++
->> 2 files changed, 21 insertions(+)
->> 
->> diff --git a/fs/nfs/pnfs_nfs.c b/fs/nfs/pnfs_nfs.c
->> index 4aaed890048f..befde63026a6 100644
->> --- a/fs/nfs/pnfs_nfs.c
->> +++ b/fs/nfs/pnfs_nfs.c
->> @@ -280,6 +280,14 @@ pnfs_generic_commit_pagelist(struct inode *inode, struct list_head *mds_pages,
->> 	list_for_each_entry_safe(data, tmp, &list, pages) {
->> 		list_del_init(&data->pages);
->> 		if (data->ds_commit_index < 0) {
->> +			/* another commit raced with us */
->> +			if (list_empty(mds_pages)) {
->> +				if (atomic_dec_and_test(&cinfo->mds->rpcs_out))
->> +					wake_up_atomic_t(&cinfo->mds->rpcs_out);
->> +				nfs_commitdata_release(data);
->> +				continue;
->> +			}
->> +
->> 			nfs_init_commit(data, mds_pages, NULL, cinfo);
->> 			nfs_initiate_commit(NFS_CLIENT(inode), data,
->> 					    NFS_PROTO(data->inode),
->> @@ -288,6 +296,15 @@ pnfs_generic_commit_pagelist(struct inode *inode, struct list_head *mds_pages,
->> 			LIST_HEAD(pages);
->> 
->> 			pnfs_fetch_commit_bucket_list(&pages, data, cinfo);
->> +
->> +			/* another commit raced with us */
->> +			if (list_empty(&pages)) {
->> +				if (atomic_dec_and_test(&cinfo->mds->rpcs_out))
->> +					wake_up_atomic_t(&cinfo->mds->rpcs_out);
->> +				nfs_commitdata_release(data);
->> +				continue;
->> +			}
->> +
+> diff --git a/utils/gssd/gssd.c b/utils/gssd/gssd.c
+> index 9bf7917..95b6715 100644
+> --- a/utils/gssd/gssd.c
+> +++ b/utils/gssd/gssd.c
+> @@ -363,54 +363,93 @@ gssd_destroy_client(struct clnt_info *clp)
+>  
+>  static void gssd_scan(void);
+>  
+> -static inline void 
+> -wait_for_child_and_detach(pthread_t th)
+> +static void
+> +start_upcall_thread(void (*func)(struct clnt_upcall_info *), void *info)
+> +{
+> +	pthread_attr_t attr;
+> +	pthread_t th;
+> +	int ret;
+> +
+> +	ret = pthread_attr_init(&attr);
+> +	if (ret != 0) {
+> +		printerr(0, "ERROR: failed to init pthread attr: ret %d: %s\n",
+> +			 ret, strerror(errno));
+> +		goto err;
+> +	}
+> +	ret = pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
+> +	if (ret != 0) {
+> +		printerr(0, "ERROR: failed to create pthread attr: ret %d: "
+> +			 "%s\n", ret, strerror(errno));
+> +		goto err;
+> +	}
+> +
+> +	ret = pthread_create(&th, &attr, (void *)func, (void *)info);
+> +	if (ret != 0) {
+> +		printerr(0, "ERROR: pthread_create failed: ret %d: %s\n",
+> +			 ret, strerror(errno));
+> +		goto err;
+> +	}
+> +	return;
+> +err:
+> +	free(info);
+> +}
+> +
+> +static struct clnt_upcall_info *alloc_upcall_info(struct clnt_info *clp)
+>  {
+> -	pthread_mutex_lock(&pmutex);
+> -	while (!thread_started)
+> -		pthread_cond_wait(&pcond, &pmutex);
+> -	thread_started = false;
+> -	pthread_mutex_unlock(&pmutex);
+> -	pthread_detach(th);
+> +	struct clnt_upcall_info *info;
+> +
+> +	info = malloc(sizeof(struct clnt_upcall_info));
+> +	if (info == NULL)
+> +		return NULL;
+> +	info->clp = clp;
+> +
+> +	return info;
+>  }
+>  
+> -/* For each upcall create a thread, detach from the main process so that
+> - * resources are released back into the system without the need for a join.
+> - * We need to wait for the child thread to start and consume the event from
+> - * the file descriptor.
+> +/* For each upcall read the upcall info into the buffer, then create a
+> + * thread in a detached state so that resources are released back into
+> + * the system without the need for a join.
+>   */
+>  static void
+>  gssd_clnt_gssd_cb(int UNUSED(fd), short UNUSED(which), void *data)
+>  {
+>  	struct clnt_info *clp = data;
+> -	pthread_t th;
+> -	int ret;
+> +	struct clnt_upcall_info *info;
+>  
+> -	ret = pthread_create(&th, NULL, (void *)handle_gssd_upcall,
+> -				(void *)clp);
+> -	if (ret != 0) {
+> -		printerr(0, "ERROR: pthread_create failed: ret %d: %s\n",
+> -			 ret, strerror(errno));
+> +	info = alloc_upcall_info(clp);
+> +	if (info == NULL)
+> +		return;
+> +
+> +	info->lbuflen = read(clp->gssd_fd, info->lbuf, sizeof(info->lbuf));
+> +	if (info->lbuflen <= 0 || info->lbuf[info->lbuflen-1] != '\n') {
+> +		printerr(0, "WARNING: %s: failed reading request\n", __func__);
+> +		free(info);
+>  		return;
+>  	}
+> -	wait_for_child_and_detach(th);
+> +	info->lbuf[info->lbuflen-1] = 0;
+> +
+> +	start_upcall_thread(handle_gssd_upcall, info);
+Instead of having start_upcall_thread() free the info pointer
+I think it makes it more readable if gssd_clnt_gssd_cb() does the
+free... So the routine would allocate the pointer, populate the
+pointer and free the point all in one routine.
+
+I think it would make start_upcall_thread() simpler since
+it would not need all those goto... 
+
+steved.
+
+>  }
+>  
+>  static void
+>  gssd_clnt_krb5_cb(int UNUSED(fd), short UNUSED(which), void *data)
+>  {
+>  	struct clnt_info *clp = data;
+> -	pthread_t th;
+> -	int ret;
+> +	struct clnt_upcall_info *info;
+>  
+> -	ret = pthread_create(&th, NULL, (void *)handle_krb5_upcall,
+> -				(void *)clp);
+> -	if (ret != 0) {
+> -		printerr(0, "ERROR: pthread_create failed: ret %d: %s\n",
+> -			 ret, strerror(errno));
+> +	info = alloc_upcall_info(clp);
+> +	if (info == NULL)
+> +		return;
+> +
+> +	if (read(clp->krb5_fd, &info->uid,
+> +			sizeof(info->uid)) < (ssize_t)sizeof(info->uid)) {
+> +		printerr(0, "WARNING: %s: failed reading uid from krb5 "
+> +			 "upcall pipe: %s\n", __func__, strerror(errno));
+> +		free(info);
+>  		return;
+>  	}
+> -	wait_for_child_and_detach(th);
+> +
+> +	start_upcall_thread(handle_krb5_upcall, info);
+>  }
+>  
+>  static struct clnt_info *
+> diff --git a/utils/gssd/gssd.h b/utils/gssd/gssd.h
+> index 565bce3..f4f5975 100644
+> --- a/utils/gssd/gssd.h
+> +++ b/utils/gssd/gssd.h
+> @@ -49,7 +49,7 @@
+>  #define GSSD_DEFAULT_MACHINE_CRED_SUFFIX	"machine"
+>  #define GSSD_DEFAULT_KEYTAB_FILE		"/etc/krb5.keytab"
+>  #define GSSD_SERVICE_NAME			"nfs"
+> -
+> +#define RPC_CHAN_BUF_SIZE			32768
+>  /*
+>   * The gss mechanisms that we can handle
+>   */
+> @@ -85,8 +85,15 @@ struct clnt_info {
+>  	struct			sockaddr_storage addr;
+>  };
+>  
+> -void handle_krb5_upcall(struct clnt_info *clp);
+> -void handle_gssd_upcall(struct clnt_info *clp);
+> +struct clnt_upcall_info {
+> +	struct clnt_info 	*clp;
+> +	char			lbuf[RPC_CHAN_BUF_SIZE];
+> +	int			lbuflen;
+> +	uid_t			uid;
+> +};
+> +
+> +void handle_krb5_upcall(struct clnt_upcall_info *clp);
+> +void handle_gssd_upcall(struct clnt_upcall_info *clp);
+>  
+>  
+>  #endif /* _RPC_GSSD_H_ */
+> diff --git a/utils/gssd/gssd_proc.c b/utils/gssd/gssd_proc.c
+> index afaaf9e..d74d372 100644
+> --- a/utils/gssd/gssd_proc.c
+> +++ b/utils/gssd/gssd_proc.c
+> @@ -79,7 +79,6 @@
+>  #include "nfsrpc.h"
+>  #include "nfslib.h"
+>  #include "gss_names.h"
+> -#include "misc.h"
+>  
+>  /* Encryption types supported by the kernel rpcsec_gss code */
+>  int num_krb5_enctypes = 0;
+> @@ -708,45 +707,22 @@ out_return_error:
+>  	goto out;
+>  }
+>  
+> -/* signal to the parent thread that we have read from the file descriptor.
+> - * it should allow the parent to proceed to poll on the descriptor for
+> - * the next upcall from the kernel.
+> - */
+> -static inline void
+> -signal_parent_event_consumed(void)
+> -{
+> -	pthread_mutex_lock(&pmutex);
+> -	thread_started = true;
+> -	pthread_cond_signal(&pcond);
+> -	pthread_mutex_unlock(&pmutex);
+> -}
+> -
+>  void
+> -handle_krb5_upcall(struct clnt_info *clp)
+> +handle_krb5_upcall(struct clnt_upcall_info *info)
+>  {
+> -	uid_t			uid;
+> -	int 			status;
+> +	struct clnt_info *clp = info->clp;
+>  
+> -	status = read(clp->krb5_fd, &uid, sizeof(uid)) < (ssize_t)sizeof(uid);
+> -	signal_parent_event_consumed();
+> +	printerr(2, "\n%s: uid %d (%s)\n", __func__, info->uid, clp->relpath);
+>  
+> -	if (status) {
+> -		printerr(0, "WARNING: failed reading uid from krb5 "
+> -			    "upcall pipe: %s\n", strerror(errno));
+> -		return;
+> -	}
+> -
+> -	printerr(2, "\n%s: uid %d (%s)\n", __func__, uid, clp->relpath);
+> -
+> -	process_krb5_upcall(clp, uid, clp->krb5_fd, NULL, NULL);
+> +	process_krb5_upcall(clp, info->uid, clp->krb5_fd, NULL, NULL);
+> +	free(info);
+>  }
+>  
+>  void
+> -handle_gssd_upcall(struct clnt_info *clp)
+> +handle_gssd_upcall(struct clnt_upcall_info *info)
+>  {
+> +	struct clnt_info	*clp = info->clp;
+>  	uid_t			uid;
+> -	char			lbuf[RPC_CHAN_BUF_SIZE];
+> -	int			lbuflen = 0;
+>  	char			*p;
+>  	char			*mech = NULL;
+>  	char			*uidstr = NULL;
+> @@ -754,19 +730,9 @@ handle_gssd_upcall(struct clnt_info *clp)
+>  	char			*service = NULL;
+>  	char			*enctypes = NULL;
+>  
+> -	lbuflen = read(clp->gssd_fd, lbuf, sizeof(lbuf));
+> -	signal_parent_event_consumed();
+> +	printerr(2, "\n%s: '%s' (%s)\n", __func__, info->lbuf, clp->relpath);
+>  
+> -	if (lbuflen <= 0 || lbuf[lbuflen-1] != '\n') {
+> -		printerr(0, "WARNING: handle_gssd_upcall: "
+> -			    "failed reading request\n");
+> -		return;
+> -	}
+> -	lbuf[lbuflen-1] = 0;
+> -
+> -	printerr(2, "\n%s: '%s' (%s)\n", __func__, lbuf, clp->relpath);
+> -
+> -	for (p = strtok(lbuf, " "); p; p = strtok(NULL, " ")) {
+> +	for (p = strtok(info->lbuf, " "); p; p = strtok(NULL, " ")) {
+>  		if (!strncmp(p, "mech=", strlen("mech=")))
+>  			mech = p + strlen("mech=");
+>  		else if (!strncmp(p, "uid=", strlen("uid=")))
+> @@ -782,8 +748,8 @@ handle_gssd_upcall(struct clnt_info *clp)
+>  	if (!mech || strlen(mech) < 1) {
+>  		printerr(0, "WARNING: handle_gssd_upcall: "
+>  			    "failed to find gss mechanism name "
+> -			    "in upcall string '%s'\n", lbuf);
+> -		return;
+> +			    "in upcall string '%s'\n", info->lbuf);
+> +		goto out;
+>  	}
+>  
+>  	if (uidstr) {
+> @@ -795,21 +761,21 @@ handle_gssd_upcall(struct clnt_info *clp)
+>  	if (!uidstr) {
+>  		printerr(0, "WARNING: handle_gssd_upcall: "
+>  			    "failed to find uid "
+> -			    "in upcall string '%s'\n", lbuf);
+> -		return;
+> +			    "in upcall string '%s'\n", info->lbuf);
+> +		goto out;
+>  	}
+>  
+>  	if (enctypes && parse_enctypes(enctypes) != 0) {
+>  		printerr(0, "WARNING: handle_gssd_upcall: "
+>  			 "parsing encryption types failed: errno %d\n", errno);
+> -		return;
+> +		goto out;
+>  	}
+>  
+>  	if (target && strlen(target) < 1) {
+>  		printerr(0, "WARNING: handle_gssd_upcall: "
+>  			 "failed to parse target name "
+> -			 "in upcall string '%s'\n", lbuf);
+> -		return;
+> +			 "in upcall string '%s'\n", info->lbuf);
+> +		goto out;
+>  	}
+>  
+>  	/*
+> @@ -823,8 +789,8 @@ handle_gssd_upcall(struct clnt_info *clp)
+>  	if (service && strlen(service) < 1) {
+>  		printerr(0, "WARNING: handle_gssd_upcall: "
+>  			 "failed to parse service type "
+> -			 "in upcall string '%s'\n", lbuf);
+> -		return;
+> +			 "in upcall string '%s'\n", info->lbuf);
+> +		goto out;
+>  	}
+>  
+>  	if (strcmp(mech, "krb5") == 0 && clp->servername)
+> @@ -835,5 +801,8 @@ handle_gssd_upcall(struct clnt_info *clp)
+>  				 "received unknown gss mech '%s'\n", mech);
+>  		do_error_downcall(clp->gssd_fd, uid, -EACCES);
+>  	}
+> +out:
+> +	free(info);
+> +	return;
+>  }
+>  
 > 
-> Is there any way to do this without the code duplication in this function?
-> 
-> Thanks,
-> Anna
-
-I can move the “if empty, then release reference” code out to a helper function that returns a bool, but both blocks will need to call it and continue if the list was empty (and ref released). This has to be called twice because the list it’s inspecting in the second block is built right before (pnfs_fetch_commit_bucket_list).
-
-Not a huge reduction in line count, but I can do that if you’d prefer.
-
-I’ll have to feed through Primary Data QA again, I’ve found this race somewhat difficult to reproduce.
-
--dros
-
-> 
->> 			nfs_init_commit(data, &pages, data->lseg, cinfo);
->> 			initiate_commit(data, how);
->> 		}
->> diff --git a/fs/nfs/write.c b/fs/nfs/write.c
->> index 5f4fd53e5764..f5e613395fc2 100644
->> --- a/fs/nfs/write.c
->> +++ b/fs/nfs/write.c
->> @@ -1709,6 +1709,10 @@ nfs_commit_list(struct inode *inode, struct list_head *head, int how,
->> {
->> 	struct nfs_commit_data	*data;
->> 
->> +	/* another commit raced with us */
->> +	if (list_empty(head))
->> +		return 0;
->> +
->> 	data = nfs_commitdata_alloc();
->> 
->> 	if (!data)
->> 
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
