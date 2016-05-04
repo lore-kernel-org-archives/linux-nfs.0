@@ -1,67 +1,59 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f179.google.com ([209.85.223.179]:36173 "EHLO
-	mail-io0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753673AbcEDOnp (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 4 May 2016 10:43:45 -0400
-Received: by mail-io0-f179.google.com with SMTP id u185so64266676iod.3
-        for <linux-nfs@vger.kernel.org>; Wed, 04 May 2016 07:43:44 -0700 (PDT)
-Subject: [PATCH] gssd: Convert 'rdma' to 'tcp' protocol
+Received: from mail-io0-f170.google.com ([209.85.223.170]:36688 "EHLO
+	mail-io0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751042AbcEDOwl (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 4 May 2016 10:52:41 -0400
+Subject: [PATCH v2 0/9] NFS/RDMA server patches proposed for v4.7
 From: Chuck Lever <chuck.lever@oracle.com>
-To: SteveD@redhat.com
-Cc: linux-nfs@vger.kernel.org
-Date: Wed, 04 May 2016 10:43:42 -0400
-Message-ID: <20160504144342.15837.19874.stgit@manet.1015granger.net>
+To: bfields@fieldses.org
+Cc: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
+Date: Wed, 04 May 2016 10:52:38 -0400
+Message-ID: <20160504144730.6602.89073.stgit@klimt.1015granger.net>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The kernel NFS client specifies 'rdma' as the transport protocol for
-NFS/RDMA mounts. This is a generic display token, probably not
-something the kernel should lie about. The kernel uses it to form
-NFSv4 client IDs, for example.
+Shirley's server-side IPv6 patch, and a number of minor fixes and
+clean-ups found during code review.
 
-Until gssd can speak RPC-over-RDMA, convert 'rdma' to 'tcp' in
-kernel gss upcalls.
+Available in the "nfsd-rdma-for-4.7" topic branch of this git repo:
 
-This means that the Linux NFS client requires an NFS/TCP service on
-an NFS/RDMA server when establishing a GSS context for proto=rdma
-mount points. This is probably not an onerous requirement for the
-time being.
+git://git.linux-nfs.org/projects/cel/cel-2.6.git
 
-Eventually user space support for RPC-over-RDMA might be introduced,
-and gssd can use that for context establishment.
+Or for browsing:
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+http://git.linux-nfs.org/?p=cel/cel-2.6.git;a=log;h=refs/heads/nfsd-rdma-for-4.7
+
+
+Changes since v1:
+- Rebased on v4.6-rc6
+- Patch converting CQs to workqueue has been dropped for now
+- A number of clean-ups
+
 ---
- utils/gssd/gssd.c |   16 ++++++++++++++++
- 1 file changed, 16 insertions(+)
 
-diff --git a/utils/gssd/gssd.c b/utils/gssd/gssd.c
-index 7ba27b1..51b2cd7 100644
---- a/utils/gssd/gssd.c
-+++ b/utils/gssd/gssd.c
-@@ -301,6 +301,22 @@ gssd_read_service_info(int dirfd, struct clnt_info *clp)
- 		goto fail;
- 	}
- 
-+	/*
-+	 * The user space RPC library has no support for
-+	 * RPC-over-RDMA at this time, so change 'rdma'
-+	 * to 'tcp', and '20049' to '2049'.
-+	 */
-+	if (strcmp(protoname, "rdma") == 0) {
-+		free(protoname);
-+		protoname = strdup("tcp");
-+		if (!protoname)
-+			goto fail;
-+		free(port);
-+		port = strdup("2049");
-+		if (!port)
-+			goto fail;
-+	}
-+
- 	if (!gssd_addrstr_to_sockaddr((struct sockaddr *)&clp->addr,
- 				 address, port ? port : ""))
- 		goto fail;
+Chuck Lever (8):
+      svcrdma: Do not add XDR padding to xdr_buf page vector
+      svcrdma: svc_rdma_put_context() is invoked twice in Send error path
+      svcrdma: Remove superfluous line from rdma_read_chunks()
+      svcrdma: Post Receives only for forward channel requests
+      svcrdma: Drain QP before freeing svcrdma_xprt
+      svcrdma: Eliminate code duplication in svc_rdma_recvfrom()
+      svcrdma: Generalize svc_rdma_xdr_decode_req()
+      svcrdma: Simplify the check for backward direction replies
 
+Shirley Ma (1):
+      svcrdma: Support IPv6 with NFS/RDMA
+
+
+ fs/nfsd/nfs3xdr.c                        |    2 -
+ include/linux/sunrpc/svc_rdma.h          |    2 -
+ net/sunrpc/xprtrdma/svc_rdma_marshal.c   |   32 ++++++++++-----
+ net/sunrpc/xprtrdma/svc_rdma_recvfrom.c  |   65 ++++++++----------------------
+ net/sunrpc/xprtrdma/svc_rdma_sendto.c    |   28 ++++++-------
+ net/sunrpc/xprtrdma/svc_rdma_transport.c |   17 +++++++-
+ 6 files changed, 70 insertions(+), 76 deletions(-)
+
+--
+Chuck Lever
