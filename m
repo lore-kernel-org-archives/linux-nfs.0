@@ -1,19 +1,19 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from victor.provo.novell.com ([137.65.250.26]:43549 "EHLO
+Received: from victor.provo.novell.com ([137.65.250.26]:56891 "EHLO
 	prv3-mh.provo.novell.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754879AbcEDX5R (ORCPT
+	with ESMTP id S1754879AbcEEAKD (ORCPT
 	<rfc822;groupwise-linux-nfs@vger.kernel.org:0:0>);
-	Wed, 4 May 2016 19:57:17 -0400
+	Wed, 4 May 2016 20:10:03 -0400
 From: NeilBrown <nfbrown@novell.com>
-To: David Howells <dhowells@redhat.com>, linux-fsdevel@vger.kernel.org
-Date: Thu, 05 May 2016 09:56:58 +1000
-Cc: linux-afs@vger.kernel.org, linux-nfs@vger.kernel.org,
-        samba-technical@lists.samba.org, linux-kernel@vger.kernel.org,
-        dhowells@redhat.com, linux-ext4@vger.kernel.org
+To: Dave Chinner <david@fromorbit.com>, David Howells <dhowells@redhat.com>
+Date: Thu, 05 May 2016 10:09:49 +1000
+Cc: linux-fsdevel@vger.kernel.org, linux-afs@vger.kernel.org,
+        linux-nfs@vger.kernel.org, samba-technical@lists.samba.org,
+        linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org
 Subject: Re: [PATCH 1/6] statx: Add a system call to make enhanced file info available
-In-Reply-To: <20160429125743.23636.85219.stgit@warthog.procyon.org.uk>
-References: <20160429125736.23636.47874.stgit@warthog.procyon.org.uk> <20160429125743.23636.85219.stgit@warthog.procyon.org.uk>
-Message-ID: <87vb2tbcmt.fsf@notabene.neil.brown.name>
+In-Reply-To: <20160504225601.GZ26977@dastard>
+References: <20160429125736.23636.47874.stgit@warthog.procyon.org.uk> <20160429125743.23636.85219.stgit@warthog.procyon.org.uk> <20160504225601.GZ26977@dastard>
+Message-ID: <87shxxbc1e.fsf@notabene.neil.brown.name>
 MIME-Version: 1.0
 Content-Type: multipart/signed; boundary="=-=-=";
 	micalg=pgp-sha256; protocol="application/pgp-signature"
@@ -22,84 +22,48 @@ List-ID: <linux-nfs.vger.kernel.org>
 
 --=-=-=
 Content-Type: text/plain
+Content-Transfer-Encoding: quoted-printable
 
-On Fri, Apr 29 2016, David Howells wrote:
+On Thu, May 05 2016, Dave Chinner wrote:
 
-> Add a system call to make extended file information available, including
-> file creation time, inode version and data version where available through
-> the underlying filesystem.
+> On Fri, Apr 29, 2016 at 01:57:43PM +0100, David Howells wrote:
+>>  (4) File creation time (st_btime*), data version (st_version), inode
+>>      generation number (st_gen).
+>>=20
+>>      These will be returned if available whether the caller asked for th=
+em or
+>>      not.  The corresponding bits in st_mask will be set or cleared as
+>>      appropriate to indicate a valid value.
 >
->
-> ========
-> OVERVIEW
-> ========
+> IMO, exposing the inode generation number to anyone is a potential
+> security problem because they are used in file handles.
 
-I think all this documentation is invaluable - thanks.
-I would really like to see much of it in
-    Documentation/filesystems/something.txt
-rather than just in the commit log.
+"security through obscurity".  We have Kerberos working really nicely
+for NFS these days.  Do we still care?
 
->
-> The defined bits in the st_information field give local system data on a
-> file, how it is accessed, where it is and what it does:
-
-These bits form a channel for communication between the filesystem
-developer and the application writer.  As such we should be sure that
-channel actually communicates meaning...
-
+What if the generation number were only made available to "root"?  Would
+that allay your concerns?
+Would that still be useful?
+We already have name_to_handle_at().  Exposing the generation number
+could/should follow the same rules at that.  Or maybe the exposure of
+each field should be guided by the filesystem, depending on (for
+example) whether it is used to provide uniqueness to the filehandle.
 
 >
-> 	STATX_INFO_ENCRYPTED		File is encrypted
-> 	STATX_INFO_TEMPORARY		File is temporary
+>>      If the caller didn't ask for them, then they may be approximated.  =
+For
+>>      example, NFS won't waste any time updating them from the server, un=
+less
+>>      as a byproduct of updating something requested.
+>
+> I would suggest that exposing them from the NFS server is something
+> we most definitely don't want to do because they are the only thing
+> that keeps remote users from guessing filehandles with ease....
 
-What is "temporary"?  Is it a statement about quality of storage
-technology (will be destroyed by reboot) or intention of creator
-(created with O_TMPFILE) or something else?
+Given that the NFS protocol does not define a "generation number"
+attribute, I think there is no risk for them being exposed from the NFS
+server ... except implicitly within the filehandle of course.
 
-
-> 	STATX_INFO_FABRICATED		File was made up by filesystem
-> 	STATX_INFO_KERNEL_API		File is kernel API (eg: procfs/sysfs)
-
-What is the difference between these two?  Both are synthesized by the
-kernel.
-Maybe the "KERNEL_API" is declared never to change its meaning, while the
-fabricated one doesn't make a "stable API" promise?
-
-What is the difference between fabricating a file from a bunch of blocks
-spread over a storage device, and fabricating a file from a single field
-in the super-block?
-
-
-> 	STATX_INFO_REMOTE		File is remote
-
-How far is "remote"?  Does Infiniband count?  Fibre channel?  iSCSI?
-Is a file on a loop-back mounted NFS filesystem more remote than a
-fibre-channel connection to the next town?
-
-Or is this relative?  Within a filesystem there are "remote" files and
-"non-remote" files and the distinction is filesystem-dependant??
-
-> 	STATX_INFO_AUTOMOUNT		Dir is automount trigger
-> 	STATX_INFO_AUTODIR		Dir provides unlisted automounts
-
-I think this last one means that there are names in the directory which
-may not appear in "readdir" but will respond to "stat".  I would prefer
-the description to match the behavior without necessarily implying that
-those names will be automounts.  e.g
-        STATX_INFO_INCOMPLETE_READDIR   getdents may not report all
-                                        names that respond to stat
-
-> 	STATX_INFO_NONSYSTEM_OWNERSHIP	File has non-system ownership details
-
-This probably is a well defined meaning that I just don't have the
-context to understand.  For me, more words would help here.
-
-
-I don't object to any of these flag.  I just want to be sure that I
-understand them.
-I am generally in favour this functionality going in promptly.
-
-Thanks,
 NeilBrown
 
 --=-=-=
@@ -108,18 +72,18 @@ Content-Type: application/pgp-signature; name="signature.asc"
 -----BEGIN PGP SIGNATURE-----
 Version: GnuPG v2
 
-iQIcBAEBCAAGBQJXKoxKAAoJEDnsnt1WYoG5O6sQAIsr3Edm/d0x/1lRFCMxU5oC
-nS0AopKDb/dsOf69nkQhXjKGXqFpbnTOkNY4+MJj1u1x2rJxZ3t0qxu6Om99JgYd
-6dYRqlIBglKiZa5XC7FMoR8l9nnZuEJ8O8FP3P53fEOMgcPZbTiBW3O/MbECLJH8
-eTKm03+sQmyaikhEZdcbubPnf9hEFH9NCWpM39zVauQDA+xxf7M4Szl03gX8tExK
-70Hz3KWE7peAaQtUs6LK9ElDF9WDs5jygpqSksN3MIRsnu++O/FX7w9ECTCBCC7L
-Md/G+iAuysPdtAy6lPmT82N/L2Ejdav5d9IbbDZ9zyUN1xNuJItWqqaWxC1dZCwU
-UXfhGYUnvkfJANwef+riX8DduTeYubJ/KW02z8BhSWoeSY+byHjapl8rJZ1EgiK8
-m1p+8L36H3ntqzwIrVwrceJVkNX/73O5mZ744rAY2dQMp+hzLNPmsp9/Na66q3/B
-u75lUGQodhUy4YxkA5R5uxDGbfhrHRg+QHFuzMfx63BmeKQ2y7YWVRAcLtQJjcEK
-q0eJ5nvh14T3pcTzG4qy0kQrhftR53PqGoJJhzCJ+88qT+JPlXxvkEI19d/I/fgS
-kTQeNYBQ73fGJfrO4bDFj/T4il1Rw21deR5F4uzE4xVwVvBklObjx8FZ4z8adJyI
-X0yuwcfJsMQjiqpkgGeY
-=jgAp
+iQIcBAEBCAAGBQJXKo9OAAoJEDnsnt1WYoG50RYQAJYplUTXpB1CyXiAl2DQFt9B
+Um+CypGo7g3lVpLlVhM3kOjNc8AGJ7dOpfPvb5v3ahzHLqCdic8RK/ZNbUIvxT6g
+JhqokLVgrklt9Swn0rOSRQ1/xzM1kNcieGUCgue4jjgOI0TxcnjTcidWfoi3a/91
+Q26QEGMyN6l149wNnq8IRc+Ehv22w30HpoBk2z0Wp4fnilsDU1LEsvf+TYd86YTj
+jUoFkOGEynwfkntK61pdWP6Evkj0W6TqXxYKn6JewDD4E0Ybvd5KxVMmQ6gOwube
+Wk+mrm5SqrKNWto1kv7exgPsXF1KUI4hnSe00YCL45d4Ys5C0eacv/sr8IQHj1rD
+Ys0Kop6yepel24/+qRSOkACr9jtxe6/56QgZtzCqTTJQktREO9Gq6613mtPgFg8f
+Eo2e0FQK3izMPwYMOLy+JAfnWI5wKLMevqC9UclNyFxQj1mux3VePk7ivDkgdehW
+ziCxC2TAPvHrOPIXHRucFbfNKKsgEoWsA41Aya875HNGrkhkUnubvCFvX0JPabLE
+9+5M4rQVuKM1o+Ukc4Py4OTBR10QDHMZDznPN8KyFTZ6wFf/ubSloXbuMdD1Wc2h
+FKcqxAvzVZYbSpE0LDoSyM4an/gmwqLFidtLGSlyzynTEHvHL7WZLRKuP548KbBc
+oV9szr0hHj2vRwypsoCK
+=T1+R
 -----END PGP SIGNATURE-----
 --=-=-=--
