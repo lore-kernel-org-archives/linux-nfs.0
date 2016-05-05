@@ -1,106 +1,64 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qk0-f175.google.com ([209.85.220.175]:36707 "EHLO
-	mail-qk0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751498AbcEESY6 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 5 May 2016 14:24:58 -0400
-Received: by mail-qk0-f175.google.com with SMTP id x7so47665084qkd.3
-        for <linux-nfs@vger.kernel.org>; Thu, 05 May 2016 11:24:58 -0700 (PDT)
+Received: from mail-qk0-f169.google.com ([209.85.220.169]:36721 "EHLO
+	mail-qk0-f169.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754684AbcEESZA (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 5 May 2016 14:25:00 -0400
+Received: by mail-qk0-f169.google.com with SMTP id x7so47665696qkd.3
+        for <linux-nfs@vger.kernel.org>; Thu, 05 May 2016 11:25:00 -0700 (PDT)
 From: Jeff Layton <jlayton@poochiereds.net>
 To: linux-nfs@vger.kernel.org
 Cc: hch@lst.de, Anna.Schumaker@netapp.com
-Subject: [RFC PATCH 3/6] nfs: keep track of the return sequence number in pnfs_layout_hdr
-Date: Thu,  5 May 2016 14:24:45 -0400
-Message-Id: <1462472688-5663-4-git-send-email-jeff.layton@primarydata.com>
+Subject: [RFC PATCH 5/6] nfs4: remove pointless setting of NFS_LAYOUT_RETURN_REQUESTED in flexfiles code
+Date: Thu,  5 May 2016 14:24:47 -0400
+Message-Id: <1462472688-5663-6-git-send-email-jeff.layton@primarydata.com>
 In-Reply-To: <1462472688-5663-1-git-send-email-jeff.layton@primarydata.com>
 References: <1462472688-5663-1-git-send-email-jeff.layton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-When we want to selectively do a LAYOUTRETURN, we need to specify a
-stateid that represents most recent layout acquisition that is to be
-returned.
-
-When we mark a layout stateid to be returned, we update the return
-sequence number in the layout header with that value, if it's newer
-than the existing one. Then, when we go to do a LAYOUTRETURN on
-layout header put, we overwrite the seqid in the stateid with the
-saved one, and then zero it out.
+Setting just the NFS_LAYOUT_RETURN_REQUESTED flag doesn't do anything,
+unless there are lsegs that are also being marked for return. At the
+point where that happens this flag is also set, so these set_bit calls
+don't do anything useful.
 
 Signed-off-by: Jeff Layton <jeff.layton@primarydata.com>
 ---
- fs/nfs/pnfs.c | 11 ++++++++---
- fs/nfs/pnfs.h |  1 +
- 2 files changed, 9 insertions(+), 3 deletions(-)
+ fs/nfs/flexfilelayout/flexfilelayout.c    | 2 --
+ fs/nfs/flexfilelayout/flexfilelayoutdev.c | 8 +-------
+ 2 files changed, 1 insertion(+), 9 deletions(-)
 
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index 7cc2c431f355..12016ed54e1d 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -899,6 +899,7 @@ pnfs_prepare_layoutreturn(struct pnfs_layout_hdr *lo)
- 	if (test_and_set_bit(NFS_LAYOUT_RETURN, &lo->plh_flags))
- 		return false;
- 	lo->plh_return_iomode = 0;
-+	lo->plh_return_seq = 0;
- 	pnfs_get_layout_hdr(lo);
- 	clear_bit(NFS_LAYOUT_RETURN_REQUESTED, &lo->plh_flags);
- 	return true;
-@@ -969,6 +970,7 @@ static void pnfs_layoutreturn_before_put_layout_hdr(struct pnfs_layout_hdr *lo)
- 		bool send;
- 
- 		nfs4_stateid_copy(&stateid, &lo->plh_stateid);
-+		stateid.seqid = cpu_to_be32(lo->plh_return_seq);
- 		iomode = lo->plh_return_iomode;
- 		send = pnfs_prepare_layoutreturn(lo);
- 		spin_unlock(&inode->i_lock);
-@@ -1747,7 +1749,8 @@ out_forget_reply:
- }
- 
- static void
--pnfs_set_plh_return_iomode(struct pnfs_layout_hdr *lo, enum pnfs_iomode iomode)
-+pnfs_set_plh_return_info(struct pnfs_layout_hdr *lo, enum pnfs_iomode iomode,
-+			 u32 seq)
- {
- 	if (lo->plh_return_iomode == iomode)
- 		return;
-@@ -1755,6 +1758,8 @@ pnfs_set_plh_return_iomode(struct pnfs_layout_hdr *lo, enum pnfs_iomode iomode)
- 		iomode = IOMODE_ANY;
- 	lo->plh_return_iomode = iomode;
- 	set_bit(NFS_LAYOUT_RETURN_REQUESTED, &lo->plh_flags);
-+	if (!lo->plh_return_seq || pnfs_seqid_is_newer(seq, lo->plh_return_seq))
-+		lo->plh_return_seq = seq;
- }
- 
- /**
-@@ -1793,7 +1798,7 @@ pnfs_mark_matching_lsegs_return(struct pnfs_layout_hdr *lo,
- 				continue;
- 			remaining++;
- 			set_bit(NFS_LSEG_LAYOUTRETURN, &lseg->pls_flags);
--			pnfs_set_plh_return_iomode(lo, return_range->iomode);
-+			pnfs_set_plh_return_info(lo, return_range->iomode, lseg->pls_seq);
- 		}
- 	return remaining;
- }
-@@ -1811,7 +1816,7 @@ void pnfs_error_mark_layout_for_return(struct inode *inode,
- 	bool return_now = false;
- 
- 	spin_lock(&inode->i_lock);
--	pnfs_set_plh_return_iomode(lo, range.iomode);
-+	pnfs_set_plh_return_info(lo, range.iomode, lseg->pls_seq);
- 	/*
- 	 * mark all matching lsegs so that we are sure to have no live
- 	 * segments at hand when sending layoutreturn. See pnfs_put_lseg()
-diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
-index 62e61cf0ad98..47042084888c 100644
---- a/fs/nfs/pnfs.h
-+++ b/fs/nfs/pnfs.h
-@@ -195,6 +195,7 @@ struct pnfs_layout_hdr {
- 	unsigned long		plh_flags;
- 	nfs4_stateid		plh_stateid;
- 	u32			plh_barrier; /* ignore lower seqids */
-+	u32			plh_return_seq;
- 	enum pnfs_iomode	plh_return_iomode;
- 	loff_t			plh_lwb; /* last write byte for layoutcommit */
- 	struct rpc_cred		*plh_lc_cred; /* layoutcommit cred */
+diff --git a/fs/nfs/flexfilelayout/flexfilelayout.c b/fs/nfs/flexfilelayout/flexfilelayout.c
+index 0ee2613b8aa6..e2bb3eaaff32 100644
+--- a/fs/nfs/flexfilelayout/flexfilelayout.c
++++ b/fs/nfs/flexfilelayout/flexfilelayout.c
+@@ -1249,8 +1249,6 @@ static int ff_layout_read_done_cb(struct rpc_task *task,
+ 					hdr->pgio_mirror_idx + 1,
+ 					&hdr->pgio_mirror_idx))
+ 			goto out_eagain;
+-		set_bit(NFS_LAYOUT_RETURN_REQUESTED,
+-			&hdr->lseg->pls_layout->plh_flags);
+ 		pnfs_read_resend_pnfs(hdr);
+ 		return task->tk_status;
+ 	case -NFS4ERR_RESET_TO_MDS:
+diff --git a/fs/nfs/flexfilelayout/flexfilelayoutdev.c b/fs/nfs/flexfilelayout/flexfilelayoutdev.c
+index 56296f3df19c..5eff05e9eb4d 100644
+--- a/fs/nfs/flexfilelayout/flexfilelayoutdev.c
++++ b/fs/nfs/flexfilelayout/flexfilelayoutdev.c
+@@ -393,13 +393,7 @@ nfs4_ff_layout_prepare_ds(struct pnfs_layout_segment *lseg, u32 ds_idx,
+ 					 mirror, lseg->pls_range.offset,
+ 					 lseg->pls_range.length, NFS4ERR_NXIO,
+ 					 OP_ILLEGAL, GFP_NOIO);
+-		if (!fail_return) {
+-			if (ff_layout_has_available_ds(lseg))
+-				set_bit(NFS_LAYOUT_RETURN_REQUESTED,
+-					&lseg->pls_layout->plh_flags);
+-			else
+-				pnfs_error_mark_layout_for_return(ino, lseg);
+-		} else
++		if (fail_return || !ff_layout_has_available_ds(lseg))
+ 			pnfs_error_mark_layout_for_return(ino, lseg);
+ 		ds = NULL;
+ 	}
 -- 
 2.5.5
 
