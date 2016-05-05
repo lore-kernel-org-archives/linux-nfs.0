@@ -1,97 +1,65 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from userp1040.oracle.com ([156.151.31.81]:46646 "EHLO
-	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755821AbcEEVCF (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 5 May 2016 17:02:05 -0400
+Received: from muru.com ([72.249.23.125]:53459 "EHLO muru.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757273AbcEEWDs (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 5 May 2016 18:03:48 -0400
+Date: Thu, 5 May 2016 15:03:44 -0700
+From: Tony Lindgren <tony@atomide.com>
+To: Al Viro <viro@zeniv.linux.org.uk>, Christoph Hellwig <hch@lst.de>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>
+Cc: linux-nfs@vger.kernel.org, linux-omap@vger.kernel.org,
+        linux-arm-kernel@lists.infradead.org
+Subject: NFSroot hangs with bad unlock balance in Linux next
+Message-ID: <20160505220344.GE5995@atomide.com>
+MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 9.3 \(3124\))
-Subject: Re: Configuring NFSv4.0 Kerberos on a multi-homed Linux NFS server
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <DB5B2D02-412E-46AD-9F0A-7EBA4EB0C0B0@oracle.com>
-Date: Thu, 5 May 2016 17:01:58 -0400
-Cc: Bruce Fields <bfields@fieldses.org>
-Message-Id: <8198666A-8963-42D2-9C4C-08374F0E8E5D@oracle.com>
-References: <DB5B2D02-412E-46AD-9F0A-7EBA4EB0C0B0@oracle.com>
-To: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Hi,
 
-> On May 5, 2016, at 12:04 PM, Chuck Lever <chuck.lever@oracle.com> wrote:
-> 
-> Hi-
-> 
-> I have a Linux NFS server with two IP addresses:
-> 
-> 192.168.1.55: klimt.home
-> 10.0.0.5: klimt-ib.home
-> 
-> The server's keytab lists three principals:
-> 
-> host/klimt.home@HOME.EXAMPLE.NET
-> nfs/klimt.home@HOME.EXAMPLE.NET
-> nfs/klimt-ib.home@HOME.EXAMPLE.NET
-> 
-> When I mount with this:
-> 
->  vers=4.0,proto=tcp,sec=sys klimt:/export
-> 
-> I get krb5i for lease management, and sys for data traffic.
-> Callback traffic from the server uses krb5i. All well and
-> good.
-> 
-> When I mount with this:
-> 
->  vers=4.0,proto=tcp,sec=sys klimt-ib:/export
-> 
-> I get krb5i for lease management and sys for data traffic
-> as before, and callback traffic attempts to use krb5i.
-> But the client rejects all CB_COMPOUND operations because
-> the callback principal does not match the clp.
-> 
-> Looks like the server always uses the nfs/klimt service
-> principal for callback traffic? Is there a way to config
-> the server to use the principal that matches the
-> interface? Or is there something else going on?
+Looks like Linux next with NFSroot hangs for me at some point booting
+into init. Then after a while it produces "BUG: bad unlock balance
+detected!".
 
-After some IRC discussion with Bruce, we think the answer
-is "this is not supported in the current Linux NFS server."
+This happens at least with omap5-uevm and igepv5. Not sure yet if it
+also happens on other boards, the ones I'm seeing it happen both have
+USB Ethernet controller. They usually hang after the system starts
+being idle some tens of seconds into booting.
 
-The server does not have a way to determine which service
-principal to use for NFSv4.0 callback operations. It picks
-(probably) the first nfs/ service principal in the server's
-keytab for all callback operations.
+I tried to bisect it down with no luck. I do have the following
+trace, does that provide any clues?
 
-Thus if a Linux NFS server has a keytab, clients can mount
-it with NFSv4.0 (and any security flavor) only on the i/f
-whose hostname matches the name of the nfs/ service
-principal in that server's keytab.
+Regards,
 
-In other words, if the server has a keytab with the
-principals:
+Tony
 
-  nfs/server-a
-  nfs/server-b
-  nfs/server-c
+8< --------------------------
+[ BUG: bad unlock balance detected! ]
+4.6.0-rc6-next-20160505+ #1252 Not tainted
+-------------------------------------
+kworker/0:2/112 is trying to release lock (&nfsi->rmdir_sem) at:
+[<c03a7f98>] nfs_async_unlink_release+0x20/0x68
+but there are no more locks to release!
 
-NFSv4.0 will operate correctly only when mounting the
-server via server-a: .
+other info that might help us debug this:
+2 locks held by kworker/0:2/112:
+ #0:  ("nfsiod"){.+.+..}, at: [<c0154774>] process_one_work+0x120/0x6bc
+  #1:  ((&task->u.tk_work)#2){+.+...}, at: [<c0154774>] process_one_work+0x120/0x6bc
 
-Clients that do not have a keytab should be able to mount
-with NFSv4.0 via the other interfaces. This is because
-they will not try to negotiate krb5i for lease management,
-and the server will not attempt to use krb5i for callback
-operations.
-
-Bruce feels this is a corner case, would be difficult to
-address, and is adequately worked around by using NFSv3
-or NFSv4.1 or higher. So currently this is a WONTFIX.
-
-Copied Bruce to correct anything I might have summarized
-incorrectly.
-
---
-Chuck Lever
-
-
-
+stack backtrace:
+CPU: 0 PID: 112 Comm: kworker/0:2 Not tainted 4.6.0-rc6-next-20160505+ #1252
+Hardware name: Generic OMAP5 (Flattened Device Tree)
+Workqueue: nfsiod rpc_async_release
+[<c0110328>] (unwind_backtrace) from [<c010c3cc>] (show_stack+0x10/0x14)
+[<c010c3cc>] (show_stack) from [<c0481348>] (dump_stack+0xb0/0xe4)
+[<c0481348>] (dump_stack) from [<c018d638>] (print_unlock_imbalance_bug+0xb0/0xe0)
+[<c018d638>] (print_unlock_imbalance_bug) from [<c0191444>] (lock_release+0x2ec/0x4c4)
+[<c0191444>] (lock_release) from [<c018abf0>] (up_read+0x18/0x58)
+[<c018abf0>] (up_read) from [<c03a7f98>] (nfs_async_unlink_release+0x20/0x68)
+[<c03a7f98>] (nfs_async_unlink_release) from [<c0785320>] (rpc_free_task+0x24/0x44)
+[<c0785320>] (rpc_free_task) from [<c015483c>] (process_one_work+0x1e8/0x6bc)
+[<c015483c>] (process_one_work) from [<c0154e54>] (worker_thread+0x144/0x4e8)
+[<c0154e54>] (worker_thread) from [<c015ad0c>] (kthread+0xdc/0xf8)
+[<c015ad0c>] (kthread) from [<c01078f0>] (ret_from_fork+0x14/0x24)
