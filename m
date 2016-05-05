@@ -1,246 +1,85 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qg0-f47.google.com ([209.85.192.47]:36743 "EHLO
-	mail-qg0-f47.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751844AbcEESkT (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 5 May 2016 14:40:19 -0400
-Received: by mail-qg0-f47.google.com with SMTP id w36so44620410qge.3
-        for <linux-nfs@vger.kernel.org>; Thu, 05 May 2016 11:40:18 -0700 (PDT)
-Message-ID: <1462473615.12332.9.camel@poochiereds.net>
-Subject: Re: [RFC PATCH 4/6] nfs4: only tear down lsegs that precede seqid
- in LAYOUTRETURN args
+Received: from mail-qg0-f50.google.com ([209.85.192.50]:36002 "EHLO
+	mail-qg0-f50.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756608AbcEETsU (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 5 May 2016 15:48:20 -0400
+Received: by mail-qg0-f50.google.com with SMTP id w36so45708673qge.3
+        for <linux-nfs@vger.kernel.org>; Thu, 05 May 2016 12:48:20 -0700 (PDT)
+Message-ID: <1462477696.12332.17.camel@poochiereds.net>
+Subject: Re: [PATCH 1/6] statx: Add a system call to make enhanced file info
+ available
 From: Jeff Layton <jlayton@poochiereds.net>
-To: linux-nfs@vger.kernel.org
-Cc: hch@lst.de, Anna.Schumaker@netapp.com,
-        Trond Myklebust <trond.myklebust@primarydata.com>
-Date: Thu, 05 May 2016 14:40:15 -0400
-In-Reply-To: <1462472688-5663-5-git-send-email-jeff.layton@primarydata.com>
-References: <1462472688-5663-1-git-send-email-jeff.layton@primarydata.com>
-	 <1462472688-5663-5-git-send-email-jeff.layton@primarydata.com>
+To: NeilBrown <nfbrown@novell.com>, Dave Chinner <david@fromorbit.com>,
+        David Howells <dhowells@redhat.com>
+Cc: linux-fsdevel@vger.kernel.org, linux-afs@vger.kernel.org,
+        linux-nfs@vger.kernel.org, samba-technical@lists.samba.org,
+        linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org
+Date: Thu, 05 May 2016 15:48:16 -0400
+In-Reply-To: <87shxxbc1e.fsf@notabene.neil.brown.name>
+References: <20160429125736.23636.47874.stgit@warthog.procyon.org.uk>
+	 <20160429125743.23636.85219.stgit@warthog.procyon.org.uk>
+	 <20160504225601.GZ26977@dastard> <87shxxbc1e.fsf@notabene.neil.brown.name>
 Content-Type: text/plain; charset="UTF-8"
 Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 2016-05-05 at 14:24 -0400, Jeff Layton wrote:
-> LAYOUTRETURN is "special" in that servers and clients are expected to
-> work with old stateids. When the client sends a LAYOUTRETURN with an old
-> stateid in it then the server is expected to only tear down layout
-> segments that were present when that seqid was current. Ensure that the
-> client handles its accounting accordingly.
+On Thu, 2016-05-05 at 10:09 +1000, NeilBrown wrote:
+> On Thu, May 05 2016, Dave Chinner wrote:
 > 
-> Signed-off-by: Jeff Layton <jeff.layton@primarydata.com>
-> ---
->  fs/nfs/callback_proc.c |  3 ++-
->  fs/nfs/nfs42proc.c     |  2 +-
->  fs/nfs/nfs4proc.c      |  5 +++--
->  fs/nfs/pnfs.c          | 61 +++++++++++++++++++++++++++++++++-----------------
->  fs/nfs/pnfs.h          |  3 ++-
->  5 files changed, 48 insertions(+), 26 deletions(-)
+> > 
+> > On Fri, Apr 29, 2016 at 01:57:43PM +0100, David Howells wrote:
+> > > 
+> > >  (4) File creation time (st_btime*), data version (st_version), inode
+> > >      generation number (st_gen).
+> > > 
+> > >      These will be returned if available whether the caller asked for them or
+> > >      not.  The corresponding bits in st_mask will be set or cleared as
+> > >      appropriate to indicate a valid value.
+> > IMO, exposing the inode generation number to anyone is a potential
+> > security problem because they are used in file handles.
+> "security through obscurity".  We have Kerberos working really nicely
+> for NFS these days.  Do we still care?
 > 
-> diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
-> index 618ced381a14..755838df9996 100644
-> --- a/fs/nfs/callback_proc.c
-> +++ b/fs/nfs/callback_proc.c
-> @@ -217,7 +217,8 @@ static u32 initiate_file_draining(struct nfs_client *clp,
->  	}
->  
->  	if (pnfs_mark_matching_lsegs_return(lo, &free_me_list,
-> -					&args->cbl_range)) {
-> +				&args->cbl_range,
-> +				be32_to_cpu(args->cbl_stateid.seqid))) {
->  		rv = NFS4_OK;
->  		goto unlock;
->  	}
-> diff --git a/fs/nfs/nfs42proc.c b/fs/nfs/nfs42proc.c
-> index dff83460e5a6..198bcc3e103d 100644
-> --- a/fs/nfs/nfs42proc.c
-> +++ b/fs/nfs/nfs42proc.c
-> @@ -232,7 +232,7 @@ nfs42_layoutstat_done(struct rpc_task *task, void *calldata)
->  			 * with the current stateid.
->  			 */
->  			set_bit(NFS_LAYOUT_INVALID_STID, &lo->plh_flags);
-> -			pnfs_mark_matching_lsegs_invalid(lo, &head, NULL);
-> +			pnfs_mark_matching_lsegs_invalid(lo, &head, NULL, 0);
->  			spin_unlock(&inode->i_lock);
->  			pnfs_free_lseg_list(&head);
->  		} else
-> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-> index 327b8c34d360..c0645b53c4bc 100644
-> --- a/fs/nfs/nfs4proc.c
-> +++ b/fs/nfs/nfs4proc.c
-> @@ -7926,7 +7926,7 @@ static void nfs4_layoutget_done(struct rpc_task *task, void *calldata)
->  			 * with the current stateid.
->  			 */
->  			set_bit(NFS_LAYOUT_INVALID_STID, &lo->plh_flags);
-> -			pnfs_mark_matching_lsegs_invalid(lo, &head, NULL);
-> +			pnfs_mark_matching_lsegs_invalid(lo, &head, NULL, 0);
->  			spin_unlock(&inode->i_lock);
->  			pnfs_free_lseg_list(&head);
->  		} else
-> @@ -8118,7 +8118,8 @@ static void nfs4_layoutreturn_release(void *calldata)
->  
->  	dprintk("--> %s\n", __func__);
->  	spin_lock(&lo->plh_inode->i_lock);
-> -	pnfs_mark_matching_lsegs_invalid(lo, &freeme, &lrp->args.range);
-> +	pnfs_mark_matching_lsegs_invalid(lo, &freeme, &lrp->args.range,
-> +			be32_to_cpu(lrp->args.stateid.seqid));
->  	pnfs_mark_layout_returned_if_empty(lo);
->  	if (lrp->res.lrs_present)
->  		pnfs_set_layout_stateid(lo, &lrp->res.stateid, true);
-> diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-> index 12016ed54e1d..dc75db4c4849 100644
-> --- a/fs/nfs/pnfs.c
-> +++ b/fs/nfs/pnfs.c
-> @@ -270,7 +270,7 @@ pnfs_mark_layout_stateid_invalid(struct pnfs_layout_hdr *lo,
->  	};
->  
->  	set_bit(NFS_LAYOUT_INVALID_STID, &lo->plh_flags);
-> -	return pnfs_mark_matching_lsegs_invalid(lo, lseg_list, &range);
-> +	return pnfs_mark_matching_lsegs_invalid(lo, lseg_list, &range, 0);
->  }
->  
->  static int
-> @@ -308,7 +308,7 @@ pnfs_layout_io_set_failed(struct pnfs_layout_hdr *lo, u32 iomode)
->  
->  	spin_lock(&inode->i_lock);
->  	pnfs_layout_set_fail_bit(lo, pnfs_iomode_to_fail_bit(iomode));
-> -	pnfs_mark_matching_lsegs_invalid(lo, &head, &range);
-> +	pnfs_mark_matching_lsegs_invalid(lo, &head, &range, 0);
->  	spin_unlock(&inode->i_lock);
->  	pnfs_free_lseg_list(&head);
->  	dprintk("%s Setting layout IOMODE_%s fail bit\n", __func__,
-> @@ -522,13 +522,35 @@ static int mark_lseg_invalid(struct pnfs_layout_segment *lseg,
->  	return rv;
->  }
->  
-> -/* Returns count of number of matching invalid lsegs remaining in list
-> - * after call.
-> +/*
-> + * Compare 2 layout stateid sequence ids, to see which is newer,
-> + * taking into account wraparound issues.
-> + */
-> +static bool pnfs_seqid_is_newer(u32 s1, u32 s2)
-> +{
-> +	return (s32)(s1 - s2) > 0;
-> +}
-> +
-> +/**
-> + * pnfs_mark_matching_lsegs_invalid - tear down lsegs or mark them for later
-> + * @lo: layout header containing the lsegs
-> + * @tmp_list: list head where doomed lsegs should go
-> + * @recall_range: optional recall range argument to match (may be NULL)
-> + * @seq: only invalidate lsegs obtained prior to this sequence (may be 0)
-> + *
-> + * Walk the list of lsegs in the layout header, and tear down any that should
-> + * be destroyed. If "recall_range" is specified then the segment must match
-> + * that range. If "seq" is non-zero, then only match segments that were handed
-> + * out at or before that sequence.
-> + *
-> + * Returns number of matching invalid lsegs remaining in list after scanning
-> + * it and purging them.
->   */
->  int
->  pnfs_mark_matching_lsegs_invalid(struct pnfs_layout_hdr *lo,
->  			    struct list_head *tmp_list,
-> -			    const struct pnfs_layout_range *recall_range)
-> +			    const struct pnfs_layout_range *recall_range,
-> +			    u32 seq)
->  {
->  	struct pnfs_layout_segment *lseg, *next;
->  	int remaining = 0;
-> @@ -540,10 +562,12 @@ pnfs_mark_matching_lsegs_invalid(struct pnfs_layout_hdr *lo,
->  	list_for_each_entry_safe(lseg, next, &lo->plh_segs, pls_list)
->  		if (!recall_range ||
->  		    should_free_lseg(&lseg->pls_range, recall_range)) {
-> -			dprintk("%s: freeing lseg %p iomode %d "
-> +			if (seq && pnfs_seqid_is_newer(lseg->pls_seq, seq))
-> +				continue;
-> +			dprintk("%s: freeing lseg %p iomode %d seq %u"
->  				"offset %llu length %llu\n", __func__,
-> -				lseg, lseg->pls_range.iomode, lseg->pls_range.offset,
-> -				lseg->pls_range.length);
-> +				lseg, lseg->pls_range.iomode, lseg->pls_seq,
-> +				lseg->pls_range.offset, lseg->pls_range.length);
->  			if (!mark_lseg_invalid(lseg, tmp_list))
->  				remaining++;
->  		}
-> @@ -730,15 +754,6 @@ pnfs_destroy_all_layouts(struct nfs_client *clp)
->  	pnfs_destroy_layouts_byclid(clp, false);
->  }
->  
-> -/*
-> - * Compare 2 layout stateid sequence ids, to see which is newer,
-> - * taking into account wraparound issues.
-> - */
-> -static bool pnfs_seqid_is_newer(u32 s1, u32 s2)
-> -{
-> -	return (s32)(s1 - s2) > 0;
-> -}
-> -
->  /* update lo->plh_stateid with new if is more recent */
->  void
->  pnfs_set_layout_stateid(struct pnfs_layout_hdr *lo, const nfs4_stateid *new,
-> @@ -1014,7 +1029,7 @@ _pnfs_return_layout(struct inode *ino)
->  	pnfs_get_layout_hdr(lo);
->  	empty = list_empty(&lo->plh_segs);
->  	pnfs_clear_layoutcommit(ino, &tmp_list);
-> -	pnfs_mark_matching_lsegs_invalid(lo, &tmp_list, NULL);
-> +	pnfs_mark_matching_lsegs_invalid(lo, &tmp_list, NULL, 0);
->  
->  	if (NFS_SERVER(ino)->pnfs_curr_ld->return_range) {
->  		struct pnfs_layout_range range = {
-> @@ -1721,7 +1736,7 @@ pnfs_layout_process(struct nfs4_layoutget *lgp)
->  		 * inode invalid, and don't bother validating the stateid
->  		 * sequence number.
->  		 */
-> -		pnfs_mark_matching_lsegs_invalid(lo, &free_me, NULL);
-> +		pnfs_mark_matching_lsegs_invalid(lo, &free_me, NULL, 0);
->  
->  		nfs4_stateid_copy(&lo->plh_stateid, &res->stateid);
->  		lo->plh_barrier = be32_to_cpu(res->stateid.seqid);
-> @@ -1775,7 +1790,8 @@ pnfs_set_plh_return_info(struct pnfs_layout_hdr *lo, enum pnfs_iomode iomode,
->  int
->  pnfs_mark_matching_lsegs_return(struct pnfs_layout_hdr *lo,
->  				struct list_head *tmp_list,
-> -				const struct pnfs_layout_range *return_range)
-> +				const struct pnfs_layout_range *return_range,
-> +				u32 seq)
->  {
->  	struct pnfs_layout_segment *lseg, *next;
->  	int remaining = 0;
-> @@ -1798,8 +1814,11 @@ pnfs_mark_matching_lsegs_return(struct pnfs_layout_hdr *lo,
->  				continue;
->  			remaining++;
->  			set_bit(NFS_LSEG_LAYOUTRETURN, &lseg->pls_flags);
-> -			pnfs_set_plh_return_info(lo, return_range->iomode, lseg->pls_seq);
->  		}
-> +
-> +	if (remaining)
-> +		pnfs_set_plh_return_info(lo, return_range->iomode, seq);
-> +
->  	return remaining;
->  }
->  
-> diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
-> index 47042084888c..bb68d354255e 100644
-> --- a/fs/nfs/pnfs.h
-> +++ b/fs/nfs/pnfs.h
-> @@ -266,7 +266,8 @@ int pnfs_choose_layoutget_stateid(nfs4_stateid *dst,
->  				  struct nfs4_state *open_state);
->  int pnfs_mark_matching_lsegs_invalid(struct pnfs_layout_hdr *lo,
->  				struct list_head *tmp_list,
-> -				const struct pnfs_layout_range *recall_range);
-> +				const struct pnfs_layout_range *recall_range,
-> +				u32 seq);
->  int pnfs_mark_matching_lsegs_return(struct pnfs_layout_hdr *lo,
->  				struct list_head *tmp_list,
->  				const struct pnfs_layout_range *recall_range);
+> What if the generation number were only made available to "root"?  Would
+> that allay your concerns?
+> Would that still be useful?
+> We already have name_to_handle_at().  Exposing the generation number
+> could/should follow the same rules at that.  Or maybe the exposure of
+> each field should be guided by the filesystem, depending on (for
+> example) whether it is used to provide uniqueness to the filehandle.
+> 
+> > 
+> > 
+> > > 
+> > >      If the caller didn't ask for them, then they may be approximated.  For
+> > >      example, NFS won't waste any time updating them from the server, unless
+> > >      as a byproduct of updating something requested.
+> > I would suggest that exposing them from the NFS server is something
+> > we most definitely don't want to do because they are the only thing
+> > that keeps remote users from guessing filehandles with ease....
+> Given that the NFS protocol does not define a "generation number"
+> attribute, I think there is no risk for them being exposed from the NFS
+> server ... except implicitly within the filehandle of course.
+> 
+> NeilBrown
 
-Oops, I sent an earlier version of this set that didn't have a needed
-fix. Must also fix the prototype for
-pnfs_mark_matching_lsegs_return here, and the caller
-in pnfs_error_mark_layout_for_return to pass in lseg->pls_seq for
-"seq".
+
+
+I don't see a real attack vector here either, but OTOH is there a
+potential user of this at the moment? An earlier chunk of the patch
+description says:
+
+(7) Inode generation number: Useful for FUSE and userspace NFS servers
+     [Bernd Schubert].  This was asked for but later deemed unnecessary
+     with the open-by-handle capability available
+
+...the last bit seems to indicate that we don't really need this
+anyway, as most userland servers now work with filehandles from the
+kernel.
+
+Maybe leave it out for now? It can always be added later.
 
 -- 
 Jeff Layton <jlayton@poochiereds.net>
+
