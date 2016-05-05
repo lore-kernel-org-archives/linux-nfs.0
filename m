@@ -1,66 +1,81 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:19808 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756605AbcEEQEj (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 5 May 2016 12:04:39 -0400
-Received: from aserv0022.oracle.com (aserv0022.oracle.com [141.146.126.234])
-	by aserp1040.oracle.com (Sentrion-MTA-4.3.2/Sentrion-MTA-4.3.2) with ESMTP id u45G4cu9003502
-	(version=TLSv1 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Thu, 5 May 2016 16:04:38 GMT
-Received: from aserv0122.oracle.com (aserv0122.oracle.com [141.146.126.236])
-	by aserv0022.oracle.com (8.13.8/8.13.8) with ESMTP id u45G4cEB018352
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Thu, 5 May 2016 16:04:38 GMT
-Received: from abhmp0002.oracle.com (abhmp0002.oracle.com [141.146.116.8])
-	by aserv0122.oracle.com (8.13.8/8.13.8) with ESMTP id u45G4ZPF019714
-	for <linux-nfs@vger.kernel.org>; Thu, 5 May 2016 16:04:36 GMT
-From: Chuck Lever <chuck.lever@oracle.com>
-Content-Type: text/plain; charset=us-ascii
-Subject: Configuring NFSv4.0 Kerberos on a multi-homed Linux NFS server
-Message-Id: <DB5B2D02-412E-46AD-9F0A-7EBA4EB0C0B0@oracle.com>
-Date: Thu, 5 May 2016 12:04:34 -0400
-To: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Mime-Version: 1.0 (Mac OS X Mail 9.3 \(3124\))
+Received: from mx1.redhat.com ([209.132.183.28]:46604 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757742AbcEEQkN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 5 May 2016 12:40:13 -0400
+Subject: Re: [PATCH 2/2] gssd: move read of upcall into main thread
+To: "Kornievskaia, Olga" <Olga.Kornievskaia@netapp.com>
+References: <1462286792-8889-1-git-send-email-kolga@netapp.com>
+ <1462286792-8889-2-git-send-email-kolga@netapp.com>
+ <50edf6a8-4d4c-07d5-af0a-363ac66dbfa5@RedHat.com>
+ <AD00DA1B-EBAD-4DD8-B50F-F9378FBA1822@netapp.com>
+ <574d004f-4b42-d4aa-60f6-607ffae6dd1b@RedHat.com>
+ <A0B61D59-F17E-4FE4-8A51-537AA7939939@netapp.com>
+ <FC32683A-F74A-4FB9-834F-ECBBBBD099D5@netapp.com>
+Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+From: Steve Dickson <SteveD@redhat.com>
+Message-ID: <222b4f6c-6f7a-2951-6d4e-75a522cde905@RedHat.com>
+Date: Thu, 5 May 2016 12:40:11 -0400
+MIME-Version: 1.0
+In-Reply-To: <FC32683A-F74A-4FB9-834F-ECBBBBD099D5@netapp.com>
+Content-Type: text/plain; charset=windows-1252
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi-
-
-I have a Linux NFS server with two IP addresses:
-
-192.168.1.55: klimt.home
-10.0.0.5: klimt-ib.home
-
-The server's keytab lists three principals:
-
-host/klimt.home@HOME.EXAMPLE.NET
-nfs/klimt.home@HOME.EXAMPLE.NET
-nfs/klimt-ib.home@HOME.EXAMPLE.NET
-
-When I mount with this:
-
-  vers=4.0,proto=tcp,sec=sys klimt:/export
-
-I get krb5i for lease management, and sys for data traffic.
-Callback traffic from the server uses krb5i. All well and
-good.
-
-When I mount with this:
-
-  vers=4.0,proto=tcp,sec=sys klimt-ib:/export
-
-I get krb5i for lease management and sys for data traffic
-as before, and callback traffic attempts to use krb5i.
-But the client rejects all CB_COMPOUND operations because
-the callback principal does not match the clp.
-
-Looks like the server always uses the nfs/klimt service
-principal for callback traffic? Is there a way to config
-the server to use the principal that matches the
-interface? Or is there something else going on?
-
---
-Chuck Lever
 
 
+On 05/05/2016 11:40 AM, Kornievskaia, Olga wrote:
+> 
+>> On May 5, 2016, at 11:35 AM, Kornievskaia, Olga <Olga.Kornievskaia@netapp.com <mailto:Olga.Kornievskaia@netapp.com>> wrote:
+>>
+>>>
+>>> On May 5, 2016, at 10:17 AM, Steve Dickson <SteveD@redhat.com <mailto:SteveD@redhat.com>> wrote:
+>>>
+>>> Hello,
+>>>
+>>> On 05/04/2016 10:15 AM, Kornievskaia, Olga wrote:
+>>>> I’m having a hard time picturing what you have in mind. I don’t see how you can allocate, 
+>>>> populate and free in one routine. The logic is we allocate memory, then read the upcall 
+>>>> and only then we create the thread. If either upcall or creation of the thread 
+>>>> fails we need to free the allocated memory.
+>>> Something like this:
+>>>
+>>> gssd_clnt_gssd_cb(int UNUSED(fd), short UNUSED(which), void *data)
+>>> {
+>>>       struct clnt_info *clp = data;
+>>> -       pthread_t th;
+>>> -       int ret;
+>>> +       struct clnt_upcall_info *info;
+>>>
+>>> -       ret = pthread_create(&th, NULL, (void *)handle_gssd_upcall,
+>>> -                               (void *)clp);
+>>> -       if (ret != 0) {
+>>> -               printerr(0, "ERROR: pthread_create failed: ret %d: %s\n",
+>>> -                        ret, strerror(errno));
+>>> +       info = alloc_upcall_info(clp);
+>>> +       if (info == NULL)
+>>> +               return;
+>>> +
+>>> +       info->lbuflen = read(clp->gssd_fd, info->lbuf, sizeof(info->lbuf));
+>>> +       if (info->lbuflen <= 0 || info->lbuf[info->lbuflen-1] != '\n') {
+>>> +               printerr(0, "WARNING: %s: failed reading request\n", __func__);
+>>> +               free(info);
+>>>               return;
+>>>       }
+>>> -       wait_for_child_and_detach(th);
+>>> +       info->lbuf[info->lbuflen-1] = 0;
+>>> +
+>>> +       start_upcall_thread(handle_gssd_upcall, info);
+>>> +
+>>> +       free(info);
+>>> +       return;
+>>
+>> Gotcha! Sounds good! You can make the modifications. Or just in case since you are traveling, 
+> I’ll just send another patch. Please also add any other lines like Modified-by or Signed-off-by that are need.
+> 
+> I’m sorry I spoke too soon. “info” is allocated and given to the thread 
+> to process so the main thread can’t free it. 
+I'm curious as to why? The main thread allocated it, is handing allocated memory 
+to a thread something special? What am I missing?
 
+steved.
