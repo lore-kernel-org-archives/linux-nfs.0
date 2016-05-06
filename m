@@ -1,62 +1,72 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f178.google.com ([209.85.223.178]:33644 "EHLO
-	mail-io0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755816AbcEFCAj (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 5 May 2016 22:00:39 -0400
+Received: from fieldses.org ([173.255.197.46]:39470 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752560AbcEFCoE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 5 May 2016 22:44:04 -0400
+Date: Thu, 5 May 2016 22:44:01 -0400
+From: Bruce Fields <bfields@fieldses.org>
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: Configuring NFSv4.0 Kerberos on a multi-homed Linux NFS server
+Message-ID: <20160506024401.GC5365@fieldses.org>
+References: <DB5B2D02-412E-46AD-9F0A-7EBA4EB0C0B0@oracle.com>
+ <8198666A-8963-42D2-9C4C-08374F0E8E5D@oracle.com>
 MIME-Version: 1.0
-In-Reply-To: <CAH2r5mvWHwmqkzyfjHro__dWf-9ZAskPHgHDGS22jNzXZVQ4iA@mail.gmail.com>
-References: <20160429125736.23636.47874.stgit@warthog.procyon.org.uk>
- <5680195.kS2oylQXhI@wuerfel> <CAH2r5mvWHwmqkzyfjHro__dWf-9ZAskPHgHDGS22jNzXZVQ4iA@mail.gmail.com>
-From: Steve French <smfrench@gmail.com>
-Date: Thu, 5 May 2016 21:00:18 -0500
-Message-ID: <CAH2r5muL336k178DJHxKByfbGMMc=_m5jsCctgRQCc1H+SRSQg@mail.gmail.com>
-Subject: Re: [RFC][PATCH 0/6] Enhanced file stat system call
-To: Arnd Bergmann <arnd@arndb.de>
-Cc: David Howells <dhowells@redhat.com>,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        linux-afs@vger.kernel.org,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        samba-technical <samba-technical@lists.samba.org>,
-        LKML <linux-kernel@vger.kernel.org>,
-        "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-        Deepa Dinamani <deepa.kernel@gmail.com>
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <8198666A-8963-42D2-9C4C-08374F0E8E5D@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, May 5, 2016 at 5:54 PM, Steve French <smfrench@gmail.com> wrote:
-> On Wed, May 4, 2016 at 8:46 AM, Arnd Bergmann <arnd@arndb.de> wrote:
->> On Friday 29 April 2016 13:57:36 David Howells wrote:
->>> struct statx *buffer);
->>>
->>> This is an enhanced file stat function that provides a number of useful
->>> features, in summary:
->>>
->>> (1) More information: creation time, data version number, inode
->>> generation
->>> number and flags. A subset of these is available through a number of
->>> filesystems (such as CIFS, NFS, AFS, Ext4 and BTRFS).
->>>
->>
->> I have a question about birthtime/creationtime: As we are gaining a way
->> to read this, should we also provide a way to update it using a new
->> variant
->> of the utimensat syscall in order to have 'cp -a' create an identical
->> copy,
->> or is the idea that this is defined as the time that is particular copy
->> of the inode was created?
->>
->> I've discussed this with Deepa in the past, as she is driving the
->> convertion of the inode timestamps to timespec64 now, and we will
->> need a new version of utimensat for her work as well. I can see good
->> reasons either way (allowing updates of btime or disallowing them).
->
-It would help interop with Windows (and presumably Mac) if birth time can be
-updated
+On Thu, May 05, 2016 at 05:01:58PM -0400, Chuck Lever wrote:
+> After some IRC discussion with Bruce, we think the answer
+> is "this is not supported in the current Linux NFS server."
+> 
+> The server does not have a way to determine which service
+> principal to use for NFSv4.0 callback operations. It picks
+> (probably) the first nfs/ service principal in the server's
+> keytab for all callback operations.
+> 
+> Thus if a Linux NFS server has a keytab, clients can mount
+> it with NFSv4.0 (and any security flavor) only on the i/f
+> whose hostname matches the name of the nfs/ service
+> principal in that server's keytab.
 
+One correction: the mount should still work correctly.  The server just
+won't grant any delegations to the client.
 
+> In other words, if the server has a keytab with the
+> principals:
+> 
+>   nfs/server-a
+>   nfs/server-b
+>   nfs/server-c
+> 
+> NFSv4.0 will operate correctly only when mounting the
+> server via server-a: .
+> 
+> Clients that do not have a keytab should be able to mount
+> with NFSv4.0 via the other interfaces. This is because
+> they will not try to negotiate krb5i for lease management,
+> and the server will not attempt to use krb5i for callback
+> operations.
+> 
+> Bruce feels this is a corner case, would be difficult to
+> address, and is adequately worked around by using NFSv3
+> or NFSv4.1 or higher. So currently this is a WONTFIX.
 
--- 
-Thanks,
+Right, so if there's somebody really need delegations in the multi-homed
+NFSv4.0/krb5 case, they're welcomed to look into it--I can't say I'd
+turn down good patches (maybe it's not even that hard--may depend on
+whether the gss-proxy protocol does what we need?).  But it doesn't seem
+like a priority.
 
-Steve
+--b.
+
+> 
+> Copied Bruce to correct anything I might have summarized
+> incorrectly.
+> 
+> --
+> Chuck Lever
+> 
+> 
