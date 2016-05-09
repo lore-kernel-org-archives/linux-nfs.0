@@ -1,77 +1,57 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from zeniv.linux.org.uk ([195.92.253.2]:50384 "EHLO
-	ZenIV.linux.org.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751145AbcEIPjj (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 9 May 2016 11:39:39 -0400
-Date: Mon, 9 May 2016 16:39:33 +0100
-From: Al Viro <viro@ZenIV.linux.org.uk>
-To: Tony Lindgren <tony@atomide.com>
-Cc: Eric Dumazet <edumazet@google.com>, linux-nfs@vger.kernel.org,
-        Jiri Pirko <jiri@resnulli.us>, netdev <netdev@vger.kernel.org>,
+Received: from rcdn-iport-8.cisco.com ([173.37.86.79]:3341 "EHLO
+	rcdn-iport-8.cisco.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750941AbcEISju (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 9 May 2016 14:39:50 -0400
+Subject: Re: [PATCH] VFS: pass the flag setting by fcntl() to vfs
+To: Christoph Hellwig <hch@infradead.org>
+References: <ebf888a1-ee45-a79b-6f72-43a8744e0196@cisco.com>
+ <c6b1075a-2eb5-a065-96ac-fc06ec04ea0f@cisco.com>
+ <20160508104038.GA13657@infradead.org>
+ <c5368586-ba17-11ae-6d48-ee244bedf6f9@cisco.com>
+ <20160509070248.GA24065@infradead.org>
+Cc: Alexander Viro <viro@zeniv.linux.org.uk>,
+        Jeff Layton <jlayton@poochiereds.net>,
+        "J. Bruce Fields" <bfields@fieldses.org>,
         Trond Myklebust <trond.myklebust@primarydata.com>,
-        Christoph Hellwig <hch@lst.de>, linux-omap@vger.kernel.org,
         Anna Schumaker <anna.schumaker@netapp.com>,
-        linux-arm-kernel@lists.infradead.org
-Subject: Re: NFSroot hangs with bad unlock balance in Linux next
-Message-ID: <20160509153932.GJ2694@ZenIV.linux.org.uk>
-References: <20160505220344.GE5995@atomide.com>
- <20160508141629.GF2694@ZenIV.linux.org.uk>
- <20160509073235.GI2694@ZenIV.linux.org.uk>
- <CANn89iK5H-SokYE1r+OO3sPmQ1vpGqYGbE4x1QLn44wdyvH0cw@mail.gmail.com>
- <20160509151219.GF5995@atomide.com>
- <20160509152138.GG5995@atomide.com>
+        linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        Enke Chen <enkechen@cisco.com>
+From: Enke Chen <enkechen@cisco.com>
+Message-ID: <e09b27b0-7f2e-b9c0-e45d-7100b7a952de@cisco.com>
+Date: Mon, 9 May 2016 11:39:48 -0700
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20160509152138.GG5995@atomide.com>
+In-Reply-To: <20160509070248.GA24065@infradead.org>
+Content-Type: text/plain; charset=windows-1252
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, May 09, 2016 at 08:21:38AM -0700, Tony Lindgren wrote:
+Hi, Christoph:
 
-> Looks like with both patches applied I still also get this eventually:
+On 5/9/16 12:02 AM, Christoph Hellwig wrote:
+> On Sun, May 08, 2016 at 05:50:32PM -0700, Enke Chen wrote:
+>> As explained in the email, currently the validation of the flags does reach
+>> the vfs, but the setting does not.
 > 
-> =====================================
-> [ BUG: bad unlock balance detected! ]
-> 4.6.0-rc7-next-20160509+ #1264 Not tainted
-> -------------------------------------
+> s/vfs/fs/, and yes, that's intentional.
+> 
+>> We have an application that uses the FUSE
+>> to implement a user-space socket, and the flags are needed.
+> 
+> And that's not a supported use case.
+> 
 
-Lockdep warnings are noise.  To make them STFU try the following incremental;
-I'll fold it into #work.lookups and #for-next.  Note that it will do nothing
-to hangs - those are completely unrelated and you need Eric's patch to deal
-with them.
+Understood, and that is the reason for the simple patch :-)
 
-diff --git a/fs/nfs/unlink.c b/fs/nfs/unlink.c
-index d367b06..1868246 100644
---- a/fs/nfs/unlink.c
-+++ b/fs/nfs/unlink.c
-@@ -64,7 +64,7 @@ static void nfs_async_unlink_release(void *calldata)
- 	struct dentry *dentry = data->dentry;
- 	struct super_block *sb = dentry->d_sb;
- 
--	up_read(&NFS_I(d_inode(dentry->d_parent))->rmdir_sem);
-+	up_read_non_owner(&NFS_I(d_inode(dentry->d_parent))->rmdir_sem);
- 	d_lookup_done(dentry);
- 	nfs_free_unlinkdata(data);
- 	dput(dentry);
-@@ -117,10 +117,10 @@ static int nfs_call_unlink(struct dentry *dentry, struct nfs_unlinkdata *data)
- 	struct inode *dir = d_inode(dentry->d_parent);
- 	struct dentry *alias;
- 
--	down_read(&NFS_I(dir)->rmdir_sem);
-+	down_read_non_owner(&NFS_I(dir)->rmdir_sem);
- 	alias = d_alloc_parallel(dentry->d_parent, &data->args.name, &data->wq);
- 	if (IS_ERR(alias)) {
--		up_read(&NFS_I(dir)->rmdir_sem);
-+		up_read_non_owner(&NFS_I(dir)->rmdir_sem);
- 		return 0;
- 	}
- 	if (!d_in_lookup(alias)) {
-@@ -142,7 +142,7 @@ static int nfs_call_unlink(struct dentry *dentry, struct nfs_unlinkdata *data)
- 			ret = 0;
- 		spin_unlock(&alias->d_lock);
- 		dput(alias);
--		up_read(&NFS_I(dir)->rmdir_sem);
-+		up_read_non_owner(&NFS_I(dir)->rmdir_sem);
- 		/*
- 		 * If we'd displaced old cached devname, free it.  At that
- 		 * point dentry is definitely not a root, so we won't need
+User-space networking stacks exist for several reasons, e.g., for migrating
+from micro-kernel based systems, or for avoiding large changes to the networking
+stack in the kernel.
+
+What is the concern with the patch?
+
+Regards,
+
+-- Enke
+
+
+
