@@ -1,83 +1,68 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from muru.com ([72.249.23.125]:53735 "EHLO muru.com"
+Received: from mx1.redhat.com ([209.132.183.28]:52628 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751033AbcEITk6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 9 May 2016 15:40:58 -0400
-Date: Mon, 9 May 2016 12:40:54 -0700
-From: Tony Lindgren <tony@atomide.com>
-To: Al Viro <viro@ZenIV.linux.org.uk>
-Cc: Eric Dumazet <edumazet@google.com>, linux-nfs@vger.kernel.org,
-        Jiri Pirko <jiri@resnulli.us>, netdev <netdev@vger.kernel.org>,
+	id S1753258AbcEIWDc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 9 May 2016 18:03:32 -0400
+From: Andreas Gruenbacher <agruenba@redhat.com>
+To: Alexander Viro <viro@zeniv.linux.org.uk>
+Cc: Andreas Gruenbacher <agruenba@redhat.com>,
+        Christoph Hellwig <hch@infradead.org>, "Theodore Ts'o" <tytso@mit.edu>,
+        Andreas Dilger <adilger.kernel@dilger.ca>,
+        "J. Bruce Fields" <bfields@fieldses.org>,
+        Jeff Layton <jlayton@poochiereds.net>,
         Trond Myklebust <trond.myklebust@primarydata.com>,
-        Christoph Hellwig <hch@lst.de>, linux-omap@vger.kernel.org,
         Anna Schumaker <anna.schumaker@netapp.com>,
-        linux-arm-kernel@lists.infradead.org
-Subject: Re: NFSroot hangs with bad unlock balance in Linux next
-Message-ID: <20160509194054.GI5995@atomide.com>
-References: <20160505220344.GE5995@atomide.com>
- <20160508141629.GF2694@ZenIV.linux.org.uk>
- <20160509073235.GI2694@ZenIV.linux.org.uk>
- <CANn89iK5H-SokYE1r+OO3sPmQ1vpGqYGbE4x1QLn44wdyvH0cw@mail.gmail.com>
- <20160509151219.GF5995@atomide.com>
- <20160509152138.GG5995@atomide.com>
- <20160509153932.GJ2694@ZenIV.linux.org.uk>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20160509153932.GJ2694@ZenIV.linux.org.uk>
+        Dave Chinner <david@fromorbit.com>, linux-ext4@vger.kernel.org,
+        xfs@oss.sgi.com, linux-kernel@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-cifs@vger.kernel.org, linux-api@vger.kernel.org
+Subject: [PATCH v21 04/22] vfs: Make the inode passed to inode_change_ok non-const
+Date: Tue, 10 May 2016 00:02:37 +0200
+Message-Id: <1462831375-23017-5-git-send-email-agruenba@redhat.com>
+In-Reply-To: <1462831375-23017-1-git-send-email-agruenba@redhat.com>
+References: <1462831375-23017-1-git-send-email-agruenba@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-* Al Viro <viro@ZenIV.linux.org.uk> [160509 08:41]:
-> On Mon, May 09, 2016 at 08:21:38AM -0700, Tony Lindgren wrote:
-> 
-> > Looks like with both patches applied I still also get this eventually:
-> > 
-> > =====================================
-> > [ BUG: bad unlock balance detected! ]
-> > 4.6.0-rc7-next-20160509+ #1264 Not tainted
-> > -------------------------------------
-> 
-> Lockdep warnings are noise.  To make them STFU try the following incremental;
-> I'll fold it into #work.lookups and #for-next.  Note that it will do nothing
-> to hangs - those are completely unrelated and you need Eric's patch to deal
-> with them.
+We will need to call iop->permission and iop->get_acl from
+inode_change_ok() for additional permission checks, and both take a
+non-const inode.
 
-OK yeah that helps thanks:
+Signed-off-by: Andreas Gruenbacher <agruenba@redhat.com>
+Reviewed-by: J. Bruce Fields <bfields@redhat.com>
+Reviewed-by: Andreas Dilger <adilger@dilger.ca>
+Reviewed-by: Steve French <steve.french@primarydata.com>
+---
+ fs/attr.c          | 2 +-
+ include/linux/fs.h | 2 +-
+ 2 files changed, 2 insertions(+), 2 deletions(-)
 
-Tested-by: Tony Lindgren <tony@atomide.com>
+diff --git a/fs/attr.c b/fs/attr.c
+index 25b24d0..7ca7fa0 100644
+--- a/fs/attr.c
++++ b/fs/attr.c
+@@ -28,7 +28,7 @@
+  * Should be called as the first thing in ->setattr implementations,
+  * possibly after taking additional locks.
+  */
+-int inode_change_ok(const struct inode *inode, struct iattr *attr)
++int inode_change_ok(struct inode *inode, struct iattr *attr)
+ {
+ 	unsigned int ia_valid = attr->ia_valid;
+ 
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index 0807a9c..ea40356 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -2939,7 +2939,7 @@ extern int buffer_migrate_page(struct address_space *,
+ #define buffer_migrate_page NULL
+ #endif
+ 
+-extern int inode_change_ok(const struct inode *, struct iattr *);
++extern int inode_change_ok(struct inode *, struct iattr *);
+ extern int inode_newsize_ok(const struct inode *, loff_t offset);
+ extern void setattr_copy(struct inode *inode, const struct iattr *attr);
+ 
+-- 
+2.5.5
 
-> diff --git a/fs/nfs/unlink.c b/fs/nfs/unlink.c
-> index d367b06..1868246 100644
-> --- a/fs/nfs/unlink.c
-> +++ b/fs/nfs/unlink.c
-> @@ -64,7 +64,7 @@ static void nfs_async_unlink_release(void *calldata)
->  	struct dentry *dentry = data->dentry;
->  	struct super_block *sb = dentry->d_sb;
->  
-> -	up_read(&NFS_I(d_inode(dentry->d_parent))->rmdir_sem);
-> +	up_read_non_owner(&NFS_I(d_inode(dentry->d_parent))->rmdir_sem);
->  	d_lookup_done(dentry);
->  	nfs_free_unlinkdata(data);
->  	dput(dentry);
-> @@ -117,10 +117,10 @@ static int nfs_call_unlink(struct dentry *dentry, struct nfs_unlinkdata *data)
->  	struct inode *dir = d_inode(dentry->d_parent);
->  	struct dentry *alias;
->  
-> -	down_read(&NFS_I(dir)->rmdir_sem);
-> +	down_read_non_owner(&NFS_I(dir)->rmdir_sem);
->  	alias = d_alloc_parallel(dentry->d_parent, &data->args.name, &data->wq);
->  	if (IS_ERR(alias)) {
-> -		up_read(&NFS_I(dir)->rmdir_sem);
-> +		up_read_non_owner(&NFS_I(dir)->rmdir_sem);
->  		return 0;
->  	}
->  	if (!d_in_lookup(alias)) {
-> @@ -142,7 +142,7 @@ static int nfs_call_unlink(struct dentry *dentry, struct nfs_unlinkdata *data)
->  			ret = 0;
->  		spin_unlock(&alias->d_lock);
->  		dput(alias);
-> -		up_read(&NFS_I(dir)->rmdir_sem);
-> +		up_read_non_owner(&NFS_I(dir)->rmdir_sem);
->  		/*
->  		 * If we'd displaced old cached devname, free it.  At that
->  		 * point dentry is definitely not a root, so we won't need
