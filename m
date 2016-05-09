@@ -1,8 +1,8 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:53966 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:37909 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752896AbcEIWEN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 9 May 2016 18:04:13 -0400
+	id S1752896AbcEIWEF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 9 May 2016 18:04:05 -0400
 From: Andreas Gruenbacher <agruenba@redhat.com>
 To: Alexander Viro <viro@zeniv.linux.org.uk>
 Cc: Andreas Gruenbacher <agruenba@redhat.com>,
@@ -16,85 +16,209 @@ Cc: Andreas Gruenbacher <agruenba@redhat.com>,
         xfs@oss.sgi.com, linux-kernel@vger.kernel.org,
         linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
         linux-cifs@vger.kernel.org, linux-api@vger.kernel.org
-Subject: [PATCH v21 10/22] posix_acl: Improve xattr fixup code
-Date: Tue, 10 May 2016 00:02:43 +0200
-Message-Id: <1462831375-23017-11-git-send-email-agruenba@redhat.com>
+Subject: [PATCH v21 08/22] richacl: Compute maximum file masks from an acl
+Date: Tue, 10 May 2016 00:02:41 +0200
+Message-Id: <1462831375-23017-9-git-send-email-agruenba@redhat.com>
 In-Reply-To: <1462831375-23017-1-git-send-email-agruenba@redhat.com>
 References: <1462831375-23017-1-git-send-email-agruenba@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Both XATTR_NAME_POSIX_ACL_ACCESS and XATTR_NAME_POSIX_ACL_DEFAULT have
-the same XATTR_SYSTEM_PREFIX prefix; don't check for the same prefix
-repeatedly.
+Compute upper bound owner, group, and other file masks with as few
+permissions as possible without denying any permissions that the NFSv4
+acl in a richacl grants.
+
+This algorithm is used when a file inherits an acl at create time and
+when an acl is set via a mechanism that does not provide file masks
+(such as setting an acl via nfsd).  When user-space sets an acl via
+setxattr, the extended attribute already includes the file masks.
+
+Setting an acl also sets the file mode permission bits: they are
+determined by the file masks; see richacl_masks_to_mode().
 
 Signed-off-by: Andreas Gruenbacher <agruenba@redhat.com>
-Reviewed-by: Steve French <steve.french@primarydata.com>
+Reviewed-by: J. Bruce Fields <bfields@redhat.com>
 ---
- fs/xattr.c | 29 +++++++++++++++++++++++------
- 1 file changed, 23 insertions(+), 6 deletions(-)
+ fs/richacl.c            | 157 ++++++++++++++++++++++++++++++++++++++++++++++++
+ include/linux/richacl.h |   1 +
+ 2 files changed, 158 insertions(+)
 
-diff --git a/fs/xattr.c b/fs/xattr.c
-index 4861322..c364696 100644
---- a/fs/xattr.c
-+++ b/fs/xattr.c
-@@ -295,6 +295,16 @@ out:
+diff --git a/fs/richacl.c b/fs/richacl.c
+index d0a4135..056228f 100644
+--- a/fs/richacl.c
++++ b/fs/richacl.c
+@@ -181,3 +181,160 @@ richacl_want_to_mask(unsigned int want)
+ 	return mask;
  }
- EXPORT_SYMBOL_GPL(vfs_removexattr);
- 
-+static void
-+fix_xattr_from_user(const char *kname, void *kvalue, size_t size)
+ EXPORT_SYMBOL_GPL(richacl_want_to_mask);
++
++/*
++ * Note: functions like richacl_allowed_to_who(), richacl_group_class_allowed(),
++ * and richacl_compute_max_masks() iterate through the entire acl in reverse
++ * order as an optimization.
++ *
++ * In the standard algorithm, aces are considered in forward order.  When a
++ * process matches an ace, the permissions in the ace are either allowed or
++ * denied depending on the ace type.  Once a permission has been allowed or
++ * denied, it is no longer considered in further aces.
++ *
++ * By iterating through the acl in reverse order, we can compute the same
++ * result without having to keep track of which permissions have been allowed
++ * and denied already.
++ */
++
++/**
++ * richacl_allowed_to_who  -  permissions allowed to a specific who value
++ *
++ * Compute the maximum mask values allowed to a specific who value, taking
++ * everyone@ aces into account.
++ */
++static unsigned int richacl_allowed_to_who(struct richacl *acl,
++					   struct richace *who)
 +{
-+	if (strncmp(kname, XATTR_SYSTEM_PREFIX, XATTR_SYSTEM_PREFIX_LEN))
-+		return;
-+	kname += XATTR_SYSTEM_PREFIX_LEN;
-+	if (!strcmp(kname, XATTR_POSIX_ACL_ACCESS) ||
-+	    !strcmp(kname, XATTR_POSIX_ACL_DEFAULT))
-+		posix_acl_fix_xattr_from_user(kvalue, size);
-+}
- 
- /*
-  * Extended attribute SET operations
-@@ -329,9 +339,7 @@ setxattr(struct dentry *d, const char __user *name, const void __user *value,
- 			error = -EFAULT;
- 			goto out;
- 		}
--		if ((strcmp(kname, XATTR_NAME_POSIX_ACL_ACCESS) == 0) ||
--		    (strcmp(kname, XATTR_NAME_POSIX_ACL_DEFAULT) == 0))
--			posix_acl_fix_xattr_from_user(kvalue, size);
-+		fix_xattr_from_user(kname, kvalue, size);
- 	}
- 
- 	error = vfs_setxattr(d, kname, kvalue, size, flags);
-@@ -396,6 +404,17 @@ SYSCALL_DEFINE5(fsetxattr, int, fd, const char __user *, name,
- 	return error;
- }
- 
-+static void
-+fix_xattr_to_user(const char *kname, void *kvalue, size_t size)
-+{
-+	if (strncmp(kname, XATTR_SYSTEM_PREFIX, XATTR_SYSTEM_PREFIX_LEN))
-+		return;
-+	kname += XATTR_SYSTEM_PREFIX_LEN;
-+	if (!strcmp(kname, XATTR_POSIX_ACL_ACCESS) ||
-+	    !strcmp(kname, XATTR_POSIX_ACL_DEFAULT))
-+		posix_acl_fix_xattr_to_user(kvalue, size);
++	struct richace *ace;
++	unsigned int allowed = 0;
++
++	richacl_for_each_entry_reverse(ace, acl) {
++		if (richace_is_inherit_only(ace))
++			continue;
++		if (richace_is_same_identifier(ace, who) ||
++		    richace_is_everyone(ace)) {
++			if (richace_is_allow(ace))
++				allowed |= ace->e_mask;
++			else if (richace_is_deny(ace))
++				allowed &= ~ace->e_mask;
++		}
++	}
++	return allowed;
 +}
 +
- /*
-  * Extended attribute GET operations
-  */
-@@ -426,9 +445,7 @@ getxattr(struct dentry *d, const char __user *name, void __user *value,
++/**
++ * richacl_group_class_allowed  -  maximum permissions of the group class
++ *
++ * Compute the maximum mask values allowed to a process in the group class
++ * (i.e., a process which is not the owner but is in the owning group or
++ * matches a user or group acl entry).  This includes permissions granted or
++ * denied by everyone@ aces.
++ *
++ * See richacl_compute_max_masks().
++ */
++static unsigned int richacl_group_class_allowed(struct richacl *acl)
++{
++	struct richace *ace;
++	unsigned int everyone_allowed = 0, group_class_allowed = 0;
++	int had_group_ace = 0;
++
++	richacl_for_each_entry_reverse(ace, acl) {
++		if (richace_is_inherit_only(ace) ||
++		    richace_is_owner(ace))
++			continue;
++
++		if (richace_is_everyone(ace)) {
++			if (richace_is_allow(ace))
++				everyone_allowed |= ace->e_mask;
++			else if (richace_is_deny(ace))
++				everyone_allowed &= ~ace->e_mask;
++		} else {
++			group_class_allowed |=
++				richacl_allowed_to_who(acl, ace);
++
++			if (richace_is_group(ace))
++				had_group_ace = 1;
++		}
++	}
++	/*
++	 * If the acl doesn't contain any group@ aces, richacl_allowed_to_who()
++	 * wasn't called for the owning group.  We could make that call now, but
++	 * we already know the result (everyone_allowed).
++	 */
++	if (!had_group_ace)
++		group_class_allowed |= everyone_allowed;
++	return group_class_allowed;
++}
++
++/**
++ * richacl_compute_max_masks  -  compute upper bound masks
++ *
++ * Computes upper bound owner, group, and other masks so that none of the
++ * permissions allowed by the acl are disabled.
++ *
++ * We don't make assumptions about who the owner is so that the owner can
++ * change with no effect on the file masks or file mode permission bits; this
++ * means that we must assume that all entries can match the owner.
++ */
++void richacl_compute_max_masks(struct richacl *acl)
++{
++	unsigned int gmask = ~0;
++	struct richace *ace;
++
++	/*
++	 * @gmask contains all permissions which the group class is ever
++	 * allowed.  We use it to avoid adding permissions to the group mask
++	 * from everyone@ allow aces which the group class is always denied
++	 * through other aces.  For example, the following acl would otherwise
++	 * result in a group mask of rw:
++	 *
++	 *	group@:w::deny
++	 *	everyone@:rw::allow
++	 *
++	 * Avoid computing @gmask for acls which do not include any group class
++	 * deny aces: in such acls, the group class is never denied any
++	 * permissions from everyone@ allow aces, and the group class cannot
++	 * have fewer permissions than the other class.
++	 */
++
++restart:
++	acl->a_owner_mask = 0;
++	acl->a_group_mask = 0;
++	acl->a_other_mask = 0;
++
++	richacl_for_each_entry_reverse(ace, acl) {
++		if (richace_is_inherit_only(ace))
++			continue;
++
++		if (richace_is_owner(ace)) {
++			if (richace_is_allow(ace))
++				acl->a_owner_mask |= ace->e_mask;
++			else if (richace_is_deny(ace))
++				acl->a_owner_mask &= ~ace->e_mask;
++		} else if (richace_is_everyone(ace)) {
++			if (richace_is_allow(ace)) {
++				acl->a_owner_mask |= ace->e_mask;
++				acl->a_group_mask |= ace->e_mask & gmask;
++				acl->a_other_mask |= ace->e_mask;
++			} else if (richace_is_deny(ace)) {
++				acl->a_owner_mask &= ~ace->e_mask;
++				acl->a_group_mask &= ~ace->e_mask;
++				acl->a_other_mask &= ~ace->e_mask;
++			}
++		} else {
++			if (richace_is_allow(ace)) {
++				acl->a_owner_mask |= ace->e_mask & gmask;
++				acl->a_group_mask |= ace->e_mask & gmask;
++			} else if (richace_is_deny(ace) && gmask == ~0) {
++				gmask = richacl_group_class_allowed(acl);
++				if (likely(gmask != ~0))
++					/* should always be true */
++					goto restart;
++			}
++		}
++	}
++
++	acl->a_flags &= ~(RICHACL_WRITE_THROUGH | RICHACL_MASKED);
++}
++EXPORT_SYMBOL_GPL(richacl_compute_max_masks);
+diff --git a/include/linux/richacl.h b/include/linux/richacl.h
+index 9102ef0..3559b2c 100644
+--- a/include/linux/richacl.h
++++ b/include/linux/richacl.h
+@@ -178,5 +178,6 @@ extern void richace_copy(struct richace *, const struct richace *);
+ extern int richacl_masks_to_mode(const struct richacl *);
+ extern unsigned int richacl_mode_to_mask(umode_t);
+ extern unsigned int richacl_want_to_mask(unsigned int);
++extern void richacl_compute_max_masks(struct richacl *);
  
- 	error = vfs_getxattr(d, kname, kvalue, size);
- 	if (error > 0) {
--		if ((strcmp(kname, XATTR_NAME_POSIX_ACL_ACCESS) == 0) ||
--		    (strcmp(kname, XATTR_NAME_POSIX_ACL_DEFAULT) == 0))
--			posix_acl_fix_xattr_to_user(kvalue, size);
-+		fix_xattr_to_user(kname, kvalue, size);
- 		if (size && copy_to_user(value, kvalue, error))
- 			error = -EFAULT;
- 	} else if (error == -ERANGE && size >= XATTR_SIZE_MAX) {
+ #endif /* __RICHACL_H */
 -- 
 2.5.5
 
