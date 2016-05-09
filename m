@@ -1,47 +1,38 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from zeniv.linux.org.uk ([195.92.253.2]:47880 "EHLO
-	ZenIV.linux.org.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750849AbcEHXZh (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 8 May 2016 19:25:37 -0400
-Date: Mon, 9 May 2016 00:25:33 +0100
-From: Al Viro <viro@ZenIV.linux.org.uk>
-To: NeilBrown <nfbrown@novell.com>
-Cc: Richard Weinberger <richard@nod.at>,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        "linux-mtd@lists.infradead.org" <linux-mtd@lists.infradead.org>,
-        Artem Bityutskiy <dedekind1@gmail.com>,
-        Christoph Hellwig <hch@infradead.org>,
-        NFS List <linux-nfs@vger.kernel.org>
-Subject: Re: Reconsidering exportable UBIFS
-Message-ID: <20160508232533.GH2694@ZenIV.linux.org.uk>
-References: <5702E7F5.1050807@nod.at>
- <871t5curbl.fsf@notabene.neil.brown.name>
+Received: from rcdn-iport-3.cisco.com ([173.37.86.74]:23777 "EHLO
+	rcdn-iport-3.cisco.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750866AbcEIBAJ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 8 May 2016 21:00:09 -0400
+Subject: Re: [PATCH] VFS: pass the flag setting by fcntl() to vfs
+To: Christoph Hellwig <hch@infradead.org>
+References: <ebf888a1-ee45-a79b-6f72-43a8744e0196@cisco.com>
+ <c6b1075a-2eb5-a065-96ac-fc06ec04ea0f@cisco.com>
+ <20160508104038.GA13657@infradead.org>
+Cc: Alexander Viro <viro@zeniv.linux.org.uk>,
+        Jeff Layton <jlayton@poochiereds.net>,
+        "J. Bruce Fields" <bfields@fieldses.org>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>,
+        linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        Enke Chen <enkechen@cisco.com>
+From: Enke Chen <enkechen@cisco.com>
+Message-ID: <c5368586-ba17-11ae-6d48-ee244bedf6f9@cisco.com>
+Date: Sun, 8 May 2016 17:50:32 -0700
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <871t5curbl.fsf@notabene.neil.brown.name>
+In-Reply-To: <20160508104038.GA13657@infradead.org>
+Content-Type: text/plain; charset=windows-1252
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, May 09, 2016 at 08:18:22AM +1000, NeilBrown wrote:
+As explained in the email, currently the validation of the flags does reach
+the vfs, but the setting does not. We have an application that uses the FUSE
+to implement a user-space socket, and the flags are needed.
 
-> Not puppies, just kittens.
+Best regards,
+
+-- Enke
+
+On 5/8/16 3:40 AM, Christoph Hellwig wrote:
+> File systems don't really have a business getting this call, and fuse
+> file systems even less so.
 > 
-> If you don't provide these functions, then exporting with
-> "subtree_check" won't work.  That is no great loss except that people
-> might find the failure confusing.
-
-	OK, a client sends you a RENAME.  With fhandles of both parents +
-old and new names in those.  Your task, should you choose to accept it, is
-to figure out whether we should fail with nfserr_inval due to an attempt
-to make a directory its own descendent.  Without being able to locate all
-ancestors of a directory.
-
-	You are fond of complaining about the checks that could've been left
-to server not getting skipped on the client.  Now you want to skip them on
-the server side as well?  Can't have it both ways...
-
-	Seriously, it really doesn't work.  You can't do directory
-modifications without having found the chain of ancestors.  No ->get_parent()
-is OK _only_ for something like tmpfs, where we have the full chains of
-ancestors towards root all the time.  For UBIFS it's obviously not true.
-Not unless you suck the entire directory tree in memory at the mount time.
