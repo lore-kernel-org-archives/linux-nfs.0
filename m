@@ -1,62 +1,104 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mout.kundenserver.de ([212.227.126.130]:64481 "EHLO
-	mout.kundenserver.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753132AbcEINJZ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 9 May 2016 09:09:25 -0400
-From: Arnd Bergmann <arnd@arndb.de>
-To: Steve French <smfrench@gmail.com>
-Cc: David Howells <dhowells@redhat.com>,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        linux-afs@vger.kernel.org,
+Received: from us-smtp-delivery-194.mimecast.com ([63.128.21.194]:30878 "EHLO
+	us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1753478AbcEINXN (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 9 May 2016 09:23:13 -0400
+From: Trond Myklebust <trondmy@primarydata.com>
+To: David Howells <dhowells@redhat.com>, Christoph Hellwig <hch@infradead.org>
+CC: "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
+        "linux-afs@vger.kernel.org" <linux-afs@vger.kernel.org>,
         "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        samba-technical <samba-technical@lists.samba.org>,
-        LKML <linux-kernel@vger.kernel.org>,
-        "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-        Deepa Dinamani <deepa.kernel@gmail.com>
-Subject: Re: [RFC][PATCH 0/6] Enhanced file stat system call
-Date: Mon, 09 May 2016 15:09:04 +0200
-Message-ID: <4211584.odaTcq8sN6@wuerfel>
-In-Reply-To: <CAH2r5muL336k178DJHxKByfbGMMc=_m5jsCctgRQCc1H+SRSQg@mail.gmail.com>
-References: <20160429125736.23636.47874.stgit@warthog.procyon.org.uk> <CAH2r5mvWHwmqkzyfjHro__dWf-9ZAskPHgHDGS22jNzXZVQ4iA@mail.gmail.com> <CAH2r5muL336k178DJHxKByfbGMMc=_m5jsCctgRQCc1H+SRSQg@mail.gmail.com>
+        "samba-technical@lists.samba.org" <samba-technical@lists.samba.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
+Subject: Re: [PATCH 1/6] statx: Add a system call to make enhanced file info
+ available
+Date: Mon, 9 May 2016 13:23:05 +0000
+Message-ID: <F0929075-BA72-4325-B47B-036EBD3B5935@primarydata.com>
+References: <20160508083543.GA14316@infradead.org>
+ <20160429125736.23636.47874.stgit@warthog.procyon.org.uk>
+ <20160429125743.23636.85219.stgit@warthog.procyon.org.uk>
+ <31651.1462798652@warthog.procyon.org.uk>
+In-Reply-To: <31651.1462798652@warthog.procyon.org.uk>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thursday 05 May 2016 21:00:18 Steve French wrote:
-> On Thu, May 5, 2016 at 5:54 PM, Steve French <smfrench@gmail.com> wrote:
-> > On Wed, May 4, 2016 at 8:46 AM, Arnd Bergmann <arnd@arndb.de> wrote:
-> >> On Friday 29 April 2016 13:57:36 David Howells wrote:
-> >>> struct statx *buffer);
-> >>>
-> >>> This is an enhanced file stat function that provides a number of useful
-> >>> features, in summary:
-> >>>
-> >>> (1) More information: creation time, data version number, inode
-> >>> generation
-> >>> number and flags. A subset of these is available through a number of
-> >>> filesystems (such as CIFS, NFS, AFS, Ext4 and BTRFS).
-> >>>
-> >>
-> >> I have a question about birthtime/creationtime: As we are gaining a way
-> >> to read this, should we also provide a way to update it using a new
-> >> variant
-> >> of the utimensat syscall in order to have 'cp -a' create an identical
-> >> copy,
-> >> or is the idea that this is defined as the time that is particular copy
-> >> of the inode was created?
-> >>
-> >> I've discussed this with Deepa in the past, as she is driving the
-> >> convertion of the inode timestamps to timespec64 now, and we will
-> >> need a new version of utimensat for her work as well. I can see good
-> >> reasons either way (allowing updates of btime or disallowing them).
-> >
-> It would help interop with Windows (and presumably Mac) if birth time can be
-> updated
+DQoNCg0KDQoNCk9uIDUvOS8xNiwgMDg6NTcsICJsaW51eC1uZnMtb3duZXJAdmdlci5rZXJuZWwu
+b3JnIG9uIGJlaGFsZiBvZiBEYXZpZCBIb3dlbGxzIiA8bGludXgtbmZzLW93bmVyQHZnZXIua2Vy
+bmVsLm9yZyBvbiBiZWhhbGYgb2YgZGhvd2VsbHNAcmVkaGF0LmNvbT4gd3JvdGU6DQoNCj5DaHJp
+c3RvcGggSGVsbHdpZyA8aGNoQGluZnJhZGVhZC5vcmc+IHdyb3RlOg0KPg0KPj4gPiAJaW50IHJl
+dCA9IHN0YXR4KGludCBkZmQsDQo+PiA+IAkJCWNvbnN0IGNoYXIgKmZpbGVuYW1lLA0KPj4gPiAJ
+CQl1bnNpZ25lZCBpbnQgZmxhZ3MsDQo+PiA+IAkJCXVuc2lnbmVkIGludCBtYXNrLA0KPj4gPiAJ
+CQlzdHJ1Y3Qgc3RhdHggKmJ1ZmZlcik7DQo+PiANCj4+IFBsZWFzZSBtb3ZlIHRoZSBmbGFncyBh
+bmQgbWFzayBhZnRlciB0aGUgYnVmZmVyLCBzaW1pbGFyIHRvIGhvdyBhbGwNCj4+IHRoZSBBVF8g
+ZmxhZ3Mgd2VyZSBhZGRlZCB0byB0aGUgZW5kIGZvciB0aGUgc3RhdGF0IGNhbGxzLg0KPg0KPlN1
+cmUsIGlmIHlvdSByZWFsbHkgd2FudC4NCj4NCj4+ID4gQVRfRk9SQ0VfQVRUUl9TWU5DIGNhbiBi
+ZSBzZXQgaW4gZmxhZ3MuICBUaGlzIHdpbGwgcmVxdWlyZSBhIG5ldHdvcmsNCj4+ID4gZmlsZXN5
+c3RlbSB0byBzeW5jaHJvbmlzZSBpdHMgYXR0cmlidXRlcyB3aXRoIHRoZSBzZXJ2ZXIuDQo+PiA+
+IA0KPj4gPiBBVF9OT19BVFRSX1NZTkMgY2FuIGJlIHNldCBpbiBmbGFncy4gIFRoaXMgd2lsbCBz
+dXBwcmVzcyBzeW5jaHJvbmlzYXRpb24NCj4+ID4gd2l0aCB0aGUgc2VydmVyIGluIGEgbmV0d29y
+ayBmaWxlc3lzdGVtLiAgVGhlIHJlc3VsdGluZyB2YWx1ZXMgc2hvdWxkIGJlDQo+PiA+IGNvbnNp
+ZGVyZWQgYXBwcm94aW1hdGUuDQo+PiANCj4+IEFuZCB3aGF0IGhhcHBlbnMgaWYgbmVpdGhlciBp
+cyBzZXQ/DQo+DQo+SXQgZG9lcyB3aGF0IHN0YXQoKSBkb2VzIG5vdywgd2hhdGV2ZXIgdGhhdCBp
+cyBmb3IgZWFjaCBmcy4gIFRoZSBhc3N1bXB0aW9uIGlzDQo+dGhhdCB0aGlzIG1pZ2h0IGJlIHVz
+ZWQgdG8gZW11bGF0ZSBzdGF0KCkgZnJvbSB1c2Vyc3BhY2UuICBIb3dldmVyLCB3ZSB3YW50IHRv
+DQo+YmUgYWJsZSB0byBtYWtlIHN1cmUgd2UgZ2V0IHRoZSB0d28gYmVoYXZpb3VycyBhYm92ZS4N
+Cj4NCj4+ID4gbWFzayBpcyBhIGJpdG1hc2sgaW5kaWNhdGluZyB0aGUgZmllbGRzIGluIHN0cnVj
+dCBzdGF0eCB0aGF0IGFyZSBvZg0KPj4gPiBpbnRlcmVzdCB0byB0aGUgY2FsbGVyLiAgVGhlIHVz
+ZXIgc2hvdWxkIHNldCB0aGlzIHRvIFNUQVRYX0JBU0lDX1NUQVRTIHRvDQo+PiA+IGdldCB0aGUg
+YmFzaWMgc2V0IHJldHVybmVkIGJ5IHN0YXQoKS4NCj4+IA0KPj4gTm8gYSB2ZXJ5IGdvb2QgbmFt
+ZSBmb3IgdGhlIGNvbnN0YW50LiAgSSBkb24ndCByZWFsbHkgc2VlIGhvdyB0aGlzIG1hY3JvDQo+
+PiBpcyB1c2VmdWwgdG8gc3RhcnQgd2l0aC4NCj4NCj5JdCdzIHRoZSBiaXRzIHRoYXQgY29ycmVz
+cG9uZCB0byBhbGwgdGhlIGRhdGEgaW4gdGhlIHRoZSBjdXJyZW50IHN0YXQgc3RydWN0Lg0KPlNv
+IGlmIHlvdSB3YW50IHRvIGVtdWxhdGUgc3RhdCgpLCB5b3Ugc2hvdWxkIHBhc3MgdGhpcyBpbiBt
+YXNrLg0KPg0KPj4gQW5kIF9BTEw/IHN1cmUsIGJ1dCB3aGF0J3MgYmFzaWM/DQo+DQo+QWN0dWFs
+bHksIF9BTEwgaXMgcGVyaGFwcyB0aGUgbGVzcyB1c2VmdWwgb2YgdGhlIHR3byBzaW5jZSB0aGUg
+Yml0c2V0IGlzIG5vdA0KPmNsb3NlZC4gIE9UT0ggLSBhbnl0aGluZyBub3QgaW4gX0FMTCB3b24n
+dCBiZSBsaXN0ZWQgZXhwbGljaXRseSBpbiB0aGUNCj5zdHJ1Y3R1cmUsIGJ1dCB3b3VsZCByYXRo
+ZXIgY29uc3VtZSBzcGFjZSBzcGFjZS4NCj4NCj4+ID4gc3RfZ2VuIGlzDQo+PiA+IHRoZSBpbm9k
+ZSBnZW5lcmF0aW9uIG51bWJlciwgc3RfYnRpbWUgaXMgdGhlIGZpbGUgY3JlYXRpb24gdGltZSwg
+c3RfdmVyc2lvbg0KPj4gPiBpcyB0aGUgZGF0YSB2ZXJzaW9uIG51bWJlciAoaV92ZXJzaW9uKSwN
+Cj4+IA0KPj4gUGxlYXNlIGRlZmluZSBzZW1hbnRpY3MgZm9yIHN0X2dlbiBhbmQgc3RfdmVyc2lv
+bi4NCj4NCj5JJ3ZlIGJlZW4gYXNrZWQgdG8gZHJvcCBzdF9nZW4gZm9yIHNlY3VyaXR5IHJlYXNv
+bnMuDQo+DQo+SSBjYW4ndCBvZmZoYW5kIHRoaW5rIG9mIGEgd2F5IHRvIGRlZmluZSBzdF92ZXJz
+aW9uIChvciBpX3ZlcnNpb24sIGZvciB0aGF0DQo+bWF0dGVyKSB0aGF0IHdvdWxkIGJlIGNvbnNp
+c3RlbnQgYWNyb3NzIGFsbCBmaWxlc3lzdGVtcy4gIEkgd291bGQgbGVhbiB0b3dhcmRzDQo+Imdl
+dHMgaW5jcmVtZW50ZWQgbW9ub3RvbmljYWxseSBieSAxIGZvciBlYWNoIGRhdGEgd3JpdGUgb3Bl
+cmF0aW9uIGNvbW1pdHRlZCwNCj5idXQgbm90IGZvciBhbnkgbWV0YWRhdGEgb3BlcmF0aW9ucyIs
+IGJ1dCBJJ20gZmFpcmx5IGNlcnRhaW4gdGhpcyB3b24ndCBqaWJlDQo+d2l0aCBkaXNrIG9wZXJh
+dGlvbnMuICBTbyBJIGNhbiBsZWF2ZSBpdCBvdXQgZm9yIG5vdyBhbmQgYnJpbmcgaXQgYmFjayBp
+ZiB3ZQ0KPmZpbmQgYSByZWFsIHVzZXIgZm9yIGl0Lg0KDQpUaGUgTkZTdjQgZGVmaW5pdGlvbiBm
+b3IgdGhlIGNoYW5nZSBhdHRyaWJ1dGUgKHdoaWNoIGlzIG1hcHBlZCB0byBpX3ZlcnNpb24gd2hl
+biBJU19JX1ZFUlNJT04oaW5vZGUpIGlzIHRydWUpIGlzDQoNCiJBIHZhbHVlIGNyZWF0ZWQgYnkg
+dGhlIHNlcnZlciB0aGF0IHRoZSBjbGllbnQgY2FuIHVzZSB0byBkZXRlcm1pbmUgaWYNCiAgIGZp
+bGUgZGF0YSwgZGlyZWN0b3J5IGNvbnRlbnRzLCBvciBhdHRyaWJ1dGVzIG9mIHRoZSBvYmplY3Qg
+aGF2ZSBiZWVuDQogICBtb2RpZmllZC4gIFRoZSBzZXJ2ZXIgbWF5IHJldHVybiB0aGUgb2JqZWN0
+J3MgdGltZV9tZXRhZGF0YSBhdHRyaWJ1dGUNCiAgIGZvciB0aGlzIGF0dHJpYnV0ZSdzIHZhbHVl
+LCBidXQgb25seSBpZiB0aGUgZmlsZSBzeXN0ZW0gb2JqZWN0IGNhbm5vdA0KICAgYmUgdXBkYXRl
+ZCBtb3JlIGZyZXF1ZW50bHkgdGhhbiB0aGUgcmVzb2x1dGlvbiBvZiB0aW1lX21ldGFkYXRhLiIN
+Cg0KDQpJT1c6IGl0IGlzIGEgdmFsdWUgdGhhdCBjaGFuZ2VzIG9uIGFsbCBkYXRhIGFuZCBtZXRh
+ZGF0YSBvcGVyYXRpb25zLCBhbmQgd2l0aCBubyBtb25vdG9uaWNpdHkgcmVxdWlyZW1lbnQuIEni
+gJltIHByZXR0eSBzdXJlIGFsbCB1c2Vyc3BhY2UgTkZTdjQgc2VydmVycyBvdXQgdGhlcmUgd291
+bGQgbGlrZSB0byBhY2Nlc3MgaXQgKGUuZy4gR2FuZXNoYSwgZENhY2hlKS4NCg0KPg0KPj4gPiBU
+aW1lIGZpZWxkcyBhcmUgc3BsaXQgaW50byBzZXBhcmF0ZSBzZWNvbmRzIGFuZCBuYW5vc2Vjb25k
+cyBmaWVsZHMgdG8gbWFrZQ0KPj4gPiBwYWNraW5nIGVhc2llciBhbmQgdGhlIGdyYW51bGFyaXRp
+ZXMgY2FuIGJlIHF1ZXJpZWQgd2l0aCB0aGUgZmlsZXN5c3RlbQ0KPj4gPiBpbmZvIHN5c3RlbSBj
+YWxsLiAgTm90ZSB0aGF0IHRpbWVzIHdpbGwgYmUgbmVnYXRpdmUgaWYgYmVmb3JlIDE5NzA7IGlu
+IHN1Y2gNCj4+ID4gYSBjYXNlLCB0aGUgbmFub3NlY29uZCBmaWVsZHMgc2hvdWxkIGFsc28gYmUg
+bmVnYXRpdmUgaWYgbm90IHplcm8uDQo+PiANCj4+IFBsZWFzZSBjb29yZGluYXRlIHdpdGggQXJu
+ZCBvbiB0aGUgdGltZXNwYW1wIGZvcm1hdCAtIEknZCBoYXRlIHRvIGhhdmUNCj4+IGEgZGlmZmVy
+ZW50IGVuY29kaW5nIHRoYW4gaGUgcGxhbnMgZm9yIGFsbCB5MjAyOC82NC1iaXQtdGltZV90IHN5
+c2NhbGxzDQo+PiB0byBiZSBhZGRlZCBzb29uLg0KPg0KPkkgaGF2ZSBkaXNjdXNzZWQgdGhpcyB3
+aXRoIGhpbSBwcmV2aW91c2x5Lg0KPg0KPj4gPiAJU1RBVFhfVkVSU0lPTgkJV2FudC9nb3Qgc3Rf
+ZGF0YV92ZXJzaW9uDQo+PiANCj4+IFdoYXQgaXMgc3RfZGF0YV92ZXJzaW9uPw0KPg0KPlNvcnJ5
+LCB0aGF0IHNob3VsZCd2ZSBiZWVuIHN0X3ZlcnNpb24uICBJdCBnb3QgcmVuYW1lZC4NCj4NCj4+
+ID4gCVNUQVRYX0dFTgkJV2FudC9nb3Qgc3RfZ2VuDQo+PiA+IAlTVEFUWF9BTExfU1RBVFMJCVtB
+bGwgY3VycmVudGx5IGF2YWlsYWJsZSBzdHVmZl0NCj4+IA0KPj4gV2hlcmUgZG9lcyB0aGUgU1RB
+VFNfIGNvbWUgZnJvbT8gIFdoeSBubyBzaW1wbHkgX0FMTD8NCj4NCj5XaHkgbm90IFNUQVRYX0FM
+TF9TVEFUUz8NCj4NCj5EYXZpZA0KPi0tDQo+VG8gdW5zdWJzY3JpYmUgZnJvbSB0aGlzIGxpc3Q6
+IHNlbmQgdGhlIGxpbmUgInVuc3Vic2NyaWJlIGxpbnV4LW5mcyIgaW4NCj50aGUgYm9keSBvZiBh
+IG1lc3NhZ2UgdG8gbWFqb3Jkb21vQHZnZXIua2VybmVsLm9yZw0KPk1vcmUgbWFqb3Jkb21vIGlu
+Zm8gYXQgIGh0dHA6Ly92Z2VyLmtlcm5lbC5vcmcvbWFqb3Jkb21vLWluZm8uaHRtbA0KPg0K
 
-Ok, thanks. That is certainly a good reason in favor.
-
-If nothing else comes up, I guess we can prepare a patch for a new
-utimensat variant to do this and wait for more comments on that.
-
-	Arnd
