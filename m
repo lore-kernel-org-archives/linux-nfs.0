@@ -1,76 +1,88 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from us-smtp-delivery-194.mimecast.com ([216.205.24.194]:53799 "EHLO
-	us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751574AbcEJQV0 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 10 May 2016 12:21:26 -0400
-From: Trond Myklebust <trondmy@primarydata.com>
-To: "Mkrtchyan, Tigran" <tigran.mkrtchyan@desy.de>,
-        linux-nfs list <linux-nfs@vger.kernel.org>
-CC: yves kemp <yves.kemp@desy.de>
-Subject: Re: pnfs client running out TCP port numbers
-Date: Tue, 10 May 2016 16:21:14 +0000
-Message-ID: <FED0B49D-4E2B-4787-B359-8FCC7B4245AB@primarydata.com>
-References: <919864487.12463321.1462895841271.JavaMail.zimbra@desy.de>
-In-Reply-To: <919864487.12463321.1462895841271.JavaMail.zimbra@desy.de>
+Received: from mx141.netapp.com ([216.240.21.12]:65335 "EHLO mx141.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750951AbcEJU5p (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 10 May 2016 16:57:45 -0400
+From: Olga Kornievskaia <kolga@netapp.com>
+To: <Trond.Myklebust@primarydata.com>
+CC: <linux-nfs@vger.kernel.org>
+Subject: [PATCH 1/1] Fixing oops in callback path
+Date: Tue, 10 May 2016 16:57:41 -0400
+Message-ID: <1462913861-1742-1-git-send-email-kolga@netapp.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-DQoNCg0KDQoNCk9uIDUvMTAvMTYsIDExOjU3LCAibGludXgtbmZzLW93bmVyQHZnZXIua2VybmVs
-Lm9yZyBvbiBiZWhhbGYgb2YgTWtydGNoeWFuLCBUaWdyYW4iIDxsaW51eC1uZnMtb3duZXJAdmdl
-ci5rZXJuZWwub3JnIG9uIGJlaGFsZiBvZiB0aWdyYW4ubWtydGNoeWFuQGRlc3kuZGU+IHdyb3Rl
-Og0KDQo+DQo+RGVhciBORlMgZ3VydXMsDQo+DQo+d2Ugb2JzZXJ2ZSB2ZXJ5IGludGVyZXN0aW5n
-IHByb2JsZW0gd2l0aCBwTkZTIGNsaWVudC4NCj5XZSBoYXZlIH42MDAgRFNlcyBpbiBvdXIgaW5z
-dGFsbGF0aW9uICsgTURTICsgc29tZQ0KPnJlZ3VsYXIgTkZTdjMgYW5kIHY0IG1vdW50cy4gQWZ0
-ZXIgc29tZSB0aW1lIHdlIGdldCBvbg0KPnRoZSBjbGllbnQgbm9kZXMgdGhhdCB0aGV5IGNhbid0
-IGNyZWF0ZSBuZXcgbW91bnRzOg0KPg0KPk1heSAxMCAxNjowMDoyNSBiWFhYMCBhdXRvbW91bnRb
-NTM1MV06IGF0dGVtcHRpbmcgdG8gbW91bnQgZW50cnkgL25mcy9hYWEvYmJiDQo+TWF5IDEwIDE2
-OjAwOjI2IGJYWFgwIGF1dG9tb3VudFs1MzUxXTogPj4gbW91bnQubmZzOiBtb3VudCBzeXN0ZW0g
-Y2FsbCBmYWlsZWQNCj5NYXkgMTAgMTY6MDA6MjYgYlhYWDAgYXV0b21vdW50WzUzNTFdOiA+PiBt
-b3VudC5uZnM6IG1vdW50IHN5c3RlbSBjYWxsIGZhaWxlZA0KPg0KPlR1cm5lZCBvdXQgdGhhdCBw
-cm9ibGVtIGlzIGluIFJQQyBsYXllci4gVGhlcmUgYXJlIG5vIGZyZWUgc291cmNlIHBvcnRzIGFu
-eW1vcmU6DQo+DQo+TWF5IDEwIDE3OjA1OjA0IGJYWFgwIGtlcm5lbDogUlBDOiAzNTU3NSBjYWxs
-X2Nvbm5lY3QgeHBydCBmZmZmODgwMjA5ZjBiMDAwIGlzIG5vdCBjb25uZWN0ZWQNCj5NYXkgMTAg
-MTc6MDU6MDQgYlhYWDAga2VybmVsOiBSUEM6IDM1NTc1IHhwcnRfY29ubmVjdCB4cHJ0IGZmZmY4
-ODAyMDlmMGIwMDAgaXMgbm90IGNvbm5lY3RlZA0KPk1heSAxMCAxNzowNTowNCBiWFhYMCBrZXJu
-ZWw6IFJQQzogMzU1NzUgc2xlZXBfb24ocXVldWUgInhwcnRfcGVuZGluZyIgdGltZSAxNDY4NTQx
-NDE2NSkNCj5NYXkgMTAgMTc6MDU6MDQgYlhYWDAga2VybmVsOiBSUEM6IDM1NTc1IGFkZGVkIHRv
-IHF1ZXVlIGZmZmY4ODAyMDlmMGIyNTggInhwcnRfcGVuZGluZyINCj5NYXkgMTAgMTc6MDU6MDQg
-YlhYWDAga2VybmVsOiBSUEM6IDM1NTc1IHNldHRpbmcgYWxhcm0gZm9yIDYwMDAwIG1zDQo+TWF5
-IDEwIDE3OjA1OjA0IGJYWFgwIGtlcm5lbDogUlBDOiAgICAgICB4c19jb25uZWN0IHNjaGVkdWxl
-ZCB4cHJ0IGZmZmY4ODAyMDlmMGIwMDANCj5NYXkgMTAgMTc6MDU6MDQgYlhYWDAga2VybmVsOiBS
-UEM6IDM1NTc1IHN5bmMgdGFzayBnb2luZyB0byBzbGVlcA0KPk1heSAxMCAxNzowNTowNCBiWFhY
-MCBrZXJuZWw6IFJQQzogICAgICAgeHNfYmluZCAwLjAuMC4wOjEwMjM6IGZhaWxlZCAoLTk4KQ0K
-Pk1heSAxMCAxNzowNTowNCBiWFhYMCBrZXJuZWw6IFJQQzogMzU1NzUgX19ycGNfd2FrZV91cF90
-YXNrIChub3cgMTQ2ODU0MTQxNjUpDQo+TWF5IDEwIDE3OjA1OjA0IGJYWFgwIGtlcm5lbDogUlBD
-OiAzNTU3NSBkaXNhYmxpbmcgdGltZXINCj5NYXkgMTAgMTc6MDU6MDQgYlhYWDAga2VybmVsOiBS
-UEM6IDM1NTc1IHJlbW92ZWQgZnJvbSBxdWV1ZSBmZmZmODgwMjA5ZjBiMjU4ICJ4cHJ0X3BlbmRp
-bmciDQo+TWF5IDEwIDE3OjA1OjA0IGJYWFgwIGtlcm5lbDogUlBDOiAgICAgICBfX3JwY193YWtl
-X3VwX3Rhc2sgZG9uZQ0KPk1heSAxMCAxNzowNTowNCBiWFhYMCBrZXJuZWw6IFJQQzogMzU1NzUg
-c3luYyB0YXNrIHJlc3VtaW5nDQo+TWF5IDEwIDE3OjA1OjA0IGJYWFgwIGtlcm5lbDogUlBDOiAz
-NTU3NSB4cHJ0X2Nvbm5lY3Rfc3RhdHVzOiBlcnJvciA5OCBjb25uZWN0aW5nIHRvIHNlcnZlciAx
-eHgueHg0Lnh4OC54eDMNCj5NYXkgMTAgMTc6MDU6MDQgYlhYWDAga2VybmVsOiBSUEM6ICAgICAg
-IHdha2VfdXBfZmlyc3QoZmZmZjg4MDIwOWYwYjE5MCAieHBydF9zZW5kaW5nIikNCj5NYXkgMTAg
-MTc6MDU6MDQgYlhYWDAga2VybmVsOiBSUEM6IDM1NTc1IGNhbGxfY29ubmVjdF9zdGF0dXMgKHN0
-YXR1cyAtNSkNCj5NYXkgMTAgMTc6MDU6MDQgYlhYWDAga2VybmVsOiBSUEM6IDM1NTc1IHJldHVy
-biAwLCBzdGF0dXMgLTUNCj4NCj4NCj5UaGlzIGlzIGxpbWl0ZWQgYnkgbWluX3Jlc3Zwb3J0IGFu
-ZCBtYXhfcmVzdnBvcnQsIHdoaWNoIGFyZSwgYnkgZGVmYXVsdCwgNjY1IGFuZCAxMDIzLCBhY2Nv
-cmRpbmdseS4NCj5UaGlzIGdpdmVzIHVzIG9ubHkgMzU4IGNvbm5lY3Rpb25zLiBJZiBhIGNsaWVu
-dCBhY2Nlc3NlcyBtYW55IERTZXMsIHRoZW4gd2UgaGF2ZSBhIHByb2JsZW0uDQo+DQo+UXVlc3Rp
-b25zOg0KPg0KPiAgLSBXaHkgcE5GUyBjbGllbnQgbXVzdCB1c2UgcHJpdmlsZWdlZCBwb3J0IG51
-bWJlciwgd2hlbiB0YWxrcyB0byBEUz8NCg0KVGhhdCdzIGEgZGVmYXVsdCByZXF1aXJlbWVudCBv
-biBtb3N0IE5GU3YzIHNlcnZlcnMsIHBhcnRpY3VsYXJseSB3aGVuIHVzaW5nIEFVVEhfU1lTLg0K
-DQo+DQo+ICAtIFdoeSBwTkZTIGNsaWVudCB1c2VzIHBvcnQgbnVtYmVyIG9ubHkgZm9yIG9uZSBj
-b25uZWN0aW9uIGFzIGZvciBpcCBjb25uZWN0aW9uDQo+ICAgIGl0IGEgc3JjX2FkZHIrc3JjX3Bv
-cnQgLSBkc3RfYWRkcitkc3RfcG9ydCBtdXN0IGJlIHVuaXF1ZSBhbmQgc291cmNlIHBvcnQgbnVt
-YmVyDQo+ICAgIGNhbiBiZSByZXVzZWQgZm9yIG90aGVyIGNvbm5lY3Rpb25zIGFzIHdlbGwuDQoN
-CkFzIHlvdSBzYXkgYWJvdmUsIGluIG9yZGVyIHRvIHJldXNlIHRoZSBwb3J0LCB0aGUgY29ubmVj
-dGlvbiBlbmQgcG9pbnRzIG5lZWQgdG8gYmUgdW5pcXVlLiBUaGF0IGNhbiBzb21ldGltZXMgYmUg
-dHJpY2t5IGlmIHRoZSBzZXJ2ZXIgaXMgYWN0aW5nIGJvdGggYXMgYW4gTURTIGFuZCBhIERTLg0K
-DQo+DQo+ICAtIFNob3VsZCB3ZSBqdXN0IGJ1bXAgbWF4X3Jlc3Zwb3J0IHRvIHNvbHZlIGl0ICh3
-aGljaCBpbiBkaWQgaGF2ZSBoZWxwZWQpPw0KDQpZb3UgY291bGQuIFdlIGNvdWxkIGFsc28gbG9v
-ayBpbnRvIGhhbmRsaW5nIHRoZSBBVVRIX1RPT1dFQUsgUlBDIGxldmVsIGVycm9yIGJ5IHR1cm5p
-bmcgb24gcHJpdmlsZWdlZCBwb3J0cy4gVGhhdCBtaWdodCBhbGxvdyB1cyB0byBkZWZhdWx0IHRv
-IG5vdCB1c2luZyBwcml2aWxlZ2VkIHBvcnRzLg0KDQoNCg0K
+Commit 80f9642724af5 ("NFSv4.x: Enforce the ca_maxreponsesize_cached
+on the back channel") causes an oops when it receives a callback with
+cachethis=yes.
+
+[  109.667378] BUG: unable to handle kernel NULL pointer dereference at 00000000000002c8
+[  109.669476] IP: [<ffffffffa08a3e68>] nfs4_callback_compound+0x4f8/0x690 [nfsv4]
+[  109.671216] PGD 0
+[  109.671736] Oops: 0000 [#1] SMP
+[  109.705427] CPU: 1 PID: 3579 Comm: nfsv4.1-svc Not tainted 4.5.0-rc1+ #1
+[  109.706987] Hardware name: VMware, Inc. VMware Virtual Platform/440BX Desktop Reference Platform, BIOS 6.00 05/20/2014
+[  109.709468] task: ffff8800b4408000 ti: ffff88008448c000 task.ti: ffff88008448c000
+[  109.711207] RIP: 0010:[<ffffffffa08a3e68>]  [<ffffffffa08a3e68>] nfs4_callback_compound+0x4f8/0x690 [nfsv4]
+[  109.713521] RSP: 0018:ffff88008448fca0  EFLAGS: 00010286
+[  109.714762] RAX: ffff880081ee202c RBX: ffff8800b7b5b600 RCX: 0000000000000001
+[  109.716427] RDX: 0000000000000008 RSI: 0000000000000008 RDI: 0000000000000000
+[  109.718091] RBP: ffff88008448fda8 R08: 0000000000000000 R09: 000000000b000000
+[  109.719757] R10: ffff880137786000 R11: ffff8800b7b5b600 R12: 0000000001000000
+[  109.721415] R13: 0000000000000002 R14: 0000000053270000 R15: 000000000000000b
+[  109.723061] FS:  0000000000000000(0000) GS:ffff880139640000(0000) knlGS:0000000000000000
+[  109.724931] CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
+[  109.726278] CR2: 00000000000002c8 CR3: 0000000034d50000 CR4: 00000000001406e0
+[  109.727972] Stack:
+[  109.728465]  ffff880081ee202c ffff880081ee201c 000000008448fcc0 ffff8800baccb800
+[  109.730349]  ffff8800baccc800 ffffffffa08d0380 0000000000000000 0000000000000000
+[  109.732211]  ffff8800b7b5b600 0000000000000001 ffffffff81d073c0 ffff880081ee3090
+[  109.734056] Call Trace:
+[  109.734657]  [<ffffffffa03795d4>] svc_process_common+0x5c4/0x6c0 [sunrpc]
+[  109.736267]  [<ffffffffa0379a4c>] bc_svc_process+0x1fc/0x360 [sunrpc]
+[  109.737775]  [<ffffffffa08a2c2c>] nfs41_callback_svc+0x10c/0x1d0 [nfsv4]
+[  109.739335]  [<ffffffff810cb380>] ? prepare_to_wait_event+0xf0/0xf0
+[  109.740799]  [<ffffffffa08a2b20>] ? nfs4_callback_svc+0x50/0x50 [nfsv4]
+[  109.742349]  [<ffffffff810a6998>] kthread+0xd8/0xf0
+[  109.743495]  [<ffffffff810a68c0>] ? kthread_park+0x60/0x60
+[  109.744776]  [<ffffffff816abc4f>] ret_from_fork+0x3f/0x70
+[  109.746037]  [<ffffffff810a68c0>] ? kthread_park+0x60/0x60
+[  109.747324] Code: cc 45 31 f6 48 8b 85 00 ff ff ff 44 89 30 48 8b 85 f8 fe ff ff 44 89 20 48 8b 9d 38 ff ff ff 48 8b bd 30 ff ff ff 48 85 db 74 4c <4c> 8b af c8 02 00 00 4d 8d a5 08 02 00 00 49 81 c5 98 02 00 00
+[  109.754361] RIP  [<ffffffffa08a3e68>] nfs4_callback_compound+0x4f8/0x690 [nfsv4]
+[  109.756123]  RSP <ffff88008448fca0>
+[  109.756951] CR2: 00000000000002c8
+[  109.757738] ---[ end trace 2b8555511ab5dfb4 ]---
+[  109.758819] Kernel panic - not syncing: Fatal exception
+[  109.760126] Kernel Offset: disabled
+[  118.938934] ---[ end Kernel panic - not syncing: Fatal exception
+
+It doesn't unlock the table nor does it set the cps->clp pointer which
+is later needed by nfs4_cb_free_slot().
+
+Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
+---
+ fs/nfs/callback_proc.c | 6 ++++--
+ 1 file changed, 4 insertions(+), 2 deletions(-)
+
+diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
+index 618ced3..7c9fbf5 100644
+--- a/fs/nfs/callback_proc.c
++++ b/fs/nfs/callback_proc.c
+@@ -500,8 +500,10 @@ __be32 nfs4_callback_sequence(struct cb_sequenceargs *args,
+ 	cps->slot = slot;
+ 
+ 	/* The ca_maxresponsesize_cached is 0 with no DRC */
+-	if (args->csa_cachethis != 0)
+-		return htonl(NFS4ERR_REP_TOO_BIG_TO_CACHE);
++	if (args->csa_cachethis != 0) {
++		status = htonl(NFS4ERR_REP_TOO_BIG_TO_CACHE);
++		goto out_unlock;
++	}
+ 
+ 	/*
+ 	 * Check for pending referring calls.  If a match is found, a
+-- 
+1.8.3.1
 
