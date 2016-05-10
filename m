@@ -1,49 +1,46 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.SerNet.de ([193.175.80.2]:54253 "EHLO mail.SerNet.de"
+Received: from mx1.redhat.com ([209.132.183.28]:34199 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751121AbcEJIUd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 10 May 2016 04:20:33 -0400
-Date: Tue, 10 May 2016 10:20:22 +0200
-From: Volker Lendecke <Volker.Lendecke@SerNet.DE>
-To: Jeremy Allison <jra@samba.org>
-Cc: Andreas Gruenbacher <agruenba@redhat.com>,
-        Alexander Viro <viro@zeniv.linux.org.uk>,
-        Christoph Hellwig <hch@infradead.org>, "Theodore Ts'o" <tytso@mit.edu>,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        Jeff Layton <jlayton@poochiereds.net>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        Anna Schumaker <anna.schumaker@netapp.com>,
-        Dave Chinner <david@fromorbit.com>, linux-ext4@vger.kernel.org,
-        xfs@oss.sgi.com, linux-kernel@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-cifs@vger.kernel.org, linux-api@vger.kernel.org
-Subject: Re: [PATCH v21 00/22] Richacls
-Message-ID: <20160510082022.GC26892@sernet.de>
-Reply-To: Volker.Lendecke@SerNet.DE
-References: <1462831375-23017-1-git-send-email-agruenba@redhat.com>
- <20160510041809.GB1079@sernet.de>
- <20160510081150.GA3411@jeremy-ThinkPad-T430s>
+	id S1751296AbcEJIZ6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 10 May 2016 04:25:58 -0400
+From: David Howells <dhowells@redhat.com>
+In-Reply-To: <20160510070421.GB30896@infradead.org>
+References: <20160510070421.GB30896@infradead.org> <20160508083543.GA14316@infradead.org> <20160429125736.23636.47874.stgit@warthog.procyon.org.uk> <20160429125743.23636.85219.stgit@warthog.procyon.org.uk> <31651.1462798652@warthog.procyon.org.uk>
+To: Christoph Hellwig <hch@infradead.org>
+Cc: dhowells@redhat.com, linux-fsdevel@vger.kernel.org,
+        linux-afs@lists.infradead.org, linux-nfs@vger.kernel.org,
+        samba-technical@lists.samba.org, linux-kernel@vger.kernel.org,
+        linux-ext4@vger.kernel.org
+Subject: Re: [PATCH 1/6] statx: Add a system call to make enhanced file info available
 MIME-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-In-Reply-To: <20160510081150.GA3411@jeremy-ThinkPad-T430s>
+Content-Type: text/plain; charset="us-ascii"
+Date: Tue, 10 May 2016 09:25:55 +0100
+Message-ID: <6897.1462868755@warthog.procyon.org.uk>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, May 10, 2016 at 10:11:50AM +0200, Jeremy Allison wrote:
-> +1 from me. This is something that many vendors need
-> and have needed for a very long time. Getting this
-> in will allow *large* amounts of existing storage to
-> be migrated to Linux.
+Christoph Hellwig <hch@infradead.org> wrote:
 
-ZFS has NFSv4 richacls, and people seem to risk shitstorms
-for ZFS. Not only for this of course, but they do
-contribute.
+> > It does what stat() does now, whatever that is for each fs.  The
+> > assumption is that this might be used to emulate stat() from userspace.
+> > However, we want to be able to make sure we get the two behaviours above.
+> 
+> And why would you emulate stat if we already have a perfectly working
+> version of it?  Either way we need to document what that behavior is,
+> and why userspace would chose one of the three options.
 
-Volker
+Because it's not necessarily a perfectly working version of it.  See the Y2037
+problem for example.
 
--- 
-SerNet GmbH, Bahnhofsallee 1b, 37081 Göttingen
-phone: +49-551-370000-0, fax: +49-551-370000-9
-AG Göttingen, HRB 2816, GF: Dr. Johannes Loxen
-http://www.sernet.de, mailto:kontakt@sernet.de
+I was assuming that C libraries might want to update the struct stat and the
+stat call() to provide fields that aren't currently there in Linux but are in
+other OS's.  We could even dispense with older stat syscalls on new arches.
+
+Admittedly, this means that you would have backwardly incompatible versions of
+the C library and would have to version your interface, so it might be too
+much effort.
+
+However, if we're going to discard this possibility, we can make these
+features available only to direct calls of extended stat.
+
+David
