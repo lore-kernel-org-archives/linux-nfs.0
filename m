@@ -1,52 +1,76 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from elasmtp-curtail.atl.sa.earthlink.net ([209.86.89.64]:59407 "EHLO
-	elasmtp-curtail.atl.sa.earthlink.net" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1752943AbcEJQEa (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 10 May 2016 12:04:30 -0400
-From: "Frank Filz" <ffilzlnx@mindspring.com>
-To: "'Jeremy Allison'" <jra@samba.org>,
-        "'Volker Lendecke'" <Volker.Lendecke@SerNet.DE>
-Cc: "'Andreas Gruenbacher'" <agruenba@redhat.com>,
-        "'Alexander Viro'" <viro@zeniv.linux.org.uk>,
-        "'Christoph Hellwig'" <hch@infradead.org>,
-        "'Theodore Ts'o'" <tytso@mit.edu>,
-        "'Andreas Dilger'" <adilger.kernel@dilger.ca>,
-        "'J. Bruce Fields'" <bfields@fieldses.org>,
-        "'Jeff Layton'" <jlayton@poochiereds.net>,
-        "'Trond Myklebust'" <trond.myklebust@primarydata.com>,
-        "'Anna Schumaker'" <anna.schumaker@netapp.com>,
-        "'Dave Chinner'" <david@fromorbit.com>, <linux-ext4@vger.kernel.org>,
-        <xfs@oss.sgi.com>, <linux-kernel@vger.kernel.org>,
-        <linux-fsdevel@vger.kernel.org>, <linux-nfs@vger.kernel.org>,
-        <linux-cifs@vger.kernel.org>, <linux-api@vger.kernel.org>
-References: <1462831375-23017-1-git-send-email-agruenba@redhat.com> <20160510041809.GB1079@sernet.de> <20160510081150.GA3411@jeremy-ThinkPad-T430s>
-In-Reply-To: <20160510081150.GA3411@jeremy-ThinkPad-T430s>
-Subject: RE: [PATCH v21 00/22] Richacls
-Date: Tue, 10 May 2016 08:55:19 -0700
-Message-ID: <002001d1aad4$5c3bd9f0$14b38dd0$@mindspring.com>
+Received: from us-smtp-delivery-194.mimecast.com ([216.205.24.194]:53799 "EHLO
+	us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751574AbcEJQV0 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 10 May 2016 12:21:26 -0400
+From: Trond Myklebust <trondmy@primarydata.com>
+To: "Mkrtchyan, Tigran" <tigran.mkrtchyan@desy.de>,
+        linux-nfs list <linux-nfs@vger.kernel.org>
+CC: yves kemp <yves.kemp@desy.de>
+Subject: Re: pnfs client running out TCP port numbers
+Date: Tue, 10 May 2016 16:21:14 +0000
+Message-ID: <FED0B49D-4E2B-4787-B359-8FCC7B4245AB@primarydata.com>
+References: <919864487.12463321.1462895841271.JavaMail.zimbra@desy.de>
+In-Reply-To: <919864487.12463321.1462895841271.JavaMail.zimbra@desy.de>
 MIME-Version: 1.0
-Content-Type: text/plain;
-	charset="us-ascii"
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-> On Tue, May 10, 2016 at 06:18:10AM +0200, Volker Lendecke wrote:
-> > On Tue, May 10, 2016 at 12:02:33AM +0200, Andreas Gruenbacher wrote:
-> > > What more can I do to finally get this merged?
-> >
-> > While I am not the one to comment on kernel specifics, from a pure
-> > Samba user space perspective let me say: We need this. NOW.
-> 
-> +1 from me. This is something that many vendors need
-> and have needed for a very long time. Getting this in will allow *large*
-> amounts of existing storage to be migrated to Linux.
-
-+1 from me also. Once this is in Ganesha will integrate with it also.
-
-Frank
-
-
----
-This email has been checked for viruses by Avast antivirus software.
-https://www.avast.com/antivirus
+DQoNCg0KDQoNCk9uIDUvMTAvMTYsIDExOjU3LCAibGludXgtbmZzLW93bmVyQHZnZXIua2VybmVs
+Lm9yZyBvbiBiZWhhbGYgb2YgTWtydGNoeWFuLCBUaWdyYW4iIDxsaW51eC1uZnMtb3duZXJAdmdl
+ci5rZXJuZWwub3JnIG9uIGJlaGFsZiBvZiB0aWdyYW4ubWtydGNoeWFuQGRlc3kuZGU+IHdyb3Rl
+Og0KDQo+DQo+RGVhciBORlMgZ3VydXMsDQo+DQo+d2Ugb2JzZXJ2ZSB2ZXJ5IGludGVyZXN0aW5n
+IHByb2JsZW0gd2l0aCBwTkZTIGNsaWVudC4NCj5XZSBoYXZlIH42MDAgRFNlcyBpbiBvdXIgaW5z
+dGFsbGF0aW9uICsgTURTICsgc29tZQ0KPnJlZ3VsYXIgTkZTdjMgYW5kIHY0IG1vdW50cy4gQWZ0
+ZXIgc29tZSB0aW1lIHdlIGdldCBvbg0KPnRoZSBjbGllbnQgbm9kZXMgdGhhdCB0aGV5IGNhbid0
+IGNyZWF0ZSBuZXcgbW91bnRzOg0KPg0KPk1heSAxMCAxNjowMDoyNSBiWFhYMCBhdXRvbW91bnRb
+NTM1MV06IGF0dGVtcHRpbmcgdG8gbW91bnQgZW50cnkgL25mcy9hYWEvYmJiDQo+TWF5IDEwIDE2
+OjAwOjI2IGJYWFgwIGF1dG9tb3VudFs1MzUxXTogPj4gbW91bnQubmZzOiBtb3VudCBzeXN0ZW0g
+Y2FsbCBmYWlsZWQNCj5NYXkgMTAgMTY6MDA6MjYgYlhYWDAgYXV0b21vdW50WzUzNTFdOiA+PiBt
+b3VudC5uZnM6IG1vdW50IHN5c3RlbSBjYWxsIGZhaWxlZA0KPg0KPlR1cm5lZCBvdXQgdGhhdCBw
+cm9ibGVtIGlzIGluIFJQQyBsYXllci4gVGhlcmUgYXJlIG5vIGZyZWUgc291cmNlIHBvcnRzIGFu
+eW1vcmU6DQo+DQo+TWF5IDEwIDE3OjA1OjA0IGJYWFgwIGtlcm5lbDogUlBDOiAzNTU3NSBjYWxs
+X2Nvbm5lY3QgeHBydCBmZmZmODgwMjA5ZjBiMDAwIGlzIG5vdCBjb25uZWN0ZWQNCj5NYXkgMTAg
+MTc6MDU6MDQgYlhYWDAga2VybmVsOiBSUEM6IDM1NTc1IHhwcnRfY29ubmVjdCB4cHJ0IGZmZmY4
+ODAyMDlmMGIwMDAgaXMgbm90IGNvbm5lY3RlZA0KPk1heSAxMCAxNzowNTowNCBiWFhYMCBrZXJu
+ZWw6IFJQQzogMzU1NzUgc2xlZXBfb24ocXVldWUgInhwcnRfcGVuZGluZyIgdGltZSAxNDY4NTQx
+NDE2NSkNCj5NYXkgMTAgMTc6MDU6MDQgYlhYWDAga2VybmVsOiBSUEM6IDM1NTc1IGFkZGVkIHRv
+IHF1ZXVlIGZmZmY4ODAyMDlmMGIyNTggInhwcnRfcGVuZGluZyINCj5NYXkgMTAgMTc6MDU6MDQg
+YlhYWDAga2VybmVsOiBSUEM6IDM1NTc1IHNldHRpbmcgYWxhcm0gZm9yIDYwMDAwIG1zDQo+TWF5
+IDEwIDE3OjA1OjA0IGJYWFgwIGtlcm5lbDogUlBDOiAgICAgICB4c19jb25uZWN0IHNjaGVkdWxl
+ZCB4cHJ0IGZmZmY4ODAyMDlmMGIwMDANCj5NYXkgMTAgMTc6MDU6MDQgYlhYWDAga2VybmVsOiBS
+UEM6IDM1NTc1IHN5bmMgdGFzayBnb2luZyB0byBzbGVlcA0KPk1heSAxMCAxNzowNTowNCBiWFhY
+MCBrZXJuZWw6IFJQQzogICAgICAgeHNfYmluZCAwLjAuMC4wOjEwMjM6IGZhaWxlZCAoLTk4KQ0K
+Pk1heSAxMCAxNzowNTowNCBiWFhYMCBrZXJuZWw6IFJQQzogMzU1NzUgX19ycGNfd2FrZV91cF90
+YXNrIChub3cgMTQ2ODU0MTQxNjUpDQo+TWF5IDEwIDE3OjA1OjA0IGJYWFgwIGtlcm5lbDogUlBD
+OiAzNTU3NSBkaXNhYmxpbmcgdGltZXINCj5NYXkgMTAgMTc6MDU6MDQgYlhYWDAga2VybmVsOiBS
+UEM6IDM1NTc1IHJlbW92ZWQgZnJvbSBxdWV1ZSBmZmZmODgwMjA5ZjBiMjU4ICJ4cHJ0X3BlbmRp
+bmciDQo+TWF5IDEwIDE3OjA1OjA0IGJYWFgwIGtlcm5lbDogUlBDOiAgICAgICBfX3JwY193YWtl
+X3VwX3Rhc2sgZG9uZQ0KPk1heSAxMCAxNzowNTowNCBiWFhYMCBrZXJuZWw6IFJQQzogMzU1NzUg
+c3luYyB0YXNrIHJlc3VtaW5nDQo+TWF5IDEwIDE3OjA1OjA0IGJYWFgwIGtlcm5lbDogUlBDOiAz
+NTU3NSB4cHJ0X2Nvbm5lY3Rfc3RhdHVzOiBlcnJvciA5OCBjb25uZWN0aW5nIHRvIHNlcnZlciAx
+eHgueHg0Lnh4OC54eDMNCj5NYXkgMTAgMTc6MDU6MDQgYlhYWDAga2VybmVsOiBSUEM6ICAgICAg
+IHdha2VfdXBfZmlyc3QoZmZmZjg4MDIwOWYwYjE5MCAieHBydF9zZW5kaW5nIikNCj5NYXkgMTAg
+MTc6MDU6MDQgYlhYWDAga2VybmVsOiBSUEM6IDM1NTc1IGNhbGxfY29ubmVjdF9zdGF0dXMgKHN0
+YXR1cyAtNSkNCj5NYXkgMTAgMTc6MDU6MDQgYlhYWDAga2VybmVsOiBSUEM6IDM1NTc1IHJldHVy
+biAwLCBzdGF0dXMgLTUNCj4NCj4NCj5UaGlzIGlzIGxpbWl0ZWQgYnkgbWluX3Jlc3Zwb3J0IGFu
+ZCBtYXhfcmVzdnBvcnQsIHdoaWNoIGFyZSwgYnkgZGVmYXVsdCwgNjY1IGFuZCAxMDIzLCBhY2Nv
+cmRpbmdseS4NCj5UaGlzIGdpdmVzIHVzIG9ubHkgMzU4IGNvbm5lY3Rpb25zLiBJZiBhIGNsaWVu
+dCBhY2Nlc3NlcyBtYW55IERTZXMsIHRoZW4gd2UgaGF2ZSBhIHByb2JsZW0uDQo+DQo+UXVlc3Rp
+b25zOg0KPg0KPiAgLSBXaHkgcE5GUyBjbGllbnQgbXVzdCB1c2UgcHJpdmlsZWdlZCBwb3J0IG51
+bWJlciwgd2hlbiB0YWxrcyB0byBEUz8NCg0KVGhhdCdzIGEgZGVmYXVsdCByZXF1aXJlbWVudCBv
+biBtb3N0IE5GU3YzIHNlcnZlcnMsIHBhcnRpY3VsYXJseSB3aGVuIHVzaW5nIEFVVEhfU1lTLg0K
+DQo+DQo+ICAtIFdoeSBwTkZTIGNsaWVudCB1c2VzIHBvcnQgbnVtYmVyIG9ubHkgZm9yIG9uZSBj
+b25uZWN0aW9uIGFzIGZvciBpcCBjb25uZWN0aW9uDQo+ICAgIGl0IGEgc3JjX2FkZHIrc3JjX3Bv
+cnQgLSBkc3RfYWRkcitkc3RfcG9ydCBtdXN0IGJlIHVuaXF1ZSBhbmQgc291cmNlIHBvcnQgbnVt
+YmVyDQo+ICAgIGNhbiBiZSByZXVzZWQgZm9yIG90aGVyIGNvbm5lY3Rpb25zIGFzIHdlbGwuDQoN
+CkFzIHlvdSBzYXkgYWJvdmUsIGluIG9yZGVyIHRvIHJldXNlIHRoZSBwb3J0LCB0aGUgY29ubmVj
+dGlvbiBlbmQgcG9pbnRzIG5lZWQgdG8gYmUgdW5pcXVlLiBUaGF0IGNhbiBzb21ldGltZXMgYmUg
+dHJpY2t5IGlmIHRoZSBzZXJ2ZXIgaXMgYWN0aW5nIGJvdGggYXMgYW4gTURTIGFuZCBhIERTLg0K
+DQo+DQo+ICAtIFNob3VsZCB3ZSBqdXN0IGJ1bXAgbWF4X3Jlc3Zwb3J0IHRvIHNvbHZlIGl0ICh3
+aGljaCBpbiBkaWQgaGF2ZSBoZWxwZWQpPw0KDQpZb3UgY291bGQuIFdlIGNvdWxkIGFsc28gbG9v
+ayBpbnRvIGhhbmRsaW5nIHRoZSBBVVRIX1RPT1dFQUsgUlBDIGxldmVsIGVycm9yIGJ5IHR1cm5p
+bmcgb24gcHJpdmlsZWdlZCBwb3J0cy4gVGhhdCBtaWdodCBhbGxvdyB1cyB0byBkZWZhdWx0IHRv
+IG5vdCB1c2luZyBwcml2aWxlZ2VkIHBvcnRzLg0KDQoNCg0K
 
