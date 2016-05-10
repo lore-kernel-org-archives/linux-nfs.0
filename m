@@ -1,55 +1,70 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:38088 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751040AbcEJInq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 10 May 2016 04:43:46 -0400
-From: David Howells <dhowells@redhat.com>
-In-Reply-To: <20160510070803.GC30896@infradead.org>
-References: <20160510070803.GC30896@infradead.org> <20160508083543.GA14316@infradead.org> <20160429125736.23636.47874.stgit@warthog.procyon.org.uk> <20160429125743.23636.85219.stgit@warthog.procyon.org.uk> <1734.1462801101@warthog.procyon.org.uk>
+Received: from mail-qk0-f173.google.com ([209.85.220.173]:33451 "EHLO
+	mail-qk0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751700AbcEJNVJ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 10 May 2016 09:21:09 -0400
+Received: by mail-qk0-f173.google.com with SMTP id n63so6251747qkf.0
+        for <linux-nfs@vger.kernel.org>; Tue, 10 May 2016 06:21:09 -0700 (PDT)
+Message-ID: <1462886465.20038.6.camel@poochiereds.net>
+Subject: Re: [PATCH 1/6] statx: Add a system call to make enhanced file info
+ available
+From: Jeff Layton <jlayton@poochiereds.net>
 To: Christoph Hellwig <hch@infradead.org>
-Cc: dhowells@redhat.com, linux-fsdevel@vger.kernel.org,
-        linux-afs@lists.infradead.org, linux-nfs@vger.kernel.org,
+Cc: David Howells <dhowells@redhat.com>, linux-fsdevel@vger.kernel.org,
+        linux-afs@vger.kernel.org, linux-nfs@vger.kernel.org,
         samba-technical@lists.samba.org, linux-kernel@vger.kernel.org,
         linux-ext4@vger.kernel.org
-Subject: Re: [PATCH 1/6] statx: Add a system call to make enhanced file info available
-MIME-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Date: Tue, 10 May 2016 09:43:43 +0100
-Message-ID: <7963.1462869823@warthog.procyon.org.uk>
+Date: Tue, 10 May 2016 09:21:05 -0400
+In-Reply-To: <20160510070044.GA30896@infradead.org>
+References: <20160429125736.23636.47874.stgit@warthog.procyon.org.uk>
+	 <20160429125743.23636.85219.stgit@warthog.procyon.org.uk>
+	 <20160508083543.GA14316@infradead.org>
+	 <1462795378.4481.31.camel@poochiereds.net>
+	 <20160510070044.GA30896@infradead.org>
+Content-Type: text/plain; charset="UTF-8"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Christoph Hellwig <hch@infradead.org> wrote:
+On Tue, 2016-05-10 at 00:00 -0700, Christoph Hellwig wrote:
+> On Mon, May 09, 2016 at 08:02:58AM -0400, Jeff Layton wrote:
+> > > > AT_FORCE_ATTR_SYNC can be set in flags.????This will require a
+> > > > network
+> > > > filesystem to synchronise its attributes with the server.
+> > > > 
+> > > > AT_NO_ATTR_SYNC can be set in flags.????This will suppress
+> > > > synchronisation
+> > > > with the server in a network filesystem.????The resulting
+> > > > values should be
+> > > > considered approximate.
+> > > 
+> > > And what happens if neither is set?
+> > > 
+> > 
+> > I'd suggest we have the documentation state that the lack of either
+> > flag leaves it up to the filesystem. In the case of NFS, you'd get
+> > "normal" attribute cache behavior, for instance which is governed
+> > by
+> > the ac* attributes.
+> > 
+> > We should also note that in the case of something like
+> > AT_NO_ATTR_SYNC
+> > on NFS, you might _still_ end up talking to the server if the
+> > client
+> > has nothing in-core for that inode.
+> 
+> File systems specific "legacy" defaults are a bad idea.  If we can't
+> describe the semantics we should not allow them, never mind making
+> the the default.  I'd strongly suggest picking one of the above flags
+> as the default behavior and only allowing the other as optional flag.
+> I suspect NO_SYNC is the better one for the flag, as otherwise people
+> will be surprised once they test their default case on a network
+> filesystem.
 
-> All of these are easily available.  But why special case them so that
-> userspace must not ask for them?  This makes an otherwise totally
-> regular interface special now.  Note that filesystems could always fill
-> it out anyway and set it in the return mask.
-
-Because it would be a waste of bits in the mask.  Is there a point in having
-bits that are always going to be set unconditionally when we can just
-*document* that these few fields are always going to be set.
-
-I'm sure people can cope with the concept that some data are provided
-unconditionally and don't have bits and the rest are provided conditionally
-and do have bits.
-
-I admit, though, that i_mode is tricky, since it's actually the combination of
-two pieces of information - one conditional (permission bits) and one normally
-unconditional (file type).  Possibly then i_mode should have two flags since I
-can think of situations where the file type might be other - reparse points,
-automount points.
-
-So yes, you can look on it as there are special cases.  However, if I can drop
-stat emulation support, everything resolves down to the following classes:
-
- (1) Stuff that's unconditional: st_dev, st_blksize, st_information (maybe).
-
- (2) st_mode & S_IFMT.  Unconditional or conditional?  I'm not sure.
-
- (3) Stuff that's conditional: st_mode & ~S_IFMT, st_rdev, st_ino, ...
-     Basically everything else.
-
-David
-
-
+Ok, that's a good point. So basically you suggest that xstat should
+always have FORCE_SYNC semantics unless the NO_SYNC flag is set? Given
+that we don't need to worry about legacy users with this interface,
+that seems like a reasonable approach to me.
+ 
+-- 
+Jeff Layton <jlayton@poochiereds.net>
