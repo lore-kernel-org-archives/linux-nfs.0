@@ -1,113 +1,64 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qk0-f196.google.com ([209.85.220.196]:35128 "EHLO
-	mail-qk0-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751594AbcEKKVY (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 11 May 2016 06:21:24 -0400
-Received: by mail-qk0-f196.google.com with SMTP id n62so2438051qkc.2
-        for <linux-nfs@vger.kernel.org>; Wed, 11 May 2016 03:21:24 -0700 (PDT)
-From: Jeff Layton <jlayton@poochiereds.net>
-To: Trond Myklebust <trondmy@primarydata.com>,
-        Anna Schumaker <anna.schumaker@netapp.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v2 0/9] pnfs: layout pipelining
-Date: Wed, 11 May 2016 06:21:05 -0400
-Message-Id: <1462962074-6989-1-git-send-email-jeff.layton@primarydata.com>
+Received: from fieldses.org ([173.255.197.46]:48512 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932162AbcEKOF1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 11 May 2016 10:05:27 -0400
+Date: Wed, 11 May 2016 10:05:24 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: Configuring NFSv4.0 Kerberos on a multi-homed Linux NFS server
+Message-ID: <20160511140524.GA24648@fieldses.org>
+References: <DB5B2D02-412E-46AD-9F0A-7EBA4EB0C0B0@oracle.com>
+ <8198666A-8963-42D2-9C4C-08374F0E8E5D@oracle.com>
+ <20160506024401.GC5365@fieldses.org>
+ <9E194D65-280F-4107-979C-FEFF2B83B211@oracle.com>
+ <20160506161332.GA11400@fieldses.org>
+ <A0A26870-27A4-48BE-ABA2-048A110F5272@oracle.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <A0A26870-27A4-48BE-ABA2-048A110F5272@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-v2:
-- rework of LAYOUTGET retry handling.
+On Mon, May 09, 2016 at 11:00:06AM -0400, Chuck Lever wrote:
+> 
+> > On May 6, 2016, at 12:13 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
+> > 
+> > On Fri, May 06, 2016 at 09:23:40AM -0400, Chuck Lever wrote:
+> >> 
+> >>> On May 5, 2016, at 10:44 PM, Bruce Fields <bfields@fieldses.org> wrote:
+> >>> 
+> >>> On Thu, May 05, 2016 at 05:01:58PM -0400, Chuck Lever wrote:
+> >>>> After some IRC discussion with Bruce, we think the answer
+> >>>> is "this is not supported in the current Linux NFS server."
+> >>>> 
+> >>>> The server does not have a way to determine which service
+> >>>> principal to use for NFSv4.0 callback operations. It picks
+> >>>> (probably) the first nfs/ service principal in the server's
+> >>>> keytab for all callback operations.
+> >>>> 
+> >>>> Thus if a Linux NFS server has a keytab, clients can mount
+> >>>> it with NFSv4.0 (and any security flavor) only on the i/f
+> >>>> whose hostname matches the name of the nfs/ service
+> >>>> principal in that server's keytab.
+> >>> 
+> >>> One correction: the mount should still work correctly.  The server just
+> >>> won't grant any delegations to the client.
+> >> 
+> >> Unfortunately this is not the case.
+> > 
+> > Ugh, OK, that's worse than I thought.  I guess you can work around it on
+> > the server side with "echo 0 >/proc/sys/fs/leases-enable".
+> 
+> Google can find this e-mail thread, but would like me to
+> open a bug report on bugzilla.linux-nfs.org as well, Bruce?
 
-This is v2 of the layout pipelining work. I've done some testing with
-it, driving read and write I/Os against a file while forcing recalls to
-occur. With this set, the client can successfully issue new LAYOUTGET
-calls to handle new page I/Os while the still draining I/Os to the old
-layout.
+Up to you.  I'll confess to mostly ignoring upstream bugzilla until
+it sends me email.
 
-The main change from the last set is a rework of how we handle retryable
-errors in LAYOUTGET. With the current code, once it has made a decision
-to issue a LAYOUTGET, it will drive that RPC until completion. That's
-not really ideal though. A usable layout could have shown up in the list
-while the RPC was still in flight.
+By the way, were you using gss-proxy?  (What distro?)  Did it take any
+special configuration to get the basic protocol working with multiple
+principals, beyond just creating the keytabs?
 
-What we really want to do when we get back a retryable error is to
-re-search for the layout from scratch.  Thus, the last patch lifts the
-code to retry the LAYOUTGET into pnfs_update_layout, so it can make an
-intelligent decision about whether it's even necessary to reissue the
-RPC at all.
-
-Original cover letter from the RFC patchset follows:
-
---------------------------[snip]----------------------------
-
-At Primary Data, one of the things we're most interested in is data
-mobility. IOW, we want to be able to change the layout for an inode
-seamlessly, with little interruption to I/O patterns.
-
-The problem we have now is that CB_LAYOUTRECALLs interrupt I/O. When one
-comes in, most pNFS servers refuse to hand out new layouts until the
-recalled ones have been returned (or the client indicates that it no
-longer knows about them). It doesn't have to be this way though. RFC5661
-allows for concurrent LAYOUTGET and LAYOUTRETURN calls.
-
-Furthermore, servers are expected to deal with old stateids in
-LAYOUTRETURN. From RFC5661, section 18.44.3:
-
-   If the client returns the layout in response to a CB_LAYOUTRECALL
-   where the lor_recalltype field of the clora_recall field was
-   LAYOUTRECALL4_FILE, the client should use the lor_stateid value from
-   CB_LAYOUTRECALL as the value for lrf_stateid.  Otherwise, it should
-   use logr_stateid (from a previous LAYOUTGET result) or lorr_stateid
-   (from a previous LAYRETURN result).  This is done to indicate the
-   point in time (in terms of layout stateid transitions) when the
-   recall was sent.
-
-The way I'm interpreting this is that we can treat a LAYOUTRETURN with
-an old stateid as returning all layouts that matched the given iomode,
-at the time that that seqid was current.
-
-With that, we can allow a LAYOUTGET on the same fh to proceed even when
-there are still recalled layouts outstanding. This should allow the
-client to pivot to a new layout while it's still draining I/Os
-that are pinning the ones to be returned.
-
-This patchset is a first draft of the client side piece that allows
-this.  Basically whenever we get a new layout segment, we'll tag it with
-the seqid that was in the LAYOUTGET stateid that grants it.
-
-When a CB_LAYOUTRECALL comes in, we tag the return seqid in the layout
-header with the one that was in the request. When we do a LAYOUTRETURN
-in response to a CB_LAYOUTRECALL, we craft the seqid such that we're
-only returning the layouts that were recalled. Nothing that has been 
-granted since then will be returned.
-
-I think I've done this in a way that the existing behavior is preserved
-in the case where the server enforces the serialization of these
-operations, but please do have a look and let me know if you see any
-potential problems here. Testing this is still a WIP...
-
-Jeff Layton (9):
-  pnfs: don't merge new ff lsegs with ones that have LAYOUTRETURN bit
-    set
-  pnfs: record sequence in pnfs_layout_segment when it's created
-  pnfs: keep track of the return sequence number in pnfs_layout_hdr
-  pnfs: only tear down lsegs that precede seqid in LAYOUTRETURN args
-  flexfiles: remove pointless setting of NFS_LAYOUT_RETURN_REQUESTED
-  flexfiles: add kerneldoc header to nfs4_ff_layout_prepare_ds
-  pnfs: fix bad error handling in send_layoutget
-  pnfs: lift retry logic from send_layoutget to pnfs_update_layout
-  pnfs: rework LAYOUTGET retry handling
-
- fs/nfs/callback_proc.c                    |   3 +-
- fs/nfs/flexfilelayout/flexfilelayout.c    |   6 +-
- fs/nfs/flexfilelayout/flexfilelayoutdev.c |  26 +++-
- fs/nfs/nfs42proc.c                        |   2 +-
- fs/nfs/nfs4proc.c                         |  68 +++------
- fs/nfs/pnfs.c                             | 243 +++++++++++++++++-------------
- fs/nfs/pnfs.h                             |  12 +-
- include/linux/nfs_xdr.h                   |   3 +-
- 8 files changed, 184 insertions(+), 179 deletions(-)
-
--- 
-2.5.5
-
+--b.
