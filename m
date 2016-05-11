@@ -1,85 +1,143 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:22581 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751769AbcEKO6a convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 11 May 2016 10:58:30 -0400
-Content-Type: text/plain; charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 9.3 \(3124\))
-Subject: Re: Configuring NFSv4.0 Kerberos on a multi-homed Linux NFS server
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <20160511140524.GA24648@fieldses.org>
-Date: Wed, 11 May 2016 10:58:26 -0400
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <647E5439-4EF9-44CB-A2C0-4132D5F3E5F4@oracle.com>
-References: <DB5B2D02-412E-46AD-9F0A-7EBA4EB0C0B0@oracle.com> <8198666A-8963-42D2-9C4C-08374F0E8E5D@oracle.com> <20160506024401.GC5365@fieldses.org> <9E194D65-280F-4107-979C-FEFF2B83B211@oracle.com> <20160506161332.GA11400@fieldses.org> <A0A26870-27A4-48BE-ABA2-048A110F5272@oracle.com> <20160511140524.GA24648@fieldses.org>
-To: "J. Bruce Fields" <bfields@fieldses.org>
+Received: from mail-qg0-f66.google.com ([209.85.192.66]:36764 "EHLO
+	mail-qg0-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932216AbcEKP3r (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 11 May 2016 11:29:47 -0400
+Received: by mail-qg0-f66.google.com with SMTP id f74so3196340qge.3
+        for <linux-nfs@vger.kernel.org>; Wed, 11 May 2016 08:29:47 -0700 (PDT)
+Message-ID: <1462980582.7287.1.camel@poochiereds.net>
+Subject: Re: [PATCH v2 8/9] pnfs: lift retry logic from send_layoutget to
+ pnfs_update_layout
+From: Jeff Layton <jlayton@poochiereds.net>
+To: Trond Myklebust <trondmy@primarydata.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>
+Cc: linux-nfs@vger.kernel.org
+Date: Wed, 11 May 2016 11:29:42 -0400
+In-Reply-To: <1462962074-6989-9-git-send-email-jeff.layton@primarydata.com>
+References: <1462962074-6989-1-git-send-email-jeff.layton@primarydata.com>
+	 <1462962074-6989-9-git-send-email-jeff.layton@primarydata.com>
+Content-Type: text/plain; charset="UTF-8"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-> On May 11, 2016, at 10:05 AM, J. Bruce Fields <bfields@fieldses.org> wrote:
+On Wed, 2016-05-11 at 06:21 -0400, Jeff Layton wrote:
+> If we get back something like NFS4ERR_OLD_STATEID, that will be
+> translated into -EAGAIN, and the do/while loop in send_layoutget
+> will drive the call again.
 > 
-> On Mon, May 09, 2016 at 11:00:06AM -0400, Chuck Lever wrote:
->> 
->>> On May 6, 2016, at 12:13 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
->>> 
->>> On Fri, May 06, 2016 at 09:23:40AM -0400, Chuck Lever wrote:
->>>> 
->>>>> On May 5, 2016, at 10:44 PM, Bruce Fields <bfields@fieldses.org> wrote:
->>>>> 
->>>>> On Thu, May 05, 2016 at 05:01:58PM -0400, Chuck Lever wrote:
->>>>>> After some IRC discussion with Bruce, we think the answer
->>>>>> is "this is not supported in the current Linux NFS server."
->>>>>> 
->>>>>> The server does not have a way to determine which service
->>>>>> principal to use for NFSv4.0 callback operations. It picks
->>>>>> (probably) the first nfs/ service principal in the server's
->>>>>> keytab for all callback operations.
->>>>>> 
->>>>>> Thus if a Linux NFS server has a keytab, clients can mount
->>>>>> it with NFSv4.0 (and any security flavor) only on the i/f
->>>>>> whose hostname matches the name of the nfs/ service
->>>>>> principal in that server's keytab.
->>>>> 
->>>>> One correction: the mount should still work correctly.  The server just
->>>>> won't grant any delegations to the client.
->>>> 
->>>> Unfortunately this is not the case.
->>> 
->>> Ugh, OK, that's worse than I thought.  I guess you can work around it on
->>> the server side with "echo 0 >/proc/sys/fs/leases-enable".
->> 
->> Google can find this e-mail thread, but would like me to
->> open a bug report on bugzilla.linux-nfs.org as well, Bruce?
+> This is not quite what we want, I think. An error like that is a
+> sign that something has changed. That something could have been a
+> concurrent LAYOUTGET that would give us a usable lseg.
 > 
-> Up to you.  I'll confess to mostly ignoring upstream bugzilla until
-> it sends me email.
+> Lift the retry logic into pnfs_update_layout instead. That allows
+> us to redo the layout search, and may spare us from having to issue
+> an RPC.
+> 
+> Signed-off-by: Jeff Layton <jeff.layton@primarydata.com>
+> ---
+>  fs/nfs/pnfs.c | 67 ++++++++++++++++++++++++++++++-----------------------------
+>  1 file changed, 34 insertions(+), 33 deletions(-)
+> 
+> diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+> index 5f6ed295acb5..ed3ab3e81f38 100644
+> --- a/fs/nfs/pnfs.c
+> +++ b/fs/nfs/pnfs.c
+> @@ -839,7 +839,6 @@ send_layoutget(struct pnfs_layout_hdr *lo,
+>  	struct inode *ino = lo->plh_inode;
+>  	struct nfs_server *server = NFS_SERVER(ino);
+>  	struct nfs4_layoutget *lgp;
+> -	struct pnfs_layout_segment *lseg;
+>  	loff_t i_size;
+>  
+>  	dprintk("--> %s\n", __func__);
+> @@ -849,42 +848,30 @@ send_layoutget(struct pnfs_layout_hdr *lo,
+>  	 * store in lseg. If we race with a concurrent seqid morphing
+>  	 * op, then re-send the LAYOUTGET.
+>  	 */
+> -	do {
+> -		lgp = kzalloc(sizeof(*lgp), gfp_flags);
+> -		if (lgp == NULL)
+> -			return NULL;
+> -
 
-Some orgs like to be able to point to a bug report.
-I'll leave it for now.
+Just spotted this bug. The above should return ERR_PTR(-ENOMEM). Fixed
+in my nfs-4.7 branch.
 
-> By the way, were you using gss-proxy?
-
-Yes, on the client and on the server.
-
-> (What distro?)
-
-Oracle Linux 7, which is equivalent to RHEL 7.
-
-> Did it take any
-> special configuration to get the basic protocol working with multiple
-> principals, beyond just creating the keytabs?
-
-These systems had keytabs from NFS testing events. I
-moved them aside and created fresh keytabs for my
-home Kerberos realm, and fixed up their krb5.conf files.
-
-I don't remember doing anything more than that because
-the real struggle was trying to get IPA to co-operate.
-
-
---
-Chuck Lever
-
-
-
+> -		i_size = i_size_read(ino);
+> -
+> -		lgp->args.minlength = PAGE_SIZE;
+> -		if (lgp->args.minlength > range->length)
+> -			lgp->args.minlength = range->length;
+> -		if (range->iomode == IOMODE_READ) {
+> -			if (range->offset >= i_size)
+> -				lgp->args.minlength = 0;
+> -			else if (i_size - range->offset < lgp->args.minlength)
+> -				lgp->args.minlength = i_size - range->offset;
+> -		}
+> -		lgp->args.maxcount = PNFS_LAYOUT_MAXSIZE;
+> -		pnfs_copy_range(&lgp->args.range, range);
+> -		lgp->args.type = server->pnfs_curr_ld->id;
+> -		lgp->args.inode = ino;
+> -		lgp->args.ctx = get_nfs_open_context(ctx);
+> -		lgp->gfp_flags = gfp_flags;
+> -		lgp->cred = lo->plh_lc_cred;
+> +	lgp = kzalloc(sizeof(*lgp), gfp_flags);
+> +	if (lgp == NULL)
+> +		return NULL;
+>  
+> -		lseg = nfs4_proc_layoutget(lgp, gfp_flags);
+> -	} while (lseg == ERR_PTR(-EAGAIN));
+> +	i_size = i_size_read(ino);
+>  
+> -	if (IS_ERR(lseg)) {
+> -		if (!nfs_error_is_fatal(PTR_ERR(lseg)))
+> -			lseg = NULL;
+> -	} else {
+> -		pnfs_layout_clear_fail_bit(lo,
+> -				pnfs_iomode_to_fail_bit(range->iomode));
+> +	lgp->args.minlength = PAGE_SIZE;
+> +	if (lgp->args.minlength > range->length)
+> +		lgp->args.minlength = range->length;
+> +	if (range->iomode == IOMODE_READ) {
+> +	if (range->offset >= i_size)
+> +			lgp->args.minlength = 0;
+> +		else if (i_size - range->offset < lgp->args.minlength)
+> +			lgp->args.minlength = i_size - range->offset;
+>  	}
+> +	lgp->args.maxcount = PNFS_LAYOUT_MAXSIZE;
+> +	pnfs_copy_range(&lgp->args.range, range);
+> +	lgp->args.type = server->pnfs_curr_ld->id;
+> +	lgp->args.inode = ino;
+> +	lgp->args.ctx = get_nfs_open_context(ctx);
+> +	lgp->gfp_flags = gfp_flags;
+> +	lgp->cred = lo->plh_lc_cred;
+>  
+> -	return lseg;
+> +	return nfs4_proc_layoutget(lgp, gfp_flags);
+>  }
+>  
+>  static void pnfs_clear_layoutcommit(struct inode *inode,
+> @@ -1646,6 +1633,20 @@ lookup_again:
+>  		arg.length = PAGE_ALIGN(arg.length);
+>  
+>  	lseg = send_layoutget(lo, ctx, &arg, gfp_flags);
+> +	if (IS_ERR(lseg)) {
+> +		if (lseg == ERR_PTR(-EAGAIN)) {
+> +			if (first)
+> +				pnfs_clear_first_layoutget(lo);
+> +			pnfs_put_layout_hdr(lo);
+> +			goto lookup_again;
+> +		}
+> +
+> +		if (!nfs_error_is_fatal(PTR_ERR(lseg)))
+> +			lseg = NULL;
+> +	} else {
+> +		pnfs_layout_clear_fail_bit(lo, pnfs_iomode_to_fail_bit(iomode));
+> +	}
+> +
+>  	atomic_dec(&lo->plh_outstanding);
+>  	trace_pnfs_update_layout(ino, pos, count, iomode, lo,
+>  				 PNFS_UPDATE_LAYOUT_SEND_LAYOUTGET);
+-- 
+Jeff Layton <jlayton@poochiereds.net>
