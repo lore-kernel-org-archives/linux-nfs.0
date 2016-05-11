@@ -1,64 +1,53 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:48512 "EHLO fieldses.org"
+Received: from a.ns.miles-group.at ([95.130.255.143]:11949 "EHLO radon.swed.at"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932162AbcEKOF1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 11 May 2016 10:05:27 -0400
-Date: Wed, 11 May 2016 10:05:24 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: Configuring NFSv4.0 Kerberos on a multi-homed Linux NFS server
-Message-ID: <20160511140524.GA24648@fieldses.org>
-References: <DB5B2D02-412E-46AD-9F0A-7EBA4EB0C0B0@oracle.com>
- <8198666A-8963-42D2-9C4C-08374F0E8E5D@oracle.com>
- <20160506024401.GC5365@fieldses.org>
- <9E194D65-280F-4107-979C-FEFF2B83B211@oracle.com>
- <20160506161332.GA11400@fieldses.org>
- <A0A26870-27A4-48BE-ABA2-048A110F5272@oracle.com>
+	id S932841AbcEKOJj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 11 May 2016 10:09:39 -0400
+Subject: Re: Reconsidering exportable UBIFS
+To: NeilBrown <nfbrown@novell.com>, Al Viro <viro@ZenIV.linux.org.uk>
+References: <5702E7F5.1050807@nod.at>
+ <871t5curbl.fsf@notabene.neil.brown.name>
+ <20160508232533.GH2694@ZenIV.linux.org.uk>
+ <87y47ju8kk.fsf@notabene.neil.brown.name>
+Cc: linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        "linux-mtd@lists.infradead.org" <linux-mtd@lists.infradead.org>,
+        Artem Bityutskiy <dedekind1@gmail.com>,
+        Christoph Hellwig <hch@infradead.org>,
+        NFS List <linux-nfs@vger.kernel.org>
+From: Richard Weinberger <richard@nod.at>
+Message-ID: <57333D1E.9090706@nod.at>
+Date: Wed, 11 May 2016 16:09:34 +0200
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <A0A26870-27A4-48BE-ABA2-048A110F5272@oracle.com>
+In-Reply-To: <87y47ju8kk.fsf@notabene.neil.brown.name>
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, May 09, 2016 at 11:00:06AM -0400, Chuck Lever wrote:
+Am 09.05.2016 um 07:03 schrieb NeilBrown:
+> On Mon, May 09 2016, Al Viro wrote:
 > 
-> > On May 6, 2016, at 12:13 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
-> > 
-> > On Fri, May 06, 2016 at 09:23:40AM -0400, Chuck Lever wrote:
-> >> 
-> >>> On May 5, 2016, at 10:44 PM, Bruce Fields <bfields@fieldses.org> wrote:
-> >>> 
-> >>> On Thu, May 05, 2016 at 05:01:58PM -0400, Chuck Lever wrote:
-> >>>> After some IRC discussion with Bruce, we think the answer
-> >>>> is "this is not supported in the current Linux NFS server."
-> >>>> 
-> >>>> The server does not have a way to determine which service
-> >>>> principal to use for NFSv4.0 callback operations. It picks
-> >>>> (probably) the first nfs/ service principal in the server's
-> >>>> keytab for all callback operations.
-> >>>> 
-> >>>> Thus if a Linux NFS server has a keytab, clients can mount
-> >>>> it with NFSv4.0 (and any security flavor) only on the i/f
-> >>>> whose hostname matches the name of the nfs/ service
-> >>>> principal in that server's keytab.
-> >>> 
-> >>> One correction: the mount should still work correctly.  The server just
-> >>> won't grant any delegations to the client.
-> >> 
-> >> Unfortunately this is not the case.
-> > 
-> > Ugh, OK, that's worse than I thought.  I guess you can work around it on
-> > the server side with "echo 0 >/proc/sys/fs/leases-enable".
+>> On Mon, May 09, 2016 at 08:18:22AM +1000, NeilBrown wrote:
+>>
+>>> Not puppies, just kittens.
+>>>
+>>> If you don't provide these functions, then exporting with
+>>> "subtree_check" won't work.  That is no great loss except that people
+>>> might find the failure confusing.
+>>
+>> 	OK, a client sends you a RENAME.  With fhandles of both parents +
+>> old and new names in those.  Your task, should you choose to accept it, is
+>> to figure out whether we should fail with nfserr_inval due to an attempt
+>> to make a directory its own descendent.  Without being able to locate all
+>> ancestors of a directory.
 > 
-> Google can find this e-mail thread, but would like me to
-> open a bug report on bugzilla.linux-nfs.org as well, Bruce?
+> You are right, sorry.  I was thinking that get_parent() was for finding
+> the parent of a non-directory, but it is for directories.  It does the
+> equivalent of lookup("..").  So if you have a ".." link or something
+> like it, it should be easy.  If you don't, it won't be easy at all.
 
-Up to you.  I'll confess to mostly ignoring upstream bugzilla until
-it sends me email.
+Thanks for the detailed explanation.
+UBIFS does not have ".." links in the on-flash layout.
+So, we'd have to change this.
 
-By the way, were you using gss-proxy?  (What distro?)  Did it take any
-special configuration to get the basic protocol working with multiple
-principals, beyond just creating the keytabs?
-
---b.
+Thanks,
+//richard
