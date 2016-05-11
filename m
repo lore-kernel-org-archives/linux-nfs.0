@@ -1,88 +1,191 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx141.netapp.com ([216.240.21.12]:65335 "EHLO mx141.netapp.com"
+Received: from m50-135.163.com ([123.125.50.135]:42236 "EHLO m50-135.163.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750951AbcEJU5p (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 10 May 2016 16:57:45 -0400
-From: Olga Kornievskaia <kolga@netapp.com>
-To: <Trond.Myklebust@primarydata.com>
-CC: <linux-nfs@vger.kernel.org>
-Subject: [PATCH 1/1] Fixing oops in callback path
-Date: Tue, 10 May 2016 16:57:41 -0400
-Message-ID: <1462913861-1742-1-git-send-email-kolga@netapp.com>
-MIME-Version: 1.0
-Content-Type: text/plain
+	id S1751648AbcEKI3Q (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 11 May 2016 04:29:16 -0400
+From: zengzhaoxiu@163.com
+To: akpm@linux-foundation.org, linux@horizon.com, bp@suse.de,
+        ulrik.debie-os@e2big.org, sam@ravnborg.org, davem@davemloft.net,
+        ddaney.cavm@gmail.com, joe@perches.com, computersforpeace@gmail.com
+Cc: linux-kernel@vger.kernel.org, linux-arch@vger.kernel.org,
+        linux-alpha@vger.kernel.org, adi-buildroot-devel@lists.sourceforge.net,
+        linux-ia64@vger.kernel.org, linux-mips@linux-mips.org,
+        linux-am33-list@redhat.com, linuxppc-dev@lists.ozlabs.org,
+        sparclinux@vger.kernel.org, qat-linux@intel.com,
+        linux-crypto@vger.kernel.org, linux-edac@vger.kernel.org,
+        linux-media@vger.kernel.org, linux-mtd@lists.infradead.org,
+        netdev@vger.kernel.org, linux-scsi@vger.kernel.org,
+        linux-nfs@vger.kernel.org, linux-mediatek@lists.infradead.org,
+        Zhaoxiu Zeng <zhaoxiu.zeng@gmail.com>
+Subject: [patch V4 00/31] bitops: add parity functions
+Date: Wed, 11 May 2016 16:25:58 +0800
+Message-Id: <1462955158-28394-1-git-send-email-zengzhaoxiu@163.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Commit 80f9642724af5 ("NFSv4.x: Enforce the ca_maxreponsesize_cached
-on the back channel") causes an oops when it receives a callback with
-cachethis=yes.
+From: Zhaoxiu Zeng <zhaoxiu.zeng@gmail.com>
 
-[  109.667378] BUG: unable to handle kernel NULL pointer dereference at 00000000000002c8
-[  109.669476] IP: [<ffffffffa08a3e68>] nfs4_callback_compound+0x4f8/0x690 [nfsv4]
-[  109.671216] PGD 0
-[  109.671736] Oops: 0000 [#1] SMP
-[  109.705427] CPU: 1 PID: 3579 Comm: nfsv4.1-svc Not tainted 4.5.0-rc1+ #1
-[  109.706987] Hardware name: VMware, Inc. VMware Virtual Platform/440BX Desktop Reference Platform, BIOS 6.00 05/20/2014
-[  109.709468] task: ffff8800b4408000 ti: ffff88008448c000 task.ti: ffff88008448c000
-[  109.711207] RIP: 0010:[<ffffffffa08a3e68>]  [<ffffffffa08a3e68>] nfs4_callback_compound+0x4f8/0x690 [nfsv4]
-[  109.713521] RSP: 0018:ffff88008448fca0  EFLAGS: 00010286
-[  109.714762] RAX: ffff880081ee202c RBX: ffff8800b7b5b600 RCX: 0000000000000001
-[  109.716427] RDX: 0000000000000008 RSI: 0000000000000008 RDI: 0000000000000000
-[  109.718091] RBP: ffff88008448fda8 R08: 0000000000000000 R09: 000000000b000000
-[  109.719757] R10: ffff880137786000 R11: ffff8800b7b5b600 R12: 0000000001000000
-[  109.721415] R13: 0000000000000002 R14: 0000000053270000 R15: 000000000000000b
-[  109.723061] FS:  0000000000000000(0000) GS:ffff880139640000(0000) knlGS:0000000000000000
-[  109.724931] CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
-[  109.726278] CR2: 00000000000002c8 CR3: 0000000034d50000 CR4: 00000000001406e0
-[  109.727972] Stack:
-[  109.728465]  ffff880081ee202c ffff880081ee201c 000000008448fcc0 ffff8800baccb800
-[  109.730349]  ffff8800baccc800 ffffffffa08d0380 0000000000000000 0000000000000000
-[  109.732211]  ffff8800b7b5b600 0000000000000001 ffffffff81d073c0 ffff880081ee3090
-[  109.734056] Call Trace:
-[  109.734657]  [<ffffffffa03795d4>] svc_process_common+0x5c4/0x6c0 [sunrpc]
-[  109.736267]  [<ffffffffa0379a4c>] bc_svc_process+0x1fc/0x360 [sunrpc]
-[  109.737775]  [<ffffffffa08a2c2c>] nfs41_callback_svc+0x10c/0x1d0 [nfsv4]
-[  109.739335]  [<ffffffff810cb380>] ? prepare_to_wait_event+0xf0/0xf0
-[  109.740799]  [<ffffffffa08a2b20>] ? nfs4_callback_svc+0x50/0x50 [nfsv4]
-[  109.742349]  [<ffffffff810a6998>] kthread+0xd8/0xf0
-[  109.743495]  [<ffffffff810a68c0>] ? kthread_park+0x60/0x60
-[  109.744776]  [<ffffffff816abc4f>] ret_from_fork+0x3f/0x70
-[  109.746037]  [<ffffffff810a68c0>] ? kthread_park+0x60/0x60
-[  109.747324] Code: cc 45 31 f6 48 8b 85 00 ff ff ff 44 89 30 48 8b 85 f8 fe ff ff 44 89 20 48 8b 9d 38 ff ff ff 48 8b bd 30 ff ff ff 48 85 db 74 4c <4c> 8b af c8 02 00 00 4d 8d a5 08 02 00 00 49 81 c5 98 02 00 00
-[  109.754361] RIP  [<ffffffffa08a3e68>] nfs4_callback_compound+0x4f8/0x690 [nfsv4]
-[  109.756123]  RSP <ffff88008448fca0>
-[  109.756951] CR2: 00000000000002c8
-[  109.757738] ---[ end trace 2b8555511ab5dfb4 ]---
-[  109.758819] Kernel panic - not syncing: Fatal exception
-[  109.760126] Kernel Offset: disabled
-[  118.938934] ---[ end Kernel panic - not syncing: Fatal exception
+When I do "grep parity -r linux", I found many parity calculations
+distributed in many drivers.
 
-It doesn't unlock the table nor does it set the cps->clp pointer which
-is later needed by nfs4_cb_free_slot().
+This patch series does:
+  1. provide generic and architecture-specific parity calculations
+  2. remove drivers' local parity calculations, use bitops' parity
+     functions instead
+  3. replace "hweightN(x) & 1" with "parityN(x)" to improve readability,
+     and improve performance on some CPUs that without popcount support
 
-Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
----
- fs/nfs/callback_proc.c | 6 ++++--
- 1 file changed, 4 insertions(+), 2 deletions(-)
+I did not use GCC's __builtin_parity* functions, based on the following reasons:
+  1. I don't know where to identify which version of GCC from the beginning
+     supported __builtin_parity for the architecture.
+  2. For the architecture that doesn't has popcount instruction, GCC instead use
+     "call __paritysi2" (__paritydi2 for 64-bits). So if use __builtin_parity, we must
+     provide __paritysi2 and __paritydi2 functions for these architectures.
+     Additionally, parity4,8,16 might be "__builtin_parity(x & mask)", but the "& mask"
+     operation is totally unnecessary.
+  3. For the architecture that has popcount instruction, we do the same things as GCC.
+  4. For powerpc, sparc, and x86, we do runtime patching to use popcount instruction
+     if the CPU support.
 
-diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
-index 618ced3..7c9fbf5 100644
---- a/fs/nfs/callback_proc.c
-+++ b/fs/nfs/callback_proc.c
-@@ -500,8 +500,10 @@ __be32 nfs4_callback_sequence(struct cb_sequenceargs *args,
- 	cps->slot = slot;
- 
- 	/* The ca_maxresponsesize_cached is 0 with no DRC */
--	if (args->csa_cachethis != 0)
--		return htonl(NFS4ERR_REP_TOO_BIG_TO_CACHE);
-+	if (args->csa_cachethis != 0) {
-+		status = htonl(NFS4ERR_REP_TOO_BIG_TO_CACHE);
-+		goto out_unlock;
-+	}
- 
- 	/*
- 	 * Check for pending referring calls.  If a match is found, a
+I have compiled successfully with x86_64_defconfig, i386_defconfig, pseries_defconfig
+and sparc64_defconfig.
+
+Changes to V3:
+- Remove "odd" and "even" from documents. The function parityN returns whether an odd
+  or even number of bits are on in a N-bit word, does not involve the definition of
+  odd/even parity. Is it an odd or even parity checking, depends on the caller's context.
+- Replace "hweightN(x) % 2" with "parityN(x)" in crypto/sahara.c and edac/amd64_edac.c
+- Use PARITY_MAGIC instead of 0x6996 in powerpc's parity_64.S
+- Use PARITY_MAGIC instead of 0x6996 in sparc's parity.S
+- Pick up ACKs
+
+Changes to v2:
+- X86, remove custom calling convention, use inline asm
+- Add constant PARITY_MAGIC (proposals by Sam Ravnborg)
+- Add include/asm-generic/bitops/popc-parity.h (proposals by Chris Metcalf)
+- Tile uses popc-parity.h directly
+- Mips uses popc-parity.h if has usable __builtin_popcount
+- Add few comments in powerpc's and sparc's parity.S
+
+Changes to v1:
+- Add runtime patching for powerpc, sparc, and x86
+- Avr32 use grenric parity too
+- Fix error in ssfdc's patch, and add commit message
+- Don't change the original code composition of adxrs450.c
+- Directly assignement to phy_cap.parity in drivers/scsi/isci/phy.c
+
+Regards,
+
+=== diffstat ===
+
+Zhaoxiu Zeng (31):
+  bitops: add parity functions
+  bitops: Include generic parity.h in some architectures' bitops.h
+  bitops: Add alpha-specific parity functions
+  bitops: Add blackfin-specific parity functions
+  bitops: Add ia-specific parity functions
+  bitops: Tile and MIPS (if has usable __builtin_popcount) use popcount
+    parity functions
+  bitops: Add powerpc-specific parity functions
+  bitops: Add sparc-specific parity functions
+  bitops: Add x86-specific parity functions
+  sunrpc: use parity8
+  mips: use parity functions in cerr-sb1.c
+  lib: bch: use parity32
+  media: use parity8 in vivid-vbi-gen.c
+  media: use parity functions in saa7115
+  input: use parity32 in grip_mp
+  input: use parity64 in sidewinder
+  input: use parity16 in ams_delta_serio
+  scsi: use parity32 in isci's phy
+  mtd: use parity16 in ssfdc
+  mtd: use parity functions in inftlcore
+  crypto: use parity functions in qat_hal
+  mtd: use parity16 in sm_ftl
+  ethernet: use parity8 in sun/niu.c
+  input: use parity8 in pcips2
+  input: use parity8 in sa1111ps2
+  iio: use parity32 in adxrs450
+  serial: use parity32 in max3100
+  input: use parity8 in elantech
+  ethernet: use parity8 in broadcom/tg3.c
+  crypto: use parity_long is sahara.c
+  edac: use parity8 in amd64_edac.c
+
+ arch/alpha/include/asm/bitops.h              |  27 +++++
+ arch/arc/include/asm/bitops.h                |   1 +
+ arch/arm/include/asm/bitops.h                |   1 +
+ arch/arm64/include/asm/bitops.h              |   1 +
+ arch/avr32/include/asm/bitops.h              |   1 +
+ arch/blackfin/include/asm/bitops.h           |  31 ++++++
+ arch/c6x/include/asm/bitops.h                |   1 +
+ arch/cris/include/asm/bitops.h               |   1 +
+ arch/frv/include/asm/bitops.h                |   1 +
+ arch/h8300/include/asm/bitops.h              |   1 +
+ arch/hexagon/include/asm/bitops.h            |   1 +
+ arch/ia64/include/asm/bitops.h               |  31 ++++++
+ arch/m32r/include/asm/bitops.h               |   1 +
+ arch/m68k/include/asm/bitops.h               |   1 +
+ arch/metag/include/asm/bitops.h              |   1 +
+ arch/mips/include/asm/bitops.h               |   7 ++
+ arch/mips/mm/cerr-sb1.c                      |  67 ++++---------
+ arch/mn10300/include/asm/bitops.h            |   1 +
+ arch/openrisc/include/asm/bitops.h           |   1 +
+ arch/parisc/include/asm/bitops.h             |   1 +
+ arch/powerpc/include/asm/bitops.h            |  11 +++
+ arch/powerpc/lib/Makefile                    |   2 +-
+ arch/powerpc/lib/parity_64.S                 | 143 +++++++++++++++++++++++++++
+ arch/powerpc/lib/ppc_ksyms.c                 |   5 +
+ arch/s390/include/asm/bitops.h               |   1 +
+ arch/sh/include/asm/bitops.h                 |   1 +
+ arch/sparc/include/asm/bitops_32.h           |   1 +
+ arch/sparc/include/asm/bitops_64.h           |  18 ++++
+ arch/sparc/kernel/sparc_ksyms_64.c           |   6 ++
+ arch/sparc/lib/Makefile                      |   2 +-
+ arch/sparc/lib/parity.S                      | 129 ++++++++++++++++++++++++
+ arch/tile/include/asm/bitops.h               |   2 +
+ arch/x86/include/asm/arch_hweight.h          |   5 +
+ arch/x86/include/asm/arch_parity.h           | 117 ++++++++++++++++++++++
+ arch/x86/include/asm/bitops.h                |   4 +-
+ arch/xtensa/include/asm/bitops.h             |   1 +
+ drivers/crypto/qat/qat_common/qat_hal.c      |  32 ++----
+ drivers/crypto/sahara.c                      |   2 +-
+ drivers/edac/amd64_edac.c                    |   2 +-
+ drivers/iio/gyro/adxrs450.c                  |   4 +-
+ drivers/input/joystick/grip_mp.c             |  16 +--
+ drivers/input/joystick/sidewinder.c          |  24 +----
+ drivers/input/mouse/elantech.c               |  10 +-
+ drivers/input/mouse/elantech.h               |   1 -
+ drivers/input/serio/ams_delta_serio.c        |   8 +-
+ drivers/input/serio/pcips2.c                 |   2 +-
+ drivers/input/serio/sa1111ps2.c              |   2 +-
+ drivers/media/i2c/saa7115.c                  |  17 +---
+ drivers/media/platform/vivid/vivid-vbi-gen.c |   9 +-
+ drivers/mtd/inftlcore.c                      |  17 +---
+ drivers/mtd/sm_ftl.c                         |   5 +-
+ drivers/mtd/ssfdc.c                          |  31 ++----
+ drivers/net/ethernet/broadcom/tg3.c          |   6 +-
+ drivers/net/ethernet/sun/niu.c               |  10 +-
+ drivers/scsi/isci/phy.c                      |  15 +--
+ drivers/tty/serial/max3100.c                 |   2 +-
+ include/asm-generic/bitops.h                 |   1 +
+ include/asm-generic/bitops/arch_parity.h     |  39 ++++++++
+ include/asm-generic/bitops/const_parity.h    |  36 +++++++
+ include/asm-generic/bitops/parity.h          |   7 ++
+ include/asm-generic/bitops/popc-parity.h     |  32 ++++++
+ include/linux/bitops.h                       |  10 ++
+ lib/bch.c                                    |  14 +--
+ net/sunrpc/auth_gss/gss_krb5_keys.c          |   6 +-
+ 64 files changed, 749 insertions(+), 237 deletions(-)
+ create mode 100644 arch/powerpc/lib/parity_64.S
+ create mode 100644 arch/sparc/lib/parity.S
+ create mode 100644 arch/x86/include/asm/arch_parity.h
+ create mode 100644 include/asm-generic/bitops/arch_parity.h
+ create mode 100644 include/asm-generic/bitops/const_parity.h
+ create mode 100644 include/asm-generic/bitops/parity.h
+ create mode 100644 include/asm-generic/bitops/popc-parity.h
+
 -- 
-1.8.3.1
+2.7.4
+
 
