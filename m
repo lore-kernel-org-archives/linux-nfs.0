@@ -1,53 +1,43 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp-o-3.desy.de ([131.169.56.156]:44962 "EHLO smtp-o-3.desy.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751611AbcEKWOQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 11 May 2016 18:14:16 -0400
-Received: from smtp-map-3.desy.de (smtp-map-3.desy.de [131.169.56.68])
-	by smtp-o-3.desy.de (DESY-O-3) with ESMTP id B85962802A8
-	for <linux-nfs@vger.kernel.org>; Thu, 12 May 2016 00:14:13 +0200 (CEST)
-Received: from ZITSWEEP2.win.desy.de (zitsweep2.win.desy.de [131.169.97.96])
-	by smtp-map-3.desy.de (DESY_MAP_3) with ESMTP id AC75A1586
-	for <linux-nfs@vger.kernel.org>; Thu, 12 May 2016 00:14:13 +0200 (MEST)
-From: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
-To: trond.myklebust@primarydata.com
-Cc: linux-nfs@vger.kernel.org, Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
-Subject: [PATCH] nfs4: client: do not send empty SETATTR after OPEN_CREATE
-Date: Thu, 12 May 2016 00:14:03 +0200
-Message-Id: <1463004843-3733-1-git-send-email-tigran.mkrtchyan@desy.de>
+Received: from us-smtp-delivery-194.mimecast.com ([216.205.24.194]:45329 "EHLO
+	us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751617AbcEKWZY (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 11 May 2016 18:25:24 -0400
+From: Trond Myklebust <trondmy@primarydata.com>
+To: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] nfs4: client: do not send empty SETATTR after OPEN_CREATE
+Date: Wed, 11 May 2016 22:25:18 +0000
+Message-ID: <BC64443A-0721-414A-9695-CDB2015099AB@primarydata.com>
+References: <1463004843-3733-1-git-send-email-tigran.mkrtchyan@desy.de>
+In-Reply-To: <1463004843-3733-1-git-send-email-tigran.mkrtchyan@desy.de>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-OPEN_CREATE with EXCLUSIVE4_1 sends initial file permission.
-Ignoring  fact, that server have indicated that file mod is set, client
-will send yet another SETATTR request, but, as mode is already set,
-new SETATTR will be empty. This is not a problem, nevertheless
-an extra roundtrip and slow open on high latency networks.
-
-This change is aims to by-pass setattr if there are no attributes defined.
-
-Signed-off-by: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
----
- fs/nfs/nfs4proc.c | 6 ++++++
- 1 file changed, 6 insertions(+)
-
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 327b8c3..f6b278f 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -2724,6 +2724,12 @@ static int nfs4_do_setattr(struct inode *inode, struct rpc_cred *cred,
- 		.inode = inode,
- 	};
- 	int err;
-+	/*
-+	 * a shortcut: it there are no attributes to be updated, do not send setattr at all
-+	 */
-+	if (sattr->ia_valid == ATTR_OPEN)
-+		return 0;
-+
- 	do {
- 		err = _nfs4_do_setattr(inode, cred, fattr, sattr, state, ilabel, olabel);
- 		switch (err) {
--- 
-2.5.5
+T24gNS8xMS8xNiwgMTg6MTQsICJUaWdyYW4gTWtydGNoeWFuIiA8dGlncmFuLm1rcnRjaHlhbkBk
+ZXN5LmRlPiB3cm90ZToNCg0KPk9QRU5fQ1JFQVRFIHdpdGggRVhDTFVTSVZFNF8xIHNlbmRzIGlu
+aXRpYWwgZmlsZSBwZXJtaXNzaW9uLg0KPklnbm9yaW5nICBmYWN0LCB0aGF0IHNlcnZlciBoYXZl
+IGluZGljYXRlZCB0aGF0IGZpbGUgbW9kIGlzIHNldCwgY2xpZW50DQo+d2lsbCBzZW5kIHlldCBh
+bm90aGVyIFNFVEFUVFIgcmVxdWVzdCwgYnV0LCBhcyBtb2RlIGlzIGFscmVhZHkgc2V0LA0KPm5l
+dyBTRVRBVFRSIHdpbGwgYmUgZW1wdHkuIFRoaXMgaXMgbm90IGEgcHJvYmxlbSwgbmV2ZXJ0aGVs
+ZXNzDQo+YW4gZXh0cmEgcm91bmR0cmlwIGFuZCBzbG93IG9wZW4gb24gaGlnaCBsYXRlbmN5IG5l
+dHdvcmtzLg0KPg0KPlRoaXMgY2hhbmdlIGlzIGFpbXMgdG8gYnktcGFzcyBzZXRhdHRyIGlmIHRo
+ZXJlIGFyZSBubyBhdHRyaWJ1dGVzIGRlZmluZWQuDQo+DQo+U2lnbmVkLW9mZi1ieTogVGlncmFu
+IE1rcnRjaHlhbiA8dGlncmFuLm1rcnRjaHlhbkBkZXN5LmRlPg0KPi0tLQ0KPiBmcy9uZnMvbmZz
+NHByb2MuYyB8IDYgKysrKysrDQo+IDEgZmlsZSBjaGFuZ2VkLCA2IGluc2VydGlvbnMoKykNCj4N
+Cj5kaWZmIC0tZ2l0IGEvZnMvbmZzL25mczRwcm9jLmMgYi9mcy9uZnMvbmZzNHByb2MuYw0KPmlu
+ZGV4IDMyN2I4YzMuLmY2YjI3OGYgMTAwNjQ0DQo+LS0tIGEvZnMvbmZzL25mczRwcm9jLmMNCj4r
+KysgYi9mcy9uZnMvbmZzNHByb2MuYw0KPkBAIC0yNzI0LDYgKzI3MjQsMTIgQEAgc3RhdGljIGlu
+dCBuZnM0X2RvX3NldGF0dHIoc3RydWN0IGlub2RlICppbm9kZSwgc3RydWN0IHJwY19jcmVkICpj
+cmVkLA0KPiAJCS5pbm9kZSA9IGlub2RlLA0KPiAJfTsNCj4gCWludCBlcnI7DQo+KwkvKg0KPisJ
+ICogYSBzaG9ydGN1dDogaXQgdGhlcmUgYXJlIG5vIGF0dHJpYnV0ZXMgdG8gYmUgdXBkYXRlZCwg
+ZG8gbm90IHNlbmQgc2V0YXR0ciBhdCBhbGwNCj4rCSAqLw0KPisJaWYgKHNhdHRyLT5pYV92YWxp
+ZCA9PSBBVFRSX09QRU4pDQo+KwkJcmV0dXJuIDA7DQo+Kw0KDQpUaGVyZSBpcyBhbHJlYWR5IGEg
+c2ltaWxhciBvcHRpbWl6YXRpb24gaW4gbmZzX3NldGF0dHIoKSwgc28gSSBkb27igJl0IHRoaW5r
+IGl0IG1ha2VzIHNlbnNlIHRvIHB1dCB0aGlzIGluIG5mczRfZG9fc2V0YXR0cigpLiBXZSBzaG91
+bGQgcmF0aGVyIGp1c3QgZml4IF9uZnM0X2RvX29wZW4oKS4NCg0KPiAJZG8gew0KPiAJCWVyciA9
+IF9uZnM0X2RvX3NldGF0dHIoaW5vZGUsIGNyZWQsIGZhdHRyLCBzYXR0ciwgc3RhdGUsIGlsYWJl
+bCwgb2xhYmVsKTsNCj4gCQlzd2l0Y2ggKGVycikgew0KPi0tIA0KPjIuNS41DQo+DQoNCg==
 
