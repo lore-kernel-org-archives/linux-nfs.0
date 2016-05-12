@@ -1,53 +1,89 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from bombadil.infradead.org ([198.137.202.9]:57854 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752617AbcELJMu (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 12 May 2016 05:12:50 -0400
-Date: Thu, 12 May 2016 02:12:49 -0700
-From: Christoph Hellwig <hch@infradead.org>
-To: David Howells <dhowells@redhat.com>
-Cc: Christoph Hellwig <hch@infradead.org>, linux-fsdevel@vger.kernel.org,
-        linux-afs@lists.infradead.org, linux-nfs@vger.kernel.org,
-        samba-technical@lists.samba.org, linux-kernel@vger.kernel.org,
-        linux-ext4@vger.kernel.org
-Subject: Re: [PATCH 1/6] statx: Add a system call to make enhanced file info
- available
-Message-ID: <20160512091249.GB22420@infradead.org>
-References: <20160510070803.GC30896@infradead.org>
- <20160508083543.GA14316@infradead.org>
- <20160429125736.23636.47874.stgit@warthog.procyon.org.uk>
- <20160429125743.23636.85219.stgit@warthog.procyon.org.uk>
- <1734.1462801101@warthog.procyon.org.uk>
- <7963.1462869823@warthog.procyon.org.uk>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <7963.1462869823@warthog.procyon.org.uk>
+Received: from smtp-o-3.desy.de ([131.169.56.156]:33071 "EHLO smtp-o-3.desy.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752655AbcELJQn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 12 May 2016 05:16:43 -0400
+Received: from smtp-map-3.desy.de (smtp-map-3.desy.de [131.169.56.68])
+	by smtp-o-3.desy.de (DESY-O-3) with ESMTP id 031B1280373
+	for <linux-nfs@vger.kernel.org>; Thu, 12 May 2016 11:16:41 +0200 (CEST)
+Received: from ZITSWEEP1.win.desy.de (zitsweep1.win.desy.de [131.169.97.95])
+	by smtp-map-3.desy.de (DESY_MAP_3) with ESMTP id E63401527
+	for <linux-nfs@vger.kernel.org>; Thu, 12 May 2016 11:16:40 +0200 (MEST)
+From: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
+To: trond.myklebust@primarydata.com
+Cc: linux-nfs@vger.kernel.org, Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
+Subject: [PATCH v2] nfs4: client: do not send empty SETATTR after OPEN_CREATE
+Date: Thu, 12 May 2016 11:16:38 +0200
+Message-Id: <1463044598-5220-1-git-send-email-tigran.mkrtchyan@desy.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, May 10, 2016 at 09:43:43AM +0100, David Howells wrote:
-> Christoph Hellwig <hch@infradead.org> wrote:
-> 
-> > All of these are easily available.  But why special case them so that
-> > userspace must not ask for them?  This makes an otherwise totally
-> > regular interface special now.  Note that filesystems could always fill
-> > it out anyway and set it in the return mask.
-> 
-> Because it would be a waste of bits in the mask.  Is there a point in having
-> bits that are always going to be set unconditionally when we can just
-> *document* that these few fields are always going to be set.
+OPEN_CREATE with EXCLUSIVE4_1 sends initial file permission.
+Ignoring  fact, that server have indicated that file mod is set, client
+will send yet another SETATTR request, but, as mode is already set,
+new SETATTR will be empty. This is not a problem, nevertheless
+an extra roundtrip and slow open on high latency networks.
 
-And what exaxtly is the cost of these bits?
+This change is aims to skip extra setattr after open  if there are
+no attributes to be set.
 
-> So yes, you can look on it as there are special cases.  However, if I can drop
-> stat emulation support, everything resolves down to the following classes:
-> 
->  (1) Stuff that's unconditional: st_dev, st_blksize, st_information (maybe).
-> 
->  (2) st_mode & S_IFMT.  Unconditional or conditional?  I'm not sure.
-> 
->  (3) Stuff that's conditional: st_mode & ~S_IFMT, st_rdev, st_ino, ...
->      Basically everything else.
+Signed-off-by: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
+---
+ fs/nfs/nfs4proc.c | 34 +++++++++++++++++++++++++---------
+ 1 file changed, 25 insertions(+), 9 deletions(-)
 
-If we at least go down to one set of conditional and one optional that's
-at least much better than what we currently have.
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 327b8c3..39f4736 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -74,6 +74,17 @@
+ #define NFS4_POLL_RETRY_MIN	(HZ/10)
+ #define NFS4_POLL_RETRY_MAX	(15*HZ)
+ 
++/* file attributes which can be mapped to nfs attributes */
++#define NFS4_VALID_ATTRS (ATTR_MODE \
++	| ATTR_UID \
++	| ATTR_GID \
++	| ATTR_SIZE \
++	| ATTR_ATIME \
++	| ATTR_MTIME \
++	| ATTR_CTIME \
++	| ATTR_ATIME_SET \
++	| ATTR_MTIME_SET)
++
+ struct nfs4_opendata;
+ static int _nfs4_proc_open(struct nfs4_opendata *data);
+ static int _nfs4_recover_proc_open(struct nfs4_opendata *data);
+@@ -2558,15 +2569,20 @@ static int _nfs4_do_open(struct inode *dir,
+ 	if ((opendata->o_arg.open_flags & (O_CREAT|O_EXCL)) == (O_CREAT|O_EXCL) &&
+ 	    (opendata->o_arg.createmode != NFS4_CREATE_GUARDED)) {
+ 		nfs4_exclusive_attrset(opendata, sattr, &label);
+-
+-		nfs_fattr_init(opendata->o_res.f_attr);
+-		status = nfs4_do_setattr(state->inode, cred,
+-				opendata->o_res.f_attr, sattr,
+-				state, label, olabel);
+-		if (status == 0) {
+-			nfs_setattr_update_inode(state->inode, sattr,
+-					opendata->o_res.f_attr);
+-			nfs_setsecurity(state->inode, opendata->o_res.f_attr, olabel);
++		/*
++		 * send create attributes which was not set by open
++		 * with an extra setattr.
++		 */
++		if (sattr->ia_valid & NFS4_VALID_ATTRS) {
++			nfs_fattr_init(opendata->o_res.f_attr);
++			status = nfs4_do_setattr(state->inode, cred,
++					opendata->o_res.f_attr, sattr,
++					state, label, olabel);
++			if (status == 0) {
++				nfs_setattr_update_inode(state->inode, sattr,
++						opendata->o_res.f_attr);
++				nfs_setsecurity(state->inode, opendata->o_res.f_attr, olabel);
++			}
+ 		}
+ 	}
+ 	if (opened && opendata->file_created)
+-- 
+2.5.5
+
