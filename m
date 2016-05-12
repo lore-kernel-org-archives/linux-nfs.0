@@ -1,43 +1,61 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from us-smtp-delivery-194.mimecast.com ([216.205.24.194]:45329 "EHLO
-	us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751617AbcEKWZY (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 11 May 2016 18:25:24 -0400
-From: Trond Myklebust <trondmy@primarydata.com>
-To: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] nfs4: client: do not send empty SETATTR after OPEN_CREATE
-Date: Wed, 11 May 2016 22:25:18 +0000
-Message-ID: <BC64443A-0721-414A-9695-CDB2015099AB@primarydata.com>
-References: <1463004843-3733-1-git-send-email-tigran.mkrtchyan@desy.de>
-In-Reply-To: <1463004843-3733-1-git-send-email-tigran.mkrtchyan@desy.de>
+Received: from userp1040.oracle.com ([156.151.31.81]:19936 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752031AbcELGQl (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 12 May 2016 02:16:41 -0400
+Date: Thu, 12 May 2016 09:11:53 +0300
+From: Dan Carpenter <dan.carpenter@oracle.com>
+To: trond.myklebust@primarydata.com
+Cc: linux-nfs@vger.kernel.org
+Subject: re: NFSv4.x: Enforce the ca_maxresponsesize_cached on the back
+ channel
+Message-ID: <20160512061113.GA20157@mwanda>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=us-ascii
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gNS8xMS8xNiwgMTg6MTQsICJUaWdyYW4gTWtydGNoeWFuIiA8dGlncmFuLm1rcnRjaHlhbkBk
-ZXN5LmRlPiB3cm90ZToNCg0KPk9QRU5fQ1JFQVRFIHdpdGggRVhDTFVTSVZFNF8xIHNlbmRzIGlu
-aXRpYWwgZmlsZSBwZXJtaXNzaW9uLg0KPklnbm9yaW5nICBmYWN0LCB0aGF0IHNlcnZlciBoYXZl
-IGluZGljYXRlZCB0aGF0IGZpbGUgbW9kIGlzIHNldCwgY2xpZW50DQo+d2lsbCBzZW5kIHlldCBh
-bm90aGVyIFNFVEFUVFIgcmVxdWVzdCwgYnV0LCBhcyBtb2RlIGlzIGFscmVhZHkgc2V0LA0KPm5l
-dyBTRVRBVFRSIHdpbGwgYmUgZW1wdHkuIFRoaXMgaXMgbm90IGEgcHJvYmxlbSwgbmV2ZXJ0aGVs
-ZXNzDQo+YW4gZXh0cmEgcm91bmR0cmlwIGFuZCBzbG93IG9wZW4gb24gaGlnaCBsYXRlbmN5IG5l
-dHdvcmtzLg0KPg0KPlRoaXMgY2hhbmdlIGlzIGFpbXMgdG8gYnktcGFzcyBzZXRhdHRyIGlmIHRo
-ZXJlIGFyZSBubyBhdHRyaWJ1dGVzIGRlZmluZWQuDQo+DQo+U2lnbmVkLW9mZi1ieTogVGlncmFu
-IE1rcnRjaHlhbiA8dGlncmFuLm1rcnRjaHlhbkBkZXN5LmRlPg0KPi0tLQ0KPiBmcy9uZnMvbmZz
-NHByb2MuYyB8IDYgKysrKysrDQo+IDEgZmlsZSBjaGFuZ2VkLCA2IGluc2VydGlvbnMoKykNCj4N
-Cj5kaWZmIC0tZ2l0IGEvZnMvbmZzL25mczRwcm9jLmMgYi9mcy9uZnMvbmZzNHByb2MuYw0KPmlu
-ZGV4IDMyN2I4YzMuLmY2YjI3OGYgMTAwNjQ0DQo+LS0tIGEvZnMvbmZzL25mczRwcm9jLmMNCj4r
-KysgYi9mcy9uZnMvbmZzNHByb2MuYw0KPkBAIC0yNzI0LDYgKzI3MjQsMTIgQEAgc3RhdGljIGlu
-dCBuZnM0X2RvX3NldGF0dHIoc3RydWN0IGlub2RlICppbm9kZSwgc3RydWN0IHJwY19jcmVkICpj
-cmVkLA0KPiAJCS5pbm9kZSA9IGlub2RlLA0KPiAJfTsNCj4gCWludCBlcnI7DQo+KwkvKg0KPisJ
-ICogYSBzaG9ydGN1dDogaXQgdGhlcmUgYXJlIG5vIGF0dHJpYnV0ZXMgdG8gYmUgdXBkYXRlZCwg
-ZG8gbm90IHNlbmQgc2V0YXR0ciBhdCBhbGwNCj4rCSAqLw0KPisJaWYgKHNhdHRyLT5pYV92YWxp
-ZCA9PSBBVFRSX09QRU4pDQo+KwkJcmV0dXJuIDA7DQo+Kw0KDQpUaGVyZSBpcyBhbHJlYWR5IGEg
-c2ltaWxhciBvcHRpbWl6YXRpb24gaW4gbmZzX3NldGF0dHIoKSwgc28gSSBkb27igJl0IHRoaW5r
-IGl0IG1ha2VzIHNlbnNlIHRvIHB1dCB0aGlzIGluIG5mczRfZG9fc2V0YXR0cigpLiBXZSBzaG91
-bGQgcmF0aGVyIGp1c3QgZml4IF9uZnM0X2RvX29wZW4oKS4NCg0KPiAJZG8gew0KPiAJCWVyciA9
-IF9uZnM0X2RvX3NldGF0dHIoaW5vZGUsIGNyZWQsIGZhdHRyLCBzYXR0ciwgc3RhdGUsIGlsYWJl
-bCwgb2xhYmVsKTsNCj4gCQlzd2l0Y2ggKGVycikgew0KPi0tIA0KPjIuNS41DQo+DQoNCg==
+Hello Trond Myklebust,
 
+The patch 80f9642724af: "NFSv4.x: Enforce the
+ca_maxresponsesize_cached on the back channel" from Jan 23, 2016,
+leads to the following static checker warning:
+
+  fs/nfs/callback_proc.c:540 nfs4_callback_sequence()
+  warn: inconsistent returns 'spin_lock:&tbl->slot_tbl_lock'.
+    Locked on:   line 504
+    Unlocked on: line 540
+
+fs/nfs/callback_proc.c
+   490          res->csr_highestslotid = tbl->server_highest_slotid;
+   491          res->csr_target_highestslotid = tbl->target_highest_slotid;
+   492  
+   493          status = validate_seqid(tbl, slot, args);
+   494          if (status)
+   495                  goto out_unlock;
+   496          if (!nfs4_try_to_lock_slot(tbl, slot)) {
+   497                  status = htonl(NFS4ERR_DELAY);
+   498                  goto out_unlock;
+                        ^^^^^^^^^^^^^^^
+   499          }
+   500          cps->slot = slot;
+   501  
+   502          /* The ca_maxresponsesize_cached is 0 with no DRC */
+   503          if (args->csa_cachethis != 0)
+   504                  return htonl(NFS4ERR_REP_TOO_BIG_TO_CACHE);
+
+This should also unlock and possibly do other unwinding?
+
+   505  
+   506          /*
+   507           * Check for pending referring calls.  If a match is found, a
+   508           * related callback was received before the response to the original
+   509           * call.
+   510           */
+   511          if (referring_call_exists(clp, args->csa_nrclists, args->csa_rclists)) {
+   512                  status = htonl(NFS4ERR_DELAY);
+   513                  goto out_unlock;
+   514          }
+
+regards,
+dan carpenter
