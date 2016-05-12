@@ -1,73 +1,37 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ig0-f196.google.com ([209.85.213.196]:34198 "EHLO
-	mail-ig0-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752160AbcELTTF (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 12 May 2016 15:19:05 -0400
-Received: by mail-ig0-f196.google.com with SMTP id kj7so387877igb.1
-        for <linux-nfs@vger.kernel.org>; Thu, 12 May 2016 12:19:04 -0700 (PDT)
-MIME-Version: 1.0
-In-Reply-To: <20160512061113.GA20157@mwanda>
-References: <20160512061113.GA20157@mwanda>
-Date: Thu, 12 May 2016 15:19:03 -0400
-Message-ID: <CAN-5tyHXmTGBM32MqWmdxeQng_9KiTbwhePA79vwzUxVra9uww@mail.gmail.com>
-Subject: Re: NFSv4.x: Enforce the ca_maxresponsesize_cached on the back channel
-From: Olga Kornievskaia <aglo@umich.edu>
-To: Dan Carpenter <dan.carpenter@oracle.com>
-Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
-        linux-nfs <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=UTF-8
+Received: from mail-pf0-f172.google.com ([209.85.192.172]:36141 "EHLO
+	mail-pf0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752208AbcELXdl convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 12 May 2016 19:33:41 -0400
+Received: by mail-pf0-f172.google.com with SMTP id c189so36807036pfb.3
+        for <linux-nfs@vger.kernel.org>; Thu, 12 May 2016 16:33:41 -0700 (PDT)
+From: "Nathalie D'Amours" <nathalie.damours@gmail.com>
+Content-Type: text/plain; charset=utf-8
+Subject: pNFS problem: client writes go through MDS instead of going directly to DS
+Date: Thu, 12 May 2016 16:33:39 -0700
+Message-Id: <8AE03FE0-3F86-4B0D-AD80-D4720C56F4A4@gmail.com>
+Cc: Frederic Carlson <frcarlson@gmail.com>
+To: linux-nfs@vger.kernel.org
+Mime-Version: 1.0 (Mac OS X Mail 9.3 \(3124\))
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Yep that leads to the kernel oops. I have posted a patch. Hopefully
-Trond will approve it.
+Hi,
 
-On Thu, May 12, 2016 at 2:11 AM, Dan Carpenter <dan.carpenter@oracle.com> wrote:
-> Hello Trond Myklebust,
->
-> The patch 80f9642724af: "NFSv4.x: Enforce the
-> ca_maxresponsesize_cached on the back channel" from Jan 23, 2016,
-> leads to the following static checker warning:
->
->   fs/nfs/callback_proc.c:540 nfs4_callback_sequence()
->   warn: inconsistent returns 'spin_lock:&tbl->slot_tbl_lock'.
->     Locked on:   line 504
->     Unlocked on: line 540
->
-> fs/nfs/callback_proc.c
->    490          res->csr_highestslotid = tbl->server_highest_slotid;
->    491          res->csr_target_highestslotid = tbl->target_highest_slotid;
->    492
->    493          status = validate_seqid(tbl, slot, args);
->    494          if (status)
->    495                  goto out_unlock;
->    496          if (!nfs4_try_to_lock_slot(tbl, slot)) {
->    497                  status = htonl(NFS4ERR_DELAY);
->    498                  goto out_unlock;
->                         ^^^^^^^^^^^^^^^
->    499          }
->    500          cps->slot = slot;
->    501
->    502          /* The ca_maxresponsesize_cached is 0 with no DRC */
->    503          if (args->csa_cachethis != 0)
->    504                  return htonl(NFS4ERR_REP_TOO_BIG_TO_CACHE);
->
-> This should also unlock and possibly do other unwinding?
->
->    505
->    506          /*
->    507           * Check for pending referring calls.  If a match is found, a
->    508           * related callback was received before the response to the original
->    509           * call.
->    510           */
->    511          if (referring_call_exists(clp, args->csa_nrclists, args->csa_rclists)) {
->    512                  status = htonl(NFS4ERR_DELAY);
->    513                  goto out_unlock;
->    514          }
->
-> regards,
-> dan carpenter
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+I am using pNFS (blocklayout) to mount an XFS file system (on top of iSCSI) on a client. Everything works except that the write data goes through the MDS first instead of going directly to the DS.  I don’t know what I am doing wrong.  Any help or pointer would be very appreciated.
+
+Here is the configuration:
+
+host1: DS with one ISCSI target
+host2: MDS: ISCSI initiator to target on host1, XFS built on the iSCSI device (initiator) and exported through NFS
+host3: NFS client mounts the XFS file system using NFS 4.1.
+
+I am using Fedora 23 (linux kernel 4.4.8) on all hosts.
+
+NFS Server (host2):
+------------------
+
+$ journalctl --since "2016-05-12" -t iscsiadm
+-- Logs begin at Wed 2016-05-04 19:17:25 UTC, end at Thu 2016-05-12 22:42:53 UTC. --
+May 12 18:30:04 ip-172-31-28-138.us-west-2.compute.internal iscsiadm[851]: Logging in to [iface: default, target: iqn.2015-10.com.agylstor:logicalcard3, portal: 172.31.36.18,3260] (multiple)
+May 12 18:30:04 ip-172-31-28-138.us-west-2.compute.internal iscsiadm[851]: Login to [iface: default, target: iqn.2015-10.com.agylstor:logicalcard3, portal: 172.31.36.18,3260] successful.
