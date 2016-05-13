@@ -1,15 +1,15 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
 Received: from mx142.netapp.com ([216.240.21.19]:7427 "EHLO mx142.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753076AbcEMUu5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 13 May 2016 16:50:57 -0400
+	id S932224AbcEMUu7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 13 May 2016 16:50:59 -0400
 From: Anna Schumaker <Anna.Schumaker@netapp.com>
 To: <fstests@vger.kernel.org>
 CC: <Anna.Schumaker@netapp.com>, <linux-nfs@vger.kernel.org>,
         <hch@infradead.org>
-Subject: [PATCH 1/5] src/copy_file_range: Add a program for testing vfs_copy_file_range()
-Date: Fri, 13 May 2016 16:50:48 -0400
-Message-ID: <1463172652-22361-2-git-send-email-Anna.Schumaker@Netapp.com>
+Subject: [PATCH 4/5] generic/345: Add copy test that overwrites data
+Date: Fri, 13 May 2016 16:50:51 -0400
+Message-ID: <1463172652-22361-5-git-send-email-Anna.Schumaker@Netapp.com>
 In-Reply-To: <1463172652-22361-1-git-send-email-Anna.Schumaker@Netapp.com>
 References: <1463172652-22361-1-git-send-email-Anna.Schumaker@Netapp.com>
 MIME-Version: 1.0
@@ -17,258 +17,163 @@ Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This will be used by the various copy tests to call the Linux
-copy_file_range() system call.  I used src/cloner.c as a reference while
-writing this tool.
+Using copy to overwrite data in the destination file is perfectly valid,
+so let's make sure this case works as expected.
 
 Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
 ---
- .gitignore            |   1 +
- common/rc             |   7 ++
- src/Makefile          |   3 +-
- src/copy_file_range.c | 189 ++++++++++++++++++++++++++++++++++++++++++++++++++
- 4 files changed, 199 insertions(+), 1 deletion(-)
- create mode 100644 src/copy_file_range.c
+ tests/generic/345     | 107 ++++++++++++++++++++++++++++++++++++++++++++++++++
+ tests/generic/345.out |  17 ++++++++
+ tests/generic/group   |   1 +
+ 3 files changed, 125 insertions(+)
+ create mode 100644 tests/generic/345
+ create mode 100644 tests/generic/345.out
 
-diff --git a/.gitignore b/.gitignore
-index f9ea1fa..07cb94b 100644
---- a/.gitignore
-+++ b/.gitignore
-@@ -38,6 +38,7 @@
- /src/bstat
- /src/bulkstat_unlink_test
- /src/bulkstat_unlink_test_modified
-+/src/copy_file_range
- /src/dbtest
- /src/devzero
- /src/dirperf
-diff --git a/common/rc b/common/rc
-index 8bec836..735ff7a 100644
---- a/common/rc
-+++ b/common/rc
-@@ -2909,6 +2909,13 @@ _require_cloner()
- 		_notrun "cloner binary not present at $CLONER_PROG"
- }
- 
-+_require_copy_file_range()
-+{
-+	COPY_FILE_RANGE_PROG=$here/src/copy_file_range
-+	[ -x $COPY_FILE_RANGE_PROG ] || \
-+		_notrun "copy file range binary not present at $COPY_FILE_RANGE_PROG"
-+}
-+
- _require_atime()
- {
- 	if [ "$FSTYP" == "nfs" ]; then
-diff --git a/src/Makefile b/src/Makefile
-index 1bf318b..b1b5766 100644
---- a/src/Makefile
-+++ b/src/Makefile
-@@ -20,7 +20,8 @@ LINUX_TARGETS = xfsctl bstat t_mtab getdevicesize preallo_rw_pattern_reader \
- 	bulkstat_unlink_test_modified t_dir_offset t_futimens t_immutable \
- 	stale_handle pwrite_mmap_blocked t_dir_offset2 seek_sanity_test \
- 	seek_copy_test t_readdir_1 t_readdir_2 fsync-tester nsexec cloner \
--	renameat2 t_getcwd e4compact test-nextquota punch-alternating
-+	renameat2 t_getcwd e4compact test-nextquota punch-alternating \
-+	copy_file_range
- 
- SUBDIRS =
- 
-diff --git a/src/copy_file_range.c b/src/copy_file_range.c
+diff --git a/tests/generic/345 b/tests/generic/345
 new file mode 100644
-index 0000000..067de26
+index 0000000..ba96e4a
 --- /dev/null
-+++ b/src/copy_file_range.c
-@@ -0,0 +1,189 @@
-+/*
-+ * Tiny program to perform file range copies using the Linux system call.
-+ *
-+ *  Copyright (c) 2016 Netapp, Inc. All rights reserved.
-+ *
-+ *  This program is free software; you can redistribute it and/or modify
-+ *  it under the terms of the GNU General Public License as published by
-+ *  the Free Software Foundation; either version 2 of the License, or
-+ *  (at your option) any later version.
-+ *
-+ *  This program is distributed in the hope that it will be useful,
-+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
-+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-+ *  GNU General Public License for more details.
-+ *
-+ *  You should have received a copy of the GNU General Public License
-+ *  along with this program; if not, write to the Free Software
-+ *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
-+ */
-+#include <errno.h>
-+#include <fcntl.h>
-+#include <stdbool.h>
-+#include <stdio.h>
-+#include <stdlib.h>
-+#include <string.h>
-+#include <sys/stat.h>
-+#include <sys/syscall.h>
-+#include <sys/types.h>
-+#include <unistd.h>
++++ b/tests/generic/345
+@@ -0,0 +1,107 @@
++#!/bin/bash
++# FS QA Test No. 345
++#
++# Tests vfs_copy_file_range():
++#   - Copy a file
++#   - Use copy to swap data at beginning and end
++#   - Use copy to swap data in the middle
++#   - Use copy to simultaneously overwrite and append to destination file
++#-----------------------------------------------------------------------
++# Copyright (c) 2016 Netapp, Inc. All rights reserved.
++#
++# This program is free software; you can redistribute it and/or
++# modify it under the terms of the GNU General Public License as
++# published by the Free Software Foundation.
++#
++# This program is distributed in the hope that it would be useful,
++# but WITHOUT ANY WARRANTY; without even the implied warranty of
++# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++# GNU General Public License for more details.
++#
++# You should have received a copy of the GNU General Public License
++# along with this program; if not, write the Free Software Foundation,
++# Inc.,  51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
++#-----------------------------------------------------------------------
++#
 +
-+static void
-+usage(char *name, const char *msg)
++seq=`basename $0`
++seqres=$RESULT_DIR/$seq
++echo "QA output created by $seq"
++
++here=`pwd`
++tmp=/tmp/$$
++status=1    # failure is the default!
++trap "_cleanup; exit \$status" 0 1 2 3 15
++
++_cleanup()
 +{
-+	printf("Fatal: %s\n"
-+	       "Usage:\n"
-+	       "%s [options] <src_file> <dest_file>\n"
-+	       "\tA full file copy is performed by default, "
-+	       "unless any of the following are specified:\n"
-+	       "\t-s <offset>:	source file offset (default = 0)\n"
-+	       "\t-d <offset>:	destination file offset (default = 0)\n"
-+	       "\t-l <length>:	length of copy (default = 0)\n",
-+	       msg, name);
-+	_exit(1);
++	cd /
++	rm -rf $tmp.*
 +}
 +
-+static loff_t
-+copy_file_range(int src_fd,  loff_t *src_pos, int dst_fd, loff_t *dst_pos,
-+		size_t len, unsigned int flags)
++# get standard environment
++. common/rc
++. common/filter
++
++# real QA test starts here
++_supported_os Linux
++
++_require_copy_file_range
++_require_test
++
++testdir=$TEST_DIR/test-$seq
++rm -rf $testdir
++mkdir $testdir
++
++_checksum_files()
 +{
-+	loff_t ret;
-+
-+	do {
-+		ret = syscall(__NR_copy_file_range, src_fd, src_pos,
-+						    dst_fd, dst_pos,
-+						    len, flags);
-+		if (ret == -1)
-+			return errno;
-+		len -= ret;
-+	} while (len > 0);
-+
-+	return 0;
++	for f in file copy; do
++		md5sum $testdir/$f | _filter_test_dir
++	done
 +}
 +
-+static loff_t
-+copy_file(int src_fd, int dst_fd, unsigned int flags)
-+{
-+	struct stat stat;
-+	loff_t src_pos = 0;
-+	loff_t dst_pos = 0;
-+	size_t len;
-+	loff_t ret;
++rm -f $seqres.full
 +
-+	ret = fstat(src_fd, &stat);
-+	if (ret == -1) {
-+		ret = errno;
-+		printf("stat failed: %s\n", strerror(ret));
-+		return ret;
-+	}
++echo "Create the original file and then copy"
++$XFS_IO_PROG -f -c 'pwrite -S 0x61 0    1000' $testdir/file >> $seqres.full 2>&1
++$XFS_IO_PROG -f -c 'pwrite -S 0x62 1000 1000' $testdir/file >> $seqres.full 2>&1
++$XFS_IO_PROG -f -c 'pwrite -S 0x63 2000 1000' $testdir/file >> $seqres.full 2>&1
++$XFS_IO_PROG -f -c 'pwrite -S 0x64 3000 1000' $testdir/file >> $seqres.full 2>&1
++$XFS_IO_PROG -f -c 'pwrite -S 0x65 4000 1000' $testdir/file >> $seqres.full 2>&1
++$COPY_FILE_RANGE_PROG $testdir/file  $testdir/copy
++cmp $testdir/file  $testdir/copy
++echo "Original md5sums:"
++_checksum_files
 +
-+	len = stat.st_size;
-+	ret = ftruncate(dst_fd, 0);
-+	if (ret == -1) {
-+		ret = errno;
-+		printf("truncate failed: %s\n", strerror(ret));
-+		return ret;
-+	}
++echo "Swap beginning and end of original file"
++$COPY_FILE_RANGE_PROG -s 4000 -l 1000 $testdir/file $testdir/copy
++$COPY_FILE_RANGE_PROG -d 4000 -l 1000 $testdir/file $testdir/copy
++cmp -n 1000 $testdir/file $testdir/copy 4000
++cmp -n 3000 $testdir/file $testdir/copy 1000 1000
++cmp -n 1000 $testdir/file $testdir/copy 0 4000
++echo "md5sums after swapping beginning and end:"
++_checksum_files
 +
-+	return copy_file_range(src_fd, &src_pos, dst_fd, &dst_pos, len, flags);
-+}
++echo "Swap middle parts of original file"
++$COPY_FILE_RANGE_PROG -s 1000 -d 3000 -l 1000 $testdir/file $testdir/copy
++$COPY_FILE_RANGE_PROG -s 3000 -d 1000 -l 1000 $testdir/file $testdir/copy
++cmp -n 1000 $testdir/file $testdir/copy 4000
++cmp -n 1000 $testdir/file $testdir/copy 3000 1000
++cmp -n 1000 $testdir/file $testdir/copy 2000 2000
++cmp -n 1000 $testdir/file $testdir/copy 1000 3000
++cmp -n 1000 $testdir/file $testdir/copy 0 4000
++echo "md5sums after swapping middle:"
++_checksum_files
 +
++echo "Copy tail of original file onto copy"
++$COPY_FILE_RANGE_PROG -s 1000 -d 3000 -l 4000 $testdir/file $testdir/copy
++cmp -n 1000 $testdir/file $testdir/copy 4000
++cmp -n 1000 $testdir/file $testdir/copy 3000 1000
++cmp -n 1000 $testdir/file $testdir/copy 2000 2000
++cmp -n 4000 $testdir/file $testdir/copy 1000 3000
++echo "md5sums after copying tail:"
++_checksum_files
 +
-+int
-+main(int argc, char **argv)
-+{
-+	char *src_file, *dst_file;
-+	bool full_file = true;
-+	loff_t src_off = 0;
-+	loff_t dst_off = 0;
-+	int src_fd, dst_fd;
-+	size_t len = 0;
-+	int opt, ret;
-+
-+	while ((opt = getopt(argc, argv, "s:d:l:")) != -1) {
-+		char *sval_end;
-+		switch (opt) {
-+		case 's':
-+			errno = 0;
-+			src_off = strtoull(optarg, &sval_end, 10);
-+			if ((errno) || (*sval_end != '\0'))
-+				usage(argv[0], "invalid source offset");
-+			full_file = false;
-+			break;
-+		case 'd':
-+			errno = 0;
-+			dst_off = strtoull(optarg, &sval_end, 10);
-+			if ((errno) || (*sval_end != '\0'))
-+				usage(argv[0], "invalid destination offset");
-+			full_file = false;
-+			break;
-+		case 'l':
-+			errno = 0;
-+			len = strtoul(optarg, &sval_end, 10);
-+			if ((errno) || (*sval_end != '\0'))
-+				usage(argv[0], "invalid length");
-+			full_file = false;
-+			break;
-+		default:
-+			usage(argv[0], "invalid argument");
-+		}
-+	}
-+
-+	/* should be exactly two args left */
-+	if (optind != argc - 2)
-+		usage(argv[0], "src_file and dst_file arguments are mandatory");
-+
-+	src_file = (char *)strdup(argv[optind++]);
-+	if (src_file == NULL) {
-+		ret = ENOMEM;
-+		printf("no memory\n");
-+		goto err_out;
-+	}
-+	dst_file = (char *)strdup(argv[optind++]);
-+	if (dst_file == NULL) {
-+		ret = ENOMEM;
-+		printf("no memory\n");
-+		goto err_src_free;
-+	}
-+
-+	src_fd = open(src_file, O_RDONLY);
-+	if (src_fd == -1) {
-+		ret = errno;
-+		printf("failed to open %s: %s\n", src_file, strerror(errno));
-+		goto err_dst_free;
-+	}
-+	dst_fd = open(dst_file, O_CREAT | O_WRONLY, 0644);
-+	if (dst_fd == -1) {
-+		ret = errno;
-+		printf("failed to open %s: %s\n", dst_file, strerror(errno));
-+		goto err_src_close;
-+	}
-+
-+	if (full_file) {
-+		ret = copy_file(src_fd, dst_fd, 0);
-+	} else {
-+		ret = copy_file_range(src_fd, &src_off, dst_fd, &dst_off, len, 0);
-+	}
-+	if (ret != 0) {
-+		printf("copy failed: %s\n", strerror(ret));
-+		goto err_dst_close;
-+	}
-+
-+	ret = 0;
-+err_dst_close:
-+	if (close(dst_fd)) {
-+		ret |= errno;
-+		printf("failed to close dst file: %s\n", strerror(errno));
-+	}
-+err_src_close:
-+	if (close(src_fd)) {
-+		ret |= errno;
-+		printf("failed to close src file: %s\n", strerror(errno));
-+	}
-+err_dst_free:
-+	free(dst_file);
-+err_src_free:
-+	free(src_file);
-+err_out:
-+	return ret;
-+}
++#success, all done
++status=0
++exit
+diff --git a/tests/generic/345.out b/tests/generic/345.out
+new file mode 100644
+index 0000000..0c0a505
+--- /dev/null
++++ b/tests/generic/345.out
+@@ -0,0 +1,17 @@
++QA output created by 345
++Create the original file and then copy
++Original md5sums:
++e11fbace556cba26bf0076e74cab90a3  TEST_DIR/test-345/file
++e11fbace556cba26bf0076e74cab90a3  TEST_DIR/test-345/copy
++Swap beginning and end of original file
++md5sums after swapping beginning and end:
++e11fbace556cba26bf0076e74cab90a3  TEST_DIR/test-345/file
++5f4e111811dd9a810143c9db9bec6d80  TEST_DIR/test-345/copy
++Swap middle parts of original file
++md5sums after swapping middle:
++e11fbace556cba26bf0076e74cab90a3  TEST_DIR/test-345/file
++8c81889a5a50b311197110bcf769a695  TEST_DIR/test-345/copy
++Copy tail of original file onto copy
++md5sums after copying tail:
++e11fbace556cba26bf0076e74cab90a3  TEST_DIR/test-345/file
++e5fbacd993eaa5e80ebc2b14b969887d  TEST_DIR/test-345/copy
+diff --git a/tests/generic/group b/tests/generic/group
+index 323e42b..69696c7 100644
+--- a/tests/generic/group
++++ b/tests/generic/group
+@@ -347,3 +347,4 @@
+ 342 auto quick metadata
+ 343 auto quick copy
+ 344 auto quick copy
++345 auto quick copy
 -- 
 2.8.2
 
