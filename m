@@ -1,15 +1,15 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx144.netapp.com ([216.240.21.25]:20975 "EHLO mx144.netapp.com"
+Received: from mx143.netapp.com ([216.240.21.24]:1096 "EHLO mx143.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753557AbcEMUu7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 13 May 2016 16:50:59 -0400
+	id S932154AbcEMUvA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 13 May 2016 16:51:00 -0400
 From: Anna Schumaker <Anna.Schumaker@netapp.com>
 To: <fstests@vger.kernel.org>
 CC: <Anna.Schumaker@netapp.com>, <linux-nfs@vger.kernel.org>,
         <hch@infradead.org>
-Subject: [PATCH 3/5] generic/344: Add small copies to new file test
-Date: Fri, 13 May 2016 16:50:50 -0400
-Message-ID: <1463172652-22361-4-git-send-email-Anna.Schumaker@Netapp.com>
+Subject: [PATCH 5/5] generic/346: Add a copy test for overwriting small amounts of data
+Date: Fri, 13 May 2016 16:50:52 -0400
+Message-ID: <1463172652-22361-6-git-send-email-Anna.Schumaker@Netapp.com>
 In-Reply-To: <1463172652-22361-1-git-send-email-Anna.Schumaker@Netapp.com>
 References: <1463172652-22361-1-git-send-email-Anna.Schumaker@Netapp.com>
 MIME-Version: 1.0
@@ -17,30 +17,32 @@ Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This test copies single bytes from a source file into various new files
-just to make sure that we can handle very small copies.
+This test is similar to 345, except that it copies one byte at a time to
+make sure that this case works as expected.
 
 Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
 ---
- tests/generic/344     | 86 +++++++++++++++++++++++++++++++++++++++++++++++++++
- tests/generic/344.out | 13 ++++++++
+ tests/generic/346     | 94 +++++++++++++++++++++++++++++++++++++++++++++++++++
+ tests/generic/346.out | 17 ++++++++++
  tests/generic/group   |  1 +
- 3 files changed, 100 insertions(+)
- create mode 100644 tests/generic/344
- create mode 100644 tests/generic/344.out
+ 3 files changed, 112 insertions(+)
+ create mode 100644 tests/generic/346
+ create mode 100644 tests/generic/346.out
 
-diff --git a/tests/generic/344 b/tests/generic/344
+diff --git a/tests/generic/346 b/tests/generic/346
 new file mode 100644
-index 0000000..4220293
+index 0000000..4154bd5
 --- /dev/null
-+++ b/tests/generic/344
-@@ -0,0 +1,86 @@
++++ b/tests/generic/346
+@@ -0,0 +1,94 @@
 +#!/bin/bash
-+# FS QA Test No. 344
++# FS QA Test No. 346
 +#
 +# Tests vfs_copy_file_range():
 +#   - Copy a small file
-+#   - Small copies from various points in the original file
++#   - Use copy to swap data at beginning and end
++#   - Use copy to swap data in the middle
++#   - Use copy to swap data in a small file
 +#-----------------------------------------------------------------------
 +# Copyright (c) 2016 Netapp, Inc. All rights reserved.
 +#
@@ -90,7 +92,7 @@ index 0000000..4220293
 +
 +_checksum_files()
 +{
-+	for f in $*; do
++	for f in file copy; do
 +		md5sum $testdir/$f | _filter_test_dir
 +	done
 +}
@@ -100,55 +102,65 @@ index 0000000..4220293
 +echo "Create the original file and then copy"
 +echo -n "abcde" > $testdir/file
 +$COPY_FILE_RANGE_PROG $testdir/file $testdir/copy
-+echo -n "abcde" | cmp $testdir/copy
++cmp $testdir/file $testdir/copy
 +echo "Original md5sums:"
-+_checksum_files file copy
++_checksum_files
 +
-+echo "Small copies from various points in the original file"
-+$COPY_FILE_RANGE_PROG -s 0 -l 1 $testdir/file $testdir/a
-+$COPY_FILE_RANGE_PROG -s 1 -l 1 $testdir/file $testdir/b
-+$COPY_FILE_RANGE_PROG -s 2 -l 1 $testdir/file $testdir/c
-+$COPY_FILE_RANGE_PROG -s 3 -l 1 $testdir/file $testdir/d
-+$COPY_FILE_RANGE_PROG -s 4 -l 1 $testdir/file $testdir/e
-+echo -n "a" | cmp $testdir/a
-+echo -n "b" | cmp $testdir/b
-+echo -n "c" | cmp $testdir/c
-+echo -n "d" | cmp $testdir/d
-+echo -n "e" | cmp $testdir/e
-+echo "md5sums after small copies"
-+_checksum_files file a b c d e
++echo "Swap beginning and end of original file"
++$COPY_FILE_RANGE_PROG -s 0 -d 4 -l 1 $testdir/file $testdir/copy
++$COPY_FILE_RANGE_PROG -s 4 -d 0 -l 1 $testdir/file $testdir/copy
++echo -n "ebcda" | cmp $testdir/copy
++echo "md5sums after swapping beginning and end:"
++_checksum_files
++
++echo "Swap middle parts of original file"
++$COPY_FILE_RANGE_PROG -s 1 -d 3 -l 1 $testdir/file $testdir/copy
++$COPY_FILE_RANGE_PROG -s 3 -d 1 -l 1 $testdir/file $testdir/copy
++echo -n "edcba" | cmp $testdir/copy
++echo "md5sums after swapping middle:"
++_checksum_files
++
++echo "Copy tail of original file onto copy"
++$COPY_FILE_RANGE_PROG -s 1 -d 3 -l 4 $testdir/file $testdir/copy
++echo -n "edcbcde" | cmp $testdir/copy
++echo "md5sums after copying tail:"
++_checksum_files
 +
 +#success, all done
 +status=0
 +exit
-diff --git a/tests/generic/344.out b/tests/generic/344.out
+diff --git a/tests/generic/346.out b/tests/generic/346.out
 new file mode 100644
-index 0000000..152fb2c
+index 0000000..0d37b62
 --- /dev/null
-+++ b/tests/generic/344.out
-@@ -0,0 +1,13 @@
-+QA output created by 344
++++ b/tests/generic/346.out
+@@ -0,0 +1,17 @@
++QA output created by 346
 +Create the original file and then copy
 +Original md5sums:
-+ab56b4d92b40713acc5af89985d4b786  TEST_DIR/test-344/file
-+ab56b4d92b40713acc5af89985d4b786  TEST_DIR/test-344/copy
-+Small copies from various points in the original file
-+md5sums after small copies
-+ab56b4d92b40713acc5af89985d4b786  TEST_DIR/test-344/file
-+0cc175b9c0f1b6a831c399e269772661  TEST_DIR/test-344/a
-+92eb5ffee6ae2fec3ad71c777531578f  TEST_DIR/test-344/b
-+4a8a08f09d37b73795649038408b5f33  TEST_DIR/test-344/c
-+8277e0910d750195b448797616e091ad  TEST_DIR/test-344/d
-+e1671797c52e15f763380b45e841ec32  TEST_DIR/test-344/e
++ab56b4d92b40713acc5af89985d4b786  TEST_DIR/test-346/file
++ab56b4d92b40713acc5af89985d4b786  TEST_DIR/test-346/copy
++Swap beginning and end of original file
++md5sums after swapping beginning and end:
++ab56b4d92b40713acc5af89985d4b786  TEST_DIR/test-346/file
++32db1f6d06d15f7e38e1ab1c69da498a  TEST_DIR/test-346/copy
++Swap middle parts of original file
++md5sums after swapping middle:
++ab56b4d92b40713acc5af89985d4b786  TEST_DIR/test-346/file
++295228f3d82d344bbcf2f0030519c2ea  TEST_DIR/test-346/copy
++Copy tail of original file onto copy
++md5sums after copying tail:
++ab56b4d92b40713acc5af89985d4b786  TEST_DIR/test-346/file
++0c4aac952f72fa078e2f8419aca70b28  TEST_DIR/test-346/copy
 diff --git a/tests/generic/group b/tests/generic/group
-index d5e5242..323e42b 100644
+index 69696c7..8a8ba8d 100644
 --- a/tests/generic/group
 +++ b/tests/generic/group
-@@ -346,3 +346,4 @@
- 341 auto quick metadata
- 342 auto quick metadata
+@@ -348,3 +348,4 @@
  343 auto quick copy
-+344 auto quick copy
+ 344 auto quick copy
+ 345 auto quick copy
++346 auto quick copy
 -- 
 2.8.2
 
