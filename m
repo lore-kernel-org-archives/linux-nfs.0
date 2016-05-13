@@ -1,102 +1,65 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:46796 "EHLO fieldses.org"
+Received: from fieldses.org ([173.255.197.46]:46834 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932116AbcEMTnY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 13 May 2016 15:43:24 -0400
-Date: Fri, 13 May 2016 15:43:20 -0400
+	id S932211AbcEMUM5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 13 May 2016 16:12:57 -0400
+Date: Fri, 13 May 2016 16:12:56 -0400
 From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Jeff Layton <jlayton@poochiereds.net>
-Cc: linux-nfs@vger.kernel.org, Christoph Hellwig <hch@lst.de>
-Subject: Re: [PATCH] nfsd: handle seqid wraparound in
- nfsd4_preprocess_layout_stateid
-Message-ID: <20160513194320.GC5658@fieldses.org>
-References: <1462445627-15093-1-git-send-email-jeff.layton@primarydata.com>
- <1462446017.28919.7.camel@poochiereds.net>
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH v2 0/9] NFS/RDMA server patches proposed for v4.7
+Message-ID: <20160513201256.GD5658@fieldses.org>
+References: <20160504144730.6602.89073.stgit@klimt.1015granger.net>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-In-Reply-To: <1462446017.28919.7.camel@poochiereds.net>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20160504144730.6602.89073.stgit@klimt.1015granger.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, May 05, 2016 at 07:00:17AM -0400, Jeff Layton wrote:
-> On Thu, 2016-05-05 at 06:53 -0400, Jeff Layton wrote:
-> > Move the existing static function to an inline helper, and call it.
-> > 
-> > Cc: Christoph Hellwig <hch@lst.de>
-> > Signed-off-by: Jeff Layton <jeff.layton@primarydata.com>
-> 
-> This is just something I noticed by inspection while ensuring that some
-> client-side changes that I have queued won't cause a problem. I don't
-> have a knfsd pnfs test rig though, so I can't test this easily.
-> 
-> As a side note though...should we also be verifying that the seqid is not zero in this function? That's never allowed for layout stateids.
+On Wed, May 04, 2016 at 10:52:38AM -0400, Chuck Lever wrote:
+> Shirley's server-side IPv6 patch, and a number of minor fixes and
+> clean-ups found during code review.
 
-In nfsd4_preprocess_layout_stateid()?  Sure.  I guess it's just a
-courtesy to help debug out-of-spec clients, but, may as well.
-
---b.
+Thanks, applying for 4.7.--b.
 
 > 
-> > ---
-> >  fs/nfsd/nfs4layouts.c | 2 +-
-> >  fs/nfsd/nfs4state.c   | 8 +-------
-> >  fs/nfsd/state.h       | 5 +++++
-> >  3 files changed, 7 insertions(+), 8 deletions(-)
-> > 
-> > diff --git a/fs/nfsd/nfs4layouts.c b/fs/nfsd/nfs4layouts.c
-> > index 825c7bc8d789..953c0755cb37 100644
-> > --- a/fs/nfsd/nfs4layouts.c
-> > +++ b/fs/nfsd/nfs4layouts.c
-> > @@ -289,7 +289,7 @@ nfsd4_preprocess_layout_stateid(struct svc_rqst *rqstp,
-> >  
-> >  		status = nfserr_bad_stateid;
-> >  		mutex_lock(&ls->ls_mutex);
-> > -		if (stateid->si_generation > stid->sc_stateid.si_generation)
-> > +		if (nfsd4_stateid_generation_after(stateid, &stid->sc_stateid))
-> >  			goto out_unlock_stid;
-> >  		if (layout_type != ls->ls_layout_type)
-> >  			goto out_unlock_stid;
-> > diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-> > index 0462eeddfff9..f5f82e145018 100644
-> > --- a/fs/nfsd/nfs4state.c
-> > +++ b/fs/nfsd/nfs4state.c
-> > @@ -4651,12 +4651,6 @@ grace_disallows_io(struct net *net, struct inode *inode)
-> >  	return opens_in_grace(net) && mandatory_lock(inode);
-> >  }
-> >  
-> > -/* Returns true iff a is later than b: */
-> > -static bool stateid_generation_after(stateid_t *a, stateid_t *b)
-> > -{
-> > -	return (s32)(a->si_generation - b->si_generation) > 0;
-> > -}
-> > -
-> >  static __be32 check_stateid_generation(stateid_t *in, stateid_t *ref, bool has_session)
-> >  {
-> >  	/*
-> > @@ -4670,7 +4664,7 @@ static __be32 check_stateid_generation(stateid_t *in, stateid_t *ref, bool has_s
-> >  		return nfs_ok;
-> >  
-> >  	/* If the client sends us a stateid from the future, it's buggy: */
-> > -	if (stateid_generation_after(in, ref))
-> > +	if (nfsd4_stateid_generation_after(in, ref))
-> >  		return nfserr_bad_stateid;
-> >  	/*
-> >  	 * However, we could see a stateid from the past, even from a
-> > diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
-> > index c050c53036a6..986e51e5ceac 100644
-> > --- a/fs/nfsd/state.h
-> > +++ b/fs/nfsd/state.h
-> > @@ -573,6 +573,11 @@ enum nfsd4_cb_op {
-> >  	NFSPROC4_CLNT_CB_SEQUENCE,
-> >  };
-> >  
-> > +/* Returns true iff a is later than b: */
-> > +static inline bool nfsd4_stateid_generation_after(stateid_t *a, stateid_t *b)
-> > +{
-> > +	return (s32)(a->si_generation - b->si_generation) > 0;
-> > +}
-> >  
-> >  struct nfsd4_compound_state;
-> >  struct nfsd_net;
-> -- 
-> Jeff Layton <jlayton@poochiereds.net>
+> Available in the "nfsd-rdma-for-4.7" topic branch of this git repo:
+> 
+> git://git.linux-nfs.org/projects/cel/cel-2.6.git
+> 
+> Or for browsing:
+> 
+> http://git.linux-nfs.org/?p=cel/cel-2.6.git;a=log;h=refs/heads/nfsd-rdma-for-4.7
+> 
+> 
+> Changes since v1:
+> - Rebased on v4.6-rc6
+> - Patch converting CQs to workqueue has been dropped for now
+> - A number of clean-ups
+> 
+> ---
+> 
+> Chuck Lever (8):
+>       svcrdma: Do not add XDR padding to xdr_buf page vector
+>       svcrdma: svc_rdma_put_context() is invoked twice in Send error path
+>       svcrdma: Remove superfluous line from rdma_read_chunks()
+>       svcrdma: Post Receives only for forward channel requests
+>       svcrdma: Drain QP before freeing svcrdma_xprt
+>       svcrdma: Eliminate code duplication in svc_rdma_recvfrom()
+>       svcrdma: Generalize svc_rdma_xdr_decode_req()
+>       svcrdma: Simplify the check for backward direction replies
+> 
+> Shirley Ma (1):
+>       svcrdma: Support IPv6 with NFS/RDMA
+> 
+> 
+>  fs/nfsd/nfs3xdr.c                        |    2 -
+>  include/linux/sunrpc/svc_rdma.h          |    2 -
+>  net/sunrpc/xprtrdma/svc_rdma_marshal.c   |   32 ++++++++++-----
+>  net/sunrpc/xprtrdma/svc_rdma_recvfrom.c  |   65 ++++++++----------------------
+>  net/sunrpc/xprtrdma/svc_rdma_sendto.c    |   28 ++++++-------
+>  net/sunrpc/xprtrdma/svc_rdma_transport.c |   17 +++++++-
+>  6 files changed, 70 insertions(+), 76 deletions(-)
+> 
+> --
+> Chuck Lever
