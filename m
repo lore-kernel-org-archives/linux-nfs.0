@@ -1,58 +1,102 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mout.kundenserver.de ([212.227.126.135]:50167 "EHLO
-	mout.kundenserver.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753352AbcEMP3I (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 13 May 2016 11:29:08 -0400
-From: Arnd Bergmann <arnd@arndb.de>
-To: Christoph Hellwig <hch@infradead.org>
-Cc: David Howells <dhowells@redhat.com>, linux-fsdevel@vger.kernel.org,
-        linux-afs@lists.infradead.org, linux-nfs@vger.kernel.org,
-        samba-technical@lists.samba.org, linux-kernel@vger.kernel.org,
-        linux-ext4@vger.kernel.org
-Subject: Re: [PATCH 1/6] statx: Add a system call to make enhanced file info available
-Date: Fri, 13 May 2016 17:28:11 +0200
-Message-ID: <3204439.9qcmCY96fi@wuerfel>
-In-Reply-To: <20160512091141.GA22420@infradead.org>
-References: <20160510070421.GB30896@infradead.org> <6897.1462868755@warthog.procyon.org.uk> <20160512091141.GA22420@infradead.org>
+Received: from fieldses.org ([173.255.197.46]:46796 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932116AbcEMTnY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 13 May 2016 15:43:24 -0400
+Date: Fri, 13 May 2016 15:43:20 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Jeff Layton <jlayton@poochiereds.net>
+Cc: linux-nfs@vger.kernel.org, Christoph Hellwig <hch@lst.de>
+Subject: Re: [PATCH] nfsd: handle seqid wraparound in
+ nfsd4_preprocess_layout_stateid
+Message-ID: <20160513194320.GC5658@fieldses.org>
+References: <1462445627-15093-1-git-send-email-jeff.layton@primarydata.com>
+ <1462446017.28919.7.camel@poochiereds.net>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
+Content-Type: text/plain; charset=utf-8
+In-Reply-To: <1462446017.28919.7.camel@poochiereds.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thursday 12 May 2016 02:11:41 Christoph Hellwig wrote:
-> On Tue, May 10, 2016 at 09:25:55AM +0100, David Howells wrote:
-> > Because it's not necessarily a perfectly working version of it.  See the Y2037
-> > problem for example.
+On Thu, May 05, 2016 at 07:00:17AM -0400, Jeff Layton wrote:
+> On Thu, 2016-05-05 at 06:53 -0400, Jeff Layton wrote:
+> > Move the existing static function to an inline helper, and call it.
 > > 
-> > I was assuming that C libraries might want to update the struct stat and the
-> > stat call() to provide fields that aren't currently there in Linux but are in
-> > other OS's.  We could even dispense with older stat syscalls on new arches.
+> > Cc: Christoph Hellwig <hch@lst.de>
+> > Signed-off-by: Jeff Layton <jeff.layton@primarydata.com>
 > 
-> Please stop this whole let's get rid of old syscalls on new
-> architectures stuff.  This just means we have to do the translation
-> multiple, and the one in userspace is more costly as we it needs to be
-> in every copy of the library.  And times where we had a single libc
-> instance (nevermind implementation) are long over if we ever actually
-> had them.
+> This is just something I noticed by inspection while ensuring that some
+> client-side changes that I have queued won't cause a problem. I don't
+> have a knfsd pnfs test rig though, so I can't test this easily.
+> 
+> As a side note though...should we also be verifying that the seqid is not zero in this function? That's never allowed for layout stateids.
 
-I'm trying to understand what that means for the 64-bit time_t syscalls.
+In nfsd4_preprocess_layout_stateid()?  Sure.  I guess it's just a
+courtesy to help debug out-of-spec clients, but, may as well.
 
-The patch series I did last year had a replacement 'sys_newfstatat()'
-syscall but IIRC no other stat variant, the idea being that we would
-only need to provide this one to the libc and have user space emulate
-the stat/fstat/lstat/fstatat variants based on that.
-With the statx introduction, I was hoping to no longer have to add
-that syscall but instead have libc do everything on top of sys_statx().
+--b.
 
-Do you think that is reasonable, given that we won't be allowed to
-call any of the existing stat() variants for a y2038-safe libc build[1],
-or should we plan to keep needing replacement fstatat (and possibly
-stat/lstat/fstat) syscalls with 64-bit time_t even after statx() support
-is merged into the kernel.
-
-	Arnd
-
-[1] the glibc developers plan to allow compatibility for 32-bit time_t
-    and 64-bit time_t in the same binary, but any user space code built
-    with 64-bit time_t must never call into kernel interfaces that use
-    a 32-bit time_t.
+> 
+> > ---
+> >  fs/nfsd/nfs4layouts.c | 2 +-
+> >  fs/nfsd/nfs4state.c   | 8 +-------
+> >  fs/nfsd/state.h       | 5 +++++
+> >  3 files changed, 7 insertions(+), 8 deletions(-)
+> > 
+> > diff --git a/fs/nfsd/nfs4layouts.c b/fs/nfsd/nfs4layouts.c
+> > index 825c7bc8d789..953c0755cb37 100644
+> > --- a/fs/nfsd/nfs4layouts.c
+> > +++ b/fs/nfsd/nfs4layouts.c
+> > @@ -289,7 +289,7 @@ nfsd4_preprocess_layout_stateid(struct svc_rqst *rqstp,
+> >  
+> >  		status = nfserr_bad_stateid;
+> >  		mutex_lock(&ls->ls_mutex);
+> > -		if (stateid->si_generation > stid->sc_stateid.si_generation)
+> > +		if (nfsd4_stateid_generation_after(stateid, &stid->sc_stateid))
+> >  			goto out_unlock_stid;
+> >  		if (layout_type != ls->ls_layout_type)
+> >  			goto out_unlock_stid;
+> > diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+> > index 0462eeddfff9..f5f82e145018 100644
+> > --- a/fs/nfsd/nfs4state.c
+> > +++ b/fs/nfsd/nfs4state.c
+> > @@ -4651,12 +4651,6 @@ grace_disallows_io(struct net *net, struct inode *inode)
+> >  	return opens_in_grace(net) && mandatory_lock(inode);
+> >  }
+> >  
+> > -/* Returns true iff a is later than b: */
+> > -static bool stateid_generation_after(stateid_t *a, stateid_t *b)
+> > -{
+> > -	return (s32)(a->si_generation - b->si_generation) > 0;
+> > -}
+> > -
+> >  static __be32 check_stateid_generation(stateid_t *in, stateid_t *ref, bool has_session)
+> >  {
+> >  	/*
+> > @@ -4670,7 +4664,7 @@ static __be32 check_stateid_generation(stateid_t *in, stateid_t *ref, bool has_s
+> >  		return nfs_ok;
+> >  
+> >  	/* If the client sends us a stateid from the future, it's buggy: */
+> > -	if (stateid_generation_after(in, ref))
+> > +	if (nfsd4_stateid_generation_after(in, ref))
+> >  		return nfserr_bad_stateid;
+> >  	/*
+> >  	 * However, we could see a stateid from the past, even from a
+> > diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
+> > index c050c53036a6..986e51e5ceac 100644
+> > --- a/fs/nfsd/state.h
+> > +++ b/fs/nfsd/state.h
+> > @@ -573,6 +573,11 @@ enum nfsd4_cb_op {
+> >  	NFSPROC4_CLNT_CB_SEQUENCE,
+> >  };
+> >  
+> > +/* Returns true iff a is later than b: */
+> > +static inline bool nfsd4_stateid_generation_after(stateid_t *a, stateid_t *b)
+> > +{
+> > +	return (s32)(a->si_generation - b->si_generation) > 0;
+> > +}
+> >  
+> >  struct nfsd4_compound_state;
+> >  struct nfsd_net;
+> -- 
+> Jeff Layton <jlayton@poochiereds.net>
