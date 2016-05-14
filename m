@@ -1,57 +1,338 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:44512 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:45668 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751934AbcENQgn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sat, 14 May 2016 12:36:43 -0400
-Subject: Re: [PATCH] blkmapd: Add the -h flag on the man page
-To: yongcheng.yang@gmail.com, linux-nfs@vger.kernel.org
-References: <1462342319-7355-1-git-send-email-yongcheng.yang@gmail.com>
-Cc: yoyang@redhat.com
+	id S1751934AbcENQhW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 14 May 2016 12:37:22 -0400
+Subject: Re: [PATCH 1/1] gssd: move read of upcall into main thread
+To: Olga Kornievskaia <kolga@netapp.com>
+References: <1462467013-11239-1-git-send-email-kolga@netapp.com>
+Cc: linux-nfs@vger.kernel.org
 From: Steve Dickson <SteveD@redhat.com>
-Message-ID: <e116ec38-32be-6a00-7dc5-4879cce72608@RedHat.com>
-Date: Sat, 14 May 2016 12:36:36 -0400
+Message-ID: <2a4b7f59-5327-810b-75e4-5944e9e4afef@RedHat.com>
+Date: Sat, 14 May 2016 12:37:21 -0400
 MIME-Version: 1.0
-In-Reply-To: <1462342319-7355-1-git-send-email-yongcheng.yang@gmail.com>
+In-Reply-To: <1462467013-11239-1-git-send-email-kolga@netapp.com>
 Content-Type: text/plain; charset=windows-1252
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
 
-On 05/04/2016 02:11 AM, yongcheng.yang@gmail.com wrote:
-> From: Yongcheng Yang <yongcheng.yang@gmail.com>
+On 05/05/2016 12:50 PM, Olga Kornievskaia wrote:
+> This patch moves reading of the upcall information from the child thread
+> into the main thread. It removes the need to synchronize between the
+> parent and child thread before processing upcall. Also it creates the thread
+> in a detached state.
 > 
-> Update SYNOPSIS and OPTIONS for the -h flag.
-> 
-> Signed-off-by: Yongcheng Yang <yongcheng.yang@gmail.com>
+> Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
 Committed... 
 
-steved
+steved.
+
 > ---
->  utils/blkmapd/blkmapd.man | 5 ++++-
->  1 file changed, 4 insertions(+), 1 deletion(-)
+>  utils/gssd/gssd.c      | 93 +++++++++++++++++++++++++++++++++++---------------
+>  utils/gssd/gssd.h      | 13 +++++--
+>  utils/gssd/gssd_proc.c | 73 ++++++++++++---------------------------
+>  3 files changed, 96 insertions(+), 83 deletions(-)
 > 
-> diff --git a/utils/blkmapd/blkmapd.man b/utils/blkmapd/blkmapd.man
-> index fd38122..914b80f 100644
-> --- a/utils/blkmapd/blkmapd.man
-> +++ b/utils/blkmapd/blkmapd.man
-> @@ -9,7 +9,7 @@
->  .SH NAME
->  blkmapd \- pNFS block layout mapping daemon
->  .SH SYNOPSIS
-> -.B "blkmapd [-d] [-f]"
-> +.B "blkmapd [-h] [-d] [-f]"
->  .SH DESCRIPTION
->  The
->  .B blkmapd
-> @@ -33,6 +33,9 @@ reflect the server topology, and passes these devices to the kernel for use
->  by the pNFS block layout client.
->  .SH OPTIONS
->  .TP
-> +.B -h
-> +Display usage message.
-> +.TP
->  .B -d
->  Performs device discovery only then exits.
->  .TP
+> diff --git a/utils/gssd/gssd.c b/utils/gssd/gssd.c
+> index 9bf7917..2179e15 100644
+> --- a/utils/gssd/gssd.c
+> +++ b/utils/gssd/gssd.c
+> @@ -363,54 +363,91 @@ gssd_destroy_client(struct clnt_info *clp)
+>  
+>  static void gssd_scan(void);
+>  
+> -static inline void 
+> -wait_for_child_and_detach(pthread_t th)
+> +static int
+> +start_upcall_thread(void (*func)(struct clnt_upcall_info *), void *info)
+>  {
+> -	pthread_mutex_lock(&pmutex);
+> -	while (!thread_started)
+> -		pthread_cond_wait(&pcond, &pmutex);
+> -	thread_started = false;
+> -	pthread_mutex_unlock(&pmutex);
+> -	pthread_detach(th);
+> +	pthread_attr_t attr;
+> +	pthread_t th;
+> +	int ret;
+> +
+> +	ret = pthread_attr_init(&attr);
+> +	if (ret != 0) {
+> +		printerr(0, "ERROR: failed to init pthread attr: ret %d: %s\n",
+> +			 ret, strerror(errno));
+> +		return ret;
+> +	}
+> +	ret = pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
+> +	if (ret != 0) {
+> +		printerr(0, "ERROR: failed to create pthread attr: ret %d: "
+> +			 "%s\n", ret, strerror(errno));
+> +		return ret;
+> +	}
+> +
+> +	ret = pthread_create(&th, &attr, (void *)func, (void *)info);
+> +	if (ret != 0)
+> +		printerr(0, "ERROR: pthread_create failed: ret %d: %s\n",
+> +			 ret, strerror(errno));
+> +	return ret;
+> +}
+> +
+> +static struct clnt_upcall_info *alloc_upcall_info(struct clnt_info *clp)
+> +{
+> +	struct clnt_upcall_info *info;
+> +
+> +	info = malloc(sizeof(struct clnt_upcall_info));
+> +	if (info == NULL)
+> +		return NULL;
+> +	info->clp = clp;
+> +
+> +	return info;
+>  }
+>  
+> -/* For each upcall create a thread, detach from the main process so that
+> - * resources are released back into the system without the need for a join.
+> - * We need to wait for the child thread to start and consume the event from
+> - * the file descriptor.
+> +/* For each upcall read the upcall info into the buffer, then create a
+> + * thread in a detached state so that resources are released back into
+> + * the system without the need for a join.
+>   */
+>  static void
+>  gssd_clnt_gssd_cb(int UNUSED(fd), short UNUSED(which), void *data)
+>  {
+>  	struct clnt_info *clp = data;
+> -	pthread_t th;
+> -	int ret;
+> +	struct clnt_upcall_info *info;
+>  
+> -	ret = pthread_create(&th, NULL, (void *)handle_gssd_upcall,
+> -				(void *)clp);
+> -	if (ret != 0) {
+> -		printerr(0, "ERROR: pthread_create failed: ret %d: %s\n",
+> -			 ret, strerror(errno));
+> +	info = alloc_upcall_info(clp);
+> +	if (info == NULL)
+> +		return;
+> +
+> +	info->lbuflen = read(clp->gssd_fd, info->lbuf, sizeof(info->lbuf));
+> +	if (info->lbuflen <= 0 || info->lbuf[info->lbuflen-1] != '\n') {
+> +		printerr(0, "WARNING: %s: failed reading request\n", __func__);
+> +		free(info);
+>  		return;
+>  	}
+> -	wait_for_child_and_detach(th);
+> +	info->lbuf[info->lbuflen-1] = 0;
+> +
+> +	if (start_upcall_thread(handle_gssd_upcall, info))
+> +		free(info);
+>  }
+>  
+>  static void
+>  gssd_clnt_krb5_cb(int UNUSED(fd), short UNUSED(which), void *data)
+>  {
+>  	struct clnt_info *clp = data;
+> -	pthread_t th;
+> -	int ret;
+> +	struct clnt_upcall_info *info;
+>  
+> -	ret = pthread_create(&th, NULL, (void *)handle_krb5_upcall,
+> -				(void *)clp);
+> -	if (ret != 0) {
+> -		printerr(0, "ERROR: pthread_create failed: ret %d: %s\n",
+> -			 ret, strerror(errno));
+> +	info = alloc_upcall_info(clp);
+> +	if (info == NULL)
+> +		return;
+> +
+> +	if (read(clp->krb5_fd, &info->uid,
+> +			sizeof(info->uid)) < (ssize_t)sizeof(info->uid)) {
+> +		printerr(0, "WARNING: %s: failed reading uid from krb5 "
+> +			 "upcall pipe: %s\n", __func__, strerror(errno));
+> +		free(info);
+>  		return;
+>  	}
+> -	wait_for_child_and_detach(th);
+> +
+> +	if (start_upcall_thread(handle_krb5_upcall, info))
+> +		free(info);
+>  }
+>  
+>  static struct clnt_info *
+> diff --git a/utils/gssd/gssd.h b/utils/gssd/gssd.h
+> index 565bce3..f4f5975 100644
+> --- a/utils/gssd/gssd.h
+> +++ b/utils/gssd/gssd.h
+> @@ -49,7 +49,7 @@
+>  #define GSSD_DEFAULT_MACHINE_CRED_SUFFIX	"machine"
+>  #define GSSD_DEFAULT_KEYTAB_FILE		"/etc/krb5.keytab"
+>  #define GSSD_SERVICE_NAME			"nfs"
+> -
+> +#define RPC_CHAN_BUF_SIZE			32768
+>  /*
+>   * The gss mechanisms that we can handle
+>   */
+> @@ -85,8 +85,15 @@ struct clnt_info {
+>  	struct			sockaddr_storage addr;
+>  };
+>  
+> -void handle_krb5_upcall(struct clnt_info *clp);
+> -void handle_gssd_upcall(struct clnt_info *clp);
+> +struct clnt_upcall_info {
+> +	struct clnt_info 	*clp;
+> +	char			lbuf[RPC_CHAN_BUF_SIZE];
+> +	int			lbuflen;
+> +	uid_t			uid;
+> +};
+> +
+> +void handle_krb5_upcall(struct clnt_upcall_info *clp);
+> +void handle_gssd_upcall(struct clnt_upcall_info *clp);
+>  
+>  
+>  #endif /* _RPC_GSSD_H_ */
+> diff --git a/utils/gssd/gssd_proc.c b/utils/gssd/gssd_proc.c
+> index afaaf9e..d74d372 100644
+> --- a/utils/gssd/gssd_proc.c
+> +++ b/utils/gssd/gssd_proc.c
+> @@ -79,7 +79,6 @@
+>  #include "nfsrpc.h"
+>  #include "nfslib.h"
+>  #include "gss_names.h"
+> -#include "misc.h"
+>  
+>  /* Encryption types supported by the kernel rpcsec_gss code */
+>  int num_krb5_enctypes = 0;
+> @@ -708,45 +707,22 @@ out_return_error:
+>  	goto out;
+>  }
+>  
+> -/* signal to the parent thread that we have read from the file descriptor.
+> - * it should allow the parent to proceed to poll on the descriptor for
+> - * the next upcall from the kernel.
+> - */
+> -static inline void
+> -signal_parent_event_consumed(void)
+> -{
+> -	pthread_mutex_lock(&pmutex);
+> -	thread_started = true;
+> -	pthread_cond_signal(&pcond);
+> -	pthread_mutex_unlock(&pmutex);
+> -}
+> -
+>  void
+> -handle_krb5_upcall(struct clnt_info *clp)
+> +handle_krb5_upcall(struct clnt_upcall_info *info)
+>  {
+> -	uid_t			uid;
+> -	int 			status;
+> +	struct clnt_info *clp = info->clp;
+>  
+> -	status = read(clp->krb5_fd, &uid, sizeof(uid)) < (ssize_t)sizeof(uid);
+> -	signal_parent_event_consumed();
+> +	printerr(2, "\n%s: uid %d (%s)\n", __func__, info->uid, clp->relpath);
+>  
+> -	if (status) {
+> -		printerr(0, "WARNING: failed reading uid from krb5 "
+> -			    "upcall pipe: %s\n", strerror(errno));
+> -		return;
+> -	}
+> -
+> -	printerr(2, "\n%s: uid %d (%s)\n", __func__, uid, clp->relpath);
+> -
+> -	process_krb5_upcall(clp, uid, clp->krb5_fd, NULL, NULL);
+> +	process_krb5_upcall(clp, info->uid, clp->krb5_fd, NULL, NULL);
+> +	free(info);
+>  }
+>  
+>  void
+> -handle_gssd_upcall(struct clnt_info *clp)
+> +handle_gssd_upcall(struct clnt_upcall_info *info)
+>  {
+> +	struct clnt_info	*clp = info->clp;
+>  	uid_t			uid;
+> -	char			lbuf[RPC_CHAN_BUF_SIZE];
+> -	int			lbuflen = 0;
+>  	char			*p;
+>  	char			*mech = NULL;
+>  	char			*uidstr = NULL;
+> @@ -754,19 +730,9 @@ handle_gssd_upcall(struct clnt_info *clp)
+>  	char			*service = NULL;
+>  	char			*enctypes = NULL;
+>  
+> -	lbuflen = read(clp->gssd_fd, lbuf, sizeof(lbuf));
+> -	signal_parent_event_consumed();
+> +	printerr(2, "\n%s: '%s' (%s)\n", __func__, info->lbuf, clp->relpath);
+>  
+> -	if (lbuflen <= 0 || lbuf[lbuflen-1] != '\n') {
+> -		printerr(0, "WARNING: handle_gssd_upcall: "
+> -			    "failed reading request\n");
+> -		return;
+> -	}
+> -	lbuf[lbuflen-1] = 0;
+> -
+> -	printerr(2, "\n%s: '%s' (%s)\n", __func__, lbuf, clp->relpath);
+> -
+> -	for (p = strtok(lbuf, " "); p; p = strtok(NULL, " ")) {
+> +	for (p = strtok(info->lbuf, " "); p; p = strtok(NULL, " ")) {
+>  		if (!strncmp(p, "mech=", strlen("mech=")))
+>  			mech = p + strlen("mech=");
+>  		else if (!strncmp(p, "uid=", strlen("uid=")))
+> @@ -782,8 +748,8 @@ handle_gssd_upcall(struct clnt_info *clp)
+>  	if (!mech || strlen(mech) < 1) {
+>  		printerr(0, "WARNING: handle_gssd_upcall: "
+>  			    "failed to find gss mechanism name "
+> -			    "in upcall string '%s'\n", lbuf);
+> -		return;
+> +			    "in upcall string '%s'\n", info->lbuf);
+> +		goto out;
+>  	}
+>  
+>  	if (uidstr) {
+> @@ -795,21 +761,21 @@ handle_gssd_upcall(struct clnt_info *clp)
+>  	if (!uidstr) {
+>  		printerr(0, "WARNING: handle_gssd_upcall: "
+>  			    "failed to find uid "
+> -			    "in upcall string '%s'\n", lbuf);
+> -		return;
+> +			    "in upcall string '%s'\n", info->lbuf);
+> +		goto out;
+>  	}
+>  
+>  	if (enctypes && parse_enctypes(enctypes) != 0) {
+>  		printerr(0, "WARNING: handle_gssd_upcall: "
+>  			 "parsing encryption types failed: errno %d\n", errno);
+> -		return;
+> +		goto out;
+>  	}
+>  
+>  	if (target && strlen(target) < 1) {
+>  		printerr(0, "WARNING: handle_gssd_upcall: "
+>  			 "failed to parse target name "
+> -			 "in upcall string '%s'\n", lbuf);
+> -		return;
+> +			 "in upcall string '%s'\n", info->lbuf);
+> +		goto out;
+>  	}
+>  
+>  	/*
+> @@ -823,8 +789,8 @@ handle_gssd_upcall(struct clnt_info *clp)
+>  	if (service && strlen(service) < 1) {
+>  		printerr(0, "WARNING: handle_gssd_upcall: "
+>  			 "failed to parse service type "
+> -			 "in upcall string '%s'\n", lbuf);
+> -		return;
+> +			 "in upcall string '%s'\n", info->lbuf);
+> +		goto out;
+>  	}
+>  
+>  	if (strcmp(mech, "krb5") == 0 && clp->servername)
+> @@ -835,5 +801,8 @@ handle_gssd_upcall(struct clnt_info *clp)
+>  				 "received unknown gss mech '%s'\n", mech);
+>  		do_error_downcall(clp->gssd_fd, uid, -EACCES);
+>  	}
+> +out:
+> +	free(info);
+> +	return;
+>  }
+>  
 > 
