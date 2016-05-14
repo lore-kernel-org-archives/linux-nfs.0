@@ -1,338 +1,94 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:45668 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751934AbcENQhW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sat, 14 May 2016 12:37:22 -0400
-Subject: Re: [PATCH 1/1] gssd: move read of upcall into main thread
-To: Olga Kornievskaia <kolga@netapp.com>
-References: <1462467013-11239-1-git-send-email-kolga@netapp.com>
-Cc: linux-nfs@vger.kernel.org
-From: Steve Dickson <SteveD@redhat.com>
-Message-ID: <2a4b7f59-5327-810b-75e4-5944e9e4afef@RedHat.com>
-Date: Sat, 14 May 2016 12:37:21 -0400
-MIME-Version: 1.0
-In-Reply-To: <1462467013-11239-1-git-send-email-kolga@netapp.com>
-Content-Type: text/plain; charset=windows-1252
+Received: from aserp1040.oracle.com ([141.146.126.69]:38473 "EHLO
+	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932295AbcENTwG convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 14 May 2016 15:52:06 -0400
+Content-Type: text/plain; charset=us-ascii
+Mime-Version: 1.0 (Mac OS X Mail 9.3 \(3124\))
+Subject: Re: [PATCH] gssd: Convert 'rdma' to 'tcp' protocol
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <0d048d10-d03e-a038-bc53-d9c292c7ec66@RedHat.com>
+Date: Sat, 14 May 2016 15:51:58 -0400
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Message-Id: <26FBA169-5D47-4372-8514-6078624196D1@oracle.com>
+References: <20160504144342.15837.19874.stgit@manet.1015granger.net> <0d048d10-d03e-a038-bc53-d9c292c7ec66@RedHat.com>
+To: Steve Dickson <SteveD@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
-
-On 05/05/2016 12:50 PM, Olga Kornievskaia wrote:
-> This patch moves reading of the upcall information from the child thread
-> into the main thread. It removes the need to synchronize between the
-> parent and child thread before processing upcall. Also it creates the thread
-> in a detached state.
+> On May 14, 2016, at 12:29 PM, Steve Dickson <SteveD@redhat.com> wrote:
 > 
-> Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
-Committed... 
-
-steved.
-
-> ---
->  utils/gssd/gssd.c      | 93 +++++++++++++++++++++++++++++++++++---------------
->  utils/gssd/gssd.h      | 13 +++++--
->  utils/gssd/gssd_proc.c | 73 ++++++++++++---------------------------
->  3 files changed, 96 insertions(+), 83 deletions(-)
 > 
-> diff --git a/utils/gssd/gssd.c b/utils/gssd/gssd.c
-> index 9bf7917..2179e15 100644
-> --- a/utils/gssd/gssd.c
-> +++ b/utils/gssd/gssd.c
-> @@ -363,54 +363,91 @@ gssd_destroy_client(struct clnt_info *clp)
->  
->  static void gssd_scan(void);
->  
-> -static inline void 
-> -wait_for_child_and_detach(pthread_t th)
-> +static int
-> +start_upcall_thread(void (*func)(struct clnt_upcall_info *), void *info)
->  {
-> -	pthread_mutex_lock(&pmutex);
-> -	while (!thread_started)
-> -		pthread_cond_wait(&pcond, &pmutex);
-> -	thread_started = false;
-> -	pthread_mutex_unlock(&pmutex);
-> -	pthread_detach(th);
-> +	pthread_attr_t attr;
-> +	pthread_t th;
-> +	int ret;
-> +
-> +	ret = pthread_attr_init(&attr);
-> +	if (ret != 0) {
-> +		printerr(0, "ERROR: failed to init pthread attr: ret %d: %s\n",
-> +			 ret, strerror(errno));
-> +		return ret;
-> +	}
-> +	ret = pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
-> +	if (ret != 0) {
-> +		printerr(0, "ERROR: failed to create pthread attr: ret %d: "
-> +			 "%s\n", ret, strerror(errno));
-> +		return ret;
-> +	}
-> +
-> +	ret = pthread_create(&th, &attr, (void *)func, (void *)info);
-> +	if (ret != 0)
-> +		printerr(0, "ERROR: pthread_create failed: ret %d: %s\n",
-> +			 ret, strerror(errno));
-> +	return ret;
-> +}
-> +
-> +static struct clnt_upcall_info *alloc_upcall_info(struct clnt_info *clp)
-> +{
-> +	struct clnt_upcall_info *info;
-> +
-> +	info = malloc(sizeof(struct clnt_upcall_info));
-> +	if (info == NULL)
-> +		return NULL;
-> +	info->clp = clp;
-> +
-> +	return info;
->  }
->  
-> -/* For each upcall create a thread, detach from the main process so that
-> - * resources are released back into the system without the need for a join.
-> - * We need to wait for the child thread to start and consume the event from
-> - * the file descriptor.
-> +/* For each upcall read the upcall info into the buffer, then create a
-> + * thread in a detached state so that resources are released back into
-> + * the system without the need for a join.
->   */
->  static void
->  gssd_clnt_gssd_cb(int UNUSED(fd), short UNUSED(which), void *data)
->  {
->  	struct clnt_info *clp = data;
-> -	pthread_t th;
-> -	int ret;
-> +	struct clnt_upcall_info *info;
->  
-> -	ret = pthread_create(&th, NULL, (void *)handle_gssd_upcall,
-> -				(void *)clp);
-> -	if (ret != 0) {
-> -		printerr(0, "ERROR: pthread_create failed: ret %d: %s\n",
-> -			 ret, strerror(errno));
-> +	info = alloc_upcall_info(clp);
-> +	if (info == NULL)
-> +		return;
-> +
-> +	info->lbuflen = read(clp->gssd_fd, info->lbuf, sizeof(info->lbuf));
-> +	if (info->lbuflen <= 0 || info->lbuf[info->lbuflen-1] != '\n') {
-> +		printerr(0, "WARNING: %s: failed reading request\n", __func__);
-> +		free(info);
->  		return;
->  	}
-> -	wait_for_child_and_detach(th);
-> +	info->lbuf[info->lbuflen-1] = 0;
-> +
-> +	if (start_upcall_thread(handle_gssd_upcall, info))
-> +		free(info);
->  }
->  
->  static void
->  gssd_clnt_krb5_cb(int UNUSED(fd), short UNUSED(which), void *data)
->  {
->  	struct clnt_info *clp = data;
-> -	pthread_t th;
-> -	int ret;
-> +	struct clnt_upcall_info *info;
->  
-> -	ret = pthread_create(&th, NULL, (void *)handle_krb5_upcall,
-> -				(void *)clp);
-> -	if (ret != 0) {
-> -		printerr(0, "ERROR: pthread_create failed: ret %d: %s\n",
-> -			 ret, strerror(errno));
-> +	info = alloc_upcall_info(clp);
-> +	if (info == NULL)
-> +		return;
-> +
-> +	if (read(clp->krb5_fd, &info->uid,
-> +			sizeof(info->uid)) < (ssize_t)sizeof(info->uid)) {
-> +		printerr(0, "WARNING: %s: failed reading uid from krb5 "
-> +			 "upcall pipe: %s\n", __func__, strerror(errno));
-> +		free(info);
->  		return;
->  	}
-> -	wait_for_child_and_detach(th);
-> +
-> +	if (start_upcall_thread(handle_krb5_upcall, info))
-> +		free(info);
->  }
->  
->  static struct clnt_info *
-> diff --git a/utils/gssd/gssd.h b/utils/gssd/gssd.h
-> index 565bce3..f4f5975 100644
-> --- a/utils/gssd/gssd.h
-> +++ b/utils/gssd/gssd.h
-> @@ -49,7 +49,7 @@
->  #define GSSD_DEFAULT_MACHINE_CRED_SUFFIX	"machine"
->  #define GSSD_DEFAULT_KEYTAB_FILE		"/etc/krb5.keytab"
->  #define GSSD_SERVICE_NAME			"nfs"
-> -
-> +#define RPC_CHAN_BUF_SIZE			32768
->  /*
->   * The gss mechanisms that we can handle
->   */
-> @@ -85,8 +85,15 @@ struct clnt_info {
->  	struct			sockaddr_storage addr;
->  };
->  
-> -void handle_krb5_upcall(struct clnt_info *clp);
-> -void handle_gssd_upcall(struct clnt_info *clp);
-> +struct clnt_upcall_info {
-> +	struct clnt_info 	*clp;
-> +	char			lbuf[RPC_CHAN_BUF_SIZE];
-> +	int			lbuflen;
-> +	uid_t			uid;
-> +};
-> +
-> +void handle_krb5_upcall(struct clnt_upcall_info *clp);
-> +void handle_gssd_upcall(struct clnt_upcall_info *clp);
->  
->  
->  #endif /* _RPC_GSSD_H_ */
-> diff --git a/utils/gssd/gssd_proc.c b/utils/gssd/gssd_proc.c
-> index afaaf9e..d74d372 100644
-> --- a/utils/gssd/gssd_proc.c
-> +++ b/utils/gssd/gssd_proc.c
-> @@ -79,7 +79,6 @@
->  #include "nfsrpc.h"
->  #include "nfslib.h"
->  #include "gss_names.h"
-> -#include "misc.h"
->  
->  /* Encryption types supported by the kernel rpcsec_gss code */
->  int num_krb5_enctypes = 0;
-> @@ -708,45 +707,22 @@ out_return_error:
->  	goto out;
->  }
->  
-> -/* signal to the parent thread that we have read from the file descriptor.
-> - * it should allow the parent to proceed to poll on the descriptor for
-> - * the next upcall from the kernel.
-> - */
-> -static inline void
-> -signal_parent_event_consumed(void)
-> -{
-> -	pthread_mutex_lock(&pmutex);
-> -	thread_started = true;
-> -	pthread_cond_signal(&pcond);
-> -	pthread_mutex_unlock(&pmutex);
-> -}
-> -
->  void
-> -handle_krb5_upcall(struct clnt_info *clp)
-> +handle_krb5_upcall(struct clnt_upcall_info *info)
->  {
-> -	uid_t			uid;
-> -	int 			status;
-> +	struct clnt_info *clp = info->clp;
->  
-> -	status = read(clp->krb5_fd, &uid, sizeof(uid)) < (ssize_t)sizeof(uid);
-> -	signal_parent_event_consumed();
-> +	printerr(2, "\n%s: uid %d (%s)\n", __func__, info->uid, clp->relpath);
->  
-> -	if (status) {
-> -		printerr(0, "WARNING: failed reading uid from krb5 "
-> -			    "upcall pipe: %s\n", strerror(errno));
-> -		return;
-> -	}
-> -
-> -	printerr(2, "\n%s: uid %d (%s)\n", __func__, uid, clp->relpath);
-> -
-> -	process_krb5_upcall(clp, uid, clp->krb5_fd, NULL, NULL);
-> +	process_krb5_upcall(clp, info->uid, clp->krb5_fd, NULL, NULL);
-> +	free(info);
->  }
->  
->  void
-> -handle_gssd_upcall(struct clnt_info *clp)
-> +handle_gssd_upcall(struct clnt_upcall_info *info)
->  {
-> +	struct clnt_info	*clp = info->clp;
->  	uid_t			uid;
-> -	char			lbuf[RPC_CHAN_BUF_SIZE];
-> -	int			lbuflen = 0;
->  	char			*p;
->  	char			*mech = NULL;
->  	char			*uidstr = NULL;
-> @@ -754,19 +730,9 @@ handle_gssd_upcall(struct clnt_info *clp)
->  	char			*service = NULL;
->  	char			*enctypes = NULL;
->  
-> -	lbuflen = read(clp->gssd_fd, lbuf, sizeof(lbuf));
-> -	signal_parent_event_consumed();
-> +	printerr(2, "\n%s: '%s' (%s)\n", __func__, info->lbuf, clp->relpath);
->  
-> -	if (lbuflen <= 0 || lbuf[lbuflen-1] != '\n') {
-> -		printerr(0, "WARNING: handle_gssd_upcall: "
-> -			    "failed reading request\n");
-> -		return;
-> -	}
-> -	lbuf[lbuflen-1] = 0;
-> -
-> -	printerr(2, "\n%s: '%s' (%s)\n", __func__, lbuf, clp->relpath);
-> -
-> -	for (p = strtok(lbuf, " "); p; p = strtok(NULL, " ")) {
-> +	for (p = strtok(info->lbuf, " "); p; p = strtok(NULL, " ")) {
->  		if (!strncmp(p, "mech=", strlen("mech=")))
->  			mech = p + strlen("mech=");
->  		else if (!strncmp(p, "uid=", strlen("uid=")))
-> @@ -782,8 +748,8 @@ handle_gssd_upcall(struct clnt_info *clp)
->  	if (!mech || strlen(mech) < 1) {
->  		printerr(0, "WARNING: handle_gssd_upcall: "
->  			    "failed to find gss mechanism name "
-> -			    "in upcall string '%s'\n", lbuf);
-> -		return;
-> +			    "in upcall string '%s'\n", info->lbuf);
-> +		goto out;
->  	}
->  
->  	if (uidstr) {
-> @@ -795,21 +761,21 @@ handle_gssd_upcall(struct clnt_info *clp)
->  	if (!uidstr) {
->  		printerr(0, "WARNING: handle_gssd_upcall: "
->  			    "failed to find uid "
-> -			    "in upcall string '%s'\n", lbuf);
-> -		return;
-> +			    "in upcall string '%s'\n", info->lbuf);
-> +		goto out;
->  	}
->  
->  	if (enctypes && parse_enctypes(enctypes) != 0) {
->  		printerr(0, "WARNING: handle_gssd_upcall: "
->  			 "parsing encryption types failed: errno %d\n", errno);
-> -		return;
-> +		goto out;
->  	}
->  
->  	if (target && strlen(target) < 1) {
->  		printerr(0, "WARNING: handle_gssd_upcall: "
->  			 "failed to parse target name "
-> -			 "in upcall string '%s'\n", lbuf);
-> -		return;
-> +			 "in upcall string '%s'\n", info->lbuf);
-> +		goto out;
->  	}
->  
->  	/*
-> @@ -823,8 +789,8 @@ handle_gssd_upcall(struct clnt_info *clp)
->  	if (service && strlen(service) < 1) {
->  		printerr(0, "WARNING: handle_gssd_upcall: "
->  			 "failed to parse service type "
-> -			 "in upcall string '%s'\n", lbuf);
-> -		return;
-> +			 "in upcall string '%s'\n", info->lbuf);
-> +		goto out;
->  	}
->  
->  	if (strcmp(mech, "krb5") == 0 && clp->servername)
-> @@ -835,5 +801,8 @@ handle_gssd_upcall(struct clnt_info *clp)
->  				 "received unknown gss mech '%s'\n", mech);
->  		do_error_downcall(clp->gssd_fd, uid, -EACCES);
->  	}
-> +out:
-> +	free(info);
-> +	return;
->  }
->  
 > 
+> On 05/04/2016 10:43 AM, Chuck Lever wrote:
+>> The kernel NFS client specifies 'rdma' as the transport protocol for
+>> NFS/RDMA mounts. This is a generic display token, probably not
+>> something the kernel should lie about. The kernel uses it to form
+>> NFSv4 client IDs, for example.
+>> 
+>> Until gssd can speak RPC-over-RDMA, convert 'rdma' to 'tcp' in
+>> kernel gss upcalls.
+>> 
+>> This means that the Linux NFS client requires an NFS/TCP service on
+>> an NFS/RDMA server when establishing a GSS context for proto=rdma
+>> mount points. This is probably not an onerous requirement for the
+>> time being.
+>> 
+>> Eventually user space support for RPC-over-RDMA might be introduced,
+>> and gssd can use that for context establishment.
+> Shouldn't we log something tell to the user this is happening??
+
+I don't understand what "this" refers to.
+
+There's no error here, and there's nothing a user or admin
+can or should do to change the situation.
+
+What am I missing?
+
+
+> steved.
+>> 
+>> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+>> ---
+>> utils/gssd/gssd.c |   16 ++++++++++++++++
+>> 1 file changed, 16 insertions(+)
+>> 
+>> diff --git a/utils/gssd/gssd.c b/utils/gssd/gssd.c
+>> index 7ba27b1..51b2cd7 100644
+>> --- a/utils/gssd/gssd.c
+>> +++ b/utils/gssd/gssd.c
+>> @@ -301,6 +301,22 @@ gssd_read_service_info(int dirfd, struct clnt_info *clp)
+>> 		goto fail;
+>> 	}
+>> 
+>> +	/*
+>> +	 * The user space RPC library has no support for
+>> +	 * RPC-over-RDMA at this time, so change 'rdma'
+>> +	 * to 'tcp', and '20049' to '2049'.
+>> +	 */
+>> +	if (strcmp(protoname, "rdma") == 0) {
+>> +		free(protoname);
+>> +		protoname = strdup("tcp");
+>> +		if (!protoname)
+>> +			goto fail;
+>> +		free(port);
+>> +		port = strdup("2049");
+>> +		if (!port)
+>> +			goto fail;
+>> +	}
+>> +
+>> 	if (!gssd_addrstr_to_sockaddr((struct sockaddr *)&clp->addr,
+>> 				 address, port ? port : ""))
+>> 		goto fail;
+>> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+--
+Chuck Lever
+
+
+
