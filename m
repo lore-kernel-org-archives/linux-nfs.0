@@ -1,73 +1,58 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:47719 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:45781 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751955AbcENQ37 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sat, 14 May 2016 12:29:59 -0400
-Subject: Re: [PATCH] gssd: Convert 'rdma' to 'tcp' protocol
-To: Chuck Lever <chuck.lever@oracle.com>
-References: <20160504144342.15837.19874.stgit@manet.1015granger.net>
+	id S1753842AbcENQgM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 14 May 2016 12:36:12 -0400
+Subject: Re: [PATCH 1/2] gssd: no longer needed pid logic
+To: Olga Kornievskaia <kolga@netapp.com>
+References: <1462286792-8889-1-git-send-email-kolga@netapp.com>
 Cc: linux-nfs@vger.kernel.org
 From: Steve Dickson <SteveD@redhat.com>
-Message-ID: <0d048d10-d03e-a038-bc53-d9c292c7ec66@RedHat.com>
-Date: Sat, 14 May 2016 12:29:57 -0400
+Message-ID: <adc79876-1a1a-0104-0230-ad51533bef3b@RedHat.com>
+Date: Sat, 14 May 2016 12:36:10 -0400
 MIME-Version: 1.0
-In-Reply-To: <20160504144342.15837.19874.stgit@manet.1015granger.net>
-Content-Type: text/plain; charset=utf-8
+In-Reply-To: <1462286792-8889-1-git-send-email-kolga@netapp.com>
+Content-Type: text/plain; charset=windows-1252
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
 
-On 05/04/2016 10:43 AM, Chuck Lever wrote:
-> The kernel NFS client specifies 'rdma' as the transport protocol for
-> NFS/RDMA mounts. This is a generic display token, probably not
-> something the kernel should lie about. The kernel uses it to form
-> NFSv4 client IDs, for example.
+On 05/03/2016 10:46 AM, Olga Kornievskaia wrote:
+> with threads, we don't need to distinguish zero uid.
 > 
-> Until gssd can speak RPC-over-RDMA, convert 'rdma' to 'tcp' in
-> kernel gss upcalls.
-> 
-> This means that the Linux NFS client requires an NFS/TCP service on
-> an NFS/RDMA server when establishing a GSS context for proto=rdma
-> mount points. This is probably not an onerous requirement for the
-> time being.
-> 
-> Eventually user space support for RPC-over-RDMA might be introduced,
-> and gssd can use that for context establishment.
-Shouldn't we log something tell to the user this is happening?? 
+> Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
+Committed... 
 
 steved.
-> 
-> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+
 > ---
->  utils/gssd/gssd.c |   16 ++++++++++++++++
->  1 file changed, 16 insertions(+)
+>  utils/gssd/gssd_proc.c | 7 +------
+>  1 file changed, 1 insertion(+), 6 deletions(-)
 > 
-> diff --git a/utils/gssd/gssd.c b/utils/gssd/gssd.c
-> index 7ba27b1..51b2cd7 100644
-> --- a/utils/gssd/gssd.c
-> +++ b/utils/gssd/gssd.c
-> @@ -301,6 +301,22 @@ gssd_read_service_info(int dirfd, struct clnt_info *clp)
->  		goto fail;
->  	}
+> diff --git a/utils/gssd/gssd_proc.c b/utils/gssd/gssd_proc.c
+> index b19c595..afaaf9e 100644
+> --- a/utils/gssd/gssd_proc.c
+> +++ b/utils/gssd/gssd_proc.c
+> @@ -604,7 +604,6 @@ process_krb5_upcall(struct clnt_info *clp, uid_t uid, int fd, char *tgtname,
+>  	gss_buffer_desc		token;
+>  	int			err, downcall_err = -EACCES;
+>  	OM_uint32		maj_stat, min_stat, lifetime_rec;
+> -	pid_t			pid, childpid = -1;
+>  	gss_name_t		gacceptor = GSS_C_NO_NAME;
+>  	gss_OID			mech;
+>  	gss_buffer_desc		acceptor  = {0};
+> @@ -702,11 +701,7 @@ out:
+>  	if (rpc_clnt)
+>  		clnt_destroy(rpc_clnt);
 >  
-> +	/*
-> +	 * The user space RPC library has no support for
-> +	 * RPC-over-RDMA at this time, so change 'rdma'
-> +	 * to 'tcp', and '20049' to '2049'.
-> +	 */
-> +	if (strcmp(protoname, "rdma") == 0) {
-> +		free(protoname);
-> +		protoname = strdup("tcp");
-> +		if (!protoname)
-> +			goto fail;
-> +		free(port);
-> +		port = strdup("2049");
-> +		if (!port)
-> +			goto fail;
-> +	}
-> +
->  	if (!gssd_addrstr_to_sockaddr((struct sockaddr *)&clp->addr,
->  				 address, port ? port : ""))
->  		goto fail;
+> -	pid = getpid();
+> -	if (pid == childpid)
+> -		exit(0);
+> -	else
+> -		return;
+> +	return;
+>  
+>  out_return_error:
+>  	do_error_downcall(fd, uid, downcall_err);
 > 
