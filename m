@@ -1,46 +1,73 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx142.netapp.com ([216.240.21.19]:10777 "EHLO mx142.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:47719 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932215AbcEMU6N (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 13 May 2016 16:58:13 -0400
-From: Anna Schumaker <Anna.Schumaker@netapp.com>
-Subject: Re: [PATCH v4 0/3] NFSv4.2: Add support for the COPY operation
-To: "J. Bruce Fields" <bfields@fieldses.org>,
-        Christoph Hellwig <hch@infradead.org>
-References: <1461962533-26534-1-git-send-email-Anna.Schumaker@Netapp.com>
- <20160501173733.GA556@infradead.org> <20160513203135.GE5658@fieldses.org>
-CC: Anna Schumaker <Anna.Schumaker@netapp.com>, <linux-nfs@vger.kernel.org>,
-        <Trond.Myklebust@primarydata.com>
-Message-ID: <8d09611c-31c1-baca-8e8f-6dc599731c8c@Netapp.com>
-Date: Fri, 13 May 2016 16:58:06 -0400
+	id S1751955AbcENQ37 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 14 May 2016 12:29:59 -0400
+Subject: Re: [PATCH] gssd: Convert 'rdma' to 'tcp' protocol
+To: Chuck Lever <chuck.lever@oracle.com>
+References: <20160504144342.15837.19874.stgit@manet.1015granger.net>
+Cc: linux-nfs@vger.kernel.org
+From: Steve Dickson <SteveD@redhat.com>
+Message-ID: <0d048d10-d03e-a038-bc53-d9c292c7ec66@RedHat.com>
+Date: Sat, 14 May 2016 12:29:57 -0400
 MIME-Version: 1.0
-In-Reply-To: <20160513203135.GE5658@fieldses.org>
-Content-Type: text/plain; charset="utf-8"
+In-Reply-To: <20160504144342.15837.19874.stgit@manet.1015granger.net>
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 05/13/2016 04:31 PM, J. Bruce Fields wrote:
-> On Sun, May 01, 2016 at 10:37:33AM -0700, Christoph Hellwig wrote:
->> I might sound like a broken record, but I'd feel much happier if this
->> had extensive xfstests coverage.  Xfstests has over one hundred tests for
->> file clones, and many of them should be easily adapatable.
-> 
-> Anna, have you looked at this yet?
 
-Yep!  I just sent out what I came up with :)
 
-Anna
+On 05/04/2016 10:43 AM, Chuck Lever wrote:
+> The kernel NFS client specifies 'rdma' as the transport protocol for
+> NFS/RDMA mounts. This is a generic display token, probably not
+> something the kernel should lie about. The kernel uses it to form
+> NFSv4 client IDs, for example.
+> 
+> Until gssd can speak RPC-over-RDMA, convert 'rdma' to 'tcp' in
+> kernel gss upcalls.
+> 
+> This means that the Linux NFS client requires an NFS/TCP service on
+> an NFS/RDMA server when establishing a GSS context for proto=rdma
+> mount points. This is probably not an onerous requirement for the
+> time being.
+> 
+> Eventually user space support for RPC-over-RDMA might be introduced,
+> and gssd can use that for context establishment.
+Shouldn't we log something tell to the user this is happening?? 
 
+steved.
 > 
-> I don't see any obvious problem with the nfsd code, other than the
-> obvious issue with large synchronous copies tying up server threads and
-> leaving clients waiting--but maybe we should just see how people end up
-> using it and deal with the problems as they come up.
+> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+> ---
+>  utils/gssd/gssd.c |   16 ++++++++++++++++
+>  1 file changed, 16 insertions(+)
 > 
-> --b.
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> diff --git a/utils/gssd/gssd.c b/utils/gssd/gssd.c
+> index 7ba27b1..51b2cd7 100644
+> --- a/utils/gssd/gssd.c
+> +++ b/utils/gssd/gssd.c
+> @@ -301,6 +301,22 @@ gssd_read_service_info(int dirfd, struct clnt_info *clp)
+>  		goto fail;
+>  	}
+>  
+> +	/*
+> +	 * The user space RPC library has no support for
+> +	 * RPC-over-RDMA at this time, so change 'rdma'
+> +	 * to 'tcp', and '20049' to '2049'.
+> +	 */
+> +	if (strcmp(protoname, "rdma") == 0) {
+> +		free(protoname);
+> +		protoname = strdup("tcp");
+> +		if (!protoname)
+> +			goto fail;
+> +		free(port);
+> +		port = strdup("2049");
+> +		if (!port)
+> +			goto fail;
+> +	}
+> +
+>  	if (!gssd_addrstr_to_sockaddr((struct sockaddr *)&clp->addr,
+>  				 address, port ? port : ""))
+>  		goto fail;
 > 
-
