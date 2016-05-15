@@ -1,17 +1,17 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qk0-f193.google.com ([209.85.220.193]:36664 "EHLO
-	mail-qk0-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753995AbcEOBGz (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 14 May 2016 21:06:55 -0400
-Received: by mail-qk0-f193.google.com with SMTP id l68so11320449qkf.3
-        for <linux-nfs@vger.kernel.org>; Sat, 14 May 2016 18:06:54 -0700 (PDT)
+Received: from mail-qk0-f196.google.com ([209.85.220.196]:35118 "EHLO
+	mail-qk0-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753999AbcEOBG4 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 14 May 2016 21:06:56 -0400
+Received: by mail-qk0-f196.google.com with SMTP id n62so5069594qkc.2
+        for <linux-nfs@vger.kernel.org>; Sat, 14 May 2016 18:06:55 -0700 (PDT)
 From: Jeff Layton <jlayton@poochiereds.net>
 To: Trond Myklebust <trondmy@primarydata.com>,
         Anna Schumaker <Anna.Schumaker@netapp.com>
 Cc: linux-nfs@vger.kernel.org, hch@infradead.org
-Subject: [PATCH v3 02/13] pNFS/flexfiles: When checking for available DSes, conditionally check for MDS io
-Date: Sat, 14 May 2016 21:06:31 -0400
-Message-Id: <1463274402-17746-3-git-send-email-jeff.layton@primarydata.com>
+Subject: [PATCH v3 03/13] pNFS/flexfiles: When initing reads or writes, we might have to retry connecting to DSes
+Date: Sat, 14 May 2016 21:06:32 -0400
+Message-Id: <1463274402-17746-4-git-send-email-jeff.layton@primarydata.com>
 In-Reply-To: <1463274402-17746-1-git-send-email-jeff.layton@primarydata.com>
 References: <1463274402-17746-1-git-send-email-jeff.layton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
@@ -19,70 +19,77 @@ List-ID: <linux-nfs.vger.kernel.org>
 
 From: Tom Haynes <loghyr@primarydata.com>
 
-Whenever we check to see if we have the needed number of DSes for the
-action, we may also have to check to see whether IO is allowed to go to
-the MDS or not.
-
-[jlayton: fix merge conflict due to lack of localio patches here]
+If we are initializing reads or writes and can not connect to a DS, then
+check whether or not IO is allowed through the MDS. If it is allowed,
+reset to the MDS. Else, fail the layout segment and force a retry
+of a new layout segment.
 
 Signed-off-by: Tom Haynes <loghyr@primarydata.com>
-Signed-off-by: Jeff Layton <jeff.layton@primarydata.com>
 ---
- fs/nfs/flexfilelayout/flexfilelayout.c    | 5 ++---
- fs/nfs/flexfilelayout/flexfilelayout.h    | 1 +
- fs/nfs/flexfilelayout/flexfilelayoutdev.c | 6 ++++++
- 3 files changed, 9 insertions(+), 3 deletions(-)
+ fs/nfs/flexfilelayout/flexfilelayout.c | 29 +++++++++++++++++++++++++----
+ 1 file changed, 25 insertions(+), 4 deletions(-)
 
 diff --git a/fs/nfs/flexfilelayout/flexfilelayout.c b/fs/nfs/flexfilelayout/flexfilelayout.c
-index 51f6660a2247..f538ca6bbe81 100644
+index f538ca6bbe81..f58cd2a14d5e 100644
 --- a/fs/nfs/flexfilelayout/flexfilelayout.c
 +++ b/fs/nfs/flexfilelayout/flexfilelayout.c
-@@ -1101,8 +1101,7 @@ static int ff_layout_async_handle_error_v4(struct rpc_task *task,
- 		rpc_wake_up(&tbl->slot_tbl_waitq);
- 		/* fall through */
- 	default:
--		if (ff_layout_no_fallback_to_mds(lseg) ||
--		    ff_layout_has_available_ds(lseg))
-+		if (ff_layout_avoid_mds_available_ds(lseg))
- 			return -NFS4ERR_RESET_TO_PNFS;
- reset:
- 		dprintk("%s Retry through MDS. Error %d\n", __func__,
-@@ -1764,7 +1763,7 @@ ff_layout_read_pagelist(struct nfs_pgio_header *hdr)
- 	return PNFS_ATTEMPTED;
+@@ -847,8 +847,13 @@ ff_layout_pg_init_read(struct nfs_pageio_descriptor *pgio,
+ 		goto out_mds;
  
- out_failed:
--	if (ff_layout_has_available_ds(lseg))
-+	if (ff_layout_avoid_mds_available_ds(lseg))
- 		return PNFS_TRY_AGAIN;
- 	return PNFS_NOT_ATTEMPTED;
- }
-diff --git a/fs/nfs/flexfilelayout/flexfilelayout.h b/fs/nfs/flexfilelayout/flexfilelayout.h
-index 1318c77aeb35..b54058122647 100644
---- a/fs/nfs/flexfilelayout/flexfilelayout.h
-+++ b/fs/nfs/flexfilelayout/flexfilelayout.h
-@@ -191,4 +191,5 @@ nfs4_ff_find_or_create_ds_client(struct pnfs_layout_segment *lseg,
- struct rpc_cred *ff_layout_get_ds_cred(struct pnfs_layout_segment *lseg,
- 				       u32 ds_idx, struct rpc_cred *mdscred);
- bool ff_layout_has_available_ds(struct pnfs_layout_segment *lseg);
-+bool ff_layout_avoid_mds_available_ds(struct pnfs_layout_segment *lseg);
- #endif /* FS_NFS_NFS4FLEXFILELAYOUT_H */
-diff --git a/fs/nfs/flexfilelayout/flexfilelayoutdev.c b/fs/nfs/flexfilelayout/flexfilelayoutdev.c
-index 56296f3df19c..c52ca75081a8 100644
---- a/fs/nfs/flexfilelayout/flexfilelayoutdev.c
-+++ b/fs/nfs/flexfilelayout/flexfilelayoutdev.c
-@@ -540,6 +540,12 @@ bool ff_layout_has_available_ds(struct pnfs_layout_segment *lseg)
- 	return ff_rw_layout_has_available_ds(lseg);
- }
- 
-+bool ff_layout_avoid_mds_available_ds(struct pnfs_layout_segment *lseg)
-+{
-+	return ff_layout_no_fallback_to_mds(lseg) ||
-+	       ff_layout_has_available_ds(lseg);
-+}
+ 	ds = ff_layout_choose_best_ds_for_read(pgio->pg_lseg, 0, &ds_idx);
+-	if (!ds)
+-		goto out_mds;
++	if (!ds) {
++		if (ff_layout_no_fallback_to_mds(pgio->pg_lseg))
++			goto out_pnfs;
++		else
++			goto out_mds;
++	}
 +
- module_param(dataserver_retrans, uint, 0644);
- MODULE_PARM_DESC(dataserver_retrans, "The  number of times the NFSv4.1 client "
- 			"retries a request before it attempts further "
+ 	mirror = FF_LAYOUT_COMP(pgio->pg_lseg, ds_idx);
+ 
+ 	pgio->pg_mirror_idx = ds_idx;
+@@ -862,6 +867,12 @@ out_mds:
+ 	pnfs_put_lseg(pgio->pg_lseg);
+ 	pgio->pg_lseg = NULL;
+ 	nfs_pageio_reset_read_mds(pgio);
++	return;
++
++out_pnfs:
++	pnfs_set_lo_fail(pgio->pg_lseg);
++	pnfs_put_lseg(pgio->pg_lseg);
++	pgio->pg_lseg = NULL;
+ }
+ 
+ static void
+@@ -904,8 +915,12 @@ ff_layout_pg_init_write(struct nfs_pageio_descriptor *pgio,
+ 
+ 	for (i = 0; i < pgio->pg_mirror_count; i++) {
+ 		ds = nfs4_ff_layout_prepare_ds(pgio->pg_lseg, i, true);
+-		if (!ds)
+-			goto out_mds;
++		if (!ds) {
++			if (ff_layout_no_fallback_to_mds(pgio->pg_lseg))
++				goto out_pnfs;
++			else
++				goto out_mds;
++		}
+ 		pgm = &pgio->pg_mirrors[i];
+ 		mirror = FF_LAYOUT_COMP(pgio->pg_lseg, i);
+ 		pgm->pg_bsize = mirror->mirror_ds->ds_versions[0].wsize;
+@@ -917,6 +932,12 @@ out_mds:
+ 	pnfs_put_lseg(pgio->pg_lseg);
+ 	pgio->pg_lseg = NULL;
+ 	nfs_pageio_reset_write_mds(pgio);
++	return;
++
++out_pnfs:
++	pnfs_set_lo_fail(pgio->pg_lseg);
++	pnfs_put_lseg(pgio->pg_lseg);
++	pgio->pg_lseg = NULL;
+ }
+ 
+ static unsigned int
 -- 
 2.5.5
 
