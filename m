@@ -1,90 +1,88 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qk0-f196.google.com ([209.85.220.196]:33365 "EHLO
-	mail-qk0-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753999AbcEOBGy (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 14 May 2016 21:06:54 -0400
-Received: by mail-qk0-f196.google.com with SMTP id q184so11339544qkf.0
-        for <linux-nfs@vger.kernel.org>; Sat, 14 May 2016 18:06:53 -0700 (PDT)
+Received: from mail-qk0-f193.google.com ([209.85.220.193]:36664 "EHLO
+	mail-qk0-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753995AbcEOBGz (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 14 May 2016 21:06:55 -0400
+Received: by mail-qk0-f193.google.com with SMTP id l68so11320449qkf.3
+        for <linux-nfs@vger.kernel.org>; Sat, 14 May 2016 18:06:54 -0700 (PDT)
 From: Jeff Layton <jlayton@poochiereds.net>
 To: Trond Myklebust <trondmy@primarydata.com>,
         Anna Schumaker <Anna.Schumaker@netapp.com>
 Cc: linux-nfs@vger.kernel.org, hch@infradead.org
-Subject: [PATCH v3 01/13] pNFS/flexfile: Fix erroneous fall back to read/write through the MDS
-Date: Sat, 14 May 2016 21:06:30 -0400
-Message-Id: <1463274402-17746-2-git-send-email-jeff.layton@primarydata.com>
+Subject: [PATCH v3 02/13] pNFS/flexfiles: When checking for available DSes, conditionally check for MDS io
+Date: Sat, 14 May 2016 21:06:31 -0400
+Message-Id: <1463274402-17746-3-git-send-email-jeff.layton@primarydata.com>
 In-Reply-To: <1463274402-17746-1-git-send-email-jeff.layton@primarydata.com>
 References: <1463274402-17746-1-git-send-email-jeff.layton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Trond Myklebust <trond.myklebust@primarydata.com>
+From: Tom Haynes <loghyr@primarydata.com>
 
-This patch fixes a problem whereby the pNFS client falls back to doing
-reads and writes through the metadata server even when the layout flag
-FF_FLAGS_NO_IO_THRU_MDS is set.
+Whenever we check to see if we have the needed number of DSes for the
+action, we may also have to check to see whether IO is allowed to go to
+the MDS or not.
 
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+[jlayton: fix merge conflict due to lack of localio patches here]
+
+Signed-off-by: Tom Haynes <loghyr@primarydata.com>
+Signed-off-by: Jeff Layton <jeff.layton@primarydata.com>
 ---
- fs/nfs/flexfilelayout/flexfilelayout.c | 23 ++++++-----------------
- 1 file changed, 6 insertions(+), 17 deletions(-)
+ fs/nfs/flexfilelayout/flexfilelayout.c    | 5 ++---
+ fs/nfs/flexfilelayout/flexfilelayout.h    | 1 +
+ fs/nfs/flexfilelayout/flexfilelayoutdev.c | 6 ++++++
+ 3 files changed, 9 insertions(+), 3 deletions(-)
 
 diff --git a/fs/nfs/flexfilelayout/flexfilelayout.c b/fs/nfs/flexfilelayout/flexfilelayout.c
-index 60d690dbc947..51f6660a2247 100644
+index 51f6660a2247..f538ca6bbe81 100644
 --- a/fs/nfs/flexfilelayout/flexfilelayout.c
 +++ b/fs/nfs/flexfilelayout/flexfilelayout.c
-@@ -1294,7 +1294,7 @@ ff_layout_set_layoutcommit(struct nfs_pgio_header *hdr)
+@@ -1101,8 +1101,7 @@ static int ff_layout_async_handle_error_v4(struct rpc_task *task,
+ 		rpc_wake_up(&tbl->slot_tbl_waitq);
+ 		/* fall through */
+ 	default:
+-		if (ff_layout_no_fallback_to_mds(lseg) ||
+-		    ff_layout_has_available_ds(lseg))
++		if (ff_layout_avoid_mds_available_ds(lseg))
+ 			return -NFS4ERR_RESET_TO_PNFS;
+ reset:
+ 		dprintk("%s Retry through MDS. Error %d\n", __func__,
+@@ -1764,7 +1763,7 @@ ff_layout_read_pagelist(struct nfs_pgio_header *hdr)
+ 	return PNFS_ATTEMPTED;
+ 
+ out_failed:
+-	if (ff_layout_has_available_ds(lseg))
++	if (ff_layout_avoid_mds_available_ds(lseg))
+ 		return PNFS_TRY_AGAIN;
+ 	return PNFS_NOT_ATTEMPTED;
+ }
+diff --git a/fs/nfs/flexfilelayout/flexfilelayout.h b/fs/nfs/flexfilelayout/flexfilelayout.h
+index 1318c77aeb35..b54058122647 100644
+--- a/fs/nfs/flexfilelayout/flexfilelayout.h
++++ b/fs/nfs/flexfilelayout/flexfilelayout.h
+@@ -191,4 +191,5 @@ nfs4_ff_find_or_create_ds_client(struct pnfs_layout_segment *lseg,
+ struct rpc_cred *ff_layout_get_ds_cred(struct pnfs_layout_segment *lseg,
+ 				       u32 ds_idx, struct rpc_cred *mdscred);
+ bool ff_layout_has_available_ds(struct pnfs_layout_segment *lseg);
++bool ff_layout_avoid_mds_available_ds(struct pnfs_layout_segment *lseg);
+ #endif /* FS_NFS_NFS4FLEXFILELAYOUT_H */
+diff --git a/fs/nfs/flexfilelayout/flexfilelayoutdev.c b/fs/nfs/flexfilelayout/flexfilelayoutdev.c
+index 56296f3df19c..c52ca75081a8 100644
+--- a/fs/nfs/flexfilelayout/flexfilelayoutdev.c
++++ b/fs/nfs/flexfilelayout/flexfilelayoutdev.c
+@@ -540,6 +540,12 @@ bool ff_layout_has_available_ds(struct pnfs_layout_segment *lseg)
+ 	return ff_rw_layout_has_available_ds(lseg);
  }
  
- static bool
--ff_layout_reset_to_mds(struct pnfs_layout_segment *lseg, int idx)
-+ff_layout_device_unavailable(struct pnfs_layout_segment *lseg, int idx)
- {
- 	/* No mirroring for now */
- 	struct nfs4_deviceid_node *node = FF_LAYOUT_DEVID_NODE(lseg, idx);
-@@ -1331,16 +1331,10 @@ static int ff_layout_read_prepare_common(struct rpc_task *task,
- 		rpc_exit(task, -EIO);
- 		return -EIO;
- 	}
--	if (ff_layout_reset_to_mds(hdr->lseg, hdr->pgio_mirror_idx)) {
--		dprintk("%s task %u reset io to MDS\n", __func__, task->tk_pid);
--		if (ff_layout_has_available_ds(hdr->lseg))
--			pnfs_read_resend_pnfs(hdr);
--		else
--			ff_layout_reset_read(hdr);
--		rpc_exit(task, 0);
-+	if (ff_layout_device_unavailable(hdr->lseg, hdr->pgio_mirror_idx)) {
-+		rpc_exit(task, -EHOSTDOWN);
- 		return -EAGAIN;
- 	}
--	hdr->pgio_done_cb = ff_layout_read_done_cb;
- 
- 	ff_layout_read_record_layoutstats_start(task, hdr);
- 	return 0;
-@@ -1530,14 +1524,8 @@ static int ff_layout_write_prepare_common(struct rpc_task *task,
- 		return -EIO;
- 	}
- 
--	if (ff_layout_reset_to_mds(hdr->lseg, hdr->pgio_mirror_idx)) {
--		bool retry_pnfs;
--
--		retry_pnfs = ff_layout_has_available_ds(hdr->lseg);
--		dprintk("%s task %u reset io to %s\n", __func__,
--			task->tk_pid, retry_pnfs ? "pNFS" : "MDS");
--		ff_layout_reset_write(hdr, retry_pnfs);
--		rpc_exit(task, 0);
-+	if (ff_layout_device_unavailable(hdr->lseg, hdr->pgio_mirror_idx)) {
-+		rpc_exit(task, -EHOSTDOWN);
- 		return -EAGAIN;
- 	}
- 
-@@ -1754,6 +1742,7 @@ ff_layout_read_pagelist(struct nfs_pgio_header *hdr)
- 	dprintk("%s USE DS: %s cl_count %d vers %d\n", __func__,
- 		ds->ds_remotestr, atomic_read(&ds->ds_clp->cl_count), vers);
- 
-+	hdr->pgio_done_cb = ff_layout_read_done_cb;
- 	atomic_inc(&ds->ds_clp->cl_count);
- 	hdr->ds_clp = ds->ds_clp;
- 	fh = nfs4_ff_layout_select_ds_fh(lseg, idx);
++bool ff_layout_avoid_mds_available_ds(struct pnfs_layout_segment *lseg)
++{
++	return ff_layout_no_fallback_to_mds(lseg) ||
++	       ff_layout_has_available_ds(lseg);
++}
++
+ module_param(dataserver_retrans, uint, 0644);
+ MODULE_PARM_DESC(dataserver_retrans, "The  number of times the NFSv4.1 client "
+ 			"retries a request before it attempts further "
 -- 
 2.5.5
 
