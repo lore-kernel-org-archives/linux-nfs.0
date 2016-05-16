@@ -1,82 +1,62 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from us-smtp-delivery-194.mimecast.com ([216.205.24.194]:47245 "EHLO
-	us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751119AbcEPVmo (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 16 May 2016 17:42:44 -0400
-From: Trond Myklebust <trondmy@primarydata.com>
-To: Anna Schumaker <Anna.Schumaker@netapp.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 2/4] NFSv4: Label stateids with the type
-Date: Mon, 16 May 2016 21:42:39 +0000
-Message-ID: <8E6667C1-9014-43E9-9E01-BCA0562C1A68@primarydata.com>
-References: <1463424447-57302-1-git-send-email-trond.myklebust@primarydata.com>
- <1463424447-57302-2-git-send-email-trond.myklebust@primarydata.com>
- <07c85b1d-fa94-90aa-b44e-ca465562bf4e@Netapp.com>
-In-Reply-To: <07c85b1d-fa94-90aa-b44e-ca465562bf4e@Netapp.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+Received: from mail-qg0-f66.google.com ([209.85.192.66]:34235 "EHLO
+	mail-qg0-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751119AbcEPVnQ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 16 May 2016 17:43:16 -0400
+Received: by mail-qg0-f66.google.com with SMTP id e35so14889237qge.1
+        for <linux-nfs@vger.kernel.org>; Mon, 16 May 2016 14:43:15 -0700 (PDT)
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: Anna Schumaker <anna.schumaker@netapp.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH v2 1/4] SUNRPC: Ensure get_rpccred() and put_rpccred() can take NULL arguments
+Date: Mon, 16 May 2016 17:42:42 -0400
+Message-Id: <1463434965-44877-1-git-send-email-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-DQoNCk9uIDUvMTYvMTYsIDE2OjU1LCAiQW5uYSBTY2h1bWFrZXIiIDxBbm5hLlNjaHVtYWtlckBu
-ZXRhcHAuY29tPiB3cm90ZToNCg0KPkhpIFRyb25kLA0KPg0KPk9uIDA1LzE2LzIwMTYgMDI6NDcg
-UE0sIFRyb25kIE15a2xlYnVzdCB3cm90ZToNCj4+IEluIG9yZGVyIHRvIG1vcmUgZWFzaWx5IGRp
-c3Rpbmd1aXNoIHdoYXQga2luZCBvZiBzdGF0ZWlkIHdlIGFyZSBkZWFsaW5nDQo+PiB3aXRoLCBp
-bnRyb2R1Y2UgYSB0eXBlIHRoYXQgY2FuIGJlIHVzZWQgdG8gbGFiZWwgdGhlIHN0YXRlaWQgc3Ry
-dWN0dXJlLg0KPj4gDQo+PiBUaGUgbGFiZWwgd2lsbCBiZSB1c2VmdWwgYm90aCBmb3IgZGVidWdn
-aW5nLCBidXQgYWxzbyB3aGVuIGRlYWxpbmcgd2l0aA0KPj4gb3BlcmF0aW9ucyBsaWtlIFNFVEFU
-VFIsIFJFQUQgYW5kIFdSSVRFIHRoYXQgY2FuIHRha2Ugc2V2ZXJhbCBkaWZmZXJlbnQNCj4+IHR5
-cGVzIG9mIHN0YXRlaWQgYXMgYXJndW1lbnRzLg0KPj4gDQo+PiBTaWduZWQtb2ZmLWJ5OiBUcm9u
-ZCBNeWtsZWJ1c3QgPHRyb25kLm15a2xlYnVzdEBwcmltYXJ5ZGF0YS5jb20+DQo+PiAtLS0NCj4+
-ICBmcy9uZnMvY2FsbGJhY2tfeGRyLmMgICAgICAgICAgICAgICAgICAgICB8IDE4ICsrKysrKysr
-KystLS0NCj4+ICBmcy9uZnMvZmxleGZpbGVsYXlvdXQvZmxleGZpbGVsYXlvdXQuYyAgICB8ICA3
-ICsrKy0tLQ0KPj4gIGZzL25mcy9mbGV4ZmlsZWxheW91dC9mbGV4ZmlsZWxheW91dGRldi5jIHwg
-IDMgKystDQo+PiAgZnMvbmZzL25mczRfZnMuaCAgICAgICAgICAgICAgICAgICAgICAgICAgfCAg
-NyArKysrLS0NCj4+ICBmcy9uZnMvbmZzNHByb2MuYyAgICAgICAgICAgICAgICAgICAgICAgICB8
-ICAzICsrKw0KPj4gIGZzL25mcy9uZnM0c3RhdGUuYyAgICAgICAgICAgICAgICAgICAgICAgIHwg
-IDUgKysrLQ0KPj4gIGZzL25mcy9uZnM0eGRyLmMgICAgICAgICAgICAgICAgICAgICAgICAgIHwg
-NDIgKysrKysrKysrKysrKysrKysrKysrKysrLS0tLS0tLQ0KPj4gIGluY2x1ZGUvbGludXgvbmZz
-NC5oICAgICAgICAgICAgICAgICAgICAgIHwgMjUgKysrKysrKysrKysrKystLS0tDQo+PiAgOCBm
-aWxlcyBjaGFuZ2VkLCA4NiBpbnNlcnRpb25zKCspLCAyNCBkZWxldGlvbnMoLSkNCj4+IA0KPj4g
-ZGlmZiAtLWdpdCBhL2ZzL25mcy9jYWxsYmFja194ZHIuYyBiL2ZzL25mcy9jYWxsYmFja194ZHIu
-Yw0KPj4gaW5kZXggOTc2YzkwNjA4ZTU2Li4zYTFkY2VlMjk4NjEgMTAwNjQ0DQo+DQo+PHNuaXA+
-DQo+DQo+DQo+PiBkaWZmIC0tZ2l0IGEvZnMvbmZzL25mczR4ZHIuYyBiL2ZzL25mcy9uZnM0eGRy
-LmMNCj4+IGluZGV4IDg4NDc0YTRmYzY2OS4uN2EyNGM5MmQxNjcyIDEwMDY0NA0KPj4gLS0tIGEv
-ZnMvbmZzL25mczR4ZHIuYw0KPj4gKysrIGIvZnMvbmZzL25mczR4ZHIuYw0KPj4gQEAgLTQyNzAs
-NiArNDI3MCwzMCBAQCBzdGF0aWMgaW50IGRlY29kZV9zdGF0ZWlkKHN0cnVjdCB4ZHJfc3RyZWFt
-ICp4ZHIsIG5mczRfc3RhdGVpZCAqc3RhdGVpZCkNCj4+ICAJcmV0dXJuIGRlY29kZV9vcGFxdWVf
-Zml4ZWQoeGRyLCBzdGF0ZWlkLCBORlM0X1NUQVRFSURfU0laRSk7DQo+PiAgfQ0KPj4gIA0KPj4g
-K3N0YXRpYyBpbnQgZGVjb2RlX29wZW5fc3RhdGVpZChzdHJ1Y3QgeGRyX3N0cmVhbSAqeGRyLCBu
-ZnM0X3N0YXRlaWQgKnN0YXRlaWQpDQo+PiArew0KPj4gKwlzdGF0ZWlkLT50eXBlID0gTkZTNF9P
-UEVOX1NUQVRFSURfVFlQRTsNCj4+ICsJcmV0dXJuIGRlY29kZV9zdGF0ZWlkKHhkciwgc3RhdGVp
-ZCk7DQo+PiArfQ0KPj4gKw0KPj4gK3N0YXRpYyBpbnQgZGVjb2RlX2xvY2tfc3RhdGVpZChzdHJ1
-Y3QgeGRyX3N0cmVhbSAqeGRyLCBuZnM0X3N0YXRlaWQgKnN0YXRlaWQpDQo+PiArew0KPj4gKwlz
-dGF0ZWlkLT50eXBlID0gTkZTNF9MT0NLX1NUQVRFSURfVFlQRTsNCj4+ICsJcmV0dXJuIGRlY29k
-ZV9zdGF0ZWlkKHhkciwgc3RhdGVpZCk7DQo+PiArfQ0KPj4gKw0KPj4gK3N0YXRpYyBpbnQgZGVj
-b2RlX2RlbGVnYXRpb25fc3RhdGVpZChzdHJ1Y3QgeGRyX3N0cmVhbSAqeGRyLCBuZnM0X3N0YXRl
-aWQgKnN0YXRlaWQpDQo+PiArew0KPj4gKwlzdGF0ZWlkLT50eXBlID0gTkZTNF9ERUxFR0FUSU9O
-X1NUQVRFSURfVFlQRTsNCj4+ICsJcmV0dXJuIGRlY29kZV9zdGF0ZWlkKHhkciwgc3RhdGVpZCk7
-DQo+PiArfQ0KPj4gKw0KPj4gK3N0YXRpYyBpbnQgZGVjb2RlX2xheW91dF9zdGF0ZWlkKHN0cnVj
-dCB4ZHJfc3RyZWFtICp4ZHIsIG5mczRfc3RhdGVpZCAqc3RhdGVpZCkNCj4+ICt7DQo+PiArCXN0
-YXRlaWQtPnR5cGUgPSBORlM0X0xBWU9VVF9TVEFURUlEX1RZUEU7DQo+PiArCXJldHVybiBkZWNv
-ZGVfc3RhdGVpZCh4ZHIsIHN0YXRlaWQpOw0KPj4gK30NCj4NCj5DYW4geW91IHdyYXAgZGVjb2Rl
-X2xheW91dF9zdGF0ZWlkKCkgaW4gYW4gI2lmZGVmIENPTkZJR19ORlNfVjRfMSBjaGVjaz8gIE90
-aGVyd2lzZSBJIGdldCB3YXJuaW5ncyB3aGVuIEkgY29tcGlsZSB3aXRob3V0IHY0LjEgZW5hYmxl
-ZDoNCj4NCj4NCj4gIENDIFtNXSAgZnMvbmZzL25mczNhY2wubw0KPiAgTEQgW01dICBmcy9uZnMv
-bmZzdjMubw0KPiAgQ0MgW01dICBmcy9uZnMvbmZzNHByb2Mubw0KPiAgQ0MgW01dICBmcy9uZnMv
-bmZzNHhkci5vDQo+ZnMvbmZzL25mczR4ZHIuYzo0MjkxOjEyOiB3YXJuaW5nOiAnZGVjb2RlX2xh
-eW91dF9zdGF0ZWlkJyBkZWZpbmVkIGJ1dCBub3QgdXNlZCBbLVd1bnVzZWQtZnVuY3Rpb25dDQo+
-IHN0YXRpYyBpbnQgZGVjb2RlX2xheW91dF9zdGF0ZWlkKHN0cnVjdCB4ZHJfc3RyZWFtICp4ZHIs
-IG5mczRfc3RhdGVpZCAqc3RhdGVpZCkNCj4gICAgICAgICAgICBefn5+fn5+fn5+fn5+fn5+fn5+
-fn4NCj4gIENDIFtNXSAgZnMvbmZzL25mczRzdGF0ZS5vDQo+ICBDQyBbTV0gIGZzL25mcy9uZnM0
-cmVuZXdkLm8NCj4gIENDIFtNXSAgZnMvbmZzL25mczRzdXBlci5vDQo+ICBDQyBbTV0gIGZzL25m
-cy9uZnM0ZmlsZS5vDQo+ICBDQyBbTV0gIGZzL25mcy9kZWxlZ2F0aW9uLm8NCj4gIENDIFtNXSAg
-ZnMvbmZzL25mczRpZG1hcC5vDQo+ICBDQyBbTV0gIGZzL25mcy9jYWxsYmFjay5vDQo+ICBDQyBb
-TV0gIGZzL25mcy9jYWxsYmFja194ZHIubw0KPmZzL25mcy9jYWxsYmFja194ZHIuYzoxNTk6MTU6
-IHdhcm5pbmc6ICdkZWNvZGVfbGF5b3V0X3N0YXRlaWQnIGRlZmluZWQgYnV0IG5vdCB1c2VkIFst
-V3VudXNlZC1mdW5jdGlvbl0NCj4gc3RhdGljIF9fYmUzMiBkZWNvZGVfbGF5b3V0X3N0YXRlaWQo
-c3RydWN0IHhkcl9zdHJlYW0gKnhkciwgbmZzNF9zdGF0ZWlkICpzdGF0ZWlkKQ0KPiAgICAgICAg
-ICAgICAgIF5+fn5+fn5+fn5+fn5+fn5+fn5+fg0KPiAgQ0MgW01dICBmcy9uZnMvY2FsbGJhY2tf
-cHJvYy5vDQo+ICBDQyBbTV0gIGZzL25mcy9uZnM0bmFtZXNwYWNlLm8NCj4NCg0KRHVo4oCmIFBs
-ZWFzZSBsb29rIGZvciB0aGUgdjIgc2VyaWVzLg0KDQpUaGFua3MNCiAgVHJvbmQNCg0K
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+---
+ include/linux/sunrpc/auth.h | 3 ++-
+ net/sunrpc/auth.c           | 5 +++--
+ 2 files changed, 5 insertions(+), 3 deletions(-)
+
+diff --git a/include/linux/sunrpc/auth.h b/include/linux/sunrpc/auth.h
+index 6a241a277249..c99fe999d0a8 100644
+--- a/include/linux/sunrpc/auth.h
++++ b/include/linux/sunrpc/auth.h
+@@ -201,7 +201,8 @@ char *			rpcauth_stringify_acceptor(struct rpc_cred *);
+ static inline
+ struct rpc_cred *	get_rpccred(struct rpc_cred *cred)
+ {
+-	atomic_inc(&cred->cr_count);
++	if (cred != NULL)
++		atomic_inc(&cred->cr_count);
+ 	return cred;
+ }
+ 
+diff --git a/net/sunrpc/auth.c b/net/sunrpc/auth.c
+index 02f53674dc39..c2cf04bf609f 100644
+--- a/net/sunrpc/auth.c
++++ b/net/sunrpc/auth.c
+@@ -703,8 +703,7 @@ rpcauth_bindcred(struct rpc_task *task, struct rpc_cred *cred, int flags)
+ 		new = rpcauth_bind_new_cred(task, lookupflags);
+ 	if (IS_ERR(new))
+ 		return PTR_ERR(new);
+-	if (req->rq_cred != NULL)
+-		put_rpccred(req->rq_cred);
++	put_rpccred(req->rq_cred);
+ 	req->rq_cred = new;
+ 	return 0;
+ }
+@@ -712,6 +711,8 @@ rpcauth_bindcred(struct rpc_task *task, struct rpc_cred *cred, int flags)
+ void
+ put_rpccred(struct rpc_cred *cred)
+ {
++	if (cred == NULL)
++		return;
+ 	/* Fast path for unhashed credentials */
+ 	if (test_bit(RPCAUTH_CRED_HASHED, &cred->cr_flags) == 0) {
+ 		if (atomic_dec_and_test(&cred->cr_count))
+-- 
+2.5.5
 
