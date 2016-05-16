@@ -1,43 +1,69 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from us-smtp-delivery-194.mimecast.com ([216.205.24.194]:34579 "EHLO
-	us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1754356AbcEPTu3 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 16 May 2016 15:50:29 -0400
-From: Trond Myklebust <trondmy@primarydata.com>
-To: Jeff Layton <jlayton@poochiereds.net>,
-        Anna Schumaker <Anna.Schumaker@netapp.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "hch@infradead.org" <hch@infradead.org>
+Received: from mail-qk0-f171.google.com ([209.85.220.171]:32936 "EHLO
+	mail-qk0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754293AbcEPUIK (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 16 May 2016 16:08:10 -0400
+Received: by mail-qk0-f171.google.com with SMTP id n63so103213962qkf.0
+        for <linux-nfs@vger.kernel.org>; Mon, 16 May 2016 13:08:10 -0700 (PDT)
+Message-ID: <1463429284.26783.23.camel@poochiereds.net>
 Subject: Re: [PATCH v3 10/13] pnfs: fix bad error handling in send_layoutget
-Date: Mon, 16 May 2016 19:50:07 +0000
-Message-ID: <FFD84C76-4FD9-403E-9FDE-4FA51C6F9619@primarydata.com>
+From: Jeff Layton <jlayton@poochiereds.net>
+To: Trond Myklebust <trondmy@primarydata.com>,
+        Anna Schumaker <Anna.Schumaker@netapp.com>
+Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "hch@infradead.org" <hch@infradead.org>
+Date: Mon, 16 May 2016 16:08:04 -0400
+In-Reply-To: <FFD84C76-4FD9-403E-9FDE-4FA51C6F9619@primarydata.com>
 References: <1463274402-17746-1-git-send-email-jeff.layton@primarydata.com>
  <1463274402-17746-11-git-send-email-jeff.layton@primarydata.com>
-In-Reply-To: <1463274402-17746-11-git-send-email-jeff.layton@primarydata.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+	 <FFD84C76-4FD9-403E-9FDE-4FA51C6F9619@primarydata.com>
+Content-Type: text/plain; charset="UTF-8"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-DQoNCk9uIDUvMTQvMTYsIDIxOjA2LCAiSmVmZiBMYXl0b24iIDxqbGF5dG9uQHBvb2NoaWVyZWRz
-Lm5ldD4gd3JvdGU6DQoNCj5DdXJyZW50bHksIHRoZSBjb2RlIHdpbGwgY2xlYXIgdGhlIGZhaWwg
-Yml0IGlmIHdlIGdldCBiYWNrIGEgZmF0YWwNCj5lcnJvci4gSSBkb24ndCB0aGluayB0aGF0J3Mg
-Y29ycmVjdCAtLSB3ZSBvbmx5IHdhbnQgdG8gY2xlYXIgdGhhdA0KPmJpdCBpZiB0aGUgbGF5b3V0
-Z2V0IHN1Y2NlZWRzLg0KPg0KPkZpeGVzOiAwYmNiZjAzOWY2IChuZnM6IGhhbmRsZSByZXF1ZXN0
-IGFkZCBmYWlsdXJlIHByb3Blcmx5KQ0KPlNpZ25lZC1vZmYtYnk6IEplZmYgTGF5dG9uIDxqZWZm
-LmxheXRvbkBwcmltYXJ5ZGF0YS5jb20+DQo+LS0tDQo+IGZzL25mcy9wbmZzLmMgfCA4ICsrKysr
-LS0tDQo+IDEgZmlsZSBjaGFuZ2VkLCA1IGluc2VydGlvbnMoKyksIDMgZGVsZXRpb25zKC0pDQo+
-DQo+ZGlmZiAtLWdpdCBhL2ZzL25mcy9wbmZzLmMgYi9mcy9uZnMvcG5mcy5jDQo+aW5kZXggZTZj
-YWQ1ZWU1ZDI5Li41ZjZlZDI5NWFjYjUgMTAwNjQ0DQo+LS0tIGEvZnMvbmZzL3BuZnMuYw0KPisr
-KyBiL2ZzL25mcy9wbmZzLmMNCj5AQCAtODc2LDExICs4NzYsMTMgQEAgc2VuZF9sYXlvdXRnZXQo
-c3RydWN0IHBuZnNfbGF5b3V0X2hkciAqbG8sDQo+IAkJbHNlZyA9IG5mczRfcHJvY19sYXlvdXRn
-ZXQobGdwLCBnZnBfZmxhZ3MpOw0KPiAJfSB3aGlsZSAobHNlZyA9PSBFUlJfUFRSKC1FQUdBSU4p
-KTsNCj4gDQo+LQlpZiAoSVNfRVJSKGxzZWcpICYmICFuZnNfZXJyb3JfaXNfZmF0YWwoUFRSX0VS
-Uihsc2VnKSkpDQo+LQkJbHNlZyA9IE5VTEw7DQo+LQllbHNlDQo+KwlpZiAoSVNfRVJSKGxzZWcp
-KSB7DQo+KwkJaWYgKCFuZnNfZXJyb3JfaXNfZmF0YWwoUFRSX0VSUihsc2VnKSkpDQo+KwkJCWxz
-ZWcgPSBOVUxMOw0KPisJfSBlbHNlIHsNCj4gCQlwbmZzX2xheW91dF9jbGVhcl9mYWlsX2JpdChs
-bywNCj4gCQkJCXBuZnNfaW9tb2RlX3RvX2ZhaWxfYml0KHJhbmdlLT5pb21vZGUpKTsNCj4rCX0N
-Cg0KTm/igKYgVGhlIGludGVudGlvbiB3YXMgaW5kZWVkIHRoYXQgd2UgY2xlYXIgdGhlIGZhaWwg
-Yml0IGluIGFsbCBjYXNlcyBleGNlcHQgZmF0YWwgZXJyb3JzLiBPdGhlcndpc2UsIHRoZSBjbGll
-bnQgd29u4oCZdCBhdHRlbXB0IGFub3RoZXIgbGF5b3V0Z2V0Lg0KDQoNCg0K
+On Mon, 2016-05-16 at 19:50 +0000, Trond Myklebust wrote:
+> 
+> 
+> On 5/14/16, 21:06, "Jeff Layton" <jlayton@poochiereds.net> wrote:
+> 
+> >Currently, the code will clear the fail bit if we get back a fatal
+> >error. I don't think that's correct -- we only want to clear that
+> >bit if the layoutget succeeds.
+> >
+> >Fixes: 0bcbf039f6 (nfs: handle request add failure properly)
+> >Signed-off-by: Jeff Layton <jeff.layton@primarydata.com>
+> >---
+> > fs/nfs/pnfs.c | 8 +++++---
+> > 1 file changed, 5 insertions(+), 3 deletions(-)
+> >
+> >diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+> >index e6cad5ee5d29..5f6ed295acb5 100644
+> >--- a/fs/nfs/pnfs.c
+> >+++ b/fs/nfs/pnfs.c
+> >@@ -876,11 +876,13 @@ send_layoutget(struct pnfs_layout_hdr *lo,
+> > lseg = nfs4_proc_layoutget(lgp, gfp_flags);
+> > } while (lseg == ERR_PTR(-EAGAIN));
+> > 
+> >-	if (IS_ERR(lseg) && !nfs_error_is_fatal(PTR_ERR(lseg)))
+> >-	 lseg = NULL;
+> >-	else
+> >+	if (IS_ERR(lseg)) {
+> >+	 if (!nfs_error_is_fatal(PTR_ERR(lseg)))
+> >+	 lseg = NULL;
+> >+	} else {
+> > pnfs_layout_clear_fail_bit(lo,
+> > pnfs_iomode_to_fail_bit(range->iomode));
+> >+	}
+> 
+> No… The intention was indeed that we clear the fail bit in all cases
+> except fatal errors. Otherwise, the client won’t attempt another
+> layoutget.
+> 
 
+Got it, thanks. Let me respin, retest and resend. Let me know if you
+see any other problems and I'll get those fixed before the next resend.
+
+Thanks!
+--
+Jeff Layton <jlayton@poochiereds.net>
