@@ -1,349 +1,175 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qg0-f65.google.com ([209.85.192.65]:35448 "EHLO
-	mail-qg0-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751119AbcEPVnR (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 16 May 2016 17:43:17 -0400
-Received: by mail-qg0-f65.google.com with SMTP id b14so14147278qge.2
-        for <linux-nfs@vger.kernel.org>; Mon, 16 May 2016 14:43:16 -0700 (PDT)
+Received: from mail-qg0-f51.google.com ([209.85.192.51]:33983 "EHLO
+	mail-qg0-f51.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751119AbcEPVnS (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 16 May 2016 17:43:18 -0400
+Received: by mail-qg0-f51.google.com with SMTP id 90so96469061qgz.1
+        for <linux-nfs@vger.kernel.org>; Mon, 16 May 2016 14:43:17 -0700 (PDT)
 From: Trond Myklebust <trond.myklebust@primarydata.com>
 To: Anna Schumaker <anna.schumaker@netapp.com>
 Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v2 2/4] NFSv4: Label stateids with the type
-Date: Mon, 16 May 2016 17:42:43 -0400
-Message-Id: <1463434965-44877-2-git-send-email-trond.myklebust@primarydata.com>
-In-Reply-To: <1463434965-44877-1-git-send-email-trond.myklebust@primarydata.com>
+Subject: [PATCH v2 3/4] NFSv4: Use the right stateid for delegations in setattr, read and write
+Date: Mon, 16 May 2016 17:42:44 -0400
+Message-Id: <1463434965-44877-3-git-send-email-trond.myklebust@primarydata.com>
+In-Reply-To: <1463434965-44877-2-git-send-email-trond.myklebust@primarydata.com>
 References: <1463434965-44877-1-git-send-email-trond.myklebust@primarydata.com>
+ <1463434965-44877-2-git-send-email-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-In order to more easily distinguish what kind of stateid we are dealing
-with, introduce a type that can be used to label the stateid structure.
-
-The label will be useful both for debugging, but also when dealing with
-operations like SETATTR, READ and WRITE that can take several different
-types of stateid as arguments.
+When we're using a delegation to represent our open state, we should
+ensure that we use the stateid that was used to create that delegation.
 
 Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
 ---
- fs/nfs/callback_xdr.c                     | 17 ++++++++++---
- fs/nfs/flexfilelayout/flexfilelayout.c    |  7 +++---
- fs/nfs/flexfilelayout/flexfilelayoutdev.c |  3 ++-
- fs/nfs/nfs4_fs.h                          |  7 ++++--
- fs/nfs/nfs4proc.c                         |  3 +++
- fs/nfs/nfs4state.c                        |  5 +++-
- fs/nfs/nfs4xdr.c                          | 42 ++++++++++++++++++++++++-------
- include/linux/nfs4.h                      | 25 ++++++++++++++----
- 8 files changed, 85 insertions(+), 24 deletions(-)
+ fs/nfs/delegation.c |  9 ++++++---
+ fs/nfs/delegation.h |  2 +-
+ fs/nfs/nfs4_fs.h    |  5 +++--
+ fs/nfs/nfs4proc.c   | 13 +++++++++----
+ fs/nfs/nfs4state.c  | 13 +++++++++----
+ 5 files changed, 28 insertions(+), 14 deletions(-)
 
-diff --git a/fs/nfs/callback_xdr.c b/fs/nfs/callback_xdr.c
-index 976c90608e56..d81f96aacd51 100644
---- a/fs/nfs/callback_xdr.c
-+++ b/fs/nfs/callback_xdr.c
-@@ -146,10 +146,16 @@ static __be32 decode_stateid(struct xdr_stream *xdr, nfs4_stateid *stateid)
- 	p = read_buf(xdr, NFS4_STATEID_SIZE);
- 	if (unlikely(p == NULL))
- 		return htonl(NFS4ERR_RESOURCE);
--	memcpy(stateid, p, NFS4_STATEID_SIZE);
-+	memcpy(stateid->data, p, NFS4_STATEID_SIZE);
- 	return 0;
- }
+diff --git a/fs/nfs/delegation.c b/fs/nfs/delegation.c
+index 5166adcfc0fb..322c2585bc34 100644
+--- a/fs/nfs/delegation.c
++++ b/fs/nfs/delegation.c
+@@ -875,15 +875,16 @@ int nfs_delegations_present(struct nfs_client *clp)
  
-+static __be32 decode_delegation_stateid(struct xdr_stream *xdr, nfs4_stateid *stateid)
-+{
-+	stateid->type = NFS4_DELEGATION_STATEID_TYPE;
-+	return decode_stateid(xdr, stateid);
-+}
-+
- static __be32 decode_compound_hdr_arg(struct xdr_stream *xdr, struct cb_compound_hdr_arg *hdr)
+ /**
+  * nfs4_copy_delegation_stateid - Copy inode's state ID information
+- * @dst: stateid data structure to fill in
+  * @inode: inode to check
+  * @flags: delegation type requirement
++ * @dst: stateid data structure to fill in
++ * @cred: optional argument to retrieve credential
+  *
+  * Returns "true" and fills in "dst->data" * if inode had a delegation,
+  * otherwise "false" is returned.
+  */
+-bool nfs4_copy_delegation_stateid(nfs4_stateid *dst, struct inode *inode,
+-		fmode_t flags)
++bool nfs4_copy_delegation_stateid(struct inode *inode, fmode_t flags,
++		nfs4_stateid *dst, struct rpc_cred **cred)
  {
- 	__be32 *p;
-@@ -211,7 +217,7 @@ static __be32 decode_recall_args(struct svc_rqst *rqstp, struct xdr_stream *xdr,
- 	__be32 *p;
- 	__be32 status;
+ 	struct nfs_inode *nfsi = NFS_I(inode);
+ 	struct nfs_delegation *delegation;
+@@ -896,6 +897,8 @@ bool nfs4_copy_delegation_stateid(nfs4_stateid *dst, struct inode *inode,
+ 	if (ret) {
+ 		nfs4_stateid_copy(dst, &delegation->stateid);
+ 		nfs_mark_delegation_referenced(delegation);
++		if (cred)
++			*cred = get_rpccred(delegation->cred);
+ 	}
+ 	rcu_read_unlock();
+ 	return ret;
+diff --git a/fs/nfs/delegation.h b/fs/nfs/delegation.h
+index 333063e032f0..64724d252a79 100644
+--- a/fs/nfs/delegation.h
++++ b/fs/nfs/delegation.h
+@@ -56,7 +56,7 @@ void nfs_delegation_reap_unclaimed(struct nfs_client *clp);
+ int nfs4_proc_delegreturn(struct inode *inode, struct rpc_cred *cred, const nfs4_stateid *stateid, int issync);
+ int nfs4_open_delegation_recall(struct nfs_open_context *ctx, struct nfs4_state *state, const nfs4_stateid *stateid, fmode_t type);
+ int nfs4_lock_delegation_recall(struct file_lock *fl, struct nfs4_state *state, const nfs4_stateid *stateid);
+-bool nfs4_copy_delegation_stateid(nfs4_stateid *dst, struct inode *inode, fmode_t flags);
++bool nfs4_copy_delegation_stateid(struct inode *inode, fmode_t flags, nfs4_stateid *dst, struct rpc_cred **cred);
  
--	status = decode_stateid(xdr, &args->stateid);
-+	status = decode_delegation_stateid(xdr, &args->stateid);
- 	if (unlikely(status != 0))
- 		goto out;
- 	p = read_buf(xdr, 4);
-@@ -227,6 +233,11 @@ out:
- }
- 
- #if defined(CONFIG_NFS_V4_1)
-+static __be32 decode_layout_stateid(struct xdr_stream *xdr, nfs4_stateid *stateid)
-+{
-+	stateid->type = NFS4_LAYOUT_STATEID_TYPE;
-+	return decode_stateid(xdr, stateid);
-+}
- 
- static __be32 decode_layoutrecall_args(struct svc_rqst *rqstp,
- 				       struct xdr_stream *xdr,
-@@ -263,7 +274,7 @@ static __be32 decode_layoutrecall_args(struct svc_rqst *rqstp,
- 		}
- 		p = xdr_decode_hyper(p, &args->cbl_range.offset);
- 		p = xdr_decode_hyper(p, &args->cbl_range.length);
--		status = decode_stateid(xdr, &args->cbl_stateid);
-+		status = decode_layout_stateid(xdr, &args->cbl_stateid);
- 		if (unlikely(status != 0))
- 			goto out;
- 	} else if (args->cbl_recall_type == RETURN_FSID) {
-diff --git a/fs/nfs/flexfilelayout/flexfilelayout.c b/fs/nfs/flexfilelayout/flexfilelayout.c
-index 0cb1abd535e3..210314ee4912 100644
---- a/fs/nfs/flexfilelayout/flexfilelayout.c
-+++ b/fs/nfs/flexfilelayout/flexfilelayout.c
-@@ -53,14 +53,15 @@ ff_layout_free_layout_hdr(struct pnfs_layout_hdr *lo)
- 	kfree(FF_LAYOUT_FROM_HDR(lo));
- }
- 
--static int decode_stateid(struct xdr_stream *xdr, nfs4_stateid *stateid)
-+static int decode_pnfs_stateid(struct xdr_stream *xdr, nfs4_stateid *stateid)
- {
- 	__be32 *p;
- 
- 	p = xdr_inline_decode(xdr, NFS4_STATEID_SIZE);
- 	if (unlikely(p == NULL))
- 		return -ENOBUFS;
--	memcpy(stateid, p, NFS4_STATEID_SIZE);
-+	stateid->type = NFS4_PNFS_DS_STATEID_TYPE;
-+	memcpy(stateid->data, p, NFS4_STATEID_SIZE);
- 	dprintk("%s: stateid id= [%x%x%x%x]\n", __func__,
- 		p[0], p[1], p[2], p[3]);
- 	return 0;
-@@ -456,7 +457,7 @@ ff_layout_alloc_lseg(struct pnfs_layout_hdr *lh,
- 		fls->mirror_array[i]->efficiency = be32_to_cpup(p);
- 
- 		/* stateid */
--		rc = decode_stateid(&stream, &fls->mirror_array[i]->stateid);
-+		rc = decode_pnfs_stateid(&stream, &fls->mirror_array[i]->stateid);
- 		if (rc)
- 			goto out_err_free;
- 
-diff --git a/fs/nfs/flexfilelayout/flexfilelayoutdev.c b/fs/nfs/flexfilelayout/flexfilelayoutdev.c
-index add0e5a70bd6..00fa83b06b74 100644
---- a/fs/nfs/flexfilelayout/flexfilelayoutdev.c
-+++ b/fs/nfs/flexfilelayout/flexfilelayoutdev.c
-@@ -228,7 +228,8 @@ ff_ds_error_match(const struct nfs4_ff_layout_ds_err *e1,
- 		return e1->opnum < e2->opnum ? -1 : 1;
- 	if (e1->status != e2->status)
- 		return e1->status < e2->status ? -1 : 1;
--	ret = memcmp(&e1->stateid, &e2->stateid, sizeof(e1->stateid));
-+	ret = memcmp(e1->stateid.data, e2->stateid.data,
-+			sizeof(e1->stateid.data));
- 	if (ret != 0)
- 		return ret;
- 	ret = memcmp(&e1->deviceid, &e2->deviceid, sizeof(e1->deviceid));
+ void nfs_mark_delegation_referenced(struct nfs_delegation *delegation);
+ int nfs4_have_delegation(struct inode *inode, fmode_t flags);
 diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
-index 4afdee420d25..b5d9f345c9f2 100644
+index b5d9f345c9f2..768456fa1b17 100644
 --- a/fs/nfs/nfs4_fs.h
 +++ b/fs/nfs/nfs4_fs.h
-@@ -496,12 +496,15 @@ extern struct svc_version nfs4_callback_version4;
+@@ -438,8 +438,9 @@ extern void nfs41_handle_server_scope(struct nfs_client *,
+ 				      struct nfs41_server_scope **);
+ extern void nfs4_put_lock_state(struct nfs4_lock_state *lsp);
+ extern int nfs4_set_lock_state(struct nfs4_state *state, struct file_lock *fl);
+-extern int nfs4_select_rw_stateid(nfs4_stateid *, struct nfs4_state *,
+-		fmode_t, const struct nfs_lockowner *);
++extern int nfs4_select_rw_stateid(struct nfs4_state *, fmode_t,
++		const struct nfs_lockowner *, nfs4_stateid *,
++		struct rpc_cred **);
  
- static inline void nfs4_stateid_copy(nfs4_stateid *dst, const nfs4_stateid *src)
- {
--	memcpy(dst, src, sizeof(*dst));
-+	memcpy(dst->data, src->data, sizeof(dst->data));
-+	dst->type = src->type;
- }
- 
- static inline bool nfs4_stateid_match(const nfs4_stateid *dst, const nfs4_stateid *src)
- {
--	return memcmp(dst, src, sizeof(*dst)) == 0;
-+	if (dst->type != src->type)
-+		return false;
-+	return memcmp(dst->data, src->data, sizeof(dst->data)) == 0;
- }
- 
- static inline bool nfs4_stateid_match_other(const nfs4_stateid *dst, const nfs4_stateid *src)
+ extern struct nfs_seqid *nfs_alloc_seqid(struct nfs_seqid_counter *counter, gfp_t gfp_mask);
+ extern int nfs_wait_on_sequence(struct nfs_seqid *seqid, struct rpc_task *task);
 diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 327b8c34d360..9cc6d28101ac 100644
+index 9cc6d28101ac..eba6a2e8677c 100644
 --- a/fs/nfs/nfs4proc.c
 +++ b/fs/nfs/nfs4proc.c
-@@ -8653,6 +8653,9 @@ nfs41_free_lock_state(struct nfs_server *server, struct nfs4_lock_state *lsp)
- static bool nfs41_match_stateid(const nfs4_stateid *s1,
- 		const nfs4_stateid *s2)
- {
-+	if (s1->type != s2->type)
-+		return false;
+@@ -2676,6 +2676,7 @@ static int _nfs4_do_setattr(struct inode *inode, struct rpc_cred *cred,
+ 		.rpc_resp	= &res,
+ 		.rpc_cred	= cred,
+         };
++	struct rpc_cred *delegation_cred = NULL;
+ 	unsigned long timestamp = jiffies;
+ 	fmode_t fmode;
+ 	bool truncate;
+@@ -2691,7 +2692,7 @@ static int _nfs4_do_setattr(struct inode *inode, struct rpc_cred *cred,
+ 	truncate = (sattr->ia_valid & ATTR_SIZE) ? true : false;
+ 	fmode = truncate ? FMODE_WRITE : FMODE_READ;
+ 
+-	if (nfs4_copy_delegation_stateid(&arg.stateid, inode, fmode)) {
++	if (nfs4_copy_delegation_stateid(inode, fmode, &arg.stateid, &delegation_cred)) {
+ 		/* Use that stateid */
+ 	} else if (truncate && state != NULL) {
+ 		struct nfs_lockowner lockowner = {
+@@ -2700,13 +2701,17 @@ static int _nfs4_do_setattr(struct inode *inode, struct rpc_cred *cred,
+ 		};
+ 		if (!nfs4_valid_open_stateid(state))
+ 			return -EBADF;
+-		if (nfs4_select_rw_stateid(&arg.stateid, state, FMODE_WRITE,
+-				&lockowner) == -EIO)
++		if (nfs4_select_rw_stateid(state, FMODE_WRITE, &lockowner,
++				&arg.stateid, &delegation_cred) == -EIO)
+ 			return -EBADF;
+ 	} else
+ 		nfs4_stateid_copy(&arg.stateid, &zero_stateid);
++	if (delegation_cred)
++		msg.rpc_cred = delegation_cred;
+ 
+ 	status = nfs4_call_sync(server->client, server, &msg, &arg.seq_args, &res.seq_res, 1);
 +
- 	if (memcmp(s1->other, s2->other, sizeof(s1->other)) != 0)
- 		return false;
++	put_rpccred(delegation_cred);
+ 	if (status == 0 && state != NULL)
+ 		renew_lease(server, timestamp);
+ 	trace_nfs4_setattr(inode, &arg.stateid, status);
+@@ -4285,7 +4290,7 @@ int nfs4_set_rw_stateid(nfs4_stateid *stateid,
+ 
+ 	if (l_ctx != NULL)
+ 		lockowner = &l_ctx->lockowner;
+-	return nfs4_select_rw_stateid(stateid, ctx->state, fmode, lockowner);
++	return nfs4_select_rw_stateid(ctx->state, fmode, lockowner, stateid, NULL);
+ }
+ EXPORT_SYMBOL_GPL(nfs4_set_rw_stateid);
  
 diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
-index d854693a15b0..d630f9cca0f1 100644
+index d630f9cca0f1..5075592df145 100644
 --- a/fs/nfs/nfs4state.c
 +++ b/fs/nfs/nfs4state.c
-@@ -65,7 +65,10 @@
- 
- #define OPENOWNER_POOL_SIZE	8
- 
--const nfs4_stateid zero_stateid;
-+const nfs4_stateid zero_stateid = {
-+	.data = { 0 },
-+	.type = NFS4_SPECIAL_STATEID_TYPE,
-+};
- static DEFINE_MUTEX(nfs_clid_init_mutex);
- 
- int nfs4_init_clientid(struct nfs_client *clp, struct rpc_cred *cred)
-diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index 88474a4fc669..94cc3b2a4764 100644
---- a/fs/nfs/nfs4xdr.c
-+++ b/fs/nfs/nfs4xdr.c
-@@ -4270,6 +4270,24 @@ static int decode_stateid(struct xdr_stream *xdr, nfs4_stateid *stateid)
- 	return decode_opaque_fixed(xdr, stateid, NFS4_STATEID_SIZE);
- }
- 
-+static int decode_open_stateid(struct xdr_stream *xdr, nfs4_stateid *stateid)
-+{
-+	stateid->type = NFS4_OPEN_STATEID_TYPE;
-+	return decode_stateid(xdr, stateid);
-+}
-+
-+static int decode_lock_stateid(struct xdr_stream *xdr, nfs4_stateid *stateid)
-+{
-+	stateid->type = NFS4_LOCK_STATEID_TYPE;
-+	return decode_stateid(xdr, stateid);
-+}
-+
-+static int decode_delegation_stateid(struct xdr_stream *xdr, nfs4_stateid *stateid)
-+{
-+	stateid->type = NFS4_DELEGATION_STATEID_TYPE;
-+	return decode_stateid(xdr, stateid);
-+}
-+
- static int decode_close(struct xdr_stream *xdr, struct nfs_closeres *res)
+@@ -988,15 +988,20 @@ static void nfs4_copy_open_stateid(nfs4_stateid *dst, struct nfs4_state *state)
+  * Byte-range lock aware utility to initialize the stateid of read/write
+  * requests.
+  */
+-int nfs4_select_rw_stateid(nfs4_stateid *dst, struct nfs4_state *state,
+-		fmode_t fmode, const struct nfs_lockowner *lockowner)
++int nfs4_select_rw_stateid(struct nfs4_state *state,
++		fmode_t fmode, const struct nfs_lockowner *lockowner,
++		nfs4_stateid *dst, struct rpc_cred **cred)
  {
- 	int status;
-@@ -4278,7 +4296,7 @@ static int decode_close(struct xdr_stream *xdr, struct nfs_closeres *res)
- 	if (status != -EIO)
- 		nfs_increment_open_seqid(status, res->seqid);
- 	if (!status)
--		status = decode_stateid(xdr, &res->stateid);
-+		status = decode_open_stateid(xdr, &res->stateid);
- 	return status;
- }
- 
-@@ -4937,7 +4955,7 @@ static int decode_lock(struct xdr_stream *xdr, struct nfs_lock_res *res)
- 	if (status == -EIO)
+-	int ret = nfs4_copy_lock_stateid(dst, state, lockowner);
++	int ret;
++
++	if (cred != NULL)
++		*cred = NULL;
++	ret = nfs4_copy_lock_stateid(dst, state, lockowner);
+ 	if (ret == -EIO)
+ 		/* A lost lock - don't even consider delegations */
  		goto out;
- 	if (status == 0) {
--		status = decode_stateid(xdr, &res->stateid);
-+		status = decode_lock_stateid(xdr, &res->stateid);
- 		if (unlikely(status))
- 			goto out;
- 	} else if (status == -NFS4ERR_DENIED)
-@@ -4966,7 +4984,7 @@ static int decode_locku(struct xdr_stream *xdr, struct nfs_locku_res *res)
- 	if (status != -EIO)
- 		nfs_increment_lock_seqid(status, res->seqid);
- 	if (status == 0)
--		status = decode_stateid(xdr, &res->stateid);
-+		status = decode_lock_stateid(xdr, &res->stateid);
- 	return status;
- }
- 
-@@ -5016,7 +5034,7 @@ static int decode_rw_delegation(struct xdr_stream *xdr,
- 	__be32 *p;
- 	int status;
- 
--	status = decode_stateid(xdr, &res->delegation);
-+	status = decode_delegation_stateid(xdr, &res->delegation);
- 	if (unlikely(status))
- 		return status;
- 	p = xdr_inline_decode(xdr, 4);
-@@ -5096,7 +5114,7 @@ static int decode_open(struct xdr_stream *xdr, struct nfs_openres *res)
- 	nfs_increment_open_seqid(status, res->seqid);
- 	if (status)
- 		return status;
--	status = decode_stateid(xdr, &res->stateid);
-+	status = decode_open_stateid(xdr, &res->stateid);
- 	if (unlikely(status))
- 		return status;
- 
-@@ -5136,7 +5154,7 @@ static int decode_open_confirm(struct xdr_stream *xdr, struct nfs_open_confirmre
- 	if (status != -EIO)
- 		nfs_increment_open_seqid(status, res->seqid);
- 	if (!status)
--		status = decode_stateid(xdr, &res->stateid);
-+		status = decode_open_stateid(xdr, &res->stateid);
- 	return status;
- }
- 
-@@ -5148,7 +5166,7 @@ static int decode_open_downgrade(struct xdr_stream *xdr, struct nfs_closeres *re
- 	if (status != -EIO)
- 		nfs_increment_open_seqid(status, res->seqid);
- 	if (!status)
--		status = decode_stateid(xdr, &res->stateid);
-+		status = decode_open_stateid(xdr, &res->stateid);
- 	return status;
- }
- 
-@@ -5838,6 +5856,12 @@ out_overflow:
- }
- 
- #if defined(CONFIG_NFS_V4_1)
-+static int decode_layout_stateid(struct xdr_stream *xdr, nfs4_stateid *stateid)
-+{
-+	stateid->type = NFS4_LAYOUT_STATEID_TYPE;
-+	return decode_stateid(xdr, stateid);
-+}
-+
- static int decode_getdeviceinfo(struct xdr_stream *xdr,
- 				struct nfs4_getdeviceinfo_res *res)
- {
-@@ -5919,7 +5943,7 @@ static int decode_layoutget(struct xdr_stream *xdr, struct rpc_rqst *req,
- 	if (unlikely(!p))
- 		goto out_overflow;
- 	res->return_on_close = be32_to_cpup(p);
--	decode_stateid(xdr, &res->stateid);
-+	decode_layout_stateid(xdr, &res->stateid);
- 	p = xdr_inline_decode(xdr, 4);
- 	if (unlikely(!p))
- 		goto out_overflow;
-@@ -5985,7 +6009,7 @@ static int decode_layoutreturn(struct xdr_stream *xdr,
- 		goto out_overflow;
- 	res->lrs_present = be32_to_cpup(p);
- 	if (res->lrs_present)
--		status = decode_stateid(xdr, &res->stateid);
-+		status = decode_layout_stateid(xdr, &res->stateid);
- 	return status;
- out_overflow:
- 	print_overflow_msg(__func__, xdr);
-diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
-index 011433478a14..f561e2029862 100644
---- a/include/linux/nfs4.h
-+++ b/include/linux/nfs4.h
-@@ -50,12 +50,27 @@ struct nfs4_label {
- 
- typedef struct { char data[NFS4_VERIFIER_SIZE]; } nfs4_verifier;
- 
--struct nfs_stateid4 {
--	__be32 seqid;
--	char other[NFS4_STATEID_OTHER_SIZE];
--} __attribute__ ((packed));
-+struct nfs4_stateid_struct {
-+	union {
-+		char data[NFS4_STATEID_SIZE];
-+		struct {
-+			__be32 seqid;
-+			char other[NFS4_STATEID_OTHER_SIZE];
-+		} __attribute__ ((packed));
-+	};
-+
-+	enum {
-+		NFS4_INVALID_STATEID_TYPE = 0,
-+		NFS4_SPECIAL_STATEID_TYPE,
-+		NFS4_OPEN_STATEID_TYPE,
-+		NFS4_LOCK_STATEID_TYPE,
-+		NFS4_DELEGATION_STATEID_TYPE,
-+		NFS4_LAYOUT_STATEID_TYPE,
-+		NFS4_PNFS_DS_STATEID_TYPE,
-+	} type;
-+};
- 
--typedef struct nfs_stateid4 nfs4_stateid;
-+typedef struct nfs4_stateid_struct nfs4_stateid;
- 
- enum nfs_opnum4 {
- 	OP_ACCESS = 3,
+ 	/* returns true if delegation stateid found and copied */
+-	if (nfs4_copy_delegation_stateid(dst, state->inode, fmode)) {
++	if (nfs4_copy_delegation_stateid(state->inode, fmode, dst, cred)) {
+ 		ret = 0;
+ 		goto out;
+ 	}
 -- 
 2.5.5
 
