@@ -1,44 +1,38 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qg0-f51.google.com ([209.85.192.51]:35801 "EHLO
-	mail-qg0-f51.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751765AbcEPVnT (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 16 May 2016 17:43:19 -0400
-Received: by mail-qg0-f51.google.com with SMTP id f74so96570866qge.2
-        for <linux-nfs@vger.kernel.org>; Mon, 16 May 2016 14:43:19 -0700 (PDT)
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Anna Schumaker <anna.schumaker@netapp.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v2 4/4] NFS: Reclaim writes via writepage are opportunistic
-Date: Mon, 16 May 2016 17:42:45 -0400
-Message-Id: <1463434965-44877-4-git-send-email-trond.myklebust@primarydata.com>
-In-Reply-To: <1463434965-44877-3-git-send-email-trond.myklebust@primarydata.com>
-References: <1463434965-44877-1-git-send-email-trond.myklebust@primarydata.com>
- <1463434965-44877-2-git-send-email-trond.myklebust@primarydata.com>
- <1463434965-44877-3-git-send-email-trond.myklebust@primarydata.com>
+Received: from ipmail05.adl6.internode.on.net ([150.101.137.143]:37389 "EHLO
+	ipmail05.adl6.internode.on.net" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751266AbcEPXVg (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 16 May 2016 19:21:36 -0400
+Date: Tue, 17 May 2016 09:20:36 +1000
+From: Dave Chinner <david@fromorbit.com>
+To: Anna Schumaker <Anna.Schumaker@netapp.com>
+Cc: fstests@vger.kernel.org, linux-nfs@vger.kernel.org, hch@infradead.org
+Subject: Re: [PATCH 1/5] src/copy_file_range: Add a program for testing
+ vfs_copy_file_range()
+Message-ID: <20160516232036.GT26977@dastard>
+References: <1463172652-22361-1-git-send-email-Anna.Schumaker@Netapp.com>
+ <1463172652-22361-2-git-send-email-Anna.Schumaker@Netapp.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1463172652-22361-2-git-send-email-Anna.Schumaker@Netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-No need to make them a priority any more, or to make them succeed.
+On Fri, May 13, 2016 at 04:50:48PM -0400, Anna Schumaker wrote:
+> This will be used by the various copy tests to call the Linux
+> copy_file_range() system call.  I used src/cloner.c as a reference while
+> writing this tool.
 
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
----
- fs/nfs/write.c | 3 +--
- 1 file changed, 1 insertion(+), 2 deletions(-)
+Hmmm - I'd much prefer to see this added to xfs_io as it's a kernel
+syscall that lots of filesystems will eventually implement. A
+one-off binary for xfstests is fine for non-standard or deeply
+filesysetm specific stuff, but if it's generic we try to put it into
+xfs_io so that it's available to everyone writing scripts, not just
+xfstests....
 
-diff --git a/fs/nfs/write.c b/fs/nfs/write.c
-index 5f4fd53e5764..7c3c62892b0b 100644
---- a/fs/nfs/write.c
-+++ b/fs/nfs/write.c
-@@ -245,8 +245,7 @@ static void nfs_mark_uptodate(struct nfs_page *req)
- static int wb_priority(struct writeback_control *wbc)
- {
- 	int ret = 0;
--	if (wbc->for_reclaim)
--		return FLUSH_HIGHPRI | FLUSH_COND_STABLE;
-+
- 	if (wbc->sync_mode == WB_SYNC_ALL)
- 		ret = FLUSH_COND_STABLE;
- 	return ret;
+Cheers,
+
+Dave.
 -- 
-2.5.5
-
+Dave Chinner
+david@fromorbit.com
