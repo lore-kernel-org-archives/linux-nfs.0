@@ -1,57 +1,66 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qk0-f193.google.com ([209.85.220.193]:33207 "EHLO
-	mail-qk0-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756154AbcEQQ3E (ORCPT
+Received: from mail-qk0-f194.google.com ([209.85.220.194]:33203 "EHLO
+	mail-qk0-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755882AbcEQQ3E (ORCPT
 	<rfc822;linux-nfs@vger.kernel.org>); Tue, 17 May 2016 12:29:04 -0400
-Received: by mail-qk0-f193.google.com with SMTP id q184so1931446qkf.0
-        for <linux-nfs@vger.kernel.org>; Tue, 17 May 2016 09:29:04 -0700 (PDT)
+Received: by mail-qk0-f194.google.com with SMTP id q184so1931407qkf.0
+        for <linux-nfs@vger.kernel.org>; Tue, 17 May 2016 09:29:03 -0700 (PDT)
 From: Jeff Layton <jlayton@poochiereds.net>
 To: Trond Myklebust <trondmy@primarydata.com>,
         Anna Schumaker <Anna.Schumaker@netapp.com>
 Cc: Thomas Haynes <loghyr@primarydata.com>, linux-nfs@vger.kernel.org,
         hch@lst.de
-Subject: [PATCH v4 09/13] flexfiles: add kerneldoc header to nfs4_ff_layout_prepare_ds
-Date: Tue, 17 May 2016 12:28:44 -0400
-Message-Id: <1463502528-11519-10-git-send-email-jeff.layton@primarydata.com>
+Subject: [PATCH v4 08/13] flexfiles: remove pointless setting of NFS_LAYOUT_RETURN_REQUESTED
+Date: Tue, 17 May 2016 12:28:43 -0400
+Message-Id: <1463502528-11519-9-git-send-email-jeff.layton@primarydata.com>
 In-Reply-To: <1463502528-11519-1-git-send-email-jeff.layton@primarydata.com>
 References: <1463502528-11519-1-git-send-email-jeff.layton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Setting just the NFS_LAYOUT_RETURN_REQUESTED flag doesn't do anything,
+unless there are lsegs that are also being marked for return. At the
+point where that happens this flag is also set, so these set_bit calls
+don't do anything useful.
+
 Signed-off-by: Jeff Layton <jeff.layton@primarydata.com>
 ---
- fs/nfs/flexfilelayout/flexfilelayoutdev.c | 18 +++++++++++++++++-
- 1 file changed, 17 insertions(+), 1 deletion(-)
+ fs/nfs/flexfilelayout/flexfilelayout.c    | 2 --
+ fs/nfs/flexfilelayout/flexfilelayoutdev.c | 8 +-------
+ 2 files changed, 1 insertion(+), 9 deletions(-)
 
+diff --git a/fs/nfs/flexfilelayout/flexfilelayout.c b/fs/nfs/flexfilelayout/flexfilelayout.c
+index 127a65fa639a..1c902b01db9e 100644
+--- a/fs/nfs/flexfilelayout/flexfilelayout.c
++++ b/fs/nfs/flexfilelayout/flexfilelayout.c
+@@ -1269,8 +1269,6 @@ static int ff_layout_read_done_cb(struct rpc_task *task,
+ 					hdr->pgio_mirror_idx + 1,
+ 					&hdr->pgio_mirror_idx))
+ 			goto out_eagain;
+-		set_bit(NFS_LAYOUT_RETURN_REQUESTED,
+-			&hdr->lseg->pls_layout->plh_flags);
+ 		pnfs_read_resend_pnfs(hdr);
+ 		return task->tk_status;
+ 	case -NFS4ERR_RESET_TO_MDS:
 diff --git a/fs/nfs/flexfilelayout/flexfilelayoutdev.c b/fs/nfs/flexfilelayout/flexfilelayoutdev.c
-index 5532cb14e800..b70133de9505 100644
+index c52ca75081a8..5532cb14e800 100644
 --- a/fs/nfs/flexfilelayout/flexfilelayoutdev.c
 +++ b/fs/nfs/flexfilelayout/flexfilelayoutdev.c
-@@ -342,7 +342,23 @@ out:
- 	return fh;
- }
- 
--/* Upon return, either ds is connected, or ds is NULL */
-+/**
-+ * nfs4_ff_layout_prepare_ds - prepare a DS connection for an RPC call
-+ * @lseg: the layout segment we're operating on
-+ * @ds_idx: index of the DS to use
-+ * @fail_return: return layout on connect failure?
-+ *
-+ * Try to prepare a DS connection to accept an RPC call. This involves
-+ * selecting a mirror to use and connecting the client to it if it's not
-+ * already connected.
-+ *
-+ * Since we only need a single functioning mirror to satisfy a read, we don't
-+ * want to return the layout if there is one. For writes though, any down
-+ * mirror should result in a LAYOUTRETURN. @fail_return is how we distinguish
-+ * between the two cases.
-+ *
-+ * Returns a pointer to a connected DS object on success or NULL on failure.
-+ */
- struct nfs4_pnfs_ds *
- nfs4_ff_layout_prepare_ds(struct pnfs_layout_segment *lseg, u32 ds_idx,
- 			  bool fail_return)
+@@ -393,13 +393,7 @@ nfs4_ff_layout_prepare_ds(struct pnfs_layout_segment *lseg, u32 ds_idx,
+ 					 mirror, lseg->pls_range.offset,
+ 					 lseg->pls_range.length, NFS4ERR_NXIO,
+ 					 OP_ILLEGAL, GFP_NOIO);
+-		if (!fail_return) {
+-			if (ff_layout_has_available_ds(lseg))
+-				set_bit(NFS_LAYOUT_RETURN_REQUESTED,
+-					&lseg->pls_layout->plh_flags);
+-			else
+-				pnfs_error_mark_layout_for_return(ino, lseg);
+-		} else
++		if (fail_return || !ff_layout_has_available_ds(lseg))
+ 			pnfs_error_mark_layout_for_return(ino, lseg);
+ 		ds = NULL;
+ 	}
 -- 
 2.5.5
 
