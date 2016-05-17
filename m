@@ -1,141 +1,102 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qk0-f193.google.com ([209.85.220.193]:36638 "EHLO
-	mail-qk0-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756154AbcEQQ3I (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 17 May 2016 12:29:08 -0400
-Received: by mail-qk0-f193.google.com with SMTP id l68so1916170qkf.3
-        for <linux-nfs@vger.kernel.org>; Tue, 17 May 2016 09:29:07 -0700 (PDT)
+Received: from mail-qk0-f195.google.com ([209.85.220.195]:36645 "EHLO
+	mail-qk0-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756202AbcEQQ3K (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 17 May 2016 12:29:10 -0400
+Received: by mail-qk0-f195.google.com with SMTP id l68so1916216qkf.3
+        for <linux-nfs@vger.kernel.org>; Tue, 17 May 2016 09:29:09 -0700 (PDT)
 From: Jeff Layton <jlayton@poochiereds.net>
 To: Trond Myklebust <trondmy@primarydata.com>,
         Anna Schumaker <Anna.Schumaker@netapp.com>
 Cc: Thomas Haynes <loghyr@primarydata.com>, linux-nfs@vger.kernel.org,
         hch@lst.de
-Subject: [PATCH v4 11/13] pnfs: lift retry logic from send_layoutget to pnfs_update_layout
-Date: Tue, 17 May 2016 12:28:46 -0400
-Message-Id: <1463502528-11519-12-git-send-email-jeff.layton@primarydata.com>
+Subject: [PATCH v4 13/13] pnfs: make pnfs_layout_process more robust
+Date: Tue, 17 May 2016 12:28:48 -0400
+Message-Id: <1463502528-11519-14-git-send-email-jeff.layton@primarydata.com>
 In-Reply-To: <1463502528-11519-1-git-send-email-jeff.layton@primarydata.com>
 References: <1463502528-11519-1-git-send-email-jeff.layton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-If we get back something like NFS4ERR_OLD_STATEID, that will be
-translated into -EAGAIN, and the do/while loop in send_layoutget
-will drive the call again.
+It can return NULL if layoutgets are blocked currently. Fix it to return
+-EAGAIN in that case, so we can properly handle it in pnfs_update_layout.
 
-This is not quite what we want, I think. An error like that is a
-sign that something has changed. That something could have been a
-concurrent LAYOUTGET that would give us a usable lseg.
-
-Lift the retry logic into pnfs_update_layout instead. That allows
-us to redo the layout search, and may spare us from having to issue
-an RPC.
+Also, clean up and simplify the error handling -- eliminate "status" and
+just use "lseg".
 
 Signed-off-by: Jeff Layton <jeff.layton@primarydata.com>
 ---
- fs/nfs/pnfs.c | 72 +++++++++++++++++++++++++++++------------------------------
- 1 file changed, 36 insertions(+), 36 deletions(-)
+ fs/nfs/pnfs.c | 27 +++++++++++----------------
+ 1 file changed, 11 insertions(+), 16 deletions(-)
 
 diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index eb90b3af3446..bc2c3ec98d32 100644
+index e97895b427c0..deb609c9cd8a 100644
 --- a/fs/nfs/pnfs.c
 +++ b/fs/nfs/pnfs.c
-@@ -839,7 +839,6 @@ send_layoutget(struct pnfs_layout_hdr *lo,
+@@ -1708,21 +1708,19 @@ pnfs_layout_process(struct nfs4_layoutget *lgp)
+ 	struct pnfs_layout_segment *lseg;
  	struct inode *ino = lo->plh_inode;
- 	struct nfs_server *server = NFS_SERVER(ino);
- 	struct nfs4_layoutget *lgp;
--	struct pnfs_layout_segment *lseg;
- 	loff_t i_size;
+ 	LIST_HEAD(free_me);
+-	int status = -EINVAL;
  
- 	dprintk("--> %s\n", __func__);
-@@ -849,45 +848,30 @@ send_layoutget(struct pnfs_layout_hdr *lo,
- 	 * store in lseg. If we race with a concurrent seqid morphing
- 	 * op, then re-send the LAYOUTGET.
- 	 */
--	do {
--		lgp = kzalloc(sizeof(*lgp), gfp_flags);
--		if (lgp == NULL)
--			return NULL;
--
--		i_size = i_size_read(ino);
--
--		lgp->args.minlength = PAGE_SIZE;
--		if (lgp->args.minlength > range->length)
--			lgp->args.minlength = range->length;
--		if (range->iomode == IOMODE_READ) {
--			if (range->offset >= i_size)
--				lgp->args.minlength = 0;
--			else if (i_size - range->offset < lgp->args.minlength)
--				lgp->args.minlength = i_size - range->offset;
--		}
--		lgp->args.maxcount = PNFS_LAYOUT_MAXSIZE;
--		pnfs_copy_range(&lgp->args.range, range);
--		lgp->args.type = server->pnfs_curr_ld->id;
--		lgp->args.inode = ino;
--		lgp->args.ctx = get_nfs_open_context(ctx);
--		lgp->gfp_flags = gfp_flags;
--		lgp->cred = lo->plh_lc_cred;
-+	lgp = kzalloc(sizeof(*lgp), gfp_flags);
-+	if (lgp == NULL)
-+		return ERR_PTR(-ENOMEM);
+ 	if (!pnfs_sanity_check_layout_range(&res->range))
+-		goto out;
++		return ERR_PTR(-EINVAL);
  
--		lseg = nfs4_proc_layoutget(lgp, gfp_flags);
--	} while (lseg == ERR_PTR(-EAGAIN));
-+	i_size = i_size_read(ino);
- 
--	if (IS_ERR(lseg)) {
--		if (!nfs_error_is_fatal(PTR_ERR(lseg))) {
--			pnfs_layout_clear_fail_bit(lo,
--					pnfs_iomode_to_fail_bit(range->iomode));
--			lseg = NULL;
--		}
--	} else {
--		pnfs_layout_clear_fail_bit(lo,
--				pnfs_iomode_to_fail_bit(range->iomode));
-+	lgp->args.minlength = PAGE_SIZE;
-+	if (lgp->args.minlength > range->length)
-+		lgp->args.minlength = range->length;
-+	if (range->iomode == IOMODE_READ) {
-+		if (range->offset >= i_size)
-+			lgp->args.minlength = 0;
-+		else if (i_size - range->offset < lgp->args.minlength)
-+			lgp->args.minlength = i_size - range->offset;
+ 	/* Inject layout blob into I/O device driver */
+ 	lseg = NFS_SERVER(ino)->pnfs_curr_ld->alloc_lseg(lo, res, lgp->gfp_flags);
+-	if (!lseg || IS_ERR(lseg)) {
++	if (IS_ERR_OR_NULL(lseg)) {
+ 		if (!lseg)
+-			status = -ENOMEM;
+-		else
+-			status = PTR_ERR(lseg);
+-		dprintk("%s: Could not allocate layout: error %d\n",
+-		       __func__, status);
+-		goto out;
++			lseg = ERR_PTR(-ENOMEM);
++
++		dprintk("%s: Could not allocate layout: error %ld\n",
++		       __func__, PTR_ERR(lseg));
++		return lseg;
  	}
-+	lgp->args.maxcount = PNFS_LAYOUT_MAXSIZE;
-+	pnfs_copy_range(&lgp->args.range, range);
-+	lgp->args.type = server->pnfs_curr_ld->id;
-+	lgp->args.inode = ino;
-+	lgp->args.ctx = get_nfs_open_context(ctx);
-+	lgp->gfp_flags = gfp_flags;
-+	lgp->cred = lo->plh_lc_cred;
  
--	return lseg;
-+	return nfs4_proc_layoutget(lgp, gfp_flags);
+ 	init_lseg(lo, lseg);
+@@ -1732,15 +1730,14 @@ pnfs_layout_process(struct nfs4_layoutget *lgp)
+ 	spin_lock(&ino->i_lock);
+ 	if (pnfs_layoutgets_blocked(lo)) {
+ 		dprintk("%s forget reply due to state\n", __func__);
+-		goto out_forget_reply;
++		goto out_forget;
+ 	}
+ 
+ 	if (nfs4_stateid_match_other(&lo->plh_stateid, &res->stateid)) {
+ 		/* existing state ID, make sure the sequence number matches. */
+ 		if (pnfs_layout_stateid_blocked(lo, &res->stateid)) {
+ 			dprintk("%s forget reply due to sequence\n", __func__);
+-			status = -EAGAIN;
+-			goto out_forget_reply;
++			goto out_forget;
+ 		}
+ 		pnfs_set_layout_stateid(lo, &res->stateid, false);
+ 	} else {
+@@ -1766,14 +1763,12 @@ pnfs_layout_process(struct nfs4_layoutget *lgp)
+ 	spin_unlock(&ino->i_lock);
+ 	pnfs_free_lseg_list(&free_me);
+ 	return lseg;
+-out:
+-	return ERR_PTR(status);
+ 
+-out_forget_reply:
++out_forget:
+ 	spin_unlock(&ino->i_lock);
+ 	lseg->pls_layout = lo;
+ 	NFS_SERVER(ino)->pnfs_curr_ld->free_lseg(lseg);
+-	goto out;
++	return ERR_PTR(-EAGAIN);
  }
  
- static void pnfs_clear_layoutcommit(struct inode *inode,
-@@ -1649,6 +1633,22 @@ lookup_again:
- 		arg.length = PAGE_ALIGN(arg.length);
- 
- 	lseg = send_layoutget(lo, ctx, &arg, gfp_flags);
-+	if (IS_ERR(lseg)) {
-+		if (lseg == ERR_PTR(-EAGAIN)) {
-+			if (first)
-+				pnfs_clear_first_layoutget(lo);
-+			pnfs_put_layout_hdr(lo);
-+			goto lookup_again;
-+		}
-+
-+		if (!nfs_error_is_fatal(PTR_ERR(lseg))) {
-+			pnfs_layout_clear_fail_bit(lo, pnfs_iomode_to_fail_bit(iomode));
-+			lseg = NULL;
-+		}
-+	} else {
-+		pnfs_layout_clear_fail_bit(lo, pnfs_iomode_to_fail_bit(iomode));
-+	}
-+
- 	atomic_dec(&lo->plh_outstanding);
- 	trace_pnfs_update_layout(ino, pos, count, iomode, lo,
- 				 PNFS_UPDATE_LAYOUT_SEND_LAYOUTGET);
+ static void
 -- 
 2.5.5
 
