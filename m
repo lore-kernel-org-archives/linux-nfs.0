@@ -1,248 +1,61 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:44839 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756026AbcEQQlI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 17 May 2016 12:41:08 -0400
-From: Scott Mayhew <smayhew@redhat.com>
-To: trond.myklebust@primarydata.com, anna.schumaker@netapp.com
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH] sunrpc: move NO_CRKEY_TIMEOUT to the auth->au_flags
-Date: Tue, 17 May 2016 12:41:05 -0400
-Message-Id: <1463503265-56645-1-git-send-email-smayhew@redhat.com>
+Received: from aserp1040.oracle.com ([141.146.126.69]:46883 "EHLO
+	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751352AbcEQRtF (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 17 May 2016 13:49:05 -0400
+Date: Tue, 17 May 2016 10:48:30 -0700
+From: "Darrick J. Wong" <darrick.wong@oracle.com>
+To: Anna Schumaker <Anna.Schumaker@netapp.com>
+Cc: Dave Chinner <david@fromorbit.com>, fstests@vger.kernel.org,
+        linux-nfs@vger.kernel.org, hch@infradead.org
+Subject: Re: [PATCH 1/5] src/copy_file_range: Add a program for testing
+ vfs_copy_file_range()
+Message-ID: <20160517174830.GA4507@birch.djwong.org>
+References: <1463172652-22361-1-git-send-email-Anna.Schumaker@Netapp.com>
+ <1463172652-22361-2-git-send-email-Anna.Schumaker@Netapp.com>
+ <20160516232036.GT26977@dastard>
+ <4fbb6f1b-5c7f-7afe-b414-0f213870a328@Netapp.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <4fbb6f1b-5c7f-7afe-b414-0f213870a328@Netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-A generic_cred can be used to look up a unx_cred or a gss_cred, so it's
-not really safe to use the the generic_cred->acred->ac_flags to store
-the NO_CRKEY_TIMEOUT flag.  A lookup for a unx_cred triggered while the
-KEY_EXPIRE_SOON flag is already set will cause both NO_CRKEY_TIMEOUT and
-KEY_EXPIRE_SOON to be set in the ac_flags, leaving the user associated
-with the auth_cred to be in a state where they're perpetually doing 4K
-NFS_FILE_SYNC writes.
+On Tue, May 17, 2016 at 10:47:42AM -0400, Anna Schumaker wrote:
+> On 05/16/2016 07:20 PM, Dave Chinner wrote:
+> > On Fri, May 13, 2016 at 04:50:48PM -0400, Anna Schumaker wrote:
+> >> This will be used by the various copy tests to call the Linux
+> >> copy_file_range() system call.  I used src/cloner.c as a reference while
+> >> writing this tool.
+> > 
+> > Hmmm - I'd much prefer to see this added to xfs_io as it's a kernel
+> > syscall that lots of filesystems will eventually implement. A
+> > one-off binary for xfstests is fine for non-standard or deeply
+> > filesysetm specific stuff, but if it's generic we try to put it into
+> > xfs_io so that it's available to everyone writing scripts, not just
+> > xfstests....
+> 
+> Ah, that makes sense.  Thanks for explaining the convention!  I'll look into
+> adding it to the xfs_io program instead.  Should I send that patch to a
+> different mailing list than fstests@vger.kernel.org?
 
-This can be reproduced as follows:
+xfs@oss.sgi.com.  I recommend looking at io/reflink.c as a template.
 
-1. Mount two NFS filesystems, one with sec=krb5 and one with sec=sys.
-They do not need to be the same export, nor do they even need to be from
-the same NFS server.  Also, v3 is fine.
-$ sudo mount -o v3,sec=krb5 server1:/export /mnt/krb5
-$ sudo mount -o v3,sec=sys server2:/export /mnt/sys
+FWIW I'd also appreciate c_f_r being wired up in xfs_io.
 
-2. As the normal user, before accessing the kerberized mount, kinit with
-a short lifetime (but not so short that renewing the ticket would leave
-you within the 4-minute window again by the time the original ticket
-expires), e.g.
-$ kinit -l 10m -r 60m
+--D
 
-3. Do some I/O to the kerberized mount and verify that the writes are
-wsize, UNSTABLE:
-$ dd if=/dev/zero of=/mnt/krb5/file bs=1M count=1
-
-4. Wait until you're within 4 minutes of key expiry, then do some more
-I/O to the kerberized mount to ensure that RPC_CRED_KEY_EXPIRE_SOON gets
-set.  Verify that the writes are 4K, FILE_SYNC:
-$ dd if=/dev/zero of=/mnt/krb5/file bs=1M count=1
-
-5. Now do some I/O to the sec=sys mount.  This will cause
-RPC_CRED_NO_CRKEY_TIMEOUT to be set:
-$ dd if=/dev/zero of=/mnt/sys/file bs=1M count=1
-
-6. Writes for that user will now be permanently 4K, FILE_SYNC for that
-user, regardless of which mount is being written to, until you reboot
-the client.  Renewing the kerberos ticket (assuming it hasn't already
-expired) will have no effect.  Grabbing a new kerberos ticket at this
-point will have no effect either.
-
-Move the flag to the auth->au_flags field (which is currently unused)
-and rename it slightly to reflect that it's no longer associated with
-the auth_cred->ac_flags.  Add the rpc_auth to the arg list of
-rpcauth_cred_key_to_expire and check the au_flags there too.  Finally,
-add the inode to the arg list of nfs_ctx_key_to_expire so we can
-determine the rpc_auth to pass to rpcauth_cred_key_to_expire.
-
-Signed-off-by: Scott Mayhew <smayhew@redhat.com>
----
- fs/nfs/file.c                  | 4 ++--
- fs/nfs/internal.h              | 2 +-
- fs/nfs/write.c                 | 6 ++++--
- include/linux/sunrpc/auth.h    | 6 ++++--
- net/sunrpc/auth.c              | 4 +++-
- net/sunrpc/auth_generic.c      | 9 +--------
- net/sunrpc/auth_gss/auth_gss.c | 1 +
- net/sunrpc/auth_null.c         | 1 +
- net/sunrpc/auth_unix.c         | 1 +
- 9 files changed, 18 insertions(+), 16 deletions(-)
-
-diff --git a/fs/nfs/file.c b/fs/nfs/file.c
-index be01095..f1cb6a3e 100644
---- a/fs/nfs/file.c
-+++ b/fs/nfs/file.c
-@@ -432,7 +432,7 @@ static int nfs_write_end(struct file *file, struct address_space *mapping,
- 		return status;
- 	NFS_I(mapping->host)->write_io += copied;
- 
--	if (nfs_ctx_key_to_expire(ctx)) {
-+	if (nfs_ctx_key_to_expire(ctx, mapping->host)) {
- 		status = nfs_wb_all(mapping->host);
- 		if (status < 0)
- 			return status;
-@@ -645,7 +645,7 @@ static int nfs_need_check_write(struct file *filp, struct inode *inode)
- 
- 	ctx = nfs_file_open_context(filp);
- 	if (test_bit(NFS_CONTEXT_ERROR_WRITE, &ctx->flags) ||
--	    nfs_ctx_key_to_expire(ctx))
-+	    nfs_ctx_key_to_expire(ctx, inode))
- 		return 1;
- 	return 0;
- }
-diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
-index f1d1d2c..2416679 100644
---- a/fs/nfs/internal.h
-+++ b/fs/nfs/internal.h
-@@ -495,7 +495,7 @@ void nfs_init_cinfo(struct nfs_commit_info *cinfo,
- 		    struct inode *inode,
- 		    struct nfs_direct_req *dreq);
- int nfs_key_timeout_notify(struct file *filp, struct inode *inode);
--bool nfs_ctx_key_to_expire(struct nfs_open_context *ctx);
-+bool nfs_ctx_key_to_expire(struct nfs_open_context *ctx, struct inode *inode);
- void nfs_pageio_stop_mirroring(struct nfs_pageio_descriptor *pgio);
- 
- #ifdef CONFIG_MIGRATION
-diff --git a/fs/nfs/write.c b/fs/nfs/write.c
-index 5f4fd53..199d527 100644
---- a/fs/nfs/write.c
-+++ b/fs/nfs/write.c
-@@ -1194,9 +1194,11 @@ nfs_key_timeout_notify(struct file *filp, struct inode *inode)
- /*
-  * Test if the open context credential key is marked to expire soon.
-  */
--bool nfs_ctx_key_to_expire(struct nfs_open_context *ctx)
-+bool nfs_ctx_key_to_expire(struct nfs_open_context *ctx, struct inode *inode)
- {
--	return rpcauth_cred_key_to_expire(ctx->cred);
-+	struct rpc_auth *auth = NFS_SERVER(inode)->client->cl_auth;
-+
-+	return rpcauth_cred_key_to_expire(auth, ctx->cred);
- }
- 
- /*
-diff --git a/include/linux/sunrpc/auth.h b/include/linux/sunrpc/auth.h
-index 6a241a2..4d8ee2e 100644
---- a/include/linux/sunrpc/auth.h
-+++ b/include/linux/sunrpc/auth.h
-@@ -37,7 +37,6 @@ struct rpcsec_gss_info;
- 
- /* auth_cred ac_flags bits */
- enum {
--	RPC_CRED_NO_CRKEY_TIMEOUT = 0, /* underlying cred has no key timeout */
- 	RPC_CRED_KEY_EXPIRE_SOON = 1, /* underlying cred key will expire soon */
- 	RPC_CRED_NOTIFY_TIMEOUT = 2,   /* nofity generic cred when underlying
- 					key will expire soon */
-@@ -82,6 +81,9 @@ struct rpc_cred {
- 
- #define RPCAUTH_CRED_MAGIC	0x0f4aa4f0
- 
-+/* rpc_auth au_flags */
-+#define RPCAUTH_AUTH_NO_CRKEY_TIMEOUT	0x0001 /* underlying cred has no key timeout */
-+
- /*
-  * Client authentication handle
-  */
-@@ -195,7 +197,7 @@ void			rpcauth_destroy_credcache(struct rpc_auth *);
- void			rpcauth_clear_credcache(struct rpc_cred_cache *);
- int			rpcauth_key_timeout_notify(struct rpc_auth *,
- 						struct rpc_cred *);
--bool			rpcauth_cred_key_to_expire(struct rpc_cred *);
-+bool			rpcauth_cred_key_to_expire(struct rpc_auth *, struct rpc_cred *);
- char *			rpcauth_stringify_acceptor(struct rpc_cred *);
- 
- static inline
-diff --git a/net/sunrpc/auth.c b/net/sunrpc/auth.c
-index 02f5367..41db00f 100644
---- a/net/sunrpc/auth.c
-+++ b/net/sunrpc/auth.c
-@@ -359,8 +359,10 @@ rpcauth_key_timeout_notify(struct rpc_auth *auth, struct rpc_cred *cred)
- EXPORT_SYMBOL_GPL(rpcauth_key_timeout_notify);
- 
- bool
--rpcauth_cred_key_to_expire(struct rpc_cred *cred)
-+rpcauth_cred_key_to_expire(struct rpc_auth *auth, struct rpc_cred *cred)
- {
-+	if (auth->au_flags & RPCAUTH_AUTH_NO_CRKEY_TIMEOUT)
-+		return false;
- 	if (!cred->cr_ops->crkey_to_expire)
- 		return false;
- 	return cred->cr_ops->crkey_to_expire(cred);
-diff --git a/net/sunrpc/auth_generic.c b/net/sunrpc/auth_generic.c
-index 41248b1..9b8f647 100644
---- a/net/sunrpc/auth_generic.c
-+++ b/net/sunrpc/auth_generic.c
-@@ -217,7 +217,7 @@ generic_key_timeout(struct rpc_auth *auth, struct rpc_cred *cred)
- 
- 
- 	/* Fast track for non crkey_timeout (no key) underlying credentials */
--	if (test_bit(RPC_CRED_NO_CRKEY_TIMEOUT, &acred->ac_flags))
-+	if (auth->au_flags & RPCAUTH_AUTH_NO_CRKEY_TIMEOUT)
- 		return 0;
- 
- 	/* Fast track for the normal case */
-@@ -229,12 +229,6 @@ generic_key_timeout(struct rpc_auth *auth, struct rpc_cred *cred)
- 	if (IS_ERR(tcred))
- 		return -EACCES;
- 
--	if (!tcred->cr_ops->crkey_timeout) {
--		set_bit(RPC_CRED_NO_CRKEY_TIMEOUT, &acred->ac_flags);
--		ret = 0;
--		goto out_put;
--	}
--
- 	/* Test for the almost error case */
- 	ret = tcred->cr_ops->crkey_timeout(tcred);
- 	if (ret != 0) {
-@@ -250,7 +244,6 @@ generic_key_timeout(struct rpc_auth *auth, struct rpc_cred *cred)
- 		set_bit(RPC_CRED_NOTIFY_TIMEOUT, &acred->ac_flags);
- 	}
- 
--out_put:
- 	put_rpccred(tcred);
- 	return ret;
- }
-diff --git a/net/sunrpc/auth_gss/auth_gss.c b/net/sunrpc/auth_gss/auth_gss.c
-index 15612ff..12948e3 100644
---- a/net/sunrpc/auth_gss/auth_gss.c
-+++ b/net/sunrpc/auth_gss/auth_gss.c
-@@ -1015,6 +1015,7 @@ gss_create_new(struct rpc_auth_create_args *args, struct rpc_clnt *clnt)
- 	auth = &gss_auth->rpc_auth;
- 	auth->au_cslack = GSS_CRED_SLACK >> 2;
- 	auth->au_rslack = GSS_VERF_SLACK >> 2;
-+	auth->au_flags = 0;
- 	auth->au_ops = &authgss_ops;
- 	auth->au_flavor = flavor;
- 	atomic_set(&auth->au_count, 1);
-diff --git a/net/sunrpc/auth_null.c b/net/sunrpc/auth_null.c
-index 8d9eb4d..4d17376 100644
---- a/net/sunrpc/auth_null.c
-+++ b/net/sunrpc/auth_null.c
-@@ -115,6 +115,7 @@ static
- struct rpc_auth null_auth = {
- 	.au_cslack	= NUL_CALLSLACK,
- 	.au_rslack	= NUL_REPLYSLACK,
-+	.au_flags	= RPCAUTH_AUTH_NO_CRKEY_TIMEOUT,
- 	.au_ops		= &authnull_ops,
- 	.au_flavor	= RPC_AUTH_NULL,
- 	.au_count	= ATOMIC_INIT(0),
-diff --git a/net/sunrpc/auth_unix.c b/net/sunrpc/auth_unix.c
-index 0d3dd36..ff6d528 100644
---- a/net/sunrpc/auth_unix.c
-+++ b/net/sunrpc/auth_unix.c
-@@ -228,6 +228,7 @@ static
- struct rpc_auth		unix_auth = {
- 	.au_cslack	= UNX_CALLSLACK,
- 	.au_rslack	= NUL_REPLYSLACK,
-+	.au_flags	= RPCAUTH_AUTH_NO_CRKEY_TIMEOUT,
- 	.au_ops		= &authunix_ops,
- 	.au_flavor	= RPC_AUTH_UNIX,
- 	.au_count	= ATOMIC_INIT(0),
--- 
-2.4.11
-
+> 
+> Thanks,
+> Anna
+> 
+> > 
+> > Cheers,
+> > 
+> > Dave.
+> > 
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe fstests" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
