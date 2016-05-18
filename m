@@ -1,39 +1,70 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:34109 "EHLO mx1.redhat.com"
+Received: from mx142.netapp.com ([216.240.21.19]:50769 "EHLO mx142.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752613AbcERKzF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 18 May 2016 06:55:05 -0400
-From: David Howells <dhowells@redhat.com>
-In-Reply-To: <3204439.9qcmCY96fi@wuerfel>
-References: <3204439.9qcmCY96fi@wuerfel> <20160510070421.GB30896@infradead.org> <6897.1462868755@warthog.procyon.org.uk> <20160512091141.GA22420@infradead.org>
-To: Christoph Hellwig <hch@infradead.org>
-Cc: dhowells@redhat.com, Arnd Bergmann <arnd@arndb.de>,
-        linux-fsdevel@vger.kernel.org, linux-afs@lists.infradead.org,
-        linux-nfs@vger.kernel.org, samba-technical@lists.samba.org,
-        linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org
-Subject: Re: [PATCH 1/6] statx: Add a system call to make enhanced file info available
+	id S1753286AbcEROMN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 18 May 2016 10:12:13 -0400
+From: Anna Schumaker <Anna.Schumaker@netapp.com>
+Subject: Re: [PATCH Version 4 03/10] NFS refactor
+ nfs4_check_serverowner_major_id
+To: <andros@netapp.com>, <trond.myklebust@primarydata.com>
+References: <1462993705-14673-1-git-send-email-andros@netapp.com>
+ <1462993705-14673-4-git-send-email-andros@netapp.com>
+CC: <bfields@fieldses.org>, <chuck.lever@oracle.com>,
+        <linux-nfs@vger.kernel.org>
+Message-ID: <f4559282-c12d-d422-c42b-d2285451dd22@Netapp.com>
+Date: Wed, 18 May 2016 10:12:07 -0400
 MIME-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Date: Wed, 18 May 2016 11:55:02 +0100
-Message-ID: <17597.1463568902@warthog.procyon.org.uk>
+In-Reply-To: <1462993705-14673-4-git-send-email-andros@netapp.com>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Arnd Bergmann <arnd@arndb.de> wrote:
+Hi Andy,
 
-> I'm trying to understand what that means for the 64-bit time_t syscalls.
+On 05/11/2016 03:08 PM, andros@netapp.com wrote:
+> From: Andy Adamson <andros@netapp.com>
 > 
-> The patch series I did last year had a replacement 'sys_newfstatat()'
-> syscall but IIRC no other stat variant, the idea being that we would
-> only need to provide this one to the libc and have user space emulate
-> the stat/fstat/lstat/fstatat variants based on that.
-> With the statx introduction, I was hoping to no longer have to add
-> that syscall but instead have libc do everything on top of sys_statx().
+> For session trunking, to compare nfs41_exchange_id_res with
+> existing nfs_client
 > 
-> Do you think that is reasonable, given that we won't be allowed to
-> call any of the existing stat() variants for a y2038-safe libc build[1],
-> or should we plan to keep needing replacement fstatat (and possibly
-> stat/lstat/fstat) syscalls with 64-bit time_t even after statx() support
-> is merged into the kernel.
+> Signed-off-by: Andy Adamson <andros@netapp.com>
+> ---
+>  fs/nfs/nfs4client.c | 9 ++++-----
+>  1 file changed, 4 insertions(+), 5 deletions(-)
+> 
+> diff --git a/fs/nfs/nfs4client.c b/fs/nfs/nfs4client.c
+> index c9177a4..5a14fda 100644
+> --- a/fs/nfs/nfs4client.c
+> +++ b/fs/nfs/nfs4client.c
+> @@ -578,11 +578,9 @@ static bool nfs4_match_clientids(u64 a, u64 b)
+>   * Returns true if the server major ids match
+>   */
+>  static bool
+> -nfs4_check_clientid_trunking(struct nfs_client *a, struct nfs_client *b)
+> +nfs4_check_serverowner_major_id(struct nfs41_server_owner *o1,
+> +				struct nfs41_server_owner *o2)
+>  {
 
-Christoph?
+It looks like you update the dprintk() in this function with the next patch.  Can you please update it in this one, instead?
+
+Thanks,
+Anna
+
+> -	struct nfs41_server_owner *o1 = a->cl_serverowner;
+> -	struct nfs41_server_owner *o2 = b->cl_serverowner;
+> -
+>  	if (o1->major_id_sz != o2->major_id_sz)
+>  		goto out_major_mismatch;
+>  	if (memcmp(o1->major_id, o2->major_id, o1->major_id_sz) != 0)
+> @@ -658,7 +656,8 @@ int nfs41_walk_client_list(struct nfs_client *new,
+>  		 * client id trunking. In either case, we want to fall back
+>  		 * to using the existing nfs_client.
+>  		 */
+> -		if (!nfs4_check_clientid_trunking(pos, new))
+> +		if (!nfs4_check_serverowner_major_id(pos->cl_serverowner,
+> +						     new->cl_serverowner))
+>  			continue;
+>  
+>  		/* Unlike NFSv4.0, we know that NFSv4.1 always uses the
+> 
+
