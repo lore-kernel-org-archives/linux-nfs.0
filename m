@@ -1,109 +1,45 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:51748 "EHLO mx2.suse.de"
+Received: from mx1.redhat.com ([209.132.183.28]:53226 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751475AbcERDlb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 17 May 2016 23:41:31 -0400
-From: NeilBrown <neilb@suse.com>
-To: Andrew Morton <akpm@linux-foundation.org>
-Date: Wed, 18 May 2016 13:41:20 +1000
-Cc: linux-mm@kvack.org, NFS List <linux-nfs@vger.kernel.org>
-Cc: LKML <linux-kernel@vger.kernel.org>
-Subject: [PATCH] MM: increase safety margin provided by PF_LESS_THROTTLE
-Message-ID: <87futgowwv.fsf@notabene.neil.brown.name>
-MIME-Version: 1.0
-Content-Type: multipart/signed; boundary="=-=-=";
-	micalg=pgp-sha256; protocol="application/pgp-signature"
+	id S1753021AbcERInA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 18 May 2016 04:43:00 -0400
+From: yongcheng.yang@gmail.com
+To: linux-nfs@vger.kernel.org
+Cc: SteveD@redhat.com, yoyang@redhat.com,
+        Yongcheng Yang <yongcheng.yang@gmail.com>
+Subject: [PATCH] mountd: update usage string to add "-P port" argument
+Date: Wed, 18 May 2016 16:42:46 +0800
+Message-Id: <1463560966-27405-1-git-send-email-yongcheng.yang@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---=-=-=
-Content-Type: text/plain
+From: Yongcheng Yang <yongcheng.yang@gmail.com>
 
+Also make some change to keep the grammar consistent.
 
-When nfsd is exporting a filesystem over NFS which is then NFS-mounted
-on the local machine there is a risk of deadlock.  This happens when
-there are lots of dirty pages in the NFS filesystem and they cause
-NFSD to be throttled, either in throttle_vm_writeout() or in
-balance_dirty_pages().
+Signed-off-by: Yongcheng Yang <yongcheng.yang@gmail.com>
+---
+ utils/mountd/mountd.c | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
 
-To avoid this problem the PF_LESS_THROTTLE flag is set for NFSD
-threads and it provides a 25% increase to the limits that affect NFSD.
-Any process writing to an NFS filesystem will be throttled well
-before the number of dirty NFS pages reaches the limit imposed on
-NFSD, so NFSD will not deadlock on pages that it needs to write out.
-At least it shouldn't.
+diff --git a/utils/mountd/mountd.c b/utils/mountd/mountd.c
+index b584afc..0a3a404 100644
+--- a/utils/mountd/mountd.c
++++ b/utils/mountd/mountd.c
+@@ -909,10 +909,10 @@ usage(const char *prog, int n)
+ 	fprintf(stderr,
+ "Usage: %s [-F|--foreground] [-h|--help] [-v|--version] [-d kind|--debug kind]\n"
+ "	[-o num|--descriptors num] [-f exports-file|--exports-file=file]\n"
+-"	[-p|--port port] [-V version|--nfs-version version]\n"
++"	[-p port|-P port|--port port] [-V version|--nfs-version version]\n"
+ "	[-N version|--no-nfs-version version] [-n|--no-tcp]\n"
+-"	[-H ha-callout prog] [-r | --reverse-lookup]\n"
+-"	[-s|--state-directory-path path] [-g|--manage-gids]\n"
++"	[-H prog|--ha-callout prog] [-r|--reverse-lookup]\n"
++"	[-s path|--state-directory-path path] [-g|--manage-gids]\n"
+ "	[-t num|--num-threads=num] [-u|--no-udp]\n", prog);
+ 	exit(n);
+ }
+-- 
+2.4.3
 
-All processes are allowed a small excess margin to avoid performing
-too many calculations: ratelimit_pages.
-
-ratelimit_pages is set so that if a thread on every CPU uses the
-entire margin, the total will only go 3% over the limit, and this is
-much less than the 25% bonus that PF_LESS_THROTTLE provides, so this
-margin shouldn't be a problem.  But it is.
-
-The "total memory" that these 3% and 25% are calculated against are not
-really total memory but are "global_dirtyable_memory()" which doesn't
-include anonymous memory, just free memory and page-cache memory.
-
-The "ratelimit_pages" number is based on whatever the
-global_dirtyable_memory was on the last CPU hot-plug, which might not
-be what you expect, but is probably close to the total freeable memory.
-
-The throttle threshold uses the global_dirtable_memory at the moment
-when the throttling happens, which could be much less than at the last
-CPU hotplug.  So if lots of anonymous memory has been allocated, thus
-pushing out lots of page-cache pages, then NFSD might end up being
-throttled due to dirty NFS pages because the "25%" bonus it gets is
-calculated against a rather small amount of dirtyable memory, while
-the "3%" margin that other processes are allowed to dirty without
-penalty is calculated against a much larger number.
-
-To remove this possibility of deadlock we need to make sure that the
-margin granted to PF_LESS_THROTTLE exceeds that rate-limit margin.
-Simply adding ratelimit_pages isn't enough as that should be
-multiplied by the number of cpus.
-
-So add "global_wb_domain.dirty_limit / 32" as that more accurately
-reflects the current total over-shoot margin.  This ensures that the
-number of dirty NFS pages never gets so high that nfsd will be
-throttled waiting for them to be written.
-
-Signed-off-by: NeilBrown <neilb@suse.com>
-
-diff --git a/mm/page-writeback.c b/mm/page-writeback.c
-index bc5149d5ec38..bbdcd7ccef57 100644
---- a/mm/page-writeback.c
-+++ b/mm/page-writeback.c
-@@ -407,8 +407,8 @@ static void domain_dirty_limits(struct dirty_throttle_control *dtc)
- 		bg_thresh = thresh / 2;
- 	tsk = current;
- 	if (tsk->flags & PF_LESS_THROTTLE || rt_task(tsk)) {
--		bg_thresh += bg_thresh / 4;
--		thresh += thresh / 4;
-+		bg_thresh += bg_thresh / 4 + global_wb_domain.dirty_limit / 32;
-+		thresh += thresh / 4 + global_wb_domain.dirty_limit / 32;
- 	}
- 	dtc->thresh = thresh;
- 	dtc->bg_thresh = bg_thresh;
-
---=-=-=
-Content-Type: application/pgp-signature; name="signature.asc"
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v2
-
-iQIcBAEBCAAGBQJXO+RgAAoJEDnsnt1WYoG57XEP/0kHGOr9T9yt1KxtWuKljofR
-zR/Pfve2jC4aQd9TY3ZEbFzsx9DbVGgk9CINEU7KYF4t7oIZgcNbM/gP2NUNav9I
-jASpv7tILjUXJnvMXCkWSWiafBmYjUTyCQX7VIuoZwsPlPPAyrD/AV4zBQ3pTcTZ
-WQon3assMgogKTpvdH55MYC6g0MtZTSFONbwrhigjKyIN1AyKKyaXmXqbRDU/zun
-hGJ7IAWJYmjhuVDmN8YWTJlZupCt5P0PmzwUyssINqle5rdeeYhxR65TLpoN/zih
-S609W5phhH0gmyJ361XM/AlGSoy0v5NNmdbQw3//QtychgupfC5FegYp0FYvZoQ4
-W1u4CUUxC/Weqg5Y/CunmI7UhTpjvr8SBQev+eFNkXz6Oi8c2okbK5CEfUMhg/7Y
-+KMUup+Hgtf1HOchBxbpQfFzlbnoyrWjViLMBEBK0mM7qj5Vm8frbztwJGpcrX72
-/RJ3mCQLIgFyIzZSwo/K1irOCzUycN7z9FKfEEY03/NvCxDmwia7awrmn/Fn+vr/
-rF0DiviE05JxfNW0RGkPSwsEohTURmxJEAQL/oVIimjaSWEXqbPfk+HEWx1kVh5/
-CKg6aRXW0v7N0WVYGey/HbsS5fZY6RyKGWc4+w8sNH2D99xN2S5UUcOe2M5bz3FU
-VzqWryyyuCwEHMttrF6g
-=cucN
------END PGP SIGNATURE-----
---=-=-=--
