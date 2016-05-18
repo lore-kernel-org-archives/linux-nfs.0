@@ -1,76 +1,213 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qk0-f195.google.com ([209.85.220.195]:34686 "EHLO
-	mail-qk0-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752533AbcERRzP (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 18 May 2016 13:55:15 -0400
-Received: by mail-qk0-f195.google.com with SMTP id i7so5044013qkd.1
-        for <linux-nfs@vger.kernel.org>; Wed, 18 May 2016 10:55:14 -0700 (PDT)
-From: Paulo Andrade <paulo.cesar.pereira.de.andrade@gmail.com>
-To: libtirpc-devel@lists.sourceforge.net
-Cc: linux-nfs@vger.kernel.org, Paulo Andrade <pcpa@gnu.org>
-Subject: [PATCH] Do not hold clnt_fd_lock mutex during connect
-Date: Wed, 18 May 2016 14:54:51 -0300
-Message-Id: <1463594091-1289-1-git-send-email-pcpa@gnu.org>
+Received: from mx143.netapp.com ([216.240.21.24]:6145 "EHLO mx143.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753418AbcERSXm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 18 May 2016 14:23:42 -0400
+From: Anna Schumaker <Anna.Schumaker@netapp.com>
+Subject: Re: [PATCH Version 4 08/10] NFS test and add multipaths for session
+ trunking
+To: <andros@netapp.com>, <trond.myklebust@primarydata.com>
+References: <1462993705-14673-1-git-send-email-andros@netapp.com>
+ <1462993705-14673-9-git-send-email-andros@netapp.com>
+CC: <bfields@fieldses.org>, <chuck.lever@oracle.com>,
+        <linux-nfs@vger.kernel.org>
+Message-ID: <4e4440f4-097f-e3c0-cd9e-34af056621e3@Netapp.com>
+Date: Wed, 18 May 2016 14:23:27 -0400
+MIME-Version: 1.0
+In-Reply-To: <1462993705-14673-9-git-send-email-andros@netapp.com>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-  An user  reports  that  their  application  connects to  multiple  servers
-through a rpc interface using  libtirpc. When one of  the servers misbehaves
-(goes down  ungracefully or  has a  delay of  a few  seconds in  the traffic
-flow), it was observed that the traffic from the  client to other servers is
-decreased by  the  traffic  anomaly  of  the failing  server,  i.e.  traffic
-decreases or goes to 0 in all the servers.
+Hi Andy,
 
-  When investigated further, specifically into the behavior  of the libtirpc
-at the  time of  the issue,  it  was observed  that all  of the  application
-threads specifically interacting with  libtirpc were locked into  one single
-lock inside  the  libtirpc library.  This  was a  race  condition which  had
-resulted in a deadlock and hence the resultant dip/stoppage of traffic.
+On 05/11/2016 03:08 PM, andros@netapp.com wrote:
+> From: Andy Adamson <andros@netapp.com>
+> 
+> Test the multipath addresses returned by nfs4_get_pseudofs_replicas
+> for session trunking.
+> 
+> Signed-off-by: Andy Adamson <andros@netapp.com>
+> ---
+>  fs/nfs/nfs4_fs.h           |   7 ++++
+>  fs/nfs/nfs4proc.c          | 100 ++++++++++++++++++++++++++++++++++++++++++++-
+>  net/sunrpc/xprtmultipath.c |   3 ++
+>  3 files changed, 109 insertions(+), 1 deletion(-)
+> 
 
-  As an experiment, the user removed the libtirpc from the application build
-and used the  standard glibc  library for rpc  communication. In  that case,
-everything worked perfectly even  in the time  of the issue of  server nodes
-misbehaving.
+<snip>
 
-Signed-off-by: Paulo Andrade <pcpa@gnu.org>
----
- src/clnt_vc.c | 8 ++------
- 1 file changed, 2 insertions(+), 6 deletions(-)
+> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+> index 8263ee8..827ae51 100644
+> --- a/fs/nfs/nfs4proc.c
+> +++ b/fs/nfs/nfs4proc.c
+> @@ -3303,6 +3304,59 @@ static int nfs4_proc_fs_locations_probe(struct nfs_server *server,
+>  	return err;
+>  }
+>  
+> +/**
+> + * Test the multipath addresses returned by nfs4_get_pseudofs_replicas
+> + * for session trunking.
+> + *
+> + * Add session trunking aliases to the cl_rpcclient
+> + */
+> +void nfs4_test_multipath(struct nfs4_fs_locations *locations,
+> +			struct nfs_client *clp)
+> +{
+> +	struct nfs4_add_xprt_data xprtdata = {
+> +		.clp = clp,
+> +	};
+> +	int i;
+> +
+> +	if (!clp->cl_mvops->session_trunk || locations == NULL ||
+> +	    locations->nlocations <= 0)
+> +		return;
+> +
+> +	xprtdata.cred = nfs4_get_clid_cred(clp);
+> +
+> +	for (i = 0; i < locations->nlocations; i++) {
+> +		struct nfs4_fs_location *loc = &locations->locations[i];
+> +		int i;
+> +
+> +		for (i = 0; i < loc->nservers; i++) {
+> +			struct nfs4_string *server = &loc->servers[i];
+> +			struct sockaddr_storage addr;
+> +			size_t addrlen;
+> +			struct xprt_create xprt_args = {
+> +				.ident = XPRT_TRANSPORT_TCP,
+> +				.net = clp->cl_net,
+> +			};
+> +
+> +			addrlen = rpc_pton(clp->cl_net, server->data,
+> +					server->len, (struct sockaddr *)&addr,
+> +					sizeof(addr));
+> +
+> +			xprt_args.dstaddr = (struct sockaddr *)&addr;
+> +			xprt_args.addrlen = addrlen;
+> +			xprt_args.servername = server->data;
+> +
+> +			/**
+> +			 * Check for session trunking. Add this address as
+> +			 * an alias if session trunking is permitted.
+> +			 */
+> +			rpc_clnt_add_xprt(clp->cl_rpcclient, &xprt_args,
+> +					clp->cl_mvops->session_trunk,
+> +					&xprtdata);
+> +		}
+> +	}
+> +	if (xprtdata.cred)
+> +		put_rpccred(xprtdata.cred);
+> +}
+>  
+>  /**
+>   * Probe the pseudo filesystem for an fs_locations replicas list.
+> @@ -3330,7 +3384,8 @@ void nfs4_get_pseudofs_replicas(struct nfs_server *server,
+>  	if (status != 0)
+>  		goto out;
+>  
+> -	/* test replicas for session trunking here */
+> +	/* test replicas for session trunking */
+> +	nfs4_test_multipath(locations, server->nfs_client);
+>  out:
+>  	if (page)
+>  		__free_page(page);
+> @@ -7291,6 +7346,47 @@ int nfs4_proc_exchange_id(struct nfs_client *clp, struct rpc_cred *cred)
+>  	return _nfs4_proc_exchange_id(clp, cred, SP4_NONE, NULL);
+>  }
+>  
+> +/**
+> + * nfs4_test_session_trunk - Test for session trunking with a
+> + * synchronous exchange_id call. Upon success, add a new transport
+> + * to the rpc_clnt
+> + *
+> + * @clnt: struct rpc_clnt to get new transport
+> + * @xps:  the rpc_xprt_switch to hold the new transport
+> + * @xprt: the rpc_xprt to test
+> + * @data: call data for _nfs4_proc_exchange_id.
+> + *
+> + */
+> +int nfs4_test_session_trunk(struct rpc_clnt *clnt, struct rpc_xprt_switch *xps,
+> +			    struct rpc_xprt *xprt, void *data)
+> +{
+> +	struct nfs4_add_xprt_data *xdata = (struct nfs4_add_xprt_data *)data;
+> +	u32 sp4_how;
+> +	int status;
+> +
+> +	sp4_how = (xdata->clp->cl_sp4_flags == 0 ? SP4_NONE : SP4_MACH_CRED);
+> +
+> +	/* Ensure these stick around for the rpc call */
+> +	xps = xprt_switch_get(xps);
+> +	xprt = xprt_get(xprt);
 
-diff --git a/src/clnt_vc.c b/src/clnt_vc.c
-index a72f9f7..2396f34 100644
---- a/src/clnt_vc.c
-+++ b/src/clnt_vc.c
-@@ -229,27 +229,23 @@ clnt_vc_create(fd, raddr, prog, vers, sendsz, recvsz)
- 	} else
- 		assert(vc_cv != (cond_t *) NULL);
- 
--	/*
--	 * XXX - fvdl connecting while holding a mutex?
--	 */
-+	mutex_unlock(&clnt_fd_lock);
-+
- 	slen = sizeof ss;
- 	if (getpeername(fd, (struct sockaddr *)&ss, &slen) < 0) {
- 		if (errno != ENOTCONN) {
- 			rpc_createerr.cf_stat = RPC_SYSTEMERROR;
- 			rpc_createerr.cf_error.re_errno = errno;
--			mutex_unlock(&clnt_fd_lock);
- 			thr_sigsetmask(SIG_SETMASK, &(mask), NULL);
- 			goto err;
- 		}
- 		if (connect(fd, (struct sockaddr *)raddr->buf, raddr->len) < 0){
- 			rpc_createerr.cf_stat = RPC_SYSTEMERROR;
- 			rpc_createerr.cf_error.re_errno = errno;
--			mutex_unlock(&clnt_fd_lock);
- 			thr_sigsetmask(SIG_SETMASK, &(mask), NULL);
- 			goto err;
- 		}
- 	}
--	mutex_unlock(&clnt_fd_lock);
- 	if (!__rpc_fd2sockinfo(fd, &si))
- 		goto err;
- 	thr_sigsetmask(SIG_SETMASK, &(mask), NULL);
--- 
-1.8.3.1
+I'm curious at what point during _nfs4_proc_exchange_id() these might get released?
+
+Thanks,
+Anna
+
+> +
+> +	/* Sync call */
+> +	status = _nfs4_proc_exchange_id(xdata->clp, xdata->cred, sp4_how, xprt);
+> +
+> +	xprt_put(xprt);
+> +	xprt_switch_put(xps);
+> +
+> +	if (status)
+> +		pr_info("NFS:   %s: Session trunking failed for %s status %d\n",
+> +			xdata->clp->cl_hostname,
+> +			xprt->address_strings[RPC_DISPLAY_ADDR], status);
+> +	else
+> +		pr_info("NFS:   %s: Session trunking succeeded for %s\n",
+> +			xdata->clp->cl_hostname,
+> +			xprt->address_strings[RPC_DISPLAY_ADDR]);
+> +	return status;
+> +}
+> +
+>  static int _nfs4_proc_destroy_clientid(struct nfs_client *clp,
+>  		struct rpc_cred *cred)
+>  {
+> @@ -8882,6 +8978,7 @@ static const struct nfs4_minor_version_ops nfs_v4_1_minor_ops = {
+>  	.find_root_sec = nfs41_find_root_sec,
+>  	.free_lock_state = nfs41_free_lock_state,
+>  	.alloc_seqid = nfs_alloc_no_seqid,
+> +	.session_trunk = nfs4_test_session_trunk,
+>  	.call_sync_ops = &nfs41_call_sync_ops,
+>  	.reboot_recovery_ops = &nfs41_reboot_recovery_ops,
+>  	.nograce_recovery_ops = &nfs41_nograce_recovery_ops,
+> @@ -8910,6 +9007,7 @@ static const struct nfs4_minor_version_ops nfs_v4_2_minor_ops = {
+>  	.free_lock_state = nfs41_free_lock_state,
+>  	.call_sync_ops = &nfs41_call_sync_ops,
+>  	.alloc_seqid = nfs_alloc_no_seqid,
+> +	.session_trunk = nfs4_test_session_trunk,
+>  	.reboot_recovery_ops = &nfs41_reboot_recovery_ops,
+>  	.nograce_recovery_ops = &nfs41_nograce_recovery_ops,
+>  	.state_renewal_ops = &nfs41_state_renewal_ops,
+> diff --git a/net/sunrpc/xprtmultipath.c b/net/sunrpc/xprtmultipath.c
+> index e7fd769..360f64c 100644
+> --- a/net/sunrpc/xprtmultipath.c
+> +++ b/net/sunrpc/xprtmultipath.c
+> @@ -53,6 +53,7 @@ void rpc_xprt_switch_add_xprt(struct rpc_xprt_switch *xps,
+>  		xprt_switch_add_xprt_locked(xps, xprt);
+>  	spin_unlock(&xps->xps_lock);
+>  }
+> +EXPORT_SYMBOL_GPL(rpc_xprt_switch_add_xprt);
+>  
+>  static void xprt_switch_remove_xprt_locked(struct rpc_xprt_switch *xps,
+>  		struct rpc_xprt *xprt)
+> @@ -145,6 +146,7 @@ struct rpc_xprt_switch *xprt_switch_get(struct rpc_xprt_switch *xps)
+>  		return xps;
+>  	return NULL;
+>  }
+> +EXPORT_SYMBOL_GPL(xprt_switch_get);
+>  
+>  /**
+>   * xprt_switch_put - Release a reference to a rpc_xprt_switch
+> @@ -157,6 +159,7 @@ void xprt_switch_put(struct rpc_xprt_switch *xps)
+>  	if (xps != NULL)
+>  		kref_put(&xps->xps_kref, xprt_switch_free);
+>  }
+> +EXPORT_SYMBOL_GPL(xprt_switch_put);
+>  
+>  /**
+>   * rpc_xprt_switch_set_roundrobin - Set a round-robin policy on rpc_xprt_switch
+> 
 
