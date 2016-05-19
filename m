@@ -1,66 +1,126 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qk0-f193.google.com ([209.85.220.193]:34242 "EHLO
-	mail-qk0-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753433AbcESPff (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 19 May 2016 11:35:35 -0400
-Received: by mail-qk0-f193.google.com with SMTP id i7so7889440qkd.1
-        for <linux-nfs@vger.kernel.org>; Thu, 19 May 2016 08:35:35 -0700 (PDT)
-From: Paulo Andrade <paulo.cesar.pereira.de.andrade@gmail.com>
-To: libtirpc-devel@lists.sourceforge.net
-Cc: linux-nfs@vger.kernel.org, Paulo Andrade <pcpa@gnu.org>
-Subject: [PATCH 3/3] Do not hold a global mutex during connect
-Date: Thu, 19 May 2016 12:35:10 -0300
-Message-Id: <1463672110-10026-4-git-send-email-pcpa@gnu.org>
-In-Reply-To: <1463672110-10026-1-git-send-email-pcpa@gnu.org>
-References: <1463593885-1179-1-git-send-email-pcpa@gnu.org>
- <1463672110-10026-1-git-send-email-pcpa@gnu.org>
+Received: from smtp-o-3.desy.de ([131.169.56.156]:47211 "EHLO smtp-o-3.desy.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753782AbcESPmf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 19 May 2016 11:42:35 -0400
+Received: from smtp-map-3.desy.de (smtp-map-3.desy.de [131.169.56.68])
+	by smtp-o-3.desy.de (DESY-O-3) with ESMTP id 9830F2804C4
+	for <linux-nfs@vger.kernel.org>; Thu, 19 May 2016 17:42:31 +0200 (CEST)
+Received: from ZITSWEEP1.win.desy.de (zitsweep1.win.desy.de [131.169.97.95])
+	by smtp-map-3.desy.de (DESY_MAP_3) with ESMTP id 4FD505254
+	for <linux-nfs@vger.kernel.org>; Thu, 19 May 2016 17:32:55 +0200 (MEST)
+From: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org, Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
+Subject: [PATCH 2/2] handle NFS4ERR_BAD_STATEID on setattr
+Date: Thu, 19 May 2016 17:32:51 +0200
+Message-Id: <1463671971-5085-2-git-send-email-tigran.mkrtchyan@desy.de>
+In-Reply-To: <1463671971-5085-1-git-send-email-tigran.mkrtchyan@desy.de>
+References: <1463671971-5085-1-git-send-email-tigran.mkrtchyan@desy.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-  A multi-threaded application, connecting to multiple rpc servers,
-may dead lock if the connect call stalls on a non responsive server.
+the st_setattr test expect that setting a size for not file objects
+will return NFS4ERR_INVAL, nevertheless, as setting a size requires
+a valid open/lock state id, server may check that first and return
+NFS4ERR_BAD_STATEID, which is not handled by the test case.
 
-Signed-off-by: Paulo Andrade <pcpa@gnu.org>
+this change adds NFS4ERR_BAD_STATEID into the list of expected
+errors.
+
+Signed-off-by: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
 ---
- src/clnt_vc.c | 7 +++----
- 1 file changed, 3 insertions(+), 4 deletions(-)
+ nfs4.0/servertests/st_setattr.py | 24 ++++++++++++------------
+ 1 file changed, 12 insertions(+), 12 deletions(-)
 
-diff --git a/src/clnt_vc.c b/src/clnt_vc.c
-index 0da18ca..0f018d5 100644
---- a/src/clnt_vc.c
-+++ b/src/clnt_vc.c
-@@ -233,15 +233,16 @@ clnt_vc_create(fd, raddr, prog, vers, sendsz, recvsz)
- 		assert(vc_cv != (cond_t *) NULL);
+diff --git a/nfs4.0/servertests/st_setattr.py b/nfs4.0/servertests/st_setattr.py
+index 5e9c4e9..912707d 100644
+--- a/nfs4.0/servertests/st_setattr.py
++++ b/nfs4.0/servertests/st_setattr.py
+@@ -544,7 +544,7 @@ def testUnsupportedSocket(t, env):
+     _try_unsupported(t, env, path)
  
- 	/*
--	 * XXX - fvdl connecting while holding a mutex?
-+	 * Do not hold mutex during connect
- 	 */
-+	mutex_unlock(&clnt_fd_lock);
-+
- 	slen = sizeof ss;
- 	if (getpeername(fd, (struct sockaddr *)&ss, &slen) < 0) {
- 		if (errno != ENOTCONN) {
- 			struct rpc_createerr *ce = &get_rpc_createerr();
- 			ce->cf_stat = RPC_SYSTEMERROR;
- 			ce->cf_error.re_errno = errno;
--			mutex_unlock(&clnt_fd_lock);
- 			thr_sigsetmask(SIG_SETMASK, &(mask), NULL);
- 			goto err;
- 		}
-@@ -249,12 +250,10 @@ clnt_vc_create(fd, raddr, prog, vers, sendsz, recvsz)
- 			struct rpc_createerr *ce = &get_rpc_createerr();
- 			ce->cf_stat = RPC_SYSTEMERROR;
- 			ce->cf_error.re_errno = errno;
--			mutex_unlock(&clnt_fd_lock);
- 			thr_sigsetmask(SIG_SETMASK, &(mask), NULL);
- 			goto err;
- 		}
- 	}
--	mutex_unlock(&clnt_fd_lock);
- 	if (!__rpc_fd2sockinfo(fd, &si))
- 		goto err;
- 	thr_sigsetmask(SIG_SETMASK, &(mask), NULL);
+ def testSizeDir(t, env):
+-    """SETATTR(_SIZE) of a directory should return NFS4ERR_ISDIR
++    """SETATTR(_SIZE) of a directory should return NFS4ERR_ISDIR or NFS4ERR_BAD_STATEID
+ 
+     FLAGS: setattr dir all
+     DEPEND: MKDIR
+@@ -556,10 +556,10 @@ def testSizeDir(t, env):
+     check(res)
+     ops = c.use_obj(path) + [c.setattr({FATTR4_SIZE: 0})]
+     res = c.compound(ops)
+-    check(res, NFS4ERR_ISDIR, "SETATTR(_SIZE) of a directory")
++    check(res, [NFS4ERR_ISDIR, NFS4ERR_BAD_STATEID], "SETATTR(_SIZE) of a directory")
+     
+ def testSizeLink(t, env):
+-    """SETATTR(FATTR4_SIZE) of a non-file object should return NFS4ERR_INVAL
++    """SETATTR(FATTR4_SIZE) of a non-file object should return NFS4ERR_INVAL or NFS4ERR_BAD_STATEID
+ 
+     FLAGS: setattr symlink all
+     DEPEND: MKLINK
+@@ -571,11 +571,11 @@ def testSizeLink(t, env):
+     check(res)
+     ops = c.use_obj(path) + [c.setattr({FATTR4_SIZE: 0})]
+     res = c.compound(ops)
+-    check(res, [NFS4ERR_INVAL, NFS4ERR_SYMLINK],
++    check(res, [NFS4ERR_INVAL, NFS4ERR_SYMLINK, NFS4ERR_BAD_STATEID],
+             "SETATTR(FATTR4_SIZE) of a symlink")
+     
+ def testSizeBlock(t, env):
+-    """SETATTR(FATTR4_SIZE) of a non-file object should return NFS4ERR_INVAL
++    """SETATTR(FATTR4_SIZE) of a non-file object should return NFS4ERR_INVAL or NFS4ERR_BAD_STATEID
+ 
+     FLAGS: setattr block all
+     DEPEND: MKBLK
+@@ -587,10 +587,10 @@ def testSizeBlock(t, env):
+     check(res)
+     ops = c.use_obj(path) + [c.setattr({FATTR4_SIZE: 0})]
+     res = c.compound(ops)
+-    check(res, NFS4ERR_INVAL, "SETATTR(FATTR4_SIZE) of a block device")
++    check(res, [NFS4ERR_INVAL, NFS4ERR_BAD_STATEID], "SETATTR(FATTR4_SIZE) of a block device")
+     
+ def testSizeChar(t, env):
+-    """SETATTR(FATTR4_SIZE) of a non-file object should return NFS4ERR_INVAL
++    """SETATTR(FATTR4_SIZE) of a non-file object should return NFS4ERR_INVAL or NFS4ERR_BAD_STATEID
+ 
+     FLAGS: setattr char all
+     DEPEND: MKCHAR
+@@ -602,10 +602,10 @@ def testSizeChar(t, env):
+     check(res)
+     ops = c.use_obj(path) + [c.setattr({FATTR4_SIZE: 0})]
+     res = c.compound(ops)
+-    check(res, NFS4ERR_INVAL, "SETATTR(FATTR4_SIZE) of a character device")
++    check(res, [NFS4ERR_INVAL, NFS4ERR_BAD_STATEID], "SETATTR(FATTR4_SIZE) of a character device")
+     
+ def testSizeFifo(t, env):
+-    """SETATTR(FATTR4_SIZE) of a non-file object should return NFS4ERR_INVAL
++    """SETATTR(FATTR4_SIZE) of a non-file object should return NFS4ERR_INVAL or NFS4ERR_BAD_STATEID
+ 
+     FLAGS: setattr fifo all
+     DEPEND: MKFIFO
+@@ -617,10 +617,10 @@ def testSizeFifo(t, env):
+     check(res)
+     ops = c.use_obj(path) + [c.setattr({FATTR4_SIZE: 0})]
+     res = c.compound(ops)
+-    check(res, NFS4ERR_INVAL, "SETATTR(FATTR4_SIZE) of a fifo")
++    check(res, [NFS4ERR_INVAL, NFS4ERR_BAD_STATEID], "SETATTR(FATTR4_SIZE) of a fifo")
+ 
+ def testSizeSocket(t, env):
+-    """SETATTR(FATTR4_SIZE) of a non-file object should return NFS4ERR_INVAL
++    """SETATTR(FATTR4_SIZE) of a non-file object should return NFS4ERR_INVAL or NFS4ERR_BAD_STATEID
+ 
+     FLAGS: setattr socket all
+     DEPEND: MKSOCK
+@@ -632,7 +632,7 @@ def testSizeSocket(t, env):
+     check(res)
+     ops = c.use_obj(path) + [c.setattr({FATTR4_SIZE: 0})]
+     res = c.compound(ops)
+-    check(res, NFS4ERR_INVAL, "SETATTR(FATTR4_SIZE) of a socket")
++    check(res, [NFS4ERR_INVAL, NFS4ERR_BAD_STATEID], "SETATTR(FATTR4_SIZE) of a socket")
+ 
+ def testInodeLocking(t, env):
+     """SETATTR: This causes printk message due to inode locking bug
 -- 
-1.8.3.1
+2.5.5
 
