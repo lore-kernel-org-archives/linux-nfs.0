@@ -1,148 +1,95 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx141.netapp.com ([216.240.21.12]:27854 "EHLO mx141.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:48697 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932577AbcESRqi (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 19 May 2016 13:46:38 -0400
-From: "Adamson, Andy" <William.Adamson@netapp.com>
-To: "Schumaker, Anna" <Anna.Schumaker@netapp.com>
-CC: "trond.myklebust@primarydata.com" <trond.myklebust@primarydata.com>,
-        "bfields@fieldses.org" <bfields@fieldses.org>,
-        "chuck.lever@oracle.com" <chuck.lever@oracle.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH Version 4 08/10] NFS test and add multipaths for session
- trunking
-Date: Thu, 19 May 2016 17:46:34 +0000
-Message-ID: <E2EEB7D7-DD31-4991-9837-3E83C663A6D1@netapp.com>
-References: <1462993705-14673-1-git-send-email-andros@netapp.com>
- <1462993705-14673-9-git-send-email-andros@netapp.com>
- <4e4440f4-097f-e3c0-cd9e-34af056621e3@Netapp.com>
-In-Reply-To: <4e4440f4-097f-e3c0-cd9e-34af056621e3@Netapp.com>
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
+	id S1751646AbcESXvN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 19 May 2016 19:51:13 -0400
+Message-ID: <1463701868.3034.16.camel@redhat.com>
+Subject: Re: [Libtirpc-devel] [PATCH 1/3] Make it clear rpc_createerr is
+ thread safe
+From: Ian Kent <ikent@redhat.com>
+To: Paulo Andrade <paulo.cesar.pereira.de.andrade@gmail.com>,
+        libtirpc-devel@lists.sourceforge.net
+Cc: linux-nfs@vger.kernel.org, Paulo Andrade <pcpa@gnu.org>
+Date: Fri, 20 May 2016 07:51:08 +0800
+In-Reply-To: <1463672110-10026-2-git-send-email-pcpa@gnu.org>
+References: <1463593885-1179-1-git-send-email-pcpa@gnu.org>
+	 <1463672110-10026-1-git-send-email-pcpa@gnu.org>
+	 <1463672110-10026-2-git-send-email-pcpa@gnu.org>
+Content-Type: text/plain; charset="UTF-8"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-DQo+IE9uIE1heSAxOCwgMjAxNiwgYXQgMjoyMyBQTSwgU2NodW1ha2VyLCBBbm5hIDxBbm5hLlNj
-aHVtYWtlckBuZXRhcHAuY29tPiB3cm90ZToNCj4gDQo+IEhpIEFuZHksDQo+IA0KPiBPbiAwNS8x
-MS8yMDE2IDAzOjA4IFBNLCBhbmRyb3NAbmV0YXBwLmNvbSB3cm90ZToNCj4+IEZyb206IEFuZHkg
-QWRhbXNvbiA8YW5kcm9zQG5ldGFwcC5jb20+DQo+PiANCj4+IFRlc3QgdGhlIG11bHRpcGF0aCBh
-ZGRyZXNzZXMgcmV0dXJuZWQgYnkgbmZzNF9nZXRfcHNldWRvZnNfcmVwbGljYXMNCj4+IGZvciBz
-ZXNzaW9uIHRydW5raW5nLg0KPj4gDQo+PiBTaWduZWQtb2ZmLWJ5OiBBbmR5IEFkYW1zb24gPGFu
-ZHJvc0BuZXRhcHAuY29tPg0KPj4gLS0tDQo+PiBmcy9uZnMvbmZzNF9mcy5oICAgICAgICAgICB8
-ICAgNyArKysrDQo+PiBmcy9uZnMvbmZzNHByb2MuYyAgICAgICAgICB8IDEwMCArKysrKysrKysr
-KysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKy0NCj4+IG5ldC9zdW5ycGMveHBydG11
-bHRpcGF0aC5jIHwgICAzICsrDQo+PiAzIGZpbGVzIGNoYW5nZWQsIDEwOSBpbnNlcnRpb25zKCsp
-LCAxIGRlbGV0aW9uKC0pDQo+PiANCj4gDQo+IDxzbmlwPg0KPiANCj4+IGRpZmYgLS1naXQgYS9m
-cy9uZnMvbmZzNHByb2MuYyBiL2ZzL25mcy9uZnM0cHJvYy5jDQo+PiBpbmRleCA4MjYzZWU4Li44
-MjdhZTUxIDEwMDY0NA0KPj4gLS0tIGEvZnMvbmZzL25mczRwcm9jLmMNCj4+ICsrKyBiL2ZzL25m
-cy9uZnM0cHJvYy5jDQo+PiBAQCAtMzMwMyw2ICszMzA0LDU5IEBAIHN0YXRpYyBpbnQgbmZzNF9w
-cm9jX2ZzX2xvY2F0aW9uc19wcm9iZShzdHJ1Y3QgbmZzX3NlcnZlciAqc2VydmVyLA0KPj4gCXJl
-dHVybiBlcnI7DQo+PiB9DQo+PiANCj4+ICsvKioNCj4+ICsgKiBUZXN0IHRoZSBtdWx0aXBhdGgg
-YWRkcmVzc2VzIHJldHVybmVkIGJ5IG5mczRfZ2V0X3BzZXVkb2ZzX3JlcGxpY2FzDQo+PiArICog
-Zm9yIHNlc3Npb24gdHJ1bmtpbmcuDQo+PiArICoNCj4+ICsgKiBBZGQgc2Vzc2lvbiB0cnVua2lu
-ZyBhbGlhc2VzIHRvIHRoZSBjbF9ycGNjbGllbnQNCj4+ICsgKi8NCj4+ICt2b2lkIG5mczRfdGVz
-dF9tdWx0aXBhdGgoc3RydWN0IG5mczRfZnNfbG9jYXRpb25zICpsb2NhdGlvbnMsDQo+PiArCQkJ
-c3RydWN0IG5mc19jbGllbnQgKmNscCkNCj4+ICt7DQo+PiArCXN0cnVjdCBuZnM0X2FkZF94cHJ0
-X2RhdGEgeHBydGRhdGEgPSB7DQo+PiArCQkuY2xwID0gY2xwLA0KPj4gKwl9Ow0KPj4gKwlpbnQg
-aTsNCj4+ICsNCj4+ICsJaWYgKCFjbHAtPmNsX212b3BzLT5zZXNzaW9uX3RydW5rIHx8IGxvY2F0
-aW9ucyA9PSBOVUxMIHx8DQo+PiArCSAgICBsb2NhdGlvbnMtPm5sb2NhdGlvbnMgPD0gMCkNCj4+
-ICsJCXJldHVybjsNCj4+ICsNCj4+ICsJeHBydGRhdGEuY3JlZCA9IG5mczRfZ2V0X2NsaWRfY3Jl
-ZChjbHApOw0KPj4gKw0KPj4gKwlmb3IgKGkgPSAwOyBpIDwgbG9jYXRpb25zLT5ubG9jYXRpb25z
-OyBpKyspIHsNCj4+ICsJCXN0cnVjdCBuZnM0X2ZzX2xvY2F0aW9uICpsb2MgPSAmbG9jYXRpb25z
-LT5sb2NhdGlvbnNbaV07DQo+PiArCQlpbnQgaTsNCj4+ICsNCj4+ICsJCWZvciAoaSA9IDA7IGkg
-PCBsb2MtPm5zZXJ2ZXJzOyBpKyspIHsNCj4+ICsJCQlzdHJ1Y3QgbmZzNF9zdHJpbmcgKnNlcnZl
-ciA9ICZsb2MtPnNlcnZlcnNbaV07DQo+PiArCQkJc3RydWN0IHNvY2thZGRyX3N0b3JhZ2UgYWRk
-cjsNCj4+ICsJCQlzaXplX3QgYWRkcmxlbjsNCj4+ICsJCQlzdHJ1Y3QgeHBydF9jcmVhdGUgeHBy
-dF9hcmdzID0gew0KPj4gKwkJCQkuaWRlbnQgPSBYUFJUX1RSQU5TUE9SVF9UQ1AsDQo+PiArCQkJ
-CS5uZXQgPSBjbHAtPmNsX25ldCwNCj4+ICsJCQl9Ow0KPj4gKw0KPj4gKwkJCWFkZHJsZW4gPSBy
-cGNfcHRvbihjbHAtPmNsX25ldCwgc2VydmVyLT5kYXRhLA0KPj4gKwkJCQkJc2VydmVyLT5sZW4s
-IChzdHJ1Y3Qgc29ja2FkZHIgKikmYWRkciwNCj4+ICsJCQkJCXNpemVvZihhZGRyKSk7DQo+PiAr
-DQo+PiArCQkJeHBydF9hcmdzLmRzdGFkZHIgPSAoc3RydWN0IHNvY2thZGRyICopJmFkZHI7DQo+
-PiArCQkJeHBydF9hcmdzLmFkZHJsZW4gPSBhZGRybGVuOw0KPj4gKwkJCXhwcnRfYXJncy5zZXJ2
-ZXJuYW1lID0gc2VydmVyLT5kYXRhOw0KPj4gKw0KPj4gKwkJCS8qKg0KPj4gKwkJCSAqIENoZWNr
-IGZvciBzZXNzaW9uIHRydW5raW5nLiBBZGQgdGhpcyBhZGRyZXNzIGFzDQo+PiArCQkJICogYW4g
-YWxpYXMgaWYgc2Vzc2lvbiB0cnVua2luZyBpcyBwZXJtaXR0ZWQuDQo+PiArCQkJICovDQo+PiAr
-CQkJcnBjX2NsbnRfYWRkX3hwcnQoY2xwLT5jbF9ycGNjbGllbnQsICZ4cHJ0X2FyZ3MsDQo+PiAr
-CQkJCQljbHAtPmNsX212b3BzLT5zZXNzaW9uX3RydW5rLA0KPj4gKwkJCQkJJnhwcnRkYXRhKTsN
-Cj4+ICsJCX0NCj4+ICsJfQ0KPj4gKwlpZiAoeHBydGRhdGEuY3JlZCkNCj4+ICsJCXB1dF9ycGNj
-cmVkKHhwcnRkYXRhLmNyZWQpOw0KPj4gK30NCj4+IA0KPj4gLyoqDQo+PiAgKiBQcm9iZSB0aGUg
-cHNldWRvIGZpbGVzeXN0ZW0gZm9yIGFuIGZzX2xvY2F0aW9ucyByZXBsaWNhcyBsaXN0Lg0KPj4g
-QEAgLTMzMzAsNyArMzM4NCw4IEBAIHZvaWQgbmZzNF9nZXRfcHNldWRvZnNfcmVwbGljYXMoc3Ry
-dWN0IG5mc19zZXJ2ZXIgKnNlcnZlciwNCj4+IAlpZiAoc3RhdHVzICE9IDApDQo+PiAJCWdvdG8g
-b3V0Ow0KPj4gDQo+PiAtCS8qIHRlc3QgcmVwbGljYXMgZm9yIHNlc3Npb24gdHJ1bmtpbmcgaGVy
-ZSAqLw0KPj4gKwkvKiB0ZXN0IHJlcGxpY2FzIGZvciBzZXNzaW9uIHRydW5raW5nICovDQo+PiAr
-CW5mczRfdGVzdF9tdWx0aXBhdGgobG9jYXRpb25zLCBzZXJ2ZXItPm5mc19jbGllbnQpOw0KPj4g
-b3V0Og0KPj4gCWlmIChwYWdlKQ0KPj4gCQlfX2ZyZWVfcGFnZShwYWdlKTsNCj4+IEBAIC03Mjkx
-LDYgKzczNDYsNDcgQEAgaW50IG5mczRfcHJvY19leGNoYW5nZV9pZChzdHJ1Y3QgbmZzX2NsaWVu
-dCAqY2xwLCBzdHJ1Y3QgcnBjX2NyZWQgKmNyZWQpDQo+PiAJcmV0dXJuIF9uZnM0X3Byb2NfZXhj
-aGFuZ2VfaWQoY2xwLCBjcmVkLCBTUDRfTk9ORSwgTlVMTCk7DQo+PiB9DQo+PiANCj4+ICsvKioN
-Cj4+ICsgKiBuZnM0X3Rlc3Rfc2Vzc2lvbl90cnVuayAtIFRlc3QgZm9yIHNlc3Npb24gdHJ1bmtp
-bmcgd2l0aCBhDQo+PiArICogc3luY2hyb25vdXMgZXhjaGFuZ2VfaWQgY2FsbC4gVXBvbiBzdWNj
-ZXNzLCBhZGQgYSBuZXcgdHJhbnNwb3J0DQo+PiArICogdG8gdGhlIHJwY19jbG50DQo+PiArICoN
-Cj4+ICsgKiBAY2xudDogc3RydWN0IHJwY19jbG50IHRvIGdldCBuZXcgdHJhbnNwb3J0DQo+PiAr
-ICogQHhwczogIHRoZSBycGNfeHBydF9zd2l0Y2ggdG8gaG9sZCB0aGUgbmV3IHRyYW5zcG9ydA0K
-Pj4gKyAqIEB4cHJ0OiB0aGUgcnBjX3hwcnQgdG8gdGVzdA0KPj4gKyAqIEBkYXRhOiBjYWxsIGRh
-dGEgZm9yIF9uZnM0X3Byb2NfZXhjaGFuZ2VfaWQuDQo+PiArICoNCj4+ICsgKi8NCj4+ICtpbnQg
-bmZzNF90ZXN0X3Nlc3Npb25fdHJ1bmsoc3RydWN0IHJwY19jbG50ICpjbG50LCBzdHJ1Y3QgcnBj
-X3hwcnRfc3dpdGNoICp4cHMsDQo+PiArCQkJICAgIHN0cnVjdCBycGNfeHBydCAqeHBydCwgdm9p
-ZCAqZGF0YSkNCj4+ICt7DQo+PiArCXN0cnVjdCBuZnM0X2FkZF94cHJ0X2RhdGEgKnhkYXRhID0g
-KHN0cnVjdCBuZnM0X2FkZF94cHJ0X2RhdGEgKilkYXRhOw0KPj4gKwl1MzIgc3A0X2hvdzsNCj4+
-ICsJaW50IHN0YXR1czsNCj4+ICsNCj4+ICsJc3A0X2hvdyA9ICh4ZGF0YS0+Y2xwLT5jbF9zcDRf
-ZmxhZ3MgPT0gMCA/IFNQNF9OT05FIDogU1A0X01BQ0hfQ1JFRCk7DQo+PiArDQo+PiArCS8qIEVu
-c3VyZSB0aGVzZSBzdGljayBhcm91bmQgZm9yIHRoZSBycGMgY2FsbCAqLw0KPj4gKwl4cHMgPSB4
-cHJ0X3N3aXRjaF9nZXQoeHBzKTsNCj4+ICsJeHBydCA9IHhwcnRfZ2V0KHhwcnQpOw0KPiANCj4g
-SSdtIGN1cmlvdXMgYXQgd2hhdCBwb2ludCBkdXJpbmcgX25mczRfcHJvY19leGNoYW5nZV9pZCgp
-IHRoZXNlIG1pZ2h0IGdldCByZWxlYXNlZD8NCg0KSSB3YXMgY29uY2VybmVkIGFib3V0IHRoZSBj
-bGllbnQgdGVhcmluZyBkb3duIHRoZSBzZXJ2ZXIgbW91bnQgd2hvc2UgcnBjX2NsbnQgc3RydWN0
-IGhvc3RzIHRoZSB4cHJ0X3N3aXRjaCAob3Igb3RoZXJ3aXNlIHRlYXJpbmcgZG93biB0aGUgcnBj
-X2NsbnQpIHdoaWxlIHRoZSBfbmZzNF9wcm9jX2V4Y2hhbmdlX2lkIGlzIGluIGZsaWdodC4NCg0K
-QUZBSUNTIHRoYXQgaXMgdGhlIHNhbWUgY29uY2VybiB0aGF0IHRoZSBvdGhlciB1c2Ugb2YgcnBj
-X2NsbnRfYWRkX3hwcnQoKSBpbiBfbmZzNF9wbmZzX3YzX2RzX2Nvbm5lY3QoKSBoYXMuDQoNCnJw
-Y19jbG50X3Rlc3RfYW5kX2FkZF94cHJ0ICgpIHJlZmVyZW5jZXMgdGhlIHhwcnRfc3dpdGNoIGFu
-ZCB0aGUgeHBydCwgYW5kIHJwY19jYl9hZGRfeHBydF9yZWxlYXNlKCkgZGVyZWZlcmVuY2VzIHRo
-ZW0uDQoNCuKAlD5BbmR5DQoNCg0KPiANCj4gVGhhbmtzLA0KPiBBbm5hDQo+IA0KPj4gKw0KPj4g
-KwkvKiBTeW5jIGNhbGwgKi8NCj4+ICsJc3RhdHVzID0gX25mczRfcHJvY19leGNoYW5nZV9pZCh4
-ZGF0YS0+Y2xwLCB4ZGF0YS0+Y3JlZCwgc3A0X2hvdywgeHBydCk7DQo+PiArDQo+PiArCXhwcnRf
-cHV0KHhwcnQpOw0KPj4gKwl4cHJ0X3N3aXRjaF9wdXQoeHBzKTsNCj4+ICsNCj4+ICsJaWYgKHN0
-YXR1cykNCj4+ICsJCXByX2luZm8oIk5GUzogICAlczogU2Vzc2lvbiB0cnVua2luZyBmYWlsZWQg
-Zm9yICVzIHN0YXR1cyAlZFxuIiwNCj4+ICsJCQl4ZGF0YS0+Y2xwLT5jbF9ob3N0bmFtZSwNCj4+
-ICsJCQl4cHJ0LT5hZGRyZXNzX3N0cmluZ3NbUlBDX0RJU1BMQVlfQUREUl0sIHN0YXR1cyk7DQo+
-PiArCWVsc2UNCj4+ICsJCXByX2luZm8oIk5GUzogICAlczogU2Vzc2lvbiB0cnVua2luZyBzdWNj
-ZWVkZWQgZm9yICVzXG4iLA0KPj4gKwkJCXhkYXRhLT5jbHAtPmNsX2hvc3RuYW1lLA0KPj4gKwkJ
-CXhwcnQtPmFkZHJlc3Nfc3RyaW5nc1tSUENfRElTUExBWV9BRERSXSk7DQo+PiArCXJldHVybiBz
-dGF0dXM7DQo+PiArfQ0KPj4gKw0KPj4gc3RhdGljIGludCBfbmZzNF9wcm9jX2Rlc3Ryb3lfY2xp
-ZW50aWQoc3RydWN0IG5mc19jbGllbnQgKmNscCwNCj4+IAkJc3RydWN0IHJwY19jcmVkICpjcmVk
-KQ0KPj4gew0KPj4gQEAgLTg4ODIsNiArODk3OCw3IEBAIHN0YXRpYyBjb25zdCBzdHJ1Y3QgbmZz
-NF9taW5vcl92ZXJzaW9uX29wcyBuZnNfdjRfMV9taW5vcl9vcHMgPSB7DQo+PiAJLmZpbmRfcm9v
-dF9zZWMgPSBuZnM0MV9maW5kX3Jvb3Rfc2VjLA0KPj4gCS5mcmVlX2xvY2tfc3RhdGUgPSBuZnM0
-MV9mcmVlX2xvY2tfc3RhdGUsDQo+PiAJLmFsbG9jX3NlcWlkID0gbmZzX2FsbG9jX25vX3NlcWlk
-LA0KPj4gKwkuc2Vzc2lvbl90cnVuayA9IG5mczRfdGVzdF9zZXNzaW9uX3RydW5rLA0KPj4gCS5j
-YWxsX3N5bmNfb3BzID0gJm5mczQxX2NhbGxfc3luY19vcHMsDQo+PiAJLnJlYm9vdF9yZWNvdmVy
-eV9vcHMgPSAmbmZzNDFfcmVib290X3JlY292ZXJ5X29wcywNCj4+IAkubm9ncmFjZV9yZWNvdmVy
-eV9vcHMgPSAmbmZzNDFfbm9ncmFjZV9yZWNvdmVyeV9vcHMsDQo+PiBAQCAtODkxMCw2ICs5MDA3
-LDcgQEAgc3RhdGljIGNvbnN0IHN0cnVjdCBuZnM0X21pbm9yX3ZlcnNpb25fb3BzIG5mc192NF8y
-X21pbm9yX29wcyA9IHsNCj4+IAkuZnJlZV9sb2NrX3N0YXRlID0gbmZzNDFfZnJlZV9sb2NrX3N0
-YXRlLA0KPj4gCS5jYWxsX3N5bmNfb3BzID0gJm5mczQxX2NhbGxfc3luY19vcHMsDQo+PiAJLmFs
-bG9jX3NlcWlkID0gbmZzX2FsbG9jX25vX3NlcWlkLA0KPj4gKwkuc2Vzc2lvbl90cnVuayA9IG5m
-czRfdGVzdF9zZXNzaW9uX3RydW5rLA0KPj4gCS5yZWJvb3RfcmVjb3Zlcnlfb3BzID0gJm5mczQx
-X3JlYm9vdF9yZWNvdmVyeV9vcHMsDQo+PiAJLm5vZ3JhY2VfcmVjb3Zlcnlfb3BzID0gJm5mczQx
-X25vZ3JhY2VfcmVjb3Zlcnlfb3BzLA0KPj4gCS5zdGF0ZV9yZW5ld2FsX29wcyA9ICZuZnM0MV9z
-dGF0ZV9yZW5ld2FsX29wcywNCj4+IGRpZmYgLS1naXQgYS9uZXQvc3VucnBjL3hwcnRtdWx0aXBh
-dGguYyBiL25ldC9zdW5ycGMveHBydG11bHRpcGF0aC5jDQo+PiBpbmRleCBlN2ZkNzY5Li4zNjBm
-NjRjIDEwMDY0NA0KPj4gLS0tIGEvbmV0L3N1bnJwYy94cHJ0bXVsdGlwYXRoLmMNCj4+ICsrKyBi
-L25ldC9zdW5ycGMveHBydG11bHRpcGF0aC5jDQo+PiBAQCAtNTMsNiArNTMsNyBAQCB2b2lkIHJw
-Y194cHJ0X3N3aXRjaF9hZGRfeHBydChzdHJ1Y3QgcnBjX3hwcnRfc3dpdGNoICp4cHMsDQo+PiAJ
-CXhwcnRfc3dpdGNoX2FkZF94cHJ0X2xvY2tlZCh4cHMsIHhwcnQpOw0KPj4gCXNwaW5fdW5sb2Nr
-KCZ4cHMtPnhwc19sb2NrKTsNCj4+IH0NCj4+ICtFWFBPUlRfU1lNQk9MX0dQTChycGNfeHBydF9z
-d2l0Y2hfYWRkX3hwcnQpOw0KPj4gDQo+PiBzdGF0aWMgdm9pZCB4cHJ0X3N3aXRjaF9yZW1vdmVf
-eHBydF9sb2NrZWQoc3RydWN0IHJwY194cHJ0X3N3aXRjaCAqeHBzLA0KPj4gCQlzdHJ1Y3QgcnBj
-X3hwcnQgKnhwcnQpDQo+PiBAQCAtMTQ1LDYgKzE0Niw3IEBAIHN0cnVjdCBycGNfeHBydF9zd2l0
-Y2ggKnhwcnRfc3dpdGNoX2dldChzdHJ1Y3QgcnBjX3hwcnRfc3dpdGNoICp4cHMpDQo+PiAJCXJl
-dHVybiB4cHM7DQo+PiAJcmV0dXJuIE5VTEw7DQo+PiB9DQo+PiArRVhQT1JUX1NZTUJPTF9HUEwo
-eHBydF9zd2l0Y2hfZ2V0KTsNCj4+IA0KPj4gLyoqDQo+PiAgKiB4cHJ0X3N3aXRjaF9wdXQgLSBS
-ZWxlYXNlIGEgcmVmZXJlbmNlIHRvIGEgcnBjX3hwcnRfc3dpdGNoDQo+PiBAQCAtMTU3LDYgKzE1
-OSw3IEBAIHZvaWQgeHBydF9zd2l0Y2hfcHV0KHN0cnVjdCBycGNfeHBydF9zd2l0Y2ggKnhwcykN
-Cj4+IAlpZiAoeHBzICE9IE5VTEwpDQo+PiAJCWtyZWZfcHV0KCZ4cHMtPnhwc19rcmVmLCB4cHJ0
-X3N3aXRjaF9mcmVlKTsNCj4+IH0NCj4+ICtFWFBPUlRfU1lNQk9MX0dQTCh4cHJ0X3N3aXRjaF9w
-dXQpOw0KPj4gDQo+PiAvKioNCj4+ICAqIHJwY194cHJ0X3N3aXRjaF9zZXRfcm91bmRyb2JpbiAt
-IFNldCBhIHJvdW5kLXJvYmluIHBvbGljeSBvbiBycGNfeHBydF9zd2l0Y2gNCj4+IA0KPiANCg0K
+On Thu, 2016-05-19 at 12:35 -0300, Paulo Andrade wrote:
+>   Avoid hidding it under a macro, and also avoid multiple function
+> calls when accessing structure fields.
+
+I like this approach, the use of the macro was confusing to me.
+Including that define must always be the case though.
+
+If others agree with this there probably needs to be follow up series with
+similar changes for the rest of the source.
+
+I guess the main argument against it is that library users have come to expect
+using the macro and could be confused by this change, the exact opposite to the
+point of the change.
+
+Thoughts anyone?
+
+> 
+> Signed-off-by: Paulo Andrade <pcpa@gnu.org>
+> ---
+>  src/clnt_vc.c | 17 +++++++++++------
+>  1 file changed, 11 insertions(+), 6 deletions(-)
+> 
+> diff --git a/src/clnt_vc.c b/src/clnt_vc.c
+> index a72f9f7..8af7ddd 100644
+> --- a/src/clnt_vc.c
+> +++ b/src/clnt_vc.c
+> @@ -72,6 +72,8 @@
+>  #define CMGROUP_MAX    16
+>  #define SCM_CREDS      0x03            /* process creds (struct cmsgcred) */
+>  
+> +#undef rpc_createerr                   /* make it clear it is a thread safe
+> variable */
+> +
+>  /*
+>   * Credentials structure, used to verify the identity of a peer
+>   * process that has sent us a message. This is allocated by the
+> @@ -188,10 +190,11 @@ clnt_vc_create(fd, raddr, prog, vers, sendsz, recvsz)
+>  	cl = (CLIENT *)mem_alloc(sizeof (*cl));
+>  	ct = (struct ct_data *)mem_alloc(sizeof (*ct));
+>  	if ((cl == (CLIENT *)NULL) || (ct == (struct ct_data *)NULL)) {
+> +		struct rpc_createerr *ce = &get_rpc_createerr();
+>  		(void) syslog(LOG_ERR, clnt_vc_errstr,
+>  		    clnt_vc_str, __no_mem_str);
+> -		rpc_createerr.cf_stat = RPC_SYSTEMERROR;
+> -		rpc_createerr.cf_error.re_errno = errno;
+> +		ce->cf_stat = RPC_SYSTEMERROR;
+> +		ce->cf_error.re_errno = errno;
+>  		goto err;
+>  	}
+>  	ct->ct_addr.buf = NULL;
+> @@ -235,15 +238,17 @@ clnt_vc_create(fd, raddr, prog, vers, sendsz, recvsz)
+>  	slen = sizeof ss;
+>  	if (getpeername(fd, (struct sockaddr *)&ss, &slen) < 0) {
+>  		if (errno != ENOTCONN) {
+> -			rpc_createerr.cf_stat = RPC_SYSTEMERROR;
+> -			rpc_createerr.cf_error.re_errno = errno;
+> +			struct rpc_createerr *ce = &get_rpc_createerr();
+> +			ce->cf_stat = RPC_SYSTEMERROR;
+> +			ce->cf_error.re_errno = errno;
+>  			mutex_unlock(&clnt_fd_lock);
+>  			thr_sigsetmask(SIG_SETMASK, &(mask), NULL);
+>  			goto err;
+>  		}
+>  		if (connect(fd, (struct sockaddr *)raddr->buf, raddr->len) <
+> 0){
+> -			rpc_createerr.cf_stat = RPC_SYSTEMERROR;
+> -			rpc_createerr.cf_error.re_errno = errno;
+> +			struct rpc_createerr *ce = &get_rpc_createerr();
+> +			ce->cf_stat = RPC_SYSTEMERROR;
+> +			ce->cf_error.re_errno = errno;
+>  			mutex_unlock(&clnt_fd_lock);
+>  			thr_sigsetmask(SIG_SETMASK, &(mask), NULL);
+>  			goto err;
