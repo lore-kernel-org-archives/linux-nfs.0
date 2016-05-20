@@ -1,84 +1,44 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:54516 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754462AbcETPsR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 20 May 2016 11:48:17 -0400
-Date: Fri, 20 May 2016 11:48:14 -0400
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH] svcrpc: autoload rdma module
-Message-ID: <20160520154814.GG2119@fieldses.org>
+Received: from mail-io0-f178.google.com ([209.85.223.178]:33142 "EHLO
+	mail-io0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750961AbcETUiu convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 20 May 2016 16:38:50 -0400
+Received: by mail-io0-f178.google.com with SMTP id t40so66671283ioi.0
+        for <linux-nfs@vger.kernel.org>; Fri, 20 May 2016 13:38:50 -0700 (PDT)
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-From: bfields@fieldses.org (J. Bruce Fields)
+Date: Fri, 20 May 2016 16:38:49 -0400
+Message-ID: <CAN-5tyE4tqNpUnQHYpNnbC-MANRKXFm0TttF9dVPOBh9MP9gyw@mail.gmail.com>
+Subject: questions about open state recovery and open owner seq_id management
+From: Olga Kornievskaia <aglo@umich.edu>
+To: linux-nfs <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
+Hi folks,
 
-This should fix failures like:
+I’m seeing a client behavior that I can’t explain the reason behind
+(i.e. spec) so want to ask for help.
 
-	# rpc.nfsd --rdma
-	rpc.nfsd: Unable to request RDMA services: Protocol not supported
+Question #1: Should a reclaim of open state handle BAD_SEQID the same
+way the normal open handles BAD_SEQID (which is: it just retries). I
+can see that during recovery we might not want the recovery to be
+trying forever and that’s why we fail? I don’t see anything in the
+spec that talk about this…
 
-Reported-by: Steve Dickson <steved@redhat.com>
-Tested-by: Steve Dickson <steved@redhat.com>
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- net/sunrpc/svc_xprt.c | 23 +++++++++++++++++++----
- 1 file changed, 19 insertions(+), 4 deletions(-)
+Question #2: Incrementing seqid of open owner. I see that when LOCK
+receives an error BAD_STATEID/ADMIN_REVOKED, sequence isn’t
+incremented and (recovery) OPEN is sent with the same seqid. The code
+explicitly sets seqid unconfirmed. Again, I don’t know where to look
+in the spec for something like this. What happens is that server
+replies back with BAD_SEQID.
 
-I'm intending to apply this for 4.7.
+So normally, when an open fails with BAD_SEQID the client retries but
+combine it with a LOCK that failed with BAD_STATEID. Then it leads to
+the application failing with “bad file descriptor” because after
+receiving an error for the lock and trying to do open recovery, the
+code doesn’t increment seqid and open fails with BAD_SEQID and we
+don’t retry the open. So now we don’t have a file descriptor and we
+fail the lock.
 
-diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
-index 7422f28818b2..f5572e31d518 100644
---- a/net/sunrpc/svc_xprt.c
-+++ b/net/sunrpc/svc_xprt.c
-@@ -244,13 +244,12 @@ void svc_add_new_perm_xprt(struct svc_serv *serv, struct svc_xprt *new)
- 	svc_xprt_received(new);
- }
- 
--int svc_create_xprt(struct svc_serv *serv, const char *xprt_name,
-+int _svc_create_xprt(struct svc_serv *serv, const char *xprt_name,
- 		    struct net *net, const int family,
- 		    const unsigned short port, int flags)
- {
- 	struct svc_xprt_class *xcl;
- 
--	dprintk("svc: creating transport %s[%d]\n", xprt_name, port);
- 	spin_lock(&svc_xprt_class_lock);
- 	list_for_each_entry(xcl, &svc_xprt_class_list, xcl_list) {
- 		struct svc_xprt *newxprt;
-@@ -274,12 +273,28 @@ int svc_create_xprt(struct svc_serv *serv, const char *xprt_name,
- 	}
-  err:
- 	spin_unlock(&svc_xprt_class_lock);
--	dprintk("svc: transport %s not found\n", xprt_name);
--
- 	/* This errno is exposed to user space.  Provide a reasonable
- 	 * perror msg for a bad transport. */
- 	return -EPROTONOSUPPORT;
- }
-+
-+int svc_create_xprt(struct svc_serv *serv, const char *xprt_name,
-+		    struct net *net, const int family,
-+		    const unsigned short port, int flags)
-+{
-+	int err;
-+
-+	dprintk("svc: creating transport %s[%d]\n", xprt_name, port);
-+	err = _svc_create_xprt(serv, xprt_name, net, family, port, flags);
-+	if (err == -EPROTONOSUPPORT) {
-+		request_module("svc%s", xprt_name);
-+		err = _svc_create_xprt(serv, xprt_name, net, family, port, flags);
-+	}
-+	if (err)
-+		dprintk("svc: transport %s not found, err %d\n",
-+			xprt_name, err);
-+	return err;
-+}
- EXPORT_SYMBOL_GPL(svc_create_xprt);
- 
- /*
--- 
-2.5.5
-
+Thank you.
