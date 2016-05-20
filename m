@@ -1,77 +1,97 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:40190 "EHLO mx1.redhat.com"
+Received: from mx141.netapp.com ([216.240.21.12]:40718 "EHLO mx141.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753334AbcETCAm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 19 May 2016 22:00:42 -0400
-Message-ID: <1463709636.3034.55.camel@redhat.com>
-Subject: Re: [Libtirpc-devel] [PATCH 3/3] Do not hold a global mutex during
- connect
-From: Ian Kent <ikent@redhat.com>
-To: Paulo Andrade <paulo.cesar.pereira.de.andrade@gmail.com>,
-        libtirpc-devel@lists.sourceforge.net
-Cc: linux-nfs@vger.kernel.org, Paulo Andrade <pcpa@gnu.org>
-Date: Fri, 20 May 2016 10:00:36 +0800
-In-Reply-To: <1463672110-10026-4-git-send-email-pcpa@gnu.org>
-References: <1463593885-1179-1-git-send-email-pcpa@gnu.org>
-	 <1463672110-10026-1-git-send-email-pcpa@gnu.org>
-	 <1463672110-10026-4-git-send-email-pcpa@gnu.org>
-Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
+	id S1752645AbcETOoV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 20 May 2016 10:44:21 -0400
+From: <andros@netapp.com>
+To: <trond.myklebust@primarydata.com>
+CC: <anna.schumaker@netapp.com>, <bfields@fieldses.org>,
+        <chuck.lever@oracle.com>, <linux-nfs@vger.kernel.org>,
+        Andy Adamson <andros@netapp.com>
+Subject: [PATCH Version 5 00/10] NFSV4.1,2 session trunking
+Date: Fri, 20 May 2016 10:43:47 -0400
+Message-ID: <1463755437-17649-1-git-send-email-andros@netapp.com>
+MIME-Version: 1.0
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 2016-05-19 at 12:35 -0300, Paulo Andrade wrote:
->   A multi-threaded application, connecting to multiple rpc servers,
-> may dead lock if the connect call stalls on a non responsive server.
+From: Andy Adamson <andros@netapp.com>
 
-It's occurred to me that the mutex may be held over the connect(2) call to
-prevent concurrent calls to connect(2) using the same fd.
+Version-5
+---------
 
-That's a race and is a lot harder to deal with.
+Responded to Anna's code cleanup comments.
 
-Comments, thoughts anyone?
+--> Andy
 
-I guess it's time to have a look at the connect(2) source ....
+Version-4
+---------
 
-> 
-> Signed-off-by: Paulo Andrade <pcpa@gnu.org>
-> ---
->  src/clnt_vc.c | 7 +++----
->  1 file changed, 3 insertions(+), 4 deletions(-)
-> 
-> diff --git a/src/clnt_vc.c b/src/clnt_vc.c
-> index 0da18ca..0f018d5 100644
-> --- a/src/clnt_vc.c
-> +++ b/src/clnt_vc.c
-> @@ -233,15 +233,16 @@ clnt_vc_create(fd, raddr, prog, vers, sendsz, recvsz)
->  		assert(vc_cv != (cond_t *) NULL);
->  
->  	/*
-> -	 * XXX - fvdl connecting while holding a mutex?
-> +	 * Do not hold mutex during connect
->  	 */
-> +	mutex_unlock(&clnt_fd_lock);
-> +
->  	slen = sizeof ss;
->  	if (getpeername(fd, (struct sockaddr *)&ss, &slen) < 0) {
->  		if (errno != ENOTCONN) {
->  			struct rpc_createerr *ce = &get_rpc_createerr();
->  			ce->cf_stat = RPC_SYSTEMERROR;
->  			ce->cf_error.re_errno = errno;
-> -			mutex_unlock(&clnt_fd_lock);
->  			thr_sigsetmask(SIG_SETMASK, &(mask), NULL);
->  			goto err;
->  		}
-> @@ -249,12 +250,10 @@ clnt_vc_create(fd, raddr, prog, vers, sendsz, recvsz)
->  			struct rpc_createerr *ce = &get_rpc_createerr();
->  			ce->cf_stat = RPC_SYSTEMERROR;
->  			ce->cf_error.re_errno = errno;
-> -			mutex_unlock(&clnt_fd_lock);
->  			thr_sigsetmask(SIG_SETMASK, &(mask), NULL);
->  			goto err;
->  		}
->  	}
-> -	mutex_unlock(&clnt_fd_lock);
->  	if (!__rpc_fd2sockinfo(fd, &si))
->  		goto err;
->  	thr_sigsetmask(SIG_SETMASK, &(mask), NULL);
+This patch set enables session trunking configured two ways.
+
+The NFSv4 minorversion > 0 pseudo-fs is probed
+with a GETATTR(fs_locations) to retrieve a replicas list.
+Each replica address is tested for session trunking. Those
+that pass are added as aliases to the mount rpc client.
+
+Try all multipath addresses for a data server. The first address that
+successfully connects and creates a session is the mount address.
+All subsequent addresses are tested for session trunking and
+added as aliases.
+
+TODO:
+
+- Periodically probe the pseudo-fs with the GETATTR(fs_locations)
+to pick up server multipath changes. This is why the
+GETATTR(fs_locations) is a stand alone call.
+
+- Call BIND_CONN_TO_SESSION for session trunking addresses
+established under SP4_MACH_CRED or SP4_SSV. SP4_NONE established
+addresses do not require BIND_CONN_TO_SESSION.
+
+TESTING:
+
+The pseudo-fs GETATTR(fs_locations) probe session trunking
+was tested against a Linux server with a pseudo-fs
+export stanza (e.g. a stanza with the fsid=0 or fsid=root
+export option) and a replicas= export option
+(replicas=<path1>@<server1>:<path2>@<server2>..)
+Note that this configuration is for testing only. A future
+patchset will add the replicas= configuration to the
+NFSEXP_V4ROOT nfsd and mountd processing.
+
+The pNFS DS multipath session trunking was tested against a
+pynfs server which provides DS multipath configuration.
+
+
+Andy Adamson (10):
+  NFS rename default callback ops
+  NFS refactor nfs4_match_clientids
+  NFS refactor nfs4_check_serverowner_major_id
+  NFS detect session trunking
+  NFS refactor _nfs4_proc_exchange_id for session trunking
+  SUNRPC add flag to rpc_task_release_client
+  NFS probe pseudo-fs for replicas
+  NFS test and add multipaths for session trunking
+  NFS test pnfs data server multipath session trunking aliases
+  NFS add multiaddr to nfs_show_nfsv4_options
+
+ fs/nfs/internal.h           |   2 +
+ fs/nfs/nfs4_fs.h            |   9 ++
+ fs/nfs/nfs4client.c         | 102 +++++++++++++++++---
+ fs/nfs/nfs4getroot.c        |   3 +
+ fs/nfs/nfs4proc.c           | 222 ++++++++++++++++++++++++++++++++++++++++++--
+ fs/nfs/nfs4xdr.c            |  38 +++-----
+ fs/nfs/pnfs_nfs.c           |  51 +++++++---
+ fs/nfs/super.c              |  26 ++++++
+ include/linux/nfs_xdr.h     |   4 +-
+ include/linux/sunrpc/clnt.h |   2 +-
+ net/sunrpc/clnt.c           |   6 +-
+ net/sunrpc/sched.c          |   2 +-
+ net/sunrpc/xprtmultipath.c  |   4 +
+ 13 files changed, 406 insertions(+), 65 deletions(-)
+
+-- 
+1.8.3.1
+
