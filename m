@@ -1,71 +1,84 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:54506 "EHLO fieldses.org"
+Received: from fieldses.org ([173.255.197.46]:54516 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752564AbcETPh0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 20 May 2016 11:37:26 -0400
-Date: Fri, 20 May 2016 11:37:24 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Jeff Layton <jlayton@poochiereds.net>
-Cc: =?utf-8?B?VG9tw6HFoQ==?= Trnka <ttrnka@mail.muni.cz>,
-        linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] sunrpc: fix stripping of padded MIC tokens
-Message-ID: <20160520153724.GF2119@fieldses.org>
-References: <38521704.8vjDAt0XQs@mintaka.ncbr.muni.cz>
- <1463758273.14305.1.camel@poochiereds.net>
- <20160520153428.GE2119@fieldses.org>
+	id S1754462AbcETPsR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 20 May 2016 11:48:17 -0400
+Date: Fri, 20 May 2016 11:48:14 -0400
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH] svcrpc: autoload rdma module
+Message-ID: <20160520154814.GG2119@fieldses.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-In-Reply-To: <20160520153428.GE2119@fieldses.org>
+Content-Type: text/plain; charset=us-ascii
+From: bfields@fieldses.org (J. Bruce Fields)
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, May 20, 2016 at 11:34:28AM -0400, J. Bruce Fields wrote:
-> On Fri, May 20, 2016 at 11:31:13AM -0400, Jeff Layton wrote:
-> > On Fri, 2016-05-20 at 16:41 +0200, Tomáš Trnka wrote:
-> > > The length of the GSS MIC token need not be a multiple of four bytes.
-> > > It is then padded by XDR to a multiple of 4 B, but unwrap_integ_data()
-> > > would previously only trim mic.len + 4 B. The remaining up to three
-> > > bytes would then trigger a check in nfs4svc_decode_compoundargs(),
-> > > leading to a "garbage args" error and mount failure:
-> > > 
-> > > nfs4svc_decode_compoundargs: compound not properly padded!
-> > > nfsd: failed to decode arguments!
-> > > 
-> > > This would prevent older clients using the pre-RFC 4121 MIC format
-> > > (37-byte MIC including a 9-byte OID) from mounting exports from v3.9+
-> > > servers using krb5i.
-> > > 
-> > > The trimming was introduced by commit 4c190e2f913f ("sunrpc: trim off
-> > > trailing checksum before returning decrypted or integrity authenticated
-> > > buffer").
-> > > 
-> > > Signed-off-by: Tomáš Trnka <ttrnka@mail.muni.cz>
-> > > ---
-> > >  net/sunrpc/auth_gss/svcauth_gss.c | 4 ++--
-> > >  1 file changed, 2 insertions(+), 2 deletions(-)
-> > > 
-> > > diff --git a/net/sunrpc/auth_gss/svcauth_gss.c 
-> > > b/net/sunrpc/auth_gss/svcauth_gss.c
-> > > index 1095be9..4605dc7 100644
-> > > --- a/net/sunrpc/auth_gss/svcauth_gss.c
-> > > +++ b/net/sunrpc/auth_gss/svcauth_gss.c
-> > > @@ -857,8 +857,8 @@ unwrap_integ_data(struct svc_rqst *rqstp, struct xdr_buf 
-> > > *buf, u32 seq, struct g
-> > >  		goto out;
-> > >  	if (svc_getnl(&buf->head[0]) != seq)
-> > >  		goto out;
-> > > -	/* trim off the mic at the end before returning */
-> > > -	xdr_buf_trim(buf, mic.len + 4);
-> > > +	/* trim off the mic and padding at the end before returning */
-> > > +	xdr_buf_trim(buf, round_up_to_quad(mic.len) + 4);
-> > >  	stat = 0;
-> > >  out:
-> > >  	kfree(mic.data);
-> > 
-> > Looks reasonable:
-> > 
-> > Acked-by: Jeff Layton <jlayton@poochiereds.net>
-> 
-> Thanks!  Applying for 4.6 and stable.
+From: "J. Bruce Fields" <bfields@redhat.com>
 
-(Err, 4.7.  All these version numbers run into each other...).
+This should fix failures like:
+
+	# rpc.nfsd --rdma
+	rpc.nfsd: Unable to request RDMA services: Protocol not supported
+
+Reported-by: Steve Dickson <steved@redhat.com>
+Tested-by: Steve Dickson <steved@redhat.com>
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ net/sunrpc/svc_xprt.c | 23 +++++++++++++++++++----
+ 1 file changed, 19 insertions(+), 4 deletions(-)
+
+I'm intending to apply this for 4.7.
+
+diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
+index 7422f28818b2..f5572e31d518 100644
+--- a/net/sunrpc/svc_xprt.c
++++ b/net/sunrpc/svc_xprt.c
+@@ -244,13 +244,12 @@ void svc_add_new_perm_xprt(struct svc_serv *serv, struct svc_xprt *new)
+ 	svc_xprt_received(new);
+ }
+ 
+-int svc_create_xprt(struct svc_serv *serv, const char *xprt_name,
++int _svc_create_xprt(struct svc_serv *serv, const char *xprt_name,
+ 		    struct net *net, const int family,
+ 		    const unsigned short port, int flags)
+ {
+ 	struct svc_xprt_class *xcl;
+ 
+-	dprintk("svc: creating transport %s[%d]\n", xprt_name, port);
+ 	spin_lock(&svc_xprt_class_lock);
+ 	list_for_each_entry(xcl, &svc_xprt_class_list, xcl_list) {
+ 		struct svc_xprt *newxprt;
+@@ -274,12 +273,28 @@ int svc_create_xprt(struct svc_serv *serv, const char *xprt_name,
+ 	}
+  err:
+ 	spin_unlock(&svc_xprt_class_lock);
+-	dprintk("svc: transport %s not found\n", xprt_name);
+-
+ 	/* This errno is exposed to user space.  Provide a reasonable
+ 	 * perror msg for a bad transport. */
+ 	return -EPROTONOSUPPORT;
+ }
++
++int svc_create_xprt(struct svc_serv *serv, const char *xprt_name,
++		    struct net *net, const int family,
++		    const unsigned short port, int flags)
++{
++	int err;
++
++	dprintk("svc: creating transport %s[%d]\n", xprt_name, port);
++	err = _svc_create_xprt(serv, xprt_name, net, family, port, flags);
++	if (err == -EPROTONOSUPPORT) {
++		request_module("svc%s", xprt_name);
++		err = _svc_create_xprt(serv, xprt_name, net, family, port, flags);
++	}
++	if (err)
++		dprintk("svc: transport %s not found, err %d\n",
++			xprt_name, err);
++	return err;
++}
+ EXPORT_SYMBOL_GPL(svc_create_xprt);
+ 
+ /*
+-- 
+2.5.5
+
