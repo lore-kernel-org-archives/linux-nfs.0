@@ -1,82 +1,85 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f176.google.com ([209.85.223.176]:36418 "EHLO
-	mail-io0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750836AbcETVD4 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 20 May 2016 17:03:56 -0400
-Received: by mail-io0-f176.google.com with SMTP id f8so26868228ioe.3
-        for <linux-nfs@vger.kernel.org>; Fri, 20 May 2016 14:03:55 -0700 (PDT)
-MIME-Version: 1.0
-In-Reply-To: <9C8C4184-5D77-43B2-A97B-173DF237F8E8@primarydata.com>
+Received: from us-smtp-delivery-194.mimecast.com ([63.128.21.194]:29566 "EHLO
+	us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751280AbcETVSK (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 20 May 2016 17:18:10 -0400
+From: Thomas Haynes <loghyr@primarydata.com>
+To: Olga Kornievskaia <aglo@umich.edu>
+CC: Mailing List Linux NFS <linux-nfs@vger.kernel.org>
+Subject: Re: questions about open state recovery and open owner seq_id
+ management
+Date: Fri, 20 May 2016 21:11:57 +0000
+Message-ID: <66555AD3-4421-4C3E-AC60-4AEC31CE8177@primarydata.com>
 References: <CAN-5tyE4tqNpUnQHYpNnbC-MANRKXFm0TttF9dVPOBh9MP9gyw@mail.gmail.com>
-	<9C8C4184-5D77-43B2-A97B-173DF237F8E8@primarydata.com>
-Date: Fri, 20 May 2016 17:03:55 -0400
-Message-ID: <CAN-5tyG0SZOarfudExa5Hra=NR2dUYgctwT-_DQH_zFDXDHx5g@mail.gmail.com>
-Subject: Re: questions about open state recovery and open owner seq_id management
-From: Olga Kornievskaia <aglo@umich.edu>
-To: Trond Myklebust <trondmy@primarydata.com>
-Cc: linux-nfs <linux-nfs@vger.kernel.org>
+In-Reply-To: <CAN-5tyE4tqNpUnQHYpNnbC-MANRKXFm0TttF9dVPOBh9MP9gyw@mail.gmail.com>
+MIME-Version: 1.0
 Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, May 20, 2016 at 4:43 PM, Trond Myklebust
-<trondmy@primarydata.com> wrote:
->
->
-> On 5/20/16, 16:38, "linux-nfs-owner@vger.kernel.org on behalf of Olga
-> Kornievskaia" <linux-nfs-owner@vger.kernel.org on behalf of aglo@umich.edu>
-> wrote:
->
->>Hi folks,
->>
->>I’m seeing a client behavior that I can’t explain the reason behind
->>(i.e. spec) so want to ask for help.
->>
->>Question #1: Should a reclaim of open state handle BAD_SEQID the same
->>way the normal open handles BAD_SEQID (which is: it just retries). I
->>can see that during recovery we might not want the recovery to be
->>trying forever and that’s why we fail? I don’t see anything in the
->>spec that talk about this…
->>
->>Question #2: Incrementing seqid of open owner. I see that when LOCK
->>receives an error BAD_STATEID/ADMIN_REVOKED, sequence isn’t
->>incremented and (recovery) OPEN is sent with the same seqid. The code
->>explicitly sets seqid unconfirmed. Again, I don’t know where to look
->>in the spec for something like this. What happens is that server
->>replies back with BAD_SEQID.
->>
->>So normally, when an open fails with BAD_SEQID the client retries but
->>combine it with a LOCK that failed with BAD_STATEID. Then it leads to
->>the application failing with “bad file descriptor” because after
->>receiving an error for the lock and trying to do open recovery, the
->>code doesn’t increment seqid and open fails with BAD_SEQID and we
->>don’t retry the open. So now we don’t have a file descriptor and we
->>fail the lock.
->>
->
-> See:
-> https://tools.ietf.org/html/rfc7530#section-9.1.7
->
-> The client MUST advance the sequence number for the CLOSE, LOCK,
-> LOCKU, OPEN, OPEN_CONFIRM, and OPEN_DOWNGRADE operations. This is
-> true even in the event that the previous operation that used the
-> sequence number received an error. The only exception to this rule
-> is if the previous operation received one of the following errors:
-> NFS4ERR_STALE_CLIENTID, NFS4ERR_STALE_STATEID, NFS4ERR_BAD_STATEID,
-> NFS4ERR_BAD_SEQID, NFS4ERR_BADXDR, NFS4ERR_RESOURCE,
-> NFS4ERR_NOFILEHANDLE, or NFS4ERR_MOVED.
->
+DQo+IE9uIE1heSAyMCwgMjAxNiwgYXQgMTozOCBQTSwgT2xnYSBLb3JuaWV2c2thaWEgPGFnbG9A
+dW1pY2guZWR1PiB3cm90ZToNCj4gDQo+IEhpIGZvbGtzLA0KPiANCj4gSeKAmW0gc2VlaW5nIGEg
+Y2xpZW50IGJlaGF2aW9yIHRoYXQgSSBjYW7igJl0IGV4cGxhaW4gdGhlIHJlYXNvbiBiZWhpbmQN
+Cj4gKGkuZS4gc3BlYykgc28gd2FudCB0byBhc2sgZm9yIGhlbHAuDQo+IA0KPiBRdWVzdGlvbiAj
+MTogU2hvdWxkIGEgcmVjbGFpbSBvZiBvcGVuIHN0YXRlIGhhbmRsZSBCQURfU0VRSUQgdGhlIHNh
+bWUNCj4gd2F5IHRoZSBub3JtYWwgb3BlbiBoYW5kbGVzIEJBRF9TRVFJRCAod2hpY2ggaXM6IGl0
+IGp1c3QgcmV0cmllcykuIEkNCj4gY2FuIHNlZSB0aGF0IGR1cmluZyByZWNvdmVyeSB3ZSBtaWdo
+dCBub3Qgd2FudCB0aGUgcmVjb3ZlcnkgdG8gYmUNCj4gdHJ5aW5nIGZvcmV2ZXIgYW5kIHRoYXTi
+gJlzIHdoeSB3ZSBmYWlsPyBJIGRvbuKAmXQgc2VlIGFueXRoaW5nIGluIHRoZQ0KPiBzcGVjIHRo
+YXQgdGFsayBhYm91dCB0aGlz4oCmDQo+IA0KPiBRdWVzdGlvbiAjMjogSW5jcmVtZW50aW5nIHNl
+cWlkIG9mIG9wZW4gb3duZXIuIEkgc2VlIHRoYXQgd2hlbiBMT0NLDQo+IHJlY2VpdmVzIGFuIGVy
+cm9yIEJBRF9TVEFURUlEL0FETUlOX1JFVk9LRUQsIHNlcXVlbmNlIGlzbuKAmXQNCj4gaW5jcmVt
+ZW50ZWQgYW5kIChyZWNvdmVyeSkgT1BFTiBpcyBzZW50IHdpdGggdGhlIHNhbWUgc2VxaWQuIFRo
+ZSBjb2RlDQo+IGV4cGxpY2l0bHkgc2V0cyBzZXFpZCB1bmNvbmZpcm1lZC4gQWdhaW4sIEkgZG9u
+4oCZdCBrbm93IHdoZXJlIHRvIGxvb2sNCj4gaW4gdGhlIHNwZWMgZm9yIHNvbWV0aGluZyBsaWtl
+IHRoaXMuIFdoYXQgaGFwcGVucyBpcyB0aGF0IHNlcnZlcg0KPiByZXBsaWVzIGJhY2sgd2l0aCBC
+QURfU0VRSUQuDQoNClJGQyA1NjYxDQoNCkl0IGRvZXNu4oCZdCBzYXkgaXQgZXhwbGljaXRseSwg
+YnV0IHlvdSBvbmx5IGJ1bXAgdGhlIHNlcWlkIG9uIHN1Y2Nlc3MuDQoNCjMuMy4xMi4gIHN0YXRl
+aWQ0DQoNCiAgVGhlIHN0YXJ0aW5nIHZhbHVlIG9mIHRoZSAic2VxaWQiIGZpZWxkIGlzDQogICB1
+bmRlZmluZWQuICBUaGUgc2VydmVyIGlzIHJlcXVpcmVkIHRvIGluY3JlbWVudCB0aGUgInNlcWlk
+IiBmaWVsZCBieQ0KICAgb25lIGF0IGVhY2ggdHJhbnNpdGlvbiBvZiB0aGUgc3RhdGVpZC4gDQoN
+Cg0KOC4yLjEuICBTdGF0ZWlkIFR5cGVzDQoNCiAgIG8gIFN0YXRlaWRzIG1heSByZXByZXNlbnQg
+c2V0cyBvZiBieXRlLXJhbmdlIGxvY2tzLg0KDQogICAgICBBbGwgbG9ja3MgaGVsZCBvbiBhIHBh
+cnRpY3VsYXIgZmlsZSBieSBhIHBhcnRpY3VsYXIgb3duZXIgYW5kDQogICAgICBnb3R0ZW4gdW5k
+ZXIgdGhlIGFlZ2lzIG9mIGEgcGFydGljdWxhciBvcGVuIGZpbGUgYXJlIGFzc29jaWF0ZWQNCiAg
+ICAgIHdpdGggYSBzaW5nbGUgc3RhdGVpZCB3aXRoIHRoZSBzZXFpZCBiZWluZyBpbmNyZW1lbnRl
+ZCB3aGVuZXZlcg0KICAgICAgTE9DSyBhbmQgTE9DS1Ugb3BlcmF0aW9ucyBhZmZlY3QgdGhhdCBz
+ZXQgb2YgbG9ja3MuDQoNCjguMi4yLiAgU3RhdGVpZCBTdHJ1Y3R1cmUNCg0KICAgV2hlbiBzdWNo
+IGEgc2V0IG9mIGxvY2tzIGlzIGZpcnN0IGNyZWF0ZWQsIHRoZSBzZXJ2ZXIgcmV0dXJucyBhDQog
+ICBzdGF0ZWlkIHdpdGggc2VxaWQgdmFsdWUgb2Ygb25lLiAgT24gc3Vic2VxdWVudCBvcGVyYXRp
+b25zIHRoYXQNCiAgIG1vZGlmeSB0aGUgc2V0IG9mIGxvY2tzLCB0aGUgc2VydmVyIGlzIHJlcXVp
+cmVkIHRvIGluY3JlbWVudCB0aGUNCiAgICJzZXFpZCIgZmllbGQgYnkgb25lIHdoZW5ldmVyIGl0
+IHJldHVybnMgYSBzdGF0ZWlkIGZvciB0aGUgc2FtZQ0KICAgc3RhdGUtb3duZXIvZmlsZS90eXBl
+IGNvbWJpbmF0aW9uIGFuZCB0aGVyZSBpcyBzb21lIGNoYW5nZSBpbiB0aGUgc2V0DQogICBvZiBs
+b2NrcyBhY3R1YWxseSBkZXNpZ25hdGVkLiAgSW4gdGhpcyBjYXNlLCB0aGUgc2VydmVyIHdpbGwg
+cmV0dXJuIGENCiAgIHN0YXRlaWQgd2l0aCBhbiAib3RoZXIiIGZpZWxkIHRoZSBzYW1lIGFzIHBy
+ZXZpb3VzbHkgdXNlZCBmb3IgdGhhdA0KICAgc3RhdGUtb3duZXIvZmlsZS90eXBlIGNvbWJpbmF0
+aW9uLCB3aXRoIGFuIGluY3JlbWVudGVkICJzZXFpZCIgZmllbGQuDQogICBUaGlzIHBhdHRlcm4g
+Y29udGludWVzIHVudGlsIHRoZSBzZXFpZCBpcyBpbmNyZW1lbnRlZCBwYXN0DQogICBORlM0X1VJ
+TlQzMl9NQVgsIGFuZCBvbmUgKG5vdCB6ZXJvKSBpcyB0aGUgbmV4dCBzZXFpZCB2YWx1ZS4NCg0K
+TW9yZSBvZiB0aGUgc2FtZSBpbg0KDQo5LjQuICBTdGF0ZWlkIFNlcWlkIFZhbHVlcyBhbmQgQnl0
+ZS1SYW5nZSBMb2Nrcw0KDQoxMi41LjMgaGFzIHRoaXMgdG8gc2F5IGFib3V0IGxheW91dCBzdGF0
+ZWlkcywgd2hpbGUgYWNrbm93bGVkZ2luZyB0aGV5DQphcmUgZGlmZmVyZW50IGZyb20gbm9ybWFs
+IHN0YXRlaWRzOg0KDQogIFRoZQ0KICAgY29ycmVjdCAic2VxaWQiIGlzIGRlZmluZWQgYXMgdGhl
+IGhpZ2hlc3QgInNlcWlkIiB2YWx1ZSBmcm9tDQogICByZXNwb25zZXMgb2YgZnVsbHkgcHJvY2Vz
+c2VkIExBWU9VVEdFVCBvciBMQVlPVVRSRVRVUk4gb3BlcmF0aW9ucyBvcg0KICAgYXJndW1lbnRz
+IG9mIGEgZnVsbHkgcHJvY2Vzc2VkIENCX0xBWU9VVFJFQ0FMTCBvcGVyYXRpb24uDQoNCkkgdGFr
+ZSDigJxmdWxseSBwcm9jZXNzZWTigJ0gdG8gbWVhbiBzdWNjZXNzZnVsLg0KDQoNCj4gDQo+IFNv
+IG5vcm1hbGx5LCB3aGVuIGFuIG9wZW4gZmFpbHMgd2l0aCBCQURfU0VRSUQgdGhlIGNsaWVudCBy
+ZXRyaWVzIGJ1dA0KPiBjb21iaW5lIGl0IHdpdGggYSBMT0NLIHRoYXQgZmFpbGVkIHdpdGggQkFE
+X1NUQVRFSUQuIFRoZW4gaXQgbGVhZHMgdG8NCj4gdGhlIGFwcGxpY2F0aW9uIGZhaWxpbmcgd2l0
+aCDigJxiYWQgZmlsZSBkZXNjcmlwdG9y4oCdIGJlY2F1c2UgYWZ0ZXINCj4gcmVjZWl2aW5nIGFu
+IGVycm9yIGZvciB0aGUgbG9jayBhbmQgdHJ5aW5nIHRvIGRvIG9wZW4gcmVjb3ZlcnksIHRoZQ0K
+PiBjb2RlIGRvZXNu4oCZdCBpbmNyZW1lbnQgc2VxaWQgYW5kIG9wZW4gZmFpbHMgd2l0aCBCQURf
+U0VRSUQgYW5kIHdlDQo+IGRvbuKAmXQgcmV0cnkgdGhlIG9wZW4uIFNvIG5vdyB3ZSBkb27igJl0
+IGhhdmUgYSBmaWxlIGRlc2NyaXB0b3IgYW5kIHdlDQo+IGZhaWwgdGhlIGxvY2suDQoNCg0KTG9v
+ayBiYWNrIGF0IHRoZSBzZWN0aW9ucyBhYm92ZSwgdGhleSBzdGF0ZWQgdGhhdCB0aGUgc2VxaWQg
+aXMNCm9ubHkgY2hhbmdlZCBpZiB0aGVyZSBpcyBhIGNoYW5nZSBpbiB0aGUgc2V0IG9mIGxvY2tz
+IGRlc2lnbmF0ZWQuIFRoZQ0KZXJyb3IgZG9lcyBub3QgY2hhbmdlIHRoZSBzZXQgb2YgbG9ja3Mu
+DQoNCllvdXIgc2VydmVyIHZlbmRvciBpcyBoYXZpbmcgdGhlIHNhbWUgaXNzdWVzIGFzIHlvdSBh
+cmUgaW4gZGVjaXBoZXJpbmcNCnRoZSBydWxlcyBvbiBzZXFpZC4NCg0KDQo+IA0KPiBUaGFuayB5
+b3UuDQo+IC0tDQo+IFRvIHVuc3Vic2NyaWJlIGZyb20gdGhpcyBsaXN0OiBzZW5kIHRoZSBsaW5l
+ICJ1bnN1YnNjcmliZSBsaW51eC1uZnMiIGluDQo+IHRoZSBib2R5IG9mIGEgbWVzc2FnZSB0byBt
+YWpvcmRvbW9Admdlci5rZXJuZWwub3JnDQo+IE1vcmUgbWFqb3Jkb21vIGluZm8gYXQgIGh0dHA6
+Ly92Z2VyLmtlcm5lbC5vcmcvbWFqb3Jkb21vLWluZm8uaHRtbA0KPiANCg0K
 
-Thanks Trond.
-> Cheers
-> Trond
->
->
-> Disclaimer
->
-> The information contained in this communication from the sender is
-> confidential. It is intended solely for use by the recipient and others
-> authorized to receive it. If you are not the recipient, you are hereby
-> notified that any disclosure, copying, distribution or taking action in
-> relation of the contents of this information is strictly prohibited and may
-> be unlawful.
