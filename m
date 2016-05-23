@@ -1,39 +1,38 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:38831 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752106AbcEWJdg (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 23 May 2016 05:33:36 -0400
-From: David Howells <dhowells@redhat.com>
-In-Reply-To: <20160523082230.GA21308@infradead.org>
-References: <20160523082230.GA21308@infradead.org> <20160510070421.GB30896@infradead.org> <6897.1462868755@warthog.procyon.org.uk> <20160512091141.GA22420@infradead.org> <3204439.9qcmCY96fi@wuerfel>
-To: Christoph Hellwig <hch@infradead.org>
-Cc: dhowells@redhat.com, Arnd Bergmann <arnd@arndb.de>,
-        linux-fsdevel@vger.kernel.org, linux-afs@lists.infradead.org,
-        linux-nfs@vger.kernel.org, samba-technical@lists.samba.org,
-        linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org
-Subject: Re: [PATCH 1/6] statx: Add a system call to make enhanced file info available
+Received: from userp1040.oracle.com ([156.151.31.81]:19249 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753646AbcEWKVR (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 23 May 2016 06:21:17 -0400
+Date: Mon, 23 May 2016 13:21:01 +0300
+From: Dan Carpenter <dan.carpenter@oracle.com>
+To: Trond Myklebust <trond.myklebust@primarydata.com>,
+        Anna Schumaker <Anna.Schumaker@Netapp.com>
+Cc: linux-nfs@vger.kernel.org, kernel-janitors@vger.kernel.org
+Subject: [patch] NFS: checking for NULL instead of IS_ERR() in
+ nfs_commit_file()
+Message-ID: <20160523102101.GC10712@mwanda>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Date: Mon, 23 May 2016 10:33:33 +0100
-Message-ID: <25305.1463996013@warthog.procyon.org.uk>
+Content-Type: text/plain; charset=us-ascii
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Christoph Hellwig <hch@infradead.org> wrote:
+nfs_create_request() doesn't return NULL, it returns error pointers.
 
-> Honestly I think this really matters on the amount of 'emulation' we
-> need - if it's just adding a new flag that can be trivially generated
-> in the syscall stub in userland that's probably fine, but if we have
-> actually differing semantics (like the stat weak attributes) I'd rather
-> have a properly documented syscall.  If we otherwise need to rewrite
-> whole structures I'd much rather do that in kernel space.
+Fixes: 67911c8f18b5 ('NFS: Add nfs_commit_file()')
+Signed-off-by: Dan Carpenter <dan.carpenter@oracle.com>
 
-I very much agree.
-
-> And to get back to stat: if would be really useful to coordinate the
-> new one with glibc so that we don't end up with two different stat
-> structures again like we do for a lot of platforms at the moment.
-
-I've tried reaching out to them and others, but no one responded.
-
-David
+diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+index 4dac51b..54a4eb6 100644
+--- a/fs/nfs/write.c
++++ b/fs/nfs/write.c
+@@ -1735,8 +1735,8 @@ int nfs_commit_file(struct file *file, struct nfs_write_verifier *verf)
+ 
+ 	open = get_nfs_open_context(nfs_file_open_context(file));
+ 	req  = nfs_create_request(open, NULL, NULL, 0, i_size_read(inode));
+-	if (!req) {
+-		ret = -ENOMEM;
++	if (IS_ERR(req)) {
++		ret = PTR_ERR(req);
+ 		goto out_put;
+ 	}
+ 
