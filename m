@@ -1,61 +1,57 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from us-smtp-delivery-194.mimecast.com ([216.205.24.194]:29727 "EHLO
-	us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1754209AbcEXTef convert rfc822-to-8bit
-	(ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 24 May 2016 15:34:35 -0400
-From: Thomas Haynes <loghyr@primarydata.com>
-To: Chuck Lever <chuck.lever@oracle.com>
-CC: Steve Dickson <SteveD@redhat.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: [RFC PATCH 0/1] Create a DNS SRV record of the ID mapping domain
-Date: Tue, 24 May 2016 19:34:28 +0000
-Message-ID: <FD49095E-BBF5-48FB-9313-B2874122701C@primarydata.com>
-References: <1464020307-8806-1-git-send-email-steved@redhat.com>
- <B7AD5C8F-13A3-466A-BAC8-8A487939BC8F@oracle.com>
- <8d2c592d-2c43-85e4-a9fb-65b13206c2ee@RedHat.com>
- <D7102E5D-3328-4379-B8F2-BFDA86AAEBE4@oracle.com>
- <c33c89df-ec54-fa6e-a84c-671f8a79f3c3@RedHat.com>
- <AB5249F6-36B2-44DF-864E-9F90D16A07FE@oracle.com>
-In-Reply-To: <AB5249F6-36B2-44DF-864E-9F90D16A07FE@oracle.com>
+Received: from mx141.netapp.com ([216.240.21.12]:62202 "EHLO mx141.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751670AbcEXUUz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 24 May 2016 16:20:55 -0400
+Subject: Re: [PATCH 0/3] FF_FLAGS_NO_READ_IO
+To: Tom Haynes <thomas.haynes@primarydata.com>,
+        Trond Myklebust <trond.myklebust@primarydata.com>
+References: <1463605676-82483-1-git-send-email-loghyr@primarydata.com>
+CC: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+From: Anna Schumaker <Anna.Schumaker@netapp.com>
+Message-ID: <d3be85ff-b066-0f9f-cb35-c18790b39b73@Netapp.com>
+Date: Tue, 24 May 2016 16:20:51 -0400
 MIME-Version: 1.0
-Content-Type: text/plain; charset=WINDOWS-1252
+In-Reply-To: <1463605676-82483-1-git-send-email-loghyr@primarydata.com>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Hi Tom,
 
-> On May 24, 2016, at 11:20 AM, Chuck Lever <chuck.lever@oracle.com> wrote:
+I'm having trouble applying these patches:
+
+Applying: nfs/flexfiles: Helper function to detect FF_FLAGS_NO_READ_IO
+fatal: sha1 information is lacking or useless (fs/nfs/flexfilelayout/flexfilelayout.h).
+error: could not build fake ancestor
+Patch failed at 0001 nfs/flexfiles: Helper function to detect FF_FLAGS_NO_READ_IO
+
+And attempting to apply using patch(1) has failed chunks.  Do you have an updated version of these?
+
+Thanks,
+Anna
+
+
+On 05/18/2016 05:07 PM, Tom Haynes wrote:
+> FF_FLAGS_NO_READ_IO is a hint the mds can use to inform the
+> client that an IOMODE_RW layout segment should not be used
+> for READ traffic and that the client should instead request
+> an IOMODE_READ layout segment. This can be used to isolate
+> only WRITE traffic onto the IOMODE_RW layout segment.
 > 
->> 
->> On May 24, 2016, at 1:43 PM, Steve Dickson <SteveD@redhat.com> wrote:
->> 
->> 
->> 
->> On 05/24/2016 12:20 PM, Chuck Lever wrote:
->>> 
->>> 
->>> So your security realm is redhat.com. Any way
->>> to discover that fact, either at system install
->>> time, or after every boot, or ... ?
->> Yea... put it DNS ;-) But I think the answer
->> is no... at least I don't know of a way. 
->> 
->>> 
->>> I think the ID mapping domain name only matters
->>> when you are using Kerberos? sec=sys should use
->>> only stringified UIDs.
->> Netapp filers still use name@domain strings and 
->> probably  Solaris servers... I think only Linux
->> use the stringified UIDs.
+> Tom Haynes (3):
+>   nfs/flexfiles: Helper function to detect FF_FLAGS_NO_READ_IO
+>   nfs/flexfiles: Use the layout segment for reading unless it a
+>     IOMODE_RW and reading is disabled
+>   pnfs: pnfs_update_layout needs to consider if strict iomode checking
+>     is on
 > 
-
-C-mode uses stringified UIDs. Not so sure about 7-mode.
-
-Primary Data uses stringified UIDs.
-
-
-> I'm pretty sure recent Solaris servers will behave
-> like Linux. But there's plenty of S10 out there.
+>  fs/nfs/filelayout/filelayout.c            |  2 ++
+>  fs/nfs/flexfilelayout/flexfilelayout.c    | 50 +++++++++++++++++++++++--------
+>  fs/nfs/flexfilelayout/flexfilelayout.h    | 10 ++++++-
+>  fs/nfs/flexfilelayout/flexfilelayoutdev.c |  6 ++++
+>  fs/nfs/pnfs.c                             | 34 +++++++++++++--------
+>  fs/nfs/pnfs.h                             |  1 +
+>  6 files changed, 77 insertions(+), 26 deletions(-)
 > 
-
 
