@@ -1,86 +1,117 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp-o-3.desy.de ([131.169.56.156]:40719 "EHLO smtp-o-3.desy.de"
+Received: from fieldses.org ([173.255.197.46]:59266 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754587AbcEXU5R (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 24 May 2016 16:57:17 -0400
-Received: from smtp-map-3.desy.de (smtp-map-3.desy.de [131.169.56.68])
-	by smtp-o-3.desy.de (DESY-O-3) with ESMTP id 51282280823
-	for <linux-nfs@vger.kernel.org>; Tue, 24 May 2016 22:57:15 +0200 (CEST)
-Received: from ZITSWEEP4.win.desy.de (zitsweep4.win.desy.de [131.169.97.98])
-	by smtp-map-3.desy.de (DESY_MAP_3) with ESMTP id 375A3165A
-	for <linux-nfs@vger.kernel.org>; Tue, 24 May 2016 22:57:13 +0200 (MEST)
-Date: Tue, 24 May 2016 22:57:12 +0200 (CEST)
-From: "Mkrtchyan, Tigran" <tigran.mkrtchyan@desy.de>
-To: Thomas Haynes <loghyr@primarydata.com>
-Cc: Chuck Lever <chuck.lever@oracle.com>, Steve Dickson <SteveD@redhat.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-ID: <1785943916.14223495.1464123432988.JavaMail.zimbra@desy.de>
-In-Reply-To: <FD49095E-BBF5-48FB-9313-B2874122701C@primarydata.com>
-References: <1464020307-8806-1-git-send-email-steved@redhat.com> <B7AD5C8F-13A3-466A-BAC8-8A487939BC8F@oracle.com> <8d2c592d-2c43-85e4-a9fb-65b13206c2ee@RedHat.com> <D7102E5D-3328-4379-B8F2-BFDA86AAEBE4@oracle.com> <c33c89df-ec54-fa6e-a84c-671f8a79f3c3@RedHat.com> <AB5249F6-36B2-44DF-864E-9F90D16A07FE@oracle.com> <FD49095E-BBF5-48FB-9313-B2874122701C@primarydata.com>
-Subject: Re: [RFC PATCH 0/1] Create a DNS SRV record of the ID mapping
- domain
-MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
+	id S1752193AbcEXVQU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 24 May 2016 17:16:20 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: Trond Myklebust <trond.myklebust@primarydata.com>,
+        Anna Schumaker <schumakeranna@gmail.com>
+Cc: linux-nfs@vger.kernel.org, "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 2/3] nfsd4/rpc: move backchannel create logic into rpc code
+Date: Tue, 24 May 2016 17:16:15 -0400
+Message-Id: <1464124576-27467-3-git-send-email-bfields@redhat.com>
+In-Reply-To: <1464124576-27467-1-git-send-email-bfields@redhat.com>
+References: <1464124576-27467-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+From: "J. Bruce Fields" <bfields@redhat.com>
 
+Also simplify the logic a bit.
 
------ Original Message -----
-> From: "Thomas Haynes" <loghyr@primarydata.com>
-> To: "Chuck Lever" <chuck.lever@oracle.com>
-> Cc: "Steve Dickson" <SteveD@redhat.com>, "Linux NFS Mailing List" <linux-nfs@vger.kernel.org>
-> Sent: Tuesday, May 24, 2016 9:34:28 PM
-> Subject: Re: [RFC PATCH 0/1] Create a DNS SRV record of the ID mapping domain
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ fs/nfsd/nfs4callback.c      | 18 +-----------------
+ include/linux/sunrpc/clnt.h |  2 --
+ net/sunrpc/clnt.c           | 12 ++++++++++--
+ 3 files changed, 11 insertions(+), 21 deletions(-)
 
->> On May 24, 2016, at 11:20 AM, Chuck Lever <chuck.lever@oracle.com> wrote:
->> 
->>> 
->>> On May 24, 2016, at 1:43 PM, Steve Dickson <SteveD@redhat.com> wrote:
->>> 
->>> 
->>> 
->>> On 05/24/2016 12:20 PM, Chuck Lever wrote:
->>>> 
->>>> 
->>>> So your security realm is redhat.com. Any way
->>>> to discover that fact, either at system install
->>>> time, or after every boot, or ... ?
->>> Yea... put it DNS ;-) But I think the answer
->>> is no... at least I don't know of a way.
->>> 
->>>> 
->>>> I think the ID mapping domain name only matters
->>>> when you are using Kerberos? sec=sys should use
->>>> only stringified UIDs.
->>> Netapp filers still use name@domain strings and
->>> probably  Solaris servers... I think only Linux
->>> use the stringified UIDs.
->> 
-> 
-> C-mode uses stringified UIDs. Not so sure about 7-mode.
-> 
-> Primary Data uses stringified UIDs.
+diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
+index 7389cb1d7409..04c68d900324 100644
+--- a/fs/nfsd/nfs4callback.c
++++ b/fs/nfsd/nfs4callback.c
+@@ -710,22 +710,6 @@ static struct rpc_cred *get_backchannel_cred(struct nfs4_client *clp, struct rpc
+ 	}
+ }
+ 
+-static struct rpc_clnt *create_backchannel_client(struct rpc_create_args *args)
+-{
+-	struct rpc_xprt *xprt;
+-
+-	if (args->protocol != XPRT_TRANSPORT_BC_TCP)
+-		return rpc_create(args);
+-
+-	xprt = args->bc_xprt->xpt_bc_xprt;
+-	if (xprt) {
+-		xprt_get(xprt);
+-		return rpc_create_xprt(args, xprt);
+-	}
+-
+-	return rpc_create(args);
+-}
+-
+ static int setup_callback_client(struct nfs4_client *clp, struct nfs4_cb_conn *conn, struct nfsd4_session *ses)
+ {
+ 	int maxtime = max_cb_time(clp->net);
+@@ -768,7 +752,7 @@ static int setup_callback_client(struct nfs4_client *clp, struct nfs4_cb_conn *c
+ 		args.authflavor = ses->se_cb_sec.flavor;
+ 	}
+ 	/* Create RPC client */
+-	client = create_backchannel_client(&args);
++	client = rpc_create(&args);
+ 	if (IS_ERR(client)) {
+ 		dprintk("NFSD: couldn't create callback client: %ld\n",
+ 			PTR_ERR(client));
+diff --git a/include/linux/sunrpc/clnt.h b/include/linux/sunrpc/clnt.h
+index 9a7ddbaf116e..14d70f59f0c2 100644
+--- a/include/linux/sunrpc/clnt.h
++++ b/include/linux/sunrpc/clnt.h
+@@ -137,8 +137,6 @@ struct rpc_create_args {
+ #define RPC_CLNT_CREATE_NO_RETRANS_TIMEOUT	(1UL << 9)
+ 
+ struct rpc_clnt *rpc_create(struct rpc_create_args *args);
+-struct rpc_clnt *rpc_create_xprt(struct rpc_create_args *args,
+-					struct rpc_xprt *xprt);
+ struct rpc_clnt	*rpc_bind_new_program(struct rpc_clnt *,
+ 				const struct rpc_program *, u32);
+ struct rpc_clnt *rpc_clone_client(struct rpc_clnt *);
+diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+index a87e29ac993e..ad3f5ebec2d1 100644
+--- a/net/sunrpc/clnt.c
++++ b/net/sunrpc/clnt.c
+@@ -446,7 +446,7 @@ out_no_rpciod:
+ 	return ERR_PTR(err);
+ }
+ 
+-struct rpc_clnt *rpc_create_xprt(struct rpc_create_args *args,
++static struct rpc_clnt *rpc_create_xprt(struct rpc_create_args *args,
+ 					struct rpc_xprt *xprt)
+ {
+ 	struct rpc_clnt *clnt = NULL;
+@@ -484,7 +484,6 @@ struct rpc_clnt *rpc_create_xprt(struct rpc_create_args *args,
+ 
+ 	return clnt;
+ }
+-EXPORT_SYMBOL_GPL(rpc_create_xprt);
+ 
+ /**
+  * rpc_create - create an RPC client and transport with one call
+@@ -510,6 +509,15 @@ struct rpc_clnt *rpc_create(struct rpc_create_args *args)
+ 	};
+ 	char servername[48];
+ 
++	if (args->bc_xprt) {
++		WARN_ON(args->protocol != XPRT_TRANSPORT_BC_TCP);
++		xprt = args->bc_xprt->xpt_bc_xprt;
++		if (xprt) {
++			xprt_get(xprt);
++			return rpc_create_xprt(args, xprt);
++		}
++	}
++
+ 	if (args->flags & RPC_CLNT_CREATE_INFINITE_SLOTS)
+ 		xprtargs.flags |= XPRT_CREATE_INFINITE_SLOTS;
+ 	if (args->flags & RPC_CLNT_CREATE_NO_IDLE_TIMEOUT)
+-- 
+2.5.5
 
-
-dCache server accepts stringified UIDs and returns
-name@domain when possible.
-
-A SRV record will help with auto configuration as
-our nfsv4 domain and dns domain are different (long
-story).
-
-Tigran.
-
-
-> 
-> 
->> I'm pretty sure recent Solaris servers will behave
->> like Linux. But there's plenty of S10 out there.
->> 
-> 
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
