@@ -1,57 +1,58 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx141.netapp.com ([216.240.21.12]:62202 "EHLO mx141.netapp.com"
+Received: from fieldses.org ([173.255.197.46]:59198 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751670AbcEXUUz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 24 May 2016 16:20:55 -0400
-Subject: Re: [PATCH 0/3] FF_FLAGS_NO_READ_IO
-To: Tom Haynes <thomas.haynes@primarydata.com>,
-        Trond Myklebust <trond.myklebust@primarydata.com>
-References: <1463605676-82483-1-git-send-email-loghyr@primarydata.com>
-CC: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-From: Anna Schumaker <Anna.Schumaker@netapp.com>
-Message-ID: <d3be85ff-b066-0f9f-cb35-c18790b39b73@Netapp.com>
-Date: Tue, 24 May 2016 16:20:51 -0400
+	id S1755280AbcEXUw3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 24 May 2016 16:52:29 -0400
+Date: Tue, 24 May 2016 16:52:27 -0400
+To: Linus Torvalds <torvalds@linux-foundation.org>
+Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
+Subject: [GIT PULL] nfsd changes for 4.7
+Message-ID: <20160524205227.GA26288@fieldses.org>
 MIME-Version: 1.0
-In-Reply-To: <1463605676-82483-1-git-send-email-loghyr@primarydata.com>
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain; charset=utf-8
+From: bfields@fieldses.org (J. Bruce Fields)
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Tom,
+Please pull nfsd changes from the nfsd-4.7 branch at:
 
-I'm having trouble applying these patches:
+  git://linux-nfs.org/~bfields/linux.git tags/nfsd-4.7
 
-Applying: nfs/flexfiles: Helper function to detect FF_FLAGS_NO_READ_IO
-fatal: sha1 information is lacking or useless (fs/nfs/flexfilelayout/flexfilelayout.h).
-error: could not build fake ancestor
-Patch failed at 0001 nfs/flexfiles: Helper function to detect FF_FLAGS_NO_READ_IO
+----------------------------------------------------------------
+A very quiet cycle for nfsd, mainly just an RDMA update from Chuck Lever.
 
-And attempting to apply using patch(1) has failed chunks.  Do you have an updated version of these?
+----------------------------------------------------------------
+Chuck Lever (7):
+      svcrdma: Do not add XDR padding to xdr_buf page vector
+      svcrdma: svc_rdma_put_context() is invoked twice in Send error path
+      svcrdma: Remove superfluous line from rdma_read_chunks()
+      svcrdma: Post Receives only for forward channel requests
+      svcrdma: Drain QP before freeing svcrdma_xprt
+      svcrdma: Eliminate code duplication in svc_rdma_recvfrom()
+      svcrdma: Generalize svc_rdma_xdr_decode_req()
 
-Thanks,
-Anna
+J. Bruce Fields (2):
+      Remove unnecessary allocation
+      svcrpc: autoload rdma module
 
+Jeff Layton (1):
+      nfsd: handle seqid wraparound in nfsd4_preprocess_layout_stateid
 
-On 05/18/2016 05:07 PM, Tom Haynes wrote:
-> FF_FLAGS_NO_READ_IO is a hint the mds can use to inform the
-> client that an IOMODE_RW layout segment should not be used
-> for READ traffic and that the client should instead request
-> an IOMODE_READ layout segment. This can be used to isolate
-> only WRITE traffic onto the IOMODE_RW layout segment.
-> 
-> Tom Haynes (3):
->   nfs/flexfiles: Helper function to detect FF_FLAGS_NO_READ_IO
->   nfs/flexfiles: Use the layout segment for reading unless it a
->     IOMODE_RW and reading is disabled
->   pnfs: pnfs_update_layout needs to consider if strict iomode checking
->     is on
-> 
->  fs/nfs/filelayout/filelayout.c            |  2 ++
->  fs/nfs/flexfilelayout/flexfilelayout.c    | 50 +++++++++++++++++++++++--------
->  fs/nfs/flexfilelayout/flexfilelayout.h    | 10 ++++++-
->  fs/nfs/flexfilelayout/flexfilelayoutdev.c |  6 ++++
->  fs/nfs/pnfs.c                             | 34 +++++++++++++--------
->  fs/nfs/pnfs.h                             |  1 +
->  6 files changed, 77 insertions(+), 26 deletions(-)
-> 
+Shirley Ma (1):
+      svcrdma: Support IPv6 with NFS/RDMA
 
+Tomáš Trnka (1):
+      sunrpc: fix stripping of padded MIC tokens
+
+ fs/nfsd/nfs3xdr.c                        |  2 +-
+ fs/nfsd/nfs4layouts.c                    |  2 +-
+ fs/nfsd/nfs4state.c                      |  8 +-------
+ fs/nfsd/state.h                          |  5 +++++
+ include/linux/sunrpc/svc_rdma.h          |  2 +-
+ net/sunrpc/auth_gss/svcauth_gss.c        |  9 ++++-----
+ net/sunrpc/svc_xprt.c                    | 23 +++++++++++++++++----
+ net/sunrpc/xprtrdma/svc_rdma_marshal.c   | 32 ++++++++++++++++++++----------
+ net/sunrpc/xprtrdma/svc_rdma_recvfrom.c  | 34 ++++++++------------------------
+ net/sunrpc/xprtrdma/svc_rdma_sendto.c    | 28 ++++++++++++--------------
+ net/sunrpc/xprtrdma/svc_rdma_transport.c | 17 ++++++++++++++--
+ 11 files changed, 90 insertions(+), 72 deletions(-)
