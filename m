@@ -1,58 +1,86 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:59198 "EHLO fieldses.org"
+Received: from smtp-o-3.desy.de ([131.169.56.156]:40719 "EHLO smtp-o-3.desy.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755280AbcEXUw3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 24 May 2016 16:52:29 -0400
-Date: Tue, 24 May 2016 16:52:27 -0400
-To: Linus Torvalds <torvalds@linux-foundation.org>
-Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: [GIT PULL] nfsd changes for 4.7
-Message-ID: <20160524205227.GA26288@fieldses.org>
+	id S1754587AbcEXU5R (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 24 May 2016 16:57:17 -0400
+Received: from smtp-map-3.desy.de (smtp-map-3.desy.de [131.169.56.68])
+	by smtp-o-3.desy.de (DESY-O-3) with ESMTP id 51282280823
+	for <linux-nfs@vger.kernel.org>; Tue, 24 May 2016 22:57:15 +0200 (CEST)
+Received: from ZITSWEEP4.win.desy.de (zitsweep4.win.desy.de [131.169.97.98])
+	by smtp-map-3.desy.de (DESY_MAP_3) with ESMTP id 375A3165A
+	for <linux-nfs@vger.kernel.org>; Tue, 24 May 2016 22:57:13 +0200 (MEST)
+Date: Tue, 24 May 2016 22:57:12 +0200 (CEST)
+From: "Mkrtchyan, Tigran" <tigran.mkrtchyan@desy.de>
+To: Thomas Haynes <loghyr@primarydata.com>
+Cc: Chuck Lever <chuck.lever@oracle.com>, Steve Dickson <SteveD@redhat.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Message-ID: <1785943916.14223495.1464123432988.JavaMail.zimbra@desy.de>
+In-Reply-To: <FD49095E-BBF5-48FB-9313-B2874122701C@primarydata.com>
+References: <1464020307-8806-1-git-send-email-steved@redhat.com> <B7AD5C8F-13A3-466A-BAC8-8A487939BC8F@oracle.com> <8d2c592d-2c43-85e4-a9fb-65b13206c2ee@RedHat.com> <D7102E5D-3328-4379-B8F2-BFDA86AAEBE4@oracle.com> <c33c89df-ec54-fa6e-a84c-671f8a79f3c3@RedHat.com> <AB5249F6-36B2-44DF-864E-9F90D16A07FE@oracle.com> <FD49095E-BBF5-48FB-9313-B2874122701C@primarydata.com>
+Subject: Re: [RFC PATCH 0/1] Create a DNS SRV record of the ID mapping
+ domain
 MIME-Version: 1.0
 Content-Type: text/plain; charset=utf-8
-From: bfields@fieldses.org (J. Bruce Fields)
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Please pull nfsd changes from the nfsd-4.7 branch at:
 
-  git://linux-nfs.org/~bfields/linux.git tags/nfsd-4.7
 
-----------------------------------------------------------------
-A very quiet cycle for nfsd, mainly just an RDMA update from Chuck Lever.
+----- Original Message -----
+> From: "Thomas Haynes" <loghyr@primarydata.com>
+> To: "Chuck Lever" <chuck.lever@oracle.com>
+> Cc: "Steve Dickson" <SteveD@redhat.com>, "Linux NFS Mailing List" <linux-nfs@vger.kernel.org>
+> Sent: Tuesday, May 24, 2016 9:34:28 PM
+> Subject: Re: [RFC PATCH 0/1] Create a DNS SRV record of the ID mapping domain
 
-----------------------------------------------------------------
-Chuck Lever (7):
-      svcrdma: Do not add XDR padding to xdr_buf page vector
-      svcrdma: svc_rdma_put_context() is invoked twice in Send error path
-      svcrdma: Remove superfluous line from rdma_read_chunks()
-      svcrdma: Post Receives only for forward channel requests
-      svcrdma: Drain QP before freeing svcrdma_xprt
-      svcrdma: Eliminate code duplication in svc_rdma_recvfrom()
-      svcrdma: Generalize svc_rdma_xdr_decode_req()
+>> On May 24, 2016, at 11:20 AM, Chuck Lever <chuck.lever@oracle.com> wrote:
+>> 
+>>> 
+>>> On May 24, 2016, at 1:43 PM, Steve Dickson <SteveD@redhat.com> wrote:
+>>> 
+>>> 
+>>> 
+>>> On 05/24/2016 12:20 PM, Chuck Lever wrote:
+>>>> 
+>>>> 
+>>>> So your security realm is redhat.com. Any way
+>>>> to discover that fact, either at system install
+>>>> time, or after every boot, or ... ?
+>>> Yea... put it DNS ;-) But I think the answer
+>>> is no... at least I don't know of a way.
+>>> 
+>>>> 
+>>>> I think the ID mapping domain name only matters
+>>>> when you are using Kerberos? sec=sys should use
+>>>> only stringified UIDs.
+>>> Netapp filers still use name@domain strings and
+>>> probably  Solaris servers... I think only Linux
+>>> use the stringified UIDs.
+>> 
+> 
+> C-mode uses stringified UIDs. Not so sure about 7-mode.
+> 
+> Primary Data uses stringified UIDs.
 
-J. Bruce Fields (2):
-      Remove unnecessary allocation
-      svcrpc: autoload rdma module
 
-Jeff Layton (1):
-      nfsd: handle seqid wraparound in nfsd4_preprocess_layout_stateid
+dCache server accepts stringified UIDs and returns
+name@domain when possible.
 
-Shirley Ma (1):
-      svcrdma: Support IPv6 with NFS/RDMA
+A SRV record will help with auto configuration as
+our nfsv4 domain and dns domain are different (long
+story).
 
-Tomáš Trnka (1):
-      sunrpc: fix stripping of padded MIC tokens
+Tigran.
 
- fs/nfsd/nfs3xdr.c                        |  2 +-
- fs/nfsd/nfs4layouts.c                    |  2 +-
- fs/nfsd/nfs4state.c                      |  8 +-------
- fs/nfsd/state.h                          |  5 +++++
- include/linux/sunrpc/svc_rdma.h          |  2 +-
- net/sunrpc/auth_gss/svcauth_gss.c        |  9 ++++-----
- net/sunrpc/svc_xprt.c                    | 23 +++++++++++++++++----
- net/sunrpc/xprtrdma/svc_rdma_marshal.c   | 32 ++++++++++++++++++++----------
- net/sunrpc/xprtrdma/svc_rdma_recvfrom.c  | 34 ++++++++------------------------
- net/sunrpc/xprtrdma/svc_rdma_sendto.c    | 28 ++++++++++++--------------
- net/sunrpc/xprtrdma/svc_rdma_transport.c | 17 ++++++++++++++--
- 11 files changed, 90 insertions(+), 72 deletions(-)
+
+> 
+> 
+>> I'm pretty sure recent Solaris servers will behave
+>> like Linux. But there's plenty of S10 out there.
+>> 
+> 
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
