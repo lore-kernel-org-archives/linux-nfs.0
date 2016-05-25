@@ -1,448 +1,165 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-yw0-f195.google.com ([209.85.161.195]:33177 "EHLO
-	mail-yw0-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752236AbcEYMav (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 25 May 2016 08:30:51 -0400
-Received: by mail-yw0-f195.google.com with SMTP id y6so6340161ywe.0
-        for <linux-nfs@vger.kernel.org>; Wed, 25 May 2016 05:30:51 -0700 (PDT)
-Message-ID: <1464179444.3037.15.camel@poochiereds.net>
-Subject: Re: [PATCH 3/4] nfsd: Add a super simple flex file server
-From: Jeff Layton <jlayton@poochiereds.net>
-To: Tom Haynes <thomas.haynes@primarydata.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>
-Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>,
-        Christoph Hellwig <hch@lst.de>
-Date: Wed, 25 May 2016 08:30:44 -0400
-In-Reply-To: <1464152979-103988-4-git-send-email-loghyr@primarydata.com>
-References: <1464152979-103988-1-git-send-email-loghyr@primarydata.com>
-	 <1464152979-103988-4-git-send-email-loghyr@primarydata.com>
-Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
+Received: from mail-io0-f194.google.com ([209.85.223.194]:34585 "EHLO
+	mail-io0-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750924AbcEYOH1 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 25 May 2016 10:07:27 -0400
+Received: by mail-io0-f194.google.com with SMTP id d197so5280612ioe.1
+        for <linux-nfs@vger.kernel.org>; Wed, 25 May 2016 07:07:26 -0700 (PDT)
+From: Weston Andros Adamson <dros@monkey.org>
+To: trond.myklebust@primarydata.com
+Cc: linux-nfs@vger.kernel.org, Weston Andros Adamson <dros@primarydata.com>
+Subject: [PATCH v2] nfs: avoid race that crashes nfs_init_commit
+Date: Wed, 25 May 2016 10:07:23 -0400
+Message-Id: <1464185243-15556-1-git-send-email-dros@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 2016-05-24 at 22:09 -0700, Tom Haynes wrote:
-> Have a simple flex file server where the mds (NFSv4.1 or NFSv4.2)
-> is also the ds (NFSv3). I.e., the metadata and the data file are
-> the exact same file.
-> 
-> This will allow testing of the flex file client.
-> 
-> Simply add the "pnfs" export option to your export
-> in /etc/exports and mount from a client that supports
-> flex files.
-> 
-> Signed-off-by: Tom Haynes <loghyr@primarydata.com>
-> ---
->  fs/nfsd/Makefile            |   1 +
->  fs/nfsd/flexfilelayout.c    | 148 ++++++++++++++++++++++++++++++++++++++++++++
->  fs/nfsd/flexfilelayoutxdr.c | 116 ++++++++++++++++++++++++++++++++++
->  fs/nfsd/flexfilelayoutxdr.h |  50 +++++++++++++++
->  fs/nfsd/nfs4layouts.c       |  10 +++
->  fs/nfsd/pnfs.h              |   3 +
->  6 files changed, 328 insertions(+)
->  create mode 100644 fs/nfsd/flexfilelayout.c
->  create mode 100644 fs/nfsd/flexfilelayoutxdr.c
->  create mode 100644 fs/nfsd/flexfilelayoutxdr.h
-> 
-> diff --git a/fs/nfsd/Makefile b/fs/nfsd/Makefile
-> index 3ae5f3c..5f5d3a7 100644
-> --- a/fs/nfsd/Makefile
-> +++ b/fs/nfsd/Makefile
-> @@ -20,3 +20,4 @@ nfsd-$(CONFIG_NFSD_V4)	+= nfs4proc.o nfs4xdr.o nfs4state.o nfs4idmap.o \
->  nfsd-$(CONFIG_NFSD_PNFS) += nfs4layouts.o
->  nfsd-$(CONFIG_NFSD_BLOCKLAYOUT) += blocklayout.o blocklayoutxdr.o
->  nfsd-$(CONFIG_NFSD_SCSILAYOUT) += blocklayout.o blocklayoutxdr.o
-> +nfsd-$(CONFIG_NFSD_FLEXFILELAYOUT) += flexfilelayout.o flexfilelayoutxdr.o
-> diff --git a/fs/nfsd/flexfilelayout.c b/fs/nfsd/flexfilelayout.c
-> new file mode 100644
-> index 0000000..d28b8a0
-> --- /dev/null
-> +++ b/fs/nfsd/flexfilelayout.c
-> @@ -0,0 +1,148 @@
-> +/*
-> + * Copyright (c) 2016 Tom Haynes <loghyr@primarydata.com>
-> + *
-> + * The following implements a super-simple flex-file server
-> + * where the NFSv4.1 mds is also the ds. And the storage is
-> + * the same. I.e., writing to the mds via a NFSv4.1 WRITE
-> + * goes to the same location as the NFSv3 WRITE.
-> + */
-> +#include 
-> +#include 
-> +#include 
-> +#include 
-> +
-> +#include 
-> +
-> +#include 
-> +
-> +#include "flexfilelayoutxdr.h"
-> +#include "pnfs.h"
-> +
-> +#define NFSDDBG_FACILITY	NFSDDBG_PNFS
-> +
-> +static __be32
-> +nfsd4_ff_proc_layoutget(struct inode *inode, const struct svc_fh *fhp,
-> +		struct nfsd4_layoutget *args)
-> +{
-> +	struct nfsd4_layout_seg *seg = &args->lg_seg;
-> +	u32 block_size = (1 << inode->i_blkbits);
-> +	u32 device_generation = 0;
-> +	int error;
-> +
-> +	struct pnfs_ff_layout *fl;
-> +
-> +	if (seg->offset & (block_size - 1)) {
-> +		dprintk("pnfsd: I/O misaligned\n");
-> +		goto out_layoutunavailable;
-> +	}
-> +
-> +	/*
-> +	 * The super simple flex file server has 1 mirror, 1 data server,
-> +	 * and 1 file handle. So instead of 4 allocs, do 1 for now.
-> +	 * Zero it out for the stateid - don't want junk in there!
-> +	 */
-> +	error = -ENOMEM;
-> +	fl = kzalloc(sizeof(*fl), GFP_KERNEL);
-> +	if (!fl)
-> +		goto out_error;
-> +	args->lg_content = fl;
-> +
-> +	/*
-> +	 * Avoid layout commit, try to force the I/O to the DS,
-> +	 * and for fun, cause all IOMODE_RW layout segments to
-> +	 * effectively be WRITE only.
-> +	 */
-> +	fl->flags = FF_FLAGS_NO_LAYOUTCOMMIT | FF_FLAGS_NO_IO_THRU_MDS |
-> +		    FF_FLAGS_NO_READ_IO;
-> +
-> +	fl->uid = inode->i_uid;
-> +	fl->gid = inode->i_gid;
-> +
-> +	error = nfsd4_set_deviceid(&fl->deviceid, fhp, device_generation);
-> +	if (error)
-> +		goto out_error;
-> +
-> +	fl->fh.size = fhp->fh_handle.fh_size;
-> +	memcpy(fl->fh.data, &fhp->fh_handle.fh_base, fl->fh.size);
-> +
-> +	/* Give whole file layout segments */
-> +	seg->offset = 0;
-> +	seg->length = NFS4_MAX_UINT64;
-> +
-> +	dprintk("GET: 0x%llx:0x%llx %d\n", seg->offset, seg->length,
-> +		seg->iomode);
-> +	return 0;
-> +
-> +out_error:
-> +	kfree(fl);
-> +	seg->length = 0;
-> +	return nfserrno(error);
-> +out_layoutunavailable:
-> +	seg->length = 0;
-> +	return nfserr_layoutunavailable;
-> +}
-> +
-> +#ifdef CONFIG_NFSD_FLEXFILELAYOUT
-> +static __be32
-> +nfsd4_ff_proc_getdeviceinfo(struct super_block *sb,
-> +		struct svc_rqst *rqstp,
-> +		struct nfs4_client *clp,
-> +		struct nfsd4_getdeviceinfo *gdp)
-> +{
-> +	struct pnfs_ff_device_addr *da;
-> +
-> +	u16 port;
-> +	char addr[INET6_ADDRSTRLEN];
-> +
-> +	if (sb->s_bdev != sb->s_bdev->bd_contains)
-> +		return nfserr_inval;
-> +
-> +	da = kzalloc(sizeof(struct pnfs_ff_device_addr), GFP_KERNEL);
-> +	if (!da)
-> +		return nfserrno(-ENOMEM);
-> +
-> +	gdp->gd_device = da;
-> +
-> +	da->version = 3;
-> +	da->minor_version = 0;
-> +
-> +	/* FIXME: Get from export? */
-> +	da->rsize = 4096;
-> +	da->wsize = 4096;
-> +
-> +	rpc_ntop((struct sockaddr *)&rqstp->rq_daddr,
-> +		 addr, INET6_ADDRSTRLEN);
-> +	if (rqstp->rq_daddr.ss_family == AF_INET) {
-> +		struct sockaddr_in *sin;
-> +
-> +		sin = (struct sockaddr_in *)&rqstp->rq_daddr;
-> +		port = ntohs(sin->sin_port);
-> +		snprintf(da->netaddr.netid, FF_NETID_LEN + 1, "tcp");
-> +		da->netaddr.netid_len = 3;
-> +	} else {
-> +		struct sockaddr_in6 *sin6;
-> +
-> +		sin6 = (struct sockaddr_in6 *)&rqstp->rq_daddr;
-> +		port = ntohs(sin6->sin6_port);
-> +		snprintf(da->netaddr.netid, FF_NETID_LEN + 1, "tcp6");
-> +		da->netaddr.netid_len = 4;
-> +	}
-> +
-> +	da->netaddr.addr_len =
-> +		snprintf(da->netaddr.addr, FF_ADDR_LEN + 1,
-> +			 "%s.%hhu.%hhu", addr, port >> 8, port & 0xff);
-> +
-> +	da->tightly_coupled = false;
-> +
-> +	return 0;
-> +}
-> +
-> +const struct nfsd4_layout_ops ff_layout_ops = {
-> +	.notify_types		=
-> +			NOTIFY_DEVICEID4_DELETE | NOTIFY_DEVICEID4_CHANGE,
-> +	.proc_getdeviceinfo	= nfsd4_ff_proc_getdeviceinfo,
-> +	.encode_getdeviceinfo	= nfsd4_ff_encode_getdeviceinfo,
-> +	.proc_layoutget		= nfsd4_ff_proc_layoutget,
-> +	.encode_layoutget	= nfsd4_ff_encode_layoutget,
-> +};
-> +#endif /* CONFIG_NFSD_FLEXFILELAYOUT */
-> diff --git a/fs/nfsd/flexfilelayoutxdr.c b/fs/nfsd/flexfilelayoutxdr.c
-> new file mode 100644
-> index 0000000..9d15ee0
-> --- /dev/null
-> +++ b/fs/nfsd/flexfilelayoutxdr.c
-> @@ -0,0 +1,116 @@
-> +/*
-> + * Copyright (c) 2016 Tom Haynes <loghyr@primarydata.com>
-> + */
-> +#include 
-> +#include 
-> +#include 
-> +
-> +#include "nfsd.h"
-> +#include "flexfilelayoutxdr.h"
-> +
-> +#define NFSDDBG_FACILITY	NFSDDBG_PNFS
-> +
-> +struct ff_idmap {
-> +	char buf[11];
-> +	int len;
-> +};
-> +
-> +__be32
-> +nfsd4_ff_encode_layoutget(struct xdr_stream *xdr,
-> +		struct nfsd4_layoutget *lgp)
-> +{
-> +	struct pnfs_ff_layout *fl = lgp->lg_content;
-> +	int len, mirror_len, ds_len, fh_len;
-> +	__be32 *p;
-> +
-> +	/*
-> +	 * Unlike nfsd4_encode_user, we know these will
-> +	 * always be stringified.
-> +	 */
-> +	struct ff_idmap uid;
-> +	struct ff_idmap gid;
-> +
-> +	fh_len = 4 + fl->fh.size;
-> +
-> +	uid.len = sprintf(uid.buf, "%u", from_kuid(&init_user_ns, fl->uid));
-> +	gid.len = sprintf(gid.buf, "%u", from_kgid(&init_user_ns, fl->gid));
-> +
-> +	/* 8 + len for recording the length, name, and padding */
-> +	ds_len = 20 + sizeof(stateid_opaque_t) + 4 + fh_len +
-> +		 8 + uid.len + 8 + gid.len;
-> +
-> +	mirror_len = 4 + ds_len;
-> +
-> +	/* The layout segment */
-> +	len = 20 + mirror_len;
-> +
-> +	p = xdr_reserve_space(xdr, sizeof(__be32) + len);
-> +	if (!p)
-> +		return nfserr_toosmall;
-> +
-> +	*p++ = cpu_to_be32(len);
-> +	p = xdr_encode_hyper(p, 1);		/* stripe unit of 1 */
-> +
-> +	*p++ = cpu_to_be32(1);			/* single mirror */
-> +	*p++ = cpu_to_be32(1);			/* single data server */
-> +
-> +	p = xdr_encode_opaque_fixed(p, &fl->deviceid,
-> +			sizeof(struct nfsd4_deviceid));
-> +
-> +	*p++ = cpu_to_be32(1);			/* efficiency */
-> +
-> +	*p++ = cpu_to_be32(fl->stateid.si_generation);
-> +	p = xdr_encode_opaque_fixed(p, &fl->stateid.si_opaque,
-> +				    sizeof(stateid_opaque_t));
-> +
-> +	*p++ = cpu_to_be32(1);			/* single file handle */
-> +	p = xdr_encode_opaque(p, fl->fh.data, fl->fh.size);
-> +
-> +	p = xdr_encode_opaque(p, uid.buf, uid.len);
-> +	p = xdr_encode_opaque(p, gid.buf, gid.len);
-> +
-> +	*p++ = cpu_to_be32(fl->flags);
-> +	*p++ = cpu_to_be32(0);			/* No stats collect hint */
-> +
-> +	return 0;
-> +}
-> +
-> +__be32
-> +nfsd4_ff_encode_getdeviceinfo(struct xdr_stream *xdr,
-> +		struct nfsd4_getdeviceinfo *gdp)
-> +{
-> +	struct pnfs_ff_device_addr *da = gdp->gd_device;
-> +	int len;
-> +	int ver_len;
-> +	int addr_len;
-> +	__be32 *p;
-> +
-> +	/* len + padding for two strings */
-> +	addr_len = 16 + da->netaddr.netid_len + da->netaddr.addr_len;
-> +	ver_len = 20;
-> +
-> +	len = 4 + ver_len + 4 + addr_len;
-> +
-> +	p = xdr_reserve_space(xdr, len + sizeof(__be32));
-> +	if (!p)
-> +		return nfserr_resource;
-> +
-> +	/*
-> +	 * Fill in the overall length and number of volumes at the beginning
-> +	 * of the layout.
-> +	 */
-> +	*p++ = cpu_to_be32(len);
-> +	*p++ = cpu_to_be32(1);			/* 1 netaddr */
-> +	p = xdr_encode_opaque(p, da->netaddr.netid, da->netaddr.netid_len);
-> +	p = xdr_encode_opaque(p, da->netaddr.addr, da->netaddr.addr_len);
-> +
-> +	*p++ = cpu_to_be32(1);			/* 1 versions */
-> +
-> +	*p++ = cpu_to_be32(da->version);
-> +	*p++ = cpu_to_be32(da->minor_version);
-> +	*p++ = cpu_to_be32(da->rsize);
-> +	*p++ = cpu_to_be32(da->wsize);
-> +	*p++ = cpu_to_be32(da->tightly_coupled);
-> +
-> +	return 0;
-> +}
-> diff --git a/fs/nfsd/flexfilelayoutxdr.h b/fs/nfsd/flexfilelayoutxdr.h
-> new file mode 100644
-> index 0000000..40e6d1b
-> --- /dev/null
-> +++ b/fs/nfsd/flexfilelayoutxdr.h
-> @@ -0,0 +1,50 @@
-> +/*
-> + * Copyright (c) 2016 Tom Haynes <loghyr@primarydata.com>
-> + */
-> +#ifndef _NFSD_FLEXFILELAYOUTXDR_H
-> +#define _NFSD_FLEXFILELAYOUTXDR_H 1
-> +
-> +#include 
-> +#include "xdr4.h"
-> +
-> +#define FF_FLAGS_NO_LAYOUTCOMMIT 1
-> +#define FF_FLAGS_NO_IO_THRU_MDS  2
-> +#define FF_FLAGS_NO_READ_IO      4
-> +
-> +struct iomap;
-> +struct xdr_stream;
-> +
-> +#define FF_NETID_LEN		(4)
-> +#define FF_ADDR_LEN		(INET6_ADDRSTRLEN + 1)
-> +struct pnfs_ff_netaddr {
-> +	char				netid[FF_NETID_LEN + 1];
-> +	char				addr[FF_ADDR_LEN + 1];
-> +	u32				netid_len;
-> +	u32				addr_len;
-> +};
-> +
-> +struct pnfs_ff_device_addr {
-> +	struct pnfs_ff_netaddr		netaddr;
-> +	u32				version;
-> +	u32				minor_version;
-> +	u32				rsize;
-> +	u32				wsize;
-> +	bool				tightly_coupled;
-> +};
-> +
-> +struct pnfs_ff_layout {
-> +	u32				flags;
-> +	u32				stats_collect_hint;
-> +	kuid_t				uid;
-> +	kgid_t				gid;
-> +	struct nfsd4_deviceid		deviceid;
-> +	stateid_t			stateid;
-> +	struct nfs_fh			fh;
-> +};
-> +
-> +__be32 nfsd4_ff_encode_getdeviceinfo(struct xdr_stream *xdr,
-> +		struct nfsd4_getdeviceinfo *gdp);
-> +__be32 nfsd4_ff_encode_layoutget(struct xdr_stream *xdr,
-> +		struct nfsd4_layoutget *lgp);
-> +
-> +#endif /* _NFSD_FLEXFILELAYOUTXDR_H */
-> diff --git a/fs/nfsd/nfs4layouts.c b/fs/nfsd/nfs4layouts.c
-> index 825c7bc..7cbd56a 100644
-> --- a/fs/nfsd/nfs4layouts.c
-> +++ b/fs/nfsd/nfs4layouts.c
-> @@ -27,6 +27,9 @@ static const struct nfsd4_callback_ops nfsd4_cb_layout_ops;
->  static const struct lock_manager_operations nfsd4_layouts_lm_ops;
->  
->  const struct nfsd4_layout_ops *nfsd4_layout_ops[LAYOUT_TYPE_MAX] =  {
-> +#ifdef CONFIG_NFSD_FLEXFILELAYOUT
-> +	[LAYOUT_FLEX_FILES]	= &ff_layout_ops,
-> +#endif
->  #ifdef CONFIG_NFSD_BLOCKLAYOUT
->  	[LAYOUT_BLOCK_VOLUME]	= &bl_layout_ops,
->  #endif
-> @@ -122,7 +125,9 @@ nfsd4_set_deviceid(struct nfsd4_deviceid *id, const struct svc_fh *fhp,
->  
->  void nfsd4_setup_layout_type(struct svc_export *exp)
->  {
-> +#if defined(CONFIG_NFSD_BLOCKLAYOUT) || defined(CONFIG_NFSD_SCSILAYOUT)
->  	struct super_block *sb = exp->ex_path.mnt->mnt_sb;
-> +#endif
->  
->  	if (!(exp->ex_flags & NFSEXP_PNFS))
->  		return;
-> @@ -145,6 +150,11 @@ void nfsd4_setup_layout_type(struct svc_export *exp)
->  	    sb->s_bdev && sb->s_bdev->bd_disk->fops->pr_ops)
->  		exp->ex_layout_type = LAYOUT_SCSI;
->  #endif
-> +#ifdef CONFIG_NFSD_FLEXFILELAYOUT
-> +	// FIXME: How do we "export" this and how does it mingle with
-> +	// the above types?
-> +	exp->ex_layout_type = LAYOUT_FLEX_FILES;
-> +#endif
->  }
->  
+Since the patch "NFS: Allow multiple commit requests in flight per file"
+we can run multiple simultaneous commits on the same inode.  This
+introduced a race over collecting pages to commit that made it possible
+to call nfs_init_commit() with an empty list - which causes crashes like
+the one below.
 
-Maybe it's time to start thinking about how to support multiple layout types per export? It doesn't look like it would be that hard. I think we could convert ex_layout_type into a bitmap that shows which types are supported.
+The fix is to catch this race and avoid calling nfs_init_commit and
+initiate_commit when there is no work to do.
 
-The harder work looks to be on the client. You'd need some heuristic to choose when you get back multiple layout types and fix that to work properly.
+Here is the crash:
 
+[600522.076832] BUG: unable to handle kernel NULL pointer dereference at 0000000000000040
+[600522.078475] IP: [<ffffffffa0479e72>] nfs_init_commit+0x22/0x130 [nfs]
+[600522.078745] PGD 4272b1067 PUD 4272cb067 PMD 0
+[600522.078972] Oops: 0000 [#1] SMP
+[600522.079204] Modules linked in: nfsv3 nfs_layout_flexfiles rpcsec_gss_krb5 nfsv4 dns_resolver nfs fscache dcdbas ip6t_rpfilter ip6t_REJECT nf_reject_ipv6 xt_conntrack ebtable_nat ebtable_broute bridge stp llc ebtable_filter ebtables ip6table_nat nf_conntrack_ipv6 nf_defrag_ipv6 nf_nat_ipv6 ip6table_mangle ip6table_security ip6table_raw ip6table_filter ip6_tables iptable_nat nf_conntrack_ipv4 nf_defrag_ipv4 nf_nat_ipv4 nf_nat nf_conntrack iptable_mangle iptable_security iptable_raw vmw_vsock_vmci_transport vsock bonding ipmi_devintf ipmi_msghandler coretemp crct10dif_pclmul crc32_pclmul ghash_clmulni_intel ppdev vmw_balloon parport_pc parport acpi_cpufreq vmw_vmci i2c_piix4 shpchp nfsd auth_rpcgss nfs_acl lockd grace sunrpc xfs libcrc32c vmwgfx drm_kms_helper ttm drm crc32c_intel serio_raw vmxnet3
+[600522.081380]  vmw_pvscsi ata_generic pata_acpi
+[600522.081809] CPU: 3 PID: 15667 Comm: /usr/bin/python Not tainted 4.1.9-100.pd.88.el7.x86_64 #1
+[600522.082281] Hardware name: VMware, Inc. VMware Virtual Platform/440BX Desktop Reference Platform, BIOS 6.00 09/30/2014
+[600522.082814] task: ffff8800bbbfa780 ti: ffff88042ae84000 task.ti: ffff88042ae84000
+[600522.083378] RIP: 0010:[<ffffffffa0479e72>]  [<ffffffffa0479e72>] nfs_init_commit+0x22/0x130 [nfs]
+[600522.083973] RSP: 0018:ffff88042ae87438  EFLAGS: 00010246
+[600522.084571] RAX: 0000000000000000 RBX: ffff880003485e40 RCX: ffff88042ae87588
+[600522.085188] RDX: 0000000000000000 RSI: ffff88042ae874b0 RDI: ffff880003485e40
+[600522.085756] RBP: ffff88042ae87448 R08: ffff880003486010 R09: ffff88042ae874b0
+[600522.086332] R10: 0000000000000000 R11: 0000000000000005 R12: ffff88042ae872d0
+[600522.086905] R13: ffff88042ae874b0 R14: ffff880003485e40 R15: ffff88042704c840
+[600522.087484] FS:  00007f4728ff2740(0000) GS:ffff88043fd80000(0000) knlGS:0000000000000000
+[600522.088070] CS:  0010 DS: 0000 ES: 0000 CR0: 000000008005003b
+[600522.088663] CR2: 0000000000000040 CR3: 000000042b6aa000 CR4: 00000000001406e0
+[600522.089327] Stack:
+[600522.089926]  0000000000000001 ffff88042ae87588 ffff88042ae874f8 ffffffffa04f09fa
+[600522.090549]  0000000000017840 0000000000017840 ffff88042ae87588 ffff8803258d9930
+[600522.091169]  ffff88042ae87578 ffffffffa0563d80 0000000000000000 ffff88042704c840
+[600522.091789] Call Trace:
+[600522.092420]  [<ffffffffa04f09fa>] pnfs_generic_commit_pagelist+0x1da/0x320 [nfsv4]
+[600522.093052]  [<ffffffffa0563d80>] ? ff_layout_commit_prepare_v3+0x30/0x30 [nfs_layout_flexfiles]
+[600522.093696]  [<ffffffffa0562645>] ff_layout_commit_pagelist+0x15/0x20 [nfs_layout_flexfiles]
+[600522.094359]  [<ffffffffa047bc78>] nfs_generic_commit_list+0xe8/0x120 [nfs]
+[600522.095032]  [<ffffffffa047bd6a>] nfs_commit_inode+0xba/0x110 [nfs]
+[600522.095719]  [<ffffffffa046ac54>] nfs_release_page+0x44/0xd0 [nfs]
+[600522.096410]  [<ffffffff811a8122>] try_to_release_page+0x32/0x50
+[600522.097109]  [<ffffffff811bd4f1>] shrink_page_list+0x961/0xb30
+[600522.097812]  [<ffffffff811bdced>] shrink_inactive_list+0x1cd/0x550
+[600522.098530]  [<ffffffff811bea65>] shrink_lruvec+0x635/0x840
+[600522.099250]  [<ffffffff811bed60>] shrink_zone+0xf0/0x2f0
+[600522.099974]  [<ffffffff811bf312>] do_try_to_free_pages+0x192/0x470
+[600522.100709]  [<ffffffff811bf6ca>] try_to_free_pages+0xda/0x170
+[600522.101464]  [<ffffffff811b2198>] __alloc_pages_nodemask+0x588/0x970
+[600522.102235]  [<ffffffff811fbbd5>] alloc_pages_vma+0xb5/0x230
+[600522.103000]  [<ffffffff813a1589>] ? cpumask_any_but+0x39/0x50
+[600522.103774]  [<ffffffff811d6115>] wp_page_copy.isra.55+0x95/0x490
+[600522.104558]  [<ffffffff810e3438>] ? __wake_up+0x48/0x60
+[600522.105357]  [<ffffffff811d7d3b>] do_wp_page+0xab/0x4f0
+[600522.106137]  [<ffffffff810a1bbb>] ? release_task+0x36b/0x470
+[600522.106902]  [<ffffffff8126dbd7>] ? eventfd_ctx_read+0x67/0x1c0
+[600522.107659]  [<ffffffff811da2a8>] handle_mm_fault+0xc78/0x1900
+[600522.108431]  [<ffffffff81067ef1>] __do_page_fault+0x181/0x420
+[600522.109173]  [<ffffffff811446a6>] ? __audit_syscall_exit+0x1e6/0x280
+[600522.109893]  [<ffffffff810681c0>] do_page_fault+0x30/0x80
+[600522.110594]  [<ffffffff81024f36>] ? syscall_trace_leave+0xc6/0x120
+[600522.111288]  [<ffffffff81790a58>] page_fault+0x28/0x30
+[600522.111947] Code: 5d c3 0f 1f 80 00 00 00 00 0f 1f 44 00 00 55 4c 8d 87 d0 01 00 00 48 89 e5 53 48 89 fb 48 83 ec 08 4c 8b 0e 49 8b 41 18 4c 39 ce <48> 8b 40 40 4c 8b 50 30 74 24 48 8b 87 d0 01 00 00 48 8b 7e 08
+[600522.113343] RIP  [<ffffffffa0479e72>] nfs_init_commit+0x22/0x130 [nfs]
+[600522.114003]  RSP <ffff88042ae87438>
+[600522.114636] CR2: 0000000000000040
 
->  static void
-> diff --git a/fs/nfsd/pnfs.h b/fs/nfsd/pnfs.h
-> index e855677..0c2a716 100644
-> --- a/fs/nfsd/pnfs.h
-> +++ b/fs/nfsd/pnfs.h
-> @@ -45,6 +45,9 @@ extern const struct nfsd4_layout_ops bl_layout_ops;
->  #ifdef CONFIG_NFSD_SCSILAYOUT
->  extern const struct nfsd4_layout_ops scsi_layout_ops;
->  #endif
-> +#ifdef CONFIG_NFSD_FLEXFILELAYOUT
-> +extern const struct nfsd4_layout_ops ff_layout_ops;
-> +#endif
->  
->  __be32 nfsd4_preprocess_layout_stateid(struct svc_rqst *rqstp,
->  		struct nfsd4_compound_state *cstate, stateid_t *stateid,
+Signed-off-by: Weston Andros Adamson <dros@primarydata.com>
+---
 
+V2 has some cleanup requested by Anna.
 
+ -dros
+
+ fs/nfs/pnfs_nfs.c | 28 ++++++++++++++++++++++++++++
+ fs/nfs/write.c    |  4 ++++
+ 2 files changed, 32 insertions(+)
+
+diff --git a/fs/nfs/pnfs_nfs.c b/fs/nfs/pnfs_nfs.c
+index d2a7c9f7aa94..0dfc476da3e1 100644
+--- a/fs/nfs/pnfs_nfs.c
++++ b/fs/nfs/pnfs_nfs.c
+@@ -246,6 +246,23 @@ void pnfs_fetch_commit_bucket_list(struct list_head *pages,
+ 
+ }
+ 
++/* Helper function for pnfs_generic_commit_pagelist to catch an empty
++ * page list. This can happen when two commits race. */
++static bool
++pnfs_generic_commit_cancel_empty_pagelist(struct list_head *pages,
++					  struct nfs_commit_data *data,
++					  struct nfs_commit_info *cinfo)
++{
++	if (list_empty(pages)) {
++		if (atomic_dec_and_test(&cinfo->mds->rpcs_out))
++			wake_up_atomic_t(&cinfo->mds->rpcs_out);
++		nfs_commitdata_release(data);
++		return true;
++	}
++
++	return false;
++}
++
+ /* This follows nfs_commit_list pretty closely */
+ int
+ pnfs_generic_commit_pagelist(struct inode *inode, struct list_head *mds_pages,
+@@ -280,6 +297,11 @@ pnfs_generic_commit_pagelist(struct inode *inode, struct list_head *mds_pages,
+ 	list_for_each_entry_safe(data, tmp, &list, pages) {
+ 		list_del_init(&data->pages);
+ 		if (data->ds_commit_index < 0) {
++			/* another commit raced with us */
++			if (pnfs_generic_commit_cancel_empty_pagelist(mds_pages,
++				data, cinfo))
++				continue;
++
+ 			nfs_init_commit(data, mds_pages, NULL, cinfo);
+ 			nfs_initiate_commit(NFS_CLIENT(inode), data,
+ 					    NFS_PROTO(data->inode),
+@@ -288,6 +310,12 @@ pnfs_generic_commit_pagelist(struct inode *inode, struct list_head *mds_pages,
+ 			LIST_HEAD(pages);
+ 
+ 			pnfs_fetch_commit_bucket_list(&pages, data, cinfo);
++
++			/* another commit raced with us */
++			if (pnfs_generic_commit_cancel_empty_pagelist(&pages,
++				data, cinfo))
++				continue;
++
+ 			nfs_init_commit(data, &pages, data->lseg, cinfo);
+ 			initiate_commit(data, how);
+ 		}
+diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+index 4dac51ba1f7e..438c00110fc9 100644
+--- a/fs/nfs/write.c
++++ b/fs/nfs/write.c
+@@ -1710,6 +1710,10 @@ nfs_commit_list(struct inode *inode, struct list_head *head, int how,
+ {
+ 	struct nfs_commit_data	*data;
+ 
++	/* another commit raced with us */
++	if (list_empty(head))
++		return 0;
++
+ 	data = nfs_commitdata_alloc();
+ 
+ 	if (!data)
 -- 
-Jeff Layton <jlayton@poochiereds.net>
+2.6.4 (Apple Git-63)
+
