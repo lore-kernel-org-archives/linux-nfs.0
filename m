@@ -1,113 +1,111 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from verein.lst.de ([213.95.11.211]:47024 "EHLO newverein.lst.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754005AbcEYPPH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 25 May 2016 11:15:07 -0400
-Date: Wed, 25 May 2016 17:15:04 +0200
-From: Christoph Hellwig <hch@lst.de>
-To: Tom Haynes <thomas.haynes@primarydata.com>
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-        Linux NFS Mailing list <linux-nfs@vger.kernel.org>,
-        Christoph Hellwig <hch@lst.de>
-Subject: Re: [PATCH 3/4] nfsd: Add a super simple flex file server
-Message-ID: <20160525151504.GD27535@lst.de>
-References: <1464152979-103988-1-git-send-email-loghyr@primarydata.com> <1464152979-103988-4-git-send-email-loghyr@primarydata.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1464152979-103988-4-git-send-email-loghyr@primarydata.com>
+Received: from aserp1040.oracle.com ([141.146.126.69]:22973 "EHLO
+	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751167AbcEYPZc (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 25 May 2016 11:25:32 -0400
+Content-Type: text/plain; charset=windows-1252
+Mime-Version: 1.0 (Mac OS X Mail 9.3 \(3124\))
+Subject: Re: [RFC PATCH 0/1] Create a DNS SRV record of the ID mapping domain
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <995c5e10-61a0-d32c-dcab-1f6a4e943eae@RedHat.com>
+Date: Wed, 25 May 2016 11:25:23 -0400
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Message-Id: <96802553-B978-4044-8697-0CE0A85BC255@oracle.com>
+References: <1464020307-8806-1-git-send-email-steved@redhat.com> <B7AD5C8F-13A3-466A-BAC8-8A487939BC8F@oracle.com> <8d2c592d-2c43-85e4-a9fb-65b13206c2ee@RedHat.com> <D7102E5D-3328-4379-B8F2-BFDA86AAEBE4@oracle.com> <c33c89df-ec54-fa6e-a84c-671f8a79f3c3@RedHat.com> <AB5249F6-36B2-44DF-864E-9F90D16A07FE@oracle.com> <995c5e10-61a0-d32c-dcab-1f6a4e943eae@RedHat.com>
+To: Steve Dickson <SteveD@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Nice!  A few comments below:
 
-> + * where the NFSv4.1 mds is also the ds. And the storage is
-> + * the same. I.e., writing to the mds via a NFSv4.1 WRITE
-> + * goes to the same location as the NFSv3 WRITE.
-> + */
-> +#include <linux/exportfs.h>
-> +#include <linux/genhd.h>
+> On May 25, 2016, at 8:14 AM, Steve Dickson <SteveD@redhat.com> wrote:
+> 
+> 
+> 
+> On 05/24/2016 02:20 PM, Chuck Lever wrote:
+>>>> $ nfsidmap --txt
+>>>>>> 
+>>>>>> could retrieve it and display it,
+>>>>>> 
+>>>>>> # nfsidmap --txt -s
+>>>>>> 
+>>>>>> could retrieve it and update idmapd.conf if
+>>>>>> there was a TXT record retrieved, for example.
+>>>> I see what you are trying to do here... instead 
+>>>> of rewriting idmapd.conf... we should probably
+>>>> uses... the system that shall go nameless... systemd! ;-)
+>>>> 
+>>>> systemd could run the nfsidmap --txt command that would
+>>>> create a file under /run, which is managed by the
+>>>> systemd-tmpfiles package. rpcbind does something similar
+>>>> to manage its warmstart up files. 
+>>>> 
+>>>> Then we could point rpc.idmap and nfsidmap to that
+>>>> runtime file via the libnfsidmap interfaces.
+>> Or provide a setting in /etc/idmapd.conf which is
+>> the pathname of the /run file.
+>> 
+>> It's a little nicer if these settings were all in
+>> one place instead of split between /etc/sysconfig,
+>> systemd configuration, and idmapd.conf.hostnamectl
+> I agree... but... we are dealing with systemd which 
+> limits your options when it comes to reading in
+> configuration files.
+> 
+>> 
+>> No Domain= setting means:
+>> 1. use the contents of the /run file
+>> 2. if no /run file exists, or it's empty, use the
+>> current mechanism to determine the ID mapping
+>> domain name
+> Right... but changing the name of the /run file
+> really does not have to changeable, IMHO... 
 
-> +#include <linux/pr.h>
+Are /run files in the same place for every distribution?
+If so, then I agree.
 
-I don't think you need any of the three headers above.
 
-> +static __be32
-> +nfsd4_ff_proc_layoutget(struct inode *inode, const struct svc_fh *fhp,
-> +		struct nfsd4_layoutget *args)
-> +{
-> +	struct nfsd4_layout_seg *seg = &args->lg_seg;
-> +	u32 block_size = (1 << inode->i_blkbits);
-> +	u32 device_generation = 0;
-> +	int error;
-> +
-> +	struct pnfs_ff_layout *fl;
-> +
-> +	if (seg->offset & (block_size - 1)) {
-> +		dprintk("pnfsd: I/O misaligned\n");
-> +		goto out_layoutunavailable;
-> +	}
+>> (Also we need to figure out how to break a tie
+>> on multi-homed systems where more than one TXT
+>> record is found; maybe the only thing to do in
+>> that case is use Domain= , but you'd kind of
+>> prefer good behavior without needing a manual
+>> setting).
+> Does that even work? How can you have multiple domains
+> on the same host?
 
-Do we really care about aligned I/O for flexfiles layouts?
+Which interface is used for the TXT record query?
+If a system is on multiple networks with their
+own DNS services, it is possible for them to see
+a different TXT lookup result depending on which
+interfaces happen to be up when the query is done,
+and what DNS service has been set up by DHCP.
 
-> +	 * effectively be WRITE only.
-> +	 */
-> +	fl->flags = FF_FLAGS_NO_LAYOUTCOMMIT | FF_FLAGS_NO_IO_THRU_MDS |
-> +		    FF_FLAGS_NO_READ_IO;
-> +
-> +	fl->uid = inode->i_uid;
-> +	fl->gid = inode->i_gid;
 
-Maybe I need to actually read the latest draft, but what's the story
-about these on the wire uids/gids?
+> I would say we document the fact the first TXT record
+> processed is the one we go with. All others are ignored.
 
-> +#ifdef CONFIG_NFSD_FLEXFILELAYOUT
+Can that value be guaranteed to be the same after
+every boot, even in the face of things like changing
+order of interface bring-up and DHCP?
 
-I don't think you need this - the whole file is conditional on this
-symbol.
+The problem with "first TXT record processed" is that
+the order these records are processed can change, and
+thus the ID mapping domain name is potentially
+different after every boot.
 
-> +	if (sb->s_bdev != sb->s_bdev->bd_contains)
-> +		return nfserr_inval;
+I think none of the automated mechanisms are 100%
+reliable in this scenario, so the best that can be
+done is to use the Domain setting in idmapd.conf.
+But admins generally ignore this and hilarity ensues.
 
-Shouldn't be needed.
+It may not be possible to solve it, but at least we
+should provide tools for tracking down the issue if
+it should occur. Maybe start by reporting the system's
+ID mapping domain setting in the system log at boot
+time, and how it was derived.
 
-> +#include <linux/exportfs.h>
+--
+Chuck Lever
 
-probably not needed.
 
-> +struct iomap;
 
-no needed.
-
->  void nfsd4_setup_layout_type(struct svc_export *exp)
->  {
-> +#if defined(CONFIG_NFSD_BLOCKLAYOUT) || defined(CONFIG_NFSD_SCSILAYOUT)
->  	struct super_block *sb = exp->ex_path.mnt->mnt_sb;
-> +#endif
->  
->  	if (!(exp->ex_flags & NFSEXP_PNFS))
->  		return;
-> @@ -145,6 +150,11 @@ void nfsd4_setup_layout_type(struct svc_export *exp)
->  	    sb->s_bdev && sb->s_bdev->bd_disk->fops->pr_ops)
->  		exp->ex_layout_type = LAYOUT_SCSI;
->  #endif
-> +#ifdef CONFIG_NFSD_FLEXFILELAYOUT
-> +	// FIXME: How do we "export" this and how does it mingle with
-> +	// the above types?
-> +	exp->ex_layout_type = LAYOUT_FLEX_FILES;
-> +#endif
-
-As pointed out by Jeff we'll probably need a bitmap of supported layouts
-here.  Something like
-
-	unsigned long ex_layout_types;
-
-...
-
-	if (supported)
-		ex_layout_types |= (1 << LAYOUT_XXX)
-
-probably best done as a separate preparation patch.
-
-The other issue is that the Linux client is currently confused when
-more than a single layout type is supported - we'll need some sort
-of runtime option to chose the layout(s) supported.
