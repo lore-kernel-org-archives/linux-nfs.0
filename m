@@ -1,173 +1,173 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx144.netapp.com ([216.240.21.25]:35856 "EHLO mx144.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753388AbcEYQsg (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 25 May 2016 12:48:36 -0400
+Received: from us-smtp-delivery-194.mimecast.com ([216.205.24.194]:37936 "EHLO
+	us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1752308AbcEYQxg (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 25 May 2016 12:53:36 -0400
+From: Trond Myklebust <trondmy@primarydata.com>
+To: Anna Schumaker <Anna.Schumaker@netapp.com>,
+        Weston Andros Adamson <dros@monkey.org>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "Weston Andros Adamson" <dros@primarydata.com>
 Subject: Re: [PATCH v2] nfs: avoid race that crashes nfs_init_commit
-To: Weston Andros Adamson <dros@monkey.org>, <trond.myklebust@primarydata.com>
+Date: Wed, 25 May 2016 16:53:27 +0000
+Message-ID: <EA1BD510-BE18-4723-BF37-FCD10221E2DA@primarydata.com>
 References: <1464185243-15556-1-git-send-email-dros@primarydata.com>
-CC: <linux-nfs@vger.kernel.org>, Weston Andros Adamson <dros@primarydata.com>
-From: Anna Schumaker <Anna.Schumaker@netapp.com>
-Message-ID: <26144774-9f6a-4a05-8d87-e3eb201adc5e@Netapp.com>
-Date: Wed, 25 May 2016 12:40:51 -0400
+ <26144774-9f6a-4a05-8d87-e3eb201adc5e@Netapp.com>
+In-Reply-To: <26144774-9f6a-4a05-8d87-e3eb201adc5e@Netapp.com>
 MIME-Version: 1.0
-In-Reply-To: <1464185243-15556-1-git-send-email-dros@primarydata.com>
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Thanks, Dros!
-
-How often are you hitting this?  Do you want me to send it to stable?
-
-Anna
-
-On 05/25/2016 10:07 AM, Weston Andros Adamson wrote:
-> Since the patch "NFS: Allow multiple commit requests in flight per file"
-> we can run multiple simultaneous commits on the same inode.  This
-> introduced a race over collecting pages to commit that made it possible
-> to call nfs_init_commit() with an empty list - which causes crashes like
-> the one below.
-> 
-> The fix is to catch this race and avoid calling nfs_init_commit and
-> initiate_commit when there is no work to do.
-> 
-> Here is the crash:
-> 
-> [600522.076832] BUG: unable to handle kernel NULL pointer dereference at 0000000000000040
-> [600522.078475] IP: [<ffffffffa0479e72>] nfs_init_commit+0x22/0x130 [nfs]
-> [600522.078745] PGD 4272b1067 PUD 4272cb067 PMD 0
-> [600522.078972] Oops: 0000 [#1] SMP
-> [600522.079204] Modules linked in: nfsv3 nfs_layout_flexfiles rpcsec_gss_krb5 nfsv4 dns_resolver nfs fscache dcdbas ip6t_rpfilter ip6t_REJECT nf_reject_ipv6 xt_conntrack ebtable_nat ebtable_broute bridge stp llc ebtable_filter ebtables ip6table_nat nf_conntrack_ipv6 nf_defrag_ipv6 nf_nat_ipv6 ip6table_mangle ip6table_security ip6table_raw ip6table_filter ip6_tables iptable_nat nf_conntrack_ipv4 nf_defrag_ipv4 nf_nat_ipv4 nf_nat nf_conntrack iptable_mangle iptable_security iptable_raw vmw_vsock_vmci_transport vsock bonding ipmi_devintf ipmi_msghandler coretemp crct10dif_pclmul crc32_pclmul ghash_clmulni_intel ppdev vmw_balloon parport_pc parport acpi_cpufreq vmw_vmci i2c_piix4 shpchp nfsd auth_rpcgss nfs_acl lockd grace sunrpc xfs libcrc32c vmwgfx drm_kms_helper ttm drm crc32c_intel serio_raw vmxnet3
-> [600522.081380]  vmw_pvscsi ata_generic pata_acpi
-> [600522.081809] CPU: 3 PID: 15667 Comm: /usr/bin/python Not tainted 4.1.9-100.pd.88.el7.x86_64 #1
-> [600522.082281] Hardware name: VMware, Inc. VMware Virtual Platform/440BX Desktop Reference Platform, BIOS 6.00 09/30/2014
-> [600522.082814] task: ffff8800bbbfa780 ti: ffff88042ae84000 task.ti: ffff88042ae84000
-> [600522.083378] RIP: 0010:[<ffffffffa0479e72>]  [<ffffffffa0479e72>] nfs_init_commit+0x22/0x130 [nfs]
-> [600522.083973] RSP: 0018:ffff88042ae87438  EFLAGS: 00010246
-> [600522.084571] RAX: 0000000000000000 RBX: ffff880003485e40 RCX: ffff88042ae87588
-> [600522.085188] RDX: 0000000000000000 RSI: ffff88042ae874b0 RDI: ffff880003485e40
-> [600522.085756] RBP: ffff88042ae87448 R08: ffff880003486010 R09: ffff88042ae874b0
-> [600522.086332] R10: 0000000000000000 R11: 0000000000000005 R12: ffff88042ae872d0
-> [600522.086905] R13: ffff88042ae874b0 R14: ffff880003485e40 R15: ffff88042704c840
-> [600522.087484] FS:  00007f4728ff2740(0000) GS:ffff88043fd80000(0000) knlGS:0000000000000000
-> [600522.088070] CS:  0010 DS: 0000 ES: 0000 CR0: 000000008005003b
-> [600522.088663] CR2: 0000000000000040 CR3: 000000042b6aa000 CR4: 00000000001406e0
-> [600522.089327] Stack:
-> [600522.089926]  0000000000000001 ffff88042ae87588 ffff88042ae874f8 ffffffffa04f09fa
-> [600522.090549]  0000000000017840 0000000000017840 ffff88042ae87588 ffff8803258d9930
-> [600522.091169]  ffff88042ae87578 ffffffffa0563d80 0000000000000000 ffff88042704c840
-> [600522.091789] Call Trace:
-> [600522.092420]  [<ffffffffa04f09fa>] pnfs_generic_commit_pagelist+0x1da/0x320 [nfsv4]
-> [600522.093052]  [<ffffffffa0563d80>] ? ff_layout_commit_prepare_v3+0x30/0x30 [nfs_layout_flexfiles]
-> [600522.093696]  [<ffffffffa0562645>] ff_layout_commit_pagelist+0x15/0x20 [nfs_layout_flexfiles]
-> [600522.094359]  [<ffffffffa047bc78>] nfs_generic_commit_list+0xe8/0x120 [nfs]
-> [600522.095032]  [<ffffffffa047bd6a>] nfs_commit_inode+0xba/0x110 [nfs]
-> [600522.095719]  [<ffffffffa046ac54>] nfs_release_page+0x44/0xd0 [nfs]
-> [600522.096410]  [<ffffffff811a8122>] try_to_release_page+0x32/0x50
-> [600522.097109]  [<ffffffff811bd4f1>] shrink_page_list+0x961/0xb30
-> [600522.097812]  [<ffffffff811bdced>] shrink_inactive_list+0x1cd/0x550
-> [600522.098530]  [<ffffffff811bea65>] shrink_lruvec+0x635/0x840
-> [600522.099250]  [<ffffffff811bed60>] shrink_zone+0xf0/0x2f0
-> [600522.099974]  [<ffffffff811bf312>] do_try_to_free_pages+0x192/0x470
-> [600522.100709]  [<ffffffff811bf6ca>] try_to_free_pages+0xda/0x170
-> [600522.101464]  [<ffffffff811b2198>] __alloc_pages_nodemask+0x588/0x970
-> [600522.102235]  [<ffffffff811fbbd5>] alloc_pages_vma+0xb5/0x230
-> [600522.103000]  [<ffffffff813a1589>] ? cpumask_any_but+0x39/0x50
-> [600522.103774]  [<ffffffff811d6115>] wp_page_copy.isra.55+0x95/0x490
-> [600522.104558]  [<ffffffff810e3438>] ? __wake_up+0x48/0x60
-> [600522.105357]  [<ffffffff811d7d3b>] do_wp_page+0xab/0x4f0
-> [600522.106137]  [<ffffffff810a1bbb>] ? release_task+0x36b/0x470
-> [600522.106902]  [<ffffffff8126dbd7>] ? eventfd_ctx_read+0x67/0x1c0
-> [600522.107659]  [<ffffffff811da2a8>] handle_mm_fault+0xc78/0x1900
-> [600522.108431]  [<ffffffff81067ef1>] __do_page_fault+0x181/0x420
-> [600522.109173]  [<ffffffff811446a6>] ? __audit_syscall_exit+0x1e6/0x280
-> [600522.109893]  [<ffffffff810681c0>] do_page_fault+0x30/0x80
-> [600522.110594]  [<ffffffff81024f36>] ? syscall_trace_leave+0xc6/0x120
-> [600522.111288]  [<ffffffff81790a58>] page_fault+0x28/0x30
-> [600522.111947] Code: 5d c3 0f 1f 80 00 00 00 00 0f 1f 44 00 00 55 4c 8d 87 d0 01 00 00 48 89 e5 53 48 89 fb 48 83 ec 08 4c 8b 0e 49 8b 41 18 4c 39 ce <48> 8b 40 40 4c 8b 50 30 74 24 48 8b 87 d0 01 00 00 48 8b 7e 08
-> [600522.113343] RIP  [<ffffffffa0479e72>] nfs_init_commit+0x22/0x130 [nfs]
-> [600522.114003]  RSP <ffff88042ae87438>
-> [600522.114636] CR2: 0000000000000040
-> 
-> Signed-off-by: Weston Andros Adamson <dros@primarydata.com>
-> ---
-> 
-> V2 has some cleanup requested by Anna.
-> 
->  -dros
-> 
->  fs/nfs/pnfs_nfs.c | 28 ++++++++++++++++++++++++++++
->  fs/nfs/write.c    |  4 ++++
->  2 files changed, 32 insertions(+)
-> 
-> diff --git a/fs/nfs/pnfs_nfs.c b/fs/nfs/pnfs_nfs.c
-> index d2a7c9f7aa94..0dfc476da3e1 100644
-> --- a/fs/nfs/pnfs_nfs.c
-> +++ b/fs/nfs/pnfs_nfs.c
-> @@ -246,6 +246,23 @@ void pnfs_fetch_commit_bucket_list(struct list_head *pages,
->  
->  }
->  
-> +/* Helper function for pnfs_generic_commit_pagelist to catch an empty
-> + * page list. This can happen when two commits race. */
-> +static bool
-> +pnfs_generic_commit_cancel_empty_pagelist(struct list_head *pages,
-> +					  struct nfs_commit_data *data,
-> +					  struct nfs_commit_info *cinfo)
-> +{
-> +	if (list_empty(pages)) {
-> +		if (atomic_dec_and_test(&cinfo->mds->rpcs_out))
-> +			wake_up_atomic_t(&cinfo->mds->rpcs_out);
-> +		nfs_commitdata_release(data);
-> +		return true;
-> +	}
-> +
-> +	return false;
-> +}
-> +
->  /* This follows nfs_commit_list pretty closely */
->  int
->  pnfs_generic_commit_pagelist(struct inode *inode, struct list_head *mds_pages,
-> @@ -280,6 +297,11 @@ pnfs_generic_commit_pagelist(struct inode *inode, struct list_head *mds_pages,
->  	list_for_each_entry_safe(data, tmp, &list, pages) {
->  		list_del_init(&data->pages);
->  		if (data->ds_commit_index < 0) {
-> +			/* another commit raced with us */
-> +			if (pnfs_generic_commit_cancel_empty_pagelist(mds_pages,
-> +				data, cinfo))
-> +				continue;
-> +
->  			nfs_init_commit(data, mds_pages, NULL, cinfo);
->  			nfs_initiate_commit(NFS_CLIENT(inode), data,
->  					    NFS_PROTO(data->inode),
-> @@ -288,6 +310,12 @@ pnfs_generic_commit_pagelist(struct inode *inode, struct list_head *mds_pages,
->  			LIST_HEAD(pages);
->  
->  			pnfs_fetch_commit_bucket_list(&pages, data, cinfo);
-> +
-> +			/* another commit raced with us */
-> +			if (pnfs_generic_commit_cancel_empty_pagelist(&pages,
-> +				data, cinfo))
-> +				continue;
-> +
->  			nfs_init_commit(data, &pages, data->lseg, cinfo);
->  			initiate_commit(data, how);
->  		}
-> diff --git a/fs/nfs/write.c b/fs/nfs/write.c
-> index 4dac51ba1f7e..438c00110fc9 100644
-> --- a/fs/nfs/write.c
-> +++ b/fs/nfs/write.c
-> @@ -1710,6 +1710,10 @@ nfs_commit_list(struct inode *inode, struct list_head *head, int how,
->  {
->  	struct nfs_commit_data	*data;
->  
-> +	/* another commit raced with us */
-> +	if (list_empty(head))
-> +		return 0;
-> +
->  	data = nfs_commitdata_alloc();
->  
->  	if (!data)
-> 
+DQoNCk9uIDUvMjUvMTYsIDEyOjQwLCAiQW5uYSBTY2h1bWFrZXIiIDxBbm5hLlNjaHVtYWtlckBu
+ZXRhcHAuY29tPiB3cm90ZToNCg0KPlRoYW5rcywgRHJvcyENCj4NCj5Ib3cgb2Z0ZW4gYXJlIHlv
+dSBoaXR0aW5nIHRoaXM/ICBEbyB5b3Ugd2FudCBtZSB0byBzZW5kIGl0IHRvIHN0YWJsZT8NCj4N
+Cg0KQWdyZWVkIHRoYXQgaXQgc2hvdWxkIGdvIHRvIHN0YWJsZS4NCg0KRHJvcywgZG8geW91IGtu
+b3cgaG93IGZhciBiYWNrPyBJ4oCZZCBhc3N1bWUgNC4wLngsIGlmIGl0IHN0aWxsIGFwcGxpZXMg
+dG8gdGhvc2Uga2VybmVscy4NCg0KPkFubmENCj4NCj5PbiAwNS8yNS8yMDE2IDEwOjA3IEFNLCBX
+ZXN0b24gQW5kcm9zIEFkYW1zb24gd3JvdGU6DQo+PiBTaW5jZSB0aGUgcGF0Y2ggIk5GUzogQWxs
+b3cgbXVsdGlwbGUgY29tbWl0IHJlcXVlc3RzIGluIGZsaWdodCBwZXIgZmlsZSINCj4+IHdlIGNh
+biBydW4gbXVsdGlwbGUgc2ltdWx0YW5lb3VzIGNvbW1pdHMgb24gdGhlIHNhbWUgaW5vZGUuICBU
+aGlzDQo+PiBpbnRyb2R1Y2VkIGEgcmFjZSBvdmVyIGNvbGxlY3RpbmcgcGFnZXMgdG8gY29tbWl0
+IHRoYXQgbWFkZSBpdCBwb3NzaWJsZQ0KPj4gdG8gY2FsbCBuZnNfaW5pdF9jb21taXQoKSB3aXRo
+IGFuIGVtcHR5IGxpc3QgLSB3aGljaCBjYXVzZXMgY3Jhc2hlcyBsaWtlDQo+PiB0aGUgb25lIGJl
+bG93Lg0KPj4gDQo+PiBUaGUgZml4IGlzIHRvIGNhdGNoIHRoaXMgcmFjZSBhbmQgYXZvaWQgY2Fs
+bGluZyBuZnNfaW5pdF9jb21taXQgYW5kDQo+PiBpbml0aWF0ZV9jb21taXQgd2hlbiB0aGVyZSBp
+cyBubyB3b3JrIHRvIGRvLg0KPj4gDQo+PiBIZXJlIGlzIHRoZSBjcmFzaDoNCj4+IA0KPj4gWzYw
+MDUyMi4wNzY4MzJdIEJVRzogdW5hYmxlIHRvIGhhbmRsZSBrZXJuZWwgTlVMTCBwb2ludGVyIGRl
+cmVmZXJlbmNlIGF0IDAwMDAwMDAwMDAwMDAwNDANCj4+IFs2MDA1MjIuMDc4NDc1XSBJUDogWzxm
+ZmZmZmZmZmEwNDc5ZTcyPl0gbmZzX2luaXRfY29tbWl0KzB4MjIvMHgxMzAgW25mc10NCj4+IFs2
+MDA1MjIuMDc4NzQ1XSBQR0QgNDI3MmIxMDY3IFBVRCA0MjcyY2IwNjcgUE1EIDANCj4+IFs2MDA1
+MjIuMDc4OTcyXSBPb3BzOiAwMDAwIFsjMV0gU01QDQo+PiBbNjAwNTIyLjA3OTIwNF0gTW9kdWxl
+cyBsaW5rZWQgaW46IG5mc3YzIG5mc19sYXlvdXRfZmxleGZpbGVzIHJwY3NlY19nc3Nfa3JiNSBu
+ZnN2NCBkbnNfcmVzb2x2ZXIgbmZzIGZzY2FjaGUgZGNkYmFzIGlwNnRfcnBmaWx0ZXIgaXA2dF9S
+RUpFQ1QgbmZfcmVqZWN0X2lwdjYgeHRfY29ubnRyYWNrIGVidGFibGVfbmF0IGVidGFibGVfYnJv
+dXRlIGJyaWRnZSBzdHAgbGxjIGVidGFibGVfZmlsdGVyIGVidGFibGVzIGlwNnRhYmxlX25hdCBu
+Zl9jb25udHJhY2tfaXB2NiBuZl9kZWZyYWdfaXB2NiBuZl9uYXRfaXB2NiBpcDZ0YWJsZV9tYW5n
+bGUgaXA2dGFibGVfc2VjdXJpdHkgaXA2dGFibGVfcmF3IGlwNnRhYmxlX2ZpbHRlciBpcDZfdGFi
+bGVzIGlwdGFibGVfbmF0IG5mX2Nvbm50cmFja19pcHY0IG5mX2RlZnJhZ19pcHY0IG5mX25hdF9p
+cHY0IG5mX25hdCBuZl9jb25udHJhY2sgaXB0YWJsZV9tYW5nbGUgaXB0YWJsZV9zZWN1cml0eSBp
+cHRhYmxlX3JhdyB2bXdfdnNvY2tfdm1jaV90cmFuc3BvcnQgdnNvY2sgYm9uZGluZyBpcG1pX2Rl
+dmludGYgaXBtaV9tc2doYW5kbGVyIGNvcmV0ZW1wIGNyY3QxMGRpZl9wY2xtdWwgY3JjMzJfcGNs
+bXVsIGdoYXNoX2NsbXVsbmlfaW50ZWwgcHBkZXYgdm13X2JhbGxvb24gcGFycG9ydF9wYyBwYXJw
+b3J0IGFjcGlfY3B1ZnJlcSB2bXdfdm1jaSBpMmNfcGlpeDQgc2hwY2hwIG5mc2QgYXV0aF9ycGNn
+c3MgbmZzX2FjbCBsb2NrZCBncmFjZSBzdW5ycGMgeGZzIGxpYmNyYzMyYyB2bXdnZnggZHJtX2tt
+c19oZWxwZXIgdHRtIGRybSBjcmMzMmNfaW50ZWwgc2VyaW9fcmF3IHZteG5ldDMNCj4+IFs2MDA1
+MjIuMDgxMzgwXSAgdm13X3B2c2NzaSBhdGFfZ2VuZXJpYyBwYXRhX2FjcGkNCj4+IFs2MDA1MjIu
+MDgxODA5XSBDUFU6IDMgUElEOiAxNTY2NyBDb21tOiAvdXNyL2Jpbi9weXRob24gTm90IHRhaW50
+ZWQgNC4xLjktMTAwLnBkLjg4LmVsNy54ODZfNjQgIzENCj4+IFs2MDA1MjIuMDgyMjgxXSBIYXJk
+d2FyZSBuYW1lOiBWTXdhcmUsIEluYy4gVk13YXJlIFZpcnR1YWwgUGxhdGZvcm0vNDQwQlggRGVz
+a3RvcCBSZWZlcmVuY2UgUGxhdGZvcm0sIEJJT1MgNi4wMCAwOS8zMC8yMDE0DQo+PiBbNjAwNTIy
+LjA4MjgxNF0gdGFzazogZmZmZjg4MDBiYmJmYTc4MCB0aTogZmZmZjg4MDQyYWU4NDAwMCB0YXNr
+LnRpOiBmZmZmODgwNDJhZTg0MDAwDQo+PiBbNjAwNTIyLjA4MzM3OF0gUklQOiAwMDEwOls8ZmZm
+ZmZmZmZhMDQ3OWU3Mj5dICBbPGZmZmZmZmZmYTA0NzllNzI+XSBuZnNfaW5pdF9jb21taXQrMHgy
+Mi8weDEzMCBbbmZzXQ0KPj4gWzYwMDUyMi4wODM5NzNdIFJTUDogMDAxODpmZmZmODgwNDJhZTg3
+NDM4ICBFRkxBR1M6IDAwMDEwMjQ2DQo+PiBbNjAwNTIyLjA4NDU3MV0gUkFYOiAwMDAwMDAwMDAw
+MDAwMDAwIFJCWDogZmZmZjg4MDAwMzQ4NWU0MCBSQ1g6IGZmZmY4ODA0MmFlODc1ODgNCj4+IFs2
+MDA1MjIuMDg1MTg4XSBSRFg6IDAwMDAwMDAwMDAwMDAwMDAgUlNJOiBmZmZmODgwNDJhZTg3NGIw
+IFJESTogZmZmZjg4MDAwMzQ4NWU0MA0KPj4gWzYwMDUyMi4wODU3NTZdIFJCUDogZmZmZjg4MDQy
+YWU4NzQ0OCBSMDg6IGZmZmY4ODAwMDM0ODYwMTAgUjA5OiBmZmZmODgwNDJhZTg3NGIwDQo+PiBb
+NjAwNTIyLjA4NjMzMl0gUjEwOiAwMDAwMDAwMDAwMDAwMDAwIFIxMTogMDAwMDAwMDAwMDAwMDAw
+NSBSMTI6IGZmZmY4ODA0MmFlODcyZDANCj4+IFs2MDA1MjIuMDg2OTA1XSBSMTM6IGZmZmY4ODA0
+MmFlODc0YjAgUjE0OiBmZmZmODgwMDAzNDg1ZTQwIFIxNTogZmZmZjg4MDQyNzA0Yzg0MA0KPj4g
+WzYwMDUyMi4wODc0ODRdIEZTOiAgMDAwMDdmNDcyOGZmMjc0MCgwMDAwKSBHUzpmZmZmODgwNDNm
+ZDgwMDAwKDAwMDApIGtubEdTOjAwMDAwMDAwMDAwMDAwMDANCj4+IFs2MDA1MjIuMDg4MDcwXSBD
+UzogIDAwMTAgRFM6IDAwMDAgRVM6IDAwMDAgQ1IwOiAwMDAwMDAwMDgwMDUwMDNiDQo+PiBbNjAw
+NTIyLjA4ODY2M10gQ1IyOiAwMDAwMDAwMDAwMDAwMDQwIENSMzogMDAwMDAwMDQyYjZhYTAwMCBD
+UjQ6IDAwMDAwMDAwMDAxNDA2ZTANCj4+IFs2MDA1MjIuMDg5MzI3XSBTdGFjazoNCj4+IFs2MDA1
+MjIuMDg5OTI2XSAgMDAwMDAwMDAwMDAwMDAwMSBmZmZmODgwNDJhZTg3NTg4IGZmZmY4ODA0MmFl
+ODc0ZjggZmZmZmZmZmZhMDRmMDlmYQ0KPj4gWzYwMDUyMi4wOTA1NDldICAwMDAwMDAwMDAwMDE3
+ODQwIDAwMDAwMDAwMDAwMTc4NDAgZmZmZjg4MDQyYWU4NzU4OCBmZmZmODgwMzI1OGQ5OTMwDQo+
+PiBbNjAwNTIyLjA5MTE2OV0gIGZmZmY4ODA0MmFlODc1NzggZmZmZmZmZmZhMDU2M2Q4MCAwMDAw
+MDAwMDAwMDAwMDAwIGZmZmY4ODA0MjcwNGM4NDANCj4+IFs2MDA1MjIuMDkxNzg5XSBDYWxsIFRy
+YWNlOg0KPj4gWzYwMDUyMi4wOTI0MjBdICBbPGZmZmZmZmZmYTA0ZjA5ZmE+XSBwbmZzX2dlbmVy
+aWNfY29tbWl0X3BhZ2VsaXN0KzB4MWRhLzB4MzIwIFtuZnN2NF0NCj4+IFs2MDA1MjIuMDkzMDUy
+XSAgWzxmZmZmZmZmZmEwNTYzZDgwPl0gPyBmZl9sYXlvdXRfY29tbWl0X3ByZXBhcmVfdjMrMHgz
+MC8weDMwIFtuZnNfbGF5b3V0X2ZsZXhmaWxlc10NCj4+IFs2MDA1MjIuMDkzNjk2XSAgWzxmZmZm
+ZmZmZmEwNTYyNjQ1Pl0gZmZfbGF5b3V0X2NvbW1pdF9wYWdlbGlzdCsweDE1LzB4MjAgW25mc19s
+YXlvdXRfZmxleGZpbGVzXQ0KPj4gWzYwMDUyMi4wOTQzNTldICBbPGZmZmZmZmZmYTA0N2JjNzg+
+XSBuZnNfZ2VuZXJpY19jb21taXRfbGlzdCsweGU4LzB4MTIwIFtuZnNdDQo+PiBbNjAwNTIyLjA5
+NTAzMl0gIFs8ZmZmZmZmZmZhMDQ3YmQ2YT5dIG5mc19jb21taXRfaW5vZGUrMHhiYS8weDExMCBb
+bmZzXQ0KPj4gWzYwMDUyMi4wOTU3MTldICBbPGZmZmZmZmZmYTA0NmFjNTQ+XSBuZnNfcmVsZWFz
+ZV9wYWdlKzB4NDQvMHhkMCBbbmZzXQ0KPj4gWzYwMDUyMi4wOTY0MTBdICBbPGZmZmZmZmZmODEx
+YTgxMjI+XSB0cnlfdG9fcmVsZWFzZV9wYWdlKzB4MzIvMHg1MA0KPj4gWzYwMDUyMi4wOTcxMDld
+ICBbPGZmZmZmZmZmODExYmQ0ZjE+XSBzaHJpbmtfcGFnZV9saXN0KzB4OTYxLzB4YjMwDQo+PiBb
+NjAwNTIyLjA5NzgxMl0gIFs8ZmZmZmZmZmY4MTFiZGNlZD5dIHNocmlua19pbmFjdGl2ZV9saXN0
+KzB4MWNkLzB4NTUwDQo+PiBbNjAwNTIyLjA5ODUzMF0gIFs8ZmZmZmZmZmY4MTFiZWE2NT5dIHNo
+cmlua19scnV2ZWMrMHg2MzUvMHg4NDANCj4+IFs2MDA1MjIuMDk5MjUwXSAgWzxmZmZmZmZmZjgx
+MWJlZDYwPl0gc2hyaW5rX3pvbmUrMHhmMC8weDJmMA0KPj4gWzYwMDUyMi4wOTk5NzRdICBbPGZm
+ZmZmZmZmODExYmYzMTI+XSBkb190cnlfdG9fZnJlZV9wYWdlcysweDE5Mi8weDQ3MA0KPj4gWzYw
+MDUyMi4xMDA3MDldICBbPGZmZmZmZmZmODExYmY2Y2E+XSB0cnlfdG9fZnJlZV9wYWdlcysweGRh
+LzB4MTcwDQo+PiBbNjAwNTIyLjEwMTQ2NF0gIFs8ZmZmZmZmZmY4MTFiMjE5OD5dIF9fYWxsb2Nf
+cGFnZXNfbm9kZW1hc2srMHg1ODgvMHg5NzANCj4+IFs2MDA1MjIuMTAyMjM1XSAgWzxmZmZmZmZm
+ZjgxMWZiYmQ1Pl0gYWxsb2NfcGFnZXNfdm1hKzB4YjUvMHgyMzANCj4+IFs2MDA1MjIuMTAzMDAw
+XSAgWzxmZmZmZmZmZjgxM2ExNTg5Pl0gPyBjcHVtYXNrX2FueV9idXQrMHgzOS8weDUwDQo+PiBb
+NjAwNTIyLjEwMzc3NF0gIFs8ZmZmZmZmZmY4MTFkNjExNT5dIHdwX3BhZ2VfY29weS5pc3JhLjU1
+KzB4OTUvMHg0OTANCj4+IFs2MDA1MjIuMTA0NTU4XSAgWzxmZmZmZmZmZjgxMGUzNDM4Pl0gPyBf
+X3dha2VfdXArMHg0OC8weDYwDQo+PiBbNjAwNTIyLjEwNTM1N10gIFs8ZmZmZmZmZmY4MTFkN2Qz
+Yj5dIGRvX3dwX3BhZ2UrMHhhYi8weDRmMA0KPj4gWzYwMDUyMi4xMDYxMzddICBbPGZmZmZmZmZm
+ODEwYTFiYmI+XSA/IHJlbGVhc2VfdGFzaysweDM2Yi8weDQ3MA0KPj4gWzYwMDUyMi4xMDY5MDJd
+ICBbPGZmZmZmZmZmODEyNmRiZDc+XSA/IGV2ZW50ZmRfY3R4X3JlYWQrMHg2Ny8weDFjMA0KPj4g
+WzYwMDUyMi4xMDc2NTldICBbPGZmZmZmZmZmODExZGEyYTg+XSBoYW5kbGVfbW1fZmF1bHQrMHhj
+NzgvMHgxOTAwDQo+PiBbNjAwNTIyLjEwODQzMV0gIFs8ZmZmZmZmZmY4MTA2N2VmMT5dIF9fZG9f
+cGFnZV9mYXVsdCsweDE4MS8weDQyMA0KPj4gWzYwMDUyMi4xMDkxNzNdICBbPGZmZmZmZmZmODEx
+NDQ2YTY+XSA/IF9fYXVkaXRfc3lzY2FsbF9leGl0KzB4MWU2LzB4MjgwDQo+PiBbNjAwNTIyLjEw
+OTg5M10gIFs8ZmZmZmZmZmY4MTA2ODFjMD5dIGRvX3BhZ2VfZmF1bHQrMHgzMC8weDgwDQo+PiBb
+NjAwNTIyLjExMDU5NF0gIFs8ZmZmZmZmZmY4MTAyNGYzNj5dID8gc3lzY2FsbF90cmFjZV9sZWF2
+ZSsweGM2LzB4MTIwDQo+PiBbNjAwNTIyLjExMTI4OF0gIFs8ZmZmZmZmZmY4MTc5MGE1OD5dIHBh
+Z2VfZmF1bHQrMHgyOC8weDMwDQo+PiBbNjAwNTIyLjExMTk0N10gQ29kZTogNWQgYzMgMGYgMWYg
+ODAgMDAgMDAgMDAgMDAgMGYgMWYgNDQgMDAgMDAgNTUgNGMgOGQgODcgZDAgMDEgMDAgMDAgNDgg
+ODkgZTUgNTMgNDggODkgZmIgNDggODMgZWMgMDggNGMgOGIgMGUgNDkgOGIgNDEgMTggNGMgMzkg
+Y2UgPDQ4PiA4YiA0MCA0MCA0YyA4YiA1MCAzMCA3NCAyNCA0OCA4YiA4NyBkMCAwMSAwMCAwMCA0
+OCA4YiA3ZSAwOA0KPj4gWzYwMDUyMi4xMTMzNDNdIFJJUCAgWzxmZmZmZmZmZmEwNDc5ZTcyPl0g
+bmZzX2luaXRfY29tbWl0KzB4MjIvMHgxMzAgW25mc10NCj4+IFs2MDA1MjIuMTE0MDAzXSAgUlNQ
+IDxmZmZmODgwNDJhZTg3NDM4Pg0KPj4gWzYwMDUyMi4xMTQ2MzZdIENSMjogMDAwMDAwMDAwMDAw
+MDA0MA0KPj4gDQo+PiBTaWduZWQtb2ZmLWJ5OiBXZXN0b24gQW5kcm9zIEFkYW1zb24gPGRyb3NA
+cHJpbWFyeWRhdGEuY29tPg0KPj4gLS0tDQo+PiANCj4+IFYyIGhhcyBzb21lIGNsZWFudXAgcmVx
+dWVzdGVkIGJ5IEFubmEuDQo+PiANCj4+ICAtZHJvcw0KPj4gDQo+PiAgZnMvbmZzL3BuZnNfbmZz
+LmMgfCAyOCArKysrKysrKysrKysrKysrKysrKysrKysrKysrDQo+PiAgZnMvbmZzL3dyaXRlLmMg
+ICAgfCAgNCArKysrDQo+PiAgMiBmaWxlcyBjaGFuZ2VkLCAzMiBpbnNlcnRpb25zKCspDQo+PiAN
+Cj4+IGRpZmYgLS1naXQgYS9mcy9uZnMvcG5mc19uZnMuYyBiL2ZzL25mcy9wbmZzX25mcy5jDQo+
+PiBpbmRleCBkMmE3YzlmN2FhOTQuLjBkZmM0NzZkYTNlMSAxMDA2NDQNCj4+IC0tLSBhL2ZzL25m
+cy9wbmZzX25mcy5jDQo+PiArKysgYi9mcy9uZnMvcG5mc19uZnMuYw0KPj4gQEAgLTI0Niw2ICsy
+NDYsMjMgQEAgdm9pZCBwbmZzX2ZldGNoX2NvbW1pdF9idWNrZXRfbGlzdChzdHJ1Y3QgbGlzdF9o
+ZWFkICpwYWdlcywNCj4+ICANCj4+ICB9DQo+PiAgDQo+PiArLyogSGVscGVyIGZ1bmN0aW9uIGZv
+ciBwbmZzX2dlbmVyaWNfY29tbWl0X3BhZ2VsaXN0IHRvIGNhdGNoIGFuIGVtcHR5DQo+PiArICog
+cGFnZSBsaXN0LiBUaGlzIGNhbiBoYXBwZW4gd2hlbiB0d28gY29tbWl0cyByYWNlLiAqLw0KPj4g
+K3N0YXRpYyBib29sDQo+PiArcG5mc19nZW5lcmljX2NvbW1pdF9jYW5jZWxfZW1wdHlfcGFnZWxp
+c3Qoc3RydWN0IGxpc3RfaGVhZCAqcGFnZXMsDQo+PiArCQkJCQkgIHN0cnVjdCBuZnNfY29tbWl0
+X2RhdGEgKmRhdGEsDQo+PiArCQkJCQkgIHN0cnVjdCBuZnNfY29tbWl0X2luZm8gKmNpbmZvKQ0K
+Pj4gK3sNCj4+ICsJaWYgKGxpc3RfZW1wdHkocGFnZXMpKSB7DQo+PiArCQlpZiAoYXRvbWljX2Rl
+Y19hbmRfdGVzdCgmY2luZm8tPm1kcy0+cnBjc19vdXQpKQ0KPj4gKwkJCXdha2VfdXBfYXRvbWlj
+X3QoJmNpbmZvLT5tZHMtPnJwY3Nfb3V0KTsNCj4+ICsJCW5mc19jb21taXRkYXRhX3JlbGVhc2Uo
+ZGF0YSk7DQo+PiArCQlyZXR1cm4gdHJ1ZTsNCj4+ICsJfQ0KPj4gKw0KPj4gKwlyZXR1cm4gZmFs
+c2U7DQo+PiArfQ0KPj4gKw0KPj4gIC8qIFRoaXMgZm9sbG93cyBuZnNfY29tbWl0X2xpc3QgcHJl
+dHR5IGNsb3NlbHkgKi8NCj4+ICBpbnQNCj4+ICBwbmZzX2dlbmVyaWNfY29tbWl0X3BhZ2VsaXN0
+KHN0cnVjdCBpbm9kZSAqaW5vZGUsIHN0cnVjdCBsaXN0X2hlYWQgKm1kc19wYWdlcywNCj4+IEBA
+IC0yODAsNiArMjk3LDExIEBAIHBuZnNfZ2VuZXJpY19jb21taXRfcGFnZWxpc3Qoc3RydWN0IGlu
+b2RlICppbm9kZSwgc3RydWN0IGxpc3RfaGVhZCAqbWRzX3BhZ2VzLA0KPj4gIAlsaXN0X2Zvcl9l
+YWNoX2VudHJ5X3NhZmUoZGF0YSwgdG1wLCAmbGlzdCwgcGFnZXMpIHsNCj4+ICAJCWxpc3RfZGVs
+X2luaXQoJmRhdGEtPnBhZ2VzKTsNCj4+ICAJCWlmIChkYXRhLT5kc19jb21taXRfaW5kZXggPCAw
+KSB7DQo+PiArCQkJLyogYW5vdGhlciBjb21taXQgcmFjZWQgd2l0aCB1cyAqLw0KPj4gKwkJCWlm
+IChwbmZzX2dlbmVyaWNfY29tbWl0X2NhbmNlbF9lbXB0eV9wYWdlbGlzdChtZHNfcGFnZXMsDQo+
+PiArCQkJCWRhdGEsIGNpbmZvKSkNCj4+ICsJCQkJY29udGludWU7DQo+PiArDQo+PiAgCQkJbmZz
+X2luaXRfY29tbWl0KGRhdGEsIG1kc19wYWdlcywgTlVMTCwgY2luZm8pOw0KPj4gIAkJCW5mc19p
+bml0aWF0ZV9jb21taXQoTkZTX0NMSUVOVChpbm9kZSksIGRhdGEsDQo+PiAgCQkJCQkgICAgTkZT
+X1BST1RPKGRhdGEtPmlub2RlKSwNCj4+IEBAIC0yODgsNiArMzEwLDEyIEBAIHBuZnNfZ2VuZXJp
+Y19jb21taXRfcGFnZWxpc3Qoc3RydWN0IGlub2RlICppbm9kZSwgc3RydWN0IGxpc3RfaGVhZCAq
+bWRzX3BhZ2VzLA0KPj4gIAkJCUxJU1RfSEVBRChwYWdlcyk7DQo+PiAgDQo+PiAgCQkJcG5mc19m
+ZXRjaF9jb21taXRfYnVja2V0X2xpc3QoJnBhZ2VzLCBkYXRhLCBjaW5mbyk7DQo+PiArDQo+PiAr
+CQkJLyogYW5vdGhlciBjb21taXQgcmFjZWQgd2l0aCB1cyAqLw0KPj4gKwkJCWlmIChwbmZzX2dl
+bmVyaWNfY29tbWl0X2NhbmNlbF9lbXB0eV9wYWdlbGlzdCgmcGFnZXMsDQo+PiArCQkJCWRhdGEs
+IGNpbmZvKSkNCj4+ICsJCQkJY29udGludWU7DQo+PiArDQo+PiAgCQkJbmZzX2luaXRfY29tbWl0
+KGRhdGEsICZwYWdlcywgZGF0YS0+bHNlZywgY2luZm8pOw0KPj4gIAkJCWluaXRpYXRlX2NvbW1p
+dChkYXRhLCBob3cpOw0KPj4gIAkJfQ0KPj4gZGlmZiAtLWdpdCBhL2ZzL25mcy93cml0ZS5jIGIv
+ZnMvbmZzL3dyaXRlLmMNCj4+IGluZGV4IDRkYWM1MWJhMWY3ZS4uNDM4YzAwMTEwZmM5IDEwMDY0
+NA0KPj4gLS0tIGEvZnMvbmZzL3dyaXRlLmMNCj4+ICsrKyBiL2ZzL25mcy93cml0ZS5jDQo+PiBA
+QCAtMTcxMCw2ICsxNzEwLDEwIEBAIG5mc19jb21taXRfbGlzdChzdHJ1Y3QgaW5vZGUgKmlub2Rl
+LCBzdHJ1Y3QgbGlzdF9oZWFkICpoZWFkLCBpbnQgaG93LA0KPj4gIHsNCj4+ICAJc3RydWN0IG5m
+c19jb21taXRfZGF0YQkqZGF0YTsNCj4+ICANCj4+ICsJLyogYW5vdGhlciBjb21taXQgcmFjZWQg
+d2l0aCB1cyAqLw0KPj4gKwlpZiAobGlzdF9lbXB0eShoZWFkKSkNCj4+ICsJCXJldHVybiAwOw0K
+Pj4gKw0KPj4gIAlkYXRhID0gbmZzX2NvbW1pdGRhdGFfYWxsb2MoKTsNCj4+ICANCj4+ICAJaWYg
+KCFkYXRhKQ0KPj4gDQo+DQoNCg==
 
