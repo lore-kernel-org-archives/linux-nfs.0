@@ -1,60 +1,58 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcdn-iport-6.cisco.com ([173.37.86.77]:36909 "EHLO
-	rcdn-iport-6.cisco.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751110AbcEYVQK (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 25 May 2016 17:16:10 -0400
-Subject: Re: [PATCH RESEND] vfs: pass the flag setting by fcntl() to vfs
-To: Al Viro <viro@ZenIV.linux.org.uk>
-References: <c6b1075a-2eb5-a065-96ac-fc06ec04ea0f@cisco.com>
- <5e560bce-837d-c1eb-7f6a-eb4fbe994433@cisco.com>
- <20160525195229.GG14480@ZenIV.linux.org.uk>
-Cc: Jeff Layton <jlayton@poochiereds.net>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        Anna Schumaker <anna.schumaker@netapp.com>,
-        Miklos Szeredi <miklos@szeredi.hu>, linux-fsdevel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, Enke Chen <enkechen@cisco.com>
-From: Enke Chen <enkechen@cisco.com>
-Message-ID: <a55e8a17-6637-0032-bd2d-32fd893fa90b@cisco.com>
-Date: Wed, 25 May 2016 14:16:07 -0700
-MIME-Version: 1.0
-In-Reply-To: <20160525195229.GG14480@ZenIV.linux.org.uk>
-Content-Type: text/plain; charset=windows-1252
+Received: from mail-yw0-f169.google.com ([209.85.161.169]:34306 "EHLO
+	mail-yw0-f169.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750732AbcEYV5d (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 25 May 2016 17:57:33 -0400
+Received: by mail-yw0-f169.google.com with SMTP id c127so60357087ywb.1
+        for <linux-nfs@vger.kernel.org>; Wed, 25 May 2016 14:57:32 -0700 (PDT)
+Message-ID: <1464213449.7439.12.camel@poochiereds.net>
+Subject: Re: [PATCH 3/4] nfsd: Add a super simple flex file server
+From: Jeff Layton <jlayton@poochiereds.net>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: Tom Haynes <thomas.haynes@primarydata.com>,
+        Linux NFS Mailing list <linux-nfs@vger.kernel.org>,
+        Christoph Hellwig <hch@lst.de>
+Date: Wed, 25 May 2016 17:57:29 -0400
+In-Reply-To: <20160525174216.GA12306@fieldses.org>
+References: <1464152979-103988-1-git-send-email-loghyr@primarydata.com>
+	 <1464152979-103988-4-git-send-email-loghyr@primarydata.com>
+	 <1464179444.3037.15.camel@poochiereds.net>
+	 <20160525174216.GA12306@fieldses.org>
+Content-Type: text/plain; charset="UTF-8"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi, Al:
-
-I did reply to the original thread:
-
--------------------
-> And that's not a supported use case.
+On Wed, 2016-05-25 at 13:42 -0400, J. Bruce Fields wrote:
+> On Wed, May 25, 2016 at 08:30:44AM -0400, Jeff Layton wrote:
+> > 
+> > Maybe it's time to start thinking about how to support multiple layout
+> > types per export?
+> It looks like nobody would want this flex file code in production.  The
+> only users will be testers and developers.
+> 
+> And the scsi layout is really just a replacement for the block layout,
+> nobody should be supporting both of those at once either.
 > 
 
-Understood, and that is the reason for the simple patch :-)
+Well...unless you have a mix of clients that just support block and
+some that support scsi. Is that plausible?
 
-User-space networking stacks exist for several reasons, e.g., for migrating
-from micro-kernel based systems, or for avoiding large changes to the networking
-stack in the kernel.
-------------------
-
-Let me clarify a bit more:
-
-FUSE, being a file system, should be able to support the same flag setting as
-in the kernel. The patch facilitates that by passing the flags to the vfs.
-
-Does this help? 
-
-Thanks.   -- Enke
-
-On 5/25/16 12:52 PM, Al Viro wrote:
-> On Wed, May 25, 2016 at 12:03:23PM -0700, Enke Chen wrote:
->> Hi, Folks:
->>
->> Could you accept this patch submitted on May 5, 2016?
+> Would it be too much of a burden just to make flexfiles and developers
+> build their own kernels?
+>
+> > It doesn't look like it would be that hard. I think
+> > we could convert ex_layout_type into a bitmap that shows which types
+> > are supported.
+> ex_layout_type is only used internally, the only external interface is
+> an export flag, so we'd need some new interface.
 > 
-> Not until you've addressed the objections in the original thread.
-> And no, "we have an application that wants it" does not qualify.
-> 
-> NAKed-by: Al Viro <viro@zeniv.linux.org.uk>
-> 
+
+I was thinking that with the "pnfs" export option you'd just enable any
+layouts that the fs supports. So here, you could theoretically allow
+nfsd to offer up block, scsi and flexfiles layouts given the right fs,
+and leave the decision of the layout type to actually use up to the
+client.
+
+-- 
+Jeff Layton <jlayton@poochiereds.net>
