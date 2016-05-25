@@ -1,94 +1,64 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from science.sciencehorizons.net ([71.41.210.147]:37909 "HELO
-	ns.sciencehorizons.net" rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org
-	with SMTP id S1751634AbcEYH0c (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 25 May 2016 03:26:32 -0400
-Date: 25 May 2016 03:26:30 -0400
-Message-ID: <20160525072630.5343.qmail@ns.sciencehorizons.net>
-From: "George Spelvin" <linux@sciencehorizons.net>
-To: bfields@fieldses.org, jlayton@poochiereds.net,
-        linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        torvalds@linux-foundation.org
-Subject: [PATCH 03/10] <linux/sunrpc/svcauth.h>: Define hash_str() in terms of hash_string()
-Cc: linux@sciencehorizons.net, tglx@linutronix.de
-In-Reply-To: <CA+55aFxPSW+84KfQ1N_WmND-wtvgj2zQm8nFPkRcc+gyU=uing@mail.gmail.com>
+Received: from mail-io0-f196.google.com ([209.85.223.196]:36716 "EHLO
+	mail-io0-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750733AbcEYIBA (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 25 May 2016 04:01:00 -0400
+MIME-Version: 1.0
+In-Reply-To: <20160525072027.5107.qmail@ns.sciencehorizons.net>
+References: <CA+55aFxPSW+84KfQ1N_WmND-wtvgj2zQm8nFPkRcc+gyU=uing@mail.gmail.com>
+	<20160525072027.5107.qmail@ns.sciencehorizons.net>
+Date: Wed, 25 May 2016 10:00:59 +0200
+Message-ID: <CAMuHMdUUCYfGfX1CDVxxihGSC+dz2D1JJVXUWC5H0_W-MmHe7Q@mail.gmail.com>
+Subject: Re: [PATCH 00/10] String hash improvements
+From: Geert Uytterhoeven <geert@linux-m68k.org>
+To: George Spelvin <linux@sciencehorizons.net>
+Cc: "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        Linus Torvalds <torvalds@linux-foundation.org>,
+        alistair.francis@xilinx.com, Bruce Fields <bfields@fieldses.org>,
+        Greg Ungerer <gerg@linux-m68k.org>,
+        Jeff Layton <jlayton@poochiereds.net>,
+        linux-m68k <linux-m68k@vger.kernel.org>,
+        "open list:NFS, SUNRPC, AND..." <linux-nfs@vger.kernel.org>,
+        Michal Simek <michal.simek@xilinx.com>,
+        Thomas Gleixner <tglx@linutronix.de>,
+        uclinux-h8-devel@lists.sourceforge.jp,
+        Yoshinori Sato <ysato@users.sourceforge.jp>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Finally, the first use of previous two patches: Eliminate the
-separate ad-hoc string hash functions in the sunrpc code.
+Hi George,
 
-This also eliminates the only caller of hash_long which asks for
-more than 32 bits of output.
+On Wed, May 25, 2016 at 9:20 AM, George Spelvin
+<linux@sciencehorizons.net> wrote:
+> I'm not particularly fond of the names of the header files I created,
+> but if anyone has a better idea please talk fast!
 
-sunrpc guys: Is it okay if I send this to Linus directly?
+Usually this is handled through include/asm-generic/.
+Put the generic default implementation in include/asm-generic/hash.h.
 
-Signed-off-by: George Spelvin <linux@sciencehorizons.net>
-Cc: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: Jeff Layton <jlayton@poochiereds.net>
-Cc: linux-nfs@vger.kernel.org
----
- include/linux/sunrpc/svcauth.h | 36 +++++-------------------------------
- 1 file changed, 5 insertions(+), 31 deletions(-)
+Architectures that need to override provide their own version, e.g.
+arch/m68k/include/asm/hash.h. They may #include <asm-generic/hash.h>
+if they still want to reuse parts of the generic implementation.
 
-diff --git a/include/linux/sunrpc/svcauth.h b/include/linux/sunrpc/svcauth.h
-index c00f53a4..ef2b2552 100644
---- a/include/linux/sunrpc/svcauth.h
-+++ b/include/linux/sunrpc/svcauth.h
-@@ -16,6 +16,7 @@
- #include <linux/sunrpc/cache.h>
- #include <linux/sunrpc/gss_api.h>
- #include <linux/hash.h>
-+#include <linux/stringhash.h>
- #include <linux/cred.h>
- 
- struct svc_cred {
-@@ -165,41 +166,14 @@ extern int svcauth_unix_set_client(struct svc_rqst *rqstp);
- extern int unix_gid_cache_create(struct net *net);
- extern void unix_gid_cache_destroy(struct net *net);
- 
--static inline unsigned long hash_str(char *name, int bits)
-+static inline unsigned long hash_str(char const *name, int bits)
- {
--	unsigned long hash = 0;
--	unsigned long l = 0;
--	int len = 0;
--	unsigned char c;
--	do {
--		if (unlikely(!(c = *name++))) {
--			c = (char)len; len = -1;
--		}
--		l = (l << 8) | c;
--		len++;
--		if ((len & (BITS_PER_LONG/8-1))==0)
--			hash = hash_long(hash^l, BITS_PER_LONG);
--	} while (len);
--	return hash >> (BITS_PER_LONG - bits);
-+	return hash_32(hashlen_hash(hash_string(name)), bits);
- }
- 
--static inline unsigned long hash_mem(char *buf, int length, int bits)
-+static inline unsigned long hash_mem(char const *buf, int length, int bits)
- {
--	unsigned long hash = 0;
--	unsigned long l = 0;
--	int len = 0;
--	unsigned char c;
--	do {
--		if (len == length) {
--			c = (char)len; len = -1;
--		} else
--			c = *buf++;
--		l = (l << 8) | c;
--		len++;
--		if ((len & (BITS_PER_LONG/8-1))==0)
--			hash = hash_long(hash^l, BITS_PER_LONG);
--	} while (len);
--	return hash >> (BITS_PER_LONG - bits);
-+	return hash_32(full_name_hash(buf, length), bits);
- }
- 
- #endif /* __KERNEL__ */
--- 
-2.8.1
+Other architectures add "generic-y += hash.h" to their
+arch/<ARCH>/include/asm/Kbuild.
 
+<linux/hash.h> includes <asm/hash.h> t.
+
+>  arch/h8300/include/asm/archhash.h      |  52 ++++++++++++
+>  arch/m68k/include/asm/archhash.h       |  67 +++++++++++++++
+>  arch/microblaze/include/asm/archhash.h |  80 ++++++++++++++++++
+>  include/linux/hash.h                   | 111 ++++++++++++------------
+>  include/linux/stringhash.h             |  76 +++++++++++++++++
+
+Gr{oetje,eeting}s,
+
+                        Geert
+
+--
+Geert Uytterhoeven -- There's lots of Linux beyond ia32 -- geert@linux-m68k.org
+
+In personal conversations with technical people, I call myself a hacker. But
+when I'm talking to journalists I just say "programmer" or something like that.
+                                -- Linus Torvalds
