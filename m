@@ -1,45 +1,62 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:59894 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932862AbcEYRmR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 25 May 2016 13:42:17 -0400
-Date: Wed, 25 May 2016 13:42:16 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Jeff Layton <jlayton@poochiereds.net>
-Cc: Tom Haynes <thomas.haynes@primarydata.com>,
-        Linux NFS Mailing list <linux-nfs@vger.kernel.org>,
-        Christoph Hellwig <hch@lst.de>
-Subject: Re: [PATCH 3/4] nfsd: Add a super simple flex file server
-Message-ID: <20160525174216.GA12306@fieldses.org>
+Received: from us-smtp-delivery-194.mimecast.com ([63.128.21.194]:21260 "EHLO
+	us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1752087AbcEYSMd convert rfc822-to-8bit
+	(ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 25 May 2016 14:12:33 -0400
+From: Thomas Haynes <loghyr@primarydata.com>
+To: hch <hch@lst.de>
+CC: Thomas Haynes <loghyr@primarydata.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>,
+        Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 2/4] nfsd: Can leak pnfs_block_extent on error
+Date: Wed, 25 May 2016 18:12:25 +0000
+Message-ID: <308154CA-0C3A-4D4F-82F0-6E2F221DBC18@primarydata.com>
 References: <1464152979-103988-1-git-send-email-loghyr@primarydata.com>
- <1464152979-103988-4-git-send-email-loghyr@primarydata.com>
- <1464179444.3037.15.camel@poochiereds.net>
+ <1464152979-103988-3-git-send-email-loghyr@primarydata.com>
+ <20160525150724.GA27535@lst.de>
+In-Reply-To: <20160525150724.GA27535@lst.de>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1464179444.3037.15.camel@poochiereds.net>
+Content-Type: text/plain; charset=WINDOWS-1252
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, May 25, 2016 at 08:30:44AM -0400, Jeff Layton wrote:
-> Maybe it's time to start thinking about how to support multiple layout
-> types per export?
 
-It looks like nobody would want this flex file code in production.  The
-only users will be testers and developers.
+> On May 25, 2016, at 8:07 AM, Christoph Hellwig <hch@lst.de> wrote:
+> 
+> On Tue, May 24, 2016 at 10:09:37PM -0700, Tom Haynes wrote:
+>> Signed-off-by: Tom Haynes <loghyr@primarydata.com>
+> 
+> How was this reported?
 
-And the scsi layout is really just a replacement for the block layout,
-nobody should be supporting both of those at once either.
+Code inspection. My guess is no one ever hit the error cases
+in there.
 
-Would it be too much of a burden just to make flexfiles and developers
-build their own kernels?
+> 
+> Like other NFS procedures the private data should be freed by the
+> XDR encode callback (nfsd4_encode_layoutget in this case) even
+> in the error case.  It could be that there is a bug somewhere,
+> but it probably shouldn't be fixed here.
+> 
 
-> It doesn't look like it would be that hard. I think
-> we could convert ex_layout_type into a bitmap that shows which types
-> are supported.
+No, it doesn’t do that on errors:
 
-ex_layout_type is only used internally, the only external interface is
-an export flag, so we'd need some new interface.
+nfsd4_layoutget():
 
---b.
+       nfserr = ops->proc_layoutget(d_inode(current_fh->fh_dentry),
+                                     current_fh, lgp);
+        if (nfserr)
+                goto out_put_stid;
 
-> The harder work looks to be on the client. You'd need some heuristic to choose when you get back multiple layout types and fix that to work properly.
+        nfserr = nfsd4_insert_layout(lgp, ls);
+
+out_put_stid:
+        mutex_unlock(&ls->ls_mutex);
+        nfs4_put_stid(&ls->ls_stid);
+out:
+        return nfserr;
+}
+
+So on error we never do anything with the lgp and the memory would
+be dropped.
+
