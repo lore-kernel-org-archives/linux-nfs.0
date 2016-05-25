@@ -1,62 +1,54 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from us-smtp-delivery-194.mimecast.com ([63.128.21.194]:21260 "EHLO
+Received: from us-smtp-delivery-194.mimecast.com ([216.205.24.194]:26385 "EHLO
 	us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1752087AbcEYSMd convert rfc822-to-8bit
+	by vger.kernel.org with ESMTP id S1751523AbcEYST0 convert rfc822-to-8bit
 	(ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 25 May 2016 14:12:33 -0400
+	Wed, 25 May 2016 14:19:26 -0400
 From: Thomas Haynes <loghyr@primarydata.com>
 To: hch <hch@lst.de>
 CC: Thomas Haynes <loghyr@primarydata.com>,
         "J. Bruce Fields" <bfields@fieldses.org>,
         Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 2/4] nfsd: Can leak pnfs_block_extent on error
-Date: Wed, 25 May 2016 18:12:25 +0000
-Message-ID: <308154CA-0C3A-4D4F-82F0-6E2F221DBC18@primarydata.com>
+Subject: Re: [PATCH 4/4] nfsd: Provide a config option for flex file layouts
+Date: Wed, 25 May 2016 18:19:20 +0000
+Message-ID: <5F7AEB38-6AFE-4BB5-B52A-3EF358FF5B46@primarydata.com>
 References: <1464152979-103988-1-git-send-email-loghyr@primarydata.com>
- <1464152979-103988-3-git-send-email-loghyr@primarydata.com>
- <20160525150724.GA27535@lst.de>
-In-Reply-To: <20160525150724.GA27535@lst.de>
+ <1464152979-103988-5-git-send-email-loghyr@primarydata.com>
+ <20160525150917.GC27535@lst.de>
+In-Reply-To: <20160525150917.GC27535@lst.de>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=WINDOWS-1252
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
-> On May 25, 2016, at 8:07 AM, Christoph Hellwig <hch@lst.de> wrote:
+> On May 25, 2016, at 8:09 AM, Christoph Hellwig <hch@lst.de> wrote:
 > 
-> On Tue, May 24, 2016 at 10:09:37PM -0700, Tom Haynes wrote:
->> Signed-off-by: Tom Haynes <loghyr@primarydata.com>
+>> +config NFSD_FLEXFILELAYOUT
+>> +	bool "NFSv4.1 server support for pNFS Flex File layouts"
+>> +	depends on NFSD_V4
+>> +	select NFSD_PNFS
+>> +	help
+>> +	  This option enables support for the exporting pNFS Flex File
+>> +	  layouts in the kernel's NFS server. The pNFS Flex File  layout
+>> +	  enables NFS clients to directly perform I/O to NFSv3 devices
+>> +	  accesible to both the server and the clients.  See
+>> +	  draft-ietf-nfsv4-flex-files for more details.
 > 
-> How was this reported?
-
-Code inspection. My guess is no one ever hit the error cases
-in there.
-
-> 
-> Like other NFS procedures the private data should be freed by the
-> XDR encode callback (nfsd4_encode_layoutget in this case) even
-> in the error case.  It could be that there is a bug somewhere,
-> but it probably shouldn't be fixed here.
+> How about a bit more of a warning that this is just a toy demo server?
 > 
 
-No, it doesn’t do that on errors:
+Add:
 
-nfsd4_layoutget():
+          Warning, this server implements the bare minimum functionality for
+          to be a flex file server - it is more for testing the client
+          than for a production server.
 
-       nfserr = ops->proc_layoutget(d_inode(current_fh->fh_dentry),
-                                     current_fh, lgp);
-        if (nfserr)
-                goto out_put_stid;
 
-        nfserr = nfsd4_insert_layout(lgp, ls);
 
-out_put_stid:
-        mutex_unlock(&ls->ls_mutex);
-        nfs4_put_stid(&ls->ls_stid);
-out:
-        return nfserr;
-}
 
-So on error we never do anything with the lgp and the memory would
-be dropped.
+> Also I'd say merge this into the previous patch.
+> 
+
+Agreed
 
