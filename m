@@ -1,77 +1,54 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:59922 "EHLO fieldses.org"
+Received: from fieldses.org ([173.255.197.46]:59928 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751523AbcEYSUD (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 25 May 2016 14:20:03 -0400
-Date: Wed, 25 May 2016 14:20:01 -0400
+	id S1752237AbcEYSVo (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 25 May 2016 14:21:44 -0400
+Date: Wed, 25 May 2016 14:21:44 -0400
 From: "J. Bruce Fields" <bfields@fieldses.org>
 To: Thomas Haynes <loghyr@primarydata.com>
 Cc: hch <hch@lst.de>, Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 2/4] nfsd: Can leak pnfs_block_extent on error
-Message-ID: <20160525182001.GB12306@fieldses.org>
+Subject: Re: [PATCH 4/4] nfsd: Provide a config option for flex file layouts
+Message-ID: <20160525182144.GC12306@fieldses.org>
 References: <1464152979-103988-1-git-send-email-loghyr@primarydata.com>
- <1464152979-103988-3-git-send-email-loghyr@primarydata.com>
- <20160525150724.GA27535@lst.de>
- <308154CA-0C3A-4D4F-82F0-6E2F221DBC18@primarydata.com>
+ <1464152979-103988-5-git-send-email-loghyr@primarydata.com>
+ <20160525150917.GC27535@lst.de>
+ <5F7AEB38-6AFE-4BB5-B52A-3EF358FF5B46@primarydata.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-In-Reply-To: <308154CA-0C3A-4D4F-82F0-6E2F221DBC18@primarydata.com>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <5F7AEB38-6AFE-4BB5-B52A-3EF358FF5B46@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, May 25, 2016 at 06:12:25PM +0000, Thomas Haynes wrote:
+On Wed, May 25, 2016 at 06:19:20PM +0000, Thomas Haynes wrote:
 > 
-> > On May 25, 2016, at 8:07 AM, Christoph Hellwig <hch@lst.de> wrote:
+> > On May 25, 2016, at 8:09 AM, Christoph Hellwig <hch@lst.de> wrote:
 > > 
-> > On Tue, May 24, 2016 at 10:09:37PM -0700, Tom Haynes wrote:
-> >> Signed-off-by: Tom Haynes <loghyr@primarydata.com>
+> >> +config NFSD_FLEXFILELAYOUT
+> >> +	bool "NFSv4.1 server support for pNFS Flex File layouts"
+> >> +	depends on NFSD_V4
+> >> +	select NFSD_PNFS
+> >> +	help
+> >> +	  This option enables support for the exporting pNFS Flex File
+> >> +	  layouts in the kernel's NFS server. The pNFS Flex File  layout
+> >> +	  enables NFS clients to directly perform I/O to NFSv3 devices
+> >> +	  accesible to both the server and the clients.  See
+> >> +	  draft-ietf-nfsv4-flex-files for more details.
 > > 
-> > How was this reported?
+> > How about a bit more of a warning that this is just a toy demo server?
+> > 
 > 
-> Code inspection. My guess is no one ever hit the error cases
-> in there.
+> Add:
 > 
-> > 
-> > Like other NFS procedures the private data should be freed by the
-> > XDR encode callback (nfsd4_encode_layoutget in this case) even
-> > in the error case.  It could be that there is a bug somewhere,
-> > but it probably shouldn't be fixed here.
-> > 
-> 
-> No, it doesn’t do that on errors:
+>           Warning, this server implements the bare minimum functionality for
+>           to be a flex file server - it is more for testing the client
+>           than for a production server.
 
-We have in nfsd4_block_proc_layoutget:
+I'd leave out the "more", and just say "it is for testing the client,
+not for use in production".
 
-	bex = kzalloc(sizeof(*bex), GFP_KERNEL);
-	if (!bex)
-		goto out_error;
-	args->lg_content = bex;
+Which makes me wonder whether it's even worth merging.
 
-and then in nfsd4_encode_layoutget:
-
-	kfree(lgp->lg_content);
-
-So, I think we're OK as is?
+But it's very small and self-contained, so I'm inclined to go ahead,
+pending other review.
 
 --b.
-
-
-> 
-> nfsd4_layoutget():
-> 
->        nfserr = ops->proc_layoutget(d_inode(current_fh->fh_dentry),
->                                      current_fh, lgp);
->         if (nfserr)
->                 goto out_put_stid;
-> 
->         nfserr = nfsd4_insert_layout(lgp, ls);
-> 
-> out_put_stid:
->         mutex_unlock(&ls->ls_mutex);
->         nfs4_put_stid(&ls->ls_stid);
-> out:
->         return nfserr;
-> }
-> 
-> So on error we never do anything with the lgp and the memory would
-> be dropped.
