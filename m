@@ -1,49 +1,31 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from verein.lst.de ([213.95.11.211]:50299 "EHLO newverein.lst.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750803AbcEZHfS (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 26 May 2016 03:35:18 -0400
-Date: Thu, 26 May 2016 09:35:15 +0200
-From: Christoph Hellwig <hch@lst.de>
-To: Tom Haynes <thomas.haynes@primarydata.com>
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-        Linux NFS Mailing list <linux-nfs@vger.kernel.org>,
-        Christoph Hellwig <hch@lst.de>
-Subject: Re: [V2 2/2] nfsd: Add a super simple flex file server
-Message-ID: <20160526073515.GA22814@lst.de>
-References: <1464209035-84591-1-git-send-email-loghyr@primarydata.com> <1464209035-84591-3-git-send-email-loghyr@primarydata.com>
+Received: from mail-wm0-f50.google.com ([74.125.82.50]:37690 "EHLO
+	mail-wm0-f50.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750854AbcEZIfu (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 May 2016 04:35:50 -0400
+Received: by mail-wm0-f50.google.com with SMTP id z87so89896797wmh.0
+        for <linux-nfs@vger.kernel.org>; Thu, 26 May 2016 01:35:49 -0700 (PDT)
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1464209035-84591-3-git-send-email-loghyr@primarydata.com>
+From: Satya Prakash GS <g.satyaprakash@gmail.com>
+Date: Thu, 26 May 2016 14:05:29 +0530
+Message-ID: <CAJZK4X4r2WMCqfBsxxswJ95Sznu6TfJk5bBsti_je92ieYnipw@mail.gmail.com>
+Subject: reg. stale post attributes
+To: linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
->  void nfsd4_setup_layout_type(struct svc_export *exp)
->  {
-> +#if defined(CONFIG_NFSD_BLOCKLAYOUT) || defined(CONFIG_NFSD_SCSILAYOUT)
->  	struct super_block *sb = exp->ex_path.mnt->mnt_sb;
-> +#endif
->  
->  	if (!(exp->ex_flags & NFSEXP_PNFS))
->  		return;
->  
->  	/*
-> -	 * Check if the file system supports exporting a block-like layout.
-> +	 * If flex file is configured, use it by default. Otherwise
-> +	 * check if the file system supports exporting a block-like layout.
->  	 * If the block device supports reservations prefer the SCSI layout,
->  	 * otherwise advertise the block layout.
->  	 */
-> +#ifdef CONFIG_NFSD_FLEXFILELAYOUT
-> +	exp->ex_layout_type = LAYOUT_FLEX_FILES;
-> +#endif
->  #ifdef CONFIG_NFSD_BLOCKLAYOUT
-> +	/* overwrite flex file layout selection if needed */
+Hi,
 
-So my evil attempt to let you take on the multi-layout support didn't
-pan out :)
+I have been going through NFS client code and looks like most of the
+file operations get post attributes and client applies them after
+checking for freshness. How does this scheme work when 2 ops modify
+the same attribute on the server ? If op1 and op2 replies come out of
+order from server or are applied on server out of order how does the
+logic for freshness ensure that the client has the correct attributes.
+Sorry, I am not a kernel expert and I could not quote examples for op1
+and op2, I am trying to understand the behaviour from the file system
+perspective logically.
 
-But given that we don't enable pnfs by defaul this should still be ok,
-so:
-
-Reviewed-by: Christoph Hellwig <hch@lst.de>
+Thanks,
+Satya.
