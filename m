@@ -1,72 +1,49 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from us-smtp-delivery-194.mimecast.com ([216.205.24.194]:56544 "EHLO
-	us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1750754AbcEZFiC convert rfc822-to-8bit
-	(ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 26 May 2016 01:38:02 -0400
-From: Thomas Haynes <loghyr@primarydata.com>
-To: hch <hch@lst.de>
-CC: "J. Bruce Fields" <bfields@fieldses.org>,
-        Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 3/4] nfsd: Add a super simple flex file server
-Date: Thu, 26 May 2016 05:37:54 +0000
-Message-ID: <09EECD5D-FB03-4424-8841-0EB67D7C5090@primarydata.com>
-References: <1464152979-103988-1-git-send-email-loghyr@primarydata.com>
- <1464152979-103988-4-git-send-email-loghyr@primarydata.com>
- <20160525151504.GD27535@lst.de>
-In-Reply-To: <20160525151504.GD27535@lst.de>
+Received: from verein.lst.de ([213.95.11.211]:50299 "EHLO newverein.lst.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750803AbcEZHfS (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 26 May 2016 03:35:18 -0400
+Date: Thu, 26 May 2016 09:35:15 +0200
+From: Christoph Hellwig <hch@lst.de>
+To: Tom Haynes <thomas.haynes@primarydata.com>
+Cc: "J. Bruce Fields" <bfields@fieldses.org>,
+        Linux NFS Mailing list <linux-nfs@vger.kernel.org>,
+        Christoph Hellwig <hch@lst.de>
+Subject: Re: [V2 2/2] nfsd: Add a super simple flex file server
+Message-ID: <20160526073515.GA22814@lst.de>
+References: <1464209035-84591-1-git-send-email-loghyr@primarydata.com> <1464209035-84591-3-git-send-email-loghyr@primarydata.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=WINDOWS-1252
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1464209035-84591-3-git-send-email-loghyr@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+>  void nfsd4_setup_layout_type(struct svc_export *exp)
+>  {
+> +#if defined(CONFIG_NFSD_BLOCKLAYOUT) || defined(CONFIG_NFSD_SCSILAYOUT)
+>  	struct super_block *sb = exp->ex_path.mnt->mnt_sb;
+> +#endif
+>  
+>  	if (!(exp->ex_flags & NFSEXP_PNFS))
+>  		return;
+>  
+>  	/*
+> -	 * Check if the file system supports exporting a block-like layout.
+> +	 * If flex file is configured, use it by default. Otherwise
+> +	 * check if the file system supports exporting a block-like layout.
+>  	 * If the block device supports reservations prefer the SCSI layout,
+>  	 * otherwise advertise the block layout.
+>  	 */
+> +#ifdef CONFIG_NFSD_FLEXFILELAYOUT
+> +	exp->ex_layout_type = LAYOUT_FLEX_FILES;
+> +#endif
+>  #ifdef CONFIG_NFSD_BLOCKLAYOUT
+> +	/* overwrite flex file layout selection if needed */
 
-> On May 25, 2016, at 8:15 AM, Christoph Hellwig <hch@lst.de> wrote:
-> 
-> 
->> +	 * effectively be WRITE only.
->> +	 */
->> +	fl->flags = FF_FLAGS_NO_LAYOUTCOMMIT | FF_FLAGS_NO_IO_THRU_MDS |
->> +		    FF_FLAGS_NO_READ_IO;
->> +
->> +	fl->uid = inode->i_uid;
->> +	fl->gid = inode->i_gid;
-> 
-> Maybe I need to actually read the latest draft, but what's the story
-> about these on the wire uids/gids?
-> 
+So my evil attempt to let you take on the multi-layout support didn't
+pan out :)
 
-Since NFSv3 does not grok stateids, this allows us to control access to
-the file.
+But given that we don't enable pnfs by defaul this should still be ok,
+so:
 
-The mode is adjusted such that the owner has read/write and
-the group has read access:
-
-loghyr:~ loghyr$ ls -la foo
--rw-r-----  1 loghyr  staff  0 May 25 22:27 foo
-
-When the mds decides to fence off access for the IOMODE_RW
-segment, it changes the uid (monotonically increasing reduces the
-chance of resetting to some older value). When it wants to fence
-off the IOMODE_READ segment, it changes the gid.
-
-So the code above, should really be something like:
-
-if (seg->iomode == IOMODE_READ)
-        fl->uid = inode->i_uid + 11;
-else
-        fl->uid = inode->i_uid;
-
-        fl->gid = inode->i_gid;
-
-This prevents some client from using the IOMODE_READ segment
-to do writes. (I think Jeff just fixed that recently in the client.)
-
-As this patchset neither has fencing nor a remote DS, the synthetic
-uid/gid works because the file modes have already determined if
-access is to be granted. There are “issues” in that the mode bits
-may not be 0640.
-
-
-
-
+Reviewed-by: Christoph Hellwig <hch@lst.de>
