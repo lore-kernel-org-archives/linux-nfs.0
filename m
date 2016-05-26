@@ -1,58 +1,72 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-yw0-f169.google.com ([209.85.161.169]:34306 "EHLO
-	mail-yw0-f169.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750732AbcEYV5d (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 25 May 2016 17:57:33 -0400
-Received: by mail-yw0-f169.google.com with SMTP id c127so60357087ywb.1
-        for <linux-nfs@vger.kernel.org>; Wed, 25 May 2016 14:57:32 -0700 (PDT)
-Message-ID: <1464213449.7439.12.camel@poochiereds.net>
+Received: from us-smtp-delivery-194.mimecast.com ([216.205.24.194]:56544 "EHLO
+	us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1750754AbcEZFiC convert rfc822-to-8bit
+	(ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 26 May 2016 01:38:02 -0400
+From: Thomas Haynes <loghyr@primarydata.com>
+To: hch <hch@lst.de>
+CC: "J. Bruce Fields" <bfields@fieldses.org>,
+        Linux NFS Mailing list <linux-nfs@vger.kernel.org>
 Subject: Re: [PATCH 3/4] nfsd: Add a super simple flex file server
-From: Jeff Layton <jlayton@poochiereds.net>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: Tom Haynes <thomas.haynes@primarydata.com>,
-        Linux NFS Mailing list <linux-nfs@vger.kernel.org>,
-        Christoph Hellwig <hch@lst.de>
-Date: Wed, 25 May 2016 17:57:29 -0400
-In-Reply-To: <20160525174216.GA12306@fieldses.org>
+Date: Thu, 26 May 2016 05:37:54 +0000
+Message-ID: <09EECD5D-FB03-4424-8841-0EB67D7C5090@primarydata.com>
 References: <1464152979-103988-1-git-send-email-loghyr@primarydata.com>
-	 <1464152979-103988-4-git-send-email-loghyr@primarydata.com>
-	 <1464179444.3037.15.camel@poochiereds.net>
-	 <20160525174216.GA12306@fieldses.org>
-Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
+ <1464152979-103988-4-git-send-email-loghyr@primarydata.com>
+ <20160525151504.GD27535@lst.de>
+In-Reply-To: <20160525151504.GD27535@lst.de>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=WINDOWS-1252
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, 2016-05-25 at 13:42 -0400, J. Bruce Fields wrote:
-> On Wed, May 25, 2016 at 08:30:44AM -0400, Jeff Layton wrote:
-> > 
-> > Maybe it's time to start thinking about how to support multiple layout
-> > types per export?
-> It looks like nobody would want this flex file code in production.Â Â The
-> only users will be testers and developers.
-> 
-> And the scsi layout is really just a replacement for the block layout,
-> nobody should be supporting both of those at once either.
-> 
 
-Well...unless you have a mix of clients that just support block and
-some that support scsi. Is that plausible?
-
-> Would it be too much of a burden just to make flexfiles and developers
-> build their own kernels?
->
-> > It doesn't look like it would be that hard. I think
-> > we could convert ex_layout_type into a bitmap that shows which types
-> > are supported.
-> ex_layout_type is only used internally, the only external interface is
-> an export flag, so we'd need some new interface.
+> On May 25, 2016, at 8:15 AM, Christoph Hellwig <hch@lst.de> wrote:
+> 
+> 
+>> +	 * effectively be WRITE only.
+>> +	 */
+>> +	fl->flags = FF_FLAGS_NO_LAYOUTCOMMIT | FF_FLAGS_NO_IO_THRU_MDS |
+>> +		    FF_FLAGS_NO_READ_IO;
+>> +
+>> +	fl->uid = inode->i_uid;
+>> +	fl->gid = inode->i_gid;
+> 
+> Maybe I need to actually read the latest draft, but what's the story
+> about these on the wire uids/gids?
 > 
 
-I was thinking that with the "pnfs" export option you'd just enable any
-layouts that the fs supports. So here, you could theoretically allow
-nfsd to offer up block, scsi and flexfiles layouts given the right fs,
-and leave the decision of the layout type to actually use up to the
-client.
+Since NFSv3 does not grok stateids, this allows us to control access to
+the file.
 
--- 
-Jeff Layton <jlayton@poochiereds.net>
+The mode is adjusted such that the owner has read/write and
+the group has read access:
+
+loghyr:~ loghyr$ ls -la foo
+-rw-r-----  1 loghyr  staff  0 May 25 22:27 foo
+
+When the mds decides to fence off access for the IOMODE_RW
+segment, it changes the uid (monotonically increasing reduces the
+chance of resetting to some older value). When it wants to fence
+off the IOMODE_READ segment, it changes the gid.
+
+So the code above, should really be something like:
+
+if (seg->iomode == IOMODE_READ)
+        fl->uid = inode->i_uid + 11;
+else
+        fl->uid = inode->i_uid;
+
+        fl->gid = inode->i_gid;
+
+This prevents some client from using the IOMODE_READ segment
+to do writes. (I think Jeff just fixed that recently in the client.)
+
+As this patchset neither has fencing nor a remote DS, the synthetic
+uid/gid works because the file modes have already determined if
+access is to be granted. There are “issues” in that the mode bits
+may not be 0640.
+
+
+
+
