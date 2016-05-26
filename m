@@ -1,220 +1,176 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from userp1040.oracle.com ([156.151.31.81]:22191 "EHLO
-	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753813AbcEZOZP convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 May 2016 10:25:15 -0400
-Content-Type: text/plain; charset=utf-8
-Mime-Version: 1.0 (Mac OS X Mail 9.3 \(3124\))
-Subject: Re: Configuring fs_locations on Linux upstream server pseudo fs for session trunking
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <CAHVgHyVEx1fUP36tHaB-uBMJmC3gqCeQ5PSgaHm9XrAWQqerqw@mail.gmail.com>
-Date: Thu, 26 May 2016 10:25:06 -0400
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
+Received: from mx141.netapp.com ([216.240.21.12]:62321 "EHLO mx141.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753892AbcEZOo1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 26 May 2016 10:44:27 -0400
+From: "Adamson, Andy" <William.Adamson@netapp.com>
+To: Chuck Lever <chuck.lever@oracle.com>
+CC: "William A. (Andy) Adamson" <androsadamson@gmail.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>,
         "Adamson, Andy" <William.Adamson@netapp.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <CE2CDF39-AACC-4D7F-AD24-BD43C87F3257@oracle.com>
-References: <04273F60-806B-4E12-B097-388C346F2DED@oracle.com> <40E6E131-029E-4337-A235-B1DB5CA687AA@netapp.com> <20160525184837.GA15210@fieldses.org> <9614D777-9C75-4FBB-BD06-4EC366273B49@oracle.com> <CAHVgHyVEx1fUP36tHaB-uBMJmC3gqCeQ5PSgaHm9XrAWQqerqw@mail.gmail.com>
-To: "William A. (Andy) Adamson" <androsadamson@gmail.com>
+        "Linux NFS Mailing List" <linux-nfs@vger.kernel.org>
+Subject: Re: Configuring fs_locations on Linux upstream server pseudo fs for
+ session trunking
+Date: Thu, 26 May 2016 14:44:25 +0000
+Message-ID: <630441D0-7CB5-43BC-A40A-79C5B27A786D@netapp.com>
+References: <04273F60-806B-4E12-B097-388C346F2DED@oracle.com>
+ <40E6E131-029E-4337-A235-B1DB5CA687AA@netapp.com>
+ <20160525184837.GA15210@fieldses.org>
+ <9614D777-9C75-4FBB-BD06-4EC366273B49@oracle.com>
+ <CAHVgHyVEx1fUP36tHaB-uBMJmC3gqCeQ5PSgaHm9XrAWQqerqw@mail.gmail.com>
+ <CE2CDF39-AACC-4D7F-AD24-BD43C87F3257@oracle.com>
+In-Reply-To: <CE2CDF39-AACC-4D7F-AD24-BD43C87F3257@oracle.com>
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-> On May 26, 2016, at 9:54 AM, Andy Adamson <androsadamson@gmail.com> wrote:
-> 
-> On Wed, May 25, 2016 at 2:55 PM, Chuck Lever <chuck.lever@oracle.com> wrote:
->> 
->>> On May 25, 2016, at 2:48 PM, bfields@fieldses.org wrote:
->>> 
->>> On Wed, May 25, 2016 at 05:29:35PM +0000, Adamson, Andy wrote:
->>>> Anna Schumaker who reviewed my client side session trunking patchset, wants a full featured version of both the client and the server session trunking pieces before accepting the session trunking feature upstream. To that end, I want to implement the server mountd V4ROOT processing of an fs_locations configuration to satisfy an fs_locations request on the pseudo fs.
->>>> 
->>>> The forwarded message is from an email stream between Bruce, Chuck and I concerning the server pseufo fs fs_locations configuration that I’m now sharing with the list.
->>>> 
->>>> Some background:
->>>> 
->>>> The recent "NFSV4.1,2 session trunking” Version-5 patch set sent to the list notes (in patch 00/10):
->>>> 
->>>> The pseudo-fs GETATTR(fs_locations) probe session trunking
->>>> was tested against a Linux server with a pseudo-fs
->>>> export stanza (e.g. a stanza with the fsid=0 or fsid=root
->>>> export option) and a replicas= export option
->>>> (replicas=<path1>@<server1>:<path2>@<server2>..)
->>>> Note that this configuration is for testing only. A future
->>>> patchset will add the replicas= configuration to the
->>>> NFSEXP_V4ROOT nfsd and mountd processing.
->>>> 
->>>> 
->>>> There are several ideas on how to accomplish mountd/V4ROOT fs_locations configuration in the forwarded message. See inline.
->>>> 
->>>> 
->>>>> Begin forwarded message:
->>>>> 
->>>>> From: Chuck Lever <chuck.lever@oracle.com>
->>>>> Subject: Re: Configuring fs_locations on Linux upstream server
->>>>> Date: May 6, 2016 at 4:31:00 PM EDT
->>>>> To: "J. Bruce Fields" <bfields@fieldses.org>
->>>>> Cc: "Adamson, Andy" <William.Adamson@netapp.com>
->>>>> 
->>>>> 
->>>>>> On May 6, 2016, at 4:16 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
->>>>>> 
->>>>>> On Fri, May 06, 2016 at 02:20:12PM -0400, Chuck Lever wrote:
->>>>>>> Seems like when a server does not return a list, that is
->>>>>>> information the client can use: basically, there is no
->>>>>>> ability to do any session trunking. It has to be set up
->>>>>>> explicitly; is that a bad thing, operationally?
->>>>>> 
->>>>>> I like the idea of it being opt in on the server.
->>>>>> 
->>>>>> Suppose the server transparently starts advertising all available
->>>>>> addresses for session trunking.  It's not hard to imagine cases where
->>>>>> that would go wrong.  E.g., maybe the server has the odd wireless or
->>>>>> 100Mb or other interface that happens to work but that's slow.  Then
->>>>>> somebody upgrades their server and performance goes down and it may take
->>>>>> them a while to figure out why.  Whereas if they'd had to opt in they'd
->>>>>> probably have avoided advertising an inappropriate interface.  Or at
->>>>>> least they'd have a better chance of figuring out that turning on
->>>>>> trunking was what caused the problem.
->>>>>> 
->>>>>> I'd rather not force people to export "/" explicitly, though.  It's fine
->>>>>> for testing, but:
->>>>>> 
->>>>>>   - I don't think we give a way to do an explicit V4ROOT export,
->>>>>>     so they'd be exposing their entire root partition.  We could
->>>>>>     fix that, but
->>>>>>   - the pseudofs just seems to me like something people shouldn't
->>>>>>     normally have to think about.  It's a protocol implementation
->>>>>>     detail, I'd rather hide it.  It'd be to easy to configure it a
->>>>>>     little wrong, I think.
->>>>>> 
->>>>>> We can still do this by adding a replicas= option to the / export, but
->>>>>> we can let rpc.mountd do that internally instead of making the admin add
->>>>>> it to /etc/exports.
->>>>>> 
->>>>>> But then you still need a way for the admin to tell rpc.mountd to cook
->>>>>> up the replicas= option.....  I'm not sure what that should look like.
->>>> 
->>>> Idea 1: extra syntax in /etc/exports
->>> 
->>> It's not really export-specific information.  I wonder if it'd be better
->>> to pass it on the rpc.nfsd commandline?
->>> 
->>>      rpc.nfsd --multipath-set="192.168.0.1,192.168.0.2"
->>> 
->>> (and then that can be configured in /etc/sysconfig/nfs or whatever)?
-> 
-> Is this (the rpc.nfsd command line and /etc/sysconfig/nfs entry) the
-> preferred way?
-
-I don't prefer it.
-
-See below: I think we want something that is more
-convenient to update automatically.
-
-
-> Is /etc/sysconfig/nfs read upon reboot?
-
-It's read by all the start-up scripts related to NFS.
-
-
-> -->Andy
-> 
-> 
-> 
->>> 
->>>>>> Maybe some extra syntax in /etc/exports, but what do they need to give
->>>>>> us--just one list of IP addresses?  Chuck, any ideas?
->>>> 
->>>> Idea 2: xattr attached to “/"
->>>> 
->>>>> 
->>>>> How about using the same approach used for junctions:
->>>>> put the list in an xattr attached to / ? mountd can
->>>>> extract that when the kernel asks for help satisfying
->>>>> a GETATTR(fs_locations) on V4ROOT.
->>> 
->>> I don't think that works.  "/" isn't a good place to put configuration.
->>> It could be read-only, among other things.
->>> 
->>>> Idea 3: new /etc/ config file
->>>>> 
->>>>> Or it could be put in a separate config file in /etc.
->>>>> You might want to specify more than just the i/f list
->>>>> here; for instance, the security policy for the
->>>>> pseudofs, or a constant fsid UUID, among other things.
->>>> 
->>>> 
->>>> API to update the i/f list.  This is not about where to hold fs_locations config info, but rather how to insert the (changed) info into the running system.
->>>> 
->>>>> 
->>>>> Also, I suggested to Andy earlier:
->>>>> 
->>>>>> I find myself leaning towards mechanisms that are easy
->>>>>> both for admins and for programs (ie, an API). Perhaps
->>>>>> one day you might want to add a command that updates the
->>>>>> i/f list from the scripts in /etc/sysconfig/network-scripts,
->>>>>> for instance.
->>>>>> 
->>>>>> As part of an ifup:
->>>>>> 
->>>>>> nfspfs add <addr>
->>>>>> 
->>>>>> and ifdown:
->>>>>> 
->>>>>> nfspfs remove <addr>
->>>>>> 
->>>>>> I wrote some Python code to manipulate entries in
->>>>>> /etc/exports, now found in fedfs-utils. It's icky.
->>>>> 
->>>>> I think we should move away from "edit this file
->>>>> and save it, then restart rpc.xyzpdq". Build some
->>>>> command line interfaces for this.
->>> 
->>> I'm OK with that.
->>> 
->>> (Note do have that for information in /etc/exports--we have exportfs.
->>> Is there a reason that didn't work for fedfs-utils?)
->> 
->> To make changes that can survive a server reboot,
->> you have to update /etc/exports.
->> 
->> 
->>> --b.
->>> 
->>>>> 
->>>>> And as you have suggested many times: separate
->>>>> policy from mechanism. /etc/exports is the
->>>>> mechanism.
->>>>> 
->>>>> --
->>>>> Chuck Lever
->>>> 
->>>> Bruce - do you have a preference between #1 and #2 or #3 (or another idea?)
->>>> 
->>>> Thanks
->>>> 
->>>> —>Andy
->>> --
->>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->>> the body of a message to majordomo@vger.kernel.org
->>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->> 
->> --
->> Chuck Lever
->> 
->> 
->> 
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
---
-Chuck Lever
-
-
-
+DQo+IE9uIE1heSAyNiwgMjAxNiwgYXQgMTA6MjUgQU0sIENodWNrIExldmVyIDxjaHVjay5sZXZl
+ckBvcmFjbGUuY29tPiB3cm90ZToNCj4gDQo+IA0KPj4gT24gTWF5IDI2LCAyMDE2LCBhdCA5OjU0
+IEFNLCBBbmR5IEFkYW1zb24gPGFuZHJvc2FkYW1zb25AZ21haWwuY29tPiB3cm90ZToNCj4+IA0K
+Pj4gT24gV2VkLCBNYXkgMjUsIDIwMTYgYXQgMjo1NSBQTSwgQ2h1Y2sgTGV2ZXIgPGNodWNrLmxl
+dmVyQG9yYWNsZS5jb20+IHdyb3RlOg0KPj4+IA0KPj4+PiBPbiBNYXkgMjUsIDIwMTYsIGF0IDI6
+NDggUE0sIGJmaWVsZHNAZmllbGRzZXMub3JnIHdyb3RlOg0KPj4+PiANCj4+Pj4gT24gV2VkLCBN
+YXkgMjUsIDIwMTYgYXQgMDU6Mjk6MzVQTSArMDAwMCwgQWRhbXNvbiwgQW5keSB3cm90ZToNCj4+
+Pj4+IEFubmEgU2NodW1ha2VyIHdobyByZXZpZXdlZCBteSBjbGllbnQgc2lkZSBzZXNzaW9uIHRy
+dW5raW5nIHBhdGNoc2V0LCB3YW50cyBhIGZ1bGwgZmVhdHVyZWQgdmVyc2lvbiBvZiBib3RoIHRo
+ZSBjbGllbnQgYW5kIHRoZSBzZXJ2ZXIgc2Vzc2lvbiB0cnVua2luZyBwaWVjZXMgYmVmb3JlIGFj
+Y2VwdGluZyB0aGUgc2Vzc2lvbiB0cnVua2luZyBmZWF0dXJlIHVwc3RyZWFtLiBUbyB0aGF0IGVu
+ZCwgSSB3YW50IHRvIGltcGxlbWVudCB0aGUgc2VydmVyIG1vdW50ZCBWNFJPT1QgcHJvY2Vzc2lu
+ZyBvZiBhbiBmc19sb2NhdGlvbnMgY29uZmlndXJhdGlvbiB0byBzYXRpc2Z5IGFuIGZzX2xvY2F0
+aW9ucyByZXF1ZXN0IG9uIHRoZSBwc2V1ZG8gZnMuDQo+Pj4+PiANCj4+Pj4+IFRoZSBmb3J3YXJk
+ZWQgbWVzc2FnZSBpcyBmcm9tIGFuIGVtYWlsIHN0cmVhbSBiZXR3ZWVuIEJydWNlLCBDaHVjayBh
+bmQgSSBjb25jZXJuaW5nIHRoZSBzZXJ2ZXIgcHNldWZvIGZzIGZzX2xvY2F0aW9ucyBjb25maWd1
+cmF0aW9uIHRoYXQgSeKAmW0gbm93IHNoYXJpbmcgd2l0aCB0aGUgbGlzdC4NCj4+Pj4+IA0KPj4+
+Pj4gU29tZSBiYWNrZ3JvdW5kOg0KPj4+Pj4gDQo+Pj4+PiBUaGUgcmVjZW50ICJORlNWNC4xLDIg
+c2Vzc2lvbiB0cnVua2luZ+KAnSBWZXJzaW9uLTUgcGF0Y2ggc2V0IHNlbnQgdG8gdGhlIGxpc3Qg
+bm90ZXMgKGluIHBhdGNoIDAwLzEwKToNCj4+Pj4+IA0KPj4+Pj4gVGhlIHBzZXVkby1mcyBHRVRB
+VFRSKGZzX2xvY2F0aW9ucykgcHJvYmUgc2Vzc2lvbiB0cnVua2luZw0KPj4+Pj4gd2FzIHRlc3Rl
+ZCBhZ2FpbnN0IGEgTGludXggc2VydmVyIHdpdGggYSBwc2V1ZG8tZnMNCj4+Pj4+IGV4cG9ydCBz
+dGFuemEgKGUuZy4gYSBzdGFuemEgd2l0aCB0aGUgZnNpZD0wIG9yIGZzaWQ9cm9vdA0KPj4+Pj4g
+ZXhwb3J0IG9wdGlvbikgYW5kIGEgcmVwbGljYXM9IGV4cG9ydCBvcHRpb24NCj4+Pj4+IChyZXBs
+aWNhcz08cGF0aDE+QDxzZXJ2ZXIxPjo8cGF0aDI+QDxzZXJ2ZXIyPi4uKQ0KPj4+Pj4gTm90ZSB0
+aGF0IHRoaXMgY29uZmlndXJhdGlvbiBpcyBmb3IgdGVzdGluZyBvbmx5LiBBIGZ1dHVyZQ0KPj4+
+Pj4gcGF0Y2hzZXQgd2lsbCBhZGQgdGhlIHJlcGxpY2FzPSBjb25maWd1cmF0aW9uIHRvIHRoZQ0K
+Pj4+Pj4gTkZTRVhQX1Y0Uk9PVCBuZnNkIGFuZCBtb3VudGQgcHJvY2Vzc2luZy4NCj4+Pj4+IA0K
+Pj4+Pj4gDQo+Pj4+PiBUaGVyZSBhcmUgc2V2ZXJhbCBpZGVhcyBvbiBob3cgdG8gYWNjb21wbGlz
+aCBtb3VudGQvVjRST09UIGZzX2xvY2F0aW9ucyBjb25maWd1cmF0aW9uIGluIHRoZSBmb3J3YXJk
+ZWQgbWVzc2FnZS4gU2VlIGlubGluZS4NCj4+Pj4+IA0KPj4+Pj4gDQo+Pj4+Pj4gQmVnaW4gZm9y
+d2FyZGVkIG1lc3NhZ2U6DQo+Pj4+Pj4gDQo+Pj4+Pj4gRnJvbTogQ2h1Y2sgTGV2ZXIgPGNodWNr
+LmxldmVyQG9yYWNsZS5jb20+DQo+Pj4+Pj4gU3ViamVjdDogUmU6IENvbmZpZ3VyaW5nIGZzX2xv
+Y2F0aW9ucyBvbiBMaW51eCB1cHN0cmVhbSBzZXJ2ZXINCj4+Pj4+PiBEYXRlOiBNYXkgNiwgMjAx
+NiBhdCA0OjMxOjAwIFBNIEVEVA0KPj4+Pj4+IFRvOiAiSi4gQnJ1Y2UgRmllbGRzIiA8YmZpZWxk
+c0BmaWVsZHNlcy5vcmc+DQo+Pj4+Pj4gQ2M6ICJBZGFtc29uLCBBbmR5IiA8V2lsbGlhbS5BZGFt
+c29uQG5ldGFwcC5jb20+DQo+Pj4+Pj4gDQo+Pj4+Pj4gDQo+Pj4+Pj4+IE9uIE1heSA2LCAyMDE2
+LCBhdCA0OjE2IFBNLCBKLiBCcnVjZSBGaWVsZHMgPGJmaWVsZHNAZmllbGRzZXMub3JnPiB3cm90
+ZToNCj4+Pj4+Pj4gDQo+Pj4+Pj4+IE9uIEZyaSwgTWF5IDA2LCAyMDE2IGF0IDAyOjIwOjEyUE0g
+LTA0MDAsIENodWNrIExldmVyIHdyb3RlOg0KPj4+Pj4+Pj4gU2VlbXMgbGlrZSB3aGVuIGEgc2Vy
+dmVyIGRvZXMgbm90IHJldHVybiBhIGxpc3QsIHRoYXQgaXMNCj4+Pj4+Pj4+IGluZm9ybWF0aW9u
+IHRoZSBjbGllbnQgY2FuIHVzZTogYmFzaWNhbGx5LCB0aGVyZSBpcyBubw0KPj4+Pj4+Pj4gYWJp
+bGl0eSB0byBkbyBhbnkgc2Vzc2lvbiB0cnVua2luZy4gSXQgaGFzIHRvIGJlIHNldCB1cA0KPj4+
+Pj4+Pj4gZXhwbGljaXRseTsgaXMgdGhhdCBhIGJhZCB0aGluZywgb3BlcmF0aW9uYWxseT8NCj4+
+Pj4+Pj4gDQo+Pj4+Pj4+IEkgbGlrZSB0aGUgaWRlYSBvZiBpdCBiZWluZyBvcHQgaW4gb24gdGhl
+IHNlcnZlci4NCj4+Pj4+Pj4gDQo+Pj4+Pj4+IFN1cHBvc2UgdGhlIHNlcnZlciB0cmFuc3BhcmVu
+dGx5IHN0YXJ0cyBhZHZlcnRpc2luZyBhbGwgYXZhaWxhYmxlDQo+Pj4+Pj4+IGFkZHJlc3NlcyBm
+b3Igc2Vzc2lvbiB0cnVua2luZy4gIEl0J3Mgbm90IGhhcmQgdG8gaW1hZ2luZSBjYXNlcyB3aGVy
+ZQ0KPj4+Pj4+PiB0aGF0IHdvdWxkIGdvIHdyb25nLiAgRS5nLiwgbWF5YmUgdGhlIHNlcnZlciBo
+YXMgdGhlIG9kZCB3aXJlbGVzcyBvcg0KPj4+Pj4+PiAxMDBNYiBvciBvdGhlciBpbnRlcmZhY2Ug
+dGhhdCBoYXBwZW5zIHRvIHdvcmsgYnV0IHRoYXQncyBzbG93LiAgVGhlbg0KPj4+Pj4+PiBzb21l
+Ym9keSB1cGdyYWRlcyB0aGVpciBzZXJ2ZXIgYW5kIHBlcmZvcm1hbmNlIGdvZXMgZG93biBhbmQg
+aXQgbWF5IHRha2UNCj4+Pj4+Pj4gdGhlbSBhIHdoaWxlIHRvIGZpZ3VyZSBvdXQgd2h5LiAgV2hl
+cmVhcyBpZiB0aGV5J2QgaGFkIHRvIG9wdCBpbiB0aGV5J2QNCj4+Pj4+Pj4gcHJvYmFibHkgaGF2
+ZSBhdm9pZGVkIGFkdmVydGlzaW5nIGFuIGluYXBwcm9wcmlhdGUgaW50ZXJmYWNlLiAgT3IgYXQN
+Cj4+Pj4+Pj4gbGVhc3QgdGhleSdkIGhhdmUgYSBiZXR0ZXIgY2hhbmNlIG9mIGZpZ3VyaW5nIG91
+dCB0aGF0IHR1cm5pbmcgb24NCj4+Pj4+Pj4gdHJ1bmtpbmcgd2FzIHdoYXQgY2F1c2VkIHRoZSBw
+cm9ibGVtLg0KPj4+Pj4+PiANCj4+Pj4+Pj4gSSdkIHJhdGhlciBub3QgZm9yY2UgcGVvcGxlIHRv
+IGV4cG9ydCAiLyIgZXhwbGljaXRseSwgdGhvdWdoLiAgSXQncyBmaW5lDQo+Pj4+Pj4+IGZvciB0
+ZXN0aW5nLCBidXQ6DQo+Pj4+Pj4+IA0KPj4+Pj4+PiAgLSBJIGRvbid0IHRoaW5rIHdlIGdpdmUg
+YSB3YXkgdG8gZG8gYW4gZXhwbGljaXQgVjRST09UIGV4cG9ydCwNCj4+Pj4+Pj4gICAgc28gdGhl
+eSdkIGJlIGV4cG9zaW5nIHRoZWlyIGVudGlyZSByb290IHBhcnRpdGlvbi4gIFdlIGNvdWxkDQo+
+Pj4+Pj4+ICAgIGZpeCB0aGF0LCBidXQNCj4+Pj4+Pj4gIC0gdGhlIHBzZXVkb2ZzIGp1c3Qgc2Vl
+bXMgdG8gbWUgbGlrZSBzb21ldGhpbmcgcGVvcGxlIHNob3VsZG4ndA0KPj4+Pj4+PiAgICBub3Jt
+YWxseSBoYXZlIHRvIHRoaW5rIGFib3V0LiAgSXQncyBhIHByb3RvY29sIGltcGxlbWVudGF0aW9u
+DQo+Pj4+Pj4+ICAgIGRldGFpbCwgSSdkIHJhdGhlciBoaWRlIGl0LiAgSXQnZCBiZSB0byBlYXN5
+IHRvIGNvbmZpZ3VyZSBpdCBhDQo+Pj4+Pj4+ICAgIGxpdHRsZSB3cm9uZywgSSB0aGluay4NCj4+
+Pj4+Pj4gDQo+Pj4+Pj4+IFdlIGNhbiBzdGlsbCBkbyB0aGlzIGJ5IGFkZGluZyBhIHJlcGxpY2Fz
+PSBvcHRpb24gdG8gdGhlIC8gZXhwb3J0LCBidXQNCj4+Pj4+Pj4gd2UgY2FuIGxldCBycGMubW91
+bnRkIGRvIHRoYXQgaW50ZXJuYWxseSBpbnN0ZWFkIG9mIG1ha2luZyB0aGUgYWRtaW4gYWRkDQo+
+Pj4+Pj4+IGl0IHRvIC9ldGMvZXhwb3J0cy4NCj4+Pj4+Pj4gDQo+Pj4+Pj4+IEJ1dCB0aGVuIHlv
+dSBzdGlsbCBuZWVkIGEgd2F5IGZvciB0aGUgYWRtaW4gdG8gdGVsbCBycGMubW91bnRkIHRvIGNv
+b2sNCj4+Pj4+Pj4gdXAgdGhlIHJlcGxpY2FzPSBvcHRpb24uLi4uLiAgSSdtIG5vdCBzdXJlIHdo
+YXQgdGhhdCBzaG91bGQgbG9vayBsaWtlLg0KPj4+Pj4gDQo+Pj4+PiBJZGVhIDE6IGV4dHJhIHN5
+bnRheCBpbiAvZXRjL2V4cG9ydHMNCj4+Pj4gDQo+Pj4+IEl0J3Mgbm90IHJlYWxseSBleHBvcnQt
+c3BlY2lmaWMgaW5mb3JtYXRpb24uICBJIHdvbmRlciBpZiBpdCdkIGJlIGJldHRlcg0KPj4+PiB0
+byBwYXNzIGl0IG9uIHRoZSBycGMubmZzZCBjb21tYW5kbGluZT8NCj4+Pj4gDQo+Pj4+ICAgICBy
+cGMubmZzZCAtLW11bHRpcGF0aC1zZXQ9IjE5Mi4xNjguMC4xLDE5Mi4xNjguMC4yIg0KPj4+PiAN
+Cj4+Pj4gKGFuZCB0aGVuIHRoYXQgY2FuIGJlIGNvbmZpZ3VyZWQgaW4gL2V0Yy9zeXNjb25maWcv
+bmZzIG9yIHdoYXRldmVyKT8NCj4+IA0KPj4gSXMgdGhpcyAodGhlIHJwYy5uZnNkIGNvbW1hbmQg
+bGluZSBhbmQgL2V0Yy9zeXNjb25maWcvbmZzIGVudHJ5KSB0aGUNCj4+IHByZWZlcnJlZCB3YXk/
+DQo+IA0KPiBJIGRvbid0IHByZWZlciBpdC4NCj4gDQo+IFNlZSBiZWxvdzogSSB0aGluayB3ZSB3
+YW50IHNvbWV0aGluZyB0aGF0IGlzIG1vcmUNCj4gY29udmVuaWVudCB0byB1cGRhdGUgYXV0b21h
+dGljYWxseS4NCg0KRmluZSwgYnV0IEnigJltIGhhdmluZyBkaWZmaWN1bHR5IGluIHVuZGVyc3Rh
+bmRpbmcgdGhlIGRlc2lnbiB5b3UgYXJlIHN1Z2dlc3RpbmcgdG8gZnVsZmlsbCB0aGUgdXBkYXRl
+IGF1dG9tYXRpY2FsbHkgcmVxdWlyZW1lbnQuDQpTZWUgaW5saW5lIGJlbG93Lg0KDQo+IA0KPiAN
+Cj4+IElzIC9ldGMvc3lzY29uZmlnL25mcyByZWFkIHVwb24gcmVib290Pw0KPiANCj4gSXQncyBy
+ZWFkIGJ5IGFsbCB0aGUgc3RhcnQtdXAgc2NyaXB0cyByZWxhdGVkIHRvIE5GUy4NCj4gDQo+IA0K
+Pj4gLS0+QW5keQ0KPj4gDQo+PiANCj4+IA0KPj4+PiANCj4+Pj4+Pj4gTWF5YmUgc29tZSBleHRy
+YSBzeW50YXggaW4gL2V0Yy9leHBvcnRzLCBidXQgd2hhdCBkbyB0aGV5IG5lZWQgdG8gZ2l2ZQ0K
+Pj4+Pj4+PiB1cy0tanVzdCBvbmUgbGlzdCBvZiBJUCBhZGRyZXNzZXM/ICBDaHVjaywgYW55IGlk
+ZWFzPw0KPj4+Pj4gDQo+Pj4+PiBJZGVhIDI6IHhhdHRyIGF0dGFjaGVkIHRvIOKAnC8iDQo+Pj4+
+PiANCj4+Pj4+PiANCj4+Pj4+PiBIb3cgYWJvdXQgdXNpbmcgdGhlIHNhbWUgYXBwcm9hY2ggdXNl
+ZCBmb3IganVuY3Rpb25zOg0KPj4+Pj4+IHB1dCB0aGUgbGlzdCBpbiBhbiB4YXR0ciBhdHRhY2hl
+ZCB0byAvID8gbW91bnRkIGNhbg0KPj4+Pj4+IGV4dHJhY3QgdGhhdCB3aGVuIHRoZSBrZXJuZWwg
+YXNrcyBmb3IgaGVscCBzYXRpc2Z5aW5nDQo+Pj4+Pj4gYSBHRVRBVFRSKGZzX2xvY2F0aW9ucykg
+b24gVjRST09ULg0KPj4+PiANCj4+Pj4gSSBkb24ndCB0aGluayB0aGF0IHdvcmtzLiAgIi8iIGlz
+bid0IGEgZ29vZCBwbGFjZSB0byBwdXQgY29uZmlndXJhdGlvbi4NCj4+Pj4gSXQgY291bGQgYmUg
+cmVhZC1vbmx5LCBhbW9uZyBvdGhlciB0aGluZ3MuDQo+Pj4+IA0KPj4+Pj4gSWRlYSAzOiBuZXcg
+L2V0Yy8gY29uZmlnIGZpbGUNCj4+Pj4+PiANCj4+Pj4+PiBPciBpdCBjb3VsZCBiZSBwdXQgaW4g
+YSBzZXBhcmF0ZSBjb25maWcgZmlsZSBpbiAvZXRjLg0KPj4+Pj4+IFlvdSBtaWdodCB3YW50IHRv
+IHNwZWNpZnkgbW9yZSB0aGFuIGp1c3QgdGhlIGkvZiBsaXN0DQo+Pj4+Pj4gaGVyZTsgZm9yIGlu
+c3RhbmNlLCB0aGUgc2VjdXJpdHkgcG9saWN5IGZvciB0aGUNCj4+Pj4+PiBwc2V1ZG9mcywgb3Ig
+YSBjb25zdGFudCBmc2lkIFVVSUQsIGFtb25nIG90aGVyIHRoaW5ncy4NCj4+Pj4+IA0KPj4+Pj4g
+DQo+Pj4+PiBBUEkgdG8gdXBkYXRlIHRoZSBpL2YgbGlzdC4gIFRoaXMgaXMgbm90IGFib3V0IHdo
+ZXJlIHRvIGhvbGQgZnNfbG9jYXRpb25zIGNvbmZpZyBpbmZvLCBidXQgcmF0aGVyIGhvdyB0byBp
+bnNlcnQgdGhlIChjaGFuZ2VkKSBpbmZvIGludG8gdGhlIHJ1bm5pbmcgc3lzdGVtLg0KPj4+Pj4g
+DQo+Pj4+Pj4gDQo+Pj4+Pj4gQWxzbywgSSBzdWdnZXN0ZWQgdG8gQW5keSBlYXJsaWVyOg0KPj4+
+Pj4+IA0KPj4+Pj4+PiBJIGZpbmQgbXlzZWxmIGxlYW5pbmcgdG93YXJkcyBtZWNoYW5pc21zIHRo
+YXQgYXJlIGVhc3kNCj4+Pj4+Pj4gYm90aCBmb3IgYWRtaW5zIGFuZCBmb3IgcHJvZ3JhbXMgKGll
+LCBhbiBBUEkpLiBQZXJoYXBzDQo+Pj4+Pj4+IG9uZSBkYXkgeW91IG1pZ2h0IHdhbnQgdG8gYWRk
+IGEgY29tbWFuZCB0aGF0IHVwZGF0ZXMgdGhlDQo+Pj4+Pj4+IGkvZiBsaXN0IGZyb20gdGhlIHNj
+cmlwdHMgaW4gL2V0Yy9zeXNjb25maWcvbmV0d29yay1zY3JpcHRzLA0KPj4+Pj4+PiBmb3IgaW5z
+dGFuY2UuDQo+Pj4+Pj4+IA0KPj4+Pj4+PiBBcyBwYXJ0IG9mIGFuIGlmdXA6DQo+Pj4+Pj4+IA0K
+Pj4+Pj4+PiBuZnNwZnMgYWRkIDxhZGRyPg0KPj4+Pj4+PiANCj4+Pj4+Pj4gYW5kIGlmZG93bjoN
+Cj4+Pj4+Pj4gDQo+Pj4+Pj4+IG5mc3BmcyByZW1vdmUgPGFkZHI+DQo+Pj4+Pj4+IA0KPj4+Pj4+
+PiBJIHdyb3RlIHNvbWUgUHl0aG9uIGNvZGUgdG8gbWFuaXB1bGF0ZSBlbnRyaWVzIGluDQo+Pj4+
+Pj4+IC9ldGMvZXhwb3J0cywgbm93IGZvdW5kIGluIGZlZGZzLXV0aWxzLiBJdCdzIGlja3kuDQo+
+Pj4+Pj4gDQo+Pj4+Pj4gSSB0aGluayB3ZSBzaG91bGQgbW92ZSBhd2F5IGZyb20gImVkaXQgdGhp
+cyBmaWxlDQo+Pj4+Pj4gYW5kIHNhdmUgaXQsIHRoZW4gcmVzdGFydCBycGMueHl6cGRxIi4gQnVp
+bGQgc29tZQ0KPj4+Pj4+IGNvbW1hbmQgbGluZSBpbnRlcmZhY2VzIGZvciB0aGlzLg0KPj4+PiAN
+Cj4+Pj4gSSdtIE9LIHdpdGggdGhhdC4NCj4+Pj4gDQo+Pj4+IChOb3RlIGRvIGhhdmUgdGhhdCBm
+b3IgaW5mb3JtYXRpb24gaW4gL2V0Yy9leHBvcnRzLS13ZSBoYXZlIGV4cG9ydGZzLg0KPj4+PiBJ
+cyB0aGVyZSBhIHJlYXNvbiB0aGF0IGRpZG4ndCB3b3JrIGZvciBmZWRmcy11dGlscz8pDQo+Pj4g
+DQo+Pj4gVG8gbWFrZSBjaGFuZ2VzIHRoYXQgY2FuIHN1cnZpdmUgYSBzZXJ2ZXIgcmVib290LA0K
+Pj4+IHlvdSBoYXZlIHRvIHVwZGF0ZSAvZXRjL2V4cG9ydHMuDQoNCg0KDQpZb3VyIHN1Z2dlc3Rp
+b24gdGhlbiBpcyB0byBidWlsZCBhIG5ldyBjb21tYW5kLWxpbmUgaW50ZXJmYWNlIHRvOg0KDQot
+IHRlbGwgbW91bnRkIG9mIGEgVjRST09UIG11bHRpcGF0aCBsaXN0Pw0KLSBoYXZlIHNhaWQgbGlz
+dCBzdXJ2aXZlIHJlYm9vdHMsIGUuZy4gc3RvcmVkIGluIGEgZmlsZT8NCg0KUGxlYXNlIHBvdmlk
+ZSBtb3JlIGRldGFpbCBvbiB5b3VyIHRob3VnaHRzLg0KDQpUaGFua3MNCg0K4oCUPiBBbmR5DQoN
+Cj4+PiANCj4+PiANCj4+PiANCj4+Pj4gLS1iLg0KPj4+PiANCj4+Pj4+PiANCj4+Pj4+PiBBbmQg
+YXMgeW91IGhhdmUgc3VnZ2VzdGVkIG1hbnkgdGltZXM6IHNlcGFyYXRlDQo+Pj4+Pj4gcG9saWN5
+IGZyb20gbWVjaGFuaXNtLiAvZXRjL2V4cG9ydHMgaXMgdGhlDQo+Pj4+Pj4gbWVjaGFuaXNtLg0K
+Pj4+Pj4+IA0KPj4+Pj4+IC0tDQo+Pj4+Pj4gQ2h1Y2sgTGV2ZXINCj4+Pj4+IA0KPj4+Pj4gQnJ1
+Y2UgLSBkbyB5b3UgaGF2ZSBhIHByZWZlcmVuY2UgYmV0d2VlbiAjMSBhbmQgIzIgb3IgIzMgKG9y
+IGFub3RoZXIgaWRlYT8pDQo+Pj4+PiANCj4+Pj4+IFRoYW5rcw0KPj4+Pj4gDQo+Pj4+PiDigJQ+
+QW5keQ0KPj4+PiAtLQ0KPj4+PiBUbyB1bnN1YnNjcmliZSBmcm9tIHRoaXMgbGlzdDogc2VuZCB0
+aGUgbGluZSAidW5zdWJzY3JpYmUgbGludXgtbmZzIiBpbg0KPj4+PiB0aGUgYm9keSBvZiBhIG1l
+c3NhZ2UgdG8gbWFqb3Jkb21vQHZnZXIua2VybmVsLm9yZw0KPj4+PiBNb3JlIG1ham9yZG9tbyBp
+bmZvIGF0ICBodHRwOi8vdmdlci5rZXJuZWwub3JnL21ham9yZG9tby1pbmZvLmh0bWwNCj4+PiAN
+Cj4+PiAtLQ0KPj4+IENodWNrIExldmVyDQo+Pj4gDQo+Pj4gDQo+Pj4gDQo+Pj4gLS0NCj4+PiBU
+byB1bnN1YnNjcmliZSBmcm9tIHRoaXMgbGlzdDogc2VuZCB0aGUgbGluZSAidW5zdWJzY3JpYmUg
+bGludXgtbmZzIiBpbg0KPj4+IHRoZSBib2R5IG9mIGEgbWVzc2FnZSB0byBtYWpvcmRvbW9Admdl
+ci5rZXJuZWwub3JnDQo+Pj4gTW9yZSBtYWpvcmRvbW8gaW5mbyBhdCAgaHR0cDovL3ZnZXIua2Vy
+bmVsLm9yZy9tYWpvcmRvbW8taW5mby5odG1sDQo+PiAtLQ0KPj4gVG8gdW5zdWJzY3JpYmUgZnJv
+bSB0aGlzIGxpc3Q6IHNlbmQgdGhlIGxpbmUgInVuc3Vic2NyaWJlIGxpbnV4LW5mcyIgaW4NCj4+
+IHRoZSBib2R5IG9mIGEgbWVzc2FnZSB0byBtYWpvcmRvbW9Admdlci5rZXJuZWwub3JnDQo+PiBN
+b3JlIG1ham9yZG9tbyBpbmZvIGF0ICBodHRwOi8vdmdlci5rZXJuZWwub3JnL21ham9yZG9tby1p
+bmZvLmh0bWwNCj4gDQo+IC0tDQo+IENodWNrIExldmVyDQo+IA0KPiANCj4gDQoNCg==
