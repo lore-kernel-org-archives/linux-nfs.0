@@ -1,63 +1,76 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-pf0-f171.google.com ([209.85.192.171]:35167 "EHLO
-	mail-pf0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751679AbcEZRFV (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 May 2016 13:05:21 -0400
-Received: by mail-pf0-f171.google.com with SMTP id g64so32867003pfb.2
-        for <linux-nfs@vger.kernel.org>; Thu, 26 May 2016 10:05:20 -0700 (PDT)
+Received: from mail-pf0-f173.google.com ([209.85.192.173]:35169 "EHLO
+	mail-pf0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753880AbcEZRFW (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 May 2016 13:05:22 -0400
+Received: by mail-pf0-f173.google.com with SMTP id g64so32867109pfb.2
+        for <linux-nfs@vger.kernel.org>; Thu, 26 May 2016 10:05:21 -0700 (PDT)
 From: Tom Haynes <thomas.haynes@primarydata.com>
 To: "J. Bruce Fields" <bfields@fieldses.org>
 Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>,
         Christoph Hellwig <hch@lst.de>
-Subject: [V3 0/2] Super simple flex file server
-Date: Thu, 26 May 2016 10:05:09 -0700
-Message-Id: <1464282311-103795-1-git-send-email-loghyr@primarydata.com>
+Subject: [V3 1/2] nfsd: flex file device id encoding will need the server address
+Date: Thu, 26 May 2016 10:05:10 -0700
+Message-Id: <1464282311-103795-2-git-send-email-loghyr@primarydata.com>
+In-Reply-To: <1464282311-103795-1-git-send-email-loghyr@primarydata.com>
+References: <1464282311-103795-1-git-send-email-loghyr@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Bruce,
+Signed-off-by: Tom Haynes <loghyr@primarydata.com>
+Reviewed-by: Christoph Hellwig <hch@lst.de>
+Reviewed-by: Jeff Layton <jlayton@poochiereds.net>
+---
+ fs/nfsd/blocklayout.c | 2 ++
+ fs/nfsd/nfs4proc.c    | 2 +-
+ fs/nfsd/pnfs.h        | 1 +
+ 3 files changed, 4 insertions(+), 1 deletion(-)
 
-The following patches make a flex file server in which
-the mds and the ds are the same machine. And the same inode
-services both metadata and data.
-
-v3:
-- Extra word help for selecting NFSD_FLEXFILELAYOUT
-- Do not allow WRITE permissions on an IOMODE_READ segment
-
-v2:
-- Remove patch 2: nfsd: Can leak pnfs_block_extent on error
-- Consolidate 3rd and 4th patch
-- Fix the rsize and wsize to come out of the rqstp as per Jeff's
-  review comments
-- Sort the available layout types such that scsi beats block which
-  beats flex file
-- Address the points brought up by Christoph in his review
-
-These patches are also in my flex_server branch at
-git://git.linux-nfs.org/projects/loghyr/linux-nfs.git
-
-Thanks,
-Tom
-
-Tom Haynes (2):
-  nfsd: flex file device id encoding will need the server address
-  nfsd: Add a super simple flex file server
-
- fs/nfsd/Kconfig             |  17 ++++++
- fs/nfsd/Makefile            |   1 +
- fs/nfsd/blocklayout.c       |   2 +
- fs/nfsd/flexfilelayout.c    | 133 ++++++++++++++++++++++++++++++++++++++++++++
- fs/nfsd/flexfilelayoutxdr.c | 115 ++++++++++++++++++++++++++++++++++++++
- fs/nfsd/flexfilelayoutxdr.h |  49 ++++++++++++++++
- fs/nfsd/nfs4layouts.c       |  12 +++-
- fs/nfsd/nfs4proc.c          |   2 +-
- fs/nfsd/pnfs.h              |   4 ++
- 9 files changed, 333 insertions(+), 2 deletions(-)
- create mode 100644 fs/nfsd/flexfilelayout.c
- create mode 100644 fs/nfsd/flexfilelayoutxdr.c
- create mode 100644 fs/nfsd/flexfilelayoutxdr.h
-
+diff --git a/fs/nfsd/blocklayout.c b/fs/nfsd/blocklayout.c
+index e55b524..248adb6 100644
+--- a/fs/nfsd/blocklayout.c
++++ b/fs/nfsd/blocklayout.c
+@@ -162,6 +162,7 @@ nfsd4_block_get_device_info_simple(struct super_block *sb,
+ 
+ static __be32
+ nfsd4_block_proc_getdeviceinfo(struct super_block *sb,
++		struct svc_rqst *rqstp,
+ 		struct nfs4_client *clp,
+ 		struct nfsd4_getdeviceinfo *gdp)
+ {
+@@ -354,6 +355,7 @@ nfsd4_block_get_device_info_scsi(struct super_block *sb,
+ 
+ static __be32
+ nfsd4_scsi_proc_getdeviceinfo(struct super_block *sb,
++		struct svc_rqst *rqstp,
+ 		struct nfs4_client *clp,
+ 		struct nfsd4_getdeviceinfo *gdp)
+ {
+diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+index de1ff1d..2ee2dc17 100644
+--- a/fs/nfsd/nfs4proc.c
++++ b/fs/nfsd/nfs4proc.c
+@@ -1270,7 +1270,7 @@ nfsd4_getdeviceinfo(struct svc_rqst *rqstp,
+ 	nfserr = nfs_ok;
+ 	if (gdp->gd_maxcount != 0) {
+ 		nfserr = ops->proc_getdeviceinfo(exp->ex_path.mnt->mnt_sb,
+-					cstate->session->se_client, gdp);
++				rqstp, cstate->session->se_client, gdp);
+ 	}
+ 
+ 	gdp->gd_notify_types &= ops->notify_types;
+diff --git a/fs/nfsd/pnfs.h b/fs/nfsd/pnfs.h
+index 7d073b9..e855677 100644
+--- a/fs/nfsd/pnfs.h
++++ b/fs/nfsd/pnfs.h
+@@ -21,6 +21,7 @@ struct nfsd4_layout_ops {
+ 	u32		notify_types;
+ 
+ 	__be32 (*proc_getdeviceinfo)(struct super_block *sb,
++			struct svc_rqst *rqstp,
+ 			struct nfs4_client *clp,
+ 			struct nfsd4_getdeviceinfo *gdevp);
+ 	__be32 (*encode_getdeviceinfo)(struct xdr_stream *xdr,
 -- 
 1.8.3.1
 
