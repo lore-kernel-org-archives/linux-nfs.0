@@ -1,117 +1,94 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from science.sciencehorizons.net ([71.41.210.147]:35473 "HELO
-	ns.sciencehorizons.net" rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org
-	with SMTP id S1750914AbcE0Q0V (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 27 May 2016 12:26:21 -0400
-Date: 26 May 2016 14:39:39 -0400
-Message-ID: <20160526183939.30389.qmail@ns.sciencehorizons.net>
-From: "George Spelvin" <linux@horizon.com>
-To: bfields@fieldses.org, jlayton@poochiereds.net, linux-nfs@vger.kernel.org
-Subject: [PATCH RESEND 03/10] <linux/sunrpc/svcauth.h>: Define hash_str() in terms of hash_string()
-Cc: linux@sciencehorizons.net
-Reply-To: linux@sciencehorizons.net
-In-Reply-To: <20160525072630.5343.qmail@ns.sciencehorizons.net>
+Received: from aserp1040.oracle.com ([141.146.126.69]:41674 "EHLO
+	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932955AbcE0ROg (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 27 May 2016 13:14:36 -0400
+Subject: Re: [GIT PULL] Please pull NFS client changes for Linux 4.7
+To: Anna Schumaker <Anna.Schumaker@netapp.com>,
+        Linus Torvalds <torvalds@linux-foundation.org>
+References: <ed695df4-9072-41ae-93b0-8479873333f6@Netapp.com>
+Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
+From: Boris Ostrovsky <boris.ostrovsky@oracle.com>
+Message-ID: <57488072.6030502@oracle.com>
+Date: Fri, 27 May 2016 13:14:26 -0400
+MIME-Version: 1.0
+In-Reply-To: <ed695df4-9072-41ae-93b0-8479873333f6@Netapp.com>
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Finally, the first use of previous two patches: Eliminate the
-separate ad-hoc string hash functions in the sunrpc code.
+On 05/26/2016 11:29 AM, Anna Schumaker wrote:
+> Hi Linus,
+>
+> The following changes since commit 44549e8f5eea4e0a41b487b63e616cb089922b99:
+>
+>   Linux 4.6-rc7 (2016-05-08 14:38:32 -0700)
+>
+> are available in the git repository at:
+>
+>   git://git.linux-nfs.org/projects/anna/linux-nfs.git tags/nfs-for-4.7-1
+>
+> for you to fetch changes up to c7d73af2d249f0323f5cdb171a59497ce80011fb:
+>
+>   pnfs: pnfs_update_layout needs to consider if strict iomode checking is on (2016-05-26 08:40:56 -0400)
+>
+>
+> There are a few merge conflicts that were found in linux-next.  Stephen's suggested resolutions looked okay to us, so I've attached those patches for reference.
+>
+> Thanks,
+> Anna
+>
+> ----------------------------------------------------------------
+...
 
-This also eliminates the only caller of hash_long which asks for
-more than 32 bits of output.
+>
+> Trond Myklebust (6):
+>       pNFS: Fix a leaked layoutstats flag
+>       SUNRPC: Ensure get_rpccred() and put_rpccred() can take NULL arguments
+>       NFSv4: Label stateids with the type
 
-sunrpc guys: Is it okay if I send this to Linus directly?
+This breaks on older compilers:
 
-Signed-off-by: George Spelvin <linux@sciencehorizons.net>
-Cc: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: Jeff Layton <jlayton@poochiereds.net>
-Cc: linux-nfs@vger.kernel.org
----
-I have't heard anything from the linix-NFS crowd, so this is a re-ping.
+  CC      fs/nfs/nfs4state.o
+/home/build/linux-linus/fs/nfs/nfs4state.c:69: error: unknown field
+‘data’ specified in initializer
+/home/build/linux-linus/fs/nfs/nfs4state.c:69: warning: missing braces
+around initializer
+/home/build/linux-linus/fs/nfs/nfs4state.c:69: warning: (near
+initialization for ‘zero_stateid.<anonymous>.data’)
+make[2]: *** [fs/nfs/nfs4state.o] Error 1
+make[1]: *** [fs/nfs/nfs4state.o] Error 2
+make[1]: Leaving directory `/home/build/xtt-x86_64/bootstrap/linux-build'
+make: *** [sub-make] Error 2
+make: Leaving directory `/home/build/linux-linus'
+FC-64 <build@build-mk2:~/xtt-x86_64/bootstrap> gcc -v
+Using built-in specs.
+Target: x86_64-redhat-linux
+Configured with: ../configure --prefix=/usr --mandir=/usr/share/man
+--infodir=/usr/share/info
+--with-bugurl=http://bugzilla.redhat.com/bugzilla --enable-bootstrap
+--enable-shared --enable-threads=posix --enable-checking=release
+--with-system-zlib --enable-__cxa_atexit --disable-libunwind-exceptions
+--enable-gnu-unique-object
+--enable-languages=c,c++,objc,obj-c++,java,fortran,ada
+--enable-java-awt=gtk --disable-dssi
+--with-java-home=/usr/lib/jvm/java-1.5.0-gcj-1.5.0.0/jre
+--enable-libgcj-multifile --enable-java-maintainer-mode
+--with-ecj-jar=/usr/share/java/eclipse-ecj.jar
+--disable-libjava-multilib --with-ppl --with-cloog --with-tune=generic
+--with-arch_32=i686 --build=x86_64-redhat-linux
+Thread model: posix
+gcc version 4.4.4 20100503 (Red Hat 4.4.4-2) (GCC)
+FC-64 <build@build-mk2:~/xtt-x86_64/bootstrap>
 
-I've been having some e-mail troubles leading to increased spam scores
-due to a recent domain name change, so this is a resend from a different
-address in case the previous copy got binned.
 
-I'll happily send along the entire patch series, but the tl;dr is this
-is part of a patch series that improves the <linux/hash.h> and fs/namei.c
-hash functions, implementing Linus's suggestion:
+I believe pre-4.6 versions do not allow initialization of anonymous
+structs/unions.
 
-On Mon, 02 May 2016 at 09:24:21, Linus Torvalds wrote:
-> That said, I actually think hash_str() should be killed entirely.
-> Better just use what we use for pathnames: full_name_hash() (which
-> gets a pointer and length) and hash_name (which gets the string).
-> 
-> Those functions do the "word-at-a-time" optimization, and they should
-> do a good enough job. If they aren't, we should fix them, because they
-> are a hell of a lot more important than anything that the svcauth code
-> does.
+-boris
 
-He had a typically fulminating comment about the hard-to-predict if()
-branch in the inner loop.
 
- include/linux/sunrpc/svcauth.h | 36 +++++-------------------------------
- 1 file changed, 5 insertions(+), 31 deletions(-)
-
-diff --git a/include/linux/sunrpc/svcauth.h b/include/linux/sunrpc/svcauth.h
-index c00f53a4..ef2b2552 100644
---- a/include/linux/sunrpc/svcauth.h
-+++ b/include/linux/sunrpc/svcauth.h
-@@ -16,6 +16,7 @@
- #include <linux/sunrpc/cache.h>
- #include <linux/sunrpc/gss_api.h>
- #include <linux/hash.h>
-+#include <linux/stringhash.h>
- #include <linux/cred.h>
- 
- struct svc_cred {
-@@ -165,41 +166,14 @@ extern int svcauth_unix_set_client(struct svc_rqst *rqstp);
- extern int unix_gid_cache_create(struct net *net);
- extern void unix_gid_cache_destroy(struct net *net);
- 
--static inline unsigned long hash_str(char *name, int bits)
-+static inline unsigned long hash_str(char const *name, int bits)
- {
--	unsigned long hash = 0;
--	unsigned long l = 0;
--	int len = 0;
--	unsigned char c;
--	do {
--		if (unlikely(!(c = *name++))) {
--			c = (char)len; len = -1;
--		}
--		l = (l << 8) | c;
--		len++;
--		if ((len & (BITS_PER_LONG/8-1))==0)
--			hash = hash_long(hash^l, BITS_PER_LONG);
--	} while (len);
--	return hash >> (BITS_PER_LONG - bits);
-+	return hash_32(hashlen_hash(hash_string(name)), bits);
- }
- 
--static inline unsigned long hash_mem(char *buf, int length, int bits)
-+static inline unsigned long hash_mem(char const *buf, int length, int bits)
- {
--	unsigned long hash = 0;
--	unsigned long l = 0;
--	int len = 0;
--	unsigned char c;
--	do {
--		if (len == length) {
--			c = (char)len; len = -1;
--		} else
--			c = *buf++;
--		l = (l << 8) | c;
--		len++;
--		if ((len & (BITS_PER_LONG/8-1))==0)
--			hash = hash_long(hash^l, BITS_PER_LONG);
--	} while (len);
--	return hash >> (BITS_PER_LONG - bits);
-+	return hash_32(full_name_hash(buf, length), bits);
- }
- 
- #endif /* __KERNEL__ */
--- 
-2.8.1
 
 
