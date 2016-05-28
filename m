@@ -1,54 +1,111 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-it0-f42.google.com ([209.85.214.42]:36091 "EHLO
-	mail-it0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752022AbcE1AiL (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 27 May 2016 20:38:11 -0400
-Received: by mail-it0-f42.google.com with SMTP id e62so6048709ita.1
-        for <linux-nfs@vger.kernel.org>; Fri, 27 May 2016 17:38:11 -0700 (PDT)
-MIME-Version: 1.0
-In-Reply-To: <19769bfc-efc7-495f-9574-f771236a9765@default>
-References: <19769bfc-efc7-495f-9574-f771236a9765@default>
-Date: Fri, 27 May 2016 17:30:18 -0700
-Message-ID: <CA+55aFzxNC0cryH4Cw660NXR2GyZ+A4qQnqRjpPf=uc=G4Wciw@mail.gmail.com>
-Subject: Re: [GIT PULL] Please pull NFS client changes for Linux 4.7
-From: Linus Torvalds <torvalds@linux-foundation.org>
-To: Boris Ostrovsky <boris.ostrovsky@oracle.com>
-Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
-        Anna Schumaker <Anna.Schumaker@netapp.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>
-Content-Type: text/plain; charset=UTF-8
+Received: from science.sciencehorizons.net ([71.41.210.147]:24355 "HELO
+	ns.sciencehorizons.net" rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org
+	with SMTP id S1751429AbcE1T6C (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 28 May 2016 15:58:02 -0400
+From: George Spelvin <linux@sciencehorizons.net>
+To: Linus Torvalds <torvalds@linux-foundation.org>,
+        lkml <linux-kernel@vger.kernel.org>
+Cc: "J . Bruce Fields" <bfields@redhat.com>,
+        George Spelvin <linux@sciencehorizons.net>,
+        Jeff Layton <jlayton@poochiereds.net>, linux-nfs@vger.kernel.org
+Subject: [PATCH v3 03/10] <linux/sunrpc/svcauth.h>: Define hash_str() in terms of hashlen_string()
+Date: Sat, 28 May 2016 15:57:16 -0400
+Message-Id: <1464465443-25305-4-git-send-email-linux@sciencehorizons.net>
+In-Reply-To: <1464465443-25305-1-git-send-email-linux@sciencehorizons.net>
+References: <CAADWXX_F0jOjui1iHti1eC6tsD+cwMzZ0T_16e9nCzAK6raFxA@mail.gmail.com>
+ <1464465443-25305-1-git-send-email-linux@sciencehorizons.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, May 27, 2016 at 5:17 PM, Boris Ostrovsky
-<boris.ostrovsky@oracle.com> wrote:
->
-> It does fix it.
+Finally, the first use of previous two patches: eliminate the
+separate ad-hoc string hash functions in the sunrpc code.
 
-Ok, I've committed that in my tree, will do my usual build test and push out.
+Now hash_str() is a wrapper around hash_string(), and hash_mem() is
+likewise a wrapper around full_name_hash().
 
-> This is not the first time we've hit this and people have always been
-> changing code to initialize fields in execution path (and I didn't fix
-> it here myself because I wasn't sure where to do that).  I guess we
-> could have been just adding braces all along.
+Note that sunrpc code *does* call hash_mem() with a zero length, which
+is why the previous patch needed to handle that in full_name_hash().
+(Thanks, Bruce, for finding that!)
 
-Well, adding the braces also requires that you get the *order* of the
-member initialization right, since the braces will be unnamed.
+This also eliminates the only caller of hash_long which asks for
+more than 32 bits of output.
 
-In this case, the unnamed union was the first member, so the trivial
-patch worked, but that's not always the case.
+The comment about the quality of hashlen_string() and full_name_hash()
+is jumping the gun by a few patches; they aren't very impressive now,
+but will be improved greatly later in the series.
 
-In fact, in this case, I think an alternate and possibly better fix
-would have been to just remove the ".data = { 0 }" initializer
-entirely, since in its absence it would have been initialized to zero
-anyway.
+Signed-off-by: George Spelvin <linux@sciencehorizons.net>
+Tested-by: J. Bruce Fields <bfields@redhat.com>
+Acked-by: J. Bruce Fields <bfields@redhat.com>
+Cc: Jeff Layton <jlayton@poochiereds.net>
+Cc: linux-nfs@vger.kernel.org
+---
+ include/linux/sunrpc/svcauth.h | 40 +++++++++-------------------------------
+ 1 file changed, 9 insertions(+), 31 deletions(-)
 
-But since you already tested my uglier "just add a brace like the
-error message suggests" that's the one I'll be committing.
+diff --git a/include/linux/sunrpc/svcauth.h b/include/linux/sunrpc/svcauth.h
+index c00f53a4..91d5a5d6 100644
+--- a/include/linux/sunrpc/svcauth.h
++++ b/include/linux/sunrpc/svcauth.h
+@@ -16,6 +16,7 @@
+ #include <linux/sunrpc/cache.h>
+ #include <linux/sunrpc/gss_api.h>
+ #include <linux/hash.h>
++#include <linux/stringhash.h>
+ #include <linux/cred.h>
+ 
+ struct svc_cred {
+@@ -165,41 +166,18 @@ extern int svcauth_unix_set_client(struct svc_rqst *rqstp);
+ extern int unix_gid_cache_create(struct net *net);
+ extern void unix_gid_cache_destroy(struct net *net);
+ 
+-static inline unsigned long hash_str(char *name, int bits)
++/*
++ * The <stringhash.h> functions are good enough that we don't need to
++ * use hash_32() on them; just extracting the high bits is enough.
++ */
++static inline unsigned long hash_str(char const *name, int bits)
+ {
+-	unsigned long hash = 0;
+-	unsigned long l = 0;
+-	int len = 0;
+-	unsigned char c;
+-	do {
+-		if (unlikely(!(c = *name++))) {
+-			c = (char)len; len = -1;
+-		}
+-		l = (l << 8) | c;
+-		len++;
+-		if ((len & (BITS_PER_LONG/8-1))==0)
+-			hash = hash_long(hash^l, BITS_PER_LONG);
+-	} while (len);
+-	return hash >> (BITS_PER_LONG - bits);
++	return hashlen_hash(hashlen_string(name)) >> (32 - bits);
+ }
+ 
+-static inline unsigned long hash_mem(char *buf, int length, int bits)
++static inline unsigned long hash_mem(char const *buf, int length, int bits)
+ {
+-	unsigned long hash = 0;
+-	unsigned long l = 0;
+-	int len = 0;
+-	unsigned char c;
+-	do {
+-		if (len == length) {
+-			c = (char)len; len = -1;
+-		} else
+-			c = *buf++;
+-		l = (l << 8) | c;
+-		len++;
+-		if ((len & (BITS_PER_LONG/8-1))==0)
+-			hash = hash_long(hash^l, BITS_PER_LONG);
+-	} while (len);
+-	return hash >> (BITS_PER_LONG - bits);
++	return full_name_hash(buf, length) >> (32 - bits);
+ }
+ 
+ #endif /* __KERNEL__ */
+-- 
+2.8.1
 
-It's a fairly annoying failure of older compilers, exactly because
-people with newer compilers won't even realize that they are causing
-problems.
-
-               Linus
