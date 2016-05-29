@@ -1,190 +1,175 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-pf0-f194.google.com ([209.85.192.194]:36343 "EHLO
-	mail-pf0-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932246AbcE2RPE (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 29 May 2016 13:15:04 -0400
-Received: by mail-pf0-f194.google.com with SMTP id 62so7050702pfd.3
-        for <linux-nfs@vger.kernel.org>; Sun, 29 May 2016 10:15:04 -0700 (PDT)
-From: Anne Marie Merritt <anne.marie.merritt@gmail.com>
-To: trondmy@primarydata.com
-Cc: linux-nfs@vger.kernel.org,
-        Anne Marie Merritt <annemarie.merritt@primarydata.com>
-Subject: [PATCH 5/6] nfs:  Add timebackup to nfs inode, along with corresponding bitfields, request, and decode xdr routines.
-Date: Sun, 29 May 2016 10:14:51 -0700
-Message-Id: <1464542092-19605-6-git-send-email-anne.marie.merritt@gmail.com>
-In-Reply-To: <1464542092-19605-1-git-send-email-anne.marie.merritt@gmail.com>
-References: <1464542092-19605-1-git-send-email-anne.marie.merritt@gmail.com>
+Received: from mail-yw0-f193.google.com ([209.85.161.193]:34656 "EHLO
+	mail-yw0-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752862AbcE2U7e (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 29 May 2016 16:59:34 -0400
+Received: by mail-yw0-f193.google.com with SMTP id j74so12773589ywg.1
+        for <linux-nfs@vger.kernel.org>; Sun, 29 May 2016 13:59:34 -0700 (PDT)
+From: Jeff Layton <jlayton@poochiereds.net>
+To: linux-nfs@vger.kernel.org
+Cc: Tom Haynes <thomas.haynes@primarydata.com>
+Subject: [RFC PATCH] nfsd: allow nfsd to advertise multiple layout types
+Date: Sun, 29 May 2016 16:59:27 -0400
+Message-Id: <1464555567-16055-1-git-send-email-jlayton@poochiereds.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Summary:
+If the underlying filesystem supports multiple layout types, then there
+is little reason not to advertise that fact to clients and let them
+choose what type to use.
 
-Add xdr support for NFS attribute 'timebackup'.
+Turn the ex_layout_type field into a bitfield. For each supported
+layout type, we set a bit in that field. When the client requests a
+layout, ensure that the bit for that layout type is set. When the
+client requests attributes, send back a list of supported types.
 
-This will permit the surfacing of this attribute for underlying filesystems that support it.
-
-Signed-off-by: Anne Marie Merritt <annemarie.merritt@primarydata.com>
+Signed-off-by: Jeff Layton <jeff.layton@primarydata.com>
 ---
- fs/nfs/inode.c            | 14 ++++++++++++++
- fs/nfs/nfs4proc.c         |  3 +++
- fs/nfs/nfs4xdr.c          | 23 +++++++++++++++++++++++
- include/linux/nfs_fs.h    |  1 +
- include/linux/nfs_fs_sb.h |  1 +
- include/linux/nfs_xdr.h   |  3 +++
- 6 files changed, 45 insertions(+)
+ fs/nfsd/export.c      |  4 ++--
+ fs/nfsd/export.h      |  2 +-
+ fs/nfsd/nfs4layouts.c |  6 +++---
+ fs/nfsd/nfs4proc.c    |  4 ++--
+ fs/nfsd/nfs4xdr.c     | 30 ++++++++++++++----------------
+ 5 files changed, 22 insertions(+), 24 deletions(-)
 
-diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
-index 7a6ee66..e2e347f 100644
---- a/fs/nfs/inode.c
-+++ b/fs/nfs/inode.c
-@@ -440,6 +440,7 @@ nfs_fhget(struct super_block *sb, struct nfs_fh *fh, struct nfs_fattr *fattr, st
- 		memset(&inode->i_mtime, 0, sizeof(inode->i_mtime));
- 		memset(&inode->i_ctime, 0, sizeof(inode->i_ctime));
- 		memset(&nfsi->timecreate, 0, sizeof(nfsi->timecreate));
-+		memset(&nfsi->timebackup, 0, sizeof(nfsi->timebackup));
- 		nfsi->hidden = 0;
- 		nfsi->system = 0;
- 		nfsi->archive = 0;
-@@ -483,6 +484,10 @@ nfs_fhget(struct super_block *sb, struct nfs_fh *fh, struct nfs_fattr *fattr, st
- 			nfsi->archive = (fattr->hsa_flags & NFS_HSA_ARCHIVE) !=0;
- 		else if (nfs_server_capable(inode, NFS_CAP_ARCHIVE))
- 			nfs_set_cache_invalid(inode, NFS_INO_INVALID_ATTR);
-+		if (fattr->valid & NFS_ATTR_FATTR_TIME_BACKUP)
-+			nfsi->timebackup = fattr->time_backup;
-+		else if (nfs_server_capable(inode, NFS_CAP_TIME_BACKUP))
-+			nfs_set_cache_invalid(inode, NFS_INO_INVALID_ATTR);
- 		if (fattr->valid & NFS_ATTR_FATTR_CHANGE)
- 			inode->i_version = fattr->change_attr;
- 		else
-@@ -1820,6 +1825,15 @@ static int nfs_update_inode(struct inode *inode, struct nfs_fattr *fattr)
- 		cache_revalidated = false;
- 	}
- 
-+	if (fattr->valid & NFS_ATTR_FATTR_TIME_BACKUP) {
-+		memcpy(&nfsi->timebackup, &fattr->time_backup, sizeof(nfsi->timebackup));
-+	} else if (server->caps & NFS_CAP_TIME_BACKUP) {
-+		nfsi->cache_validity |= save_cache_validity &
-+				(NFS_INO_INVALID_ATTR
-+				| NFS_INO_REVAL_FORCED);
-+		cache_revalidated = false;
-+	}
-+
- 	/* Check if our cached file size is stale */
- 	if (fattr->valid & NFS_ATTR_FATTR_SIZE) {
- 		new_isize = nfs_size_to_loff_t(fattr->size);
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 1d84b5c..2e148f3 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -191,6 +191,7 @@ const u32 nfs4_fattr_bitmap[3] = {
- 	| FATTR4_WORD1_TIME_ACCESS
- 	| FATTR4_WORD1_TIME_CREATE
- 	| FATTR4_WORD1_SYSTEM
-+	| FATTR4_WORD1_TIME_BACKUP
- 	| FATTR4_WORD1_TIME_METADATA
- 	| FATTR4_WORD1_TIME_MODIFY
- 	| FATTR4_WORD1_MOUNTED_ON_FILEID,
-@@ -3085,6 +3086,8 @@ static int _nfs4_server_capabilities(struct nfs_server *server, struct nfs_fh *f
- 			server->caps |= NFS_CAP_TIME_CREATE;
- 		if (res.attr_bitmask[1] & FATTR4_WORD1_SYSTEM)
- 			server->caps |= NFS_CAP_SYSTEM;
-+		if (res.attr_bitmask[1] & FATTR4_WORD1_TIME_BACKUP)
-+			server->caps |= NFS_CAP_TIME_BACKUP;
- #ifdef CONFIG_NFS_V4_SECURITY_LABEL
- 		if (res.attr_bitmask[2] & FATTR4_WORD2_SECURITY_LABEL)
- 			server->caps |= NFS_CAP_SECURITY_LABEL;
-diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index d8328a5..d3ecb7e 100644
---- a/fs/nfs/nfs4xdr.c
-+++ b/fs/nfs/nfs4xdr.c
-@@ -4193,6 +4193,24 @@ out_overflow:
- 	return -EIO;
+diff --git a/fs/nfsd/export.c b/fs/nfsd/export.c
+index b4d84b579f20..f97ba49d5e66 100644
+--- a/fs/nfsd/export.c
++++ b/fs/nfsd/export.c
+@@ -706,7 +706,7 @@ static void svc_export_init(struct cache_head *cnew, struct cache_head *citem)
+ 	new->ex_fslocs.locations = NULL;
+ 	new->ex_fslocs.locations_count = 0;
+ 	new->ex_fslocs.migrated = 0;
+-	new->ex_layout_type = 0;
++	new->ex_layout_types = 0;
+ 	new->ex_uuid = NULL;
+ 	new->cd = item->cd;
+ }
+@@ -731,7 +731,7 @@ static void export_update(struct cache_head *cnew, struct cache_head *citem)
+ 	item->ex_fslocs.locations_count = 0;
+ 	new->ex_fslocs.migrated = item->ex_fslocs.migrated;
+ 	item->ex_fslocs.migrated = 0;
+-	new->ex_layout_type = item->ex_layout_type;
++	new->ex_layout_types = item->ex_layout_types;
+ 	new->ex_nflavors = item->ex_nflavors;
+ 	for (i = 0; i < MAX_SECINFO_LIST; i++) {
+ 		new->ex_flavors[i] = item->ex_flavors[i];
+diff --git a/fs/nfsd/export.h b/fs/nfsd/export.h
+index 2e315072bf3f..730f15eeb7ed 100644
+--- a/fs/nfsd/export.h
++++ b/fs/nfsd/export.h
+@@ -57,7 +57,7 @@ struct svc_export {
+ 	struct nfsd4_fs_locations ex_fslocs;
+ 	uint32_t		ex_nflavors;
+ 	struct exp_flavor_info	ex_flavors[MAX_SECINFO_LIST];
+-	enum pnfs_layouttype	ex_layout_type;
++	u32			ex_layout_types;
+ 	struct nfsd4_deviceid_map *ex_devid_map;
+ 	struct cache_detail	*cd;
+ };
+diff --git a/fs/nfsd/nfs4layouts.c b/fs/nfsd/nfs4layouts.c
+index 6d98d16b3354..2be9602b0221 100644
+--- a/fs/nfsd/nfs4layouts.c
++++ b/fs/nfsd/nfs4layouts.c
+@@ -139,21 +139,21 @@ void nfsd4_setup_layout_type(struct svc_export *exp)
+ 	 * otherwise advertise the block layout.
+ 	 */
+ #ifdef CONFIG_NFSD_FLEXFILELAYOUT
+-	exp->ex_layout_type = LAYOUT_FLEX_FILES;
++	exp->ex_layout_types |= 1 << LAYOUT_FLEX_FILES;
+ #endif
+ #ifdef CONFIG_NFSD_BLOCKLAYOUT
+ 	/* overwrite flex file layout selection if needed */
+ 	if (sb->s_export_op->get_uuid &&
+ 	    sb->s_export_op->map_blocks &&
+ 	    sb->s_export_op->commit_blocks)
+-		exp->ex_layout_type = LAYOUT_BLOCK_VOLUME;
++		exp->ex_layout_types |= 1 << LAYOUT_BLOCK_VOLUME;
+ #endif
+ #ifdef CONFIG_NFSD_SCSILAYOUT
+ 	/* overwrite block layout selection if needed */
+ 	if (sb->s_export_op->map_blocks &&
+ 	    sb->s_export_op->commit_blocks &&
+ 	    sb->s_bdev && sb->s_bdev->bd_disk->fops->pr_ops)
+-		exp->ex_layout_type = LAYOUT_SCSI;
++		exp->ex_layout_types |= 1 << LAYOUT_SCSI;
+ #endif
  }
  
-+static int decode_attr_time_backup(struct xdr_stream *xdr, uint32_t *bitmap, struct timespec *time)
-+{
-+	int status = 0;
-+
-+	time->tv_sec = 0;
-+	time->tv_nsec = 0;
-+	if (unlikely(bitmap[1] & (FATTR4_WORD1_TIME_BACKUP - 1U)))
-+		return -EIO;
-+	if (likely(bitmap[1] & FATTR4_WORD1_TIME_BACKUP)) {
-+		status = decode_attr_time(xdr, time);
-+		if (status == 0)
-+			status = NFS_ATTR_FATTR_TIME_BACKUP;
-+		bitmap[1] &= ~FATTR4_WORD1_TIME_BACKUP;
-+	}
-+	dprintk("%s: time_backup=%ld\n", __func__, (long)time->tv_sec);
-+	return status;
-+}
-+
- static int decode_attr_archive(struct xdr_stream *xdr, uint32_t *bitmap, uint32_t *res)
+diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+index 2ee2dc170327..719c620753e2 100644
+--- a/fs/nfsd/nfs4proc.c
++++ b/fs/nfsd/nfs4proc.c
+@@ -1219,12 +1219,12 @@ nfsd4_verify(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ static const struct nfsd4_layout_ops *
+ nfsd4_layout_verify(struct svc_export *exp, unsigned int layout_type)
  {
- 	__be32 *p;
-@@ -4748,6 +4766,11 @@ static int decode_getfattr_attrs(struct xdr_stream *xdr, uint32_t *bitmap,
- 		goto xdr_error;
- 	fattr->valid |= status;
+-	if (!exp->ex_layout_type) {
++	if (!exp->ex_layout_types) {
+ 		dprintk("%s: export does not support pNFS\n", __func__);
+ 		return NULL;
+ 	}
  
-+	status = decode_attr_time_backup(xdr, bitmap, &fattr->time_backup);
-+	if (status < 0)
-+		goto xdr_error;
-+	fattr->valid |= status;
+-	if (exp->ex_layout_type != layout_type) {
++	if (!(exp->ex_layout_types & (1 << layout_type))) {
+ 		dprintk("%s: layout type %d not supported\n",
+ 			__func__, layout_type);
+ 		return NULL;
+diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+index 9df898ba648f..4d3ae75ad4c8 100644
+--- a/fs/nfsd/nfs4xdr.c
++++ b/fs/nfsd/nfs4xdr.c
+@@ -2164,22 +2164,20 @@ nfsd4_encode_aclname(struct xdr_stream *xdr, struct svc_rqst *rqstp,
+ }
+ 
+ static inline __be32
+-nfsd4_encode_layout_type(struct xdr_stream *xdr, enum pnfs_layouttype layout_type)
++nfsd4_encode_layout_types(struct xdr_stream *xdr, u32 layout_types)
+ {
+-	__be32 *p;
++	__be32		*p;
++	unsigned long	i = hweight_long(layout_types);
+ 
+-	if (layout_type) {
+-		p = xdr_reserve_space(xdr, 8);
+-		if (!p)
+-			return nfserr_resource;
+-		*p++ = cpu_to_be32(1);
+-		*p++ = cpu_to_be32(layout_type);
+-	} else {
+-		p = xdr_reserve_space(xdr, 4);
+-		if (!p)
+-			return nfserr_resource;
+-		*p++ = cpu_to_be32(0);
+-	}
++	p = xdr_reserve_space(xdr, 4 + 4 * i);
++	if (!p)
++		return nfserr_resource;
 +
- 	status = decode_attr_time_create(xdr, bitmap, &fattr->time_create);
- 	if (status < 0)
- 		goto xdr_error;
-diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
-index 83c42f6..82eae20 100644
---- a/include/linux/nfs_fs.h
-+++ b/include/linux/nfs_fs.h
-@@ -135,6 +135,7 @@ struct nfs_inode {
- 	 */
++	*p++ = cpu_to_be32(i);
++
++	for (i = LAYOUT_NFSV4_1_FILES; i < LAYOUT_TYPE_MAX; ++i)
++		if (layout_types & (1 << i))
++			*p++ = cpu_to_be32(i);
  
- 	struct timespec		timecreate;
-+	struct timespec		timebackup;
- 	bool			hidden;
- 	bool			system;
- 	bool			archive;
-diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
-index 3f972e7..256d37f 100644
---- a/include/linux/nfs_fs_sb.h
-+++ b/include/linux/nfs_fs_sb.h
-@@ -249,5 +249,6 @@ struct nfs_server {
- #define NFS_CAP_HIDDEN          (1U << 27)
- #define NFS_CAP_SYSTEM          (1U << 28)
- #define NFS_CAP_ARCHIVE         (1U << 29)
-+#define NFS_CAP_TIME_BACKUP     (1U << 30)
+ 	return 0;
+ }
+@@ -2754,13 +2752,13 @@ out_acl:
+ 	}
+ #ifdef CONFIG_NFSD_PNFS
+ 	if (bmval1 & FATTR4_WORD1_FS_LAYOUT_TYPES) {
+-		status = nfsd4_encode_layout_type(xdr, exp->ex_layout_type);
++		status = nfsd4_encode_layout_types(xdr, exp->ex_layout_types);
+ 		if (status)
+ 			goto out;
+ 	}
  
- #endif
-diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-index de90f90..0fe5bdb 100644
---- a/include/linux/nfs_xdr.h
-+++ b/include/linux/nfs_xdr.h
-@@ -71,6 +71,7 @@ struct nfs_fattr {
- 	struct timespec		ctime;
- 	struct timespec		time_create;
- 	__u32			hsa_flags;	/* hidden, system, archive flags bitfield */
-+	struct timespec		time_backup;
- 	__u64			change_attr;	/* NFSv4 change attribute */
- 	__u64			pre_change_attr;/* pre-op NFSv4 change attribute */
- 	__u64			pre_size;	/* pre_op_attr.size	  */
-@@ -113,6 +114,7 @@ struct nfs_fattr {
- #define NFS_ATTR_FATTR_HIDDEN           (1U << 27)
- #define NFS_ATTR_FATTR_SYSTEM           (1U << 28)
- #define NFS_ATTR_FATTR_ARCHIVE          (1U << 29)
-+#define NFS_ATTR_FATTR_TIME_BACKUP      (1U << 30)
- 
- #define NFS_ATTR_FATTR (NFS_ATTR_FATTR_TYPE \
- 		| NFS_ATTR_FATTR_MODE \
-@@ -130,6 +132,7 @@ struct nfs_fattr {
- 		| NFS_ATTR_FATTR_HIDDEN \
- 		| NFS_ATTR_FATTR_SYSTEM \
- 		| NFS_ATTR_FATTR_ARCHIVE \
-+		| NFS_ATTR_FATTR_TIME_BACKUP \
- 		| NFS_ATTR_FATTR_CHANGE)
- #define NFS_ATTR_FATTR_V2 (NFS_ATTR_FATTR \
- 		| NFS_ATTR_FATTR_BLOCKS_USED)
+ 	if (bmval2 & FATTR4_WORD2_LAYOUT_TYPES) {
+-		status = nfsd4_encode_layout_type(xdr, exp->ex_layout_type);
++		status = nfsd4_encode_layout_types(xdr, exp->ex_layout_types);
+ 		if (status)
+ 			goto out;
+ 	}
 -- 
-2.3.6
+2.5.5
 
