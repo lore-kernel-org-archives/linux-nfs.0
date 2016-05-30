@@ -1,131 +1,284 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp-o-1.desy.de ([131.169.56.154]:39968 "EHLO smtp-o-1.desy.de"
+Received: from smtp-o-3.desy.de ([131.169.56.156]:47140 "EHLO smtp-o-3.desy.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1161799AbcE3S3p convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 30 May 2016 14:29:45 -0400
-Received: from smtp-map-1.desy.de (smtp-map-1.desy.de [131.169.56.66])
-	by smtp-o-1.desy.de (DESY-O-1) with ESMTP id 37E25280943
-	for <linux-nfs@vger.kernel.org>; Mon, 30 May 2016 20:29:42 +0200 (CEST)
+	id S1161301AbcE3Smv convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 30 May 2016 14:42:51 -0400
+Received: from smtp-map-3.desy.de (smtp-map-3.desy.de [131.169.56.68])
+	by smtp-o-3.desy.de (DESY-O-3) with ESMTP id 5F9B5280A42
+	for <linux-nfs@vger.kernel.org>; Mon, 30 May 2016 20:42:48 +0200 (CEST)
 Received: from ZITSWEEP4.win.desy.de (zitsweep4.win.desy.de [131.169.97.98])
-	by smtp-map-1.desy.de (DESY_MAP_1) with ESMTP id 2093313E9B
-	for <linux-nfs@vger.kernel.org>; Mon, 30 May 2016 20:29:41 +0200 (MEST)
-Date: Mon, 30 May 2016 20:29:41 +0200 (CEST)
+	by smtp-map-3.desy.de (DESY_MAP_3) with ESMTP id 4F47E1675
+	for <linux-nfs@vger.kernel.org>; Mon, 30 May 2016 20:42:47 +0200 (MEST)
+Date: Mon, 30 May 2016 20:42:47 +0200 (CEST)
 From: "Mkrtchyan, Tigran" <tigran.mkrtchyan@desy.de>
 To: Jeff Layton <jlayton@poochiereds.net>
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Trond Myklebust <trond.myklebust@primarydata.com>
-Message-ID: <814812120.15151348.1464632981013.JavaMail.zimbra@desy.de>
-In-Reply-To: <1464631095.13639.6.camel@poochiereds.net>
-References: <1897196982.15107146.1464620758631.JavaMail.zimbra@desy.de> <345347427.15123988.1464623475380.JavaMail.zimbra@desy.de> <1464631095.13639.6.camel@poochiereds.net>
-Subject: Re: Infinit LAYOUTGET with mmap
+Cc: linux-nfs@vger.kernel.org, Tom Haynes <thomas.haynes@primarydata.com>,
+        Christoph Hellwig <hch@lst.de>
+Message-ID: <1457806307.15151735.1464633767657.JavaMail.zimbra@desy.de>
+In-Reply-To: <1464631520.13639.12.camel@poochiereds.net>
+References: <1464555567-16055-1-git-send-email-jlayton@poochiereds.net> <1464555974.7044.4.camel@poochiereds.net> <643433762.15123359.1464623258309.JavaMail.zimbra@desy.de> <1464627098.8117.6.camel@poochiereds.net> <1373800959.15136324.1464627888132.JavaMail.zimbra@desy.de> <1464631520.13639.12.camel@poochiereds.net>
+Subject: Re: [RFC PATCH] nfsd: allow nfsd to advertise multiple layout types
 MIME-Version: 1.0
 Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-the 4.7 have the same behavior...
 
-capture file: https://desycloud.desy.de/public.php?service=files&t=5e26a8d73ed6aacbdbf49e4c8f1cc01a&download
+
+You have explicit order in set_pnfs_layoutdriver function.
+Your patch looks like ot to me. I will try it with our
+server and will let you know.
 
 Tigran.
 
 ----- Original Message -----
 > From: "Jeff Layton" <jlayton@poochiereds.net>
-> To: "Mkrtchyan, Tigran" <tigran.mkrtchyan@desy.de>, "Linux NFS Mailing List" <linux-nfs@vger.kernel.org>
-> Cc: "Trond Myklebust" <trond.myklebust@primarydata.com>
-> Sent: Monday, May 30, 2016 7:58:15 PM
-> Subject: Re: Infinit LAYOUTGET with mmap
+> To: "Mkrtchyan, Tigran" <tigran.mkrtchyan@desy.de>
+> Cc: linux-nfs@vger.kernel.org, "Tom Haynes" <thomas.haynes@primarydata.com>, "Christoph Hellwig" <hch@lst.de>
+> Sent: Monday, May 30, 2016 8:05:20 PM
+> Subject: Re: [RFC PATCH] nfsd: allow nfsd to advertise multiple layout types
 
-> On Mon, 2016-05-30 at 17:51 +0200, Mkrtchyan, Tigran wrote:
->> 
->> re-sending, as it never arrived....
+> On Mon, 2016-05-30 at 19:04 +0200, Mkrtchyan, Tigran wrote:
 >> 
 >> ----- Original Message -----
 >> > 
->> > From: "Mkrtchyan, Tigran" <tigran.mkrtchyan@desy.de>
->> > To: "Linux NFS Mailing List" <linux-nfs@vger.kernel.org>
->> > Sent: Monday, May 30, 2016 5:05:59 PM
->> > Subject: Infinit LAYOUTGET with mmap
+>> > From: "Jeff Layton" <jlayton@poochiereds.net>
+>> > To: "Mkrtchyan, Tigran" <tigran.mkrtchyan@desy.de>
+>> > Cc: linux-nfs@vger.kernel.org, "Tom Haynes" , "Christoph Hellwig" <hch@lst.de>
+>> > Sent: Monday, May 30, 2016 6:51:38 PM
+>> > Subject: Re: [RFC PATCH] nfsd: allow nfsd to advertise multiple layout types
 >> > 
->> > Dear NFS developers,
+>> > On Mon, 2016-05-30 at 17:47 +0200, Mkrtchyan, Tigran wrote:
+>> > > 
+>> > > 
+>> > > ----- Original Message -----
+>> > > > 
+>> > > > From: "Jeff Layton" <jlayton@poochiereds.net>
+>> > > > To: linux-nfs@vger.kernel.org
+>> > > > Cc: "Tom Haynes" <thomas.haynes@primarydata.com>, "Christoph Hellwig"
+>> > > > <hch@lst.de>
+>> > > > Sent: Sunday, May 29, 2016 11:06:14 PM
+>> > > > Subject: Re: [RFC PATCH] nfsd: allow nfsd to advertise multiple layout types
+>> > > > 
+>> > > > On Sun, 2016-05-29 at 16:59 -0400, Jeff Layton wrote:
+>> > > > > 
+>> > > > > If the underlying filesystem supports multiple layout types, then there
+>> > > > > is little reason not to advertise that fact to clients and let them
+>> > > > > choose what type to use.
+>> > > > > 
+>> > > > > Turn the ex_layout_type field into a bitfield. For each supported
+>> > > > > layout type, we set a bit in that field. When the client requests a
+>> > > > > layout, ensure that the bit for that layout type is set. When the
+>> > > > > client requests attributes, send back a list of supported types.
+>> > > > > 
+>> > > > > Signed-off-by: Jeff Layton <jeff.layton@primarydata.com>
+>> > > > > ---
+>> > > > >  fs/nfsd/export.c      |  4 ++--
+>> > > > >  fs/nfsd/export.h      |  2 +-
+>> > > > >  fs/nfsd/nfs4layouts.c |  6 +++---
+>> > > > >  fs/nfsd/nfs4proc.c    |  4 ++--
+>> > > > >  fs/nfsd/nfs4xdr.c     | 30 ++++++++++++++----------------
+>> > > > >  5 files changed, 22 insertions(+), 24 deletions(-)
+>> > > > > 
+>> > > > > diff --git a/fs/nfsd/export.c b/fs/nfsd/export.c
+>> > > > > index b4d84b579f20..f97ba49d5e66 100644
+>> > > > > --- a/fs/nfsd/export.c
+>> > > > > +++ b/fs/nfsd/export.c
+>> > > > > @@ -706,7 +706,7 @@ static void svc_export_init(struct cache_head *cnew, struct
+>> > > > > cache_head *citem)
+>> > > > >  	new->ex_fslocs.locations = NULL;
+>> > > > >  	new->ex_fslocs.locations_count = 0;
+>> > > > >  	new->ex_fslocs.migrated = 0;
+>> > > > > -	new->ex_layout_type = 0;
+>> > > > > +	new->ex_layout_types = 0;
+>> > > > >  	new->ex_uuid = NULL;
+>> > > > >  	new->cd = item->cd;
+>> > > > >  }
+>> > > > > @@ -731,7 +731,7 @@ static void export_update(struct cache_head *cnew, struct
+>> > > > > cache_head *citem)
+>> > > > >  	item->ex_fslocs.locations_count = 0;
+>> > > > >  	new->ex_fslocs.migrated = item->ex_fslocs.migrated;
+>> > > > >  	item->ex_fslocs.migrated = 0;
+>> > > > > -	new->ex_layout_type = item->ex_layout_type;
+>> > > > > +	new->ex_layout_types = item->ex_layout_types;
+>> > > > >  	new->ex_nflavors = item->ex_nflavors;
+>> > > > >  	for (i = 0; i < MAX_SECINFO_LIST; i++) {
+>> > > > >  		new->ex_flavors[i] = item->ex_flavors[i];
+>> > > > > diff --git a/fs/nfsd/export.h b/fs/nfsd/export.h
+>> > > > > index 2e315072bf3f..730f15eeb7ed 100644
+>> > > > > --- a/fs/nfsd/export.h
+>> > > > > +++ b/fs/nfsd/export.h
+>> > > > > @@ -57,7 +57,7 @@ struct svc_export {
+>> > > > >  	struct nfsd4_fs_locations ex_fslocs;
+>> > > > >  	uint32_t		ex_nflavors;
+>> > > > >  	struct exp_flavor_info	ex_flavors[MAX_SECINFO_LIST];
+>> > > > > -	enum pnfs_layouttype	ex_layout_type;
+>> > > > > +	u32			ex_layout_types;
+>> > > > >  	struct nfsd4_deviceid_map *ex_devid_map;
+>> > > > >  	struct cache_detail	*cd;
+>> > > > >  };
+>> > > > > diff --git a/fs/nfsd/nfs4layouts.c b/fs/nfsd/nfs4layouts.c
+>> > > > > index 6d98d16b3354..2be9602b0221 100644
+>> > > > > --- a/fs/nfsd/nfs4layouts.c
+>> > > > > +++ b/fs/nfsd/nfs4layouts.c
+>> > > > > @@ -139,21 +139,21 @@ void nfsd4_setup_layout_type(struct svc_export *exp)
+>> > > > >  	 * otherwise advertise the block layout.
+>> > > > >  	 */
+>> > > > >  #ifdef CONFIG_NFSD_FLEXFILELAYOUT
+>> > > > > -	exp->ex_layout_type = LAYOUT_FLEX_FILES;
+>> > > > > +	exp->ex_layout_types |= 1 << LAYOUT_FLEX_FILES;
+>> > > > >  #endif
+>> > > > >  #ifdef CONFIG_NFSD_BLOCKLAYOUT
+>> > > > >  	/* overwrite flex file layout selection if needed */
+>> > > > >  	if (sb->s_export_op->get_uuid &&
+>> > > > >  	    sb->s_export_op->map_blocks &&
+>> > > > >  	    sb->s_export_op->commit_blocks)
+>> > > > > -		exp->ex_layout_type = LAYOUT_BLOCK_VOLUME;
+>> > > > > +		exp->ex_layout_types |= 1 << LAYOUT_BLOCK_VOLUME;
+>> > > > >  #endif
+>> > > > >  #ifdef CONFIG_NFSD_SCSILAYOUT
+>> > > > >  	/* overwrite block layout selection if needed */
+>> > > > >  	if (sb->s_export_op->map_blocks &&
+>> > > > >  	    sb->s_export_op->commit_blocks &&
+>> > > > >  	    sb->s_bdev && sb->s_bdev->bd_disk->fops->pr_ops)
+>> > > > > -		exp->ex_layout_type = LAYOUT_SCSI;
+>> > > > > +		exp->ex_layout_types |= 1 << LAYOUT_SCSI;
+>> > > > >  #endif
+>> > > > >  }
+>> > > > >  
+>> > > > > diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+>> > > > > index 2ee2dc170327..719c620753e2 100644
+>> > > > > --- a/fs/nfsd/nfs4proc.c
+>> > > > > +++ b/fs/nfsd/nfs4proc.c
+>> > > > > @@ -1219,12 +1219,12 @@ nfsd4_verify(struct svc_rqst *rqstp, struct
+>> > > > > nfsd4_compound_state *cstate,
+>> > > > >  static const struct nfsd4_layout_ops *
+>> > > > >  nfsd4_layout_verify(struct svc_export *exp, unsigned int layout_type)
+>> > > > >  {
+>> > > > > -	if (!exp->ex_layout_type) {
+>> > > > > +	if (!exp->ex_layout_types) {
+>> > > > >  		dprintk("%s: export does not support pNFS\n", __func__);
+>> > > > >  		return NULL;
+>> > > > >  	}
+>> > > > >  
+>> > > > > -	if (exp->ex_layout_type != layout_type) {
+>> > > > > +	if (!(exp->ex_layout_types & (1 << layout_type))) {
+>> > > > >  		dprintk("%s: layout type %d not supported\n",
+>> > > > >  			__func__, layout_type);
+>> > > > >  		return NULL;
+>> > > > > diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+>> > > > > index 9df898ba648f..4d3ae75ad4c8 100644
+>> > > > > --- a/fs/nfsd/nfs4xdr.c
+>> > > > > +++ b/fs/nfsd/nfs4xdr.c
+>> > > > > @@ -2164,22 +2164,20 @@ nfsd4_encode_aclname(struct xdr_stream *xdr, struct
+>> > > > > svc_rqst *rqstp,
+>> > > > >  }
+>> > > > >  
+>> > > > >  static inline __be32
+>> > > > > -nfsd4_encode_layout_type(struct xdr_stream *xdr, enum pnfs_layouttype
+>> > > > > layout_type)
+>> > > > > +nfsd4_encode_layout_types(struct xdr_stream *xdr, u32 layout_types)
+>> > > > >  {
+>> > > > > -	__be32 *p;
+>> > > > > +	__be32		*p;
+>> > > > > +	unsigned long	i = hweight_long(layout_types);
+>> > > > >  
+>> > > > > -	if (layout_type) {
+>> > > > > -		p = xdr_reserve_space(xdr, 8);
+>> > > > > -		if (!p)
+>> > > > > -			return nfserr_resource;
+>> > > > > -		*p++ = cpu_to_be32(1);
+>> > > > > -		*p++ = cpu_to_be32(layout_type);
+>> > > > > -	} else {
+>> > > > > -		p = xdr_reserve_space(xdr, 4);
+>> > > > > -		if (!p)
+>> > > > > -			return nfserr_resource;
+>> > > > > -		*p++ = cpu_to_be32(0);
+>> > > > > -	}
+>> > > > > +	p = xdr_reserve_space(xdr, 4 + 4 * i);
+>> > > > > +	if (!p)
+>> > > > > +		return nfserr_resource;
+>> > > > > +
+>> > > > > +	*p++ = cpu_to_be32(i);
+>> > > > > +
+>> > > > > +	for (i = LAYOUT_NFSV4_1_FILES; i < LAYOUT_TYPE_MAX; ++i)
+>> > > > > +		if (layout_types & (1 << i))
+>> > > > > +			*p++ = cpu_to_be32(i);
+>> > > > >  
+>> > > > >  	return 0;
+>> > > > >  }
+>> > > > > @@ -2754,13 +2752,13 @@ out_acl:
+>> > > > >  	}
+>> > > > >  #ifdef CONFIG_NFSD_PNFS
+>> > > > >  	if (bmval1 & FATTR4_WORD1_FS_LAYOUT_TYPES) {
+>> > > > > -		status = nfsd4_encode_layout_type(xdr, exp->ex_layout_type);
+>> > > > > +		status = nfsd4_encode_layout_types(xdr, exp->ex_layout_types);
+>> > > > >  		if (status)
+>> > > > >  			goto out;
+>> > > > >  	}
+>> > > > >  
+>> > > > >  	if (bmval2 & FATTR4_WORD2_LAYOUT_TYPES) {
+>> > > > > -		status = nfsd4_encode_layout_type(xdr, exp->ex_layout_type);
+>> > > > > +		status = nfsd4_encode_layout_types(xdr, exp->ex_layout_types);
+>> > > > >  		if (status)
+>> > > > >  			goto out;
+>> > > > >  	}
+>> > > > 
+>> > > > Just a (lightly-tested) RFC patch for now.
+>> > > > 
+>> > > > This seems to do the right thing WRT to GETATTR response that requests
+>> > > > a layout types list. The current client code spews this into the ring
+>> > > > buffer though:
+>> > > > 
+>> > > >     NFS: decode_first_pnfs_layout_type: Warning: Multiple pNFS layout drivers per
+>> > > >     filesystem not supported
+>> > > > 
+>> > > > ...so that would need a little work. Wireshark also seems to not parse
+>> > > > the layout types list correctly.
+>> > > Hi Jeff,
+>> > > 
+>> > > I had an attempt to add multi-layout support into the client:
+>> > > 
+>> > > https://github.com/0day-ci/linux/commit/e2d792dc32b82ffc511b009c0a8db5313126888e
+>> > > 
+>> > > I can't find it in the list archive. This explains why Trond never
+>> > > respond to it.
+>> > > 
+>> > > Tigran.
+>> > > 
+>> > Thanks. I had already rolled one up that does a different approach of a
+>> > hardcoded selection order in the client code and sent it as an RFC.
 >> > 
->> > On my test system I hit a behavior of the nfs client with
->> > kernel 4.4 which I haven't seen before.
->> > 
->> > 
->> > Here is a minimal example to reproduce the issue:
->> > 
->> > ============= bug.c =====================
->> > 
->> > #include <stdio.h>
->> > #include <stdlib.h>
->> > #include <unistd.h>
->> > #include <fcntl.h>
->> > #include <sys/mman.h>
->> > 
->> > 
->> > int main(int argc, char* argv[])
->> > {
->> > 
->> >    int *m;
->> >    int fd;
->> >    int err;
->> > 
->> >    fd = open(argv[1], O_CREAT| O_RDWR, O_TRUNC, 0666);
->> >    if (fd < 0) {
->> >        perror("failed to open file");
->> >        exit(1);
->> >    }
->> > 
->> >    err = ftruncate(fd, 4096);
->> >    if (err) {
->> >        perror("cant set filesize");
->> >        exit(2);
->> >    }
->> > 
->> >    m = mmap(NULL, 4096, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
->> >    if (m == MAP_FAILED) {
->> >        perror("failed to map the file");
->> >        exit(2);
->> >    }
->> > 
->> >    m[1] = 0;
->> > 
->> >    err = munmap(m, 4096);
->> >    if (err) {
->> >        perror("failed to unmap the file");
->> >    }
->> > 
->> >    close(fd);
->> > }
->> > =============== end of example ================
->> > 
->> > 
->> > 
->> > When  running this code, client send an OPEN with share_access
->> > OPEN4_SHARE_ACCESS_BOTH. But later calient sends LAYOUTGET with
->> > IOMODE_READ
->> > followed by GETDEVICEINFO.
->> > 
->> > This combination of LG+GDI remain for ever. The capture file is
->> > attached.
->> > 
->> > My guess it that client expects RW layout.
->> > 
->> > Kernel: 4.4.9-300.fc23.x86_64. I will try with upstream as well.
->> > 
->> > Thanks a lot,
->> >    Tigran.
+>> > So...yours assumes that the server will send the "default" one first in
+>> > the list, but AFAICT, the spec doesn't say anything about the
+>> > fs_layout_type list being ordered in any way. I don't think we can make
+>> > that assumption. Am I wrong there?
+>> Imagine a muti-layout server in a deployment, where some client are old (RHEL6)
+>> and some clients are new. RHEL6 will always take only the first one and fail, if
+>> it wasn't nfs4_file_layout. But, if we always return 'well-known' as a first
+>> one,
+>> then, then RHEL6 clients will be able to coexists with newer clients.
+>> 
+>> Our server can provide flexfile layouts, but 99% of our clients are
+>> RHEL6-clones.
+>> This stops us from enable flexfile support, unless we add per-client based
+>> control
+>> of layout type.
+>> 
+>> Tigran.
+>> 
 > 
-> No capture attached, but 4.7 should be getting a major overhaul to the
-> LAYOUTGET retry handling code. You may want to re-test with a bleeding
-> edge kernel and see if the problem is still present.
+> Ahh ok, I see what you mean...
 > 
-> Cheers,
+> So yeah, I don't think the spec places any significance on the order of
+> the list, but we some de-facto precedence due to legacy clients. Not
+> much we can do about that. I guess all you can do for those clients is
+> just ensure that the first entry is the one most likely to be usable by
+> those clients.
+> 
+> This patch just orders the list by numerical value of the layout type
+> constants. If someone can offer up a sane argument for ordering the
+> list in a different fashion, then I'm OK with doing that.
+> 
 > --
 > Jeff Layton <jlayton@poochiereds.net>
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
