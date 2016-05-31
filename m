@@ -1,238 +1,306 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f194.google.com ([209.85.223.194]:34418 "EHLO
-	mail-io0-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S933361AbcE3UH6 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 30 May 2016 16:07:58 -0400
-Received: by mail-io0-f194.google.com with SMTP id l9so1510448ioe.1
-        for <linux-nfs@vger.kernel.org>; Mon, 30 May 2016 13:07:57 -0700 (PDT)
+Received: from mail-io0-f193.google.com ([209.85.223.193]:35484 "EHLO
+	mail-io0-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1161729AbcEaBKv convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 30 May 2016 21:10:51 -0400
+Received: by mail-io0-f193.google.com with SMTP id k19so4183023ioi.2
+        for <linux-nfs@vger.kernel.org>; Mon, 30 May 2016 18:10:50 -0700 (PDT)
 Content-Type: text/plain; charset=utf-8
 Mime-Version: 1.0 (Mac OS X Mail 9.3 \(3124\))
-Subject: Re: [PATCH v2] nfs: avoid race that crashes nfs_init_commit
+Subject: Re: [RFC PATCH] nfsd: allow nfsd to advertise multiple layout types
 From: Weston Andros Adamson <dros@monkey.org>
-In-Reply-To: <3FB15BEF-F7A8-4643-90C8-D3292FA0BE61@monkey.org>
-Date: Mon, 30 May 2016 16:07:54 -0400
-Cc: linux-nfs list <linux-nfs@vger.kernel.org>
-Message-Id: <D7B46CAB-23D7-4FEA-A841-4951DD425B62@monkey.org>
-References: <1464185243-15556-1-git-send-email-dros@primarydata.com> <26144774-9f6a-4a05-8d87-e3eb201adc5e@Netapp.com> <EA1BD510-BE18-4723-BF37-FCD10221E2DA@primarydata.com> <3FB15BEF-F7A8-4643-90C8-D3292FA0BE61@monkey.org>
-To: Trond Myklebust <trondmy@primarydata.com>,
-        Anna Schumaker <Anna.Schumaker@netapp.com>
+In-Reply-To: <1457806307.15151735.1464633767657.JavaMail.zimbra@desy.de>
+Date: Mon, 30 May 2016 21:10:48 -0400
+Cc: Jeff Layton <jlayton@poochiereds.net>,
+        linux-nfs list <linux-nfs@vger.kernel.org>,
+        Tom Haynes <thomas.haynes@primarydata.com>,
+        Christoph Hellwig <hch@lst.de>
+Message-Id: <E916D988-C7AA-42C0-B552-CDA808605FE7@monkey.org>
+References: <1464555567-16055-1-git-send-email-jlayton@poochiereds.net> <1464555974.7044.4.camel@poochiereds.net> <643433762.15123359.1464623258309.JavaMail.zimbra@desy.de> <1464627098.8117.6.camel@poochiereds.net> <1373800959.15136324.1464627888132.JavaMail.zimbra@desy.de> <1464631520.13639.12.camel@poochiereds.net> <1457806307.15151735.1464633767657.JavaMail.zimbra@desy.de>
+To: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-So, some bad news: this patch isn’t quite right.
 
-When cancelling, I called nfs_commitdata_release which puts the open context before
-freeing the commit data, but the open context isn’t grabbed until nfs_init_commit -
-the call that we avoid with this path! The fix is to call nfs_commit_free instead.
+> On May 30, 2016, at 2:42 PM, Mkrtchyan, Tigran <tigran.mkrtchyan@desy.de> wrote:
+> 
+> 
+> 
+> You have explicit order in set_pnfs_layoutdriver function.
+> Your patch looks like ot to me. I will try it with our
+> server and will let you know.
+> 
+> Tigran.
+> 
+> ----- Original Message -----
+>> From: "Jeff Layton" <jlayton@poochiereds.net>
+>> To: "Mkrtchyan, Tigran" <tigran.mkrtchyan@desy.de>
+>> Cc: linux-nfs@vger.kernel.org, "Tom Haynes" <thomas.haynes@primarydata.com>, "Christoph Hellwig" <hch@lst.de>
+>> Sent: Monday, May 30, 2016 8:05:20 PM
+>> Subject: Re: [RFC PATCH] nfsd: allow nfsd to advertise multiple layout types
+> 
+>> On Mon, 2016-05-30 at 19:04 +0200, Mkrtchyan, Tigran wrote:
+>>> 
+>>> ----- Original Message -----
+>>>> 
+>>>> From: "Jeff Layton" <jlayton@poochiereds.net>
+>>>> To: "Mkrtchyan, Tigran" <tigran.mkrtchyan@desy.de>
+>>>> Cc: linux-nfs@vger.kernel.org, "Tom Haynes" , "Christoph Hellwig" <hch@lst.de>
+>>>> Sent: Monday, May 30, 2016 6:51:38 PM
+>>>> Subject: Re: [RFC PATCH] nfsd: allow nfsd to advertise multiple layout types
+>>>> 
+>>>> On Mon, 2016-05-30 at 17:47 +0200, Mkrtchyan, Tigran wrote:
+>>>>> 
+>>>>> 
+>>>>> ----- Original Message -----
+>>>>>> 
+>>>>>> From: "Jeff Layton" <jlayton@poochiereds.net>
+>>>>>> To: linux-nfs@vger.kernel.org
+>>>>>> Cc: "Tom Haynes" <thomas.haynes@primarydata.com>, "Christoph Hellwig"
+>>>>>> <hch@lst.de>
+>>>>>> Sent: Sunday, May 29, 2016 11:06:14 PM
+>>>>>> Subject: Re: [RFC PATCH] nfsd: allow nfsd to advertise multiple layout types
+>>>>>> 
+>>>>>> On Sun, 2016-05-29 at 16:59 -0400, Jeff Layton wrote:
+>>>>>>> 
+>>>>>>> If the underlying filesystem supports multiple layout types, then there
+>>>>>>> is little reason not to advertise that fact to clients and let them
+>>>>>>> choose what type to use.
+>>>>>>> 
+>>>>>>> Turn the ex_layout_type field into a bitfield. For each supported
+>>>>>>> layout type, we set a bit in that field. When the client requests a
+>>>>>>> layout, ensure that the bit for that layout type is set. When the
+>>>>>>> client requests attributes, send back a list of supported types.
+>>>>>>> 
+>>>>>>> Signed-off-by: Jeff Layton <jeff.layton@primarydata.com>
+>>>>>>> ---
+>>>>>>>  fs/nfsd/export.c      |  4 ++--
+>>>>>>>  fs/nfsd/export.h      |  2 +-
+>>>>>>>  fs/nfsd/nfs4layouts.c |  6 +++---
+>>>>>>>  fs/nfsd/nfs4proc.c    |  4 ++--
+>>>>>>>  fs/nfsd/nfs4xdr.c     | 30 ++++++++++++++----------------
+>>>>>>>  5 files changed, 22 insertions(+), 24 deletions(-)
+>>>>>>> 
+>>>>>>> diff --git a/fs/nfsd/export.c b/fs/nfsd/export.c
+>>>>>>> index b4d84b579f20..f97ba49d5e66 100644
+>>>>>>> --- a/fs/nfsd/export.c
+>>>>>>> +++ b/fs/nfsd/export.c
+>>>>>>> @@ -706,7 +706,7 @@ static void svc_export_init(struct cache_head *cnew, struct
+>>>>>>> cache_head *citem)
+>>>>>>>  	new->ex_fslocs.locations = NULL;
+>>>>>>>  	new->ex_fslocs.locations_count = 0;
+>>>>>>>  	new->ex_fslocs.migrated = 0;
+>>>>>>> -	new->ex_layout_type = 0;
+>>>>>>> +	new->ex_layout_types = 0;
+>>>>>>>  	new->ex_uuid = NULL;
+>>>>>>>  	new->cd = item->cd;
+>>>>>>>  }
+>>>>>>> @@ -731,7 +731,7 @@ static void export_update(struct cache_head *cnew, struct
+>>>>>>> cache_head *citem)
+>>>>>>>  	item->ex_fslocs.locations_count = 0;
+>>>>>>>  	new->ex_fslocs.migrated = item->ex_fslocs.migrated;
+>>>>>>>  	item->ex_fslocs.migrated = 0;
+>>>>>>> -	new->ex_layout_type = item->ex_layout_type;
+>>>>>>> +	new->ex_layout_types = item->ex_layout_types;
+>>>>>>>  	new->ex_nflavors = item->ex_nflavors;
+>>>>>>>  	for (i = 0; i < MAX_SECINFO_LIST; i++) {
+>>>>>>>  		new->ex_flavors[i] = item->ex_flavors[i];
+>>>>>>> diff --git a/fs/nfsd/export.h b/fs/nfsd/export.h
+>>>>>>> index 2e315072bf3f..730f15eeb7ed 100644
+>>>>>>> --- a/fs/nfsd/export.h
+>>>>>>> +++ b/fs/nfsd/export.h
+>>>>>>> @@ -57,7 +57,7 @@ struct svc_export {
+>>>>>>>  	struct nfsd4_fs_locations ex_fslocs;
+>>>>>>>  	uint32_t		ex_nflavors;
+>>>>>>>  	struct exp_flavor_info	ex_flavors[MAX_SECINFO_LIST];
+>>>>>>> -	enum pnfs_layouttype	ex_layout_type;
+>>>>>>> +	u32			ex_layout_types;
+>>>>>>>  	struct nfsd4_deviceid_map *ex_devid_map;
+>>>>>>>  	struct cache_detail	*cd;
+>>>>>>>  };
+>>>>>>> diff --git a/fs/nfsd/nfs4layouts.c b/fs/nfsd/nfs4layouts.c
+>>>>>>> index 6d98d16b3354..2be9602b0221 100644
+>>>>>>> --- a/fs/nfsd/nfs4layouts.c
+>>>>>>> +++ b/fs/nfsd/nfs4layouts.c
+>>>>>>> @@ -139,21 +139,21 @@ void nfsd4_setup_layout_type(struct svc_export *exp)
+>>>>>>>  	 * otherwise advertise the block layout.
+>>>>>>>  	 */
+>>>>>>>  #ifdef CONFIG_NFSD_FLEXFILELAYOUT
+>>>>>>> -	exp->ex_layout_type = LAYOUT_FLEX_FILES;
+>>>>>>> +	exp->ex_layout_types |= 1 << LAYOUT_FLEX_FILES;
+>>>>>>>  #endif
+>>>>>>>  #ifdef CONFIG_NFSD_BLOCKLAYOUT
+>>>>>>>  	/* overwrite flex file layout selection if needed */
+>>>>>>>  	if (sb->s_export_op->get_uuid &&
+>>>>>>>  	    sb->s_export_op->map_blocks &&
+>>>>>>>  	    sb->s_export_op->commit_blocks)
+>>>>>>> -		exp->ex_layout_type = LAYOUT_BLOCK_VOLUME;
+>>>>>>> +		exp->ex_layout_types |= 1 << LAYOUT_BLOCK_VOLUME;
+>>>>>>>  #endif
+>>>>>>>  #ifdef CONFIG_NFSD_SCSILAYOUT
+>>>>>>>  	/* overwrite block layout selection if needed */
+>>>>>>>  	if (sb->s_export_op->map_blocks &&
+>>>>>>>  	    sb->s_export_op->commit_blocks &&
+>>>>>>>  	    sb->s_bdev && sb->s_bdev->bd_disk->fops->pr_ops)
+>>>>>>> -		exp->ex_layout_type = LAYOUT_SCSI;
+>>>>>>> +		exp->ex_layout_types |= 1 << LAYOUT_SCSI;
+>>>>>>>  #endif
+>>>>>>>  }
+>>>>>>>  
+>>>>>>> diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+>>>>>>> index 2ee2dc170327..719c620753e2 100644
+>>>>>>> --- a/fs/nfsd/nfs4proc.c
+>>>>>>> +++ b/fs/nfsd/nfs4proc.c
+>>>>>>> @@ -1219,12 +1219,12 @@ nfsd4_verify(struct svc_rqst *rqstp, struct
+>>>>>>> nfsd4_compound_state *cstate,
+>>>>>>>  static const struct nfsd4_layout_ops *
+>>>>>>>  nfsd4_layout_verify(struct svc_export *exp, unsigned int layout_type)
+>>>>>>>  {
+>>>>>>> -	if (!exp->ex_layout_type) {
+>>>>>>> +	if (!exp->ex_layout_types) {
+>>>>>>>  		dprintk("%s: export does not support pNFS\n", __func__);
+>>>>>>>  		return NULL;
+>>>>>>>  	}
+>>>>>>>  
+>>>>>>> -	if (exp->ex_layout_type != layout_type) {
+>>>>>>> +	if (!(exp->ex_layout_types & (1 << layout_type))) {
+>>>>>>>  		dprintk("%s: layout type %d not supported\n",
+>>>>>>>  			__func__, layout_type);
+>>>>>>>  		return NULL;
+>>>>>>> diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+>>>>>>> index 9df898ba648f..4d3ae75ad4c8 100644
+>>>>>>> --- a/fs/nfsd/nfs4xdr.c
+>>>>>>> +++ b/fs/nfsd/nfs4xdr.c
+>>>>>>> @@ -2164,22 +2164,20 @@ nfsd4_encode_aclname(struct xdr_stream *xdr, struct
+>>>>>>> svc_rqst *rqstp,
+>>>>>>>  }
+>>>>>>>  
+>>>>>>>  static inline __be32
+>>>>>>> -nfsd4_encode_layout_type(struct xdr_stream *xdr, enum pnfs_layouttype
+>>>>>>> layout_type)
+>>>>>>> +nfsd4_encode_layout_types(struct xdr_stream *xdr, u32 layout_types)
+>>>>>>>  {
+>>>>>>> -	__be32 *p;
+>>>>>>> +	__be32		*p;
+>>>>>>> +	unsigned long	i = hweight_long(layout_types);
+>>>>>>>  
+>>>>>>> -	if (layout_type) {
+>>>>>>> -		p = xdr_reserve_space(xdr, 8);
+>>>>>>> -		if (!p)
+>>>>>>> -			return nfserr_resource;
+>>>>>>> -		*p++ = cpu_to_be32(1);
+>>>>>>> -		*p++ = cpu_to_be32(layout_type);
+>>>>>>> -	} else {
+>>>>>>> -		p = xdr_reserve_space(xdr, 4);
+>>>>>>> -		if (!p)
+>>>>>>> -			return nfserr_resource;
+>>>>>>> -		*p++ = cpu_to_be32(0);
+>>>>>>> -	}
+>>>>>>> +	p = xdr_reserve_space(xdr, 4 + 4 * i);
+>>>>>>> +	if (!p)
+>>>>>>> +		return nfserr_resource;
+>>>>>>> +
+>>>>>>> +	*p++ = cpu_to_be32(i);
+>>>>>>> +
+>>>>>>> +	for (i = LAYOUT_NFSV4_1_FILES; i < LAYOUT_TYPE_MAX; ++i)
+>>>>>>> +		if (layout_types & (1 << i))
+>>>>>>> +			*p++ = cpu_to_be32(i);
+>>>>>>>  
+>>>>>>>  	return 0;
+>>>>>>>  }
+>>>>>>> @@ -2754,13 +2752,13 @@ out_acl:
+>>>>>>>  	}
+>>>>>>>  #ifdef CONFIG_NFSD_PNFS
+>>>>>>>  	if (bmval1 & FATTR4_WORD1_FS_LAYOUT_TYPES) {
+>>>>>>> -		status = nfsd4_encode_layout_type(xdr, exp->ex_layout_type);
+>>>>>>> +		status = nfsd4_encode_layout_types(xdr, exp->ex_layout_types);
+>>>>>>>  		if (status)
+>>>>>>>  			goto out;
+>>>>>>>  	}
+>>>>>>>  
+>>>>>>>  	if (bmval2 & FATTR4_WORD2_LAYOUT_TYPES) {
+>>>>>>> -		status = nfsd4_encode_layout_type(xdr, exp->ex_layout_type);
+>>>>>>> +		status = nfsd4_encode_layout_types(xdr, exp->ex_layout_types);
+>>>>>>>  		if (status)
+>>>>>>>  			goto out;
+>>>>>>>  	}
+>>>>>> 
+>>>>>> Just a (lightly-tested) RFC patch for now.
+>>>>>> 
+>>>>>> This seems to do the right thing WRT to GETATTR response that requests
+>>>>>> a layout types list. The current client code spews this into the ring
+>>>>>> buffer though:
+>>>>>> 
+>>>>>>     NFS: decode_first_pnfs_layout_type: Warning: Multiple pNFS layout drivers per
+>>>>>>     filesystem not supported
+>>>>>> 
+>>>>>> ...so that would need a little work. Wireshark also seems to not parse
+>>>>>> the layout types list correctly.
+>>>>> Hi Jeff,
+>>>>> 
+>>>>> I had an attempt to add multi-layout support into the client:
+>>>>> 
+>>>>> https://github.com/0day-ci/linux/commit/e2d792dc32b82ffc511b009c0a8db5313126888e
+>>>>> 
+>>>>> I can't find it in the list archive. This explains why Trond never
+>>>>> respond to it.
+>>>>> 
+>>>>> Tigran.
+>>>>> 
+>>>> Thanks. I had already rolled one up that does a different approach of a
+>>>> hardcoded selection order in the client code and sent it as an RFC.
+>>>> 
+>>>> So...yours assumes that the server will send the "default" one first in
+>>>> the list, but AFAICT, the spec doesn't say anything about the
+>>>> fs_layout_type list being ordered in any way. I don't think we can make
+>>>> that assumption. Am I wrong there?
+>>> Imagine a muti-layout server in a deployment, where some client are old (RHEL6)
+>>> and some clients are new. RHEL6 will always take only the first one and fail, if
+>>> it wasn't nfs4_file_layout. But, if we always return 'well-known' as a first
+>>> one,
+>>> then, then RHEL6 clients will be able to coexists with newer clients.
+>>> 
+>>> Our server can provide flexfile layouts, but 99% of our clients are
+>>> RHEL6-clones.
+>>> This stops us from enable flexfile support, unless we add per-client based
+>>> control
+>>> of layout type.
+>>> 
+>>> Tigran.
+>>> 
+>> 
+>> Ahh ok, I see what you mean...
+>> 
+>> So yeah, I don't think the spec places any significance on the order of
+>> the list, but we some de-facto precedence due to legacy clients. Not
+>> much we can do about that. I guess all you can do for those clients is
+>> just ensure that the first entry is the one most likely to be usable by
+>> those clients.
+>> 
+>> This patch just orders the list by numerical value of the layout type
+>> constants. If someone can offer up a sane argument for ordering the
+>> list in a different fashion, then I'm OK with doing that.
+>> 
+>> --
+>> Jeff Layton <jlayton@poochiereds.net>
+> 
 
-I have a patch that I’m about to hand off to PD's QA to test out… This can be pretty
-difficult to hit.
+Jeff, this patch looks good to me.
 
-Anna & Trond - would you like the fix now, or after QA has pushed it through testing?
+As for backward compatibility, we could do some complicated client
+support detection (implementation ID based or fallback if layout is rejected),
+but that’s probably going overboard for now.
 
-Sorry for the churn,
+Maybe we should just hardcode this array instead of building it in the
+order of the numerical value of each layout type. We could add them in
+the order that the client supported them. I think that would fix Tigran’s
+problem. Maybe it’s already in this order as client support quickly followed
+layout type number allocation?
+
+Reviewed-by: Weston Andros Adamson <dros@primarydata.com>
 
 -dros
 
-> On May 25, 2016, at 2:31 PM, Weston Andros Adamson <dros@monkey.org> wrote:
-> 
-> 
-> 
->> On May 25, 2016, at 12:53 PM, Trond Myklebust <trondmy@primarydata.com> wrote:
->> 
->> 
->> 
->> On 5/25/16, 12:40, "Anna Schumaker" <Anna.Schumaker@netapp.com> wrote:
->> 
->>> Thanks, Dros!
->>> 
->>> How often are you hitting this?
-> 
-> Not that often, the only way I’ve seen it hit is if a normal commit races with a commit
-> from kswapd evicting pages, ie under heavy memory load.
-> 
->> Do you want me to send it to stable?
->>> 
->> 
->> Agreed that it should go to stable.
->> 
->> Dros, do you know how far back? I’d assume 4.0.x, if it still applies to those kernels.
-> 
-> This was introduced by the patch:
-> 
-> commit af7cf057933f01dc7f33ddfb5e436ad598ed17ad
-> Author: Trond Myklebust <trond.myklebust@primarydata.com>
-> Date:   Tue Sep 29 20:34:05 2015 -0400
-> 
->    NFS: Allow multiple commit requests in flight per file
-> 
-> 
-> git branch -r --contains=af7cf057933f01dc7f33ddfb5e436ad598ed17ad | grep stable
->  stable/linux-4.5.y
->  stable/linux-4.6.y
->  stable/master
-> 
-> So yeah, we should also send to stable.
-> 
-> -dros
-> 
->> 
->>> Anna
->>> 
->>> On 05/25/2016 10:07 AM, Weston Andros Adamson wrote:
->>>> Since the patch "NFS: Allow multiple commit requests in flight per file"
->>>> we can run multiple simultaneous commits on the same inode. This
->>>> introduced a race over collecting pages to commit that made it possible
->>>> to call nfs_init_commit() with an empty list - which causes crashes like
->>>> the one below.
->>>> 
->>>> The fix is to catch this race and avoid calling nfs_init_commit and
->>>> initiate_commit when there is no work to do.
->>>> 
->>>> Here is the crash:
->>>> 
->>>> [600522.076832] BUG: unable to handle kernel NULL pointer dereference at 0000000000000040
->>>> [600522.078475] IP: [<ffffffffa0479e72>] nfs_init_commit+0x22/0x130 [nfs]
->>>> [600522.078745] PGD 4272b1067 PUD 4272cb067 PMD 0
->>>> [600522.078972] Oops: 0000 [#1] SMP
->>>> [600522.079204] Modules linked in: nfsv3 nfs_layout_flexfiles rpcsec_gss_krb5 nfsv4 dns_resolver nfs fscache dcdbas ip6t_rpfilter ip6t_REJECT nf_reject_ipv6 xt_conntrack ebtable_nat ebtable_broute bridge stp llc ebtable_filter ebtables ip6table_nat nf_conntrack_ipv6 nf_defrag_ipv6 nf_nat_ipv6 ip6table_mangle ip6table_security ip6table_raw ip6table_filter ip6_tables iptable_nat nf_conntrack_ipv4 nf_defrag_ipv4 nf_nat_ipv4 nf_nat nf_conntrack iptable_mangle iptable_security iptable_raw vmw_vsock_vmci_transport vsock bonding ipmi_devintf ipmi_msghandler coretemp crct10dif_pclmul crc32_pclmul ghash_clmulni_intel ppdev vmw_balloon parport_pc parport acpi_cpufreq vmw_vmci i2c_piix4 shpchp nfsd auth_rpcgss nfs_acl lockd grace sunrpc xfs libcrc32c vmwgfx drm_kms_helper ttm drm crc32c_intel serio_raw vmxnet3
->>>> [600522.081380] vmw_pvscsi ata_generic pata_acpi
->>>> [600522.081809] CPU: 3 PID: 15667 Comm: /usr/bin/python Not tainted 4.1.9-100.pd.88.el7.x86_64 #1
->>>> [600522.082281] Hardware name: VMware, Inc. VMware Virtual Platform/440BX Desktop Reference Platform, BIOS 6.00 09/30/2014
->>>> [600522.082814] task: ffff8800bbbfa780 ti: ffff88042ae84000 task.ti: ffff88042ae84000
->>>> [600522.083378] RIP: 0010:[<ffffffffa0479e72>] [<ffffffffa0479e72>] nfs_init_commit+0x22/0x130 [nfs]
->>>> [600522.083973] RSP: 0018:ffff88042ae87438 EFLAGS: 00010246
->>>> [600522.084571] RAX: 0000000000000000 RBX: ffff880003485e40 RCX: ffff88042ae87588
->>>> [600522.085188] RDX: 0000000000000000 RSI: ffff88042ae874b0 RDI: ffff880003485e40
->>>> [600522.085756] RBP: ffff88042ae87448 R08: ffff880003486010 R09: ffff88042ae874b0
->>>> [600522.086332] R10: 0000000000000000 R11: 0000000000000005 R12: ffff88042ae872d0
->>>> [600522.086905] R13: ffff88042ae874b0 R14: ffff880003485e40 R15: ffff88042704c840
->>>> [600522.087484] FS: 00007f4728ff2740(0000) GS:ffff88043fd80000(0000) knlGS:0000000000000000
->>>> [600522.088070] CS: 0010 DS: 0000 ES: 0000 CR0: 000000008005003b
->>>> [600522.088663] CR2: 0000000000000040 CR3: 000000042b6aa000 CR4: 00000000001406e0
->>>> [600522.089327] Stack:
->>>> [600522.089926] 0000000000000001 ffff88042ae87588 ffff88042ae874f8 ffffffffa04f09fa
->>>> [600522.090549] 0000000000017840 0000000000017840 ffff88042ae87588 ffff8803258d9930
->>>> [600522.091169] ffff88042ae87578 ffffffffa0563d80 0000000000000000 ffff88042704c840
->>>> [600522.091789] Call Trace:
->>>> [600522.092420] [<ffffffffa04f09fa>] pnfs_generic_commit_pagelist+0x1da/0x320 [nfsv4]
->>>> [600522.093052] [<ffffffffa0563d80>] ? ff_layout_commit_prepare_v3+0x30/0x30 [nfs_layout_flexfiles]
->>>> [600522.093696] [<ffffffffa0562645>] ff_layout_commit_pagelist+0x15/0x20 [nfs_layout_flexfiles]
->>>> [600522.094359] [<ffffffffa047bc78>] nfs_generic_commit_list+0xe8/0x120 [nfs]
->>>> [600522.095032] [<ffffffffa047bd6a>] nfs_commit_inode+0xba/0x110 [nfs]
->>>> [600522.095719] [<ffffffffa046ac54>] nfs_release_page+0x44/0xd0 [nfs]
->>>> [600522.096410] [<ffffffff811a8122>] try_to_release_page+0x32/0x50
->>>> [600522.097109] [<ffffffff811bd4f1>] shrink_page_list+0x961/0xb30
->>>> [600522.097812] [<ffffffff811bdced>] shrink_inactive_list+0x1cd/0x550
->>>> [600522.098530] [<ffffffff811bea65>] shrink_lruvec+0x635/0x840
->>>> [600522.099250] [<ffffffff811bed60>] shrink_zone+0xf0/0x2f0
->>>> [600522.099974] [<ffffffff811bf312>] do_try_to_free_pages+0x192/0x470
->>>> [600522.100709] [<ffffffff811bf6ca>] try_to_free_pages+0xda/0x170
->>>> [600522.101464] [<ffffffff811b2198>] __alloc_pages_nodemask+0x588/0x970
->>>> [600522.102235] [<ffffffff811fbbd5>] alloc_pages_vma+0xb5/0x230
->>>> [600522.103000] [<ffffffff813a1589>] ? cpumask_any_but+0x39/0x50
->>>> [600522.103774] [<ffffffff811d6115>] wp_page_copy.isra.55+0x95/0x490
->>>> [600522.104558] [<ffffffff810e3438>] ? __wake_up+0x48/0x60
->>>> [600522.105357] [<ffffffff811d7d3b>] do_wp_page+0xab/0x4f0
->>>> [600522.106137] [<ffffffff810a1bbb>] ? release_task+0x36b/0x470
->>>> [600522.106902] [<ffffffff8126dbd7>] ? eventfd_ctx_read+0x67/0x1c0
->>>> [600522.107659] [<ffffffff811da2a8>] handle_mm_fault+0xc78/0x1900
->>>> [600522.108431] [<ffffffff81067ef1>] __do_page_fault+0x181/0x420
->>>> [600522.109173] [<ffffffff811446a6>] ? __audit_syscall_exit+0x1e6/0x280
->>>> [600522.109893] [<ffffffff810681c0>] do_page_fault+0x30/0x80
->>>> [600522.110594] [<ffffffff81024f36>] ? syscall_trace_leave+0xc6/0x120
->>>> [600522.111288] [<ffffffff81790a58>] page_fault+0x28/0x30
->>>> [600522.111947] Code: 5d c3 0f 1f 80 00 00 00 00 0f 1f 44 00 00 55 4c 8d 87 d0 01 00 00 48 89 e5 53 48 89 fb 48 83 ec 08 4c 8b 0e 49 8b 41 18 4c 39 ce <48> 8b 40 40 4c 8b 50 30 74 24 48 8b 87 d0 01 00 00 48 8b 7e 08
->>>> [600522.113343] RIP [<ffffffffa0479e72>] nfs_init_commit+0x22/0x130 [nfs]
->>>> [600522.114003] RSP <ffff88042ae87438>
->>>> [600522.114636] CR2: 0000000000000040
->>>> 
->>>> Signed-off-by: Weston Andros Adamson <dros@primarydata.com>
->>>> ---
->>>> 
->>>> V2 has some cleanup requested by Anna.
->>>> 
->>>> -dros
->>>> 
->>>> fs/nfs/pnfs_nfs.c | 28 ++++++++++++++++++++++++++++
->>>> fs/nfs/write.c | 4 ++++
->>>> 2 files changed, 32 insertions(+)
->>>> 
->>>> diff --git a/fs/nfs/pnfs_nfs.c b/fs/nfs/pnfs_nfs.c
->>>> index d2a7c9f7aa94..0dfc476da3e1 100644
->>>> --- a/fs/nfs/pnfs_nfs.c
->>>> +++ b/fs/nfs/pnfs_nfs.c
->>>> @@ -246,6 +246,23 @@ void pnfs_fetch_commit_bucket_list(struct list_head *pages,
->>>> 
->>>> }
->>>> 
->>>> +/* Helper function for pnfs_generic_commit_pagelist to catch an empty
->>>> + * page list. This can happen when two commits race. */
->>>> +static bool
->>>> +pnfs_generic_commit_cancel_empty_pagelist(struct list_head *pages,
->>>> +	struct nfs_commit_data *data,
->>>> +	struct nfs_commit_info *cinfo)
->>>> +{
->>>> +	if (list_empty(pages)) {
->>>> +	if (atomic_dec_and_test(&cinfo->mds->rpcs_out))
->>>> +	wake_up_atomic_t(&cinfo->mds->rpcs_out);
->>>> +	nfs_commitdata_release(data);
->>>> +	return true;
->>>> +	}
->>>> +
->>>> +	return false;
->>>> +}
->>>> +
->>>> /* This follows nfs_commit_list pretty closely */
->>>> int
->>>> pnfs_generic_commit_pagelist(struct inode *inode, struct list_head *mds_pages,
->>>> @@ -280,6 +297,11 @@ pnfs_generic_commit_pagelist(struct inode *inode, struct list_head *mds_pages,
->>>> list_for_each_entry_safe(data, tmp, &list, pages) {
->>>> list_del_init(&data->pages);
->>>> if (data->ds_commit_index < 0) {
->>>> +	/* another commit raced with us */
->>>> +	if (pnfs_generic_commit_cancel_empty_pagelist(mds_pages,
->>>> +	data, cinfo))
->>>> +	continue;
->>>> +
->>>> nfs_init_commit(data, mds_pages, NULL, cinfo);
->>>> nfs_initiate_commit(NFS_CLIENT(inode), data,
->>>> NFS_PROTO(data->inode),
->>>> @@ -288,6 +310,12 @@ pnfs_generic_commit_pagelist(struct inode *inode, struct list_head *mds_pages,
->>>> LIST_HEAD(pages);
->>>> 
->>>> pnfs_fetch_commit_bucket_list(&pages, data, cinfo);
->>>> +
->>>> +	/* another commit raced with us */
->>>> +	if (pnfs_generic_commit_cancel_empty_pagelist(&pages,
->>>> +	data, cinfo))
->>>> +	continue;
->>>> +
->>>> nfs_init_commit(data, &pages, data->lseg, cinfo);
->>>> initiate_commit(data, how);
->>>> }
->>>> diff --git a/fs/nfs/write.c b/fs/nfs/write.c
->>>> index 4dac51ba1f7e..438c00110fc9 100644
->>>> --- a/fs/nfs/write.c
->>>> +++ b/fs/nfs/write.c
->>>> @@ -1710,6 +1710,10 @@ nfs_commit_list(struct inode *inode, struct list_head *head, int how,
->>>> {
->>>> struct nfs_commit_data	*data;
->>>> 
->>>> +	/* another commit raced with us */
->>>> +	if (list_empty(head))
->>>> +	return 0;
->>>> +
->>>> data = nfs_commitdata_alloc();
->>>> 
->>>> if (!data)
->>>> 
->>> 
->> 
->> 
->> Disclaimer
->> 
->> The information contained in this communication from the sender is confidential. It is intended solely for use by the recipient and others authorized to receive it. If you are not the recipient, you are hereby notified that any disclosure, copying, distribution or taking action in relation of the contents of this information is strictly prohibited and may be unlawful.
->> 
-> 
+
+
 
