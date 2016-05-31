@@ -1,182 +1,189 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from us-smtp-delivery-194.mimecast.com ([216.205.24.194]:54996 "EHLO
-	us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1750730AbcEaQDw (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 31 May 2016 12:03:52 -0400
-From: Trond Myklebust <trondmy@primarydata.com>
-To: Jeff Layton <jlayton@poochiereds.net>,
+Received: from mx1.redhat.com ([209.132.183.28]:55231 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751616AbcEaSXU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 31 May 2016 14:23:20 -0400
+Subject: Re: Configuring fs_locations on Linux upstream server pseudo fs for
+ session trunking
+To: "Adamson, Andy" <William.Adamson@netapp.com>,
+        "bfields@fieldses.org" <bfields@fieldses.org>
+References: <04273F60-806B-4E12-B097-388C346F2DED@oracle.com>
+ <40E6E131-029E-4337-A235-B1DB5CA687AA@netapp.com>
+Cc: "chuck.lever@oracle.com" <chuck.lever@oracle.com>,
         "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-CC: "tigran.mkrtchyan@desy.de" <tigran.mkrtchyan@desy.de>,
-        "Anna.Schumaker@netapp.com" <Anna.Schumaker@netapp.com>,
-        "hch@infradead.org" <hch@infradead.org>
-Subject: Re: [RFC PATCH] nfs: allow nfs client to handle servers that hand out
- multiple layout types
-Date: Tue, 31 May 2016 16:03:39 +0000
-Message-ID: <58537471-DDCA-413F-AD22-1269A4301FBA@primarydata.com>
-References: <1464626102-13100-1-git-send-email-jlayton@poochiereds.net>
-In-Reply-To: <1464626102-13100-1-git-send-email-jlayton@poochiereds.net>
+From: Steve Dickson <SteveD@redhat.com>
+Message-ID: <1568116e-5730-0fd0-270d-c66599b0c77f@RedHat.com>
+Date: Tue, 31 May 2016 14:23:18 -0400
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+In-Reply-To: <40E6E131-029E-4337-A235-B1DB5CA687AA@netapp.com>
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-DQoNCk9uIDUvMzAvMTYsIDEyOjM1LCAiSmVmZiBMYXl0b24iIDxqbGF5dG9uQHBvb2NoaWVyZWRz
-Lm5ldD4gd3JvdGU6DQoNCj5BbGxvdyB0aGUgY2xpZW50IHRvIGRlYWwgd2l0aCBzZXJ2ZXJzIHRo
-YXQgaGFuZCBvdXQgbXVsdGlwbGUgbGF5b3V0DQo+dHlwZXMgZm9yIHRoZSBzYW1lIGZpbGVzeXN0
-ZW0uIFdoZW4gdGhpcyBoYXBwZW5zLCB3ZSBwaWNrIHRoZSAiYmVzdCIgb25lLA0KPmJhc2VkIG9u
-IGEgaGFyZGNvZGVkIGFzc3VtZWQgb3JkZXIgaW4gdGhlIGNsaWVudCBjb2RlLg0KPg0KPlNpZ25l
-ZC1vZmYtYnk6IEplZmYgTGF5dG9uIDxqZWZmLmxheXRvbkBwcmltYXJ5ZGF0YS5jb20+DQo+LS0t
-DQo+IGZzL25mcy9jbGllbnQuYyAgICAgICAgIHwgIDIgKy0NCj4gZnMvbmZzL25mczRwcm9jLmMg
-ICAgICAgfCAgMiArLQ0KPiBmcy9uZnMvbmZzNHhkci5jICAgICAgICB8IDQxICsrKysrKysrKysr
-KystLS0tLS0tLS0tLS0tDQo+IGZzL25mcy9wbmZzLmMgICAgICAgICAgIHwgNzYgKysrKysrKysr
-KysrKysrKysrKysrKysrKysrKysrKysrKysrKystLS0tLS0tLS0tLQ0KPiBpbmNsdWRlL2xpbnV4
-L25mc194ZHIuaCB8ICAyICstDQo+IDUgZmlsZXMgY2hhbmdlZCwgODUgaW5zZXJ0aW9ucygrKSwg
-MzggZGVsZXRpb25zKC0pDQo+DQo+ZGlmZiAtLWdpdCBhL2ZzL25mcy9jbGllbnQuYyBiL2ZzL25m
-cy9jbGllbnQuYw0KPmluZGV4IDBjOTY1MjhkYjk0YS4uNTNiNDFmNGJkNDVhIDEwMDY0NA0KPi0t
-LSBhL2ZzL25mcy9jbGllbnQuYw0KPisrKyBiL2ZzL25mcy9jbGllbnQuYw0KPkBAIC03ODcsNyAr
-Nzg3LDcgQEAgaW50IG5mc19wcm9iZV9mc2luZm8oc3RydWN0IG5mc19zZXJ2ZXIgKnNlcnZlciwg
-c3RydWN0IG5mc19maCAqbW50ZmgsIHN0cnVjdCBuZnMNCj4gCX0NCj4gDQo+IAlmc2luZm8uZmF0
-dHIgPSBmYXR0cjsNCj4tCWZzaW5mby5sYXlvdXR0eXBlID0gMDsNCj4rCWZzaW5mby5sYXlvdXR0
-eXBlcyA9IDA7DQo+IAllcnJvciA9IGNscC0+cnBjX29wcy0+ZnNpbmZvKHNlcnZlciwgbW50Zmgs
-ICZmc2luZm8pOw0KPiAJaWYgKGVycm9yIDwgMCkNCj4gCQlnb3RvIG91dF9lcnJvcjsNCj5kaWZm
-IC0tZ2l0IGEvZnMvbmZzL25mczRwcm9jLmMgYi9mcy9uZnMvbmZzNHByb2MuYw0KPmluZGV4IGRl
-OTc1Njc3OTVhNS4uOTQ0NmFlZjg5YjQ4IDEwMDY0NA0KPi0tLSBhL2ZzL25mcy9uZnM0cHJvYy5j
-DQo+KysrIGIvZnMvbmZzL25mczRwcm9jLmMNCj5AQCAtNDI1Miw3ICs0MjUyLDcgQEAgc3RhdGlj
-IGludCBuZnM0X3Byb2NfZnNpbmZvKHN0cnVjdCBuZnNfc2VydmVyICpzZXJ2ZXIsIHN0cnVjdCBu
-ZnNfZmggKmZoYW5kbGUsIHMNCj4gCWlmIChlcnJvciA9PSAwKSB7DQo+IAkJLyogYmxvY2sgbGF5
-b3V0IGNoZWNrcyB0aGlzISAqLw0KPiAJCXNlcnZlci0+cG5mc19ibGtzaXplID0gZnNpbmZvLT5i
-bGtzaXplOw0KPi0JCXNldF9wbmZzX2xheW91dGRyaXZlcihzZXJ2ZXIsIGZoYW5kbGUsIGZzaW5m
-by0+bGF5b3V0dHlwZSk7DQo+KwkJc2V0X3BuZnNfbGF5b3V0ZHJpdmVyKHNlcnZlciwgZmhhbmRs
-ZSwgZnNpbmZvLT5sYXlvdXR0eXBlcyk7DQo+IAl9DQo+IA0KPiAJcmV0dXJuIGVycm9yOw0KPmRp
-ZmYgLS1naXQgYS9mcy9uZnMvbmZzNHhkci5jIGIvZnMvbmZzL25mczR4ZHIuYw0KPmluZGV4IDY2
-MWU3NTNmZTFjOS4uODc2YTgwODAyYzFkIDEwMDY0NA0KPi0tLSBhL2ZzL25mcy9uZnM0eGRyLmMN
-Cj4rKysgYi9mcy9uZnMvbmZzNHhkci5jDQo+QEAgLTQ3MjMsMzMgKzQ3MjMsMzYgQEAgc3RhdGlj
-IGludCBkZWNvZGVfZ2V0ZmF0dHIoc3RydWN0IHhkcl9zdHJlYW0gKnhkciwgc3RydWN0IG5mc19m
-YXR0ciAqZmF0dHIsDQo+ICAqIERlY29kZSBwb3RlbnRpYWxseSBtdWx0aXBsZSBsYXlvdXQgdHlw
-ZXMuIEN1cnJlbnRseSB3ZSBvbmx5IHN1cHBvcnQNCj4gICogb25lIGxheW91dCBkcml2ZXIgcGVy
-IGZpbGUgc3lzdGVtLg0KPiAgKi8NCj4tc3RhdGljIGludCBkZWNvZGVfZmlyc3RfcG5mc19sYXlv
-dXRfdHlwZShzdHJ1Y3QgeGRyX3N0cmVhbSAqeGRyLA0KPi0JCQkJCSB1aW50MzJfdCAqbGF5b3V0
-dHlwZSkNCj4rc3RhdGljIGludCBkZWNvZGVfcG5mc19sYXlvdXRfdHlwZXMoc3RydWN0IHhkcl9z
-dHJlYW0gKnhkciwgdTMyICpsYXlvdXR0eXBlcykNCj4gew0KPiAJX19iZTMyICpwOw0KPiAJaW50
-IG51bTsNCj4rCXUzMiB0eXBlOw0KPiANCj4gCXAgPSB4ZHJfaW5saW5lX2RlY29kZSh4ZHIsIDQp
-Ow0KPiAJaWYgKHVubGlrZWx5KCFwKSkNCj4gCQlnb3RvIG91dF9vdmVyZmxvdzsNCj4gCW51bSA9
-IGJlMzJfdG9fY3B1cChwKTsNCj4gDQo+LQkvKiBwTkZTIGlzIG5vdCBzdXBwb3J0ZWQgYnkgdGhl
-IHVuZGVybHlpbmcgZmlsZSBzeXN0ZW0gKi8NCj4tCWlmIChudW0gPT0gMCkgew0KPi0JCSpsYXlv
-dXR0eXBlID0gMDsNCj4tCQlyZXR1cm4gMDsNCj4tCX0NCj4tCWlmIChudW0gPiAxKQ0KPi0JCXBy
-aW50ayhLRVJOX0lORk8gIk5GUzogJXM6IFdhcm5pbmc6IE11bHRpcGxlIHBORlMgbGF5b3V0ICIN
-Cj4tCQkJImRyaXZlcnMgcGVyIGZpbGVzeXN0ZW0gbm90IHN1cHBvcnRlZFxuIiwgX19mdW5jX18p
-Ow0KPisJKmxheW91dHR5cGVzID0gMDsNCj4gDQo+LQkvKiBEZWNvZGUgYW5kIHNldCBmaXJzdCBs
-YXlvdXQgdHlwZSwgbW92ZSB4ZHItPnAgcGFzdCB1bnVzZWQgdHlwZXMgKi8NCj4tCXAgPSB4ZHJf
-aW5saW5lX2RlY29kZSh4ZHIsIG51bSAqIDQpOw0KPi0JaWYgKHVubGlrZWx5KCFwKSkNCj4tCQln
-b3RvIG91dF9vdmVyZmxvdzsNCj4tCSpsYXlvdXR0eXBlID0gYmUzMl90b19jcHVwKHApOw0KPisJ
-Zm9yICg7IG51bTsgLS1udW0pIHsNCj4rCQlwID0geGRyX2lubGluZV9kZWNvZGUoeGRyLCA0KTsN
-Cj4rDQo+KwkJaWYgKHVubGlrZWx5KCFwKSkNCj4rCQkJZ290byBvdXRfb3ZlcmZsb3c7DQo+Kw0K
-PisJCXR5cGUgPSBiZTMyX3RvX2NwdXAocCk7DQo+Kw0KPisJCS8qIElnbm9yZSBhbnkgdGhhdCB3
-ZSBkb24ndCB1bmRlcnN0YW5kICovDQo+KwkJaWYgKHVubGlrZWx5KHR5cGUgPj0gTEFZT1VUX1RZ
-UEVfTUFYKSkNCg0KVGhpcyB3aWxsIGluIGVmZmVjdCBoYXJkIGNvZGUgdGhlIGxheW91dHMgdGhh
-dCB0aGUgY2xpZW50IHN1cHBvcnRzLiBMQVlPVVRfVFlQRV9NQVggaXMgc29tZXRoaW5nIHRoYXQg
-YXBwbGllcyB0byBrbmZzZCBvbmx5IGZvciBub3cuIExldOKAmXMgbm90IGxlYWsgaXQgaW50byB0
-aGUgY2xpZW50LiBJIHN1Z2dlc3QganVzdCBtYWtpbmcgdGhpcyA4KnNpemVvZigqbGF5b3V0dHlw
-ZXMpLg0KDQo+KwkJCWNvbnRpbnVlOw0KPisNCj4rCQkqbGF5b3V0dHlwZXMgfD0gMSA8PCB0eXBl
-Ow0KPisJfQ0KPiAJcmV0dXJuIDA7DQo+IG91dF9vdmVyZmxvdzoNCj4rCSpsYXlvdXR0eXBlcyA9
-IDA7DQo+IAlwcmludF9vdmVyZmxvd19tc2coX19mdW5jX18sIHhkcik7DQo+IAlyZXR1cm4gLUVJ
-TzsNCj4gfQ0KPkBAIC00NzU5LDcgKzQ3NjIsNyBAQCBvdXRfb3ZlcmZsb3c6DQo+ICAqIE5vdGUg
-d2UgbXVzdCBlbnN1cmUgdGhhdCBsYXlvdXR0eXBlIGlzIHNldCBpbiBhbnkgbm9uLWVycm9yIGNh
-c2UuDQo+ICAqLw0KPiBzdGF0aWMgaW50IGRlY29kZV9hdHRyX3BuZnN0eXBlKHN0cnVjdCB4ZHJf
-c3RyZWFtICp4ZHIsIHVpbnQzMl90ICpiaXRtYXAsDQo+LQkJCQl1aW50MzJfdCAqbGF5b3V0dHlw
-ZSkNCj4rCQkJCV9fdTMyICpsYXlvdXR0eXBlcykNCj4gew0KPiAJaW50IHN0YXR1cyA9IDA7DQo+
-IA0KPkBAIC00NzY3LDEwICs0NzcwLDEwIEBAIHN0YXRpYyBpbnQgZGVjb2RlX2F0dHJfcG5mc3R5
-cGUoc3RydWN0IHhkcl9zdHJlYW0gKnhkciwgdWludDMyX3QgKmJpdG1hcCwNCj4gCWlmICh1bmxp
-a2VseShiaXRtYXBbMV0gJiAoRkFUVFI0X1dPUkQxX0ZTX0xBWU9VVF9UWVBFUyAtIDFVKSkpDQo+
-IAkJcmV0dXJuIC1FSU87DQo+IAlpZiAoYml0bWFwWzFdICYgRkFUVFI0X1dPUkQxX0ZTX0xBWU9V
-VF9UWVBFUykgew0KPi0JCXN0YXR1cyA9IGRlY29kZV9maXJzdF9wbmZzX2xheW91dF90eXBlKHhk
-ciwgbGF5b3V0dHlwZSk7DQo+KwkJc3RhdHVzID0gZGVjb2RlX3BuZnNfbGF5b3V0X3R5cGVzKHhk
-ciwgbGF5b3V0dHlwZXMpOw0KPiAJCWJpdG1hcFsxXSAmPSB+RkFUVFI0X1dPUkQxX0ZTX0xBWU9V
-VF9UWVBFUzsNCj4gCX0gZWxzZQ0KPi0JCSpsYXlvdXR0eXBlID0gMDsNCj4rCQkqbGF5b3V0dHlw
-ZXMgPSAwOw0KPiAJcmV0dXJuIHN0YXR1czsNCj4gfQ0KPiANCj5AQCAtNDg1MSw3ICs0ODU0LDcg
-QEAgc3RhdGljIGludCBkZWNvZGVfZnNpbmZvKHN0cnVjdCB4ZHJfc3RyZWFtICp4ZHIsIHN0cnVj
-dCBuZnNfZnNpbmZvICpmc2luZm8pDQo+IAlzdGF0dXMgPSBkZWNvZGVfYXR0cl90aW1lX2RlbHRh
-KHhkciwgYml0bWFwLCAmZnNpbmZvLT50aW1lX2RlbHRhKTsNCj4gCWlmIChzdGF0dXMgIT0gMCkN
-Cj4gCQlnb3RvIHhkcl9lcnJvcjsNCj4tCXN0YXR1cyA9IGRlY29kZV9hdHRyX3BuZnN0eXBlKHhk
-ciwgYml0bWFwLCAmZnNpbmZvLT5sYXlvdXR0eXBlKTsNCj4rCXN0YXR1cyA9IGRlY29kZV9hdHRy
-X3BuZnN0eXBlKHhkciwgYml0bWFwLCAmZnNpbmZvLT5sYXlvdXR0eXBlcyk7DQo+IAlpZiAoc3Rh
-dHVzICE9IDApDQo+IAkJZ290byB4ZHJfZXJyb3I7DQo+IA0KPmRpZmYgLS1naXQgYS9mcy9uZnMv
-cG5mcy5jIGIvZnMvbmZzL3BuZnMuYw0KPmluZGV4IDBjN2UwZDQ1YTRkZS4uMjBiN2IxZjRlMDQx
-IDEwMDY0NA0KPi0tLSBhL2ZzL25mcy9wbmZzLmMNCj4rKysgYi9mcy9uZnMvcG5mcy5jDQo+QEAg
-LTcwLDcgKzcwLDcgQEAgb3V0Og0KPiB9DQo+IA0KPiBzdGF0aWMgc3RydWN0IHBuZnNfbGF5b3V0
-ZHJpdmVyX3R5cGUgKg0KPi1maW5kX3BuZnNfZHJpdmVyKHUzMiBpZCkNCj4rX19maW5kX3BuZnNf
-ZHJpdmVyKHUzMiBpZCkNCj4gew0KPiAJc3RydWN0IHBuZnNfbGF5b3V0ZHJpdmVyX3R5cGUgKmxv
-Y2FsOw0KPiANCj5AQCAtODQsNiArODQsMjIgQEAgZmluZF9wbmZzX2RyaXZlcih1MzIgaWQpDQo+
-IAlyZXR1cm4gbG9jYWw7DQo+IH0NCj4gDQo+K3N0YXRpYyBzdHJ1Y3QgcG5mc19sYXlvdXRkcml2
-ZXJfdHlwZSAqDQo+K2ZpbmRfcG5mc19kcml2ZXIodTMyIGlkKQ0KPit7DQo+KwlzdHJ1Y3QgcG5m
-c19sYXlvdXRkcml2ZXJfdHlwZSAqbGRfdHlwZTsNCj4rDQo+KwlsZF90eXBlID0gX19maW5kX3Bu
-ZnNfZHJpdmVyKGlkKTsNCj4rCWlmICghbGRfdHlwZSkgew0KPisJCXJlcXVlc3RfbW9kdWxlKCIl
-cy0ldSIsIExBWU9VVF9ORlNWNF8xX01PRFVMRV9QUkVGSVgsIGlkKTsNCj4rCQlsZF90eXBlID0g
-X19maW5kX3BuZnNfZHJpdmVyKGlkKTsNCj4rCQlpZiAoIWxkX3R5cGUpDQo+KwkJCWRwcmludGso
-IiVzOiBObyBwTkZTIG1vZHVsZSBmb3VuZCBmb3IgJXUuXG4iLA0KPisJCQkJX19mdW5jX18sIGlk
-KTsNCj4rCX0NCj4rCXJldHVybiBsZF90eXBlOw0KPit9DQo+Kw0KPiB2b2lkDQo+IHVuc2V0X3Bu
-ZnNfbGF5b3V0ZHJpdmVyKHN0cnVjdCBuZnNfc2VydmVyICpuZnNzKQ0KPiB7DQo+QEAgLTEwMiw0
-NCArMTE4LDcyIEBAIHVuc2V0X3BuZnNfbGF5b3V0ZHJpdmVyKHN0cnVjdCBuZnNfc2VydmVyICpu
-ZnNzKQ0KPiAgKiBUcnkgdG8gc2V0IHRoZSBzZXJ2ZXIncyBwbmZzIG1vZHVsZSB0byB0aGUgcG5m
-cyBsYXlvdXQgdHlwZSBzcGVjaWZpZWQgYnkgaWQuDQo+ICAqIEN1cnJlbnRseSBvbmx5IG9uZSBw
-TkZTIGxheW91dCBkcml2ZXIgcGVyIGZpbGVzeXN0ZW0gaXMgc3VwcG9ydGVkLg0KPiAgKg0KPi0g
-KiBAaWQgbGF5b3V0IHR5cGUuIFplcm8gKGlsbGVnYWwgbGF5b3V0IHR5cGUpIGluZGljYXRlcyBw
-TkZTIG5vdCBpbiB1c2UuDQo+KyAqIEBsYXlvdXR0eXBlczogYml0ZmllbGQgc2hvd2luZyB3aGF0
-IGxheW91dCB0eXBlcyBzZXJ2ZXIgc3VwcG9ydHMNCj4gICovDQo+IHZvaWQNCj4gc2V0X3BuZnNf
-bGF5b3V0ZHJpdmVyKHN0cnVjdCBuZnNfc2VydmVyICpzZXJ2ZXIsIGNvbnN0IHN0cnVjdCBuZnNf
-ZmggKm1udGZoLA0KPi0JCSAgICAgIHUzMiBpZCkNCj4rCQkgICAgICB1MzIgbGF5b3V0dHlwZXMp
-DQo+IHsNCj4gCXN0cnVjdCBwbmZzX2xheW91dGRyaXZlcl90eXBlICpsZF90eXBlID0gTlVMTDsN
-Cj4gDQo+LQlpZiAoaWQgPT0gMCkNCj4rCWlmIChsYXlvdXR0eXBlcyA9PSAwKQ0KPiAJCWdvdG8g
-b3V0X25vX2RyaXZlcjsNCj4gCWlmICghKHNlcnZlci0+bmZzX2NsaWVudC0+Y2xfZXhjaGFuZ2Vf
-ZmxhZ3MgJg0KPiAJCSAoRVhDSEdJRDRfRkxBR19VU0VfTk9OX1BORlMgfCBFWENIR0lENF9GTEFH
-X1VTRV9QTkZTX01EUykpKSB7DQo+LQkJcHJpbnRrKEtFUk5fRVJSICJORlM6ICVzOiBpZCAldSBj
-bF9leGNoYW5nZV9mbGFncyAweCV4XG4iLA0KPi0JCQlfX2Z1bmNfXywgaWQsIHNlcnZlci0+bmZz
-X2NsaWVudC0+Y2xfZXhjaGFuZ2VfZmxhZ3MpOw0KPisJCXByaW50ayhLRVJOX0VSUiAiTkZTOiAl
-czogbGF5b3V0dHlwZXMgMHgleCBjbF9leGNoYW5nZV9mbGFncyAweCV4XG4iLA0KPisJCQlfX2Z1
-bmNfXywgbGF5b3V0dHlwZXMsIHNlcnZlci0+bmZzX2NsaWVudC0+Y2xfZXhjaGFuZ2VfZmxhZ3Mp
-Ow0KPiAJCWdvdG8gb3V0X25vX2RyaXZlcjsNCj4gCX0NCj4tCWxkX3R5cGUgPSBmaW5kX3BuZnNf
-ZHJpdmVyKGlkKTsNCj4tCWlmICghbGRfdHlwZSkgew0KPi0JCXJlcXVlc3RfbW9kdWxlKCIlcy0l
-dSIsIExBWU9VVF9ORlNWNF8xX01PRFVMRV9QUkVGSVgsIGlkKTsNCj4tCQlsZF90eXBlID0gZmlu
-ZF9wbmZzX2RyaXZlcihpZCk7DQo+LQkJaWYgKCFsZF90eXBlKSB7DQo+LQkJCWRwcmludGsoIiVz
-OiBObyBwTkZTIG1vZHVsZSBmb3VuZCBmb3IgJXUuXG4iLA0KPi0JCQkJX19mdW5jX18sIGlkKTsN
-Cj4rDQo+KwkvKg0KPisJICogU2VlIGlmIG9uZSBvZiB0aGUgbGF5b3V0IHR5cGVzIHRoYXQgd2Ug
-Z290IGhhbmRlZCBpcyB1c2FibGUuIFdlDQo+KwkgKiBhdHRlbXB0IGluIGEgaGFyZGNvZGVkIG9y
-ZGVyIG9mIHByZWZlcmVuY2UsIGluIG9yZGVyIG9mIChhc3N1bWVkKQ0KPisJICogZGVjcmVhc2lu
-ZyBzcGVlZHMgYW5kIGZ1bmN0aW9uYWxpdHkuDQo+KwkgKg0KPisJICogRklYTUU6IHNob3VsZCB0
-aGlzIG9yZGVyIGJlIGNvbmZpZ3VyYWJsZSBpbiBzb21lIGZhc2hpb24/DQo+KwkgKi8NCj4rCWlm
-IChsYXlvdXR0eXBlcyAmICgxIDw8IExBWU9VVF9TQ1NJKSkgew0KPisJCWxkX3R5cGUgPSBmaW5k
-X3BuZnNfZHJpdmVyKExBWU9VVF9TQ1NJKTsNCj4rCQlpZiAobGRfdHlwZSkNCj4rCQkJZ290byBz
-ZXRfZHJpdmVyOw0KPisJfQ0KPisNCj4rCWlmIChsYXlvdXR0eXBlcyAmICgxIDw8IExBWU9VVF9C
-TE9DS19WT0xVTUUpKSB7DQo+KwkJbGRfdHlwZSA9IGZpbmRfcG5mc19kcml2ZXIoTEFZT1VUX0JM
-T0NLX1ZPTFVNRSk7DQo+KwkJaWYgKGxkX3R5cGUpDQo+KwkJCWdvdG8gc2V0X2RyaXZlcjsNCj4r
-CX0NCj4rDQo+KwlpZiAobGF5b3V0dHlwZXMgJiAoMSA8PCBMQVlPVVRfT1NEMl9PQkpFQ1RTKSkg
-ew0KPisJCWxkX3R5cGUgPSBmaW5kX3BuZnNfZHJpdmVyKExBWU9VVF9PU0QyX09CSkVDVFMpOw0K
-PisJCWlmIChsZF90eXBlKQ0KPisJCQlnb3RvIHNldF9kcml2ZXI7DQo+Kwl9DQo+Kw0KPisJaWYg
-KGxheW91dHR5cGVzICYgKDEgPDwgTEFZT1VUX0ZMRVhfRklMRVMpKSB7DQo+KwkJbGRfdHlwZSA9
-IGZpbmRfcG5mc19kcml2ZXIoTEFZT1VUX0ZMRVhfRklMRVMpOw0KPisJCWlmIChsZF90eXBlKQ0K
-PisJCQlnb3RvIHNldF9kcml2ZXI7DQo+Kwl9DQo+Kw0KPisJaWYgKGxheW91dHR5cGVzICYgKDEg
-PDwgTEFZT1VUX05GU1Y0XzFfRklMRVMpKSB7DQo+KwkJbGRfdHlwZSA9IGZpbmRfcG5mc19kcml2
-ZXIoTEFZT1VUX05GU1Y0XzFfRklMRVMpOw0KPisJCWlmICghbGRfdHlwZSkNCj4gCQkJZ290byBv
-dXRfbm9fZHJpdmVyOw0KPi0JCX0NCj4gCX0NCj4rc2V0X2RyaXZlcjoNCj4gCXNlcnZlci0+cG5m
-c19jdXJyX2xkID0gbGRfdHlwZTsNCj4gCWlmIChsZF90eXBlLT5zZXRfbGF5b3V0ZHJpdmVyDQo+
-IAkgICAgJiYgbGRfdHlwZS0+c2V0X2xheW91dGRyaXZlcihzZXJ2ZXIsIG1udGZoKSkgew0KPiAJ
-CXByaW50ayhLRVJOX0VSUiAiTkZTOiAlczogRXJyb3IgaW5pdGlhbGl6aW5nIHBORlMgbGF5b3V0
-ICINCj4tCQkJImRyaXZlciAldS5cbiIsIF9fZnVuY19fLCBpZCk7DQo+KwkJCSJkcml2ZXIgJXUu
-XG4iLCBfX2Z1bmNfXywgbGRfdHlwZS0+aWQpOw0KPiAJCW1vZHVsZV9wdXQobGRfdHlwZS0+b3du
-ZXIpOw0KPiAJCWdvdG8gb3V0X25vX2RyaXZlcjsNCj4gCX0NCj4gCS8qIEJ1bXAgdGhlIE1EUyBj
-b3VudCAqLw0KPiAJYXRvbWljX2luYygmc2VydmVyLT5uZnNfY2xpZW50LT5jbF9tZHNfY291bnQp
-Ow0KPiANCj4tCWRwcmludGsoIiVzOiBwTkZTIG1vZHVsZSBmb3IgJXUgc2V0XG4iLCBfX2Z1bmNf
-XywgaWQpOw0KPisJZHByaW50aygiJXM6IHBORlMgbW9kdWxlIGZvciAldSBzZXRcbiIsIF9fZnVu
-Y19fLCBsZF90eXBlLT5pZCk7DQo+IAlyZXR1cm47DQo+IA0KPiBvdXRfbm9fZHJpdmVyOg0KPmRp
-ZmYgLS1naXQgYS9pbmNsdWRlL2xpbnV4L25mc194ZHIuaCBiL2luY2x1ZGUvbGludXgvbmZzX3hk
-ci5oDQo+aW5kZXggYzMwNGExMWI1YjFhLi4xZjZiYjU5ZjA1ZjIgMTAwNjQ0DQo+LS0tIGEvaW5j
-bHVkZS9saW51eC9uZnNfeGRyLmgNCj4rKysgYi9pbmNsdWRlL2xpbnV4L25mc194ZHIuaA0KPkBA
-IC0xMzksNyArMTM5LDcgQEAgc3RydWN0IG5mc19mc2luZm8gew0KPiAJX191NjQJCQltYXhmaWxl
-c2l6ZTsNCj4gCXN0cnVjdCB0aW1lc3BlYwkJdGltZV9kZWx0YTsgLyogc2VydmVyIHRpbWUgZ3Jh
-bnVsYXJpdHkgKi8NCj4gCV9fdTMyCQkJbGVhc2VfdGltZTsgLyogaW4gc2Vjb25kcyAqLw0KPi0J
-X191MzIJCQlsYXlvdXR0eXBlOyAvKiBzdXBwb3J0ZWQgcG5mcyBsYXlvdXQgZHJpdmVyICovDQo+
-KwlfX3UzMgkJCWxheW91dHR5cGVzOyAvKiBzdXBwb3J0ZWQgcG5mcyBsYXlvdXQgZHJpdmVycyAq
-Lw0KPiAJX191MzIJCQlibGtzaXplOyAvKiBwcmVmZXJyZWQgcG5mcyBpbyBibG9jayBzaXplICov
-DQo+IAlfX3UzMgkJCWNsb25lX2Jsa3NpemU7IC8qIGdyYW51bGFyaXR5IG9mIGEgQ0xPTkUgb3Bl
-cmF0aW9uICovDQo+IH07DQo+LS0gDQo+Mi41LjUNCj4NCg0K
+Hello,
 
+Sorry for coming the party late... 
+
+On 05/25/2016 01:29 PM, Adamson, Andy wrote:
+> Anna Schumaker who reviewed my client side session trunking patchset, wants a full featured version of both the client and the server session trunking pieces before accepting the session trunking feature upstream. To that end, I want to implement the server mountd V4ROOT processing of an fs_locations configuration to satisfy an fs_locations request on the pseudo fs.
+> 
+> The forwarded message is from an email stream between Bruce, Chuck and I concerning the server pseufo fs fs_locations configuration that I’m now sharing with the list.
+> 
+> Some background:
+> 
+> The recent "NFSV4.1,2 session trunking” Version-5 patch set sent to the list notes (in patch 00/10):
+> 
+> The pseudo-fs GETATTR(fs_locations) probe session trunking
+> was tested against a Linux server with a pseudo-fs
+> export stanza (e.g. a stanza with the fsid=0 or fsid=root
+> export option) and a replicas= export option
+> (replicas=<path1>@<server1>:<path2>@<server2>..)
+> Note that this configuration is for testing only. A future
+> patchset will add the replicas= configuration to the
+> NFSEXP_V4ROOT nfsd and mountd processing.
+> 
+> 
+> There are several ideas on how to accomplish mountd/V4ROOT fs_locations configuration in the forwarded message. See inline.
+> 
+> 
+>> Begin forwarded message:
+>>
+>> From: Chuck Lever <chuck.lever@oracle.com>
+>> Subject: Re: Configuring fs_locations on Linux upstream server
+>> Date: May 6, 2016 at 4:31:00 PM EDT
+>> To: "J. Bruce Fields" <bfields@fieldses.org>
+>> Cc: "Adamson, Andy" <William.Adamson@netapp.com>
+>>
+>>
+>>> On May 6, 2016, at 4:16 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
+>>>
+>>> On Fri, May 06, 2016 at 02:20:12PM -0400, Chuck Lever wrote:
+>>>> Seems like when a server does not return a list, that is
+>>>> information the client can use: basically, there is no
+>>>> ability to do any session trunking. It has to be set up
+>>>> explicitly; is that a bad thing, operationally?
+>>>
+>>> I like the idea of it being opt in on the server.
+>>>
+>>> Suppose the server transparently starts advertising all available
+>>> addresses for session trunking.  It's not hard to imagine cases where
+>>> that would go wrong.  E.g., maybe the server has the odd wireless or
+>>> 100Mb or other interface that happens to work but that's slow.  Then
+>>> somebody upgrades their server and performance goes down and it may take
+>>> them a while to figure out why.  Whereas if they'd had to opt in they'd
+>>> probably have avoided advertising an inappropriate interface.  Or at
+>>> least they'd have a better chance of figuring out that turning on
+>>> trunking was what caused the problem.
+>>>
+>>> I'd rather not force people to export "/" explicitly, though.  It's fine
+>>> for testing, but:
+>>>
+>>> 	- I don't think we give a way to do an explicit V4ROOT export,
+>>> 	  so they'd be exposing their entire root partition.  We could
+>>> 	  fix that, but
+>>> 	- the pseudofs just seems to me like something people shouldn't
+>>> 	  normally have to think about.  It's a protocol implementation
+>>> 	  detail, I'd rather hide it.  It'd be to easy to configure it a
+>>> 	  little wrong, I think.
+>>>
+>>> We can still do this by adding a replicas= option to the / export, but
+>>> we can let rpc.mountd do that internally instead of making the admin add
+>>> it to /etc/exports.
+>>>
+>>> But then you still need a way for the admin to tell rpc.mountd to cook
+>>> up the replicas= option.....  I'm not sure what that should look like.
+> 
+> Idea 1: extra syntax in /etc/exports
+As someone said during this thread we really should be moving
+away from edit/write/rerun configuration... When you are
+talking about 1000s of entries it becomes a bit painful.
+
+> 
+> 
+>>> Maybe some extra syntax in /etc/exports, but what do they need to give
+>>> us--just one list of IP addresses?  Chuck, any ideas?
+> 
+> Idea 2: xattr attached to “/"
+I guess this is not possible... so its out.
+
+> 
+>>
+>> How about using the same approach used for junctions:
+>> put the list in an xattr attached to / ? mountd can
+>> extract that when the kernel asks for help satisfying
+>> a GETATTR(fs_locations) on V4ROOT.
+> 
+> 
+> Idea 3: new /etc/ config file
+>>
+>> Or it could be put in a separate config file in /etc.
+>> You might want to specify more than just the i/f list
+>> here; for instance, the security policy for the
+>> pseudofs, or a constant fsid UUID, among other things.
+Add new configuration files is become very unpopular in
+a particular distro I know of... ;-) and once again 
+it comes down managing flat files... 
+ 
+> 
+> 
+> API to update the i/f list.  This is not about where to hold fs_locations config info, but rather how to insert the (changed) info into the running system.
+> 
+>>
+>> Also, I suggested to Andy earlier:
+>>
+>>> I find myself leaning towards mechanisms that are easy
+>>> both for admins and for programs (ie, an API). Perhaps
+>>> one day you might want to add a command that updates the
+>>> i/f list from the scripts in /etc/sysconfig/network-scripts,
+>>> for instance.
+>>>
+>>> As part of an ifup:
+>>>
+>>> nfspfs add <addr>
+>>>
+>>> and ifdown:
+>>>
+>>> nfspfs remove <addr>
+What happens to this idea? This seems like the most straightforward...
+
+I'm guess I'm leaning for new commands to new stuff instead
+of globing on new stuff on old stuff... if that makes any sense. ;-)
+
+Question, these list of ip address are they dynamic? Meaning
+can the change on the fly or they are only set on startup
+and restarts?
+
+>>>
+>>> I wrote some Python code to manipulate entries in
+>>> /etc/exports, now found in fedfs-utils. It's icky.
+I never like editing files that admins also edit. It
+just seems like not a good thing to do.
+
+>>
+>>
+>> I think we should move away from "edit this file
+>> and save it, then restart rpc.xyzpdq". Build some
+>> command line interfaces for this.
+This what I was thinking about above... 
+
+>>
+>> And as you have suggested many times: separate
+>> policy from mechanism. /etc/exports is the
+>> mechanism.
+Hmm.. I see this as adding more complexity to something
+that is already complex... 
+
+my two cents,
+
+steved.
+
+>>
+>> --
+>> Chuck Lever
+> 
+> Bruce - do you have a preference between #1 and #2 or #3 (or another idea?)
+> 
+> Thanks
+> 
+> —>AndyN�����r��y���b�X��ǧv�^�)޺{.n�+����{���"��^n�r���z���h����&���G���h�(�階�ݢj"���m�����z�ޖ���f���h���~�mml==
+> 
