@@ -1,11 +1,11 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:45059 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:45155 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753742AbcEaLxN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 31 May 2016 07:53:13 -0400
+	id S1754410AbcEaLxe (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 31 May 2016 07:53:34 -0400
 From: Andreas Gruenbacher <agruenba@redhat.com>
 To: Alexander Viro <viro@zeniv.linux.org.uk>
-Cc: Andreas Gruenbacher <agruenba@redhat.com>,
+Cc: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
         Christoph Hellwig <hch@infradead.org>, "Theodore Ts'o" <tytso@mit.edu>,
         Andreas Dilger <adilger.kernel@dilger.ca>,
         "J. Bruce Fields" <bfields@fieldses.org>,
@@ -15,124 +15,157 @@ Cc: Andreas Gruenbacher <agruenba@redhat.com>,
         Dave Chinner <david@fromorbit.com>, linux-ext4@vger.kernel.org,
         xfs@oss.sgi.com, linux-kernel@vger.kernel.org,
         linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-cifs@vger.kernel.org, linux-api@vger.kernel.org
-Subject: [PATCH v22 19/22] richacl: Add richacl xattr handler
-Date: Tue, 31 May 2016 13:50:51 +0200
-Message-Id: <1464695454-18557-20-git-send-email-agruenba@redhat.com>
+        linux-cifs@vger.kernel.org, linux-api@vger.kernel.org,
+        Andreas Gruenbacher <agruenba@redhat.com>
+Subject: [PATCH v22 22/22] ext4: Add richacl feature flag
+Date: Tue, 31 May 2016 13:50:54 +0200
+Message-Id: <1464695454-18557-23-git-send-email-agruenba@redhat.com>
 In-Reply-To: <1464695454-18557-1-git-send-email-agruenba@redhat.com>
 References: <1464695454-18557-1-git-send-email-agruenba@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Add richacl xattr handler implementing the xattr operations based on the
-get_richacl and set_richacl inode operations.
+From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
 
+This feature flag selects richacl instead of POSIX ACL support on the
+filesystem.  When this feature is off, the "acl" and "noacl" mount options
+control whether POSIX ACLs are enabled.  When it is on, richacls are
+automatically enabled and using the "noacl" mount option leads to an error.
+
+Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
 Signed-off-by: Andreas Gruenbacher <agruenba@redhat.com>
+Reviewed-by: Andreas Dilger <adilger@dilger.ca>
 ---
- fs/richacl_xattr.c            | 73 +++++++++++++++++++++++++++++++++++++++++++
- include/linux/richacl_xattr.h |  2 ++
- 2 files changed, 75 insertions(+)
+ fs/ext4/ext4.h  |  6 ++++--
+ fs/ext4/super.c | 49 ++++++++++++++++++++++++++++++++++++++++---------
+ 2 files changed, 44 insertions(+), 11 deletions(-)
 
-diff --git a/fs/richacl_xattr.c b/fs/richacl_xattr.c
-index dc1ad36..8860f60 100644
---- a/fs/richacl_xattr.c
-+++ b/fs/richacl_xattr.c
-@@ -18,7 +18,9 @@
- #include <linux/fs.h>
- #include <linux/slab.h>
- #include <linux/module.h>
-+#include <linux/xattr.h>
- #include <linux/richacl_xattr.h>
-+#include <uapi/linux/xattr.h>
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index b84aa1c..ff48f07 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -1126,7 +1126,7 @@ struct ext4_inode_info {
+ #define EXT4_MOUNT_UPDATE_JOURNAL	0x01000	/* Update the journal format */
+ #define EXT4_MOUNT_NO_UID32		0x02000  /* Disable 32-bit UIDs */
+ #define EXT4_MOUNT_XATTR_USER		0x04000	/* Extended user attributes */
+-#define EXT4_MOUNT_POSIX_ACL		0x08000	/* POSIX Access Control Lists */
++#define EXT4_MOUNT_ACL			0x08000	/* Access Control Lists */
+ #define EXT4_MOUNT_NO_AUTO_DA_ALLOC	0x10000	/* No auto delalloc mapping */
+ #define EXT4_MOUNT_BARRIER		0x20000 /* Use block barriers */
+ #define EXT4_MOUNT_QUOTA		0x80000 /* Some quota option set */
+@@ -1707,6 +1707,7 @@ static inline int ext4_encrypted_inode(struct inode *inode)
+ #define EXT4_FEATURE_INCOMPAT_LARGEDIR		0x4000 /* >2GB or 3-lvl htree */
+ #define EXT4_FEATURE_INCOMPAT_INLINE_DATA	0x8000 /* data in inode */
+ #define EXT4_FEATURE_INCOMPAT_ENCRYPT		0x10000
++#define EXT4_FEATURE_INCOMPAT_RICHACL		0x20000
  
- /**
-  * richacl_from_xattr  -  convert a richacl xattr into the in-memory representation
-@@ -159,3 +161,74 @@ richacl_to_xattr(struct user_namespace *user_ns,
- 	return real_size;
+ #define EXT4_FEATURE_COMPAT_FUNCS(name, flagname) \
+ static inline bool ext4_has_feature_##name(struct super_block *sb) \
+@@ -1821,7 +1822,8 @@ EXT4_FEATURE_INCOMPAT_FUNCS(encrypt,		ENCRYPT)
+ 					 EXT4_FEATURE_INCOMPAT_MMP | \
+ 					 EXT4_FEATURE_INCOMPAT_INLINE_DATA | \
+ 					 EXT4_FEATURE_INCOMPAT_ENCRYPT | \
+-					 EXT4_FEATURE_INCOMPAT_CSUM_SEED)
++					 EXT4_FEATURE_INCOMPAT_CSUM_SEED | \
++					 EXT4_FEATURE_INCOMPAT_RICHACL)
+ #define EXT4_FEATURE_RO_COMPAT_SUPP	(EXT4_FEATURE_RO_COMPAT_SPARSE_SUPER| \
+ 					 EXT4_FEATURE_RO_COMPAT_LARGE_FILE| \
+ 					 EXT4_FEATURE_RO_COMPAT_GDT_CSUM| \
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 3822a5a..122410f 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -1306,6 +1306,28 @@ static ext4_fsblk_t get_sb_block(void **data)
+ 	return sb_block;
  }
- EXPORT_SYMBOL_GPL(richacl_to_xattr);
-+
-+static bool
-+richacl_xattr_list(struct dentry *dentry)
-+{
-+	return IS_RICHACL(d_backing_inode(dentry));
-+}
-+
-+static int
-+richacl_xattr_get(const struct xattr_handler *handler,
-+		  struct dentry *unused, struct inode *inode,
-+		  const char *name, void *buffer, size_t buffer_size)
-+{
-+	struct richacl *acl;
-+	int error;
-+
-+	if (*name)
-+		return -EINVAL;
-+	if (!IS_RICHACL(inode))
-+		return -EOPNOTSUPP;
-+	if (S_ISLNK(inode->i_mode))
-+		return -EOPNOTSUPP;
-+	acl = get_richacl(inode);
-+	if (IS_ERR(acl))
-+		return PTR_ERR(acl);
-+	if (acl == NULL)
-+		return -ENODATA;
-+	error = richacl_to_xattr(current_user_ns(), acl, buffer, buffer_size);
-+	richacl_put(acl);
-+	return error;
-+}
-+
-+static int
-+richacl_xattr_set(const struct xattr_handler *handler,
-+		  struct dentry *unused, struct inode *inode,
-+		  const char *name, const void *value, size_t size,
-+		  int flags)
-+{
-+	struct richacl *acl = NULL;
-+	int ret;
-+
-+	if (*name)
-+		return -EINVAL;
-+	if (!IS_RICHACL(inode))
-+		return -EOPNOTSUPP;
-+	if (!inode->i_op->set_richacl)
-+		return -EOPNOTSUPP;
-+
-+	if (!uid_eq(current_fsuid(), inode->i_uid) &&
-+	    inode_permission(inode, MAY_CHMOD) &&
-+	    !capable(CAP_FOWNER))
-+		return -EPERM;
-+
-+	if (value) {
-+		acl = richacl_from_xattr(current_user_ns(), value, size,
-+					 -EINVAL);
-+		if (IS_ERR(acl))
-+			return PTR_ERR(acl);
-+	}
-+
-+	ret = inode->i_op->set_richacl(inode, acl);
-+	richacl_put(acl);
-+	return ret;
-+}
-+
-+struct xattr_handler richacl_xattr_handler = {
-+	.name = XATTR_NAME_RICHACL,
-+	.list = richacl_xattr_list,
-+	.get = richacl_xattr_get,
-+	.set = richacl_xattr_set,
-+};
-+EXPORT_SYMBOL(richacl_xattr_handler);
-diff --git a/include/linux/richacl_xattr.h b/include/linux/richacl_xattr.h
-index 0efa14b..6c6adb1 100644
---- a/include/linux/richacl_xattr.h
-+++ b/include/linux/richacl_xattr.h
-@@ -26,4 +26,6 @@ extern size_t richacl_xattr_size(const struct richacl *);
- extern int richacl_to_xattr(struct user_namespace *, const struct richacl *,
- 			    void *, size_t);
  
-+extern struct xattr_handler richacl_xattr_handler;
++static int enable_acl(struct super_block *sb)
++{
++	sb->s_flags &= ~(MS_POSIXACL | MS_RICHACL);
++	if (test_opt(sb, ACL)) {
++		if (EXT4_HAS_INCOMPAT_FEATURE(sb,
++					      EXT4_FEATURE_INCOMPAT_RICHACL)) {
++#ifdef CONFIG_EXT4_FS_RICHACL
++			sb->s_flags |= MS_RICHACL;
++#else
++			return -EOPNOTSUPP;
++#endif
++		} else {
++#ifdef CONFIG_EXT4_FS_POSIX_ACL
++			sb->s_flags |= MS_POSIXACL;
++#else
++			return -EOPNOTSUPP;
++#endif
++		}
++	}
++	return 0;
++}
 +
- #endif /* __RICHACL_XATTR_H */
+ #define DEFAULT_JOURNAL_IOPRIO (IOPRIO_PRIO_VALUE(IOPRIO_CLASS_BE, 3))
+ static char deprecated_msg[] = "Mount option \"%s\" will be removed by %s\n"
+ 	"Contact linux-ext4@vger.kernel.org if you think we should keep it.\n";
+@@ -1452,9 +1474,9 @@ static const struct mount_opts {
+ 	 MOPT_NO_EXT2 | MOPT_DATAJ},
+ 	{Opt_user_xattr, EXT4_MOUNT_XATTR_USER, MOPT_SET},
+ 	{Opt_nouser_xattr, EXT4_MOUNT_XATTR_USER, MOPT_CLEAR},
+-#ifdef CONFIG_EXT4_FS_POSIX_ACL
+-	{Opt_acl, EXT4_MOUNT_POSIX_ACL, MOPT_SET},
+-	{Opt_noacl, EXT4_MOUNT_POSIX_ACL, MOPT_CLEAR},
++#if defined(CONFIG_EXT4_FS_POSIX_ACL) || defined(CONFIG_EXT4_FS_RICHACL)
++	{Opt_acl, EXT4_MOUNT_ACL, MOPT_SET},
++	{Opt_noacl, EXT4_MOUNT_ACL, MOPT_CLEAR},
+ #else
+ 	{Opt_acl, 0, MOPT_NOSUPPORT},
+ 	{Opt_noacl, 0, MOPT_NOSUPPORT},
+@@ -1502,6 +1524,13 @@ static int handle_mount_opt(struct super_block *sb, char *opt, int token,
+ #endif
+ 	switch (token) {
+ 	case Opt_noacl:
++#ifdef CONFIG_EXT4_FS_RICHACL
++	if (EXT4_HAS_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_RICHACL)) {
++		ext4_msg(sb, KERN_ERR, "Mount option \"%s\" incompatible "
++			 "with richacl feature", opt);
++		return -1;
++	}
++#endif
+ 	case Opt_nouser_xattr:
+ 		ext4_msg(sb, KERN_WARNING, deprecated_msg, opt, "3.5");
+ 		break;
+@@ -3274,8 +3303,8 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+ 		set_opt(sb, NO_UID32);
+ 	/* xattr user namespace & acls are now defaulted on */
+ 	set_opt(sb, XATTR_USER);
+-#ifdef CONFIG_EXT4_FS_POSIX_ACL
+-	set_opt(sb, POSIX_ACL);
++#if defined(CONFIG_EXT4_FS_POSIX_ACL) || defined(CONFIG_EXT4_FS_RICHACL)
++	set_opt(sb, ACL);
+ #endif
+ 	/* don't forget to enable journal_csum when metadata_csum is enabled. */
+ 	if (ext4_has_metadata_csum(sb))
+@@ -3358,8 +3387,9 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+ 		sb->s_iflags |= SB_I_CGROUPWB;
+ 	}
+ 
+-	sb->s_flags = (sb->s_flags & ~MS_POSIXACL) |
+-		(test_opt(sb, POSIX_ACL) ? MS_POSIXACL : 0);
++	err = enable_acl(sb);
++	if (err)
++		goto failed_mount;
+ 
+ 	if (le32_to_cpu(es->s_rev_level) == EXT4_GOOD_OLD_REV &&
+ 	    (ext4_has_compat_features(sb) ||
+@@ -4673,8 +4703,9 @@ static int ext4_remount(struct super_block *sb, int *flags, char *data)
+ 	if (sbi->s_mount_flags & EXT4_MF_FS_ABORTED)
+ 		ext4_abort(sb, "Abort forced by user");
+ 
+-	sb->s_flags = (sb->s_flags & ~MS_POSIXACL) |
+-		(test_opt(sb, POSIX_ACL) ? MS_POSIXACL : 0);
++	err = enable_acl(sb);
++	if (err)
++		goto restore_opts;
+ 
+ 	es = sbi->s_es;
+ 
 -- 
 2.5.5
 
