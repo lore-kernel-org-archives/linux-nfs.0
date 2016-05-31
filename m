@@ -1,142 +1,70 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:38099 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752861AbcEaLvL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 31 May 2016 07:51:11 -0400
-From: Andreas Gruenbacher <agruenba@redhat.com>
-To: Alexander Viro <viro@zeniv.linux.org.uk>
-Cc: Andreas Gruenbacher <agruenba@redhat.com>,
-        Christoph Hellwig <hch@infradead.org>, "Theodore Ts'o" <tytso@mit.edu>,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        Jeff Layton <jlayton@poochiereds.net>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        Anna Schumaker <anna.schumaker@netapp.com>,
-        Dave Chinner <david@fromorbit.com>, linux-ext4@vger.kernel.org,
-        xfs@oss.sgi.com, linux-kernel@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-cifs@vger.kernel.org, linux-api@vger.kernel.org
-Subject: [PATCH v22 01/22] vfs: Add IS_ACL() and IS_RICHACL() tests
-Date: Tue, 31 May 2016 13:50:33 +0200
-Message-Id: <1464695454-18557-2-git-send-email-agruenba@redhat.com>
-In-Reply-To: <1464695454-18557-1-git-send-email-agruenba@redhat.com>
-References: <1464695454-18557-1-git-send-email-agruenba@redhat.com>
+Received: from smtpi.meduniwien.ac.at ([149.148.51.14]:38658 "EHLO
+	smtpi.meduniwien.ac.at" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752062AbcEaMKy (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 31 May 2016 08:10:54 -0400
+Received: from localhost (localhost [127.0.0.1])
+	by smtpi.meduniwien.ac.at (Postfix) with ESMTP id 30A0160641
+	for <linux-nfs@vger.kernel.org>; Tue, 31 May 2016 14:10:52 +0200 (CEST)
+Received: from smtpi.meduniwien.ac.at ([127.0.0.1])
+	by localhost (mailsip.meduniwien.ac.at [127.0.0.1]) (amavisd-new, port 10024)
+	with ESMTP id HiIXtbyhnhKe for <linux-nfs@vger.kernel.org>;
+	Tue, 31 May 2016 14:10:51 +0200 (CEST)
+Received: from [149.148.52.63] (itsc063.cc.meduniwien.ac.at [149.148.52.63])
+	by smtpi.meduniwien.ac.at (Postfix) with ESMTPS id 3AEDB6062E
+	for <linux-nfs@vger.kernel.org>; Tue, 31 May 2016 14:10:50 +0200 (CEST)
+To: linux-nfs@vger.kernel.org
+From: Matthias Leopold <matthias.leopold@meduniwien.ac.at>
+Subject: getattr ERROR: Request couldn't be completed in time
+Message-ID: <574D7F26.1090202@meduniwien.ac.at>
+Date: Tue, 31 May 2016 14:10:14 +0200
+MIME-Version: 1.0
+Content-Type: text/plain; charset=utf-8; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The vfs does not apply the umask for file systems that support acls.
-The test used for this used to be called IS_POSIXACL().  Switch to a new
-IS_ACL() test to check for either posix acls or richacls instead.  Add a
-new MS_RICHACL flag and IS_RICHACL() test for richacls alone.  The
-IS_POSIXACL() test is still needed in some places like nfsd.
+hi,
 
-Signed-off-by: Andreas Gruenbacher <agruenba@redhat.com>
-Reviewed-by: J. Bruce Fields <bfields@redhat.com>
-Reviewed-by: Andreas Dilger <adilger@dilger.ca>
-Reviewed-by: Steve French <steve.french@primarydata.com>
----
- fs/Kconfig              |  3 +++
- fs/namei.c              |  6 +++---
- include/linux/fs.h      | 12 ++++++++++++
- include/uapi/linux/fs.h |  3 ++-
- 4 files changed, 20 insertions(+), 4 deletions(-)
+i'm trying to mount a NFS 4 share with "sec=sys" from a NetApp FAS3250 
+on a CentOS KVM guest. this doesn't work, the mount doesn't complete and 
+hangs.
 
-diff --git a/fs/Kconfig b/fs/Kconfig
-index b8fcb41..de6de55 100644
---- a/fs/Kconfig
-+++ b/fs/Kconfig
-@@ -64,6 +64,9 @@ endif # BLOCK
- config FS_POSIX_ACL
- 	def_bool n
- 
-+config FS_RICHACL
-+	def_bool n
-+
- config EXPORTFS
- 	tristate
- 
-diff --git a/fs/namei.c b/fs/namei.c
-index 4c4f95a..113e3f2 100644
---- a/fs/namei.c
-+++ b/fs/namei.c
-@@ -3076,7 +3076,7 @@ static int lookup_open(struct nameidata *nd, struct path *path,
- 	 * O_EXCL open we want to return EEXIST not EROFS).
- 	 */
- 	if (open_flag & O_CREAT) {
--		if (!IS_POSIXACL(dir->d_inode))
-+		if (!IS_ACL(dir->d_inode))
- 			mode &= ~current_umask();
- 		if (unlikely(!got_write)) {
- 			create_error = -EROFS;
-@@ -3705,7 +3705,7 @@ retry:
- 	if (IS_ERR(dentry))
- 		return PTR_ERR(dentry);
- 
--	if (!IS_POSIXACL(path.dentry->d_inode))
-+	if (!IS_ACL(path.dentry->d_inode))
- 		mode &= ~current_umask();
- 	error = security_path_mknod(&path, dentry, mode, dev);
- 	if (error)
-@@ -3776,7 +3776,7 @@ retry:
- 	if (IS_ERR(dentry))
- 		return PTR_ERR(dentry);
- 
--	if (!IS_POSIXACL(path.dentry->d_inode))
-+	if (!IS_ACL(path.dentry->d_inode))
- 		mode &= ~current_umask();
- 	error = security_path_mkdir(&path, dentry, mode);
- 	if (!error)
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index dd28814..4ad130c 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -1850,6 +1850,12 @@ struct super_operations {
- #define IS_IMMUTABLE(inode)	((inode)->i_flags & S_IMMUTABLE)
- #define IS_POSIXACL(inode)	__IS_FLG(inode, MS_POSIXACL)
- 
-+#ifdef CONFIG_FS_RICHACL
-+#define IS_RICHACL(inode)	__IS_FLG(inode, MS_RICHACL)
-+#else
-+#define IS_RICHACL(inode)	0
-+#endif
-+
- #define IS_DEADDIR(inode)	((inode)->i_flags & S_DEAD)
- #define IS_NOCMTIME(inode)	((inode)->i_flags & S_NOCMTIME)
- #define IS_SWAPFILE(inode)	((inode)->i_flags & S_SWAPFILE)
-@@ -1863,6 +1869,12 @@ struct super_operations {
- 				 (inode)->i_rdev == WHITEOUT_DEV)
- 
- /*
-+ * IS_ACL() tells the VFS to not apply the umask
-+ * and use check_acl for acl permission checks when defined.
-+ */
-+#define IS_ACL(inode)		__IS_FLG(inode, MS_POSIXACL | MS_RICHACL)
-+
-+/*
-  * Inode state bits.  Protected by inode->i_lock
-  *
-  * Three bits determine the dirty state of the inode, I_DIRTY_SYNC,
-diff --git a/include/uapi/linux/fs.h b/include/uapi/linux/fs.h
-index 3b00f7c..f9c41ef 100644
---- a/include/uapi/linux/fs.h
-+++ b/include/uapi/linux/fs.h
-@@ -120,7 +120,7 @@ struct inodes_stat_t {
- #define MS_VERBOSE	32768	/* War is peace. Verbosity is silence.
- 				   MS_VERBOSE is deprecated. */
- #define MS_SILENT	32768
--#define MS_POSIXACL	(1<<16)	/* VFS does not apply the umask */
-+#define MS_POSIXACL	(1<<16)	/* Supports POSIX ACLs */
- #define MS_UNBINDABLE	(1<<17)	/* change to unbindable */
- #define MS_PRIVATE	(1<<18)	/* change to private */
- #define MS_SLAVE	(1<<19)	/* change to slave */
-@@ -130,6 +130,7 @@ struct inodes_stat_t {
- #define MS_I_VERSION	(1<<23) /* Update inode I_version field */
- #define MS_STRICTATIME	(1<<24) /* Always perform atime updates */
- #define MS_LAZYTIME	(1<<25) /* Update the on-disk [acm]times lazily */
-+#define MS_RICHACL	(1<<26) /* Supports richacls */
- 
- /* These sb flags are internal to the kernel */
- #define MS_NOSEC	(1<<28)
--- 
-2.5.5
+mount command is:
+/bin/mount -v -t nfs -s -o vers=4.1,sec=sys 10.110.96.90:/home /home/cir
 
+what i'm seeing in tcpdump is:
+
+08:36:48.875019 IP 10.110.96.112.2456702824 > 10.110.96.90.2049: 212 
+getattr fh 0,1/53
+08:36:48.875355 IP 10.110.96.90.2049 > 10.110.96.112.2456702824: reply 
+ok 96 getattr ERROR: Request couldn't be completed in time
+
+server: 10.110.96.90
+client: 10.110.96.112
+
+status of nfs services:
+
+nfslock: running
+rpcbind: running
+rpcidmapd: stopped
+
+this happens with a centos 6 _and_ a centos 7 client (both KVM).
+NFS 3 mount from the same host don't work either.
+
+other kvm guests (centos 6) on the same physical host can mount the 
+share with no problem.
+
+the netapp admin tells me there's "no problem" on his side.
+iptables is disabled of course.
+
+###
+
+what could be the problem on my (client) side?
+could this be a kvm problem?
+
+kvm host is centos 6.
+network mode is "bridge".
+network driver is "virtio".
+
+thx for any advice
+matthias
