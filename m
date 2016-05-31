@@ -1,315 +1,215 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-yw0-f195.google.com ([209.85.161.195]:35403 "EHLO
-	mail-yw0-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751364AbcEaVJr (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 31 May 2016 17:09:47 -0400
-Received: by mail-yw0-f195.google.com with SMTP id n16so20684720ywd.2
-        for <linux-nfs@vger.kernel.org>; Tue, 31 May 2016 14:09:46 -0700 (PDT)
-Message-ID: <1464728975.3019.3.camel@poochiereds.net>
-Subject: Re: [RFC PATCH] nfs: allow nfs client to handle servers that hand
- out multiple layout types
-From: Jeff Layton <jlayton@poochiereds.net>
-To: Trond Myklebust <trondmy@primarydata.com>,
+Received: from us-smtp-delivery-194.mimecast.com ([63.128.21.194]:32134 "EHLO
+	us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751484AbcEaVly (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 31 May 2016 17:41:54 -0400
+From: Trond Myklebust <trondmy@primarydata.com>
+To: Jeff Layton <jlayton@poochiereds.net>,
         "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Cc: "tigran.mkrtchyan@desy.de" <tigran.mkrtchyan@desy.de>,
+CC: "tigran.mkrtchyan@desy.de" <tigran.mkrtchyan@desy.de>,
         "Anna.Schumaker@netapp.com" <Anna.Schumaker@netapp.com>,
         "hch@infradead.org" <hch@infradead.org>
-Date: Tue, 31 May 2016 17:09:35 -0400
-In-Reply-To: <58537471-DDCA-413F-AD22-1269A4301FBA@primarydata.com>
+Subject: Re: [RFC PATCH] nfs: allow nfs client to handle servers that hand out
+ multiple layout types
+Date: Tue, 31 May 2016 21:41:47 +0000
+Message-ID: <5E21BE07-5263-4309-A9B3-CB6364C12987@primarydata.com>
 References: <1464626102-13100-1-git-send-email-jlayton@poochiereds.net>
-	 <58537471-DDCA-413F-AD22-1269A4301FBA@primarydata.com>
-Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
+ <58537471-DDCA-413F-AD22-1269A4301FBA@primarydata.com>
+ <1464728975.3019.3.camel@poochiereds.net>
+In-Reply-To: <1464728975.3019.3.camel@poochiereds.net>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 2016-05-31 at 16:03 +0000, Trond Myklebust wrote:
-> 
-> On 5/30/16, 12:35, "Jeff Layton" <jlayton@poochiereds.net> wrote:
-> 
-> > Allow the client to deal with servers that hand out multiple layout
-> > types for the same filesystem. When this happens, we pick the "best" one,
-> > based on a hardcoded assumed order in the client code.
-> > 
-> > Signed-off-by: Jeff Layton <jeff.layton@primarydata.com>
-> > ---
-> > fs/nfs/client.c         |  2 +-
-> > fs/nfs/nfs4proc.c       |  2 +-
-> > fs/nfs/nfs4xdr.c        | 41 +++++++++++++-------------
-> > fs/nfs/pnfs.c           | 76 ++++++++++++++++++++++++++++++++++++++-----------
-> > include/linux/nfs_xdr.h |  2 +-
-> > 5 files changed, 85 insertions(+), 38 deletions(-)
-> > 
-> > diff --git a/fs/nfs/client.c b/fs/nfs/client.c
-> > index 0c96528db94a..53b41f4bd45a 100644
-> > --- a/fs/nfs/client.c
-> > +++ b/fs/nfs/client.c
-> > @@ -787,7 +787,7 @@ int nfs_probe_fsinfo(struct nfs_server *server, struct nfs_fh *mntfh, struct nfs
-> > 	}
-> > 
-> > 	fsinfo.fattr = fattr;
-> > -	fsinfo.layouttype = 0;
-> > +	fsinfo.layouttypes = 0;
-> > 	error = clp->rpc_ops->fsinfo(server, mntfh, &fsinfo);
-> > 	if (error < 0)
-> > 		goto out_error;
-> > diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-> > index de97567795a5..9446aef89b48 100644
-> > --- a/fs/nfs/nfs4proc.c
-> > +++ b/fs/nfs/nfs4proc.c
-> > @@ -4252,7 +4252,7 @@ static int nfs4_proc_fsinfo(struct nfs_server *server, struct nfs_fh *fhandle, s
-> > 	if (error == 0) {
-> > 		/* block layout checks this! */
-> > 		server->pnfs_blksize = fsinfo->blksize;
-> > -		set_pnfs_layoutdriver(server, fhandle, fsinfo->layouttype);
-> > +		set_pnfs_layoutdriver(server, fhandle, fsinfo->layouttypes);
-> > 	}
-> > 
-> > 	return error;
-> > diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-> > index 661e753fe1c9..876a80802c1d 100644
-> > --- a/fs/nfs/nfs4xdr.c
-> > +++ b/fs/nfs/nfs4xdr.c
-> > @@ -4723,33 +4723,36 @@ static int decode_getfattr(struct xdr_stream *xdr, struct nfs_fattr *fattr,
-> >  * Decode potentially multiple layout types. Currently we only support
-> >  * one layout driver per file system.
-> >  */
-> > -static int decode_first_pnfs_layout_type(struct xdr_stream *xdr,
-> > -					 uint32_t *layouttype)
-> > +static int decode_pnfs_layout_types(struct xdr_stream *xdr, u32 *layouttypes)
-> > {
-> > 	__be32 *p;
-> > 	int num;
-> > +	u32 type;
-> > 
-> > 	p = xdr_inline_decode(xdr, 4);
-> > 	if (unlikely(!p))
-> > 		goto out_overflow;
-> > 	num = be32_to_cpup(p);
-> > 
-> > -	/* pNFS is not supported by the underlying file system */
-> > -	if (num == 0) {
-> > -		*layouttype = 0;
-> > -		return 0;
-> > -	}
-> > -	if (num > 1)
-> > -		printk(KERN_INFO "NFS: %s: Warning: Multiple pNFS layout "
-> > -			"drivers per filesystem not supported\n", __func__);
-> > +	*layouttypes = 0;
-> > 
-> > -	/* Decode and set first layout type, move xdr->p past unused types */
-> > -	p = xdr_inline_decode(xdr, num * 4);
-> > -	if (unlikely(!p))
-> > -		goto out_overflow;
-> > -	*layouttype = be32_to_cpup(p);
-> > +	for (; num; --num) {
-> > +		p = xdr_inline_decode(xdr, 4);
-> > +
-> > +		if (unlikely(!p))
-> > +			goto out_overflow;
-> > +
-> > +		type = be32_to_cpup(p);
-> > +
-> > +		/* Ignore any that we don't understand */
-> > +		if (unlikely(type >= LAYOUT_TYPE_MAX))
-> 
-> This will in effect hard code the layouts that the client supports.
-> LAYOUT_TYPE_MAX is something that applies to knfsd only for now.
-> Let’s not leak it into the client. I suggest just making this
-> 8*sizeof(*layouttypes).
-> 
+DQoNCk9uIDUvMzEvMTYsIDE3OjA5LCAiSmVmZiBMYXl0b24iIDxqbGF5dG9uQHBvb2NoaWVyZWRz
+Lm5ldD4gd3JvdGU6DQoNCj5PbiBUdWUsIDIwMTYtMDUtMzEgYXQgMTY6MDMgKzAwMDAsIFRyb25k
+IE15a2xlYnVzdCB3cm90ZToNCj4+IA0KPj4gT24gNS8zMC8xNiwgMTI6MzUsICJKZWZmIExheXRv
+biIgPGpsYXl0b25AcG9vY2hpZXJlZHMubmV0PiB3cm90ZToNCj4+IA0KPj4gPiBBbGxvdyB0aGUg
+Y2xpZW50IHRvIGRlYWwgd2l0aCBzZXJ2ZXJzIHRoYXQgaGFuZCBvdXQgbXVsdGlwbGUgbGF5b3V0
+DQo+PiA+IHR5cGVzIGZvciB0aGUgc2FtZSBmaWxlc3lzdGVtLiBXaGVuIHRoaXMgaGFwcGVucywg
+d2UgcGljayB0aGUgImJlc3QiIG9uZSwNCj4+ID4gYmFzZWQgb24gYSBoYXJkY29kZWQgYXNzdW1l
+ZCBvcmRlciBpbiB0aGUgY2xpZW50IGNvZGUuDQo+PiA+IA0KPj4gPiBTaWduZWQtb2ZmLWJ5OiBK
+ZWZmIExheXRvbiA8amVmZi5sYXl0b25AcHJpbWFyeWRhdGEuY29tPg0KPj4gPiAtLS0NCj4+ID4g
+ZnMvbmZzL2NsaWVudC5jICAgICAgICAgfCAgMiArLQ0KPj4gPiBmcy9uZnMvbmZzNHByb2MuYyAg
+ICAgICB8ICAyICstDQo+PiA+IGZzL25mcy9uZnM0eGRyLmMgICAgICAgIHwgNDEgKysrKysrKysr
+KysrKy0tLS0tLS0tLS0tLS0NCj4+ID4gZnMvbmZzL3BuZnMuYyAgICAgICAgICAgfCA3NiArKysr
+KysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKy0tLS0tLS0tLS0tDQo+PiA+IGluY2x1
+ZGUvbGludXgvbmZzX3hkci5oIHwgIDIgKy0NCj4+ID4gNSBmaWxlcyBjaGFuZ2VkLCA4NSBpbnNl
+cnRpb25zKCspLCAzOCBkZWxldGlvbnMoLSkNCj4+ID4gDQo+PiA+IGRpZmYgLS1naXQgYS9mcy9u
+ZnMvY2xpZW50LmMgYi9mcy9uZnMvY2xpZW50LmMNCj4+ID4gaW5kZXggMGM5NjUyOGRiOTRhLi41
+M2I0MWY0YmQ0NWEgMTAwNjQ0DQo+PiA+IC0tLSBhL2ZzL25mcy9jbGllbnQuYw0KPj4gPiArKysg
+Yi9mcy9uZnMvY2xpZW50LmMNCj4+ID4gQEAgLTc4Nyw3ICs3ODcsNyBAQCBpbnQgbmZzX3Byb2Jl
+X2ZzaW5mbyhzdHJ1Y3QgbmZzX3NlcnZlciAqc2VydmVyLCBzdHJ1Y3QgbmZzX2ZoICptbnRmaCwg
+c3RydWN0IG5mcw0KPj4gPiAJfQ0KPj4gPiANCj4+ID4gCWZzaW5mby5mYXR0ciA9IGZhdHRyOw0K
+Pj4gPiAtCWZzaW5mby5sYXlvdXR0eXBlID0gMDsNCj4+ID4gKwlmc2luZm8ubGF5b3V0dHlwZXMg
+PSAwOw0KPj4gPiAJZXJyb3IgPSBjbHAtPnJwY19vcHMtPmZzaW5mbyhzZXJ2ZXIsIG1udGZoLCAm
+ZnNpbmZvKTsNCj4+ID4gCWlmIChlcnJvciA8IDApDQo+PiA+IAkJZ290byBvdXRfZXJyb3I7DQo+
+PiA+IGRpZmYgLS1naXQgYS9mcy9uZnMvbmZzNHByb2MuYyBiL2ZzL25mcy9uZnM0cHJvYy5jDQo+
+PiA+IGluZGV4IGRlOTc1Njc3OTVhNS4uOTQ0NmFlZjg5YjQ4IDEwMDY0NA0KPj4gPiAtLS0gYS9m
+cy9uZnMvbmZzNHByb2MuYw0KPj4gPiArKysgYi9mcy9uZnMvbmZzNHByb2MuYw0KPj4gPiBAQCAt
+NDI1Miw3ICs0MjUyLDcgQEAgc3RhdGljIGludCBuZnM0X3Byb2NfZnNpbmZvKHN0cnVjdCBuZnNf
+c2VydmVyICpzZXJ2ZXIsIHN0cnVjdCBuZnNfZmggKmZoYW5kbGUsIHMNCj4+ID4gCWlmIChlcnJv
+ciA9PSAwKSB7DQo+PiA+IAkJLyogYmxvY2sgbGF5b3V0IGNoZWNrcyB0aGlzISAqLw0KPj4gPiAJ
+CXNlcnZlci0+cG5mc19ibGtzaXplID0gZnNpbmZvLT5ibGtzaXplOw0KPj4gPiAtCQlzZXRfcG5m
+c19sYXlvdXRkcml2ZXIoc2VydmVyLCBmaGFuZGxlLCBmc2luZm8tPmxheW91dHR5cGUpOw0KPj4g
+PiArCQlzZXRfcG5mc19sYXlvdXRkcml2ZXIoc2VydmVyLCBmaGFuZGxlLCBmc2luZm8tPmxheW91
+dHR5cGVzKTsNCj4+ID4gCX0NCj4+ID4gDQo+PiA+IAlyZXR1cm4gZXJyb3I7DQo+PiA+IGRpZmYg
+LS1naXQgYS9mcy9uZnMvbmZzNHhkci5jIGIvZnMvbmZzL25mczR4ZHIuYw0KPj4gPiBpbmRleCA2
+NjFlNzUzZmUxYzkuLjg3NmE4MDgwMmMxZCAxMDA2NDQNCj4+ID4gLS0tIGEvZnMvbmZzL25mczR4
+ZHIuYw0KPj4gPiArKysgYi9mcy9uZnMvbmZzNHhkci5jDQo+PiA+IEBAIC00NzIzLDMzICs0NzIz
+LDM2IEBAIHN0YXRpYyBpbnQgZGVjb2RlX2dldGZhdHRyKHN0cnVjdCB4ZHJfc3RyZWFtICp4ZHIs
+IHN0cnVjdCBuZnNfZmF0dHIgKmZhdHRyLA0KPj4gPiAgKiBEZWNvZGUgcG90ZW50aWFsbHkgbXVs
+dGlwbGUgbGF5b3V0IHR5cGVzLiBDdXJyZW50bHkgd2Ugb25seSBzdXBwb3J0DQo+PiA+ICAqIG9u
+ZSBsYXlvdXQgZHJpdmVyIHBlciBmaWxlIHN5c3RlbS4NCj4+ID4gICovDQo+PiA+IC1zdGF0aWMg
+aW50IGRlY29kZV9maXJzdF9wbmZzX2xheW91dF90eXBlKHN0cnVjdCB4ZHJfc3RyZWFtICp4ZHIs
+DQo+PiA+IC0JCQkJCSB1aW50MzJfdCAqbGF5b3V0dHlwZSkNCj4+ID4gK3N0YXRpYyBpbnQgZGVj
+b2RlX3BuZnNfbGF5b3V0X3R5cGVzKHN0cnVjdCB4ZHJfc3RyZWFtICp4ZHIsIHUzMiAqbGF5b3V0
+dHlwZXMpDQo+PiA+IHsNCj4+ID4gCV9fYmUzMiAqcDsNCj4+ID4gCWludCBudW07DQo+PiA+ICsJ
+dTMyIHR5cGU7DQo+PiA+IA0KPj4gPiAJcCA9IHhkcl9pbmxpbmVfZGVjb2RlKHhkciwgNCk7DQo+
+PiA+IAlpZiAodW5saWtlbHkoIXApKQ0KPj4gPiAJCWdvdG8gb3V0X292ZXJmbG93Ow0KPj4gPiAJ
+bnVtID0gYmUzMl90b19jcHVwKHApOw0KPj4gPiANCj4+ID4gLQkvKiBwTkZTIGlzIG5vdCBzdXBw
+b3J0ZWQgYnkgdGhlIHVuZGVybHlpbmcgZmlsZSBzeXN0ZW0gKi8NCj4+ID4gLQlpZiAobnVtID09
+IDApIHsNCj4+ID4gLQkJKmxheW91dHR5cGUgPSAwOw0KPj4gPiAtCQlyZXR1cm4gMDsNCj4+ID4g
+LQl9DQo+PiA+IC0JaWYgKG51bSA+IDEpDQo+PiA+IC0JCXByaW50ayhLRVJOX0lORk8gIk5GUzog
+JXM6IFdhcm5pbmc6IE11bHRpcGxlIHBORlMgbGF5b3V0ICINCj4+ID4gLQkJCSJkcml2ZXJzIHBl
+ciBmaWxlc3lzdGVtIG5vdCBzdXBwb3J0ZWRcbiIsIF9fZnVuY19fKTsNCj4+ID4gKwkqbGF5b3V0
+dHlwZXMgPSAwOw0KPj4gPiANCj4+ID4gLQkvKiBEZWNvZGUgYW5kIHNldCBmaXJzdCBsYXlvdXQg
+dHlwZSwgbW92ZSB4ZHItPnAgcGFzdCB1bnVzZWQgdHlwZXMgKi8NCj4+ID4gLQlwID0geGRyX2lu
+bGluZV9kZWNvZGUoeGRyLCBudW0gKiA0KTsNCj4+ID4gLQlpZiAodW5saWtlbHkoIXApKQ0KPj4g
+PiAtCQlnb3RvIG91dF9vdmVyZmxvdzsNCj4+ID4gLQkqbGF5b3V0dHlwZSA9IGJlMzJfdG9fY3B1
+cChwKTsNCj4+ID4gKwlmb3IgKDsgbnVtOyAtLW51bSkgew0KPj4gPiArCQlwID0geGRyX2lubGlu
+ZV9kZWNvZGUoeGRyLCA0KTsNCj4+ID4gKw0KPj4gPiArCQlpZiAodW5saWtlbHkoIXApKQ0KPj4g
+PiArCQkJZ290byBvdXRfb3ZlcmZsb3c7DQo+PiA+ICsNCj4+ID4gKwkJdHlwZSA9IGJlMzJfdG9f
+Y3B1cChwKTsNCj4+ID4gKw0KPj4gPiArCQkvKiBJZ25vcmUgYW55IHRoYXQgd2UgZG9uJ3QgdW5k
+ZXJzdGFuZCAqLw0KPj4gPiArCQlpZiAodW5saWtlbHkodHlwZSA+PSBMQVlPVVRfVFlQRV9NQVgp
+KQ0KPj4gDQo+PiBUaGlzIHdpbGwgaW4gZWZmZWN0IGhhcmQgY29kZSB0aGUgbGF5b3V0cyB0aGF0
+IHRoZSBjbGllbnQgc3VwcG9ydHMuDQo+PiBMQVlPVVRfVFlQRV9NQVggaXMgc29tZXRoaW5nIHRo
+YXQgYXBwbGllcyB0byBrbmZzZCBvbmx5IGZvciBub3cuDQo+PiBMZXTigJlzIG5vdCBsZWFrIGl0
+IGludG8gdGhlIGNsaWVudC4gSSBzdWdnZXN0IGp1c3QgbWFraW5nIHRoaXMNCj4+IDgqc2l6ZW9m
+KCpsYXlvdXR0eXBlcykuDQo+PiANCj4NCj5GYWlyIGVub3VnaC4gSSdsbCBtYWtlIHRoYXQgY2hh
+bmdlLg0KPg0KPlRoYXQgc2FpZC4uLkxBWU9VVF9UWVBFX01BWCBpcyBhIHZhbHVlIGluIHRoZSBw
+bmZzX2xheW91dHR5cGUgZW51bSwgYW5kDQo+dGhhdCBlbnVtIGlzIHVzZWQgaW4gYm90aCB0aGUg
+Y2xpZW50IGFuZCB0aGUgc2VydmVyIGNvZGUsIEFGQUlDVC4gSWYgd2UNCj5hZGQgYSBuZXcgTEFZ
+T1VUXyogdmFsdWUgdG8gdGhhdCBlbnVtIGZvciB0aGUgY2xpZW50LCB0aGVuIHdlJ2xsIG5lZWQN
+Cj50byBpbmNyZWFzZSB0aGF0IHZhbHVlIGFueXdheS4gU28sIEknbSBub3Qgc3VyZSBJIHVuZGVy
+c3RhbmQgaG93IHRoaXMNCj5saW1pdHMgdGhlIGNsaWVudCBpbiBhbnkgd2F5Li4uDQoNCk5vLCB0
+aGUgY2xpZW50IGRvZXNu4oCZdCB1c2UgZW51bSBwbmZzX2xheW91dHR5cGUgYW55d2hlcmUuIElm
+IHlvdSBsb29rIGF0IHNldF9wbmZzX2xheW91dGRyaXZlcigpLCB5b3XigJlsbCBub3RlIHRoYXQg
+d2UgY3VycmVudGx5IHN1cHBvcnQgYWxsIHZhbHVlcyBmb3IgdGhlIGxheW91dCB0eXBlLg0KDQo+
+DQo+DQo+PiA+ICsJCQljb250aW51ZTsNCj4+ID4gKw0KPj4gPiArCQkqbGF5b3V0dHlwZXMgfD0g
+MSA8PCB0eXBlOw0KPj4gPiArCX0NCj4+ID4gCXJldHVybiAwOw0KPj4gPiBvdXRfb3ZlcmZsb3c6
+DQo+PiA+ICsJKmxheW91dHR5cGVzID0gMDsNCj4+ID4gCXByaW50X292ZXJmbG93X21zZyhfX2Z1
+bmNfXywgeGRyKTsNCj4+ID4gCXJldHVybiAtRUlPOw0KPj4gPiB9DQo+PiA+IEBAIC00NzU5LDcg
+KzQ3NjIsNyBAQCBvdXRfb3ZlcmZsb3c6DQo+PiA+ICAqIE5vdGUgd2UgbXVzdCBlbnN1cmUgdGhh
+dCBsYXlvdXR0eXBlIGlzIHNldCBpbiBhbnkgbm9uLWVycm9yIGNhc2UuDQo+PiA+ICAqLw0KPj4g
+PiBzdGF0aWMgaW50IGRlY29kZV9hdHRyX3BuZnN0eXBlKHN0cnVjdCB4ZHJfc3RyZWFtICp4ZHIs
+IHVpbnQzMl90ICpiaXRtYXAsDQo+PiA+IC0JCQkJdWludDMyX3QgKmxheW91dHR5cGUpDQo+PiA+
+ICsJCQkJX191MzIgKmxheW91dHR5cGVzKQ0KPj4gPiB7DQo+PiA+IAlpbnQgc3RhdHVzID0gMDsN
+Cj4+ID4gDQo+PiA+IEBAIC00NzY3LDEwICs0NzcwLDEwIEBAIHN0YXRpYyBpbnQgZGVjb2RlX2F0
+dHJfcG5mc3R5cGUoc3RydWN0IHhkcl9zdHJlYW0gKnhkciwgdWludDMyX3QgKmJpdG1hcCwNCj4+
+ID4gCWlmICh1bmxpa2VseShiaXRtYXBbMV0gJiAoRkFUVFI0X1dPUkQxX0ZTX0xBWU9VVF9UWVBF
+UyAtIDFVKSkpDQo+PiA+IAkJcmV0dXJuIC1FSU87DQo+PiA+IAlpZiAoYml0bWFwWzFdICYgRkFU
+VFI0X1dPUkQxX0ZTX0xBWU9VVF9UWVBFUykgew0KPj4gPiAtCQlzdGF0dXMgPSBkZWNvZGVfZmly
+c3RfcG5mc19sYXlvdXRfdHlwZSh4ZHIsIGxheW91dHR5cGUpOw0KPj4gPiArCQlzdGF0dXMgPSBk
+ZWNvZGVfcG5mc19sYXlvdXRfdHlwZXMoeGRyLCBsYXlvdXR0eXBlcyk7DQo+PiA+IAkJYml0bWFw
+WzFdICY9IH5GQVRUUjRfV09SRDFfRlNfTEFZT1VUX1RZUEVTOw0KPj4gPiAJfSBlbHNlDQo+PiA+
+IC0JCSpsYXlvdXR0eXBlID0gMDsNCj4+ID4gKwkJKmxheW91dHR5cGVzID0gMDsNCj4+ID4gCXJl
+dHVybiBzdGF0dXM7DQo+PiA+IH0NCj4+ID4gDQo+PiA+IEBAIC00ODUxLDcgKzQ4NTQsNyBAQCBz
+dGF0aWMgaW50IGRlY29kZV9mc2luZm8oc3RydWN0IHhkcl9zdHJlYW0gKnhkciwgc3RydWN0IG5m
+c19mc2luZm8gKmZzaW5mbykNCj4+ID4gCXN0YXR1cyA9IGRlY29kZV9hdHRyX3RpbWVfZGVsdGEo
+eGRyLCBiaXRtYXAsICZmc2luZm8tPnRpbWVfZGVsdGEpOw0KPj4gPiAJaWYgKHN0YXR1cyAhPSAw
+KQ0KPj4gPiAJCWdvdG8geGRyX2Vycm9yOw0KPj4gPiAtCXN0YXR1cyA9IGRlY29kZV9hdHRyX3Bu
+ZnN0eXBlKHhkciwgYml0bWFwLCAmZnNpbmZvLT5sYXlvdXR0eXBlKTsNCj4+ID4gKwlzdGF0dXMg
+PSBkZWNvZGVfYXR0cl9wbmZzdHlwZSh4ZHIsIGJpdG1hcCwgJmZzaW5mby0+bGF5b3V0dHlwZXMp
+Ow0KPj4gPiAJaWYgKHN0YXR1cyAhPSAwKQ0KPj4gPiAJCWdvdG8geGRyX2Vycm9yOw0KPj4gPiAN
+Cj4+ID4gZGlmZiAtLWdpdCBhL2ZzL25mcy9wbmZzLmMgYi9mcy9uZnMvcG5mcy5jDQo+PiA+IGlu
+ZGV4IDBjN2UwZDQ1YTRkZS4uMjBiN2IxZjRlMDQxIDEwMDY0NA0KPj4gPiAtLS0gYS9mcy9uZnMv
+cG5mcy5jDQo+PiA+ICsrKyBiL2ZzL25mcy9wbmZzLmMNCj4+ID4gQEAgLTcwLDcgKzcwLDcgQEAg
+b3V0Og0KPj4gPiB9DQo+PiA+IA0KPj4gPiBzdGF0aWMgc3RydWN0IHBuZnNfbGF5b3V0ZHJpdmVy
+X3R5cGUgKg0KPj4gPiAtZmluZF9wbmZzX2RyaXZlcih1MzIgaWQpDQo+PiA+ICtfX2ZpbmRfcG5m
+c19kcml2ZXIodTMyIGlkKQ0KPj4gPiB7DQo+PiA+IAlzdHJ1Y3QgcG5mc19sYXlvdXRkcml2ZXJf
+dHlwZSAqbG9jYWw7DQo+PiA+IA0KPj4gPiBAQCAtODQsNiArODQsMjIgQEAgZmluZF9wbmZzX2Ry
+aXZlcih1MzIgaWQpDQo+PiA+IAlyZXR1cm4gbG9jYWw7DQo+PiA+IH0NCj4+ID4gDQo+PiA+ICtz
+dGF0aWMgc3RydWN0IHBuZnNfbGF5b3V0ZHJpdmVyX3R5cGUgKg0KPj4gPiArZmluZF9wbmZzX2Ry
+aXZlcih1MzIgaWQpDQo+PiA+ICt7DQo+PiA+ICsJc3RydWN0IHBuZnNfbGF5b3V0ZHJpdmVyX3R5
+cGUgKmxkX3R5cGU7DQo+PiA+ICsNCj4+ID4gKwlsZF90eXBlID0gX19maW5kX3BuZnNfZHJpdmVy
+KGlkKTsNCj4+ID4gKwlpZiAoIWxkX3R5cGUpIHsNCj4+ID4gKwkJcmVxdWVzdF9tb2R1bGUoIiVz
+LSV1IiwgTEFZT1VUX05GU1Y0XzFfTU9EVUxFX1BSRUZJWCwgaWQpOw0KPj4gPiArCQlsZF90eXBl
+ID0gX19maW5kX3BuZnNfZHJpdmVyKGlkKTsNCj4+ID4gKwkJaWYgKCFsZF90eXBlKQ0KPj4gPiAr
+CQkJZHByaW50aygiJXM6IE5vIHBORlMgbW9kdWxlIGZvdW5kIGZvciAldS5cbiIsDQo+PiA+ICsJ
+CQkJX19mdW5jX18sIGlkKTsNCj4+ID4gKwl9DQo+PiA+ICsJcmV0dXJuIGxkX3R5cGU7DQo+PiA+
+ICt9DQo+PiA+ICsNCj4+ID4gdm9pZA0KPj4gPiB1bnNldF9wbmZzX2xheW91dGRyaXZlcihzdHJ1
+Y3QgbmZzX3NlcnZlciAqbmZzcykNCj4+ID4gew0KPj4gPiBAQCAtMTAyLDQ0ICsxMTgsNzIgQEAg
+dW5zZXRfcG5mc19sYXlvdXRkcml2ZXIoc3RydWN0IG5mc19zZXJ2ZXIgKm5mc3MpDQo+PiA+ICAq
+IFRyeSB0byBzZXQgdGhlIHNlcnZlcidzIHBuZnMgbW9kdWxlIHRvIHRoZSBwbmZzIGxheW91dCB0
+eXBlIHNwZWNpZmllZCBieSBpZC4NCj4+ID4gICogQ3VycmVudGx5IG9ubHkgb25lIHBORlMgbGF5
+b3V0IGRyaXZlciBwZXIgZmlsZXN5c3RlbSBpcyBzdXBwb3J0ZWQuDQo+PiA+ICAqDQo+PiA+IC0g
+KiBAaWQgbGF5b3V0IHR5cGUuIFplcm8gKGlsbGVnYWwgbGF5b3V0IHR5cGUpIGluZGljYXRlcyBw
+TkZTIG5vdCBpbiB1c2UuDQo+PiA+ICsgKiBAbGF5b3V0dHlwZXM6IGJpdGZpZWxkIHNob3dpbmcg
+d2hhdCBsYXlvdXQgdHlwZXMgc2VydmVyIHN1cHBvcnRzDQo+PiA+ICAqLw0KPj4gPiB2b2lkDQo+
+PiA+IHNldF9wbmZzX2xheW91dGRyaXZlcihzdHJ1Y3QgbmZzX3NlcnZlciAqc2VydmVyLCBjb25z
+dCBzdHJ1Y3QgbmZzX2ZoICptbnRmaCwNCj4+ID4gLQkJICAgICAgdTMyIGlkKQ0KPj4gPiArCQkg
+ICAgICB1MzIgbGF5b3V0dHlwZXMpDQo+PiA+IHsNCj4+ID4gCXN0cnVjdCBwbmZzX2xheW91dGRy
+aXZlcl90eXBlICpsZF90eXBlID0gTlVMTDsNCj4+ID4gDQo+PiA+IC0JaWYgKGlkID09IDApDQo+
+PiA+ICsJaWYgKGxheW91dHR5cGVzID09IDApDQo+PiA+IAkJZ290byBvdXRfbm9fZHJpdmVyOw0K
+Pj4gPiAJaWYgKCEoc2VydmVyLT5uZnNfY2xpZW50LT5jbF9leGNoYW5nZV9mbGFncyAmDQo+PiA+
+IAkJIChFWENIR0lENF9GTEFHX1VTRV9OT05fUE5GUyB8IEVYQ0hHSUQ0X0ZMQUdfVVNFX1BORlNf
+TURTKSkpIHsNCj4+ID4gLQkJcHJpbnRrKEtFUk5fRVJSICJORlM6ICVzOiBpZCAldSBjbF9leGNo
+YW5nZV9mbGFncyAweCV4XG4iLA0KPj4gPiAtCQkJX19mdW5jX18sIGlkLCBzZXJ2ZXItPm5mc19j
+bGllbnQtPmNsX2V4Y2hhbmdlX2ZsYWdzKTsNCj4+ID4gKwkJcHJpbnRrKEtFUk5fRVJSICJORlM6
+ICVzOiBsYXlvdXR0eXBlcyAweCV4IGNsX2V4Y2hhbmdlX2ZsYWdzIDB4JXhcbiIsDQo+PiA+ICsJ
+CQlfX2Z1bmNfXywgbGF5b3V0dHlwZXMsIHNlcnZlci0+bmZzX2NsaWVudC0+Y2xfZXhjaGFuZ2Vf
+ZmxhZ3MpOw0KPj4gPiAJCWdvdG8gb3V0X25vX2RyaXZlcjsNCj4+ID4gCX0NCj4+ID4gLQlsZF90
+eXBlID0gZmluZF9wbmZzX2RyaXZlcihpZCk7DQo+PiA+IC0JaWYgKCFsZF90eXBlKSB7DQo+PiA+
+IC0JCXJlcXVlc3RfbW9kdWxlKCIlcy0ldSIsIExBWU9VVF9ORlNWNF8xX01PRFVMRV9QUkVGSVgs
+IGlkKTsNCj4+ID4gLQkJbGRfdHlwZSA9IGZpbmRfcG5mc19kcml2ZXIoaWQpOw0KPj4gPiAtCQlp
+ZiAoIWxkX3R5cGUpIHsNCj4+ID4gLQkJCWRwcmludGsoIiVzOiBObyBwTkZTIG1vZHVsZSBmb3Vu
+ZCBmb3IgJXUuXG4iLA0KPj4gPiAtCQkJCV9fZnVuY19fLCBpZCk7DQo+PiA+ICsNCj4+ID4gKwkv
+Kg0KPj4gPiArCSAqIFNlZSBpZiBvbmUgb2YgdGhlIGxheW91dCB0eXBlcyB0aGF0IHdlIGdvdCBo
+YW5kZWQgaXMgdXNhYmxlLiBXZQ0KPj4gPiArCSAqIGF0dGVtcHQgaW4gYSBoYXJkY29kZWQgb3Jk
+ZXIgb2YgcHJlZmVyZW5jZSwgaW4gb3JkZXIgb2YgKGFzc3VtZWQpDQo+PiA+ICsJICogZGVjcmVh
+c2luZyBzcGVlZHMgYW5kIGZ1bmN0aW9uYWxpdHkuDQo+PiA+ICsJICoNCj4+ID4gKwkgKiBGSVhN
+RTogc2hvdWxkIHRoaXMgb3JkZXIgYmUgY29uZmlndXJhYmxlIGluIHNvbWUgZmFzaGlvbj8NCj4+
+ID4gKwkgKi8NCj4+ID4gKwlpZiAobGF5b3V0dHlwZXMgJiAoMSA8PCBMQVlPVVRfU0NTSSkpIHsN
+Cj4+ID4gKwkJbGRfdHlwZSA9IGZpbmRfcG5mc19kcml2ZXIoTEFZT1VUX1NDU0kpOw0KPj4gPiAr
+CQlpZiAobGRfdHlwZSkNCj4+ID4gKwkJCWdvdG8gc2V0X2RyaXZlcjsNCj4+ID4gKwl9DQo+PiA+
+ICsNCj4+ID4gKwlpZiAobGF5b3V0dHlwZXMgJiAoMSA8PCBMQVlPVVRfQkxPQ0tfVk9MVU1FKSkg
+ew0KPj4gPiArCQlsZF90eXBlID0gZmluZF9wbmZzX2RyaXZlcihMQVlPVVRfQkxPQ0tfVk9MVU1F
+KTsNCj4+ID4gKwkJaWYgKGxkX3R5cGUpDQo+PiA+ICsJCQlnb3RvIHNldF9kcml2ZXI7DQo+PiA+
+ICsJfQ0KPj4gPiArDQo+PiA+ICsJaWYgKGxheW91dHR5cGVzICYgKDEgPDwgTEFZT1VUX09TRDJf
+T0JKRUNUUykpIHsNCj4+ID4gKwkJbGRfdHlwZSA9IGZpbmRfcG5mc19kcml2ZXIoTEFZT1VUX09T
+RDJfT0JKRUNUUyk7DQo+PiA+ICsJCWlmIChsZF90eXBlKQ0KPj4gPiArCQkJZ290byBzZXRfZHJp
+dmVyOw0KPj4gPiArCX0NCj4+ID4gKw0KPj4gPiArCWlmIChsYXlvdXR0eXBlcyAmICgxIDw8IExB
+WU9VVF9GTEVYX0ZJTEVTKSkgew0KPj4gPiArCQlsZF90eXBlID0gZmluZF9wbmZzX2RyaXZlcihM
+QVlPVVRfRkxFWF9GSUxFUyk7DQo+PiA+ICsJCWlmIChsZF90eXBlKQ0KPj4gPiArCQkJZ290byBz
+ZXRfZHJpdmVyOw0KPj4gPiArCX0NCj4+ID4gKw0KPj4gPiArCWlmIChsYXlvdXR0eXBlcyAmICgx
+IDw8IExBWU9VVF9ORlNWNF8xX0ZJTEVTKSkgew0KPj4gPiArCQlsZF90eXBlID0gZmluZF9wbmZz
+X2RyaXZlcihMQVlPVVRfTkZTVjRfMV9GSUxFUyk7DQo+PiA+ICsJCWlmICghbGRfdHlwZSkNCj4+
+ID4gCQkJZ290byBvdXRfbm9fZHJpdmVyOw0KPj4gPiAtCQl9DQo+PiA+IAl9DQo+PiA+ICtzZXRf
+ZHJpdmVyOg0KPj4gPiAJc2VydmVyLT5wbmZzX2N1cnJfbGQgPSBsZF90eXBlOw0KPj4gPiAJaWYg
+KGxkX3R5cGUtPnNldF9sYXlvdXRkcml2ZXINCj4+ID4gCSAgICAmJiBsZF90eXBlLT5zZXRfbGF5
+b3V0ZHJpdmVyKHNlcnZlciwgbW50ZmgpKSB7DQo+PiA+IAkJcHJpbnRrKEtFUk5fRVJSICJORlM6
+ICVzOiBFcnJvciBpbml0aWFsaXppbmcgcE5GUyBsYXlvdXQgIg0KPj4gPiAtCQkJImRyaXZlciAl
+dS5cbiIsIF9fZnVuY19fLCBpZCk7DQo+PiA+ICsJCQkiZHJpdmVyICV1LlxuIiwgX19mdW5jX18s
+IGxkX3R5cGUtPmlkKTsNCj4+ID4gCQltb2R1bGVfcHV0KGxkX3R5cGUtPm93bmVyKTsNCj4+ID4g
+CQlnb3RvIG91dF9ub19kcml2ZXI7DQo+PiA+IAl9DQo+PiA+IAkvKiBCdW1wIHRoZSBNRFMgY291
+bnQgKi8NCj4+ID4gCWF0b21pY19pbmMoJnNlcnZlci0+bmZzX2NsaWVudC0+Y2xfbWRzX2NvdW50
+KTsNCj4+ID4gDQo+PiA+IC0JZHByaW50aygiJXM6IHBORlMgbW9kdWxlIGZvciAldSBzZXRcbiIs
+IF9fZnVuY19fLCBpZCk7DQo+PiA+ICsJZHByaW50aygiJXM6IHBORlMgbW9kdWxlIGZvciAldSBz
+ZXRcbiIsIF9fZnVuY19fLCBsZF90eXBlLT5pZCk7DQo+PiA+IAlyZXR1cm47DQo+PiA+IA0KPj4g
+PiBvdXRfbm9fZHJpdmVyOg0KPj4gPiBkaWZmIC0tZ2l0IGEvaW5jbHVkZS9saW51eC9uZnNfeGRy
+LmggYi9pbmNsdWRlL2xpbnV4L25mc194ZHIuaA0KPj4gPiBpbmRleCBjMzA0YTExYjViMWEuLjFm
+NmJiNTlmMDVmMiAxMDA2NDQNCj4+ID4gLS0tIGEvaW5jbHVkZS9saW51eC9uZnNfeGRyLmgNCj4+
+ID4gKysrIGIvaW5jbHVkZS9saW51eC9uZnNfeGRyLmgNCj4+ID4gQEAgLTEzOSw3ICsxMzksNyBA
+QCBzdHJ1Y3QgbmZzX2ZzaW5mbyB7DQo+PiA+IAlfX3U2NAkJCW1heGZpbGVzaXplOw0KPj4gPiAJ
+c3RydWN0IHRpbWVzcGVjCQl0aW1lX2RlbHRhOyAvKiBzZXJ2ZXIgdGltZSBncmFudWxhcml0eSAq
+Lw0KPj4gPiAJX191MzIJCQlsZWFzZV90aW1lOyAvKiBpbiBzZWNvbmRzICovDQo+PiA+IC0JX191
+MzIJCQlsYXlvdXR0eXBlOyAvKiBzdXBwb3J0ZWQgcG5mcyBsYXlvdXQgZHJpdmVyICovDQo+PiA+
+ICsJX191MzIJCQlsYXlvdXR0eXBlczsgLyogc3VwcG9ydGVkIHBuZnMgbGF5b3V0IGRyaXZlcnMg
+Ki8NCj4+ID4gCV9fdTMyCQkJYmxrc2l6ZTsgLyogcHJlZmVycmVkIHBuZnMgaW8gYmxvY2sgc2l6
+ZSAqLw0KPj4gPiAJX191MzIJCQljbG9uZV9ibGtzaXplOyAvKiBncmFudWxhcml0eSBvZiBhIENM
+T05FIG9wZXJhdGlvbiAqLw0KPj4gPiB9Ow0KPj4gPiAtLSANCj4+ID4gMi41LjUNCj4+ID4gDQo+
+PiANCj4+IE5yeWJYx6d2Xineunsubit7Il5ucno/aCY/R2g/KOmajt2iaiI/P2163pZmaH5tDQo+
+LS0gDQo+SmVmZiBMYXl0b24gPGpsYXl0b25AcG9vY2hpZXJlZHMubmV0Pg0KPg0KDQo=
 
-Fair enough. I'll make that change.
-
-That said...LAYOUT_TYPE_MAX is a value in the pnfs_layouttype enum, and
-that enum is used in both the client and the server code, AFAICT. If we
-add a new LAYOUT_* value to that enum for the client, then we'll need
-to increase that value anyway. So, I'm not sure I understand how this
-limits the client in any way...
-
-
-> > +			continue;
-> > +
-> > +		*layouttypes |= 1 << type;
-> > +	}
-> > 	return 0;
-> > out_overflow:
-> > +	*layouttypes = 0;
-> > 	print_overflow_msg(__func__, xdr);
-> > 	return -EIO;
-> > }
-> > @@ -4759,7 +4762,7 @@ out_overflow:
-> >  * Note we must ensure that layouttype is set in any non-error case.
-> >  */
-> > static int decode_attr_pnfstype(struct xdr_stream *xdr, uint32_t *bitmap,
-> > -				uint32_t *layouttype)
-> > +				__u32 *layouttypes)
-> > {
-> > 	int status = 0;
-> > 
-> > @@ -4767,10 +4770,10 @@ static int decode_attr_pnfstype(struct xdr_stream *xdr, uint32_t *bitmap,
-> > 	if (unlikely(bitmap[1] & (FATTR4_WORD1_FS_LAYOUT_TYPES - 1U)))
-> > 		return -EIO;
-> > 	if (bitmap[1] & FATTR4_WORD1_FS_LAYOUT_TYPES) {
-> > -		status = decode_first_pnfs_layout_type(xdr, layouttype);
-> > +		status = decode_pnfs_layout_types(xdr, layouttypes);
-> > 		bitmap[1] &= ~FATTR4_WORD1_FS_LAYOUT_TYPES;
-> > 	} else
-> > -		*layouttype = 0;
-> > +		*layouttypes = 0;
-> > 	return status;
-> > }
-> > 
-> > @@ -4851,7 +4854,7 @@ static int decode_fsinfo(struct xdr_stream *xdr, struct nfs_fsinfo *fsinfo)
-> > 	status = decode_attr_time_delta(xdr, bitmap, &fsinfo->time_delta);
-> > 	if (status != 0)
-> > 		goto xdr_error;
-> > -	status = decode_attr_pnfstype(xdr, bitmap, &fsinfo->layouttype);
-> > +	status = decode_attr_pnfstype(xdr, bitmap, &fsinfo->layouttypes);
-> > 	if (status != 0)
-> > 		goto xdr_error;
-> > 
-> > diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-> > index 0c7e0d45a4de..20b7b1f4e041 100644
-> > --- a/fs/nfs/pnfs.c
-> > +++ b/fs/nfs/pnfs.c
-> > @@ -70,7 +70,7 @@ out:
-> > }
-> > 
-> > static struct pnfs_layoutdriver_type *
-> > -find_pnfs_driver(u32 id)
-> > +__find_pnfs_driver(u32 id)
-> > {
-> > 	struct pnfs_layoutdriver_type *local;
-> > 
-> > @@ -84,6 +84,22 @@ find_pnfs_driver(u32 id)
-> > 	return local;
-> > }
-> > 
-> > +static struct pnfs_layoutdriver_type *
-> > +find_pnfs_driver(u32 id)
-> > +{
-> > +	struct pnfs_layoutdriver_type *ld_type;
-> > +
-> > +	ld_type = __find_pnfs_driver(id);
-> > +	if (!ld_type) {
-> > +		request_module("%s-%u", LAYOUT_NFSV4_1_MODULE_PREFIX, id);
-> > +		ld_type = __find_pnfs_driver(id);
-> > +		if (!ld_type)
-> > +			dprintk("%s: No pNFS module found for %u.\n",
-> > +				__func__, id);
-> > +	}
-> > +	return ld_type;
-> > +}
-> > +
-> > void
-> > unset_pnfs_layoutdriver(struct nfs_server *nfss)
-> > {
-> > @@ -102,44 +118,72 @@ unset_pnfs_layoutdriver(struct nfs_server *nfss)
-> >  * Try to set the server's pnfs module to the pnfs layout type specified by id.
-> >  * Currently only one pNFS layout driver per filesystem is supported.
-> >  *
-> > - * @id layout type. Zero (illegal layout type) indicates pNFS not in use.
-> > + * @layouttypes: bitfield showing what layout types server supports
-> >  */
-> > void
-> > set_pnfs_layoutdriver(struct nfs_server *server, const struct nfs_fh *mntfh,
-> > -		      u32 id)
-> > +		      u32 layouttypes)
-> > {
-> > 	struct pnfs_layoutdriver_type *ld_type = NULL;
-> > 
-> > -	if (id == 0)
-> > +	if (layouttypes == 0)
-> > 		goto out_no_driver;
-> > 	if (!(server->nfs_client->cl_exchange_flags &
-> > 		 (EXCHGID4_FLAG_USE_NON_PNFS | EXCHGID4_FLAG_USE_PNFS_MDS))) {
-> > -		printk(KERN_ERR "NFS: %s: id %u cl_exchange_flags 0x%x\n",
-> > -			__func__, id, server->nfs_client->cl_exchange_flags);
-> > +		printk(KERN_ERR "NFS: %s: layouttypes 0x%x cl_exchange_flags 0x%x\n",
-> > +			__func__, layouttypes, server->nfs_client->cl_exchange_flags);
-> > 		goto out_no_driver;
-> > 	}
-> > -	ld_type = find_pnfs_driver(id);
-> > -	if (!ld_type) {
-> > -		request_module("%s-%u", LAYOUT_NFSV4_1_MODULE_PREFIX, id);
-> > -		ld_type = find_pnfs_driver(id);
-> > -		if (!ld_type) {
-> > -			dprintk("%s: No pNFS module found for %u.\n",
-> > -				__func__, id);
-> > +
-> > +	/*
-> > +	 * See if one of the layout types that we got handed is usable. We
-> > +	 * attempt in a hardcoded order of preference, in order of (assumed)
-> > +	 * decreasing speeds and functionality.
-> > +	 *
-> > +	 * FIXME: should this order be configurable in some fashion?
-> > +	 */
-> > +	if (layouttypes & (1 << LAYOUT_SCSI)) {
-> > +		ld_type = find_pnfs_driver(LAYOUT_SCSI);
-> > +		if (ld_type)
-> > +			goto set_driver;
-> > +	}
-> > +
-> > +	if (layouttypes & (1 << LAYOUT_BLOCK_VOLUME)) {
-> > +		ld_type = find_pnfs_driver(LAYOUT_BLOCK_VOLUME);
-> > +		if (ld_type)
-> > +			goto set_driver;
-> > +	}
-> > +
-> > +	if (layouttypes & (1 << LAYOUT_OSD2_OBJECTS)) {
-> > +		ld_type = find_pnfs_driver(LAYOUT_OSD2_OBJECTS);
-> > +		if (ld_type)
-> > +			goto set_driver;
-> > +	}
-> > +
-> > +	if (layouttypes & (1 << LAYOUT_FLEX_FILES)) {
-> > +		ld_type = find_pnfs_driver(LAYOUT_FLEX_FILES);
-> > +		if (ld_type)
-> > +			goto set_driver;
-> > +	}
-> > +
-> > +	if (layouttypes & (1 << LAYOUT_NFSV4_1_FILES)) {
-> > +		ld_type = find_pnfs_driver(LAYOUT_NFSV4_1_FILES);
-> > +		if (!ld_type)
-> > 			goto out_no_driver;
-> > -		}
-> > 	}
-> > +set_driver:
-> > 	server->pnfs_curr_ld = ld_type;
-> > 	if (ld_type->set_layoutdriver
-> > 	    && ld_type->set_layoutdriver(server, mntfh)) {
-> > 		printk(KERN_ERR "NFS: %s: Error initializing pNFS layout "
-> > -			"driver %u.\n", __func__, id);
-> > +			"driver %u.\n", __func__, ld_type->id);
-> > 		module_put(ld_type->owner);
-> > 		goto out_no_driver;
-> > 	}
-> > 	/* Bump the MDS count */
-> > 	atomic_inc(&server->nfs_client->cl_mds_count);
-> > 
-> > -	dprintk("%s: pNFS module for %u set\n", __func__, id);
-> > +	dprintk("%s: pNFS module for %u set\n", __func__, ld_type->id);
-> > 	return;
-> > 
-> > out_no_driver:
-> > diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-> > index c304a11b5b1a..1f6bb59f05f2 100644
-> > --- a/include/linux/nfs_xdr.h
-> > +++ b/include/linux/nfs_xdr.h
-> > @@ -139,7 +139,7 @@ struct nfs_fsinfo {
-> > 	__u64			maxfilesize;
-> > 	struct timespec		time_delta; /* server time granularity */
-> > 	__u32			lease_time; /* in seconds */
-> > -	__u32			layouttype; /* supported pnfs layout driver */
-> > +	__u32			layouttypes; /* supported pnfs layout drivers */
-> > 	__u32			blksize; /* preferred pnfs io block size */
-> > 	__u32			clone_blksize; /* granularity of a CLONE operation */
-> > };
-> > -- 
-> > 2.5.5
-> > 
-> 
-> NrybXǧv^)޺{.n+{"^nrzh&Gh(階ݢj"mzޖfh~m
--- 
-Jeff Layton <jlayton@poochiereds.net>
