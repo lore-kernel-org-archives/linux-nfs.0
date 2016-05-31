@@ -1,486 +1,182 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp-o-1.desy.de ([131.169.56.154]:54369 "EHLO smtp-o-1.desy.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750730AbcEaPmS (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 31 May 2016 11:42:18 -0400
-Received: from smtp-map-1.desy.de (smtp-map-1.desy.de [131.169.56.66])
-	by smtp-o-1.desy.de (DESY-O-1) with ESMTP id 2778C280B3B
-	for <linux-nfs@vger.kernel.org>; Tue, 31 May 2016 17:42:16 +0200 (CEST)
-Received: from ZITSWEEP2.win.desy.de (zitsweep2.win.desy.de [131.169.97.96])
-	by smtp-map-1.desy.de (DESY_MAP_1) with ESMTP id 1693613ED7
-	for <linux-nfs@vger.kernel.org>; Tue, 31 May 2016 17:42:15 +0200 (MEST)
-Date: Tue, 31 May 2016 17:42:15 +0200 (CEST)
-From: "Mkrtchyan, Tigran" <tigran.mkrtchyan@desy.de>
-To: Tom Haynes <thomas.haynes@primarydata.com>
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-        Linux NFS Mailing list <linux-nfs@vger.kernel.org>,
-        Christoph Hellwig <hch@lst.de>
-Message-ID: <2120378764.15265667.1464709335193.JavaMail.zimbra@desy.de>
-In-Reply-To: <1464282311-103795-3-git-send-email-loghyr@primarydata.com>
-References: <1464282311-103795-1-git-send-email-loghyr@primarydata.com> <1464282311-103795-3-git-send-email-loghyr@primarydata.com>
-Subject: Re: [V3 2/2] nfsd: Add a super simple flex file server
+Received: from us-smtp-delivery-194.mimecast.com ([216.205.24.194]:54996 "EHLO
+	us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1750730AbcEaQDw (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 31 May 2016 12:03:52 -0400
+From: Trond Myklebust <trondmy@primarydata.com>
+To: Jeff Layton <jlayton@poochiereds.net>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+CC: "tigran.mkrtchyan@desy.de" <tigran.mkrtchyan@desy.de>,
+        "Anna.Schumaker@netapp.com" <Anna.Schumaker@netapp.com>,
+        "hch@infradead.org" <hch@infradead.org>
+Subject: Re: [RFC PATCH] nfs: allow nfs client to handle servers that hand out
+ multiple layout types
+Date: Tue, 31 May 2016 16:03:39 +0000
+Message-ID: <58537471-DDCA-413F-AD22-1269A4301FBA@primarydata.com>
+References: <1464626102-13100-1-git-send-email-jlayton@poochiereds.net>
+In-Reply-To: <1464626102-13100-1-git-send-email-jlayton@poochiereds.net>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+DQoNCk9uIDUvMzAvMTYsIDEyOjM1LCAiSmVmZiBMYXl0b24iIDxqbGF5dG9uQHBvb2NoaWVyZWRz
+Lm5ldD4gd3JvdGU6DQoNCj5BbGxvdyB0aGUgY2xpZW50IHRvIGRlYWwgd2l0aCBzZXJ2ZXJzIHRo
+YXQgaGFuZCBvdXQgbXVsdGlwbGUgbGF5b3V0DQo+dHlwZXMgZm9yIHRoZSBzYW1lIGZpbGVzeXN0
+ZW0uIFdoZW4gdGhpcyBoYXBwZW5zLCB3ZSBwaWNrIHRoZSAiYmVzdCIgb25lLA0KPmJhc2VkIG9u
+IGEgaGFyZGNvZGVkIGFzc3VtZWQgb3JkZXIgaW4gdGhlIGNsaWVudCBjb2RlLg0KPg0KPlNpZ25l
+ZC1vZmYtYnk6IEplZmYgTGF5dG9uIDxqZWZmLmxheXRvbkBwcmltYXJ5ZGF0YS5jb20+DQo+LS0t
+DQo+IGZzL25mcy9jbGllbnQuYyAgICAgICAgIHwgIDIgKy0NCj4gZnMvbmZzL25mczRwcm9jLmMg
+ICAgICAgfCAgMiArLQ0KPiBmcy9uZnMvbmZzNHhkci5jICAgICAgICB8IDQxICsrKysrKysrKysr
+KystLS0tLS0tLS0tLS0tDQo+IGZzL25mcy9wbmZzLmMgICAgICAgICAgIHwgNzYgKysrKysrKysr
+KysrKysrKysrKysrKysrKysrKysrKysrKysrKystLS0tLS0tLS0tLQ0KPiBpbmNsdWRlL2xpbnV4
+L25mc194ZHIuaCB8ICAyICstDQo+IDUgZmlsZXMgY2hhbmdlZCwgODUgaW5zZXJ0aW9ucygrKSwg
+MzggZGVsZXRpb25zKC0pDQo+DQo+ZGlmZiAtLWdpdCBhL2ZzL25mcy9jbGllbnQuYyBiL2ZzL25m
+cy9jbGllbnQuYw0KPmluZGV4IDBjOTY1MjhkYjk0YS4uNTNiNDFmNGJkNDVhIDEwMDY0NA0KPi0t
+LSBhL2ZzL25mcy9jbGllbnQuYw0KPisrKyBiL2ZzL25mcy9jbGllbnQuYw0KPkBAIC03ODcsNyAr
+Nzg3LDcgQEAgaW50IG5mc19wcm9iZV9mc2luZm8oc3RydWN0IG5mc19zZXJ2ZXIgKnNlcnZlciwg
+c3RydWN0IG5mc19maCAqbW50ZmgsIHN0cnVjdCBuZnMNCj4gCX0NCj4gDQo+IAlmc2luZm8uZmF0
+dHIgPSBmYXR0cjsNCj4tCWZzaW5mby5sYXlvdXR0eXBlID0gMDsNCj4rCWZzaW5mby5sYXlvdXR0
+eXBlcyA9IDA7DQo+IAllcnJvciA9IGNscC0+cnBjX29wcy0+ZnNpbmZvKHNlcnZlciwgbW50Zmgs
+ICZmc2luZm8pOw0KPiAJaWYgKGVycm9yIDwgMCkNCj4gCQlnb3RvIG91dF9lcnJvcjsNCj5kaWZm
+IC0tZ2l0IGEvZnMvbmZzL25mczRwcm9jLmMgYi9mcy9uZnMvbmZzNHByb2MuYw0KPmluZGV4IGRl
+OTc1Njc3OTVhNS4uOTQ0NmFlZjg5YjQ4IDEwMDY0NA0KPi0tLSBhL2ZzL25mcy9uZnM0cHJvYy5j
+DQo+KysrIGIvZnMvbmZzL25mczRwcm9jLmMNCj5AQCAtNDI1Miw3ICs0MjUyLDcgQEAgc3RhdGlj
+IGludCBuZnM0X3Byb2NfZnNpbmZvKHN0cnVjdCBuZnNfc2VydmVyICpzZXJ2ZXIsIHN0cnVjdCBu
+ZnNfZmggKmZoYW5kbGUsIHMNCj4gCWlmIChlcnJvciA9PSAwKSB7DQo+IAkJLyogYmxvY2sgbGF5
+b3V0IGNoZWNrcyB0aGlzISAqLw0KPiAJCXNlcnZlci0+cG5mc19ibGtzaXplID0gZnNpbmZvLT5i
+bGtzaXplOw0KPi0JCXNldF9wbmZzX2xheW91dGRyaXZlcihzZXJ2ZXIsIGZoYW5kbGUsIGZzaW5m
+by0+bGF5b3V0dHlwZSk7DQo+KwkJc2V0X3BuZnNfbGF5b3V0ZHJpdmVyKHNlcnZlciwgZmhhbmRs
+ZSwgZnNpbmZvLT5sYXlvdXR0eXBlcyk7DQo+IAl9DQo+IA0KPiAJcmV0dXJuIGVycm9yOw0KPmRp
+ZmYgLS1naXQgYS9mcy9uZnMvbmZzNHhkci5jIGIvZnMvbmZzL25mczR4ZHIuYw0KPmluZGV4IDY2
+MWU3NTNmZTFjOS4uODc2YTgwODAyYzFkIDEwMDY0NA0KPi0tLSBhL2ZzL25mcy9uZnM0eGRyLmMN
+Cj4rKysgYi9mcy9uZnMvbmZzNHhkci5jDQo+QEAgLTQ3MjMsMzMgKzQ3MjMsMzYgQEAgc3RhdGlj
+IGludCBkZWNvZGVfZ2V0ZmF0dHIoc3RydWN0IHhkcl9zdHJlYW0gKnhkciwgc3RydWN0IG5mc19m
+YXR0ciAqZmF0dHIsDQo+ICAqIERlY29kZSBwb3RlbnRpYWxseSBtdWx0aXBsZSBsYXlvdXQgdHlw
+ZXMuIEN1cnJlbnRseSB3ZSBvbmx5IHN1cHBvcnQNCj4gICogb25lIGxheW91dCBkcml2ZXIgcGVy
+IGZpbGUgc3lzdGVtLg0KPiAgKi8NCj4tc3RhdGljIGludCBkZWNvZGVfZmlyc3RfcG5mc19sYXlv
+dXRfdHlwZShzdHJ1Y3QgeGRyX3N0cmVhbSAqeGRyLA0KPi0JCQkJCSB1aW50MzJfdCAqbGF5b3V0
+dHlwZSkNCj4rc3RhdGljIGludCBkZWNvZGVfcG5mc19sYXlvdXRfdHlwZXMoc3RydWN0IHhkcl9z
+dHJlYW0gKnhkciwgdTMyICpsYXlvdXR0eXBlcykNCj4gew0KPiAJX19iZTMyICpwOw0KPiAJaW50
+IG51bTsNCj4rCXUzMiB0eXBlOw0KPiANCj4gCXAgPSB4ZHJfaW5saW5lX2RlY29kZSh4ZHIsIDQp
+Ow0KPiAJaWYgKHVubGlrZWx5KCFwKSkNCj4gCQlnb3RvIG91dF9vdmVyZmxvdzsNCj4gCW51bSA9
+IGJlMzJfdG9fY3B1cChwKTsNCj4gDQo+LQkvKiBwTkZTIGlzIG5vdCBzdXBwb3J0ZWQgYnkgdGhl
+IHVuZGVybHlpbmcgZmlsZSBzeXN0ZW0gKi8NCj4tCWlmIChudW0gPT0gMCkgew0KPi0JCSpsYXlv
+dXR0eXBlID0gMDsNCj4tCQlyZXR1cm4gMDsNCj4tCX0NCj4tCWlmIChudW0gPiAxKQ0KPi0JCXBy
+aW50ayhLRVJOX0lORk8gIk5GUzogJXM6IFdhcm5pbmc6IE11bHRpcGxlIHBORlMgbGF5b3V0ICIN
+Cj4tCQkJImRyaXZlcnMgcGVyIGZpbGVzeXN0ZW0gbm90IHN1cHBvcnRlZFxuIiwgX19mdW5jX18p
+Ow0KPisJKmxheW91dHR5cGVzID0gMDsNCj4gDQo+LQkvKiBEZWNvZGUgYW5kIHNldCBmaXJzdCBs
+YXlvdXQgdHlwZSwgbW92ZSB4ZHItPnAgcGFzdCB1bnVzZWQgdHlwZXMgKi8NCj4tCXAgPSB4ZHJf
+aW5saW5lX2RlY29kZSh4ZHIsIG51bSAqIDQpOw0KPi0JaWYgKHVubGlrZWx5KCFwKSkNCj4tCQln
+b3RvIG91dF9vdmVyZmxvdzsNCj4tCSpsYXlvdXR0eXBlID0gYmUzMl90b19jcHVwKHApOw0KPisJ
+Zm9yICg7IG51bTsgLS1udW0pIHsNCj4rCQlwID0geGRyX2lubGluZV9kZWNvZGUoeGRyLCA0KTsN
+Cj4rDQo+KwkJaWYgKHVubGlrZWx5KCFwKSkNCj4rCQkJZ290byBvdXRfb3ZlcmZsb3c7DQo+Kw0K
+PisJCXR5cGUgPSBiZTMyX3RvX2NwdXAocCk7DQo+Kw0KPisJCS8qIElnbm9yZSBhbnkgdGhhdCB3
+ZSBkb24ndCB1bmRlcnN0YW5kICovDQo+KwkJaWYgKHVubGlrZWx5KHR5cGUgPj0gTEFZT1VUX1RZ
+UEVfTUFYKSkNCg0KVGhpcyB3aWxsIGluIGVmZmVjdCBoYXJkIGNvZGUgdGhlIGxheW91dHMgdGhh
+dCB0aGUgY2xpZW50IHN1cHBvcnRzLiBMQVlPVVRfVFlQRV9NQVggaXMgc29tZXRoaW5nIHRoYXQg
+YXBwbGllcyB0byBrbmZzZCBvbmx5IGZvciBub3cuIExldOKAmXMgbm90IGxlYWsgaXQgaW50byB0
+aGUgY2xpZW50LiBJIHN1Z2dlc3QganVzdCBtYWtpbmcgdGhpcyA4KnNpemVvZigqbGF5b3V0dHlw
+ZXMpLg0KDQo+KwkJCWNvbnRpbnVlOw0KPisNCj4rCQkqbGF5b3V0dHlwZXMgfD0gMSA8PCB0eXBl
+Ow0KPisJfQ0KPiAJcmV0dXJuIDA7DQo+IG91dF9vdmVyZmxvdzoNCj4rCSpsYXlvdXR0eXBlcyA9
+IDA7DQo+IAlwcmludF9vdmVyZmxvd19tc2coX19mdW5jX18sIHhkcik7DQo+IAlyZXR1cm4gLUVJ
+TzsNCj4gfQ0KPkBAIC00NzU5LDcgKzQ3NjIsNyBAQCBvdXRfb3ZlcmZsb3c6DQo+ICAqIE5vdGUg
+d2UgbXVzdCBlbnN1cmUgdGhhdCBsYXlvdXR0eXBlIGlzIHNldCBpbiBhbnkgbm9uLWVycm9yIGNh
+c2UuDQo+ICAqLw0KPiBzdGF0aWMgaW50IGRlY29kZV9hdHRyX3BuZnN0eXBlKHN0cnVjdCB4ZHJf
+c3RyZWFtICp4ZHIsIHVpbnQzMl90ICpiaXRtYXAsDQo+LQkJCQl1aW50MzJfdCAqbGF5b3V0dHlw
+ZSkNCj4rCQkJCV9fdTMyICpsYXlvdXR0eXBlcykNCj4gew0KPiAJaW50IHN0YXR1cyA9IDA7DQo+
+IA0KPkBAIC00NzY3LDEwICs0NzcwLDEwIEBAIHN0YXRpYyBpbnQgZGVjb2RlX2F0dHJfcG5mc3R5
+cGUoc3RydWN0IHhkcl9zdHJlYW0gKnhkciwgdWludDMyX3QgKmJpdG1hcCwNCj4gCWlmICh1bmxp
+a2VseShiaXRtYXBbMV0gJiAoRkFUVFI0X1dPUkQxX0ZTX0xBWU9VVF9UWVBFUyAtIDFVKSkpDQo+
+IAkJcmV0dXJuIC1FSU87DQo+IAlpZiAoYml0bWFwWzFdICYgRkFUVFI0X1dPUkQxX0ZTX0xBWU9V
+VF9UWVBFUykgew0KPi0JCXN0YXR1cyA9IGRlY29kZV9maXJzdF9wbmZzX2xheW91dF90eXBlKHhk
+ciwgbGF5b3V0dHlwZSk7DQo+KwkJc3RhdHVzID0gZGVjb2RlX3BuZnNfbGF5b3V0X3R5cGVzKHhk
+ciwgbGF5b3V0dHlwZXMpOw0KPiAJCWJpdG1hcFsxXSAmPSB+RkFUVFI0X1dPUkQxX0ZTX0xBWU9V
+VF9UWVBFUzsNCj4gCX0gZWxzZQ0KPi0JCSpsYXlvdXR0eXBlID0gMDsNCj4rCQkqbGF5b3V0dHlw
+ZXMgPSAwOw0KPiAJcmV0dXJuIHN0YXR1czsNCj4gfQ0KPiANCj5AQCAtNDg1MSw3ICs0ODU0LDcg
+QEAgc3RhdGljIGludCBkZWNvZGVfZnNpbmZvKHN0cnVjdCB4ZHJfc3RyZWFtICp4ZHIsIHN0cnVj
+dCBuZnNfZnNpbmZvICpmc2luZm8pDQo+IAlzdGF0dXMgPSBkZWNvZGVfYXR0cl90aW1lX2RlbHRh
+KHhkciwgYml0bWFwLCAmZnNpbmZvLT50aW1lX2RlbHRhKTsNCj4gCWlmIChzdGF0dXMgIT0gMCkN
+Cj4gCQlnb3RvIHhkcl9lcnJvcjsNCj4tCXN0YXR1cyA9IGRlY29kZV9hdHRyX3BuZnN0eXBlKHhk
+ciwgYml0bWFwLCAmZnNpbmZvLT5sYXlvdXR0eXBlKTsNCj4rCXN0YXR1cyA9IGRlY29kZV9hdHRy
+X3BuZnN0eXBlKHhkciwgYml0bWFwLCAmZnNpbmZvLT5sYXlvdXR0eXBlcyk7DQo+IAlpZiAoc3Rh
+dHVzICE9IDApDQo+IAkJZ290byB4ZHJfZXJyb3I7DQo+IA0KPmRpZmYgLS1naXQgYS9mcy9uZnMv
+cG5mcy5jIGIvZnMvbmZzL3BuZnMuYw0KPmluZGV4IDBjN2UwZDQ1YTRkZS4uMjBiN2IxZjRlMDQx
+IDEwMDY0NA0KPi0tLSBhL2ZzL25mcy9wbmZzLmMNCj4rKysgYi9mcy9uZnMvcG5mcy5jDQo+QEAg
+LTcwLDcgKzcwLDcgQEAgb3V0Og0KPiB9DQo+IA0KPiBzdGF0aWMgc3RydWN0IHBuZnNfbGF5b3V0
+ZHJpdmVyX3R5cGUgKg0KPi1maW5kX3BuZnNfZHJpdmVyKHUzMiBpZCkNCj4rX19maW5kX3BuZnNf
+ZHJpdmVyKHUzMiBpZCkNCj4gew0KPiAJc3RydWN0IHBuZnNfbGF5b3V0ZHJpdmVyX3R5cGUgKmxv
+Y2FsOw0KPiANCj5AQCAtODQsNiArODQsMjIgQEAgZmluZF9wbmZzX2RyaXZlcih1MzIgaWQpDQo+
+IAlyZXR1cm4gbG9jYWw7DQo+IH0NCj4gDQo+K3N0YXRpYyBzdHJ1Y3QgcG5mc19sYXlvdXRkcml2
+ZXJfdHlwZSAqDQo+K2ZpbmRfcG5mc19kcml2ZXIodTMyIGlkKQ0KPit7DQo+KwlzdHJ1Y3QgcG5m
+c19sYXlvdXRkcml2ZXJfdHlwZSAqbGRfdHlwZTsNCj4rDQo+KwlsZF90eXBlID0gX19maW5kX3Bu
+ZnNfZHJpdmVyKGlkKTsNCj4rCWlmICghbGRfdHlwZSkgew0KPisJCXJlcXVlc3RfbW9kdWxlKCIl
+cy0ldSIsIExBWU9VVF9ORlNWNF8xX01PRFVMRV9QUkVGSVgsIGlkKTsNCj4rCQlsZF90eXBlID0g
+X19maW5kX3BuZnNfZHJpdmVyKGlkKTsNCj4rCQlpZiAoIWxkX3R5cGUpDQo+KwkJCWRwcmludGso
+IiVzOiBObyBwTkZTIG1vZHVsZSBmb3VuZCBmb3IgJXUuXG4iLA0KPisJCQkJX19mdW5jX18sIGlk
+KTsNCj4rCX0NCj4rCXJldHVybiBsZF90eXBlOw0KPit9DQo+Kw0KPiB2b2lkDQo+IHVuc2V0X3Bu
+ZnNfbGF5b3V0ZHJpdmVyKHN0cnVjdCBuZnNfc2VydmVyICpuZnNzKQ0KPiB7DQo+QEAgLTEwMiw0
+NCArMTE4LDcyIEBAIHVuc2V0X3BuZnNfbGF5b3V0ZHJpdmVyKHN0cnVjdCBuZnNfc2VydmVyICpu
+ZnNzKQ0KPiAgKiBUcnkgdG8gc2V0IHRoZSBzZXJ2ZXIncyBwbmZzIG1vZHVsZSB0byB0aGUgcG5m
+cyBsYXlvdXQgdHlwZSBzcGVjaWZpZWQgYnkgaWQuDQo+ICAqIEN1cnJlbnRseSBvbmx5IG9uZSBw
+TkZTIGxheW91dCBkcml2ZXIgcGVyIGZpbGVzeXN0ZW0gaXMgc3VwcG9ydGVkLg0KPiAgKg0KPi0g
+KiBAaWQgbGF5b3V0IHR5cGUuIFplcm8gKGlsbGVnYWwgbGF5b3V0IHR5cGUpIGluZGljYXRlcyBw
+TkZTIG5vdCBpbiB1c2UuDQo+KyAqIEBsYXlvdXR0eXBlczogYml0ZmllbGQgc2hvd2luZyB3aGF0
+IGxheW91dCB0eXBlcyBzZXJ2ZXIgc3VwcG9ydHMNCj4gICovDQo+IHZvaWQNCj4gc2V0X3BuZnNf
+bGF5b3V0ZHJpdmVyKHN0cnVjdCBuZnNfc2VydmVyICpzZXJ2ZXIsIGNvbnN0IHN0cnVjdCBuZnNf
+ZmggKm1udGZoLA0KPi0JCSAgICAgIHUzMiBpZCkNCj4rCQkgICAgICB1MzIgbGF5b3V0dHlwZXMp
+DQo+IHsNCj4gCXN0cnVjdCBwbmZzX2xheW91dGRyaXZlcl90eXBlICpsZF90eXBlID0gTlVMTDsN
+Cj4gDQo+LQlpZiAoaWQgPT0gMCkNCj4rCWlmIChsYXlvdXR0eXBlcyA9PSAwKQ0KPiAJCWdvdG8g
+b3V0X25vX2RyaXZlcjsNCj4gCWlmICghKHNlcnZlci0+bmZzX2NsaWVudC0+Y2xfZXhjaGFuZ2Vf
+ZmxhZ3MgJg0KPiAJCSAoRVhDSEdJRDRfRkxBR19VU0VfTk9OX1BORlMgfCBFWENIR0lENF9GTEFH
+X1VTRV9QTkZTX01EUykpKSB7DQo+LQkJcHJpbnRrKEtFUk5fRVJSICJORlM6ICVzOiBpZCAldSBj
+bF9leGNoYW5nZV9mbGFncyAweCV4XG4iLA0KPi0JCQlfX2Z1bmNfXywgaWQsIHNlcnZlci0+bmZz
+X2NsaWVudC0+Y2xfZXhjaGFuZ2VfZmxhZ3MpOw0KPisJCXByaW50ayhLRVJOX0VSUiAiTkZTOiAl
+czogbGF5b3V0dHlwZXMgMHgleCBjbF9leGNoYW5nZV9mbGFncyAweCV4XG4iLA0KPisJCQlfX2Z1
+bmNfXywgbGF5b3V0dHlwZXMsIHNlcnZlci0+bmZzX2NsaWVudC0+Y2xfZXhjaGFuZ2VfZmxhZ3Mp
+Ow0KPiAJCWdvdG8gb3V0X25vX2RyaXZlcjsNCj4gCX0NCj4tCWxkX3R5cGUgPSBmaW5kX3BuZnNf
+ZHJpdmVyKGlkKTsNCj4tCWlmICghbGRfdHlwZSkgew0KPi0JCXJlcXVlc3RfbW9kdWxlKCIlcy0l
+dSIsIExBWU9VVF9ORlNWNF8xX01PRFVMRV9QUkVGSVgsIGlkKTsNCj4tCQlsZF90eXBlID0gZmlu
+ZF9wbmZzX2RyaXZlcihpZCk7DQo+LQkJaWYgKCFsZF90eXBlKSB7DQo+LQkJCWRwcmludGsoIiVz
+OiBObyBwTkZTIG1vZHVsZSBmb3VuZCBmb3IgJXUuXG4iLA0KPi0JCQkJX19mdW5jX18sIGlkKTsN
+Cj4rDQo+KwkvKg0KPisJICogU2VlIGlmIG9uZSBvZiB0aGUgbGF5b3V0IHR5cGVzIHRoYXQgd2Ug
+Z290IGhhbmRlZCBpcyB1c2FibGUuIFdlDQo+KwkgKiBhdHRlbXB0IGluIGEgaGFyZGNvZGVkIG9y
+ZGVyIG9mIHByZWZlcmVuY2UsIGluIG9yZGVyIG9mIChhc3N1bWVkKQ0KPisJICogZGVjcmVhc2lu
+ZyBzcGVlZHMgYW5kIGZ1bmN0aW9uYWxpdHkuDQo+KwkgKg0KPisJICogRklYTUU6IHNob3VsZCB0
+aGlzIG9yZGVyIGJlIGNvbmZpZ3VyYWJsZSBpbiBzb21lIGZhc2hpb24/DQo+KwkgKi8NCj4rCWlm
+IChsYXlvdXR0eXBlcyAmICgxIDw8IExBWU9VVF9TQ1NJKSkgew0KPisJCWxkX3R5cGUgPSBmaW5k
+X3BuZnNfZHJpdmVyKExBWU9VVF9TQ1NJKTsNCj4rCQlpZiAobGRfdHlwZSkNCj4rCQkJZ290byBz
+ZXRfZHJpdmVyOw0KPisJfQ0KPisNCj4rCWlmIChsYXlvdXR0eXBlcyAmICgxIDw8IExBWU9VVF9C
+TE9DS19WT0xVTUUpKSB7DQo+KwkJbGRfdHlwZSA9IGZpbmRfcG5mc19kcml2ZXIoTEFZT1VUX0JM
+T0NLX1ZPTFVNRSk7DQo+KwkJaWYgKGxkX3R5cGUpDQo+KwkJCWdvdG8gc2V0X2RyaXZlcjsNCj4r
+CX0NCj4rDQo+KwlpZiAobGF5b3V0dHlwZXMgJiAoMSA8PCBMQVlPVVRfT1NEMl9PQkpFQ1RTKSkg
+ew0KPisJCWxkX3R5cGUgPSBmaW5kX3BuZnNfZHJpdmVyKExBWU9VVF9PU0QyX09CSkVDVFMpOw0K
+PisJCWlmIChsZF90eXBlKQ0KPisJCQlnb3RvIHNldF9kcml2ZXI7DQo+Kwl9DQo+Kw0KPisJaWYg
+KGxheW91dHR5cGVzICYgKDEgPDwgTEFZT1VUX0ZMRVhfRklMRVMpKSB7DQo+KwkJbGRfdHlwZSA9
+IGZpbmRfcG5mc19kcml2ZXIoTEFZT1VUX0ZMRVhfRklMRVMpOw0KPisJCWlmIChsZF90eXBlKQ0K
+PisJCQlnb3RvIHNldF9kcml2ZXI7DQo+Kwl9DQo+Kw0KPisJaWYgKGxheW91dHR5cGVzICYgKDEg
+PDwgTEFZT1VUX05GU1Y0XzFfRklMRVMpKSB7DQo+KwkJbGRfdHlwZSA9IGZpbmRfcG5mc19kcml2
+ZXIoTEFZT1VUX05GU1Y0XzFfRklMRVMpOw0KPisJCWlmICghbGRfdHlwZSkNCj4gCQkJZ290byBv
+dXRfbm9fZHJpdmVyOw0KPi0JCX0NCj4gCX0NCj4rc2V0X2RyaXZlcjoNCj4gCXNlcnZlci0+cG5m
+c19jdXJyX2xkID0gbGRfdHlwZTsNCj4gCWlmIChsZF90eXBlLT5zZXRfbGF5b3V0ZHJpdmVyDQo+
+IAkgICAgJiYgbGRfdHlwZS0+c2V0X2xheW91dGRyaXZlcihzZXJ2ZXIsIG1udGZoKSkgew0KPiAJ
+CXByaW50ayhLRVJOX0VSUiAiTkZTOiAlczogRXJyb3IgaW5pdGlhbGl6aW5nIHBORlMgbGF5b3V0
+ICINCj4tCQkJImRyaXZlciAldS5cbiIsIF9fZnVuY19fLCBpZCk7DQo+KwkJCSJkcml2ZXIgJXUu
+XG4iLCBfX2Z1bmNfXywgbGRfdHlwZS0+aWQpOw0KPiAJCW1vZHVsZV9wdXQobGRfdHlwZS0+b3du
+ZXIpOw0KPiAJCWdvdG8gb3V0X25vX2RyaXZlcjsNCj4gCX0NCj4gCS8qIEJ1bXAgdGhlIE1EUyBj
+b3VudCAqLw0KPiAJYXRvbWljX2luYygmc2VydmVyLT5uZnNfY2xpZW50LT5jbF9tZHNfY291bnQp
+Ow0KPiANCj4tCWRwcmludGsoIiVzOiBwTkZTIG1vZHVsZSBmb3IgJXUgc2V0XG4iLCBfX2Z1bmNf
+XywgaWQpOw0KPisJZHByaW50aygiJXM6IHBORlMgbW9kdWxlIGZvciAldSBzZXRcbiIsIF9fZnVu
+Y19fLCBsZF90eXBlLT5pZCk7DQo+IAlyZXR1cm47DQo+IA0KPiBvdXRfbm9fZHJpdmVyOg0KPmRp
+ZmYgLS1naXQgYS9pbmNsdWRlL2xpbnV4L25mc194ZHIuaCBiL2luY2x1ZGUvbGludXgvbmZzX3hk
+ci5oDQo+aW5kZXggYzMwNGExMWI1YjFhLi4xZjZiYjU5ZjA1ZjIgMTAwNjQ0DQo+LS0tIGEvaW5j
+bHVkZS9saW51eC9uZnNfeGRyLmgNCj4rKysgYi9pbmNsdWRlL2xpbnV4L25mc194ZHIuaA0KPkBA
+IC0xMzksNyArMTM5LDcgQEAgc3RydWN0IG5mc19mc2luZm8gew0KPiAJX191NjQJCQltYXhmaWxl
+c2l6ZTsNCj4gCXN0cnVjdCB0aW1lc3BlYwkJdGltZV9kZWx0YTsgLyogc2VydmVyIHRpbWUgZ3Jh
+bnVsYXJpdHkgKi8NCj4gCV9fdTMyCQkJbGVhc2VfdGltZTsgLyogaW4gc2Vjb25kcyAqLw0KPi0J
+X191MzIJCQlsYXlvdXR0eXBlOyAvKiBzdXBwb3J0ZWQgcG5mcyBsYXlvdXQgZHJpdmVyICovDQo+
+KwlfX3UzMgkJCWxheW91dHR5cGVzOyAvKiBzdXBwb3J0ZWQgcG5mcyBsYXlvdXQgZHJpdmVycyAq
+Lw0KPiAJX191MzIJCQlibGtzaXplOyAvKiBwcmVmZXJyZWQgcG5mcyBpbyBibG9jayBzaXplICov
+DQo+IAlfX3UzMgkJCWNsb25lX2Jsa3NpemU7IC8qIGdyYW51bGFyaXR5IG9mIGEgQ0xPTkUgb3Bl
+cmF0aW9uICovDQo+IH07DQo+LS0gDQo+Mi41LjUNCj4NCg0K
 
-
------ Original Message -----
-> From: "Tom Haynes" <thomas.haynes@primarydata.com>
-> To: "J. Bruce Fields" <bfields@fieldses.org>
-> Cc: "Linux NFS Mailing list" <linux-nfs@vger.kernel.org>, "Christoph Hellwig" <hch@lst.de>
-> Sent: Thursday, May 26, 2016 7:05:11 PM
-> Subject: [V3 2/2] nfsd: Add a super simple flex file server
-
-> Have a simple flex file server where the mds (NFSv4.1 or NFSv4.2)
-> is also the ds (NFSv3). I.e., the metadata and the data file are
-> the exact same file.
-> 
-> This will allow testing of the flex file client.
-> 
-> Simply add the "pnfs" export option to your export
-> in /etc/exports and mount from a client that supports
-> flex files.
-> 
-> Signed-off-by: Tom Haynes <loghyr@primarydata.com>
-> Reviewed-by: Christoph Hellwig <hch@lst.de>
-> ---
-> fs/nfsd/Kconfig             |  17 ++++++
-> fs/nfsd/Makefile            |   1 +
-> fs/nfsd/flexfilelayout.c    | 133 ++++++++++++++++++++++++++++++++++++++++++++
-> fs/nfsd/flexfilelayoutxdr.c | 115 ++++++++++++++++++++++++++++++++++++++
-> fs/nfsd/flexfilelayoutxdr.h |  49 ++++++++++++++++
-> fs/nfsd/nfs4layouts.c       |  12 +++-
-> fs/nfsd/pnfs.h              |   3 +
-> 7 files changed, 329 insertions(+), 1 deletion(-)
-> create mode 100644 fs/nfsd/flexfilelayout.c
-> create mode 100644 fs/nfsd/flexfilelayoutxdr.c
-> create mode 100644 fs/nfsd/flexfilelayoutxdr.h
-> 
-> diff --git a/fs/nfsd/Kconfig b/fs/nfsd/Kconfig
-> index c9f583d..e64d1a3 100644
-> --- a/fs/nfsd/Kconfig
-> +++ b/fs/nfsd/Kconfig
-> @@ -111,6 +111,23 @@ config NFSD_SCSILAYOUT
-> 
-> 	  If unsure, say N.
-> 
-> +config NFSD_FLEXFILELAYOUT
-> +	bool "NFSv4.1 server support for pNFS Flex File layouts"
-> +	depends on NFSD_V4
-> +	select NFSD_PNFS
-> +	help
-> +	  This option enables support for the exporting pNFS Flex File
-> +	  layouts in the kernel's NFS server. The pNFS Flex File  layout
-> +	  enables NFS clients to directly perform I/O to NFSv3 devices
-> +	  accesible to both the server and the clients.  See
-> +	  draft-ietf-nfsv4-flex-files for more details.
-> +
-> +	  Warning, this server implements the bare minimum functionality
-> +	  to be a flex file server - it is for testing the client,
-> +	  not for use in production.
-> +
-> +	  If unsure, say N.
-> +
-> config NFSD_V4_SECURITY_LABEL
-> 	bool "Provide Security Label support for NFSv4 server"
-> 	depends on NFSD_V4 && SECURITY
-> diff --git a/fs/nfsd/Makefile b/fs/nfsd/Makefile
-> index 3ae5f3c..5f5d3a7 100644
-> --- a/fs/nfsd/Makefile
-> +++ b/fs/nfsd/Makefile
-> @@ -20,3 +20,4 @@ nfsd-$(CONFIG_NFSD_V4)	+= nfs4proc.o nfs4xdr.o nfs4state.o
-> nfs4idmap.o \
-> nfsd-$(CONFIG_NFSD_PNFS) += nfs4layouts.o
-> nfsd-$(CONFIG_NFSD_BLOCKLAYOUT) += blocklayout.o blocklayoutxdr.o
-> nfsd-$(CONFIG_NFSD_SCSILAYOUT) += blocklayout.o blocklayoutxdr.o
-> +nfsd-$(CONFIG_NFSD_FLEXFILELAYOUT) += flexfilelayout.o flexfilelayoutxdr.o
-> diff --git a/fs/nfsd/flexfilelayout.c b/fs/nfsd/flexfilelayout.c
-> new file mode 100644
-> index 0000000..df880e9
-> --- /dev/null
-> +++ b/fs/nfsd/flexfilelayout.c
-> @@ -0,0 +1,133 @@
-> +/*
-> + * Copyright (c) 2016 Tom Haynes <loghyr@primarydata.com>
-> + *
-> + * The following implements a super-simple flex-file server
-> + * where the NFSv4.1 mds is also the ds. And the storage is
-> + * the same. I.e., writing to the mds via a NFSv4.1 WRITE
-> + * goes to the same location as the NFSv3 WRITE.
-> + */
-> +#include <linux/slab.h>
-> +
-> +#include <linux/nfsd/debug.h>
-> +
-> +#include <linux/sunrpc/addr.h>
-> +
-> +#include "flexfilelayoutxdr.h"
-> +#include "pnfs.h"
-> +
-> +#define NFSDDBG_FACILITY	NFSDDBG_PNFS
-> +
-> +static __be32
-> +nfsd4_ff_proc_layoutget(struct inode *inode, const struct svc_fh *fhp,
-> +		struct nfsd4_layoutget *args)
-> +{
-> +	struct nfsd4_layout_seg *seg = &args->lg_seg;
-> +	u32 device_generation = 0;
-> +	int error;
-> +	uid_t u;
-> +
-> +	struct pnfs_ff_layout *fl;
-> +
-> +	/*
-> +	 * The super simple flex file server has 1 mirror, 1 data server,
-> +	 * and 1 file handle. So instead of 4 allocs, do 1 for now.
-> +	 * Zero it out for the stateid - don't want junk in there!
-> +	 */
-> +	error = -ENOMEM;
-> +	fl = kzalloc(sizeof(*fl), GFP_KERNEL);
-> +	if (!fl)
-> +		goto out_error;
-> +	args->lg_content = fl;
-> +
-> +	/*
-> +	 * Avoid layout commit, try to force the I/O to the DS,
-> +	 * and for fun, cause all IOMODE_RW layout segments to
-> +	 * effectively be WRITE only.
-> +	 */
-> +	fl->flags = FF_FLAGS_NO_LAYOUTCOMMIT | FF_FLAGS_NO_IO_THRU_MDS |
-> +		    FF_FLAGS_NO_READ_IO;
-> +
-> +	/* Do not allow a IOMODE_READ segment to have write pemissions */
-> +	if (seg->iomode == IOMODE_READ) {
-> +		u = from_kuid(&init_user_ns, inode->i_uid) + 1;
-> +		fl->uid = make_kuid(&init_user_ns, u);
-> +	} else
-> +		fl->uid = inode->i_uid;
-> +	fl->gid = inode->i_gid;
-> +
-> +	error = nfsd4_set_deviceid(&fl->deviceid, fhp, device_generation);
-> +	if (error)
-> +		goto out_error;
-> +
-> +	fl->fh.size = fhp->fh_handle.fh_size;
-> +	memcpy(fl->fh.data, &fhp->fh_handle.fh_base, fl->fh.size);
-> +
-> +	/* Give whole file layout segments */
-> +	seg->offset = 0;
-> +	seg->length = NFS4_MAX_UINT64;
-> +
-> +	dprintk("GET: 0x%llx:0x%llx %d\n", seg->offset, seg->length,
-> +		seg->iomode);
-> +	return 0;
-> +
-> +out_error:
-> +	seg->length = 0;
-> +	return nfserrno(error);
-> +}
-> +
-> +static __be32
-> +nfsd4_ff_proc_getdeviceinfo(struct super_block *sb, struct svc_rqst *rqstp,
-> +		struct nfs4_client *clp, struct nfsd4_getdeviceinfo *gdp)
-> +{
-> +	struct pnfs_ff_device_addr *da;
-> +
-> +	u16 port;
-> +	char addr[INET6_ADDRSTRLEN];
-> +
-> +	da = kzalloc(sizeof(struct pnfs_ff_device_addr), GFP_KERNEL);
-> +	if (!da)
-> +		return nfserrno(-ENOMEM);
-> +
-> +	gdp->gd_device = da;
-> +
-> +	da->version = 3;
-> +	da->minor_version = 0;
-> +
-> +	da->rsize = svc_max_payload(rqstp);
-> +	da->wsize = da->rsize;
-> +
-> +	rpc_ntop((struct sockaddr *)&rqstp->rq_daddr,
-> +		 addr, INET6_ADDRSTRLEN);
-> +	if (rqstp->rq_daddr.ss_family == AF_INET) {
-> +		struct sockaddr_in *sin;
-> +
-> +		sin = (struct sockaddr_in *)&rqstp->rq_daddr;
-> +		port = ntohs(sin->sin_port);
-> +		snprintf(da->netaddr.netid, FF_NETID_LEN + 1, "tcp");
-> +		da->netaddr.netid_len = 3;
-> +	} else {
-> +		struct sockaddr_in6 *sin6;
-> +
-> +		sin6 = (struct sockaddr_in6 *)&rqstp->rq_daddr;
-> +		port = ntohs(sin6->sin6_port);
-> +		snprintf(da->netaddr.netid, FF_NETID_LEN + 1, "tcp6");
-> +		da->netaddr.netid_len = 4;
-> +	}
-> +
-> +	da->netaddr.addr_len =
-> +		snprintf(da->netaddr.addr, FF_ADDR_LEN + 1,
-> +			 "%s.%hhu.%hhu", addr, port >> 8, port & 0xff);
-> +
-> +	da->tightly_coupled = false;
-> +
-> +	return 0;
-> +}
-> +
-> +const struct nfsd4_layout_ops ff_layout_ops = {
-> +	.notify_types		=
-> +			NOTIFY_DEVICEID4_DELETE | NOTIFY_DEVICEID4_CHANGE,
-> +	.proc_getdeviceinfo	= nfsd4_ff_proc_getdeviceinfo,
-> +	.encode_getdeviceinfo	= nfsd4_ff_encode_getdeviceinfo,
-> +	.proc_layoutget		= nfsd4_ff_proc_layoutget,
-> +	.encode_layoutget	= nfsd4_ff_encode_layoutget,
-> +};
-> diff --git a/fs/nfsd/flexfilelayoutxdr.c b/fs/nfsd/flexfilelayoutxdr.c
-> new file mode 100644
-> index 0000000..a241f29
-> --- /dev/null
-> +++ b/fs/nfsd/flexfilelayoutxdr.c
-> @@ -0,0 +1,115 @@
-> +/*
-> + * Copyright (c) 2016 Tom Haynes <loghyr@primarydata.com>
-> + */
-> +#include <linux/sunrpc/svc.h>
-> +#include <linux/nfs4.h>
-> +
-> +#include "nfsd.h"
-> +#include "flexfilelayoutxdr.h"
-> +
-> +#define NFSDDBG_FACILITY	NFSDDBG_PNFS
-> +
-> +struct ff_idmap {
-> +	char buf[11];
-> +	int len;
-> +};
-> +
-> +__be32
-> +nfsd4_ff_encode_layoutget(struct xdr_stream *xdr,
-> +		struct nfsd4_layoutget *lgp)
-> +{
-> +	struct pnfs_ff_layout *fl = lgp->lg_content;
-> +	int len, mirror_len, ds_len, fh_len;
-> +	__be32 *p;
-> +
-> +	/*
-> +	 * Unlike nfsd4_encode_user, we know these will
-> +	 * always be stringified.
-> +	 */
-> +	struct ff_idmap uid;
-> +	struct ff_idmap gid;
-> +
-> +	fh_len = 4 + fl->fh.size;
-> +
-> +	uid.len = sprintf(uid.buf, "%u", from_kuid(&init_user_ns, fl->uid));
-> +	gid.len = sprintf(gid.buf, "%u", from_kgid(&init_user_ns, fl->gid));
-> +
-> +	/* 8 + len for recording the length, name, and padding */
-> +	ds_len = 20 + sizeof(stateid_opaque_t) + 4 + fh_len +
-> +		 8 + uid.len + 8 + gid.len;
-> +
-> +	mirror_len = 4 + ds_len;
-> +
-> +	/* The layout segment */
-> +	len = 20 + mirror_len;
-> +
-> +	p = xdr_reserve_space(xdr, sizeof(__be32) + len);
-> +	if (!p)
-> +		return nfserr_toosmall;
-> +
-> +	*p++ = cpu_to_be32(len);
-> +	p = xdr_encode_hyper(p, 1);		/* stripe unit of 1 */
-
-
-from flexfiles draft8:
-
-If the number of stripes is one, then the value for ffl_stripe_unit
-MUST default to  zero. 
-
-or I am treating the spec wrongly.
-
-Tigran.
-
-> +
-> +	*p++ = cpu_to_be32(1);			/* single mirror */
-> +	*p++ = cpu_to_be32(1);			/* single data server */
-> +
-> +	p = xdr_encode_opaque_fixed(p, &fl->deviceid,
-> +			sizeof(struct nfsd4_deviceid));
-> +
-> +	*p++ = cpu_to_be32(1);			/* efficiency */
-> +
-> +	*p++ = cpu_to_be32(fl->stateid.si_generation);
-> +	p = xdr_encode_opaque_fixed(p, &fl->stateid.si_opaque,
-> +				    sizeof(stateid_opaque_t));
-> +
-> +	*p++ = cpu_to_be32(1);			/* single file handle */
-> +	p = xdr_encode_opaque(p, fl->fh.data, fl->fh.size);
-> +
-> +	p = xdr_encode_opaque(p, uid.buf, uid.len);
-> +	p = xdr_encode_opaque(p, gid.buf, gid.len);
-> +
-> +	*p++ = cpu_to_be32(fl->flags);
-> +	*p++ = cpu_to_be32(0);			/* No stats collect hint */
-> +
-> +	return 0;
-> +}
-> +
-> +__be32
-> +nfsd4_ff_encode_getdeviceinfo(struct xdr_stream *xdr,
-> +		struct nfsd4_getdeviceinfo *gdp)
-> +{
-> +	struct pnfs_ff_device_addr *da = gdp->gd_device;
-> +	int len;
-> +	int ver_len;
-> +	int addr_len;
-> +	__be32 *p;
-> +
-> +	/* len + padding for two strings */
-> +	addr_len = 16 + da->netaddr.netid_len + da->netaddr.addr_len;
-> +	ver_len = 20;
-> +
-> +	len = 4 + ver_len + 4 + addr_len;
-> +
-> +	p = xdr_reserve_space(xdr, len + sizeof(__be32));
-> +	if (!p)
-> +		return nfserr_resource;
-> +
-> +	/*
-> +	 * Fill in the overall length and number of volumes at the beginning
-> +	 * of the layout.
-> +	 */
-> +	*p++ = cpu_to_be32(len);
-> +	*p++ = cpu_to_be32(1);			/* 1 netaddr */
-> +	p = xdr_encode_opaque(p, da->netaddr.netid, da->netaddr.netid_len);
-> +	p = xdr_encode_opaque(p, da->netaddr.addr, da->netaddr.addr_len);
-> +
-> +	*p++ = cpu_to_be32(1);			/* 1 versions */
-> +
-> +	*p++ = cpu_to_be32(da->version);
-> +	*p++ = cpu_to_be32(da->minor_version);
-> +	*p++ = cpu_to_be32(da->rsize);
-> +	*p++ = cpu_to_be32(da->wsize);
-> +	*p++ = cpu_to_be32(da->tightly_coupled);
-> +
-> +	return 0;
-> +}
-> diff --git a/fs/nfsd/flexfilelayoutxdr.h b/fs/nfsd/flexfilelayoutxdr.h
-> new file mode 100644
-> index 0000000..b77275c
-> --- /dev/null
-> +++ b/fs/nfsd/flexfilelayoutxdr.h
-> @@ -0,0 +1,49 @@
-> +/*
-> + * Copyright (c) 2016 Tom Haynes <loghyr@primarydata.com>
-> + */
-> +#ifndef _NFSD_FLEXFILELAYOUTXDR_H
-> +#define _NFSD_FLEXFILELAYOUTXDR_H 1
-> +
-> +#include <linux/inet.h>
-> +#include "xdr4.h"
-> +
-> +#define FF_FLAGS_NO_LAYOUTCOMMIT 1
-> +#define FF_FLAGS_NO_IO_THRU_MDS  2
-> +#define FF_FLAGS_NO_READ_IO      4
-> +
-> +struct xdr_stream;
-> +
-> +#define FF_NETID_LEN		(4)
-> +#define FF_ADDR_LEN		(INET6_ADDRSTRLEN + 1)
-> +struct pnfs_ff_netaddr {
-> +	char				netid[FF_NETID_LEN + 1];
-> +	char				addr[FF_ADDR_LEN + 1];
-> +	u32				netid_len;
-> +	u32				addr_len;
-> +};
-> +
-> +struct pnfs_ff_device_addr {
-> +	struct pnfs_ff_netaddr		netaddr;
-> +	u32				version;
-> +	u32				minor_version;
-> +	u32				rsize;
-> +	u32				wsize;
-> +	bool				tightly_coupled;
-> +};
-> +
-> +struct pnfs_ff_layout {
-> +	u32				flags;
-> +	u32				stats_collect_hint;
-> +	kuid_t				uid;
-> +	kgid_t				gid;
-> +	struct nfsd4_deviceid		deviceid;
-> +	stateid_t			stateid;
-> +	struct nfs_fh			fh;
-> +};
-> +
-> +__be32 nfsd4_ff_encode_getdeviceinfo(struct xdr_stream *xdr,
-> +		struct nfsd4_getdeviceinfo *gdp);
-> +__be32 nfsd4_ff_encode_layoutget(struct xdr_stream *xdr,
-> +		struct nfsd4_layoutget *lgp);
-> +
-> +#endif /* _NFSD_FLEXFILELAYOUTXDR_H */
-> diff --git a/fs/nfsd/nfs4layouts.c b/fs/nfsd/nfs4layouts.c
-> index 825c7bc..8fee9bf 100644
-> --- a/fs/nfsd/nfs4layouts.c
-> +++ b/fs/nfsd/nfs4layouts.c
-> @@ -27,6 +27,9 @@ static const struct nfsd4_callback_ops nfsd4_cb_layout_ops;
-> static const struct lock_manager_operations nfsd4_layouts_lm_ops;
-> 
-> const struct nfsd4_layout_ops *nfsd4_layout_ops[LAYOUT_TYPE_MAX] =  {
-> +#ifdef CONFIG_NFSD_FLEXFILELAYOUT
-> +	[LAYOUT_FLEX_FILES]	= &ff_layout_ops,
-> +#endif
-> #ifdef CONFIG_NFSD_BLOCKLAYOUT
-> 	[LAYOUT_BLOCK_VOLUME]	= &bl_layout_ops,
-> #endif
-> @@ -122,17 +125,24 @@ nfsd4_set_deviceid(struct nfsd4_deviceid *id, const struct
-> svc_fh *fhp,
-> 
-> void nfsd4_setup_layout_type(struct svc_export *exp)
-> {
-> +#if defined(CONFIG_NFSD_BLOCKLAYOUT) || defined(CONFIG_NFSD_SCSILAYOUT)
-> 	struct super_block *sb = exp->ex_path.mnt->mnt_sb;
-> +#endif
-> 
-> 	if (!(exp->ex_flags & NFSEXP_PNFS))
-> 		return;
-> 
-> 	/*
-> -	 * Check if the file system supports exporting a block-like layout.
-> +	 * If flex file is configured, use it by default. Otherwise
-> +	 * check if the file system supports exporting a block-like layout.
-> 	 * If the block device supports reservations prefer the SCSI layout,
-> 	 * otherwise advertise the block layout.
-> 	 */
-> +#ifdef CONFIG_NFSD_FLEXFILELAYOUT
-> +	exp->ex_layout_type = LAYOUT_FLEX_FILES;
-> +#endif
-> #ifdef CONFIG_NFSD_BLOCKLAYOUT
-> +	/* overwrite flex file layout selection if needed */
-> 	if (sb->s_export_op->get_uuid &&
-> 	    sb->s_export_op->map_blocks &&
-> 	    sb->s_export_op->commit_blocks)
-> diff --git a/fs/nfsd/pnfs.h b/fs/nfsd/pnfs.h
-> index e855677..0c2a716 100644
-> --- a/fs/nfsd/pnfs.h
-> +++ b/fs/nfsd/pnfs.h
-> @@ -45,6 +45,9 @@ extern const struct nfsd4_layout_ops bl_layout_ops;
-> #ifdef CONFIG_NFSD_SCSILAYOUT
-> extern const struct nfsd4_layout_ops scsi_layout_ops;
-> #endif
-> +#ifdef CONFIG_NFSD_FLEXFILELAYOUT
-> +extern const struct nfsd4_layout_ops ff_layout_ops;
-> +#endif
-> 
-> __be32 nfsd4_preprocess_layout_stateid(struct svc_rqst *rqstp,
-> 		struct nfsd4_compound_state *cstate, stateid_t *stateid,
-> --
-> 1.8.3.1
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
