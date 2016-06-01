@@ -1,347 +1,367 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-yw0-f196.google.com ([209.85.161.196]:33455 "EHLO
-	mail-yw0-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755886AbcEaVyF (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 31 May 2016 17:54:05 -0400
-Received: by mail-yw0-f196.google.com with SMTP id y6so146457ywe.0
-        for <linux-nfs@vger.kernel.org>; Tue, 31 May 2016 14:54:04 -0700 (PDT)
-Message-ID: <1464731641.3019.10.camel@poochiereds.net>
-Subject: Re: [RFC PATCH] nfs: allow nfs client to handle servers that hand
- out multiple layout types
-From: Jeff Layton <jlayton@poochiereds.net>
-To: Trond Myklebust <trondmy@primarydata.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Cc: "tigran.mkrtchyan@desy.de" <tigran.mkrtchyan@desy.de>,
-        "Anna.Schumaker@netapp.com" <Anna.Schumaker@netapp.com>,
-        "hch@infradead.org" <hch@infradead.org>
-Date: Tue, 31 May 2016 17:54:01 -0400
-In-Reply-To: <5E21BE07-5263-4309-A9B3-CB6364C12987@primarydata.com>
-References: <1464626102-13100-1-git-send-email-jlayton@poochiereds.net>
- <58537471-DDCA-413F-AD22-1269A4301FBA@primarydata.com>
- <1464728975.3019.3.camel@poochiereds.net>
-	 <5E21BE07-5263-4309-A9B3-CB6364C12987@primarydata.com>
-Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
+Received: from fieldses.org ([173.255.197.46]:39828 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750822AbcFAMvI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 1 Jun 2016 08:51:08 -0400
+Date: Wed, 1 Jun 2016 08:51:07 -0400
+To: "Mkrtchyan, Tigran" <tigran.mkrtchyan@desy.de>
+Cc: Jeff Layton <jlayton@poochiereds.net>,
+        Weston Andros Adamson <dros@monkey.org>,
+        linux-nfs list <linux-nfs@vger.kernel.org>,
+        Tom Haynes <thomas.haynes@primarydata.com>,
+        Christoph Hellwig <hch@lst.de>
+Subject: Re: [RFC PATCH] nfsd: allow nfsd to advertise multiple layout types
+Message-ID: <20160601125107.GB3387@fieldses.org>
+References: <1464555567-16055-1-git-send-email-jlayton@poochiereds.net>
+ <643433762.15123359.1464623258309.JavaMail.zimbra@desy.de>
+ <1464627098.8117.6.camel@poochiereds.net>
+ <1373800959.15136324.1464627888132.JavaMail.zimbra@desy.de>
+ <1464631520.13639.12.camel@poochiereds.net>
+ <1457806307.15151735.1464633767657.JavaMail.zimbra@desy.de>
+ <E916D988-C7AA-42C0-B552-CDA808605FE7@monkey.org>
+ <1464659250.8117.25.camel@poochiereds.net>
+ <703205520.15241153.1464699640808.JavaMail.zimbra@desy.de>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=utf-8
+In-Reply-To: <703205520.15241153.1464699640808.JavaMail.zimbra@desy.de>
+From: bfields@fieldses.org (J. Bruce Fields)
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 2016-05-31 at 21:41 +0000, Trond Myklebust wrote:
+On Tue, May 31, 2016 at 03:00:40PM +0200, Mkrtchyan, Tigran wrote:
+> Hi Jeff,
 > 
-> 
-> On 5/31/16, 17:09, "Jeff Layton" <jlayton@poochiereds.net> wrote:
-> 
-> >On Tue, 2016-05-31 at 16:03 +0000, Trond Myklebust wrote:
-> >> 
-> >> On 5/30/16, 12:35, "Jeff Layton" <jlayton@poochiereds.net> wrote:
-> >> 
-> >> > Allow the client to deal with servers that hand out multiple layout
-> >> > types for the same filesystem. When this happens, we pick the "best" one,
-> >> > based on a hardcoded assumed order in the client code.
-> >> > 
-> >> > Signed-off-by: Jeff Layton <jeff.layton@primarydata.com>
-> >> > ---
-> >> > fs/nfs/client.c | 2 +-
-> >> > fs/nfs/nfs4proc.c | 2 +-
-> >> > fs/nfs/nfs4xdr.c | 41 +++++++++++++-------------
-> >> > fs/nfs/pnfs.c | 76 ++++++++++++++++++++++++++++++++++++++-----------
-> >> > include/linux/nfs_xdr.h | 2 +-
-> >> > 5 files changed, 85 insertions(+), 38 deletions(-)
-> >> > 
-> >> > diff --git a/fs/nfs/client.c b/fs/nfs/client.c
-> >> > index 0c96528db94a..53b41f4bd45a 100644
-> >> > --- a/fs/nfs/client.c
-> >> > +++ b/fs/nfs/client.c
-> >> > @@ -787,7 +787,7 @@ int nfs_probe_fsinfo(struct nfs_server *server, struct nfs_fh *mntfh, struct nfs
-> >> > }
-> >> > 
-> >> > fsinfo.fattr = fattr;
-> >> > -	fsinfo.layouttype = 0;
-> >> > +	fsinfo.layouttypes = 0;
-> >> > error = clp->rpc_ops->fsinfo(server, mntfh, &fsinfo);
-> >> > if (error < 0)
-> >> > goto out_error;
-> >> > diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-> >> > index de97567795a5..9446aef89b48 100644
-> >> > --- a/fs/nfs/nfs4proc.c
-> >> > +++ b/fs/nfs/nfs4proc.c
-> >> > @@ -4252,7 +4252,7 @@ static int nfs4_proc_fsinfo(struct nfs_server *server, struct nfs_fh *fhandle, s
-> >> > if (error == 0) {
-> >> > /* block layout checks this! */
-> >> > server->pnfs_blksize = fsinfo->blksize;
-> >> > -	 set_pnfs_layoutdriver(server, fhandle, fsinfo->layouttype);
-> >> > +	 set_pnfs_layoutdriver(server, fhandle, fsinfo->layouttypes);
-> >> > }
-> >> > 
-> >> > return error;
-> >> > diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-> >> > index 661e753fe1c9..876a80802c1d 100644
-> >> > --- a/fs/nfs/nfs4xdr.c
-> >> > +++ b/fs/nfs/nfs4xdr.c
-> >> > @@ -4723,33 +4723,36 @@ static int decode_getfattr(struct xdr_stream *xdr, struct nfs_fattr *fattr,
-> >> > * Decode potentially multiple layout types. Currently we only support
-> >> > * one layout driver per file system.
-> >> > */
-> >> > -static int decode_first_pnfs_layout_type(struct xdr_stream *xdr,
-> >> > -	 uint32_t *layouttype)
-> >> > +static int decode_pnfs_layout_types(struct xdr_stream *xdr, u32 *layouttypes)
-> >> > {
-> >> > __be32 *p;
-> >> > int num;
-> >> > +	u32 type;
-> >> > 
-> >> > p = xdr_inline_decode(xdr, 4);
-> >> > if (unlikely(!p))
-> >> > goto out_overflow;
-> >> > num = be32_to_cpup(p);
-> >> > 
-> >> > -	/* pNFS is not supported by the underlying file system */
-> >> > -	if (num == 0) {
-> >> > -	 *layouttype = 0;
-> >> > -	 return 0;
-> >> > -	}
-> >> > -	if (num > 1)
-> >> > -	 printk(KERN_INFO "NFS: %s: Warning: Multiple pNFS layout "
-> >> > -	 "drivers per filesystem not supported\n", __func__);
-> >> > +	*layouttypes = 0;
-> >> > 
-> >> > -	/* Decode and set first layout type, move xdr->p past unused types */
-> >> > -	p = xdr_inline_decode(xdr, num * 4);
-> >> > -	if (unlikely(!p))
-> >> > -	 goto out_overflow;
-> >> > -	*layouttype = be32_to_cpup(p);
-> >> > +	for (; num; --num) {
-> >> > +	 p = xdr_inline_decode(xdr, 4);
-> >> > +
-> >> > +	 if (unlikely(!p))
-> >> > +	 goto out_overflow;
-> >> > +
-> >> > +	 type = be32_to_cpup(p);
-> >> > +
-> >> > +	 /* Ignore any that we don't understand */
-> >> > +	 if (unlikely(type >= LAYOUT_TYPE_MAX))
-> >> 
-> >> This will in effect hard code the layouts that the client supports.
-> >> LAYOUT_TYPE_MAX is something that applies to knfsd only for now.
-> >> Let’s not leak it into the client. I suggest just making this
-> >> 8*sizeof(*layouttypes).
-> >> 
-> >
-> >Fair enough. I'll make that change.
-> >
-> >That said...LAYOUT_TYPE_MAX is a value in the pnfs_layouttype enum, and
-> >that enum is used in both the client and the server code, AFAICT. If we
-> >add a new LAYOUT_* value to that enum for the client, then we'll need
-> >to increase that value anyway. So, I'm not sure I understand how this
-> >limits the client in any way...
-> 
-> No, the client doesn’t use enum pnfs_layouttype anywhere. If you look
-> at set_pnfs_layoutdriver(), you’ll note that we currently support all
-> values for the layout type.
-> 
+> I have tested the patch. Works as expected.
+> I am able to use flexfiles with latest kernel
+> while older client use nfs4_file_layout. So
 
-Ok, I see. So if someone were to (for instance) create a 3rd party
-layout driver module that had used a value above LAYOUT_TYPE_MAX then
-this would prevent it from working.
+Please just add a comment documenting the issue with older clients and
+what we're doing to keep them working, so that we don't accidentally
+break that.
 
-Hmmm...so even if I make the change that you're suggesting, this will
-still limit the client to working with layout types that are below a
-value of 32. Is that also a problem? If so, then maybe I should respin
-this to be more like the one Tigran had: make an array or something to
-hold those values.
+--b.
 
-Thoughts?
-
-> >
-> >
-> >> > +	 continue;
-> >> > +
-> >> > +	 *layouttypes |= 1 << type;
-> >> > +	}
-> >> > return 0;
-> >> > out_overflow:
-> >> > +	*layouttypes = 0;
-> >> > print_overflow_msg(__func__, xdr);
-> >> > return -EIO;
-> >> > }
-> >> > @@ -4759,7 +4762,7 @@ out_overflow:
-> >> > * Note we must ensure that layouttype is set in any non-error case.
-> >> > */
-> >> > static int decode_attr_pnfstype(struct xdr_stream *xdr, uint32_t *bitmap,
-> >> > -	 uint32_t *layouttype)
-> >> > +	 __u32 *layouttypes)
-> >> > {
-> >> > int status = 0;
-> >> > 
-> >> > @@ -4767,10 +4770,10 @@ static int decode_attr_pnfstype(struct xdr_stream *xdr, uint32_t *bitmap,
-> >> > if (unlikely(bitmap[1] & (FATTR4_WORD1_FS_LAYOUT_TYPES - 1U)))
-> >> > return -EIO;
-> >> > if (bitmap[1] & FATTR4_WORD1_FS_LAYOUT_TYPES) {
-> >> > -	 status = decode_first_pnfs_layout_type(xdr, layouttype);
-> >> > +	 status = decode_pnfs_layout_types(xdr, layouttypes);
-> >> > bitmap[1] &= ~FATTR4_WORD1_FS_LAYOUT_TYPES;
-> >> > } else
-> >> > -	 *layouttype = 0;
-> >> > +	 *layouttypes = 0;
-> >> > return status;
-> >> > }
-> >> > 
-> >> > @@ -4851,7 +4854,7 @@ static int decode_fsinfo(struct xdr_stream *xdr, struct nfs_fsinfo *fsinfo)
-> >> > status = decode_attr_time_delta(xdr, bitmap, &fsinfo->time_delta);
-> >> > if (status != 0)
-> >> > goto xdr_error;
-> >> > -	status = decode_attr_pnfstype(xdr, bitmap, &fsinfo->layouttype);
-> >> > +	status = decode_attr_pnfstype(xdr, bitmap, &fsinfo->layouttypes);
-> >> > if (status != 0)
-> >> > goto xdr_error;
-> >> > 
-> >> > diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-> >> > index 0c7e0d45a4de..20b7b1f4e041 100644
-> >> > --- a/fs/nfs/pnfs.c
-> >> > +++ b/fs/nfs/pnfs.c
-> >> > @@ -70,7 +70,7 @@ out:
-> >> > }
-> >> > 
-> >> > static struct pnfs_layoutdriver_type *
-> >> > -find_pnfs_driver(u32 id)
-> >> > +__find_pnfs_driver(u32 id)
-> >> > {
-> >> > struct pnfs_layoutdriver_type *local;
-> >> > 
-> >> > @@ -84,6 +84,22 @@ find_pnfs_driver(u32 id)
-> >> > return local;
-> >> > }
-> >> > 
-> >> > +static struct pnfs_layoutdriver_type *
-> >> > +find_pnfs_driver(u32 id)
-> >> > +{
-> >> > +	struct pnfs_layoutdriver_type *ld_type;
-> >> > +
-> >> > +	ld_type = __find_pnfs_driver(id);
-> >> > +	if (!ld_type) {
-> >> > +	 request_module("%s-%u", LAYOUT_NFSV4_1_MODULE_PREFIX, id);
-> >> > +	 ld_type = __find_pnfs_driver(id);
-> >> > +	 if (!ld_type)
-> >> > +	 dprintk("%s: No pNFS module found for %u.\n",
-> >> > +	 __func__, id);
-> >> > +	}
-> >> > +	return ld_type;
-> >> > +}
-> >> > +
-> >> > void
-> >> > unset_pnfs_layoutdriver(struct nfs_server *nfss)
-> >> > {
-> >> > @@ -102,44 +118,72 @@ unset_pnfs_layoutdriver(struct nfs_server *nfss)
-> >> > * Try to set the server's pnfs module to the pnfs layout type specified by id.
-> >> > * Currently only one pNFS layout driver per filesystem is supported.
-> >> > *
-> >> > - * @id layout type. Zero (illegal layout type) indicates pNFS not in use.
-> >> > + * @layouttypes: bitfield showing what layout types server supports
-> >> > */
-> >> > void
-> >> > set_pnfs_layoutdriver(struct nfs_server *server, const struct nfs_fh *mntfh,
-> >> > -	 u32 id)
-> >> > +	 u32 layouttypes)
-> >> > {
-> >> > struct pnfs_layoutdriver_type *ld_type = NULL;
-> >> > 
-> >> > -	if (id == 0)
-> >> > +	if (layouttypes == 0)
-> >> > goto out_no_driver;
-> >> > if (!(server->nfs_client->cl_exchange_flags &
-> >> > (EXCHGID4_FLAG_USE_NON_PNFS | EXCHGID4_FLAG_USE_PNFS_MDS))) {
-> >> > -	 printk(KERN_ERR "NFS: %s: id %u cl_exchange_flags 0x%x\n",
-> >> > -	 __func__, id, server->nfs_client->cl_exchange_flags);
-> >> > +	 printk(KERN_ERR "NFS: %s: layouttypes 0x%x cl_exchange_flags 0x%x\n",
-> >> > +	 __func__, layouttypes, server->nfs_client->cl_exchange_flags);
-> >> > goto out_no_driver;
-> >> > }
-> >> > -	ld_type = find_pnfs_driver(id);
-> >> > -	if (!ld_type) {
-> >> > -	 request_module("%s-%u", LAYOUT_NFSV4_1_MODULE_PREFIX, id);
-> >> > -	 ld_type = find_pnfs_driver(id);
-> >> > -	 if (!ld_type) {
-> >> > -	 dprintk("%s: No pNFS module found for %u.\n",
-> >> > -	 __func__, id);
-> >> > +
-> >> > +	/*
-> >> > +	 * See if one of the layout types that we got handed is usable. We
-> >> > +	 * attempt in a hardcoded order of preference, in order of (assumed)
-> >> > +	 * decreasing speeds and functionality.
-> >> > +	 *
-> >> > +	 * FIXME: should this order be configurable in some fashion?
-> >> > +	 */
-> >> > +	if (layouttypes & (1 << LAYOUT_SCSI)) {
-> >> > +	 ld_type = find_pnfs_driver(LAYOUT_SCSI);
-> >> > +	 if (ld_type)
-> >> > +	 goto set_driver;
-> >> > +	}
-> >> > +
-> >> > +	if (layouttypes & (1 << LAYOUT_BLOCK_VOLUME)) {
-> >> > +	 ld_type = find_pnfs_driver(LAYOUT_BLOCK_VOLUME);
-> >> > +	 if (ld_type)
-> >> > +	 goto set_driver;
-> >> > +	}
-> >> > +
-> >> > +	if (layouttypes & (1 << LAYOUT_OSD2_OBJECTS)) {
-> >> > +	 ld_type = find_pnfs_driver(LAYOUT_OSD2_OBJECTS);
-> >> > +	 if (ld_type)
-> >> > +	 goto set_driver;
-> >> > +	}
-> >> > +
-> >> > +	if (layouttypes & (1 << LAYOUT_FLEX_FILES)) {
-> >> > +	 ld_type = find_pnfs_driver(LAYOUT_FLEX_FILES);
-> >> > +	 if (ld_type)
-> >> > +	 goto set_driver;
-> >> > +	}
-> >> > +
-> >> > +	if (layouttypes & (1 << LAYOUT_NFSV4_1_FILES)) {
-> >> > +	 ld_type = find_pnfs_driver(LAYOUT_NFSV4_1_FILES);
-> >> > +	 if (!ld_type)
-> >> > goto out_no_driver;
-> >> > -	 }
-> >> > }
-> >> > +set_driver:
-> >> > server->pnfs_curr_ld = ld_type;
-> >> > if (ld_type->set_layoutdriver
-> >> > && ld_type->set_layoutdriver(server, mntfh)) {
-> >> > printk(KERN_ERR "NFS: %s: Error initializing pNFS layout "
-> >> > -	 "driver %u.\n", __func__, id);
-> >> > +	 "driver %u.\n", __func__, ld_type->id);
-> >> > module_put(ld_type->owner);
-> >> > goto out_no_driver;
-> >> > }
-> >> > /* Bump the MDS count */
-> >> > atomic_inc(&server->nfs_client->cl_mds_count);
-> >> > 
-> >> > -	dprintk("%s: pNFS module for %u set\n", __func__, id);
-> >> > +	dprintk("%s: pNFS module for %u set\n", __func__, ld_type->id);
-> >> > return;
-> >> > 
-> >> > out_no_driver:
-> >> > diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-> >> > index c304a11b5b1a..1f6bb59f05f2 100644
-> >> > --- a/include/linux/nfs_xdr.h
-> >> > +++ b/include/linux/nfs_xdr.h
-> >> > @@ -139,7 +139,7 @@ struct nfs_fsinfo {
-> >> > __u64	 maxfilesize;
-> >> > struct timespec	 time_delta; /* server time granularity */
-> >> > __u32	 lease_time; /* in seconds */
-> >> > -	__u32	 layouttype; /* supported pnfs layout driver */
-> >> > +	__u32	 layouttypes; /* supported pnfs layout drivers */
-> >> > __u32	 blksize; /* preferred pnfs io block size */
-> >> > __u32	 clone_blksize; /* granularity of a CLONE operation */
-> >> > };
-> >> > -- 
-> >> > 2.5.5
-> >> > 
-> >> 
-> >> NrybXǧv^)޺{.n+{"^nrz?h&?Gh?(階ݢj"??mzޖfh~m
-> >-- 
-> >Jeff Layton <jlayton@poochiereds.net>
-> >
 > 
+> Teset-by:
 > 
-> Disclaimer
-> The information contained in this communication from the sender is confidential. It is intended solely for use by the recipient and others authorized to receive it. If you are not the recipient, you are hereby notified that any disclosure, copying, distribution or taking action in relation of the contents of this information is strictly prohibited and may be unlawful.
--- 
-Jeff Layton <jlayton@poochiereds.net>
+> Unrelated to you patch (as it now fails with my as well),
+> flex file layout hangs on write with 4.7-rc1 (and 4.6.0).
+> The same test works with nfs4_files. I will recompile with
+> an older version, where I tested in the past (4.5-rc3?).
+> 
+> I will start a new email with my discoveries.
+> 
+> Tigran.
+> 
+> ----- Original Message -----
+> > From: "Jeff Layton" <jlayton@poochiereds.net>
+> > To: "Weston Andros Adamson" <dros@monkey.org>, "Tigran Mkrtchyan" <tigran.mkrtchyan@desy.de>
+> > Cc: "linux-nfs list" <linux-nfs@vger.kernel.org>, "Tom Haynes" <thomas.haynes@primarydata.com>, "Christoph Hellwig"
+> > <hch@lst.de>
+> > Sent: Tuesday, May 31, 2016 3:47:30 AM
+> > Subject: Re: [RFC PATCH] nfsd: allow nfsd to advertise multiple layout types
+> 
+> > On Mon, 2016-05-30 at 21:10 -0400, Weston Andros Adamson wrote:
+> >> > 
+> >> > On May 30, 2016, at 2:42 PM, Mkrtchyan, Tigran  wrote:
+> >> > 
+> >> > 
+> >> > 
+> >> > You have explicit order in set_pnfs_layoutdriver function.
+> >> > Your patch looks like ot to me. I will try it with our
+> >> > server and will let you know.
+> >> > 
+> >> > Tigran.
+> >> > 
+> >> > ----- Original Message -----
+> >> > > From: "Jeff Layton" <jlayton@poochiereds.net>
+> >> > > To: "Mkrtchyan, Tigran" <tigran.mkrtchyan@desy.de>
+> >> > > Cc: linux-nfs@vger.kernel.org, "Tom Haynes" , "Christoph Hellwig" <hch@lst.de>
+> >> > > Sent: Monday, May 30, 2016 8:05:20 PM
+> >> > > Subject: Re: [RFC PATCH] nfsd: allow nfsd to advertise multiple layout types
+> >> > 
+> >> > > On Mon, 2016-05-30 at 19:04 +0200, Mkrtchyan, Tigran wrote:
+> >> > > > 
+> >> > > > ----- Original Message -----
+> >> > > > > 
+> >> > > > > From: "Jeff Layton" <jlayton@poochiereds.net>
+> >> > > > > To: "Mkrtchyan, Tigran" <tigran.mkrtchyan@desy.de>
+> >> > > > > Cc: linux-nfs@vger.kernel.org, "Tom Haynes" , "Christoph Hellwig" <hch@lst.de>
+> >> > > > > Sent: Monday, May 30, 2016 6:51:38 PM
+> >> > > > > Subject: Re: [RFC PATCH] nfsd: allow nfsd to advertise multiple layout types
+> >> > > > > 
+> >> > > > > On Mon, 2016-05-30 at 17:47 +0200, Mkrtchyan, Tigran wrote:
+> >> > > > > > 
+> >> > > > > > 
+> >> > > > > > ----- Original Message -----
+> >> > > > > > > 
+> >> > > > > > > From: "Jeff Layton" <jlayton@poochiereds.net>
+> >> > > > > > > To: linux-nfs@vger.kernel.org
+> >> > > > > > > Cc: "Tom Haynes" <thomas.haynes@primarydata.com>, "Christoph Hellwig"
+> >> > > > > > > <hch@lst.de>
+> >> > > > > > > Sent: Sunday, May 29, 2016 11:06:14 PM
+> >> > > > > > > Subject: Re: [RFC PATCH] nfsd: allow nfsd to advertise multiple layout types
+> >> > > > > > > 
+> >> > > > > > > On Sun, 2016-05-29 at 16:59 -0400, Jeff Layton wrote:
+> >> > > > > > > > 
+> >> > > > > > > > If the underlying filesystem supports multiple layout types, then there
+> >> > > > > > > > is little reason not to advertise that fact to clients and let them
+> >> > > > > > > > choose what type to use.
+> >> > > > > > > > 
+> >> > > > > > > > Turn the ex_layout_type field into a bitfield. For each supported
+> >> > > > > > > > layout type, we set a bit in that field. When the client requests a
+> >> > > > > > > > layout, ensure that the bit for that layout type is set. When the
+> >> > > > > > > > client requests attributes, send back a list of supported types.
+> >> > > > > > > > 
+> >> > > > > > > > Signed-off-by: Jeff Layton <jeff.layton@primarydata.com>
+> >> > > > > > > > ---
+> >> > > > > > > >  fs/nfsd/export.c      |  4 ++--
+> >> > > > > > > >  fs/nfsd/export.h      |  2 +-
+> >> > > > > > > >  fs/nfsd/nfs4layouts.c |  6 +++---
+> >> > > > > > > >  fs/nfsd/nfs4proc.c    |  4 ++--
+> >> > > > > > > >  fs/nfsd/nfs4xdr.c     | 30 ++++++++++++++----------------
+> >> > > > > > > >  5 files changed, 22 insertions(+), 24 deletions(-)
+> >> > > > > > > > 
+> >> > > > > > > > diff --git a/fs/nfsd/export.c b/fs/nfsd/export.c
+> >> > > > > > > > index b4d84b579f20..f97ba49d5e66 100644
+> >> > > > > > > > --- a/fs/nfsd/export.c
+> >> > > > > > > > +++ b/fs/nfsd/export.c
+> >> > > > > > > > @@ -706,7 +706,7 @@ static void svc_export_init(struct cache_head *cnew, struct
+> >> > > > > > > > cache_head *citem)
+> >> > > > > > > >  	new->ex_fslocs.locations = NULL;
+> >> > > > > > > >  	new->ex_fslocs.locations_count = 0;
+> >> > > > > > > >  	new->ex_fslocs.migrated = 0;
+> >> > > > > > > > -	new->ex_layout_type = 0;
+> >> > > > > > > > +	new->ex_layout_types = 0;
+> >> > > > > > > >  	new->ex_uuid = NULL;
+> >> > > > > > > >  	new->cd = item->cd;
+> >> > > > > > > >  }
+> >> > > > > > > > @@ -731,7 +731,7 @@ static void export_update(struct cache_head *cnew, struct
+> >> > > > > > > > cache_head *citem)
+> >> > > > > > > >  	item->ex_fslocs.locations_count = 0;
+> >> > > > > > > >  	new->ex_fslocs.migrated = item->ex_fslocs.migrated;
+> >> > > > > > > >  	item->ex_fslocs.migrated = 0;
+> >> > > > > > > > -	new->ex_layout_type = item->ex_layout_type;
+> >> > > > > > > > +	new->ex_layout_types = item->ex_layout_types;
+> >> > > > > > > >  	new->ex_nflavors = item->ex_nflavors;
+> >> > > > > > > >  	for (i = 0; i < MAX_SECINFO_LIST; i++) {
+> >> > > > > > > >  		new->ex_flavors[i] = item->ex_flavors[i];
+> >> > > > > > > > diff --git a/fs/nfsd/export.h b/fs/nfsd/export.h
+> >> > > > > > > > index 2e315072bf3f..730f15eeb7ed 100644
+> >> > > > > > > > --- a/fs/nfsd/export.h
+> >> > > > > > > > +++ b/fs/nfsd/export.h
+> >> > > > > > > > @@ -57,7 +57,7 @@ struct svc_export {
+> >> > > > > > > >  	struct nfsd4_fs_locations ex_fslocs;
+> >> > > > > > > >  	uint32_t		ex_nflavors;
+> >> > > > > > > >  	struct exp_flavor_info	ex_flavors[MAX_SECINFO_LIST];
+> >> > > > > > > > -	enum pnfs_layouttype	ex_layout_type;
+> >> > > > > > > > +	u32			ex_layout_types;
+> >> > > > > > > >  	struct nfsd4_deviceid_map *ex_devid_map;
+> >> > > > > > > >  	struct cache_detail	*cd;
+> >> > > > > > > >  };
+> >> > > > > > > > diff --git a/fs/nfsd/nfs4layouts.c b/fs/nfsd/nfs4layouts.c
+> >> > > > > > > > index 6d98d16b3354..2be9602b0221 100644
+> >> > > > > > > > --- a/fs/nfsd/nfs4layouts.c
+> >> > > > > > > > +++ b/fs/nfsd/nfs4layouts.c
+> >> > > > > > > > @@ -139,21 +139,21 @@ void nfsd4_setup_layout_type(struct svc_export *exp)
+> >> > > > > > > >  	 * otherwise advertise the block layout.
+> >> > > > > > > >  	 */
+> >> > > > > > > >  #ifdef CONFIG_NFSD_FLEXFILELAYOUT
+> >> > > > > > > > -	exp->ex_layout_type = LAYOUT_FLEX_FILES;
+> >> > > > > > > > +	exp->ex_layout_types |= 1 << LAYOUT_FLEX_FILES;
+> >> > > > > > > >  #endif
+> >> > > > > > > >  #ifdef CONFIG_NFSD_BLOCKLAYOUT
+> >> > > > > > > >  	/* overwrite flex file layout selection if needed */
+> >> > > > > > > >  	if (sb->s_export_op->get_uuid &&
+> >> > > > > > > >  	    sb->s_export_op->map_blocks &&
+> >> > > > > > > >  	    sb->s_export_op->commit_blocks)
+> >> > > > > > > > -		exp->ex_layout_type = LAYOUT_BLOCK_VOLUME;
+> >> > > > > > > > +		exp->ex_layout_types |= 1 << LAYOUT_BLOCK_VOLUME;
+> >> > > > > > > >  #endif
+> >> > > > > > > >  #ifdef CONFIG_NFSD_SCSILAYOUT
+> >> > > > > > > >  	/* overwrite block layout selection if needed */
+> >> > > > > > > >  	if (sb->s_export_op->map_blocks &&
+> >> > > > > > > >  	    sb->s_export_op->commit_blocks &&
+> >> > > > > > > >  	    sb->s_bdev && sb->s_bdev->bd_disk->fops->pr_ops)
+> >> > > > > > > > -		exp->ex_layout_type = LAYOUT_SCSI;
+> >> > > > > > > > +		exp->ex_layout_types |= 1 << LAYOUT_SCSI;
+> >> > > > > > > >  #endif
+> >> > > > > > > >  }
+> >> > > > > > > >  
+> >> > > > > > > > diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+> >> > > > > > > > index 2ee2dc170327..719c620753e2 100644
+> >> > > > > > > > --- a/fs/nfsd/nfs4proc.c
+> >> > > > > > > > +++ b/fs/nfsd/nfs4proc.c
+> >> > > > > > > > @@ -1219,12 +1219,12 @@ nfsd4_verify(struct svc_rqst *rqstp, struct
+> >> > > > > > > > nfsd4_compound_state *cstate,
+> >> > > > > > > >  static const struct nfsd4_layout_ops *
+> >> > > > > > > >  nfsd4_layout_verify(struct svc_export *exp, unsigned int layout_type)
+> >> > > > > > > >  {
+> >> > > > > > > > -	if (!exp->ex_layout_type) {
+> >> > > > > > > > +	if (!exp->ex_layout_types) {
+> >> > > > > > > >  		dprintk("%s: export does not support pNFS\n", __func__);
+> >> > > > > > > >  		return NULL;
+> >> > > > > > > >  	}
+> >> > > > > > > >  
+> >> > > > > > > > -	if (exp->ex_layout_type != layout_type) {
+> >> > > > > > > > +	if (!(exp->ex_layout_types & (1 << layout_type))) {
+> >> > > > > > > >  		dprintk("%s: layout type %d not supported\n",
+> >> > > > > > > >  			__func__, layout_type);
+> >> > > > > > > >  		return NULL;
+> >> > > > > > > > diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+> >> > > > > > > > index 9df898ba648f..4d3ae75ad4c8 100644
+> >> > > > > > > > --- a/fs/nfsd/nfs4xdr.c
+> >> > > > > > > > +++ b/fs/nfsd/nfs4xdr.c
+> >> > > > > > > > @@ -2164,22 +2164,20 @@ nfsd4_encode_aclname(struct xdr_stream *xdr, struct
+> >> > > > > > > > svc_rqst *rqstp,
+> >> > > > > > > >  }
+> >> > > > > > > >  
+> >> > > > > > > >  static inline __be32
+> >> > > > > > > > -nfsd4_encode_layout_type(struct xdr_stream *xdr, enum pnfs_layouttype
+> >> > > > > > > > layout_type)
+> >> > > > > > > > +nfsd4_encode_layout_types(struct xdr_stream *xdr, u32 layout_types)
+> >> > > > > > > >  {
+> >> > > > > > > > -	__be32 *p;
+> >> > > > > > > > +	__be32		*p;
+> >> > > > > > > > +	unsigned long	i = hweight_long(layout_types);
+> >> > > > > > > >  
+> >> > > > > > > > -	if (layout_type) {
+> >> > > > > > > > -		p = xdr_reserve_space(xdr, 8);
+> >> > > > > > > > -		if (!p)
+> >> > > > > > > > -			return nfserr_resource;
+> >> > > > > > > > -		*p++ = cpu_to_be32(1);
+> >> > > > > > > > -		*p++ = cpu_to_be32(layout_type);
+> >> > > > > > > > -	} else {
+> >> > > > > > > > -		p = xdr_reserve_space(xdr, 4);
+> >> > > > > > > > -		if (!p)
+> >> > > > > > > > -			return nfserr_resource;
+> >> > > > > > > > -		*p++ = cpu_to_be32(0);
+> >> > > > > > > > -	}
+> >> > > > > > > > +	p = xdr_reserve_space(xdr, 4 + 4 * i);
+> >> > > > > > > > +	if (!p)
+> >> > > > > > > > +		return nfserr_resource;
+> >> > > > > > > > +
+> >> > > > > > > > +	*p++ = cpu_to_be32(i);
+> >> > > > > > > > +
+> >> > > > > > > > +	for (i = LAYOUT_NFSV4_1_FILES; i < LAYOUT_TYPE_MAX; ++i)
+> >> > > > > > > > +		if (layout_types & (1 << i))
+> >> > > > > > > > +			*p++ = cpu_to_be32(i);
+> >> > > > > > > >  
+> >> > > > > > > >  	return 0;
+> >> > > > > > > >  }
+> >> > > > > > > > @@ -2754,13 +2752,13 @@ out_acl:
+> >> > > > > > > >  	}
+> >> > > > > > > >  #ifdef CONFIG_NFSD_PNFS
+> >> > > > > > > >  	if (bmval1 & FATTR4_WORD1_FS_LAYOUT_TYPES) {
+> >> > > > > > > > -		status = nfsd4_encode_layout_type(xdr, exp->ex_layout_type);
+> >> > > > > > > > +		status = nfsd4_encode_layout_types(xdr, exp->ex_layout_types);
+> >> > > > > > > >  		if (status)
+> >> > > > > > > >  			goto out;
+> >> > > > > > > >  	}
+> >> > > > > > > >  
+> >> > > > > > > >  	if (bmval2 & FATTR4_WORD2_LAYOUT_TYPES) {
+> >> > > > > > > > -		status = nfsd4_encode_layout_type(xdr, exp->ex_layout_type);
+> >> > > > > > > > +		status = nfsd4_encode_layout_types(xdr, exp->ex_layout_types);
+> >> > > > > > > >  		if (status)
+> >> > > > > > > >  			goto out;
+> >> > > > > > > >  	}
+> >> > > > > > > 
+> >> > > > > > > Just a (lightly-tested) RFC patch for now.
+> >> > > > > > > 
+> >> > > > > > > This seems to do the right thing WRT to GETATTR response that requests
+> >> > > > > > > a layout types list. The current client code spews this into the ring
+> >> > > > > > > buffer though:
+> >> > > > > > > 
+> >> > > > > > >     NFS: decode_first_pnfs_layout_type: Warning: Multiple pNFS layout drivers per
+> >> > > > > > >     filesystem not supported
+> >> > > > > > > 
+> >> > > > > > > ...so that would need a little work. Wireshark also seems to not parse
+> >> > > > > > > the layout types list correctly.
+> >> > > > > > Hi Jeff,
+> >> > > > > > 
+> >> > > > > > I had an attempt to add multi-layout support into the client:
+> >> > > > > > 
+> >> > > > > > https://github.com/0day-ci/linux/commit/e2d792dc32b82ffc511b009c0a8db5313126888e
+> >> > > > > > 
+> >> > > > > > I can't find it in the list archive. This explains why Trond never
+> >> > > > > > respond to it.
+> >> > > > > > 
+> >> > > > > > Tigran.
+> >> > > > > > 
+> >> > > > > Thanks. I had already rolled one up that does a different approach of a
+> >> > > > > hardcoded selection order in the client code and sent it as an RFC.
+> >> > > > > 
+> >> > > > > So...yours assumes that the server will send the "default" one first in
+> >> > > > > the list, but AFAICT, the spec doesn't say anything about the
+> >> > > > > fs_layout_type list being ordered in any way. I don't think we can make
+> >> > > > > that assumption. Am I wrong there?
+> >> > > > Imagine a muti-layout server in a deployment, where some client are old (RHEL6)
+> >> > > > and some clients are new. RHEL6 will always take only the first one and fail, if
+> >> > > > it wasn't nfs4_file_layout. But, if we always return 'well-known' as a first
+> >> > > > one,
+> >> > > > then, then RHEL6 clients will be able to coexists with newer clients.
+> >> > > > 
+> >> > > > Our server can provide flexfile layouts, but 99% of our clients are
+> >> > > > RHEL6-clones.
+> >> > > > This stops us from enable flexfile support, unless we add per-client based
+> >> > > > control
+> >> > > > of layout type.
+> >> > > > 
+> >> > > > Tigran.
+> >> > > > 
+> >> > > 
+> >> > > Ahh ok, I see what you mean...
+> >> > > 
+> >> > > So yeah, I don't think the spec places any significance on the order of
+> >> > > the list, but we some de-facto precedence due to legacy clients. Not
+> >> > > much we can do about that. I guess all you can do for those clients is
+> >> > > just ensure that the first entry is the one most likely to be usable by
+> >> > > those clients.
+> >> > > 
+> >> > > This patch just orders the list by numerical value of the layout type
+> >> > > constants. If someone can offer up a sane argument for ordering the
+> >> > > list in a different fashion, then I'm OK with doing that.
+> >> > > 
+> >> > > --
+> >> > > Jeff Layton <jlayton@poochiereds.net>
+> >> > 
+> >> 
+> >> Jeff, this patch looks good to me.
+> >> 
+> >> As for backward compatibility, we could do some complicated client
+> >> support detection (implementation ID based or fallback if layout is rejected),
+> >> but that’s probably going overboard for now.
+> >> 
+> > 
+> > Yeah, this is a step in the right direction I think, but we may need to
+> > do something more elaborate eventually.
+> > 
+> >> Maybe we should just hardcode this array instead of building it in the
+> >> order of the numerical value of each layout type. We could add them in
+> >> the order that the client supported them.
+> >>  I think that would fix Tigran’s
+> >> problem. Maybe it’s already in this order as client support quickly followed
+> >> layout type number allocation?
+> >> 
+> > 
+> > Hmm...knfsd only supports block, scsi and flexfiles (as of Tom's
+> > patches). We might want to re-sort the list so that scsi comes first,
+> > actually? OTOH...block was there first so maybe it ought to be first?
+> > Hard to know without knowing exactly what sort of clients you have.
+> > 
+> > Either way, the order of the array that the server sends and the
+> > preference of the client for various layouts can both definitely be
+> > changed.
+> > 
+> > Perhaps this isn't a one-size-fits-all situation and it needs to be
+> > configurable somehow at the client and/or server?
+> > --
+> > Jeff Layton <jlayton@poochiereds.net>
+> > --
+> > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> > the body of a message to majordomo@vger.kernel.org
+> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
