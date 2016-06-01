@@ -1,46 +1,53 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-it0-f68.google.com ([209.85.214.68]:33679 "EHLO
-	mail-it0-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751201AbcFAUbX (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 1 Jun 2016 16:31:23 -0400
-Received: by mail-it0-f68.google.com with SMTP id v125so226700itc.0
-        for <linux-nfs@vger.kernel.org>; Wed, 01 Jun 2016 13:31:23 -0700 (PDT)
+Received: from us-smtp-delivery-194.mimecast.com ([63.128.21.194]:27677 "EHLO
+	us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751537AbcFAUlL (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 1 Jun 2016 16:41:11 -0400
+From: Trond Myklebust <trondmy@primarydata.com>
+To: Olga Kornievskaia <aglo@umich.edu>, linux-nfs <linux-nfs@vger.kernel.org>
+Subject: Re: open_downgrade use
+Date: Wed, 1 Jun 2016 20:41:03 +0000
+Message-ID: <F693F912-2BA0-4899-A73C-65CB7536B090@primarydata.com>
+References: <CAN-5tyFXzH+Je8Th_irarJtBb+9QziFj8p7xH0NRLupOsTYBrw@mail.gmail.com>
+In-Reply-To: <CAN-5tyFXzH+Je8Th_irarJtBb+9QziFj8p7xH0NRLupOsTYBrw@mail.gmail.com>
 MIME-Version: 1.0
-Date: Wed, 1 Jun 2016 16:31:22 -0400
-Message-ID: <CAN-5tyFXzH+Je8Th_irarJtBb+9QziFj8p7xH0NRLupOsTYBrw@mail.gmail.com>
-Subject: open_downgrade use
-From: Olga Kornievskaia <aglo@umich.edu>
-To: linux-nfs <linux-nfs@vger.kernel.org>
 Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-I'm failing to think of what can trigger an open_downgrade?
-I thought the following example should trigger an open downgrade:
+WW91IGFyZSBtaXNyZWFkaW5nIHdoYXQgSSB3cm90ZS4gWW91ciB0ZXN0IHNob3VsZCBpbmRlZWQg
+Z2l2ZSByaXNlIHRvIGFuIE9QRU5fRE9XTkdSQURFICh1bmxlc3MgdGhlcmUgaXMgYSBkZWxlZ2F0
+aW9uIGludm9sdmVkKS4gVGhlIGNvZGUgdGhhdCB3YXMgbWlzYmVoYXZpbmcgYW5kIHRoYXQgd2Fz
+IGZpeGVkIGJ5IHRoZSBwYXRjaCB3YXMgdHJpZ2dlcmluZyBhbiBPUEVOX0RPV05HUkFERSBmcm9t
+IGEgc3RhdGVpZCB0aGF0IGhhZCBvbmx5IGJlZW4gb3BlbmVkIGZvciBSVy4NCg0KT24gNi8xLzE2
+LCAxNjozMSwgImxpbnV4LW5mcy1vd25lckB2Z2VyLmtlcm5lbC5vcmcgb24gYmVoYWxmIG9mIE9s
+Z2EgS29ybmlldnNrYWlhIiA8bGludXgtbmZzLW93bmVyQHZnZXIua2VybmVsLm9yZyBvbiBiZWhh
+bGYgb2YgYWdsb0B1bWljaC5lZHU+IHdyb3RlOg0KDQo+SSdtIGZhaWxpbmcgdG8gdGhpbmsgb2Yg
+d2hhdCBjYW4gdHJpZ2dlciBhbiBvcGVuX2Rvd25ncmFkZT8NCj5JIHRob3VnaHQgdGhlIGZvbGxv
+d2luZyBleGFtcGxlIHNob3VsZCB0cmlnZ2VyIGFuIG9wZW4gZG93bmdyYWRlOg0KPg0KPmZkMCA9
+IG9wZW4oZm9vLCBSRFJXKSAgIC0tIHNob3VsZCBiZSBvcGVuIG9uIHRoZSB3aXJlIGZvciAiYm90
+aCINCj5mZDEgPSBvcGVuKGZvbywgUkRPTkxZKSAgLS0gc2hvdWxkIGJlIG9wZW4gb24gdGhlIHdp
+cmUgZm9yICJyZWFkIg0KPmNsb3NlKGZkMCkgLS0gc2hvdWxkIHRyaWdnZXIgYW4gb3Blbl9kb3du
+Z3JhZGUNCj5yZWFkKGZkMSkNCj5jbG9zZShmZDEpDQo+DQo+SG93ZXZlciB0aGlzIGNvbW1pdCBz
+YXlzIHRoYXQgaXQncyBub3QgYWxsb3dlZCBieSB0aGUgc3BlYy4NCj4NCj5jb21taXQgY2Q5Mjg4
+ZmZhZWE0MzU5ZDVjZmUyYjhkMjY0OTExNTA2YWVkMjZhNA0KPkF1dGhvcjogVHJvbmQgTXlrbGVi
+dXN0IDx0cm9uZC5teWtsZWJ1c3RAcHJpbWFyeWRhdGEuY29tPg0KPkRhdGU6ICAgVGh1IFNlcCAx
+OCAxMTo1MTozMiAyMDE0IC0wNDAwDQo+DQo+ICAgIE5GU3Y0OiBGaXggYW5vdGhlciBidWcgaW4g
+dGhlIGNsb3NlL29wZW5fZG93bmdyYWRlIGNvZGUNCj4NCj4gICAgSmFtZXMgRHJldyByZXBvcnRz
+IGFub3RoZXIgYnVnIHdoZXJlYnkgdGhlIE5GUyBjbGllbnQgaXMgbm93IHNlbmRpbmcNCj4gICAg
+YW4gT1BFTl9ET1dOR1JBREUgaW4gYSBzaXR1YXRpb24gd2hlcmUgaXQgc2hvdWxkIHJlYWxseSBo
+YXZlIHNlbnQgYQ0KPiAgICBDTE9TRTogdGhlIGNsaWVudCBpcyBvcGVuaW5nIHRoZSBmaWxlIGZv
+ciBPX1JEV1IsIGJ1dCB0aGVuIHRyeWluZyB0bw0KPiAgICBkbyBhIGRvd25ncmFkZSB0byBPX1JE
+T05MWSwgd2hpY2ggaXMgbm90IGFsbG93ZWQgYnkgdGhlIE5GU3Y0IHNwZWMuDQo+DQo+ICAgIFJl
+cG9ydGVkLWJ5OiBKYW1lcyBEcmV3cyA8ZHJld3NAZW5nci53aXNjLmVkdT4NCj4gICAgTGluazog
+aHR0cDovL2xrbWwua2VybmVsLm9yZy9yLzU0MUFEN0U1LjgwMjA0MDlAZW5nci53aXNjLmVkdQ0K
+PiAgICBGaXhlczogYWVlN2FmMzU2ZTE1IChORlN2NDogRml4IHByb2JsZW1zIHdpdGggY2xvc2Ug
+aW4gdGhlIHByZXNlbmNlLi4uKQ0KPiAgICBDYzogc3RhYmxlQHZnZXIua2VybmVsLm9yZyAjIDIu
+Ni4zMysNCj4gICAgU2lnbmVkLW9mZi1ieTogVHJvbmQgTXlrbGVidXN0IDx0cm9uZC5teWtsZWJ1
+c3RAcHJpbWFyeWRhdGEuY29tPg0KPg0KPklmIFJEV1IgdG8gUkRPTkxZIGlzbid0IGFsbG93ZWQg
+dGhlbiB3aHkgZG8gd2UgaGF2ZSBPUEVOX0RPV05HUkFERSBhdCBhbGw/DQo+LS0NCj5UbyB1bnN1
+YnNjcmliZSBmcm9tIHRoaXMgbGlzdDogc2VuZCB0aGUgbGluZSAidW5zdWJzY3JpYmUgbGludXgt
+bmZzIiBpbg0KPnRoZSBib2R5IG9mIGEgbWVzc2FnZSB0byBtYWpvcmRvbW9Admdlci5rZXJuZWwu
+b3JnDQo+TW9yZSBtYWpvcmRvbW8gaW5mbyBhdCAgaHR0cDovL3ZnZXIua2VybmVsLm9yZy9tYWpv
+cmRvbW8taW5mby5odG1sDQo+DQoNCg==
 
-fd0 = open(foo, RDRW)   -- should be open on the wire for "both"
-fd1 = open(foo, RDONLY)  -- should be open on the wire for "read"
-close(fd0) -- should trigger an open_downgrade
-read(fd1)
-close(fd1)
-
-However this commit says that it's not allowed by the spec.
-
-commit cd9288ffaea4359d5cfe2b8d264911506aed26a4
-Author: Trond Myklebust <trond.myklebust@primarydata.com>
-Date:   Thu Sep 18 11:51:32 2014 -0400
-
-    NFSv4: Fix another bug in the close/open_downgrade code
-
-    James Drew reports another bug whereby the NFS client is now sending
-    an OPEN_DOWNGRADE in a situation where it should really have sent a
-    CLOSE: the client is opening the file for O_RDWR, but then trying to
-    do a downgrade to O_RDONLY, which is not allowed by the NFSv4 spec.
-
-    Reported-by: James Drews <drews@engr.wisc.edu>
-    Link: http://lkml.kernel.org/r/541AD7E5.8020409@engr.wisc.edu
-    Fixes: aee7af356e15 (NFSv4: Fix problems with close in the presence...)
-    Cc: stable@vger.kernel.org # 2.6.33+
-    Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
-
-If RDWR to RDONLY isn't allowed then why do we have OPEN_DOWNGRADE at all?
