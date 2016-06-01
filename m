@@ -1,32 +1,46 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-out2.apple.com ([17.151.62.25]:50059 "EHLO
-	mail-in2.apple.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1751058AbcFATAu convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 1 Jun 2016 15:00:50 -0400
-Received: from [17.115.111.245] (unknown [17.115.111.245])
- by nwk-mmpp-sz07.apple.com
- (Oracle Communications Messaging Server 7.0.5.35.0 64bit (built Mar 31 2015))
- with ESMTPSA id <0O83004OLW4CEB50@nwk-mmpp-sz07.apple.com> for
- linux-nfs@vger.kernel.org; Wed, 01 Jun 2016 11:45:48 -0700 (PDT)
-From: Blake Golliher <bgolliher@apple.com>
-Content-type: text/plain; charset=utf-8
-Subject: NFS client side failover
-Message-id: <AEFEE2E4-0F50-44EA-9C33-EC64A7AA6E59@apple.com>
-Date: Wed, 01 Jun 2016 11:45:48 -0700
-To: linux-nfs@vger.kernel.org
-MIME-version: 1.0 (Mac OS X Mail 9.1 \(3096.5\))
+Received: from mail-it0-f68.google.com ([209.85.214.68]:33679 "EHLO
+	mail-it0-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751201AbcFAUbX (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 1 Jun 2016 16:31:23 -0400
+Received: by mail-it0-f68.google.com with SMTP id v125so226700itc.0
+        for <linux-nfs@vger.kernel.org>; Wed, 01 Jun 2016 13:31:23 -0700 (PDT)
+MIME-Version: 1.0
+Date: Wed, 1 Jun 2016 16:31:22 -0400
+Message-ID: <CAN-5tyFXzH+Je8Th_irarJtBb+9QziFj8p7xH0NRLupOsTYBrw@mail.gmail.com>
+Subject: open_downgrade use
+From: Olga Kornievskaia <aglo@umich.edu>
+To: linux-nfs <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi! 
+I'm failing to think of what can trigger an open_downgrade?
+I thought the following example should trigger an open downgrade:
 
-Hopefully a simple question.  Is there any work in making the linux nfs client able to survive a nfs server failover to another IP?  Meaning, I have an NFS server, on a node called ‘cheetah', and it’s HA side is 'puma', and a client named 'lizard’.  If lizard has an established mount on ‘cheetah’, then cheetah suffers some event, and puma takes over it’s storage, but the IP changes, can lizard try it’s IO to the new IP?  Assuming the fsid, data in the filesystem, export permissions are all fine, the only change is the IP the client is talking to goes away, but there is a new IP it could use.
+fd0 = open(foo, RDRW)   -- should be open on the wire for "both"
+fd1 = open(foo, RDONLY)  -- should be open on the wire for "read"
+close(fd0) -- should trigger an open_downgrade
+read(fd1)
+close(fd1)
 
-Is there any work in a client failover like that?  nfsv4.1 or pnfs anything like that?
+However this commit says that it's not allowed by the spec.
 
-Thanks!
+commit cd9288ffaea4359d5cfe2b8d264911506aed26a4
+Author: Trond Myklebust <trond.myklebust@primarydata.com>
+Date:   Thu Sep 18 11:51:32 2014 -0400
 
--Blake
+    NFSv4: Fix another bug in the close/open_downgrade code
 
+    James Drew reports another bug whereby the NFS client is now sending
+    an OPEN_DOWNGRADE in a situation where it should really have sent a
+    CLOSE: the client is opening the file for O_RDWR, but then trying to
+    do a downgrade to O_RDONLY, which is not allowed by the NFSv4 spec.
 
+    Reported-by: James Drews <drews@engr.wisc.edu>
+    Link: http://lkml.kernel.org/r/541AD7E5.8020409@engr.wisc.edu
+    Fixes: aee7af356e15 (NFSv4: Fix problems with close in the presence...)
+    Cc: stable@vger.kernel.org # 2.6.33+
+    Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
 
+If RDWR to RDONLY isn't allowed then why do we have OPEN_DOWNGRADE at all?
