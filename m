@@ -1,75 +1,32 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:39854 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750981AbcFANCL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 1 Jun 2016 09:02:11 -0400
-Date: Wed, 1 Jun 2016 09:02:10 -0400
-To: Matthias Leopold <matthias.leopold@meduniwien.ac.at>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: getattr ERROR: Request couldn't be completed in time
-Message-ID: <20160601130210.GD3387@fieldses.org>
-References: <574D7F26.1090202@meduniwien.ac.at>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <574D7F26.1090202@meduniwien.ac.at>
-From: bfields@fieldses.org (J. Bruce Fields)
+Received: from mail-out2.apple.com ([17.151.62.25]:50059 "EHLO
+	mail-in2.apple.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1751058AbcFATAu convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 1 Jun 2016 15:00:50 -0400
+Received: from [17.115.111.245] (unknown [17.115.111.245])
+ by nwk-mmpp-sz07.apple.com
+ (Oracle Communications Messaging Server 7.0.5.35.0 64bit (built Mar 31 2015))
+ with ESMTPSA id <0O83004OLW4CEB50@nwk-mmpp-sz07.apple.com> for
+ linux-nfs@vger.kernel.org; Wed, 01 Jun 2016 11:45:48 -0700 (PDT)
+From: Blake Golliher <bgolliher@apple.com>
+Content-type: text/plain; charset=utf-8
+Subject: NFS client side failover
+Message-id: <AEFEE2E4-0F50-44EA-9C33-EC64A7AA6E59@apple.com>
+Date: Wed, 01 Jun 2016 11:45:48 -0700
+To: linux-nfs@vger.kernel.org
+MIME-version: 1.0 (Mac OS X Mail 9.1 \(3096.5\))
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, May 31, 2016 at 02:10:14PM +0200, Matthias Leopold wrote:
-> hi,
-> 
-> i'm trying to mount a NFS 4 share with "sec=sys" from a NetApp
-> FAS3250 on a CentOS KVM guest. this doesn't work, the mount doesn't
-> complete and hangs.
-> 
-> mount command is:
-> /bin/mount -v -t nfs -s -o vers=4.1,sec=sys 10.110.96.90:/home /home/cir
-> 
-> what i'm seeing in tcpdump is:
-> 
-> 08:36:48.875019 IP 10.110.96.112.2456702824 > 10.110.96.90.2049: 212
-> getattr fh 0,1/53
-> 08:36:48.875355 IP 10.110.96.90.2049 > 10.110.96.112.2456702824:
-> reply ok 96 getattr ERROR: Request couldn't be completed in time
+Hi! 
 
-I guess that's NFS4ERR_DELAY?  (Wireshark would show the details.)
+Hopefully a simple question.  Is there any work in making the linux nfs client able to survive a nfs server failover to another IP?  Meaning, I have an NFS server, on a node called ‘cheetah', and it’s HA side is 'puma', and a client named 'lizard’.  If lizard has an established mount on ‘cheetah’, then cheetah suffers some event, and puma takes over it’s storage, but the IP changes, can lizard try it’s IO to the new IP?  Assuming the fsid, data in the filesystem, export permissions are all fine, the only change is the IP the client is talking to goes away, but there is a new IP it could use.
 
-> server: 10.110.96.90
-> client: 10.110.96.112
-> 
-> status of nfs services:
-> 
-> nfslock: running
-> rpcbind: running
-> rpcidmapd: stopped
-> 
-> this happens with a centos 6 _and_ a centos 7 client (both KVM).
-> NFS 3 mount from the same host don't work either.
-> 
-> other kvm guests (centos 6) on the same physical host can mount the
-> share with no problem.
-> 
-> the netapp admin tells me there's "no problem" on his side.
+Is there any work in a client failover like that?  nfsv4.1 or pnfs anything like that?
 
-I think that needs to be looked into in more detail.
+Thanks!
 
---b.
+-Blake
 
-> iptables is disabled of course.
-> 
-> ###
-> 
-> what could be the problem on my (client) side?
-> could this be a kvm problem?
-> 
-> kvm host is centos 6.
-> network mode is "bridge".
-> network driver is "virtio".
-> 
-> thx for any advice
-> matthias
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+
