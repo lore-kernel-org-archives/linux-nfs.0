@@ -1,69 +1,37 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:41566 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932171AbcFBUbH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 2 Jun 2016 16:31:07 -0400
-Date: Thu, 2 Jun 2016 16:31:06 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: NeilBrown <neilb@suse.com>
-Cc: NFS List <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] sunrpc: remove 'inuse' flag from struct cache_detail.
-Message-ID: <20160602203106.GB15621@fieldses.org>
-References: <87inxsp0ew.fsf@notabene.neil.brown.name>
+Received: from mail-yw0-f180.google.com ([209.85.161.180]:34725 "EHLO
+	mail-yw0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932166AbcFBW7j (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 2 Jun 2016 18:59:39 -0400
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <87inxsp0ew.fsf@notabene.neil.brown.name>
+In-Reply-To: <CAADWXX_F0jOjui1iHti1eC6tsD+cwMzZ0T_16e9nCzAK6raFxA@mail.gmail.com>
+References: <CA+55aFxPSW+84KfQ1N_WmND-wtvgj2zQm8nFPkRcc+gyU=uing@mail.gmail.com>
+	<20160525072027.5107.qmail@ns.sciencehorizons.net>
+	<CAADWXX_F0jOjui1iHti1eC6tsD+cwMzZ0T_16e9nCzAK6raFxA@mail.gmail.com>
+Date: Thu, 2 Jun 2016 15:59:38 -0700
+Message-ID: <CAJAFBLD5ipSiNNCUxkeqYn59+7r59LGAy2fXt-ag7aGh+s6Ckg@mail.gmail.com>
+Subject: Re: [PATCH 00/10] String hash improvements
+From: Fubo Chen <fubo.chen@gmail.com>
+To: Linus Torvalds <torvalds@linux-foundation.org>
+Cc: George Spelvin <linux@sciencehorizons.net>,
+        lkml <linux-kernel@vger.kernel.org>, alistair.francis@xilinx.com,
+        Bruce Fields <bfields@fieldses.org>, geert@linux-m68k.org,
+        gerg@linux-m68k.org, jlayton@poochiereds.net,
+        linux-m68k@vger.kernel.org, linux-nfs@vger.kernel.org,
+        michal.simek@xilinx.com, Thomas Gleixner <tglx@linutronix.de>,
+        uclinux-h8-devel@lists.sourceforge.jp, ysato@users.sourceforge.jp
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Jun 02, 2016 at 04:31:03PM +1000, NeilBrown wrote:
-> 
-> This field is not currently in use.
+On Wed, May 25, 2016 at 9:08 AM, Linus Torvalds
+<torvalds@linux-foundation.org> wrote:
+> Ok, thanks. For some odd reason all your emails in this series got
+> marked as spam. Every single one, including the cover letter (but not
+> your replies to the replies to this).
 
-Hah.  OK, thanks.--b.
+I have added the following filter to my gmail account: "never send
+e-mails with [PATCH in the subject to the spam folder". That helps a
+lot.
 
-> 
-> Signed-off-by: NeilBrown <neilb@suse.com>
-> ---
-> 
-> I recently noticed this and wondered what it was for. "Nothing" seems to
-> be the answer..
-> 
-> NeilBrown
-> 
-> 
->  include/linux/sunrpc/cache.h | 2 --
->  net/sunrpc/cache.c           | 2 +-
->  2 files changed, 1 insertion(+), 3 deletions(-)
-> 
-> diff --git a/include/linux/sunrpc/cache.h b/include/linux/sunrpc/cache.h
-> index ed03c9f7f908..62a60eeacb0a 100644
-> --- a/include/linux/sunrpc/cache.h
-> +++ b/include/linux/sunrpc/cache.h
-> @@ -78,8 +78,6 @@ struct cache_detail {
->  	struct hlist_head *	hash_table;
->  	rwlock_t		hash_lock;
->  
-> -	atomic_t		inuse; /* active user-space update or lookup */
-> -
->  	char			*name;
->  	void			(*cache_put)(struct kref *);
->  
-> diff --git a/net/sunrpc/cache.c b/net/sunrpc/cache.c
-> index 553bf95f7003..4d8e11f94a35 100644
-> --- a/net/sunrpc/cache.c
-> +++ b/net/sunrpc/cache.c
-> @@ -362,7 +362,7 @@ void sunrpc_destroy_cache_detail(struct cache_detail *cd)
->  	cache_purge(cd);
->  	spin_lock(&cache_list_lock);
->  	write_lock(&cd->hash_lock);
-> -	if (cd->entries || atomic_read(&cd->inuse)) {
-> +	if (cd->entries) {
->  		write_unlock(&cd->hash_lock);
->  		spin_unlock(&cache_list_lock);
->  		goto out;
-> -- 
-> 2.8.3
-> 
-
-
+Fubo.
