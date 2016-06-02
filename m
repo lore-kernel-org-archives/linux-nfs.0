@@ -1,63 +1,87 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:33046 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:60290 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750850AbcFBMJk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 2 Jun 2016 08:09:40 -0400
-Received: from int-mx09.intmail.prod.int.phx2.redhat.com (int-mx09.intmail.prod.int.phx2.redhat.com [10.5.11.22])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
-	(No client certificate requested)
-	by mx1.redhat.com (Postfix) with ESMTPS id 8CC967F6A6
-	for <linux-nfs@vger.kernel.org>; Thu,  2 Jun 2016 12:09:39 +0000 (UTC)
-Received: from steved.boston.devel.redhat.com (vpn-59-172.rdu2.redhat.com [10.10.59.172])
-	by int-mx09.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id u52C9cja013534
-	for <linux-nfs@vger.kernel.org>; Thu, 2 Jun 2016 08:09:39 -0400
+	id S1752365AbcFBOum (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 2 Jun 2016 10:50:42 -0400
+Subject: Re: [Libtirpc-devel] [PATCH 1/3] Make it clear rpc_createerr is
+ thread safe
+To: Paulo Andrade <paulo.cesar.pereira.de.andrade@gmail.com>,
+        libtirpc-devel@lists.sourceforge.net
+References: <1463593885-1179-1-git-send-email-pcpa@gnu.org>
+ <1463672110-10026-1-git-send-email-pcpa@gnu.org>
+ <1463672110-10026-2-git-send-email-pcpa@gnu.org>
+Cc: linux-nfs@vger.kernel.org, Paulo Andrade <pcpa@gnu.org>
 From: Steve Dickson <SteveD@redhat.com>
-Subject: Monthly Linux NFS Town Hall meeting: *Today* - Thur Jun 2
-To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Message-ID: <65408623-4ba1-b03e-f8b2-48c98167e0e8@RedHat.com>
-Date: Thu, 2 Jun 2016 08:09:38 -0400
+Message-ID: <84940ee5-ca5b-c07b-521e-9a89c98fdf93@RedHat.com>
+Date: Thu, 2 Jun 2016 10:50:40 -0400
 MIME-Version: 1.0
+In-Reply-To: <1463672110-10026-2-git-send-email-pcpa@gnu.org>
 Content-Type: text/plain; charset=windows-1252
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hello,
 
-Sorry for the late notice... I took yesterday off.
 
-We have not had one of these for a while so lets see
-what everyone is up to... 
-
-The meeting will be *Today* at 
-
-   *01:00 pm EST (10:00am PST)*
-
-The usual agenda will apply. The maintainers will give
-a quick status of what is happening in their worlds.
-
-Next we'll get updates from major contributors on what
-they have been doing and are planing on doing.
-  
-Finally, we'll open the floor to questions, comments, 
-concerns from the community.  
-
-Generally the meeting lasts between 30 to 45 mins, with 
-a very hard stop at 60mins. 
-
-Please feel to attend and participate!
-
-Again the Time: 10:00 am PST (01:00 pm EST)
-
-BlueJeans Video Link:
-    https://bluejeans.com/5642721552/
-
-The call in numbers are:
-
-U.S. and Canada: (800) 451-8679
-World wide toll free numbers
-   https://www.intercallonline.com/listNumbersByCode.action?confCode=5642721552
-
-Conference code: 564.272.1552
+On 05/19/2016 11:35 AM, Paulo Andrade wrote:
+>   Avoid hidding it under a macro, and also avoid multiple function
+> calls when accessing structure fields.
+> 
+> Signed-off-by: Paulo Andrade <pcpa@gnu.org>
+Committed... 
 
 steved.
 
+> ---
+>  src/clnt_vc.c | 17 +++++++++++------
+>  1 file changed, 11 insertions(+), 6 deletions(-)
+> 
+> diff --git a/src/clnt_vc.c b/src/clnt_vc.c
+> index a72f9f7..8af7ddd 100644
+> --- a/src/clnt_vc.c
+> +++ b/src/clnt_vc.c
+> @@ -72,6 +72,8 @@
+>  #define CMGROUP_MAX    16
+>  #define SCM_CREDS      0x03            /* process creds (struct cmsgcred) */
+>  
+> +#undef rpc_createerr                   /* make it clear it is a thread safe variable */
+> +
+>  /*
+>   * Credentials structure, used to verify the identity of a peer
+>   * process that has sent us a message. This is allocated by the
+> @@ -188,10 +190,11 @@ clnt_vc_create(fd, raddr, prog, vers, sendsz, recvsz)
+>  	cl = (CLIENT *)mem_alloc(sizeof (*cl));
+>  	ct = (struct ct_data *)mem_alloc(sizeof (*ct));
+>  	if ((cl == (CLIENT *)NULL) || (ct == (struct ct_data *)NULL)) {
+> +		struct rpc_createerr *ce = &get_rpc_createerr();
+>  		(void) syslog(LOG_ERR, clnt_vc_errstr,
+>  		    clnt_vc_str, __no_mem_str);
+> -		rpc_createerr.cf_stat = RPC_SYSTEMERROR;
+> -		rpc_createerr.cf_error.re_errno = errno;
+> +		ce->cf_stat = RPC_SYSTEMERROR;
+> +		ce->cf_error.re_errno = errno;
+>  		goto err;
+>  	}
+>  	ct->ct_addr.buf = NULL;
+> @@ -235,15 +238,17 @@ clnt_vc_create(fd, raddr, prog, vers, sendsz, recvsz)
+>  	slen = sizeof ss;
+>  	if (getpeername(fd, (struct sockaddr *)&ss, &slen) < 0) {
+>  		if (errno != ENOTCONN) {
+> -			rpc_createerr.cf_stat = RPC_SYSTEMERROR;
+> -			rpc_createerr.cf_error.re_errno = errno;
+> +			struct rpc_createerr *ce = &get_rpc_createerr();
+> +			ce->cf_stat = RPC_SYSTEMERROR;
+> +			ce->cf_error.re_errno = errno;
+>  			mutex_unlock(&clnt_fd_lock);
+>  			thr_sigsetmask(SIG_SETMASK, &(mask), NULL);
+>  			goto err;
+>  		}
+>  		if (connect(fd, (struct sockaddr *)raddr->buf, raddr->len) < 0){
+> -			rpc_createerr.cf_stat = RPC_SYSTEMERROR;
+> -			rpc_createerr.cf_error.re_errno = errno;
+> +			struct rpc_createerr *ce = &get_rpc_createerr();
+> +			ce->cf_stat = RPC_SYSTEMERROR;
+> +			ce->cf_error.re_errno = errno;
+>  			mutex_unlock(&clnt_fd_lock);
+>  			thr_sigsetmask(SIG_SETMASK, &(mask), NULL);
+>  			goto err;
+> 
