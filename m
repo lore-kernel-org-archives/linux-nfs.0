@@ -1,73 +1,75 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:38453 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:39949 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752911AbcFBOvZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 2 Jun 2016 10:51:25 -0400
-Subject: Re: [Libtirpc-devel] [PATCH 3/3] Do not hold a global mutex during
- connect
-To: Paulo Andrade <paulo.cesar.pereira.de.andrade@gmail.com>,
-        libtirpc-devel@lists.sourceforge.net
-References: <1463593885-1179-1-git-send-email-pcpa@gnu.org>
- <1463672110-10026-1-git-send-email-pcpa@gnu.org>
- <1463672110-10026-4-git-send-email-pcpa@gnu.org>
-Cc: linux-nfs@vger.kernel.org, Paulo Andrade <pcpa@gnu.org>
+	id S932841AbcFBQuz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 2 Jun 2016 12:50:55 -0400
+Received: from int-mx13.intmail.prod.int.phx2.redhat.com (int-mx13.intmail.prod.int.phx2.redhat.com [10.5.11.26])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+	(No client certificate requested)
+	by mx1.redhat.com (Postfix) with ESMTPS id 17DAA3B71B
+	for <linux-nfs@vger.kernel.org>; Thu,  2 Jun 2016 16:50:54 +0000 (UTC)
+Received: from steved.boston.devel.redhat.com (steved.boston.devel.redhat.com [10.19.60.47])
+	by int-mx13.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id u52GorvZ017206
+	for <linux-nfs@vger.kernel.org>; Thu, 2 Jun 2016 12:50:53 -0400
+Subject: Re: Monthly Linux NFS Town Hall meeting: *Today* - Thur Jun 2
+To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+References: <65408623-4ba1-b03e-f8b2-48c98167e0e8@RedHat.com>
 From: Steve Dickson <SteveD@redhat.com>
-Message-ID: <42ceb376-1853-5ad6-2fa4-8022de48776e@RedHat.com>
-Date: Thu, 2 Jun 2016 10:51:23 -0400
+Message-ID: <4638a7b3-4835-69df-7c11-76213f432a87@RedHat.com>
+Date: Thu, 2 Jun 2016 12:50:53 -0400
 MIME-Version: 1.0
-In-Reply-To: <1463672110-10026-4-git-send-email-pcpa@gnu.org>
+In-Reply-To: <65408623-4ba1-b03e-f8b2-48c98167e0e8@RedHat.com>
 Content-Type: text/plain; charset=windows-1252
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-
-On 05/19/2016 11:35 AM, Paulo Andrade wrote:
->   A multi-threaded application, connecting to multiple rpc servers,
-> may dead lock if the connect call stalls on a non responsive server.
-> 
-> Signed-off-by: Paulo Andrade <pcpa@gnu.org>
-committed... 
+Quick reminder... this will be starting a few... 
 
 steved.
-> ---
->  src/clnt_vc.c | 7 +++----
->  1 file changed, 3 insertions(+), 4 deletions(-)
+
+On 06/02/2016 08:09 AM, Steve Dickson wrote:
+> Hello,
 > 
-> diff --git a/src/clnt_vc.c b/src/clnt_vc.c
-> index 0da18ca..0f018d5 100644
-> --- a/src/clnt_vc.c
-> +++ b/src/clnt_vc.c
-> @@ -233,15 +233,16 @@ clnt_vc_create(fd, raddr, prog, vers, sendsz, recvsz)
->  		assert(vc_cv != (cond_t *) NULL);
->  
->  	/*
-> -	 * XXX - fvdl connecting while holding a mutex?
-> +	 * Do not hold mutex during connect
->  	 */
-> +	mutex_unlock(&clnt_fd_lock);
-> +
->  	slen = sizeof ss;
->  	if (getpeername(fd, (struct sockaddr *)&ss, &slen) < 0) {
->  		if (errno != ENOTCONN) {
->  			struct rpc_createerr *ce = &get_rpc_createerr();
->  			ce->cf_stat = RPC_SYSTEMERROR;
->  			ce->cf_error.re_errno = errno;
-> -			mutex_unlock(&clnt_fd_lock);
->  			thr_sigsetmask(SIG_SETMASK, &(mask), NULL);
->  			goto err;
->  		}
-> @@ -249,12 +250,10 @@ clnt_vc_create(fd, raddr, prog, vers, sendsz, recvsz)
->  			struct rpc_createerr *ce = &get_rpc_createerr();
->  			ce->cf_stat = RPC_SYSTEMERROR;
->  			ce->cf_error.re_errno = errno;
-> -			mutex_unlock(&clnt_fd_lock);
->  			thr_sigsetmask(SIG_SETMASK, &(mask), NULL);
->  			goto err;
->  		}
->  	}
-> -	mutex_unlock(&clnt_fd_lock);
->  	if (!__rpc_fd2sockinfo(fd, &si))
->  		goto err;
->  	thr_sigsetmask(SIG_SETMASK, &(mask), NULL);
+> Sorry for the late notice... I took yesterday off.
+> 
+> We have not had one of these for a while so lets see
+> what everyone is up to... 
+> 
+> The meeting will be *Today* at 
+> 
+>    *01:00 pm EST (10:00am PST)*
+> 
+> The usual agenda will apply. The maintainers will give
+> a quick status of what is happening in their worlds.
+> 
+> Next we'll get updates from major contributors on what
+> they have been doing and are planing on doing.
+>   
+> Finally, we'll open the floor to questions, comments, 
+> concerns from the community.  
+> 
+> Generally the meeting lasts between 30 to 45 mins, with 
+> a very hard stop at 60mins. 
+> 
+> Please feel to attend and participate!
+> 
+> Again the Time: 10:00 am PST (01:00 pm EST)
+> 
+> BlueJeans Video Link:
+>     https://bluejeans.com/5642721552/
+> 
+> The call in numbers are:
+> 
+> U.S. and Canada: (800) 451-8679
+> World wide toll free numbers
+>    https://www.intercallonline.com/listNumbersByCode.action?confCode=5642721552
+> 
+> Conference code: 564.272.1552
+> 
+> steved.
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 > 
