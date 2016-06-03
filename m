@@ -1,102 +1,120 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from linuxhacker.ru ([217.76.32.60]:33748 "EHLO fiona.linuxhacker.ru"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932166AbcFBXDj convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 2 Jun 2016 19:03:39 -0400
-From: Oleg Drokin <green@linuxhacker.ru>
-Content-Type: text/plain; charset=us-ascii
-Subject: NFS/d_splice_alias breakage
-Date: Thu, 2 Jun 2016 18:46:08 -0400
-Message-Id: <CF78E59B-F311-437B-9D1C-1F3FF6C22126@linuxhacker.ru>
-Cc: linux-nfs@vger.kernel.org,
+Received: from us-smtp-delivery-194.mimecast.com ([216.205.24.194]:51452 "EHLO
+	us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1750833AbcFCAoz (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 2 Jun 2016 20:44:55 -0400
+From: Trond Myklebust <trondmy@primarydata.com>
+To: Oleg Drokin <green@linuxhacker.ru>, Al Viro <viro@zeniv.linux.org.uk>,
+        "J. Bruce Fields" <bfields@redhat.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
         "<linux-kernel@vger.kernel.org> Mailing List"
 	<linux-kernel@vger.kernel.org>,
         "<linux-fsdevel@vger.kernel.org>" <linux-fsdevel@vger.kernel.org>
-To: Al Viro <viro@zeniv.linux.org.uk>, "J. Bruce Fields" <bfields@redhat.com>
-Mime-Version: 1.0 (Apple Message framework v1283)
+Subject: Re: NFS/d_splice_alias breakage
+Date: Fri, 3 Jun 2016 00:44:51 +0000
+Message-ID: <F0790F28-A8F9-406E-8B1A-F3F3773DA28E@primarydata.com>
+References: <CF78E59B-F311-437B-9D1C-1F3FF6C22126@linuxhacker.ru>
+In-Reply-To: <CF78E59B-F311-437B-9D1C-1F3FF6C22126@linuxhacker.ru>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hello!
+DQoNCk9uIDYvMi8xNiwgMTg6NDYsICJsaW51eC1uZnMtb3duZXJAdmdlci5rZXJuZWwub3JnIG9u
+IGJlaGFsZiBvZiBPbGVnIERyb2tpbiIgPGxpbnV4LW5mcy1vd25lckB2Z2VyLmtlcm5lbC5vcmcg
+b24gYmVoYWxmIG9mIGdyZWVuQGxpbnV4aGFja2VyLnJ1PiB3cm90ZToNCg0KPkhlbGxvIQ0KPg0K
+PiAgIEkganVzdCBjYW1lIGFjcm9zcyBhIGJ1ZyAodHJ5aW5nIHRvIHJ1biBzb21lIEx1c3RyZSB0
+ZXN0IHNjcmlwdHMgYWdhaW5zdCBORlMsIHdoaWxlIGh1bnRpbmcgZm9yIGFub3RoZXIgbmZzZCBi
+dWcpDQo+ICAgdGhhdCBzZWVtcyB0byBiZSBwcmVzZW50IHNpbmNlIGF0IGxlYXN0IDIwMTQgdGhh
+dCBsZXRzIHVzZXJzIGNyYXNoIG5mcyBjbGllbnQgbG9jYWxseS4NCj4NCj4gICBIZXJlJ3Mgc29t
+ZSBpbnRlcmVzdGluZyBjb21tZW50IHF1b3RlIGZpcnN0IGZyb20gZF9vYnRhaW5fYWxpYXM6DQo+
+DQo+PiAgKiBDbHVzdGVyIGZpbGVzeXN0ZW1zIG1heSBjYWxsIHRoaXMgZnVuY3Rpb24gd2l0aCBh
+IG5lZ2F0aXZlLCBoYXNoZWQgZGVudHJ5Lg0KPj4gICogSW4gdGhhdCBjYXNlLCB3ZSBrbm93IHRo
+YXQgdGhlIGlub2RlIHdpbGwgYmUgYSByZWd1bGFyIGZpbGUsIGFuZCBhbHNvIHRoaXMNCj4+ICAq
+IHdpbGwgb25seSBvY2N1ciBkdXJpbmcgYXRvbWljX29wZW4uIFNvIHdlIG5lZWQgdG8gY2hlY2sg
+Zm9yIHRoZSBkZW50cnkNCj4+ICAqIGJlaW5nIGFscmVhZHkgaGFzaGVkIG9ubHkgaW4gdGhlIGZp
+bmFsIGNhc2UuDQo+PiAgKi8NCj4+IHN0cnVjdCBkZW50cnkgKmRfc3BsaWNlX2FsaWFzKHN0cnVj
+dCBpbm9kZSAqaW5vZGUsIHN0cnVjdCBkZW50cnkgKmRlbnRyeSkNCj4+IHsNCj4+ICAgICAgICAg
+aWYgKElTX0VSUihpbm9kZSkpDQo+PiAgICAgICAgICAgICAgICAgcmV0dXJuIEVSUl9DQVNUKGlu
+b2RlKTsNCj4+IA0KPj4gICAgICAgICBCVUdfT04oIWRfdW5oYXNoZWQoZGVudHJ5KSk7DQo+ICAg
+ICAgICBeXl5eXl5eXl5eXl5eXiAtIFRoaXMgZG9lcyBub3QgYWxpZ24gd2VsbCB3aXRoIHRoZSBx
+dW90ZSBhYm92ZS4NCj4NCj5JdCBnb3QgaW1wb3J0ZWQgaGVyZSBieSBjb21taXQgYjVhZTZiMTVi
+ZDczZTM1YjEyOTQwODc1NWEwODA0Mjg3YTg3ZTA0MQ0KPg0KPlJlbW92aW5nIHRoZSBCVUdfT04g
+aGVhZG9uIGlzIG5vdCBnb2luZyB0byB3b3JrIHNpbmNlIHRoZSBkX3JlaGFzaCBvZiBvbGQNCj5p
+cyBub3cgZm9sZGVkIGludG8gX19kX2FkZCBhbmQgd2UgbWlnaHQgbm90IHdhbnQgdG8gbW92ZSB0
+aGF0IGNvbmRpdGlvbiB0aGVyZS4NCj4NCj5kb2luZyBhbg0KPmlmIChkX3VuaGFzaGVkKGRlbnRy
+eSkpDQo+ICAgX19kX2FkZChkZW50cnksIGlub2RlKTsNCj5lbHNlDQo+ICAgZF9pbnN0YW50aWF0
+ZShkZW50cnksIGlub2RlKTsNCj4NCj5hbHNvIGRvZXMgbm90IGxvb2sgc3VwZXIgcHJldHR5IGFu
+ZCB3aG8ga25vd3MgaG93IGFsbCBvZiB0aGUgcHJldmlvdXMgY29kZQ0KPmxpa2UgX2RfZmluZF9h
+bnlfYWxpYXMgd291bGQgcmVhY3QuDQo+DQo+QWwsIEkgdGhpbmsgeW91IG1pZ2h0IHdhbnQgdG8g
+Y2hpbWUgaW4gaGVyZSBvbiBob3cgdG8gYmV0dGVyIGhhbmRsZSB0aGlzPw0KPg0KPlRoZSBwcm9i
+bGVtIHdhcyB0aGVyZSBhdCBsZWFzdCBzaW5jZSAzLjEwIGl0IGFwcGVhcnMgd2hlcmUgdGhlIGZz
+L25mcy9kaXIuYyBjb2RlDQo+d2FzIGNhbGxpbmcgZF9tYXRlcmlhbGlzZV91bmlxdWUoKSB0aGF0
+IGRpZCByZXF1aXJlIHRoZSBkZW50cnkgdG8gYmUgdW5oYXNoZWQuDQo+DQo+Tm90IHN1cmUgaG93
+IHRoaXMgd2FzIG5vdCBoaXQgZWFybGllci4gVGhlIGNyYXNoIGxvb2tzIGxpa2UgdGhpcyAoSSBh
+ZGRlZA0KPmEgcHJpbnRrIHRvIGVuc3VyZSB0aGlzIGlzIHdoYXQgaXMgZ29pbmcgb24gaW5kZWVk
+IGFuZCBub3Qgc29tZSBvdGhlciB3ZWlyZCByYWNlKToNCj4NCj5bICAgNjQuNDg5MzI2XSBDYWxs
+aW5nIGludG8gZF9zcGxpY2VfYWxpYXMgd2l0aCBoYXNoZWQgZGVudHJ5LCBkZW50cnktPmRfaW5v
+ZGUgKG51bGwpIGlub2RlIGZmZmY4ODAxMGY1MDBjNzANCj5bICAgNjQuNDg5NTQ5XSAtLS0tLS0t
+LS0tLS1bIGN1dCBoZXJlIF0tLS0tLS0tLS0tLS0NCj5bICAgNjQuNDg5NjQyXSBrZXJuZWwgQlVH
+IGF0IC9ob21lL2dyZWVuL2JrL2xpbnV4L2ZzL2RjYWNoZS5jOjI5ODkhDQo+WyAgIDY0LjQ4OTc1
+MF0gaW52YWxpZCBvcGNvZGU6IDAwMDAgWyMxXSBTTVAgREVCVUdfUEFHRUFMTE9DDQo+WyAgIDY0
+LjQ4OTg1M10gTW9kdWxlcyBsaW5rZWQgaW46IGxvb3AgcnBjc2VjX2dzc19rcmI1IGpveWRldiBw
+Y3Nwa3IgYWNwaV9jcHVmcmVxIGkyY19waWl4NCB0cG1fdGlzIHRwbSBuZnNkIGRybV9rbXNfaGVs
+cGVyIHR0bSBkcm0gc2VyaW9fcmF3IHZpcnRpb19ibGsNCj5bICAgNjQuNDkxMTExXSBDUFU6IDYg
+UElEOiA3MTI1IENvbW06IGZpbGVfY29uY2F0LnNoIE5vdCB0YWludGVkIDQuNy4wLXJjMS12bS1u
+ZnMrICM5OQ0KPlsgICA2NC40OTIwNjldIEhhcmR3YXJlIG5hbWU6IEJvY2hzIEJvY2hzLCBCSU9T
+IEJvY2hzIDAxLzAxLzIwMTENCj5bICAgNjQuNDkyNDg5XSB0YXNrOiBmZmZmODgwMTEwYTgwMWMw
+IHRpOiBmZmZmODgwMGMyODNjMDAwIHRhc2sudGk6IGZmZmY4ODAwYzI4M2MwMDANCj5bICAgNjQu
+NDkzMTU5XSBSSVA6IDAwMTA6WzxmZmZmZmZmZjgxMjQyOTJmPl0gIFs8ZmZmZmZmZmY4MTI0Mjky
+Zj5dIGRfc3BsaWNlX2FsaWFzKzB4MzFmLzB4NDgwDQo+WyAgIDY0LjQ5Mzg2Nl0gUlNQOiAwMDE4
+OmZmZmY4ODAwYzI4M2ZiMjAgIEVGTEFHUzogMDAwMTAyODINCj5bICAgNjQuNDk0MjM4XSBSQVg6
+IDAwMDAwMDAwMDAwMDAwNjcgUkJYOiBmZmZmODgwMTBmNTAwYzcwIFJDWDogMDAwMDAwMDAwMDAw
+MDAwMA0KPlsgICA2NC40OTQ2MjVdIFJEWDogMDAwMDAwMDAwMDAwMDA2NyBSU0k6IGZmZmY4ODAw
+ZDA4ZDJlZDAgUkRJOiBmZmZmODgwMTBmNTAwYzcwDQo+WyAgIDY0LjQ5NTAyMV0gUkJQOiBmZmZm
+ODgwMGMyODNmYjc4IFIwODogMDAwMDAwMDAwMDAwMDAwMSBSMDk6IDAwMDAwMDAwMDAwMDAwMDAN
+Cj5bICAgNjQuNDk1NDA3XSBSMTA6IDAwMDAwMDAwMDAwMDAwMDEgUjExOiAwMDAwMDAwMDAwMDAw
+MDAxIFIxMjogZmZmZjg4MDBkMDhkMmVkMA0KPlsgICA2NC40OTU4MDRdIFIxMzogMDAwMDAwMDAw
+MDAwMDAwMCBSMTQ6IGZmZmY4ODAwZDRhNTZmMDAgUjE1OiBmZmZmODgwMGQwYmI4YzcwDQo+WyAg
+IDY0LjQ5NjE5OV0gRlM6ICAwMDAwN2Y5NGFlMjVjNzAwKDAwMDApIEdTOmZmZmY4ODAxMWY1ODAw
+MDAoMDAwMCkga25sR1M6MDAwMDAwMDAwMDAwMDAwMA0KPlsgICA2NC40OTY4NTldIENTOiAgMDAx
+MCBEUzogMDAwMCBFUzogMDAwMCBDUjA6IDAwMDAwMDAwODAwNTAwMzMNCj5bICAgNjQuNDk3MjM1
+XSBDUjI6IDAwMDA1NWU1ZDNmYjQ2YTQgQ1IzOiAwMDAwMDAwMGNlMzY0MDAwIENSNDogMDAwMDAw
+MDAwMDAwMDZlMA0KPlsgICA2NC40OTc2MjZdIFN0YWNrOg0KPlsgICA2NC40OTc5NjFdICBmZmZm
+ZmZmZjgxMzIxNTRlIGZmZmY4ODAwYzI4M2ZiNjggZmZmZmZmZmY4MTMyNTkxNiAwMDAwMDAwMDAw
+MDAwMDAwDQo+WyAgIDY0LjQ5ODc2NV0gIDAwMDAwMDAwMDAwMDAwMDAgZmZmZjg4MDExMDk0NTlj
+MCAwMDAwMDAwMDAwMDAwMDAwIGZmZmY4ODAwZDBiYjhjNzANCj5bICAgNjQuNDk5NTc4XSAgZmZm
+Zjg4MDBjMjgzZmJhMCBmZmZmODgwMGQwOGQyZWQwIGZmZmY4ODAwY2I5MjcwODAgZmZmZjg4MDBj
+MjgzZmMxOA0KPlsgICA2NC41MDAzODVdIENhbGwgVHJhY2U6DQo+WyAgIDY0LjUwMDcyN10gIFs8
+ZmZmZmZmZmY4MTMyMTU0ZT5dID8gbmZzX2xvb2t1cCsweDE3ZS8weDMyMA0KPlsgICA2NC41MDEx
+MDNdICBbPGZmZmZmZmZmODEzMjU5MTY+XSA/IF9fcHV0X25mc19vcGVuX2NvbnRleHQrMHhjNi8w
+eGYwDQo+WyAgIDY0LjUwMTQ3N10gIFs8ZmZmZmZmZmY4MTMyMjUyYj5dIG5mc19hdG9taWNfb3Bl
+bisweDhiLzB4NDMwDQo+WyAgIDY0LjUwMTg1MF0gIFs8ZmZmZmZmZmY4MTIzNmRlZj5dIGxvb2t1
+cF9vcGVuKzB4MjlmLzB4N2EwDQo+WyAgIDY0LjUwMjIyMl0gIFs8ZmZmZmZmZmY4MTIzNzdjZT5d
+IHBhdGhfb3BlbmF0KzB4NGRlLzB4ZmMwDQo+WyAgIDY0LjUwMjU5MV0gIFs8ZmZmZmZmZmY4MTIz
+OTM1ZT5dIGRvX2ZpbHBfb3BlbisweDdlLzB4ZTANCj5bICAgNjQuNTAyOTY0XSAgWzxmZmZmZmZm
+ZjgxMjQ4NzdjPl0gPyBfX2FsbG9jX2ZkKzB4YmMvMHgxNzANCj5bICAgNjQuNTAzMzQ3XSAgWzxm
+ZmZmZmZmZjgxN2Y0OTc3Pl0gPyBfcmF3X3NwaW5fdW5sb2NrKzB4MjcvMHg0MA0KPlsgICA2NC41
+MDM3MTldICBbPGZmZmZmZmZmODEyNDg3N2M+XSA/IF9fYWxsb2NfZmQrMHhiYy8weDE3MA0KPlsg
+ICA2NC41MDQwOTddICBbPGZmZmZmZmZmODEyMjY4OTY+XSBkb19zeXNfb3BlbisweDExNi8weDFm
+MA0KPlsgICA2NC41MDQ0NjVdICBbPGZmZmZmZmZmODEyMjY5OGU+XSBTeVNfb3BlbisweDFlLzB4
+MjANCj5bICAgNjQuNTA0ODMxXSAgWzxmZmZmZmZmZjgxN2Y1MTc2Pl0gZW50cnlfU1lTQ0FMTF82
+NF9mYXN0cGF0aCsweDFlLzB4YWQNCj5bICAgNjQuNTA1MjE4XSBDb2RlOiAwMSBlOCA0NiAyMCA1
+YiAwMCA4NSBkYiA3NCAwYiA0YyA4OSBmZiA0YyA2MyBmYiBlOCA4NyBkOCBmZiBmZiA0YyA4OSBl
+NyBlOCAyZiAzYyAwMCAwMCA0YyA4OSBmOCBlOSA1ZSBmZSBmZiBmZiAwZiAwYiA0OCA4OSBmOCBj
+MyA8MGY+IDBiIDQ4IDhiIDQzIDQwIDRjIDhiIDc4IDU4IDQ5IDhkIDhmIDU4IDAzIDAwIDAwIGVi
+IDAyIGYzIDkwIA0KPlsgICA2NC41MDg3NTRdIFJJUCAgWzxmZmZmZmZmZjgxMjQyOTJmPl0gZF9z
+cGxpY2VfYWxpYXMrMHgzMWYvMHg0ODANCj5bICAgNjQuNTA5MTc2XSAgUlNQIDxmZmZmODgwMGMy
+ODNmYjIwPg0KDQpUaGF0IHdvdWxkIGhhdmUgdG8gYmUgYSByZWFsbHkgdGlnaHQgcmFjZSwgc2lu
+Y2UgdGhlIGNvZGUgaW4gX25mczRfb3Blbl9hbmRfZ2V0X3N0YXRlKCkgY3VycmVudGx5IHJlYWRz
+Og0KDQogICAgICAgICAgICAgICAgZF9kcm9wKGRlbnRyeSk7DQogICAgICAgICAgICAgICAgYWxp
+YXMgPSBkX2V4YWN0X2FsaWFzKGRlbnRyeSwgc3RhdGUtPmlub2RlKTsNCiAgICAgICAgICAgICAg
+ICBpZiAoIWFsaWFzKQ0KICAgICAgICAgICAgICAgICAgICAgICAgYWxpYXMgPSBkX3NwbGljZV9h
+bGlhcyhpZ3JhYihzdGF0ZS0+aW5vZGUpLCBkZW50cnkpOw0KDQpJT1c6IHNvbWV0aGluZyB3b3Vs
+ZCBoYXZlIHRvIGJlIGFjdGluZyBiZXR3ZWVuIHRoZSBkX2Ryb3AoKSBhbmQgZF9zcGxpY2VfYWxp
+YXMoKSBhYm92ZS4uLg0KDQpBbCwgSeKAmXZlIGJlZW4gZGlzdHJhY3RlZCBieSBwZXJzb25hbCBt
+YXR0ZXJzIGluIHRoZSBwYXN0IDYgbW9udGhzLiBXaGF0IGlzIHRoZXJlIHRvIGd1YXJhbnRlZSBl
+eGNsdXNpb24gb2YgdGhlIHJlYWRkaXJwbHVzIGRlbnRyeSBpbnN0YW50aWF0aW9uIGFuZCB0aGUg
+TkZTdjQgYXRvbWljIG9wZW4gaW4gdGhlIGJyYXZlIG5ldyB3b3JsZCBvZiBWRlMsIEp1bmUgMjAx
+NiB2aW50YWdlPw0KDQpDaGVlcnMNCiAgVHJvbmQNCg0K
 
-   I just came across a bug (trying to run some Lustre test scripts against NFS, while hunting for another nfsd bug)
-   that seems to be present since at least 2014 that lets users crash nfs client locally.
-
-   Here's some interesting comment quote first from d_obtain_alias:
-
->  * Cluster filesystems may call this function with a negative, hashed dentry.
->  * In that case, we know that the inode will be a regular file, and also this
->  * will only occur during atomic_open. So we need to check for the dentry
->  * being already hashed only in the final case.
->  */
-> struct dentry *d_splice_alias(struct inode *inode, struct dentry *dentry)
-> {
->         if (IS_ERR(inode))
->                 return ERR_CAST(inode);
-> 
->         BUG_ON(!d_unhashed(dentry));
-        ^^^^^^^^^^^^^^ - This does not align well with the quote above.
-
-It got imported here by commit b5ae6b15bd73e35b129408755a0804287a87e041
-
-Removing the BUG_ON headon is not going to work since the d_rehash of old
-is now folded into __d_add and we might not want to move that condition there.
-
-doing an
-if (d_unhashed(dentry))
-   __d_add(dentry, inode);
-else
-   d_instantiate(dentry, inode);
-
-also does not look super pretty and who knows how all of the previous code
-like _d_find_any_alias would react.
-
-Al, I think you might want to chime in here on how to better handle this?
-
-The problem was there at least since 3.10 it appears where the fs/nfs/dir.c code
-was calling d_materialise_unique() that did require the dentry to be unhashed.
-
-Not sure how this was not hit earlier. The crash looks like this (I added
-a printk to ensure this is what is going on indeed and not some other weird race):
-
-[   64.489326] Calling into d_splice_alias with hashed dentry, dentry->d_inode (null) inode ffff88010f500c70
-[   64.489549] ------------[ cut here ]------------
-[   64.489642] kernel BUG at /home/green/bk/linux/fs/dcache.c:2989!
-[   64.489750] invalid opcode: 0000 [#1] SMP DEBUG_PAGEALLOC
-[   64.489853] Modules linked in: loop rpcsec_gss_krb5 joydev pcspkr acpi_cpufreq i2c_piix4 tpm_tis tpm nfsd drm_kms_helper ttm drm serio_raw virtio_blk
-[   64.491111] CPU: 6 PID: 7125 Comm: file_concat.sh Not tainted 4.7.0-rc1-vm-nfs+ #99
-[   64.492069] Hardware name: Bochs Bochs, BIOS Bochs 01/01/2011
-[   64.492489] task: ffff880110a801c0 ti: ffff8800c283c000 task.ti: ffff8800c283c000
-[   64.493159] RIP: 0010:[<ffffffff8124292f>]  [<ffffffff8124292f>] d_splice_alias+0x31f/0x480
-[   64.493866] RSP: 0018:ffff8800c283fb20  EFLAGS: 00010282
-[   64.494238] RAX: 0000000000000067 RBX: ffff88010f500c70 RCX: 0000000000000000
-[   64.494625] RDX: 0000000000000067 RSI: ffff8800d08d2ed0 RDI: ffff88010f500c70
-[   64.495021] RBP: ffff8800c283fb78 R08: 0000000000000001 R09: 0000000000000000
-[   64.495407] R10: 0000000000000001 R11: 0000000000000001 R12: ffff8800d08d2ed0
-[   64.495804] R13: 0000000000000000 R14: ffff8800d4a56f00 R15: ffff8800d0bb8c70
-[   64.496199] FS:  00007f94ae25c700(0000) GS:ffff88011f580000(0000) knlGS:0000000000000000
-[   64.496859] CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
-[   64.497235] CR2: 000055e5d3fb46a4 CR3: 00000000ce364000 CR4: 00000000000006e0
-[   64.497626] Stack:
-[   64.497961]  ffffffff8132154e ffff8800c283fb68 ffffffff81325916 0000000000000000
-[   64.498765]  0000000000000000 ffff8801109459c0 0000000000000000 ffff8800d0bb8c70
-[   64.499578]  ffff8800c283fba0 ffff8800d08d2ed0 ffff8800cb927080 ffff8800c283fc18
-[   64.500385] Call Trace:
-[   64.500727]  [<ffffffff8132154e>] ? nfs_lookup+0x17e/0x320
-[   64.501103]  [<ffffffff81325916>] ? __put_nfs_open_context+0xc6/0xf0
-[   64.501477]  [<ffffffff8132252b>] nfs_atomic_open+0x8b/0x430
-[   64.501850]  [<ffffffff81236def>] lookup_open+0x29f/0x7a0
-[   64.502222]  [<ffffffff812377ce>] path_openat+0x4de/0xfc0
-[   64.502591]  [<ffffffff8123935e>] do_filp_open+0x7e/0xe0
-[   64.502964]  [<ffffffff8124877c>] ? __alloc_fd+0xbc/0x170
-[   64.503347]  [<ffffffff817f4977>] ? _raw_spin_unlock+0x27/0x40
-[   64.503719]  [<ffffffff8124877c>] ? __alloc_fd+0xbc/0x170
-[   64.504097]  [<ffffffff81226896>] do_sys_open+0x116/0x1f0
-[   64.504465]  [<ffffffff8122698e>] SyS_open+0x1e/0x20
-[   64.504831]  [<ffffffff817f5176>] entry_SYSCALL_64_fastpath+0x1e/0xad
-[   64.505218] Code: 01 e8 46 20 5b 00 85 db 74 0b 4c 89 ff 4c 63 fb e8 87 d8 ff ff 4c 89 e7 e8 2f 3c 00 00 4c 89 f8 e9 5e fe ff ff 0f 0b 48 89 f8 c3 <0f> 0b 48 8b 43 40 4c 8b 78 58 49 8d 8f 58 03 00 00 eb 02 f3 90 
-[   64.508754] RIP  [<ffffffff8124292f>] d_splice_alias+0x31f/0x480
-[   64.509176]  RSP <ffff8800c283fb20>
-
-Bye,
-    Oleg
