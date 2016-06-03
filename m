@@ -1,65 +1,92 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from zeniv.linux.org.uk ([195.92.253.2]:50282 "EHLO
-	ZenIV.linux.org.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751126AbcFCF47 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 3 Jun 2016 01:56:59 -0400
-Date: Fri, 3 Jun 2016 06:56:55 +0100
-From: Al Viro <viro@ZenIV.linux.org.uk>
-To: Oleg Drokin <green@linuxhacker.ru>
-Cc: "J. Bruce Fields" <bfields@redhat.com>, linux-nfs@vger.kernel.org,
-        "<linux-kernel@vger.kernel.org> Mailing List"
-	<linux-kernel@vger.kernel.org>,
-        "<linux-fsdevel@vger.kernel.org>" <linux-fsdevel@vger.kernel.org>
-Subject: Re: NFS/d_splice_alias breakage
-Message-ID: <20160603055655.GQ14480@ZenIV.linux.org.uk>
-References: <CF78E59B-F311-437B-9D1C-1F3FF6C22126@linuxhacker.ru>
- <20160603033750.GL14480@ZenIV.linux.org.uk>
- <0C971585-6BFC-4665-832B-9B262F733BFC@linuxhacker.ru>
- <20160603042648.GN14480@ZenIV.linux.org.uk>
- <51139F5D-8CC8-4448-B3AB-5EF1B67E2D6C@linuxhacker.ru>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <51139F5D-8CC8-4448-B3AB-5EF1B67E2D6C@linuxhacker.ru>
+Received: from smtp-o-3.desy.de ([131.169.56.156]:42760 "EHLO smtp-o-3.desy.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932593AbcFCMI5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 3 Jun 2016 08:08:57 -0400
+Received: from smtp-map-3.desy.de (smtp-map-3.desy.de [131.169.56.68])
+	by smtp-o-3.desy.de (DESY-O-3) with ESMTP id 5AAE52808A9
+	for <linux-nfs@vger.kernel.org>; Fri,  3 Jun 2016 14:08:55 +0200 (CEST)
+Received: from ZITSWEEP1.win.desy.de (zitsweep1.win.desy.de [131.169.97.95])
+	by smtp-map-3.desy.de (DESY_MAP_3) with ESMTP id 4E6601391
+	for <linux-nfs@vger.kernel.org>; Fri,  3 Jun 2016 14:08:54 +0200 (MEST)
+From: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
+To: linux-nfs@vger.kernel.org
+Cc: Yves Kemp <yves.kemp@desy.de>, Trond Myklebust <trondmy@primarydata.com>,
+        Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
+Subject: [PATCH] nfs4: clnt: respect noresvport when establishing connections to DSes
+Date: Fri,  3 Jun 2016 14:08:43 +0200
+Message-Id: <1464955723-4678-1-git-send-email-tigran.mkrtchyan@desy.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Jun 03, 2016 at 12:58:10AM -0400, Oleg Drokin wrote:
+tcp        0      0 131.169.185.68:34894    131.169.191.141:32049   ESTABLISHED
+tcp        0      0 131.169.185.68:35722    131.169.191.144:2049    ESTABLISHED
 
-> This one cures the insta-crash I was having, and I see no other ill-effects so far.
+tcp        0      0 131.169.185.68:1005     131.169.191.141:32049   ESTABLISHED
+tcp        0      0 131.169.185.68:751      131.169.191.144:2049    ESTABLISHED
 
-OK...  I can take it through vfs.git, but I think it'd be better off in
-NFS tree.  Is everyone OK with something like the following?
-
-make nfs_atomic_open() call d_drop() on all ->open_context() errors.
-
-In "NFSv4: Move dentry instantiation into the NFSv4-specific atomic open code"
-unconditional d_drop() after the ->open_context() had been removed.  It had
-been correct for success cases (there ->open_context() itself had been doing
-dcache manipulations), but not for error ones.  Only one of those (ENOENT)
-got a compensatory d_drop() added in that commit, but in fact it should've
-been done for all errors.  As it is, the case of O_CREAT non-exclusive open
-on a hashed negative dentry racing with e.g. symlink creation from another
-client ended up with ->open_context() getting an error and proceeding to
-call nfs_lookup().  On a hashed dentry, which would've instantly triggered
-BUG_ON() in d_materialise_unique() (or, these days, its equivalent in
-d_splice_alias()).
-
-Cc: stable@vger.kernel.org # v3.10+
-Tested-by: Oleg Drokin <green@linuxhacker.ru>
-Signed-off-by: Al Viro <viro@zeniv.linux.org.uk>
+Signed-off-by: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
 ---
-diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
-index aaf7bd0..6e3a6f4 100644
---- a/fs/nfs/dir.c
-+++ b/fs/nfs/dir.c
-@@ -1536,9 +1536,9 @@ int nfs_atomic_open(struct inode *dir, struct dentry *dentry,
- 		err = PTR_ERR(inode);
- 		trace_nfs_atomic_open_exit(dir, ctx, open_flags, err);
- 		put_nfs_open_context(ctx);
-+		d_drop(dentry);
- 		switch (err) {
- 		case -ENOENT:
--			d_drop(dentry);
- 			d_add(dentry, NULL);
- 			nfs_set_verifier(dentry, nfs_save_change_attribute(dir));
- 			break;
+ fs/nfs/internal.h   | 1 +
+ fs/nfs/nfs4client.c | 5 ++++-
+ fs/nfs/pnfs_nfs.c   | 2 ++
+ 3 files changed, 7 insertions(+), 1 deletion(-)
+
+diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
+index 5154fa6..e8b2192 100644
+--- a/fs/nfs/internal.h
++++ b/fs/nfs/internal.h
+@@ -185,6 +185,7 @@ extern struct nfs_server *nfs_clone_server(struct nfs_server *,
+ extern int nfs_wait_client_init_complete(const struct nfs_client *clp);
+ extern void nfs_mark_client_ready(struct nfs_client *clp, int state);
+ extern struct nfs_client *nfs4_set_ds_client(struct nfs_client* mds_clp,
++					     int noresvport,
+ 					     const struct sockaddr *ds_addr,
+ 					     int ds_addrlen, int ds_proto,
+ 					     unsigned int ds_timeo,
+diff --git a/fs/nfs/nfs4client.c b/fs/nfs/nfs4client.c
+index 10410e8..6cfb5f9 100644
+--- a/fs/nfs/nfs4client.c
++++ b/fs/nfs/nfs4client.c
+@@ -842,7 +842,7 @@ error:
+  * low timeout interval so that if a connection is lost, we retry through
+  * the MDS.
+  */
+-struct nfs_client *nfs4_set_ds_client(struct nfs_client* mds_clp,
++struct nfs_client *nfs4_set_ds_client(struct nfs_client* mds_clp, int noresvport,
+ 		const struct sockaddr *ds_addr, int ds_addrlen,
+ 		int ds_proto, unsigned int ds_timeo, unsigned int ds_retrans,
+ 		u32 minor_version, rpc_authflavor_t au_flavor)
+@@ -863,6 +863,9 @@ struct nfs_client *nfs4_set_ds_client(struct nfs_client* mds_clp,
+ 		return ERR_PTR(-EINVAL);
+ 	cl_init.hostname = buf;
+ 
++	if (noresvport)
++		set_bit(NFS_CS_NORESVPORT, &cl_init.init_flags);
++
+ 	/*
+ 	 * Set an authflavor equual to the MDS value. Use the MDS nfs_client
+ 	 * cl_ipaddr so as to use the same EXCHANGE_ID co_ownerid as the MDS
+diff --git a/fs/nfs/pnfs_nfs.c b/fs/nfs/pnfs_nfs.c
+index 0dfc476..b4ac66d 100644
+--- a/fs/nfs/pnfs_nfs.c
++++ b/fs/nfs/pnfs_nfs.c
+@@ -8,6 +8,7 @@
+  */
+ 
+ #include <linux/nfs_fs.h>
++#include <linux/nfs_mount.h>
+ #include <linux/nfs_page.h>
+ #include <linux/sunrpc/addr.h>
+ #include <linux/module.h>
+@@ -683,6 +684,7 @@ static int _nfs4_pnfs_v4_ds_connect(struct nfs_server *mds_srv,
+ 			__func__, ds->ds_remotestr, da->da_remotestr);
+ 
+ 		clp = nfs4_set_ds_client(mds_srv->nfs_client,
++					mds_srv->flags & NFS_MOUNT_NORESVPORT ? 1 : 0,
+ 					(struct sockaddr *)&da->da_addr,
+ 					da->da_addrlen, IPPROTO_TCP,
+ 					timeo, retrans, minor_version,
+-- 
+2.5.5
+
