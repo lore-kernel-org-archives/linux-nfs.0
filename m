@@ -1,48 +1,84 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from linuxhacker.ru ([217.76.32.60]:58702 "EHLO fiona.linuxhacker.ru"
+Received: from linuxhacker.ru ([217.76.32.60]:59034 "EHLO fiona.linuxhacker.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751001AbcFDQM1 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 4 Jun 2016 12:12:27 -0400
-Subject: Re: Dcache oops
-Mime-Version: 1.0 (Apple Message framework v1283)
-Content-Type: text/plain; charset=us-ascii
-From: Oleg Drokin <green@linuxhacker.ru>
-In-Reply-To: <20160604005611.GA14480@ZenIV.linux.org.uk>
-Date: Sat, 4 Jun 2016 12:12:14 -0400
-Cc: Jeff Layton <jlayton@poochiereds.net>,
-        "<linux-kernel@vger.kernel.org> Mailing List"
-	<linux-kernel@vger.kernel.org>,
-        "<linux-fsdevel@vger.kernel.org>" <linux-fsdevel@vger.kernel.org>,
-        linux-nfs@vger.kernel.org
-Message-Id: <DF4A1130-84CD-4083-92B4-6DEA2D633753@linuxhacker.ru>
-References: <74306F63-DBDF-4DED-85D2-5C3FB21B8A1E@linuxhacker.ru> <20160603182203.GR14480@ZenIV.linux.org.uk> <4285E00F-7228-485C-AD32-97552ED746F2@linuxhacker.ru> <20160603200759.GS14480@ZenIV.linux.org.uk> <CA+55aFznPit97evuwZHdCG55=N0QbkFSST2ydKxvExQTR-YXTg@mail.gmail.com> <20160603212652.GT14480@ZenIV.linux.org.uk> <CA+55aFyYkbXqoJ3PqfrnxWDEXJM_BH6Q_OdKf+UVJYEUF4gdQA@mail.gmail.com> <20160603222355.GW14480@ZenIV.linux.org.uk> <20160603223700.GY14480@ZenIV.linux.org.uk> <DA67EEEA-D769-4D0F-9C20-6145F2B0808F@linuxhacker.ru> <20160604005611.GA14480@ZenIV.linux.org.uk>
-To: Al Viro <viro@ZenIV.linux.org.uk>
+	id S1750889AbcFDQWR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 4 Jun 2016 12:22:17 -0400
+From: green@linuxhacker.ru
+To: Trond Myklebust <trond.myklebust@primarydata.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>
+Cc: Olga Kornievskaia <kolga@netapp.com>, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org, Oleg Drokin <green@linuxhacker.ru>
+Subject: [PATCH] nfs4: Fix potential use after free of state in nfs4_do_reclaim.
+Date: Sat,  4 Jun 2016 12:21:53 -0400
+Message-Id: <1465057313-2582381-1-git-send-email-green@linuxhacker.ru>
+In-Reply-To: <DF4A1130-84CD-4083-92B4-6DEA2D633753@linuxhacker.ru>
+References: <DF4A1130-84CD-4083-92B4-6DEA2D633753@linuxhacker.ru>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+From: Oleg Drokin <green@linuxhacker.ru>
 
-On Jun 3, 2016, at 8:56 PM, Al Viro wrote:
+Commit e8d975e73e5f ("fixing infinite OPEN loop in 4.0 stateid recovery")
+introduced access to state after it was just potentially freed by
+nfs4_put_open_state leading to a random data corruption somewhere.
 
-> On Fri, Jun 03, 2016 at 07:58:37PM -0400, Oleg Drokin wrote:
-> 
->>> EOPENSTALE, that is...  Oleg, could you check if the following works?
->> 
->> Yes, this one lasted for an hour with no crashing, so it must be good.
->> Thanks.
->> (note, I am not equipped to verify correctness of NFS operations, though).
-> 
-> I suspect that Jeff Layton might have relevant regression tests.  Incidentally,
-> we really need a consolidated regression testsuite, including the tests you'd
-> been running.  Right now there's some stuff in xfstests, LTP and cthon; if
-> anything, this mess shows just why we need all of that and then some in
-> a single place.  Lustre stuff has caught a 3 years old NFS bug (missing
-> d_drop() in nfs_atomic_open()) and a year-old bug in handling of EOPENSTALE
-> retries on the last component of a trailing non-embedded symlink.  Neither
-> is hard to trigger; it's just that relevant tests hadn't been run on NFS,
-> period.
+BUG: unable to handle kernel paging request at ffff88004941ee40
+IP: [<ffffffff813baf01>] nfs4_do_reclaim+0x461/0x740
+PGD 3501067 PUD 3504067 PMD 6ff37067 PTE 800000004941e060
+Oops: 0002 [#1] SMP DEBUG_PAGEALLOC
+Modules linked in: loop rpcsec_gss_krb5 acpi_cpufreq tpm_tis joydev i2c_piix4 pcspkr tpm virtio_console nfsd ttm drm_kms_helper syscopyarea sysfillrect sysimgblt fb_sys_fops floppy serio_raw virtio_blk drm
+CPU: 6 PID: 2161 Comm: 192.168.10.253- Not tainted 4.7.0-rc1-vm-nfs+ #112
+Hardware name: Bochs Bochs, BIOS Bochs 01/01/2011
+task: ffff8800463dcd00 ti: ffff88003ff48000 task.ti: ffff88003ff48000
+RIP: 0010:[<ffffffff813baf01>]  [<ffffffff813baf01>] nfs4_do_reclaim+0x461/0x740
+RSP: 0018:ffff88003ff4bd68  EFLAGS: 00010246
+RAX: 0000000000000000 RBX: ffffffff81a49900 RCX: 00000000000000e8
+RDX: 00000000000000e8 RSI: ffff8800418b9930 RDI: ffff880040c96c88
+RBP: ffff88003ff4bdf8 R08: 0000000000000001 R09: 0000000000000000
+R10: 0000000000000000 R11: 0000000000000000 R12: ffff880040c96c98
+R13: ffff88004941ee20 R14: ffff88004941ee40 R15: ffff88004941ee00
+FS:  0000000000000000(0000) GS:ffff88006d000000(0000) knlGS:0000000000000000
+CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
+CR2: ffff88004941ee40 CR3: 0000000060b0b000 CR4: 00000000000006e0
+Stack:
+ ffffffff813baad5 ffff8800463dcd00 ffff880000000001 ffffffff810e6b68
+ ffff880043ddbc88 ffff8800418b9800 ffff8800418b98c8 ffff88004941ee48
+ ffff880040c96c90 ffff880040c96c00 ffff880040c96c20 ffff880040c96c40
+Call Trace:
+ [<ffffffff813baad5>] ? nfs4_do_reclaim+0x35/0x740
+ [<ffffffff810e6b68>] ? trace_hardirqs_on_caller+0x128/0x1b0
+ [<ffffffff813bb7cd>] nfs4_run_state_manager+0x5ed/0xa40
+ [<ffffffff813bb1e0>] ? nfs4_do_reclaim+0x740/0x740
+ [<ffffffff813bb1e0>] ? nfs4_do_reclaim+0x740/0x740
+ [<ffffffff810af0d1>] kthread+0x101/0x120
+ [<ffffffff810e6b68>] ? trace_hardirqs_on_caller+0x128/0x1b0
+ [<ffffffff818843af>] ret_from_fork+0x1f/0x40
+ [<ffffffff810aefd0>] ? kthread_create_on_node+0x250/0x250
+Code: 65 80 4c 8b b5 78 ff ff ff e8 fc 88 4c 00 48 8b 7d 88 e8 13 67 d2 ff 49 8b 47 40 a8 02 0f 84 d3 01 00 00 4c 89 ff e8 7f f9 ff ff <f0> 41 80 26 7f 48 8b 7d c8 e8 b1 84 4c 00 e9 39 fd ff ff 3d e6
+RIP  [<ffffffff813baf01>] nfs4_do_reclaim+0x461/0x740
+ RSP <ffff88003ff4bd68>
+CR2: ffff88004941ee40
 
-BTW, the nets also have brought in another use after free in nfs4 state
-tracking code (this is the one I was trying to hunt down from the start).
-I'll submit a patch shortly.
-And also there's a mysterious ext4 data corruption that I do not really fully
-understand but only hit once so far.
+Signed-off-by: Oleg Drokin <green@linuxhacker.ru>
+---
+ fs/nfs/nfs4state.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
+index 9679f47..834b875 100644
+--- a/fs/nfs/nfs4state.c
++++ b/fs/nfs/nfs4state.c
+@@ -1488,9 +1488,9 @@ restart:
+ 					}
+ 					spin_unlock(&state->state_lock);
+ 				}
+-				nfs4_put_open_state(state);
+ 				clear_bit(NFS_STATE_RECLAIM_NOGRACE,
+ 					&state->flags);
++				nfs4_put_open_state(state);
+ 				spin_lock(&sp->so_lock);
+ 				goto restart;
+ 			}
+-- 
+2.5.5
+
