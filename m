@@ -1,98 +1,78 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from linuxhacker.ru ([217.76.32.60]:54138 "EHLO fiona.linuxhacker.ru"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750927AbcFFDUp convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 5 Jun 2016 23:20:45 -0400
-From: Oleg Drokin <green@linuxhacker.ru>
-Content-Type: text/plain; charset=us-ascii
-Subject: nfs4 infinite loop in rpc_clnt_iterate_for_each_xprt without multipath
-Date: Sun, 5 Jun 2016 23:20:35 -0400
-Message-Id: <8C211C23-0DBA-4702-96BC-405E6ECDC10F@linuxhacker.ru>
-Cc: linux-nfs@vger.kernel.org,
-        "<linux-kernel@vger.kernel.org> Mailing List"
-	<linux-kernel@vger.kernel.org>
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-Mime-Version: 1.0 (Apple Message framework v1283)
+Received: from mx5-phx2.redhat.com ([209.132.183.37]:48164 "EHLO
+	mx5-phx2.redhat.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750884AbcFFNh4 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 6 Jun 2016 09:37:56 -0400
+Date: Mon, 6 Jun 2016 09:37:51 -0400 (EDT)
+From: Jan Stancek <jstancek@redhat.com>
+To: linux-nfs@vger.kernel.org
+Cc: trond.myklebust@primarydata.com, Steve Dickson <steved@redhat.com>
+Message-ID: <309914450.3712032.1465220270981.JavaMail.zimbra@redhat.com>
+In-Reply-To: <568964311.3695972.1465219129059.JavaMail.zimbra@redhat.com>
+Subject: WARNING at net/ipv4/af_inet.c:155 .inet_sock_destruct+0x170/0x220
+MIME-Version: 1.0
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hello!
+Hello,
 
-   I am hitting a strange problem with 4.7.0-rc1, basically eventually my NFS4 client
-   enters a state where it's stuck in an infinite loop in
-   rpc_clnt_iterate_for_each_xprt() called from nfs4_proc_bind_conn_to_session_callback
+I'm running sporadically into following warning during NFS cthon
+special tests (NFSv3, UDP, rhel6 as server):
 
-   The whole backtrace looks like this:
-(gdb) bt
-#0  xprt_iter_next_entry_multiple (xpi=0xffff880058cf3d80, 
-    find_next=0xffffffff81865de0 <xprt_switch_find_next_entry>)
-    at /home/green/bk/linux/net/sunrpc/xprtmultipath.c:276
-#1  0xffffffff81866085 in xprt_iter_next_entry_all (xpi=<optimized out>)
-    at /home/green/bk/linux/net/sunrpc/xprtmultipath.c:306
-#2  0xffffffff81865e56 in xprt_iter_get_helper (xpi=0xffff880058cf3d80, 
-    fn=0xffffffff81866070 <xprt_iter_next_entry_all>)
-    at /home/green/bk/linux/net/sunrpc/xprtmultipath.c:411
-#3  0xffffffff818668e6 in xprt_iter_get_next (xpi=0xffff880058cf3d80)
-    at /home/green/bk/linux/net/sunrpc/xprtmultipath.c:448
-#4  0xffffffff8183ebc2 in rpc_clnt_iterate_for_each_xprt (
-    clnt=0xffff88005e313e00, 
-    fn=0xffffffff8139d8f0 <nfs4_proc_bind_conn_to_session_callback>, 
-    data=0xffff880058cf3dd8) at /home/green/bk/linux/net/sunrpc/clnt.c:776
-#5  0xffffffff813adfdb in nfs4_proc_bind_conn_to_session (clp=<optimized out>, 
-    cred=<optimized out>) at /home/green/bk/linux/fs/nfs/nfs4proc.c:6917
-#6  0xffffffff813bea11 in nfs4_bind_conn_to_session (clp=<optimized out>)
-    at /home/green/bk/linux/fs/nfs/nfs4state.c:2311
-#7  nfs4_state_manager (clp=<optimized out>)
-    at /home/green/bk/linux/fs/nfs/nfs4state.c:2376
-#8  nfs4_run_state_manager (ptr=0xffff88003c39d800)
-    at /home/green/bk/linux/fs/nfs/nfs4state.c:2457
-#9  0xffffffff810af3a1 in kthread (_create=0xffff8800509c62c0)
-    at /home/green/bk/linux/kernel/kthread.c:209
+[ 1085.443289] ------------[ cut here ]------------ 
+[ 1085.443302] WARNING: CPU: 9 PID: 31049 at net/ipv4/af_inet.c:155 .inet_sock_destruct+0x170/0x220 
+[ 1085.443306] Modules linked in: rpcsec_gss_krb5 nfsv4 nfsv3 nfs fscache nfnetlink_queue nfnetlink_log nfnetlink bluetooth rfkill arc4 md4 nls_utf8 cifs dns_resolver rpcrdma ib_isert iscsi_target_mod ib_iser rdma_cm iw_cm libiscsi scsi_transport_iscsi ib_srpt target_core_mod ib_srp ib_ipoib ib_ucm ib_uverbs ib_umad ib_cm ib_sa ib_mad ib_core ib_addr nls_koi8_u nls_cp932 ts_kmp nf_conntrack_ipv4 nf_defrag_ipv4 nf_conntrack sg pseries_rng nfsd auth_rpcgss nfs_acl lockd sunrpc grace xfs libcrc32c sd_mod ibmvscsi scsi_transport_srp ibmveth dm_mirror dm_region_hash dm_log dm_mod [last unloaded: xt_u32] 
+[ 1085.443363] CPU: 9 PID: 31049 Comm: umount.nfs Not tainted 4.6.0 #1 
+[ 1085.443366] task: c0000005edde8500 ti: c0000000fd0b0000 task.ti: c0000000fd0b0000 
+[ 1085.443370] NIP: c000000000762fd0 LR: c0000000006a487c CTR: c000000000762e60 
+[ 1085.443373] REGS: c0000000fd0b3030 TRAP: 0700   Not tainted  (4.6.0) 
+[ 1085.443376] MSR: 800000010282b032 <SF,VEC,VSX,EE,FP,ME,IR,DR,RI,TM[E]>  CR: 42002824  XER: 00000006 
+[ 1085.443387] CFAR: c000000000762eec SOFTE: 1  
+GPR00: c0000000006a487c c0000000fd0b32b0 c0000000010efe00 c0000005f57c3400  
+GPR04: 0000000000000500 00000000fffffff1 c0000005f1339080 0000000000000001  
+GPR08: c00000000113fe00 0000000000000001 0000000000000001 d000000006795508  
+GPR12: c00000000069c330 c00000000e825100 0000000000000000 0000000000000000  
+GPR16: 0000000000000000 0000000000000000 0000000000000000 0000000000000000  
+GPR20: 0000000000000000 0000000000000000 0000000000000000 0000000000000000  
+GPR24: 0000000000000000 0000000000000200 0000000000000000 c0000005f57c35a8  
+GPR28: c0000005b19bd6c0 c0000005f57c3588 c0000005faa8c080 c0000005f57c3400  
+[ 1085.443426] NIP [c000000000762fd0] .inet_sock_destruct+0x170/0x220 
+[ 1085.443430] LR [c0000000006a487c] .sk_destruct+0x3c/0x200 
+[ 1085.443433] Call Trace: 
+[ 1085.443435] [c0000000fd0b32b0] [c0000000fd0b3340] 0xc0000000fd0b3340 (unreliable) 
+[ 1085.443439] [c0000000fd0b3340] [c0000000006a487c] .sk_destruct+0x3c/0x200 
+[ 1085.443444] [c0000000fd0b33d0] [c000000000751f80] .udp_lib_close+0x10/0x30 
+[ 1085.443448] [c0000000fd0b3440] [c0000000007636e8] .inet_release+0x68/0xb0 
+[ 1085.443452] [c0000000fd0b34c0] [c00000000069c370] .sock_release+0x40/0xf0 
+[ 1085.443473] [c0000000fd0b3540] [d00000000676b940] .xs_reset_transport+0x110/0x1d0 [sunrpc] 
+[ 1085.443492] [c0000000fd0b35e0] [d00000000676ba30] .xs_close+0x30/0x70 [sunrpc] 
+[ 1085.443511] [c0000000fd0b3660] [d00000000676baac] .xs_destroy+0x3c/0xa0 [sunrpc] 
+[ 1085.443530] [c0000000fd0b36e0] [d000000006766960] .xprt_destroy+0xf0/0x120 [sunrpc] 
+[ 1085.443548] [c0000000fd0b3760] [d00000000678fe04] .xprt_switch_free+0xb4/0x150 [sunrpc] 
+[ 1085.443567] [c0000000fd0b3810] [d000000006760f8c] .rpc_free_client+0xac/0x130 [sunrpc] 
+[ 1085.443586] [c0000000fd0b38a0] [d0000000067612f8] .rpc_release_client+0xb8/0x140 [sunrpc] 
+[ 1085.443605] [c0000000fd0b3920] [d0000000067616d4] .rpc_shutdown_client+0xf4/0x140 [sunrpc] 
+[ 1085.443620] [c0000000fd0b39f0] [d0000000043705cc] .nfs_free_client+0x4c/0x130 [nfs] 
+[ 1085.443634] [c0000000fd0b3a70] [d0000000043707e4] .nfs_put_client+0x134/0x1b0 [nfs] 
+[ 1085.443648] [c0000000fd0b3b00] [d000000004371634] .nfs_free_server+0x94/0x130 [nfs] 
+[ 1085.443662] [c0000000fd0b3b80] [d000000004383000] .nfs_kill_super+0x40/0x70 [nfs] 
+[ 1085.443667] [c0000000fd0b3c10] [c0000000002a4080] .deactivate_locked_super+0xa0/0xf0 
+[ 1085.443672] [c0000000fd0b3c90] [c0000000002c9314] .cleanup_mnt+0x54/0xa0 
+[ 1085.443676] [c0000000fd0b3d10] [c0000000000d3044] .task_work_run+0xe4/0x120 
+[ 1085.443681] [c0000000fd0b3db0] [c000000000016a58] .do_notify_resume+0xf8/0x100 
+[ 1085.443685] [c0000000fd0b3e30] [c0000000000097c4] .ret_from_except_lite+0x70/0x74 
+[ 1085.443688] Instruction dump: 
+[ 1085.443691] 5529d97e 69290001 0b090000 813f014c 7d290034 5529d97e 69290001 0b090000  
+[ 1085.443697] 813f00d8 7d290034 5529d97e 69290001 <0b090000> e87f02e0 4bb0fb79 60000000  
+[ 1085.443703] ---[ end trace 811d03b71443934f ]--- 
 
+I ran into this warning initially on RHEL7.3 kernel, where
+I bisected it to following (first bad) commit:
+ [fs] sunrpc: Move UDP receive data path into a workqueue context
 
-   if I enable nfs debug, I also see a very tight loop like:
-[ 4563.114185] --> nfs4_proc_bind_one_conn_to_session
-[ 4563.114690] <-- nfs4_proc_bind_one_conn_to_session status= 0
-[ 4563.114691] --> nfs4_proc_bind_one_conn_to_session
-[ 4563.115177] <-- nfs4_proc_bind_one_conn_to_session status= 0
-. . .
-   the NFSD side also gets a lot of these back to back requests.
-   Everytthign using this nfs export is stuck in D state.
+I'm looking to confirm this result with 4.6 as well, but given
+low reproducibility it will probably take couple days.
 
-   So I looked around and I guess I am confused how is this all supposed to work.
-
-   The loop in rpc_clnt_iterate_for_each_xprt() supposedly iterates over all connections
-   for the "import". Now looking into the xprt_iter_next_entry_multiple, we can see that
-        if (xps->xps_nxprts < 2)
-                return xprt_switch_find_first_entry(head);
-
-   This is my case:
-$15 = {xps_lock = {{rlock = {raw_lock = {val = {counter = 0}}, 
-        magic = 3735899821, owner_cpu = 4294967295, owner = 0xffffffffffffffff, 
-        dep_map = {key = 0xffffffff8357e4b0 <__key.23771>, class_cache = {
-            0x0 <irq_stack_union>, 0x0 <irq_stack_union>}, 
-          name = 0xffffffff81cf96e6 "&(&xps->xps_lock)->rlock", cpu = 4, 
-          ip = 6510615555426900570}}, {
-        __padding = "\000\000\000\000\255N\255\336\377\377\377\377ZZZZ\377\377\377\377\377\377\377\377", dep_map = {key = 0xffffffff8357e4b0 <__key.23771>, 
-          class_cache = {0x0 <irq_stack_union>, 0x0 <irq_stack_union>}, 
-          name = 0xffffffff81cf96e6 "&(&xps->xps_lock)->rlock", cpu = 4, 
-          ip = 6510615555426900570}}}}, xps_kref = {refcount = {counter = 3}}, 
-  xps_nxprts = 1, xps_xprt_list = {next = 0xffff88004f5835e0, 
-    prev = 0xffff88004f5835e0}, xps_net = 0xffffffff81f790c0 <init_net>, 
-  xps_iter_ops = 0xffffffff81adfb20 <rpc_xprt_iter_singular>, xps_rcu = {
-    next = 0x5a5a5a5a5a5a5a5a, func = 0xa55a5a5a5a5a5a5a}}
-
-
-   So the loop in rpc_clnt_iterate_for_each_xprt(), that terminates on when the next
-   element returned is NULL never gets that for when there are no failover links
-   and happily keeps looping forever? Am I reading this right?
-
-   This seems to be a somewhat new code landing on Linus' tree only on Mar 22,
-   so I imagine if it was indeed an eternal loop like that, there would be a lot
-   more reports already but in fact I don't hit this all the time myself, so I
-   wonder if there's something else in play?
-
-   Thanks.
-
-Bye,
-    Oleg
+Regards,
+Jan
