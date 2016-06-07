@@ -1,149 +1,76 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-it0-f65.google.com ([209.85.214.65]:36707 "EHLO
-	mail-it0-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752889AbcFGO0n (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 7 Jun 2016 10:26:43 -0400
-Received: by mail-it0-f65.google.com with SMTP id h190so1879282ith.3
-        for <linux-nfs@vger.kernel.org>; Tue, 07 Jun 2016 07:26:42 -0700 (PDT)
-MIME-Version: 1.0
-In-Reply-To: <CAN-5tyEnAAkw58Zn70YkN-neJVJUkCLVAc1dbz4F22rsUoQnZQ@mail.gmail.com>
-References: <CAN-5tyFXzH+Je8Th_irarJtBb+9QziFj8p7xH0NRLupOsTYBrw@mail.gmail.com>
- <F693F912-2BA0-4899-A73C-65CB7536B090@primarydata.com> <CAN-5tyEdttEMqepHWmd-KgUcH-azbnko4QJsVuwQha=GSVgzoA@mail.gmail.com>
- <CAN-5tyEnAAkw58Zn70YkN-neJVJUkCLVAc1dbz4F22rsUoQnZQ@mail.gmail.com>
-From: Olga Kornievskaia <aglo@umich.edu>
-Date: Tue, 7 Jun 2016 10:26:41 -0400
-Message-ID: <CAN-5tyEdL990pxniakRVhAQ=gdyKmcR5-bJRawRbdCL1mfb0Cg@mail.gmail.com>
-Subject: Re: open_downgrade use
-To: Trond Myklebust <trondmy@primarydata.com>
-Cc: linux-nfs <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=UTF-8
+Received: from linuxhacker.ru ([217.76.32.60]:48884 "EHLO fiona.linuxhacker.ru"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752632AbcFGPhl convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 7 Jun 2016 11:37:41 -0400
+From: Oleg Drokin <green@linuxhacker.ru>
+Content-Type: text/plain; charset=us-ascii
+Subject: Files leak from nfsd in 4.7.1-rc1 (and more?)
+Date: Tue, 7 Jun 2016 11:37:32 -0400
+Message-Id: <4EDA6CFD-1FE8-4FCA-ACCF-84250BE342CB@linuxhacker.ru>
+Cc: linux-nfs@vger.kernel.org,
+        "<linux-kernel@vger.kernel.org> Mailing List"
+	<linux-kernel@vger.kernel.org>
+To: "J. Bruce Fields" <bfields@fieldses.org>,
+        Jeff Layton <jlayton@poochiereds.net>
+Mime-Version: 1.0 (Apple Message framework v1283)
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Jun 2, 2016 at 3:48 PM, Olga Kornievskaia <aglo@umich.edu> wrote:
-> On Wed, Jun 1, 2016 at 4:59 PM, Olga Kornievskaia <aglo@umich.edu> wrote:
->> On Wed, Jun 1, 2016 at 4:41 PM, Trond Myklebust <trondmy@primarydata.com> wrote:
->>> You are misreading what I wrote. Your test should indeed give rise to an
->>> OPEN_DOWNGRADE (unless there is a delegation involved). The code that was
->>> misbehaving and that was fixed by the patch was triggering an OPEN_DOWNGRADE
->>> from a stateid that had only been opened for RW.
->>
->> I see. With this patch, the upstream code no longer sends an
->> OPEN_DOWNGRADE. I will investigate why then as it seems like a bug.
->
-> Can you please help explain the logic of this commit as my solution is
-> to negate this:
->
-> commit aee7af356e151494d5014f57b33460b162f181b5
-> Author: Trond Myklebust <trond.myklebust@primarydata.com>
-> Date:   Mon Aug 25 22:33:12 2014 -0400
->
->     NFSv4: Fix problems with close in the presence of a delegation
->
->     In the presence of delegations, we can no longer assume that the
->     state->n_rdwr, state->n_rdonly, state->n_wronly reflect the open
->     stateid share mode, and so we need to calculate the initial value
->     for calldata->arg.fmode using the state->flags.
->
->     Reported-by: James Drews <drews@engr.wisc.edu>
->     Fixes: 88069f77e1ac5 (NFSv41: Fix a potential state leakage when...)
->     Cc: stable@vger.kernel.org # 2.6.33+
->     Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
->
-> When close(fd0) come which suppose to translate into OPEN_DOWNGRADE:
->
-> nfs4_close_prepare is_rdwr=1 is_rdonly=1 is_wronly=0 n_rdwr=0
-> n_rdonly=1 n_wonly=0
->
->         if (state->n_rdwr == 0) {
->                 if (state->n_rdonly == 0)
->                         call_close |= is_rdonly;
->                 else if (is_rdonly)
->                         calldata->arg.fmode |= FMODE_READ;  <** this
-> is set but call_close ends up being 0 **>
->                 if (state->n_wronly == 0)
->                         call_close |= is_wronly;
->                 else if (is_wronly)
->                         calldata->arg.fmode |= FMODE_WRITE;
->         } else if (is_rdwr)
->                 calldata->arg.fmode |= FMODE_READ|FMODE_WRITE;
->
-> so then the check for !call_close later sends it to no_action and
-> nothing is sent.
->
-> Here's what I propose to fix it:
-> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-> index 327b8c3..1db2e31 100644
-> --- a/fs/nfs/nfs4proc.c
-> +++ b/fs/nfs/nfs4proc.c
-> @@ -2870,7 +2870,7 @@ static void nfs4_close_prepare(struct rpc_task *task, void
->                 call_close = 0;
->         spin_unlock(&state->owner->so_lock);
->
-> -       if (!call_close) {
-> +       if (!call_close && !calldata->arg.fmode) {
->                 /* Note: exit _without_ calling nfs4_close_done */
->                 goto out_no_action;
->         }
->
-> But then I really don't understand why not sent call_close for if
-> (is_rdonly) case?
+Hello!
 
-Trond,
+   I've been trying to better understand this problem I was having where sometimes
+   a formerly NFS-exported mountpoint becomes unmountable (after nfsd stop).
 
-What do you think about the fix for the OPEN_DOWNGRADE problem?
+   I finally traced it to a leaked filedescriptor that was allocated from
+   nfsd4_open()->nfsd4_process_open2()->nfs4_get_vfs_file()->nfsd_open().
+
+   Also together with it we see leaked credentials allocated along the same path from
+   fh_verify() and groups allocated from svcauth_unix_accept()->groups_alloc() that
+   are presumably used by the credentials.
+
+   Unfortunately I was not able to make total sense out of the state handling in nfsd,
+   but it's clear that one of the file descriptors inside struct nfs4_file is
+   lost. I added a patch like this (always a good idea, so surprised it was not
+   there already):
+@@ -271,6 +274,9 @@ static void nfsd4_free_file_rcu(struct rcu_head *rcu)
+ {
+        struct nfs4_file *fp = container_of(rcu, struct nfs4_file, fi_rcu);
+ 
++       WARN_ON(fp->fi_fds[0]);
++       WARN_ON(fp->fi_fds[1]);
++       WARN_ON(fp->fi_fds[2]);
+        kmem_cache_free(file_slab, fp);
+ }
+
+   And when the problem is hit, I am also triggering (Always this one which is fd[1])
+[ 3588.143002] ------------[ cut here ]------------
+[ 3588.143662] WARNING: CPU: 5 PID: 9 at /home/green/bk/linux/fs/nfsd/nfs4state.c:278 nfsd4_free_file_rcu+0x65/0x80 [nfsd]
+[ 3588.144947] Modules linked in: loop rpcsec_gss_krb5 joydev acpi_cpufreq tpm_tis i2c_piix4 tpm virtio_console pcspkr nfsd ttm drm_kms_helper syscopyarea sysfillrect sysimgblt fb_sys_fops drm floppy serio_raw virtio_blk
+[ 3588.147135] CPU: 5 PID: 9 Comm: rcuos/0 Not tainted 4.7.0-rc1-vm-nfs+ #120
+[ 3588.153826] Hardware name: Bochs Bochs, BIOS Bochs 01/01/2011
+[ 3588.153830]  0000000000000286 00000000e2d5ccdf ffff88011965bd50 ffffffff814a11a5
+[ 3588.153832]  0000000000000000 0000000000000000 ffff88011965bd90 ffffffff8108806b
+[ 3588.153834]  0000011600000000 ffff8800c476a0b8 ffff8800c476a048 ffffffffc0110fc0
+[ 3588.153834] Call Trace:
+[ 3588.153839]  [<ffffffff814a11a5>] dump_stack+0x86/0xc1
+[ 3588.153841]  [<ffffffff8108806b>] __warn+0xcb/0xf0
+[ 3588.153852]  [<ffffffffc0110fc0>] ? trace_raw_output_fh_want_write+0x60/0x60 [nfsd]
+[ 3588.153853]  [<ffffffff8108819d>] warn_slowpath_null+0x1d/0x20
+[ 3588.153859]  [<ffffffffc0111025>] nfsd4_free_file_rcu+0x65/0x80 [nfsd]
+[ 3588.153861]  [<ffffffff81109c65>] rcu_nocb_kthread+0x335/0x510
+[ 3588.153862]  [<ffffffff81109baf>] ? rcu_nocb_kthread+0x27f/0x510
+[ 3588.153863]  [<ffffffff81109930>] ? rcu_cpu_notify+0x3e0/0x3e0
+[ 3588.153866]  [<ffffffff810af391>] kthread+0x101/0x120
+[ 3588.153868]  [<ffffffff810e6c84>] ? trace_hardirqs_on_caller+0xf4/0x1b0
+[ 3588.153871]  [<ffffffff8188b6af>] ret_from_fork+0x1f/0x40
+[ 3588.153872]  [<ffffffff810af290>] ? kthread_create_on_node+0x250/0x250
 
 
->
-> Thank you.
->>
->>>
->>>
->>> On 6/1/16, 16:31, "linux-nfs-owner@vger.kernel.org on behalf of Olga
->>> Kornievskaia" <linux-nfs-owner@vger.kernel.org on behalf of aglo@umich.edu>
->>> wrote:
->>>
->>>>I'm failing to think of what can trigger an open_downgrade?
->>>>I thought the following example should trigger an open downgrade:
->>>>
->>>>fd0 = open(foo, RDRW) -- should be open on the wire for "both"
->>>>fd1 = open(foo, RDONLY) -- should be open on the wire for "read"
->>>>close(fd0) -- should trigger an open_downgrade
->>>>read(fd1)
->>>>close(fd1)
->>>>
->>>>However this commit says that it's not allowed by the spec.
->>>>
->>>>commit cd9288ffaea4359d5cfe2b8d264911506aed26a4
->>>>Author: Trond Myklebust <trond.myklebust@primarydata.com>
->>>>Date: Thu Sep 18 11:51:32 2014 -0400
->>>>
->>>> NFSv4: Fix another bug in the close/open_downgrade code
->>>>
->>>> James Drew reports another bug whereby the NFS client is now sending
->>>> an OPEN_DOWNGRADE in a situation where it should really have sent a
->>>> CLOSE: the client is opening the file for O_RDWR, but then trying to
->>>> do a downgrade to O_RDONLY, which is not allowed by the NFSv4 spec.
->>>>
->>>> Reported-by: James Drews <drews@engr.wisc.edu>
->>>> Link: http://lkml.kernel.org/r/541AD7E5.8020409@engr.wisc.edu
->>>> Fixes: aee7af356e15 (NFSv4: Fix problems with close in the presence...)
->>>> Cc: stable@vger.kernel.org # 2.6.33+
->>>> Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
->>>>
->>>>If RDWR to RDONLY isn't allowed then why do we have OPEN_DOWNGRADE at all?
->>>>--
->>>>To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->>>>the body of a message to majordomo@vger.kernel.org
->>>>More majordomo info at http://vger.kernel.org/majordomo-info.html
->>>>
->>>
->>>
->>> Disclaimer
->>>
->>> The information contained in this communication from the sender is
->>> confidential. It is intended solely for use by the recipient and others
->>> authorized to receive it. If you are not the recipient, you are hereby
->>> notified that any disclosure, copying, distribution or taking action in
->>> relation of the contents of this information is strictly prohibited and may
->>> be unlawful.
+  release_all_access() seems to be doing correct job of all that cleaning, so
+  there must be some other path that I do not quite see.
+
+  Hopefully you are more familiar with the code and can see the problem right away ;)
+
+Bye,
+    Oleg
