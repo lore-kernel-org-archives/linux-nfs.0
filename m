@@ -1,179 +1,145 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-yw0-f193.google.com ([209.85.161.193]:33003 "EHLO
-	mail-yw0-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753058AbcFGKiT (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 7 Jun 2016 06:38:19 -0400
-Received: by mail-yw0-f193.google.com with SMTP id y6so22381863ywe.0
-        for <linux-nfs@vger.kernel.org>; Tue, 07 Jun 2016 03:38:18 -0700 (PDT)
+Received: from mail-yw0-f196.google.com ([209.85.161.196]:33009 "EHLO
+	mail-yw0-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753058AbcFGKiV (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 7 Jun 2016 06:38:21 -0400
+Received: by mail-yw0-f196.google.com with SMTP id y6so22381910ywe.0
+        for <linux-nfs@vger.kernel.org>; Tue, 07 Jun 2016 03:38:20 -0700 (PDT)
 From: Jeff Layton <jlayton@poochiereds.net>
 To: bfields@fieldses.org, anna.schumaker@netapp.com, trondmy@primarydata.com
 Cc: tigran.mkrtchyan@desy.de, thomas.haynes@primarydata.com,
         linux-nfs@vger.kernel.org
-Subject: [PATCH 1/3] nfsd: allow nfsd to advertise multiple layout types
-Date: Tue,  7 Jun 2016 06:38:09 -0400
-Message-Id: <1465295891-4952-2-git-send-email-jlayton@poochiereds.net>
+Subject: [PATCH 3/3] pnfs: add a new mechanism to select a layout driver according to an ordered list
+Date: Tue,  7 Jun 2016 06:38:11 -0400
+Message-Id: <1465295891-4952-4-git-send-email-jlayton@poochiereds.net>
 In-Reply-To: <1465295891-4952-1-git-send-email-jlayton@poochiereds.net>
 References: <1465295891-4952-1-git-send-email-jlayton@poochiereds.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-If the underlying filesystem supports multiple layout types, then there
-is little reason not to advertise that fact to clients and let them
-choose what type to use.
+Currently, the layout driver selection code attempts to divine meaning
+from the order of the layout driver list sent by the server.
+Unfortunately, the spec doesn't place any significance on the order
+and the server is free to send them in any order it likes.
 
-Turn the ex_layout_type field into a bitfield. For each supported
-layout type, we set a bit in that field. When the client requests a
-layout, ensure that the bit for that layout type is set. When the
-client requests attributes, send back a list of supported types.
+Instead, set a list of preferred driver types in the kernel and have
+the selection code try them in order until it finds one that can be
+loaded.
+
+If we go through the whole list of preferred drivers and don't find one,
+then try any that weren't recognized in the first scan. This should
+allow the use of 3rd party and experimental drivers without needing to
+muck with the order of preference.
+
+For now, the order of preference is hardcoded, but it should be possible
+to make this configurable (via module param perhaps?).
 
 Signed-off-by: Jeff Layton <jeff.layton@primarydata.com>
-Reviewed-by: Weston Andros Adamson <dros@primarydata.com>
 ---
- fs/nfsd/export.c      |  4 ++--
- fs/nfsd/export.h      |  2 +-
- fs/nfsd/nfs4layouts.c |  6 +++---
- fs/nfsd/nfs4proc.c    |  4 ++--
- fs/nfsd/nfs4xdr.c     | 30 ++++++++++++++----------------
- 5 files changed, 22 insertions(+), 24 deletions(-)
+ fs/nfs/pnfs.c | 71 +++++++++++++++++++++++++++++++++++++++++------------------
+ 1 file changed, 50 insertions(+), 21 deletions(-)
 
-diff --git a/fs/nfsd/export.c b/fs/nfsd/export.c
-index b4d84b579f20..f97ba49d5e66 100644
---- a/fs/nfsd/export.c
-+++ b/fs/nfsd/export.c
-@@ -706,7 +706,7 @@ static void svc_export_init(struct cache_head *cnew, struct cache_head *citem)
- 	new->ex_fslocs.locations = NULL;
- 	new->ex_fslocs.locations_count = 0;
- 	new->ex_fslocs.migrated = 0;
--	new->ex_layout_type = 0;
-+	new->ex_layout_types = 0;
- 	new->ex_uuid = NULL;
- 	new->cd = item->cd;
- }
-@@ -731,7 +731,7 @@ static void export_update(struct cache_head *cnew, struct cache_head *citem)
- 	item->ex_fslocs.locations_count = 0;
- 	new->ex_fslocs.migrated = item->ex_fslocs.migrated;
- 	item->ex_fslocs.migrated = 0;
--	new->ex_layout_type = item->ex_layout_type;
-+	new->ex_layout_types = item->ex_layout_types;
- 	new->ex_nflavors = item->ex_nflavors;
- 	for (i = 0; i < MAX_SECINFO_LIST; i++) {
- 		new->ex_flavors[i] = item->ex_flavors[i];
-diff --git a/fs/nfsd/export.h b/fs/nfsd/export.h
-index 2e315072bf3f..730f15eeb7ed 100644
---- a/fs/nfsd/export.h
-+++ b/fs/nfsd/export.h
-@@ -57,7 +57,7 @@ struct svc_export {
- 	struct nfsd4_fs_locations ex_fslocs;
- 	uint32_t		ex_nflavors;
- 	struct exp_flavor_info	ex_flavors[MAX_SECINFO_LIST];
--	enum pnfs_layouttype	ex_layout_type;
-+	u32			ex_layout_types;
- 	struct nfsd4_deviceid_map *ex_devid_map;
- 	struct cache_detail	*cd;
- };
-diff --git a/fs/nfsd/nfs4layouts.c b/fs/nfsd/nfs4layouts.c
-index 6d98d16b3354..2be9602b0221 100644
---- a/fs/nfsd/nfs4layouts.c
-+++ b/fs/nfsd/nfs4layouts.c
-@@ -139,21 +139,21 @@ void nfsd4_setup_layout_type(struct svc_export *exp)
- 	 * otherwise advertise the block layout.
- 	 */
- #ifdef CONFIG_NFSD_FLEXFILELAYOUT
--	exp->ex_layout_type = LAYOUT_FLEX_FILES;
-+	exp->ex_layout_types |= 1 << LAYOUT_FLEX_FILES;
- #endif
- #ifdef CONFIG_NFSD_BLOCKLAYOUT
- 	/* overwrite flex file layout selection if needed */
- 	if (sb->s_export_op->get_uuid &&
- 	    sb->s_export_op->map_blocks &&
- 	    sb->s_export_op->commit_blocks)
--		exp->ex_layout_type = LAYOUT_BLOCK_VOLUME;
-+		exp->ex_layout_types |= 1 << LAYOUT_BLOCK_VOLUME;
- #endif
- #ifdef CONFIG_NFSD_SCSILAYOUT
- 	/* overwrite block layout selection if needed */
- 	if (sb->s_export_op->map_blocks &&
- 	    sb->s_export_op->commit_blocks &&
- 	    sb->s_bdev && sb->s_bdev->bd_disk->fops->pr_ops)
--		exp->ex_layout_type = LAYOUT_SCSI;
-+		exp->ex_layout_types |= 1 << LAYOUT_SCSI;
- #endif
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index b02cad9c04bf..3ec5f2b392b6 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -99,6 +99,21 @@ unset_pnfs_layoutdriver(struct nfs_server *nfss)
  }
  
-diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-index 2ee2dc170327..719c620753e2 100644
---- a/fs/nfsd/nfs4proc.c
-+++ b/fs/nfsd/nfs4proc.c
-@@ -1219,12 +1219,12 @@ nfsd4_verify(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- static const struct nfsd4_layout_ops *
- nfsd4_layout_verify(struct svc_export *exp, unsigned int layout_type)
- {
--	if (!exp->ex_layout_type) {
-+	if (!exp->ex_layout_types) {
- 		dprintk("%s: export does not support pNFS\n", __func__);
- 		return NULL;
- 	}
- 
--	if (exp->ex_layout_type != layout_type) {
-+	if (!(exp->ex_layout_types & (1 << layout_type))) {
- 		dprintk("%s: layout type %d not supported\n",
- 			__func__, layout_type);
- 		return NULL;
-diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index 9df898ba648f..4d3ae75ad4c8 100644
---- a/fs/nfsd/nfs4xdr.c
-+++ b/fs/nfsd/nfs4xdr.c
-@@ -2164,22 +2164,20 @@ nfsd4_encode_aclname(struct xdr_stream *xdr, struct svc_rqst *rqstp,
- }
- 
- static inline __be32
--nfsd4_encode_layout_type(struct xdr_stream *xdr, enum pnfs_layouttype layout_type)
-+nfsd4_encode_layout_types(struct xdr_stream *xdr, u32 layout_types)
- {
--	__be32 *p;
-+	__be32		*p;
-+	unsigned long	i = hweight_long(layout_types);
- 
--	if (layout_type) {
--		p = xdr_reserve_space(xdr, 8);
--		if (!p)
--			return nfserr_resource;
--		*p++ = cpu_to_be32(1);
--		*p++ = cpu_to_be32(layout_type);
--	} else {
--		p = xdr_reserve_space(xdr, 4);
--		if (!p)
--			return nfserr_resource;
--		*p++ = cpu_to_be32(0);
--	}
-+	p = xdr_reserve_space(xdr, 4 + 4 * i);
-+	if (!p)
-+		return nfserr_resource;
+ /*
++ * When the server sends a list of layout types, we choose one in the order
++ * given in the list below.
++ *
++ * FIXME: should this list be configurable via module_param or something?
++ */
++static const u32 ld_prefs[] = {
++	LAYOUT_SCSI,
++	LAYOUT_BLOCK_VOLUME,
++	LAYOUT_OSD2_OBJECTS,
++	LAYOUT_FLEX_FILES,
++	LAYOUT_NFSV4_1_FILES,
++	0
++};
 +
-+	*p++ = cpu_to_be32(i);
++/*
+  * Try to set the server's pnfs module to the pnfs layout type specified by id.
+  * Currently only one pNFS layout driver per filesystem is supported.
+  *
+@@ -110,7 +125,7 @@ set_pnfs_layoutdriver(struct nfs_server *server, const struct nfs_fh *mntfh,
+ {
+ 	struct pnfs_layoutdriver_type *ld_type = NULL;
+ 	u32 id;
+-	int i;
++	int i, j;
+ 
+ 	if (!(server->nfs_client->cl_exchange_flags &
+ 		 (EXCHGID4_FLAG_USE_NON_PNFS | EXCHGID4_FLAG_USE_PNFS_MDS))) {
+@@ -118,31 +133,45 @@ set_pnfs_layoutdriver(struct nfs_server *server, const struct nfs_fh *mntfh,
+ 			__func__, server->nfs_client->cl_exchange_flags);
+ 		goto out_no_driver;
+ 	}
+-	/*
+-	 * If server supports more than one layout types.
+-	 * By assuming, that server will put 'common default' as the first
+-	 * entry, try all following entries ibefore and fall back to the default
+-	 * if we did not found a matching one.
+-	 */
+-	for(i = 1; i < NFS_MAX_LAYOUT_TYPES && ids[i] != 0; i++) {
+-		id = ids[i];
+-		request_module("%s-%u", LAYOUT_NFSV4_1_MODULE_PREFIX, id);
+-		ld_type = find_pnfs_driver(id);
+-		if(ld_type)
+-			goto found_module;
+ 
+-		dprintk("%s: No pNFS module found for %u.\n", __func__, id);
++	/* scan the list for each layout type in order of preference */
++	for (j = 0; ld_prefs[j] != 0; j++) {
++		for (i = 0; i < NFS_MAX_LAYOUT_TYPES && ids[i] != 0; i++) {
++			id = ids[i];
 +
-+	for (i = LAYOUT_NFSV4_1_FILES; i < LAYOUT_TYPE_MAX; ++i)
-+		if (layout_types & (1 << i))
-+			*p++ = cpu_to_be32(i);
- 
- 	return 0;
- }
-@@ -2754,13 +2752,13 @@ out_acl:
- 	}
- #ifdef CONFIG_NFSD_PNFS
- 	if (bmval1 & FATTR4_WORD1_FS_LAYOUT_TYPES) {
--		status = nfsd4_encode_layout_type(xdr, exp->ex_layout_type);
-+		status = nfsd4_encode_layout_types(xdr, exp->ex_layout_types);
- 		if (status)
- 			goto out;
++			if (ld_prefs[j] == id) {
++				request_module("%s-%u", LAYOUT_NFSV4_1_MODULE_PREFIX, id);
++				ld_type = find_pnfs_driver(id);
++				if (ld_type)
++					goto found_module;
++			}
++		}
  	}
  
- 	if (bmval2 & FATTR4_WORD2_LAYOUT_TYPES) {
--		status = nfsd4_encode_layout_type(xdr, exp->ex_layout_type);
-+		status = nfsd4_encode_layout_types(xdr, exp->ex_layout_types);
- 		if (status)
- 			goto out;
+-	/*
+-	 * no other layout types found. Try default one.
+-	 */
+-	id = ids[0];
+-	request_module("%s-%u", LAYOUT_NFSV4_1_MODULE_PREFIX, id);
+-	ld_type = find_pnfs_driver(id);
++	/* didn't find one -- make sure we try any that weren't in ld_prefs */
++	for (i = 0; i < NFS_MAX_LAYOUT_TYPES && ids[i] != 0; i++) {
++		bool	match = false;
++
++		id = ids[i];
++
++		/* Was it in the prefs list? */
++		for (j = 0; ld_prefs[j] != 0; j++) {
++			if (ld_prefs[j] != id) {
++				match = true;
++				break;
++			}
++		}
++
++		if (!match) {
++			request_module("%s-%u", LAYOUT_NFSV4_1_MODULE_PREFIX, id);
++			ld_type = find_pnfs_driver(id);
++			if (ld_type)
++				goto found_module;
++		}
++	}
+ 
+ 	if (!ld_type) {
+-		dprintk("%s: No pNFS module found for %u.\n", __func__, id);
++		dprintk("%s: No pNFS module found!\n", __func__);
+ 		goto out_no_driver;
  	}
+ 
 -- 
 2.5.5
 
