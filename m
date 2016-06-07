@@ -1,48 +1,64 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from us-smtp-delivery-194.mimecast.com ([63.128.21.194]:26338 "EHLO
-	us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751119AbcFFXtR (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 6 Jun 2016 19:49:17 -0400
-From: Trond Myklebust <trondmy@primarydata.com>
-To: Rob Landley <rob@landley.net>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        Anna Schumaker <anna.schumaker@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] Fix NFS option parsing bit-rot.
-Date: Mon, 6 Jun 2016 23:49:10 +0000
-Message-ID: <B4B27507-DD34-49D0-9BE9-01C9DA1A86FA@primarydata.com>
-References: <57560021.5030708@landley.net>
-In-Reply-To: <57560021.5030708@landley.net>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+Received: from mail-yw0-f171.google.com ([209.85.161.171]:34361 "EHLO
+	mail-yw0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751196AbcFGKiS (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 7 Jun 2016 06:38:18 -0400
+Received: by mail-yw0-f171.google.com with SMTP id c127so165463326ywb.1
+        for <linux-nfs@vger.kernel.org>; Tue, 07 Jun 2016 03:38:17 -0700 (PDT)
+From: Jeff Layton <jlayton@poochiereds.net>
+To: bfields@fieldses.org, anna.schumaker@netapp.com, trondmy@primarydata.com
+Cc: tigran.mkrtchyan@desy.de, thomas.haynes@primarydata.com,
+        linux-nfs@vger.kernel.org
+Subject: [PATCH 0/3] pnfs/nfsd: have client and server support multiple layout types
+Date: Tue,  7 Jun 2016 06:38:08 -0400
+Message-Id: <1465295891-4952-1-git-send-email-jlayton@poochiereds.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-DQoNCk9uIDYvNi8xNiwgMTg6NTgsICJSb2IgTGFuZGxleSIgPHJvYkBsYW5kbGV5Lm5ldD4gd3Jv
-dGU6DQoNCj5Gcm9tOiBSb2IgTGFuZGxleSA8cm9iQGxhbmRsZXkubmV0Pg0KPg0KPlRoZSBrZXJu
-ZWwgaGFzIHN0cmluZyBwYXJzaW5nIGNvZGUgZm9yIE5GUyBtb3VudCBvcHRpb25zLCBidXQgaXQg
-c2VlbXMNCj50byBoYXZlIGJpdC1yb3R0ZWQgb3ZlciB0aGUgeWVhcnMsIHNvIHRveWJveCBtb3Vu
-dCBuZWVkcyB0aGUgZm9sbG93aW5nDQo+cGF0Y2ggdG8gYmUgYWJsZSB0byBtb3VudCBuZnMuIFdp
-dGhvdXQgaXQsIHRoZSBrZXJuZWwgcmV0dXJucyAiaW52YWxpZA0KPmFyZ3VtZW50IiBiZWZvcmUg
-c2VuZGluZyBhbnkgbmV0d29yayB0cmFmZmljLg0KPg0KPkZvciBtb3JlIGluZm9ybWF0aW9uLCBz
-ZWUNCj5odHRwOi8vbGlzdHMubGFuZGxleS5uZXQvcGlwZXJtYWlsL3RveWJveC1sYW5kbGV5Lm5l
-dC8yMDE2LU1hcmNoLzAwNDc5MC5odG1sDQo+DQo+U2lnbmVkLW9mZi1ieTogUm9iIExhbmRsZXkg
-PHJvYkBsYW5kbGV5Lm5ldD4NCj4tLS0NCj4NCj4gZnMvbmZzL3N1cGVyLmMgfCAgIDE4ICsrKysr
-KysrKysrKystLS0tLQ0KPiAxIGZpbGUgY2hhbmdlZCwgMTMgaW5zZXJ0aW9ucygrKSwgNSBkZWxl
-dGlvbnMoLSkNCj4NCj5kaWZmIC0tZ2l0IGEvZnMvbmZzL3N1cGVyLmMgYi9mcy9uZnMvc3VwZXIu
-Yw0KPmluZGV4IDIxMzdlMDIuLjg2MzU4NWQgMTAwNjQ0DQo+LS0tIGEvZnMvbmZzL3N1cGVyLmMN
-Cj4rKysgYi9mcy9uZnMvc3VwZXIuYw0KPkBAIC0yMTMwLDExICsyMTMwLDIzIEBAIHN0YXRpYyBp
-bnQgbmZzX3ZhbGlkYXRlX3RleHRfbW91bnRfZGF0YSh2b2lkICpvcHRpb25zLA0KPiAJaW50IHBv
-cnQgPSAwOw0KPiAJaW50IG1heF9uYW1lbGVuID0gUEFHRV9TSVpFOw0KPiAJaW50IG1heF9wYXRo
-bGVuID0gTkZTX01BWFBBVEhMRU47DQo+KwlpbnQgcmM7DQo+IAlzdHJ1Y3Qgc29ja2FkZHIgKnNh
-cCA9IChzdHJ1Y3Qgc29ja2FkZHIgKikmYXJncy0+bmZzX3NlcnZlci5hZGRyZXNzOw0KPiANCj4g
-CWlmIChuZnNfcGFyc2VfbW91bnRfb3B0aW9ucygoY2hhciAqKW9wdGlvbnMsIGFyZ3MpID09IDAp
-DQo+IAkJcmV0dXJuIC1FSU5WQUw7DQo+IA0KPisJcmMgPSBuZnNfcGFyc2VfZGV2bmFtZShkZXZf
-bmFtZSwNCj4rCQkJCSAgICZhcmdzLT5uZnNfc2VydmVyLmhvc3RuYW1lLA0KPisJCQkJICAgbWF4
-X25hbWVsZW4sDQo+KwkJCQkgICAmYXJncy0+bmZzX3NlcnZlci5leHBvcnRfcGF0aCwNCj4rCQkJ
-CSAgIG1heF9wYXRobGVuKTsNCj4rDQo+KwlhcmdzLT5uZnNfc2VydmVyLmFkZHJsZW4gPSBycGNf
-cHRvbihhcmdzLT5uZXQsDQo+KwkJCWFyZ3MtPm5mc19zZXJ2ZXIuaG9zdG5hbWUsDQo+KwkJCXN0
-cmxlbihhcmdzLT5uZnNfc2VydmVyLmhvc3RuYW1lKSwNCj4rCQkJc2FwLCBzaXplb2YoYXJncy0+
-bmZzX3NlcnZlci5hZGRyZXNzKSk7DQo+Kw0KDQpUaGF0IHdpbGwgc2NyaWJibGUgb3ZlciB0aGUg
-cGFyc2VkIGFkZHJlc3MuDQoNClRyb25kDQoNCg0K
+This is a follow-up to the RFC set that I sent a week ago.
+
+The basic idea is to allow the client to handle lists of layout types,
+and for the server to provide them when there are multiple layout types
+available for a particular filesystem.
+
+The main change since the RFC set is to change how the client-side
+layout driver selection code works. I dropped the patch that I had
+written for the client and picked up Tigran's instead, and added a
+patch on top to change the selection order.
+
+Only lightly tested by mounting a server that sends both flexfiles and
+block layouts. The client successfully selected the block layout in most
+cases, but if I blacklist blocklayoutdriver then it selects flexfiles
+instead.
+
+I'm sending these together, but I'd expect Bruce to pick up the nfsd
+patches and Trond or Anna to pick up the client-side ones.
+
+The nfsd patch is based on top of Tom's nfsd flexfile layout patches.
+Probably we should squash patches 2 and 3 before merging, but I left
+them apart for now so you can see the change on top of what Tigran
+originally proposed.
+
+Jeff Layton (2):
+  nfsd: allow nfsd to advertise multiple layout types
+  pnfs: add a new mechanism to select a layout driver according to an
+    ordered list
+
+Tigran Mkrtchyan (1):
+  pnfs support servers with multiple layout types
+
+ fs/nfs/client.c         |  2 +-
+ fs/nfs/nfs4xdr.c        | 23 +++++++--------
+ fs/nfs/pnfs.c           | 76 ++++++++++++++++++++++++++++++++++++++++---------
+ fs/nfs/pnfs.h           |  2 +-
+ fs/nfsd/export.c        |  4 +--
+ fs/nfsd/export.h        |  2 +-
+ fs/nfsd/nfs4layouts.c   |  6 ++--
+ fs/nfsd/nfs4proc.c      |  4 +--
+ fs/nfsd/nfs4xdr.c       | 30 +++++++++----------
+ include/linux/nfs_xdr.h |  8 +++++-
+ 10 files changed, 103 insertions(+), 54 deletions(-)
+
+-- 
+2.5.5
 
