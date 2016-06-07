@@ -1,167 +1,105 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:47832 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932424AbcFGVqY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 7 Jun 2016 17:46:24 -0400
-Date: Tue, 7 Jun 2016 17:46:22 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Jeff Layton <jlayton@poochiereds.net>
-Cc: anna.schumaker@netapp.com, trondmy@primarydata.com,
-        tigran.mkrtchyan@desy.de, thomas.haynes@primarydata.com,
-        linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 3/3] pnfs: add a new mechanism to select a layout driver
- according to an ordered list
-Message-ID: <20160607214622.GE6653@fieldses.org>
-References: <1465295891-4952-1-git-send-email-jlayton@poochiereds.net>
- <1465295891-4952-4-git-send-email-jlayton@poochiereds.net>
-MIME-Version: 1.0
+Received: from aserp1040.oracle.com ([141.146.126.69]:31731 "EHLO
+	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751475AbcFGVvO convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 7 Jun 2016 17:51:14 -0400
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1465295891-4952-4-git-send-email-jlayton@poochiereds.net>
+Mime-Version: 1.0 (Mac OS X Mail 9.3 \(3124\))
+Subject: Re: [PATCH v1 09/20] xprtrdma: Limit the number of rpcrdma_mws
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <20160607212831.GA9192@obsidianresearch.com>
+Date: Tue, 7 Jun 2016 17:51:04 -0400
+Cc: linux-rdma <linux-rdma@vger.kernel.org>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Message-Id: <D90190F5-ACCB-45D8-B08D-B75023ED6240@oracle.com>
+References: <20160607194001.18401.88592.stgit@manet.1015granger.net> <20160607194732.18401.71941.stgit@manet.1015granger.net> <20160607204941.GA7991@obsidianresearch.com> <F1820E16-A2BF-4529-A5C9-59C9AD57369A@oracle.com> <20160607212831.GA9192@obsidianresearch.com>
+To: Jason Gunthorpe <jgunthorpe@obsidianresearch.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Jun 07, 2016 at 06:38:11AM -0400, Jeff Layton wrote:
-> Currently, the layout driver selection code attempts to divine meaning
-> from the order of the layout driver list sent by the server.
-> Unfortunately, the spec doesn't place any significance on the order
-> and the server is free to send them in any order it likes.
+
+> On Jun 7, 2016, at 5:28 PM, Jason Gunthorpe <jgunthorpe@obsidianresearch.com> wrote:
 > 
-> Instead, set a list of preferred driver types in the kernel and have
-> the selection code try them in order until it finds one that can be
-> loaded.
+> On Tue, Jun 07, 2016 at 05:09:47PM -0400, Chuck Lever wrote:
 > 
-> If we go through the whole list of preferred drivers and don't find one,
-> then try any that weren't recognized in the first scan. This should
-> allow the use of 3rd party and experimental drivers without needing to
-> muck with the order of preference.
+>>> Either the number in queue is limited by the invalidation
+>>> synchronization point to 2, or in the case of iwarp read, it doesn't
+>>> matter since everything executes serially in order and the value can
+>>> safely wrap.
+>> 
+>> I don't understand this. How does invalidation prevent
+>> the ULP from registering more R_keys?
 > 
-> For now, the order of preference is hardcoded, but it should be possible
-> to make this configurable (via module param perhaps?).
+> The ULP doesn't 'register' rkeys, it only changes the active RKey assigned
+> to a MR. The number of active rkeys is strictly limited to the number
+> of available MRs.
+
+I'm sure I'm using the language poorly.
+
+
+> Further changing the rkey can only be done as part of an invalidate
+> cycle.
+
+OK, I'm not remembering something very clearly, and
+I've drawn an incorrect conclusion. Yes, there always
+has to be an invalidation before an R_key can be
+reused to register a new MR.
+
+
+> Invaliding a MR/RKey can only happen after synchronization with the
+> remote.
 > 
-> Signed-off-by: Jeff Layton <jeff.layton@primarydata.com>
-> ---
->  fs/nfs/pnfs.c | 71 +++++++++++++++++++++++++++++++++++++++++------------------
->  1 file changed, 50 insertions(+), 21 deletions(-)
+> So the work queue looks broadly like this:
 > 
-> diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-> index b02cad9c04bf..3ec5f2b392b6 100644
-> --- a/fs/nfs/pnfs.c
-> +++ b/fs/nfs/pnfs.c
-> @@ -99,6 +99,21 @@ unset_pnfs_layoutdriver(struct nfs_server *nfss)
->  }
->  
->  /*
-> + * When the server sends a list of layout types, we choose one in the order
-> + * given in the list below.
-> + *
-> + * FIXME: should this list be configurable via module_param or something?
-> + */
-> +static const u32 ld_prefs[] = {
-> +	LAYOUT_SCSI,
-> +	LAYOUT_BLOCK_VOLUME,
-> +	LAYOUT_OSD2_OBJECTS,
-> +	LAYOUT_FLEX_FILES,
-> +	LAYOUT_NFSV4_1_FILES,
-> +	0
-> +};
-> +
-> +/*
->   * Try to set the server's pnfs module to the pnfs layout type specified by id.
->   * Currently only one pNFS layout driver per filesystem is supported.
->   *
-> @@ -110,7 +125,7 @@ set_pnfs_layoutdriver(struct nfs_server *server, const struct nfs_fh *mntfh,
->  {
->  	struct pnfs_layoutdriver_type *ld_type = NULL;
->  	u32 id;
-> -	int i;
-> +	int i, j;
->  
->  	if (!(server->nfs_client->cl_exchange_flags &
->  		 (EXCHGID4_FLAG_USE_NON_PNFS | EXCHGID4_FLAG_USE_PNFS_MDS))) {
-> @@ -118,31 +133,45 @@ set_pnfs_layoutdriver(struct nfs_server *server, const struct nfs_fh *mntfh,
->  			__func__, server->nfs_client->cl_exchange_flags);
->  		goto out_no_driver;
->  	}
-> -	/*
-> -	 * If server supports more than one layout types.
-> -	 * By assuming, that server will put 'common default' as the first
-> -	 * entry, try all following entries ibefore and fall back to the default
-> -	 * if we did not found a matching one.
-> -	 */
-> -	for(i = 1; i < NFS_MAX_LAYOUT_TYPES && ids[i] != 0; i++) {
-> -		id = ids[i];
-> -		request_module("%s-%u", LAYOUT_NFSV4_1_MODULE_PREFIX, id);
-> -		ld_type = find_pnfs_driver(id);
-> -		if(ld_type)
-> -			goto found_module;
->  
-> -		dprintk("%s: No pNFS module found for %u.\n", __func__, id);
-> +	/* scan the list for each layout type in order of preference */
-> +	for (j = 0; ld_prefs[j] != 0; j++) {
-> +		for (i = 0; i < NFS_MAX_LAYOUT_TYPES && ids[i] != 0; i++) {
-> +			id = ids[i];
-> +
-> +			if (ld_prefs[j] == id) {
-> +				request_module("%s-%u", LAYOUT_NFSV4_1_MODULE_PREFIX, id);
-> +				ld_type = find_pnfs_driver(id);
-> +				if (ld_type)
-> +					goto found_module;
-> +			}
-> +		}
->  	}
->  
-> -	/*
-> -	 * no other layout types found. Try default one.
-> -	 */
-> -	id = ids[0];
-> -	request_module("%s-%u", LAYOUT_NFSV4_1_MODULE_PREFIX, id);
-> -	ld_type = find_pnfs_driver(id);
-> +	/* didn't find one -- make sure we try any that weren't in ld_prefs */
-> +	for (i = 0; i < NFS_MAX_LAYOUT_TYPES && ids[i] != 0; i++) {
-> +		bool	match = false;
-> +
-> +		id = ids[i];
-> +
-> +		/* Was it in the prefs list? */
-> +		for (j = 0; ld_prefs[j] != 0; j++) {
-> +			if (ld_prefs[j] != id) {
-> +				match = true;
-> +				break;
-> +			}
-> +		}
+> WR setup rkey 1
+> WR send rkey 1 to remote
+> <synchronize>
+> WR invalidate rkey 1
+> WR setup rkey 2
+> WR send rkey 2 to remote
+> <synchronize>
+> 
+> Thus the WR queue can never have more than 2 rkey's per MR in it at
+> any time, and there is no need to care about the 24/8 bit split.
 
-This logic feels more complicated than necessary.
+Agreed, I see that the split has nothing to do with it.
+I will drop this patch.
 
-We're going out of our way to support (at this point purely theoretical)
-3rd-party layout modules.  When new layouts are develop, the chance
-they'll be implementable with *no* changes to kernel code outside that
-module seem small, and once you have to touch other code you may as well
-update ld_prefs.
 
-But anyway, if we want this, it might be easier to follow with logic
-like:
+>> And, I'd like to limit the number of pre-allocated MRs
+>> to no more than each transport endpoint can use. For
+>> xprtrdma, a transport is one QP and PD. What is that
+>> number?
+> 
+> I'm not sure I understand this question. AFAIK there is no limit on
+> MRs that can be used with a QP. As long as the MR is allocated you can
+> use it.
 
-	1. sort the ids[] array so the known layouts are at the top, in
-	   ld_prefs order.
-	2. try request_module() and find_pnfs_driver() in order on
-	   the sorted ids[] array.
+There is a practical number of MRs that can be allocated
+per device, I thought. And each MR consumes some amount
+of host memory.
 
---b.
+xprtrdma is happy to allocate thousands of MRs per QP/PD
+pair, but that isn't practical as you start adding more
+transports/connections.
 
-> +
-> +		if (!match) {
-> +			request_module("%s-%u", LAYOUT_NFSV4_1_MODULE_PREFIX, id);
-> +			ld_type = find_pnfs_driver(id);
-> +			if (ld_type)
-> +				goto found_module;
-> +		}
-> +	}
->  
->  	if (!ld_type) {
-> -		dprintk("%s: No pNFS module found for %u.\n", __func__, id);
-> +		dprintk("%s: No pNFS module found!\n", __func__);
->  		goto out_no_driver;
->  	}
->  
-> -- 
-> 2.5.5
+The question has to do with scaling the number of xprt
+connections over available device resources.
+
+
+> Typically you'd allocate enough MRs to handle your typical case
+> concurrancy level (pipeline depth).
+> 
+> The concurrancy level is limited by lots of things, for instance the
+> max number of posted recv's typically places a hard upper limit.
+
+xprtrdma already makes an estimate. I'm wondering if its
+still a valid one. Fewer MRs means better scaling in number
+of transports.
+
+
+--
+Chuck Lever
+
+
+
