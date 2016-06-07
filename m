@@ -1,13 +1,13 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-it0-f65.google.com ([209.85.214.65]:36216 "EHLO
-	mail-it0-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1161014AbcFGTsk (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 7 Jun 2016 15:48:40 -0400
-Subject: [PATCH v1 17/20] NFS: Don't drop CB requests with invalid principals
+Received: from mail-it0-f68.google.com ([209.85.214.68]:34689 "EHLO
+	mail-it0-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1161167AbcFGTss (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 7 Jun 2016 15:48:48 -0400
+Subject: [PATCH v1 18/20] xprtrdma: Eliminate rpcrdma_receive_worker()
 From: Chuck Lever <chuck.lever@oracle.com>
 To: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Tue, 07 Jun 2016 15:48:38 -0400
-Message-ID: <20160607194838.18401.42853.stgit@manet.1015granger.net>
+Date: Tue, 07 Jun 2016 15:48:46 -0400
+Message-ID: <20160607194846.18401.84542.stgit@manet.1015granger.net>
 In-Reply-To: <20160607194001.18401.88592.stgit@manet.1015granger.net>
 References: <20160607194001.18401.88592.stgit@manet.1015granger.net>
 MIME-Version: 1.0
@@ -15,58 +15,71 @@ Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Before commit 778be232a207 ("NFS do not find client in NFSv4
-pg_authenticate"), the Linux callback server replied with
-RPC_AUTH_ERROR / RPC_AUTH_BADCRED, instead of dropping the CB
-request. Let's restore that behavior so the server has a chance to
-do something useful about it, and provide a warning that helps
-admins correct the problem.
+Clean up: the extra layer of indirection doesn't add value.
 
-Fixes: 778be232a207 ("NFS do not find client in NFSv4 ...")
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- fs/nfs/callback_xdr.c |    6 +++++-
- net/sunrpc/svc.c      |    5 +++++
- 2 files changed, 10 insertions(+), 1 deletion(-)
+ net/sunrpc/xprtrdma/rpc_rdma.c  |    4 +++-
+ net/sunrpc/xprtrdma/verbs.c     |   11 +----------
+ net/sunrpc/xprtrdma/xprt_rdma.h |    2 +-
+ 3 files changed, 5 insertions(+), 12 deletions(-)
 
-diff --git a/fs/nfs/callback_xdr.c b/fs/nfs/callback_xdr.c
-index d81f96a..656f68f 100644
---- a/fs/nfs/callback_xdr.c
-+++ b/fs/nfs/callback_xdr.c
-@@ -925,7 +925,7 @@ static __be32 nfs4_callback_compound(struct svc_rqst *rqstp, void *argp, void *r
- 	if (hdr_arg.minorversion == 0) {
- 		cps.clp = nfs4_find_client_ident(SVC_NET(rqstp), hdr_arg.cb_ident);
- 		if (!cps.clp || !check_gss_callback_principal(cps.clp, rqstp))
--			return rpc_drop_reply;
-+			goto out_invalidcred;
- 	}
- 
- 	cps.minorversion = hdr_arg.minorversion;
-@@ -953,6 +953,10 @@ static __be32 nfs4_callback_compound(struct svc_rqst *rqstp, void *argp, void *r
- 	nfs_put_client(cps.clp);
- 	dprintk("%s: done, status = %u\n", __func__, ntohl(status));
- 	return rpc_success;
-+
-+out_invalidcred:
-+	pr_warn_ratelimited("NFS: NFSv4 callback contains invalid cred\n");
-+	return rpc_autherr_badcred;
+diff --git a/net/sunrpc/xprtrdma/rpc_rdma.c b/net/sunrpc/xprtrdma/rpc_rdma.c
+index aa7951a..41f7bf7 100644
+--- a/net/sunrpc/xprtrdma/rpc_rdma.c
++++ b/net/sunrpc/xprtrdma/rpc_rdma.c
+@@ -919,8 +919,10 @@ rpcrdma_conn_func(struct rpcrdma_ep *ep)
+  * allowed to timeout, to discover the errors at that time.
+  */
+ void
+-rpcrdma_reply_handler(struct rpcrdma_rep *rep)
++rpcrdma_reply_handler(struct work_struct *work)
+ {
++	struct rpcrdma_rep *rep =
++			container_of(work, struct rpcrdma_rep, rr_work);
+ 	struct rpcrdma_msg *headerp;
+ 	struct rpcrdma_req *req;
+ 	struct rpc_rqst *rqst;
+diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
+index e016b9c..d9d8aa0 100644
+--- a/net/sunrpc/xprtrdma/verbs.c
++++ b/net/sunrpc/xprtrdma/verbs.c
+@@ -128,15 +128,6 @@ rpcrdma_wc_send(struct ib_cq *cq, struct ib_wc *wc)
+ 		       wc->status, wc->vendor_err);
  }
  
+-static void
+-rpcrdma_receive_worker(struct work_struct *work)
+-{
+-	struct rpcrdma_rep *rep =
+-			container_of(work, struct rpcrdma_rep, rr_work);
+-
+-	rpcrdma_reply_handler(rep);
+-}
+-
+ /* Perform basic sanity checking to avoid using garbage
+  * to update the credit grant value.
+  */
+@@ -840,7 +831,7 @@ rpcrdma_create_rep(struct rpcrdma_xprt *r_xprt)
+ 	rep->rr_device = ia->ri_device;
+ 	rep->rr_cqe.done = rpcrdma_receive_wc;
+ 	rep->rr_rxprt = r_xprt;
+-	INIT_WORK(&rep->rr_work, rpcrdma_receive_worker);
++	INIT_WORK(&rep->rr_work, rpcrdma_reply_handler);
+ 	return rep;
+ 
+ out_free:
+diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
+index 33a1b48..3bd47f1 100644
+--- a/net/sunrpc/xprtrdma/xprt_rdma.h
++++ b/net/sunrpc/xprtrdma/xprt_rdma.h
+@@ -507,7 +507,7 @@ rpcrdma_data_dir(bool writing)
+  */
+ void rpcrdma_connect_worker(struct work_struct *);
+ void rpcrdma_conn_func(struct rpcrdma_ep *);
+-void rpcrdma_reply_handler(struct rpcrdma_rep *);
++void rpcrdma_reply_handler(struct work_struct *);
+ 
  /*
-diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
-index 87290a5..c5b0cb4 100644
---- a/net/sunrpc/svc.c
-+++ b/net/sunrpc/svc.c
-@@ -1194,6 +1194,11 @@ svc_process_common(struct svc_rqst *rqstp, struct kvec *argv, struct kvec *resv)
- 				procp->pc_release(rqstp, NULL, rqstp->rq_resp);
- 			goto dropit;
- 		}
-+		if (*statp == rpc_autherr_badcred) {
-+			if (procp->pc_release)
-+				procp->pc_release(rqstp, NULL, rqstp->rq_resp);
-+			goto err_bad_auth;
-+		}
- 		if (*statp == rpc_success &&
- 		    (xdr = procp->pc_encode) &&
- 		    !xdr(rqstp, resv->iov_base+resv->iov_len, rqstp->rq_resp)) {
+  * RPC/RDMA protocol calls - xprtrdma/rpc_rdma.c
 
