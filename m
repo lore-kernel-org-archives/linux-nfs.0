@@ -1,36 +1,28 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from resqmta-ch2-08v.sys.comcast.net ([69.252.207.40]:56444 "EHLO
-	resqmta-ch2-08v.sys.comcast.net" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1755121AbcFGXKA (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 7 Jun 2016 19:10:00 -0400
-Date: Tue, 7 Jun 2016 16:09:54 -0700
+Received: from resqmta-ch2-04v.sys.comcast.net ([69.252.207.36]:40141 "EHLO
+	resqmta-ch2-04v.sys.comcast.net" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751497AbcFGXLH (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 7 Jun 2016 19:11:07 -0400
+Date: Tue, 7 Jun 2016 16:11:03 -0700
 From: Tom Haynes <loghyr@excfb.com>
-To: "Mkrtchyan, Tigran" <tigran.mkrtchyan@desy.de>
+To: Jeff Layton <jlayton@poochiereds.net>
 Cc: Tom Haynes <thomas.haynes@primarydata.com>,
         "J. Bruce Fields" <bfields@fieldses.org>,
         Linux NFS Mailing list <linux-nfs@vger.kernel.org>,
         Christoph Hellwig <hch@lst.de>
-Subject: Re: [V3 2/2] nfsd: Add a super simple flex file server
-Message-ID: <20160607230954.GA30521@psyklo.internal.excfb.com>
-References: <1464282311-103795-1-git-send-email-loghyr@primarydata.com>
- <1464282311-103795-3-git-send-email-loghyr@primarydata.com>
- <2120378764.15265667.1464709335193.JavaMail.zimbra@desy.de>
+Subject: Re: [V4 2/2] nfsd: Add a super simple flex file server
+Message-ID: <20160607231102.GB30521@psyklo.internal.excfb.com>
+References: <1464325747-118810-1-git-send-email-loghyr@primarydata.com>
+ <1464325747-118810-3-git-send-email-loghyr@primarydata.com>
+ <1464523007.2746.15.camel@poochiereds.net>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <2120378764.15265667.1464709335193.JavaMail.zimbra@desy.de>
+Content-Type: text/plain; charset=iso-8859-1
+In-Reply-To: <1464523007.2746.15.camel@poochiereds.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, May 31, 2016 at 05:42:15PM +0200, Mkrtchyan, Tigran wrote:
-> 
-> 
-> ----- Original Message -----
-> > From: "Tom Haynes" <thomas.haynes@primarydata.com>
-> > To: "J. Bruce Fields" <bfields@fieldses.org>
-> > Cc: "Linux NFS Mailing list" <linux-nfs@vger.kernel.org>, "Christoph Hellwig" <hch@lst.de>
-> > Sent: Thursday, May 26, 2016 7:05:11 PM
-> > Subject: [V3 2/2] nfsd: Add a super simple flex file server
-> 
+On Sun, May 29, 2016 at 07:56:47AM -0400, Jeff Layton wrote:
+> On Thu, 2016-05-26 at 22:09 -0700, Tom Haynes wrote:
 > > Have a simple flex file server where the mds (NFSv4.1 or NFSv4.2)
 > > is also the ds (NFSv3). I.e., the metadata and the data file are
 > > the exact same file.
@@ -43,56 +35,67 @@ On Tue, May 31, 2016 at 05:42:15PM +0200, Mkrtchyan, Tigran wrote:
 > > 
 > > Signed-off-by: Tom Haynes <loghyr@primarydata.com>
 > > Reviewed-by: Christoph Hellwig <hch@lst.de>
+> > 
+> > Signed-off-by: Tom Haynes <loghyr@primarydata.com>
 > > ---
-> > fs/nfsd/Kconfig             |  17 ++++++
-> > fs/nfsd/Makefile            |   1 +
-> > fs/nfsd/flexfilelayout.c    | 133 ++++++++++++++++++++++++++++++++++++++++++++
-> > fs/nfsd/flexfilelayoutxdr.c | 115 ++++++++++++++++++++++++++++++++++++++
-> > fs/nfsd/flexfilelayoutxdr.h |  49 ++++++++++++++++
-> > fs/nfsd/nfs4layouts.c       |  12 +++-
-> > fs/nfsd/pnfs.h              |   3 +
-> > 7 files changed, 329 insertions(+), 1 deletion(-)
-> > create mode 100644 fs/nfsd/flexfilelayout.c
-> > create mode 100644 fs/nfsd/flexfilelayoutxdr.c
-> > create mode 100644 fs/nfsd/flexfilelayoutxdr.h
+> >  fs/nfsd/Kconfig             |  17 ++++++
+> >  fs/nfsd/Makefile            |   1 +
+> >  fs/nfsd/flexfilelayout.c    | 133 ++++++++++++++++++++++++++++++++++++++++++++
+> >  fs/nfsd/flexfilelayoutxdr.c | 115 ++++++++++++++++++++++++++++++++++++++
+> >  fs/nfsd/flexfilelayoutxdr.h |  49 ++++++++++++++++
+> >  fs/nfsd/nfs4layouts.c       |  12 +++-
+> >  fs/nfsd/pnfs.h              |   3 +
+> >  7 files changed, 329 insertions(+), 1 deletion(-)
+> >  create mode 100644 fs/nfsd/flexfilelayout.c
+> >  create mode 100644 fs/nfsd/flexfilelayoutxdr.c
+> >  create mode 100644 fs/nfsd/flexfilelayoutxdr.h
 > > 
 > > diff --git a/fs/nfsd/Kconfig b/fs/nfsd/Kconfig
 > > index c9f583d..e64d1a3 100644
 > > --- a/fs/nfsd/Kconfig
 > > +++ b/fs/nfsd/Kconfig
 > > @@ -111,6 +111,23 @@ config NFSD_SCSILAYOUT
-> > 
-> > 	  If unsure, say N.
-> > 
+> >  
+> >  	  If unsure, say N.
+> >  
 > > +config NFSD_FLEXFILELAYOUT
 > > +	bool "NFSv4.1 server support for pNFS Flex File layouts"
 > > +	depends on NFSD_V4
 > > +	select NFSD_PNFS
 > > +	help
-> > +	  This option enables support for the exporting pNFS Flex File
-> > +	  layouts in the kernel's NFS server. The pNFS Flex File  layout
-> > +	  enables NFS clients to directly perform I/O to NFSv3 devices
-> > +	  accesible to both the server and the clients.  See
-> > +	  draft-ietf-nfsv4-flex-files for more details.
+> > +	  This option enables support for the exporting pNFS Flex File
+> > +	  layouts in the kernel's NFS server. The pNFS Flex File  layout
+> > +	  enables NFS clients to directly perform I/O to NFSv3 devices
+> > +	  accesible to both the server and the clients.  See
+> > +	  draft-ietf-nfsv4-flex-files for more details.
 > > +
-> > +	  Warning, this server implements the bare minimum functionality
-> > +	  to be a flex file server - it is for testing the client,
-> > +	  not for use in production.
+> > +	  Warning, this server implements the bare minimum functionality
+> > +	  to be a flex file server - it is for testing the client,
+> > +	  not for use in production.
 > > +
-> > +	  If unsure, say N.
+> > +	  If unsure, say N.
 > > +
-> > config NFSD_V4_SECURITY_LABEL
-> > 	bool "Provide Security Label support for NFSv4 server"
-> > 	depends on NFSD_V4 && SECURITY
+> 
+> I think you should add a note here that if you turn this on, that you
+> should also disable CONFIG_LAYOUT_BLOCK/SCSI since the server can only
+> handle one layout type per export currently.
+
+But the server could be exporting multiple exports concurrently.
+
+I.e., it could have one of each.
+
+> 
+> >  config NFSD_V4_SECURITY_LABEL
+> >  	bool "Provide Security Label support for NFSv4 server"
+> >  	depends on NFSD_V4 && SECURITY
 > > diff --git a/fs/nfsd/Makefile b/fs/nfsd/Makefile
 > > index 3ae5f3c..5f5d3a7 100644
 > > --- a/fs/nfsd/Makefile
 > > +++ b/fs/nfsd/Makefile
-> > @@ -20,3 +20,4 @@ nfsd-$(CONFIG_NFSD_V4)	+= nfs4proc.o nfs4xdr.o nfs4state.o
-> > nfs4idmap.o \
-> > nfsd-$(CONFIG_NFSD_PNFS) += nfs4layouts.o
-> > nfsd-$(CONFIG_NFSD_BLOCKLAYOUT) += blocklayout.o blocklayoutxdr.o
-> > nfsd-$(CONFIG_NFSD_SCSILAYOUT) += blocklayout.o blocklayoutxdr.o
+> > @@ -20,3 +20,4 @@ nfsd-$(CONFIG_NFSD_V4)	+= nfs4proc.o nfs4xdr.o nfs4state.o nfs4idmap.o \
+> >  nfsd-$(CONFIG_NFSD_PNFS) += nfs4layouts.o
+> >  nfsd-$(CONFIG_NFSD_BLOCKLAYOUT) += blocklayout.o blocklayoutxdr.o
+> >  nfsd-$(CONFIG_NFSD_SCSILAYOUT) += blocklayout.o blocklayoutxdr.o
 > > +nfsd-$(CONFIG_NFSD_FLEXFILELAYOUT) += flexfilelayout.o flexfilelayoutxdr.o
 > > diff --git a/fs/nfsd/flexfilelayout.c b/fs/nfsd/flexfilelayout.c
 > > new file mode 100644
@@ -108,11 +111,11 @@ On Tue, May 31, 2016 at 05:42:15PM +0200, Mkrtchyan, Tigran wrote:
 > > + * the same. I.e., writing to the mds via a NFSv4.1 WRITE
 > > + * goes to the same location as the NFSv3 WRITE.
 > > + */
-> > +#include <linux/slab.h>
+> > +#include 
 > > +
-> > +#include <linux/nfsd/debug.h>
+> > +#include 
 > > +
-> > +#include <linux/sunrpc/addr.h>
+> > +#include 
 > > +
 > > +#include "flexfilelayoutxdr.h"
 > > +#include "pnfs.h"
@@ -131,10 +134,10 @@ On Tue, May 31, 2016 at 05:42:15PM +0200, Mkrtchyan, Tigran wrote:
 > > +	struct pnfs_ff_layout *fl;
 > > +
 > > +	/*
-> > +	 * The super simple flex file server has 1 mirror, 1 data server,
-> > +	 * and 1 file handle. So instead of 4 allocs, do 1 for now.
-> > +	 * Zero it out for the stateid - don't want junk in there!
-> > +	 */
+> > +	 * The super simple flex file server has 1 mirror, 1 data server,
+> > +	 * and 1 file handle. So instead of 4 allocs, do 1 for now.
+> > +	 * Zero it out for the stateid - don't want junk in there!
+> > +	 */
 > > +	error = -ENOMEM;
 > > +	fl = kzalloc(sizeof(*fl), GFP_KERNEL);
 > > +	if (!fl)
@@ -142,12 +145,12 @@ On Tue, May 31, 2016 at 05:42:15PM +0200, Mkrtchyan, Tigran wrote:
 > > +	args->lg_content = fl;
 > > +
 > > +	/*
-> > +	 * Avoid layout commit, try to force the I/O to the DS,
-> > +	 * and for fun, cause all IOMODE_RW layout segments to
-> > +	 * effectively be WRITE only.
-> > +	 */
+> > +	 * Avoid layout commit, try to force the I/O to the DS,
+> > +	 * and for fun, cause all IOMODE_RW layout segments to
+> > +	 * effectively be WRITE only.
+> > +	 */
 > > +	fl->flags = FF_FLAGS_NO_LAYOUTCOMMIT | FF_FLAGS_NO_IO_THRU_MDS |
-> > +		    FF_FLAGS_NO_READ_IO;
+> > +		    FF_FLAGS_NO_READ_IO;
 > > +
 > > +	/* Do not allow a IOMODE_READ segment to have write pemissions */
 > > +	if (seg->iomode == IOMODE_READ) {
@@ -199,7 +202,7 @@ On Tue, May 31, 2016 at 05:42:15PM +0200, Mkrtchyan, Tigran wrote:
 > > +	da->wsize = da->rsize;
 > > +
 > > +	rpc_ntop((struct sockaddr *)&rqstp->rq_daddr,
-> > +		 addr, INET6_ADDRSTRLEN);
+> > +		 addr, INET6_ADDRSTRLEN);
 > > +	if (rqstp->rq_daddr.ss_family == AF_INET) {
 > > +		struct sockaddr_in *sin;
 > > +
@@ -218,7 +221,7 @@ On Tue, May 31, 2016 at 05:42:15PM +0200, Mkrtchyan, Tigran wrote:
 > > +
 > > +	da->netaddr.addr_len =
 > > +		snprintf(da->netaddr.addr, FF_ADDR_LEN + 1,
-> > +			 "%s.%hhu.%hhu", addr, port >> 8, port & 0xff);
+> > +			 "%s.%hhu.%hhu", addr, port >> 8, port & 0xff);
 > > +
 > > +	da->tightly_coupled = false;
 > > +
@@ -242,8 +245,8 @@ On Tue, May 31, 2016 at 05:42:15PM +0200, Mkrtchyan, Tigran wrote:
 > > +/*
 > > + * Copyright (c) 2016 Tom Haynes <loghyr@primarydata.com>
 > > + */
-> > +#include <linux/sunrpc/svc.h>
-> > +#include <linux/nfs4.h>
+> > +#include 
+> > +#include 
 > > +
 > > +#include "nfsd.h"
 > > +#include "flexfilelayoutxdr.h"
@@ -264,9 +267,9 @@ On Tue, May 31, 2016 at 05:42:15PM +0200, Mkrtchyan, Tigran wrote:
 > > +	__be32 *p;
 > > +
 > > +	/*
-> > +	 * Unlike nfsd4_encode_user, we know these will
-> > +	 * always be stringified.
-> > +	 */
+> > +	 * Unlike nfsd4_encode_user, we know these will
+> > +	 * always be stringified.
+> > +	 */
 > > +	struct ff_idmap uid;
 > > +	struct ff_idmap gid;
 > > +
@@ -277,7 +280,7 @@ On Tue, May 31, 2016 at 05:42:15PM +0200, Mkrtchyan, Tigran wrote:
 > > +
 > > +	/* 8 + len for recording the length, name, and padding */
 > > +	ds_len = 20 + sizeof(stateid_opaque_t) + 4 + fh_len +
-> > +		 8 + uid.len + 8 + gid.len;
+> > +		 8 + uid.len + 8 + gid.len;
 > > +
 > > +	mirror_len = 4 + ds_len;
 > > +
@@ -290,23 +293,6 @@ On Tue, May 31, 2016 at 05:42:15PM +0200, Mkrtchyan, Tigran wrote:
 > > +
 > > +	*p++ = cpu_to_be32(len);
 > > +	p = xdr_encode_hyper(p, 1);		/* stripe unit of 1 */
-> 
-> 
-> from flexfiles draft8:
-> 
-> If the number of stripes is one, then the value for ffl_stripe_unit
-> MUST default to  zero. 
-> 
-> or I am treating the spec wrongly.
-
-No, I'll fix that up.
-
-Note that client is evidently not checking this value. :-)
-
-
-> 
-> Tigran.
-> 
 > > +
 > > +	*p++ = cpu_to_be32(1);			/* single mirror */
 > > +	*p++ = cpu_to_be32(1);			/* single data server */
@@ -318,7 +304,7 @@ Note that client is evidently not checking this value. :-)
 > > +
 > > +	*p++ = cpu_to_be32(fl->stateid.si_generation);
 > > +	p = xdr_encode_opaque_fixed(p, &fl->stateid.si_opaque,
-> > +				    sizeof(stateid_opaque_t));
+> > +				    sizeof(stateid_opaque_t));
 > > +
 > > +	*p++ = cpu_to_be32(1);			/* single file handle */
 > > +	p = xdr_encode_opaque(p, fl->fh.data, fl->fh.size);
@@ -353,9 +339,9 @@ Note that client is evidently not checking this value. :-)
 > > +		return nfserr_resource;
 > > +
 > > +	/*
-> > +	 * Fill in the overall length and number of volumes at the beginning
-> > +	 * of the layout.
-> > +	 */
+> > +	 * Fill in the overall length and number of volumes at the beginning
+> > +	 * of the layout.
+> > +	 */
 > > +	*p++ = cpu_to_be32(len);
 > > +	*p++ = cpu_to_be32(1);			/* 1 netaddr */
 > > +	p = xdr_encode_opaque(p, da->netaddr.netid, da->netaddr.netid_len);
@@ -373,7 +359,7 @@ Note that client is evidently not checking this value. :-)
 > > +}
 > > diff --git a/fs/nfsd/flexfilelayoutxdr.h b/fs/nfsd/flexfilelayoutxdr.h
 > > new file mode 100644
-> > index 0000000..b77275c
+> > index 0000000..467defd
 > > --- /dev/null
 > > +++ b/fs/nfsd/flexfilelayoutxdr.h
 > > @@ -0,0 +1,49 @@
@@ -383,17 +369,17 @@ Note that client is evidently not checking this value. :-)
 > > +#ifndef _NFSD_FLEXFILELAYOUTXDR_H
 > > +#define _NFSD_FLEXFILELAYOUTXDR_H 1
 > > +
-> > +#include <linux/inet.h>
+> > +#include 
 > > +#include "xdr4.h"
 > > +
 > > +#define FF_FLAGS_NO_LAYOUTCOMMIT 1
-> > +#define FF_FLAGS_NO_IO_THRU_MDS  2
-> > +#define FF_FLAGS_NO_READ_IO      4
+> > +#define FF_FLAGS_NO_IO_THRU_MDS  2
+> > +#define FF_FLAGS_NO_READ_IO      4
 > > +
 > > +struct xdr_stream;
 > > +
 > > +#define FF_NETID_LEN		(4)
-> > +#define FF_ADDR_LEN		(INET6_ADDRSTRLEN + 1)
+> > +#define FF_ADDR_LEN		(INET6_ADDRSTRLEN + 8)
 > > +struct pnfs_ff_netaddr {
 > > +	char				netid[FF_NETID_LEN + 1];
 > > +	char				addr[FF_ADDR_LEN + 1];
@@ -431,63 +417,78 @@ Note that client is evidently not checking this value. :-)
 > > --- a/fs/nfsd/nfs4layouts.c
 > > +++ b/fs/nfsd/nfs4layouts.c
 > > @@ -27,6 +27,9 @@ static const struct nfsd4_callback_ops nfsd4_cb_layout_ops;
-> > static const struct lock_manager_operations nfsd4_layouts_lm_ops;
-> > 
-> > const struct nfsd4_layout_ops *nfsd4_layout_ops[LAYOUT_TYPE_MAX] =  {
+> >  static const struct lock_manager_operations nfsd4_layouts_lm_ops;
+> >  
+> >  const struct nfsd4_layout_ops *nfsd4_layout_ops[LAYOUT_TYPE_MAX] =  {
 > > +#ifdef CONFIG_NFSD_FLEXFILELAYOUT
 > > +	[LAYOUT_FLEX_FILES]	= &ff_layout_ops,
 > > +#endif
-> > #ifdef CONFIG_NFSD_BLOCKLAYOUT
-> > 	[LAYOUT_BLOCK_VOLUME]	= &bl_layout_ops,
-> > #endif
-> > @@ -122,17 +125,24 @@ nfsd4_set_deviceid(struct nfsd4_deviceid *id, const struct
-> > svc_fh *fhp,
-> > 
-> > void nfsd4_setup_layout_type(struct svc_export *exp)
-> > {
+> >  #ifdef CONFIG_NFSD_BLOCKLAYOUT
+> >  	[LAYOUT_BLOCK_VOLUME]	= &bl_layout_ops,
+> >  #endif
+> > @@ -122,17 +125,24 @@ nfsd4_set_deviceid(struct nfsd4_deviceid *id, const struct svc_fh *fhp,
+> >  
+> >  void nfsd4_setup_layout_type(struct svc_export *exp)
+> >  {
 > > +#if defined(CONFIG_NFSD_BLOCKLAYOUT) || defined(CONFIG_NFSD_SCSILAYOUT)
-> > 	struct super_block *sb = exp->ex_path.mnt->mnt_sb;
+> >  	struct super_block *sb = exp->ex_path.mnt->mnt_sb;
 > > +#endif
-> > 
-> > 	if (!(exp->ex_flags & NFSEXP_PNFS))
-> > 		return;
-> > 
-> > 	/*
-> > -	 * Check if the file system supports exporting a block-like layout.
-> > +	 * If flex file is configured, use it by default. Otherwise
-> > +	 * check if the file system supports exporting a block-like layout.
-> > 	 * If the block device supports reservations prefer the SCSI layout,
-> > 	 * otherwise advertise the block layout.
-> > 	 */
+> >  
+> >  	if (!(exp->ex_flags & NFSEXP_PNFS))
+> >  		return;
+> >  
+> >  	/*
+> > -	 * Check if the file system supports exporting a block-like layout.
+> > +	 * If flex file is configured, use it by default. Otherwise
+> > +	 * check if the file system supports exporting a block-like layout.
+> >  	 * If the block device supports reservations prefer the SCSI layout,
+> >  	 * otherwise advertise the block layout.
+> >  	 */
+> 
+> 
 > > +#ifdef CONFIG_NFSD_FLEXFILELAYOUT
 > > +	exp->ex_layout_type = LAYOUT_FLEX_FILES;
 > > +#endif
-> > #ifdef CONFIG_NFSD_BLOCKLAYOUT
+> 
+> That comment is not quite right. AFAICT, if flexfiles is enabled then
+> you can always get those layouts, but if the fs supports block or scsi,
+> then you get those. So you either need to disable block/scsi layout
+> types if you want to test flexfiles or you need to test on an exported
+> filesystem that doesn't support block or scsi layouts.
+> 
+> Longer term, I think we should to fix the server to hand out multiple
+> layout types (and the client to intelligently pick a type to use). The
+> server-side of that looks quite simple to do, actually. The client
+> doesn't look too hard to fix either, but we'd need to decide how to
+> pick the right type when there are multiple ones available.
+> 
+> 
+> >  #ifdef CONFIG_NFSD_BLOCKLAYOUT
 > > +	/* overwrite flex file layout selection if needed */
-> > 	if (sb->s_export_op->get_uuid &&
-> > 	    sb->s_export_op->map_blocks &&
-> > 	    sb->s_export_op->commit_blocks)
+> >  	if (sb->s_export_op->get_uuid &&
+> >  	    sb->s_export_op->map_blocks &&
+> >  	    sb->s_export_op->commit_blocks)
 > > diff --git a/fs/nfsd/pnfs.h b/fs/nfsd/pnfs.h
 > > index e855677..0c2a716 100644
 > > --- a/fs/nfsd/pnfs.h
 > > +++ b/fs/nfsd/pnfs.h
 > > @@ -45,6 +45,9 @@ extern const struct nfsd4_layout_ops bl_layout_ops;
-> > #ifdef CONFIG_NFSD_SCSILAYOUT
-> > extern const struct nfsd4_layout_ops scsi_layout_ops;
-> > #endif
+> >  #ifdef CONFIG_NFSD_SCSILAYOUT
+> >  extern const struct nfsd4_layout_ops scsi_layout_ops;
+> >  #endif
 > > +#ifdef CONFIG_NFSD_FLEXFILELAYOUT
 > > +extern const struct nfsd4_layout_ops ff_layout_ops;
 > > +#endif
-> > 
-> > __be32 nfsd4_preprocess_layout_stateid(struct svc_rqst *rqstp,
-> > 		struct nfsd4_compound_state *cstate, stateid_t *stateid,
-> > --
-> > 1.8.3.1
-> > 
-> > --
-> > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> > the body of a message to majordomo@vger.kernel.org
-> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> >  
+> >  __be32 nfsd4_preprocess_layout_stateid(struct svc_rqst *rqstp,
+> >  		struct nfsd4_compound_state *cstate, stateid_t *stateid,
+> 
+> 
+> I think this looks really good overall. Add the note about disabling
+> other layout types if you want to use flexfiles and I think this looks
+> ready to be merged for 4.8. Nice work, Tom!
+> 
+> Reviewed-by: Jeff Layton <jlayton@poochiereds.net>
 > --
 > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
 > the body of a message to majordomo@vger.kernel.org
