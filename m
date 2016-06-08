@@ -1,51 +1,99 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from us-smtp-delivery-194.mimecast.com ([216.205.24.194]:39975 "EHLO
-	us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1754467AbcFHPHI (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 8 Jun 2016 11:07:08 -0400
-From: Trond Myklebust <trondmy@primarydata.com>
-To: Tom Talpey <tom@talpey.com>,
-        Jason Gunthorpe <jgunthorpe@obsidianresearch.com>,
-        Chuck Lever <chuck.lever@oracle.com>
-CC: linux-rdma <linux-rdma@vger.kernel.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH v1 09/20] xprtrdma: Limit the number of rpcrdma_mws
-Date: Wed, 8 Jun 2016 15:06:56 +0000
-Message-ID: <8FF9BF11-C5BF-4418-9A84-AAD7A6D6321D@primarydata.com>
-References: <20160607194001.18401.88592.stgit@manet.1015granger.net>
- <20160607194732.18401.71941.stgit@manet.1015granger.net>
- <20160607204941.GA7991@obsidianresearch.com>
- <F1820E16-A2BF-4529-A5C9-59C9AD57369A@oracle.com>
- <20160607212831.GA9192@obsidianresearch.com>
- <D90190F5-ACCB-45D8-B08D-B75023ED6240@oracle.com>
- <20160607220107.GA9982@obsidianresearch.com>
- <c43e37cd-71ea-8629-20f2-bcd674d50b83@talpey.com>
-In-Reply-To: <c43e37cd-71ea-8629-20f2-bcd674d50b83@talpey.com>
+Received: from mx1.redhat.com ([209.132.183.28]:52936 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752929AbcFHPUy (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 8 Jun 2016 11:20:54 -0400
+Received: from int-mx10.intmail.prod.int.phx2.redhat.com (int-mx10.intmail.prod.int.phx2.redhat.com [10.5.11.23])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+	(No client certificate requested)
+	by mx1.redhat.com (Postfix) with ESMTPS id 49270C0467EE
+	for <linux-nfs@vger.kernel.org>; Wed,  8 Jun 2016 15:20:53 +0000 (UTC)
+Received: from steved.boston.devel.redhat.com (vpn-49-78.rdu2.redhat.com [10.10.49.78])
+	by int-mx10.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id u58FKql1022140
+	for <linux-nfs@vger.kernel.org>; Wed, 8 Jun 2016 11:20:52 -0400
+Subject: Re: [PATCH v2] nfsidmap: added the -h option
+To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+References: <1465392195-11875-1-git-send-email-steved@redhat.com>
+From: Steve Dickson <SteveD@redhat.com>
+Message-ID: <60b45427-48b2-cb97-233c-5e5eab413e25@RedHat.com>
+Date: Wed, 8 Jun 2016 11:20:52 -0400
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+In-Reply-To: <1465392195-11875-1-git-send-email-steved@redhat.com>
+Content-Type: text/plain; charset=windows-1252
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-DQoNCk9uIDYvOC8xNiwgMTA6NTQsICJsaW51eC1uZnMtb3duZXJAdmdlci5rZXJuZWwub3JnIG9u
-IGJlaGFsZiBvZiBUb20gVGFscGV5IiA8bGludXgtbmZzLW93bmVyQHZnZXIua2VybmVsLm9yZyBv
-biBiZWhhbGYgb2YgdG9tQHRhbHBleS5jb20+IHdyb3RlOg0KDQo+T24gNi83LzIwMTYgNjowMSBQ
-TSwgSmFzb24gR3VudGhvcnBlIHdyb3RlOg0KPj4gT24gVHVlLCBKdW4gMDcsIDIwMTYgYXQgMDU6
-NTE6MDRQTSAtMDQwMCwgQ2h1Y2sgTGV2ZXIgd3JvdGU6DQo+Pg0KPj4+IFRoZXJlIGlzIGEgcHJh
-Y3RpY2FsIG51bWJlciBvZiBNUnMgdGhhdCBjYW4gYmUgYWxsb2NhdGVkDQo+Pj4gcGVyIGRldmlj
-ZSwgSSB0aG91Z2h0LiBBbmQgZWFjaCBNUiBjb25zdW1lcyBzb21lIGFtb3VudA0KPj4+IG9mIGhv
-c3QgbWVtb3J5Lg0KPj4NCj4+PiB4cHJ0cmRtYSBpcyBoYXBweSB0byBhbGxvY2F0ZSB0aG91c2Fu
-ZHMgb2YgTVJzIHBlciBRUC9QRA0KPj4+IHBhaXIsIGJ1dCB0aGF0IGlzbid0IHByYWN0aWNhbCBh
-cyB5b3Ugc3RhcnQgYWRkaW5nIG1vcmUNCj4+PiB0cmFuc3BvcnRzL2Nvbm5lY3Rpb25zLg0KPj4N
-Cj4+IFllcywgdGhpcyBpcyBhbGwgc2FuZSBhbmQgdmFsaWQuDQo+Pg0KPj4gVHlwaWNhbGx5IHlv
-dSdkIHRhcmdldCBhIGNvbmN1cnJlbmN5IGxpbWl0IHBlciBRUCBhbmQgYWxsb2NhdGUNCj4+IGV2
-ZXJ5dGhpbmcgKCMgTVJzLCBzcSxycSxjcSBkZXB0aCwgZXRjKSBpbiBhY2NvcmRhbmNlIHdpdGgg
-dGhhdCBnb2FsLA0KPj4gSSdkIGFsc28gc3VnZ2VzdCB0aGF0IHRhcmdldCBjb25jdXJyZW5jeSBp
-cyBwcm9iYWJseSBhIHVzZXIgdHVuYWJsZS4uDQo+DQo+VGhpcyBpcyBhbHJlYWR5IHByZXNlbnQg
-LSBpdCdzIHRoZSBSUEMgc2xvdCB0YWJsZSBkZXB0aC4gSXQgd291bGQgYmUNCj5ncmVhdCwgSU1P
-LCB0byBtYWtlIHRoaXMgYSBtb3VudCBwYXJhbWV0ZXIgc2luY2UgaXQgaXMgdHJhbnNwb3J0LSBh
-bmQNCj5hbHNvIHNlcnZlci1kZXBlbmRlbnQsIGJ1dCBjdXJyZW50bHkgSSBiZWxpZXZlIGl0IGlz
-IGp1c3QgYSBrZXJuZWwNCj5SUEMgbW9kdWxlIHBhcmFtZXRlci4NCg0KVGhhdCB3b3VsZCBiZSBh
-IG1vdW50IHBhcmFtZXRlciB3aGljaCB3b3VsZCBvbmx5IGFwcGx5IHRvIFJETUEgc2luY2UgZXZl
-cnl0aGluZyBlbHNlIHVzZXMgZHluYW1pYyBzbG90IGFsbG9jYXRpb24gdGhlc2UgZGF5cy4gSeKA
-mWQgcHJlZmVyIHRvIGF2b2lkIHRoYXQuDQoNClRyb25kDQoNCg==
 
+
+On 06/08/2016 09:23 AM, Steve Dickson wrote:
+> Use the correct exit code when an invalid option
+> use or the -h option.
+> 
+> Signed-off-by: Steve Dickson <steved@redhat.com>
+Committed.. 
+
+steved.
+
+> ---
+>  utils/nfsidmap/nfsidmap.c   | 7 ++++---
+>  utils/nfsidmap/nfsidmap.man | 5 +++++
+>  2 files changed, 9 insertions(+), 3 deletions(-)
+> 
+> diff --git a/utils/nfsidmap/nfsidmap.c b/utils/nfsidmap/nfsidmap.c
+> index 2abefe9..63545fc 100644
+> --- a/utils/nfsidmap/nfsidmap.c
+> +++ b/utils/nfsidmap/nfsidmap.c
+> @@ -17,7 +17,7 @@
+>  #include "conffile.h"
+>  
+>  int verbose = 0;
+> -char *usage = "Usage: %s [-v] [-c || [-u|-g|-r key] || -d || -l || [-t timeout] key desc]";
+> +char *usage = "Usage: %s [-vh] [-c || [-u|-g|-r key] || -d || -l || [-t timeout] key desc]";
+>  
+>  #define MAX_ID_LEN   11
+>  #define IDMAP_NAMESZ 128
+> @@ -369,7 +369,7 @@ int main(int argc, char **argv)
+>  
+>  	xlog_open(progname);
+>  
+> -	while ((opt = getopt(argc, argv, "du:g:r:ct:vl")) != -1) {
+> +	while ((opt = getopt(argc, argv, "hdu:g:r:ct:vl")) != -1) {
+>  		switch (opt) {
+>  		case 'd':
+>  			display++;
+> @@ -398,9 +398,10 @@ int main(int argc, char **argv)
+>  		case 't':
+>  			timeout = atoi(optarg);
+>  			break;
+> +		case 'h':
+>  		default:
+>  			xlog_warn(usage, progname);
+> -			break;
+> +			exit(opt == 'h' ? 0 : 1);
+>  		}
+>  	}
+>  
+> diff --git a/utils/nfsidmap/nfsidmap.man b/utils/nfsidmap/nfsidmap.man
+> index 0275bdf..2f17cf2 100644
+> --- a/utils/nfsidmap/nfsidmap.man
+> +++ b/utils/nfsidmap/nfsidmap.man
+> @@ -15,6 +15,8 @@ nfsidmap \- The NFS idmapper upcall program
+>  .B "nfsidmap -d"
+>  .br
+>  .B "nfsidmap -l"
+> +.br
+> +.B "nfsidmap -h"
+>  .SH DESCRIPTION
+>  The NFSv4 protocol represents the local system's UID and GID values
+>  on the wire as strings of the form
+> @@ -71,6 +73,9 @@ Display the system's effective NFSv4 domain name on
+>  .B -g user
+>  Revoke the gid key of the given user.
+>  .TP
+> +.B -h
+> +Display usage message.
+> +.TP
+>  .B -l
+>  Display on
+>  .I stdout
+> 
