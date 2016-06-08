@@ -1,39 +1,50 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:48381 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1424687AbcFHOpb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 8 Jun 2016 10:45:31 -0400
-From: "Benjamin Coddington" <bcodding@redhat.com>
-To: "Weston Andros Adamson" <dros@primarydata.com>
-Cc: "Linux NFS Mailing List" <linux-nfs@vger.kernel.org>
-Subject: non-contiguous write across SCSI layout
-Date: Wed, 08 Jun 2016 10:45:40 -0400
-Message-ID: <A0E027A5-A8E1-402C-890C-89C2AE5E4FE1@redhat.com>
+Received: from p3plsmtpa07-06.prod.phx3.secureserver.net ([173.201.192.235]:55206
+	"EHLO p3plsmtpa07-06.prod.phx3.secureserver.net" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751489AbcFHPCA (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 8 Jun 2016 11:02:00 -0400
+Subject: Re: [PATCH v1 09/20] xprtrdma: Limit the number of rpcrdma_mws
+To: Jason Gunthorpe <jgunthorpe@obsidianresearch.com>,
+        Chuck Lever <chuck.lever@oracle.com>
+References: <20160607194001.18401.88592.stgit@manet.1015granger.net>
+ <20160607194732.18401.71941.stgit@manet.1015granger.net>
+ <20160607204941.GA7991@obsidianresearch.com>
+ <F1820E16-A2BF-4529-A5C9-59C9AD57369A@oracle.com>
+ <20160607212831.GA9192@obsidianresearch.com>
+ <D90190F5-ACCB-45D8-B08D-B75023ED6240@oracle.com>
+ <20160607220107.GA9982@obsidianresearch.com>
+Cc: linux-rdma <linux-rdma@vger.kernel.org>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+From: Tom Talpey <tom@talpey.com>
+Message-ID: <c43e37cd-71ea-8629-20f2-bcd674d50b83@talpey.com>
+Date: Wed, 8 Jun 2016 10:54:36 -0400
 MIME-Version: 1.0
+In-Reply-To: <20160607220107.GA9982@obsidianresearch.com>
+Content-Type: text/plain; charset=windows-1252; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Dros,
+On 6/7/2016 6:01 PM, Jason Gunthorpe wrote:
+> On Tue, Jun 07, 2016 at 05:51:04PM -0400, Chuck Lever wrote:
+>
+>> There is a practical number of MRs that can be allocated
+>> per device, I thought. And each MR consumes some amount
+>> of host memory.
+>
+>> xprtrdma is happy to allocate thousands of MRs per QP/PD
+>> pair, but that isn't practical as you start adding more
+>> transports/connections.
+>
+> Yes, this is all sane and valid.
+>
+> Typically you'd target a concurrency limit per QP and allocate
+> everything (# MRs, sq,rq,cq depth, etc) in accordance with that goal,
+> I'd also suggest that target concurrency is probably a user tunable..
 
-The client takes this WARN_ON_ONCE path pretty often in
-pnfs_generic_pg_test() with SCSI layout type and generic/010:
+This is already present - it's the RPC slot table depth. It would be
+great, IMO, to make this a mount parameter since it is transport- and
+also server-dependent, but currently I believe it is just a kernel
+RPC module parameter.
 
-1925     if (pgio->pg_lseg) {
-1926         seg_end = end_offset(pgio->pg_lseg->pls_range.offset,
-1927                      pgio->pg_lseg->pls_range.length);
-1928         req_start = req_offset(req);
-1929         WARN_ON_ONCE(req_start >= seg_end);
-1930         /* start of request is past the last byte of this segment */
-1931         if (req_start >= seg_end) {
-1932             /* reference the new lseg */
-1933             if (pgio->pg_ops->pg_cleanup)
-1934                 pgio->pg_ops->pg_cleanup(pgio);
-1935             if (pgio->pg_ops->pg_init)
-1936                 pgio->pg_ops->pg_init(pgio, req);
-1937             return 0;
-1938         }
+Tom.
 
-I'm trying to figure out why that's a WARN-able path.. do you recall the
-original reason for that warning?
-
-Ben
