@@ -1,74 +1,263 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from linuxhacker.ru ([217.76.32.60]:53982 "EHLO fiona.linuxhacker.ru"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752150AbcFHDzu convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 7 Jun 2016 23:55:50 -0400
-Subject: Re: Files leak from nfsd in 4.7.1-rc1 (and more?)
-Mime-Version: 1.0 (Apple Message framework v1283)
-Content-Type: text/plain; charset=us-ascii
-From: Oleg Drokin <green@linuxhacker.ru>
-In-Reply-To: <AA8AB6FA-E3FF-42B9-A275-0173BD667B0F@linuxhacker.ru>
-Date: Tue, 7 Jun 2016 23:55:41 -0400
-Cc: "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org,
-        "<linux-kernel@vger.kernel.org> Mailing List"
-	<linux-kernel@vger.kernel.org>
-Message-Id: <1D1008D4-9A28-48B2-9BA7-4069C2998D17@linuxhacker.ru>
-References: <4EDA6CFD-1FE8-4FCA-ACCF-84250BE342CB@linuxhacker.ru> <1465319435.3024.25.camel@poochiereds.net> <0F21EDD6-5CBB-4B5B-A1FF-E066011D18D6@linuxhacker.ru> <1465329897.3024.38.camel@poochiereds.net> <752F7196-1EE7-4FB3-8769-177131C8A793@linuxhacker.ru> <1465344205.3024.42.camel@poochiereds.net> <AA8AB6FA-E3FF-42B9-A275-0173BD667B0F@linuxhacker.ru>
-To: Jeff Layton <jlayton@poochiereds.net>
+Received: from mail-yw0-f196.google.com ([209.85.161.196]:35842 "EHLO
+	mail-yw0-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1161760AbcFHKeI (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 8 Jun 2016 06:34:08 -0400
+Received: by mail-yw0-f196.google.com with SMTP id l126so407534ywe.3
+        for <linux-nfs@vger.kernel.org>; Wed, 08 Jun 2016 03:34:08 -0700 (PDT)
+Message-ID: <1465382043.27742.0.camel@poochiereds.net>
+Subject: Re: [PATCH 2/3] pnfs support servers with multiple layout types
+From: Jeff Layton <jlayton@poochiereds.net>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: anna.schumaker@netapp.com, trondmy@primarydata.com,
+        tigran.mkrtchyan@desy.de, thomas.haynes@primarydata.com,
+        linux-nfs@vger.kernel.org
+Date: Wed, 08 Jun 2016 06:34:03 -0400
+In-Reply-To: <20160607213332.GD6653@fieldses.org>
+References: <1465295891-4952-1-git-send-email-jlayton@poochiereds.net>
+ <1465295891-4952-3-git-send-email-jlayton@poochiereds.net>
+	 <20160607213332.GD6653@fieldses.org>
+Content-Type: text/plain; charset="UTF-8"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-On Jun 7, 2016, at 10:22 PM, Oleg Drokin wrote:
-
+On Tue, 2016-06-07 at 17:33 -0400, J. Bruce Fields wrote:
+> On Tue, Jun 07, 2016 at 06:38:10AM -0400, Jeff Layton wrote:
+> > From: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
+> > 
+> > current NFSv4.1/pNFS client assumes that MDS supports
+> > only one layout type. While it's true for most existing servers,
+> > nevertheless, this can be change in the near future.
+> > 
+> > This patch is an attempt to multi layouttype MDS support. To make
+> > it possible for such servers to function with existing clients,
+> > server must always send default layout type first in the list. The
+> > client starts processing layout types starting from the second element
+> > and will fall back to the wfirst one, if none of presented types
+> > is supported.
 > 
-> On Jun 7, 2016, at 8:03 PM, Jeff Layton wrote:
+> I don't follow this explanation.
 > 
->>>> That said, this code is quite subtle. I'd need to look over it in more
->>>> detail before I offer up any fixes. I'd also appreciate it if anyone
->>>> else wants to sanity check my analysis there.
->>>> 
->> Yeah, I think you're right. It's fine since r/w opens have a distinct
->> slot, even though the refcounting just tracks the number of read and
->> write references. So yeah, the leak probably is in an error path
->> someplace, or maybe a race someplace.
+> Also, it gets overridden by the following patch.
 > 
-> So I noticed that set_access is always called locked, but clear_access is not,
-> this does not sound right.
+> How about making this patch purely a preperatory patch that puts the
+> necessary code in place without changing behavior, and leaving any
+> discussion of ordering to the following patch.
 > 
-> So I placed this strategic WARN_ON:
-> @@ -3991,6 +4030,7 @@ static __be32 nfs4_get_vfs_file(struct svc_rqst *rqstp, struct nfs4_file *fp,
->                        goto out_put_access;
->                spin_lock(&fp->fi_lock);
->                if (!fp->fi_fds[oflag]) {
-> +WARN_ON(!test_access(open->op_share_access, stp));
->                        fp->fi_fds[oflag] = filp;
->                        filp = NULL;
+> So, change set_pnfs_layoutdriver to take an array, but have it just do
+> the trivial thing (take the first element) till the following patch.
 > 
-> This is right in the place where nfsd set the access flag already, discovered
-> that the file is not opened and went on to open it, yet some parallel thread
-> came in and cleared the flag by the time we got the file opened.
-> It did trigger (but there are 30 minutes left till test finish, so I don't
-> know yet if this will correspond to the problem at hand yet, so below is speculation).
+> --b.
+> 
 
-Duh, I looked for a warning, but did not cross reference, and it was not this one that
-hit yet.
+Sounds good. I'll do that for the next respin.
 
-Though apparently I am hitting some of the "impossible" warnings, so you might want to
-look into that anyway.
-
-        status = nfsd4_process_open2(rqstp, resfh, open);
-        WARN(status && open->op_created,
-             "nfsd4_process_open2 failed to open newly-created file! status=%u\n",
-             be32_to_cpu(status));
-
-and
-
-        filp = find_readable_file(fp);
-        if (!filp) {
-                /* We should always have a readable file here */
-                WARN_ON_ONCE(1);
-                locks_free_lock(fl);
-                return -EBADF;
-        }
-
+> > 
+> > Testing done:
+> > 
+> >   - started a server with nfs4_file and flex_file layout
+> >   - new kernel picked flexr_-file layout
+> >   - old complained about multiple layout types and proceeded  nfs4_file layout
+> > 
+> > Signed-off-by: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
+> > ---
+> >  fs/nfs/client.c         |  2 +-
+> >  fs/nfs/nfs4xdr.c        | 23 ++++++++++-------------
+> >  fs/nfs/pnfs.c           | 45 ++++++++++++++++++++++++++++++++-------------
+> >  fs/nfs/pnfs.h           |  2 +-
+> >  include/linux/nfs_xdr.h |  8 +++++++-
+> >  5 files changed, 51 insertions(+), 29 deletions(-)
+> > 
+> > diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+> > index 0c96528db94a..067f489aab3f 100644
+> > --- a/fs/nfs/client.c
+> > +++ b/fs/nfs/client.c
+> > @@ -787,7 +787,7 @@ int nfs_probe_fsinfo(struct nfs_server *server, struct nfs_fh *mntfh, struct nfs
+> >  	}
+> >  
+> >  	fsinfo.fattr = fattr;
+> > -	fsinfo.layouttype = 0;
+> > +	memset(fsinfo.layouttype, 0, sizeof(fsinfo.layouttype));
+> >  	error = clp->rpc_ops->fsinfo(server, mntfh, &fsinfo);
+> >  	if (error < 0)
+> >  		goto out_error;
+> > diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+> > index 661e753fe1c9..b2c698499ad9 100644
+> > --- a/fs/nfs/nfs4xdr.c
+> > +++ b/fs/nfs/nfs4xdr.c
+> > @@ -4720,14 +4720,13 @@ static int decode_getfattr(struct xdr_stream *xdr, struct nfs_fattr *fattr,
+> >  }
+> >  
+> >  /*
+> > - * Decode potentially multiple layout types. Currently we only support
+> > - * one layout driver per file system.
+> > + * Decode potentially multiple layout types.
+> >   */
+> > -static int decode_first_pnfs_layout_type(struct xdr_stream *xdr,
+> > +static int decode_pnfs_layout_types(struct xdr_stream *xdr,
+> >  					 uint32_t *layouttype)
+> >  {
+> >  	__be32 *p;
+> > -	int num;
+> > +	uint32_t num, i;
+> >  
+> >  	p = xdr_inline_decode(xdr, 4);
+> >  	if (unlikely(!p))
+> > @@ -4736,18 +4735,17 @@ static int decode_first_pnfs_layout_type(struct xdr_stream *xdr,
+> >  
+> >  	/* pNFS is not supported by the underlying file system */
+> >  	if (num == 0) {
+> > -		*layouttype = 0;
+> >  		return 0;
+> >  	}
+> > -	if (num > 1)
+> > -		printk(KERN_INFO "NFS: %s: Warning: Multiple pNFS layout "
+> > -			"drivers per filesystem not supported\n", __func__);
+> > +	if (num > NFS_MAX_LAYOUT_TYPES)
+> > +		printk(KERN_INFO "NFS: %s: Warning: Too many (%d) pNFS layout types\n", __func__, num);
+> >  
+> >  	/* Decode and set first layout type, move xdr->p past unused types */
+> >  	p = xdr_inline_decode(xdr, num * 4);
+> >  	if (unlikely(!p))
+> >  		goto out_overflow;
+> > -	*layouttype = be32_to_cpup(p);
+> > +	for(i = 0; i < num && i < NFS_MAX_LAYOUT_TYPES; i++)
+> > +		layouttype[i] = be32_to_cpup(p++);
+> >  	return 0;
+> >  out_overflow:
+> >  	print_overflow_msg(__func__, xdr);
+> > @@ -4767,10 +4765,9 @@ static int decode_attr_pnfstype(struct xdr_stream *xdr, uint32_t *bitmap,
+> >  	if (unlikely(bitmap[1] & (FATTR4_WORD1_FS_LAYOUT_TYPES - 1U)))
+> >  		return -EIO;
+> >  	if (bitmap[1] & FATTR4_WORD1_FS_LAYOUT_TYPES) {
+> > -		status = decode_first_pnfs_layout_type(xdr, layouttype);
+> > +		status = decode_pnfs_layout_types(xdr, layouttype);
+> >  		bitmap[1] &= ~FATTR4_WORD1_FS_LAYOUT_TYPES;
+> > -	} else
+> > -		*layouttype = 0;
+> > +	}
+> >  	return status;
+> >  }
+> >  
+> > @@ -4851,7 +4848,7 @@ static int decode_fsinfo(struct xdr_stream *xdr, struct nfs_fsinfo *fsinfo)
+> >  	status = decode_attr_time_delta(xdr, bitmap, &fsinfo->time_delta);
+> >  	if (status != 0)
+> >  		goto xdr_error;
+> > -	status = decode_attr_pnfstype(xdr, bitmap, &fsinfo->layouttype);
+> > +	status = decode_attr_pnfstype(xdr, bitmap, fsinfo->layouttype);
+> >  	if (status != 0)
+> >  		goto xdr_error;
+> >  
+> > diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+> > index 0c7e0d45a4de..b02cad9c04bf 100644
+> > --- a/fs/nfs/pnfs.c
+> > +++ b/fs/nfs/pnfs.c
+> > @@ -102,32 +102,51 @@ unset_pnfs_layoutdriver(struct nfs_server *nfss)
+> >   * Try to set the server's pnfs module to the pnfs layout type specified by id.
+> >   * Currently only one pNFS layout driver per filesystem is supported.
+> >   *
+> > - * @id layout type. Zero (illegal layout type) indicates pNFS not in use.
+> > + * @ids array of layout types supported by MDS.
+> >   */
+> >  void
+> >  set_pnfs_layoutdriver(struct nfs_server *server, const struct nfs_fh *mntfh,
+> > -		      u32 id)
+> > +		      u32 *ids)
+> >  {
+> >  	struct pnfs_layoutdriver_type *ld_type = NULL;
+> > +	u32 id;
+> > +	int i;
+> >  
+> > -	if (id == 0)
+> > -		goto out_no_driver;
+> >  	if (!(server->nfs_client->cl_exchange_flags &
+> >  		 (EXCHGID4_FLAG_USE_NON_PNFS | EXCHGID4_FLAG_USE_PNFS_MDS))) {
+> > -		printk(KERN_ERR "NFS: %s: id %u cl_exchange_flags 0x%x\n",
+> > -			__func__, id, server->nfs_client->cl_exchange_flags);
+> > +		printk(KERN_ERR "NFS: %s: cl_exchange_flags 0x%x\n",
+> > +			__func__, server->nfs_client->cl_exchange_flags);
+> >  		goto out_no_driver;
+> >  	}
+> > -	ld_type = find_pnfs_driver(id);
+> > -	if (!ld_type) {
+> > +	/*
+> > +	 * If server supports more than one layout types.
+> > +	 * By assuming, that server will put 'common default' as the first
+> > +	 * entry, try all following entries ibefore and fall back to the default
+> > +	 * if we did not found a matching one.
+> > +	 */
+> > +	for(i = 1; i < NFS_MAX_LAYOUT_TYPES && ids[i] != 0; i++) {
+> > +		id = ids[i];
+> >  		request_module("%s-%u", LAYOUT_NFSV4_1_MODULE_PREFIX, id);
+> >  		ld_type = find_pnfs_driver(id);
+> > -		if (!ld_type) {
+> > -			dprintk("%s: No pNFS module found for %u.\n",
+> > -				__func__, id);
+> > -			goto out_no_driver;
+> > -		}
+> > +		if(ld_type)
+> > +			goto found_module;
+> > +
+> > +		dprintk("%s: No pNFS module found for %u.\n", __func__, id);
+> > +	}
+> > +
+> > +	/*
+> > +	 * no other layout types found. Try default one.
+> > +	 */
+> > +	id = ids[0];
+> > +	request_module("%s-%u", LAYOUT_NFSV4_1_MODULE_PREFIX, id);
+> > +	ld_type = find_pnfs_driver(id);
+> > +
+> > +	if (!ld_type) {
+> > +		dprintk("%s: No pNFS module found for %u.\n", __func__, id);
+> > +		goto out_no_driver;
+> >  	}
+> > +
+> > +found_module:
+> >  	server->pnfs_curr_ld = ld_type;
+> >  	if (ld_type->set_layoutdriver
+> >  	    && ld_type->set_layoutdriver(server, mntfh)) {
+> > diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+> > index b21bd0bee784..7d74e3da1d69 100644
+> > --- a/fs/nfs/pnfs.h
+> > +++ b/fs/nfs/pnfs.h
+> > @@ -236,7 +236,7 @@ void pnfs_get_layout_hdr(struct pnfs_layout_hdr *lo);
+> >  void pnfs_put_lseg(struct pnfs_layout_segment *lseg);
+> >  void pnfs_put_lseg_locked(struct pnfs_layout_segment *lseg);
+> >  
+> > -void set_pnfs_layoutdriver(struct nfs_server *, const struct nfs_fh *, u32);
+> > +void set_pnfs_layoutdriver(struct nfs_server *, const struct nfs_fh *, u32 *);
+> >  void unset_pnfs_layoutdriver(struct nfs_server *);
+> >  void pnfs_generic_pg_init_read(struct nfs_pageio_descriptor *, struct nfs_page *);
+> >  int pnfs_generic_pg_readpages(struct nfs_pageio_descriptor *desc);
+> > diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+> > index c304a11b5b1a..15f7979494b2 100644
+> > --- a/include/linux/nfs_xdr.h
+> > +++ b/include/linux/nfs_xdr.h
+> > @@ -125,6 +125,12 @@ struct nfs_fattr {
+> >  		| NFS_ATTR_FATTR_V4_SECURITY_LABEL)
+> >  
+> >  /*
+> > + * Maximal number of supported layout drivers.
+> > + */
+> > +#define NFS_MAX_LAYOUT_TYPES 8
+> > +
+> > +
+> > +/*
+> >   * Info on the file system
+> >   */
+> >  struct nfs_fsinfo {
+> > @@ -139,7 +145,7 @@ struct nfs_fsinfo {
+> >  	__u64			maxfilesize;
+> >  	struct timespec		time_delta; /* server time granularity */
+> >  	__u32			lease_time; /* in seconds */
+> > -	__u32			layouttype; /* supported pnfs layout driver */
+> > +	__u32			layouttype[NFS_MAX_LAYOUT_TYPES]; /* supported pnfs layout driver */
+> >  	__u32			blksize; /* preferred pnfs io block size */
+> >  	__u32			clone_blksize; /* granularity of a CLONE operation */
+> >  };
+> > -- 
+> > 2.5.5
+-- 
+Jeff Layton <jlayton@poochiereds.net>
