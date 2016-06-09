@@ -1,51 +1,55 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from discipline.rit.edu ([129.21.6.207]:50612 "HELO
-	discipline.rit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with SMTP id S1751039AbcFIMUA (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 9 Jun 2016 08:20:00 -0400
-From: Andrew W Elble <aweits@rit.edu>
-To: Jeff Layton <jlayton@poochiereds.net>
-Cc: Oleg Drokin <green@linuxhacker.ru>,
-        "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org,
-        "<linux-kernel@vger.kernel.org> Mailing List"
-	<linux-kernel@vger.kernel.org>
-Subject: Re: Files leak from nfsd in 4.7.1-rc1 (and more?)
-References: <4EDA6CFD-1FE8-4FCA-ACCF-84250BE342CB@linuxhacker.ru>
-	<1465319435.3024.25.camel@poochiereds.net>
-	<0F21EDD6-5CBB-4B5B-A1FF-E066011D18D6@linuxhacker.ru>
-	<1465329897.3024.38.camel@poochiereds.net>
-	<752F7196-1EE7-4FB3-8769-177131C8A793@linuxhacker.ru>
-	<1465344205.3024.42.camel@poochiereds.net>
-	<AA8AB6FA-E3FF-42B9-A275-0173BD667B0F@linuxhacker.ru>
-	<1465383501.27742.19.camel@poochiereds.net>
-Date: Thu, 09 Jun 2016 08:13:18 -0400
-In-Reply-To: <1465383501.27742.19.camel@poochiereds.net> (Jeff Layton's
-	message of "Wed, 08 Jun 2016 06:58:21 -0400")
-Message-ID: <m2a8iuy2zl.fsf@discipline.rit.edu>
-MIME-Version: 1.0
-Content-Type: text/plain
+Received: from mail-yw0-f194.google.com ([209.85.161.194]:33713 "EHLO
+	mail-yw0-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750964AbcFIMVN (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 9 Jun 2016 08:21:13 -0400
+Received: by mail-yw0-f194.google.com with SMTP id y6so4501298ywe.0
+        for <linux-nfs@vger.kernel.org>; Thu, 09 Jun 2016 05:21:12 -0700 (PDT)
+From: Jeff Layton <jlayton@poochiereds.net>
+To: bfields@fieldses.org, anna.schumaker@netapp.com, trondmy@primarydata.com
+Cc: tigran.mkrtchyan@desy.de, thomas.haynes@primarydata.com,
+        linux-nfs@vger.kernel.org
+Subject: [PATCH v2 0/3] pnfs/nfsd: have client and server support multiple layout types
+Date: Thu,  9 Jun 2016 08:21:02 -0400
+Message-Id: <1465474865-15285-1-git-send-email-jlayton@poochiereds.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+v2:
+- rework Tigran's patch to preserve existing selection behaviour
+- simplify layout driver selection by sorting the list
 
-> But...suppose we have two racing OPEN calls. They're both in
-> nfs4_get_vfs_file. One opens the file and succeeds and the other fails
-> and ends up in out_put_access. At that point, you could end up
-> clobbering the successful update to st_access_bmap from the other task,
-> and we'd end up not putting the file access references in
-> release_all_access.
+This is v2 of the patchset. Most of the changes are to incorporate
+Bruce's suggestions on the client code. Original cover letter follows:
 
+Only lightly tested by mounting a server that sends both flexfiles and
+block layouts. The client successfully selected the block layout in most
+cases, but if I blacklist blocklayoutdriver then it selects flexfiles
+instead.
 
-   Pondering further (with an assumption about the workload), isn't this
-   path also likely to involve a lease break in progress on that file?
+I'm sending these together, but I'd expect Bruce to pick up the nfsd
+patches and Trond or Anna to pick up the client-side ones.
 
-Thanks,
+The nfsd patch is based on top of Tom's nfsd flexfile layout patches.
 
-Andy
+Jeff Layton (3):
+  nfsd: allow nfsd to advertise multiple layout types
+  pnfs: track multiple layout types in fsinfo structure
+  pnfs: add a new mechanism to select a layout driver according to an
+    ordered list
+
+ fs/nfs/client.c         |  2 +-
+ fs/nfs/nfs4xdr.c        | 23 +++++++---------
+ fs/nfs/pnfs.c           | 72 ++++++++++++++++++++++++++++++++++++++++---------
+ fs/nfs/pnfs.h           |  4 +--
+ fs/nfsd/export.c        |  4 +--
+ fs/nfsd/export.h        |  2 +-
+ fs/nfsd/nfs4layouts.c   |  6 ++---
+ fs/nfsd/nfs4proc.c      |  4 +--
+ fs/nfsd/nfs4xdr.c       | 30 ++++++++++-----------
+ include/linux/nfs_xdr.h |  7 ++++-
+ 10 files changed, 101 insertions(+), 53 deletions(-)
 
 -- 
-Andrew W. Elble
-aweits@discipline.rit.edu
-Infrastructure Engineer, Communications Technical Lead
-Rochester Institute of Technology
-PGP: BFAD 8461 4CCF DC95 DA2C B0EB 965B 082E 863E C912
+2.5.5
+
