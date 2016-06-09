@@ -1,71 +1,92 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-pf0-f194.google.com ([209.85.192.194]:33895 "EHLO
-	mail-pf0-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1426571AbcFIFGI (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 9 Jun 2016 01:06:08 -0400
-From: Deepa Dinamani <deepa.kernel@gmail.com>
-To: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org
+Received: from mga04.intel.com ([192.55.52.120]:19866 "EHLO mga04.intel.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753934AbcFIHv5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 9 Jun 2016 03:51:57 -0400
+From: Felipe Balbi <balbi@kernel.org>
+To: Deepa Dinamani <deepa.kernel@gmail.com>, linux-fsdevel@vger.kernel.org,
+        linux-kernel@vger.kernel.org
 Cc: Arnd Bergmann <arnd@arndb.de>, Thomas Gleixner <tglx@linutronix.de>,
         Al Viro <viro@zeniv.linux.org.uk>,
         Linus Torvalds <torvalds@linux-foundation.org>, y2038@lists.linaro.org,
+        Anna Schumaker <anna.schumaker@netapp.com>,
+        Anton Vorontsov <anton@enomsg.org>,
+        Benny Halevy <bhalevy@primarydata.com>,
+        Boaz Harrosh <ooo@electrozaur.com>,
+        Changman Lee <cm224.lee@samsung.com>, Chris Mason <clm@fb.com>,
+        Colin Cross <ccross@android.com>, Dave Kleikamp <shaggy@kernel.org>,
+        "David S. Miller" <davem@davemloft.net>,
+        David Sterba <dsterba@suse.com>,
+        Eric Van Hensbergen <ericvh@gmail.com>,
+        Hugh Dickins <hughd@google.com>, Ian Kent <raven@themaw.net>,
+        Jaegeuk Kim <jaegeuk@kernel.org>, Joern Engel <joern@logfs.org>,
+        Josef Bacik <jbacik@fb.com>, Kees Cook <keescook@chromium.org>,
+        Latchesar Ionkov <lucho@ionkov.net>,
+        Matt Fleming <matt@codeblueprint.co.uk>,
+        Matthew Garrett <matthew.garrett@nebula.com>,
+        Miklos Szeredi <miklos@szeredi.hu>,
+        Nadia Yvette Chambers <nyc@holomorphy.com>,
+        Prasad Joshi <prasadjoshi.linux@gmail.com>,
+        Robert Richter <rric@kernel.org>, Ron Minnich <rminnich@sandia.gov>,
+        Tony Luck <tony.luck@intel.com>,
         Trond Myklebust <trond.myklebust@primarydata.com>,
-        Anna Schumaker <anna.schumaker@netapp.com>, linux-nfs@vger.kernel.org
-Subject: [PATCH 18/21] fs: nfs: Make nfs boot time y2038 safe
-Date: Wed,  8 Jun 2016 22:05:02 -0700
-Message-Id: <1465448705-25055-19-git-send-email-deepa.kernel@gmail.com>
+        autofs@vger.kernel.org, cluster-devel@redhat.com,
+        jfs-discussion@lists.sourceforge.net, linux-btrfs@vger.kernel.org,
+        linux-efi@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
+        linux-mm@kvack.org, linux-nfs@vger.kernel.org,
+        linux-nilfs@vger.kernel.org, linuxppc-dev@lists.ozlabs.org,
+        linux-rdma@vger.kernel.org, linux-s390@vger.kernel.org,
+        linux-security-module@vger.kernel.org, linux-usb@vger.kernel.org,
+        logfs@logfs.org, netdev@vger.kernel.org, ocfs2-devel@oss.oracle.com,
+        oprofile-list@lists.sf.net, osd-dev@open-osd.org,
+        selinux@tycho.nsa.gov, v9fs-developer@lists.sourceforge.net
+Subject: Re: [PATCH 00/21] Delete CURRENT_TIME and CURRENT_TIME_SEC macros
 In-Reply-To: <1465448705-25055-1-git-send-email-deepa.kernel@gmail.com>
 References: <1465448705-25055-1-git-send-email-deepa.kernel@gmail.com>
+Date: Thu, 09 Jun 2016 10:51:31 +0300
+Message-ID: <87twh294vw.fsf@linux.intel.com>
+MIME-Version: 1.0
+Content-Type: multipart/signed; boundary="=-=-=";
+	micalg=pgp-sha256; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-boot_time is represented as a struct timespec.
-struct timespec and CURRENT_TIME are not y2038 safe.
-Overall, the plan is to use timespec64 for all internal
-kernel representation of timestamps.
-CURRENT_TIME will also be removed.
-Use struct timespec64 to represent boot_time.
-And, ktime_get_real_ts64() for the boot_time value.
+--=-=-=
+Content-Type: text/plain
+Content-Transfer-Encoding: quoted-printable
 
-boot_time is used to construct the nfs client boot verifier.
-This will now wrap in 2106 instead of 2038 on 32-bit systems.
-The server only relies on the value being persistent until
-reboot so the wrapping should be fine.
 
-Signed-off-by: Deepa Dinamani <deepa.kernel@gmail.com>
-Cc: Trond Myklebust <trond.myklebust@primarydata.com>
-Cc: Anna Schumaker <anna.schumaker@netapp.com>
-Cc: linux-nfs@vger.kernel.org
----
- fs/nfs/client.c | 2 +-
- fs/nfs/netns.h  | 2 +-
- 2 files changed, 2 insertions(+), 2 deletions(-)
+Hi,
 
-diff --git a/fs/nfs/client.c b/fs/nfs/client.c
-index 0c96528..406972e 100644
---- a/fs/nfs/client.c
-+++ b/fs/nfs/client.c
-@@ -1080,7 +1080,7 @@ void nfs_clients_init(struct net *net)
- 	idr_init(&nn->cb_ident_idr);
- #endif
- 	spin_lock_init(&nn->nfs_client_lock);
--	nn->boot_time = CURRENT_TIME;
-+	ktime_get_real_ts64(&nn->boot_time);
- }
- 
- #ifdef CONFIG_PROC_FS
-diff --git a/fs/nfs/netns.h b/fs/nfs/netns.h
-index f0e06e4..48d6b95 100644
---- a/fs/nfs/netns.h
-+++ b/fs/nfs/netns.h
-@@ -29,7 +29,7 @@ struct nfs_net {
- 	int cb_users[NFS4_MAX_MINOR_VERSION + 1];
- #endif
- 	spinlock_t nfs_client_lock;
--	struct timespec boot_time;
-+	struct timespec64 boot_time;
- #ifdef CONFIG_PROC_FS
- 	struct proc_dir_entry *proc_nfsfs;
- #endif
--- 
-1.9.1
+Deepa Dinamani <deepa.kernel@gmail.com> writes:
+>  drivers/usb/gadget/function/f_fs.c                 |  2 +-
+>  drivers/usb/gadget/legacy/inode.c                  |  2 +-
 
+for drivers/usb/gadget:
+
+Acked-by: Felipe Balbi <balbi@kernel.org>
+
+=2D-=20
+balbi
+
+--=-=-=
+Content-Type: application/pgp-signature; name="signature.asc"
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v2
+
+iQIcBAEBCAAGBQJXWSADAAoJEIaOsuA1yqRE3xkP/iQ1fuTIybbV6wTI8KcBipLN
+RYE+b6JJVPFMIpj76aDznk/eZG+CSnwRUAPoPGWs1o7xVqnVGqfLDMWyHLp3pU5C
+NQyphaTDahzkV3cbTbAjbLpcluDKmCmRb++9YyfSyEcFP4HnlpgmIVFM7SinMADk
+OXGwum3/L0HpAs+91j4FORMHiKma5fa5CXmE5aHsM3TSWONWldycLywu9jlF/AyU
+lY83J4AjvL2qii9hWdlxX81+zFZ92Vh9v5vvms8ErPB2w3a75PbM70gaoVM2VOxQ
+kMeLZUiGywrnDv+/RKC+9WX3KiwDsAlTk1rbuDBePE7PbjQmRW/hfRtXcpECXAyG
+LrV9HskF1UIIv8aVyWoR/GwQdO0cdxoW8uBuw+/l7pSHTvfpvl3/sb+VNBH3j2lQ
+aosxpF7QlU08QxWzpPHgrQ7TNbZ0o9zl5aZ8HAhAPt9FZDu1KKHy/EEJ0aI5d25y
+p7aTdxvf2SxMGVo6K1ozZUq/EeXOW061oeOUmDLT1NZWS69g19lGBx/XSWLpqf1b
+V6SK0hpP3QqHajNOsTFfHLuP13zygCZsSQJU1Z4MO3RyawyMsgjCqAKrEHCoF0zL
+rCfYHY+r6PMRmrirPoBdPwdoWB8/i1INydBfU4OqjO/7dRgjhl2iPSUvSOPrhVlu
+g2HkIFwp1Wj8eyUm+JYM
+=tfo4
+-----END PGP SIGNATURE-----
+--=-=-=--
