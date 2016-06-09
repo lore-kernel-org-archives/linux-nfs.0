@@ -1,51 +1,72 @@
-Return-Path: <weston.andros.adamson@gmail.com>
-Sender: Weston Andros Adamson <weston.andros.adamson@gmail.com>
-Content-Type: text/plain; charset=windows-1252
-Mime-Version: 1.0 (Mac OS X Mail 9.3 \(3124\))
-Subject: Re: non-contiguous write across SCSI layout
+Return-Path: <linux-nfs-owner@vger.kernel.org>
+Received: from mail-io0-f193.google.com ([209.85.223.193]:36055 "EHLO
+	mail-io0-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752154AbcFIPpb (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 9 Jun 2016 11:45:31 -0400
 From: Weston Andros Adamson <dros@monkey.org>
-In-Reply-To: <A0E027A5-A8E1-402C-890C-89C2AE5E4FE1@redhat.com>
-Date: Thu, 9 Jun 2016 10:17:29 -0400
-Cc: linux-nfs list <linux-nfs@vger.kernel.org>
-Message-Id: <585C6DB8-1D8F-4001-9B23-1C25F1DC4743@monkey.org>
-References: <A0E027A5-A8E1-402C-890C-89C2AE5E4FE1@redhat.com>
-To: Benjamin Coddington <bcodding@redhat.com>
+To: trond.myklebust@primarydata.com, anna.schumaker@netapp.com
+Cc: linux-nfs@vger.kernel.org, Weston Andros Adamson <dros@primarydata.com>,
+        stable@vger.kernel.org
+Subject: [PATCH] pnfs_nfs: fix _cancel_empty_pagelist
+Date: Thu,  9 Jun 2016 11:45:26 -0400
+Message-Id: <1465487126-1899-1-git-send-email-dros@primarydata.com>
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+pnfs_generic_commit_cancel_empty_pagelist calls nfs_commitdata_release,
+but that is wrong: nfs_commitdata_release puts the open context, something
+that isn't valid until nfs_init_commit is called, which is never the case
+when pnfs_generic_commit_cancel_empty_pagelist is called.
 
-> On Jun 8, 2016, at 10:45 AM, Benjamin Coddington <bcodding@redhat.com> =
-wrote:
->=20
-> Hi Dros,
->=20
-> The client takes this WARN_ON_ONCE path pretty often in
-> pnfs_generic_pg_test() with SCSI layout type and generic/010:
->=20
-> 1925     if (pgio->pg_lseg) {
-> 1926         seg_end =3D end_offset(pgio->pg_lseg->pls_range.offset,
-> 1927                      pgio->pg_lseg->pls_range.length);
-> 1928         req_start =3D req_offset(req);
-> 1929         WARN_ON_ONCE(req_start >=3D seg_end);
-> 1930         /* start of request is past the last byte of this segment =
-*/
-> 1931         if (req_start >=3D seg_end) {
-> 1932             /* reference the new lseg */
-> 1933             if (pgio->pg_ops->pg_cleanup)
-> 1934                 pgio->pg_ops->pg_cleanup(pgio);
-> 1935             if (pgio->pg_ops->pg_init)
-> 1936                 pgio->pg_ops->pg_init(pgio, req);
-> 1937             return 0;
-> 1938         }
->=20
-> I'm trying to figure out why that's a WARN-able path.. do you recall =
-the
-> original reason for that warning?
+This was introduced in "nfs: avoid race that crashes nfs_init_commit".
 
-What=92s happening here is that the pgio descriptor spans multiple =
-layout segments.
+Signed-off-by: Weston Andros Adamson <dros@primarydata.com>
+Cc: stable@vger.kernel.org
+---
 
-IIRC this points to a problem with the pg_test call. It shouldn=92t =
-allow requests
-from different lsegs to be coalesced.
+This is fix to the issue I brought up on the list last week.
 
--dros
+It fixes a bug I introduced in the last "fix":
+
+"nfs: avoid race that crashes nfs_init_commit"
+
+So it should be included in the stable releases that patch was sent to.
+
+ -dros
+
+ fs/nfs/pnfs_nfs.c | 12 ++++++++++--
+ 1 file changed, 10 insertions(+), 2 deletions(-)
+
+diff --git a/fs/nfs/pnfs_nfs.c b/fs/nfs/pnfs_nfs.c
+index 0dfc476da3e1..b38e3c0dc790 100644
+--- a/fs/nfs/pnfs_nfs.c
++++ b/fs/nfs/pnfs_nfs.c
+@@ -247,7 +247,11 @@ void pnfs_fetch_commit_bucket_list(struct list_head *pages,
+ }
+ 
+ /* Helper function for pnfs_generic_commit_pagelist to catch an empty
+- * page list. This can happen when two commits race. */
++ * page list. This can happen when two commits race.
++ *
++ * This must be called instead of nfs_init_commit - call one or the other, but
++ * not both!
++ */
+ static bool
+ pnfs_generic_commit_cancel_empty_pagelist(struct list_head *pages,
+ 					  struct nfs_commit_data *data,
+@@ -256,7 +260,11 @@ pnfs_generic_commit_cancel_empty_pagelist(struct list_head *pages,
+ 	if (list_empty(pages)) {
+ 		if (atomic_dec_and_test(&cinfo->mds->rpcs_out))
+ 			wake_up_atomic_t(&cinfo->mds->rpcs_out);
+-		nfs_commitdata_release(data);
++		/* don't call nfs_commitdata_release - it tries to put
++		 * the open_context which is not acquired until nfs_init_commit
++		 * which has not been called on @data */
++		WARN_ON_ONCE(data->context);
++		nfs_commit_free(data);
+ 		return true;
+ 	}
+ 
+-- 
+2.6.4 (Apple Git-63)
+
