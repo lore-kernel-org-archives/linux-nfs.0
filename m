@@ -1,51 +1,113 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-yw0-f196.google.com ([209.85.161.196]:32833 "EHLO
-	mail-yw0-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751440AbcFJUF2 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 10 Jun 2016 16:05:28 -0400
-Received: by mail-yw0-f196.google.com with SMTP id y6so9763532ywe.0
-        for <linux-nfs@vger.kernel.org>; Fri, 10 Jun 2016 13:05:27 -0700 (PDT)
-Message-ID: <1465589124.3759.3.camel@poochiereds.net>
-Subject: Re: [PATCH 1/5] NFSv4.1/pnfs: Ensure we handle delegation errors in
- nfs4_proc_layoutget()
-From: Jeff Layton <jlayton@poochiereds.net>
-To: Trond Myklebust <trond.myklebust@primarydata.com>,
-        linux-nfs@vger.kernel.org
-Date: Fri, 10 Jun 2016 16:05:24 -0400
-In-Reply-To: <1465573798-80118-1-git-send-email-trond.myklebust@primarydata.com>
-References: <1465573798-80118-1-git-send-email-trond.myklebust@primarydata.com>
-Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
+Received: from mx1.redhat.com ([209.132.183.28]:43269 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932300AbcFJUtH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 10 Jun 2016 16:49:07 -0400
+From: Benjamin Coddington <bcodding@redhat.com>
+To: linux-nfs@vger.kernel.org
+Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>,
+        Christoph Hellwig <hch@lst.de>
+Subject: [PATCH] pnfs/blocklayout: put deviceid node after releasing bl_ext_lock
+Date: Fri, 10 Jun 2016 16:37:35 -0400
+Message-Id: <0ca3d07057a20e89726de2f0e9ff8c7fcb6ac3d9.1465589365.git.bcodding@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, 2016-06-10 at 11:49 -0400, Trond Myklebust wrote:
-> nfs4_handle_exception() relies on the caller setting the 'inode' field
-> in the struct nfs4_exception argument when the error applies to a
-> delegation.
-> 
-> Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
-> ---
->  fs/nfs/nfs4proc.c | 5 ++++-
->  1 file changed, 4 insertions(+), 1 deletion(-)
-> 
-> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-> index de97567795a5..27fe63b502d5 100644
-> --- a/fs/nfs/nfs4proc.c
-> +++ b/fs/nfs/nfs4proc.c
-> @@ -8036,7 +8036,10 @@ nfs4_proc_layoutget(struct nfs4_layoutget *lgp, long *timeout, gfp_t gfp_flags)
->  		.flags = RPC_TASK_ASYNC,
->  	};
->  	struct pnfs_layout_segment *lseg = NULL;
-> -	struct nfs4_exception exception = { .timeout = *timeout };
-> +	struct nfs4_exception exception = {
-> +		.inode = inode,
-> +		.timeout = *timeout,
-> +	};
->  	int status = 0;
->  
->  	dprintk("--> %s\n", __func__);
+The last put of deviceid nodes for SCSI layouts may sleep, so we shouldn't
+hold any spinlocks.  Make sure we put them outside the bl_ext_lock.
 
-The whole set looks good to me. You can add this to all of them:
+Signed-off-by: Benjamin Coddington <bcodding@redhat.com>
+---
+ fs/nfs/blocklayout/extent_tree.c | 27 +++++++++++++++++++++------
+ 1 file changed, 21 insertions(+), 6 deletions(-)
 
-Reviewed-by: Jeff Layton <jlayton@poochiereds.net>
+diff --git a/fs/nfs/blocklayout/extent_tree.c b/fs/nfs/blocklayout/extent_tree.c
+index 720b3ff55fa9..992bcb19c11e 100644
+--- a/fs/nfs/blocklayout/extent_tree.c
++++ b/fs/nfs/blocklayout/extent_tree.c
+@@ -121,6 +121,16 @@ ext_try_to_merge_right(struct rb_root *root, struct pnfs_block_extent *be)
+ 	return be;
+ }
+ 
++static void __ext_put_deviceids(struct list_head *head)
++{
++	struct pnfs_block_extent *be, *tmp;
++
++	list_for_each_entry_safe(be, tmp, head, be_list) {
++		nfs4_put_deviceid_node(be->be_device);
++		kfree(be);
++	}
++}
++
+ static void
+ __ext_tree_insert(struct rb_root *root,
+ 		struct pnfs_block_extent *new, bool merge_ok)
+@@ -163,7 +173,8 @@ free_new:
+ }
+ 
+ static int
+-__ext_tree_remove(struct rb_root *root, sector_t start, sector_t end)
++__ext_tree_remove(struct rb_root *root,
++		sector_t start, sector_t end, struct list_head *tmp)
+ {
+ 	struct pnfs_block_extent *be;
+ 	sector_t len1 = 0, len2 = 0;
+@@ -223,8 +234,7 @@ __ext_tree_remove(struct rb_root *root, sector_t start, sector_t end)
+ 			struct pnfs_block_extent *next = ext_tree_next(be);
+ 
+ 			rb_erase(&be->be_node, root);
+-			nfs4_put_deviceid_node(be->be_device);
+-			kfree(be);
++			list_add_tail(&be->be_list, tmp);
+ 			be = next;
+ 		}
+ 
+@@ -350,16 +360,18 @@ int ext_tree_remove(struct pnfs_block_layout *bl, bool rw,
+ 		sector_t start, sector_t end)
+ {
+ 	int err, err2;
++	LIST_HEAD(tmp);
+ 
+ 	spin_lock(&bl->bl_ext_lock);
+-	err = __ext_tree_remove(&bl->bl_ext_ro, start, end);
++	err = __ext_tree_remove(&bl->bl_ext_ro, start, end, &tmp);
+ 	if (rw) {
+-		err2 = __ext_tree_remove(&bl->bl_ext_rw, start, end);
++		err2 = __ext_tree_remove(&bl->bl_ext_rw, start, end, &tmp);
+ 		if (!err)
+ 			err = err2;
+ 	}
+ 	spin_unlock(&bl->bl_ext_lock);
+ 
++	__ext_put_deviceids(&tmp);
+ 	return err;
+ }
+ 
+@@ -396,12 +408,13 @@ ext_tree_mark_written(struct pnfs_block_layout *bl, sector_t start,
+ 	sector_t end = start + len;
+ 	struct pnfs_block_extent *be;
+ 	int err = 0;
++	LIST_HEAD(tmp);
+ 
+ 	spin_lock(&bl->bl_ext_lock);
+ 	/*
+ 	 * First remove all COW extents or holes from written to range.
+ 	 */
+-	err = __ext_tree_remove(&bl->bl_ext_ro, start, end);
++	err = __ext_tree_remove(&bl->bl_ext_ro, start, end, &tmp);
+ 	if (err)
+ 		goto out;
+ 
+@@ -459,6 +472,8 @@ ext_tree_mark_written(struct pnfs_block_layout *bl, sector_t start,
+ 	}
+ out:
+ 	spin_unlock(&bl->bl_ext_lock);
++
++	__ext_put_deviceids(&tmp);
+ 	return err;
+ }
+ 
+-- 
+2.5.5
+
