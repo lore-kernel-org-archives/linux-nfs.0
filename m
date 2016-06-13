@@ -1,114 +1,111 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:58119 "EHLO mx1.redhat.com"
+Received: from smtp-o-1.desy.de ([131.169.56.154]:42234 "EHLO smtp-o-1.desy.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1423084AbcFMRmM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 13 Jun 2016 13:42:12 -0400
-From: Benjamin Coddington <bcodding@redhat.com>
+	id S1423278AbcFMR5v (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 13 Jun 2016 13:57:51 -0400
+Received: from smtp-map-1.desy.de (smtp-map-1.desy.de [131.169.56.66])
+	by smtp-o-1.desy.de (DESY-O-1) with ESMTP id E9018280486
+	for <linux-nfs@vger.kernel.org>; Mon, 13 Jun 2016 19:57:41 +0200 (CEST)
+Received: from ZITSWEEP4.win.desy.de (zitsweep4.win.desy.de [131.169.97.98])
+	by smtp-map-1.desy.de (DESY_MAP_1) with ESMTP id D2BF113E81
+	for <linux-nfs@vger.kernel.org>; Mon, 13 Jun 2016 19:57:41 +0200 (MEST)
+From: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
 To: linux-nfs@vger.kernel.org
-Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
-        Anna Schumaker <anna.schumaker@netapp.com>,
-        Christoph Hellwig <hch@lst.de>
-Subject: [PATCH V2] pnfs/blocklayout: put deviceid node after releasing bl_ext_lock
-Date: Mon, 13 Jun 2016 13:42:08 -0400
-Message-Id: <21b196752b7a1f492e0ec680eba86286aa1e98d6.1465839321.git.bcodding@redhat.com>
+Cc: trond.myklebust@primarydata.com, Anna.Schumaker@netapp.com,
+        Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
+Subject: [PATCH v2] nfs4: clnt: respect noresvport when establishing connections to DSes
+Date: Mon, 13 Jun 2016 19:57:35 +0200
+Message-Id: <1465840655-3927-1-git-send-email-tigran.mkrtchyan@desy.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The last put of deviceid nodes for SCSI layouts may sleep, so we shouldn't
-hold any spinlocks.  Make sure we put them outside the bl_ext_lock.
+result:
 
-Signed-off-by: Benjamin Coddington <bcodding@redhat.com>
-Reviewed-by: Christoph Hellwig <hch@lst.de>
+$ mount -o vers=4.1 dcache-lab007:/ /pnfs
+$ cp /etc/profile /pnfs
+tcp        0      0 131.169.185.68:1005     131.169.191.141:32049   ESTABLISHED
+tcp        0      0 131.169.185.68:751      131.169.191.144:2049    ESTABLISHED
+$
+
+$ mount -o vers=4.1,noresvport dcache-lab007:/ /pnfs
+$ cp /etc/profile /pnfs
+tcp        0      0 131.169.185.68:34894    131.169.191.141:32049   ESTABLISHED
+tcp        0      0 131.169.185.68:35722    131.169.191.144:2049    ESTABLISHED
+$
+
+Signed-off-by: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
 ---
- fs/nfs/blocklayout/extent_tree.c | 27 +++++++++++++++++++++------
- 1 file changed, 21 insertions(+), 6 deletions(-)
+ fs/nfs/internal.h   | 2 +-
+ fs/nfs/nfs4client.c | 9 ++++++---
+ fs/nfs/pnfs_nfs.c   | 2 +-
+ 3 files changed, 8 insertions(+), 5 deletions(-)
 
-diff --git a/fs/nfs/blocklayout/extent_tree.c b/fs/nfs/blocklayout/extent_tree.c
-index 720b3ff55fa9..7bf575b404ec 100644
---- a/fs/nfs/blocklayout/extent_tree.c
-+++ b/fs/nfs/blocklayout/extent_tree.c
-@@ -121,6 +121,16 @@ ext_try_to_merge_right(struct rb_root *root, struct pnfs_block_extent *be)
- 	return be;
- }
+diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
+index 5154fa6..67b9345 100644
+--- a/fs/nfs/internal.h
++++ b/fs/nfs/internal.h
+@@ -184,7 +184,7 @@ extern struct nfs_server *nfs_clone_server(struct nfs_server *,
+ 					   rpc_authflavor_t);
+ extern int nfs_wait_client_init_complete(const struct nfs_client *clp);
+ extern void nfs_mark_client_ready(struct nfs_client *clp, int state);
+-extern struct nfs_client *nfs4_set_ds_client(struct nfs_client* mds_clp,
++extern struct nfs_client *nfs4_set_ds_client(struct nfs_server *mds_srv,
+ 					     const struct sockaddr *ds_addr,
+ 					     int ds_addrlen, int ds_proto,
+ 					     unsigned int ds_timeo,
+diff --git a/fs/nfs/nfs4client.c b/fs/nfs/nfs4client.c
+index 10410e8..1d36e7f 100644
+--- a/fs/nfs/nfs4client.c
++++ b/fs/nfs/nfs4client.c
+@@ -842,7 +842,7 @@ error:
+  * low timeout interval so that if a connection is lost, we retry through
+  * the MDS.
+  */
+-struct nfs_client *nfs4_set_ds_client(struct nfs_client* mds_clp,
++struct nfs_client *nfs4_set_ds_client(struct nfs_server *mds_srv,
+ 		const struct sockaddr *ds_addr, int ds_addrlen,
+ 		int ds_proto, unsigned int ds_timeo, unsigned int ds_retrans,
+ 		u32 minor_version, rpc_authflavor_t au_flavor)
+@@ -853,7 +853,7 @@ struct nfs_client *nfs4_set_ds_client(struct nfs_client* mds_clp,
+ 		.nfs_mod = &nfs_v4,
+ 		.proto = ds_proto,
+ 		.minorversion = minor_version,
+-		.net = mds_clp->cl_net,
++		.net = mds_srv->nfs_client->cl_net,
+ 	};
+ 	struct rpc_timeout ds_timeout;
+ 	struct nfs_client *clp;
+@@ -863,13 +863,16 @@ struct nfs_client *nfs4_set_ds_client(struct nfs_client* mds_clp,
+ 		return ERR_PTR(-EINVAL);
+ 	cl_init.hostname = buf;
  
-+static void ext_put_deviceids(struct list_head *head)
-+{
-+	struct pnfs_block_extent *be, *tmp;
++	if (mds_srv->flags & NFS_MOUNT_NORESVPORT)
++		set_bit(NFS_CS_NORESVPORT, &cl_init.init_flags);
 +
-+	list_for_each_entry_safe(be, tmp, head, be_list) {
-+		nfs4_put_deviceid_node(be->be_device);
-+		kfree(be);
-+	}
-+}
-+
- static void
- __ext_tree_insert(struct rb_root *root,
- 		struct pnfs_block_extent *new, bool merge_ok)
-@@ -163,7 +173,8 @@ free_new:
- }
- 
- static int
--__ext_tree_remove(struct rb_root *root, sector_t start, sector_t end)
-+__ext_tree_remove(struct rb_root *root,
-+		sector_t start, sector_t end, struct list_head *to_free)
- {
- 	struct pnfs_block_extent *be;
- 	sector_t len1 = 0, len2 = 0;
-@@ -223,8 +234,7 @@ __ext_tree_remove(struct rb_root *root, sector_t start, sector_t end)
- 			struct pnfs_block_extent *next = ext_tree_next(be);
- 
- 			rb_erase(&be->be_node, root);
--			nfs4_put_deviceid_node(be->be_device);
--			kfree(be);
-+			list_add_tail(&be->be_list, to_free);
- 			be = next;
- 		}
- 
-@@ -350,16 +360,18 @@ int ext_tree_remove(struct pnfs_block_layout *bl, bool rw,
- 		sector_t start, sector_t end)
- {
- 	int err, err2;
-+	LIST_HEAD(to_free);
- 
- 	spin_lock(&bl->bl_ext_lock);
--	err = __ext_tree_remove(&bl->bl_ext_ro, start, end);
-+	err = __ext_tree_remove(&bl->bl_ext_ro, start, end, &to_free);
- 	if (rw) {
--		err2 = __ext_tree_remove(&bl->bl_ext_rw, start, end);
-+		err2 = __ext_tree_remove(&bl->bl_ext_rw, start, end, &to_free);
- 		if (!err)
- 			err = err2;
- 	}
- 	spin_unlock(&bl->bl_ext_lock);
- 
-+	ext_put_deviceids(&to_free);
- 	return err;
- }
- 
-@@ -396,12 +408,13 @@ ext_tree_mark_written(struct pnfs_block_layout *bl, sector_t start,
- 	sector_t end = start + len;
- 	struct pnfs_block_extent *be;
- 	int err = 0;
-+	LIST_HEAD(to_free);
- 
- 	spin_lock(&bl->bl_ext_lock);
  	/*
- 	 * First remove all COW extents or holes from written to range.
+ 	 * Set an authflavor equual to the MDS value. Use the MDS nfs_client
+ 	 * cl_ipaddr so as to use the same EXCHANGE_ID co_ownerid as the MDS
+ 	 * (section 13.1 RFC 5661).
  	 */
--	err = __ext_tree_remove(&bl->bl_ext_ro, start, end);
-+	err = __ext_tree_remove(&bl->bl_ext_ro, start, end, &to_free);
- 	if (err)
- 		goto out;
+ 	nfs_init_timeout_values(&ds_timeout, ds_proto, ds_timeo, ds_retrans);
+-	clp = nfs_get_client(&cl_init, &ds_timeout, mds_clp->cl_ipaddr,
++	clp = nfs_get_client(&cl_init, &ds_timeout, mds_srv->nfs_client->cl_ipaddr,
+ 			     au_flavor);
  
-@@ -459,6 +472,8 @@ ext_tree_mark_written(struct pnfs_block_layout *bl, sector_t start,
- 	}
- out:
- 	spin_unlock(&bl->bl_ext_lock);
-+
-+	ext_put_deviceids(&to_free);
- 	return err;
- }
+ 	dprintk("<-- %s %p\n", __func__, clp);
+diff --git a/fs/nfs/pnfs_nfs.c b/fs/nfs/pnfs_nfs.c
+index 0dfc476..a3e3157 100644
+--- a/fs/nfs/pnfs_nfs.c
++++ b/fs/nfs/pnfs_nfs.c
+@@ -682,7 +682,7 @@ static int _nfs4_pnfs_v4_ds_connect(struct nfs_server *mds_srv,
+ 		dprintk("%s: DS %s: trying address %s\n",
+ 			__func__, ds->ds_remotestr, da->da_remotestr);
  
+-		clp = nfs4_set_ds_client(mds_srv->nfs_client,
++		clp = nfs4_set_ds_client(mds_srv,
+ 					(struct sockaddr *)&da->da_addr,
+ 					da->da_addrlen, IPPROTO_TCP,
+ 					timeo, retrans, minor_version,
 -- 
 2.5.5
 
