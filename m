@@ -1,141 +1,103 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-yw0-f171.google.com ([209.85.161.171]:34907 "EHLO
-	mail-yw0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753130AbcFLNNV (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 12 Jun 2016 09:13:21 -0400
-Received: by mail-yw0-f171.google.com with SMTP id z186so87164798ywd.2
-        for <linux-nfs@vger.kernel.org>; Sun, 12 Jun 2016 06:13:20 -0700 (PDT)
-Message-ID: <1465737197.8881.22.camel@poochiereds.net>
-Subject: Re: [PATCH] nfsd: Close a race between access checking/setting in
- nfs4_get_vfs_file
-From: Jeff Layton <jlayton@poochiereds.net>
-To: Oleg Drokin <green@linuxhacker.ru>
-Cc: "J . Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org, Andrew W Elble <aweits@rit.edu>
-Date: Sun, 12 Jun 2016 09:13:17 -0400
-In-Reply-To: <30E98D26-CB99-4BF8-8697-A2E9BB41920D@linuxhacker.ru>
-References: <1465406560.30890.10.camel@poochiereds.net>
-	 <1465506099-475103-1-git-send-email-green@linuxhacker.ru>
-	 <D672EBB0-E73C-4BA6-BB2C-F687CA780CBA@linuxhacker.ru>
-	 <1465555833.1425.15.camel@poochiereds.net>
-	 <20160610205545.GA13766@fieldses.org>
-	 <B1897F84-EAAF-4AA4-921E-6FFD7FED0A9A@linuxhacker.ru>
-	 <1465695219.9492.4.camel@poochiereds.net>
-	 <EFD3D41C-1992-40CD-B736-13FDEC17F75E@linuxhacker.ru>
-	 <1465699835.10915.22.camel@poochiereds.net>
-	 <30E98D26-CB99-4BF8-8697-A2E9BB41920D@linuxhacker.ru>
-Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
+Received: from mx0b-001b2d01.pphosted.com ([148.163.158.5]:20827 "EHLO
+	mx0a-001b2d01.pphosted.com" rhost-flags-OK-OK-OK-FAIL)
+	by vger.kernel.org with ESMTP id S933245AbcFMAeo convert rfc822-to-8bit
+	(ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 12 Jun 2016 20:34:44 -0400
+Received: from pps.filterd (m0098420.ppops.net [127.0.0.1])
+	by mx0b-001b2d01.pphosted.com (8.16.0.11/8.16.0.11) with SMTP id u5D0Yb45020032
+	for <linux-nfs@vger.kernel.org>; Sun, 12 Jun 2016 20:34:43 -0400
+Received: from e37.co.us.ibm.com (e37.co.us.ibm.com [32.97.110.158])
+	by mx0b-001b2d01.pphosted.com with ESMTP id 23getk2tb2-1
+	(version=TLSv1.2 cipher=AES256-SHA bits=256 verify=NOT)
+	for <linux-nfs@vger.kernel.org>; Sun, 12 Jun 2016 20:34:43 -0400
+Received: from localhost
+	by e37.co.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
+	for <linux-nfs@vger.kernel.org> from <eshel@us.ibm.com>;
+	Sun, 12 Jun 2016 18:34:42 -0600
+Received: from b03cxnp07029.gho.boulder.ibm.com (b03cxnp07029.gho.boulder.ibm.com [9.17.130.16])
+	by d03dlp02.boulder.ibm.com (Postfix) with ESMTP id 1C8283E4001C
+	for <linux-nfs@vger.kernel.org>; Sun, 12 Jun 2016 18:34:39 -0600 (MDT)
+Received: from b03ledav001.gho.boulder.ibm.com (b03ledav001.gho.boulder.ibm.com [9.17.130.232])
+	by b03cxnp07029.gho.boulder.ibm.com (8.14.9/8.14.9/NCO v10.0) with ESMTP id u5D0YdtE42074254
+	for <linux-nfs@vger.kernel.org>; Sun, 12 Jun 2016 17:34:39 -0700
+Received: from b03ledav001.gho.boulder.ibm.com (unknown [127.0.0.1])
+	by IMSVA (Postfix) with ESMTP id EDD376E038
+	for <linux-nfs@vger.kernel.org>; Sun, 12 Jun 2016 18:34:38 -0600 (MDT)
+Received: from d50lp03.ny.us.ibm.com (unknown [146.89.104.211])
+	by b03ledav001.gho.boulder.ibm.com (Postfix) with ESMTPS id B95B16E035
+	for <linux-nfs@vger.kernel.org>; Sun, 12 Jun 2016 18:34:38 -0600 (MDT)
+Received: from localhost
+	by d50lp03.ny.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
+	for <linux-nfs@vger.kernel.org> from <eshel@us.ibm.com>;
+	Sun, 12 Jun 2016 20:34:38 -0400
+Received: from /spool/local
+	by smtp.notes.na.collabserv.com with smtp.notes.na.collabserv.com ESMTP
+	for <linux-nfs@vger.kernel.org> from <eshel@us.ibm.com>;
+	Mon, 13 Jun 2016 00:34:35 -0000
+In-Reply-To: <OFAE63B935.50A753D1-ON88257FD0.00812E5D-88257FD0.0081788A@LocalDomain>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: linux-nfs@vger.kernel.org, "Srikanth Srinivasan" <ssrikanth@in.ibm.com>,
+        "Trond Myklebust" <trond.myklebust@primarydata.com>,
+        "Venkateswara R Puvvada" <vpuvvada@in.ibm.com>
+Subject: Re: NFS fixes
+From: "Marc Eshel" <eshel@us.ibm.com>
+Date: Sun, 12 Jun 2016 17:34:32 -0700
+References: <OF9C78122D.D4F282BF-ON88257FD0.00686038-88257FD0.006E09F0@LocalDomain>
+ <OFAE63B935.50A753D1-ON88257FD0.00812E5D-88257FD0.0081788A@LocalDomain>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="US-ASCII"
+Message-Id: <OF4D8DDA37.ED72F2E9-ON88257FD1.00031E93-88257FD1.0003298D@notes.na.collabserv.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sat, 2016-06-11 at 23:15 -0400, Oleg Drokin wrote:
-> On Jun 11, 2016, at 10:50 PM, Jeff Layton wrote:
-> 
-> > 
-> > On Sat, 2016-06-11 at 22:06 -0400, Oleg Drokin wrote:
-> > > 
-> > > 
-> > > Hm. I am trying to lock the newly initialized one and that seems to be holding up
-> > > well (but I want 24 hours just to be extra sure).
-> > > Hn, I just noticed a bug in this, so that'll reset the clock back.
-> > > 
-> > > But I think we cannot return with locked one if we found existing one due to lock
-> > > inversion?
-> > > I see that normally first we lock the state rwsem (now mutex) and then
-> > > lock the fi_lock.
-> > > Now if we make init_open_stateid() to lock the new state mutex while the fi_lock
-> > > is locked - that's probably ok, because we can do it before adding it to the list,
-> > > so nobody can find it.
-> > > Now the existing state that we find, we cannot really lock while holding that fi_lock,
-> > > because what if there's a parallel thread that already holds the mutex and now
-> > > wants the fi_lock?
-> > > And so it's probably best to return with existing state unlocked and let caller lock it?
-> > > Or do you think it's best to separately lock the found stp outside of spinlock
-> > > just for consistency?
-> > I think we just have to ensure that if the new stateid is hashed that
-> > its mutex is locked prior to being inserted into the hashtable. That
-> > should prevent the race you mentioned.
-> > 
-> > If we find an existing one in the hashtable in init_open_stateid, then
-> > we _can_ take the mutex after dropping the spinlocks, since we won't
-> > call release_open_stateid in that case anyway.
-> Yes.
-> 
-> > 
-> > We'll also need to consider what happens if nfs4_get_vfs_file fails
-> > after we hashed the stateid, but then another task finds it while
-> > processing another open. So we might have to have release_open_stateid
-> > unlock the mutex after unhashing the stateid, but before putting the
-> > reference, and then have init_open_stateid check to see if the thing is
-> > still hashed after it gets the mutex.
-> Hm.
-> So what's going to go wrong if another user reuses the unhashed stateid?
-> As long as they drop it once they are done it'll be freed and all is fine, no?
-> Are there other implications?
-> Hm, it looks like free_ol_stateid_reaplist() just frees the thing without any looking
-> into mutexes and stuff?
-> 
+We are seeing a data corruption when putting very high load on the NFS V3 
+client reading multi gigabyte files in parallel. The check-sum on the 
+files is showing the corruption, and looking at the data we see data that 
+in one block that belongs in another block but it is not the full block. 
+The test is done on multiple set of hardware using different type of 
+server including kNFS and Ganesha servers with EXT3 or GPFS file system. 
+The only common part in all test are NFSv3 client on REHL7.0, 7.1, 7.2.
 
-The problem there is that you're sending a very soon to be defunct
-stateid to the client as valid, which means the client will end up in
-state recovery (at best).
+The question is there anything up stream that might fix data corruption by 
+the NFSv3 client, oo do we know if this problem might have been reported 
+by other users.
 
-The initial open is somewhat of a special case...we are hashing a new
-stateid. If the operation that hashes it fails, then we want to make
-like it never happened at all. The client will never see it, so we
-don't want to leave it hanging around on the server. We need to unhash
-the stateid in that case.
+The only fix that I see that might be related is attached, can this 
+explain a data corruption?
 
-So, yes, the mutex doesn't really prevent the thing from being
-unhashed, but if you take the mutex and the thing is still hashed
-afterward, then you know that the above situation didn't happen. The
-initial incarnation of the stateid will have been sent to the client.
+Thanks, Marc. 
 
-> Ok, so we get the mutex, check that the stateid is hashed, it's not anymore
-> (actually unhashing could be done without mutex too, right? so just mutex held
-> is not going to protect us), then we need to drop the mutex and restart the search
-> from scratch (including all relocking), I assume?
 
-Yeah, that's what I was thinking. It should be a fairly rare race so
-taking an extra hit on the locking in that case shouldn't be too bad. I
-think there's quite a bit of opportunity to simplify the open path by
-reworking this code as well.
+Author: Trond Myklebust <trond.myklebust@primarydata.com>
+Date:   Mon Aug 17 12:57:07 2015 -0500
 
-What we probably need to do is turn nfsd4_find_existing_open into
-something that intializes and hashes the stateid if it doesn't find one
-, and returns it with the mutex locked. It could also do the check to
-see if an existing stateid was still hashed after taking the mutex and
-could redrive the search if it isn't. That would also make the open
-code more resilient in the face of OPEN vs. CLOSE races, which would
-also be nice...
+    NFS: nfs_set_pgio_error sometimes misses errors
+ 
+    We should ensure that we always set the pgio_header's error field
+    if a READ or WRITE RPC call returns an error. The current code depends
+    on 'hdr->good_bytes' always being initialised to a large value, which
+    is not always done correctly by callers.
+    When this happens, applications may end up missing important errors.
+ 
+    Cc: stable@vger.kernel.org
+    Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
 
-> I guess I'll have it as a separate follow on patch.
-> We'll probably also need some fault-injection here to trigger this case, as triggering
-> it "naturally" will be a tough problem even on my mega-racy setup.
-> 
-> Something like:
->                 if (swapstp) {
-> …
-> 		}
-> 		if (FAULTINJECTION) {
-> 			msleep(some_random_time);
-> 			status = nfserr_eio;
-> 		} else
-> 			status = nfs4_get_vfs_file(rqstp, fp, current_fh, stp, open); 
-> 
-> should increase the chance.
+diff --git a/fs/nfs/pagelist.c b/fs/nfs/pagelist.c
+index 4984bbe..7c5718b 100644
+--- a/fs/nfs/pagelist.c
++++ b/fs/nfs/pagelist.c
+@@ -77,8 +77,8 @@ EXPORT_SYMBOL_GPL(nfs_pgheader_init);
+ void nfs_set_pgio_error(struct nfs_pgio_header *hdr, int error, loff_t 
+pos)
+ {
+        spin_lock(&hdr->lock);
+-       if (pos < hdr->io_start + hdr->good_bytes) {
+-               set_bit(NFS_IOHDR_ERROR, &hdr->flags);
++       if (!test_and_set_bit(NFS_IOHDR_ERROR, &hdr->flags)
++           || pos < hdr->io_start + hdr->good_bytes) {
+                clear_bit(NFS_IOHDR_EOF, &hdr->flags);
+                hdr->good_bytes = pos - hdr->io_start;
 
-Sure. Look for CONFIG_NFSD_FAULT_INJECTION. You might be able to use
-that framework (though it is a bit manky).
+\
 
-> Ideally there'd be a way to trigger this case more deterministically,
-> how do I have two OPEN requests in parallel in NFS for the same file,
-> just have two threads do it and that would 100% result in two requests,
-> no merging anywhere along the way that I need to be aware of?
-
-Yeah, that's basically it. You need two racing OPEN calls for the same
-stateid. Might be easiest to do with something like pynfs...
-
--- 
-Jeff Layton <jlayton@poochiereds.net>
