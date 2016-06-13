@@ -1,103 +1,240 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx0b-001b2d01.pphosted.com ([148.163.158.5]:20827 "EHLO
-	mx0a-001b2d01.pphosted.com" rhost-flags-OK-OK-OK-FAIL)
-	by vger.kernel.org with ESMTP id S933245AbcFMAeo convert rfc822-to-8bit
-	(ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 12 Jun 2016 20:34:44 -0400
-Received: from pps.filterd (m0098420.ppops.net [127.0.0.1])
-	by mx0b-001b2d01.pphosted.com (8.16.0.11/8.16.0.11) with SMTP id u5D0Yb45020032
-	for <linux-nfs@vger.kernel.org>; Sun, 12 Jun 2016 20:34:43 -0400
-Received: from e37.co.us.ibm.com (e37.co.us.ibm.com [32.97.110.158])
-	by mx0b-001b2d01.pphosted.com with ESMTP id 23getk2tb2-1
-	(version=TLSv1.2 cipher=AES256-SHA bits=256 verify=NOT)
-	for <linux-nfs@vger.kernel.org>; Sun, 12 Jun 2016 20:34:43 -0400
-Received: from localhost
-	by e37.co.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
-	for <linux-nfs@vger.kernel.org> from <eshel@us.ibm.com>;
-	Sun, 12 Jun 2016 18:34:42 -0600
-Received: from b03cxnp07029.gho.boulder.ibm.com (b03cxnp07029.gho.boulder.ibm.com [9.17.130.16])
-	by d03dlp02.boulder.ibm.com (Postfix) with ESMTP id 1C8283E4001C
-	for <linux-nfs@vger.kernel.org>; Sun, 12 Jun 2016 18:34:39 -0600 (MDT)
-Received: from b03ledav001.gho.boulder.ibm.com (b03ledav001.gho.boulder.ibm.com [9.17.130.232])
-	by b03cxnp07029.gho.boulder.ibm.com (8.14.9/8.14.9/NCO v10.0) with ESMTP id u5D0YdtE42074254
-	for <linux-nfs@vger.kernel.org>; Sun, 12 Jun 2016 17:34:39 -0700
-Received: from b03ledav001.gho.boulder.ibm.com (unknown [127.0.0.1])
-	by IMSVA (Postfix) with ESMTP id EDD376E038
-	for <linux-nfs@vger.kernel.org>; Sun, 12 Jun 2016 18:34:38 -0600 (MDT)
-Received: from d50lp03.ny.us.ibm.com (unknown [146.89.104.211])
-	by b03ledav001.gho.boulder.ibm.com (Postfix) with ESMTPS id B95B16E035
-	for <linux-nfs@vger.kernel.org>; Sun, 12 Jun 2016 18:34:38 -0600 (MDT)
-Received: from localhost
-	by d50lp03.ny.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
-	for <linux-nfs@vger.kernel.org> from <eshel@us.ibm.com>;
-	Sun, 12 Jun 2016 20:34:38 -0400
-Received: from /spool/local
-	by smtp.notes.na.collabserv.com with smtp.notes.na.collabserv.com ESMTP
-	for <linux-nfs@vger.kernel.org> from <eshel@us.ibm.com>;
-	Mon, 13 Jun 2016 00:34:35 -0000
-In-Reply-To: <OFAE63B935.50A753D1-ON88257FD0.00812E5D-88257FD0.0081788A@LocalDomain>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: linux-nfs@vger.kernel.org, "Srikanth Srinivasan" <ssrikanth@in.ibm.com>,
-        "Trond Myklebust" <trond.myklebust@primarydata.com>,
-        "Venkateswara R Puvvada" <vpuvvada@in.ibm.com>
-Subject: Re: NFS fixes
-From: "Marc Eshel" <eshel@us.ibm.com>
-Date: Sun, 12 Jun 2016 17:34:32 -0700
-References: <OF9C78122D.D4F282BF-ON88257FD0.00686038-88257FD0.006E09F0@LocalDomain>
- <OFAE63B935.50A753D1-ON88257FD0.00812E5D-88257FD0.0081788A@LocalDomain>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="US-ASCII"
-Message-Id: <OF4D8DDA37.ED72F2E9-ON88257FD1.00031E93-88257FD1.0003298D@notes.na.collabserv.com>
+Received: from linuxhacker.ru ([217.76.32.60]:34650 "EHLO fiona.linuxhacker.ru"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S933082AbcFMB0m (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 12 Jun 2016 21:26:42 -0400
+From: Oleg Drokin <green@linuxhacker.ru>
+To: Jeff Layton <jlayton@poochiereds.net>,
+        "J . Bruce Fields" <bfields@fieldses.org>
+Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
+        Oleg Drokin <green@linuxhacker.ru>
+Subject: [PATCH v2] nfsd: Always lock state exclusively.
+Date: Sun, 12 Jun 2016 21:26:27 -0400
+Message-Id: <1465781187-824653-1-git-send-email-green@linuxhacker.ru>
+In-Reply-To: <30E98D26-CB99-4BF8-8697-A2E9BB41920D@linuxhacker.ru>
+References: <30E98D26-CB99-4BF8-8697-A2E9BB41920D@linuxhacker.ru>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-We are seeing a data corruption when putting very high load on the NFS V3 
-client reading multi gigabyte files in parallel. The check-sum on the 
-files is showing the corruption, and looking at the data we see data that 
-in one block that belongs in another block but it is not the full block. 
-The test is done on multiple set of hardware using different type of 
-server including kNFS and Ganesha servers with EXT3 or GPFS file system. 
-The only common part in all test are NFSv3 client on REHL7.0, 7.1, 7.2.
+It used to be the case that state had an rwlock that was locked for write
+by downgrades, but for read for upgrades (opens). Well, the problem is
+if there are two competing opens for the same state, they step on
+each other toes potentially leading to leaking file descriptors
+from the state structure, since access mode is a bitmap only set once.
 
-The question is there anything up stream that might fix data corruption by 
-the NFSv3 client, oo do we know if this problem might have been reported 
-by other users.
+Extend the holding region around in nfsd4_process_open2() to avoid
+racing entry into nfs4_get_vfs_file().
+Make init_open_stateid() return with locked stateid to be unlocked
+by the caller.
 
-The only fix that I see that might be related is attached, can this 
-explain a data corruption?
+Now this version held up pretty well in my testing for 24 hours.
+It still does not address the situation if during one of the racing
+nfs4_get_vfs_file() calls we are getting an error from one (first?)
+of them. This is to be addressed in a separate patch after having a
+solid reproducer (potentially using some fault injection).
 
-Thanks, Marc. 
+Signed-off-by: Oleg Drokin <green@linuxhacker.ru>
+---
+ fs/nfsd/nfs4state.c | 47 +++++++++++++++++++++++++++--------------------
+ fs/nfsd/state.h     |  2 +-
+ 2 files changed, 28 insertions(+), 21 deletions(-)
 
-
-Author: Trond Myklebust <trond.myklebust@primarydata.com>
-Date:   Mon Aug 17 12:57:07 2015 -0500
-
-    NFS: nfs_set_pgio_error sometimes misses errors
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index f5f82e1..fa5fb5a 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -3487,6 +3487,10 @@ init_open_stateid(struct nfs4_ol_stateid *stp, struct nfs4_file *fp,
+ 	struct nfs4_openowner *oo = open->op_openowner;
+ 	struct nfs4_ol_stateid *retstp = NULL;
  
-    We should ensure that we always set the pgio_header's error field
-    if a READ or WRITE RPC call returns an error. The current code depends
-    on 'hdr->good_bytes' always being initialised to a large value, which
-    is not always done correctly by callers.
-    When this happens, applications may end up missing important errors.
++	/* We are moving these outside of the spinlocks to avoid the warnings */
++	mutex_init(&stp->st_mutex);
++	mutex_lock(&stp->st_mutex);
++
+ 	spin_lock(&oo->oo_owner.so_client->cl_lock);
+ 	spin_lock(&fp->fi_lock);
  
-    Cc: stable@vger.kernel.org
-    Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
-
-diff --git a/fs/nfs/pagelist.c b/fs/nfs/pagelist.c
-index 4984bbe..7c5718b 100644
---- a/fs/nfs/pagelist.c
-+++ b/fs/nfs/pagelist.c
-@@ -77,8 +77,8 @@ EXPORT_SYMBOL_GPL(nfs_pgheader_init);
- void nfs_set_pgio_error(struct nfs_pgio_header *hdr, int error, loff_t 
-pos)
- {
-        spin_lock(&hdr->lock);
--       if (pos < hdr->io_start + hdr->good_bytes) {
--               set_bit(NFS_IOHDR_ERROR, &hdr->flags);
-+       if (!test_and_set_bit(NFS_IOHDR_ERROR, &hdr->flags)
-+           || pos < hdr->io_start + hdr->good_bytes) {
-                clear_bit(NFS_IOHDR_EOF, &hdr->flags);
-                hdr->good_bytes = pos - hdr->io_start;
-
-\
+@@ -3502,13 +3506,14 @@ init_open_stateid(struct nfs4_ol_stateid *stp, struct nfs4_file *fp,
+ 	stp->st_access_bmap = 0;
+ 	stp->st_deny_bmap = 0;
+ 	stp->st_openstp = NULL;
+-	init_rwsem(&stp->st_rwsem);
+ 	list_add(&stp->st_perstateowner, &oo->oo_owner.so_stateids);
+ 	list_add(&stp->st_perfile, &fp->fi_stateids);
+ 
+ out_unlock:
+ 	spin_unlock(&fp->fi_lock);
+ 	spin_unlock(&oo->oo_owner.so_client->cl_lock);
++	if (retstp)
++		mutex_lock(&retstp->st_mutex);
+ 	return retstp;
+ }
+ 
+@@ -4335,32 +4340,34 @@ nfsd4_process_open2(struct svc_rqst *rqstp, struct svc_fh *current_fh, struct nf
+ 	 */
+ 	if (stp) {
+ 		/* Stateid was found, this is an OPEN upgrade */
+-		down_read(&stp->st_rwsem);
++		mutex_lock(&stp->st_mutex);
+ 		status = nfs4_upgrade_open(rqstp, fp, current_fh, stp, open);
+ 		if (status) {
+-			up_read(&stp->st_rwsem);
++			mutex_unlock(&stp->st_mutex);
+ 			goto out;
+ 		}
+ 	} else {
+ 		stp = open->op_stp;
+ 		open->op_stp = NULL;
++		/*
++		 * init_open_stateid() either returns a locked stateid
++		 * it found, or initializes and locks the new one we passed in
++		 */
+ 		swapstp = init_open_stateid(stp, fp, open);
+ 		if (swapstp) {
+ 			nfs4_put_stid(&stp->st_stid);
+ 			stp = swapstp;
+-			down_read(&stp->st_rwsem);
+ 			status = nfs4_upgrade_open(rqstp, fp, current_fh,
+ 						stp, open);
+ 			if (status) {
+-				up_read(&stp->st_rwsem);
++				mutex_unlock(&stp->st_mutex);
+ 				goto out;
+ 			}
+ 			goto upgrade_out;
+ 		}
+-		down_read(&stp->st_rwsem);
+ 		status = nfs4_get_vfs_file(rqstp, fp, current_fh, stp, open);
+ 		if (status) {
+-			up_read(&stp->st_rwsem);
++			mutex_unlock(&stp->st_mutex);
+ 			release_open_stateid(stp);
+ 			goto out;
+ 		}
+@@ -4372,7 +4379,7 @@ nfsd4_process_open2(struct svc_rqst *rqstp, struct svc_fh *current_fh, struct nf
+ 	}
+ upgrade_out:
+ 	nfs4_inc_and_copy_stateid(&open->op_stateid, &stp->st_stid);
+-	up_read(&stp->st_rwsem);
++	mutex_unlock(&stp->st_mutex);
+ 
+ 	if (nfsd4_has_session(&resp->cstate)) {
+ 		if (open->op_deleg_want & NFS4_SHARE_WANT_NO_DELEG) {
+@@ -4977,12 +4984,12 @@ static __be32 nfs4_seqid_op_checks(struct nfsd4_compound_state *cstate, stateid_
+ 		 * revoked delegations are kept only for free_stateid.
+ 		 */
+ 		return nfserr_bad_stateid;
+-	down_write(&stp->st_rwsem);
++	mutex_lock(&stp->st_mutex);
+ 	status = check_stateid_generation(stateid, &stp->st_stid.sc_stateid, nfsd4_has_session(cstate));
+ 	if (status == nfs_ok)
+ 		status = nfs4_check_fh(current_fh, &stp->st_stid);
+ 	if (status != nfs_ok)
+-		up_write(&stp->st_rwsem);
++		mutex_unlock(&stp->st_mutex);
+ 	return status;
+ }
+ 
+@@ -5030,7 +5037,7 @@ static __be32 nfs4_preprocess_confirmed_seqid_op(struct nfsd4_compound_state *cs
+ 		return status;
+ 	oo = openowner(stp->st_stateowner);
+ 	if (!(oo->oo_flags & NFS4_OO_CONFIRMED)) {
+-		up_write(&stp->st_rwsem);
++		mutex_unlock(&stp->st_mutex);
+ 		nfs4_put_stid(&stp->st_stid);
+ 		return nfserr_bad_stateid;
+ 	}
+@@ -5062,12 +5069,12 @@ nfsd4_open_confirm(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 	oo = openowner(stp->st_stateowner);
+ 	status = nfserr_bad_stateid;
+ 	if (oo->oo_flags & NFS4_OO_CONFIRMED) {
+-		up_write(&stp->st_rwsem);
++		mutex_unlock(&stp->st_mutex);
+ 		goto put_stateid;
+ 	}
+ 	oo->oo_flags |= NFS4_OO_CONFIRMED;
+ 	nfs4_inc_and_copy_stateid(&oc->oc_resp_stateid, &stp->st_stid);
+-	up_write(&stp->st_rwsem);
++	mutex_unlock(&stp->st_mutex);
+ 	dprintk("NFSD: %s: success, seqid=%d stateid=" STATEID_FMT "\n",
+ 		__func__, oc->oc_seqid, STATEID_VAL(&stp->st_stid.sc_stateid));
+ 
+@@ -5143,7 +5150,7 @@ nfsd4_open_downgrade(struct svc_rqst *rqstp,
+ 	nfs4_inc_and_copy_stateid(&od->od_stateid, &stp->st_stid);
+ 	status = nfs_ok;
+ put_stateid:
+-	up_write(&stp->st_rwsem);
++	mutex_unlock(&stp->st_mutex);
+ 	nfs4_put_stid(&stp->st_stid);
+ out:
+ 	nfsd4_bump_seqid(cstate, status);
+@@ -5196,7 +5203,7 @@ nfsd4_close(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 	if (status)
+ 		goto out; 
+ 	nfs4_inc_and_copy_stateid(&close->cl_stateid, &stp->st_stid);
+-	up_write(&stp->st_rwsem);
++	mutex_unlock(&stp->st_mutex);
+ 
+ 	nfsd4_close_open_stateid(stp);
+ 
+@@ -5422,7 +5429,7 @@ init_lock_stateid(struct nfs4_ol_stateid *stp, struct nfs4_lockowner *lo,
+ 	stp->st_access_bmap = 0;
+ 	stp->st_deny_bmap = open_stp->st_deny_bmap;
+ 	stp->st_openstp = open_stp;
+-	init_rwsem(&stp->st_rwsem);
++	mutex_init(&stp->st_mutex);
+ 	list_add(&stp->st_locks, &open_stp->st_locks);
+ 	list_add(&stp->st_perstateowner, &lo->lo_owner.so_stateids);
+ 	spin_lock(&fp->fi_lock);
+@@ -5591,7 +5598,7 @@ nfsd4_lock(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 					&open_stp, nn);
+ 		if (status)
+ 			goto out;
+-		up_write(&open_stp->st_rwsem);
++		mutex_unlock(&open_stp->st_mutex);
+ 		open_sop = openowner(open_stp->st_stateowner);
+ 		status = nfserr_bad_stateid;
+ 		if (!same_clid(&open_sop->oo_owner.so_client->cl_clientid,
+@@ -5600,7 +5607,7 @@ nfsd4_lock(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 		status = lookup_or_create_lock_state(cstate, open_stp, lock,
+ 							&lock_stp, &new);
+ 		if (status == nfs_ok)
+-			down_write(&lock_stp->st_rwsem);
++			mutex_lock(&lock_stp->st_mutex);
+ 	} else {
+ 		status = nfs4_preprocess_seqid_op(cstate,
+ 				       lock->lk_old_lock_seqid,
+@@ -5704,7 +5711,7 @@ out:
+ 		    seqid_mutating_err(ntohl(status)))
+ 			lock_sop->lo_owner.so_seqid++;
+ 
+-		up_write(&lock_stp->st_rwsem);
++		mutex_unlock(&lock_stp->st_mutex);
+ 
+ 		/*
+ 		 * If this is a new, never-before-used stateid, and we are
+@@ -5874,7 +5881,7 @@ nfsd4_locku(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ fput:
+ 	fput(filp);
+ put_stateid:
+-	up_write(&stp->st_rwsem);
++	mutex_unlock(&stp->st_mutex);
+ 	nfs4_put_stid(&stp->st_stid);
+ out:
+ 	nfsd4_bump_seqid(cstate, status);
+diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
+index 986e51e..64053ea 100644
+--- a/fs/nfsd/state.h
++++ b/fs/nfsd/state.h
+@@ -535,7 +535,7 @@ struct nfs4_ol_stateid {
+ 	unsigned char			st_access_bmap;
+ 	unsigned char			st_deny_bmap;
+ 	struct nfs4_ol_stateid		*st_openstp;
+-	struct rw_semaphore		st_rwsem;
++	struct mutex			st_mutex;
+ };
+ 
+ static inline struct nfs4_ol_stateid *openlockstateid(struct nfs4_stid *s)
+-- 
+2.7.4
 
