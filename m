@@ -1,157 +1,252 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx0b-001b2d01.pphosted.com ([148.163.158.5]:61530 "EHLO
-	mx0a-001b2d01.pphosted.com" rhost-flags-OK-OK-OK-FAIL)
-	by vger.kernel.org with ESMTP id S933428AbcFMRB5 convert rfc822-to-8bit
-	(ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 13 Jun 2016 13:01:57 -0400
-Received: from pps.filterd (m0098417.ppops.net [127.0.0.1])
-	by mx0a-001b2d01.pphosted.com (8.16.0.11/8.16.0.11) with SMTP id u5DGwShC082857
-	for <linux-nfs@vger.kernel.org>; Mon, 13 Jun 2016 13:01:57 -0400
-Received: from e31.co.us.ibm.com (e31.co.us.ibm.com [32.97.110.149])
-	by mx0a-001b2d01.pphosted.com with ESMTP id 23geh3eg1m-1
-	(version=TLSv1.2 cipher=AES256-SHA bits=256 verify=NOT)
-	for <linux-nfs@vger.kernel.org>; Mon, 13 Jun 2016 13:01:57 -0400
-Received: from localhost
-	by e31.co.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
-	for <linux-nfs@vger.kernel.org> from <eshel@us.ibm.com>;
-	Mon, 13 Jun 2016 11:01:54 -0600
-Received: from b01cxnp23033.gho.pok.ibm.com (b01cxnp23033.gho.pok.ibm.com [9.57.198.28])
-	by d03dlp02.boulder.ibm.com (Postfix) with ESMTP id 1C16B3E40041
-	for <linux-nfs@vger.kernel.org>; Mon, 13 Jun 2016 11:01:53 -0600 (MDT)
-Received: from b01ledav004.gho.pok.ibm.com (b01ledav004.gho.pok.ibm.com [9.57.199.109])
-	by b01cxnp23033.gho.pok.ibm.com (8.14.9/8.14.9/NCO v10.0) with ESMTP id u5DH15or37289994
-	for <linux-nfs@vger.kernel.org>; Mon, 13 Jun 2016 17:01:53 GMT
-Received: from b01ledav004.gho.pok.ibm.com (unknown [127.0.0.1])
-	by IMSVA (Postfix) with ESMTP id 896BF11206D
-	for <linux-nfs@vger.kernel.org>; Mon, 13 Jun 2016 13:01:52 -0400 (EDT)
-Received: from d50lp33.co.us.ibm.com (unknown [9.17.249.38])
-	by b01ledav004.gho.pok.ibm.com (Postfix) with ESMTPS id 3EB6D112061
-	for <linux-nfs@vger.kernel.org>; Mon, 13 Jun 2016 13:01:52 -0400 (EDT)
-Received: from localhost
-	by d50lp33.co.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
-	for <linux-nfs@vger.kernel.org> from <eshel@us.ibm.com>;
-	Mon, 13 Jun 2016 11:01:51 -0600
-Received: from /spool/local
-	by smtp.notes.na.collabserv.com with smtp.notes.na.collabserv.com ESMTP
-	for <linux-nfs@vger.kernel.org> from <eshel@us.ibm.com>;
-	Mon, 13 Jun 2016 17:01:48 -0000
-In-Reply-To: <20160613160138.GD17866@fieldses.org>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: linux-nfs@vger.kernel.org, Srikanth Srinivasan <ssrikanth@in.ibm.com>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        Venkateswara R Puvvada <vpuvvada@in.ibm.com>
-Subject: Re: NFS fixes
-From: "Marc Eshel" <eshel@us.ibm.com>
-Date: Mon, 13 Jun 2016 10:01:46 -0700
-References: <OF9C78122D.D4F282BF-ON88257FD0.00686038-88257FD0.006E09F0@LocalDomain>
- <OFAE63B935.50A753D1-ON88257FD0.00812E5D-88257FD0.0081788A@LocalDomain>
- <OF4D8DDA37.ED72F2E9-ON88257FD1.00031E93-88257FD1.0003298D@notes.na.collabserv.com>
- <20160613160138.GD17866@fieldses.org>
+Received: from fieldses.org ([173.255.197.46]:55344 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1422768AbcFMRaU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 13 Jun 2016 13:30:20 -0400
+Date: Mon, 13 Jun 2016 13:30:19 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: "Adamson, Andy" <William.Adamson@netapp.com>,
+        "William A. (Andy) Adamson" <androsadamson@gmail.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: Configuring fs_locations on Linux upstream server pseudo fs for
+ session trunking
+Message-ID: <20160613173019.GE17866@fieldses.org>
+References: <04273F60-806B-4E12-B097-388C346F2DED@oracle.com>
+ <40E6E131-029E-4337-A235-B1DB5CA687AA@netapp.com>
+ <20160525184837.GA15210@fieldses.org>
+ <9614D777-9C75-4FBB-BD06-4EC366273B49@oracle.com>
+ <CAHVgHyVEx1fUP36tHaB-uBMJmC3gqCeQ5PSgaHm9XrAWQqerqw@mail.gmail.com>
+ <CE2CDF39-AACC-4D7F-AD24-BD43C87F3257@oracle.com>
+ <630441D0-7CB5-43BC-A40A-79C5B27A786D@netapp.com>
+ <FFA470BA-7C4C-4C28-AE3B-5DD03CA61958@oracle.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="US-ASCII"
-Message-Id: <OFD91CE247.B0636D6B-ON88257FD1.005D4E83-88257FD1.005D8B74@notes.na.collabserv.com>
+Content-Type: text/plain; charset=utf-8
+In-Reply-To: <FFA470BA-7C4C-4C28-AE3B-5DD03CA61958@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-There are no error from vfs_read just the data corruption, we tried it 
-with DIO and still see the problem, so it might not be the NFS client, we 
-are looking again at the memory management of the application.
-Thanks, Marc.
+On Thu, May 26, 2016 at 11:22:50AM -0400, Chuck Lever wrote:
+> 
+> > On May 26, 2016, at 10:44 AM, Adamson, Andy <William.Adamson@netapp.com> wrote:
+> > 
+> >> 
+> >> On May 26, 2016, at 10:25 AM, Chuck Lever <chuck.lever@oracle.com> wrote:
+> >> 
+> >> 
+> >>> On May 26, 2016, at 9:54 AM, Andy Adamson <androsadamson@gmail.com> wrote:
+> >>> 
+> >>> On Wed, May 25, 2016 at 2:55 PM, Chuck Lever <chuck.lever@oracle.com> wrote:
+> >>>> 
+> >>>>> On May 25, 2016, at 2:48 PM, bfields@fieldses.org wrote:
+> >>>>> 
+> >>>>> On Wed, May 25, 2016 at 05:29:35PM +0000, Adamson, Andy wrote:
+> >>>>>> Anna Schumaker who reviewed my client side session trunking patchset, wants a full featured version of both the client and the server session trunking pieces before accepting the session trunking feature upstream. To that end, I want to implement the server mountd V4ROOT processing of an fs_locations configuration to satisfy an fs_locations request on the pseudo fs.
+> >>>>>> 
+> >>>>>> The forwarded message is from an email stream between Bruce, Chuck and I concerning the server pseufo fs fs_locations configuration that I’m now sharing with the list.
+> >>>>>> 
+> >>>>>> Some background:
+> >>>>>> 
+> >>>>>> The recent "NFSV4.1,2 session trunking” Version-5 patch set sent to the list notes (in patch 00/10):
+> >>>>>> 
+> >>>>>> The pseudo-fs GETATTR(fs_locations) probe session trunking
+> >>>>>> was tested against a Linux server with a pseudo-fs
+> >>>>>> export stanza (e.g. a stanza with the fsid=0 or fsid=root
+> >>>>>> export option) and a replicas= export option
+> >>>>>> (replicas=<path1>@<server1>:<path2>@<server2>..)
+> >>>>>> Note that this configuration is for testing only. A future
+> >>>>>> patchset will add the replicas= configuration to the
+> >>>>>> NFSEXP_V4ROOT nfsd and mountd processing.
+> >>>>>> 
+> >>>>>> 
+> >>>>>> There are several ideas on how to accomplish mountd/V4ROOT fs_locations configuration in the forwarded message. See inline.
+> >>>>>> 
+> >>>>>> 
+> >>>>>>> Begin forwarded message:
+> >>>>>>> 
+> >>>>>>> From: Chuck Lever <chuck.lever@oracle.com>
+> >>>>>>> Subject: Re: Configuring fs_locations on Linux upstream server
+> >>>>>>> Date: May 6, 2016 at 4:31:00 PM EDT
+> >>>>>>> To: "J. Bruce Fields" <bfields@fieldses.org>
+> >>>>>>> Cc: "Adamson, Andy" <William.Adamson@netapp.com>
+> >>>>>>> 
+> >>>>>>> 
+> >>>>>>>> On May 6, 2016, at 4:16 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
+> >>>>>>>> 
+> >>>>>>>> On Fri, May 06, 2016 at 02:20:12PM -0400, Chuck Lever wrote:
+> >>>>>>>>> Seems like when a server does not return a list, that is
+> >>>>>>>>> information the client can use: basically, there is no
+> >>>>>>>>> ability to do any session trunking. It has to be set up
+> >>>>>>>>> explicitly; is that a bad thing, operationally?
+> >>>>>>>> 
+> >>>>>>>> I like the idea of it being opt in on the server.
+> >>>>>>>> 
+> >>>>>>>> Suppose the server transparently starts advertising all available
+> >>>>>>>> addresses for session trunking.  It's not hard to imagine cases where
+> >>>>>>>> that would go wrong.  E.g., maybe the server has the odd wireless or
+> >>>>>>>> 100Mb or other interface that happens to work but that's slow.  Then
+> >>>>>>>> somebody upgrades their server and performance goes down and it may take
+> >>>>>>>> them a while to figure out why.  Whereas if they'd had to opt in they'd
+> >>>>>>>> probably have avoided advertising an inappropriate interface.  Or at
+> >>>>>>>> least they'd have a better chance of figuring out that turning on
+> >>>>>>>> trunking was what caused the problem.
+> >>>>>>>> 
+> >>>>>>>> I'd rather not force people to export "/" explicitly, though.  It's fine
+> >>>>>>>> for testing, but:
+> >>>>>>>> 
+> >>>>>>>> - I don't think we give a way to do an explicit V4ROOT export,
+> >>>>>>>>   so they'd be exposing their entire root partition.  We could
+> >>>>>>>>   fix that, but
+> >>>>>>>> - the pseudofs just seems to me like something people shouldn't
+> >>>>>>>>   normally have to think about.  It's a protocol implementation
+> >>>>>>>>   detail, I'd rather hide it.  It'd be to easy to configure it a
+> >>>>>>>>   little wrong, I think.
+> >>>>>>>> 
+> >>>>>>>> We can still do this by adding a replicas= option to the / export, but
+> >>>>>>>> we can let rpc.mountd do that internally instead of making the admin add
+> >>>>>>>> it to /etc/exports.
+> >>>>>>>> 
+> >>>>>>>> But then you still need a way for the admin to tell rpc.mountd to cook
+> >>>>>>>> up the replicas= option.....  I'm not sure what that should look like.
+> >>>>>> 
+> >>>>>> Idea 1: extra syntax in /etc/exports
+> >>>>> 
+> >>>>> It's not really export-specific information.  I wonder if it'd be better
+> >>>>> to pass it on the rpc.nfsd commandline?
+> >>>>> 
+> >>>>>    rpc.nfsd --multipath-set="192.168.0.1,192.168.0.2"
+> >>>>> 
+> >>>>> (and then that can be configured in /etc/sysconfig/nfs or whatever)?
+> >>> 
+> >>> Is this (the rpc.nfsd command line and /etc/sysconfig/nfs entry) the
+> >>> preferred way?
+> >> 
+> >> I don't prefer it.
+> >> 
+> >> See below: I think we want something that is more
+> >> convenient to update automatically.
+> > 
+> > Fine, but I’m having difficulty in understanding the design you are suggesting to fulfill the update automatically requirement.
+> > See inline below.
+> > 
+> >> 
+> >> 
+> >>> Is /etc/sysconfig/nfs read upon reboot?
+> >> 
+> >> It's read by all the start-up scripts related to NFS.
+> >> 
+> >> 
+> >>> -->Andy
+> >>> 
+> >>> 
+> >>> 
+> >>>>> 
+> >>>>>>>> Maybe some extra syntax in /etc/exports, but what do they need to give
+> >>>>>>>> us--just one list of IP addresses?  Chuck, any ideas?
+> >>>>>> 
+> >>>>>> Idea 2: xattr attached to “/"
+> >>>>>> 
+> >>>>>>> 
+> >>>>>>> How about using the same approach used for junctions:
+> >>>>>>> put the list in an xattr attached to / ? mountd can
+> >>>>>>> extract that when the kernel asks for help satisfying
+> >>>>>>> a GETATTR(fs_locations) on V4ROOT.
+> >>>>> 
+> >>>>> I don't think that works.  "/" isn't a good place to put configuration.
+> >>>>> It could be read-only, among other things.
+> >>>>> 
+> >>>>>> Idea 3: new /etc/ config file
+> >>>>>>> 
+> >>>>>>> Or it could be put in a separate config file in /etc.
+> >>>>>>> You might want to specify more than just the i/f list
+> >>>>>>> here; for instance, the security policy for the
+> >>>>>>> pseudofs, or a constant fsid UUID, among other things.
+> >>>>>> 
+> >>>>>> 
+> >>>>>> API to update the i/f list.  This is not about where to hold fs_locations config info, but rather how to insert the (changed) info into the running system.
+> >>>>>> 
+> >>>>>>> 
+> >>>>>>> Also, I suggested to Andy earlier:
+> >>>>>>> 
+> >>>>>>>> I find myself leaning towards mechanisms that are easy
+> >>>>>>>> both for admins and for programs (ie, an API). Perhaps
+> >>>>>>>> one day you might want to add a command that updates the
+> >>>>>>>> i/f list from the scripts in /etc/sysconfig/network-scripts,
+> >>>>>>>> for instance.
+> 
+> >>>>>>>> As part of an ifup:
+> >>>>>>>> 
+> >>>>>>>> nfspfs add <addr>
+> >>>>>>>> 
+> >>>>>>>> and ifdown:
+> >>>>>>>> 
+> >>>>>>>> nfspfs remove <addr>
+> >>>>>>>> 
+> >>>>>>>> I wrote some Python code to manipulate entries in
+> >>>>>>>> /etc/exports, now found in fedfs-utils. It's icky.
+> >>>>>>> 
+> >>>>>>> I think we should move away from "edit this file
+> >>>>>>> and save it, then restart rpc.xyzpdq". Build some
+> >>>>>>> command line interfaces for this.
+> >>>>> 
+> >>>>> I'm OK with that.
+> >>>>> 
+> >>>>> (Note do have that for information in /etc/exports--we have exportfs.
+> >>>>> Is there a reason that didn't work for fedfs-utils?)
+> >>>> 
+> >>>> To make changes that can survive a server reboot,
+> >>>> you have to update /etc/exports.
+> > 
+> > 
+> > 
+> > Your suggestion then is to build a new command-line interface to:
+> > 
+> > - tell mountd of a V4ROOT multipath list?
+> > - have said list survive reboots, e.g. stored in a file?
+> > 
+> > Please povide more detail on your thoughts.
+> 
+> Persistence of multipath information doesn't
+> seem as necessary as it is for FedFS junctions.
+> I was just answering Bruce's question about why
+> exportfs is not adequate for FedFS junctions.
+> 
+> In fact, the multipath list itself will need
+> attention after any change of the server's
+> network configuration, including after a reboot
+> where an i/f can be potentially added or removed.
+> So the list is often not going to be persistent
+> at all.
+> 
+> However, the policy that determines how the
+> multipath list is rebuilt should probably be
+> stored in a configuration file. Eg, which i/f's
+> to ignore (like lo); classes of i/f's to
+> ignore (like IPv6 or RDMA); which i/f's should
+> always be considered for the list if they are
+> up; whether to advertise IP addresses or
+> hostnames; and so on.
+> 
+> So I agree, an xattr on / is right out, and
+> /etc/exports is probably not a good long term
+> solution either. But exportfs is a closer
+> analog to how to manage the multipath list.
+> 
+> If you can reuse exportfs that's OK too.
 
-linux-nfs-owner@vger.kernel.org wrote on 06/13/2016 09:01:38 AM:
+OK, so you could check whether we could piggyback on the same mechanism
+exportfs and mountd use to communicate (which is basically just reading,
+writing, and locking /var/lib/nfs/etab, if I remember right).  And then
+add some syntax to the exportfs commandline.  As long as you're doing
+that, I don't see why you couldn't also allow people to specify the same
+information in /etc/exports, if they'd like.  But, whatever, maybe
+that's not necessary.
 
-> From: "J. Bruce Fields" <bfields@fieldses.org>
-> To: Marc Eshel/Almaden/IBM@IBMUS
-> Cc: linux-nfs@vger.kernel.org, Srikanth Srinivasan 
-> <ssrikanth@in.ibm.com>, Trond Myklebust 
-> <trond.myklebust@primarydata.com>, Venkateswara R Puvvada 
-> <vpuvvada@in.ibm.com>
-> Date: 06/13/2016 09:01 AM
-> Subject: Re: NFS fixes
-> Sent by: linux-nfs-owner@vger.kernel.org
-> 
-> On Sun, Jun 12, 2016 at 05:34:32PM -0700, Marc Eshel wrote:
-> > We are seeing a data corruption when putting very high load on the NFS 
-V3 
-> > client reading multi gigabyte files in parallel. The check-sum on the 
-> > files is showing the corruption, and looking at the data we see data 
-that 
-> > in one block that belongs in another block but it is not the full 
-block. 
-> > The test is done on multiple set of hardware using different type of 
-> > server including kNFS and Ganesha servers with EXT3 or GPFS file 
-system. 
-> > The only common part in all test are NFSv3 client on REHL7.0, 7.1, 
-7.2.
-> > 
-> > The question is there anything up stream that might fix data 
-corruption by 
-> > the NFSv3 client, oo do we know if this problem might have been 
-reported 
-> > by other users.
-> > 
-> > The only fix that I see that might be related is attached, can this 
-> > explain a data corruption?
-> 
-> It should be pretty easy to check whether there've been any READ/WRITE
-> errors, and rule this out if not.
-> 
-> Is the data being read completely static?  (So you can rule out e.g.
-> some subtle violation of close-to-open.)
-> 
-> Sorry, no special knowledge here.
-> 
-> --b.
-> 
-> > 
-> > Thanks, Marc. 
-> > 
-> > 
-> > Author: Trond Myklebust <trond.myklebust@primarydata.com>
-> > Date:   Mon Aug 17 12:57:07 2015 -0500
-> > 
-> >     NFS: nfs_set_pgio_error sometimes misses errors
-> > 
-> >     We should ensure that we always set the pgio_header's error field
-> >     if a READ or WRITE RPC call returns an error. The current code 
-depends
-> >     on 'hdr->good_bytes' always being initialised to a large value, 
-which
-> >     is not always done correctly by callers.
-> >     When this happens, applications may end up missing important 
-errors.
-> > 
-> >     Cc: stable@vger.kernel.org
-> >     Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
-> > 
-> > diff --git a/fs/nfs/pagelist.c b/fs/nfs/pagelist.c
-> > index 4984bbe..7c5718b 100644
-> > --- a/fs/nfs/pagelist.c
-> > +++ b/fs/nfs/pagelist.c
-> > @@ -77,8 +77,8 @@ EXPORT_SYMBOL_GPL(nfs_pgheader_init);
-> >  void nfs_set_pgio_error(struct nfs_pgio_header *hdr, int error, 
-loff_t 
-> > pos)
-> >  {
-> >         spin_lock(&hdr->lock);
-> > -       if (pos < hdr->io_start + hdr->good_bytes) {
-> > -               set_bit(NFS_IOHDR_ERROR, &hdr->flags);
-> > +       if (!test_and_set_bit(NFS_IOHDR_ERROR, &hdr->flags)
-> > +           || pos < hdr->io_start + hdr->good_bytes) {
-> >                 clear_bit(NFS_IOHDR_EOF, &hdr->flags);
-> >                 hdr->good_bytes = pos - hdr->io_start;
-> > 
-> > \
-> > 
-> > --
-> > To unsubscribe from this list: send the line "unsubscribe linux-nfs" 
-in
-> > the body of a message to majordomo@vger.kernel.org
-> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
+A new rpc.mountd commandline option might work too?
 
+Whatever we choose doesn't have to do everything we want--as long as we
+can build whatever you want on top of it later.  So, ideally we choose
+something simple that we can build on later, just to unblock Andy's
+work.
 
+--b.
