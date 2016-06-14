@@ -1,82 +1,52 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-it0-f66.google.com ([209.85.214.66]:32794 "EHLO
-	mail-it0-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752783AbcFNTEj (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 14 Jun 2016 15:04:39 -0400
-Received: by mail-it0-f66.google.com with SMTP id i6so429818ith.0
-        for <linux-nfs@vger.kernel.org>; Tue, 14 Jun 2016 12:04:39 -0700 (PDT)
+Received: from mail-it0-f65.google.com ([209.85.214.65]:36238 "EHLO
+	mail-it0-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752710AbcFNTFi (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 14 Jun 2016 15:05:38 -0400
+Received: by mail-it0-f65.google.com with SMTP id h190so412479ith.3
+        for <linux-nfs@vger.kernel.org>; Tue, 14 Jun 2016 12:05:38 -0700 (PDT)
 From: Trond Myklebust <trond.myklebust@primarydata.com>
 To: linux-nfs@vger.kernel.org
-Subject: [PATCH 5/5] SUNRPC: Fix suspicious enobufs issues.
-Date: Tue, 14 Jun 2016 15:04:06 -0400
-Message-Id: <1465931046-30696-5-git-send-email-trond.myklebust@primarydata.com>
-In-Reply-To: <1465931046-30696-4-git-send-email-trond.myklebust@primarydata.com>
-References: <1465931046-30696-1-git-send-email-trond.myklebust@primarydata.com>
- <1465931046-30696-2-git-send-email-trond.myklebust@primarydata.com>
- <1465931046-30696-3-git-send-email-trond.myklebust@primarydata.com>
- <1465931046-30696-4-git-send-email-trond.myklebust@primarydata.com>
+Subject: [PATCH 01/12] NFS: Don't flush caches for a getattr that races with writeback
+Date: Tue, 14 Jun 2016 15:05:04 -0400
+Message-Id: <1465931115-30784-1-git-send-email-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The current test is racy when dealing with fast NICs.
+If there were outstanding writes then chalk up the unexpected change
+attribute on the server to them.
 
 Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
 ---
- net/sunrpc/xprtsock.c | 31 +++++++++++++++++++++++++------
- 1 file changed, 25 insertions(+), 6 deletions(-)
+ fs/nfs/inode.c | 15 +++++++++------
+ 1 file changed, 9 insertions(+), 6 deletions(-)
 
-diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
-index 646170d0cb86..6b3efeb3edc5 100644
---- a/net/sunrpc/xprtsock.c
-+++ b/net/sunrpc/xprtsock.c
-@@ -642,6 +642,7 @@ static int xs_tcp_send_request(struct rpc_task *task)
- 	struct sock_xprt *transport = container_of(xprt, struct sock_xprt, xprt);
- 	struct xdr_buf *xdr = &req->rq_snd_buf;
- 	bool zerocopy = true;
-+	bool vm_wait = false;
- 	int status;
- 	int sent;
- 
-@@ -677,15 +678,33 @@ static int xs_tcp_send_request(struct rpc_task *task)
- 			return 0;
- 		}
- 
-+		WARN_ON_ONCE(sent == 0 && status == 0);
-+
-+		if (status == -EAGAIN ) {
-+			/*
-+			 * Return EAGAIN if we're sure we're hitting the
-+			 * socket send buffer limits.
-+			 */
-+			if (test_bit(SOCK_NOSPACE, &transport->sock->flags))
-+				break;
-+			/*
-+			 * Did we hit a memory allocation failure?
-+			 */
-+			if (sent == 0) {
-+				status = -ENOBUFS;
-+				if (vm_wait)
-+					break;
-+				/* Retry, knowing now that we're below the
-+				 * socket send buffer limit
-+				 */
-+				vm_wait = true;
+diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
+index 52e7d6869e3b..60051e62d3f1 100644
+--- a/fs/nfs/inode.c
++++ b/fs/nfs/inode.c
+@@ -1729,12 +1729,15 @@ static int nfs_update_inode(struct inode *inode, struct nfs_fattr *fattr)
+ 		if (inode->i_version != fattr->change_attr) {
+ 			dprintk("NFS: change_attr change on server for file %s/%ld\n",
+ 					inode->i_sb->s_id, inode->i_ino);
+-			invalid |= NFS_INO_INVALID_ATTR
+-				| NFS_INO_INVALID_DATA
+-				| NFS_INO_INVALID_ACCESS
+-				| NFS_INO_INVALID_ACL;
+-			if (S_ISDIR(inode->i_mode))
+-				nfs_force_lookup_revalidate(inode);
++			/* Could it be a race with writeback? */
++			if (nfsi->nrequests == 0) {
++				invalid |= NFS_INO_INVALID_ATTR
++					| NFS_INO_INVALID_DATA
++					| NFS_INO_INVALID_ACCESS
++					| NFS_INO_INVALID_ACL;
++				if (S_ISDIR(inode->i_mode))
++					nfs_force_lookup_revalidate(inode);
 +			}
-+			continue;
-+		}
- 		if (status < 0)
- 			break;
--		if (sent == 0) {
--			status = -EAGAIN;
--			break;
--		}
-+		vm_wait = false;
- 	}
--	if (status == -EAGAIN && sk_stream_is_writeable(transport->inet))
--		status = -ENOBUFS;
- 
- 	switch (status) {
- 	case -ENOTSOCK:
+ 			inode->i_version = fattr->change_attr;
+ 		}
+ 	} else {
 -- 
 2.5.5
 
