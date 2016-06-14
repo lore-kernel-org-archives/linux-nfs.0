@@ -1,24 +1,24 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from linuxhacker.ru ([217.76.32.60]:36964 "EHLO fiona.linuxhacker.ru"
+Received: from linuxhacker.ru ([217.76.32.60]:37322 "EHLO fiona.linuxhacker.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751401AbcFNPxh convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 14 Jun 2016 11:53:37 -0400
+	id S1751049AbcFNP41 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 14 Jun 2016 11:56:27 -0400
 Subject: Re: [PATCH v2] nfsd: Always lock state exclusively.
 Mime-Version: 1.0 (Apple Message framework v1283)
 Content-Type: text/plain; charset=us-ascii
 From: Oleg Drokin <green@linuxhacker.ru>
-In-Reply-To: <20160614153808.GD25973@fieldses.org>
-Date: Tue, 14 Jun 2016 11:53:27 -0400
+In-Reply-To: <20160614154659.GE25973@fieldses.org>
+Date: Tue, 14 Jun 2016 11:56:20 -0400
 Cc: Jeff Layton <jlayton@poochiereds.net>, linux-nfs@vger.kernel.org,
         linux-kernel@vger.kernel.org
-Message-Id: <ED916555-2D4D-4BF5-8850-9A17D0ABFE82@linuxhacker.ru>
-References: <30E98D26-CB99-4BF8-8697-A2E9BB41920D@linuxhacker.ru> <1465781187-824653-1-git-send-email-green@linuxhacker.ru> <20160614153808.GD25973@fieldses.org>
+Message-Id: <799A23EB-FA33-4251-A137-028402BDA4C8@linuxhacker.ru>
+References: <30E98D26-CB99-4BF8-8697-A2E9BB41920D@linuxhacker.ru> <1465781187-824653-1-git-send-email-green@linuxhacker.ru> <20160614154659.GE25973@fieldses.org>
 To: "J . Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
-On Jun 14, 2016, at 11:38 AM, J . Bruce Fields wrote:
+On Jun 14, 2016, at 11:46 AM, J . Bruce Fields wrote:
 
 > On Sun, Jun 12, 2016 at 09:26:27PM -0400, Oleg Drokin wrote:
 >> It used to be the case that state had an rwlock that was locked for write
@@ -55,6 +55,26 @@ On Jun 14, 2016, at 11:38 AM, J . Bruce Fields wrote:
 >> +	/* We are moving these outside of the spinlocks to avoid the warnings */
 >> +	mutex_init(&stp->st_mutex);
 >> +	mutex_lock(&stp->st_mutex);
+> 
+> A mutex_init_locked() primitive might also be convenient here.
+
+I know! I would be able to do it under spinlock then without moving this around too.
+
+But alas, not only there is not one, mutex documentation states this is disallowed.
+
+> You could also take the two previous lines from the caller into this
+> function instead of passing in stp, that might simplify the code.
+> (Haven't checked.)
+
+I am not really sure what do you mean here.
+These lines are moved from further away in this function )well, just the init, anyway).
+
+Having half initialisation of stp here and half in the caller sounds kind of strange
+to me.
+
+> 
+> --b.
+> 
 >> +
 >> 	spin_lock(&oo->oo_owner.so_client->cl_lock);
 >> 	spin_lock(&fp->fi_lock);
@@ -73,20 +93,6 @@ On Jun 14, 2016, at 11:38 AM, J . Bruce Fields wrote:
 >> +	if (retstp)
 >> +		mutex_lock(&retstp->st_mutex);
 >> 	return retstp;
-> 
-> You're returning with both stp->st_mutex and retstp->st_mutex locked.
-> Did you mean to drop that first lock in the (retstp) case, or am I
-> missing something?
-
-Well, I think it's ok (perhaps worthy of a comment) it's that if we matched a different
-retstp state, then stp is not used and either released right away or even
-if reused, it would be reinitialized in another call to init_open_stateid(),
-so it's fine?
-
-
-> 
-> --b.
-> 
 >> }
 >> 
 >> @@ -4335,32 +4340,34 @@ nfsd4_process_open2(struct svc_rqst *rqstp, struct svc_fh *current_fh, struct nf
