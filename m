@@ -1,15 +1,15 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:56434 "EHLO fieldses.org"
+Received: from fieldses.org ([173.255.197.46]:56442 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751863AbcFNPiP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 14 Jun 2016 11:38:15 -0400
-Date: Tue, 14 Jun 2016 11:38:08 -0400
+	id S1751213AbcFNPrA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 14 Jun 2016 11:47:00 -0400
+Date: Tue, 14 Jun 2016 11:46:59 -0400
 From: "J . Bruce Fields" <bfields@fieldses.org>
 To: Oleg Drokin <green@linuxhacker.ru>
 Cc: Jeff Layton <jlayton@poochiereds.net>, linux-nfs@vger.kernel.org,
         linux-kernel@vger.kernel.org
 Subject: Re: [PATCH v2] nfsd: Always lock state exclusively.
-Message-ID: <20160614153808.GD25973@fieldses.org>
+Message-ID: <20160614154659.GE25973@fieldses.org>
 References: <30E98D26-CB99-4BF8-8697-A2E9BB41920D@linuxhacker.ru>
  <1465781187-824653-1-git-send-email-green@linuxhacker.ru>
 MIME-Version: 1.0
@@ -53,6 +53,15 @@ On Sun, Jun 12, 2016 at 09:26:27PM -0400, Oleg Drokin wrote:
 > +	/* We are moving these outside of the spinlocks to avoid the warnings */
 > +	mutex_init(&stp->st_mutex);
 > +	mutex_lock(&stp->st_mutex);
+
+A mutex_init_locked() primitive might also be convenient here.
+
+You could also take the two previous lines from the caller into this
+function instead of passing in stp, that might simplify the code.
+(Haven't checked.)
+
+--b.
+
 > +
 >  	spin_lock(&oo->oo_owner.so_client->cl_lock);
 >  	spin_lock(&fp->fi_lock);
@@ -71,13 +80,6 @@ On Sun, Jun 12, 2016 at 09:26:27PM -0400, Oleg Drokin wrote:
 > +	if (retstp)
 > +		mutex_lock(&retstp->st_mutex);
 >  	return retstp;
-
-You're returning with both stp->st_mutex and retstp->st_mutex locked.
-Did you mean to drop that first lock in the (retstp) case, or am I
-missing something?
-
---b.
-
 >  }
 >  
 > @@ -4335,32 +4340,34 @@ nfsd4_process_open2(struct svc_rqst *rqstp, struct svc_fh *current_fh, struct nf
