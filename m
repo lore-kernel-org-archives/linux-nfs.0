@@ -1,13 +1,14 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f194.google.com ([209.85.223.194]:36250 "EHLO
-	mail-io0-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932225AbcFODP1 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 14 Jun 2016 23:15:27 -0400
-Subject: [PATCH v2 01/24] mlx4-ib: Use coherent memory for priv pages
+Received: from mail-io0-f195.google.com ([209.85.223.195]:36292 "EHLO
+	mail-io0-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932364AbcFODPg (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 14 Jun 2016 23:15:36 -0400
+Subject: [PATCH v2 02/24] xprtrdma: Remove FMRs from the unmap list after
+ unmapping
 From: Chuck Lever <chuck.lever@oracle.com>
 To: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Tue, 14 Jun 2016 23:15:25 -0400
-Message-ID: <20160615031525.14794.69066.stgit@manet.1015granger.net>
+Date: Tue, 14 Jun 2016 23:15:34 -0400
+Message-ID: <20160615031534.14794.33883.stgit@manet.1015granger.net>
 In-Reply-To: <20160615030626.14794.43805.stgit@manet.1015granger.net>
 References: <20160615030626.14794.43805.stgit@manet.1015granger.net>
 MIME-Version: 1.0
@@ -15,98 +16,70 @@ Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Sagi Grimberg <sagi@grimberg.me>
+ib_unmap_fmr() takes a list of FMRs to unmap. However, it does not
+remove the FMRs from this list as it processes them. Other
+ib_unmap_fmr() call sites are careful to remove FMRs from the list
+after ib_unmap_fmr() returns.
 
-kmalloc doesn't guarantee the returned memory is all on one page.
+Since commit 7c7a5390dc6c8 ("xprtrdma: Add ro_unmap_sync method for FMR")
+fmr_op_unmap_sync passes more than one FMR to ib_unmap_fmr(), but
+it didn't bother to remove the FMRs from that list once the call was
+complete.
 
-Fixes: 1b2cd0fc673c ("IB/mlx4: Support the new memory ... ")
-Signed-off-by: Sagi Grimberg <sagi@grimberg.me>
+I've noticed some instability that could be related to list
+tangling by the new fmr_op_unmap_sync() logic. In an abundance
+of caution, add some defensive logic to clean up properly after
+ib_unmap_fmr().
+
+Fixes: 7c7a5390dc6c8 ("xprtrdma: Add ro_unmap_sync method for FMR")
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- drivers/infiniband/hw/mlx4/mlx4_ib.h |    1 -
- drivers/infiniband/hw/mlx4/mr.c      |   42 +++++-----------------------------
- 2 files changed, 6 insertions(+), 37 deletions(-)
+ net/sunrpc/xprtrdma/fmr_ops.c |   10 ++++++++--
+ 1 file changed, 8 insertions(+), 2 deletions(-)
 
-diff --git a/drivers/infiniband/hw/mlx4/mlx4_ib.h b/drivers/infiniband/hw/mlx4/mlx4_ib.h
-index 6c5ac5d..4a8bbe4 100644
---- a/drivers/infiniband/hw/mlx4/mlx4_ib.h
-+++ b/drivers/infiniband/hw/mlx4/mlx4_ib.h
-@@ -139,7 +139,6 @@ struct mlx4_ib_mr {
- 	u32			max_pages;
- 	struct mlx4_mr		mmr;
- 	struct ib_umem	       *umem;
--	void			*pages_alloc;
- };
- 
- struct mlx4_ib_mw {
-diff --git a/drivers/infiniband/hw/mlx4/mr.c b/drivers/infiniband/hw/mlx4/mr.c
-index 6312721..c4c2044 100644
---- a/drivers/infiniband/hw/mlx4/mr.c
-+++ b/drivers/infiniband/hw/mlx4/mr.c
-@@ -278,30 +278,13 @@ mlx4_alloc_priv_pages(struct ib_device *device,
- 		      int max_pages)
+diff --git a/net/sunrpc/xprtrdma/fmr_ops.c b/net/sunrpc/xprtrdma/fmr_ops.c
+index 6326ebe..958c792 100644
+--- a/net/sunrpc/xprtrdma/fmr_ops.c
++++ b/net/sunrpc/xprtrdma/fmr_ops.c
+@@ -63,9 +63,12 @@ static int
+ __fmr_unmap(struct rpcrdma_mw *mw)
  {
- 	int size = max_pages * sizeof(u64);
--	int add_size;
--	int ret;
--
--	add_size = max_t(int, MLX4_MR_PAGES_ALIGN - ARCH_KMALLOC_MINALIGN, 0);
+ 	LIST_HEAD(l);
++	int rc;
  
--	mr->pages_alloc = kzalloc(size + add_size, GFP_KERNEL);
--	if (!mr->pages_alloc)
-+	mr->pages = dma_alloc_coherent(device->dma_device, size,
-+				       &mr->page_map, GFP_KERNEL);
-+	if (!mr->pages)
- 		return -ENOMEM;
- 
--	mr->pages = PTR_ALIGN(mr->pages_alloc, MLX4_MR_PAGES_ALIGN);
--
--	mr->page_map = dma_map_single(device->dma_device, mr->pages,
--				      size, DMA_TO_DEVICE);
--
--	if (dma_mapping_error(device->dma_device, mr->page_map)) {
--		ret = -ENOMEM;
--		goto err;
--	}
--
- 	return 0;
--err:
--	kfree(mr->pages_alloc);
--
--	return ret;
+ 	list_add(&mw->fmr.fmr->list, &l);
+-	return ib_unmap_fmr(&l);
++	rc = ib_unmap_fmr(&l);
++	list_del_init(&mw->fmr.fmr->list);
++	return rc;
  }
  
- static void
-@@ -311,9 +294,8 @@ mlx4_free_priv_pages(struct mlx4_ib_mr *mr)
- 		struct ib_device *device = mr->ibmr.device;
- 		int size = mr->max_pages * sizeof(u64);
+ /* Deferred reset of a single FMR. Generate a fresh rkey by
+@@ -149,6 +152,7 @@ fmr_op_init(struct rpcrdma_xprt *r_xprt)
+ 		r->fmr.fmr = ib_alloc_fmr(pd, mr_access_flags, &fmr_attr);
+ 		if (IS_ERR(r->fmr.fmr))
+ 			goto out_fmr_err;
++		INIT_LIST_HEAD(&r->fmr.fmr->list);
  
--		dma_unmap_single(device->dma_device, mr->page_map,
--				 size, DMA_TO_DEVICE);
--		kfree(mr->pages_alloc);
-+		dma_free_coherent(device->dma_device, size,
-+				  mr->pages, mr->page_map);
- 		mr->pages = NULL;
+ 		r->mw_xprt = r_xprt;
+ 		list_add(&r->mw_list, &buf->rb_mws);
+@@ -267,7 +271,7 @@ fmr_op_unmap_sync(struct rpcrdma_xprt *r_xprt, struct rpcrdma_req *req)
+ 		seg = &req->rl_segments[i];
+ 		mw = seg->rl_mw;
+ 
+-		list_add(&mw->fmr.fmr->list, &unmap_list);
++		list_add_tail(&mw->fmr.fmr->list, &unmap_list);
+ 
+ 		i += seg->mr_nsegs;
  	}
- }
-@@ -532,19 +514,7 @@ int mlx4_ib_map_mr_sg(struct ib_mr *ibmr, struct scatterlist *sg, int sg_nents,
- 		      unsigned int *sg_offset)
- {
- 	struct mlx4_ib_mr *mr = to_mmr(ibmr);
--	int rc;
+@@ -280,7 +284,9 @@ fmr_op_unmap_sync(struct rpcrdma_xprt *r_xprt, struct rpcrdma_req *req)
+ 	 */
+ 	for (i = 0, nchunks = req->rl_nchunks; nchunks; nchunks--) {
+ 		seg = &req->rl_segments[i];
++		mw = seg->rl_mw;
  
- 	mr->npages = 0;
--
--	ib_dma_sync_single_for_cpu(ibmr->device, mr->page_map,
--				   sizeof(u64) * mr->max_pages,
--				   DMA_TO_DEVICE);
--
--	rc = ib_sg_to_pages(ibmr, sg, sg_nents, sg_offset, mlx4_set_page);
--
--	ib_dma_sync_single_for_device(ibmr->device, mr->page_map,
--				      sizeof(u64) * mr->max_pages,
--				      DMA_TO_DEVICE);
--
--	return rc;
-+	return ib_sg_to_pages(ibmr, sg, sg_nents, sg_offset, mlx4_set_page);
- }
++		list_del_init(&mw->fmr.fmr->list);
+ 		__fmr_dma_unmap(r_xprt, seg);
+ 		rpcrdma_put_mw(r_xprt, seg->rl_mw);
+ 
 
