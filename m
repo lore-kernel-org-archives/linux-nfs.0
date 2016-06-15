@@ -1,63 +1,35 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from us-smtp-delivery-194.mimecast.com ([63.128.21.194]:31232 "EHLO
-	us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S933233AbcFOOwb (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 15 Jun 2016 10:52:31 -0400
-From: Trond Myklebust <trondmy@primarydata.com>
-To: Christoph Hellwig <hch@infradead.org>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "xfs@oss.sgi.com" <xfs@oss.sgi.com>
-Subject: Re: [PATCH 10/12] NFS: Do not serialise O_DIRECT reads and writes
-Date: Wed, 15 Jun 2016 14:52:24 +0000
-Message-ID: <C13D01C1-4B83-442A-A0EA-D7624BE8A782@primarydata.com>
-References: <1465931115-30784-3-git-send-email-trond.myklebust@primarydata.com>
- <1465931115-30784-4-git-send-email-trond.myklebust@primarydata.com>
- <1465931115-30784-5-git-send-email-trond.myklebust@primarydata.com>
- <1465931115-30784-6-git-send-email-trond.myklebust@primarydata.com>
+Received: from bombadil.infradead.org ([198.137.202.9]:50097 "EHLO
+	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932951AbcFOOxb (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 15 Jun 2016 10:53:31 -0400
+Date: Wed, 15 Jun 2016 07:53:30 -0700
+From: Christoph Hellwig <hch@infradead.org>
+To: Trond Myklebust <trondmy@primarydata.com>
+Cc: Christoph Hellwig <hch@infradead.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 11/12] NFS: Don't count O_DIRECT reads in the
+ inode->i_dio_count
+Message-ID: <20160615145330.GA5297@infradead.org>
+References: <1465931115-30784-6-git-send-email-trond.myklebust@primarydata.com>
  <1465931115-30784-7-git-send-email-trond.myklebust@primarydata.com>
  <1465931115-30784-8-git-send-email-trond.myklebust@primarydata.com>
  <1465931115-30784-9-git-send-email-trond.myklebust@primarydata.com>
  <1465931115-30784-10-git-send-email-trond.myklebust@primarydata.com>
- <20160615071343.GC4318@infradead.org>
- <755A2A14-C6A9-4737-8335-0A6785490F6D@primarydata.com>
- <20160615144801.GB18524@infradead.org>
-In-Reply-To: <20160615144801.GB18524@infradead.org>
+ <1465931115-30784-11-git-send-email-trond.myklebust@primarydata.com>
+ <20160615071605.GD4318@infradead.org>
+ <C9DCA08F-F8FE-41FD-978B-8B1CAF3DEB17@primarydata.com>
+ <20160615144150.GA18524@infradead.org>
+ <B4354EF8-B0AB-43C6-B7C3-FD27E43364B1@primarydata.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <B4354EF8-B0AB-43C6-B7C3-FD27E43364B1@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gNi8xNS8xNiwgMTA6NDgsICJDaHJpc3RvcGggSGVsbHdpZyIgPGhjaEBpbmZyYWRlYWQub3Jn
-PiB3cm90ZToNCg0KPk9uIFdlZCwgSnVuIDE1LCAyMDE2IGF0IDAyOjI5OjQyUE0gKzAwMDAsIFRy
-b25kIE15a2xlYnVzdCB3cm90ZToNCj4+IFRoZSBsb2NraW5nIGlzIGFjdHVhbGx5IHNpbXBsZXIg
-dGhhbiBYRlMuDQo+DQo+SXQgbG9va3Mgd2F5IG1vcmUgY29tcGxpY2F0ZWQuICBBbmQgdG90YWxs
-eSB1bmRvY3VtZW50ZWQuDQo+DQo+PiBXZSBoYXZlIDIgSS9PIG1vZGVzOiBidWZmZXJlZCBJL08g
-YW5kIGRpcmVjdCBJL08uIFRoZSB3cml0ZSBsb2NrIGlzIHRoZXJlIHRvIGVuc3VyZSBzYWZlIHRy
-YW5zaXRpb25zIGJldHdlZW4gdGhvc2UgMiBtb2RlcywgYnV0IG9uY2UgdGhlIG1vZGUgaXMgc2V0
-LA0KPj4gd2UgX29ubHlfIHVzZSBzaGFyZWQgbG9ja3MgaW4gb3JkZXIgdG8gYWxsb3cgcGFyYWxs
-ZWxpc20uDQo+DQo+RnJvbSByZWFkaW5nIHRoZSBwYXRjaCB0aGF0J3Mgbm90IHdoYXQgYWN0dWFs
-bHkgaGFwcGVucyAtIEkgdGhpbmsgeW91J3JlDQo+c3RpbGwgdGFraW5nIGlfcndzZW0gZXhjbHVz
-aXZlIGZvciBidWZmZXJlZCB3cml0ZXMsIGFyZW4ndCB5b3U/DQo+DQo+RG9pbmcgdGhhdCBpcyBh
-YnNvbHV0ZWx5IG1hbmRhdG9yeSBmb3IgUG9zaXggYXRvbWljeSByZXF1aXJlbWVudHMsIG9yDQo+
-eW91J2xsIGJyZWFrIHRvbnMgb2Ygb2YgYXBwbGljYXRpb25zLg0KDQpZZXMuIFdlIGNvbnRpbnVl
-IHRvIGxldCB0aGUgVkZTIG1hbmFnZSBzZXJpYWxpc2F0aW9uIG9mIHdyaXRlcy4NCg0KPkJ1dCBY
-RlMgYWxsb3dzIGZ1bGwgcGFyYWxsZWxpc20gZm9yIGRpcmVjdCByZWFkcyBhbmQgd3JpdGVzIGFz
-IGxvbmcNCj5hcyB0aGVyZSBpcyBubyBtb3JlIHBhZ2VjYWNoZSB0byBmbHVzaC4gIEJ1dCBpZiB5
-b3UgaGF2ZSBwYWdlcyBpbg0KPnRoZSBwYWdlY2FjaGUgeW91IG5lZWQgdGhlIGV4Y2x1c2l2ZSBs
-b2NrIHRvIHByZXZlbnQgYWdhaW5zdCBuZXcNCj5wYWdlY2FjaGUgcGFnZXMgYmVpbmcgYWRkZWQu
-DQoNCkV4YWN0bHkuIFNvIGRvZXMgdGhpcy4NCg0KPj4gPlRoZSBuaWNlIHRoaW5nIGlzIHRoYW4g
-aW4gNC43LXJjIGlfbXV0ZXggaGFzIGJlZW4gcmVwbGFjZWQgd2l0aCBhDQo+PiA+cndfbXV0ZXgg
-c28geW91IGNhbiBqdXN0IHVzZSB0aGF0IGluIHNoYXJlZCBtb2RlIGZvciBkaXJlY3QgSS9PDQo+
-PiA+YXMtaXMgd2l0aG91dCBuZWVkaW5nIGFueSBuZXcgbG9jay4NCj4+IA0KPj4gV2Ugd291bGQg
-ZW5kIHVwIHNlcmlhbGlzaW5nIHJlYWRzIGFuZCB3cml0ZXMsIHNpbmNlIHRoZSBsYXR0ZXIgZ3Jh
-YiBhbg0KPj4gZXhjbHVzaXZlIGxvY2sgaW4gZ2VuZXJpY19maWxlX3dyaXRlKCkuIFdoeSBkbyB0
-aGF0IGlmIHdlIGRvbj8/P3QgaGF2ZSB0bz8NCj4NCj5Mb29rcyBhdCB0aGUgWEZTIGNvZGUgLSBu
-byBzZXJpYWxpemF0aW9uIGJldHdlZW4gZGlyZWN0IHJlYWRzIGFuZCB3cml0ZXMNCj5hcyBsb25n
-IGFzIG5vIGJ1ZmZlcmVkIEkvTyBjYW1lIGluIGluYmV0d2Vlbi4NCj4NCj5BbmQgZG9uJ3QgdXNl
-IGdlbmVyaWNfZmlsZV97cmVhZCx3cml0ZX1faXRlciBpZiB5b3Ugd2FudCB0byBkbyBkaXJlY3Qg
-SS9PLA0KPnVuZm9ydHVuYXRlbHkgbG9ja2luZyBpbiBtbS9maWxlbWFwLmMgaXMgdG90YWxseSBz
-Y3Jld2VkIGZvciBkaXJlY3QgSS9PLA0KPnRha2UgYSBsb29rIGF0IFhGUyB3aGljaCBpcyB3aGVy
-ZSBkaXJlY3QgSS9PIGNhbWUgZnJvbSBhbmQgd2hlcmUgd2UgZ2V0DQo+dGhlIGxvY2tpbmcgcmln
-aHQuDQoNCldlIGRvbuKAmXQgdXNlIGdlbmVyaWNfZmlsZV8qIGZvciBPX0RJUkVDVDsgd2Ugb25s
-eSB1c2UgaXQgZm9yIGJ1ZmZlcmVkIEkvTy4NCg0KDQo=
+On Wed, Jun 15, 2016 at 02:50:07PM +0000, Trond Myklebust wrote:
+> Fair enough. So it sounds as if you are suggesting we can just drop using inode_dio_*() altogether?
 
+Maybe.  The big question is how a direct write vs truncate race is
+handled.  Either way I think a patch like this deserves a detailed
+analysis documented in the changelog and/or comments in the code.
