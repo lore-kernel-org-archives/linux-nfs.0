@@ -1,107 +1,35 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from discipline.rit.edu ([129.21.6.207]:53081 "HELO
-	discipline.rit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with SMTP id S1752578AbcFOQ7D (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 15 Jun 2016 12:59:03 -0400
-From: Andrew Elble <aweits@rit.edu>
-To: linux-nfs@vger.kernel.org, bfields@fieldses.org
-Cc: Andrew Elble <aweits@rit.edu>
-Subject: [PATCH v3 2/3] nfsd: allow mach_creds_match to be used more broadly
-Date: Wed, 15 Jun 2016 12:52:08 -0400
-Message-Id: <1466009529-3421-3-git-send-email-aweits@rit.edu>
-In-Reply-To: <1466009529-3421-1-git-send-email-aweits@rit.edu>
-References: <1466009529-3421-1-git-send-email-aweits@rit.edu>
+Received: from mx1.redhat.com ([209.132.183.28]:43453 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752444AbcFOSKl (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 15 Jun 2016 14:10:41 -0400
+Received: from int-mx09.intmail.prod.int.phx2.redhat.com (int-mx09.intmail.prod.int.phx2.redhat.com [10.5.11.22])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+	(No client certificate requested)
+	by mx1.redhat.com (Postfix) with ESMTPS id 342CF64461
+	for <linux-nfs@vger.kernel.org>; Wed, 15 Jun 2016 18:10:41 +0000 (UTC)
+Received: from steved.boston.devel.redhat.com (vpn-63-66.rdu2.redhat.com [10.10.63.66])
+	by int-mx09.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id u5FIAeiV030476
+	for <linux-nfs@vger.kernel.org>; Wed, 15 Jun 2016 14:10:40 -0400
+Subject: Re: Tentative Dates for the Fall Bake-a-ton
+To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+References: <266bef87-020b-8c01-d668-484f4fe0582d@RedHat.com>
+From: Steve Dickson <SteveD@redhat.com>
+Message-ID: <c9fe953e-3a34-0f54-660b-c5229ea2c943@RedHat.com>
+Date: Wed, 15 Jun 2016 14:10:40 -0400
+MIME-Version: 1.0
+In-Reply-To: <266bef87-020b-8c01-d668-484f4fe0582d@RedHat.com>
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Rename mach_creds_match() to nfsd4_mach_creds_match() and un-staticify
 
-Signed-off-by: Andrew Elble <aweits@rit.edu>
----
- fs/nfsd/nfs4state.c | 14 +++++++-------
- fs/nfsd/xdr4.h      |  2 ++
- 2 files changed, 9 insertions(+), 7 deletions(-)
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index f5f82e145018..51db26811a14 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -1972,7 +1972,7 @@ static bool svc_rqst_integrity_protected(struct svc_rqst *rqstp)
- 	       service == RPC_GSS_SVC_PRIVACY;
- }
- 
--static bool mach_creds_match(struct nfs4_client *cl, struct svc_rqst *rqstp)
-+bool nfsd4_mach_creds_match(struct nfs4_client *cl, struct svc_rqst *rqstp)
- {
- 	struct svc_cred *cr = &rqstp->rq_cred;
- 
-@@ -2424,7 +2424,7 @@ nfsd4_exchange_id(struct svc_rqst *rqstp,
- 				status = nfserr_inval;
- 				goto out;
- 			}
--			if (!mach_creds_match(conf, rqstp)) {
-+			if (!nfsd4_mach_creds_match(conf, rqstp)) {
- 				status = nfserr_wrong_cred;
- 				goto out;
- 			}
-@@ -2676,7 +2676,7 @@ nfsd4_create_session(struct svc_rqst *rqstp,
- 
- 	if (conf) {
- 		status = nfserr_wrong_cred;
--		if (!mach_creds_match(conf, rqstp))
-+		if (!nfsd4_mach_creds_match(conf, rqstp))
- 			goto out_free_conn;
- 		cs_slot = &conf->cl_cs_slot;
- 		status = check_slot_seqid(cr_ses->seqid, cs_slot->sl_seqid, 0);
-@@ -2692,7 +2692,7 @@ nfsd4_create_session(struct svc_rqst *rqstp,
- 			goto out_free_conn;
- 		}
- 		status = nfserr_wrong_cred;
--		if (!mach_creds_match(unconf, rqstp))
-+		if (!nfsd4_mach_creds_match(unconf, rqstp))
- 			goto out_free_conn;
- 		cs_slot = &unconf->cl_cs_slot;
- 		status = check_slot_seqid(cr_ses->seqid, cs_slot->sl_seqid, 0);
-@@ -2801,7 +2801,7 @@ __be32 nfsd4_bind_conn_to_session(struct svc_rqst *rqstp,
- 	if (!session)
- 		goto out_no_session;
- 	status = nfserr_wrong_cred;
--	if (!mach_creds_match(session->se_client, rqstp))
-+	if (!nfsd4_mach_creds_match(session->se_client, rqstp))
- 		goto out;
- 	status = nfsd4_map_bcts_dir(&bcts->dir);
- 	if (status)
-@@ -2848,7 +2848,7 @@ nfsd4_destroy_session(struct svc_rqst *r,
- 	if (!ses)
- 		goto out_client_lock;
- 	status = nfserr_wrong_cred;
--	if (!mach_creds_match(ses->se_client, r))
-+	if (!nfsd4_mach_creds_match(ses->se_client, r))
- 		goto out_put_session;
- 	status = mark_session_dead_locked(ses, 1 + ref_held_by_me);
- 	if (status)
-@@ -3087,7 +3087,7 @@ nfsd4_destroy_clientid(struct svc_rqst *rqstp, struct nfsd4_compound_state *csta
- 		status = nfserr_stale_clientid;
- 		goto out;
- 	}
--	if (!mach_creds_match(clp, rqstp)) {
-+	if (!nfsd4_mach_creds_match(clp, rqstp)) {
- 		clp = NULL;
- 		status = nfserr_wrong_cred;
- 		goto out;
-diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
-index d9554813e58a..74342a7c208a 100644
---- a/fs/nfsd/xdr4.h
-+++ b/fs/nfsd/xdr4.h
-@@ -654,6 +654,8 @@ set_change_info(struct nfsd4_change_info *cinfo, struct svc_fh *fhp)
- 
- }
- 
-+
-+bool nfsd4_mach_creds_match(struct nfs4_client *cl, struct svc_rqst *rqstp);
- int nfs4svc_encode_voidres(struct svc_rqst *, __be32 *, void *);
- int nfs4svc_decode_compoundargs(struct svc_rqst *, __be32 *,
- 		struct nfsd4_compoundargs *);
--- 
-2.6.3
-
+On 05/19/2016 11:16 AM, Steve Dickson wrote:
+> Hello,
+> 
+> I'm looking to have the fall bake-a-thon in
+> the third week of October (Mon Oct 17 to Fri Oct 21)
+> 
+> Are those good for the majority? Silence is acceptance! :-) 
+I have not heard any problems with these dates... Anybody?? 
