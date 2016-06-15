@@ -1,52 +1,69 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from userp1040.oracle.com ([156.151.31.81]:26129 "EHLO
-	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753172AbcFOQkD (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 15 Jun 2016 12:40:03 -0400
-Content-Type: text/plain; charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 9.3 \(3124\))
-Subject: Re: [PATCH v2 01/24] mlx4-ib: Use coherent memory for priv pages
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <20160615042849.GR5408@leon.nu>
-Date: Wed, 15 Jun 2016 12:40:07 -0400
-Cc: linux-rdma@vger.kernel.org,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <68F7CD80-0092-4B55-9FAD-4C54D284BCA3@oracle.com>
-References: <20160615030626.14794.43805.stgit@manet.1015granger.net> <20160615031525.14794.69066.stgit@manet.1015granger.net> <20160615042849.GR5408@leon.nu>
-To: leon@kernel.org
+Received: from discipline.rit.edu ([129.21.6.207]:19650 "HELO
+	discipline.rit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with SMTP id S932772AbcFOQ65 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 15 Jun 2016 12:58:57 -0400
+From: Andrew Elble <aweits@rit.edu>
+To: linux-nfs@vger.kernel.org, bfields@fieldses.org
+Cc: Andrew Elble <aweits@rit.edu>
+Subject: [PATCH v3 1/3] nfs/nfsd: Move useful bitfield ops to a commonly accessible place
+Date: Wed, 15 Jun 2016 12:52:07 -0400
+Message-Id: <1466009529-3421-2-git-send-email-aweits@rit.edu>
+In-Reply-To: <1466009529-3421-1-git-send-email-aweits@rit.edu>
+References: <1466009529-3421-1-git-send-email-aweits@rit.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+So these may be used in nfsd as well
 
-> On Jun 15, 2016, at 12:28 AM, Leon Romanovsky <leon@kernel.org> wrote:
-> 
-> On Tue, Jun 14, 2016 at 11:15:25PM -0400, Chuck Lever wrote:
->> From: Sagi Grimberg <sagi@grimberg.me>
->> 
->> kmalloc doesn't guarantee the returned memory is all on one page.
-> 
-> IMHO, the patch posted by Christoph at that thread is best way to go,
-> because you changed streaming DMA mappings to be coherent DMA mappings [1].
-> 
-> "The kernel developers recommend the use of streaming mappings over
-> coherent mappings whenever possible" [1].
-> 
-> [1] http://www.makelinux.net/ldd3/chp-15-sect-4
+Signed-off-by: Andrew Elble <aweits@rit.edu>
+---
+ include/linux/nfs4.h    | 11 +++++++++++
+ include/linux/nfs_xdr.h | 11 -----------
+ 2 files changed, 11 insertions(+), 11 deletions(-)
 
-Hi Leon-
-
-I'll happily drop this patch from my 4.8 series as soon
-as an official mlx4/mlx5 fix is merged.
-
-Meanwhile, I notice some unexplained instability (driver
-resets, list corruption, and so on) when I test NFS/RDMA
-without this patch included. So it is attached to the
-series for anyone with mlx4 who wants to pull my topic
-branch and try it out.
-
-
---
-Chuck Lever
-
-
+diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
+index bfed6b367350..c6564ada9beb 100644
+--- a/include/linux/nfs4.h
++++ b/include/linux/nfs4.h
+@@ -643,4 +643,15 @@ enum pnfs_update_layout_reason {
+ 	PNFS_UPDATE_LAYOUT_SEND_LAYOUTGET,
+ };
+ 
++#define NFS4_OP_MAP_NUM_LONGS					\
++	DIV_ROUND_UP(LAST_NFS4_OP, 8 * sizeof(unsigned long))
++#define NFS4_OP_MAP_NUM_WORDS \
++	(NFS4_OP_MAP_NUM_LONGS * sizeof(unsigned long) / sizeof(u32))
++struct nfs4_op_map {
++	union {
++		unsigned long longs[NFS4_OP_MAP_NUM_LONGS];
++		u32 words[NFS4_OP_MAP_NUM_WORDS];
++	} u;
++};
++
+ #endif
+diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+index c304a11b5b1a..e66abc2d1f88 100644
+--- a/include/linux/nfs_xdr.h
++++ b/include/linux/nfs_xdr.h
+@@ -1185,17 +1185,6 @@ struct pnfs_ds_commit_info {
+ 	struct pnfs_commit_bucket *buckets;
+ };
+ 
+-#define NFS4_OP_MAP_NUM_LONGS \
+-	DIV_ROUND_UP(LAST_NFS4_OP, 8 * sizeof(unsigned long))
+-#define NFS4_OP_MAP_NUM_WORDS \
+-	(NFS4_OP_MAP_NUM_LONGS * sizeof(unsigned long) / sizeof(u32))
+-struct nfs4_op_map {
+-	union {
+-		unsigned long longs[NFS4_OP_MAP_NUM_LONGS];
+-		u32 words[NFS4_OP_MAP_NUM_WORDS];
+-	} u;
+-};
+-
+ struct nfs41_state_protection {
+ 	u32 how;
+ 	struct nfs4_op_map enforce;
+-- 
+2.6.3
 
