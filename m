@@ -1,181 +1,107 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from linuxhacker.ru ([217.76.32.60]:47354 "EHLO fiona.linuxhacker.ru"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751614AbcFOCT7 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 14 Jun 2016 22:19:59 -0400
-Subject: Re: [PATCH v2] nfsd: Always lock state exclusively.
-Mime-Version: 1.0 (Apple Message framework v1283)
-Content-Type: text/plain; charset=us-ascii
-From: Oleg Drokin <green@linuxhacker.ru>
-In-Reply-To: <20160614184655.GI25973@fieldses.org>
-Date: Tue, 14 Jun 2016 22:19:49 -0400
-Cc: Jeff Layton <jlayton@poochiereds.net>, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-Message-Id: <4B503C8E-0195-4016-96F2-C848F667218D@linuxhacker.ru>
-References: <30E98D26-CB99-4BF8-8697-A2E9BB41920D@linuxhacker.ru> <1465781187-824653-1-git-send-email-green@linuxhacker.ru> <20160614154659.GE25973@fieldses.org> <799A23EB-FA33-4251-A137-028402BDA4C8@linuxhacker.ru> <20160614184655.GI25973@fieldses.org>
-To: "J . Bruce Fields" <bfields@fieldses.org>
+Received: from mail-it0-f68.google.com ([209.85.214.68]:35946 "EHLO
+	mail-it0-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932225AbcFODPT (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 14 Jun 2016 23:15:19 -0400
+Subject: [PATCH v2 00/24] NFS/RDMA client patches proposed for v4.8
+From: Chuck Lever <chuck.lever@oracle.com>
+To: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
+Date: Tue, 14 Jun 2016 23:15:16 -0400
+Message-ID: <20160615030626.14794.43805.stgit@manet.1015granger.net>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+This series implements the following:
 
-On Jun 14, 2016, at 2:46 PM, J . Bruce Fields wrote:
+- Fixes to FMR disconnect recovery
+- Removal of the insecure ALLPHYSICAL memory registration mode
+- Significant reductions in per-transport memory consumption
+- Support for sec=krb5, sec=krb5i, and sec=krb5p with NFS/RDMA
+  (with no performance impact on sec=sys)
+- Pre-requisites for device removal support
 
-> On Tue, Jun 14, 2016 at 11:56:20AM -0400, Oleg Drokin wrote:
->> 
->> On Jun 14, 2016, at 11:46 AM, J . Bruce Fields wrote:
->> 
->>> On Sun, Jun 12, 2016 at 09:26:27PM -0400, Oleg Drokin wrote:
->>>> It used to be the case that state had an rwlock that was locked for write
->>>> by downgrades, but for read for upgrades (opens). Well, the problem is
->>>> if there are two competing opens for the same state, they step on
->>>> each other toes potentially leading to leaking file descriptors
->>>> from the state structure, since access mode is a bitmap only set once.
->>>> 
->>>> Extend the holding region around in nfsd4_process_open2() to avoid
->>>> racing entry into nfs4_get_vfs_file().
->>>> Make init_open_stateid() return with locked stateid to be unlocked
->>>> by the caller.
->>>> 
->>>> Now this version held up pretty well in my testing for 24 hours.
->>>> It still does not address the situation if during one of the racing
->>>> nfs4_get_vfs_file() calls we are getting an error from one (first?)
->>>> of them. This is to be addressed in a separate patch after having a
->>>> solid reproducer (potentially using some fault injection).
->>>> 
->>>> Signed-off-by: Oleg Drokin <green@linuxhacker.ru>
->>>> ---
->>>> fs/nfsd/nfs4state.c | 47 +++++++++++++++++++++++++++--------------------
->>>> fs/nfsd/state.h     |  2 +-
->>>> 2 files changed, 28 insertions(+), 21 deletions(-)
->>>> 
->>>> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
->>>> index f5f82e1..fa5fb5a 100644
->>>> --- a/fs/nfsd/nfs4state.c
->>>> +++ b/fs/nfsd/nfs4state.c
->>>> @@ -3487,6 +3487,10 @@ init_open_stateid(struct nfs4_ol_stateid *stp, struct nfs4_file *fp,
->>>> 	struct nfs4_openowner *oo = open->op_openowner;
->>>> 	struct nfs4_ol_stateid *retstp = NULL;
->>>> 
->>>> +	/* We are moving these outside of the spinlocks to avoid the warnings */
->>>> +	mutex_init(&stp->st_mutex);
->>>> +	mutex_lock(&stp->st_mutex);
->>> 
->>> A mutex_init_locked() primitive might also be convenient here.
->> 
->> I know! I would be able to do it under spinlock then without moving this around too.
->> 
->> But alas, not only there is not one, mutex documentation states this is disallowed.
-> 
-> You're just talking about this comment?:
-> 
-> 	 * It is not allowed to initialize an already locked mutex.
-> 
-> That's a weird comment.  You're proably right that what they meant was
-> something like "It is not allowed to initialize a mutex to locked
-> state".  But, I don't know, taken literally that comment doesn't make
-> sense (how could you even distinguish between an already-locked mutex
-> and an uninitialized mutex?), so maybe it'd be worth asking.
+Kerberos with NFS/RDMA is useful mainly for secure authentication of
+each RPC transaction (sec=krb5). The Kerberos integrity and privacy
+services are also available, providing feature parity with TCP in
+environments where the use of sec=krb5i or sec=krb5p is mandated by
+IT policy.
 
-I think this is because of the strict ownership tracking or something.
-I guess I can ask.
-
->>> You could also take the two previous lines from the caller into this
->>> function instead of passing in stp, that might simplify the code.
->>> (Haven't checked.)
->> 
->> I am not really sure what do you mean here.
->> These lines are moved from further away in this function )well, just the init, anyway).
->> 
->> Having half initialisation of stp here and half in the caller sounds kind of strange
->> to me.
-> 
-> I was thinking of something like the following--so init_open_stateid
-> hides more of the details of the swapping.  Untested.  Does it look like
-> an improvement to you?
-> 
-> There's got to be a way to make this code a little less convoluted....
-> 
-> --b.
-> 
-> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-> index fa5fb5aa4847..41b59854c40f 100644
-> --- a/fs/nfsd/nfs4state.c
-> +++ b/fs/nfsd/nfs4state.c
-> @@ -3480,13 +3480,15 @@ alloc_init_open_stateowner(unsigned int strhashval, struct nfsd4_open *open,
-> }
-> 
-> static struct nfs4_ol_stateid *
-> -init_open_stateid(struct nfs4_ol_stateid *stp, struct nfs4_file *fp,
-> -		struct nfsd4_open *open)
-> +init_open_stateid(struct nfs4_file *fp, struct nfsd4_open *open)
-> {
-> 
-> 	struct nfs4_openowner *oo = open->op_openowner;
-> 	struct nfs4_ol_stateid *retstp = NULL;
-> +	struct nfs4_ol_stateid *stp;
-> 
-> +	stp = open->op_stp;
-> +	open->op_stp = NULL;
-> 	/* We are moving these outside of the spinlocks to avoid the warnings */
-> 	mutex_init(&stp->st_mutex);
-> 	mutex_lock(&stp->st_mutex);
-> @@ -3512,9 +3514,12 @@ init_open_stateid(struct nfs4_ol_stateid *stp, struct nfs4_file *fp,
-> out_unlock:
-> 	spin_unlock(&fp->fi_lock);
-> 	spin_unlock(&oo->oo_owner.so_client->cl_lock);
-> -	if (retstp)
-> -		mutex_lock(&retstp->st_mutex);
-> -	return retstp;
-> +	if (retstp) {
-> +		nfs4_put_stid(&stp->st_stid);
-
-So as I am trying to integrate this into my patchset,
-do we really need this?
-We don't if we took the other path and left this one
-hanging off the struct nfsd4_open (why do we need to
-assign it NULL before the search?) I imagine then
-we'd save some free/realloc churn as well?
-
-I assume struct nfsd4_open cannot be shared between threads?
-Otherwise we have bigger problems at hand like mutex init on a locked
-mutex from another thread and stuff.
-
-I'll try this theory I guess.
+Sagi's proposed fix for mlx4's new FRWR API is included. I'll drop
+it from my series once the official version of this fix is merged.
 
 
-> +		stp = retstp;
-> +		mutex_lock(&stp->st_mutex);
-> +	}
-> +	return stp;
-> }
-> 
-> /*
-> @@ -4310,7 +4315,6 @@ nfsd4_process_open2(struct svc_rqst *rqstp, struct svc_fh *current_fh, struct nf
-> 	struct nfs4_client *cl = open->op_openowner->oo_owner.so_client;
-> 	struct nfs4_file *fp = NULL;
-> 	struct nfs4_ol_stateid *stp = NULL;
-> -	struct nfs4_ol_stateid *swapstp = NULL;
-> 	struct nfs4_delegation *dp = NULL;
-> 	__be32 status;
-> 
-> @@ -4347,16 +4351,9 @@ nfsd4_process_open2(struct svc_rqst *rqstp, struct svc_fh *current_fh, struct nf
-> 			goto out;
-> 		}
-> 	} else {
-> -		stp = open->op_stp;
-> -		open->op_stp = NULL;
-> -		/*
-> -		 * init_open_stateid() either returns a locked stateid
-> -		 * it found, or initializes and locks the new one we passed in
-> -		 */
-> -		swapstp = init_open_stateid(stp, fp, open);
-> -		if (swapstp) {
-> -			nfs4_put_stid(&stp->st_stid);
-> -			stp = swapstp;
-> +		/* stp is returned locked: */
-> +		stp = init_open_stateid(fp, open);
-> +		if (stp->st_access_bmap == 0) {
-> 			status = nfs4_upgrade_open(rqstp, fp, current_fh,
-> 						stp, open);
-> 			if (status) {
+Available in the "nfs-rdma-for-4.8" topic branch of this git repo:
 
+git://git.linux-nfs.org/projects/cel/cel-2.6.git
+
+Or for browsing:
+
+http://git.linux-nfs.org/?p=cel/cel-2.6.git;a=log;h=refs/heads/nfs-rdma-for-4.8
+
+
+Changes since v1:
+- Rebased on v4.7-rc3
+- Re-ordered series so FMR fixes come first
+- Fix ib_unmap_fmr list handling
+- Replaced the bogus 256-MRs-per-QP patch with dynamic MR allocation
+- Add performance counters to expose MR allocation and recovery behavior
+- Included Sagi's proposed mlx4 priv pages fix
+- Make it easier to merge my datatouch patch with Scott's bug fix
+- Split some patches for readability
+- Drop some clean-up patches to keep the series patch count down
+
+---
+
+Chuck Lever (23):
+      xprtrdma: Remove FMRs from the unmap list after unmapping
+      xprtrdma: Create common scatterlist fields in rpcrdma_mw
+      xprtrdma: Move init and release helpers
+      xprtrdma: Rename fields in rpcrdma_fmr
+      xprtrdma: Use scatterlist for DMA mapping and unmapping under FMR
+      xprtrdma: Refactor MR recovery work queues
+      xprtrdma: Do not leak an MW during a DMA map failure
+      xprtrdma: Remove ALLPHYSICAL memory registration mode
+      xprtrdma: Remove rpcrdma_map_one() and friends
+      xprtrdma: Reply buffer exhaustion can be catastrophic
+      xprtrdma: Honor ->send_request API contract
+      xprtrdma: Chunk list encoders must not return zero
+      xprtrdma: Allocate MRs on demand
+      xprtrdma: Release orphaned MRs immediately
+      xprtrdma: Place registered MWs on a per-req list
+      xprtrdma: Chunk list encoders no longer share one rl_segments array
+      xprtrdma: rpcrdma_inline_fixup() overruns the receive page list
+      xprtrdma: Do not update {head,tail}.iov_len in rpcrdma_inline_fixup()
+      xprtrdma: Update only specific fields in private receive buffer
+      xprtrdma: Clean up fixup_copy_count accounting
+      xprtrdma: No direct data placement with krb5i and krb5p
+      svc: Avoid garbage replies when pc_func() returns rpc_drop_reply
+      NFS: Don't drop CB requests with invalid principals
+
+Sagi Grimberg (1):
+      mlx4-ib: Use coherent memory for priv pages
+
+
+ drivers/infiniband/hw/mlx4/mlx4_ib.h  |    1 
+ drivers/infiniband/hw/mlx4/mr.c       |   42 +---
+ fs/nfs/callback_xdr.c                 |    6 -
+ include/linux/sunrpc/auth.h           |    3 
+ include/linux/sunrpc/gss_api.h        |    2 
+ net/sunrpc/auth_gss/auth_gss.c        |    2 
+ net/sunrpc/auth_gss/gss_krb5_mech.c   |    2 
+ net/sunrpc/auth_gss/gss_mech_switch.c |   12 +
+ net/sunrpc/svc.c                      |    8 +
+ net/sunrpc/xprtrdma/Makefile          |    2 
+ net/sunrpc/xprtrdma/fmr_ops.c         |  372 +++++++++++++++------------------
+ net/sunrpc/xprtrdma/frwr_ops.c        |  352 +++++++++++--------------------
+ net/sunrpc/xprtrdma/physical_ops.c    |  122 -----------
+ net/sunrpc/xprtrdma/rpc_rdma.c        |  274 +++++++++++++-----------
+ net/sunrpc/xprtrdma/transport.c       |   40 ++--
+ net/sunrpc/xprtrdma/verbs.c           |  189 +++++++++++++----
+ net/sunrpc/xprtrdma/xprt_rdma.h       |  116 ++++------
+ 17 files changed, 684 insertions(+), 861 deletions(-)
+ delete mode 100644 net/sunrpc/xprtrdma/physical_ops.c
+
+--
+Chuck Lever
