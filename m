@@ -1,14 +1,13 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f195.google.com ([209.85.223.195]:35886 "EHLO
-	mail-io0-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932473AbcFODSC (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 14 Jun 2016 23:18:02 -0400
-Subject: [PATCH v2 20/24] xprtrdma: Update only specific fields in private
- receive buffer
+Received: from mail-io0-f194.google.com ([209.85.223.194]:35924 "EHLO
+	mail-io0-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932473AbcFODSK (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 14 Jun 2016 23:18:10 -0400
+Subject: [PATCH v2 21/24] xprtrdma: Clean up fixup_copy_count accounting
 From: Chuck Lever <chuck.lever@oracle.com>
 To: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Tue, 14 Jun 2016 23:18:00 -0400
-Message-ID: <20160615031800.14794.94412.stgit@manet.1015granger.net>
+Date: Tue, 14 Jun 2016 23:18:08 -0400
+Message-ID: <20160615031808.14794.62029.stgit@manet.1015granger.net>
 In-Reply-To: <20160615030626.14794.43805.stgit@manet.1015granger.net>
 References: <20160615030626.14794.43805.stgit@manet.1015granger.net>
 MIME-Version: 1.0
@@ -16,58 +15,95 @@ Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Now that rpcrdma_inline_fixup() updates only two fields in
-rq_rcv_buf, a full memcpy of that structure to rq_private_buf is
-unwarranted. Updating rq_private_buf fields only where needed also
-better documents what is going on.
+fixup_copy_count should count only the number of bytes copied to the
+page list. The head and tail are now always handled without a data
+copy.
+
+And the debugging at the end of rpcrdma_inline_fixup() is also no
+longer necessary, since copy_len will be non-zero when there is reply
+data in the tail (a normal and valid case).
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- net/sunrpc/xprtrdma/rpc_rdma.c |   13 +++++++++----
- 1 file changed, 9 insertions(+), 4 deletions(-)
+ net/sunrpc/xprtrdma/rpc_rdma.c |   26 +++++++++++++-------------
+ 1 file changed, 13 insertions(+), 13 deletions(-)
 
 diff --git a/net/sunrpc/xprtrdma/rpc_rdma.c b/net/sunrpc/xprtrdma/rpc_rdma.c
-index d018eb7..a0e811d 100644
+index a0e811d..dac2990 100644
 --- a/net/sunrpc/xprtrdma/rpc_rdma.c
 +++ b/net/sunrpc/xprtrdma/rpc_rdma.c
-@@ -750,6 +750,11 @@ rpcrdma_count_chunks(struct rpcrdma_rep *rep, int wrchunk, __be32 **iptrp)
-  * The upper layer has set the maximum number of bytes it can
-  * receive in each component of rq_rcv_buf. These values are set in
-  * the head.iov_len, page_len, tail.iov_len, and buflen fields.
+@@ -755,11 +755,14 @@ rpcrdma_count_chunks(struct rpcrdma_rep *rep, int wrchunk, __be32 **iptrp)
+  * many cases this function simply updates iov_base pointers in
+  * rq_rcv_buf to point directly to the received reply data, to
+  * avoid copying reply data.
 + *
-+ * Unlike the TCP equivalent (xdr_partial_copy_from_skb), in
-+ * many cases this function simply updates iov_base pointers in
-+ * rq_rcv_buf to point directly to the received reply data, to
-+ * avoid copying reply data.
++ * Returns the count of bytes which had to be memcopied.
   */
- static void
+-static void
++static unsigned long
  rpcrdma_inline_fixup(struct rpc_rqst *rqst, char *srcp, int copy_len, int pad)
-@@ -763,6 +768,7 @@ rpcrdma_inline_fixup(struct rpc_rqst *rqst, char *srcp, int copy_len, int pad)
- 	 * in the receive buffer, to avoid a memcopy.
- 	 */
- 	rqst->rq_rcv_buf.head[0].iov_base = srcp;
-+	rqst->rq_private_buf.head[0].iov_base = srcp;
+ {
+-	int i, npages, curlen, olen;
++	unsigned long fixup_copy_count;
++	int i, npages, curlen;
+ 	char *destp;
+ 	struct page **ppages;
+ 	int page_base;
+@@ -781,13 +784,10 @@ rpcrdma_inline_fixup(struct rpc_rqst *rqst, char *srcp, int copy_len, int pad)
+ 	srcp += curlen;
+ 	copy_len -= curlen;
  
- 	/* The contents of the receive buffer that follow
- 	 * head.iov_len bytes are copied into the page list.
-@@ -822,16 +828,15 @@ rpcrdma_inline_fixup(struct rpc_rqst *rqst, char *srcp, int copy_len, int pad)
- 	/* The tail iovec is redirected to the remaining data
- 	 * in the receive buffer, to avoid a memcopy.
- 	 */
--	if (copy_len || pad)
-+	if (copy_len || pad) {
- 		rqst->rq_rcv_buf.tail[0].iov_base = srcp;
-+		rqst->rq_private_buf.tail[0].iov_base = srcp;
-+	}
- 
- 	if (copy_len)
- 		dprintk("RPC:       %s: %d bytes in"
- 			" %d extra segments (%d lost)\n",
- 			__func__, olen, i, copy_len);
+-	olen = copy_len;
+-	i = 0;
+-	rpcx_to_rdmax(rqst->rq_xprt)->rx_stats.fixup_copy_count += olen;
+ 	page_base = rqst->rq_rcv_buf.page_base;
+ 	ppages = rqst->rq_rcv_buf.pages + (page_base >> PAGE_SHIFT);
+ 	page_base &= ~PAGE_MASK;
 -
--	/* TBD avoid a warning from call_decode() */
--	rqst->rq_private_buf = rqst->rq_rcv_buf;
++	fixup_copy_count = 0;
+ 	if (copy_len && rqst->rq_rcv_buf.page_len) {
+ 		int pagelist_len;
+ 
+@@ -795,7 +795,7 @@ rpcrdma_inline_fixup(struct rpc_rqst *rqst, char *srcp, int copy_len, int pad)
+ 		if (pagelist_len > copy_len)
+ 			pagelist_len = copy_len;
+ 		npages = PAGE_ALIGN(page_base + pagelist_len) >> PAGE_SHIFT;
+-		for (; i < npages; i++) {
++		for (i = 0; i < npages; i++) {
+ 			curlen = PAGE_SIZE - page_base;
+ 			if (curlen > pagelist_len)
+ 				curlen = pagelist_len;
+@@ -809,6 +809,7 @@ rpcrdma_inline_fixup(struct rpc_rqst *rqst, char *srcp, int copy_len, int pad)
+ 			kunmap_atomic(destp);
+ 			srcp += curlen;
+ 			copy_len -= curlen;
++			fixup_copy_count += curlen;
+ 			pagelist_len -= curlen;
+ 			if (!pagelist_len)
+ 				break;
+@@ -833,10 +834,7 @@ rpcrdma_inline_fixup(struct rpc_rqst *rqst, char *srcp, int copy_len, int pad)
+ 		rqst->rq_private_buf.tail[0].iov_base = srcp;
+ 	}
+ 
+-	if (copy_len)
+-		dprintk("RPC:       %s: %d bytes in"
+-			" %d extra segments (%d lost)\n",
+-			__func__, olen, i, copy_len);
++	return fixup_copy_count;
  }
  
  void
+@@ -999,8 +997,10 @@ rpcrdma_reply_handler(struct rpcrdma_rep *rep)
+ 			rep->rr_len -= RPCRDMA_HDRLEN_MIN;
+ 			status = rep->rr_len;
+ 		}
+-		/* Fix up the rpc results for upper layer */
+-		rpcrdma_inline_fixup(rqst, (char *)iptr, rep->rr_len, rdmalen);
++
++		r_xprt->rx_stats.fixup_copy_count +=
++			rpcrdma_inline_fixup(rqst, (char *)iptr, rep->rr_len,
++					     rdmalen);
+ 		break;
+ 
+ 	case rdma_nomsg:
 
