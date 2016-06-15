@@ -1,39 +1,39 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-it0-f65.google.com ([209.85.214.65]:34451 "EHLO
-	mail-it0-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S933028AbcFOUGE (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 15 Jun 2016 16:06:04 -0400
-Received: by mail-it0-f65.google.com with SMTP id d71so4758765ith.1
-        for <linux-nfs@vger.kernel.org>; Wed, 15 Jun 2016 13:06:04 -0700 (PDT)
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH] NFS: Fix potential race in nfs_fhget()
-Date: Wed, 15 Jun 2016 16:05:28 -0400
-Message-Id: <1466021128-62407-1-git-send-email-trond.myklebust@primarydata.com>
+Received: from discipline.rit.edu ([129.21.6.207]:36452 "HELO
+	discipline.rit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with SMTP id S932791AbcFOUOA (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 15 Jun 2016 16:14:00 -0400
+From: Andrew W Elble <aweits@rit.edu>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: <linux-nfs@vger.kernel.org>, tibbs@math.uh.edu
+Subject: Re: [PATCH v3 0/3] Deal with lost delegations and EKEYEXPIRED
+References: <1466009529-3421-1-git-send-email-aweits@rit.edu>
+	<20160615192116.GA3848@fieldses.org>
+	<20160615192415.GB3848@fieldses.org>
+Date: Wed, 15 Jun 2016 16:13:58 -0400
+In-Reply-To: <20160615192415.GB3848@fieldses.org> (J. Bruce Fields's message
+	of "Wed, 15 Jun 2016 15:24:15 -0400")
+Message-ID: <m2d1niw6pl.fsf@discipline.rit.edu>
+MIME-Version: 1.0
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-If we don't set the mode correctly in nfs_init_locked(), then there is
-potential for a race with a second call to nfs_fhget that will cause
-inode aliasing.
 
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
----
- fs/nfs/inode.c | 1 +
- 1 file changed, 1 insertion(+)
+> (Also: remind me what they symptoms ("lost delegation problems")
+> actually were from the point of view of users?  Does the client end up
+> resending failing DELEGRETURNS and failing to make progress?)
 
-diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
-index 52e7d6869e3b..dda689d7a8a7 100644
---- a/fs/nfs/inode.c
-+++ b/fs/nfs/inode.c
-@@ -282,6 +282,7 @@ nfs_init_locked(struct inode *inode, void *opaque)
- 	struct nfs_fattr	*fattr = desc->fattr;
- 
- 	set_nfs_fileid(inode, fattr->fileid);
-+	inode->i_mode = fattr->mode;
- 	nfs_copy_fh(NFS_FH(inode), desc->fh);
- 	return 0;
- }
+Client endlessly loops in state recovery with no path to recovery.
+I'm guessing Jason is seeing some of this as well.
+
+Thanks,
+
+Andy
+
 -- 
-2.5.5
-
+Andrew W. Elble
+aweits@discipline.rit.edu
+Infrastructure Engineer, Communications Technical Lead
+Rochester Institute of Technology
+PGP: BFAD 8461 4CCF DC95 DA2C B0EB 965B 082E 863E C912
