@@ -1,39 +1,74 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from discipline.rit.edu ([129.21.6.207]:36452 "HELO
-	discipline.rit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with SMTP id S932791AbcFOUOA (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 15 Jun 2016 16:14:00 -0400
-From: Andrew W Elble <aweits@rit.edu>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: <linux-nfs@vger.kernel.org>, tibbs@math.uh.edu
-Subject: Re: [PATCH v3 0/3] Deal with lost delegations and EKEYEXPIRED
-References: <1466009529-3421-1-git-send-email-aweits@rit.edu>
-	<20160615192116.GA3848@fieldses.org>
-	<20160615192415.GB3848@fieldses.org>
-Date: Wed, 15 Jun 2016 16:13:58 -0400
-In-Reply-To: <20160615192415.GB3848@fieldses.org> (J. Bruce Fields's message
-	of "Wed, 15 Jun 2016 15:24:15 -0400")
-Message-ID: <m2d1niw6pl.fsf@discipline.rit.edu>
+Received: from fieldses.org ([173.255.197.46]:58164 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752159AbcFOUW3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 15 Jun 2016 16:22:29 -0400
+Date: Wed, 15 Jun 2016 16:22:27 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Tom Haynes <thomas.haynes@primarydata.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [V5 0/2] Super simple flex file server
+Message-ID: <20160615202227.GC3848@fieldses.org>
+References: <1465936888-103341-1-git-send-email-loghyr@primarydata.com>
 MIME-Version: 1.0
-Content-Type: text/plain
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1465936888-103341-1-git-send-email-loghyr@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Tue, Jun 14, 2016 at 01:41:26PM -0700, Tom Haynes wrote:
+> Hi Bruce,
+> 
+> The following patches make a flex file server in which
+> the mds and the ds are the same machine. And the same inode
+> services both metadata and data.
 
-> (Also: remind me what they symptoms ("lost delegation problems")
-> actually were from the point of view of users?  Does the client end up
-> resending failing DELEGRETURNS and failing to make progress?)
+Thanks, applying for 4.8.
 
-Client endlessly loops in state recovery with no path to recovery.
-I'm guessing Jason is seeing some of this as well.
-
-Thanks,
-
-Andy
-
--- 
-Andrew W. Elble
-aweits@discipline.rit.edu
-Infrastructure Engineer, Communications Technical Lead
-Rochester Institute of Technology
-PGP: BFAD 8461 4CCF DC95 DA2C B0EB 965B 082E 863E C912
+--b.
+> 
+> v5:
+> - Fix the stripe unit size as reported by Tigran
+> 
+> v4:
+> - The addr len in a netaddr is INET6_ADDRSTRLEN + 8
+> 
+> v3:
+> - Extra word help for selecting NFSD_FLEXFILELAYOUT
+> - Do not allow WRITE permissions on an IOMODE_READ segment
+> 
+> v2:
+> - Remove patch 2: nfsd: Can leak pnfs_block_extent on error
+> - Consolidate 3rd and 4th patch
+> - Fix the rsize and wsize to come out of the rqstp as per Jeff's
+>   review comments
+> - Sort the available layout types such that scsi beats block which
+>   beats flex file
+> - Address the points brought up by Christoph in his review
+> 
+> These patches are also in my flex_server branch at
+> git://git.linux-nfs.org/projects/loghyr/linux-nfs.git
+> 
+> Thanks,
+> Tom
+> 
+> Tom Haynes (2):
+>   nfsd: flex file device id encoding will need the server address
+>   nfsd: Add a super simple flex file server
+> 
+>  fs/nfsd/Kconfig             |  17 ++++++
+>  fs/nfsd/Makefile            |   1 +
+>  fs/nfsd/blocklayout.c       |   2 +
+>  fs/nfsd/flexfilelayout.c    | 133 ++++++++++++++++++++++++++++++++++++++++++++
+>  fs/nfsd/flexfilelayoutxdr.c | 115 ++++++++++++++++++++++++++++++++++++++
+>  fs/nfsd/flexfilelayoutxdr.h |  49 ++++++++++++++++
+>  fs/nfsd/nfs4layouts.c       |  12 +++-
+>  fs/nfsd/nfs4proc.c          |   2 +-
+>  fs/nfsd/pnfs.h              |   4 ++
+>  9 files changed, 333 insertions(+), 2 deletions(-)
+>  create mode 100644 fs/nfsd/flexfilelayout.c
+>  create mode 100644 fs/nfsd/flexfilelayoutxdr.c
+>  create mode 100644 fs/nfsd/flexfilelayoutxdr.h
+> 
+> -- 
+> 1.8.3.1
