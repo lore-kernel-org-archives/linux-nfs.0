@@ -1,43 +1,38 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from bombadil.infradead.org ([198.137.202.9]:38259 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753241AbcFOOlv (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 15 Jun 2016 10:41:51 -0400
-Date: Wed, 15 Jun 2016 07:41:50 -0700
-From: Christoph Hellwig <hch@infradead.org>
-To: Trond Myklebust <trondmy@primarydata.com>
-Cc: Christoph Hellwig <hch@infradead.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 11/12] NFS: Don't count O_DIRECT reads in the
- inode->i_dio_count
-Message-ID: <20160615144150.GA18524@infradead.org>
-References: <1465931115-30784-4-git-send-email-trond.myklebust@primarydata.com>
+Received: from us-smtp-delivery-194.mimecast.com ([216.205.24.194]:26872 "EHLO
+	us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S932752AbcFOOsD (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 15 Jun 2016 10:48:03 -0400
+From: Trond Myklebust <trondmy@primarydata.com>
+To: Christoph Hellwig <hch@infradead.org>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 06/12] NFS: Don't hold the inode lock across fsync()
+Date: Wed, 15 Jun 2016 14:47:55 +0000
+Message-ID: <D6D08D10-6752-4A7A-9CFE-3227D9A58BA2@primarydata.com>
+References: <1465931115-30784-1-git-send-email-trond.myklebust@primarydata.com>
+ <1465931115-30784-2-git-send-email-trond.myklebust@primarydata.com>
+ <1465931115-30784-3-git-send-email-trond.myklebust@primarydata.com>
+ <1465931115-30784-4-git-send-email-trond.myklebust@primarydata.com>
  <1465931115-30784-5-git-send-email-trond.myklebust@primarydata.com>
  <1465931115-30784-6-git-send-email-trond.myklebust@primarydata.com>
- <1465931115-30784-7-git-send-email-trond.myklebust@primarydata.com>
- <1465931115-30784-8-git-send-email-trond.myklebust@primarydata.com>
- <1465931115-30784-9-git-send-email-trond.myklebust@primarydata.com>
- <1465931115-30784-10-git-send-email-trond.myklebust@primarydata.com>
- <1465931115-30784-11-git-send-email-trond.myklebust@primarydata.com>
- <20160615071605.GD4318@infradead.org>
- <C9DCA08F-F8FE-41FD-978B-8B1CAF3DEB17@primarydata.com>
+ <20160615070840.GA4318@infradead.org>
+In-Reply-To: <20160615070840.GA4318@infradead.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <C9DCA08F-F8FE-41FD-978B-8B1CAF3DEB17@primarydata.com>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Jun 15, 2016 at 02:36:04PM +0000, Trond Myklebust wrote:
-> On 6/15/16, 03:16, "Christoph Hellwig" <hch@infradead.org> wrote:
-> 
-> >Explanation of why reads are more special than writes here or in
-> >general why they are safe?
-> >
-> 
-> With the new locking, we already have exclusion between buffered I/O and direct I/O, and so the only remaining use case for inode_dio_wait() is to wait for writes to complete in operations like fsync().
+DQoNCk9uIDYvMTUvMTYsIDAzOjA4LCAibGludXgtbmZzLW93bmVyQHZnZXIua2VybmVsLm9yZyBv
+biBiZWhhbGYgb2YgQ2hyaXN0b3BoIEhlbGx3aWciIDxsaW51eC1uZnMtb3duZXJAdmdlci5rZXJu
+ZWwub3JnIG9uIGJlaGFsZiBvZiBoY2hAaW5mcmFkZWFkLm9yZz4gd3JvdGU6DQoNCj5PbiBUdWUs
+IEp1biAxNCwgMjAxNiBhdCAwMzowNTowOVBNIC0wNDAwLCBUcm9uZCBNeWtsZWJ1c3Qgd3JvdGU6
+DQo+PiBDb21taXRzIGFyZSBubyBsb25nZXIgcmVxdWlyZWQgdG8gYmUgc2VyaWFsaXNlZC4NCj4N
+Cj5CdXQgd2UgbmVlZCBzb21ldGhpbmcgdG8gbG9jayBvdXQgbmV3IGNhbGxlcnMgb2YgaW5vZGVf
+ZGlvX2VuZA0KPndoZW4gY2FsbGluZyBpbm9kZV9kaW9fd2FpdC4gIFRoZW4gYWdhaW4gdGhlIGN1
+cnJlbnQgY29kZSBhbHJlYWR5DQo+ZmFpbHMgdG8gdG8gZG8gdGhhdC4uDQoNCldlIGNvdWxkIGRv
+IHRoYXQgYnkgc2V0dGluZyB0aGUgSS9PIG1vZGUgdG8gYnVmZmVyZWQ7IHRoYXQgc3RpbGwgYWxs
+b3dzIHBhcmFsbGVsaXNtICBmb3IgdGhlIGJ1ZmZlcmVkIEkvTyBjYXNlLiBJIHdvdWxkbuKAmXQg
+bm9ybWFsbHkgZXhwZWN0IGFwcGxpY2F0aW9ucyB0aGF0IHVzZSBPX0RJUkVDVCBvbiBORlMgdG8g
+Y2FsbCBmc3luYygpLCBzaW5jZSB3ZSBhbHdheXMgZW5mb3JjZSBPX0RJUkVDVHxPX1NZTkMgc2Vt
+YW50aWNzLg0KDQo=
 
-There is no need to wait for pending dio in fsync - fsync is only
-guarantee to flush out I/O that's alreayd been completed.
-
-inode_dio_wait and friends were introduces to protect aio that doesn't
-hold i_mutex against truncate.
