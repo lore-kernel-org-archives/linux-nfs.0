@@ -1,210 +1,70 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:59460 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752492AbcFPR3y (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 16 Jun 2016 13:29:54 -0400
-Date: Thu, 16 Jun 2016 13:29:52 -0400
-To: Christoph Hellwig <hch@infradead.org>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: odd sillyrename bug in 4.6 / 4.7-rc
-Message-ID: <20160616172952.GA17604@fieldses.org>
-References: <20160616150146.GA14015@infradead.org>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20160616150146.GA14015@infradead.org>
-From: bfields@fieldses.org (J. Bruce Fields)
+Received: from mail-yw0-f195.google.com ([209.85.161.195]:36730 "EHLO
+	mail-yw0-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754207AbcFPUBB convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 16 Jun 2016 16:01:01 -0400
+From: Weston Andros Adamson <dros@monkey.org>
+Content-Type: text/plain; charset=utf-8
+Subject: nfs/flexfiles patches for stable
+Date: Thu, 16 Jun 2016 16:00:55 -0400
+Message-Id: <77CC4C9F-85C6-4E78-9ACA-11D4A67D1B9B@monkey.org>
+Cc: linux-nfs@vger.kernel.org, Trond Myklebust <trondmy@primarydata.com>,
+        Anna.Schumaker@netapp.com
+To: stable@vger.kernel.org
+Mime-Version: 1.0 (Mac OS X Mail 9.3 \(3124\))
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Jun 16, 2016 at 08:01:47AM -0700, Christoph Hellwig wrote:
-> I've run into an odd bug when testing the clone / reflink functionality,
-> and managed to isolate a testcase not relying on clones.  The issue is
-> that after a lot of direct I/O hitting ENOSPC on a NFS mount I run
-> into a silly rename that never gets cleaned up after cleaning up the
-> directory.
+The following patches are already merged upstream, but should be
+included in stable releases 4.5.y and 4.6.y.
 
-I have a redhat bug for what sounds like the same behavior.  I spent
-some time looking at it but I don't think I got anywere.
+They fix an issue where the client can use the wrong credential if the
+server returns a read-only and readwrite layout with different creds.
+The client then goes into a LAYOUTRETURN/LAYOUTGET loop that
+it never recovers from.
 
-	https://bugzilla.redhat.com/show_bug.cgi?id=1132610
+This has been seen in recent fedora releases.
 
-(But you probably can't see that right now; I'll see if I can open it.)
+Here are the relevant patches:
 
---b.
+commit 547a637630c61b9e1dae9abce2b44ce7076244af
+Author: Jeff Layton <jlayton@poochiereds.net>
+Date:   Thu Apr 21 20:51:57 2016 -0400
 
-> 
-> Note that so far I've only managed to reproduce it against a Linux
-> server running XFS (ext4 and btrfs seem fine) despite looking like
-> a client bug, and although once in a while a single run of the testcase
-> cause the bug I usually need a few iterations.
-> 
-> All over it seems like some odd dentry refcount race where we see
-> a spurious reference for one reason or another.
-> 
-> 
-> Below is a patch to xfstests to add this reproducer:
-> 
-> 
-> diff --git a/tests/generic/700 b/tests/generic/700
-> new file mode 100755
-> index 0000000..33505b0
-> --- /dev/null
-> +++ b/tests/generic/700
-> @@ -0,0 +1,130 @@
-> +#! /bin/bash
-> +# FS QA Test No. 700
-> +#
-> +# Dumbed down Copy of the original version of generic/187 that reproduced
-> +# NFS silly rename issues.
-> +#-----------------------------------------------------------------------
-> +# Copyright (c) 2015, Oracle and/or its affiliates.  All Rights Reserved.
-> +#
-> +# This program is free software; you can redistribute it and/or
-> +# modify it under the terms of the GNU General Public License as
-> +# published by the Free Software Foundation.
-> +#
-> +# This program is distributed in the hope that it would be useful,
-> +# but WITHOUT ANY WARRANTY; without even the implied warranty of
-> +# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-> +# GNU General Public License for more details.
-> +#
-> +# You should have received a copy of the GNU General Public License
-> +# along with this program; if not, write the Free Software Foundation,
-> +# Inc.,  51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
-> +#-----------------------------------------------------------------------
-> +
-> +seq=`basename $0`
-> +seqres=$RESULT_DIR/$seq
-> +echo "QA output created by $seq"
-> +
-> +here=`pwd`
-> +tmp=/tmp/$$
-> +status=1    # failure is the default!
-> +trap "_cleanup; exit \$status" 0 1 2 3 15
-> +
-> +_cleanup()
-> +{
-> +    cd /
-> +    rm -rf $tmp.* $testdir
-> +}
-> +
-> +# get standard environment, filters and checks
-> +. ./common/rc
-> +. ./common/filter
-> +
-> +# real QA test starts here
-> +_supported_os Linux
-> +_require_xfs_io_command "falloc"
-> +_require_xfs_io_command "fpunch"
-> +test $FSTYP = "btrfs" && _notrun "Can't fragment free space on btrfs."
-> +_require_odirect
-> +
-> +rm -f $seqres.full
-> +
-> +_fragment_freesp()
-> +{
-> +	file=$1
-> +
-> +	# consume nearly all available space (leave ~1MB)
-> +	avail=`_get_available_space $SCRATCH_MNT`
-> +	echo "$avail bytes left"
-> +	filesize=$((avail - 1048576))
-> +	$XFS_IO_PROG -fc "truncate $filesize" $file
-> +
-> +	chunks=20
-> +	chunksizemb=$((filesize / chunks / 1048576))
-> +	seq 1 $chunks | while read f; do
-> +		echo "$((f * chunksizemb)) file size $f / 20"
-> +		$XFS_IO_PROG -fc "falloc -k $(( (f - 1) * chunksizemb))m ${chunksizemb}m" $file
-> +	done
-> +
-> +	chunks=100
-> +	chunksizemb=$((filesize / chunks / 1048576))
-> +	seq 80 $chunks | while read f; do
-> +		echo "$((f * chunksizemb)) file size $f / $chunks"
-> +		$XFS_IO_PROG -fc "falloc -k $(( (f - 1) * chunksizemb))m ${chunksizemb}m" $file
-> +	done
-> +
-> +	filesizemb=$((filesize / 1048576))
-> +	$XFS_IO_PROG -fc "falloc -k 0 ${filesizemb}m" $file
-> +
-> +	# Try again anyway
-> +	avail=`_get_available_space $SCRATCH_MNT`
-> +	$XFS_IO_PROG -fc "pwrite -S 0x65 0 $avail" ${file}.${i}
-> +
-> +	# Punch out whatever we need
-> +	seq 1 $((nr * 4)) | while read f; do
-> +		$XFS_IO_PROG -f -c "fpunch $((f * 2 * blksz)) $blksz" $file
-> +	done
-> +}
-> +
-> +echo "Format and mount"
-> +_scratch_mkfs > $seqres.full 2>&1
-> +_scratch_mount >> $seqres.full 2>&1
-> +
-> +testdir=$SCRATCH_MNT/test-$seq
-> +mkdir $testdir
-> +
-> +echo "Create the original files"
-> +blksz=65536
-> +nr=1024
-> +filesize=$((blksz * nr))
-> +_pwrite_byte 0x61 0 $filesize $testdir/file1 >> $seqres.full
-> +_pwrite_byte 0x62 0 $filesize $testdir/file2 >> $seqres.full
-> +seq 0 2 $((nr-1)) | while read f; do
-> +#	_reflink_range $testdir/file1 $((blksz * f)) $testdir/file3 $((blksz * f)) $blksz >> $seqres.full
-> +	touch $testdir/file3
-> +	_pwrite_byte 0x61 $((blksz * f)) $blksz $testdir/file3.chk >> $seqres.full
-> +done
-> +seq 1 2 $((nr-1)) | while read f; do
-> +	touch $testdir/file3
-> +#	_reflink_range $testdir/file2 $((blksz * f)) $testdir/file3 $((blksz * f)) $blksz >> $seqres.full
-> +	_pwrite_byte 0x62 $((blksz * f)) $blksz $testdir/file3.chk >> $seqres.full
-> +done
-> +_scratch_cycle_mount
-> +_fragment_freesp $testdir/bigfile >> $seqres.full 2>&1
-> +filesize=$((blksz * nr))
-> +_scratch_cycle_mount
-> +
-> +echo "Overwrite"
-> +cowoff=$((filesize / 4))
-> +cowsz=$((filesize / 2))
-> +$XFS_IO_PROG -d -f -c "pwrite -S 0x63 -b $cowsz $cowoff $cowsz" $testdir/file3 >> $seqres.full
-> +_pwrite_byte 0x63 $cowoff $cowsz $testdir/file3.chk >> $seqres.full
-> +
-> +# mount / unmount
-> +_scratch_cycle_mount
-> +
-> +echo "Deleting"
-> +rm -r $testdir
-> +
-> +# success, all done
-> +status=0
-> +exit
-> diff --git a/tests/generic/700.out b/tests/generic/700.out
-> new file mode 100644
-> index 0000000..9f7ce0f
-> --- /dev/null
-> +++ b/tests/generic/700.out
-> @@ -0,0 +1,5 @@
-> +QA output created by 700
-> +Format and mount
-> +Create the original files
-> +Overwrite
-> +Deleting
-> diff --git a/tests/generic/group b/tests/generic/group
-> index 2bd40a1..46a796a 100644
-> --- a/tests/generic/group
-> +++ b/tests/generic/group
-> @@ -354,6 +354,7 @@
->  349 blockdev quick rw
->  350 blockdev quick rw
->  351 blockdev quick rw
-> +700 auto nfs
->  923 auto quick clone
->  924 auto quick clone
->  925 auto quick clone
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+  nfs: don't call nfs4_ff_layout_prepare_ds from ff_layout_get_ds_cred
+
+commit 57f3f4c0cd50e90aa92eec20d9c309dd67c594a5
+Author: Jeff Layton <jlayton@poochiereds.net>
+Date:   Thu Apr 21 20:51:58 2016 -0400
+
+  nfs: have ff_layout_get_ds_cred take a reference to the cred
+
+commit 90a0be00e9d29d9baac27c0c63a5e71ca1334001
+Author: Jeff Layton <jlayton@poochiereds.net>
+Date:   Thu Apr 21 20:51:59 2016 -0400
+
+  nfs: get a reference to the credential in ff_layout_alloc_lseg
+
+commit 3064b6861d00b7124558cdf79f9387f948361be3
+Author: Jeff Layton <jlayton@poochiereds.net>
+Date:   Thu Apr 21 20:52:00 2016 -0400
+
+  nfs: have flexfiles mirror keep creds for both ro and rw layouts
+
+
+
+linux-4.6.y: applies cleanly
+
+linux-4.5.y: needs another patch to apply cleanly — and that patch looks pretty important too!
+
+commit 849dc3244c916545790bfb9055625a3719061c92
+Author: Jeff Layton <jlayton@poochiereds.net>
+Date:   Wed Feb 24 15:28:29 2016 -0500
+
+    nfs4: nfs4_ff_layout_prepare_ds should return NULL if connection failed
+
+
+Thanks,
+
+-dros
+
