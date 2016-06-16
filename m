@@ -1,70 +1,68 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-yw0-f195.google.com ([209.85.161.195]:36730 "EHLO
-	mail-yw0-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754207AbcFPUBB convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 16 Jun 2016 16:01:01 -0400
-From: Weston Andros Adamson <dros@monkey.org>
-Content-Type: text/plain; charset=utf-8
-Subject: nfs/flexfiles patches for stable
-Date: Thu, 16 Jun 2016 16:00:55 -0400
-Message-Id: <77CC4C9F-85C6-4E78-9ACA-11D4A67D1B9B@monkey.org>
-Cc: linux-nfs@vger.kernel.org, Trond Myklebust <trondmy@primarydata.com>,
-        Anna.Schumaker@netapp.com
-To: stable@vger.kernel.org
-Mime-Version: 1.0 (Mac OS X Mail 9.3 \(3124\))
+Received: from mail-wm0-f65.google.com ([74.125.82.65]:36799 "EHLO
+	mail-wm0-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754634AbcFPVKh (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 16 Jun 2016 17:10:37 -0400
+Subject: Re: [PATCH v2 01/24] mlx4-ib: Use coherent memory for priv pages
+To: leon@kernel.org, Chuck Lever <chuck.lever@oracle.com>
+References: <20160615030626.14794.43805.stgit@manet.1015granger.net>
+ <20160615031525.14794.69066.stgit@manet.1015granger.net>
+ <20160615042849.GR5408@leon.nu>
+ <68F7CD80-0092-4B55-9FAD-4C54D284BCA3@oracle.com>
+ <20160616143518.GX5408@leon.nu>
+Cc: linux-rdma@vger.kernel.org,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+From: Sagi Grimberg <sagigrim@gmail.com>
+Message-ID: <576315C9.30002@gmail.com>
+Date: Fri, 17 Jun 2016 00:10:33 +0300
+MIME-Version: 1.0
+In-Reply-To: <20160616143518.GX5408@leon.nu>
+Content-Type: text/plain; charset=windows-1252; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The following patches are already merged upstream, but should be
-included in stable releases 4.5.y and 4.6.y.
 
-They fix an issue where the client can use the wrong credential if the
-server returns a read-only and readwrite layout with different creds.
-The client then goes into a LAYOUTRETURN/LAYOUTGET loop that
-it never recovers from.
+>>> On Jun 15, 2016, at 12:28 AM, Leon Romanovsky <leon@kernel.org> wrote:
+>>>
+>>> On Tue, Jun 14, 2016 at 11:15:25PM -0400, Chuck Lever wrote:
+>>>> From: Sagi Grimberg <sagi@grimberg.me>
+>>>>
+>>>> kmalloc doesn't guarantee the returned memory is all on one page.
+>>>
+>>> IMHO, the patch posted by Christoph at that thread is best way to go,
+>>> because you changed streaming DMA mappings to be coherent DMA mappings [1].
+>>>
+>>> "The kernel developers recommend the use of streaming mappings over
+>>> coherent mappings whenever possible" [1].
+>>>
+>>> [1] http://www.makelinux.net/ldd3/chp-15-sect-4
+>>
+>> Hi Leon-
+>>
+>> I'll happily drop this patch from my 4.8 series as soon
+>> as an official mlx4/mlx5 fix is merged.
+>>
+>> Meanwhile, I notice some unexplained instability (driver
+>> resets, list corruption, and so on) when I test NFS/RDMA
+>> without this patch included. So it is attached to the
+>> series for anyone with mlx4 who wants to pull my topic
+>> branch and try it out.
+>
+> hi Chuck,
+>
+> We plan to send attached patch during our second round of fixes for
+> mlx4/mlx5 and would be grateful to you if you could provide your
+> Tested-by tag before.
 
-This has been seen in recent fedora releases.
+First of all, IIRC the patch author was Christoph wasn't he.
 
-Here are the relevant patches:
+Plus, you do realize that this patch makes the pages allocation
+in granularity of pages. In systems with a large page size this
+is completely redundant, it might even be harmful as the storage
+ULPs need lots of MRs.
 
-commit 547a637630c61b9e1dae9abce2b44ce7076244af
-Author: Jeff Layton <jlayton@poochiereds.net>
-Date:   Thu Apr 21 20:51:57 2016 -0400
+Also, I don't see how that solves the issue, I'm not sure I even
+understand the issue. Do you? Were you able to reproduce it?
 
-  nfs: don't call nfs4_ff_layout_prepare_ds from ff_layout_get_ds_cred
-
-commit 57f3f4c0cd50e90aa92eec20d9c309dd67c594a5
-Author: Jeff Layton <jlayton@poochiereds.net>
-Date:   Thu Apr 21 20:51:58 2016 -0400
-
-  nfs: have ff_layout_get_ds_cred take a reference to the cred
-
-commit 90a0be00e9d29d9baac27c0c63a5e71ca1334001
-Author: Jeff Layton <jlayton@poochiereds.net>
-Date:   Thu Apr 21 20:51:59 2016 -0400
-
-  nfs: get a reference to the credential in ff_layout_alloc_lseg
-
-commit 3064b6861d00b7124558cdf79f9387f948361be3
-Author: Jeff Layton <jlayton@poochiereds.net>
-Date:   Thu Apr 21 20:52:00 2016 -0400
-
-  nfs: have flexfiles mirror keep creds for both ro and rw layouts
-
-
-
-linux-4.6.y: applies cleanly
-
-linux-4.5.y: needs another patch to apply cleanly — and that patch looks pretty important too!
-
-commit 849dc3244c916545790bfb9055625a3719061c92
-Author: Jeff Layton <jlayton@poochiereds.net>
-Date:   Wed Feb 24 15:28:29 2016 -0500
-
-    nfs4: nfs4_ff_layout_prepare_ds should return NULL if connection failed
-
-
-Thanks,
-
--dros
-
+IFF the pages buffer end not being aligned to a cacheline is problematic
+then why not extent it to end in a cacheline? Why in the next full page?
