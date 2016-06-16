@@ -1,59 +1,48 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-yw0-f171.google.com ([209.85.161.171]:34514 "EHLO
-	mail-yw0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753866AbcFPOwt convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 16 Jun 2016 10:52:49 -0400
-Received: by mail-yw0-f171.google.com with SMTP id c72so44824274ywb.1
-        for <linux-nfs@vger.kernel.org>; Thu, 16 Jun 2016 07:52:49 -0700 (PDT)
-From: Weston Andros Adamson <dros@monkey.org>
-Content-Type: text/plain; charset=utf-8
-Subject: flexfiles LAYOUTGET/LAYOUTRETURN loop
-Date: Thu, 16 Jun 2016 10:52:44 -0400
-Message-Id: <54992BAB-C388-4CA6-9713-D8CA09BE3E37@monkey.org>
-Cc: linux-nfs list <linux-nfs@vger.kernel.org>
-To: Anna.Schumaker@netapp.com, Trond Myklebust <trondmy@primarydata.com>
-Mime-Version: 1.0 (Mac OS X Mail 9.3 \(3124\))
+Received: from us-smtp-delivery-194.mimecast.com ([216.205.24.194]:45891 "EHLO
+	us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1754376AbcFPO4X (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 16 Jun 2016 10:56:23 -0400
+From: Trond Myklebust <trondmy@primarydata.com>
+To: Weston Andros Adamson <dros@monkey.org>
+CC: Schumaker Anna <Anna.Schumaker@netapp.com>,
+        linux-nfs list <linux-nfs@vger.kernel.org>
+Subject: Re: flexfiles LAYOUTGET/LAYOUTRETURN loop
+Date: Thu, 16 Jun 2016 14:56:12 +0000
+Message-ID: <41FA6F5E-E288-4FE4-B748-E17A854E2551@primarydata.com>
+References: <54992BAB-C388-4CA6-9713-D8CA09BE3E37@monkey.org>
+In-Reply-To: <54992BAB-C388-4CA6-9713-D8CA09BE3E37@monkey.org>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hey Trond, Anna,
-
-The following patches should be CC’d to stable for all stable branches
-with flexfiles.
-
-They fix an issue where the client can use the wrong credential if the
-server returns a read-only and readwrite layout with different creds.
-The client then goes into a LAYOUTRETURN/LAYOUTGET loop that
-it never recovers from.
-
-This has been seen in recent fedora releases.
-
-Here are the relevant patches:
-
-commit 3064b6861d00b7124558cdf79f9387f948361be3
-Author: Jeff Layton <jlayton@poochiereds.net>
-Date:   Thu Apr 21 20:52:00 2016 -0400
-
-   nfs: have flexfiles mirror keep creds for both ro and rw layouts
-
-commit 90a0be00e9d29d9baac27c0c63a5e71ca1334001
-Author: Jeff Layton <jlayton@poochiereds.net>
-Date:   Thu Apr 21 20:51:59 2016 -0400
-
-   nfs: get a reference to the credential in ff_layout_alloc_lseg
-
-commit 57f3f4c0cd50e90aa92eec20d9c309dd67c594a5
-Author: Jeff Layton <jlayton@poochiereds.net>
-Date:   Thu Apr 21 20:51:58 2016 -0400
-
-   nfs: have ff_layout_get_ds_cred take a reference to the cred
-
-commit 547a637630c61b9e1dae9abce2b44ce7076244af
-Author: Jeff Layton <jlayton@poochiereds.net>
-Date:   Thu Apr 21 20:51:57 2016 -0400
-
-   nfs: don't call nfs4_ff_layout_prepare_ds from ff_layout_get_ds_cred
-
-
--dros
+DQo+IE9uIEp1biAxNiwgMjAxNiwgYXQgMTA6NTIsIFdlc3RvbiBBbmRyb3MgQWRhbXNvbiA8ZHJv
+c0Btb25rZXkub3JnPiB3cm90ZToNCj4gDQo+IEhleSBUcm9uZCwgQW5uYSwNCj4gDQo+IFRoZSBm
+b2xsb3dpbmcgcGF0Y2hlcyBzaG91bGQgYmUgQ0PigJlkIHRvIHN0YWJsZSBmb3IgYWxsIHN0YWJs
+ZSBicmFuY2hlcw0KPiB3aXRoIGZsZXhmaWxlcy4NCj4gDQo+IFRoZXkgZml4IGFuIGlzc3VlIHdo
+ZXJlIHRoZSBjbGllbnQgY2FuIHVzZSB0aGUgd3JvbmcgY3JlZGVudGlhbCBpZiB0aGUNCj4gc2Vy
+dmVyIHJldHVybnMgYSByZWFkLW9ubHkgYW5kIHJlYWR3cml0ZSBsYXlvdXQgd2l0aCBkaWZmZXJl
+bnQgY3JlZHMuDQo+IFRoZSBjbGllbnQgdGhlbiBnb2VzIGludG8gYSBMQVlPVVRSRVRVUk4vTEFZ
+T1VUR0VUIGxvb3AgdGhhdA0KPiBpdCBuZXZlciByZWNvdmVycyBmcm9tLg0KPiANCj4gVGhpcyBo
+YXMgYmVlbiBzZWVuIGluIHJlY2VudCBmZWRvcmEgcmVsZWFzZXMuDQo+IA0KPiBIZXJlIGFyZSB0
+aGUgcmVsZXZhbnQgcGF0Y2hlczoNCj4gDQo+IGNvbW1pdCAzMDY0YjY4NjFkMDBiNzEyNDU1OGNk
+Zjc5ZjkzODdmOTQ4MzYxYmUzDQo+IEF1dGhvcjogSmVmZiBMYXl0b24gPGpsYXl0b25AcG9vY2hp
+ZXJlZHMubmV0Pg0KPiBEYXRlOiAgIFRodSBBcHIgMjEgMjA6NTI6MDAgMjAxNiAtMDQwMA0KPiAN
+Cj4gICBuZnM6IGhhdmUgZmxleGZpbGVzIG1pcnJvciBrZWVwIGNyZWRzIGZvciBib3RoIHJvIGFu
+ZCBydyBsYXlvdXRzDQo+IA0KPiBjb21taXQgOTBhMGJlMDBlOWQyOWQ5YmFhYzI3YzBjNjNhNWU3
+MWNhMTMzNDAwMQ0KPiBBdXRob3I6IEplZmYgTGF5dG9uIDxqbGF5dG9uQHBvb2NoaWVyZWRzLm5l
+dD4NCj4gRGF0ZTogICBUaHUgQXByIDIxIDIwOjUxOjU5IDIwMTYgLTA0MDANCj4gDQo+ICAgbmZz
+OiBnZXQgYSByZWZlcmVuY2UgdG8gdGhlIGNyZWRlbnRpYWwgaW4gZmZfbGF5b3V0X2FsbG9jX2xz
+ZWcNCj4gDQo+IGNvbW1pdCA1N2YzZjRjMGNkNTBlOTBhYTkyZWVjMjBkOWMzMDlkZDY3YzU5NGE1
+DQo+IEF1dGhvcjogSmVmZiBMYXl0b24gPGpsYXl0b25AcG9vY2hpZXJlZHMubmV0Pg0KPiBEYXRl
+OiAgIFRodSBBcHIgMjEgMjA6NTE6NTggMjAxNiAtMDQwMA0KPiANCj4gICBuZnM6IGhhdmUgZmZf
+bGF5b3V0X2dldF9kc19jcmVkIHRha2UgYSByZWZlcmVuY2UgdG8gdGhlIGNyZWQNCj4gDQo+IGNv
+bW1pdCA1NDdhNjM3NjMwYzYxYjllMWRhZTlhYmNlMmI0NGNlNzA3NjI0NGFmDQo+IEF1dGhvcjog
+SmVmZiBMYXl0b24gPGpsYXl0b25AcG9vY2hpZXJlZHMubmV0Pg0KPiBEYXRlOiAgIFRodSBBcHIg
+MjEgMjA6NTE6NTcgMjAxNiAtMDQwMA0KPiANCj4gICBuZnM6IGRvbid0IGNhbGwgbmZzNF9mZl9s
+YXlvdXRfcHJlcGFyZV9kcyBmcm9tIGZmX2xheW91dF9nZXRfZHNfY3JlZA0KPiANCj4gDQo+IC1k
+cm9zDQo+IA0KDQpUaG9zZSBhcmUgYWxyZWFkeSBhcHBsaWVkIHVwc3RyZWFtIGFmYWljcywgc28g
+d2UgY2Fu4oCZdCBhZGQgYW55IENjcy4gSWYgdGhleSBuZWVkIHRvIGdvIHRvIHN0YWJsZSwgdGhl
+biBzb21lb25lIGhhcyB0byBzdWJtaXQgdGhlbSBkaXJlY3RseS4NCg0KQ2hlZXJzDQogIFRyb25k
 
