@@ -1,295 +1,210 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:58775 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([173.255.197.46]:59460 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751490AbcFPQcv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 16 Jun 2016 12:32:51 -0400
-From: "Benjamin Coddington" <bcodding@redhat.com>
-To: "Scott Mayhew" <smayhew@redhat.com>
-Cc: trond.myklebust@primarydata.com, anna.schumaker@netapp.com,
-        bfields@fieldses.org, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH RESEND] sunrpc: move NO_CRKEY_TIMEOUT to the
- auth->au_flags
-Date: Thu, 16 Jun 2016 12:33:11 -0400
-Message-ID: <62BA7359-9421-41F3-9116-8AA25AD1E77F@redhat.com>
-In-Reply-To: <1465326888-11185-1-git-send-email-smayhew@redhat.com>
-References: <1465326888-11185-1-git-send-email-smayhew@redhat.com>
+	id S1752492AbcFPR3y (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 16 Jun 2016 13:29:54 -0400
+Date: Thu, 16 Jun 2016 13:29:52 -0400
+To: Christoph Hellwig <hch@infradead.org>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: odd sillyrename bug in 4.6 / 4.7-rc
+Message-ID: <20160616172952.GA17604@fieldses.org>
+References: <20160616150146.GA14015@infradead.org>
 MIME-Version: 1.0
-Content-Type: text/plain; format=flowed
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20160616150146.GA14015@infradead.org>
+From: bfields@fieldses.org (J. Bruce Fields)
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hey Scott,  after reviewing this work, I recreated the problem at BAT 
-today.
-This patch looks good, and fixes the problem for me.  Thanks!
+On Thu, Jun 16, 2016 at 08:01:47AM -0700, Christoph Hellwig wrote:
+> I've run into an odd bug when testing the clone / reflink functionality,
+> and managed to isolate a testcase not relying on clones.  The issue is
+> that after a lot of direct I/O hitting ENOSPC on a NFS mount I run
+> into a silly rename that never gets cleaned up after cleaning up the
+> directory.
 
-Reviewed-by: Benjamin Coddington <bcodding@redhat.com>
+I have a redhat bug for what sounds like the same behavior.  I spent
+some time looking at it but I don't think I got anywere.
 
-Ben
+	https://bugzilla.redhat.com/show_bug.cgi?id=1132610
 
-On 7 Jun 2016, at 15:14, Scott Mayhew wrote:
+(But you probably can't see that right now; I'll see if I can open it.)
 
-> A generic_cred can be used to look up a unx_cred or a gss_cred, so 
-> it's
-> not really safe to use the the generic_cred->acred->ac_flags to store
-> the NO_CRKEY_TIMEOUT flag.  A lookup for a unx_cred triggered while 
-> the
-> KEY_EXPIRE_SOON flag is already set will cause both NO_CRKEY_TIMEOUT 
-> and
-> KEY_EXPIRE_SOON to be set in the ac_flags, leaving the user associated
-> with the auth_cred to be in a state where they're perpetually doing 4K
-> NFS_FILE_SYNC writes.
->
-> This can be reproduced as follows:
->
-> 1. Mount two NFS filesystems, one with sec=krb5 and one with sec=sys.
-> They do not need to be the same export, nor do they even need to be 
-> from
-> the same NFS server.  Also, v3 is fine.
-> $ sudo mount -o v3,sec=krb5 server1:/export /mnt/krb5
-> $ sudo mount -o v3,sec=sys server2:/export /mnt/sys
->
-> 2. As the normal user, before accessing the kerberized mount, kinit 
-> with
-> a short lifetime (but not so short that renewing the ticket would 
-> leave
-> you within the 4-minute window again by the time the original ticket
-> expires), e.g.
-> $ kinit -l 10m -r 60m
->
-> 3. Do some I/O to the kerberized mount and verify that the writes are
-> wsize, UNSTABLE:
-> $ dd if=/dev/zero of=/mnt/krb5/file bs=1M count=1
->
-> 4. Wait until you're within 4 minutes of key expiry, then do some more
-> I/O to the kerberized mount to ensure that RPC_CRED_KEY_EXPIRE_SOON 
-> gets
-> set.  Verify that the writes are 4K, FILE_SYNC:
-> $ dd if=/dev/zero of=/mnt/krb5/file bs=1M count=1
->
-> 5. Now do some I/O to the sec=sys mount.  This will cause
-> RPC_CRED_NO_CRKEY_TIMEOUT to be set:
-> $ dd if=/dev/zero of=/mnt/sys/file bs=1M count=1
->
-> 6. Writes for that user will now be permanently 4K, FILE_SYNC for that
-> user, regardless of which mount is being written to, until you reboot
-> the client.  Renewing the kerberos ticket (assuming it hasn't already
-> expired) will have no effect.  Grabbing a new kerberos ticket at this
-> point will have no effect either.
->
-> Move the flag to the auth->au_flags field (which is currently unused)
-> and rename it slightly to reflect that it's no longer associated with
-> the auth_cred->ac_flags.  Add the rpc_auth to the arg list of
-> rpcauth_cred_key_to_expire and check the au_flags there too.  Finally,
-> add the inode to the arg list of nfs_ctx_key_to_expire so we can
-> determine the rpc_auth to pass to rpcauth_cred_key_to_expire.
->
-> Signed-off-by: Scott Mayhew <smayhew@redhat.com>
-> ---
->  fs/nfs/file.c                  | 4 ++--
->  fs/nfs/internal.h              | 2 +-
->  fs/nfs/write.c                 | 6 ++++--
->  include/linux/sunrpc/auth.h    | 6 ++++--
->  net/sunrpc/auth.c              | 4 +++-
->  net/sunrpc/auth_generic.c      | 9 +--------
->  net/sunrpc/auth_gss/auth_gss.c | 1 +
->  net/sunrpc/auth_null.c         | 1 +
->  net/sunrpc/auth_unix.c         | 1 +
->  9 files changed, 18 insertions(+), 16 deletions(-)
->
-> diff --git a/fs/nfs/file.c b/fs/nfs/file.c
-> index 717a8d6..6bcd891 100644
-> --- a/fs/nfs/file.c
-> +++ b/fs/nfs/file.c
-> @@ -432,7 +432,7 @@ static int nfs_write_end(struct file *file, struct 
-> address_space *mapping,
->  		return status;
->  	NFS_I(mapping->host)->write_io += copied;
->
-> -	if (nfs_ctx_key_to_expire(ctx)) {
-> +	if (nfs_ctx_key_to_expire(ctx, mapping->host)) {
->  		status = nfs_wb_all(mapping->host);
->  		if (status < 0)
->  			return status;
-> @@ -645,7 +645,7 @@ static int nfs_need_check_write(struct file *filp, 
-> struct inode *inode)
->
->  	ctx = nfs_file_open_context(filp);
->  	if (test_bit(NFS_CONTEXT_ERROR_WRITE, &ctx->flags) ||
-> -	    nfs_ctx_key_to_expire(ctx))
-> +	    nfs_ctx_key_to_expire(ctx, inode))
->  		return 1;
->  	return 0;
->  }
-> diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
-> index 5154fa6..ca87787 100644
-> --- a/fs/nfs/internal.h
-> +++ b/fs/nfs/internal.h
-> @@ -496,7 +496,7 @@ void nfs_init_cinfo(struct nfs_commit_info *cinfo,
->  		    struct inode *inode,
->  		    struct nfs_direct_req *dreq);
->  int nfs_key_timeout_notify(struct file *filp, struct inode *inode);
-> -bool nfs_ctx_key_to_expire(struct nfs_open_context *ctx);
-> +bool nfs_ctx_key_to_expire(struct nfs_open_context *ctx, struct inode 
-> *inode);
->  void nfs_pageio_stop_mirroring(struct nfs_pageio_descriptor *pgio);
->
->  #ifdef CONFIG_MIGRATION
-> diff --git a/fs/nfs/write.c b/fs/nfs/write.c
-> index e1c74d3..0b949a0 100644
-> --- a/fs/nfs/write.c
-> +++ b/fs/nfs/write.c
-> @@ -1195,9 +1195,11 @@ nfs_key_timeout_notify(struct file *filp, 
-> struct inode *inode)
->  /*
->   * Test if the open context credential key is marked to expire soon.
->   */
-> -bool nfs_ctx_key_to_expire(struct nfs_open_context *ctx)
-> +bool nfs_ctx_key_to_expire(struct nfs_open_context *ctx, struct inode 
-> *inode)
->  {
-> -	return rpcauth_cred_key_to_expire(ctx->cred);
-> +	struct rpc_auth *auth = NFS_SERVER(inode)->client->cl_auth;
+--b.
+
+> 
+> Note that so far I've only managed to reproduce it against a Linux
+> server running XFS (ext4 and btrfs seem fine) despite looking like
+> a client bug, and although once in a while a single run of the testcase
+> cause the bug I usually need a few iterations.
+> 
+> All over it seems like some odd dentry refcount race where we see
+> a spurious reference for one reason or another.
+> 
+> 
+> Below is a patch to xfstests to add this reproducer:
+> 
+> 
+> diff --git a/tests/generic/700 b/tests/generic/700
+> new file mode 100755
+> index 0000000..33505b0
+> --- /dev/null
+> +++ b/tests/generic/700
+> @@ -0,0 +1,130 @@
+> +#! /bin/bash
+> +# FS QA Test No. 700
+> +#
+> +# Dumbed down Copy of the original version of generic/187 that reproduced
+> +# NFS silly rename issues.
+> +#-----------------------------------------------------------------------
+> +# Copyright (c) 2015, Oracle and/or its affiliates.  All Rights Reserved.
+> +#
+> +# This program is free software; you can redistribute it and/or
+> +# modify it under the terms of the GNU General Public License as
+> +# published by the Free Software Foundation.
+> +#
+> +# This program is distributed in the hope that it would be useful,
+> +# but WITHOUT ANY WARRANTY; without even the implied warranty of
+> +# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+> +# GNU General Public License for more details.
+> +#
+> +# You should have received a copy of the GNU General Public License
+> +# along with this program; if not, write the Free Software Foundation,
+> +# Inc.,  51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+> +#-----------------------------------------------------------------------
 > +
-> +	return rpcauth_cred_key_to_expire(auth, ctx->cred);
->  }
->
->  /*
-> diff --git a/include/linux/sunrpc/auth.h b/include/linux/sunrpc/auth.h
-> index 8997915..f890a29 100644
-> --- a/include/linux/sunrpc/auth.h
-> +++ b/include/linux/sunrpc/auth.h
-> @@ -37,7 +37,6 @@ struct rpcsec_gss_info;
->
->  /* auth_cred ac_flags bits */
->  enum {
-> -	RPC_CRED_NO_CRKEY_TIMEOUT = 0, /* underlying cred has no key timeout 
-> */
->  	RPC_CRED_KEY_EXPIRE_SOON = 1, /* underlying cred key will expire 
-> soon */
->  	RPC_CRED_NOTIFY_TIMEOUT = 2,   /* nofity generic cred when 
-> underlying
->  					key will expire soon */
-> @@ -82,6 +81,9 @@ struct rpc_cred {
->
->  #define RPCAUTH_CRED_MAGIC	0x0f4aa4f0
->
-> +/* rpc_auth au_flags */
-> +#define RPCAUTH_AUTH_NO_CRKEY_TIMEOUT	0x0001 /* underlying cred has 
-> no key timeout */
+> +seq=`basename $0`
+> +seqres=$RESULT_DIR/$seq
+> +echo "QA output created by $seq"
 > +
->  /*
->   * Client authentication handle
->   */
-> @@ -196,7 +198,7 @@ void			rpcauth_destroy_credcache(struct rpc_auth 
-> *);
->  void			rpcauth_clear_credcache(struct rpc_cred_cache *);
->  int			rpcauth_key_timeout_notify(struct rpc_auth *,
->  						struct rpc_cred *);
-> -bool			rpcauth_cred_key_to_expire(struct rpc_cred *);
-> +bool			rpcauth_cred_key_to_expire(struct rpc_auth *, struct rpc_cred 
-> *);
->  char *			rpcauth_stringify_acceptor(struct rpc_cred *);
->
->  static inline
-> diff --git a/net/sunrpc/auth.c b/net/sunrpc/auth.c
-> index 040ff62..696eb39 100644
-> --- a/net/sunrpc/auth.c
-> +++ b/net/sunrpc/auth.c
-> @@ -359,8 +359,10 @@ rpcauth_key_timeout_notify(struct rpc_auth *auth, 
-> struct rpc_cred *cred)
->  EXPORT_SYMBOL_GPL(rpcauth_key_timeout_notify);
->
->  bool
-> -rpcauth_cred_key_to_expire(struct rpc_cred *cred)
-> +rpcauth_cred_key_to_expire(struct rpc_auth *auth, struct rpc_cred 
-> *cred)
->  {
-> +	if (auth->au_flags & RPCAUTH_AUTH_NO_CRKEY_TIMEOUT)
-> +		return false;
->  	if (!cred->cr_ops->crkey_to_expire)
->  		return false;
->  	return cred->cr_ops->crkey_to_expire(cred);
-> diff --git a/net/sunrpc/auth_generic.c b/net/sunrpc/auth_generic.c
-> index 54dd3fd..1682195 100644
-> --- a/net/sunrpc/auth_generic.c
-> +++ b/net/sunrpc/auth_generic.c
-> @@ -224,7 +224,7 @@ generic_key_timeout(struct rpc_auth *auth, struct 
-> rpc_cred *cred)
->
->
->  	/* Fast track for non crkey_timeout (no key) underlying credentials 
-> */
-> -	if (test_bit(RPC_CRED_NO_CRKEY_TIMEOUT, &acred->ac_flags))
-> +	if (auth->au_flags & RPCAUTH_AUTH_NO_CRKEY_TIMEOUT)
->  		return 0;
->
->  	/* Fast track for the normal case */
-> @@ -236,12 +236,6 @@ generic_key_timeout(struct rpc_auth *auth, struct 
-> rpc_cred *cred)
->  	if (IS_ERR(tcred))
->  		return -EACCES;
->
-> -	if (!tcred->cr_ops->crkey_timeout) {
-> -		set_bit(RPC_CRED_NO_CRKEY_TIMEOUT, &acred->ac_flags);
-> -		ret = 0;
-> -		goto out_put;
-> -	}
-> -
->  	/* Test for the almost error case */
->  	ret = tcred->cr_ops->crkey_timeout(tcred);
->  	if (ret != 0) {
-> @@ -257,7 +251,6 @@ generic_key_timeout(struct rpc_auth *auth, struct 
-> rpc_cred *cred)
->  		set_bit(RPC_CRED_NOTIFY_TIMEOUT, &acred->ac_flags);
->  	}
->
-> -out_put:
->  	put_rpccred(tcred);
->  	return ret;
->  }
-> diff --git a/net/sunrpc/auth_gss/auth_gss.c 
-> b/net/sunrpc/auth_gss/auth_gss.c
-> index e64ae93..813a3cd 100644
-> --- a/net/sunrpc/auth_gss/auth_gss.c
-> +++ b/net/sunrpc/auth_gss/auth_gss.c
-> @@ -1015,6 +1015,7 @@ gss_create_new(struct rpc_auth_create_args 
-> *args, struct rpc_clnt *clnt)
->  	auth = &gss_auth->rpc_auth;
->  	auth->au_cslack = GSS_CRED_SLACK >> 2;
->  	auth->au_rslack = GSS_VERF_SLACK >> 2;
-> +	auth->au_flags = 0;
->  	auth->au_ops = &authgss_ops;
->  	auth->au_flavor = flavor;
->  	atomic_set(&auth->au_count, 1);
-> diff --git a/net/sunrpc/auth_null.c b/net/sunrpc/auth_null.c
-> index 8d9eb4d..4d17376 100644
-> --- a/net/sunrpc/auth_null.c
-> +++ b/net/sunrpc/auth_null.c
-> @@ -115,6 +115,7 @@ static
->  struct rpc_auth null_auth = {
->  	.au_cslack	= NUL_CALLSLACK,
->  	.au_rslack	= NUL_REPLYSLACK,
-> +	.au_flags	= RPCAUTH_AUTH_NO_CRKEY_TIMEOUT,
->  	.au_ops		= &authnull_ops,
->  	.au_flavor	= RPC_AUTH_NULL,
->  	.au_count	= ATOMIC_INIT(0),
-> diff --git a/net/sunrpc/auth_unix.c b/net/sunrpc/auth_unix.c
-> index 9f65452..a99278c 100644
-> --- a/net/sunrpc/auth_unix.c
-> +++ b/net/sunrpc/auth_unix.c
-> @@ -228,6 +228,7 @@ static
->  struct rpc_auth		unix_auth = {
->  	.au_cslack	= UNX_CALLSLACK,
->  	.au_rslack	= NUL_REPLYSLACK,
-> +	.au_flags	= RPCAUTH_AUTH_NO_CRKEY_TIMEOUT,
->  	.au_ops		= &authunix_ops,
->  	.au_flavor	= RPC_AUTH_UNIX,
->  	.au_count	= ATOMIC_INIT(0),
-> -- 
-> 2.4.11
->
+> +here=`pwd`
+> +tmp=/tmp/$$
+> +status=1    # failure is the default!
+> +trap "_cleanup; exit \$status" 0 1 2 3 15
+> +
+> +_cleanup()
+> +{
+> +    cd /
+> +    rm -rf $tmp.* $testdir
+> +}
+> +
+> +# get standard environment, filters and checks
+> +. ./common/rc
+> +. ./common/filter
+> +
+> +# real QA test starts here
+> +_supported_os Linux
+> +_require_xfs_io_command "falloc"
+> +_require_xfs_io_command "fpunch"
+> +test $FSTYP = "btrfs" && _notrun "Can't fragment free space on btrfs."
+> +_require_odirect
+> +
+> +rm -f $seqres.full
+> +
+> +_fragment_freesp()
+> +{
+> +	file=$1
+> +
+> +	# consume nearly all available space (leave ~1MB)
+> +	avail=`_get_available_space $SCRATCH_MNT`
+> +	echo "$avail bytes left"
+> +	filesize=$((avail - 1048576))
+> +	$XFS_IO_PROG -fc "truncate $filesize" $file
+> +
+> +	chunks=20
+> +	chunksizemb=$((filesize / chunks / 1048576))
+> +	seq 1 $chunks | while read f; do
+> +		echo "$((f * chunksizemb)) file size $f / 20"
+> +		$XFS_IO_PROG -fc "falloc -k $(( (f - 1) * chunksizemb))m ${chunksizemb}m" $file
+> +	done
+> +
+> +	chunks=100
+> +	chunksizemb=$((filesize / chunks / 1048576))
+> +	seq 80 $chunks | while read f; do
+> +		echo "$((f * chunksizemb)) file size $f / $chunks"
+> +		$XFS_IO_PROG -fc "falloc -k $(( (f - 1) * chunksizemb))m ${chunksizemb}m" $file
+> +	done
+> +
+> +	filesizemb=$((filesize / 1048576))
+> +	$XFS_IO_PROG -fc "falloc -k 0 ${filesizemb}m" $file
+> +
+> +	# Try again anyway
+> +	avail=`_get_available_space $SCRATCH_MNT`
+> +	$XFS_IO_PROG -fc "pwrite -S 0x65 0 $avail" ${file}.${i}
+> +
+> +	# Punch out whatever we need
+> +	seq 1 $((nr * 4)) | while read f; do
+> +		$XFS_IO_PROG -f -c "fpunch $((f * 2 * blksz)) $blksz" $file
+> +	done
+> +}
+> +
+> +echo "Format and mount"
+> +_scratch_mkfs > $seqres.full 2>&1
+> +_scratch_mount >> $seqres.full 2>&1
+> +
+> +testdir=$SCRATCH_MNT/test-$seq
+> +mkdir $testdir
+> +
+> +echo "Create the original files"
+> +blksz=65536
+> +nr=1024
+> +filesize=$((blksz * nr))
+> +_pwrite_byte 0x61 0 $filesize $testdir/file1 >> $seqres.full
+> +_pwrite_byte 0x62 0 $filesize $testdir/file2 >> $seqres.full
+> +seq 0 2 $((nr-1)) | while read f; do
+> +#	_reflink_range $testdir/file1 $((blksz * f)) $testdir/file3 $((blksz * f)) $blksz >> $seqres.full
+> +	touch $testdir/file3
+> +	_pwrite_byte 0x61 $((blksz * f)) $blksz $testdir/file3.chk >> $seqres.full
+> +done
+> +seq 1 2 $((nr-1)) | while read f; do
+> +	touch $testdir/file3
+> +#	_reflink_range $testdir/file2 $((blksz * f)) $testdir/file3 $((blksz * f)) $blksz >> $seqres.full
+> +	_pwrite_byte 0x62 $((blksz * f)) $blksz $testdir/file3.chk >> $seqres.full
+> +done
+> +_scratch_cycle_mount
+> +_fragment_freesp $testdir/bigfile >> $seqres.full 2>&1
+> +filesize=$((blksz * nr))
+> +_scratch_cycle_mount
+> +
+> +echo "Overwrite"
+> +cowoff=$((filesize / 4))
+> +cowsz=$((filesize / 2))
+> +$XFS_IO_PROG -d -f -c "pwrite -S 0x63 -b $cowsz $cowoff $cowsz" $testdir/file3 >> $seqres.full
+> +_pwrite_byte 0x63 $cowoff $cowsz $testdir/file3.chk >> $seqres.full
+> +
+> +# mount / unmount
+> +_scratch_cycle_mount
+> +
+> +echo "Deleting"
+> +rm -r $testdir
+> +
+> +# success, all done
+> +status=0
+> +exit
+> diff --git a/tests/generic/700.out b/tests/generic/700.out
+> new file mode 100644
+> index 0000000..9f7ce0f
+> --- /dev/null
+> +++ b/tests/generic/700.out
+> @@ -0,0 +1,5 @@
+> +QA output created by 700
+> +Format and mount
+> +Create the original files
+> +Overwrite
+> +Deleting
+> diff --git a/tests/generic/group b/tests/generic/group
+> index 2bd40a1..46a796a 100644
+> --- a/tests/generic/group
+> +++ b/tests/generic/group
+> @@ -354,6 +354,7 @@
+>  349 blockdev quick rw
+>  350 blockdev quick rw
+>  351 blockdev quick rw
+> +700 auto nfs
+>  923 auto quick clone
+>  924 auto quick clone
+>  925 auto quick clone
 > --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" 
-> in
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
 > the body of a message to majordomo@vger.kernel.org
 > More majordomo info at  http://vger.kernel.org/majordomo-info.html
