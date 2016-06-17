@@ -1,128 +1,139 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-oi0-f68.google.com ([209.85.218.68]:34533 "EHLO
-	mail-oi0-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751309AbcFQNxb (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 17 Jun 2016 09:53:31 -0400
-Received: by mail-oi0-f68.google.com with SMTP id a64so13849915oii.1
-        for <linux-nfs@vger.kernel.org>; Fri, 17 Jun 2016 06:53:31 -0700 (PDT)
+Received: from us-smtp-delivery-194.mimecast.com ([63.128.21.194]:46338 "EHLO
+	us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1752038AbcFQOBs (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 17 Jun 2016 10:01:48 -0400
+From: Trond Myklebust <trondmy@primarydata.com>
+To: Oleg Drokin <green@linuxhacker.ru>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 03/12] NFS: Cache aggressively when file is open for
+ writing
+Date: Fri, 17 Jun 2016 14:01:18 +0000
+Message-ID: <B2C7A4BC-E47A-49FA-B50E-A3B64EEA1A7D@primarydata.com>
+References: <1465931115-30784-1-git-send-email-trond.myklebust@primarydata.com>
+ <1465931115-30784-2-git-send-email-trond.myklebust@primarydata.com>
+ <1465931115-30784-3-git-send-email-trond.myklebust@primarydata.com>
+ <87A9597E-A1F5-4DBE-B3C1-12369E5DF994@linuxhacker.ru>
+In-Reply-To: <87A9597E-A1F5-4DBE-B3C1-12369E5DF994@linuxhacker.ru>
 MIME-Version: 1.0
-In-Reply-To: <1463755437-17649-1-git-send-email-andros@netapp.com>
-References: <1463755437-17649-1-git-send-email-andros@netapp.com>
-From: Martin Houry <martinhoury@gmail.com>
-Date: Fri, 17 Jun 2016 15:53:10 +0200
-Message-ID: <CAEUt8V+tLAgkkuFZSDfAW+0gZcP5=HYrhnv5rVeFRkmCH-xn3g@mail.gmail.com>
-Subject: Re: [PATCH Version 5 00/10] NFSV4.1,2 session trunking
-To: andros@netapp.com
-Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
-        anna.schumaker@netapp.com, Bruce Fields <bfields@fieldses.org>,
-        Chuck Lever <chuck.lever@oracle.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Olivier Hault <olivier.hault@level-it.be>
 Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Greeting,
+DQoNCk9uIDYvMTYvMTYsIDIxOjExLCAiT2xlZyBEcm9raW4iIDxncmVlbkBsaW51eGhhY2tlci5y
+dT4gd3JvdGU6DQoNCkkgZ2V0IGFsbW9zdC1pbnN0YS1jcmFzaCB3aXRoIHRoaXMgcGF0Y2ggKHJl
+YWxseSwganVzdCB0ZXN0aW5nDQp0aGUgdGVzdGluZyBicmFuY2gsIGJ1dCBpbiB0aGUgY29kZSB0
+aGlzIHBhdGNoIGludHJvZHVjZWQpLg0KLXJjMiBkaWQgbm90IGhhdmUgdGhpcyBzb3J0IG9mIGNy
+YXNoLCBzbyBpdCBtdXN0IGJlIGEgbmV3IG9uZS4NCg0KT24gSnVuIDE0LCAyMDE2LCBhdCAzOjA1
+IFBNLCBUcm9uZCBNeWtsZWJ1c3Qgd3JvdGU6DQoNCj4gVW5sZXNzIHRoZSB1c2VyIGlzIHVzaW5n
+IGZpbGUgbG9ja2luZywgd2UgbXVzdCBhc3N1bWUgY2xvc2UtdG8tb3Blbg0KPiBjYWNoZSBjb25z
+aXN0ZW5jeSB3aGVuIHRoZSBmaWxlIGlzIG9wZW4gZm9yIHdyaXRpbmcuIEFkanVzdCB0aGUNCj4g
+Y2FjaGluZyBhbGdvcml0aG0gc28gdGhhdCBpdCBkb2VzIG5vdCBjbGVhciB0aGUgY2FjaGUgb24g
+b3V0LW9mLW9yZGVyDQo+IHdyaXRlcyBhbmQvb3IgYXR0cmlidXRlIHJldmFsaWRhdGlvbnMuDQo+
+IA0KPiBTaWduZWQtb2ZmLWJ5OiBUcm9uZCBNeWtsZWJ1c3QgPHRyb25kLm15a2xlYnVzdEBwcmlt
+YXJ5ZGF0YS5jb20+DQo+IC0tLQ0KPiBmcy9uZnMvZmlsZS5jICB8IDEzICsrLS0tLS0tLS0tLS0N
+Cj4gZnMvbmZzL2lub2RlLmMgfCA1NiArKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysr
+KysrKystLS0tLS0tLS0tLS0tLS0tLQ0KPiAyIGZpbGVzIGNoYW5nZWQsIDQxIGluc2VydGlvbnMo
+KyksIDI4IGRlbGV0aW9ucygtKQ0KPiANCj4gZGlmZiAtLWdpdCBhL2ZzL25mcy9maWxlLmMgYi9m
+cy9uZnMvZmlsZS5jDQo+IGluZGV4IDcxN2E4ZDZhZjUyZC4uMmQzOWQ5ZjlkYTdkIDEwMDY0NA0K
+PiAtLS0gYS9mcy9uZnMvZmlsZS5jDQo+ICsrKyBiL2ZzL25mcy9maWxlLmMNCj4gQEAgLTc4MCwx
+MSArNzgwLDYgQEAgZG9fdW5sayhzdHJ1Y3QgZmlsZSAqZmlscCwgaW50IGNtZCwgc3RydWN0IGZp
+bGVfbG9jayAqZmwsIGludCBpc19sb2NhbCkNCj4gfQ0KPiANCj4gc3RhdGljIGludA0KPiAtaXNf
+dGltZV9ncmFudWxhcihzdHJ1Y3QgdGltZXNwZWMgKnRzKSB7DQo+IC0JcmV0dXJuICgodHMtPnR2
+X3NlYyA9PSAwKSAmJiAodHMtPnR2X25zZWMgPD0gMTAwMCkpOw0KPiAtfQ0KPiAtDQo+IC1zdGF0
+aWMgaW50DQo+IGRvX3NldGxrKHN0cnVjdCBmaWxlICpmaWxwLCBpbnQgY21kLCBzdHJ1Y3QgZmls
+ZV9sb2NrICpmbCwgaW50IGlzX2xvY2FsKQ0KPiB7DQo+IAlzdHJ1Y3QgaW5vZGUgKmlub2RlID0g
+ZmlscC0+Zl9tYXBwaW5nLT5ob3N0Ow0KPiBAQCAtODE3LDEyICs4MTIsOCBAQCBkb19zZXRsayhz
+dHJ1Y3QgZmlsZSAqZmlscCwgaW50IGNtZCwgc3RydWN0IGZpbGVfbG9jayAqZmwsIGludCBpc19s
+b2NhbCkNCj4gCSAqIFRoaXMgbWFrZXMgbG9ja2luZyBhY3QgYXMgYSBjYWNoZSBjb2hlcmVuY3kg
+cG9pbnQuDQo+IAkgKi8NCj4gCW5mc19zeW5jX21hcHBpbmcoZmlscC0+Zl9tYXBwaW5nKTsNCj4g
+LQlpZiAoIU5GU19QUk9UTyhpbm9kZSktPmhhdmVfZGVsZWdhdGlvbihpbm9kZSwgRk1PREVfUkVB
+RCkpIHsNCj4gLQkJaWYgKGlzX3RpbWVfZ3JhbnVsYXIoJk5GU19TRVJWRVIoaW5vZGUpLT50aW1l
+X2RlbHRhKSkNCj4gLQkJCV9fbmZzX3JldmFsaWRhdGVfaW5vZGUoTkZTX1NFUlZFUihpbm9kZSks
+IGlub2RlKTsNCj4gLQkJZWxzZQ0KPiAtCQkJbmZzX3phcF9jYWNoZXMoaW5vZGUpOw0KPiAtCX0N
+Cj4gKwlpZiAoIU5GU19QUk9UTyhpbm9kZSktPmhhdmVfZGVsZWdhdGlvbihpbm9kZSwgRk1PREVf
+UkVBRCkpDQo+ICsJCW5mc196YXBfbWFwcGluZyhpbm9kZSwgZmlscC0+Zl9tYXBwaW5nKTsNCj4g
+b3V0Og0KPiAJcmV0dXJuIHN0YXR1czsNCj4gfQ0KPiBkaWZmIC0tZ2l0IGEvZnMvbmZzL2lub2Rl
+LmMgYi9mcy9uZnMvaW5vZGUuYw0KPiBpbmRleCA2MDA1MWU2MmQzZjEuLjhhODA4ZDI1ZGJjOCAx
+MDA2NDQNCj4gLS0tIGEvZnMvbmZzL2lub2RlLmMNCj4gKysrIGIvZnMvbmZzL2lub2RlLmMNCj4g
+QEAgLTg3OCw3ICs4NzgsMTAgQEAgdm9pZCBuZnNfaW5vZGVfYXR0YWNoX29wZW5fY29udGV4dChz
+dHJ1Y3QgbmZzX29wZW5fY29udGV4dCAqY3R4KQ0KPiAJc3RydWN0IG5mc19pbm9kZSAqbmZzaSA9
+IE5GU19JKGlub2RlKTsNCj4gDQo+IAlzcGluX2xvY2soJmlub2RlLT5pX2xvY2spOw0KPiAtCWxp
+c3RfYWRkKCZjdHgtPmxpc3QsICZuZnNpLT5vcGVuX2ZpbGVzKTsNCj4gKwlpZiAoY3R4LT5tb2Rl
+ICYgRk1PREVfV1JJVEUpDQo+ICsJCWxpc3RfYWRkKCZjdHgtPmxpc3QsICZuZnNpLT5vcGVuX2Zp
+bGVzKTsNCj4gKwllbHNlDQo+ICsJCWxpc3RfYWRkX3RhaWwoJmN0eC0+bGlzdCwgJm5mc2ktPm9w
+ZW5fZmlsZXMpOw0KPiAJc3Bpbl91bmxvY2soJmlub2RlLT5pX2xvY2spOw0KPiB9DQo+IEVYUE9S
+VF9TWU1CT0xfR1BMKG5mc19pbm9kZV9hdHRhY2hfb3Blbl9jb250ZXh0KTsNCj4gQEAgLTEyMTUs
+NiArMTIxOCwyMSBAQCBpbnQgbmZzX3JldmFsaWRhdGVfbWFwcGluZ19wcm90ZWN0ZWQoc3RydWN0
+IGlub2RlICppbm9kZSwgc3RydWN0IGFkZHJlc3Nfc3BhY2UgKg0KPiAJcmV0dXJuIF9fbmZzX3Jl
+dmFsaWRhdGVfbWFwcGluZyhpbm9kZSwgbWFwcGluZywgdHJ1ZSk7DQo+IH0NCj4gDQo+ICtzdGF0
+aWMgYm9vbCBuZnNfZmlsZV9oYXNfd3JpdGVycyhzdHJ1Y3QgbmZzX2lub2RlICpuZnNpKQ0KPiAr
+ew0KPiArCWFzc2VydF9zcGluX2xvY2tlZCgmbmZzaS0+dmZzX2lub2RlLmlfbG9jayk7DQo+ICsN
+Cj4gKwlpZiAobGlzdF9lbXB0eSgmbmZzaS0+b3Blbl9maWxlcykpDQo+ICsJCXJldHVybiBmYWxz
+ZTsNCj4gKwkvKiBOb3RlOiBUaGlzIHJlbGllcyBvbiBuZnNpLT5vcGVuX2ZpbGVzIGJlaW5nIG9y
+ZGVyZWQgd2l0aCB3cml0ZXJzDQo+ICsJICogICAgICAgYmVpbmcgcGxhY2VkIGF0IHRoZSBoZWFk
+IG9mIHRoZSBsaXN0Lg0KPiArCSAqICAgICAgIFNlZSBuZnNfaW5vZGVfYXR0YWNoX29wZW5fY29u
+dGV4dCgpDQo+ICsJICovDQo+ICsJcmV0dXJuIChsaXN0X2ZpcnN0X2VudHJ5KCZuZnNpLT5vcGVu
+X2ZpbGVzLA0KPiArCQkJc3RydWN0IG5mc19vcGVuX2NvbnRleHQsDQo+ICsJCQlsaXN0KS0+bW9k
+ZSAmIEZNT0RFX1dSSVRFKSA9PSBGTU9ERV9XUklURTsNCj4gK30NCj4gKw0KPiBzdGF0aWMgdW5z
+aWduZWQgbG9uZyBuZnNfd2NjX3VwZGF0ZV9pbm9kZShzdHJ1Y3QgaW5vZGUgKmlub2RlLCBzdHJ1
+Y3QgbmZzX2ZhdHRyICpmYXR0cikNCj4gew0KPiAJc3RydWN0IG5mc19pbm9kZSAqbmZzaSA9IE5G
+U19JKGlub2RlKTsNCj4gQEAgLTEyNzksMjIgKzEyOTcsMjQgQEAgc3RhdGljIGludCBuZnNfY2hl
+Y2tfaW5vZGVfYXR0cmlidXRlcyhzdHJ1Y3QgaW5vZGUgKmlub2RlLCBzdHJ1Y3QgbmZzX2ZhdHRy
+ICpmYXQNCj4gCWlmICgoZmF0dHItPnZhbGlkICYgTkZTX0FUVFJfRkFUVFJfVFlQRSkgJiYgKGlu
+b2RlLT5pX21vZGUgJiBTX0lGTVQpICE9IChmYXR0ci0+bW9kZSAmIFNfSUZNVCkpDQo+IAkJcmV0
+dXJuIC1FSU87DQo+IA0KPiAtCWlmICgoZmF0dHItPnZhbGlkICYgTkZTX0FUVFJfRkFUVFJfQ0hB
+TkdFKSAhPSAwICYmDQo+IC0JCQlpbm9kZS0+aV92ZXJzaW9uICE9IGZhdHRyLT5jaGFuZ2VfYXR0
+cikNCj4gLQkJaW52YWxpZCB8PSBORlNfSU5PX0lOVkFMSURfQVRUUnxORlNfSU5PX1JFVkFMX1BB
+R0VDQUNIRTsNCj4gKwlpZiAoIW5mc19maWxlX2hhc193cml0ZXJzKG5mc2kpKSB7DQoNClRoZSBj
+cmFzaCBhZGRyZXNzIHBvaW50cyBoZXJlIF5eOg0KZ2RiPiBsICoobmZzX3JlZnJlc2hfaW5vZGVf
+bG9ja2VkKzB4MjQ5KQ0KMHhmZmZmZmZmZjgxMzgyYzM5IGlzIGluIG5mc19yZWZyZXNoX2lub2Rl
+X2xvY2tlZCAoL2hvbWUvZ3JlZW4vYmsvbGludXgtdGVzdC9mcy9uZnMvaW5vZGUuYzoxMzAxKS4N
+CjEzMDEJCWlmICghbmZzX2ZpbGVfaGFzX3dyaXRlcnMobmZzaSkpIHsNCg0KRGlkIHNvbWUgcmFj
+aW5nIHRocmVhZCBqdXN0IGtpbGwgdGhlIGlub2RlIHVuZGVyIHRoaXMgdGhyZWFkIEkgd29uZGVy
+Pw0KDQpbICAyNjQuNzM5NzU3XSBCVUc6IHVuYWJsZSB0byBoYW5kbGUga2VybmVsIHBhZ2luZyBy
+ZXF1ZXN0IGF0IGZmZmY4ODAwOTg3NWZmZTgNClsgIDI2NC43NDA0NjhdIElQOiBbPGZmZmZmZmZm
+ODEzODJjMzk+XSBuZnNfcmVmcmVzaF9pbm9kZV9sb2NrZWQrMHgyNDkvMHg0ZTANClsgIDI2NC43
+NDEwODBdIFBHRCAzNTgwMDY3IFBVRCAzNTgzMDY3IFBNRCBiY2U1NjA2NyBQVEUgODAwMDAwMDA5
+ODc1ZjA2MA0KWyAgMjY0Ljc0MTgzNl0gT29wczogMDAwMCBbIzFdIFNNUCBERUJVR19QQUdFQUxM
+T0MNClsgIDI2NC43NDIzNTddIE1vZHVsZXMgbGlua2VkIGluOiBsb29wIHJwY3NlY19nc3Nfa3Ji
+NSBhY3BpX2NwdWZyZXEgdHBtX3RpcyBqb3lkZXYgdHBtIHZpcnRpb19jb25zb2xlIHBjc3BrciBp
+MmNfcGlpeDQgbmZzZCB0dG0gZHJtX2ttc19oZWxwZXIgc3lzY29weWFyZWEgc3lzZmlsbHJlY3Qg
+c3lzaW1nYmx0IGZiX3N5c19mb3BzIGRybSBmbG9wcHkgc2VyaW9fcmF3DQpbICAyNjQuNzg1MDA5
+XSBDUFU6IDcgUElEOiAzNDQ5NCBDb21tOiBscyBOb3QgdGFpbnRlZCA0LjcuMC1yYzMtdm0tbmZz
+KyAjMg0KWyAgMjY0Ljc4NTU1OV0gSGFyZHdhcmUgbmFtZTogUUVNVSBTdGFuZGFyZCBQQyAoaTQ0
+MEZYICsgUElJWCwgMTk5NiksIEJJT1MgMS44LjItMjAxNTA3MTRfMTkxMTM0LSAwNC8wMS8yMDE0
+DQpbICAyNjQuNzg2NTQ1XSB0YXNrOiBmZmZmODgwMDlmNzhjYWMwIHRpOiBmZmZmODgwMDlmNzgw
+MDAwIHRhc2sudGk6IGZmZmY4ODAwOWY3ODAwMDANClsgIDI2NC43ODc1OTZdIFJJUDogMDAxMDpb
+PGZmZmZmZmZmODEzODJjMzk+XSAgWzxmZmZmZmZmZjgxMzgyYzM5Pl0gbmZzX3JlZnJlc2hfaW5v
+ZGVfbG9ja2VkKzB4MjQ5LzB4NGUwDQpbICAyNjQuNzg4NjI4XSBSU1A6IDAwMTg6ZmZmZjg4MDA5
+Zjc4M2I1OCAgRUZMQUdTOiAwMDAxMDI0Ng0KWyAgMjY0Ljc4OTE1MV0gUkFYOiAwMDAwMDAwMDAw
+MDAwMDAwIFJCWDogZmZmZjg4MDBhYTQ4YjM0OCBSQ1g6IGZmZmY4ODAwOTg3NjAwMDANClsgIDI2
+NC43ODk3MDhdIFJEWDogMDAwMDAwMDAwMDAyN2U3ZiBSU0k6IDAwMDAwMDAwMDAwMDAwMDEgUkRJ
+OiBmZmZmODgwMGFhNDhiMzQ4DQpbICAyNjQuNzkyNTMzXSBSQlA6IGZmZmY4ODAwOWY3ODNiNzAg
+UjA4OiAwMDAwMDAwMDAwMDAwMDAwIFIwOTogMDAwMDAwMDAwMDAwMDAwMQ0KWyAgMjY0Ljc5MzA5
+MF0gUjEwOiBmZmZmODgwMGFhNDhiM2U4IFIxMTogMDAwMDAwMDAwMDAwMDAwMCBSMTI6IGZmZmY4
+ODAwYWE0OGIzNDgNClsgIDI2NC43OTM2NDddIFIxMzogZmZmZjg4MDA5M2Y4Y2YwMCBSMTQ6IGZm
+ZmY4ODAwODllYjEwYzAgUjE1OiBmZmZmODgwMDlmNzgzZGUwDQpbICAyNjQuNzk0MjA0XSBGUzog
+IDAwMDA3ZmVmZWU0ODg4MDAoMDAwMCkgR1M6ZmZmZjg4MDBiOTAwMDAwMCgwMDAwKSBrbmxHUzow
+MDAwMDAwMDAwMDAwMDAwDQpbICAyNjQuNzk1MTU0XSBDUzogIDAwMTAgRFM6IDAwMDAgRVM6IDAw
+MDAgQ1IwOiAwMDAwMDAwMDgwMDUwMDMzDQpbICAyNjQuNzk1Njg2XSBDUjI6IGZmZmY4ODAwOTg3
+NWZmZTggQ1IzOiAwMDAwMDAwMDlmM2FiMDAwIENSNDogMDAwMDAwMDAwMDAwMDZlMA0KWyAgMjY0
+Ljc5NjI0M10gU3RhY2s6DQpbICAyNjQuNzk2NzA4XSAgZmZmZjg4MDBhYTQ4YjNkMCBmZmZmODgw
+MGFhNDhiMzQ4IGZmZmY4ODAwOTNmOGNmMDAgZmZmZjg4MDA5Zjc4M2I5OA0KWyAgMjY0Ljc5Nzg1
+M10gIGZmZmZmZmZmODEzODJlZmUgZmZmZjg4MDBhYTQ4YjM0OCBmZmZmODgwMDlmNzgzYzM4IDAw
+MDAwMDAwMDAwMDAwMDANClsgIDI2NC43OTg5OTZdICBmZmZmODgwMDlmNzgzYmE4IGZmZmZmZmZm
+ODEzODJmMzkgZmZmZjg4MDA5Zjc4M2MxOCBmZmZmZmZmZjgxMzk2ZmUzDQpbICAyNjQuODI0ODgx
+XSBDYWxsIFRyYWNlOg0KWyAgMjY0LjgyNTM2Nl0gIFs8ZmZmZmZmZmY4MTM4MmVmZT5dIG5mc19y
+ZWZyZXNoX2lub2RlLnBhcnQuMjQrMHgyZS8weDUwDQpbICAyNjQuODI1OTA4XSAgWzxmZmZmZmZm
+ZjgxMzgyZjM5Pl0gbmZzX3JlZnJlc2hfaW5vZGUrMHgxOS8weDIwDQpbICAyNjQuODI2NDQxXSAg
+WzxmZmZmZmZmZjgxMzk2ZmUzPl0gbmZzM19wcm9jX2FjY2VzcysweGQzLzB4MTkwDQpbICAyNjQu
+ODI2OTcxXSAgWzxmZmZmZmZmZjgxMzdjNjZjPl0gbmZzX2RvX2FjY2VzcysweDNlYy8weDYyMA0K
+WyAgMjY0LjgzNzQ5N10gIFs8ZmZmZmZmZmY4MTM3YzJkMT5dID8gbmZzX2RvX2FjY2VzcysweDUx
+LzB4NjIwDQoNCkkgc3VzcGVjdCB0aGlzIGlzIHRoZSBidWcgdGhhdCB0aGUgYXV0b21hdGVkIHRl
+c3RpbmcgYWxzbyBmb3VuZCB3aXRoIHRoZSBuZnNfcmV2YWxpZGF0ZV9pbm9kZSgpIGdldHRpbmcg
+Y2FsbGVkIGFzIHBhcnQgb2YgdGhlIFJDVSBwYXRoLiBJIGhhdmUgYSBuZXcgcGF0Y2ggc2VyaWVz
+IHRoYXQgZml4ZXMgdGhhdCBpc3N1ZSBhbmQgdGhhdCBJ4oCZbGwgcHVibGlzaCBzb29uIChqdXN0
+IG5lZWQgdG8gZmlndXJlIG91dCB3aGF0IHRvIGRvIGFib3V0IHRoZSBsYXN0IGZldyBjb21tZW50
+cyBmcm9tIENocmlzdG9waOKAmXMgcmV2aWV3KS4NCg0KQ2hlZXJzDQogIFRyb25kDQoNCg==
 
-I have just tested the new version of the patch. I tried to shutdown
-an interface to see how it react. I have seen that the transfert is
-suspended until I up the interface back. This is a threat and I would
-like to share with you some clue to resolve it.
-1 - Could we use the depth of the requests queue to analyse if it stay
-at the same value during a determined amout of time. If this time is
-too long, we switch all the requests of this queue to another.
-2 - Stay aware of the state of each TCP connection and switch all the
-request of this queue to another if the TCP connection goes down.
-3 - Check the RTT of the request and consider the connection down if
-the RTT is too long. If it's too long  switch all the request of this
-queue to another.
-
-What do you think of these propositions?
-
-
-Martin
-
-2016-05-20 16:43 GMT+02:00  <andros@netapp.com>:
-> From: Andy Adamson <andros@netapp.com>
->
-> Version-5
-> ---------
->
-> Responded to Anna's code cleanup comments.
->
-> --> Andy
->
-> Version-4
-> ---------
->
-> This patch set enables session trunking configured two ways.
->
-> The NFSv4 minorversion > 0 pseudo-fs is probed
-> with a GETATTR(fs_locations) to retrieve a replicas list.
-> Each replica address is tested for session trunking. Those
-> that pass are added as aliases to the mount rpc client.
->
-> Try all multipath addresses for a data server. The first address that
-> successfully connects and creates a session is the mount address.
-> All subsequent addresses are tested for session trunking and
-> added as aliases.
->
-> TODO:
->
-> - Periodically probe the pseudo-fs with the GETATTR(fs_locations)
-> to pick up server multipath changes. This is why the
-> GETATTR(fs_locations) is a stand alone call.
->
-> - Call BIND_CONN_TO_SESSION for session trunking addresses
-> established under SP4_MACH_CRED or SP4_SSV. SP4_NONE established
-> addresses do not require BIND_CONN_TO_SESSION.
->
-> TESTING:
->
-> The pseudo-fs GETATTR(fs_locations) probe session trunking
-> was tested against a Linux server with a pseudo-fs
-> export stanza (e.g. a stanza with the fsid=0 or fsid=root
-> export option) and a replicas= export option
-> (replicas=<path1>@<server1>:<path2>@<server2>..)
-> Note that this configuration is for testing only. A future
-> patchset will add the replicas= configuration to the
-> NFSEXP_V4ROOT nfsd and mountd processing.
->
-> The pNFS DS multipath session trunking was tested against a
-> pynfs server which provides DS multipath configuration.
->
->
-> Andy Adamson (10):
->   NFS rename default callback ops
->   NFS refactor nfs4_match_clientids
->   NFS refactor nfs4_check_serverowner_major_id
->   NFS detect session trunking
->   NFS refactor _nfs4_proc_exchange_id for session trunking
->   SUNRPC add flag to rpc_task_release_client
->   NFS probe pseudo-fs for replicas
->   NFS test and add multipaths for session trunking
->   NFS test pnfs data server multipath session trunking aliases
->   NFS add multiaddr to nfs_show_nfsv4_options
->
->  fs/nfs/internal.h           |   2 +
->  fs/nfs/nfs4_fs.h            |   9 ++
->  fs/nfs/nfs4client.c         | 102 +++++++++++++++++---
->  fs/nfs/nfs4getroot.c        |   3 +
->  fs/nfs/nfs4proc.c           | 222 ++++++++++++++++++++++++++++++++++++++++++--
->  fs/nfs/nfs4xdr.c            |  38 +++-----
->  fs/nfs/pnfs_nfs.c           |  51 +++++++---
->  fs/nfs/super.c              |  26 ++++++
->  include/linux/nfs_xdr.h     |   4 +-
->  include/linux/sunrpc/clnt.h |   2 +-
->  net/sunrpc/clnt.c           |   6 +-
->  net/sunrpc/sched.c          |   2 +-
->  net/sunrpc/xprtmultipath.c  |   4 +
->  13 files changed, 406 insertions(+), 65 deletions(-)
->
-> --
-> 1.8.3.1
->
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
