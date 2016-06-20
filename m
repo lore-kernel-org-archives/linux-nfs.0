@@ -1,59 +1,53 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx142.netapp.com ([216.240.21.19]:52005 "EHLO mx142.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752253AbcFTPJH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 20 Jun 2016 11:09:07 -0400
-From: Anna Schumaker <Anna.Schumaker@netapp.com>
-Subject: Re: [PATCH] NFS: Trim extra slash in v4 nfs_path
-To: Benjamin Coddington <bcodding@redhat.com>, <linux-nfs@vger.kernel.org>
-References: <1cb38ee043176bca8ded7e18120776f8cf6a722d.1466017326.git.bcodding@redhat.com>
-CC: Trond Myklebust <trond.myklebust@primarydata.com>,
-        Anna Schumaker <anna.schumaker@netapp.com>
-Message-ID: <f4f47844-5a28-acbc-0779-fcd66ea6c028@Netapp.com>
-Date: Mon, 20 Jun 2016 11:08:09 -0400
+Received: from zeniv.linux.org.uk ([195.92.253.2]:47940 "EHLO
+	ZenIV.linux.org.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751403AbcFTP2o (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 20 Jun 2016 11:28:44 -0400
+Date: Mon, 20 Jun 2016 16:28:17 +0100
+From: Al Viro <viro@ZenIV.linux.org.uk>
+To: Trond Myklebust <trondmy@primarydata.com>
+Cc: Oleg Drokin <green@linuxhacker.ru>, Fields Bruce <bfields@redhat.com>,
+        linux-nfs list <linux-nfs@vger.kernel.org>,
+        "<linux-kernel@vger.kernel.org> Mailing List"
+	<linux-kernel@vger.kernel.org>,
+        "<linux-fsdevel@vger.kernel.org>" <linux-fsdevel@vger.kernel.org>
+Subject: Re: NFS/d_splice_alias breakage
+Message-ID: <20160620152817.GM14480@ZenIV.linux.org.uk>
+References: <CF78E59B-F311-437B-9D1C-1F3FF6C22126@linuxhacker.ru>
+ <20160603033750.GL14480@ZenIV.linux.org.uk>
+ <0C971585-6BFC-4665-832B-9B262F733BFC@linuxhacker.ru>
+ <20160603042648.GN14480@ZenIV.linux.org.uk>
+ <51139F5D-8CC8-4448-B3AB-5EF1B67E2D6C@linuxhacker.ru>
+ <20160603055655.GQ14480@ZenIV.linux.org.uk>
+ <D500FB60-CE33-4655-9995-70332B5945D2@linuxhacker.ru>
+ <20160620140858.GJ14480@ZenIV.linux.org.uk>
+ <78AC8FB0-86F3-4ABB-B2A9-2252CBFB4BC5@primarydata.com>
 MIME-Version: 1.0
-In-Reply-To: <1cb38ee043176bca8ded7e18120776f8cf6a722d.1466017326.git.bcodding@redhat.com>
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain; charset=utf-8
+In-Reply-To: <78AC8FB0-86F3-4ABB-B2A9-2252CBFB4BC5@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Ben,
-
-On 06/15/2016 03:02 PM, Benjamin Coddington wrote:
-> A NFSv4 mount of a subdirectory will show an extra slash (as in
-> 'server://path') in proc's mountinfo which will not match the device name
-> and path.  This can cause problems for programs searching for the mount.
-> Fix this by checking for a leading slash in the dentry path, if so trim
-> away any trailing slashes in the device name.
+On Mon, Jun 20, 2016 at 02:54:36PM +0000, Trond Myklebust wrote:
 > 
-> Signed-off-by: Benjamin Coddington <bcodding@redhat.com>
-> ---
->  fs/nfs/namespace.c | 2 +-
->  1 file changed, 1 insertion(+), 1 deletion(-)
+> > On Jun 20, 2016, at 10:08, Al Viro <viro@zeniv.linux.org.uk> wrote:
+> > 
+> > On Mon, Jun 20, 2016 at 09:25:12AM -0400, Oleg Drokin wrote:
+> >> It looks like this patch was totally forgotten?
+> >> I don't see it in neither vfs nor nfs trees and yet it fixes a very easy to cause
+> >> crash in nfs code. And I think it's unrelated to the other parallel case too.
+> > 
+> > I assumed it would go through NFS tree, seeing that it's NFS-specific and
+> > has nothing to do with any of the recent VFS changes (oops is triggerable
+> > starting from 3.11); I can certainly put it through vfs.git, and there
+> > will be changes nearby, but this one should go into -stable as a separate
+> > patch.
+> > 
 > 
-> diff --git a/fs/nfs/namespace.c b/fs/nfs/namespace.c
-> index c8162c660c44..5551e8ef67fd 100644
-> --- a/fs/nfs/namespace.c
-> +++ b/fs/nfs/namespace.c
-> @@ -98,7 +98,7 @@ rename_retry:
->  		return end;
->  	}
->  	namelen = strlen(base);
-> -	if (flags & NFS_PATH_CANONICAL) {
-> +	if (*end == '/') {
+> I’ll take it through the NFS tree.
 
-Are we getting here through nfs_show_devname()?  Because it looks like that function is passing 0 for flags instead of NFS_PATH_CANONICAL.
-
-Earlier in this function we have a check for:
-    if ((flags & NFS_PATH_CANONICAL) && *end != '/')
-
-Should we be checking if NFS_PATH_CANONICAL is set here, too?
-
-Thanks,
-Anna
-
->  		/* Strip off excess slashes in base string */
->  		while (namelen > 0 && base[namelen - 1] == '/')
->  			namelen--;
-> 
-
+OK.  It's really a -stable fodder, BTW - all you need to trigger that oops is
+a hashed negative dentry from earlier lookup + symlink created from another
+client + attempt to open from ours.  Gets you d_splice_alias() (or
+d_materialise_unique() prior to 3.19) with hashed dentry and that triggers
+BUG_ON, leaving us with the parent directory locked.
