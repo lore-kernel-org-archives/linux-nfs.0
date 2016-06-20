@@ -1,119 +1,91 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-pf0-f194.google.com ([209.85.192.194]:35096 "EHLO
-	mail-pf0-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751423AbcFTAnc (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 19 Jun 2016 20:43:32 -0400
-From: Deepa Dinamani <deepa.kernel@gmail.com>
-To: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org
-Cc: arnd@arndb.de, tglx@linutronix.de, torvalds@linux-foundation.org,
-        tytso@mit.edu, viro@zeniv.linux.org.uk, y2038@lists.linaro.org,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        Anna Schumaker <anna.schumaker@netapp.com>, linux-nfs@vger.kernel.org
-Subject: [PATCH v2 18/24] fs: nfs: Make nfs boot time y2038 safe
-Date: Sun, 19 Jun 2016 17:27:17 -0700
-Message-Id: <1466382443-11063-19-git-send-email-deepa.kernel@gmail.com>
-In-Reply-To: <1466382443-11063-1-git-send-email-deepa.kernel@gmail.com>
-References: <1466382443-11063-1-git-send-email-deepa.kernel@gmail.com>
+Received: from mail.kernel.org ([198.145.29.136]:49520 "EHLO mail.kernel.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751450AbcFTFo7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 20 Jun 2016 01:44:59 -0400
+Date: Mon, 20 Jun 2016 08:44:53 +0300
+From: Leon Romanovsky <leon@kernel.org>
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: Or Gerlitz <gerlitz.or@gmail.com>, Sagi Grimberg <sagigrim@gmail.com>,
+        Yishai Hadas <yishaih@mellanox.com>,
+        linux-rdma <linux-rdma@vger.kernel.org>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH v2 01/24] mlx4-ib: Use coherent memory for priv pages
+Message-ID: <20160620054453.GA1172@leon.nu>
+Reply-To: leon@kernel.org
+References: <20160616143518.GX5408@leon.nu>
+ <576315C9.30002@gmail.com>
+ <652EBA09-2978-414C-8606-38A96C63365A@oracle.com>
+ <20160617092018.GZ5408@leon.nu>
+ <4D23496A-FE01-4693-B125-82CD03B8F2D4@oracle.com>
+ <20160618105650.GD5408@leon.nu>
+ <5D0A6B47-CB71-42DA-AE76-164B6A660ECC@oracle.com>
+ <57666E14.2070802@gmail.com>
+ <CAJ3xEMha=i5SaM+fV5XP15Fx6pymrYnvk=a8w+3h1cbBeuVX0A@mail.gmail.com>
+ <B62EEE84-454D-4D55-9C7E-653F564DF381@oracle.com>
+MIME-Version: 1.0
+Content-Type: multipart/signed; micalg=pgp-sha1;
+	protocol="application/pgp-signature"; boundary="ew6BAiZeqk4r7MaW"
+In-Reply-To: <B62EEE84-454D-4D55-9C7E-653F564DF381@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-boot_time is represented as a struct timespec.
-struct timespec and CURRENT_TIME are not y2038 safe.
-Overall, the plan is to use timespec64 and ktime_t for
-all internal kernel representation of timestamps.
-CURRENT_TIME will also be removed.
 
-boot_time is used to construct the nfs client boot verifier.
+--ew6BAiZeqk4r7MaW
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+Content-Transfer-Encoding: quoted-printable
 
-Use ktime_t to represent boot_time and ktime_get_real() for
-the boot_time value.
+On Sun, Jun 19, 2016 at 04:02:23PM -0400, Chuck Lever wrote:
+>=20
 
-Following Trond's request https://lkml.org/lkml/2016/6/9/22 ,
-use ktime_t instead of converting to struct timespec64.
+Thanks Chuck and Sagi for the help.
 
-Use higher and lower 32 bit parts of ktime_t for the boot
-verifier.
+<...>
 
-Use the lower 32 bit part of ktime_t for the authsys_parms
-stamp field.
+>=20
+> > I
+> > didn't see such note along the thread, basically, I think this is
+> > where we should be starting, thoughts? I also added the mlx4 core/IB
+> > maintainer.
+>=20
+> Yishai was notified about this issue on May 25:
+>=20
+> http://marc.info/?l=3Dlinux-rdma&m=3D146419192913960&w=3D2
 
-Signed-off-by: Deepa Dinamani <deepa.kernel@gmail.com>
-Cc: Trond Myklebust <trond.myklebust@primarydata.com>
-Cc: Anna Schumaker <anna.schumaker@netapp.com>
-Cc: linux-nfs@vger.kernel.org
----
-Changes from V1:
-* Use ktime_t instead of timespec64_t
-* Change algorithm to use boot_time accordingly
+Yishai and me follow this thread closely and we work on finding the
+root cause of this issue.
 
- fs/nfs/client.c   |  2 +-
- fs/nfs/netns.h    |  2 +-
- fs/nfs/nfs4proc.c | 10 ++++++----
- fs/nfs/nfs4xdr.c  |  2 +-
- 4 files changed, 9 insertions(+), 7 deletions(-)
+Thanks
 
-diff --git a/fs/nfs/client.c b/fs/nfs/client.c
-index 0c96528..d1aff29 100644
---- a/fs/nfs/client.c
-+++ b/fs/nfs/client.c
-@@ -1080,7 +1080,7 @@ void nfs_clients_init(struct net *net)
- 	idr_init(&nn->cb_ident_idr);
- #endif
- 	spin_lock_init(&nn->nfs_client_lock);
--	nn->boot_time = CURRENT_TIME;
-+	nn->boot_time = ktime_get_real();
- }
- 
- #ifdef CONFIG_PROC_FS
-diff --git a/fs/nfs/netns.h b/fs/nfs/netns.h
-index f0e06e4..fbce0d8 100644
---- a/fs/nfs/netns.h
-+++ b/fs/nfs/netns.h
-@@ -29,7 +29,7 @@ struct nfs_net {
- 	int cb_users[NFS4_MAX_MINOR_VERSION + 1];
- #endif
- 	spinlock_t nfs_client_lock;
--	struct timespec boot_time;
-+	ktime_t boot_time;
- #ifdef CONFIG_PROC_FS
- 	struct proc_dir_entry *proc_nfsfs;
- #endif
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 406dd3e..8d9b5a9 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -5062,12 +5062,14 @@ static void nfs4_init_boot_verifier(const struct nfs_client *clp,
- 	if (test_bit(NFS4CLNT_PURGE_STATE, &clp->cl_state)) {
- 		/* An impossible timestamp guarantees this value
- 		 * will never match a generated boot time. */
--		verf[0] = 0;
--		verf[1] = cpu_to_be32(NSEC_PER_SEC + 1);
-+		verf[0] = cpu_to_be32(U32_MAX);
-+		verf[1] = cpu_to_be32(U32_MAX);
- 	} else {
- 		struct nfs_net *nn = net_generic(clp->cl_net, nfs_net_id);
--		verf[0] = cpu_to_be32(nn->boot_time.tv_sec);
--		verf[1] = cpu_to_be32(nn->boot_time.tv_nsec);
-+		u64 ns = ktime_to_ns(nn->boot_time);
-+
-+		verf[0] = cpu_to_be32(ns >> 32);
-+		verf[1] = cpu_to_be32(ns);
- 	}
- 	memcpy(bootverf->data, verf, sizeof(bootverf->data));
- }
-diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index 661e753..5944be0 100644
---- a/fs/nfs/nfs4xdr.c
-+++ b/fs/nfs/nfs4xdr.c
-@@ -1850,7 +1850,7 @@ static void encode_create_session(struct xdr_stream *xdr,
- 	*p++ = cpu_to_be32(RPC_AUTH_UNIX);			/* auth_sys */
- 
- 	/* authsys_parms rfc1831 */
--	*p++ = cpu_to_be32(nn->boot_time.tv_nsec);	/* stamp */
-+	*p++ = cpu_to_be32(ktime_to_ns(nn->boot_time));	/* stamp */
- 	p = xdr_encode_array(p, clnt->cl_nodename, clnt->cl_nodelen);
- 	*p++ = cpu_to_be32(0);				/* UID */
- 	*p++ = cpu_to_be32(0);				/* GID */
--- 
-1.9.1
+>=20
+>=20
+> --
+> Chuck Lever
+>=20
+>=20
+>=20
 
+--ew6BAiZeqk4r7MaW
+Content-Type: application/pgp-signature; name="signature.asc"
+Content-Description: Digital signature
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1
+
+iQIcBAEBAgAGBQJXZ4LVAAoJEORje4g2clinX2MQALc5XUJL6yV70MznegmDYPXd
+jjiO+3YD/Of9IVzX4wRYiV24F/4Q3lgFutP5NQx6kowF8GL4oiPjpJb3F19KdW0n
+zfRTmXnZUDs+JpSGVb6pzGSXxxk1PIeVtvV3KUM2oaCzxvdg9acvzLiKBZnFNDFw
+00VbB1WKRuKOqe+9FCavJXnNxq1bgyxZ14zEOtZD3qpQjMCttRfLE0VRnQuKaLD+
+9JbJWivg+MEgona4iObZJHOIahJkseMVNO4wxSnbCPAoByLdEk8Xu+wImy5xW6zM
+SO5+ArYqb5vMRh37FqC2mCOczwckZAtzT4Zrs3CI/ypGeUzoROEi6eCSBfqjPsiO
+Q3KzUo3mKw9WljV2UgATAQ1VoKaxze/GPIKVOZalLFdU268XHwp1hA0bjX/8vV9+
+TO6sJqLZ9NZVi2IVMnfDSjCfio7ZABm07GvwaZ8V56CvtvyuKcr8mjeZ90y2PhpQ
+Njoyu0tMFIJgK+fRcL0WF5aKinFuQREUb2/UN3Zd7V3KbxxTWGmzwmYGFmczL8Ev
+hWzUjd1/PzCe8/7dMi/RwNcI3yQgaXnQSeuwo6gaZkdR2Du2glKHpKOUgj2pc7Dk
+xYdBxQYWpRsvkLeHLHLUY94cBnnn3nLc/ukmLhyFvNwkSotoIWMpha1wUiYPQ7mi
+l0WNLlBjwxU1JeW7POx4
+=R5VF
+-----END PGP SIGNATURE-----
+
+--ew6BAiZeqk4r7MaW--
