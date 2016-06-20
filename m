@@ -1,13 +1,14 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-it0-f68.google.com ([209.85.214.68]:35200 "EHLO
+Received: from mail-it0-f68.google.com ([209.85.214.68]:33216 "EHLO
 	mail-it0-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754100AbcFTQNN (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 20 Jun 2016 12:13:13 -0400
-Subject: [PATCH v3 16/25] xprtrdma: Place registered MWs on a per-req list
+	with ESMTP id S1754136AbcFTQXc (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 20 Jun 2016 12:23:32 -0400
+Subject: [PATCH v3 22/25] xprtrdma: No direct data placement with krb5i and
+ krb5p
 From: Chuck Lever <chuck.lever@oracle.com>
 To: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Mon, 20 Jun 2016 12:10:46 -0400
-Message-ID: <20160620161046.10809.61198.stgit@manet.1015granger.net>
+Date: Mon, 20 Jun 2016 12:11:35 -0400
+Message-ID: <20160620161135.10809.55145.stgit@manet.1015granger.net>
 In-Reply-To: <20160620155751.10809.22262.stgit@manet.1015granger.net>
 References: <20160620155751.10809.22262.stgit@manet.1015granger.net>
 MIME-Version: 1.0
@@ -15,639 +16,161 @@ Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Instead of placing registered MWs sparsely into the rl_segments
-array, place these MWs on a per-req list.
+Direct data placement is not allowed when using flavors that
+guarantee integrity or privacy. When such security flavors are in
+effect, don't allow the use of Read and Write chunks for moving
+individual data items. All messages larger than the inline threshold
+are sent via Long Call or Long Reply.
 
-ro_unmap_{sync,safe} can then simply pull those MWs off the list
-instead of walking through the array.
+On my systems (CX-3 Pro on FDR), for small I/O operations, the use
+of Long messages adds only around 5 usecs of latency in each
+direction.
 
-This change significantly reduces the size of struct rpcrdma_req
-by removing nsegs and rl_mw from every array element.
-
-As an additional clean-up, chunk co-ordinates are returned in the
-"*mw" output argument so they are no longer needed in every
-array element.
+Note that when integrity or encryption is used, the host CPU touches
+every byte in these messages. Even if it could be used, data
+movement offload doesn't buy much in this case.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- net/sunrpc/xprtrdma/fmr_ops.c   |   65 ++++++++++---------------------
- net/sunrpc/xprtrdma/frwr_ops.c  |   72 ++++++++++++-----------------------
- net/sunrpc/xprtrdma/rpc_rdma.c  |   81 ++++++++++++++++++---------------------
- net/sunrpc/xprtrdma/transport.c |    3 +
- net/sunrpc/xprtrdma/verbs.c     |    1 
- net/sunrpc/xprtrdma/xprt_rdma.h |   11 +++--
- 6 files changed, 94 insertions(+), 139 deletions(-)
+ include/linux/sunrpc/auth.h           |    3 +++
+ include/linux/sunrpc/gss_api.h        |    2 ++
+ net/sunrpc/auth_gss/auth_gss.c        |    2 ++
+ net/sunrpc/auth_gss/gss_krb5_mech.c   |    2 ++
+ net/sunrpc/auth_gss/gss_mech_switch.c |   12 ++++++++++++
+ net/sunrpc/xprtrdma/rpc_rdma.c        |   12 ++++++++++--
+ 6 files changed, 31 insertions(+), 2 deletions(-)
 
-diff --git a/net/sunrpc/xprtrdma/fmr_ops.c b/net/sunrpc/xprtrdma/fmr_ops.c
-index 828ba46..1f504c4 100644
---- a/net/sunrpc/xprtrdma/fmr_ops.c
-+++ b/net/sunrpc/xprtrdma/fmr_ops.c
-@@ -102,6 +102,10 @@ fmr_op_release_mr(struct rpcrdma_mw *r)
- 	LIST_HEAD(unmap_list);
- 	int rc;
+diff --git a/include/linux/sunrpc/auth.h b/include/linux/sunrpc/auth.h
+index 8997915..3a40287 100644
+--- a/include/linux/sunrpc/auth.h
++++ b/include/linux/sunrpc/auth.h
+@@ -107,6 +107,9 @@ struct rpc_auth {
+ 	/* per-flavor data */
+ };
  
-+	/* Ensure MW is not on any rl_registered list */
-+	if (!list_empty(&r->mw_list))
-+		list_del(&r->mw_list);
++/* rpc_auth au_flags */
++#define RPCAUTH_AUTH_DATATOUCH	0x00000002
 +
- 	kfree(r->fmr.fm_physaddrs);
- 	kfree(r->mw_sg);
+ struct rpc_auth_create_args {
+ 	rpc_authflavor_t pseudoflavor;
+ 	const char *target_name;
+diff --git a/include/linux/sunrpc/gss_api.h b/include/linux/sunrpc/gss_api.h
+index 1f911cc..68ec78c 100644
+--- a/include/linux/sunrpc/gss_api.h
++++ b/include/linux/sunrpc/gss_api.h
+@@ -73,6 +73,7 @@ u32 gss_delete_sec_context(
+ rpc_authflavor_t gss_svc_to_pseudoflavor(struct gss_api_mech *, u32 qop,
+ 					u32 service);
+ u32 gss_pseudoflavor_to_service(struct gss_api_mech *, u32 pseudoflavor);
++bool gss_pseudoflavor_to_datatouch(struct gss_api_mech *, u32 pseudoflavor);
+ char *gss_service_to_auth_domain_name(struct gss_api_mech *, u32 service);
  
-@@ -177,17 +181,13 @@ fmr_op_maxpages(struct rpcrdma_xprt *r_xprt)
-  */
- static int
- fmr_op_map(struct rpcrdma_xprt *r_xprt, struct rpcrdma_mr_seg *seg,
--	   int nsegs, bool writing)
-+	   int nsegs, bool writing, struct rpcrdma_mw **out)
- {
- 	struct rpcrdma_mr_seg *seg1 = seg;
- 	int len, pageoff, i, rc;
- 	struct rpcrdma_mw *mw;
- 	u64 *dma_pages;
+ struct pf_desc {
+@@ -81,6 +82,7 @@ struct pf_desc {
+ 	u32	service;
+ 	char	*name;
+ 	char	*auth_domain_name;
++	bool	datatouch;
+ };
  
--	mw = seg1->rl_mw;
--	seg1->rl_mw = NULL;
--	if (mw)
--		rpcrdma_defer_mr_recovery(mw);
- 	mw = rpcrdma_get_mw(r_xprt);
- 	if (!mw)
- 		return -ENOBUFS;
-@@ -231,11 +231,11 @@ fmr_op_map(struct rpcrdma_xprt *r_xprt, struct rpcrdma_mr_seg *seg,
- 	if (rc)
- 		goto out_maperr;
+ /* Different mechanisms (e.g., krb5 or spkm3) may implement gss-api, and
+diff --git a/net/sunrpc/auth_gss/auth_gss.c b/net/sunrpc/auth_gss/auth_gss.c
+index e64ae93..bca3537 100644
+--- a/net/sunrpc/auth_gss/auth_gss.c
++++ b/net/sunrpc/auth_gss/auth_gss.c
+@@ -1017,6 +1017,8 @@ gss_create_new(struct rpc_auth_create_args *args, struct rpc_clnt *clnt)
+ 	auth->au_rslack = GSS_VERF_SLACK >> 2;
+ 	auth->au_ops = &authgss_ops;
+ 	auth->au_flavor = flavor;
++	if (gss_pseudoflavor_to_datatouch(gss_auth->mech, flavor))
++		auth->au_flags |= RPCAUTH_AUTH_DATATOUCH;
+ 	atomic_set(&auth->au_count, 1);
+ 	kref_init(&gss_auth->kref);
  
--	seg1->rl_mw = mw;
--	seg1->mr_rkey = mw->fmr.fm_mr->rkey;
--	seg1->mr_base = dma_pages[0] + pageoff;
--	seg1->mr_nsegs = mw->mw_nents;
--	seg1->mr_len = len;
-+	mw->mw_handle = mw->fmr.fm_mr->rkey;
-+	mw->mw_length = len;
-+	mw->mw_offset = dma_pages[0] + pageoff;
+diff --git a/net/sunrpc/auth_gss/gss_krb5_mech.c b/net/sunrpc/auth_gss/gss_krb5_mech.c
+index 6542749..6059583 100644
+--- a/net/sunrpc/auth_gss/gss_krb5_mech.c
++++ b/net/sunrpc/auth_gss/gss_krb5_mech.c
+@@ -745,12 +745,14 @@ static struct pf_desc gss_kerberos_pfs[] = {
+ 		.qop = GSS_C_QOP_DEFAULT,
+ 		.service = RPC_GSS_SVC_INTEGRITY,
+ 		.name = "krb5i",
++		.datatouch = true,
+ 	},
+ 	[2] = {
+ 		.pseudoflavor = RPC_AUTH_GSS_KRB5P,
+ 		.qop = GSS_C_QOP_DEFAULT,
+ 		.service = RPC_GSS_SVC_PRIVACY,
+ 		.name = "krb5p",
++		.datatouch = true,
+ 	},
+ };
+ 
+diff --git a/net/sunrpc/auth_gss/gss_mech_switch.c b/net/sunrpc/auth_gss/gss_mech_switch.c
+index 7063d85..5fec3ab 100644
+--- a/net/sunrpc/auth_gss/gss_mech_switch.c
++++ b/net/sunrpc/auth_gss/gss_mech_switch.c
+@@ -361,6 +361,18 @@ gss_pseudoflavor_to_service(struct gss_api_mech *gm, u32 pseudoflavor)
+ }
+ EXPORT_SYMBOL(gss_pseudoflavor_to_service);
+ 
++bool
++gss_pseudoflavor_to_datatouch(struct gss_api_mech *gm, u32 pseudoflavor)
++{
++	int i;
 +
-+	*out = mw;
- 	return mw->mw_nents;
- 
- out_dmamap_err:
-@@ -256,13 +256,13 @@ out_maperr:
-  *
-  * Sleeps until it is safe for the host CPU to access the
-  * previously mapped memory regions.
-+ *
-+ * Caller ensures that req->rl_registered is not empty.
-  */
- static void
- fmr_op_unmap_sync(struct rpcrdma_xprt *r_xprt, struct rpcrdma_req *req)
- {
--	struct rpcrdma_mr_seg *seg;
--	unsigned int i, nchunks;
--	struct rpcrdma_mw *mw;
-+	struct rpcrdma_mw *mw, *tmp;
- 	LIST_HEAD(unmap_list);
- 	int rc;
- 
-@@ -273,14 +273,8 @@ fmr_op_unmap_sync(struct rpcrdma_xprt *r_xprt, struct rpcrdma_req *req)
- 	 * ib_unmap_fmr() is slow, so use a single call instead
- 	 * of one call per mapped FMR.
- 	 */
--	for (i = 0, nchunks = req->rl_nchunks; nchunks; nchunks--) {
--		seg = &req->rl_segments[i];
--		mw = seg->rl_mw;
--
-+	list_for_each_entry(mw, &req->rl_registered, mw_list)
- 		list_add_tail(&mw->fmr.fm_mr->list, &unmap_list);
--
--		i += seg->mr_nsegs;
--	}
- 	rc = ib_unmap_fmr(&unmap_list);
- 	if (rc)
- 		goto out_reset;
-@@ -288,34 +282,22 @@ fmr_op_unmap_sync(struct rpcrdma_xprt *r_xprt, struct rpcrdma_req *req)
- 	/* ORDER: Now DMA unmap all of the req's MRs, and return
- 	 * them to the free MW list.
- 	 */
--	for (i = 0, nchunks = req->rl_nchunks; nchunks; nchunks--) {
--		seg = &req->rl_segments[i];
--		mw = seg->rl_mw;
--
-+	list_for_each_entry_safe(mw, tmp, &req->rl_registered, mw_list) {
-+		list_del_init(&mw->mw_list);
- 		list_del_init(&mw->fmr.fm_mr->list);
- 		ib_dma_unmap_sg(r_xprt->rx_ia.ri_device,
- 				mw->mw_sg, mw->mw_nents, mw->mw_dir);
- 		rpcrdma_put_mw(r_xprt, mw);
--
--		i += seg->mr_nsegs;
--		seg->mr_nsegs = 0;
--		seg->rl_mw = NULL;
- 	}
- 
--	req->rl_nchunks = 0;
- 	return;
- 
- out_reset:
- 	pr_err("rpcrdma: ib_unmap_fmr failed (%i)\n", rc);
- 
--	for (i = 0, nchunks = req->rl_nchunks; nchunks; nchunks--) {
--		seg = &req->rl_segments[i];
--		mw = seg->rl_mw;
--
-+	list_for_each_entry_safe(mw, tmp, &req->rl_registered, mw_list) {
- 		list_del_init(&mw->fmr.fm_mr->list);
- 		fmr_op_recover_mr(mw);
--
--		i += seg->mr_nsegs;
- 	}
- }
- 
-@@ -326,22 +308,17 @@ static void
- fmr_op_unmap_safe(struct rpcrdma_xprt *r_xprt, struct rpcrdma_req *req,
- 		  bool sync)
- {
--	struct rpcrdma_mr_seg *seg;
- 	struct rpcrdma_mw *mw;
--	unsigned int i;
- 
--	for (i = 0; req->rl_nchunks; req->rl_nchunks--) {
--		seg = &req->rl_segments[i];
--		mw = seg->rl_mw;
-+	while (!list_empty(&req->rl_registered)) {
-+		mw = list_first_entry(&req->rl_registered,
-+				      struct rpcrdma_mw, mw_list);
-+		list_del_init(&mw->mw_list);
- 
- 		if (sync)
- 			fmr_op_recover_mr(mw);
- 		else
- 			rpcrdma_defer_mr_recovery(mw);
--
--		i += seg->mr_nsegs;
--		seg->mr_nsegs = 0;
--		seg->rl_mw = NULL;
- 	}
- }
- 
-diff --git a/net/sunrpc/xprtrdma/frwr_ops.c b/net/sunrpc/xprtrdma/frwr_ops.c
-index f4c06c8..892b5e1 100644
---- a/net/sunrpc/xprtrdma/frwr_ops.c
-+++ b/net/sunrpc/xprtrdma/frwr_ops.c
-@@ -128,6 +128,10 @@ frwr_op_release_mr(struct rpcrdma_mw *r)
- {
- 	int rc;
- 
-+	/* Ensure MW is not on any rl_registered list */
-+	if (!list_empty(&r->mw_list))
-+		list_del(&r->mw_list);
++	for (i = 0; i < gm->gm_pf_num; i++) {
++		if (gm->gm_pfs[i].pseudoflavor == pseudoflavor)
++			return gm->gm_pfs[i].datatouch;
++	}
++	return false;
++}
 +
- 	rc = ib_dereg_mr(r->frmr.fr_mr);
- 	if (rc)
- 		pr_err("rpcrdma: final ib_dereg_mr for %p returned %i\n",
-@@ -333,10 +337,9 @@ frwr_wc_localinv_wake(struct ib_cq *cq, struct ib_wc *wc)
-  */
- static int
- frwr_op_map(struct rpcrdma_xprt *r_xprt, struct rpcrdma_mr_seg *seg,
--	    int nsegs, bool writing)
-+	    int nsegs, bool writing, struct rpcrdma_mw **out)
+ char *
+ gss_service_to_auth_domain_name(struct gss_api_mech *gm, u32 service)
  {
- 	struct rpcrdma_ia *ia = &r_xprt->rx_ia;
--	struct rpcrdma_mr_seg *seg1 = seg;
- 	struct rpcrdma_mw *mw;
- 	struct rpcrdma_frmr *frmr;
- 	struct ib_mr *mr;
-@@ -345,8 +348,7 @@ frwr_op_map(struct rpcrdma_xprt *r_xprt, struct rpcrdma_mr_seg *seg,
- 	int rc, i, n, dma_nents;
- 	u8 key;
- 
--	mw = seg1->rl_mw;
--	seg1->rl_mw = NULL;
-+	mw = NULL;
- 	do {
- 		if (mw)
- 			rpcrdma_defer_mr_recovery(mw);
-@@ -416,12 +418,11 @@ frwr_op_map(struct rpcrdma_xprt *r_xprt, struct rpcrdma_mr_seg *seg,
- 	if (rc)
- 		goto out_senderr;
- 
--	seg1->rl_mw = mw;
--	seg1->mr_rkey = mr->rkey;
--	seg1->mr_base = mr->iova;
--	seg1->mr_nsegs = mw->mw_nents;
--	seg1->mr_len = mr->length;
-+	mw->mw_handle = mr->rkey;
-+	mw->mw_length = mr->length;
-+	mw->mw_offset = mr->iova;
- 
-+	*out = mw;
- 	return mw->mw_nents;
- 
- out_dmamap_err:
-@@ -443,9 +444,8 @@ out_senderr:
- }
- 
- static struct ib_send_wr *
--__frwr_prepare_linv_wr(struct rpcrdma_mr_seg *seg)
-+__frwr_prepare_linv_wr(struct rpcrdma_mw *mw)
- {
--	struct rpcrdma_mw *mw = seg->rl_mw;
- 	struct rpcrdma_frmr *f = &mw->frmr;
- 	struct ib_send_wr *invalidate_wr;
- 
-@@ -465,16 +465,16 @@ __frwr_prepare_linv_wr(struct rpcrdma_mr_seg *seg)
-  *
-  * Sleeps until it is safe for the host CPU to access the
-  * previously mapped memory regions.
-+ *
-+ * Caller ensures that req->rl_registered is not empty.
-  */
- static void
- frwr_op_unmap_sync(struct rpcrdma_xprt *r_xprt, struct rpcrdma_req *req)
- {
- 	struct ib_send_wr *invalidate_wrs, *pos, *prev, *bad_wr;
- 	struct rpcrdma_ia *ia = &r_xprt->rx_ia;
--	struct rpcrdma_mr_seg *seg;
--	unsigned int i, nchunks;
-+	struct rpcrdma_mw *mw, *tmp;
- 	struct rpcrdma_frmr *f;
--	struct rpcrdma_mw *mw;
- 	int rc;
- 
- 	dprintk("RPC:       %s: req %p\n", __func__, req);
-@@ -484,22 +484,18 @@ frwr_op_unmap_sync(struct rpcrdma_xprt *r_xprt, struct rpcrdma_req *req)
- 	 * Chain the LOCAL_INV Work Requests and post them with
- 	 * a single ib_post_send() call.
- 	 */
-+	f = NULL;
- 	invalidate_wrs = pos = prev = NULL;
--	seg = NULL;
--	for (i = 0, nchunks = req->rl_nchunks; nchunks; nchunks--) {
--		seg = &req->rl_segments[i];
--
--		pos = __frwr_prepare_linv_wr(seg);
-+	list_for_each_entry(mw, &req->rl_registered, mw_list) {
-+		pos = __frwr_prepare_linv_wr(mw);
- 
- 		if (!invalidate_wrs)
- 			invalidate_wrs = pos;
- 		else
- 			prev->next = pos;
- 		prev = pos;
--
--		i += seg->mr_nsegs;
-+		f = &mw->frmr;
- 	}
--	f = &seg->rl_mw->frmr;
- 
- 	/* Strong send queue ordering guarantees that when the
- 	 * last WR in the chain completes, all WRs in the chain
-@@ -524,20 +520,12 @@ frwr_op_unmap_sync(struct rpcrdma_xprt *r_xprt, struct rpcrdma_req *req)
- 	 * them to the free MW list.
- 	 */
- unmap:
--	for (i = 0, nchunks = req->rl_nchunks; nchunks; nchunks--) {
--		seg = &req->rl_segments[i];
--		mw = seg->rl_mw;
--		seg->rl_mw = NULL;
--
-+	list_for_each_entry_safe(mw, tmp, &req->rl_registered, mw_list) {
-+		list_del_init(&mw->mw_list);
- 		ib_dma_unmap_sg(ia->ri_device,
- 				mw->mw_sg, mw->mw_nents, mw->mw_dir);
- 		rpcrdma_put_mw(r_xprt, mw);
--
--		i += seg->mr_nsegs;
--		seg->mr_nsegs = 0;
- 	}
--
--	req->rl_nchunks = 0;
- 	return;
- 
- reset_mrs:
-@@ -547,17 +535,12 @@ reset_mrs:
- 	/* Find and reset the MRs in the LOCAL_INV WRs that did not
- 	 * get posted. This is synchronous, and slow.
- 	 */
--	for (i = 0, nchunks = req->rl_nchunks; nchunks; nchunks--) {
--		seg = &req->rl_segments[i];
--		mw = seg->rl_mw;
-+	list_for_each_entry(mw, &req->rl_registered, mw_list) {
- 		f = &mw->frmr;
--
- 		if (mw->frmr.fr_mr->rkey == bad_wr->ex.invalidate_rkey) {
- 			__frwr_reset_mr(ia, mw);
- 			bad_wr = bad_wr->next;
- 		}
--
--		i += seg->mr_nsegs;
- 	}
- 	goto unmap;
- }
-@@ -569,22 +552,17 @@ static void
- frwr_op_unmap_safe(struct rpcrdma_xprt *r_xprt, struct rpcrdma_req *req,
- 		   bool sync)
- {
--	struct rpcrdma_mr_seg *seg;
- 	struct rpcrdma_mw *mw;
--	unsigned int i;
- 
--	for (i = 0; req->rl_nchunks; req->rl_nchunks--) {
--		seg = &req->rl_segments[i];
--		mw = seg->rl_mw;
-+	while (!list_empty(&req->rl_registered)) {
-+		mw = list_first_entry(&req->rl_registered,
-+				      struct rpcrdma_mw, mw_list);
-+		list_del_init(&mw->mw_list);
- 
- 		if (sync)
- 			frwr_op_recover_mr(mw);
- 		else
- 			rpcrdma_defer_mr_recovery(mw);
--
--		i += seg->mr_nsegs;
--		seg->mr_nsegs = 0;
--		seg->rl_mw = NULL;
- 	}
- }
- 
 diff --git a/net/sunrpc/xprtrdma/rpc_rdma.c b/net/sunrpc/xprtrdma/rpc_rdma.c
-index 8fde0ab..6d34c1f 100644
+index dac2990..a47f170 100644
 --- a/net/sunrpc/xprtrdma/rpc_rdma.c
 +++ b/net/sunrpc/xprtrdma/rpc_rdma.c
-@@ -286,11 +286,11 @@ rpcrdma_convert_iovs(struct xdr_buf *xdrbuf, unsigned int pos,
- }
+@@ -570,6 +570,7 @@ rpcrdma_marshal_req(struct rpc_rqst *rqst)
+ 	struct rpcrdma_req *req = rpcr_to_rdmar(rqst);
+ 	enum rpcrdma_chunktype rtype, wtype;
+ 	struct rpcrdma_msg *headerp;
++	bool ddp_allowed;
+ 	ssize_t hdrlen;
+ 	size_t rpclen;
+ 	__be32 *iptr;
+@@ -586,6 +587,13 @@ rpcrdma_marshal_req(struct rpc_rqst *rqst)
+ 	headerp->rm_credit = cpu_to_be32(r_xprt->rx_buf.rb_max_requests);
+ 	headerp->rm_type = rdma_msg;
  
- static inline __be32 *
--xdr_encode_rdma_segment(__be32 *iptr, struct rpcrdma_mr_seg *seg)
-+xdr_encode_rdma_segment(__be32 *iptr, struct rpcrdma_mw *mw)
- {
--	*iptr++ = cpu_to_be32(seg->mr_rkey);
--	*iptr++ = cpu_to_be32(seg->mr_len);
--	return xdr_encode_hyper(iptr, seg->mr_base);
-+	*iptr++ = cpu_to_be32(mw->mw_handle);
-+	*iptr++ = cpu_to_be32(mw->mw_length);
-+	return xdr_encode_hyper(iptr, mw->mw_offset);
- }
- 
- /* XDR-encode the Read list. Supports encoding a list of read
-@@ -311,6 +311,7 @@ rpcrdma_encode_read_list(struct rpcrdma_xprt *r_xprt,
- 			 __be32 *iptr, enum rpcrdma_chunktype rtype)
- {
- 	struct rpcrdma_mr_seg *seg = req->rl_nextseg;
-+	struct rpcrdma_mw *mw;
- 	unsigned int pos;
- 	int n, nsegs;
- 
-@@ -328,9 +329,11 @@ rpcrdma_encode_read_list(struct rpcrdma_xprt *r_xprt,
- 		return ERR_PTR(nsegs);
- 
- 	do {
--		n = r_xprt->rx_ia.ri_ops->ro_map(r_xprt, seg, nsegs, false);
-+		n = r_xprt->rx_ia.ri_ops->ro_map(r_xprt, seg, nsegs,
-+						 false, &mw);
- 		if (n < 0)
- 			return ERR_PTR(n);
-+		list_add(&mw->mw_list, &req->rl_registered);
- 
- 		*iptr++ = xdr_one;	/* item present */
- 
-@@ -338,13 +341,12 @@ rpcrdma_encode_read_list(struct rpcrdma_xprt *r_xprt,
- 		 * have the same "position".
- 		 */
- 		*iptr++ = cpu_to_be32(pos);
--		iptr = xdr_encode_rdma_segment(iptr, seg);
-+		iptr = xdr_encode_rdma_segment(iptr, mw);
- 
--		dprintk("RPC: %5u %s: read segment pos %u "
--			"%d@0x%016llx:0x%08x (%s)\n",
-+		dprintk("RPC: %5u %s: pos %u %u@0x%016llx:0x%08x (%s)\n",
- 			rqst->rq_task->tk_pid, __func__, pos,
--			seg->mr_len, (unsigned long long)seg->mr_base,
--			seg->mr_rkey, n < nsegs ? "more" : "last");
-+			mw->mw_length, (unsigned long long)mw->mw_offset,
-+			mw->mw_handle, n < nsegs ? "more" : "last");
- 
- 		r_xprt->rx_stats.read_chunk_count++;
- 		req->rl_nchunks++;
-@@ -376,6 +378,7 @@ rpcrdma_encode_write_list(struct rpcrdma_xprt *r_xprt, struct rpcrdma_req *req,
- 			  enum rpcrdma_chunktype wtype)
- {
- 	struct rpcrdma_mr_seg *seg = req->rl_nextseg;
-+	struct rpcrdma_mw *mw;
- 	int n, nsegs, nchunks;
- 	__be32 *segcount;
- 
-@@ -396,17 +399,18 @@ rpcrdma_encode_write_list(struct rpcrdma_xprt *r_xprt, struct rpcrdma_req *req,
- 
- 	nchunks = 0;
- 	do {
--		n = r_xprt->rx_ia.ri_ops->ro_map(r_xprt, seg, nsegs, true);
-+		n = r_xprt->rx_ia.ri_ops->ro_map(r_xprt, seg, nsegs,
-+						 true, &mw);
- 		if (n < 0)
- 			return ERR_PTR(n);
-+		list_add(&mw->mw_list, &req->rl_registered);
- 
--		iptr = xdr_encode_rdma_segment(iptr, seg);
-+		iptr = xdr_encode_rdma_segment(iptr, mw);
- 
--		dprintk("RPC: %5u %s: write segment "
--			"%d@0x016%llx:0x%08x (%s)\n",
-+		dprintk("RPC: %5u %s: %u@0x016%llx:0x%08x (%s)\n",
- 			rqst->rq_task->tk_pid, __func__,
--			seg->mr_len, (unsigned long long)seg->mr_base,
--			seg->mr_rkey, n < nsegs ? "more" : "last");
-+			mw->mw_length, (unsigned long long)mw->mw_offset,
-+			mw->mw_handle, n < nsegs ? "more" : "last");
- 
- 		r_xprt->rx_stats.write_chunk_count++;
- 		r_xprt->rx_stats.total_rdma_request += seg->mr_len;
-@@ -443,6 +447,7 @@ rpcrdma_encode_reply_chunk(struct rpcrdma_xprt *r_xprt,
- 			   __be32 *iptr, enum rpcrdma_chunktype wtype)
- {
- 	struct rpcrdma_mr_seg *seg = req->rl_nextseg;
-+	struct rpcrdma_mw *mw;
- 	int n, nsegs, nchunks;
- 	__be32 *segcount;
- 
-@@ -461,17 +466,18 @@ rpcrdma_encode_reply_chunk(struct rpcrdma_xprt *r_xprt,
- 
- 	nchunks = 0;
- 	do {
--		n = r_xprt->rx_ia.ri_ops->ro_map(r_xprt, seg, nsegs, true);
-+		n = r_xprt->rx_ia.ri_ops->ro_map(r_xprt, seg, nsegs,
-+						 true, &mw);
- 		if (n < 0)
- 			return ERR_PTR(n);
-+		list_add(&mw->mw_list, &req->rl_registered);
- 
--		iptr = xdr_encode_rdma_segment(iptr, seg);
-+		iptr = xdr_encode_rdma_segment(iptr, mw);
- 
--		dprintk("RPC: %5u %s: reply segment "
--			"%d@0x%016llx:0x%08x (%s)\n",
-+		dprintk("RPC: %5u %s: %u@0x%016llx:0x%08x (%s)\n",
- 			rqst->rq_task->tk_pid, __func__,
--			seg->mr_len, (unsigned long long)seg->mr_base,
--			seg->mr_rkey, n < nsegs ? "more" : "last");
-+			mw->mw_length, (unsigned long long)mw->mw_offset,
-+			mw->mw_handle, n < nsegs ? "more" : "last");
- 
- 		r_xprt->rx_stats.reply_chunk_count++;
- 		r_xprt->rx_stats.total_rdma_request += seg->mr_len;
-@@ -690,10 +696,7 @@ rpcrdma_marshal_req(struct rpc_rqst *rqst)
- out_overflow:
- 	pr_err("rpcrdma: send overflow: hdrlen %zd rpclen %zu %s/%s\n",
- 		hdrlen, rpclen, transfertypes[rtype], transfertypes[wtype]);
--	/* Terminate this RPC. Chunks registered above will be
--	 * released by xprt_release -> xprt_rmda_free .
--	 */
--	return -EIO;
-+	iptr = ERR_PTR(-EIO);
- 
- out_unmap:
- 	r_xprt->rx_ia.ri_ops->ro_unmap_safe(r_xprt, req, false);
-@@ -705,15 +708,13 @@ out_unmap:
-  * RDMA'd by server. See map at rpcrdma_create_chunks()! :-)
-  */
- static int
--rpcrdma_count_chunks(struct rpcrdma_rep *rep, unsigned int max, int wrchunk, __be32 **iptrp)
-+rpcrdma_count_chunks(struct rpcrdma_rep *rep, int wrchunk, __be32 **iptrp)
- {
- 	unsigned int i, total_len;
- 	struct rpcrdma_write_chunk *cur_wchunk;
- 	char *base = (char *)rdmab_to_msg(rep->rr_rdmabuf);
- 
- 	i = be32_to_cpu(**iptrp);
--	if (i > max)
--		return -1;
- 	cur_wchunk = (struct rpcrdma_write_chunk *) (*iptrp + 1);
- 	total_len = 0;
- 	while (i--) {
-@@ -960,14 +961,13 @@ rpcrdma_reply_handler(struct rpcrdma_rep *rep)
- 		    (headerp->rm_body.rm_chunks[1] == xdr_zero &&
- 		     headerp->rm_body.rm_chunks[2] != xdr_zero) ||
- 		    (headerp->rm_body.rm_chunks[1] != xdr_zero &&
--		     req->rl_nchunks == 0))
-+		     list_empty(&req->rl_registered)))
- 			goto badheader;
- 		if (headerp->rm_body.rm_chunks[1] != xdr_zero) {
- 			/* count any expected write chunks in read reply */
- 			/* start at write chunk array count */
- 			iptr = &headerp->rm_body.rm_chunks[2];
--			rdmalen = rpcrdma_count_chunks(rep,
--						req->rl_nchunks, 1, &iptr);
-+			rdmalen = rpcrdma_count_chunks(rep, 1, &iptr);
- 			/* check for validity, and no reply chunk after */
- 			if (rdmalen < 0 || *iptr++ != xdr_zero)
- 				goto badheader;
-@@ -997,11 +997,11 @@ rpcrdma_reply_handler(struct rpcrdma_rep *rep)
- 		if (headerp->rm_body.rm_chunks[0] != xdr_zero ||
- 		    headerp->rm_body.rm_chunks[1] != xdr_zero ||
- 		    headerp->rm_body.rm_chunks[2] != xdr_one ||
--		    req->rl_nchunks == 0)
-+		    list_empty(&req->rl_registered))
- 			goto badheader;
- 		iptr = (__be32 *)((unsigned char *)headerp +
- 							RPCRDMA_HDRLEN_MIN);
--		rdmalen = rpcrdma_count_chunks(rep, req->rl_nchunks, 0, &iptr);
-+		rdmalen = rpcrdma_count_chunks(rep, 0, &iptr);
- 		if (rdmalen < 0)
- 			goto badheader;
- 		r_xprt->rx_stats.total_rdma_reply += rdmalen;
-@@ -1014,14 +1014,9 @@ rpcrdma_reply_handler(struct rpcrdma_rep *rep)
- 
- badheader:
- 	default:
--		dprintk("%s: invalid rpcrdma reply header (type %d):"
--				" chunks[012] == %d %d %d"
--				" expected chunks <= %d\n",
--				__func__, be32_to_cpu(headerp->rm_type),
--				headerp->rm_body.rm_chunks[0],
--				headerp->rm_body.rm_chunks[1],
--				headerp->rm_body.rm_chunks[2],
--				req->rl_nchunks);
-+		dprintk("RPC: %5u %s: invalid rpcrdma reply (type %u)\n",
-+			rqst->rq_task->tk_pid, __func__,
-+			be32_to_cpu(headerp->rm_type));
- 		status = -EIO;
- 		r_xprt->rx_stats.bad_reply_count++;
- 		break;
-@@ -1035,7 +1030,7 @@ out:
- 	 * control: waking the next RPC waits until this RPC has
- 	 * relinquished all its Send Queue entries.
- 	 */
--	if (req->rl_nchunks)
-+	if (!list_empty(&req->rl_registered))
- 		r_xprt->rx_ia.ri_ops->ro_unmap_sync(r_xprt, req);
- 
- 	spin_lock_bh(&xprt->transport_lock);
-diff --git a/net/sunrpc/xprtrdma/transport.c b/net/sunrpc/xprtrdma/transport.c
-index b1dd42a..81f0e87 100644
---- a/net/sunrpc/xprtrdma/transport.c
-+++ b/net/sunrpc/xprtrdma/transport.c
-@@ -619,6 +619,9 @@ xprt_rdma_send_request(struct rpc_task *task)
- 	struct rpcrdma_xprt *r_xprt = rpcx_to_rdmax(xprt);
- 	int rc = 0;
- 
-+	/* On retransmit, remove any previously registered chunks */
-+	r_xprt->rx_ia.ri_ops->ro_unmap_safe(r_xprt, req, false);
++	/* When the ULP employs a GSS flavor that guarantees integrity
++	 * or privacy, direct data placement of individual data items
++	 * is not allowed.
++	 */
++	ddp_allowed = !(rqst->rq_cred->cr_auth->au_flags &
++						RPCAUTH_AUTH_DATATOUCH);
 +
- 	rc = rpcrdma_marshal_req(rqst);
- 	if (rc < 0)
- 		goto failed_marshal;
-diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
-index c6242e4..6ad18a6 100644
---- a/net/sunrpc/xprtrdma/verbs.c
-+++ b/net/sunrpc/xprtrdma/verbs.c
-@@ -855,6 +855,7 @@ rpcrdma_create_req(struct rpcrdma_xprt *r_xprt)
- 	spin_unlock(&buffer->rb_reqslock);
- 	req->rl_cqe.done = rpcrdma_wc_send;
- 	req->rl_buffer = &r_xprt->rx_buf;
-+	INIT_LIST_HEAD(&req->rl_registered);
- 	return req;
- }
- 
-diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
-index 649d01d..f5d0511 100644
---- a/net/sunrpc/xprtrdma/xprt_rdma.h
-+++ b/net/sunrpc/xprtrdma/xprt_rdma.h
-@@ -245,6 +245,9 @@ struct rpcrdma_mw {
- 		struct rpcrdma_frmr	frmr;
- 	};
- 	struct rpcrdma_xprt	*mw_xprt;
-+	u32			mw_handle;
-+	u32			mw_length;
-+	u64			mw_offset;
- 	struct list_head	mw_all;
- };
- 
-@@ -272,11 +275,7 @@ struct rpcrdma_mw {
-  */
- 
- struct rpcrdma_mr_seg {		/* chunk descriptors */
--	struct rpcrdma_mw *rl_mw;	/* registered MR */
--	u64		mr_base;	/* registration result */
--	u32		mr_rkey;	/* registration result */
- 	u32		mr_len;		/* length of chunk or segment */
--	int		mr_nsegs;	/* number of segments in chunk or 0 */
- 	struct page	*mr_page;	/* owning page, if any */
- 	char		*mr_offset;	/* kva if no page, else offset */
- };
-@@ -294,6 +293,7 @@ struct rpcrdma_req {
- 	struct ib_sge		rl_send_iov[RPCRDMA_MAX_IOVS];
- 	struct rpcrdma_regbuf	*rl_rdmabuf;
- 	struct rpcrdma_regbuf	*rl_sendbuf;
-+	struct list_head	rl_registered;	/* registered segments */
- 	struct rpcrdma_mr_seg	rl_segments[RPCRDMA_MAX_SEGS];
- 	struct rpcrdma_mr_seg	*rl_nextseg;
- 
-@@ -397,7 +397,8 @@ struct rpcrdma_stats {
- struct rpcrdma_xprt;
- struct rpcrdma_memreg_ops {
- 	int		(*ro_map)(struct rpcrdma_xprt *,
--				  struct rpcrdma_mr_seg *, int, bool);
-+				  struct rpcrdma_mr_seg *, int, bool,
-+				  struct rpcrdma_mw **);
- 	void		(*ro_unmap_sync)(struct rpcrdma_xprt *,
- 					 struct rpcrdma_req *);
- 	void		(*ro_unmap_safe)(struct rpcrdma_xprt *,
+ 	/*
+ 	 * Chunks needed for results?
+ 	 *
+@@ -597,7 +605,7 @@ rpcrdma_marshal_req(struct rpc_rqst *rqst)
+ 	 */
+ 	if (rpcrdma_results_inline(r_xprt, rqst))
+ 		wtype = rpcrdma_noch;
+-	else if (rqst->rq_rcv_buf.flags & XDRBUF_READ)
++	else if (ddp_allowed && rqst->rq_rcv_buf.flags & XDRBUF_READ)
+ 		wtype = rpcrdma_writech;
+ 	else
+ 		wtype = rpcrdma_replych;
+@@ -620,7 +628,7 @@ rpcrdma_marshal_req(struct rpc_rqst *rqst)
+ 		rtype = rpcrdma_noch;
+ 		rpcrdma_inline_pullup(rqst);
+ 		rpclen = rqst->rq_svec[0].iov_len;
+-	} else if (rqst->rq_snd_buf.flags & XDRBUF_WRITE) {
++	} else if (ddp_allowed && rqst->rq_snd_buf.flags & XDRBUF_WRITE) {
+ 		rtype = rpcrdma_readch;
+ 		rpclen = rqst->rq_svec[0].iov_len;
+ 		rpclen += rpcrdma_tail_pullup(&rqst->rq_snd_buf);
 
