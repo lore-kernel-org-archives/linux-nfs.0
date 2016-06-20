@@ -1,72 +1,48 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-it0-f67.google.com ([209.85.214.67]:35915 "EHLO
-	mail-it0-f67.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751189AbcFTQbh (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 20 Jun 2016 12:31:37 -0400
-Subject: [PATCH v3 24/25] NFS: Don't drop CB requests with invalid principals
-From: Chuck Lever <chuck.lever@oracle.com>
-To: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Mon, 20 Jun 2016 12:11:52 -0400
-Message-ID: <20160620161152.10809.29988.stgit@manet.1015granger.net>
-In-Reply-To: <20160620155751.10809.22262.stgit@manet.1015granger.net>
-References: <20160620155751.10809.22262.stgit@manet.1015granger.net>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Received: from mx1.redhat.com ([209.132.183.28]:36650 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753641AbcFTRI1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 20 Jun 2016 13:08:27 -0400
+Received: from int-mx10.intmail.prod.int.phx2.redhat.com (int-mx10.intmail.prod.int.phx2.redhat.com [10.5.11.23])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+	(No client certificate requested)
+	by mx1.redhat.com (Postfix) with ESMTPS id DA1F0128262
+	for <linux-nfs@vger.kernel.org>; Mon, 20 Jun 2016 16:45:01 +0000 (UTC)
+Received: from steved.boston.devel.redhat.com (vpn-62-104.rdu2.redhat.com [10.10.62.104])
+	by int-mx10.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id u5KGj1Rv004280
+	for <linux-nfs@vger.kernel.org>; Mon, 20 Jun 2016 12:45:01 -0400
+From: Steve Dickson <steved@redhat.com>
+To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: [PATCH 1/1] start-statd: Use flock to serialize the running of this script
+Date: Mon, 20 Jun 2016 12:44:59 -0400
+Message-Id: <1466441099-16166-1-git-send-email-steved@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Before commit 778be232a207 ("NFS do not find client in NFSv4
-pg_authenticate"), the Linux callback server replied with
-RPC_AUTH_ERROR / RPC_AUTH_BADCRED, instead of dropping the CB
-request. Let's restore that behavior so the server has a chance to
-do something useful about it, and provide a warning that helps
-admins correct the problem.
+To once and for all stop multiple rpc.statd from
+being started (mostly in HA environments), use
+flock to serialize the running of the script
 
-Fixes: 778be232a207 ("NFS do not find client in NFSv4 ...")
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Signed-off-by: Steve Dickson <steved@redhat.com>
 ---
- fs/nfs/callback_xdr.c |    6 +++++-
- net/sunrpc/svc.c      |    5 +++++
- 2 files changed, 10 insertions(+), 1 deletion(-)
+ utils/statd/start-statd | 4 ++++
+ 1 file changed, 4 insertions(+)
 
-diff --git a/fs/nfs/callback_xdr.c b/fs/nfs/callback_xdr.c
-index d81f96a..656f68f 100644
---- a/fs/nfs/callback_xdr.c
-+++ b/fs/nfs/callback_xdr.c
-@@ -925,7 +925,7 @@ static __be32 nfs4_callback_compound(struct svc_rqst *rqstp, void *argp, void *r
- 	if (hdr_arg.minorversion == 0) {
- 		cps.clp = nfs4_find_client_ident(SVC_NET(rqstp), hdr_arg.cb_ident);
- 		if (!cps.clp || !check_gss_callback_principal(cps.clp, rqstp))
--			return rpc_drop_reply;
-+			goto out_invalidcred;
- 	}
+diff --git a/utils/statd/start-statd b/utils/statd/start-statd
+index 19e6eb2..2fd6039 100755
+--- a/utils/statd/start-statd
++++ b/utils/statd/start-statd
+@@ -6,6 +6,10 @@
+ # site.
+ PATH="/sbin:/usr/sbin:/bin:/usr/bin"
  
- 	cps.minorversion = hdr_arg.minorversion;
-@@ -953,6 +953,10 @@ static __be32 nfs4_callback_compound(struct svc_rqst *rqstp, void *argp, void *r
- 	nfs_put_client(cps.clp);
- 	dprintk("%s: done, status = %u\n", __func__, ntohl(status));
- 	return rpc_success;
++# Use flock to serialize the running of this script
++exec 200> /var/run/rpc.statd.lock
++flock -e 200
 +
-+out_invalidcred:
-+	pr_warn_ratelimited("NFS: NFSv4 callback contains invalid cred\n");
-+	return rpc_autherr_badcred;
- }
- 
- /*
-diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
-index 87290a5..c5b0cb4 100644
---- a/net/sunrpc/svc.c
-+++ b/net/sunrpc/svc.c
-@@ -1194,6 +1194,11 @@ svc_process_common(struct svc_rqst *rqstp, struct kvec *argv, struct kvec *resv)
- 				procp->pc_release(rqstp, NULL, rqstp->rq_resp);
- 			goto dropit;
- 		}
-+		if (*statp == rpc_autherr_badcred) {
-+			if (procp->pc_release)
-+				procp->pc_release(rqstp, NULL, rqstp->rq_resp);
-+			goto err_bad_auth;
-+		}
- 		if (*statp == rpc_success &&
- 		    (xdr = procp->pc_encode) &&
- 		    !xdr(rqstp, resv->iov_base+resv->iov_len, rqstp->rq_resp)) {
+ if [ -s /var/run/rpc.statd.pid ] &&
+        [ 1`cat /var/run/rpc.statd.pid` -gt 1 ] &&
+        kill -0 `cat /var/run/rpc.statd.pid` > /dev/null 2>&1
+-- 
+2.5.5
 
