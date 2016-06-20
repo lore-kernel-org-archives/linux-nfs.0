@@ -1,14 +1,14 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f195.google.com ([209.85.223.195]:36085 "EHLO
-	mail-io0-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754624AbcFTQNN (ORCPT
+Received: from mail-it0-f68.google.com ([209.85.214.68]:34575 "EHLO
+	mail-it0-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755091AbcFTQNN (ORCPT
 	<rfc822;linux-nfs@vger.kernel.org>); Mon, 20 Jun 2016 12:13:13 -0400
-Subject: [PATCH v3 17/25] xprtrdma: Chunk list encoders no longer share one
- rl_segments array
+Subject: [PATCH v3 19/25] xprtrdma: Do not update {head,
+ tail}.iov_len in rpcrdma_inline_fixup()
 From: Chuck Lever <chuck.lever@oracle.com>
 To: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Mon, 20 Jun 2016 12:10:54 -0400
-Message-ID: <20160620161054.10809.54380.stgit@manet.1015granger.net>
+Date: Mon, 20 Jun 2016 12:11:10 -0400
+Message-ID: <20160620161110.10809.24136.stgit@manet.1015granger.net>
 In-Reply-To: <20160620155751.10809.22262.stgit@manet.1015granger.net>
 References: <20160620155751.10809.22262.stgit@manet.1015granger.net>
 MIME-Version: 1.0
@@ -16,319 +16,138 @@ Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Currently, all three chunk list encoders each use a portion of the
-one rl_segments array in rpcrdma_req. This is because the MWs for
-each chunk list were preserved in rl_segments so that ro_unmap could
-find and invalidate them after the RPC was complete.
+While trying NFSv4.0/RDMA with sec=krb5p, I noticed small NFS READ
+operations failed. After the client unwrapped the NFS READ reply
+message, the NFS READ XDR decoder was not able to decode the reply.
+The message was "Server cheating in reply", with the reported
+number of received payload bytes being zero. Applications reported
+a read(2) that returned -1/EIO.
 
-However, now that MWs are placed on a per-req linked list as they
-are registered, there is no longer any information in rpcrdma_mr_seg
-that is shared between ro_map and ro_unmap_{sync,safe}, and thus
-nothing in rl_segments needs to be preserved after
-rpcrdma_marshal_req is complete.
+The problem is rpcrdma_inline_fixup() sets the tail.iov_len to zero
+when the incoming reply fits entirely in the head iovec. The zero
+tail.iov_len confused xdr_buf_trim(), which then mangled the actual
+reply data instead of simply removing the trailing GSS checksum.
 
-Thus the rl_segments array can be used now just for the needs of
-each rpcrdma_convert_iovs call. Once each chunk list is encoded, the
-next chunk list encoder is free to re-use all of rl_segments.
+As near as I can tell, RPC transports are not supposed to update the
+head.iov_len, page_len, or tail.iov_len fields in the receive XDR
+buffer when handling an incoming RPC reply message. These fields
+contain the length of each component of the XDR buffer, and hence
+the maximum number of bytes of reply data that can be stored in each
+XDR buffer component. I've concluded this because:
 
-This means all three chunk lists in one RPC request can now each
-encode a full size data payload with no increase in the size of
-rl_segments.
+- This is how xdr_partial_copy_from_skb() appears to behave
+- rpcrdma_inline_fixup() already does not alter page_len
+- call_decode() compares rq_private_buf and rq_rcv_buf and WARNs
+   if they are not exactly the same
 
-This is a key requirement for Kerberos support, since both the Call
-and Reply for a single RPC transaction are conveyed via Long
-messages (RDMA Read/Write). Both can be large.
+Unfortunately, as soon as I tried the simple fix to just remove the
+line that sets tail.iov_len to zero, I saw that the logic that
+appends the implicit Write chunk pad inline depends on inline_fixup
+setting tail.iov_len to zero.
+
+To address this, re-organize the tail iovec handling logic to use
+the same approach as with the head iovec: simply point tail.iov_base
+to the correct bytes in the receive buffer.
+
+While I remember all this, write down the conclusion in documenting
+comments.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- net/sunrpc/xprtrdma/rpc_rdma.c  |   61 ++++++++++++++++++---------------------
- net/sunrpc/xprtrdma/xprt_rdma.h |   36 ++++++++++-------------
- 2 files changed, 44 insertions(+), 53 deletions(-)
+ net/sunrpc/xprtrdma/rpc_rdma.c |   61 ++++++++++++++++++++++------------------
+ 1 file changed, 33 insertions(+), 28 deletions(-)
 
 diff --git a/net/sunrpc/xprtrdma/rpc_rdma.c b/net/sunrpc/xprtrdma/rpc_rdma.c
-index 6d34c1f..f60d229 100644
+index e3560c2..d018eb7 100644
 --- a/net/sunrpc/xprtrdma/rpc_rdma.c
 +++ b/net/sunrpc/xprtrdma/rpc_rdma.c
-@@ -196,8 +196,7 @@ rpcrdma_tail_pullup(struct xdr_buf *buf)
-  * MR when they can.
-  */
- static int
--rpcrdma_convert_kvec(struct kvec *vec, struct rpcrdma_mr_seg *seg,
--		     int n, int nsegs)
-+rpcrdma_convert_kvec(struct kvec *vec, struct rpcrdma_mr_seg *seg, int n)
- {
- 	size_t page_offset;
- 	u32 remaining;
-@@ -206,7 +205,7 @@ rpcrdma_convert_kvec(struct kvec *vec, struct rpcrdma_mr_seg *seg,
- 	base = vec->iov_base;
- 	page_offset = offset_in_page(base);
- 	remaining = vec->iov_len;
--	while (remaining && n < nsegs) {
-+	while (remaining && n < RPCRDMA_MAX_SEGS) {
- 		seg[n].mr_page = NULL;
- 		seg[n].mr_offset = base;
- 		seg[n].mr_len = min_t(u32, PAGE_SIZE - page_offset, remaining);
-@@ -230,23 +229,23 @@ rpcrdma_convert_kvec(struct kvec *vec, struct rpcrdma_mr_seg *seg,
- 
- static int
- rpcrdma_convert_iovs(struct xdr_buf *xdrbuf, unsigned int pos,
--	enum rpcrdma_chunktype type, struct rpcrdma_mr_seg *seg, int nsegs)
-+	enum rpcrdma_chunktype type, struct rpcrdma_mr_seg *seg)
- {
--	int len, n = 0, p;
--	int page_base;
-+	int len, n, p, page_base;
- 	struct page **ppages;
- 
-+	n = 0;
- 	if (pos == 0) {
--		n = rpcrdma_convert_kvec(&xdrbuf->head[0], seg, n, nsegs);
--		if (n == nsegs)
--			return -EIO;
-+		n = rpcrdma_convert_kvec(&xdrbuf->head[0], seg, n);
-+		if (n == RPCRDMA_MAX_SEGS)
-+			goto out_overflow;
- 	}
- 
- 	len = xdrbuf->page_len;
- 	ppages = xdrbuf->pages + (xdrbuf->page_base >> PAGE_SHIFT);
- 	page_base = xdrbuf->page_base & ~PAGE_MASK;
- 	p = 0;
--	while (len && n < nsegs) {
-+	while (len && n < RPCRDMA_MAX_SEGS) {
- 		if (!ppages[p]) {
- 			/* alloc the pagelist for receiving buffer */
- 			ppages[p] = alloc_page(GFP_ATOMIC);
-@@ -257,7 +256,7 @@ rpcrdma_convert_iovs(struct xdr_buf *xdrbuf, unsigned int pos,
- 		seg[n].mr_offset = (void *)(unsigned long) page_base;
- 		seg[n].mr_len = min_t(u32, PAGE_SIZE - page_base, len);
- 		if (seg[n].mr_len > PAGE_SIZE)
--			return -EIO;
-+			goto out_overflow;
- 		len -= seg[n].mr_len;
- 		++n;
- 		++p;
-@@ -265,8 +264,8 @@ rpcrdma_convert_iovs(struct xdr_buf *xdrbuf, unsigned int pos,
- 	}
- 
- 	/* Message overflows the seg array */
--	if (len && n == nsegs)
--		return -EIO;
-+	if (len && n == RPCRDMA_MAX_SEGS)
-+		goto out_overflow;
- 
- 	/* When encoding the read list, the tail is always sent inline */
- 	if (type == rpcrdma_readch)
-@@ -277,12 +276,16 @@ rpcrdma_convert_iovs(struct xdr_buf *xdrbuf, unsigned int pos,
- 		 * xdr pad bytes, saving the server an RDMA operation. */
- 		if (xdrbuf->tail[0].iov_len < 4 && xprt_rdma_pad_optimize)
- 			return n;
--		n = rpcrdma_convert_kvec(&xdrbuf->tail[0], seg, n, nsegs);
--		if (n == nsegs)
--			return -EIO;
-+		n = rpcrdma_convert_kvec(&xdrbuf->tail[0], seg, n);
-+		if (n == RPCRDMA_MAX_SEGS)
-+			goto out_overflow;
- 	}
- 
- 	return n;
-+
-+out_overflow:
-+	pr_err("rpcrdma: segment array overflow\n");
-+	return -EIO;
+@@ -740,8 +740,16 @@ rpcrdma_count_chunks(struct rpcrdma_rep *rep, int wrchunk, __be32 **iptrp)
+ 	return total_len;
  }
  
- static inline __be32 *
-@@ -310,7 +313,7 @@ rpcrdma_encode_read_list(struct rpcrdma_xprt *r_xprt,
- 			 struct rpcrdma_req *req, struct rpc_rqst *rqst,
- 			 __be32 *iptr, enum rpcrdma_chunktype rtype)
- {
--	struct rpcrdma_mr_seg *seg = req->rl_nextseg;
-+	struct rpcrdma_mr_seg *seg;
- 	struct rpcrdma_mw *mw;
- 	unsigned int pos;
- 	int n, nsegs;
-@@ -323,8 +326,8 @@ rpcrdma_encode_read_list(struct rpcrdma_xprt *r_xprt,
- 	pos = rqst->rq_snd_buf.head[0].iov_len;
- 	if (rtype == rpcrdma_areadch)
- 		pos = 0;
--	nsegs = rpcrdma_convert_iovs(&rqst->rq_snd_buf, pos, rtype, seg,
--				     RPCRDMA_MAX_SEGS - req->rl_nchunks);
-+	seg = req->rl_segments;
-+	nsegs = rpcrdma_convert_iovs(&rqst->rq_snd_buf, pos, rtype, seg);
- 	if (nsegs < 0)
- 		return ERR_PTR(nsegs);
+-/*
+- * Scatter inline received data back into provided iov's.
++/**
++ * rpcrdma_inline_fixup - Scatter inline received data into rqst's iovecs
++ * @rqst: controlling RPC request
++ * @srcp: points to RPC message payload in receive buffer
++ * @copy_len: remaining length of receive buffer content
++ * @pad: Write chunk pad bytes needed (zero for pure inline)
++ *
++ * The upper layer has set the maximum number of bytes it can
++ * receive in each component of rq_rcv_buf. These values are set in
++ * the head.iov_len, page_len, tail.iov_len, and buflen fields.
+  */
+ static void
+ rpcrdma_inline_fixup(struct rpc_rqst *rqst, char *srcp, int copy_len, int pad)
+@@ -751,17 +759,19 @@ rpcrdma_inline_fixup(struct rpc_rqst *rqst, char *srcp, int copy_len, int pad)
+ 	struct page **ppages;
+ 	int page_base;
  
-@@ -349,11 +352,9 @@ rpcrdma_encode_read_list(struct rpcrdma_xprt *r_xprt,
- 			mw->mw_handle, n < nsegs ? "more" : "last");
++	/* The head iovec is redirected to the RPC reply message
++	 * in the receive buffer, to avoid a memcopy.
++	 */
++	rqst->rq_rcv_buf.head[0].iov_base = srcp;
++
++	/* The contents of the receive buffer that follow
++	 * head.iov_len bytes are copied into the page list.
++	 */
+ 	curlen = rqst->rq_rcv_buf.head[0].iov_len;
+-	if (curlen > copy_len) {	/* write chunk header fixup */
++	if (curlen > copy_len)
+ 		curlen = copy_len;
+-		rqst->rq_rcv_buf.head[0].iov_len = curlen;
+-	}
+-
+ 	dprintk("RPC:       %s: srcp 0x%p len %d hdrlen %d\n",
+ 		__func__, srcp, copy_len, curlen);
+-
+-	/* Shift pointer for first receive segment only */
+-	rqst->rq_rcv_buf.head[0].iov_base = srcp;
+ 	srcp += curlen;
+ 	copy_len -= curlen;
  
- 		r_xprt->rx_stats.read_chunk_count++;
--		req->rl_nchunks++;
- 		seg += n;
- 		nsegs -= n;
- 	} while (nsegs);
--	req->rl_nextseg = seg;
+@@ -798,28 +808,23 @@ rpcrdma_inline_fixup(struct rpc_rqst *rqst, char *srcp, int copy_len, int pad)
+ 				break;
+ 			page_base = 0;
+ 		}
+-	}
  
- 	/* Finish Read list */
- 	*iptr++ = xdr_zero;	/* Next item not present */
-@@ -377,7 +378,7 @@ rpcrdma_encode_write_list(struct rpcrdma_xprt *r_xprt, struct rpcrdma_req *req,
- 			  struct rpc_rqst *rqst, __be32 *iptr,
- 			  enum rpcrdma_chunktype wtype)
- {
--	struct rpcrdma_mr_seg *seg = req->rl_nextseg;
-+	struct rpcrdma_mr_seg *seg;
- 	struct rpcrdma_mw *mw;
- 	int n, nsegs, nchunks;
- 	__be32 *segcount;
-@@ -387,10 +388,10 @@ rpcrdma_encode_write_list(struct rpcrdma_xprt *r_xprt, struct rpcrdma_req *req,
- 		return iptr;
+-	if (copy_len && rqst->rq_rcv_buf.tail[0].iov_len) {
+-		curlen = copy_len;
+-		if (curlen > rqst->rq_rcv_buf.tail[0].iov_len)
+-			curlen = rqst->rq_rcv_buf.tail[0].iov_len;
+-		if (rqst->rq_rcv_buf.tail[0].iov_base != srcp)
+-			memmove(rqst->rq_rcv_buf.tail[0].iov_base, srcp, curlen);
+-		dprintk("RPC:       %s: tail srcp 0x%p len %d curlen %d\n",
+-			__func__, srcp, copy_len, curlen);
+-		rqst->rq_rcv_buf.tail[0].iov_len = curlen;
+-		copy_len -= curlen; ++i;
+-	} else
+-		rqst->rq_rcv_buf.tail[0].iov_len = 0;
+-
+-	if (pad) {
+-		/* implicit padding on terminal chunk */
+-		unsigned char *p = rqst->rq_rcv_buf.tail[0].iov_base;
+-		while (pad--)
+-			p[rqst->rq_rcv_buf.tail[0].iov_len++] = 0;
++		/* Implicit padding for the last segment in a Write
++		 * chunk is inserted inline at the front of the tail
++		 * iovec. The upper layer ignores the content of
++		 * the pad. Simply ensure inline content in the tail
++		 * that follows the Write chunk is properly aligned.
++		 */
++		if (pad)
++			srcp -= pad;
  	}
  
-+	seg = req->rl_segments;
- 	nsegs = rpcrdma_convert_iovs(&rqst->rq_rcv_buf,
- 				     rqst->rq_rcv_buf.head[0].iov_len,
--				     wtype, seg,
--				     RPCRDMA_MAX_SEGS - req->rl_nchunks);
-+				     wtype, seg);
- 	if (nsegs < 0)
- 		return ERR_PTR(nsegs);
- 
-@@ -414,12 +415,10 @@ rpcrdma_encode_write_list(struct rpcrdma_xprt *r_xprt, struct rpcrdma_req *req,
- 
- 		r_xprt->rx_stats.write_chunk_count++;
- 		r_xprt->rx_stats.total_rdma_request += seg->mr_len;
--		req->rl_nchunks++;
- 		nchunks++;
- 		seg   += n;
- 		nsegs -= n;
- 	} while (nsegs);
--	req->rl_nextseg = seg;
- 
- 	/* Update count of segments in this Write chunk */
- 	*segcount = cpu_to_be32(nchunks);
-@@ -446,7 +445,7 @@ rpcrdma_encode_reply_chunk(struct rpcrdma_xprt *r_xprt,
- 			   struct rpcrdma_req *req, struct rpc_rqst *rqst,
- 			   __be32 *iptr, enum rpcrdma_chunktype wtype)
- {
--	struct rpcrdma_mr_seg *seg = req->rl_nextseg;
-+	struct rpcrdma_mr_seg *seg;
- 	struct rpcrdma_mw *mw;
- 	int n, nsegs, nchunks;
- 	__be32 *segcount;
-@@ -456,8 +455,8 @@ rpcrdma_encode_reply_chunk(struct rpcrdma_xprt *r_xprt,
- 		return iptr;
- 	}
- 
--	nsegs = rpcrdma_convert_iovs(&rqst->rq_rcv_buf, 0, wtype, seg,
--				     RPCRDMA_MAX_SEGS - req->rl_nchunks);
-+	seg = req->rl_segments;
-+	nsegs = rpcrdma_convert_iovs(&rqst->rq_rcv_buf, 0, wtype, seg);
- 	if (nsegs < 0)
- 		return ERR_PTR(nsegs);
- 
-@@ -481,12 +480,10 @@ rpcrdma_encode_reply_chunk(struct rpcrdma_xprt *r_xprt,
- 
- 		r_xprt->rx_stats.reply_chunk_count++;
- 		r_xprt->rx_stats.total_rdma_request += seg->mr_len;
--		req->rl_nchunks++;
- 		nchunks++;
- 		seg   += n;
- 		nsegs -= n;
- 	} while (nsegs);
--	req->rl_nextseg = seg;
- 
- 	/* Update count of segments in the Reply chunk */
- 	*segcount = cpu_to_be32(nchunks);
-@@ -656,8 +653,6 @@ rpcrdma_marshal_req(struct rpc_rqst *rqst)
- 	 * send a Call message with a Position Zero Read chunk and a
- 	 * regular Read chunk at the same time.
- 	 */
--	req->rl_nchunks = 0;
--	req->rl_nextseg = req->rl_segments;
- 	iptr = headerp->rm_body.rm_chunks;
- 	iptr = rpcrdma_encode_read_list(r_xprt, req, rqst, iptr, rtype);
- 	if (IS_ERR(iptr))
-diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
-index f5d0511..670fad5 100644
---- a/net/sunrpc/xprtrdma/xprt_rdma.h
-+++ b/net/sunrpc/xprtrdma/xprt_rdma.h
-@@ -171,23 +171,14 @@ rdmab_to_msg(struct rpcrdma_regbuf *rb)
-  *   o recv buffer (posted to provider)
-  *   o ib_sge (also donated to provider)
-  *   o status of reply (length, success or not)
-- *   o bookkeeping state to get run by tasklet (list, etc)
-+ *   o bookkeeping state to get run by reply handler (list, etc)
-  *
-- * These are allocated during initialization, per-transport instance;
-- * however, the tasklet execution list itself is global, as it should
-- * always be pretty short.
-+ * These are allocated during initialization, per-transport instance.
-  *
-  * N of these are associated with a transport instance, and stored in
-  * struct rpcrdma_buffer. N is the max number of outstanding requests.
-  */
- 
--#define RPCRDMA_MAX_DATA_SEGS	((1 * 1024 * 1024) / PAGE_SIZE)
--
--/* data segments + head/tail for Call + head/tail for Reply */
--#define RPCRDMA_MAX_SEGS 	(RPCRDMA_MAX_DATA_SEGS + 4)
--
--struct rpcrdma_buffer;
--
- struct rpcrdma_rep {
- 	struct ib_cqe		rr_cqe;
- 	unsigned int		rr_len;
-@@ -267,13 +258,18 @@ struct rpcrdma_mw {
-  * of iovs for send operations. The reason is that the iovs passed to
-  * ib_post_{send,recv} must not be modified until the work request
-  * completes.
-- *
-- * NOTES:
-- *   o RPCRDMA_MAX_SEGS is the max number of addressible chunk elements we
-- *     marshal. The number needed varies depending on the iov lists that
-- *     are passed to us and the memory registration mode we are in.
-  */
- 
-+/* Maximum number of page-sized "segments" per chunk list to be
-+ * registered or invalidated. Must handle a Reply chunk:
-+ */
-+enum {
-+	RPCRDMA_MAX_IOV_SEGS	= 3,
-+	RPCRDMA_MAX_DATA_SEGS	= ((1 * 1024 * 1024) / PAGE_SIZE) + 1,
-+	RPCRDMA_MAX_SEGS	= RPCRDMA_MAX_DATA_SEGS +
-+				  RPCRDMA_MAX_IOV_SEGS,
-+};
++	/* The tail iovec is redirected to the remaining data
++	 * in the receive buffer, to avoid a memcopy.
++	 */
++	if (copy_len || pad)
++		rqst->rq_rcv_buf.tail[0].iov_base = srcp;
 +
- struct rpcrdma_mr_seg {		/* chunk descriptors */
- 	u32		mr_len;		/* length of chunk or segment */
- 	struct page	*mr_page;	/* owning page, if any */
-@@ -282,10 +278,10 @@ struct rpcrdma_mr_seg {		/* chunk descriptors */
- 
- #define RPCRDMA_MAX_IOVS	(2)
- 
-+struct rpcrdma_buffer;
- struct rpcrdma_req {
- 	struct list_head	rl_free;
- 	unsigned int		rl_niovs;
--	unsigned int		rl_nchunks;
- 	unsigned int		rl_connect_cookie;
- 	struct rpc_task		*rl_task;
- 	struct rpcrdma_buffer	*rl_buffer;
-@@ -293,13 +289,13 @@ struct rpcrdma_req {
- 	struct ib_sge		rl_send_iov[RPCRDMA_MAX_IOVS];
- 	struct rpcrdma_regbuf	*rl_rdmabuf;
- 	struct rpcrdma_regbuf	*rl_sendbuf;
--	struct list_head	rl_registered;	/* registered segments */
--	struct rpcrdma_mr_seg	rl_segments[RPCRDMA_MAX_SEGS];
--	struct rpcrdma_mr_seg	*rl_nextseg;
- 
- 	struct ib_cqe		rl_cqe;
- 	struct list_head	rl_all;
- 	bool			rl_backchannel;
-+
-+	struct list_head	rl_registered;	/* registered segments */
-+	struct rpcrdma_mr_seg	rl_segments[RPCRDMA_MAX_SEGS];
- };
- 
- static inline struct rpcrdma_req *
+ 	if (copy_len)
+ 		dprintk("RPC:       %s: %d bytes in"
+ 			" %d extra segments (%d lost)\n",
 
