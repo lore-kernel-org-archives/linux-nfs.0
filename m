@@ -1,119 +1,52 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from userp1050.oracle.com ([156.151.31.82]:27320 "EHLO
-	userp1050.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750907AbcFUVUf convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 21 Jun 2016 17:20:35 -0400
-Received: from userp1040.oracle.com (userp1040.oracle.com [156.151.31.81])
-	by userp1050.oracle.com (Sentrion-MTA-4.3.2/Sentrion-MTA-4.3.2) with ESMTP id u5LFSmDS001404
-	(version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Tue, 21 Jun 2016 15:28:48 GMT
-Content-Type: text/plain; charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 9.3 \(3124\))
-Subject: Re: [PATCH 1/1 v2] systemd: Only start the gssd daemons when they are enabled
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <1466520807-4340-1-git-send-email-steved@redhat.com>
-Date: Tue, 21 Jun 2016 11:26:53 -0400
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <09ECB137-8EC4-4713-B5F4-44D0405B2700@oracle.com>
-References: <1466520807-4340-1-git-send-email-steved@redhat.com>
-To: Steve Dickson <steved@redhat.com>
+Received: from mail-io0-f194.google.com ([209.85.223.194]:33980 "EHLO
+	mail-io0-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751099AbcFUVfR (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 21 Jun 2016 17:35:17 -0400
+Received: by mail-io0-f194.google.com with SMTP id 100so4270178ioh.1
+        for <linux-nfs@vger.kernel.org>; Tue, 21 Jun 2016 14:35:17 -0700 (PDT)
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH v2 01/12] NFS: Don't flush caches for a getattr that races with writeback
+Date: Tue, 21 Jun 2016 17:34:42 -0400
+Message-Id: <1466544893-12058-1-git-send-email-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+If there were outstanding writes then chalk up the unexpected change
+attribute on the server to them.
 
-> On Jun 21, 2016, at 10:53 AM, Steve Dickson <steved@redhat.com> wrote:
-> 
-> When Kerberos is enabled, the /etc/krb5.keytab exists
-> which causes the both gssd daemons to start, automatically.
-> 
-> With rpc.gssd running, on all NFS mounts, an upcall
-> is done to get GSS security context for SETCLIENTID procedure.
-> 
-> When Kerberos is not configured for NFS, meaning
-> there is no host/hostname@REALM principal in
-> the key tab, those upcalls always fall causing
-> the mount to hang for several seconds.
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+---
+ fs/nfs/inode.c | 15 +++++++++------
+ 1 file changed, 9 insertions(+), 6 deletions(-)
 
-What is the root cause of the temporary hang?
-
-When you say "the upcall fails" do you mean there is
-no reply, or that there is a negative reply after a
-delay, or there is an immediate negative reply?
-
-
-> This patch added an [Install] section to both
-> services so the services can be enable and disable.
-> The README was also updated.
-> 
-> Signed-off-by: Steve Dickson <steved@redhat.com>
-> ---
-> systemd/README              | 14 +++++---------
-> systemd/rpc-gssd.service    |  6 ++++++
-> systemd/rpc-svcgssd.service |  7 +++++++
-> 3 files changed, 18 insertions(+), 9 deletions(-)
-> 
-> diff --git a/systemd/README b/systemd/README
-> index 7c43df8..58dae42 100644
-> --- a/systemd/README
-> +++ b/systemd/README
-> @@ -59,13 +59,9 @@ information such as in /etc/sysconfig/nfs or /etc/defaults/nfs.
-> It is run once by nfs-config.service.
-> 
-> rpc.gssd and rpc.svcgssd are assumed to be needed if /etc/krb5.keytab
-> -is present.
-> -If a site needs this file present but does not want the gss daemons
-> -running, it should create
-> -   /etc/systemd/system/rpc-gssd.service.d/01-disable.conf
-> -and
-> -   /etc/systemd/system/rpc-svcgssd.service.d/01-disable.conf
-> +is present.  If a site needs this file present but does not want 
-> +the gss daemons running, they can be disabled by doing
-> +   
-> +   systemctl disable rpc-gssd
-> +   systemctl disable rpc-svcgssd
-> 
-> -containing
-> -   [Unit]
-> -   ConditionNull=false
-> diff --git a/systemd/rpc-gssd.service b/systemd/rpc-gssd.service
-> index d4a3819..681f26a 100644
-> --- a/systemd/rpc-gssd.service
-> +++ b/systemd/rpc-gssd.service
-> @@ -17,3 +17,9 @@ EnvironmentFile=-/run/sysconfig/nfs-utils
-> 
-> Type=forking
-> ExecStart=/usr/sbin/rpc.gssd $GSSDARGS
-> +
-> +# Only start if the service is enabled 
-> +# and /etc/krb5.keytab exists 
-> +[Install]
-> +WantedBy=multi-user.target
-> +
-> diff --git a/systemd/rpc-svcgssd.service b/systemd/rpc-svcgssd.service
-> index 41177b6..4433ed7 100644
-> --- a/systemd/rpc-svcgssd.service
-> +++ b/systemd/rpc-svcgssd.service
-> @@ -18,3 +18,10 @@ After=nfs-config.service
-> EnvironmentFile=-/run/sysconfig/nfs-utils
-> Type=forking
-> ExecStart=/usr/sbin/rpc.svcgssd $SVCGSSDARGS
-> +
-> +# Only start if the service is enabled 
-> +# and /etc/krb5.keytab exists 
-> +# and when gss-proxy is not runing
-> +[Install]
-> +WantedBy=multi-user.target
-> +
-> -- 
-> 2.5.5
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
---
-Chuck Lever
-
-
+diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
+index 52e7d6869e3b..60051e62d3f1 100644
+--- a/fs/nfs/inode.c
++++ b/fs/nfs/inode.c
+@@ -1729,12 +1729,15 @@ static int nfs_update_inode(struct inode *inode, struct nfs_fattr *fattr)
+ 		if (inode->i_version != fattr->change_attr) {
+ 			dprintk("NFS: change_attr change on server for file %s/%ld\n",
+ 					inode->i_sb->s_id, inode->i_ino);
+-			invalid |= NFS_INO_INVALID_ATTR
+-				| NFS_INO_INVALID_DATA
+-				| NFS_INO_INVALID_ACCESS
+-				| NFS_INO_INVALID_ACL;
+-			if (S_ISDIR(inode->i_mode))
+-				nfs_force_lookup_revalidate(inode);
++			/* Could it be a race with writeback? */
++			if (nfsi->nrequests == 0) {
++				invalid |= NFS_INO_INVALID_ATTR
++					| NFS_INO_INVALID_DATA
++					| NFS_INO_INVALID_ACCESS
++					| NFS_INO_INVALID_ACL;
++				if (S_ISDIR(inode->i_mode))
++					nfs_force_lookup_revalidate(inode);
++			}
+ 			inode->i_version = fattr->change_attr;
+ 		}
+ 	} else {
+-- 
+2.5.5
 
