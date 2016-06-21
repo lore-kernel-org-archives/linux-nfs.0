@@ -1,102 +1,72 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-it0-f66.google.com ([209.85.214.66]:36139 "EHLO
-	mail-it0-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751579AbcFUVfZ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 21 Jun 2016 17:35:25 -0400
-Received: by mail-it0-f66.google.com with SMTP id h190so4082804ith.3
+Received: from mail-it0-f68.google.com ([209.85.214.68]:33964 "EHLO
+	mail-it0-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751454AbcFUVfY (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 21 Jun 2016 17:35:24 -0400
+Received: by mail-it0-f68.google.com with SMTP id f6so4003202ith.1
         for <linux-nfs@vger.kernel.org>; Tue, 21 Jun 2016 14:35:24 -0700 (PDT)
 From: Trond Myklebust <trond.myklebust@primarydata.com>
 To: linux-nfs@vger.kernel.org
-Subject: [PATCH v2 08/12] NFS: Fix O_DIRECT verifier problems
-Date: Tue, 21 Jun 2016 17:34:49 -0400
-Message-Id: <1466544893-12058-8-git-send-email-trond.myklebust@primarydata.com>
-In-Reply-To: <1466544893-12058-7-git-send-email-trond.myklebust@primarydata.com>
+Subject: [PATCH v2 07/12] NFS: Don't call COMMIT in ->releasepage()
+Date: Tue, 21 Jun 2016 17:34:48 -0400
+Message-Id: <1466544893-12058-7-git-send-email-trond.myklebust@primarydata.com>
+In-Reply-To: <1466544893-12058-6-git-send-email-trond.myklebust@primarydata.com>
 References: <1466544893-12058-1-git-send-email-trond.myklebust@primarydata.com>
  <1466544893-12058-2-git-send-email-trond.myklebust@primarydata.com>
  <1466544893-12058-3-git-send-email-trond.myklebust@primarydata.com>
  <1466544893-12058-4-git-send-email-trond.myklebust@primarydata.com>
  <1466544893-12058-5-git-send-email-trond.myklebust@primarydata.com>
  <1466544893-12058-6-git-send-email-trond.myklebust@primarydata.com>
- <1466544893-12058-7-git-send-email-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-We should not be interested in looking at the value of the stable field,
-since that could take any value.
+While COMMIT has the potential to free up a lot of memory that is being
+taken by unstable writes, it isn't guaranteed to free up this particular
+page. Also, calling fsync() on the server is expensive and so we want to
+do it in a more controlled fashion, rather than have it triggered at
+random by the VM.
 
 Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
 ---
- fs/nfs/direct.c   | 10 ++++++++--
- fs/nfs/internal.h |  7 +++++++
- fs/nfs/write.c    |  2 +-
- 3 files changed, 16 insertions(+), 3 deletions(-)
+ fs/nfs/file.c | 23 -----------------------
+ 1 file changed, 23 deletions(-)
 
-diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
-index 979b3c4dee6a..d6d43b5eafb3 100644
---- a/fs/nfs/direct.c
-+++ b/fs/nfs/direct.c
-@@ -196,6 +196,12 @@ static void nfs_direct_set_hdr_verf(struct nfs_direct_req *dreq,
- 	WARN_ON_ONCE(verfp->committed < 0);
- }
+diff --git a/fs/nfs/file.c b/fs/nfs/file.c
+index 249262b6bcbe..df4dd8e7e62e 100644
+--- a/fs/nfs/file.c
++++ b/fs/nfs/file.c
+@@ -460,31 +460,8 @@ static void nfs_invalidate_page(struct page *page, unsigned int offset,
+  */
+ static int nfs_release_page(struct page *page, gfp_t gfp)
+ {
+-	struct address_space *mapping = page->mapping;
+-
+ 	dfprintk(PAGECACHE, "NFS: release_page(%p)\n", page);
  
-+static int nfs_direct_cmp_verf(const struct nfs_writeverf *v1,
-+		const struct nfs_writeverf *v2)
-+{
-+	return nfs_write_verifier_cmp(&v1->verifier, &v2->verifier);
-+}
-+
- /*
-  * nfs_direct_cmp_hdr_verf - compare verifier for pgio header
-  * @dreq - direct request possibly spanning multiple servers
-@@ -215,7 +221,7 @@ static int nfs_direct_set_or_cmp_hdr_verf(struct nfs_direct_req *dreq,
- 		nfs_direct_set_hdr_verf(dreq, hdr);
+-	/* Always try to initiate a 'commit' if relevant, but only
+-	 * wait for it if the caller allows blocking.  Even then,
+-	 * only wait 1 second and only if the 'bdi' is not congested.
+-	 * Waiting indefinitely can cause deadlocks when the NFS
+-	 * server is on this machine, when a new TCP connection is
+-	 * needed and in other rare cases.  There is no particular
+-	 * need to wait extensively here.  A short wait has the
+-	 * benefit that someone else can worry about the freezer.
+-	 */
+-	if (mapping) {
+-		struct nfs_server *nfss = NFS_SERVER(mapping->host);
+-		nfs_commit_inode(mapping->host, 0);
+-		if (gfpflags_allow_blocking(gfp) &&
+-		    !bdi_write_congested(&nfss->backing_dev_info)) {
+-			wait_on_page_bit_killable_timeout(page, PG_private,
+-							  HZ);
+-			if (PagePrivate(page))
+-				set_bdi_congested(&nfss->backing_dev_info,
+-						  BLK_RW_ASYNC);
+-		}
+-	}
+ 	/* If PagePrivate() is set, then the page is not freeable */
+ 	if (PagePrivate(page))
  		return 0;
- 	}
--	return memcmp(verfp, &hdr->verf, sizeof(struct nfs_writeverf));
-+	return nfs_direct_cmp_verf(verfp, &hdr->verf);
- }
- 
- /*
-@@ -238,7 +244,7 @@ static int nfs_direct_cmp_commit_data_verf(struct nfs_direct_req *dreq,
- 	if (verfp->committed < 0)
- 		return 1;
- 
--	return memcmp(verfp, &data->verf, sizeof(struct nfs_writeverf));
-+	return nfs_direct_cmp_verf(verfp, &data->verf);
- }
- 
- /**
-diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
-index 5154fa65a2f2..150a8eb0f323 100644
---- a/fs/nfs/internal.h
-+++ b/fs/nfs/internal.h
-@@ -506,6 +506,13 @@ extern int nfs_migrate_page(struct address_space *,
- #define nfs_migrate_page NULL
- #endif
- 
-+static inline int
-+nfs_write_verifier_cmp(const struct nfs_write_verifier *v1,
-+		const struct nfs_write_verifier *v2)
-+{
-+	return memcmp(v1->data, v2->data, sizeof(v1->data));
-+}
-+
- /* unlink.c */
- extern struct rpc_task *
- nfs_async_rename(struct inode *old_dir, struct inode *new_dir,
-diff --git a/fs/nfs/write.c b/fs/nfs/write.c
-index b13d48881d3a..3087fb6f1983 100644
---- a/fs/nfs/write.c
-+++ b/fs/nfs/write.c
-@@ -1789,7 +1789,7 @@ static void nfs_commit_release_pages(struct nfs_commit_data *data)
- 
- 		/* Okay, COMMIT succeeded, apparently. Check the verifier
- 		 * returned by the server against all stored verfs. */
--		if (!memcmp(&req->wb_verf, &data->verf.verifier, sizeof(req->wb_verf))) {
-+		if (!nfs_write_verifier_cmp(&req->wb_verf, &data->verf.verifier)) {
- 			/* We have a match */
- 			nfs_inode_remove_request(req);
- 			dprintk(" OK\n");
 -- 
 2.5.5
 
