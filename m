@@ -1,132 +1,102 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f193.google.com ([209.85.223.193]:35525 "EHLO
-	mail-io0-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751139AbcFUVfS (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 21 Jun 2016 17:35:18 -0400
-Received: by mail-io0-f193.google.com with SMTP id u25so3726974iou.2
-        for <linux-nfs@vger.kernel.org>; Tue, 21 Jun 2016 14:35:18 -0700 (PDT)
+Received: from mail-it0-f66.google.com ([209.85.214.66]:36139 "EHLO
+	mail-it0-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751579AbcFUVfZ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 21 Jun 2016 17:35:25 -0400
+Received: by mail-it0-f66.google.com with SMTP id h190so4082804ith.3
+        for <linux-nfs@vger.kernel.org>; Tue, 21 Jun 2016 14:35:24 -0700 (PDT)
 From: Trond Myklebust <trond.myklebust@primarydata.com>
 To: linux-nfs@vger.kernel.org
-Subject: [PATCH v2 02/12] NFS: Cache access checks more aggressively
-Date: Tue, 21 Jun 2016 17:34:43 -0400
-Message-Id: <1466544893-12058-2-git-send-email-trond.myklebust@primarydata.com>
-In-Reply-To: <1466544893-12058-1-git-send-email-trond.myklebust@primarydata.com>
+Subject: [PATCH v2 08/12] NFS: Fix O_DIRECT verifier problems
+Date: Tue, 21 Jun 2016 17:34:49 -0400
+Message-Id: <1466544893-12058-8-git-send-email-trond.myklebust@primarydata.com>
+In-Reply-To: <1466544893-12058-7-git-send-email-trond.myklebust@primarydata.com>
 References: <1466544893-12058-1-git-send-email-trond.myklebust@primarydata.com>
+ <1466544893-12058-2-git-send-email-trond.myklebust@primarydata.com>
+ <1466544893-12058-3-git-send-email-trond.myklebust@primarydata.com>
+ <1466544893-12058-4-git-send-email-trond.myklebust@primarydata.com>
+ <1466544893-12058-5-git-send-email-trond.myklebust@primarydata.com>
+ <1466544893-12058-6-git-send-email-trond.myklebust@primarydata.com>
+ <1466544893-12058-7-git-send-email-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-If an attribute revalidation fails, then we already know that we'll
-zap the access cache. If, OTOH, the inode isn't changing, there should
-be no need to eject access calls just because they are old.
+We should not be interested in looking at the value of the stable field,
+since that could take any value.
 
 Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
 ---
- fs/nfs/dir.c | 52 +++++++++++++++++++++++++++++++---------------------
- 1 file changed, 31 insertions(+), 21 deletions(-)
+ fs/nfs/direct.c   | 10 ++++++++--
+ fs/nfs/internal.h |  7 +++++++
+ fs/nfs/write.c    |  2 +-
+ 3 files changed, 16 insertions(+), 3 deletions(-)
 
-diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
-index aaf7bd0cbae2..210b33636fe4 100644
---- a/fs/nfs/dir.c
-+++ b/fs/nfs/dir.c
-@@ -2228,21 +2228,37 @@ static struct nfs_access_entry *nfs_access_search_rbtree(struct inode *inode, st
- 	return NULL;
+diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
+index 979b3c4dee6a..d6d43b5eafb3 100644
+--- a/fs/nfs/direct.c
++++ b/fs/nfs/direct.c
+@@ -196,6 +196,12 @@ static void nfs_direct_set_hdr_verf(struct nfs_direct_req *dreq,
+ 	WARN_ON_ONCE(verfp->committed < 0);
  }
  
--static int nfs_access_get_cached(struct inode *inode, struct rpc_cred *cred, struct nfs_access_entry *res)
-+static int nfs_access_get_cached(struct inode *inode, struct rpc_cred *cred, struct nfs_access_entry *res, bool may_block)
- {
- 	struct nfs_inode *nfsi = NFS_I(inode);
- 	struct nfs_access_entry *cache;
--	int err = -ENOENT;
-+	bool retry = true;
-+	int err;
++static int nfs_direct_cmp_verf(const struct nfs_writeverf *v1,
++		const struct nfs_writeverf *v2)
++{
++	return nfs_write_verifier_cmp(&v1->verifier, &v2->verifier);
++}
++
+ /*
+  * nfs_direct_cmp_hdr_verf - compare verifier for pgio header
+  * @dreq - direct request possibly spanning multiple servers
+@@ -215,7 +221,7 @@ static int nfs_direct_set_or_cmp_hdr_verf(struct nfs_direct_req *dreq,
+ 		nfs_direct_set_hdr_verf(dreq, hdr);
+ 		return 0;
+ 	}
+-	return memcmp(verfp, &hdr->verf, sizeof(struct nfs_writeverf));
++	return nfs_direct_cmp_verf(verfp, &hdr->verf);
+ }
  
- 	spin_lock(&inode->i_lock);
--	if (nfsi->cache_validity & NFS_INO_INVALID_ACCESS)
--		goto out_zap;
--	cache = nfs_access_search_rbtree(inode, cred);
--	if (cache == NULL)
--		goto out;
--	if (!nfs_have_delegated_attributes(inode) &&
--	    !time_in_range_open(jiffies, cache->jiffies, cache->jiffies + nfsi->attrtimeo))
--		goto out_stale;
-+	for(;;) {
-+		if (nfsi->cache_validity & NFS_INO_INVALID_ACCESS)
-+			goto out_zap;
-+		cache = nfs_access_search_rbtree(inode, cred);
-+		err = -ENOENT;
-+		if (cache == NULL)
-+			goto out;
-+		/* Found an entry, is our attribute cache valid? */
-+		if (!nfs_attribute_cache_expired(inode) &&
-+		    !(nfsi->cache_validity & NFS_INO_INVALID_ATTR))
-+			break;
-+		err = -ECHILD;
-+		if (!may_block)
-+			goto out;
-+		if (!retry)
-+			goto out_zap;
-+		spin_unlock(&inode->i_lock);
-+		err = __nfs_revalidate_inode(NFS_SERVER(inode), inode);
-+		if (err)
-+			return err;
-+		spin_lock(&inode->i_lock);
-+		retry = false;
-+	}
- 	res->jiffies = cache->jiffies;
- 	res->cred = cache->cred;
- 	res->mask = cache->mask;
-@@ -2251,12 +2267,6 @@ static int nfs_access_get_cached(struct inode *inode, struct rpc_cred *cred, str
- out:
- 	spin_unlock(&inode->i_lock);
- 	return err;
--out_stale:
--	rb_erase(&cache->rb_node, &nfsi->access_cache);
--	list_del(&cache->lru);
--	spin_unlock(&inode->i_lock);
--	nfs_access_free_entry(cache);
--	return -ENOENT;
- out_zap:
- 	spin_unlock(&inode->i_lock);
- 	nfs_access_zap_cache(inode);
-@@ -2283,13 +2293,12 @@ static int nfs_access_get_cached_rcu(struct inode *inode, struct rpc_cred *cred,
- 		cache = NULL;
- 	if (cache == NULL)
- 		goto out;
--	if (!nfs_have_delegated_attributes(inode) &&
--	    !time_in_range_open(jiffies, cache->jiffies, cache->jiffies + nfsi->attrtimeo))
-+	err = nfs_revalidate_inode_rcu(NFS_SERVER(inode), inode);
-+	if (err)
- 		goto out;
- 	res->jiffies = cache->jiffies;
- 	res->cred = cache->cred;
- 	res->mask = cache->mask;
--	err = 0;
- out:
- 	rcu_read_unlock();
- 	return err;
-@@ -2378,18 +2387,19 @@ EXPORT_SYMBOL_GPL(nfs_access_set_mask);
- static int nfs_do_access(struct inode *inode, struct rpc_cred *cred, int mask)
- {
- 	struct nfs_access_entry cache;
-+	bool may_block = (mask & MAY_NOT_BLOCK) == 0;
- 	int status;
+ /*
+@@ -238,7 +244,7 @@ static int nfs_direct_cmp_commit_data_verf(struct nfs_direct_req *dreq,
+ 	if (verfp->committed < 0)
+ 		return 1;
  
- 	trace_nfs_access_enter(inode);
+-	return memcmp(verfp, &data->verf, sizeof(struct nfs_writeverf));
++	return nfs_direct_cmp_verf(verfp, &data->verf);
+ }
  
- 	status = nfs_access_get_cached_rcu(inode, cred, &cache);
- 	if (status != 0)
--		status = nfs_access_get_cached(inode, cred, &cache);
-+		status = nfs_access_get_cached(inode, cred, &cache, may_block);
- 	if (status == 0)
- 		goto out_cached;
+ /**
+diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
+index 5154fa65a2f2..150a8eb0f323 100644
+--- a/fs/nfs/internal.h
++++ b/fs/nfs/internal.h
+@@ -506,6 +506,13 @@ extern int nfs_migrate_page(struct address_space *,
+ #define nfs_migrate_page NULL
+ #endif
  
- 	status = -ECHILD;
--	if (mask & MAY_NOT_BLOCK)
-+	if (!may_block)
- 		goto out;
++static inline int
++nfs_write_verifier_cmp(const struct nfs_write_verifier *v1,
++		const struct nfs_write_verifier *v2)
++{
++	return memcmp(v1->data, v2->data, sizeof(v1->data));
++}
++
+ /* unlink.c */
+ extern struct rpc_task *
+ nfs_async_rename(struct inode *old_dir, struct inode *new_dir,
+diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+index b13d48881d3a..3087fb6f1983 100644
+--- a/fs/nfs/write.c
++++ b/fs/nfs/write.c
+@@ -1789,7 +1789,7 @@ static void nfs_commit_release_pages(struct nfs_commit_data *data)
  
- 	/* Be clever: ask server to check for all possible rights */
+ 		/* Okay, COMMIT succeeded, apparently. Check the verifier
+ 		 * returned by the server against all stored verfs. */
+-		if (!memcmp(&req->wb_verf, &data->verf.verifier, sizeof(req->wb_verf))) {
++		if (!nfs_write_verifier_cmp(&req->wb_verf, &data->verf.verifier)) {
+ 			/* We have a match */
+ 			nfs_inode_remove_request(req);
+ 			dprintk(" OK\n");
 -- 
 2.5.5
 
