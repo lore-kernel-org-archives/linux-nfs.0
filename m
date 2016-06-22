@@ -1,89 +1,200 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from bombadil.infradead.org ([198.137.202.9]:35216 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751244AbcFVL6D (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 22 Jun 2016 07:58:03 -0400
-Subject: Re: [PATCH v3 25/25] IB/mlx4: Workaround for mlx4_alloc_priv_pages()
- array allocator
-To: Chuck Lever <chuck.lever@oracle.com>, linux-rdma@vger.kernel.org,
-        linux-nfs@vger.kernel.org
-References: <20160620155751.10809.22262.stgit@manet.1015granger.net>
- <20160620161200.10809.45762.stgit@manet.1015granger.net>
-From: Sagi Grimberg <sagi@grimberg.me>
-Message-ID: <576A7CD5.4000603@grimberg.me>
-Date: Wed, 22 Jun 2016 14:56:05 +0300
+Received: from us-smtp-delivery-194.mimecast.com ([216.205.24.194]:54788 "EHLO
+	us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751434AbcFVNHT (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 22 Jun 2016 09:07:19 -0400
+From: Trond Myklebust <trondmy@primarydata.com>
+To: "green@linuxhacker.ru" <green@linuxhacker.ru>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH v2 03/12] NFS: Cache aggressively when file is open for
+ writing
+Date: Wed, 22 Jun 2016 13:06:49 +0000
+Message-ID: <1466600806.90993.2.camel@primarydata.com>
+References: <1466544893-12058-1-git-send-email-trond.myklebust@primarydata.com>
+	 <1466544893-12058-2-git-send-email-trond.myklebust@primarydata.com>
+	 <1466544893-12058-3-git-send-email-trond.myklebust@primarydata.com>
+	 <43F206E4-FCA8-4ED3-A4FC-4150AB927026@linuxhacker.ru>
+In-Reply-To: <43F206E4-FCA8-4ED3-A4FC-4150AB927026@linuxhacker.ru>
 MIME-Version: 1.0
-In-Reply-To: <20160620161200.10809.45762.stgit@manet.1015granger.net>
-Content-Type: text/plain; charset=utf-8; format=flowed
+Content-Type: multipart/mixed;
+	boundary="_003_1466600806909932camelprimarydatacom_"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+--_003_1466600806909932camelprimarydatacom_
+Content-Type: text/plain; charset=UTF-8
+Content-ID: <6914B88462858C4D9FC95E253C38D035@namprd11.prod.outlook.com>
+Content-Transfer-Encoding: base64
 
+SGkgT2xlZywNCg0KVGhhbmtzIGZvciB0ZXN0aW5nIQ0KDQpPbiBUdWUsIDIwMTYtMDYtMjEgYXQg
+MTg6MjUgLTA0MDAsIE9sZWcgRHJva2luIHdyb3RlOg0KPiBUaGlzIHBhdGNoIHN0aWxsIGNyYXNo
+ZXMgZm9yIG1lLg0KPiANCj4gW8KgwqAxODMuODE0ODU1XSBCVUc6IHVuYWJsZSB0byBoYW5kbGUg
+a2VybmVsIHBhZ2luZyByZXF1ZXN0IGF0DQo+IGZmZmY4ODAwMWIxOGNmZTgNCj4gW8KgwqAxODMu
+ODE1NDAzXSBJUDogWzxmZmZmZmZmZjgxMzgxYjYzPl0gbmZzX3VwZGF0ZV9pbm9kZSsweDUzLzB4
+YTMwDQo+IFvCoMKgMTgzLjgxNTg2OF0gUEdEIDM1ODAwNjcgUFVEIDM1ODEwNjcgUE1EIDc3ZjY5
+MDY3IFBURQ0KPiA4MDAwMDAwMDFiMThjMDYwDQo+IFvCoMKgMTgzLjgxNjY0MF0gT29wczogMDAw
+MCBbIzFdIFNNUCBERUJVR19QQUdFQUxMT0MNCj4gW8KgwqAxODMuODE3MjUyXSBNb2R1bGVzIGxp
+bmtlZCBpbjogbG9vcCBycGNzZWNfZ3NzX2tyYjUgam95ZGV2DQo+IGFjcGlfY3B1ZnJlcSB0cG1f
+dGlzIHZpcnRpb19jb25zb2xlIHRwbSBpMmNfcGlpeDQgcGNzcGtyIG5mc2QgdHRtDQo+IGRybV9r
+bXNfaGVscGVyIHN5c2NvcHlhcmVhIHN5c2ZpbGxyZWN0IHN5c2ltZ2JsdCBmYl9zeXNfZm9wcw0K
+PiB2aXJ0aW9fYmxrIHNlcmlvX3JhdyBkcm0gZmxvcHB5DQo+IFvCoMKgMTgzLjgyMDIwM10gQ1BV
+OiA2IFBJRDogNDA5MzUgQ29tbTogcm0gTm90IHRhaW50ZWQgNC43LjAtcmMzLXZtLQ0KPiBuZnN0
+KyAjNg0KPiBbwqDCoDE4My44MjA4MThdIEhhcmR3YXJlIG5hbWU6IEJvY2hzIEJvY2hzLCBCSU9T
+IEJvY2hzIDAxLzAxLzIwMTENCj4gW8KgwqAxODMuODIxMzI5XSB0YXNrOiBmZmZmODgwMDFiNDMw
+YzgwIHRpOiBmZmZmODgwMDFjZjJjMDAwIHRhc2sudGk6DQo+IGZmZmY4ODAwMWNmMmMwMDANCj4g
+W8KgwqAxODMuODIyMjIzXSBSSVA6IDAwMTA6WzxmZmZmZmZmZjgxMzgxYjYzPl3CoMKgWzxmZmZm
+ZmZmZjgxMzgxYjYzPl0NCj4gbmZzX3VwZGF0ZV9pbm9kZSsweDUzLzB4YTMwDQo+IFvCoMKgMTgz
+LjgyMzAwN10gUlNQOiAwMDE4OmZmZmY4ODAwMWNmMmZiMDjCoMKgRUZMQUdTOiAwMDAxMDI4Mw0K
+PiBbwqDCoDE4My44MjM0MTddIFJBWDogZmZmZjg4MDAxYjE4ZDAwMCBSQlg6IGZmZmY4ODAwMjFi
+NTgyYTggUkNYOg0KPiAwMDAwMDAwMDAwMDAwMDAwDQo+IFvCoMKgMTgzLjgyMzg0NV0gUkRYOiBm
+ZmZmODgwMDFiMThkMDAwIFJTSTogZmZmZjg4MDAxYzNjZGYwMCBSREk6DQo+IGZmZmY4ODAwMjFi
+NTgyYTgNCj4gW8KgwqAxODMuODI0Mjc2XSBSQlA6IGZmZmY4ODAwMWNmMmZiNTggUjA4OiAwMDAw
+MDAwMDAwMDAwMDAwIFIwOToNCj4gMDAwMDAwMDAwMDAwMDAwMQ0KPiBbwqDCoDE4My44MjQ3MDFd
+IFIxMDogZmZmZjg4MDAxYjQzMGM4MCBSMTE6IDAwMDAwMDAwZmZmZTM4MTggUjEyOg0KPiBmZmZm
+ODgwMDFjM2NkZjAwDQo+IFvCoMKgMTgzLjgyNTE5MF0gUjEzOiBmZmZmODgwMDFjM2NkZjAwIFIx
+NDogZmZmZjg4MDAxYzNjZGYwMCBSMTU6DQo+IDAwMDAwMDAwMDAwMDAwMDENCj4gW8KgwqAxODMu
+ODI1NjUxXSBGUzrCoMKgMDAwMDdmYTBlOWM1YjcwMCgwMDAwKSBHUzpmZmZmODgwMDc1MjAwMDAw
+KDAwMDApDQo+IGtubEdTOjAwMDAwMDAwMDAwMDAwMDANCj4gW8KgwqAxODMuODI2Mzk2XSBDUzrC
+oMKgMDAxMCBEUzogMDAwMCBFUzogMDAwMCBDUjA6IDAwMDAwMDAwODAwNTAwMzMNCj4gW8KgwqAx
+ODMuODI2ODg0XSBDUjI6IGZmZmY4ODAwMWIxOGNmZTggQ1IzOiAwMDAwMDAwMDFiYzFmMDAwIENS
+NDoNCj4gMDAwMDAwMDAwMDAwMDZlMA0KPiBbwqDCoDE4My44Mjc0NjBdIFN0YWNrOg0KPiBbwqDC
+oDE4My44Mjc4MjVdwqDCoGZmZmY4ODAwMDAwMDAwMDAgZmZmZjg4MDAxY2YyZmI1OCAwMDAwMDAw
+MDAwMDAwMjQ2DQo+IGZmZmZmZmZmODEzODJmMzMNCj4gW8KgwqAxODMuODI4NzM0XcKgwqAwMDAw
+MDAwMDAwMDAwMjQ2IGZmZmY4ODAwMjFiNTgyYTggZmZmZjg4MDAyMWI1ODJhOA0KPiBmZmZmODgw
+MDFjM2NkZjAwDQo+IFvCoMKgMTgzLjgyOTYzNF3CoMKgZmZmZjg4MDAxYzNjZGYwMCAwMDAwMDAw
+MDAwMDAwMDAxIGZmZmY4ODAwMWNmMmZiODANCj4gZmZmZmZmZmY4MTM4MmFhMQ0KPiBbwqDCoDE4
+My44MzA1NjJdIENhbGwgVHJhY2U6DQo+IFvCoMKgMTgzLjgzMDkzOF3CoMKgWzxmZmZmZmZmZjgx
+MzgyZjMzPl0gPw0KPiBuZnNfcmVmcmVzaF9pbm9kZS5wYXJ0LjI0KzB4MjMvMHg1MA0KPiBbwqDC
+oDE4My44MzEzNjhdwqDCoFs8ZmZmZmZmZmY4MTM4MmFhMT5dDQo+IG5mc19yZWZyZXNoX2lub2Rl
+X2xvY2tlZCsweDcxLzB4NGUwDQo+IFvCoMKgMTgzLjgzMTc4NV3CoMKgWzxmZmZmZmZmZjgxMzgy
+ZjNlPl0NCj4gbmZzX3JlZnJlc2hfaW5vZGUucGFydC4yNCsweDJlLzB4NTANCj4gW8KgwqAxODMu
+ODMyMjA5XcKgwqBbPGZmZmZmZmZmODEzODQwMjQ+XQ0KPiBfX25mc19yZXZhbGlkYXRlX2lub2Rl
+KzB4MzE0LzB4NGIwDQo+IFvCoMKgMTgzLjgzMjYzMl3CoMKgWzxmZmZmZmZmZjgxMzdjNmZlPl0g
+bmZzX2RvX2FjY2VzcysweDQ3ZS8weDYyMA0KPiBbwqDCoDE4My44MzMwMzZdwqDCoFs8ZmZmZmZm
+ZmY4MTM3YzJkMT5dID8gbmZzX2RvX2FjY2VzcysweDUxLzB4NjIwDQo+IFvCoMKgMTgzLjgzMzQ1
+Nl3CoMKgWzxmZmZmZmZmZjgxODUwN2VhPl0gPyBnZW5lcmljX2xvb2t1cF9jcmVkKzB4MWEvMHgy
+MA0KPiBbwqDCoDE4My44MzM4NzJdwqDCoFs8ZmZmZmZmZmY4MTg0ZWY3ZT5dID8gcnBjYXV0aF9s
+b29rdXBjcmVkKzB4OGUvMHhkMA0KPiBbwqDCoDE4My44MzQyODhdwqDCoFs8ZmZmZmZmZmY4MTM3
+Y2I2OT5dIG5mc19wZXJtaXNzaW9uKzB4Mjg5LzB4MmUwDQo+IFvCoMKgMTgzLjgzNDY5OV3CoMKg
+WzxmZmZmZmZmZjgxMzdjOTQzPl0gPyBuZnNfcGVybWlzc2lvbisweDYzLzB4MmUwDQo+IFvCoMKg
+MTgzLjgzNTEwOF3CoMKgWzxmZmZmZmZmZjgxMjc2OGRhPl0gX19pbm9kZV9wZXJtaXNzaW9uKzB4
+NmEvMHhiMA0KPiBbwqDCoDE4My44MzU1MjFdwqDCoFs8ZmZmZmZmZmY4MTI3NjkzND5dIGlub2Rl
+X3Blcm1pc3Npb24rMHgxNC8weDUwDQo+IFvCoMKgMTgzLjgzNTkyOF3CoMKgWzxmZmZmZmZmZjgx
+MjdiMmNmPl0gbGlua19wYXRoX3dhbGsrMHgyZWYvMHg2YjANCj4gW8KgwqAxODMuODM3MzI3XcKg
+wqBbPGZmZmZmZmZmODEyN2I2YTk+XSA/IHBhdGhfcGFyZW50YXQrMHgxOS8weDgwDQo+IFvCoMKg
+MTgzLjgzNzk4OF3CoMKgWzxmZmZmZmZmZjgxMjdiNmJlPl0gcGF0aF9wYXJlbnRhdCsweDJlLzB4
+ODANCj4gW8KgwqAxODMuODM4NjUzXcKgwqBbPGZmZmZmZmZmODEyN2NiMTM+XSBmaWxlbmFtZV9w
+YXJlbnRhdCsweGIzLzB4MTkwDQo+IFvCoMKgMTgzLjgzOTMyOF3CoMKgWzxmZmZmZmZmZjgxMjNi
+YzRjPl0gPw0KPiBjYWNoZV9hbGxvY19kZWJ1Z2NoZWNrX2FmdGVyLmlzcmEuNTIrMHgxOWMvMHgx
+ZjANCj4gW8KgwqAxODMuODQwNTMzXcKgwqBbPGZmZmZmZmZmODEyM2UwYTA+XSA/IGttZW1fY2Fj
+aGVfYWxsb2MrMHgzMDAvMHgzZDANCj4gW8KgwqAxODMuODQxMjE3XcKgwqBbPGZmZmZmZmZmODEy
+N2M4OWY+XSA/IGdldG5hbWVfZmxhZ3MrMHg0Zi8weDFmMA0KPiBbwqDCoDE4My44NDE4ODhdwqDC
+oFs8ZmZmZmZmZmY4MTBlNmQwZD5dID8gdHJhY2VfaGFyZGlycXNfb24rMHhkLzB4MTANCj4gW8Kg
+wqAxODMuODQyNTcwXcKgwqBbPGZmZmZmZmZmODEyN2Q0NTU+XSBkb191bmxpbmthdCsweDY1LzB4
+MmYwDQo+IFvCoMKgMTgzLjg0MzI0M13CoMKgWzxmZmZmZmZmZjgxMDAyMDFhPl0gPw0KPiB0cmFj
+ZV9oYXJkaXJxc19vbl90aHVuaysweDFhLzB4MWMNCj4gW8KgwqAxODMuODQzOTEwXcKgwqBbPGZm
+ZmZmZmZmODEyN2UxN2I+XSBTeVNfdW5saW5rYXQrMHgxYi8weDMwDQo+IFvCoMKgMTgzLjg0NDU4
+Ml3CoMKgWzxmZmZmZmZmZjgxODhhZWJjPl0NCj4gZW50cnlfU1lTQ0FMTF82NF9mYXN0cGF0aCsw
+eDFmLzB4YmQNCj4gDQo+IChnZGIpIGwgKihuZnNfdXBkYXRlX2lub2RlKzB4NTMpDQo+IDB4ZmZm
+ZmZmZmY4MTM4MWI2MyBpcyBpbiBuZnNfdXBkYXRlX2lub2RlICgvaG9tZS9ncmVlbi9iay9saW51
+eC0NCj4gdGVzdC9mcy9uZnMvaW5vZGUuYzoxMjMzKS4NCj4gMTIyOAkJwqAqwqDCoMKgwqDCoMKg
+wqBiZWluZyBwbGFjZWQgYXQgdGhlIGhlYWQgb2YgdGhlIGxpc3QuDQo+IDEyMjkJCcKgKsKgwqDC
+oMKgwqDCoMKgU2VlIG5mc19pbm9kZV9hdHRhY2hfb3Blbl9jb250ZXh0KCkNCj4gMTIzMAkJwqAq
+Lw0KPiAxMjMxCQlyZXR1cm4gKGxpc3RfZmlyc3RfZW50cnkoJm5mc2ktPm9wZW5fZmlsZXMsDQo+
+IDEyMzIJCQkJc3RydWN0IG5mc19vcGVuX2NvbnRleHQsDQo+IDEyMzMJCQkJbGlzdCktPm1vZGUg
+JiBGTU9ERV9XUklURSkgPT0NCj4gRk1PREVfV1JJVEU7DQo+IDEyMzQJfQ0KPiAxMjM1CQ0KPiAx
+MjM2CXN0YXRpYyB1bnNpZ25lZCBsb25nIG5mc193Y2NfdXBkYXRlX2lub2RlKHN0cnVjdCBpbm9k
+ZQ0KPiAqaW5vZGUsIHN0cnVjdCBuZnNfZmF0dHIgKmZhdHRyKQ0KPiAxMjM3CXsNCj4gDQo+IFJl
+dmVydGluZyBpdCBtYWtlcyB0aGUgY3Jhc2ggZ28gYXdheS4NCj4gDQo+IEJ1dCB0aGVyZSdzIGFs
+c28gdGhpcyBvdGhlciBwcm9ibGVtIHRoYXQgSSBoYXZlIG5vdCB0cmFja2VkIHRvIGENCj4gcGFy
+dGljdWxhciBwYXRjaCB5ZXQ6DQo+IA0KPiBbwqDCoMKgMjUuODMwMjg4XSA9PT09PT09PT09PT09
+PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT0NCj4gW8KgwqDCoDI1LjgzMDQ2OF0gWyBJ
+TkZPOiBwb3NzaWJsZSByZWN1cnNpdmUgbG9ja2luZyBkZXRlY3RlZCBdDQo+IFvCoMKgwqAyNS44
+MzA2NThdIDQuNy4wLXJjMy12bS1uZnN0KyAjOCBOb3QgdGFpbnRlZA0KPiBbwqDCoMKgMjUuODMw
+ODIyXSAtLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0NCj4gW8Kg
+wqDCoDI1LjgzMTAwOV0gY2F0LzY1ODggaXMgdHJ5aW5nIHRvIGFjcXVpcmUgbG9jazoNCj4gW8Kg
+wqDCoDI1LjgzMTE3OV3CoMKgKCZzYi0+c190eXBlLT5pX211dGV4X2tleSMxMyl7KysrKysrfSwg
+YXQ6DQo+IFs8ZmZmZmZmZmY4MTM4NDFmND5dIF9fbmZzX3JldmFsaWRhdGVfbWFwcGluZysweDEy
+NC8weDNlMA0KPiBbwqDCoMKgMjUuODMyNDg4XcKgDQo+IMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDC
+oMKgwqDCoGJ1dCB0YXNrIGlzIGFscmVhZHkgaG9sZGluZyBsb2NrOg0KPiBbwqDCoMKgMjUuODMz
+MjE0XcKgwqAoJnNiLT5zX3R5cGUtPmlfbXV0ZXhfa2V5IzEzKXsrKysrKyt9LCBhdDoNCj4gWzxm
+ZmZmZmZmZjgxMzg4YjdlPl0gbmZzX3N0YXJ0X2lvX3JlYWQrMHgxZS8weDUwDQo+IFvCoMKgwqAy
+NS44MzQyMDldwqANCj4gwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgb3RoZXIgaW5mbyB0
+aGF0IG1pZ2h0IGhlbHAgdXMgZGVidWcgdGhpczoNCj4gW8KgwqDCoDI1LjgzNDk3MF3CoMKgUG9z
+c2libGUgdW5zYWZlIGxvY2tpbmcgc2NlbmFyaW86DQo+IA0KPiBbwqDCoMKgMjUuODM1Njk5XcKg
+wqDCoMKgwqDCoMKgwqBDUFUwDQo+IFvCoMKgwqAyNS44MzYwNzddwqDCoMKgwqDCoMKgwqDCoC0t
+LS0NCj4gW8KgwqDCoDI1LjgzNjQ1OV3CoMKgwqBsb2NrKCZzYi0+c190eXBlLT5pX211dGV4X2tl
+eSMxMyk7DQo+IFvCoMKgwqAyNS44MzY5ODhdwqDCoMKgbG9jaygmc2ItPnNfdHlwZS0+aV9tdXRl
+eF9rZXkjMTMpOw0KPiBbwqDCoMKgMjUuODM3NjM2XcKgDQo+IMKgwqDCoMKgwqDCoMKgwqDCoMKg
+wqDCoMKgwqDCoMKgKioqIERFQURMT0NLICoqKg0KPiANCg0KVGhlIDIgYXR0YWNoZWQgcGF0Y2hl
+cyBzaG91bGQgaG9wZWZ1bGx5IGZpeCB0aGVzZSAyIGlzc3VlcyBhbmQgd2lsbCBiZQ0Kcm9sbGVk
+IGludG8gdjMgdG9nZXRoZXIgd2l0aCBhIGNsZWFudXAgcGF0Y2ggdG8gcmVtb3ZlIHRoZSBub3ct
+b2Jzb2xldGUgDQpmdW5jdGlvbiBuZnNfcmV2YWxpZGF0ZV9tYXBwaW5nX3Byb3RlY3RlZCgpLg0K
+DQpDaGVlcnMNCsKgIFRyb25kDQrCoMKgDQotLSANCg0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBO
+RlMgY2xpZW50IG1haW50YWluZXIsIFByaW1hcnlEYXRhDQp0cm9uZC5teWtsZWJ1c3RAcHJpbWFy
+eWRhdGEuY29tDQo=
+--_003_1466600806909932camelprimarydatacom_
+Content-Type: text/x-patch;
+	name=0001-fixup-NFS-Cache-aggressively-when-file-is-open-for-w.patch
+Content-Description: 0001-fixup-NFS-Cache-aggressively-when-file-is-open-for-w.patch
+Content-Disposition: attachment;
+	filename="0001-fixup-NFS-Cache-aggressively-when-file-is-open-for-w.patch";
+	size=968; creation-date="Wed, 22 Jun 2016 13:06:49 GMT";
+	modification-date="Wed, 22 Jun 2016 13:06:49 GMT"
+Content-ID: <FFB07DE6DA96EF4E802B182574B3E3B8@namprd11.prod.outlook.com>
+Content-Transfer-Encoding: base64
 
-On 20/06/16 19:12, Chuck Lever wrote:
-> Ensure the MR's PBL array never occupies the last 8 bytes of a page.
-> This eliminates random "Local Protection Error" flushes when SLUB
-> debugging is enabled.
->
-> Fixes: 1b2cd0fc673c ('IB/mlx4: Support the new memory registration API')
-> Suggested-by: Christoph Hellwig <hch@infradead.org>
-> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-> ---
->   drivers/infiniband/hw/mlx4/mlx4_ib.h |    2 +-
->   drivers/infiniband/hw/mlx4/mr.c      |   40 +++++++++++++++++++---------------
->   2 files changed, 23 insertions(+), 19 deletions(-)
->
-> diff --git a/drivers/infiniband/hw/mlx4/mlx4_ib.h b/drivers/infiniband/hw/mlx4/mlx4_ib.h
-> index 6c5ac5d..29acda2 100644
-> --- a/drivers/infiniband/hw/mlx4/mlx4_ib.h
-> +++ b/drivers/infiniband/hw/mlx4/mlx4_ib.h
-> @@ -139,7 +139,7 @@ struct mlx4_ib_mr {
->   	u32			max_pages;
->   	struct mlx4_mr		mmr;
->   	struct ib_umem	       *umem;
-> -	void			*pages_alloc;
-> +	size_t			page_map_size;
->   };
->
->   struct mlx4_ib_mw {
-> diff --git a/drivers/infiniband/hw/mlx4/mr.c b/drivers/infiniband/hw/mlx4/mr.c
-> index 6312721..b90e47c 100644
-> --- a/drivers/infiniband/hw/mlx4/mr.c
-> +++ b/drivers/infiniband/hw/mlx4/mr.c
-> @@ -277,20 +277,27 @@ mlx4_alloc_priv_pages(struct ib_device *device,
->   		      struct mlx4_ib_mr *mr,
->   		      int max_pages)
->   {
-> -	int size = max_pages * sizeof(u64);
-> -	int add_size;
->   	int ret;
->
-> -	add_size = max_t(int, MLX4_MR_PAGES_ALIGN - ARCH_KMALLOC_MINALIGN, 0);
-> -
-> -	mr->pages_alloc = kzalloc(size + add_size, GFP_KERNEL);
-> -	if (!mr->pages_alloc)
-> +	/* Round mapping size up to ensure DMA cacheline
-> +	 * alignment, and cache the size to avoid mult/div
-> +	 * in fast path.
-> +	 */
-> +	mr->page_map_size = roundup(max_pages * sizeof(u64),
-> +				    MLX4_MR_PAGES_ALIGN);
-> +	if (mr->page_map_size > PAGE_SIZE)
-> +		return -EINVAL;
-> +
-> +	/* This is overkill, but hardware requires that the
-> +	 * PBL array begins at a properly aligned address and
-> +	 * never occupies the last 8 bytes of a page.
-> +	 */
-> +	mr->pages = (__be64 *)get_zeroed_page(GFP_KERNEL);
-> +	if (!mr->pages)
->   		return -ENOMEM;
+RnJvbSBkZjRjODYzZDY5ZjVjMzMzNjQ4ZDhjOGUwNzdmMDBiMmNjOTNhYWRjIE1vbiBTZXAgMTcg
+MDA6MDA6MDAgMjAwMQ0KRnJvbTogVHJvbmQgTXlrbGVidXN0IDx0cm9uZC5teWtsZWJ1c3RAcHJp
+bWFyeWRhdGEuY29tPg0KRGF0ZTogV2VkLCAyMiBKdW4gMjAxNiAwODowNDoxNSAtMDQwMA0KU3Vi
+amVjdDogW1BBVENIIDEvMl0gZml4dXAhIE5GUzogQ2FjaGUgYWdncmVzc2l2ZWx5IHdoZW4gZmls
+ZSBpcyBvcGVuIGZvcg0KIHdyaXRpbmcNCg0KLS0tDQogZnMvbmZzL2lub2RlLmMgfCA2ICsrKysr
+LQ0KIDEgZmlsZSBjaGFuZ2VkLCA1IGluc2VydGlvbnMoKyksIDEgZGVsZXRpb24oLSkNCg0KZGlm
+ZiAtLWdpdCBhL2ZzL25mcy9pbm9kZS5jIGIvZnMvbmZzL2lub2RlLmMNCmluZGV4IDZiYzY1ZmZj
+M2M2Yy4uOTUyMWZhNjE1NGM4IDEwMDY0NA0KLS0tIGEvZnMvbmZzL2lub2RlLmMNCisrKyBiL2Zz
+L25mcy9pbm9kZS5jDQpAQCAtMTIxOSw4ICsxMjE5LDEyIEBAIGludCBuZnNfcmV2YWxpZGF0ZV9t
+YXBwaW5nX3Byb3RlY3RlZChzdHJ1Y3QgaW5vZGUgKmlub2RlLCBzdHJ1Y3QgYWRkcmVzc19zcGFj
+ZSAqDQogDQogc3RhdGljIGJvb2wgbmZzX2ZpbGVfaGFzX3dyaXRlcnMoc3RydWN0IG5mc19pbm9k
+ZSAqbmZzaSkNCiB7DQotCWFzc2VydF9zcGluX2xvY2tlZCgmbmZzaS0+dmZzX2lub2RlLmlfbG9j
+ayk7DQorCXN0cnVjdCBpbm9kZSAqaW5vZGUgPSAmbmZzaS0+dmZzX2lub2RlOw0KIA0KKwlhc3Nl
+cnRfc3Bpbl9sb2NrZWQoJmlub2RlLT5pX2xvY2spOw0KKw0KKwlpZiAoIVNfSVNSRUcoaW5vZGUt
+PmlfbW9kZSkpDQorCQlyZXR1cm4gZmFsc2U7DQogCWlmIChsaXN0X2VtcHR5KCZuZnNpLT5vcGVu
+X2ZpbGVzKSkNCiAJCXJldHVybiBmYWxzZTsNCiAJLyogTm90ZTogVGhpcyByZWxpZXMgb24gbmZz
+aS0+b3Blbl9maWxlcyBiZWluZyBvcmRlcmVkIHdpdGggd3JpdGVycw0KLS0gDQoyLjcuNA0KDQo=
 
-Again, I'm not convinced that this is a better choice then allocating
-the exact needed size as dma coherent, but given that the dma coherent
-allocations are always page aligned I wander if it's not the same
-effect...
+--_003_1466600806909932camelprimarydatacom_
+Content-Type: text/x-patch;
+	name=0002-fixup-NFS-Do-not-serialise-O_DIRECT-reads-and-writes.patch
+Content-Description: 0002-fixup-NFS-Do-not-serialise-O_DIRECT-reads-and-writes.patch
+Content-Disposition: attachment;
+	filename="0002-fixup-NFS-Do-not-serialise-O_DIRECT-reads-and-writes.patch";
+	size=1259; creation-date="Wed, 22 Jun 2016 13:06:49 GMT";
+	modification-date="Wed, 22 Jun 2016 13:06:49 GMT"
+Content-ID: <6D73253027D21B4EB7FEFD46C7609FBE@namprd11.prod.outlook.com>
+Content-Transfer-Encoding: base64
 
-In any event, we can move forward with this for now:
+RnJvbSA2NWQyN2VhNmNjNTFjYjY1M2MyNjc0NjY2MzUzY2YzYjhkMGY3NjVmIE1vbiBTZXAgMTcg
+MDA6MDA6MDAgMjAwMQ0KRnJvbTogVHJvbmQgTXlrbGVidXN0IDx0cm9uZC5teWtsZWJ1c3RAcHJp
+bWFyeWRhdGEuY29tPg0KRGF0ZTogV2VkLCAyMiBKdW4gMjAxNiAwODoxNjo1NCAtMDQwMA0KU3Vi
+amVjdDogW1BBVENIIDIvMl0gZml4dXAhIE5GUzogRG8gbm90IHNlcmlhbGlzZSBPX0RJUkVDVCBy
+ZWFkcyBhbmQgd3JpdGVzDQoNCi0tLQ0KIGZzL25mcy9maWxlLmMgfCA0ICsrLS0NCiAxIGZpbGUg
+Y2hhbmdlZCwgMiBpbnNlcnRpb25zKCspLCAyIGRlbGV0aW9ucygtKQ0KDQpkaWZmIC0tZ2l0IGEv
+ZnMvbmZzL2ZpbGUuYyBiL2ZzL25mcy9maWxlLmMNCmluZGV4IGZiN2ExYjBiNmEyMC4uOTA4MWFm
+YWNiNDU3IDEwMDY0NA0KLS0tIGEvZnMvbmZzL2ZpbGUuYw0KKysrIGIvZnMvbmZzL2ZpbGUuYw0K
+QEAgLTE3MSw3ICsxNzEsNyBAQCBuZnNfZmlsZV9yZWFkKHN0cnVjdCBraW9jYiAqaW9jYiwgc3Ry
+dWN0IGlvdl9pdGVyICp0bykNCiAJCWlvdl9pdGVyX2NvdW50KHRvKSwgKHVuc2lnbmVkIGxvbmcp
+IGlvY2ItPmtpX3Bvcyk7DQogDQogCW5mc19zdGFydF9pb19yZWFkKGlub2RlKTsNCi0JcmVzdWx0
+ID0gbmZzX3JldmFsaWRhdGVfbWFwcGluZ19wcm90ZWN0ZWQoaW5vZGUsIGlvY2ItPmtpX2ZpbHAt
+PmZfbWFwcGluZyk7DQorCXJlc3VsdCA9IG5mc19yZXZhbGlkYXRlX21hcHBpbmcoaW5vZGUsIGlv
+Y2ItPmtpX2ZpbHAtPmZfbWFwcGluZyk7DQogCWlmICghcmVzdWx0KSB7DQogCQlyZXN1bHQgPSBn
+ZW5lcmljX2ZpbGVfcmVhZF9pdGVyKGlvY2IsIHRvKTsNCiAJCWlmIChyZXN1bHQgPiAwKQ0KQEAg
+LTE5NCw3ICsxOTQsNyBAQCBuZnNfZmlsZV9zcGxpY2VfcmVhZChzdHJ1Y3QgZmlsZSAqZmlscCwg
+bG9mZl90ICpwcG9zLA0KIAkJZmlscCwgKHVuc2lnbmVkIGxvbmcpIGNvdW50LCAodW5zaWduZWQg
+bG9uZyBsb25nKSAqcHBvcyk7DQogDQogCW5mc19zdGFydF9pb19yZWFkKGlub2RlKTsNCi0JcmVz
+ID0gbmZzX3JldmFsaWRhdGVfbWFwcGluZ19wcm90ZWN0ZWQoaW5vZGUsIGZpbHAtPmZfbWFwcGlu
+Zyk7DQorCXJlcyA9IG5mc19yZXZhbGlkYXRlX21hcHBpbmcoaW5vZGUsIGZpbHAtPmZfbWFwcGlu
+Zyk7DQogCWlmICghcmVzKSB7DQogCQlyZXMgPSBnZW5lcmljX2ZpbGVfc3BsaWNlX3JlYWQoZmls
+cCwgcHBvcywgcGlwZSwgY291bnQsIGZsYWdzKTsNCiAJCWlmIChyZXMgPiAwKQ0KLS0gDQoyLjcu
+NA0KDQo=
+--_003_1466600806909932camelprimarydatacom_--
 
-Reviewed-by: Sagi Grimberg <sagi@grimberg.me>
