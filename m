@@ -1,15 +1,13 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from us-smtp-delivery-194.mimecast.com ([63.128.21.194]:39347 "EHLO
-	us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751242AbcFVRZB convert rfc822-to-8bit
-	(ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 22 Jun 2016 13:25:01 -0400
-From: Trond Myklebust <trondmy@primarydata.com>
-To: Christoph Hellwig <hch@infradead.org>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH v2 10/12] NFS: Do not serialise O_DIRECT reads and writes
-Date: Wed, 22 Jun 2016 17:24:50 +0000
-Message-ID: <97494C37-23D3-44FA-A9B8-1887E17429D9@primarydata.com>
+Received: from mx143.netapp.com ([216.240.21.24]:37979 "EHLO mx143.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751396AbcFVR60 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 22 Jun 2016 13:58:26 -0400
+From: Anna Schumaker <Anna.Schumaker@netapp.com>
+Subject: Re: [PATCH v2 11/12] NFS: Remove inode->i_dio_count from the NFS
+ O_DIRECT code
+To: Trond Myklebust <trond.myklebust@primarydata.com>,
+        <linux-nfs@vger.kernel.org>
 References: <1466544893-12058-1-git-send-email-trond.myklebust@primarydata.com>
  <1466544893-12058-2-git-send-email-trond.myklebust@primarydata.com>
  <1466544893-12058-3-git-send-email-trond.myklebust@primarydata.com>
@@ -20,169 +18,134 @@ References: <1466544893-12058-1-git-send-email-trond.myklebust@primarydata.com>
  <1466544893-12058-8-git-send-email-trond.myklebust@primarydata.com>
  <1466544893-12058-9-git-send-email-trond.myklebust@primarydata.com>
  <1466544893-12058-10-git-send-email-trond.myklebust@primarydata.com>
- <20160622164715.GB16823@infradead.org>
-In-Reply-To: <20160622164715.GB16823@infradead.org>
+ <1466544893-12058-11-git-send-email-trond.myklebust@primarydata.com>
+Message-ID: <74f8a81e-41c2-b28c-0227-780f3d26db75@Netapp.com>
+Date: Wed, 22 Jun 2016 13:58:16 -0400
 MIME-Version: 1.0
-Content-Type: text/plain; charset=WINDOWS-1252
+In-Reply-To: <1466544893-12058-11-git-send-email-trond.myklebust@primarydata.com>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Hi Trond,
 
-> On Jun 22, 2016, at 12:47, Christoph Hellwig <hch@infradead.org> wrote:
+On 06/21/2016 05:34 PM, Trond Myklebust wrote:
+> Now that we can serialise O_DIRECT and write/truncate using the
+> inode->i_rwsem, we no longer need inode->i_dio_count.
+
+I'm seeing cthon basic tests fail on all NFS versions after applying this patch:
+
+./test5: read and write
+        ./test5: (/nfs/basic) 'bigfile' has size 8192, should be 1048576
+basic tests failed
+
+Just thought you should know :)
+Anna
+
 > 
-> On Tue, Jun 21, 2016 at 05:34:51PM -0400, Trond Myklebust wrote:
->> Allow dio requests to be scheduled in parallel, but ensuring that they
->> do not conflict with buffered I/O.
-> 
-> Can you explain why we care about the full direct / bufferd exclusion
-> that no other file system seems do be doing?  I would have expected
-> something more like the patch below, which follows the XFS locking
-> model 1:1.  This passed xfstests with plain NFSv4, haven't done any pNFS
-> testing yet:
-
-
-If we’re going to worry about write atomicity in the buffered I/O case, then we really should also make sure that O_DIRECT writes are atomic w.r.t. page cache updates too. With this locking model, a buffered read() can race with the O_DIRECT write() and get a mixture of old data and new.
-
-> 
+> Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
 > ---
-> From 913189e25fc0e7318f077610c0aa8d5c1071c0c8 Mon Sep 17 00:00:00 2001
-> From: Christoph Hellwig <hch@lst.de>
-> Date: Wed, 22 Jun 2016 18:00:24 +0200
-> Subject: nfs: do not serialise O_DIRECT reads and writes
-> 
-> Currently NFS takes the inode lock exclusive for all direct I/O reads and
-> writes, which forces users of direct I/O to be unessecarily synchronized.
-> We only need the exclusive lock to invalidate the page cache, and could
-> otherwise do with a shared lock to protect against buffered writers and
-> truncate.  This also adds the shared lock to buffered reads to provide
-> Posix synchronized I/O guarantees for reads after synchronous writes,
-> although that change shouldn't be nessecary to allow parallel direct I/O.
-> 
-> Signed-off-by: Christoph Hellwig <hch@lst.de>
-> ---
-> fs/nfs/direct.c | 47 +++++++++++++++++++++++++++++++----------------
-> fs/nfs/file.c   |  4 +++-
-> 2 files changed, 34 insertions(+), 17 deletions(-)
+>  fs/nfs/direct.c | 12 +++---------
+>  fs/nfs/file.c   |  2 --
+>  fs/nfs/inode.c  |  1 -
+>  3 files changed, 3 insertions(+), 12 deletions(-)
 > 
 > diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
-> index 979b3c4..8b9c7e95 100644
+> index 2333e9973802..92267316290a 100644
 > --- a/fs/nfs/direct.c
 > +++ b/fs/nfs/direct.c
-> @@ -581,10 +581,17 @@ ssize_t nfs_file_direct_read(struct kiocb *iocb, struct iov_iter *iter)
-> 	if (!count)
-> 		goto out;
-> 
-> -	inode_lock(inode);
-> -	result = nfs_sync_mapping(mapping);
-> -	if (result)
-> -		goto out_unlock;
-> +	if (mapping->nrpages) {
-> +		inode_lock(inode);
-
-This is unnecessary now that we have a rw_semaphore. You don’t need to take an exclusive lock in order to serialise w.r.t. new writes, and by doing so you end up serialising all reads if there happens to be pages in the page cache. This is true whether or not those pages are dirty.
-
-> +		result = nfs_sync_mapping(mapping);
-> +		if (result) {
-> +			inode_unlock(inode);
-> +			goto out;
-> +		}
-> +		downgrade_write(&inode->i_rwsem);
-> +	} else {
-> +		inode_lock_shared(inode);
-> +	}
-> 
-> 	task_io_account_read(count);
-> 
-> @@ -609,7 +616,7 @@ ssize_t nfs_file_direct_read(struct kiocb *iocb, struct iov_iter *iter)
-> 	NFS_I(inode)->read_io += count;
-> 	result = nfs_direct_read_schedule_iovec(dreq, iter, iocb->ki_pos);
-> 
-> -	inode_unlock(inode);
-> +	inode_unlock_shared(inode);
-> 
-> 	if (!result) {
-> 		result = nfs_direct_wait(dreq);
-> @@ -623,7 +630,7 @@ ssize_t nfs_file_direct_read(struct kiocb *iocb, struct iov_iter *iter)
-> out_release:
-> 	nfs_direct_req_release(dreq);
-> out_unlock:
-> -	inode_unlock(inode);
-> +	inode_unlock_shared(inode);
-> out:
-> 	return result;
-> }
-> @@ -1005,17 +1012,22 @@ ssize_t nfs_file_direct_write(struct kiocb *iocb, struct iov_iter *iter)
-> 	pos = iocb->ki_pos;
-> 	end = (pos + iov_iter_count(iter) - 1) >> PAGE_SHIFT;
-> 
-> -	inode_lock(inode);
+> @@ -385,11 +385,6 @@ static void nfs_direct_complete(struct nfs_direct_req *dreq, bool write)
+>  		spin_unlock(&inode->i_lock);
+>  	}
+>  
+> -	if (write)
+> -		nfs_zap_mapping(inode, inode->i_mapping);
 > -
-> -	result = nfs_sync_mapping(mapping);
-> -	if (result)
-> -		goto out_unlock;
+> -	inode_dio_end(inode);
 > -
-> 	if (mapping->nrpages) {
-> -		result = invalidate_inode_pages2_range(mapping,
-> -					pos >> PAGE_SHIFT, end);
-> +		inode_lock(inode);
-> +		result = nfs_sync_mapping(mapping);
-> 		if (result)
-> -			goto out_unlock;
-> +			goto out_unlock_exclusive;
+>  	if (dreq->iocb) {
+>  		long res = (long) dreq->error;
+>  		if (!res)
+> @@ -488,7 +483,6 @@ static ssize_t nfs_direct_read_schedule_iovec(struct nfs_direct_req *dreq,
+>  			     &nfs_direct_read_completion_ops);
+>  	get_dreq(dreq);
+>  	desc.pg_dreq = dreq;
+> -	inode_dio_begin(inode);
+>  
+>  	while (iov_iter_count(iter)) {
+>  		struct page **pagevec;
+> @@ -540,7 +534,6 @@ static ssize_t nfs_direct_read_schedule_iovec(struct nfs_direct_req *dreq,
+>  	 * generic layer handle the completion.
+>  	 */
+>  	if (requested_bytes == 0) {
+> -		inode_dio_end(inode);
+>  		nfs_direct_req_release(dreq);
+>  		return result < 0 ? result : -EIO;
+>  	}
+> @@ -770,6 +763,7 @@ static void nfs_direct_commit_schedule(struct nfs_direct_req *dreq)
+>  static void nfs_direct_write_schedule_work(struct work_struct *work)
+>  {
+>  	struct nfs_direct_req *dreq = container_of(work, struct nfs_direct_req, work);
+> +	struct inode *inode = dreq->inode;
+>  	int flags = dreq->flags;
+>  
+>  	dreq->flags = 0;
+> @@ -781,6 +775,8 @@ static void nfs_direct_write_schedule_work(struct work_struct *work)
+>  			nfs_direct_write_reschedule(dreq);
+>  			break;
+>  		default:
+> +			nfs_zap_mapping(inode, inode->i_mapping);
 > +
-> +		if (mapping->nrpages) {
-> +			result = invalidate_inode_pages2_range(mapping,
-> +					pos >> PAGE_SHIFT, end);
-> +			if (result)	
-> +				goto out_unlock_exclusive;
-> +		}
-> +
-> +		downgrade_write(&inode->i_rwsem);
-> +	} else {
-> +		inode_lock_shared(inode);
-> 	}
-> 
-> 	task_io_account_write(iov_iter_count(iter));
-> @@ -1045,7 +1057,7 @@ ssize_t nfs_file_direct_write(struct kiocb *iocb, struct iov_iter *iter)
-> 					      pos >> PAGE_SHIFT, end);
-> 	}
-> 
-> -	inode_unlock(inode);
-> +	inode_unlock_shared(inode);
-> 
-> 	if (!result) {
-> 		result = nfs_direct_wait(dreq);
-> @@ -1068,6 +1080,9 @@ ssize_t nfs_file_direct_write(struct kiocb *iocb, struct iov_iter *iter)
-> out_release:
-> 	nfs_direct_req_release(dreq);
-> out_unlock:
-> +	inode_unlock_shared(inode);
-> +	return result;
-> +out_unlock_exclusive:
-> 	inode_unlock(inode);
-> 	return result;
-> }
+>  			nfs_direct_complete(dreq, true);
+>  	}
+>  }
+> @@ -903,7 +899,6 @@ static ssize_t nfs_direct_write_schedule_iovec(struct nfs_direct_req *dreq,
+>  			      &nfs_direct_write_completion_ops);
+>  	desc.pg_dreq = dreq;
+>  	get_dreq(dreq);
+> -	inode_dio_begin(inode);
+>  
+>  	NFS_I(inode)->write_io += iov_iter_count(iter);
+>  	while (iov_iter_count(iter)) {
+> @@ -964,7 +959,6 @@ static ssize_t nfs_direct_write_schedule_iovec(struct nfs_direct_req *dreq,
+>  	 * generic layer handle the completion.
+>  	 */
+>  	if (requested_bytes == 0) {
+> -		inode_dio_end(inode);
+>  		nfs_direct_req_release(dreq);
+>  		return result < 0 ? result : -EIO;
+>  	}
 > diff --git a/fs/nfs/file.c b/fs/nfs/file.c
-> index 717a8d6..719296f 100644
+> index b1dd7f2c64f4..fb7a1b0b6a20 100644
 > --- a/fs/nfs/file.c
 > +++ b/fs/nfs/file.c
-> @@ -170,12 +170,14 @@ nfs_file_read(struct kiocb *iocb, struct iov_iter *to)
-> 		iocb->ki_filp,
-> 		iov_iter_count(to), (unsigned long) iocb->ki_pos);
-> 
-> -	result = nfs_revalidate_mapping_protected(inode, iocb->ki_filp->f_mapping);
-> +	inode_lock_shared(inode);
-> +	result = nfs_revalidate_mapping(inode, iocb->ki_filp->f_mapping);
-> 	if (!result) {
-> 		result = generic_file_read_iter(iocb, to);
-> 		if (result > 0)
-> 			nfs_add_stats(inode, NFSIOS_NORMALREADBYTES, result);
-> 	}
-> +	inode_unlock_shared(inode);
-> 	return result;
-> }
-> EXPORT_SYMBOL_GPL(nfs_file_read);
-> -- 
-> 2.1.4
+> @@ -276,7 +276,6 @@ nfs_file_fsync(struct file *file, loff_t start, loff_t end, int datasync)
+>  
+>  	trace_nfs_fsync_enter(inode);
+>  
+> -	inode_dio_wait(inode);
+>  	do {
+>  		ret = filemap_write_and_wait_range(inode->i_mapping, start, end);
+>  		if (ret != 0)
+> @@ -364,7 +363,6 @@ start:
+>  	/*
+>  	 * Wait for O_DIRECT to complete
+>  	 */
+> -	inode_dio_wait(mapping->host);
+>  
+>  	page = grab_cache_page_write_begin(mapping, index, flags);
+>  	if (!page)
+> diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
+> index bd0390da3344..6bc65ffc3c6c 100644
+> --- a/fs/nfs/inode.c
+> +++ b/fs/nfs/inode.c
+> @@ -141,7 +141,6 @@ void nfs_evict_inode(struct inode *inode)
+>  
+>  int nfs_sync_inode(struct inode *inode)
+>  {
+> -	inode_dio_wait(inode);
+>  	return nfs_wb_all(inode);
+>  }
+>  EXPORT_SYMBOL_GPL(nfs_sync_inode);
 > 
 
