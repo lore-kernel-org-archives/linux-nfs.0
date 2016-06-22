@@ -1,68 +1,83 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx142.netapp.com ([216.240.21.19]:14920 "EHLO mx142.netapp.com"
+Received: from mx143.netapp.com ([216.240.21.24]:26594 "EHLO mx143.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751498AbcFVSwp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 22 Jun 2016 14:52:45 -0400
-From: Anna Schumaker <Anna.Schumaker@netapp.com>
-Subject: Re: [PATCH v2 11/12] NFS: Remove inode->i_dio_count from the NFS
- O_DIRECT code
-To: Anna Schumaker <Anna.Schumaker@netapp.com>,
-        Trond Myklebust <trondmy@primarydata.com>
-References: <1466544893-12058-1-git-send-email-trond.myklebust@primarydata.com>
- <1466544893-12058-2-git-send-email-trond.myklebust@primarydata.com>
- <1466544893-12058-3-git-send-email-trond.myklebust@primarydata.com>
- <1466544893-12058-4-git-send-email-trond.myklebust@primarydata.com>
- <1466544893-12058-5-git-send-email-trond.myklebust@primarydata.com>
- <1466544893-12058-6-git-send-email-trond.myklebust@primarydata.com>
- <1466544893-12058-7-git-send-email-trond.myklebust@primarydata.com>
- <1466544893-12058-8-git-send-email-trond.myklebust@primarydata.com>
- <1466544893-12058-9-git-send-email-trond.myklebust@primarydata.com>
- <1466544893-12058-10-git-send-email-trond.myklebust@primarydata.com>
- <1466544893-12058-11-git-send-email-trond.myklebust@primarydata.com>
- <74f8a81e-41c2-b28c-0227-780f3d26db75@Netapp.com>
- <BD2F73AF-8547-4198-A937-0C6EDBF079FA@primarydata.com>
- <795f5e87-2c43-0e6e-2f1c-322a5a928b39@Netapp.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Message-ID: <22b9a7ea-771c-34b3-bb22-f109772d5da5@Netapp.com>
-Date: Wed, 22 Jun 2016 14:51:32 -0400
+	id S1751286AbcFVT23 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 22 Jun 2016 15:28:29 -0400
+From: Olga Kornievskaia <kolga@netapp.com>
+To: <Trond.Myklebust@primarydata.com>
+CC: <linux-nfs@vger.kernel.org>
+Subject: [PATCH 1/1] Fix SETATTR/DELEGRETURN race
+Date: Wed, 22 Jun 2016 15:28:26 -0400
+Message-ID: <1466623706-41389-1-git-send-email-kolga@netapp.com>
 MIME-Version: 1.0
-In-Reply-To: <795f5e87-2c43-0e6e-2f1c-322a5a928b39@Netapp.com>
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 06/22/2016 02:08 PM, Anna Schumaker wrote:
-> On 06/22/2016 02:06 PM, Trond Myklebust wrote:
->>
->>> On Jun 22, 2016, at 13:58, Anna Schumaker <Anna.Schumaker@netapp.com> wrote:
->>>
->>> Hi Trond,
->>>
->>> On 06/21/2016 05:34 PM, Trond Myklebust wrote:
->>>> Now that we can serialise O_DIRECT and write/truncate using the
->>>> inode->i_rwsem, we no longer need inode->i_dio_count.
->>>
->>> I'm seeing cthon basic tests fail on all NFS versions after applying this patch:
->>>
->>> ./test5: read and write
->>>        ./test5: (/nfs/basic) 'bigfile' has size 8192, should be 1048576
->>> basic tests failed
->>>
->>
->> ???? Connectathon doesn’t use O_DIRECT. Are you sure it is this patch?
->>
-> 
-> Pretty sure.  Cthon worked for me at patch #10, but it failed after adding this one.
+Hi Trond,
 
-I retried the tests, and it's actually patch #10 where I start having problems.  Sorry for the confusion!
+In this version of the patch, we won't be retrying if
+BAD_STATEID was for zero stateid. If open stateid was 
+used then the normal error handling kicks off recovery
+and retries. So I think this is the only case left.
 
-Anna
+It's insufficient to only retry SETATTR if we have a delegation
+and got a bad_stateid-type error. A DELEGRETURN could be sent
+after SETATTR is sent and before reply comes back and thus no
+delegation would be found and SETATTR not retried with zero
+stateid and instead fail with EIO. Check if we sent SETATTR
+with a delegation stateid, received an error and no longer
+have a delegation, then retry.
 
-> 
-> Anna
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
+Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
+---
+ fs/nfs/nfs4proc.c | 12 +++++++++++-
+ 1 file changed, 11 insertions(+), 1 deletion(-)
+
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 406dd3e..63f7fd3 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -2696,7 +2696,7 @@ static int _nfs4_do_setattr(struct inode *inode, struct rpc_cred *cred,
+ 	struct rpc_cred *delegation_cred = NULL;
+ 	unsigned long timestamp = jiffies;
+ 	fmode_t fmode;
+-	bool truncate;
++	bool truncate, use_delegation = false;
+ 	int status;
+ 
+ 	arg.bitmask = nfs4_bitmask(server, ilabel);
+@@ -2711,6 +2711,7 @@ static int _nfs4_do_setattr(struct inode *inode, struct rpc_cred *cred,
+ 
+ 	if (nfs4_copy_delegation_stateid(inode, fmode, &arg.stateid, &delegation_cred)) {
+ 		/* Use that stateid */
++		use_delegation = true;
+ 	} else if (truncate && state != NULL) {
+ 		struct nfs_lockowner lockowner = {
+ 			.l_owner = current->files,
+@@ -2732,6 +2733,13 @@ static int _nfs4_do_setattr(struct inode *inode, struct rpc_cred *cred,
+ 	if (status == 0 && state != NULL)
+ 		renew_lease(server, timestamp);
+ 	trace_nfs4_setattr(inode, &arg.stateid, status);
++	switch (status) {
++	case -NFS4ERR_DELEG_REVOKED:
++	case -NFS4ERR_ADMIN_REVOKED:
++	case -NFS4ERR_BAD_STATEID:
++		if (use_delegation && !nfs4_have_delegation(inode, fmode))
++			status = -EAGAIN;
++	}
+ 	return status;
+ }
+ 
+@@ -2765,6 +2773,8 @@ static int nfs4_do_setattr(struct inode *inode, struct rpc_cred *cred,
+ 			}
+ 		}
+ 		err = nfs4_handle_exception(server, err, &exception);
++		if (err == -EAGAIN)
++			exception.retry = 1;
+ 	} while (exception.retry);
+ out:
+ 	return err;
+-- 
+1.8.3.1
 
