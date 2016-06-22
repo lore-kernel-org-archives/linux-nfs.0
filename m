@@ -1,56 +1,52 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from us-smtp-delivery-194.mimecast.com ([216.205.24.194]:49140 "EHLO
-	us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751059AbcFVTm6 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 22 Jun 2016 15:42:58 -0400
-From: Trond Myklebust <trondmy@primarydata.com>
-To: Schumaker Anna <Anna.Schumaker@netapp.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH v2 11/12] NFS: Remove inode->i_dio_count from the NFS
- O_DIRECT code
-Date: Wed, 22 Jun 2016 19:42:51 +0000
-Message-ID: <C4FA4E4F-DFF3-4AA7-9B1A-C34806DFA6A3@primarydata.com>
-References: <1466544893-12058-1-git-send-email-trond.myklebust@primarydata.com>
- <1466544893-12058-2-git-send-email-trond.myklebust@primarydata.com>
- <1466544893-12058-3-git-send-email-trond.myklebust@primarydata.com>
- <1466544893-12058-4-git-send-email-trond.myklebust@primarydata.com>
- <1466544893-12058-5-git-send-email-trond.myklebust@primarydata.com>
- <1466544893-12058-6-git-send-email-trond.myklebust@primarydata.com>
- <1466544893-12058-7-git-send-email-trond.myklebust@primarydata.com>
- <1466544893-12058-8-git-send-email-trond.myklebust@primarydata.com>
- <1466544893-12058-9-git-send-email-trond.myklebust@primarydata.com>
- <1466544893-12058-10-git-send-email-trond.myklebust@primarydata.com>
- <1466544893-12058-11-git-send-email-trond.myklebust@primarydata.com>
- <74f8a81e-41c2-b28c-0227-780f3d26db75@Netapp.com>
- <BD2F73AF-8547-4198-A937-0C6EDBF079FA@primarydata.com>
- <795f5e87-2c43-0e6e-2f1c-322a5a928b39@Netapp.com>
- <22b9a7ea-771c-34b3-bb22-f109772d5da5@Netapp.com>
-In-Reply-To: <22b9a7ea-771c-34b3-bb22-f109772d5da5@Netapp.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+Received: from mail-io0-f194.google.com ([209.85.223.194]:34003 "EHLO
+	mail-io0-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750821AbcFVUsS (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 22 Jun 2016 16:48:18 -0400
+Received: by mail-io0-f194.google.com with SMTP id 100so9133650ioh.1
+        for <linux-nfs@vger.kernel.org>; Wed, 22 Jun 2016 13:48:18 -0700 (PDT)
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH v3 01/13] NFS: Don't flush caches for a getattr that races with writeback
+Date: Wed, 22 Jun 2016 16:47:36 -0400
+Message-Id: <1466628468-3958-1-git-send-email-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-DQo+IE9uIEp1biAyMiwgMjAxNiwgYXQgMTQ6NTEsIEFubmEgU2NodW1ha2VyIDxBbm5hLlNjaHVt
-YWtlckBuZXRhcHAuY29tPiB3cm90ZToNCj4gDQo+IE9uIDA2LzIyLzIwMTYgMDI6MDggUE0sIEFu
-bmEgU2NodW1ha2VyIHdyb3RlOg0KPj4gT24gMDYvMjIvMjAxNiAwMjowNiBQTSwgVHJvbmQgTXlr
-bGVidXN0IHdyb3RlOg0KPj4+IA0KPj4+PiBPbiBKdW4gMjIsIDIwMTYsIGF0IDEzOjU4LCBBbm5h
-IFNjaHVtYWtlciA8QW5uYS5TY2h1bWFrZXJAbmV0YXBwLmNvbT4gd3JvdGU6DQo+Pj4+IA0KPj4+
-PiBIaSBUcm9uZCwNCj4+Pj4gDQo+Pj4+IE9uIDA2LzIxLzIwMTYgMDU6MzQgUE0sIFRyb25kIE15
-a2xlYnVzdCB3cm90ZToNCj4+Pj4+IE5vdyB0aGF0IHdlIGNhbiBzZXJpYWxpc2UgT19ESVJFQ1Qg
-YW5kIHdyaXRlL3RydW5jYXRlIHVzaW5nIHRoZQ0KPj4+Pj4gaW5vZGUtPmlfcndzZW0sIHdlIG5v
-IGxvbmdlciBuZWVkIGlub2RlLT5pX2Rpb19jb3VudC4NCj4+Pj4gDQo+Pj4+IEknbSBzZWVpbmcg
-Y3Rob24gYmFzaWMgdGVzdHMgZmFpbCBvbiBhbGwgTkZTIHZlcnNpb25zIGFmdGVyIGFwcGx5aW5n
-IHRoaXMgcGF0Y2g6DQo+Pj4+IA0KPj4+PiAuL3Rlc3Q1OiByZWFkIGFuZCB3cml0ZQ0KPj4+PiAg
-ICAgICAuL3Rlc3Q1OiAoL25mcy9iYXNpYykgJ2JpZ2ZpbGUnIGhhcyBzaXplIDgxOTIsIHNob3Vs
-ZCBiZSAxMDQ4NTc2DQo+Pj4+IGJhc2ljIHRlc3RzIGZhaWxlZA0KPj4+PiANCj4+PiANCj4+PiA/
-Pz8/IENvbm5lY3RhdGhvbiBkb2VzbuKAmXQgdXNlIE9fRElSRUNULiBBcmUgeW91IHN1cmUgaXQg
-aXMgdGhpcyBwYXRjaD8NCj4+PiANCj4+IA0KPj4gUHJldHR5IHN1cmUuICBDdGhvbiB3b3JrZWQg
-Zm9yIG1lIGF0IHBhdGNoICMxMCwgYnV0IGl0IGZhaWxlZCBhZnRlciBhZGRpbmcgdGhpcyBvbmUu
-DQo+IA0KPiBJIHJldHJpZWQgdGhlIHRlc3RzLCBhbmQgaXQncyBhY3R1YWxseSBwYXRjaCAjMTAg
-d2hlcmUgSSBzdGFydCBoYXZpbmcgcHJvYmxlbXMuICBTb3JyeSBmb3IgdGhlIGNvbmZ1c2lvbiEN
-Cj4gDQoNClRoYXQgbWFrZXMgbW9yZSBzZW5zZSwgYW5kIEkgdGhpbmsgSeKAmXZlIGZvdW5kIHRo
-ZSBpc3N1ZXMuIFRoZXJlIHdlcmUgMjoNCg0KMSkgVGhlIHVwZGF0ZSBvZiBpb2NiLT5raV9wb3Mg
-d2FzIGJyb2tlbi4NCjIpIGdlbmVyaWNfd3JpdGVfY2hlY2tzKCkgbmVlZHMgdG8gcnVuIGFmdGVy
-IHRoZSBmaWxlIHNpemUgcmV2YWxpZGF0aW9uDQoNCkNoZWVycw0KICBUcm9uZA==
+If there were outstanding writes then chalk up the unexpected change
+attribute on the server to them.
+
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+---
+ fs/nfs/inode.c | 15 +++++++++------
+ 1 file changed, 9 insertions(+), 6 deletions(-)
+
+diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
+index 52e7d6869e3b..60051e62d3f1 100644
+--- a/fs/nfs/inode.c
++++ b/fs/nfs/inode.c
+@@ -1729,12 +1729,15 @@ static int nfs_update_inode(struct inode *inode, struct nfs_fattr *fattr)
+ 		if (inode->i_version != fattr->change_attr) {
+ 			dprintk("NFS: change_attr change on server for file %s/%ld\n",
+ 					inode->i_sb->s_id, inode->i_ino);
+-			invalid |= NFS_INO_INVALID_ATTR
+-				| NFS_INO_INVALID_DATA
+-				| NFS_INO_INVALID_ACCESS
+-				| NFS_INO_INVALID_ACL;
+-			if (S_ISDIR(inode->i_mode))
+-				nfs_force_lookup_revalidate(inode);
++			/* Could it be a race with writeback? */
++			if (nfsi->nrequests == 0) {
++				invalid |= NFS_INO_INVALID_ATTR
++					| NFS_INO_INVALID_DATA
++					| NFS_INO_INVALID_ACCESS
++					| NFS_INO_INVALID_ACL;
++				if (S_ISDIR(inode->i_mode))
++					nfs_force_lookup_revalidate(inode);
++			}
+ 			inode->i_version = fattr->change_attr;
+ 		}
+ 	} else {
+-- 
+2.7.4
 
