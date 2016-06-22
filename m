@@ -1,132 +1,182 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f193.google.com ([209.85.223.193]:35029 "EHLO
-	mail-io0-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750821AbcFVUsU (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 22 Jun 2016 16:48:20 -0400
-Received: by mail-io0-f193.google.com with SMTP id u25so8584761iou.2
-        for <linux-nfs@vger.kernel.org>; Wed, 22 Jun 2016 13:48:19 -0700 (PDT)
+Received: from mail-io0-f196.google.com ([209.85.223.196]:34024 "EHLO
+	mail-io0-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750821AbcFVUsV (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 22 Jun 2016 16:48:21 -0400
+Received: by mail-io0-f196.google.com with SMTP id 100so9133779ioh.1
+        for <linux-nfs@vger.kernel.org>; Wed, 22 Jun 2016 13:48:20 -0700 (PDT)
 From: Trond Myklebust <trond.myklebust@primarydata.com>
 To: linux-nfs@vger.kernel.org
-Subject: [PATCH v3 02/13] NFS: Cache access checks more aggressively
-Date: Wed, 22 Jun 2016 16:47:37 -0400
-Message-Id: <1466628468-3958-2-git-send-email-trond.myklebust@primarydata.com>
-In-Reply-To: <1466628468-3958-1-git-send-email-trond.myklebust@primarydata.com>
+Subject: [PATCH v3 03/13] NFS: Cache aggressively when file is open for writing
+Date: Wed, 22 Jun 2016 16:47:38 -0400
+Message-Id: <1466628468-3958-3-git-send-email-trond.myklebust@primarydata.com>
+In-Reply-To: <1466628468-3958-2-git-send-email-trond.myklebust@primarydata.com>
 References: <1466628468-3958-1-git-send-email-trond.myklebust@primarydata.com>
+ <1466628468-3958-2-git-send-email-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-If an attribute revalidation fails, then we already know that we'll
-zap the access cache. If, OTOH, the inode isn't changing, there should
-be no need to eject access calls just because they are old.
+Unless the user is using file locking, we must assume close-to-open
+cache consistency when the file is open for writing. Adjust the
+caching algorithm so that it does not clear the cache on out-of-order
+writes and/or attribute revalidations.
 
 Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
 ---
- fs/nfs/dir.c | 52 +++++++++++++++++++++++++++++++---------------------
- 1 file changed, 31 insertions(+), 21 deletions(-)
+ fs/nfs/file.c  | 13 ++----------
+ fs/nfs/inode.c | 62 +++++++++++++++++++++++++++++++++++++++++-----------------
+ 2 files changed, 46 insertions(+), 29 deletions(-)
 
-diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
-index aaf7bd0cbae2..210b33636fe4 100644
---- a/fs/nfs/dir.c
-+++ b/fs/nfs/dir.c
-@@ -2228,21 +2228,37 @@ static struct nfs_access_entry *nfs_access_search_rbtree(struct inode *inode, st
- 	return NULL;
+diff --git a/fs/nfs/file.c b/fs/nfs/file.c
+index 717a8d6af52d..2d39d9f9da7d 100644
+--- a/fs/nfs/file.c
++++ b/fs/nfs/file.c
+@@ -780,11 +780,6 @@ do_unlk(struct file *filp, int cmd, struct file_lock *fl, int is_local)
  }
  
--static int nfs_access_get_cached(struct inode *inode, struct rpc_cred *cred, struct nfs_access_entry *res)
-+static int nfs_access_get_cached(struct inode *inode, struct rpc_cred *cred, struct nfs_access_entry *res, bool may_block)
+ static int
+-is_time_granular(struct timespec *ts) {
+-	return ((ts->tv_sec == 0) && (ts->tv_nsec <= 1000));
+-}
+-
+-static int
+ do_setlk(struct file *filp, int cmd, struct file_lock *fl, int is_local)
  {
+ 	struct inode *inode = filp->f_mapping->host;
+@@ -817,12 +812,8 @@ do_setlk(struct file *filp, int cmd, struct file_lock *fl, int is_local)
+ 	 * This makes locking act as a cache coherency point.
+ 	 */
+ 	nfs_sync_mapping(filp->f_mapping);
+-	if (!NFS_PROTO(inode)->have_delegation(inode, FMODE_READ)) {
+-		if (is_time_granular(&NFS_SERVER(inode)->time_delta))
+-			__nfs_revalidate_inode(NFS_SERVER(inode), inode);
+-		else
+-			nfs_zap_caches(inode);
+-	}
++	if (!NFS_PROTO(inode)->have_delegation(inode, FMODE_READ))
++		nfs_zap_mapping(inode, filp->f_mapping);
+ out:
+ 	return status;
+ }
+diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
+index 60051e62d3f1..4e65a5a8a01b 100644
+--- a/fs/nfs/inode.c
++++ b/fs/nfs/inode.c
+@@ -878,7 +878,10 @@ void nfs_inode_attach_open_context(struct nfs_open_context *ctx)
  	struct nfs_inode *nfsi = NFS_I(inode);
- 	struct nfs_access_entry *cache;
--	int err = -ENOENT;
-+	bool retry = true;
-+	int err;
  
  	spin_lock(&inode->i_lock);
--	if (nfsi->cache_validity & NFS_INO_INVALID_ACCESS)
--		goto out_zap;
--	cache = nfs_access_search_rbtree(inode, cred);
--	if (cache == NULL)
--		goto out;
--	if (!nfs_have_delegated_attributes(inode) &&
--	    !time_in_range_open(jiffies, cache->jiffies, cache->jiffies + nfsi->attrtimeo))
--		goto out_stale;
-+	for(;;) {
-+		if (nfsi->cache_validity & NFS_INO_INVALID_ACCESS)
-+			goto out_zap;
-+		cache = nfs_access_search_rbtree(inode, cred);
-+		err = -ENOENT;
-+		if (cache == NULL)
-+			goto out;
-+		/* Found an entry, is our attribute cache valid? */
-+		if (!nfs_attribute_cache_expired(inode) &&
-+		    !(nfsi->cache_validity & NFS_INO_INVALID_ATTR))
-+			break;
-+		err = -ECHILD;
-+		if (!may_block)
-+			goto out;
-+		if (!retry)
-+			goto out_zap;
-+		spin_unlock(&inode->i_lock);
-+		err = __nfs_revalidate_inode(NFS_SERVER(inode), inode);
-+		if (err)
-+			return err;
-+		spin_lock(&inode->i_lock);
-+		retry = false;
-+	}
- 	res->jiffies = cache->jiffies;
- 	res->cred = cache->cred;
- 	res->mask = cache->mask;
-@@ -2251,12 +2267,6 @@ static int nfs_access_get_cached(struct inode *inode, struct rpc_cred *cred, str
- out:
+-	list_add(&ctx->list, &nfsi->open_files);
++	if (ctx->mode & FMODE_WRITE)
++		list_add(&ctx->list, &nfsi->open_files);
++	else
++		list_add_tail(&ctx->list, &nfsi->open_files);
  	spin_unlock(&inode->i_lock);
- 	return err;
--out_stale:
--	rb_erase(&cache->rb_node, &nfsi->access_cache);
--	list_del(&cache->lru);
--	spin_unlock(&inode->i_lock);
--	nfs_access_free_entry(cache);
--	return -ENOENT;
- out_zap:
- 	spin_unlock(&inode->i_lock);
- 	nfs_access_zap_cache(inode);
-@@ -2283,13 +2293,12 @@ static int nfs_access_get_cached_rcu(struct inode *inode, struct rpc_cred *cred,
- 		cache = NULL;
- 	if (cache == NULL)
- 		goto out;
--	if (!nfs_have_delegated_attributes(inode) &&
--	    !time_in_range_open(jiffies, cache->jiffies, cache->jiffies + nfsi->attrtimeo))
-+	err = nfs_revalidate_inode_rcu(NFS_SERVER(inode), inode);
-+	if (err)
- 		goto out;
- 	res->jiffies = cache->jiffies;
- 	res->cred = cache->cred;
- 	res->mask = cache->mask;
--	err = 0;
- out:
- 	rcu_read_unlock();
- 	return err;
-@@ -2378,18 +2387,19 @@ EXPORT_SYMBOL_GPL(nfs_access_set_mask);
- static int nfs_do_access(struct inode *inode, struct rpc_cred *cred, int mask)
+ }
+ EXPORT_SYMBOL_GPL(nfs_inode_attach_open_context);
+@@ -1215,6 +1218,25 @@ int nfs_revalidate_mapping_protected(struct inode *inode, struct address_space *
+ 	return __nfs_revalidate_mapping(inode, mapping, true);
+ }
+ 
++static bool nfs_file_has_writers(struct nfs_inode *nfsi)
++{
++	struct inode *inode = &nfsi->vfs_inode;
++
++	assert_spin_locked(&inode->i_lock);
++
++	if (!S_ISREG(inode->i_mode))
++		return false;
++	if (list_empty(&nfsi->open_files))
++		return false;
++	/* Note: This relies on nfsi->open_files being ordered with writers
++	 *       being placed at the head of the list.
++	 *       See nfs_inode_attach_open_context()
++	 */
++	return (list_first_entry(&nfsi->open_files,
++			struct nfs_open_context,
++			list)->mode & FMODE_WRITE) == FMODE_WRITE;
++}
++
+ static unsigned long nfs_wcc_update_inode(struct inode *inode, struct nfs_fattr *fattr)
  {
- 	struct nfs_access_entry cache;
-+	bool may_block = (mask & MAY_NOT_BLOCK) == 0;
- 	int status;
+ 	struct nfs_inode *nfsi = NFS_I(inode);
+@@ -1279,22 +1301,24 @@ static int nfs_check_inode_attributes(struct inode *inode, struct nfs_fattr *fat
+ 	if ((fattr->valid & NFS_ATTR_FATTR_TYPE) && (inode->i_mode & S_IFMT) != (fattr->mode & S_IFMT))
+ 		return -EIO;
  
- 	trace_nfs_access_enter(inode);
+-	if ((fattr->valid & NFS_ATTR_FATTR_CHANGE) != 0 &&
+-			inode->i_version != fattr->change_attr)
+-		invalid |= NFS_INO_INVALID_ATTR|NFS_INO_REVAL_PAGECACHE;
++	if (!nfs_file_has_writers(nfsi)) {
++		/* Verify a few of the more important attributes */
++		if ((fattr->valid & NFS_ATTR_FATTR_CHANGE) != 0 && inode->i_version != fattr->change_attr)
++			invalid |= NFS_INO_INVALID_ATTR | NFS_INO_REVAL_PAGECACHE;
  
- 	status = nfs_access_get_cached_rcu(inode, cred, &cache);
- 	if (status != 0)
--		status = nfs_access_get_cached(inode, cred, &cache);
-+		status = nfs_access_get_cached(inode, cred, &cache, may_block);
- 	if (status == 0)
- 		goto out_cached;
+-	/* Verify a few of the more important attributes */
+-	if ((fattr->valid & NFS_ATTR_FATTR_MTIME) && !timespec_equal(&inode->i_mtime, &fattr->mtime))
+-		invalid |= NFS_INO_INVALID_ATTR;
++		if ((fattr->valid & NFS_ATTR_FATTR_MTIME) && !timespec_equal(&inode->i_mtime, &fattr->mtime))
++			invalid |= NFS_INO_INVALID_ATTR;
  
- 	status = -ECHILD;
--	if (mask & MAY_NOT_BLOCK)
-+	if (!may_block)
- 		goto out;
+-	if (fattr->valid & NFS_ATTR_FATTR_SIZE) {
+-		cur_size = i_size_read(inode);
+-		new_isize = nfs_size_to_loff_t(fattr->size);
+-		if (cur_size != new_isize)
+-			invalid |= NFS_INO_INVALID_ATTR|NFS_INO_REVAL_PAGECACHE;
++		if ((fattr->valid & NFS_ATTR_FATTR_CTIME) && !timespec_equal(&inode->i_ctime, &fattr->ctime))
++			invalid |= NFS_INO_INVALID_ATTR;
++
++		if (fattr->valid & NFS_ATTR_FATTR_SIZE) {
++			cur_size = i_size_read(inode);
++			new_isize = nfs_size_to_loff_t(fattr->size);
++			if (cur_size != new_isize)
++				invalid |= NFS_INO_INVALID_ATTR|NFS_INO_REVAL_PAGECACHE;
++		}
+ 	}
+-	if (nfsi->nrequests != 0)
+-		invalid &= ~NFS_INO_REVAL_PAGECACHE;
  
- 	/* Be clever: ask server to check for all possible rights */
+ 	/* Have any file permissions changed? */
+ 	if ((fattr->valid & NFS_ATTR_FATTR_MODE) && (inode->i_mode & S_IALLUGO) != (fattr->mode & S_IALLUGO))
+@@ -1526,7 +1550,7 @@ EXPORT_SYMBOL_GPL(nfs_refresh_inode);
+ 
+ static int nfs_post_op_update_inode_locked(struct inode *inode, struct nfs_fattr *fattr)
+ {
+-	unsigned long invalid = NFS_INO_INVALID_ATTR|NFS_INO_REVAL_PAGECACHE;
++	unsigned long invalid = NFS_INO_INVALID_ATTR;
+ 
+ 	/*
+ 	 * Don't revalidate the pagecache if we hold a delegation, but do
+@@ -1675,6 +1699,7 @@ static int nfs_update_inode(struct inode *inode, struct nfs_fattr *fattr)
+ 	unsigned long invalid = 0;
+ 	unsigned long now = jiffies;
+ 	unsigned long save_cache_validity;
++	bool have_writers = nfs_file_has_writers(nfsi);
+ 	bool cache_revalidated = true;
+ 
+ 	dfprintk(VFS, "NFS: %s(%s/%lu fh_crc=0x%08x ct=%d info=0x%x)\n",
+@@ -1730,7 +1755,7 @@ static int nfs_update_inode(struct inode *inode, struct nfs_fattr *fattr)
+ 			dprintk("NFS: change_attr change on server for file %s/%ld\n",
+ 					inode->i_sb->s_id, inode->i_ino);
+ 			/* Could it be a race with writeback? */
+-			if (nfsi->nrequests == 0) {
++			if (!have_writers) {
+ 				invalid |= NFS_INO_INVALID_ATTR
+ 					| NFS_INO_INVALID_DATA
+ 					| NFS_INO_INVALID_ACCESS
+@@ -1770,9 +1795,10 @@ static int nfs_update_inode(struct inode *inode, struct nfs_fattr *fattr)
+ 		if (new_isize != cur_isize) {
+ 			/* Do we perhaps have any outstanding writes, or has
+ 			 * the file grown beyond our last write? */
+-			if ((nfsi->nrequests == 0) || new_isize > cur_isize) {
++			if (nfsi->nrequests == 0 || new_isize > cur_isize) {
+ 				i_size_write(inode, new_isize);
+-				invalid |= NFS_INO_INVALID_ATTR|NFS_INO_INVALID_DATA;
++				if (!have_writers)
++					invalid |= NFS_INO_INVALID_ATTR|NFS_INO_INVALID_DATA;
+ 			}
+ 			dprintk("NFS: isize change on server for file %s/%ld "
+ 					"(%Ld to %Ld)\n",
 -- 
 2.7.4
 
