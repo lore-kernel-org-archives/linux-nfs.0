@@ -1,58 +1,66 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from us-smtp-delivery-194.mimecast.com ([216.205.24.194]:49567 "EHLO
-	us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1750866AbcFVFJB convert rfc822-to-8bit
-	(ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 22 Jun 2016 01:09:01 -0400
-From: Trond Myklebust <trondmy@primarydata.com>
-To: NeilBrown <neilb@suse.com>
-CC: Dickson Steve <SteveD@redhat.com>, Howard Guo <hguo@suse.com>,
-        NFS List <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] nfs.man: clarify effect of 'retry' option.
-Date: Wed, 22 Jun 2016 05:08:01 +0000
-Message-ID: <7031616D-5483-494A-A749-28D8861CDB29@primarydata.com>
-References: <87por9lufn.fsf@notabene.neil.brown.name>
-In-Reply-To: <87por9lufn.fsf@notabene.neil.brown.name>
+Received: from mx5-phx2.redhat.com ([209.132.183.37]:53467 "EHLO
+	mx5-phx2.redhat.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751002AbcFVHaS (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 22 Jun 2016 03:30:18 -0400
+Received: from zmail25.collab.prod.int.phx2.redhat.com (zmail25.collab.prod.int.phx2.redhat.com [10.5.83.31])
+	by mx5-phx2.redhat.com (8.14.4/8.14.4) with ESMTP id u5M7EX4V041117
+	for <linux-nfs@vger.kernel.org>; Wed, 22 Jun 2016 03:14:33 -0400
+Date: Wed, 22 Jun 2016 03:14:32 -0400 (EDT)
+From: Jayaram Radhakrishnan <jradhakr@redhat.com>
+To: linux-nfs@vger.kernel.org
+Message-ID: <939921093.768587.1466579672990.JavaMail.zimbra@redhat.com>
+In-Reply-To: <1856161711.57783106.1464980479955.JavaMail.zimbra@redhat.com>
+References: <1856161711.57783106.1464980479955.JavaMail.zimbra@redhat.com>
+Subject: Re: Feature for lockd messages
 MIME-Version: 1.0
-Content-Type: text/plain; charset=WINDOWS-1252
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Hello,
 
-> On Jun 22, 2016, at 00:27, NeilBrown <neilb@suse.com> wrote:
-> 
-> 
-> 
-> The total timeout for a "mount" attempt to an non-responsive server
-> will always be a multiple of time a single mount attempt in the kernel takes,
-> which for TCP defaults to about 4 minutes.
-> The documentation for the "retry" option seems to suggest that this can be used
-> to set a maximum but it really sets a time after which to stop retrying.
-> The total can be as much as "retry" plus the time for a single attempt.
-> 
-> So clarify the documentation a bit, and also note that retrans
-> defaults are different for UDP and TCP:
->   #define NFS_DEF_UDP_RETRANS	(3)
->   #define NFS_DEF_TCP_RETRANS	(2)
-> 
-> Reported-by: Howard Guo<hguo@suse.com>
-> Signed-off-by: NeilBrown <neilb@suse.com>
-> 
-> diff --git a/utils/mount/nfs.man b/utils/mount/nfs.man
-> index e541cdc95cb1..fab24f898f64 100644
-> --- a/utils/mount/nfs.man
-> +++ b/utils/mount/nfs.man
-> @@ -391,6 +391,13 @@ is 2 minutes, and the default value for background mounts is 10000 minutes
-> If a value of zero is specified, the
-> .BR mount (8)
-> command exits immediately after the first failure.
-> +.IP
-> +Note that the total timeout will always be a multiple of the time
-> +determined by the
-> +.BR timeo
-> +and
-> +.BR retrans
-> +options, which by default will be 30 minutes.
+Could you please provide me an update about my last update, whether this feature can include or not.
 
-How do we get to 30 minutes?
+Thanks
+Jayaram
 
+----- Original Message -----
+From: "Jayaram Radhakrishnan" <jradhakr@redhat.com>
+To: linux-nfs@vger.kernel.org
+Sent: Saturday, June 4, 2016 12:31:19 AM
+Subject: Feature for lockd messages
+
+Hello,
+
+I would like to know if there are any chances to include the feature like, changing the error code instead of file name. As per the below error from lockd, it means its a NFS stale and throwing error code.  
+
+~~~
+<kern.warning> kernel:lockd: unexpected unlock status: 7
+~~~
+
+Behaviuor changes 
+
+from: 
+"lockd: unexpected unlock status: <unlock status code>"
+
+to: 
+"lockd: unexpected unlock status   <full path of the affected file>"
+
+In RHEL7 kernel as well as the current upstream kernel shows a warning if the response for an unlock NFS call to the filer isn't "NLM_GRANTED".
+
+Unfortunately the message is meaningless without the affected file. The filename is very important to do an correlation with an application or an user.
+
+Please extend the message by printing the affected file additional to the unexpected lockd status
+
+Is there any plans for modifying this message behavior into filename instead of throwing error code?
+
+In general
+
+>> NFS knows files and nothing about sockets.
+>> RPC knows sockets and nothing about files. 
+
+Awaiting for your reply
+
+Thanks
+Jayaram
