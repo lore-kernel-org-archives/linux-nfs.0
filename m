@@ -1,51 +1,52 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from elasmtp-scoter.atl.sa.earthlink.net ([209.86.89.67]:33481 "EHLO
-	elasmtp-scoter.atl.sa.earthlink.net" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751415AbcFWRP5 convert rfc822-to-8bit
-	(ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 23 Jun 2016 13:15:57 -0400
-From: "Frank Filz" <ffilzlnx@mindspring.com>
-To: "'Weston Andros Adamson'" <dros@monkey.org>,
-        "'Andreas Gruenbacher'" <andreas.gruenbacher@gmail.com>
-Cc: "'Linux Kernel'" <linux-kernel@vger.kernel.org>,
-        <linux-fsdevel@vger.kernel.org>,
-        "'linux-nfs list'" <linux-nfs@vger.kernel.org>,
-        "'Weston Adamson'" <dros@primarydata.com>
-References: <cover.1429868795.git.agruenba@redhat.com> <cover.1429868795.git.agruenba@redhat.com> <39cf890265e2a906a1cf41d6949b5be69903a064.1429868795.git.agruenba@redhat.com> <56F61F7E-9B41-45DD-B478-FE9329DD9983@monkey.org>
-In-Reply-To: <56F61F7E-9B41-45DD-B478-FE9329DD9983@monkey.org>
-Subject: RE: [RFC v3 42/45] nfs: Add richacl support
-Date: Thu, 23 Jun 2016 10:15:31 -0700
-Message-ID: <145e01d1cd72$d9b8d570$8d2a8050$@mindspring.com>
-MIME-Version: 1.0
-Content-Type: text/plain;
-	charset="UTF-8"
+Received: from mail-it0-f65.google.com ([209.85.214.65]:35842 "EHLO
+	mail-it0-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750919AbcFWUBS (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 23 Jun 2016 16:01:18 -0400
+Received: by mail-it0-f65.google.com with SMTP id h190so13090942ith.3
+        for <linux-nfs@vger.kernel.org>; Thu, 23 Jun 2016 13:01:18 -0700 (PDT)
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH v4 01/17] NFS: Don't flush caches for a getattr that races with writeback
+Date: Thu, 23 Jun 2016 16:00:33 -0400
+Message-Id: <1466712049-5326-1-git-send-email-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-> First, let me say thanks for all the work! We (Primary Data) have been using
-> samba with the vfs_richacl module reexporting an nfsv4.2 mount and things
-> are working pretty well. You can count on us for testing, bug fixing and code
-> review.
-> 
-> Now for my question: It looks like this call to richacl_apply_masks in the client
-> xattr_set path exists so that the knfsd permission check algorithm works
-> correctly.
-> This makes some pretty big assumptions about the server’s implementation.
-> There are other servers out there besides knfsd!
-> 
-> I think this will have to be fixed before this patch can be accepted. I’m willing
-> to help, but I’m wondering where this should be fixed:
-> 
-> Do we call richacl_apply_masks on the server before setting the xattr so the
-> normalized acl is saved, or should we save the ACL as-is and call
-> richacl_apply_masks before it’s used?
+If there were outstanding writes then chalk up the unexpected change
+attribute on the server to them.
 
-I definitely want to hear more about this. At some point we will utilize RichACLs in Ganesha.
-
-Frank
-
-
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
 ---
-This email has been checked for viruses by Avast antivirus software.
-https://www.avast.com/antivirus
+ fs/nfs/inode.c | 15 +++++++++------
+ 1 file changed, 9 insertions(+), 6 deletions(-)
+
+diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
+index 52e7d6869e3b..60051e62d3f1 100644
+--- a/fs/nfs/inode.c
++++ b/fs/nfs/inode.c
+@@ -1729,12 +1729,15 @@ static int nfs_update_inode(struct inode *inode, struct nfs_fattr *fattr)
+ 		if (inode->i_version != fattr->change_attr) {
+ 			dprintk("NFS: change_attr change on server for file %s/%ld\n",
+ 					inode->i_sb->s_id, inode->i_ino);
+-			invalid |= NFS_INO_INVALID_ATTR
+-				| NFS_INO_INVALID_DATA
+-				| NFS_INO_INVALID_ACCESS
+-				| NFS_INO_INVALID_ACL;
+-			if (S_ISDIR(inode->i_mode))
+-				nfs_force_lookup_revalidate(inode);
++			/* Could it be a race with writeback? */
++			if (nfsi->nrequests == 0) {
++				invalid |= NFS_INO_INVALID_ATTR
++					| NFS_INO_INVALID_DATA
++					| NFS_INO_INVALID_ACCESS
++					| NFS_INO_INVALID_ACL;
++				if (S_ISDIR(inode->i_mode))
++					nfs_force_lookup_revalidate(inode);
++			}
+ 			inode->i_version = fattr->change_attr;
+ 		}
+ 	} else {
+-- 
+2.7.4
 
