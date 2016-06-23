@@ -1,56 +1,72 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from bombadil.infradead.org ([198.137.202.9]:34064 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751835AbcFWLAM (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 23 Jun 2016 07:00:12 -0400
-Date: Thu, 23 Jun 2016 04:00:11 -0700
-From: Christoph Hellwig <hch@infradead.org>
-To: Trond Myklebust <trondmy@primarydata.com>
-Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        linux-fsdevel@vger.kernel.org, linux-mm@kvack.org
-Subject: Re: [PATCH v2 10/12] NFS: Do not serialise O_DIRECT reads and writes
-Message-ID: <20160623110011.GA6247@infradead.org>
-References: <1466544893-12058-3-git-send-email-trond.myklebust@primarydata.com>
- <1466544893-12058-4-git-send-email-trond.myklebust@primarydata.com>
- <1466544893-12058-5-git-send-email-trond.myklebust@primarydata.com>
- <1466544893-12058-6-git-send-email-trond.myklebust@primarydata.com>
- <1466544893-12058-7-git-send-email-trond.myklebust@primarydata.com>
- <1466544893-12058-8-git-send-email-trond.myklebust@primarydata.com>
- <1466544893-12058-9-git-send-email-trond.myklebust@primarydata.com>
- <1466544893-12058-10-git-send-email-trond.myklebust@primarydata.com>
- <20160622164715.GB16823@infradead.org>
- <97494C37-23D3-44FA-A9B8-1887E17429D9@primarydata.com>
+Received: from smtp.opengridcomputing.com ([72.48.136.20]:56693 "EHLO
+	smtp.opengridcomputing.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1750919AbcFWPma (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 23 Jun 2016 11:42:30 -0400
+From: "Steve Wise" <swise@opengridcomputing.com>
+To: "Chuck Lever" <chuck.lever@oracle.com>
+Cc: "Raju  Rangoju" <rajur@chelsio.com>, <linux-nfs@vger.kernel.org>,
+        <linux-rdma@vger.kernel.org>
+Subject: Interrupted IO causing async errors
+Date: Thu, 23 Jun 2016 10:42:43 -0500
+Message-ID: <00e101d1cd65$e19bf360$a4d3da20$@opengridcomputing.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <97494C37-23D3-44FA-A9B8-1887E17429D9@primarydata.com>
+Content-Type: text/plain;
+	charset="us-ascii"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Jun 22, 2016 at 05:24:50PM +0000, Trond Myklebust wrote:
-> If we?re going to worry about write atomicity in the buffered I/O case,
-> then we really should also make sure that O_DIRECT writes are atomic
-> w.r.t. page cache updates too.  With this locking model, a buffered
-> read() can race with the O_DIRECT write() and get a mixture of old
-> data and new.
+Hey chuck, we observe with 4.7-rc4 (and older kernels too) that interrupting a
+dbench test on a nfsrdma/cxgb4 mount while it is doing heavy I/O can result in
+cxgb4 logging an "invalid stag" error on an ingress RDMA WRITE message.   Is
+this expected?  I'm wondering if this is a normal side effect of interrupting
+the IO on the mount.  Maybe due to the mount options or NFS version?    This
+error could happen if the NFSRDMA client invalidated MRs that were advertised to
+the server for IO, while IO was still in flight.  Is this expected or should we
+dive in further?  Thoughts?  thanks...
+ 
+Here are the details of the test.
 
-The difference between buffered I/O and direct I/O is that the former
-is covered by standards, and the latter is a Linux extension with very
-lose semantics.  But I'm perfectly fine with removing the buffered
-reader shared lock for now - for the purposes of direct I/O
-synchronization it's not nessecary.
+Steps:
+
+-> Load iw_cxgb4,rdma_ucm on both nodes.
+-> Assign ip to chelsio interfaces on both nodes.
+
+Server Side [gayabari]:
+
+-> mknod /dev/ram0 b 1 0
+-> modprobe brd rd_nr=1 rd_size=1048576
+-> mkdir /nfsrdma 
+-> mkfs.ext3 /dev/ram0
+-> mount /dev/ram0 /nfsrdma
+-> vim /etc/exports
+   /nfsrdma  *(sync,insecure,rw,no_root_squash,no_subtree_check)
+
+-> modprobe xprtrdma 
+-> modprobe svcrdma
+-> service nfsserver restart 
+-> echo rdma 20049 > /proc/fs/nfsd/portlist
+-> exportfs -rav
+
+Client Side [sonada]:
+
+-> modprobe xprtrdma 
+-> modprobe svcrdma
+
+-> mount 102.1.1.186:/nfsrdma/ -o
+rdma,port=20049,vers=3,wsize=65536,rsize=65536
+/mnt/ 
+
+-> Then run below command on client [sonada] : 
+sonada:~ # dbench -t100 -D /root/share1/  10
 
 
-Yes.
+-> Issue is seen only on killing dbench test in between otherwise it ran fine.
 
-> > +	if (mapping->nrpages) {
-> > +		inode_lock(inode);
-> 
-> This is unnecessary now that we have a rw_semaphore. You don?t need to
-> take an exclusive lock in order to serialise w.r.t. new writes, and by
-> doing so you end up serialising all reads if there happens to be pages
-> in the page cache. This is true whether or not those pages are dirty.
+Error seen on the nfsdma client:
 
-Traditionally we needed the exclusive lock around
-invalidate_inode_pages2 and unmap_mapping_range, and from a quick look
-that's what the existing callers all have.  I don't actually see that
-requirement documented anywhere, though.
+[ 1593.398351] cxgb4 0000:01:00.4: AE qpid 1028 opcode 0 status 0x1 type 0 len
+0x18e6009c wrid.hi 0x2cce2dc wrid.lo 0x2
+[ 1593.398374] RPC:       rpcrdma_qp_async_error_upcall: QP request error on
+device cxgb4_0 ep ffff88022f3567e8
+
