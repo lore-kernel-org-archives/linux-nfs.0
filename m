@@ -1,132 +1,107 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f195.google.com ([209.85.223.195]:33890 "EHLO
-	mail-io0-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750919AbcFWUBT (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 23 Jun 2016 16:01:19 -0400
-Received: by mail-io0-f195.google.com with SMTP id 100so13298567ioh.1
-        for <linux-nfs@vger.kernel.org>; Thu, 23 Jun 2016 13:01:19 -0700 (PDT)
+Received: from mail-io0-f194.google.com ([209.85.223.194]:33922 "EHLO
+	mail-io0-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751481AbcFWUBW (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 23 Jun 2016 16:01:22 -0400
+Received: by mail-io0-f194.google.com with SMTP id 100so13298800ioh.1
+        for <linux-nfs@vger.kernel.org>; Thu, 23 Jun 2016 13:01:21 -0700 (PDT)
 From: Trond Myklebust <trond.myklebust@primarydata.com>
 To: linux-nfs@vger.kernel.org
-Subject: [PATCH v4 02/17] NFS: Cache access checks more aggressively
-Date: Thu, 23 Jun 2016 16:00:34 -0400
-Message-Id: <1466712049-5326-2-git-send-email-trond.myklebust@primarydata.com>
-In-Reply-To: <1466712049-5326-1-git-send-email-trond.myklebust@primarydata.com>
+Subject: [PATCH v4 04/17] NFS: Kill NFS_INO_NFS_INO_FLUSHING: it is a performance killer
+Date: Thu, 23 Jun 2016 16:00:36 -0400
+Message-Id: <1466712049-5326-4-git-send-email-trond.myklebust@primarydata.com>
+In-Reply-To: <1466712049-5326-3-git-send-email-trond.myklebust@primarydata.com>
 References: <1466712049-5326-1-git-send-email-trond.myklebust@primarydata.com>
+ <1466712049-5326-2-git-send-email-trond.myklebust@primarydata.com>
+ <1466712049-5326-3-git-send-email-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-If an attribute revalidation fails, then we already know that we'll
-zap the access cache. If, OTOH, the inode isn't changing, there should
-be no need to eject access calls just because they are old.
+filemap_datawrite() and friends already deal just fine with livelock.
 
 Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
 ---
- fs/nfs/dir.c | 52 +++++++++++++++++++++++++++++++---------------------
- 1 file changed, 31 insertions(+), 21 deletions(-)
+ fs/nfs/file.c          |  8 --------
+ fs/nfs/nfstrace.h      |  1 -
+ fs/nfs/write.c         | 11 -----------
+ include/linux/nfs_fs.h |  1 -
+ 4 files changed, 21 deletions(-)
 
-diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
-index aaf7bd0cbae2..210b33636fe4 100644
---- a/fs/nfs/dir.c
-+++ b/fs/nfs/dir.c
-@@ -2228,21 +2228,37 @@ static struct nfs_access_entry *nfs_access_search_rbtree(struct inode *inode, st
- 	return NULL;
- }
+diff --git a/fs/nfs/file.c b/fs/nfs/file.c
+index 2d39d9f9da7d..29d7477a62e8 100644
+--- a/fs/nfs/file.c
++++ b/fs/nfs/file.c
+@@ -360,14 +360,6 @@ static int nfs_write_begin(struct file *file, struct address_space *mapping,
  
--static int nfs_access_get_cached(struct inode *inode, struct rpc_cred *cred, struct nfs_access_entry *res)
-+static int nfs_access_get_cached(struct inode *inode, struct rpc_cred *cred, struct nfs_access_entry *res, bool may_block)
+ start:
+ 	/*
+-	 * Prevent starvation issues if someone is doing a consistency
+-	 * sync-to-disk
+-	 */
+-	ret = wait_on_bit_action(&NFS_I(mapping->host)->flags, NFS_INO_FLUSHING,
+-				 nfs_wait_bit_killable, TASK_KILLABLE);
+-	if (ret)
+-		return ret;
+-	/*
+ 	 * Wait for O_DIRECT to complete
+ 	 */
+ 	inode_dio_wait(mapping->host);
+diff --git a/fs/nfs/nfstrace.h b/fs/nfs/nfstrace.h
+index 0b9e5cc9a747..fe80a1c26340 100644
+--- a/fs/nfs/nfstrace.h
++++ b/fs/nfs/nfstrace.h
+@@ -37,7 +37,6 @@
+ 			{ 1 << NFS_INO_ADVISE_RDPLUS, "ADVISE_RDPLUS" }, \
+ 			{ 1 << NFS_INO_STALE, "STALE" }, \
+ 			{ 1 << NFS_INO_INVALIDATING, "INVALIDATING" }, \
+-			{ 1 << NFS_INO_FLUSHING, "FLUSHING" }, \
+ 			{ 1 << NFS_INO_FSCACHE, "FSCACHE" }, \
+ 			{ 1 << NFS_INO_LAYOUTCOMMIT, "NEED_LAYOUTCOMMIT" }, \
+ 			{ 1 << NFS_INO_LAYOUTCOMMITTING, "LAYOUTCOMMIT" })
+diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+index e1c74d3db64d..980d44f3a84c 100644
+--- a/fs/nfs/write.c
++++ b/fs/nfs/write.c
+@@ -657,16 +657,9 @@ static int nfs_writepages_callback(struct page *page, struct writeback_control *
+ int nfs_writepages(struct address_space *mapping, struct writeback_control *wbc)
  {
- 	struct nfs_inode *nfsi = NFS_I(inode);
- 	struct nfs_access_entry *cache;
--	int err = -ENOENT;
-+	bool retry = true;
-+	int err;
+ 	struct inode *inode = mapping->host;
+-	unsigned long *bitlock = &NFS_I(inode)->flags;
+ 	struct nfs_pageio_descriptor pgio;
+ 	int err;
  
- 	spin_lock(&inode->i_lock);
--	if (nfsi->cache_validity & NFS_INO_INVALID_ACCESS)
--		goto out_zap;
--	cache = nfs_access_search_rbtree(inode, cred);
--	if (cache == NULL)
--		goto out;
--	if (!nfs_have_delegated_attributes(inode) &&
--	    !time_in_range_open(jiffies, cache->jiffies, cache->jiffies + nfsi->attrtimeo))
--		goto out_stale;
-+	for(;;) {
-+		if (nfsi->cache_validity & NFS_INO_INVALID_ACCESS)
-+			goto out_zap;
-+		cache = nfs_access_search_rbtree(inode, cred);
-+		err = -ENOENT;
-+		if (cache == NULL)
-+			goto out;
-+		/* Found an entry, is our attribute cache valid? */
-+		if (!nfs_attribute_cache_expired(inode) &&
-+		    !(nfsi->cache_validity & NFS_INO_INVALID_ATTR))
-+			break;
-+		err = -ECHILD;
-+		if (!may_block)
-+			goto out;
-+		if (!retry)
-+			goto out_zap;
-+		spin_unlock(&inode->i_lock);
-+		err = __nfs_revalidate_inode(NFS_SERVER(inode), inode);
-+		if (err)
-+			return err;
-+		spin_lock(&inode->i_lock);
-+		retry = false;
-+	}
- 	res->jiffies = cache->jiffies;
- 	res->cred = cache->cred;
- 	res->mask = cache->mask;
-@@ -2251,12 +2267,6 @@ static int nfs_access_get_cached(struct inode *inode, struct rpc_cred *cred, str
- out:
- 	spin_unlock(&inode->i_lock);
- 	return err;
--out_stale:
--	rb_erase(&cache->rb_node, &nfsi->access_cache);
--	list_del(&cache->lru);
--	spin_unlock(&inode->i_lock);
--	nfs_access_free_entry(cache);
--	return -ENOENT;
- out_zap:
- 	spin_unlock(&inode->i_lock);
- 	nfs_access_zap_cache(inode);
-@@ -2283,13 +2293,12 @@ static int nfs_access_get_cached_rcu(struct inode *inode, struct rpc_cred *cred,
- 		cache = NULL;
- 	if (cache == NULL)
- 		goto out;
--	if (!nfs_have_delegated_attributes(inode) &&
--	    !time_in_range_open(jiffies, cache->jiffies, cache->jiffies + nfsi->attrtimeo))
-+	err = nfs_revalidate_inode_rcu(NFS_SERVER(inode), inode);
-+	if (err)
- 		goto out;
- 	res->jiffies = cache->jiffies;
- 	res->cred = cache->cred;
- 	res->mask = cache->mask;
--	err = 0;
- out:
- 	rcu_read_unlock();
- 	return err;
-@@ -2378,18 +2387,19 @@ EXPORT_SYMBOL_GPL(nfs_access_set_mask);
- static int nfs_do_access(struct inode *inode, struct rpc_cred *cred, int mask)
- {
- 	struct nfs_access_entry cache;
-+	bool may_block = (mask & MAY_NOT_BLOCK) == 0;
- 	int status;
+-	/* Stop dirtying of new pages while we sync */
+-	err = wait_on_bit_lock_action(bitlock, NFS_INO_FLUSHING,
+-			nfs_wait_bit_killable, TASK_KILLABLE);
+-	if (err)
+-		goto out_err;
+-
+ 	nfs_inc_stats(inode, NFSIOS_VFSWRITEPAGES);
  
- 	trace_nfs_access_enter(inode);
+ 	nfs_pageio_init_write(&pgio, inode, wb_priority(wbc), false,
+@@ -674,10 +667,6 @@ int nfs_writepages(struct address_space *mapping, struct writeback_control *wbc)
+ 	err = write_cache_pages(mapping, wbc, nfs_writepages_callback, &pgio);
+ 	nfs_pageio_complete(&pgio);
  
- 	status = nfs_access_get_cached_rcu(inode, cred, &cache);
- 	if (status != 0)
--		status = nfs_access_get_cached(inode, cred, &cache);
-+		status = nfs_access_get_cached(inode, cred, &cache, may_block);
- 	if (status == 0)
- 		goto out_cached;
- 
- 	status = -ECHILD;
--	if (mask & MAY_NOT_BLOCK)
-+	if (!may_block)
- 		goto out;
- 
- 	/* Be clever: ask server to check for all possible rights */
+-	clear_bit_unlock(NFS_INO_FLUSHING, bitlock);
+-	smp_mb__after_atomic();
+-	wake_up_bit(bitlock, NFS_INO_FLUSHING);
+-
+ 	if (err < 0)
+ 		goto out_err;
+ 	err = pgio.pg_error;
+diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
+index d71278c3c5bd..120dd04b553c 100644
+--- a/include/linux/nfs_fs.h
++++ b/include/linux/nfs_fs.h
+@@ -205,7 +205,6 @@ struct nfs_inode {
+ #define NFS_INO_STALE		(1)		/* possible stale inode */
+ #define NFS_INO_ACL_LRU_SET	(2)		/* Inode is on the LRU list */
+ #define NFS_INO_INVALIDATING	(3)		/* inode is being invalidated */
+-#define NFS_INO_FLUSHING	(4)		/* inode is flushing out data */
+ #define NFS_INO_FSCACHE		(5)		/* inode can be cached by FS-Cache */
+ #define NFS_INO_FSCACHE_LOCK	(6)		/* FS-Cache cookie management lock */
+ #define NFS_INO_LAYOUTCOMMIT	(9)		/* layoutcommit required */
 -- 
 2.7.4
 
