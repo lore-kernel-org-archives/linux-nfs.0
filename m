@@ -1,69 +1,85 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp.opengridcomputing.com ([72.48.136.20]:58081 "EHLO
-	smtp.opengridcomputing.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751398AbcFXNg4 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 24 Jun 2016 09:36:56 -0400
-From: "Steve Wise" <swise@opengridcomputing.com>
-To: "'Chuck Lever'" <chuck.lever@oracle.com>
-Cc: "'Raju Rangoju'" <rajur@chelsio.com>, <linux-nfs@vger.kernel.org>,
-        <linux-rdma@vger.kernel.org>
-References: <00e101d1cd65$e19bf360$a4d3da20$@opengridcomputing.com> <BDD2D64C-7A05-42EB-83C2-F95825C7579D@oracle.com>
-In-Reply-To: <BDD2D64C-7A05-42EB-83C2-F95825C7579D@oracle.com>
-Subject: RE: Interrupted IO causing async errors
-Date: Fri, 24 Jun 2016 08:36:55 -0500
-Message-ID: <001601d1ce1d$7990c800$6cb25800$@opengridcomputing.com>
-MIME-Version: 1.0
-Content-Type: text/plain;
-	charset="us-ascii"
+Received: from mail-io0-f194.google.com ([209.85.223.194]:33798 "EHLO
+	mail-io0-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750997AbcFXO4W (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 24 Jun 2016 10:56:22 -0400
+Received: by mail-io0-f194.google.com with SMTP id 100so16544979ioh.1
+        for <linux-nfs@vger.kernel.org>; Fri, 24 Jun 2016 07:56:22 -0700 (PDT)
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH 01/10] SUNRPC: Fix tracepoint storage issues with svc_recv and svc_rqst_status
+Date: Fri, 24 Jun 2016 10:55:43 -0400
+Message-Id: <1466780152-7154-1-git-send-email-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+There is no guarantee that either the request or the svc_xprt exist
+by the time we get round to printing the trace message.
 
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+---
+ include/trace/events/sunrpc.h | 17 ++++++++++-------
+ 1 file changed, 10 insertions(+), 7 deletions(-)
 
-> -----Original Message-----
-> From: Chuck Lever [mailto:chuck.lever@oracle.com]
-> Sent: Thursday, June 23, 2016 7:15 PM
-> To: Steve Wise
-> Cc: Raju Rangoju; linux-nfs@vger.kernel.org; linux-rdma@vger.kernel.org
-> Subject: Re: Interrupted IO causing async errors
-> 
-> Hi Steve-
-> 
-> > On Jun 23, 2016, at 11:42 AM, Steve Wise <swise@opengridcomputing.com>
-> wrote:
-> >
-> > Hey chuck, we observe with 4.7-rc4 (and older kernels too) that interrupting
-a
-> > dbench test on a nfsrdma/cxgb4 mount while it is doing heavy I/O can result
-in
-> > cxgb4 logging an "invalid stag" error on an ingress RDMA WRITE message.   Is
-> > this expected?  I'm wondering if this is a normal side effect of
-interrupting
-> > the IO on the mount.  Maybe due to the mount options or NFS version?    This
-> > error could happen if the NFSRDMA client invalidated MRs that were
-advertised
-> to
-> > the server for IO, while IO was still in flight.  Is this expected or should
-we
-> > dive in further?  Thoughts?  thanks...
-> 
-> When an application is signaled, outstanding RPCs are terminated.
-> When an RPC completes, whether because a reply was received,
-> or because the local application has died, any memory that was
-> registered on behalf of that RPC is invalidated before it can be
-> used for something else. The data in that memory remains at rest
-> until invalidation and DMA unmapping is complete.
-> 
-> It appears that your server is attempting to read an argument or
-> write a result for an RPC that is no longer pending. I think both
-> sides should report a transport error, and the connection should
-> terminate. No other problems, though: other operation should
-> continue normally after the client re-establishes a fresh connection.
-> 
-> If this doesn't match your observations, let me know.
->
-
-This is exactly what we see.  Thanks!
-
-Steve.
+diff --git a/include/trace/events/sunrpc.h b/include/trace/events/sunrpc.h
+index 003dca933803..e82493d07a86 100644
+--- a/include/trace/events/sunrpc.h
++++ b/include/trace/events/sunrpc.h
+@@ -455,20 +455,22 @@ TRACE_EVENT(svc_recv,
+ 	TP_ARGS(rqst, status),
+ 
+ 	TP_STRUCT__entry(
+-		__field(struct sockaddr *, addr)
+ 		__field(__be32, xid)
+ 		__field(int, status)
+ 		__field(unsigned long, flags)
++		__dynamic_array(unsigned char, addr, rqst->rq_addrlen)
+ 	),
+ 
+ 	TP_fast_assign(
+-		__entry->addr = (struct sockaddr *)&rqst->rq_addr;
+ 		__entry->xid = status > 0 ? rqst->rq_xid : 0;
+ 		__entry->status = status;
+ 		__entry->flags = rqst->rq_flags;
++		memcpy(__get_dynamic_array(addr),
++			&rqst->rq_addr, rqst->rq_addrlen);
+ 	),
+ 
+-	TP_printk("addr=%pIScp xid=0x%x status=%d flags=%s", __entry->addr,
++	TP_printk("addr=%pIScp xid=0x%x status=%d flags=%s",
++			(struct sockaddr *)__get_dynamic_array(addr),
+ 			be32_to_cpu(__entry->xid), __entry->status,
+ 			show_rqstp_flags(__entry->flags))
+ );
+@@ -480,22 +482,23 @@ DECLARE_EVENT_CLASS(svc_rqst_status,
+ 	TP_ARGS(rqst, status),
+ 
+ 	TP_STRUCT__entry(
+-		__field(struct sockaddr *, addr)
+ 		__field(__be32, xid)
+-		__field(int, dropme)
+ 		__field(int, status)
+ 		__field(unsigned long, flags)
++		__dynamic_array(unsigned char, addr, rqst->rq_addrlen)
+ 	),
+ 
+ 	TP_fast_assign(
+-		__entry->addr = (struct sockaddr *)&rqst->rq_addr;
+ 		__entry->xid = rqst->rq_xid;
+ 		__entry->status = status;
+ 		__entry->flags = rqst->rq_flags;
++		memcpy(__get_dynamic_array(addr),
++			&rqst->rq_addr, rqst->rq_addrlen);
+ 	),
+ 
+ 	TP_printk("addr=%pIScp rq_xid=0x%x status=%d flags=%s",
+-		__entry->addr, be32_to_cpu(__entry->xid),
++		(struct sockaddr *)__get_dynamic_array(addr),
++		be32_to_cpu(__entry->xid),
+ 		__entry->status, show_rqstp_flags(__entry->flags))
+ );
+ 
+-- 
+2.7.4
 
