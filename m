@@ -1,17 +1,17 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-it0-f67.google.com ([209.85.214.67]:34956 "EHLO
-	mail-it0-f67.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751410AbcFXO4a (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 24 Jun 2016 10:56:30 -0400
-Received: by mail-it0-f67.google.com with SMTP id g127so2580828ith.2
-        for <linux-nfs@vger.kernel.org>; Fri, 24 Jun 2016 07:56:30 -0700 (PDT)
+Received: from mail-io0-f196.google.com ([209.85.223.196]:36404 "EHLO
+	mail-io0-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751209AbcFXO4b (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 24 Jun 2016 10:56:31 -0400
+Received: by mail-io0-f196.google.com with SMTP id s63so16496465ioi.3
+        for <linux-nfs@vger.kernel.org>; Fri, 24 Jun 2016 07:56:31 -0700 (PDT)
 From: Trond Myklebust <trond.myklebust@primarydata.com>
 To: bfields@fieldses.org
 Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH 09/10] SUNRPC: Change TCP socket space reservation
-Date: Fri, 24 Jun 2016 10:55:51 -0400
-Message-Id: <1466780152-7154-9-git-send-email-trond.myklebust@primarydata.com>
-In-Reply-To: <1466780152-7154-8-git-send-email-trond.myklebust@primarydata.com>
+Subject: [PATCH 10/10] SUNRPC: Remove unused callback xpo_adjust_wspace()
+Date: Fri, 24 Jun 2016 10:55:52 -0400
+Message-Id: <1466780152-7154-10-git-send-email-trond.myklebust@primarydata.com>
+In-Reply-To: <1466780152-7154-9-git-send-email-trond.myklebust@primarydata.com>
 References: <1466780152-7154-1-git-send-email-trond.myklebust@primarydata.com>
  <1466780152-7154-2-git-send-email-trond.myklebust@primarydata.com>
  <1466780152-7154-3-git-send-email-trond.myklebust@primarydata.com>
@@ -20,103 +20,41 @@ References: <1466780152-7154-1-git-send-email-trond.myklebust@primarydata.com>
  <1466780152-7154-6-git-send-email-trond.myklebust@primarydata.com>
  <1466780152-7154-7-git-send-email-trond.myklebust@primarydata.com>
  <1466780152-7154-8-git-send-email-trond.myklebust@primarydata.com>
+ <1466780152-7154-9-git-send-email-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Instead of trying (and failing) to predict how much writeable socket space
-will be available to the RPC call, just fall back to the simple model of
-deferring processing until the socket is uncongested.
-
-If a limit is neeeded, then set the hard per-connection limit.
-
 Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
 ---
- net/sunrpc/svcsock.c | 47 ++++-------------------------------------------
- 1 file changed, 4 insertions(+), 43 deletions(-)
+ include/linux/sunrpc/svc_xprt.h | 1 -
+ net/sunrpc/svc_xprt.c           | 2 --
+ 2 files changed, 3 deletions(-)
 
-diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
-index 338d6fe1103d..bc3ef0734f2f 100644
---- a/net/sunrpc/svcsock.c
-+++ b/net/sunrpc/svcsock.c
-@@ -431,43 +431,11 @@ static void svc_write_space(struct sock *sk)
- 
- static int svc_tcp_has_wspace(struct svc_xprt *xprt)
- {
--	struct svc_sock *svsk =	container_of(xprt, struct svc_sock, sk_xprt);
--	struct svc_serv *serv = svsk->sk_xprt.xpt_server;
--	int required;
-+	struct svc_sock *svsk = container_of(xprt, struct svc_sock, sk_xprt);
- 
- 	if (test_bit(XPT_LISTENER, &xprt->xpt_flags))
- 		return 1;
--	required = atomic_read(&xprt->xpt_reserved) + serv->sv_max_mesg;
--	if (sk_stream_wspace(svsk->sk_sk) >= required ||
--	    (sk_stream_min_wspace(svsk->sk_sk) == 0 &&
--	     atomic_read(&xprt->xpt_reserved) == 0))
--		return 1;
--	set_bit(SOCK_NOSPACE, &svsk->sk_sock->flags);
--	return 0;
--}
--
--static void svc_tcp_write_space(struct sock *sk)
--{
--	struct svc_sock *svsk = (struct svc_sock *)(sk->sk_user_data);
--	struct socket *sock = sk->sk_socket;
--
--	if (!svsk)
--		return;
--
--	if (!sk_stream_is_writeable(sk) || !sock)
--		return;
--	if (svc_tcp_has_wspace(&svsk->sk_xprt)) {
--		clear_bit(SOCK_NOSPACE, &sock->flags);
--		svc_write_space(sk);
--	}
--}
--
--static void svc_tcp_adjust_wspace(struct svc_xprt *xprt)
--{
--	struct svc_sock *svsk = container_of(xprt, struct svc_sock, sk_xprt);
--
--	if (svc_tcp_has_wspace(xprt))
--		clear_bit(SOCK_NOSPACE, &svsk->sk_sock->flags);
-+	return !test_bit(SOCK_NOSPACE, &svsk->sk_sock->flags);
- }
- 
- /*
-@@ -1272,7 +1240,6 @@ static struct svc_xprt_ops svc_tcp_ops = {
- 	.xpo_has_wspace = svc_tcp_has_wspace,
- 	.xpo_accept = svc_tcp_accept,
- 	.xpo_secure_port = svc_sock_secure_port,
--	.xpo_adjust_wspace = svc_tcp_adjust_wspace,
+diff --git a/include/linux/sunrpc/svc_xprt.h b/include/linux/sunrpc/svc_xprt.h
+index 555c004de51e..cb6e4037e590 100644
+--- a/include/linux/sunrpc/svc_xprt.h
++++ b/include/linux/sunrpc/svc_xprt.h
+@@ -25,7 +25,6 @@ struct svc_xprt_ops {
+ 	void		(*xpo_detach)(struct svc_xprt *);
+ 	void		(*xpo_free)(struct svc_xprt *);
+ 	int		(*xpo_secure_port)(struct svc_rqst *);
+-	void		(*xpo_adjust_wspace)(struct svc_xprt *);
  };
  
- static struct svc_xprt_class svc_tcp_class = {
-@@ -1313,7 +1280,7 @@ static void svc_tcp_init(struct svc_sock *svsk, struct svc_serv *serv)
- 		dprintk("setting up TCP socket for reading\n");
- 		sk->sk_state_change = svc_tcp_state_change;
- 		sk->sk_data_ready = svc_data_ready;
--		sk->sk_write_space = svc_tcp_write_space;
-+		sk->sk_write_space = svc_write_space;
+ struct svc_xprt_class {
+diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
+index cd26d0d9e41f..2503392b95ad 100644
+--- a/net/sunrpc/svc_xprt.c
++++ b/net/sunrpc/svc_xprt.c
+@@ -515,8 +515,6 @@ void svc_reserve(struct svc_rqst *rqstp, int space)
+ 		atomic_sub((rqstp->rq_reserved - space), &xprt->xpt_reserved);
+ 		rqstp->rq_reserved = space;
  
- 		svsk->sk_reclen = 0;
- 		svsk->sk_tcplen = 0;
-@@ -1383,14 +1350,8 @@ static struct svc_sock *svc_setup_socket(struct svc_serv *serv,
- 	/* Initialize the socket */
- 	if (sock->type == SOCK_DGRAM)
- 		svc_udp_init(svsk, serv);
--	else {
--		/* initialise setting must have enough space to
--		 * receive and respond to one request.
--		 */
--		svc_sock_setbufsize(svsk->sk_sock, 4 * serv->sv_max_mesg,
--					4 * serv->sv_max_mesg);
-+	else
- 		svc_tcp_init(svsk, serv);
--	}
- 
- 	dprintk("svc: svc_setup_socket created %p (inet %p)\n",
- 				svsk, svsk->sk_sk);
+-		if (xprt->xpt_ops->xpo_adjust_wspace)
+-			xprt->xpt_ops->xpo_adjust_wspace(xprt);
+ 		svc_xprt_enqueue(xprt);
+ 	}
+ }
 -- 
 2.7.4
 
