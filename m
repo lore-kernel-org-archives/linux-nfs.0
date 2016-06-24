@@ -1,246 +1,156 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f194.google.com ([209.85.223.194]:33838 "EHLO
-	mail-io0-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751209AbcFXO41 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 24 Jun 2016 10:56:27 -0400
-Received: by mail-io0-f194.google.com with SMTP id 100so16545247ioh.1
-        for <linux-nfs@vger.kernel.org>; Fri, 24 Jun 2016 07:56:27 -0700 (PDT)
+Received: from mail-io0-f196.google.com ([209.85.223.196]:32985 "EHLO
+	mail-io0-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751209AbcFXO43 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 24 Jun 2016 10:56:29 -0400
+Received: by mail-io0-f196.google.com with SMTP id t74so15637665ioi.0
+        for <linux-nfs@vger.kernel.org>; Fri, 24 Jun 2016 07:56:28 -0700 (PDT)
 From: Trond Myklebust <trond.myklebust@primarydata.com>
 To: bfields@fieldses.org
 Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH 06/10] SUNRPC: Call the default socket callbacks instead of open coding
-Date: Fri, 24 Jun 2016 10:55:48 -0400
-Message-Id: <1466780152-7154-6-git-send-email-trond.myklebust@primarydata.com>
-In-Reply-To: <1466780152-7154-5-git-send-email-trond.myklebust@primarydata.com>
+Subject: [PATCH 08/10] SUNRPC: Add a server side per-connection limit
+Date: Fri, 24 Jun 2016 10:55:50 -0400
+Message-Id: <1466780152-7154-8-git-send-email-trond.myklebust@primarydata.com>
+In-Reply-To: <1466780152-7154-7-git-send-email-trond.myklebust@primarydata.com>
 References: <1466780152-7154-1-git-send-email-trond.myklebust@primarydata.com>
  <1466780152-7154-2-git-send-email-trond.myklebust@primarydata.com>
  <1466780152-7154-3-git-send-email-trond.myklebust@primarydata.com>
  <1466780152-7154-4-git-send-email-trond.myklebust@primarydata.com>
  <1466780152-7154-5-git-send-email-trond.myklebust@primarydata.com>
+ <1466780152-7154-6-git-send-email-trond.myklebust@primarydata.com>
+ <1466780152-7154-7-git-send-email-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Rather than code up our own versions of the socket callbacks, just
-call the defaults.
-This also allows us to merge svc_udp_data_ready() and svc_tcp_data_ready().
+Allow the user to limit the number of requests serviced through a single
+connection.
 
 Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
 ---
- net/sunrpc/svcsock.c | 88 ++++++++++++----------------------------------------
- 1 file changed, 19 insertions(+), 69 deletions(-)
+ Documentation/kernel-parameters.txt |  6 ++++++
+ include/linux/sunrpc/svc.h          |  1 +
+ include/linux/sunrpc/svc_xprt.h     |  1 +
+ net/sunrpc/svc_xprt.c               | 39 ++++++++++++++++++++++++++++++++++---
+ 4 files changed, 44 insertions(+), 3 deletions(-)
 
-diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
-index abe2da602fb8..03134708deeb 100644
---- a/net/sunrpc/svcsock.c
-+++ b/net/sunrpc/svcsock.c
-@@ -60,7 +60,6 @@
+diff --git a/Documentation/kernel-parameters.txt b/Documentation/kernel-parameters.txt
+index 82b42c958d1c..48ba6d2e670a 100644
+--- a/Documentation/kernel-parameters.txt
++++ b/Documentation/kernel-parameters.txt
+@@ -3832,6 +3832,12 @@ bytes respectively. Such letter suffixes can also be entirely omitted.
+ 			using these two parameters to set the minimum and
+ 			maximum port values.
  
- static struct svc_sock *svc_setup_socket(struct svc_serv *, struct socket *,
- 					 int flags);
--static void		svc_udp_data_ready(struct sock *);
- static int		svc_udp_recvfrom(struct svc_rqst *);
- static int		svc_udp_sendto(struct svc_rqst *);
- static void		svc_sock_detach(struct svc_xprt *);
-@@ -398,48 +397,21 @@ static int svc_sock_secure_port(struct svc_rqst *rqstp)
- 	return svc_port_is_privileged(svc_addr(rqstp));
- }
- 
--static bool sunrpc_waitqueue_active(wait_queue_head_t *wq)
--{
--	if (!wq)
--		return false;
--	/*
--	 * There should normally be a memory * barrier here--see
--	 * wq_has_sleeper().
--	 *
--	 * It appears that isn't currently necessary, though, basically
--	 * because callers all appear to have sufficient memory barriers
--	 * between the time the relevant change is made and the
--	 * time they call these callbacks.
--	 *
--	 * The nfsd code itself doesn't actually explicitly wait on
--	 * these waitqueues, but it may wait on them for example in
--	 * sendpage() or sendmsg() calls.  (And those may be the only
--	 * places, since it it uses nonblocking reads.)
--	 *
--	 * Maybe we should add the memory barriers anyway, but these are
--	 * hot paths so we'd need to be convinced there's no sigificant
--	 * penalty.
--	 */
--	return waitqueue_active(wq);
--}
--
- /*
-  * INET callback when data has been received on the socket.
-  */
--static void svc_udp_data_ready(struct sock *sk)
-+static void svc_data_ready(struct sock *sk)
- {
- 	struct svc_sock	*svsk = (struct svc_sock *)sk->sk_user_data;
--	wait_queue_head_t *wq = sk_sleep(sk);
- 
- 	if (svsk) {
- 		dprintk("svc: socket %p(inet %p), busy=%d\n",
- 			svsk, sk,
- 			test_bit(XPT_BUSY, &svsk->sk_xprt.xpt_flags));
-+		svsk->sk_odata(sk);
- 		set_bit(XPT_DATA, &svsk->sk_xprt.xpt_flags);
- 		svc_xprt_enqueue(&svsk->sk_xprt);
- 	}
--	if (sunrpc_waitqueue_active(wq))
--		wake_up_interruptible(wq);
- }
- 
- /*
-@@ -448,19 +420,13 @@ static void svc_udp_data_ready(struct sock *sk)
- static void svc_write_space(struct sock *sk)
- {
- 	struct svc_sock	*svsk = (struct svc_sock *)(sk->sk_user_data);
--	wait_queue_head_t *wq = sk_sleep(sk);
- 
- 	if (svsk) {
- 		dprintk("svc: socket %p(inet %p), write_space busy=%d\n",
- 			svsk, sk, test_bit(XPT_BUSY, &svsk->sk_xprt.xpt_flags));
-+		svsk->sk_owspace(sk);
- 		svc_xprt_enqueue(&svsk->sk_xprt);
- 	}
--
--	if (sunrpc_waitqueue_active(wq)) {
--		dprintk("RPC svc_write_space: someone sleeping on %p\n",
--		       svsk);
--		wake_up_interruptible(wq);
--	}
- }
- 
- static int svc_tcp_has_wspace(struct svc_xprt *xprt)
-@@ -485,11 +451,15 @@ static void svc_tcp_write_space(struct sock *sk)
- 	struct svc_sock *svsk = (struct svc_sock *)(sk->sk_user_data);
- 	struct socket *sock = sk->sk_socket;
- 
-+	if (!svsk)
-+		return;
++	sunrpc.svc_rpc_per_connection_limit=
++			[NFS,SUNRPC]
++			Limit the number of requests that the server will
++			process in parallel from a single connection.
++			The default value is 0 (no limit).
 +
- 	if (!sk_stream_is_writeable(sk) || !sock)
- 		return;
--	if (!svsk || svc_tcp_has_wspace(&svsk->sk_xprt))
-+	if (svc_tcp_has_wspace(&svsk->sk_xprt)) {
- 		clear_bit(SOCK_NOSPACE, &sock->flags);
--	svc_write_space(sk);
-+		svc_write_space(sk);
+ 	sunrpc.pool_mode=
+ 			[NFS]
+ 			Control how the NFS server code allocates CPUs to
+diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
+index 7ca44fb5b675..7321ae933867 100644
+--- a/include/linux/sunrpc/svc.h
++++ b/include/linux/sunrpc/svc.h
+@@ -268,6 +268,7 @@ struct svc_rqst {
+ 						 * cache pages */
+ #define	RQ_VICTIM	(5)			/* about to be shut down */
+ #define	RQ_BUSY		(6)			/* request is busy */
++#define	RQ_DATA		(7)			/* request has data */
+ 	unsigned long		rq_flags;	/* flags field */
+ 
+ 	void *			rq_argp;	/* decoded arguments */
+diff --git a/include/linux/sunrpc/svc_xprt.h b/include/linux/sunrpc/svc_xprt.h
+index b7dabc4baafd..555c004de51e 100644
+--- a/include/linux/sunrpc/svc_xprt.h
++++ b/include/linux/sunrpc/svc_xprt.h
+@@ -69,6 +69,7 @@ struct svc_xprt {
+ 
+ 	struct svc_serv		*xpt_server;	/* service for transport */
+ 	atomic_t    	    	xpt_reserved;	/* space on outq that is rsvd */
++	atomic_t		xpt_nr_rqsts;	/* Number of requests */
+ 	struct mutex		xpt_mutex;	/* to serialize sending data */
+ 	spinlock_t		xpt_lock;	/* protects sk_deferred
+ 						 * and xpt_auth_cache */
+diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
+index eccc61237ca9..cd26d0d9e41f 100644
+--- a/net/sunrpc/svc_xprt.c
++++ b/net/sunrpc/svc_xprt.c
+@@ -21,6 +21,10 @@
+ 
+ #define RPCDBG_FACILITY	RPCDBG_SVCXPRT
+ 
++static unsigned int svc_rpc_per_connection_limit __read_mostly;
++module_param(svc_rpc_per_connection_limit, uint, 0644);
++
++
+ static struct svc_deferred_req *svc_deferred_dequeue(struct svc_xprt *xprt);
+ static int svc_deferred_recv(struct svc_rqst *rqstp);
+ static struct cache_deferred_req *svc_defer(struct cache_req *req);
+@@ -327,12 +331,41 @@ char *svc_print_addr(struct svc_rqst *rqstp, char *buf, size_t len)
+ }
+ EXPORT_SYMBOL_GPL(svc_print_addr);
+ 
++static bool svc_xprt_slots_in_range(struct svc_xprt *xprt)
++{
++	unsigned int limit = svc_rpc_per_connection_limit;
++	int nrqsts = atomic_read(&xprt->xpt_nr_rqsts);
++
++	return limit == 0 || (nrqsts >= 0 && nrqsts < limit);
++}
++
++static bool svc_xprt_reserve_slot(struct svc_rqst *rqstp, struct svc_xprt *xprt)
++{
++	if (!test_bit(RQ_DATA, &rqstp->rq_flags)) {
++		if (!svc_xprt_slots_in_range(xprt))
++			return false;
++		atomic_inc(&xprt->xpt_nr_rqsts);
++		set_bit(RQ_DATA, &rqstp->rq_flags);
 +	}
- }
- 
- static void svc_tcp_adjust_wspace(struct svc_xprt *xprt)
-@@ -746,7 +716,7 @@ static void svc_udp_init(struct svc_sock *svsk, struct svc_serv *serv)
- 	svc_xprt_init(sock_net(svsk->sk_sock->sk), &svc_udp_class,
- 		      &svsk->sk_xprt, serv);
- 	clear_bit(XPT_CACHE_AUTH, &svsk->sk_xprt.xpt_flags);
--	svsk->sk_sk->sk_data_ready = svc_udp_data_ready;
-+	svsk->sk_sk->sk_data_ready = svc_data_ready;
- 	svsk->sk_sk->sk_write_space = svc_write_space;
- 
- 	/* initialise setting must have enough space to
-@@ -786,11 +756,12 @@ static void svc_udp_init(struct svc_sock *svsk, struct svc_serv *serv)
- static void svc_tcp_listen_data_ready(struct sock *sk)
- {
- 	struct svc_sock	*svsk = (struct svc_sock *)sk->sk_user_data;
--	wait_queue_head_t *wq;
- 
- 	dprintk("svc: socket %p TCP (listen) state change %d\n",
- 		sk, sk->sk_state);
- 
-+	if (svsk)
-+		svsk->sk_odata(sk);
- 	/*
- 	 * This callback may called twice when a new connection
- 	 * is established as a child socket inherits everything
-@@ -808,10 +779,6 @@ static void svc_tcp_listen_data_ready(struct sock *sk)
- 		} else
- 			printk("svc: socket %p: no user data\n", sk);
- 	}
--
--	wq = sk_sleep(sk);
--	if (sunrpc_waitqueue_active(wq))
--		wake_up_interruptible_all(wq);
- }
- 
- /*
-@@ -820,7 +787,6 @@ static void svc_tcp_listen_data_ready(struct sock *sk)
- static void svc_tcp_state_change(struct sock *sk)
- {
- 	struct svc_sock	*svsk = (struct svc_sock *)sk->sk_user_data;
--	wait_queue_head_t *wq = sk_sleep(sk);
- 
- 	dprintk("svc: socket %p TCP (connected) state change %d (svsk %p)\n",
- 		sk, sk->sk_state, sk->sk_user_data);
-@@ -828,26 +794,10 @@ static void svc_tcp_state_change(struct sock *sk)
- 	if (!svsk)
- 		printk("svc: socket %p: no user data\n", sk);
- 	else {
-+		svsk->sk_ostate(sk);
- 		set_bit(XPT_CLOSE, &svsk->sk_xprt.xpt_flags);
- 		svc_xprt_enqueue(&svsk->sk_xprt);
- 	}
--	if (sunrpc_waitqueue_active(wq))
--		wake_up_interruptible_all(wq);
--}
--
--static void svc_tcp_data_ready(struct sock *sk)
--{
--	struct svc_sock *svsk = (struct svc_sock *)sk->sk_user_data;
--	wait_queue_head_t *wq = sk_sleep(sk);
--
--	dprintk("svc: socket %p TCP data ready (svsk %p)\n",
--		sk, sk->sk_user_data);
--	if (svsk) {
--		set_bit(XPT_DATA, &svsk->sk_xprt.xpt_flags);
--		svc_xprt_enqueue(&svsk->sk_xprt);
--	}
--	if (sunrpc_waitqueue_active(wq))
--		wake_up_interruptible(wq);
- }
- 
- /*
-@@ -901,6 +851,11 @@ static struct svc_xprt *svc_tcp_accept(struct svc_xprt *xprt)
- 	dprintk("%s: connect from %s\n", serv->sv_name,
- 		__svc_print_addr(sin, buf, sizeof(buf)));
- 
-+	/* Reset the inherited callbacks before calling svc_setup_socket */
-+	newsock->sk->sk_state_change = svsk->sk_ostate;
-+	newsock->sk->sk_data_ready = svsk->sk_odata;
-+	newsock->sk->sk_write_space = svsk->sk_owspace;
++	return true;
++}
 +
- 	/* make sure that a write doesn't block forever when
- 	 * low on memory
- 	 */
-@@ -1357,7 +1312,7 @@ static void svc_tcp_init(struct svc_sock *svsk, struct svc_serv *serv)
- 	} else {
- 		dprintk("setting up TCP socket for reading\n");
- 		sk->sk_state_change = svc_tcp_state_change;
--		sk->sk_data_ready = svc_tcp_data_ready;
-+		sk->sk_data_ready = svc_data_ready;
- 		sk->sk_write_space = svc_tcp_write_space;
- 
- 		svsk->sk_reclen = 0;
-@@ -1606,7 +1561,6 @@ static void svc_sock_detach(struct svc_xprt *xprt)
++static void svc_xprt_release_slot(struct svc_rqst *rqstp)
++{
++	struct svc_xprt	*xprt = rqstp->rq_xprt;
++	if (test_and_clear_bit(RQ_DATA, &rqstp->rq_flags)) {
++		atomic_dec(&xprt->xpt_nr_rqsts);
++		svc_xprt_enqueue(xprt);
++	}
++}
++
+ static bool svc_xprt_has_something_to_do(struct svc_xprt *xprt)
  {
- 	struct svc_sock *svsk = container_of(xprt, struct svc_sock, sk_xprt);
- 	struct sock *sk = svsk->sk_sk;
--	wait_queue_head_t *wq;
+ 	if (xprt->xpt_flags & ((1<<XPT_CONN)|(1<<XPT_CLOSE)))
+ 		return true;
+ 	if (xprt->xpt_flags & ((1<<XPT_DATA)|(1<<XPT_DEFERRED))) {
+-		if (xprt->xpt_ops->xpo_has_wspace(xprt))
++		if (xprt->xpt_ops->xpo_has_wspace(xprt) &&
++		    svc_xprt_slots_in_range(xprt))
+ 			return true;
+ 		trace_svc_xprt_no_write_space(xprt);
+ 		return false;
+@@ -514,8 +547,8 @@ static void svc_xprt_release(struct svc_rqst *rqstp)
  
- 	dprintk("svc: svc_sock_detach(%p)\n", svsk);
- 
-@@ -1617,10 +1571,6 @@ static void svc_sock_detach(struct svc_xprt *xprt)
- 	sk->sk_write_space = svsk->sk_owspace;
- 	sk->sk_user_data = NULL;
- 	release_sock(sk);
+ 	rqstp->rq_res.head[0].iov_len = 0;
+ 	svc_reserve(rqstp, 0);
++	svc_xprt_release_slot(rqstp);
+ 	rqstp->rq_xprt = NULL;
 -
--	wq = sk_sleep(sk);
--	if (sunrpc_waitqueue_active(wq))
--		wake_up_interruptible(wq);
+ 	svc_xprt_put(xprt);
  }
  
- /*
+@@ -783,7 +816,7 @@ static int svc_handle_xprt(struct svc_rqst *rqstp, struct svc_xprt *xprt)
+ 			svc_add_new_temp_xprt(serv, newxpt);
+ 		else
+ 			module_put(xprt->xpt_class->xcl_owner);
+-	} else {
++	} else if (svc_xprt_reserve_slot(rqstp, xprt)) {
+ 		/* XPT_DATA|XPT_DEFERRED case: */
+ 		dprintk("svc: server %p, pool %u, transport %p, inuse=%d\n",
+ 			rqstp, rqstp->rq_pool->sp_id, xprt,
 -- 
 2.7.4
 
