@@ -1,14 +1,14 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:41728 "EHLO fieldses.org"
+Received: from fieldses.org ([173.255.197.46]:41732 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751175AbcFXVPR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 24 Jun 2016 17:15:17 -0400
-Date: Fri, 24 Jun 2016 17:15:16 -0400
+	id S1751427AbcFXVSJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 24 Jun 2016 17:18:09 -0400
+Date: Fri, 24 Jun 2016 17:18:08 -0400
 From: "J. Bruce Fields" <bfields@fieldses.org>
 To: Trond Myklebust <trond.myklebust@primarydata.com>
 Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 08/10] SUNRPC: Add a server side per-connection limit
-Message-ID: <20160624211516.GK3287@fieldses.org>
+Subject: Re: [PATCH 09/10] SUNRPC: Change TCP socket space reservation
+Message-ID: <20160624211808.GL3287@fieldses.org>
 References: <1466780152-7154-1-git-send-email-trond.myklebust@primarydata.com>
  <1466780152-7154-2-git-send-email-trond.myklebust@primarydata.com>
  <1466780152-7154-3-git-send-email-trond.myklebust@primarydata.com>
@@ -17,147 +17,118 @@ References: <1466780152-7154-1-git-send-email-trond.myklebust@primarydata.com>
  <1466780152-7154-6-git-send-email-trond.myklebust@primarydata.com>
  <1466780152-7154-7-git-send-email-trond.myklebust@primarydata.com>
  <1466780152-7154-8-git-send-email-trond.myklebust@primarydata.com>
+ <1466780152-7154-9-git-send-email-trond.myklebust@primarydata.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1466780152-7154-8-git-send-email-trond.myklebust@primarydata.com>
+In-Reply-To: <1466780152-7154-9-git-send-email-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Jun 24, 2016 at 10:55:50AM -0400, Trond Myklebust wrote:
-> Allow the user to limit the number of requests serviced through a single
-> connection.
+On Fri, Jun 24, 2016 at 10:55:51AM -0400, Trond Myklebust wrote:
+> Instead of trying (and failing) to predict how much writeable socket space
+> will be available to the RPC call, just fall back to the simple model of
+> deferring processing until the socket is uncongested.
 
-Could you give a little detail about the problem you encountered and how
-this solved it?
+OK, it would be a relief to get rid of that, I guess that explains the
+previous patch.
+
+But was there some specific reason you were running into this?
+
+In general I could use a little more idea of the motivation for these
+patches.
 
 --b.
 
 > 
+> If a limit is neeeded, then set the hard per-connection limit.
+> 
 > Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
 > ---
->  Documentation/kernel-parameters.txt |  6 ++++++
->  include/linux/sunrpc/svc.h          |  1 +
->  include/linux/sunrpc/svc_xprt.h     |  1 +
->  net/sunrpc/svc_xprt.c               | 39 ++++++++++++++++++++++++++++++++++---
->  4 files changed, 44 insertions(+), 3 deletions(-)
+>  net/sunrpc/svcsock.c | 47 ++++-------------------------------------------
+>  1 file changed, 4 insertions(+), 43 deletions(-)
 > 
-> diff --git a/Documentation/kernel-parameters.txt b/Documentation/kernel-parameters.txt
-> index 82b42c958d1c..48ba6d2e670a 100644
-> --- a/Documentation/kernel-parameters.txt
-> +++ b/Documentation/kernel-parameters.txt
-> @@ -3832,6 +3832,12 @@ bytes respectively. Such letter suffixes can also be entirely omitted.
->  			using these two parameters to set the minimum and
->  			maximum port values.
+> diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
+> index 338d6fe1103d..bc3ef0734f2f 100644
+> --- a/net/sunrpc/svcsock.c
+> +++ b/net/sunrpc/svcsock.c
+> @@ -431,43 +431,11 @@ static void svc_write_space(struct sock *sk)
 >  
-> +	sunrpc.svc_rpc_per_connection_limit=
-> +			[NFS,SUNRPC]
-> +			Limit the number of requests that the server will
-> +			process in parallel from a single connection.
-> +			The default value is 0 (no limit).
-> +
->  	sunrpc.pool_mode=
->  			[NFS]
->  			Control how the NFS server code allocates CPUs to
-> diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
-> index 7ca44fb5b675..7321ae933867 100644
-> --- a/include/linux/sunrpc/svc.h
-> +++ b/include/linux/sunrpc/svc.h
-> @@ -268,6 +268,7 @@ struct svc_rqst {
->  						 * cache pages */
->  #define	RQ_VICTIM	(5)			/* about to be shut down */
->  #define	RQ_BUSY		(6)			/* request is busy */
-> +#define	RQ_DATA		(7)			/* request has data */
->  	unsigned long		rq_flags;	/* flags field */
->  
->  	void *			rq_argp;	/* decoded arguments */
-> diff --git a/include/linux/sunrpc/svc_xprt.h b/include/linux/sunrpc/svc_xprt.h
-> index b7dabc4baafd..555c004de51e 100644
-> --- a/include/linux/sunrpc/svc_xprt.h
-> +++ b/include/linux/sunrpc/svc_xprt.h
-> @@ -69,6 +69,7 @@ struct svc_xprt {
->  
->  	struct svc_serv		*xpt_server;	/* service for transport */
->  	atomic_t    	    	xpt_reserved;	/* space on outq that is rsvd */
-> +	atomic_t		xpt_nr_rqsts;	/* Number of requests */
->  	struct mutex		xpt_mutex;	/* to serialize sending data */
->  	spinlock_t		xpt_lock;	/* protects sk_deferred
->  						 * and xpt_auth_cache */
-> diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
-> index eccc61237ca9..cd26d0d9e41f 100644
-> --- a/net/sunrpc/svc_xprt.c
-> +++ b/net/sunrpc/svc_xprt.c
-> @@ -21,6 +21,10 @@
->  
->  #define RPCDBG_FACILITY	RPCDBG_SVCXPRT
->  
-> +static unsigned int svc_rpc_per_connection_limit __read_mostly;
-> +module_param(svc_rpc_per_connection_limit, uint, 0644);
-> +
-> +
->  static struct svc_deferred_req *svc_deferred_dequeue(struct svc_xprt *xprt);
->  static int svc_deferred_recv(struct svc_rqst *rqstp);
->  static struct cache_deferred_req *svc_defer(struct cache_req *req);
-> @@ -327,12 +331,41 @@ char *svc_print_addr(struct svc_rqst *rqstp, char *buf, size_t len)
->  }
->  EXPORT_SYMBOL_GPL(svc_print_addr);
->  
-> +static bool svc_xprt_slots_in_range(struct svc_xprt *xprt)
-> +{
-> +	unsigned int limit = svc_rpc_per_connection_limit;
-> +	int nrqsts = atomic_read(&xprt->xpt_nr_rqsts);
-> +
-> +	return limit == 0 || (nrqsts >= 0 && nrqsts < limit);
-> +}
-> +
-> +static bool svc_xprt_reserve_slot(struct svc_rqst *rqstp, struct svc_xprt *xprt)
-> +{
-> +	if (!test_bit(RQ_DATA, &rqstp->rq_flags)) {
-> +		if (!svc_xprt_slots_in_range(xprt))
-> +			return false;
-> +		atomic_inc(&xprt->xpt_nr_rqsts);
-> +		set_bit(RQ_DATA, &rqstp->rq_flags);
-> +	}
-> +	return true;
-> +}
-> +
-> +static void svc_xprt_release_slot(struct svc_rqst *rqstp)
-> +{
-> +	struct svc_xprt	*xprt = rqstp->rq_xprt;
-> +	if (test_and_clear_bit(RQ_DATA, &rqstp->rq_flags)) {
-> +		atomic_dec(&xprt->xpt_nr_rqsts);
-> +		svc_xprt_enqueue(xprt);
-> +	}
-> +}
-> +
->  static bool svc_xprt_has_something_to_do(struct svc_xprt *xprt)
+>  static int svc_tcp_has_wspace(struct svc_xprt *xprt)
 >  {
->  	if (xprt->xpt_flags & ((1<<XPT_CONN)|(1<<XPT_CLOSE)))
->  		return true;
->  	if (xprt->xpt_flags & ((1<<XPT_DATA)|(1<<XPT_DEFERRED))) {
-> -		if (xprt->xpt_ops->xpo_has_wspace(xprt))
-> +		if (xprt->xpt_ops->xpo_has_wspace(xprt) &&
-> +		    svc_xprt_slots_in_range(xprt))
->  			return true;
->  		trace_svc_xprt_no_write_space(xprt);
->  		return false;
-> @@ -514,8 +547,8 @@ static void svc_xprt_release(struct svc_rqst *rqstp)
+> -	struct svc_sock *svsk =	container_of(xprt, struct svc_sock, sk_xprt);
+> -	struct svc_serv *serv = svsk->sk_xprt.xpt_server;
+> -	int required;
+> +	struct svc_sock *svsk = container_of(xprt, struct svc_sock, sk_xprt);
 >  
->  	rqstp->rq_res.head[0].iov_len = 0;
->  	svc_reserve(rqstp, 0);
-> +	svc_xprt_release_slot(rqstp);
->  	rqstp->rq_xprt = NULL;
+>  	if (test_bit(XPT_LISTENER, &xprt->xpt_flags))
+>  		return 1;
+> -	required = atomic_read(&xprt->xpt_reserved) + serv->sv_max_mesg;
+> -	if (sk_stream_wspace(svsk->sk_sk) >= required ||
+> -	    (sk_stream_min_wspace(svsk->sk_sk) == 0 &&
+> -	     atomic_read(&xprt->xpt_reserved) == 0))
+> -		return 1;
+> -	set_bit(SOCK_NOSPACE, &svsk->sk_sock->flags);
+> -	return 0;
+> -}
 > -
->  	svc_xprt_put(xprt);
+> -static void svc_tcp_write_space(struct sock *sk)
+> -{
+> -	struct svc_sock *svsk = (struct svc_sock *)(sk->sk_user_data);
+> -	struct socket *sock = sk->sk_socket;
+> -
+> -	if (!svsk)
+> -		return;
+> -
+> -	if (!sk_stream_is_writeable(sk) || !sock)
+> -		return;
+> -	if (svc_tcp_has_wspace(&svsk->sk_xprt)) {
+> -		clear_bit(SOCK_NOSPACE, &sock->flags);
+> -		svc_write_space(sk);
+> -	}
+> -}
+> -
+> -static void svc_tcp_adjust_wspace(struct svc_xprt *xprt)
+> -{
+> -	struct svc_sock *svsk = container_of(xprt, struct svc_sock, sk_xprt);
+> -
+> -	if (svc_tcp_has_wspace(xprt))
+> -		clear_bit(SOCK_NOSPACE, &svsk->sk_sock->flags);
+> +	return !test_bit(SOCK_NOSPACE, &svsk->sk_sock->flags);
 >  }
 >  
-> @@ -783,7 +816,7 @@ static int svc_handle_xprt(struct svc_rqst *rqstp, struct svc_xprt *xprt)
->  			svc_add_new_temp_xprt(serv, newxpt);
->  		else
->  			module_put(xprt->xpt_class->xcl_owner);
-> -	} else {
-> +	} else if (svc_xprt_reserve_slot(rqstp, xprt)) {
->  		/* XPT_DATA|XPT_DEFERRED case: */
->  		dprintk("svc: server %p, pool %u, transport %p, inuse=%d\n",
->  			rqstp, rqstp->rq_pool->sp_id, xprt,
+>  /*
+> @@ -1272,7 +1240,6 @@ static struct svc_xprt_ops svc_tcp_ops = {
+>  	.xpo_has_wspace = svc_tcp_has_wspace,
+>  	.xpo_accept = svc_tcp_accept,
+>  	.xpo_secure_port = svc_sock_secure_port,
+> -	.xpo_adjust_wspace = svc_tcp_adjust_wspace,
+>  };
+>  
+>  static struct svc_xprt_class svc_tcp_class = {
+> @@ -1313,7 +1280,7 @@ static void svc_tcp_init(struct svc_sock *svsk, struct svc_serv *serv)
+>  		dprintk("setting up TCP socket for reading\n");
+>  		sk->sk_state_change = svc_tcp_state_change;
+>  		sk->sk_data_ready = svc_data_ready;
+> -		sk->sk_write_space = svc_tcp_write_space;
+> +		sk->sk_write_space = svc_write_space;
+>  
+>  		svsk->sk_reclen = 0;
+>  		svsk->sk_tcplen = 0;
+> @@ -1383,14 +1350,8 @@ static struct svc_sock *svc_setup_socket(struct svc_serv *serv,
+>  	/* Initialize the socket */
+>  	if (sock->type == SOCK_DGRAM)
+>  		svc_udp_init(svsk, serv);
+> -	else {
+> -		/* initialise setting must have enough space to
+> -		 * receive and respond to one request.
+> -		 */
+> -		svc_sock_setbufsize(svsk->sk_sock, 4 * serv->sv_max_mesg,
+> -					4 * serv->sv_max_mesg);
+> +	else
+>  		svc_tcp_init(svsk, serv);
+> -	}
+>  
+>  	dprintk("svc: svc_setup_socket created %p (inet %p)\n",
+>  				svsk, svsk->sk_sk);
 > -- 
 > 2.7.4
