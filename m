@@ -1,56 +1,67 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx6-phx2.redhat.com ([209.132.183.39]:50772 "EHLO
-	mx6-phx2.redhat.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751639AbcF0TRU (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 27 Jun 2016 15:17:20 -0400
-Received: from zmail22.collab.prod.int.phx2.redhat.com (zmail22.collab.prod.int.phx2.redhat.com [10.5.83.26])
-	by mx6-phx2.redhat.com (8.14.4/8.14.4) with ESMTP id u5RJHJDJ043461
-	for <linux-nfs@vger.kernel.org>; Mon, 27 Jun 2016 15:17:19 -0400
-Date: Mon, 27 Jun 2016 15:17:19 -0400 (EDT)
-From: Frank Sorenson <sorenson@redhat.com>
-To: linux-nfs@vger.kernel.org
-Message-ID: <335417401.1580552.1467055039492.JavaMail.zimbra@redhat.com>
-In-Reply-To: <598557625.1580230.1467054918817.JavaMail.zimbra@redhat.com>
-Subject: [PATCH] sunrpc: Fix bit count when setting hashtable size to
- power-of-two
+Received: from mail-it0-f65.google.com ([209.85.214.65]:36225 "EHLO
+	mail-it0-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751638AbcF0VMt (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 27 Jun 2016 17:12:49 -0400
+Received: by mail-it0-f65.google.com with SMTP id h190so11458ith.3
+        for <linux-nfs@vger.kernel.org>; Mon, 27 Jun 2016 14:12:49 -0700 (PDT)
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
+In-Reply-To: <1466896768-23657-1-git-send-email-trond.myklebust@primarydata.com>
+References: <1466896768-23657-1-git-send-email-trond.myklebust@primarydata.com>
+From: Olga Kornievskaia <aglo@umich.edu>
+Date: Mon, 27 Jun 2016 17:12:48 -0400
+Message-ID: <CAN-5tyF2UU096gnD_qGCiLyfF1KaVu+w4yuMLXpDWiBwFcHvhw@mail.gmail.com>
+Subject: Re: [PATCH] NFS: Fix another OPEN_DOWNGRADE bug
+To: Trond Myklebust <trond.myklebust@primarydata.com>
+Cc: linux-nfs <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Sat, Jun 25, 2016 at 7:19 PM, Trond Myklebust
+<trond.myklebust@primarydata.com> wrote:
+> Olga Kornievskaia reports that the following test fails to trigger
+> an OPEN_DOWNGRADE on the wire, and only triggers the final CLOSE.
+>
+>         fd0 = open(foo, RDRW)   -- should be open on the wire for "both"
+>         fd1 = open(foo, RDONLY)  -- should be open on the wire for "read"
+>         close(fd0) -- should trigger an open_downgrade
+>         read(fd1)
+>         close(fd1)
+>
+> The issue is that we're missing a check for whether or not the current
+> state transitioned from an O_RDWR state as opposed to having transitioned
+> from a combination of O_RDONLY and O_WRONLY.
+>
+> Reported-by: Olga Kornievskaia <aglo@umich.edu>
+> Fixes: cd9288ffaea4 ("NFSv4: Fix another bug in the close/open_downgrade code")
+> Cc: stable@vger.kernel.org # 2.6.33+
+> Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+> ---
+>  fs/nfs/nfs4proc.c | 5 ++---
+>  1 file changed, 2 insertions(+), 3 deletions(-)
+>
+> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+> index 406dd3eb68e2..ff416d0e24bc 100644
+> --- a/fs/nfs/nfs4proc.c
+> +++ b/fs/nfs/nfs4proc.c
+> @@ -2882,12 +2882,11 @@ static void nfs4_close_prepare(struct rpc_task *task, void *data)
+>                         call_close |= is_wronly;
+>                 else if (is_wronly)
+>                         calldata->arg.fmode |= FMODE_WRITE;
+> +               if (calldata->arg.fmode != (FMODE_READ|FMODE_WRITE))
+> +                       call_close |= is_rdwr;
+>         } else if (is_rdwr)
+>                 calldata->arg.fmode |= FMODE_READ|FMODE_WRITE;
+>
+> -       if (calldata->arg.fmode == 0)
+> -               call_close |= is_rdwr;
+> -
+>         if (!nfs4_valid_open_stateid(state))
+>                 call_close = 0;
+>         spin_unlock(&state->owner->so_lock);
+> --
+> 2.7.4
+>
 
-Author: Frank Sorenson <sorenson@redhat.com>
-Date:   2016-06-27 13:55:48 -0500
-
-    sunrpc: Fix bit count when setting hashtable size to power-of-two
-    
-    The hashtable size is incorrectly calculated as the next higher
-    power-of-two when being set to a power-of-two.  fls() returns the
-    bit number of the most significant set bit, with the least
-    significant bit being numbered '1'.  For a power-of-two, fls()
-    will return a bit number which is one higher than the number of bits
-    required, leading to a hashtable which is twice the requested size.
-    
-    In addition, the value of (1 << nbits) will always be at least num,
-    so the test will never be true.
-    
-    Fix the hash table size calculation to correctly set hashtable
-    size, and eliminate the unnecessary check.
-    
-    Signed-off-by: Frank Sorenson <sorenson@redhat.com>
-
-diff --git a/net/sunrpc/auth.c b/net/sunrpc/auth.c
-index 040ff62..9d7056f 100644
---- a/net/sunrpc/auth.c
-+++ b/net/sunrpc/auth.c
-@@ -51,9 +51,7 @@ static int param_set_hashtbl_sz(const char *val, const struct kernel_param *kp)
- 	ret = kstrtoul(val, 0, &num);
- 	if (ret == -EINVAL)
- 		goto out_inval;
--	nbits = fls(num);
--	if (num > (1U << nbits))
--		nbits++;
-+	nbits = fls(num - 1);
- 	if (nbits > MAX_HASHTABLE_BITS || nbits < 2)
- 		goto out_inval;
- 	*(unsigned int *)kp->arg = nbits;
+Thanks Trond. With this patch, in my test I see OPEN_DOWNGRADE sent.
