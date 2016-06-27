@@ -1,101 +1,56 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx141.netapp.com ([216.240.21.12]:62047 "EHLO mx141.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751906AbcF0RrI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 27 Jun 2016 13:47:08 -0400
-Subject: Re: [PATCH v3 01/25] xprtrdma: Remove FMRs from the unmap list after
- unmapping
-To: Chuck Lever <chuck.lever@oracle.com>, <linux-rdma@vger.kernel.org>,
-        <linux-nfs@vger.kernel.org>
-References: <20160620155751.10809.22262.stgit@manet.1015granger.net>
- <20160620160843.10809.96379.stgit@manet.1015granger.net>
-From: Anna Schumaker <Anna.Schumaker@netapp.com>
-Message-ID: <bf577252-3786-9ee8-be3b-036922eb0507@Netapp.com>
-Date: Mon, 27 Jun 2016 13:47:04 -0400
+Received: from mx6-phx2.redhat.com ([209.132.183.39]:50772 "EHLO
+	mx6-phx2.redhat.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751639AbcF0TRU (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 27 Jun 2016 15:17:20 -0400
+Received: from zmail22.collab.prod.int.phx2.redhat.com (zmail22.collab.prod.int.phx2.redhat.com [10.5.83.26])
+	by mx6-phx2.redhat.com (8.14.4/8.14.4) with ESMTP id u5RJHJDJ043461
+	for <linux-nfs@vger.kernel.org>; Mon, 27 Jun 2016 15:17:19 -0400
+Date: Mon, 27 Jun 2016 15:17:19 -0400 (EDT)
+From: Frank Sorenson <sorenson@redhat.com>
+To: linux-nfs@vger.kernel.org
+Message-ID: <335417401.1580552.1467055039492.JavaMail.zimbra@redhat.com>
+In-Reply-To: <598557625.1580230.1467054918817.JavaMail.zimbra@redhat.com>
+Subject: [PATCH] sunrpc: Fix bit count when setting hashtable size to
+ power-of-two
 MIME-Version: 1.0
-In-Reply-To: <20160620160843.10809.96379.stgit@manet.1015granger.net>
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Chuck,
 
-On 06/20/2016 12:08 PM, Chuck Lever wrote:
-> ib_unmap_fmr() takes a list of FMRs to unmap. However, it does not
-> remove the FMRs from this list as it processes them. Other
-> ib_unmap_fmr() call sites are careful to remove FMRs from the list
-> after ib_unmap_fmr() returns.
-> 
-> Since commit 7c7a5390dc6c8 ("xprtrdma: Add ro_unmap_sync method for FMR")
-> fmr_op_unmap_sync passes more than one FMR to ib_unmap_fmr(), but
-> it didn't bother to remove the FMRs from that list once the call was
-> complete.
-> 
-> I've noticed some instability that could be related to list
-> tangling by the new fmr_op_unmap_sync() logic. In an abundance
-> of caution, add some defensive logic to clean up properly after
-> ib_unmap_fmr().
-> 
-> Fixes: 7c7a5390dc6c8 ("xprtrdma: Add ro_unmap_sync method for FMR")
-> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-> ---
->  net/sunrpc/xprtrdma/fmr_ops.c |   10 ++++++++--
->  1 file changed, 8 insertions(+), 2 deletions(-)
-> 
-> diff --git a/net/sunrpc/xprtrdma/fmr_ops.c b/net/sunrpc/xprtrdma/fmr_ops.c
-> index 6326ebe..958c792 100644
-> --- a/net/sunrpc/xprtrdma/fmr_ops.c
-> +++ b/net/sunrpc/xprtrdma/fmr_ops.c
-> @@ -63,9 +63,12 @@ static int
->  __fmr_unmap(struct rpcrdma_mw *mw)
->  {
->  	LIST_HEAD(l);
-> +	int rc;
->  
->  	list_add(&mw->fmr.fmr->list, &l);
-> -	return ib_unmap_fmr(&l);
-> +	rc = ib_unmap_fmr(&l);
-> +	list_del_init(&mw->fmr.fmr->list);
-> +	return rc;
->  }
->  
->  /* Deferred reset of a single FMR. Generate a fresh rkey by
-> @@ -149,6 +152,7 @@ fmr_op_init(struct rpcrdma_xprt *r_xprt)
->  		r->fmr.fmr = ib_alloc_fmr(pd, mr_access_flags, &fmr_attr);
->  		if (IS_ERR(r->fmr.fmr))
->  			goto out_fmr_err;
-> +		INIT_LIST_HEAD(&r->fmr.fmr->list);
+Author: Frank Sorenson <sorenson@redhat.com>
+Date:   2016-06-27 13:55:48 -0500
 
-I'm a little surprised to see that ib_alloc_fmr() isn't initializing this list.  Do you know of any plans to add the INIT_LIST_HEAD() into the infiniband code, that way it's always initialized when an ib_fmr is allocated?
+    sunrpc: Fix bit count when setting hashtable size to power-of-two
+    
+    The hashtable size is incorrectly calculated as the next higher
+    power-of-two when being set to a power-of-two.  fls() returns the
+    bit number of the most significant set bit, with the least
+    significant bit being numbered '1'.  For a power-of-two, fls()
+    will return a bit number which is one higher than the number of bits
+    required, leading to a hashtable which is twice the requested size.
+    
+    In addition, the value of (1 << nbits) will always be at least num,
+    so the test will never be true.
+    
+    Fix the hash table size calculation to correctly set hashtable
+    size, and eliminate the unnecessary check.
+    
+    Signed-off-by: Frank Sorenson <sorenson@redhat.com>
 
-Anna
-
->  
->  		r->mw_xprt = r_xprt;
->  		list_add(&r->mw_list, &buf->rb_mws);
-> @@ -267,7 +271,7 @@ fmr_op_unmap_sync(struct rpcrdma_xprt *r_xprt, struct rpcrdma_req *req)
->  		seg = &req->rl_segments[i];
->  		mw = seg->rl_mw;
->  
-> -		list_add(&mw->fmr.fmr->list, &unmap_list);
-> +		list_add_tail(&mw->fmr.fmr->list, &unmap_list);
->  
->  		i += seg->mr_nsegs;
->  	}
-> @@ -280,7 +284,9 @@ fmr_op_unmap_sync(struct rpcrdma_xprt *r_xprt, struct rpcrdma_req *req)
->  	 */
->  	for (i = 0, nchunks = req->rl_nchunks; nchunks; nchunks--) {
->  		seg = &req->rl_segments[i];
-> +		mw = seg->rl_mw;
->  
-> +		list_del_init(&mw->fmr.fmr->list);
->  		__fmr_dma_unmap(r_xprt, seg);
->  		rpcrdma_put_mw(r_xprt, seg->rl_mw);
->  
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
-
+diff --git a/net/sunrpc/auth.c b/net/sunrpc/auth.c
+index 040ff62..9d7056f 100644
+--- a/net/sunrpc/auth.c
++++ b/net/sunrpc/auth.c
+@@ -51,9 +51,7 @@ static int param_set_hashtbl_sz(const char *val, const struct kernel_param *kp)
+ 	ret = kstrtoul(val, 0, &num);
+ 	if (ret == -EINVAL)
+ 		goto out_inval;
+-	nbits = fls(num);
+-	if (num > (1U << nbits))
+-		nbits++;
++	nbits = fls(num - 1);
+ 	if (nbits > MAX_HASHTABLE_BITS || nbits < 2)
+ 		goto out_inval;
+ 	*(unsigned int *)kp->arg = nbits;
