@@ -1,82 +1,183 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qk0-f176.google.com ([209.85.220.176]:36122 "EHLO
-	mail-qk0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752098AbcF1NJ5 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 28 Jun 2016 09:09:57 -0400
-Received: by mail-qk0-f176.google.com with SMTP id z142so2956344qkb.3
-        for <linux-nfs@vger.kernel.org>; Tue, 28 Jun 2016 06:09:56 -0700 (PDT)
-Message-ID: <1467119394.32374.11.camel@poochiereds.net>
-Subject: Re: [PATCH v4 12/13] pnfs: rework LAYOUTGET retry handling
-From: Jeff Layton <jlayton@poochiereds.net>
-To: Andrew W Elble <aweits@rit.edu>
-Cc: Trond Myklebust <trondmy@primarydata.com>,
-        Anna Schumaker <Anna.Schumaker@netapp.com>,
-        Thomas Haynes <loghyr@primarydata.com>, linux-nfs@vger.kernel.org,
-        hch@lst.de
-Date: Tue, 28 Jun 2016 09:09:54 -0400
-In-Reply-To: <m2d1n1tqxk.fsf@discipline.rit.edu>
-References: <1463502528-11519-1-git-send-email-jeff.layton@primarydata.com>
-	 <1463502528-11519-13-git-send-email-jeff.layton@primarydata.com>
-	 <m260stv7hp.fsf@discipline.rit.edu>
-	 <1467116540.32374.5.camel@poochiereds.net>
-	 <m2d1n1tqxk.fsf@discipline.rit.edu>
-Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
+Received: from mx1.redhat.com ([209.132.183.28]:52479 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752054AbcF1O15 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 28 Jun 2016 10:27:57 -0400
+Subject: Re: [PATCH 1/1 v2] systemd: Only start the gssd daemons when they are
+ enabled
+To: Chuck Lever <chuck.lever@oracle.com>
+References: <1466520807-4340-1-git-send-email-steved@redhat.com>
+ <09ECB137-8EC4-4713-B5F4-44D0405B2700@oracle.com>
+ <c21d7a5d-853f-1722-53b4-99f66f263d74@RedHat.com>
+ <AA20A3F4-82FB-4118-B0F2-012890D24042@oracle.com>
+ <a82a0e31-a0e0-409a-8310-bd62cf0436b5@RedHat.com>
+ <1D39CEF6-AC29-4166-95DF-ADBD2C0286B3@oracle.com>
+ <e3735233-446f-ff18-6127-41ed956e6f91@RedHat.com>
+ <73CFA6F9-C983-47D7-972C-9DF782731F3C@oracle.com>
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+From: Steve Dickson <SteveD@redhat.com>
+Message-ID: <2085406d-1e41-46b2-6791-2a3208f5497b@RedHat.com>
+Date: Tue, 28 Jun 2016 10:27:55 -0400
+MIME-Version: 1.0
+In-Reply-To: <73CFA6F9-C983-47D7-972C-9DF782731F3C@oracle.com>
+Content-Type: text/plain; charset=windows-1252
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 2016-06-28 at 08:53 -0400, Andrew W Elble wrote:
-> > 
-> > > 
-> > > > 
-> > > > +		default:
-> > > > +			if
-> > > > (!nfs_error_is_fatal(PTR_ERR(lseg))) {
-> > > > +				pnfs_layout_clear_fail_bit(lo,
-> > > > pnfs_iomode_to_fail_bit(iomode));
-> > > > +				lseg = NULL;
-> > > > +			}
-> > > Seems like in the past, a non-fatal-error used to trigger the
-> > > opposite
-> > > behavior, where this would set the fail_bit? Shouldn't that be
-> > > the
-> > > behavior for -NFS4ERR_LAYOUTUNAVAILABLE (which is mapped to
-> > > -ENODATA)
-> > > etc...?
-> > > 
-> > Yes, and I think that was a bug. See commit
-> > d03ab29dbbe905c6c7c5abd78e02547fa954ec07 for where that actually
-> > changed.
-> I think you mean:
-> 0bcbf039f6b2bcefe4f5dada76079080edf9ecd0
+Again, sorry for the delay... That darn flux capacitor broke... again!!! :-)
+
+On 06/23/2016 09:30 PM, Chuck Lever wrote:
 > 
-> ?
+>> On Jun 23, 2016, at 11:57 AM, Steve Dickson <SteveD@redhat.com> wrote:
+
+[snip]
+
+>> the key tab does have a nfs/hosname@REALM entry. So the 
+>> call to the KDC is probably failing... which 
+>> could be construed as a misconfiguration, but
+>> that misconfiguration should not even come into 
+>> play with sec=sys mounts... IMHO...
 > 
-> ...and I was looking at this one:
-> d600ad1f2bdbf97c4818dcc85b174f72c90c21bd
+> I disagree, of course. sec=sys means the client is not going
+> to use Kerberos to authenticate individual user requests,
+> and users don't need a Kerberos ticket to access their files.
+> That's still the case.
 > 
-
-No, d03ab29dbbe905c6c7c5abd78e02547fa954ec07 is where that bug was
-fixed. Basically, we were clearing the fail bit on fatal errors, when
-what we really wanted to do was clear it on non-fatal errors.
-
-> > 
-> > You do have a good point about LAYOUTUNAVAILABLE though. That
-> > probably
-> > should stop further attempts to get a layout. That said, the error
-> > mapping here is fiendishly complex. I always have to wonder whether
-> > there other errors that get turned into ENODATA? It may be safest
-> > to
-> > change the error mapping there to something more specific.
-> If setting the fail_bit is the right way to go, that could be done
-> with less confusion in nfs4_layoutget_handle_exception()...?
+> I'm not aware of any promise that sec=sys means there is
+> no Kerberos within 50 miles of that mount.
+I think that's is the assumption... No Kerberos will be
+needed for sec=sys mounts. Its not when Kerberos is 
+not configured. 
+ 
 > 
+> If there are valid keytabs on both systems, they need to
+> be set up correctly. If there's a misconfiguration, then
+> gssd needs to report it precisely instead of time out.
+> And it's just as easy to add a service principal to a keytab
+> as it is to disable a systemd service in that case.
+I think its more straightforward to disable a service
+that is not needed than to have to add a principal to a 
+keytab for a service that's not being used or needed.
 
-Hmm...Trond's response just says "it's not", which I'm not sure how to
-interpret here. Trond, do you mean that we should be retrying on
-LAYOUTUNAVAILABLE, or that we should be indicating that using some
-means other than the fail bit?
+> 
+> 
+>>> Is gssd waiting for syslog or something?
+>> No... its just failing to get the machine creds for root
+> 
+> Clearly more is going on than that, and so far we have only
+> some speculation. Can you provide an strace of rpc.gssd or
+> a network capture so we can confirm what's going on?
+Yes... Yes... and Yes.. I added you to the bz... 
 
--- 
-Jeff Layton <jlayton@poochiereds.net>
+> 
+> 
+>> [snip]
+>>
+>>>> Which does work and will still work... but I'm thinking it is
+>>>> much similar to disable the service via systemd command
+>>>>  systemctl disable rpc-gssd
+>>>>
+>>>> than creating and editing those .conf files.
+>>>
+>>> This should all be automatic, IMO.
+>>>
+>>> On Solaris, drop in a keytab and a krb5.conf, and add sec=krb5
+>>> to your mounts. No reboot, nothing to restart. Linux should be
+>>> that simple.
+>> The only extra step with Linux is to 'sysctmctl start rpc-gssd'
+>> I don't there is much would can do about that....
+> 
+> Sure there is. Leave gssd running, and make sure it can respond
+> quickly in every reasonable case. :-p
+> 
+> 
+>> But of
+>> course... Patches are always welcomed!! 8-)
+>>
+>> TBL... When kerberos is configured correctly for NFS everything
+>> works just fine. When kerberos is configured, but not for NFS,
+>> causes delays on all NFS mounts.
+> 
+> This convinces me even more that there is a gssd issue here.
+> 
+> 
+>> Today, there is a method to stop rpc-gssd from blindly starting
+>> when kerberos is configured to eliminate that delay.
+> 
+> I can fix my broken TV by not turning it on, and I don't
+> notice the problem. But the problem is still there any
+> time I want to watch TV.
+> 
+> The problem is not fixed by disabling gssd, it's just
+> hidden in some cases.
+I agree this %100... All I'm saying there should be a 
+way to disable it when the daemon is not needed or used.
 
+Having it automatically started just because there is a 
+keytab, at first, I thought was a good idea, now
+it turns not people really don't what miscellaneous 
+daemons running. Case in point gssproxy... Automatically
+comes but there is a way to disable it. With rpc.gssd
+there is not (easily). 
+ 
+> 
+> 
+>> This patch just tweaking that method to make things easier.
+> 
+> It makes one thing easier, and other things more difficult.
+> As a community, I thought our goal was to make Kerberos
+> easier to use, not easier to turn off.
+Again I can't agree with you more! But this is the case 
+were Kerberos is *not* being used for NFS... we should
+make that case work as well... 
+
+> 
+> 
+>> To address your concern about covering up a bug. I just don't
+>> see it... The code is doing exactly what its asked to do.
+>> By default the kernel asks krb5i context (when rpc.gssd
+>> is run). rpc.gssd looking for a principle in the key tab, 
+>> when found the KDC is called... 
+>>
+>> Everything is working just like it should and it is
+>> failing just like it should. I'm just trying to 
+>> eliminate all this process when not needed, in 
+>> an easier way..
+> 
+> I'm not even sure now what the use case is. The client has
+> proper principals, but the server doesn't? The server
+> should refuse the init sec context immediately. Is gssd
+> even running on the server?
+No they don't because they are not using Kerberos for NFS...
+
+So I guess this is what we are saying:
+ 
+If you what to used Kerberos for anything at all,
+they must configure it for NFS for their clients
+to work properly... I'm not sure we really want to
+say this. 
+
+> 
+> Suppose there are a thousand clients and one broken
+> server. An administrator would fix that one server by
+> adding an extra service principal, rather than log
+> into a thousand clients to change a setting on each.
+> 
+> Suppose your client wants both sys and krb5 mounts of
+> a group of servers, and some are "misconfigured."
+> You have to enable gssd on the client but there are still
+> delays on the sec=sys mounts.
+In both these cases you are assuming Kerberos mounts 
+are being used and so Kerberos should be configured 
+for NFS. That is just not the case. 
+
+> 
+> In fact, I think that's going to be pretty common. Why add
+> an NFS service principal on a client if you don't expect
+> to use sec=krb5 some of the time?
+In that case adding the principal does make sense. But...
+
+Why *must* you add a principal when you know only sec=sys 
+mounts will be used?
+
+steved.
