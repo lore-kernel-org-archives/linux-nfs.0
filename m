@@ -1,14 +1,16 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-it0-f67.google.com ([209.85.214.67]:33658 "EHLO
-	mail-it0-f67.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752018AbcF2SI2 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 29 Jun 2016 14:08:28 -0400
-Subject: [PATCH v4 24/24] NFS: Don't drop CB requests with invalid principals
+Received: from mail-it0-f66.google.com ([209.85.214.66]:35992 "EHLO
+	mail-it0-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751793AbcF2SKE (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 29 Jun 2016 14:10:04 -0400
+Received: by mail-it0-f66.google.com with SMTP id h190so6168222ith.3
+        for <linux-nfs@vger.kernel.org>; Wed, 29 Jun 2016 11:10:04 -0700 (PDT)
+Subject: [PATCH v4 15/24] xprtrdma: Release orphaned MRs immediately
 From: Chuck Lever <chuck.lever@oracle.com>
 To: anna.schumaker@netapp.com
 Cc: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Wed, 29 Jun 2016 13:55:22 -0400
-Message-ID: <20160629175522.15094.96403.stgit@manet.1015granger.net>
+Date: Wed, 29 Jun 2016 13:54:08 -0400
+Message-ID: <20160629175408.15094.97803.stgit@manet.1015granger.net>
 In-Reply-To: <20160629173231.15094.52660.stgit@manet.1015granger.net>
 References: <20160629173231.15094.52660.stgit@manet.1015granger.net>
 MIME-Version: 1.0
@@ -16,59 +18,81 @@ Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Before commit 778be232a207 ("NFS do not find client in NFSv4
-pg_authenticate"), the Linux callback server replied with
-RPC_AUTH_ERROR / RPC_AUTH_BADCRED, instead of dropping the CB
-request. Let's restore that behavior so the server has a chance to
-do something useful about it, and provide a warning that helps
-admins correct the problem.
+Instead of leaving orphaned MRs to be released when the transport
+is destroyed, release them immediately. The MR free list can now be
+replenished if it becomes exhausted.
 
-Fixes: 778be232a207 ("NFS do not find client in NFSv4 ...")
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 Tested-by: Steve Wise <swise@opengridcomputing.com>
 ---
- fs/nfs/callback_xdr.c |    6 +++++-
- net/sunrpc/svc.c      |    5 +++++
- 2 files changed, 10 insertions(+), 1 deletion(-)
+ net/sunrpc/xprtrdma/fmr_ops.c  |   19 +++++++++++++------
+ net/sunrpc/xprtrdma/frwr_ops.c |   19 +++++++++++++------
+ 2 files changed, 26 insertions(+), 12 deletions(-)
 
-diff --git a/fs/nfs/callback_xdr.c b/fs/nfs/callback_xdr.c
-index d81f96a..656f68f 100644
---- a/fs/nfs/callback_xdr.c
-+++ b/fs/nfs/callback_xdr.c
-@@ -925,7 +925,7 @@ static __be32 nfs4_callback_compound(struct svc_rqst *rqstp, void *argp, void *r
- 	if (hdr_arg.minorversion == 0) {
- 		cps.clp = nfs4_find_client_ident(SVC_NET(rqstp), hdr_arg.cb_ident);
- 		if (!cps.clp || !check_gss_callback_principal(cps.clp, rqstp))
--			return rpc_drop_reply;
-+			goto out_invalidcred;
- 	}
+diff --git a/net/sunrpc/xprtrdma/fmr_ops.c b/net/sunrpc/xprtrdma/fmr_ops.c
+index 758cd1a..6521dce 100644
+--- a/net/sunrpc/xprtrdma/fmr_ops.c
++++ b/net/sunrpc/xprtrdma/fmr_ops.c
+@@ -134,15 +134,22 @@ fmr_op_recover_mr(struct rpcrdma_mw *mw)
+ 	/* ORDER: then DMA unmap */
+ 	ib_dma_unmap_sg(r_xprt->rx_ia.ri_device,
+ 			mw->mw_sg, mw->mw_nents, mw->mw_dir);
+-	if (rc) {
+-		pr_err("rpcrdma: FMR reset status %d, %p orphaned\n",
+-		       rc, mw);
+-		r_xprt->rx_stats.mrs_orphaned++;
+-		return;
+-	}
++	if (rc)
++		goto out_release;
  
- 	cps.minorversion = hdr_arg.minorversion;
-@@ -953,6 +953,10 @@ static __be32 nfs4_callback_compound(struct svc_rqst *rqstp, void *argp, void *r
- 	nfs_put_client(cps.clp);
- 	dprintk("%s: done, status = %u\n", __func__, ntohl(status));
- 	return rpc_success;
+ 	rpcrdma_put_mw(r_xprt, mw);
+ 	r_xprt->rx_stats.mrs_recovered++;
++	return;
 +
-+out_invalidcred:
-+	pr_warn_ratelimited("NFS: NFSv4 callback contains invalid cred\n");
-+	return rpc_autherr_badcred;
++out_release:
++	pr_err("rpcrdma: FMR reset failed (%d), %p released\n", rc, mw);
++	r_xprt->rx_stats.mrs_orphaned++;
++
++	spin_lock(&r_xprt->rx_buf.rb_mwlock);
++	list_del(&mw->mw_all);
++	spin_unlock(&r_xprt->rx_buf.rb_mwlock);
++
++	fmr_op_release_mr(mw);
  }
  
- /*
-diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
-index 87290a5..c5b0cb4 100644
---- a/net/sunrpc/svc.c
-+++ b/net/sunrpc/svc.c
-@@ -1194,6 +1194,11 @@ svc_process_common(struct svc_rqst *rqstp, struct kvec *argv, struct kvec *resv)
- 				procp->pc_release(rqstp, NULL, rqstp->rq_resp);
- 			goto dropit;
- 		}
-+		if (*statp == rpc_autherr_badcred) {
-+			if (procp->pc_release)
-+				procp->pc_release(rqstp, NULL, rqstp->rq_resp);
-+			goto err_bad_auth;
-+		}
- 		if (*statp == rpc_success &&
- 		    (xdr = procp->pc_encode) &&
- 		    !xdr(rqstp, resv->iov_base+resv->iov_len, rqstp->rq_resp)) {
+ static int
+diff --git a/net/sunrpc/xprtrdma/frwr_ops.c b/net/sunrpc/xprtrdma/frwr_ops.c
+index e77776b..f4c06c8 100644
+--- a/net/sunrpc/xprtrdma/frwr_ops.c
++++ b/net/sunrpc/xprtrdma/frwr_ops.c
+@@ -177,15 +177,22 @@ frwr_op_recover_mr(struct rpcrdma_mw *mw)
+ 
+ 	rc = __frwr_reset_mr(ia, mw);
+ 	ib_dma_unmap_sg(ia->ri_device, mw->mw_sg, mw->mw_nents, mw->mw_dir);
+-	if (rc) {
+-		pr_err("rpcrdma: FRMR reset status %d, %p orphaned\n",
+-		       rc, mw);
+-		r_xprt->rx_stats.mrs_orphaned++;
+-		return;
+-	}
++	if (rc)
++		goto out_release;
+ 
+ 	rpcrdma_put_mw(r_xprt, mw);
+ 	r_xprt->rx_stats.mrs_recovered++;
++	return;
++
++out_release:
++	pr_err("rpcrdma: FRMR reset failed %d, %p release\n", rc, mw);
++	r_xprt->rx_stats.mrs_orphaned++;
++
++	spin_lock(&r_xprt->rx_buf.rb_mwlock);
++	list_del(&mw->mw_all);
++	spin_unlock(&r_xprt->rx_buf.rb_mwlock);
++
++	frwr_op_release_mr(mw);
+ }
+ 
+ static int
 
