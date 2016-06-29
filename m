@@ -1,103 +1,129 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from us-smtp-delivery-194.mimecast.com ([216.205.24.194]:52928 "EHLO
-	us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1753148AbcF2OyX convert rfc822-to-8bit
-	(ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 29 Jun 2016 10:54:23 -0400
-From: Trond Myklebust <trondmy@primarydata.com>
-To: "Mkrtchyan, Tigran" <tigran.mkrtchyan@desy.de>
-CC: linux-nfs list <linux-nfs@vger.kernel.org>
-Subject: Re: unhappy 4.5.7 kernel with nfs
-Date: Wed, 29 Jun 2016 14:54:14 +0000
-Message-ID: <996468AC-7B28-4267-A049-9974AC8D705F@primarydata.com>
-References: <1437966383.20209875.1467210735879.JavaMail.zimbra@desy.de>
-In-Reply-To: <1437966383.20209875.1467210735879.JavaMail.zimbra@desy.de>
+Received: from mail-it0-f51.google.com ([209.85.214.51]:38677 "EHLO
+	mail-it0-f51.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750878AbcF2RwH (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 29 Jun 2016 13:52:07 -0400
+Subject: [PATCH v4 00/24] NFS/RDMA client patches proposed for v4.8
+From: Chuck Lever <chuck.lever@oracle.com>
+To: anna.schumaker@netapp.com
+Cc: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
+Date: Wed, 29 Jun 2016 13:52:03 -0400
+Message-ID: <20160629173231.15094.52660.stgit@manet.1015granger.net>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=WINDOWS-1252
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+This series implements the following:
 
-> On Jun 29, 2016, at 10:32, Mkrtchyan, Tigran <tigran.mkrtchyan@desy.de> wrote:
-> 
-> Dear NFS gurus and Co.
-> 
-> 
-> During some simple testing as:
-> 
-> on a fresh rebooted host
-> 
-> [root@anahit ~]# uptime
-> 16:31:10 up  1:29,  1 user,  load average: 0.39, 0.65, 0.35
-> [root@anahit ~]# uname -a
-> Linux anahit.desy.de 4.5.7-300.fc24.x86_64 #1 SMP Wed Jun 8 18:12:45 UTC 2016 x86_64 x86_64 x86_64 GNU/Linux
-> [root@anahit ~]# mount -o vers=4.1 dcache-lab007:/ /pnfs
-> [root@anahit ~]# cd /pnfs/exports/data
-> [root@anahit data]# python
-> Python 2.7.11 (default, Jun 21 2016, 09:15:12) 
-> [GCC 6.1.1 20160510 (Red Hat 6.1.1-2)] on linux2
-> Type "help", "copyright", "credits" or "license" for more information.
->>>> f = open("NTUP_MINBIAS.125118._000007.root.1")
->>>> b = f.read(1)
-> Segmentation fault
-> [root@anahit data]# dmesg 
-> 
-> ......
-> 
-> [ 5128.031968] nfs4filelayout_init: NFSv4 File Layout Driver Registering...
-> [ 5153.179497] page:ffffea0001863980 count:2 mapcount:0 mapping:ffff880074d73eb0 index:0x0
-> [ 5153.179502] flags: 0x1ffffc00000000()
-> [ 5153.179504] page dumped because: VM_BUG_ON_PAGE(!PageLocked(page))
-> [ 5153.179506] page->mem_cgroup:ffff88012b013800
-> [ 5153.179528] ------------[ cut here ]------------
-> [ 5153.179542] kernel BUG at mm/filemap.c:843!
-> [ 5153.179548] invalid opcode: 0000 [#1] SMP 
-> [ 5153.179556] Modules linked in: nfs_layout_nfsv41_files rpcsec_gss_krb5 nfsv4 dns_resolver nfs fscache fuse binfmt_misc nf_conntrack_netbios_ns nf_conntrack_broadcast ip6t_rpfilter ip6t_REJECT nf_reject_ipv6 xt_conntrack ip_set nfnetlink ebtable_nat ebtable_broute bridge stp llc ip6table_security ip6table_nat nf_conntrack_ipv6 nf_defrag_ipv6 nf_nat_ipv6 ip6table_mangle ip6table_raw iptable_security iptable_nat nf_conntrack_ipv4 nf_defrag_ipv4 nf_nat_ipv4 nf_nat nf_conntrack iptable_mangle iptable_raw ebtable_filter ebtables ip6table_filter ip6_tables btrfs xor raid6_pq coretemp snd_hda_codec_idt kvm_intel snd_hda_codec_generic snd_hda_intel kvm snd_hda_codec snd_hda_core irqbypass snd_hwdep snd_seq snd_seq_device snd_pcm gpio_ich ppdev iTCO_wdt iTCO_vendor_support lpc_ich winbond_cir snd_timer i2c_i801
-> [ 5153.179700]  rc_core parport_pc snd parport shpchp soundcore acpi_cpufreq x38_edac edac_core tpm_tis tpm nfsd auth_rpcgss nfs_acl lockd grace sunrpc ata_generic pata_acpi nouveau serio_raw video mxm_wmi wmi i2c_algo_bit drm_kms_helper firewire_ohci firewire_core ttm crc_itu_t drm pata_marvell fjes e1000e ptp pps_core
-> [ 5153.179772] CPU: 0 PID: 2504 Comm: python Tainted: G          I     4.5.7-300.fc24.x86_64 #1
-> [ 5153.179780] Hardware name: Comptronic pczW1007/DX38BT, BIOS BTX3810J.86A.1893.2008.1009.1712 10/09/2008
-> [ 5153.179788] task: ffff8800c88cd880 ti: ffff88007fef8000 task.ti: ffff88007fef8000
-> [ 5153.179794] RIP: 0010:[<ffffffff811b1966>]  [<ffffffff811b1966>] unlock_page+0xa6/0xb0
-> [ 5153.179808] RSP: 0018:ffff88007fefbac8  EFLAGS: 00010282
-> [ 5153.179813] RAX: 0000000000000021 RBX: ffffea0001863980 RCX: 0000000000000006
-> [ 5153.179820] RDX: 0000000000000000 RSI: 0000000000000246 RDI: ffff88012fc0dfb0
-> [ 5153.179826] RBP: ffff88007fefbac8 R08: 000000000002bd32 R09: 0000000000000389
-> [ 5153.179833] R10: 0000000000000000 R11: ffffffff81f410cd R12: ffff880090f6fa00
-> [ 5153.179839] R13: 00000000fffffffb R14: ffff88007fefbb60 R15: ffffea00018639a0
-> [ 5153.179846] FS:  00007fef72a0b700(0000) GS:ffff88012fc00000(0000) knlGS:0000000000000000
-> [ 5153.179853] CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
-> [ 5153.179859] CR2: 00007f45eaadc000 CR3: 000000007fe35000 CR4: 00000000000406f0
-> [ 5153.179865] Stack:
-> [ 5153.179869]  ffff88007fefbaf8 ffffffffa07d7c28 ffff88007fefbc90 ffffea0001863980
-> [ 5153.179882]  ffff880074d73eb0 ffff8800c88cd880 ffff88007fefbb48 ffffffff811c2aa1
-> [ 5153.179894]  ffff8800c88cd880 ffff88007fefbb60 ffffffffa07d7b70 ffff880074d73d48
-> [ 5153.179906] Call Trace:
-> [ 5153.179928]  [<ffffffffa07d7c28>] readpage_async_filler+0xb8/0x220 [nfs]
-> [ 5153.179938]  [<ffffffff811c2aa1>] read_cache_pages+0xc1/0x150
-> [ 5153.179954]  [<ffffffffa07d7b70>] ? nfs_read_completion+0x210/0x210 [nfs]
-> [ 5153.179972]  [<ffffffffa07d8319>] nfs_readpages+0x129/0x200 [nfs]
-> [ 5153.179980]  [<ffffffff811c2ccd>] __do_page_cache_readahead+0x19d/0x270
-> [ 5153.179988]  [<ffffffff811c2e6e>] ondemand_readahead+0xce/0x250
-> [ 5153.179995]  [<ffffffff811c318e>] page_cache_sync_readahead+0x2e/0x50
-> [ 5153.180002]  [<ffffffff811b4a32>] generic_file_read_iter+0x5d2/0x8b0
-> [ 5153.180028]  [<ffffffffa0822563>] ? nfs4_have_delegation+0x13/0x20 [nfsv4]
-> [ 5153.180044]  [<ffffffffa07cf3eb>] ? __nfs_revalidate_mapping+0x8b/0x240 [nfs]
-> [ 5153.180053]  [<ffffffff811c542c>] ? lru_cache_add_active_or_unevictable+0x4c/0xf0
-> [ 5153.180068]  [<ffffffffa07cac72>] nfs_file_read+0x52/0xa0 [nfs]
-> [ 5153.180076]  [<ffffffff81241528>] __vfs_read+0xc8/0x110
-> [ 5153.180083]  [<ffffffff81242496>] vfs_read+0x86/0x130
-> [ 5153.180090]  [<ffffffff81243455>] SyS_read+0x55/0xc0
-> [ 5153.180098]  [<ffffffff817cf06e>] entry_SYSCALL_64_fastpath+0x12/0x6d
-> [ 5153.180104] Code: 92 b0 00 00 00 48 d3 ee 48 8d 0c 76 48 89 c6 48 8d 3c ca 31 d2 e8 db 68 f3 ff 5d c3 48 c7 c6 58 bb a7 81 48 89 c7 e8 0a 1a 03 00 <0f> 0b 0f 1f 84 00 00 00 00 00 66 66 66 66 90 55 48 89 fa 48 89 
-> [ 5153.180206] RIP  [<ffffffff811b1966>] unlock_page+0xa6/0xb0
-> [ 5153.180215]  RSP <ffff88007fefbac8>
-> [ 5153.182743] ---[ end trace 7439f3337246bf52 ]---
-> 
-> 
-> 100% reproducible!
+- Fixes to FMR disconnect recovery
+- Removal of the insecure ALLPHYSICAL memory registration mode
+- Significant reductions in per-transport memory consumption
+- Support for sec=krb5, sec=krb5i, and sec=krb5p with NFS/RDMA
+  (with no performance impact on sec=sys)
+- Pre-requisites for device removal support
 
-That looks like http://git.linux-nfs.org/?p=trondmy/linux-nfs.git;a=commit;h=b84d4fa6e7658f307177e4da75f1335415ed97ab
+Kerberos with NFS/RDMA is useful mainly for secure authentication of
+each RPC transaction (sec=krb5). The Kerberos integrity and privacy
+services are also available, providing feature parity with TCP in
+environments where the use of sec=krb5i or sec=krb5p is mandated by
+IT policy.
 
-Cheers
-  Trond
+No changes to the Linux server are needed to use Kerberos with
+NFS/RDMA.
 
+The mlx4_alloc_priv_pages workaround has been dropped, as it was
+merged into v4.7-rc5.
+
+Otherwise, there are only a few minor clean-ups to the series,
+listed below. Anna, these are ready for you to pop into linux-next
+and then consider for the 4.8 merge window.
+
+
+Available in the "nfs-rdma-for-4.8" topic branch of this git repo:
+
+git://git.linux-nfs.org/projects/cel/cel-2.6.git
+
+
+Or for browsing:
+
+http://git.linux-nfs.org/?p=cel/cel-2.6.git;a=log;h=refs/heads/nfs-rdma-for-4.8
+
+
+Changes since v3:
+- Rebased on v4.7-rc5
+- Dropped mlx4_alloc_priv_pages fix, was merged into v4.7-rc5
+- Added Tested-by: Steve Wise
+- Factored destroy_mrs helper out of buffer_destroy
+- More clean-up in rpcrdma_ia_open
+- Remove arbitrary "+ 2" from loop that allocates receive buffers
+- Removed unneeded INIT_LIST_HEAD in fmr_op_init
+
+
+Changes since v2:
+- Rebased on v4.7-rc4
+- Reworked the mlx4_alloc_priv_pages patch
+- Refactored registration mode checking
+- Allocate 32 MRs at a time
+
+
+Changes since v1:
+- Rebased on v4.7-rc3
+- Re-ordered series so FMR fixes come first
+- Fix ib_unmap_fmr list handling
+- Replaced the bogus 256-MRs-per-QP patch with dynamic MR allocation
+- Add performance counters to expose MR allocation and recovery behavior
+- Included Sagi's proposed mlx4 priv pages fix
+- Make it easier to merge my datatouch patch with Scott's bug fix
+- Split some patches for readability
+- Dropped some clean-up patches to keep the series patch count down
+
+---
+
+Chuck Lever (24):
+      xprtrdma: Remove FMRs from the unmap list after unmapping
+      xprtrdma: Create common scatterlist fields in rpcrdma_mw
+      xprtrdma: Move init and release helpers
+      xprtrdma: Rename fields in rpcrdma_fmr
+      xprtrdma: Use scatterlist for DMA mapping and unmapping under FMR
+      xprtrdma: Refactor MR recovery work queues
+      xprtrdma: Do not leak an MW during a DMA map failure
+      xprtrdma: Remove ALLPHYSICAL memory registration mode
+      xprtrdma: Remove rpcrdma_map_one() and friends
+      xprtrdma: Clean up device capability detection
+      xprtrdma: Reply buffer exhaustion can be catastrophic
+      xprtrdma: Honor ->send_request API contract
+      xprtrdma: Chunk list encoders must not return zero
+      xprtrdma: Allocate MRs on demand
+      xprtrdma: Release orphaned MRs immediately
+      xprtrdma: Place registered MWs on a per-req list
+      xprtrdma: Chunk list encoders no longer share one rl_segments array
+      xprtrdma: rpcrdma_inline_fixup() overruns the receive page list
+      xprtrdma: Do not update {head,tail}.iov_len in rpcrdma_inline_fixup()
+      xprtrdma: Update only specific fields in private receive buffer
+      xprtrdma: Clean up fixup_copy_count accounting
+      xprtrdma: No direct data placement with krb5i and krb5p
+      svc: Avoid garbage replies when pc_func() returns rpc_drop_reply
+      NFS: Don't drop CB requests with invalid principals
+
+
+ fs/nfs/callback_xdr.c                 |    6 -
+ include/linux/sunrpc/auth.h           |    3 
+ include/linux/sunrpc/gss_api.h        |    2 
+ net/sunrpc/auth_gss/auth_gss.c        |    2 
+ net/sunrpc/auth_gss/gss_krb5_mech.c   |    2 
+ net/sunrpc/auth_gss/gss_mech_switch.c |   12 +
+ net/sunrpc/svc.c                      |    8 +
+ net/sunrpc/xprtrdma/Makefile          |    2 
+ net/sunrpc/xprtrdma/fmr_ops.c         |  378 +++++++++++++++------------------
+ net/sunrpc/xprtrdma/frwr_ops.c        |  369 ++++++++++++--------------------
+ net/sunrpc/xprtrdma/physical_ops.c    |  122 -----------
+ net/sunrpc/xprtrdma/rpc_rdma.c        |  274 +++++++++++++-----------
+ net/sunrpc/xprtrdma/transport.c       |   40 ++-
+ net/sunrpc/xprtrdma/verbs.c           |  242 +++++++++++++++------
+ net/sunrpc/xprtrdma/xprt_rdma.h       |  118 ++++------
+ 15 files changed, 728 insertions(+), 852 deletions(-)
+ delete mode 100644 net/sunrpc/xprtrdma/physical_ops.c
+
+--
+Chuck Lever
