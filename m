@@ -1,14 +1,15 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f193.google.com ([209.85.223.193]:34037 "EHLO
-	mail-io0-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751900AbcF2Rxq (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 29 Jun 2016 13:53:46 -0400
-Subject: [PATCH v4 12/24] xprtrdma: Honor ->send_request API contract
+Received: from mail-io0-f194.google.com ([209.85.223.194]:34868 "EHLO
+	mail-io0-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751499AbcF2R5C (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 29 Jun 2016 13:57:02 -0400
+Subject: [PATCH v4 20/24] xprtrdma: Update only specific fields in private
+ receive buffer
 From: Chuck Lever <chuck.lever@oracle.com>
 To: anna.schumaker@netapp.com
 Cc: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Wed, 29 Jun 2016 13:53:43 -0400
-Message-ID: <20160629175343.15094.69342.stgit@manet.1015granger.net>
+Date: Wed, 29 Jun 2016 13:54:49 -0400
+Message-ID: <20160629175449.15094.7128.stgit@manet.1015granger.net>
 In-Reply-To: <20160629173231.15094.52660.stgit@manet.1015granger.net>
 References: <20160629173231.15094.52660.stgit@manet.1015granger.net>
 MIME-Version: 1.0
@@ -16,222 +17,59 @@ Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Commit c93c62231cf5 ("xprtrdma: Disconnect on registration failure")
-added a disconnect for some RPC marshaling failures. This is needed
-only in a handful of cases, but it was triggering for simple stuff
-like temporary resource shortages. Try to straighten this out.
-
-Fix up the lower layers so they don't return -ENOMEM or other error
-codes that the RPC client's FSM doesn't explicitly recognize.
-
-Also fix up the places in the send_request path that do want a
-disconnect. For example, when ib_post_send or ib_post_recv fail,
-this is a sign that there is a send or receive queue resource
-miscalculation. That should be rare, and is a sign of a software
-bug. But xprtrdma can recover: disconnect to reset the transport and
-start over.
+Now that rpcrdma_inline_fixup() updates only two fields in
+rq_rcv_buf, a full memcpy of that structure to rq_private_buf is
+unwarranted. Updating rq_private_buf fields only where needed also
+better documents what is going on.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 Tested-by: Steve Wise <swise@opengridcomputing.com>
 ---
- net/sunrpc/xprtrdma/fmr_ops.c   |    6 +++---
- net/sunrpc/xprtrdma/frwr_ops.c  |   13 +++++++------
- net/sunrpc/xprtrdma/rpc_rdma.c  |    2 +-
- net/sunrpc/xprtrdma/transport.c |   20 +++++++++++++++-----
- net/sunrpc/xprtrdma/verbs.c     |   22 +++++++++++++---------
- 5 files changed, 39 insertions(+), 24 deletions(-)
+ net/sunrpc/xprtrdma/rpc_rdma.c |   13 +++++++++----
+ 1 file changed, 9 insertions(+), 4 deletions(-)
 
-diff --git a/net/sunrpc/xprtrdma/fmr_ops.c b/net/sunrpc/xprtrdma/fmr_ops.c
-index 8b6ce8e..aae4c37 100644
---- a/net/sunrpc/xprtrdma/fmr_ops.c
-+++ b/net/sunrpc/xprtrdma/fmr_ops.c
-@@ -219,7 +219,7 @@ fmr_op_map(struct rpcrdma_xprt *r_xprt, struct rpcrdma_mr_seg *seg,
- 		rpcrdma_defer_mr_recovery(mw);
- 	mw = rpcrdma_get_mw(r_xprt);
- 	if (!mw)
--		return -ENOMEM;
-+		return -ENOBUFS;
- 
- 	pageoff = offset_in_page(seg1->mr_offset);
- 	seg1->mr_offset -= pageoff;	/* start of page */
-@@ -269,14 +269,14 @@ out_dmamap_err:
- 	pr_err("rpcrdma: failed to dma map sg %p sg_nents %u\n",
- 	       mw->mw_sg, mw->mw_nents);
- 	rpcrdma_defer_mr_recovery(mw);
--	return -ENOMEM;
-+	return -EIO;
- 
- out_maperr:
- 	pr_err("rpcrdma: ib_map_phys_fmr %u@0x%llx+%i (%d) status %i\n",
- 	       len, (unsigned long long)dma_pages[0],
- 	       pageoff, mw->mw_nents, rc);
- 	rpcrdma_defer_mr_recovery(mw);
--	return rc;
-+	return -EIO;
- }
- 
- /* Invalidate all memory regions that were registered for "req".
-diff --git a/net/sunrpc/xprtrdma/frwr_ops.c b/net/sunrpc/xprtrdma/frwr_ops.c
-index fc2826b..d7613db9 100644
---- a/net/sunrpc/xprtrdma/frwr_ops.c
-+++ b/net/sunrpc/xprtrdma/frwr_ops.c
-@@ -382,7 +382,7 @@ frwr_op_map(struct rpcrdma_xprt *r_xprt, struct rpcrdma_mr_seg *seg,
- 			rpcrdma_defer_mr_recovery(mw);
- 		mw = rpcrdma_get_mw(r_xprt);
- 		if (!mw)
--			return -ENOMEM;
-+			return -ENOBUFS;
- 	} while (mw->frmr.fr_state != FRMR_IS_INVALID);
- 	frmr = &mw->frmr;
- 	frmr->fr_state = FRMR_IS_VALID;
-@@ -456,18 +456,18 @@ out_dmamap_err:
- 	pr_err("rpcrdma: failed to dma map sg %p sg_nents %u\n",
- 	       mw->mw_sg, mw->mw_nents);
- 	rpcrdma_defer_mr_recovery(mw);
--	return -ENOMEM;
-+	return -EIO;
- 
- out_mapmr_err:
- 	pr_err("rpcrdma: failed to map mr %p (%u/%u)\n",
- 	       frmr->fr_mr, n, mw->mw_nents);
--	rc = n < 0 ? n : -EIO;
- 	rpcrdma_defer_mr_recovery(mw);
--	return rc;
-+	return -EIO;
- 
- out_senderr:
-+	pr_err("rpcrdma: FRMR registration ib_post_send returned %i\n", rc);
- 	rpcrdma_defer_mr_recovery(mw);
--	return rc;
-+	return -ENOTCONN;
- }
- 
- static struct ib_send_wr *
-@@ -569,7 +569,8 @@ unmap:
- 	return;
- 
- reset_mrs:
--	pr_warn("%s: ib_post_send failed %i\n", __func__, rc);
-+	pr_err("rpcrdma: FRMR invalidate ib_post_send returned %i\n", rc);
-+	rdma_disconnect(ia->ri_id);
- 
- 	/* Find and reset the MRs in the LOCAL_INV WRs that did not
- 	 * get posted. This is synchronous, and slow.
 diff --git a/net/sunrpc/xprtrdma/rpc_rdma.c b/net/sunrpc/xprtrdma/rpc_rdma.c
-index 35a8109..77e002f 100644
+index d018eb7..a0e811d 100644
 --- a/net/sunrpc/xprtrdma/rpc_rdma.c
 +++ b/net/sunrpc/xprtrdma/rpc_rdma.c
-@@ -251,7 +251,7 @@ rpcrdma_convert_iovs(struct xdr_buf *xdrbuf, unsigned int pos,
- 			/* alloc the pagelist for receiving buffer */
- 			ppages[p] = alloc_page(GFP_ATOMIC);
- 			if (!ppages[p])
--				return -ENOMEM;
-+				return -EAGAIN;
- 		}
- 		seg[n].mr_page = ppages[p];
- 		seg[n].mr_offset = (void *)(unsigned long) page_base;
-diff --git a/net/sunrpc/xprtrdma/transport.c b/net/sunrpc/xprtrdma/transport.c
-index 4c8e7f1..be4dd2c 100644
---- a/net/sunrpc/xprtrdma/transport.c
-+++ b/net/sunrpc/xprtrdma/transport.c
-@@ -558,7 +558,6 @@ out_sendbuf:
- 
- out_fail:
- 	rpcrdma_buffer_put(req);
--	r_xprt->rx_stats.failed_marshal_count++;
- 	return NULL;
- }
- 
-@@ -590,8 +589,19 @@ xprt_rdma_free(void *buffer)
- 	rpcrdma_buffer_put(req);
- }
- 
--/*
-+/**
-+ * xprt_rdma_send_request - marshal and send an RPC request
-+ * @task: RPC task with an RPC message in rq_snd_buf
+@@ -750,6 +750,11 @@ rpcrdma_count_chunks(struct rpcrdma_rep *rep, int wrchunk, __be32 **iptrp)
+  * The upper layer has set the maximum number of bytes it can
+  * receive in each component of rq_rcv_buf. These values are set in
+  * the head.iov_len, page_len, tail.iov_len, and buflen fields.
 + *
-+ * Return values:
-+ *        0:	The request has been sent
-+ * ENOTCONN:	Caller needs to invoke connect logic then call again
-+ *  ENOBUFS:	Call again later to send the request
-+ *      EIO:	A permanent error occurred. The request was not sent,
-+ *		and don't try it again
-+ *
-  * send_request invokes the meat of RPC RDMA. It must do the following:
-+ *
-  *  1.  Marshal the RPC request into an RPC RDMA request, which means
-  *	putting a header in front of data, and creating IOVs for RDMA
-  *	from those in the request.
-@@ -600,7 +610,6 @@ xprt_rdma_free(void *buffer)
-  *	the request (rpcrdma_ep_post).
-  *  4.  No partial sends are possible in the RPC-RDMA protocol (as in UDP).
++ * Unlike the TCP equivalent (xdr_partial_copy_from_skb), in
++ * many cases this function simply updates iov_base pointers in
++ * rq_rcv_buf to point directly to the received reply data, to
++ * avoid copying reply data.
   */
+ static void
+ rpcrdma_inline_fixup(struct rpc_rqst *rqst, char *srcp, int copy_len, int pad)
+@@ -763,6 +768,7 @@ rpcrdma_inline_fixup(struct rpc_rqst *rqst, char *srcp, int copy_len, int pad)
+ 	 * in the receive buffer, to avoid a memcopy.
+ 	 */
+ 	rqst->rq_rcv_buf.head[0].iov_base = srcp;
++	rqst->rq_private_buf.head[0].iov_base = srcp;
+ 
+ 	/* The contents of the receive buffer that follow
+ 	 * head.iov_len bytes are copied into the page list.
+@@ -822,16 +828,15 @@ rpcrdma_inline_fixup(struct rpc_rqst *rqst, char *srcp, int copy_len, int pad)
+ 	/* The tail iovec is redirected to the remaining data
+ 	 * in the receive buffer, to avoid a memcopy.
+ 	 */
+-	if (copy_len || pad)
++	if (copy_len || pad) {
+ 		rqst->rq_rcv_buf.tail[0].iov_base = srcp;
++		rqst->rq_private_buf.tail[0].iov_base = srcp;
++	}
+ 
+ 	if (copy_len)
+ 		dprintk("RPC:       %s: %d bytes in"
+ 			" %d extra segments (%d lost)\n",
+ 			__func__, olen, i, copy_len);
 -
- static int
- xprt_rdma_send_request(struct rpc_task *task)
- {
-@@ -630,11 +639,12 @@ xprt_rdma_send_request(struct rpc_task *task)
- 	return 0;
- 
- failed_marshal:
--	r_xprt->rx_stats.failed_marshal_count++;
- 	dprintk("RPC:       %s: rpcrdma_marshal_req failed, status %i\n",
- 		__func__, rc);
- 	if (rc == -EIO)
--		return -EIO;
-+		r_xprt->rx_stats.failed_marshal_count++;
-+	if (rc != -ENOTCONN)
-+		return rc;
- drop_connection:
- 	xprt_disconnect_done(xprt);
- 	return -ENOTCONN;	/* implies disconnect */
-diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
-index 6fb73ff..db935ed 100644
---- a/net/sunrpc/xprtrdma/verbs.c
-+++ b/net/sunrpc/xprtrdma/verbs.c
-@@ -1151,7 +1151,7 @@ rpcrdma_ep_post(struct rpcrdma_ia *ia,
- 	if (rep) {
- 		rc = rpcrdma_ep_post_recv(ia, ep, rep);
- 		if (rc)
--			goto out;
-+			return rc;
- 		req->rl_reply = NULL;
- 	}
- 
-@@ -1176,10 +1176,12 @@ rpcrdma_ep_post(struct rpcrdma_ia *ia,
- 
- 	rc = ib_post_send(ia->ri_id->qp, &send_wr, &send_wr_fail);
- 	if (rc)
--		dprintk("RPC:       %s: ib_post_send returned %i\n", __func__,
--			rc);
--out:
--	return rc;
-+		goto out_postsend_err;
-+	return 0;
-+
-+out_postsend_err:
-+	pr_err("rpcrdma: RDMA Send ib_post_send returned %i\n", rc);
-+	return -ENOTCONN;
+-	/* TBD avoid a warning from call_decode() */
+-	rqst->rq_private_buf = rqst->rq_rcv_buf;
  }
  
- /*
-@@ -1204,11 +1206,13 @@ rpcrdma_ep_post_recv(struct rpcrdma_ia *ia,
- 				   DMA_BIDIRECTIONAL);
- 
- 	rc = ib_post_recv(ia->ri_id->qp, &recv_wr, &recv_wr_fail);
--
- 	if (rc)
--		dprintk("RPC:       %s: ib_post_recv returned %i\n", __func__,
--			rc);
--	return rc;
-+		goto out_postrecv;
-+	return 0;
-+
-+out_postrecv:
-+	pr_err("rpcrdma: ib_post_recv returned %i\n", rc);
-+	return -ENOTCONN;
- }
- 
- /**
+ void
 
