@@ -1,15 +1,15 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f194.google.com ([209.85.223.194]:34868 "EHLO
-	mail-io0-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751499AbcF2R5C (ORCPT
+Received: from mail-it0-f68.google.com ([209.85.214.68]:32957 "EHLO
+	mail-it0-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751438AbcF2R5C (ORCPT
 	<rfc822;linux-nfs@vger.kernel.org>); Wed, 29 Jun 2016 13:57:02 -0400
-Subject: [PATCH v4 20/24] xprtrdma: Update only specific fields in private
- receive buffer
+Subject: [PATCH v4 18/24] xprtrdma: rpcrdma_inline_fixup() overruns the
+ receive page list
 From: Chuck Lever <chuck.lever@oracle.com>
 To: anna.schumaker@netapp.com
 Cc: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Wed, 29 Jun 2016 13:54:49 -0400
-Message-ID: <20160629175449.15094.7128.stgit@manet.1015granger.net>
+Date: Wed, 29 Jun 2016 13:54:33 -0400
+Message-ID: <20160629175433.15094.37962.stgit@manet.1015granger.net>
 In-Reply-To: <20160629173231.15094.52660.stgit@manet.1015granger.net>
 References: <20160629173231.15094.52660.stgit@manet.1015granger.net>
 MIME-Version: 1.0
@@ -17,59 +17,50 @@ Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Now that rpcrdma_inline_fixup() updates only two fields in
-rq_rcv_buf, a full memcpy of that structure to rq_private_buf is
-unwarranted. Updating rq_private_buf fields only where needed also
-better documents what is going on.
+When the remaining length of an incoming reply is longer than the
+XDR buf's page_len, switch over to the tail iovec instead of
+copying more than page_len bytes into the page list.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 Tested-by: Steve Wise <swise@opengridcomputing.com>
 ---
- net/sunrpc/xprtrdma/rpc_rdma.c |   13 +++++++++----
- 1 file changed, 9 insertions(+), 4 deletions(-)
+ net/sunrpc/xprtrdma/rpc_rdma.c |   16 +++++++++++-----
+ 1 file changed, 11 insertions(+), 5 deletions(-)
 
 diff --git a/net/sunrpc/xprtrdma/rpc_rdma.c b/net/sunrpc/xprtrdma/rpc_rdma.c
-index d018eb7..a0e811d 100644
+index f60d229..e3560c2 100644
 --- a/net/sunrpc/xprtrdma/rpc_rdma.c
 +++ b/net/sunrpc/xprtrdma/rpc_rdma.c
-@@ -750,6 +750,11 @@ rpcrdma_count_chunks(struct rpcrdma_rep *rep, int wrchunk, __be32 **iptrp)
-  * The upper layer has set the maximum number of bytes it can
-  * receive in each component of rq_rcv_buf. These values are set in
-  * the head.iov_len, page_len, tail.iov_len, and buflen fields.
-+ *
-+ * Unlike the TCP equivalent (xdr_partial_copy_from_skb), in
-+ * many cases this function simply updates iov_base pointers in
-+ * rq_rcv_buf to point directly to the received reply data, to
-+ * avoid copying reply data.
-  */
- static void
- rpcrdma_inline_fixup(struct rpc_rqst *rqst, char *srcp, int copy_len, int pad)
-@@ -763,6 +768,7 @@ rpcrdma_inline_fixup(struct rpc_rqst *rqst, char *srcp, int copy_len, int pad)
- 	 * in the receive buffer, to avoid a memcopy.
- 	 */
- 	rqst->rq_rcv_buf.head[0].iov_base = srcp;
-+	rqst->rq_private_buf.head[0].iov_base = srcp;
+@@ -773,12 +773,17 @@ rpcrdma_inline_fixup(struct rpc_rqst *rqst, char *srcp, int copy_len, int pad)
+ 	page_base &= ~PAGE_MASK;
  
- 	/* The contents of the receive buffer that follow
- 	 * head.iov_len bytes are copied into the page list.
-@@ -822,16 +828,15 @@ rpcrdma_inline_fixup(struct rpc_rqst *rqst, char *srcp, int copy_len, int pad)
- 	/* The tail iovec is redirected to the remaining data
- 	 * in the receive buffer, to avoid a memcopy.
- 	 */
--	if (copy_len || pad)
-+	if (copy_len || pad) {
- 		rqst->rq_rcv_buf.tail[0].iov_base = srcp;
-+		rqst->rq_private_buf.tail[0].iov_base = srcp;
-+	}
- 
- 	if (copy_len)
- 		dprintk("RPC:       %s: %d bytes in"
- 			" %d extra segments (%d lost)\n",
- 			__func__, olen, i, copy_len);
--
--	/* TBD avoid a warning from call_decode() */
--	rqst->rq_private_buf = rqst->rq_rcv_buf;
- }
- 
- void
+ 	if (copy_len && rqst->rq_rcv_buf.page_len) {
+-		npages = PAGE_ALIGN(page_base +
+-			rqst->rq_rcv_buf.page_len) >> PAGE_SHIFT;
++		int pagelist_len;
++
++		pagelist_len = rqst->rq_rcv_buf.page_len;
++		if (pagelist_len > copy_len)
++			pagelist_len = copy_len;
++		npages = PAGE_ALIGN(page_base + pagelist_len) >> PAGE_SHIFT;
+ 		for (; i < npages; i++) {
+ 			curlen = PAGE_SIZE - page_base;
+-			if (curlen > copy_len)
+-				curlen = copy_len;
++			if (curlen > pagelist_len)
++				curlen = pagelist_len;
++
+ 			dprintk("RPC:       %s: page %d"
+ 				" srcp 0x%p len %d curlen %d\n",
+ 				__func__, i, srcp, copy_len, curlen);
+@@ -788,7 +793,8 @@ rpcrdma_inline_fixup(struct rpc_rqst *rqst, char *srcp, int copy_len, int pad)
+ 			kunmap_atomic(destp);
+ 			srcp += curlen;
+ 			copy_len -= curlen;
+-			if (copy_len == 0)
++			pagelist_len -= curlen;
++			if (!pagelist_len)
+ 				break;
+ 			page_base = 0;
+ 		}
 
