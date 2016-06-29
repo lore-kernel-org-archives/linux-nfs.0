@@ -1,15 +1,14 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f196.google.com ([209.85.223.196]:36296 "EHLO
+Received: from mail-io0-f196.google.com ([209.85.223.196]:34592 "EHLO
 	mail-io0-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751547AbcF2R5C (ORCPT
+	with ESMTP id S1751505AbcF2R5C (ORCPT
 	<rfc822;linux-nfs@vger.kernel.org>); Wed, 29 Jun 2016 13:57:02 -0400
-Subject: [PATCH v4 23/24] svc: Avoid garbage replies when pc_func() returns
- rpc_drop_reply
+Subject: [PATCH v4 21/24] xprtrdma: Clean up fixup_copy_count accounting
 From: Chuck Lever <chuck.lever@oracle.com>
 To: anna.schumaker@netapp.com
 Cc: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Wed, 29 Jun 2016 13:55:14 -0400
-Message-ID: <20160629175514.15094.83711.stgit@manet.1015granger.net>
+Date: Wed, 29 Jun 2016 13:54:58 -0400
+Message-ID: <20160629175458.15094.25550.stgit@manet.1015granger.net>
 In-Reply-To: <20160629173231.15094.52660.stgit@manet.1015granger.net>
 References: <20160629173231.15094.52660.stgit@manet.1015granger.net>
 MIME-Version: 1.0
@@ -17,30 +16,96 @@ Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-If an RPC program does not set vs_dispatch and pc_func() returns
-rpc_drop_reply, the server sends a reply anyway containing a single
-word containing the value RPC_DROP_REPLY (in network byte-order, of
-course). This is a nonsense RPC message.
+fixup_copy_count should count only the number of bytes copied to the
+page list. The head and tail are now always handled without a data
+copy.
 
-Fixes: 9e701c610923 ("svcrpc: simpler request dropping")
+And the debugging at the end of rpcrdma_inline_fixup() is also no
+longer necessary, since copy_len will be non-zero when there is reply
+data in the tail (a normal and valid case).
+
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 Tested-by: Steve Wise <swise@opengridcomputing.com>
 ---
- net/sunrpc/svc.c |    3 ++-
- 1 file changed, 2 insertions(+), 1 deletion(-)
+ net/sunrpc/xprtrdma/rpc_rdma.c |   26 +++++++++++++-------------
+ 1 file changed, 13 insertions(+), 13 deletions(-)
 
-diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
-index cc98528..87290a5 100644
---- a/net/sunrpc/svc.c
-+++ b/net/sunrpc/svc.c
-@@ -1188,7 +1188,8 @@ svc_process_common(struct svc_rqst *rqstp, struct kvec *argv, struct kvec *resv)
- 		*statp = procp->pc_func(rqstp, rqstp->rq_argp, rqstp->rq_resp);
+diff --git a/net/sunrpc/xprtrdma/rpc_rdma.c b/net/sunrpc/xprtrdma/rpc_rdma.c
+index a0e811d..dac2990 100644
+--- a/net/sunrpc/xprtrdma/rpc_rdma.c
++++ b/net/sunrpc/xprtrdma/rpc_rdma.c
+@@ -755,11 +755,14 @@ rpcrdma_count_chunks(struct rpcrdma_rep *rep, int wrchunk, __be32 **iptrp)
+  * many cases this function simply updates iov_base pointers in
+  * rq_rcv_buf to point directly to the received reply data, to
+  * avoid copying reply data.
++ *
++ * Returns the count of bytes which had to be memcopied.
+  */
+-static void
++static unsigned long
+ rpcrdma_inline_fixup(struct rpc_rqst *rqst, char *srcp, int copy_len, int pad)
+ {
+-	int i, npages, curlen, olen;
++	unsigned long fixup_copy_count;
++	int i, npages, curlen;
+ 	char *destp;
+ 	struct page **ppages;
+ 	int page_base;
+@@ -781,13 +784,10 @@ rpcrdma_inline_fixup(struct rpc_rqst *rqst, char *srcp, int copy_len, int pad)
+ 	srcp += curlen;
+ 	copy_len -= curlen;
  
- 		/* Encode reply */
--		if (test_bit(RQ_DROPME, &rqstp->rq_flags)) {
-+		if (*statp == rpc_drop_reply ||
-+		    test_bit(RQ_DROPME, &rqstp->rq_flags)) {
- 			if (procp->pc_release)
- 				procp->pc_release(rqstp, NULL, rqstp->rq_resp);
- 			goto dropit;
+-	olen = copy_len;
+-	i = 0;
+-	rpcx_to_rdmax(rqst->rq_xprt)->rx_stats.fixup_copy_count += olen;
+ 	page_base = rqst->rq_rcv_buf.page_base;
+ 	ppages = rqst->rq_rcv_buf.pages + (page_base >> PAGE_SHIFT);
+ 	page_base &= ~PAGE_MASK;
+-
++	fixup_copy_count = 0;
+ 	if (copy_len && rqst->rq_rcv_buf.page_len) {
+ 		int pagelist_len;
+ 
+@@ -795,7 +795,7 @@ rpcrdma_inline_fixup(struct rpc_rqst *rqst, char *srcp, int copy_len, int pad)
+ 		if (pagelist_len > copy_len)
+ 			pagelist_len = copy_len;
+ 		npages = PAGE_ALIGN(page_base + pagelist_len) >> PAGE_SHIFT;
+-		for (; i < npages; i++) {
++		for (i = 0; i < npages; i++) {
+ 			curlen = PAGE_SIZE - page_base;
+ 			if (curlen > pagelist_len)
+ 				curlen = pagelist_len;
+@@ -809,6 +809,7 @@ rpcrdma_inline_fixup(struct rpc_rqst *rqst, char *srcp, int copy_len, int pad)
+ 			kunmap_atomic(destp);
+ 			srcp += curlen;
+ 			copy_len -= curlen;
++			fixup_copy_count += curlen;
+ 			pagelist_len -= curlen;
+ 			if (!pagelist_len)
+ 				break;
+@@ -833,10 +834,7 @@ rpcrdma_inline_fixup(struct rpc_rqst *rqst, char *srcp, int copy_len, int pad)
+ 		rqst->rq_private_buf.tail[0].iov_base = srcp;
+ 	}
+ 
+-	if (copy_len)
+-		dprintk("RPC:       %s: %d bytes in"
+-			" %d extra segments (%d lost)\n",
+-			__func__, olen, i, copy_len);
++	return fixup_copy_count;
+ }
+ 
+ void
+@@ -999,8 +997,10 @@ rpcrdma_reply_handler(struct rpcrdma_rep *rep)
+ 			rep->rr_len -= RPCRDMA_HDRLEN_MIN;
+ 			status = rep->rr_len;
+ 		}
+-		/* Fix up the rpc results for upper layer */
+-		rpcrdma_inline_fixup(rqst, (char *)iptr, rep->rr_len, rdmalen);
++
++		r_xprt->rx_stats.fixup_copy_count +=
++			rpcrdma_inline_fixup(rqst, (char *)iptr, rep->rr_len,
++					     rdmalen);
+ 		break;
+ 
+ 	case rdma_nomsg:
 
