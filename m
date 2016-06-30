@@ -1,7 +1,7 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:44683 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:54163 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751900AbcF3Ntv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	id S1752169AbcF3Ntv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
 	Thu, 30 Jun 2016 09:49:51 -0400
 From: Andreas Gruenbacher <agruenba@redhat.com>
 To: Alexander Viro <viro@zeniv.linux.org.uk>
@@ -16,125 +16,104 @@ Cc: Andreas Gruenbacher <agruenba@redhat.com>,
         xfs@oss.sgi.com, linux-kernel@vger.kernel.org,
         linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
         linux-cifs@vger.kernel.org, linux-api@vger.kernel.org
-Subject: [PATCH v23 00/22] Richacls (Core and Ext4)
-Date: Thu, 30 Jun 2016 15:46:51 +0200
-Message-Id: <1467294433-3222-1-git-send-email-agruenba@redhat.com>
+Subject: [PATCH v23 20/22] vfs: Add richacl permission checking
+Date: Thu, 30 Jun 2016 15:47:11 +0200
+Message-Id: <1467294433-3222-21-git-send-email-agruenba@redhat.com>
+In-Reply-To: <1467294433-3222-1-git-send-email-agruenba@redhat.com>
+References: <1467294433-3222-1-git-send-email-agruenba@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Here is another update of the richacl patches.  Changes since the last posting
-(https://lwn.net/Articles/689151/):
+Hook the richacl permission checking function into the vfs.
 
- * Rebase on top of 4.7-rc5+ because of commit 999653786d "nfsd: check
-   permissions when setting ACLs".
+Signed-off-by: Andreas Gruenbacher <agruenba@redhat.com>
+---
+ fs/namei.c | 54 ++++++++++++++++++++++++++++++++++++++++++++++++++++--
+ 1 file changed, 52 insertions(+), 2 deletions(-)
 
- * Introduce set_richacl() similar to set_posix_acl() and use it in nfsd
-   to avoid going through the richacl xattr representation.
-
-
-The complete patch queue is available here:
-
-  git://git.kernel.org/pub/scm/linux/kernel/git/agruen/linux-richacl.git \
-	richacl-2016-06-30
-
-
-The richacl user-space utilitites, man pages, and test suite are available
-here:
-
-  https://github.com/andreas-gruenbacher/richacl
-
-
-Changes to other user-space packages for richacl:
-
-  https://github.com/andreas-gruenbacher/coreutils
-  https://github.com/andreas-gruenbacher/e2fsprogs
-  https://github.com/andreas-gruenbacher/samba
-  https://github.com/andreas-gruenbacher/xfsprogs-dev
-  https://github.com/andreas-gruenbacher/nfs-utils
-
-
-Please see the richacl homepage for more information:
-
-  http://www.bestbits.at/richacl/
-
-
-What more needs to be done to get this initial set of patches merged?
-
-Thanks,
-Andreas
-
-Andreas Gruenbacher (20):
-  vfs: Add IS_ACL() and IS_RICHACL() tests
-  vfs: Add MAY_CREATE_FILE and MAY_CREATE_DIR permission flags
-  vfs: Add MAY_DELETE_SELF and MAY_DELETE_CHILD permission flags
-  vfs: Make the inode passed to inode_change_ok non-const
-  vfs: Add permission flags for setting file attributes
-  richacl: In-memory representation and helper functions
-  richacl: Permission mapping functions
-  richacl: Compute maximum file masks from an acl
-  richacl: Permission check algorithm
-  posix_acl: Improve xattr fixup code
-  vfs: Cache base_acl objects in inodes
-  vfs: Add get_richacl and set_richacl inode operations
-  vfs: Cache richacl in struct inode
-  richacl: Update the file masks in chmod()
-  richacl: Check if an acl is equivalent to a file mode
-  richacl: Create-time inheritance
-  richacl: Automatic Inheritance
-  richacl: xattr mapping functions
-  richacl: Add richacl xattr handler
-  vfs: Add richacl permission checking
-
-Aneesh Kumar K.V (2):
-  ext4: Add richacl support
-  ext4: Add richacl feature flag
-
- drivers/staging/lustre/lustre/llite/llite_lib.c |   2 +-
- fs/9p/acl.c                                     |   8 +-
- fs/Kconfig                                      |   3 +
- fs/Makefile                                     |   1 +
- fs/attr.c                                       |  81 ++-
- fs/ext4/Kconfig                                 |  11 +
- fs/ext4/Makefile                                |   1 +
- fs/ext4/ext4.h                                  |   6 +-
- fs/ext4/file.c                                  |   3 +
- fs/ext4/ialloc.c                                |  11 +-
- fs/ext4/inode.c                                 |   5 +-
- fs/ext4/namei.c                                 |   5 +
- fs/ext4/richacl.c                               | 134 ++++
- fs/ext4/richacl.h                               |  40 ++
- fs/ext4/super.c                                 |  49 +-
- fs/ext4/xattr.c                                 |   7 +
- fs/f2fs/acl.c                                   |   4 +-
- fs/inode.c                                      |  43 +-
- fs/jffs2/acl.c                                  |   6 +-
- fs/namei.c                                      | 152 +++-
- fs/nfs/nfs3acl.c                                |  14 +-
- fs/posix_acl.c                                  |  69 +-
- fs/richacl.c                                    | 915 ++++++++++++++++++++++++
- fs/richacl_xattr.c                              | 222 ++++++
- fs/xattr.c                                      |  29 +-
- include/linux/acl.h                             |  15 +
- include/linux/fs.h                              |  67 +-
- include/linux/posix_acl.h                       |  21 +-
- include/linux/richacl.h                         | 211 ++++++
- include/linux/richacl_xattr.h                   |  31 +
- include/uapi/linux/Kbuild                       |   2 +
- include/uapi/linux/fs.h                         |   3 +-
- include/uapi/linux/richacl.h                    | 152 ++++
- include/uapi/linux/richacl_xattr.h              |  44 ++
- include/uapi/linux/xattr.h                      |   2 +
- 35 files changed, 2209 insertions(+), 160 deletions(-)
- create mode 100644 fs/ext4/richacl.c
- create mode 100644 fs/ext4/richacl.h
- create mode 100644 fs/richacl.c
- create mode 100644 fs/richacl_xattr.c
- create mode 100644 include/linux/acl.h
- create mode 100644 include/linux/richacl.h
- create mode 100644 include/linux/richacl_xattr.h
- create mode 100644 include/uapi/linux/richacl.h
- create mode 100644 include/uapi/linux/richacl_xattr.h
-
+diff --git a/fs/namei.c b/fs/namei.c
+index 7a822d0..48c9958 100644
+--- a/fs/namei.c
++++ b/fs/namei.c
+@@ -34,6 +34,7 @@
+ #include <linux/device_cgroup.h>
+ #include <linux/fs_struct.h>
+ #include <linux/posix_acl.h>
++#include <linux/richacl.h>
+ #include <linux/hash.h>
+ #include <linux/bitops.h>
+ #include <asm/uaccess.h>
+@@ -256,7 +257,43 @@ void putname(struct filename *name)
+ 		__putname(name);
+ }
+ 
+-static int check_acl(struct inode *inode, int mask)
++static int check_richacl(struct inode *inode, int mask)
++{
++#ifdef CONFIG_FS_RICHACL
++	if (mask & MAY_NOT_BLOCK) {
++		struct base_acl *base_acl;
++
++		base_acl = rcu_dereference(inode->i_acl);
++		if (!base_acl)
++			goto no_acl;
++		/* no ->get_richacl() calls in RCU mode... */
++		if (is_uncached_acl(base_acl))
++			return -ECHILD;
++		return richacl_permission(inode, richacl(base_acl),
++					  mask & ~MAY_NOT_BLOCK);
++	} else {
++		struct richacl *acl;
++
++		acl = get_richacl(inode);
++		if (IS_ERR(acl))
++			return PTR_ERR(acl);
++		if (acl) {
++			int error = richacl_permission(inode, acl, mask);
++			richacl_put(acl);
++			return error;
++		}
++	}
++no_acl:
++#endif
++	if (mask & (MAY_DELETE_SELF | MAY_TAKE_OWNERSHIP |
++		    MAY_CHMOD | MAY_SET_TIMES)) {
++		/* File permission bits cannot grant this. */
++		return -EACCES;
++	}
++	return -EAGAIN;
++}
++
++static int check_posix_acl(struct inode *inode, int mask)
+ {
+ #ifdef CONFIG_FS_POSIX_ACL
+ 	if (mask & MAY_NOT_BLOCK) {
+@@ -294,11 +331,24 @@ static int acl_permission_check(struct inode *inode, int mask)
+ {
+ 	unsigned int mode = inode->i_mode;
+ 
++	/*
++	 * With POSIX ACLs, the (mode & S_IRWXU) bits exactly match the owner
++	 * permissions, and we can skip checking posix acls for the owner.
++	 * With richacls, the owner may be granted fewer permissions than the
++	 * mode bits seem to suggest (for example, append but not write), and
++	 * we always need to check the richacl.
++	 */
++
++	if (IS_RICHACL(inode)) {
++		int error = check_richacl(inode, mask);
++		if (error != -EAGAIN)
++			return error;
++	}
+ 	if (likely(uid_eq(current_fsuid(), inode->i_uid)))
+ 		mode >>= 6;
+ 	else {
+ 		if (IS_POSIXACL(inode) && (mode & S_IRWXG)) {
+-			int error = check_acl(inode, mask);
++			int error = check_posix_acl(inode, mask);
+ 			if (error != -EAGAIN)
+ 				return error;
+ 		}
 -- 
 2.5.5
 
