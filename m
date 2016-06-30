@@ -1,7 +1,7 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:58691 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:59819 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752161AbcF3Ntv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	id S1751906AbcF3Ntv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
 	Thu, 30 Jun 2016 09:49:51 -0400
 From: Andreas Gruenbacher <agruenba@redhat.com>
 To: Alexander Viro <viro@zeniv.linux.org.uk>
@@ -16,157 +16,204 @@ Cc: Andreas Gruenbacher <agruenba@redhat.com>,
         xfs@oss.sgi.com, linux-kernel@vger.kernel.org,
         linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
         linux-cifs@vger.kernel.org, linux-api@vger.kernel.org
-Subject: [PATCH v23 19/22] richacl: Add richacl xattr handler
-Date: Thu, 30 Jun 2016 15:47:10 +0200
-Message-Id: <1467294433-3222-20-git-send-email-agruenba@redhat.com>
+Subject: [PATCH v23 13/22] vfs: Cache richacl in struct inode
+Date: Thu, 30 Jun 2016 15:47:04 +0200
+Message-Id: <1467294433-3222-14-git-send-email-agruenba@redhat.com>
 In-Reply-To: <1467294433-3222-1-git-send-email-agruenba@redhat.com>
 References: <1467294433-3222-1-git-send-email-agruenba@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Add richacl xattr handler implementing the xattr operations based on the
-get_richacl and set_richacl inode operations.
+Cache richacls in struct inode so that this doesn't have to be done
+individually in each filesystem.  This is similar to POSIX ACLs.
 
 Signed-off-by: Andreas Gruenbacher <agruenba@redhat.com>
 ---
- fs/richacl.c                  | 22 ++++++++++++++++
- fs/richacl_xattr.c            | 61 +++++++++++++++++++++++++++++++++++++++++++
- include/linux/richacl.h       |  1 +
- include/linux/richacl_xattr.h |  2 ++
- 4 files changed, 86 insertions(+)
+ fs/inode.c              | 13 +++++---
+ fs/richacl.c            | 81 +++++++++++++++++++++++++++++++++++++++++++++++++
+ include/linux/fs.h      |  5 ++-
+ include/linux/richacl.h | 11 +++++++
+ 4 files changed, 105 insertions(+), 5 deletions(-)
 
+diff --git a/fs/inode.c b/fs/inode.c
+index 40c03a7..7dbb09c 100644
+--- a/fs/inode.c
++++ b/fs/inode.c
+@@ -181,8 +181,11 @@ int inode_init_always(struct super_block *sb, struct inode *inode)
+ 	inode->i_private = NULL;
+ 	inode->i_mapping = mapping;
+ 	INIT_HLIST_HEAD(&inode->i_dentry);	/* buggered by rcu freeing */
+-#ifdef CONFIG_FS_POSIX_ACL
+-	inode->i_acl = inode->i_default_acl = ACL_NOT_CACHED;
++#if defined(CONFIG_FS_POSIX_ACL) || defined(CONFIG_FS_RICHACL)
++	inode->i_acl = ACL_NOT_CACHED;
++# if defined(CONFIG_FS_POSIX_ACL)
++	inode->i_default_acl = ACL_NOT_CACHED;
++# endif
+ #endif
+ 
+ #ifdef CONFIG_FSNOTIFY
+@@ -238,17 +241,19 @@ void __destroy_inode(struct inode *inode)
+ 		atomic_long_dec(&inode->i_sb->s_remove_count);
+ 	}
+ 
+-#ifdef CONFIG_FS_POSIX_ACL
++#if defined(CONFIG_FS_POSIX_ACL) || defined(CONFIG_FS_RICHACL)
+ 	if (inode->i_acl && !is_uncached_acl(inode->i_acl))
+ 		base_acl_put(inode->i_acl);
++# if defined(CONFIG_FS_POSIX_ACL)
+ 	if (inode->i_default_acl && !is_uncached_acl(inode->i_default_acl))
+ 		base_acl_put(inode->i_default_acl);
++# endif
+ #endif
+ 	this_cpu_dec(nr_inodes);
+ }
+ EXPORT_SYMBOL(__destroy_inode);
+ 
+-#ifdef CONFIG_FS_POSIX_ACL
++#if defined(CONFIG_FS_POSIX_ACL) || defined(CONFIG_FS_RICHACL)
+ struct base_acl *__get_cached_acl(struct base_acl **p)
+ {
+ 	struct base_acl *base_acl;
 diff --git a/fs/richacl.c b/fs/richacl.c
-index 40e4af9..b7d7104 100644
+index 8971ead..b2a03c1 100644
 --- a/fs/richacl.c
 +++ b/fs/richacl.c
-@@ -549,6 +549,28 @@ out:
- EXPORT_SYMBOL_GPL(richacl_permission);
- 
- /**
-+ * set_richacl  -  set the richacl of an inode
-+ * @inode:	inode whose richacl to set
-+ * @acl:	access control list
-+ */
-+int
-+set_richacl(struct inode *inode, struct richacl *acl)
-+{
-+	if (!IS_RICHACL(inode))
-+		return -EOPNOTSUPP;
-+	if (!inode->i_op->set_richacl)
-+		return -EOPNOTSUPP;
-+
-+	if (!uid_eq(current_fsuid(), inode->i_uid) &&
-+	    inode_permission(inode, MAY_CHMOD) &&
-+	    !capable(CAP_FOWNER))
-+		return -EPERM;
-+
-+	return inode->i_op->set_richacl(inode, acl);
-+}
-+EXPORT_SYMBOL(set_richacl);
-+
-+/**
-  * __richacl_chmod  -  update the file masks to reflect the new mode
-  * @acl:	access control list
-  * @mode:	new file permission bits including the file type
-diff --git a/fs/richacl_xattr.c b/fs/richacl_xattr.c
-index dc1ad36..5eb4aba 100644
---- a/fs/richacl_xattr.c
-+++ b/fs/richacl_xattr.c
-@@ -18,7 +18,9 @@
- #include <linux/fs.h>
+@@ -20,6 +20,87 @@
  #include <linux/slab.h>
- #include <linux/module.h>
-+#include <linux/xattr.h>
- #include <linux/richacl_xattr.h>
-+#include <uapi/linux/xattr.h>
+ #include <linux/richacl.h>
  
- /**
-  * richacl_from_xattr  -  convert a richacl xattr into the in-memory representation
-@@ -159,3 +161,62 @@ richacl_to_xattr(struct user_namespace *user_ns,
- 	return real_size;
- }
- EXPORT_SYMBOL_GPL(richacl_to_xattr);
-+
-+static bool
-+richacl_xattr_list(struct dentry *dentry)
++void set_cached_richacl(struct inode *inode, struct richacl *acl)
 +{
-+	return IS_RICHACL(d_backing_inode(dentry));
++	struct base_acl *old;
++
++	old = xchg(&inode->i_acl, &richacl_get(acl)->a_base);
++	if (!is_uncached_acl(old))
++		base_acl_put(old);
 +}
++EXPORT_SYMBOL_GPL(set_cached_richacl);
 +
-+static int
-+richacl_xattr_get(const struct xattr_handler *handler,
-+		  struct dentry *unused, struct inode *inode,
-+		  const char *name, void *buffer, size_t buffer_size)
++void forget_cached_richacl(struct inode *inode)
 +{
++	__forget_cached_acl(&inode->i_acl);
++}
++EXPORT_SYMBOL_GPL(forget_cached_richacl);
++
++struct richacl *get_richacl(struct inode *inode)
++{
++	struct base_acl *sentinel, *base_acl;
 +	struct richacl *acl;
-+	int error;
 +
-+	if (*name)
-+		return -EINVAL;
 +	if (!IS_RICHACL(inode))
-+		return -EOPNOTSUPP;
-+	if (S_ISLNK(inode->i_mode))
-+		return -EOPNOTSUPP;
-+	acl = get_richacl(inode);
-+	if (IS_ERR(acl))
-+		return PTR_ERR(acl);
-+	if (acl == NULL)
-+		return -ENODATA;
-+	error = richacl_to_xattr(current_user_ns(), acl, buffer, buffer_size);
-+	richacl_put(acl);
-+	return error;
-+}
++		return NULL;
 +
-+static int
-+richacl_xattr_set(const struct xattr_handler *handler,
-+		  struct dentry *unused, struct inode *inode,
-+		  const char *name, const void *value, size_t size,
-+		  int flags)
-+{
-+	struct richacl *acl = NULL;
-+	int ret;
++	/*
++	 * The sentinel is used to detect when another operation like
++	 * set_cached_richacl() or forget_cached_richacl() races with
++	 * get_richacl().
++	 * It is guaranteed that is_uncached_acl(sentinel) is true.
++	 */
 +
-+	if (value) {
-+		acl = richacl_from_xattr(current_user_ns(), value, size,
-+					 -EINVAL);
-+		if (IS_ERR(acl))
-+			return PTR_ERR(acl);
++	base_acl = __get_cached_acl(&inode->i_acl);
++	if (!is_uncached_acl(base_acl))
++		return richacl(base_acl);
++
++	sentinel = uncached_acl_sentinel(current);
++
++	/*
++	 * If the ACL isn't being read yet, set our sentinel.  Otherwise, the
++	 * current value of the ACL will not be ACL_NOT_CACHED and so our own
++	 * sentinel will not be set; another task will update the cache.  We
++	 * could wait for that other task to complete its job, but it's easier
++	 * to just call ->get_acl to fetch the ACL ourself.  (This is going to
++	 * be an unlikely race.)
++	 */
++	if (cmpxchg(&inode->i_acl, ACL_NOT_CACHED, sentinel) != ACL_NOT_CACHED)
++		/* fall through */ ;
++
++	/*
++	 * Normally, the ACL returned by ->get_richacl will be cached.
++	 * A filesystem can prevent that by calling
++	 * forget_cached_richacl(inode) in ->get_richacl.
++	 *
++	 * If the filesystem doesn't have a ->get_richacl function at all,
++	 * we'll just create the negative cache entry.
++	 */
++	if (!inode->i_op->get_richacl) {
++		set_cached_richacl(inode, NULL);
++		return NULL;
 +	}
 +
-+	ret = set_richacl(inode, acl);
-+	richacl_put(acl);
-+	return ret;
-+}
++	acl = inode->i_op->get_richacl(inode);
++	if (IS_ERR(acl)) {
++		/*
++		 * Remove our sentinel so that we don't block future attempts
++		 * to cache the ACL.
++		 */
++		cmpxchg(&inode->i_acl, sentinel, ACL_NOT_CACHED);
++		return acl;
++	}
 +
-+struct xattr_handler richacl_xattr_handler = {
-+	.name = XATTR_NAME_RICHACL,
-+	.list = richacl_xattr_list,
-+	.get = richacl_xattr_get,
-+	.set = richacl_xattr_set,
-+};
-+EXPORT_SYMBOL(richacl_xattr_handler);
++	/*
++	 * Cache the result, but only if our sentinel is still in place.
++	 */
++	richacl_get(acl);
++	if (unlikely(cmpxchg(&inode->i_acl, sentinel, &acl->a_base) != sentinel))
++		richacl_put(acl);
++	return acl;
++}
++EXPORT_SYMBOL_GPL(get_richacl);
++
+ /**
+  * richacl_alloc  -  allocate a richacl
+  * @count:	number of entries
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index ac96bda..4d72a6d 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -589,6 +589,7 @@ struct base_acl {
+ 	};
+ };
+ struct posix_acl;
++struct richacl;
+ #define ACL_NOT_CACHED ((void *)(-1))
+ 
+ static inline struct base_acl *
+@@ -619,9 +620,11 @@ struct inode {
+ 	kgid_t			i_gid;
+ 	unsigned int		i_flags;
+ 
+-#if defined(CONFIG_FS_POSIX_ACL)
++#if defined(CONFIG_FS_POSIX_ACL) || defined(CONFIG_FS_RICHACL)
+ 	struct base_acl		*i_acl;
++# if defined(CONFIG_FS_POSIX_ACL)
+ 	struct base_acl		*i_default_acl;
++# endif
+ #endif
+ 
+ 	const struct inode_operations	*i_op;
 diff --git a/include/linux/richacl.h b/include/linux/richacl.h
-index a442372..e7db066 100644
+index 35a5bcb..3e05c94 100644
 --- a/include/linux/richacl.h
 +++ b/include/linux/richacl.h
-@@ -206,5 +206,6 @@ extern int richacl_chmod(struct inode *, umode_t);
- extern int richacl_equiv_mode(const struct richacl *, umode_t *);
- extern struct richacl *richacl_inherit(const struct richacl *, int);
- extern struct richacl *richacl_create(umode_t *, struct inode *);
-+extern int set_richacl(struct inode *, struct richacl *);
+@@ -70,6 +70,17 @@ richacl_put(struct richacl *acl)
+ 	base_acl_put(&acl->a_base);
+ }
  
- #endif /* __RICHACL_H */
-diff --git a/include/linux/richacl_xattr.h b/include/linux/richacl_xattr.h
-index 0efa14b..6c6adb1 100644
---- a/include/linux/richacl_xattr.h
-+++ b/include/linux/richacl_xattr.h
-@@ -26,4 +26,6 @@ extern size_t richacl_xattr_size(const struct richacl *);
- extern int richacl_to_xattr(struct user_namespace *, const struct richacl *,
- 			    void *, size_t);
- 
-+extern struct xattr_handler richacl_xattr_handler;
++static inline struct richacl *
++richacl(struct base_acl *base_acl)
++{
++	BUILD_BUG_ON(offsetof(struct richacl, a_base) != 0);
++	return container_of(base_acl, struct richacl, a_base);
++}
 +
- #endif /* __RICHACL_XATTR_H */
++extern void set_cached_richacl(struct inode *, struct richacl *);
++extern void forget_cached_richacl(struct inode *);
++extern struct richacl *get_richacl(struct inode *);
++
+ /**
+  * richace_is_owner  -  check if @ace is an OWNER@ entry
+  */
 -- 
 2.5.5
 
