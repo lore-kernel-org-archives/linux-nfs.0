@@ -1,45 +1,99 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from us-smtp-delivery-194.mimecast.com ([216.205.24.194]:60264 "EHLO
-	us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S932692AbcF3QAg convert rfc822-to-8bit
-	(ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 30 Jun 2016 12:00:36 -0400
-From: Trond Myklebust <trondmy@primarydata.com>
-To: Dickson Steve <SteveD@redhat.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: /etc/exports parsing is borked again in nfs-utils
-Date: Thu, 30 Jun 2016 15:59:59 +0000
-Message-ID: <658F0E02-7B83-41AC-AE8F-03E258BEBD68@primarydata.com>
-References: <1466885520.9316.4.camel@primarydata.com>
- <9a09922f-5105-db85-628a-667a5d93867b@RedHat.com>
-In-Reply-To: <9a09922f-5105-db85-628a-667a5d93867b@RedHat.com>
+Received: from mx1.redhat.com ([209.132.183.28]:35957 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752670AbcF3QK3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 30 Jun 2016 12:10:29 -0400
+Date: Thu, 30 Jun 2016 12:10:27 -0400
+From: Scott Mayhew <smayhew@redhat.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] lockd: unregister notifier blocks if the service fails
+ to come up completely
+Message-ID: <20160630161027.exvppkmsmfj4kfwl@tonberry.usersys.redhat.com>
+References: <1467297572-27945-1-git-send-email-smayhew@redhat.com>
+ <20160630150921.GA2954@fieldses.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=WINDOWS-1252
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20160630150921.GA2954@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Thu, 30 Jun 2016, J. Bruce Fields wrote:
 
-> On Jun 30, 2016, at 11:42, Steve Dickson <SteveD@redhat.com> wrote:
+> On Thu, Jun 30, 2016 at 10:39:32AM -0400, Scott Mayhew wrote:
+> > If the lockd service fails to start up then we need to be sure that the
+> > notifier blocks are not registered, otherwise a subsequent start of the
+> > service could cause the same notifier to be registered twice, leading to
+> > soft lockups.
 > 
+> Good catch, thanks!
 > 
-> 
-> On 06/25/2016 04:12 PM, Trond Myklebust wrote:
->> [root@leira nfs]# cat /etc/exports
->> /export		-ro,sec=sys,sync	localhost(rw,no_root_squ
->> ash)
->> [root@leira nfs]# exportfs -rv
->> exporting localhost:/export
->> [root@leira nfs]# mount -t nfs localhost:/export /mnt/nfs
->> [root@leira nfs]# mkdir /mnt/nfs/gnurr
->> mkdir: cannot create directory ‘/mnt/nfs/gnurr’: Read-only file system
->> 
->> 
->> Note that removing the "sec=sys" above causes the test to succeed.
-> When you say "succeed" what do you mean by that since your
-> are specifying both 'ro' and 'rw’.
+> I think the following (untested) should do the same job slightly more
+> concisely?
 
-I expect the default option specification (i.e. ‘ro’) to be overridden by the host-specific option. That’s how it used to work, and I know, because I had to fix it once already.
+Yes, that works too.  Thanks.
 
-Cheers
-  Trond
+-Scott
+> 
+> --b.
+> 
+> commit d2f017465698
+> Author: Scott Mayhew <smayhew@redhat.com>
+> Date:   Thu Jun 30 10:39:32 2016 -0400
+> 
+>     lockd: unregister notifier blocks if the service fails to come up completely
+>     
+>     If the lockd service fails to start up then we need to be sure that the
+>     notifier blocks are not registered, otherwise a subsequent start of the
+>     service could cause the same notifier to be registered twice, leading to
+>     soft lockups.
+>     
+>     Signed-off-by: Scott Mayhew <smayhew@redhat.com>
+>     Cc: stable@vger.kernel.org
+>     Fixes: 0751ddf77b6a "lockd: Register callbacks on the inetaddr_chain..."
+>     Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+> 
+> diff --git a/fs/lockd/svc.c b/fs/lockd/svc.c
+> index 154a107cd376..fc4084ef4736 100644
+> --- a/fs/lockd/svc.c
+> +++ b/fs/lockd/svc.c
+> @@ -335,12 +335,17 @@ static struct notifier_block lockd_inet6addr_notifier = {
+>  };
+>  #endif
+>  
+> -static void lockd_svc_exit_thread(void)
+> +static void lockd_unregister_notifiers(void)
+>  {
+>  	unregister_inetaddr_notifier(&lockd_inetaddr_notifier);
+>  #if IS_ENABLED(CONFIG_IPV6)
+>  	unregister_inet6addr_notifier(&lockd_inet6addr_notifier);
+>  #endif
+> +}
+> +
+> +static void lockd_svc_exit_thread(void)
+> +{
+> +	lockd_unregister_notifiers();
+>  	svc_exit_thread(nlmsvc_rqst);
+>  }
+>  
+> @@ -462,7 +467,7 @@ int lockd_up(struct net *net)
+>  	 * Note: svc_serv structures have an initial use count of 1,
+>  	 * so we exit through here on both success and failure.
+>  	 */
+> -err_net:
+> +err_put:
+>  	svc_destroy(serv);
+>  err_create:
+>  	mutex_unlock(&nlmsvc_mutex);
+> @@ -470,7 +475,9 @@ err_create:
+>  
+>  err_start:
+>  	lockd_down_net(serv, net);
+> -	goto err_net;
+> +err_net:
+> +	lockd_unregister_notifiers();
+> +	goto err_put;
+>  }
+>  EXPORT_SYMBOL_GPL(lockd_up);
+>  
 
