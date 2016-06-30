@@ -1,135 +1,157 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qk0-f176.google.com ([209.85.220.176]:36296 "EHLO
-	mail-qk0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752547AbcF3QaT (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 30 Jun 2016 12:30:19 -0400
-Received: by mail-qk0-f176.google.com with SMTP id j2so100514291qkf.3
-        for <linux-nfs@vger.kernel.org>; Thu, 30 Jun 2016 09:30:19 -0700 (PDT)
-Message-ID: <1467303756.3634.0.camel@redhat.com>
-Subject: Re: [PATCH] nfsd: Close race between nfsd4_release_lockowner and
- nfsd4_lock
-From: Jeff Layton <jlayton@redhat.com>
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Date: Thu, 30 Jun 2016 12:22:36 -0400
-In-Reply-To: <6010058D-F107-41C5-AFA4-75E25E37935C@oracle.com>
-References: <20160630160659.19405.46852.stgit@manet.1015granger.net>
-	 <1467303443.7421.1.camel@redhat.com>
-	 <6010058D-F107-41C5-AFA4-75E25E37935C@oracle.com>
-Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
+Received: from us-smtp-delivery-194.mimecast.com ([63.128.21.194]:57498 "EHLO
+	us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751487AbcF3Sat (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 30 Jun 2016 14:30:49 -0400
+From: Trond Myklebust <trondmy@primarydata.com>
+To: Rostedt Steven <rostedt@goodmis.org>
+CC: Jeff Layton <jlayton@poochiereds.net>,
+        Eric Dumazet <eric.dumazet@gmail.com>,
+        Schumaker Anna <anna.schumaker@netapp.com>,
+        "Linux NFS Mailing List" <linux-nfs@vger.kernel.org>,
+        "Linux Network Devel Mailing List" <netdev@vger.kernel.org>,
+        LKML <linux-kernel@vger.kernel.org>,
+        "Andrew Morton" <akpm@linux-foundation.org>,
+        Fields Bruce <bfields@fieldses.org>
+Subject: Re: It's back! (Re: [REGRESSION] NFS is creating a hidden port (left
+ over from xs_bind() ))
+Date: Thu, 30 Jun 2016 18:30:42 +0000
+Message-ID: <72EF2259-3A78-4FE3-8E0E-B3090FDFF14F@primarydata.com>
+References: <20160630085950.61e5c7e0@gandalf.local.home>
+ <C44AFFBB-EF40-4B22-8B45-7817EB7276E3@primarydata.com>
+ <20160630112341.5ab5a821@gandalf.local.home>
+In-Reply-To: <20160630112341.5ab5a821@gandalf.local.home>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 2016-06-30 at 12:20 -0400, Chuck Lever wrote:
-> 
-> > 
-> > On Jun 30, 2016, at 12:17 PM, Jeff Layton <jlayton@redhat.com> wrote:
-> > 
-> > On Thu, 2016-06-30 at 12:12 -0400, Chuck Lever wrote:
-> > > nfsd4_release_lockowner finds a lock owner that has no lock state,
-> > > and drops cl_lock. Then release_lockowner picks up cl_lock and
-> > > unhashes the lock owner.
-> > > 
-> > > During the window where cl_lock is dropped, I don't see anything
-> > > preventing a concurrent nfsd4_lock from finding that same lock owner
-> > > and adding lock state to it.
-> > > 
-> > > Move release_lockowner() into nfsd4_release_lockowner and hang onto
-> > > the cl_lock until after the lock owner's state has been unhashed.
-> > > 
-> > > Fixes: 2c41beb0e5cf ("nfsd: reduce cl_lock thrashing in ... ")
-> > > Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-> > > ---
-> > >  fs/nfsd/nfs4state.c |   40 +++++++++++++++++-----------------------
-> > >  1 file changed, 17 insertions(+), 23 deletions(-)
-> > > 
-> > > Hey Jeff-
-> > > 
-> > > Wondering what your thoughts about this are. I noticed a possible
-> > > race while looking at another bug. It's untested.
-> > > 
-> > > 
-> > > diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-> > > index 70d0b9b..b921123 100644
-> > > --- a/fs/nfsd/nfs4state.c
-> > > +++ b/fs/nfsd/nfs4state.c
-> > > @@ -1200,27 +1200,6 @@ free_ol_stateid_reaplist(struct list_head *reaplist)
-> > >  	}
-> > >  }
-> > >  
-> > > -static void release_lockowner(struct nfs4_lockowner *lo)
-> > > -{
-> > > -	struct nfs4_client *clp = lo->lo_owner.so_client;
-> > > -	struct nfs4_ol_stateid *stp;
-> > > -	struct list_head reaplist;
-> > > -
-> > > -	INIT_LIST_HEAD(&reaplist);
-> > > -
-> > > -	spin_lock(&clp->cl_lock);
-> > > -	unhash_lockowner_locked(lo);
-> > > -	while (!list_empty(&lo->lo_owner.so_stateids)) {
-> > > -		stp = list_first_entry(&lo->lo_owner.so_stateids,
-> > > -				struct nfs4_ol_stateid, st_perstateowner);
-> > > -		WARN_ON(!unhash_lock_stateid(stp));
-> > > -		put_ol_stateid_locked(stp, &reaplist);
-> > > -	}
-> > > -	spin_unlock(&clp->cl_lock);
-> > > -	free_ol_stateid_reaplist(&reaplist);
-> > > -	nfs4_put_stateowner(&lo->lo_owner);
-> > > -}
-> > > -
-> > >  static void release_open_stateid_locks(struct nfs4_ol_stateid *open_stp,
-> > >  				       struct list_head *reaplist)
-> > >  {
-> > > @@ -5945,6 +5924,7 @@ nfsd4_release_lockowner(struct svc_rqst *rqstp,
-> > >  	__be32 status;
-> > >  	struct nfsd_net *nn = net_generic(SVC_NET(rqstp), nfsd_net_id);
-> > >  	struct nfs4_client *clp;
-> > > +	LIST_HEAD (reaplist);
-> > >  
-> > >  	dprintk("nfsd4_release_lockowner clientid: (%08x/%08x):\n",
-> > >  		clid->cl_boot, clid->cl_id);
-> > > @@ -5975,9 +5955,23 @@ nfsd4_release_lockowner(struct svc_rqst *rqstp,
-> > >  		nfs4_get_stateowner(sop);
-> > >  		break;
-> > >  	}
-> > > +	if (!lo) {
-> > > +		spin_unlock(&clp->cl_lock);
-> > > +		return status;
-> > > +	}
-> > > +
-> > > +	unhash_lockowner_locked(lo);
-> > > +	while (!list_empty(&lo->lo_owner.so_stateids)) {
-> > > +		stp = list_first_entry(&lo->lo_owner.so_stateids,
-> > > +				       struct nfs4_ol_stateid,
-> > > +				       st_perstateowner);
-> > > +		WARN_ON(!unhash_lock_stateid(stp));
-> > > +		put_ol_stateid_locked(stp, &reaplist);
-> > > +	}
-> > >  	spin_unlock(&clp->cl_lock);
-> > > -	if (lo)
-> > > -		release_lockowner(lo);
-> > > +	free_ol_stateid_reaplist(&reaplist);
-> > > +	nfs4_put_stateowner(&lo->lo_owner);
-> > > +
-> > >  	return status;
-> > >  }
-> > >  
-> > > 
-> > 
-> > 
-> > Your patch looks correct to me. Even if there is something else that
-> > prevents that race (and I don't see anything that does either), then
-> > still reduces the spinlock thrashing further. So...
-> > 
-> > Reviewed-by: Jeff Layton <jlayton@redhat.com>
-> 
-> Thanks, I'll add your tag and put this through some testing.
-> Do you want to take this, or should it go through Bruce?
-> 
+DQo+IE9uIEp1biAzMCwgMjAxNiwgYXQgMTE6MjMsIFN0ZXZlbiBSb3N0ZWR0IDxyb3N0ZWR0QGdv
+b2RtaXMub3JnPiB3cm90ZToNCj4gDQo+IE9uIFRodSwgMzAgSnVuIDIwMTYgMTM6MTc6NDcgKzAw
+MDANCj4gVHJvbmQgTXlrbGVidXN0IDx0cm9uZG15QHByaW1hcnlkYXRhLmNvbT4gd3JvdGU6DQo+
+IA0KPj4+IE9uIEp1biAzMCwgMjAxNiwgYXQgMDg6NTksIFN0ZXZlbiBSb3N0ZWR0IDxyb3N0ZWR0
+QGdvb2RtaXMub3JnPiB3cm90ZToNCj4+PiANCj4+PiBbIHJlc2VuZGluZyBhcyBhIG5ldyBlbWFp
+bCwgYXMgSSdtIGFzc3VtaW5nIHBlb3BsZSBkbyBub3Qgc29ydCB0aGVpcg0KPj4+IElOQk9YIHZp
+YSBsYXN0IGVtYWlsIG9uIHRocmVhZCwgdGh1cyBteSBsYXN0IGVtYWlsIGlzIHNpdHRpbmcgaW4g
+dGhlDQo+Pj4gYm90dG9tIG9mIGV2ZXJ5b25lJ3MgSU5CT1ggXQ0KPj4+IA0KPj4+IEkndmUgaGl0
+IHRoaXMgYWdhaW4uIE5vdCBzdXJlIHdoZW4gaXQgc3RhcnRlZCwgYnV0IEkgYXBwbGllZCBteSBv
+bGQNCj4+PiBkZWJ1ZyB0cmFjZV9wcmludGsoKSBwYXRjaCAoYXR0YWNoZWQpIGFuZCByZWJvb3Rl
+ZCAoNC41LjcpLiBJIGp1c3QNCj4+PiB0ZXN0ZWQgdGhlIGxhdGVzdCBrZXJuZWwgZnJvbSBMaW51
+cydzIHRyZWUgKGZyb20gbGFzdCBuaWdodHMgcHVsbCksIGFuZA0KPj4+IGl0IHN0aWxsIGdpdmVz
+IG1lIHRoZSBwcm9ibGVtLg0KPj4+IA0KPj4+IEhlcmUncyB0aGUgdHJhY2UgSSBoYXZlOg0KPj4+
+IA0KPj4+ICAga3dvcmtlci8zOjFILTEzNCAgIFswMDNdIC4ucy4gICAgNjEuMDM2MTI5OiBpbmV0
+X2Nza19nZXRfcG9ydDogc251bSA4MDUNCj4gDQo+IEhlcmUncyB3ZXJlIHRoZSBwb3J0IGlzIHRh
+a2VuDQo+IA0KPj4+ICAga3dvcmtlci8zOjFILTEzNCAgIFswMDNdIC4ucy4gICAgNjEuMDM2MTM1
+OiA8c3RhY2sgdHJhY2U+ICANCj4+PiA9PiBzY2hlZF9jbG9jaw0KPj4+ID0+IGluZXRfYWRkcl90
+eXBlX3RhYmxlDQo+Pj4gPT4gc2VjdXJpdHlfY2FwYWJsZQ0KPj4+ID0+IGluZXRfYmluZA0KPj4+
+ID0+IHhzX2JpbmQNCj4+PiA9PiByZWxlYXNlX3NvY2sNCj4+PiA9PiBzb2NrX3NldHNvY2tvcHQN
+Cj4+PiA9PiBfX3NvY2tfY3JlYXRlDQo+Pj4gPT4geHNfY3JlYXRlX3NvY2suaXNyYS4xOQ0KPj4+
+ID0+IHhzX3RjcF9zZXR1cF9zb2NrZXQNCj4+PiA9PiBwcm9jZXNzX29uZV93b3JrDQo+Pj4gPT4g
+d29ya2VyX3RocmVhZA0KPj4+ID0+IHdvcmtlcl90aHJlYWQNCj4+PiA9PiBrdGhyZWFkDQo+Pj4g
+PT4gcmV0X2Zyb21fZm9yaw0KPj4+ID0+IGt0aHJlYWQgICAgDQo+Pj4gICBrd29ya2VyLzM6MUgt
+MTM0ICAgWzAwM10gLi5zLiAgICA2MS4wMzYxMzY6IGluZXRfYmluZF9oYXNoOiBhZGQgODA1DQo+
+Pj4gICBrd29ya2VyLzM6MUgtMTM0ICAgWzAwM10gLi5zLiAgICA2MS4wMzYxMzg6IDxzdGFjayB0
+cmFjZT4gIA0KPj4+ID0+IGluZXRfY3NrX2dldF9wb3J0DQo+Pj4gPT4gc2NoZWRfY2xvY2sNCj4+
+PiA9PiBpbmV0X2FkZHJfdHlwZV90YWJsZQ0KPj4+ID0+IHNlY3VyaXR5X2NhcGFibGUNCj4+PiA9
+PiBpbmV0X2JpbmQNCj4+PiA9PiB4c19iaW5kDQo+Pj4gPT4gcmVsZWFzZV9zb2NrDQo+Pj4gPT4g
+c29ja19zZXRzb2Nrb3B0DQo+Pj4gPT4gX19zb2NrX2NyZWF0ZQ0KPj4+ID0+IHhzX2NyZWF0ZV9z
+b2NrLmlzcmEuMTkNCj4+PiA9PiB4c190Y3Bfc2V0dXBfc29ja2V0DQo+Pj4gPT4gcHJvY2Vzc19v
+bmVfd29yaw0KPj4+ID0+IHdvcmtlcl90aHJlYWQNCj4+PiA9PiB3b3JrZXJfdGhyZWFkDQo+Pj4g
+PT4ga3RocmVhZA0KPj4+ID0+IHJldF9mcm9tX2ZvcmsNCj4+PiA9PiBrdGhyZWFkICAgIA0KPj4+
+ICAga3dvcmtlci8zOjFILTEzNCAgIFswMDNdIC4uLi4gICAgNjEuMDM2MTM5OiB4c19iaW5kOiBS
+UEM6ICAgICAgIHhzX2JpbmQgNC4xMzYuMjU1LjI1NTo4MDU6IG9rICgwKQ0KPiANCj4gSGVyZSdz
+IHdoZXJlIGl0IGlzIGJvdW5kZWQuDQo+IA0KPj4+ICAga3dvcmtlci8zOjFILTEzNCAgIFswMDNd
+IC4uLi4gICAgNjEuMDM2MTQwOiB4c190Y3Bfc2V0dXBfc29ja2V0OiBSUEM6ICAgICAgIHdvcmtl
+ciBjb25uZWN0aW5nIHhwcnQgZmZmZjg4MDQwN2VjYTgwMCB2aWEgdGNwIHRvIDE5Mi4xNjguMjMu
+MjIgKHBvcnQgNDM2NTEpDQo+Pj4gICBrd29ya2VyLzM6MUgtMTM0ICAgWzAwM10gLi4uLiAgICA2
+MS4wMzYxNjI6IHhzX3RjcF9zZXR1cF9zb2NrZXQ6IFJQQzogICAgICAgZmZmZjg4MDQwN2VjYTgw
+MCBjb25uZWN0IHN0YXR1cyAxMTUgY29ubmVjdGVkIDAgc29jayBzdGF0ZSAyDQo+Pj4gICAgICAg
+ICA8aWRsZT4tMCAgICAgWzAwMV0gLi5zLiAgICA2MS4wMzY0NTA6IHhzX3RjcF9zdGF0ZV9jaGFu
+Z2U6IFJQQzogICAgICAgeHNfdGNwX3N0YXRlX2NoYW5nZSBjbGllbnQgZmZmZjg4MDQwN2VjYTgw
+MC4uLg0KPj4+ICAgICAgICAgPGlkbGU+LTAgICAgIFswMDFdIC4ucy4gICAgNjEuMDM2NDUyOiB4
+c190Y3Bfc3RhdGVfY2hhbmdlOiBSUEM6ICAgICAgIHN0YXRlIDEgY29ubiAwIGRlYWQgMCB6YXBw
+ZWQgMSBza19zaHV0ZG93biAwDQo+Pj4gICBrd29ya2VyLzE6MUgtMTM2ICAgWzAwMV0gLi4uLiAg
+ICA2MS4wMzY0NzY6IHhwcnRfY29ubmVjdF9zdGF0dXM6IFJQQzogICAgNDMgeHBydF9jb25uZWN0
+X3N0YXR1czogcmV0cnlpbmcNCj4+PiAgIGt3b3JrZXIvMToxSC0xMzYgICBbMDAxXSAuLi4uICAg
+IDYxLjAzNjQ3ODogeHBydF9wcmVwYXJlX3RyYW5zbWl0OiBSUEM6ICAgIDQzIHhwcnRfcHJlcGFy
+ZV90cmFuc21pdA0KPj4+ICAga3dvcmtlci8xOjFILTEzNiAgIFswMDFdIC4uLi4gICAgNjEuMDM2
+NDc5OiB4cHJ0X3RyYW5zbWl0OiBSUEM6ICAgIDQzIHhwcnRfdHJhbnNtaXQoNzIpDQo+Pj4gICBr
+d29ya2VyLzE6MUgtMTM2ICAgWzAwMV0gLi4uLiAgICA2MS4wMzY0ODY6IHhzX3RjcF9zZW5kX3Jl
+cXVlc3Q6IFJQQzogICAgICAgeHNfdGNwX3NlbmRfcmVxdWVzdCg3MikgPSAwDQo+Pj4gICBrd29y
+a2VyLzE6MUgtMTM2ICAgWzAwMV0gLi4uLiAgICA2MS4wMzY0ODc6IHhwcnRfdHJhbnNtaXQ6IFJQ
+QzogICAgNDMgeG1pdCBjb21wbGV0ZQ0KPj4+ICAgICAgICAgPGlkbGU+LTAgICAgIFswMDFdIC4u
+cy4gICAgNjEuMDM2Nzg5OiB4c190Y3BfZGF0YV9yZWFkeTogUlBDOiAgICAgICB4c190Y3BfZGF0
+YV9yZWFkeS4uLg0KPj4+ICAga3dvcmtlci8xOjFILTEzNiAgIFswMDFdIC4uLi4gICAgNjEuMDM2
+Nzk4OiB4c190Y3BfZGF0YV9yZWN2OiBSUEM6ICAgICAgIHhzX3RjcF9kYXRhX3JlY3Ygc3RhcnRl
+ZA0KPj4+ICAga3dvcmtlci8xOjFILTEzNiAgIFswMDFdIC4uLi4gICAgNjEuMDM2Nzk5OiB4c190
+Y3BfZGF0YV9yZWN2OiBSUEM6ICAgICAgIHJlYWRpbmcgVENQIHJlY29yZCBmcmFnbWVudCBvZiBs
+ZW5ndGggMjQNCj4+PiAgIGt3b3JrZXIvMToxSC0xMzYgICBbMDAxXSAuLi4uICAgIDYxLjAzNjc5
+OTogeHNfdGNwX2RhdGFfcmVjdjogUlBDOiAgICAgICByZWFkaW5nIFhJRCAoNCBieXRlcykNCj4+
+PiAgIGt3b3JrZXIvMToxSC0xMzYgICBbMDAxXSAuLi4uICAgIDYxLjAzNjgwMDogeHNfdGNwX2Rh
+dGFfcmVjdjogUlBDOiAgICAgICByZWFkaW5nIHJlcXVlc3Qgd2l0aCBYSUQgMmY0YzNmODgNCj4+
+PiAgIGt3b3JrZXIvMToxSC0xMzYgICBbMDAxXSAuLi4uICAgIDYxLjAzNjgwMDogeHNfdGNwX2Rh
+dGFfcmVjdjogUlBDOiAgICAgICByZWFkaW5nIENBTEwvUkVQTFkgZmxhZyAoNCBieXRlcykNCj4+
+PiAgIGt3b3JrZXIvMToxSC0xMzYgICBbMDAxXSAuLi4uICAgIDYxLjAzNjgwMTogeHNfdGNwX2Rh
+dGFfcmVjdjogUlBDOiAgICAgICByZWFkIHJlcGx5IFhJRCAyZjRjM2Y4OA0KPj4+ICAga3dvcmtl
+ci8xOjFILTEzNiAgIFswMDFdIC4ucy4gICAgNjEuMDM2ODAxOiB4c190Y3BfZGF0YV9yZWN2OiBS
+UEM6ICAgICAgIFhJRCAyZjRjM2Y4OCByZWFkIDE2IGJ5dGVzDQo+Pj4gICBrd29ya2VyLzE6MUgt
+MTM2ICAgWzAwMV0gLi5zLiAgICA2MS4wMzY4MDI6IHhzX3RjcF9kYXRhX3JlY3Y6IFJQQzogICAg
+ICAgeHBydCA9IGZmZmY4ODA0MDdlY2E4MDAsIHRjcF9jb3BpZWQgPSAyNCwgdGNwX29mZnNldCA9
+IDI0LCB0Y3BfcmVjbGVuID0gMjQNCj4+PiAgIGt3b3JrZXIvMToxSC0xMzYgICBbMDAxXSAuLnMu
+ICAgIDYxLjAzNjgwMjogeHBydF9jb21wbGV0ZV9ycXN0OiBSUEM6ICAgIDQzIHhpZCAyZjRjM2Y4
+OCBjb21wbGV0ZSAoMjQgYnl0ZXMgcmVjZWl2ZWQpDQo+Pj4gICBrd29ya2VyLzE6MUgtMTM2ICAg
+WzAwMV0gLi4uLiAgICA2MS4wMzY4MDM6IHhzX3RjcF9kYXRhX3JlY3Y6IFJQQzogICAgICAgeHNf
+dGNwX2RhdGFfcmVjdiBkb25lDQo+Pj4gICBrd29ya2VyLzE6MUgtMTM2ICAgWzAwMV0gLi4uLiAg
+ICA2MS4wMzY4MTI6IHhwcnRfcmVsZWFzZTogUlBDOiAgICA0MyByZWxlYXNlIHJlcXVlc3QgZmZm
+Zjg4MDQwYjI3MDgwMA0KPj4+IA0KPj4+IA0KPj4+ICMgdW5oaWRlLXRjcCANCj4+PiBVbmhpZGUt
+dGNwIDIwMTMwNTI2DQo+Pj4gQ29weXJpZ2h0IMKpIDIwMTMgWWFnbyBKZXN1cyAmIFBhdHJpY2sg
+R291aW4NCj4+PiBMaWNlbnNlIEdQTHYzKyA6IEdOVSBHUEwgdmVyc2lvbiAzIG9yIGxhdGVyDQo+
+Pj4gaHR0cDovL3d3dy51bmhpZGUtZm9yZW5zaWNzLmluZm8NCj4+PiBVc2VkIG9wdGlvbnM6IA0K
+Pj4+IFsqXVN0YXJ0aW5nIFRDUCBjaGVja2luZw0KPj4+IA0KPj4+IEZvdW5kIEhpZGRlbiBwb3J0
+IHRoYXQgbm90IGFwcGVhcnMgaW4gc3M6IDgwNQ0KPj4+IA0KPj4gDQo+PiBXaGF0IGlzIGEg4oCc
+SGlkZGVuIHBvcnQgdGhhdCBub3QgYXBwZWFycyBpbiBzczogODA14oCdLCBhbmQgd2hhdCBkb2Vz
+IHRoaXMgcmVwb3J0IG1lYW4/IEFyZSB3ZSBmYWlsaW5nIHRvIGNsb3NlIGEgc29ja2V0Pw0KPiAN
+Cj4gSSBiZWxpZXZlIGhpZGRlbiBwb3J0cyBhcmUgcG9ydHMgdGhhdCBhcmUgYm91bmQgdG8gbm8g
+c29ja2V0Lg0KPiBCYXNpY2FsbHksIGEgInBvcnQgbGVhayIuIFdoZXJlIHRoZXkgYXJlIGluIGxp
+bWJvIGFuZCBjYW4gbmV2ZXIgYmUNCj4gcmV1c2VkLg0KPiANCj4gSSBsb29rZWQgYXQgbXkgcGFz
+dCByZXBvcnQsIGFuZCBldmVydGhpbmcgaXMgZXhhY3RseSBsaWtlIHRoZSBpc3N1ZQ0KPiBiZWZv
+cmUuIFdoZW4gSSBmaXJzdCBib290IG15IGJveCwgdGhlIHBvcnQgaXMgdGhlcmUsIEkgaGF2ZSB0
+aGUgYWJvdmUNCj4gdHJhY2UuIEkgcnVuIG5ldHN0YXQgLXRhcG4gYW5kIGdyZXAgZm9yIHRoZSBw
+b3J0LiBBbmQgaXQgc2hvd3MgdGhhdCBpdA0KPiBpcyBhbiBlc3RhYmxpc2hlZCBzb2NrZXQgYmV0
+d2VlbiBteSBib3ggYW5kIG15IHdpZmUncyBib3ggKEkgaGF2ZSBhIG5mcw0KPiBtb3VudGVkIGZp
+bGUgc3lzdGVtIGZvciBoZXIgdG8gY29weSBoZXIgcGljdHVyZXMgdG8gbXkgc2VydmVyKS4gQWZ0
+ZXIgYQ0KPiBjb3VwbGUgb2YgbWludXRlcywgdGhlIHBvcnQgdHVybnMgZnJvbSBFU1RBQkxJU0hF
+RCB0byBUSU1FX1dBSVQsIGFuZA0KPiBhZnRlciBhbm90aGVyIG1pbnV0ZSBpdCBkaXNhcHBlYXJz
+LiBBdCB0aGF0IG1vbWVudCwgdGhlIHVuaGlkZS10Y3ANCj4gc2hvd3MgdGhlIHBvcnQgYXMgaGlk
+ZGVuLg0KPiANCj4gV2hlbiB0aGUgc29ja2V0IGdvZXMgYXdheSAod2l0aG91dCByZWxlYXNpbmcg
+dGhlIHBvcnQpIEkgc2VlIHRoaXMgaW4gbXkNCj4gdHJhY2U6DQo+IA0KPiAgICBrd29ya2VyLzE6
+MUgtMTMxICAgWzAwMV0gLi5zLiAgIDM2NC43NjI1Mzc6IHhzX3RjcF9zdGF0ZV9jaGFuZ2U6IFJQ
+QzogICAgICAgeHNfdGNwX3N0YXRlX2NoYW5nZSBjbGllbnQgZmZmZjg4MDQwYWQ2ODgwMC4uLg0K
+PiAgICBrd29ya2VyLzE6MUgtMTMxICAgWzAwMV0gLi5zLiAgIDM2NC43NjI1Mzk6IHhzX3RjcF9z
+dGF0ZV9jaGFuZ2U6IFJQQzogICAgICAgc3RhdGUgNCBjb25uIDEgZGVhZCAwIHphcHBlZCAxIHNr
+X3NodXRkb3duIDMNCj4gICAgICAgICAgPGlkbGU+LTAgICAgIFswMDFdIC4ucy4gICAzNjQuNzYy
+NzE1OiB4c190Y3Bfc3RhdGVfY2hhbmdlOiBSUEM6ICAgICAgIHhzX3RjcF9zdGF0ZV9jaGFuZ2Ug
+Y2xpZW50IGZmZmY4ODA0MGFkNjg4MDAuLi4NCj4gICAgICAgICAgPGlkbGU+LTAgICAgIFswMDFd
+IC4ucy4gICAzNjQuNzYyNzE2OiB4c190Y3Bfc3RhdGVfY2hhbmdlOiBSUEM6ICAgICAgIHN0YXRl
+IDUgY29ubiAwIGRlYWQgMCB6YXBwZWQgMSBza19zaHV0ZG93biAzDQo+ICAgICAgICAgIDxpZGxl
+Pi0wICAgICBbMDAxXSAuLnMuICAgMzY0Ljc2MjcyODogeHNfdGNwX3N0YXRlX2NoYW5nZTogUlBD
+OiAgICAgICB4c190Y3Bfc3RhdGVfY2hhbmdlIGNsaWVudCBmZmZmODgwNDBhZDY4ODAwLi4uDQo+
+ICAgICAgICAgIDxpZGxlPi0wICAgICBbMDAxXSAuLnMuICAgMzY0Ljc2MjcyODogeHNfdGNwX3N0
+YXRlX2NoYW5nZTogUlBDOiAgICAgICBzdGF0ZSA3IGNvbm4gMCBkZWFkIDAgemFwcGVkIDEgc2tf
+c2h1dGRvd24gMw0KPiAgICAgICAgICA8aWRsZT4tMCAgICAgWzAwMV0gLi5zLiAgIDM2NC43NjI3
+Mjk6IHhwcnRfZGlzY29ubmVjdF9kb25lOiBSUEM6ICAgICAgIGRpc2Nvbm5lY3RlZCB0cmFuc3Bv
+cnQgZmZmZjg4MDQwYWQ2ODgwMA0KPiAgICAgICAgICA8aWRsZT4tMCAgICAgWzAwMV0gLi5zLiAg
+IDM2NC43NjI3MzA6IHhzX3RjcF9zdGF0ZV9jaGFuZ2U6IFJQQzogICAgICAgeHNfdGNwX3N0YXRl
+X2NoYW5nZSBjbGllbnQgZmZmZjg4MDQwYWQ2ODgwMC4uLg0KPiAgICAgICAgICA8aWRsZT4tMCAg
+ICAgWzAwMV0gLi5zLiAgIDM2NC43NjI3MzA6IHhzX3RjcF9zdGF0ZV9jaGFuZ2U6IFJQQzogICAg
+ICAgc3RhdGUgNyBjb25uIDAgZGVhZCAwIHphcHBlZCAxIHNrX3NodXRkb3duIDMNCj4gICAgICAg
+ICAgPGlkbGU+LTAgICAgIFswMDFdIC4ucy4gICAzNjQuNzYyNzMwOiB4cHJ0X2Rpc2Nvbm5lY3Rf
+ZG9uZTogUlBDOiAgICAgICBkaXNjb25uZWN0ZWQgdHJhbnNwb3J0IGZmZmY4ODA0MGFkNjg4MDAN
+Cj4gDQo+IEkgY2FuIGFkZCBtb3JlIHRyYWNlX3ByaW50aygpcyBpZiBpdCB3b3VsZCBoZWxwLg0K
+DQoNCldhaXQuIFNvIHRoZSBORlMgbW91bnQgaXMgc3RpbGwgYWN0aXZlLCBpdOKAmXMganVzdCB0
+aGF0IHRoZSBzb2NrZXQgZGlzY29ubmVjdGVkIGR1ZSB0byBubyB0cmFmZmljPyBUaGF0IHNob3Vs
+ZCBiZSBPSy4gR3JhbnRlZCB0aGF0IHRoZSBwb3J0IGNhbuKAmXQgYmUgcmV1c2VkIGJ5IGFub3Ro
+ZXIgcHJvY2VzcywgYnV0IHlvdSByZWFsbHkgZG9u4oCZdCB3YW50IHRoYXQ6IHdoYXQgaWYgdGhl
+cmUgYXJlIG5vIG90aGVyIHBvcnRzIGF2YWlsYWJsZSBhbmQgeW91IHN0YXJ0IHdyaXRpbmcgdG8g
+YSBmaWxlIG9uIHRoZSBORlMgcGFydGl0aW9uPw0KDQpDaGVlcnMNCiAgVHJvbmQ=
 
-Great. Please send it to Bruce...
--- 
-
-Jeff Layton <jlayton@redhat.com>
