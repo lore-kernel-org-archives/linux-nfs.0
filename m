@@ -1,118 +1,171 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from us-smtp-delivery-194.mimecast.com ([216.205.24.194]:21692 "EHLO
-	us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751424AbcF3NSK convert rfc822-to-8bit
-	(ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 30 Jun 2016 09:18:10 -0400
-From: Trond Myklebust <trondmy@primarydata.com>
-To: Rostedt Steven <rostedt@goodmis.org>
-CC: Jeff Layton <jlayton@poochiereds.net>,
-        Eric Dumazet <eric.dumazet@gmail.com>,
-        Schumaker Anna <anna.schumaker@netapp.com>,
-        "Linux NFS Mailing List" <linux-nfs@vger.kernel.org>,
-        "Linux Network Devel Mailing List" <netdev@vger.kernel.org>,
-        LKML <linux-kernel@vger.kernel.org>,
-        "Andrew Morton" <akpm@linux-foundation.org>,
-        Fields Bruce <bfields@fieldses.org>
-Subject: Re: It's back! (Re: [REGRESSION] NFS is creating a hidden port (left
- over from xs_bind() ))
-Date: Thu, 30 Jun 2016 13:17:47 +0000
-Message-ID: <C44AFFBB-EF40-4B22-8B45-7817EB7276E3@primarydata.com>
-References: <20160630085950.61e5c7e0@gandalf.local.home>
-In-Reply-To: <20160630085950.61e5c7e0@gandalf.local.home>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=WINDOWS-1252
+Received: from mx1.redhat.com ([209.132.183.28]:58808 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752480AbcF3Nt5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 30 Jun 2016 09:49:57 -0400
+From: Andreas Gruenbacher <agruenba@redhat.com>
+To: Alexander Viro <viro@zeniv.linux.org.uk>
+Cc: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
+        Christoph Hellwig <hch@infradead.org>, "Theodore Ts'o" <tytso@mit.edu>,
+        Andreas Dilger <adilger.kernel@dilger.ca>,
+        "J. Bruce Fields" <bfields@fieldses.org>,
+        Jeff Layton <jlayton@poochiereds.net>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>,
+        Dave Chinner <david@fromorbit.com>, linux-ext4@vger.kernel.org,
+        xfs@oss.sgi.com, linux-kernel@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-cifs@vger.kernel.org, linux-api@vger.kernel.org,
+        Andreas Gruenbacher <agruenba@redhat.com>
+Subject: [PATCH v23 22/22] ext4: Add richacl feature flag
+Date: Thu, 30 Jun 2016 15:47:13 +0200
+Message-Id: <1467294433-3222-23-git-send-email-agruenba@redhat.com>
+In-Reply-To: <1467294433-3222-1-git-send-email-agruenba@redhat.com>
+References: <1467294433-3222-1-git-send-email-agruenba@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
 
-> On Jun 30, 2016, at 08:59, Steven Rostedt <rostedt@goodmis.org> wrote:
-> 
-> [ resending as a new email, as I'm assuming people do not sort their
->  INBOX via last email on thread, thus my last email is sitting in the
->  bottom of everyone's INBOX ]
-> 
-> I've hit this again. Not sure when it started, but I applied my old
-> debug trace_printk() patch (attached) and rebooted (4.5.7). I just
-> tested the latest kernel from Linus's tree (from last nights pull), and
-> it still gives me the problem.
-> 
-> Here's the trace I have:
-> 
->    kworker/3:1H-134   [003] ..s.    61.036129: inet_csk_get_port: snum 805
->    kworker/3:1H-134   [003] ..s.    61.036135: <stack trace>
-> => sched_clock
-> => inet_addr_type_table
-> => security_capable
-> => inet_bind
-> => xs_bind
-> => release_sock
-> => sock_setsockopt
-> => __sock_create
-> => xs_create_sock.isra.19
-> => xs_tcp_setup_socket
-> => process_one_work
-> => worker_thread
-> => worker_thread
-> => kthread
-> => ret_from_fork
-> => kthread  
->    kworker/3:1H-134   [003] ..s.    61.036136: inet_bind_hash: add 805
->    kworker/3:1H-134   [003] ..s.    61.036138: <stack trace>
-> => inet_csk_get_port
-> => sched_clock
-> => inet_addr_type_table
-> => security_capable
-> => inet_bind
-> => xs_bind
-> => release_sock
-> => sock_setsockopt
-> => __sock_create
-> => xs_create_sock.isra.19
-> => xs_tcp_setup_socket
-> => process_one_work
-> => worker_thread
-> => worker_thread
-> => kthread
-> => ret_from_fork
-> => kthread  
->    kworker/3:1H-134   [003] ....    61.036139: xs_bind: RPC:       xs_bind 4.136.255.255:805: ok (0)
->    kworker/3:1H-134   [003] ....    61.036140: xs_tcp_setup_socket: RPC:       worker connecting xprt ffff880407eca800 via tcp to 192.168.23.22 (port 43651)
->    kworker/3:1H-134   [003] ....    61.036162: xs_tcp_setup_socket: RPC:       ffff880407eca800 connect status 115 connected 0 sock state 2
->          <idle>-0     [001] ..s.    61.036450: xs_tcp_state_change: RPC:       xs_tcp_state_change client ffff880407eca800...
->          <idle>-0     [001] ..s.    61.036452: xs_tcp_state_change: RPC:       state 1 conn 0 dead 0 zapped 1 sk_shutdown 0
->    kworker/1:1H-136   [001] ....    61.036476: xprt_connect_status: RPC:    43 xprt_connect_status: retrying
->    kworker/1:1H-136   [001] ....    61.036478: xprt_prepare_transmit: RPC:    43 xprt_prepare_transmit
->    kworker/1:1H-136   [001] ....    61.036479: xprt_transmit: RPC:    43 xprt_transmit(72)
->    kworker/1:1H-136   [001] ....    61.036486: xs_tcp_send_request: RPC:       xs_tcp_send_request(72) = 0
->    kworker/1:1H-136   [001] ....    61.036487: xprt_transmit: RPC:    43 xmit complete
->          <idle>-0     [001] ..s.    61.036789: xs_tcp_data_ready: RPC:       xs_tcp_data_ready...
->    kworker/1:1H-136   [001] ....    61.036798: xs_tcp_data_recv: RPC:       xs_tcp_data_recv started
->    kworker/1:1H-136   [001] ....    61.036799: xs_tcp_data_recv: RPC:       reading TCP record fragment of length 24
->    kworker/1:1H-136   [001] ....    61.036799: xs_tcp_data_recv: RPC:       reading XID (4 bytes)
->    kworker/1:1H-136   [001] ....    61.036800: xs_tcp_data_recv: RPC:       reading request with XID 2f4c3f88
->    kworker/1:1H-136   [001] ....    61.036800: xs_tcp_data_recv: RPC:       reading CALL/REPLY flag (4 bytes)
->    kworker/1:1H-136   [001] ....    61.036801: xs_tcp_data_recv: RPC:       read reply XID 2f4c3f88
->    kworker/1:1H-136   [001] ..s.    61.036801: xs_tcp_data_recv: RPC:       XID 2f4c3f88 read 16 bytes
->    kworker/1:1H-136   [001] ..s.    61.036802: xs_tcp_data_recv: RPC:       xprt = ffff880407eca800, tcp_copied = 24, tcp_offset = 24, tcp_reclen = 24
->    kworker/1:1H-136   [001] ..s.    61.036802: xprt_complete_rqst: RPC:    43 xid 2f4c3f88 complete (24 bytes received)
->    kworker/1:1H-136   [001] ....    61.036803: xs_tcp_data_recv: RPC:       xs_tcp_data_recv done
->    kworker/1:1H-136   [001] ....    61.036812: xprt_release: RPC:    43 release request ffff88040b270800
-> 
-> 
-> # unhide-tcp 
-> Unhide-tcp 20130526
-> Copyright © 2013 Yago Jesus & Patrick Gouin
-> License GPLv3+ : GNU GPL version 3 or later
-> http://www.unhide-forensics.info
-> Used options: 
-> [*]Starting TCP checking
-> 
-> Found Hidden port that not appears in ss: 805
-> 
+This feature flag selects richacl instead of POSIX ACL support on the
+filesystem.  When this feature is off, the "acl" and "noacl" mount options
+control whether POSIX ACLs are enabled.  When it is on, richacls are
+automatically enabled and using the "noacl" mount option leads to an error.
 
-What is a “Hidden port that not appears in ss: 805”, and what does this report mean? Are we failing to close a socket?
+Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+Signed-off-by: Andreas Gruenbacher <agruenba@redhat.com>
+Reviewed-by: Andreas Dilger <adilger@dilger.ca>
+---
+ fs/ext4/ext4.h  |  6 ++++--
+ fs/ext4/super.c | 49 ++++++++++++++++++++++++++++++++++++++++---------
+ 2 files changed, 44 insertions(+), 11 deletions(-)
 
-Cheers
-  Trond
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index b84aa1c..ff48f07 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -1126,7 +1126,7 @@ struct ext4_inode_info {
+ #define EXT4_MOUNT_UPDATE_JOURNAL	0x01000	/* Update the journal format */
+ #define EXT4_MOUNT_NO_UID32		0x02000  /* Disable 32-bit UIDs */
+ #define EXT4_MOUNT_XATTR_USER		0x04000	/* Extended user attributes */
+-#define EXT4_MOUNT_POSIX_ACL		0x08000	/* POSIX Access Control Lists */
++#define EXT4_MOUNT_ACL			0x08000	/* Access Control Lists */
+ #define EXT4_MOUNT_NO_AUTO_DA_ALLOC	0x10000	/* No auto delalloc mapping */
+ #define EXT4_MOUNT_BARRIER		0x20000 /* Use block barriers */
+ #define EXT4_MOUNT_QUOTA		0x80000 /* Some quota option set */
+@@ -1707,6 +1707,7 @@ static inline int ext4_encrypted_inode(struct inode *inode)
+ #define EXT4_FEATURE_INCOMPAT_LARGEDIR		0x4000 /* >2GB or 3-lvl htree */
+ #define EXT4_FEATURE_INCOMPAT_INLINE_DATA	0x8000 /* data in inode */
+ #define EXT4_FEATURE_INCOMPAT_ENCRYPT		0x10000
++#define EXT4_FEATURE_INCOMPAT_RICHACL		0x20000
+ 
+ #define EXT4_FEATURE_COMPAT_FUNCS(name, flagname) \
+ static inline bool ext4_has_feature_##name(struct super_block *sb) \
+@@ -1821,7 +1822,8 @@ EXT4_FEATURE_INCOMPAT_FUNCS(encrypt,		ENCRYPT)
+ 					 EXT4_FEATURE_INCOMPAT_MMP | \
+ 					 EXT4_FEATURE_INCOMPAT_INLINE_DATA | \
+ 					 EXT4_FEATURE_INCOMPAT_ENCRYPT | \
+-					 EXT4_FEATURE_INCOMPAT_CSUM_SEED)
++					 EXT4_FEATURE_INCOMPAT_CSUM_SEED | \
++					 EXT4_FEATURE_INCOMPAT_RICHACL)
+ #define EXT4_FEATURE_RO_COMPAT_SUPP	(EXT4_FEATURE_RO_COMPAT_SPARSE_SUPER| \
+ 					 EXT4_FEATURE_RO_COMPAT_LARGE_FILE| \
+ 					 EXT4_FEATURE_RO_COMPAT_GDT_CSUM| \
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 3822a5a..122410f 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -1306,6 +1306,28 @@ static ext4_fsblk_t get_sb_block(void **data)
+ 	return sb_block;
+ }
+ 
++static int enable_acl(struct super_block *sb)
++{
++	sb->s_flags &= ~(MS_POSIXACL | MS_RICHACL);
++	if (test_opt(sb, ACL)) {
++		if (EXT4_HAS_INCOMPAT_FEATURE(sb,
++					      EXT4_FEATURE_INCOMPAT_RICHACL)) {
++#ifdef CONFIG_EXT4_FS_RICHACL
++			sb->s_flags |= MS_RICHACL;
++#else
++			return -EOPNOTSUPP;
++#endif
++		} else {
++#ifdef CONFIG_EXT4_FS_POSIX_ACL
++			sb->s_flags |= MS_POSIXACL;
++#else
++			return -EOPNOTSUPP;
++#endif
++		}
++	}
++	return 0;
++}
++
+ #define DEFAULT_JOURNAL_IOPRIO (IOPRIO_PRIO_VALUE(IOPRIO_CLASS_BE, 3))
+ static char deprecated_msg[] = "Mount option \"%s\" will be removed by %s\n"
+ 	"Contact linux-ext4@vger.kernel.org if you think we should keep it.\n";
+@@ -1452,9 +1474,9 @@ static const struct mount_opts {
+ 	 MOPT_NO_EXT2 | MOPT_DATAJ},
+ 	{Opt_user_xattr, EXT4_MOUNT_XATTR_USER, MOPT_SET},
+ 	{Opt_nouser_xattr, EXT4_MOUNT_XATTR_USER, MOPT_CLEAR},
+-#ifdef CONFIG_EXT4_FS_POSIX_ACL
+-	{Opt_acl, EXT4_MOUNT_POSIX_ACL, MOPT_SET},
+-	{Opt_noacl, EXT4_MOUNT_POSIX_ACL, MOPT_CLEAR},
++#if defined(CONFIG_EXT4_FS_POSIX_ACL) || defined(CONFIG_EXT4_FS_RICHACL)
++	{Opt_acl, EXT4_MOUNT_ACL, MOPT_SET},
++	{Opt_noacl, EXT4_MOUNT_ACL, MOPT_CLEAR},
+ #else
+ 	{Opt_acl, 0, MOPT_NOSUPPORT},
+ 	{Opt_noacl, 0, MOPT_NOSUPPORT},
+@@ -1502,6 +1524,13 @@ static int handle_mount_opt(struct super_block *sb, char *opt, int token,
+ #endif
+ 	switch (token) {
+ 	case Opt_noacl:
++#ifdef CONFIG_EXT4_FS_RICHACL
++	if (EXT4_HAS_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_RICHACL)) {
++		ext4_msg(sb, KERN_ERR, "Mount option \"%s\" incompatible "
++			 "with richacl feature", opt);
++		return -1;
++	}
++#endif
+ 	case Opt_nouser_xattr:
+ 		ext4_msg(sb, KERN_WARNING, deprecated_msg, opt, "3.5");
+ 		break;
+@@ -3274,8 +3303,8 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+ 		set_opt(sb, NO_UID32);
+ 	/* xattr user namespace & acls are now defaulted on */
+ 	set_opt(sb, XATTR_USER);
+-#ifdef CONFIG_EXT4_FS_POSIX_ACL
+-	set_opt(sb, POSIX_ACL);
++#if defined(CONFIG_EXT4_FS_POSIX_ACL) || defined(CONFIG_EXT4_FS_RICHACL)
++	set_opt(sb, ACL);
+ #endif
+ 	/* don't forget to enable journal_csum when metadata_csum is enabled. */
+ 	if (ext4_has_metadata_csum(sb))
+@@ -3358,8 +3387,9 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+ 		sb->s_iflags |= SB_I_CGROUPWB;
+ 	}
+ 
+-	sb->s_flags = (sb->s_flags & ~MS_POSIXACL) |
+-		(test_opt(sb, POSIX_ACL) ? MS_POSIXACL : 0);
++	err = enable_acl(sb);
++	if (err)
++		goto failed_mount;
+ 
+ 	if (le32_to_cpu(es->s_rev_level) == EXT4_GOOD_OLD_REV &&
+ 	    (ext4_has_compat_features(sb) ||
+@@ -4673,8 +4703,9 @@ static int ext4_remount(struct super_block *sb, int *flags, char *data)
+ 	if (sbi->s_mount_flags & EXT4_MF_FS_ABORTED)
+ 		ext4_abort(sb, "Abort forced by user");
+ 
+-	sb->s_flags = (sb->s_flags & ~MS_POSIXACL) |
+-		(test_opt(sb, POSIX_ACL) ? MS_POSIXACL : 0);
++	err = enable_acl(sb);
++	if (err)
++		goto restore_opts;
+ 
+ 	es = sbi->s_es;
+ 
+-- 
+2.5.5
 
