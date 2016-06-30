@@ -1,11 +1,11 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:58808 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:44802 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752480AbcF3Nt5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 30 Jun 2016 09:49:57 -0400
+	id S1752049AbcF3Ntv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 30 Jun 2016 09:49:51 -0400
 From: Andreas Gruenbacher <agruenba@redhat.com>
 To: Alexander Viro <viro@zeniv.linux.org.uk>
-Cc: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
+Cc: Andreas Gruenbacher <agruenba@redhat.com>,
         Christoph Hellwig <hch@infradead.org>, "Theodore Ts'o" <tytso@mit.edu>,
         Andreas Dilger <adilger.kernel@dilger.ca>,
         "J. Bruce Fields" <bfields@fieldses.org>,
@@ -15,157 +15,95 @@ Cc: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
         Dave Chinner <david@fromorbit.com>, linux-ext4@vger.kernel.org,
         xfs@oss.sgi.com, linux-kernel@vger.kernel.org,
         linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-cifs@vger.kernel.org, linux-api@vger.kernel.org,
-        Andreas Gruenbacher <agruenba@redhat.com>
-Subject: [PATCH v23 22/22] ext4: Add richacl feature flag
-Date: Thu, 30 Jun 2016 15:47:13 +0200
-Message-Id: <1467294433-3222-23-git-send-email-agruenba@redhat.com>
+        linux-cifs@vger.kernel.org, linux-api@vger.kernel.org
+Subject: [PATCH v23 03/22] vfs: Add MAY_DELETE_SELF and MAY_DELETE_CHILD permission flags
+Date: Thu, 30 Jun 2016 15:46:54 +0200
+Message-Id: <1467294433-3222-4-git-send-email-agruenba@redhat.com>
 In-Reply-To: <1467294433-3222-1-git-send-email-agruenba@redhat.com>
 References: <1467294433-3222-1-git-send-email-agruenba@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Normally, deleting a file requires MAY_WRITE access to the parent
+directory.  With richacls, a file may be deleted with MAY_DELETE_CHILD access
+to the parent directory or with MAY_DELETE_SELF access to the file.
 
-This feature flag selects richacl instead of POSIX ACL support on the
-filesystem.  When this feature is off, the "acl" and "noacl" mount options
-control whether POSIX ACLs are enabled.  When it is on, richacls are
-automatically enabled and using the "noacl" mount option leads to an error.
+To support that, pass the MAY_DELETE_CHILD mask flag to inode_permission()
+when checking for delete access inside a directory, and MAY_DELETE_SELF
+when checking for delete access to a file itelf.
 
-Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+The MAY_DELETE_SELF permission overrides the sticky directory check.
+
 Signed-off-by: Andreas Gruenbacher <agruenba@redhat.com>
-Reviewed-by: Andreas Dilger <adilger@dilger.ca>
+Reviewed-by: J. Bruce Fields <bfields@redhat.com>
+Reviewed-by: Steve French <steve.french@primarydata.com>
 ---
- fs/ext4/ext4.h  |  6 ++++--
- fs/ext4/super.c | 49 ++++++++++++++++++++++++++++++++++++++++---------
- 2 files changed, 44 insertions(+), 11 deletions(-)
+ fs/namei.c         | 20 ++++++++++++--------
+ include/linux/fs.h |  2 ++
+ 2 files changed, 14 insertions(+), 8 deletions(-)
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index b84aa1c..ff48f07 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -1126,7 +1126,7 @@ struct ext4_inode_info {
- #define EXT4_MOUNT_UPDATE_JOURNAL	0x01000	/* Update the journal format */
- #define EXT4_MOUNT_NO_UID32		0x02000  /* Disable 32-bit UIDs */
- #define EXT4_MOUNT_XATTR_USER		0x04000	/* Extended user attributes */
--#define EXT4_MOUNT_POSIX_ACL		0x08000	/* POSIX Access Control Lists */
-+#define EXT4_MOUNT_ACL			0x08000	/* Access Control Lists */
- #define EXT4_MOUNT_NO_AUTO_DA_ALLOC	0x10000	/* No auto delalloc mapping */
- #define EXT4_MOUNT_BARRIER		0x20000 /* Use block barriers */
- #define EXT4_MOUNT_QUOTA		0x80000 /* Some quota option set */
-@@ -1707,6 +1707,7 @@ static inline int ext4_encrypted_inode(struct inode *inode)
- #define EXT4_FEATURE_INCOMPAT_LARGEDIR		0x4000 /* >2GB or 3-lvl htree */
- #define EXT4_FEATURE_INCOMPAT_INLINE_DATA	0x8000 /* data in inode */
- #define EXT4_FEATURE_INCOMPAT_ENCRYPT		0x10000
-+#define EXT4_FEATURE_INCOMPAT_RICHACL		0x20000
+diff --git a/fs/namei.c b/fs/namei.c
+index dc91858..663933e 100644
+--- a/fs/namei.c
++++ b/fs/namei.c
+@@ -454,9 +454,9 @@ static int sb_permission(struct super_block *sb, struct inode *inode, int mask)
+  * this, letting us set arbitrary permissions for filesystem access without
+  * changing the "normal" UIDs which are used for other things.
+  *
+- * MAY_WRITE must be set in @mask whenever MAY_APPEND, MAY_CREATE_FILE, or
+- * MAY_CREATE_DIR are set.  That way, file systems that don't support these
+- * permissions will check for MAY_WRITE instead.
++ * MAY_WRITE must be set in @mask whenever MAY_APPEND, MAY_CREATE_FILE,
++ * MAY_CREATE_DIR, or MAY_DELETE_CHILD are set.  That way, file systems that
++ * don't support these permissions will check for MAY_WRITE instead.
+  */
+ int inode_permission(struct inode *inode, int mask)
+ {
+@@ -2778,14 +2778,18 @@ static int may_delete_or_replace(struct inode *dir, struct dentry *victim,
+ 	BUG_ON(victim->d_parent->d_inode != dir);
+ 	audit_inode_child(dir, victim, AUDIT_TYPE_CHILD_DELETE);
  
- #define EXT4_FEATURE_COMPAT_FUNCS(name, flagname) \
- static inline bool ext4_has_feature_##name(struct super_block *sb) \
-@@ -1821,7 +1822,8 @@ EXT4_FEATURE_INCOMPAT_FUNCS(encrypt,		ENCRYPT)
- 					 EXT4_FEATURE_INCOMPAT_MMP | \
- 					 EXT4_FEATURE_INCOMPAT_INLINE_DATA | \
- 					 EXT4_FEATURE_INCOMPAT_ENCRYPT | \
--					 EXT4_FEATURE_INCOMPAT_CSUM_SEED)
-+					 EXT4_FEATURE_INCOMPAT_CSUM_SEED | \
-+					 EXT4_FEATURE_INCOMPAT_RICHACL)
- #define EXT4_FEATURE_RO_COMPAT_SUPP	(EXT4_FEATURE_RO_COMPAT_SPARSE_SUPER| \
- 					 EXT4_FEATURE_RO_COMPAT_LARGE_FILE| \
- 					 EXT4_FEATURE_RO_COMPAT_GDT_CSUM| \
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 3822a5a..122410f 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -1306,6 +1306,28 @@ static ext4_fsblk_t get_sb_block(void **data)
- 	return sb_block;
+-	error = inode_permission(dir, mask);
++	error = inode_permission(dir, mask | MAY_WRITE | MAY_DELETE_CHILD);
++	if (!error && check_sticky(dir, inode))
++		error = -EPERM;
++	if (error && IS_RICHACL(inode) &&
++	    inode_permission(inode, MAY_DELETE_SELF) == 0 &&
++	    inode_permission(dir, mask) == 0)
++		error = 0;
+ 	if (error)
+ 		return error;
+ 	if (IS_APPEND(dir))
+ 		return -EPERM;
+-
+-	if (check_sticky(dir, inode) || IS_APPEND(inode) ||
+-	    IS_IMMUTABLE(inode) || IS_SWAPFILE(inode))
++	if (IS_APPEND(inode) || IS_IMMUTABLE(inode) || IS_SWAPFILE(inode))
+ 		return -EPERM;
+ 	if (isdir) {
+ 		if (!d_is_dir(victim))
+@@ -2803,7 +2807,7 @@ static int may_delete_or_replace(struct inode *dir, struct dentry *victim,
+ 
+ static int may_delete(struct inode *dir, struct dentry *victim, bool isdir)
+ {
+-	return may_delete_or_replace(dir, victim, isdir, MAY_WRITE | MAY_EXEC);
++	return may_delete_or_replace(dir, victim, isdir, MAY_EXEC);
  }
  
-+static int enable_acl(struct super_block *sb)
-+{
-+	sb->s_flags &= ~(MS_POSIXACL | MS_RICHACL);
-+	if (test_opt(sb, ACL)) {
-+		if (EXT4_HAS_INCOMPAT_FEATURE(sb,
-+					      EXT4_FEATURE_INCOMPAT_RICHACL)) {
-+#ifdef CONFIG_EXT4_FS_RICHACL
-+			sb->s_flags |= MS_RICHACL;
-+#else
-+			return -EOPNOTSUPP;
-+#endif
-+		} else {
-+#ifdef CONFIG_EXT4_FS_POSIX_ACL
-+			sb->s_flags |= MS_POSIXACL;
-+#else
-+			return -EOPNOTSUPP;
-+#endif
-+		}
-+	}
-+	return 0;
-+}
-+
- #define DEFAULT_JOURNAL_IOPRIO (IOPRIO_PRIO_VALUE(IOPRIO_CLASS_BE, 3))
- static char deprecated_msg[] = "Mount option \"%s\" will be removed by %s\n"
- 	"Contact linux-ext4@vger.kernel.org if you think we should keep it.\n";
-@@ -1452,9 +1474,9 @@ static const struct mount_opts {
- 	 MOPT_NO_EXT2 | MOPT_DATAJ},
- 	{Opt_user_xattr, EXT4_MOUNT_XATTR_USER, MOPT_SET},
- 	{Opt_nouser_xattr, EXT4_MOUNT_XATTR_USER, MOPT_CLEAR},
--#ifdef CONFIG_EXT4_FS_POSIX_ACL
--	{Opt_acl, EXT4_MOUNT_POSIX_ACL, MOPT_SET},
--	{Opt_noacl, EXT4_MOUNT_POSIX_ACL, MOPT_CLEAR},
-+#if defined(CONFIG_EXT4_FS_POSIX_ACL) || defined(CONFIG_EXT4_FS_RICHACL)
-+	{Opt_acl, EXT4_MOUNT_ACL, MOPT_SET},
-+	{Opt_noacl, EXT4_MOUNT_ACL, MOPT_CLEAR},
- #else
- 	{Opt_acl, 0, MOPT_NOSUPPORT},
- 	{Opt_noacl, 0, MOPT_NOSUPPORT},
-@@ -1502,6 +1524,13 @@ static int handle_mount_opt(struct super_block *sb, char *opt, int token,
- #endif
- 	switch (token) {
- 	case Opt_noacl:
-+#ifdef CONFIG_EXT4_FS_RICHACL
-+	if (EXT4_HAS_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_RICHACL)) {
-+		ext4_msg(sb, KERN_ERR, "Mount option \"%s\" incompatible "
-+			 "with richacl feature", opt);
-+		return -1;
-+	}
-+#endif
- 	case Opt_nouser_xattr:
- 		ext4_msg(sb, KERN_WARNING, deprecated_msg, opt, "3.5");
- 		break;
-@@ -3274,8 +3303,8 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
- 		set_opt(sb, NO_UID32);
- 	/* xattr user namespace & acls are now defaulted on */
- 	set_opt(sb, XATTR_USER);
--#ifdef CONFIG_EXT4_FS_POSIX_ACL
--	set_opt(sb, POSIX_ACL);
-+#if defined(CONFIG_EXT4_FS_POSIX_ACL) || defined(CONFIG_EXT4_FS_RICHACL)
-+	set_opt(sb, ACL);
- #endif
- 	/* don't forget to enable journal_csum when metadata_csum is enabled. */
- 	if (ext4_has_metadata_csum(sb))
-@@ -3358,8 +3387,9 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
- 		sb->s_iflags |= SB_I_CGROUPWB;
- 	}
+ static int may_replace(struct inode *dir, struct dentry *victim, bool isdir)
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index dd614ad..86bfa10 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -86,6 +86,8 @@ typedef int (dio_iodone_t)(struct kiocb *iocb, loff_t offset,
+ #define MAY_NOT_BLOCK		0x00000080
+ #define MAY_CREATE_FILE		0x00000100
+ #define MAY_CREATE_DIR		0x00000200
++#define MAY_DELETE_CHILD	0x00000400
++#define MAY_DELETE_SELF		0x00000800
  
--	sb->s_flags = (sb->s_flags & ~MS_POSIXACL) |
--		(test_opt(sb, POSIX_ACL) ? MS_POSIXACL : 0);
-+	err = enable_acl(sb);
-+	if (err)
-+		goto failed_mount;
- 
- 	if (le32_to_cpu(es->s_rev_level) == EXT4_GOOD_OLD_REV &&
- 	    (ext4_has_compat_features(sb) ||
-@@ -4673,8 +4703,9 @@ static int ext4_remount(struct super_block *sb, int *flags, char *data)
- 	if (sbi->s_mount_flags & EXT4_MF_FS_ABORTED)
- 		ext4_abort(sb, "Abort forced by user");
- 
--	sb->s_flags = (sb->s_flags & ~MS_POSIXACL) |
--		(test_opt(sb, POSIX_ACL) ? MS_POSIXACL : 0);
-+	err = enable_acl(sb);
-+	if (err)
-+		goto restore_opts;
- 
- 	es = sbi->s_es;
- 
+ /*
+  * flags in file.f_mode.  Note that FMODE_READ and FMODE_WRITE must correspond
 -- 
 2.5.5
 
