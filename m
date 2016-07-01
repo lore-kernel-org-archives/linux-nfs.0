@@ -1,142 +1,89 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:52076 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752159AbcGAVBx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 1 Jul 2016 17:01:53 -0400
-Date: Fri, 1 Jul 2016 17:01:51 -0400
-From: Bruce Fields <bfields@fieldses.org>
-To: Marc Eshel <eshel@us.ibm.com>
-Cc: linux-nfs@vger.kernel.org, Tomer Perry <TOMP@il.ibm.com>
-Subject: Re: grace period
-Message-ID: <20160701210151.GE24269@fieldses.org>
-References: <1465939516-44769-1-git-send-email-trond.myklebust@primarydata.com>
- <OF44E4DD0C.FF5B6C3E-ON88257FE2.00771383-88257FE2.007798E3@notes.na.collabserv.com>
- <20160701160857.GB20327@fieldses.org>
- <OF82A5FFDC.3CCEBF40-ON88257FE3.0059C174-88257FE3.00604E03@notes.na.collabserv.com>
- <20160701200742.GA24269@fieldses.org>
- <OF5D486F02.62CECB7B-ON88257FE3.0071DBE5-88257FE3.00722388@notes.na.collabserv.com>
+Received: from smtprelay0047.hostedemail.com ([216.40.44.47]:58485 "EHLO
+	smtprelay.hostedemail.com" rhost-flags-OK-OK-OK-FAIL)
+	by vger.kernel.org with ESMTP id S1752152AbcGAV0O (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 1 Jul 2016 17:26:14 -0400
+Date: Fri, 1 Jul 2016 17:24:01 -0400
+From: Steven Rostedt <rostedt@goodmis.org>
+To: LKML <linux-kernel@vger.kernel.org>,
+        "Linux NFS Mailing List" <linux-nfs@vger.kernel.org>
+Cc: Trond Myklebust <trondmy@primarydata.com>,
+        Jeff Layton <jlayton@poochiereds.net>,
+        Eric Dumazet <eric.dumazet@gmail.com>,
+        Schumaker Anna <anna.schumaker@netapp.com>,
+        "Andrew Morton" <akpm@linux-foundation.org>,
+        Fields Bruce <bfields@fieldses.org>,
+        Linus Torvalds <torvalds@linux-foundation.org>
+Subject: Revert: SUNRPC: xs_sock_mark_closed() does not need to trigger
+ socket autoclose
+Message-ID: <20160701172401.3ba89015@gandalf.local.home>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <OF5D486F02.62CECB7B-ON88257FE3.0071DBE5-88257FE3.00722388@notes.na.collabserv.com>
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Jul 01, 2016 at 01:46:42PM -0700, Marc Eshel wrote:
-> This is my v3 test that show the lock still there after echo 0 > 
-> /proc/fs/nfsd/threads
-> 
-> [root@sonascl21 ~]# cat /etc/redhat-release 
-> Red Hat Enterprise Linux Server release 7.2 (Maipo)
-> 
-> [root@sonascl21 ~]# uname -a
-> Linux sonascl21.sonasad.almaden.ibm.com 3.10.0-327.el7.x86_64 #1 SMP Thu 
-> Oct 29 17:29:29 EDT 2015 x86_64 x86_64 x86_64 GNU/Linux
-> 
-> [root@sonascl21 ~]# cat /proc/locks | grep 999
-> 3: POSIX  ADVISORY  WRITE 2349 00:2a:489486 0 999
-> 
-> [root@sonascl21 ~]# echo 0 > /proc/fs/nfsd/threads
-> [root@sonascl21 ~]# cat /proc/fs/nfsd/threads
-> 0
-> 
-> [root@sonascl21 ~]# cat /proc/locks | grep 999
-> 3: POSIX  ADVISORY  WRITE 2349 00:2a:489486 0 999
+A while back, rkhunter reported a "hidden port" on my main server,
+making me nervous that I had been hacked. Doing lots of debugging, I
+found that it was happening from xprt code in NFS. I found a way to
+trigger the bug, which happened because my wife's machine was NFS
+mounting a directory of my main server. She does this to upload her
+photos quickly to gallery2.
 
-Huh, that's not what I see.  Are you positive that's the lock on the
-backend filesystem and not the client-side lock (in case you're doing a
-loopback mount?)
+  "Warning: Hidden ports found:
+         Port number: TCP:871"
 
---b.
+A hidden port is one that has no socket connected to it. That is, it's
+a dead resource. Nothing can ever use that port. It's not something
+that is "reserved", it's just a leaked bit of info. rkhunter treats
+this as a possible root kit attack.
 
-> 
-> 
-> 
-> 
-> From:   Bruce Fields <bfields@fieldses.org>
-> To:     Marc Eshel/Almaden/IBM@IBMUS
-> Cc:     linux-nfs@vger.kernel.org
-> Date:   07/01/2016 01:07 PM
-> Subject:        Re: grace period
-> 
-> 
-> 
-> On Fri, Jul 01, 2016 at 10:31:55AM -0700, Marc Eshel wrote:
-> > It used to be that sending KILL signal to lockd would free locks and 
-> start 
-> > Grace period, and when setting nfsd threads to zero, nfsd_last_thread() 
-> > calls nfsd_shutdown that called lockd_down that I believe was causing 
-> both 
-> > freeing of locks and starting grace period or maybe it was setting it 
-> back 
-> > to a value > 0 that started the grace period.
-> 
-> OK, apologies, I didn't know (or forgot) that.
-> 
-> > Any way starting with the kernels that are in RHEL7.1 and up echo 0 > 
-> > /proc/fs/nfsd/threads doesn't do it anymore, I assume going to common 
-> > grace period for NLM and NFSv4 changed things.
-> > The question is how to do IP fail-over, so when a node fails and the IP 
-> is 
-> > moving to another node, we need to go into grace period on all the nodes 
-> 
-> > in the cluster so the locks of the failed node are not given to anyone 
-> > other than the client that is reclaiming his locks. Restarting NFS 
-> server 
-> > is to distractive.
-> 
-> What's the difference?  Just that clients don't have to reestablish tcp
-> connections?
-> 
-> --b.
-> 
-> > For NFSv3 KILL signal to lockd still works but for 
-> > NFSv4 have no way to do it for v4.
-> > Marc. 
-> > 
-> > 
-> > 
-> > From:   Bruce Fields <bfields@fieldses.org>
-> > To:     Marc Eshel/Almaden/IBM@IBMUS
-> > Cc:     linux-nfs@vger.kernel.org
-> > Date:   07/01/2016 09:09 AM
-> > Subject:        Re: grace period
-> > 
-> > 
-> > 
-> > On Thu, Jun 30, 2016 at 02:46:19PM -0700, Marc Eshel wrote:
-> > > I see that setting the number of nfsd threads to 0 (echo 0 > 
-> > > /proc/fs/nfsd/threads) is not releasing the locks and putting the 
-> server 
-> > 
-> > > in grace mode.
-> > 
-> > Writing 0 to /proc/fs/nfsd/threads shuts down knfsd.  So it should
-> > certainly drop locks.  If that's not happening, there's a bug, but we'd
-> > need to know more details (version numbers, etc.) to help.
-> > 
-> > That alone has never been enough to start a grace period--you'd have to
-> > start knfsd again to do that.
-> > 
-> > > What is the best way to go into grace period, in new version of the
-> > > kernel, without restarting the nfs server?
-> > 
-> > Restarting the nfs server is the only way.  That's true on older kernels
-> > true, as far as I know.  (OK, you can apparently make lockd do something
-> > like this with a signal, I don't know if that's used much, and I doubt
-> > it works outside an NFSv3-only environment.)
-> > 
-> > So if you want locks dropped and a new grace period, then you should run
-> > "systemctl restart nfs-server", or your distro's equivalent.
-> > 
-> > But you're probably doing something more complicated than that.  I'm not
-> > sure I understand the question....
-> > 
-> > --b.
-> > 
-> > 
-> > 
-> > 
-> 
-> 
-> 
-> 
+I did a bisect and found the culprit and worked with the NFS folks who
+came up with a fix that made rkhunter happy again.
+
+Link: http://lkml.kernel.org/r/20150611234929.7b48d314@gandalf.local.home
+
+The previous fix was 4876cc779ff5 ("SUNRPC: Ensure we release the TCP
+socket once it has been closed")
+
+Recently, after traveling with my wife, she decided to upload pictures
+again and mounted the directory, and lo and behold the hidden port
+re-appeared. I noticed that the mounting of the NFS directory caused
+this to happen again. I did lots of debugging to see why and asked for
+help from the NFS folks again. But this time I didn't receive much help.
+
+Link: http://lkml.kernel.org/r/20160630085950.61e5c7e0@gandalf.local.home
+
+Frustrated, I spent all day bisecting this, and found that this bug was
+created in the next release. And I even found the commit that causes
+this bug: 4b0ab51db32e ("SUNRPC: xs_sock_mark_closed() does not need to
+trigger socket autoclose"). This commit states:
+
+   "Under all conditions, it should be quite sufficient just to mark
+    the socket as disconnected. It will then be closed by the
+    transport shutdown or reconnect code."
+
+Well, this isn't quite correct. And doing a little git blaming, the
+line that it removed was added by the first commit above that
+previously fixed my issue.
+
+Reverting this commit makes rkhunter and myself quite happy again.
+
+I consider this userland breakage, as rkhunter is a userland tool and
+this commit causes it to report a problem that does not exist.
+
+Fixes: 4b0ab51db32e ("SUNRPC: xs_sock_mark_closed() does not need to trigger socket autoclose")
+Cc: stable@vger.kernel.org # v4.3+
+Signed-off-by: Steven Rostedt <rostedt@goodmis.org>
+---
+diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
+index 7e2b2fa189c3..5579d13e253f 100644
+--- a/net/sunrpc/xprtsock.c
++++ b/net/sunrpc/xprtsock.c
+@@ -768,6 +768,7 @@ static void xs_sock_mark_closed(struct rpc_xprt *xprt)
+ 	xs_sock_reset_connection_flags(xprt);
+ 	/* Mark transport as closed and wake up all pending tasks */
+ 	xprt_disconnect_done(xprt);
++	xprt_force_disconnect(xprt);
+ }
+ 
+ /**
