@@ -1,50 +1,133 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from us-smtp-delivery-194.mimecast.com ([216.205.24.194]:32831 "EHLO
-	us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S932086AbcGAXCb (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 1 Jul 2016 19:02:31 -0400
-From: Trond Myklebust <trondmy@primarydata.com>
-To: Rostedt Steven <rostedt@goodmis.org>
-CC: LKML <linux-kernel@vger.kernel.org>,
+Received: from smtprelay0003.hostedemail.com ([216.40.44.3]:34266 "EHLO
+	smtprelay.hostedemail.com" rhost-flags-OK-OK-OK-FAIL)
+	by vger.kernel.org with ESMTP id S1752296AbcGAXOi convert rfc822-to-8bit
+	(ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 1 Jul 2016 19:14:38 -0400
+Date: Fri, 1 Jul 2016 19:14:07 -0400
+From: Steven Rostedt <rostedt@goodmis.org>
+To: Trond Myklebust <trondmy@primarydata.com>
+Cc: LKML <linux-kernel@vger.kernel.org>,
         Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Jeff Layton <jlayton@poochiereds.net>,
-        "Eric Dumazet" <eric.dumazet@gmail.com>,
+        "Jeff Layton" <jlayton@poochiereds.net>,
+        Eric Dumazet <eric.dumazet@gmail.com>,
         Schumaker Anna <anna.schumaker@netapp.com>,
         Andrew Morton <akpm@linux-foundation.org>,
         Fields Bruce <bfields@fieldses.org>,
-        Torvalds Linus <torvalds@linux-foundation.org>
+        "Torvalds Linus" <torvalds@linux-foundation.org>
 Subject: Re: Revert: SUNRPC: xs_sock_mark_closed() does not need to trigger
  socket autoclose
-Date: Fri, 1 Jul 2016 23:02:23 +0000
-Message-ID: <CB98840B-1CEE-48C6-9ABB-82DA8D213BAF@primarydata.com>
+Message-ID: <20160701191407.795361d5@gandalf.local.home>
+In-Reply-To: <0A51DE9E-81B2-474A-BA07-55C3BE19629A@primarydata.com>
 References: <20160701172401.3ba89015@gandalf.local.home>
- <0A51DE9E-81B2-474A-BA07-55C3BE19629A@primarydata.com>
- <20160701183912.1f9d376b@gandalf.local.home>
-In-Reply-To: <20160701183912.1f9d376b@gandalf.local.home>
+	<0A51DE9E-81B2-474A-BA07-55C3BE19629A@primarydata.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-DQo+IE9uIEp1bCAxLCAyMDE2LCBhdCAxODozOSwgU3RldmVuIFJvc3RlZHQgPHJvc3RlZHRAZ29v
-ZG1pcy5vcmc+IHdyb3RlOg0KPiANCj4gT24gRnJpLCAxIEp1bCAyMDE2IDIyOjM0OjAyICswMDAw
-DQo+IFRyb25kIE15a2xlYnVzdCA8dHJvbmRteUBwcmltYXJ5ZGF0YS5jb20+IHdyb3RlOg0KPiAN
-Cj4gDQo+PiBOQUNLLiBUaGlzIG9jZGUgd2FzIHJlbW92ZWQgb24gcHVycG9zZSBiZWNhdXNlIGl0
-IGlzIGRhbmdlcm91cyB0bw0KPj4gaGF2ZSB0aGUgVENQIHN0YXRlIGNoYW5nZSBjYWxsYmFja3Mg
-cXVldWUgdXAgYSBuZXcgY2xvc2UoKS4gVGhlDQo+PiBjb25uZWN0IGNvZGUgc29tZXRpbWVzIGhh
-cyB0byBjbG9zZSBzb2NrZXRzIHRoYXQgYXJlIG1pc2JlaGF2aW5nLCBhbmQNCj4+IHNvIHdl4oCZ
-dmUgc2VlbiByYWNlcyB3aGVyZWJ5IHRoZSBvbGQgc29ja2V0IGNsb3NlcyBhbmQgdHJpZ2dlcnMg
-YW4NCj4+IGF1dG9jbG9zZSBmb3IgdGhlIG5ldyBzb2NrZXQgd2hpbGUgaXQgaXMgY29ubmVjdGlu
-Zy4NCj4gDQo+IE9LIGZpbmUuIEJ1dCBjYW4gd2UgcGxlYXNlIGNvbWUgdXAgd2l0aCBhIHNvbHV0
-aW9uIHRvIGdldCByaWQgb2YgdGhlDQo+IGhpZGRlbiBwb3J0IGlzc3VlLiBJdCdzIHZlcnkgYW5u
-b3lpbmcgdGhhdCBJIGdldCBhIG1lc3NhZ2UgZnJvbQ0KPiBya2h1bnRlciBldmVyIG1vcm5pbmcg
-dGVsbGluZyBtZSAiUGxlYXNlIGluc3BlY3QgdGhpcyBtYWNoaW5lLCBiZWNhdXNlDQo+IGl0IG1h
-eSBiZSBpbmZlY3RlZC7igJ0NCj4gDQoNCkNhbiB3ZSBsb29rIGludG8gd2h5IHRoZSBzb2NrZXQg
-ZGlzY29ubmVjdCBpcyBoYXBwZW5pbmcgaW4gdGhlIGZpcnN0IHBsYWNlPyBJdOKAmXMgcHJlc3Vt
-YWJseSBub3QgdGhlIHNlcnZlciwgc2luY2UgdGhhdCBfd291bGRfIHRyaWdnZXIgYW4gYXV0b2Ns
-b3NlIHdoZW4gdGhlIHNvY2tldCBoaXRzIFRDUF9DTE9TRV9XQUlULiBUaGF0IHB1dHMgdGhlIHR3
-byB0b3Agc3VzcGVjdHMgYmVpbmcgdGhlIFRDUCBrZWVwYWxpdmUgYW5kIHRoZSBUQ1BfVVNFUl9U
-SU1FT1VULiBBcmUgdGhlcmUgYW55IHRyYWNlcG9pbnRzIHdlIGNvdWxkIHVzZSB0byBsb29rIGF0
-IHdoZXRoZXIgb3Igbm90IHRoZXkgYXJlIHRyaWdnZXJpbmcgYSBjbG9zZT8NCg0KVGhhbmtzDQog
-IFRyb25kDQoNCg0K
+On Fri, 1 Jul 2016 22:34:02 +0000
+Trond Myklebust <trondmy@primarydata.com> wrote:
 
+> > On Jul 1, 2016, at 17:24, Steven Rostedt <rostedt@goodmis.org> wrote:
+> > 
+> > A while back, rkhunter reported a "hidden port" on my main server,
+> > making me nervous that I had been hacked. Doing lots of debugging, I
+> > found that it was happening from xprt code in NFS. I found a way to
+> > trigger the bug, which happened because my wife's machine was NFS
+> > mounting a directory of my main server. She does this to upload her
+> > photos quickly to gallery2.
+> > 
+> >  "Warning: Hidden ports found:
+> >         Port number: TCP:871"
+> > 
+> > A hidden port is one that has no socket connected to it. That is, it's
+> > a dead resource. Nothing can ever use that port. It's not something
+> > that is "reserved", it's just a leaked bit of info. rkhunter treats
+> > this as a possible root kit attack.  
+
+[ missed this part when replying last time ]
+> 
+> No, it’s not leaked at all; it is still being tracked by the RPC layer.
+
+How so? I watched on wireshark and the port is closed (FIN/ACK are
+sent, and I watch it go in "netstat -tapn" from ESTABLISHED to
+TIME_WAIT to nothing at all), and then it is never reused. I kicked off
+lots of copies to and from that mounted directory, and that port never
+shows up.
+
+> 
+> Furthermore, you haven’t unmounted the NFS partition, so it is a port
+> that can and SHOULD, according to the NFSv3 rules be reused by the
+> same NFS client when it reconnects. 
+
+It uses another port. Maybe I missed saying that. But there's two ports
+that show up.
+
+Not to mention, when I unmount that port still exists as unhidden. It's
+not till I remount it that the port goes away until it goes into it
+times out again.
+
+> The server attaches a duplicate
+> reply cache to the source IP address and port number and expects RPC
+> calls that were lost by the server to be replayed through the same IP
+> address and port number.
+>
+
+Is this what is expected?
+
+[ from Wife's machine ]
+
+ # mount /upload
+
+[ from my server ]
+
+ # netstat -tapn | grep '192.168.23.22'
+tcp        0      0 192.168.23.9:931        192.168.23.22:42546     ESTABLISHED -                   
+tcp        0      0 192.168.23.9:2049       192.168.23.22:879       ESTABLISHED -     
+
+
+# while :; do if ! netstat -tapn |grep :931; then break; fi; sleep 1; done; netstat -tapn | grep '192.168.23.22'
+tcp        0      0 192.168.23.9:931        192.168.23.22:42546     ESTABLISHED -                   
+tcp        0      0 192.168.23.9:931        192.168.23.22:42546     ESTABLISHED -                   
+tcp        0      0 192.168.23.9:931        192.168.23.22:42546     ESTABLISHED -                   
+tcp        0      0 192.168.23.9:931        192.168.23.22:42546     ESTABLISHED -                   
+tcp        0      0 192.168.23.9:931        192.168.23.22:42546     ESTABLISHED -         
+[...]
+tcp        0      0 192.168.23.9:931        192.168.23.22:42546     ESTABLISHED -                   
+tcp        0      0 192.168.23.9:931        192.168.23.22:42546     ESTABLISHED -                   
+tcp        0      0 192.168.23.9:931        192.168.23.22:42546     ESTABLISHED -                   
+tcp        0      0 192.168.23.9:931        192.168.23.22:42546     ESTABLISHED -                   
+tcp        0      0 192.168.23.9:931        192.168.23.22:42546     TIME_WAIT   -                   
+tcp        0      0 192.168.23.9:931        192.168.23.22:42546     TIME_WAIT   -                   
+tcp        0      0 192.168.23.9:931        192.168.23.22:42546     TIME_WAIT   -                   
+tcp        0      0 192.168.23.9:931        192.168.23.22:42546     TIME_WAIT   -       
+[...]
+tcp        0      0 192.168.23.9:931        192.168.23.22:42546     TIME_WAIT   -                   
+tcp        0      0 192.168.23.9:931        192.168.23.22:42546     TIME_WAIT   -                   
+tcp        0      0 192.168.23.9:931        192.168.23.22:42546     TIME_WAIT   -                   
+# netstat -tapn | grep '192.168.23.22'
+tcp        0      0 192.168.23.9:2049       192.168.23.22:879       ESTABLISHED -             
+
+At this point port 931 is hidden and never shows up again. All
+connection (according to wireshark) goes through port 2049 from this
+point on.
+
+I unmount, and the port is still hidden, but if I remount, the port
+goes away and another two ports are connect (2049 along with another
+one)
+
+[ form Wife's machine ]
+
+ # umount /upload
+ # mount /upload
+
+[ from my server ]
+
+# netstat -tapn | grep '192.168.23.22'
+tcp        0      0 192.168.23.9:2049       192.168.23.22:859       ESTABLISHED -                   
+tcp        0      0 192.168.23.9:975        192.168.23.22:39281     ESTABLISHED -         
+
+Is this expected?
+
+-- Steve
