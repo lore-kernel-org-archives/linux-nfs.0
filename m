@@ -1,64 +1,179 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:44467 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([173.255.197.46]:52222 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752457AbcGAXos (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 1 Jul 2016 19:44:48 -0400
-From: Daniel Bristot de Oliveira <bristot@redhat.com>
-To: linux-kernel@vger.kernel.org
-Cc: Steven Rostedt <rostedt@goodmis.org>, Ingo Molnar <mingo@redhat.com>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        Anna Schumaker <anna.schumaker@netapp.com>, linux-nfs@vger.kernel.org
-Subject: [PATCH 1/4] tracing: Use outer () on __get_str() definition
-Date: Fri,  1 Jul 2016 20:44:34 -0300
-Message-Id: <20ac1a10c2ec4ccd23e4a8ef34101fb6e4157d37.1467407618.git.bristot@redhat.com>
-In-Reply-To: <cover.1467407618.git.bristot@redhat.com>
-References: <cover.1467407618.git.bristot@redhat.com>
+	id S932086AbcGBA6W (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 1 Jul 2016 20:58:22 -0400
+Date: Fri, 1 Jul 2016 20:58:20 -0400
+From: Bruce Fields <bfields@fieldses.org>
+To: Marc Eshel <eshel@us.ibm.com>
+Cc: linux-nfs@vger.kernel.org, Tomer Perry <TOMP@il.ibm.com>
+Subject: Re: grace period
+Message-ID: <20160702005820.GA27063@fieldses.org>
+References: <1465939516-44769-1-git-send-email-trond.myklebust@primarydata.com>
+ <OF44E4DD0C.FF5B6C3E-ON88257FE2.00771383-88257FE2.007798E3@notes.na.collabserv.com>
+ <20160701160857.GB20327@fieldses.org>
+ <OF82A5FFDC.3CCEBF40-ON88257FE3.0059C174-88257FE3.00604E03@notes.na.collabserv.com>
+ <20160701200742.GA24269@fieldses.org>
+ <OF5D486F02.62CECB7B-ON88257FE3.0071DBE5-88257FE3.00722388@notes.na.collabserv.com>
+ <20160701210151.GE24269@fieldses.org>
+ <OF79A36FEE.749D5EF5-ON88257FE3.007C9721-88257FE3.007CC2B1@notes.na.collabserv.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <OF79A36FEE.749D5EF5-ON88257FE3.007C9721-88257FE3.007CC2B1@notes.na.collabserv.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-__get_str(str)'s definition includes a (char *) operator
-overloading that is not protected with outer ().
+On Fri, Jul 01, 2016 at 03:42:43PM -0700, Marc Eshel wrote:
+> Yes, the locks are requested from another node, what fs are you using, I 
+> don't think it should make any difference, but I can try it with the same 
+> fs. 
+> Make sure you are using v3, it does work for v4.
 
-This patch adds () around __get_str()'s definition, enabling
-some code cleanup.
+I tested v3 on upstream.--b.
 
-Suggested-by: Steven Rostedt <rostedt@goodmis.org>
-Signed-off-by: Daniel Bristot de Oliveira <bristot@redhat.com>
-Reviewed-by: Steven Rostedt <rostedt@goodmis.org>
-Cc: Steven Rostedt <rostedt@goodmis.org>
-Cc: Ingo Molnar <mingo@redhat.com>
-Cc: linux-kernel@vger.kernel.org
----
- include/trace/perf.h         | 2 +-
- include/trace/trace_events.h | 2 +-
- 2 files changed, 2 insertions(+), 2 deletions(-)
-
-diff --git a/include/trace/perf.h b/include/trace/perf.h
-index 26486fc..7144550 100644
---- a/include/trace/perf.h
-+++ b/include/trace/perf.h
-@@ -15,7 +15,7 @@
- 		((__entry->__data_loc_##field >> 16) & 0xffff)
- 
- #undef __get_str
--#define __get_str(field) (char *)__get_dynamic_array(field)
-+#define __get_str(field) ((char *)__get_dynamic_array(field))
- 
- #undef __get_bitmask
- #define __get_bitmask(field) (char *)__get_dynamic_array(field)
-diff --git a/include/trace/trace_events.h b/include/trace/trace_events.h
-index 170c93b..427e4aa 100644
---- a/include/trace/trace_events.h
-+++ b/include/trace/trace_events.h
-@@ -256,7 +256,7 @@ TRACE_MAKE_SYSTEM_STR();
- 		((__entry->__data_loc_##field >> 16) & 0xffff)
- 
- #undef __get_str
--#define __get_str(field) (char *)__get_dynamic_array(field)
-+#define __get_str(field) ((char *)__get_dynamic_array(field))
- 
- #undef __get_bitmask
- #define __get_bitmask(field)						\
--- 
-2.7.4
-
+> Marc.
+> 
+> 
+> 
+> From:   Bruce Fields <bfields@fieldses.org>
+> To:     Marc Eshel/Almaden/IBM@IBMUS
+> Cc:     linux-nfs@vger.kernel.org, Tomer Perry <TOMP@il.ibm.com>
+> Date:   07/01/2016 02:01 PM
+> Subject:        Re: grace period
+> 
+> 
+> 
+> On Fri, Jul 01, 2016 at 01:46:42PM -0700, Marc Eshel wrote:
+> > This is my v3 test that show the lock still there after echo 0 > 
+> > /proc/fs/nfsd/threads
+> > 
+> > [root@sonascl21 ~]# cat /etc/redhat-release 
+> > Red Hat Enterprise Linux Server release 7.2 (Maipo)
+> > 
+> > [root@sonascl21 ~]# uname -a
+> > Linux sonascl21.sonasad.almaden.ibm.com 3.10.0-327.el7.x86_64 #1 SMP Thu 
+> 
+> > Oct 29 17:29:29 EDT 2015 x86_64 x86_64 x86_64 GNU/Linux
+> > 
+> > [root@sonascl21 ~]# cat /proc/locks | grep 999
+> > 3: POSIX  ADVISORY  WRITE 2349 00:2a:489486 0 999
+> > 
+> > [root@sonascl21 ~]# echo 0 > /proc/fs/nfsd/threads
+> > [root@sonascl21 ~]# cat /proc/fs/nfsd/threads
+> > 0
+> > 
+> > [root@sonascl21 ~]# cat /proc/locks | grep 999
+> > 3: POSIX  ADVISORY  WRITE 2349 00:2a:489486 0 999
+> 
+> Huh, that's not what I see.  Are you positive that's the lock on the
+> backend filesystem and not the client-side lock (in case you're doing a
+> loopback mount?)
+> 
+> --b.
+> 
+> > 
+> > 
+> > 
+> > 
+> > From:   Bruce Fields <bfields@fieldses.org>
+> > To:     Marc Eshel/Almaden/IBM@IBMUS
+> > Cc:     linux-nfs@vger.kernel.org
+> > Date:   07/01/2016 01:07 PM
+> > Subject:        Re: grace period
+> > 
+> > 
+> > 
+> > On Fri, Jul 01, 2016 at 10:31:55AM -0700, Marc Eshel wrote:
+> > > It used to be that sending KILL signal to lockd would free locks and 
+> > start 
+> > > Grace period, and when setting nfsd threads to zero, 
+> nfsd_last_thread() 
+> > > calls nfsd_shutdown that called lockd_down that I believe was causing 
+> > both 
+> > > freeing of locks and starting grace period or maybe it was setting it 
+> > back 
+> > > to a value > 0 that started the grace period.
+> > 
+> > OK, apologies, I didn't know (or forgot) that.
+> > 
+> > > Any way starting with the kernels that are in RHEL7.1 and up echo 0 > 
+> > > /proc/fs/nfsd/threads doesn't do it anymore, I assume going to common 
+> > > grace period for NLM and NFSv4 changed things.
+> > > The question is how to do IP fail-over, so when a node fails and the 
+> IP 
+> > is 
+> > > moving to another node, we need to go into grace period on all the 
+> nodes 
+> > 
+> > > in the cluster so the locks of the failed node are not given to anyone 
+> 
+> > > other than the client that is reclaiming his locks. Restarting NFS 
+> > server 
+> > > is to distractive.
+> > 
+> > What's the difference?  Just that clients don't have to reestablish tcp
+> > connections?
+> > 
+> > --b.
+> > 
+> > > For NFSv3 KILL signal to lockd still works but for 
+> > > NFSv4 have no way to do it for v4.
+> > > Marc. 
+> > > 
+> > > 
+> > > 
+> > > From:   Bruce Fields <bfields@fieldses.org>
+> > > To:     Marc Eshel/Almaden/IBM@IBMUS
+> > > Cc:     linux-nfs@vger.kernel.org
+> > > Date:   07/01/2016 09:09 AM
+> > > Subject:        Re: grace period
+> > > 
+> > > 
+> > > 
+> > > On Thu, Jun 30, 2016 at 02:46:19PM -0700, Marc Eshel wrote:
+> > > > I see that setting the number of nfsd threads to 0 (echo 0 > 
+> > > > /proc/fs/nfsd/threads) is not releasing the locks and putting the 
+> > server 
+> > > 
+> > > > in grace mode.
+> > > 
+> > > Writing 0 to /proc/fs/nfsd/threads shuts down knfsd.  So it should
+> > > certainly drop locks.  If that's not happening, there's a bug, but 
+> we'd
+> > > need to know more details (version numbers, etc.) to help.
+> > > 
+> > > That alone has never been enough to start a grace period--you'd have 
+> to
+> > > start knfsd again to do that.
+> > > 
+> > > > What is the best way to go into grace period, in new version of the
+> > > > kernel, without restarting the nfs server?
+> > > 
+> > > Restarting the nfs server is the only way.  That's true on older 
+> kernels
+> > > true, as far as I know.  (OK, you can apparently make lockd do 
+> something
+> > > like this with a signal, I don't know if that's used much, and I doubt
+> > > it works outside an NFSv3-only environment.)
+> > > 
+> > > So if you want locks dropped and a new grace period, then you should 
+> run
+> > > "systemctl restart nfs-server", or your distro's equivalent.
+> > > 
+> > > But you're probably doing something more complicated than that.  I'm 
+> not
+> > > sure I understand the question....
+> > > 
+> > > --b.
+> > > 
+> > > 
+> > > 
+> > > 
+> > 
+> > 
+> > 
+> > 
+> 
+> 
+> 
+> 
