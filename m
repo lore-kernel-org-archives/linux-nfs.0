@@ -1,266 +1,169 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx0b-001b2d01.pphosted.com ([148.163.158.5]:19094 "EHLO
-	mx0a-001b2d01.pphosted.com" rhost-flags-OK-OK-OK-FAIL)
-	by vger.kernel.org with ESMTP id S1750713AbcGCFaV convert rfc822-to-8bit
-	(ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 3 Jul 2016 01:30:21 -0400
-Received: from pps.filterd (m0098419.ppops.net [127.0.0.1])
-	by mx0b-001b2d01.pphosted.com (8.16.0.11/8.16.0.11) with SMTP id u635TMhB016409
-	for <linux-nfs@vger.kernel.org>; Sun, 3 Jul 2016 01:30:20 -0400
-Received: from e31.co.us.ibm.com (e31.co.us.ibm.com [32.97.110.149])
-	by mx0b-001b2d01.pphosted.com with ESMTP id 23x6hvjt6e-1
-	(version=TLSv1.2 cipher=AES256-SHA bits=256 verify=NOT)
-	for <linux-nfs@vger.kernel.org>; Sun, 03 Jul 2016 01:30:20 -0400
-Received: from localhost
-	by e31.co.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
-	for <linux-nfs@vger.kernel.org> from <eshel@us.ibm.com>;
-	Sat, 2 Jul 2016 23:30:19 -0600
-Received: from b03cxnp08026.gho.boulder.ibm.com (b03cxnp08026.gho.boulder.ibm.com [9.17.130.18])
-	by d03dlp01.boulder.ibm.com (Postfix) with ESMTP id 1F0221FF001E
-	for <linux-nfs@vger.kernel.org>; Sat,  2 Jul 2016 23:30:02 -0600 (MDT)
-Received: from b03ledav005.gho.boulder.ibm.com (b03ledav005.gho.boulder.ibm.com [9.17.130.236])
-	by b03cxnp08026.gho.boulder.ibm.com (8.14.9/8.14.9/NCO v10.0) with ESMTP id u635UI1K45678604
-	for <linux-nfs@vger.kernel.org>; Sat, 2 Jul 2016 22:30:18 -0700
-Received: from b03ledav005.gho.boulder.ibm.com (unknown [127.0.0.1])
-	by IMSVA (Postfix) with ESMTP id 88F47BE047
-	for <linux-nfs@vger.kernel.org>; Sat,  2 Jul 2016 23:30:18 -0600 (MDT)
-Received: from d50lp31.co.us.ibm.com (unknown [9.17.249.32])
-	by b03ledav005.gho.boulder.ibm.com (Postfix) with ESMTPS id 73E31BE04A
-	for <linux-nfs@vger.kernel.org>; Sat,  2 Jul 2016 23:30:18 -0600 (MDT)
-Received: from localhost
-	by d50lp31.co.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
-	for <linux-nfs@vger.kernel.org> from <eshel@us.ibm.com>;
-	Sat, 2 Jul 2016 23:30:18 -0600
-Received: from localhost
-	by smtp.notes.na.collabserv.com with smtp.notes.na.collabserv.com ESMTP
-	for <linux-nfs@vger.kernel.org> from <eshel@us.ibm.com>;
-	Sun, 3 Jul 2016 05:30:15 -0000
-In-Reply-To: <20160702005820.GA27063@fieldses.org>
-To: Bruce Fields <bfields@fieldses.org>
-Cc: linux-nfs@vger.kernel.org, Tomer Perry <TOMP@il.ibm.com>
-Subject: Re: grace period
-From: "Marc Eshel" <eshel@us.ibm.com>
-Date: Sat, 2 Jul 2016 22:30:11 -0700
-References: <1465939516-44769-1-git-send-email-trond.myklebust@primarydata.com>
- <OF44E4DD0C.FF5B6C3E-ON88257FE2.00771383-88257FE2.007798E3@notes.na.collabserv.com>
- <20160701160857.GB20327@fieldses.org>
- <OF82A5FFDC.3CCEBF40-ON88257FE3.0059C174-88257FE3.00604E03@notes.na.collabserv.com>
- <20160701200742.GA24269@fieldses.org>
- <OF5D486F02.62CECB7B-ON88257FE3.0071DBE5-88257FE3.00722388@notes.na.collabserv.com>
- <20160701210151.GE24269@fieldses.org>
- <OF79A36FEE.749D5EF5-ON88257FE3.007C9721-88257FE3.007CC2B1@notes.na.collabserv.com>
- <20160702005820.GA27063@fieldses.org>
+Received: from smtp-o-3.desy.de ([131.169.56.156]:60390 "EHLO smtp-o-3.desy.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752844AbcGDMGK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 4 Jul 2016 08:06:10 -0400
+Received: from smtp-map-3.desy.de (smtp-map-3.desy.de [131.169.56.68])
+	by smtp-o-3.desy.de (DESY-O-3) with ESMTP id ED7482806E7
+	for <linux-nfs@vger.kernel.org>; Mon,  4 Jul 2016 14:06:07 +0200 (CEST)
+Received: from ZITSWEEP2.win.desy.de (zitsweep2.win.desy.de [131.169.97.96])
+	by smtp-map-3.desy.de (DESY_MAP_3) with ESMTP id DA99B1168
+	for <linux-nfs@vger.kernel.org>; Mon,  4 Jul 2016 14:06:07 +0200 (MEST)
+Date: Mon, 4 Jul 2016 14:06:07 +0200 (CEST)
+From: "Mkrtchyan, Tigran" <tigran.mkrtchyan@desy.de>
+To: Trond Myklebust <trondmy@primarydata.com>
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Message-ID: <871432796.21769435.1467633967302.JavaMail.zimbra@desy.de>
+In-Reply-To: <5FDF6F2B-D8A6-42A5-93C4-646AA934AAF2@desy.de>
+References: <1437966383.20209875.1467210735879.JavaMail.zimbra@desy.de> <996468AC-7B28-4267-A049-9974AC8D705F@primarydata.com> <5FDF6F2B-D8A6-42A5-93C4-646AA934AAF2@desy.de>
+Subject: Re: unhappy 4.5.7 kernel with nfs
 MIME-Version: 1.0
-Content-Type: text/plain; charset="US-ASCII"
-Message-Id: <OFC1237E53.3CFCA8E8-ON88257FE5.001D3182-88257FE5.001E3AE3@notes.na.collabserv.com>
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-I tried again NFSv3 locks with xfs export. "echo 0 > 
-/proc/fs/nfsd/threads" releases locks on rhel7.0 but not on rhel7.2
-What else can I show you to find the problem?
-Marc.
- 
-works:
-[root@boar11 ~]# uname -a
-Linux boar11 3.10.0-123.el7.x86_64 #1 SMP Mon May 5 11:16:57 EDT 2014 
-x86_64 x86_64 x86_64 GNU/Linux
-[root@boar11 ~]# cat /etc/redhat-release 
-Red Hat Enterprise Linux Server release 7.0 (Maipo)
-
-not working:
-[root@sonascl21 ~]# uname -a
-Linux sonascl21.sonasad.almaden.ibm.com 3.10.0-327.el7.x86_64 #1 SMP Thu 
-Oct 29 17:29:29 EDT 2015 x86_64 x86_64 x86_64 GNU/Linux
-[root@sonascl21 ~]# cat /etc/redhat-release 
-Red Hat Enterprise Linux Server release 7.2 (Maipo)
-[root@sonascl21 ~]# cat /proc/fs/nfsd/threads 
-0
-[root@sonascl21 ~]# cat /proc/locks
-1: POSIX  ADVISORY  WRITE 2346 fd:00:1612092569 0 9999
 
 
 
-From:   Bruce Fields <bfields@fieldses.org>
-To:     Marc Eshel/Almaden/IBM@IBMUS
-Cc:     linux-nfs@vger.kernel.org, Tomer Perry <TOMP@il.ibm.com>
-Date:   07/01/2016 05:58 PM
-Subject:        Re: grace period
+Hi Trond,
+
+I did, the patch fave fixed the issue.
+
+Tigran.
+
+----- Original Message -----
+> From: "Mkrtchyan, Tigran" <tigran.mkrtchyan@desy.de>
+> To: "Trond Myklebust" <trondmy@primarydata.com>
+> Cc: "Linux NFS Mailing List" <linux-nfs@vger.kernel.org>
+> Sent: Wednesday, June 29, 2016 6:58:24 PM
+> Subject: Re: unhappy 4.5.7 kernel with nfs
+
+> Hi Trond,
+
+> I will re-run with that fix and let you know.
+
+> -Tigran
+
+> ----- Reply message -----
+> From: "Trond Myklebust" <trondmy@primarydata.com>
+> To: "Mkrtchyan, Tigran" <tigran.mkrtchyan@desy.de>
+> Cc: "linux-nfs list" <linux-nfs@vger.kernel.org>
+> Subject: unhappy 4.5.7 kernel with nfs
+> Date: Wed, Jun 29, 2016 16:54
+
+> > On Jun 29, 2016, at 10:32, Mkrtchyan, Tigran <tigran.mkrtchyan@desy.de> wrote:
+
+> > Dear NFS gurus and Co.
 
 
+> > During some simple testing as:
 
-On Fri, Jul 01, 2016 at 03:42:43PM -0700, Marc Eshel wrote:
-> Yes, the locks are requested from another node, what fs are you using, I 
+> > on a fresh rebooted host
 
-> don't think it should make any difference, but I can try it with the 
-same 
-> fs. 
-> Make sure you are using v3, it does work for v4.
+> > [root@anahit ~]# uptime
+> > 16:31:10 up 1:29, 1 user, load average: 0.39, 0.65, 0.35
+> > [root@anahit ~]# uname -a
+>> Linux anahit.desy.de 4.5.7-300.fc24.x86_64 #1 SMP Wed Jun 8 18:12:45 UTC 2016
+> > x86_64 x86_64 x86_64 GNU/Linux
+> > [root@anahit ~]# mount -o vers=4.1 dcache-lab007:/ /pnfs
+> > [root@anahit ~]# cd /pnfs/exports/data
+> > [root@anahit data]# python
+> > Python 2.7.11 (default, Jun 21 2016, 09:15:12)
+> > [GCC 6.1.1 20160510 (Red Hat 6.1.1-2)] on linux2
+> > Type "help", "copyright", "credits" or "license" for more information.
+> >>>> f = open("NTUP_MINBIAS.125118._000007.root.1")
+> >>>> b = f.read(1)
+> > Segmentation fault
+> > [root@anahit data]# dmesg
 
-I tested v3 on upstream.--b.
+> > ......
 
-> Marc.
-> 
-> 
-> 
-> From:   Bruce Fields <bfields@fieldses.org>
-> To:     Marc Eshel/Almaden/IBM@IBMUS
-> Cc:     linux-nfs@vger.kernel.org, Tomer Perry <TOMP@il.ibm.com>
-> Date:   07/01/2016 02:01 PM
-> Subject:        Re: grace period
-> 
-> 
-> 
-> On Fri, Jul 01, 2016 at 01:46:42PM -0700, Marc Eshel wrote:
-> > This is my v3 test that show the lock still there after echo 0 > 
-> > /proc/fs/nfsd/threads
-> > 
-> > [root@sonascl21 ~]# cat /etc/redhat-release 
-> > Red Hat Enterprise Linux Server release 7.2 (Maipo)
-> > 
-> > [root@sonascl21 ~]# uname -a
-> > Linux sonascl21.sonasad.almaden.ibm.com 3.10.0-327.el7.x86_64 #1 SMP 
-Thu 
-> 
-> > Oct 29 17:29:29 EDT 2015 x86_64 x86_64 x86_64 GNU/Linux
-> > 
-> > [root@sonascl21 ~]# cat /proc/locks | grep 999
-> > 3: POSIX  ADVISORY  WRITE 2349 00:2a:489486 0 999
-> > 
-> > [root@sonascl21 ~]# echo 0 > /proc/fs/nfsd/threads
-> > [root@sonascl21 ~]# cat /proc/fs/nfsd/threads
-> > 0
-> > 
-> > [root@sonascl21 ~]# cat /proc/locks | grep 999
-> > 3: POSIX  ADVISORY  WRITE 2349 00:2a:489486 0 999
-> 
-> Huh, that's not what I see.  Are you positive that's the lock on the
-> backend filesystem and not the client-side lock (in case you're doing a
-> loopback mount?)
-> 
-> --b.
-> 
-> > 
-> > 
-> > 
-> > 
-> > From:   Bruce Fields <bfields@fieldses.org>
-> > To:     Marc Eshel/Almaden/IBM@IBMUS
-> > Cc:     linux-nfs@vger.kernel.org
-> > Date:   07/01/2016 01:07 PM
-> > Subject:        Re: grace period
-> > 
-> > 
-> > 
-> > On Fri, Jul 01, 2016 at 10:31:55AM -0700, Marc Eshel wrote:
-> > > It used to be that sending KILL signal to lockd would free locks and 
-
-> > start 
-> > > Grace period, and when setting nfsd threads to zero, 
-> nfsd_last_thread() 
-> > > calls nfsd_shutdown that called lockd_down that I believe was 
-causing 
-> > both 
-> > > freeing of locks and starting grace period or maybe it was setting 
-it 
-> > back 
-> > > to a value > 0 that started the grace period.
-> > 
-> > OK, apologies, I didn't know (or forgot) that.
-> > 
-> > > Any way starting with the kernels that are in RHEL7.1 and up echo 0 
-> 
-> > > /proc/fs/nfsd/threads doesn't do it anymore, I assume going to 
-common 
-> > > grace period for NLM and NFSv4 changed things.
-> > > The question is how to do IP fail-over, so when a node fails and the 
-
-> IP 
-> > is 
-> > > moving to another node, we need to go into grace period on all the 
-> nodes 
-> > 
-> > > in the cluster so the locks of the failed node are not given to 
-anyone 
-> 
-> > > other than the client that is reclaiming his locks. Restarting NFS 
-> > server 
-> > > is to distractive.
-> > 
-> > What's the difference?  Just that clients don't have to reestablish 
-tcp
-> > connections?
-> > 
-> > --b.
-> > 
-> > > For NFSv3 KILL signal to lockd still works but for 
-> > > NFSv4 have no way to do it for v4.
-> > > Marc. 
-> > > 
-> > > 
-> > > 
-> > > From:   Bruce Fields <bfields@fieldses.org>
-> > > To:     Marc Eshel/Almaden/IBM@IBMUS
-> > > Cc:     linux-nfs@vger.kernel.org
-> > > Date:   07/01/2016 09:09 AM
-> > > Subject:        Re: grace period
-> > > 
-> > > 
-> > > 
-> > > On Thu, Jun 30, 2016 at 02:46:19PM -0700, Marc Eshel wrote:
-> > > > I see that setting the number of nfsd threads to 0 (echo 0 > 
-> > > > /proc/fs/nfsd/threads) is not releasing the locks and putting the 
-> > server 
-> > > 
-> > > > in grace mode.
-> > > 
-> > > Writing 0 to /proc/fs/nfsd/threads shuts down knfsd.  So it should
-> > > certainly drop locks.  If that's not happening, there's a bug, but 
-> we'd
-> > > need to know more details (version numbers, etc.) to help.
-> > > 
-> > > That alone has never been enough to start a grace period--you'd have 
-
-> to
-> > > start knfsd again to do that.
-> > > 
-> > > > What is the best way to go into grace period, in new version of 
-the
-> > > > kernel, without restarting the nfs server?
-> > > 
-> > > Restarting the nfs server is the only way.  That's true on older 
-> kernels
-> > > true, as far as I know.  (OK, you can apparently make lockd do 
-> something
-> > > like this with a signal, I don't know if that's used much, and I 
-doubt
-> > > it works outside an NFSv3-only environment.)
-> > > 
-> > > So if you want locks dropped and a new grace period, then you should 
-
-> run
-> > > "systemctl restart nfs-server", or your distro's equivalent.
-> > > 
-> > > But you're probably doing something more complicated than that.  I'm 
-
-> not
-> > > sure I understand the question....
-> > > 
-> > > --b.
-> > > 
-> > > 
-> > > 
-> > > 
-> > 
-> > 
-> > 
-> > 
-> 
-> 
-> 
-> 
+> > [ 5128.031968] nfs4filelayout_init: NFSv4 File Layout Driver Registering...
+>> [ 5153.179497] page:ffffea0001863980 count:2 mapcount:0 mapping:ffff880074d73eb0
+> > index:0x0
+> > [ 5153.179502] flags: 0x1ffffc00000000()
+> > [ 5153.179504] page dumped because: VM_BUG_ON_PAGE(!PageLocked(page))
+> > [ 5153.179506] page->mem_cgroup:ffff88012b013800
+> > [ 5153.179528] ------------[ cut here ]------------
+> > [ 5153.179542] kernel BUG at mm/filemap.c:843!
+> > [ 5153.179548] invalid opcode: 0000 [#1] SMP
+>> [ 5153.179556] Modules linked in: nfs_layout_nfsv41_files rpcsec_gss_krb5 nfsv4
+>> dns_resolver nfs fscache fuse binfmt_misc nf_conntrack_netbios_ns
+>> nf_conntrack_broadcast ip6t_rpfilter ip6t_REJECT nf_reject_ipv6 xt_conntrack
+>> ip_set nfnetlink ebtable_nat ebtable_broute bridge stp llc ip6table_security
+>> ip6table_nat nf_conntrack_ipv6 nf_defrag_ipv6 nf_nat_ipv6 ip6table_mangle
+>> ip6table_raw iptable_security iptable_nat nf_conntrack_ipv4 nf_defrag_ipv4
+>> nf_nat_ipv4 nf_nat nf_conntrack iptable_mangle iptable_raw ebtable_filter
+>> ebtables ip6table_filter ip6_tables btrfs xor raid6_pq coretemp
+>> snd_hda_codec_idt kvm_intel snd_hda_codec_generic snd_hda_intel kvm
+>> snd_hda_codec snd_hda_core irqbypass snd_hwdep snd_seq snd_seq_device snd_pcm
+>> gpio_ich ppdev iTCO_wdt iTCO_vendor_support lpc_ich winbond_cir snd_timer
+> > i2c_i801
+>> [ 5153.179700] rc_core parport_pc snd parport shpchp soundcore acpi_cpufreq
+>> x38_edac edac_core tpm_tis tpm nfsd auth_rpcgss nfs_acl lockd grace sunrpc
+>> ata_generic pata_acpi nouveau serio_raw video mxm_wmi wmi i2c_algo_bit
+>> drm_kms_helper firewire_ohci firewire_core ttm crc_itu_t drm pata_marvell fjes
+> > e1000e ptp pps_core
+>> [ 5153.179772] CPU: 0 PID: 2504 Comm: python Tainted: G I 4.5.7-300.fc24.x86_64
+> > #1
+>> [ 5153.179780] Hardware name: Comptronic pczW1007/DX38BT, BIOS
+> > BTX3810J.86A.1893.2008.1009.1712 10/09/2008
+>> [ 5153.179788] task: ffff8800c88cd880 ti: ffff88007fef8000 task.ti:
+> > ffff88007fef8000
+>> [ 5153.179794] RIP: 0010:[<ffffffff811b1966>] [<ffffffff811b1966>]
+> > unlock_page+0xa6/0xb0
+> > [ 5153.179808] RSP: 0018:ffff88007fefbac8 EFLAGS: 00010282
+> > [ 5153.179813] RAX: 0000000000000021 RBX: ffffea0001863980 RCX: 0000000000000006
+> > [ 5153.179820] RDX: 0000000000000000 RSI: 0000000000000246 RDI: ffff88012fc0dfb0
+> > [ 5153.179826] RBP: ffff88007fefbac8 R08: 000000000002bd32 R09: 0000000000000389
+> > [ 5153.179833] R10: 0000000000000000 R11: ffffffff81f410cd R12: ffff880090f6fa00
+> > [ 5153.179839] R13: 00000000fffffffb R14: ffff88007fefbb60 R15: ffffea00018639a0
+>> [ 5153.179846] FS: 00007fef72a0b700(0000) GS:ffff88012fc00000(0000)
+> > knlGS:0000000000000000
+> > [ 5153.179853] CS: 0010 DS: 0000 ES: 0000 CR0: 0000000080050033
+> > [ 5153.179859] CR2: 00007f45eaadc000 CR3: 000000007fe35000 CR4: 00000000000406f0
+> > [ 5153.179865] Stack:
+>> [ 5153.179869] ffff88007fefbaf8 ffffffffa07d7c28 ffff88007fefbc90
+> > ffffea0001863980
+>> [ 5153.179882] ffff880074d73eb0 ffff8800c88cd880 ffff88007fefbb48
+> > ffffffff811c2aa1
+>> [ 5153.179894] ffff8800c88cd880 ffff88007fefbb60 ffffffffa07d7b70
+> > ffff880074d73d48
+> > [ 5153.179906] Call Trace:
+> > [ 5153.179928] [<ffffffffa07d7c28>] readpage_async_filler+0xb8/0x220 [nfs]
+> > [ 5153.179938] [<ffffffff811c2aa1>] read_cache_pages+0xc1/0x150
+> > [ 5153.179954] [<ffffffffa07d7b70>] ? nfs_read_completion+0x210/0x210 [nfs]
+> > [ 5153.179972] [<ffffffffa07d8319>] nfs_readpages+0x129/0x200 [nfs]
+> > [ 5153.179980] [<ffffffff811c2ccd>] __do_page_cache_readahead+0x19d/0x270
+> > [ 5153.179988] [<ffffffff811c2e6e>] ondemand_readahead+0xce/0x250
+> > [ 5153.179995] [<ffffffff811c318e>] page_cache_sync_readahead+0x2e/0x50
+> > [ 5153.180002] [<ffffffff811b4a32>] generic_file_read_iter+0x5d2/0x8b0
+> > [ 5153.180028] [<ffffffffa0822563>] ? nfs4_have_delegation+0x13/0x20 [nfsv4]
+> > [ 5153.180044] [<ffffffffa07cf3eb>] ? __nfs_revalidate_mapping+0x8b/0x240 [nfs]
+>> [ 5153.180053] [<ffffffff811c542c>] ?
+> > lru_cache_add_active_or_unevictable+0x4c/0xf0
+> > [ 5153.180068] [<ffffffffa07cac72>] nfs_file_read+0x52/0xa0 [nfs]
+> > [ 5153.180076] [<ffffffff81241528>] __vfs_read+0xc8/0x110
+> > [ 5153.180083] [<ffffffff81242496>] vfs_read+0x86/0x130
+> > [ 5153.180090] [<ffffffff81243455>] SyS_read+0x55/0xc0
+> > [ 5153.180098] [<ffffffff817cf06e>] entry_SYSCALL_64_fastpath+0x12/0x6d
+>> [ 5153.180104] Code: 92 b0 00 00 00 48 d3 ee 48 8d 0c 76 48 89 c6 48 8d 3c ca 31
+>> d2 e8 db 68 f3 ff 5d c3 48 c7 c6 58 bb a7 81 48 89 c7 e8 0a 1a 03 00 <0f> 0b 0f
+> > 1f 84 00 00 00 00 00 66 66 66 66 90 55 48 89 fa 48 89
+> > [ 5153.180206] RIP [<ffffffff811b1966>] unlock_page+0xa6/0xb0
+> > [ 5153.180215] RSP <ffff88007fefbac8>
+> > [ 5153.182743] ---[ end trace 7439f3337246bf52 ]---
 
 
+> > 100% reproducible!
 
+> That looks like
+> http://git.linux-nfs.org/?p=trondmy/linux-nfs.git;a=commit;h=b84d4fa6e7658f307177e4da75f1335415ed97ab
 
+> Cheers
+> Trond
 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at http://vger.kernel.org/majordomo-info.html
