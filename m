@@ -1,58 +1,108 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:54266 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754832AbcGEPIS (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 5 Jul 2016 11:08:18 -0400
-Subject: Re: HA NFS
-To: Marc Eshel <eshel@us.ibm.com>
-References: <1465939516-44769-1-git-send-email-trond.myklebust@primarydata.com>
- <OF44E4DD0C.FF5B6C3E-ON88257FE2.00771383-88257FE2.007798E3@notes.na.collabserv.com>
- <20160701160857.GB20327@fieldses.org>
- <OF82A5FFDC.3CCEBF40-ON88257FE3.0059C174-88257FE3.00604E03@notes.na.collabserv.com>
- <20160701200742.GA24269@fieldses.org>
- <OF5D486F02.62CECB7B-ON88257FE3.0071DBE5-88257FE3.00722388@notes.na.collabserv.com>
- <20160701210151.GE24269@fieldses.org>
- <OF79A36FEE.749D5EF5-ON88257FE3.007C9721-88257FE3.007CC2B1@notes.na.collabserv.com>
- <20160702005820.GA27063@fieldses.org>
- <OFC1237E53.3CFCA8E8-ON88257FE5.001D3182-88257FE5.001E3A5B@LocalDomain>
- <OF839F4B82.C0113FD6-ON88257FE6.00828B44-88257FE6.008343CD@notes.na.collabserv.com>
-Cc: linux-nfs@vger.kernel.org, Tomer Perry <TOMP@il.ibm.com>
-From: Steve Dickson <SteveD@redhat.com>
-Message-ID: <47ebf941-2e1c-83fc-93e0-b4d70892dc2c@RedHat.com>
-Date: Tue, 5 Jul 2016 11:08:17 -0400
-MIME-Version: 1.0
-In-Reply-To: <OF839F4B82.C0113FD6-ON88257FE6.00828B44-88257FE6.008343CD@notes.na.collabserv.com>
-Content-Type: text/plain; charset=windows-1252
+Received: from mail-qt0-f178.google.com ([209.85.216.178]:36431 "EHLO
+	mail-qt0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752524AbcGEPix (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 5 Jul 2016 11:38:53 -0400
+Received: by mail-qt0-f178.google.com with SMTP id w59so102802766qtd.3
+        for <linux-nfs@vger.kernel.org>; Tue, 05 Jul 2016 08:38:52 -0700 (PDT)
+Message-ID: <1467733130.3800.36.camel@redhat.com>
+Subject: Re: [PATCH v23 10/22] posix_acl: Improve xattr fixup code
+From: Jeff Layton <jlayton@redhat.com>
+To: Andreas Gruenbacher <agruenba@redhat.com>,
+        Alexander Viro <viro@zeniv.linux.org.uk>
+Cc: Christoph Hellwig <hch@infradead.org>, "Theodore Ts'o" <tytso@mit.edu>,
+        Andreas Dilger <adilger.kernel@dilger.ca>,
+        "J. Bruce Fields" <bfields@fieldses.org>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>,
+        Dave Chinner <david@fromorbit.com>, linux-ext4@vger.kernel.org,
+        xfs@oss.sgi.com, linux-kernel@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-cifs@vger.kernel.org, linux-api@vger.kernel.org
+Date: Tue, 05 Jul 2016 11:38:50 -0400
+In-Reply-To: <1467294433-3222-11-git-send-email-agruenba@redhat.com>
+References: <1467294433-3222-1-git-send-email-agruenba@redhat.com>
+	 <1467294433-3222-11-git-send-email-agruenba@redhat.com>
+Content-Type: text/plain; charset="UTF-8"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Thu, 2016-06-30 at 15:47 +0200, Andreas Gruenbacher wrote:
+> Both XATTR_NAME_POSIX_ACL_ACCESS and XATTR_NAME_POSIX_ACL_DEFAULT have
+> the same XATTR_SYSTEM_PREFIX prefix; don't check for the same prefix
+> repeatedly.
+> 
+> Signed-off-by: Andreas Gruenbacher <agruenba@redhat.com>
+> Reviewed-by: Steve French <steve.french@primarydata.com>
+> ---
+>  fs/xattr.c | 29 +++++++++++++++++++++++------
+>  1 file changed, 23 insertions(+), 6 deletions(-)
+> 
+> diff --git a/fs/xattr.c b/fs/xattr.c
+> index 4beafc4..61ac218 100644
+> --- a/fs/xattr.c
+> +++ b/fs/xattr.c
+> @@ -295,6 +295,16 @@ out:
+>  }
+>  EXPORT_SYMBOL_GPL(vfs_removexattr);
+>  
+> +static void
+> +fix_xattr_from_user(const char *kname, void *kvalue, size_t size)
+> +{
+> +	if (strncmp(kname, XATTR_SYSTEM_PREFIX, XATTR_SYSTEM_PREFIX_LEN))
+> +		return;
+> +	kname += XATTR_SYSTEM_PREFIX_LEN;
+> +	if (!strcmp(kname, XATTR_POSIX_ACL_ACCESS) ||
+> +	    !strcmp(kname, XATTR_POSIX_ACL_DEFAULT))
+> +		posix_acl_fix_xattr_from_user(kvalue, size);
+> +}
+>  
+>  /*
+>   * Extended attribute SET operations
+> @@ -329,9 +339,7 @@ setxattr(struct dentry *d, const char __user *name, const void __user *value,
+>  			error = -EFAULT;
+>  			goto out;
+>  		}
+> -		if ((strcmp(kname, XATTR_NAME_POSIX_ACL_ACCESS) == 0) ||
+> -		    (strcmp(kname, XATTR_NAME_POSIX_ACL_DEFAULT) == 0))
+> -			posix_acl_fix_xattr_from_user(kvalue, size);
+> +		fix_xattr_from_user(kname, kvalue, size);
+>  	}
+>  
+>  	error = vfs_setxattr(d, kname, kvalue, size, flags);
+> @@ -396,6 +404,17 @@ SYSCALL_DEFINE5(fsetxattr, int, fd, const char __user *, name,
+>  	return error;
+>  }
+>  
+> +static void
+> +fix_xattr_to_user(const char *kname, void *kvalue, size_t size)
+> +{
+> +	if (strncmp(kname, XATTR_SYSTEM_PREFIX, XATTR_SYSTEM_PREFIX_LEN))
+> +		return;
+> +	kname += XATTR_SYSTEM_PREFIX_LEN;
+> +	if (!strcmp(kname, XATTR_POSIX_ACL_ACCESS) ||
+> +	    !strcmp(kname, XATTR_POSIX_ACL_DEFAULT))
+> +		posix_acl_fix_xattr_to_user(kvalue, size);
+> +}
+> +
+>  /*
+>   * Extended attribute GET operations
+>   */
+> @@ -426,9 +445,7 @@ getxattr(struct dentry *d, const char __user *name, void __user *value,
+>  
+>  	error = vfs_getxattr(d, kname, kvalue, size);
+>  	if (error > 0) {
+> -		if ((strcmp(kname, XATTR_NAME_POSIX_ACL_ACCESS) == 0) ||
+> -		    (strcmp(kname, XATTR_NAME_POSIX_ACL_DEFAULT) == 0))
+> -			posix_acl_fix_xattr_to_user(kvalue, size);
+> +		fix_xattr_to_user(kname, kvalue, size);
+>  		if (size && copy_to_user(value, kvalue, error))
+>  			error = -EFAULT;
+>  	} else if (error == -ERANGE && size >= XATTR_SIZE_MAX) {
 
+Might be nice to move this one to the head of the queue. I don't see it
+as being a controversial change, and it could go in before the rest of
+the patches.
 
-On 07/04/2016 07:53 PM, Marc Eshel wrote:
-> Hi Steve,
-> I did not pay attention for a while and now I see that since RHEL7.0 there 
-> a major changes in NFSv4 recovery for a signal machine and for cluster 
-> file system. Is there any write up on the changes like the use of 
-> /var/lib/nfs/nfsdcltrack/main.sqlite, I see it being used in 7.0 but not 
-> in 7.2. Any information would be appreciated.
-
-That file is still being used... but there were some changes.
-
-In RHEL 7.2 this was added for bz 1234598
-commit c41a3d0a17baa61a07d48d8536e99908d765de9b
-Author: Jeff Layton <jlayton@primarydata.com>
-Date:   Fri Sep 19 11:07:31 2014 -0400
-
-    nfsdcltrack: fetch NFSDCLTRACK_GRACE_START out of environment
-
-
-In RHEL 7.3 there will be this for bz 1285097
-commit d479ad3adb0671c48d6fbf3e36bd52a31159c413
-Author: Jeff Layton <jlayton@primarydata.com>
-Date:   Fri Sep 19 11:03:45 2014 -0400
-
-    nfsdcltrack: update schema to v2
-
-I hope this helps... 
-
-steved.
+Reviewed-by: Jeff Layton <jlayton@redhat.com>
