@@ -1,59 +1,87 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:59535 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751105AbcGETGc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 5 Jul 2016 15:06:32 -0400
-Subject: Re: /etc/exports parsing is borked again in nfs-utils
-To: Trond Myklebust <trondmy@primarydata.com>
-References: <1466885520.9316.4.camel@primarydata.com>
- <151cf713-410a-b073-5c5a-430691fb5e6d@RedHat.com>
-Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-From: Steve Dickson <SteveD@redhat.com>
-Message-ID: <95f0bd6b-b480-33ab-4a7c-b864505c32b9@RedHat.com>
-Date: Tue, 5 Jul 2016 15:06:30 -0400
+Received: from out3-smtp.messagingengine.com ([66.111.4.27]:38570 "EHLO
+	out3-smtp.messagingengine.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1752737AbcGEUgz convert rfc822-to-8bit
+	(ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 5 Jul 2016 16:36:55 -0400
+Received: from compute6.internal (compute6.nyi.internal [10.202.2.46])
+	by mailout.nyi.internal (Postfix) with ESMTP id DA20020411
+	for <linux-nfs@vger.kernel.org>; Tue,  5 Jul 2016 16:36:54 -0400 (EDT)
+Received: from ebox.rath.org (ebox.rath.org [45.79.69.51])
+	by mail.messagingengine.com (Postfix) with ESMTPA id 9E0AAF29FA
+	for <linux-nfs@vger.kernel.org>; Tue,  5 Jul 2016 16:36:54 -0400 (EDT)
+Received: from thinkpad.rath.org (thinkpad [192.168.12.2])
+	by ebox.rath.org (Postfix) with ESMTPS id EC2503240E6
+	for <linux-nfs@vger.kernel.org>; Tue,  5 Jul 2016 20:36:53 +0000 (UTC)
+From: Nikolaus Rath <Nikolaus@rath.org>
+To: linux-nfs@vger.kernel.org
+Subject: ELOOP from getdents
+Date: Tue, 05 Jul 2016 13:36:53 -0700
+Message-ID: <87lh1fizyy.fsf@thinkpad.rath.org>
 MIME-Version: 1.0
-In-Reply-To: <151cf713-410a-b073-5c5a-430691fb5e6d@RedHat.com>
 Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Hello,
+
+I'm having trouble exporting a FUSE file system over nfs4
+(cf. https://bitbucket.org/nikratio/s3ql/issues/221/). If there are only
+a few entries in exported directory, `ls` on the NFS mountpoint fails
+with:
+
+# ls -li /mnt/nfs/
+/bin/ls: reading directory /mnt/nfs/: Too many levels of symbolic links
+total 1
+3 drwx------ 1 root root 0 Jul  5 11:07 lost+found/
+3 drwx------ 1 root root 0 Jul  5 11:07 lost+found/
+4 -rw-r--r-- 1 root root 4 Jul  5 11:07 testfile
+4 -rw-r--r-- 1 root root 4 Jul  5 11:07 testfile
+
+Running strace shows that the getdents() syscall fails with ELOOP:
+
+stat("/mnt/nfs", {st_mode=S_IFDIR|0755, st_size=0, ...}) = 0
+openat(AT_FDCWD, "/mnt/nfs", O_RDONLY|O_NONBLOCK|O_DIRECTORY|O_CLOEXEC) = 3
+getdents(3, /* 4 entries */, 32768)     = 112
+getdents(3, /* 2 entries */, 32768)     = 64
+getdents(3, 0xf15c90, 32768)            = -1 ELOOP (Too many levels of symbolic links)
+open("/usr/share/locale/locale.alias", O_RDONLY|O_CLOEXEC) = 4
+
+This happens only when using NFSv4, when mounting with vers=3 the error
+does not occur.
+
+The FUSE file system receives the same requests and responds in the same
+way in both cases:
+
+2016-07-05 12:22:31.477 21519:fuse-worker-7 s3ql.fs.opendir: started with 1
+2016-07-05 12:22:31.477 21519:fuse-worker-8 s3ql.fs.readdir: started with 1, 0
+2016-07-05 12:22:31.478 21519:fuse-worker-8 s3ql.fs.readdir: reporting lost+found with inode 3, generation 0, nlink 1
+2016-07-05 12:22:31.478 21519:fuse-worker-8 s3ql.fs.readdir: reporting testfile with inode 4, generation 0, nlink 1
+2016-07-05 12:22:31.479 21519:fuse-worker-9 s3ql.fs.getattr: started with 1
+2016-07-05 12:22:31.479 21519:fuse-worker-10 s3ql.fs._lookup: started with 1, b'lost+found'
+2016-07-05 12:22:31.480 21519:fuse-worker-11 s3ql.fs._lookup: started with 1, b'testfile'
+2016-07-05 12:22:31.481 21519:fuse-worker-12 s3ql.fs.readdir: started with 1, 2
+2016-07-05 12:22:31.484 21519:fuse-worker-13 s3ql.fs.releasedir: started with 1
 
 
-On 07/05/2016 02:45 PM, Steve Dickson wrote:
-> 
-> 
-> On 06/25/2016 04:12 PM, Trond Myklebust wrote:
->> [root@leira nfs]# cat /etc/exports
->> /export		-ro,sec=sys,sync	localhost(rw,no_root_squ
->> ash)
->> [root@leira nfs]# exportfs -rv
->> exporting localhost:/export
->> [root@leira nfs]# mount -t nfs localhost:/export /mnt/nfs
->> [root@leira nfs]# mkdir /mnt/nfs/gnurr
->> mkdir: cannot create directory ‘/mnt/nfs/gnurr’: Read-only file system
->>
->>
->> Note that removing the "sec=sys" above causes the test to succeed.
->>
-> Well it has something to do with
-> 
-> commit 9b5c3c6a6571a265a90cfce30345891fac24a67c
-> Author: Trond Myklebust <Trond.Myklebust@netapp.com>
-> Date:   Wed Sep 18 11:50:58 2013 -0400
-> 
->     exportfs: insecure/secure should be a secinfo_flag
-> 
-> Because I commit out the call to secinfo_flags_show(), 
-> the export is exported correctly... still looking... 
-It turns out the problem has nothing to do that commit
-because the export flags that are being passed to it 
-are wrong. 
+The numbers refer to inodes. So FUSE first receives an opendir() request
+for inode 1 (the file system root / mountpoint), followed by readdir()
+for the same directory with offset 0. It reports two entries. It then
+receives another readdir for this directory with offset 2, and reports
+that all entries have been returned.
 
-When the sec= specified in the default options the 
-flags stored in the  e_secinfo are the default 
-export flags and are not being updated by the 
-host-specific options.
+However, for some reason NFSv4 gets confused by this and reports 6
+entries to ls.
 
-I'm not sure how this ever worked... :-( 
 
-steved.
+Can anyone advise what might be happening here?
+
+
+Best,
+-Nikolaus
+
+-- 
+GPG encrypted emails preferred. Key id: 0xD113FCAC3C4E599F
+Fingerprint: ED31 791B 2C5C 1613 AF38 8B8A D113 FCAC 3C4E 599F
+
+             »Time flies like an arrow, fruit flies like a Banana.«
