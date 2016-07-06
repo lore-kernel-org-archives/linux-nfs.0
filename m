@@ -1,14 +1,14 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:57736 "EHLO fieldses.org"
+Received: from fieldses.org ([173.255.197.46]:57748 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751666AbcGFURt (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 6 Jul 2016 16:17:49 -0400
-Date: Wed, 6 Jul 2016 16:17:48 -0400
+	id S1755813AbcGFUbH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 6 Jul 2016 16:31:07 -0400
+Date: Wed, 6 Jul 2016 16:30:55 -0400
 From: Fields Bruce <bfields@fieldses.org>
 To: Trond Myklebust <trondmy@primarydata.com>
 Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
 Subject: Re: [PATCH 09/10] SUNRPC: Change TCP socket space reservation
-Message-ID: <20160706201748.GG18856@fieldses.org>
+Message-ID: <20160706203055.GH18856@fieldses.org>
 References: <1466780152-7154-2-git-send-email-trond.myklebust@primarydata.com>
  <1466780152-7154-3-git-send-email-trond.myklebust@primarydata.com>
  <1466780152-7154-4-git-send-email-trond.myklebust@primarydata.com>
@@ -17,49 +17,53 @@ References: <1466780152-7154-2-git-send-email-trond.myklebust@primarydata.com>
  <1466780152-7154-7-git-send-email-trond.myklebust@primarydata.com>
  <1466780152-7154-8-git-send-email-trond.myklebust@primarydata.com>
  <1466780152-7154-9-git-send-email-trond.myklebust@primarydata.com>
- <20160624211808.GL3287@fieldses.org>
- <A6F54110-7D15-4545-B15B-D058EAB358F0@primarydata.com>
+ <20160706195308.GF18856@fieldses.org>
+ <3774A9EF-883F-45E2-B93E-26B178FF499D@primarydata.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=utf-8
-In-Reply-To: <A6F54110-7D15-4545-B15B-D058EAB358F0@primarydata.com>
+In-Reply-To: <3774A9EF-883F-45E2-B93E-26B178FF499D@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Jun 24, 2016 at 09:31:07PM +0000, Trond Myklebust wrote:
+On Wed, Jul 06, 2016 at 08:11:53PM +0000, Trond Myklebust wrote:
 > 
-> > On Jun 24, 2016, at 17:18, J. Bruce Fields <bfields@fieldses.org> wrote:
+> > On Jul 6, 2016, at 15:53, J. Bruce Fields <bfields@fieldses.org>
+> > wrote:
 > > 
 > > On Fri, Jun 24, 2016 at 10:55:51AM -0400, Trond Myklebust wrote:
-> >> Instead of trying (and failing) to predict how much writeable socket space
-> >> will be available to the RPC call, just fall back to the simple model of
-> >> deferring processing until the socket is uncongested.
+> >> Instead of trying (and failing) to predict how much writeable
+> >> socket space will be available to the RPC call, just fall back to
+> >> the simple model of deferring processing until the socket is
+> >> uncongested.
+> >> 
+> >> If a limit is neeeded, then set the hard per-connection limit.
 > > 
-> > OK, it would be a relief to get rid of that, I guess that explains the
-> > previous patch.
+> > I was hoping this would be an opportunity to get rid of even more
+> > code, but there's still the udp case.  Do we actually need that?
 > > 
-> > But was there some specific reason you were running into this?
 > 
-> I’ve been testing using a 40GigE network, which easily hits this bottleneck. The result is that each connection saturates long before we’re even near the saturation of the network or even the disk. So we find ourselves with a server that can continue to scale up to several 100 clients, but with each client seeing the same low performance irrespective of the total number of clients.
+> I wasn’t really too concerned about UDP; I consider it to be legacy
+> code.
 
-OK, I'm stealing some of your responses for a slightly more verbose
-changelog (see below), but otherwise committing the patches unchanged
-for 4.8.  Thanks!
+Sure, but by the same token maybe it's not worth carrying the extra code
+for a udp-only optimization; quick untested diff looks like:
+
+ fs/nfsd/nfs3proc.c              |  1 -
+ fs/nfsd/nfs4state.c             |  1 -
+ fs/nfsd/nfs4xdr.c               |  1 -
+ fs/nfsd/nfsproc.c               |  1 -
+ include/linux/sunrpc/svc.h      | 16 ----------------
+ include/linux/sunrpc/svc_xprt.h |  1 -
+ net/sunrpc/svc.c                |  6 ------
+ net/sunrpc/svc_xprt.c           | 37 -------------------------------------
+ net/sunrpc/svcsock.c            | 13 +------------
+ 9 files changed, 1 insertion(+), 76 deletions(-)
+
+> That said, I’d argue the existing system make a little more sense in
+> the case of UDP as you don’t have any equivalent of the TCP window
+> size. That means the socket buffer sizes are predictable, and so are
+> more easily modelled as a pipeline.
+
+OK, could be.
 
 --b.
-
-    SUNRPC: Change TCP socket space reservation
-    
-    The current server rpc tcp code attempts to predict how much writeable
-    socket space will be available to a given RPC call before accepting it
-    for processing.  On a 40GigE network, we've found this throttles
-    individual clients long before the network or disk is saturated.  The
-    server may handle more clients easily, but the bandwidth of individual
-    clients is still artificially limited.
-    
-    Instead of trying (and failing) to predict how much writeable socket space
-    will be available to the RPC call, just fall back to the simple model of
-    deferring processing until the socket is uncongested.
-    
-    This may increase the risk of fast clients starving slower clients; in
-    such cases, the previous patch allows setting a hard per-connection
-    limit.
