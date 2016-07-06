@@ -1,25 +1,32 @@
-Return-Path: <hch@lst.de>
-Date: Wed, 6 Jul 2016 04:20:29 +0200
-From: Christoph Hellwig <hch@lst.de>
-To: Benjamin Coddington <bcodding@redhat.com>
-Cc: linux-nfs@vger.kernel.org, Christoph Hellwig <hch@lst.de>,
-        bfields@fieldses.org
-Subject: Re: [PATCH] nfsd: allow SCSI layout support without Block layout
-Message-ID: <20160706022029.GA1162@lst.de>
-References: <74871b1ce0d09b21fb67c1b2176695cc1c19169e.1467624319.git.bcodding@redhat.com>
+Return-Path: <linux-nfs-owner@vger.kernel.org>
+Received: from mail-it0-f47.google.com ([209.85.214.47]:36923 "EHLO
+	mail-it0-f47.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750760AbcGFFwq (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 6 Jul 2016 01:52:46 -0400
+Received: by mail-it0-f47.google.com with SMTP id f6so98991637ith.0
+        for <linux-nfs@vger.kernel.org>; Tue, 05 Jul 2016 22:52:46 -0700 (PDT)
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <74871b1ce0d09b21fb67c1b2176695cc1c19169e.1467624319.git.bcodding@redhat.com>
+From: Pankaj Singh <psingh.ait@gmail.com>
+Date: Wed, 6 Jul 2016 11:22:45 +0530
+Message-ID: <CAPrqf91tFmR3BVk8RbBbXvMsFa-SOC2WKqGvsb-LvTiLUT61hA@mail.gmail.com>
+Subject: When can nfsv3 returns nfs3err_jukebox to client?
+To: linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=UTF-8
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Jul 05, 2016 at 06:14:56AM -0400, Benjamin Coddington wrote:
-> We shouldn't have to configure both NFSD_BLOCKLAYOUT and NFSD_SCSILAYOUT if
-> all we want are SCSI layouts on the server, so define the xfs export
-> operations for either configuration.
-> 
-> Signed-off-by: Benjamin Coddington <bcodding@redhat.com>
+Hi All,
 
-Thanks Benjamin,
+I have read in the RFC 1813 that "nfs3err_jukebox" will be return only
+when server is not able to finish the RPC request within time. To
+indicate client to wait and retry again.
 
-this looks good. But I think it needs to go to the xfs list, not the nfs
-one.  Can you resend there?
+Could anyone tell me is there any senario where NFSv3 or SUN RPC can
+send this error to client, if not returned from base filesystem?
+
+Here base filesystem means exporting file system via NFS.
+
+-- 
+Regards,
+Pankaj SIngh
+Phone No: 8826266889
