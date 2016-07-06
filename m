@@ -1,16 +1,16 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-it0-f67.google.com ([209.85.214.67]:35585 "EHLO
-	mail-it0-f67.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932298AbcGFWav (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 6 Jul 2016 18:30:51 -0400
-Received: by mail-it0-f67.google.com with SMTP id g4so900336ith.2
-        for <linux-nfs@vger.kernel.org>; Wed, 06 Jul 2016 15:30:51 -0700 (PDT)
+Received: from mail-it0-f65.google.com ([209.85.214.65]:35589 "EHLO
+	mail-it0-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932174AbcGFWaw (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 6 Jul 2016 18:30:52 -0400
+Received: by mail-it0-f65.google.com with SMTP id g4so900364ith.2
+        for <linux-nfs@vger.kernel.org>; Wed, 06 Jul 2016 15:30:52 -0700 (PDT)
 From: Trond Myklebust <trond.myklebust@primarydata.com>
 To: linux-nfs@vger.kernel.org
-Subject: [PATCH v4 15/28] NFS: Ensure we reset the write verifier 'committed' value on resend.
-Date: Wed,  6 Jul 2016 18:29:52 -0400
-Message-Id: <1467844205-76852-16-git-send-email-trond.myklebust@primarydata.com>
-In-Reply-To: <1467844205-76852-15-git-send-email-trond.myklebust@primarydata.com>
+Subject: [PATCH v4 16/28] NFS: Remove racy size manipulations in O_DIRECT
+Date: Wed,  6 Jul 2016 18:29:53 -0400
+Message-Id: <1467844205-76852-17-git-send-email-trond.myklebust@primarydata.com>
+In-Reply-To: <1467844205-76852-16-git-send-email-trond.myklebust@primarydata.com>
 References: <1467844205-76852-1-git-send-email-trond.myklebust@primarydata.com>
  <1467844205-76852-2-git-send-email-trond.myklebust@primarydata.com>
  <1467844205-76852-3-git-send-email-trond.myklebust@primarydata.com>
@@ -26,56 +26,53 @@ References: <1467844205-76852-1-git-send-email-trond.myklebust@primarydata.com>
  <1467844205-76852-13-git-send-email-trond.myklebust@primarydata.com>
  <1467844205-76852-14-git-send-email-trond.myklebust@primarydata.com>
  <1467844205-76852-15-git-send-email-trond.myklebust@primarydata.com>
+ <1467844205-76852-16-git-send-email-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On success, the RPC callbacks will ensure that we make the appropriate calls
+to nfs_writeback_update_inode()
+
 Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
 ---
- fs/nfs/direct.c   |  2 ++
- fs/nfs/internal.h | 17 +++++++++++++++++
- 2 files changed, 19 insertions(+)
+ fs/nfs/direct.c | 16 ----------------
+ 1 file changed, 16 deletions(-)
 
 diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
-index d6d43b5eafb3..fb659bb50678 100644
+index fb659bb50678..826d4dace0e5 100644
 --- a/fs/nfs/direct.c
 +++ b/fs/nfs/direct.c
-@@ -661,6 +661,8 @@ static void nfs_direct_write_reschedule(struct nfs_direct_req *dreq)
- 	nfs_direct_write_scan_commit_list(dreq->inode, &reqs, &cinfo);
+@@ -376,15 +376,6 @@ static void nfs_direct_complete(struct nfs_direct_req *dreq, bool write)
+ {
+ 	struct inode *inode = dreq->inode;
  
- 	dreq->count = 0;
-+	dreq->verf.committed = NFS_INVALID_STABLE_HOW;
-+	nfs_clear_pnfs_ds_commit_verifiers(&dreq->ds_cinfo);
- 	for (i = 0; i < dreq->mirror_count; i++)
- 		dreq->mirrors[i].count = 0;
- 	get_dreq(dreq);
-diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
-index 150a8eb0f323..0eb5c924886d 100644
---- a/fs/nfs/internal.h
-+++ b/fs/nfs/internal.h
-@@ -499,6 +499,23 @@ int nfs_key_timeout_notify(struct file *filp, struct inode *inode);
- bool nfs_ctx_key_to_expire(struct nfs_open_context *ctx);
- void nfs_pageio_stop_mirroring(struct nfs_pageio_descriptor *pgio);
+-	if (dreq->iocb && write) {
+-		loff_t pos = dreq->iocb->ki_pos + dreq->count;
+-
+-		spin_lock(&inode->i_lock);
+-		if (i_size_read(inode) < pos)
+-			i_size_write(inode, pos);
+-		spin_unlock(&inode->i_lock);
+-	}
+-
+ 	if (write)
+ 		nfs_zap_mapping(inode, inode->i_mapping);
  
-+#ifdef CONFIG_NFS_V4_1
-+static inline
-+void nfs_clear_pnfs_ds_commit_verifiers(struct pnfs_ds_commit_info *cinfo)
-+{
-+	int i;
-+
-+	for (i = 0; i < cinfo->nbuckets; i++)
-+		cinfo->buckets[i].direct_verf.committed = NFS_INVALID_STABLE_HOW;
-+}
-+#else
-+static inline
-+void nfs_clear_pnfs_ds_commit_verifiers(struct pnfs_ds_commit_info *cinfo)
-+{
-+}
-+#endif
-+
-+
- #ifdef CONFIG_MIGRATION
- extern int nfs_migrate_page(struct address_space *,
- 		struct page *, struct page *, enum migrate_mode);
+@@ -1058,14 +1049,7 @@ ssize_t nfs_file_direct_write(struct kiocb *iocb, struct iov_iter *iter)
+ 	if (!result) {
+ 		result = nfs_direct_wait(dreq);
+ 		if (result > 0) {
+-			struct inode *inode = mapping->host;
+-
+ 			iocb->ki_pos = pos + result;
+-			spin_lock(&inode->i_lock);
+-			if (i_size_read(inode) < iocb->ki_pos)
+-				i_size_write(inode, iocb->ki_pos);
+-			spin_unlock(&inode->i_lock);
+-
+ 			/* XXX: should check the generic_write_sync retval */
+ 			generic_write_sync(iocb, result);
+ 		}
 -- 
 2.7.4
 
