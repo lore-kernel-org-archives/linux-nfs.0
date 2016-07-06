@@ -1,14 +1,15 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:57688 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754599AbcGFTxL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 6 Jul 2016 15:53:11 -0400
-Date: Wed, 6 Jul 2016 15:53:08 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-Cc: linux-nfs@vger.kernel.org
+Received: from us-smtp-delivery-194.mimecast.com ([63.128.21.194]:60105 "EHLO
+	us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751629AbcGFUMI convert rfc822-to-8bit
+	(ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 6 Jul 2016 16:12:08 -0400
+From: Trond Myklebust <trondmy@primarydata.com>
+To: Fields Bruce <bfields@fieldses.org>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
 Subject: Re: [PATCH 09/10] SUNRPC: Change TCP socket space reservation
-Message-ID: <20160706195308.GF18856@fieldses.org>
+Date: Wed, 6 Jul 2016 20:11:53 +0000
+Message-ID: <3774A9EF-883F-45E2-B93E-26B178FF499D@primarydata.com>
 References: <1466780152-7154-1-git-send-email-trond.myklebust@primarydata.com>
  <1466780152-7154-2-git-send-email-trond.myklebust@primarydata.com>
  <1466780152-7154-3-git-send-email-trond.myklebust@primarydata.com>
@@ -18,113 +19,31 @@ References: <1466780152-7154-1-git-send-email-trond.myklebust@primarydata.com>
  <1466780152-7154-7-git-send-email-trond.myklebust@primarydata.com>
  <1466780152-7154-8-git-send-email-trond.myklebust@primarydata.com>
  <1466780152-7154-9-git-send-email-trond.myklebust@primarydata.com>
+ <20160706195308.GF18856@fieldses.org>
+In-Reply-To: <20160706195308.GF18856@fieldses.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1466780152-7154-9-git-send-email-trond.myklebust@primarydata.com>
+Content-Type: text/plain; charset=WINDOWS-1252
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Jun 24, 2016 at 10:55:51AM -0400, Trond Myklebust wrote:
-> Instead of trying (and failing) to predict how much writeable socket space
-> will be available to the RPC call, just fall back to the simple model of
-> deferring processing until the socket is uncongested.
+
+> On Jul 6, 2016, at 15:53, J. Bruce Fields <bfields@fieldses.org> wrote:
 > 
-> If a limit is neeeded, then set the hard per-connection limit.
-
-I was hoping this would be an opportunity to get rid of even more code,
-but there's still the udp case.  Do we actually need that?
-
---b.
-
-
+> On Fri, Jun 24, 2016 at 10:55:51AM -0400, Trond Myklebust wrote:
+>> Instead of trying (and failing) to predict how much writeable socket space
+>> will be available to the RPC call, just fall back to the simple model of
+>> deferring processing until the socket is uncongested.
+>> 
+>> If a limit is neeeded, then set the hard per-connection limit.
 > 
-> Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
-> ---
->  net/sunrpc/svcsock.c | 47 ++++-------------------------------------------
->  1 file changed, 4 insertions(+), 43 deletions(-)
+> I was hoping this would be an opportunity to get rid of even more code,
+> but there's still the udp case.  Do we actually need that?
 > 
-> diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
-> index 338d6fe1103d..bc3ef0734f2f 100644
-> --- a/net/sunrpc/svcsock.c
-> +++ b/net/sunrpc/svcsock.c
-> @@ -431,43 +431,11 @@ static void svc_write_space(struct sock *sk)
->  
->  static int svc_tcp_has_wspace(struct svc_xprt *xprt)
->  {
-> -	struct svc_sock *svsk =	container_of(xprt, struct svc_sock, sk_xprt);
-> -	struct svc_serv *serv = svsk->sk_xprt.xpt_server;
-> -	int required;
-> +	struct svc_sock *svsk = container_of(xprt, struct svc_sock, sk_xprt);
->  
->  	if (test_bit(XPT_LISTENER, &xprt->xpt_flags))
->  		return 1;
-> -	required = atomic_read(&xprt->xpt_reserved) + serv->sv_max_mesg;
-> -	if (sk_stream_wspace(svsk->sk_sk) >= required ||
-> -	    (sk_stream_min_wspace(svsk->sk_sk) == 0 &&
-> -	     atomic_read(&xprt->xpt_reserved) == 0))
-> -		return 1;
-> -	set_bit(SOCK_NOSPACE, &svsk->sk_sock->flags);
-> -	return 0;
-> -}
-> -
-> -static void svc_tcp_write_space(struct sock *sk)
-> -{
-> -	struct svc_sock *svsk = (struct svc_sock *)(sk->sk_user_data);
-> -	struct socket *sock = sk->sk_socket;
-> -
-> -	if (!svsk)
-> -		return;
-> -
-> -	if (!sk_stream_is_writeable(sk) || !sock)
-> -		return;
-> -	if (svc_tcp_has_wspace(&svsk->sk_xprt)) {
-> -		clear_bit(SOCK_NOSPACE, &sock->flags);
-> -		svc_write_space(sk);
-> -	}
-> -}
-> -
-> -static void svc_tcp_adjust_wspace(struct svc_xprt *xprt)
-> -{
-> -	struct svc_sock *svsk = container_of(xprt, struct svc_sock, sk_xprt);
-> -
-> -	if (svc_tcp_has_wspace(xprt))
-> -		clear_bit(SOCK_NOSPACE, &svsk->sk_sock->flags);
-> +	return !test_bit(SOCK_NOSPACE, &svsk->sk_sock->flags);
->  }
->  
->  /*
-> @@ -1272,7 +1240,6 @@ static struct svc_xprt_ops svc_tcp_ops = {
->  	.xpo_has_wspace = svc_tcp_has_wspace,
->  	.xpo_accept = svc_tcp_accept,
->  	.xpo_secure_port = svc_sock_secure_port,
-> -	.xpo_adjust_wspace = svc_tcp_adjust_wspace,
->  };
->  
->  static struct svc_xprt_class svc_tcp_class = {
-> @@ -1313,7 +1280,7 @@ static void svc_tcp_init(struct svc_sock *svsk, struct svc_serv *serv)
->  		dprintk("setting up TCP socket for reading\n");
->  		sk->sk_state_change = svc_tcp_state_change;
->  		sk->sk_data_ready = svc_data_ready;
-> -		sk->sk_write_space = svc_tcp_write_space;
-> +		sk->sk_write_space = svc_write_space;
->  
->  		svsk->sk_reclen = 0;
->  		svsk->sk_tcplen = 0;
-> @@ -1383,14 +1350,8 @@ static struct svc_sock *svc_setup_socket(struct svc_serv *serv,
->  	/* Initialize the socket */
->  	if (sock->type == SOCK_DGRAM)
->  		svc_udp_init(svsk, serv);
-> -	else {
-> -		/* initialise setting must have enough space to
-> -		 * receive and respond to one request.
-> -		 */
-> -		svc_sock_setbufsize(svsk->sk_sock, 4 * serv->sv_max_mesg,
-> -					4 * serv->sv_max_mesg);
-> +	else
->  		svc_tcp_init(svsk, serv);
-> -	}
->  
->  	dprintk("svc: svc_setup_socket created %p (inet %p)\n",
->  				svsk, svsk->sk_sk);
-> -- 
-> 2.7.4
+
+I wasn’t really too concerned about UDP; I consider it to be legacy code.
+
+That said, I’d argue the existing system make a little more sense in the case of UDP as you don’t have any equivalent of the TCP window size. That means the socket buffer sizes are predictable, and so are more easily modelled as a pipeline.
+
+Cheers
+  Trond
+
