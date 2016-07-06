@@ -1,55 +1,68 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-oi0-f48.google.com ([209.85.218.48]:36715 "EHLO
-	mail-oi0-f48.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754490AbcGFRq6 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 6 Jul 2016 13:46:58 -0400
-Received: by mail-oi0-f48.google.com with SMTP id f189so280982928oig.3
-        for <linux-nfs@vger.kernel.org>; Wed, 06 Jul 2016 10:46:58 -0700 (PDT)
-Date: Wed, 6 Jul 2016 12:46:55 -0500
-From: Seth Forshee <seth.forshee@canonical.com>
-To: Trond Myklebust <trond.myklebust@primarydata.com>,
-        Anna Schumaker <anna.schumaker@netapp.com>
-Cc: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org,
-        Tycho Andersen <tycho.andersen@canonical.com>
-Subject: Hang due to nfs letting tasks freeze with locked inodes
-Message-ID: <20160706174655.GD45215@ubuntu-hedt>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Received: from mail-qk0-f180.google.com ([209.85.220.180]:34849 "EHLO
+	mail-qk0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932133AbcGFSbW (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 6 Jul 2016 14:31:22 -0400
+Received: by mail-qk0-f180.google.com with SMTP id s126so38666039qkh.2
+        for <linux-nfs@vger.kernel.org>; Wed, 06 Jul 2016 11:31:17 -0700 (PDT)
+Message-ID: <1467829873.2908.1.camel@redhat.com>
+Subject: Re: [PATCH v23 12/22] vfs: Add get_richacl and set_richacl inode
+ operations
+From: Jeff Layton <jlayton@redhat.com>
+To: Andreas Gruenbacher <agruenba@redhat.com>,
+        Alexander Viro <viro@zeniv.linux.org.uk>
+Cc: Christoph Hellwig <hch@infradead.org>, "Theodore Ts'o" <tytso@mit.edu>,
+        Andreas Dilger <adilger.kernel@dilger.ca>,
+        "J. Bruce Fields" <bfields@fieldses.org>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>,
+        Dave Chinner <david@fromorbit.com>, linux-ext4@vger.kernel.org,
+        xfs@oss.sgi.com, linux-kernel@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-cifs@vger.kernel.org, linux-api@vger.kernel.org
+Date: Wed, 06 Jul 2016 14:31:13 -0400
+In-Reply-To: <1467294433-3222-13-git-send-email-agruenba@redhat.com>
+References: <1467294433-3222-1-git-send-email-agruenba@redhat.com>
+	 <1467294433-3222-13-git-send-email-agruenba@redhat.com>
+Content-Type: text/plain; charset="UTF-8"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-We're seeing a hang when freezing a container with an nfs bind mount while
-running iozone. Two iozone processes were hung with this stack trace.
+On Thu, 2016-06-30 at 15:47 +0200, Andreas Gruenbacher wrote:
+> These operations are similar to the get_acl and set_acl operations for
+> POSIX ACLs.  The distinction between access and default ACLs doesn't exist
+> for richacls.
+> 
+> Signed-off-by: Andreas Gruenbacher <agruenba@redhat.com>
+> Reviewed-by: Steve French <steve.french@primarydata.com>
+> ---
+>  include/linux/fs.h | 2 ++
+>  1 file changed, 2 insertions(+)
+> 
+> diff --git a/include/linux/fs.h b/include/linux/fs.h
+> index 06a30b0..ac96bda 100644
+> --- a/include/linux/fs.h
+> +++ b/include/linux/fs.h
+> @@ -1726,6 +1726,7 @@ struct inode_operations {
+>  	const char * (*get_link) (struct dentry *, struct inode *, struct delayed_call *);
+>  	int (*permission) (struct inode *, int);
+>  	struct posix_acl * (*get_acl)(struct inode *, int);
+> +	struct richacl * (*get_richacl)(struct inode *);
+>  
+>  	int (*readlink) (struct dentry *, char __user *,int);
+>  
+> @@ -1756,6 +1757,7 @@ struct inode_operations {
+>  			   umode_t create_mode, int *opened);
+>  	int (*tmpfile) (struct inode *, struct dentry *, umode_t);
+>  	int (*set_acl)(struct inode *, struct posix_acl *, int);
+> +	int (*set_richacl)(struct inode *, struct richacl *);
+>  } ____cacheline_aligned;
+>  
+>  ssize_t rw_copy_check_uvector(int type, const struct iovec __user * uvector,
 
- [<ffffffff81821b15>] schedule+0x35/0x80
- [<ffffffff81821dbe>] schedule_preempt_disabled+0xe/0x10
- [<ffffffff818239f9>] __mutex_lock_slowpath+0xb9/0x130
- [<ffffffff81823a8f>] mutex_lock+0x1f/0x30
- [<ffffffff8121d00b>] do_unlinkat+0x12b/0x2d0
- [<ffffffff8121dc16>] SyS_unlink+0x16/0x20
- [<ffffffff81825bf2>] entry_SYSCALL_64_fastpath+0x16/0x71
+Looks OK, though it's hard to review something like this without some
+context. Maybe this patch should be folded in with the patch that
+actually adds the calls for these operations?
 
-This seems to be due to another iozone thread frozen during unlink with
-this stack trace:
-
- [<ffffffff810e9cfa>] __refrigerator+0x7a/0x140
- [<ffffffffc08e80b8>] nfs4_handle_exception+0x118/0x130 [nfsv4]
- [<ffffffffc08e9efd>] nfs4_proc_remove+0x7d/0xf0 [nfsv4]
- [<ffffffffc088a329>] nfs_unlink+0x149/0x350 [nfs]
- [<ffffffff81219bd1>] vfs_unlink+0xf1/0x1a0
- [<ffffffff8121d159>] do_unlinkat+0x279/0x2d0
- [<ffffffff8121dc16>] SyS_unlink+0x16/0x20
- [<ffffffff81825bf2>] entry_SYSCALL_64_fastpath+0x16/0x71
-
-Since nfs is allowing the thread to be frozen with the inode locked it's
-preventing other threads trying to lock the same inode from freezing. It
-seems like a bad idea for nfs to be doing this.
-
-Can nfs do something different here to prevent this? Maybe use a
-non-freezable sleep and let the operation complete, or else abort the
-operation and return ERESTARTSYS?
-
-Thanks,
-Seth
-
+Reviewed-by: Jeff Layton <jlayton@redhat.com>
