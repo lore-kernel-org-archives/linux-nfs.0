@@ -1,16 +1,16 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-it0-f65.google.com ([209.85.214.65]:35598 "EHLO
-	mail-it0-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932174AbcGFWay (ORCPT
+Received: from mail-it0-f67.google.com ([209.85.214.67]:33217 "EHLO
+	mail-it0-f67.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932298AbcGFWay (ORCPT
 	<rfc822;linux-nfs@vger.kernel.org>); Wed, 6 Jul 2016 18:30:54 -0400
-Received: by mail-it0-f65.google.com with SMTP id g4so900444ith.2
-        for <linux-nfs@vger.kernel.org>; Wed, 06 Jul 2016 15:30:54 -0700 (PDT)
+Received: by mail-it0-f67.google.com with SMTP id y93so926411ita.0
+        for <linux-nfs@vger.kernel.org>; Wed, 06 Jul 2016 15:30:53 -0700 (PDT)
 From: Trond Myklebust <trond.myklebust@primarydata.com>
 To: linux-nfs@vger.kernel.org
-Subject: [PATCH v4 18/28] NFS: Move buffered I/O locking into nfs_file_write()
-Date: Wed,  6 Jul 2016 18:29:55 -0400
-Message-Id: <1467844205-76852-19-git-send-email-trond.myklebust@primarydata.com>
-In-Reply-To: <1467844205-76852-18-git-send-email-trond.myklebust@primarydata.com>
+Subject: [PATCH v4 17/28] NFS Cleanup: move call to generic_write_checks() into fs/nfs/direct.c
+Date: Wed,  6 Jul 2016 18:29:54 -0400
+Message-Id: <1467844205-76852-18-git-send-email-trond.myklebust@primarydata.com>
+In-Reply-To: <1467844205-76852-17-git-send-email-trond.myklebust@primarydata.com>
 References: <1467844205-76852-1-git-send-email-trond.myklebust@primarydata.com>
  <1467844205-76852-2-git-send-email-trond.myklebust@primarydata.com>
  <1467844205-76852-3-git-send-email-trond.myklebust@primarydata.com>
@@ -28,84 +28,77 @@ References: <1467844205-76852-1-git-send-email-trond.myklebust@primarydata.com>
  <1467844205-76852-15-git-send-email-trond.myklebust@primarydata.com>
  <1467844205-76852-16-git-send-email-trond.myklebust@primarydata.com>
  <1467844205-76852-17-git-send-email-trond.myklebust@primarydata.com>
- <1467844205-76852-18-git-send-email-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Preparation for the patch that de-serialises O_DIRECT reads and
-writes.
-
 Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
 ---
- fs/nfs/file.c | 27 +++++++++++++++------------
- 1 file changed, 15 insertions(+), 12 deletions(-)
+ fs/nfs/direct.c | 12 ++++++++----
+ fs/nfs/file.c   |  6 +-----
+ 2 files changed, 9 insertions(+), 9 deletions(-)
 
+diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
+index 826d4dace0e5..0169eca8eb42 100644
+--- a/fs/nfs/direct.c
++++ b/fs/nfs/direct.c
+@@ -988,6 +988,7 @@ static ssize_t nfs_direct_write_schedule_iovec(struct nfs_direct_req *dreq,
+ ssize_t nfs_file_direct_write(struct kiocb *iocb, struct iov_iter *iter)
+ {
+ 	ssize_t result = -EINVAL;
++	size_t count;
+ 	struct file *file = iocb->ki_filp;
+ 	struct address_space *mapping = file->f_mapping;
+ 	struct inode *inode = mapping->host;
+@@ -998,8 +999,11 @@ ssize_t nfs_file_direct_write(struct kiocb *iocb, struct iov_iter *iter)
+ 	dfprintk(FILE, "NFS: direct write(%pD2, %zd@%Ld)\n",
+ 		file, iov_iter_count(iter), (long long) iocb->ki_pos);
+ 
+-	nfs_add_stats(mapping->host, NFSIOS_DIRECTWRITTENBYTES,
+-		      iov_iter_count(iter));
++	result = generic_write_checks(iocb, iter);
++	if (result <= 0)
++		return result;
++	count = result;
++	nfs_add_stats(mapping->host, NFSIOS_DIRECTWRITTENBYTES, count);
+ 
+ 	pos = iocb->ki_pos;
+ 	end = (pos + iov_iter_count(iter) - 1) >> PAGE_SHIFT;
+@@ -1017,7 +1021,7 @@ ssize_t nfs_file_direct_write(struct kiocb *iocb, struct iov_iter *iter)
+ 			goto out_unlock;
+ 	}
+ 
+-	task_io_account_write(iov_iter_count(iter));
++	task_io_account_write(count);
+ 
+ 	result = -ENOMEM;
+ 	dreq = nfs_direct_req_alloc();
+@@ -1025,7 +1029,7 @@ ssize_t nfs_file_direct_write(struct kiocb *iocb, struct iov_iter *iter)
+ 		goto out_unlock;
+ 
+ 	dreq->inode = inode;
+-	dreq->bytes_left = dreq->max_count = iov_iter_count(iter);
++	dreq->bytes_left = dreq->max_count = count;
+ 	dreq->io_start = pos;
+ 	dreq->ctx = get_nfs_open_context(nfs_file_open_context(iocb->ki_filp));
+ 	l_ctx = nfs_get_lock_context(dreq->ctx);
 diff --git a/fs/nfs/file.c b/fs/nfs/file.c
-index c26847c84d00..46cf0afe3c0f 100644
+index df4dd8e7e62e..c26847c84d00 100644
 --- a/fs/nfs/file.c
 +++ b/fs/nfs/file.c
-@@ -623,7 +623,6 @@ ssize_t nfs_file_write(struct kiocb *iocb, struct iov_iter *from)
- 	struct inode *inode = file_inode(file);
- 	unsigned long written = 0;
- 	ssize_t result;
--	size_t count = iov_iter_count(from);
- 
- 	result = nfs_key_timeout_notify(file, inode);
+@@ -629,12 +629,8 @@ ssize_t nfs_file_write(struct kiocb *iocb, struct iov_iter *from)
  	if (result)
-@@ -633,9 +632,8 @@ ssize_t nfs_file_write(struct kiocb *iocb, struct iov_iter *from)
+ 		return result;
+ 
+-	if (iocb->ki_flags & IOCB_DIRECT) {
+-		result = generic_write_checks(iocb, from);
+-		if (result <= 0)
+-			return result;
++	if (iocb->ki_flags & IOCB_DIRECT)
  		return nfs_file_direct_write(iocb, from);
+-	}
  
  	dprintk("NFS: write(%pD2, %zu@%Ld)\n",
--		file, count, (long long) iocb->ki_pos);
-+		file, iov_iter_count(from), (long long) iocb->ki_pos);
- 
--	result = -EBUSY;
- 	if (IS_SWAPFILE(inode))
- 		goto out_swapfile;
- 	/*
-@@ -647,28 +645,33 @@ ssize_t nfs_file_write(struct kiocb *iocb, struct iov_iter *from)
- 			goto out;
- 	}
- 
--	result = count;
--	if (!count)
-+	inode_lock(inode);
-+	result = generic_write_checks(iocb, from);
-+	if (result > 0) {
-+		current->backing_dev_info = inode_to_bdi(inode);
-+		result = generic_perform_write(file, from, iocb->ki_pos);
-+		current->backing_dev_info = NULL;
-+	}
-+	inode_unlock(inode);
-+	if (result <= 0)
- 		goto out;
- 
--	result = generic_file_write_iter(iocb, from);
--	if (result > 0)
--		written = result;
-+	written = generic_write_sync(iocb, result);
-+	iocb->ki_pos += written;
- 
- 	/* Return error values */
--	if (result >= 0 && nfs_need_check_write(file, inode)) {
-+	if (nfs_need_check_write(file, inode)) {
- 		int err = vfs_fsync(file, 0);
- 		if (err < 0)
- 			result = err;
- 	}
--	if (result > 0)
--		nfs_add_stats(inode, NFSIOS_NORMALWRITTENBYTES, written);
-+	nfs_add_stats(inode, NFSIOS_NORMALWRITTENBYTES, written);
- out:
- 	return result;
- 
- out_swapfile:
- 	printk(KERN_INFO "NFS: attempt to write to active swap file!\n");
--	goto out;
-+	return -EBUSY;
- }
- EXPORT_SYMBOL_GPL(nfs_file_write);
- 
+ 		file, count, (long long) iocb->ki_pos);
 -- 
 2.7.4
 
