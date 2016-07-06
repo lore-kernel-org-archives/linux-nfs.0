@@ -1,69 +1,79 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:57748 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755813AbcGFUbH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 6 Jul 2016 16:31:07 -0400
-Date: Wed, 6 Jul 2016 16:30:55 -0400
-From: Fields Bruce <bfields@fieldses.org>
-To: Trond Myklebust <trondmy@primarydata.com>
-Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 09/10] SUNRPC: Change TCP socket space reservation
-Message-ID: <20160706203055.GH18856@fieldses.org>
-References: <1466780152-7154-2-git-send-email-trond.myklebust@primarydata.com>
- <1466780152-7154-3-git-send-email-trond.myklebust@primarydata.com>
- <1466780152-7154-4-git-send-email-trond.myklebust@primarydata.com>
- <1466780152-7154-5-git-send-email-trond.myklebust@primarydata.com>
- <1466780152-7154-6-git-send-email-trond.myklebust@primarydata.com>
- <1466780152-7154-7-git-send-email-trond.myklebust@primarydata.com>
- <1466780152-7154-8-git-send-email-trond.myklebust@primarydata.com>
- <1466780152-7154-9-git-send-email-trond.myklebust@primarydata.com>
- <20160706195308.GF18856@fieldses.org>
- <3774A9EF-883F-45E2-B93E-26B178FF499D@primarydata.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-In-Reply-To: <3774A9EF-883F-45E2-B93E-26B178FF499D@primarydata.com>
+Received: from mail-qt0-f173.google.com ([209.85.216.173]:35112 "EHLO
+	mail-qt0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755650AbcGFWHX (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 6 Jul 2016 18:07:23 -0400
+Received: by mail-qt0-f173.google.com with SMTP id f89so22831qtd.2
+        for <linux-nfs@vger.kernel.org>; Wed, 06 Jul 2016 15:07:22 -0700 (PDT)
+Message-ID: <1467842838.2908.45.camel@redhat.com>
+Subject: Re: Hang due to nfs letting tasks freeze with locked inodes
+From: Jeff Layton <jlayton@redhat.com>
+To: Seth Forshee <seth.forshee@canonical.com>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>
+Cc: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org,
+        Tycho Andersen <tycho.andersen@canonical.com>
+Date: Wed, 06 Jul 2016 18:07:18 -0400
+In-Reply-To: <20160706174655.GD45215@ubuntu-hedt>
+References: <20160706174655.GD45215@ubuntu-hedt>
+Content-Type: text/plain; charset="UTF-8"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Jul 06, 2016 at 08:11:53PM +0000, Trond Myklebust wrote:
+On Wed, 2016-07-06 at 12:46 -0500, Seth Forshee wrote:
+> We're seeing a hang when freezing a container with an nfs bind mount while
+> running iozone. Two iozone processes were hung with this stack trace.
 > 
-> > On Jul 6, 2016, at 15:53, J. Bruce Fields <bfields@fieldses.org>
-> > wrote:
-> > 
-> > On Fri, Jun 24, 2016 at 10:55:51AM -0400, Trond Myklebust wrote:
-> >> Instead of trying (and failing) to predict how much writeable
-> >> socket space will be available to the RPC call, just fall back to
-> >> the simple model of deferring processing until the socket is
-> >> uncongested.
-> >> 
-> >> If a limit is neeeded, then set the hard per-connection limit.
-> > 
-> > I was hoping this would be an opportunity to get rid of even more
-> > code, but there's still the udp case.  Do we actually need that?
-> > 
+>  [] schedule+0x35/0x80
+>  [] schedule_preempt_disabled+0xe/0x10
+>  [] __mutex_lock_slowpath+0xb9/0x130
+>  [] mutex_lock+0x1f/0x30
+>  [] do_unlinkat+0x12b/0x2d0
+>  [] SyS_unlink+0x16/0x20
+>  [] entry_SYSCALL_64_fastpath+0x16/0x71
 > 
-> I wasn’t really too concerned about UDP; I consider it to be legacy
-> code.
+> This seems to be due to another iozone thread frozen during unlink with
+> this stack trace:
+> 
+>  [] __refrigerator+0x7a/0x140
+>  [] nfs4_handle_exception+0x118/0x130 [nfsv4]
+>  [] nfs4_proc_remove+0x7d/0xf0 [nfsv4]
+>  [] nfs_unlink+0x149/0x350 [nfs]
+>  [] vfs_unlink+0xf1/0x1a0
+>  [] do_unlinkat+0x279/0x2d0
+>  [] SyS_unlink+0x16/0x20
+>  [] entry_SYSCALL_64_fastpath+0x16/0x71
+> 
+> Since nfs is allowing the thread to be frozen with the inode locked it's
+> preventing other threads trying to lock the same inode from freezing. It
+> seems like a bad idea for nfs to be doing this.
+> 
 
-Sure, but by the same token maybe it's not worth carrying the extra code
-for a udp-only optimization; quick untested diff looks like:
+Yeah, known problem. Not a simple one to fix though.
 
- fs/nfsd/nfs3proc.c              |  1 -
- fs/nfsd/nfs4state.c             |  1 -
- fs/nfsd/nfs4xdr.c               |  1 -
- fs/nfsd/nfsproc.c               |  1 -
- include/linux/sunrpc/svc.h      | 16 ----------------
- include/linux/sunrpc/svc_xprt.h |  1 -
- net/sunrpc/svc.c                |  6 ------
- net/sunrpc/svc_xprt.c           | 37 -------------------------------------
- net/sunrpc/svcsock.c            | 13 +------------
- 9 files changed, 1 insertion(+), 76 deletions(-)
+> Can nfs do something different here to prevent this? Maybe use a
+> non-freezable sleep and let the operation complete, or else abort the
+> operation and return ERESTARTSYS?
 
-> That said, I’d argue the existing system make a little more sense in
-> the case of UDP as you don’t have any equivalent of the TCP window
-> size. That means the socket buffer sizes are predictable, and so are
-> more easily modelled as a pipeline.
+The problem with letting the op complete is that often by the time you
+get to the point of trying to freeze processes, the network interfaces
+are already shut down. So the operation you're waiting on might never
+complete. Stuff like suspend operations on your laptop fail, leading to
+fun bug reports like: "Oh, my laptop burned to crisp inside my bag
+because the suspend never completed."
 
-OK, could be.
+You could (in principle) return something like -ERESTARTSYS iff the
+call has not yet been transmitted. If it has already been transmitted,
+then you might end up sending the call a second time (but not as an RPC
+retransmission of course). If that call was non-idempotent then you end
+up with all of _those_ sorts of problems.
 
---b.
+Also, -ERESTARTSYS is not quite right as it doesn't always cause the
+call to be restarted. It depends on the syscall. I think this would
+probably need some other sort of syscall-restart machinery plumbed in.
+
+-- 
+Jeff Layton <jlayton@redhat.com>
+
