@@ -1,120 +1,92 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from us-smtp-delivery-194.mimecast.com ([216.205.24.194]:32539 "EHLO
-	us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1753084AbcGGXRR convert rfc822-to-8bit
-	(ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 7 Jul 2016 19:17:17 -0400
-From: Trond Myklebust <trondmy@primarydata.com>
-To: Oleg Drokin <green@linuxhacker.ru>
-CC: Fields Bruce <bfields@fieldses.org>, Jeff Layton <jlayton@poochiereds.net>,
-        Viro Alexander <viro@ZenIV.linux.org.uk>,
-        "<linux-fsdevel@vger.kernel.org>" <linux-fsdevel@vger.kernel.org>,
-        "Linux NFS Mailing List" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 1/2] nfs: Fix spurios EPERM when mkdir of existing dentry
-Date: Thu, 7 Jul 2016 23:17:10 +0000
-Message-ID: <D43BECF5-0A45-45F0-A9DC-422367843332@primarydata.com>
-References: <1467870827-2959489-1-git-send-email-green@linuxhacker.ru>
- <1467870827-2959489-2-git-send-email-green@linuxhacker.ru>
- <9F6E5530-CBA4-4A0A-BAE1-72AAC28DB4D1@primarydata.com>
- <F3D54183-12C6-458F-B4DB-05016EAA6272@linuxhacker.ru>
- <0438AC35-50AD-4D9E-9C23-7EED70EF2B4C@primarydata.com>
- <F6721966-DE36-44B1-8935-A01132B4C62F@linuxhacker.ru>
- <4D9E1AEE-D37F-43D8-8F22-E66572388CB8@primarydata.com>
- <1DFC2ADD-11BF-43E6-8229-3F266FE3ABF5@linuxhacker.ru>
-In-Reply-To: <1DFC2ADD-11BF-43E6-8229-3F266FE3ABF5@linuxhacker.ru>
+Received: from ipmail06.adl6.internode.on.net ([150.101.137.145]:38192 "EHLO
+	ipmail06.adl6.internode.on.net" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1753394AbcGGXxv (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 7 Jul 2016 19:53:51 -0400
+Date: Fri, 8 Jul 2016 09:53:30 +1000
+From: Dave Chinner <david@fromorbit.com>
+To: Jeff Layton <jlayton@redhat.com>
+Cc: Seth Forshee <seth.forshee@canonical.com>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>,
+        linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org,
+        Tycho Andersen <tycho.andersen@canonical.com>
+Subject: Re: Hang due to nfs letting tasks freeze with locked inodes
+Message-ID: <20160707235330.GN27480@dastard>
+References: <20160706174655.GD45215@ubuntu-hedt>
+ <1467842838.2908.45.camel@redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=WINDOWS-1252
+Content-Type: text/plain; charset=iso-8859-1
+In-Reply-To: <1467842838.2908.45.camel@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Wed, Jul 06, 2016 at 06:07:18PM -0400, Jeff Layton wrote:
+> On Wed, 2016-07-06 at 12:46 -0500, Seth Forshee wrote:
+> > We're seeing a hang when freezing a container with an nfs bind mount while
+> > running iozone. Two iozone processes were hung with this stack trace.
+> > 
+> >  [] schedule+0x35/0x80
+> >  [] schedule_preempt_disabled+0xe/0x10
+> >  [] __mutex_lock_slowpath+0xb9/0x130
+> >  [] mutex_lock+0x1f/0x30
+> >  [] do_unlinkat+0x12b/0x2d0
+> >  [] SyS_unlink+0x16/0x20
+> >  [] entry_SYSCALL_64_fastpath+0x16/0x71
+> > 
+> > This seems to be due to another iozone thread frozen during unlink with
+> > this stack trace:
+> > 
+> >  [] __refrigerator+0x7a/0x140
+> >  [] nfs4_handle_exception+0x118/0x130 [nfsv4]
+> >  [] nfs4_proc_remove+0x7d/0xf0 [nfsv4]
+> >  [] nfs_unlink+0x149/0x350 [nfs]
+> >  [] vfs_unlink+0xf1/0x1a0
+> >  [] do_unlinkat+0x279/0x2d0
+> >  [] SyS_unlink+0x16/0x20
+> >  [] entry_SYSCALL_64_fastpath+0x16/0x71
+> > 
+> > Since nfs is allowing the thread to be frozen with the inode locked it's
+> > preventing other threads trying to lock the same inode from freezing. It
+> > seems like a bad idea for nfs to be doing this.
+> > 
+> 
+> Yeah, known problem. Not a simple one to fix though.
 
-> On Jul 7, 2016, at 17:52, Oleg Drokin <green@linuxhacker.ru> wrote:
-> 
-> 
-> On Jul 7, 2016, at 1:27 PM, Trond Myklebust wrote:
-> 
->> 
->>> On Jul 7, 2016, at 13:07, Oleg Drokin <green@linuxhacker.ru> wrote:
->>> 
->>> 
->>> On Jul 7, 2016, at 12:59 PM, Trond Myklebust wrote:
->>> 
->>>> 
->>>>> On Jul 7, 2016, at 12:52, Oleg Drokin <green@linuxhacker.ru> wrote:
->>>>> 
->>>>> 
->>>>> On Jul 7, 2016, at 12:16 PM, Trond Myklebust wrote:
->>>>> 
->>>>>> 
->>>>>>> On Jul 7, 2016, at 01:53, Oleg Drokin <green@linuxhacker.ru> wrote:
->>>>>>> 
->>>>>>> It's great when we can shave an extra RPC, but not at the expense
->>>>>>> of correctness.
->>>>>>> We should not return EPERM (from vfs_create/mknod/mkdir) if the
->>>>>>> name already exists, even if we have no write access in parent.
->>>>>>> 
->>>>>>> Since the check in nfs_permission is clearly not enough to stave
->>>>>>> off this, just throw in the extra READ access to actually
->>>>>>> go through.
->>>>>>> 
->>>>>>> Signed-off-by: Oleg Drokin <green@linuxhacker.ru>
->>>>>>> ---
->>>>>>> fs/nfs/dir.c | 4 +++-
->>>>>>> 1 file changed, 3 insertions(+), 1 deletion(-)
->>>>>>> 
->>>>>>> diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
->>>>>>> index d8015a0..8c7835b 100644
->>>>>>> --- a/fs/nfs/dir.c
->>>>>>> +++ b/fs/nfs/dir.c
->>>>>>> @@ -1383,8 +1383,10 @@ struct dentry *nfs_lookup(struct inode *dir, struct dentry * dentry, unsigned in
->>>>>>> 	/*
->>>>>>> 	 * If we're doing an exclusive create, optimize away the lookup
->>>>>>> 	 * but don't hash the dentry.
->>>>>>> +	 * This optimization only works if we can write in the parent.
->>>>>>> 	 */
->>>>>>> -	if (nfs_is_exclusive_create(dir, flags))
->>>>>>> +	if (nfs_is_exclusive_create(dir, flags) &&
->>>>>>> +	    (inode_permission(dir, MAY_WRITE | MAY_READ | MAY_EXEC) == 0))
->>>>>>> 		return NULL;
->>>>>>> 
->>>>>> 
->>>>>> NACK. The only write permission we should care about on the client side is whether or not the filesystem is mounted read-only. All other permissions are checked by the server.
->>>>> 
->>>>> Right. This was mostly a discussion piece.
->>>>> The problem here is nfs_permission() returns 0 if you check for
->>>>> inode_permission(dir, MAY_WRITE | MAY_EXEC) (as in may_create), but then
->>>>> some other checks in the kernel still catch on to the fact that the directory
->>>>> is not writeable, so we have a premature failure with EPERM and server never sees
->>>>> this request which breaks things.
->>>> 
->>>> Are these VFS level checks? Which ones?
->>> 
->>> Yes, VFS level I believe.
->>> For Lustre it's may_create() from vfs_mkdir() that stops us short
->>> and the Lustre patch is effective.
->>> but for NFS this must be something else and I did not trace
->>> it completely. One of the security checks, I guess?
->>> if NFS patch is changed to check inode_permission(dir, MAY_OPEN | MAY_EXEC)
->>> as in Lustre, that returns 0 no matter what.
->>> 
->>> This is trivial to reproduce too.
->> 
->> So, should we be ignoring the MAY_EXEC flag when the VFS asks for inode_permission(dir, MAY_WRITE|MAY_EXEC)? I suspect that is the problem here.
-> 
-> You know, I have been wrong here.
-> VFS is not in the way.
-> it's the NFS server that's returning us the error:
-> [  326.069066] NFS: mkdir(0:44/12), test
-> [  326.070510] nfsd_dispatch: vers 3 proc 9
-> [  326.071612] nfsd: MKDIR(3)    16: 01010001 00000000 0000000c 4b3b7a92 00000000 00000000 test
-> [  326.071617] nfsd: fh_verify(16: 01010001 00000000 0000000c 4b3b7a92 00000000 00000000)
-> [  326.071684] fh_verify: /racer permission failure, acc=3, error=13
-> 
-> So I guess nfsd wants to be lazy too?
-> What side do you think this is best fixed then? the client or the server?
+Actually, it is simple to fix.
 
-If the bug lies in the knfsd server, then we should fix it there. The Linux client isn’t the only one out there, and those other clients should also be able to depend on correct semantics from the server.
+<insert broken record about suspend should be using freeze_super(),
+not sys_sync(), to suspend filesystem operations>
 
-Cheers
-  Trond
+i.e. the VFS blocks new operations from starting, and then then the
+NFS client simply needs to implement ->freeze_fs to drain all it's
+active operations before returning. Problem solved.
 
+> > Can nfs do something different here to prevent this? Maybe use a
+> > non-freezable sleep and let the operation complete, or else abort the
+> > operation and return ERESTARTSYS?
+> 
+> The problem with letting the op complete is that often by the time you
+> get to the point of trying to freeze processes, the network interfaces
+> are already shut down. So the operation you're waiting on might never
+> complete. Stuff like suspend operations on your laptop fail, leading to
+> fun bug reports like: "Oh, my laptop burned to crisp inside my bag
+> because the suspend never completed."
+
+Yup, precisely the sort of problems we've had over the past 10 years
+with XFS because we do lots of stuff aynchronously in the background
+(just like NFS) and hence sys_sync() isn't sufficient to quiesce a
+filesystem's operations.
+
+But I'm used to being ignored on this topic (for almost 10 years,
+now!). Indeed, it's been made clear in the past that I know
+absolutely nothing about what is needed to be done to safely
+suspend filesystem operations...  :/
+
+Cheers,
+
+Dave.
+-- 
+Dave Chinner
+david@fromorbit.com
