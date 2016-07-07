@@ -1,21 +1,21 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from linuxhacker.ru ([217.76.32.60]:58014 "EHLO fiona.linuxhacker.ru"
+Received: from linuxhacker.ru ([217.76.32.60]:42136 "EHLO fiona.linuxhacker.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751395AbcGGRcU convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 7 Jul 2016 13:32:20 -0400
+	id S1752844AbcGGVxB convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 7 Jul 2016 17:53:01 -0400
 Subject: Re: [PATCH 1/2] nfs: Fix spurios EPERM when mkdir of existing dentry
 Mime-Version: 1.0 (Apple Message framework v1283)
 Content-Type: text/plain; charset=windows-1252
 From: Oleg Drokin <green@linuxhacker.ru>
 In-Reply-To: <4D9E1AEE-D37F-43D8-8F22-E66572388CB8@primarydata.com>
-Date: Thu, 7 Jul 2016 13:32:11 -0400
+Date: Thu, 7 Jul 2016 17:52:47 -0400
 Cc: Jeff Layton <jlayton@poochiereds.net>,
         Viro Alexander <viro@ZenIV.linux.org.uk>,
-        "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Message-Id: <35E0ED0E-5716-4235-8853-8A3B103B3F94@linuxhacker.ru>
+        linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org
+Message-Id: <1DFC2ADD-11BF-43E6-8229-3F266FE3ABF5@linuxhacker.ru>
 References: <1467870827-2959489-1-git-send-email-green@linuxhacker.ru> <1467870827-2959489-2-git-send-email-green@linuxhacker.ru> <9F6E5530-CBA4-4A0A-BAE1-72AAC28DB4D1@primarydata.com> <F3D54183-12C6-458F-B4DB-05016EAA6272@linuxhacker.ru> <0438AC35-50AD-4D9E-9C23-7EED70EF2B4C@primarydata.com> <F6721966-DE36-44B1-8935-A01132B4C62F@linuxhacker.ru> <4D9E1AEE-D37F-43D8-8F22-E66572388CB8@primarydata.com>
-To: Trond Myklebust <trondmy@primarydata.com>
+To: Trond Myklebust <trondmy@primarydata.com>,
+        "J . Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
@@ -90,26 +90,14 @@ On Jul 7, 2016, at 1:27 PM, Trond Myklebust wrote:
 > 
 > So, should we be ignoring the MAY_EXEC flag when the VFS asks for inode_permission(dir, MAY_WRITE|MAY_EXEC)? I suspect that is the problem here.
 
-I am not sure what do you mean here.
+You know, I have been wrong here.
+VFS is not in the way.
+it's the NFS server that's returning us the error:
+[  326.069066] NFS: mkdir(0:44/12), test
+[  326.070510] nfsd_dispatch: vers 3 proc 9
+[  326.071612] nfsd: MKDIR(3)    16: 01010001 00000000 0000000c 4b3b7a92 00000000 00000000 test
+[  326.071617] nfsd: fh_verify(16: 01010001 00000000 0000000c 4b3b7a92 00000000 00000000)
+[  326.071684] fh_verify: /racer permission failure, acc=3, error=13
 
-When vfs asks for inode_permission(dir, MAY_WRITE|MAY_EXEC) NFS already returns 0
-(i.e. everything is ok, go ahead).
-But it's all futile because some other check somewhere still catches on
-to the fact that the directory is not writeable and does not let the mkdir
-to actually happen in the FS itself.
-
->>>> (the read-only mount is not handled as well at the moment of course and my patch
->>>> does not address this issue either, but it's easier to address in the VFS, like
->>>> in filename_create() or something).
->>>> 
->>>> I see that two major consumers of this nfs_permission MAY_WRITE|!MAY_READ check
->>>> are creates and deletes and with deletes we had a lookup already, so it already
->>>> looked up the child and revalidated the parent.
->>>> For creates, a revalidation still might be needed, I guess and that was the main driver
->>>> behind this check? And that only when you do current dir creates, because otherwise
->>>> the parent would have been revalidated in lookup?
->>>> Is this the major case why that check is actually there?
->>>> 
->>>> Just trying to see how to approach this better without breaking the applications.
-> 
-
+So I guess nfsd wants to be lazy too?
+What side do you think this is best fixed then? the client or the server?
