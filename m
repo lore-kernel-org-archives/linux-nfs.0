@@ -1,37 +1,46 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:55993 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:38487 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750991AbcGGMnv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 7 Jul 2016 08:43:51 -0400
-Received: from int-mx14.intmail.prod.int.phx2.redhat.com (int-mx14.intmail.prod.int.phx2.redhat.com [10.5.11.27])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
-	(No client certificate requested)
-	by mx1.redhat.com (Postfix) with ESMTPS id A8A2F80083
-	for <linux-nfs@vger.kernel.org>; Thu,  7 Jul 2016 12:43:50 +0000 (UTC)
-Received: from steved.boston.devel.redhat.com (unused [10.10.51.119] (may be forged))
-	by int-mx14.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id u67ChoBX006306
-	for <linux-nfs@vger.kernel.org>; Thu, 7 Jul 2016 08:43:50 -0400
-From: Steve Dickson <SteveD@redhat.com>
-Subject: Monthly Linux NFS Town Hall meeting: Canceled
-To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Message-ID: <9d528df2-8307-b6e3-d2c1-0a62ffa7e96b@RedHat.com>
-Date: Thu, 7 Jul 2016 08:43:49 -0400
+	id S1750968AbcGGOOY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 7 Jul 2016 10:14:24 -0400
+From: David Howells <dhowells@redhat.com>
+In-Reply-To: <1467831425.2908.16.camel@redhat.com>
+References: <1467831425.2908.16.camel@redhat.com> <1467294433-3222-1-git-send-email-agruenba@redhat.com> <1467294433-3222-14-git-send-email-agruenba@redhat.com>
+To: Jeff Layton <jlayton@redhat.com>,
+        Andreas Gruenbacher <agruenba@redhat.com>,
+        Alexander Viro <viro@zeniv.linux.org.uk>
+Cc: dhowells@redhat.com, Christoph Hellwig <hch@infradead.org>,
+        "Theodore Ts'o" <tytso@mit.edu>,
+        Andreas Dilger <adilger.kernel@dilger.ca>,
+        "J. Bruce Fields" <bfields@fieldses.org>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>,
+        Dave Chinner <david@fromorbit.com>, linux-ext4@vger.kernel.org,
+        xfs@oss.sgi.com, linux-kernel@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-cifs@vger.kernel.org, linux-api@vger.kernel.org
+Subject: Re: [PATCH v23 13/22] vfs: Cache richacl in struct inode
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
+Content-Type: text/plain; charset="us-ascii"
+Date: Thu, 07 Jul 2016 15:14:13 +0100
+Message-ID: <1689.1467900853@warthog.procyon.org.uk>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hello,
+Jeff Layton <jlayton@redhat.com> wrote:
 
-Today's Town Hall meeting is canceled due 
-to a scheduling conflict..   
+> > +	if (cmpxchg(&inode->i_acl, ACL_NOT_CACHED, sentinel) != ACL_NOT_CACHED)
+> > +		/* fall through */ ;
+> > +
+> 
+> So you do the same thing regardless of the outcome of the above? Why
+> bother with the if at all here? Just do the cmpxchg and toss out the
+> result.
 
-The only news I have is the dates for the Fall Bakeathon
-are set. The 3rd week in Oct (17 thur 21). 
+gcc might complain if you don't check the result.
 
-I'm still working on the hotels as soon as I get that
-settled I'll make the official announcement
+However, this does look like it's subject to a thundering herd problem.  If
+30000 processes all look at the ACL at the same time on a network fs, could
+that cause 30000 RPC calls to be transmitted for the same thing?
 
-  
-steved.
-
+David
