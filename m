@@ -1,125 +1,61 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:58710 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752934AbcGGPnm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 7 Jul 2016 11:43:42 -0400
-Date: Thu, 7 Jul 2016 11:43:40 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Benjamin Coddington <bcodding@redhat.com>
-Cc: xfs@oss.sgi.com, linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        Alexander Viro <viro@zeniv.linux.org.uk>,
-        Dave Chinner <david@fromorbit.com>, Christoph Hellwig <hch@lst.de>
-Subject: Re: [PATCH 2/2] xfs: abstract block export operations from nfsd
- layouts
-Message-ID: <20160707154340.GA27009@fieldses.org>
-References: <5ff05b585226b689866f4604adddffc94910f63f.1467889001.git.bcodding@redhat.com>
- <073be10a55e5e952adbfd320abcce075fb3958ae.1467889001.git.bcodding@redhat.com>
+Received: from us-smtp-delivery-194.mimecast.com ([216.205.24.194]:24888 "EHLO
+	us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751220AbcGGQQe convert rfc822-to-8bit
+	(ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 7 Jul 2016 12:16:34 -0400
+From: Trond Myklebust <trondmy@primarydata.com>
+To: Oleg Drokin <green@linuxhacker.ru>
+CC: Jeff Layton <jlayton@poochiereds.net>,
+        Viro Alexander <viro@ZenIV.linux.org.uk>,
+        "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 1/2] nfs: Fix spurios EPERM when mkdir of existing dentry
+Date: Thu, 7 Jul 2016 16:16:12 +0000
+Message-ID: <9F6E5530-CBA4-4A0A-BAE1-72AAC28DB4D1@primarydata.com>
+References: <1467870827-2959489-1-git-send-email-green@linuxhacker.ru>
+ <1467870827-2959489-2-git-send-email-green@linuxhacker.ru>
+In-Reply-To: <1467870827-2959489-2-git-send-email-green@linuxhacker.ru>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <073be10a55e5e952adbfd320abcce075fb3958ae.1467889001.git.bcodding@redhat.com>
+Content-Type: text/plain; charset=WINDOWS-1252
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Fine by me.  Dave, I'm happy to take it through the nfsd tree, or if you
-want to take it, feel free to add my
 
-	Acked-by: J. Bruce Fields <bfields@redhat.com>
-
-I'm OK either way.
-
---b.
-
-On Thu, Jul 07, 2016 at 07:02:32AM -0400, Benjamin Coddington wrote:
-> Instead of creeping pnfs layout configuration into filesystems, move the
-> definition of block-based export operations under a more abstract
-> configuration.
+> On Jul 7, 2016, at 01:53, Oleg Drokin <green@linuxhacker.ru> wrote:
 > 
-> Signed-off-by: Benjamin Coddington <bcodding@redhat.com>
+> It's great when we can shave an extra RPC, but not at the expense
+> of correctness.
+> We should not return EPERM (from vfs_create/mknod/mkdir) if the
+> name already exists, even if we have no write access in parent.
+> 
+> Since the check in nfs_permission is clearly not enough to stave
+> off this, just throw in the extra READ access to actually
+> go through.
+> 
+> Signed-off-by: Oleg Drokin <green@linuxhacker.ru>
 > ---
->  fs/Kconfig          | 3 +++
->  fs/nfsd/Kconfig     | 2 ++
->  fs/xfs/Makefile     | 3 +--
->  fs/xfs/xfs_export.c | 2 +-
->  fs/xfs/xfs_pnfs.h   | 4 ++--
->  5 files changed, 9 insertions(+), 5 deletions(-)
+> fs/nfs/dir.c | 4 +++-
+> 1 file changed, 3 insertions(+), 1 deletion(-)
 > 
-> diff --git a/fs/Kconfig b/fs/Kconfig
-> index 6725f59c18e6..6e57b4237d72 100644
-> --- a/fs/Kconfig
-> +++ b/fs/Kconfig
-> @@ -66,6 +66,9 @@ config FS_POSIX_ACL
->  config EXPORTFS
->  	tristate
->  
-> +config BLOCK_EXPORT_OPS
-> +	bool
-> +
->  config FILE_LOCKING
->  	bool "Enable POSIX file locking API" if EXPERT
->  	default y
-> diff --git a/fs/nfsd/Kconfig b/fs/nfsd/Kconfig
-> index c9f583d7bac8..fb63f93cd5f1 100644
-> --- a/fs/nfsd/Kconfig
-> +++ b/fs/nfsd/Kconfig
-> @@ -90,6 +90,7 @@ config NFSD_BLOCKLAYOUT
->  	bool "NFSv4.1 server support for pNFS block layouts"
->  	depends on NFSD_V4 && BLOCK
->  	select NFSD_PNFS
-> +	select BLOCK_EXPORT_OPS
->  	help
->  	  This option enables support for the exporting pNFS block layouts
->  	  in the kernel's NFS server. The pNFS block layout enables NFS
-> @@ -102,6 +103,7 @@ config NFSD_SCSILAYOUT
->  	bool "NFSv4.1 server support for pNFS SCSI layouts"
->  	depends on NFSD_V4 && BLOCK
->  	select NFSD_PNFS
-> +	select BLOCK_EXPORT_OPS
->  	help
->  	  This option enables support for the exporting pNFS SCSI layouts
->  	  in the kernel's NFS server. The pNFS SCSI layout enables NFS
-> diff --git a/fs/xfs/Makefile b/fs/xfs/Makefile
-> index 3542d94fddce..9c9f039e2f05 100644
-> --- a/fs/xfs/Makefile
-> +++ b/fs/xfs/Makefile
-> @@ -121,5 +121,4 @@ xfs-$(CONFIG_XFS_RT)		+= xfs_rtalloc.o
->  xfs-$(CONFIG_XFS_POSIX_ACL)	+= xfs_acl.o
->  xfs-$(CONFIG_SYSCTL)		+= xfs_sysctl.o
->  xfs-$(CONFIG_COMPAT)		+= xfs_ioctl32.o
-> -xfs-$(CONFIG_NFSD_BLOCKLAYOUT)	+= xfs_pnfs.o
-> -xfs-$(CONFIG_NFSD_SCSILAYOUT)	+= xfs_pnfs.o
-> +xfs-$(CONFIG_BLOCK_EXPORT_OPS)	+= xfs_pnfs.o
-> diff --git a/fs/xfs/xfs_export.c b/fs/xfs/xfs_export.c
-> index b08a5541f292..7b1896ef9112 100644
-> --- a/fs/xfs/xfs_export.c
-> +++ b/fs/xfs/xfs_export.c
-> @@ -246,7 +246,7 @@ const struct export_operations xfs_export_operations = {
->  	.fh_to_parent		= xfs_fs_fh_to_parent,
->  	.get_parent		= xfs_fs_get_parent,
->  	.commit_metadata	= xfs_fs_nfs_commit_metadata,
-> -#if defined(CONFIG_NFSD_BLOCKLAYOUT) || defined(CONFIG_NFSD_SCSILAYOUT)
-> +#ifdef CONFIG_BLOCK_EXPORT_OPS
->  	.get_uuid		= xfs_fs_get_uuid,
->  	.map_blocks		= xfs_fs_map_blocks,
->  	.commit_blocks		= xfs_fs_commit_blocks,
-> diff --git a/fs/xfs/xfs_pnfs.h b/fs/xfs/xfs_pnfs.h
-> index 93f74853961b..1073f08cd668 100644
-> --- a/fs/xfs/xfs_pnfs.h
-> +++ b/fs/xfs/xfs_pnfs.h
-> @@ -1,7 +1,7 @@
->  #ifndef _XFS_PNFS_H
->  #define _XFS_PNFS_H 1
->  
-> -#if defined(CONFIG_NFSD_BLOCKLAYOUT) || defined(CONFIG_NFSD_SCSILAYOUT)
-> +#ifdef CONFIG_BLOCK_EXPORT_OPS
->  int xfs_fs_get_uuid(struct super_block *sb, u8 *buf, u32 *len, u64 *offset);
->  int xfs_fs_map_blocks(struct inode *inode, loff_t offset, u64 length,
->  		struct iomap *iomap, bool write, u32 *device_generation);
-> @@ -15,5 +15,5 @@ xfs_break_layouts(struct inode *inode, uint *iolock, bool with_imutex)
->  {
->  	return 0;
->  }
-> -#endif /* CONFIG_NFSD_PNFS */
-> +#endif /* CONFIG_BLOCK_EXPORT_OPS */
->  #endif /* _XFS_PNFS_H */
-> -- 
-> 2.5.5
+> diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
+> index d8015a0..8c7835b 100644
+> --- a/fs/nfs/dir.c
+> +++ b/fs/nfs/dir.c
+> @@ -1383,8 +1383,10 @@ struct dentry *nfs_lookup(struct inode *dir, struct dentry * dentry, unsigned in
+> 	/*
+> 	 * If we're doing an exclusive create, optimize away the lookup
+> 	 * but don't hash the dentry.
+> +	 * This optimization only works if we can write in the parent.
+> 	 */
+> -	if (nfs_is_exclusive_create(dir, flags))
+> +	if (nfs_is_exclusive_create(dir, flags) &&
+> +	    (inode_permission(dir, MAY_WRITE | MAY_READ | MAY_EXEC) == 0))
+> 		return NULL;
+> 
+
+NACK. The only write permission we should care about on the client side is whether or not the filesystem is mounted read-only. All other permissions are checked by the server.
+
+Cheers
+  Trond
+
