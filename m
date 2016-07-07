@@ -1,129 +1,114 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qt0-f196.google.com ([209.85.216.196]:36364 "EHLO
-	mail-qt0-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751523AbcGGKxI (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 7 Jul 2016 06:53:08 -0400
-Received: by mail-qt0-f196.google.com with SMTP id w59so475819qtd.3
-        for <linux-nfs@vger.kernel.org>; Thu, 07 Jul 2016 03:53:07 -0700 (PDT)
-Message-ID: <1467888784.3195.20.camel@poochiereds.net>
-Subject: Re: [RFC] [PATCH 0/2] mkdir lookup optimization
-From: Jeff Layton <jlayton@poochiereds.net>
-To: Oleg Drokin <green@linuxhacker.ru>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        Al Viro <viro@ZenIV.linux.org.uk>
-Cc: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Thu, 07 Jul 2016 06:53:04 -0400
-In-Reply-To: <1467870827-2959489-1-git-send-email-green@linuxhacker.ru>
-References: <1467870827-2959489-1-git-send-email-green@linuxhacker.ru>
-Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
+Received: from mx1.redhat.com ([209.132.183.28]:47684 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751269AbcGGLCe (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 7 Jul 2016 07:02:34 -0400
+From: Benjamin Coddington <bcodding@redhat.com>
+To: xfs@oss.sgi.com, linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org
+Cc: Alexander Viro <viro@zeniv.linux.org.uk>,
+        Dave Chinner <david@fromorbit.com>, Christoph Hellwig <hch@lst.de>,
+        bfields@fieldses.org
+Subject: [PATCH 2/2] xfs: abstract block export operations from nfsd layouts
+Date: Thu,  7 Jul 2016 07:02:32 -0400
+Message-Id: <073be10a55e5e952adbfd320abcce075fb3958ae.1467889001.git.bcodding@redhat.com>
+In-Reply-To: <5ff05b585226b689866f4604adddffc94910f63f.1467889001.git.bcodding@redhat.com>
+References: <5ff05b585226b689866f4604adddffc94910f63f.1467889001.git.bcodding@redhat.com>
+In-Reply-To: <5ff05b585226b689866f4604adddffc94910f63f.1467889001.git.bcodding@redhat.com>
+References: <5ff05b585226b689866f4604adddffc94910f63f.1467889001.git.bcodding@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 2016-07-07 at 01:53 -0400, Oleg Drokin wrote:
-> (sorry for resend, the first go around did not make it to fsdevel and to Al).
-> 
-> This is inspired by a bug in Lustre that's ATM is shared by NFS
-> and used o be shared by CIFS code.
-> 
-> The problem at hand is: when you try to mkdir in a directory
-> where you do not have permissions to create anything, you only
-> supposed to get EPERM if the directory you are creatign does not exist.
-> Now if the name does exist, you are supposed to get EEXIST instead.
-> There are tons of programs that when fed a pathname go and try
-> to perform a create of every path component starting from /,
-> and ignoring EEXIST, but not other errors. Those programs are broken
-> by the above mentioned bug.
-> 
-> All is fine everywhere by Lustre and NFS at the moment, because
-> there's an optimization at hand. e.g. in NFS:
->        /*
->         * If we're doing an exclusive create, optimize away the lookup
->         * but don't hash the dentry.
->         */
->        if (nfs_is_exclusive_create(dir, flags))
->                return NULL;
-> 
-> Now, this is all fine except when you have no permissions to create
-> anything - then vfs_mknod/mkdir/create will do may_create(dir, dentry)
-> and we exit spuriously with EPERM.
-> 
-> [green@fedora1 crash]$ mkdir aaa 
-> mkdir: cannot create directory 'aaa': Permission denied
-> [green@fedora1 crash]$ mkdir lost+found
-> mkdir: cannot create directory 'lost+found': Permission denied
-> [green@fedora1 crash]$ ls -ld lost+found
-> drwx------ 2 root root 16384 May 25  2013 lost+found
-> [green@fedora1 crash]$ mkdir lost+found
-> mkdir: cannot create directory 'lost+found': File exists
-> 
-> cifs had exactly the same code, but it got removed when atomic_open
-> was introduced (throwing away a perfectly good optimization for mkdir
-> in process) with commit d2c127197dfc0b2bae62a52e1e0d3e3ff493919e
-> "cifs: implement i_op->atomic_open()"
-> 
-> These two patches are the lazy way of fixing the problem -
-> "just throw in the extra permission check before bailing out"
-> with a bit of complication on the NFS side because there
-> the inode permission check is actually circumvented in nfs_permission,
-> for MAY_WRITE | !MAY_READ case which is enough to fool
-> may_create, but not enough to fool some following check, I guess
-> as the problem still exists.
-> (I am not sure of the performance implications of just removing that
-> thing in nfs_permission).
-> 
-> Anyway I think instead of resurrecting this optimization for cifs,
-> and seeing if ceph and others need it, why not bring it up
-> all the way to __lookup_hash() so that we don't do actual lookup
-> if the parent is writeable?
-> 
-> Even for local filesystems like ext4 that's of benefit - we save
-> one lookup (even with hashed dirs, that only gives us the last blook
-> to lookat and then we still need to check all names to make sure
-> the one we want does not exist - so it's not exactly free).
-> 
-> This should not upset any sort of client-side SELinux/other security
-> stuff magic either. If the name exists, we get EEXIST no matter what,
-> if it does not exist, parent policy declares if we can create or not
-> anyway.
-> 
-> Something like this (+ whatever nfs_permission fix):
-> diff --git a/fs/namei.c b/fs/namei.c
-> index 70580ab..b9de645 100644
-> --- a/fs/namei.c
-> +++ b/fs/namei.c
-> @@ -1512,6 +1512,10 @@ static struct dentry *__lookup_hash(const struct qstr *name,
-> 	if (unlikely(!dentry))
-> 		return ERR_PTR(-ENOMEM);
-> 
-> +	if ((flags & LOOKUP_EXCL|LOOKUP_CREATE) &&
-> +	    (may_create(base, dentry) == 0))
-> +		return dentry;
-> +
+Instead of creeping pnfs layout configuration into filesystems, move the
+definition of block-based export operations under a more abstract
+configuration.
 
-That would need to check that LOOKUP_EXCL is actually set. I think you
-want something like:
+Signed-off-by: Benjamin Coddington <bcodding@redhat.com>
+---
+ fs/Kconfig          | 3 +++
+ fs/nfsd/Kconfig     | 2 ++
+ fs/xfs/Makefile     | 3 +--
+ fs/xfs/xfs_export.c | 2 +-
+ fs/xfs/xfs_pnfs.h   | 4 ++--
+ 5 files changed, 9 insertions(+), 5 deletions(-)
 
-   (flags & (LOOKUP_EXCL|LOOKUP_CREATE)) == (LOOKUP_EXCL|LOOKUP_CREATE)
-
-...and you'd have to figure out how to determine the isdir param for
-may_create at that point.
-
-That said, it does seem like a reasonable idea at first glance.
-
-> 	return lookup_real(base->d_inode, dentry, flags);
-> }
-> 
-> Comments?
-> 
-> Oleg Drokin (2):
->   nfs: Fix spurios EPERM when mkdir of existing dentry
->   staging/lustre: Prevent spurious EPERM on mkdir
-> 
->  drivers/staging/lustre/lustre/llite/namei.c | 8 ++++++--
->  fs/nfs/dir.c                                | 4 +++-
->  2 files changed, 9 insertions(+), 3 deletions(-)
-> 
-
+diff --git a/fs/Kconfig b/fs/Kconfig
+index 6725f59c18e6..6e57b4237d72 100644
+--- a/fs/Kconfig
++++ b/fs/Kconfig
+@@ -66,6 +66,9 @@ config FS_POSIX_ACL
+ config EXPORTFS
+ 	tristate
+ 
++config BLOCK_EXPORT_OPS
++	bool
++
+ config FILE_LOCKING
+ 	bool "Enable POSIX file locking API" if EXPERT
+ 	default y
+diff --git a/fs/nfsd/Kconfig b/fs/nfsd/Kconfig
+index c9f583d7bac8..fb63f93cd5f1 100644
+--- a/fs/nfsd/Kconfig
++++ b/fs/nfsd/Kconfig
+@@ -90,6 +90,7 @@ config NFSD_BLOCKLAYOUT
+ 	bool "NFSv4.1 server support for pNFS block layouts"
+ 	depends on NFSD_V4 && BLOCK
+ 	select NFSD_PNFS
++	select BLOCK_EXPORT_OPS
+ 	help
+ 	  This option enables support for the exporting pNFS block layouts
+ 	  in the kernel's NFS server. The pNFS block layout enables NFS
+@@ -102,6 +103,7 @@ config NFSD_SCSILAYOUT
+ 	bool "NFSv4.1 server support for pNFS SCSI layouts"
+ 	depends on NFSD_V4 && BLOCK
+ 	select NFSD_PNFS
++	select BLOCK_EXPORT_OPS
+ 	help
+ 	  This option enables support for the exporting pNFS SCSI layouts
+ 	  in the kernel's NFS server. The pNFS SCSI layout enables NFS
+diff --git a/fs/xfs/Makefile b/fs/xfs/Makefile
+index 3542d94fddce..9c9f039e2f05 100644
+--- a/fs/xfs/Makefile
++++ b/fs/xfs/Makefile
+@@ -121,5 +121,4 @@ xfs-$(CONFIG_XFS_RT)		+= xfs_rtalloc.o
+ xfs-$(CONFIG_XFS_POSIX_ACL)	+= xfs_acl.o
+ xfs-$(CONFIG_SYSCTL)		+= xfs_sysctl.o
+ xfs-$(CONFIG_COMPAT)		+= xfs_ioctl32.o
+-xfs-$(CONFIG_NFSD_BLOCKLAYOUT)	+= xfs_pnfs.o
+-xfs-$(CONFIG_NFSD_SCSILAYOUT)	+= xfs_pnfs.o
++xfs-$(CONFIG_BLOCK_EXPORT_OPS)	+= xfs_pnfs.o
+diff --git a/fs/xfs/xfs_export.c b/fs/xfs/xfs_export.c
+index b08a5541f292..7b1896ef9112 100644
+--- a/fs/xfs/xfs_export.c
++++ b/fs/xfs/xfs_export.c
+@@ -246,7 +246,7 @@ const struct export_operations xfs_export_operations = {
+ 	.fh_to_parent		= xfs_fs_fh_to_parent,
+ 	.get_parent		= xfs_fs_get_parent,
+ 	.commit_metadata	= xfs_fs_nfs_commit_metadata,
+-#if defined(CONFIG_NFSD_BLOCKLAYOUT) || defined(CONFIG_NFSD_SCSILAYOUT)
++#ifdef CONFIG_BLOCK_EXPORT_OPS
+ 	.get_uuid		= xfs_fs_get_uuid,
+ 	.map_blocks		= xfs_fs_map_blocks,
+ 	.commit_blocks		= xfs_fs_commit_blocks,
+diff --git a/fs/xfs/xfs_pnfs.h b/fs/xfs/xfs_pnfs.h
+index 93f74853961b..1073f08cd668 100644
+--- a/fs/xfs/xfs_pnfs.h
++++ b/fs/xfs/xfs_pnfs.h
+@@ -1,7 +1,7 @@
+ #ifndef _XFS_PNFS_H
+ #define _XFS_PNFS_H 1
+ 
+-#if defined(CONFIG_NFSD_BLOCKLAYOUT) || defined(CONFIG_NFSD_SCSILAYOUT)
++#ifdef CONFIG_BLOCK_EXPORT_OPS
+ int xfs_fs_get_uuid(struct super_block *sb, u8 *buf, u32 *len, u64 *offset);
+ int xfs_fs_map_blocks(struct inode *inode, loff_t offset, u64 length,
+ 		struct iomap *iomap, bool write, u32 *device_generation);
+@@ -15,5 +15,5 @@ xfs_break_layouts(struct inode *inode, uint *iolock, bool with_imutex)
+ {
+ 	return 0;
+ }
+-#endif /* CONFIG_NFSD_PNFS */
++#endif /* CONFIG_BLOCK_EXPORT_OPS */
+ #endif /* _XFS_PNFS_H */
 -- 
-Jeff Layton <jlayton@poochiereds.net>
+2.5.5
+
