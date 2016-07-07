@@ -1,41 +1,37 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:36696 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:55993 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752191AbcGGLCe (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 7 Jul 2016 07:02:34 -0400
-From: Benjamin Coddington <bcodding@redhat.com>
-To: xfs@oss.sgi.com, linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org
-Cc: Alexander Viro <viro@zeniv.linux.org.uk>,
-        Dave Chinner <david@fromorbit.com>, Christoph Hellwig <hch@lst.de>,
-        bfields@fieldses.org
-Subject: [PATCH 1/2] nfsd: allow SCSI layout support without block layout
-Date: Thu,  7 Jul 2016 07:02:31 -0400
-Message-Id: <5ff05b585226b689866f4604adddffc94910f63f.1467889001.git.bcodding@redhat.com>
+	id S1750991AbcGGMnv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 7 Jul 2016 08:43:51 -0400
+Received: from int-mx14.intmail.prod.int.phx2.redhat.com (int-mx14.intmail.prod.int.phx2.redhat.com [10.5.11.27])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+	(No client certificate requested)
+	by mx1.redhat.com (Postfix) with ESMTPS id A8A2F80083
+	for <linux-nfs@vger.kernel.org>; Thu,  7 Jul 2016 12:43:50 +0000 (UTC)
+Received: from steved.boston.devel.redhat.com (unused [10.10.51.119] (may be forged))
+	by int-mx14.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id u67ChoBX006306
+	for <linux-nfs@vger.kernel.org>; Thu, 7 Jul 2016 08:43:50 -0400
+From: Steve Dickson <SteveD@redhat.com>
+Subject: Monthly Linux NFS Town Hall meeting: Canceled
+To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Message-ID: <9d528df2-8307-b6e3-d2c1-0a62ffa7e96b@RedHat.com>
+Date: Thu, 7 Jul 2016 08:43:49 -0400
+MIME-Version: 1.0
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-We shouldn't have to configure both NFSD_BLOCKLAYOUT and NFSD_SCSILAYOUT if
-all we want are SCSI layouts on the server, so define the xfs export
-operations for either configuration.
+Hello,
 
-Signed-off-by: Benjamin Coddington <bcodding@redhat.com>
----
- fs/xfs/xfs_export.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+Today's Town Hall meeting is canceled due 
+to a scheduling conflict..   
 
-diff --git a/fs/xfs/xfs_export.c b/fs/xfs/xfs_export.c
-index a1b2dd828b9d..b08a5541f292 100644
---- a/fs/xfs/xfs_export.c
-+++ b/fs/xfs/xfs_export.c
-@@ -246,7 +246,7 @@ const struct export_operations xfs_export_operations = {
- 	.fh_to_parent		= xfs_fs_fh_to_parent,
- 	.get_parent		= xfs_fs_get_parent,
- 	.commit_metadata	= xfs_fs_nfs_commit_metadata,
--#ifdef CONFIG_NFSD_BLOCKLAYOUT
-+#if defined(CONFIG_NFSD_BLOCKLAYOUT) || defined(CONFIG_NFSD_SCSILAYOUT)
- 	.get_uuid		= xfs_fs_get_uuid,
- 	.map_blocks		= xfs_fs_map_blocks,
- 	.commit_blocks		= xfs_fs_commit_blocks,
--- 
-2.5.5
+The only news I have is the dates for the Fall Bakeathon
+are set. The 3rd week in Oct (17 thur 21). 
+
+I'm still working on the hotels as soon as I get that
+settled I'll make the official announcement
+
+  
+steved.
 
