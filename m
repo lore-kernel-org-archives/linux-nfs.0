@@ -1,92 +1,112 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-oi0-f41.google.com ([209.85.218.41]:35420 "EHLO
-	mail-oi0-f41.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756128AbcGGDzh (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 6 Jul 2016 23:55:37 -0400
-Received: by mail-oi0-f41.google.com with SMTP id r2so8084136oih.2
-        for <linux-nfs@vger.kernel.org>; Wed, 06 Jul 2016 20:55:37 -0700 (PDT)
-Date: Wed, 6 Jul 2016 22:55:34 -0500
-From: Seth Forshee <seth.forshee@canonical.com>
-To: Jeff Layton <jlayton@redhat.com>
-Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
-        Anna Schumaker <anna.schumaker@netapp.com>,
-        linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org,
-        Tycho Andersen <tycho.andersen@canonical.com>
-Subject: Re: Hang due to nfs letting tasks freeze with locked inodes
-Message-ID: <20160707035534.GF45215@ubuntu-hedt>
-References: <20160706174655.GD45215@ubuntu-hedt>
- <1467842838.2908.45.camel@redhat.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-In-Reply-To: <1467842838.2908.45.camel@redhat.com>
+Received: from linuxhacker.ru ([217.76.32.60]:58980 "EHLO fiona.linuxhacker.ru"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750981AbcGGFy5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 7 Jul 2016 01:54:57 -0400
+From: Oleg Drokin <green@linuxhacker.ru>
+To: Trond Myklebust <trond.myklebust@primarydata.com>,
+        Jeff Layton <jlayton@poochiereds.net>,
+        Al Viro <viro@ZenIV.linux.org.uk>
+Cc: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        Oleg Drokin <green@linuxhacker.ru>
+Subject: [RFC] [PATCH 0/2] mkdir lookup optimization
+Date: Thu,  7 Jul 2016 01:53:45 -0400
+Message-Id: <1467870827-2959489-1-git-send-email-green@linuxhacker.ru>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Jul 06, 2016 at 06:07:18PM -0400, Jeff Layton wrote:
-> On Wed, 2016-07-06 at 12:46 -0500, Seth Forshee wrote:
-> > We're seeing a hang when freezing a container with an nfs bind mount while
-> > running iozone. Two iozone processes were hung with this stack trace.
-> > 
-> >  [] schedule+0x35/0x80
-> >  [] schedule_preempt_disabled+0xe/0x10
-> >  [] __mutex_lock_slowpath+0xb9/0x130
-> >  [] mutex_lock+0x1f/0x30
-> >  [] do_unlinkat+0x12b/0x2d0
-> >  [] SyS_unlink+0x16/0x20
-> >  [] entry_SYSCALL_64_fastpath+0x16/0x71
-> > 
-> > This seems to be due to another iozone thread frozen during unlink with
-> > this stack trace:
-> > 
-> >  [] __refrigerator+0x7a/0x140
-> >  [] nfs4_handle_exception+0x118/0x130 [nfsv4]
-> >  [] nfs4_proc_remove+0x7d/0xf0 [nfsv4]
-> >  [] nfs_unlink+0x149/0x350 [nfs]
-> >  [] vfs_unlink+0xf1/0x1a0
-> >  [] do_unlinkat+0x279/0x2d0
-> >  [] SyS_unlink+0x16/0x20
-> >  [] entry_SYSCALL_64_fastpath+0x16/0x71
-> > 
-> > Since nfs is allowing the thread to be frozen with the inode locked it's
-> > preventing other threads trying to lock the same inode from freezing. It
-> > seems like a bad idea for nfs to be doing this.
-> > 
-> 
-> Yeah, known problem. Not a simple one to fix though.
-> 
-> > Can nfs do something different here to prevent this? Maybe use a
-> > non-freezable sleep and let the operation complete, or else abort the
-> > operation and return ERESTARTSYS?
-> 
-> The problem with letting the op complete is that often by the time you
-> get to the point of trying to freeze processes, the network interfaces
-> are already shut down. So the operation you're waiting on might never
-> complete. Stuff like suspend operations on your laptop fail, leading to
-> fun bug reports like: "Oh, my laptop burned to crisp inside my bag
-> because the suspend never completed."
-> 
-> You could (in principle) return something like -ERESTARTSYS iff the
-> call has not yet been transmitted. If it has already been transmitted,
-> then you might end up sending the call a second time (but not as an RPC
-> retransmission of course). If that call was non-idempotent then you end
-> up with all of _those_ sorts of problems.
-> 
-> Also, -ERESTARTSYS is not quite right as it doesn't always cause the
-> call to be restarted. It depends on the syscall. I think this would
-> probably need some other sort of syscall-restart machinery plumbed in.
+(sorry for resend, the first go around did not make it to fsdevel and to Al).
 
-I don't really know much at all about how NFS works, so I hope you don't
-mind indulging me in some questions.
+This is inspired by a bug in Lustre that's ATM is shared by NFS
+and used o be shared by CIFS code.
 
-What happens then if you suspend waiting for an op to complete and then
-resume an hour later? Will it actually succeed or end up returning some
-sort of "timed out" error?
+The problem at hand is: when you try to mkdir in a directory
+where you do not have permissions to create anything, you only
+supposed to get EPERM if the directory you are creatign does not exist.
+Now if the name does exist, you are supposed to get EEXIST instead.
+There are tons of programs that when fed a pathname go and try
+to perform a create of every path component starting from /,
+and ignoring EEXIST, but not other errors. Those programs are broken
+by the above mentioned bug.
 
-If it's going to be an error (or even likely to be one) could the op
-just be aborted immediately with an error code? It just seems like there
-must be something better than potentially deadlocking the kernel.
+All is fine everywhere by Lustre and NFS at the moment, because
+there's an optimization at hand. e.g. in NFS:
+       /*
+        * If we're doing an exclusive create, optimize away the lookup
+        * but don't hash the dentry.
+        */
+       if (nfs_is_exclusive_create(dir, flags))
+               return NULL;
 
-Thanks,
-Seth
+Now, this is all fine except when you have no permissions to create
+anything - then vfs_mknod/mkdir/create will do may_create(dir, dentry)
+and we exit spuriously with EPERM.
+
+[green@fedora1 crash]$ mkdir aaa 
+mkdir: cannot create directory 'aaa': Permission denied
+[green@fedora1 crash]$ mkdir lost+found
+mkdir: cannot create directory 'lost+found': Permission denied
+[green@fedora1 crash]$ ls -ld lost+found
+drwx------ 2 root root 16384 May 25  2013 lost+found
+[green@fedora1 crash]$ mkdir lost+found
+mkdir: cannot create directory 'lost+found': File exists
+
+cifs had exactly the same code, but it got removed when atomic_open
+was introduced (throwing away a perfectly good optimization for mkdir
+in process) with commit d2c127197dfc0b2bae62a52e1e0d3e3ff493919e
+"cifs: implement i_op->atomic_open()"
+
+These two patches are the lazy way of fixing the problem -
+"just throw in the extra permission check before bailing out"
+with a bit of complication on the NFS side because there
+the inode permission check is actually circumvented in nfs_permission,
+for MAY_WRITE | !MAY_READ case which is enough to fool
+may_create, but not enough to fool some following check, I guess
+as the problem still exists.
+(I am not sure of the performance implications of just removing that
+thing in nfs_permission).
+
+Anyway I think instead of resurrecting this optimization for cifs,
+and seeing if ceph and others need it, why not bring it up
+all the way to __lookup_hash() so that we don't do actual lookup
+if the parent is writeable?
+
+Even for local filesystems like ext4 that's of benefit - we save
+one lookup (even with hashed dirs, that only gives us the last blook
+to lookat and then we still need to check all names to make sure
+the one we want does not exist - so it's not exactly free).
+
+This should not upset any sort of client-side SELinux/other security
+stuff magic either. If the name exists, we get EEXIST no matter what,
+if it does not exist, parent policy declares if we can create or not
+anyway.
+
+Something like this (+ whatever nfs_permission fix):
+diff --git a/fs/namei.c b/fs/namei.c
+index 70580ab..b9de645 100644
+--- a/fs/namei.c
++++ b/fs/namei.c
+@@ -1512,6 +1512,10 @@ static struct dentry *__lookup_hash(const struct qstr *name,
+	if (unlikely(!dentry))
+		return ERR_PTR(-ENOMEM);
+
++	if ((flags & LOOKUP_EXCL|LOOKUP_CREATE) &&
++	    (may_create(base, dentry) == 0))
++		return dentry;
++
+	return lookup_real(base->d_inode, dentry, flags);
+}
+
+Comments?
+
+Oleg Drokin (2):
+  nfs: Fix spurios EPERM when mkdir of existing dentry
+  staging/lustre: Prevent spurious EPERM on mkdir
+
+ drivers/staging/lustre/lustre/llite/namei.c | 8 ++++++--
+ fs/nfs/dir.c                                | 4 +++-
+ 2 files changed, 9 insertions(+), 3 deletions(-)
+
+-- 
+2.7.4
 
