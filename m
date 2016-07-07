@@ -1,103 +1,72 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from linuxhacker.ru ([217.76.32.60]:42136 "EHLO fiona.linuxhacker.ru"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752844AbcGGVxB convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 7 Jul 2016 17:53:01 -0400
-Subject: Re: [PATCH 1/2] nfs: Fix spurios EPERM when mkdir of existing dentry
-Mime-Version: 1.0 (Apple Message framework v1283)
-Content-Type: text/plain; charset=windows-1252
-From: Oleg Drokin <green@linuxhacker.ru>
-In-Reply-To: <4D9E1AEE-D37F-43D8-8F22-E66572388CB8@primarydata.com>
-Date: Thu, 7 Jul 2016 17:52:47 -0400
-Cc: Jeff Layton <jlayton@poochiereds.net>,
-        Viro Alexander <viro@ZenIV.linux.org.uk>,
-        linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org
-Message-Id: <1DFC2ADD-11BF-43E6-8229-3F266FE3ABF5@linuxhacker.ru>
-References: <1467870827-2959489-1-git-send-email-green@linuxhacker.ru> <1467870827-2959489-2-git-send-email-green@linuxhacker.ru> <9F6E5530-CBA4-4A0A-BAE1-72AAC28DB4D1@primarydata.com> <F3D54183-12C6-458F-B4DB-05016EAA6272@linuxhacker.ru> <0438AC35-50AD-4D9E-9C23-7EED70EF2B4C@primarydata.com> <F6721966-DE36-44B1-8935-A01132B4C62F@linuxhacker.ru> <4D9E1AEE-D37F-43D8-8F22-E66572388CB8@primarydata.com>
-To: Trond Myklebust <trondmy@primarydata.com>,
-        "J . Bruce Fields" <bfields@fieldses.org>
+Received: from ipmail06.adl6.internode.on.net ([150.101.137.145]:9165 "EHLO
+	ipmail06.adl6.internode.on.net" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1753575AbcGGWip (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 7 Jul 2016 18:38:45 -0400
+Date: Fri, 8 Jul 2016 08:38:09 +1000
+From: Dave Chinner <david@fromorbit.com>
+To: Benjamin Coddington <bcodding@redhat.com>
+Cc: xfs@oss.sgi.com, linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        Alexander Viro <viro@zeniv.linux.org.uk>,
+        Christoph Hellwig <hch@lst.de>, bfields@fieldses.org
+Subject: Re: [PATCH 2/2] xfs: abstract block export operations from nfsd
+ layouts
+Message-ID: <20160707223809.GH12670@dastard>
+References: <5ff05b585226b689866f4604adddffc94910f63f.1467889001.git.bcodding@redhat.com>
+ <073be10a55e5e952adbfd320abcce075fb3958ae.1467889001.git.bcodding@redhat.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <073be10a55e5e952adbfd320abcce075fb3958ae.1467889001.git.bcodding@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-On Jul 7, 2016, at 1:27 PM, Trond Myklebust wrote:
-
+On Thu, Jul 07, 2016 at 07:02:32AM -0400, Benjamin Coddington wrote:
+> Instead of creeping pnfs layout configuration into filesystems, move the
+> definition of block-based export operations under a more abstract
+> configuration.
 > 
->> On Jul 7, 2016, at 13:07, Oleg Drokin <green@linuxhacker.ru> wrote:
->> 
->> 
->> On Jul 7, 2016, at 12:59 PM, Trond Myklebust wrote:
->> 
->>> 
->>>> On Jul 7, 2016, at 12:52, Oleg Drokin <green@linuxhacker.ru> wrote:
->>>> 
->>>> 
->>>> On Jul 7, 2016, at 12:16 PM, Trond Myklebust wrote:
->>>> 
->>>>> 
->>>>>> On Jul 7, 2016, at 01:53, Oleg Drokin <green@linuxhacker.ru> wrote:
->>>>>> 
->>>>>> It's great when we can shave an extra RPC, but not at the expense
->>>>>> of correctness.
->>>>>> We should not return EPERM (from vfs_create/mknod/mkdir) if the
->>>>>> name already exists, even if we have no write access in parent.
->>>>>> 
->>>>>> Since the check in nfs_permission is clearly not enough to stave
->>>>>> off this, just throw in the extra READ access to actually
->>>>>> go through.
->>>>>> 
->>>>>> Signed-off-by: Oleg Drokin <green@linuxhacker.ru>
->>>>>> ---
->>>>>> fs/nfs/dir.c | 4 +++-
->>>>>> 1 file changed, 3 insertions(+), 1 deletion(-)
->>>>>> 
->>>>>> diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
->>>>>> index d8015a0..8c7835b 100644
->>>>>> --- a/fs/nfs/dir.c
->>>>>> +++ b/fs/nfs/dir.c
->>>>>> @@ -1383,8 +1383,10 @@ struct dentry *nfs_lookup(struct inode *dir, struct dentry * dentry, unsigned in
->>>>>> 	/*
->>>>>> 	 * If we're doing an exclusive create, optimize away the lookup
->>>>>> 	 * but don't hash the dentry.
->>>>>> +	 * This optimization only works if we can write in the parent.
->>>>>> 	 */
->>>>>> -	if (nfs_is_exclusive_create(dir, flags))
->>>>>> +	if (nfs_is_exclusive_create(dir, flags) &&
->>>>>> +	    (inode_permission(dir, MAY_WRITE | MAY_READ | MAY_EXEC) == 0))
->>>>>> 		return NULL;
->>>>>> 
->>>>> 
->>>>> NACK. The only write permission we should care about on the client side is whether or not the filesystem is mounted read-only. All other permissions are checked by the server.
->>>> 
->>>> Right. This was mostly a discussion piece.
->>>> The problem here is nfs_permission() returns 0 if you check for
->>>> inode_permission(dir, MAY_WRITE | MAY_EXEC) (as in may_create), but then
->>>> some other checks in the kernel still catch on to the fact that the directory
->>>> is not writeable, so we have a premature failure with EPERM and server never sees
->>>> this request which breaks things.
->>> 
->>> Are these VFS level checks? Which ones?
->> 
->> Yes, VFS level I believe.
->> For Lustre it's may_create() from vfs_mkdir() that stops us short
->> and the Lustre patch is effective.
->> but for NFS this must be something else and I did not trace
->> it completely. One of the security checks, I guess?
->> if NFS patch is changed to check inode_permission(dir, MAY_OPEN | MAY_EXEC)
->> as in Lustre, that returns 0 no matter what.
->> 
->> This is trivial to reproduce too.
+> Signed-off-by: Benjamin Coddington <bcodding@redhat.com>
+> ---
+>  fs/Kconfig          | 3 +++
+>  fs/nfsd/Kconfig     | 2 ++
+>  fs/xfs/Makefile     | 3 +--
+>  fs/xfs/xfs_export.c | 2 +-
+>  fs/xfs/xfs_pnfs.h   | 4 ++--
+>  5 files changed, 9 insertions(+), 5 deletions(-)
 > 
-> So, should we be ignoring the MAY_EXEC flag when the VFS asks for inode_permission(dir, MAY_WRITE|MAY_EXEC)? I suspect that is the problem here.
+> diff --git a/fs/Kconfig b/fs/Kconfig
+> index 6725f59c18e6..6e57b4237d72 100644
+> --- a/fs/Kconfig
+> +++ b/fs/Kconfig
+> @@ -66,6 +66,9 @@ config FS_POSIX_ACL
+>  config EXPORTFS
+>  	tristate
+>  
+> +config BLOCK_EXPORT_OPS
+> +	bool
+> +
 
-You know, I have been wrong here.
-VFS is not in the way.
-it's the NFS server that's returning us the error:
-[  326.069066] NFS: mkdir(0:44/12), test
-[  326.070510] nfsd_dispatch: vers 3 proc 9
-[  326.071612] nfsd: MKDIR(3)    16: 01010001 00000000 0000000c 4b3b7a92 00000000 00000000 test
-[  326.071617] nfsd: fh_verify(16: 01010001 00000000 0000000c 4b3b7a92 00000000 00000000)
-[  326.071684] fh_verify: /racer permission failure, acc=3, error=13
+default n, help text?
 
-So I guess nfsd wants to be lazy too?
-What side do you think this is best fixed then? the client or the server?
+Also, BLOCK_* prefix config options are for block layer
+functionality, hence I suspect this will confuse people because it's
+a filesystem config option. EXPORTFS_BLOCK_OPS seems more obvious
+and correct to me, as the block mapping ops are part of the exportfs
+operations interface....
+
+>  xfs-$(CONFIG_SYSCTL)		+= xfs_sysctl.o
+>  xfs-$(CONFIG_COMPAT)		+= xfs_ioctl32.o
+> -xfs-$(CONFIG_NFSD_BLOCKLAYOUT)	+= xfs_pnfs.o
+> -xfs-$(CONFIG_NFSD_SCSILAYOUT)	+= xfs_pnfs.o
+> +xfs-$(CONFIG_BLOCK_EXPORT_OPS)	+= xfs_pnfs.o
+
+Why do we need the first patch to XFS anymore? Just convert it
+straight to using CONFIG_EXPORTFS_BLOCK_OPS....
+
+
+Cheers,
+
+Dave.
+-- 
+Dave Chinner
+david@fromorbit.com
