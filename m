@@ -1,103 +1,80 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from linuxhacker.ru ([217.76.32.60]:42118 "EHLO fiona.linuxhacker.ru"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755636AbcGHVx0 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 8 Jul 2016 17:53:26 -0400
-Subject: Re: [PATCH] nfsd: Make creates return EEXIST correctly instead of EPERM
-Mime-Version: 1.0 (Apple Message framework v1283)
+Received: from ipmail07.adl2.internode.on.net ([150.101.137.131]:43403 "EHLO
+	ipmail07.adl2.internode.on.net" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1752518AbcGHXaU (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 8 Jul 2016 19:30:20 -0400
+Date: Sat, 9 Jul 2016 09:30:03 +1000
+From: Dave Chinner <david@fromorbit.com>
+To: Benjamin Coddington <bcodding@redhat.com>
+Cc: xfs@oss.sgi.com, linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        Alexander Viro <viro@zeniv.linux.org.uk>,
+        Christoph Hellwig <hch@lst.de>, bfields@fieldses.org
+Subject: Re: [PATCH 2/2] abstract block export operations from nfsd layouts
+Message-ID: <20160708233003.GO27480@dastard>
+References: <5ff05b585226b689866f4604adddffc94910f63f.1467889001.git.bcodding@redhat.com>
+ <073be10a55e5e952adbfd320abcce075fb3958ae.1467889001.git.bcodding@redhat.com>
+ <20160707223809.GH12670@dastard>
+ <EAD93DB0-20FD-4EC5-9232-F12671E21630@redhat.com>
+MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-From: Oleg Drokin <green@linuxhacker.ru>
-In-Reply-To: <20160708205413.GC11269@fieldses.org>
-Date: Fri, 8 Jul 2016 17:53:19 -0400
-Cc: Jeff Layton <jlayton@poochiereds.net>, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-Message-Id: <DFD42803-99B2-4844-AAD3-0707E0F7DC66@linuxhacker.ru>
-References: <1467942466-3081422-1-git-send-email-green@linuxhacker.ru> <20160708205413.GC11269@fieldses.org>
-To: "J. Bruce Fields" <bfields@fieldses.org>
+In-Reply-To: <EAD93DB0-20FD-4EC5-9232-F12671E21630@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-On Jul 8, 2016, at 4:54 PM, J. Bruce Fields wrote:
-
-> On Thu, Jul 07, 2016 at 09:47:46PM -0400, Oleg Drokin wrote:
->> It looks like we are bit overzealous about failing mkdir/create/mknod
->> with permission denied if the parent dir is not writeable.
->> Need to make sure the name does not exist first, because we need to
->> return EEXIST in that case.
->> 
->> Signed-off-by: Oleg Drokin <green@linuxhacker.ru>
->> ---
->> A very similar problem exists with symlinks, but the patch is more
->> involved, so assuming this one is ok, I'll send a symlink one separately.
->> fs/nfsd/nfs4proc.c |  6 +++++-
->> fs/nfsd/vfs.c      | 11 ++++++++++-
->> 2 files changed, 15 insertions(+), 2 deletions(-)
->> 
->> diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
->> index de1ff1d..0067520 100644
->> --- a/fs/nfsd/nfs4proc.c
->> +++ b/fs/nfsd/nfs4proc.c
->> @@ -605,8 +605,12 @@ nfsd4_create(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
->> 
->> 	fh_init(&resfh, NFS4_FHSIZE);
->> 
->> +	/*
->> +	 * We just check thta parent is accessible here, nfsd_* do their
->> +	 * own access permission checks
->> +	 */
->> 	status = fh_verify(rqstp, &cstate->current_fh, S_IFDIR,
->> -			   NFSD_MAY_CREATE);
->> +			   NFSD_MAY_EXEC);
->> 	if (status)
->> 		return status;
->> 
->> diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
->> index 6fbd81e..6a45ec6 100644
->> --- a/fs/nfsd/vfs.c
->> +++ b/fs/nfsd/vfs.c
->> @@ -1161,7 +1161,11 @@ nfsd_create(struct svc_rqst *rqstp, struct svc_fh *fhp,
->> 	if (isdotent(fname, flen))
->> 		goto out;
->> 
->> -	err = fh_verify(rqstp, fhp, S_IFDIR, NFSD_MAY_CREATE);
->> +	/*
->> +	 * Even though it is a create, first we see if we are even allowed
->> +	 * to peek inside the parent
->> +	 */
->> +	err = fh_verify(rqstp, fhp, S_IFDIR, NFSD_MAY_EXEC);
+On Fri, Jul 08, 2016 at 09:24:27AM -0400, Benjamin Coddington wrote:
+> On 7 Jul 2016, at 18:38, Dave Chinner wrote:
 > 
-> Looks like in the v3 case we haven't actually locked the directory yet
-> at this point so this check is a little race-prone.
-
-In reality this check is not really needed, I suspect.
-When we call vfs_create/mknod/mkdir later on, it has it's own permission check
-anyway so if there was a race and somebody changed dir access in the middle,
-there's going to be another check anyway and it would be caught.
-Unless there's some weird server-side permission wiggling as well that makes it
-ineffective, but I imagine that one cannot really change in a racy way?
-
-> I wonder why the code's structured that way--it's confusing.
-
-Probably years of accumulated "damage" ;)
-
-> --b.
+> > On Thu, Jul 07, 2016 at 07:02:32AM -0400, Benjamin Coddington wrote:
+> >> Instead of creeping pnfs layout configuration into filesystems, move the
+> >> definition of block-based export operations under a more abstract
+> >> configuration.
+> >>
+> >> Signed-off-by: Benjamin Coddington <bcodding@redhat.com>
+> >> ---
+> >>  fs/Kconfig          | 3 +++
+> >>  fs/nfsd/Kconfig     | 2 ++
+> >>  fs/xfs/Makefile     | 3 +--
+> >>  fs/xfs/xfs_export.c | 2 +-
+> >>  fs/xfs/xfs_pnfs.h   | 4 ++--
+> >>  5 files changed, 9 insertions(+), 5 deletions(-)
+> >>
+> >> diff --git a/fs/Kconfig b/fs/Kconfig
+> >> index 6725f59c18e6..6e57b4237d72 100644
+> >> --- a/fs/Kconfig
+> >> +++ b/fs/Kconfig
+> >> @@ -66,6 +66,9 @@ config FS_POSIX_ACL
+> >>  config EXPORTFS
+> >>  	tristate
+> >>
+> >> +config BLOCK_EXPORT_OPS
+> >> +	bool
+> >> +
+> >
+> > default n, help text?
 > 
->> 	if (err)
->> 		goto out;
->> 
->> @@ -1211,6 +1215,11 @@ nfsd_create(struct svc_rqst *rqstp, struct svc_fh *fhp,
->> 		goto out; 
->> 	}
->> 
->> +	/* Now let's see if we actually have permissions to create */
->> +	err = nfsd_permission(rqstp, fhp->fh_export, dentry, NFSD_MAY_CREATE);
->> +	if (err)
->> +		goto out;
->> +
->> 	if (!(iap->ia_valid & ATTR_MODE))
->> 		iap->ia_mode = 0;
->> 	iap->ia_mode = (iap->ia_mode & S_IALLUGO) | type;
->> -- 
->> 2.7.4
-
+> Not set is n, and as it isn't visible or intended to be set by a user, I
+> left out the help text.  I'll add both for completeness.
+> 
+> > Also, BLOCK_* prefix config options are for block layer
+> > functionality, hence I suspect this will confuse people because it's
+> > a filesystem config option. EXPORTFS_BLOCK_OPS seems more obvious
+> > and correct to me, as the block mapping ops are part of the exportfs
+> > operations interface....
+> 
+> OK. I agree - that is better.
+> 
+> >>  xfs-$(CONFIG_SYSCTL)		+= xfs_sysctl.o
+> >>  xfs-$(CONFIG_COMPAT)		+= xfs_ioctl32.o
+> >> -xfs-$(CONFIG_NFSD_BLOCKLAYOUT)	+= xfs_pnfs.o
+> >> -xfs-$(CONFIG_NFSD_SCSILAYOUT)	+= xfs_pnfs.o
+> >> +xfs-$(CONFIG_BLOCK_EXPORT_OPS)	+= xfs_pnfs.o
+> >
+> > Why do we need the first patch to XFS anymore? Just convert it
+> > straight to using CONFIG_EXPORTFS_BLOCK_OPS....
+> 
+> Doing this in a single patch would combine two changes in a single commit:
+>  - the definition of the extra operations for a config of only SCSI_LAYOUT
+>  - the addition of CONFIG_EXPORTFS_BLOCK_OPS.
+> 
+> Since the first is the originally intended behavior, and the second fixes it
+> up, I'll just send it along in a single patch if that's preferred.
