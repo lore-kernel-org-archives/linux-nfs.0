@@ -1,33 +1,35 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-oi0-f42.google.com ([209.85.218.42]:34190 "EHLO
-	mail-oi0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755174AbcGHMsz (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 8 Jul 2016 08:48:55 -0400
-Received: by mail-oi0-f42.google.com with SMTP id s66so59500431oif.1
-        for <linux-nfs@vger.kernel.org>; Fri, 08 Jul 2016 05:48:55 -0700 (PDT)
-Date: Fri, 8 Jul 2016 07:48:53 -0500
-From: Seth Forshee <seth.forshee@canonical.com>
-To: Dave Chinner <david@fromorbit.com>
-Cc: Jeff Layton <jlayton@redhat.com>,
+Received: from mail-qk0-f171.google.com ([209.85.220.171]:34328 "EHLO
+	mail-qk0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755111AbcGHMv5 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 8 Jul 2016 08:51:57 -0400
+Received: by mail-qk0-f171.google.com with SMTP id t127so36932568qkf.1
+        for <linux-nfs@vger.kernel.org>; Fri, 08 Jul 2016 05:51:56 -0700 (PDT)
+Message-ID: <1467982314.13822.5.camel@redhat.com>
+Subject: Re: Hang due to nfs letting tasks freeze with locked inodes
+From: Jeff Layton <jlayton@redhat.com>
+To: Michal Hocko <mhocko@kernel.org>
+Cc: Seth Forshee <seth.forshee@canonical.com>,
         Trond Myklebust <trond.myklebust@primarydata.com>,
         Anna Schumaker <anna.schumaker@netapp.com>,
         linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
         linux-kernel@vger.kernel.org,
         Tycho Andersen <tycho.andersen@canonical.com>
-Subject: Re: Hang due to nfs letting tasks freeze with locked inodes
-Message-ID: <20160708124853.GB16921@ubuntu-hedt>
+Date: Fri, 08 Jul 2016 08:51:54 -0400
+In-Reply-To: <20160708122224.GA20200@dhcp22.suse.cz>
 References: <20160706174655.GD45215@ubuntu-hedt>
- <1467842838.2908.45.camel@redhat.com>
- <20160707235330.GN27480@dastard>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-In-Reply-To: <20160707235330.GN27480@dastard>
+	 <1467842838.2908.45.camel@redhat.com>
+	 <20160708122224.GA20200@dhcp22.suse.cz>
+Content-Type: text/plain; charset="UTF-8"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Jul 08, 2016 at 09:53:30AM +1000, Dave Chinner wrote:
-> On Wed, Jul 06, 2016 at 06:07:18PM -0400, Jeff Layton wrote:
+On Fri, 2016-07-08 at 14:22 +0200, Michal Hocko wrote:
+> On Wed 06-07-16 18:07:18, Jeff Layton wrote:
+> > 
 > > On Wed, 2016-07-06 at 12:46 -0500, Seth Forshee wrote:
+> > > 
 > > > We're seeing a hang when freezing a container with an nfs bind mount while
 > > > running iozone. Two iozone processes were hung with this stack trace.
 > > > 
@@ -55,22 +57,29 @@ On Fri, Jul 08, 2016 at 09:53:30AM +1000, Dave Chinner wrote:
 > > > preventing other threads trying to lock the same inode from freezing. It
 > > > seems like a bad idea for nfs to be doing this.
 > > > 
-> > 
 > > Yeah, known problem. Not a simple one to fix though.
+> Apart from alternative Dave was mentioning in other email, what is the
+> point to use freezable wait from this path in the first place?
 > 
-> Actually, it is simple to fix.
-> 
-> <insert broken record about suspend should be using freeze_super(),
-> not sys_sync(), to suspend filesystem operations>
-> 
-> i.e. the VFS blocks new operations from starting, and then then the
-> NFS client simply needs to implement ->freeze_fs to drain all it's
-> active operations before returning. Problem solved.
+> nfs4_handle_exception does nfs4_wait_clnt_recover from the same path and
+> that does wait_on_bit_action with TASK_KILLABLE so we are waiting in two
+> different modes from the same path AFAICS. There do not seem to be other
+> callers of nfs4_delay outside of nfs4_handle_exception. Sounds like
+> something is not quite right here to me. If the nfs4_delay did regular
+> wait then the freezing would fail as well but at least it would be clear
+> who is the culrprit rather than having an indirect dependency.
 
-No, this won't solve my problem. We're not doing a full suspend, rather
-using a freezer cgroup to freeze a subset of processes. We don't want to
-want to fully freeze the filesystem.
+The codepaths involved there are a lot more complex than that
+unfortunately.
 
-Thanks,
-Seth
+nfs4_delay is the function that we use to handle the case where the
+server returns NFS4ERR_DELAY. Basically telling us that it's too busy
+right now or has some transient error and the client should retry after
+a small, sliding delay.
 
+That codepath could probably be made more freezer-safe. The typical
+case however, is that we've sent a call and just haven't gotten a
+reply. That's the trickier one to handle.
+
+-- 
+Jeff Layton <jlayton@redhat.com>
