@@ -1,75 +1,79 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from us-smtp-delivery-194.mimecast.com ([63.128.21.194]:59446 "EHLO
-	us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S932615AbcGHNFq (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 8 Jul 2016 09:05:46 -0400
-From: Trond Myklebust <trondmy@primarydata.com>
-To: Seth Forshee <seth.forshee@canonical.com>
-CC: Chinner Dave <david@fromorbit.com>, Jeff Layton <jlayton@redhat.com>,
-        Schumaker Anna <anna.schumaker@netapp.com>,
-        "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        Tycho Andersen <tycho.andersen@canonical.com>
-Subject: Re: Hang due to nfs letting tasks freeze with locked inodes
-Date: Fri, 8 Jul 2016 13:05:40 +0000
-Message-ID: <8E320A98-4DA6-49B0-8288-E46A03A899C1@primarydata.com>
-References: <20160706174655.GD45215@ubuntu-hedt>
- <1467842838.2908.45.camel@redhat.com> <20160707235330.GN27480@dastard>
- <20160708124853.GB16921@ubuntu-hedt>
- <F1C12823-0C51-4FEF-BA8E-330A066B086D@primarydata.com>
-In-Reply-To: <F1C12823-0C51-4FEF-BA8E-330A066B086D@primarydata.com>
+Received: from mx1.redhat.com ([209.132.183.28]:45381 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755251AbcGHNXO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 8 Jul 2016 09:23:14 -0400
+From: "Benjamin Coddington" <bcodding@redhat.com>
+To: "Dave Chinner" <david@fromorbit.com>
+Cc: xfs@oss.sgi.com, linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        "Alexander Viro" <viro@zeniv.linux.org.uk>,
+        "Christoph Hellwig" <hch@lst.de>, bfields@fieldses.org
+Subject: Re: [PATCH 2/2] abstract block export operations from nfsd layouts
+Date: Fri, 08 Jul 2016 09:24:27 -0400
+Message-ID: <EAD93DB0-20FD-4EC5-9232-F12671E21630@redhat.com>
+In-Reply-To: <20160707223809.GH12670@dastard>
+References: <5ff05b585226b689866f4604adddffc94910f63f.1467889001.git.bcodding@redhat.com>
+ <073be10a55e5e952adbfd320abcce075fb3958ae.1467889001.git.bcodding@redhat.com>
+ <20160707223809.GH12670@dastard>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-DQo+IE9uIEp1bCA4LCAyMDE2LCBhdCAwODo1NSwgVHJvbmQgTXlrbGVidXN0IDx0cm9uZG15QHBy
-aW1hcnlkYXRhLmNvbT4gd3JvdGU6DQo+IA0KPiANCj4+IE9uIEp1bCA4LCAyMDE2LCBhdCAwODo0
-OCwgU2V0aCBGb3JzaGVlIDxzZXRoLmZvcnNoZWVAY2Fub25pY2FsLmNvbT4gd3JvdGU6DQo+PiAN
-Cj4+IE9uIEZyaSwgSnVsIDA4LCAyMDE2IGF0IDA5OjUzOjMwQU0gKzEwMDAsIERhdmUgQ2hpbm5l
-ciB3cm90ZToNCj4+PiBPbiBXZWQsIEp1bCAwNiwgMjAxNiBhdCAwNjowNzoxOFBNIC0wNDAwLCBK
-ZWZmIExheXRvbiB3cm90ZToNCj4+Pj4gT24gV2VkLCAyMDE2LTA3LTA2IGF0IDEyOjQ2IC0wNTAw
-LCBTZXRoIEZvcnNoZWUgd3JvdGU6DQo+Pj4+PiBXZSdyZSBzZWVpbmcgYSBoYW5nIHdoZW4gZnJl
-ZXppbmcgYSBjb250YWluZXIgd2l0aCBhbiBuZnMgYmluZCBtb3VudCB3aGlsZQ0KPj4+Pj4gcnVu
-bmluZyBpb3pvbmUuIFR3byBpb3pvbmUgcHJvY2Vzc2VzIHdlcmUgaHVuZyB3aXRoIHRoaXMgc3Rh
-Y2sgdHJhY2UuDQo+Pj4+PiANCj4+Pj4+IFtdIHNjaGVkdWxlKzB4MzUvMHg4MA0KPj4+Pj4gW10g
-c2NoZWR1bGVfcHJlZW1wdF9kaXNhYmxlZCsweGUvMHgxMA0KPj4+Pj4gW10gX19tdXRleF9sb2Nr
-X3Nsb3dwYXRoKzB4YjkvMHgxMzANCj4+Pj4+IFtdIG11dGV4X2xvY2srMHgxZi8weDMwDQo+Pj4+
-PiBbXSBkb191bmxpbmthdCsweDEyYi8weDJkMA0KPj4+Pj4gW10gU3lTX3VubGluaysweDE2LzB4
-MjANCj4+Pj4+IFtdIGVudHJ5X1NZU0NBTExfNjRfZmFzdHBhdGgrMHgxNi8weDcxDQo+Pj4+PiAN
-Cj4+Pj4+IFRoaXMgc2VlbXMgdG8gYmUgZHVlIHRvIGFub3RoZXIgaW96b25lIHRocmVhZCBmcm96
-ZW4gZHVyaW5nIHVubGluayB3aXRoDQo+Pj4+PiB0aGlzIHN0YWNrIHRyYWNlOg0KPj4+Pj4gDQo+
-Pj4+PiBbXSBfX3JlZnJpZ2VyYXRvcisweDdhLzB4MTQwDQo+Pj4+PiBbXSBuZnM0X2hhbmRsZV9l
-eGNlcHRpb24rMHgxMTgvMHgxMzAgW25mc3Y0XQ0KPj4+Pj4gW10gbmZzNF9wcm9jX3JlbW92ZSsw
-eDdkLzB4ZjAgW25mc3Y0XQ0KPj4+Pj4gW10gbmZzX3VubGluaysweDE0OS8weDM1MCBbbmZzXQ0K
-Pj4+Pj4gW10gdmZzX3VubGluaysweGYxLzB4MWEwDQo+Pj4+PiBbXSBkb191bmxpbmthdCsweDI3
-OS8weDJkMA0KPj4+Pj4gW10gU3lTX3VubGluaysweDE2LzB4MjANCj4+Pj4+IFtdIGVudHJ5X1NZ
-U0NBTExfNjRfZmFzdHBhdGgrMHgxNi8weDcxDQo+Pj4+PiANCj4+Pj4+IFNpbmNlIG5mcyBpcyBh
-bGxvd2luZyB0aGUgdGhyZWFkIHRvIGJlIGZyb3plbiB3aXRoIHRoZSBpbm9kZSBsb2NrZWQgaXQn
-cw0KPj4+Pj4gcHJldmVudGluZyBvdGhlciB0aHJlYWRzIHRyeWluZyB0byBsb2NrIHRoZSBzYW1l
-IGlub2RlIGZyb20gZnJlZXppbmcuIEl0DQo+Pj4+PiBzZWVtcyBsaWtlIGEgYmFkIGlkZWEgZm9y
-IG5mcyB0byBiZSBkb2luZyB0aGlzLg0KPj4+Pj4gDQo+Pj4+IA0KPj4+PiBZZWFoLCBrbm93biBw
-cm9ibGVtLiBOb3QgYSBzaW1wbGUgb25lIHRvIGZpeCB0aG91Z2guDQo+Pj4gDQo+Pj4gQWN0dWFs
-bHksIGl0IGlzIHNpbXBsZSB0byBmaXguDQo+Pj4gDQo+Pj4gPGluc2VydCBicm9rZW4gcmVjb3Jk
-IGFib3V0IHN1c3BlbmQgc2hvdWxkIGJlIHVzaW5nIGZyZWV6ZV9zdXBlcigpLA0KPj4+IG5vdCBz
-eXNfc3luYygpLCB0byBzdXNwZW5kIGZpbGVzeXN0ZW0gb3BlcmF0aW9ucz4NCj4+PiANCj4+PiBp
-LmUuIHRoZSBWRlMgYmxvY2tzIG5ldyBvcGVyYXRpb25zIGZyb20gc3RhcnRpbmcsIGFuZCB0aGVu
-IHRoZW4gdGhlDQo+Pj4gTkZTIGNsaWVudCBzaW1wbHkgbmVlZHMgdG8gaW1wbGVtZW50IC0+ZnJl
-ZXplX2ZzIHRvIGRyYWluIGFsbCBpdCdzDQo+Pj4gYWN0aXZlIG9wZXJhdGlvbnMgYmVmb3JlIHJl
-dHVybmluZy4gUHJvYmxlbSBzb2x2ZWQuDQo+PiANCj4+IE5vLCB0aGlzIHdvbid0IHNvbHZlIG15
-IHByb2JsZW0uIFdlJ3JlIG5vdCBkb2luZyBhIGZ1bGwgc3VzcGVuZCwgcmF0aGVyDQo+PiB1c2lu
-ZyBhIGZyZWV6ZXIgY2dyb3VwIHRvIGZyZWV6ZSBhIHN1YnNldCBvZiBwcm9jZXNzZXMuIFdlIGRv
-bid0IHdhbnQgdG8NCj4+IHdhbnQgdG8gZnVsbHkgZnJlZXplIHRoZSBmaWxlc3lzdGVtLg0KPiAN
-Cj4g4oCmYW5kIHRoZXJlaW4gbGllcyB0aGUgcnViLiBUaGUgd2hvbGUgY2dyb3VwIGZyZWV6ZXIg
-c3R1ZmYgYXNzdW1lcyB0aGF0IHlvdSBjYW4gc2FmZWx5IGRlYWN0aXZhdGUgYSBidW5jaCBvZiBw
-cm9jZXNzZXMgdGhhdCBtYXkgb3IgbWF5IG5vdCBob2xkIHN0YXRlIGluIHRoZSBmaWxlc3lzdGVt
-LiBUaGF04oCZcyBkZWZpbml0ZWx5IG5vdCBPSyB3aGVuIHlvdSBob2xkIGxvY2tzIGV0YyB0aGF0
-IGNhbiBhZmZlY3QgcHJvY2Vzc2VzIHRoYXQgbGllcyBvdXRzaWRlIHRoZSBjZ3JvdXAgKGFuZC9v
-ciBvdXRzaWRlIHRoZSBORlMgY2xpZW50IGl0c2VsZikuDQo+IA0KDQpJbiBjYXNlIGl0IHdhc27i
-gJl0IGNsZWFyLCBJ4oCZbSBub3QganVzdCB0YWxraW5nIGFib3V0IFZGUyBtdXRleGVzIGhlcmUu
-IEnigJltIGFsc28gdGFsa2luZyBhYm91dCBhbGwgdGhlIG90aGVyIHN0dWZmLCBhIGxvdCBvZiB3
-aGljaCB0aGUga2VybmVsIGhhcyBubyBjb250cm9sIG92ZXIsIGluY2x1ZGluZyBQT1NJWCBmaWxl
-IGxvY2tpbmcsIHNoYXJlIGxvY2tzLCBsZWFzZXMvZGVsZWdhdGlvbnMsIGV0Yy4NCg0KVHJvbmQN
-Cg==
+On 7 Jul 2016, at 18:38, Dave Chinner wrote:
 
+> On Thu, Jul 07, 2016 at 07:02:32AM -0400, Benjamin Coddington wrote:
+>> Instead of creeping pnfs layout configuration into filesystems, move the
+>> definition of block-based export operations under a more abstract
+>> configuration.
+>>
+>> Signed-off-by: Benjamin Coddington <bcodding@redhat.com>
+>> ---
+>>  fs/Kconfig          | 3 +++
+>>  fs/nfsd/Kconfig     | 2 ++
+>>  fs/xfs/Makefile     | 3 +--
+>>  fs/xfs/xfs_export.c | 2 +-
+>>  fs/xfs/xfs_pnfs.h   | 4 ++--
+>>  5 files changed, 9 insertions(+), 5 deletions(-)
+>>
+>> diff --git a/fs/Kconfig b/fs/Kconfig
+>> index 6725f59c18e6..6e57b4237d72 100644
+>> --- a/fs/Kconfig
+>> +++ b/fs/Kconfig
+>> @@ -66,6 +66,9 @@ config FS_POSIX_ACL
+>>  config EXPORTFS
+>>  	tristate
+>>
+>> +config BLOCK_EXPORT_OPS
+>> +	bool
+>> +
+>
+> default n, help text?
+
+Not set is n, and as it isn't visible or intended to be set by a user, I
+left out the help text.  I'll add both for completeness.
+
+> Also, BLOCK_* prefix config options are for block layer
+> functionality, hence I suspect this will confuse people because it's
+> a filesystem config option. EXPORTFS_BLOCK_OPS seems more obvious
+> and correct to me, as the block mapping ops are part of the exportfs
+> operations interface....
+
+OK. I agree - that is better.
+
+>>  xfs-$(CONFIG_SYSCTL)		+= xfs_sysctl.o
+>>  xfs-$(CONFIG_COMPAT)		+= xfs_ioctl32.o
+>> -xfs-$(CONFIG_NFSD_BLOCKLAYOUT)	+= xfs_pnfs.o
+>> -xfs-$(CONFIG_NFSD_SCSILAYOUT)	+= xfs_pnfs.o
+>> +xfs-$(CONFIG_BLOCK_EXPORT_OPS)	+= xfs_pnfs.o
+>
+> Why do we need the first patch to XFS anymore? Just convert it
+> straight to using CONFIG_EXPORTFS_BLOCK_OPS....
+
+Doing this in a single patch would combine two changes in a single commit:
+ - the definition of the extra operations for a config of only SCSI_LAYOUT
+ - the addition of CONFIG_EXPORTFS_BLOCK_OPS.
+
+Since the first is the originally intended behavior, and the second fixes it
+up, I'll just send it along in a single patch if that's preferred.
+
+Ben
