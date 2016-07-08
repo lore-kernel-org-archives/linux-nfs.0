@@ -1,52 +1,45 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from bombadil.infradead.org ([198.137.202.9]:49126 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754191AbcGHJlv (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 8 Jul 2016 05:41:51 -0400
-Received: from i60-34-157-115.s41.a006.ap.plala.or.jp ([60.34.157.115] helo=localhost)
-	by bombadil.infradead.org with esmtpsa (Exim 4.85_2 #1 (Red Hat Linux))
-	id 1bLSHy-0007Zy-Vz
-	for linux-nfs@vger.kernel.org; Fri, 08 Jul 2016 09:41:39 +0000
-From: Christoph Hellwig <hch@lst.de>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH 1/3] nfs/blocklayout: use proper fmode for opening block devices
-Date: Fri,  8 Jul 2016 18:41:28 +0900
-Message-Id: <1467970890-11237-2-git-send-email-hch@lst.de>
-In-Reply-To: <1467970890-11237-1-git-send-email-hch@lst.de>
-References: <1467970890-11237-1-git-send-email-hch@lst.de>
+Received: from mail-qt0-f193.google.com ([209.85.216.193]:36684 "EHLO
+	mail-qt0-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754166AbcGHKpg (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 8 Jul 2016 06:45:36 -0400
+Received: by mail-qt0-f193.google.com with SMTP id w59so4637738qtd.3
+        for <linux-nfs@vger.kernel.org>; Fri, 08 Jul 2016 03:45:33 -0700 (PDT)
+Message-ID: <1467974731.24149.7.camel@poochiereds.net>
+Subject: Re: [PATCH] nfsd: Correct a comment for NFSD_MAY_ defines location
+From: Jeff Layton <jlayton@poochiereds.net>
+To: Oleg Drokin <green@linuxhacker.ru>,
+        "J. Bruce Fields" <bfields@fieldses.org>
+Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
+Date: Fri, 08 Jul 2016 06:45:31 -0400
+In-Reply-To: <1467942578-3081513-1-git-send-email-green@linuxhacker.ru>
+References: <1467942578-3081513-1-git-send-email-green@linuxhacker.ru>
+Content-Type: text/plain; charset="UTF-8"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This was fixed for the original block layout code a while ago, but also
-needs to be fixed for the SCSI layout path.
+On Thu, 2016-07-07 at 21:49 -0400, Oleg Drokin wrote:
+> Those are now defined in fs/nfsd/vfs.h
+> 
+> Signed-off-by: Oleg Drokin <green@linuxhacker.ru>
+> ---
+>  fs/nfsd/nfsfh.c | 2 +-
+>  1 file changed, 1 insertion(+), 1 deletion(-)
+> 
+> diff --git a/fs/nfsd/nfsfh.c b/fs/nfsd/nfsfh.c
+> index a891944..7e49dcb 100644
+> --- a/fs/nfsd/nfsfh.c
+> +++ b/fs/nfsd/nfsfh.c
+> @@ -298,7 +298,7 @@ out:
+>   * that it expects something not of the given type.
+>   *
+>   * @access is formed from the NFSD_MAY_* constants defined in
+> - * include/linux/nfsd/nfsd.h.
+> + * fs/nfsd/vfs.h.
+>   */
+>  __be32
+>  fh_verify(struct svc_rqst *rqstp, struct svc_fh *fhp, umode_t type,
+> int access)
 
-Signed-off-by: Christoph Hellwig <hch@lst.de>
----
- fs/nfs/blocklayout/dev.c | 4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
-
-diff --git a/fs/nfs/blocklayout/dev.c b/fs/nfs/blocklayout/dev.c
-index e5b8967..7fb9c07 100644
---- a/fs/nfs/blocklayout/dev.c
-+++ b/fs/nfs/blocklayout/dev.c
-@@ -316,7 +316,7 @@ bl_parse_scsi(struct nfs_server *server, struct pnfs_block_dev *d,
- 		return -EINVAL;
- 	}
- 
--	d->bdev = blkdev_get_by_path(devname, FMODE_READ, NULL);
-+	d->bdev = blkdev_get_by_path(devname, FMODE_READ | FMODE_WRITE, NULL);
- 	if (IS_ERR(d->bdev)) {
- 		pr_warn("pNFS: failed to open device %s (%ld)\n",
- 			devname, PTR_ERR(d->bdev));
-@@ -352,7 +352,7 @@ bl_parse_scsi(struct nfs_server *server, struct pnfs_block_dev *d,
- 	return 0;
- 
- out_blkdev_put:
--	blkdev_put(d->bdev, FMODE_READ);
-+	blkdev_put(d->bdev, FMODE_READ | FMODE_WRITE);
- 	return error;
- }
- 
--- 
-2.1.4
-
+Reviewed-by: Jeff Layton <jlayton@poochiereds.net>
