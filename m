@@ -1,85 +1,67 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qk0-f171.google.com ([209.85.220.171]:34328 "EHLO
-	mail-qk0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755111AbcGHMv5 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 8 Jul 2016 08:51:57 -0400
-Received: by mail-qk0-f171.google.com with SMTP id t127so36932568qkf.1
-        for <linux-nfs@vger.kernel.org>; Fri, 08 Jul 2016 05:51:56 -0700 (PDT)
-Message-ID: <1467982314.13822.5.camel@redhat.com>
-Subject: Re: Hang due to nfs letting tasks freeze with locked inodes
-From: Jeff Layton <jlayton@redhat.com>
-To: Michal Hocko <mhocko@kernel.org>
-Cc: Seth Forshee <seth.forshee@canonical.com>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        Anna Schumaker <anna.schumaker@netapp.com>,
-        linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org,
+Received: from us-smtp-delivery-194.mimecast.com ([216.205.24.194]:47013 "EHLO
+	us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1755164AbcGHMzs (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 8 Jul 2016 08:55:48 -0400
+From: Trond Myklebust <trondmy@primarydata.com>
+To: Seth Forshee <seth.forshee@canonical.com>
+CC: Chinner Dave <david@fromorbit.com>, Jeff Layton <jlayton@redhat.com>,
+        Schumaker Anna <anna.schumaker@netapp.com>,
+        "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
         Tycho Andersen <tycho.andersen@canonical.com>
-Date: Fri, 08 Jul 2016 08:51:54 -0400
-In-Reply-To: <20160708122224.GA20200@dhcp22.suse.cz>
+Subject: Re: Hang due to nfs letting tasks freeze with locked inodes
+Date: Fri, 8 Jul 2016 12:55:41 +0000
+Message-ID: <F1C12823-0C51-4FEF-BA8E-330A066B086D@primarydata.com>
 References: <20160706174655.GD45215@ubuntu-hedt>
-	 <1467842838.2908.45.camel@redhat.com>
-	 <20160708122224.GA20200@dhcp22.suse.cz>
-Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
+ <1467842838.2908.45.camel@redhat.com> <20160707235330.GN27480@dastard>
+ <20160708124853.GB16921@ubuntu-hedt>
+In-Reply-To: <20160708124853.GB16921@ubuntu-hedt>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, 2016-07-08 at 14:22 +0200, Michal Hocko wrote:
-> On Wed 06-07-16 18:07:18, Jeff Layton wrote:
-> > 
-> > On Wed, 2016-07-06 at 12:46 -0500, Seth Forshee wrote:
-> > > 
-> > > We're seeing a hang when freezing a container with an nfs bind mount while
-> > > running iozone. Two iozone processes were hung with this stack trace.
-> > > 
-> > >  [] schedule+0x35/0x80
-> > >  [] schedule_preempt_disabled+0xe/0x10
-> > >  [] __mutex_lock_slowpath+0xb9/0x130
-> > >  [] mutex_lock+0x1f/0x30
-> > >  [] do_unlinkat+0x12b/0x2d0
-> > >  [] SyS_unlink+0x16/0x20
-> > >  [] entry_SYSCALL_64_fastpath+0x16/0x71
-> > > 
-> > > This seems to be due to another iozone thread frozen during unlink with
-> > > this stack trace:
-> > > 
-> > >  [] __refrigerator+0x7a/0x140
-> > >  [] nfs4_handle_exception+0x118/0x130 [nfsv4]
-> > >  [] nfs4_proc_remove+0x7d/0xf0 [nfsv4]
-> > >  [] nfs_unlink+0x149/0x350 [nfs]
-> > >  [] vfs_unlink+0xf1/0x1a0
-> > >  [] do_unlinkat+0x279/0x2d0
-> > >  [] SyS_unlink+0x16/0x20
-> > >  [] entry_SYSCALL_64_fastpath+0x16/0x71
-> > > 
-> > > Since nfs is allowing the thread to be frozen with the inode locked it's
-> > > preventing other threads trying to lock the same inode from freezing. It
-> > > seems like a bad idea for nfs to be doing this.
-> > > 
-> > Yeah, known problem. Not a simple one to fix though.
-> Apart from alternative Dave was mentioning in other email, what is the
-> point to use freezable wait from this path in the first place?
-> 
-> nfs4_handle_exception does nfs4_wait_clnt_recover from the same path and
-> that does wait_on_bit_action with TASK_KILLABLE so we are waiting in two
-> different modes from the same path AFAICS. There do not seem to be other
-> callers of nfs4_delay outside of nfs4_handle_exception. Sounds like
-> something is not quite right here to me. If the nfs4_delay did regular
-> wait then the freezing would fail as well but at least it would be clear
-> who is the culrprit rather than having an indirect dependency.
+DQo+IE9uIEp1bCA4LCAyMDE2LCBhdCAwODo0OCwgU2V0aCBGb3JzaGVlIDxzZXRoLmZvcnNoZWVA
+Y2Fub25pY2FsLmNvbT4gd3JvdGU6DQo+IA0KPiBPbiBGcmksIEp1bCAwOCwgMjAxNiBhdCAwOTo1
+MzozMEFNICsxMDAwLCBEYXZlIENoaW5uZXIgd3JvdGU6DQo+PiBPbiBXZWQsIEp1bCAwNiwgMjAx
+NiBhdCAwNjowNzoxOFBNIC0wNDAwLCBKZWZmIExheXRvbiB3cm90ZToNCj4+PiBPbiBXZWQsIDIw
+MTYtMDctMDYgYXQgMTI6NDYgLTA1MDAsIFNldGggRm9yc2hlZSB3cm90ZToNCj4+Pj4gV2UncmUg
+c2VlaW5nIGEgaGFuZyB3aGVuIGZyZWV6aW5nIGEgY29udGFpbmVyIHdpdGggYW4gbmZzIGJpbmQg
+bW91bnQgd2hpbGUNCj4+Pj4gcnVubmluZyBpb3pvbmUuIFR3byBpb3pvbmUgcHJvY2Vzc2VzIHdl
+cmUgaHVuZyB3aXRoIHRoaXMgc3RhY2sgdHJhY2UuDQo+Pj4+IA0KPj4+PiAgW10gc2NoZWR1bGUr
+MHgzNS8weDgwDQo+Pj4+ICBbXSBzY2hlZHVsZV9wcmVlbXB0X2Rpc2FibGVkKzB4ZS8weDEwDQo+
+Pj4+ICBbXSBfX211dGV4X2xvY2tfc2xvd3BhdGgrMHhiOS8weDEzMA0KPj4+PiAgW10gbXV0ZXhf
+bG9jaysweDFmLzB4MzANCj4+Pj4gIFtdIGRvX3VubGlua2F0KzB4MTJiLzB4MmQwDQo+Pj4+ICBb
+XSBTeVNfdW5saW5rKzB4MTYvMHgyMA0KPj4+PiAgW10gZW50cnlfU1lTQ0FMTF82NF9mYXN0cGF0
+aCsweDE2LzB4NzENCj4+Pj4gDQo+Pj4+IFRoaXMgc2VlbXMgdG8gYmUgZHVlIHRvIGFub3RoZXIg
+aW96b25lIHRocmVhZCBmcm96ZW4gZHVyaW5nIHVubGluayB3aXRoDQo+Pj4+IHRoaXMgc3RhY2sg
+dHJhY2U6DQo+Pj4+IA0KPj4+PiAgW10gX19yZWZyaWdlcmF0b3IrMHg3YS8weDE0MA0KPj4+PiAg
+W10gbmZzNF9oYW5kbGVfZXhjZXB0aW9uKzB4MTE4LzB4MTMwIFtuZnN2NF0NCj4+Pj4gIFtdIG5m
+czRfcHJvY19yZW1vdmUrMHg3ZC8weGYwIFtuZnN2NF0NCj4+Pj4gIFtdIG5mc191bmxpbmsrMHgx
+NDkvMHgzNTAgW25mc10NCj4+Pj4gIFtdIHZmc191bmxpbmsrMHhmMS8weDFhMA0KPj4+PiAgW10g
+ZG9fdW5saW5rYXQrMHgyNzkvMHgyZDANCj4+Pj4gIFtdIFN5U191bmxpbmsrMHgxNi8weDIwDQo+
+Pj4+ICBbXSBlbnRyeV9TWVNDQUxMXzY0X2Zhc3RwYXRoKzB4MTYvMHg3MQ0KPj4+PiANCj4+Pj4g
+U2luY2UgbmZzIGlzIGFsbG93aW5nIHRoZSB0aHJlYWQgdG8gYmUgZnJvemVuIHdpdGggdGhlIGlu
+b2RlIGxvY2tlZCBpdCdzDQo+Pj4+IHByZXZlbnRpbmcgb3RoZXIgdGhyZWFkcyB0cnlpbmcgdG8g
+bG9jayB0aGUgc2FtZSBpbm9kZSBmcm9tIGZyZWV6aW5nLiBJdA0KPj4+PiBzZWVtcyBsaWtlIGEg
+YmFkIGlkZWEgZm9yIG5mcyB0byBiZSBkb2luZyB0aGlzLg0KPj4+PiANCj4+PiANCj4+PiBZZWFo
+LCBrbm93biBwcm9ibGVtLiBOb3QgYSBzaW1wbGUgb25lIHRvIGZpeCB0aG91Z2guDQo+PiANCj4+
+IEFjdHVhbGx5LCBpdCBpcyBzaW1wbGUgdG8gZml4Lg0KPj4gDQo+PiA8aW5zZXJ0IGJyb2tlbiBy
+ZWNvcmQgYWJvdXQgc3VzcGVuZCBzaG91bGQgYmUgdXNpbmcgZnJlZXplX3N1cGVyKCksDQo+PiBu
+b3Qgc3lzX3N5bmMoKSwgdG8gc3VzcGVuZCBmaWxlc3lzdGVtIG9wZXJhdGlvbnM+DQo+PiANCj4+
+IGkuZS4gdGhlIFZGUyBibG9ja3MgbmV3IG9wZXJhdGlvbnMgZnJvbSBzdGFydGluZywgYW5kIHRo
+ZW4gdGhlbiB0aGUNCj4+IE5GUyBjbGllbnQgc2ltcGx5IG5lZWRzIHRvIGltcGxlbWVudCAtPmZy
+ZWV6ZV9mcyB0byBkcmFpbiBhbGwgaXQncw0KPj4gYWN0aXZlIG9wZXJhdGlvbnMgYmVmb3JlIHJl
+dHVybmluZy4gUHJvYmxlbSBzb2x2ZWQuDQo+IA0KPiBObywgdGhpcyB3b24ndCBzb2x2ZSBteSBw
+cm9ibGVtLiBXZSdyZSBub3QgZG9pbmcgYSBmdWxsIHN1c3BlbmQsIHJhdGhlcg0KPiB1c2luZyBh
+IGZyZWV6ZXIgY2dyb3VwIHRvIGZyZWV6ZSBhIHN1YnNldCBvZiBwcm9jZXNzZXMuIFdlIGRvbid0
+IHdhbnQgdG8NCj4gd2FudCB0byBmdWxseSBmcmVlemUgdGhlIGZpbGVzeXN0ZW0uDQoNCuKApmFu
+ZCB0aGVyZWluIGxpZXMgdGhlIHJ1Yi4gVGhlIHdob2xlIGNncm91cCBmcmVlemVyIHN0dWZmIGFz
+c3VtZXMgdGhhdCB5b3UgY2FuIHNhZmVseSBkZWFjdGl2YXRlIGEgYnVuY2ggb2YgcHJvY2Vzc2Vz
+IHRoYXQgbWF5IG9yIG1heSBub3QgaG9sZCBzdGF0ZSBpbiB0aGUgZmlsZXN5c3RlbS4gVGhhdOKA
+mXMgZGVmaW5pdGVseSBub3QgT0sgd2hlbiB5b3UgaG9sZCBsb2NrcyBldGMgdGhhdCBjYW4gYWZm
+ZWN0IHByb2Nlc3NlcyB0aGF0IGxpZXMgb3V0c2lkZSB0aGUgY2dyb3VwIChhbmQvb3Igb3V0c2lk
+ZSB0aGUgTkZTIGNsaWVudCBpdHNlbGYpLg0KDQpDaGVlcnMNCiAgVHJvbmQNCg0K
 
-The codepaths involved there are a lot more complex than that
-unfortunately.
-
-nfs4_delay is the function that we use to handle the case where the
-server returns NFS4ERR_DELAY. Basically telling us that it's too busy
-right now or has some transient error and the client should retry after
-a small, sliding delay.
-
-That codepath could probably be made more freezer-safe. The typical
-case however, is that we've sent a call and just haven't gotten a
-reply. That's the trickier one to handle.
-
--- 
-Jeff Layton <jlayton@redhat.com>
