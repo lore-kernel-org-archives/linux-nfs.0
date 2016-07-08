@@ -1,39 +1,21 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from linuxhacker.ru ([217.76.32.60]:49104 "EHLO fiona.linuxhacker.ru"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753543AbcGHCDo (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 7 Jul 2016 22:03:44 -0400
-From: Oleg Drokin <green@linuxhacker.ru>
-To: Jeff Layton <jlayton@poochiereds.net>,
-        "J. Bruce Fields" <bfields@fieldses.org>
-Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
-        Oleg Drokin <green@linuxhacker.ru>
-Subject: [PATCH] nfsd: Correct a comment for NFSD_MAY_ defines location
-Date: Thu,  7 Jul 2016 21:49:38 -0400
-Message-Id: <1467942578-3081513-1-git-send-email-green@linuxhacker.ru>
+Received: from bombadil.infradead.org ([198.137.202.9]:49124 "EHLO
+	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754134AbcGHJlv (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 8 Jul 2016 05:41:51 -0400
+Received: from i60-34-157-115.s41.a006.ap.plala.or.jp ([60.34.157.115] helo=localhost)
+	by bombadil.infradead.org with esmtpsa (Exim 4.85_2 #1 (Red Hat Linux))
+	id 1bLSHw-0007ZF-8N
+	for linux-nfs@vger.kernel.org; Fri, 08 Jul 2016 09:41:36 +0000
+From: Christoph Hellwig <hch@lst.de>
+To: linux-nfs@vger.kernel.org
+Subject: a few simple scsi-layout fixes
+Date: Fri,  8 Jul 2016 18:41:27 +0900
+Message-Id: <1467970890-11237-1-git-send-email-hch@lst.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Those are now defined in fs/nfsd/vfs.h
-
-Signed-off-by: Oleg Drokin <green@linuxhacker.ru>
----
- fs/nfsd/nfsfh.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
-
-diff --git a/fs/nfsd/nfsfh.c b/fs/nfsd/nfsfh.c
-index a891944..7e49dcb 100644
---- a/fs/nfsd/nfsfh.c
-+++ b/fs/nfsd/nfsfh.c
-@@ -298,7 +298,7 @@ out:
-  * that it expects something not of the given type.
-  *
-  * @access is formed from the NFSD_MAY_* constants defined in
-- * include/linux/nfsd/nfsd.h.
-+ * fs/nfsd/vfs.h.
-  */
- __be32
- fh_verify(struct svc_rqst *rqstp, struct svc_fh *fhp, umode_t type, int access)
--- 
-2.7.4
+Use the proper open mode for the block device (mostly harmless), and
+ensure we cope with the magic dm-mpath device names in RHEL and
+Fedora.
 
