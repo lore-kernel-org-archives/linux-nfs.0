@@ -1,53 +1,41 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from linuxhacker.ru ([217.76.32.60]:55688 "EHLO fiona.linuxhacker.ru"
+Received: from mx1.redhat.com ([209.132.183.28]:57938 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932844AbcGIDls convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 8 Jul 2016 23:41:48 -0400
-Subject: Re: [PATCH] nfsd: Make creates return EEXIST correctly instead of EPERM
-Mime-Version: 1.0 (Apple Message framework v1283)
-Content-Type: text/plain; charset=us-ascii
-From: Oleg Drokin <green@linuxhacker.ru>
-In-Reply-To: <20160709031001.GS14480@ZenIV.linux.org.uk>
-Date: Fri, 8 Jul 2016 23:41:41 -0400
-Cc: Jeff Layton <jlayton@poochiereds.net>, linux-nfs@vger.kernel.org,
-        Mailing List <linux-kernel@vger.kernel.org>
-Message-Id: <67C35F5E-7CB0-4CE9-998F-D9871E0DAF81@linuxhacker.ru>
-References: <1467942466-3081422-1-git-send-email-green@linuxhacker.ru> <1467975747.24149.16.camel@poochiereds.net> <05872587-E1A0-4714-AF43-7070D72D930C@linuxhacker.ru> <1467993208.27907.17.camel@poochiereds.net> <20160708160426.GB7395@fieldses.org> <8FC42FC1-AB95-4AF7-8493-EF0A34138B4A@linuxhacker.ru> <20160708204925.GB11269@fieldses.org> <71EA6CA5-3451-4A0F-BAA0-59843BA2D153@linuxhacker.ru> <20160709031001.GS14480@ZenIV.linux.org.uk>
-To: Al Viro <viro@ZenIV.linux.org.uk>,
-        "J. Bruce Fields" <bfields@fieldses.org>
+	id S1750696AbcGIFPj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 9 Jul 2016 01:15:39 -0400
+From: "Jianhong.Yin" <yin-jianhong@163.com>
+To: linux-nfs@vger.kernel.org
+Cc: steved@redhat.com, "Jianhong.Yin" <yin-jianhong@163.com>,
+        Jianhong Yin <jiyin@redhat.com>
+Subject: [PATCH] exportfs: fix export point checking
+Date: Sat,  9 Jul 2016 13:15:33 +0800
+Message-Id: <1468041333-30255-1-git-send-email-yin-jianhong@163.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+NFS does not support file and symbolic export, if the export point
+is regular file should give warning to user.
 
-On Jul 8, 2016, at 11:10 PM, Al Viro wrote:
+Signed-off-by: Jianhong Yin <jiyin@redhat.com>
+---
+ utils/exportfs/exportfs.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
 
-> On Fri, Jul 08, 2016 at 05:47:22PM -0400, Oleg Drokin wrote:
-> 
->> I wonder if people just accept that "NFS is just weird" and code in workarounds,
->> where as with Lustre we promise (almost) full POSIX compliance, and also came much later
->> so people are just seeing that "this does not work" and complain more loudly?
-> 
-> To quote POSIX: "If more than one error occurs in processing a function call,
-> any one of the possible errors may be returned, as the order of detection is
-> undefined." (from System Interfaces: General Information: 2.3 Error Numbers)
-> 
-> And regarding mkdir(2) it has
-> [EACCES]
->    Search permission is denied on a component of the path prefix, or write
-> permission is denied on the parent directory of the directory to be created.
-> [EEXIST]
->    The named file exists.
-> among the error conditions.  In situations when both apply, the implementation
-> is bloody well allowed to return either.  It might be nicer to return EEXIST
-> in such cases, for consistency sake (if another thread does stat() on the
-> pathname in question just as you are about to call mkdir(2), you will get
-> EEXIST without ever reaching permission(9), let alone ->mkdir() method), but
-> please do not bring POSIX compliance as an argument.  It's a QoI argument and
-> nothing beyond that.
-
-Ok, I see.
-Thanks.
-
-Bruce, do you want the patch resubmitted with a rewritten commit message,
-or do you think it's best to just drop it them?
+diff --git a/utils/exportfs/exportfs.c b/utils/exportfs/exportfs.c
+index 5db348b..a00b5ea 100644
+--- a/utils/exportfs/exportfs.c
++++ b/utils/exportfs/exportfs.c
+@@ -585,8 +585,8 @@ validate_export(nfs_export *exp)
+ 		xlog(L_ERROR, "Failed to stat %s: %m", path);
+ 		return;
+ 	}
+-	if (!S_ISDIR(stb.st_mode) && !S_ISREG(stb.st_mode)) {
+-		xlog(L_ERROR, "%s is neither a directory nor a file. "
++	if (!S_ISDIR(stb.st_mode)) {
++		xlog(L_ERROR, "%s is not a directory. "
+ 			"Remote access will fail", path);
+ 		return;
+ 	}
+-- 
+2.5.5
 
