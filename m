@@ -1,41 +1,59 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:57938 "EHLO mx1.redhat.com"
+Received: from verein.lst.de ([213.95.11.211]:41977 "EHLO newverein.lst.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750696AbcGIFPj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sat, 9 Jul 2016 01:15:39 -0400
-From: "Jianhong.Yin" <yin-jianhong@163.com>
-To: linux-nfs@vger.kernel.org
-Cc: steved@redhat.com, "Jianhong.Yin" <yin-jianhong@163.com>,
-        Jianhong Yin <jiyin@redhat.com>
-Subject: [PATCH] exportfs: fix export point checking
-Date: Sat,  9 Jul 2016 13:15:33 +0800
-Message-Id: <1468041333-30255-1-git-send-email-yin-jianhong@163.com>
+	id S1750822AbcGJJpm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 10 Jul 2016 05:45:42 -0400
+Date: Sun, 10 Jul 2016 11:45:40 +0200
+From: Christoph Hellwig <hch@lst.de>
+To: Benjamin Coddington <bcodding@redhat.com>
+Cc: xfs@oss.sgi.com, linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        Alexander Viro <viro@zeniv.linux.org.uk>,
+        Dave Chinner <david@fromorbit.com>, Christoph Hellwig <hch@lst.de>,
+        bfields@fieldses.org
+Subject: Re: [PATCH v2] xfs: abstract block export operations from nfsd
+	layouts
+Message-ID: <20160710094540.GA19392@lst.de>
+References: <6c1549ee874431c8293cad72c5f7382095277822.1467985684.git.bcodding@redhat.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <6c1549ee874431c8293cad72c5f7382095277822.1467985684.git.bcodding@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-NFS does not support file and symbolic export, if the export point
-is regular file should give warning to user.
+On Fri, Jul 08, 2016 at 09:53:20AM -0400, Benjamin Coddington wrote:
+> Instead of creeping pnfs layout configuration into filesystems, move the
+> definition of block-based export operations under a more abstract
+> configuration.
+> 
+> Changes from v1:
+> 	- dropped the first patch in the first posting
+> 	- renamed the config to EXPORTFS_BLOCK_OPS from BLOCK_EXPORT_OPS
+> 	- add an explicit default to no for EXPORTFS_BLOCK_OPS
+> 	- add some help and menu text
+> 
+> Signed-off-by: Benjamin Coddington <bcodding@redhat.com>
+> ---
+>  fs/Kconfig          | 7 +++++++
+>  fs/nfsd/Kconfig     | 2 ++
+>  fs/xfs/Makefile     | 3 +--
+>  fs/xfs/xfs_export.c | 2 +-
+>  fs/xfs/xfs_pnfs.h   | 4 ++--
+>  5 files changed, 13 insertions(+), 5 deletions(-)
+> 
+> diff --git a/fs/Kconfig b/fs/Kconfig
+> index 6725f59c18e6..ac6d3b36600c 100644
+> --- a/fs/Kconfig
+> +++ b/fs/Kconfig
+> @@ -66,6 +66,13 @@ config FS_POSIX_ACL
+>  config EXPORTFS
+>  	tristate
+>  
+> +config EXPORTFS_BLOCK_OPS
+> +	bool "Enable filesystem export operations for block IO"
+> +	default n
 
-Signed-off-by: Jianhong Yin <jiyin@redhat.com>
----
- utils/exportfs/exportfs.c | 4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
+default n is the default, no need to add it.
 
-diff --git a/utils/exportfs/exportfs.c b/utils/exportfs/exportfs.c
-index 5db348b..a00b5ea 100644
---- a/utils/exportfs/exportfs.c
-+++ b/utils/exportfs/exportfs.c
-@@ -585,8 +585,8 @@ validate_export(nfs_export *exp)
- 		xlog(L_ERROR, "Failed to stat %s: %m", path);
- 		return;
- 	}
--	if (!S_ISDIR(stb.st_mode) && !S_ISREG(stb.st_mode)) {
--		xlog(L_ERROR, "%s is neither a directory nor a file. "
-+	if (!S_ISDIR(stb.st_mode)) {
-+		xlog(L_ERROR, "%s is not a directory. "
- 			"Remote access will fail", path);
- 		return;
- 	}
--- 
-2.5.5
+Otherwise looks fine:
 
+Reviewed-by: Christoph Hellwig <hch@lst.de>
