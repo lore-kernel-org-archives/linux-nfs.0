@@ -1,59 +1,66 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from verein.lst.de ([213.95.11.211]:41977 "EHLO newverein.lst.de"
+Received: from mx1.redhat.com ([209.132.183.28]:51918 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750822AbcGJJpm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 10 Jul 2016 05:45:42 -0400
-Date: Sun, 10 Jul 2016 11:45:40 +0200
-From: Christoph Hellwig <hch@lst.de>
-To: Benjamin Coddington <bcodding@redhat.com>
-Cc: xfs@oss.sgi.com, linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        Alexander Viro <viro@zeniv.linux.org.uk>,
-        Dave Chinner <david@fromorbit.com>, Christoph Hellwig <hch@lst.de>,
+	id S1751406AbcGJT4E (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 10 Jul 2016 15:56:04 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: trond.myklebust@primarydata.com, anna.schumaker@netapp.com,
         bfields@fieldses.org
-Subject: Re: [PATCH v2] xfs: abstract block export operations from nfsd
-	layouts
-Message-ID: <20160710094540.GA19392@lst.de>
-References: <6c1549ee874431c8293cad72c5f7382095277822.1467985684.git.bcodding@redhat.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <6c1549ee874431c8293cad72c5f7382095277822.1467985684.git.bcodding@redhat.com>
+Cc: tigran.mkrtchyan@desy.de, thomas.haynes@primarydata.com,
+        linux-nfs@vger.kernel.org
+Subject: [PATCH v3 0/3][resend] pnfs/nfsd: have client and server support multiple layout types
+Date: Sun, 10 Jul 2016 15:55:57 -0400
+Message-Id: <1468180560-13004-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Jul 08, 2016 at 09:53:20AM -0400, Benjamin Coddington wrote:
-> Instead of creeping pnfs layout configuration into filesystems, move the
-> definition of block-based export operations under a more abstract
-> configuration.
-> 
-> Changes from v1:
-> 	- dropped the first patch in the first posting
-> 	- renamed the config to EXPORTFS_BLOCK_OPS from BLOCK_EXPORT_OPS
-> 	- add an explicit default to no for EXPORTFS_BLOCK_OPS
-> 	- add some help and menu text
-> 
-> Signed-off-by: Benjamin Coddington <bcodding@redhat.com>
-> ---
->  fs/Kconfig          | 7 +++++++
->  fs/nfsd/Kconfig     | 2 ++
->  fs/xfs/Makefile     | 3 +--
->  fs/xfs/xfs_export.c | 2 +-
->  fs/xfs/xfs_pnfs.h   | 4 ++--
->  5 files changed, 13 insertions(+), 5 deletions(-)
-> 
-> diff --git a/fs/Kconfig b/fs/Kconfig
-> index 6725f59c18e6..ac6d3b36600c 100644
-> --- a/fs/Kconfig
-> +++ b/fs/Kconfig
-> @@ -66,6 +66,13 @@ config FS_POSIX_ACL
->  config EXPORTFS
->  	tristate
->  
-> +config EXPORTFS_BLOCK_OPS
-> +	bool "Enable filesystem export operations for block IO"
-> +	default n
+From: Jeff Layton <jlayton@poochiereds.net>
 
-default n is the default, no need to add it.
+v3:
+- use sort() from lib/sort.c to sort the list
 
-Otherwise looks fine:
+v2:
+- rework Tigran's patch to preserve existing selection behaviour
+- simplify layout driver selection by sorting the list
 
-Reviewed-by: Christoph Hellwig <hch@lst.de>
+This is v3 of the patchset. The main change is that this patch doesn't
+use a hand-rolled bubble sort, but rather the heapsort library in
+lib/sort.c. This is mostly for conciseness since the array sizes are
+generally so small that it shouldn't make any perf difference.
+
+Note that this does mean that we need to keep track on the number of
+elements in the array that the server sends, so there are a few
+ancillary changes to deal with that as well.
+
+Only lightly tested by mounting a server that sends both flexfiles and
+block layouts. The client successfully selected the block layout in most
+cases, but if I blacklist blocklayoutdriver then it selects flexfiles
+instead.
+
+I'm sending these together, but I'd expect Bruce to pick up the nfsd
+patches and Trond or Anna to pick up the client-side ones.
+
+The nfsd patch is based on top of Tom's nfsd flexfile layout patches.
+
+Jeff Layton (3):
+  nfsd: allow nfsd to advertise multiple layout types
+  pnfs: track multiple layout types in fsinfo structure
+  pnfs: add a new mechanism to select a layout driver according to an
+    ordered list
+
+ fs/nfs/client.c         |  3 ++-
+ fs/nfs/nfs4proc.c       |  3 ++-
+ fs/nfs/nfs4xdr.c        | 40 +++++++++++++++--------------
+ fs/nfs/pnfs.c           | 67 ++++++++++++++++++++++++++++++++++++++++---------
+ fs/nfs/pnfs.h           |  5 ++--
+ fs/nfsd/export.c        |  4 +--
+ fs/nfsd/export.h        |  2 +-
+ fs/nfsd/nfs4layouts.c   |  6 ++---
+ fs/nfsd/nfs4proc.c      |  4 +--
+ fs/nfsd/nfs4xdr.c       | 30 +++++++++++-----------
+ include/linux/nfs_xdr.h |  8 +++++-
+ 11 files changed, 112 insertions(+), 60 deletions(-)
+
+-- 
+2.5.5
+
