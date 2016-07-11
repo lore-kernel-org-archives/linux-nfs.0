@@ -1,256 +1,127 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-vk0-f48.google.com ([209.85.213.48]:35708 "EHLO
-	mail-vk0-f48.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751093AbcGKN0l (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 11 Jul 2016 09:26:41 -0400
-Received: by mail-vk0-f48.google.com with SMTP id v6so138121819vkb.2
-        for <linux-nfs@vger.kernel.org>; Mon, 11 Jul 2016 06:26:41 -0700 (PDT)
+Received: from us-smtp-delivery-194.mimecast.com ([63.128.21.194]:24434 "EHLO
+	us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1030466AbcGKN2Y convert rfc822-to-8bit
+	(ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 11 Jul 2016 09:28:24 -0400
+From: Trond Myklebust <trondmy@primarydata.com>
+To: Alexey Dobriyan <adobriyan@gmail.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        Schumaker Anna <anna.schumaker@netapp.com>,
+        Weston Andros Adamson <dros@primarydata.com>
+Subject: Re: RHEL7 hang (and probably mainline) while copying big files
+ because of subrequests merging(?)
+Date: Mon, 11 Jul 2016 13:28:03 +0000
+Message-ID: <E70C1354-A1F7-47F3-A810-344BA5BE51AB@primarydata.com>
+References: <CACVxJT8fYGqGbHz97xVR1fWtq3YEfQoN7180fEW-Q27UgD=3Ag@mail.gmail.com>
+In-Reply-To: <CACVxJT8fYGqGbHz97xVR1fWtq3YEfQoN7180fEW-Q27UgD=3Ag@mail.gmail.com>
 MIME-Version: 1.0
-In-Reply-To: <1467725986.3800.22.camel@redhat.com>
-References: <1467294433-3222-1-git-send-email-agruenba@redhat.com>
- <1467294433-3222-8-git-send-email-agruenba@redhat.com> <1467725986.3800.22.camel@redhat.com>
-From: Andreas Gruenbacher <agruenba@redhat.com>
-Date: Mon, 11 Jul 2016 15:26:40 +0200
-Message-ID: <CAHc6FU7n13=g-v-X7y6_ojV2HOkt8qL6ywMzRzWxScTHm10Ynw@mail.gmail.com>
-Subject: Re: [PATCH v23 07/22] richacl: Permission mapping functions
-To: Jeff Layton <jlayton@redhat.com>
-Cc: Alexander Viro <viro@zeniv.linux.org.uk>,
-        Christoph Hellwig <hch@infradead.org>, "Theodore Ts'o" <tytso@mit.edu>,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        Anna Schumaker <anna.schumaker@netapp.com>,
-        Dave Chinner <david@fromorbit.com>,
-        linux-ext4 <linux-ext4@vger.kernel.org>,
-        XFS Developers <xfs@oss.sgi.com>, LKML <linux-kernel@vger.kernel.org>,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        linux-cifs@vger.kernel.org, Linux API <linux-api@vger.kernel.org>
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=WINDOWS-1252
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Jul 5, 2016 at 3:39 PM, Jeff Layton <jlayton@redhat.com> wrote:
-> On Thu, 2016-06-30 at 15:46 +0200, Andreas Gruenbacher wrote:
->> We need to map from POSIX permissions to NFSv4 permissions when a
->> chmod() is done, from NFSv4 permissions to POSIX permissions when an acl
->> is set (which implicitly sets the file permission bits), and from the
->> MAY_READ/MAY_WRITE/MAY_EXEC/MAY_APPEND flags to NFSv4 permissions when
->> doing an access check in a richacl.
->>
->> Signed-off-by: Andreas Gruenbacher <agruenba@redhat.com>
->> Reviewed-by: J. Bruce Fields <bfields@redhat.com>
->> ---
->>  fs/richacl.c                 | 118 +++++++++++++++++++++++++++++++++++++++++++
->>  include/linux/richacl.h      |   3 ++
->>  include/uapi/linux/richacl.h |  44 ++++++++++++++++
->>  3 files changed, 165 insertions(+)
->>
->> diff --git a/fs/richacl.c b/fs/richacl.c
->> index bcc6591..d0a4135 100644
->> --- a/fs/richacl.c
->> +++ b/fs/richacl.c
->> @@ -63,3 +63,121 @@ richace_copy(struct richace *to, const struct richace *from)
->>  {
->>       memcpy(to, from, sizeof(struct richace));
->>  }
->> +
->> +/*
->> + * richacl_mask_to_mode  -  compute the file permission bits from mask
->> + * @mask:    %RICHACE_* permission mask
->> + *
->> + * Compute the file permission bits corresponding to a particular set of
->> + * richacl permissions.
->> + *
->> + * See richacl_masks_to_mode().
->> + */
->> +static int
->> +richacl_mask_to_mode(unsigned int mask)
->> +{
->> +     int mode = 0;
->> +
->> +     if (mask & RICHACE_POSIX_MODE_READ)
->> +             mode |= S_IROTH;
->> +     if (mask & RICHACE_POSIX_MODE_WRITE)
->> +             mode |= S_IWOTH;
->> +     if (mask & RICHACE_POSIX_MODE_EXEC)
->> +             mode |= S_IXOTH;
->> +
->> +     return mode;
->> +}
->> +
->> +/**
->> + * richacl_masks_to_mode  -  compute file permission bits from file masks
->> + *
->> + * When setting a richacl, we set the file permission bits to indicate maximum
->> + * permissions: for example, we set the Write permission when a mask contains
->> + * RICHACE_APPEND_DATA even if it does not also contain RICHACE_WRITE_DATA.
->> + *
->> + * Permissions which are not in RICHACE_POSIX_MODE_READ,
->> + * RICHACE_POSIX_MODE_WRITE, or RICHACE_POSIX_MODE_EXEC cannot be represented
->> + * in the file permission bits.  Such permissions can still be effective, but
->> + * not for new files or after a chmod(); they must be explicitly enabled in the
->> + * richacl.
->> + */
->> +int
->> +richacl_masks_to_mode(const struct richacl *acl)
->> +{
->> +     return richacl_mask_to_mode(acl->a_owner_mask) << 6 |
->> +            richacl_mask_to_mode(acl->a_group_mask) << 3 |
->> +            richacl_mask_to_mode(acl->a_other_mask);
->> +}
->> +EXPORT_SYMBOL_GPL(richacl_masks_to_mode);
->> +
->> +/**
->> + * richacl_mode_to_mask  - compute a file mask from the lowest three mode bits
->> + * @mode:    mode to convert to richacl permissions
->> + *
->> + * When the file permission bits of a file are set with chmod(), this specifies
->> + * the maximum permissions that processes will get.  All permissions beyond
->> + * that will be removed from the file masks, and become ineffective.
->> + */
->> +unsigned int
->> +richacl_mode_to_mask(umode_t mode)
->> +{
->> +     unsigned int mask = 0;
->> +
->> +     if (mode & S_IROTH)
->> +             mask |= RICHACE_POSIX_MODE_READ;
->> +     if (mode & S_IWOTH)
->> +             mask |= RICHACE_POSIX_MODE_WRITE;
->> +     if (mode & S_IXOTH)
->> +             mask |= RICHACE_POSIX_MODE_EXEC;
->> +
->> +     return mask;
->> +}
->> +
->> +/**
->> + * richacl_want_to_mask  - convert the iop->permission want argument to a mask
->> + * @want:    @want argument of the permission inode operation
->> + *
->> + * When checking for append, @want is (MAY_WRITE | MAY_APPEND).
->> + *
->> + * Richacls use the iop->may_create and iop->may_delete hooks which are used
->> + * for checking if creating and deleting files is allowed.  These hooks do not
->> + * use richacl_want_to_mask(), so we do not have to deal with mapping MAY_WRITE
->> + * to RICHACE_ADD_FILE, RICHACE_ADD_SUBDIRECTORY, and RICHACE_DELETE_CHILD
->> + * here.
->> + */
->
-> This comment is confusing as I don't see any may_create or may_delete
-> iops in the final patchset. Do you mean may_create() and may_delete()
-> here?
 
-Since this is only called from richacl_permission, the comment doesn't
-make much sense anymore; removing. Also, richacl_want_to_mask can be
-turned into a static function.
+> On Jul 11, 2016, at 08:59, Alexey Dobriyan <adobriyan@gmail.com> wrote:
+> 
+> We have a customer who was able to reliably reproduce the following hang:
+> (hang itself is rare but there are many machines, so it is not rare)
+> 
+> INFO: task ascp:66692 blocked for more than 120 seconds.
+> 
+>> bt 66692
+> PID: 66692  TASK: ffff883f124ba280  CPU: 5   COMMAND: "ascp"
+> 
+> __schedule
+> schedule
+> schedule_timeout
+> io_schedule_timeout
+> io_schedule
+> nfs_wait_bit_uninterruptible
+> __wait_on_bit
+> out_of_line_wait_on_bit
+> nfs_wait_on_request
+> nfs_try_to_update_request
+> nfs_setup_write_request
+> nfs_writepage_setup
+> nfs_updatepage
+> nfs_write_end
+> generic_file_buffered_write
+> __generic_file_aio_write
+> generic_file_aio_write
+> nfs_file_write
+> do_sync_write
+> vfs_write
+> sys_write
+> system_call_fastpath
+> 
+> ascp is Aspera secure copy program. It is multithreaded.
+> When the hang happens, 5 threads are in S-state and 1 on D-state.
+> 
+> The workload is copying ~100+ GB files over NFS3 with 10GiB ethernet
+> with the following mount options:
+> rw,relatime,vers=3,rsize=131072,wsize=524288,namlen=255,hard,proto=tcp,timeo=600,retrans=2,sec=sys,mountaddr=X.X.X.X,mountvers=3,mountport=300,mountproto=udp,local_lock=none,addr=X.X.X.X
+> 
+> We got coredump (2 actually) and observations are below:
+> 
+> 1) one of the inode's pagecache pages has page->private available:
+> struct nfs_page {
+>  wb_list = {
+>    next = 0xffff885623ac4f80,
+>    prev = 0xffff885623ac4f80
+>  },
+>  wb_page = 0xffffea01218c2600,
+>  wb_context = 0xffff887f2265de00,
+>  wb_lock_context = 0xffff887f2265de00,
+>  wb_index = 2649328,
+>  wb_offset = 0,
+>  wb_pgbase = 0,
+>  wb_bytes = 0,
+>  wb_kref = {
+>    refcount = {
+>      counter = 3
+>    }
+>  },
+>  wb_flags = 19,
+>  wb_verf = {
+>    data = "\000\000\000\000\000\000\000"
+>  },
+>  wb_this_page = 0xffff885623ac4f80,
+>  wb_head = 0xffff885623ac4f80
+> }
+> 
+> ->wb_list is always empty,
+> ->wb_bytes is always 0 (!).
+> ->wb_kref is always 3.
+> ->wb_flags = PG_BUSY|PG_MAPPED|PG_INODE_REF,
+> 
+> page->flags = 0x2869 =
+> PG_writeback|PG_private|PG_active|PF_lru|PG_uptodate|PG_locked
+> 
+> The zero-length request is created at nfs_create_request():
+> WARN_ON_ONCE(req->wb_bytes == 0)
+> nfs_create_request
+> nfs_setup_write_request
+> nfs_updatepage
+> nfs_write_end
+> generic_perform_write
+> generic_file_buffered_write
+> __generic_file_aio_write
+> generic_file_aio_write
+> nfs_file_write
+> do_sync_write
+> vfs_write
+> SyS_write
+> 
+> with count=0 coming from generic_perform_write (where else?).
+> 
+> Customer is saying that RHEL6 was totally OK, and there are several reports
+> of other people hitting same bug with RHEL7:
+> https://gist.github.com/Millnert/ecc10d8cc79c81b55d7f
+> https://bugs.centos.org/view.php?id=9284
+> 
 
->> +unsigned int
->> +richacl_want_to_mask(unsigned int want)
->> +{
->> +     unsigned int mask = 0;
->> +
->> +     if (want & MAY_READ)
->> +             mask |= RICHACE_READ_DATA;
->> +     if (want & MAY_DELETE_SELF)
->> +             mask |= RICHACE_DELETE;
->> +     if (want & MAY_TAKE_OWNERSHIP)
->> +             mask |= RICHACE_WRITE_OWNER;
->> +     if (want & MAY_CHMOD)
->> +             mask |= RICHACE_WRITE_ACL;
->> +     if (want & MAY_SET_TIMES)
->> +             mask |= RICHACE_WRITE_ATTRIBUTES;
->> +     if (want & MAY_EXEC)
->> +             mask |= RICHACE_EXECUTE;
->> +     /*
->> +      * differentiate MAY_WRITE from these request
->> +      */
->> +     if (want & (MAY_APPEND |
->> +                 MAY_CREATE_FILE | MAY_CREATE_DIR |
->> +                 MAY_DELETE_CHILD)) {
->> +             if (want & MAY_APPEND)
->> +                     mask |= RICHACE_APPEND_DATA;
->> +             if (want & MAY_CREATE_FILE)
->> +                     mask |= RICHACE_ADD_FILE;
->> +             if (want & MAY_CREATE_DIR)
->> +                     mask |= RICHACE_ADD_SUBDIRECTORY;
->> +             if (want & MAY_DELETE_CHILD)
->> +                     mask |= RICHACE_DELETE_CHILD;
->> +     } else if (want & MAY_WRITE)
->> +             mask |= RICHACE_WRITE_DATA;
->> +     return mask;
->> +}
->> +EXPORT_SYMBOL_GPL(richacl_want_to_mask);
->> diff --git a/include/linux/richacl.h b/include/linux/richacl.h
->> index edb8480..9102ef0 100644
->> --- a/include/linux/richacl.h
->> +++ b/include/linux/richacl.h
->> @@ -175,5 +175,8 @@ richace_is_same_identifier(const struct richace *a, const struct richace *b)
->>  extern struct richacl *richacl_alloc(int, gfp_t);
->>  extern struct richacl *richacl_clone(const struct richacl *, gfp_t);
->>  extern void richace_copy(struct richace *, const struct richace *);
->> +extern int richacl_masks_to_mode(const struct richacl *);
->> +extern unsigned int richacl_mode_to_mask(umode_t);
->> +extern unsigned int richacl_want_to_mask(unsigned int);
->>
->>  #endif /* __RICHACL_H */
->> diff --git a/include/uapi/linux/richacl.h b/include/uapi/linux/richacl.h
->> index 08856f8..1ed48ac 100644
->> --- a/include/uapi/linux/richacl.h
->> +++ b/include/uapi/linux/richacl.h
->> @@ -96,4 +96,48 @@
->>       RICHACE_WRITE_OWNER |                                   \
->>       RICHACE_SYNCHRONIZE )
->>
->> +/*
->> + * The POSIX permissions are supersets of the following richacl permissions:
->> + *
->> + *  - MAY_READ maps to READ_DATA or LIST_DIRECTORY, depending on the type
->> + *    of the file system object.
->> + *
->> + *  - MAY_WRITE maps to WRITE_DATA or RICHACE_APPEND_DATA for files, and to
->> + *    ADD_FILE, RICHACE_ADD_SUBDIRECTORY, or RICHACE_DELETE_CHILD for directories.
->> + *
->> + *  - MAY_EXECUTE maps to RICHACE_EXECUTE.
->> + *
->> + *  (Some of these richacl permissions have the same bit values.)
->> + */
->> +#define RICHACE_POSIX_MODE_READ (                    \
->> +             RICHACE_READ_DATA |                     \
->> +             RICHACE_LIST_DIRECTORY)
->> +#define RICHACE_POSIX_MODE_WRITE (                   \
->> +             RICHACE_WRITE_DATA |                    \
->> +             RICHACE_ADD_FILE |                      \
->> +             RICHACE_APPEND_DATA |                   \
->> +             RICHACE_ADD_SUBDIRECTORY |              \
->> +             RICHACE_DELETE_CHILD)
->> +#define RICHACE_POSIX_MODE_EXEC RICHACE_EXECUTE
->> +#define RICHACE_POSIX_MODE_ALL (                     \
->> +             RICHACE_POSIX_MODE_READ |               \
->> +             RICHACE_POSIX_MODE_WRITE |              \
->> +             RICHACE_POSIX_MODE_EXEC)
->> +
->> +/*
->> + * These permissions are always allowed no matter what the acl says.
->> + */
->> +#define RICHACE_POSIX_ALWAYS_ALLOWED (                       \
->> +             RICHACE_SYNCHRONIZE |                   \
->> +             RICHACE_READ_ATTRIBUTES |               \
->> +             RICHACE_READ_ACL)
->> +
->> +/*
->> + * The owner is implicitly granted these permissions under POSIX.
->> + */
->> +#define RICHACE_POSIX_OWNER_ALLOWED (                        \
->> +             RICHACE_WRITE_ATTRIBUTES |              \
->> +             RICHACE_WRITE_OWNER |                   \
->> +             RICHACE_WRITE_ACL)
->> +
->>  #endif /* __UAPI_RICHACL_H */
->
-> Other than the confusing comment, this looks ok.
->
-> Reviewed-by: Jeff Layton <jlayton@redhat.com>
+Why is this being reported here and not to Red Hat? Is the bug reproducible on the upstream kernel?
 
-Thanks,
-Andreas
+Cheers
+  Trond
+
