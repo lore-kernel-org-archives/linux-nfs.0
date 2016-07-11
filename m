@@ -1,103 +1,117 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-oi0-f45.google.com ([209.85.218.45]:33559 "EHLO
-	mail-oi0-f45.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S933671AbcGKMup (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 11 Jul 2016 08:50:45 -0400
-Received: by mail-oi0-f45.google.com with SMTP id u201so145505698oie.0
-        for <linux-nfs@vger.kernel.org>; Mon, 11 Jul 2016 05:50:45 -0700 (PDT)
-Date: Mon, 11 Jul 2016 07:50:41 -0500
-From: Seth Forshee <seth.forshee@canonical.com>
-To: Jeff Layton <jlayton@redhat.com>
-Cc: Michal Hocko <mhocko@kernel.org>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        Anna Schumaker <anna.schumaker@netapp.com>,
-        linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org,
-        Tycho Andersen <tycho.andersen@canonical.com>
-Subject: Re: Hang due to nfs letting tasks freeze with locked inodes
-Message-ID: <20160711125041.GA3024@ubuntu-hedt>
-References: <20160706174655.GD45215@ubuntu-hedt>
- <1467842838.2908.45.camel@redhat.com>
- <20160708122224.GA20200@dhcp22.suse.cz>
- <1467982314.13822.5.camel@redhat.com>
- <20160708142308.GA20133@dhcp22.suse.cz>
- <1467988058.13822.9.camel@redhat.com>
- <20160711072325.GC5284@dhcp22.suse.cz>
- <1468235011.2577.3.camel@redhat.com>
+Received: from mail-wm0-f53.google.com ([74.125.82.53]:35740 "EHLO
+	mail-wm0-f53.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751093AbcGKM74 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 11 Jul 2016 08:59:56 -0400
+Received: by mail-wm0-f53.google.com with SMTP id f65so61416652wmi.0
+        for <linux-nfs@vger.kernel.org>; Mon, 11 Jul 2016 05:59:56 -0700 (PDT)
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1468235011.2577.3.camel@redhat.com>
+From: Alexey Dobriyan <adobriyan@gmail.com>
+Date: Mon, 11 Jul 2016 15:59:53 +0300
+Message-ID: <CACVxJT8fYGqGbHz97xVR1fWtq3YEfQoN7180fEW-Q27UgD=3Ag@mail.gmail.com>
+Subject: RHEL7 hang (and probably mainline) while copying big files because of
+ subrequests merging(?)
+To: linux-nfs@vger.kernel.org
+Cc: trond.myklebust@primarydata.com, anna.schumaker@netapp.com,
+        dros@primarydata.com
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Jul 11, 2016 at 07:03:31AM -0400, Jeff Layton wrote:
-> On Mon, 2016-07-11 at 09:23 +0200, Michal Hocko wrote:
-> > On Fri 08-07-16 10:27:38, Jeff Layton wrote:
-> > > On Fri, 2016-07-08 at 16:23 +0200, Michal Hocko wrote:
-> > > > On Fri 08-07-16 08:51:54, Jeff Layton wrote:
-> > > > > 
-> > > > > On Fri, 2016-07-08 at 14:22 +0200, Michal Hocko wrote:
-> > > > [...]
-> > > > > 
-> > > > > > 
-> > > > > > Apart from alternative Dave was mentioning in other email, what
-> > > > > > is the
-> > > > > > point to use freezable wait from this path in the first place?
-> > > > > > 
-> > > > > > nfs4_handle_exception does nfs4_wait_clnt_recover from the same
-> > > > > > path and
-> > > > > > that does wait_on_bit_action with TASK_KILLABLE so we are waiting
-> > > > > > in two
-> > > > > > different modes from the same path AFAICS. There do not seem to
-> > > > > > be other
-> > > > > > callers of nfs4_delay outside of nfs4_handle_exception. Sounds
-> > > > > > like
-> > > > > > something is not quite right here to me. If the nfs4_delay did
-> > > > > > regular
-> > > > > > wait then the freezing would fail as well but at least it would
-> > > > > > be clear
-> > > > > > who is the culrprit rather than having an indirect dependency.
-> > > > > The codepaths involved there are a lot more complex than that
-> > > > > unfortunately.
-> > > > > 
-> > > > > nfs4_delay is the function that we use to handle the case where the
-> > > > > server returns NFS4ERR_DELAY. Basically telling us that it's too
-> > > > > busy
-> > > > > right now or has some transient error and the client should retry
-> > > > > after
-> > > > > a small, sliding delay.
-> > > > > 
-> > > > > That codepath could probably be made more freezer-safe. The typical
-> > > > > case however, is that we've sent a call and just haven't gotten a
-> > > > > reply. That's the trickier one to handle.
-> > > > Why using a regular non-freezable wait would be a problem?
-> > > 
-> > > It has been a while since I looked at that code, but IIRC, that could
-> > > block the freezer for up to 15s, which is a significant portion of the
-> > > 20s that you get before the freezer gives up.
-> > 
-> > But how does that differ from the situation when the freezer has to give
-> > up on the timeout because another task fails due to lock dependency.
-> > 
-> > As Trond and Dave have written in other emails. It is really danngerous
-> > to freeze a task while it is holding locks and other resources.
-> 
-> It's not really dangerous if you're freezing every task on the host.
-> Sure, you're freezing with locks held, but everything else is freezing
-> too, so nothing will be contending for those locks.
+We have a customer who was able to reliably reproduce the following hang:
+(hang itself is rare but there are many machines, so it is not rare)
 
-Unless you have tasks either already waiting on those locks or that will
-attaempt to lock them before calling try_to_freeze. That happens to be
-the case in this cgroup freezer hang too, all the tasks stuck waiting on
-the i_mutex are p being frozen.
+INFO: task ascp:66692 blocked for more than 120 seconds.
 
-> I'm not at all opposed to changing how all of that works. My only
-> stipulation is that we not break the ability to reliably suspend a host
-> that is actively using an NFS mount. If you can come up with a way to
-> do that that also works for freezing cgroups, then I'm all for it.
+> bt 66692
+PID: 66692  TASK: ffff883f124ba280  CPU: 5   COMMAND: "ascp"
 
-The deadlock that we've seen should apply equally to suspend and to the
-cgroup freezer. The only difference is that suspend will eventually time
-out and abort the suspend whereas the cgroup freezer does not.
+__schedule
+schedule
+schedule_timeout
+io_schedule_timeout
+io_schedule
+nfs_wait_bit_uninterruptible
+__wait_on_bit
+out_of_line_wait_on_bit
+nfs_wait_on_request
+nfs_try_to_update_request
+nfs_setup_write_request
+nfs_writepage_setup
+nfs_updatepage
+nfs_write_end
+generic_file_buffered_write
+__generic_file_aio_write
+generic_file_aio_write
+nfs_file_write
+do_sync_write
+vfs_write
+sys_write
+system_call_fastpath
 
-Seth
+ascp is Aspera secure copy program. It is multithreaded.
+When the hang happens, 5 threads are in S-state and 1 on D-state.
+
+The workload is copying ~100+ GB files over NFS3 with 10GiB ethernet
+with the following mount options:
+rw,relatime,vers=3,rsize=131072,wsize=524288,namlen=255,hard,proto=tcp,timeo=600,retrans=2,sec=sys,mountaddr=X.X.X.X,mountvers=3,mountport=300,mountproto=udp,local_lock=none,addr=X.X.X.X
+
+We got coredump (2 actually) and observations are below:
+
+1) one of the inode's pagecache pages has page->private available:
+struct nfs_page {
+  wb_list = {
+    next = 0xffff885623ac4f80,
+    prev = 0xffff885623ac4f80
+  },
+  wb_page = 0xffffea01218c2600,
+  wb_context = 0xffff887f2265de00,
+  wb_lock_context = 0xffff887f2265de00,
+  wb_index = 2649328,
+  wb_offset = 0,
+  wb_pgbase = 0,
+  wb_bytes = 0,
+  wb_kref = {
+    refcount = {
+      counter = 3
+    }
+  },
+  wb_flags = 19,
+  wb_verf = {
+    data = "\000\000\000\000\000\000\000"
+  },
+  wb_this_page = 0xffff885623ac4f80,
+  wb_head = 0xffff885623ac4f80
+}
+
+->wb_list is always empty,
+->wb_bytes is always 0 (!).
+->wb_kref is always 3.
+->wb_flags = PG_BUSY|PG_MAPPED|PG_INODE_REF,
+
+page->flags = 0x2869 =
+PG_writeback|PG_private|PG_active|PF_lru|PG_uptodate|PG_locked
+
+The zero-length request is created at nfs_create_request():
+WARN_ON_ONCE(req->wb_bytes == 0)
+nfs_create_request
+nfs_setup_write_request
+nfs_updatepage
+nfs_write_end
+generic_perform_write
+generic_file_buffered_write
+__generic_file_aio_write
+generic_file_aio_write
+nfs_file_write
+do_sync_write
+vfs_write
+SyS_write
+
+with count=0 coming from generic_perform_write (where else?).
+
+Customer is saying that RHEL6 was totally OK, and there are several reports
+of other people hitting same bug with RHEL7:
+https://gist.github.com/Millnert/ecc10d8cc79c81b55d7f
+https://bugs.centos.org/view.php?id=9284
+
+    Alexey
