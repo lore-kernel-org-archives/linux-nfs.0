@@ -1,459 +1,94 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-vk0-f47.google.com ([209.85.213.47]:36694 "EHLO
-	mail-vk0-f47.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757885AbcGKKL6 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 11 Jul 2016 06:11:58 -0400
-Received: by mail-vk0-f47.google.com with SMTP id f7so116581157vkb.3
-        for <linux-nfs@vger.kernel.org>; Mon, 11 Jul 2016 03:11:57 -0700 (PDT)
-MIME-Version: 1.0
-In-Reply-To: <1467718448.3800.16.camel@redhat.com>
-References: <1467294433-3222-1-git-send-email-agruenba@redhat.com>
- <1467294433-3222-7-git-send-email-agruenba@redhat.com> <1467718448.3800.16.camel@redhat.com>
-From: Andreas Gruenbacher <agruenba@redhat.com>
-Date: Mon, 11 Jul 2016 12:11:56 +0200
-Message-ID: <CAHc6FU6B-3R=DZ08aMSxr2065sENHAi2V-VAeEqO8kFmpiOgHQ@mail.gmail.com>
-Subject: Re: [PATCH v23 06/22] richacl: In-memory representation and helper functions
-To: Jeff Layton <jlayton@redhat.com>
-Cc: Alexander Viro <viro@zeniv.linux.org.uk>,
-        Christoph Hellwig <hch@infradead.org>, "Theodore Ts'o" <tytso@mit.edu>,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
+Received: from mail-qk0-f177.google.com ([209.85.220.177]:33880 "EHLO
+	mail-qk0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1758362AbcGKLDf (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 11 Jul 2016 07:03:35 -0400
+Received: by mail-qk0-f177.google.com with SMTP id o67so23292077qke.1
+        for <linux-nfs@vger.kernel.org>; Mon, 11 Jul 2016 04:03:35 -0700 (PDT)
+Message-ID: <1468235011.2577.3.camel@redhat.com>
+Subject: Re: Hang due to nfs letting tasks freeze with locked inodes
+From: Jeff Layton <jlayton@redhat.com>
+To: Michal Hocko <mhocko@kernel.org>
+Cc: Seth Forshee <seth.forshee@canonical.com>,
         Trond Myklebust <trond.myklebust@primarydata.com>,
         Anna Schumaker <anna.schumaker@netapp.com>,
-        Dave Chinner <david@fromorbit.com>,
-        linux-ext4 <linux-ext4@vger.kernel.org>,
-        XFS Developers <xfs@oss.sgi.com>, LKML <linux-kernel@vger.kernel.org>,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        linux-cifs@vger.kernel.org, Linux API <linux-api@vger.kernel.org>
-Content-Type: text/plain; charset=UTF-8
+        linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org,
+        Tycho Andersen <tycho.andersen@canonical.com>
+Date: Mon, 11 Jul 2016 07:03:31 -0400
+In-Reply-To: <20160711072325.GC5284@dhcp22.suse.cz>
+References: <20160706174655.GD45215@ubuntu-hedt>
+ <1467842838.2908.45.camel@redhat.com>
+ <20160708122224.GA20200@dhcp22.suse.cz>
+ <1467982314.13822.5.camel@redhat.com>
+ <20160708142308.GA20133@dhcp22.suse.cz>
+ <1467988058.13822.9.camel@redhat.com>
+	 <20160711072325.GC5284@dhcp22.suse.cz>
+Content-Type: text/plain; charset="UTF-8"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Jul 5, 2016 at 1:34 PM, Jeff Layton <jlayton@redhat.com> wrote:
-> On Thu, 2016-06-30 at 15:46 +0200, Andreas Gruenbacher wrote:
->> A richacl consists of an NFSv4 acl and an owner, group, and other mask.
->> These three masks correspond to the owner, group, and other file
->> permission bits, but they contain NFSv4 permissions instead of POSIX
->> permissions.
->>
->> Each entry in the NFSv4 acl applies to the file owner (OWNER@), the
->> owning group (GROUP@), everyone (EVERYONE@), or to a specific uid or
->> gid.
->>
->> As in the standard POSIX file permission model, each process is the
->> owner, group, or other file class.  A richacl grants a requested access
->> only if the NFSv4 acl in the richacl grants the access (according to the
->> NFSv4 permission check algorithm), and the file mask that applies to the
->> process includes the requested permissions.
->>
->> Signed-off-by: Andreas Gruenbacher <agruenba@redhat.com>
->> Reviewed-by: J. Bruce Fields <bfields@redhat.com>
->> ---
->>  fs/Makefile                  |   1 +
->>  fs/richacl.c                 |  65 ++++++++++++++++
->>  include/linux/richacl.h      | 179 +++++++++++++++++++++++++++++++++++++++++++
->>  include/uapi/linux/Kbuild    |   1 +
->>  include/uapi/linux/richacl.h |  99 ++++++++++++++++++++++++
->>  5 files changed, 345 insertions(+)
->>  create mode 100644 fs/richacl.c
->>  create mode 100644 include/linux/richacl.h
->>  create mode 100644 include/uapi/linux/richacl.h
->>
->> diff --git a/fs/Makefile b/fs/Makefile
->> index 85b6e13..2b3e6f1 100644
->> --- a/fs/Makefile
->> +++ b/fs/Makefile
->> @@ -49,6 +49,7 @@ obj-$(CONFIG_COREDUMP)              += coredump.o
->>  obj-$(CONFIG_SYSCTL)         += drop_caches.o
->>
->>  obj-$(CONFIG_FHANDLE)                += fhandle.o
->> +obj-$(CONFIG_FS_RICHACL)     += richacl.o
->>
->>  obj-y                                += quota/
->>
->> diff --git a/fs/richacl.c b/fs/richacl.c
->> new file mode 100644
->> index 0000000..bcc6591
->> --- /dev/null
->> +++ b/fs/richacl.c
->> @@ -0,0 +1,65 @@
->> +/*
->> + * Copyright (C) 2006, 2010  Novell, Inc.
->> + * Copyright (C) 2015  Red Hat, Inc.
->> + * Written by Andreas Gruenbacher <agruenba@redhat.com>
->> + *
->> + * This program is free software; you can redistribute it and/or modify it
->> + * under the terms of the GNU General Public License as published by the
->> + * Free Software Foundation; either version 2, or (at your option) any
->> + * later version.
->> + *
->> + * This program is distributed in the hope that it will be useful, but
->> + * WITHOUT ANY WARRANTY; without even the implied warranty of
->> + * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
->> + * General Public License for more details.
->> + */
->> +
->> +#include
->> +#include
->> +#include
->> +#include
->> +#include
->> +
->> +/**
->> + * richacl_alloc  -  allocate a richacl
->> + * @count:   number of entries
->> + */
->> +struct richacl *
->> +richacl_alloc(int count, gfp_t gfp)
->> +{
->> +     size_t size = sizeof(struct richacl) + count * sizeof(struct richace);
->> +     struct richacl *acl = kzalloc(size, gfp);
->> +
->> +     if (acl) {
->> +             atomic_set(&acl->a_refcount, 1);
->> +             acl->a_count = count;
->> +     }
->> +     return acl;
->> +}
->> +EXPORT_SYMBOL_GPL(richacl_alloc);
->> +
->
-> I imagine we could have a lot of these at any given time. It might be
-> nice to consider how to do this with dedicated slabcaches for better
-> packing, but I think that would add to the complexity, unfortunately.
+On Mon, 2016-07-11 at 09:23 +0200, Michal Hocko wrote:
+> On Fri 08-07-16 10:27:38, Jeff Layton wrote:
+> > On Fri, 2016-07-08 at 16:23 +0200, Michal Hocko wrote:
+> > > On Fri 08-07-16 08:51:54, Jeff Layton wrote:
+> > > > 
+> > > > On Fri, 2016-07-08 at 14:22 +0200, Michal Hocko wrote:
+> > > [...]
+> > > > 
+> > > > > 
+> > > > > Apart from alternative Dave was mentioning in other email, what
+> > > > > is the
+> > > > > point to use freezable wait from this path in the first place?
+> > > > > 
+> > > > > nfs4_handle_exception does nfs4_wait_clnt_recover from the same
+> > > > > path and
+> > > > > that does wait_on_bit_action with TASK_KILLABLE so we are waiting
+> > > > > in two
+> > > > > different modes from the same path AFAICS. There do not seem to
+> > > > > be other
+> > > > > callers of nfs4_delay outside of nfs4_handle_exception. Sounds
+> > > > > like
+> > > > > something is not quite right here to me. If the nfs4_delay did
+> > > > > regular
+> > > > > wait then the freezing would fail as well but at least it would
+> > > > > be clear
+> > > > > who is the culrprit rather than having an indirect dependency.
+> > > > The codepaths involved there are a lot more complex than that
+> > > > unfortunately.
+> > > > 
+> > > > nfs4_delay is the function that we use to handle the case where the
+> > > > server returns NFS4ERR_DELAY. Basically telling us that it's too
+> > > > busy
+> > > > right now or has some transient error and the client should retry
+> > > > after
+> > > > a small, sliding delay.
+> > > > 
+> > > > That codepath could probably be made more freezer-safe. The typical
+> > > > case however, is that we've sent a call and just haven't gotten a
+> > > > reply. That's the trickier one to handle.
+> > > Why using a regular non-freezable wait would be a problem?
+> > 
+> > It has been a while since I looked at that code, but IIRC, that could
+> > block the freezer for up to 15s, which is a significant portion of the
+> > 20s that you get before the freezer gives up.
+> 
+> But how does that differ from the situation when the freezer has to give
+> up on the timeout because another task fails due to lock dependency.
+> 
+> As Trond and Dave have written in other emails. It is really danngerous
+> to freeze a task while it is holding locks and other resources.
 
-The objects are variable in size, so that wouldn't work.
+It's not really dangerous if you're freezing every task on the host.
+Sure, you're freezing with locks held, but everything else is freezing
+too, so nothing will be contending for those locks.
 
->> +/**
->> + * richacl_clone  -  create a copy of a richacl
->> + */
->> +struct richacl *
->> +richacl_clone(const struct richacl *acl, gfp_t gfp)
->> +{
->> +     int count = acl->a_count;
->> +     size_t size = sizeof(struct richacl) + count * sizeof(struct richace);
->> +     struct richacl *dup = kmalloc(size, gfp);
->> +
->> +     if (dup) {
->> +             memcpy(dup, acl, size);
->> +             atomic_set(&dup->a_refcount, 1);
->> +     }
->> +     return dup;
->> +}
->> +
->> +/**
->> + * richace_copy  -  copy an acl entry
->> + */
->> +void
->> +richace_copy(struct richace *to, const struct richace *from)
->> +{
->> +     memcpy(to, from, sizeof(struct richace));
->> +}
->> diff --git a/include/linux/richacl.h b/include/linux/richacl.h
->> new file mode 100644
->> index 0000000..edb8480
->> --- /dev/null
->> +++ b/include/linux/richacl.h
->> @@ -0,0 +1,179 @@
->> +/*
->> + * Copyright (C) 2006, 2010  Novell, Inc.
->> + * Copyright (C) 2015  Red Hat, Inc.
->> + * Written by Andreas Gruenbacher <agruenba@redhat.com>
->> + *
->> + * This program is free software; you can redistribute it and/or modify it
->> + * under the terms of the GNU General Public License as published by the
->> + * Free Software Foundation; either version 2, or (at your option) any
->> + * later version.
->> + *
->> + * This program is distributed in the hope that it will be useful, but
->> + * WITHOUT ANY WARRANTY; without even the implied warranty of
->> + * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
->> + * General Public License for more details.
->> + */
->> +
->> +#ifndef __RICHACL_H
->> +#define __RICHACL_H
->> +
->> +#include
->> +
->> +struct richace {
->> +     unsigned short  e_type;
->> +     unsigned short  e_flags;
->> +     unsigned int    e_mask;
->> +     union {
->> +             kuid_t          uid;
->> +             kgid_t          gid;
->> +             unsigned int    special;
->> +     } e_id;
->> +};
->> +
->> +struct richacl {
->> +     atomic_t        a_refcount;
->> +     unsigned int    a_owner_mask;
->> +     unsigned int    a_group_mask;
->> +     unsigned int    a_other_mask;
->> +     unsigned short  a_count;
->> +     unsigned short  a_flags;
->> +     struct richace  a_entries[0];
->> +};
->> +
->> +#define richacl_for_each_entry(_ace, _acl)                   \
->> +     for (_ace = (_acl)->a_entries;                          \
->> +          _ace != (_acl)->a_entries + (_acl)->a_count;       \
->> +          _ace++)
->> +
->> +#define richacl_for_each_entry_reverse(_ace, _acl)           \
->> +     for (_ace = (_acl)->a_entries + (_acl)->a_count - 1;    \
->> +          _ace != (_acl)->a_entries - 1;                     \
->> +          _ace--)
->> +
->> +/**
->> + * richacl_get  -  grab another reference to a richacl handle
->> + */
->> +static inline struct richacl *
->> +richacl_get(struct richacl *acl)
->> +{
->> +     if (acl)
->> +             atomic_inc(&acl->a_refcount);
->> +     return acl;
->> +}
->> +
->> +/**
->> + * richacl_put  -  free a richacl handle
->> + */
->> +static inline void
->> +richacl_put(struct richacl *acl)
->> +{
->> +     if (acl && atomic_dec_and_test(&acl->a_refcount))
->> +             kfree(acl);
->> +}
->> +
->> +/**
->> + * richace_is_owner  -  check if @ace is an OWNER@ entry
->> + */
->> +static inline bool
->> +richace_is_owner(const struct richace *ace)
->> +{
->> +     return (ace->e_flags & RICHACE_SPECIAL_WHO) &&
->> +            ace->e_id.special == RICHACE_OWNER_SPECIAL_ID;
->> +}
->> +
->> +/**
->> + * richace_is_group  -  check if @ace is a GROUP@ entry
->> + */
->> +static inline bool
->> +richace_is_group(const struct richace *ace)
->> +{
->> +     return (ace->e_flags & RICHACE_SPECIAL_WHO) &&
->> +            ace->e_id.special == RICHACE_GROUP_SPECIAL_ID;
->> +}
->> +
->> +/**
->> + * richace_is_everyone  -  check if @ace is an EVERYONE@ entry
->> + */
->> +static inline bool
->> +richace_is_everyone(const struct richace *ace)
->> +{
->> +     return (ace->e_flags & RICHACE_SPECIAL_WHO) &&
->> +            ace->e_id.special == RICHACE_EVERYONE_SPECIAL_ID;
->> +}
->> +
->> +/**
->> + * richace_is_unix_user  -  check if @ace applies to a specific user
->> + */
->> +static inline bool
->> +richace_is_unix_user(const struct richace *ace)
->> +{
->> +     return !(ace->e_flags & RICHACE_SPECIAL_WHO) &&
->> +            !(ace->e_flags & RICHACE_IDENTIFIER_GROUP);
->> +}
->> +
->> +/**
->> + * richace_is_unix_group  -  check if @ace applies to a specific group
->> + */
->> +static inline bool
->> +richace_is_unix_group(const struct richace *ace)
->> +{
->> +     return !(ace->e_flags & RICHACE_SPECIAL_WHO) &&
->> +            (ace->e_flags & RICHACE_IDENTIFIER_GROUP);
->> +}
->> +
->> +/**
->> + * richace_is_inherit_only  -  check if @ace is for inheritance only
->> + *
->> + * ACEs with the %RICHACE_INHERIT_ONLY_ACE flag set have no effect during
->> + * permission checking.
->> + */
->> +static inline bool
->> +richace_is_inherit_only(const struct richace *ace)
->> +{
->> +     return ace->e_flags & RICHACE_INHERIT_ONLY_ACE;
->> +}
->> +
->> +/**
->> + * richace_is_inheritable  -  check if @ace is inheritable
->> + */
->> +static inline bool
->> +richace_is_inheritable(const struct richace *ace)
->> +{
->> +     return ace->e_flags & (RICHACE_FILE_INHERIT_ACE |
->> +                            RICHACE_DIRECTORY_INHERIT_ACE);
->> +}
->> +
->> +/**
->> + * richace_is_allow  -  check if @ace is an %ALLOW type entry
->> + */
->> +static inline bool
->> +richace_is_allow(const struct richace *ace)
->> +{
->> +     return ace->e_type == RICHACE_ACCESS_ALLOWED_ACE_TYPE;
->> +}
->> +
->> +/**
->> + * richace_is_deny  -  check if @ace is a %DENY type entry
->> + */
->> +static inline bool
->> +richace_is_deny(const struct richace *ace)
->> +{
->> +     return ace->e_type == RICHACE_ACCESS_DENIED_ACE_TYPE;
->> +}
->> +
->> +/**
->> + * richace_is_same_identifier  -  are both identifiers the same?
->> + */
->> +static inline bool
->> +richace_is_same_identifier(const struct richace *a, const struct richace *b)
->> +{
->> +     return !((a->e_flags ^ b->e_flags) &
->> +              (RICHACE_SPECIAL_WHO | RICHACE_IDENTIFIER_GROUP)) &&
->> +            !memcmp(&a->e_id, &b->e_id, sizeof(a->e_id));
->> +}
->> +
->> +extern struct richacl *richacl_alloc(int, gfp_t);
->> +extern struct richacl *richacl_clone(const struct richacl *, gfp_t);
->> +extern void richace_copy(struct richace *, const struct richace *);
->> +
->> +#endif /* __RICHACL_H */
->> diff --git a/include/uapi/linux/Kbuild b/include/uapi/linux/Kbuild
->> index 8bdae34..abeaa98 100644
->> --- a/include/uapi/linux/Kbuild
->> +++ b/include/uapi/linux/Kbuild
->> @@ -355,6 +355,7 @@ header-y += reboot.h
->>  header-y += reiserfs_fs.h
->>  header-y += reiserfs_xattr.h
->>  header-y += resource.h
->> +header-y += richacl.h
->>  header-y += rfkill.h
->>  header-y += rio_mport_cdev.h
->>  header-y += romfs_fs.h
->> diff --git a/include/uapi/linux/richacl.h b/include/uapi/linux/richacl.h
->> new file mode 100644
->> index 0000000..08856f8
->> --- /dev/null
->> +++ b/include/uapi/linux/richacl.h
->> @@ -0,0 +1,99 @@
->> +/*
->> + * Copyright (C) 2006, 2010  Novell, Inc.
->> + * Copyright (C) 2015  Red Hat, Inc.
->> + * Written by Andreas Gruenbacher <agruenba@redhat.com>
->> + *
->> + * This file is free software; you can redistribute it and/or
->> + * modify it under the terms of the GNU Lesser General Public
->> + * License as published by the Free Software Foundation; either
->> + * version 2.1 of the License, or (at your option) any later version.
->> + *
->> + * This file is distributed in the hope that it will be useful,
->> + * but WITHOUT ANY WARRANTY; without even the implied warranty of
->> + * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
->> + * Lesser General Public License for more details.
->> + */
->> +
->> +#ifndef __UAPI_RICHACL_H
->> +#define __UAPI_RICHACL_H
->> +
->> +/* a_flags values */
->> +#define RICHACL_WRITE_THROUGH                        0x40
->> +#define RICHACL_MASKED                               0x80
->> +
->> +/* e_type values */
->> +#define RICHACE_ACCESS_ALLOWED_ACE_TYPE              0x0000
->> +#define RICHACE_ACCESS_DENIED_ACE_TYPE               0x0001
->> +
->> +/* e_flags bitflags */
->> +#define RICHACE_FILE_INHERIT_ACE             0x0001
->> +#define RICHACE_DIRECTORY_INHERIT_ACE                0x0002
->> +#define RICHACE_NO_PROPAGATE_INHERIT_ACE     0x0004
->> +#define RICHACE_INHERIT_ONLY_ACE             0x0008
->> +#define RICHACE_IDENTIFIER_GROUP             0x0040
->> +#define RICHACE_SPECIAL_WHO                  0x4000
->> +
->> +/* e_mask bitflags */
->> +#define RICHACE_READ_DATA                    0x00000001
->> +#define RICHACE_LIST_DIRECTORY                       0x00000001
->> +#define RICHACE_WRITE_DATA                   0x00000002
->> +#define RICHACE_ADD_FILE                     0x00000002
->> +#define RICHACE_APPEND_DATA                  0x00000004
->> +#define RICHACE_ADD_SUBDIRECTORY             0x00000004
->> +#define RICHACE_READ_NAMED_ATTRS             0x00000008
->> +#define RICHACE_WRITE_NAMED_ATTRS            0x00000010
->> +#define RICHACE_EXECUTE                              0x00000020
->> +#define RICHACE_DELETE_CHILD                 0x00000040
->> +#define RICHACE_READ_ATTRIBUTES                      0x00000080
->> +#define RICHACE_WRITE_ATTRIBUTES             0x00000100
->> +#define RICHACE_WRITE_RETENTION                      0x00000200
->> +#define RICHACE_WRITE_RETENTION_HOLD         0x00000400
->> +#define RICHACE_DELETE                               0x00010000
->> +#define RICHACE_READ_ACL                     0x00020000
->> +#define RICHACE_WRITE_ACL                    0x00040000
->> +#define RICHACE_WRITE_OWNER                  0x00080000
->> +#define RICHACE_SYNCHRONIZE                  0x00100000
->> +
->> +/* e_id values */
->> +#define RICHACE_OWNER_SPECIAL_ID             0
->> +#define RICHACE_GROUP_SPECIAL_ID             1
->> +#define RICHACE_EVERYONE_SPECIAL_ID          2
->> +
->> +#define RICHACL_VALID_FLAGS (                                        \
->> +     RICHACL_WRITE_THROUGH |                                 \
->> +     RICHACL_MASKED )
->> +
->> +#define RICHACE_VALID_FLAGS (                                        \
->> +     RICHACE_FILE_INHERIT_ACE |                              \
->> +     RICHACE_DIRECTORY_INHERIT_ACE |                         \
->> +     RICHACE_NO_PROPAGATE_INHERIT_ACE |                      \
->> +     RICHACE_INHERIT_ONLY_ACE |                              \
->> +     RICHACE_IDENTIFIER_GROUP |                              \
->> +     RICHACE_SPECIAL_WHO )
->> +
->> +#define RICHACE_INHERITANCE_FLAGS (                          \
->> +     RICHACE_FILE_INHERIT_ACE |                              \
->> +     RICHACE_DIRECTORY_INHERIT_ACE |                         \
->> +     RICHACE_NO_PROPAGATE_INHERIT_ACE |                      \
->> +     RICHACE_INHERIT_ONLY_ACE )
->> +
->> +/* Valid RICHACE_* flags for directories and non-directories */
->> +#define RICHACE_VALID_MASK (                                 \
->> +     RICHACE_READ_DATA | RICHACE_LIST_DIRECTORY |            \
->> +     RICHACE_WRITE_DATA | RICHACE_ADD_FILE |                 \
->> +     RICHACE_APPEND_DATA | RICHACE_ADD_SUBDIRECTORY |        \
->> +     RICHACE_READ_NAMED_ATTRS |                              \
->> +     RICHACE_WRITE_NAMED_ATTRS |                             \
->> +     RICHACE_EXECUTE |                                       \
->> +     RICHACE_DELETE_CHILD |                                  \
->> +     RICHACE_READ_ATTRIBUTES |                               \
->> +     RICHACE_WRITE_ATTRIBUTES |                              \
->> +     RICHACE_WRITE_RETENTION |                               \
->> +     RICHACE_WRITE_RETENTION_HOLD |                          \
->> +     RICHACE_DELETE |                                        \
->> +     RICHACE_READ_ACL |                                      \
->> +     RICHACE_WRITE_ACL |                                     \
->> +     RICHACE_WRITE_OWNER |                                   \
->> +     RICHACE_SYNCHRONIZE )
->> +
->> +#endif /* __UAPI_RICHACL_H */
->
-> Reviewed-by: Jeff Layton <jlayton@redhat.com>
+I'm not at all opposed to changing how all of that works. My only
+stipulation is that we not break the ability to reliably suspend a host
+that is actively using an NFS mount. If you can come up with a way to
+do that that also works for freezing cgroups, then I'm all for it.
 
-Thanks,
-Andreas
+-- 
+
+Jeff Layton <jlayton@redhat.com>
