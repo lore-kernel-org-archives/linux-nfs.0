@@ -1,153 +1,214 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp4-g21.free.fr ([212.27.42.4]:26159 "EHLO smtp4-g21.free.fr"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752554AbcGLLs6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 12 Jul 2016 07:48:58 -0400
-Subject: Re: WARNING: CPU: 0 PID: 0 at net/ipv4/af_inet.c:155
- inet_sock_destruct+0x1c4/0x1dc
-To: Florian Fainelli <f.fainelli@gmail.com>, netdev <netdev@vger.kernel.org>,
-        LKML <linux-kernel@vger.kernel.org>,
-        linux-nfs <linux-nfs@vger.kernel.org>
-Cc: Linux ARM <linux-arm-kernel@lists.infradead.org>,
-        Sebastian Frias <sf84@laposte.net>
-References: <577BB72E.3020904@free.fr> <577BC94A.4060204@free.fr>
- <577BD201.2040202@gmail.com> <5784BE36.8060200@free.fr>
-From: Mason <slash.tmp@free.fr>
-Message-ID: <5784D918.30904@free.fr>
-Date: Tue, 12 Jul 2016 13:48:40 +0200
-MIME-Version: 1.0
-In-Reply-To: <5784BE36.8060200@free.fr>
-Content-Type: text/plain; charset=UTF-8
+Received: from mail-qt0-f173.google.com ([209.85.216.173]:35834 "EHLO
+	mail-qt0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S933154AbcGLL4D (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 12 Jul 2016 07:56:03 -0400
+Received: by mail-qt0-f173.google.com with SMTP id j35so6438954qtj.2
+        for <linux-nfs@vger.kernel.org>; Tue, 12 Jul 2016 04:56:03 -0700 (PDT)
+Message-ID: <1468324560.7798.14.camel@redhat.com>
+Subject: Re: [PATCH v23 17/22] richacl: Automatic Inheritance
+From: Jeff Layton <jlayton@redhat.com>
+To: Andreas Gruenbacher <agruenba@redhat.com>,
+        Alexander Viro <viro@zeniv.linux.org.uk>
+Cc: Christoph Hellwig <hch@infradead.org>, "Theodore Ts'o" <tytso@mit.edu>,
+        Andreas Dilger <adilger.kernel@dilger.ca>,
+        "J. Bruce Fields" <bfields@fieldses.org>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>,
+        Dave Chinner <david@fromorbit.com>, linux-ext4@vger.kernel.org,
+        xfs@oss.sgi.com, linux-kernel@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-cifs@vger.kernel.org, linux-api@vger.kernel.org
+Date: Tue, 12 Jul 2016 07:56:00 -0400
+In-Reply-To: <1467294433-3222-18-git-send-email-agruenba@redhat.com>
+References: <1467294433-3222-1-git-send-email-agruenba@redhat.com>
+	 <1467294433-3222-18-git-send-email-agruenba@redhat.com>
+Content-Type: text/plain; charset="UTF-8"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 12/07/2016 11:53, Mason wrote:
-
-> However, the 310 seconds time span still seems to be relevant.
+On Thu, 2016-06-30 at 15:47 +0200, Andreas Gruenbacher wrote:
+> Automatic Inheritance (AI) allows changes to the acl of a directory to
+> propagate down to children.
 > 
-> Steps to reproduce: I booted the system, logged in as root,
-> mounted an NFS file system, then left the system idling at
-> the prompt.
+> This is mostly implemented in user space: when a process changes the
+> permissions of a directory and Automatic Inheritance is enabled for that
+> directory, the process must propagate those changes to all children,
+> recursively.
 > 
-> (I don't remember seeing this warning in v4.1 and v4.4)
+> The kernel enables this by keeping track of which permissions have been
+> inherited at create time.  In addition, it makes sure that permission
+> propagation is turned off when the permissions are set explicitly (for
+> example, upon create or chmod).
 > 
-> What's going wrong here? Is it related to NFS?
+> Automatic Inheritance works as follows:
 > 
-> Here is the defconfig I'm using
-> http://pastebin.ubuntu.com/19160299/
+>  - When the RICHACL_AUTO_INHERIT flag in the acl of a file or directory
+>    is not set, the file or directory is not affected by AI.
 > 
+>  - When the RICHACL_AUTO_INHERIT flag in the acl of a directory is set
+>    and a file or subdirectory is created in that directory, the
+>    inherited acl will have the RICHACL_AUTO_INHERIT flag set, and all
+>    inherited aces will have the RICHACE_INHERITED_ACE flag set.  This
+>    allows user space to distinguish between aces which have been
+>    inherited and aces which have been explicitly added.
 > 
-> [  317.940133] ------------[ cut here ]------------
-> [  317.944815] WARNING: CPU: 1 PID: 0 at net/ipv4/af_inet.c:155 inet_sock_destruct+0x1c4/0x1dc
-> [  317.953223] Modules linked in:
-> [  317.956305] CPU: 1 PID: 0 Comm: swapper/1 Not tainted 4.7.0-rc6-00010-gd07031bdc433-dirty #2
-> [  317.964784] Hardware name: Sigma Tango DT
-> [  317.968809] Backtrace: 
-> [  317.971279] [<c010b974>] (dump_backtrace) from [<c010bb70>] (show_stack+0x18/0x1c)
-> [  317.978884]  r7:60000113 r6:c080ea84 r5:00000000 r4:c080ea84
-> [  317.984590] [<c010bb58>] (show_stack) from [<c02e9fc4>] (dump_stack+0x80/0x94)
-> [  317.991856] [<c02e9f44>] (dump_stack) from [<c011bfb0>] (__warn+0xec/0x104)
-> [  317.998849]  r7:00000009 r6:c05e3fc8 r5:00000000 r4:00000000
-> [  318.004549] [<c011bec4>] (__warn) from [<c011c080>] (warn_slowpath_null+0x28/0x30)
-> [  318.012154]  r9:dfbea4e0 r8:0000000a r7:df45fe30 r6:dec19594 r5:df68f144 r4:df68f040
-> [  318.019954] [<c011c058>] (warn_slowpath_null) from [<c0463be4>] (inet_sock_destruct+0x1c4/0x1dc)
-> [  318.028788] [<c0463a20>] (inet_sock_destruct) from [<c03e9c40>] (__sk_destruct+0x28/0xe0)
-> [  318.037005]  r7:df45fe30 r6:dec19594 r5:df68f040 r4:df68f1ec
-> [  318.042710] [<c03e9c18>] (__sk_destruct) from [<c016f218>] (rcu_process_callbacks+0x488/0x59c)
-> [  318.051363]  r5:00000000 r4:00000000
-> [  318.054962] [<c016ed90>] (rcu_process_callbacks) from [<c01207cc>] (__do_softirq+0x138/0x264)
-> [  318.063527]  r10:c08020a0 r9:40000001 r8:00000101 r7:df45e000 r6:c08020a4 r5:00000009
-> [  318.071408]  r4:00000000
-> [  318.073953] [<c0120694>] (__do_softirq) from [<c0120bec>] (irq_exit+0xc8/0x104)
-> [  318.081296]  r10:df45ff58 r9:df402400 r8:00000001 r7:00000000 r6:00000013 r5:00000000
-> [  318.089176]  r4:c0735428
-> [  318.091723] [<c0120b24>] (irq_exit) from [<c01625f8>] (__handle_domain_irq+0x88/0xf4)
-> [  318.099595] [<c0162570>] (__handle_domain_irq) from [<c01014ac>] (gic_handle_irq+0x50/0x94)
-> [  318.107986]  r10:00000000 r9:e0803100 r8:e0802100 r7:df45ff58 r6:e080210c r5:c080277c
-> [  318.115865]  r4:c080eca0 r3:df45ff58
-> [  318.119461] [<c010145c>] (gic_handle_irq) from [<c010c694>] (__irq_svc+0x54/0x90)
-> [  318.126980] Exception stack(0xdf45ff58 to 0xdf45ffa0)
-> [  318.132053] ff40:                                                       00000001 00000000
-> [  318.140273] ff60: 0000ab80 c0117c80 df45e000 c08024f8 c0802494 c081e2d6 c05b9550 413fc090
-> [  318.148492] ff80: 00000000 df45ffb4 df45ffb8 df45ffa8 c01086b0 c01086b4 60000013 ffffffff
-> [  318.156709]  r9:413fc090 r8:c05b9550 r7:df45ff8c r6:ffffffff r5:60000013 r4:c01086b4
-> [  318.164512] [<c0108674>] (arch_cpu_idle) from [<c0155f3c>] (default_idle_call+0x28/0x34)
-> [  318.172646] [<c0155f14>] (default_idle_call) from [<c0156070>] (cpu_startup_entry+0x128/0x17c)
-> [  318.181305] [<c0155f48>] (cpu_startup_entry) from [<c010dc14>] (secondary_start_kernel+0x158/0x164)
-> [  318.190395]  r7:c081e7c8 r4:c080b4f0
-> [  318.193993] [<c010dabc>] (secondary_start_kernel) from [<8010158c>] (0x8010158c)
-> [  318.201423]  r5:00000051 r4:9f44006a
-> [  318.205024] ---[ end trace 6e04001434b19cb9 ]---
+>  - When the RICHACL_PROTECTED acl flag in the acl of a file or directory
+>    is set, AI will not modify the acl.  This does not affect propagation
+>    of permissions from the file to its children (if the file is a
+>    directory).
 > 
+> Linux does not have a way of creating files or directories without setting the
+> file permission bits, so all files created inside a directory with
+> RICHACL_AUTO_INHERIT set will have the RICHACL_PROTECTED flag set.  This
+> effectively disables Automatic Inheritance.
 > 
-> Just to be sure, I performed the same steps a second time:
+> Protocols which support creating files without specifying permissions can
+> explicitly clear the RICHACL_PROTECTED flag after creating a file and reset the
+> file masks to "undo" applying the create mode; see richacl_compute_max_masks().
+> They should set the RICHACL_DEFAULTED flag.  (A mechanism that would allow to
+> indicate to the kernel to ignore the create mode in the first place when there
+> are inherited permissions would be nice to have.)
 > 
-> [  316.238527] ------------[ cut here ]------------
-> [  316.243210] WARNING: CPU: 1 PID: 0 at net/ipv4/af_inet.c:155 inet_sock_destruct+0x1c4/0x1dc
-> [  316.251619] Modules linked in:
-> [  316.254702] CPU: 1 PID: 0 Comm: swapper/1 Not tainted 4.7.0-rc6-00010-gd07031bdc433-dirty #2
-> [  316.263182] Hardware name: Sigma Tango DT
-> [  316.267206] Backtrace: 
-> [  316.269675] [<c010b974>] (dump_backtrace) from [<c010bb70>] (show_stack+0x18/0x1c)
-> [  316.277280]  r7:60000113 r6:c080ea84 r5:00000000 r4:c080ea84
-> [  316.282986] [<c010bb58>] (show_stack) from [<c02e9fc4>] (dump_stack+0x80/0x94)
-> [  316.290254] [<c02e9f44>] (dump_stack) from [<c011bfb0>] (__warn+0xec/0x104)
-> [  316.297247]  r7:00000009 r6:c05e3fc8 r5:00000000 r4:00000000
-> [  316.302947] [<c011bec4>] (__warn) from [<c011c080>] (warn_slowpath_null+0x28/0x30)
-> [  316.310552]  r9:dfbea4e0 r8:0000000a r7:df45fe30 r6:dec15694 r5:df6063c4 r4:df6062c0
-> [  316.318354] [<c011c058>] (warn_slowpath_null) from [<c0463be4>] (inet_sock_destruct+0x1c4/0x1dc)
-> [  316.327190] [<c0463a20>] (inet_sock_destruct) from [<c03e9c40>] (__sk_destruct+0x28/0xe0)
-> [  316.335406]  r7:df45fe30 r6:dec15694 r5:df6062c0 r4:df60646c
-> [  316.341112] [<c03e9c18>] (__sk_destruct) from [<c016f218>] (rcu_process_callbacks+0x488/0x59c)
-> [  316.349765]  r5:00000000 r4:00000000
-> [  316.353363] [<c016ed90>] (rcu_process_callbacks) from [<c01207cc>] (__do_softirq+0x138/0x264)
-> [  316.361929]  r10:c08020a0 r9:40000001 r8:00000101 r7:df45e000 r6:c08020a4 r5:00000009
-> [  316.369811]  r4:00000000
-> [  316.372356] [<c0120694>] (__do_softirq) from [<c0120bec>] (irq_exit+0xc8/0x104)
-> [  316.379699]  r10:df45ff58 r9:df402400 r8:00000001 r7:00000000 r6:00000013 r5:00000000
-> [  316.387579]  r4:c0735428
-> [  316.390127] [<c0120b24>] (irq_exit) from [<c01625f8>] (__handle_domain_irq+0x88/0xf4)
-> [  316.397998] [<c0162570>] (__handle_domain_irq) from [<c01014ac>] (gic_handle_irq+0x50/0x94)
-> [  316.406388]  r10:00000000 r9:e0803100 r8:e0802100 r7:df45ff58 r6:e080210c r5:c080277c
-> [  316.414268]  r4:c080eca0 r3:df45ff58
-> [  316.417862] [<c010145c>] (gic_handle_irq) from [<c010c694>] (__irq_svc+0x54/0x90)
-> [  316.425382] Exception stack(0xdf45ff58 to 0xdf45ffa0)
-> [  316.430456] ff40:                                                       00000001 00000000
-> [  316.438676] ff60: 00009370 c0117c80 df45e000 c08024f8 c0802494 c081e2d6 c05b9550 413fc090
-> [  316.446897] ff80: 00000000 df45ffb4 df45ffb8 df45ffa8 c01086b0 c01086b4 60000013 ffffffff
-> [  316.455113]  r9:413fc090 r8:c05b9550 r7:df45ff8c r6:ffffffff r5:60000013 r4:c01086b4
-> [  316.462916] [<c0108674>] (arch_cpu_idle) from [<c0155f3c>] (default_idle_call+0x28/0x34)
-> [  316.471051] [<c0155f14>] (default_idle_call) from [<c0156070>] (cpu_startup_entry+0x128/0x17c)
-> [  316.479709] [<c0155f48>] (cpu_startup_entry) from [<c010dc14>] (secondary_start_kernel+0x158/0x164)
-> [  316.488799]  r7:c081e7c8 r4:c080b4f0
-> [  316.492395] [<c010dabc>] (secondary_start_kernel) from [<8010158c>] (0x8010158c)
-> [  316.499826]  r5:00000051 r4:9f44006a
-> [  316.503430] ---[ end trace 2dd53d8e86a1a69b ]---
+> Signed-off-by: Andreas Gruenbacher <agruenba@redhat.com>
+> ---
+>  fs/richacl.c                 | 20 +++++++++++++++++++-
+>  include/linux/richacl.h      | 12 ++++++++++++
+>  include/uapi/linux/richacl.h | 11 ++++++++++-
+>  3 files changed, 41 insertions(+), 2 deletions(-)
+> 
+> diff --git a/fs/richacl.c b/fs/richacl.c
+> index 29eaf89..40e4af9 100644
+> --- a/fs/richacl.c
+> +++ b/fs/richacl.c
+> @@ -573,7 +573,8 @@ __richacl_chmod(struct richacl *acl, umode_t mode)
+>  	    acl->a_group_mask == group_mask &&
+>  	    acl->a_other_mask == other_mask &&
+>  	    (acl->a_flags & RICHACL_MASKED) &&
+> -	    (acl->a_flags & RICHACL_WRITE_THROUGH))
+> +	    (acl->a_flags & RICHACL_WRITE_THROUGH) &&
+> +	    (!richacl_is_auto_inherit(acl) || richacl_is_protected(acl)))
+>  		return acl;
+>  
+>  	clone = richacl_clone(acl, GFP_KERNEL);
+> @@ -585,6 +586,8 @@ __richacl_chmod(struct richacl *acl, umode_t mode)
+>  	clone->a_owner_mask = owner_mask;
+>  	clone->a_group_mask = group_mask;
+>  	clone->a_other_mask = other_mask;
+> +	if (richacl_is_auto_inherit(clone))
+> +		clone->a_flags |= RICHACL_PROTECTED;
+>  
+>  	return clone;
+>  }
+> @@ -800,6 +803,14 @@ richacl_inherit(const struct richacl *dir_acl, int isdir)
+>  			ace++;
+>  		}
+>  	}
+> +	if (richacl_is_auto_inherit(dir_acl)) {
+> +		acl->a_flags = RICHACL_AUTO_INHERIT;
+> +		richacl_for_each_entry(ace, acl)
+> +			ace->e_flags |= RICHACE_INHERITED_ACE;
+> +	} else {
+> +		richacl_for_each_entry(ace, acl)
+> +			ace->e_flags &= ~RICHACE_INHERITED_ACE;
+> +	}
+>  
+>  	return acl;
+>  }
+> @@ -828,6 +839,13 @@ richacl_inherit_inode(const struct richacl *dir_acl, umode_t *mode_p)
+>  			richacl_put(acl);
+>  			acl = NULL;
+>  		} else {
+> +			/*
+> +			 * We need to set RICHACL_PROTECTED because we are
+> +			 * doing an implicit chmod
+> +			 */
+> +			if (richacl_is_auto_inherit(acl))
+> +				acl->a_flags |= RICHACL_PROTECTED;
+> +
+>  			richacl_compute_max_masks(acl);
+>  			/*
+>  			 * Ensure that the acl will not grant any permissions
+> diff --git a/include/linux/richacl.h b/include/linux/richacl.h
+> index 7aca1a3..a442372 100644
+> --- a/include/linux/richacl.h
+> +++ b/include/linux/richacl.h
+> @@ -81,6 +81,18 @@ extern void set_cached_richacl(struct inode *, struct richacl *);
+>  extern void forget_cached_richacl(struct inode *);
+>  extern struct richacl *get_richacl(struct inode *);
+>  
+> +static inline int
+> +richacl_is_auto_inherit(const struct richacl *acl)
+> +{
+> +	return acl->a_flags & RICHACL_AUTO_INHERIT;
+> +}
+> +
+> +static inline int
+> +richacl_is_protected(const struct richacl *acl)
+> +{
+> +	return acl->a_flags & RICHACL_PROTECTED;
+> +}
+> +
+>  /**
+>   * richace_is_owner  -  check if @ace is an OWNER@ entry
+>   */
+> diff --git a/include/uapi/linux/richacl.h b/include/uapi/linux/richacl.h
+> index 1ed48ac..8849a53 100644
+> --- a/include/uapi/linux/richacl.h
+> +++ b/include/uapi/linux/richacl.h
+> @@ -18,6 +18,9 @@
+>  #define __UAPI_RICHACL_H
+>  
+>  /* a_flags values */
+> +#define RICHACL_AUTO_INHERIT			0x01
+> +#define RICHACL_PROTECTED			0x02
+> +#define RICHACL_DEFAULTED			0x04
+>  #define RICHACL_WRITE_THROUGH			0x40
+>  #define RICHACL_MASKED				0x80
+>  
+> @@ -31,6 +34,7 @@
+>  #define RICHACE_NO_PROPAGATE_INHERIT_ACE	0x0004
+>  #define RICHACE_INHERIT_ONLY_ACE		0x0008
+>  #define RICHACE_IDENTIFIER_GROUP		0x0040
+> +#define RICHACE_INHERITED_ACE			0x0080
+>  #define RICHACE_SPECIAL_WHO			0x4000
+>  
+>  /* e_mask bitflags */
+> @@ -60,6 +64,9 @@
+>  #define RICHACE_EVERYONE_SPECIAL_ID		2
+>  
+>  #define RICHACL_VALID_FLAGS (					\
+> +	RICHACL_AUTO_INHERIT |					\
+> +	RICHACL_PROTECTED |					\
+> +	RICHACL_DEFAULTED |					\
+>  	RICHACL_WRITE_THROUGH |					\
+>  	RICHACL_MASKED )
+>  
+> @@ -69,13 +76,15 @@
+>  	RICHACE_NO_PROPAGATE_INHERIT_ACE |			\
+>  	RICHACE_INHERIT_ONLY_ACE |				\
+>  	RICHACE_IDENTIFIER_GROUP |				\
+> +	RICHACE_INHERITED_ACE |					\
+>  	RICHACE_SPECIAL_WHO )
+>  
+>  #define RICHACE_INHERITANCE_FLAGS (				\
+>  	RICHACE_FILE_INHERIT_ACE |				\
+>  	RICHACE_DIRECTORY_INHERIT_ACE |				\
+>  	RICHACE_NO_PROPAGATE_INHERIT_ACE |			\
+> -	RICHACE_INHERIT_ONLY_ACE )
+> +	RICHACE_INHERIT_ONLY_ACE |				\
+> +	RICHACE_INHERITED_ACE )
+>  
+>  /* Valid RICHACE_* flags for directories and non-directories */
+>  #define RICHACE_VALID_MASK (					
+> \
 
-Adding linux-nfs in case it is NFS-related.
-(I'm using an nfsroot file system, and the issue is triggered by
-mounting an NFS file system.)
+Barf. AI seems like a trainwreck waiting to happen. What are the
+chances that userland is going to get this right?
 
-Similar warnings here:
+Still, I do applaud the fact that you're just doing the bare minimum in
+kernel to support userland apps that want this. Thanks for not trying
+to push the propagation of the changed ACEs into the kernel.
 
-http://thread.gmane.org/gmane.linux.kernel/2100812
-WARNING: CPU: 1 PID: 81 at net/ipv4/af_inet.c:155 inet_sock_destruct+0x188/0x1dc()
-(different call stack though)
-
-https://www.spinics.net/lists/linux-nfs/msg58133.html
-WARNING: CPU: 9 PID: 31049 at net/ipv4/af_inet.c:155 .inet_sock_destruct+0x170/0x220
-(different call stack though)
-
-http://thread.gmane.org/gmane.linux.network/134151
-WARNING: at net/ipv4/af_inet.c:155 inet_sock_destruct+0x122/0x13a()
-(different call stack though)
-
-http://oops.kernel.org/oops/?function=inet_sock_destruct&bugline=155&search=submit
-
-None of these seem to mention rcu_process_callbacks() in the call stack.
-
-I can reproduce the warning systematically.
-What can I do to pinpoint the root of the issue?
-
-Regards.
-
+Reviewed-by: Jeff Layton <jlayton@redhat.com>
