@@ -1,53 +1,102 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-vk0-f48.google.com ([209.85.213.48]:33881 "EHLO
-	mail-vk0-f48.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750831AbcGLU2Q (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 12 Jul 2016 16:28:16 -0400
-Received: by mail-vk0-f48.google.com with SMTP id o63so38510396vkg.1
-        for <linux-nfs@vger.kernel.org>; Tue, 12 Jul 2016 13:28:16 -0700 (PDT)
+Received: from out5-smtp.messagingengine.com ([66.111.4.29]:47099 "EHLO
+	out5-smtp.messagingengine.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1753120AbcGLWoi convert rfc822-to-8bit
+	(ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 12 Jul 2016 18:44:38 -0400
+From: Nikolaus Rath <Nikolaus@rath.org>
+To: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org
+Subject: Re: ELOOP from getdents
+References: <87lh1fizyy.fsf@thinkpad.rath.org>
+Date: Wed, 13 Jul 2016 00:35:23 +0200
+In-Reply-To: <87lh1fizyy.fsf@thinkpad.rath.org> (Nikolaus Rath's message of
+	"Tue, 05 Jul 2016 13:36:53 -0700")
+Message-ID: <87vb0a8oyc.fsf@thinkpad.rath.org>
 MIME-Version: 1.0
-In-Reply-To: <20160712191142.GE449@fieldses.org>
-References: <1467294433-3222-1-git-send-email-agruenba@redhat.com>
- <1467294433-3222-18-git-send-email-agruenba@redhat.com> <1468324560.7798.14.camel@redhat.com>
- <20160712191142.GE449@fieldses.org>
-From: Andreas Gruenbacher <agruenba@redhat.com>
-Date: Tue, 12 Jul 2016 22:28:15 +0200
-Message-ID: <CAHc6FU6k+eZ1Ozc8wofDBNOAHZzvXXWMAs1NJNTbd9Ntbqqsqw@mail.gmail.com>
-Subject: Re: [PATCH v23 17/22] richacl: Automatic Inheritance
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: Jeff Layton <jlayton@redhat.com>, Alexander Viro <viro@zeniv.linux.org.uk>,
-        Christoph Hellwig <hch@infradead.org>, "Theodore Ts'o" <tytso@mit.edu>,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        Anna Schumaker <anna.schumaker@netapp.com>,
-        Dave Chinner <david@fromorbit.com>,
-        linux-ext4 <linux-ext4@vger.kernel.org>,
-        XFS Developers <xfs@oss.sgi.com>, LKML <linux-kernel@vger.kernel.org>,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        linux-cifs@vger.kernel.org, Linux API <linux-api@vger.kernel.org>
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Jul 12, 2016 at 9:11 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
-> On Tue, Jul 12, 2016 at 07:56:00AM -0400, Jeff Layton wrote:
->> Barf. AI seems like a trainwreck waiting to happen. What are the
->> chances that userland is going to get this right?
->
-> This is just taken from Windows, so presumably Samba should do the right
-> thing (with one workaround required--see the discussion of PROTECTED in
-> the changelog).
->
->> Still, I do applaud the fact that you're just doing the bare minimum in
->> kernel to support userland apps that want this. Thanks for not trying
->> to push the propagation of the changed ACEs into the kernel.
->
-> Agreed.  But, again, this is just what Windows does.  (I wonder whether
-> there's an OS that's actually tried do any sort of atomic propagation.)
+Hi,
 
-NetWare's NSS filesystem did have automatic propagation, but I think
-that was implemented by composing the permissions along the path to a
-file at access time.
+Really no one any idea about this? 
 
-Andreas
+Adding fsdevel- to Cc, maybe someone there can help..
+
+Best,
+Nikolaus'
+
+On Jul 05 2016, Nikolaus Rath <Nikolaus-BTH8mxji4b0@public.gmane.org> wrote:
+> Hello,
+>
+> I'm having trouble exporting a FUSE file system over nfs4
+> (cf. https://bitbucket.org/nikratio/s3ql/issues/221/). If there are only
+> a few entries in exported directory, `ls` on the NFS mountpoint fails
+> with:
+>
+> # ls -li /mnt/nfs/
+> /bin/ls: reading directory /mnt/nfs/: Too many levels of symbolic links
+> total 1
+> 3 drwx------ 1 root root 0 Jul  5 11:07 lost+found/
+> 3 drwx------ 1 root root 0 Jul  5 11:07 lost+found/
+> 4 -rw-r--r-- 1 root root 4 Jul  5 11:07 testfile
+> 4 -rw-r--r-- 1 root root 4 Jul  5 11:07 testfile
+>
+> Running strace shows that the getdents() syscall fails with ELOOP:
+>
+> stat("/mnt/nfs", {st_mode=S_IFDIR|0755, st_size=0, ...}) = 0
+> openat(AT_FDCWD, "/mnt/nfs", O_RDONLY|O_NONBLOCK|O_DIRECTORY|O_CLOEXEC) = 3
+> getdents(3, /* 4 entries */, 32768)     = 112
+> getdents(3, /* 2 entries */, 32768)     = 64
+> getdents(3, 0xf15c90, 32768)            = -1 ELOOP (Too many levels of symbolic links)
+> open("/usr/share/locale/locale.alias", O_RDONLY|O_CLOEXEC) = 4
+>
+> This happens only when using NFSv4, when mounting with vers=3 the error
+> does not occur.
+>
+> The FUSE file system receives the same requests and responds in the same
+> way in both cases:
+>
+> 2016-07-05 12:22:31.477 21519:fuse-worker-7 s3ql.fs.opendir: started with 1
+> 2016-07-05 12:22:31.477 21519:fuse-worker-8 s3ql.fs.readdir: started with 1, 0
+> 2016-07-05 12:22:31.478 21519:fuse-worker-8 s3ql.fs.readdir: reporting lost+found with inode 3, generation 0, nlink 1
+> 2016-07-05 12:22:31.478 21519:fuse-worker-8 s3ql.fs.readdir: reporting testfile with inode 4, generation 0, nlink 1
+> 2016-07-05 12:22:31.479 21519:fuse-worker-9 s3ql.fs.getattr: started with 1
+> 2016-07-05 12:22:31.479 21519:fuse-worker-10 s3ql.fs._lookup: started with 1, b'lost+found'
+> 2016-07-05 12:22:31.480 21519:fuse-worker-11 s3ql.fs._lookup: started with 1, b'testfile'
+> 2016-07-05 12:22:31.481 21519:fuse-worker-12 s3ql.fs.readdir: started with 1, 2
+> 2016-07-05 12:22:31.484 21519:fuse-worker-13 s3ql.fs.releasedir: started with 1
+>
+>
+> The numbers refer to inodes. So FUSE first receives an opendir() request
+> for inode 1 (the file system root / mountpoint), followed by readdir()
+> for the same directory with offset 0. It reports two entries. It then
+> receives another readdir for this directory with offset 2, and reports
+> that all entries have been returned.
+>
+> However, for some reason NFSv4 gets confused by this and reports 6
+> entries to ls.
+>
+>
+> Can anyone advise what might be happening here?
+>
+>
+> Best,
+> -Nikolaus
+>
+> -- 
+> GPG encrypted emails preferred. Key id: 0xD113FCAC3C4E599F
+> Fingerprint: ED31 791B 2C5C 1613 AF38 8B8A D113 FCAC 3C4E 599F
+>
+>              »Time flies like an arrow, fruit flies like a Banana.«
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+
+-- 
+GPG encrypted emails preferred. Key id: 0xD113FCAC3C4E599F
+Fingerprint: ED31 791B 2C5C 1613 AF38 8B8A D113 FCAC 3C4E 599F
+
+             »Time flies like an arrow, fruit flies like a Banana.«
