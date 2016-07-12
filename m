@@ -1,102 +1,90 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from out5-smtp.messagingengine.com ([66.111.4.29]:47099 "EHLO
-	out5-smtp.messagingengine.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1753120AbcGLWoi convert rfc822-to-8bit
-	(ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 12 Jul 2016 18:44:38 -0400
-From: Nikolaus Rath <Nikolaus@rath.org>
-To: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org
+Received: from us-smtp-delivery-194.mimecast.com ([216.205.24.194]:21004 "EHLO
+	us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751335AbcGLX0b (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 12 Jul 2016 19:26:31 -0400
+From: Trond Myklebust <trondmy@primarydata.com>
+To: Nikolaus Rath <Nikolaus@rath.org>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>
 Subject: Re: ELOOP from getdents
+Date: Tue, 12 Jul 2016 23:26:00 +0000
+Message-ID: <E35BAE5E-4D9B-44B4-98B3-54BA36AC895B@primarydata.com>
 References: <87lh1fizyy.fsf@thinkpad.rath.org>
-Date: Wed, 13 Jul 2016 00:35:23 +0200
-In-Reply-To: <87lh1fizyy.fsf@thinkpad.rath.org> (Nikolaus Rath's message of
-	"Tue, 05 Jul 2016 13:36:53 -0700")
-Message-ID: <87vb0a8oyc.fsf@thinkpad.rath.org>
+ <87vb0a8oyc.fsf@thinkpad.rath.org>
+In-Reply-To: <87vb0a8oyc.fsf@thinkpad.rath.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi,
+DQo+IE9uIEp1bCAxMiwgMjAxNiwgYXQgMTg6MzUsIE5pa29sYXVzIFJhdGggPE5pa29sYXVzQHJh
+dGgub3JnPiB3cm90ZToNCj4gDQo+IEhpLA0KPiANCj4gUmVhbGx5IG5vIG9uZSBhbnkgaWRlYSBh
+Ym91dCB0aGlzPyANCj4gDQoNCkluIE5GU3Y0LCBvZmZzZXRzIDEgYW5kIDIgYXJlIHJlc2VydmVk
+OiBodHRwczovL3Rvb2xzLmlldGYub3JnL2h0bWwvcmZjNzUzMCNzZWN0aW9uLTE2LjI0DQoNCj4g
+QWRkaW5nIGZzZGV2ZWwtIHRvIENjLCBtYXliZSBzb21lb25lIHRoZXJlIGNhbiBoZWxwLi4NCj4g
+DQo+IEJlc3QsDQo+IE5pa29sYXVzJw0KPiANCj4gT24gSnVsIDA1IDIwMTYsIE5pa29sYXVzIFJh
+dGggPE5pa29sYXVzLUJUSDhteGppNGIwQHB1YmxpYy5nbWFuZS5vcmc+IHdyb3RlOg0KPj4gSGVs
+bG8sDQo+PiANCj4+IEknbSBoYXZpbmcgdHJvdWJsZSBleHBvcnRpbmcgYSBGVVNFIGZpbGUgc3lz
+dGVtIG92ZXIgbmZzNA0KPj4gKGNmLiBodHRwczovL2JpdGJ1Y2tldC5vcmcvbmlrcmF0aW8vczNx
+bC9pc3N1ZXMvMjIxLykuIElmIHRoZXJlIGFyZSBvbmx5DQo+PiBhIGZldyBlbnRyaWVzIGluIGV4
+cG9ydGVkIGRpcmVjdG9yeSwgYGxzYCBvbiB0aGUgTkZTIG1vdW50cG9pbnQgZmFpbHMNCj4+IHdp
+dGg6DQo+PiANCj4+ICMgbHMgLWxpIC9tbnQvbmZzLw0KPj4gL2Jpbi9sczogcmVhZGluZyBkaXJl
+Y3RvcnkgL21udC9uZnMvOiBUb28gbWFueSBsZXZlbHMgb2Ygc3ltYm9saWMgbGlua3MNCj4+IHRv
+dGFsIDENCj4+IDMgZHJ3eC0tLS0tLSAxIHJvb3Qgcm9vdCAwIEp1bCAgNSAxMTowNyBsb3N0K2Zv
+dW5kLw0KPj4gMyBkcnd4LS0tLS0tIDEgcm9vdCByb290IDAgSnVsICA1IDExOjA3IGxvc3QrZm91
+bmQvDQo+PiA0IC1ydy1yLS1yLS0gMSByb290IHJvb3QgNCBKdWwgIDUgMTE6MDcgdGVzdGZpbGUN
+Cj4+IDQgLXJ3LXItLXItLSAxIHJvb3Qgcm9vdCA0IEp1bCAgNSAxMTowNyB0ZXN0ZmlsZQ0KPj4g
+DQo+PiBSdW5uaW5nIHN0cmFjZSBzaG93cyB0aGF0IHRoZSBnZXRkZW50cygpIHN5c2NhbGwgZmFp
+bHMgd2l0aCBFTE9PUDoNCj4+IA0KPj4gc3RhdCgiL21udC9uZnMiLCB7c3RfbW9kZT1TX0lGRElS
+fDA3NTUsIHN0X3NpemU9MCwgLi4ufSkgPSAwDQo+PiBvcGVuYXQoQVRfRkRDV0QsICIvbW50L25m
+cyIsIE9fUkRPTkxZfE9fTk9OQkxPQ0t8T19ESVJFQ1RPUll8T19DTE9FWEVDKSA9IDMNCj4+IGdl
+dGRlbnRzKDMsIC8qIDQgZW50cmllcyAqLywgMzI3NjgpICAgICA9IDExMg0KPj4gZ2V0ZGVudHMo
+MywgLyogMiBlbnRyaWVzICovLCAzMjc2OCkgICAgID0gNjQNCj4+IGdldGRlbnRzKDMsIDB4ZjE1
+YzkwLCAzMjc2OCkgICAgICAgICAgICA9IC0xIEVMT09QIChUb28gbWFueSBsZXZlbHMgb2Ygc3lt
+Ym9saWMgbGlua3MpDQo+PiBvcGVuKCIvdXNyL3NoYXJlL2xvY2FsZS9sb2NhbGUuYWxpYXMiLCBP
+X1JET05MWXxPX0NMT0VYRUMpID0gNA0KPj4gDQo+PiBUaGlzIGhhcHBlbnMgb25seSB3aGVuIHVz
+aW5nIE5GU3Y0LCB3aGVuIG1vdW50aW5nIHdpdGggdmVycz0zIHRoZSBlcnJvcg0KPj4gZG9lcyBu
+b3Qgb2NjdXIuDQo+PiANCj4+IFRoZSBGVVNFIGZpbGUgc3lzdGVtIHJlY2VpdmVzIHRoZSBzYW1l
+IHJlcXVlc3RzIGFuZCByZXNwb25kcyBpbiB0aGUgc2FtZQ0KPj4gd2F5IGluIGJvdGggY2FzZXM6
+DQo+PiANCj4+IDIwMTYtMDctMDUgMTI6MjI6MzEuNDc3IDIxNTE5OmZ1c2Utd29ya2VyLTcgczNx
+bC5mcy5vcGVuZGlyOiBzdGFydGVkIHdpdGggMQ0KPj4gMjAxNi0wNy0wNSAxMjoyMjozMS40Nzcg
+MjE1MTk6ZnVzZS13b3JrZXItOCBzM3FsLmZzLnJlYWRkaXI6IHN0YXJ0ZWQgd2l0aCAxLCAwDQo+
+PiAyMDE2LTA3LTA1IDEyOjIyOjMxLjQ3OCAyMTUxOTpmdXNlLXdvcmtlci04IHMzcWwuZnMucmVh
+ZGRpcjogcmVwb3J0aW5nIGxvc3QrZm91bmQgd2l0aCBpbm9kZSAzLCBnZW5lcmF0aW9uIDAsIG5s
+aW5rIDENCj4+IDIwMTYtMDctMDUgMTI6MjI6MzEuNDc4IDIxNTE5OmZ1c2Utd29ya2VyLTggczNx
+bC5mcy5yZWFkZGlyOiByZXBvcnRpbmcgdGVzdGZpbGUgd2l0aCBpbm9kZSA0LCBnZW5lcmF0aW9u
+IDAsIG5saW5rIDENCj4+IDIwMTYtMDctMDUgMTI6MjI6MzEuNDc5IDIxNTE5OmZ1c2Utd29ya2Vy
+LTkgczNxbC5mcy5nZXRhdHRyOiBzdGFydGVkIHdpdGggMQ0KPj4gMjAxNi0wNy0wNSAxMjoyMjoz
+MS40NzkgMjE1MTk6ZnVzZS13b3JrZXItMTAgczNxbC5mcy5fbG9va3VwOiBzdGFydGVkIHdpdGgg
+MSwgYidsb3N0K2ZvdW5kJw0KPj4gMjAxNi0wNy0wNSAxMjoyMjozMS40ODAgMjE1MTk6ZnVzZS13
+b3JrZXItMTEgczNxbC5mcy5fbG9va3VwOiBzdGFydGVkIHdpdGggMSwgYid0ZXN0ZmlsZScNCj4+
+IDIwMTYtMDctMDUgMTI6MjI6MzEuNDgxIDIxNTE5OmZ1c2Utd29ya2VyLTEyIHMzcWwuZnMucmVh
+ZGRpcjogc3RhcnRlZCB3aXRoIDEsIDINCj4+IDIwMTYtMDctMDUgMTI6MjI6MzEuNDg0IDIxNTE5
+OmZ1c2Utd29ya2VyLTEzIHMzcWwuZnMucmVsZWFzZWRpcjogc3RhcnRlZCB3aXRoIDENCj4+IA0K
+Pj4gDQo+PiBUaGUgbnVtYmVycyByZWZlciB0byBpbm9kZXMuIFNvIEZVU0UgZmlyc3QgcmVjZWl2
+ZXMgYW4gb3BlbmRpcigpIHJlcXVlc3QNCj4+IGZvciBpbm9kZSAxICh0aGUgZmlsZSBzeXN0ZW0g
+cm9vdCAvIG1vdW50cG9pbnQpLCBmb2xsb3dlZCBieSByZWFkZGlyKCkNCj4+IGZvciB0aGUgc2Ft
+ZSBkaXJlY3Rvcnkgd2l0aCBvZmZzZXQgMC4gSXQgcmVwb3J0cyB0d28gZW50cmllcy4gSXQgdGhl
+bg0KPj4gcmVjZWl2ZXMgYW5vdGhlciByZWFkZGlyIGZvciB0aGlzIGRpcmVjdG9yeSB3aXRoIG9m
+ZnNldCAyLCBhbmQgcmVwb3J0cw0KPj4gdGhhdCBhbGwgZW50cmllcyBoYXZlIGJlZW4gcmV0dXJu
+ZWQuDQo+PiANCj4+IEhvd2V2ZXIsIGZvciBzb21lIHJlYXNvbiBORlN2NCBnZXRzIGNvbmZ1c2Vk
+IGJ5IHRoaXMgYW5kIHJlcG9ydHMgNg0KPj4gZW50cmllcyB0byBscy4NCj4+IA0KPj4gDQo+PiBD
+YW4gYW55b25lIGFkdmlzZSB3aGF0IG1pZ2h0IGJlIGhhcHBlbmluZyBoZXJlPw0KPj4gDQo+PiAN
+Cj4+IEJlc3QsDQo+PiAtTmlrb2xhdXMNCj4+IA0KPj4gLS0gDQo+PiBHUEcgZW5jcnlwdGVkIGVt
+YWlscyBwcmVmZXJyZWQuIEtleSBpZDogMHhEMTEzRkNBQzNDNEU1OTlGDQo+PiBGaW5nZXJwcmlu
+dDogRUQzMSA3OTFCIDJDNUMgMTYxMyBBRjM4IDhCOEEgRDExMyBGQ0FDIDNDNEUgNTk5Rg0KPj4g
+DQo+PiAgICAgICAgICAgICDCu1RpbWUgZmxpZXMgbGlrZSBhbiBhcnJvdywgZnJ1aXQgZmxpZXMg
+bGlrZSBhIEJhbmFuYS7Cqw0KPj4gLS0NCj4+IFRvIHVuc3Vic2NyaWJlIGZyb20gdGhpcyBsaXN0
+OiBzZW5kIHRoZSBsaW5lICJ1bnN1YnNjcmliZSBsaW51eC1uZnMiIGluDQo+PiB0aGUgYm9keSBv
+ZiBhIG1lc3NhZ2UgdG8gbWFqb3Jkb21vLXU3OXV3WEwyOVRZNzZaMnJNNW1IWEFAcHVibGljLmdt
+YW5lLm9yZw0KPj4gTW9yZSBtYWpvcmRvbW8gaW5mbyBhdCAgaHR0cDovL3ZnZXIua2VybmVsLm9y
+Zy9tYWpvcmRvbW8taW5mby5odG1sDQo+IA0KPiANCj4gLS0gDQo+IEdQRyBlbmNyeXB0ZWQgZW1h
+aWxzIHByZWZlcnJlZC4gS2V5IGlkOiAweEQxMTNGQ0FDM0M0RTU5OUYNCj4gRmluZ2VycHJpbnQ6
+IEVEMzEgNzkxQiAyQzVDIDE2MTMgQUYzOCA4QjhBIEQxMTMgRkNBQyAzQzRFIDU5OUYNCj4gDQo+
+ICAgICAgICAgICAgIMK7VGltZSBmbGllcyBsaWtlIGFuIGFycm93LCBmcnVpdCBmbGllcyBsaWtl
+IGEgQmFuYW5hLsKrDQo+IC0tDQo+IFRvIHVuc3Vic2NyaWJlIGZyb20gdGhpcyBsaXN0OiBzZW5k
+IHRoZSBsaW5lICJ1bnN1YnNjcmliZSBsaW51eC1uZnMiIGluDQo+IHRoZSBib2R5IG9mIGEgbWVz
+c2FnZSB0byBtYWpvcmRvbW9Admdlci5rZXJuZWwub3JnDQo+IE1vcmUgbWFqb3Jkb21vIGluZm8g
+YXQgIGh0dHA6Ly92Z2VyLmtlcm5lbC5vcmcvbWFqb3Jkb21vLWluZm8uaHRtbA0KDQo=
 
-Really no one any idea about this? 
-
-Adding fsdevel- to Cc, maybe someone there can help..
-
-Best,
-Nikolaus'
-
-On Jul 05 2016, Nikolaus Rath <Nikolaus-BTH8mxji4b0@public.gmane.org> wrote:
-> Hello,
->
-> I'm having trouble exporting a FUSE file system over nfs4
-> (cf. https://bitbucket.org/nikratio/s3ql/issues/221/). If there are only
-> a few entries in exported directory, `ls` on the NFS mountpoint fails
-> with:
->
-> # ls -li /mnt/nfs/
-> /bin/ls: reading directory /mnt/nfs/: Too many levels of symbolic links
-> total 1
-> 3 drwx------ 1 root root 0 Jul  5 11:07 lost+found/
-> 3 drwx------ 1 root root 0 Jul  5 11:07 lost+found/
-> 4 -rw-r--r-- 1 root root 4 Jul  5 11:07 testfile
-> 4 -rw-r--r-- 1 root root 4 Jul  5 11:07 testfile
->
-> Running strace shows that the getdents() syscall fails with ELOOP:
->
-> stat("/mnt/nfs", {st_mode=S_IFDIR|0755, st_size=0, ...}) = 0
-> openat(AT_FDCWD, "/mnt/nfs", O_RDONLY|O_NONBLOCK|O_DIRECTORY|O_CLOEXEC) = 3
-> getdents(3, /* 4 entries */, 32768)     = 112
-> getdents(3, /* 2 entries */, 32768)     = 64
-> getdents(3, 0xf15c90, 32768)            = -1 ELOOP (Too many levels of symbolic links)
-> open("/usr/share/locale/locale.alias", O_RDONLY|O_CLOEXEC) = 4
->
-> This happens only when using NFSv4, when mounting with vers=3 the error
-> does not occur.
->
-> The FUSE file system receives the same requests and responds in the same
-> way in both cases:
->
-> 2016-07-05 12:22:31.477 21519:fuse-worker-7 s3ql.fs.opendir: started with 1
-> 2016-07-05 12:22:31.477 21519:fuse-worker-8 s3ql.fs.readdir: started with 1, 0
-> 2016-07-05 12:22:31.478 21519:fuse-worker-8 s3ql.fs.readdir: reporting lost+found with inode 3, generation 0, nlink 1
-> 2016-07-05 12:22:31.478 21519:fuse-worker-8 s3ql.fs.readdir: reporting testfile with inode 4, generation 0, nlink 1
-> 2016-07-05 12:22:31.479 21519:fuse-worker-9 s3ql.fs.getattr: started with 1
-> 2016-07-05 12:22:31.479 21519:fuse-worker-10 s3ql.fs._lookup: started with 1, b'lost+found'
-> 2016-07-05 12:22:31.480 21519:fuse-worker-11 s3ql.fs._lookup: started with 1, b'testfile'
-> 2016-07-05 12:22:31.481 21519:fuse-worker-12 s3ql.fs.readdir: started with 1, 2
-> 2016-07-05 12:22:31.484 21519:fuse-worker-13 s3ql.fs.releasedir: started with 1
->
->
-> The numbers refer to inodes. So FUSE first receives an opendir() request
-> for inode 1 (the file system root / mountpoint), followed by readdir()
-> for the same directory with offset 0. It reports two entries. It then
-> receives another readdir for this directory with offset 2, and reports
-> that all entries have been returned.
->
-> However, for some reason NFSv4 gets confused by this and reports 6
-> entries to ls.
->
->
-> Can anyone advise what might be happening here?
->
->
-> Best,
-> -Nikolaus
->
-> -- 
-> GPG encrypted emails preferred. Key id: 0xD113FCAC3C4E599F
-> Fingerprint: ED31 791B 2C5C 1613 AF38 8B8A D113 FCAC 3C4E 599F
->
->              »Time flies like an arrow, fruit flies like a Banana.«
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
-
--- 
-GPG encrypted emails preferred. Key id: 0xD113FCAC3C4E599F
-Fingerprint: ED31 791B 2C5C 1613 AF38 8B8A D113 FCAC 3C4E 599F
-
-             »Time flies like an arrow, fruit flies like a Banana.«
