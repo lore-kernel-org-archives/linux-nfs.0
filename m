@@ -1,112 +1,68 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp-o-1.desy.de ([131.169.56.154]:46878 "EHLO smtp-o-1.desy.de"
+Received: from fieldses.org ([173.255.197.46]:37904 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751210AbcGMQts convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 13 Jul 2016 12:49:48 -0400
-Received: from smtp-map-1.desy.de (smtp-map-1.desy.de [131.169.56.66])
-	by smtp-o-1.desy.de (DESY-O-1) with ESMTP id 7F6DA280701
-	for <linux-nfs@vger.kernel.org>; Wed, 13 Jul 2016 18:49:02 +0200 (CEST)
-Received: from ZITSWEEP1.win.desy.de (zitsweep1.win.desy.de [131.169.97.95])
-	by smtp-map-1.desy.de (DESY_MAP_1) with ESMTP id 724F913E95
-	for <linux-nfs@vger.kernel.org>; Wed, 13 Jul 2016 18:49:02 +0200 (MEST)
-Date: Wed, 13 Jul 2016 18:49:01 +0200 (CEST)
-From: "Mkrtchyan, Tigran" <tigran.mkrtchyan@desy.de>
-To: Andy Adamson <William.Adamson@netapp.com>
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        Steve Dickson <steved@redhat.com>
-Message-ID: <1826288060.966410.1468428541658.JavaMail.zimbra@desy.de>
-In-Reply-To: <34F13011-FB4A-4ACD-9DDC-BAD3F7EC9B56@netapp.com>
-References: <1485779983.22627050.1467888579184.JavaMail.zimbra@desy.de> <34F13011-FB4A-4ACD-9DDC-BAD3F7EC9B56@netapp.com>
-Subject: Re: Lost CLOSE with NFSv4.1 on RHEL7 ( and bejond?)
+	id S1751827AbcGMTBR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 13 Jul 2016 15:01:17 -0400
+Date: Wed, 13 Jul 2016 15:00:29 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Oleg Drokin <green@linuxhacker.ru>
+Cc: Al Viro <viro@ZenIV.linux.org.uk>, Jeff Layton <jlayton@poochiereds.net>,
+        linux-nfs@vger.kernel.org, Mailing List <linux-kernel@vger.kernel.org>
+Subject: Re: [PATCH] nfsd: Make creates return EEXIST correctly instead of
+ EPERM
+Message-ID: <20160713190029.GB10459@fieldses.org>
+References: <1467942466-3081422-1-git-send-email-green@linuxhacker.ru>
+ <1467975747.24149.16.camel@poochiereds.net>
+ <05872587-E1A0-4714-AF43-7070D72D930C@linuxhacker.ru>
+ <1467993208.27907.17.camel@poochiereds.net>
+ <20160708160426.GB7395@fieldses.org>
+ <8FC42FC1-AB95-4AF7-8493-EF0A34138B4A@linuxhacker.ru>
+ <20160708204925.GB11269@fieldses.org>
+ <71EA6CA5-3451-4A0F-BAA0-59843BA2D153@linuxhacker.ru>
+ <20160709031001.GS14480@ZenIV.linux.org.uk>
+ <67C35F5E-7CB0-4CE9-998F-D9871E0DAF81@linuxhacker.ru>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <67C35F5E-7CB0-4CE9-998F-D9871E0DAF81@linuxhacker.ru>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-
-Hi Andy,
-
-I will try to get upstream kernel on one of the nodes. It will take
-some time as we need to add a new host into the cluster and get
-some traffic go through it.
-
-In the mean while, with RHEL7 we get it easy reproduced - about 10
-such cases per day. Is there any tool that will help us to see where
-it happens? Some traces points? Call trace from vfs close to NFS close?
-
-
-There is a one comment in the kernel code, which sounds similar:
-(http://git.linux-nfs.org/?p=trondmy/linux-nfs.git;a=blob;f=fs/nfs/nfs4proc.c;h=519368b987622ea23bea210929bebfd0c327e14e;hb=refs/heads/linux-next#l2955)
-
-nfs4proc.c: 2954
-==== 
-
-/* 
- * It is possible for data to be read/written from a mem-mapped file 
- * after the sys_close call (which hits the vfs layer as a flush).
- * This means that we can't safely call nfsv4 close on a file until 
- * the inode is cleared. This in turn means that we are not good
- * NFSv4 citizens - we do not indicate to the server to update the file's 
- * share state even when we are done with one of the three share 
- * stateid's in the inode.
- *
- * NOTE: Caller must be holding the sp->so_owner semaphore!
- */
-int nfs4_do_close(struct nfs4_state *state, gfp_t gfp_mask, int wait)
-
-====
-
-
-Tigran.
-
-
------ Original Message -----
-> From: "Andy Adamson" <William.Adamson@netapp.com>
-> To: "Mkrtchyan, Tigran" <tigran.mkrtchyan@desy.de>
-> Cc: "Linux NFS Mailing List" <linux-nfs@vger.kernel.org>, "Andy Adamson" <William.Adamson@netapp.com>, "Trond Myklebust"
-> <trond.myklebust@primarydata.com>, "Steve Dickson" <steved@redhat.com>
-> Sent: Tuesday, July 12, 2016 7:16:19 PM
-> Subject: Re: Lost CLOSE with NFSv4.1 on RHEL7 ( and bejond?)
-
-> Hi Tigran
+On Fri, Jul 08, 2016 at 11:41:41PM -0400, Oleg Drokin wrote:
 > 
-> Can you test with an upstream kernel? Olga has seen issues around no CLOSE being
-> sent - it is really hard to reproduce….
+> On Jul 8, 2016, at 11:10 PM, Al Viro wrote:
 > 
-> —>Andy
+> > On Fri, Jul 08, 2016 at 05:47:22PM -0400, Oleg Drokin wrote:
+> > 
+> >> I wonder if people just accept that "NFS is just weird" and code in workarounds,
+> >> where as with Lustre we promise (almost) full POSIX compliance, and also came much later
+> >> so people are just seeing that "this does not work" and complain more loudly?
+> > 
+> > To quote POSIX: "If more than one error occurs in processing a function call,
+> > any one of the possible errors may be returned, as the order of detection is
+> > undefined." (from System Interfaces: General Information: 2.3 Error Numbers)
+> > 
+> > And regarding mkdir(2) it has
+> > [EACCES]
+> >    Search permission is denied on a component of the path prefix, or write
+> > permission is denied on the parent directory of the directory to be created.
+> > [EEXIST]
+> >    The named file exists.
+> > among the error conditions.  In situations when both apply, the implementation
+> > is bloody well allowed to return either.  It might be nicer to return EEXIST
+> > in such cases, for consistency sake (if another thread does stat() on the
+> > pathname in question just as you are about to call mkdir(2), you will get
+> > EEXIST without ever reaching permission(9), let alone ->mkdir() method), but
+> > please do not bring POSIX compliance as an argument.  It's a QoI argument and
+> > nothing beyond that.
 > 
+> Ok, I see.
+> Thanks.
 > 
->> On Jul 7, 2016, at 6:49 AM, Mkrtchyan, Tigran <tigran.mkrtchyan@desy.de> wrote:
->> 
->> 
->> 
->> Dear NFS folks,
->> 
->> we observe orphan open-states on our deployment with nfsv4.1.
->> Our setup - two client nodes, running RHEL-7.2 with kernel
->> 3.10.0-327.22.2.el7.x86_64. Both nodes running ownCloud (like
->> a dropbox) which nfsv4.1 mounts to dCache storage. Some clients
->> connected to node1, others to node2.
->> 
->> Time-to-time we see some 'active' transfers on data our DS
->> which do nothing. There is a corresponding state on MDS.
->> 
->> I have traced one one such cases:
->> 
->>  - node1 uploads the file.
->>  - node2 reads the file couple of times, OPEN+LAYOUTGET+CLOSE
->>  - node2 sends OPEN+LAYOUTGET
->>  - there is no open file on node2 which points to it.
->>  - CLOSE never send to the server.
->>  - node1 eventually removes the removes the file
->> 
->> We have many other cases where file is not removed, but this one I was
->> able to trace. The link to capture files:
->> 
->> https://desycloud.desy.de/index.php/s/YldowcRzTGJeLbN
->> 
->> We had ~ 10^6 transfers in last 2 days and 29 files in such state (~0.0029%).
->> 
-> > Tigran.
+> Bruce, do you want the patch resubmitted with a rewritten commit message,
+> or do you think it's best to just drop it them?
+
+Other things being equal I still agree with you that there'd be
+advantages to being more consistent, so a changelog update would be
+fine.
+
+--b.
