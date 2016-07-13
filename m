@@ -1,68 +1,123 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:38012 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750872AbcGMUVG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 13 Jul 2016 16:21:06 -0400
-Date: Wed, 13 Jul 2016 16:21:04 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Christoph Hellwig <hch@lst.de>
-Cc: Benjamin Coddington <bcodding@redhat.com>, xfs@oss.sgi.com,
-        linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        Alexander Viro <viro@zeniv.linux.org.uk>,
-        Dave Chinner <david@fromorbit.com>
-Subject: Re: [PATCH v2] xfs: abstract block export operations from nfsd
- layouts
-Message-ID: <20160713202104.GA10734@fieldses.org>
-References: <6c1549ee874431c8293cad72c5f7382095277822.1467985684.git.bcodding@redhat.com>
- <20160710094540.GA19392@lst.de>
+Received: from mail-it0-f68.google.com ([209.85.214.68]:35110 "EHLO
+	mail-it0-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750897AbcGMUkW (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 13 Jul 2016 16:40:22 -0400
+Received: by mail-it0-f68.google.com with SMTP id f6so3544071ith.2
+        for <linux-nfs@vger.kernel.org>; Wed, 13 Jul 2016 13:40:22 -0700 (PDT)
+Subject: [PATCH] nfsd: Close race between nfsd4_release_lockowner and
+ nfsd4_lock
+From: Chuck Lever <chuck.lever@oracle.com>
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org
+Date: Wed, 13 Jul 2016 16:40:14 -0400
+Message-ID: <20160713202810.19268.64046.stgit@klimt.1015granger.net>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20160710094540.GA19392@lst.de>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sun, Jul 10, 2016 at 11:45:40AM +0200, Christoph Hellwig wrote:
-> On Fri, Jul 08, 2016 at 09:53:20AM -0400, Benjamin Coddington wrote:
-> > Instead of creeping pnfs layout configuration into filesystems, move the
-> > definition of block-based export operations under a more abstract
-> > configuration.
-> > 
-> > Changes from v1:
-> > 	- dropped the first patch in the first posting
-> > 	- renamed the config to EXPORTFS_BLOCK_OPS from BLOCK_EXPORT_OPS
-> > 	- add an explicit default to no for EXPORTFS_BLOCK_OPS
-> > 	- add some help and menu text
-> > 
-> > Signed-off-by: Benjamin Coddington <bcodding@redhat.com>
-> > ---
-> >  fs/Kconfig          | 7 +++++++
-> >  fs/nfsd/Kconfig     | 2 ++
-> >  fs/xfs/Makefile     | 3 +--
-> >  fs/xfs/xfs_export.c | 2 +-
-> >  fs/xfs/xfs_pnfs.h   | 4 ++--
-> >  5 files changed, 13 insertions(+), 5 deletions(-)
-> > 
-> > diff --git a/fs/Kconfig b/fs/Kconfig
-> > index 6725f59c18e6..ac6d3b36600c 100644
-> > --- a/fs/Kconfig
-> > +++ b/fs/Kconfig
-> > @@ -66,6 +66,13 @@ config FS_POSIX_ACL
-> >  config EXPORTFS
-> >  	tristate
-> >  
-> > +config EXPORTFS_BLOCK_OPS
-> > +	bool "Enable filesystem export operations for block IO"
-> > +	default n
-> 
-> default n is the default, no need to add it.
-> 
-> Otherwise looks fine:
-> 
-> Reviewed-by: Christoph Hellwig <hch@lst.de>
+nfsd4_release_lockowner finds a lock owner that has no lock state,
+and drops cl_lock. Then release_lockowner picks up cl_lock and
+unhashes the lock owner.
 
-Thanks.  Applied, with that one "default n" line dropped.
+During the window where cl_lock is dropped, I don't see anything
+preventing a concurrent nfsd4_lock from finding that same lock owner
+and adding lock state to it.
 
-An ACK from Dave might also help reassure Linus I'm not stepping on
-anybody's toes.
+Move release_lockowner() into nfsd4_release_lockowner and hang onto
+the cl_lock until after the lock owner's state cannot be found
+again.
 
---b.
+Fixes: 2c41beb0e5cf ("nfsd: reduce cl_lock thrashing in ... ")
+Reviewed-by: Jeff Layton <jlayton@redhat.com>
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
+Hi Bruce-
+
+Noticed this recently. I've been running with this patch on my test
+NFS server for over a week. Haven't noticed any issues, but I wonder
+if my clients or tests actually exercise this code in parallel.
+
+The reason I was looking at this area is that one of our internal
+testers encountered a related problem with NFSv4.1. LOCK and
+FREE_STATEID are racing: LOCK returns an existing lock stateid, then
+FREE_STATEID frees that stateid (NFS4_OK). FREE_STATEID should
+return NFS4ERR_LOCKS_HELD in this case?
+
+I have not been able to reproduce this, but our tester is able to
+hit it fairly reliably with Oracle's v4.1-based kernel running on
+his server. Recent upstream kernels make the issue rare, but it is
+still encountered on occasion.
+
+
+ fs/nfsd/nfs4state.c |   40 +++++++++++++++++-----------------------
+ 1 file changed, 17 insertions(+), 23 deletions(-)
+
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index f5f82e1..31c993f 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -1200,27 +1200,6 @@ free_ol_stateid_reaplist(struct list_head *reaplist)
+ 	}
+ }
+ 
+-static void release_lockowner(struct nfs4_lockowner *lo)
+-{
+-	struct nfs4_client *clp = lo->lo_owner.so_client;
+-	struct nfs4_ol_stateid *stp;
+-	struct list_head reaplist;
+-
+-	INIT_LIST_HEAD(&reaplist);
+-
+-	spin_lock(&clp->cl_lock);
+-	unhash_lockowner_locked(lo);
+-	while (!list_empty(&lo->lo_owner.so_stateids)) {
+-		stp = list_first_entry(&lo->lo_owner.so_stateids,
+-				struct nfs4_ol_stateid, st_perstateowner);
+-		WARN_ON(!unhash_lock_stateid(stp));
+-		put_ol_stateid_locked(stp, &reaplist);
+-	}
+-	spin_unlock(&clp->cl_lock);
+-	free_ol_stateid_reaplist(&reaplist);
+-	nfs4_put_stateowner(&lo->lo_owner);
+-}
+-
+ static void release_open_stateid_locks(struct nfs4_ol_stateid *open_stp,
+ 				       struct list_head *reaplist)
+ {
+@@ -5938,6 +5917,7 @@ nfsd4_release_lockowner(struct svc_rqst *rqstp,
+ 	__be32 status;
+ 	struct nfsd_net *nn = net_generic(SVC_NET(rqstp), nfsd_net_id);
+ 	struct nfs4_client *clp;
++	LIST_HEAD (reaplist);
+ 
+ 	dprintk("nfsd4_release_lockowner clientid: (%08x/%08x):\n",
+ 		clid->cl_boot, clid->cl_id);
+@@ -5968,9 +5948,23 @@ nfsd4_release_lockowner(struct svc_rqst *rqstp,
+ 		nfs4_get_stateowner(sop);
+ 		break;
+ 	}
++	if (!lo) {
++		spin_unlock(&clp->cl_lock);
++		return status;
++	}
++
++	unhash_lockowner_locked(lo);
++	while (!list_empty(&lo->lo_owner.so_stateids)) {
++		stp = list_first_entry(&lo->lo_owner.so_stateids,
++				       struct nfs4_ol_stateid,
++				       st_perstateowner);
++		WARN_ON(!unhash_lock_stateid(stp));
++		put_ol_stateid_locked(stp, &reaplist);
++	}
+ 	spin_unlock(&clp->cl_lock);
+-	if (lo)
+-		release_lockowner(lo);
++	free_ol_stateid_reaplist(&reaplist);
++	nfs4_put_stateowner(&lo->lo_owner);
++
+ 	return status;
+ }
+ 
+
