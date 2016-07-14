@@ -1,138 +1,102 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-vk0-f50.google.com ([209.85.213.50]:33782 "EHLO
-	mail-vk0-f50.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751397AbcGNU7R (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 14 Jul 2016 16:59:17 -0400
-Received: by mail-vk0-f50.google.com with SMTP id x130so129043986vkc.0
-        for <linux-nfs@vger.kernel.org>; Thu, 14 Jul 2016 13:59:17 -0700 (PDT)
-MIME-Version: 1.0
-In-Reply-To: <1468325634.7798.24.camel@redhat.com>
-References: <1467294433-3222-1-git-send-email-agruenba@redhat.com>
- <1467294433-3222-21-git-send-email-agruenba@redhat.com> <1468325634.7798.24.camel@redhat.com>
-From: Andreas Gruenbacher <agruenba@redhat.com>
-Date: Thu, 14 Jul 2016 22:59:16 +0200
-Message-ID: <CAHc6FU6+NpXZTMCub6XydBbHw_LVz8aPh8whZ9HwDoTbxjqLBw@mail.gmail.com>
-Subject: Re: [PATCH v23 20/22] vfs: Add richacl permission checking
-To: Jeff Layton <jlayton@redhat.com>
-Cc: Alexander Viro <viro@zeniv.linux.org.uk>,
-        Christoph Hellwig <hch@infradead.org>, "Theodore Ts'o" <tytso@mit.edu>,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        Anna Schumaker <anna.schumaker@netapp.com>,
-        Dave Chinner <david@fromorbit.com>,
-        linux-ext4 <linux-ext4@vger.kernel.org>,
-        XFS Developers <xfs@oss.sgi.com>, LKML <linux-kernel@vger.kernel.org>,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        linux-cifs@vger.kernel.org, Linux API <linux-api@vger.kernel.org>
-Content-Type: text/plain; charset=UTF-8
+Received: from mail-io0-f195.google.com ([209.85.223.195]:35289 "EHLO
+	mail-io0-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751976AbcGNW7F (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 14 Jul 2016 18:59:05 -0400
+Received: by mail-io0-f195.google.com with SMTP id q83so5363347iod.2
+        for <linux-nfs@vger.kernel.org>; Thu, 14 Jul 2016 15:59:05 -0700 (PDT)
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 2/4] pNFS: Separate handling of NFS4ERR_LAYOUTTRYLATER and RECALLCONFLICT
+Date: Thu, 14 Jul 2016 18:58:33 -0400
+Message-Id: <1468537115-65826-2-git-send-email-trond.myklebust@primarydata.com>
+In-Reply-To: <1468537115-65826-1-git-send-email-trond.myklebust@primarydata.com>
+References: <1468537115-65826-1-git-send-email-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Jul 12, 2016 at 2:13 PM, Jeff Layton <jlayton@redhat.com> wrote:
-> On Thu, 2016-06-30 at 15:47 +0200, Andreas Gruenbacher wrote:
->> Hook the richacl permission checking function into the vfs.
->>
->> Signed-off-by: Andreas Gruenbacher <agruenba@redhat.com>
->> ---
->>  fs/namei.c | 54 ++++++++++++++++++++++++++++++++++++++++++++++++++++--
->>  1 file changed, 52 insertions(+), 2 deletions(-)
->>
->> diff --git a/fs/namei.c b/fs/namei.c
->> index 7a822d0..48c9958 100644
->> --- a/fs/namei.c
->> +++ b/fs/namei.c
->> @@ -34,6 +34,7 @@
->>  #include
->>  #include
->>  #include
->> +#include
->>  #include
->>  #include
->>  #include
->> @@ -256,7 +257,43 @@ void putname(struct filename *name)
->>               __putname(name);
->>  }
->>
->> -static int check_acl(struct inode *inode, int mask)
->> +static int check_richacl(struct inode *inode, int mask)
->> +{
->> +#ifdef CONFIG_FS_RICHACL
->> +     if (mask & MAY_NOT_BLOCK) {
->> +             struct base_acl *base_acl;
->> +
->> +             base_acl = rcu_dereference(inode->i_acl);
->> +             if (!base_acl)
->> +                     goto no_acl;
->> +             /* no ->get_richacl() calls in RCU mode... */
->> +             if (is_uncached_acl(base_acl))
->> +                     return -ECHILD;
->> +             return richacl_permission(inode, richacl(base_acl),
->> +                                       mask & ~MAY_NOT_BLOCK);
->> +     } else {
->> +             struct richacl *acl;
->> +
->> +             acl = get_richacl(inode);
->> +             if (IS_ERR(acl))
->> +                     return PTR_ERR(acl);
->> +             if (acl) {
->> +                     int error = richacl_permission(inode, acl, mask);
->> +                     richacl_put(acl);
->> +                     return error;
->> +             }
->> +     }
->> +no_acl:
->> +#endif
->
-> nit: Can you move the above to a static inline or something that becomes a noop when the config var is turned off?
+They are not the same error, and need to be handled differently.
 
-We could move check_richacl into richacl.c and check_posix_acl into
-posix_acl.c. Given that those functions are currently only called once
-in namei.c, that's a very small improvement at most though.
+Fixes: 183d9e7b112aa ("pnfs: rework LAYOUTGET retry handling")
+Cc: stable@vger.kernel.org # 4.7
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+---
+ fs/nfs/nfs4proc.c | 23 ++++++++++++++---------
+ fs/nfs/pnfs.c     |  1 +
+ 2 files changed, 15 insertions(+), 9 deletions(-)
 
->> +     if (mask & (MAY_DELETE_SELF | MAY_TAKE_OWNERSHIP |
->> +                 MAY_CHMOD | MAY_SET_TIMES)) {
->> +             /* File permission bits cannot grant this. */
->> +             return -EACCES;
->> +     }
->> +     return -EAGAIN;
->> +}
->> +
->> +static int check_posix_acl(struct inode *inode, int mask)
->>  {
->>  #ifdef CONFIG_FS_POSIX_ACL
->>       if (mask & MAY_NOT_BLOCK) {
->> @@ -294,11 +331,24 @@ static int acl_permission_check(struct inode *inode, int mask)
->>  {
->>       unsigned int mode = inode->i_mode;
->>
->> +     /*
->> +      * With POSIX ACLs, the (mode & S_IRWXU) bits exactly match the owner
->> +      * permissions, and we can skip checking posix acls for the owner.
->> +      * With richacls, the owner may be granted fewer permissions than the
->> +      * mode bits seem to suggest (for example, append but not write), and
->> +      * we always need to check the richacl.
->> +      */
->> +
->> +     if (IS_RICHACL(inode)) {
->> +             int error = check_richacl(inode, mask);
->> +             if (error != -EAGAIN)
->> +                     return error;
->> +     }
->>       if (likely(uid_eq(current_fsuid(), inode->i_uid)))
->>               mode >>= 6;
->>       else {
->>               if (IS_POSIXACL(inode) && (mode & S_IRWXG)) {
->> -                     int error = check_acl(inode, mask);
->> +                     int error = check_posix_acl(inode, mask);
->>                       if (error != -EAGAIN)
->>                               return error;
->>               }
->
-> Looks fine other than the nit above:
->
-> Reviewed-by: Jeff Layton <jlayton@redhat.com>
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 519368b98762..ee8efe0a5202 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -437,6 +437,7 @@ static int nfs4_do_handle_exception(struct nfs_server *server,
+ 		case -NFS4ERR_DELAY:
+ 			nfs_inc_server_stats(server, NFSIOS_DELAY);
+ 		case -NFS4ERR_GRACE:
++		case -NFS4ERR_LAYOUTTRYLATER:
+ 		case -NFS4ERR_RECALLCONFLICT:
+ 			exception->delay = 1;
+ 			return 0;
+@@ -7883,11 +7884,12 @@ nfs4_layoutget_handle_exception(struct rpc_task *task,
+ 	struct inode *inode = lgp->args.inode;
+ 	struct nfs_server *server = NFS_SERVER(inode);
+ 	struct pnfs_layout_hdr *lo;
+-	int status = task->tk_status;
++	int nfs4err = task->tk_status;
++	int err, status = 0;
+ 
+ 	dprintk("--> %s tk_status => %d\n", __func__, -task->tk_status);
+ 
+-	switch (status) {
++	switch (nfs4err) {
+ 	case 0:
+ 		goto out;
+ 
+@@ -7919,12 +7921,11 @@ nfs4_layoutget_handle_exception(struct rpc_task *task,
+ 			status = -EOVERFLOW;
+ 			goto out;
+ 		}
+-		/* Fallthrough */
++		status = -EBUSY;
++		break;
+ 	case -NFS4ERR_RECALLCONFLICT:
+-		nfs4_handle_exception(server, -NFS4ERR_RECALLCONFLICT,
+-					exception);
+ 		status = -ERECALLCONFLICT;
+-		goto out;
++		break;
+ 	case -NFS4ERR_EXPIRED:
+ 	case -NFS4ERR_BAD_STATEID:
+ 		exception->timeout = 0;
+@@ -7955,9 +7956,13 @@ nfs4_layoutget_handle_exception(struct rpc_task *task,
+ 			spin_unlock(&inode->i_lock);
+ 	}
+ 
+-	status = nfs4_handle_exception(server, status, exception);
+-	if (exception->retry)
+-		status = -EAGAIN;
++	err = nfs4_handle_exception(server, nfs4err, exception);
++	if (!status) {
++		if (exception->retry)
++			status = -EAGAIN;
++		else
++			status = err;
++	}
+ out:
+ 	dprintk("<-- %s\n", __func__);
+ 	return status;
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index 73b0dc90265a..b5c1306f63c1 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -1648,6 +1648,7 @@ lookup_again:
+ 	atomic_dec(&lo->plh_outstanding);
+ 	if (IS_ERR(lseg)) {
+ 		switch(PTR_ERR(lseg)) {
++		case -EBUSY:
+ 		case -ERECALLCONFLICT:
+ 			if (time_after(jiffies, giveup))
+ 				lseg = NULL;
+-- 
+2.7.4
 
-Thanks,
-Andreas
