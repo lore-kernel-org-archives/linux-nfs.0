@@ -1,77 +1,71 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:57054 "EHLO mx2.suse.de"
+Received: from mx2.suse.de ([195.135.220.15]:57060 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750865AbcGNC1e (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 13 Jul 2016 22:27:34 -0400
+	id S1751149AbcGNC1j (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 13 Jul 2016 22:27:39 -0400
 From: NeilBrown <neilb@suse.com>
 To: Steve Dickson <SteveD@redhat.com>
 Date: Thu, 14 Jul 2016 12:26:43 +1000
-Subject: [PATCH 0/8] Assorted mount-related nfs-utils patches.
+Subject: [PATCH 1/8] nfs.man: clarify effect of 'retry' option.
 Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Message-ID: <20160714021310.5874.22953.stgit@noble>
+Message-ID: <20160714022643.5874.60079.stgit@noble>
+In-Reply-To: <20160714021310.5874.22953.stgit@noble>
+References: <20160714021310.5874.22953.stgit@noble>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This series is an assortment of mount-related things.
+The total timeout for a "mount" attempt to a non-responsive server
+will always be a multiple of the time a single mount attempt in the
+kernel takes, which for TCP defaults to about 4 minutes.
 
-1/ resend the manpage update for "retry=" that I sent a while
-   back, but messed up
-2/ remove a meaningless option from mountd.
-3/ Fix up support for the "mountpoint" export option in mountd,
-   particularly making it work sensibly with NFSv4
-4/ temporary hostname failure should be treated by mount.nfs
-   as a temporary condition
-5/ Avoid advertising a temporary IPv6 address for NFSv4.0 callback.
+The documentation for the "retry" option seems to suggest that this can be used
+to set a maximum but it really sets a time after which to stop retrying.
+The total can be as much as "retry" plus the time for a single attempt.
 
-That last point needs a kernel fix too, but I'm not sure what is best
-yet.
+So clarify the documentation a bit, and also note that retrans
+defaults are different for UDP and TCP:
+   #define NFS_DEF_UDP_RETRANS	(3)
+   #define NFS_DEF_TCP_RETRANS	(2)
 
-If you have IPv6 privacy extensions enabled, then the default
-address for outgoing connections is a temporary address which
-becomes "deprecated" after a period of time, when another address will
-become available for use.  A while later the deprecated address becomes
-invalid, and will stop working.
-So if a connection is held open for longer than the "valid lifetime"
-(valid_lft in "ip -6 addr" output) it will stop working, which isn't
-what users will expect.
-
-We could possibly close and re-open the connection after the address
-becomes deprecated.  Or we could insist on a 'public' address when
-establishing the connection.  Thoughts?
-
-When setting the call-back address for NFSv4.0, using a public address
-is the only real option, so that is what this patch does.
-
-Thanks,
-NeilBrown
-
+Reported-by: Howard Guo<hguo@suse.com>
+Signed-off-by: NeilBrown <neilb@suse.com>
 ---
+ utils/mount/nfs.man |   14 ++++++++++++--
+ 1 file changed, 12 insertions(+), 2 deletions(-)
 
-NeilBrown (8):
-      nfs.man: clarify effect of 'retry' option.
-      mountd: remove the --exports-file option
-      mountd: remove 'dev_missing' checks
-      mountd: cause attempts to access unmounted exportpoints to return ESTALE
-      mountd: Don't export unmounted exports to NFSv4
-      mountd: don't add paths to non-mounted export points to pseudo-root
-      mount: don't treat temporary name resolution failure as permanent.
-      mount: use a public address for IPv6 callback.
+diff --git a/utils/mount/nfs.man b/utils/mount/nfs.man
+index e541cdc95cb1..a0f790a5961b 100644
+--- a/utils/mount/nfs.man
++++ b/utils/mount/nfs.man
+@@ -158,8 +158,8 @@ up to a maximum timeout length of 60 seconds.
+ The number of times the NFS client retries a request before
+ it attempts further recovery action. If the
+ .B retrans
+-option is not specified, the NFS client tries each request
+-three times.
++option is not specified, the NFS client tries each UDP request
++three times and each TCP request twice.
+ .IP
+ The NFS client generates a "server not responding" message
+ after
+@@ -391,6 +391,16 @@ is 2 minutes, and the default value for background mounts is 10000 minutes
+ If a value of zero is specified, the
+ .BR mount (8)
+ command exits immediately after the first failure.
++.IP
++Note that this only affects how many retries are made and doesn't
++affect the delay caused by each retry.  For UDP each retry takes the
++time determined by the
++.BR timeo
++and
++.BR retrans
++options, which by default will be about 7 seconds.  For TCP the
++default is 3 minutes, but system TCP connection timeouts will
++sometimes limit the timeout of each retransmission to around 2 minutes.
+ .TP 1.5i
+ .BI sec= flavors
+ A colon-separated list of one or more security flavors to use for accessing
 
-
- support/include/v4root.h |    2 +-
- utils/mount/network.c    |    5 ++++
- utils/mount/nfs.man      |   14 ++++++++++--
- utils/mount/stropts.c    |   54 ++++++++++++++++++++++++++--------------------
- utils/mountd/auth.c      |   34 ++++++++++++++++++++++++-----
- utils/mountd/cache.c     |   36 ++++++++++++++-----------------
- utils/mountd/mountd.c    |   11 +++------
- utils/mountd/mountd.h    |    2 +-
- utils/mountd/mountd.man  |    8 -------
- utils/mountd/v4root.c    |   11 +++++++++
- 10 files changed, 107 insertions(+), 70 deletions(-)
-
---
-Signature
 
