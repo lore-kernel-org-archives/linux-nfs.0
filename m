@@ -1,80 +1,91 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f194.google.com ([209.85.223.194]:36545 "EHLO
-	mail-io0-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751279AbcGNW7F (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 14 Jul 2016 18:59:05 -0400
-Received: by mail-io0-f194.google.com with SMTP id y34so5351007ioi.3
-        for <linux-nfs@vger.kernel.org>; Thu, 14 Jul 2016 15:59:04 -0700 (PDT)
+Received: from mail-it0-f67.google.com ([209.85.214.67]:33460 "EHLO
+	mail-it0-f67.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752159AbcGNW7I (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 14 Jul 2016 18:59:08 -0400
+Received: by mail-it0-f67.google.com with SMTP id d65so310408ith.0
+        for <linux-nfs@vger.kernel.org>; Thu, 14 Jul 2016 15:59:08 -0700 (PDT)
 From: Trond Myklebust <trond.myklebust@primarydata.com>
 To: linux-nfs@vger.kernel.org
-Subject: [PATCH 1/4] pNFS: Fix post-layoutget error handling in pnfs_update_layout()
-Date: Thu, 14 Jul 2016 18:58:32 -0400
-Message-Id: <1468537115-65826-1-git-send-email-trond.myklebust@primarydata.com>
+Subject: [PATCH 4/4] pNFS: Fix LAYOUTGET handling of NFS4ERR_BAD_STATEID and NFS4ERR_EXPIRED
+Date: Thu, 14 Jul 2016 18:58:35 -0400
+Message-Id: <1468537115-65826-4-git-send-email-trond.myklebust@primarydata.com>
+In-Reply-To: <1468537115-65826-3-git-send-email-trond.myklebust@primarydata.com>
+References: <1468537115-65826-1-git-send-email-trond.myklebust@primarydata.com>
+ <1468537115-65826-2-git-send-email-trond.myklebust@primarydata.com>
+ <1468537115-65826-3-git-send-email-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The non-retry error path is currently broken and ends up releasing the
-reference to the layout twice. It also can end up clearing the
-NFS_LAYOUT_FIRST_LAYOUTGET flag twice, causing a race.
-
-In addition, the retry path will fail to decrement the plh_outstanding
-counter.
+We want to recover the open stateid if there is no layout stateid
+and/or the stateid argument matches an open stateid.
+Otherwise throw out the existing layout and recover from scratch, as
+the layout stateid is bad.
 
 Fixes: 183d9e7b112aa ("pnfs: rework LAYOUTGET retry handling")
 Cc: stable@vger.kernel.org # 4.7
 Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
 ---
- fs/nfs/pnfs.c | 20 ++++++++++----------
- 1 file changed, 10 insertions(+), 10 deletions(-)
+ fs/nfs/nfs4proc.c | 34 +++++++++++++++-------------------
+ 1 file changed, 15 insertions(+), 19 deletions(-)
 
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index 0fbe734cc38c..73b0dc90265a 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -1645,6 +1645,7 @@ lookup_again:
- 	lseg = send_layoutget(lo, ctx, &stateid, &arg, &timeout, gfp_flags);
- 	trace_pnfs_update_layout(ino, pos, count, iomode, lo, lseg,
- 				 PNFS_UPDATE_LAYOUT_SEND_LAYOUTGET);
-+	atomic_dec(&lo->plh_outstanding);
- 	if (IS_ERR(lseg)) {
- 		switch(PTR_ERR(lseg)) {
- 		case -ERECALLCONFLICT:
-@@ -1652,26 +1653,25 @@ lookup_again:
- 				lseg = NULL;
- 			/* Fallthrough */
- 		case -EAGAIN:
--			pnfs_put_layout_hdr(lo);
--			if (first)
--				pnfs_clear_first_layoutget(lo);
--			if (lseg) {
--				trace_pnfs_update_layout(ino, pos, count,
--					iomode, lo, lseg, PNFS_UPDATE_LAYOUT_RETRY);
--				goto lookup_again;
--			}
--			/* Fallthrough */
-+			break;
- 		default:
- 			if (!nfs_error_is_fatal(PTR_ERR(lseg))) {
- 				pnfs_layout_clear_fail_bit(lo, pnfs_iomode_to_fail_bit(iomode));
- 				lseg = NULL;
- 			}
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index ee8efe0a5202..a1a3b4c9a563 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -7886,6 +7886,7 @@ nfs4_layoutget_handle_exception(struct rpc_task *task,
+ 	struct pnfs_layout_hdr *lo;
+ 	int nfs4err = task->tk_status;
+ 	int err, status = 0;
++	LIST_HEAD(head);
+ 
+ 	dprintk("--> %s tk_status => %d\n", __func__, -task->tk_status);
+ 
+@@ -7930,30 +7931,25 @@ nfs4_layoutget_handle_exception(struct rpc_task *task,
+ 	case -NFS4ERR_BAD_STATEID:
+ 		exception->timeout = 0;
+ 		spin_lock(&inode->i_lock);
+-		if (nfs4_stateid_match(&lgp->args.stateid,
++		lo = NFS_I(inode)->layout;
++		/* If the open stateid was bad, then recover it. */
++		if (!lo || test_bit(NFS_LAYOUT_INVALID_STID, &lo->plh_flags) ||
++		    nfs4_stateid_match_other(&lgp->args.stateid,
+ 					&lgp->args.ctx->state->stateid)) {
+ 			spin_unlock(&inode->i_lock);
+-			/* If the open stateid was bad, then recover it. */
+ 			exception->state = lgp->args.ctx->state;
+ 			break;
  		}
-+		if (lseg) {
-+			pnfs_put_layout_hdr(lo);
-+			if (first)
-+				pnfs_clear_first_layoutget(lo);
-+			trace_pnfs_update_layout(ino, pos, count,
-+				iomode, lo, lseg, PNFS_UPDATE_LAYOUT_RETRY);
-+			goto lookup_again;
-+		}
- 	} else {
- 		pnfs_layout_clear_fail_bit(lo, pnfs_iomode_to_fail_bit(iomode));
+-		lo = NFS_I(inode)->layout;
+-		if (lo && !test_bit(NFS_LAYOUT_INVALID_STID, &lo->plh_flags) &&
+-		    nfs4_stateid_match_other(&lgp->args.stateid, &lo->plh_stateid)) {
+-			LIST_HEAD(head);
+-
+-			/*
+-			 * Mark the bad layout state as invalid, then retry
+-			 * with the current stateid.
+-			 */
+-			set_bit(NFS_LAYOUT_INVALID_STID, &lo->plh_flags);
+-			pnfs_mark_matching_lsegs_invalid(lo, &head, NULL, 0);
+-			spin_unlock(&inode->i_lock);
+-			pnfs_free_lseg_list(&head);
+-			status = -EAGAIN;
+-			goto out;
+-		} else
+-			spin_unlock(&inode->i_lock);
++
++		/*
++		 * Mark the bad layout state as invalid, then retry
++		 */
++		set_bit(NFS_LAYOUT_INVALID_STID, &lo->plh_flags);
++		pnfs_mark_matching_lsegs_invalid(lo, &head, NULL, 0);
++		spin_unlock(&inode->i_lock);
++		pnfs_free_lseg_list(&head);
++		status = -EAGAIN;
++		goto out;
  	}
  
--	atomic_dec(&lo->plh_outstanding);
- out_put_layout_hdr:
- 	if (first)
- 		pnfs_clear_first_layoutget(lo);
+ 	err = nfs4_handle_exception(server, nfs4err, exception);
 -- 
 2.7.4
 
