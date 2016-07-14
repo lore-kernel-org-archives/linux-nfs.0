@@ -1,69 +1,58 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-pf0-f195.google.com ([209.85.192.195]:34799 "EHLO
-	mail-pf0-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750950AbcGNCvO (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 13 Jul 2016 22:51:14 -0400
-Received: by mail-pf0-f195.google.com with SMTP id g202so4093023pfb.1
-        for <linux-nfs@vger.kernel.org>; Wed, 13 Jul 2016 19:51:13 -0700 (PDT)
+Received: from mail-pa0-f67.google.com ([209.85.220.67]:36473 "EHLO
+	mail-pa0-f67.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750972AbcGNCva (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 13 Jul 2016 22:51:30 -0400
+Received: by mail-pa0-f67.google.com with SMTP id ez1so498645pab.3
+        for <linux-nfs@vger.kernel.org>; Wed, 13 Jul 2016 19:51:30 -0700 (PDT)
 To: Steve Dickson <SteveD@redhat.com>
 Cc: linux-nfs@vger.kernel.org, Kinglong Mee <kinglongmee@gmail.com>
 From: Kinglong Mee <kinglongmee@gmail.com>
-Subject: [PATCH 1/2] blkmapd: Let running correctly when pid file exists
-Message-ID: <ae344139-4e98-4c61-ac5c-352f04bc80db@gmail.com>
-Date: Thu, 14 Jul 2016 10:51:05 +0800
+Subject: [PATCH 2/2] blkmapd: unlink pid file when error out
+Message-ID: <90d4ca22-1ec0-3cba-263f-7a3cdd871b28@gmail.com>
+Date: Thu, 14 Jul 2016 10:51:22 +0800
 MIME-Version: 1.0
 Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Blkmapd cannot run until blkmapd.pid is unlinked.
-This patch lets checking exists based on lockf without stat.
-
-# ps -ajx | grep blkmapd
- 1644  9126  9125  1644 pts/1     9125 S+       0   0:00 grep --color=auto blkmapd
-# ll /var/run/blkmapd
- -rw-r--r--. 1 root root 5 Jul 14 09:51 /var/run/blkmapd.pid
-# blkmapd
- Pid file /var/run/blkmapd.pid already existed
+Fix some error out without unlink pid file.
 
 Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
 ---
- utils/blkmapd/device-discovery.c | 8 +-------
- 1 file changed, 1 insertion(+), 7 deletions(-)
+ utils/blkmapd/device-discovery.c | 8 ++++----
+ 1 file changed, 4 insertions(+), 4 deletions(-)
 
 diff --git a/utils/blkmapd/device-discovery.c b/utils/blkmapd/device-discovery.c
-index 052d582..50e2746 100644
+index 50e2746..8eb3fd0 100644
 --- a/utils/blkmapd/device-discovery.c
 +++ b/utils/blkmapd/device-discovery.c
-@@ -436,7 +436,6 @@ static void usage(void)
- int main(int argc, char **argv)
- {
- 	int opt, dflag = 0, fg = 0, ret = 1;
--	struct stat statbuf;
- 	char pidbuf[64];
+@@ -486,13 +486,13 @@ int main(int argc, char **argv)
+ 	signal(SIGHUP, SIG_IGN);
  
- 	while ((opt = getopt(argc, argv, "hdf")) != -1) {
-@@ -460,11 +459,6 @@ int main(int argc, char **argv)
- 	if (fg) {
- 		openlog("blkmapd", LOG_PERROR, 0);
- 	} else {
--		if (!stat(PID_FILE, &statbuf)) {
--			fprintf(stderr, "Pid file %s already existed\n", PID_FILE);
--			exit(1);
--		}
+ 	if (dflag) {
+-		bl_discover_devices();
+-		exit(0);
++		ret = bl_discover_devices();
++		goto out;
+ 	}
+ 
+ 	if ((bl_watch_fd = inotify_init()) < 0) {
+ 		BL_LOG_ERR("init inotify failed %s\n", strerror(errno));
+-		exit(1);
++		goto out;
+ 	}
+ 
+ 	/* open pipe file */
+@@ -513,7 +513,7 @@ int main(int argc, char **argv)
+ 			BL_LOG_ERR("inquiry process return %d\n", ret);
+ 		}
+ 	}
 -
- 		if (daemon(0, 0) != 0) {
- 			fprintf(stderr, "Daemonize failed\n");
- 			exit(1);
-@@ -478,7 +472,7 @@ int main(int argc, char **argv)
- 		}
- 
- 		if (lockf(pidfd, F_TLOCK, 0) < 0) {
--			BL_LOG_ERR("Lock pid file %s failed\n", PID_FILE);
-+			BL_LOG_ERR("Already running; Exiting!");
- 			close(pidfd);
- 			exit(1);
- 		}
++out:
+ 	if (pidfd >= 0) {
+ 		close(pidfd);
+ 		unlink(PID_FILE);
 -- 
 2.7.4
 
