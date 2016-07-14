@@ -1,73 +1,77 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from ipmail07.adl2.internode.on.net ([150.101.137.131]:26690 "EHLO
-	ipmail07.adl2.internode.on.net" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751092AbcGMXX3 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 13 Jul 2016 19:23:29 -0400
-Date: Thu, 14 Jul 2016 09:23:24 +1000
-From: Dave Chinner <david@fromorbit.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: Christoph Hellwig <hch@lst.de>, Benjamin Coddington <bcodding@redhat.com>,
-        xfs@oss.sgi.com, linux-fsdevel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, Alexander Viro <viro@zeniv.linux.org.uk>
-Subject: Re: [PATCH v2] xfs: abstract block export operations from nfsd
- layouts
-Message-ID: <20160713232324.GO1922@dastard>
-References: <6c1549ee874431c8293cad72c5f7382095277822.1467985684.git.bcodding@redhat.com>
- <20160710094540.GA19392@lst.de>
- <20160713202104.GA10734@fieldses.org>
+Received: from mx2.suse.de ([195.135.220.15]:57054 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750865AbcGNC1e (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 13 Jul 2016 22:27:34 -0400
+From: NeilBrown <neilb@suse.com>
+To: Steve Dickson <SteveD@redhat.com>
+Date: Thu, 14 Jul 2016 12:26:43 +1000
+Subject: [PATCH 0/8] Assorted mount-related nfs-utils patches.
+Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Message-ID: <20160714021310.5874.22953.stgit@noble>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20160713202104.GA10734@fieldses.org>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Jul 13, 2016 at 04:21:04PM -0400, J. Bruce Fields wrote:
-> On Sun, Jul 10, 2016 at 11:45:40AM +0200, Christoph Hellwig wrote:
-> > On Fri, Jul 08, 2016 at 09:53:20AM -0400, Benjamin Coddington wrote:
-> > > Instead of creeping pnfs layout configuration into filesystems, move the
-> > > definition of block-based export operations under a more abstract
-> > > configuration.
-> > > 
-> > > Changes from v1:
-> > > 	- dropped the first patch in the first posting
-> > > 	- renamed the config to EXPORTFS_BLOCK_OPS from BLOCK_EXPORT_OPS
-> > > 	- add an explicit default to no for EXPORTFS_BLOCK_OPS
-> > > 	- add some help and menu text
-> > > 
-> > > Signed-off-by: Benjamin Coddington <bcodding@redhat.com>
-> > > ---
-> > >  fs/Kconfig          | 7 +++++++
-> > >  fs/nfsd/Kconfig     | 2 ++
-> > >  fs/xfs/Makefile     | 3 +--
-> > >  fs/xfs/xfs_export.c | 2 +-
-> > >  fs/xfs/xfs_pnfs.h   | 4 ++--
-> > >  5 files changed, 13 insertions(+), 5 deletions(-)
-> > > 
-> > > diff --git a/fs/Kconfig b/fs/Kconfig
-> > > index 6725f59c18e6..ac6d3b36600c 100644
-> > > --- a/fs/Kconfig
-> > > +++ b/fs/Kconfig
-> > > @@ -66,6 +66,13 @@ config FS_POSIX_ACL
-> > >  config EXPORTFS
-> > >  	tristate
-> > >  
-> > > +config EXPORTFS_BLOCK_OPS
-> > > +	bool "Enable filesystem export operations for block IO"
-> > > +	default n
-> > 
-> > default n is the default, no need to add it.
-> > 
-> > Otherwise looks fine:
-> > 
-> > Reviewed-by: Christoph Hellwig <hch@lst.de>
-> 
-> Thanks.  Applied, with that one "default n" line dropped.
-> 
-> An ACK from Dave might also help reassure Linus I'm not stepping on
-> anybody's toes.
+This series is an assortment of mount-related things.
 
-Acked-by: Dave Chinner <david@fromorbit.com>
+1/ resend the manpage update for "retry=" that I sent a while
+   back, but messed up
+2/ remove a meaningless option from mountd.
+3/ Fix up support for the "mountpoint" export option in mountd,
+   particularly making it work sensibly with NFSv4
+4/ temporary hostname failure should be treated by mount.nfs
+   as a temporary condition
+5/ Avoid advertising a temporary IPv6 address for NFSv4.0 callback.
 
--- 
-Dave Chinner
-david@fromorbit.com
+That last point needs a kernel fix too, but I'm not sure what is best
+yet.
+
+If you have IPv6 privacy extensions enabled, then the default
+address for outgoing connections is a temporary address which
+becomes "deprecated" after a period of time, when another address will
+become available for use.  A while later the deprecated address becomes
+invalid, and will stop working.
+So if a connection is held open for longer than the "valid lifetime"
+(valid_lft in "ip -6 addr" output) it will stop working, which isn't
+what users will expect.
+
+We could possibly close and re-open the connection after the address
+becomes deprecated.  Or we could insist on a 'public' address when
+establishing the connection.  Thoughts?
+
+When setting the call-back address for NFSv4.0, using a public address
+is the only real option, so that is what this patch does.
+
+Thanks,
+NeilBrown
+
+---
+
+NeilBrown (8):
+      nfs.man: clarify effect of 'retry' option.
+      mountd: remove the --exports-file option
+      mountd: remove 'dev_missing' checks
+      mountd: cause attempts to access unmounted exportpoints to return ESTALE
+      mountd: Don't export unmounted exports to NFSv4
+      mountd: don't add paths to non-mounted export points to pseudo-root
+      mount: don't treat temporary name resolution failure as permanent.
+      mount: use a public address for IPv6 callback.
+
+
+ support/include/v4root.h |    2 +-
+ utils/mount/network.c    |    5 ++++
+ utils/mount/nfs.man      |   14 ++++++++++--
+ utils/mount/stropts.c    |   54 ++++++++++++++++++++++++++--------------------
+ utils/mountd/auth.c      |   34 ++++++++++++++++++++++++-----
+ utils/mountd/cache.c     |   36 ++++++++++++++-----------------
+ utils/mountd/mountd.c    |   11 +++------
+ utils/mountd/mountd.h    |    2 +-
+ utils/mountd/mountd.man  |    8 -------
+ utils/mountd/v4root.c    |   11 +++++++++
+ 10 files changed, 107 insertions(+), 70 deletions(-)
+
+--
+Signature
+
