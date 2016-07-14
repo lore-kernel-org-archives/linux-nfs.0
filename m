@@ -1,91 +1,34 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from us-smtp-delivery-194.mimecast.com ([216.205.24.194]:31278 "EHLO
-	us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751084AbcGNXQJ convert rfc822-to-8bit
-	(ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 14 Jul 2016 19:16:09 -0400
-From: Trond Myklebust <trondmy@primarydata.com>
-To: List Linux <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 1/4] pNFS: Fix post-layoutget error handling in
- pnfs_update_layout()
-Date: Thu, 14 Jul 2016 23:15:50 +0000
-Message-ID: <69402880-98F0-4B0D-A0FC-877B803D974B@primarydata.com>
-References: <1468537115-65826-1-git-send-email-trond.myklebust@primarydata.com>
-In-Reply-To: <1468537115-65826-1-git-send-email-trond.myklebust@primarydata.com>
+Received: from smtprelay0053.hostedemail.com ([216.40.44.53]:58678 "EHLO
+	smtprelay.hostedemail.com" rhost-flags-OK-OK-OK-FAIL)
+	by vger.kernel.org with ESMTP id S1751084AbcGNXSl (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 14 Jul 2016 19:18:41 -0400
+Date: Thu, 14 Jul 2016 19:18:38 -0400
+From: Steven Rostedt <rostedt@goodmis.org>
+To: Trond Myklebust <trond.myklebust@primarydata.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] Fix the socket autoclose regression
+Message-ID: <20160714191838.31fc4ea4@gandalf.local.home>
+In-Reply-To: <1468537380-66033-1-git-send-email-trond.myklebust@primarydata.com>
+References: <1468537380-66033-1-git-send-email-trond.myklebust@primarydata.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=WINDOWS-1252
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Thu, 14 Jul 2016 19:02:59 -0400
+Trond Myklebust <trond.myklebust@primarydata.com> wrote:
 
-> On Jul 14, 2016, at 18:58, Trond Myklebust <trond.myklebust@primarydata.com> wrote:
+> Hi Steven
 > 
-> The non-retry error path is currently broken and ends up releasing the
-> reference to the layout twice. It also can end up clearing the
-> NFS_LAYOUT_FIRST_LAYOUTGET flag twice, causing a race.
-> 
-> In addition, the retry path will fail to decrement the plh_outstanding
-> counter.
-> 
-> Fixes: 183d9e7b112aa ("pnfs: rework LAYOUTGET retry handling")
-> Cc: stable@vger.kernel.org # 4.7
-> Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
-> ---
-> fs/nfs/pnfs.c | 20 ++++++++++----------
-> 1 file changed, 10 insertions(+), 10 deletions(-)
-> 
-> diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-> index 0fbe734cc38c..73b0dc90265a 100644
-> --- a/fs/nfs/pnfs.c
-> +++ b/fs/nfs/pnfs.c
-> @@ -1645,6 +1645,7 @@ lookup_again:
-> 	lseg = send_layoutget(lo, ctx, &stateid, &arg, &timeout, gfp_flags);
-> 	trace_pnfs_update_layout(ino, pos, count, iomode, lo, lseg,
-> 				 PNFS_UPDATE_LAYOUT_SEND_LAYOUTGET);
-> +	atomic_dec(&lo->plh_outstanding);
-> 	if (IS_ERR(lseg)) {
-> 		switch(PTR_ERR(lseg)) {
-> 		case -ERECALLCONFLICT:
-> @@ -1652,26 +1653,25 @@ lookup_again:
-> 				lseg = NULL;
-> 			/* Fallthrough */
-> 		case -EAGAIN:
-> -			pnfs_put_layout_hdr(lo);
-> -			if (first)
-> -				pnfs_clear_first_layoutget(lo);
-> -			if (lseg) {
-> -				trace_pnfs_update_layout(ino, pos, count,
-> -					iomode, lo, lseg, PNFS_UPDATE_LAYOUT_RETRY);
-> -				goto lookup_again;
-> -			}
-> -			/* Fallthrough */
-> +			break;
-> 		default:
-> 			if (!nfs_error_is_fatal(PTR_ERR(lseg))) {
-> 				pnfs_layout_clear_fail_bit(lo, pnfs_iomode_to_fail_bit(iomode));
-> 				lseg = NULL;
-> 			}
-> 		}
-> +		if (lseg) {
-> +			pnfs_put_layout_hdr(lo);
+> Does the following patch fix the issue you reported?
 
-Yes, I’m aware I need to move this to after the trace_pnfs_update_layout() below (and before “goto lookup_again”). I managed to send out an earlier version of the patch that is being committed to linux-next.
+I'll see if I can try it out tomorrow. My server that has the issue is
+currently in use. I'll also be traveling on Saturday, so if I can't get
+to it tomorrow, I'll definitely get to it when I get back on Monday the
+25th.
 
-> +			if (first)
-> +				pnfs_clear_first_layoutget(lo);
-> +			trace_pnfs_update_layout(ino, pos, count,
-> +				iomode, lo, lseg, PNFS_UPDATE_LAYOUT_RETRY);
-> +			goto lookup_again;
-> +		}
-> 	} else {
-> 		pnfs_layout_clear_fail_bit(lo, pnfs_iomode_to_fail_bit(iomode));
-> 	}
-> 
-> -	atomic_dec(&lo->plh_outstanding);
-> out_put_layout_hdr:
-> 	if (first)
-> 		pnfs_clear_first_layoutget(lo);
-> -- 
-> 2.7.4
-> 
+Thanks!
+
+-- Steve
 
