@@ -1,15 +1,14 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:57132 "EHLO mx2.suse.de"
+Received: from mx2.suse.de ([195.135.220.15]:57144 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750865AbcGNC2N (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 13 Jul 2016 22:28:13 -0400
+	id S1750865AbcGNC2S (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 13 Jul 2016 22:28:18 -0400
 From: NeilBrown <neilb@suse.com>
 To: Steve Dickson <SteveD@redhat.com>
 Date: Thu, 14 Jul 2016 12:26:43 +1000
-Subject: [PATCH 7/8] mount: don't treat temporary name resolution failure as
- permanent.
+Subject: [PATCH 8/8] mount: use a public address for IPv6 callback.
 Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Message-ID: <20160714022643.5874.27102.stgit@noble>
+Message-ID: <20160714022643.5874.51563.stgit@noble>
 In-Reply-To: <20160714021310.5874.22953.stgit@noble>
 References: <20160714021310.5874.22953.stgit@noble>
 MIME-Version: 1.0
@@ -17,118 +16,45 @@ Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-If getaddrinfo() returns EAI_AGAIN, we shouldn't just give up, but
-should continue normal retries as the nameserver may be unavailable
-for the same reason as the NFS server.
-
-So move the getaddrinfo() call from nfs_validate_options() into
-nfs_try_mounts() which is always called soon after, except in the
-'remount' case when we don't want it anyway.
-
-If EAI_AGAIN is returned, set errno to EAGAIN and allow this to be a
-temporary failure.  Otherwise report error and set errno to EALREADY
-so no further message is given.
+If IPv6 address privacy is active, the "clientaddr" given to the server
+will likely be a temporary address which will eventually expire, thus
+breaking callback.
+So ask for a public address to ensure continued service.
 
 Signed-off-by: NeilBrown <neilb@suse.com>
 ---
- utils/mount/stropts.c |   54 ++++++++++++++++++++++++++++---------------------
- 1 file changed, 31 insertions(+), 23 deletions(-)
+ utils/mount/network.c |    5 +++++
+ 1 file changed, 5 insertions(+)
 
-diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
-index d60b484ab960..522c7ae015f1 100644
---- a/utils/mount/stropts.c
-+++ b/utils/mount/stropts.c
-@@ -84,6 +84,7 @@ struct nfsmount_info {
- 				*type;		/* "nfs" or "nfs4" */
- 	char			*hostname;	/* server's hostname */
- 	struct addrinfo		*address;	/* server's addresses */
-+	sa_family_t		family;		/* Address family */
+diff --git a/utils/mount/network.c b/utils/mount/network.c
+index 0d12613e86a4..6529b6ee6b01 100644
+--- a/utils/mount/network.c
++++ b/utils/mount/network.c
+@@ -38,6 +38,7 @@
+ #include <sys/socket.h>
+ #include <sys/wait.h>
+ #include <sys/stat.h>
++#include <linux/in6.h>
+ #include <netinet/in.h>
+ #include <rpc/rpc.h>
+ #include <rpc/pmap_prot.h>
+@@ -1113,6 +1114,7 @@ static int nfs_ca_sockname(const struct sockaddr *sap, const socklen_t salen,
+ 		.sin6_addr		= IN6ADDR_ANY_INIT,
+ 	};
+ 	int sock, result = 0;
++	int val;
  
- 	struct mount_options	*options;	/* parsed mount options */
- 	char			**extra_opts;	/* string for /etc/mtab */
-@@ -371,39 +372,19 @@ static int nfs_set_version(struct nfsmount_info *mi)
-  */
- static int nfs_validate_options(struct nfsmount_info *mi)
- {
--	struct addrinfo hint = {
--		.ai_protocol	= (int)IPPROTO_UDP,
--	};
--	sa_family_t family;
--	int error;
--
- 	if (!nfs_parse_devname(mi->spec, &mi->hostname, NULL))
- 		return 0;
- 
--	if (!nfs_nfs_proto_family(mi->options, &family))
-+	if (!nfs_nfs_proto_family(mi->options, &mi->family))
- 		return 0;
- 
- 	/*
- 	 * A remount is not going to be able to change the server's address,
- 	 * nor should we try to resolve another address for the server as we
- 	 * may end up with a different address.
-+	 * A non-remount will set 'addr' from ->hostname
- 	 */
--	if (mi->flags & MS_REMOUNT) {
--		po_remove_all(mi->options, "addr");
--	} else {
--		hint.ai_family = (int)family;
--		error = getaddrinfo(mi->hostname, NULL, &hint, &mi->address);
--		if (error != 0) {
--			nfs_error(_("%s: Failed to resolve server %s: %s"),
--				progname, mi->hostname, gai_strerror(error));
--			mi->address = NULL;
--			return 0;
--		}
--
--		if (!nfs_append_addr_option(mi->address->ai_addr,
--						mi->address->ai_addrlen, mi->options))
--			return 0;
--	}
-+	po_remove_all(mi->options, "addr");
- 
- 	if (!nfs_set_version(mi))
- 		return 0;
-@@ -903,6 +884,32 @@ static int nfs_try_mount(struct nfsmount_info *mi)
- {
- 	int result = 0;
- 
-+	if (mi->address == NULL) {
-+		struct addrinfo hint = {
-+			.ai_protocol	= (int)IPPROTO_UDP,
-+		};
-+		int error;
-+		struct addrinfo *address;
-+
-+		hint.ai_family = (int)mi->family;
-+		error = getaddrinfo(mi->hostname, NULL, &hint, &address);
-+		if (error != 0) {
-+			if (error == EAI_AGAIN)
-+				errno = EAGAIN;
-+			else {
-+				nfs_error(_("%s: Failed to resolve server %s: %s"),
-+					  progname, mi->hostname, gai_strerror(error));
-+				errno = EALREADY;
-+			}
-+			return 0;
-+		}
-+
-+		if (!nfs_append_addr_option(mi->address->ai_addr,
-+					    mi->address->ai_addrlen, mi->options))
-+			return 0;
-+		mi->address = address;
-+	}
-+
- 	switch (mi->version.major) {
- 		case 2:
- 		case 3:
-@@ -941,6 +948,7 @@ static int nfs_is_permanent_error(int error)
- 	case ETIMEDOUT:
- 	case ECONNREFUSED:
- 	case EHOSTUNREACH:
-+	case EAGAIN:
- 		return 0;	/* temporary */
- 	default:
- 		return 1;	/* permanent */
+ 	sock = socket(sap->sa_family, SOCK_DGRAM, IPPROTO_UDP);
+ 	if (sock < 0)
+@@ -1124,6 +1126,9 @@ static int nfs_ca_sockname(const struct sockaddr *sap, const socklen_t salen,
+ 			goto out;
+ 		break;
+ 	case AF_INET6:
++		/* Make sure the call-back address is public */
++		val = IPV6_PREFER_SRC_PUBLIC;
++		setsockopt(sock, SOL_IPV6, IPV6_ADDR_PREFERENCES, &val, sizeof(val));
+ 		if (bind(sock, SAFE_SOCKADDR(&sin6), sizeof(sin6)) < 0)
+ 			goto out;
+ 		break;
 
 
