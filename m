@@ -1,58 +1,50 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-pa0-f67.google.com ([209.85.220.67]:36473 "EHLO
-	mail-pa0-f67.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750972AbcGNCva (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 13 Jul 2016 22:51:30 -0400
-Received: by mail-pa0-f67.google.com with SMTP id ez1so498645pab.3
-        for <linux-nfs@vger.kernel.org>; Wed, 13 Jul 2016 19:51:30 -0700 (PDT)
-To: Steve Dickson <SteveD@redhat.com>
+Received: from mail-pa0-f66.google.com ([209.85.220.66]:33008 "EHLO
+	mail-pa0-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750699AbcGNEB0 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 14 Jul 2016 00:01:26 -0400
+Received: by mail-pa0-f66.google.com with SMTP id q2so3983293pap.0
+        for <linux-nfs@vger.kernel.org>; Wed, 13 Jul 2016 21:01:26 -0700 (PDT)
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Cc: linux-nfs@vger.kernel.org, Kinglong Mee <kinglongmee@gmail.com>
 From: Kinglong Mee <kinglongmee@gmail.com>
-Subject: [PATCH 2/2] blkmapd: unlink pid file when error out
-Message-ID: <90d4ca22-1ec0-3cba-263f-7a3cdd871b28@gmail.com>
-Date: Thu, 14 Jul 2016 10:51:22 +0800
+Subject: [PATCH] nfsd/blocklayout: Make sure calculate signature/designator
+ length aligned
+Message-ID: <53d87a05-76c2-d1f5-4c48-52290468a6e7@gmail.com>
+Date: Thu, 14 Jul 2016 12:01:17 +0800
 MIME-Version: 1.0
 Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Fix some error out without unlink pid file.
 
 Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
 ---
- utils/blkmapd/device-discovery.c | 8 ++++----
- 1 file changed, 4 insertions(+), 4 deletions(-)
+ fs/nfsd/blocklayoutxdr.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
 
-diff --git a/utils/blkmapd/device-discovery.c b/utils/blkmapd/device-discovery.c
-index 50e2746..8eb3fd0 100644
---- a/utils/blkmapd/device-discovery.c
-+++ b/utils/blkmapd/device-discovery.c
-@@ -486,13 +486,13 @@ int main(int argc, char **argv)
- 	signal(SIGHUP, SIG_IGN);
+diff --git a/fs/nfsd/blocklayoutxdr.c b/fs/nfsd/blocklayoutxdr.c
+index 6c3b316..d72467e 100644
+--- a/fs/nfsd/blocklayoutxdr.c
++++ b/fs/nfsd/blocklayoutxdr.c
+@@ -43,7 +43,7 @@ nfsd4_block_encode_volume(struct xdr_stream *xdr, struct pnfs_block_volume *b)
  
- 	if (dflag) {
--		bl_discover_devices();
--		exit(0);
-+		ret = bl_discover_devices();
-+		goto out;
- 	}
- 
- 	if ((bl_watch_fd = inotify_init()) < 0) {
- 		BL_LOG_ERR("init inotify failed %s\n", strerror(errno));
--		exit(1);
-+		goto out;
- 	}
- 
- 	/* open pipe file */
-@@ -513,7 +513,7 @@ int main(int argc, char **argv)
- 			BL_LOG_ERR("inquiry process return %d\n", ret);
- 		}
- 	}
--
-+out:
- 	if (pidfd >= 0) {
- 		close(pidfd);
- 		unlink(PID_FILE);
+ 	switch (b->type) {
+ 	case PNFS_BLOCK_VOLUME_SIMPLE:
+-		len = 4 + 4 + 8 + 4 + b->simple.sig_len;
++		len = 4 + 4 + 8 + 4 + (XDR_QUADLEN(b->simple.sig_len) << 2);
+ 		p = xdr_reserve_space(xdr, len);
+ 		if (!p)
+ 			return -ETOOSMALL;
+@@ -54,7 +54,7 @@ nfsd4_block_encode_volume(struct xdr_stream *xdr, struct pnfs_block_volume *b)
+ 		p = xdr_encode_opaque(p, b->simple.sig, b->simple.sig_len);
+ 		break;
+ 	case PNFS_BLOCK_VOLUME_SCSI:
+-		len = 4 + 4 + 4 + 4 + b->scsi.designator_len + 8;
++		len = 4 + 4 + 4 + 4 + (XDR_QUADLEN(b->scsi.designator_len) << 2) + 8;
+ 		p = xdr_reserve_space(xdr, len);
+ 		if (!p)
+ 			return -ETOOSMALL;
 -- 
 2.7.4
 
