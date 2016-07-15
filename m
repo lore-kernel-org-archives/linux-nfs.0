@@ -1,34 +1,82 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtprelay0053.hostedemail.com ([216.40.44.53]:58678 "EHLO
-	smtprelay.hostedemail.com" rhost-flags-OK-OK-OK-FAIL)
-	by vger.kernel.org with ESMTP id S1751084AbcGNXSl (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 14 Jul 2016 19:18:41 -0400
-Date: Thu, 14 Jul 2016 19:18:38 -0400
-From: Steven Rostedt <rostedt@goodmis.org>
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] Fix the socket autoclose regression
-Message-ID: <20160714191838.31fc4ea4@gandalf.local.home>
-In-Reply-To: <1468537380-66033-1-git-send-email-trond.myklebust@primarydata.com>
-References: <1468537380-66033-1-git-send-email-trond.myklebust@primarydata.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Received: from linuxhacker.ru ([217.76.32.60]:41742 "EHLO fiona.linuxhacker.ru"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751279AbcGODUi (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 14 Jul 2016 23:20:38 -0400
+From: Oleg Drokin <green@linuxhacker.ru>
+To: "J. Bruce Fields" <bfields@fieldses.org>,
+        Jeff Layton <jlayton@poochiereds.net>
+Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
+        Oleg Drokin <green@linuxhacker.ru>
+Subject: [PATCH] nfsd: Make creates return EEXIST instead of EACCES
+Date: Thu, 14 Jul 2016 23:20:22 -0400
+Message-Id: <1468552822-14175-1-git-send-email-green@linuxhacker.ru>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 14 Jul 2016 19:02:59 -0400
-Trond Myklebust <trond.myklebust@primarydata.com> wrote:
+When doing a create (mkdir/mknod) on a name, it's worth
+checking the name exists first before returning EACCES in case
+the directory is not writeable by the user.
+This makes return values on the client more consistent
+regardless of whenever the entry there is cached in the local
+cache or not.
+Another positive side effect is certain programs only expect
+EEXIST in that case even despite POSIX allowing any valid
+error to be returned.
 
-> Hi Steven
-> 
-> Does the following patch fix the issue you reported?
+Signed-off-by: Oleg Drokin <green@linuxhacker.ru>
+---
+ fs/nfsd/nfs4proc.c |  6 +++++-
+ fs/nfsd/vfs.c      | 11 ++++++++++-
+ 2 files changed, 15 insertions(+), 2 deletions(-)
 
-I'll see if I can try it out tomorrow. My server that has the issue is
-currently in use. I'll also be traveling on Saturday, so if I can't get
-to it tomorrow, I'll definitely get to it when I get back on Monday the
-25th.
-
-Thanks!
-
--- Steve
+diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+index de1ff1d..0067520 100644
+--- a/fs/nfsd/nfs4proc.c
++++ b/fs/nfsd/nfs4proc.c
+@@ -605,8 +605,12 @@ nfsd4_create(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 
+ 	fh_init(&resfh, NFS4_FHSIZE);
+ 
++	/*
++	 * We just check that parent is accessible here, nfsd_* do their
++	 * own access permission checks
++	 */
+ 	status = fh_verify(rqstp, &cstate->current_fh, S_IFDIR,
+-			   NFSD_MAY_CREATE);
++			   NFSD_MAY_EXEC);
+ 	if (status)
+ 		return status;
+ 
+diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
+index 6fbd81e..6a45ec6 100644
+--- a/fs/nfsd/vfs.c
++++ b/fs/nfsd/vfs.c
+@@ -1161,7 +1161,11 @@ nfsd_create(struct svc_rqst *rqstp, struct svc_fh *fhp,
+ 	if (isdotent(fname, flen))
+ 		goto out;
+ 
+-	err = fh_verify(rqstp, fhp, S_IFDIR, NFSD_MAY_CREATE);
++	/*
++	 * Even though it is a create, first let's see if we are even allowed
++	 * to peek inside the parent
++	 */
++	err = fh_verify(rqstp, fhp, S_IFDIR, NFSD_MAY_EXEC);
+ 	if (err)
+ 		goto out;
+ 
+@@ -1211,6 +1215,11 @@ nfsd_create(struct svc_rqst *rqstp, struct svc_fh *fhp,
+ 		goto out; 
+ 	}
+ 
++	/* Now let's see if we actually have permissions to create */
++	err = nfsd_permission(rqstp, fhp->fh_export, dentry, NFSD_MAY_CREATE);
++	if (err)
++		goto out;
++
+ 	if (!(iap->ia_valid & ATTR_MODE))
+ 		iap->ia_mode = 0;
+ 	iap->ia_mode = (iap->ia_mode & S_IALLUGO) | type;
+-- 
+2.7.4
 
