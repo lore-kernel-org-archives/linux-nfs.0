@@ -1,56 +1,74 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f194.google.com ([209.85.223.194]:35600 "EHLO
-	mail-io0-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751864AbcGPQFf (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 16 Jul 2016 12:05:35 -0400
-Received: by mail-io0-f194.google.com with SMTP id q83so8263611iod.2
-        for <linux-nfs@vger.kernel.org>; Sat, 16 Jul 2016 09:05:35 -0700 (PDT)
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Oleg Drokin <green@linuxhacker.ru>
+Received: from bombadil.infradead.org ([198.137.202.9]:52426 "EHLO
+	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751400AbcGRDss (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 17 Jul 2016 23:48:48 -0400
+Date: Sun, 17 Jul 2016 20:48:47 -0700
+From: Christoph Hellwig <hch@infradead.org>
+To: Trond Myklebust <trond.myklebust@primarydata.com>
 Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH] SUNRPC: Fix infinite looping in rpc_clnt_iterate_for_each_xprt
-Date: Sat, 16 Jul 2016 12:04:50 -0400
-Message-Id: <1468685090-5513-1-git-send-email-trond.myklebust@primarydata.com>
+Subject: Re: [PATCH v4 24/28] NFS: Getattr doesn't require data sync semantics
+Message-ID: <20160718034847.GA1195@infradead.org>
+References: <1467844205-76852-16-git-send-email-trond.myklebust@primarydata.com>
+ <1467844205-76852-17-git-send-email-trond.myklebust@primarydata.com>
+ <1467844205-76852-18-git-send-email-trond.myklebust@primarydata.com>
+ <1467844205-76852-19-git-send-email-trond.myklebust@primarydata.com>
+ <1467844205-76852-20-git-send-email-trond.myklebust@primarydata.com>
+ <1467844205-76852-21-git-send-email-trond.myklebust@primarydata.com>
+ <1467844205-76852-22-git-send-email-trond.myklebust@primarydata.com>
+ <1467844205-76852-23-git-send-email-trond.myklebust@primarydata.com>
+ <1467844205-76852-24-git-send-email-trond.myklebust@primarydata.com>
+ <1467844205-76852-25-git-send-email-trond.myklebust@primarydata.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1467844205-76852-25-git-send-email-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-If there were less than 2 entries in the multipath list, then
-xprt_iter_next_entry_multiple() would never advance beyond the
-first entry, which is correct for round robin behaviour, but not
-for the list iteration.
+On Wed, Jul 06, 2016 at 06:30:01PM -0400, Trond Myklebust wrote:
+> When retrieving stat() information, NFS unfortunately does require us to
+> sync writes to disk in order to ensure that mtime and ctime are up to
+> date. However we shouldn't have to ensure that those writes are persisted.
+> 
+> Relaxing that requirement does mean that we may see an mtime/ctime change
+> if the server reboots and forces us to replay all writes.
+> 
+> The exception to this rule are pNFS clients that are required to send
+> layoutcommit, however that is dealt with by the call to pnfs_sync_inode()
+> in _nfs_revalidate_inode().
 
-The end result would be infinite looping in rpc_clnt_iterate_for_each_xprt()
-as we would never see the xprt == NULL condition fulfilled.
+This one breaks xfstests generic/207 on block/scsi layout for me.  The
+reason for that is that we need a layoutcommit after writing out all
+data for the file for the file size to be updated on the server.
 
-Reported-by: Oleg Drokin <green@linuxhacker.ru>
-Fixes: 80b14d5e61ca ("SUNRPC: Add a structure to track multiple transports")
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
----
- net/sunrpc/xprtmultipath.c | 8 +++-----
- 1 file changed, 3 insertions(+), 5 deletions(-)
+Below is my attempt to fix this by re-adding pnfs_sync_inode to
+nfs_getattr.  The call in _nfs_revalidate_inode isn't enough as it
+doesn't get called in most cases we care about.
 
-diff --git a/net/sunrpc/xprtmultipath.c b/net/sunrpc/xprtmultipath.c
-index e7fd76975d86..66c9d63f4797 100644
---- a/net/sunrpc/xprtmultipath.c
-+++ b/net/sunrpc/xprtmultipath.c
-@@ -271,14 +271,12 @@ struct rpc_xprt *xprt_iter_next_entry_multiple(struct rpc_xprt_iter *xpi,
- 		xprt_switch_find_xprt_t find_next)
- {
- 	struct rpc_xprt_switch *xps = rcu_dereference(xpi->xpi_xpswitch);
--	struct list_head *head;
+diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
+index 22a53ee..8bd04cf 100644
+--- a/fs/nfs/inode.c
++++ b/fs/nfs/inode.c
+@@ -660,11 +660,20 @@ int nfs_getattr(struct vfsmount *mnt, struct dentry *dentry, struct kstat *stat)
+ 	int err = 0;
  
- 	if (xps == NULL)
- 		return NULL;
--	head = &xps->xps_xprt_list;
--	if (xps->xps_nxprts < 2)
--		return xprt_switch_find_first_entry(head);
--	return xprt_switch_set_next_cursor(head, &xpi->xpi_cursor, find_next);
-+	return xprt_switch_set_next_cursor(&xps->xps_xprt_list,
-+			&xpi->xpi_cursor,
-+			find_next);
- }
+ 	trace_nfs_getattr_enter(inode);
+-	/* Flush out writes to the server in order to update c/mtime.  */
++
++	/*
++	 * Flush out writes to the server in order to update c/mtime as well
++	 * as the file size.  In the pNFS case this also requires a
++	 * LAYOUTCOMMIT.
++	 */
+ 	if (S_ISREG(inode->i_mode)) {
+ 		err = filemap_write_and_wait(inode->i_mapping);
+ 		if (err)
+ 			goto out;
++
++		err = pnfs_sync_inode(inode, true);
++		if (err)
++			goto out;
+ 	}
  
- static
--- 
-2.7.4
+ 	/*
 
