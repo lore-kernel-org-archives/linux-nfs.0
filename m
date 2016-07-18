@@ -1,59 +1,99 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from us-smtp-delivery-194.mimecast.com ([216.205.24.194]:29424 "EHLO
+Received: from us-smtp-delivery-194.mimecast.com ([63.128.21.194]:60856 "EHLO
 	us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1750732AbcGREdB convert rfc822-to-8bit
-	(ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 18 Jul 2016 00:33:01 -0400
+	by vger.kernel.org with ESMTP id S1750786AbcGRE7P (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 18 Jul 2016 00:59:15 -0400
 From: Trond Myklebust <trondmy@primarydata.com>
-To: Christoph Hellwig <hch@infradead.org>
-CC: List Linux <linux-nfs@vger.kernel.org>
+To: "hch@infradead.org" <hch@infradead.org>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
 Subject: Re: [PATCH v4 24/28] NFS: Getattr doesn't require data sync semantics
-Date: Mon, 18 Jul 2016 04:32:53 +0000
-Message-ID: <A9C18137-87A3-4652-ADD6-E8E1C4BAE27B@primarydata.com>
+Date: Mon, 18 Jul 2016 04:59:09 +0000
+Message-ID: <1468817945.5273.2.camel@primarydata.com>
 References: <1467844205-76852-16-git-send-email-trond.myklebust@primarydata.com>
- <1467844205-76852-17-git-send-email-trond.myklebust@primarydata.com>
- <1467844205-76852-18-git-send-email-trond.myklebust@primarydata.com>
- <1467844205-76852-19-git-send-email-trond.myklebust@primarydata.com>
- <1467844205-76852-20-git-send-email-trond.myklebust@primarydata.com>
- <1467844205-76852-21-git-send-email-trond.myklebust@primarydata.com>
- <1467844205-76852-22-git-send-email-trond.myklebust@primarydata.com>
- <1467844205-76852-23-git-send-email-trond.myklebust@primarydata.com>
- <1467844205-76852-24-git-send-email-trond.myklebust@primarydata.com>
- <1467844205-76852-25-git-send-email-trond.myklebust@primarydata.com>
- <20160718034847.GA1195@infradead.org>
-In-Reply-To: <20160718034847.GA1195@infradead.org>
+	 <1467844205-76852-17-git-send-email-trond.myklebust@primarydata.com>
+	 <1467844205-76852-18-git-send-email-trond.myklebust@primarydata.com>
+	 <1467844205-76852-19-git-send-email-trond.myklebust@primarydata.com>
+	 <1467844205-76852-20-git-send-email-trond.myklebust@primarydata.com>
+	 <1467844205-76852-21-git-send-email-trond.myklebust@primarydata.com>
+	 <1467844205-76852-22-git-send-email-trond.myklebust@primarydata.com>
+	 <1467844205-76852-23-git-send-email-trond.myklebust@primarydata.com>
+	 <1467844205-76852-24-git-send-email-trond.myklebust@primarydata.com>
+	 <1467844205-76852-25-git-send-email-trond.myklebust@primarydata.com>
+	 <20160718034847.GA1195@infradead.org>
+	 <A9C18137-87A3-4652-ADD6-E8E1C4BAE27B@primarydata.com>
+In-Reply-To: <A9C18137-87A3-4652-ADD6-E8E1C4BAE27B@primarydata.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=WINDOWS-1252
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Christoph,
-
-> On Jul 17, 2016, at 23:48, Christoph Hellwig <hch@infradead.org> wrote:
-> 
-> On Wed, Jul 06, 2016 at 06:30:01PM -0400, Trond Myklebust wrote:
->> When retrieving stat() information, NFS unfortunately does require us to
->> sync writes to disk in order to ensure that mtime and ctime are up to
->> date. However we shouldn't have to ensure that those writes are persisted.
->> 
->> Relaxing that requirement does mean that we may see an mtime/ctime change
->> if the server reboots and forces us to replay all writes.
->> 
->> The exception to this rule are pNFS clients that are required to send
->> layoutcommit, however that is dealt with by the call to pnfs_sync_inode()
->> in _nfs_revalidate_inode().
-> 
-> This one breaks xfstests generic/207 on block/scsi layout for me.  The
-> reason for that is that we need a layoutcommit after writing out all
-> data for the file for the file size to be updated on the server.
-> 
-> Below is my attempt to fix this by re-adding pnfs_sync_inode to
-> nfs_getattr.  The call in _nfs_revalidate_inode isn't enough as it
-> doesn't get called in most cases we care about.
-> 
-
-I’m not understanding this argument. Why do we care if the file size is up to date on the server if we’re not sending an actual GETATTR on the wire to retrieve the file size?
-
-Cheers
-  Trond
+T24gTW9uLCAyMDE2LTA3LTE4IGF0IDAwOjMyIC0wNDAwLCBUcm9uZCBNeWtsZWJ1c3Qgd3JvdGU6
+DQo+IEhpIENocmlzdG9waCwNCj4gDQo+ID4gDQo+ID4gT24gSnVsIDE3LCAyMDE2LCBhdCAyMzo0
+OCwgQ2hyaXN0b3BoIEhlbGx3aWcgPGhjaEBpbmZyYWRlYWQub3JnPg0KPiA+IHdyb3RlOg0KPiA+
+IA0KPiA+IE9uIFdlZCwgSnVsIDA2LCAyMDE2IGF0IDA2OjMwOjAxUE0gLTA0MDAsIFRyb25kIE15
+a2xlYnVzdCB3cm90ZToNCj4gPiA+IA0KPiA+ID4gV2hlbiByZXRyaWV2aW5nIHN0YXQoKSBpbmZv
+cm1hdGlvbiwgTkZTIHVuZm9ydHVuYXRlbHkgZG9lcw0KPiA+ID4gcmVxdWlyZSB1cyB0bw0KPiA+
+ID4gc3luYyB3cml0ZXMgdG8gZGlzayBpbiBvcmRlciB0byBlbnN1cmUgdGhhdCBtdGltZSBhbmQg
+Y3RpbWUgYXJlDQo+ID4gPiB1cCB0bw0KPiA+ID4gZGF0ZS4gSG93ZXZlciB3ZSBzaG91bGRuJ3Qg
+aGF2ZSB0byBlbnN1cmUgdGhhdCB0aG9zZSB3cml0ZXMgYXJlDQo+ID4gPiBwZXJzaXN0ZWQuDQo+
+ID4gPiANCj4gPiA+IFJlbGF4aW5nIHRoYXQgcmVxdWlyZW1lbnQgZG9lcyBtZWFuIHRoYXQgd2Ug
+bWF5IHNlZSBhbg0KPiA+ID4gbXRpbWUvY3RpbWUgY2hhbmdlDQo+ID4gPiBpZiB0aGUgc2VydmVy
+IHJlYm9vdHMgYW5kIGZvcmNlcyB1cyB0byByZXBsYXkgYWxsIHdyaXRlcy4NCj4gPiA+IA0KPiA+
+ID4gVGhlIGV4Y2VwdGlvbiB0byB0aGlzIHJ1bGUgYXJlIHBORlMgY2xpZW50cyB0aGF0IGFyZSBy
+ZXF1aXJlZCB0bw0KPiA+ID4gc2VuZA0KPiA+ID4gbGF5b3V0Y29tbWl0LCBob3dldmVyIHRoYXQg
+aXMgZGVhbHQgd2l0aCBieSB0aGUgY2FsbCB0bw0KPiA+ID4gcG5mc19zeW5jX2lub2RlKCkNCj4g
+PiA+IGluIF9uZnNfcmV2YWxpZGF0ZV9pbm9kZSgpLg0KPiA+IA0KPiA+IFRoaXMgb25lIGJyZWFr
+cyB4ZnN0ZXN0cyBnZW5lcmljLzIwNyBvbiBibG9jay9zY3NpIGxheW91dCBmb3INCj4gPiBtZS7C
+oMKgVGhlDQo+ID4gcmVhc29uIGZvciB0aGF0IGlzIHRoYXQgd2UgbmVlZCBhIGxheW91dGNvbW1p
+dCBhZnRlciB3cml0aW5nIG91dA0KPiA+IGFsbA0KPiA+IGRhdGEgZm9yIHRoZSBmaWxlIGZvciB0
+aGUgZmlsZSBzaXplIHRvIGJlIHVwZGF0ZWQgb24gdGhlIHNlcnZlci4NCj4gPiANCj4gPiBCZWxv
+dyBpcyBteSBhdHRlbXB0IHRvIGZpeCB0aGlzIGJ5IHJlLWFkZGluZyBwbmZzX3N5bmNfaW5vZGUg
+dG8NCj4gPiBuZnNfZ2V0YXR0ci7CoMKgVGhlIGNhbGwgaW4gX25mc19yZXZhbGlkYXRlX2lub2Rl
+IGlzbid0IGVub3VnaCBhcyBpdA0KPiA+IGRvZXNuJ3QgZ2V0IGNhbGxlZCBpbiBtb3N0IGNhc2Vz
+IHdlIGNhcmUgYWJvdXQuDQo+ID4gDQo+IA0KPiBJ4oCZbSBub3QgdW5kZXJzdGFuZGluZyB0aGlz
+IGFyZ3VtZW50LiBXaHkgZG8gd2UgY2FyZSBpZiB0aGUgZmlsZSBzaXplDQo+IGlzIHVwIHRvIGRh
+dGUgb24gdGhlIHNlcnZlciBpZiB3ZeKAmXJlIG5vdCBzZW5kaW5nIGFuIGFjdHVhbCBHRVRBVFRS
+IG9uDQo+IHRoZSB3aXJlIHRvIHJldHJpZXZlIHRoZSBmaWxlIHNpemU/DQo+IA0KPiBDaGVlcnMN
+Cj4gwqAgVHJvbmQNCg0KQWN0dWFsbHkuLi4gVGhlIHByb2JsZW0gbWlnaHQgYmUgdGhhdCBhIHBy
+ZXZpb3VzIGF0dHJpYnV0ZSB1cGRhdGUgaXMNCm1hcmtpbmcgdGhlIGF0dHJpYnV0ZSBjYWNoZSBh
+cyBiZWluZyByZXZhbGlkYXRlZC4gRG9lcyB0aGUgZm9sbG93aW5nDQpwYXRjaCBoZWxwPw0KDQpD
+aGVlcnMNCsKgIFRyb25kDQoNCjg8LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
+LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0NCkZyb20gMTBiN2U5YWQ0NDg4MWZjZDQ2YWMyNGViNzM3
+NDM3N2M2ZTg5NjJlZCBNb24gU2VwIDE3IDAwOjAwOjAwIDIwMDENCkZyb206IFRyb25kIE15a2xl
+YnVzdCA8dHJvbmQubXlrbGVidXN0QHByaW1hcnlkYXRhLmNvbT4NCkRhdGU6IE1vbiwgMTggSnVs
+IDIwMTYgMDA6NTE6MDEgLTA0MDANClN1YmplY3Q6IFtQQVRDSF0gcE5GUzogRG9uJ3QgbWFyayB0
+aGUgaW5vZGUgYXMgcmV2YWxpZGF0ZWQgaWYgYSBMQVlPVVRDT01NSVQNCiBpcyBvdXRzdGFuZGlu
+Zw0KDQpXZSBrbm93IHRoYXQgdGhlIGF0dHJpYnV0ZXMgd2lsbCBuZWVkIHVwZGF0aW5nIGlmIHRo
+ZXJlIGlzIHN0aWxsIGENCkxBWU9VVENPTU1JVCBvdXRzdGFuZGluZy4NCg0KUmVwb3J0ZWQtYnk6
+IENocmlzdG9waCBIZWxsd2lnIDxoY2hAbHN0LmRlPg0KU2lnbmVkLW9mZi1ieTogVHJvbmQgTXlr
+bGVidXN0IDx0cm9uZC5teWtsZWJ1c3RAcHJpbWFyeWRhdGEuY29tPg0KLS0tDQogZnMvbmZzL2lu
+b2RlLmMgfCA1ICsrKystDQogZnMvbmZzL3BuZnMuaCAgfCA3ICsrKysrKysNCiAyIGZpbGVzIGNo
+YW5nZWQsIDExIGluc2VydGlvbnMoKyksIDEgZGVsZXRpb24oLSkNCg0KZGlmZiAtLWdpdCBhL2Zz
+L25mcy9pbm9kZS5jIGIvZnMvbmZzL2lub2RlLmMNCmluZGV4IDM1ZmRhMDhkYzRmNi4uOWRmNDU4
+MzJlMjhiIDEwMDY0NA0KLS0tIGEvZnMvbmZzL2lub2RlLmMNCisrKyBiL2ZzL25mcy9pbm9kZS5j
+DQpAQCAtMTY2NCw3ICsxNjY0LDcgQEAgc3RhdGljIGludCBuZnNfdXBkYXRlX2lub2RlKHN0cnVj
+dCBpbm9kZSAqaW5vZGUsIHN0cnVjdCBuZnNfZmF0dHIgKmZhdHRyKQ0KIAl1bnNpZ25lZCBsb25n
+IG5vdyA9IGppZmZpZXM7DQogCXVuc2lnbmVkIGxvbmcgc2F2ZV9jYWNoZV92YWxpZGl0eTsNCiAJ
+Ym9vbCBoYXZlX3dyaXRlcnMgPSBuZnNfZmlsZV9oYXNfYnVmZmVyZWRfd3JpdGVycyhuZnNpKTsN
+Ci0JYm9vbCBjYWNoZV9yZXZhbGlkYXRlZCA9IHRydWU7DQorCWJvb2wgY2FjaGVfcmV2YWxpZGF0
+ZWQ7DQogDQogCWRmcHJpbnRrKFZGUywgIk5GUzogJXMoJXMvJWx1IGZoX2NyYz0weCUwOHggY3Q9
+JWQgaW5mbz0weCV4KVxuIiwNCiAJCQlfX2Z1bmNfXywgaW5vZGUtPmlfc2ItPnNfaWQsIGlub2Rl
+LT5pX2lubywNCkBAIC0xNzEzLDYgKzE3MTMsOSBAQCBzdGF0aWMgaW50IG5mc191cGRhdGVfaW5v
+ZGUoc3RydWN0IGlub2RlICppbm9kZSwgc3RydWN0IG5mc19mYXR0ciAqZmF0dHIpDQogCS8qIERv
+IGF0b21pYyB3ZWFrIGNhY2hlIGNvbnNpc3RlbmN5IHVwZGF0ZXMgKi8NCiAJaW52YWxpZCB8PSBu
+ZnNfd2NjX3VwZGF0ZV9pbm9kZShpbm9kZSwgZmF0dHIpOw0KIA0KKw0KKwljYWNoZV9yZXZhbGlk
+YXRlZCA9ICFwbmZzX2xheW91dGNvbW1pdF9vdXRzdGFuZGluZyhpbm9kZSk7DQorDQogCS8qIE1v
+cmUgY2FjaGUgY29uc2lzdGVuY3kgY2hlY2tzICovDQogCWlmIChmYXR0ci0+dmFsaWQgJiBORlNf
+QVRUUl9GQVRUUl9DSEFOR0UpIHsNCiAJCWlmIChpbm9kZS0+aV92ZXJzaW9uICE9IGZhdHRyLT5j
+aGFuZ2VfYXR0cikgew0KZGlmZiAtLWdpdCBhL2ZzL25mcy9wbmZzLmggYi9mcy9uZnMvcG5mcy5o
+DQppbmRleCBkNmJlNTI5OWE1NWEuLjE4MTI4M2M0ZWJjMyAxMDA2NDQNCi0tLSBhL2ZzL25mcy9w
+bmZzLmgNCisrKyBiL2ZzL25mcy9wbmZzLmgNCkBAIC02MjksNiArNjI5LDEzIEBAIHBuZnNfc3lu
+Y19pbm9kZShzdHJ1Y3QgaW5vZGUgKmlub2RlLCBib29sIGRhdGFzeW5jKQ0KIH0NCiANCiBzdGF0
+aWMgaW5saW5lIGJvb2wNCitwbmZzX2xheW91dGNvbW1pdF9vdXRzdGFuZGluZyhzdHJ1Y3QgaW5v
+ZGUgKmlub2RlKQ0KK3sNCisJcmV0dXJuIGZhbHNlOw0KK30NCisNCisNCitzdGF0aWMgaW5saW5l
+IGJvb2wNCiBwbmZzX3JvYyhzdHJ1Y3QgaW5vZGUgKmlubykNCiB7DQogCXJldHVybiBmYWxzZTsN
+Ci0tIA0KMi43LjQNCg0KDQrCoMKgDQrCoMKgDQoNCg0KDQoNClRyb25kIE15a2xlYnVzdA0KUHJp
+bmNpcGFsIFN5c3RlbSBBcmNoaXRlY3QNCjQzMDAgRWwgQ2FtaW5vIFJlYWwgfCBTdWl0ZSAxMDAN
+CkxvcyBBbHRvcywgQ0HCoMKgOTQwMjINClc6IDY1MC00MjItMzgwMA0KQzogODAxLTkyMS00NTgz
+wqANCnd3dy5wcmltYXJ5ZGF0YS5jb20NCg0KDQoNCg==
 
