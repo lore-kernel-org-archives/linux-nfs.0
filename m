@@ -1,99 +1,179 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from us-smtp-delivery-194.mimecast.com ([63.128.21.194]:60856 "EHLO
-	us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1750786AbcGRE7P (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 18 Jul 2016 00:59:15 -0400
-From: Trond Myklebust <trondmy@primarydata.com>
-To: "hch@infradead.org" <hch@infradead.org>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH v4 24/28] NFS: Getattr doesn't require data sync semantics
-Date: Mon, 18 Jul 2016 04:59:09 +0000
-Message-ID: <1468817945.5273.2.camel@primarydata.com>
-References: <1467844205-76852-16-git-send-email-trond.myklebust@primarydata.com>
-	 <1467844205-76852-17-git-send-email-trond.myklebust@primarydata.com>
-	 <1467844205-76852-18-git-send-email-trond.myklebust@primarydata.com>
-	 <1467844205-76852-19-git-send-email-trond.myklebust@primarydata.com>
-	 <1467844205-76852-20-git-send-email-trond.myklebust@primarydata.com>
-	 <1467844205-76852-21-git-send-email-trond.myklebust@primarydata.com>
-	 <1467844205-76852-22-git-send-email-trond.myklebust@primarydata.com>
-	 <1467844205-76852-23-git-send-email-trond.myklebust@primarydata.com>
-	 <1467844205-76852-24-git-send-email-trond.myklebust@primarydata.com>
-	 <1467844205-76852-25-git-send-email-trond.myklebust@primarydata.com>
-	 <20160718034847.GA1195@infradead.org>
-	 <A9C18137-87A3-4652-ADD6-E8E1C4BAE27B@primarydata.com>
-In-Reply-To: <A9C18137-87A3-4652-ADD6-E8E1C4BAE27B@primarydata.com>
+Received: from mx1.redhat.com ([209.132.183.28]:56773 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751013AbcGRLl3 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 18 Jul 2016 07:41:29 -0400
+From: "Benjamin Coddington" <bcodding@redhat.com>
+To: "Trond Myklebust" <trondmy@primarydata.com>
+Cc: "Alexey Dobriyan" <adobriyan@gmail.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "Schumaker Anna" <anna.schumaker@netapp.com>,
+        "Weston Andros Adamson" <dros@primarydata.com>
+Subject: Re: RHEL7 hang (and probably mainline) while copying big files
+ because of subrequests merging(?)
+Date: Mon, 18 Jul 2016 07:43:00 -0400
+Message-ID: <37A2D73A-A493-4E29-B590-E5B272390359@redhat.com>
+In-Reply-To: <E70C1354-A1F7-47F3-A810-344BA5BE51AB@primarydata.com>
+References: <CACVxJT8fYGqGbHz97xVR1fWtq3YEfQoN7180fEW-Q27UgD=3Ag@mail.gmail.com>
+ <E70C1354-A1F7-47F3-A810-344BA5BE51AB@primarydata.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=US-ASCII;
+	format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gTW9uLCAyMDE2LTA3LTE4IGF0IDAwOjMyIC0wNDAwLCBUcm9uZCBNeWtsZWJ1c3Qgd3JvdGU6
-DQo+IEhpIENocmlzdG9waCwNCj4gDQo+ID4gDQo+ID4gT24gSnVsIDE3LCAyMDE2LCBhdCAyMzo0
-OCwgQ2hyaXN0b3BoIEhlbGx3aWcgPGhjaEBpbmZyYWRlYWQub3JnPg0KPiA+IHdyb3RlOg0KPiA+
-IA0KPiA+IE9uIFdlZCwgSnVsIDA2LCAyMDE2IGF0IDA2OjMwOjAxUE0gLTA0MDAsIFRyb25kIE15
-a2xlYnVzdCB3cm90ZToNCj4gPiA+IA0KPiA+ID4gV2hlbiByZXRyaWV2aW5nIHN0YXQoKSBpbmZv
-cm1hdGlvbiwgTkZTIHVuZm9ydHVuYXRlbHkgZG9lcw0KPiA+ID4gcmVxdWlyZSB1cyB0bw0KPiA+
-ID4gc3luYyB3cml0ZXMgdG8gZGlzayBpbiBvcmRlciB0byBlbnN1cmUgdGhhdCBtdGltZSBhbmQg
-Y3RpbWUgYXJlDQo+ID4gPiB1cCB0bw0KPiA+ID4gZGF0ZS4gSG93ZXZlciB3ZSBzaG91bGRuJ3Qg
-aGF2ZSB0byBlbnN1cmUgdGhhdCB0aG9zZSB3cml0ZXMgYXJlDQo+ID4gPiBwZXJzaXN0ZWQuDQo+
-ID4gPiANCj4gPiA+IFJlbGF4aW5nIHRoYXQgcmVxdWlyZW1lbnQgZG9lcyBtZWFuIHRoYXQgd2Ug
-bWF5IHNlZSBhbg0KPiA+ID4gbXRpbWUvY3RpbWUgY2hhbmdlDQo+ID4gPiBpZiB0aGUgc2VydmVy
-IHJlYm9vdHMgYW5kIGZvcmNlcyB1cyB0byByZXBsYXkgYWxsIHdyaXRlcy4NCj4gPiA+IA0KPiA+
-ID4gVGhlIGV4Y2VwdGlvbiB0byB0aGlzIHJ1bGUgYXJlIHBORlMgY2xpZW50cyB0aGF0IGFyZSBy
-ZXF1aXJlZCB0bw0KPiA+ID4gc2VuZA0KPiA+ID4gbGF5b3V0Y29tbWl0LCBob3dldmVyIHRoYXQg
-aXMgZGVhbHQgd2l0aCBieSB0aGUgY2FsbCB0bw0KPiA+ID4gcG5mc19zeW5jX2lub2RlKCkNCj4g
-PiA+IGluIF9uZnNfcmV2YWxpZGF0ZV9pbm9kZSgpLg0KPiA+IA0KPiA+IFRoaXMgb25lIGJyZWFr
-cyB4ZnN0ZXN0cyBnZW5lcmljLzIwNyBvbiBibG9jay9zY3NpIGxheW91dCBmb3INCj4gPiBtZS7C
-oMKgVGhlDQo+ID4gcmVhc29uIGZvciB0aGF0IGlzIHRoYXQgd2UgbmVlZCBhIGxheW91dGNvbW1p
-dCBhZnRlciB3cml0aW5nIG91dA0KPiA+IGFsbA0KPiA+IGRhdGEgZm9yIHRoZSBmaWxlIGZvciB0
-aGUgZmlsZSBzaXplIHRvIGJlIHVwZGF0ZWQgb24gdGhlIHNlcnZlci4NCj4gPiANCj4gPiBCZWxv
-dyBpcyBteSBhdHRlbXB0IHRvIGZpeCB0aGlzIGJ5IHJlLWFkZGluZyBwbmZzX3N5bmNfaW5vZGUg
-dG8NCj4gPiBuZnNfZ2V0YXR0ci7CoMKgVGhlIGNhbGwgaW4gX25mc19yZXZhbGlkYXRlX2lub2Rl
-IGlzbid0IGVub3VnaCBhcyBpdA0KPiA+IGRvZXNuJ3QgZ2V0IGNhbGxlZCBpbiBtb3N0IGNhc2Vz
-IHdlIGNhcmUgYWJvdXQuDQo+ID4gDQo+IA0KPiBJ4oCZbSBub3QgdW5kZXJzdGFuZGluZyB0aGlz
-IGFyZ3VtZW50LiBXaHkgZG8gd2UgY2FyZSBpZiB0aGUgZmlsZSBzaXplDQo+IGlzIHVwIHRvIGRh
-dGUgb24gdGhlIHNlcnZlciBpZiB3ZeKAmXJlIG5vdCBzZW5kaW5nIGFuIGFjdHVhbCBHRVRBVFRS
-IG9uDQo+IHRoZSB3aXJlIHRvIHJldHJpZXZlIHRoZSBmaWxlIHNpemU/DQo+IA0KPiBDaGVlcnMN
-Cj4gwqAgVHJvbmQNCg0KQWN0dWFsbHkuLi4gVGhlIHByb2JsZW0gbWlnaHQgYmUgdGhhdCBhIHBy
-ZXZpb3VzIGF0dHJpYnV0ZSB1cGRhdGUgaXMNCm1hcmtpbmcgdGhlIGF0dHJpYnV0ZSBjYWNoZSBh
-cyBiZWluZyByZXZhbGlkYXRlZC4gRG9lcyB0aGUgZm9sbG93aW5nDQpwYXRjaCBoZWxwPw0KDQpD
-aGVlcnMNCsKgIFRyb25kDQoNCjg8LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
-LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0NCkZyb20gMTBiN2U5YWQ0NDg4MWZjZDQ2YWMyNGViNzM3
-NDM3N2M2ZTg5NjJlZCBNb24gU2VwIDE3IDAwOjAwOjAwIDIwMDENCkZyb206IFRyb25kIE15a2xl
-YnVzdCA8dHJvbmQubXlrbGVidXN0QHByaW1hcnlkYXRhLmNvbT4NCkRhdGU6IE1vbiwgMTggSnVs
-IDIwMTYgMDA6NTE6MDEgLTA0MDANClN1YmplY3Q6IFtQQVRDSF0gcE5GUzogRG9uJ3QgbWFyayB0
-aGUgaW5vZGUgYXMgcmV2YWxpZGF0ZWQgaWYgYSBMQVlPVVRDT01NSVQNCiBpcyBvdXRzdGFuZGlu
-Zw0KDQpXZSBrbm93IHRoYXQgdGhlIGF0dHJpYnV0ZXMgd2lsbCBuZWVkIHVwZGF0aW5nIGlmIHRo
-ZXJlIGlzIHN0aWxsIGENCkxBWU9VVENPTU1JVCBvdXRzdGFuZGluZy4NCg0KUmVwb3J0ZWQtYnk6
-IENocmlzdG9waCBIZWxsd2lnIDxoY2hAbHN0LmRlPg0KU2lnbmVkLW9mZi1ieTogVHJvbmQgTXlr
-bGVidXN0IDx0cm9uZC5teWtsZWJ1c3RAcHJpbWFyeWRhdGEuY29tPg0KLS0tDQogZnMvbmZzL2lu
-b2RlLmMgfCA1ICsrKystDQogZnMvbmZzL3BuZnMuaCAgfCA3ICsrKysrKysNCiAyIGZpbGVzIGNo
-YW5nZWQsIDExIGluc2VydGlvbnMoKyksIDEgZGVsZXRpb24oLSkNCg0KZGlmZiAtLWdpdCBhL2Zz
-L25mcy9pbm9kZS5jIGIvZnMvbmZzL2lub2RlLmMNCmluZGV4IDM1ZmRhMDhkYzRmNi4uOWRmNDU4
-MzJlMjhiIDEwMDY0NA0KLS0tIGEvZnMvbmZzL2lub2RlLmMNCisrKyBiL2ZzL25mcy9pbm9kZS5j
-DQpAQCAtMTY2NCw3ICsxNjY0LDcgQEAgc3RhdGljIGludCBuZnNfdXBkYXRlX2lub2RlKHN0cnVj
-dCBpbm9kZSAqaW5vZGUsIHN0cnVjdCBuZnNfZmF0dHIgKmZhdHRyKQ0KIAl1bnNpZ25lZCBsb25n
-IG5vdyA9IGppZmZpZXM7DQogCXVuc2lnbmVkIGxvbmcgc2F2ZV9jYWNoZV92YWxpZGl0eTsNCiAJ
-Ym9vbCBoYXZlX3dyaXRlcnMgPSBuZnNfZmlsZV9oYXNfYnVmZmVyZWRfd3JpdGVycyhuZnNpKTsN
-Ci0JYm9vbCBjYWNoZV9yZXZhbGlkYXRlZCA9IHRydWU7DQorCWJvb2wgY2FjaGVfcmV2YWxpZGF0
-ZWQ7DQogDQogCWRmcHJpbnRrKFZGUywgIk5GUzogJXMoJXMvJWx1IGZoX2NyYz0weCUwOHggY3Q9
-JWQgaW5mbz0weCV4KVxuIiwNCiAJCQlfX2Z1bmNfXywgaW5vZGUtPmlfc2ItPnNfaWQsIGlub2Rl
-LT5pX2lubywNCkBAIC0xNzEzLDYgKzE3MTMsOSBAQCBzdGF0aWMgaW50IG5mc191cGRhdGVfaW5v
-ZGUoc3RydWN0IGlub2RlICppbm9kZSwgc3RydWN0IG5mc19mYXR0ciAqZmF0dHIpDQogCS8qIERv
-IGF0b21pYyB3ZWFrIGNhY2hlIGNvbnNpc3RlbmN5IHVwZGF0ZXMgKi8NCiAJaW52YWxpZCB8PSBu
-ZnNfd2NjX3VwZGF0ZV9pbm9kZShpbm9kZSwgZmF0dHIpOw0KIA0KKw0KKwljYWNoZV9yZXZhbGlk
-YXRlZCA9ICFwbmZzX2xheW91dGNvbW1pdF9vdXRzdGFuZGluZyhpbm9kZSk7DQorDQogCS8qIE1v
-cmUgY2FjaGUgY29uc2lzdGVuY3kgY2hlY2tzICovDQogCWlmIChmYXR0ci0+dmFsaWQgJiBORlNf
-QVRUUl9GQVRUUl9DSEFOR0UpIHsNCiAJCWlmIChpbm9kZS0+aV92ZXJzaW9uICE9IGZhdHRyLT5j
-aGFuZ2VfYXR0cikgew0KZGlmZiAtLWdpdCBhL2ZzL25mcy9wbmZzLmggYi9mcy9uZnMvcG5mcy5o
-DQppbmRleCBkNmJlNTI5OWE1NWEuLjE4MTI4M2M0ZWJjMyAxMDA2NDQNCi0tLSBhL2ZzL25mcy9w
-bmZzLmgNCisrKyBiL2ZzL25mcy9wbmZzLmgNCkBAIC02MjksNiArNjI5LDEzIEBAIHBuZnNfc3lu
-Y19pbm9kZShzdHJ1Y3QgaW5vZGUgKmlub2RlLCBib29sIGRhdGFzeW5jKQ0KIH0NCiANCiBzdGF0
-aWMgaW5saW5lIGJvb2wNCitwbmZzX2xheW91dGNvbW1pdF9vdXRzdGFuZGluZyhzdHJ1Y3QgaW5v
-ZGUgKmlub2RlKQ0KK3sNCisJcmV0dXJuIGZhbHNlOw0KK30NCisNCisNCitzdGF0aWMgaW5saW5l
-IGJvb2wNCiBwbmZzX3JvYyhzdHJ1Y3QgaW5vZGUgKmlubykNCiB7DQogCXJldHVybiBmYWxzZTsN
-Ci0tIA0KMi43LjQNCg0KDQrCoMKgDQrCoMKgDQoNCg0KDQoNClRyb25kIE15a2xlYnVzdA0KUHJp
-bmNpcGFsIFN5c3RlbSBBcmNoaXRlY3QNCjQzMDAgRWwgQ2FtaW5vIFJlYWwgfCBTdWl0ZSAxMDAN
-CkxvcyBBbHRvcywgQ0HCoMKgOTQwMjINClc6IDY1MC00MjItMzgwMA0KQzogODAxLTkyMS00NTgz
-wqANCnd3dy5wcmltYXJ5ZGF0YS5jb20NCg0KDQoNCg==
+On 11 Jul 2016, at 9:28, Trond Myklebust wrote:
 
+>> On Jul 11, 2016, at 08:59, Alexey Dobriyan <adobriyan@gmail.com> 
+>> wrote:
+>>
+>> We have a customer who was able to reliably reproduce the following 
+>> hang:
+>> (hang itself is rare but there are many machines, so it is not rare)
+>>
+>> INFO: task ascp:66692 blocked for more than 120 seconds.
+>>
+>>> bt 66692
+>> PID: 66692  TASK: ffff883f124ba280  CPU: 5   COMMAND: "ascp"
+>>
+>> __schedule
+>> schedule
+>> schedule_timeout
+>> io_schedule_timeout
+>> io_schedule
+>> nfs_wait_bit_uninterruptible
+>> __wait_on_bit
+>> out_of_line_wait_on_bit
+>> nfs_wait_on_request
+>> nfs_try_to_update_request
+>> nfs_setup_write_request
+>> nfs_writepage_setup
+>> nfs_updatepage
+>> nfs_write_end
+>> generic_file_buffered_write
+>> __generic_file_aio_write
+>> generic_file_aio_write
+>> nfs_file_write
+>> do_sync_write
+>> vfs_write
+>> sys_write
+>> system_call_fastpath
+>>
+>> ascp is Aspera secure copy program. It is multithreaded.
+>> When the hang happens, 5 threads are in S-state and 1 on D-state.
+>>
+>> The workload is copying ~100+ GB files over NFS3 with 10GiB ethernet
+>> with the following mount options:
+>> rw,relatime,vers=3,rsize=131072,wsize=524288,namlen=255,hard,proto=tcp,timeo=600,retrans=2,sec=sys,mountaddr=X.X.X.X,mountvers=3,mountport=300,mountproto=udp,local_lock=none,addr=X.X.X.X
+>>
+>> We got coredump (2 actually) and observations are below:
+>>
+>> 1) one of the inode's pagecache pages has page->private available:
+>> struct nfs_page {
+>>  wb_list = {
+>>    next = 0xffff885623ac4f80,
+>>    prev = 0xffff885623ac4f80
+>>  },
+>>  wb_page = 0xffffea01218c2600,
+>>  wb_context = 0xffff887f2265de00,
+>>  wb_lock_context = 0xffff887f2265de00,
+>>  wb_index = 2649328,
+>>  wb_offset = 0,
+>>  wb_pgbase = 0,
+>>  wb_bytes = 0,
+>>  wb_kref = {
+>>    refcount = {
+>>      counter = 3
+>>    }
+>>  },
+>>  wb_flags = 19,
+>>  wb_verf = {
+>>    data = "\000\000\000\000\000\000\000"
+>>  },
+>>  wb_this_page = 0xffff885623ac4f80,
+>>  wb_head = 0xffff885623ac4f80
+>> }
+>>
+>> ->wb_list is always empty,
+>> ->wb_bytes is always 0 (!).
+>> ->wb_kref is always 3.
+>> ->wb_flags = PG_BUSY|PG_MAPPED|PG_INODE_REF,
+>>
+>> page->flags = 0x2869 =
+>> PG_writeback|PG_private|PG_active|PF_lru|PG_uptodate|PG_locked
+>>
+>> The zero-length request is created at nfs_create_request():
+>> WARN_ON_ONCE(req->wb_bytes == 0)
+>> nfs_create_request
+>> nfs_setup_write_request
+>> nfs_updatepage
+>> nfs_write_end
+>> generic_perform_write
+>> generic_file_buffered_write
+>> __generic_file_aio_write
+>> generic_file_aio_write
+>> nfs_file_write
+>> do_sync_write
+>> vfs_write
+>> SyS_write
+>>
+>> with count=0 coming from generic_perform_write (where else?).
+>>
+>> Customer is saying that RHEL6 was totally OK, and there are several 
+>> reports
+>> of other people hitting same bug with RHEL7:
+>> https://gist.github.com/Millnert/ecc10d8cc79c81b55d7f
+>> https://bugs.centos.org/view.php?id=9284
+>>
+>
+> Why is this being reported here and not to Red Hat? Is the bug 
+> reproducible on the upstream kernel?
+
+There's a RHEL BZ open for it:
+https://bugzilla.redhat.com/show_bug.cgi?id=132463
+
+Upstream has the problem, too.  The pgio layer doesn't expect 
+zero-length
+requests, so an nfs_page can get locked but never added to a pageio
+descriptor.
+
+To create such a problem, writeback has to happen just after 
+nfs_write_end()
+has created a nfs_page with wb_bytes = 0.  This can happen if
+iov_iter_copy_from_user_atomic() fails to copy pages in
+generic_perform_write().  Normally, we'd just go around the loop and try 
+the
+copy again, but if writeback sneaks in then the request gets locked but
+never added to a pgio descriptor due to the way we use conditions on 
+zero
+bytes to move requests around.
+
+I see two potential ways to fix:
+     - Just skip the creation of the request if the length is zero.  
+We're
+       bound to just come around and created it again.
+
+     - Allow zero-length requests, but fix up __nfs_pageio_add_request,
+       nfs_generic_pg_test, and others that use conditions on zero.
+
+I think the first option to handle the case early is the simpler fix, 
+and
+best approach, since: what do we do with a zero-length request?  Not
+creating them helps us be conservative in what we send out to the
+nfs_pageio_ops.
+
+I don't understand what conditions can cause 
+iov_iter_copy_from_user_atomic
+to fail since pagefaults are disabled.  Can anyone enlighten me?
+
+To reproduce this upstream, I've simulated 
+iov_iter_copy_from_user_atomic()
+returning zero once, then inserted a small delay after nfs_write_end to
+allow me to sneak in a sync.
+
+Any advice on how to proceed?  I'll send a patch to fix the first way
+otherwise.  If anyone has trouble with that RHEL BZ, send me your 
+bugzilla
+email and I'll give you access.
+
+Ben
