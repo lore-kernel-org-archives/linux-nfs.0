@@ -1,118 +1,56 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:17565 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752477AbcGSOvO (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 19 Jul 2016 10:51:14 -0400
-From: Chuck Lever <chuck.lever@oracle.com>
-Content-Type: text/plain; charset=us-ascii
-Subject: Problem re-establishing GSS contexts after a server reboot
-Date: Tue, 19 Jul 2016 16:51:08 +0200
-Message-Id: <59704D2B-9FBD-41BB-ADA8-4CF4AEF4BB9D@oracle.com>
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-To: "Adamson, Andy" <William.Adamson@netapp.com>
-Mime-Version: 1.0 (Mac OS X Mail 9.3 \(3124\))
+Received: from mx143.netapp.com ([216.240.21.24]:47370 "EHLO mx143.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752534AbcGSPVN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 19 Jul 2016 11:21:13 -0400
+From: Anna Schumaker <Anna.Schumaker@netapp.com>
+Subject: Re: [PATCH] Fix NULL pointer dereference in bl_free_device().
+To: Artem Savkov <asavkov@redhat.com>, <linux-nfs@vger.kernel.org>
+References: <1468927851-2186-1-git-send-email-asavkov@redhat.com>
+CC: <linux-kernel@vger.kernel.org>, <trond.myklebust@primarydata.com>,
+        <hch@lst.de>
+Message-ID: <6cf8c0f8-37d9-cf60-8607-20b933d248ae@Netapp.com>
+Date: Tue, 19 Jul 2016 09:57:39 -0400
+MIME-Version: 1.0
+In-Reply-To: <1468927851-2186-1-git-send-email-asavkov@redhat.com>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Andy-
+Hi Artem,
 
-Thanks for taking the time to discuss this with me. I've
-copied linux-nfs to make this e-mail also an upstream bug
-report.
+On 07/19/2016 07:30 AM, Artem Savkov wrote:
+> When bl_parse_deviceid() fails in bl_alloc_deviceid_node() on
+> blkdev_get_by_*() step we get an pnfs_block_dev struct that is
+> uninitialized except for bdev field which is set to whatever error
+> blkdev_get_by_*() returns.  bl_free_device() then tries to call
+> blkdev_put() if bdev is not 0 resulting in a wrong pointer dereference.
+> 
+> Fixing this by making sure bdev is not an error code in bl_free_device().
+> 
+> Signed-off-by: Artem Savkov <asavkov@redhat.com>
+> ---
+>  fs/nfs/blocklayout/dev.c | 2 +-
+>  1 file changed, 1 insertion(+), 1 deletion(-)
+> 
+> diff --git a/fs/nfs/blocklayout/dev.c b/fs/nfs/blocklayout/dev.c
+> index 118252f..7db3af0 100644
+> --- a/fs/nfs/blocklayout/dev.c
+> +++ b/fs/nfs/blocklayout/dev.c
+> @@ -33,7 +33,7 @@ bl_free_device(struct pnfs_block_dev *dev)
+>  				pr_err("failed to unregister PR key.\n");
+>  		}
+>  
+> -		if (dev->bdev)
+> +		if (dev->bdev && !IS_ERR(dev->bdev))
 
-As we saw in the network capture, recovery of GSS contexts
-after a server reboot fails in certain cases with NFSv4.0
-and NFSv4.1 mount points.
+This looks pretty straightforward, but can you use IS_ERR_OR_NULL() instead?  It accomplishes the same check with slightly cleaner code :)
 
-The reproducer is a simple program that generates one NFS
-WRITE periodically, run while the server repeatedly reboots
-(or one cluster head fails over to the other and back). The
-goal of the reproducer is to identify problems with state
-recovery without a lot of other I/O going on to clutter up
-the network capture.
+Thanks,
+Anna
 
-In the failing case, sec=krb5 is specified on the mount
-point, and the reproducer is run as root. We've found this
-combination fails with both NFSv4.0 and NFSv4.1.
-
-At mount time, the client establishes a GSS context for
-lease management operations, which is bound to the client's
-NFS service principal and uses GSS service "integrity."
-Call this GSS context 1.
-
-When the reproducer starts, a second GSS context is
-established for NFS operations associated with that user.
-Since the reproducer is running as root, this context is
-also bound to the client's NFS service principal, but it
-uses the GSS service "none" (reflecting the explicit
-request for "sec=krb5"). Call this GSS context 2.
-
-After the server reboots, the client re-establishes a TCP
-connection with the server, and performs a RENEW
-operation using context 1. Thanks to the server reboot,
-contexts 1 and 2 are now stale. The server thus rejects
-the RPC with RPCSEC_GSS_CTXPROBLEM.
-
-The client performs a GSS_INIT_SEC_CONTEXT via an NFSv4
-NULL operation. Call this GSS context 3.
-
-Interestingly, the client does not resend the RENEW
-operation at this point (if it did, we wouldn't see this
-problem at all).
-
-The client then attempts to resume the reproducer workload.
-It sends an NFSv4 WRITE operation, using the first available
-GSS context in UID 0's credential cache, which is context 3,
-already bound to the client's NFS service principal. But GSS
-service "none" is used for this operation, since it is on
-behalf of the mount where sec=krb5 was specified.
-
-The RPC is accepted, but the server reports
-NFS4ERR_STALE_STATEID, since it has recently rebooted.
-
-The client responds by attempting state recovery. The
-first operation it tries is another RENEW. Since this is
-a lease management operation, the client looks in UID 0's
-credential cache again and finds the recently established
-context 3. It tries the RENEW operation using GSS context
-3 with GSS service "integrity."
-
-The server rejects the RENEW RPC with AUTH_FAILED, and
-the client reports that "check lease failed" and
-terminates state recovery.
-
-The client re-drives the WRITE operation with the stale
-stateid with predictable results. The client again tries
-to recover state by sending a RENEW, and still uses the
-same GSS context 3 with service "integrity" and gets the
-same result. A (perhaps slow-motion) STALE_STATEID loop
-ensues, and the client mount point is deadlocked.
-
-Your analysis was that because the reproducer is run as
-root, both the reproducer's I/O operations, and lease
-management operations, attempt to use the same GSS context
-in UID 0's credential cache, but each uses different GSS
-services. The key issue seems to be why, when the mount
-is first established, the client is correctly able to
-establish two separate GSS contexts for UID 0; but after
-a server reboot, the client attempts to use the same GSS
-context with two different GSS services.
-
-One solution is to introduce a quick check before a
-context is used to see if the GSS service bound to it
-matches the GSS service that the caller intends to use.
-I'm not sure how that can be done without exposing a window
-where another caller requests the use of a GSS context and
-grabs the fresh one, before it can be used by our first
-caller and bound to its desired GSS service.
-
-Other solutions might be to somehow isolate the credential
-cache used for lease management operations, or to split
-credential caches by GSS service.
-
-
---
-Chuck Lever
-
-
+>  			blkdev_put(dev->bdev, FMODE_READ | FMODE_WRITE);
+>  	}
+>  }
+> 
 
