@@ -1,47 +1,191 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:37487 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753873AbcGSPjz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 19 Jul 2016 11:39:55 -0400
-From: Artem Savkov <asavkov@redhat.com>
-To: Anna Schumaker <Anna.Schumaker@netapp.com>
-Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
-        trond.myklebust@primarydata.com, hch@lst.de,
-        Artem Savkov <asavkov@redhat.com>
-Subject: [PATCH v2] Fix NULL pointer dereference in bl_free_device().
-Date: Tue, 19 Jul 2016 17:39:04 +0200
-Message-Id: <1468942744-10646-1-git-send-email-asavkov@redhat.com>
-In-Reply-To: <f195fe6f-8e2c-b200-2b00-9cd84f29bfc5@Netapp.com>
-References: <f195fe6f-8e2c-b200-2b00-9cd84f29bfc5@Netapp.com>
+Received: from mail-io0-f194.google.com ([209.85.223.194]:33856 "EHLO
+	mail-io0-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751492AbcGSTUb (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 19 Jul 2016 15:20:31 -0400
+Received: by mail-io0-f194.google.com with SMTP id g86so2050498ioj.1
+        for <linux-nfs@vger.kernel.org>; Tue, 19 Jul 2016 12:20:17 -0700 (PDT)
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: Olga Kornievskaia <kolga@netapp.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH] NFSv4: Allow retry of operations that used a returned delegation stateid
+Date: Tue, 19 Jul 2016 15:19:40 -0400
+Message-Id: <1468955980-8675-1-git-send-email-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-When bl_parse_deviceid() fails in bl_alloc_deviceid_node() on
-blkdev_get_by_*() step we get an pnfs_block_dev struct that is
-uninitialized except for bdev field which is set to whatever error
-blkdev_get_by_*() returns.  bl_free_device() then tries to call
-blkdev_put() if bdev is not 0 resulting in a wrong pointer dereference.
+Fix up nfs4_do_handle_exception() so that it can check if the operation
+that received the NFS4ERR_BAD_STATEID was using a defunct delegation.
+Apply that to the case of SETATTR, which will currently return EIO
+in some cases where this happens.
 
-Fixing this by making sure bdev is not an error code in bl_free_device().
-
-Signed-off-by: Artem Savkov <asavkov@redhat.com>
+Reported-by: Olga Kornievskaia <kolga@netapp.com>
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
 ---
- fs/nfs/blocklayout/dev.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ fs/nfs/nfs4_fs.h  |  1 +
+ fs/nfs/nfs4proc.c | 79 ++++++++++++++++++++++++++++++++-----------------------
+ 2 files changed, 47 insertions(+), 33 deletions(-)
 
-diff --git a/fs/nfs/blocklayout/dev.c b/fs/nfs/blocklayout/dev.c
-index 118252f..57cb800 100644
---- a/fs/nfs/blocklayout/dev.c
-+++ b/fs/nfs/blocklayout/dev.c
-@@ -33,7 +33,7 @@ bl_free_device(struct pnfs_block_dev *dev)
- 				pr_err("failed to unregister PR key.\n");
- 		}
+diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
+index 768456fa1b17..4be567a54958 100644
+--- a/fs/nfs/nfs4_fs.h
++++ b/fs/nfs/nfs4_fs.h
+@@ -185,6 +185,7 @@ struct nfs4_state {
+ struct nfs4_exception {
+ 	struct nfs4_state *state;
+ 	struct inode *inode;
++	nfs4_stateid *stateid;
+ 	long timeout;
+ 	unsigned char delay : 1,
+ 		      recovering : 1,
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 6191b7e46913..519368b98762 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -363,6 +363,7 @@ static int nfs4_do_handle_exception(struct nfs_server *server,
+ {
+ 	struct nfs_client *clp = server->nfs_client;
+ 	struct nfs4_state *state = exception->state;
++	const nfs4_stateid *stateid = exception->stateid;
+ 	struct inode *inode = exception->inode;
+ 	int ret = errorcode;
  
--		if (dev->bdev)
-+		if (!IS_ERR_OR_NULL(dev->bdev))
- 			blkdev_put(dev->bdev, FMODE_READ | FMODE_WRITE);
- 	}
+@@ -376,9 +377,18 @@ static int nfs4_do_handle_exception(struct nfs_server *server,
+ 		case -NFS4ERR_DELEG_REVOKED:
+ 		case -NFS4ERR_ADMIN_REVOKED:
+ 		case -NFS4ERR_BAD_STATEID:
+-			if (inode && nfs_async_inode_return_delegation(inode,
+-						NULL) == 0)
+-				goto wait_on_recovery;
++			if (inode) {
++				int err;
++
++				err = nfs_async_inode_return_delegation(inode,
++						stateid);
++				if (err == 0)
++					goto wait_on_recovery;
++				if (stateid != NULL && stateid->type == NFS4_DELEGATION_STATEID_TYPE) {
++					exception->retry = 1;
++					break;
++				}
++			}
+ 			if (state == NULL)
+ 				break;
+ 			ret = nfs4_schedule_stateid_recovery(server, state);
+@@ -2669,28 +2679,17 @@ static struct nfs4_state *nfs4_do_open(struct inode *dir,
+ 	return res;
  }
+ 
+-static int _nfs4_do_setattr(struct inode *inode, struct rpc_cred *cred,
+-			    struct nfs_fattr *fattr, struct iattr *sattr,
+-			    struct nfs4_state *state, struct nfs4_label *ilabel,
+-			    struct nfs4_label *olabel)
++static int _nfs4_do_setattr(struct inode *inode,
++			    struct nfs_setattrargs *arg,
++			    struct nfs_setattrres *res,
++			    struct rpc_cred *cred,
++			    struct nfs4_state *state)
+ {
+ 	struct nfs_server *server = NFS_SERVER(inode);
+-        struct nfs_setattrargs  arg = {
+-                .fh             = NFS_FH(inode),
+-                .iap            = sattr,
+-		.server		= server,
+-		.bitmask = server->attr_bitmask,
+-		.label		= ilabel,
+-        };
+-        struct nfs_setattrres  res = {
+-		.fattr		= fattr,
+-		.label		= olabel,
+-		.server		= server,
+-        };
+         struct rpc_message msg = {
+ 		.rpc_proc	= &nfs4_procedures[NFSPROC4_CLNT_SETATTR],
+-		.rpc_argp	= &arg,
+-		.rpc_resp	= &res,
++		.rpc_argp	= arg,
++		.rpc_resp	= res,
+ 		.rpc_cred	= cred,
+         };
+ 	struct rpc_cred *delegation_cred = NULL;
+@@ -2699,17 +2698,13 @@ static int _nfs4_do_setattr(struct inode *inode, struct rpc_cred *cred,
+ 	bool truncate;
+ 	int status;
+ 
+-	arg.bitmask = nfs4_bitmask(server, ilabel);
+-	if (ilabel)
+-		arg.bitmask = nfs4_bitmask(server, olabel);
+-
+-	nfs_fattr_init(fattr);
++	nfs_fattr_init(res->fattr);
+ 
+ 	/* Servers should only apply open mode checks for file size changes */
+-	truncate = (sattr->ia_valid & ATTR_SIZE) ? true : false;
++	truncate = (arg->iap->ia_valid & ATTR_SIZE) ? true : false;
+ 	fmode = truncate ? FMODE_WRITE : FMODE_READ;
+ 
+-	if (nfs4_copy_delegation_stateid(inode, fmode, &arg.stateid, &delegation_cred)) {
++	if (nfs4_copy_delegation_stateid(inode, fmode, &arg->stateid, &delegation_cred)) {
+ 		/* Use that stateid */
+ 	} else if (truncate && state != NULL) {
+ 		struct nfs_lockowner lockowner = {
+@@ -2719,19 +2714,19 @@ static int _nfs4_do_setattr(struct inode *inode, struct rpc_cred *cred,
+ 		if (!nfs4_valid_open_stateid(state))
+ 			return -EBADF;
+ 		if (nfs4_select_rw_stateid(state, FMODE_WRITE, &lockowner,
+-				&arg.stateid, &delegation_cred) == -EIO)
++				&arg->stateid, &delegation_cred) == -EIO)
+ 			return -EBADF;
+ 	} else
+-		nfs4_stateid_copy(&arg.stateid, &zero_stateid);
++		nfs4_stateid_copy(&arg->stateid, &zero_stateid);
+ 	if (delegation_cred)
+ 		msg.rpc_cred = delegation_cred;
+ 
+-	status = nfs4_call_sync(server->client, server, &msg, &arg.seq_args, &res.seq_res, 1);
++	status = nfs4_call_sync(server->client, server, &msg, &arg->seq_args, &res->seq_res, 1);
+ 
+ 	put_rpccred(delegation_cred);
+ 	if (status == 0 && state != NULL)
+ 		renew_lease(server, timestamp);
+-	trace_nfs4_setattr(inode, &arg.stateid, status);
++	trace_nfs4_setattr(inode, &arg->stateid, status);
+ 	return status;
+ }
+ 
+@@ -2741,13 +2736,31 @@ static int nfs4_do_setattr(struct inode *inode, struct rpc_cred *cred,
+ 			   struct nfs4_label *olabel)
+ {
+ 	struct nfs_server *server = NFS_SERVER(inode);
++        struct nfs_setattrargs  arg = {
++                .fh             = NFS_FH(inode),
++                .iap            = sattr,
++		.server		= server,
++		.bitmask = server->attr_bitmask,
++		.label		= ilabel,
++        };
++        struct nfs_setattrres  res = {
++		.fattr		= fattr,
++		.label		= olabel,
++		.server		= server,
++        };
+ 	struct nfs4_exception exception = {
+ 		.state = state,
+ 		.inode = inode,
++		.stateid = &arg.stateid,
+ 	};
+ 	int err;
++
++	arg.bitmask = nfs4_bitmask(server, ilabel);
++	if (ilabel)
++		arg.bitmask = nfs4_bitmask(server, olabel);
++
+ 	do {
+-		err = _nfs4_do_setattr(inode, cred, fattr, sattr, state, ilabel, olabel);
++		err = _nfs4_do_setattr(inode, &arg, &res, cred, state);
+ 		switch (err) {
+ 		case -NFS4ERR_OPENMODE:
+ 			if (!(sattr->ia_valid & ATTR_SIZE)) {
 -- 
-2.5.5
+2.7.4
 
