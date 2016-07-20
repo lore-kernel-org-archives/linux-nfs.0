@@ -1,111 +1,68 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:45475 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:48763 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754266AbcGTPBb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 20 Jul 2016 11:01:31 -0400
-From: "Benjamin Coddington" <bcodding@redhat.com>
-To: "Trond Myklebust" <trondmy@primarydata.com>
-Cc: "hch@infradead.org" <hch@infradead.org>,
-        "List Linux" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH v4 24/28] Getattr doesn't require data sync semantics
-Date: Wed, 20 Jul 2016 11:03:06 -0400
-Message-ID: <AB904138-E761-4F8F-AF97-0E8A4E067DB1@redhat.com>
-In-Reply-To: <C44AB0DD-8FA3-42F2-B7DE-C694559A68EF@primarydata.com>
-References: <1467844205-76852-19-git-send-email-trond.myklebust@primarydata.com>
- <1467844205-76852-20-git-send-email-trond.myklebust@primarydata.com>
- <1467844205-76852-21-git-send-email-trond.myklebust@primarydata.com>
- <1467844205-76852-22-git-send-email-trond.myklebust@primarydata.com>
- <1467844205-76852-23-git-send-email-trond.myklebust@primarydata.com>
- <1467844205-76852-24-git-send-email-trond.myklebust@primarydata.com>
- <1467844205-76852-25-git-send-email-trond.myklebust@primarydata.com>
- <20160718034847.GA1195@infradead.org>
- <A9C18137-87A3-4652-ADD6-E8E1C4BAE27B@primarydata.com>
- <1468817945.5273.2.camel@primarydata.com>
- <20160719035843.GA24437@infradead.org>
- <F879054A-2116-40D5-90C9-473E71977E8A@redhat.com>
- <C44AB0DD-8FA3-42F2-B7DE-C694559A68EF@primarydata.com>
+	id S1753212AbcGTPNi (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 20 Jul 2016 11:13:38 -0400
+Subject: Re: [PATCH] Gssd: Avoid compiling warning and simplify codes
+To: Kinglong Mee <kinglongmee@gmail.com>
+References: <839f5fbe-0dea-ea36-d38f-15d0a997edbb@gmail.com>
+Cc: linux-nfs@vger.kernel.org
+From: Steve Dickson <SteveD@redhat.com>
+Message-ID: <fea18044-645d-b3ff-1cbe-2f41ec374374@RedHat.com>
+Date: Wed, 20 Jul 2016 11:13:36 -0400
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8; format=flowed
+In-Reply-To: <839f5fbe-0dea-ea36-d38f-15d0a997edbb@gmail.com>
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 19 Jul 2016, at 16:06, Trond Myklebust wrote:
 
->> On Jul 19, 2016, at 16:00, Benjamin Coddington <bcodding@redhat.com> 
->> wrote:
->>
->> On 18 Jul 2016, at 23:58, hch@infradead.org wrote:
->>
->>> On Mon, Jul 18, 2016 at 04:59:09AM +0000, Trond Myklebust wrote:
->>>> Actually... The problem might be that a previous attribute update 
->>>> is
->>>> marking the attribute cache as being revalidated. Does the 
->>>> following
->>>> patch help?
->>>
->>> It doesn't.  Also with your most recent linux-next branch the test
->>> now cause the systems to OOM with or without your patch (with mine 
->>> it's
->>> still fine).  I tested with your writeback branch from about two or
->>> three days ago before, and with that + your patch it also 'just 
->>> fails'
->>> and doesn't OOM.  Looks like whatever causes the bug also creates
->>> a temporarily memory leak when combined with recent changes from 
->>> your
->>> tree, most likely something from the pnfs branch.
->>
->> I couldn't find the memory leak using kmemleak, but it OOMs pretty 
->> quick.  If I
->> insert an mdelay(200) just after the lookup_again: marker in
->> pnfs_update_layout() it doesn't OOM, but it seems stuck forever in a 
->> loop on
->> that marker:
->>
->> [ 1230.635586] pnfs_find_alloc_layout Begin ino=ffff88003ef986f8 
->> layout=ffff8800392bca58
->> [ 1230.636729] pnfs_find_lseg:Begin
->> [ 1230.637538] pnfs_find_lseg:Return lseg           (null) ref 0
->> [ 1230.638582] --> send_layoutget
->> [ 1230.639499] --> nfs4_proc_layoutget
->> [ 1230.640525] --> nfs4_layoutget_prepare
->> [ 1230.641479] --> nfs41_setup_sequence
->> [ 1230.641581] <-- nfs4_proc_layoutget status=-512
->> [ 1230.643288] --> nfs4_alloc_slot used_slots=0000 
->> highest_used=4294967295 max_slots=31
->> [ 1230.644348] <-- nfs4_alloc_slot used_slots=0001 highest_used=0 
->> slotid=0
->> [ 1230.645373] <-- nfs41_setup_sequence slotid=0 seqid=4376
->> [ 1230.646356] <-- nfs4_layoutget_prepare
->> [ 1230.647357] encode_sequence: sessionid=1468956665:2:3:0 seqid=4376 
->> slotid=0 max_slotid=0 cache_this=0
->> [ 1230.648522] encode_layoutget: 1st type:0x5 iomode:2 off:122880 
->> len:4096 mc:4096
->> [ 1230.650182] decode_layoutget roff:122880 rlen:4096 riomode:2, 
->> lo_type:0x5, lo.len:48
->> [ 1230.651331] --> nfs4_layoutget_done
->> [ 1230.652233] --> nfs4_alloc_slot used_slots=0001 highest_used=0 
->> max_slots=31
->> [ 1230.653409] <-- nfs4_alloc_slot used_slots=0003 highest_used=1 
->> slotid=1
->> [ 1230.654547] nfs4_free_slot: slotid 1 highest_used_slotid 0
->> [ 1230.655606] nfs41_sequence_done: Error 0 free the slot
->> [ 1230.656635] nfs4_free_slot: slotid 0 highest_used_slotid 
->> 4294967295
->> [ 1230.657739] <-- nfs4_layoutget_done
->> [ 1230.658650] --> nfs4_layoutget_release
->> [ 1230.659626] <-- nfs4_layoutget_release
->>
->> This debug output is identical for every cycle of the loop. Have to 
->> stop for the
->> day.. more tomorrow.
->>
->> Ben
->>
->
-> Duh… It’s this patch: pNFS: Fix post-layoutget error handling in 
-> pnfs_update_layout()
-> We have to pass through fatal errors… I’ll fix it.
 
-That's indeed fixed it up, and generic/207 passes now.  Thanks!
+On 07/13/2016 10:44 PM, Kinglong Mee wrote:
+> gcc -DHAVE_CONFIG_H -I. -I../../support/include  -I/usr/include/tirpc -D_GNU_SOURCE -Wall -Wextra -Wstrict-prototypes  -pipe -g -O2    -g -O2 -MT gssd-krb5_util.o -MD -MP -MF .deps/gssd-krb5_util.Tpo -c -o gssd-krb5_util.o `test -f 'krb5_util.c' || echo './'`krb5_util.c
+> krb5_util.c: In function ‘gssd_acquire_user_cred’:
+> krb5_util.c:1389:4: warning: this ‘if’ clause does not guard... [-Wmisleading-indentation]
+>     if (get_verbosity() > 0)
+>     ^~
+> krb5_util.c:1392:5: note: ...this statement, but the latter is misleadingly indented as if it is guarded by the ‘if’
+>      ret = -1;
+> 
+> Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
+Committed... 
 
-Ben
+steved.
+> ---
+>  utils/gssd/krb5_util.c | 16 ++++++++--------
+>  1 file changed, 8 insertions(+), 8 deletions(-)
+> 
+> diff --git a/utils/gssd/krb5_util.c b/utils/gssd/krb5_util.c
+> index c1e4d2b..b64818a 100644
+> --- a/utils/gssd/krb5_util.c
+> +++ b/utils/gssd/krb5_util.c
+> @@ -1380,17 +1380,17 @@ gssd_acquire_user_cred(gss_cred_id_t *gss_cred)
+>  	int ret;
+>  
+>  	ret = gssd_acquire_krb5_cred(gss_cred);
+> +	if (ret)
+> +		return ret;
+>  
+>  	/* force validation of cred to check for expiry */
+> -	if (ret == 0) {
+> -		maj_stat = gss_inquire_cred(&min_stat, *gss_cred, 
+> +	maj_stat = gss_inquire_cred(&min_stat, *gss_cred,
+>  			NULL, NULL, NULL, NULL);
+> -		if (maj_stat != GSS_S_COMPLETE) {
+> -			if (get_verbosity() > 0)
+> -				pgsserr("gss_inquire_cred",
+> -					maj_stat, min_stat, &krb5oid);
+> -				ret = -1;
+> -			}
+> +	if (maj_stat != GSS_S_COMPLETE) {
+> +		if (get_verbosity() > 0)
+> +			pgsserr("gss_inquire_cred",
+> +				maj_stat, min_stat, &krb5oid);
+> +		ret = -1;
+>  	}
+>  
+>  	return ret;
+> 
