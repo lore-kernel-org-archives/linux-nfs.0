@@ -1,200 +1,111 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx144.netapp.com ([216.240.21.25]:41515 "EHLO mx144.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:45475 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754011AbcGTO2p convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 20 Jul 2016 10:28:45 -0400
-From: "Kornievskaia, Olga" <Olga.Kornievskaia@netapp.com>
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] NFSv4: Allow retry of operations that used a returned
- delegation stateid
-Date: Wed, 20 Jul 2016 14:28:28 +0000
-Message-ID: <BEA34F37-97D9-49F1-B554-CED9AB2098FC@netapp.com>
-References: <1468955980-8675-1-git-send-email-trond.myklebust@primarydata.com>
-In-Reply-To: <1468955980-8675-1-git-send-email-trond.myklebust@primarydata.com>
-Content-Type: text/plain; charset="us-ascii"
+	id S1754266AbcGTPBb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 20 Jul 2016 11:01:31 -0400
+From: "Benjamin Coddington" <bcodding@redhat.com>
+To: "Trond Myklebust" <trondmy@primarydata.com>
+Cc: "hch@infradead.org" <hch@infradead.org>,
+        "List Linux" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH v4 24/28] Getattr doesn't require data sync semantics
+Date: Wed, 20 Jul 2016 11:03:06 -0400
+Message-ID: <AB904138-E761-4F8F-AF97-0E8A4E067DB1@redhat.com>
+In-Reply-To: <C44AB0DD-8FA3-42F2-B7DE-C694559A68EF@primarydata.com>
+References: <1467844205-76852-19-git-send-email-trond.myklebust@primarydata.com>
+ <1467844205-76852-20-git-send-email-trond.myklebust@primarydata.com>
+ <1467844205-76852-21-git-send-email-trond.myklebust@primarydata.com>
+ <1467844205-76852-22-git-send-email-trond.myklebust@primarydata.com>
+ <1467844205-76852-23-git-send-email-trond.myklebust@primarydata.com>
+ <1467844205-76852-24-git-send-email-trond.myklebust@primarydata.com>
+ <1467844205-76852-25-git-send-email-trond.myklebust@primarydata.com>
+ <20160718034847.GA1195@infradead.org>
+ <A9C18137-87A3-4652-ADD6-E8E1C4BAE27B@primarydata.com>
+ <1468817945.5273.2.camel@primarydata.com>
+ <20160719035843.GA24437@infradead.org>
+ <F879054A-2116-40D5-90C9-473E71977E8A@redhat.com>
+ <C44AB0DD-8FA3-42F2-B7DE-C694559A68EF@primarydata.com>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=utf-8; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On 19 Jul 2016, at 16:06, Trond Myklebust wrote:
 
-> On Jul 19, 2016, at 3:19 PM, Trond Myklebust <trond.myklebust@primarydata.com> wrote:
-> 
-> Fix up nfs4_do_handle_exception() so that it can check if the operation
-> that received the NFS4ERR_BAD_STATEID was using a defunct delegation.
-> Apply that to the case of SETATTR, which will currently return EIO
-> in some cases where this happens.
-> 
-> Reported-by: Olga Kornievskaia <kolga@netapp.com>
-> Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
-> ---
-> fs/nfs/nfs4_fs.h  |  1 +
-> fs/nfs/nfs4proc.c | 79 ++++++++++++++++++++++++++++++++-----------------------
-> 2 files changed, 47 insertions(+), 33 deletions(-)
-> 
-> diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
-> index 768456fa1b17..4be567a54958 100644
-> --- a/fs/nfs/nfs4_fs.h
-> +++ b/fs/nfs/nfs4_fs.h
-> @@ -185,6 +185,7 @@ struct nfs4_state {
-> struct nfs4_exception {
-> 	struct nfs4_state *state;
-> 	struct inode *inode;
-> +	nfs4_stateid *stateid;
-> 	long timeout;
-> 	unsigned char delay : 1,
-> 		      recovering : 1,
-> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-> index 6191b7e46913..519368b98762 100644
-> --- a/fs/nfs/nfs4proc.c
-> +++ b/fs/nfs/nfs4proc.c
-> @@ -363,6 +363,7 @@ static int nfs4_do_handle_exception(struct nfs_server *server,
-> {
-> 	struct nfs_client *clp = server->nfs_client;
-> 	struct nfs4_state *state = exception->state;
-> +	const nfs4_stateid *stateid = exception->stateid;
-> 	struct inode *inode = exception->inode;
-> 	int ret = errorcode;
-> 
-> @@ -376,9 +377,18 @@ static int nfs4_do_handle_exception(struct nfs_server *server,
-> 		case -NFS4ERR_DELEG_REVOKED:
-> 		case -NFS4ERR_ADMIN_REVOKED:
-> 		case -NFS4ERR_BAD_STATEID:
-> -			if (inode && nfs_async_inode_return_delegation(inode,
-> -						NULL) == 0)
-> -				goto wait_on_recovery;
-> +			if (inode) {
-> +				int err;
-> +
-> +				err = nfs_async_inode_return_delegation(inode,
-> +						stateid);
-> +				if (err == 0)
-> +					goto wait_on_recovery;
-> +				if (stateid != NULL && stateid->type == NFS4_DELEGATION_STATEID_TYPE) {
-> +					exception->retry = 1;
-> +					break;
-> +				}
-> +			}
-> 			if (state == NULL)
-> 				break;
-> 			ret = nfs4_schedule_stateid_recovery(server, state);
-> @@ -2669,28 +2679,17 @@ static struct nfs4_state *nfs4_do_open(struct inode *dir,
-> 	return res;
-> }
-> 
-> -static int _nfs4_do_setattr(struct inode *inode, struct rpc_cred *cred,
-> -			    struct nfs_fattr *fattr, struct iattr *sattr,
-> -			    struct nfs4_state *state, struct nfs4_label *ilabel,
-> -			    struct nfs4_label *olabel)
-> +static int _nfs4_do_setattr(struct inode *inode,
-> +			    struct nfs_setattrargs *arg,
-> +			    struct nfs_setattrres *res,
-> +			    struct rpc_cred *cred,
-> +			    struct nfs4_state *state)
-> {
-> 	struct nfs_server *server = NFS_SERVER(inode);
-> -        struct nfs_setattrargs  arg = {
-> -                .fh             = NFS_FH(inode),
-> -                .iap            = sattr,
-> -		.server		= server,
-> -		.bitmask = server->attr_bitmask,
-> -		.label		= ilabel,
-> -        };
-> -        struct nfs_setattrres  res = {
-> -		.fattr		= fattr,
-> -		.label		= olabel,
-> -		.server		= server,
-> -        };
->         struct rpc_message msg = {
-> 		.rpc_proc	= &nfs4_procedures[NFSPROC4_CLNT_SETATTR],
-> -		.rpc_argp	= &arg,
-> -		.rpc_resp	= &res,
-> +		.rpc_argp	= arg,
-> +		.rpc_resp	= res,
-> 		.rpc_cred	= cred,
->         };
-> 	struct rpc_cred *delegation_cred = NULL;
-> @@ -2699,17 +2698,13 @@ static int _nfs4_do_setattr(struct inode *inode, struct rpc_cred *cred,
-> 	bool truncate;
-> 	int status;
-> 
-> -	arg.bitmask = nfs4_bitmask(server, ilabel);
-> -	if (ilabel)
-> -		arg.bitmask = nfs4_bitmask(server, olabel);
-> -
-> -	nfs_fattr_init(fattr);
-> +	nfs_fattr_init(res->fattr);
-> 
-> 	/* Servers should only apply open mode checks for file size changes */
-> -	truncate = (sattr->ia_valid & ATTR_SIZE) ? true : false;
-> +	truncate = (arg->iap->ia_valid & ATTR_SIZE) ? true : false;
-> 	fmode = truncate ? FMODE_WRITE : FMODE_READ;
-> 
-> -	if (nfs4_copy_delegation_stateid(inode, fmode, &arg.stateid, &delegation_cred)) {
-> +	if (nfs4_copy_delegation_stateid(inode, fmode, &arg->stateid, &delegation_cred)) {
-> 		/* Use that stateid */
-> 	} else if (truncate && state != NULL) {
-> 		struct nfs_lockowner lockowner = {
-> @@ -2719,19 +2714,19 @@ static int _nfs4_do_setattr(struct inode *inode, struct rpc_cred *cred,
-> 		if (!nfs4_valid_open_stateid(state))
-> 			return -EBADF;
-> 		if (nfs4_select_rw_stateid(state, FMODE_WRITE, &lockowner,
-> -				&arg.stateid, &delegation_cred) == -EIO)
-> +				&arg->stateid, &delegation_cred) == -EIO)
-> 			return -EBADF;
-> 	} else
-> -		nfs4_stateid_copy(&arg.stateid, &zero_stateid);
-> +		nfs4_stateid_copy(&arg->stateid, &zero_stateid);
-> 	if (delegation_cred)
-> 		msg.rpc_cred = delegation_cred;
-> 
-> -	status = nfs4_call_sync(server->client, server, &msg, &arg.seq_args, &res.seq_res, 1);
-> +	status = nfs4_call_sync(server->client, server, &msg, &arg->seq_args, &res->seq_res, 1);
-> 
-> 	put_rpccred(delegation_cred);
-> 	if (status == 0 && state != NULL)
-> 		renew_lease(server, timestamp);
-> -	trace_nfs4_setattr(inode, &arg.stateid, status);
-> +	trace_nfs4_setattr(inode, &arg->stateid, status);
-> 	return status;
-> }
-> 
-> @@ -2741,13 +2736,31 @@ static int nfs4_do_setattr(struct inode *inode, struct rpc_cred *cred,
-> 			   struct nfs4_label *olabel)
-> {
-> 	struct nfs_server *server = NFS_SERVER(inode);
-> +        struct nfs_setattrargs  arg = {
-> +                .fh             = NFS_FH(inode),
-> +                .iap            = sattr,
-> +		.server		= server,
-> +		.bitmask = server->attr_bitmask,
-> +		.label		= ilabel,
-> +        };
-> +        struct nfs_setattrres  res = {
-> +		.fattr		= fattr,
-> +		.label		= olabel,
-> +		.server		= server,
-> +        };
-> 	struct nfs4_exception exception = {
-> 		.state = state,
-> 		.inode = inode,
-> +		.stateid = &arg.stateid,
-> 	};
-> 	int err;
-> +
-> +	arg.bitmask = nfs4_bitmask(server, ilabel);
-> +	if (ilabel)
-> +		arg.bitmask = nfs4_bitmask(server, olabel);
-> +
-> 	do {
-> -		err = _nfs4_do_setattr(inode, cred, fattr, sattr, state, ilabel, olabel);
-> +		err = _nfs4_do_setattr(inode, &arg, &res, cred, state);
-> 		switch (err) {
-> 		case -NFS4ERR_OPENMODE:
-> 			if (!(sattr->ia_valid & ATTR_SIZE)) {
-> -- 
-> 2.7.4
-> 
+>> On Jul 19, 2016, at 16:00, Benjamin Coddington <bcodding@redhat.com> 
+>> wrote:
+>>
+>> On 18 Jul 2016, at 23:58, hch@infradead.org wrote:
+>>
+>>> On Mon, Jul 18, 2016 at 04:59:09AM +0000, Trond Myklebust wrote:
+>>>> Actually... The problem might be that a previous attribute update 
+>>>> is
+>>>> marking the attribute cache as being revalidated. Does the 
+>>>> following
+>>>> patch help?
+>>>
+>>> It doesn't.  Also with your most recent linux-next branch the test
+>>> now cause the systems to OOM with or without your patch (with mine 
+>>> it's
+>>> still fine).  I tested with your writeback branch from about two or
+>>> three days ago before, and with that + your patch it also 'just 
+>>> fails'
+>>> and doesn't OOM.  Looks like whatever causes the bug also creates
+>>> a temporarily memory leak when combined with recent changes from 
+>>> your
+>>> tree, most likely something from the pnfs branch.
+>>
+>> I couldn't find the memory leak using kmemleak, but it OOMs pretty 
+>> quick.  If I
+>> insert an mdelay(200) just after the lookup_again: marker in
+>> pnfs_update_layout() it doesn't OOM, but it seems stuck forever in a 
+>> loop on
+>> that marker:
+>>
+>> [ 1230.635586] pnfs_find_alloc_layout Begin ino=ffff88003ef986f8 
+>> layout=ffff8800392bca58
+>> [ 1230.636729] pnfs_find_lseg:Begin
+>> [ 1230.637538] pnfs_find_lseg:Return lseg           (null) ref 0
+>> [ 1230.638582] --> send_layoutget
+>> [ 1230.639499] --> nfs4_proc_layoutget
+>> [ 1230.640525] --> nfs4_layoutget_prepare
+>> [ 1230.641479] --> nfs41_setup_sequence
+>> [ 1230.641581] <-- nfs4_proc_layoutget status=-512
+>> [ 1230.643288] --> nfs4_alloc_slot used_slots=0000 
+>> highest_used=4294967295 max_slots=31
+>> [ 1230.644348] <-- nfs4_alloc_slot used_slots=0001 highest_used=0 
+>> slotid=0
+>> [ 1230.645373] <-- nfs41_setup_sequence slotid=0 seqid=4376
+>> [ 1230.646356] <-- nfs4_layoutget_prepare
+>> [ 1230.647357] encode_sequence: sessionid=1468956665:2:3:0 seqid=4376 
+>> slotid=0 max_slotid=0 cache_this=0
+>> [ 1230.648522] encode_layoutget: 1st type:0x5 iomode:2 off:122880 
+>> len:4096 mc:4096
+>> [ 1230.650182] decode_layoutget roff:122880 rlen:4096 riomode:2, 
+>> lo_type:0x5, lo.len:48
+>> [ 1230.651331] --> nfs4_layoutget_done
+>> [ 1230.652233] --> nfs4_alloc_slot used_slots=0001 highest_used=0 
+>> max_slots=31
+>> [ 1230.653409] <-- nfs4_alloc_slot used_slots=0003 highest_used=1 
+>> slotid=1
+>> [ 1230.654547] nfs4_free_slot: slotid 1 highest_used_slotid 0
+>> [ 1230.655606] nfs41_sequence_done: Error 0 free the slot
+>> [ 1230.656635] nfs4_free_slot: slotid 0 highest_used_slotid 
+>> 4294967295
+>> [ 1230.657739] <-- nfs4_layoutget_done
+>> [ 1230.658650] --> nfs4_layoutget_release
+>> [ 1230.659626] <-- nfs4_layoutget_release
+>>
+>> This debug output is identical for every cycle of the loop. Have to 
+>> stop for the
+>> day.. more tomorrow.
+>>
+>> Ben
+>>
+>
+> Duh… It’s this patch: pNFS: Fix post-layoutget error handling in 
+> pnfs_update_layout()
+> We have to pass through fatal errors… I’ll fix it.
 
-Thanks Trond. That works. 
+That's indeed fixed it up, and generic/207 passes now.  Thanks!
 
+Ben
