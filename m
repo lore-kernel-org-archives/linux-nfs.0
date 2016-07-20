@@ -1,105 +1,200 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:53405 "EHLO mx1.redhat.com"
+Received: from mx144.netapp.com ([216.240.21.25]:41515 "EHLO mx144.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751693AbcGTM2X (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 20 Jul 2016 08:28:23 -0400
-From: "Benjamin Coddington" <bcodding@redhat.com>
-To: "Christoph Hellwig" <hch@lst.de>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 3/3] nfs/blocklayout: support RH/Fedora dm-mpath device
- nodes
-Date: Wed, 20 Jul 2016 08:29:59 -0400
-Message-ID: <41AD6662-7620-4ECB-AE94-D8B9FAC0317E@redhat.com>
-In-Reply-To: <1467970890-11237-4-git-send-email-hch@lst.de>
-References: <1467970890-11237-1-git-send-email-hch@lst.de>
- <1467970890-11237-4-git-send-email-hch@lst.de>
+	id S1754011AbcGTO2p convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 20 Jul 2016 10:28:45 -0400
+From: "Kornievskaia, Olga" <Olga.Kornievskaia@netapp.com>
+To: Trond Myklebust <trond.myklebust@primarydata.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] NFSv4: Allow retry of operations that used a returned
+ delegation stateid
+Date: Wed, 20 Jul 2016 14:28:28 +0000
+Message-ID: <BEA34F37-97D9-49F1-B554-CED9AB2098FC@netapp.com>
+References: <1468955980-8675-1-git-send-email-trond.myklebust@primarydata.com>
+In-Reply-To: <1468955980-8675-1-git-send-email-trond.myklebust@primarydata.com>
+Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
-Content-Type: text/plain; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hey Christoph,
 
-On 8 Jul 2016, at 5:41, Christoph Hellwig wrote:
-
-> Instead of reusing the wwn-* names for multipath devices nodes RHEL 
-> and
-> Fedora introduce new dm-mpath-uuid-* nodes with a slightly different
-> naming scheme.  Try these names first to ensure we always get a
-> multipath-capable device if it exists.
->
-> Signed-off-by: Christoph Hellwig <hch@lst.de>
+> On Jul 19, 2016, at 3:19 PM, Trond Myklebust <trond.myklebust@primarydata.com> wrote:
+> 
+> Fix up nfs4_do_handle_exception() so that it can check if the operation
+> that received the NFS4ERR_BAD_STATEID was using a defunct delegation.
+> Apply that to the case of SETATTR, which will currently return EIO
+> in some cases where this happens.
+> 
+> Reported-by: Olga Kornievskaia <kolga@netapp.com>
+> Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
 > ---
->  fs/nfs/blocklayout/dev.c | 26 +++++++++++++++++++++++++-
->  1 file changed, 25 insertions(+), 1 deletion(-)
->
-> diff --git a/fs/nfs/blocklayout/dev.c b/fs/nfs/blocklayout/dev.c
-> index ea70883..436bb30 100644
-> --- a/fs/nfs/blocklayout/dev.c
-> +++ b/fs/nfs/blocklayout/dev.c
-> @@ -312,6 +312,28 @@ bl_open_udev_path(struct pnfs_block_volume *v)
->  	return bdev;
->  }
->
-> +/*
-> + * Try to open the RH/Fedora specific dm-mpath udev path for this 
-> WWN, as the
-> + * wwn- links will only point to the first discovered SCSI device 
-> there.
-> + */
-> +static struct block_device *
-> +bl_open_dm_mpath_udev_path(struct pnfs_block_volume *v)
-> +{
-> +	struct block_device *bdev;
-> +	const char *devname;
+> fs/nfs/nfs4_fs.h  |  1 +
+> fs/nfs/nfs4proc.c | 79 ++++++++++++++++++++++++++++++++-----------------------
+> 2 files changed, 47 insertions(+), 33 deletions(-)
+> 
+> diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
+> index 768456fa1b17..4be567a54958 100644
+> --- a/fs/nfs/nfs4_fs.h
+> +++ b/fs/nfs/nfs4_fs.h
+> @@ -185,6 +185,7 @@ struct nfs4_state {
+> struct nfs4_exception {
+> 	struct nfs4_state *state;
+> 	struct inode *inode;
+> +	nfs4_stateid *stateid;
+> 	long timeout;
+> 	unsigned char delay : 1,
+> 		      recovering : 1,
+> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+> index 6191b7e46913..519368b98762 100644
+> --- a/fs/nfs/nfs4proc.c
+> +++ b/fs/nfs/nfs4proc.c
+> @@ -363,6 +363,7 @@ static int nfs4_do_handle_exception(struct nfs_server *server,
+> {
+> 	struct nfs_client *clp = server->nfs_client;
+> 	struct nfs4_state *state = exception->state;
+> +	const nfs4_stateid *stateid = exception->stateid;
+> 	struct inode *inode = exception->inode;
+> 	int ret = errorcode;
+> 
+> @@ -376,9 +377,18 @@ static int nfs4_do_handle_exception(struct nfs_server *server,
+> 		case -NFS4ERR_DELEG_REVOKED:
+> 		case -NFS4ERR_ADMIN_REVOKED:
+> 		case -NFS4ERR_BAD_STATEID:
+> -			if (inode && nfs_async_inode_return_delegation(inode,
+> -						NULL) == 0)
+> -				goto wait_on_recovery;
+> +			if (inode) {
+> +				int err;
 > +
-> +	devname = kasprintf(GFP_KERNEL,
-> +			"/dev/disk/by-id/dm-uuid-mpath-%d%*phN",
-> +			v->scsi.designator_type,
-> +			v->scsi.designator_len, v->scsi.designator);
-> +	if (!devname)
-> +		return ERR_PTR(-ENOMEM);
+> +				err = nfs_async_inode_return_delegation(inode,
+> +						stateid);
+> +				if (err == 0)
+> +					goto wait_on_recovery;
+> +				if (stateid != NULL && stateid->type == NFS4_DELEGATION_STATEID_TYPE) {
+> +					exception->retry = 1;
+> +					break;
+> +				}
+> +			}
+> 			if (state == NULL)
+> 				break;
+> 			ret = nfs4_schedule_stateid_recovery(server, state);
+> @@ -2669,28 +2679,17 @@ static struct nfs4_state *nfs4_do_open(struct inode *dir,
+> 	return res;
+> }
+> 
+> -static int _nfs4_do_setattr(struct inode *inode, struct rpc_cred *cred,
+> -			    struct nfs_fattr *fattr, struct iattr *sattr,
+> -			    struct nfs4_state *state, struct nfs4_label *ilabel,
+> -			    struct nfs4_label *olabel)
+> +static int _nfs4_do_setattr(struct inode *inode,
+> +			    struct nfs_setattrargs *arg,
+> +			    struct nfs_setattrres *res,
+> +			    struct rpc_cred *cred,
+> +			    struct nfs4_state *state)
+> {
+> 	struct nfs_server *server = NFS_SERVER(inode);
+> -        struct nfs_setattrargs  arg = {
+> -                .fh             = NFS_FH(inode),
+> -                .iap            = sattr,
+> -		.server		= server,
+> -		.bitmask = server->attr_bitmask,
+> -		.label		= ilabel,
+> -        };
+> -        struct nfs_setattrres  res = {
+> -		.fattr		= fattr,
+> -		.label		= olabel,
+> -		.server		= server,
+> -        };
+>         struct rpc_message msg = {
+> 		.rpc_proc	= &nfs4_procedures[NFSPROC4_CLNT_SETATTR],
+> -		.rpc_argp	= &arg,
+> -		.rpc_resp	= &res,
+> +		.rpc_argp	= arg,
+> +		.rpc_resp	= res,
+> 		.rpc_cred	= cred,
+>         };
+> 	struct rpc_cred *delegation_cred = NULL;
+> @@ -2699,17 +2698,13 @@ static int _nfs4_do_setattr(struct inode *inode, struct rpc_cred *cred,
+> 	bool truncate;
+> 	int status;
+> 
+> -	arg.bitmask = nfs4_bitmask(server, ilabel);
+> -	if (ilabel)
+> -		arg.bitmask = nfs4_bitmask(server, olabel);
+> -
+> -	nfs_fattr_init(fattr);
+> +	nfs_fattr_init(res->fattr);
+> 
+> 	/* Servers should only apply open mode checks for file size changes */
+> -	truncate = (sattr->ia_valid & ATTR_SIZE) ? true : false;
+> +	truncate = (arg->iap->ia_valid & ATTR_SIZE) ? true : false;
+> 	fmode = truncate ? FMODE_WRITE : FMODE_READ;
+> 
+> -	if (nfs4_copy_delegation_stateid(inode, fmode, &arg.stateid, &delegation_cred)) {
+> +	if (nfs4_copy_delegation_stateid(inode, fmode, &arg->stateid, &delegation_cred)) {
+> 		/* Use that stateid */
+> 	} else if (truncate && state != NULL) {
+> 		struct nfs_lockowner lockowner = {
+> @@ -2719,19 +2714,19 @@ static int _nfs4_do_setattr(struct inode *inode, struct rpc_cred *cred,
+> 		if (!nfs4_valid_open_stateid(state))
+> 			return -EBADF;
+> 		if (nfs4_select_rw_stateid(state, FMODE_WRITE, &lockowner,
+> -				&arg.stateid, &delegation_cred) == -EIO)
+> +				&arg->stateid, &delegation_cred) == -EIO)
+> 			return -EBADF;
+> 	} else
+> -		nfs4_stateid_copy(&arg.stateid, &zero_stateid);
+> +		nfs4_stateid_copy(&arg->stateid, &zero_stateid);
+> 	if (delegation_cred)
+> 		msg.rpc_cred = delegation_cred;
+> 
+> -	status = nfs4_call_sync(server->client, server, &msg, &arg.seq_args, &res.seq_res, 1);
+> +	status = nfs4_call_sync(server->client, server, &msg, &arg->seq_args, &res->seq_res, 1);
+> 
+> 	put_rpccred(delegation_cred);
+> 	if (status == 0 && state != NULL)
+> 		renew_lease(server, timestamp);
+> -	trace_nfs4_setattr(inode, &arg.stateid, status);
+> +	trace_nfs4_setattr(inode, &arg->stateid, status);
+> 	return status;
+> }
+> 
+> @@ -2741,13 +2736,31 @@ static int nfs4_do_setattr(struct inode *inode, struct rpc_cred *cred,
+> 			   struct nfs4_label *olabel)
+> {
+> 	struct nfs_server *server = NFS_SERVER(inode);
+> +        struct nfs_setattrargs  arg = {
+> +                .fh             = NFS_FH(inode),
+> +                .iap            = sattr,
+> +		.server		= server,
+> +		.bitmask = server->attr_bitmask,
+> +		.label		= ilabel,
+> +        };
+> +        struct nfs_setattrres  res = {
+> +		.fattr		= fattr,
+> +		.label		= olabel,
+> +		.server		= server,
+> +        };
+> 	struct nfs4_exception exception = {
+> 		.state = state,
+> 		.inode = inode,
+> +		.stateid = &arg.stateid,
+> 	};
+> 	int err;
 > +
-> +	bdev = blkdev_get_by_path(devname, FMODE_READ | FMODE_WRITE, NULL);
-> +	kfree(devname);
-> +	return bdev;
-> +}
+> +	arg.bitmask = nfs4_bitmask(server, ilabel);
+> +	if (ilabel)
+> +		arg.bitmask = nfs4_bitmask(server, olabel);
 > +
->  static int
->  bl_parse_scsi(struct nfs_server *server, struct pnfs_block_dev *d,
->  		struct pnfs_block_volume *volumes, int idx, gfp_t gfp_mask)
-> @@ -323,7 +345,9 @@ bl_parse_scsi(struct nfs_server *server, struct 
-> pnfs_block_dev *d,
->  	if (!bl_validate_designator(v))
->  		return -EINVAL;
->
-> -	d->bdev = bl_open_udev_path(v);
-> +	d->bdev = bl_open_dm_mpath_udev_path(v);
-> +	if (IS_ERR(d->bdev))
-> +		d->bdev = bl_open_udev_path(v);
->  	if (IS_ERR(d->bdev))
->  		return PTR_ERR(d->bdev);
+> 	do {
+> -		err = _nfs4_do_setattr(inode, cred, fattr, sattr, state, ilabel, olabel);
+> +		err = _nfs4_do_setattr(inode, &arg, &res, cred, state);
+> 		switch (err) {
+> 		case -NFS4ERR_OPENMODE:
+> 			if (!(sattr->ia_valid & ATTR_SIZE)) {
+> -- 
+> 2.7.4
+> 
 
-Not a problem with this exact patch, but related..  If ->bdev isn't NULL 
-in
-the error path, won't we try to do bdev_put in bl_free_device()?  Should 
-we
-do something like:
+Thanks Trond. That works. 
 
-diff --git a/fs/nfs/blocklayout/dev.c b/fs/nfs/blocklayout/dev.c
-index 436bb303d856..6d5e8428b074 100644
---- a/fs/nfs/blocklayout/dev.c
-+++ b/fs/nfs/blocklayout/dev.c
-@@ -33,7 +33,7 @@ bl_free_device(struct pnfs_block_dev *dev)
-                                 pr_err("failed to unregister PR 
-key.\n");
-                 }
-
--               if (dev->bdev)
-+               if (!IS_ERR_OR_NULL(dev->bdev))
-                         blkdev_put(dev->bdev, FMODE_READ | 
-FMODE_WRITE);
-         }
-  }
-
-Ben
