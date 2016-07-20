@@ -1,111 +1,77 @@
-Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx141.netapp.com ([216.240.21.12]:1330 "EHLO mx141.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752006AbcGTJOT (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 20 Jul 2016 05:14:19 -0400
-From: "Adamson, Andy" <William.Adamson@netapp.com>
-To: Chuck Lever <chuck.lever@oracle.com>
-CC: "Adamson, Andy" <William.Adamson@netapp.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: Problem re-establishing GSS contexts after a server reboot
-Date: Wed, 20 Jul 2016 09:14:16 +0000
-Message-ID: <259CD26A-E1E7-44CA-B1D3-F46AED01B932@netapp.com>
-References: <59704D2B-9FBD-41BB-ADA8-4CF4AEF4BB9D@oracle.com>
-In-Reply-To: <59704D2B-9FBD-41BB-ADA8-4CF4AEF4BB9D@oracle.com>
-Content-Type: text/plain; charset="utf-8"
+Return-Path: <redhat@redhat.com>
+Date: Wed, 20 Jul 2016 06:33:01 -0400 (EDT)
+From: Red Hat <redhat@redhat.com>
+To: Benjamin Coddington <bcodding@redhat.com>
+cc: linux-nfs@vger.kernel.org
+Subject: Re: nfsd delays between svc_recv and gss_check_seq_num
+In-Reply-To: <alpine.OSX.2.19.9992.1604100724080.44797@planck>
+Message-ID: <alpine.OSX.2.19.9992.1607200628390.6057@planck.local>
+References: <alpine.OSX.2.19.9992.1604100724080.44797@planck>
 MIME-Version: 1.0
-Sender: linux-nfs-owner@vger.kernel.org
+Content-Type: text/plain; charset=US-ASCII
 List-ID: <linux-nfs.vger.kernel.org>
 
-DQo+IE9uIEp1bCAxOSwgMjAxNiwgYXQgMTA6NTEgQU0sIENodWNrIExldmVyIDxjaHVjay5sZXZl
-ckBvcmFjbGUuY29tPiB3cm90ZToNCj4gDQo+IEhpIEFuZHktDQo+IA0KPiBUaGFua3MgZm9yIHRh
-a2luZyB0aGUgdGltZSB0byBkaXNjdXNzIHRoaXMgd2l0aCBtZS4gSSd2ZQ0KPiBjb3BpZWQgbGlu
-dXgtbmZzIHRvIG1ha2UgdGhpcyBlLW1haWwgYWxzbyBhbiB1cHN0cmVhbSBidWcNCj4gcmVwb3J0
-Lg0KPiANCj4gQXMgd2Ugc2F3IGluIHRoZSBuZXR3b3JrIGNhcHR1cmUsIHJlY292ZXJ5IG9mIEdT
-UyBjb250ZXh0cw0KPiBhZnRlciBhIHNlcnZlciByZWJvb3QgZmFpbHMgaW4gY2VydGFpbiBjYXNl
-cyB3aXRoIE5GU3Y0LjANCj4gYW5kIE5GU3Y0LjEgbW91bnQgcG9pbnRzLg0KPiANCj4gVGhlIHJl
-cHJvZHVjZXIgaXMgYSBzaW1wbGUgcHJvZ3JhbSB0aGF0IGdlbmVyYXRlcyBvbmUgTkZTDQo+IFdS
-SVRFIHBlcmlvZGljYWxseSwgcnVuIHdoaWxlIHRoZSBzZXJ2ZXIgcmVwZWF0ZWRseSByZWJvb3Rz
-DQo+IChvciBvbmUgY2x1c3RlciBoZWFkIGZhaWxzIG92ZXIgdG8gdGhlIG90aGVyIGFuZCBiYWNr
-KS4gVGhlDQo+IGdvYWwgb2YgdGhlIHJlcHJvZHVjZXIgaXMgdG8gaWRlbnRpZnkgcHJvYmxlbXMg
-d2l0aCBzdGF0ZQ0KPiByZWNvdmVyeSB3aXRob3V0IGEgbG90IG9mIG90aGVyIEkvTyBnb2luZyBv
-biB0byBjbHV0dGVyIHVwDQo+IHRoZSBuZXR3b3JrIGNhcHR1cmUuDQo+IA0KPiBJbiB0aGUgZmFp
-bGluZyBjYXNlLCBzZWM9a3JiNSBpcyBzcGVjaWZpZWQgb24gdGhlIG1vdW50DQo+IHBvaW50LCBh
-bmQgdGhlIHJlcHJvZHVjZXIgaXMgcnVuIGFzIHJvb3QuIFdlJ3ZlIGZvdW5kIHRoaXMNCj4gY29t
-YmluYXRpb24gZmFpbHMgd2l0aCBib3RoIE5GU3Y0LjAgYW5kIE5GU3Y0LjEuDQo+IA0KPiBBdCBt
-b3VudCB0aW1lLCB0aGUgY2xpZW50IGVzdGFibGlzaGVzIGEgR1NTIGNvbnRleHQgZm9yDQo+IGxl
-YXNlIG1hbmFnZW1lbnQgb3BlcmF0aW9ucywgd2hpY2ggaXMgYm91bmQgdG8gdGhlIGNsaWVudCdz
-DQo+IE5GUyBzZXJ2aWNlIHByaW5jaXBhbCBhbmQgdXNlcyBHU1Mgc2VydmljZSAiaW50ZWdyaXR5
-LiINCj4gQ2FsbCB0aGlzIEdTUyBjb250ZXh0IDEuDQo+IA0KPiBXaGVuIHRoZSByZXByb2R1Y2Vy
-IHN0YXJ0cywgYSBzZWNvbmQgR1NTIGNvbnRleHQgaXMNCj4gZXN0YWJsaXNoZWQgZm9yIE5GUyBv
-cGVyYXRpb25zIGFzc29jaWF0ZWQgd2l0aCB0aGF0IHVzZXIuDQo+IFNpbmNlIHRoZSByZXByb2R1
-Y2VyIGlzIHJ1bm5pbmcgYXMgcm9vdCwgdGhpcyBjb250ZXh0IGlzDQo+IGFsc28gYm91bmQgdG8g
-dGhlIGNsaWVudCdzIE5GUyBzZXJ2aWNlIHByaW5jaXBhbCwgYnV0IGl0DQo+IHVzZXMgdGhlIEdT
-UyBzZXJ2aWNlICJub25lIiAocmVmbGVjdGluZyB0aGUgZXhwbGljaXQNCj4gcmVxdWVzdCBmb3Ig
-InNlYz1rcmI1IikuIENhbGwgdGhpcyBHU1MgY29udGV4dCAyLg0KPiANCj4gQWZ0ZXIgdGhlIHNl
-cnZlciByZWJvb3RzLCB0aGUgY2xpZW50IHJlLWVzdGFibGlzaGVzIGEgVENQDQo+IGNvbm5lY3Rp
-b24gd2l0aCB0aGUgc2VydmVyLCBhbmQgcGVyZm9ybXMgYSBSRU5FVw0KPiBvcGVyYXRpb24gdXNp
-bmcgY29udGV4dCAxLiBUaGFua3MgdG8gdGhlIHNlcnZlciByZWJvb3QsDQo+IGNvbnRleHRzIDEg
-YW5kIDIgYXJlIG5vdyBzdGFsZS4gVGhlIHNlcnZlciB0aHVzIHJlamVjdHMNCj4gdGhlIFJQQyB3
-aXRoIFJQQ1NFQ19HU1NfQ1RYUFJPQkxFTS4NCj4gDQo+IFRoZSBjbGllbnQgcGVyZm9ybXMgYSBH
-U1NfSU5JVF9TRUNfQ09OVEVYVCB2aWEgYW4gTkZTdjQNCj4gTlVMTCBvcGVyYXRpb24uIENhbGwg
-dGhpcyBHU1MgY29udGV4dCAzLg0KPiANCj4gSW50ZXJlc3RpbmdseSwgdGhlIGNsaWVudCBkb2Vz
-IG5vdCByZXNlbmQgdGhlIFJFTkVXDQo+IG9wZXJhdGlvbiBhdCB0aGlzIHBvaW50IChpZiBpdCBk
-aWQsIHdlIHdvdWxkbid0IHNlZSB0aGlzDQo+IHByb2JsZW0gYXQgYWxsKS4NCj4gDQo+IFRoZSBj
-bGllbnQgdGhlbiBhdHRlbXB0cyB0byByZXN1bWUgdGhlIHJlcHJvZHVjZXIgd29ya2xvYWQuDQo+
-IEl0IHNlbmRzIGFuIE5GU3Y0IFdSSVRFIG9wZXJhdGlvbiwgdXNpbmcgdGhlIGZpcnN0IGF2YWls
-YWJsZQ0KPiBHU1MgY29udGV4dCBpbiBVSUQgMCdzIGNyZWRlbnRpYWwgY2FjaGUsIHdoaWNoIGlz
-IGNvbnRleHQgMywNCj4gYWxyZWFkeSBib3VuZCB0byB0aGUgY2xpZW50J3MgTkZTIHNlcnZpY2Ug
-cHJpbmNpcGFsLiBCdXQgR1NTDQo+IHNlcnZpY2UgIm5vbmUiIGlzIHVzZWQgZm9yIHRoaXMgb3Bl
-cmF0aW9uLCBzaW5jZSBpdCBpcyBvbg0KPiBiZWhhbGYgb2YgdGhlIG1vdW50IHdoZXJlIHNlYz1r
-cmI1IHdhcyBzcGVjaWZpZWQuDQo+IA0KPiBUaGUgUlBDIGlzIGFjY2VwdGVkLCBidXQgdGhlIHNl
-cnZlciByZXBvcnRzDQo+IE5GUzRFUlJfU1RBTEVfU1RBVEVJRCwgc2luY2UgaXQgaGFzIHJlY2Vu
-dGx5IHJlYm9vdGVkLg0KPiANCj4gVGhlIGNsaWVudCByZXNwb25kcyBieSBhdHRlbXB0aW5nIHN0
-YXRlIHJlY292ZXJ5LiBUaGUNCj4gZmlyc3Qgb3BlcmF0aW9uIGl0IHRyaWVzIGlzIGFub3RoZXIg
-UkVORVcuIFNpbmNlIHRoaXMgaXMNCj4gYSBsZWFzZSBtYW5hZ2VtZW50IG9wZXJhdGlvbiwgdGhl
-IGNsaWVudCBsb29rcyBpbiBVSUQgMCdzDQo+IGNyZWRlbnRpYWwgY2FjaGUgYWdhaW4gYW5kIGZp
-bmRzIHRoZSByZWNlbnRseSBlc3RhYmxpc2hlZA0KPiBjb250ZXh0IDMuIEl0IHRyaWVzIHRoZSBS
-RU5FVyBvcGVyYXRpb24gdXNpbmcgR1NTIGNvbnRleHQNCj4gMyB3aXRoIEdTUyBzZXJ2aWNlICJp
-bnRlZ3JpdHkuIg0KPiANCj4gVGhlIHNlcnZlciByZWplY3RzIHRoZSBSRU5FVyBSUEMgd2l0aCBB
-VVRIX0ZBSUxFRCwgYW5kDQo+IHRoZSBjbGllbnQgcmVwb3J0cyB0aGF0ICJjaGVjayBsZWFzZSBm
-YWlsZWQiIGFuZA0KPiB0ZXJtaW5hdGVzIHN0YXRlIHJlY292ZXJ5Lg0KPiANCj4gVGhlIGNsaWVu
-dCByZS1kcml2ZXMgdGhlIFdSSVRFIG9wZXJhdGlvbiB3aXRoIHRoZSBzdGFsZQ0KPiBzdGF0ZWlk
-IHdpdGggcHJlZGljdGFibGUgcmVzdWx0cy4gVGhlIGNsaWVudCBhZ2FpbiB0cmllcw0KPiB0byBy
-ZWNvdmVyIHN0YXRlIGJ5IHNlbmRpbmcgYSBSRU5FVywgYW5kIHN0aWxsIHVzZXMgdGhlDQo+IHNh
-bWUgR1NTIGNvbnRleHQgMyB3aXRoIHNlcnZpY2UgImludGVncml0eSIgYW5kIGdldHMgdGhlDQo+
-IHNhbWUgcmVzdWx0LiBBIChwZXJoYXBzIHNsb3ctbW90aW9uKSBTVEFMRV9TVEFURUlEIGxvb3AN
-Cj4gZW5zdWVzLCBhbmQgdGhlIGNsaWVudCBtb3VudCBwb2ludCBpcyBkZWFkbG9ja2VkLg0KPiAN
-Cj4gWW91ciBhbmFseXNpcyB3YXMgdGhhdCBiZWNhdXNlIHRoZSByZXByb2R1Y2VyIGlzIHJ1biBh
-cw0KPiByb290LCBib3RoIHRoZSByZXByb2R1Y2VyJ3MgSS9PIG9wZXJhdGlvbnMsIGFuZCBsZWFz
-ZQ0KPiBtYW5hZ2VtZW50IG9wZXJhdGlvbnMsIGF0dGVtcHQgdG8gdXNlIHRoZSBzYW1lIEdTUyBj
-b250ZXh0DQo+IGluIFVJRCAwJ3MgY3JlZGVudGlhbCBjYWNoZSwgYnV0IGVhY2ggdXNlcyBkaWZm
-ZXJlbnQgR1NTDQo+IHNlcnZpY2VzLg0KDQpBcyBSRkMyMjAzIHN0YXRlcywgIkluIGEgY3JlYXRp
-b24gcmVxdWVzdCwgdGhlIHNlcV9udW0gYW5kIHNlcnZpY2UgZmllbGRzIGFyZSB1bmRlZmluZWQg
-YW5kIGJvdGggbXVzdCBiZSBpZ25vcmVkIGJ5IHRoZSBzZXJ2ZXLigJ0NClNvIGEgY29udGV4dCBj
-cmVhdGlvbiByZXF1ZXN0IHdoaWxlIGtpY2tlZCBvZmYgYnkgYW4gb3BlcmF0aW9uIHdpdGggYSBz
-ZXJ2aWNlIGF0dGFjaGVkIChlLmcuIFdSSVRFIHVzZXMgcnBjX2dzc19zdmNfbm9uZSBhbmQgUkVO
-RVcgdXNlcyBycGNfZ3NzX3N2Y19pbnRlZ3JpdHkpLCBjYW4gYmUgdXNlZCBieSBlaXRoZXIgc2Vy
-dmljZSBsZXZlbC4NCkFGQUlDUyBhIHNpbmdsZSBHU1MgY29udGV4dCBjb3VsZCBpbiB0aGVvcnkg
-YmUgdXNlZCBmb3IgYWxsIHNlcnZpY2UgbGV2ZWxzLCBidXQgaW4gcHJhY3RpY2UsIEdTUyBjb250
-ZXh0cyBhcmUgcmVzdHJpY3RlZCB0byBhIHNlcnZpY2UgbGV2ZWwgKGJ5IGNsaWVudD8gYnkgc2Vy
-dmVyPyApIG9uY2UgdGhleSBhcmUgdXNlZC4NCg0KDQo+IFRoZSBrZXkgaXNzdWUgc2VlbXMgdG8g
-YmUgd2h5LCB3aGVuIHRoZSBtb3VudA0KPiBpcyBmaXJzdCBlc3RhYmxpc2hlZCwgdGhlIGNsaWVu
-dCBpcyBjb3JyZWN0bHkgYWJsZSB0bw0KPiBlc3RhYmxpc2ggdHdvIHNlcGFyYXRlIEdTUyBjb250
-ZXh0cyBmb3IgVUlEIDA7IGJ1dCBhZnRlcg0KPiBhIHNlcnZlciByZWJvb3QsIHRoZSBjbGllbnQg
-YXR0ZW1wdHMgdG8gdXNlIHRoZSBzYW1lIEdTUw0KPiBjb250ZXh0IHdpdGggdHdvIGRpZmZlcmVu
-dCBHU1Mgc2VydmljZXMuDQoNCkkgc3BlY3VsYXRlIHRoYXQgaXQgaXMgYSByYWNlIGJldHdlZW4g
-dGhlIFdSSVRFIGFuZCB0aGUgUkVORVcgdG8gdXNlIHRoZSBzYW1lIG5ld2x5IGNyZWF0ZWQgR1NT
-IGNvbnRleHQgdGhhdCBoYXMgbm90IGJlZW4gdXNlZCB5ZXQsIGFuZCBzbyBoYXMgbm8gYXNzaWdu
-ZWQgc2VydmljZSBsZXZlbCwgYW5kIHRoZSB0d28gcmVxdWVzdHMgcmFjZSB0byBzZXQgdGhlIHNl
-cnZpY2UgbGV2ZWwuDQoNCuKAlD5BbmR5DQo+IA0KPiBPbmUgc29sdXRpb24gaXMgdG8gaW50cm9k
-dWNlIGEgcXVpY2sgY2hlY2sgYmVmb3JlIGENCj4gY29udGV4dCBpcyB1c2VkIHRvIHNlZSBpZiB0
-aGUgR1NTIHNlcnZpY2UgYm91bmQgdG8gaXQNCj4gbWF0Y2hlcyB0aGUgR1NTIHNlcnZpY2UgdGhh
-dCB0aGUgY2FsbGVyIGludGVuZHMgdG8gdXNlLg0KPiBJJ20gbm90IHN1cmUgaG93IHRoYXQgY2Fu
-IGJlIGRvbmUgd2l0aG91dCBleHBvc2luZyBhIHdpbmRvdw0KPiB3aGVyZSBhbm90aGVyIGNhbGxl
-ciByZXF1ZXN0cyB0aGUgdXNlIG9mIGEgR1NTIGNvbnRleHQgYW5kDQo+IGdyYWJzIHRoZSBmcmVz
-aCBvbmUsIGJlZm9yZSBpdCBjYW4gYmUgdXNlZCBieSBvdXIgZmlyc3QNCj4gY2FsbGVyIGFuZCBi
-b3VuZCB0byBpdHMgZGVzaXJlZCBHU1Mgc2VydmljZS4NCj4gDQo+IE90aGVyIHNvbHV0aW9ucyBt
-aWdodCBiZSB0byBzb21laG93IGlzb2xhdGUgdGhlIGNyZWRlbnRpYWwNCj4gY2FjaGUgdXNlZCBm
-b3IgbGVhc2UgbWFuYWdlbWVudCBvcGVyYXRpb25zLCBvciB0byBzcGxpdA0KPiBjcmVkZW50aWFs
-IGNhY2hlcyBieSBHU1Mgc2VydmljZS4NCj4gDQo+IA0KPiAtLQ0KPiBDaHVjayBMZXZlcg0KPiAN
-Cj4gDQo+IA0KDQo=
+On Sun, 10 Apr 2016, Benjamin Coddington wrote:
+
+> My client hangs on xfstests generic/074 on a krb5 mount, and I've found that
+> the linux server is silently discarding one or more RPCs because the GSS
+> sequence numbers are outside the sequence window.
+>
+> The reason is that sometimes one of the nfsd threads takes a long time
+> between receiving the RPC and then checking if the sequence is within the
+> window.  That delay allows the other nfsd threads to quickly move the window
+> forward out of range.
+>
+> If the server discards the RPC then that causes then the client to wait
+> forever for a response or until the connection is reset.
+>
+> By inserting tracepoints, I think I found two sources of delay:
+>
+>  1) gss_svc_searchbyctx() uses dup_to_netobj() which has a kmemdup with
+> GFP_KERNEL.  It does this because presumabely it doesn't know how big the
+> context handle should be.
+>
+>  2) gss_verify_mic() uses make_checksum() which eventually gets to
+> crypto_alloc_hash() with GFP_KERNEL.
+>
+> For the first delay, can we assume the context handles are all going to be
+> the same size?  It looks like the handle is assigned by the server, so it
+> seems like we should be able to know beforehand how large they are.
+>
+> For the second allocation -- I haven't thrown a lot of thought into what
+> could be done to fix it.. seems a bit tricker.  I'll think about both of
+> these a bit more, but I thought in the meantime to ask if anyone has
+> thoughts about this problem.  Maybe we can to the sequence check before
+> verify_mic -- but then a message that fails verification could flip the
+> sequence bit..
+
+I haven't gotten back to this problem yet, but in the interest of not
+forgetting about it I want to self-reply that some testing with kmemleak
+showed a bunch of these on trond's linux-next branch.  I haven't done any
+other investigation:
+
+unreferenced object 0xffff8800545bfe48 (size 16):
+  comm "nfsd", pid 1548, jiffies 4294980011 (age 54.660s)
+  hex dump (first 16 bytes):
+    2a 86 48 86 f7 12 01 02 02 6b 6b 6b 6b 6b 6b a5  *.H......kkkkkk.
+  backtrace:
+    [<ffffffff817c1f2e>] kmemleak_alloc+0x4e/0xb0
+    [<ffffffff81220767>] __kmalloc_track_caller+0x187/0x2a0
+    [<ffffffff811d6cb0>] kmemdup+0x20/0x50
+    [<ffffffffc011d86f>] gssx_dec_buffer+0x8f/0xa0 [auth_rpcgss]
+    [<ffffffffc011e252>] gssx_dec_accept_sec_context+0x242/0x58e
+[auth_rpcgss]
+    [<ffffffffc0147e57>] rpcauth_unwrap_resp+0xa7/0xe0 [sunrpc]
+    [<ffffffffc01386e3>] call_decode+0x1e3/0x810 [sunrpc]
+    [<ffffffffc01441b1>] __rpc_execute+0x91/0x460 [sunrpc]
+    [<ffffffffc01468a1>] rpc_execute+0x61/0xc0 [sunrpc]
+    [<ffffffffc013a351>] rpc_run_task+0xf1/0x130 [sunrpc]
+    [<ffffffffc013a3e0>] rpc_call_sync+0x50/0xc0 [sunrpc]
+    [<ffffffffc011d3fa>] gssp_accept_sec_context_upcall+0x1aa/0x4b0
+[auth_rpcgss]
+    [<ffffffffc011b9c5>] svcauth_gss_proxy_init+0x175/0x520 [auth_rpcgss]
+    [<ffffffffc011c172>] svcauth_gss_accept+0x402/0xb60 [auth_rpcgss]
+    [<ffffffffc014d77d>] svc_authenticate+0xed/0xf0 [sunrpc]
+    [<ffffffffc01491e4>] svc_process_common+0x244/0x690 [sunrpc]
+
+Ben
