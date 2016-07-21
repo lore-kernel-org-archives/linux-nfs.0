@@ -1,16 +1,16 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:33986 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:54759 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751302AbcGUJIZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 21 Jul 2016 05:08:25 -0400
+	id S1751905AbcGUJu2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 21 Jul 2016 05:50:28 -0400
 From: "Benjamin Coddington" <bcodding@redhat.com>
 To: "hch@infradead.org" <hch@infradead.org>
 Cc: "Trond Myklebust" <trondmy@primarydata.com>,
         "List Linux" <linux-nfs@vger.kernel.org>
 Subject: Re: [PATCH v4 24/28] Getattr doesn't require data sync semantics
-Date: Thu, 21 Jul 2016 05:10:03 -0400
-Message-ID: <B4719B7F-3FC4-4FD7-929E-CC528CA867F4@redhat.com>
-In-Reply-To: <A540F5A1-37B3-40EB-876D-EC33E891F0C9@redhat.com>
+Date: Thu, 21 Jul 2016 05:52:05 -0400
+Message-ID: <9E2543EF-0442-491E-AB22-3E1667DABBA4@redhat.com>
+In-Reply-To: <B4719B7F-3FC4-4FD7-929E-CC528CA867F4@redhat.com>
 References: <1467844205-76852-23-git-send-email-trond.myklebust@primarydata.com>
  <1467844205-76852-24-git-send-email-trond.myklebust@primarydata.com>
  <1467844205-76852-25-git-send-email-trond.myklebust@primarydata.com>
@@ -23,48 +23,63 @@ References: <1467844205-76852-23-git-send-email-trond.myklebust@primarydata.com>
  <AB904138-E761-4F8F-AF97-0E8A4E067DB1@redhat.com>
  <20160721082216.GA15247@infradead.org>
  <A540F5A1-37B3-40EB-876D-EC33E891F0C9@redhat.com>
+ <B4719B7F-3FC4-4FD7-929E-CC528CA867F4@redhat.com>
 MIME-Version: 1.0
 Content-Type: text/plain; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 21 Jul 2016, at 4:32, Benjamin Coddington wrote:
+On 21 Jul 2016, at 5:10, Benjamin Coddington wrote:
 
-> On 21 Jul 2016, at 4:22, hch@infradead.org wrote:
+> On 21 Jul 2016, at 4:32, Benjamin Coddington wrote:
 >
->> On Wed, Jul 20, 2016 at 11:03:06AM -0400, Benjamin Coddington wrote:
->>>>> This debug output is identical for every cycle of the loop. Have 
->>>>> to
->>>>> stop for the
->>>>> day.. more tomorrow.
+>> On 21 Jul 2016, at 4:22, hch@infradead.org wrote:
+>>
+>>> On Wed, Jul 20, 2016 at 11:03:06AM -0400, Benjamin Coddington wrote:
+>>>>>> This debug output is identical for every cycle of the loop. Have 
+>>>>>> to
+>>>>>> stop for the
+>>>>>> day.. more tomorrow.
+>>>>>>
+>>>>>> Ben
+>>>>>>
 >>>>>
->>>>> Ben
->>>>>
+>>>>> Duh??? It???s this patch: pNFS: Fix post-layoutget error handling 
+>>>>> in
+>>>>> pnfs_update_layout()
+>>>>> We have to pass through fatal errors??? I???ll fix it.
 >>>>
->>>> Duh??? It???s this patch: pNFS: Fix post-layoutget error handling 
->>>> in
->>>> pnfs_update_layout()
->>>> We have to pass through fatal errors??? I???ll fix it.
+>>>> That's indeed fixed it up, and generic/207 passes now.  Thanks!
 >>>
->>> That's indeed fixed it up, and generic/207 passes now.  Thanks!
+>>> So I spoke too soon in my last mail, generic/207 still fails for me
+>>> with Trond's linux-next tree, although much later in the test now.
+>>>
+>>> Does it include the changes that are supposed to fix the issue?
 >>
->> So I spoke too soon in my last mail, generic/207 still fails for me
->> with Trond's linux-next tree, although much later in the test now.
->>
->> Does it include the changes that are supposed to fix the issue?
+>> It should -- the v2 that fixed 207 for me is 
+>> 56b38a1f7c781519eef09c1668a3c97ea911f86b, the first version was 
+>> e35c2a0b3cd062a8941d21511719391b64437427, I think.  I'll test again 
+>> too.
 >
-> It should -- the v2 that fixed 207 for me is 
-> 56b38a1f7c781519eef09c1668a3c97ea911f86b, the first version was 
-> e35c2a0b3cd062a8941d21511719391b64437427, I think.  I'll test again 
-> too.
+> Looks like we're back to the original problem - it fails with the 
+> inode size is 4k less than expected.
+>
+> The reason it worked for me was I had pnfs_ld debugging turned up 
+> which slowed things down enough to somehow catch the right size.
+>
+> Looks like the right size is returned in the CLOSE, but the inode's 
+> not getting updated.
 
-Looks like we're back to the original problem - it fails with the inode 
-size is 4k less than expected.
+And the size is right in the last LAYOUTCOMMIT response, of course.  Is 
+this the problem?
 
-The reason it worked for me was I had pnfs_ld debugging turned up which 
-slowed things down enough to somehow catch the right size.
+6024 static int decode_layoutcommit(struct xdr_stream *xdr,
+...
+6040     sizechanged = be32_to_cpup(p);
+6041
+6042     if (sizechanged) {
+6043         /* throw away new size */
+6044         p = xdr_inline_decode(xdr, 8);
 
-Looks like the right size is returned in the CLOSE, but the inode's not 
-getting updated.
 
 Ben
