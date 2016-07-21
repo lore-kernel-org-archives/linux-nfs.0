@@ -1,210 +1,229 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:49026 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753476AbcGURdv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 21 Jul 2016 13:33:51 -0400
-Date: Thu, 21 Jul 2016 13:33:50 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: NeilBrown <neilb@suse.com>
-Cc: Steve Dickson <SteveD@redhat.com>,
-        Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 6/8] mountd: don't add paths to non-mounted export points
- to pseudo-root
-Message-ID: <20160721173350.GD27148@fieldses.org>
-References: <20160714021310.5874.22953.stgit@noble>
- <20160714022643.5874.27117.stgit@noble>
- <20160718203242.GD12304@fieldses.org>
- <8760s19qul.fsf@notabene.neil.brown.name>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <8760s19qul.fsf@notabene.neil.brown.name>
+Received: from userp1040.oracle.com ([156.151.31.81]:48457 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753476AbcGUR5D convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 21 Jul 2016 13:57:03 -0400
+Content-Type: text/plain; charset=utf-8
+Mime-Version: 1.0 (Mac OS X Mail 9.3 \(3124\))
+Subject: Re: Problem re-establishing GSS contexts after a server reboot
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <CAN-5tyHWPvNeq-0kNErTY+nENqkfrbGXwutcMgaOYcvYL3fX7Q@mail.gmail.com>
+Date: Thu, 21 Jul 2016 19:56:50 +0200
+Cc: "Adamson, Andy" <William.Adamson@netapp.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Message-Id: <42FD3D54-79F9-485A-A2B4-FBFA65C2FC16@oracle.com>
+References: <59704D2B-9FBD-41BB-ADA8-4CF4AEF4BB9D@oracle.com> <259CD26A-E1E7-44CA-B1D3-F46AED01B932@netapp.com> <CAN-5tyE_yrspQDpftO1Ls9LxjaZPHGe9hH0V65xaFuNEyrbwig@mail.gmail.com> <6BC3C19E-6F44-4C38-BF26-3E9A948D305C@oracle.com> <CAN-5tyHWPvNeq-0kNErTY+nENqkfrbGXwutcMgaOYcvYL3fX7Q@mail.gmail.com>
+To: Olga Kornievskaia <aglo@umich.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Jul 20, 2016 at 08:59:30AM +1000, NeilBrown wrote:
-> On Tue, Jul 19 2016, J. Bruce Fields wrote:
-> 
-> > On Thu, Jul 14, 2016 at 12:26:43PM +1000, NeilBrown wrote:
-> >> export points with the "mountpoint" flag should not be exported
-> >> if they aren't mounted.
-> >> They shouldn't even appear in the pseudo-root filesystem.
-> >> So add an appropriate check to v4root_set().
-> >> 
-> >> This means that the v4root might need to be recomputed whenever a
-> >> filesystem is mounted or unmounted.  So when there are export points
-> >> with the "mountpoint" flag, check for changes in the mount table.
-> >> This is done be measuring the size of /proc/mounts.
-> >
-> > Surely there's some more reliable measurement--could we track some data
-> > about the mountpoint itself, maybe?
-> 
-> We could.  But it would be more complex code for very little gain.
-> I did consider using select() on /proc/mounts to get a notification
-> whenever anything changes.  What we be more reliable but more difficult.
-> I also considered calculating an SHA1, or maybe just a crc32 on the
-> contents of /proc/mounts.  But then I realised that the size was very
-> easy and very nearly as reliable.
 
-So we don't care enough about the mountpoint option enough to make it
-work 100% reliably?
-
-If we expect too few users for there to be a real chance of hitting the
-bad case here, then I wonder again whether the whole feature is worth
-the trouble.
-
-> > But I'd still like some more justification for this change in logic.
-> > Does anyone currently use the "mp" option?  If not, could we just
-> > deprecate it?  If so, can we really get away with changing it this way?
+> On Jul 21, 2016, at 6:04 PM, Olga Kornievskaia <aglo@umich.edu> wrote:
 > 
-> I have a customer complaining that it doesn't work as advertised for
-> NFSv4.  So presumably they have a use-case, though I haven't asked for
-> details on exactly why they want it.
-
-I'd be inclined to ask for more details about the use case before
-continuing.
-
-As it is I'm inclined towards some plan like documenting "mountpoint" as
-deprecated, warning on use, and taking it out eventually.
-
---b.
-
-> I actually think this is the most useful of the changes.  It means that
-> if a filesystem isn't mounted, it isn't even visible over NFSv4.
+> On Thu, Jul 21, 2016 at 2:55 AM, Chuck Lever <chuck.lever@oracle.com> wrote:
+>> 
+>>> On Jul 20, 2016, at 6:56 PM, Olga Kornievskaia <aglo@umich.edu> wrote:
+>>> 
+>>> On Wed, Jul 20, 2016 at 5:14 AM, Adamson, Andy
+>>> <William.Adamson@netapp.com> wrote:
+>>>> 
+>>>>> On Jul 19, 2016, at 10:51 AM, Chuck Lever <chuck.lever@oracle.com> wrote:
+>>>>> 
+>>>>> Hi Andy-
+>>>>> 
+>>>>> Thanks for taking the time to discuss this with me. I've
+>>>>> copied linux-nfs to make this e-mail also an upstream bug
+>>>>> report.
+>>>>> 
+>>>>> As we saw in the network capture, recovery of GSS contexts
+>>>>> after a server reboot fails in certain cases with NFSv4.0
+>>>>> and NFSv4.1 mount points.
+>>>>> 
+>>>>> The reproducer is a simple program that generates one NFS
+>>>>> WRITE periodically, run while the server repeatedly reboots
+>>>>> (or one cluster head fails over to the other and back). The
+>>>>> goal of the reproducer is to identify problems with state
+>>>>> recovery without a lot of other I/O going on to clutter up
+>>>>> the network capture.
+>>>>> 
+>>>>> In the failing case, sec=krb5 is specified on the mount
+>>>>> point, and the reproducer is run as root. We've found this
+>>>>> combination fails with both NFSv4.0 and NFSv4.1.
+>>>>> 
+>>>>> At mount time, the client establishes a GSS context for
+>>>>> lease management operations, which is bound to the client's
+>>>>> NFS service principal and uses GSS service "integrity."
+>>>>> Call this GSS context 1.
+>>>>> 
+>>>>> When the reproducer starts, a second GSS context is
+>>>>> established for NFS operations associated with that user.
+>>>>> Since the reproducer is running as root, this context is
+>>>>> also bound to the client's NFS service principal, but it
+>>>>> uses the GSS service "none" (reflecting the explicit
+>>>>> request for "sec=krb5"). Call this GSS context 2.
+>>>>> 
+>>>>> After the server reboots, the client re-establishes a TCP
+>>>>> connection with the server, and performs a RENEW
+>>>>> operation using context 1. Thanks to the server reboot,
+>>>>> contexts 1 and 2 are now stale. The server thus rejects
+>>>>> the RPC with RPCSEC_GSS_CTXPROBLEM.
+>>>>> 
+>>>>> The client performs a GSS_INIT_SEC_CONTEXT via an NFSv4
+>>>>> NULL operation. Call this GSS context 3.
+>>>>> 
+>>>>> Interestingly, the client does not resend the RENEW
+>>>>> operation at this point (if it did, we wouldn't see this
+>>>>> problem at all).
+>>>>> 
+>>>>> The client then attempts to resume the reproducer workload.
+>>>>> It sends an NFSv4 WRITE operation, using the first available
+>>>>> GSS context in UID 0's credential cache, which is context 3,
+>>>>> already bound to the client's NFS service principal. But GSS
+>>>>> service "none" is used for this operation, since it is on
+>>>>> behalf of the mount where sec=krb5 was specified.
+>>>>> 
+>>>>> The RPC is accepted, but the server reports
+>>>>> NFS4ERR_STALE_STATEID, since it has recently rebooted.
+>>>>> 
+>>>>> The client responds by attempting state recovery. The
+>>>>> first operation it tries is another RENEW. Since this is
+>>>>> a lease management operation, the client looks in UID 0's
+>>>>> credential cache again and finds the recently established
+>>>>> context 3. It tries the RENEW operation using GSS context
+>>>>> 3 with GSS service "integrity."
+>>>>> 
+>>>>> The server rejects the RENEW RPC with AUTH_FAILED, and
+>>>>> the client reports that "check lease failed" and
+>>>>> terminates state recovery.
+>>>>> 
+>>>>> The client re-drives the WRITE operation with the stale
+>>>>> stateid with predictable results. The client again tries
+>>>>> to recover state by sending a RENEW, and still uses the
+>>>>> same GSS context 3 with service "integrity" and gets the
+>>>>> same result. A (perhaps slow-motion) STALE_STATEID loop
+>>>>> ensues, and the client mount point is deadlocked.
+>>>>> 
+>>>>> Your analysis was that because the reproducer is run as
+>>>>> root, both the reproducer's I/O operations, and lease
+>>>>> management operations, attempt to use the same GSS context
+>>>>> in UID 0's credential cache, but each uses different GSS
+>>>>> services.
+>>>> 
+>>>> As RFC2203 states, "In a creation request, the seq_num and service fields are undefined and both must be ignored by the server”
+>>>> So a context creation request while kicked off by an operation with a service attached (e.g. WRITE uses rpc_gss_svc_none and RENEW uses rpc_gss_svc_integrity), can be used by either service level.
+>>>> AFAICS a single GSS context could in theory be used for all service levels, but in practice, GSS contexts are restricted to a service level (by client? by server? ) once they are used.
+>>>> 
+>>>> 
+>>>>> The key issue seems to be why, when the mount
+>>>>> is first established, the client is correctly able to
+>>>>> establish two separate GSS contexts for UID 0; but after
+>>>>> a server reboot, the client attempts to use the same GSS
+>>>>> context with two different GSS services.
+>>>> 
+>>>> I speculate that it is a race between the WRITE and the RENEW to use the same newly created GSS context that has not been used yet, and so has no assigned service level, and the two requests race to set the service level.
+>>> 
+>>> I agree with Andy. It must be a tight race.
+>> 
+>> In one capture I see something like this after
+>> the server restarts:
+>> 
+>> SYN
+>> SYN, ACK
+>> ACK
+>> C WRITE
+>> C SEQUENCE
+>> R WRITE -> CTX_PROBLEM
+>> R SEQUENCE -> CTX_PROBLEM
+>> C NULL (KRB5_AP_REQ)
+>> R NULL (KRB5_AP_REP)
+>> C WRITE
+>> C SEQUENCE
+>> R WRITE -> NFS4ERR_STALE_STATEID
+>> R SEQUENCE -> AUTH_FAILED
+>> 
+>> Andy's theory neatly explains this behavior.
+>> 
+>> 
+>>> I have tried to reproduce
+>>> your scenario and in my tests of rebooting the server all recover
+>>> correctly. In my case, if RENEW was the one hitting the AUTH_ERR then
+>>> the new context is established and then RENEW using integrity service
+>>> is retried with the new context which gets ERR_STALE_CLIENTID which
+>>> then client recovers from. If it's an operation (I have a GETATTR)
+>>> that gets AUTH_ERR, then it gets new context and is retried using none
+>>> service. Then RENEW gets its own AUTH_ERR as it uses a different
+>>> context, a new context is gotten, RENEW is retried over integrity and
+>>> gets ERR_STALE_CLIENTID which it recovers from.
+>> 
+>> If one operation is allowed to complete, then
+>> the other will always recognize that another
+>> fresh GSS context is needed. If two are sent
+>> at the same time, they race and one always
+>> fails.
+>> 
+>> Helen's test includes a second idle mount point
+>> (sec=krb5i) and maybe that is needed to trigger
+>> the race?
+>> 
 > 
-> After all, the reality is that people export filesystems, not names in
-> their namespace.  NFSv4 tries to make it all look like the same thing,
-> and there is some justification for that.  But I think a lot of people
-> think about it as filesystems being exported, and the mountpoint option
-> allows that thought to be expressed in the configuration.
-> 
-> NeilBrown
-> 
-> 
-> >
-> > --b.
-> >
-> >> 
-> >> Signed-off-by: NeilBrown <neilb@suse.com>
-> >> ---
-> >>  support/include/v4root.h |    2 +-
-> >>  utils/mountd/auth.c      |   29 +++++++++++++++++++++++++++--
-> >>  utils/mountd/v4root.c    |   11 ++++++++++-
-> >>  3 files changed, 38 insertions(+), 4 deletions(-)
-> >> 
-> >> diff --git a/support/include/v4root.h b/support/include/v4root.h
-> >> index 706c15c70d95..406fd4e43e5a 100644
-> >> --- a/support/include/v4root.h
-> >> +++ b/support/include/v4root.h
-> >> @@ -10,6 +10,6 @@
-> >>  #define V4ROOT_H
-> >>  
-> >>  extern int v4root_needed;
-> >> -extern void v4root_set(void);
-> >> +extern void v4root_set(int *mountpoints_checked);
-> >>  
-> >>  #endif /* V4ROOT_H */
-> >> diff --git a/utils/mountd/auth.c b/utils/mountd/auth.c
-> >> index 0881d9a6edba..5bd7e6622307 100644
-> >> --- a/utils/mountd/auth.c
-> >> +++ b/utils/mountd/auth.c
-> >> @@ -77,6 +77,29 @@ check_useipaddr(void)
-> >>  		cache_flush(1);
-> >>  }
-> >>  
-> >> +static int mountpoints_changed(void)
-> >> +{
-> >> +	static int last_size = 0;
-> >> +	int size;
-> >> +	int fd;
-> >> +	char buf[4096];
-> >> +	int n;
-> >> +
-> >> +	fd = open("/proc/mounts", O_RDONLY);
-> >> +	if (fd < 0)
-> >> +		/* ignore mountpoint changes if we cannot read /proc/mounts */
-> >> +		return 0;
-> >> +	size = 0;
-> >> +	while ((n = read(fd, buf, sizeof(buf))) > 0)
-> >> +		size += n;
-> >> +	if (n < 0)
-> >> +		return 0;
-> >> +	if (size == last_size)
-> >> +		return 0;
-> >> +	last_size = size;
-> >> +	return 1;
-> >> +}
-> >> +
-> >>  unsigned int
-> >>  auth_reload()
-> >>  {
-> >> @@ -84,6 +107,7 @@ auth_reload()
-> >>  	static ino_t		last_inode;
-> >>  	static int		last_fd = -1;
-> >>  	static unsigned int	counter;
-> >> +	static int		mountpoints_checked = 0;
-> >>  	int			fd;
-> >>  
-> >>  	if ((fd = open(_PATH_ETAB, O_RDONLY)) < 0) {
-> >> @@ -91,7 +115,8 @@ auth_reload()
-> >>  	} else if (fstat(fd, &stb) < 0) {
-> >>  		xlog(L_FATAL, "couldn't stat %s", _PATH_ETAB);
-> >>  		close(fd);
-> >> -	} else if (last_fd != -1 && stb.st_ino == last_inode) {
-> >> +	} else if (last_fd != -1 && stb.st_ino == last_inode &&
-> >> +		   (!mountpoints_checked || !mountpoints_changed())) {
-> >>  		/* We opened the etab file before, and its inode
-> >>  		 * number hasn't changed since then.
-> >>  		 */
-> >> @@ -114,7 +139,7 @@ auth_reload()
-> >>  	memset(&my_client, 0, sizeof(my_client));
-> >>  	xtab_export_read();
-> >>  	check_useipaddr();
-> >> -	v4root_set();
-> >> +	v4root_set(&mountpoints_checked);
-> >>  
-> >>  	++counter;
-> >>  
-> >> diff --git a/utils/mountd/v4root.c b/utils/mountd/v4root.c
-> >> index d52172592823..1a5778f9c7de 100644
-> >> --- a/utils/mountd/v4root.c
-> >> +++ b/utils/mountd/v4root.c
-> >> @@ -183,7 +183,7 @@ static int v4root_add_parents(nfs_export *exp)
-> >>   * looking for components of the v4 mount.
-> >>   */
-> >>  void
-> >> -v4root_set()
-> >> +v4root_set(int *mountpoints_checked)
-> >>  {
-> >>  	nfs_export	*exp;
-> >>  	int	i;
-> >> @@ -193,6 +193,7 @@ v4root_set()
-> >>  	if (!v4root_support())
-> >>  		return;
-> >>  
-> >> +	*mountpoints_checked = 0;
-> >>  	for (i = 0; i < MCL_MAXTYPES; i++) {
-> >>  		for (exp = exportlist[i].p_head; exp; exp = exp->m_next) {
-> >>  			if (exp->m_export.e_flags & NFSEXP_V4ROOT)
-> >> @@ -202,6 +203,14 @@ v4root_set()
-> >>  				 */
-> >>  				continue;
-> >>  
-> >> +			if (exp->m_export.e_mountpoint) {
-> >> +				*mountpoints_checked = 1;
-> >> +				if (!is_mountpoint(exp->m_export.e_mountpoint[0]?
-> >> +						   exp->m_export.e_mountpoint:
-> >> +						   exp->m_export.e_path))
-> >> +					continue;
-> >> +			}
-> >> +
-> >>  			if (strcmp(exp->m_export.e_path, "/") == 0 &&
-> >>  			    !(exp->m_export.e_flags & NFSEXP_FSID)) {
-> >>  				/* Force '/' to be exported as fsid == 0*/
-> >> 
-> >> 
-> >> --
-> >> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> >> the body of a message to majordomo@vger.kernel.org
-> >> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> Chuck, any chance to get "rpcdebug -m rpc auth" output during the
+> failure (gssd optionally) (i realize that it might alter the timings
+> and not hit the issue but worth a shot)?
+
+I'm sure that's fine. An internal tester hit this,
+not a customer, so I will ask.
+
+I agree, though, that timing might be a problem:
+these systems all have real serial consoles via
+iLOM, so /v/l/m traffic does bring everything to
+a standstill.
+
+Meanwhile, what's you're opinion about AUTH_FAILED?
+Should the server return RPCSEC_GSS_CTXPROBLEM
+in this case instead? If it did, do you think
+the Linux client would recover by creating a
+replacement GSS context?
+
+
+
+>>>> —>Andy
+>>>>> 
+>>>>> One solution is to introduce a quick check before a
+>>>>> context is used to see if the GSS service bound to it
+>>>>> matches the GSS service that the caller intends to use.
+>>>>> I'm not sure how that can be done without exposing a window
+>>>>> where another caller requests the use of a GSS context and
+>>>>> grabs the fresh one, before it can be used by our first
+>>>>> caller and bound to its desired GSS service.
+>>>>> 
+>>>>> Other solutions might be to somehow isolate the credential
+>>>>> cache used for lease management operations, or to split
+>>>>> credential caches by GSS service.
+>>>>> 
+>>>>> 
+>>>>> --
+>>>>> Chuck Lever
+>>>>> 
+>>>>> 
+>>>>> 
+>>>> 
+>>> --
+>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>>> the body of a message to majordomo@vger.kernel.org
+>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>> 
+>> --
+>> Chuck Lever
+>> 
+>> 
+>> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+--
+Chuck Lever
+
 
 
