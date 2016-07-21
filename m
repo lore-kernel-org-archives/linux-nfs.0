@@ -1,108 +1,91 @@
-Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:38047 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752418AbcGUM3P (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 21 Jul 2016 08:29:15 -0400
-From: "Benjamin Coddington" <bcodding@redhat.com>
-To: "Artem Savkov" <asavkov@redhat.com>
-Cc: "Christoph Hellwig" <hch@lst.de>,
-        "Anna Schumaker" <Anna.Schumaker@netapp.com>,
-        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
-        trond.myklebust@primarydata.com
-Subject: Re: [PATCH v3] Fix NULL pointer dereference in bl_free_device().
-Date: Thu, 21 Jul 2016 08:30:52 -0400
-Message-ID: <C1E3B80C-FF09-4611-A6BE-6A0576987F5B@redhat.com>
-In-Reply-To: <1469100724-11039-1-git-send-email-asavkov@redhat.com>
-References: <20160721080910.GA20363@lst.de>
- <1469100724-11039-1-git-send-email-asavkov@redhat.com>
+Return-Path: <trondmy@primarydata.com>
+From: Trond Myklebust <trondmy@primarydata.com>
+To: Coddington Benjamin <bcodding@redhat.com>
+CC: "hch@infradead.org" <hch@infradead.org>,
+        List Linux
+	<linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH v4 24/28] Getattr doesn't require data sync semantics
+Date: Thu, 21 Jul 2016 12:46:55 +0000
+Message-ID: <E33497F6-079C-4903-9CC5-0ABDFA149694@primarydata.com>
+References: <1467844205-76852-23-git-send-email-trond.myklebust@primarydata.com>
+ <1467844205-76852-24-git-send-email-trond.myklebust@primarydata.com>
+ <1467844205-76852-25-git-send-email-trond.myklebust@primarydata.com>
+ <20160718034847.GA1195@infradead.org>
+ <A9C18137-87A3-4652-ADD6-E8E1C4BAE27B@primarydata.com>
+ <1468817945.5273.2.camel@primarydata.com>
+ <20160719035843.GA24437@infradead.org>
+ <F879054A-2116-40D5-90C9-473E71977E8A@redhat.com>
+ <C44AB0DD-8FA3-42F2-B7DE-C694559A68EF@primarydata.com>
+ <AB904138-E761-4F8F-AF97-0E8A4E067DB1@redhat.com>
+ <20160721082216.GA15247@infradead.org>
+ <A540F5A1-37B3-40EB-876D-EC33E891F0C9@redhat.com>
+ <B4719B7F-3FC4-4FD7-929E-CC528CA867F4@redhat.com>
+ <9E2543EF-0442-491E-AB22-3E1667DABBA4@redhat.com>
+In-Reply-To: <9E2543EF-0442-491E-AB22-3E1667DABBA4@redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain; format=flowed
-Sender: linux-nfs-owner@vger.kernel.org
+Content-Type: text/plain; charset=WINDOWS-1252
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 21 Jul 2016, at 7:32, Artem Savkov wrote:
 
-> When bl_parse_deviceid() fails in bl_alloc_deviceid_node() on
-> blkdev_get_by_*() step we get an pnfs_block_dev struct that is
-> uninitialized except for bdev field which is set to whatever error
-> blkdev_get_by_*() returns.  bl_free_device() then tries to call
-> blkdev_put() if bdev is not 0 resulting in a wrong pointer 
-> dereference.
->
-> Fixing this by setting bdev in struct pnfs_block_dev only if we didn't
-> get an error from blkdev_get_by_*().
->
-> Signed-off-by: Artem Savkov <asavkov@redhat.com>
+> On Jul 21, 2016, at 05:52, Benjamin Coddington <bcodding@redhat.com> wrot=
+e:
+>=20
+> On 21 Jul 2016, at 5:10, Benjamin Coddington wrote:
+>=20
+>> On 21 Jul 2016, at 4:32, Benjamin Coddington wrote:
+>>=20
+>>> On 21 Jul 2016, at 4:22, hch@infradead.org wrote:
+>>>=20
+>>>> On Wed, Jul 20, 2016 at 11:03:06AM -0400, Benjamin Coddington wrote:
+>>>>>>> This debug output is identical for every cycle of the loop. Have to
+>>>>>>> stop for the
+>>>>>>> day.. more tomorrow.
+>>>>>>>=20
+>>>>>>> Ben
+>>>>>>>=20
+>>>>>>=20
+>>>>>> Duh??? It???s this patch: pNFS: Fix post-layoutget error handling in
+>>>>>> pnfs_update_layout()
+>>>>>> We have to pass through fatal errors??? I???ll fix it.
+>>>>>=20
+>>>>> That's indeed fixed it up, and generic/207 passes now.  Thanks!
+>>>>=20
+>>>> So I spoke too soon in my last mail, generic/207 still fails for me
+>>>> with Trond's linux-next tree, although much later in the test now.
+>>>>=20
+>>>> Does it include the changes that are supposed to fix the issue?
+>>>=20
+>>> It should -- the v2 that fixed 207 for me is 56b38a1f7c781519eef09c1668=
+a3c97ea911f86b, the first version was e35c2a0b3cd062a8941d21511719391b64437=
+427, I think.  I'll test again too.
+>>=20
+>> Looks like we're back to the original problem - it fails with the inode =
+size is 4k less than expected.
+>>=20
+>> The reason it worked for me was I had pnfs_ld debugging turned up which =
+slowed things down enough to somehow catch the right size.
+>>=20
+>> Looks like the right size is returned in the CLOSE, but the inode's not =
+getting updated.
+>=20
+> And the size is right in the last LAYOUTCOMMIT response, of course.  Is t=
+his the problem?
+>=20
+> 6024 static int decode_layoutcommit(struct xdr_stream *xdr,
+> ...
+> 6040     sizechanged =3D be32_to_cpup(p);
+> 6041
+> 6042     if (sizechanged) {
+> 6043         /* throw away new size */
+> 6044         p =3D xdr_inline_decode(xdr, 8);
+>=20
+>=20
+> Ben
+>=20
 
-Looks good to me.
+That shouldn=92t really matter since we have a GETATTR immediately followin=
+g the LAYOUTGET operation. Assuming that nfs4_proc_layoutcommit() actually =
+gets called, it is supposed to update the inode correctly.
 
-Reviewed-by: Benjamin Coddington <bcodding@redhat.com>
-
-> ---
->  fs/nfs/blocklayout/dev.c | 22 +++++++++++++---------
->  1 file changed, 13 insertions(+), 9 deletions(-)
->
-> diff --git a/fs/nfs/blocklayout/dev.c b/fs/nfs/blocklayout/dev.c
-> index 118252f..a69ef4e 100644
-> --- a/fs/nfs/blocklayout/dev.c
-> +++ b/fs/nfs/blocklayout/dev.c
-> @@ -235,18 +235,20 @@ bl_parse_simple(struct nfs_server *server, 
-> struct pnfs_block_dev *d,
->  		struct pnfs_block_volume *volumes, int idx, gfp_t gfp_mask)
->  {
->  	struct pnfs_block_volume *v = &volumes[idx];
-> +	struct block_device *bdev;
->  	dev_t dev;
->
->  	dev = bl_resolve_deviceid(server, v, gfp_mask);
->  	if (!dev)
->  		return -EIO;
->
-> -	d->bdev = blkdev_get_by_dev(dev, FMODE_READ | FMODE_WRITE, NULL);
-> -	if (IS_ERR(d->bdev)) {
-> +	bdev = blkdev_get_by_dev(dev, FMODE_READ | FMODE_WRITE, NULL);
-> +	if (IS_ERR(bdev)) {
->  		printk(KERN_WARNING "pNFS: failed to open device %d:%d (%ld)\n",
-> -			MAJOR(dev), MINOR(dev), PTR_ERR(d->bdev));
-> -		return PTR_ERR(d->bdev);
-> +			MAJOR(dev), MINOR(dev), PTR_ERR(bdev));
-> +		return PTR_ERR(bdev);
->  	}
-> +	d->bdev = bdev;
->
->
->  	d->len = i_size_read(d->bdev->bd_inode);
-> @@ -350,17 +352,19 @@ bl_parse_scsi(struct nfs_server *server, struct 
-> pnfs_block_dev *d,
->  		struct pnfs_block_volume *volumes, int idx, gfp_t gfp_mask)
->  {
->  	struct pnfs_block_volume *v = &volumes[idx];
-> +	struct block_device *bdev;
->  	const struct pr_ops *ops;
->  	int error;
->
->  	if (!bl_validate_designator(v))
->  		return -EINVAL;
->
-> -	d->bdev = bl_open_dm_mpath_udev_path(v);
-> -	if (IS_ERR(d->bdev))
-> -		d->bdev = bl_open_udev_path(v);
-> -	if (IS_ERR(d->bdev))
-> -		return PTR_ERR(d->bdev);
-> +	bdev = bl_open_dm_mpath_udev_path(v);
-> +	if (IS_ERR(bdev))
-> +		bdev = bl_open_udev_path(v);
-> +	if (IS_ERR(bdev))
-> +		return PTR_ERR(bdev);
-> +	d->bdev = bdev;
->
->  	d->len = i_size_read(d->bdev->bd_inode);
->  	d->map = bl_map_simple;
-> -- 
-> 2.5.5
->
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" 
-> in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Cheers
+  Trond
