@@ -1,249 +1,117 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-it0-f53.google.com ([209.85.214.53]:33763 "EHLO
-	mail-it0-f53.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752077AbcGUTy0 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 21 Jul 2016 15:54:26 -0400
-Received: by mail-it0-f53.google.com with SMTP id f6so3748791ith.0
-        for <linux-nfs@vger.kernel.org>; Thu, 21 Jul 2016 12:54:26 -0700 (PDT)
+Received: from fieldses.org ([173.255.197.46]:49176 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754006AbcGUUeR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 21 Jul 2016 16:34:17 -0400
+Date: Thu, 21 Jul 2016 16:34:15 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Oleg Drokin <green@linuxhacker.ru>
+Cc: Jeff Layton <jlayton@poochiereds.net>, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org
+Subject: Re: [PATCH] nfsd: Make creates return EEXIST correctly instead of
+ EPERM
+Message-ID: <20160721203415.GE27148@fieldses.org>
+References: <1467942466-3081422-1-git-send-email-green@linuxhacker.ru>
+ <20160708205413.GC11269@fieldses.org>
+ <DFD42803-99B2-4844-AAD3-0707E0F7DC66@linuxhacker.ru>
 MIME-Version: 1.0
-In-Reply-To: <42FD3D54-79F9-485A-A2B4-FBFA65C2FC16@oracle.com>
-References: <59704D2B-9FBD-41BB-ADA8-4CF4AEF4BB9D@oracle.com>
- <259CD26A-E1E7-44CA-B1D3-F46AED01B932@netapp.com> <CAN-5tyE_yrspQDpftO1Ls9LxjaZPHGe9hH0V65xaFuNEyrbwig@mail.gmail.com>
- <6BC3C19E-6F44-4C38-BF26-3E9A948D305C@oracle.com> <CAN-5tyHWPvNeq-0kNErTY+nENqkfrbGXwutcMgaOYcvYL3fX7Q@mail.gmail.com>
- <42FD3D54-79F9-485A-A2B4-FBFA65C2FC16@oracle.com>
-From: Olga Kornievskaia <aglo@umich.edu>
-Date: Thu, 21 Jul 2016 15:54:24 -0400
-Message-ID: <CAN-5tyGJ8YUesk-KBTK+DFqaRV9wNvjQp-4EkcoU4J58EmM7_A@mail.gmail.com>
-Subject: Re: Problem re-establishing GSS contexts after a server reboot
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: "Adamson, Andy" <William.Adamson@netapp.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <DFD42803-99B2-4844-AAD3-0707E0F7DC66@linuxhacker.ru>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Jul 21, 2016 at 1:56 PM, Chuck Lever <chuck.lever@oracle.com> wrote:
->
->> On Jul 21, 2016, at 6:04 PM, Olga Kornievskaia <aglo@umich.edu> wrote:
->>
->> On Thu, Jul 21, 2016 at 2:55 AM, Chuck Lever <chuck.lever@oracle.com> wrote:
->>>
->>>> On Jul 20, 2016, at 6:56 PM, Olga Kornievskaia <aglo@umich.edu> wrote:
->>>>
->>>> On Wed, Jul 20, 2016 at 5:14 AM, Adamson, Andy
->>>> <William.Adamson@netapp.com> wrote:
->>>>>
->>>>>> On Jul 19, 2016, at 10:51 AM, Chuck Lever <chuck.lever@oracle.com> wrote:
->>>>>>
->>>>>> Hi Andy-
->>>>>>
->>>>>> Thanks for taking the time to discuss this with me. I've
->>>>>> copied linux-nfs to make this e-mail also an upstream bug
->>>>>> report.
->>>>>>
->>>>>> As we saw in the network capture, recovery of GSS contexts
->>>>>> after a server reboot fails in certain cases with NFSv4.0
->>>>>> and NFSv4.1 mount points.
->>>>>>
->>>>>> The reproducer is a simple program that generates one NFS
->>>>>> WRITE periodically, run while the server repeatedly reboots
->>>>>> (or one cluster head fails over to the other and back). The
->>>>>> goal of the reproducer is to identify problems with state
->>>>>> recovery without a lot of other I/O going on to clutter up
->>>>>> the network capture.
->>>>>>
->>>>>> In the failing case, sec=krb5 is specified on the mount
->>>>>> point, and the reproducer is run as root. We've found this
->>>>>> combination fails with both NFSv4.0 and NFSv4.1.
->>>>>>
->>>>>> At mount time, the client establishes a GSS context for
->>>>>> lease management operations, which is bound to the client's
->>>>>> NFS service principal and uses GSS service "integrity."
->>>>>> Call this GSS context 1.
->>>>>>
->>>>>> When the reproducer starts, a second GSS context is
->>>>>> established for NFS operations associated with that user.
->>>>>> Since the reproducer is running as root, this context is
->>>>>> also bound to the client's NFS service principal, but it
->>>>>> uses the GSS service "none" (reflecting the explicit
->>>>>> request for "sec=krb5"). Call this GSS context 2.
->>>>>>
->>>>>> After the server reboots, the client re-establishes a TCP
->>>>>> connection with the server, and performs a RENEW
->>>>>> operation using context 1. Thanks to the server reboot,
->>>>>> contexts 1 and 2 are now stale. The server thus rejects
->>>>>> the RPC with RPCSEC_GSS_CTXPROBLEM.
->>>>>>
->>>>>> The client performs a GSS_INIT_SEC_CONTEXT via an NFSv4
->>>>>> NULL operation. Call this GSS context 3.
->>>>>>
->>>>>> Interestingly, the client does not resend the RENEW
->>>>>> operation at this point (if it did, we wouldn't see this
->>>>>> problem at all).
->>>>>>
->>>>>> The client then attempts to resume the reproducer workload.
->>>>>> It sends an NFSv4 WRITE operation, using the first available
->>>>>> GSS context in UID 0's credential cache, which is context 3,
->>>>>> already bound to the client's NFS service principal. But GSS
->>>>>> service "none" is used for this operation, since it is on
->>>>>> behalf of the mount where sec=krb5 was specified.
->>>>>>
->>>>>> The RPC is accepted, but the server reports
->>>>>> NFS4ERR_STALE_STATEID, since it has recently rebooted.
->>>>>>
->>>>>> The client responds by attempting state recovery. The
->>>>>> first operation it tries is another RENEW. Since this is
->>>>>> a lease management operation, the client looks in UID 0's
->>>>>> credential cache again and finds the recently established
->>>>>> context 3. It tries the RENEW operation using GSS context
->>>>>> 3 with GSS service "integrity."
->>>>>>
->>>>>> The server rejects the RENEW RPC with AUTH_FAILED, and
->>>>>> the client reports that "check lease failed" and
->>>>>> terminates state recovery.
->>>>>>
->>>>>> The client re-drives the WRITE operation with the stale
->>>>>> stateid with predictable results. The client again tries
->>>>>> to recover state by sending a RENEW, and still uses the
->>>>>> same GSS context 3 with service "integrity" and gets the
->>>>>> same result. A (perhaps slow-motion) STALE_STATEID loop
->>>>>> ensues, and the client mount point is deadlocked.
->>>>>>
->>>>>> Your analysis was that because the reproducer is run as
->>>>>> root, both the reproducer's I/O operations, and lease
->>>>>> management operations, attempt to use the same GSS context
->>>>>> in UID 0's credential cache, but each uses different GSS
->>>>>> services.
->>>>>
->>>>> As RFC2203 states, "In a creation request, the seq_num and service fields are undefined and both must be ignored by the server”
->>>>> So a context creation request while kicked off by an operation with a service attached (e.g. WRITE uses rpc_gss_svc_none and RENEW uses rpc_gss_svc_integrity), can be used by either service level.
->>>>> AFAICS a single GSS context could in theory be used for all service levels, but in practice, GSS contexts are restricted to a service level (by client? by server? ) once they are used.
->>>>>
->>>>>
->>>>>> The key issue seems to be why, when the mount
->>>>>> is first established, the client is correctly able to
->>>>>> establish two separate GSS contexts for UID 0; but after
->>>>>> a server reboot, the client attempts to use the same GSS
->>>>>> context with two different GSS services.
->>>>>
->>>>> I speculate that it is a race between the WRITE and the RENEW to use the same newly created GSS context that has not been used yet, and so has no assigned service level, and the two requests race to set the service level.
->>>>
->>>> I agree with Andy. It must be a tight race.
->>>
->>> In one capture I see something like this after
->>> the server restarts:
->>>
->>> SYN
->>> SYN, ACK
->>> ACK
->>> C WRITE
->>> C SEQUENCE
->>> R WRITE -> CTX_PROBLEM
->>> R SEQUENCE -> CTX_PROBLEM
->>> C NULL (KRB5_AP_REQ)
->>> R NULL (KRB5_AP_REP)
->>> C WRITE
->>> C SEQUENCE
->>> R WRITE -> NFS4ERR_STALE_STATEID
->>> R SEQUENCE -> AUTH_FAILED
->>>
->>> Andy's theory neatly explains this behavior.
->>>
->>>
->>>> I have tried to reproduce
->>>> your scenario and in my tests of rebooting the server all recover
->>>> correctly. In my case, if RENEW was the one hitting the AUTH_ERR then
->>>> the new context is established and then RENEW using integrity service
->>>> is retried with the new context which gets ERR_STALE_CLIENTID which
->>>> then client recovers from. If it's an operation (I have a GETATTR)
->>>> that gets AUTH_ERR, then it gets new context and is retried using none
->>>> service. Then RENEW gets its own AUTH_ERR as it uses a different
->>>> context, a new context is gotten, RENEW is retried over integrity and
->>>> gets ERR_STALE_CLIENTID which it recovers from.
->>>
->>> If one operation is allowed to complete, then
->>> the other will always recognize that another
->>> fresh GSS context is needed. If two are sent
->>> at the same time, they race and one always
->>> fails.
->>>
->>> Helen's test includes a second idle mount point
->>> (sec=krb5i) and maybe that is needed to trigger
->>> the race?
->>>
->>
->> Chuck, any chance to get "rpcdebug -m rpc auth" output during the
->> failure (gssd optionally) (i realize that it might alter the timings
->> and not hit the issue but worth a shot)?
->
-> I'm sure that's fine. An internal tester hit this,
-> not a customer, so I will ask.
->
-> I agree, though, that timing might be a problem:
-> these systems all have real serial consoles via
-> iLOM, so /v/l/m traffic does bring everything to
-> a standstill.
->
-> Meanwhile, what's you're opinion about AUTH_FAILED?
-> Should the server return RPCSEC_GSS_CTXPROBLEM
-> in this case instead? If it did, do you think
-> the Linux client would recover by creating a
-> replacement GSS context?
+On Fri, Jul 08, 2016 at 05:53:19PM -0400, Oleg Drokin wrote:
+> 
+> On Jul 8, 2016, at 4:54 PM, J. Bruce Fields wrote:
+> 
+> > On Thu, Jul 07, 2016 at 09:47:46PM -0400, Oleg Drokin wrote:
+> >> It looks like we are bit overzealous about failing mkdir/create/mknod
+> >> with permission denied if the parent dir is not writeable.
+> >> Need to make sure the name does not exist first, because we need to
+> >> return EEXIST in that case.
+> >> 
+> >> Signed-off-by: Oleg Drokin <green@linuxhacker.ru>
+> >> ---
+> >> A very similar problem exists with symlinks, but the patch is more
+> >> involved, so assuming this one is ok, I'll send a symlink one separately.
+> >> fs/nfsd/nfs4proc.c |  6 +++++-
+> >> fs/nfsd/vfs.c      | 11 ++++++++++-
+> >> 2 files changed, 15 insertions(+), 2 deletions(-)
+> >> 
+> >> diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+> >> index de1ff1d..0067520 100644
+> >> --- a/fs/nfsd/nfs4proc.c
+> >> +++ b/fs/nfsd/nfs4proc.c
+> >> @@ -605,8 +605,12 @@ nfsd4_create(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+> >> 
+> >> 	fh_init(&resfh, NFS4_FHSIZE);
+> >> 
+> >> +	/*
+> >> +	 * We just check thta parent is accessible here, nfsd_* do their
+> >> +	 * own access permission checks
+> >> +	 */
+> >> 	status = fh_verify(rqstp, &cstate->current_fh, S_IFDIR,
+> >> -			   NFSD_MAY_CREATE);
+> >> +			   NFSD_MAY_EXEC);
+> >> 	if (status)
+> >> 		return status;
+> >> 
+> >> diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
+> >> index 6fbd81e..6a45ec6 100644
+> >> --- a/fs/nfsd/vfs.c
+> >> +++ b/fs/nfsd/vfs.c
+> >> @@ -1161,7 +1161,11 @@ nfsd_create(struct svc_rqst *rqstp, struct svc_fh *fhp,
+> >> 	if (isdotent(fname, flen))
+> >> 		goto out;
+> >> 
+> >> -	err = fh_verify(rqstp, fhp, S_IFDIR, NFSD_MAY_CREATE);
+> >> +	/*
+> >> +	 * Even though it is a create, first we see if we are even allowed
+> >> +	 * to peek inside the parent
+> >> +	 */
+> >> +	err = fh_verify(rqstp, fhp, S_IFDIR, NFSD_MAY_EXEC);
+> > 
+> > Looks like in the v3 case we haven't actually locked the directory yet
+> > at this point so this check is a little race-prone.
+> 
+> In reality this check is not really needed, I suspect.
+> When we call vfs_create/mknod/mkdir later on, it has it's own permission check
+> anyway so if there was a race and somebody changed dir access in the middle,
+> there's going to be another check anyway and it would be caught.
+> Unless there's some weird server-side permission wiggling as well that makes it
+> ineffective, but I imagine that one cannot really change in a racy way?
 
-Ah, yes, I equated AUTH_FAILED And AUTH_ERROR in my mind. If client
-receives the reason as AUTH_FAILED as oppose to CTXPROBLEM it will
-fail with EIO error and will not try to create a new GSS context. So
-yes, I believe it would help if the server returns any of the
-following errors:
-                case RPC_AUTH_REJECTEDCRED:
-                case RPC_AUTH_REJECTEDVERF:
-                case RPCSEC_GSS_CREDPROBLEM:
-                case RPCSEC_GSS_CTXPROBLEM:
+Yeah, I think I'll just change those NFSD_MAY_EXEC's to NFSD_MAY_NOP's.
+We still need the fh_verify there since it's also what does the
+filehandle->dentry translation, but we don't need permission checking
+here yet.
 
-then the client will recreate the context.
+Applying with that one change.  (And I'll followup with some additional
+minor cleanup of the create code.)
 
+--b.
 
->
->
->
->>>>> —>Andy
->>>>>>
->>>>>> One solution is to introduce a quick check before a
->>>>>> context is used to see if the GSS service bound to it
->>>>>> matches the GSS service that the caller intends to use.
->>>>>> I'm not sure how that can be done without exposing a window
->>>>>> where another caller requests the use of a GSS context and
->>>>>> grabs the fresh one, before it can be used by our first
->>>>>> caller and bound to its desired GSS service.
->>>>>>
->>>>>> Other solutions might be to somehow isolate the credential
->>>>>> cache used for lease management operations, or to split
->>>>>> credential caches by GSS service.
->>>>>>
->>>>>>
->>>>>> --
->>>>>> Chuck Lever
->>>>>>
->>>>>>
->>>>>>
->>>>>
->>>> --
->>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->>>> the body of a message to majordomo@vger.kernel.org
->>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->>>
->>> --
->>> Chuck Lever
->>>
->>>
->>>
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->
-> --
-> Chuck Lever
->
->
->
+> 
+> > I wonder why the code's structured that way--it's confusing.
+> 
+> Probably years of accumulated "damage" ;)
+> 
+> > --b.
+> > 
+> >> 	if (err)
+> >> 		goto out;
+> >> 
+> >> @@ -1211,6 +1215,11 @@ nfsd_create(struct svc_rqst *rqstp, struct svc_fh *fhp,
+> >> 		goto out; 
+> >> 	}
+> >> 
+> >> +	/* Now let's see if we actually have permissions to create */
+> >> +	err = nfsd_permission(rqstp, fhp->fh_export, dentry, NFSD_MAY_CREATE);
+> >> +	if (err)
+> >> +		goto out;
+> >> +
+> >> 	if (!(iap->ia_valid & ATTR_MODE))
+> >> 		iap->ia_mode = 0;
+> >> 	iap->ia_mode = (iap->ia_mode & S_IALLUGO) | type;
+> >> -- 
+> >> 2.7.4
