@@ -1,103 +1,90 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-it0-f65.google.com ([209.85.214.65]:36648 "EHLO
-	mail-it0-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753016AbcGVTeu (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 22 Jul 2016 15:34:50 -0400
-Received: by mail-it0-f65.google.com with SMTP id j124so3675976ith.3
-        for <linux-nfs@vger.kernel.org>; Fri, 22 Jul 2016 12:34:50 -0700 (PDT)
+Received: from mail-io0-f196.google.com ([209.85.223.196]:34880 "EHLO
+	mail-io0-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753016AbcGVTe4 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 22 Jul 2016 15:34:56 -0400
+Received: by mail-io0-f196.google.com with SMTP id q83so8028146iod.2
+        for <linux-nfs@vger.kernel.org>; Fri, 22 Jul 2016 12:34:56 -0700 (PDT)
 From: Trond Myklebust <trond.myklebust@primarydata.com>
 To: linux-nfs@vger.kernel.org
-Subject: [PATCH 5/6] NFS: pnfs_mark_matching_lsegs_return() should match the layout sequence id
-Date: Fri, 22 Jul 2016 15:33:57 -0400
-Message-Id: <1469216038-71882-6-git-send-email-trond.myklebust@primarydata.com>
-In-Reply-To: <1469216038-71882-5-git-send-email-trond.myklebust@primarydata.com>
+Subject: [PATCH 6/6] pNFS: Cleanup - don't open code pnfs_mark_layout_stateid_invalid()
+Date: Fri, 22 Jul 2016 15:33:58 -0400
+Message-Id: <1469216038-71882-7-git-send-email-trond.myklebust@primarydata.com>
+In-Reply-To: <1469216038-71882-6-git-send-email-trond.myklebust@primarydata.com>
 References: <1469216038-71882-1-git-send-email-trond.myklebust@primarydata.com>
  <1469216038-71882-2-git-send-email-trond.myklebust@primarydata.com>
  <1469216038-71882-3-git-send-email-trond.myklebust@primarydata.com>
  <1469216038-71882-4-git-send-email-trond.myklebust@primarydata.com>
  <1469216038-71882-5-git-send-email-trond.myklebust@primarydata.com>
+ <1469216038-71882-6-git-send-email-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-When determining which layout segments to return, we do want
-pnfs_mark_matching_lsegs_return to check that they match the layout
-sequence id. This ensures that we don't waste time if the server
-is replaying a layout recall that has already been satisfied.
+Ensure nfs42_layoutstat_done() layoutget don't open code layout stateid
+invalidation.
 
 Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
 ---
- fs/nfs/pnfs.c | 37 +++++++++++++++++++++++--------------
- 1 file changed, 23 insertions(+), 14 deletions(-)
+ fs/nfs/nfs42proc.c | 3 +--
+ fs/nfs/nfs4proc.c  | 3 +--
+ fs/nfs/pnfs.c      | 2 +-
+ fs/nfs/pnfs.h      | 2 ++
+ 4 files changed, 5 insertions(+), 5 deletions(-)
 
+diff --git a/fs/nfs/nfs42proc.c b/fs/nfs/nfs42proc.c
+index aa03ed09ba06..6ea5ad6f0d44 100644
+--- a/fs/nfs/nfs42proc.c
++++ b/fs/nfs/nfs42proc.c
+@@ -336,8 +336,7 @@ nfs42_layoutstat_done(struct rpc_task *task, void *calldata)
+ 			 * Mark the bad layout state as invalid, then retry
+ 			 * with the current stateid.
+ 			 */
+-			set_bit(NFS_LAYOUT_INVALID_STID, &lo->plh_flags);
+-			pnfs_mark_matching_lsegs_invalid(lo, &head, NULL, 0);
++			pnfs_mark_layout_stateid_invalid(lo, &head);
+ 			spin_unlock(&inode->i_lock);
+ 			pnfs_free_lseg_list(&head);
+ 		} else
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index de97567795a5..676d0e5392c7 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -7932,8 +7932,7 @@ nfs4_layoutget_handle_exception(struct rpc_task *task,
+ 			 * Mark the bad layout state as invalid, then retry
+ 			 * with the current stateid.
+ 			 */
+-			set_bit(NFS_LAYOUT_INVALID_STID, &lo->plh_flags);
+-			pnfs_mark_matching_lsegs_invalid(lo, &head, NULL, 0);
++			pnfs_mark_layout_stateid_invalid(lo, &head);
+ 			spin_unlock(&inode->i_lock);
+ 			pnfs_free_lseg_list(&head);
+ 		} else
 diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index 010f8803090b..0d68768e7afe 100644
+index 0d68768e7afe..7ac0eaa97a89 100644
 --- a/fs/nfs/pnfs.c
 +++ b/fs/nfs/pnfs.c
-@@ -484,15 +484,6 @@ pnfs_lseg_range_intersecting(const struct pnfs_layout_range *l1,
- 	       (end2 == NFS4_MAX_UINT64 || end2 > start1);
- }
- 
--static bool
--should_free_lseg(const struct pnfs_layout_range *lseg_range,
--		 const struct pnfs_layout_range *recall_range)
--{
--	return (recall_range->iomode == IOMODE_ANY ||
--		lseg_range->iomode == recall_range->iomode) &&
--	       pnfs_lseg_range_intersecting(lseg_range, recall_range);
--}
--
- static bool pnfs_lseg_dec_and_remove_zero(struct pnfs_layout_segment *lseg,
- 		struct list_head *tmp_list)
+@@ -259,7 +259,7 @@ pnfs_put_layout_hdr(struct pnfs_layout_hdr *lo)
+  * is required.
+  * Note that caller must hold inode->i_lock.
+  */
+-static int
++int
+ pnfs_mark_layout_stateid_invalid(struct pnfs_layout_hdr *lo,
+ 		struct list_head *lseg_list)
  {
-@@ -531,6 +522,27 @@ static bool pnfs_seqid_is_newer(u32 s1, u32 s2)
- 	return (s32)(s1 - s2) > 0;
- }
- 
-+static bool
-+pnfs_should_free_range(const struct pnfs_layout_range *lseg_range,
-+		 const struct pnfs_layout_range *recall_range)
-+{
-+	return (recall_range->iomode == IOMODE_ANY ||
-+		lseg_range->iomode == recall_range->iomode) &&
-+	       pnfs_lseg_range_intersecting(lseg_range, recall_range);
-+}
-+
-+static bool
-+pnfs_match_lseg_recall(const struct pnfs_layout_segment *lseg,
-+		const struct pnfs_layout_range *recall_range,
-+		u32 seq)
-+{
-+	if (seq != 0 && pnfs_seqid_is_newer(lseg->pls_seq, seq))
-+		return false;
-+	if (recall_range == NULL)
-+		return true;
-+	return pnfs_should_free_range(&lseg->pls_range, recall_range);
-+}
-+
- /**
-  * pnfs_mark_matching_lsegs_invalid - tear down lsegs or mark them for later
-  * @lo: layout header containing the lsegs
-@@ -560,10 +572,7 @@ pnfs_mark_matching_lsegs_invalid(struct pnfs_layout_hdr *lo,
- 	if (list_empty(&lo->plh_segs))
- 		return 0;
- 	list_for_each_entry_safe(lseg, next, &lo->plh_segs, pls_list)
--		if (!recall_range ||
--		    should_free_lseg(&lseg->pls_range, recall_range)) {
--			if (seq && pnfs_seqid_is_newer(lseg->pls_seq, seq))
--				continue;
-+		if (pnfs_match_lseg_recall(lseg, recall_range, seq)) {
- 			dprintk("%s: freeing lseg %p iomode %d seq %u"
- 				"offset %llu length %llu\n", __func__,
- 				lseg, lseg->pls_range.iomode, lseg->pls_seq,
-@@ -1839,7 +1848,7 @@ pnfs_mark_matching_lsegs_return(struct pnfs_layout_hdr *lo,
- 	assert_spin_locked(&lo->plh_inode->i_lock);
- 
- 	list_for_each_entry_safe(lseg, next, &lo->plh_segs, pls_list)
--		if (should_free_lseg(&lseg->pls_range, return_range)) {
-+		if (pnfs_match_lseg_recall(lseg, return_range, seq)) {
- 			dprintk("%s: marking lseg %p iomode %d "
- 				"offset %llu length %llu\n", __func__,
- 				lseg, lseg->pls_range.iomode,
+diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+index b21bd0bee784..4a7ab14900d9 100644
+--- a/fs/nfs/pnfs.h
++++ b/fs/nfs/pnfs.h
+@@ -268,6 +268,8 @@ int pnfs_mark_matching_lsegs_return(struct pnfs_layout_hdr *lo,
+ 				struct list_head *tmp_list,
+ 				const struct pnfs_layout_range *recall_range,
+ 				u32 seq);
++int pnfs_mark_layout_stateid_invalid(struct pnfs_layout_hdr *lo,
++		struct list_head *lseg_list);
+ bool pnfs_roc(struct inode *ino);
+ void pnfs_roc_release(struct inode *ino);
+ void pnfs_roc_set_barrier(struct inode *ino, u32 barrier);
 -- 
 2.7.4
 
