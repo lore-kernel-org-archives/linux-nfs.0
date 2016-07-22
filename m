@@ -1,50 +1,59 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:40022 "EHLO fieldses.org"
+Received: from fieldses.org ([173.255.197.46]:40088 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751488AbcGVRtF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 22 Jul 2016 13:49:05 -0400
+	id S1753366AbcGVRtG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 22 Jul 2016 13:49:06 -0400
 From: "J. Bruce Fields" <bfields@redhat.com>
 To: Oleg Drokin <green@linuxhacker.ru>
 Cc: Jeff Layton <jlayton@poochiereds.net>, linux-nfs@vger.kernel.org,
         linux-kernel@vger.kernel.org, "J. Bruce Fields" <bfields@fieldses.org>,
         "J. Bruce Fields" <bfields@redhat.com>
-Subject: Re: [PATCH] nfsd: Make creates return EEXIST correctly instead of EPERM
-Date: Fri, 22 Jul 2016 13:48:49 -0400
-Message-Id: <1469209736-6490-1-git-send-email-bfields@redhat.com>
-In-reply-to: <C0BB3C96-A951-45D4-8599-B7FA50F1BA90@linuxhacker.ru>
+Subject: [PATCH 6/7] nfsd: clean up bad-type check in nfsd_create_locked
+Date: Fri, 22 Jul 2016 13:48:55 -0400
+Message-Id: <1469209736-6490-7-git-send-email-bfields@redhat.com>
+In-Reply-To: <1469209736-6490-1-git-send-email-bfields@redhat.com>
+References: <1469209736-6490-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 From: "J. Bruce Fields" <bfields@redhat.com>
 
-On Fri, Jul 22, 2016 at 11:13:20AM -0400, Oleg Drokin wrote:
-> Hm, in fact indeed. I was just too worked up about the client side,
-> but on the server side there was a real lookup already, so it does
-> look workable.
+Minor cleanup, no change in behavior.
 
-So I end up with the following.  This is all (after your patch) pretty
-trivial cleanup, but I think it's overdue for that code.
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ fs/nfsd/vfs.c | 11 ++++-------
+ 1 file changed, 4 insertions(+), 7 deletions(-)
 
---b.
-
-
-J. Bruce Fields (6):
-  nfsd: remove redundant zero-length check from create
-  nfsd: remove redundant i_lookup check
-  nfsd: reorganize nfsd_create
-  nfsd: remove unnecessary positive-dentry check
-  nfsd: clean up bad-type check in nfsd_create_locked
-  nfsd: drop unnecessary MAY_EXEC check from create
-
-Oleg Drokin (1):
-  nfsd: Make creates return EEXIST instead of EACCES
-
- fs/nfsd/nfs4proc.c |   3 +-
- fs/nfsd/nfsproc.c  |   7 +--
- fs/nfsd/vfs.c      | 131 ++++++++++++++++++++++++-----------------------------
- fs/nfsd/vfs.h      |   3 ++
- 4 files changed, 66 insertions(+), 78 deletions(-)
-
+diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
+index d45b39b408a1..cd06c6511cfc 100644
+--- a/fs/nfsd/vfs.c
++++ b/fs/nfsd/vfs.c
+@@ -1166,13 +1166,6 @@ nfsd_create_locked(struct svc_rqst *rqstp, struct svc_fh *fhp,
+ 		iap->ia_mode = 0;
+ 	iap->ia_mode = (iap->ia_mode & S_IALLUGO) | type;
+ 
+-	err = nfserr_inval;
+-	if (!S_ISREG(type) && !S_ISDIR(type) && !special_file(type)) {
+-		printk(KERN_WARNING "nfsd: bad file type %o in nfsd_create\n",
+-		       type);
+-		goto out;
+-	}
+-
+ 	err = 0;
+ 	host_err = 0;
+ 	switch (type) {
+@@ -1190,6 +1183,10 @@ nfsd_create_locked(struct svc_rqst *rqstp, struct svc_fh *fhp,
+ 	case S_IFSOCK:
+ 		host_err = vfs_mknod(dirp, dchild, iap->ia_mode, rdev);
+ 		break;
++	default:
++		printk(KERN_WARNING "nfsd: bad file type %o in nfsd_create\n",
++		       type);
++		host_err = -EINVAL;
+ 	}
+ 	if (host_err < 0)
+ 		goto out_nfserr;
 -- 
 2.7.4
 
