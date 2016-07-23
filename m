@@ -1,160 +1,148 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:40220 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751751AbcGVUIo (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 22 Jul 2016 16:08:44 -0400
-Date: Fri, 22 Jul 2016 16:08:43 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: NeilBrown <neilb@suse.com>
-Cc: fdmanana@kernel.org, linux-btrfs@vger.kernel.org,
-        NFS List <linux-nfs@vger.kernel.org>,
-        Christoph Hellwig <hch@infradead.org>
-Subject: Re: [PATCH 1/2] Btrfs: be more precise on errors when getting an
- inode from disk
-Message-ID: <20160722200843.GA7463@fieldses.org>
-References: <1465491191-28102-1-git-send-email-fdmanana@kernel.org>
- <874m7i8oou.fsf@notabene.neil.brown.name>
- <20160722015904.GB29969@fieldses.org>
- <87bn1q75ut.fsf@notabene.neil.brown.name>
+Received: from mail-pf0-f171.google.com ([209.85.192.171]:34301 "EHLO
+	mail-pf0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751303AbcGWUMo (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 23 Jul 2016 16:12:44 -0400
+Received: by mail-pf0-f171.google.com with SMTP id p64so51474251pfb.1
+        for <linux-nfs@vger.kernel.org>; Sat, 23 Jul 2016 13:12:43 -0700 (PDT)
+Received: from tornado.leadboat.com (c-98-248-47-228.hsd1.ca.comcast.net. [98.248.47.228])
+        by smtp.gmail.com with ESMTPSA id nd4sm29022952pab.14.2016.07.23.13.12.40
+        for <linux-nfs@vger.kernel.org>
+        (version=TLS1 cipher=AES128-SHA bits=128/128);
+        Sat, 23 Jul 2016 13:12:41 -0700 (PDT)
+Date: Sat, 23 Jul 2016 16:12:38 -0400
+From: Noah Misch <noah@leadboat.com>
+To: linux-nfs@vger.kernel.org
+Subject: EACCES race when opening just-created file
+Message-ID: <20160723201238.GA2134756@tornado.leadboat.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <87bn1q75ut.fsf@notabene.neil.brown.name>
+Content-Type: multipart/mixed; boundary="oyUTqETQ0mS9luUI"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Jul 22, 2016 at 12:40:26PM +1000, NeilBrown wrote:
-> On Fri, Jul 22 2016, J. Bruce Fields wrote:
-> 
-> > On Fri, Jul 22, 2016 at 11:08:17AM +1000, NeilBrown wrote:
-> >> On Fri, Jun 10 2016, fdmanana@kernel.org wrote:
-> >> 
-> >> > From: Filipe Manana <fdmanana@suse.com>
-> >> >
-> >> > When we attempt to read an inode from disk, we end up always returning an
-> >> > -ESTALE error to the caller regardless of the actual failure reason, which
-> >> > can be an out of memory problem (when allocating a path), some error found
-> >> > when reading from the fs/subvolume btree (like a genuine IO error) or the
-> >> > inode does not exists. So lets start returning the real error code to the
-> >> > callers so that they don't treat all -ESTALE errors as meaning that the
-> >> > inode does not exists (such as during orphan cleanup). This will also be
-> >> > needed for a subsequent patch in the same series dealing with a special
-> >> > fsync case.
-> >> >
-> >> > Signed-off-by: Filipe Manana <fdmanana@suse.com>
-> >> 
-> >> SNIP
-> >> 
-> >> > @@ -5594,7 +5602,8 @@ struct inode *btrfs_iget(struct super_block *s, struct btrfs_key *location,
-> >> >  		} else {
-> >> >  			unlock_new_inode(inode);
-> >> >  			iput(inode);
-> >> > -			inode = ERR_PTR(-ESTALE);
-> >> > +			ASSERT(ret < 0);
-> >> > +			inode = ERR_PTR(ret < 0 ? ret : -ESTALE);
-> >> >  		}
-> >> 
-> >> Just a heads-up.  This change breaks NFS :-(
-> >> 
-> >> The change in error code percolates up the call chain:
-> >> 
-> >>  nfs4_pufh->fh_verify->nfsd_set_fh_dentry->exportfs_decode_fh
-> >>     ->btrfs_fh_to_dentry->ntrfs_get_dentry->btrfs_iget
-> >> 
-> >> and nfsd returns NFS4ERR_NOENT to the client instead of NFS4ERR_STALE,
-> >> and the client doesn't handle that quite the same way.
-> >> 
-> >> This doesn't mean that the change is wrong, but it could mean we need to
-> >> fix something else in the path to sanitize the error code.
-> >> 
-> >> nfsd_set_fh_dentry already has
-> >> 
-> >> 	error = nfserr_stale;
-> >> 	if (PTR_ERR(exp) == -ENOENT)
-> >> 		return error;
-> >> 
-> >> 	if (IS_ERR(exp))
-> >> 		return nfserrno(PTR_ERR(exp));
-> >> 
-> >> for a different error case, so duplicating that would work, but I doubt
-> >> it is best.  At the very least we should check for valid errors, not
-> >> specific invalid ones.
-> >> 
-> >> Bruce: do you have an opinion where we should make sure that PUTFH (and
-> >> various other requests) returns a valid error code?
-> >
-> > Uh, I guess not.  Maybe exportfs_decode_fh?
-> >
-> > Though my kneejerk reaction is to be cranky and wonder why btrfs
-> > suddenly needs a different convention for decode_fh().
-> >
-> 
-> I can certainly agree with that perspective, though it would be
-> appropriate in that case to make sure we document the requirements for
-> fh_to_dentry (the current spelling for 'decode_fh').  So I went looking
-> for documentation and found:
-> 
->  * fh_to_dentry:
->  *    @fh_to_dentry is given a &struct super_block (@sb) and a file handle
->  *    fragment (@fh, @fh_len). It should return a &struct dentry which refers
->  *    to the same file that the file handle fragment refers to.  If it cannot,
->  *    it should return a %NULL pointer if the file was found but no acceptable
->  *    &dentries were available, or an %ERR_PTR error code indicating why it
->  *    couldn't be found (e.g. %ENOENT or %ENOMEM).  Any suitable dentry can be
->  *    returned including, if necessary, a new dentry created with d_alloc_root.
->  *    The caller can then find any other extant dentries by following the
->  *    d_alias links.
->  *
-> 
-> So the new btrfs code is actually conformant!!
-> That documentation dates back to 2002 when I wrote it....
-> And it looks like ENOENT wasn't handled correctly then :-(
-> 
-> I suspect anything that isn't ENOMEM should be converted to ESTALE.
-> ENOMEM causes the client to be asked to retry the request later.
-> 
-> Does this look reasonable to you?
-> (Adding Christof as he as contributed a lot to exportfs)
-> 
-> If there is agreement I'll test and post a proper patch.
 
-I can live with it.  It bothers me that we're losing potentially useful
-information about what went wrong in the filesystem.  Maybe this is a
-place a dprintk could be handy?
+--oyUTqETQ0mS9luUI
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
 
---b.
+With the Linux kernel as both NFS client and server, I'm seeing a race
+condition where open() can return EACCES for a just-created file.  Is this
+expected behavior?  POSIX implicitly allows it, but I failed to locate any
+discussion of it.  I have attached a test program; here, it witnesses the race
+for roughly a dozen of the 4096 files it creates (different files each time).
+One router separates client from server, with overall ping times as follows:
 
-> 
-> Thanks,
-> NeilBrown
-> 
-> 
-> diff --git a/fs/exportfs/expfs.c b/fs/exportfs/expfs.c
-> index 207ba8d627ca..3527b58cd5bc 100644
-> --- a/fs/exportfs/expfs.c
-> +++ b/fs/exportfs/expfs.c
-> @@ -428,10 +428,10 @@ struct dentry *exportfs_decode_fh(struct vfsmount *mnt, struct fid *fid,
->  	if (!nop || !nop->fh_to_dentry)
->  		return ERR_PTR(-ESTALE);
->  	result = nop->fh_to_dentry(mnt->mnt_sb, fid, fh_len, fileid_type);
-> -	if (!result)
-> -		result = ERR_PTR(-ESTALE);
-> -	if (IS_ERR(result))
-> -		return result;
-> +	if (PTR_ERR(result) == -ENOMEM)
-> +		return ERR_CAST(result)
-> +	if (IS_ERR_OR_NULL(result))
-> +		return ERR_PTR(-ESTALE);
->  
->  	if (d_is_dir(result)) {
->  		/*
-> @@ -541,6 +541,8 @@ struct dentry *exportfs_decode_fh(struct vfsmount *mnt, struct fid *fid,
->  
->   err_result:
->  	dput(result);
-> +	if (err != -ENOMEM)
-> +		err = -ESTALE;
->  	return ERR_PTR(err);
->  }
->  EXPORT_SYMBOL_GPL(exportfs_decode_fh);
+100 packets transmitted, 100 received, 0% packet loss, time 99039ms
+rtt min/avg/max/mdev = 0.173/0.259/4.447/0.422 ms
 
+This server has three similar clients, each of which witnesses the race.  I
+did not reproduce this in a different NFS setup where client and server were
+virtual machines on the same box.  Those are the only two environments I have
+tested so far.
 
+-- Server Details
+[nm@gcc45 0:0 00:36:42 ~]$ uname -a
+Linux gcc45 3.16.0-4-686-pae #1 SMP Debian 3.16.7-ckt11-1+deb8u3 (2015-08-04) i686 GNU/Linux
+[nm@gcc45 0:0 00:36:37 ~]$ cat /proc/fs/nfs/exports
+# Version 1.1
+# Path Client(Flags) # IPs
+/home   gcc24.tetaneutral.net(rw,no_root_squash,async,wdelay,no_subtree_check,uuid=6797c43c:b0f64b64:bfca4840:f15789eb,sec=1)
+/home   gcc23.tetaneutral.net(rw,no_root_squash,async,wdelay,no_subtree_check,uuid=6797c43c:b0f64b64:bfca4840:f15789eb,sec=1)
+/home   gcc22.tetaneutral.net(rw,no_root_squash,async,wdelay,no_subtree_check,uuid=6797c43c:b0f64b64:bfca4840:f15789eb,sec=1)
+
+-- Client Details
+[nm@erpro8-fsf3 0:1 00:37:28 nfs]$ uname -a
+Linux erpro8-fsf3 4.1.4 #1 SMP PREEMPT Mon Aug 3 14:22:54 PDT 2015 mips64 GNU/Linux
+[nm@erpro8-fsf3 0:1 00:37:49 nfs]$ mount|grep nfs
+gcc45.tetaneutral.net:/home on /home type nfs4 (rw,relatime,vers=4.0,rsize=131072,wsize=131072,namlen=255,hard,proto=tcp6,port=0,timeo=600,retrans=2,sec=sys,clientaddr=2a03:7220:8083:9d00::1,local_lock=none,addr=2a03:7220:8081:8100::1)
+
+Thanks,
+nm
+
+--oyUTqETQ0mS9luUI
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: attachment; filename="nfs-creat-eacces.c"
+
+/*
+ * Demonstrates open() returning EACCES for a recently-created file on NFS.  One
+ * thread creates files nfs0 .. nfs4095 in the CWD, and another thread
+ * continually attempts to open(O_RDWR) the latest file.  Prints a message
+ * whenever the second thread sees open() fail in a way other than ENOENT.
+ * Affected NFS configurations will print such messages for a selection of the
+ * files, and immune configurations will print nothing.
+ *
+ * I abstracted this test case from a malfunction in the PostgreSQL database,
+ * where one process opened a file just created in another process.  (See
+ * src/interfaces/ecpg cases thread/thread and thread/prep.)
+ */
+
+#include <errno.h>
+#include <fcntl.h>
+#include <limits.h>
+#include <pthread.h>
+#include <stdio.h>
+#include <string.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <unistd.h>
+
+/* no reader/writer synchronization; occasional disagreement is okay */
+static int pos;
+
+static void *
+creator_task(void *arg)
+{
+    for (pos = 0; pos < (1 << 12); ++pos)
+    {
+	char buf[128];
+	int fd;
+
+	sprintf(buf, "nfs%d", pos);
+	fd = open(buf, O_RDWR | O_CREAT | O_EXCL, 0600);
+	if (fd < 0)
+	    printf("could not create %s: %s\n", buf, strerror(errno));
+	else if (close(fd) != 0)
+	    printf("could not close %s after creation: %s\n",
+		   buf, strerror(errno));
+    }
+
+    pos = -1;
+
+    return NULL;
+}
+
+static void *
+tester_task(void *arg)
+{
+    while (pos >= 0)
+    {
+	char buf[128];
+	int fd;
+
+	sprintf(buf, "nfs%d", pos);
+	fd = open(buf, O_RDWR);
+	if (fd < 0)
+	{
+	    if (errno != ENOENT)
+		printf("could not open %s: %s\n", buf, strerror(errno));
+	}
+	else if (close(fd) != 0)
+	    printf("could not close %s: %s\n", buf, strerror(errno));
+    }
+
+    return NULL;
+}
+
+int
+main(int argc, char **argv)
+{
+    pthread_t creator;
+
+    pthread_create(&creator, NULL, creator_task, 0);
+    tester_task(NULL);
+    pthread_join(creator, NULL);
+
+    return 0;
+}
+
+--oyUTqETQ0mS9luUI--
