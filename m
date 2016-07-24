@@ -1,39 +1,69 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f179.google.com ([209.85.223.179]:33200 "EHLO
-	mail-io0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751453AbcGXPIH (ORCPT
+Received: from mail-io0-f195.google.com ([209.85.223.195]:36336 "EHLO
+	mail-io0-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751510AbcGXPIH (ORCPT
 	<rfc822;linux-nfs@vger.kernel.org>); Sun, 24 Jul 2016 11:08:07 -0400
-Received: by mail-io0-f179.google.com with SMTP id 38so142686972iol.0
-        for <linux-nfs@vger.kernel.org>; Sun, 24 Jul 2016 08:08:06 -0700 (PDT)
+Received: by mail-io0-f195.google.com with SMTP id y34so10393834ioi.3
+        for <linux-nfs@vger.kernel.org>; Sun, 24 Jul 2016 08:08:07 -0700 (PDT)
 From: Trond Myklebust <trond.myklebust@primarydata.com>
 To: linux-nfs@vger.kernel.org
-Subject: [PATCH v2 0/7] More layoutreturn nits
-Date: Sun, 24 Jul 2016 11:07:30 -0400
-Message-Id: <1469372857-29670-1-git-send-email-trond.myklebust@primarydata.com>
+Subject: [PATCH v2 1/7] pNFS: Clear the layout return tracking on layout reinitialisation
+Date: Sun, 24 Jul 2016 11:07:31 -0400
+Message-Id: <1469372857-29670-2-git-send-email-trond.myklebust@primarydata.com>
+In-Reply-To: <1469372857-29670-1-git-send-email-trond.myklebust@primarydata.com>
+References: <1469372857-29670-1-git-send-email-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Various non-critical bugfixes and cleanups targeting layoutreturn
+Ensure that we don't carry over layoutreturn info from a previous
+incarnation of this layout.
 
-v2: Add  CB_LAYOUTRECALL stateid verification fixups
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+---
+ fs/nfs/pnfs.c | 17 +++++++++++++----
+ 1 file changed, 13 insertions(+), 4 deletions(-)
 
-Trond Myklebust (7):
-  pNFS: Clear the layout return tracking on layout reinitialisation
-  pNFS: Ensure layoutreturn acts as a completion for layout callbacks
-  pNFS: Do not set plh_return_seq for non-callback related layoutreturns
-  pNFS: Remove redundant stateid invalidation
-  NFS: pnfs_mark_matching_lsegs_return() should match the layout
-    sequence id
-  pNFS: Cleanup - don't open code pnfs_mark_layout_stateid_invalid()
-  pNFS: Fix CB_LAYOUTRECALL stateid verification
-
- fs/nfs/callback_proc.c |  63 ++++++++++++++++++++---------
- fs/nfs/nfs42proc.c     |   3 +-
- fs/nfs/nfs4proc.c      |   3 +-
- fs/nfs/pnfs.c          | 108 ++++++++++++++++++++++++++++++-------------------
- fs/nfs/pnfs.h          |   2 +
- 5 files changed, 115 insertions(+), 64 deletions(-)
-
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index 0c7e0d45a4de..27052d4b46ef 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -871,15 +871,21 @@ void pnfs_clear_layoutreturn_waitbit(struct pnfs_layout_hdr *lo)
+ 	rpc_wake_up(&NFS_SERVER(lo->plh_inode)->roc_rpcwaitq);
+ }
+ 
++static void
++pnfs_clear_layoutreturn_info(struct pnfs_layout_hdr *lo)
++{
++	lo->plh_return_iomode = 0;
++	lo->plh_return_seq = 0;
++	clear_bit(NFS_LAYOUT_RETURN_REQUESTED, &lo->plh_flags);
++}
++
+ static bool
+ pnfs_prepare_layoutreturn(struct pnfs_layout_hdr *lo)
+ {
+ 	if (test_and_set_bit(NFS_LAYOUT_RETURN, &lo->plh_flags))
+ 		return false;
+-	lo->plh_return_iomode = 0;
+-	lo->plh_return_seq = 0;
+ 	pnfs_get_layout_hdr(lo);
+-	clear_bit(NFS_LAYOUT_RETURN_REQUESTED, &lo->plh_flags);
++	pnfs_clear_layoutreturn_info(lo);
+ 	return true;
+ }
+ 
+@@ -1760,7 +1766,10 @@ pnfs_layout_process(struct nfs4_layoutget *lgp)
+ 		lo->plh_barrier = be32_to_cpu(res->stateid.seqid);
+ 	}
+ 
+-	clear_bit(NFS_LAYOUT_INVALID_STID, &lo->plh_flags);
++	if (test_bit(NFS_LAYOUT_INVALID_STID, &lo->plh_flags)) {
++		pnfs_clear_layoutreturn_info(lo);
++		clear_bit(NFS_LAYOUT_INVALID_STID, &lo->plh_flags);
++	}
+ 
+ 	pnfs_get_lseg(lseg);
+ 	pnfs_layout_insert_lseg(lo, lseg, &free_me);
 -- 
 2.7.4
 
