@@ -1,70 +1,122 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-it0-f68.google.com ([209.85.214.68]:36105 "EHLO
-	mail-it0-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751453AbcGXPIJ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 24 Jul 2016 11:08:09 -0400
-Received: by mail-it0-f68.google.com with SMTP id j124so6121565ith.3
-        for <linux-nfs@vger.kernel.org>; Sun, 24 Jul 2016 08:08:09 -0700 (PDT)
+Received: from mail-io0-f196.google.com ([209.85.223.196]:33244 "EHLO
+	mail-io0-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751531AbcGXPII (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 24 Jul 2016 11:08:08 -0400
+Received: by mail-io0-f196.google.com with SMTP id y195so10395412iod.0
+        for <linux-nfs@vger.kernel.org>; Sun, 24 Jul 2016 08:08:08 -0700 (PDT)
 From: Trond Myklebust <trond.myklebust@primarydata.com>
 To: linux-nfs@vger.kernel.org
-Subject: [PATCH v2 3/7] pNFS: Do not set plh_return_seq for non-callback related layoutreturns
-Date: Sun, 24 Jul 2016 11:07:33 -0400
-Message-Id: <1469372857-29670-4-git-send-email-trond.myklebust@primarydata.com>
-In-Reply-To: <1469372857-29670-3-git-send-email-trond.myklebust@primarydata.com>
+Subject: [PATCH v2 2/7] pNFS: Ensure layoutreturn acts as a completion for layout callbacks
+Date: Sun, 24 Jul 2016 11:07:32 -0400
+Message-Id: <1469372857-29670-3-git-send-email-trond.myklebust@primarydata.com>
+In-Reply-To: <1469372857-29670-2-git-send-email-trond.myklebust@primarydata.com>
 References: <1469372857-29670-1-git-send-email-trond.myklebust@primarydata.com>
  <1469372857-29670-2-git-send-email-trond.myklebust@primarydata.com>
- <1469372857-29670-3-git-send-email-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-In cases where we need to send a layoutreturn in order to propagate
-an error, we should not tie that to a specific layout stateid.
+When we return NFS_OK to the CB_LAYOUTRECALL, we are required to
+send a layoutreturn that "completes" that layout recall request, using
+the correct stateid.
 
 Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
 ---
- fs/nfs/pnfs.c | 13 ++++++-------
- 1 file changed, 6 insertions(+), 7 deletions(-)
+ fs/nfs/pnfs.c | 40 +++++++++++++++++++++++++---------------
+ 1 file changed, 25 insertions(+), 15 deletions(-)
 
 diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index 7a29598d8ab0..12d4d1b55dd1 100644
+index 27052d4b46ef..7a29598d8ab0 100644
 --- a/fs/nfs/pnfs.c
 +++ b/fs/nfs/pnfs.c
-@@ -1803,14 +1803,14 @@ static void
- pnfs_set_plh_return_info(struct pnfs_layout_hdr *lo, enum pnfs_iomode iomode,
- 			 u32 seq)
- {
--	if (lo->plh_return_iomode == iomode)
--		return;
--	if (lo->plh_return_iomode != 0)
-+	if (lo->plh_return_iomode != 0 && lo->plh_return_iomode != iomode)
- 		iomode = IOMODE_ANY;
- 	lo->plh_return_iomode = iomode;
- 	set_bit(NFS_LAYOUT_RETURN_REQUESTED, &lo->plh_flags);
--	if (!lo->plh_return_seq || pnfs_seqid_is_newer(seq, lo->plh_return_seq))
-+	if (seq != 0) {
-+		WARN_ON_ONCE(lo->plh_return_seq != 0 && lo->plh_return_seq != seq);
- 		lo->plh_return_seq = seq;
-+	}
+@@ -880,12 +880,28 @@ pnfs_clear_layoutreturn_info(struct pnfs_layout_hdr *lo)
  }
  
- /**
-@@ -1871,14 +1871,13 @@ void pnfs_error_mark_layout_for_return(struct inode *inode,
- 	bool return_now = false;
+ static bool
+-pnfs_prepare_layoutreturn(struct pnfs_layout_hdr *lo)
++pnfs_prepare_layoutreturn(struct pnfs_layout_hdr *lo,
++		nfs4_stateid *stateid,
++		enum pnfs_iomode *iomode)
+ {
+ 	if (test_and_set_bit(NFS_LAYOUT_RETURN, &lo->plh_flags))
+ 		return false;
+ 	pnfs_get_layout_hdr(lo);
+-	pnfs_clear_layoutreturn_info(lo);
++	if (test_bit(NFS_LAYOUT_RETURN_REQUESTED, &lo->plh_flags)) {
++		if (stateid != NULL) {
++			nfs4_stateid_copy(stateid, &lo->plh_stateid);
++			if (lo->plh_return_seq != 0)
++				stateid->seqid = cpu_to_be32(lo->plh_return_seq);
++		}
++		if (iomode != NULL)
++			*iomode = lo->plh_return_iomode;
++		pnfs_clear_layoutreturn_info(lo);
++		return true;
++	}
++	if (stateid != NULL)
++		nfs4_stateid_copy(stateid, &lo->plh_stateid);
++	if (iomode != NULL)
++		*iomode = IOMODE_ANY;
+ 	return true;
+ }
  
- 	spin_lock(&inode->i_lock);
--	pnfs_set_plh_return_info(lo, range.iomode, lseg->pls_seq);
-+	pnfs_set_plh_return_info(lo, range.iomode, 0);
- 	/*
- 	 * mark all matching lsegs so that we are sure to have no live
- 	 * segments at hand when sending layoutreturn. See pnfs_put_lseg()
- 	 * for how it works.
- 	 */
--	if (!pnfs_mark_matching_lsegs_return(lo, &free_me,
--						&range, lseg->pls_seq)) {
-+	if (!pnfs_mark_matching_lsegs_return(lo, &free_me, &range, 0)) {
- 		nfs4_stateid stateid;
+@@ -953,10 +969,7 @@ static void pnfs_layoutreturn_before_put_layout_hdr(struct pnfs_layout_hdr *lo)
  		enum pnfs_iomode iomode;
+ 		bool send;
  
+-		nfs4_stateid_copy(&stateid, &lo->plh_stateid);
+-		stateid.seqid = cpu_to_be32(lo->plh_return_seq);
+-		iomode = lo->plh_return_iomode;
+-		send = pnfs_prepare_layoutreturn(lo);
++		send = pnfs_prepare_layoutreturn(lo, &stateid, &iomode);
+ 		spin_unlock(&inode->i_lock);
+ 		if (send) {
+ 			/* Send an async layoutreturn so we dont deadlock */
+@@ -993,7 +1006,6 @@ _pnfs_return_layout(struct inode *ino)
+ 		dprintk("NFS: %s no layout to return\n", __func__);
+ 		goto out;
+ 	}
+-	nfs4_stateid_copy(&stateid, &nfsi->layout->plh_stateid);
+ 	/* Reference matched in nfs4_layoutreturn_release */
+ 	pnfs_get_layout_hdr(lo);
+ 	empty = list_empty(&lo->plh_segs);
+@@ -1017,7 +1029,7 @@ _pnfs_return_layout(struct inode *ino)
+ 	}
+ 
+ 	set_bit(NFS_LAYOUT_INVALID_STID, &lo->plh_flags);
+-	send = pnfs_prepare_layoutreturn(lo);
++	send = pnfs_prepare_layoutreturn(lo, &stateid, NULL);
+ 	spin_unlock(&ino->i_lock);
+ 	pnfs_free_lseg_list(&tmp_list);
+ 	if (send)
+@@ -1084,11 +1096,10 @@ bool pnfs_roc(struct inode *ino)
+ 			goto out_noroc;
+ 	}
+ 
+-	nfs4_stateid_copy(&stateid, &lo->plh_stateid);
+ 	/* always send layoutreturn if being marked so */
+-	if (test_and_clear_bit(NFS_LAYOUT_RETURN_REQUESTED,
+-				   &lo->plh_flags))
+-		layoutreturn = pnfs_prepare_layoutreturn(lo);
++	if (test_bit(NFS_LAYOUT_RETURN_REQUESTED, &lo->plh_flags))
++		layoutreturn = pnfs_prepare_layoutreturn(lo,
++				&stateid, NULL);
+ 
+ 	list_for_each_entry_safe(lseg, tmp, &lo->plh_segs, pls_list)
+ 		/* If we are sending layoutreturn, invalidate all valid lsegs */
+@@ -1869,10 +1880,9 @@ void pnfs_error_mark_layout_for_return(struct inode *inode,
+ 	if (!pnfs_mark_matching_lsegs_return(lo, &free_me,
+ 						&range, lseg->pls_seq)) {
+ 		nfs4_stateid stateid;
+-		enum pnfs_iomode iomode = lo->plh_return_iomode;
++		enum pnfs_iomode iomode;
+ 
+-		nfs4_stateid_copy(&stateid, &lo->plh_stateid);
+-		return_now = pnfs_prepare_layoutreturn(lo);
++		return_now = pnfs_prepare_layoutreturn(lo, &stateid, &iomode);
+ 		spin_unlock(&inode->i_lock);
+ 		if (return_now)
+ 			pnfs_send_layoutreturn(lo, &stateid, iomode, false);
 -- 
 2.7.4
 
