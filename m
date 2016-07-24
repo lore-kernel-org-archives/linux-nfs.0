@@ -1,16 +1,16 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-it0-f68.google.com ([209.85.214.68]:36769 "EHLO
-	mail-it0-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752540AbcGXVbk (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 24 Jul 2016 17:31:40 -0400
-Received: by mail-it0-f68.google.com with SMTP id j124so6500475ith.3
-        for <linux-nfs@vger.kernel.org>; Sun, 24 Jul 2016 14:31:40 -0700 (PDT)
+Received: from mail-it0-f67.google.com ([209.85.214.67]:33616 "EHLO
+	mail-it0-f67.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752515AbcGXVbm (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 24 Jul 2016 17:31:42 -0400
+Received: by mail-it0-f67.google.com with SMTP id d65so6501187ith.0
+        for <linux-nfs@vger.kernel.org>; Sun, 24 Jul 2016 14:31:41 -0700 (PDT)
 From: Trond Myklebust <trond.myklebust@primarydata.com>
 To: linux-nfs@vger.kernel.org
-Subject: [PATCH v3 07/14] pNFS: Do not set plh_return_seq for non-callback related layoutreturns
-Date: Sun, 24 Jul 2016 17:30:52 -0400
-Message-Id: <1469395859-83194-8-git-send-email-trond.myklebust@primarydata.com>
-In-Reply-To: <1469395859-83194-7-git-send-email-trond.myklebust@primarydata.com>
+Subject: [PATCH v3 08/14] NFS: pnfs_mark_matching_lsegs_return() should match the layout sequence id
+Date: Sun, 24 Jul 2016 17:30:53 -0400
+Message-Id: <1469395859-83194-9-git-send-email-trond.myklebust@primarydata.com>
+In-Reply-To: <1469395859-83194-8-git-send-email-trond.myklebust@primarydata.com>
 References: <1469395859-83194-1-git-send-email-trond.myklebust@primarydata.com>
  <1469395859-83194-2-git-send-email-trond.myklebust@primarydata.com>
  <1469395859-83194-3-git-send-email-trond.myklebust@primarydata.com>
@@ -18,57 +18,89 @@ References: <1469395859-83194-1-git-send-email-trond.myklebust@primarydata.com>
  <1469395859-83194-5-git-send-email-trond.myklebust@primarydata.com>
  <1469395859-83194-6-git-send-email-trond.myklebust@primarydata.com>
  <1469395859-83194-7-git-send-email-trond.myklebust@primarydata.com>
+ <1469395859-83194-8-git-send-email-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-In cases where we need to send a layoutreturn in order to propagate
-an error, we should not tie that to a specific layout stateid.
+When determining which layout segments to return, we do want
+pnfs_mark_matching_lsegs_return to check that they match the layout
+sequence id. This ensures that we don't waste time if the server
+is replaying a layout recall that has already been satisfied.
 
 Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
 ---
- fs/nfs/pnfs.c | 13 ++++++-------
- 1 file changed, 6 insertions(+), 7 deletions(-)
+ fs/nfs/pnfs.c | 37 +++++++++++++++++++++++--------------
+ 1 file changed, 23 insertions(+), 14 deletions(-)
 
 diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index 878dc4b7085a..c57cbddca760 100644
+index c57cbddca760..52b2a4dfdcb0 100644
 --- a/fs/nfs/pnfs.c
 +++ b/fs/nfs/pnfs.c
-@@ -1808,14 +1808,14 @@ static void
- pnfs_set_plh_return_info(struct pnfs_layout_hdr *lo, enum pnfs_iomode iomode,
- 			 u32 seq)
- {
--	if (lo->plh_return_iomode == iomode)
--		return;
--	if (lo->plh_return_iomode != 0)
-+	if (lo->plh_return_iomode != 0 && lo->plh_return_iomode != iomode)
- 		iomode = IOMODE_ANY;
- 	lo->plh_return_iomode = iomode;
- 	set_bit(NFS_LAYOUT_RETURN_REQUESTED, &lo->plh_flags);
--	if (!lo->plh_return_seq || pnfs_seqid_is_newer(seq, lo->plh_return_seq))
-+	if (seq != 0) {
-+		WARN_ON_ONCE(lo->plh_return_seq != 0 && lo->plh_return_seq != seq);
- 		lo->plh_return_seq = seq;
-+	}
+@@ -486,15 +486,6 @@ pnfs_lseg_range_intersecting(const struct pnfs_layout_range *l1,
+ 	       (end2 == NFS4_MAX_UINT64 || end2 > start1);
  }
  
+-static bool
+-should_free_lseg(const struct pnfs_layout_range *lseg_range,
+-		 const struct pnfs_layout_range *recall_range)
+-{
+-	return (recall_range->iomode == IOMODE_ANY ||
+-		lseg_range->iomode == recall_range->iomode) &&
+-	       pnfs_lseg_range_intersecting(lseg_range, recall_range);
+-}
+-
+ static bool pnfs_lseg_dec_and_remove_zero(struct pnfs_layout_segment *lseg,
+ 		struct list_head *tmp_list)
+ {
+@@ -533,6 +524,27 @@ static bool pnfs_seqid_is_newer(u32 s1, u32 s2)
+ 	return (s32)(s1 - s2) > 0;
+ }
+ 
++static bool
++pnfs_should_free_range(const struct pnfs_layout_range *lseg_range,
++		 const struct pnfs_layout_range *recall_range)
++{
++	return (recall_range->iomode == IOMODE_ANY ||
++		lseg_range->iomode == recall_range->iomode) &&
++	       pnfs_lseg_range_intersecting(lseg_range, recall_range);
++}
++
++static bool
++pnfs_match_lseg_recall(const struct pnfs_layout_segment *lseg,
++		const struct pnfs_layout_range *recall_range,
++		u32 seq)
++{
++	if (seq != 0 && pnfs_seqid_is_newer(lseg->pls_seq, seq))
++		return false;
++	if (recall_range == NULL)
++		return true;
++	return pnfs_should_free_range(&lseg->pls_range, recall_range);
++}
++
  /**
-@@ -1876,14 +1876,13 @@ void pnfs_error_mark_layout_for_return(struct inode *inode,
- 	bool return_now = false;
+  * pnfs_mark_matching_lsegs_invalid - tear down lsegs or mark them for later
+  * @lo: layout header containing the lsegs
+@@ -562,10 +574,7 @@ pnfs_mark_matching_lsegs_invalid(struct pnfs_layout_hdr *lo,
+ 	if (list_empty(&lo->plh_segs))
+ 		return 0;
+ 	list_for_each_entry_safe(lseg, next, &lo->plh_segs, pls_list)
+-		if (!recall_range ||
+-		    should_free_lseg(&lseg->pls_range, recall_range)) {
+-			if (seq && pnfs_seqid_is_newer(lseg->pls_seq, seq))
+-				continue;
++		if (pnfs_match_lseg_recall(lseg, recall_range, seq)) {
+ 			dprintk("%s: freeing lseg %p iomode %d seq %u"
+ 				"offset %llu length %llu\n", __func__,
+ 				lseg, lseg->pls_range.iomode, lseg->pls_seq,
+@@ -1845,7 +1854,7 @@ pnfs_mark_matching_lsegs_return(struct pnfs_layout_hdr *lo,
+ 	assert_spin_locked(&lo->plh_inode->i_lock);
  
- 	spin_lock(&inode->i_lock);
--	pnfs_set_plh_return_info(lo, range.iomode, lseg->pls_seq);
-+	pnfs_set_plh_return_info(lo, range.iomode, 0);
- 	/*
- 	 * mark all matching lsegs so that we are sure to have no live
- 	 * segments at hand when sending layoutreturn. See pnfs_put_lseg()
- 	 * for how it works.
- 	 */
--	if (!pnfs_mark_matching_lsegs_return(lo, &free_me,
--						&range, lseg->pls_seq)) {
-+	if (!pnfs_mark_matching_lsegs_return(lo, &free_me, &range, 0)) {
- 		nfs4_stateid stateid;
- 		enum pnfs_iomode iomode;
- 
+ 	list_for_each_entry_safe(lseg, next, &lo->plh_segs, pls_list)
+-		if (should_free_lseg(&lseg->pls_range, return_range)) {
++		if (pnfs_match_lseg_recall(lseg, return_range, seq)) {
+ 			dprintk("%s: marking lseg %p iomode %d "
+ 				"offset %llu length %llu\n", __func__,
+ 				lseg, lseg->pls_range.iomode,
 -- 
 2.7.4
 
