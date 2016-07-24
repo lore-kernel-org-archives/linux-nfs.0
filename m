@@ -1,16 +1,16 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f195.google.com ([209.85.223.195]:33453 "EHLO
-	mail-io0-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752515AbcGXVbp (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 24 Jul 2016 17:31:45 -0400
-Received: by mail-io0-f195.google.com with SMTP id y195so10763591iod.0
-        for <linux-nfs@vger.kernel.org>; Sun, 24 Jul 2016 14:31:45 -0700 (PDT)
+Received: from mail-io0-f196.google.com ([209.85.223.196]:36592 "EHLO
+	mail-io0-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752515AbcGXVbr (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 24 Jul 2016 17:31:47 -0400
+Received: by mail-io0-f196.google.com with SMTP id y34so10760903ioi.3
+        for <linux-nfs@vger.kernel.org>; Sun, 24 Jul 2016 14:31:46 -0700 (PDT)
 From: Trond Myklebust <trond.myklebust@primarydata.com>
 To: linux-nfs@vger.kernel.org
-Subject: [PATCH v3 11/14] pNFS: Remove redundant pnfs_mark_layout_returned_if_empty()
-Date: Sun, 24 Jul 2016 17:30:56 -0400
-Message-Id: <1469395859-83194-12-git-send-email-trond.myklebust@primarydata.com>
-In-Reply-To: <1469395859-83194-11-git-send-email-trond.myklebust@primarydata.com>
+Subject: [PATCH v3 13/14] pNFS: Cleanup - do layout segment initialisation in one place
+Date: Sun, 24 Jul 2016 17:30:58 -0400
+Message-Id: <1469395859-83194-14-git-send-email-trond.myklebust@primarydata.com>
+In-Reply-To: <1469395859-83194-13-git-send-email-trond.myklebust@primarydata.com>
 References: <1469395859-83194-1-git-send-email-trond.myklebust@primarydata.com>
  <1469395859-83194-2-git-send-email-trond.myklebust@primarydata.com>
  <1469395859-83194-3-git-send-email-trond.myklebust@primarydata.com>
@@ -22,79 +22,54 @@ References: <1469395859-83194-1-git-send-email-trond.myklebust@primarydata.com>
  <1469395859-83194-9-git-send-email-trond.myklebust@primarydata.com>
  <1469395859-83194-10-git-send-email-trond.myklebust@primarydata.com>
  <1469395859-83194-11-git-send-email-trond.myklebust@primarydata.com>
+ <1469395859-83194-12-git-send-email-trond.myklebust@primarydata.com>
+ <1469395859-83194-13-git-send-email-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-That's already being taken care of in pnfs_layout_remove_lseg().
+...instead of splitting the initialisation over init_lseg() and
+pnfs_layout_process().
 
 Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
 ---
- fs/nfs/callback_proc.c |  1 -
- fs/nfs/nfs4proc.c      |  1 -
- fs/nfs/pnfs.c          |  1 -
- fs/nfs/pnfs.h          | 13 -------------
- 4 files changed, 16 deletions(-)
+ fs/nfs/pnfs.c | 10 ++++++----
+ 1 file changed, 6 insertions(+), 4 deletions(-)
 
-diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
-index 837da8a02d35..c92a75e066a6 100644
---- a/fs/nfs/callback_proc.c
-+++ b/fs/nfs/callback_proc.c
-@@ -252,7 +252,6 @@ static u32 initiate_file_draining(struct nfs_client *clp,
- 		NFS_SERVER(ino)->pnfs_curr_ld->return_range(lo,
- 			&args->cbl_range);
- 	}
--	pnfs_mark_layout_returned_if_empty(lo);
- unlock:
- 	spin_unlock(&ino->i_lock);
- 	pnfs_free_lseg_list(&free_me_list);
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 8c453515d98c..d38cc5f0282f 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -8128,7 +8128,6 @@ static void nfs4_layoutreturn_release(void *calldata)
- 	spin_lock(&lo->plh_inode->i_lock);
- 	pnfs_mark_matching_lsegs_invalid(lo, &freeme, &lrp->args.range,
- 			be32_to_cpu(lrp->args.stateid.seqid));
--	pnfs_mark_layout_returned_if_empty(lo);
- 	if (lrp->res.lrs_present && pnfs_layout_is_valid(lo))
- 		pnfs_set_layout_stateid(lo, &lrp->res.stateid, true);
- 	pnfs_clear_layoutreturn_waitbit(lo);
 diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index e16997da157f..49e952968ede 100644
+index c9a684c128b8..09b77a68422f 100644
 --- a/fs/nfs/pnfs.c
 +++ b/fs/nfs/pnfs.c
-@@ -1159,7 +1159,6 @@ void pnfs_roc_set_barrier(struct inode *ino, u32 barrier)
- 
- 	spin_lock(&ino->i_lock);
- 	lo = NFS_I(ino)->layout;
--	pnfs_mark_layout_returned_if_empty(lo);
- 	if (pnfs_seqid_is_newer(barrier, lo->plh_barrier))
- 		lo->plh_barrier = barrier;
- 	spin_unlock(&ino->i_lock);
-diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
-index d71c9493693a..595648a3ad7a 100644
---- a/fs/nfs/pnfs.h
-+++ b/fs/nfs/pnfs.h
-@@ -552,19 +552,6 @@ pnfs_calc_offset_length(u64 offset, u64 end)
- 	return 1 + end - offset;
+@@ -334,7 +334,9 @@ pnfs_layout_io_test_failed(struct pnfs_layout_hdr *lo, u32 iomode)
  }
  
--/**
-- * pnfs_mark_layout_returned_if_empty - marks the layout as returned
-- * @lo: layout header
-- *
-- * Note: Caller must hold inode->i_lock
-- */
--static inline void
--pnfs_mark_layout_returned_if_empty(struct pnfs_layout_hdr *lo)
--{
--	if (list_empty(&lo->plh_segs))
--		set_bit(NFS_LAYOUT_INVALID_STID, &lo->plh_flags);
--}
--
- static inline void
- pnfs_copy_range(struct pnfs_layout_range *dst,
- 		const struct pnfs_layout_range *src)
+ static void
+-init_lseg(struct pnfs_layout_hdr *lo, struct pnfs_layout_segment *lseg)
++pnfs_init_lseg(struct pnfs_layout_hdr *lo, struct pnfs_layout_segment *lseg,
++		const struct pnfs_layout_range *range,
++		const nfs4_stateid *stateid)
+ {
+ 	INIT_LIST_HEAD(&lseg->pls_list);
+ 	INIT_LIST_HEAD(&lseg->pls_lc_list);
+@@ -342,6 +344,8 @@ init_lseg(struct pnfs_layout_hdr *lo, struct pnfs_layout_segment *lseg)
+ 	smp_mb();
+ 	set_bit(NFS_LSEG_VALID, &lseg->pls_flags);
+ 	lseg->pls_layout = lo;
++	lseg->pls_range = *range;
++	lseg->pls_seq = be32_to_cpu(stateid->seqid);
+ }
+ 
+ static void pnfs_free_lseg(struct pnfs_layout_segment *lseg)
+@@ -1760,9 +1764,7 @@ pnfs_layout_process(struct nfs4_layoutget *lgp)
+ 		return lseg;
+ 	}
+ 
+-	init_lseg(lo, lseg);
+-	lseg->pls_range = res->range;
+-	lseg->pls_seq = be32_to_cpu(res->stateid.seqid);
++	pnfs_init_lseg(lo, lseg, &res->range, &res->stateid);
+ 
+ 	spin_lock(&ino->i_lock);
+ 	if (pnfs_layoutgets_blocked(lo)) {
 -- 
 2.7.4
 
