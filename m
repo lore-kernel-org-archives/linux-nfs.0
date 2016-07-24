@@ -1,199 +1,126 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f193.google.com ([209.85.223.193]:35244 "EHLO
+Received: from mail-io0-f193.google.com ([209.85.223.193]:35247 "EHLO
 	mail-io0-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752531AbcGXVbi (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 24 Jul 2016 17:31:38 -0400
-Received: by mail-io0-f193.google.com with SMTP id q83so10786629iod.2
-        for <linux-nfs@vger.kernel.org>; Sun, 24 Jul 2016 14:31:38 -0700 (PDT)
+	with ESMTP id S1752515AbcGXVbj (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 24 Jul 2016 17:31:39 -0400
+Received: by mail-io0-f193.google.com with SMTP id q83so10786652iod.2
+        for <linux-nfs@vger.kernel.org>; Sun, 24 Jul 2016 14:31:39 -0700 (PDT)
 From: Trond Myklebust <trond.myklebust@primarydata.com>
 To: linux-nfs@vger.kernel.org
-Subject: [PATCH v3 05/14] pNFS: Fix CB_LAYOUTRECALL stateid verification
-Date: Sun, 24 Jul 2016 17:30:50 -0400
-Message-Id: <1469395859-83194-6-git-send-email-trond.myklebust@primarydata.com>
-In-Reply-To: <1469395859-83194-5-git-send-email-trond.myklebust@primarydata.com>
+Subject: [PATCH v3 06/14] pNFS: Ensure layoutreturn acts as a completion for layout callbacks
+Date: Sun, 24 Jul 2016 17:30:51 -0400
+Message-Id: <1469395859-83194-7-git-send-email-trond.myklebust@primarydata.com>
+In-Reply-To: <1469395859-83194-6-git-send-email-trond.myklebust@primarydata.com>
 References: <1469395859-83194-1-git-send-email-trond.myklebust@primarydata.com>
  <1469395859-83194-2-git-send-email-trond.myklebust@primarydata.com>
  <1469395859-83194-3-git-send-email-trond.myklebust@primarydata.com>
  <1469395859-83194-4-git-send-email-trond.myklebust@primarydata.com>
  <1469395859-83194-5-git-send-email-trond.myklebust@primarydata.com>
+ <1469395859-83194-6-git-send-email-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-We want to evaluate in this order:
-
-If the client holds no layout for this inode, then return
-NFS4ERR_NOMATCHING_LAYOUT; it probably forgot the layout.
-
-If the client finds the inode among the list of layouts, but the corresponding
-stateid has not yet been initialised, then return NFS4ERR_DELAY to ask the
-server to retry once the outstanding LAYOUTGET is complete.
-
-If the current layout stateid's "other" field does not match the recalled
-stateid, return NFS4ERR_BAD_STATEID.
-
-If already processing a layout recall with a newer stateid, return
-NFS4ERR_OLD_STATEID. This can only happens for servers that are
-non-compliant with the NFSv4.1 protocol.
-
-If already processing a layout recall with an older stateid, return
-NFS4ERR_DELAY to ask the server to retry once the outstanding
-LAYOUTRETURN is complete. Again, this is technically incompliant with
-the NFSv4.1 protocol.
-
-If the current layout sequence id is newer than the recalled stateid's
-sequence id, return NFS4ERR_OLD_STATEID. This too implies protocol
-non-compliance.
-
-If the current layout sequence id is older than the recalled stateid's
-sequence id+1, return NFS4ERR_DELAY.
+When we return NFS_OK to the CB_LAYOUTRECALL, we are required to
+send a layoutreturn that "completes" that layout recall request, using
+the correct stateid.
 
 Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
 ---
- fs/nfs/callback_proc.c | 63 +++++++++++++++++++++++++++++++++++---------------
- 1 file changed, 44 insertions(+), 19 deletions(-)
+ fs/nfs/pnfs.c | 40 +++++++++++++++++++++++++---------------
+ 1 file changed, 25 insertions(+), 15 deletions(-)
 
-diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
-index aaa2e8d3df6f..837da8a02d35 100644
---- a/fs/nfs/callback_proc.c
-+++ b/fs/nfs/callback_proc.c
-@@ -119,27 +119,30 @@ out:
-  * hashed by filehandle.
-  */
- static struct pnfs_layout_hdr * get_layout_by_fh_locked(struct nfs_client *clp,
--		struct nfs_fh *fh, nfs4_stateid *stateid)
-+		struct nfs_fh *fh)
- {
- 	struct nfs_server *server;
-+	struct nfs_inode *nfsi;
- 	struct inode *ino;
- 	struct pnfs_layout_hdr *lo;
- 
-+restart:
- 	list_for_each_entry_rcu(server, &clp->cl_superblocks, client_link) {
- 		list_for_each_entry(lo, &server->layouts, plh_layouts) {
--			if (!nfs4_stateid_match_other(&lo->plh_stateid, stateid))
-+			nfsi = NFS_I(lo->plh_inode);
-+			if (nfs_compare_fh(fh, &nfsi->fh))
- 				continue;
--			if (nfs_compare_fh(fh, &NFS_I(lo->plh_inode)->fh))
-+			if (nfsi->layout != lo)
- 				continue;
- 			ino = igrab(lo->plh_inode);
- 			if (!ino)
- 				break;
- 			spin_lock(&ino->i_lock);
- 			/* Is this layout in the process of being freed? */
--			if (NFS_I(ino)->layout != lo) {
-+			if (nfsi->layout != lo) {
- 				spin_unlock(&ino->i_lock);
- 				iput(ino);
--				break;
-+				goto restart;
- 			}
- 			pnfs_get_layout_hdr(lo);
- 			spin_unlock(&ino->i_lock);
-@@ -151,13 +154,13 @@ static struct pnfs_layout_hdr * get_layout_by_fh_locked(struct nfs_client *clp,
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index 85c3e7b47ddb..878dc4b7085a 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -883,12 +883,28 @@ pnfs_clear_layoutreturn_info(struct pnfs_layout_hdr *lo)
  }
  
- static struct pnfs_layout_hdr * get_layout_by_fh(struct nfs_client *clp,
--		struct nfs_fh *fh, nfs4_stateid *stateid)
-+		struct nfs_fh *fh)
+ static bool
+-pnfs_prepare_layoutreturn(struct pnfs_layout_hdr *lo)
++pnfs_prepare_layoutreturn(struct pnfs_layout_hdr *lo,
++		nfs4_stateid *stateid,
++		enum pnfs_iomode *iomode)
  {
- 	struct pnfs_layout_hdr *lo;
- 
- 	spin_lock(&clp->cl_lock);
- 	rcu_read_lock();
--	lo = get_layout_by_fh_locked(clp, fh, stateid);
-+	lo = get_layout_by_fh_locked(clp, fh);
- 	rcu_read_unlock();
- 	spin_unlock(&clp->cl_lock);
- 
-@@ -167,17 +170,39 @@ static struct pnfs_layout_hdr * get_layout_by_fh(struct nfs_client *clp,
- /*
-  * Enforce RFC5661 section 12.5.5.2.1. (Layout Recall and Return Sequencing)
-  */
--static bool pnfs_check_stateid_sequence(struct pnfs_layout_hdr *lo,
-+static u32 pnfs_check_callback_stateid(struct pnfs_layout_hdr *lo,
- 					const nfs4_stateid *new)
- {
- 	u32 oldseq, newseq;
- 
--	oldseq = be32_to_cpu(lo->plh_stateid.seqid);
-+	/* Is the stateid still not initialised? */
-+	if (!pnfs_layout_is_valid(lo))
-+		return NFS4ERR_DELAY;
-+
-+	/* Mismatched stateid? */
-+	if (!nfs4_stateid_match_other(&lo->plh_stateid, new))
-+		return NFS4ERR_BAD_STATEID;
-+
- 	newseq = be32_to_cpu(new->seqid);
-+	/* Are we already in a layout recall situation? */
-+	if (test_bit(NFS_LAYOUT_RETURN_REQUESTED, &lo->plh_flags) &&
-+	    lo->plh_return_seq != 0) {
-+		if (newseq < lo->plh_return_seq)
-+			return NFS4ERR_OLD_STATEID;
-+		if (newseq > lo->plh_return_seq)
-+			return NFS4ERR_DELAY;
-+		goto out;
+ 	if (test_and_set_bit(NFS_LAYOUT_RETURN, &lo->plh_flags))
+ 		return false;
+ 	pnfs_get_layout_hdr(lo);
+-	pnfs_clear_layoutreturn_info(lo);
++	if (test_bit(NFS_LAYOUT_RETURN_REQUESTED, &lo->plh_flags)) {
++		if (stateid != NULL) {
++			nfs4_stateid_copy(stateid, &lo->plh_stateid);
++			if (lo->plh_return_seq != 0)
++				stateid->seqid = cpu_to_be32(lo->plh_return_seq);
++		}
++		if (iomode != NULL)
++			*iomode = lo->plh_return_iomode;
++		pnfs_clear_layoutreturn_info(lo);
++		return true;
 +	}
- 
-+	/* Check that the stateid matches what we think it should be. */
-+	oldseq = be32_to_cpu(lo->plh_stateid.seqid);
- 	if (newseq > oldseq + 1)
--		return false;
--	return true;
-+		return NFS4ERR_DELAY;
-+	/* Crazy server! */
-+	if (newseq <= oldseq)
-+		return NFS4ERR_OLD_STATEID;
-+out:
-+	return NFS_OK;
++	if (stateid != NULL)
++		nfs4_stateid_copy(stateid, &lo->plh_stateid);
++	if (iomode != NULL)
++		*iomode = IOMODE_ANY;
+ 	return true;
  }
  
- static u32 initiate_file_draining(struct nfs_client *clp,
-@@ -188,7 +213,7 @@ static u32 initiate_file_draining(struct nfs_client *clp,
- 	u32 rv = NFS4ERR_NOMATCHING_LAYOUT;
- 	LIST_HEAD(free_me_list);
+@@ -956,10 +972,7 @@ static void pnfs_layoutreturn_before_put_layout_hdr(struct pnfs_layout_hdr *lo)
+ 		enum pnfs_iomode iomode;
+ 		bool send;
  
--	lo = get_layout_by_fh(clp, &args->cbl_fh, &args->cbl_stateid);
-+	lo = get_layout_by_fh(clp, &args->cbl_fh);
- 	if (!lo) {
- 		trace_nfs4_cb_layoutrecall_file(clp, &args->cbl_fh, NULL,
- 				&args->cbl_stateid, -rv);
-@@ -196,18 +221,15 @@ static u32 initiate_file_draining(struct nfs_client *clp,
+-		nfs4_stateid_copy(&stateid, &lo->plh_stateid);
+-		stateid.seqid = cpu_to_be32(lo->plh_return_seq);
+-		iomode = lo->plh_return_iomode;
+-		send = pnfs_prepare_layoutreturn(lo);
++		send = pnfs_prepare_layoutreturn(lo, &stateid, &iomode);
+ 		spin_unlock(&inode->i_lock);
+ 		if (send) {
+ 			/* Send an async layoutreturn so we dont deadlock */
+@@ -996,7 +1009,6 @@ _pnfs_return_layout(struct inode *ino)
+ 		dprintk("NFS: %s no layout to return\n", __func__);
+ 		goto out;
+ 	}
+-	nfs4_stateid_copy(&stateid, &nfsi->layout->plh_stateid);
+ 	/* Reference matched in nfs4_layoutreturn_release */
+ 	pnfs_get_layout_hdr(lo);
+ 	empty = list_empty(&lo->plh_segs);
+@@ -1020,7 +1032,7 @@ _pnfs_return_layout(struct inode *ino)
  	}
  
- 	ino = lo->plh_inode;
-+	pnfs_layoutcommit_inode(ino, false);
-+
- 
- 	spin_lock(&ino->i_lock);
--	if (!pnfs_check_stateid_sequence(lo, &args->cbl_stateid)) {
--		rv = NFS4ERR_DELAY;
-+	rv = pnfs_check_callback_stateid(lo, &args->cbl_stateid);
-+	if (rv != NFS_OK)
- 		goto unlock;
--	}
- 	pnfs_set_layout_stateid(lo, &args->cbl_stateid, true);
--	spin_unlock(&ino->i_lock);
--
--	pnfs_layoutcommit_inode(ino, false);
- 
--	spin_lock(&ino->i_lock);
- 	/*
- 	 * Enforce RFC5661 Section 12.5.5.2.1.5 (Bulk Recall and Return)
- 	 */
-@@ -223,6 +245,9 @@ static u32 initiate_file_draining(struct nfs_client *clp,
- 		goto unlock;
+ 	set_bit(NFS_LAYOUT_INVALID_STID, &lo->plh_flags);
+-	send = pnfs_prepare_layoutreturn(lo);
++	send = pnfs_prepare_layoutreturn(lo, &stateid, NULL);
+ 	spin_unlock(&ino->i_lock);
+ 	pnfs_free_lseg_list(&tmp_list);
+ 	if (send)
+@@ -1087,11 +1099,10 @@ bool pnfs_roc(struct inode *ino)
+ 			goto out_noroc;
  	}
  
-+	/* Embrace your forgetfulness! */
-+	rv = NFS4ERR_NOMATCHING_LAYOUT;
-+
- 	if (NFS_SERVER(ino)->pnfs_curr_ld->return_range) {
- 		NFS_SERVER(ino)->pnfs_curr_ld->return_range(lo,
- 			&args->cbl_range);
+-	nfs4_stateid_copy(&stateid, &lo->plh_stateid);
+ 	/* always send layoutreturn if being marked so */
+-	if (test_and_clear_bit(NFS_LAYOUT_RETURN_REQUESTED,
+-				   &lo->plh_flags))
+-		layoutreturn = pnfs_prepare_layoutreturn(lo);
++	if (test_bit(NFS_LAYOUT_RETURN_REQUESTED, &lo->plh_flags))
++		layoutreturn = pnfs_prepare_layoutreturn(lo,
++				&stateid, NULL);
+ 
+ 	list_for_each_entry_safe(lseg, tmp, &lo->plh_segs, pls_list)
+ 		/* If we are sending layoutreturn, invalidate all valid lsegs */
+@@ -1874,10 +1885,9 @@ void pnfs_error_mark_layout_for_return(struct inode *inode,
+ 	if (!pnfs_mark_matching_lsegs_return(lo, &free_me,
+ 						&range, lseg->pls_seq)) {
+ 		nfs4_stateid stateid;
+-		enum pnfs_iomode iomode = lo->plh_return_iomode;
++		enum pnfs_iomode iomode;
+ 
+-		nfs4_stateid_copy(&stateid, &lo->plh_stateid);
+-		return_now = pnfs_prepare_layoutreturn(lo);
++		return_now = pnfs_prepare_layoutreturn(lo, &stateid, &iomode);
+ 		spin_unlock(&inode->i_lock);
+ 		if (return_now)
+ 			pnfs_send_layoutreturn(lo, &stateid, iomode, false);
 -- 
 2.7.4
 
