@@ -1,16 +1,16 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f196.google.com ([209.85.223.196]:34092 "EHLO
+Received: from mail-io0-f196.google.com ([209.85.223.196]:35257 "EHLO
 	mail-io0-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752553AbcGXVbq (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 24 Jul 2016 17:31:46 -0400
-Received: by mail-io0-f196.google.com with SMTP id g86so10762356ioj.1
-        for <linux-nfs@vger.kernel.org>; Sun, 24 Jul 2016 14:31:45 -0700 (PDT)
+	with ESMTP id S1752515AbcGXVbt (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 24 Jul 2016 17:31:49 -0400
+Received: by mail-io0-f196.google.com with SMTP id q83so10786792iod.2
+        for <linux-nfs@vger.kernel.org>; Sun, 24 Jul 2016 14:31:48 -0700 (PDT)
 From: Trond Myklebust <trond.myklebust@primarydata.com>
 To: linux-nfs@vger.kernel.org
-Subject: [PATCH v3 12/14] pNFS: Remove redundant stateid invalidation
-Date: Sun, 24 Jul 2016 17:30:57 -0400
-Message-Id: <1469395859-83194-13-git-send-email-trond.myklebust@primarydata.com>
-In-Reply-To: <1469395859-83194-12-git-send-email-trond.myklebust@primarydata.com>
+Subject: [PATCH v3 14/14] pNFS: Remove redundant smp_mb() from pnfs_init_lseg()
+Date: Sun, 24 Jul 2016 17:30:59 -0400
+Message-Id: <1469395859-83194-15-git-send-email-trond.myklebust@primarydata.com>
+In-Reply-To: <1469395859-83194-14-git-send-email-trond.myklebust@primarydata.com>
 References: <1469395859-83194-1-git-send-email-trond.myklebust@primarydata.com>
  <1469395859-83194-2-git-send-email-trond.myklebust@primarydata.com>
  <1469395859-83194-3-git-send-email-trond.myklebust@primarydata.com>
@@ -23,11 +23,12 @@ References: <1469395859-83194-1-git-send-email-trond.myklebust@primarydata.com>
  <1469395859-83194-10-git-send-email-trond.myklebust@primarydata.com>
  <1469395859-83194-11-git-send-email-trond.myklebust@primarydata.com>
  <1469395859-83194-12-git-send-email-trond.myklebust@primarydata.com>
+ <1469395859-83194-13-git-send-email-trond.myklebust@primarydata.com>
+ <1469395859-83194-14-git-send-email-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The layout stateid will be invalidated once it holds no more layout
-segments anyway.
+It's not visible yet, and won't be until after we grab the inode->i_lock.
 
 Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
 ---
@@ -35,17 +36,17 @@ Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
  1 file changed, 1 deletion(-)
 
 diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index 49e952968ede..c9a684c128b8 100644
+index 09b77a68422f..1d47a845d77a 100644
 --- a/fs/nfs/pnfs.c
 +++ b/fs/nfs/pnfs.c
-@@ -1040,7 +1040,6 @@ _pnfs_return_layout(struct inode *ino)
- 		goto out_put_layout_hdr;
- 	}
- 
--	set_bit(NFS_LAYOUT_INVALID_STID, &lo->plh_flags);
- 	send = pnfs_prepare_layoutreturn(lo, &stateid, NULL);
- 	spin_unlock(&ino->i_lock);
- 	pnfs_free_lseg_list(&tmp_list);
+@@ -341,7 +341,6 @@ pnfs_init_lseg(struct pnfs_layout_hdr *lo, struct pnfs_layout_segment *lseg,
+ 	INIT_LIST_HEAD(&lseg->pls_list);
+ 	INIT_LIST_HEAD(&lseg->pls_lc_list);
+ 	atomic_set(&lseg->pls_refcount, 1);
+-	smp_mb();
+ 	set_bit(NFS_LSEG_VALID, &lseg->pls_flags);
+ 	lseg->pls_layout = lo;
+ 	lseg->pls_range = *range;
 -- 
 2.7.4
 
