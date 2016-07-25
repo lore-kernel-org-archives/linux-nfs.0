@@ -1,8 +1,8 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:56670 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:56750 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753225AbcGYOKv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 25 Jul 2016 10:10:51 -0400
+	id S1753229AbcGYOLB (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 25 Jul 2016 10:11:01 -0400
 From: Andreas Gruenbacher <agruenba@redhat.com>
 To: Alexander Viro <viro@zeniv.linux.org.uk>
 Cc: Andreas Gruenbacher <agruenba@redhat.com>,
@@ -16,188 +16,158 @@ Cc: Andreas Gruenbacher <agruenba@redhat.com>,
         xfs@oss.sgi.com, linux-kernel@vger.kernel.org,
         linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
         linux-cifs@vger.kernel.org, linux-api@vger.kernel.org
-Subject: [PATCH v24 16/22] richacl: Automatic Inheritance
-Date: Mon, 25 Jul 2016 16:09:13 +0200
-Message-Id: <1469455759-6141-17-git-send-email-agruenba@redhat.com>
+Subject: [PATCH v24 18/22] richacl: Add richacl xattr handler
+Date: Mon, 25 Jul 2016 16:09:15 +0200
+Message-Id: <1469455759-6141-19-git-send-email-agruenba@redhat.com>
 In-Reply-To: <1469455759-6141-1-git-send-email-agruenba@redhat.com>
 References: <1469455759-6141-1-git-send-email-agruenba@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Automatic Inheritance (AI) allows changes to the acl of a directory to
-propagate down to children.
-
-This is mostly implemented in user space: when a process changes the
-permissions of a directory and Automatic Inheritance is enabled for that
-directory, the process must propagate those changes to all children,
-recursively.
-
-The kernel enables this by keeping track of which permissions have been
-inherited at create time.  In addition, it makes sure that permission
-propagation is turned off when the permissions are set explicitly (for
-example, upon create or chmod).
-
-Automatic Inheritance works as follows:
-
- - When the RICHACL_AUTO_INHERIT flag in the acl of a file or directory
-   is not set, the file or directory is not affected by AI.
-
- - When the RICHACL_AUTO_INHERIT flag in the acl of a directory is set
-   and a file or subdirectory is created in that directory, the
-   inherited acl will have the RICHACL_AUTO_INHERIT flag set, and all
-   inherited aces will have the RICHACE_INHERITED_ACE flag set.  This
-   allows user space to distinguish between aces which have been
-   inherited and aces which have been explicitly added.
-
- - When the RICHACL_PROTECTED acl flag in the acl of a file or directory
-   is set, AI will not modify the acl.  This does not affect propagation
-   of permissions from the file to its children (if the file is a
-   directory).
-
-Linux does not have a way of creating files or directories without setting the
-file permission bits, so all files created inside a directory with
-RICHACL_AUTO_INHERIT set will have the RICHACL_PROTECTED flag set.  This
-effectively disables Automatic Inheritance.
-
-Protocols which support creating files without specifying permissions can
-explicitly clear the RICHACL_PROTECTED flag after creating a file and reset the
-file masks to "undo" applying the create mode; see richacl_compute_max_masks().
-They should set the RICHACL_DEFAULTED flag.  (A mechanism that would allow to
-indicate to the kernel to ignore the create mode in the first place when there
-are inherited permissions would be nice to have.)
+Add richacl xattr handler implementing the xattr operations based on the
+get_richacl and set_richacl inode operations.
 
 Signed-off-by: Andreas Gruenbacher <agruenba@redhat.com>
 Reviewed-by: Jeff Layton <jlayton@redhat.com>
 ---
- fs/richacl.c                 | 20 +++++++++++++++++++-
- include/linux/richacl.h      | 12 ++++++++++++
- include/uapi/linux/richacl.h | 11 ++++++++++-
- 3 files changed, 41 insertions(+), 2 deletions(-)
+ fs/richacl.c                  | 22 ++++++++++++++++
+ fs/richacl_xattr.c            | 61 +++++++++++++++++++++++++++++++++++++++++++
+ include/linux/richacl.h       |  1 +
+ include/linux/richacl_xattr.h |  2 ++
+ 4 files changed, 86 insertions(+)
 
 diff --git a/fs/richacl.c b/fs/richacl.c
-index 8051181..4edce8b 100644
+index 4edce8b..1945691 100644
 --- a/fs/richacl.c
 +++ b/fs/richacl.c
-@@ -567,7 +567,8 @@ __richacl_chmod(struct richacl *acl, umode_t mode)
- 	    acl->a_group_mask == group_mask &&
- 	    acl->a_other_mask == other_mask &&
- 	    (acl->a_flags & RICHACL_MASKED) &&
--	    (acl->a_flags & RICHACL_WRITE_THROUGH))
-+	    (acl->a_flags & RICHACL_WRITE_THROUGH) &&
-+	    (!richacl_is_auto_inherit(acl) || richacl_is_protected(acl)))
- 		return acl;
+@@ -543,6 +543,28 @@ restart:
+ EXPORT_SYMBOL_GPL(richacl_compute_max_masks);
  
- 	clone = richacl_clone(acl, GFP_KERNEL);
-@@ -579,6 +580,8 @@ __richacl_chmod(struct richacl *acl, umode_t mode)
- 	clone->a_owner_mask = owner_mask;
- 	clone->a_group_mask = group_mask;
- 	clone->a_other_mask = other_mask;
-+	if (richacl_is_auto_inherit(clone))
-+		clone->a_flags |= RICHACL_PROTECTED;
- 
- 	return clone;
- }
-@@ -794,6 +797,14 @@ richacl_inherit(const struct richacl *dir_acl, int isdir)
- 			ace++;
- 		}
- 	}
-+	if (richacl_is_auto_inherit(dir_acl)) {
-+		acl->a_flags = RICHACL_AUTO_INHERIT;
-+		richacl_for_each_entry(ace, acl)
-+			ace->e_flags |= RICHACE_INHERITED_ACE;
-+	} else {
-+		richacl_for_each_entry(ace, acl)
-+			ace->e_flags &= ~RICHACE_INHERITED_ACE;
-+	}
- 
- 	return acl;
- }
-@@ -822,6 +833,13 @@ richacl_inherit_inode(const struct richacl *dir_acl, umode_t *mode_p)
- 			richacl_put(acl);
- 			acl = NULL;
- 		} else {
-+			/*
-+			 * We need to set RICHACL_PROTECTED because we are
-+			 * doing an implicit chmod
-+			 */
-+			if (richacl_is_auto_inherit(acl))
-+				acl->a_flags |= RICHACL_PROTECTED;
+ /**
++ * set_richacl  -  set the richacl of an inode
++ * @inode:	inode whose richacl to set
++ * @acl:	access control list
++ */
++int
++set_richacl(struct inode *inode, struct richacl *acl)
++{
++	if (!IS_RICHACL(inode))
++		return -EOPNOTSUPP;
++	if (!inode->i_op->set_richacl)
++		return -EOPNOTSUPP;
 +
- 			richacl_compute_max_masks(acl);
- 			/*
- 			 * Ensure that the acl will not grant any permissions
++	if (!uid_eq(current_fsuid(), inode->i_uid) &&
++	    inode_permission(inode, MAY_CHMOD) &&
++	    !capable(CAP_FOWNER))
++		return -EPERM;
++
++	return inode->i_op->set_richacl(inode, acl);
++}
++EXPORT_SYMBOL(set_richacl);
++
++/**
+  * __richacl_chmod  -  update the file masks to reflect the new mode
+  * @acl:	access control list
+  * @mode:	new file permission bits including the file type
+diff --git a/fs/richacl_xattr.c b/fs/richacl_xattr.c
+index dc1ad36..5eb4aba 100644
+--- a/fs/richacl_xattr.c
++++ b/fs/richacl_xattr.c
+@@ -18,7 +18,9 @@
+ #include <linux/fs.h>
+ #include <linux/slab.h>
+ #include <linux/module.h>
++#include <linux/xattr.h>
+ #include <linux/richacl_xattr.h>
++#include <uapi/linux/xattr.h>
+ 
+ /**
+  * richacl_from_xattr  -  convert a richacl xattr into the in-memory representation
+@@ -159,3 +161,62 @@ richacl_to_xattr(struct user_namespace *user_ns,
+ 	return real_size;
+ }
+ EXPORT_SYMBOL_GPL(richacl_to_xattr);
++
++static bool
++richacl_xattr_list(struct dentry *dentry)
++{
++	return IS_RICHACL(d_backing_inode(dentry));
++}
++
++static int
++richacl_xattr_get(const struct xattr_handler *handler,
++		  struct dentry *unused, struct inode *inode,
++		  const char *name, void *buffer, size_t buffer_size)
++{
++	struct richacl *acl;
++	int error;
++
++	if (*name)
++		return -EINVAL;
++	if (!IS_RICHACL(inode))
++		return -EOPNOTSUPP;
++	if (S_ISLNK(inode->i_mode))
++		return -EOPNOTSUPP;
++	acl = get_richacl(inode);
++	if (IS_ERR(acl))
++		return PTR_ERR(acl);
++	if (acl == NULL)
++		return -ENODATA;
++	error = richacl_to_xattr(current_user_ns(), acl, buffer, buffer_size);
++	richacl_put(acl);
++	return error;
++}
++
++static int
++richacl_xattr_set(const struct xattr_handler *handler,
++		  struct dentry *unused, struct inode *inode,
++		  const char *name, const void *value, size_t size,
++		  int flags)
++{
++	struct richacl *acl = NULL;
++	int ret;
++
++	if (value) {
++		acl = richacl_from_xattr(current_user_ns(), value, size,
++					 -EINVAL);
++		if (IS_ERR(acl))
++			return PTR_ERR(acl);
++	}
++
++	ret = set_richacl(inode, acl);
++	richacl_put(acl);
++	return ret;
++}
++
++struct xattr_handler richacl_xattr_handler = {
++	.name = XATTR_NAME_RICHACL,
++	.list = richacl_xattr_list,
++	.get = richacl_xattr_get,
++	.set = richacl_xattr_set,
++};
++EXPORT_SYMBOL(richacl_xattr_handler);
 diff --git a/include/linux/richacl.h b/include/linux/richacl.h
-index 6354ef0..737513b 100644
+index 737513b..7530920 100644
 --- a/include/linux/richacl.h
 +++ b/include/linux/richacl.h
-@@ -81,6 +81,18 @@ extern void set_cached_richacl(struct inode *, struct richacl *);
- extern void forget_cached_richacl(struct inode *);
- extern struct richacl *get_richacl(struct inode *);
+@@ -205,5 +205,6 @@ extern int richacl_chmod(struct inode *, umode_t);
+ extern int richacl_equiv_mode(const struct richacl *, umode_t *);
+ extern struct richacl *richacl_inherit(const struct richacl *, int);
+ extern struct richacl *richacl_create(umode_t *, struct inode *);
++extern int set_richacl(struct inode *, struct richacl *);
  
-+static inline int
-+richacl_is_auto_inherit(const struct richacl *acl)
-+{
-+	return acl->a_flags & RICHACL_AUTO_INHERIT;
-+}
+ #endif /* __RICHACL_H */
+diff --git a/include/linux/richacl_xattr.h b/include/linux/richacl_xattr.h
+index 0efa14b..6c6adb1 100644
+--- a/include/linux/richacl_xattr.h
++++ b/include/linux/richacl_xattr.h
+@@ -26,4 +26,6 @@ extern size_t richacl_xattr_size(const struct richacl *);
+ extern int richacl_to_xattr(struct user_namespace *, const struct richacl *,
+ 			    void *, size_t);
+ 
++extern struct xattr_handler richacl_xattr_handler;
 +
-+static inline int
-+richacl_is_protected(const struct richacl *acl)
-+{
-+	return acl->a_flags & RICHACL_PROTECTED;
-+}
-+
- /**
-  * richace_is_owner  -  check if @ace is an OWNER@ entry
-  */
-diff --git a/include/uapi/linux/richacl.h b/include/uapi/linux/richacl.h
-index 1ed48ac..8849a53 100644
---- a/include/uapi/linux/richacl.h
-+++ b/include/uapi/linux/richacl.h
-@@ -18,6 +18,9 @@
- #define __UAPI_RICHACL_H
- 
- /* a_flags values */
-+#define RICHACL_AUTO_INHERIT			0x01
-+#define RICHACL_PROTECTED			0x02
-+#define RICHACL_DEFAULTED			0x04
- #define RICHACL_WRITE_THROUGH			0x40
- #define RICHACL_MASKED				0x80
- 
-@@ -31,6 +34,7 @@
- #define RICHACE_NO_PROPAGATE_INHERIT_ACE	0x0004
- #define RICHACE_INHERIT_ONLY_ACE		0x0008
- #define RICHACE_IDENTIFIER_GROUP		0x0040
-+#define RICHACE_INHERITED_ACE			0x0080
- #define RICHACE_SPECIAL_WHO			0x4000
- 
- /* e_mask bitflags */
-@@ -60,6 +64,9 @@
- #define RICHACE_EVERYONE_SPECIAL_ID		2
- 
- #define RICHACL_VALID_FLAGS (					\
-+	RICHACL_AUTO_INHERIT |					\
-+	RICHACL_PROTECTED |					\
-+	RICHACL_DEFAULTED |					\
- 	RICHACL_WRITE_THROUGH |					\
- 	RICHACL_MASKED )
- 
-@@ -69,13 +76,15 @@
- 	RICHACE_NO_PROPAGATE_INHERIT_ACE |			\
- 	RICHACE_INHERIT_ONLY_ACE |				\
- 	RICHACE_IDENTIFIER_GROUP |				\
-+	RICHACE_INHERITED_ACE |					\
- 	RICHACE_SPECIAL_WHO )
- 
- #define RICHACE_INHERITANCE_FLAGS (				\
- 	RICHACE_FILE_INHERIT_ACE |				\
- 	RICHACE_DIRECTORY_INHERIT_ACE |				\
- 	RICHACE_NO_PROPAGATE_INHERIT_ACE |			\
--	RICHACE_INHERIT_ONLY_ACE )
-+	RICHACE_INHERIT_ONLY_ACE |				\
-+	RICHACE_INHERITED_ACE )
- 
- /* Valid RICHACE_* flags for directories and non-directories */
- #define RICHACE_VALID_MASK (					\
+ #endif /* __RICHACL_XATTR_H */
 -- 
 2.5.5
 
