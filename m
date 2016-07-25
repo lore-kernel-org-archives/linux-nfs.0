@@ -1,8 +1,8 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:55074 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:54793 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752987AbcGYOKD (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 25 Jul 2016 10:10:03 -0400
+	id S1752985AbcGYOKm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 25 Jul 2016 10:10:42 -0400
 From: Andreas Gruenbacher <agruenba@redhat.com>
 To: Alexander Viro <viro@zeniv.linux.org.uk>
 Cc: Andreas Gruenbacher <agruenba@redhat.com>,
@@ -16,214 +16,151 @@ Cc: Andreas Gruenbacher <agruenba@redhat.com>,
         xfs@oss.sgi.com, linux-kernel@vger.kernel.org,
         linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
         linux-cifs@vger.kernel.org, linux-api@vger.kernel.org
-Subject: [PATCH v24 07/22] richacl: Permission mapping functions
-Date: Mon, 25 Jul 2016 16:09:04 +0200
-Message-Id: <1469455759-6141-8-git-send-email-agruenba@redhat.com>
+Subject: [PATCH v24 14/22] richacl: Check if an acl is equivalent to a file mode
+Date: Mon, 25 Jul 2016 16:09:11 +0200
+Message-Id: <1469455759-6141-15-git-send-email-agruenba@redhat.com>
 In-Reply-To: <1469455759-6141-1-git-send-email-agruenba@redhat.com>
 References: <1469455759-6141-1-git-send-email-agruenba@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-We need to map from POSIX permissions to NFSv4 permissions when a
-chmod() is done, from NFSv4 permissions to POSIX permissions when an acl
-is set (which implicitly sets the file permission bits), and from the
-MAY_READ/MAY_WRITE/MAY_EXEC/MAY_APPEND flags to NFSv4 permissions when
-doing an access check in a richacl.
+ACLs are considered equivalent to file modes if they only consist of
+owner@, group@, and everyone@ entries, the owner@ permissions do not
+depend on whether the owner is a member in the owning group, and no
+inheritance flags are set.  This test is used to avoid storing richacls
+if the acl can be computed from the file permission bits.
 
 Signed-off-by: Andreas Gruenbacher <agruenba@redhat.com>
 Reviewed-by: J. Bruce Fields <bfields@redhat.com>
 Reviewed-by: Jeff Layton <jlayton@redhat.com>
 ---
- fs/richacl.c                 | 112 +++++++++++++++++++++++++++++++++++++++++++
- include/linux/richacl.h      |   2 +
- include/uapi/linux/richacl.h |  44 +++++++++++++++++
- 3 files changed, 158 insertions(+)
+ fs/richacl.c            | 104 ++++++++++++++++++++++++++++++++++++++++++++++++
+ include/linux/richacl.h |   1 +
+ 2 files changed, 105 insertions(+)
 
 diff --git a/fs/richacl.c b/fs/richacl.c
-index bcc6591..2072cf4 100644
+index a199245..1022983 100644
 --- a/fs/richacl.c
 +++ b/fs/richacl.c
-@@ -63,3 +63,115 @@ richace_copy(struct richace *to, const struct richace *from)
- {
- 	memcpy(to, from, sizeof(struct richace));
+@@ -612,3 +612,107 @@ richacl_chmod(struct inode *inode, umode_t mode)
+ 	return retval;
  }
-+
-+/*
-+ * richacl_mask_to_mode  -  compute the file permission bits from mask
-+ * @mask:	%RICHACE_* permission mask
-+ *
-+ * Compute the file permission bits corresponding to a particular set of
-+ * richacl permissions.
-+ *
-+ * See richacl_masks_to_mode().
-+ */
-+static int
-+richacl_mask_to_mode(unsigned int mask)
-+{
-+	int mode = 0;
-+
-+	if (mask & RICHACE_POSIX_MODE_READ)
-+		mode |= S_IROTH;
-+	if (mask & RICHACE_POSIX_MODE_WRITE)
-+		mode |= S_IWOTH;
-+	if (mask & RICHACE_POSIX_MODE_EXEC)
-+		mode |= S_IXOTH;
-+
-+	return mode;
-+}
+ EXPORT_SYMBOL(richacl_chmod);
 +
 +/**
-+ * richacl_masks_to_mode  -  compute file permission bits from file masks
++ * richacl_equiv_mode  -  compute the mode equivalent of @acl
 + *
-+ * When setting a richacl, we set the file permission bits to indicate maximum
-+ * permissions: for example, we set the Write permission when a mask contains
-+ * RICHACE_APPEND_DATA even if it does not also contain RICHACE_WRITE_DATA.
-+ *
-+ * Permissions which are not in RICHACE_POSIX_MODE_READ,
-+ * RICHACE_POSIX_MODE_WRITE, or RICHACE_POSIX_MODE_EXEC cannot be represented
-+ * in the file permission bits.  Such permissions can still be effective, but
-+ * not for new files or after a chmod(); they must be explicitly enabled in the
-+ * richacl.
++ * An acl is considered equivalent to a file mode if it only consists of
++ * owner@, group@, and everyone@ entries and the owner@ permissions do not
++ * depend on whether the owner is a member in the owning group.
 + */
 +int
-+richacl_masks_to_mode(const struct richacl *acl)
++richacl_equiv_mode(const struct richacl *acl, umode_t *mode_p)
 +{
-+	return richacl_mask_to_mode(acl->a_owner_mask) << 6 |
-+	       richacl_mask_to_mode(acl->a_group_mask) << 3 |
-+	       richacl_mask_to_mode(acl->a_other_mask);
-+}
-+EXPORT_SYMBOL_GPL(richacl_masks_to_mode);
++	umode_t mode = *mode_p;
 +
-+/**
-+ * richacl_mode_to_mask  - compute a file mask from the lowest three mode bits
-+ * @mode:	mode to convert to richacl permissions
-+ *
-+ * When the file permission bits of a file are set with chmod(), this specifies
-+ * the maximum permissions that processes will get.  All permissions beyond
-+ * that will be removed from the file masks, and become ineffective.
-+ */
-+unsigned int
-+richacl_mode_to_mask(umode_t mode)
-+{
-+	unsigned int mask = 0;
-+
-+	if (mode & S_IROTH)
-+		mask |= RICHACE_POSIX_MODE_READ;
-+	if (mode & S_IWOTH)
-+		mask |= RICHACE_POSIX_MODE_WRITE;
-+	if (mode & S_IXOTH)
-+		mask |= RICHACE_POSIX_MODE_EXEC;
-+
-+	return mask;
-+}
-+
-+/**
-+ * richacl_want_to_mask  - convert the iop->permission want argument to a mask
-+ * @want:	@want argument of the permission inode operation
-+ *
-+ * When checking for append, create file, create dir, or delete child access,
-+ * MAY_WRITE is also set in @want.
-+ */
-+static unsigned int
-+richacl_want_to_mask(unsigned int want)
-+{
-+	unsigned int mask = 0;
-+
-+	if (want & MAY_READ)
-+		mask |= RICHACE_READ_DATA;
-+	if (want & MAY_DELETE_SELF)
-+		mask |= RICHACE_DELETE;
-+	if (want & MAY_TAKE_OWNERSHIP)
-+		mask |= RICHACE_WRITE_OWNER;
-+	if (want & MAY_CHMOD)
-+		mask |= RICHACE_WRITE_ACL;
-+	if (want & MAY_SET_TIMES)
-+		mask |= RICHACE_WRITE_ATTRIBUTES;
-+	if (want & MAY_EXEC)
-+		mask |= RICHACE_EXECUTE;
 +	/*
-+	 * differentiate MAY_WRITE from these request
++	 * The RICHACE_DELETE_CHILD flag is meaningless for non-directories, so
++	 * we ignore it.
 +	 */
-+	if (want & (MAY_APPEND |
-+		    MAY_CREATE_FILE | MAY_CREATE_DIR |
-+		    MAY_DELETE_CHILD)) {
-+		if (want & MAY_APPEND)
-+			mask |= RICHACE_APPEND_DATA;
-+		if (want & MAY_CREATE_FILE)
-+			mask |= RICHACE_ADD_FILE;
-+		if (want & MAY_CREATE_DIR)
-+			mask |= RICHACE_ADD_SUBDIRECTORY;
-+		if (want & MAY_DELETE_CHILD)
-+			mask |= RICHACE_DELETE_CHILD;
-+	} else if (want & MAY_WRITE)
-+		mask |= RICHACE_WRITE_DATA;
-+	return mask;
++	unsigned int x = S_ISDIR(mode) ? 0 : RICHACE_DELETE_CHILD;
++	struct {
++		unsigned int allowed;
++		unsigned int defined;  /* allowed or denied */
++	} owner = {
++		.defined = RICHACE_POSIX_ALWAYS_ALLOWED |
++			   RICHACE_POSIX_OWNER_ALLOWED  | x,
++	}, group = {
++		.defined = RICHACE_POSIX_ALWAYS_ALLOWED | x,
++	}, everyone = {
++		.defined = RICHACE_POSIX_ALWAYS_ALLOWED | x,
++	};
++	const struct richace *ace;
++
++	if (acl->a_flags & ~(RICHACL_WRITE_THROUGH | RICHACL_MASKED))
++		return -1;
++
++	richacl_for_each_entry(ace, acl) {
++		if (ace->e_flags & ~RICHACE_SPECIAL_WHO)
++			return -1;
++
++		if (richace_is_owner(ace) || richace_is_everyone(ace)) {
++			x = ace->e_mask & ~owner.defined;
++			if (richace_is_allow(ace)) {
++				unsigned int group_denied =
++					group.defined & ~group.allowed;
++
++				if (x & group_denied)
++					return -1;
++				owner.allowed |= x;
++			} else /* if (richace_is_deny(ace)) */ {
++				if (x & group.allowed)
++					return -1;
++			}
++			owner.defined |= x;
++
++			if (richace_is_everyone(ace)) {
++				x = ace->e_mask;
++				if (richace_is_allow(ace)) {
++					group.allowed |=
++						x & ~group.defined;
++					everyone.allowed |=
++						x & ~everyone.defined;
++				}
++				group.defined |= x;
++				everyone.defined |= x;
++			}
++		} else if (richace_is_group(ace)) {
++			x = ace->e_mask & ~group.defined;
++			if (richace_is_allow(ace))
++				group.allowed |= x;
++			group.defined |= x;
++		} else
++			return -1;
++	}
++
++	if (group.allowed & ~owner.defined)
++		return -1;
++
++	if (acl->a_flags & RICHACL_MASKED) {
++		if (acl->a_flags & RICHACL_WRITE_THROUGH) {
++			owner.allowed = acl->a_owner_mask;
++			everyone.allowed = acl->a_other_mask;
++		} else {
++			owner.allowed &= acl->a_owner_mask;
++			everyone.allowed &= acl->a_other_mask;
++		}
++		group.allowed &= acl->a_group_mask;
++	}
++
++	mode = (mode & ~S_IRWXUGO) |
++	       (richacl_mask_to_mode(owner.allowed) << 6) |
++	       (richacl_mask_to_mode(group.allowed) << 3) |
++		richacl_mask_to_mode(everyone.allowed);
++
++	/* Mask flags we can ignore */
++	x = S_ISDIR(mode) ? 0 : RICHACE_DELETE_CHILD;
++
++	if (((richacl_mode_to_mask(mode >> 6) ^ owner.allowed)    & ~x) ||
++	    ((richacl_mode_to_mask(mode >> 3) ^ group.allowed)    & ~x) ||
++	    ((richacl_mode_to_mask(mode)      ^ everyone.allowed) & ~x))
++		return -1;
++
++	*mode_p = mode;
++	return 0;
 +}
++EXPORT_SYMBOL_GPL(richacl_equiv_mode);
 diff --git a/include/linux/richacl.h b/include/linux/richacl.h
-index edb8480..70923f8 100644
+index 3cd5e53..a865f37 100644
 --- a/include/linux/richacl.h
 +++ b/include/linux/richacl.h
-@@ -175,5 +175,7 @@ richace_is_same_identifier(const struct richace *a, const struct richace *b)
- extern struct richacl *richacl_alloc(int, gfp_t);
- extern struct richacl *richacl_clone(const struct richacl *, gfp_t);
- extern void richace_copy(struct richace *, const struct richace *);
-+extern int richacl_masks_to_mode(const struct richacl *);
-+extern unsigned int richacl_mode_to_mask(umode_t);
+@@ -190,5 +190,6 @@ extern unsigned int richacl_mode_to_mask(umode_t);
+ extern int richacl_permission(struct inode *, const struct richacl *, int);
+ extern void richacl_compute_max_masks(struct richacl *);
+ extern int richacl_chmod(struct inode *, umode_t);
++extern int richacl_equiv_mode(const struct richacl *, umode_t *);
  
  #endif /* __RICHACL_H */
-diff --git a/include/uapi/linux/richacl.h b/include/uapi/linux/richacl.h
-index 08856f8..1ed48ac 100644
---- a/include/uapi/linux/richacl.h
-+++ b/include/uapi/linux/richacl.h
-@@ -96,4 +96,48 @@
- 	RICHACE_WRITE_OWNER |					\
- 	RICHACE_SYNCHRONIZE )
- 
-+/*
-+ * The POSIX permissions are supersets of the following richacl permissions:
-+ *
-+ *  - MAY_READ maps to READ_DATA or LIST_DIRECTORY, depending on the type
-+ *    of the file system object.
-+ *
-+ *  - MAY_WRITE maps to WRITE_DATA or RICHACE_APPEND_DATA for files, and to
-+ *    ADD_FILE, RICHACE_ADD_SUBDIRECTORY, or RICHACE_DELETE_CHILD for directories.
-+ *
-+ *  - MAY_EXECUTE maps to RICHACE_EXECUTE.
-+ *
-+ *  (Some of these richacl permissions have the same bit values.)
-+ */
-+#define RICHACE_POSIX_MODE_READ (			\
-+		RICHACE_READ_DATA |			\
-+		RICHACE_LIST_DIRECTORY)
-+#define RICHACE_POSIX_MODE_WRITE (			\
-+		RICHACE_WRITE_DATA |			\
-+		RICHACE_ADD_FILE |			\
-+		RICHACE_APPEND_DATA |			\
-+		RICHACE_ADD_SUBDIRECTORY |		\
-+		RICHACE_DELETE_CHILD)
-+#define RICHACE_POSIX_MODE_EXEC RICHACE_EXECUTE
-+#define RICHACE_POSIX_MODE_ALL (			\
-+		RICHACE_POSIX_MODE_READ |		\
-+		RICHACE_POSIX_MODE_WRITE |		\
-+		RICHACE_POSIX_MODE_EXEC)
-+
-+/*
-+ * These permissions are always allowed no matter what the acl says.
-+ */
-+#define RICHACE_POSIX_ALWAYS_ALLOWED (			\
-+		RICHACE_SYNCHRONIZE |			\
-+		RICHACE_READ_ATTRIBUTES |		\
-+		RICHACE_READ_ACL)
-+
-+/*
-+ * The owner is implicitly granted these permissions under POSIX.
-+ */
-+#define RICHACE_POSIX_OWNER_ALLOWED (			\
-+		RICHACE_WRITE_ATTRIBUTES |		\
-+		RICHACE_WRITE_OWNER |			\
-+		RICHACE_WRITE_ACL)
-+
- #endif /* __UAPI_RICHACL_H */
 -- 
 2.5.5
 
