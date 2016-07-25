@@ -1,11 +1,11 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:55168 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:35734 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753301AbcGYOLX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 25 Jul 2016 10:11:23 -0400
+	id S1751407AbcGYOLM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 25 Jul 2016 10:11:12 -0400
 From: Andreas Gruenbacher <agruenba@redhat.com>
 To: Alexander Viro <viro@zeniv.linux.org.uk>
-Cc: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
+Cc: Andreas Gruenbacher <agruenba@redhat.com>,
         Christoph Hellwig <hch@infradead.org>, "Theodore Ts'o" <tytso@mit.edu>,
         Andreas Dilger <adilger.kernel@dilger.ca>,
         "J. Bruce Fields" <bfields@fieldses.org>,
@@ -15,157 +15,237 @@ Cc: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
         Dave Chinner <david@fromorbit.com>, linux-ext4@vger.kernel.org,
         xfs@oss.sgi.com, linux-kernel@vger.kernel.org,
         linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-cifs@vger.kernel.org, linux-api@vger.kernel.org,
-        Andreas Gruenbacher <agruenba@redhat.com>
-Subject: [PATCH v24 22/22] ext4: Add richacl feature flag
-Date: Mon, 25 Jul 2016 16:09:19 +0200
-Message-Id: <1469455759-6141-23-git-send-email-agruenba@redhat.com>
+        linux-cifs@vger.kernel.org, linux-api@vger.kernel.org
+Subject: [PATCH v24 20/22] vfs: Move check_posix_acl and check_richacl out of fs/namei.c
+Date: Mon, 25 Jul 2016 16:09:17 +0200
+Message-Id: <1469455759-6141-21-git-send-email-agruenba@redhat.com>
 In-Reply-To: <1469455759-6141-1-git-send-email-agruenba@redhat.com>
 References: <1469455759-6141-1-git-send-email-agruenba@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+By moving those functions into fs/posix_acl.c and fs/richacl.c, the
+ifdefs can be moved into include/linux/posix_acl.h and
+include/linux/richacl.h.  This may be seen as a small improvement.
 
-This feature flag selects richacl instead of POSIX ACL support on the
-filesystem.  When this feature is off, the "acl" and "noacl" mount options
-control whether POSIX ACLs are enabled.  When it is on, richacls are
-automatically enabled and using the "noacl" mount option leads to an error.
-
-Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+Suggested-by: Jeff Layton <jlayton@redhat.com>
 Signed-off-by: Andreas Gruenbacher <agruenba@redhat.com>
-Reviewed-by: Andreas Dilger <adilger@dilger.ca>
 ---
- fs/ext4/ext4.h  |  6 ++++--
- fs/ext4/super.c | 49 ++++++++++++++++++++++++++++++++++++++++---------
- 2 files changed, 44 insertions(+), 11 deletions(-)
+ fs/namei.c                | 72 ++++-------------------------------------------
+ fs/posix_acl.c            | 28 ++++++++++++++++++
+ fs/richacl.c              | 28 ++++++++++++++++++
+ include/linux/posix_acl.h |  5 ++++
+ include/linux/richacl.h   |  8 ++++++
+ 5 files changed, 74 insertions(+), 67 deletions(-)
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index b84aa1c..ff48f07 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -1126,7 +1126,7 @@ struct ext4_inode_info {
- #define EXT4_MOUNT_UPDATE_JOURNAL	0x01000	/* Update the journal format */
- #define EXT4_MOUNT_NO_UID32		0x02000  /* Disable 32-bit UIDs */
- #define EXT4_MOUNT_XATTR_USER		0x04000	/* Extended user attributes */
--#define EXT4_MOUNT_POSIX_ACL		0x08000	/* POSIX Access Control Lists */
-+#define EXT4_MOUNT_ACL			0x08000	/* Access Control Lists */
- #define EXT4_MOUNT_NO_AUTO_DA_ALLOC	0x10000	/* No auto delalloc mapping */
- #define EXT4_MOUNT_BARRIER		0x20000 /* Use block barriers */
- #define EXT4_MOUNT_QUOTA		0x80000 /* Some quota option set */
-@@ -1707,6 +1707,7 @@ static inline int ext4_encrypted_inode(struct inode *inode)
- #define EXT4_FEATURE_INCOMPAT_LARGEDIR		0x4000 /* >2GB or 3-lvl htree */
- #define EXT4_FEATURE_INCOMPAT_INLINE_DATA	0x8000 /* data in inode */
- #define EXT4_FEATURE_INCOMPAT_ENCRYPT		0x10000
-+#define EXT4_FEATURE_INCOMPAT_RICHACL		0x20000
- 
- #define EXT4_FEATURE_COMPAT_FUNCS(name, flagname) \
- static inline bool ext4_has_feature_##name(struct super_block *sb) \
-@@ -1821,7 +1822,8 @@ EXT4_FEATURE_INCOMPAT_FUNCS(encrypt,		ENCRYPT)
- 					 EXT4_FEATURE_INCOMPAT_MMP | \
- 					 EXT4_FEATURE_INCOMPAT_INLINE_DATA | \
- 					 EXT4_FEATURE_INCOMPAT_ENCRYPT | \
--					 EXT4_FEATURE_INCOMPAT_CSUM_SEED)
-+					 EXT4_FEATURE_INCOMPAT_CSUM_SEED | \
-+					 EXT4_FEATURE_INCOMPAT_RICHACL)
- #define EXT4_FEATURE_RO_COMPAT_SUPP	(EXT4_FEATURE_RO_COMPAT_SPARSE_SUPER| \
- 					 EXT4_FEATURE_RO_COMPAT_LARGE_FILE| \
- 					 EXT4_FEATURE_RO_COMPAT_GDT_CSUM| \
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 3822a5a..122410f 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -1306,6 +1306,28 @@ static ext4_fsblk_t get_sb_block(void **data)
- 	return sb_block;
+diff --git a/fs/namei.c b/fs/namei.c
+index 48c9958..f1a58d03 100644
+--- a/fs/namei.c
++++ b/fs/namei.c
+@@ -257,73 +257,6 @@ void putname(struct filename *name)
+ 		__putname(name);
  }
  
-+static int enable_acl(struct super_block *sb)
+-static int check_richacl(struct inode *inode, int mask)
+-{
+-#ifdef CONFIG_FS_RICHACL
+-	if (mask & MAY_NOT_BLOCK) {
+-		struct base_acl *base_acl;
+-
+-		base_acl = rcu_dereference(inode->i_acl);
+-		if (!base_acl)
+-			goto no_acl;
+-		/* no ->get_richacl() calls in RCU mode... */
+-		if (is_uncached_acl(base_acl))
+-			return -ECHILD;
+-		return richacl_permission(inode, richacl(base_acl),
+-					  mask & ~MAY_NOT_BLOCK);
+-	} else {
+-		struct richacl *acl;
+-
+-		acl = get_richacl(inode);
+-		if (IS_ERR(acl))
+-			return PTR_ERR(acl);
+-		if (acl) {
+-			int error = richacl_permission(inode, acl, mask);
+-			richacl_put(acl);
+-			return error;
+-		}
+-	}
+-no_acl:
+-#endif
+-	if (mask & (MAY_DELETE_SELF | MAY_TAKE_OWNERSHIP |
+-		    MAY_CHMOD | MAY_SET_TIMES)) {
+-		/* File permission bits cannot grant this. */
+-		return -EACCES;
+-	}
+-	return -EAGAIN;
+-}
+-
+-static int check_posix_acl(struct inode *inode, int mask)
+-{
+-#ifdef CONFIG_FS_POSIX_ACL
+-	if (mask & MAY_NOT_BLOCK) {
+-		struct base_acl *base_acl;
+-
+-		base_acl = rcu_dereference(inode->i_acl);
+-	        if (!base_acl)
+-	                return -EAGAIN;
+-		/* no ->get_acl() calls in RCU mode... */
+-		if (is_uncached_acl(base_acl))
+-			return -ECHILD;
+-	        return posix_acl_permission(inode, posix_acl(base_acl),
+-					    mask & ~MAY_NOT_BLOCK);
+-	} else {
+-		struct posix_acl *acl;
+-
+-		acl = get_acl(inode, ACL_TYPE_ACCESS);
+-		if (IS_ERR(acl))
+-			return PTR_ERR(acl);
+-		if (acl) {
+-			int error = posix_acl_permission(inode, acl, mask);
+-			posix_acl_release(acl);
+-			return error;
+-		}
+-	}
+-#endif
+-
+-	return -EAGAIN;
+-}
+-
+ /*
+  * This does the basic permission checking
+  */
+@@ -343,6 +276,11 @@ static int acl_permission_check(struct inode *inode, int mask)
+ 		int error = check_richacl(inode, mask);
+ 		if (error != -EAGAIN)
+ 			return error;
++		if (mask & (MAY_DELETE_SELF | MAY_TAKE_OWNERSHIP |
++			    MAY_CHMOD | MAY_SET_TIMES)) {
++			/* File permission bits cannot grant this. */
++			return -EACCES;
++		}
+ 	}
+ 	if (likely(uid_eq(current_fsuid(), inode->i_uid)))
+ 		mode >>= 6;
+diff --git a/fs/posix_acl.c b/fs/posix_acl.c
+index 1b685a1..ce2fd35 100644
+--- a/fs/posix_acl.c
++++ b/fs/posix_acl.c
+@@ -374,6 +374,34 @@ check_perm:
+ 	return -EACCES;
+ }
+ 
++int check_posix_acl(struct inode *inode, int mask)
 +{
-+	sb->s_flags &= ~(MS_POSIXACL | MS_RICHACL);
-+	if (test_opt(sb, ACL)) {
-+		if (EXT4_HAS_INCOMPAT_FEATURE(sb,
-+					      EXT4_FEATURE_INCOMPAT_RICHACL)) {
-+#ifdef CONFIG_EXT4_FS_RICHACL
-+			sb->s_flags |= MS_RICHACL;
-+#else
-+			return -EOPNOTSUPP;
-+#endif
-+		} else {
-+#ifdef CONFIG_EXT4_FS_POSIX_ACL
-+			sb->s_flags |= MS_POSIXACL;
-+#else
-+			return -EOPNOTSUPP;
-+#endif
++	if (mask & MAY_NOT_BLOCK) {
++		struct base_acl *base_acl;
++
++		base_acl = rcu_dereference(inode->i_acl);
++	        if (!base_acl)
++	                return -EAGAIN;
++		/* no ->get_acl() calls in RCU mode... */
++		if (is_uncached_acl(base_acl))
++			return -ECHILD;
++	        return posix_acl_permission(inode, posix_acl(base_acl),
++					    mask & ~MAY_NOT_BLOCK);
++	} else {
++		struct posix_acl *acl;
++
++		acl = get_acl(inode, ACL_TYPE_ACCESS);
++		if (IS_ERR(acl))
++			return PTR_ERR(acl);
++		if (acl) {
++			int error = posix_acl_permission(inode, acl, mask);
++			posix_acl_release(acl);
++			return error;
 +		}
 +	}
-+	return 0;
++	return -EAGAIN;
 +}
 +
- #define DEFAULT_JOURNAL_IOPRIO (IOPRIO_PRIO_VALUE(IOPRIO_CLASS_BE, 3))
- static char deprecated_msg[] = "Mount option \"%s\" will be removed by %s\n"
- 	"Contact linux-ext4@vger.kernel.org if you think we should keep it.\n";
-@@ -1452,9 +1474,9 @@ static const struct mount_opts {
- 	 MOPT_NO_EXT2 | MOPT_DATAJ},
- 	{Opt_user_xattr, EXT4_MOUNT_XATTR_USER, MOPT_SET},
- 	{Opt_nouser_xattr, EXT4_MOUNT_XATTR_USER, MOPT_CLEAR},
--#ifdef CONFIG_EXT4_FS_POSIX_ACL
--	{Opt_acl, EXT4_MOUNT_POSIX_ACL, MOPT_SET},
--	{Opt_noacl, EXT4_MOUNT_POSIX_ACL, MOPT_CLEAR},
-+#if defined(CONFIG_EXT4_FS_POSIX_ACL) || defined(CONFIG_EXT4_FS_RICHACL)
-+	{Opt_acl, EXT4_MOUNT_ACL, MOPT_SET},
-+	{Opt_noacl, EXT4_MOUNT_ACL, MOPT_CLEAR},
- #else
- 	{Opt_acl, 0, MOPT_NOSUPPORT},
- 	{Opt_noacl, 0, MOPT_NOSUPPORT},
-@@ -1502,6 +1524,13 @@ static int handle_mount_opt(struct super_block *sb, char *opt, int token,
- #endif
- 	switch (token) {
- 	case Opt_noacl:
-+#ifdef CONFIG_EXT4_FS_RICHACL
-+	if (EXT4_HAS_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_RICHACL)) {
-+		ext4_msg(sb, KERN_ERR, "Mount option \"%s\" incompatible "
-+			 "with richacl feature", opt);
-+		return -1;
+ /*
+  * Modify acl when creating a new inode. The caller must ensure the acl is
+  * only referenced once.
+diff --git a/fs/richacl.c b/fs/richacl.c
+index 1945691..ece9d0b 100644
+--- a/fs/richacl.c
++++ b/fs/richacl.c
+@@ -385,6 +385,34 @@ out:
+ }
+ EXPORT_SYMBOL_GPL(richacl_permission);
+ 
++int check_richacl(struct inode *inode, int mask)
++{
++	if (mask & MAY_NOT_BLOCK) {
++		struct base_acl *base_acl;
++
++		base_acl = rcu_dereference(inode->i_acl);
++		if (!base_acl)
++			return -EAGAIN;
++		/* no ->get_richacl() calls in RCU mode... */
++		if (is_uncached_acl(base_acl))
++			return -ECHILD;
++		return richacl_permission(inode, richacl(base_acl),
++					  mask & ~MAY_NOT_BLOCK);
++	} else {
++		struct richacl *acl;
++
++		acl = get_richacl(inode);
++		if (IS_ERR(acl))
++			return PTR_ERR(acl);
++		if (acl) {
++			int error = richacl_permission(inode, acl, mask);
++			richacl_put(acl);
++			return error;
++		}
 +	}
-+#endif
- 	case Opt_nouser_xattr:
- 		ext4_msg(sb, KERN_WARNING, deprecated_msg, opt, "3.5");
- 		break;
-@@ -3274,8 +3303,8 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
- 		set_opt(sb, NO_UID32);
- 	/* xattr user namespace & acls are now defaulted on */
- 	set_opt(sb, XATTR_USER);
--#ifdef CONFIG_EXT4_FS_POSIX_ACL
--	set_opt(sb, POSIX_ACL);
-+#if defined(CONFIG_EXT4_FS_POSIX_ACL) || defined(CONFIG_EXT4_FS_RICHACL)
-+	set_opt(sb, ACL);
- #endif
- 	/* don't forget to enable journal_csum when metadata_csum is enabled. */
- 	if (ext4_has_metadata_csum(sb))
-@@ -3358,8 +3387,9 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
- 		sb->s_iflags |= SB_I_CGROUPWB;
- 	}
++	return -EAGAIN;
++}
++
+ /*
+  * Note: functions like richacl_allowed_to_who(), richacl_group_class_allowed(),
+  * and richacl_compute_max_masks() iterate through the entire acl in reverse
+diff --git a/include/linux/posix_acl.h b/include/linux/posix_acl.h
+index daf84fa..2b62017 100644
+--- a/include/linux/posix_acl.h
++++ b/include/linux/posix_acl.h
+@@ -94,6 +94,7 @@ extern struct posix_acl *get_posix_acl(struct inode *, int);
+ extern int set_posix_acl(struct inode *, int, struct posix_acl *);
  
--	sb->s_flags = (sb->s_flags & ~MS_POSIXACL) |
--		(test_opt(sb, POSIX_ACL) ? MS_POSIXACL : 0);
-+	err = enable_acl(sb);
-+	if (err)
-+		goto failed_mount;
+ #ifdef CONFIG_FS_POSIX_ACL
++extern int check_posix_acl(struct inode *, int);
+ extern int posix_acl_chmod(struct inode *, umode_t);
+ extern int posix_acl_create(struct inode *, umode_t *, struct posix_acl **,
+ 		struct posix_acl **);
+@@ -112,6 +113,10 @@ static inline void cache_no_acl(struct inode *inode)
+ 	inode->i_default_acl = NULL;
+ }
+ #else
++static inline int check_posix_acl(struct inode *inode, int mask) {
++	return -EAGAIN;
++}
++
+ static inline int posix_acl_chmod(struct inode *inode, umode_t mode)
+ {
+ 	return 0;
+diff --git a/include/linux/richacl.h b/include/linux/richacl.h
+index 7530920..368e918 100644
+--- a/include/linux/richacl.h
++++ b/include/linux/richacl.h
+@@ -207,4 +207,12 @@ extern struct richacl *richacl_inherit(const struct richacl *, int);
+ extern struct richacl *richacl_create(umode_t *, struct inode *);
+ extern int set_richacl(struct inode *, struct richacl *);
  
- 	if (le32_to_cpu(es->s_rev_level) == EXT4_GOOD_OLD_REV &&
- 	    (ext4_has_compat_features(sb) ||
-@@ -4673,8 +4703,9 @@ static int ext4_remount(struct super_block *sb, int *flags, char *data)
- 	if (sbi->s_mount_flags & EXT4_MF_FS_ABORTED)
- 		ext4_abort(sb, "Abort forced by user");
- 
--	sb->s_flags = (sb->s_flags & ~MS_POSIXACL) |
--		(test_opt(sb, POSIX_ACL) ? MS_POSIXACL : 0);
-+	err = enable_acl(sb);
-+	if (err)
-+		goto restore_opts;
- 
- 	es = sbi->s_es;
- 
++#ifdef CONFIG_FS_RICHACL
++extern int check_richacl(struct inode *, int);
++#else
++static inline int check_richacl(struct inode *inode, int mask) {
++	return -EAGAIN;
++}
++#endif  /* CONFIG_FS_RICHACL */
++
+ #endif /* __RICHACL_H */
 -- 
 2.5.5
 
