@@ -1,166 +1,117 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:46532 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:50532 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752927AbcGYOJw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 25 Jul 2016 10:09:52 -0400
-From: Andreas Gruenbacher <agruenba@redhat.com>
-To: Alexander Viro <viro@zeniv.linux.org.uk>
-Cc: Andreas Gruenbacher <agruenba@redhat.com>,
-        Christoph Hellwig <hch@infradead.org>, "Theodore Ts'o" <tytso@mit.edu>,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        Jeff Layton <jlayton@poochiereds.net>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        Anna Schumaker <anna.schumaker@netapp.com>,
-        Dave Chinner <david@fromorbit.com>, linux-ext4@vger.kernel.org,
-        xfs@oss.sgi.com, linux-kernel@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-cifs@vger.kernel.org, linux-api@vger.kernel.org
-Subject: [PATCH v24 05/22] vfs: Add permission flags for setting file attributes
-Date: Mon, 25 Jul 2016 16:09:02 +0200
-Message-Id: <1469455759-6141-6-git-send-email-agruenba@redhat.com>
-In-Reply-To: <1469455759-6141-1-git-send-email-agruenba@redhat.com>
-References: <1469455759-6141-1-git-send-email-agruenba@redhat.com>
+	id S1752271AbcGYQYh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 25 Jul 2016 12:24:37 -0400
+From: "Benjamin Coddington" <bcodding@redhat.com>
+To: "Trond Myklebust" <trondmy@primarydata.com>
+Cc: "hch@infradead.org" <hch@infradead.org>,
+        "List Linux" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH v4 24/28] Getattr doesn't require data sync semantics
+Date: Mon, 25 Jul 2016 12:26:18 -0400
+Message-ID: <C7773DBC-C4D9-4DA4-9391-8B7E91D7D5AF@redhat.com>
+In-Reply-To: <8B8BB73D-39A6-4291-A10E-736B0F907459@primarydata.com>
+References: <1467844205-76852-23-git-send-email-trond.myklebust@primarydata.com>
+ <1467844205-76852-24-git-send-email-trond.myklebust@primarydata.com>
+ <1467844205-76852-25-git-send-email-trond.myklebust@primarydata.com>
+ <20160718034847.GA1195@infradead.org>
+ <A9C18137-87A3-4652-ADD6-E8E1C4BAE27B@primarydata.com>
+ <1468817945.5273.2.camel@primarydata.com>
+ <20160719035843.GA24437@infradead.org>
+ <F879054A-2116-40D5-90C9-473E71977E8A@redhat.com>
+ <C44AB0DD-8FA3-42F2-B7DE-C694559A68EF@primarydata.com>
+ <AB904138-E761-4F8F-AF97-0E8A4E067DB1@redhat.com>
+ <20160721082216.GA15247@infradead.org>
+ <A540F5A1-37B3-40EB-876D-EC33E891F0C9@redhat.com>
+ <B4719B7F-3FC4-4FD7-929E-CC528CA867F4@redhat.com>
+ <9E2543EF-0442-491E-AB22-3E1667DABBA4@redhat.com>
+ <E33497F6-079C-4903-9CC5-0ABDFA149694@primarydata.com>
+ <70375D08-FCA9-4C73-9991-38490C11B171@redhat.com>
+ <8B8BB73D-39A6-4291-A10E-736B0F907459@primarydata.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=utf-8; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Richacls support permissions that allow to take ownership of a file,
-change the file permissions, and set the file timestamps.  Support that
-by introducing new permission mask flags and by checking for those mask
-flags in inode_change_ok().
+On 21 Jul 2016, at 9:20, Trond Myklebust wrote:
 
-Signed-off-by: Andreas Gruenbacher <agruenba@redhat.com>
-Reviewed-by: J. Bruce Fields <bfields@redhat.com>
-Reviewed-by: Steve French <steve.french@primarydata.com>
-Reviewed-by: Jeff Layton <jlayton@redhat.com>
----
- fs/attr.c          | 79 +++++++++++++++++++++++++++++++++++++++++++++---------
- include/linux/fs.h |  3 +++
- 2 files changed, 70 insertions(+), 12 deletions(-)
+>> On Jul 21, 2016, at 09:05, Benjamin Coddington <bcodding@redhat.com> 
+>> wrote:
+>>
+>> So back to Christoph's point earlier:
+>>
+>> On 17 Jul 2016, at 23:48, Christoph Hellwig wrote:
+>>> This one breaks xfstests generic/207 on block/scsi layout for me.  
+>>> The
+>>> reason for that is that we need a layoutcommit after writing out all
+>>> data for the file for the file size to be updated on the server.
+>>
+>> You responded:
+>>
+>> On 18 Jul 2016, at 0:32, Trond Myklebust wrote:
+>>> I’m not understanding this argument. Why do we care if the file 
+>>> size is up
+>>> to date on the server if we’re not sending an actual GETATTR on 
+>>> the wire
+>>> to retrieve the file size?
+>>
+>> I guess the answer might be because we can get it back from the last
+>> LAYOUTCOMMIT.
+>>
+>
+> The patch that I followed up with should now ensure that we do not 
+> mark the attribute cache as up to date if there is a LAYOUTCOMMIT 
+> pending.
+> IOW: when the pNFS write is done, it is expected to do 2 things:
+>
+> 1) mark the inode for LAYOUTCOMMIT
+> 2) mark the attribute cache as invalid (because we know the change 
+> attribute, mtime, ctime need to be updates)
+>
+> In the case of blocks pNFS write:
+> The call to pnfs_set_layoutcommit() in pnfs_ld_write_done() should 
+> take care of (1)
+> The call to nfs_writeback_update_inode() in nfs4_write_done_cb() 
+> should take care of (2).
+>
+> Provided that these 2 calls are performed in the above order, then any 
+> call to nfs_getattr() which has not been preceded by a call to 
+> nfs4_proc_layoutcommit() should trigger the call to 
+> __nfs_revalidate_inode().
 
-diff --git a/fs/attr.c b/fs/attr.c
-index 7ca7fa0..2a8c49c 100644
---- a/fs/attr.c
-+++ b/fs/attr.c
-@@ -17,6 +17,65 @@
- #include <linux/ima.h>
- 
- /**
-+ * inode_extended_permission  -  permissions beyond read/write/execute
-+ *
-+ * Check for permissions that only richacls can currently grant.
-+ */
-+static int inode_extended_permission(struct inode *inode, int mask)
-+{
-+	if (!IS_RICHACL(inode))
-+		return -EPERM;
-+	return inode_permission(inode, mask);
-+}
-+
-+static bool inode_uid_change_ok(struct inode *inode, kuid_t ia_uid)
-+{
-+	if (uid_eq(current_fsuid(), inode->i_uid) &&
-+	    uid_eq(ia_uid, inode->i_uid))
-+		return true;
-+	if (uid_eq(current_fsuid(), ia_uid) &&
-+	    inode_extended_permission(inode, MAY_TAKE_OWNERSHIP) == 0)
-+		return true;
-+	if (capable_wrt_inode_uidgid(inode, CAP_CHOWN))
-+		return true;
-+	return false;
-+}
-+
-+static bool inode_gid_change_ok(struct inode *inode, kgid_t ia_gid)
-+{
-+	int in_group = in_group_p(ia_gid);
-+	if (uid_eq(current_fsuid(), inode->i_uid) &&
-+	    (in_group || gid_eq(ia_gid, inode->i_gid)))
-+		return true;
-+	if (in_group && inode_extended_permission(inode, MAY_TAKE_OWNERSHIP) == 0)
-+		return true;
-+	if (capable_wrt_inode_uidgid(inode, CAP_CHOWN))
-+		return true;
-+	return false;
-+}
-+
-+/**
-+ * inode_owner_permitted_or_capable
-+ *
-+ * Check for permissions implicitly granted to the owner, like MAY_CHMOD or
-+ * MAY_SET_TIMES.  Equivalent to inode_owner_or_capable for file systems
-+ * without support for those permissions.
-+ */
-+static bool inode_owner_permitted_or_capable(struct inode *inode, int mask)
-+{
-+	struct user_namespace *ns;
-+
-+	if (uid_eq(current_fsuid(), inode->i_uid))
-+		return true;
-+	if (inode_extended_permission(inode, mask) == 0)
-+		return true;
-+	ns = current_user_ns();
-+	if (ns_capable(ns, CAP_FOWNER) && kuid_has_mapping(ns, inode->i_uid))
-+		return true;
-+	return false;
-+}
-+
-+/**
-  * inode_change_ok - check if attribute changes to an inode are allowed
-  * @inode:	inode to check
-  * @attr:	attributes to change
-@@ -47,22 +106,18 @@ int inode_change_ok(struct inode *inode, struct iattr *attr)
- 		return 0;
- 
- 	/* Make sure a caller can chown. */
--	if ((ia_valid & ATTR_UID) &&
--	    (!uid_eq(current_fsuid(), inode->i_uid) ||
--	     !uid_eq(attr->ia_uid, inode->i_uid)) &&
--	    !capable_wrt_inode_uidgid(inode, CAP_CHOWN))
--		return -EPERM;
-+	if (ia_valid & ATTR_UID)
-+		if (!inode_uid_change_ok(inode, attr->ia_uid))
-+			return -EPERM;
- 
- 	/* Make sure caller can chgrp. */
--	if ((ia_valid & ATTR_GID) &&
--	    (!uid_eq(current_fsuid(), inode->i_uid) ||
--	    (!in_group_p(attr->ia_gid) && !gid_eq(attr->ia_gid, inode->i_gid))) &&
--	    !capable_wrt_inode_uidgid(inode, CAP_CHOWN))
--		return -EPERM;
-+	if (ia_valid & ATTR_GID)
-+		if (!inode_gid_change_ok(inode, attr->ia_gid))
-+			return -EPERM;
- 
- 	/* Make sure a caller can chmod. */
- 	if (ia_valid & ATTR_MODE) {
--		if (!inode_owner_or_capable(inode))
-+		if (!inode_owner_permitted_or_capable(inode, MAY_CHMOD))
- 			return -EPERM;
- 		/* Also check the setgid bit! */
- 		if (!in_group_p((ia_valid & ATTR_GID) ? attr->ia_gid :
-@@ -73,7 +128,7 @@ int inode_change_ok(struct inode *inode, struct iattr *attr)
- 
- 	/* Check for setting the inode time. */
- 	if (ia_valid & (ATTR_MTIME_SET | ATTR_ATIME_SET | ATTR_TIMES_SET)) {
--		if (!inode_owner_or_capable(inode))
-+		if (!inode_owner_permitted_or_capable(inode, MAY_SET_TIMES))
- 			return -EPERM;
- 	}
- 
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index 208f73b..bb36561 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -88,6 +88,9 @@ typedef int (dio_iodone_t)(struct kiocb *iocb, loff_t offset,
- #define MAY_CREATE_DIR		0x00000200
- #define MAY_DELETE_CHILD	0x00000400
- #define MAY_DELETE_SELF		0x00000800
-+#define MAY_TAKE_OWNERSHIP	0x00001000
-+#define MAY_CHMOD		0x00002000
-+#define MAY_SET_TIMES		0x00004000
- 
- /*
-  * flags in file.f_mode.  Note that FMODE_READ and FMODE_WRITE must correspond
--- 
-2.5.5
+I think the problem is that a following nfs_getattr() will fail to 
+notice
+the size change in the case of a write_completion and layoutcommit 
+occuring
+after nfs_getattr() has done pnfs_sync_inode() but before it has done
+nfs_update_inode().
 
+In the failing case there are two threads one is doing writes, the other
+doing lstat on aio_complete via io_getevents(2).
+
+For each write completion the lstat thread tries to verify the file 
+size.
+
+GETATTR Thread                  LAYOUTCOMMIT Thread
+--------------                  --------------------
+                                 write_completion sets LAYOUTCOMMIT 
+(4096@0)
+--> nfs_getattr
+  __nfs_revalidate_inode
+   pnfs_sync_inode
+   getattr sees 4096
+                                 write_completion sets LAYOUTCOMMIT 
+(4096@4096)
+                                 sets LAYOUTCOMMITING
+                                 clears LAYOUTCOMMIT
+                                 clears LAYOUTCOMMITTING
+   nfs_refresh_inode
+    nfs_update_inode size is 4096
+<-- nfs_getattr
+
+At this point the cached attributes are seen as up to date, but
+aio-dio-extend-stat program expects that second write_completion to 
+reflect
+in the file size.
+
+Ben
