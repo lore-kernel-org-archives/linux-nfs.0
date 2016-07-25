@@ -1,93 +1,264 @@
-Return-Path: <trondmy@primarydata.com>
-From: Trond Myklebust <trondmy@primarydata.com>
-To: Coddington Benjamin <bcodding@redhat.com>
-CC: "hch@infradead.org" <hch@infradead.org>,
-        List Linux NFS Mailing
-	<linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH v4 24/28] Getattr doesn't require data sync semantics
-Date: Mon, 25 Jul 2016 16:39:33 +0000
-Message-ID: <B174B540-8D12-4BD1-8DD0-FE49E2AB216E@primarydata.com>
-References: <1467844205-76852-23-git-send-email-trond.myklebust@primarydata.com>
- <1467844205-76852-24-git-send-email-trond.myklebust@primarydata.com>
- <1467844205-76852-25-git-send-email-trond.myklebust@primarydata.com>
- <20160718034847.GA1195@infradead.org>
- <A9C18137-87A3-4652-ADD6-E8E1C4BAE27B@primarydata.com>
- <1468817945.5273.2.camel@primarydata.com>
- <20160719035843.GA24437@infradead.org>
- <F879054A-2116-40D5-90C9-473E71977E8A@redhat.com>
- <C44AB0DD-8FA3-42F2-B7DE-C694559A68EF@primarydata.com>
- <AB904138-E761-4F8F-AF97-0E8A4E067DB1@redhat.com>
- <20160721082216.GA15247@infradead.org>
- <A540F5A1-37B3-40EB-876D-EC33E891F0C9@redhat.com>
- <B4719B7F-3FC4-4FD7-929E-CC528CA867F4@redhat.com>
- <9E2543EF-0442-491E-AB22-3E1667DABBA4@redhat.com>
- <E33497F6-079C-4903-9CC5-0ABDFA149694@primarydata.com>
- <70375D08-FCA9-4C73-9991-38490C11B171@redhat.com>
- <8B8BB73D-39A6-4291-A10E-736B0F907459@primarydata.com>
- <C7773DBC-C4D9-4DA4-9391-8B7E91D7D5AF@redhat.com>
-In-Reply-To: <C7773DBC-C4D9-4DA4-9391-8B7E91D7D5AF@redhat.com>
+Return-Path: <linux-nfs-owner@vger.kernel.org>
+Received: from mail-it0-f53.google.com ([209.85.214.53]:35285 "EHLO
+	mail-it0-f53.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751036AbcGYSSy convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 25 Jul 2016 14:18:54 -0400
+Received: by mail-it0-f53.google.com with SMTP id u186so91387908ita.0
+        for <linux-nfs@vger.kernel.org>; Mon, 25 Jul 2016 11:18:53 -0700 (PDT)
 MIME-Version: 1.0
+In-Reply-To: <CC879117-DCA5-4BC1-8A70-FA859546CD01@oracle.com>
+References: <59704D2B-9FBD-41BB-ADA8-4CF4AEF4BB9D@oracle.com>
+ <259CD26A-E1E7-44CA-B1D3-F46AED01B932@netapp.com> <CAN-5tyE_yrspQDpftO1Ls9LxjaZPHGe9hH0V65xaFuNEyrbwig@mail.gmail.com>
+ <6BC3C19E-6F44-4C38-BF26-3E9A948D305C@oracle.com> <CAN-5tyHWPvNeq-0kNErTY+nENqkfrbGXwutcMgaOYcvYL3fX7Q@mail.gmail.com>
+ <42FD3D54-79F9-485A-A2B4-FBFA65C2FC16@oracle.com> <CAN-5tyGJ8YUesk-KBTK+DFqaRV9wNvjQp-4EkcoU4J58EmM7_A@mail.gmail.com>
+ <CAN-5tyEyg4aYXc5Zr-diLHxhkU1VnvYaaKS01qCH-vtxa8qzqg@mail.gmail.com> <CC879117-DCA5-4BC1-8A70-FA859546CD01@oracle.com>
+From: Olga Kornievskaia <aglo@umich.edu>
+Date: Mon, 25 Jul 2016 14:18:52 -0400
+Message-ID: <CAN-5tyGnK7Zus2pBg5dO__XZ8NrM_h9k4EXzJERneHBBnn6VPg@mail.gmail.com>
+Subject: Re: Problem re-establishing GSS contexts after a server reboot
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: "Adamson, Andy" <William.Adamson@netapp.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
 Content-Type: text/plain; charset=UTF-8
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-DQo+IE9uIEp1bCAyNSwgMjAxNiwgYXQgMTI6MjYsIEJlbmphbWluIENvZGRpbmd0b24gPGJjb2Rk
-aW5nQHJlZGhhdC5jb20+IHdyb3RlOg0KPiANCj4gT24gMjEgSnVsIDIwMTYsIGF0IDk6MjAsIFRy
-b25kIE15a2xlYnVzdCB3cm90ZToNCj4gDQo+Pj4gT24gSnVsIDIxLCAyMDE2LCBhdCAwOTowNSwg
-QmVuamFtaW4gQ29kZGluZ3RvbiA8YmNvZGRpbmdAcmVkaGF0LmNvbT4gd3JvdGU6DQo+Pj4gDQo+
-Pj4gU28gYmFjayB0byBDaHJpc3RvcGgncyBwb2ludCBlYXJsaWVyOg0KPj4+IA0KPj4+IE9uIDE3
-IEp1bCAyMDE2LCBhdCAyMzo0OCwgQ2hyaXN0b3BoIEhlbGx3aWcgd3JvdGU6DQo+Pj4+IFRoaXMg
-b25lIGJyZWFrcyB4ZnN0ZXN0cyBnZW5lcmljLzIwNyBvbiBibG9jay9zY3NpIGxheW91dCBmb3Ig
-bWUuICBUaGUNCj4+Pj4gcmVhc29uIGZvciB0aGF0IGlzIHRoYXQgd2UgbmVlZCBhIGxheW91dGNv
-bW1pdCBhZnRlciB3cml0aW5nIG91dCBhbGwNCj4+Pj4gZGF0YSBmb3IgdGhlIGZpbGUgZm9yIHRo
-ZSBmaWxlIHNpemUgdG8gYmUgdXBkYXRlZCBvbiB0aGUgc2VydmVyLg0KPj4+IA0KPj4+IFlvdSBy
-ZXNwb25kZWQ6DQo+Pj4gDQo+Pj4gT24gMTggSnVsIDIwMTYsIGF0IDA6MzIsIFRyb25kIE15a2xl
-YnVzdCB3cm90ZToNCj4+Pj4gSeKAmW0gbm90IHVuZGVyc3RhbmRpbmcgdGhpcyBhcmd1bWVudC4g
-V2h5IGRvIHdlIGNhcmUgaWYgdGhlIGZpbGUgc2l6ZSBpcyB1cA0KPj4+PiB0byBkYXRlIG9uIHRo
-ZSBzZXJ2ZXIgaWYgd2XigJlyZSBub3Qgc2VuZGluZyBhbiBhY3R1YWwgR0VUQVRUUiBvbiB0aGUg
-d2lyZQ0KPj4+PiB0byByZXRyaWV2ZSB0aGUgZmlsZSBzaXplPw0KPj4+IA0KPj4+IEkgZ3Vlc3Mg
-dGhlIGFuc3dlciBtaWdodCBiZSBiZWNhdXNlIHdlIGNhbiBnZXQgaXQgYmFjayBmcm9tIHRoZSBs
-YXN0DQo+Pj4gTEFZT1VUQ09NTUlULg0KPj4+IA0KPj4gDQo+PiBUaGUgcGF0Y2ggdGhhdCBJIGZv
-bGxvd2VkIHVwIHdpdGggc2hvdWxkIG5vdyBlbnN1cmUgdGhhdCB3ZSBkbyBub3QgbWFyayB0aGUg
-YXR0cmlidXRlIGNhY2hlIGFzIHVwIHRvIGRhdGUgaWYgdGhlcmUgaXMgYSBMQVlPVVRDT01NSVQg
-cGVuZGluZy4NCj4+IElPVzogd2hlbiB0aGUgcE5GUyB3cml0ZSBpcyBkb25lLCBpdCBpcyBleHBl
-Y3RlZCB0byBkbyAyIHRoaW5nczoNCj4+IA0KPj4gMSkgbWFyayB0aGUgaW5vZGUgZm9yIExBWU9V
-VENPTU1JVA0KPj4gMikgbWFyayB0aGUgYXR0cmlidXRlIGNhY2hlIGFzIGludmFsaWQgKGJlY2F1
-c2Ugd2Uga25vdyB0aGUgY2hhbmdlIGF0dHJpYnV0ZSwgbXRpbWUsIGN0aW1lIG5lZWQgdG8gYmUg
-dXBkYXRlcykNCj4+IA0KPj4gSW4gdGhlIGNhc2Ugb2YgYmxvY2tzIHBORlMgd3JpdGU6DQo+PiBU
-aGUgY2FsbCB0byBwbmZzX3NldF9sYXlvdXRjb21taXQoKSBpbiBwbmZzX2xkX3dyaXRlX2RvbmUo
-KSBzaG91bGQgdGFrZSBjYXJlIG9mICgxKQ0KPj4gVGhlIGNhbGwgdG8gbmZzX3dyaXRlYmFja191
-cGRhdGVfaW5vZGUoKSBpbiBuZnM0X3dyaXRlX2RvbmVfY2IoKSBzaG91bGQgdGFrZSBjYXJlIG9m
-ICgyKS4NCj4+IA0KPj4gUHJvdmlkZWQgdGhhdCB0aGVzZSAyIGNhbGxzIGFyZSBwZXJmb3JtZWQg
-aW4gdGhlIGFib3ZlIG9yZGVyLCB0aGVuIGFueSBjYWxsIHRvIG5mc19nZXRhdHRyKCkgd2hpY2gg
-aGFzIG5vdCBiZWVuIHByZWNlZGVkIGJ5IGEgY2FsbCB0byBuZnM0X3Byb2NfbGF5b3V0Y29tbWl0
-KCkgc2hvdWxkIHRyaWdnZXIgdGhlIGNhbGwgdG8gX19uZnNfcmV2YWxpZGF0ZV9pbm9kZSgpLg0K
-PiANCj4gSSB0aGluayB0aGUgcHJvYmxlbSBpcyB0aGF0IGEgZm9sbG93aW5nIG5mc19nZXRhdHRy
-KCkgd2lsbCBmYWlsIHRvIG5vdGljZQ0KPiB0aGUgc2l6ZSBjaGFuZ2UgaW4gdGhlIGNhc2Ugb2Yg
-YSB3cml0ZV9jb21wbGV0aW9uIGFuZCBsYXlvdXRjb21taXQgb2NjdXJpbmcNCj4gYWZ0ZXIgbmZz
-X2dldGF0dHIoKSBoYXMgZG9uZSBwbmZzX3N5bmNfaW5vZGUoKSBidXQgYmVmb3JlIGl0IGhhcyBk
-b25lDQo+IG5mc191cGRhdGVfaW5vZGUoKS4NCj4gDQo+IEluIHRoZSBmYWlsaW5nIGNhc2UgdGhl
-cmUgYXJlIHR3byB0aHJlYWRzIG9uZSBpcyBkb2luZyB3cml0ZXMsIHRoZSBvdGhlcg0KPiBkb2lu
-ZyBsc3RhdCBvbiBhaW9fY29tcGxldGUgdmlhIGlvX2dldGV2ZW50cygyKS4NCj4gDQo+IEZvciBl
-YWNoIHdyaXRlIGNvbXBsZXRpb24gdGhlIGxzdGF0IHRocmVhZCB0cmllcyB0byB2ZXJpZnkgdGhl
-IGZpbGUgc2l6ZS4NCj4gDQo+IEdFVEFUVFIgVGhyZWFkICAgICAgICAgICAgICAgICAgTEFZT1VU
-Q09NTUlUIFRocmVhZA0KPiAtLS0tLS0tLS0tLS0tLSAgICAgICAgICAgICAgICAgIC0tLS0tLS0t
-LS0tLS0tLS0tLS0tDQo+ICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICB3cml0ZV9jb21w
-bGV0aW9uIHNldHMgTEFZT1VUQ09NTUlUICg0MDk2QDApDQo+IC0tPiBuZnNfZ2V0YXR0cg0KDQpm
-aWxlbWFwX3dyaXRlX2FuZF93YWl0KCkNCg0KPiBfX25mc19yZXZhbGlkYXRlX2lub2RlDQo+ICBw
-bmZzX3N5bmNfaW5vZGUNCg0KTkZTX1BST1RPKGlub2RlKS0+Z2V0YXR0cigpDQoNCj4gIGdldGF0
-dHIgc2VlcyA0MDk2DQo+ICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICB3cml0ZV9jb21w
-bGV0aW9uIHNldHMgTEFZT1VUQ09NTUlUICg0MDk2QDQwOTYpDQo+ICAgICAgICAgICAgICAgICAg
-ICAgICAgICAgICAgICBzZXRzIExBWU9VVENPTU1JVElORw0KPiAgICAgICAgICAgICAgICAgICAg
-ICAgICAgICAgICAgY2xlYXJzIExBWU9VVENPTU1JVA0KPiAgICAgICAgICAgICAgICAgICAgICAg
-ICAgICAgICAgY2xlYXJzIExBWU9VVENPTU1JVFRJTkcNCj4gIG5mc19yZWZyZXNoX2lub2RlDQo+
-ICAgbmZzX3VwZGF0ZV9pbm9kZSBzaXplIGlzIDQwOTYNCj4gPC0tIG5mc19nZXRhdHRyDQo+IA0K
-PiBBdCB0aGlzIHBvaW50IHRoZSBjYWNoZWQgYXR0cmlidXRlcyBhcmUgc2VlbiBhcyB1cCB0byBk
-YXRlLCBidXQNCj4gYWlvLWRpby1leHRlbmQtc3RhdCBwcm9ncmFtIGV4cGVjdHMgdGhhdCBzZWNv
-bmQgd3JpdGVfY29tcGxldGlvbiB0byByZWZsZWN0DQo+IGluIHRoZSBmaWxlIHNpemUuDQo+IA0K
-DQpXaHkgaXNu4oCZdCB0aGUgZmlsZW1hcF93cml0ZV9hbmRfd2FpdCgpIGFib3ZlIHJlc29sdmlu
-ZyB0aGUgcmFjZT8gSeKAmWQgZXhwZWN0IHRoYXQgd291bGQgbW92ZSB5b3VyIOKAnHdyaXRlIGNv
-bXBsZXRpb24gc2V0cyBMQVlPVVRDT01NSVTigJ0gdXAgdG8gYmVmb3JlIHRoZSBwbmZzX3N5bmNf
-aW5vZGUoKS4NCkluIGZhY3QsIGluIHRoZSBwYXRjaCB0aGF0IENocmlzdG9waCBzZW50LCBhbGwg
-aGUgd2FzIGRvaW5nIHdhcyBtb3ZpbmcgdGhlIHBuZnNfc3luY19pbm9kZSgpIHRvIGltbWVkaWF0
-ZWx5IGFmdGVyIHRoYXQgZmlsZW1hcF93cml0ZV9hbmRfd2FpdCgpIGluc3RlYWQgb2YgcmVseWlu
-ZyBvbiBpdCBpbiBfbmZzX3JldmFsaWRhdGVfaW5vZGUu
+On Thu, Jul 21, 2016 at 5:32 PM, Chuck Lever <chuck.lever@oracle.com> wrote:
+>
+>
+>> On Jul 21, 2016, at 10:46 PM, Olga Kornievskaia <aglo@umich.edu> wrote:
+>>
+>>> On Thu, Jul 21, 2016 at 3:54 PM, Olga Kornievskaia <aglo@umich.edu> wrote:
+>>>> On Thu, Jul 21, 2016 at 1:56 PM, Chuck Lever <chuck.lever@oracle.com> wrote:
+>>>>
+>>>>> On Jul 21, 2016, at 6:04 PM, Olga Kornievskaia <aglo@umich.edu> wrote:
+>>>>>
+>>>>> On Thu, Jul 21, 2016 at 2:55 AM, Chuck Lever <chuck.lever@oracle.com> wrote:
+>>>>>>
+>>>>>>> On Jul 20, 2016, at 6:56 PM, Olga Kornievskaia <aglo@umich.edu> wrote:
+>>>>>>>
+>>>>>>> On Wed, Jul 20, 2016 at 5:14 AM, Adamson, Andy
+>>>>>>> <William.Adamson@netapp.com> wrote:
+>>>>>>>>
+>>>>>>>>> On Jul 19, 2016, at 10:51 AM, Chuck Lever <chuck.lever@oracle.com> wrote:
+>>>>>>>>>
+>>>>>>>>> Hi Andy-
+>>>>>>>>>
+>>>>>>>>> Thanks for taking the time to discuss this with me. I've
+>>>>>>>>> copied linux-nfs to make this e-mail also an upstream bug
+>>>>>>>>> report.
+>>>>>>>>>
+>>>>>>>>> As we saw in the network capture, recovery of GSS contexts
+>>>>>>>>> after a server reboot fails in certain cases with NFSv4.0
+>>>>>>>>> and NFSv4.1 mount points.
+>>>>>>>>>
+>>>>>>>>> The reproducer is a simple program that generates one NFS
+>>>>>>>>> WRITE periodically, run while the server repeatedly reboots
+>>>>>>>>> (or one cluster head fails over to the other and back). The
+>>>>>>>>> goal of the reproducer is to identify problems with state
+>>>>>>>>> recovery without a lot of other I/O going on to clutter up
+>>>>>>>>> the network capture.
+>>>>>>>>>
+>>>>>>>>> In the failing case, sec=krb5 is specified on the mount
+>>>>>>>>> point, and the reproducer is run as root. We've found this
+>>>>>>>>> combination fails with both NFSv4.0 and NFSv4.1.
+>>>>>>>>>
+>>>>>>>>> At mount time, the client establishes a GSS context for
+>>>>>>>>> lease management operations, which is bound to the client's
+>>>>>>>>> NFS service principal and uses GSS service "integrity."
+>>>>>>>>> Call this GSS context 1.
+>>>>>>>>>
+>>>>>>>>> When the reproducer starts, a second GSS context is
+>>>>>>>>> established for NFS operations associated with that user.
+>>>>>>>>> Since the reproducer is running as root, this context is
+>>>>>>>>> also bound to the client's NFS service principal, but it
+>>>>>>>>> uses the GSS service "none" (reflecting the explicit
+>>>>>>>>> request for "sec=krb5"). Call this GSS context 2.
+>>>>>>>>>
+>>>>>>>>> After the server reboots, the client re-establishes a TCP
+>>>>>>>>> connection with the server, and performs a RENEW
+>>>>>>>>> operation using context 1. Thanks to the server reboot,
+>>>>>>>>> contexts 1 and 2 are now stale. The server thus rejects
+>>>>>>>>> the RPC with RPCSEC_GSS_CTXPROBLEM.
+>>>>>>>>>
+>>>>>>>>> The client performs a GSS_INIT_SEC_CONTEXT via an NFSv4
+>>>>>>>>> NULL operation. Call this GSS context 3.
+>>>>>>>>>
+>>>>>>>>> Interestingly, the client does not resend the RENEW
+>>>>>>>>> operation at this point (if it did, we wouldn't see this
+>>>>>>>>> problem at all).
+>>>>>>>>>
+>>>>>>>>> The client then attempts to resume the reproducer workload.
+>>>>>>>>> It sends an NFSv4 WRITE operation, using the first available
+>>>>>>>>> GSS context in UID 0's credential cache, which is context 3,
+>>>>>>>>> already bound to the client's NFS service principal. But GSS
+>>>>>>>>> service "none" is used for this operation, since it is on
+>>>>>>>>> behalf of the mount where sec=krb5 was specified.
+>>>>>>>>>
+>>>>>>>>> The RPC is accepted, but the server reports
+>>>>>>>>> NFS4ERR_STALE_STATEID, since it has recently rebooted.
+>>>>>>>>>
+>>>>>>>>> The client responds by attempting state recovery. The
+>>>>>>>>> first operation it tries is another RENEW. Since this is
+>>>>>>>>> a lease management operation, the client looks in UID 0's
+>>>>>>>>> credential cache again and finds the recently established
+>>>>>>>>> context 3. It tries the RENEW operation using GSS context
+>>>>>>>>> 3 with GSS service "integrity."
+>>>>>>>>>
+>>>>>>>>> The server rejects the RENEW RPC with AUTH_FAILED, and
+>>>>>>>>> the client reports that "check lease failed" and
+>>>>>>>>> terminates state recovery.
+>>>>>>>>>
+>>>>>>>>> The client re-drives the WRITE operation with the stale
+>>>>>>>>> stateid with predictable results. The client again tries
+>>>>>>>>> to recover state by sending a RENEW, and still uses the
+>>>>>>>>> same GSS context 3 with service "integrity" and gets the
+>>>>>>>>> same result. A (perhaps slow-motion) STALE_STATEID loop
+>>>>>>>>> ensues, and the client mount point is deadlocked.
+>>>>>>>>>
+>>>>>>>>> Your analysis was that because the reproducer is run as
+>>>>>>>>> root, both the reproducer's I/O operations, and lease
+>>>>>>>>> management operations, attempt to use the same GSS context
+>>>>>>>>> in UID 0's credential cache, but each uses different GSS
+>>>>>>>>> services.
+>>>>>>>>
+>>>>>>>> As RFC2203 states, "In a creation request, the seq_num and service fields are undefined and both must be ignored by the server”
+>>>>>>>> So a context creation request while kicked off by an operation with a service attached (e.g. WRITE uses rpc_gss_svc_none and RENEW uses rpc_gss_svc_integrity), can be used by either service level.
+>>>>>>>> AFAICS a single GSS context could in theory be used for all service levels, but in practice, GSS contexts are restricted to a service level (by client? by server? ) once they are used.
+>>>>>>>>
+>>>>>>>>
+>>>>>>>>> The key issue seems to be why, when the mount
+>>>>>>>>> is first established, the client is correctly able to
+>>>>>>>>> establish two separate GSS contexts for UID 0; but after
+>>>>>>>>> a server reboot, the client attempts to use the same GSS
+>>>>>>>>> context with two different GSS services.
+>>>>>>>>
+>>>>>>>> I speculate that it is a race between the WRITE and the RENEW to use the same newly created GSS context that has not been used yet, and so has no assigned service level, and the two requests race to set the service level.
+>>>>>>>
+>>>>>>> I agree with Andy. It must be a tight race.
+>>>>>>
+>>>>>> In one capture I see something like this after
+>>>>>> the server restarts:
+>>>>>>
+>>>>>> SYN
+>>>>>> SYN, ACK
+>>>>>> ACK
+>>>>>> C WRITE
+>>>>>> C SEQUENCE
+>>>>>> R WRITE -> CTX_PROBLEM
+>>>>>> R SEQUENCE -> CTX_PROBLEM
+>>>>>> C NULL (KRB5_AP_REQ)
+>>>>>> R NULL (KRB5_AP_REP)
+>>>>>> C WRITE
+>>>>>> C SEQUENCE
+>>>>>> R WRITE -> NFS4ERR_STALE_STATEID
+>>>>>> R SEQUENCE -> AUTH_FAILED
+>>>>>>
+>>>>>> Andy's theory neatly explains this behavior.
+>>>>>>
+>>>>>>
+>>>>>>> I have tried to reproduce
+>>>>>>> your scenario and in my tests of rebooting the server all recover
+>>>>>>> correctly. In my case, if RENEW was the one hitting the AUTH_ERR then
+>>>>>>> the new context is established and then RENEW using integrity service
+>>>>>>> is retried with the new context which gets ERR_STALE_CLIENTID which
+>>>>>>> then client recovers from. If it's an operation (I have a GETATTR)
+>>>>>>> that gets AUTH_ERR, then it gets new context and is retried using none
+>>>>>>> service. Then RENEW gets its own AUTH_ERR as it uses a different
+>>>>>>> context, a new context is gotten, RENEW is retried over integrity and
+>>>>>>> gets ERR_STALE_CLIENTID which it recovers from.
+>>>>>>
+>>>>>> If one operation is allowed to complete, then
+>>>>>> the other will always recognize that another
+>>>>>> fresh GSS context is needed. If two are sent
+>>>>>> at the same time, they race and one always
+>>>>>> fails.
+>>>>>>
+>>>>>> Helen's test includes a second idle mount point
+>>>>>> (sec=krb5i) and maybe that is needed to trigger
+>>>>>> the race?
+>>>>>
+>>>>> Chuck, any chance to get "rpcdebug -m rpc auth" output during the
+>>>>> failure (gssd optionally) (i realize that it might alter the timings
+>>>>> and not hit the issue but worth a shot)?
+>>>>
+>>>> I'm sure that's fine. An internal tester hit this,
+>>>> not a customer, so I will ask.
+>>>>
+>>>> I agree, though, that timing might be a problem:
+>>>> these systems all have real serial consoles via
+>>>> iLOM, so /v/l/m traffic does bring everything to
+>>>> a standstill.
+>>>>
+>>>> Meanwhile, what's you're opinion about AUTH_FAILED?
+>>>> Should the server return RPCSEC_GSS_CTXPROBLEM
+>>>> in this case instead? If it did, do you think
+>>>> the Linux client would recover by creating a
+>>>> replacement GSS context?
+>>>
+>>> Ah, yes, I equated AUTH_FAILED And AUTH_ERROR in my mind. If client
+>>> receives the reason as AUTH_FAILED as oppose to CTXPROBLEM it will
+>>> fail with EIO error and will not try to create a new GSS context. So
+>>> yes, I believe it would help if the server returns any of the
+>>> following errors:
+>>>                case RPC_AUTH_REJECTEDCRED:
+>>>                case RPC_AUTH_REJECTEDVERF:
+>>>                case RPCSEC_GSS_CREDPROBLEM:
+>>>                case RPCSEC_GSS_CTXPROBLEM:
+>>>
+>>> then the client will recreate the context.
+>>
+>> Also in my testing, I can see that credential cache is per gss flavor.
+>> Just to check, what kernel version is this problem encountered on (I
+>> know you said upstream) but I just want to double check so that I can
+>> look at the correct source code.
+>
+> v4.1.12 (stable) I think.
+
+Also, can you share the network trace?
+
+>
+>
+>>
+>> Thanks.
+>>
+>>>
+>>>>
+>>>>
+>>>>
+>>>>>>>> —>Andy
+>>>>>>>>>
+>>>>>>>>> One solution is to introduce a quick check before a
+>>>>>>>>> context is used to see if the GSS service bound to it
+>>>>>>>>> matches the GSS service that the caller intends to use.
+>>>>>>>>> I'm not sure how that can be done without exposing a window
+>>>>>>>>> where another caller requests the use of a GSS context and
+>>>>>>>>> grabs the fresh one, before it can be used by our first
+>>>>>>>>> caller and bound to its desired GSS service.
+>>>>>>>>>
+>>>>>>>>> Other solutions might be to somehow isolate the credential
+>>>>>>>>> cache used for lease management operations, or to split
+>>>>>>>>> credential caches by GSS service.
+>>>>>>>>>
+>>>>>>>>>
+>>>>>>>>> --
+>>>>>>>>> Chuck Lever
+>>>>>>> --
+>>>>>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>>>>>>> the body of a message to majordomo@vger.kernel.org
+>>>>>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>>>>>>
+>>>>>> --
+>>>>>> Chuck Lever
+>>>>> --
+>>>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>>>>> the body of a message to majordomo@vger.kernel.org
+>>>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>>>>
+>>>> --
+>>>> Chuck Lever
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>
