@@ -1,45 +1,63 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f194.google.com ([209.85.223.194]:36089 "EHLO
-	mail-io0-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752196AbcGXVhX (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 24 Jul 2016 17:37:23 -0400
-Received: by mail-io0-f194.google.com with SMTP id y34so10765641ioi.3
-        for <linux-nfs@vger.kernel.org>; Sun, 24 Jul 2016 14:37:23 -0700 (PDT)
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH] SUNRPC: Fix a compiler warning in fs/nfs/clnt.c
-Date: Sun, 24 Jul 2016 17:36:58 -0400
-Message-Id: <1469396218-85598-3-git-send-email-trond.myklebust@primarydata.com>
-In-Reply-To: <1469396218-85598-2-git-send-email-trond.myklebust@primarydata.com>
-References: <1469396218-85598-1-git-send-email-trond.myklebust@primarydata.com>
- <1469396218-85598-2-git-send-email-trond.myklebust@primarydata.com>
+Received: from mgwym03.jp.fujitsu.com ([211.128.242.42]:53645 "EHLO
+	mgwym03.jp.fujitsu.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752472AbcGYAhJ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 24 Jul 2016 20:37:09 -0400
+Received: from g01jpfmpwyt03.exch.g01.fujitsu.local (g01jpfmpwyt03.exch.g01.fujitsu.local [10.128.193.57])
+	by yt-mxauth.gw.nic.fujitsu.com (Postfix) with ESMTP id 1B62AAC016A
+	for <linux-nfs@vger.kernel.org>; Mon, 25 Jul 2016 09:37:05 +0900 (JST)
+To: Trond Myklebust <trond.myklebust@primarydata.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>
+CC: <linux-nfs@vger.kernel.org>
+From: Seiichi Ikarashi <s.ikarashi@jp.fujitsu.com>
+Subject: sunrpc: add bounds checking RPCSVC_MAXPAGES to svc_tcp_*_pages()
+Message-ID: <4283d127-db43-338e-1122-b845bbd5d335@jp.fujitsu.com>
+Date: Mon, 25 Jul 2016 09:35:57 +0900
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset="iso-2022-jp"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Fix the report:
+To prevent page* buffer overrun that breaks svc_rqst,
+though I do not know sk_datalen can actually become so large.
 
-net/sunrpc/clnt.c:2580:1: warning: ‘static’ is not at beginning of declaration [-Wold-style-declaration]
+Signed-off-by: Seiichi Ikarashi <s.ikarashi@jp.fujitsu.com>
 
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
 ---
- net/sunrpc/clnt.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ net/sunrpc/svcsock.c | 9 +++++++++
+ 1 file changed, 9 insertions(+)
 
-diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
-index 06b4df9faaa1..d6e75872454d 100644
---- a/net/sunrpc/clnt.c
-+++ b/net/sunrpc/clnt.c
-@@ -2558,7 +2558,7 @@ static void rpc_cb_add_xprt_release(void *calldata)
- 	kfree(data);
- }
- 
--const static struct rpc_call_ops rpc_cb_add_xprt_call_ops = {
-+static const struct rpc_call_ops rpc_cb_add_xprt_call_ops = {
- 	.rpc_call_done = rpc_cb_add_xprt_done,
- 	.rpc_release = rpc_cb_add_xprt_release,
- };
--- 
-2.7.4
-
+diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
+index dadfec6..7532dfa 100644
+--- a/net/sunrpc/svcsock.c
++++ b/net/sunrpc/svcsock.c
+@@ -940,6 +940,9 @@ static unsigned int svc_tcp_restore_pages(struct svc_sock *svsk, struct svc_rqst
+ 		return 0;
+ 	len = svsk->sk_datalen;
+ 	npages = (len + PAGE_SIZE - 1) >> PAGE_SHIFT;
++	WARN_ON_ONCE(npages > RPCSVC_MAXPAGES);
++	if (npages > RPCSVC_MAXPAGES)
++		npages = RPCSVC_MAXPAGES;
+ 	for (i = 0; i < npages; i++) {
+ 		if (rqstp->rq_pages[i] != NULL)
+ 			put_page(rqstp->rq_pages[i]);
+@@ -959,6 +962,9 @@ static void svc_tcp_save_pages(struct svc_sock *svsk, struct svc_rqst *rqstp)
+ 		return;
+ 	len = svsk->sk_datalen;
+ 	npages = (len + PAGE_SIZE - 1) >> PAGE_SHIFT;
++	WARN_ON_ONCE(npages > RPCSVC_MAXPAGES);
++	if (npages > RPCSVC_MAXPAGES)
++		npages = RPCSVC_MAXPAGES;
+ 	for (i = 0; i < npages; i++) {
+ 		svsk->sk_pages[i] = rqstp->rq_pages[i];
+ 		rqstp->rq_pages[i] = NULL;
+@@ -973,6 +979,9 @@ static void svc_tcp_clear_pages(struct svc_sock *svsk)
+ 		goto out;
+ 	len = svsk->sk_datalen;
+ 	npages = (len + PAGE_SIZE - 1) >> PAGE_SHIFT;
++	WARN_ON_ONCE(npages > RPCSVC_MAXPAGES);
++	if (npages > RPCSVC_MAXPAGES)
++		npages = RPCSVC_MAXPAGES;
+ 	for (i = 0; i < npages; i++) {
+ 		if (svsk->sk_pages[i] == NULL) {
+ 			WARN_ON_ONCE(1);
