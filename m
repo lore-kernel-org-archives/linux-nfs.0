@@ -1,175 +1,222 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from us-smtp-delivery-194.mimecast.com ([216.205.24.194]:53583 "EHLO
-	us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1752871AbcGZQVy convert rfc822-to-8bit
-	(ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 26 Jul 2016 12:21:54 -0400
-From: Trond Myklebust <trondmy@primarydata.com>
-To: Kornievskaia Olga <aglo@umich.edu>
-CC: Kornievskaia Olga <Olga.Kornievskaia@netapp.com>,
-        List Linux NFS Mailing <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] NFSv4: Allow retry of operations that used a returned
- delegation stateid
-Date: Tue, 26 Jul 2016 16:21:45 +0000
-Message-ID: <0587D076-6BF8-4BB9-A094-62D830ADF0B1@primarydata.com>
-References: <1468955980-8675-1-git-send-email-trond.myklebust@primarydata.com>
- <BEA34F37-97D9-49F1-B554-CED9AB2098FC@netapp.com>
- <CAN-5tyGpcs5EFCEhE9ShdGyCtMLpKUtC9i8yB1YeVzDpO0PsGw@mail.gmail.com>
-In-Reply-To: <CAN-5tyGpcs5EFCEhE9ShdGyCtMLpKUtC9i8yB1YeVzDpO0PsGw@mail.gmail.com>
+Received: from mx1.redhat.com ([209.132.183.28]:40214 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757219AbcGZQao (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 26 Jul 2016 12:30:44 -0400
+From: "Benjamin Coddington" <bcodding@redhat.com>
+To: "Trond Myklebust" <trondmy@primarydata.com>
+Cc: "hch@infradead.org" <hch@infradead.org>,
+        "List Linux NFS Mailing" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH v4 24/28] Getattr doesn't require data sync semantics
+Date: Tue, 26 Jul 2016 12:32:26 -0400
+Message-ID: <10749CC8-F76E-4DBD-9C27-9802475CF8A5@redhat.com>
+In-Reply-To: <F5EFC301-6372-4993-82BA-C96455F3957E@redhat.com>
+References: <1467844205-76852-23-git-send-email-trond.myklebust@primarydata.com>
+ <1467844205-76852-24-git-send-email-trond.myklebust@primarydata.com>
+ <1467844205-76852-25-git-send-email-trond.myklebust@primarydata.com>
+ <20160718034847.GA1195@infradead.org>
+ <A9C18137-87A3-4652-ADD6-E8E1C4BAE27B@primarydata.com>
+ <1468817945.5273.2.camel@primarydata.com>
+ <20160719035843.GA24437@infradead.org>
+ <F879054A-2116-40D5-90C9-473E71977E8A@redhat.com>
+ <C44AB0DD-8FA3-42F2-B7DE-C694559A68EF@primarydata.com>
+ <AB904138-E761-4F8F-AF97-0E8A4E067DB1@redhat.com>
+ <20160721082216.GA15247@infradead.org>
+ <A540F5A1-37B3-40EB-876D-EC33E891F0C9@redhat.com>
+ <B4719B7F-3FC4-4FD7-929E-CC528CA867F4@redhat.com>
+ <9E2543EF-0442-491E-AB22-3E1667DABBA4@redhat.com>
+ <E33497F6-079C-4903-9CC5-0ABDFA149694@primarydata.com>
+ <70375D08-FCA9-4C73-9991-38490C11B171@redhat.com>
+ <8B8BB73D-39A6-4291-A10E-736B0F907459@primarydata.com>
+ <C7773DBC-C4D9-4DA4-9391-8B7E91D7D5AF@redhat.com>
+ <B174B540-8D12-4BD1-8DD0-FE49E2AB216E@primarydata.com>
+ <AAB7FE0A-8409-494D-8CCF-BE07442791F3@redhat.com>
+ <737F0071-AAD2-49B5-9BD0-02DF98049B76@primarydata.com>
+ <F5EFC301-6372-4993-82BA-C96455F3957E@redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=WINDOWS-1252
+Content-Type: text/plain; charset=utf-8; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On 25 Jul 2016, at 14:41, Benjamin Coddington wrote:
 
-> On Jul 26, 2016, at 12:18, Olga Kornievskaia <aglo@umich.edu> wrote:
-> 
-> On Wed, Jul 20, 2016 at 10:28 AM, Kornievskaia, Olga
-> <Olga.Kornievskaia@netapp.com> wrote:
->> 
->>> On Jul 19, 2016, at 3:19 PM, Trond Myklebust <trond.myklebust@primarydata.com> wrote:
->>> 
->>> Fix up nfs4_do_handle_exception() so that it can check if the operation
->>> that received the NFS4ERR_BAD_STATEID was using a defunct delegation.
->>> Apply that to the case of SETATTR, which will currently return EIO
->>> in some cases where this happens.
->>> 
->>> Reported-by: Olga Kornievskaia <kolga@netapp.com>
->>> Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
->>> ---
->>> fs/nfs/nfs4_fs.h  |  1 +
->>> fs/nfs/nfs4proc.c | 79 ++++++++++++++++++++++++++++++++-----------------------
->>> 2 files changed, 47 insertions(+), 33 deletions(-)
->>> 
->>> diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
->>> index 768456fa1b17..4be567a54958 100644
->>> --- a/fs/nfs/nfs4_fs.h
->>> +++ b/fs/nfs/nfs4_fs.h
->>> @@ -185,6 +185,7 @@ struct nfs4_state {
->>> struct nfs4_exception {
->>>      struct nfs4_state *state;
->>>      struct inode *inode;
->>> +     nfs4_stateid *stateid;
->>>      long timeout;
->>>      unsigned char delay : 1,
->>>                    recovering : 1,
->>> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
->>> index 6191b7e46913..519368b98762 100644
->>> --- a/fs/nfs/nfs4proc.c
->>> +++ b/fs/nfs/nfs4proc.c
->>> @@ -363,6 +363,7 @@ static int nfs4_do_handle_exception(struct nfs_server *server,
->>> {
->>>      struct nfs_client *clp = server->nfs_client;
->>>      struct nfs4_state *state = exception->state;
->>> +     const nfs4_stateid *stateid = exception->stateid;
->>>      struct inode *inode = exception->inode;
->>>      int ret = errorcode;
->>> 
->>> @@ -376,9 +377,18 @@ static int nfs4_do_handle_exception(struct nfs_server *server,
->>>              case -NFS4ERR_DELEG_REVOKED:
->>>              case -NFS4ERR_ADMIN_REVOKED:
->>>              case -NFS4ERR_BAD_STATEID:
->>> -                     if (inode && nfs_async_inode_return_delegation(inode,
->>> -                                             NULL) == 0)
->>> -                             goto wait_on_recovery;
->>> +                     if (inode) {
->>> +                             int err;
->>> +
->>> +                             err = nfs_async_inode_return_delegation(inode,
->>> +                                             stateid);
->>> +                             if (err == 0)
->>> +                                     goto wait_on_recovery;
->>> +                             if (stateid != NULL && stateid->type == NFS4_DELEGATION_STATEID_TYPE) {
->>> +                                     exception->retry = 1;
->>> +                                     break;
->>> +                             }
->>> +                     }
->>>                      if (state == NULL)
->>>                              break;
->>>                      ret = nfs4_schedule_stateid_recovery(server, state);
->>> @@ -2669,28 +2679,17 @@ static struct nfs4_state *nfs4_do_open(struct inode *dir,
->>>      return res;
->>> }
->>> 
->>> -static int _nfs4_do_setattr(struct inode *inode, struct rpc_cred *cred,
->>> -                         struct nfs_fattr *fattr, struct iattr *sattr,
->>> -                         struct nfs4_state *state, struct nfs4_label *ilabel,
->>> -                         struct nfs4_label *olabel)
->>> +static int _nfs4_do_setattr(struct inode *inode,
->>> +                         struct nfs_setattrargs *arg,
->>> +                         struct nfs_setattrres *res,
->>> +                         struct rpc_cred *cred,
->>> +                         struct nfs4_state *state)
->>> {
->>>      struct nfs_server *server = NFS_SERVER(inode);
->>> -        struct nfs_setattrargs  arg = {
->>> -                .fh             = NFS_FH(inode),
->>> -                .iap            = sattr,
->>> -             .server         = server,
->>> -             .bitmask = server->attr_bitmask,
->>> -             .label          = ilabel,
->>> -        };
->>> -        struct nfs_setattrres  res = {
->>> -             .fattr          = fattr,
->>> -             .label          = olabel,
->>> -             .server         = server,
->>> -        };
->>>        struct rpc_message msg = {
->>>              .rpc_proc       = &nfs4_procedures[NFSPROC4_CLNT_SETATTR],
->>> -             .rpc_argp       = &arg,
->>> -             .rpc_resp       = &res,
->>> +             .rpc_argp       = arg,
->>> +             .rpc_resp       = res,
->>>              .rpc_cred       = cred,
->>>        };
->>>      struct rpc_cred *delegation_cred = NULL;
->>> @@ -2699,17 +2698,13 @@ static int _nfs4_do_setattr(struct inode *inode, struct rpc_cred *cred,
->>>      bool truncate;
->>>      int status;
->>> 
->>> -     arg.bitmask = nfs4_bitmask(server, ilabel);
->>> -     if (ilabel)
->>> -             arg.bitmask = nfs4_bitmask(server, olabel);
->>> -
->>> -     nfs_fattr_init(fattr);
->>> +     nfs_fattr_init(res->fattr);
->>> 
->>>      /* Servers should only apply open mode checks for file size changes */
->>> -     truncate = (sattr->ia_valid & ATTR_SIZE) ? true : false;
->>> +     truncate = (arg->iap->ia_valid & ATTR_SIZE) ? true : false;
->>>      fmode = truncate ? FMODE_WRITE : FMODE_READ;
->>> 
->>> -     if (nfs4_copy_delegation_stateid(inode, fmode, &arg.stateid, &delegation_cred)) {
->>> +     if (nfs4_copy_delegation_stateid(inode, fmode, &arg->stateid, &delegation_cred)) {
->>>              /* Use that stateid */
->>>      } else if (truncate && state != NULL) {
->>>              struct nfs_lockowner lockowner = {
->>> @@ -2719,19 +2714,19 @@ static int _nfs4_do_setattr(struct inode *inode, struct rpc_cred *cred,
->>>              if (!nfs4_valid_open_stateid(state))
->>>                      return -EBADF;
->>>              if (nfs4_select_rw_stateid(state, FMODE_WRITE, &lockowner,
->>> -                             &arg.stateid, &delegation_cred) == -EIO)
->>> +                             &arg->stateid, &delegation_cred) == -EIO)
->>>                      return -EBADF;
->>>      } else
->>> -             nfs4_stateid_copy(&arg.stateid, &zero_stateid);
->>> +             nfs4_stateid_copy(&arg->stateid, &zero_stateid);
->>>      if (delegation_cred)
->>>              msg.rpc_cred = delegation_cred;
->>> 
->>> -     status = nfs4_call_sync(server->client, server, &msg, &arg.seq_args, &res.seq_res, 1);
->>> +     status = nfs4_call_sync(server->client, server, &msg, &arg->seq_args, &res->seq_res, 1);
->>> 
->>>      put_rpccred(delegation_cred);
-> 
-> Steve D is reporting a kernel oops because there is no "if
-> (delegation_cred)" check here?
-> 
+> On 25 Jul 2016, at 14:34, Trond Myklebust wrote:
+>
+>>> On Jul 25, 2016, at 14:26, Benjamin Coddington <bcodding@redhat.com> 
+>>> wrote:
+>>>
+>>>
+>>>
+>>> On 25 Jul 2016, at 12:39, Trond Myklebust wrote:
+>>>
+>>>>> On Jul 25, 2016, at 12:26, Benjamin Coddington 
+>>>>> <bcodding@redhat.com> wrote:
+>>>>>
+>>>>> On 21 Jul 2016, at 9:20, Trond Myklebust wrote:
+>>>>>
+>>>>>>> On Jul 21, 2016, at 09:05, Benjamin Coddington 
+>>>>>>> <bcodding@redhat.com> wrote:
+>>>>>>>
+>>>>>>> So back to Christoph's point earlier:
+>>>>>>>
+>>>>>>> On 17 Jul 2016, at 23:48, Christoph Hellwig wrote:
+>>>>>>>> This one breaks xfstests generic/207 on block/scsi layout for 
+>>>>>>>> me.  The
+>>>>>>>> reason for that is that we need a layoutcommit after writing 
+>>>>>>>> out all
+>>>>>>>> data for the file for the file size to be updated on the 
+>>>>>>>> server.
+>>>>>>>
+>>>>>>> You responded:
+>>>>>>>
+>>>>>>> On 18 Jul 2016, at 0:32, Trond Myklebust wrote:
+>>>>>>>> I’m not understanding this argument. Why do we care if the 
+>>>>>>>> file size is up
+>>>>>>>> to date on the server if we’re not sending an actual GETATTR 
+>>>>>>>> on the wire
+>>>>>>>> to retrieve the file size?
+>>>>>>>
+>>>>>>> I guess the answer might be because we can get it back from the 
+>>>>>>> last
+>>>>>>> LAYOUTCOMMIT.
+>>>>>>>
+>>>>>>
+>>>>>> The patch that I followed up with should now ensure that we do 
+>>>>>> not mark the attribute cache as up to date if there is a 
+>>>>>> LAYOUTCOMMIT pending.
+>>>>>> IOW: when the pNFS write is done, it is expected to do 2 things:
+>>>>>>
+>>>>>> 1) mark the inode for LAYOUTCOMMIT
+>>>>>> 2) mark the attribute cache as invalid (because we know the 
+>>>>>> change attribute, mtime, ctime need to be updates)
+>>>>>>
+>>>>>> In the case of blocks pNFS write:
+>>>>>> The call to pnfs_set_layoutcommit() in pnfs_ld_write_done() 
+>>>>>> should take care of (1)
+>>>>>> The call to nfs_writeback_update_inode() in nfs4_write_done_cb() 
+>>>>>> should take care of (2).
+>>>>>>
+>>>>>> Provided that these 2 calls are performed in the above order, 
+>>>>>> then any call to nfs_getattr() which has not been preceded by a 
+>>>>>> call to nfs4_proc_layoutcommit() should trigger the call to 
+>>>>>> __nfs_revalidate_inode().
+>>>>>
+>>>>> I think the problem is that a following nfs_getattr() will fail to 
+>>>>> notice
+>>>>> the size change in the case of a write_completion and layoutcommit 
+>>>>> occuring
+>>>>> after nfs_getattr() has done pnfs_sync_inode() but before it has 
+>>>>> done
+>>>>> nfs_update_inode().
+>>>>>
+>>>>> In the failing case there are two threads one is doing writes, the 
+>>>>> other
+>>>>> doing lstat on aio_complete via io_getevents(2).
+>>>>>
+>>>>> For each write completion the lstat thread tries to verify the 
+>>>>> file size.
+>>>>>
+>>>>> GETATTR Thread                  LAYOUTCOMMIT Thread
+>>>>> --------------                  --------------------
+>>>>>                               write_completion sets LAYOUTCOMMIT 
+>>>>> (4096@0)
+>>>>> --> nfs_getattr
+>>>>
+>>>> filemap_write_and_wait()
+>>>>
+>>>>> __nfs_revalidate_inode
+>>>>> pnfs_sync_inode
+>>>>
+>>>> NFS_PROTO(inode)->getattr()
+>>>>
+>>>>> getattr sees 4096
+>>>>>                               write_completion sets LAYOUTCOMMIT 
+>>>>> (4096@4096)
+>>>>>                               sets LAYOUTCOMMITING
+>>>>>                               clears LAYOUTCOMMIT
+>>>>>                               clears LAYOUTCOMMITTING
+>>>>> nfs_refresh_inode
+>>>>>  nfs_update_inode size is 4096
+>>>>> <-- nfs_getattr
+>>>>>
+>>>>> At this point the cached attributes are seen as up to date, but
+>>>>> aio-dio-extend-stat program expects that second write_completion 
+>>>>> to reflect
+>>>>> in the file size.
+>>>>>
+>>>>
+>>>> Why isn’t the filemap_write_and_wait() above resolving the race? 
+>>>> I’d
+>>>> expect that would move your “write completion sets 
+>>>> LAYOUTCOMMIT” up to
+>>>> before the pnfs_sync_inode().  In fact, in the patch that Christoph 
+>>>> sent,
+>>>> all he was doing was moving the pnfs_sync_inode() to immediately 
+>>>> after
+>>>> that filemap_write_and_wait() instead of relying on it in
+>>>> _nfs_revalidate_inode.
+>>>
+>>> This is O_DIRECT, I've failed to mention yet.  The second write 
+>>> hasn't made
+>>> it out of __nfs_pageio_add_request() at the time 
+>>> filemap_write_and_wait() is
+>>> called.  It is sleeping in pnfs_update_layout() waiting on a 
+>>> LAYOUTGET and it
+>>> doesn't resumes until after filemap_write_and_wait().
+>>
+>> Wait, so you have 1 thread doing an O_DIRECT write() and another 
+>> doing a
+>> stat() in parallel? Why would there be an expectation that the 
+>> filesystem
+>> should serialise those system calls?
+>
+> Not exactly parallel, but synchronized on aio_complete.  A comment in
+> generic/207's src/aio-dio-regress/aio-dio-extend-stat.c:
+>
+>  36 /*
+>  37  * This was originally submitted to
+>  38  * http://bugzilla.kernel.org/show_bug.cgi?id=6831 by
+>  39  * Rafal Wijata <wijata@nec-labs.com>.  It caught a race in dio 
+> aio completion
+>  40  * that would call aio_complete() before the dio callers would 
+> update i_size.
+>  41  * A stat after io_getevents() would not see the new file size.
+>  42  *
+>  43  * The bug was fixed in the fs/direct-io.c completion reworking 
+> that appeared
+>  44  * in 2.6.20.  This test should fail on 2.6.19.
+>  45  */
+>
+> As far as I can see, this check is the whole point of generic/207..
 
-The following patch is already in Linux 4.7:
+This would fix it up:
 
-9a8f6b5ea275f SUNRPC: Ensure get_rpccred() and put_rpccred() can take NULL arguments
+diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
+index f108d58101f8..823700f827b6 100644
+--- a/fs/nfs/inode.c
++++ b/fs/nfs/inode.c
+@@ -661,6 +661,7 @@ int nfs_getattr(struct vfsmount *mnt, struct dentry
+*dentry, struct kstat *stat)
 
-Cheers
-  Trond
+         trace_nfs_getattr_enter(inode);
+         /* Flush out writes to the server in order to update c/mtime.  
+*/
++       nfs_start_io_read(inode);
+         if (S_ISREG(inode->i_mode)) {
+                 err = filemap_write_and_wait(inode->i_mapping);
+                 if (err)
+@@ -694,6 +695,7 @@ int nfs_getattr(struct vfsmount *mnt, struct dentry
+*dentry, struct kstat *stat)
+                         stat->blksize = NFS_SERVER(inode)->dtsize;
+         }
+  out:
++       nfs_end_io_read(inode);
+         trace_nfs_getattr_exit(inode, err);
+         return err;
+  }
 
+Trond, what do you think?  I'll take any additional silence as a sign to 
+go
+elsewhere.  :P
+
+Ben
