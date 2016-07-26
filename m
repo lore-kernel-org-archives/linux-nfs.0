@@ -1,207 +1,76 @@
-Return-Path: <trondmy@primarydata.com>
-From: Trond Myklebust <trondmy@primarydata.com>
-To: Coddington Benjamin <bcodding@redhat.com>
-CC: "hch@infradead.org" <hch@infradead.org>,
-        List Linux NFS Mailing
-	<linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH v4 24/28] Getattr doesn't require data sync semantics
-Date: Tue, 26 Jul 2016 18:07:51 +0000
-Message-ID: <DA6506A7-57F0-4263-BA23-0BB638BC2E36@primarydata.com>
-References: <1467844205-76852-23-git-send-email-trond.myklebust@primarydata.com>
- <1467844205-76852-24-git-send-email-trond.myklebust@primarydata.com>
- <1467844205-76852-25-git-send-email-trond.myklebust@primarydata.com>
- <20160718034847.GA1195@infradead.org>
- <A9C18137-87A3-4652-ADD6-E8E1C4BAE27B@primarydata.com>
- <1468817945.5273.2.camel@primarydata.com>
- <20160719035843.GA24437@infradead.org>
- <F879054A-2116-40D5-90C9-473E71977E8A@redhat.com>
- <C44AB0DD-8FA3-42F2-B7DE-C694559A68EF@primarydata.com>
- <AB904138-E761-4F8F-AF97-0E8A4E067DB1@redhat.com>
- <20160721082216.GA15247@infradead.org>
- <A540F5A1-37B3-40EB-876D-EC33E891F0C9@redhat.com>
- <B4719B7F-3FC4-4FD7-929E-CC528CA867F4@redhat.com>
- <9E2543EF-0442-491E-AB22-3E1667DABBA4@redhat.com>
- <E33497F6-079C-4903-9CC5-0ABDFA149694@primarydata.com>
- <70375D08-FCA9-4C73-9991-38490C11B171@redhat.com>
- <8B8BB73D-39A6-4291-A10E-736B0F907459@primarydata.com>
- <C7773DBC-C4D9-4DA4-9391-8B7E91D7D5AF@redhat.com>
- <B174B540-8D12-4BD1-8DD0-FE49E2AB216E@primarydata.com>
- <AAB7FE0A-8409-494D-8CCF-BE07442791F3@redhat.com>
- <737F0071-AAD2-49B5-9BD0-02DF98049B76@primarydata.com>
- <F5EFC301-6372-4993-82BA-C96455F3957E@redhat.com>
- <10749CC8-F76E-4DBD-9C27-9802475CF8A5@redhat.com>
- <3448E968-3564-43C1-ADBB-A16C9687B0F3@primarydata.com>
- <4CA4361B-2501-48AA-8B2C-715E5A3FD35C@redhat.com>
-In-Reply-To: <4CA4361B-2501-48AA-8B2C-715E5A3FD35C@redhat.com>
+Return-Path: <linux-nfs-owner@vger.kernel.org>
+Received: from fieldses.org ([173.255.197.46]:41020 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757109AbcGZUTs (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 26 Jul 2016 16:19:48 -0400
+Date: Tue, 26 Jul 2016 16:19:47 -0400
+To: Seiichi Ikarashi <s.ikarashi@jp.fujitsu.com>
+Cc: trond.myklebust@primarydata.com, anna.schumaker@netapp.com,
+        linux-nfs@vger.kernel.org
+Subject: Re: [PATCH v2] Prevent rqstp->rq_pages[RPCSVC_MAXPAGES] overrun
+Message-ID: <20160726201947.GA8387@fieldses.org>
+References: <28fb2e47-48ce-1af7-3135-15ca9b4e1726@jp.fujitsu.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <28fb2e47-48ce-1af7-3135-15ca9b4e1726@jp.fujitsu.com>
+From: bfields@fieldses.org (J. Bruce Fields)
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-DQo+IE9uIEp1bCAyNiwgMjAxNiwgYXQgMTM6NTcsIEJlbmphbWluIENvZGRpbmd0b24gPGJjb2Rk
-aW5nQHJlZGhhdC5jb20+IHdyb3RlOg0KPiANCj4gT24gMjYgSnVsIDIwMTYsIGF0IDEyOjM1LCBU
-cm9uZCBNeWtsZWJ1c3Qgd3JvdGU6DQo+IA0KPj4+IE9uIEp1bCAyNiwgMjAxNiwgYXQgMTI6MzIs
-IEJlbmphbWluIENvZGRpbmd0b24gPGJjb2RkaW5nQHJlZGhhdC5jb20+IHdyb3RlOg0KPj4+IA0K
-Pj4+IE9uIDI1IEp1bCAyMDE2LCBhdCAxNDo0MSwgQmVuamFtaW4gQ29kZGluZ3RvbiB3cm90ZToN
-Cj4+PiANCj4+Pj4gT24gMjUgSnVsIDIwMTYsIGF0IDE0OjM0LCBUcm9uZCBNeWtsZWJ1c3Qgd3Jv
-dGU6DQo+Pj4+IA0KPj4+Pj4+IE9uIEp1bCAyNSwgMjAxNiwgYXQgMTQ6MjYsIEJlbmphbWluIENv
-ZGRpbmd0b24gPGJjb2RkaW5nQHJlZGhhdC5jb20+IHdyb3RlOg0KPj4+Pj4+IA0KPj4+Pj4+IA0K
-Pj4+Pj4+IA0KPj4+Pj4+IE9uIDI1IEp1bCAyMDE2LCBhdCAxMjozOSwgVHJvbmQgTXlrbGVidXN0
-IHdyb3RlOg0KPj4+Pj4+IA0KPj4+Pj4+Pj4gT24gSnVsIDI1LCAyMDE2LCBhdCAxMjoyNiwgQmVu
-amFtaW4gQ29kZGluZ3RvbiA8YmNvZGRpbmdAcmVkaGF0LmNvbT4gd3JvdGU6DQo+Pj4+Pj4+PiAN
-Cj4+Pj4+Pj4+IE9uIDIxIEp1bCAyMDE2LCBhdCA5OjIwLCBUcm9uZCBNeWtsZWJ1c3Qgd3JvdGU6
-DQo+Pj4+Pj4+PiANCj4+Pj4+Pj4+Pj4gT24gSnVsIDIxLCAyMDE2LCBhdCAwOTowNSwgQmVuamFt
-aW4gQ29kZGluZ3RvbiA8YmNvZGRpbmdAcmVkaGF0LmNvbT4gd3JvdGU6DQo+Pj4+Pj4+Pj4+IA0K
-Pj4+Pj4+Pj4+PiBTbyBiYWNrIHRvIENocmlzdG9waCdzIHBvaW50IGVhcmxpZXI6DQo+Pj4+Pj4+
-Pj4+IA0KPj4+Pj4+Pj4+PiBPbiAxNyBKdWwgMjAxNiwgYXQgMjM6NDgsIENocmlzdG9waCBIZWxs
-d2lnIHdyb3RlOg0KPj4+Pj4+Pj4+Pj4gVGhpcyBvbmUgYnJlYWtzIHhmc3Rlc3RzIGdlbmVyaWMv
-MjA3IG9uIGJsb2NrL3Njc2kgbGF5b3V0IGZvciBtZS4gIFRoZQ0KPj4+Pj4+Pj4+Pj4gcmVhc29u
-IGZvciB0aGF0IGlzIHRoYXQgd2UgbmVlZCBhIGxheW91dGNvbW1pdCBhZnRlciB3cml0aW5nIG91
-dCBhbGwNCj4+Pj4+Pj4+Pj4+IGRhdGEgZm9yIHRoZSBmaWxlIGZvciB0aGUgZmlsZSBzaXplIHRv
-IGJlIHVwZGF0ZWQgb24gdGhlIHNlcnZlci4NCj4+Pj4+Pj4+Pj4gDQo+Pj4+Pj4+Pj4+IFlvdSBy
-ZXNwb25kZWQ6DQo+Pj4+Pj4+Pj4+IA0KPj4+Pj4+Pj4+PiBPbiAxOCBKdWwgMjAxNiwgYXQgMDoz
-MiwgVHJvbmQgTXlrbGVidXN0IHdyb3RlOg0KPj4+Pj4+Pj4+Pj4gSeKAmW0gbm90IHVuZGVyc3Rh
-bmRpbmcgdGhpcyBhcmd1bWVudC4gV2h5IGRvIHdlIGNhcmUgaWYgdGhlIGZpbGUgc2l6ZSBpcyB1
-cA0KPj4+Pj4+Pj4+Pj4gdG8gZGF0ZSBvbiB0aGUgc2VydmVyIGlmIHdl4oCZcmUgbm90IHNlbmRp
-bmcgYW4gYWN0dWFsIEdFVEFUVFIgb24gdGhlIHdpcmUNCj4+Pj4+Pj4+Pj4+IHRvIHJldHJpZXZl
-IHRoZSBmaWxlIHNpemU/DQo+Pj4+Pj4+Pj4+IA0KPj4+Pj4+Pj4+PiBJIGd1ZXNzIHRoZSBhbnN3
-ZXIgbWlnaHQgYmUgYmVjYXVzZSB3ZSBjYW4gZ2V0IGl0IGJhY2sgZnJvbSB0aGUgbGFzdA0KPj4+
-Pj4+Pj4+PiBMQVlPVVRDT01NSVQuDQo+Pj4+Pj4+Pj4+IA0KPj4+Pj4+Pj4+IA0KPj4+Pj4+Pj4+
-IFRoZSBwYXRjaCB0aGF0IEkgZm9sbG93ZWQgdXAgd2l0aCBzaG91bGQgbm93IGVuc3VyZSB0aGF0
-IHdlIGRvIG5vdCBtYXJrIHRoZSBhdHRyaWJ1dGUgY2FjaGUgYXMgdXAgdG8gZGF0ZSBpZiB0aGVy
-ZSBpcyBhIExBWU9VVENPTU1JVCBwZW5kaW5nLg0KPj4+Pj4+Pj4+IElPVzogd2hlbiB0aGUgcE5G
-UyB3cml0ZSBpcyBkb25lLCBpdCBpcyBleHBlY3RlZCB0byBkbyAyIHRoaW5nczoNCj4+Pj4+Pj4+
-PiANCj4+Pj4+Pj4+PiAxKSBtYXJrIHRoZSBpbm9kZSBmb3IgTEFZT1VUQ09NTUlUDQo+Pj4+Pj4+
-Pj4gMikgbWFyayB0aGUgYXR0cmlidXRlIGNhY2hlIGFzIGludmFsaWQgKGJlY2F1c2Ugd2Uga25v
-dyB0aGUgY2hhbmdlIGF0dHJpYnV0ZSwgbXRpbWUsIGN0aW1lIG5lZWQgdG8gYmUgdXBkYXRlcykN
-Cj4+Pj4+Pj4+PiANCj4+Pj4+Pj4+PiBJbiB0aGUgY2FzZSBvZiBibG9ja3MgcE5GUyB3cml0ZToN
-Cj4+Pj4+Pj4+PiBUaGUgY2FsbCB0byBwbmZzX3NldF9sYXlvdXRjb21taXQoKSBpbiBwbmZzX2xk
-X3dyaXRlX2RvbmUoKSBzaG91bGQgdGFrZSBjYXJlIG9mICgxKQ0KPj4+Pj4+Pj4+IFRoZSBjYWxs
-IHRvIG5mc193cml0ZWJhY2tfdXBkYXRlX2lub2RlKCkgaW4gbmZzNF93cml0ZV9kb25lX2NiKCkg
-c2hvdWxkIHRha2UgY2FyZSBvZiAoMikuDQo+Pj4+Pj4+Pj4gDQo+Pj4+Pj4+Pj4gUHJvdmlkZWQg
-dGhhdCB0aGVzZSAyIGNhbGxzIGFyZSBwZXJmb3JtZWQgaW4gdGhlIGFib3ZlIG9yZGVyLCB0aGVu
-IGFueSBjYWxsIHRvIG5mc19nZXRhdHRyKCkgd2hpY2ggaGFzIG5vdCBiZWVuIHByZWNlZGVkIGJ5
-IGEgY2FsbCB0byBuZnM0X3Byb2NfbGF5b3V0Y29tbWl0KCkgc2hvdWxkIHRyaWdnZXIgdGhlIGNh
-bGwgdG8gX19uZnNfcmV2YWxpZGF0ZV9pbm9kZSgpLg0KPj4+Pj4+Pj4gDQo+Pj4+Pj4+PiBJIHRo
-aW5rIHRoZSBwcm9ibGVtIGlzIHRoYXQgYSBmb2xsb3dpbmcgbmZzX2dldGF0dHIoKSB3aWxsIGZh
-aWwgdG8gbm90aWNlDQo+Pj4+Pj4+PiB0aGUgc2l6ZSBjaGFuZ2UgaW4gdGhlIGNhc2Ugb2YgYSB3
-cml0ZV9jb21wbGV0aW9uIGFuZCBsYXlvdXRjb21taXQgb2NjdXJpbmcNCj4+Pj4+Pj4+IGFmdGVy
-IG5mc19nZXRhdHRyKCkgaGFzIGRvbmUgcG5mc19zeW5jX2lub2RlKCkgYnV0IGJlZm9yZSBpdCBo
-YXMgZG9uZQ0KPj4+Pj4+Pj4gbmZzX3VwZGF0ZV9pbm9kZSgpLg0KPj4+Pj4+Pj4gDQo+Pj4+Pj4+
-PiBJbiB0aGUgZmFpbGluZyBjYXNlIHRoZXJlIGFyZSB0d28gdGhyZWFkcyBvbmUgaXMgZG9pbmcg
-d3JpdGVzLCB0aGUgb3RoZXINCj4+Pj4+Pj4+IGRvaW5nIGxzdGF0IG9uIGFpb19jb21wbGV0ZSB2
-aWEgaW9fZ2V0ZXZlbnRzKDIpLg0KPj4+Pj4+Pj4gDQo+Pj4+Pj4+PiBGb3IgZWFjaCB3cml0ZSBj
-b21wbGV0aW9uIHRoZSBsc3RhdCB0aHJlYWQgdHJpZXMgdG8gdmVyaWZ5IHRoZSBmaWxlIHNpemUu
-DQo+Pj4+Pj4+PiANCj4+Pj4+Pj4+IEdFVEFUVFIgVGhyZWFkICAgICAgICAgICAgICAgICAgTEFZ
-T1VUQ09NTUlUIFRocmVhZA0KPj4+Pj4+Pj4gLS0tLS0tLS0tLS0tLS0gICAgICAgICAgICAgICAg
-ICAtLS0tLS0tLS0tLS0tLS0tLS0tLQ0KPj4+Pj4+Pj4gICAgICAgICAgICAgICAgICAgICAgICAg
-ICAgIHdyaXRlX2NvbXBsZXRpb24gc2V0cyBMQVlPVVRDT01NSVQgKDQwOTZAMCkNCj4+Pj4+Pj4+
-IC0tPiBuZnNfZ2V0YXR0cg0KPj4+Pj4+PiANCj4+Pj4+Pj4gZmlsZW1hcF93cml0ZV9hbmRfd2Fp
-dCgpDQo+Pj4+Pj4+IA0KPj4+Pj4+Pj4gX19uZnNfcmV2YWxpZGF0ZV9pbm9kZQ0KPj4+Pj4+Pj4g
-cG5mc19zeW5jX2lub2RlDQo+Pj4+Pj4+IA0KPj4+Pj4+PiBORlNfUFJPVE8oaW5vZGUpLT5nZXRh
-dHRyKCkNCj4+Pj4+Pj4gDQo+Pj4+Pj4+PiBnZXRhdHRyIHNlZXMgNDA5Ng0KPj4+Pj4+Pj4gICAg
-ICAgICAgICAgICAgICAgICAgICAgICAgIHdyaXRlX2NvbXBsZXRpb24gc2V0cyBMQVlPVVRDT01N
-SVQgKDQwOTZANDA5NikNCj4+Pj4+Pj4+ICAgICAgICAgICAgICAgICAgICAgICAgICAgICBzZXRz
-IExBWU9VVENPTU1JVElORw0KPj4+Pj4+Pj4gICAgICAgICAgICAgICAgICAgICAgICAgICAgIGNs
-ZWFycyBMQVlPVVRDT01NSVQNCj4+Pj4+Pj4+ICAgICAgICAgICAgICAgICAgICAgICAgICAgICBj
-bGVhcnMgTEFZT1VUQ09NTUlUVElORw0KPj4+Pj4+Pj4gbmZzX3JlZnJlc2hfaW5vZGUNCj4+Pj4+
-Pj4+IG5mc191cGRhdGVfaW5vZGUgc2l6ZSBpcyA0MDk2DQo+Pj4+Pj4+PiA8LS0gbmZzX2dldGF0
-dHINCj4+Pj4+Pj4+IA0KPj4+Pj4+Pj4gQXQgdGhpcyBwb2ludCB0aGUgY2FjaGVkIGF0dHJpYnV0
-ZXMgYXJlIHNlZW4gYXMgdXAgdG8gZGF0ZSwgYnV0DQo+Pj4+Pj4+PiBhaW8tZGlvLWV4dGVuZC1z
-dGF0IHByb2dyYW0gZXhwZWN0cyB0aGF0IHNlY29uZCB3cml0ZV9jb21wbGV0aW9uIHRvIHJlZmxl
-Y3QNCj4+Pj4+Pj4+IGluIHRoZSBmaWxlIHNpemUuDQo+Pj4+Pj4+PiANCj4+Pj4+Pj4gDQo+Pj4+
-Pj4+IFdoeSBpc27igJl0IHRoZSBmaWxlbWFwX3dyaXRlX2FuZF93YWl0KCkgYWJvdmUgcmVzb2x2
-aW5nIHRoZSByYWNlPyBJ4oCZZA0KPj4+Pj4+PiBleHBlY3QgdGhhdCB3b3VsZCBtb3ZlIHlvdXIg
-4oCcd3JpdGUgY29tcGxldGlvbiBzZXRzIExBWU9VVENPTU1JVOKAnSB1cCB0bw0KPj4+Pj4+PiBi
-ZWZvcmUgdGhlIHBuZnNfc3luY19pbm9kZSgpLiAgSW4gZmFjdCwgaW4gdGhlIHBhdGNoIHRoYXQg
-Q2hyaXN0b3BoIHNlbnQsDQo+Pj4+Pj4+IGFsbCBoZSB3YXMgZG9pbmcgd2FzIG1vdmluZyB0aGUg
-cG5mc19zeW5jX2lub2RlKCkgdG8gaW1tZWRpYXRlbHkgYWZ0ZXINCj4+Pj4+Pj4gdGhhdCBmaWxl
-bWFwX3dyaXRlX2FuZF93YWl0KCkgaW5zdGVhZCBvZiByZWx5aW5nIG9uIGl0IGluDQo+Pj4+Pj4+
-IF9uZnNfcmV2YWxpZGF0ZV9pbm9kZS4NCj4+Pj4+PiANCj4+Pj4+PiBUaGlzIGlzIE9fRElSRUNU
-LCBJJ3ZlIGZhaWxlZCB0byBtZW50aW9uIHlldC4gIFRoZSBzZWNvbmQgd3JpdGUgaGFzbid0IG1h
-ZGUNCj4+Pj4+PiBpdCBvdXQgb2YgX19uZnNfcGFnZWlvX2FkZF9yZXF1ZXN0KCkgYXQgdGhlIHRp
-bWUgZmlsZW1hcF93cml0ZV9hbmRfd2FpdCgpIGlzDQo+Pj4+Pj4gY2FsbGVkLiAgSXQgaXMgc2xl
-ZXBpbmcgaW4gcG5mc191cGRhdGVfbGF5b3V0KCkgd2FpdGluZyBvbiBhIExBWU9VVEdFVCBhbmQg
-aXQNCj4+Pj4+PiBkb2Vzbid0IHJlc3VtZXMgdW50aWwgYWZ0ZXIgZmlsZW1hcF93cml0ZV9hbmRf
-d2FpdCgpLg0KPj4+Pj4gDQo+Pj4+PiBXYWl0LCBzbyB5b3UgaGF2ZSAxIHRocmVhZCBkb2luZyBh
-biBPX0RJUkVDVCB3cml0ZSgpIGFuZCBhbm90aGVyIGRvaW5nIGENCj4+Pj4+IHN0YXQoKSBpbiBw
-YXJhbGxlbD8gV2h5IHdvdWxkIHRoZXJlIGJlIGFuIGV4cGVjdGF0aW9uIHRoYXQgdGhlIGZpbGVz
-eXN0ZW0NCj4+Pj4+IHNob3VsZCBzZXJpYWxpc2UgdGhvc2Ugc3lzdGVtIGNhbGxzPw0KPj4+PiAN
-Cj4+Pj4gTm90IGV4YWN0bHkgcGFyYWxsZWwsIGJ1dCBzeW5jaHJvbml6ZWQgb24gYWlvX2NvbXBs
-ZXRlLiAgQSBjb21tZW50IGluDQo+Pj4+IGdlbmVyaWMvMjA3J3Mgc3JjL2Fpby1kaW8tcmVncmVz
-cy9haW8tZGlvLWV4dGVuZC1zdGF0LmM6DQo+Pj4+IA0KPj4+PiAzNiAvKg0KPj4+PiAzNyAgKiBU
-aGlzIHdhcyBvcmlnaW5hbGx5IHN1Ym1pdHRlZCB0bw0KPj4+PiAzOCAgKiBodHRwOi8vYnVnemls
-bGEua2VybmVsLm9yZy9zaG93X2J1Zy5jZ2k/aWQ9NjgzMSBieQ0KPj4+PiAzOSAgKiBSYWZhbCBX
-aWphdGEgPHdpamF0YUBuZWMtbGFicy5jb20+LiAgSXQgY2F1Z2h0IGEgcmFjZSBpbiBkaW8gYWlv
-IGNvbXBsZXRpb24NCj4+Pj4gNDAgICogdGhhdCB3b3VsZCBjYWxsIGFpb19jb21wbGV0ZSgpIGJl
-Zm9yZSB0aGUgZGlvIGNhbGxlcnMgd291bGQgdXBkYXRlIGlfc2l6ZS4NCj4+Pj4gNDEgICogQSBz
-dGF0IGFmdGVyIGlvX2dldGV2ZW50cygpIHdvdWxkIG5vdCBzZWUgdGhlIG5ldyBmaWxlIHNpemUu
-DQo+Pj4+IDQyICAqDQo+Pj4+IDQzICAqIFRoZSBidWcgd2FzIGZpeGVkIGluIHRoZSBmcy9kaXJl
-Y3QtaW8uYyBjb21wbGV0aW9uIHJld29ya2luZyB0aGF0IGFwcGVhcmVkDQo+Pj4+IDQ0ICAqIGlu
-IDIuNi4yMC4gIFRoaXMgdGVzdCBzaG91bGQgZmFpbCBvbiAyLjYuMTkuDQo+Pj4+IDQ1ICAqLw0K
-Pj4+PiANCj4+Pj4gQXMgZmFyIGFzIEkgY2FuIHNlZSwgdGhpcyBjaGVjayBpcyB0aGUgd2hvbGUg
-cG9pbnQgb2YgZ2VuZXJpYy8yMDcuLg0KPj4+IA0KPj4+IFRoaXMgd291bGQgZml4IGl0IHVwOg0K
-Pj4+IA0KPj4+IGRpZmYgLS1naXQgYS9mcy9uZnMvaW5vZGUuYyBiL2ZzL25mcy9pbm9kZS5jDQo+
-Pj4gaW5kZXggZjEwOGQ1ODEwMWY4Li44MjM3MDBmODI3YjYgMTAwNjQ0DQo+Pj4gLS0tIGEvZnMv
-bmZzL2lub2RlLmMNCj4+PiArKysgYi9mcy9uZnMvaW5vZGUuYw0KPj4+IEBAIC02NjEsNiArNjYx
-LDcgQEAgaW50IG5mc19nZXRhdHRyKHN0cnVjdCB2ZnNtb3VudCAqbW50LCBzdHJ1Y3QgZGVudHJ5
-DQo+Pj4gKmRlbnRyeSwgc3RydWN0IGtzdGF0ICpzdGF0KQ0KPj4+IA0KPj4+ICAgICAgIHRyYWNl
-X25mc19nZXRhdHRyX2VudGVyKGlub2RlKTsNCj4+PiAgICAgICAvKiBGbHVzaCBvdXQgd3JpdGVz
-IHRvIHRoZSBzZXJ2ZXIgaW4gb3JkZXIgdG8gdXBkYXRlIGMvbXRpbWUuICAqLw0KPj4+ICsgICAg
-ICAgbmZzX3N0YXJ0X2lvX3JlYWQoaW5vZGUpOw0KPj4+ICAgICAgIGlmIChTX0lTUkVHKGlub2Rl
-LT5pX21vZGUpKSB7DQo+Pj4gICAgICAgICAgICAgICBlcnIgPSBmaWxlbWFwX3dyaXRlX2FuZF93
-YWl0KGlub2RlLT5pX21hcHBpbmcpOw0KPj4+ICAgICAgICAgICAgICAgaWYgKGVycikNCj4+PiBA
-QCAtNjk0LDYgKzY5NSw3IEBAIGludCBuZnNfZ2V0YXR0cihzdHJ1Y3QgdmZzbW91bnQgKm1udCwg
-c3RydWN0IGRlbnRyeQ0KPj4+ICpkZW50cnksIHN0cnVjdCBrc3RhdCAqc3RhdCkNCj4+PiAgICAg
-ICAgICAgICAgICAgICAgICAgc3RhdC0+Ymxrc2l6ZSA9IE5GU19TRVJWRVIoaW5vZGUpLT5kdHNp
-emU7DQo+Pj4gICAgICAgfQ0KPj4+IG91dDoNCj4+PiArICAgICAgIG5mc19lbmRfaW9fcmVhZChp
-bm9kZSk7DQo+Pj4gICAgICAgdHJhY2VfbmZzX2dldGF0dHJfZXhpdChpbm9kZSwgZXJyKTsNCj4+
-PiAgICAgICByZXR1cm4gZXJyOw0KPj4+IH0NCj4+PiANCj4+PiBUcm9uZCwgd2hhdCBkbyB5b3Ug
-dGhpbms/ICBJJ2xsIHRha2UgYW55IGFkZGl0aW9uYWwgc2lsZW5jZSBhcyBhIHNpZ24gdG8gZ28N
-Cj4+PiBlbHNld2hlcmUuICA6UA0KPj4gDQo+PiBOby4gVGhlIGFib3ZlIGxvY2tpbmcgZXhjbHVk
-ZXMgYWxsIHdyaXRlcyBhcyB3ZWxsIGFzIE9fRElSRUNUIHJlYWRz4oCmIFRoYXTigJlzIHdvcnNl
-IHRoYW4gd2UgaGFkIGJlZm9yZS4NCj4+IA0KPj4gSeKAmWQgbGlrZSByYXRoZXIgdG8gdW5kZXJz
-dGFuZCBfd2h5XyB0aGUgYWlvX2NvbXBsZXRlKCkgaXMgZmFpbGluZyB0byB3b3JrIGNvcnJlY3Rs
-eSBoZXJlLiBBY2NvcmRpbmcgdG8gdGhlIGFuYWx5c2lzIG9mIHRoZSB0ZXN0IGNhc2UgdGhhdCB5
-b3UgcXVvdGVkIHllc3RlcmRheSwgdGhlIE9fRElSRUNUIHdyaXRlcyBzaG91bGQgaGF2ZSBjb21w
-bGV0ZWQgYmVmb3JlIHdlIGV2ZW4gY2FsbCBzdGF0KCkuDQo+PiANCj4+IENoZWVycw0KPj4gIFRy
-b25kDQo+IA0KPiBUaGUgT19ESVJFQ1Qgd3JpdGVzIGRvIGNvbXBsZXRlLCBhbmQgZXZlcnkgY29t
-cGxldGlvbiBzaWduYWxzIHRoZSBvdGhlcg0KPiB0aHJlYWQgdG8gZG8gc3RhdCgpLCBidXQgdGhh
-dCBjb21wbGV0aW9uIGRvZXMgbm90IHVwZGF0ZSB0aGUgc2l6ZSBvbiB0aGUNCj4gc2VydmVyLiAg
-QXMgd2Uga25vdywgd2UgbmVlZCBhIExBWU9VVENPTU1JVC4gIEFmdGVyIHRoaXMgcGF0Y2gsIHdl
-J3JlIG9ubHkNCj4gZ29pbmcgdG8gZG8gYSBMQVlPVVRDT01NSVQgaWYgbmZzX25lZWRfcmV2YWxp
-ZGF0ZV9pbm9kZShpbm9kZSkuDQo+IA0KDQpTbyBob3cgaXMgdGhlIGNvbXBsZXRpb24gaGFwcGVu
-aW5nPyBBcyBmYXIgYXMgSSBrbm93LCB0aGlzIGlzIHdoYXQgaXMgc3VwcG9zZWQgdG8gaGFwcGVu
-Og0KDQotIGJsX3dyaXRlX2NsZWFudXAoKSBjYWxscyBwbmZzX2xkX3dyaXRlX2RvbmUoKSwNCiAg
-ICAtIHBuZnNfbGRfd3JpdGVfZG9uZSB0aGVuIGZpcnN0IGNhbGxzIHBuZnNfc2V0X2xheW91dGNv
-bW1pdCgpIGFuZCBuZnNfcGdpb19yZXN1bHQoKSAod2hpY2ggY2FsbHMgbmZzX3dyaXRlYmFja19k
-b25lKCkgYW5kIGV2ZW50dWFsbHkgbmZzX3dyaXRlYmFja191cGRhdGVfaW5vZGUoKSkNCiAgICAt
-IHBuZnNfbGRfd3JpdGVfZG9uZSB0aGVuIGNhbGxzIG5mc19wZ2lvX3JlbGVhc2UoKSwgd2hpY2gg
-YWdhaW4gY2FsbHMgbmZzX2RpcmVjdF93cml0ZV9jb21wbGV0aW9uKCkuDQoNCklzIHNvbWV0aGlu
-ZyBzZXR0aW5nIGhkci0+cG5mc19lcnJvciBhbmQgcHJldmVudGluZyB0aGUgY2FsbCB0byBwbmZz
-X3NldF9sYXlvdXRjb21taXQgYW5kIG5mc193cml0ZWJhY2tfZG9uZSgpPyBJZiBub3QsIHRoZW4g
-d2h5IGlzIHRoZSBjYWxsIHRvIG5mc193cml0ZWJhY2tfdXBkYXRlX2lub2RlKCkgbm90IHNldHRp
-bmcgdGhlIGZpbGUgc2l6ZT8NCg0KPiBTbyB3aGF0IGhhcHBlbnMgaXMgdGhhdCB0aGUgZmlyc3Qg
-d3JpdGUgY29tcGxldGVzLCBhbmQgdGhlIGZpcnN0DQo+IG5mc19nZXRhdHRyKCkgdHJpZ2dlcnMg
-dGhlIGZpcnN0IExBWU9VVENPTU1JVCwgYW5kIHRoZW4gYSBHRVRBVFRSLg0KPiBTaW11bHRhbmVv
-dXNseSwgdGhlIHNlY29uZCB3cml0ZSBpcyB3YWl0aW5nIG9uIGEgTEFZT1VUR0VULiAgVGhlIEdF
-VEFUVFINCj4gY29tcGxldGVzIGFuZCBzZXRzIHRoZSBzaXplIHRvIDRrLg0KPiANCj4gTm93IHRo
-ZSBhdHRyaWJ1dGVzIGFyZSBtYXJrZWQgdXAgdG8gZGF0ZSB3aXRoIGEgc2l6ZSBvZiA0aywgYW5k
-IHdoZW4gdGhlDQo+IHNlY29uZCB3cml0ZSBjb21wbGV0ZXMsIG5mc19nZXRhdHRyKCkgaXMgY2Fs
-bGVkLCBuZnNfbmVlZF9yZXZhbGlkYXRlX2lub2RlKCkNCj4gaXMgZmFsc2UsIGFuZCB3ZSBkb24n
-dCBib3RoZXIgdG8gc2VuZCBhbm90aGVyIExBWU9VVENPTU1JVCBvciBHRVRBVFRSIHRvDQo+IGNv
-cnJlY3QgdGhlIGNhY2hlZCBmaWxlIHNpemUuDQo+IA0KPiBIZXJlJ3MgYSBmdW5jdGlvbiBncmFw
-aCBvZiB0aGF0OiBodHRwOi8vcGVvcGxlLnJlZGhhdC5jb20vYmNvZGRpbmcvYm9ya2VuDQo+IA0K
-PiBXZSBjb3VsZCBpbnZhbGlkYXRlIHRoZSBhdHRyaWJ1dGUgY2FjaGUgZXZlcnkgdGltZSBhIHdy
-aXRlIGNvbXBsZXRlcy4uIG1heWJlDQo+IG5mc193cml0ZWJhY2tfdXBkYXRlX2lub2RlKCkgaXNu
-J3QgZG9pbmcgdGhlIGpvYiBmb3IgYmxvY2sgbGF5b3V0cyAoYXJlIHdlDQo+IG5vdCBzZXR0aW5n
-IHJlcy5jb3VudD8gIEknbGwgbG9vayBhdCB0aGF0Li4pDQo+IA0KPiBJIHRoaW5rIHdlIGNvdWxk
-IGFsc28gdXNlIHRoZSBMQVlPVVRDT01NSVQgcmVzdWx0cyB0byBpbnZhbGlkYXRlIHRoZSBjYWNo
-ZSwNCj4gUkZDLTU2NjEgMTguNDIuMzoNCj4gICBJZiB0aGUgbWV0YWRhdGEgc2VydmVyIHVwZGF0
-ZXMgdGhlIGZpbGUncyBzaXplIGFzIHRoZQ0KPiAgIHJlc3VsdCBvZiB0aGUgTEFZT1VUQ09NTUlU
-IG9wZXJhdGlvbiwgaXQgbXVzdCByZXR1cm4gdGhlIG5ldyBzaXplDQo+ICAgKGxvY3JfbmV3c2l6
-ZS5uc19zaXplKSBhcyBwYXJ0IG9mIHRoZSByZXN1bHRzLiINCj4gDQo+IEknbSBub3Qgc3VyZSB5
-b3Ugd2FudCB0byBib3RoZXIgdG8gdHJ5IHRvIHJlcHJvZHVjZSAtLSBidXQgaWYgc28sIHlvdSBk
-b24ndA0KPiBuZWVkIHNwZWNpYWwgaGFyZHdhcmUgZm9yIFNDU0kgbGF5b3V0LiAgSSB3cm90ZSB1
-cCBhIHF1aWNrIGhvdy10byBmb3IgU0NTSQ0KPiBsYXlvdXRzIG9uIGEgVk0gaW4gcWVtdToNCj4g
-aHR0cDovL3Blb3BsZS5yZWRoYXQuY29tL2Jjb2RkaW5nL3BuZnMvbmZzL3Njc2kvMjAxNi8wNy8x
-My9wbmZzX3Njc2lfc2V0dXBfZm9yX1ZNcy8NCj4gDQo+IEJlbg0KDQo=
+Thanks for the report.
+
+On Tue, Jul 26, 2016 at 11:38:11AM +0900, Seiichi Ikarashi wrote:
+> If over-"RPCSVC_MAXPAGES" pages are sent from file system through pipe_buffer,
+> nfsd_splice_actor() corrupts struct svc_rqst and results in kernel panic. It
+> actually occurred with a parallel distributed file system. It needs boundary
+> checking.
+
+This check might be useful as defensive programming, but the bug was
+elsewhere.
+
+In theory this should be prevented by the "maxcount" calculations in
+nfsd4_encode_read().
+
+What version of the kernel did you see this happen on?  What was the
+client, and what was it doing?  Any other hints on reproducing?
+
+--b.
+
+> 
+> v2: Fix semicolon-missing bug.
+> 
+> Signed-off-by: Seiichi Ikarashi <s.ikarashi@jp.fujitsu.com>
+> 
+> ---
+>  fs/nfsd/vfs.c | 8 ++++++++
+>  1 file changed, 8 insertions(+)
+> 
+> diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
+> index 6fbd81e..43393f3 100644
+> --- a/fs/nfsd/vfs.c
+> +++ b/fs/nfsd/vfs.c
+> @@ -811,12 +811,20 @@ nfsd_splice_actor(struct pipe_inode_info *pipe, struct pipe_buffer *buf,
+>  	size = sd->len;
+>  
+>  	if (rqstp->rq_res.page_len == 0) {
+> +		if (rqstp->rq_next_page > &rqstp->rq_pages[RPCSVC_MAXPAGES-1]) {
+> +			WARN_ON(1);
+> +			return -ENOMEM;
+> +		}
+>  		get_page(page);
+>  		put_page(*rqstp->rq_next_page);
+>  		*(rqstp->rq_next_page++) = page;
+>  		rqstp->rq_res.page_base = buf->offset;
+>  		rqstp->rq_res.page_len = size;
+>  	} else if (page != pp[-1]) {
+> +		if (rqstp->rq_next_page > &rqstp->rq_pages[RPCSVC_MAXPAGES-1]) {
+> +			WARN_ON(1);
+> +			return -ENOMEM;
+> +		}
+>  		get_page(page);
+>  		if (*rqstp->rq_next_page)
+>  			put_page(*rqstp->rq_next_page);
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
