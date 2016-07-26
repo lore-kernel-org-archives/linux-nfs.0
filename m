@@ -1,12 +1,16 @@
-Return-Path: <trondmy@primarydata.com>
-From: Trond Myklebust <trondmy@primarydata.com>
-To: Coddington Benjamin <bcodding@redhat.com>
-CC: "hch@infradead.org" <hch@infradead.org>,
-        List Linux NFS Mailing
-	<linux-nfs@vger.kernel.org>
+Return-Path: <linux-nfs-owner@vger.kernel.org>
+Received: from mx1.redhat.com ([209.132.183.28]:34617 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754595AbcGZR4A convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 26 Jul 2016 13:56:00 -0400
+From: "Benjamin Coddington" <bcodding@redhat.com>
+To: "Trond Myklebust" <trondmy@primarydata.com>
+Cc: "hch@infradead.org" <hch@infradead.org>,
+        "List Linux NFS Mailing" <linux-nfs@vger.kernel.org>
 Subject: Re: [PATCH v4 24/28] Getattr doesn't require data sync semantics
-Date: Tue, 26 Jul 2016 16:35:45 +0000
-Message-ID: <3448E968-3564-43C1-ADBB-A16C9687B0F3@primarydata.com>
+Date: Tue, 26 Jul 2016 13:57:40 -0400
+Message-ID: <4CA4361B-2501-48AA-8B2C-715E5A3FD35C@redhat.com>
+In-Reply-To: <3448E968-3564-43C1-ADBB-A16C9687B0F3@primarydata.com>
 References: <1467844205-76852-23-git-send-email-trond.myklebust@primarydata.com>
  <1467844205-76852-24-git-send-email-trond.myklebust@primarydata.com>
  <1467844205-76852-25-git-send-email-trond.myklebust@primarydata.com>
@@ -30,128 +34,251 @@ References: <1467844205-76852-23-git-send-email-trond.myklebust@primarydata.com>
  <737F0071-AAD2-49B5-9BD0-02DF98049B76@primarydata.com>
  <F5EFC301-6372-4993-82BA-C96455F3957E@redhat.com>
  <10749CC8-F76E-4DBD-9C27-9802475CF8A5@redhat.com>
-In-Reply-To: <10749CC8-F76E-4DBD-9C27-9802475CF8A5@redhat.com>
+ <3448E968-3564-43C1-ADBB-A16C9687B0F3@primarydata.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=utf-8; format=flowed
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-DQo+IE9uIEp1bCAyNiwgMjAxNiwgYXQgMTI6MzIsIEJlbmphbWluIENvZGRpbmd0b24gPGJjb2Rk
-aW5nQHJlZGhhdC5jb20+IHdyb3RlOg0KPiANCj4gT24gMjUgSnVsIDIwMTYsIGF0IDE0OjQxLCBC
-ZW5qYW1pbiBDb2RkaW5ndG9uIHdyb3RlOg0KPiANCj4+IE9uIDI1IEp1bCAyMDE2LCBhdCAxNDoz
-NCwgVHJvbmQgTXlrbGVidXN0IHdyb3RlOg0KPj4gDQo+Pj4+IE9uIEp1bCAyNSwgMjAxNiwgYXQg
-MTQ6MjYsIEJlbmphbWluIENvZGRpbmd0b24gPGJjb2RkaW5nQHJlZGhhdC5jb20+IHdyb3RlOg0K
-Pj4+PiANCj4+Pj4gDQo+Pj4+IA0KPj4+PiBPbiAyNSBKdWwgMjAxNiwgYXQgMTI6MzksIFRyb25k
-IE15a2xlYnVzdCB3cm90ZToNCj4+Pj4gDQo+Pj4+Pj4gT24gSnVsIDI1LCAyMDE2LCBhdCAxMjoy
-NiwgQmVuamFtaW4gQ29kZGluZ3RvbiA8YmNvZGRpbmdAcmVkaGF0LmNvbT4gd3JvdGU6DQo+Pj4+
-Pj4gDQo+Pj4+Pj4gT24gMjEgSnVsIDIwMTYsIGF0IDk6MjAsIFRyb25kIE15a2xlYnVzdCB3cm90
-ZToNCj4+Pj4+PiANCj4+Pj4+Pj4+IE9uIEp1bCAyMSwgMjAxNiwgYXQgMDk6MDUsIEJlbmphbWlu
-IENvZGRpbmd0b24gPGJjb2RkaW5nQHJlZGhhdC5jb20+IHdyb3RlOg0KPj4+Pj4+Pj4gDQo+Pj4+
-Pj4+PiBTbyBiYWNrIHRvIENocmlzdG9waCdzIHBvaW50IGVhcmxpZXI6DQo+Pj4+Pj4+PiANCj4+
-Pj4+Pj4+IE9uIDE3IEp1bCAyMDE2LCBhdCAyMzo0OCwgQ2hyaXN0b3BoIEhlbGx3aWcgd3JvdGU6
-DQo+Pj4+Pj4+Pj4gVGhpcyBvbmUgYnJlYWtzIHhmc3Rlc3RzIGdlbmVyaWMvMjA3IG9uIGJsb2Nr
-L3Njc2kgbGF5b3V0IGZvciBtZS4gIFRoZQ0KPj4+Pj4+Pj4+IHJlYXNvbiBmb3IgdGhhdCBpcyB0
-aGF0IHdlIG5lZWQgYSBsYXlvdXRjb21taXQgYWZ0ZXIgd3JpdGluZyBvdXQgYWxsDQo+Pj4+Pj4+
-Pj4gZGF0YSBmb3IgdGhlIGZpbGUgZm9yIHRoZSBmaWxlIHNpemUgdG8gYmUgdXBkYXRlZCBvbiB0
-aGUgc2VydmVyLg0KPj4+Pj4+Pj4gDQo+Pj4+Pj4+PiBZb3UgcmVzcG9uZGVkOg0KPj4+Pj4+Pj4g
-DQo+Pj4+Pj4+PiBPbiAxOCBKdWwgMjAxNiwgYXQgMDozMiwgVHJvbmQgTXlrbGVidXN0IHdyb3Rl
-Og0KPj4+Pj4+Pj4+IEnigJltIG5vdCB1bmRlcnN0YW5kaW5nIHRoaXMgYXJndW1lbnQuIFdoeSBk
-byB3ZSBjYXJlIGlmIHRoZSBmaWxlIHNpemUgaXMgdXANCj4+Pj4+Pj4+PiB0byBkYXRlIG9uIHRo
-ZSBzZXJ2ZXIgaWYgd2XigJlyZSBub3Qgc2VuZGluZyBhbiBhY3R1YWwgR0VUQVRUUiBvbiB0aGUg
-d2lyZQ0KPj4+Pj4+Pj4+IHRvIHJldHJpZXZlIHRoZSBmaWxlIHNpemU/DQo+Pj4+Pj4+PiANCj4+
-Pj4+Pj4+IEkgZ3Vlc3MgdGhlIGFuc3dlciBtaWdodCBiZSBiZWNhdXNlIHdlIGNhbiBnZXQgaXQg
-YmFjayBmcm9tIHRoZSBsYXN0DQo+Pj4+Pj4+PiBMQVlPVVRDT01NSVQuDQo+Pj4+Pj4+PiANCj4+
-Pj4+Pj4gDQo+Pj4+Pj4+IFRoZSBwYXRjaCB0aGF0IEkgZm9sbG93ZWQgdXAgd2l0aCBzaG91bGQg
-bm93IGVuc3VyZSB0aGF0IHdlIGRvIG5vdCBtYXJrIHRoZSBhdHRyaWJ1dGUgY2FjaGUgYXMgdXAg
-dG8gZGF0ZSBpZiB0aGVyZSBpcyBhIExBWU9VVENPTU1JVCBwZW5kaW5nLg0KPj4+Pj4+PiBJT1c6
-IHdoZW4gdGhlIHBORlMgd3JpdGUgaXMgZG9uZSwgaXQgaXMgZXhwZWN0ZWQgdG8gZG8gMiB0aGlu
-Z3M6DQo+Pj4+Pj4+IA0KPj4+Pj4+PiAxKSBtYXJrIHRoZSBpbm9kZSBmb3IgTEFZT1VUQ09NTUlU
-DQo+Pj4+Pj4+IDIpIG1hcmsgdGhlIGF0dHJpYnV0ZSBjYWNoZSBhcyBpbnZhbGlkIChiZWNhdXNl
-IHdlIGtub3cgdGhlIGNoYW5nZSBhdHRyaWJ1dGUsIG10aW1lLCBjdGltZSBuZWVkIHRvIGJlIHVw
-ZGF0ZXMpDQo+Pj4+Pj4+IA0KPj4+Pj4+PiBJbiB0aGUgY2FzZSBvZiBibG9ja3MgcE5GUyB3cml0
-ZToNCj4+Pj4+Pj4gVGhlIGNhbGwgdG8gcG5mc19zZXRfbGF5b3V0Y29tbWl0KCkgaW4gcG5mc19s
-ZF93cml0ZV9kb25lKCkgc2hvdWxkIHRha2UgY2FyZSBvZiAoMSkNCj4+Pj4+Pj4gVGhlIGNhbGwg
-dG8gbmZzX3dyaXRlYmFja191cGRhdGVfaW5vZGUoKSBpbiBuZnM0X3dyaXRlX2RvbmVfY2IoKSBz
-aG91bGQgdGFrZSBjYXJlIG9mICgyKS4NCj4+Pj4+Pj4gDQo+Pj4+Pj4+IFByb3ZpZGVkIHRoYXQg
-dGhlc2UgMiBjYWxscyBhcmUgcGVyZm9ybWVkIGluIHRoZSBhYm92ZSBvcmRlciwgdGhlbiBhbnkg
-Y2FsbCB0byBuZnNfZ2V0YXR0cigpIHdoaWNoIGhhcyBub3QgYmVlbiBwcmVjZWRlZCBieSBhIGNh
-bGwgdG8gbmZzNF9wcm9jX2xheW91dGNvbW1pdCgpIHNob3VsZCB0cmlnZ2VyIHRoZSBjYWxsIHRv
-IF9fbmZzX3JldmFsaWRhdGVfaW5vZGUoKS4NCj4+Pj4+PiANCj4+Pj4+PiBJIHRoaW5rIHRoZSBw
-cm9ibGVtIGlzIHRoYXQgYSBmb2xsb3dpbmcgbmZzX2dldGF0dHIoKSB3aWxsIGZhaWwgdG8gbm90
-aWNlDQo+Pj4+Pj4gdGhlIHNpemUgY2hhbmdlIGluIHRoZSBjYXNlIG9mIGEgd3JpdGVfY29tcGxl
-dGlvbiBhbmQgbGF5b3V0Y29tbWl0IG9jY3VyaW5nDQo+Pj4+Pj4gYWZ0ZXIgbmZzX2dldGF0dHIo
-KSBoYXMgZG9uZSBwbmZzX3N5bmNfaW5vZGUoKSBidXQgYmVmb3JlIGl0IGhhcyBkb25lDQo+Pj4+
-Pj4gbmZzX3VwZGF0ZV9pbm9kZSgpLg0KPj4+Pj4+IA0KPj4+Pj4+IEluIHRoZSBmYWlsaW5nIGNh
-c2UgdGhlcmUgYXJlIHR3byB0aHJlYWRzIG9uZSBpcyBkb2luZyB3cml0ZXMsIHRoZSBvdGhlcg0K
-Pj4+Pj4+IGRvaW5nIGxzdGF0IG9uIGFpb19jb21wbGV0ZSB2aWEgaW9fZ2V0ZXZlbnRzKDIpLg0K
-Pj4+Pj4+IA0KPj4+Pj4+IEZvciBlYWNoIHdyaXRlIGNvbXBsZXRpb24gdGhlIGxzdGF0IHRocmVh
-ZCB0cmllcyB0byB2ZXJpZnkgdGhlIGZpbGUgc2l6ZS4NCj4+Pj4+PiANCj4+Pj4+PiBHRVRBVFRS
-IFRocmVhZCAgICAgICAgICAgICAgICAgIExBWU9VVENPTU1JVCBUaHJlYWQNCj4+Pj4+PiAtLS0t
-LS0tLS0tLS0tLSAgICAgICAgICAgICAgICAgIC0tLS0tLS0tLS0tLS0tLS0tLS0tDQo+Pj4+Pj4g
-ICAgICAgICAgICAgICAgICAgICAgICAgICAgICB3cml0ZV9jb21wbGV0aW9uIHNldHMgTEFZT1VU
-Q09NTUlUICg0MDk2QDApDQo+Pj4+Pj4gLS0+IG5mc19nZXRhdHRyDQo+Pj4+PiANCj4+Pj4+IGZp
-bGVtYXBfd3JpdGVfYW5kX3dhaXQoKQ0KPj4+Pj4gDQo+Pj4+Pj4gX19uZnNfcmV2YWxpZGF0ZV9p
-bm9kZQ0KPj4+Pj4+IHBuZnNfc3luY19pbm9kZQ0KPj4+Pj4gDQo+Pj4+PiBORlNfUFJPVE8oaW5v
-ZGUpLT5nZXRhdHRyKCkNCj4+Pj4+IA0KPj4+Pj4+IGdldGF0dHIgc2VlcyA0MDk2DQo+Pj4+Pj4g
-ICAgICAgICAgICAgICAgICAgICAgICAgICAgICB3cml0ZV9jb21wbGV0aW9uIHNldHMgTEFZT1VU
-Q09NTUlUICg0MDk2QDQwOTYpDQo+Pj4+Pj4gICAgICAgICAgICAgICAgICAgICAgICAgICAgICBz
-ZXRzIExBWU9VVENPTU1JVElORw0KPj4+Pj4+ICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg
-Y2xlYXJzIExBWU9VVENPTU1JVA0KPj4+Pj4+ICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg
-Y2xlYXJzIExBWU9VVENPTU1JVFRJTkcNCj4+Pj4+PiBuZnNfcmVmcmVzaF9pbm9kZQ0KPj4+Pj4+
-IG5mc191cGRhdGVfaW5vZGUgc2l6ZSBpcyA0MDk2DQo+Pj4+Pj4gPC0tIG5mc19nZXRhdHRyDQo+
-Pj4+Pj4gDQo+Pj4+Pj4gQXQgdGhpcyBwb2ludCB0aGUgY2FjaGVkIGF0dHJpYnV0ZXMgYXJlIHNl
-ZW4gYXMgdXAgdG8gZGF0ZSwgYnV0DQo+Pj4+Pj4gYWlvLWRpby1leHRlbmQtc3RhdCBwcm9ncmFt
-IGV4cGVjdHMgdGhhdCBzZWNvbmQgd3JpdGVfY29tcGxldGlvbiB0byByZWZsZWN0DQo+Pj4+Pj4g
-aW4gdGhlIGZpbGUgc2l6ZS4NCj4+Pj4+PiANCj4+Pj4+IA0KPj4+Pj4gV2h5IGlzbuKAmXQgdGhl
-IGZpbGVtYXBfd3JpdGVfYW5kX3dhaXQoKSBhYm92ZSByZXNvbHZpbmcgdGhlIHJhY2U/IEnigJlk
-DQo+Pj4+PiBleHBlY3QgdGhhdCB3b3VsZCBtb3ZlIHlvdXIg4oCcd3JpdGUgY29tcGxldGlvbiBz
-ZXRzIExBWU9VVENPTU1JVOKAnSB1cCB0bw0KPj4+Pj4gYmVmb3JlIHRoZSBwbmZzX3N5bmNfaW5v
-ZGUoKS4gIEluIGZhY3QsIGluIHRoZSBwYXRjaCB0aGF0IENocmlzdG9waCBzZW50LA0KPj4+Pj4g
-YWxsIGhlIHdhcyBkb2luZyB3YXMgbW92aW5nIHRoZSBwbmZzX3N5bmNfaW5vZGUoKSB0byBpbW1l
-ZGlhdGVseSBhZnRlcg0KPj4+Pj4gdGhhdCBmaWxlbWFwX3dyaXRlX2FuZF93YWl0KCkgaW5zdGVh
-ZCBvZiByZWx5aW5nIG9uIGl0IGluDQo+Pj4+PiBfbmZzX3JldmFsaWRhdGVfaW5vZGUuDQo+Pj4+
-IA0KPj4+PiBUaGlzIGlzIE9fRElSRUNULCBJJ3ZlIGZhaWxlZCB0byBtZW50aW9uIHlldC4gIFRo
-ZSBzZWNvbmQgd3JpdGUgaGFzbid0IG1hZGUNCj4+Pj4gaXQgb3V0IG9mIF9fbmZzX3BhZ2Vpb19h
-ZGRfcmVxdWVzdCgpIGF0IHRoZSB0aW1lIGZpbGVtYXBfd3JpdGVfYW5kX3dhaXQoKSBpcw0KPj4+
-PiBjYWxsZWQuICBJdCBpcyBzbGVlcGluZyBpbiBwbmZzX3VwZGF0ZV9sYXlvdXQoKSB3YWl0aW5n
-IG9uIGEgTEFZT1VUR0VUIGFuZCBpdA0KPj4+PiBkb2Vzbid0IHJlc3VtZXMgdW50aWwgYWZ0ZXIg
-ZmlsZW1hcF93cml0ZV9hbmRfd2FpdCgpLg0KPj4+IA0KPj4+IFdhaXQsIHNvIHlvdSBoYXZlIDEg
-dGhyZWFkIGRvaW5nIGFuIE9fRElSRUNUIHdyaXRlKCkgYW5kIGFub3RoZXIgZG9pbmcgYQ0KPj4+
-IHN0YXQoKSBpbiBwYXJhbGxlbD8gV2h5IHdvdWxkIHRoZXJlIGJlIGFuIGV4cGVjdGF0aW9uIHRo
-YXQgdGhlIGZpbGVzeXN0ZW0NCj4+PiBzaG91bGQgc2VyaWFsaXNlIHRob3NlIHN5c3RlbSBjYWxs
-cz8NCj4+IA0KPj4gTm90IGV4YWN0bHkgcGFyYWxsZWwsIGJ1dCBzeW5jaHJvbml6ZWQgb24gYWlv
-X2NvbXBsZXRlLiAgQSBjb21tZW50IGluDQo+PiBnZW5lcmljLzIwNydzIHNyYy9haW8tZGlvLXJl
-Z3Jlc3MvYWlvLWRpby1leHRlbmQtc3RhdC5jOg0KPj4gDQo+PiAzNiAvKg0KPj4gMzcgICogVGhp
-cyB3YXMgb3JpZ2luYWxseSBzdWJtaXR0ZWQgdG8NCj4+IDM4ICAqIGh0dHA6Ly9idWd6aWxsYS5r
-ZXJuZWwub3JnL3Nob3dfYnVnLmNnaT9pZD02ODMxIGJ5DQo+PiAzOSAgKiBSYWZhbCBXaWphdGEg
-PHdpamF0YUBuZWMtbGFicy5jb20+LiAgSXQgY2F1Z2h0IGEgcmFjZSBpbiBkaW8gYWlvIGNvbXBs
-ZXRpb24NCj4+IDQwICAqIHRoYXQgd291bGQgY2FsbCBhaW9fY29tcGxldGUoKSBiZWZvcmUgdGhl
-IGRpbyBjYWxsZXJzIHdvdWxkIHVwZGF0ZSBpX3NpemUuDQo+PiA0MSAgKiBBIHN0YXQgYWZ0ZXIg
-aW9fZ2V0ZXZlbnRzKCkgd291bGQgbm90IHNlZSB0aGUgbmV3IGZpbGUgc2l6ZS4NCj4+IDQyICAq
-DQo+PiA0MyAgKiBUaGUgYnVnIHdhcyBmaXhlZCBpbiB0aGUgZnMvZGlyZWN0LWlvLmMgY29tcGxl
-dGlvbiByZXdvcmtpbmcgdGhhdCBhcHBlYXJlZA0KPj4gNDQgICogaW4gMi42LjIwLiAgVGhpcyB0
-ZXN0IHNob3VsZCBmYWlsIG9uIDIuNi4xOS4NCj4+IDQ1ICAqLw0KPj4gDQo+PiBBcyBmYXIgYXMg
-SSBjYW4gc2VlLCB0aGlzIGNoZWNrIGlzIHRoZSB3aG9sZSBwb2ludCBvZiBnZW5lcmljLzIwNy4u
-DQo+IA0KPiBUaGlzIHdvdWxkIGZpeCBpdCB1cDoNCj4gDQo+IGRpZmYgLS1naXQgYS9mcy9uZnMv
-aW5vZGUuYyBiL2ZzL25mcy9pbm9kZS5jDQo+IGluZGV4IGYxMDhkNTgxMDFmOC4uODIzNzAwZjgy
-N2I2IDEwMDY0NA0KPiAtLS0gYS9mcy9uZnMvaW5vZGUuYw0KPiArKysgYi9mcy9uZnMvaW5vZGUu
-Yw0KPiBAQCAtNjYxLDYgKzY2MSw3IEBAIGludCBuZnNfZ2V0YXR0cihzdHJ1Y3QgdmZzbW91bnQg
-Km1udCwgc3RydWN0IGRlbnRyeQ0KPiAqZGVudHJ5LCBzdHJ1Y3Qga3N0YXQgKnN0YXQpDQo+IA0K
-PiAgICAgICAgdHJhY2VfbmZzX2dldGF0dHJfZW50ZXIoaW5vZGUpOw0KPiAgICAgICAgLyogRmx1
-c2ggb3V0IHdyaXRlcyB0byB0aGUgc2VydmVyIGluIG9yZGVyIHRvIHVwZGF0ZSBjL210aW1lLiAg
-Ki8NCj4gKyAgICAgICBuZnNfc3RhcnRfaW9fcmVhZChpbm9kZSk7DQo+ICAgICAgICBpZiAoU19J
-U1JFRyhpbm9kZS0+aV9tb2RlKSkgew0KPiAgICAgICAgICAgICAgICBlcnIgPSBmaWxlbWFwX3dy
-aXRlX2FuZF93YWl0KGlub2RlLT5pX21hcHBpbmcpOw0KPiAgICAgICAgICAgICAgICBpZiAoZXJy
-KQ0KPiBAQCAtNjk0LDYgKzY5NSw3IEBAIGludCBuZnNfZ2V0YXR0cihzdHJ1Y3QgdmZzbW91bnQg
-Km1udCwgc3RydWN0IGRlbnRyeQ0KPiAqZGVudHJ5LCBzdHJ1Y3Qga3N0YXQgKnN0YXQpDQo+ICAg
-ICAgICAgICAgICAgICAgICAgICAgc3RhdC0+Ymxrc2l6ZSA9IE5GU19TRVJWRVIoaW5vZGUpLT5k
-dHNpemU7DQo+ICAgICAgICB9DQo+IG91dDoNCj4gKyAgICAgICBuZnNfZW5kX2lvX3JlYWQoaW5v
-ZGUpOw0KPiAgICAgICAgdHJhY2VfbmZzX2dldGF0dHJfZXhpdChpbm9kZSwgZXJyKTsNCj4gICAg
-ICAgIHJldHVybiBlcnI7DQo+IH0NCj4gDQo+IFRyb25kLCB3aGF0IGRvIHlvdSB0aGluaz8gIEkn
-bGwgdGFrZSBhbnkgYWRkaXRpb25hbCBzaWxlbmNlIGFzIGEgc2lnbiB0byBnbw0KPiBlbHNld2hl
-cmUuICA6UA0KDQpOby4gVGhlIGFib3ZlIGxvY2tpbmcgZXhjbHVkZXMgYWxsIHdyaXRlcyBhcyB3
-ZWxsIGFzIE9fRElSRUNUIHJlYWRz4oCmIFRoYXTigJlzIHdvcnNlIHRoYW4gd2UgaGFkIGJlZm9y
-ZS4NCg0KSeKAmWQgbGlrZSByYXRoZXIgdG8gdW5kZXJzdGFuZCBfd2h5XyB0aGUgYWlvX2NvbXBs
-ZXRlKCkgaXMgZmFpbGluZyB0byB3b3JrIGNvcnJlY3RseSBoZXJlLiBBY2NvcmRpbmcgdG8gdGhl
-IGFuYWx5c2lzIG9mIHRoZSB0ZXN0IGNhc2UgdGhhdCB5b3UgcXVvdGVkIHllc3RlcmRheSwgdGhl
-IE9fRElSRUNUIHdyaXRlcyBzaG91bGQgaGF2ZSBjb21wbGV0ZWQgYmVmb3JlIHdlIGV2ZW4gY2Fs
-bCBzdGF0KCkuDQoNCkNoZWVycw0KICBUcm9uZA0KDQo=
+On 26 Jul 2016, at 12:35, Trond Myklebust wrote:
+
+>> On Jul 26, 2016, at 12:32, Benjamin Coddington <bcodding@redhat.com> 
+>> wrote:
+>>
+>> On 25 Jul 2016, at 14:41, Benjamin Coddington wrote:
+>>
+>>> On 25 Jul 2016, at 14:34, Trond Myklebust wrote:
+>>>
+>>>>> On Jul 25, 2016, at 14:26, Benjamin Coddington 
+>>>>> <bcodding@redhat.com> wrote:
+>>>>>
+>>>>>
+>>>>>
+>>>>> On 25 Jul 2016, at 12:39, Trond Myklebust wrote:
+>>>>>
+>>>>>>> On Jul 25, 2016, at 12:26, Benjamin Coddington 
+>>>>>>> <bcodding@redhat.com> wrote:
+>>>>>>>
+>>>>>>> On 21 Jul 2016, at 9:20, Trond Myklebust wrote:
+>>>>>>>
+>>>>>>>>> On Jul 21, 2016, at 09:05, Benjamin Coddington 
+>>>>>>>>> <bcodding@redhat.com> wrote:
+>>>>>>>>>
+>>>>>>>>> So back to Christoph's point earlier:
+>>>>>>>>>
+>>>>>>>>> On 17 Jul 2016, at 23:48, Christoph Hellwig wrote:
+>>>>>>>>>> This one breaks xfstests generic/207 on block/scsi layout for 
+>>>>>>>>>> me.  The
+>>>>>>>>>> reason for that is that we need a layoutcommit after writing 
+>>>>>>>>>> out all
+>>>>>>>>>> data for the file for the file size to be updated on the 
+>>>>>>>>>> server.
+>>>>>>>>>
+>>>>>>>>> You responded:
+>>>>>>>>>
+>>>>>>>>> On 18 Jul 2016, at 0:32, Trond Myklebust wrote:
+>>>>>>>>>> I’m not understanding this argument. Why do we care if the 
+>>>>>>>>>> file size is up
+>>>>>>>>>> to date on the server if we’re not sending an actual 
+>>>>>>>>>> GETATTR on the wire
+>>>>>>>>>> to retrieve the file size?
+>>>>>>>>>
+>>>>>>>>> I guess the answer might be because we can get it back from 
+>>>>>>>>> the last
+>>>>>>>>> LAYOUTCOMMIT.
+>>>>>>>>>
+>>>>>>>>
+>>>>>>>> The patch that I followed up with should now ensure that we do 
+>>>>>>>> not mark the attribute cache as up to date if there is a 
+>>>>>>>> LAYOUTCOMMIT pending.
+>>>>>>>> IOW: when the pNFS write is done, it is expected to do 2 
+>>>>>>>> things:
+>>>>>>>>
+>>>>>>>> 1) mark the inode for LAYOUTCOMMIT
+>>>>>>>> 2) mark the attribute cache as invalid (because we know the 
+>>>>>>>> change attribute, mtime, ctime need to be updates)
+>>>>>>>>
+>>>>>>>> In the case of blocks pNFS write:
+>>>>>>>> The call to pnfs_set_layoutcommit() in pnfs_ld_write_done() 
+>>>>>>>> should take care of (1)
+>>>>>>>> The call to nfs_writeback_update_inode() in 
+>>>>>>>> nfs4_write_done_cb() should take care of (2).
+>>>>>>>>
+>>>>>>>> Provided that these 2 calls are performed in the above order, 
+>>>>>>>> then any call to nfs_getattr() which has not been preceded by a 
+>>>>>>>> call to nfs4_proc_layoutcommit() should trigger the call to 
+>>>>>>>> __nfs_revalidate_inode().
+>>>>>>>
+>>>>>>> I think the problem is that a following nfs_getattr() will fail 
+>>>>>>> to notice
+>>>>>>> the size change in the case of a write_completion and 
+>>>>>>> layoutcommit occuring
+>>>>>>> after nfs_getattr() has done pnfs_sync_inode() but before it has 
+>>>>>>> done
+>>>>>>> nfs_update_inode().
+>>>>>>>
+>>>>>>> In the failing case there are two threads one is doing writes, 
+>>>>>>> the other
+>>>>>>> doing lstat on aio_complete via io_getevents(2).
+>>>>>>>
+>>>>>>> For each write completion the lstat thread tries to verify the 
+>>>>>>> file size.
+>>>>>>>
+>>>>>>> GETATTR Thread                  LAYOUTCOMMIT Thread
+>>>>>>> --------------                  --------------------
+>>>>>>>                              write_completion sets LAYOUTCOMMIT 
+>>>>>>> (4096@0)
+>>>>>>> --> nfs_getattr
+>>>>>>
+>>>>>> filemap_write_and_wait()
+>>>>>>
+>>>>>>> __nfs_revalidate_inode
+>>>>>>> pnfs_sync_inode
+>>>>>>
+>>>>>> NFS_PROTO(inode)->getattr()
+>>>>>>
+>>>>>>> getattr sees 4096
+>>>>>>>                              write_completion sets LAYOUTCOMMIT 
+>>>>>>> (4096@4096)
+>>>>>>>                              sets LAYOUTCOMMITING
+>>>>>>>                              clears LAYOUTCOMMIT
+>>>>>>>                              clears LAYOUTCOMMITTING
+>>>>>>> nfs_refresh_inode
+>>>>>>> nfs_update_inode size is 4096
+>>>>>>> <-- nfs_getattr
+>>>>>>>
+>>>>>>> At this point the cached attributes are seen as up to date, but
+>>>>>>> aio-dio-extend-stat program expects that second write_completion 
+>>>>>>> to reflect
+>>>>>>> in the file size.
+>>>>>>>
+>>>>>>
+>>>>>> Why isn’t the filemap_write_and_wait() above resolving the 
+>>>>>> race? I’d
+>>>>>> expect that would move your “write completion sets 
+>>>>>> LAYOUTCOMMIT” up to
+>>>>>> before the pnfs_sync_inode().  In fact, in the patch that 
+>>>>>> Christoph sent,
+>>>>>> all he was doing was moving the pnfs_sync_inode() to immediately 
+>>>>>> after
+>>>>>> that filemap_write_and_wait() instead of relying on it in
+>>>>>> _nfs_revalidate_inode.
+>>>>>
+>>>>> This is O_DIRECT, I've failed to mention yet.  The second write 
+>>>>> hasn't made
+>>>>> it out of __nfs_pageio_add_request() at the time 
+>>>>> filemap_write_and_wait() is
+>>>>> called.  It is sleeping in pnfs_update_layout() waiting on a 
+>>>>> LAYOUTGET and it
+>>>>> doesn't resumes until after filemap_write_and_wait().
+>>>>
+>>>> Wait, so you have 1 thread doing an O_DIRECT write() and another 
+>>>> doing a
+>>>> stat() in parallel? Why would there be an expectation that the 
+>>>> filesystem
+>>>> should serialise those system calls?
+>>>
+>>> Not exactly parallel, but synchronized on aio_complete.  A comment 
+>>> in
+>>> generic/207's src/aio-dio-regress/aio-dio-extend-stat.c:
+>>>
+>>> 36 /*
+>>> 37  * This was originally submitted to
+>>> 38  * http://bugzilla.kernel.org/show_bug.cgi?id=6831 by
+>>> 39  * Rafal Wijata <wijata@nec-labs.com>.  It caught a race in dio 
+>>> aio completion
+>>> 40  * that would call aio_complete() before the dio callers would 
+>>> update i_size.
+>>> 41  * A stat after io_getevents() would not see the new file size.
+>>> 42  *
+>>> 43  * The bug was fixed in the fs/direct-io.c completion reworking 
+>>> that appeared
+>>> 44  * in 2.6.20.  This test should fail on 2.6.19.
+>>> 45  */
+>>>
+>>> As far as I can see, this check is the whole point of generic/207..
+>>
+>> This would fix it up:
+>>
+>> diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
+>> index f108d58101f8..823700f827b6 100644
+>> --- a/fs/nfs/inode.c
+>> +++ b/fs/nfs/inode.c
+>> @@ -661,6 +661,7 @@ int nfs_getattr(struct vfsmount *mnt, struct 
+>> dentry
+>> *dentry, struct kstat *stat)
+>>
+>>        trace_nfs_getattr_enter(inode);
+>>        /* Flush out writes to the server in order to update c/mtime.  
+>> */
+>> +       nfs_start_io_read(inode);
+>>        if (S_ISREG(inode->i_mode)) {
+>>                err = filemap_write_and_wait(inode->i_mapping);
+>>                if (err)
+>> @@ -694,6 +695,7 @@ int nfs_getattr(struct vfsmount *mnt, struct 
+>> dentry
+>> *dentry, struct kstat *stat)
+>>                        stat->blksize = NFS_SERVER(inode)->dtsize;
+>>        }
+>> out:
+>> +       nfs_end_io_read(inode);
+>>        trace_nfs_getattr_exit(inode, err);
+>>        return err;
+>> }
+>>
+>> Trond, what do you think?  I'll take any additional silence as a sign 
+>> to go
+>> elsewhere.  :P
+>
+> No. The above locking excludes all writes as well as O_DIRECT reads… 
+> That’s worse than we had before.
+>
+> I’d like rather to understand _why_ the aio_complete() is failing to 
+> work correctly here. According to the analysis of the test case that 
+> you quoted yesterday, the O_DIRECT writes should have completed before 
+> we even call stat().
+>
+> Cheers
+>   Trond
+
+The O_DIRECT writes do complete, and every completion signals the other
+thread to do stat(), but that completion does not update the size on the
+server.  As we know, we need a LAYOUTCOMMIT.  After this patch, we're 
+only
+going to do a LAYOUTCOMMIT if nfs_need_revalidate_inode(inode).
+
+So what happens is that the first write completes, and the first
+nfs_getattr() triggers the first LAYOUTCOMMIT, and then a GETATTR.
+Simultaneously, the second write is waiting on a LAYOUTGET.  The GETATTR
+completes and sets the size to 4k.
+
+Now the attributes are marked up to date with a size of 4k, and when the
+second write completes, nfs_getattr() is called, 
+nfs_need_revalidate_inode()
+is false, and we don't bother to send another LAYOUTCOMMIT or GETATTR to
+correct the cached file size.
+
+Here's a function graph of that: 
+http://people.redhat.com/bcodding/borken
+
+We could invalidate the attribute cache every time a write completes.. 
+maybe
+nfs_writeback_update_inode() isn't doing the job for block layouts (are 
+we
+not setting res.count?  I'll look at that..)
+
+I think we could also use the LAYOUTCOMMIT results to invalidate the 
+cache,
+RFC-5661 18.42.3:
+    If the metadata server updates the file's size as the
+    result of the LAYOUTCOMMIT operation, it must return the new size
+    (locr_newsize.ns_size) as part of the results."
+
+I'm not sure you want to bother to try to reproduce -- but if so, you 
+don't
+need special hardware for SCSI layout.  I wrote up a quick how-to for 
+SCSI
+layouts on a VM in qemu:
+http://people.redhat.com/bcodding/pnfs/nfs/scsi/2016/07/13/pnfs_scsi_setup_for_VMs/
+
+Ben
