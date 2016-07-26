@@ -1,94 +1,85 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:41886 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750806AbcGZK4X (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 26 Jul 2016 06:56:23 -0400
-From: "Benjamin Coddington" <bcodding@redhat.com>
-To: "Anna Schumaker" <Anna.Schumaker@netapp.com>
-Cc: linux-nfs@vger.kernel.org,
-        "Trond Myklebust" <trond.myklebust@primarydata.com>
-Subject: Re: [PATCH] Trim extra slash in v4 nfs_path
-Date: Tue, 26 Jul 2016 06:58:06 -0400
-Message-ID: <D8D9A61C-B01F-4E72-BB5F-2E524608B3BB@redhat.com>
-In-Reply-To: <AE75E577-5BF1-40E5-A9FA-7C40DB029989@redhat.com>
-References: <1cb38ee043176bca8ded7e18120776f8cf6a722d.1466017326.git.bcodding@redhat.com>
- <f4f47844-5a28-acbc-0779-fcd66ea6c028@Netapp.com>
- <AE75E577-5BF1-40E5-A9FA-7C40DB029989@redhat.com>
-MIME-Version: 1.0
-Content-Type: text/plain; format=flowed
+Received: from mail-it0-f65.google.com ([209.85.214.65]:36302 "EHLO
+	mail-it0-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756109AbcGZNvp (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 26 Jul 2016 09:51:45 -0400
+Received: by mail-it0-f65.google.com with SMTP id j124so659646ith.3
+        for <linux-nfs@vger.kernel.org>; Tue, 26 Jul 2016 06:51:45 -0700 (PDT)
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH 1/2] SUNRPC: accept() may return sockets that are still in SYN_RECV
+Date: Tue, 26 Jul 2016 09:51:19 -0400
+Message-Id: <1469541080-4184-1-git-send-email-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Anna,
+We're seeing traces of the following form:
 
-On 20 Jun 2016, at 11:38, Benjamin Coddington wrote:
+ [10952.396347] svc: transport ffff88042ba4a 000 dequeued, inuse=2
+ [10952.396351] svc: tcp_accept ffff88042ba4 a000 sock ffff88042a6e4c80
+ [10952.396362] nfsd: connect from 10.2.6.1, port=187
+ [10952.396364] svc: svc_setup_socket ffff8800b99bcf00
+ [10952.396368] setting up TCP socket for reading
+ [10952.396370] svc: svc_setup_socket created ffff8803eb10a000 (inet ffff88042b75b800)
+ [10952.396373] svc: transport ffff8803eb10a000 put into queue
+ [10952.396375] svc: transport ffff88042ba4a000 put into queue
+ [10952.396377] svc: server ffff8800bb0ec000 waiting for data (to = 3600000)
+ [10952.396380] svc: transport ffff8803eb10a000 dequeued, inuse=2
+ [10952.396381] svc_recv: found XPT_CLOSE
+ [10952.396397] svc: svc_delete_xprt(ffff8803eb10a000)
+ [10952.396398] svc: svc_tcp_sock_detach(ffff8803eb10a000)
+ [10952.396399] svc: svc_sock_detach(ffff8803eb10a000)
+ [10952.396412] svc: svc_sock_free(ffff8803eb10a000)
 
-> On 20 Jun 2016, at 11:08, Anna Schumaker wrote:
->
->> Hi Ben,
->>
->> On 06/15/2016 03:02 PM, Benjamin Coddington wrote:
->>> A NFSv4 mount of a subdirectory will show an extra slash (as in
->>> 'server://path') in proc's mountinfo which will not match the device 
->>> name
->>> and path.  This can cause problems for programs searching for the 
->>> mount.
->>> Fix this by checking for a leading slash in the dentry path, if so 
->>> trim
->>> away any trailing slashes in the device name.
->>>
->>> Signed-off-by: Benjamin Coddington <bcodding@redhat.com>
->>> ---
->>>  fs/nfs/namespace.c | 2 +-
->>>  1 file changed, 1 insertion(+), 1 deletion(-)
->>>
->>> diff --git a/fs/nfs/namespace.c b/fs/nfs/namespace.c
->>> index c8162c660c44..5551e8ef67fd 100644
->>> --- a/fs/nfs/namespace.c
->>> +++ b/fs/nfs/namespace.c
->>> @@ -98,7 +98,7 @@ rename_retry:
->>>  		return end;
->>>  	}
->>>  	namelen = strlen(base);
->>> -	if (flags & NFS_PATH_CANONICAL) {
->>> +	if (*end == '/') {
->>
->> Are we getting here through nfs_show_devname()?  Because it looks 
->> like that function is passing 0 for flags instead of 
->> NFS_PATH_CANONICAL.
->
-> We can get here with or withount NFS_PATH_CANONICAL, through
-> nfs_show_devname() or nfs4_path() or nfs_do_submount().
->
->>
->> Earlier in this function we have a check for:
->>     if ((flags & NFS_PATH_CANONICAL) && *end != '/')
->>
->> Should we be checking if NFS_PATH_CANONICAL is set here, too?
->
-> I don't think we need it.
->
-> The "if (flags & NFS_PATH_CANONICAL) {" was meant to cover the case 
-> where
-> NFS_PATH_CANONICAL had earlier added a leading '/' to the path, and so 
-> would
-> trim away any trailing '/' from the base.  So, don't combine server:/ 
-> and
-> /path into server://path after adding a leading '/' to the path.
->
-> The logic here is simplified such that we should _never_ concat these 
-> two:
-> a base:/ and a /path, otherwise we'll have server://path.
->
-> Further confusing the matter is that for v3 mounts, the base is 
-> server:/path
-> and the path is '/' (which is added by NFS_PATH_CANONICAL), but for v4
-> mounts the base is server:/ and the path is /path/to/export
+i.e. an immediate close of the socket after initialisation.
 
-Did this make any sense, or should I try to make it clearer or rework 
-this?
+The culprit appears to be the test at the end of svc_tcp_init, which
+checks if the newly created socket is in the TCP_ESTABLISHED state,
+and immediately closes it if not. The evidence appears to suggest that
+the socket might still be in the SYN_RECV state at this time.
 
-This patch seems like just a minor fix, but the double slashes breaks 
-some mount parsing in tests we have.
+The fix is to check for both states, and then to add a check in
+svc_tcp_state_change() to ensure we don't close the socket when
+it transitions into TCP_ESTABLISHED.
 
-Ben
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+---
+ net/sunrpc/svcsock.c | 13 ++++++++++---
+ 1 file changed, 10 insertions(+), 3 deletions(-)
+
+diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
+index df61a4ec21a4..38b132ff6dce 100644
+--- a/net/sunrpc/svcsock.c
++++ b/net/sunrpc/svcsock.c
+@@ -767,8 +767,10 @@ static void svc_tcp_state_change(struct sock *sk)
+ 		printk("svc: socket %p: no user data\n", sk);
+ 	else {
+ 		svsk->sk_ostate(sk);
+-		set_bit(XPT_CLOSE, &svsk->sk_xprt.xpt_flags);
+-		svc_xprt_enqueue(&svsk->sk_xprt);
++		if (sk->sk_state != TCP_ESTABLISHED) {
++			set_bit(XPT_CLOSE, &svsk->sk_xprt.xpt_flags);
++			svc_xprt_enqueue(&svsk->sk_xprt);
++		}
+ 	}
+ }
+ 
+@@ -1294,8 +1296,13 @@ static void svc_tcp_init(struct svc_sock *svsk, struct svc_serv *serv)
+ 		tcp_sk(sk)->nonagle |= TCP_NAGLE_OFF;
+ 
+ 		set_bit(XPT_DATA, &svsk->sk_xprt.xpt_flags);
+-		if (sk->sk_state != TCP_ESTABLISHED)
++		switch (sk->sk_state) {
++		case TCP_SYN_RECV:
++		case TCP_ESTABLISHED:
++			break;
++		default:
+ 			set_bit(XPT_CLOSE, &svsk->sk_xprt.xpt_flags);
++		}
+ 	}
+ }
+ 
+-- 
+2.7.4
+
