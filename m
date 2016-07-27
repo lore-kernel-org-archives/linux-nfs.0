@@ -1,102 +1,45 @@
-Return-Path: <trondmy@primarydata.com>
-From: Trond Myklebust <trondmy@primarydata.com>
-To: Coddington Benjamin <bcodding@redhat.com>
-CC: "hch@infradead.org" <hch@infradead.org>,
-        List Linux NFS Mailing
-	<linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH v4 24/28] Getattr doesn't require data sync semantics
-Date: Wed, 27 Jul 2016 18:05:36 +0000
-Message-ID: <4F9280AE-46C2-4D1A-8CC9-F28DCFCE6271@primarydata.com>
-References: <1467844205-76852-23-git-send-email-trond.myklebust@primarydata.com>
- <1467844205-76852-24-git-send-email-trond.myklebust@primarydata.com>
- <1467844205-76852-25-git-send-email-trond.myklebust@primarydata.com>
- <20160718034847.GA1195@infradead.org>
- <A9C18137-87A3-4652-ADD6-E8E1C4BAE27B@primarydata.com>
- <1468817945.5273.2.camel@primarydata.com>
- <20160719035843.GA24437@infradead.org>
- <F879054A-2116-40D5-90C9-473E71977E8A@redhat.com>
- <C44AB0DD-8FA3-42F2-B7DE-C694559A68EF@primarydata.com>
- <AB904138-E761-4F8F-AF97-0E8A4E067DB1@redhat.com>
- <20160721082216.GA15247@infradead.org>
- <A540F5A1-37B3-40EB-876D-EC33E891F0C9@redhat.com>
- <B4719B7F-3FC4-4FD7-929E-CC528CA867F4@redhat.com>
- <9E2543EF-0442-491E-AB22-3E1667DABBA4@redhat.com>
- <E33497F6-079C-4903-9CC5-0ABDFA149694@primarydata.com>
- <70375D08-FCA9-4C73-9991-38490C11B171@redhat.com>
- <8B8BB73D-39A6-4291-A10E-736B0F907459@primarydata.com>
- <C7773DBC-C4D9-4DA4-9391-8B7E91D7D5AF@redhat.com>
- <B174B540-8D12-4BD1-8DD0-FE49E2AB216E@primarydata.com>
- <AAB7FE0A-8409-494D-8CCF-BE07442791F3@redhat.com>
- <737F0071-AAD2-49B5-9BD0-02DF98049B76@primarydata.com>
- <F5EFC301-6372-4993-82BA-C96455F3957E@redhat.com>
- <10749CC8-F76E-4DBD-9C27-9802475CF8A5@redhat.com>
- <3448E968-3564-43C1-ADBB-A16C9687B0F3@primarydata.com>
- <4CA4361B-2501-48AA-8B2C-715E5A3FD35C@redhat.com>
- <DA6506A7-57F0-4263-BA23-0BB638BC2E36@primarydata.com>
- <7EEB460E-F197-4B68-BBD1-7EEF16B77A71@redhat.com>
- <455341C5-F202-4FA7-8A9B-7AA73CFA21CF@primarydata.com>
- <06BBFA63-02D9-4BDE-A61D-14FE9F4E9E5F@primarydata.com>
- <CFD74F0F-5375-4C05-8918-516F730FDBA7@redhat.com>
-In-Reply-To: <CFD74F0F-5375-4C05-8918-516F730FDBA7@redhat.com>
+Return-Path: <linux-nfs-owner@vger.kernel.org>
+Received: from mx141.netapp.com ([216.240.21.12]:45036 "EHLO mx141.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753597AbcG0SlV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 27 Jul 2016 14:41:21 -0400
+From: <andros@netapp.com>
+To: <trond.myklebust@primarydata.com>
+CC: <anna.schumaker@netapp.com>, <linux-nfs@vger.kernel.org>,
+        Andy Adamson <andros@rhel7-2-ga-2.androsad.fake>
+Subject: [PATCH Version 7 0/8] pNFS file layout session trunking
+Date: Wed, 27 Jul 2016 14:39:28 -0400
+Message-ID: <1469644776-19491-1-git-send-email-andros@netapp.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-DQo+IE9uIEp1bCAyNywgMjAxNiwgYXQgMTI6MTQsIEJlbmphbWluIENvZGRpbmd0b24gPGJjb2Rk
-aW5nQHJlZGhhdC5jb20+IHdyb3RlOg0KPiANCj4gT24gMjcgSnVsIDIwMTYsIGF0IDg6MzEsIFRy
-b25kIE15a2xlYnVzdCB3cm90ZToNCj4gDQo+Pj4gT24gSnVsIDI3LCAyMDE2LCBhdCAwODoxNSwg
-VHJvbmQgTXlrbGVidXN0IDx0cm9uZG15QHByaW1hcnlkYXRhLmNvbT4gd3JvdGU6DQo+Pj4gDQo+
-Pj4gDQo+Pj4+IE9uIEp1bCAyNywgMjAxNiwgYXQgMDc6NTUsIEJlbmphbWluIENvZGRpbmd0b24g
-PGJjb2RkaW5nQHJlZGhhdC5jb20+IHdyb3RlOg0KPj4+PiANCj4+Pj4gQWZ0ZXIgYWRkaW5nIG1v
-cmUgZGVidWdnaW5nLCBJIHNlZSB0aGF0IGFsbCBvZiB0aGF0IGlzIHdvcmtpbmcgY29ycmVjdGx5
-LA0KPj4+PiBidXQgdGhlIGZpcnN0IExBWU9VVENPTU1JVCBpcyB0YWtpbmcgdGhlIHNpemUgYmFj
-ayBkb3duIHRvIDQwOTYgZnJvbSB0aGUNCj4+Pj4gbGFzdCBuZnNfd3JpdGViYWNrX2RvbmUoKSwg
-YW5kIHRoZSBzZWNvbmQgTEFZT1VUQ09NTUlUIG5ldmVyIGJyaW5ncyBpdCBiYWNrDQo+Pj4+IHVw
-IGFnYWluLg0KPj4+PiANCj4+PiANCj4+PiBFeGNlbGxlbnQhIFRoYW5rcyBmb3IgZGVidWdnaW5n
-IHRoYXQuDQo+Pj4gDQo+Pj4+IE5vdyBJIHNlZSB0aGF0IHdlIHNob3VsZCBiZSBtYXJraW5nIHRo
-ZSBibG9jayBleHRlbnRzIGFzIHdyaXR0ZW4gYXRvbWljYWxseSB3aXRoDQo+Pj4+IHNldHRpbmcg
-TEFZT1VUQ09NTUlUIGFuZCBuZnNpLT5sYXlvdXQtPnBsaF9sd2IsIG90aGVyd2lzZSBhIExBWU9V
-VENPTU1JVCBjYW4NCj4+Pj4gY29sbGVjdCBleHRlbnRzIGp1c3QgYWRkZWQgZnJvbSB0aGUgbmV4
-dCBibF93cml0ZV9jbGVhbnVwKCkuICBUaGVuLCB0aGUgbmV4dA0KPj4+PiBMQVlPVVRDT01NSVQg
-ZmFpbHMsIGFuZCBhbGwgd2UncmUgbGVmdCB3aXRoIGlzIHRoZSBzaXplIGZyb20gdGhlIGZpcnN0
-DQo+Pj4+IExBWU9VVENPTU1JVC4gIE5vdCBzdXJlIGlmIHRoYXQgcGFydGljdWxhciBwcm9ibGVt
-IGlzIHRoZSB3aG9sZSBmaXgsIGJ1dA0KPj4+PiB0aGF0J3Mgc29tZXRoaW5nIHRvIHdvcmsgb24u
-DQo+Pj4+IA0KPj4+PiBJIHNlZSB3YXlzIHRvIGZpeCB0aGF0Og0KPj4+PiANCj4+Pj4gIC0gbWFr
-ZSBhIG5ldyBwbmZzX3NldF9sYXlvdXRjb21taXRfbG9ja2VkKCkgdGhhdCBjYW4gYmUgdXNlZCB0
-byBjYWxsDQo+Pj4+ICAgIGV4dF90cmVlX21hcmtfd3JpdHRlbigpIGluc2lkZSB0aGUgaV9sb2Nr
-DQo+Pj4+IA0KPj4+PiAgLSBtYWtlIGFub3RoZXIgcG5mc19sYXlvdXRkcml2ZXJfdHlwZSBvcGVy
-YXRpb24gdG8gYmUgdXNlZCB3aXRoaW4NCj4+Pj4gICAgcG5mc19zZXRfbGF5b3V0Y29tbWl0ICht
-YXJrX2xheW91dGNvbW1pdD8gc2V0X2xheW91dGNvbW1pdD8pLCBhbmQgY2FsbA0KPj4+PiAgICBl
-eHRfdHJlZV9tYXJrX3dyaXR0ZW4oKSB3aXRoaW4gdGhhdC4uDQo+Pj4+IA0KPj4+PiAgLSBoYXZl
-IC5wcmVwYXJlX2xheW91dGNvbW1pdCByZXR1cm4gYSBuZXcgcG9zaXRpdmUgcGxoX2x3YiB0aGF0
-IHdvdWxkDQo+Pj4+ICAgIGV4dGVuZCB0aGUgY3VycmVudCBMQVlPVVRDT01NSVQNCj4+Pj4gDQo+
-Pj4+ICAtIG1ha2UgZXh0X3RyZWVfcHJlcGFyZV9jb21taXQgb25seSBlbmNvZGUgdXAgdG8gcGxo
-X2x3Yg0KPj4+IA0KPj4+IEkgc2VlIG5vIHJlYXNvbiB3aHkgZXh0X3RyZWVfcHJlcGFyZV9jb21t
-aXQoKSBzaG91bGRu4oCZdCBiZSBhbGxvd2VkIHRvIGV4dGVuZCB0aGUgYXJncy0+bGFzdGJ5dGV3
-cml0dGVuLiBUaGlzIGlzIGEgbWV0YWRhdGEgb3BlcmF0aW9uIHRoYXQgaXMgb3duZWQgYnkgdGhl
-IHBORlMgbGF5b3V0IGRyaXZlci4NCj4+PiBUaGUgb25seSB0aGluZyBJ4oCZZCBub3RlIGlzIHlv
-dSBzaG91bGQgdGhlbiByZXdyaXRlIHRoZSBmYWlsdXJlIGNhc2UgaW4gcG5mc19sYXlvdXRjb21t
-aXRfaW5vZGUoKSBzbyB0aGF0IGl0IGRvZXNu4oCZdCByZWx5IG9uIHRoZSBzYXZlZCDigJxlbmRf
-cG9z4oCdLCBidXQgdXNlcyBhcmdzLT5sYXN0Ynl0ZXdyaXR0ZW4gaW5zdGVhZCAod2l0aCBhIGNv
-bW1lbnQgdG8gdGhlIGVmZmVjdCB3aHkp4oCmDQo+PiANCj4+IEluIGZhY3QsIGdpdmVuIHRoZSBw
-b3RlbnRpYWwgZm9yIHJhY2VzIGhlcmUsIEkgdGhpbmsgdGhlIHJpZ2h0IHRoaW5nIHRvIGRvIGlz
-IHRvIGhhdmUgZXh0X3RyZWVfcHJlcGFyZV9jb21taXQoKSBhbHdheXMgc2V0IHRoZSBjb3JyZWN0
-IHZhbHVlIGZvciBhcmdzLT5sYXN0Ynl0ZXdyaXR0ZW4uDQo+IA0KPiBPSywgdGhhdCBoYXMgY2xl
-YXJlZCB1cCB0aGF0IGNvbW1vbiBmYWlsdXJlIGNhc2UgdGhhdCB3YXMgZ2V0dGluZyBpbiB0aGUN
-Cj4gd2F5LCBidXQgbm93IGl0IGNhbiBzdGlsbCBmYWlsIGxpa2UgdGhpczoNCj4gDQoNCkdvb2Qg
-cHJvZ3Jlc3MhIDotKQ0KDQo+IG5mc193cml0ZWJhY2tfdXBkYXRlX2lub2RlIHNldHMgc2l6ZSA0
-MDk2IHcvIE5GU19JTk9fSU5WQUxJRF9BVFRSIHNldCwgYW5kIHNldHMgTkZTX0lOT19MQVlPVVRD
-T01NSVQNCj4gMXN0IG5mc19nZXRhdHRyIC0+IHBuZnNfbGF5b3V0Y29tbWl0X2lub2RlIHN0YXJ0
-cywgY2xlYXJzIGxheW91dGNvbW1pdCBmbGFnIHNldHMgTkZTX0lOT19MQVlPVVRDT01NSVRJTkcN
-Cj4gbmZzX3dyaXRlYmFja191cGRhdGVfaW5vZGUgc2V0cyBzaXplIDgxOTIgdy8gTkZTX0lOT19J
-TlZBTElEX0FUVFIgc2V0LCBhbmQgc2V0cyBORlNfSU5PX0xBWU9VVENPTU1JVA0KPiAxc3QgbmZz
-X2dldGF0dHIgLT4gbmZzNF9sYXlvdXRjb21taXRfcmVsZWFzZSBzZXRzIHNpemUgNDA5NiwgTkZT
-X0lOT19JTlZBTElEX0FUVFIgc2V0LCBjbGVhcnMgTkZTX0lOT19MQVlPVVRDT01NSVRUSU5HDQo+
-IDFzdCBuZnNfZ2V0YXR0ciAtPiBfX3JldmFsaWRhdGVfaW5vZGUgc2V0cyBzaXplIDQwOTYsIE5G
-U19JTk9fSU5WQUxJRF9BVFRSIG5vdCBzZXQuLiBjYWNoZSBpcyB2YWxpZA0KPiAybmQgbmZzX2dl
-dGF0dHIgaW1tZWRpYXRlbHkgcmV0dXJucyA0MDk2IGV2ZW4gdGhvdWdoIE5GU19JTk9fTEFZT1VU
-Q09NTUlUDQoNCklzIHRoaXMgYmVpbmcgdGVzdGVkIG9uIHRvcCBvZiB0aGUgY3VycmVudCBsaW51
-eC1uZXh0L3Rlc3Rpbmc/IE5vcm1hbGx5LCBJ4oCZZCBleHBlY3QgaHR0cDovL2dpdC5saW51eC1u
-ZnMub3JnLz9wPXRyb25kbXkvbGludXgtbmZzLmdpdDthPWNvbW1pdGRpZmY7aD0xMGI3ZTlhZDQ0
-ODgxZmNkNDZhYzI0ZWI3Mzc0Mzc3YzZlODk2MmVkIHRvIGNhdXNlIDFzdCBuZnNfZ2V0YXR0cigp
-IHRvIG5vdCBkZWNsYXJlIHRoZSBjYWNoZSB2YWxpZC4NCg0KQ2hlZXJzDQogIFRyb25k
+From: Andy Adamson <andros@rhel7-2-ga-2.androsad.fake>
+
+This patch set differs from previous session trunking patch sets in that it
+only addresses pNFS filelayout data server session trunking.
+
+Andy Adamson (8):
+  NFS setup async exchange_id
+  NFS refactor nfs4_match_clientids
+  NFS refactor nfs4_check_serverowner_major_id
+  NFS detect session trunking
+  SUNRPC add flag to rpc_task_release_client
+  SUNRPC add an RPC null call to test session trunking connection
+  NFS test session trunking with exchange id
+  NFS pnfs data server multipath session trunking
+
+ fs/nfs/nfs4_fs.h            |   9 ++
+ fs/nfs/nfs4client.c         | 114 ++++++++++++++--
+ fs/nfs/nfs4proc.c           | 310 ++++++++++++++++++++++++++++++++------------
+ fs/nfs/pnfs_nfs.c           |  52 ++++++--
+ include/linux/sunrpc/clnt.h |   4 +-
+ net/sunrpc/clnt.c           |  24 +++-
+ net/sunrpc/sched.c          |   2 +-
+ net/sunrpc/xprtmultipath.c  |   2 +
+ 8 files changed, 402 insertions(+), 115 deletions(-)
+
+-- 
+1.8.3.1
+
