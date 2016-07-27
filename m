@@ -1,79 +1,33 @@
-Return-Path: <trondmy@primarydata.com>
-From: Trond Myklebust <trondmy@primarydata.com>
-To: Coddington Benjamin <bcodding@redhat.com>
-CC: "hch@infradead.org" <hch@infradead.org>,
-        List Linux NFS Mailing
-	<linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH v4 24/28] Getattr doesn't require data sync semantics
-Date: Wed, 27 Jul 2016 12:31:02 +0000
-Message-ID: <06BBFA63-02D9-4BDE-A61D-14FE9F4E9E5F@primarydata.com>
-References: <1467844205-76852-23-git-send-email-trond.myklebust@primarydata.com>
- <1467844205-76852-24-git-send-email-trond.myklebust@primarydata.com>
- <1467844205-76852-25-git-send-email-trond.myklebust@primarydata.com>
- <20160718034847.GA1195@infradead.org>
- <A9C18137-87A3-4652-ADD6-E8E1C4BAE27B@primarydata.com>
- <1468817945.5273.2.camel@primarydata.com>
- <20160719035843.GA24437@infradead.org>
- <F879054A-2116-40D5-90C9-473E71977E8A@redhat.com>
- <C44AB0DD-8FA3-42F2-B7DE-C694559A68EF@primarydata.com>
- <AB904138-E761-4F8F-AF97-0E8A4E067DB1@redhat.com>
- <20160721082216.GA15247@infradead.org>
- <A540F5A1-37B3-40EB-876D-EC33E891F0C9@redhat.com>
- <B4719B7F-3FC4-4FD7-929E-CC528CA867F4@redhat.com>
- <9E2543EF-0442-491E-AB22-3E1667DABBA4@redhat.com>
- <E33497F6-079C-4903-9CC5-0ABDFA149694@primarydata.com>
- <70375D08-FCA9-4C73-9991-38490C11B171@redhat.com>
- <8B8BB73D-39A6-4291-A10E-736B0F907459@primarydata.com>
- <C7773DBC-C4D9-4DA4-9391-8B7E91D7D5AF@redhat.com>
- <B174B540-8D12-4BD1-8DD0-FE49E2AB216E@primarydata.com>
- <AAB7FE0A-8409-494D-8CCF-BE07442791F3@redhat.com>
- <737F0071-AAD2-49B5-9BD0-02DF98049B76@primarydata.com>
- <F5EFC301-6372-4993-82BA-C96455F3957E@redhat.com>
- <10749CC8-F76E-4DBD-9C27-9802475CF8A5@redhat.com>
- <3448E968-3564-43C1-ADBB-A16C9687B0F3@primarydata.com>
- <4CA4361B-2501-48AA-8B2C-715E5A3FD35C@redhat.com>
- <DA6506A7-57F0-4263-BA23-0BB638BC2E36@primarydata.com>
- <7EEB460E-F197-4B68-BBD1-7EEF16B77A71@redhat.com>
- <455341C5-F202-4FA7-8A9B-7AA73CFA21CF@primarydata.com>
-In-Reply-To: <455341C5-F202-4FA7-8A9B-7AA73CFA21CF@primarydata.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+Return-Path: <linux-nfs-owner@vger.kernel.org>
+Received: from plane.gmane.org ([80.91.229.3]:33439 "EHLO plane.gmane.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754393AbcG0NuI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 27 Jul 2016 09:50:08 -0400
+Received: from list by plane.gmane.org with local (Exim 4.69)
+	(envelope-from <glN-linux-nfs@m.gmane.org>)
+	id 1bSPDp-0006gn-49
+	for linux-nfs@vger.kernel.org; Wed, 27 Jul 2016 15:50:05 +0200
+Received: from 51.30-broadband.acttv.in ([51.30-broadband.acttv.in])
+        by main.gmane.org with esmtp (Gmexim 0.1 (Debian))
+        id 1AlnuQ-0007hv-00
+        for <linux-nfs@vger.kernel.org>; Wed, 27 Jul 2016 15:50:05 +0200
+Received: from haritms87 by 51.30-broadband.acttv.in with local (Gmexim 0.1 (Debian))
+        id 1AlnuQ-0007hv-00
+        for <linux-nfs@vger.kernel.org>; Wed, 27 Jul 2016 15:50:05 +0200
+To: linux-nfs@vger.kernel.org
+From: Hari Krishnan <haritms87@gmail.com>
+Subject: Re: Error: state manager encountered =?utf-8?b?UlBDU0VDX0dTUw==?= session expired against NFSv4 server
+Date: Wed, 27 Jul 2016 13:45:34 +0000 (UTC)
+Message-ID: <loom.20160727T154423-566@post.gmane.org>
+References: <1331912791.2336.3.camel@localhost> <1331919386.2518.44.camel@lade.trondhjem.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-DQo+IE9uIEp1bCAyNywgMjAxNiwgYXQgMDg6MTUsIFRyb25kIE15a2xlYnVzdCA8dHJvbmRteUBw
-cmltYXJ5ZGF0YS5jb20+IHdyb3RlOg0KPiANCj4gDQo+PiBPbiBKdWwgMjcsIDIwMTYsIGF0IDA3
-OjU1LCBCZW5qYW1pbiBDb2RkaW5ndG9uIDxiY29kZGluZ0ByZWRoYXQuY29tPiB3cm90ZToNCj4+
-IA0KPj4gQWZ0ZXIgYWRkaW5nIG1vcmUgZGVidWdnaW5nLCBJIHNlZSB0aGF0IGFsbCBvZiB0aGF0
-IGlzIHdvcmtpbmcgY29ycmVjdGx5LA0KPj4gYnV0IHRoZSBmaXJzdCBMQVlPVVRDT01NSVQgaXMg
-dGFraW5nIHRoZSBzaXplIGJhY2sgZG93biB0byA0MDk2IGZyb20gdGhlDQo+PiBsYXN0IG5mc193
-cml0ZWJhY2tfZG9uZSgpLCBhbmQgdGhlIHNlY29uZCBMQVlPVVRDT01NSVQgbmV2ZXIgYnJpbmdz
-IGl0IGJhY2sNCj4+IHVwIGFnYWluLg0KPj4gDQo+IA0KPiBFeGNlbGxlbnQhIFRoYW5rcyBmb3Ig
-ZGVidWdnaW5nIHRoYXQuDQo+IA0KPj4gTm93IEkgc2VlIHRoYXQgd2Ugc2hvdWxkIGJlIG1hcmtp
-bmcgdGhlIGJsb2NrIGV4dGVudHMgYXMgd3JpdHRlbiBhdG9taWNhbGx5IHdpdGgNCj4+IHNldHRp
-bmcgTEFZT1VUQ09NTUlUIGFuZCBuZnNpLT5sYXlvdXQtPnBsaF9sd2IsIG90aGVyd2lzZSBhIExB
-WU9VVENPTU1JVCBjYW4NCj4+IGNvbGxlY3QgZXh0ZW50cyBqdXN0IGFkZGVkIGZyb20gdGhlIG5l
-eHQgYmxfd3JpdGVfY2xlYW51cCgpLiAgVGhlbiwgdGhlIG5leHQNCj4+IExBWU9VVENPTU1JVCBm
-YWlscywgYW5kIGFsbCB3ZSdyZSBsZWZ0IHdpdGggaXMgdGhlIHNpemUgZnJvbSB0aGUgZmlyc3QN
-Cj4+IExBWU9VVENPTU1JVC4gIE5vdCBzdXJlIGlmIHRoYXQgcGFydGljdWxhciBwcm9ibGVtIGlz
-IHRoZSB3aG9sZSBmaXgsIGJ1dA0KPj4gdGhhdCdzIHNvbWV0aGluZyB0byB3b3JrIG9uLg0KPj4g
-DQo+PiBJIHNlZSB3YXlzIHRvIGZpeCB0aGF0Og0KPj4gDQo+PiAgIC0gbWFrZSBhIG5ldyBwbmZz
-X3NldF9sYXlvdXRjb21taXRfbG9ja2VkKCkgdGhhdCBjYW4gYmUgdXNlZCB0byBjYWxsDQo+PiAg
-ICAgZXh0X3RyZWVfbWFya193cml0dGVuKCkgaW5zaWRlIHRoZSBpX2xvY2sNCj4+IA0KPj4gICAt
-IG1ha2UgYW5vdGhlciBwbmZzX2xheW91dGRyaXZlcl90eXBlIG9wZXJhdGlvbiB0byBiZSB1c2Vk
-IHdpdGhpbg0KPj4gICAgIHBuZnNfc2V0X2xheW91dGNvbW1pdCAobWFya19sYXlvdXRjb21taXQ/
-IHNldF9sYXlvdXRjb21taXQ/KSwgYW5kIGNhbGwNCj4+ICAgICBleHRfdHJlZV9tYXJrX3dyaXR0
-ZW4oKSB3aXRoaW4gdGhhdC4uDQo+PiANCj4+ICAgLSBoYXZlIC5wcmVwYXJlX2xheW91dGNvbW1p
-dCByZXR1cm4gYSBuZXcgcG9zaXRpdmUgcGxoX2x3YiB0aGF0IHdvdWxkDQo+PiAgICAgZXh0ZW5k
-IHRoZSBjdXJyZW50IExBWU9VVENPTU1JVA0KPj4gDQo+PiAgIC0gbWFrZSBleHRfdHJlZV9wcmVw
-YXJlX2NvbW1pdCBvbmx5IGVuY29kZSB1cCB0byBwbGhfbHdiDQo+IA0KPiBJIHNlZSBubyByZWFz
-b24gd2h5IGV4dF90cmVlX3ByZXBhcmVfY29tbWl0KCkgc2hvdWxkbuKAmXQgYmUgYWxsb3dlZCB0
-byBleHRlbmQgdGhlIGFyZ3MtPmxhc3RieXRld3JpdHRlbi4gVGhpcyBpcyBhIG1ldGFkYXRhIG9w
-ZXJhdGlvbiB0aGF0IGlzIG93bmVkIGJ5IHRoZSBwTkZTIGxheW91dCBkcml2ZXIuDQo+IFRoZSBv
-bmx5IHRoaW5nIEnigJlkIG5vdGUgaXMgeW91IHNob3VsZCB0aGVuIHJld3JpdGUgdGhlIGZhaWx1
-cmUgY2FzZSBpbiBwbmZzX2xheW91dGNvbW1pdF9pbm9kZSgpIHNvIHRoYXQgaXQgZG9lc27igJl0
-IHJlbHkgb24gdGhlIHNhdmVkIOKAnGVuZF9wb3PigJ0sIGJ1dCB1c2VzIGFyZ3MtPmxhc3RieXRl
-d3JpdHRlbiBpbnN0ZWFkICh3aXRoIGEgY29tbWVudCB0byB0aGUgZWZmZWN0IHdoeSnigKYNCg0K
-SW4gZmFjdCwgZ2l2ZW4gdGhlIHBvdGVudGlhbCBmb3IgcmFjZXMgaGVyZSwgSSB0aGluayB0aGUg
-cmlnaHQgdGhpbmcgdG8gZG8gaXMgdG8gaGF2ZSBleHRfdHJlZV9wcmVwYXJlX2NvbW1pdCgpIGFs
-d2F5cyBzZXQgdGhlIGNvcnJlY3QgdmFsdWUgZm9yIGFyZ3MtPmxhc3RieXRld3JpdHRlbi4NCg0K
-Q2hlZXJzDQogIFRyb25k
+Have u got a fix?  I'm having same issue. 
+
+Myklebust, Trond <Trond.Myklebust@...> writes:
+
+
+
