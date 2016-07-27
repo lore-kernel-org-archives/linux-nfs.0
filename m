@@ -1,16 +1,12 @@
-Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:39088 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754160AbcG0QMs (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 27 Jul 2016 12:12:48 -0400
-From: "Benjamin Coddington" <bcodding@redhat.com>
-To: "Trond Myklebust" <trondmy@primarydata.com>
-Cc: "hch@infradead.org" <hch@infradead.org>,
-        "List Linux NFS Mailing" <linux-nfs@vger.kernel.org>
+Return-Path: <trondmy@primarydata.com>
+From: Trond Myklebust <trondmy@primarydata.com>
+To: Coddington Benjamin <bcodding@redhat.com>
+CC: "hch@infradead.org" <hch@infradead.org>,
+        List Linux NFS Mailing
+	<linux-nfs@vger.kernel.org>
 Subject: Re: [PATCH v4 24/28] Getattr doesn't require data sync semantics
-Date: Wed, 27 Jul 2016 12:14:32 -0400
-Message-ID: <CFD74F0F-5375-4C05-8918-516F730FDBA7@redhat.com>
-In-Reply-To: <06BBFA63-02D9-4BDE-A61D-14FE9F4E9E5F@primarydata.com>
+Date: Wed, 27 Jul 2016 18:05:36 +0000
+Message-ID: <4F9280AE-46C2-4D1A-8CC9-F28DCFCE6271@primarydata.com>
 References: <1467844205-76852-23-git-send-email-trond.myklebust@primarydata.com>
  <1467844205-76852-24-git-send-email-trond.myklebust@primarydata.com>
  <1467844205-76852-25-git-send-email-trond.myklebust@primarydata.com>
@@ -40,86 +36,67 @@ References: <1467844205-76852-23-git-send-email-trond.myklebust@primarydata.com>
  <7EEB460E-F197-4B68-BBD1-7EEF16B77A71@redhat.com>
  <455341C5-F202-4FA7-8A9B-7AA73CFA21CF@primarydata.com>
  <06BBFA63-02D9-4BDE-A61D-14FE9F4E9E5F@primarydata.com>
+ <CFD74F0F-5375-4C05-8918-516F730FDBA7@redhat.com>
+In-Reply-To: <CFD74F0F-5375-4C05-8918-516F730FDBA7@redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8; format=flowed
-Sender: linux-nfs-owner@vger.kernel.org
+Content-Type: text/plain; charset=UTF-8
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 27 Jul 2016, at 8:31, Trond Myklebust wrote:
-
->> On Jul 27, 2016, at 08:15, Trond Myklebust <trondmy@primarydata.com> 
->> wrote:
->>
->>
->>> On Jul 27, 2016, at 07:55, Benjamin Coddington <bcodding@redhat.com> 
->>> wrote:
->>>
->>> After adding more debugging, I see that all of that is working 
->>> correctly,
->>> but the first LAYOUTCOMMIT is taking the size back down to 4096 from 
->>> the
->>> last nfs_writeback_done(), and the second LAYOUTCOMMIT never brings 
->>> it back
->>> up again.
->>>
->>
->> Excellent! Thanks for debugging that.
->>
->>> Now I see that we should be marking the block extents as written 
->>> atomically with
->>> setting LAYOUTCOMMIT and nfsi->layout->plh_lwb, otherwise a 
->>> LAYOUTCOMMIT can
->>> collect extents just added from the next bl_write_cleanup().  Then, 
->>> the next
->>> LAYOUTCOMMIT fails, and all we're left with is the size from the 
->>> first
->>> LAYOUTCOMMIT.  Not sure if that particular problem is the whole fix, 
->>> but
->>> that's something to work on.
->>>
->>> I see ways to fix that:
->>>
->>>   - make a new pnfs_set_layoutcommit_locked() that can be used to 
->>> call
->>>     ext_tree_mark_written() inside the i_lock
->>>
->>>   - make another pnfs_layoutdriver_type operation to be used within
->>>     pnfs_set_layoutcommit (mark_layoutcommit? set_layoutcommit?), 
->>> and call
->>>     ext_tree_mark_written() within that..
->>>
->>>   - have .prepare_layoutcommit return a new positive plh_lwb that 
->>> would
->>>     extend the current LAYOUTCOMMIT
->>>
->>>   - make ext_tree_prepare_commit only encode up to plh_lwb
->>
->> I see no reason why ext_tree_prepare_commit() shouldn’t be allowed 
->> to extend the args->lastbytewritten. This is a metadata operation 
->> that is owned by the pNFS layout driver.
->> The only thing I’d note is you should then rewrite the failure case 
->> in pnfs_layoutcommit_inode() so that it doesn’t rely on the saved 
->> “end_pos”, but uses args->lastbytewritten instead (with a comment 
->> to the effect why)…
->
-> In fact, given the potential for races here, I think the right thing 
-> to do is to have ext_tree_prepare_commit() always set the correct 
-> value for args->lastbytewritten.
-
-OK, that has cleared up that common failure case that was getting in the
-way, but now it can still fail like this:
-
-nfs_writeback_update_inode sets size 4096 w/ NFS_INO_INVALID_ATTR set, 
-and sets NFS_INO_LAYOUTCOMMIT
-1st nfs_getattr -> pnfs_layoutcommit_inode starts, clears layoutcommit 
-flag sets NFS_INO_LAYOUTCOMMITING
-nfs_writeback_update_inode sets size 8192 w/ NFS_INO_INVALID_ATTR set, 
-and sets NFS_INO_LAYOUTCOMMIT
-1st nfs_getattr -> nfs4_layoutcommit_release sets size 4096, 
-NFS_INO_INVALID_ATTR set, clears NFS_INO_LAYOUTCOMMITTING
-1st nfs_getattr -> __revalidate_inode sets size 4096, 
-NFS_INO_INVALID_ATTR not set.. cache is valid
-2nd nfs_getattr immediately returns 4096 even though 
-NFS_INO_LAYOUTCOMMIT
-
-Ben
+DQo+IE9uIEp1bCAyNywgMjAxNiwgYXQgMTI6MTQsIEJlbmphbWluIENvZGRpbmd0b24gPGJjb2Rk
+aW5nQHJlZGhhdC5jb20+IHdyb3RlOg0KPiANCj4gT24gMjcgSnVsIDIwMTYsIGF0IDg6MzEsIFRy
+b25kIE15a2xlYnVzdCB3cm90ZToNCj4gDQo+Pj4gT24gSnVsIDI3LCAyMDE2LCBhdCAwODoxNSwg
+VHJvbmQgTXlrbGVidXN0IDx0cm9uZG15QHByaW1hcnlkYXRhLmNvbT4gd3JvdGU6DQo+Pj4gDQo+
+Pj4gDQo+Pj4+IE9uIEp1bCAyNywgMjAxNiwgYXQgMDc6NTUsIEJlbmphbWluIENvZGRpbmd0b24g
+PGJjb2RkaW5nQHJlZGhhdC5jb20+IHdyb3RlOg0KPj4+PiANCj4+Pj4gQWZ0ZXIgYWRkaW5nIG1v
+cmUgZGVidWdnaW5nLCBJIHNlZSB0aGF0IGFsbCBvZiB0aGF0IGlzIHdvcmtpbmcgY29ycmVjdGx5
+LA0KPj4+PiBidXQgdGhlIGZpcnN0IExBWU9VVENPTU1JVCBpcyB0YWtpbmcgdGhlIHNpemUgYmFj
+ayBkb3duIHRvIDQwOTYgZnJvbSB0aGUNCj4+Pj4gbGFzdCBuZnNfd3JpdGViYWNrX2RvbmUoKSwg
+YW5kIHRoZSBzZWNvbmQgTEFZT1VUQ09NTUlUIG5ldmVyIGJyaW5ncyBpdCBiYWNrDQo+Pj4+IHVw
+IGFnYWluLg0KPj4+PiANCj4+PiANCj4+PiBFeGNlbGxlbnQhIFRoYW5rcyBmb3IgZGVidWdnaW5n
+IHRoYXQuDQo+Pj4gDQo+Pj4+IE5vdyBJIHNlZSB0aGF0IHdlIHNob3VsZCBiZSBtYXJraW5nIHRo
+ZSBibG9jayBleHRlbnRzIGFzIHdyaXR0ZW4gYXRvbWljYWxseSB3aXRoDQo+Pj4+IHNldHRpbmcg
+TEFZT1VUQ09NTUlUIGFuZCBuZnNpLT5sYXlvdXQtPnBsaF9sd2IsIG90aGVyd2lzZSBhIExBWU9V
+VENPTU1JVCBjYW4NCj4+Pj4gY29sbGVjdCBleHRlbnRzIGp1c3QgYWRkZWQgZnJvbSB0aGUgbmV4
+dCBibF93cml0ZV9jbGVhbnVwKCkuICBUaGVuLCB0aGUgbmV4dA0KPj4+PiBMQVlPVVRDT01NSVQg
+ZmFpbHMsIGFuZCBhbGwgd2UncmUgbGVmdCB3aXRoIGlzIHRoZSBzaXplIGZyb20gdGhlIGZpcnN0
+DQo+Pj4+IExBWU9VVENPTU1JVC4gIE5vdCBzdXJlIGlmIHRoYXQgcGFydGljdWxhciBwcm9ibGVt
+IGlzIHRoZSB3aG9sZSBmaXgsIGJ1dA0KPj4+PiB0aGF0J3Mgc29tZXRoaW5nIHRvIHdvcmsgb24u
+DQo+Pj4+IA0KPj4+PiBJIHNlZSB3YXlzIHRvIGZpeCB0aGF0Og0KPj4+PiANCj4+Pj4gIC0gbWFr
+ZSBhIG5ldyBwbmZzX3NldF9sYXlvdXRjb21taXRfbG9ja2VkKCkgdGhhdCBjYW4gYmUgdXNlZCB0
+byBjYWxsDQo+Pj4+ICAgIGV4dF90cmVlX21hcmtfd3JpdHRlbigpIGluc2lkZSB0aGUgaV9sb2Nr
+DQo+Pj4+IA0KPj4+PiAgLSBtYWtlIGFub3RoZXIgcG5mc19sYXlvdXRkcml2ZXJfdHlwZSBvcGVy
+YXRpb24gdG8gYmUgdXNlZCB3aXRoaW4NCj4+Pj4gICAgcG5mc19zZXRfbGF5b3V0Y29tbWl0ICht
+YXJrX2xheW91dGNvbW1pdD8gc2V0X2xheW91dGNvbW1pdD8pLCBhbmQgY2FsbA0KPj4+PiAgICBl
+eHRfdHJlZV9tYXJrX3dyaXR0ZW4oKSB3aXRoaW4gdGhhdC4uDQo+Pj4+IA0KPj4+PiAgLSBoYXZl
+IC5wcmVwYXJlX2xheW91dGNvbW1pdCByZXR1cm4gYSBuZXcgcG9zaXRpdmUgcGxoX2x3YiB0aGF0
+IHdvdWxkDQo+Pj4+ICAgIGV4dGVuZCB0aGUgY3VycmVudCBMQVlPVVRDT01NSVQNCj4+Pj4gDQo+
+Pj4+ICAtIG1ha2UgZXh0X3RyZWVfcHJlcGFyZV9jb21taXQgb25seSBlbmNvZGUgdXAgdG8gcGxo
+X2x3Yg0KPj4+IA0KPj4+IEkgc2VlIG5vIHJlYXNvbiB3aHkgZXh0X3RyZWVfcHJlcGFyZV9jb21t
+aXQoKSBzaG91bGRu4oCZdCBiZSBhbGxvd2VkIHRvIGV4dGVuZCB0aGUgYXJncy0+bGFzdGJ5dGV3
+cml0dGVuLiBUaGlzIGlzIGEgbWV0YWRhdGEgb3BlcmF0aW9uIHRoYXQgaXMgb3duZWQgYnkgdGhl
+IHBORlMgbGF5b3V0IGRyaXZlci4NCj4+PiBUaGUgb25seSB0aGluZyBJ4oCZZCBub3RlIGlzIHlv
+dSBzaG91bGQgdGhlbiByZXdyaXRlIHRoZSBmYWlsdXJlIGNhc2UgaW4gcG5mc19sYXlvdXRjb21t
+aXRfaW5vZGUoKSBzbyB0aGF0IGl0IGRvZXNu4oCZdCByZWx5IG9uIHRoZSBzYXZlZCDigJxlbmRf
+cG9z4oCdLCBidXQgdXNlcyBhcmdzLT5sYXN0Ynl0ZXdyaXR0ZW4gaW5zdGVhZCAod2l0aCBhIGNv
+bW1lbnQgdG8gdGhlIGVmZmVjdCB3aHkp4oCmDQo+PiANCj4+IEluIGZhY3QsIGdpdmVuIHRoZSBw
+b3RlbnRpYWwgZm9yIHJhY2VzIGhlcmUsIEkgdGhpbmsgdGhlIHJpZ2h0IHRoaW5nIHRvIGRvIGlz
+IHRvIGhhdmUgZXh0X3RyZWVfcHJlcGFyZV9jb21taXQoKSBhbHdheXMgc2V0IHRoZSBjb3JyZWN0
+IHZhbHVlIGZvciBhcmdzLT5sYXN0Ynl0ZXdyaXR0ZW4uDQo+IA0KPiBPSywgdGhhdCBoYXMgY2xl
+YXJlZCB1cCB0aGF0IGNvbW1vbiBmYWlsdXJlIGNhc2UgdGhhdCB3YXMgZ2V0dGluZyBpbiB0aGUN
+Cj4gd2F5LCBidXQgbm93IGl0IGNhbiBzdGlsbCBmYWlsIGxpa2UgdGhpczoNCj4gDQoNCkdvb2Qg
+cHJvZ3Jlc3MhIDotKQ0KDQo+IG5mc193cml0ZWJhY2tfdXBkYXRlX2lub2RlIHNldHMgc2l6ZSA0
+MDk2IHcvIE5GU19JTk9fSU5WQUxJRF9BVFRSIHNldCwgYW5kIHNldHMgTkZTX0lOT19MQVlPVVRD
+T01NSVQNCj4gMXN0IG5mc19nZXRhdHRyIC0+IHBuZnNfbGF5b3V0Y29tbWl0X2lub2RlIHN0YXJ0
+cywgY2xlYXJzIGxheW91dGNvbW1pdCBmbGFnIHNldHMgTkZTX0lOT19MQVlPVVRDT01NSVRJTkcN
+Cj4gbmZzX3dyaXRlYmFja191cGRhdGVfaW5vZGUgc2V0cyBzaXplIDgxOTIgdy8gTkZTX0lOT19J
+TlZBTElEX0FUVFIgc2V0LCBhbmQgc2V0cyBORlNfSU5PX0xBWU9VVENPTU1JVA0KPiAxc3QgbmZz
+X2dldGF0dHIgLT4gbmZzNF9sYXlvdXRjb21taXRfcmVsZWFzZSBzZXRzIHNpemUgNDA5NiwgTkZT
+X0lOT19JTlZBTElEX0FUVFIgc2V0LCBjbGVhcnMgTkZTX0lOT19MQVlPVVRDT01NSVRUSU5HDQo+
+IDFzdCBuZnNfZ2V0YXR0ciAtPiBfX3JldmFsaWRhdGVfaW5vZGUgc2V0cyBzaXplIDQwOTYsIE5G
+U19JTk9fSU5WQUxJRF9BVFRSIG5vdCBzZXQuLiBjYWNoZSBpcyB2YWxpZA0KPiAybmQgbmZzX2dl
+dGF0dHIgaW1tZWRpYXRlbHkgcmV0dXJucyA0MDk2IGV2ZW4gdGhvdWdoIE5GU19JTk9fTEFZT1VU
+Q09NTUlUDQoNCklzIHRoaXMgYmVpbmcgdGVzdGVkIG9uIHRvcCBvZiB0aGUgY3VycmVudCBsaW51
+eC1uZXh0L3Rlc3Rpbmc/IE5vcm1hbGx5LCBJ4oCZZCBleHBlY3QgaHR0cDovL2dpdC5saW51eC1u
+ZnMub3JnLz9wPXRyb25kbXkvbGludXgtbmZzLmdpdDthPWNvbW1pdGRpZmY7aD0xMGI3ZTlhZDQ0
+ODgxZmNkNDZhYzI0ZWI3Mzc0Mzc3YzZlODk2MmVkIHRvIGNhdXNlIDFzdCBuZnNfZ2V0YXR0cigp
+IHRvIG5vdCBkZWNsYXJlIHRoZSBjYWNoZSB2YWxpZC4NCg0KQ2hlZXJzDQogIFRyb25k
