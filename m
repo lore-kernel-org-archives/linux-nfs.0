@@ -1,15 +1,15 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx141.netapp.com ([216.240.21.12]:19787 "EHLO mx141.netapp.com"
+Received: from mx142.netapp.com ([216.240.21.19]:55629 "EHLO mx142.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757960AbcG0SpH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 27 Jul 2016 14:45:07 -0400
+	id S1757439AbcG0SpJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 27 Jul 2016 14:45:09 -0400
 From: <andros@netapp.com>
 To: <trond.myklebust@primarydata.com>
 CC: <anna.schumaker@netapp.com>, <linux-nfs@vger.kernel.org>,
         Andy Adamson <andros@netapp.com>
-Subject: [PATCH Version 7 5/8] SUNRPC add remove xprt flag to rpc_task_release_client
-Date: Wed, 27 Jul 2016 14:43:17 -0400
-Message-ID: <1469645000-19791-6-git-send-email-andros@netapp.com>
+Subject: [PATCH Version 7 7/8] NFS test session trunking with exchange id
+Date: Wed, 27 Jul 2016 14:43:19 -0400
+Message-ID: <1469645000-19791-8-git-send-email-andros@netapp.com>
 In-Reply-To: <1469645000-19791-1-git-send-email-andros@netapp.com>
 References: <1469645000-19791-1-git-send-email-andros@netapp.com>
 MIME-Version: 1.0
@@ -19,77 +19,231 @@ List-ID: <linux-nfs.vger.kernel.org>
 
 From: Andy Adamson <andros@netapp.com>
 
-Want to specify which rpc_xprt to use in rpc_run_task.
-
-Don't pass in an rpc_xprt in rpc_init_task just to have it not used as it
-is removed in rpc_task_release_client.
-
 Signed-off-by: Andy Adamson <andros@netapp.com>
 ---
- include/linux/sunrpc/clnt.h | 2 +-
- net/sunrpc/clnt.c           | 7 +++----
- net/sunrpc/sched.c          | 2 +-
- 3 files changed, 5 insertions(+), 6 deletions(-)
+ fs/nfs/nfs4_fs.h           |  5 +++
+ fs/nfs/nfs4proc.c          | 97 +++++++++++++++++++++++++++++++++++++++++++---
+ net/sunrpc/xprtmultipath.c |  2 +
+ 3 files changed, 98 insertions(+), 6 deletions(-)
 
-diff --git a/include/linux/sunrpc/clnt.h b/include/linux/sunrpc/clnt.h
-index b6810c9..99410bb 100644
---- a/include/linux/sunrpc/clnt.h
-+++ b/include/linux/sunrpc/clnt.h
-@@ -148,7 +148,7 @@ int		rpc_switch_client_transport(struct rpc_clnt *,
+diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
+index eb315e1..b2a94ca 100644
+--- a/fs/nfs/nfs4_fs.h
++++ b/fs/nfs/nfs4_fs.h
+@@ -203,6 +203,11 @@ struct nfs4_state_recovery_ops {
+ 		struct rpc_cred *);
+ };
  
- void		rpc_shutdown_client(struct rpc_clnt *);
- void		rpc_release_client(struct rpc_clnt *);
--void		rpc_task_release_client(struct rpc_task *);
-+void		rpc_task_release_client(struct rpc_task *, int);
++struct nfs4_add_xprt_data {
++	struct nfs_client	*clp;
++	struct rpc_cred		*cred;
++};
++
+ struct nfs4_state_maintenance_ops {
+ 	int (*sched_state_renewal)(struct nfs_client *, struct rpc_cred *, unsigned);
+ 	struct rpc_cred * (*get_state_renewal_cred_locked)(struct nfs_client *);
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index e29f5ce..fa9ae75 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -44,6 +44,7 @@
+ #include <linux/printk.h>
+ #include <linux/slab.h>
+ #include <linux/sunrpc/clnt.h>
++#include <linux/sunrpc/addr.h>
+ #include <linux/nfs.h>
+ #include <linux/nfs4.h>
+ #include <linux/nfs_fs.h>
+@@ -7050,10 +7051,16 @@ static int nfs4_sp4_select_mode(struct nfs_client *clp,
  
- int		rpcb_create_local(struct net *);
- void		rpcb_put_local(struct net *);
-diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
-index cb49898..459f9b1 100644
---- a/net/sunrpc/clnt.c
-+++ b/net/sunrpc/clnt.c
-@@ -961,7 +961,7 @@ out:
+ 	return 0;
  }
- EXPORT_SYMBOL_GPL(rpc_bind_new_program);
++struct nfs41_test_xprt_data {
++	struct rpc_xprt *xprt;
++	struct rpc_xprt_switch *xps;
++};
  
--void rpc_task_release_client(struct rpc_task *task)
-+void rpc_task_release_client(struct rpc_task *task, int rm_xprt)
- {
- 	struct rpc_clnt *clnt = task->tk_client;
- 	struct rpc_xprt *xprt = task->tk_xprt;
-@@ -976,9 +976,8 @@ void rpc_task_release_client(struct rpc_task *task)
- 		rpc_release_client(clnt);
+ struct nfs41_exchange_id_data {
+ 	struct nfs41_exchange_id_res res;
+ 	struct nfs41_exchange_id_args args;
++	struct nfs41_test_xprt_data xdata;
++	int session_trunk;
+ 	int rpc_status;
+ };
+ 
+@@ -7068,6 +7075,10 @@ static void nfs4_exchange_id_done(struct rpc_task *task, void *data)
+ 
+ 	if (status == 0)
+ 		status = nfs4_check_cl_exchange_flags(cdata->res.flags);
++
++	if (cdata->session_trunk)
++		goto session_trunk;
++
+ 	if (status  == 0)
+ 		status = nfs4_sp4_select_mode(clp, &cdata->res.state_protect);
+ 
+@@ -7105,7 +7116,15 @@ static void nfs4_exchange_id_done(struct rpc_task *task, void *data)
+ 			cdata->res.server_scope = NULL;
+ 		}
  	}
++out:
+ 	cdata->rpc_status = status;
++	return;
++
++session_trunk:
++	if (status == 0)
++		status = nfs4_detect_session_trunking(clp, &cdata->res,
++						      cdata->xdata.xprt);
++	goto out;
+ }
  
--	if (xprt != NULL) {
-+	if (rm_xprt && xprt) {
- 		task->tk_xprt = NULL;
+ static void nfs4_exchange_id_release(void *data)
+@@ -7114,6 +7133,10 @@ static void nfs4_exchange_id_release(void *data)
+ 					(struct nfs41_exchange_id_data *)data;
+ 
+ 	nfs_put_client(cdata->args.client);
++	if (cdata->session_trunk) {
++		xprt_put(cdata->xdata.xprt);
++		xprt_switch_put(cdata->xdata.xps);
++	}
+ 	kfree(cdata->res.impl_id);
+ 	kfree(cdata->res.server_scope);
+ 	kfree(cdata->res.server_owner);
+@@ -7131,7 +7154,7 @@ static const struct rpc_call_ops nfs4_exchange_id_call_ops = {
+  * Wrapper for EXCHANGE_ID operation.
+  */
+ static int _nfs4_proc_exchange_id(struct nfs_client *clp, struct rpc_cred *cred,
+-	u32 sp4_how)
++			u32 sp4_how, struct nfs41_test_xprt_data *xdata)
+ {
+ 	nfs4_verifier verifier;
+ 	struct rpc_message msg = {
+@@ -7151,6 +7174,11 @@ static int _nfs4_proc_exchange_id(struct nfs_client *clp, struct rpc_cred *cred,
+ 	if (!atomic_inc_not_zero(&clp->cl_count))
+ 		goto out;
+ 
++	/* Don't test session trunking against the established mount rpc_xprt */
++	if (xdata &&
++	    xdata->xprt == rcu_access_pointer(clp->cl_rpcclient->cl_xprt))
++		return 1;
++
+ 	status = -ENOMEM;
+ 	calldata = kzalloc(sizeof(*calldata), GFP_NOFS);
+ 	if (!calldata)
+@@ -7196,7 +7224,14 @@ static int _nfs4_proc_exchange_id(struct nfs_client *clp, struct rpc_cred *cred,
+ 		status = -EINVAL;
+ 		goto out_impl_id;
+ 	}
 -
- 		xprt_put(xprt);
++	if (xdata) {
++		calldata->session_trunk = 1;
++		calldata->xdata.xprt = xdata->xprt;
++		calldata->xdata.xps = xdata->xps;
++		task_setup_data.rpc_xprt = xdata->xprt;
++		task_setup_data.flags =
++				RPC_TASK_SOFT|RPC_TASK_SOFTCONN|RPC_TASK_ASYNC;
++	}
+ 	calldata->args.verifier = &verifier;
+ 	calldata->args.client = clp;
+ #ifdef CONFIG_NFS_V4_1_MIGRATION
+@@ -7217,9 +7252,13 @@ static int _nfs4_proc_exchange_id(struct nfs_client *clp, struct rpc_cred *cred,
+ 		goto out_impl_id;
  	}
- }
-@@ -988,7 +987,7 @@ void rpc_task_set_client(struct rpc_task *task, struct rpc_clnt *clnt)
- {
  
- 	if (clnt != NULL) {
--		rpc_task_release_client(task);
-+		rpc_task_release_client(task, 0);
- 		if (task->tk_xprt == NULL)
- 			task->tk_xprt = xprt_iter_get_next(&clnt->cl_xpi);
- 		task->tk_client = clnt;
-diff --git a/net/sunrpc/sched.c b/net/sunrpc/sched.c
-index 9ae5885..575b254 100644
---- a/net/sunrpc/sched.c
-+++ b/net/sunrpc/sched.c
-@@ -1017,7 +1017,7 @@ static void rpc_release_resources_task(struct rpc_task *task)
- 		put_rpccred(task->tk_msg.rpc_cred);
- 		task->tk_msg.rpc_cred = NULL;
+-	status = rpc_wait_for_completion_task(task);
+-	if (!status)
++	if (!xdata) {
++		status = rpc_wait_for_completion_task(task);
++		if (!status)
++			status = calldata->rpc_status;
++	} else	/* session trunking test */
+ 		status = calldata->rpc_status;
++
+ 	rpc_put_task(task);
+ out:
+ 	if (clp->cl_implid != NULL)
+@@ -7262,13 +7301,59 @@ int nfs4_proc_exchange_id(struct nfs_client *clp, struct rpc_cred *cred)
+ 	/* try SP4_MACH_CRED if krb5i/p	*/
+ 	if (authflavor == RPC_AUTH_GSS_KRB5I ||
+ 	    authflavor == RPC_AUTH_GSS_KRB5P) {
+-		status = _nfs4_proc_exchange_id(clp, cred, SP4_MACH_CRED);
++		status = _nfs4_proc_exchange_id(clp, cred, SP4_MACH_CRED, NULL);
+ 		if (!status)
+ 			return 0;
  	}
--	rpc_task_release_client(task);
-+	rpc_task_release_client(task, 1);
+ 
+ 	/* try SP4_NONE */
+-	return _nfs4_proc_exchange_id(clp, cred, SP4_NONE);
++	return _nfs4_proc_exchange_id(clp, cred, SP4_NONE, NULL);
++}
++
++/**
++ * nfs4_test_session_trunk
++ * Test the connection with an rpc null ping.
++ * Test for session trunking with an asynchronous exchange_id call.
++ * Upon success, add a new transport
++ * to the rpc_clnt
++ *
++ * @clnt: struct rpc_clnt to get new transport
++ * @xps:  the rpc_xprt_switch to hold the new transport
++ * @xprt: the rpc_xprt to test
++ * @data: call data for _nfs4_proc_exchange_id.
++ */
++int nfs4_test_session_trunk(struct rpc_clnt *clnt, struct rpc_xprt_switch *xps,
++			    struct rpc_xprt *xprt, void *data)
++{
++	struct nfs4_add_xprt_data *adata = (struct nfs4_add_xprt_data *)data;
++	struct nfs41_test_xprt_data xdata = {
++		.xprt = xprt,
++		.xps = xps,
++	};
++	u32 sp4_how;
++	int status;
++
++	dprintk("--> %s try %s\n", __func__,
++		xprt->address_strings[RPC_DISPLAY_ADDR]);
++
++	xprt = xprt_get(xprt);
++	/* Test the connection */
++	status = rpc_clnt_test_xprt(clnt, xprt);
++	if (status < 0) {
++		dprintk(" %s rpc_clnt_test_xprt failed for %s\n", __func__,
++			xprt->address_strings[RPC_DISPLAY_ADDR]);
++		xprt_put(xprt);
++		goto out;
++	}
++	xps = xprt_switch_get(xps);
++
++	sp4_how = (adata->clp->cl_sp4_flags == 0 ? SP4_NONE : SP4_MACH_CRED);
++
++	/* Test connection for session trunking. Async exchange_id call */
++	status = _nfs4_proc_exchange_id(adata->clp, adata->cred, sp4_how,
++					&xdata);
++out:
++	return status;
  }
  
- static void rpc_final_put_task(struct rpc_task *task,
+ static int _nfs4_proc_destroy_clientid(struct nfs_client *clp,
+diff --git a/net/sunrpc/xprtmultipath.c b/net/sunrpc/xprtmultipath.c
+index 66c9d63..505d3b9 100644
+--- a/net/sunrpc/xprtmultipath.c
++++ b/net/sunrpc/xprtmultipath.c
+@@ -145,6 +145,7 @@ struct rpc_xprt_switch *xprt_switch_get(struct rpc_xprt_switch *xps)
+ 		return xps;
+ 	return NULL;
+ }
++EXPORT_SYMBOL_GPL(xprt_switch_get);
+ 
+ /**
+  * xprt_switch_put - Release a reference to a rpc_xprt_switch
+@@ -157,6 +158,7 @@ void xprt_switch_put(struct rpc_xprt_switch *xps)
+ 	if (xps != NULL)
+ 		kref_put(&xps->xps_kref, xprt_switch_free);
+ }
++EXPORT_SYMBOL_GPL(xprt_switch_put);
+ 
+ /**
+  * rpc_xprt_switch_set_roundrobin - Set a round-robin policy on rpc_xprt_switch
 -- 
 1.8.3.1
 
