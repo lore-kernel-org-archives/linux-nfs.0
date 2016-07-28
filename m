@@ -1,16 +1,12 @@
-Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:41098 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754819AbcG1Jpf convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 28 Jul 2016 05:45:35 -0400
-From: "Benjamin Coddington" <bcodding@redhat.com>
-To: "Trond Myklebust" <trondmy@primarydata.com>
-Cc: "hch@infradead.org" <hch@infradead.org>,
-        "List Linux NFS Mailing" <linux-nfs@vger.kernel.org>
+Return-Path: <trondmy@primarydata.com>
+From: Trond Myklebust <trondmy@primarydata.com>
+To: Coddington Benjamin <bcodding@redhat.com>
+CC: "hch@infradead.org" <hch@infradead.org>,
+        List Linux NFS Mailing
+	<linux-nfs@vger.kernel.org>
 Subject: Re: [PATCH v4 24/28] Getattr doesn't require data sync semantics
-Date: Thu, 28 Jul 2016 05:47:21 -0400
-Message-ID: <AFFE8305-AB9B-46F9-8618-B8310A923D62@redhat.com>
-In-Reply-To: <4F9280AE-46C2-4D1A-8CC9-F28DCFCE6271@primarydata.com>
+Date: Thu, 28 Jul 2016 12:31:34 +0000
+Message-ID: <4FC77AD6-40D9-48E4-BF08-0EA03334BDC7@primarydata.com>
 References: <1467844205-76852-23-git-send-email-trond.myklebust@primarydata.com>
  <1467844205-76852-24-git-send-email-trond.myklebust@primarydata.com>
  <1467844205-76852-25-git-send-email-trond.myklebust@primarydata.com>
@@ -42,113 +38,83 @@ References: <1467844205-76852-23-git-send-email-trond.myklebust@primarydata.com>
  <06BBFA63-02D9-4BDE-A61D-14FE9F4E9E5F@primarydata.com>
  <CFD74F0F-5375-4C05-8918-516F730FDBA7@redhat.com>
  <4F9280AE-46C2-4D1A-8CC9-F28DCFCE6271@primarydata.com>
+ <AFFE8305-AB9B-46F9-8618-B8310A923D62@redhat.com>
+In-Reply-To: <AFFE8305-AB9B-46F9-8618-B8310A923D62@redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8; format=flowed
-Sender: linux-nfs-owner@vger.kernel.org
+Content-Type: text/plain; charset=UTF-8
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-On 27 Jul 2016, at 14:05, Trond Myklebust wrote:
-
->> On Jul 27, 2016, at 12:14, Benjamin Coddington <bcodding@redhat.com> 
->> wrote:
->>
->> On 27 Jul 2016, at 8:31, Trond Myklebust wrote:
->>
->>>> On Jul 27, 2016, at 08:15, Trond Myklebust 
->>>> <trondmy@primarydata.com> wrote:
->>>>
->>>>
->>>>> On Jul 27, 2016, at 07:55, Benjamin Coddington 
->>>>> <bcodding@redhat.com> wrote:
->>>>>
->>>>> After adding more debugging, I see that all of that is working 
->>>>> correctly,
->>>>> but the first LAYOUTCOMMIT is taking the size back down to 4096 
->>>>> from the
->>>>> last nfs_writeback_done(), and the second LAYOUTCOMMIT never 
->>>>> brings it back
->>>>> up again.
->>>>>
->>>>
->>>> Excellent! Thanks for debugging that.
->>>>
->>>>> Now I see that we should be marking the block extents as written 
->>>>> atomically with
->>>>> setting LAYOUTCOMMIT and nfsi->layout->plh_lwb, otherwise a 
->>>>> LAYOUTCOMMIT can
->>>>> collect extents just added from the next bl_write_cleanup().  
->>>>> Then, the next
->>>>> LAYOUTCOMMIT fails, and all we're left with is the size from the 
->>>>> first
->>>>> LAYOUTCOMMIT.  Not sure if that particular problem is the whole 
->>>>> fix, but
->>>>> that's something to work on.
->>>>>
->>>>> I see ways to fix that:
->>>>>
->>>>>  - make a new pnfs_set_layoutcommit_locked() that can be used to 
->>>>> call
->>>>>    ext_tree_mark_written() inside the i_lock
->>>>>
->>>>>  - make another pnfs_layoutdriver_type operation to be used within
->>>>>    pnfs_set_layoutcommit (mark_layoutcommit? set_layoutcommit?), 
->>>>> and call
->>>>>    ext_tree_mark_written() within that..
->>>>>
->>>>>  - have .prepare_layoutcommit return a new positive plh_lwb that 
->>>>> would
->>>>>    extend the current LAYOUTCOMMIT
->>>>>
->>>>>  - make ext_tree_prepare_commit only encode up to plh_lwb
->>>>
->>>> I see no reason why ext_tree_prepare_commit() shouldn’t be 
->>>> allowed to extend the args->lastbytewritten. This is a metadata 
->>>> operation that is owned by the pNFS layout driver.
->>>> The only thing I’d note is you should then rewrite the failure 
->>>> case in pnfs_layoutcommit_inode() so that it doesn’t rely on the 
->>>> saved “end_pos”, but uses args->lastbytewritten instead (with a 
->>>> comment to the effect why)…
->>>
->>> In fact, given the potential for races here, I think the right thing 
->>> to do is to have ext_tree_prepare_commit() always set the correct 
->>> value for args->lastbytewritten.
->>
->> OK, that has cleared up that common failure case that was getting in 
->> the
->> way, but now it can still fail like this:
->>
->
-> Good progress! :-)
->
->> nfs_writeback_update_inode sets size 4096 w/ NFS_INO_INVALID_ATTR 
->> set, and sets NFS_INO_LAYOUTCOMMIT
->> 1st nfs_getattr -> pnfs_layoutcommit_inode starts, clears 
->> layoutcommit flag sets NFS_INO_LAYOUTCOMMITING
->> nfs_writeback_update_inode sets size 8192 w/ NFS_INO_INVALID_ATTR 
->> set, and sets NFS_INO_LAYOUTCOMMIT
->> 1st nfs_getattr -> nfs4_layoutcommit_release sets size 4096, 
->> NFS_INO_INVALID_ATTR set, clears NFS_INO_LAYOUTCOMMITTING
->> 1st nfs_getattr -> __revalidate_inode sets size 4096, 
->> NFS_INO_INVALID_ATTR not set.. cache is valid
->> 2nd nfs_getattr immediately returns 4096 even though 
->> NFS_INO_LAYOUTCOMMIT
->
-> Is this being tested on top of the current linux-next/testing? 
-> Normally, I’d expect 
-> http://git.linux-nfs.org/?p=trondmy/linux-nfs.git;a=commitdiff;h=10b7e9ad44881fcd46ac24eb7374377c6e8962ed 
-> to cause 1st nfs_getattr() to not declare the cache valid.
-
-Yes, this is on your linux-next branch.
-
-When the 1st nfs_getattr() goes through nfs_update_inode() the second 
-time
-(during __revalidate_inode), NFS_INO_INVALID_ATTR is never set by 
-anything,
-since all the attributes returned match the cache.  So even though
-NFS_INO_LAYOUTCOMMIT is set, and the cache_validity variable is "false",
-the NFS_INO_INVALID_ATTR is never set in the "invalid" local variable.
-
-Should pnfs_layoutcommit_outstanding() always set NFS_INO_INVALID_ATTR?
-
-Ben
+DQo+IE9uIEp1bCAyOCwgMjAxNiwgYXQgMDU6NDcsIEJlbmphbWluIENvZGRpbmd0b24gPGJjb2Rk
+aW5nQHJlZGhhdC5jb20+IHdyb3RlOg0KPiANCj4gDQo+IE9uIDI3IEp1bCAyMDE2LCBhdCAxNDow
+NSwgVHJvbmQgTXlrbGVidXN0IHdyb3RlOg0KPiANCj4+PiBPbiBKdWwgMjcsIDIwMTYsIGF0IDEy
+OjE0LCBCZW5qYW1pbiBDb2RkaW5ndG9uIDxiY29kZGluZ0ByZWRoYXQuY29tPiB3cm90ZToNCj4+
+PiANCj4+PiBPbiAyNyBKdWwgMjAxNiwgYXQgODozMSwgVHJvbmQgTXlrbGVidXN0IHdyb3RlOg0K
+Pj4+IA0KPj4+Pj4gT24gSnVsIDI3LCAyMDE2LCBhdCAwODoxNSwgVHJvbmQgTXlrbGVidXN0IDx0
+cm9uZG15QHByaW1hcnlkYXRhLmNvbT4gd3JvdGU6DQo+Pj4+PiANCj4+Pj4+IA0KPj4+Pj4+IE9u
+IEp1bCAyNywgMjAxNiwgYXQgMDc6NTUsIEJlbmphbWluIENvZGRpbmd0b24gPGJjb2RkaW5nQHJl
+ZGhhdC5jb20+IHdyb3RlOg0KPj4+Pj4+IA0KPj4+Pj4+IEFmdGVyIGFkZGluZyBtb3JlIGRlYnVn
+Z2luZywgSSBzZWUgdGhhdCBhbGwgb2YgdGhhdCBpcyB3b3JraW5nIGNvcnJlY3RseSwNCj4+Pj4+
+PiBidXQgdGhlIGZpcnN0IExBWU9VVENPTU1JVCBpcyB0YWtpbmcgdGhlIHNpemUgYmFjayBkb3du
+IHRvIDQwOTYgZnJvbSB0aGUNCj4+Pj4+PiBsYXN0IG5mc193cml0ZWJhY2tfZG9uZSgpLCBhbmQg
+dGhlIHNlY29uZCBMQVlPVVRDT01NSVQgbmV2ZXIgYnJpbmdzIGl0IGJhY2sNCj4+Pj4+PiB1cCBh
+Z2Fpbi4NCj4+Pj4+PiANCj4+Pj4+IA0KPj4+Pj4gRXhjZWxsZW50ISBUaGFua3MgZm9yIGRlYnVn
+Z2luZyB0aGF0Lg0KPj4+Pj4gDQo+Pj4+Pj4gTm93IEkgc2VlIHRoYXQgd2Ugc2hvdWxkIGJlIG1h
+cmtpbmcgdGhlIGJsb2NrIGV4dGVudHMgYXMgd3JpdHRlbiBhdG9taWNhbGx5IHdpdGgNCj4+Pj4+
+PiBzZXR0aW5nIExBWU9VVENPTU1JVCBhbmQgbmZzaS0+bGF5b3V0LT5wbGhfbHdiLCBvdGhlcndp
+c2UgYSBMQVlPVVRDT01NSVQgY2FuDQo+Pj4+Pj4gY29sbGVjdCBleHRlbnRzIGp1c3QgYWRkZWQg
+ZnJvbSB0aGUgbmV4dCBibF93cml0ZV9jbGVhbnVwKCkuICBUaGVuLCB0aGUgbmV4dA0KPj4+Pj4+
+IExBWU9VVENPTU1JVCBmYWlscywgYW5kIGFsbCB3ZSdyZSBsZWZ0IHdpdGggaXMgdGhlIHNpemUg
+ZnJvbSB0aGUgZmlyc3QNCj4+Pj4+PiBMQVlPVVRDT01NSVQuICBOb3Qgc3VyZSBpZiB0aGF0IHBh
+cnRpY3VsYXIgcHJvYmxlbSBpcyB0aGUgd2hvbGUgZml4LCBidXQNCj4+Pj4+PiB0aGF0J3Mgc29t
+ZXRoaW5nIHRvIHdvcmsgb24uDQo+Pj4+Pj4gDQo+Pj4+Pj4gSSBzZWUgd2F5cyB0byBmaXggdGhh
+dDoNCj4+Pj4+PiANCj4+Pj4+PiAtIG1ha2UgYSBuZXcgcG5mc19zZXRfbGF5b3V0Y29tbWl0X2xv
+Y2tlZCgpIHRoYXQgY2FuIGJlIHVzZWQgdG8gY2FsbA0KPj4+Pj4+ICAgZXh0X3RyZWVfbWFya193
+cml0dGVuKCkgaW5zaWRlIHRoZSBpX2xvY2sNCj4+Pj4+PiANCj4+Pj4+PiAtIG1ha2UgYW5vdGhl
+ciBwbmZzX2xheW91dGRyaXZlcl90eXBlIG9wZXJhdGlvbiB0byBiZSB1c2VkIHdpdGhpbg0KPj4+
+Pj4+ICAgcG5mc19zZXRfbGF5b3V0Y29tbWl0IChtYXJrX2xheW91dGNvbW1pdD8gc2V0X2xheW91
+dGNvbW1pdD8pLCBhbmQgY2FsbA0KPj4+Pj4+ICAgZXh0X3RyZWVfbWFya193cml0dGVuKCkgd2l0
+aGluIHRoYXQuLg0KPj4+Pj4+IA0KPj4+Pj4+IC0gaGF2ZSAucHJlcGFyZV9sYXlvdXRjb21taXQg
+cmV0dXJuIGEgbmV3IHBvc2l0aXZlIHBsaF9sd2IgdGhhdCB3b3VsZA0KPj4+Pj4+ICAgZXh0ZW5k
+IHRoZSBjdXJyZW50IExBWU9VVENPTU1JVA0KPj4+Pj4+IA0KPj4+Pj4+IC0gbWFrZSBleHRfdHJl
+ZV9wcmVwYXJlX2NvbW1pdCBvbmx5IGVuY29kZSB1cCB0byBwbGhfbHdiDQo+Pj4+PiANCj4+Pj4+
+IEkgc2VlIG5vIHJlYXNvbiB3aHkgZXh0X3RyZWVfcHJlcGFyZV9jb21taXQoKSBzaG91bGRu4oCZ
+dCBiZSBhbGxvd2VkIHRvIGV4dGVuZCB0aGUgYXJncy0+bGFzdGJ5dGV3cml0dGVuLiBUaGlzIGlz
+IGEgbWV0YWRhdGEgb3BlcmF0aW9uIHRoYXQgaXMgb3duZWQgYnkgdGhlIHBORlMgbGF5b3V0IGRy
+aXZlci4NCj4+Pj4+IFRoZSBvbmx5IHRoaW5nIEnigJlkIG5vdGUgaXMgeW91IHNob3VsZCB0aGVu
+IHJld3JpdGUgdGhlIGZhaWx1cmUgY2FzZSBpbiBwbmZzX2xheW91dGNvbW1pdF9pbm9kZSgpIHNv
+IHRoYXQgaXQgZG9lc27igJl0IHJlbHkgb24gdGhlIHNhdmVkIOKAnGVuZF9wb3PigJ0sIGJ1dCB1
+c2VzIGFyZ3MtPmxhc3RieXRld3JpdHRlbiBpbnN0ZWFkICh3aXRoIGEgY29tbWVudCB0byB0aGUg
+ZWZmZWN0IHdoeSnigKYNCj4+Pj4gDQo+Pj4+IEluIGZhY3QsIGdpdmVuIHRoZSBwb3RlbnRpYWwg
+Zm9yIHJhY2VzIGhlcmUsIEkgdGhpbmsgdGhlIHJpZ2h0IHRoaW5nIHRvIGRvIGlzIHRvIGhhdmUg
+ZXh0X3RyZWVfcHJlcGFyZV9jb21taXQoKSBhbHdheXMgc2V0IHRoZSBjb3JyZWN0IHZhbHVlIGZv
+ciBhcmdzLT5sYXN0Ynl0ZXdyaXR0ZW4uDQo+Pj4gDQo+Pj4gT0ssIHRoYXQgaGFzIGNsZWFyZWQg
+dXAgdGhhdCBjb21tb24gZmFpbHVyZSBjYXNlIHRoYXQgd2FzIGdldHRpbmcgaW4gdGhlDQo+Pj4g
+d2F5LCBidXQgbm93IGl0IGNhbiBzdGlsbCBmYWlsIGxpa2UgdGhpczoNCj4+PiANCj4+IA0KPj4g
+R29vZCBwcm9ncmVzcyEgOi0pDQo+PiANCj4+PiBuZnNfd3JpdGViYWNrX3VwZGF0ZV9pbm9kZSBz
+ZXRzIHNpemUgNDA5NiB3LyBORlNfSU5PX0lOVkFMSURfQVRUUiBzZXQsIGFuZCBzZXRzIE5GU19J
+Tk9fTEFZT1VUQ09NTUlUDQo+Pj4gMXN0IG5mc19nZXRhdHRyIC0+IHBuZnNfbGF5b3V0Y29tbWl0
+X2lub2RlIHN0YXJ0cywgY2xlYXJzIGxheW91dGNvbW1pdCBmbGFnIHNldHMgTkZTX0lOT19MQVlP
+VVRDT01NSVRJTkcNCj4+PiBuZnNfd3JpdGViYWNrX3VwZGF0ZV9pbm9kZSBzZXRzIHNpemUgODE5
+MiB3LyBORlNfSU5PX0lOVkFMSURfQVRUUiBzZXQsIGFuZCBzZXRzIE5GU19JTk9fTEFZT1VUQ09N
+TUlUDQo+Pj4gMXN0IG5mc19nZXRhdHRyIC0+IG5mczRfbGF5b3V0Y29tbWl0X3JlbGVhc2Ugc2V0
+cyBzaXplIDQwOTYsIE5GU19JTk9fSU5WQUxJRF9BVFRSIHNldCwgY2xlYXJzIE5GU19JTk9fTEFZ
+T1VUQ09NTUlUVElORw0KPj4+IDFzdCBuZnNfZ2V0YXR0ciAtPiBfX3JldmFsaWRhdGVfaW5vZGUg
+c2V0cyBzaXplIDQwOTYsIE5GU19JTk9fSU5WQUxJRF9BVFRSIG5vdCBzZXQuLiBjYWNoZSBpcyB2
+YWxpZA0KPj4+IDJuZCBuZnNfZ2V0YXR0ciBpbW1lZGlhdGVseSByZXR1cm5zIDQwOTYgZXZlbiB0
+aG91Z2ggTkZTX0lOT19MQVlPVVRDT01NSVQNCj4+IA0KPj4gSXMgdGhpcyBiZWluZyB0ZXN0ZWQg
+b24gdG9wIG9mIHRoZSBjdXJyZW50IGxpbnV4LW5leHQvdGVzdGluZz8gTm9ybWFsbHksIEnigJlk
+IGV4cGVjdCBodHRwOi8vZ2l0LmxpbnV4LW5mcy5vcmcvP3A9dHJvbmRteS9saW51eC1uZnMuZ2l0
+O2E9Y29tbWl0ZGlmZjtoPTEwYjdlOWFkNDQ4ODFmY2Q0NmFjMjRlYjczNzQzNzdjNmU4OTYyZWQg
+dG8gY2F1c2UgMXN0IG5mc19nZXRhdHRyKCkgdG8gbm90IGRlY2xhcmUgdGhlIGNhY2hlIHZhbGlk
+Lg0KPiANCj4gWWVzLCB0aGlzIGlzIG9uIHlvdXIgbGludXgtbmV4dCBicmFuY2guDQo+IA0KPiBX
+aGVuIHRoZSAxc3QgbmZzX2dldGF0dHIoKSBnb2VzIHRocm91Z2ggbmZzX3VwZGF0ZV9pbm9kZSgp
+IHRoZSBzZWNvbmQgdGltZQ0KPiAoZHVyaW5nIF9fcmV2YWxpZGF0ZV9pbm9kZSksIE5GU19JTk9f
+SU5WQUxJRF9BVFRSIGlzIG5ldmVyIHNldCBieSBhbnl0aGluZywNCj4gc2luY2UgYWxsIHRoZSBh
+dHRyaWJ1dGVzIHJldHVybmVkIG1hdGNoIHRoZSBjYWNoZS4gIFNvIGV2ZW4gdGhvdWdoDQo+IE5G
+U19JTk9fTEFZT1VUQ09NTUlUIGlzIHNldCwgYW5kIHRoZSBjYWNoZV92YWxpZGl0eSB2YXJpYWJs
+ZSBpcyAiZmFsc2UiLA0KPiB0aGUgTkZTX0lOT19JTlZBTElEX0FUVFIgaXMgbmV2ZXIgc2V0IGlu
+IHRoZSAiaW52YWxpZCIgbG9jYWwgdmFyaWFibGUuDQo+IA0KPiBTaG91bGQgcG5mc19sYXlvdXRj
+b21taXRfb3V0c3RhbmRpbmcoKSBhbHdheXMgc2V0IE5GU19JTk9fSU5WQUxJRF9BVFRSPw0KPiAN
+Cj4gQmVuDQoNCm5mc19wb3N0X29wX3VwZGF0ZV9pbm9kZV9sb2NrZWQoKSBzaG91bGQgYmUgZG9p
+bmcgdGhhdCBhcyBwYXJ0IG9mIHRoZSBjYWxsY2hhaW4gaW4gbmZzX3dyaXRlYmFja191cGRhdGVf
+aW5vZGUoKS4NCg0KDQo=
