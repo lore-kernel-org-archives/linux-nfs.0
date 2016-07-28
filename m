@@ -1,59 +1,36 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from us-smtp-delivery-194.mimecast.com ([63.128.21.194]:26145 "EHLO
-	us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1756059AbcG1SsS (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 28 Jul 2016 14:48:18 -0400
-From: Trond Myklebust <trondmy@primarydata.com>
-To: "bcodding@redhat.com" <bcodding@redhat.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-CC: "anna.schumaker@netapp.com" <anna.schumaker@netapp.com>,
-        Trond Myklebust <trondmy@primarydata.com>,
-        "hch@infradead.org" <hch@infradead.org>
-Subject: Re: [PATCH 2/2] pNFS: Actively set attributes as invalid if
- LAYOUTCOMMIT is outstanding
-Date: Thu, 28 Jul 2016 18:48:11 +0000
-Message-ID: <1469731690.9558.4.camel@primarydata.com>
-References: <cover.1469730653.git.bcodding@redhat.com>
-	 <ff7fc557ff6953c01aa1e9508e9b0067d30038f7.1469730653.git.bcodding@redhat.com>
-In-Reply-To: <ff7fc557ff6953c01aa1e9508e9b0067d30038f7.1469730653.git.bcodding@redhat.com>
+Received: from mx142.netapp.com ([216.240.21.19]:20352 "EHLO mx142.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751504AbcG1TgW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 28 Jul 2016 15:36:22 -0400
+From: Anna Schumaker <Anna.Schumaker@netapp.com>
+Subject: Re: xfstests generic/285 fails reliably on Trond's linux-next branch
+To: Christoph Hellwig <hch@infradead.org>, <trond.myklebust@primarydata.com>
+References: <20160721081802.GA14413@infradead.org>
+ <20160728144641.GA28753@infradead.org>
+CC: <linux-nfs@vger.kernel.org>
+Message-ID: <d67d77f3-9df9-4f02-354b-85cc46a5f9c5@Netapp.com>
+Date: Thu, 28 Jul 2016 15:36:04 -0400
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+In-Reply-To: <20160728144641.GA28753@infradead.org>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVGh1LCAyMDE2LTA3LTI4IGF0IDE0OjQxIC0wNDAwLCBCZW5qYW1pbiBDb2RkaW5ndG9uIHdy
-b3RlOg0KPiBBIExBWU9VVENPTU1JVCB0aGVuIHN1YnNlcXVlbnQgR0VUQVRUUiBtYXkgYm90aCBy
-ZXR1cm4gdGhlIHNhbWUNCj4gYXR0cmlidXRlcywNCj4gYW5kIGluIHRoYXQgY2FzZSBORlNfSU5P
-X0lOVkFMSURfQVRUUiBpcyBuZXZlciBzZXQgb24gdGhlIHNlY29uZCBwYXNzDQo+IHRocm91Z2gg
-bmZzX3VwZGF0ZV9pbm9kZSgpLsKgwqBUaGUgZXhpc3RpbmcgY2hlY2sgdG8gc2tpcCB0aGUgY2xl
-YXJpbmcNCj4gb2YNCj4gTkZTX0lOT19JTlZBTElEX0FUVFIgaWYgYSBMQVlPVVRDT01NSVQgaXMg
-b3V0c3RhbmRpbmcgZG9lcyBub3QgaGVscA0KPiBpbiB0aGlzDQo+IGNhc2UgKHNlZSBjb21taXQg
-MTBiN2U5YWQ0NDg4OiAicE5GUzogRG9uJ3QgbWFyayB0aGUgaW5vZGUgYXMNCj4gcmV2YWxpZGF0
-ZWQNCj4gaWYgYSBMQVlPVVRDT01NSVQgaXMgb3V0c3RhbmRpbmciKS7CoMKgV2Uga25vdyB0aGF0
-IGlmIGEgTEFZT1VUQ09NTUlUDQo+IGlzDQo+IG91dHN0YW5kaW5nIHRoZW4gYXR0cmlidXRlcyB3
-aWxsIG5lZWQgdXBhdGluZywgc28gYWx3YXlzIHNldA0KPiBORlNfSU5PX0lOVkFMSURfQVRUUi4N
-Cj4gDQo+IFNpZ25lZC1vZmYtYnk6IEJlbmphbWluIENvZGRpbmd0b24gPGJjb2RkaW5nQHJlZGhh
-dC5jb20+DQo+IC0tLQ0KPiDCoGZzL25mcy9pbm9kZS5jIHwgOCArKysrKy0tLQ0KPiDCoDEgZmls
-ZSBjaGFuZ2VkLCA1IGluc2VydGlvbnMoKyksIDMgZGVsZXRpb25zKC0pDQo+IA0KPiBkaWZmIC0t
-Z2l0IGEvZnMvbmZzL2lub2RlLmMgYi9mcy9uZnMvaW5vZGUuYw0KPiBpbmRleCBmMTA4ZDU4MTAx
-ZjguLmJmNGVjNWVjYzk3ZSAxMDA2NDQNCj4gLS0tIGEvZnMvbmZzL2lub2RlLmMNCj4gKysrIGIv
-ZnMvbmZzL2lub2RlLmMNCj4gQEAgLTE2NjUsNyArMTY2NSw3IEBAIHN0YXRpYyBpbnQgbmZzX3Vw
-ZGF0ZV9pbm9kZShzdHJ1Y3QgaW5vZGUNCj4gKmlub2RlLCBzdHJ1Y3QgbmZzX2ZhdHRyICpmYXR0
-cikNCj4gwqAJdW5zaWduZWQgbG9uZyBub3cgPSBqaWZmaWVzOw0KPiDCoAl1bnNpZ25lZCBsb25n
-IHNhdmVfY2FjaGVfdmFsaWRpdHk7DQo+IMKgCWJvb2wgaGF2ZV93cml0ZXJzID0gbmZzX2ZpbGVf
-aGFzX2J1ZmZlcmVkX3dyaXRlcnMobmZzaSk7DQo+IC0JYm9vbCBjYWNoZV9yZXZhbGlkYXRlZDsN
-Cj4gKwlib29sIGNhY2hlX3JldmFsaWRhdGVkID0gdHJ1ZTsNCj4gwqANCj4gwqAJZGZwcmludGso
-VkZTLCAiTkZTOiAlcyglcy8lbHUgZmhfY3JjPTB4JTA4eCBjdD0lZA0KPiBpbmZvPTB4JXgpXG4i
-LA0KPiDCoAkJCV9fZnVuY19fLCBpbm9kZS0+aV9zYi0+c19pZCwgaW5vZGUtPmlfaW5vLA0KPiBA
-QCAtMTcxNCw4ICsxNzE0LDEwIEBAIHN0YXRpYyBpbnQgbmZzX3VwZGF0ZV9pbm9kZShzdHJ1Y3Qg
-aW5vZGUNCj4gKmlub2RlLCBzdHJ1Y3QgbmZzX2ZhdHRyICpmYXR0cikNCj4gwqAJLyogRG8gYXRv
-bWljIHdlYWsgY2FjaGUgY29uc2lzdGVuY3kgdXBkYXRlcyAqLw0KPiDCoAlpbnZhbGlkIHw9IG5m
-c193Y2NfdXBkYXRlX2lub2RlKGlub2RlLCBmYXR0cik7DQo+IMKgDQo+IC0NCj4gLQljYWNoZV9y
-ZXZhbGlkYXRlZCA9ICFwbmZzX2xheW91dGNvbW1pdF9vdXRzdGFuZGluZyhpbm9kZSk7DQo+ICsJ
-aWYgKHBuZnNfbGF5b3V0Y29tbWl0X291dHN0YW5kaW5nKGlub2RlKSkgew0KPiArCQluZnNpLT5j
-YWNoZV92YWxpZGl0eSB8PSBzYXZlX2NhY2hlX3ZhbGlkaXR5ICYNCj4gTkZTX0lOT19JTlZBTElE
-X0FUVFI7DQo+ICsJCWNhY2hlX3JldmFsaWRhdGVkID0gZmFsc2U7DQo+ICsJfQ0KPiDCoA0KPiDC
-oAkvKiBNb3JlIGNhY2hlIGNvbnNpc3RlbmN5IGNoZWNrcyAqLw0KPiDCoAlpZiAoZmF0dHItPnZh
-bGlkICYgTkZTX0FUVFJfRkFUVFJfQ0hBTkdFKSB7DQoNClRoYW5rcyEgQXBwbGllZCB0byBsaW51
-eC1uZXh0Li4uDQo=
+Hi Christoph,
 
+On 07/28/2016 10:46 AM, Christoph Hellwig wrote:
+> On Thu, Jul 21, 2016 at 01:18:02AM -0700, Christoph Hellwig wrote:
+>> Now that 207 is fixed the next test starts failing..  285 is
+>> the SEEK_HOLE/DATA sanity check, which might help with figuring out
+>> which of the recent changes introduced it.
+> 
+> A week later this still fails with the linux-next branch. Plain NFSv4.2
+> against a Linux/XFS server.  The 285.full file documenting the failures
+> is attached below:
+> 
+
+What mount options are you using?  The test passes for me on xfs, btrfs, and ext4.
+
+Thanks,
+Anna
