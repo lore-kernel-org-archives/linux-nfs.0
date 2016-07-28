@@ -1,85 +1,154 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from us-smtp-delivery-194.mimecast.com ([216.205.24.194]:40787 "EHLO
-	us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1756830AbcG0TLb (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 27 Jul 2016 15:11:31 -0400
-From: Trond Myklebust <trondmy@primarydata.com>
-To: Eric Dumazet <eric.dumazet@gmail.com>
-CC: Fields Bruce James <bfields@fieldses.org>,
-        List Linux NFS Mailing <linux-nfs@vger.kernel.org>,
-        List Linux Network Devel Mailing <netdev@vger.kernel.org>,
-        Yuchung Cheng <ycheng@google.com>
-Subject: Re: [PATCH 1/2] SUNRPC: accept() may return sockets that are still in
- SYN_RECV
-Date: Wed, 27 Jul 2016 19:11:23 +0000
-Message-ID: <332ACE13-83D0-4516-9B2D-200250ED3437@primarydata.com>
-References: <1469541080-4184-1-git-send-email-trond.myklebust@primarydata.com>
- <20160726154354.GA6692@fieldses.org>
- <7C18520C-D486-4466-8D9D-FF2052B03F0E@primarydata.com>
- <20160727184806.GA19229@fieldses.org>
- <1469645951.17736.13.camel@edumazet-glaptop3.roam.corp.google.com>
-In-Reply-To: <1469645951.17736.13.camel@edumazet-glaptop3.roam.corp.google.com>
+Received: from mx1.redhat.com ([209.132.183.28]:41098 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754819AbcG1Jpf convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 28 Jul 2016 05:45:35 -0400
+From: "Benjamin Coddington" <bcodding@redhat.com>
+To: "Trond Myklebust" <trondmy@primarydata.com>
+Cc: "hch@infradead.org" <hch@infradead.org>,
+        "List Linux NFS Mailing" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH v4 24/28] Getattr doesn't require data sync semantics
+Date: Thu, 28 Jul 2016 05:47:21 -0400
+Message-ID: <AFFE8305-AB9B-46F9-8618-B8310A923D62@redhat.com>
+In-Reply-To: <4F9280AE-46C2-4D1A-8CC9-F28DCFCE6271@primarydata.com>
+References: <1467844205-76852-23-git-send-email-trond.myklebust@primarydata.com>
+ <1467844205-76852-24-git-send-email-trond.myklebust@primarydata.com>
+ <1467844205-76852-25-git-send-email-trond.myklebust@primarydata.com>
+ <20160718034847.GA1195@infradead.org>
+ <A9C18137-87A3-4652-ADD6-E8E1C4BAE27B@primarydata.com>
+ <1468817945.5273.2.camel@primarydata.com>
+ <20160719035843.GA24437@infradead.org>
+ <F879054A-2116-40D5-90C9-473E71977E8A@redhat.com>
+ <C44AB0DD-8FA3-42F2-B7DE-C694559A68EF@primarydata.com>
+ <AB904138-E761-4F8F-AF97-0E8A4E067DB1@redhat.com>
+ <20160721082216.GA15247@infradead.org>
+ <A540F5A1-37B3-40EB-876D-EC33E891F0C9@redhat.com>
+ <B4719B7F-3FC4-4FD7-929E-CC528CA867F4@redhat.com>
+ <9E2543EF-0442-491E-AB22-3E1667DABBA4@redhat.com>
+ <E33497F6-079C-4903-9CC5-0ABDFA149694@primarydata.com>
+ <70375D08-FCA9-4C73-9991-38490C11B171@redhat.com>
+ <8B8BB73D-39A6-4291-A10E-736B0F907459@primarydata.com>
+ <C7773DBC-C4D9-4DA4-9391-8B7E91D7D5AF@redhat.com>
+ <B174B540-8D12-4BD1-8DD0-FE49E2AB216E@primarydata.com>
+ <AAB7FE0A-8409-494D-8CCF-BE07442791F3@redhat.com>
+ <737F0071-AAD2-49B5-9BD0-02DF98049B76@primarydata.com>
+ <F5EFC301-6372-4993-82BA-C96455F3957E@redhat.com>
+ <10749CC8-F76E-4DBD-9C27-9802475CF8A5@redhat.com>
+ <3448E968-3564-43C1-ADBB-A16C9687B0F3@primarydata.com>
+ <4CA4361B-2501-48AA-8B2C-715E5A3FD35C@redhat.com>
+ <DA6506A7-57F0-4263-BA23-0BB638BC2E36@primarydata.com>
+ <7EEB460E-F197-4B68-BBD1-7EEF16B77A71@redhat.com>
+ <455341C5-F202-4FA7-8A9B-7AA73CFA21CF@primarydata.com>
+ <06BBFA63-02D9-4BDE-A61D-14FE9F4E9E5F@primarydata.com>
+ <CFD74F0F-5375-4C05-8918-516F730FDBA7@redhat.com>
+ <4F9280AE-46C2-4D1A-8CC9-F28DCFCE6271@primarydata.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=utf-8; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-SGkgRXJpYywNCg0KPiBPbiBKdWwgMjcsIDIwMTYsIGF0IDE0OjU5LCBFcmljIER1bWF6ZXQgPGVy
-aWMuZHVtYXpldEBnbWFpbC5jb20+IHdyb3RlOg0KPiANCj4gT24gV2VkLCAyMDE2LTA3LTI3IGF0
-IDE0OjQ4IC0wNDAwLCBGaWVsZHMgQnJ1Y2UgSmFtZXMgd3JvdGU6DQo+PiBPbiBUdWUsIEp1bCAy
-NiwgMjAxNiBhdCAwNDowODoyOVBNICswMDAwLCBUcm9uZCBNeWtsZWJ1c3Qgd3JvdGU6DQo+Pj4g
-DQo+Pj4+IE9uIEp1bCAyNiwgMjAxNiwgYXQgMTE6NDMsIEouIEJydWNlIEZpZWxkcyA8YmZpZWxk
-c0BmaWVsZHNlcy5vcmc+IHdyb3RlOg0KPj4+PiANCj4+Pj4gT24gVHVlLCBKdWwgMjYsIDIwMTYg
-YXQgMDk6NTE6MTlBTSAtMDQwMCwgVHJvbmQgTXlrbGVidXN0IHdyb3RlOg0KPj4+Pj4gV2UncmUg
-c2VlaW5nIHRyYWNlcyBvZiB0aGUgZm9sbG93aW5nIGZvcm06DQo+Pj4+PiANCj4+Pj4+IFsxMDk1
-Mi4zOTYzNDddIHN2YzogdHJhbnNwb3J0IGZmZmY4ODA0MmJhNGEgMDAwIGRlcXVldWVkLCBpbnVz
-ZT0yDQo+Pj4+PiBbMTA5NTIuMzk2MzUxXSBzdmM6IHRjcF9hY2NlcHQgZmZmZjg4MDQyYmE0IGEw
-MDAgc29jayBmZmZmODgwNDJhNmU0YzgwDQo+Pj4+PiBbMTA5NTIuMzk2MzYyXSBuZnNkOiBjb25u
-ZWN0IGZyb20gMTAuMi42LjEsIHBvcnQ9MTg3DQo+Pj4+PiBbMTA5NTIuMzk2MzY0XSBzdmM6IHN2
-Y19zZXR1cF9zb2NrZXQgZmZmZjg4MDBiOTliY2YwMA0KPj4+Pj4gWzEwOTUyLjM5NjM2OF0gc2V0
-dGluZyB1cCBUQ1Agc29ja2V0IGZvciByZWFkaW5nDQo+Pj4+PiBbMTA5NTIuMzk2MzcwXSBzdmM6
-IHN2Y19zZXR1cF9zb2NrZXQgY3JlYXRlZCBmZmZmODgwM2ViMTBhMDAwIChpbmV0IGZmZmY4ODA0
-MmI3NWI4MDApDQo+Pj4+PiBbMTA5NTIuMzk2MzczXSBzdmM6IHRyYW5zcG9ydCBmZmZmODgwM2Vi
-MTBhMDAwIHB1dCBpbnRvIHF1ZXVlDQo+Pj4+PiBbMTA5NTIuMzk2Mzc1XSBzdmM6IHRyYW5zcG9y
-dCBmZmZmODgwNDJiYTRhMDAwIHB1dCBpbnRvIHF1ZXVlDQo+Pj4+PiBbMTA5NTIuMzk2Mzc3XSBz
-dmM6IHNlcnZlciBmZmZmODgwMGJiMGVjMDAwIHdhaXRpbmcgZm9yIGRhdGEgKHRvID0gMzYwMDAw
-MCkNCj4+Pj4+IFsxMDk1Mi4zOTYzODBdIHN2YzogdHJhbnNwb3J0IGZmZmY4ODAzZWIxMGEwMDAg
-ZGVxdWV1ZWQsIGludXNlPTINCj4+Pj4+IFsxMDk1Mi4zOTYzODFdIHN2Y19yZWN2OiBmb3VuZCBY
-UFRfQ0xPU0UNCj4+Pj4+IFsxMDk1Mi4zOTYzOTddIHN2Yzogc3ZjX2RlbGV0ZV94cHJ0KGZmZmY4
-ODAzZWIxMGEwMDApDQo+Pj4+PiBbMTA5NTIuMzk2Mzk4XSBzdmM6IHN2Y190Y3Bfc29ja19kZXRh
-Y2goZmZmZjg4MDNlYjEwYTAwMCkNCj4+Pj4+IFsxMDk1Mi4zOTYzOTldIHN2Yzogc3ZjX3NvY2tf
-ZGV0YWNoKGZmZmY4ODAzZWIxMGEwMDApDQo+Pj4+PiBbMTA5NTIuMzk2NDEyXSBzdmM6IHN2Y19z
-b2NrX2ZyZWUoZmZmZjg4MDNlYjEwYTAwMCkNCj4+Pj4+IA0KPj4+Pj4gaS5lLiBhbiBpbW1lZGlh
-dGUgY2xvc2Ugb2YgdGhlIHNvY2tldCBhZnRlciBpbml0aWFsaXNhdGlvbi4NCj4+Pj4gDQo+Pj4+
-IEludGVyZXN0aW5nLCB0aGFua3MhDQo+Pj4+IA0KPj4+PiBTbyB0aGUgb25lIHRoaW5nIEkgZG9u
-J3QgdW5kZXJzdGFuZCBpcyB3aHkgdGhpcyBpcyBjb3JyZWN0IGJlaGF2aW9yIGZvcg0KPj4+PiBh
-Y2NlcHQtLUkgdGhvdWdodCBpdCB3YXNuJ3Qgc3VwcG9zZWQgdG8gcmV0dXJuIGEgc29ja2V0IHVu
-dGlsIGl0IHdhcw0KPj4+PiBmdWxseSBlc3RhYmxpc2hlZC4NCj4+PiANCj4+PiBpbmV0X2FjY2Vw
-dCgpIGFwcGVhcnMgdG8gYWxsb3cgU1lOX1JFQ1Y6DQo+PiANCj4+IE9LLiAgQ2MnaW5nIG5ldGRl
-diBqdXN0IHRvIG1ha2Ugc3VyZSB3ZSBkaWRuJ3Qgb3Zlcmxvb2sgYW55dGhpbmcuDQo+PiANCj4g
-DQo+IFNZTl9SRUNWIGFmdGVyIGFjY2VwdCgpIGlzIGEgVENQIEZhc3QgT3BlbiBwcm9wZXJ0eSBJ
-IHRoaW5rLg0KPiANCj4gTWF5YmUgeW91IGFyZSBwbGF5aW5nIHdpdGggc29tZSBnbG9iYWwgVENQ
-IEZhc3QgT3BlbiBzZXR0aW5ncyA/DQo+IA0KDQpUaGUgTGludXgga2VybmVsIGNsaWVudCBzaG91
-bGQgbm90IGJlIHVzaW5nIFRDUCBmYXN0IG9wZW4sIGJ1dCBpdCBpcyBwb3NzaWJsZSB0aGF0IHNv
-bWUgb2YgdGhlIG90aGVyIE5GU3YzIGNsaWVudHMgd2XigJlyZSB1c2luZyBhcmUuDQpXb3VsZCBh
-IHN0YW5kYXJkIGtuZnNkIGxpc3RlbmVyIHJlc3BvbmQgdG8gYSBUQ1AgZmFzdCBvcGVuIHJlcXVl
-c3QsIG9yIHdvdWxkIHRoZSBkZWZhdWx0IGJlaGF2aW91ciBiZSB0byBpZ25vcmUgaXQ/DQoNCklm
-IHRoZSBkZWZhdWx0IGJlaGF2aW91ciBmb3IgdGhlIHNlcnZlciBpcyB0byBhbGxvdyBmYXN0IG9w
-ZW4sIHRoZW4gd2UgZG8gbmVlZCB0aGVzZSBwYXRjaGVzLCBJTU8uDQoNCj4gDQo+PiAoQWxzbzog
-d2hhdCB3ZXJlIHVzZXItdmlzaWJsZSBzeW1wdG9tcz8gIE1vdW50cyBmYWlsaW5nLCBvciB1bmV4
-cGVjdGVkDQo+PiBkZWxheXM/KQ0KPj4gDQoNCkNvbm5lY3Rpb24gcmV0cnkgc3Rvcm1zIG9uIHRo
-ZSBzZXJ2ZXIuDQoNCj4+IC0tYi4NCj4+IA0KPj4+IA0KPj4+IGludCBpbmV0X2FjY2VwdChzdHJ1
-Y3Qgc29ja2V0ICpzb2NrLCBzdHJ1Y3Qgc29ja2V0ICpuZXdzb2NrLCBpbnQgZmxhZ3MpDQo+Pj4g
-ew0KPj4+ICAgICAgICBzdHJ1Y3Qgc29jayAqc2sxID0gc29jay0+c2s7DQo+Pj4gICAgICAgIGlu
-dCBlcnIgPSAtRUlOVkFMOw0KPj4+ICAgICAgICBzdHJ1Y3Qgc29jayAqc2syID0gc2sxLT5za19w
-cm90LT5hY2NlcHQoc2sxLCBmbGFncywgJmVycik7DQo+Pj4gDQo+Pj4gICAgICAgIGlmICghc2sy
-KQ0KPj4+ICAgICAgICAgICAgICAgIGdvdG8gZG9fZXJyOw0KPj4+IA0KPj4+ICAgICAgICBsb2Nr
-X3NvY2soc2syKTsNCj4+PiANCj4+PiAgICAgICAgc29ja19ycHNfcmVjb3JkX2Zsb3coc2syKTsN
-Cj4+PiAgICAgICAgV0FSTl9PTighKCgxIDw8IHNrMi0+c2tfc3RhdGUpICYNCj4+PiAgICAgICAg
-ICAgICAgICAgIChUQ1BGX0VTVEFCTElTSEVEIHwgVENQRl9TWU5fUkVDViB8DQo+Pj4gICAgICAg
-ICAgICAgICAgICBUQ1BGX0NMT1NFX1dBSVQgfCBUQ1BGX0NMT1NFKSkpOw0KPj4+IA0KPj4+ICAg
-ICAgICBzb2NrX2dyYWZ0KHNrMiwgbmV3c29jayk7DQo+Pj4gDQo+Pj4gICAgICAgIG5ld3NvY2st
-PnN0YXRlID0gU1NfQ09OTkVDVEVEOw0KPj4+ICAgICAgICBlcnIgPSAwOw0KPj4+ICAgICAgICBy
-ZWxlYXNlX3NvY2soc2syKTsNCj4+PiBkb19lcnI6DQo+Pj4gICAgICAgIHJldHVybiBlcnI7DQo+
-Pj4gfQ0KPiANCj4gDQoNCg==
 
+On 27 Jul 2016, at 14:05, Trond Myklebust wrote:
+
+>> On Jul 27, 2016, at 12:14, Benjamin Coddington <bcodding@redhat.com> 
+>> wrote:
+>>
+>> On 27 Jul 2016, at 8:31, Trond Myklebust wrote:
+>>
+>>>> On Jul 27, 2016, at 08:15, Trond Myklebust 
+>>>> <trondmy@primarydata.com> wrote:
+>>>>
+>>>>
+>>>>> On Jul 27, 2016, at 07:55, Benjamin Coddington 
+>>>>> <bcodding@redhat.com> wrote:
+>>>>>
+>>>>> After adding more debugging, I see that all of that is working 
+>>>>> correctly,
+>>>>> but the first LAYOUTCOMMIT is taking the size back down to 4096 
+>>>>> from the
+>>>>> last nfs_writeback_done(), and the second LAYOUTCOMMIT never 
+>>>>> brings it back
+>>>>> up again.
+>>>>>
+>>>>
+>>>> Excellent! Thanks for debugging that.
+>>>>
+>>>>> Now I see that we should be marking the block extents as written 
+>>>>> atomically with
+>>>>> setting LAYOUTCOMMIT and nfsi->layout->plh_lwb, otherwise a 
+>>>>> LAYOUTCOMMIT can
+>>>>> collect extents just added from the next bl_write_cleanup().  
+>>>>> Then, the next
+>>>>> LAYOUTCOMMIT fails, and all we're left with is the size from the 
+>>>>> first
+>>>>> LAYOUTCOMMIT.  Not sure if that particular problem is the whole 
+>>>>> fix, but
+>>>>> that's something to work on.
+>>>>>
+>>>>> I see ways to fix that:
+>>>>>
+>>>>>  - make a new pnfs_set_layoutcommit_locked() that can be used to 
+>>>>> call
+>>>>>    ext_tree_mark_written() inside the i_lock
+>>>>>
+>>>>>  - make another pnfs_layoutdriver_type operation to be used within
+>>>>>    pnfs_set_layoutcommit (mark_layoutcommit? set_layoutcommit?), 
+>>>>> and call
+>>>>>    ext_tree_mark_written() within that..
+>>>>>
+>>>>>  - have .prepare_layoutcommit return a new positive plh_lwb that 
+>>>>> would
+>>>>>    extend the current LAYOUTCOMMIT
+>>>>>
+>>>>>  - make ext_tree_prepare_commit only encode up to plh_lwb
+>>>>
+>>>> I see no reason why ext_tree_prepare_commit() shouldn’t be 
+>>>> allowed to extend the args->lastbytewritten. This is a metadata 
+>>>> operation that is owned by the pNFS layout driver.
+>>>> The only thing I’d note is you should then rewrite the failure 
+>>>> case in pnfs_layoutcommit_inode() so that it doesn’t rely on the 
+>>>> saved “end_pos”, but uses args->lastbytewritten instead (with a 
+>>>> comment to the effect why)…
+>>>
+>>> In fact, given the potential for races here, I think the right thing 
+>>> to do is to have ext_tree_prepare_commit() always set the correct 
+>>> value for args->lastbytewritten.
+>>
+>> OK, that has cleared up that common failure case that was getting in 
+>> the
+>> way, but now it can still fail like this:
+>>
+>
+> Good progress! :-)
+>
+>> nfs_writeback_update_inode sets size 4096 w/ NFS_INO_INVALID_ATTR 
+>> set, and sets NFS_INO_LAYOUTCOMMIT
+>> 1st nfs_getattr -> pnfs_layoutcommit_inode starts, clears 
+>> layoutcommit flag sets NFS_INO_LAYOUTCOMMITING
+>> nfs_writeback_update_inode sets size 8192 w/ NFS_INO_INVALID_ATTR 
+>> set, and sets NFS_INO_LAYOUTCOMMIT
+>> 1st nfs_getattr -> nfs4_layoutcommit_release sets size 4096, 
+>> NFS_INO_INVALID_ATTR set, clears NFS_INO_LAYOUTCOMMITTING
+>> 1st nfs_getattr -> __revalidate_inode sets size 4096, 
+>> NFS_INO_INVALID_ATTR not set.. cache is valid
+>> 2nd nfs_getattr immediately returns 4096 even though 
+>> NFS_INO_LAYOUTCOMMIT
+>
+> Is this being tested on top of the current linux-next/testing? 
+> Normally, I’d expect 
+> http://git.linux-nfs.org/?p=trondmy/linux-nfs.git;a=commitdiff;h=10b7e9ad44881fcd46ac24eb7374377c6e8962ed 
+> to cause 1st nfs_getattr() to not declare the cache valid.
+
+Yes, this is on your linux-next branch.
+
+When the 1st nfs_getattr() goes through nfs_update_inode() the second 
+time
+(during __revalidate_inode), NFS_INO_INVALID_ATTR is never set by 
+anything,
+since all the attributes returned match the cache.  So even though
+NFS_INO_LAYOUTCOMMIT is set, and the cache_validity variable is "false",
+the NFS_INO_INVALID_ATTR is never set in the "invalid" local variable.
+
+Should pnfs_layoutcommit_outstanding() always set NFS_INO_INVALID_ATTR?
+
+Ben
