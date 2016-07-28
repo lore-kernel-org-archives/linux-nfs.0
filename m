@@ -1,128 +1,86 @@
-Return-Path: <trondmy@primarydata.com>
-From: Trond Myklebust <trondmy@primarydata.com>
-To: Coddington Benjamin <bcodding@redhat.com>
-CC: "hch@infradead.org" <hch@infradead.org>,
-        List Linux NFS Mailing
-	<linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH v4 24/28] Getattr doesn't require data sync semantics
-Date: Thu, 28 Jul 2016 14:04:31 +0000
-Message-ID: <54CFDC65-76C2-46AE-9401-861EA4AA8127@primarydata.com>
-References: <1467844205-76852-23-git-send-email-trond.myklebust@primarydata.com>
- <1467844205-76852-24-git-send-email-trond.myklebust@primarydata.com>
- <1467844205-76852-25-git-send-email-trond.myklebust@primarydata.com>
- <20160718034847.GA1195@infradead.org>
- <A9C18137-87A3-4652-ADD6-E8E1C4BAE27B@primarydata.com>
- <1468817945.5273.2.camel@primarydata.com>
- <20160719035843.GA24437@infradead.org>
- <F879054A-2116-40D5-90C9-473E71977E8A@redhat.com>
- <C44AB0DD-8FA3-42F2-B7DE-C694559A68EF@primarydata.com>
- <AB904138-E761-4F8F-AF97-0E8A4E067DB1@redhat.com>
- <20160721082216.GA15247@infradead.org>
- <A540F5A1-37B3-40EB-876D-EC33E891F0C9@redhat.com>
- <B4719B7F-3FC4-4FD7-929E-CC528CA867F4@redhat.com>
- <9E2543EF-0442-491E-AB22-3E1667DABBA4@redhat.com>
- <E33497F6-079C-4903-9CC5-0ABDFA149694@primarydata.com>
- <70375D08-FCA9-4C73-9991-38490C11B171@redhat.com>
- <8B8BB73D-39A6-4291-A10E-736B0F907459@primarydata.com>
- <C7773DBC-C4D9-4DA4-9391-8B7E91D7D5AF@redhat.com>
- <B174B540-8D12-4BD1-8DD0-FE49E2AB216E@primarydata.com>
- <AAB7FE0A-8409-494D-8CCF-BE07442791F3@redhat.com>
- <737F0071-AAD2-49B5-9BD0-02DF98049B76@primarydata.com>
- <F5EFC301-6372-4993-82BA-C96455F3957E@redhat.com>
- <10749CC8-F76E-4DBD-9C27-9802475CF8A5@redhat.com>
- <3448E968-3564-43C1-ADBB-A16C9687B0F3@primarydata.com>
- <4CA4361B-2501-48AA-8B2C-715E5A3FD35C@redhat.com>
- <DA6506A7-57F0-4263-BA23-0BB638BC2E36@primarydata.com>
- <7EEB460E-F197-4B68-BBD1-7EEF16B77A71@redhat.com>
- <455341C5-F202-4FA7-8A9B-7AA73CFA21CF@primarydata.com>
- <06BBFA63-02D9-4BDE-A61D-14FE9F4E9E5F@primarydata.com>
- <CFD74F0F-5375-4C05-8918-516F730FDBA7@redhat.com>
- <4F9280AE-46C2-4D1A-8CC9-F28DCFCE6271@primarydata.com>
- <AFFE8305-AB9B-46F9-8618-B8310A923D62@redhat.com>
- <4FC77AD6-40D9-48E4-BF08-0EA03334BDC7@primarydata.com>
-In-Reply-To: <4FC77AD6-40D9-48E4-BF08-0EA03334BDC7@primarydata.com>
+Return-Path: <linux-nfs-owner@vger.kernel.org>
+Received: from fieldses.org ([173.255.197.46]:43246 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751792AbcG1OVI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 28 Jul 2016 10:21:08 -0400
+Date: Thu, 28 Jul 2016 10:21:06 -0400
+From: Fields Bruce James <bfields@fieldses.org>
+To: Trond Myklebust <trondmy@primarydata.com>
+Cc: Eric Dumazet <eric.dumazet@gmail.com>,
+        List Linux NFS Mailing <linux-nfs@vger.kernel.org>,
+        List Linux Network Devel Mailing <netdev@vger.kernel.org>,
+        Yuchung Cheng <ycheng@google.com>
+Subject: Re: [PATCH 1/2] SUNRPC: accept() may return sockets that are still
+ in SYN_RECV
+Message-ID: <20160728142106.GA27786@fieldses.org>
+References: <1469541080-4184-1-git-send-email-trond.myklebust@primarydata.com>
+ <20160726154354.GA6692@fieldses.org>
+ <7C18520C-D486-4466-8D9D-FF2052B03F0E@primarydata.com>
+ <20160727184806.GA19229@fieldses.org>
+ <1469645951.17736.13.camel@edumazet-glaptop3.roam.corp.google.com>
+ <332ACE13-83D0-4516-9B2D-200250ED3437@primarydata.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=utf-8
+In-Reply-To: <332ACE13-83D0-4516-9B2D-200250ED3437@primarydata.com>
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-DQo+IE9uIEp1bCAyOCwgMjAxNiwgYXQgMDg6MzEsIFRyb25kIE15a2xlYnVzdCA8dHJvbmRteUBw
-cmltYXJ5ZGF0YS5jb20+IHdyb3RlOg0KPiANCj4gDQo+PiBPbiBKdWwgMjgsIDIwMTYsIGF0IDA1
-OjQ3LCBCZW5qYW1pbiBDb2RkaW5ndG9uIDxiY29kZGluZ0ByZWRoYXQuY29tPiB3cm90ZToNCj4+
-IA0KPj4gDQo+PiBPbiAyNyBKdWwgMjAxNiwgYXQgMTQ6MDUsIFRyb25kIE15a2xlYnVzdCB3cm90
-ZToNCj4+IA0KPj4+PiBPbiBKdWwgMjcsIDIwMTYsIGF0IDEyOjE0LCBCZW5qYW1pbiBDb2RkaW5n
-dG9uIDxiY29kZGluZ0ByZWRoYXQuY29tPiB3cm90ZToNCj4+Pj4gDQo+Pj4+IE9uIDI3IEp1bCAy
-MDE2LCBhdCA4OjMxLCBUcm9uZCBNeWtsZWJ1c3Qgd3JvdGU6DQo+Pj4+IA0KPj4+Pj4+IE9uIEp1
-bCAyNywgMjAxNiwgYXQgMDg6MTUsIFRyb25kIE15a2xlYnVzdCA8dHJvbmRteUBwcmltYXJ5ZGF0
-YS5jb20+IHdyb3RlOg0KPj4+Pj4+IA0KPj4+Pj4+IA0KPj4+Pj4+PiBPbiBKdWwgMjcsIDIwMTYs
-IGF0IDA3OjU1LCBCZW5qYW1pbiBDb2RkaW5ndG9uIDxiY29kZGluZ0ByZWRoYXQuY29tPiB3cm90
-ZToNCj4+Pj4+Pj4gDQo+Pj4+Pj4+IEFmdGVyIGFkZGluZyBtb3JlIGRlYnVnZ2luZywgSSBzZWUg
-dGhhdCBhbGwgb2YgdGhhdCBpcyB3b3JraW5nIGNvcnJlY3RseSwNCj4+Pj4+Pj4gYnV0IHRoZSBm
-aXJzdCBMQVlPVVRDT01NSVQgaXMgdGFraW5nIHRoZSBzaXplIGJhY2sgZG93biB0byA0MDk2IGZy
-b20gdGhlDQo+Pj4+Pj4+IGxhc3QgbmZzX3dyaXRlYmFja19kb25lKCksIGFuZCB0aGUgc2Vjb25k
-IExBWU9VVENPTU1JVCBuZXZlciBicmluZ3MgaXQgYmFjaw0KPj4+Pj4+PiB1cCBhZ2Fpbi4NCj4+
-Pj4+Pj4gDQo+Pj4+Pj4gDQo+Pj4+Pj4gRXhjZWxsZW50ISBUaGFua3MgZm9yIGRlYnVnZ2luZyB0
-aGF0Lg0KPj4+Pj4+IA0KPj4+Pj4+PiBOb3cgSSBzZWUgdGhhdCB3ZSBzaG91bGQgYmUgbWFya2lu
-ZyB0aGUgYmxvY2sgZXh0ZW50cyBhcyB3cml0dGVuIGF0b21pY2FsbHkgd2l0aA0KPj4+Pj4+PiBz
-ZXR0aW5nIExBWU9VVENPTU1JVCBhbmQgbmZzaS0+bGF5b3V0LT5wbGhfbHdiLCBvdGhlcndpc2Ug
-YSBMQVlPVVRDT01NSVQgY2FuDQo+Pj4+Pj4+IGNvbGxlY3QgZXh0ZW50cyBqdXN0IGFkZGVkIGZy
-b20gdGhlIG5leHQgYmxfd3JpdGVfY2xlYW51cCgpLiAgVGhlbiwgdGhlIG5leHQNCj4+Pj4+Pj4g
-TEFZT1VUQ09NTUlUIGZhaWxzLCBhbmQgYWxsIHdlJ3JlIGxlZnQgd2l0aCBpcyB0aGUgc2l6ZSBm
-cm9tIHRoZSBmaXJzdA0KPj4+Pj4+PiBMQVlPVVRDT01NSVQuICBOb3Qgc3VyZSBpZiB0aGF0IHBh
-cnRpY3VsYXIgcHJvYmxlbSBpcyB0aGUgd2hvbGUgZml4LCBidXQNCj4+Pj4+Pj4gdGhhdCdzIHNv
-bWV0aGluZyB0byB3b3JrIG9uLg0KPj4+Pj4+PiANCj4+Pj4+Pj4gSSBzZWUgd2F5cyB0byBmaXgg
-dGhhdDoNCj4+Pj4+Pj4gDQo+Pj4+Pj4+IC0gbWFrZSBhIG5ldyBwbmZzX3NldF9sYXlvdXRjb21t
-aXRfbG9ja2VkKCkgdGhhdCBjYW4gYmUgdXNlZCB0byBjYWxsDQo+Pj4+Pj4+ICBleHRfdHJlZV9t
-YXJrX3dyaXR0ZW4oKSBpbnNpZGUgdGhlIGlfbG9jaw0KPj4+Pj4+PiANCj4+Pj4+Pj4gLSBtYWtl
-IGFub3RoZXIgcG5mc19sYXlvdXRkcml2ZXJfdHlwZSBvcGVyYXRpb24gdG8gYmUgdXNlZCB3aXRo
-aW4NCj4+Pj4+Pj4gIHBuZnNfc2V0X2xheW91dGNvbW1pdCAobWFya19sYXlvdXRjb21taXQ/IHNl
-dF9sYXlvdXRjb21taXQ/KSwgYW5kIGNhbGwNCj4+Pj4+Pj4gIGV4dF90cmVlX21hcmtfd3JpdHRl
-bigpIHdpdGhpbiB0aGF0Li4NCj4+Pj4+Pj4gDQo+Pj4+Pj4+IC0gaGF2ZSAucHJlcGFyZV9sYXlv
-dXRjb21taXQgcmV0dXJuIGEgbmV3IHBvc2l0aXZlIHBsaF9sd2IgdGhhdCB3b3VsZA0KPj4+Pj4+
-PiAgZXh0ZW5kIHRoZSBjdXJyZW50IExBWU9VVENPTU1JVA0KPj4+Pj4+PiANCj4+Pj4+Pj4gLSBt
-YWtlIGV4dF90cmVlX3ByZXBhcmVfY29tbWl0IG9ubHkgZW5jb2RlIHVwIHRvIHBsaF9sd2INCj4+
-Pj4+PiANCj4+Pj4+PiBJIHNlZSBubyByZWFzb24gd2h5IGV4dF90cmVlX3ByZXBhcmVfY29tbWl0
-KCkgc2hvdWxkbuKAmXQgYmUgYWxsb3dlZCB0byBleHRlbmQgdGhlIGFyZ3MtPmxhc3RieXRld3Jp
-dHRlbi4gVGhpcyBpcyBhIG1ldGFkYXRhIG9wZXJhdGlvbiB0aGF0IGlzIG93bmVkIGJ5IHRoZSBw
-TkZTIGxheW91dCBkcml2ZXIuDQo+Pj4+Pj4gVGhlIG9ubHkgdGhpbmcgSeKAmWQgbm90ZSBpcyB5
-b3Ugc2hvdWxkIHRoZW4gcmV3cml0ZSB0aGUgZmFpbHVyZSBjYXNlIGluIHBuZnNfbGF5b3V0Y29t
-bWl0X2lub2RlKCkgc28gdGhhdCBpdCBkb2VzbuKAmXQgcmVseSBvbiB0aGUgc2F2ZWQg4oCcZW5k
-X3Bvc+KAnSwgYnV0IHVzZXMgYXJncy0+bGFzdGJ5dGV3cml0dGVuIGluc3RlYWQgKHdpdGggYSBj
-b21tZW50IHRvIHRoZSBlZmZlY3Qgd2h5KeKApg0KPj4+Pj4gDQo+Pj4+PiBJbiBmYWN0LCBnaXZl
-biB0aGUgcG90ZW50aWFsIGZvciByYWNlcyBoZXJlLCBJIHRoaW5rIHRoZSByaWdodCB0aGluZyB0
-byBkbyBpcyB0byBoYXZlIGV4dF90cmVlX3ByZXBhcmVfY29tbWl0KCkgYWx3YXlzIHNldCB0aGUg
-Y29ycmVjdCB2YWx1ZSBmb3IgYXJncy0+bGFzdGJ5dGV3cml0dGVuLg0KPj4+PiANCj4+Pj4gT0ss
-IHRoYXQgaGFzIGNsZWFyZWQgdXAgdGhhdCBjb21tb24gZmFpbHVyZSBjYXNlIHRoYXQgd2FzIGdl
-dHRpbmcgaW4gdGhlDQo+Pj4+IHdheSwgYnV0IG5vdyBpdCBjYW4gc3RpbGwgZmFpbCBsaWtlIHRo
-aXM6DQo+Pj4+IA0KPj4+IA0KPj4+IEdvb2QgcHJvZ3Jlc3MhIDotKQ0KPj4+IA0KPj4+PiBuZnNf
-d3JpdGViYWNrX3VwZGF0ZV9pbm9kZSBzZXRzIHNpemUgNDA5NiB3LyBORlNfSU5PX0lOVkFMSURf
-QVRUUiBzZXQsIGFuZCBzZXRzIE5GU19JTk9fTEFZT1VUQ09NTUlUDQo+Pj4+IDFzdCBuZnNfZ2V0
-YXR0ciAtPiBwbmZzX2xheW91dGNvbW1pdF9pbm9kZSBzdGFydHMsIGNsZWFycyBsYXlvdXRjb21t
-aXQgZmxhZyBzZXRzIE5GU19JTk9fTEFZT1VUQ09NTUlUSU5HDQo+Pj4+IG5mc193cml0ZWJhY2tf
-dXBkYXRlX2lub2RlIHNldHMgc2l6ZSA4MTkyIHcvIE5GU19JTk9fSU5WQUxJRF9BVFRSIHNldCwg
-YW5kIHNldHMgTkZTX0lOT19MQVlPVVRDT01NSVQNCj4+Pj4gMXN0IG5mc19nZXRhdHRyIC0+IG5m
-czRfbGF5b3V0Y29tbWl0X3JlbGVhc2Ugc2V0cyBzaXplIDQwOTYsIE5GU19JTk9fSU5WQUxJRF9B
-VFRSIHNldCwgY2xlYXJzIE5GU19JTk9fTEFZT1VUQ09NTUlUVElORw0KPj4+PiAxc3QgbmZzX2dl
-dGF0dHIgLT4gX19yZXZhbGlkYXRlX2lub2RlIHNldHMgc2l6ZSA0MDk2LCBORlNfSU5PX0lOVkFM
-SURfQVRUUiBub3Qgc2V0Li4gY2FjaGUgaXMgdmFsaWQNCj4+Pj4gMm5kIG5mc19nZXRhdHRyIGlt
-bWVkaWF0ZWx5IHJldHVybnMgNDA5NiBldmVuIHRob3VnaCBORlNfSU5PX0xBWU9VVENPTU1JVA0K
-Pj4+IA0KPj4+IElzIHRoaXMgYmVpbmcgdGVzdGVkIG9uIHRvcCBvZiB0aGUgY3VycmVudCBsaW51
-eC1uZXh0L3Rlc3Rpbmc/IE5vcm1hbGx5LCBJ4oCZZCBleHBlY3QgaHR0cDovL2dpdC5saW51eC1u
-ZnMub3JnLz9wPXRyb25kbXkvbGludXgtbmZzLmdpdDthPWNvbW1pdGRpZmY7aD0xMGI3ZTlhZDQ0
-ODgxZmNkNDZhYzI0ZWI3Mzc0Mzc3YzZlODk2MmVkIHRvIGNhdXNlIDFzdCBuZnNfZ2V0YXR0cigp
-IHRvIG5vdCBkZWNsYXJlIHRoZSBjYWNoZSB2YWxpZC4NCj4+IA0KPj4gWWVzLCB0aGlzIGlzIG9u
-IHlvdXIgbGludXgtbmV4dCBicmFuY2guDQo+PiANCj4+IFdoZW4gdGhlIDFzdCBuZnNfZ2V0YXR0
-cigpIGdvZXMgdGhyb3VnaCBuZnNfdXBkYXRlX2lub2RlKCkgdGhlIHNlY29uZCB0aW1lDQo+PiAo
-ZHVyaW5nIF9fcmV2YWxpZGF0ZV9pbm9kZSksIE5GU19JTk9fSU5WQUxJRF9BVFRSIGlzIG5ldmVy
-IHNldCBieSBhbnl0aGluZywNCj4+IHNpbmNlIGFsbCB0aGUgYXR0cmlidXRlcyByZXR1cm5lZCBt
-YXRjaCB0aGUgY2FjaGUuICBTbyBldmVuIHRob3VnaA0KPj4gTkZTX0lOT19MQVlPVVRDT01NSVQg
-aXMgc2V0LCBhbmQgdGhlIGNhY2hlX3ZhbGlkaXR5IHZhcmlhYmxlIGlzICJmYWxzZSIsDQo+PiB0
-aGUgTkZTX0lOT19JTlZBTElEX0FUVFIgaXMgbmV2ZXIgc2V0IGluIHRoZSAiaW52YWxpZCIgbG9j
-YWwgdmFyaWFibGUuDQo+PiANCj4+IFNob3VsZCBwbmZzX2xheW91dGNvbW1pdF9vdXRzdGFuZGlu
-ZygpIGFsd2F5cyBzZXQgTkZTX0lOT19JTlZBTElEX0FUVFI/DQo+PiANCj4+IEJlbg0KPiANCj4g
-bmZzX3Bvc3Rfb3BfdXBkYXRlX2lub2RlX2xvY2tlZCgpIHNob3VsZCBiZSBkb2luZyB0aGF0IGFz
-IHBhcnQgb2YgdGhlIGNhbGxjaGFpbiBpbiBuZnNfd3JpdGViYWNrX3VwZGF0ZV9pbm9kZSgpLg0K
-PiANCg0KQnkgdGhlIHdheS4gSSBqdXN0IG5vdGljZWQgdGhhdCBub3RoaW5nIGFwcGVhcnMgdG8g
-YmUgdXNpbmcgdGhlIGF0dHJpYnV0ZXMgd2UgcmV0cmlldmUgYXMgcGFydCBvZiB0aGUgbGF5b3V0
-Y29tbWl0IGNhbGwuIERvZXMgYWRkaW5nIGEgbmZzX3JlZnJlc2hfaW5vZGUoKSB0byB0aGUg4oCc
-c3VjY2Vzc+KAnSBwYXRoIGluIG5mczRfbGF5b3V0Y29tbWl0X2RvbmUoKSBwZXJoYXBzIGhlbHA/
-DQoNCg0K
+On Wed, Jul 27, 2016 at 07:11:23PM +0000, Trond Myklebust wrote:
+> Hi Eric,
+> 
+> > On Jul 27, 2016, at 14:59, Eric Dumazet <eric.dumazet@gmail.com> wrote:
+> > 
+> > On Wed, 2016-07-27 at 14:48 -0400, Fields Bruce James wrote:
+> >> On Tue, Jul 26, 2016 at 04:08:29PM +0000, Trond Myklebust wrote:
+> >>> 
+> >>>> On Jul 26, 2016, at 11:43, J. Bruce Fields <bfields@fieldses.org> wrote:
+> >>>> 
+> >>>> On Tue, Jul 26, 2016 at 09:51:19AM -0400, Trond Myklebust wrote:
+> >>>>> We're seeing traces of the following form:
+> >>>>> 
+> >>>>> [10952.396347] svc: transport ffff88042ba4a 000 dequeued, inuse=2
+> >>>>> [10952.396351] svc: tcp_accept ffff88042ba4 a000 sock ffff88042a6e4c80
+> >>>>> [10952.396362] nfsd: connect from 10.2.6.1, port=187
+> >>>>> [10952.396364] svc: svc_setup_socket ffff8800b99bcf00
+> >>>>> [10952.396368] setting up TCP socket for reading
+> >>>>> [10952.396370] svc: svc_setup_socket created ffff8803eb10a000 (inet ffff88042b75b800)
+> >>>>> [10952.396373] svc: transport ffff8803eb10a000 put into queue
+> >>>>> [10952.396375] svc: transport ffff88042ba4a000 put into queue
+> >>>>> [10952.396377] svc: server ffff8800bb0ec000 waiting for data (to = 3600000)
+> >>>>> [10952.396380] svc: transport ffff8803eb10a000 dequeued, inuse=2
+> >>>>> [10952.396381] svc_recv: found XPT_CLOSE
+> >>>>> [10952.396397] svc: svc_delete_xprt(ffff8803eb10a000)
+> >>>>> [10952.396398] svc: svc_tcp_sock_detach(ffff8803eb10a000)
+> >>>>> [10952.396399] svc: svc_sock_detach(ffff8803eb10a000)
+> >>>>> [10952.396412] svc: svc_sock_free(ffff8803eb10a000)
+> >>>>> 
+> >>>>> i.e. an immediate close of the socket after initialisation.
+> >>>> 
+> >>>> Interesting, thanks!
+> >>>> 
+> >>>> So the one thing I don't understand is why this is correct behavior for
+> >>>> accept--I thought it wasn't supposed to return a socket until it was
+> >>>> fully established.
+> >>> 
+> >>> inet_accept() appears to allow SYN_RECV:
+> >> 
+> >> OK.  Cc'ing netdev just to make sure we didn't overlook anything.
+> >> 
+> > 
+> > SYN_RECV after accept() is a TCP Fast Open property I think.
+> > 
+> > Maybe you are playing with some global TCP Fast Open settings ?
+> > 
+> 
+> The Linux kernel client should not be using TCP fast open, but it is possible that some of the other NFSv3 clients we’re using are.
+> Would a standard knfsd listener respond to a TCP fast open request, or would the default behaviour be to ignore it?
+> 
+> If the default behaviour for the server is to allow fast open, then we do need these patches, IMO.
+
+Even if it's not a default, if there's a configuration that allows
+accept to return a socket in SYN_RECV state, then knfsd should handle it
+gracefully, especially as long as it's this easy.
+
+It'd still be useful to understand why this is happening, though....
+
+--b.
