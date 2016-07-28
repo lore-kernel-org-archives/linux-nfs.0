@@ -1,16 +1,16 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:41742 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:45064 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758895AbcG1Pbh convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 28 Jul 2016 11:31:37 -0400
+	id S932411AbcG1Pgd convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 28 Jul 2016 11:36:33 -0400
 From: "Benjamin Coddington" <bcodding@redhat.com>
 To: "Trond Myklebust" <trondmy@primarydata.com>
 Cc: "hch@infradead.org" <hch@infradead.org>,
         "List Linux NFS Mailing" <linux-nfs@vger.kernel.org>
 Subject: Re: [PATCH v4 24/28] Getattr doesn't require data sync semantics
-Date: Thu, 28 Jul 2016 11:33:23 -0400
-Message-ID: <6E3A8D21-6935-44DA-850B-A2B0E96EE169@redhat.com>
-In-Reply-To: <4FC77AD6-40D9-48E4-BF08-0EA03334BDC7@primarydata.com>
+Date: Thu, 28 Jul 2016 11:38:18 -0400
+Message-ID: <82A0BF81-D7D4-4972-B331-0BA60529E5BC@redhat.com>
+In-Reply-To: <54CFDC65-76C2-46AE-9401-861EA4AA8127@primarydata.com>
 References: <1467844205-76852-23-git-send-email-trond.myklebust@primarydata.com>
  <1467844205-76852-24-git-send-email-trond.myklebust@primarydata.com>
  <1467844205-76852-25-git-send-email-trond.myklebust@primarydata.com>
@@ -44,129 +44,159 @@ References: <1467844205-76852-23-git-send-email-trond.myklebust@primarydata.com>
  <4F9280AE-46C2-4D1A-8CC9-F28DCFCE6271@primarydata.com>
  <AFFE8305-AB9B-46F9-8618-B8310A923D62@redhat.com>
  <4FC77AD6-40D9-48E4-BF08-0EA03334BDC7@primarydata.com>
+ <54CFDC65-76C2-46AE-9401-861EA4AA8127@primarydata.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=utf-8; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 28 Jul 2016, at 8:31, Trond Myklebust wrote:
 
->> On Jul 28, 2016, at 05:47, Benjamin Coddington <bcodding@redhat.com> 
+
+On 28 Jul 2016, at 10:04, Trond Myklebust wrote:
+
+>> On Jul 28, 2016, at 08:31, Trond Myklebust <trondmy@primarydata.com> 
 >> wrote:
 >>
 >>
->> On 27 Jul 2016, at 14:05, Trond Myklebust wrote:
->>
->>>> On Jul 27, 2016, at 12:14, Benjamin Coddington 
->>>> <bcodding@redhat.com> wrote:
->>>>
->>>> On 27 Jul 2016, at 8:31, Trond Myklebust wrote:
->>>>
->>>>>> On Jul 27, 2016, at 08:15, Trond Myklebust 
->>>>>> <trondmy@primarydata.com> wrote:
->>>>>>
->>>>>>
->>>>>>> On Jul 27, 2016, at 07:55, Benjamin Coddington 
->>>>>>> <bcodding@redhat.com> wrote:
->>>>>>>
->>>>>>> After adding more debugging, I see that all of that is working 
->>>>>>> correctly,
->>>>>>> but the first LAYOUTCOMMIT is taking the size back down to 4096 
->>>>>>> from the
->>>>>>> last nfs_writeback_done(), and the second LAYOUTCOMMIT never 
->>>>>>> brings it back
->>>>>>> up again.
->>>>>>>
->>>>>>
->>>>>> Excellent! Thanks for debugging that.
->>>>>>
->>>>>>> Now I see that we should be marking the block extents as written 
->>>>>>> atomically with
->>>>>>> setting LAYOUTCOMMIT and nfsi->layout->plh_lwb, otherwise a 
->>>>>>> LAYOUTCOMMIT can
->>>>>>> collect extents just added from the next bl_write_cleanup().  
->>>>>>> Then, the next
->>>>>>> LAYOUTCOMMIT fails, and all we're left with is the size from the 
->>>>>>> first
->>>>>>> LAYOUTCOMMIT.  Not sure if that particular problem is the whole 
->>>>>>> fix, but
->>>>>>> that's something to work on.
->>>>>>>
->>>>>>> I see ways to fix that:
->>>>>>>
->>>>>>> - make a new pnfs_set_layoutcommit_locked() that can be used to 
->>>>>>> call
->>>>>>>   ext_tree_mark_written() inside the i_lock
->>>>>>>
->>>>>>> - make another pnfs_layoutdriver_type operation to be used 
->>>>>>> within
->>>>>>>   pnfs_set_layoutcommit (mark_layoutcommit? set_layoutcommit?), 
->>>>>>> and call
->>>>>>>   ext_tree_mark_written() within that..
->>>>>>>
->>>>>>> - have .prepare_layoutcommit return a new positive plh_lwb that 
->>>>>>> would
->>>>>>>   extend the current LAYOUTCOMMIT
->>>>>>>
->>>>>>> - make ext_tree_prepare_commit only encode up to plh_lwb
->>>>>>
->>>>>> I see no reason why ext_tree_prepare_commit() shouldn’t be 
->>>>>> allowed to extend the args->lastbytewritten. This is a metadata 
->>>>>> operation that is owned by the pNFS layout driver.
->>>>>> The only thing I’d note is you should then rewrite the failure 
->>>>>> case in pnfs_layoutcommit_inode() so that it doesn’t rely on 
->>>>>> the saved “end_pos”, but uses args->lastbytewritten instead 
->>>>>> (with a comment to the effect why)…
+>>> On Jul 28, 2016, at 05:47, Benjamin Coddington <bcodding@redhat.com> 
+>>> wrote:
+>>>
+>>>
+>>> On 27 Jul 2016, at 14:05, Trond Myklebust wrote:
+>>>
+>>>>> On Jul 27, 2016, at 12:14, Benjamin Coddington 
+>>>>> <bcodding@redhat.com> wrote:
 >>>>>
->>>>> In fact, given the potential for races here, I think the right 
->>>>> thing to do is to have ext_tree_prepare_commit() always set the 
->>>>> correct value for args->lastbytewritten.
+>>>>> On 27 Jul 2016, at 8:31, Trond Myklebust wrote:
+>>>>>
+>>>>>>> On Jul 27, 2016, at 08:15, Trond Myklebust 
+>>>>>>> <trondmy@primarydata.com> wrote:
+>>>>>>>
+>>>>>>>
+>>>>>>>> On Jul 27, 2016, at 07:55, Benjamin Coddington 
+>>>>>>>> <bcodding@redhat.com> wrote:
+>>>>>>>>
+>>>>>>>> After adding more debugging, I see that all of that is working 
+>>>>>>>> correctly,
+>>>>>>>> but the first LAYOUTCOMMIT is taking the size back down to 4096 
+>>>>>>>> from the
+>>>>>>>> last nfs_writeback_done(), and the second LAYOUTCOMMIT never 
+>>>>>>>> brings it back
+>>>>>>>> up again.
+>>>>>>>>
+>>>>>>>
+>>>>>>> Excellent! Thanks for debugging that.
+>>>>>>>
+>>>>>>>> Now I see that we should be marking the block extents as 
+>>>>>>>> written atomically with
+>>>>>>>> setting LAYOUTCOMMIT and nfsi->layout->plh_lwb, otherwise a 
+>>>>>>>> LAYOUTCOMMIT can
+>>>>>>>> collect extents just added from the next bl_write_cleanup().  
+>>>>>>>> Then, the next
+>>>>>>>> LAYOUTCOMMIT fails, and all we're left with is the size from 
+>>>>>>>> the first
+>>>>>>>> LAYOUTCOMMIT.  Not sure if that particular problem is the whole 
+>>>>>>>> fix, but
+>>>>>>>> that's something to work on.
+>>>>>>>>
+>>>>>>>> I see ways to fix that:
+>>>>>>>>
+>>>>>>>> - make a new pnfs_set_layoutcommit_locked() that can be used to 
+>>>>>>>> call
+>>>>>>>>  ext_tree_mark_written() inside the i_lock
+>>>>>>>>
+>>>>>>>> - make another pnfs_layoutdriver_type operation to be used 
+>>>>>>>> within
+>>>>>>>>  pnfs_set_layoutcommit (mark_layoutcommit? set_layoutcommit?), 
+>>>>>>>> and call
+>>>>>>>>  ext_tree_mark_written() within that..
+>>>>>>>>
+>>>>>>>> - have .prepare_layoutcommit return a new positive plh_lwb that 
+>>>>>>>> would
+>>>>>>>>  extend the current LAYOUTCOMMIT
+>>>>>>>>
+>>>>>>>> - make ext_tree_prepare_commit only encode up to plh_lwb
+>>>>>>>
+>>>>>>> I see no reason why ext_tree_prepare_commit() shouldn’t be 
+>>>>>>> allowed to extend the args->lastbytewritten. This is a metadata 
+>>>>>>> operation that is owned by the pNFS layout driver.
+>>>>>>> The only thing I’d note is you should then rewrite the failure 
+>>>>>>> case in pnfs_layoutcommit_inode() so that it doesn’t rely on 
+>>>>>>> the saved “end_pos”, but uses args->lastbytewritten instead 
+>>>>>>> (with a comment to the effect why)…
+>>>>>>
+>>>>>> In fact, given the potential for races here, I think the right 
+>>>>>> thing to do is to have ext_tree_prepare_commit() always set the 
+>>>>>> correct value for args->lastbytewritten.
+>>>>>
+>>>>> OK, that has cleared up that common failure case that was getting 
+>>>>> in the
+>>>>> way, but now it can still fail like this:
+>>>>>
 >>>>
->>>> OK, that has cleared up that common failure case that was getting 
->>>> in the
->>>> way, but now it can still fail like this:
+>>>> Good progress! :-)
 >>>>
+>>>>> nfs_writeback_update_inode sets size 4096 w/ NFS_INO_INVALID_ATTR 
+>>>>> set, and sets NFS_INO_LAYOUTCOMMIT
+>>>>> 1st nfs_getattr -> pnfs_layoutcommit_inode starts, clears 
+>>>>> layoutcommit flag sets NFS_INO_LAYOUTCOMMITING
+>>>>> nfs_writeback_update_inode sets size 8192 w/ NFS_INO_INVALID_ATTR 
+>>>>> set, and sets NFS_INO_LAYOUTCOMMIT
+>>>>> 1st nfs_getattr -> nfs4_layoutcommit_release sets size 4096, 
+>>>>> NFS_INO_INVALID_ATTR set, clears NFS_INO_LAYOUTCOMMITTING
+>>>>> 1st nfs_getattr -> __revalidate_inode sets size 4096, 
+>>>>> NFS_INO_INVALID_ATTR not set.. cache is valid
+>>>>> 2nd nfs_getattr immediately returns 4096 even though 
+>>>>> NFS_INO_LAYOUTCOMMIT
+>>>>
+>>>> Is this being tested on top of the current linux-next/testing? 
+>>>> Normally, I’d expect 
+>>>> http://git.linux-nfs.org/?p=trondmy/linux-nfs.git;a=commitdiff;h=10b7e9ad44881fcd46ac24eb7374377c6e8962ed 
+>>>> to cause 1st nfs_getattr() to not declare the cache valid.
 >>>
->>> Good progress! :-)
+>>> Yes, this is on your linux-next branch.
 >>>
->>>> nfs_writeback_update_inode sets size 4096 w/ NFS_INO_INVALID_ATTR 
->>>> set, and sets NFS_INO_LAYOUTCOMMIT
->>>> 1st nfs_getattr -> pnfs_layoutcommit_inode starts, clears 
->>>> layoutcommit flag sets NFS_INO_LAYOUTCOMMITING
->>>> nfs_writeback_update_inode sets size 8192 w/ NFS_INO_INVALID_ATTR 
->>>> set, and sets NFS_INO_LAYOUTCOMMIT
->>>> 1st nfs_getattr -> nfs4_layoutcommit_release sets size 4096, 
->>>> NFS_INO_INVALID_ATTR set, clears NFS_INO_LAYOUTCOMMITTING
->>>> 1st nfs_getattr -> __revalidate_inode sets size 4096, 
->>>> NFS_INO_INVALID_ATTR not set.. cache is valid
->>>> 2nd nfs_getattr immediately returns 4096 even though 
->>>> NFS_INO_LAYOUTCOMMIT
+>>> When the 1st nfs_getattr() goes through nfs_update_inode() the 
+>>> second time
+>>> (during __revalidate_inode), NFS_INO_INVALID_ATTR is never set by 
+>>> anything,
+>>> since all the attributes returned match the cache.  So even though
+>>> NFS_INO_LAYOUTCOMMIT is set, and the cache_validity variable is 
+>>> "false",
+>>> the NFS_INO_INVALID_ATTR is never set in the "invalid" local 
+>>> variable.
 >>>
->>> Is this being tested on top of the current linux-next/testing? 
->>> Normally, I’d expect 
->>> http://git.linux-nfs.org/?p=trondmy/linux-nfs.git;a=commitdiff;h=10b7e9ad44881fcd46ac24eb7374377c6e8962ed 
->>> to cause 1st nfs_getattr() to not declare the cache valid.
+>>> Should pnfs_layoutcommit_outstanding() always set 
+>>> NFS_INO_INVALID_ATTR?
+>>>
+>>> Ben
 >>
->> Yes, this is on your linux-next branch.
+>> nfs_post_op_update_inode_locked() should be doing that as part of the 
+>> callchain in nfs_writeback_update_inode().
 >>
->> When the 1st nfs_getattr() goes through nfs_update_inode() the second 
->> time
->> (during __revalidate_inode), NFS_INO_INVALID_ATTR is never set by 
->> anything,
->> since all the attributes returned match the cache.  So even though
->> NFS_INO_LAYOUTCOMMIT is set, and the cache_validity variable is 
->> "false",
->> the NFS_INO_INVALID_ATTR is never set in the "invalid" local 
->> variable.
->>
->> Should pnfs_layoutcommit_outstanding() always set 
->> NFS_INO_INVALID_ATTR?
->>
->> Ben
 >
-> nfs_post_op_update_inode_locked() should be doing that as part of the 
-> callchain in nfs_writeback_update_inode().
+> By the way. I just noticed that nothing appears to be using the 
+> attributes we retrieve as part of the layoutcommit call. Does adding a 
+> nfs_refresh_inode() to the “success” path in 
+> nfs4_layoutcommit_done() perhaps help?
 
-And it is, and the bit persists through the next layoutcommit, it is the 
-next GETATTR response that finds that all the attributes are the same 
-and the bit is cleared.
+We do it in layoutcommit_release:
+
+  nfs4_layoutcommit_done [nfsv4]() {
+    ...
+  }
+  nfs4_layoutcommit_release [nfsv4]() {
+    ...
+    nfs_post_op_update_inode_force_wcc [nfs]() {
+      nfs_post_op_update_inode_force_wcc_locked [nfs]() {
+        nfs_post_op_update_inode_locked [nfs]() {
+          nfs4_have_delegation [nfsv4]() {
+            nfs4_do_check_delegation [nfsv4]();
+          }
+          nfs_refresh_inode_locked [nfs]() {
+            nfs_update_inode [nfs]() {
+
+
+Should I still try adding it in nfs4_layoutcommit_done()?
+
+Ben
