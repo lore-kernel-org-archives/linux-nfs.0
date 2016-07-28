@@ -1,33 +1,64 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:33710 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755622AbcG1SlM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 28 Jul 2016 14:41:12 -0400
-From: Benjamin Coddington <bcodding@redhat.com>
-To: linux-nfs@vger.kernel.org
-Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
-        Anna Schumaker <anna.schumaker@netapp.com>,
+Received: from us-smtp-delivery-194.mimecast.com ([63.128.21.194]:59817 "EHLO
+	us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1756059AbcG1Srs (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 28 Jul 2016 14:47:48 -0400
+From: Trond Myklebust <trondmy@primarydata.com>
+To: "bcodding@redhat.com" <bcodding@redhat.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+CC: "anna.schumaker@netapp.com" <anna.schumaker@netapp.com>,
         "hch@infradead.org" <hch@infradead.org>
-Subject: [PATCH 0/2] Two fixups for generic/207
-Date: Thu, 28 Jul 2016 14:41:08 -0400
-Message-Id: <cover.1469730653.git.bcodding@redhat.com>
+Subject: Re: [PATCH 1/2] pnfs/blocklayout: update last_write_offset in
+ prepare_layoutcommit
+Date: Thu, 28 Jul 2016 18:47:40 +0000
+Message-ID: <1469731659.9558.3.camel@primarydata.com>
+References: <cover.1469730653.git.bcodding@redhat.com>
+	 <973de15d7e14e23d6945ad03713384c97a6a0087.1469730653.git.bcodding@redhat.com>
+In-Reply-To: <973de15d7e14e23d6945ad03713384c97a6a0087.1469730653.git.bcodding@redhat.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Refer to the monster thread here:
-http://marc.info/?t=146895837900002&r=1&w=2
-
-Thanks very much for your help with this Trond.
-
-Benjamin Coddington (2):
-  pnfs/blocklayout: update last_write_offset in prepare_layoutcommit
-  pNFS: Actively set attributes as invalid if LAYOUTCOMMIT is
-    outstanding
-
- fs/nfs/blocklayout/extent_tree.c | 6 ++++--
- fs/nfs/inode.c                   | 8 +++++---
- 2 files changed, 9 insertions(+), 5 deletions(-)
-
--- 
-2.5.5
+T24gVGh1LCAyMDE2LTA3LTI4IGF0IDE0OjQxIC0wNDAwLCBCZW5qYW1pbiBDb2RkaW5ndG9uIHdy
+b3RlOg0KPiBCbG9jay9TQ1NJIGxheW91dCB3cml0ZSBjb21wbGV0aW9uIG1heSBhZGQgY29tbWl0
+dGFibGUgZXh0ZW50cyB0byB0aGUNCj4gZXh0ZW50IHRyZWUgYmVmb3JlIHVwZGF0aW5nIHRoZSBs
+YXlvdXQncyBsYXN0LXdyaXR0ZW4gYnl0ZSB1bmRlciB0aGUNCj4gaW5vZGUNCj4gbG9jay7CoMKg
+SWYgYSBzeW5jIGhhcHBlbnMgYmVmb3JlIHRoaXMgdmFsdWUgaXMgdXBkYXRlZCwgdGhlbg0KPiBw
+cmVwYXJlX2xheW91dGNvbW1pdCBtYXkgZmluZCBhbmQgZW5jb2RlIHRoZXNlIGV4dGVudHMgd2hp
+Y2ggd291bGQNCj4gcHJvZHVjZQ0KPiBhIExBWU9VVENPTU1JVCByZXF1ZXN0IHdob3NlIGVuY29k
+ZWQgZXh0ZW50cyBhcmUgbGFyZ2VyIHRoYW4gdGhlDQo+IHJlcXVlc3Qncw0KPiBsb2NhX2xlbmd0
+aC4NCj4gDQo+IEZpeCB0aGlzIGJ5IHVwZGF0aW5nIHRoZSBsYXN0X3dyaXRlX29mZnNldCB0byBt
+YXRjaCB0aGUgY3VycmVudGx5DQo+IGVuY29kZWQNCj4gZXh0ZW50cy4NCj4gDQo+IFNpZ25lZC1v
+ZmYtYnk6IEJlbmphbWluIENvZGRpbmd0b24gPGJjb2RkaW5nQHJlZGhhdC5jb20+DQo+IC0tLQ0K
+PiDCoGZzL25mcy9ibG9ja2xheW91dC9leHRlbnRfdHJlZS5jIHwgNiArKysrLS0NCj4gwqAxIGZp
+bGUgY2hhbmdlZCwgNCBpbnNlcnRpb25zKCspLCAyIGRlbGV0aW9ucygtKQ0KPiANCj4gZGlmZiAt
+LWdpdCBhL2ZzL25mcy9ibG9ja2xheW91dC9leHRlbnRfdHJlZS5jDQo+IGIvZnMvbmZzL2Jsb2Nr
+bGF5b3V0L2V4dGVudF90cmVlLmMNCj4gaW5kZXggOTkyYmNiMTljMTFlLi4xOGFlMWZkMjE3NWUg
+MTAwNjQ0DQo+IC0tLSBhL2ZzL25mcy9ibG9ja2xheW91dC9leHRlbnRfdHJlZS5jDQo+ICsrKyBi
+L2ZzL25mcy9ibG9ja2xheW91dC9leHRlbnRfdHJlZS5jDQo+IEBAIC01MTgsNyArNTE4LDcgQEAg
+c3RhdGljIF9fYmUzMiAqZW5jb2RlX3Njc2lfcmFuZ2Uoc3RydWN0DQo+IHBuZnNfYmxvY2tfZXh0
+ZW50ICpiZSwgX19iZTMyICpwKQ0KPiDCoH0NCj4gwqANCj4gwqBzdGF0aWMgaW50IGV4dF90cmVl
+X2VuY29kZV9jb21taXQoc3RydWN0IHBuZnNfYmxvY2tfbGF5b3V0ICpibCwNCj4gX19iZTMyICpw
+LA0KPiAtCQlzaXplX3QgYnVmZmVyX3NpemUsIHNpemVfdCAqY291bnQpDQo+ICsJCXNpemVfdCBi
+dWZmZXJfc2l6ZSwgc2l6ZV90ICpjb3VudCwgX191NjQgKmxhc3RieXRlKQ0KPiDCoHsNCj4gwqAJ
+c3RydWN0IHBuZnNfYmxvY2tfZXh0ZW50ICpiZTsNCj4gwqAJaW50IHJldCA9IDA7DQo+IEBAIC01
+NDEsNiArNTQxLDggQEAgc3RhdGljIGludCBleHRfdHJlZV9lbmNvZGVfY29tbWl0KHN0cnVjdA0K
+PiBwbmZzX2Jsb2NrX2xheW91dCAqYmwsIF9fYmUzMiAqcCwNCj4gwqAJCWVsc2UNCj4gwqAJCQlw
+ID0gZW5jb2RlX2Jsb2NrX2V4dGVudChiZSwgcCk7DQo+IMKgCQliZS0+YmVfdGFnID0gRVhURU5U
+X0NPTU1JVFRJTkc7DQo+ICsJCWlmICgoZXh0X2ZfZW5kKGJlKSA8PCBTRUNUT1JfU0hJRlQpIC0g
+MSA+ICpsYXN0Ynl0ZSkNCj4gKwkJCSpsYXN0Ynl0ZSA9IChleHRfZl9lbmQoYmUpIDw8IFNFQ1RP
+Ul9TSElGVCkgDQo+IC0gMTsNCg0KV29uJ3QgdGhpcyBjYXVzZSB0aGUgZmlsZSBzaXplIHRvIGJl
+IGFsd2F5cyBzZWN0b3IgYWxpZ25lZCBvbiB0aGUNCnNlcnZlcj8gSSB3YXMgYXNzdW1pbmcgdGhh
+dCB3ZSB3b3VsZCBoYXZlIHRvIHN0b3JlIHRoZSBsYXN0Ynl0ZQ0KYXRvbWljYWxseSB3aXRoIHNl
+dHRpbmcgdXAgdGhlIGNvbW1pdCBpbsKgZXh0X3RyZWVfbWFya193cml0dGVuKCkuDQoNCj4gwqAJ
+fQ0KPiDCoAlzcGluX3VubG9jaygmYmwtPmJsX2V4dF9sb2NrKTsNCj4gwqANCj4gQEAgLTU2NCw3
+ICs1NjYsNyBAQCBleHRfdHJlZV9wcmVwYXJlX2NvbW1pdChzdHJ1Y3QNCj4gbmZzNF9sYXlvdXRj
+b21taXRfYXJncyAqYXJnKQ0KPiDCoAlhcmctPmxheW91dHVwZGF0ZV9wYWdlcyA9ICZhcmctPmxh
+eW91dHVwZGF0ZV9wYWdlOw0KPiDCoA0KPiDCoHJldHJ5Og0KPiAtCXJldCA9IGV4dF90cmVlX2Vu
+Y29kZV9jb21taXQoYmwsIHN0YXJ0X3AgKyAxLCBidWZmZXJfc2l6ZSwNCj4gJmNvdW50KTsNCj4g
+KwlyZXQgPSBleHRfdHJlZV9lbmNvZGVfY29tbWl0KGJsLCBzdGFydF9wICsgMSwgYnVmZmVyX3Np
+emUsDQo+ICZjb3VudCwgJmFyZy0+bGFzdGJ5dGV3cml0dGVuKTsNCj4gwqAJaWYgKHVubGlrZWx5
+KHJldCkpIHsNCj4gwqAJCWV4dF90cmVlX2ZyZWVfY29tbWl0ZGF0YShhcmcsIGJ1ZmZlcl9zaXpl
+KTsNCj4gwqA=
 
