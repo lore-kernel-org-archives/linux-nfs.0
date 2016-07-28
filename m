@@ -1,136 +1,172 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from bombadil.infradead.org ([198.137.202.9]:35615 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758735AbcG1Oqm (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 28 Jul 2016 10:46:42 -0400
-Date: Thu, 28 Jul 2016 07:46:41 -0700
-From: Christoph Hellwig <hch@infradead.org>
-To: trond.myklebust@primarydata.com
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: xfstests generic/285 fails reliably on Trond's linux-next branch
-Message-ID: <20160728144641.GA28753@infradead.org>
-References: <20160721081802.GA14413@infradead.org>
+Received: from mx1.redhat.com ([209.132.183.28]:41742 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1758895AbcG1Pbh convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 28 Jul 2016 11:31:37 -0400
+From: "Benjamin Coddington" <bcodding@redhat.com>
+To: "Trond Myklebust" <trondmy@primarydata.com>
+Cc: "hch@infradead.org" <hch@infradead.org>,
+        "List Linux NFS Mailing" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH v4 24/28] Getattr doesn't require data sync semantics
+Date: Thu, 28 Jul 2016 11:33:23 -0400
+Message-ID: <6E3A8D21-6935-44DA-850B-A2B0E96EE169@redhat.com>
+In-Reply-To: <4FC77AD6-40D9-48E4-BF08-0EA03334BDC7@primarydata.com>
+References: <1467844205-76852-23-git-send-email-trond.myklebust@primarydata.com>
+ <1467844205-76852-24-git-send-email-trond.myklebust@primarydata.com>
+ <1467844205-76852-25-git-send-email-trond.myklebust@primarydata.com>
+ <20160718034847.GA1195@infradead.org>
+ <A9C18137-87A3-4652-ADD6-E8E1C4BAE27B@primarydata.com>
+ <1468817945.5273.2.camel@primarydata.com>
+ <20160719035843.GA24437@infradead.org>
+ <F879054A-2116-40D5-90C9-473E71977E8A@redhat.com>
+ <C44AB0DD-8FA3-42F2-B7DE-C694559A68EF@primarydata.com>
+ <AB904138-E761-4F8F-AF97-0E8A4E067DB1@redhat.com>
+ <20160721082216.GA15247@infradead.org>
+ <A540F5A1-37B3-40EB-876D-EC33E891F0C9@redhat.com>
+ <B4719B7F-3FC4-4FD7-929E-CC528CA867F4@redhat.com>
+ <9E2543EF-0442-491E-AB22-3E1667DABBA4@redhat.com>
+ <E33497F6-079C-4903-9CC5-0ABDFA149694@primarydata.com>
+ <70375D08-FCA9-4C73-9991-38490C11B171@redhat.com>
+ <8B8BB73D-39A6-4291-A10E-736B0F907459@primarydata.com>
+ <C7773DBC-C4D9-4DA4-9391-8B7E91D7D5AF@redhat.com>
+ <B174B540-8D12-4BD1-8DD0-FE49E2AB216E@primarydata.com>
+ <AAB7FE0A-8409-494D-8CCF-BE07442791F3@redhat.com>
+ <737F0071-AAD2-49B5-9BD0-02DF98049B76@primarydata.com>
+ <F5EFC301-6372-4993-82BA-C96455F3957E@redhat.com>
+ <10749CC8-F76E-4DBD-9C27-9802475CF8A5@redhat.com>
+ <3448E968-3564-43C1-ADBB-A16C9687B0F3@primarydata.com>
+ <4CA4361B-2501-48AA-8B2C-715E5A3FD35C@redhat.com>
+ <DA6506A7-57F0-4263-BA23-0BB638BC2E36@primarydata.com>
+ <7EEB460E-F197-4B68-BBD1-7EEF16B77A71@redhat.com>
+ <455341C5-F202-4FA7-8A9B-7AA73CFA21CF@primarydata.com>
+ <06BBFA63-02D9-4BDE-A61D-14FE9F4E9E5F@primarydata.com>
+ <CFD74F0F-5375-4C05-8918-516F730FDBA7@redhat.com>
+ <4F9280AE-46C2-4D1A-8CC9-F28DCFCE6271@primarydata.com>
+ <AFFE8305-AB9B-46F9-8618-B8310A923D62@redhat.com>
+ <4FC77AD6-40D9-48E4-BF08-0EA03334BDC7@primarydata.com>
 MIME-Version: 1.0
-Content-Type: multipart/mixed; boundary="J/dobhs11T7y2rNN"
-In-Reply-To: <20160721081802.GA14413@infradead.org>
+Content-Type: text/plain; charset=utf-8; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On 28 Jul 2016, at 8:31, Trond Myklebust wrote:
 
---J/dobhs11T7y2rNN
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
+>> On Jul 28, 2016, at 05:47, Benjamin Coddington <bcodding@redhat.com> 
+>> wrote:
+>>
+>>
+>> On 27 Jul 2016, at 14:05, Trond Myklebust wrote:
+>>
+>>>> On Jul 27, 2016, at 12:14, Benjamin Coddington 
+>>>> <bcodding@redhat.com> wrote:
+>>>>
+>>>> On 27 Jul 2016, at 8:31, Trond Myklebust wrote:
+>>>>
+>>>>>> On Jul 27, 2016, at 08:15, Trond Myklebust 
+>>>>>> <trondmy@primarydata.com> wrote:
+>>>>>>
+>>>>>>
+>>>>>>> On Jul 27, 2016, at 07:55, Benjamin Coddington 
+>>>>>>> <bcodding@redhat.com> wrote:
+>>>>>>>
+>>>>>>> After adding more debugging, I see that all of that is working 
+>>>>>>> correctly,
+>>>>>>> but the first LAYOUTCOMMIT is taking the size back down to 4096 
+>>>>>>> from the
+>>>>>>> last nfs_writeback_done(), and the second LAYOUTCOMMIT never 
+>>>>>>> brings it back
+>>>>>>> up again.
+>>>>>>>
+>>>>>>
+>>>>>> Excellent! Thanks for debugging that.
+>>>>>>
+>>>>>>> Now I see that we should be marking the block extents as written 
+>>>>>>> atomically with
+>>>>>>> setting LAYOUTCOMMIT and nfsi->layout->plh_lwb, otherwise a 
+>>>>>>> LAYOUTCOMMIT can
+>>>>>>> collect extents just added from the next bl_write_cleanup().  
+>>>>>>> Then, the next
+>>>>>>> LAYOUTCOMMIT fails, and all we're left with is the size from the 
+>>>>>>> first
+>>>>>>> LAYOUTCOMMIT.  Not sure if that particular problem is the whole 
+>>>>>>> fix, but
+>>>>>>> that's something to work on.
+>>>>>>>
+>>>>>>> I see ways to fix that:
+>>>>>>>
+>>>>>>> - make a new pnfs_set_layoutcommit_locked() that can be used to 
+>>>>>>> call
+>>>>>>>   ext_tree_mark_written() inside the i_lock
+>>>>>>>
+>>>>>>> - make another pnfs_layoutdriver_type operation to be used 
+>>>>>>> within
+>>>>>>>   pnfs_set_layoutcommit (mark_layoutcommit? set_layoutcommit?), 
+>>>>>>> and call
+>>>>>>>   ext_tree_mark_written() within that..
+>>>>>>>
+>>>>>>> - have .prepare_layoutcommit return a new positive plh_lwb that 
+>>>>>>> would
+>>>>>>>   extend the current LAYOUTCOMMIT
+>>>>>>>
+>>>>>>> - make ext_tree_prepare_commit only encode up to plh_lwb
+>>>>>>
+>>>>>> I see no reason why ext_tree_prepare_commit() shouldn’t be 
+>>>>>> allowed to extend the args->lastbytewritten. This is a metadata 
+>>>>>> operation that is owned by the pNFS layout driver.
+>>>>>> The only thing I’d note is you should then rewrite the failure 
+>>>>>> case in pnfs_layoutcommit_inode() so that it doesn’t rely on 
+>>>>>> the saved “end_pos”, but uses args->lastbytewritten instead 
+>>>>>> (with a comment to the effect why)…
+>>>>>
+>>>>> In fact, given the potential for races here, I think the right 
+>>>>> thing to do is to have ext_tree_prepare_commit() always set the 
+>>>>> correct value for args->lastbytewritten.
+>>>>
+>>>> OK, that has cleared up that common failure case that was getting 
+>>>> in the
+>>>> way, but now it can still fail like this:
+>>>>
+>>>
+>>> Good progress! :-)
+>>>
+>>>> nfs_writeback_update_inode sets size 4096 w/ NFS_INO_INVALID_ATTR 
+>>>> set, and sets NFS_INO_LAYOUTCOMMIT
+>>>> 1st nfs_getattr -> pnfs_layoutcommit_inode starts, clears 
+>>>> layoutcommit flag sets NFS_INO_LAYOUTCOMMITING
+>>>> nfs_writeback_update_inode sets size 8192 w/ NFS_INO_INVALID_ATTR 
+>>>> set, and sets NFS_INO_LAYOUTCOMMIT
+>>>> 1st nfs_getattr -> nfs4_layoutcommit_release sets size 4096, 
+>>>> NFS_INO_INVALID_ATTR set, clears NFS_INO_LAYOUTCOMMITTING
+>>>> 1st nfs_getattr -> __revalidate_inode sets size 4096, 
+>>>> NFS_INO_INVALID_ATTR not set.. cache is valid
+>>>> 2nd nfs_getattr immediately returns 4096 even though 
+>>>> NFS_INO_LAYOUTCOMMIT
+>>>
+>>> Is this being tested on top of the current linux-next/testing? 
+>>> Normally, I’d expect 
+>>> http://git.linux-nfs.org/?p=trondmy/linux-nfs.git;a=commitdiff;h=10b7e9ad44881fcd46ac24eb7374377c6e8962ed 
+>>> to cause 1st nfs_getattr() to not declare the cache valid.
+>>
+>> Yes, this is on your linux-next branch.
+>>
+>> When the 1st nfs_getattr() goes through nfs_update_inode() the second 
+>> time
+>> (during __revalidate_inode), NFS_INO_INVALID_ATTR is never set by 
+>> anything,
+>> since all the attributes returned match the cache.  So even though
+>> NFS_INO_LAYOUTCOMMIT is set, and the cache_validity variable is 
+>> "false",
+>> the NFS_INO_INVALID_ATTR is never set in the "invalid" local 
+>> variable.
+>>
+>> Should pnfs_layoutcommit_outstanding() always set 
+>> NFS_INO_INVALID_ATTR?
+>>
+>> Ben
+>
+> nfs_post_op_update_inode_locked() should be doing that as part of the 
+> callchain in nfs_writeback_update_inode().
 
-On Thu, Jul 21, 2016 at 01:18:02AM -0700, Christoph Hellwig wrote:
-> Now that 207 is fixed the next test starts failing..  285 is
-> the SEEK_HOLE/DATA sanity check, which might help with figuring out
-> which of the recent changes introduced it.
-
-A week later this still fails with the linux-next branch. Plain NFSv4.2
-against a Linux/XFS server.  The 285.full file documenting the failures
-is attached below:
-
---J/dobhs11T7y2rNN
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: attachment; filename="285.full"
-
-File system magic#: 0x6969
-Allocation size: 524288
-
-01. Test empty file                                   
-01.01 SEEK_DATA expected -1 with errno -6, got -6.                succ
-01.02 SEEK_HOLE expected -1 with errno -6, got -6.                succ
-01.03 SEEK_HOLE expected -1 with errno -6, got -6.                succ
-
-02. Test a tiny full file                             
-02.01 SEEK_HOLE expected 8 or 8, got 8.                           succ
-02.02 SEEK_DATA expected 0 or 0, got 0.                           succ
-02.03 SEEK_DATA expected 1 or 1, got 1.                           succ
-02.04 SEEK_HOLE expected 8 or 8, got 8.                           succ
-02.05 SEEK_DATA expected 7 or 7, got 7.                           succ
-02.06 SEEK_HOLE expected -1 with errno -6, got -6.                succ
-02.07 SEEK_DATA expected -1 with errno -6, got -6.                succ
-02.08 SEEK_HOLE expected -1 with errno -6, got -6.                succ
-02.09 SEEK_DATA expected -1 with errno -6, got -6.                succ
-
-03. Test a larger full file                           
-03.01 SEEK_HOLE expected 1048676 or 1048676, got 1048676.         succ
-03.02 SEEK_HOLE expected 1048676 or 1048676, got 1048676.         succ
-03.03 SEEK_DATA expected 0 or 0, got 0.                           succ
-03.04 SEEK_DATA expected 1 or 1, got 1.                           succ
-03.05 SEEK_HOLE expected 1048676 or 1048676, got 1048676.         succ
-03.06 SEEK_DATA expected 1048675 or 1048675, got 1048675.         succ
-03.07 SEEK_HOLE expected -1 with errno -6, got -6.                succ
-03.08 SEEK_DATA expected -1 with errno -6, got -6.                succ
-03.09 SEEK_HOLE expected -1 with errno -6, got -6.                succ
-03.10 SEEK_DATA expected -1 with errno -6, got -6.                succ
-
-04. Test file hole at beg, data at end                
-04.01 SEEK_HOLE expected 0 or 1048584, got 0.                     succ
-04.02 SEEK_HOLE expected 1 or 1048584, got 1.                     succ
-04.03 SEEK_DATA expected 1048576 or 1048576, got 1048576.         succ
-04.04 SEEK_DATA expected 1048576 or 1048576, got 1048576.         succ
-04.05 SEEK_HOLE expected 1048575 or 1048584, got 1048575.         succ
-04.06 SEEK_DATA expected 1048576 or 1048576, got 1048576.         succ
-04.07 SEEK_HOLE expected 1048584 or 1048584, got 1048584.         succ
-04.08 SEEK_DATA expected 1048576 or 1048576, got 1048576.         succ
-04.09 SEEK_HOLE expected 1048584 or 1048584, got 1048584.         succ
-04.10 SEEK_DATA expected 1048577 or 1048577, got 1048577.         succ
-04.11 SEEK_HOLE expected 1048584 or 1048584, got 1048584.         succ
-04.12 SEEK_DATA expected 1048583 or 1048583, got 1048583.         succ
-04.13 SEEK_HOLE expected -1 with errno -6, got -6.                succ
-04.14 SEEK_DATA expected -1 with errno -6, got -6.                succ
-04.15 SEEK_HOLE expected -1 with errno -6, got -6.                succ
-04.16 SEEK_DATA expected -1 with errno -6, got -6.                succ
-
-05. Test file data at beg, hole at end                
-05.01 SEEK_HOLE expected 524288 or 2097152, got 524288.           succ
-05.02 SEEK_HOLE expected 524288 or 2097152, got 524288.           succ
-05.03 SEEK_DATA expected 0 or 0, got 0.                           succ
-05.04 SEEK_DATA expected 1 or 1, got 1.                           succ
-05.05 SEEK_HOLE expected 524288 or 2097152, got 524288.           succ
-05.06 SEEK_DATA expected 524287 or 524287, got 524287.            succ
-05.07 SEEK_HOLE expected 524288 or 2097152, got 524288.           succ
-05.08 SEEK_DATA expected -1 with errno -6, got -6.                succ
-05.09 SEEK_HOLE expected 524289 or 2097152, got 524289.           succ
-05.10 SEEK_DATA expected -1 with errno -6, got -6.                succ
-05.11 SEEK_HOLE expected 2097151 or 2097152, got 2097151.         succ
-05.12 SEEK_DATA expected -1 with errno -6, got -6.                succ
-05.13 SEEK_HOLE expected -1 with errno -6, got -6.                succ
-05.14 SEEK_DATA expected -1 with errno -6, got -6.                succ
-05.15 SEEK_HOLE expected -1 with errno -6, got -6.                succ
-05.16 SEEK_DATA expected -1 with errno -6, got -6.                succ
-
-06. Test file hole data hole data                     
-06.01 SEEK_HOLE expected 0 or 2097152, got 0.                     succ
-06.02 SEEK_HOLE expected 1 or 2097152, got 1.                     succ
-06.03 SEEK_DATA expected 524288 or 524288, got 524288.            succ
-06.04 SEEK_DATA expected 524288 or 524288, got 524288.            succ
-06.05 SEEK_HOLE expected 524287 or 2097152, got 524287.           succ
-06.06 SEEK_DATA expected 524288 or 524288, got 524288.            succ
-06.07 SEEK_HOLE expected 1048576 or 2097152, got 1507328.         FAIL
-06.08 SEEK_DATA expected 524288 or 524288, got 524288.            succ
-06.09 SEEK_HOLE expected 1048576 or 2097152, got 1507328.         FAIL
-06.10 SEEK_DATA expected 524289 or 524289, got 524289.            succ
-06.11 SEEK_HOLE expected 1048576 or 2097152, got 1507328.         FAIL
-06.12 SEEK_DATA expected 1048575 or 1048575, got 1048575.         succ
-06.13 SEEK_HOLE expected 1048576 or 2097152, got 1507328.         FAIL
-06.14 SEEK_DATA expected 1572864 or 1572864, got 1048576.         FAIL
-06.15 SEEK_HOLE expected 1048577 or 2097152, got 1507328.         FAIL
-06.16 SEEK_DATA expected 1572864 or 1572864, got 1048577.         FAIL
-06.17 SEEK_HOLE expected 1572863 or 2097152, got 1572863.         succ
-06.18 SEEK_DATA expected 1572864 or 1572864, got 1572864.         succ
-06.19 SEEK_HOLE expected 2097152 or 2097152, got 2097152.         succ
-06.20 SEEK_DATA expected 1572864 or 1572864, got 1572864.         succ
-06.21 SEEK_HOLE expected 2097152 or 2097152, got 2097152.         succ
-06.22 SEEK_DATA expected 1572865 or 1572865, got 1572865.         succ
-06.23 SEEK_HOLE expected 2097152 or 2097152, got 2097152.         succ
-06.24 SEEK_DATA expected 2097151 or 2097151, got 2097151.         succ
-06.25 SEEK_HOLE expected -1 with errno -6, got -6.                succ
-06.26 SEEK_DATA expected -1 with errno -6, got -6.                succ
-06.27 SEEK_HOLE expected -1 with errno -6, got -6.                succ
-06.28 SEEK_DATA expected -1 with errno -6, got -6.                succ
-
-seek sanity check failed!
-
---J/dobhs11T7y2rNN--
+And it is, and the bit persists through the next layoutcommit, it is the 
+next GETATTR response that finds that all the attributes are the same 
+and the bit is cleared.
