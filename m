@@ -1,86 +1,136 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:43246 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751792AbcG1OVI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 28 Jul 2016 10:21:08 -0400
-Date: Thu, 28 Jul 2016 10:21:06 -0400
-From: Fields Bruce James <bfields@fieldses.org>
-To: Trond Myklebust <trondmy@primarydata.com>
-Cc: Eric Dumazet <eric.dumazet@gmail.com>,
-        List Linux NFS Mailing <linux-nfs@vger.kernel.org>,
-        List Linux Network Devel Mailing <netdev@vger.kernel.org>,
-        Yuchung Cheng <ycheng@google.com>
-Subject: Re: [PATCH 1/2] SUNRPC: accept() may return sockets that are still
- in SYN_RECV
-Message-ID: <20160728142106.GA27786@fieldses.org>
-References: <1469541080-4184-1-git-send-email-trond.myklebust@primarydata.com>
- <20160726154354.GA6692@fieldses.org>
- <7C18520C-D486-4466-8D9D-FF2052B03F0E@primarydata.com>
- <20160727184806.GA19229@fieldses.org>
- <1469645951.17736.13.camel@edumazet-glaptop3.roam.corp.google.com>
- <332ACE13-83D0-4516-9B2D-200250ED3437@primarydata.com>
+Received: from bombadil.infradead.org ([198.137.202.9]:35615 "EHLO
+	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1758735AbcG1Oqm (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 28 Jul 2016 10:46:42 -0400
+Date: Thu, 28 Jul 2016 07:46:41 -0700
+From: Christoph Hellwig <hch@infradead.org>
+To: trond.myklebust@primarydata.com
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: xfstests generic/285 fails reliably on Trond's linux-next branch
+Message-ID: <20160728144641.GA28753@infradead.org>
+References: <20160721081802.GA14413@infradead.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-In-Reply-To: <332ACE13-83D0-4516-9B2D-200250ED3437@primarydata.com>
+Content-Type: multipart/mixed; boundary="J/dobhs11T7y2rNN"
+In-Reply-To: <20160721081802.GA14413@infradead.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Jul 27, 2016 at 07:11:23PM +0000, Trond Myklebust wrote:
-> Hi Eric,
-> 
-> > On Jul 27, 2016, at 14:59, Eric Dumazet <eric.dumazet@gmail.com> wrote:
-> > 
-> > On Wed, 2016-07-27 at 14:48 -0400, Fields Bruce James wrote:
-> >> On Tue, Jul 26, 2016 at 04:08:29PM +0000, Trond Myklebust wrote:
-> >>> 
-> >>>> On Jul 26, 2016, at 11:43, J. Bruce Fields <bfields@fieldses.org> wrote:
-> >>>> 
-> >>>> On Tue, Jul 26, 2016 at 09:51:19AM -0400, Trond Myklebust wrote:
-> >>>>> We're seeing traces of the following form:
-> >>>>> 
-> >>>>> [10952.396347] svc: transport ffff88042ba4a 000 dequeued, inuse=2
-> >>>>> [10952.396351] svc: tcp_accept ffff88042ba4 a000 sock ffff88042a6e4c80
-> >>>>> [10952.396362] nfsd: connect from 10.2.6.1, port=187
-> >>>>> [10952.396364] svc: svc_setup_socket ffff8800b99bcf00
-> >>>>> [10952.396368] setting up TCP socket for reading
-> >>>>> [10952.396370] svc: svc_setup_socket created ffff8803eb10a000 (inet ffff88042b75b800)
-> >>>>> [10952.396373] svc: transport ffff8803eb10a000 put into queue
-> >>>>> [10952.396375] svc: transport ffff88042ba4a000 put into queue
-> >>>>> [10952.396377] svc: server ffff8800bb0ec000 waiting for data (to = 3600000)
-> >>>>> [10952.396380] svc: transport ffff8803eb10a000 dequeued, inuse=2
-> >>>>> [10952.396381] svc_recv: found XPT_CLOSE
-> >>>>> [10952.396397] svc: svc_delete_xprt(ffff8803eb10a000)
-> >>>>> [10952.396398] svc: svc_tcp_sock_detach(ffff8803eb10a000)
-> >>>>> [10952.396399] svc: svc_sock_detach(ffff8803eb10a000)
-> >>>>> [10952.396412] svc: svc_sock_free(ffff8803eb10a000)
-> >>>>> 
-> >>>>> i.e. an immediate close of the socket after initialisation.
-> >>>> 
-> >>>> Interesting, thanks!
-> >>>> 
-> >>>> So the one thing I don't understand is why this is correct behavior for
-> >>>> accept--I thought it wasn't supposed to return a socket until it was
-> >>>> fully established.
-> >>> 
-> >>> inet_accept() appears to allow SYN_RECV:
-> >> 
-> >> OK.  Cc'ing netdev just to make sure we didn't overlook anything.
-> >> 
-> > 
-> > SYN_RECV after accept() is a TCP Fast Open property I think.
-> > 
-> > Maybe you are playing with some global TCP Fast Open settings ?
-> > 
-> 
-> The Linux kernel client should not be using TCP fast open, but it is possible that some of the other NFSv3 clients we’re using are.
-> Would a standard knfsd listener respond to a TCP fast open request, or would the default behaviour be to ignore it?
-> 
-> If the default behaviour for the server is to allow fast open, then we do need these patches, IMO.
 
-Even if it's not a default, if there's a configuration that allows
-accept to return a socket in SYN_RECV state, then knfsd should handle it
-gracefully, especially as long as it's this easy.
+--J/dobhs11T7y2rNN
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
 
-It'd still be useful to understand why this is happening, though....
+On Thu, Jul 21, 2016 at 01:18:02AM -0700, Christoph Hellwig wrote:
+> Now that 207 is fixed the next test starts failing..  285 is
+> the SEEK_HOLE/DATA sanity check, which might help with figuring out
+> which of the recent changes introduced it.
 
---b.
+A week later this still fails with the linux-next branch. Plain NFSv4.2
+against a Linux/XFS server.  The 285.full file documenting the failures
+is attached below:
+
+--J/dobhs11T7y2rNN
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: attachment; filename="285.full"
+
+File system magic#: 0x6969
+Allocation size: 524288
+
+01. Test empty file                                   
+01.01 SEEK_DATA expected -1 with errno -6, got -6.                succ
+01.02 SEEK_HOLE expected -1 with errno -6, got -6.                succ
+01.03 SEEK_HOLE expected -1 with errno -6, got -6.                succ
+
+02. Test a tiny full file                             
+02.01 SEEK_HOLE expected 8 or 8, got 8.                           succ
+02.02 SEEK_DATA expected 0 or 0, got 0.                           succ
+02.03 SEEK_DATA expected 1 or 1, got 1.                           succ
+02.04 SEEK_HOLE expected 8 or 8, got 8.                           succ
+02.05 SEEK_DATA expected 7 or 7, got 7.                           succ
+02.06 SEEK_HOLE expected -1 with errno -6, got -6.                succ
+02.07 SEEK_DATA expected -1 with errno -6, got -6.                succ
+02.08 SEEK_HOLE expected -1 with errno -6, got -6.                succ
+02.09 SEEK_DATA expected -1 with errno -6, got -6.                succ
+
+03. Test a larger full file                           
+03.01 SEEK_HOLE expected 1048676 or 1048676, got 1048676.         succ
+03.02 SEEK_HOLE expected 1048676 or 1048676, got 1048676.         succ
+03.03 SEEK_DATA expected 0 or 0, got 0.                           succ
+03.04 SEEK_DATA expected 1 or 1, got 1.                           succ
+03.05 SEEK_HOLE expected 1048676 or 1048676, got 1048676.         succ
+03.06 SEEK_DATA expected 1048675 or 1048675, got 1048675.         succ
+03.07 SEEK_HOLE expected -1 with errno -6, got -6.                succ
+03.08 SEEK_DATA expected -1 with errno -6, got -6.                succ
+03.09 SEEK_HOLE expected -1 with errno -6, got -6.                succ
+03.10 SEEK_DATA expected -1 with errno -6, got -6.                succ
+
+04. Test file hole at beg, data at end                
+04.01 SEEK_HOLE expected 0 or 1048584, got 0.                     succ
+04.02 SEEK_HOLE expected 1 or 1048584, got 1.                     succ
+04.03 SEEK_DATA expected 1048576 or 1048576, got 1048576.         succ
+04.04 SEEK_DATA expected 1048576 or 1048576, got 1048576.         succ
+04.05 SEEK_HOLE expected 1048575 or 1048584, got 1048575.         succ
+04.06 SEEK_DATA expected 1048576 or 1048576, got 1048576.         succ
+04.07 SEEK_HOLE expected 1048584 or 1048584, got 1048584.         succ
+04.08 SEEK_DATA expected 1048576 or 1048576, got 1048576.         succ
+04.09 SEEK_HOLE expected 1048584 or 1048584, got 1048584.         succ
+04.10 SEEK_DATA expected 1048577 or 1048577, got 1048577.         succ
+04.11 SEEK_HOLE expected 1048584 or 1048584, got 1048584.         succ
+04.12 SEEK_DATA expected 1048583 or 1048583, got 1048583.         succ
+04.13 SEEK_HOLE expected -1 with errno -6, got -6.                succ
+04.14 SEEK_DATA expected -1 with errno -6, got -6.                succ
+04.15 SEEK_HOLE expected -1 with errno -6, got -6.                succ
+04.16 SEEK_DATA expected -1 with errno -6, got -6.                succ
+
+05. Test file data at beg, hole at end                
+05.01 SEEK_HOLE expected 524288 or 2097152, got 524288.           succ
+05.02 SEEK_HOLE expected 524288 or 2097152, got 524288.           succ
+05.03 SEEK_DATA expected 0 or 0, got 0.                           succ
+05.04 SEEK_DATA expected 1 or 1, got 1.                           succ
+05.05 SEEK_HOLE expected 524288 or 2097152, got 524288.           succ
+05.06 SEEK_DATA expected 524287 or 524287, got 524287.            succ
+05.07 SEEK_HOLE expected 524288 or 2097152, got 524288.           succ
+05.08 SEEK_DATA expected -1 with errno -6, got -6.                succ
+05.09 SEEK_HOLE expected 524289 or 2097152, got 524289.           succ
+05.10 SEEK_DATA expected -1 with errno -6, got -6.                succ
+05.11 SEEK_HOLE expected 2097151 or 2097152, got 2097151.         succ
+05.12 SEEK_DATA expected -1 with errno -6, got -6.                succ
+05.13 SEEK_HOLE expected -1 with errno -6, got -6.                succ
+05.14 SEEK_DATA expected -1 with errno -6, got -6.                succ
+05.15 SEEK_HOLE expected -1 with errno -6, got -6.                succ
+05.16 SEEK_DATA expected -1 with errno -6, got -6.                succ
+
+06. Test file hole data hole data                     
+06.01 SEEK_HOLE expected 0 or 2097152, got 0.                     succ
+06.02 SEEK_HOLE expected 1 or 2097152, got 1.                     succ
+06.03 SEEK_DATA expected 524288 or 524288, got 524288.            succ
+06.04 SEEK_DATA expected 524288 or 524288, got 524288.            succ
+06.05 SEEK_HOLE expected 524287 or 2097152, got 524287.           succ
+06.06 SEEK_DATA expected 524288 or 524288, got 524288.            succ
+06.07 SEEK_HOLE expected 1048576 or 2097152, got 1507328.         FAIL
+06.08 SEEK_DATA expected 524288 or 524288, got 524288.            succ
+06.09 SEEK_HOLE expected 1048576 or 2097152, got 1507328.         FAIL
+06.10 SEEK_DATA expected 524289 or 524289, got 524289.            succ
+06.11 SEEK_HOLE expected 1048576 or 2097152, got 1507328.         FAIL
+06.12 SEEK_DATA expected 1048575 or 1048575, got 1048575.         succ
+06.13 SEEK_HOLE expected 1048576 or 2097152, got 1507328.         FAIL
+06.14 SEEK_DATA expected 1572864 or 1572864, got 1048576.         FAIL
+06.15 SEEK_HOLE expected 1048577 or 2097152, got 1507328.         FAIL
+06.16 SEEK_DATA expected 1572864 or 1572864, got 1048577.         FAIL
+06.17 SEEK_HOLE expected 1572863 or 2097152, got 1572863.         succ
+06.18 SEEK_DATA expected 1572864 or 1572864, got 1572864.         succ
+06.19 SEEK_HOLE expected 2097152 or 2097152, got 2097152.         succ
+06.20 SEEK_DATA expected 1572864 or 1572864, got 1572864.         succ
+06.21 SEEK_HOLE expected 2097152 or 2097152, got 2097152.         succ
+06.22 SEEK_DATA expected 1572865 or 1572865, got 1572865.         succ
+06.23 SEEK_HOLE expected 2097152 or 2097152, got 2097152.         succ
+06.24 SEEK_DATA expected 2097151 or 2097151, got 2097151.         succ
+06.25 SEEK_HOLE expected -1 with errno -6, got -6.                succ
+06.26 SEEK_DATA expected -1 with errno -6, got -6.                succ
+06.27 SEEK_HOLE expected -1 with errno -6, got -6.                succ
+06.28 SEEK_DATA expected -1 with errno -6, got -6.                succ
+
+seek sanity check failed!
+
+--J/dobhs11T7y2rNN--
