@@ -1,16 +1,16 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:55068 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:55064 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754700AbcG1SlM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	id S1755241AbcG1SlM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
 	Thu, 28 Jul 2016 14:41:12 -0400
 From: Benjamin Coddington <bcodding@redhat.com>
 To: linux-nfs@vger.kernel.org
 Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
         Anna Schumaker <anna.schumaker@netapp.com>,
         "hch@infradead.org" <hch@infradead.org>
-Subject: [PATCH 2/2] pNFS: Actively set attributes as invalid if LAYOUTCOMMIT is outstanding
-Date: Thu, 28 Jul 2016 14:41:10 -0400
-Message-Id: <ff7fc557ff6953c01aa1e9508e9b0067d30038f7.1469730653.git.bcodding@redhat.com>
+Subject: [PATCH 1/2] pnfs/blocklayout: update last_write_offset in prepare_layoutcommit
+Date: Thu, 28 Jul 2016 14:41:09 -0400
+Message-Id: <973de15d7e14e23d6945ad03713384c97a6a0087.1469730653.git.bcodding@redhat.com>
 In-Reply-To: <cover.1469730653.git.bcodding@redhat.com>
 References: <cover.1469730653.git.bcodding@redhat.com>
 In-Reply-To: <cover.1469730653.git.bcodding@redhat.com>
@@ -18,46 +18,52 @@ References: <cover.1469730653.git.bcodding@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-A LAYOUTCOMMIT then subsequent GETATTR may both return the same attributes,
-and in that case NFS_INO_INVALID_ATTR is never set on the second pass
-through nfs_update_inode().  The existing check to skip the clearing of
-NFS_INO_INVALID_ATTR if a LAYOUTCOMMIT is outstanding does not help in this
-case (see commit 10b7e9ad4488: "pNFS: Don't mark the inode as revalidated
-if a LAYOUTCOMMIT is outstanding").  We know that if a LAYOUTCOMMIT is
-outstanding then attributes will need upating, so always set
-NFS_INO_INVALID_ATTR.
+Block/SCSI layout write completion may add committable extents to the
+extent tree before updating the layout's last-written byte under the inode
+lock.  If a sync happens before this value is updated, then
+prepare_layoutcommit may find and encode these extents which would produce
+a LAYOUTCOMMIT request whose encoded extents are larger than the request's
+loca_length.
+
+Fix this by updating the last_write_offset to match the currently encoded
+extents.
 
 Signed-off-by: Benjamin Coddington <bcodding@redhat.com>
 ---
- fs/nfs/inode.c | 8 +++++---
- 1 file changed, 5 insertions(+), 3 deletions(-)
+ fs/nfs/blocklayout/extent_tree.c | 6 ++++--
+ 1 file changed, 4 insertions(+), 2 deletions(-)
 
-diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
-index f108d58101f8..bf4ec5ecc97e 100644
---- a/fs/nfs/inode.c
-+++ b/fs/nfs/inode.c
-@@ -1665,7 +1665,7 @@ static int nfs_update_inode(struct inode *inode, struct nfs_fattr *fattr)
- 	unsigned long now = jiffies;
- 	unsigned long save_cache_validity;
- 	bool have_writers = nfs_file_has_buffered_writers(nfsi);
--	bool cache_revalidated;
-+	bool cache_revalidated = true;
+diff --git a/fs/nfs/blocklayout/extent_tree.c b/fs/nfs/blocklayout/extent_tree.c
+index 992bcb19c11e..18ae1fd2175e 100644
+--- a/fs/nfs/blocklayout/extent_tree.c
++++ b/fs/nfs/blocklayout/extent_tree.c
+@@ -518,7 +518,7 @@ static __be32 *encode_scsi_range(struct pnfs_block_extent *be, __be32 *p)
+ }
  
- 	dfprintk(VFS, "NFS: %s(%s/%lu fh_crc=0x%08x ct=%d info=0x%x)\n",
- 			__func__, inode->i_sb->s_id, inode->i_ino,
-@@ -1714,8 +1714,10 @@ static int nfs_update_inode(struct inode *inode, struct nfs_fattr *fattr)
- 	/* Do atomic weak cache consistency updates */
- 	invalid |= nfs_wcc_update_inode(inode, fattr);
+ static int ext_tree_encode_commit(struct pnfs_block_layout *bl, __be32 *p,
+-		size_t buffer_size, size_t *count)
++		size_t buffer_size, size_t *count, __u64 *lastbyte)
+ {
+ 	struct pnfs_block_extent *be;
+ 	int ret = 0;
+@@ -541,6 +541,8 @@ static int ext_tree_encode_commit(struct pnfs_block_layout *bl, __be32 *p,
+ 		else
+ 			p = encode_block_extent(be, p);
+ 		be->be_tag = EXTENT_COMMITTING;
++		if ((ext_f_end(be) << SECTOR_SHIFT) - 1 > *lastbyte)
++			*lastbyte = (ext_f_end(be) << SECTOR_SHIFT) - 1;
+ 	}
+ 	spin_unlock(&bl->bl_ext_lock);
  
--
--	cache_revalidated = !pnfs_layoutcommit_outstanding(inode);
-+	if (pnfs_layoutcommit_outstanding(inode)) {
-+		nfsi->cache_validity |= save_cache_validity & NFS_INO_INVALID_ATTR;
-+		cache_revalidated = false;
-+	}
+@@ -564,7 +566,7 @@ ext_tree_prepare_commit(struct nfs4_layoutcommit_args *arg)
+ 	arg->layoutupdate_pages = &arg->layoutupdate_page;
  
- 	/* More cache consistency checks */
- 	if (fattr->valid & NFS_ATTR_FATTR_CHANGE) {
+ retry:
+-	ret = ext_tree_encode_commit(bl, start_p + 1, buffer_size, &count);
++	ret = ext_tree_encode_commit(bl, start_p + 1, buffer_size, &count, &arg->lastbytewritten);
+ 	if (unlikely(ret)) {
+ 		ext_tree_free_commitdata(arg, buffer_size);
+ 
 -- 
 2.5.5
 
