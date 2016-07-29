@@ -1,111 +1,49 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qk0-f173.google.com ([209.85.220.173]:35059 "EHLO
-	mail-qk0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753205AbcG2RwU (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 29 Jul 2016 13:52:20 -0400
-Received: by mail-qk0-f173.google.com with SMTP id s63so97580747qkb.2
-        for <linux-nfs@vger.kernel.org>; Fri, 29 Jul 2016 10:52:19 -0700 (PDT)
-Message-ID: <1469814735.19411.1.camel@poochiereds.net>
-Subject: Re: PROBLEM: nfs I/O errors with sqlite applications
-From: Jeff Layton <jlayton@poochiereds.net>
-To: Nick Bowler <nbowler@draconx.ca>
-Cc: "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org
-Date: Fri, 29 Jul 2016 13:52:15 -0400
-In-Reply-To: <CADyTPEx=h95ODeG3BixMHc=kxLmkFt+aVyS+V_bK-b=CqK4_6Q@mail.gmail.com>
-References: <20151012164846.GA5017@draconx.ca>
-	 <20151012192538.GG28755@fieldses.org> <20151012194647.GJ28755@fieldses.org>
-	 <20151013030136.GA7081@draconx.ca>
-	 <20151013065225.44c5581d@synchrony.poochiereds.net>
-	 <CADyTPEyUKNdYuj0LwoX-r6jJJ0tEufwyA_mEKE=OVniX9rXPog@mail.gmail.com>
-	 <CADyTPEx=h95ODeG3BixMHc=kxLmkFt+aVyS+V_bK-b=CqK4_6Q@mail.gmail.com>
-Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
+Received: from fieldses.org ([173.255.197.46]:44676 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750834AbcG2S7f (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 29 Jul 2016 14:59:35 -0400
+Date: Fri, 29 Jul 2016 14:59:33 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Anna Schumaker <Anna.Schumaker@netapp.com>
+Cc: Christoph Hellwig <hch@infradead.org>, linux-nfs@vger.kernel.org,
+        Trond.Myklebust@primarydata.com
+Subject: Re: [PATCH v4 0/3] NFSv4.2: Add support for the COPY operation
+Message-ID: <20160729185933.GA7964@fieldses.org>
+References: <1461962533-26534-1-git-send-email-Anna.Schumaker@Netapp.com>
+ <20160501173733.GA556@infradead.org>
+ <20160513203135.GE5658@fieldses.org>
+ <8d09611c-31c1-baca-8e8f-6dc599731c8c@Netapp.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <8d09611c-31c1-baca-8e8f-6dc599731c8c@Netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, 2016-07-29 at 12:43 -0400, Nick Bowler wrote:
-> Hi guys,
-> 
-> > On 2015-10-13, Nick Bowler <nbowler@draconx.ca> wrote:
+On Fri, May 13, 2016 at 04:58:06PM -0400, Anna Schumaker wrote:
+> On 05/13/2016 04:31 PM, J. Bruce Fields wrote:
+> > On Sun, May 01, 2016 at 10:37:33AM -0700, Christoph Hellwig wrote:
+> >> I might sound like a broken record, but I'd feel much happier if this
+> >> had extensive xfstests coverage.  Xfstests has over one hundred tests for
+> >> file clones, and many of them should be easily adapatable.
 > > 
-> > > > On 2015-10-13, Jeff Layton <jlayton@poochiereds.net> wrote:
-> > > 
-> > > On Mon, 12 Oct 2015 23:01:36 -0400
-> > > > > > Nick Bowler <nbowler@draconx.ca> wrote:
-> > > > 
-> > > > On 2015-10-12 15:46 -0400, J. Bruce Fields wrote:
-> > > > > 
-> > > > > On Mon, Oct 12, 2015 at 03:25:38PM -0400, bfields wrote:
-> > > > > > 
-> > > > > > On Mon, Oct 12, 2015 at 12:48:56PM -0400, Nick Bowler wrote:
-> [...]
-> > 
-> > > 
-> > > > 
-> > > > > 
-> > > > > > 
-> > > > > > > 
-> > > > > > > the failing syscall seems to be:
-> > > > > > > 
-> > > > > > >   fcntl(7, F_SETLK, {type=F_RDLCK, whence=SEEK_SET,
-> > > > > > > start=1073741824, len=1}) = -1 EIO (Input/output error)
-> > > > > > > 
-> > > > > > > When the issue occurs, the client dmesg log is full of messages of
-> > > > > > > the form:
-> > > > > > > 
-> > > > > > >   [3441972.381211] NFS: v4 server returned a bad sequence-id error
-> > > > > > > on an unconfirmed sequence ffff88007612ae20!
-> > > > > > > 
-> > > > > > > There are no unusual messages on the server.
-> > > > [...]
-> > > Ok, makes sense. The log shows that it occurred in a fcntl call, so
-> > > it's probably this from lookup_or_create_lock_state:
-> > > 
-> > >         lo = find_lockowner_str(cl, &lock->lk_new_owner);
-> > >         if (!lo) {
-> > >                 strhashval = ownerstr_hashval(&lock->lk_new_owner);
-> > >                 lo = alloc_init_lock_stateowner(strhashval, cl, ost,
-> > > lock);
-> > >                 if (lo == NULL)
-> > >                         return nfserr_jukebox;
-> > >         } else {
-> > >                 /* with an existing lockowner, seqids must be the same */
-> > >                 status = nfserr_bad_seqid;
-> > >                 if (!cstate->minorversion &&
-> > >                     lock->lk_new_lock_seqid != lo->lo_owner.so_seqid)
-> > >                         goto out;
-> > >         }
-> > > 
-> > > ...so we found an existing lockowner, but the seqid in the call is
-> > > wrong. It seems like the client ought to try to recover in this case,
-> > > but I don't see where it handles BAD_SEQID errors in the locking code.
-> [...]
-> > 
-> > > 
-> > > In any case, the question now is whether this is a client or server
-> > > bug. What would tell us that is a network capture of the NFS traffic
-> > > between client and server at the time that this occurs. Would it be
-> > > possible to collect one? If so, then let Bruce and I know and we can
-> > > figure out a way to share it privately.
+> > Anna, have you looked at this yet?
 > 
-> Hi guys,
-> 
-> Unfortunately I did not manage to perform a network capture last time
-> due to power loss.  I did not hit this issue again until yesterday (~9
-> months later), this time after 45 days of uptime.
-> 
-> Kernel versions now are: 4.5.1 on the server, and 4.4.3 on the client.
-> 
-> Since it's now in a failing state again (this situation persists until
-> a reboot of the client), I captured with strace and tcpdump (on both
-> client and server) when attempting to start gmpc, the result is quite
-> small (just 30 packets).  Will that be helpful?
-> 
-> Thanks,
->   Nick
+> Yep!  I just sent out what I came up with :)
 
-I doubt we'd be able to tell much after the fact, but feel free to send it along.
+Sorry for the lack of response.  For some reason I don't seem to have
+the updated version in my mailboxes.  Do you have a more recent version?
 
-Thanks,
--- 
-Jeff Layton <jlayton@poochiereds.net>
+> > I don't see any obvious problem with the nfsd code, other than the
+> > obvious issue with large synchronous copies tying up server threads and
+> > leaving clients waiting--but maybe we should just see how people end up
+> > using it and deal with the problems as they come up.
+
+I'm still worrying about this, though.
+
+As a simple stopgap, could we just set *some* maximum on the size of the
+copy?  Or better yet on the time?--that'd let filesystems with
+clone-like features copy the whole file without blocking an nfsd thread
+indefinitely in the case of other filesystems.
+
+--b.
