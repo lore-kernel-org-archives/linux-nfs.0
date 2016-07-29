@@ -1,49 +1,87 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:44676 "EHLO fieldses.org"
+Received: from fieldses.org ([173.255.197.46]:44724 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750834AbcG2S7f (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 29 Jul 2016 14:59:35 -0400
-Date: Fri, 29 Jul 2016 14:59:33 -0400
+	id S1750834AbcG2TEh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 29 Jul 2016 15:04:37 -0400
+Date: Fri, 29 Jul 2016 15:04:36 -0400
 From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Anna Schumaker <Anna.Schumaker@netapp.com>
-Cc: Christoph Hellwig <hch@infradead.org>, linux-nfs@vger.kernel.org,
-        Trond.Myklebust@primarydata.com
-Subject: Re: [PATCH v4 0/3] NFSv4.2: Add support for the COPY operation
-Message-ID: <20160729185933.GA7964@fieldses.org>
-References: <1461962533-26534-1-git-send-email-Anna.Schumaker@Netapp.com>
- <20160501173733.GA556@infradead.org>
- <20160513203135.GE5658@fieldses.org>
- <8d09611c-31c1-baca-8e8f-6dc599731c8c@Netapp.com>
+To: NeilBrown <neilb@suse.com>
+Cc: Steve Dickson <SteveD@redhat.com>,
+        Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 7/7] mountd: fail nfsd.export lookup for path to
+ unmounted exportpoint
+Message-ID: <20160729190436.GB7964@fieldses.org>
+References: <146976807524.20186.8871903418718212567.stgit@noble>
+ <146976861683.20186.1810009593325251793.stgit@noble>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <8d09611c-31c1-baca-8e8f-6dc599731c8c@Netapp.com>
+In-Reply-To: <146976861683.20186.1810009593325251793.stgit@noble>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, May 13, 2016 at 04:58:06PM -0400, Anna Schumaker wrote:
-> On 05/13/2016 04:31 PM, J. Bruce Fields wrote:
-> > On Sun, May 01, 2016 at 10:37:33AM -0700, Christoph Hellwig wrote:
-> >> I might sound like a broken record, but I'd feel much happier if this
-> >> had extensive xfstests coverage.  Xfstests has over one hundred tests for
-> >> file clones, and many of them should be easily adapatable.
-> > 
-> > Anna, have you looked at this yet?
+On Fri, Jul 29, 2016 at 03:03:36PM +1000, NeilBrown wrote:
+> If an export point should be mounted ("mountpoint" option set) but
+> isn't, then an attempt to mount using the MOUNT protocol for NFSv3
+> will fail and an attempt to access the filesystem using a pre-existing
+> filehandle will block because nfsd_fh wont tell the kernel about it.
 > 
-> Yep!  I just sent out what I came up with :)
+> However a lookup from the parent, as happens with an NFSv4 mount
+> request, will pass the name to nfsd_export(), and it doesn't check the
+> mointpoint option, and so exports the underlying (typically "/")
+> filesystem.
+> 
+> So change nfsd_export() to refused to export that exportpoint, but
+> instead to explictly say that it isn't exported.
+> This will cause an 'ls' in the parent pseudo-root directory to not show
+> the name and will cause a "mount" attempt which walks down through the
+> pseudo root to fail in the same way that it does with NFSv3.
+> 
+> An access from a pre-existing NFSv4 mount will still hang until the
+> filesystem is mounted, just like it does with NFSv3.
+> 
+> In order to be a bit more responsive to the filesystem getting mounted,
+> just a short timeout (1 minutes) on exports of missing "mountpoint"
+> exportpoints.
 
-Sorry for the lack of response.  For some reason I don't seem to have
-the updated version in my mailboxes.  Do you have a more recent version?
+OK, I'm still haven't learned to love "mountpoint", but, I agree, it
+looks like this fixes the complaint about the v4 case with minimal risk
+of disruption to existing users.
 
-> > I don't see any obvious problem with the nfsd code, other than the
-> > obvious issue with large synchronous copies tying up server threads and
-> > leaving clients waiting--but maybe we should just see how people end up
-> > using it and deal with the problems as they come up.
+ACK.--b.
 
-I'm still worrying about this, though.
-
-As a simple stopgap, could we just set *some* maximum on the size of the
-copy?  Or better yet on the time?--that'd let filesystems with
-clone-like features copy the whole file without blocking an nfsd thread
-indefinitely in the case of other filesystems.
-
---b.
+> 
+> Signed-off-by: NeilBrown <neilb@suse.com>
+> ---
+>  utils/mountd/cache.c |   18 +++++++++++++++++-
+>  1 file changed, 17 insertions(+), 1 deletion(-)
+> 
+> diff --git a/utils/mountd/cache.c b/utils/mountd/cache.c
+> index 9cc270690d90..ca6c84f4d93d 100644
+> --- a/utils/mountd/cache.c
+> +++ b/utils/mountd/cache.c
+> @@ -1334,7 +1334,23 @@ static void nfsd_export(int f)
+>  	found = lookup_export(dom, path, ai);
+>  
+>  	if (found) {
+> -		if (dump_to_cache(f, buf, sizeof(buf), dom, path, &found->m_export, 0) < 0) {
+> +		char *mp = found->m_export.e_mountpoint;
+> +
+> +		if (mp && !*mp)
+> +			mp = found->m_export.e_path;
+> +		if (mp && !is_mountpoint(mp))
+> +			/* Exportpoint is not mounted, so tell kernel it is
+> +			 * not available.
+> +			 * This will cause it not to appear in the V4 Pseudo-root
+> +			 * and so a "mount" of this path will fail, just like with
+> +			 * V3.
+> +			 * And filehandle for this mountpoint from an earlier
+> +			 * mount will block in nfsd.fh lookup.
+> +			 */
+> +			dump_to_cache(f, buf, sizeof(buf), dom, path,
+> +				      NULL, 60);
+> +		else if (dump_to_cache(f, buf, sizeof(buf), dom, path,
+> +					 &found->m_export, 0) < 0) {
+>  			xlog(L_WARNING,
+>  			     "Cannot export %s, possibly unsupported filesystem"
+>  			     " or fsid= required", path);
+> 
