@@ -1,232 +1,111 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx144.netapp.com ([216.240.21.25]:38063 "EHLO mx144.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752681AbcG2RcH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 29 Jul 2016 13:32:07 -0400
-From: "Adamson, Andy" <William.Adamson@netapp.com>
-To: "Adamson, Andy" <William.Adamson@netapp.com>
-CC: Chuck Lever <chuck.lever@oracle.com>, Olga Kornievskaia <aglo@umich.edu>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: Problem re-establishing GSS contexts after a server reboot
-Date: Fri, 29 Jul 2016 17:32:05 +0000
-Message-ID: <783DF5CA-AE7E-4F0B-ACCE-1562EC3B7B65@netapp.com>
-References: <59704D2B-9FBD-41BB-ADA8-4CF4AEF4BB9D@oracle.com>
- <259CD26A-E1E7-44CA-B1D3-F46AED01B932@netapp.com>
- <CAN-5tyE_yrspQDpftO1Ls9LxjaZPHGe9hH0V65xaFuNEyrbwig@mail.gmail.com>
- <6BC3C19E-6F44-4C38-BF26-3E9A948D305C@oracle.com>
- <CAN-5tyHWPvNeq-0kNErTY+nENqkfrbGXwutcMgaOYcvYL3fX7Q@mail.gmail.com>
- <42FD3D54-79F9-485A-A2B4-FBFA65C2FC16@oracle.com>
- <CAN-5tyGJ8YUesk-KBTK+DFqaRV9wNvjQp-4EkcoU4J58EmM7_A@mail.gmail.com>
- <CAN-5tyEyg4aYXc5Zr-diLHxhkU1VnvYaaKS01qCH-vtxa8qzqg@mail.gmail.com>
- <CC879117-DCA5-4BC1-8A70-FA859546CD01@oracle.com>
- <CAN-5tyGnK7Zus2pBg5dO__XZ8NrM_h9k4EXzJERneHBBnn6VPg@mail.gmail.com>
- <CAN-5tyGJQXrLm7L98UgJULT=gQjsuVM86KGwEkGPuS8GBTAGrA@mail.gmail.com>
- <9E866C53-DD4B-419E-ABF0-64B04609C066@oracle.com>
- <6B77F70A-9AD0-4085-A90F-3AE795AA3717@netapp.com>
-In-Reply-To: <6B77F70A-9AD0-4085-A90F-3AE795AA3717@netapp.com>
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
+Received: from mail-qk0-f173.google.com ([209.85.220.173]:35059 "EHLO
+	mail-qk0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753205AbcG2RwU (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 29 Jul 2016 13:52:20 -0400
+Received: by mail-qk0-f173.google.com with SMTP id s63so97580747qkb.2
+        for <linux-nfs@vger.kernel.org>; Fri, 29 Jul 2016 10:52:19 -0700 (PDT)
+Message-ID: <1469814735.19411.1.camel@poochiereds.net>
+Subject: Re: PROBLEM: nfs I/O errors with sqlite applications
+From: Jeff Layton <jlayton@poochiereds.net>
+To: Nick Bowler <nbowler@draconx.ca>
+Cc: "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org
+Date: Fri, 29 Jul 2016 13:52:15 -0400
+In-Reply-To: <CADyTPEx=h95ODeG3BixMHc=kxLmkFt+aVyS+V_bK-b=CqK4_6Q@mail.gmail.com>
+References: <20151012164846.GA5017@draconx.ca>
+	 <20151012192538.GG28755@fieldses.org> <20151012194647.GJ28755@fieldses.org>
+	 <20151013030136.GA7081@draconx.ca>
+	 <20151013065225.44c5581d@synchrony.poochiereds.net>
+	 <CADyTPEyUKNdYuj0LwoX-r6jJJ0tEufwyA_mEKE=OVniX9rXPog@mail.gmail.com>
+	 <CADyTPEx=h95ODeG3BixMHc=kxLmkFt+aVyS+V_bK-b=CqK4_6Q@mail.gmail.com>
+Content-Type: text/plain; charset="UTF-8"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-DQo+IE9uIEp1bCAyOSwgMjAxNiwgYXQgMTowNyBQTSwgQWRhbXNvbiwgQW5keSA8V2lsbGlhbS5B
-ZGFtc29uQG5ldGFwcC5jb20+IHdyb3RlOg0KPiANCj4+IA0KPj4gT24gSnVsIDI5LCAyMDE2LCBh
-dCAxMjozOCBQTSwgQ2h1Y2sgTGV2ZXIgPGNodWNrLmxldmVyQG9yYWNsZS5jb20+IHdyb3RlOg0K
-Pj4gDQo+Pj4gDQo+Pj4gT24gSnVsIDI5LCAyMDE2LCBhdCAxMjoyNyBQTSwgT2xnYSBLb3JuaWV2
-c2thaWEgPGFnbG9AdW1pY2guZWR1PiB3cm90ZToNCj4+PiANCj4+PiBPbiBNb24sIEp1bCAyNSwg
-MjAxNiBhdCAyOjE4IFBNLCBPbGdhIEtvcm5pZXZza2FpYSA8YWdsb0B1bWljaC5lZHU+IHdyb3Rl
-Og0KPj4+PiBPbiBUaHUsIEp1bCAyMSwgMjAxNiBhdCA1OjMyIFBNLCBDaHVjayBMZXZlciA8Y2h1
-Y2subGV2ZXJAb3JhY2xlLmNvbT4gd3JvdGU6DQo+Pj4+PiANCj4+Pj4+IA0KPj4+Pj4+IE9uIEp1
-bCAyMSwgMjAxNiwgYXQgMTA6NDYgUE0sIE9sZ2EgS29ybmlldnNrYWlhIDxhZ2xvQHVtaWNoLmVk
-dT4gd3JvdGU6DQo+Pj4+Pj4gDQo+Pj4+Pj4+IE9uIFRodSwgSnVsIDIxLCAyMDE2IGF0IDM6NTQg
-UE0sIE9sZ2EgS29ybmlldnNrYWlhIDxhZ2xvQHVtaWNoLmVkdT4gd3JvdGU6DQo+Pj4+Pj4+PiBP
-biBUaHUsIEp1bCAyMSwgMjAxNiBhdCAxOjU2IFBNLCBDaHVjayBMZXZlciA8Y2h1Y2subGV2ZXJA
-b3JhY2xlLmNvbT4gd3JvdGU6DQo+Pj4+Pj4+PiANCj4+Pj4+Pj4+PiBPbiBKdWwgMjEsIDIwMTYs
-IGF0IDY6MDQgUE0sIE9sZ2EgS29ybmlldnNrYWlhIDxhZ2xvQHVtaWNoLmVkdT4gd3JvdGU6DQo+
-Pj4+Pj4+Pj4gDQo+Pj4+Pj4+Pj4gT24gVGh1LCBKdWwgMjEsIDIwMTYgYXQgMjo1NSBBTSwgQ2h1
-Y2sgTGV2ZXIgPGNodWNrLmxldmVyQG9yYWNsZS5jb20+IHdyb3RlOg0KPj4+Pj4+Pj4+PiANCj4+
-Pj4+Pj4+Pj4+IE9uIEp1bCAyMCwgMjAxNiwgYXQgNjo1NiBQTSwgT2xnYSBLb3JuaWV2c2thaWEg
-PGFnbG9AdW1pY2guZWR1PiB3cm90ZToNCj4+Pj4+Pj4+Pj4+IA0KPj4+Pj4+Pj4+Pj4gT24gV2Vk
-LCBKdWwgMjAsIDIwMTYgYXQgNToxNCBBTSwgQWRhbXNvbiwgQW5keQ0KPj4+Pj4+Pj4+Pj4gPFdp
-bGxpYW0uQWRhbXNvbkBuZXRhcHAuY29tPiB3cm90ZToNCj4+Pj4+Pj4+Pj4+PiANCj4+Pj4+Pj4+
-Pj4+Pj4gT24gSnVsIDE5LCAyMDE2LCBhdCAxMDo1MSBBTSwgQ2h1Y2sgTGV2ZXIgPGNodWNrLmxl
-dmVyQG9yYWNsZS5jb20+IHdyb3RlOg0KPj4+Pj4+Pj4+Pj4+PiANCj4+Pj4+Pj4+Pj4+Pj4gSGkg
-QW5keS0NCj4+Pj4+Pj4+Pj4+Pj4gDQo+Pj4+Pj4+Pj4+Pj4+IFRoYW5rcyBmb3IgdGFraW5nIHRo
-ZSB0aW1lIHRvIGRpc2N1c3MgdGhpcyB3aXRoIG1lLiBJJ3ZlDQo+Pj4+Pj4+Pj4+Pj4+IGNvcGll
-ZCBsaW51eC1uZnMgdG8gbWFrZSB0aGlzIGUtbWFpbCBhbHNvIGFuIHVwc3RyZWFtIGJ1Zw0KPj4+
-Pj4+Pj4+Pj4+PiByZXBvcnQuDQo+Pj4+Pj4+Pj4+Pj4+IA0KPj4+Pj4+Pj4+Pj4+PiBBcyB3ZSBz
-YXcgaW4gdGhlIG5ldHdvcmsgY2FwdHVyZSwgcmVjb3Zlcnkgb2YgR1NTIGNvbnRleHRzDQo+Pj4+
-Pj4+Pj4+Pj4+IGFmdGVyIGEgc2VydmVyIHJlYm9vdCBmYWlscyBpbiBjZXJ0YWluIGNhc2VzIHdp
-dGggTkZTdjQuMA0KPj4+Pj4+Pj4+Pj4+PiBhbmQgTkZTdjQuMSBtb3VudCBwb2ludHMuDQo+Pj4+
-Pj4+Pj4+Pj4+IA0KPj4+Pj4+Pj4+Pj4+PiBUaGUgcmVwcm9kdWNlciBpcyBhIHNpbXBsZSBwcm9n
-cmFtIHRoYXQgZ2VuZXJhdGVzIG9uZSBORlMNCj4+Pj4+Pj4+Pj4+Pj4gV1JJVEUgcGVyaW9kaWNh
-bGx5LCBydW4gd2hpbGUgdGhlIHNlcnZlciByZXBlYXRlZGx5IHJlYm9vdHMNCj4+Pj4+Pj4+Pj4+
-Pj4gKG9yIG9uZSBjbHVzdGVyIGhlYWQgZmFpbHMgb3ZlciB0byB0aGUgb3RoZXIgYW5kIGJhY2sp
-LiBUaGUNCj4+Pj4+Pj4+Pj4+Pj4gZ29hbCBvZiB0aGUgcmVwcm9kdWNlciBpcyB0byBpZGVudGlm
-eSBwcm9ibGVtcyB3aXRoIHN0YXRlDQo+Pj4+Pj4+Pj4+Pj4+IHJlY292ZXJ5IHdpdGhvdXQgYSBs
-b3Qgb2Ygb3RoZXIgSS9PIGdvaW5nIG9uIHRvIGNsdXR0ZXIgdXANCj4+Pj4+Pj4+Pj4+Pj4gdGhl
-IG5ldHdvcmsgY2FwdHVyZS4NCj4+Pj4+Pj4+Pj4+Pj4gDQo+Pj4+Pj4+Pj4+Pj4+IEluIHRoZSBm
-YWlsaW5nIGNhc2UsIHNlYz1rcmI1IGlzIHNwZWNpZmllZCBvbiB0aGUgbW91bnQNCj4+Pj4+Pj4+
-Pj4+Pj4gcG9pbnQsIGFuZCB0aGUgcmVwcm9kdWNlciBpcyBydW4gYXMgcm9vdC4gV2UndmUgZm91
-bmQgdGhpcw0KPj4+Pj4+Pj4+Pj4+PiBjb21iaW5hdGlvbiBmYWlscyB3aXRoIGJvdGggTkZTdjQu
-MCBhbmQgTkZTdjQuMS4NCj4+Pj4+Pj4+Pj4+Pj4gDQo+Pj4+Pj4+Pj4+Pj4+IEF0IG1vdW50IHRp
-bWUsIHRoZSBjbGllbnQgZXN0YWJsaXNoZXMgYSBHU1MgY29udGV4dCBmb3INCj4+Pj4+Pj4+Pj4+
-Pj4gbGVhc2UgbWFuYWdlbWVudCBvcGVyYXRpb25zLCB3aGljaCBpcyBib3VuZCB0byB0aGUgY2xp
-ZW50J3MNCj4+Pj4+Pj4+Pj4+Pj4gTkZTIHNlcnZpY2UgcHJpbmNpcGFsIGFuZCB1c2VzIEdTUyBz
-ZXJ2aWNlICJpbnRlZ3JpdHkuIg0KPj4+Pj4+Pj4+Pj4+PiBDYWxsIHRoaXMgR1NTIGNvbnRleHQg
-MS4NCj4+Pj4+Pj4+Pj4+Pj4gDQo+Pj4+Pj4+Pj4+Pj4+IFdoZW4gdGhlIHJlcHJvZHVjZXIgc3Rh
-cnRzLCBhIHNlY29uZCBHU1MgY29udGV4dCBpcw0KPj4+Pj4+Pj4+Pj4+PiBlc3RhYmxpc2hlZCBm
-b3IgTkZTIG9wZXJhdGlvbnMgYXNzb2NpYXRlZCB3aXRoIHRoYXQgdXNlci4NCj4+Pj4+Pj4+Pj4+
-Pj4gU2luY2UgdGhlIHJlcHJvZHVjZXIgaXMgcnVubmluZyBhcyByb290LCB0aGlzIGNvbnRleHQg
-aXMNCj4+Pj4+Pj4+Pj4+Pj4gYWxzbyBib3VuZCB0byB0aGUgY2xpZW50J3MgTkZTIHNlcnZpY2Ug
-cHJpbmNpcGFsLCBidXQgaXQNCj4+Pj4+Pj4+Pj4+Pj4gdXNlcyB0aGUgR1NTIHNlcnZpY2UgIm5v
-bmUiIChyZWZsZWN0aW5nIHRoZSBleHBsaWNpdA0KPj4+Pj4+Pj4+Pj4+PiByZXF1ZXN0IGZvciAi
-c2VjPWtyYjUiKS4gQ2FsbCB0aGlzIEdTUyBjb250ZXh0IDIuDQo+Pj4+Pj4+Pj4+Pj4+IA0KPj4+
-Pj4+Pj4+Pj4+PiBBZnRlciB0aGUgc2VydmVyIHJlYm9vdHMsIHRoZSBjbGllbnQgcmUtZXN0YWJs
-aXNoZXMgYSBUQ1ANCj4+Pj4+Pj4+Pj4+Pj4gY29ubmVjdGlvbiB3aXRoIHRoZSBzZXJ2ZXIsIGFu
-ZCBwZXJmb3JtcyBhIFJFTkVXDQo+Pj4+Pj4+Pj4+Pj4+IG9wZXJhdGlvbiB1c2luZyBjb250ZXh0
-IDEuIFRoYW5rcyB0byB0aGUgc2VydmVyIHJlYm9vdCwNCj4+Pj4+Pj4+Pj4+Pj4gY29udGV4dHMg
-MSBhbmQgMiBhcmUgbm93IHN0YWxlLiBUaGUgc2VydmVyIHRodXMgcmVqZWN0cw0KPj4+Pj4+Pj4+
-Pj4+PiB0aGUgUlBDIHdpdGggUlBDU0VDX0dTU19DVFhQUk9CTEVNLg0KPj4+Pj4+Pj4+Pj4+PiAN
-Cj4+Pj4+Pj4+Pj4+Pj4gVGhlIGNsaWVudCBwZXJmb3JtcyBhIEdTU19JTklUX1NFQ19DT05URVhU
-IHZpYSBhbiBORlN2NA0KPj4+Pj4+Pj4+Pj4+PiBOVUxMIG9wZXJhdGlvbi4gQ2FsbCB0aGlzIEdT
-UyBjb250ZXh0IDMuDQo+Pj4+Pj4+Pj4+Pj4+IA0KPj4+Pj4+Pj4+Pj4+PiBJbnRlcmVzdGluZ2x5
-LCB0aGUgY2xpZW50IGRvZXMgbm90IHJlc2VuZCB0aGUgUkVORVcNCj4+Pj4+Pj4+Pj4+Pj4gb3Bl
-cmF0aW9uIGF0IHRoaXMgcG9pbnQgKGlmIGl0IGRpZCwgd2Ugd291bGRuJ3Qgc2VlIHRoaXMNCj4+
-Pj4+Pj4+Pj4+Pj4gcHJvYmxlbSBhdCBhbGwpLg0KPj4+Pj4+Pj4+Pj4+PiANCj4+Pj4+Pj4+Pj4+
-Pj4gVGhlIGNsaWVudCB0aGVuIGF0dGVtcHRzIHRvIHJlc3VtZSB0aGUgcmVwcm9kdWNlciB3b3Jr
-bG9hZC4NCj4+Pj4+Pj4+Pj4+Pj4gSXQgc2VuZHMgYW4gTkZTdjQgV1JJVEUgb3BlcmF0aW9uLCB1
-c2luZyB0aGUgZmlyc3QgYXZhaWxhYmxlDQo+Pj4+Pj4+Pj4+Pj4+IEdTUyBjb250ZXh0IGluIFVJ
-RCAwJ3MgY3JlZGVudGlhbCBjYWNoZSwgd2hpY2ggaXMgY29udGV4dCAzLA0KPj4+Pj4+Pj4+Pj4+
-PiBhbHJlYWR5IGJvdW5kIHRvIHRoZSBjbGllbnQncyBORlMgc2VydmljZSBwcmluY2lwYWwuIEJ1
-dCBHU1MNCj4+Pj4+Pj4+Pj4+Pj4gc2VydmljZSAibm9uZSIgaXMgdXNlZCBmb3IgdGhpcyBvcGVy
-YXRpb24sIHNpbmNlIGl0IGlzIG9uDQo+Pj4+Pj4+Pj4+Pj4+IGJlaGFsZiBvZiB0aGUgbW91bnQg
-d2hlcmUgc2VjPWtyYjUgd2FzIHNwZWNpZmllZC4NCj4+Pj4+Pj4+Pj4+Pj4gDQo+Pj4+Pj4+Pj4+
-Pj4+IFRoZSBSUEMgaXMgYWNjZXB0ZWQsIGJ1dCB0aGUgc2VydmVyIHJlcG9ydHMNCj4+Pj4+Pj4+
-Pj4+Pj4gTkZTNEVSUl9TVEFMRV9TVEFURUlELCBzaW5jZSBpdCBoYXMgcmVjZW50bHkgcmVib290
-ZWQuDQo+Pj4+Pj4+Pj4+Pj4+IA0KPj4+Pj4+Pj4+Pj4+PiBUaGUgY2xpZW50IHJlc3BvbmRzIGJ5
-IGF0dGVtcHRpbmcgc3RhdGUgcmVjb3ZlcnkuIFRoZQ0KPj4+Pj4+Pj4+Pj4+PiBmaXJzdCBvcGVy
-YXRpb24gaXQgdHJpZXMgaXMgYW5vdGhlciBSRU5FVy4gU2luY2UgdGhpcyBpcw0KPj4+Pj4+Pj4+
-Pj4+PiBhIGxlYXNlIG1hbmFnZW1lbnQgb3BlcmF0aW9uLCB0aGUgY2xpZW50IGxvb2tzIGluIFVJ
-RCAwJ3MNCj4+Pj4+Pj4+Pj4+Pj4gY3JlZGVudGlhbCBjYWNoZSBhZ2FpbiBhbmQgZmluZHMgdGhl
-IHJlY2VudGx5IGVzdGFibGlzaGVkDQo+Pj4+Pj4+Pj4+Pj4+IGNvbnRleHQgMy4gSXQgdHJpZXMg
-dGhlIFJFTkVXIG9wZXJhdGlvbiB1c2luZyBHU1MgY29udGV4dA0KPj4+Pj4+Pj4+Pj4+PiAzIHdp
-dGggR1NTIHNlcnZpY2UgImludGVncml0eS4iDQo+Pj4+Pj4+Pj4+Pj4+IA0KPj4+Pj4+Pj4+Pj4+
-PiBUaGUgc2VydmVyIHJlamVjdHMgdGhlIFJFTkVXIFJQQyB3aXRoIEFVVEhfRkFJTEVELCBhbmQN
-Cj4+Pj4+Pj4+Pj4+Pj4gdGhlIGNsaWVudCByZXBvcnRzIHRoYXQgImNoZWNrIGxlYXNlIGZhaWxl
-ZCIgYW5kDQo+Pj4+Pj4+Pj4+Pj4+IHRlcm1pbmF0ZXMgc3RhdGUgcmVjb3ZlcnkuDQo+Pj4+Pj4+
-Pj4+Pj4+IA0KPj4+Pj4+Pj4+Pj4+PiBUaGUgY2xpZW50IHJlLWRyaXZlcyB0aGUgV1JJVEUgb3Bl
-cmF0aW9uIHdpdGggdGhlIHN0YWxlDQo+Pj4+Pj4+Pj4+Pj4+IHN0YXRlaWQgd2l0aCBwcmVkaWN0
-YWJsZSByZXN1bHRzLiBUaGUgY2xpZW50IGFnYWluIHRyaWVzDQo+Pj4+Pj4+Pj4+Pj4+IHRvIHJl
-Y292ZXIgc3RhdGUgYnkgc2VuZGluZyBhIFJFTkVXLCBhbmQgc3RpbGwgdXNlcyB0aGUNCj4+Pj4+
-Pj4+Pj4+Pj4gc2FtZSBHU1MgY29udGV4dCAzIHdpdGggc2VydmljZSAiaW50ZWdyaXR5IiBhbmQg
-Z2V0cyB0aGUNCj4+Pj4+Pj4+Pj4+Pj4gc2FtZSByZXN1bHQuIEEgKHBlcmhhcHMgc2xvdy1tb3Rp
-b24pIFNUQUxFX1NUQVRFSUQgbG9vcA0KPj4+Pj4+Pj4+Pj4+PiBlbnN1ZXMsIGFuZCB0aGUgY2xp
-ZW50IG1vdW50IHBvaW50IGlzIGRlYWRsb2NrZWQuDQo+Pj4+Pj4+Pj4+Pj4+IA0KPj4+Pj4+Pj4+
-Pj4+PiBZb3VyIGFuYWx5c2lzIHdhcyB0aGF0IGJlY2F1c2UgdGhlIHJlcHJvZHVjZXIgaXMgcnVu
-IGFzDQo+Pj4+Pj4+Pj4+Pj4+IHJvb3QsIGJvdGggdGhlIHJlcHJvZHVjZXIncyBJL08gb3BlcmF0
-aW9ucywgYW5kIGxlYXNlDQo+Pj4+Pj4+Pj4+Pj4+IG1hbmFnZW1lbnQgb3BlcmF0aW9ucywgYXR0
-ZW1wdCB0byB1c2UgdGhlIHNhbWUgR1NTIGNvbnRleHQNCj4+Pj4+Pj4+Pj4+Pj4gaW4gVUlEIDAn
-cyBjcmVkZW50aWFsIGNhY2hlLCBidXQgZWFjaCB1c2VzIGRpZmZlcmVudCBHU1MNCj4+Pj4+Pj4+
-Pj4+Pj4gc2VydmljZXMuDQo+Pj4+Pj4+Pj4+Pj4gDQo+Pj4+Pj4+Pj4+Pj4gQXMgUkZDMjIwMyBz
-dGF0ZXMsICJJbiBhIGNyZWF0aW9uIHJlcXVlc3QsIHRoZSBzZXFfbnVtIGFuZCBzZXJ2aWNlIGZp
-ZWxkcyBhcmUgdW5kZWZpbmVkIGFuZCBib3RoIG11c3QgYmUgaWdub3JlZCBieSB0aGUgc2VydmVy
-4oCdDQo+Pj4+Pj4+Pj4+Pj4gU28gYSBjb250ZXh0IGNyZWF0aW9uIHJlcXVlc3Qgd2hpbGUga2lj
-a2VkIG9mZiBieSBhbiBvcGVyYXRpb24gd2l0aCBhIHNlcnZpY2UgYXR0YWNoZWQgKGUuZy4gV1JJ
-VEUgdXNlcyBycGNfZ3NzX3N2Y19ub25lIGFuZCBSRU5FVyB1c2VzIHJwY19nc3Nfc3ZjX2ludGVn
-cml0eSksIGNhbiBiZSB1c2VkIGJ5IGVpdGhlciBzZXJ2aWNlIGxldmVsLg0KPj4+Pj4+Pj4+Pj4+
-IEFGQUlDUyBhIHNpbmdsZSBHU1MgY29udGV4dCBjb3VsZCBpbiB0aGVvcnkgYmUgdXNlZCBmb3Ig
-YWxsIHNlcnZpY2UgbGV2ZWxzLCBidXQgaW4gcHJhY3RpY2UsIEdTUyBjb250ZXh0cyBhcmUgcmVz
-dHJpY3RlZCB0byBhIHNlcnZpY2UgbGV2ZWwgKGJ5IGNsaWVudD8gYnkgc2VydmVyPyApIG9uY2Ug
-dGhleSBhcmUgdXNlZC4NCj4+Pj4+Pj4+Pj4+PiANCj4+Pj4+Pj4+Pj4+PiANCj4+Pj4+Pj4+Pj4+
-Pj4gVGhlIGtleSBpc3N1ZSBzZWVtcyB0byBiZSB3aHksIHdoZW4gdGhlIG1vdW50DQo+Pj4+Pj4+
-Pj4+Pj4+IGlzIGZpcnN0IGVzdGFibGlzaGVkLCB0aGUgY2xpZW50IGlzIGNvcnJlY3RseSBhYmxl
-IHRvDQo+Pj4+Pj4+Pj4+Pj4+IGVzdGFibGlzaCB0d28gc2VwYXJhdGUgR1NTIGNvbnRleHRzIGZv
-ciBVSUQgMDsgYnV0IGFmdGVyDQo+Pj4+Pj4+Pj4+Pj4+IGEgc2VydmVyIHJlYm9vdCwgdGhlIGNs
-aWVudCBhdHRlbXB0cyB0byB1c2UgdGhlIHNhbWUgR1NTDQo+Pj4+Pj4+Pj4+Pj4+IGNvbnRleHQg
-d2l0aCB0d28gZGlmZmVyZW50IEdTUyBzZXJ2aWNlcy4NCj4+Pj4+Pj4+Pj4+PiANCj4+Pj4+Pj4+
-Pj4+PiBJIHNwZWN1bGF0ZSB0aGF0IGl0IGlzIGEgcmFjZSBiZXR3ZWVuIHRoZSBXUklURSBhbmQg
-dGhlIFJFTkVXIHRvIHVzZSB0aGUgc2FtZSBuZXdseSBjcmVhdGVkIEdTUyBjb250ZXh0IHRoYXQg
-aGFzIG5vdCBiZWVuIHVzZWQgeWV0LCBhbmQgc28gaGFzIG5vIGFzc2lnbmVkIHNlcnZpY2UgbGV2
-ZWwsIGFuZCB0aGUgdHdvIHJlcXVlc3RzIHJhY2UgdG8gc2V0IHRoZSBzZXJ2aWNlIGxldmVsLg0K
-Pj4+Pj4+Pj4+Pj4gDQo+Pj4+Pj4+Pj4+PiBJIGFncmVlIHdpdGggQW5keS4gSXQgbXVzdCBiZSBh
-IHRpZ2h0IHJhY2UuDQo+Pj4+Pj4+Pj4+IA0KPj4+Pj4+Pj4+PiBJbiBvbmUgY2FwdHVyZSBJIHNl
-ZSBzb21ldGhpbmcgbGlrZSB0aGlzIGFmdGVyDQo+Pj4+Pj4+Pj4+IHRoZSBzZXJ2ZXIgcmVzdGFy
-dHM6DQo+Pj4+Pj4+Pj4+IA0KPj4+Pj4+Pj4+PiBTWU4NCj4+Pj4+Pj4+Pj4gU1lOLCBBQ0sNCj4+
-Pj4+Pj4+Pj4gQUNLDQo+Pj4+Pj4+Pj4+IEMgV1JJVEUNCj4+Pj4+Pj4+Pj4gQyBTRVFVRU5DRQ0K
-Pj4+Pj4+Pj4+PiBSIFdSSVRFIC0+IENUWF9QUk9CTEVNDQo+Pj4+Pj4+Pj4+IFIgU0VRVUVOQ0Ug
-LT4gQ1RYX1BST0JMRU0NCj4+Pj4+Pj4+Pj4gQyBOVUxMIChLUkI1X0FQX1JFUSkNCj4+Pj4+Pj4+
-Pj4gUiBOVUxMIChLUkI1X0FQX1JFUCkNCj4+Pj4+Pj4+Pj4gQyBXUklURQ0KPj4+Pj4+Pj4+PiBD
-IFNFUVVFTkNFDQo+Pj4+Pj4+Pj4+IFIgV1JJVEUgLT4gTkZTNEVSUl9TVEFMRV9TVEFURUlEDQo+
-Pj4+Pj4+Pj4+IFIgU0VRVUVOQ0UgLT4gQVVUSF9GQUlMRUQNCj4+Pj4+Pj4+Pj4gDQo+Pj4+Pj4+
-Pj4+IEFuZHkncyB0aGVvcnkgbmVhdGx5IGV4cGxhaW5zIHRoaXMgYmVoYXZpb3IuDQo+Pj4+Pj4+
-Pj4+IA0KPj4+Pj4+Pj4+PiANCj4+Pj4+Pj4+Pj4+IEkgaGF2ZSB0cmllZCB0byByZXByb2R1Y2UN
-Cj4+Pj4+Pj4+Pj4+IHlvdXIgc2NlbmFyaW8gYW5kIGluIG15IHRlc3RzIG9mIHJlYm9vdGluZyB0
-aGUgc2VydmVyIGFsbCByZWNvdmVyDQo+Pj4+Pj4+Pj4+PiBjb3JyZWN0bHkuIEluIG15IGNhc2Us
-IGlmIFJFTkVXIHdhcyB0aGUgb25lIGhpdHRpbmcgdGhlIEFVVEhfRVJSIHRoZW4NCj4+Pj4+Pj4+
-Pj4+IHRoZSBuZXcgY29udGV4dCBpcyBlc3RhYmxpc2hlZCBhbmQgdGhlbiBSRU5FVyB1c2luZyBp
-bnRlZ3JpdHkgc2VydmljZQ0KPj4+Pj4+Pj4+Pj4gaXMgcmV0cmllZCB3aXRoIHRoZSBuZXcgY29u
-dGV4dCB3aGljaCBnZXRzIEVSUl9TVEFMRV9DTElFTlRJRCB3aGljaA0KPj4+Pj4+Pj4+Pj4gdGhl
-biBjbGllbnQgcmVjb3ZlcnMgZnJvbS4gSWYgaXQncyBhbiBvcGVyYXRpb24gKEkgaGF2ZSBhIEdF
-VEFUVFIpDQo+Pj4+Pj4+Pj4+PiB0aGF0IGdldHMgQVVUSF9FUlIsIHRoZW4gaXQgZ2V0cyBuZXcg
-Y29udGV4dCBhbmQgaXMgcmV0cmllZCB1c2luZyBub25lDQo+Pj4+Pj4+Pj4+PiBzZXJ2aWNlLiBU
-aGVuIFJFTkVXIGdldHMgaXRzIG93biBBVVRIX0VSUiBhcyBpdCB1c2VzIGEgZGlmZmVyZW50DQo+
-Pj4+Pj4+Pj4+PiBjb250ZXh0LCBhIG5ldyBjb250ZXh0IGlzIGdvdHRlbiwgUkVORVcgaXMgcmV0
-cmllZCBvdmVyIGludGVncml0eSBhbmQNCj4+Pj4+Pj4+Pj4+IGdldHMgRVJSX1NUQUxFX0NMSUVO
-VElEIHdoaWNoIGl0IHJlY292ZXJzIGZyb20uDQo+Pj4+Pj4+Pj4+IA0KPj4+Pj4+Pj4+PiBJZiBv
-bmUgb3BlcmF0aW9uIGlzIGFsbG93ZWQgdG8gY29tcGxldGUsIHRoZW4NCj4+Pj4+Pj4+Pj4gdGhl
-IG90aGVyIHdpbGwgYWx3YXlzIHJlY29nbml6ZSB0aGF0IGFub3RoZXINCj4+Pj4+Pj4+Pj4gZnJl
-c2ggR1NTIGNvbnRleHQgaXMgbmVlZGVkLiBJZiB0d28gYXJlIHNlbnQNCj4+Pj4+Pj4+Pj4gYXQg
-dGhlIHNhbWUgdGltZSwgdGhleSByYWNlIGFuZCBvbmUgYWx3YXlzDQo+Pj4+Pj4+Pj4+IGZhaWxz
-Lg0KPj4+Pj4+Pj4+PiANCj4+Pj4+Pj4+Pj4gSGVsZW4ncyB0ZXN0IGluY2x1ZGVzIGEgc2Vjb25k
-IGlkbGUgbW91bnQgcG9pbnQNCj4+Pj4+Pj4+Pj4gKHNlYz1rcmI1aSkgYW5kIG1heWJlIHRoYXQg
-aXMgbmVlZGVkIHRvIHRyaWdnZXINCj4+Pj4+Pj4+Pj4gdGhlIHJhY2U/DQo+Pj4+Pj4+Pj4gDQo+
-Pj4+Pj4+Pj4gQ2h1Y2ssIGFueSBjaGFuY2UgdG8gZ2V0ICJycGNkZWJ1ZyAtbSBycGMgYXV0aCIg
-b3V0cHV0IGR1cmluZyB0aGUNCj4+Pj4+Pj4+PiBmYWlsdXJlIChnc3NkIG9wdGlvbmFsbHkpIChp
-IHJlYWxpemUgdGhhdCBpdCBtaWdodCBhbHRlciB0aGUgdGltaW5ncw0KPj4+Pj4+Pj4+IGFuZCBu
-b3QgaGl0IHRoZSBpc3N1ZSBidXQgd29ydGggYSBzaG90KT8NCj4+Pj4+Pj4+IA0KPj4+Pj4+Pj4g
-SSdtIHN1cmUgdGhhdCdzIGZpbmUuIEFuIGludGVybmFsIHRlc3RlciBoaXQgdGhpcywNCj4+Pj4+
-Pj4+IG5vdCBhIGN1c3RvbWVyLCBzbyBJIHdpbGwgYXNrLg0KPj4+Pj4+Pj4gDQo+Pj4+Pj4+PiBJ
-IGFncmVlLCB0aG91Z2gsIHRoYXQgdGltaW5nIG1pZ2h0IGJlIGEgcHJvYmxlbToNCj4+Pj4+Pj4+
-IHRoZXNlIHN5c3RlbXMgYWxsIGhhdmUgcmVhbCBzZXJpYWwgY29uc29sZXMgdmlhDQo+Pj4+Pj4+
-PiBpTE9NLCBzbyAvdi9sL20gdHJhZmZpYyBkb2VzIGJyaW5nIGV2ZXJ5dGhpbmcgdG8NCj4+Pj4+
-Pj4+IGEgc3RhbmRzdGlsbC4NCj4+Pj4+Pj4+IA0KPj4+Pj4+Pj4gTWVhbndoaWxlLCB3aGF0J3Mg
-eW91J3JlIG9waW5pb24gYWJvdXQgQVVUSF9GQUlMRUQ/DQo+Pj4+Pj4+PiBTaG91bGQgdGhlIHNl
-cnZlciByZXR1cm4gUlBDU0VDX0dTU19DVFhQUk9CTEVNDQo+Pj4+Pj4+PiBpbiB0aGlzIGNhc2Ug
-aW5zdGVhZD8gSWYgaXQgZGlkLCBkbyB5b3UgdGhpbmsNCj4+Pj4+Pj4+IHRoZSBMaW51eCBjbGll
-bnQgd291bGQgcmVjb3ZlciBieSBjcmVhdGluZyBhDQo+Pj4+Pj4+PiByZXBsYWNlbWVudCBHU1Mg
-Y29udGV4dD8NCj4+Pj4+Pj4gDQo+Pj4+Pj4+IEFoLCB5ZXMsIEkgZXF1YXRlZCBBVVRIX0ZBSUxF
-RCBBbmQgQVVUSF9FUlJPUiBpbiBteSBtaW5kLiBJZiBjbGllbnQNCj4+Pj4+Pj4gcmVjZWl2ZXMg
-dGhlIHJlYXNvbiBhcyBBVVRIX0ZBSUxFRCBhcyBvcHBvc2UgdG8gQ1RYUFJPQkxFTSBpdCB3aWxs
-DQo+Pj4+Pj4+IGZhaWwgd2l0aCBFSU8gZXJyb3IgYW5kIHdpbGwgbm90IHRyeSB0byBjcmVhdGUg
-YSBuZXcgR1NTIGNvbnRleHQuIFNvDQo+Pj4+Pj4+IHllcywgSSBiZWxpZXZlIGl0IHdvdWxkIGhl
-bHAgaWYgdGhlIHNlcnZlciByZXR1cm5zIGFueSBvZiB0aGUNCj4+Pj4+Pj4gZm9sbG93aW5nIGVy
-cm9yczoNCj4+Pj4+Pj4gICAgICAgICAgICAgY2FzZSBSUENfQVVUSF9SRUpFQ1RFRENSRUQ6DQo+
-Pj4+Pj4+ICAgICAgICAgICAgIGNhc2UgUlBDX0FVVEhfUkVKRUNURURWRVJGOg0KPj4+Pj4+PiAg
-ICAgICAgICAgICBjYXNlIFJQQ1NFQ19HU1NfQ1JFRFBST0JMRU06DQo+Pj4+Pj4+ICAgICAgICAg
-ICAgIGNhc2UgUlBDU0VDX0dTU19DVFhQUk9CTEVNOg0KPj4+Pj4+PiANCj4+Pj4+Pj4gdGhlbiB0
-aGUgY2xpZW50IHdpbGwgcmVjcmVhdGUgdGhlIGNvbnRleHQuDQo+Pj4+Pj4gDQo+Pj4+Pj4gQWxz
-byBpbiBteSB0ZXN0aW5nLCBJIGNhbiBzZWUgdGhhdCBjcmVkZW50aWFsIGNhY2hlIGlzIHBlciBn
-c3MgZmxhdm9yLg0KPj4+Pj4+IEp1c3QgdG8gY2hlY2ssIHdoYXQga2VybmVsIHZlcnNpb24gaXMg
-dGhpcyBwcm9ibGVtIGVuY291bnRlcmVkIG9uIChJDQo+Pj4+Pj4ga25vdyB5b3Ugc2FpZCB1cHN0
-cmVhbSkgYnV0IEkganVzdCB3YW50IHRvIGRvdWJsZSBjaGVjayBzbyB0aGF0IEkgY2FuDQo+Pj4+
-Pj4gbG9vayBhdCB0aGUgY29ycmVjdCBzb3VyY2UgY29kZS4NCj4+Pj4+IA0KPj4+Pj4gdjQuMS4x
-MiAoc3RhYmxlKSBJIHRoaW5rLg0KPj4+PiANCj4+Pj4gQWxzbywgY2FuIHlvdSBzaGFyZSB0aGUg
-bmV0d29yayB0cmFjZT8NCj4+PiANCj4+PiBIaSBDaHVjaywNCj4+PiANCj4+PiBJIHdhcyBmaW5h
-bGx5IGFibGUgdG8gcmVwcm9kdWNlIHRoZSBjb25kaXRpb24geW91IHdlcmUgc2VlaW5nIChpLmUu
-LA0KPj4+IHRoZSB1c2Ugb2YgdGhlIHNhbWUgY29udGV4dCBmb3IgZGlmZmVyZW50IGdzcyBzZXJ2
-aWNlcykuDQo+Pj4gDQo+Pj4gSSBlbmFibGVkIHJwY2RlYnVnIHJwYyBhdXRoIGFuZCBJIGNhbiBz
-ZWUgdGhhdCB0aGUgMm5kIHJlcXVlc3QgZW5kcyB1cA0KPj4+IGZpbmRpbmcgYSBnc3NfdXBjYWxs
-IG1lc3NhZ2UgYmVjYXVzZSBpdCdzIGp1c3QgbWF0Y2hlZCBieSB0aGUgdWlkLg0KPj4+IFRoZXJl
-IGlzIGV2ZW4gYSBjb21tZW50IGluIGF1dGhfZ3NzL2F1dGhfZ3NzLmMgaW4gZ3NzX2FkZF9tc2co
-KSBzYXlpbmcNCj4+PiB0aGF0IGlmIHRoZXJlIGlzIHVwY2FsbCBmb3IgYW4gdWlkIHRoZW4gaXQg
-d29uJ3QgYWRkIGFub3RoZXIgdXBjYWxsLg0KPj4+IFNvIEkgdGhpbmsgdGhlIGRlY2lzaW9uIGlz
-IG1hZGUgcmlnaHQgdGhlcmUgdG8gc2hhcmUgdGhlIHNhbWUgY29udGV4dA0KPj4+IG5vIG1hdHRl
-ciB0aGUgZ3NzIHNlcnZpY2UuDQo+PiANCj4+IElmIEkgdW5kZXJzdGFuZCBjb3JyZWN0bHksIHRo
-YXQncyBqdXN0IHdoYXQgQW5keSBwcmVkaWN0ZWQuDQo+PiANCj4+IFRoYXQgY2hlY2sgbmVlZHMg
-dG8gYmUgY2hhbmdlZCB0byBhbGxvdyBhbm90aGVyIHVwY2FsbCB0byBiZQ0KPj4gcXVldWVkIGlm
-IHRoZSBVSUQgbWF0Y2hlcyBidXQgdGhlIEdTUyBzZXJ2aWNlIGRvZXMgbm90Lg0KPiANCj4gWWVz
-LCB3ZSBuZWVkIHRvIGVuc3VyZSB0aGF0IHRoZSBzZXJ2aWNlIGlzIHNldCBldmVuIHRob3VnaCBp
-dCBpcyBpZ25vcmVkIGJ5IHRoZSBzZXJ2ZXIuDQoNCuKApnNlcnZpY2UgaXMgc2V0IGluIHRoZSBn
-c3NfdXBjYWxsX21zZ+KApg0KDQo+IA0KPiDigJQ+QW5keQ0KPiANCj4+IA0KPj4gDQo+PiAtLQ0K
-Pj4gQ2h1Y2sgTGV2ZXINCg0K
+On Fri, 2016-07-29 at 12:43 -0400, Nick Bowler wrote:
+> Hi guys,
+> 
+> > On 2015-10-13, Nick Bowler <nbowler@draconx.ca> wrote:
+> > 
+> > > > On 2015-10-13, Jeff Layton <jlayton@poochiereds.net> wrote:
+> > > 
+> > > On Mon, 12 Oct 2015 23:01:36 -0400
+> > > > > > Nick Bowler <nbowler@draconx.ca> wrote:
+> > > > 
+> > > > On 2015-10-12 15:46 -0400, J. Bruce Fields wrote:
+> > > > > 
+> > > > > On Mon, Oct 12, 2015 at 03:25:38PM -0400, bfields wrote:
+> > > > > > 
+> > > > > > On Mon, Oct 12, 2015 at 12:48:56PM -0400, Nick Bowler wrote:
+> [...]
+> > 
+> > > 
+> > > > 
+> > > > > 
+> > > > > > 
+> > > > > > > 
+> > > > > > > the failing syscall seems to be:
+> > > > > > > 
+> > > > > > >   fcntl(7, F_SETLK, {type=F_RDLCK, whence=SEEK_SET,
+> > > > > > > start=1073741824, len=1}) = -1 EIO (Input/output error)
+> > > > > > > 
+> > > > > > > When the issue occurs, the client dmesg log is full of messages of
+> > > > > > > the form:
+> > > > > > > 
+> > > > > > >   [3441972.381211] NFS: v4 server returned a bad sequence-id error
+> > > > > > > on an unconfirmed sequence ffff88007612ae20!
+> > > > > > > 
+> > > > > > > There are no unusual messages on the server.
+> > > > [...]
+> > > Ok, makes sense. The log shows that it occurred in a fcntl call, so
+> > > it's probably this from lookup_or_create_lock_state:
+> > > 
+> > >         lo = find_lockowner_str(cl, &lock->lk_new_owner);
+> > >         if (!lo) {
+> > >                 strhashval = ownerstr_hashval(&lock->lk_new_owner);
+> > >                 lo = alloc_init_lock_stateowner(strhashval, cl, ost,
+> > > lock);
+> > >                 if (lo == NULL)
+> > >                         return nfserr_jukebox;
+> > >         } else {
+> > >                 /* with an existing lockowner, seqids must be the same */
+> > >                 status = nfserr_bad_seqid;
+> > >                 if (!cstate->minorversion &&
+> > >                     lock->lk_new_lock_seqid != lo->lo_owner.so_seqid)
+> > >                         goto out;
+> > >         }
+> > > 
+> > > ...so we found an existing lockowner, but the seqid in the call is
+> > > wrong. It seems like the client ought to try to recover in this case,
+> > > but I don't see where it handles BAD_SEQID errors in the locking code.
+> [...]
+> > 
+> > > 
+> > > In any case, the question now is whether this is a client or server
+> > > bug. What would tell us that is a network capture of the NFS traffic
+> > > between client and server at the time that this occurs. Would it be
+> > > possible to collect one? If so, then let Bruce and I know and we can
+> > > figure out a way to share it privately.
+> 
+> Hi guys,
+> 
+> Unfortunately I did not manage to perform a network capture last time
+> due to power loss.  I did not hit this issue again until yesterday (~9
+> months later), this time after 45 days of uptime.
+> 
+> Kernel versions now are: 4.5.1 on the server, and 4.4.3 on the client.
+> 
+> Since it's now in a failing state again (this situation persists until
+> a reboot of the client), I captured with strace and tcpdump (on both
+> client and server) when attempting to start gmpc, the result is quite
+> small (just 30 packets).  Will that be helpful?
+> 
+> Thanks,
+>   Nick
+
+I doubt we'd be able to tell much after the fact, but feel free to send it along.
+
+Thanks,
+-- 
+Jeff Layton <jlayton@poochiereds.net>
