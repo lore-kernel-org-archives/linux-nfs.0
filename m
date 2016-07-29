@@ -1,15 +1,16 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:35073 "EHLO mx2.suse.de"
+Received: from mx2.suse.de ([195.135.220.15]:35090 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750962AbcG2FEs (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 29 Jul 2016 01:04:48 -0400
+	id S1750835AbcG2FEy (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 29 Jul 2016 01:04:54 -0400
 From: NeilBrown <neilb@suse.com>
 To: Steve Dickson <SteveD@redhat.com>
 Date: Fri, 29 Jul 2016 15:03:36 +1000
-Subject: [PATCH 2/7] mountd: remove the --exports-file option
+Subject: [PATCH 3/7] mount: don't treat temporary name resolution failure as
+ permanent.
 Cc: "J. Bruce Fields" <bfields@fieldses.org>,
         Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Message-ID: <146976861654.20186.7932993398701298729.stgit@noble>
+Message-ID: <146976861666.20186.10594715887070996846.stgit@noble>
 In-Reply-To: <146976807524.20186.8871903418718212567.stgit@noble>
 References: <146976807524.20186.8871903418718212567.stgit@noble>
 MIME-Version: 1.0
@@ -17,128 +18,118 @@ Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-It is completely ineffective.
+If getaddrinfo() returns EAI_AGAIN, we shouldn't just give up, but
+should continue normal retries as the nameserver may be unavailable
+for the same reason as the NFS server.
+
+So move the getaddrinfo() call from nfs_validate_options() into
+nfs_try_mounts() which is always called soon after, except in the
+'remount' case when we don't want it anyway.
+
+If EAI_AGAIN is returned, set errno to EAGAIN and allow this to be a
+temporary failure.  Otherwise report error and set errno to EALREADY
+so no further message is given.
 
 Signed-off-by: NeilBrown <neilb@suse.com>
 ---
- utils/mountd/auth.c     |    5 +----
- utils/mountd/mountd.c   |   11 +++--------
- utils/mountd/mountd.h   |    2 +-
- utils/mountd/mountd.man |    8 --------
- 4 files changed, 5 insertions(+), 21 deletions(-)
+ utils/mount/stropts.c |   54 ++++++++++++++++++++++++++++---------------------
+ 1 file changed, 31 insertions(+), 23 deletions(-)
 
-diff --git a/utils/mountd/auth.c b/utils/mountd/auth.c
-index 894a7a53957f..0881d9a6edba 100644
---- a/utils/mountd/auth.c
-+++ b/utils/mountd/auth.c
-@@ -36,7 +36,6 @@ enum auth_error
- };
+diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
+index d60b484ab960..9de6794c6177 100644
+--- a/utils/mount/stropts.c
++++ b/utils/mount/stropts.c
+@@ -84,6 +84,7 @@ struct nfsmount_info {
+ 				*type;		/* "nfs" or "nfs4" */
+ 	char			*hostname;	/* server's hostname */
+ 	struct addrinfo		*address;	/* server's addresses */
++	sa_family_t		family;		/* Address family */
  
- static void		auth_fixpath(char *path);
--static char	*export_file = NULL;
- static nfs_export my_exp;
- static nfs_client my_client;
- 
-@@ -44,10 +43,8 @@ extern int new_cache;
- extern int use_ipaddr;
- 
- void
--auth_init(char *exports)
-+auth_init(void)
+ 	struct mount_options	*options;	/* parsed mount options */
+ 	char			**extra_opts;	/* string for /etc/mtab */
+@@ -371,39 +372,19 @@ static int nfs_set_version(struct nfsmount_info *mi)
+  */
+ static int nfs_validate_options(struct nfsmount_info *mi)
  {
+-	struct addrinfo hint = {
+-		.ai_protocol	= (int)IPPROTO_UDP,
+-	};
+-	sa_family_t family;
+-	int error;
 -
--	export_file = exports;
- 	auth_reload();
- 	xtab_mount_write();
- }
-diff --git a/utils/mountd/mountd.c b/utils/mountd/mountd.c
-index 063da269f895..7a51b093f66a 100644
---- a/utils/mountd/mountd.c
-+++ b/utils/mountd/mountd.c
-@@ -57,7 +57,6 @@ static struct option longopts[] =
- 	{ "descriptors", 1, 0, 'o' },
- 	{ "debug", 1, 0, 'd' },
- 	{ "help", 0, 0, 'h' },
--	{ "exports-file", 1, 0, 'f' },
- 	{ "nfs-version", 1, 0, 'V' },
- 	{ "no-nfs-version", 1, 0, 'N' },
- 	{ "version", 0, 0, 'v' },
-@@ -689,7 +688,6 @@ get_exportlist(void)
- int
- main(int argc, char **argv)
+ 	if (!nfs_parse_devname(mi->spec, &mi->hostname, NULL))
+ 		return 0;
+ 
+-	if (!nfs_nfs_proto_family(mi->options, &family))
++	if (!nfs_nfs_proto_family(mi->options, &mi->family))
+ 		return 0;
+ 
+ 	/*
+ 	 * A remount is not going to be able to change the server's address,
+ 	 * nor should we try to resolve another address for the server as we
+ 	 * may end up with a different address.
++	 * A non-remount will set 'addr' from ->hostname
+ 	 */
+-	if (mi->flags & MS_REMOUNT) {
+-		po_remove_all(mi->options, "addr");
+-	} else {
+-		hint.ai_family = (int)family;
+-		error = getaddrinfo(mi->hostname, NULL, &hint, &mi->address);
+-		if (error != 0) {
+-			nfs_error(_("%s: Failed to resolve server %s: %s"),
+-				progname, mi->hostname, gai_strerror(error));
+-			mi->address = NULL;
+-			return 0;
+-		}
+-
+-		if (!nfs_append_addr_option(mi->address->ai_addr,
+-						mi->address->ai_addrlen, mi->options))
+-			return 0;
+-	}
++	po_remove_all(mi->options, "addr");
+ 
+ 	if (!nfs_set_version(mi))
+ 		return 0;
+@@ -903,6 +884,32 @@ static int nfs_try_mount(struct nfsmount_info *mi)
  {
--	char	*export_file = _PATH_EXPORTS;
- 	char    *state_dir = NFS_STATEDIR;
- 	char	*progname;
- 	unsigned int listeners = 0;
-@@ -709,7 +707,7 @@ main(int argc, char **argv)
+ 	int result = 0;
  
- 	/* Parse the command line options and arguments. */
- 	opterr = 0;
--	while ((c = getopt_long(argc, argv, "o:nFd:f:p:P:hH:N:V:vurs:t:g", longopts, NULL)) != EOF)
-+	while ((c = getopt_long(argc, argv, "o:nFd:p:P:hH:N:V:vurs:t:g", longopts, NULL)) != EOF)
- 		switch (c) {
- 		case 'g':
- 			manage_gids = 1;
-@@ -728,9 +726,6 @@ main(int argc, char **argv)
- 		case 'd':
- 			xlog_sconfig(optarg, 1);
- 			break;
--		case 'f':
--			export_file = optarg;
--			break;
- 		case 'H': /* PRC: specify a high-availability callout program */
- 			ha_callout_prog = optarg;
- 			break;
-@@ -862,7 +857,7 @@ main(int argc, char **argv)
- 	sa.sa_handler = sig_hup;
- 	sigaction(SIGHUP, &sa, NULL);
- 
--	auth_init(export_file);
-+	auth_init();
- 
- 	if (!foreground) {
- 		/* We first fork off a child. */
-@@ -908,7 +903,7 @@ usage(const char *prog, int n)
- {
- 	fprintf(stderr,
- "Usage: %s [-F|--foreground] [-h|--help] [-v|--version] [-d kind|--debug kind]\n"
--"	[-o num|--descriptors num] [-f exports-file|--exports-file=file]\n"
-+"	[-o num|--descriptors num]\n"
- "	[-p|--port port] [-V version|--nfs-version version]\n"
- "	[-N version|--no-nfs-version version] [-n|--no-tcp]\n"
- "	[-H prog |--ha-callout prog] [-r |--reverse-lookup]\n"
-diff --git a/utils/mountd/mountd.h b/utils/mountd/mountd.h
-index 6d358a75d9f3..f058f01d3584 100644
---- a/utils/mountd/mountd.h
-+++ b/utils/mountd/mountd.h
-@@ -39,7 +39,7 @@ bool_t		mount_pathconf_2_svc(struct svc_req *, dirpath *, ppathcnf *);
- bool_t		mount_mnt_3_svc(struct svc_req *, dirpath *, mountres3 *);
- 
- void		mount_dispatch(struct svc_req *, SVCXPRT *);
--void		auth_init(char *export_file);
-+void		auth_init(void);
- unsigned int	auth_reload(void);
- nfs_export *	auth_authenticate(const char *what,
- 					const struct sockaddr *caller,
-diff --git a/utils/mountd/mountd.man b/utils/mountd/mountd.man
-index 66e3bba7e865..e0d1a0acba3a 100644
---- a/utils/mountd/mountd.man
-+++ b/utils/mountd/mountd.man
-@@ -86,14 +86,6 @@ Turn on debugging. Valid kinds are: all, auth, call, general and parse.
- .B \-F " or " \-\-foreground
- Run in foreground (do not daemonize)
- .TP
--.B \-f export-file " or " \-\-exports-file export-file
--This option specifies the exports file, listing the clients that this
--server is prepared to serve and parameters to apply to each
--such mount (see
--.BR exports (5)).
--By default, export information is read from
--.IR /etc/exports .
--.TP
- .B \-h " or " \-\-help
- Display usage message.
- .TP
++	if (mi->address == NULL) {
++		struct addrinfo hint = {
++			.ai_protocol	= (int)IPPROTO_UDP,
++		};
++		int error;
++		struct addrinfo *address;
++
++		hint.ai_family = (int)mi->family;
++		error = getaddrinfo(mi->hostname, NULL, &hint, &address);
++		if (error != 0) {
++			if (error == EAI_AGAIN)
++				errno = EAGAIN;
++			else {
++				nfs_error(_("%s: Failed to resolve server %s: %s"),
++					  progname, mi->hostname, gai_strerror(error));
++				errno = EALREADY;
++			}
++			return 0;
++		}
++
++		if (!nfs_append_addr_option(address->ai_addr,
++					    address->ai_addrlen, mi->options))
++			return 0;
++		mi->address = address;
++	}
++
+ 	switch (mi->version.major) {
+ 		case 2:
+ 		case 3:
+@@ -941,6 +948,7 @@ static int nfs_is_permanent_error(int error)
+ 	case ETIMEDOUT:
+ 	case ECONNREFUSED:
+ 	case EHOSTUNREACH:
++	case EAGAIN:
+ 		return 0;	/* temporary */
+ 	default:
+ 		return 1;	/* permanent */
 
 
