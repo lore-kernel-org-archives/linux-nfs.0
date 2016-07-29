@@ -1,76 +1,72 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:35041 "EHLO mx2.suse.de"
+Received: from mx2.suse.de ([195.135.220.15]:35058 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750839AbcG2FEl (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 29 Jul 2016 01:04:41 -0400
+	id S1750839AbcG2FEn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 29 Jul 2016 01:04:43 -0400
 From: NeilBrown <neilb@suse.com>
 To: Steve Dickson <SteveD@redhat.com>
 Date: Fri, 29 Jul 2016 15:03:36 +1000
-Subject: [PATCH 0/7] Assorted mount/mountd nfs-utils patches - V2
+Subject: [PATCH 1/7] nfs.man: clarify effect of 'retry' option.
 Cc: "J. Bruce Fields" <bfields@fieldses.org>,
         Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Message-ID: <146976807524.20186.8871903418718212567.stgit@noble>
+Message-ID: <146976861647.20186.11572870441721752708.stgit@noble>
+In-Reply-To: <146976807524.20186.8871903418718212567.stgit@noble>
+References: <146976807524.20186.8871903418718212567.stgit@noble>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi,
- here is a revision of a recent patch series.
- Thanks to Bruce's uncompromising review I have significantly reduced
- the changes to mountpoint handling to just that which is needed.
+The total timeout for a "mount" attempt to a non-responsive server
+will always be a multiple of the time a single mount attempt in the
+kernel takes, which for TCP defaults to about 4 minutes.
 
- If we assume the NFSv3 behavior is "correct" (because it has been
- that way for over a decade), the NFSv4 behavior differs
- particularly in that a mount request arrives as a lookup from an
- pseduo-root parent.  This is seen by rpc.mountd as an upcall through
- nfsd.export.
- The nfsd_export() handled was ignoring the mountpoint option, and
- that is incorrect.  So a patch in this series handles the option correctly.
+The documentation for the "retry" option seems to suggest that this can be used
+to set a maximum but it really sets a time after which to stop retrying.
+The total can be as much as "retry" plus the time for a single attempt.
 
- The changes to blocking and ESTALE return, and the monitoring of
- /proc/mounts have all been removed.
+So clarify the documentation a bit, and also note that retrans
+defaults are different for UDP and TCP:
+   #define NFS_DEF_UDP_RETRANS	(3)
+   #define NFS_DEF_TCP_RETRANS	(2)
 
- It might be beneficial to change the kernel so that the reported
- mtime of V4ROOT directories is that last time any change was made to
- any V4ROOT export.  That might allow the client to see changes in
- exports more quickly.
-
- It might also be generally useful for mountd to monitor /proc/mounts
- (using e.g. select()) and flush the export cache shortly after any
- changes.  Again, this would allow the client to see changes more
- promptly.
-
- However I don't plan either of these immediately, which means they
- almost certainly won't happen unless the issue is raised again for
- some reason.
-
-Thanks,
-NeilBrown
-
+Reported-by: Howard Guo<hguo@suse.com>
+Signed-off-by: NeilBrown <neilb@suse.com>
 ---
+ utils/mount/nfs.man |   14 ++++++++++++--
+ 1 file changed, 12 insertions(+), 2 deletions(-)
 
-NeilBrown (7):
-      nfs.man: clarify effect of 'retry' option.
-      mountd: remove the --exports-file option
-      mount: don't treat temporary name resolution failure as permanent.
-      mount: use a public address for IPv6 callback.
-      mount: fix memory leak in v4root_add_parents
-      mountd: allow alternate ttl to be specified for dump_to_cache.
-      mountd: fail nfsd.export lookup for path to unmounted exportpoint
+diff --git a/utils/mount/nfs.man b/utils/mount/nfs.man
+index e541cdc95cb1..a0f790a5961b 100644
+--- a/utils/mount/nfs.man
++++ b/utils/mount/nfs.man
+@@ -158,8 +158,8 @@ up to a maximum timeout length of 60 seconds.
+ The number of times the NFS client retries a request before
+ it attempts further recovery action. If the
+ .B retrans
+-option is not specified, the NFS client tries each request
+-three times.
++option is not specified, the NFS client tries each UDP request
++three times and each TCP request twice.
+ .IP
+ The NFS client generates a "server not responding" message
+ after
+@@ -391,6 +391,16 @@ is 2 minutes, and the default value for background mounts is 10000 minutes
+ If a value of zero is specified, the
+ .BR mount (8)
+ command exits immediately after the first failure.
++.IP
++Note that this only affects how many retries are made and doesn't
++affect the delay caused by each retry.  For UDP each retry takes the
++time determined by the
++.BR timeo
++and
++.BR retrans
++options, which by default will be about 7 seconds.  For TCP the
++default is 3 minutes, but system TCP connection timeouts will
++sometimes limit the timeout of each retransmission to around 2 minutes.
+ .TP 1.5i
+ .BI sec= flavors
+ A colon-separated list of one or more security flavors to use for accessing
 
-
- utils/mount/network.c   |    5 ++++
- utils/mount/nfs.man     |   14 ++++++++++--
- utils/mount/stropts.c   |   54 +++++++++++++++++++++++++++--------------------
- utils/mountd/auth.c     |    5 +---
- utils/mountd/cache.c    |   36 ++++++++++++++++++++++++-------
- utils/mountd/mountd.c   |   11 +++-------
- utils/mountd/mountd.h   |    2 +-
- utils/mountd/mountd.man |    8 -------
- utils/mountd/v4root.c   |    6 +++--
- 9 files changed, 84 insertions(+), 57 deletions(-)
-
---
-Signature
 
