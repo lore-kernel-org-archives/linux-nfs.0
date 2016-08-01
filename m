@@ -1,45 +1,94 @@
-Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:48174 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751806AbcHAOnu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 1 Aug 2016 10:43:50 -0400
-Date: Mon, 1 Aug 2016 10:42:56 -0400
-To: Frank Filz <ffilzlnx@mindspring.com>
-Cc: "'J. Bruce Fields'" <bfields@redhat.com>,
-        "'Linux NFS Mailing List'" <linux-nfs@vger.kernel.org>
-Subject: Re: pynfs pull request
-Message-ID: <20160801144256.GB4953@fieldses.org>
-References: <037201d1e81e$04a9b9f0$0dfd2dd0$@mindspring.com>
- <20160728193855.GF4732@pad>
- <040401d1e914$52e71a30$f8b54e90$@mindspring.com>
- <20160729213011.GA11390@pad>
- <047b01d1e9e3$e6d51fb0$b47f5f10$@mindspring.com>
+Return-Path: <Anna.Schumaker@netapp.com>
+From: Anna Schumaker <Anna.Schumaker@netapp.com>
+Subject: Re: [PATCH] Trim extra slash in v4 nfs_path
+To: Benjamin Coddington <bcodding@redhat.com>,
+        Anna Schumaker
+	<Anna.Schumaker@netapp.com>
+References: <1cb38ee043176bca8ded7e18120776f8cf6a722d.1466017326.git.bcodding@redhat.com>
+ <f4f47844-5a28-acbc-0779-fcd66ea6c028@Netapp.com>
+ <AE75E577-5BF1-40E5-A9FA-7C40DB029989@redhat.com>
+ <D8D9A61C-B01F-4E72-BB5F-2E524608B3BB@redhat.com>
+CC: <linux-nfs@vger.kernel.org>,
+        Trond Myklebust
+	<trond.myklebust@primarydata.com>
+Message-ID: <01b31d32-ffbf-673c-4838-67e2205f75aa@Netapp.com>
+Date: Mon, 1 Aug 2016 15:11:25 -0400
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <047b01d1e9e3$e6d51fb0$b47f5f10$@mindspring.com>
-From: bfields@fieldses.org (J. Bruce Fields)
-Sender: linux-nfs-owner@vger.kernel.org
+In-Reply-To: <D8D9A61C-B01F-4E72-BB5F-2E524608B3BB@redhat.com>
+Content-Type: text/plain; charset="utf-8"
 List-ID: <linux-nfs.vger.kernel.org>
 
-> > The reason knfsd gave up on the utf8 tests was complaints from people with
-> > filesystems with non-utf8 encodings.  Given a preexisting filesystem
-> neither
-> > knfsd nor probably Ganesha has any way to determine the encoding, so
-> > we're left just injecting unhelpful errors when we come across something
-> > that doesn't look like utf-8.  Which just annoyed people with those
-> > filesystems, didn't really help anyone else, and changed behavior on
-> NFSv3-
-> > >NFSv4 upgrade.
-> > 
-> > But maybe non-utf8 is less common now.
+Hi Ben,
 
-On Fri, Jul 29, 2016 at 02:55:19PM -0700, Frank Filz wrote:
-> Hmm, I can see that point. It would be interesting to see if we could just
-> lump utf8 tests into all now...
+On 07/26/2016 06:58 AM, Benjamin Coddington wrote:
+> Hi Anna,
+> 
+> On 20 Jun 2016, at 11:38, Benjamin Coddington wrote:
+> 
+>> On 20 Jun 2016, at 11:08, Anna Schumaker wrote:
+>>
+>>> Hi Ben,
+>>>
+>>> On 06/15/2016 03:02 PM, Benjamin Coddington wrote:
+>>>> A NFSv4 mount of a subdirectory will show an extra slash (as in
+>>>> 'server://path') in proc's mountinfo which will not match the device name
+>>>> and path.  This can cause problems for programs searching for the mount.
+>>>> Fix this by checking for a leading slash in the dentry path, if so trim
+>>>> away any trailing slashes in the device name.
+>>>>
+>>>> Signed-off-by: Benjamin Coddington <bcodding@redhat.com>
+>>>> ---
+>>>>  fs/nfs/namespace.c | 2 +-
+>>>>  1 file changed, 1 insertion(+), 1 deletion(-)
+>>>>
+>>>> diff --git a/fs/nfs/namespace.c b/fs/nfs/namespace.c
+>>>> index c8162c660c44..5551e8ef67fd 100644
+>>>> --- a/fs/nfs/namespace.c
+>>>> +++ b/fs/nfs/namespace.c
+>>>> @@ -98,7 +98,7 @@ rename_retry:
+>>>>          return end;
+>>>>      }
+>>>>      namelen = strlen(base);
+>>>> -    if (flags & NFS_PATH_CANONICAL) {
+>>>> +    if (*end == '/') {
+>>>
+>>> Are we getting here through nfs_show_devname()?  Because it looks like that function is passing 0 for flags instead of NFS_PATH_CANONICAL.
+>>
+>> We can get here with or withount NFS_PATH_CANONICAL, through
+>> nfs_show_devname() or nfs4_path() or nfs_do_submount().
+>>
+>>>
+>>> Earlier in this function we have a check for:
+>>>     if ((flags & NFS_PATH_CANONICAL) && *end != '/')
+>>>
+>>> Should we be checking if NFS_PATH_CANONICAL is set here, too?
+>>
+>> I don't think we need it.
+>>
+>> The "if (flags & NFS_PATH_CANONICAL) {" was meant to cover the case where
+>> NFS_PATH_CANONICAL had earlier added a leading '/' to the path, and so would
+>> trim away any trailing '/' from the base.  So, don't combine server:/ and
+>> /path into server://path after adding a leading '/' to the path.
+>>
+>> The logic here is simplified such that we should _never_ concat these two:
+>> a base:/ and a /path, otherwise we'll have server://path.
+>>
+>> Further confusing the matter is that for v3 mounts, the base is server:/path
+>> and the path is '/' (which is added by NFS_PATH_CANONICAL), but for v4
+>> mounts the base is server:/ and the path is /path/to/export
+> 
+> Did this make any sense, or should I try to make it clearer or rework this?
 
-In our case we'd have to reintroduce some sort of utf8 enforcement in
-knfsd, or only test with filesystems that will do that for us.  The
-cases where that would cause problems are probably rarer now, but I'm
-still not ready to do that.
+Your explanation made sense to me, and if tests are failing without this patch then we should probably go with it.
 
---b.
+Thanks,
+Anna
+
+> 
+> This patch seems like just a minor fix, but the double slashes breaks some mount parsing in tests we have.
+> 
+> Ben
+> -- 
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
