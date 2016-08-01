@@ -1,44 +1,45 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from bombadil.infradead.org ([198.137.202.9]:40721 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753327AbcHANar (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 1 Aug 2016 09:30:47 -0400
-Date: Mon, 1 Aug 2016 06:30:46 -0700
-From: Christoph Hellwig <hch@infradead.org>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: Anna Schumaker <Anna.Schumaker@netapp.com>,
-        Christoph Hellwig <hch@infradead.org>, linux-nfs@vger.kernel.org,
-        Trond.Myklebust@primarydata.com
-Subject: Re: [PATCH v4 0/3] NFSv4.2: Add support for the COPY operation
-Message-ID: <20160801133046.GB26191@infradead.org>
-References: <1461962533-26534-1-git-send-email-Anna.Schumaker@Netapp.com>
- <20160501173733.GA556@infradead.org>
- <20160513203135.GE5658@fieldses.org>
- <8d09611c-31c1-baca-8e8f-6dc599731c8c@Netapp.com>
- <20160729185933.GA7964@fieldses.org>
+Received: from fieldses.org ([173.255.197.46]:48174 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751806AbcHAOnu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 1 Aug 2016 10:43:50 -0400
+Date: Mon, 1 Aug 2016 10:42:56 -0400
+To: Frank Filz <ffilzlnx@mindspring.com>
+Cc: "'J. Bruce Fields'" <bfields@redhat.com>,
+        "'Linux NFS Mailing List'" <linux-nfs@vger.kernel.org>
+Subject: Re: pynfs pull request
+Message-ID: <20160801144256.GB4953@fieldses.org>
+References: <037201d1e81e$04a9b9f0$0dfd2dd0$@mindspring.com>
+ <20160728193855.GF4732@pad>
+ <040401d1e914$52e71a30$f8b54e90$@mindspring.com>
+ <20160729213011.GA11390@pad>
+ <047b01d1e9e3$e6d51fb0$b47f5f10$@mindspring.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20160729185933.GA7964@fieldses.org>
+In-Reply-To: <047b01d1e9e3$e6d51fb0$b47f5f10$@mindspring.com>
+From: bfields@fieldses.org (J. Bruce Fields)
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Jul 29, 2016 at 02:59:33PM -0400, J. Bruce Fields wrote:
-> > > I don't see any obvious problem with the nfsd code, other than the
-> > > obvious issue with large synchronous copies tying up server threads and
-> > > leaving clients waiting--but maybe we should just see how people end up
-> > > using it and deal with the problems as they come up.
-> 
-> I'm still worrying about this, though.
-> 
-> As a simple stopgap, could we just set *some* maximum on the size of the
-> copy?  Or better yet on the time?--that'd let filesystems with
-> clone-like features copy the whole file without blocking an nfsd thread
-> indefinitely in the case of other filesystems.
+> > The reason knfsd gave up on the utf8 tests was complaints from people with
+> > filesystems with non-utf8 encodings.  Given a preexisting filesystem
+> neither
+> > knfsd nor probably Ganesha has any way to determine the encoding, so
+> > we're left just injecting unhelpful errors when we come across something
+> > that doesn't look like utf-8.  Which just annoyed people with those
+> > filesystems, didn't really help anyone else, and changed behavior on
+> NFSv3-
+> > >NFSv4 upgrade.
+> > 
+> > But maybe non-utf8 is less common now.
 
-I'm still really worried about corner cases in the copy_file_range
-syscall and the COPY nfs implementation.  When Darrick implemented
-xfstests support for clone we found various bugs in the existing
-implementation and corner cases handled different by xfs/btrfs/nfs and
-the documentation.  I'd really like to see something similar for
-the copy side.  Especially as clone should always be a valid
-implementation for copy as well.
+On Fri, Jul 29, 2016 at 02:55:19PM -0700, Frank Filz wrote:
+> Hmm, I can see that point. It would be interesting to see if we could just
+> lump utf8 tests into all now...
+
+In our case we'd have to reintroduce some sort of utf8 enforcement in
+knfsd, or only test with filesystems that will do that for us.  The
+cases where that would cause problems are probably rarer now, but I'm
+still not ready to do that.
+
+--b.
