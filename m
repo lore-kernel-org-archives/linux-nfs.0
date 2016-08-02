@@ -1,253 +1,341 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:49866 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753780AbcHBSoA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 2 Aug 2016 14:44:00 -0400
-Date: Tue, 2 Aug 2016 14:06:42 -0400
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: Olga Kornievskaia <aglo@umich.edu>,
-        "Adamson, Andy" <William.Adamson@netapp.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: Problem re-establishing GSS contexts after a server reboot
-Message-ID: <20160802180642.GA15324@fieldses.org>
-References: <CAN-5tyE_yrspQDpftO1Ls9LxjaZPHGe9hH0V65xaFuNEyrbwig@mail.gmail.com>
- <6BC3C19E-6F44-4C38-BF26-3E9A948D305C@oracle.com>
- <CAN-5tyHWPvNeq-0kNErTY+nENqkfrbGXwutcMgaOYcvYL3fX7Q@mail.gmail.com>
- <42FD3D54-79F9-485A-A2B4-FBFA65C2FC16@oracle.com>
- <CAN-5tyGJ8YUesk-KBTK+DFqaRV9wNvjQp-4EkcoU4J58EmM7_A@mail.gmail.com>
- <CAN-5tyEyg4aYXc5Zr-diLHxhkU1VnvYaaKS01qCH-vtxa8qzqg@mail.gmail.com>
- <CC879117-DCA5-4BC1-8A70-FA859546CD01@oracle.com>
- <CAN-5tyGnK7Zus2pBg5dO__XZ8NrM_h9k4EXzJERneHBBnn6VPg@mail.gmail.com>
- <CAN-5tyGJQXrLm7L98UgJULT=gQjsuVM86KGwEkGPuS8GBTAGrA@mail.gmail.com>
- <9E866C53-DD4B-419E-ABF0-64B04609C066@oracle.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-In-Reply-To: <9E866C53-DD4B-419E-ABF0-64B04609C066@oracle.com>
-From: bfields@fieldses.org (J. Bruce Fields)
+Received: from mail-qk0-f169.google.com ([209.85.220.169]:36829 "EHLO
+	mail-qk0-f169.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752337AbcHBSqA (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 2 Aug 2016 14:46:00 -0400
+Received: by mail-qk0-f169.google.com with SMTP id v123so50500531qkh.3
+        for <linux-nfs@vger.kernel.org>; Tue, 02 Aug 2016 11:46:00 -0700 (PDT)
+Message-ID: <1470163555.15226.1.camel@redhat.com>
+Subject: Re: [RFC PATCH 2/4] nfsd: have nfsd4_lock use blocking locks for
+ v4.1+ locks
+From: Jeff Layton <jlayton@redhat.com>
+To: linux-nfs@vger.kernel.org
+Cc: bfields@fieldses.org
+Date: Tue, 02 Aug 2016 14:45:55 -0400
+In-Reply-To: <1470161731-11301-3-git-send-email-jlayton@redhat.com>
+References: <1470161731-11301-1-git-send-email-jlayton@redhat.com>
+	 <1470161731-11301-3-git-send-email-jlayton@redhat.com>
+Content-Type: text/plain; charset="UTF-8"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Jul 29, 2016 at 12:38:34PM -0400, Chuck Lever wrote:
+On Tue, 2016-08-02 at 14:15 -0400, Jeff Layton wrote:
+> Create a new per-lockowner+per-inode structure that contains a
+> file_lock. Have nfsd4_lock add this structure to the lockowner's list
+> prior to setting the lock. Then call the vfs and request a blocking lock
+> (by setting FL_SLEEP). If we get anything besides FILE_LOCK_DEFERRED
+> back, then we dequeue the block structure and free it. When the next
+> lock request comes in, we'll look for an existing block for the same
+> filehandle and dequeue and reuse it if there is one.
 > 
-> > On Jul 29, 2016, at 12:27 PM, Olga Kornievskaia <aglo@umich.edu> wrote:
-> > 
-> > On Mon, Jul 25, 2016 at 2:18 PM, Olga Kornievskaia <aglo@umich.edu> wrote:
-> >> On Thu, Jul 21, 2016 at 5:32 PM, Chuck Lever <chuck.lever@oracle.com> wrote:
-> >>> 
-> >>> 
-> >>>> On Jul 21, 2016, at 10:46 PM, Olga Kornievskaia <aglo@umich.edu> wrote:
-> >>>> 
-> >>>>> On Thu, Jul 21, 2016 at 3:54 PM, Olga Kornievskaia <aglo@umich.edu> wrote:
-> >>>>>> On Thu, Jul 21, 2016 at 1:56 PM, Chuck Lever <chuck.lever@oracle.com> wrote:
-> >>>>>> 
-> >>>>>>> On Jul 21, 2016, at 6:04 PM, Olga Kornievskaia <aglo@umich.edu> wrote:
-> >>>>>>> 
-> >>>>>>> On Thu, Jul 21, 2016 at 2:55 AM, Chuck Lever <chuck.lever@oracle.com> wrote:
-> >>>>>>>> 
-> >>>>>>>>> On Jul 20, 2016, at 6:56 PM, Olga Kornievskaia <aglo@umich.edu> wrote:
-> >>>>>>>>> 
-> >>>>>>>>> On Wed, Jul 20, 2016 at 5:14 AM, Adamson, Andy
-> >>>>>>>>> <William.Adamson@netapp.com> wrote:
-> >>>>>>>>>> 
-> >>>>>>>>>>> On Jul 19, 2016, at 10:51 AM, Chuck Lever <chuck.lever@oracle.com> wrote:
-> >>>>>>>>>>> 
-> >>>>>>>>>>> Hi Andy-
-> >>>>>>>>>>> 
-> >>>>>>>>>>> Thanks for taking the time to discuss this with me. I've
-> >>>>>>>>>>> copied linux-nfs to make this e-mail also an upstream bug
-> >>>>>>>>>>> report.
-> >>>>>>>>>>> 
-> >>>>>>>>>>> As we saw in the network capture, recovery of GSS contexts
-> >>>>>>>>>>> after a server reboot fails in certain cases with NFSv4.0
-> >>>>>>>>>>> and NFSv4.1 mount points.
-> >>>>>>>>>>> 
-> >>>>>>>>>>> The reproducer is a simple program that generates one NFS
-> >>>>>>>>>>> WRITE periodically, run while the server repeatedly reboots
-> >>>>>>>>>>> (or one cluster head fails over to the other and back). The
-> >>>>>>>>>>> goal of the reproducer is to identify problems with state
-> >>>>>>>>>>> recovery without a lot of other I/O going on to clutter up
-> >>>>>>>>>>> the network capture.
-> >>>>>>>>>>> 
-> >>>>>>>>>>> In the failing case, sec=krb5 is specified on the mount
-> >>>>>>>>>>> point, and the reproducer is run as root. We've found this
-> >>>>>>>>>>> combination fails with both NFSv4.0 and NFSv4.1.
-> >>>>>>>>>>> 
-> >>>>>>>>>>> At mount time, the client establishes a GSS context for
-> >>>>>>>>>>> lease management operations, which is bound to the client's
-> >>>>>>>>>>> NFS service principal and uses GSS service "integrity."
-> >>>>>>>>>>> Call this GSS context 1.
-> >>>>>>>>>>> 
-> >>>>>>>>>>> When the reproducer starts, a second GSS context is
-> >>>>>>>>>>> established for NFS operations associated with that user.
-> >>>>>>>>>>> Since the reproducer is running as root, this context is
-> >>>>>>>>>>> also bound to the client's NFS service principal, but it
-> >>>>>>>>>>> uses the GSS service "none" (reflecting the explicit
-> >>>>>>>>>>> request for "sec=krb5"). Call this GSS context 2.
-> >>>>>>>>>>> 
-> >>>>>>>>>>> After the server reboots, the client re-establishes a TCP
-> >>>>>>>>>>> connection with the server, and performs a RENEW
-> >>>>>>>>>>> operation using context 1. Thanks to the server reboot,
-> >>>>>>>>>>> contexts 1 and 2 are now stale. The server thus rejects
-> >>>>>>>>>>> the RPC with RPCSEC_GSS_CTXPROBLEM.
-> >>>>>>>>>>> 
-> >>>>>>>>>>> The client performs a GSS_INIT_SEC_CONTEXT via an NFSv4
-> >>>>>>>>>>> NULL operation. Call this GSS context 3.
-> >>>>>>>>>>> 
-> >>>>>>>>>>> Interestingly, the client does not resend the RENEW
-> >>>>>>>>>>> operation at this point (if it did, we wouldn't see this
-> >>>>>>>>>>> problem at all).
-> >>>>>>>>>>> 
-> >>>>>>>>>>> The client then attempts to resume the reproducer workload.
-> >>>>>>>>>>> It sends an NFSv4 WRITE operation, using the first available
-> >>>>>>>>>>> GSS context in UID 0's credential cache, which is context 3,
-> >>>>>>>>>>> already bound to the client's NFS service principal. But GSS
-> >>>>>>>>>>> service "none" is used for this operation, since it is on
-> >>>>>>>>>>> behalf of the mount where sec=krb5 was specified.
-> >>>>>>>>>>> 
-> >>>>>>>>>>> The RPC is accepted, but the server reports
-> >>>>>>>>>>> NFS4ERR_STALE_STATEID, since it has recently rebooted.
-> >>>>>>>>>>> 
-> >>>>>>>>>>> The client responds by attempting state recovery. The
-> >>>>>>>>>>> first operation it tries is another RENEW. Since this is
-> >>>>>>>>>>> a lease management operation, the client looks in UID 0's
-> >>>>>>>>>>> credential cache again and finds the recently established
-> >>>>>>>>>>> context 3. It tries the RENEW operation using GSS context
-> >>>>>>>>>>> 3 with GSS service "integrity."
-> >>>>>>>>>>> 
-> >>>>>>>>>>> The server rejects the RENEW RPC with AUTH_FAILED, and
-> >>>>>>>>>>> the client reports that "check lease failed" and
-> >>>>>>>>>>> terminates state recovery.
-> >>>>>>>>>>> 
-> >>>>>>>>>>> The client re-drives the WRITE operation with the stale
-> >>>>>>>>>>> stateid with predictable results. The client again tries
-> >>>>>>>>>>> to recover state by sending a RENEW, and still uses the
-> >>>>>>>>>>> same GSS context 3 with service "integrity" and gets the
-> >>>>>>>>>>> same result. A (perhaps slow-motion) STALE_STATEID loop
-> >>>>>>>>>>> ensues, and the client mount point is deadlocked.
-> >>>>>>>>>>> 
-> >>>>>>>>>>> Your analysis was that because the reproducer is run as
-> >>>>>>>>>>> root, both the reproducer's I/O operations, and lease
-> >>>>>>>>>>> management operations, attempt to use the same GSS context
-> >>>>>>>>>>> in UID 0's credential cache, but each uses different GSS
-> >>>>>>>>>>> services.
-> >>>>>>>>>> 
-> >>>>>>>>>> As RFC2203 states, "In a creation request, the seq_num and service fields are undefined and both must be ignored by the server”
-> >>>>>>>>>> So a context creation request while kicked off by an operation with a service attached (e.g. WRITE uses rpc_gss_svc_none and RENEW uses rpc_gss_svc_integrity), can be used by either service level.
-> >>>>>>>>>> AFAICS a single GSS context could in theory be used for all service levels, but in practice, GSS contexts are restricted to a service level (by client? by server? ) once they are used.
-> >>>>>>>>>> 
-> >>>>>>>>>> 
-> >>>>>>>>>>> The key issue seems to be why, when the mount
-> >>>>>>>>>>> is first established, the client is correctly able to
-> >>>>>>>>>>> establish two separate GSS contexts for UID 0; but after
-> >>>>>>>>>>> a server reboot, the client attempts to use the same GSS
-> >>>>>>>>>>> context with two different GSS services.
-> >>>>>>>>>> 
-> >>>>>>>>>> I speculate that it is a race between the WRITE and the RENEW to use the same newly created GSS context that has not been used yet, and so has no assigned service level, and the two requests race to set the service level.
-> >>>>>>>>> 
-> >>>>>>>>> I agree with Andy. It must be a tight race.
-> >>>>>>>> 
-> >>>>>>>> In one capture I see something like this after
-> >>>>>>>> the server restarts:
-> >>>>>>>> 
-> >>>>>>>> SYN
-> >>>>>>>> SYN, ACK
-> >>>>>>>> ACK
-> >>>>>>>> C WRITE
-> >>>>>>>> C SEQUENCE
-> >>>>>>>> R WRITE -> CTX_PROBLEM
-> >>>>>>>> R SEQUENCE -> CTX_PROBLEM
-> >>>>>>>> C NULL (KRB5_AP_REQ)
-> >>>>>>>> R NULL (KRB5_AP_REP)
-> >>>>>>>> C WRITE
-> >>>>>>>> C SEQUENCE
-> >>>>>>>> R WRITE -> NFS4ERR_STALE_STATEID
-> >>>>>>>> R SEQUENCE -> AUTH_FAILED
-> >>>>>>>> 
-> >>>>>>>> Andy's theory neatly explains this behavior.
-> >>>>>>>> 
-> >>>>>>>> 
-> >>>>>>>>> I have tried to reproduce
-> >>>>>>>>> your scenario and in my tests of rebooting the server all recover
-> >>>>>>>>> correctly. In my case, if RENEW was the one hitting the AUTH_ERR then
-> >>>>>>>>> the new context is established and then RENEW using integrity service
-> >>>>>>>>> is retried with the new context which gets ERR_STALE_CLIENTID which
-> >>>>>>>>> then client recovers from. If it's an operation (I have a GETATTR)
-> >>>>>>>>> that gets AUTH_ERR, then it gets new context and is retried using none
-> >>>>>>>>> service. Then RENEW gets its own AUTH_ERR as it uses a different
-> >>>>>>>>> context, a new context is gotten, RENEW is retried over integrity and
-> >>>>>>>>> gets ERR_STALE_CLIENTID which it recovers from.
-> >>>>>>>> 
-> >>>>>>>> If one operation is allowed to complete, then
-> >>>>>>>> the other will always recognize that another
-> >>>>>>>> fresh GSS context is needed. If two are sent
-> >>>>>>>> at the same time, they race and one always
-> >>>>>>>> fails.
-> >>>>>>>> 
-> >>>>>>>> Helen's test includes a second idle mount point
-> >>>>>>>> (sec=krb5i) and maybe that is needed to trigger
-> >>>>>>>> the race?
-> >>>>>>> 
-> >>>>>>> Chuck, any chance to get "rpcdebug -m rpc auth" output during the
-> >>>>>>> failure (gssd optionally) (i realize that it might alter the timings
-> >>>>>>> and not hit the issue but worth a shot)?
-> >>>>>> 
-> >>>>>> I'm sure that's fine. An internal tester hit this,
-> >>>>>> not a customer, so I will ask.
-> >>>>>> 
-> >>>>>> I agree, though, that timing might be a problem:
-> >>>>>> these systems all have real serial consoles via
-> >>>>>> iLOM, so /v/l/m traffic does bring everything to
-> >>>>>> a standstill.
-> >>>>>> 
-> >>>>>> Meanwhile, what's you're opinion about AUTH_FAILED?
-> >>>>>> Should the server return RPCSEC_GSS_CTXPROBLEM
-> >>>>>> in this case instead? If it did, do you think
-> >>>>>> the Linux client would recover by creating a
-> >>>>>> replacement GSS context?
-> >>>>> 
-> >>>>> Ah, yes, I equated AUTH_FAILED And AUTH_ERROR in my mind. If client
-> >>>>> receives the reason as AUTH_FAILED as oppose to CTXPROBLEM it will
-> >>>>> fail with EIO error and will not try to create a new GSS context. So
-> >>>>> yes, I believe it would help if the server returns any of the
-> >>>>> following errors:
-> >>>>>               case RPC_AUTH_REJECTEDCRED:
-> >>>>>               case RPC_AUTH_REJECTEDVERF:
-> >>>>>               case RPCSEC_GSS_CREDPROBLEM:
-> >>>>>               case RPCSEC_GSS_CTXPROBLEM:
-> >>>>> 
-> >>>>> then the client will recreate the context.
-> >>>> 
-> >>>> Also in my testing, I can see that credential cache is per gss flavor.
-> >>>> Just to check, what kernel version is this problem encountered on (I
-> >>>> know you said upstream) but I just want to double check so that I can
-> >>>> look at the correct source code.
-> >>> 
-> >>> v4.1.12 (stable) I think.
-> >> 
-> >> Also, can you share the network trace?
-> > 
-> > Hi Chuck,
-> > 
-> > I was finally able to reproduce the condition you were seeing (i.e.,
-> > the use of the same context for different gss services).
-> > 
-> > I enabled rpcdebug rpc auth and I can see that the 2nd request ends up
-> > finding a gss_upcall message because it's just matched by the uid.
-> > There is even a comment in auth_gss/auth_gss.c in gss_add_msg() saying
-> > that if there is upcall for an uid then it won't add another upcall.
-> > So I think the decision is made right there to share the same context
-> > no matter the gss service.
+> When the lock comes free (a'la an lm_notify call), we dequeue it
+> from the lockowner's list and kick off a CB_NOTIFY_LOCK callback to
+> inform the client that it should retry the lock request.
 > 
-> If I understand correctly, that's just what Andy predicted.
+> > Signed-off-by: Jeff Layton <jlayton@redhat.com>
+> ---
+>  fs/nfsd/nfs4state.c | 152 +++++++++++++++++++++++++++++++++++++++++++++++-----
+>  fs/nfsd/state.h     |  12 +++--
+>  2 files changed, 147 insertions(+), 17 deletions(-)
 > 
-> That check needs to be changed to allow another upcall to be
-> queued if the UID matches but the GSS service does not.
+> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+> index 70d0b9b33031..38367201c14f 100644
+> --- a/fs/nfsd/nfs4state.c
+> +++ b/fs/nfsd/nfs4state.c
+> @@ -99,6 +99,7 @@ static struct kmem_cache *odstate_slab;
+>  static void free_session(struct nfsd4_session *);
+>  
+>  static const struct nfsd4_callback_ops nfsd4_cb_recall_ops;
+> +static const struct nfsd4_callback_ops nfsd4_cb_notify_lock_ops;
+>  
+>  static bool is_session_dead(struct nfsd4_session *ses)
+>  {
+> @@ -210,6 +211,84 @@ static void nfsd4_put_session(struct nfsd4_session *ses)
+> >  	spin_unlock(&nn->client_lock);
+>  }
+>  
+> +static struct nfsd4_blocked_lock *
+> +find_blocked_lock(struct nfs4_lockowner *lo, struct knfsd_fh *fh,
+> > +			struct nfsd_net *nn)
+> +{
+> > +	struct nfsd4_blocked_lock *cur, *found = NULL;
+> +
+> > +	spin_lock(&nn->client_lock);
+> > +	list_for_each_entry(cur, &lo->lo_blocked, nbl_list) {
+> > +		if (fh_match(fh, &cur->nbl_fh)) {
+> > +			list_del_init(&cur->nbl_list);
+> > +			found = cur;
+> > +			break;
+> > +		}
+> > +	}
+> > +	spin_unlock(&nn->client_lock);
+> > +	if (found)
+> > +		posix_unblock_lock(&found->nbl_lock);
+> > +	return found;
+> +}
+> +
+> +static struct nfsd4_blocked_lock *
+> +find_or_allocate_block(struct nfs4_lockowner *lo, struct knfsd_fh *fh,
+> > +			struct nfsd_net *nn)
+> +{
+> > +	struct nfsd4_blocked_lock *nbl;
+> +
+> > +	nbl = find_blocked_lock(lo, fh, nn);
+> > +	if (!nbl) {
+> > +		nbl= kmalloc(sizeof(*nbl), GFP_KERNEL);
+> > +		if (nbl) {
+> > +			fh_copy_shallow(&nbl->nbl_fh, fh);
+> > +			locks_init_lock(&nbl->nbl_lock);
+> > +			nfsd4_init_cb(&nbl->nbl_cb, lo->lo_owner.so_client,
+> > +					&nfsd4_cb_notify_lock_ops,
+> > +					NFSPROC4_CLNT_CB_NOTIFY_LOCK);
+> > +		}
+> > +	}
+> > +	return nbl;
+> +}
+> +
+> +static void
+> +free_blocked_lock(struct nfsd4_blocked_lock *nbl)
+> +{
+> > +	locks_release_private(&nbl->nbl_lock);
+> > +	kfree(nbl);
+> +}
+> +
+> +static int
+> +nfsd4_cb_notify_lock_done(struct nfsd4_callback *cb, struct rpc_task *task)
+> +{
+> > +	/*
+> > +	 * Since this is just an optimization, we don't try very hard if it
+> > +	 * turns out not to succeed. We'll requeue it on NFS4ERR_DELAY, and
+> > +	 * just quit trying on anything else.
+> > +	 */
+> > +	switch (task->tk_status) {
+> > +	case -NFS4ERR_DELAY:
+> > +		rpc_delay(task, 1 * HZ);
+> > +		return 0;
+> > +	default:
+> > +		return 1;
+> > +	}
+> +}
+> +
+> +static void
+> +nfsd4_cb_notify_lock_release(struct nfsd4_callback *cb)
+> +{
+> > > +	struct nfsd4_blocked_lock	*nbl = container_of(cb,
+> > +						struct nfsd4_blocked_lock, nbl_cb);
+> +
+> > +	free_blocked_lock(nbl);
+> +}
+> +
+> +static const struct nfsd4_callback_ops nfsd4_cb_notify_lock_ops = {
+> > > +	.done		= nfsd4_cb_notify_lock_done,
+> > > +	.release	= nfsd4_cb_notify_lock_release,
+> +};
+> +
+>  static inline struct nfs4_stateowner *
+>  nfs4_get_stateowner(struct nfs4_stateowner *sop)
+>  {
+> @@ -5296,7 +5375,29 @@ nfsd4_fl_put_owner(fl_owner_t owner)
+> >  		nfs4_put_stateowner(&lo->lo_owner);
+>  }
+>  
+> +static void
+> +nfsd4_lm_notify(struct file_lock *fl)
+> +{
+> > > +	struct nfs4_lockowner		*lo = (struct nfs4_lockowner *)fl->fl_owner;
+> > > +	struct net			*net = lo->lo_owner.so_client->net;
+> > > +	struct nfsd_net			*nn = net_generic(net, nfsd_net_id);
+> > > +	struct nfsd4_blocked_lock	*nbl = container_of(fl,
+> > +						struct nfsd4_blocked_lock, nbl_lock);
+> > +	bool queue = false;
+> +
+> > +	spin_lock(&nn->client_lock);
+> > +	if (!list_empty(&nbl->nbl_list)) {
+> > +		list_del_init(&nbl->nbl_list);
+> > +		queue = true;
+> > +	}
+> > +	spin_unlock(&nn->client_lock);
+> +
+> > +	if (queue)
+> > +		nfsd4_run_cb(&nbl->nbl_cb);
+> +}
+> +
+>  static const struct lock_manager_operations nfsd_posix_mng_ops  = {
+> > +	.lm_notify = nfsd4_lm_notify,
+> >  	.lm_get_owner = nfsd4_fl_get_owner,
+> >  	.lm_put_owner = nfsd4_fl_put_owner,
+>  };
+> @@ -5394,6 +5495,7 @@ alloc_init_lock_stateowner(unsigned int strhashval, struct nfs4_client *clp,
+> >  	lo = alloc_stateowner(lockowner_slab, &lock->lk_new_owner, clp);
+> >  	if (!lo)
+> >  		return NULL;
+> > +	INIT_LIST_HEAD(&lo->lo_blocked);
+> >  	INIT_LIST_HEAD(&lo->lo_owner.so_stateids);
+> >  	lo->lo_owner.so_is_open_owner = 0;
+> >  	lo->lo_owner.so_seqid = lock->lk_new_lock_seqid;
+> @@ -5558,12 +5660,14 @@ nfsd4_lock(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+> >  	struct nfs4_ol_stateid *open_stp = NULL;
+> >  	struct nfs4_file *fp;
+> >  	struct file *filp = NULL;
+> > +	struct nfsd4_blocked_lock *nbl = NULL;
+> >  	struct file_lock *file_lock = NULL;
+> >  	struct file_lock *conflock = NULL;
+> >  	__be32 status = 0;
+> >  	int lkflg;
+> >  	int err;
+> >  	bool new = false;
+> > +	unsigned char fl_type;
+> >  	struct net *net = SVC_NET(rqstp);
+> >  	struct nfsd_net *nn = net_generic(net, nfsd_net_id);
+>  
+> @@ -5630,13 +5734,6 @@ nfsd4_lock(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+> >  	if (!locks_in_grace(net) && lock->lk_reclaim)
+> >  		goto out;
+>  
+> > -	file_lock = locks_alloc_lock();
+> > -	if (!file_lock) {
+> > -		dprintk("NFSD: %s: unable to allocate lock!\n", __func__);
+> > -		status = nfserr_jukebox;
+> > -		goto out;
+> > -	}
+> -
+> >  	fp = lock_stp->st_stid.sc_file;
+> >  	switch (lock->lk_type) {
+> >  		case NFS4_READ_LT:
+> @@ -5646,7 +5743,7 @@ nfsd4_lock(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+> >  			if (filp)
+> >  				get_lock_access(lock_stp, NFS4_SHARE_ACCESS_READ);
+> >  			spin_unlock(&fp->fi_lock);
+> > -			file_lock->fl_type = F_RDLCK;
+> > +			fl_type = F_RDLCK;
+> >  			break;
+> >  		case NFS4_WRITE_LT:
+> >  		case NFS4_WRITEW_LT:
+> @@ -5655,17 +5752,27 @@ nfsd4_lock(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+> >  			if (filp)
+> >  				get_lock_access(lock_stp, NFS4_SHARE_ACCESS_WRITE);
+> >  			spin_unlock(&fp->fi_lock);
+> > -			file_lock->fl_type = F_WRLCK;
+> > +			fl_type = F_WRLCK;
+> >  			break;
+> >  		default:
+> >  			status = nfserr_inval;
+> >  		goto out;
+> >  	}
+> +
+> >  	if (!filp) {
+> >  		status = nfserr_openmode;
+> >  		goto out;
+> >  	}
+>  
+> > +	nbl = find_or_allocate_block(lock_sop, &fp->fi_fhandle, nn);
+> > +	if (!nbl) {
+> > +		dprintk("NFSD: %s: unable to allocate block!\n", __func__);
+> > +		status = nfserr_jukebox;
+> > +		goto out;
+> > +	}
+> +
+> > +	file_lock = &nbl->nbl_lock;
+> > +	file_lock->fl_type = fl_type;
+> >  	file_lock->fl_owner = (fl_owner_t)lockowner(nfs4_get_stateowner(&lock_sop->lo_owner));
+> >  	file_lock->fl_pid = current->tgid;
+> >  	file_lock->fl_file = filp;
+> @@ -5682,18 +5789,28 @@ nfsd4_lock(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+> >  		goto out;
+> >  	}
+>  
+> > +	if (nfsd4_has_session(cstate)) {
+> > +		file_lock->fl_flags |= FL_SLEEP;
+> > +		spin_lock(&nn->client_lock);
+> > +		list_add_tail(&nbl->nbl_list, &lock_sop->lo_blocked);
+> > +		spin_unlock(&nn->client_lock);
+> > +	}
+> +
+> >  	err = vfs_lock_file(filp, F_SETLK, file_lock, conflock);
+> > -	switch (-err) {
+> > > +	switch (err) {
 
-You should be able to use the same context with different services.
+Ouch, already see a bug here. Need to propagate the negative to the
+other return codes.
 
-Apologies, I haven't caught up with the whole discussion above, this one
-point just jumped out at me.  If you're trying to request a whole new
-gss context just so you can use, e.g., integrity instead of privacy,
-then something's wrong.
+> > >  	case 0: /* success! */
+> >  		nfs4_inc_and_copy_stateid(&lock->lk_resp_stateid, &lock_stp->st_stid);
+> >  		status = 0;
+> >  		break;
+> > > -	case (EAGAIN):		/* conflock holds conflicting lock */
+> > +	case FILE_LOCK_DEFERRED:
+> > +		nbl = NULL;
+> > +		/* Fallthrough */
+> > > +	case EAGAIN:		/* conflock holds conflicting lock */
+> >  		status = nfserr_denied;
+> >  		dprintk("NFSD: nfsd4_lock: conflicting lock found!\n");
+> >  		nfs4_set_lock_denied(conflock, &lock->lk_denied);
+> >  		break;
+> > -	case (EDEADLK):
+> > +	case EDEADLK:
+> >  		status = nfserr_deadlock;
+> >  		break;
+> >  	default:
+> @@ -5702,6 +5819,15 @@ nfsd4_lock(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+> >  		break;
+> >  	}
+>  out:
+> > +	if (nbl) {
+> > +		/* dequeue it if we queued it before */
+> > +		if (nfsd4_has_session(cstate)) {
+> > +			spin_lock(&nn->client_lock);
+> > +			list_del_init(&nbl->nbl_list);
+> > +			spin_unlock(&nn->client_lock);
+> > +		}
+> > +		free_blocked_lock(nbl);
+> > +	}
+> >  	if (filp)
+> >  		fput(filp);
+> >  	if (lock_stp) {
+> @@ -5725,8 +5851,6 @@ out:
+> >  	if (open_stp)
+> >  		nfs4_put_stid(&open_stp->st_stid);
+> >  	nfsd4_bump_seqid(cstate, status);
+> > -	if (file_lock)
+> > -		locks_free_lock(file_lock);
+> >  	if (conflock)
+> >  		locks_free_lock(conflock);
+> >  	return status;
+> diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
+> index ecf3f4671654..056b0e4c485b 100644
+> --- a/fs/nfsd/state.h
+> +++ b/fs/nfsd/state.h
+> @@ -440,11 +440,11 @@ struct nfs4_openowner {
+>  /*
+>   * Represents a generic "lockowner". Similar to an openowner. References to it
+>   * are held by the lock stateids that are created on its behalf. This object is
+> - * a superset of the nfs4_stateowner struct (or would be if it needed any extra
+> - * fields).
+> + * a superset of the nfs4_stateowner struct.
+>   */
+>  struct nfs4_lockowner {
+> > > -	struct nfs4_stateowner	lo_owner; /* must be first element */
+> > > > +	struct nfs4_stateowner	lo_owner;	/* must be first element */
+> > > > +	struct list_head	lo_blocked;	/* blocked file_locks */
+>  };
+>  
+>  static inline struct nfs4_openowner * openowner(struct nfs4_stateowner *so)
+> @@ -580,7 +580,13 @@ static inline bool nfsd4_stateid_generation_after(stateid_t *a, stateid_t *b)
+> >  	return (s32)(a->si_generation - b->si_generation) > 0;
+>  }
+>  
+> +/*
+> + * When a client tries to get a lock on a file, we set one of these objects
+> + * on the blocking lock. When the lock becomes free, we can then issue a
+> + * CB_NOTIFY_LOCK to the server.
+> + */
+>  struct nfsd4_blocked_lock {
+> > > +	struct list_head	nbl_list;
+> > >  	struct file_lock	nbl_lock;
+> > >  	struct knfsd_fh		nbl_fh;
+> > >  	struct nfsd4_callback	nbl_cb;
 
---b.
+
+-- 
+Jeff Layton <jlayton@redhat.com>
