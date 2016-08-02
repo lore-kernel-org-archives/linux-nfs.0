@@ -1,8 +1,8 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mga02.intel.com ([134.134.136.20]:57203 "EHLO mga02.intel.com"
+Received: from mga11.intel.com ([192.55.52.93]:30211 "EHLO mga11.intel.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S965668AbcHBM5t (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 2 Aug 2016 08:57:49 -0400
+	id S965744AbcHBM5h (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 2 Aug 2016 08:57:37 -0400
 From: Baole Ni <baolex.ni@intel.com>
 To: trond.myklebust@primarydata.com, anna.schumaker@netapp.com,
         tomi.valkeinen@ti.com, m.chehab@samsung.com,
@@ -11,9 +11,9 @@ To: trond.myklebust@primarydata.com, anna.schumaker@netapp.com,
 Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
         chuansheng.liu@intel.com, baolex.ni@intel.com, mhalcrow@google.com,
         kirill.shutemov@linux.intel.com, oneukum@suse.com
-Subject: [PATCH 1047/1285] Replace numeric parameter like 0444 with macro
-Date: Tue,  2 Aug 2016 20:11:34 +0800
-Message-Id: <20160802121134.19909-1-baolex.ni@intel.com>
+Subject: [PATCH 1048/1285] Replace numeric parameter like 0444 with macro
+Date: Tue,  2 Aug 2016 20:11:39 +0800
+Message-Id: <20160802121139.19975-1-baolex.ni@intel.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
@@ -26,25 +26,22 @@ thus, I suggest replacing the numeric parameter with the macro.
 Signed-off-by: Chuansheng Liu <chuansheng.liu@intel.com>
 Signed-off-by: Baole Ni <baolex.ni@intel.com>
 ---
- fs/nfs/cache_lib.c | 4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
+ fs/nfs/dir.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/fs/nfs/cache_lib.c b/fs/nfs/cache_lib.c
-index 5f7b053..72422cd 100644
---- a/fs/nfs/cache_lib.c
-+++ b/fs/nfs/cache_lib.c
-@@ -25,9 +25,9 @@ static char nfs_cache_getent_prog[NFS_CACHE_UPCALL_PATHLEN] =
- static unsigned long nfs_cache_getent_timeout = NFS_CACHE_UPCALL_TIMEOUT;
+diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
+index aaf7bd0..d3f4311 100644
+--- a/fs/nfs/dir.c
++++ b/fs/nfs/dir.c
+@@ -2079,7 +2079,7 @@ static LIST_HEAD(nfs_access_lru_list);
+ static atomic_long_t nfs_access_nr_entries;
  
- module_param_string(cache_getent, nfs_cache_getent_prog,
--		sizeof(nfs_cache_getent_prog), 0600);
-+		sizeof(nfs_cache_getent_prog), S_IRUSR | S_IWUSR);
- MODULE_PARM_DESC(cache_getent, "Path to the client cache upcall program");
--module_param_named(cache_getent_timeout, nfs_cache_getent_timeout, ulong, 0600);
-+module_param_named(cache_getent_timeout, nfs_cache_getent_timeout, ulong, S_IRUSR | S_IWUSR);
- MODULE_PARM_DESC(cache_getent_timeout, "Timeout (in seconds) after which "
- 		"the cache upcall is assumed to have failed");
+ static unsigned long nfs_access_max_cachesize = ULONG_MAX;
+-module_param(nfs_access_max_cachesize, ulong, 0644);
++module_param(nfs_access_max_cachesize, ulong, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+ MODULE_PARM_DESC(nfs_access_max_cachesize, "NFS access maximum total cache length");
  
+ static void nfs_access_free_entry(struct nfs_access_entry *entry)
 -- 
 2.9.2
 
