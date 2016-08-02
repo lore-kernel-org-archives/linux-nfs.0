@@ -1,47 +1,92 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mga04.intel.com ([192.55.52.120]:43557 "EHLO mga04.intel.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S965294AbcHBMwJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 2 Aug 2016 08:52:09 -0400
-From: Baole Ni <baolex.ni@intel.com>
-To: bfields@fieldses.org, jlayton@poochiereds.net,
-        trond.myklebust@primarydata.com, anna.schumaker@netapp.com,
-        tomi.valkeinen@ti.com, m.chehab@samsung.com,
-        gregkh@linuxfoundation.org, m.szyprowski@samsung.com,
-        kyungmin.park@samsung.com, k.kozlowski@samsung.com
-Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
-        chuansheng.liu@intel.com, baolex.ni@intel.com, oneukum@suse.com
-Subject: [PATCH 1055/1285] Replace numeric parameter like 0444 with macro
-Date: Tue,  2 Aug 2016 20:12:15 +0800
-Message-Id: <20160802121215.20444-1-baolex.ni@intel.com>
+Received: from mail-it0-f65.google.com ([209.85.214.65]:33526 "EHLO
+	mail-it0-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S967712AbcHBR5W (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 2 Aug 2016 13:57:22 -0400
+Received: by mail-it0-f65.google.com with SMTP id d65so14531547ith.0
+        for <linux-nfs@vger.kernel.org>; Tue, 02 Aug 2016 10:57:09 -0700 (PDT)
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH] SUNRPC: Fix up socket autodisconnect
+Date: Tue,  2 Aug 2016 13:56:37 -0400
+Message-Id: <1470160597-14274-1-git-send-email-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-I find that the developers often just specified the numeric value
-when calling a macro which is defined with a parameter for access permission.
-As we know, these numeric value for access permission have had the corresponding macro,
-and that using macro can improve the robustness and readability of the code,
-thus, I suggest replacing the numeric parameter with the macro.
+Ensure that we don't forget to set up the disconnection timer for the
+case when a connect request is fulfilled after the RPC request that
+initiated it has timed out or been interrupted.
 
-Signed-off-by: Chuansheng Liu <chuansheng.liu@intel.com>
-Signed-off-by: Baole Ni <baolex.ni@intel.com>
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
 ---
- fs/nfsd/nfs4idmap.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ net/sunrpc/xprt.c | 26 ++++++++++++++++++--------
+ 1 file changed, 18 insertions(+), 8 deletions(-)
 
-diff --git a/fs/nfsd/nfs4idmap.c b/fs/nfsd/nfs4idmap.c
-index 5b20577..7d4722c 100644
---- a/fs/nfsd/nfs4idmap.c
-+++ b/fs/nfsd/nfs4idmap.c
-@@ -46,7 +46,7 @@
-  * Turn off idmapping when using AUTH_SYS.
-  */
- static bool nfs4_disable_idmapping = true;
--module_param(nfs4_disable_idmapping, bool, 0644);
-+module_param(nfs4_disable_idmapping, bool, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
- MODULE_PARM_DESC(nfs4_disable_idmapping,
- 		"Turn off server's NFSv4 idmapping when using 'sec=sys'");
+diff --git a/net/sunrpc/xprt.c b/net/sunrpc/xprt.c
+index 8313960cac52..ea244b29138b 100644
+--- a/net/sunrpc/xprt.c
++++ b/net/sunrpc/xprt.c
+@@ -680,6 +680,20 @@ out:
+ 	spin_unlock_bh(&xprt->transport_lock);
+ }
  
++static bool
++xprt_has_timer(const struct rpc_xprt *xprt)
++{
++	return xprt->idle_timeout != 0;
++}
++
++static void
++xprt_schedule_autodisconnect(struct rpc_xprt *xprt)
++	__must_hold(&xprt->transport_lock)
++{
++	if (list_empty(&xprt->recv) && xprt_has_timer(xprt))
++		mod_timer(&xprt->timer, xprt->last_used + xprt->idle_timeout);
++}
++
+ static void
+ xprt_init_autodisconnect(unsigned long data)
+ {
+@@ -688,6 +702,8 @@ xprt_init_autodisconnect(unsigned long data)
+ 	spin_lock(&xprt->transport_lock);
+ 	if (!list_empty(&xprt->recv))
+ 		goto out_abort;
++	/* Reset xprt->last_used to avoid connect/autodisconnect cycling */
++	xprt->last_used = jiffies;
+ 	if (test_and_set_bit(XPRT_LOCKED, &xprt->state))
+ 		goto out_abort;
+ 	spin_unlock(&xprt->transport_lock);
+@@ -725,6 +741,7 @@ void xprt_unlock_connect(struct rpc_xprt *xprt, void *cookie)
+ 		goto out;
+ 	xprt->snd_task =NULL;
+ 	xprt->ops->release_xprt(xprt, NULL);
++	xprt_schedule_autodisconnect(xprt);
+ out:
+ 	spin_unlock_bh(&xprt->transport_lock);
+ 	wake_up_bit(&xprt->state, XPRT_LOCKED);
+@@ -888,11 +905,6 @@ static void xprt_timer(struct rpc_task *task)
+ 	spin_unlock_bh(&xprt->transport_lock);
+ }
+ 
+-static inline int xprt_has_timer(struct rpc_xprt *xprt)
+-{
+-	return xprt->idle_timeout != 0;
+-}
+-
+ /**
+  * xprt_prepare_transmit - reserve the transport before sending a request
+  * @task: RPC task about to send a request
+@@ -1280,9 +1292,7 @@ void xprt_release(struct rpc_task *task)
+ 	if (!list_empty(&req->rq_list))
+ 		list_del(&req->rq_list);
+ 	xprt->last_used = jiffies;
+-	if (list_empty(&xprt->recv) && xprt_has_timer(xprt))
+-		mod_timer(&xprt->timer,
+-				xprt->last_used + xprt->idle_timeout);
++	xprt_schedule_autodisconnect(xprt);
+ 	spin_unlock_bh(&xprt->transport_lock);
+ 	if (req->rq_buffer)
+ 		xprt->ops->buf_free(req->rq_buffer);
 -- 
-2.9.2
+2.7.4
 
