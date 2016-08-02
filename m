@@ -1,92 +1,329 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-it0-f65.google.com ([209.85.214.65]:33526 "EHLO
-	mail-it0-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S967712AbcHBR5W (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 2 Aug 2016 13:57:22 -0400
-Received: by mail-it0-f65.google.com with SMTP id d65so14531547ith.0
-        for <linux-nfs@vger.kernel.org>; Tue, 02 Aug 2016 10:57:09 -0700 (PDT)
-From: Trond Myklebust <trond.myklebust@primarydata.com>
+Received: from mx1.redhat.com ([209.132.183.28]:45238 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S936353AbcHBSXM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 2 Aug 2016 14:23:12 -0400
+From: Jeff Layton <jlayton@redhat.com>
 To: linux-nfs@vger.kernel.org
-Subject: [PATCH] SUNRPC: Fix up socket autodisconnect
-Date: Tue,  2 Aug 2016 13:56:37 -0400
-Message-Id: <1470160597-14274-1-git-send-email-trond.myklebust@primarydata.com>
+Cc: bfields@fieldses.org
+Subject: [RFC PATCH 2/4] nfsd: have nfsd4_lock use blocking locks for v4.1+ locks
+Date: Tue,  2 Aug 2016 14:15:29 -0400
+Message-Id: <1470161731-11301-3-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1470161731-11301-1-git-send-email-jlayton@redhat.com>
+References: <1470161731-11301-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Ensure that we don't forget to set up the disconnection timer for the
-case when a connect request is fulfilled after the RPC request that
-initiated it has timed out or been interrupted.
+Create a new per-lockowner+per-inode structure that contains a
+file_lock. Have nfsd4_lock add this structure to the lockowner's list
+prior to setting the lock. Then call the vfs and request a blocking lock
+(by setting FL_SLEEP). If we get anything besides FILE_LOCK_DEFERRED
+back, then we dequeue the block structure and free it. When the next
+lock request comes in, we'll look for an existing block for the same
+filehandle and dequeue and reuse it if there is one.
 
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+When the lock comes free (a'la an lm_notify call), we dequeue it
+from the lockowner's list and kick off a CB_NOTIFY_LOCK callback to
+inform the client that it should retry the lock request.
+
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
 ---
- net/sunrpc/xprt.c | 26 ++++++++++++++++++--------
- 1 file changed, 18 insertions(+), 8 deletions(-)
+ fs/nfsd/nfs4state.c | 152 +++++++++++++++++++++++++++++++++++++++++++++++-----
+ fs/nfsd/state.h     |  12 +++--
+ 2 files changed, 147 insertions(+), 17 deletions(-)
 
-diff --git a/net/sunrpc/xprt.c b/net/sunrpc/xprt.c
-index 8313960cac52..ea244b29138b 100644
---- a/net/sunrpc/xprt.c
-+++ b/net/sunrpc/xprt.c
-@@ -680,6 +680,20 @@ out:
- 	spin_unlock_bh(&xprt->transport_lock);
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 70d0b9b33031..38367201c14f 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -99,6 +99,7 @@ static struct kmem_cache *odstate_slab;
+ static void free_session(struct nfsd4_session *);
+ 
+ static const struct nfsd4_callback_ops nfsd4_cb_recall_ops;
++static const struct nfsd4_callback_ops nfsd4_cb_notify_lock_ops;
+ 
+ static bool is_session_dead(struct nfsd4_session *ses)
+ {
+@@ -210,6 +211,84 @@ static void nfsd4_put_session(struct nfsd4_session *ses)
+ 	spin_unlock(&nn->client_lock);
  }
  
-+static bool
-+xprt_has_timer(const struct rpc_xprt *xprt)
++static struct nfsd4_blocked_lock *
++find_blocked_lock(struct nfs4_lockowner *lo, struct knfsd_fh *fh,
++			struct nfsd_net *nn)
 +{
-+	return xprt->idle_timeout != 0;
++	struct nfsd4_blocked_lock *cur, *found = NULL;
++
++	spin_lock(&nn->client_lock);
++	list_for_each_entry(cur, &lo->lo_blocked, nbl_list) {
++		if (fh_match(fh, &cur->nbl_fh)) {
++			list_del_init(&cur->nbl_list);
++			found = cur;
++			break;
++		}
++	}
++	spin_unlock(&nn->client_lock);
++	if (found)
++		posix_unblock_lock(&found->nbl_lock);
++	return found;
++}
++
++static struct nfsd4_blocked_lock *
++find_or_allocate_block(struct nfs4_lockowner *lo, struct knfsd_fh *fh,
++			struct nfsd_net *nn)
++{
++	struct nfsd4_blocked_lock *nbl;
++
++	nbl = find_blocked_lock(lo, fh, nn);
++	if (!nbl) {
++		nbl= kmalloc(sizeof(*nbl), GFP_KERNEL);
++		if (nbl) {
++			fh_copy_shallow(&nbl->nbl_fh, fh);
++			locks_init_lock(&nbl->nbl_lock);
++			nfsd4_init_cb(&nbl->nbl_cb, lo->lo_owner.so_client,
++					&nfsd4_cb_notify_lock_ops,
++					NFSPROC4_CLNT_CB_NOTIFY_LOCK);
++		}
++	}
++	return nbl;
 +}
 +
 +static void
-+xprt_schedule_autodisconnect(struct rpc_xprt *xprt)
-+	__must_hold(&xprt->transport_lock)
++free_blocked_lock(struct nfsd4_blocked_lock *nbl)
 +{
-+	if (list_empty(&xprt->recv) && xprt_has_timer(xprt))
-+		mod_timer(&xprt->timer, xprt->last_used + xprt->idle_timeout);
++	locks_release_private(&nbl->nbl_lock);
++	kfree(nbl);
 +}
 +
- static void
- xprt_init_autodisconnect(unsigned long data)
++static int
++nfsd4_cb_notify_lock_done(struct nfsd4_callback *cb, struct rpc_task *task)
++{
++	/*
++	 * Since this is just an optimization, we don't try very hard if it
++	 * turns out not to succeed. We'll requeue it on NFS4ERR_DELAY, and
++	 * just quit trying on anything else.
++	 */
++	switch (task->tk_status) {
++	case -NFS4ERR_DELAY:
++		rpc_delay(task, 1 * HZ);
++		return 0;
++	default:
++		return 1;
++	}
++}
++
++static void
++nfsd4_cb_notify_lock_release(struct nfsd4_callback *cb)
++{
++	struct nfsd4_blocked_lock	*nbl = container_of(cb,
++						struct nfsd4_blocked_lock, nbl_cb);
++
++	free_blocked_lock(nbl);
++}
++
++static const struct nfsd4_callback_ops nfsd4_cb_notify_lock_ops = {
++	.done		= nfsd4_cb_notify_lock_done,
++	.release	= nfsd4_cb_notify_lock_release,
++};
++
+ static inline struct nfs4_stateowner *
+ nfs4_get_stateowner(struct nfs4_stateowner *sop)
  {
-@@ -688,6 +702,8 @@ xprt_init_autodisconnect(unsigned long data)
- 	spin_lock(&xprt->transport_lock);
- 	if (!list_empty(&xprt->recv))
- 		goto out_abort;
-+	/* Reset xprt->last_used to avoid connect/autodisconnect cycling */
-+	xprt->last_used = jiffies;
- 	if (test_and_set_bit(XPRT_LOCKED, &xprt->state))
- 		goto out_abort;
- 	spin_unlock(&xprt->transport_lock);
-@@ -725,6 +741,7 @@ void xprt_unlock_connect(struct rpc_xprt *xprt, void *cookie)
- 		goto out;
- 	xprt->snd_task =NULL;
- 	xprt->ops->release_xprt(xprt, NULL);
-+	xprt_schedule_autodisconnect(xprt);
- out:
- 	spin_unlock_bh(&xprt->transport_lock);
- 	wake_up_bit(&xprt->state, XPRT_LOCKED);
-@@ -888,11 +905,6 @@ static void xprt_timer(struct rpc_task *task)
- 	spin_unlock_bh(&xprt->transport_lock);
+@@ -5296,7 +5375,29 @@ nfsd4_fl_put_owner(fl_owner_t owner)
+ 		nfs4_put_stateowner(&lo->lo_owner);
  }
  
--static inline int xprt_has_timer(struct rpc_xprt *xprt)
--{
--	return xprt->idle_timeout != 0;
--}
++static void
++nfsd4_lm_notify(struct file_lock *fl)
++{
++	struct nfs4_lockowner		*lo = (struct nfs4_lockowner *)fl->fl_owner;
++	struct net			*net = lo->lo_owner.so_client->net;
++	struct nfsd_net			*nn = net_generic(net, nfsd_net_id);
++	struct nfsd4_blocked_lock	*nbl = container_of(fl,
++						struct nfsd4_blocked_lock, nbl_lock);
++	bool queue = false;
++
++	spin_lock(&nn->client_lock);
++	if (!list_empty(&nbl->nbl_list)) {
++		list_del_init(&nbl->nbl_list);
++		queue = true;
++	}
++	spin_unlock(&nn->client_lock);
++
++	if (queue)
++		nfsd4_run_cb(&nbl->nbl_cb);
++}
++
+ static const struct lock_manager_operations nfsd_posix_mng_ops  = {
++	.lm_notify = nfsd4_lm_notify,
+ 	.lm_get_owner = nfsd4_fl_get_owner,
+ 	.lm_put_owner = nfsd4_fl_put_owner,
+ };
+@@ -5394,6 +5495,7 @@ alloc_init_lock_stateowner(unsigned int strhashval, struct nfs4_client *clp,
+ 	lo = alloc_stateowner(lockowner_slab, &lock->lk_new_owner, clp);
+ 	if (!lo)
+ 		return NULL;
++	INIT_LIST_HEAD(&lo->lo_blocked);
+ 	INIT_LIST_HEAD(&lo->lo_owner.so_stateids);
+ 	lo->lo_owner.so_is_open_owner = 0;
+ 	lo->lo_owner.so_seqid = lock->lk_new_lock_seqid;
+@@ -5558,12 +5660,14 @@ nfsd4_lock(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 	struct nfs4_ol_stateid *open_stp = NULL;
+ 	struct nfs4_file *fp;
+ 	struct file *filp = NULL;
++	struct nfsd4_blocked_lock *nbl = NULL;
+ 	struct file_lock *file_lock = NULL;
+ 	struct file_lock *conflock = NULL;
+ 	__be32 status = 0;
+ 	int lkflg;
+ 	int err;
+ 	bool new = false;
++	unsigned char fl_type;
+ 	struct net *net = SVC_NET(rqstp);
+ 	struct nfsd_net *nn = net_generic(net, nfsd_net_id);
+ 
+@@ -5630,13 +5734,6 @@ nfsd4_lock(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 	if (!locks_in_grace(net) && lock->lk_reclaim)
+ 		goto out;
+ 
+-	file_lock = locks_alloc_lock();
+-	if (!file_lock) {
+-		dprintk("NFSD: %s: unable to allocate lock!\n", __func__);
+-		status = nfserr_jukebox;
+-		goto out;
+-	}
 -
- /**
-  * xprt_prepare_transmit - reserve the transport before sending a request
-  * @task: RPC task about to send a request
-@@ -1280,9 +1292,7 @@ void xprt_release(struct rpc_task *task)
- 	if (!list_empty(&req->rq_list))
- 		list_del(&req->rq_list);
- 	xprt->last_used = jiffies;
--	if (list_empty(&xprt->recv) && xprt_has_timer(xprt))
--		mod_timer(&xprt->timer,
--				xprt->last_used + xprt->idle_timeout);
-+	xprt_schedule_autodisconnect(xprt);
- 	spin_unlock_bh(&xprt->transport_lock);
- 	if (req->rq_buffer)
- 		xprt->ops->buf_free(req->rq_buffer);
+ 	fp = lock_stp->st_stid.sc_file;
+ 	switch (lock->lk_type) {
+ 		case NFS4_READ_LT:
+@@ -5646,7 +5743,7 @@ nfsd4_lock(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 			if (filp)
+ 				get_lock_access(lock_stp, NFS4_SHARE_ACCESS_READ);
+ 			spin_unlock(&fp->fi_lock);
+-			file_lock->fl_type = F_RDLCK;
++			fl_type = F_RDLCK;
+ 			break;
+ 		case NFS4_WRITE_LT:
+ 		case NFS4_WRITEW_LT:
+@@ -5655,17 +5752,27 @@ nfsd4_lock(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 			if (filp)
+ 				get_lock_access(lock_stp, NFS4_SHARE_ACCESS_WRITE);
+ 			spin_unlock(&fp->fi_lock);
+-			file_lock->fl_type = F_WRLCK;
++			fl_type = F_WRLCK;
+ 			break;
+ 		default:
+ 			status = nfserr_inval;
+ 		goto out;
+ 	}
++
+ 	if (!filp) {
+ 		status = nfserr_openmode;
+ 		goto out;
+ 	}
+ 
++	nbl = find_or_allocate_block(lock_sop, &fp->fi_fhandle, nn);
++	if (!nbl) {
++		dprintk("NFSD: %s: unable to allocate block!\n", __func__);
++		status = nfserr_jukebox;
++		goto out;
++	}
++
++	file_lock = &nbl->nbl_lock;
++	file_lock->fl_type = fl_type;
+ 	file_lock->fl_owner = (fl_owner_t)lockowner(nfs4_get_stateowner(&lock_sop->lo_owner));
+ 	file_lock->fl_pid = current->tgid;
+ 	file_lock->fl_file = filp;
+@@ -5682,18 +5789,28 @@ nfsd4_lock(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 		goto out;
+ 	}
+ 
++	if (nfsd4_has_session(cstate)) {
++		file_lock->fl_flags |= FL_SLEEP;
++		spin_lock(&nn->client_lock);
++		list_add_tail(&nbl->nbl_list, &lock_sop->lo_blocked);
++		spin_unlock(&nn->client_lock);
++	}
++
+ 	err = vfs_lock_file(filp, F_SETLK, file_lock, conflock);
+-	switch (-err) {
++	switch (err) {
+ 	case 0: /* success! */
+ 		nfs4_inc_and_copy_stateid(&lock->lk_resp_stateid, &lock_stp->st_stid);
+ 		status = 0;
+ 		break;
+-	case (EAGAIN):		/* conflock holds conflicting lock */
++	case FILE_LOCK_DEFERRED:
++		nbl = NULL;
++		/* Fallthrough */
++	case EAGAIN:		/* conflock holds conflicting lock */
+ 		status = nfserr_denied;
+ 		dprintk("NFSD: nfsd4_lock: conflicting lock found!\n");
+ 		nfs4_set_lock_denied(conflock, &lock->lk_denied);
+ 		break;
+-	case (EDEADLK):
++	case EDEADLK:
+ 		status = nfserr_deadlock;
+ 		break;
+ 	default:
+@@ -5702,6 +5819,15 @@ nfsd4_lock(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 		break;
+ 	}
+ out:
++	if (nbl) {
++		/* dequeue it if we queued it before */
++		if (nfsd4_has_session(cstate)) {
++			spin_lock(&nn->client_lock);
++			list_del_init(&nbl->nbl_list);
++			spin_unlock(&nn->client_lock);
++		}
++		free_blocked_lock(nbl);
++	}
+ 	if (filp)
+ 		fput(filp);
+ 	if (lock_stp) {
+@@ -5725,8 +5851,6 @@ out:
+ 	if (open_stp)
+ 		nfs4_put_stid(&open_stp->st_stid);
+ 	nfsd4_bump_seqid(cstate, status);
+-	if (file_lock)
+-		locks_free_lock(file_lock);
+ 	if (conflock)
+ 		locks_free_lock(conflock);
+ 	return status;
+diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
+index ecf3f4671654..056b0e4c485b 100644
+--- a/fs/nfsd/state.h
++++ b/fs/nfsd/state.h
+@@ -440,11 +440,11 @@ struct nfs4_openowner {
+ /*
+  * Represents a generic "lockowner". Similar to an openowner. References to it
+  * are held by the lock stateids that are created on its behalf. This object is
+- * a superset of the nfs4_stateowner struct (or would be if it needed any extra
+- * fields).
++ * a superset of the nfs4_stateowner struct.
+  */
+ struct nfs4_lockowner {
+-	struct nfs4_stateowner	lo_owner; /* must be first element */
++	struct nfs4_stateowner	lo_owner;	/* must be first element */
++	struct list_head	lo_blocked;	/* blocked file_locks */
+ };
+ 
+ static inline struct nfs4_openowner * openowner(struct nfs4_stateowner *so)
+@@ -580,7 +580,13 @@ static inline bool nfsd4_stateid_generation_after(stateid_t *a, stateid_t *b)
+ 	return (s32)(a->si_generation - b->si_generation) > 0;
+ }
+ 
++/*
++ * When a client tries to get a lock on a file, we set one of these objects
++ * on the blocking lock. When the lock becomes free, we can then issue a
++ * CB_NOTIFY_LOCK to the server.
++ */
+ struct nfsd4_blocked_lock {
++	struct list_head	nbl_list;
+ 	struct file_lock	nbl_lock;
+ 	struct knfsd_fh		nbl_fh;
+ 	struct nfsd4_callback	nbl_cb;
 -- 
 2.7.4
 
