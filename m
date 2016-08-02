@@ -1,19 +1,20 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mga11.intel.com ([192.55.52.93]:30211 "EHLO mga11.intel.com"
+Received: from mga02.intel.com ([134.134.136.20]:57203 "EHLO mga02.intel.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S965744AbcHBM5h (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 2 Aug 2016 08:57:37 -0400
+	id S965851AbcHBM5a (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 2 Aug 2016 08:57:30 -0400
 From: Baole Ni <baolex.ni@intel.com>
-To: trond.myklebust@primarydata.com, anna.schumaker@netapp.com,
-        tomi.valkeinen@ti.com, m.chehab@samsung.com,
-        gregkh@linuxfoundation.org, m.szyprowski@samsung.com,
-        kyungmin.park@samsung.com, k.kozlowski@samsung.com
-Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
-        chuansheng.liu@intel.com, baolex.ni@intel.com, mhalcrow@google.com,
-        kirill.shutemov@linux.intel.com, oneukum@suse.com
-Subject: [PATCH 1048/1285] Replace numeric parameter like 0444 with macro
-Date: Tue,  2 Aug 2016 20:11:39 +0800
-Message-Id: <20160802121139.19975-1-baolex.ni@intel.com>
+To: bfields@fieldses.org, jlayton@poochiereds.net,
+        trond.myklebust@primarydata.com, anna.schumaker@netapp.com,
+        davem@davemloft.net, kadlec@blackhole.kfki.hu,
+        m.szyprowski@samsung.com, kyungmin.park@samsung.com,
+        k.kozlowski@samsung.com
+Cc: linux-nfs@vger.kernel.org, netdev@vger.kernel.org,
+        linux-kernel@vger.kernel.org, chuansheng.liu@intel.com,
+        baolex.ni@intel.com, aryabinin@virtuozzo.com
+Subject: [PATCH 1136/1285] Replace numeric parameter like 0444 with macro
+Date: Tue,  2 Aug 2016 20:19:31 +0800
+Message-Id: <20160802121931.25849-1-baolex.ni@intel.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
@@ -26,22 +27,27 @@ thus, I suggest replacing the numeric parameter with the macro.
 Signed-off-by: Chuansheng Liu <chuansheng.liu@intel.com>
 Signed-off-by: Baole Ni <baolex.ni@intel.com>
 ---
- fs/nfs/dir.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ net/sunrpc/auth.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
 
-diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
-index aaf7bd0..d3f4311 100644
---- a/fs/nfs/dir.c
-+++ b/fs/nfs/dir.c
-@@ -2079,7 +2079,7 @@ static LIST_HEAD(nfs_access_lru_list);
- static atomic_long_t nfs_access_nr_entries;
+diff --git a/net/sunrpc/auth.c b/net/sunrpc/auth.c
+index 040ff62..1cd99fc 100644
+--- a/net/sunrpc/auth.c
++++ b/net/sunrpc/auth.c
+@@ -77,11 +77,11 @@ static const struct kernel_param_ops param_ops_hashtbl_sz = {
+ 	.get = param_get_hashtbl_sz,
+ };
  
- static unsigned long nfs_access_max_cachesize = ULONG_MAX;
--module_param(nfs_access_max_cachesize, ulong, 0644);
-+module_param(nfs_access_max_cachesize, ulong, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
- MODULE_PARM_DESC(nfs_access_max_cachesize, "NFS access maximum total cache length");
+-module_param_named(auth_hashtable_size, auth_hashbits, hashtbl_sz, 0644);
++module_param_named(auth_hashtable_size, auth_hashbits, hashtbl_sz, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+ MODULE_PARM_DESC(auth_hashtable_size, "RPC credential cache hashtable size");
  
- static void nfs_access_free_entry(struct nfs_access_entry *entry)
+ static unsigned long auth_max_cred_cachesize = ULONG_MAX;
+-module_param(auth_max_cred_cachesize, ulong, 0644);
++module_param(auth_max_cred_cachesize, ulong, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+ MODULE_PARM_DESC(auth_max_cred_cachesize, "RPC credential maximum total cache size");
+ 
+ static u32
 -- 
 2.9.2
 
