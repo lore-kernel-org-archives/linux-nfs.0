@@ -1,140 +1,91 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:54834 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S934031AbcHDVYs (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 4 Aug 2016 17:24:48 -0400
-Date: Thu, 4 Aug 2016 17:24:44 -0400
-To: Linus Torvalds <torvalds@linux-foundation.org>
-Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: [GIT PULL] nfsd changes for 4.8
-Message-ID: <20160804212444.GC3907@fieldses.org>
+Received: from mail-db5eur01on0135.outbound.protection.outlook.com ([104.47.2.135]:18080
+	"EHLO EUR01-DB5-obe.outbound.protection.outlook.com"
+	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+	id S1759198AbcHEAP4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 4 Aug 2016 20:15:56 -0400
+Date: Wed, 3 Aug 2016 20:36:48 +0300
+From: Cyrill Gorcunov <gorcunov@virtuozzo.com>
+To: Stanislav Kinsburskiy <skinsbursky@virtuozzo.com>
+CC: <bfields@fieldses.org>, <jlayton@poochiereds.net>,
+        <trond.myklebust@primarydata.com>, <anna.schumaker@netapp.com>,
+        <linux-nfs@vger.kernel.org>, <netdev@vger.kernel.org>,
+        <linux-kernel@vger.kernel.org>, <davem@davemloft.net>,
+        <devel@openvz.org>
+Subject: Re: [RFC PATCH] sunrpc: do not allow process to freeze within RPC
+ state machine
+Message-ID: <20160803173648.GA10543@uranus>
+References: <20160803165412.22407.47399.stgit@localhost.localdomain>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-From: bfields@fieldses.org (J. Bruce Fields)
+Content-Type: text/plain; charset="us-ascii"
+In-Reply-To: <20160803165412.22407.47399.stgit@localhost.localdomain>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Please pull:
+On Wed, Aug 03, 2016 at 08:54:50PM +0400, Stanislav Kinsburskiy wrote:
+> Otherwise freezer cgroup state might never become "FROZEN".
+> 
+> Here is a deadlock scheme for 2 processes in one freezer cgroup, which is
+> freezing:
+> 
+> CPU 0                                   CPU 1
+> --------                                --------
+> do_last
+> inode_lock(dir->d_inode)
+> vfs_create
+> nfs_create
+> ...
+> __rpc_execute
+> rpc_wait_bit_killable
+> __refrigerator
+>                                         do_last
+>                                         inode_lock(dir->d_inode)
+> 
+> So, the problem is that one process takes directory inode mutex, executes
+> creation request and goes to refrigerator.
+> Another one waits till directory lock is released, remains "thawed" and thus
+> freezer cgroup state never becomes "FROZEN".
+> 
+> Notes:
+> 1) Interesting, that this is not a pure deadlock: one can thaw cgroup and then
+> freeze it again.
+> 2) The issue was introduced by commit d310310cbff18ec385c6ab4d58f33b100192a96a.
+> 3) This patch is not aimed to fix the issue, but to show the problem root.
+> Look like this problem moght be applicable to other hunks from the commit,
+> mentioned above.
+> 
+> Signed-off-by: Stanislav Kinsburskiy <skinsbursky@virtuozzo.com>
 
-  git://linux-nfs.org/~bfields/linux.git tags/nfsd-4.8
+I think it's worth adding backtrace as well
+---
 
-for nfsd changes for 4.8.
+=== pid: 708987 === (file_read)
 
---b.
+[<ffffffff810de47b>] __refrigerator+0x5b/0x190
+[<ffffffffa01e6d36>] rpc_wait_bit_killable+0x66/0x80 [sunrpc]
+[<ffffffffa01e7bf4>] __rpc_execute+0x154/0x420 [sunrpc]
+[<ffffffffa01e972e>] rpc_execute+0x5e/0xa0 [sunrpc]
+[<ffffffffa01df220>] rpc_run_task+0x70/0x90 [sunrpc]
+[<ffffffffa01df290>] rpc_call_sync+0x50/0xc0 [sunrpc]
+[<ffffffffa035c5cb>] nfs3_rpc_wrapper.constprop.10+0x6b/0xb0 [nfsv3]
+[<ffffffffa035c6cf>] nfs3_proc_setattr+0xbf/0x140 [nfsv3]
+[<ffffffffa035db03>] nfs3_proc_create+0x1a3/0x220 [nfsv3]
+[<ffffffffa036c023>] nfs_create+0x83/0x150 [nfs]
+[<ffffffff8120639c>] vfs_create+0x8c/0x110
+[<ffffffff8120963d>] do_last+0xc0d/0x11d0
+[<ffffffff81209cc2>] path_openat+0xc2/0x460
+[<ffffffff8120b45b>] do_filp_open+0x4b/0xb0
+[<ffffffff811f8c63>] do_sys_open+0xf3/0x1f0
+[<ffffffff811f8d7e>] SyS_open+0x1e/0x20
+[<ffffffff81643449>] system_call_fastpath+0x16/0x1b
+[<ffffffffffffffff>] 0xffffffffffffffff
 
-----------------------------------------------------------------
-Highlights:
+=== pid: 708988 === (file_read)
 
-	Trond made a change to the server's tcp logic that allows a fast
-	client to better take advantage of high bandwidth networks, but
-	may increase the risk that a single client could starve other
-	clients; a new sunrpc.svc_rpc_per_connection_limit parameter
-	should help mitigate this in the (hopefully unlikely) event this
-	becomes a problem in practice.
-
-	Tom Haynes added a minimal flex-layout pnfs server, which is of
-	no use in production for now--don't build it unless you're doing
-	client testing or further server development.
-
-----------------------------------------------------------------
-Andrew Elble (3):
-      nfs/nfsd: Move useful bitfield ops to a commonly accessible place
-      nfsd: allow mach_creds_match to be used more broadly
-      nfsd: implement machine credential support for some operations
-
-Benjamin Coddington (1):
-      xfs: abstract block export operations from nfsd layouts
-
-Christophe JAILLET (1):
-      nfsd: Fix some indent inconsistancy
-
-Chuck Lever (1):
-      nfsd: Close race between nfsd4_release_lockowner and nfsd4_lock
-
-Dan Carpenter (1):
-      nfsd: remove some dead code in nfsd_create_locked()
-
-J. Bruce Fields (6):
-      nfsd: remove redundant zero-length check from create
-      nfsd: check d_can_lookup in fh_verify of directories
-      nfsd: reorganize nfsd_create
-      nfsd: remove unnecessary positive-dentry check
-      nfsd: clean up bad-type check in nfsd_create_locked
-      nfsd: drop unnecessary MAY_EXEC check from create
-
-Jeff Layton (1):
-      nfsd: allow nfsd to advertise multiple layout types
-
-Kinglong Mee (1):
-      nfsd/blocklayout: Make sure calculate signature/designator length aligned
-
-NeilBrown (1):
-      sunrpc: remove 'inuse' flag from struct cache_detail.
-
-Oleg Drokin (2):
-      nfsd: Correct a comment for NFSD_MAY_ defines location
-      nfsd: Make creates return EEXIST instead of EACCES
-
-Scott Mayhew (1):
-      sunrpc: add gss minor status to svcauth_gss_proxy_init
-
-Tom Haynes (2):
-      nfsd: flex file device id encoding will need the server address
-      nfsd: Add a super simple flex file server
-
-Trond Myklebust (11):
-      SUNRPC: Don't allocate a full sockaddr_storage for tracing
-      SUNRPC: Add a tracepoint for server socket out-of-space conditions
-      SUNRPC: Add tracepoints for dropped and deferred requests
-      SUNRPC: lock the socket while detaching it
-      SUNRPC: Call the default socket callbacks instead of open coding
-      SUNRPC: Micro optimisation for svc_data_ready
-      SUNRPC: Add a server side per-connection limit
-      SUNRPC: Change TCP socket space reservation
-      SUNRPC: Remove unused callback xpo_adjust_wspace()
-      SUNRPC: accept() may return sockets that are still in SYN_RECV
-      SUNRPC: Detect immediate closure of accepted sockets
-
- Documentation/kernel-parameters.txt |   6 ++
- fs/Kconfig                          |   6 ++
- fs/nfsd/Kconfig                     |  19 +++++
- fs/nfsd/Makefile                    |   1 +
- fs/nfsd/blocklayout.c               |   2 +
- fs/nfsd/blocklayoutxdr.c            |   4 +-
- fs/nfsd/export.c                    |  14 +++-
- fs/nfsd/export.h                    |   2 +-
- fs/nfsd/flexfilelayout.c            | 133 ++++++++++++++++++++++++++++++++
- fs/nfsd/flexfilelayoutxdr.c         | 115 +++++++++++++++++++++++++++
- fs/nfsd/flexfilelayoutxdr.h         |  49 ++++++++++++
- fs/nfsd/nfs4layouts.c               |  16 +++-
- fs/nfsd/nfs4proc.c                  |  48 ++++++++++--
- fs/nfsd/nfs4state.c                 |  74 ++++++++++--------
- fs/nfsd/nfs4xdr.c                   |  81 +++++++++----------
- fs/nfsd/nfsd.h                      |   5 ++
- fs/nfsd/nfsfh.c                     |  18 +++--
- fs/nfsd/nfsproc.c                   |   7 +-
- fs/nfsd/nfsxdr.c                    |   2 +-
- fs/nfsd/pnfs.h                      |   4 +
- fs/nfsd/state.h                     |   1 +
- fs/nfsd/vfs.c                       | 142 +++++++++++++++-------------------
- fs/nfsd/vfs.h                       |   3 +
- fs/nfsd/xdr4.h                      |   5 ++
- fs/xfs/Makefile                     |   3 +-
- fs/xfs/xfs_export.c                 |   2 +-
- fs/xfs/xfs_pnfs.h                   |   4 +-
- include/linux/nfs4.h                |  11 +++
- include/linux/nfs_xdr.h             |  11 ---
- include/linux/sunrpc/cache.h        |   2 -
- include/linux/sunrpc/svc.h          |   1 +
- include/linux/sunrpc/svc_xprt.h     |   2 +-
- include/trace/events/sunrpc.h       | 118 ++++++++++++++++++++++++----
- net/sunrpc/auth_gss/svcauth_gss.c   |   5 +-
- net/sunrpc/cache.c                  |   2 +-
- net/sunrpc/svc_xprt.c               |  51 ++++++++++--
- net/sunrpc/svcsock.c                | 150 +++++++++---------------------------
- 37 files changed, 784 insertions(+), 335 deletions(-)
- create mode 100644 fs/nfsd/flexfilelayout.c
- create mode 100644 fs/nfsd/flexfilelayoutxdr.c
- create mode 100644 fs/nfsd/flexfilelayoutxdr.h
-
---b.
+[<ffffffff81208cb3>] do_last+0x283/0x11d0
+[<ffffffff81209cc2>] path_openat+0xc2/0x460
+[<ffffffff8120b45b>] do_filp_open+0x4b/0xb0
+[<ffffffff811f8c63>] do_sys_open+0xf3/0x1f0
+[<ffffffff811f8d7e>] SyS_open+0x1e/0x20
+[<ffffffff81643449>] system_call_fastpath+0x16/0x1b
+[<ffffffffffffffff>] 0xffffffffffffffff
