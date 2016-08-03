@@ -1,275 +1,286 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx141.netapp.com ([216.240.21.12]:53742 "EHLO mx141.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758232AbcHCUSh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 3 Aug 2016 16:18:37 -0400
-From: "Adamson, Andy" <William.Adamson@netapp.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: Olga Kornievskaia <aglo@umich.edu>,
-        "Adamson, Andy" <William.Adamson@netapp.com>,
-        Chuck Lever <chuck.lever@oracle.com>,
-        "Linux NFS Mailing List" <linux-nfs@vger.kernel.org>
-Subject: Re: Problem re-establishing GSS contexts after a server reboot
-Date: Wed, 3 Aug 2016 20:18:27 +0000
-Message-ID: <54E16DA6-1DEE-41FB-B15A-904C93B3AC5E@netapp.com>
+Received: from mail-it0-f46.google.com ([209.85.214.46]:34178 "EHLO
+	mail-it0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1758326AbcHCUTS convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 3 Aug 2016 16:19:18 -0400
+Received: by mail-it0-f46.google.com with SMTP id j8so47880720itb.1
+        for <linux-nfs@vger.kernel.org>; Wed, 03 Aug 2016 13:19:18 -0700 (PDT)
+MIME-Version: 1.0
+In-Reply-To: <20160803200619.GB5901@fieldses.org>
 References: <42FD3D54-79F9-485A-A2B4-FBFA65C2FC16@oracle.com>
  <CAN-5tyGJ8YUesk-KBTK+DFqaRV9wNvjQp-4EkcoU4J58EmM7_A@mail.gmail.com>
  <CAN-5tyEyg4aYXc5Zr-diLHxhkU1VnvYaaKS01qCH-vtxa8qzqg@mail.gmail.com>
- <CC879117-DCA5-4BC1-8A70-FA859546CD01@oracle.com>
- <CAN-5tyGnK7Zus2pBg5dO__XZ8NrM_h9k4EXzJERneHBBnn6VPg@mail.gmail.com>
+ <CC879117-DCA5-4BC1-8A70-FA859546CD01@oracle.com> <CAN-5tyGnK7Zus2pBg5dO__XZ8NrM_h9k4EXzJERneHBBnn6VPg@mail.gmail.com>
  <CAN-5tyGJQXrLm7L98UgJULT=gQjsuVM86KGwEkGPuS8GBTAGrA@mail.gmail.com>
- <9E866C53-DD4B-419E-ABF0-64B04609C066@oracle.com>
- <20160802180642.GA15324@fieldses.org>
- <C351F835-AD54-4E43-A831-3C00126E2739@netapp.com>
- <CAN-5tyG6_GnLVM4PBiQT8LK+xvFQw6aVFwUm3m=PcM63ZYffew@mail.gmail.com>
+ <9E866C53-DD4B-419E-ABF0-64B04609C066@oracle.com> <20160802180642.GA15324@fieldses.org>
+ <C351F835-AD54-4E43-A831-3C00126E2739@netapp.com> <CAN-5tyG6_GnLVM4PBiQT8LK+xvFQw6aVFwUm3m=PcM63ZYffew@mail.gmail.com>
  <20160803200619.GB5901@fieldses.org>
-In-Reply-To: <20160803200619.GB5901@fieldses.org>
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
+From: Olga Kornievskaia <aglo@umich.edu>
+Date: Wed, 3 Aug 2016 16:11:58 -0400
+Message-ID: <CAN-5tyGD4sTP6j=ZWdKg=82-RDTYOy55Z1w1cDzLL1s9N8SHvQ@mail.gmail.com>
+Subject: Re: Problem re-establishing GSS contexts after a server reboot
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: "Adamson, Andy" <William.Adamson@netapp.com>,
+        Chuck Lever <chuck.lever@oracle.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-DQo+IE9uIEF1ZyAzLCAyMDE2LCBhdCA0OjA2IFBNLCBKLiBCcnVjZSBGaWVsZHMgPGJmaWVsZHNA
-ZmllbGRzZXMub3JnPiB3cm90ZToNCj4gDQo+IE9uIFdlZCwgQXVnIDAzLCAyMDE2IGF0IDAzOjU2
-OjMxUE0gLTA0MDAsIE9sZ2EgS29ybmlldnNrYWlhIHdyb3RlOg0KPj4gT24gV2VkLCBBdWcgMywg
-MjAxNiBhdCAyOjUzIFBNLCBBZGFtc29uLCBBbmR5DQo+PiA8V2lsbGlhbS5BZGFtc29uQG5ldGFw
-cC5jb20+IHdyb3RlOg0KPj4+IA0KPj4+PiBPbiBBdWcgMiwgMjAxNiwgYXQgMjowNiBQTSwgSi4g
-QnJ1Y2UgRmllbGRzIDxiZmllbGRzQGZpZWxkc2VzLm9yZz4gd3JvdGU6DQo+Pj4+IA0KPj4+PiBP
-biBGcmksIEp1bCAyOSwgMjAxNiBhdCAxMjozODozNFBNIC0wNDAwLCBDaHVjayBMZXZlciB3cm90
-ZToNCj4+Pj4+IA0KPj4+Pj4+IE9uIEp1bCAyOSwgMjAxNiwgYXQgMTI6MjcgUE0sIE9sZ2EgS29y
-bmlldnNrYWlhIDxhZ2xvQHVtaWNoLmVkdT4gd3JvdGU6DQo+Pj4+Pj4gDQo+Pj4+Pj4gT24gTW9u
-LCBKdWwgMjUsIDIwMTYgYXQgMjoxOCBQTSwgT2xnYSBLb3JuaWV2c2thaWEgPGFnbG9AdW1pY2gu
-ZWR1PiB3cm90ZToNCj4+Pj4+Pj4gT24gVGh1LCBKdWwgMjEsIDIwMTYgYXQgNTozMiBQTSwgQ2h1
-Y2sgTGV2ZXIgPGNodWNrLmxldmVyQG9yYWNsZS5jb20+IHdyb3RlOg0KPj4+Pj4+Pj4gDQo+Pj4+
-Pj4+PiANCj4+Pj4+Pj4+PiBPbiBKdWwgMjEsIDIwMTYsIGF0IDEwOjQ2IFBNLCBPbGdhIEtvcm5p
-ZXZza2FpYSA8YWdsb0B1bWljaC5lZHU+IHdyb3RlOg0KPj4+Pj4+Pj4+IA0KPj4+Pj4+Pj4+PiBP
-biBUaHUsIEp1bCAyMSwgMjAxNiBhdCAzOjU0IFBNLCBPbGdhIEtvcm5pZXZza2FpYSA8YWdsb0B1
-bWljaC5lZHU+IHdyb3RlOg0KPj4+Pj4+Pj4+Pj4gT24gVGh1LCBKdWwgMjEsIDIwMTYgYXQgMTo1
-NiBQTSwgQ2h1Y2sgTGV2ZXIgPGNodWNrLmxldmVyQG9yYWNsZS5jb20+IHdyb3RlOg0KPj4+Pj4+
-Pj4+Pj4gDQo+Pj4+Pj4+Pj4+Pj4gT24gSnVsIDIxLCAyMDE2LCBhdCA2OjA0IFBNLCBPbGdhIEtv
-cm5pZXZza2FpYSA8YWdsb0B1bWljaC5lZHU+IHdyb3RlOg0KPj4+Pj4+Pj4+Pj4+IA0KPj4+Pj4+
-Pj4+Pj4+IE9uIFRodSwgSnVsIDIxLCAyMDE2IGF0IDI6NTUgQU0sIENodWNrIExldmVyIDxjaHVj
-ay5sZXZlckBvcmFjbGUuY29tPiB3cm90ZToNCj4+Pj4+Pj4+Pj4+Pj4gDQo+Pj4+Pj4+Pj4+Pj4+
-PiBPbiBKdWwgMjAsIDIwMTYsIGF0IDY6NTYgUE0sIE9sZ2EgS29ybmlldnNrYWlhIDxhZ2xvQHVt
-aWNoLmVkdT4gd3JvdGU6DQo+Pj4+Pj4+Pj4+Pj4+PiANCj4+Pj4+Pj4+Pj4+Pj4+IE9uIFdlZCwg
-SnVsIDIwLCAyMDE2IGF0IDU6MTQgQU0sIEFkYW1zb24sIEFuZHkNCj4+Pj4+Pj4+Pj4+Pj4+IDxX
-aWxsaWFtLkFkYW1zb25AbmV0YXBwLmNvbT4gd3JvdGU6DQo+Pj4+Pj4+Pj4+Pj4+Pj4gDQo+Pj4+
-Pj4+Pj4+Pj4+Pj4+IE9uIEp1bCAxOSwgMjAxNiwgYXQgMTA6NTEgQU0sIENodWNrIExldmVyIDxj
-aHVjay5sZXZlckBvcmFjbGUuY29tPiB3cm90ZToNCj4+Pj4+Pj4+Pj4+Pj4+Pj4gDQo+Pj4+Pj4+
-Pj4+Pj4+Pj4+IEhpIEFuZHktDQo+Pj4+Pj4+Pj4+Pj4+Pj4+IA0KPj4+Pj4+Pj4+Pj4+Pj4+PiBU
-aGFua3MgZm9yIHRha2luZyB0aGUgdGltZSB0byBkaXNjdXNzIHRoaXMgd2l0aCBtZS4gSSd2ZQ0K
-Pj4+Pj4+Pj4+Pj4+Pj4+PiBjb3BpZWQgbGludXgtbmZzIHRvIG1ha2UgdGhpcyBlLW1haWwgYWxz
-byBhbiB1cHN0cmVhbSBidWcNCj4+Pj4+Pj4+Pj4+Pj4+Pj4gcmVwb3J0Lg0KPj4+Pj4+Pj4+Pj4+
-Pj4+PiANCj4+Pj4+Pj4+Pj4+Pj4+Pj4gQXMgd2Ugc2F3IGluIHRoZSBuZXR3b3JrIGNhcHR1cmUs
-IHJlY292ZXJ5IG9mIEdTUyBjb250ZXh0cw0KPj4+Pj4+Pj4+Pj4+Pj4+PiBhZnRlciBhIHNlcnZl
-ciByZWJvb3QgZmFpbHMgaW4gY2VydGFpbiBjYXNlcyB3aXRoIE5GU3Y0LjANCj4+Pj4+Pj4+Pj4+
-Pj4+Pj4gYW5kIE5GU3Y0LjEgbW91bnQgcG9pbnRzLg0KPj4+Pj4+Pj4+Pj4+Pj4+PiANCj4+Pj4+
-Pj4+Pj4+Pj4+Pj4gVGhlIHJlcHJvZHVjZXIgaXMgYSBzaW1wbGUgcHJvZ3JhbSB0aGF0IGdlbmVy
-YXRlcyBvbmUgTkZTDQo+Pj4+Pj4+Pj4+Pj4+Pj4+IFdSSVRFIHBlcmlvZGljYWxseSwgcnVuIHdo
-aWxlIHRoZSBzZXJ2ZXIgcmVwZWF0ZWRseSByZWJvb3RzDQo+Pj4+Pj4+Pj4+Pj4+Pj4+IChvciBv
-bmUgY2x1c3RlciBoZWFkIGZhaWxzIG92ZXIgdG8gdGhlIG90aGVyIGFuZCBiYWNrKS4gVGhlDQo+
-Pj4+Pj4+Pj4+Pj4+Pj4+IGdvYWwgb2YgdGhlIHJlcHJvZHVjZXIgaXMgdG8gaWRlbnRpZnkgcHJv
-YmxlbXMgd2l0aCBzdGF0ZQ0KPj4+Pj4+Pj4+Pj4+Pj4+PiByZWNvdmVyeSB3aXRob3V0IGEgbG90
-IG9mIG90aGVyIEkvTyBnb2luZyBvbiB0byBjbHV0dGVyIHVwDQo+Pj4+Pj4+Pj4+Pj4+Pj4+IHRo
-ZSBuZXR3b3JrIGNhcHR1cmUuDQo+Pj4+Pj4+Pj4+Pj4+Pj4+IA0KPj4+Pj4+Pj4+Pj4+Pj4+PiBJ
-biB0aGUgZmFpbGluZyBjYXNlLCBzZWM9a3JiNSBpcyBzcGVjaWZpZWQgb24gdGhlIG1vdW50DQo+
-Pj4+Pj4+Pj4+Pj4+Pj4+IHBvaW50LCBhbmQgdGhlIHJlcHJvZHVjZXIgaXMgcnVuIGFzIHJvb3Qu
-IFdlJ3ZlIGZvdW5kIHRoaXMNCj4+Pj4+Pj4+Pj4+Pj4+Pj4gY29tYmluYXRpb24gZmFpbHMgd2l0
-aCBib3RoIE5GU3Y0LjAgYW5kIE5GU3Y0LjEuDQo+Pj4+Pj4+Pj4+Pj4+Pj4+IA0KPj4+Pj4+Pj4+
-Pj4+Pj4+PiBBdCBtb3VudCB0aW1lLCB0aGUgY2xpZW50IGVzdGFibGlzaGVzIGEgR1NTIGNvbnRl
-eHQgZm9yDQo+Pj4+Pj4+Pj4+Pj4+Pj4+IGxlYXNlIG1hbmFnZW1lbnQgb3BlcmF0aW9ucywgd2hp
-Y2ggaXMgYm91bmQgdG8gdGhlIGNsaWVudCdzDQo+Pj4+Pj4+Pj4+Pj4+Pj4+IE5GUyBzZXJ2aWNl
-IHByaW5jaXBhbCBhbmQgdXNlcyBHU1Mgc2VydmljZSAiaW50ZWdyaXR5LiINCj4+Pj4+Pj4+Pj4+
-Pj4+Pj4gQ2FsbCB0aGlzIEdTUyBjb250ZXh0IDEuDQo+Pj4+Pj4+Pj4+Pj4+Pj4+IA0KPj4+Pj4+
-Pj4+Pj4+Pj4+PiBXaGVuIHRoZSByZXByb2R1Y2VyIHN0YXJ0cywgYSBzZWNvbmQgR1NTIGNvbnRl
-eHQgaXMNCj4+Pj4+Pj4+Pj4+Pj4+Pj4gZXN0YWJsaXNoZWQgZm9yIE5GUyBvcGVyYXRpb25zIGFz
-c29jaWF0ZWQgd2l0aCB0aGF0IHVzZXIuDQo+Pj4+Pj4+Pj4+Pj4+Pj4+IFNpbmNlIHRoZSByZXBy
-b2R1Y2VyIGlzIHJ1bm5pbmcgYXMgcm9vdCwgdGhpcyBjb250ZXh0IGlzDQo+Pj4+Pj4+Pj4+Pj4+
-Pj4+IGFsc28gYm91bmQgdG8gdGhlIGNsaWVudCdzIE5GUyBzZXJ2aWNlIHByaW5jaXBhbCwgYnV0
-IGl0DQo+Pj4+Pj4+Pj4+Pj4+Pj4+IHVzZXMgdGhlIEdTUyBzZXJ2aWNlICJub25lIiAocmVmbGVj
-dGluZyB0aGUgZXhwbGljaXQNCj4+Pj4+Pj4+Pj4+Pj4+Pj4gcmVxdWVzdCBmb3IgInNlYz1rcmI1
-IikuIENhbGwgdGhpcyBHU1MgY29udGV4dCAyLg0KPj4+Pj4+Pj4+Pj4+Pj4+PiANCj4+Pj4+Pj4+
-Pj4+Pj4+Pj4gQWZ0ZXIgdGhlIHNlcnZlciByZWJvb3RzLCB0aGUgY2xpZW50IHJlLWVzdGFibGlz
-aGVzIGEgVENQDQo+Pj4+Pj4+Pj4+Pj4+Pj4+IGNvbm5lY3Rpb24gd2l0aCB0aGUgc2VydmVyLCBh
-bmQgcGVyZm9ybXMgYSBSRU5FVw0KPj4+Pj4+Pj4+Pj4+Pj4+PiBvcGVyYXRpb24gdXNpbmcgY29u
-dGV4dCAxLiBUaGFua3MgdG8gdGhlIHNlcnZlciByZWJvb3QsDQo+Pj4+Pj4+Pj4+Pj4+Pj4+IGNv
-bnRleHRzIDEgYW5kIDIgYXJlIG5vdyBzdGFsZS4gVGhlIHNlcnZlciB0aHVzIHJlamVjdHMNCj4+
-Pj4+Pj4+Pj4+Pj4+Pj4gdGhlIFJQQyB3aXRoIFJQQ1NFQ19HU1NfQ1RYUFJPQkxFTS4NCj4+Pj4+
-Pj4+Pj4+Pj4+Pj4gDQo+Pj4+Pj4+Pj4+Pj4+Pj4+IFRoZSBjbGllbnQgcGVyZm9ybXMgYSBHU1Nf
-SU5JVF9TRUNfQ09OVEVYVCB2aWEgYW4gTkZTdjQNCj4+Pj4+Pj4+Pj4+Pj4+Pj4gTlVMTCBvcGVy
-YXRpb24uIENhbGwgdGhpcyBHU1MgY29udGV4dCAzLg0KPj4+Pj4+Pj4+Pj4+Pj4+PiANCj4+Pj4+
-Pj4+Pj4+Pj4+Pj4gSW50ZXJlc3RpbmdseSwgdGhlIGNsaWVudCBkb2VzIG5vdCByZXNlbmQgdGhl
-IFJFTkVXDQo+Pj4+Pj4+Pj4+Pj4+Pj4+IG9wZXJhdGlvbiBhdCB0aGlzIHBvaW50IChpZiBpdCBk
-aWQsIHdlIHdvdWxkbid0IHNlZSB0aGlzDQo+Pj4+Pj4+Pj4+Pj4+Pj4+IHByb2JsZW0gYXQgYWxs
-KS4NCj4+Pj4+Pj4+Pj4+Pj4+Pj4gDQo+Pj4+Pj4+Pj4+Pj4+Pj4+IFRoZSBjbGllbnQgdGhlbiBh
-dHRlbXB0cyB0byByZXN1bWUgdGhlIHJlcHJvZHVjZXIgd29ya2xvYWQuDQo+Pj4+Pj4+Pj4+Pj4+
-Pj4+IEl0IHNlbmRzIGFuIE5GU3Y0IFdSSVRFIG9wZXJhdGlvbiwgdXNpbmcgdGhlIGZpcnN0IGF2
-YWlsYWJsZQ0KPj4+Pj4+Pj4+Pj4+Pj4+PiBHU1MgY29udGV4dCBpbiBVSUQgMCdzIGNyZWRlbnRp
-YWwgY2FjaGUsIHdoaWNoIGlzIGNvbnRleHQgMywNCj4+Pj4+Pj4+Pj4+Pj4+Pj4gYWxyZWFkeSBi
-b3VuZCB0byB0aGUgY2xpZW50J3MgTkZTIHNlcnZpY2UgcHJpbmNpcGFsLiBCdXQgR1NTDQo+Pj4+
-Pj4+Pj4+Pj4+Pj4+IHNlcnZpY2UgIm5vbmUiIGlzIHVzZWQgZm9yIHRoaXMgb3BlcmF0aW9uLCBz
-aW5jZSBpdCBpcyBvbg0KPj4+Pj4+Pj4+Pj4+Pj4+PiBiZWhhbGYgb2YgdGhlIG1vdW50IHdoZXJl
-IHNlYz1rcmI1IHdhcyBzcGVjaWZpZWQuDQo+Pj4+Pj4+Pj4+Pj4+Pj4+IA0KPj4+Pj4+Pj4+Pj4+
-Pj4+PiBUaGUgUlBDIGlzIGFjY2VwdGVkLCBidXQgdGhlIHNlcnZlciByZXBvcnRzDQo+Pj4+Pj4+
-Pj4+Pj4+Pj4+IE5GUzRFUlJfU1RBTEVfU1RBVEVJRCwgc2luY2UgaXQgaGFzIHJlY2VudGx5IHJl
-Ym9vdGVkLg0KPj4+Pj4+Pj4+Pj4+Pj4+PiANCj4+Pj4+Pj4+Pj4+Pj4+Pj4gVGhlIGNsaWVudCBy
-ZXNwb25kcyBieSBhdHRlbXB0aW5nIHN0YXRlIHJlY292ZXJ5LiBUaGUNCj4+Pj4+Pj4+Pj4+Pj4+
-Pj4gZmlyc3Qgb3BlcmF0aW9uIGl0IHRyaWVzIGlzIGFub3RoZXIgUkVORVcuIFNpbmNlIHRoaXMg
-aXMNCj4+Pj4+Pj4+Pj4+Pj4+Pj4gYSBsZWFzZSBtYW5hZ2VtZW50IG9wZXJhdGlvbiwgdGhlIGNs
-aWVudCBsb29rcyBpbiBVSUQgMCdzDQo+Pj4+Pj4+Pj4+Pj4+Pj4+IGNyZWRlbnRpYWwgY2FjaGUg
-YWdhaW4gYW5kIGZpbmRzIHRoZSByZWNlbnRseSBlc3RhYmxpc2hlZA0KPj4+Pj4+Pj4+Pj4+Pj4+
-PiBjb250ZXh0IDMuIEl0IHRyaWVzIHRoZSBSRU5FVyBvcGVyYXRpb24gdXNpbmcgR1NTIGNvbnRl
-eHQNCj4+Pj4+Pj4+Pj4+Pj4+Pj4gMyB3aXRoIEdTUyBzZXJ2aWNlICJpbnRlZ3JpdHkuIg0KPj4+
-Pj4+Pj4+Pj4+Pj4+PiANCj4+Pj4+Pj4+Pj4+Pj4+Pj4gVGhlIHNlcnZlciByZWplY3RzIHRoZSBS
-RU5FVyBSUEMgd2l0aCBBVVRIX0ZBSUxFRCwgYW5kDQo+Pj4+Pj4+Pj4+Pj4+Pj4+IHRoZSBjbGll
-bnQgcmVwb3J0cyB0aGF0ICJjaGVjayBsZWFzZSBmYWlsZWQiIGFuZA0KPj4+Pj4+Pj4+Pj4+Pj4+
-PiB0ZXJtaW5hdGVzIHN0YXRlIHJlY292ZXJ5Lg0KPj4+Pj4+Pj4+Pj4+Pj4+PiANCj4+Pj4+Pj4+
-Pj4+Pj4+Pj4gVGhlIGNsaWVudCByZS1kcml2ZXMgdGhlIFdSSVRFIG9wZXJhdGlvbiB3aXRoIHRo
-ZSBzdGFsZQ0KPj4+Pj4+Pj4+Pj4+Pj4+PiBzdGF0ZWlkIHdpdGggcHJlZGljdGFibGUgcmVzdWx0
-cy4gVGhlIGNsaWVudCBhZ2FpbiB0cmllcw0KPj4+Pj4+Pj4+Pj4+Pj4+PiB0byByZWNvdmVyIHN0
-YXRlIGJ5IHNlbmRpbmcgYSBSRU5FVywgYW5kIHN0aWxsIHVzZXMgdGhlDQo+Pj4+Pj4+Pj4+Pj4+
-Pj4+IHNhbWUgR1NTIGNvbnRleHQgMyB3aXRoIHNlcnZpY2UgImludGVncml0eSIgYW5kIGdldHMg
-dGhlDQo+Pj4+Pj4+Pj4+Pj4+Pj4+IHNhbWUgcmVzdWx0LiBBIChwZXJoYXBzIHNsb3ctbW90aW9u
-KSBTVEFMRV9TVEFURUlEIGxvb3ANCj4+Pj4+Pj4+Pj4+Pj4+Pj4gZW5zdWVzLCBhbmQgdGhlIGNs
-aWVudCBtb3VudCBwb2ludCBpcyBkZWFkbG9ja2VkLg0KPj4+Pj4+Pj4+Pj4+Pj4+PiANCj4+Pj4+
-Pj4+Pj4+Pj4+Pj4gWW91ciBhbmFseXNpcyB3YXMgdGhhdCBiZWNhdXNlIHRoZSByZXByb2R1Y2Vy
-IGlzIHJ1biBhcw0KPj4+Pj4+Pj4+Pj4+Pj4+PiByb290LCBib3RoIHRoZSByZXByb2R1Y2VyJ3Mg
-SS9PIG9wZXJhdGlvbnMsIGFuZCBsZWFzZQ0KPj4+Pj4+Pj4+Pj4+Pj4+PiBtYW5hZ2VtZW50IG9w
-ZXJhdGlvbnMsIGF0dGVtcHQgdG8gdXNlIHRoZSBzYW1lIEdTUyBjb250ZXh0DQo+Pj4+Pj4+Pj4+
-Pj4+Pj4+IGluIFVJRCAwJ3MgY3JlZGVudGlhbCBjYWNoZSwgYnV0IGVhY2ggdXNlcyBkaWZmZXJl
-bnQgR1NTDQo+Pj4+Pj4+Pj4+Pj4+Pj4+IHNlcnZpY2VzLg0KPj4+Pj4+Pj4+Pj4+Pj4+IA0KPj4+
-Pj4+Pj4+Pj4+Pj4+IEFzIFJGQzIyMDMgc3RhdGVzLCAiSW4gYSBjcmVhdGlvbiByZXF1ZXN0LCB0
-aGUgc2VxX251bSBhbmQgc2VydmljZSBmaWVsZHMgYXJlIHVuZGVmaW5lZCBhbmQgYm90aCBtdXN0
-IGJlIGlnbm9yZWQgYnkgdGhlIHNlcnZlcuKAnQ0KPj4+Pj4+Pj4+Pj4+Pj4+IFNvIGEgY29udGV4
-dCBjcmVhdGlvbiByZXF1ZXN0IHdoaWxlIGtpY2tlZCBvZmYgYnkgYW4gb3BlcmF0aW9uIHdpdGgg
-YSBzZXJ2aWNlIGF0dGFjaGVkIChlLmcuIFdSSVRFIHVzZXMgcnBjX2dzc19zdmNfbm9uZSBhbmQg
-UkVORVcgdXNlcyBycGNfZ3NzX3N2Y19pbnRlZ3JpdHkpLCBjYW4gYmUgdXNlZCBieSBlaXRoZXIg
-c2VydmljZSBsZXZlbC4NCj4+Pj4+Pj4+Pj4+Pj4+PiBBRkFJQ1MgYSBzaW5nbGUgR1NTIGNvbnRl
-eHQgY291bGQgaW4gdGhlb3J5IGJlIHVzZWQgZm9yIGFsbCBzZXJ2aWNlIGxldmVscywgYnV0IGlu
-IHByYWN0aWNlLCBHU1MgY29udGV4dHMgYXJlIHJlc3RyaWN0ZWQgdG8gYSBzZXJ2aWNlIGxldmVs
-IChieSBjbGllbnQ/IGJ5IHNlcnZlcj8gKSBvbmNlIHRoZXkgYXJlIHVzZWQuDQo+Pj4+Pj4+Pj4+
-Pj4+Pj4gDQo+Pj4+Pj4+Pj4+Pj4+Pj4gDQo+Pj4+Pj4+Pj4+Pj4+Pj4+IFRoZSBrZXkgaXNzdWUg
-c2VlbXMgdG8gYmUgd2h5LCB3aGVuIHRoZSBtb3VudA0KPj4+Pj4+Pj4+Pj4+Pj4+PiBpcyBmaXJz
-dCBlc3RhYmxpc2hlZCwgdGhlIGNsaWVudCBpcyBjb3JyZWN0bHkgYWJsZSB0bw0KPj4+Pj4+Pj4+
-Pj4+Pj4+PiBlc3RhYmxpc2ggdHdvIHNlcGFyYXRlIEdTUyBjb250ZXh0cyBmb3IgVUlEIDA7IGJ1
-dCBhZnRlcg0KPj4+Pj4+Pj4+Pj4+Pj4+PiBhIHNlcnZlciByZWJvb3QsIHRoZSBjbGllbnQgYXR0
-ZW1wdHMgdG8gdXNlIHRoZSBzYW1lIEdTUw0KPj4+Pj4+Pj4+Pj4+Pj4+PiBjb250ZXh0IHdpdGgg
-dHdvIGRpZmZlcmVudCBHU1Mgc2VydmljZXMuDQo+Pj4+Pj4+Pj4+Pj4+Pj4gDQo+Pj4+Pj4+Pj4+
-Pj4+Pj4gSSBzcGVjdWxhdGUgdGhhdCBpdCBpcyBhIHJhY2UgYmV0d2VlbiB0aGUgV1JJVEUgYW5k
-IHRoZSBSRU5FVyB0byB1c2UgdGhlIHNhbWUgbmV3bHkgY3JlYXRlZCBHU1MgY29udGV4dCB0aGF0
-IGhhcyBub3QgYmVlbiB1c2VkIHlldCwgYW5kIHNvIGhhcyBubyBhc3NpZ25lZCBzZXJ2aWNlIGxl
-dmVsLCBhbmQgdGhlIHR3byByZXF1ZXN0cyByYWNlIHRvIHNldCB0aGUgc2VydmljZSBsZXZlbC4N
-Cj4+Pj4+Pj4+Pj4+Pj4+IA0KPj4+Pj4+Pj4+Pj4+Pj4gSSBhZ3JlZSB3aXRoIEFuZHkuIEl0IG11
-c3QgYmUgYSB0aWdodCByYWNlLg0KPj4+Pj4+Pj4+Pj4+PiANCj4+Pj4+Pj4+Pj4+Pj4gSW4gb25l
-IGNhcHR1cmUgSSBzZWUgc29tZXRoaW5nIGxpa2UgdGhpcyBhZnRlcg0KPj4+Pj4+Pj4+Pj4+PiB0
-aGUgc2VydmVyIHJlc3RhcnRzOg0KPj4+Pj4+Pj4+Pj4+PiANCj4+Pj4+Pj4+Pj4+Pj4gU1lODQo+
-Pj4+Pj4+Pj4+Pj4+IFNZTiwgQUNLDQo+Pj4+Pj4+Pj4+Pj4+IEFDSw0KPj4+Pj4+Pj4+Pj4+PiBD
-IFdSSVRFDQo+Pj4+Pj4+Pj4+Pj4+IEMgU0VRVUVOQ0UNCj4+Pj4+Pj4+Pj4+Pj4gUiBXUklURSAt
-PiBDVFhfUFJPQkxFTQ0KPj4+Pj4+Pj4+Pj4+PiBSIFNFUVVFTkNFIC0+IENUWF9QUk9CTEVNDQo+
-Pj4+Pj4+Pj4+Pj4+IEMgTlVMTCAoS1JCNV9BUF9SRVEpDQo+Pj4+Pj4+Pj4+Pj4+IFIgTlVMTCAo
-S1JCNV9BUF9SRVApDQo+Pj4+Pj4+Pj4+Pj4+IEMgV1JJVEUNCj4+Pj4+Pj4+Pj4+Pj4gQyBTRVFV
-RU5DRQ0KPj4+Pj4+Pj4+Pj4+PiBSIFdSSVRFIC0+IE5GUzRFUlJfU1RBTEVfU1RBVEVJRA0KPj4+
-Pj4+Pj4+Pj4+PiBSIFNFUVVFTkNFIC0+IEFVVEhfRkFJTEVEDQo+Pj4+Pj4+Pj4+Pj4+IA0KPj4+
-Pj4+Pj4+Pj4+PiBBbmR5J3MgdGhlb3J5IG5lYXRseSBleHBsYWlucyB0aGlzIGJlaGF2aW9yLg0K
-Pj4+Pj4+Pj4+Pj4+PiANCj4+Pj4+Pj4+Pj4+Pj4gDQo+Pj4+Pj4+Pj4+Pj4+PiBJIGhhdmUgdHJp
-ZWQgdG8gcmVwcm9kdWNlDQo+Pj4+Pj4+Pj4+Pj4+PiB5b3VyIHNjZW5hcmlvIGFuZCBpbiBteSB0
-ZXN0cyBvZiByZWJvb3RpbmcgdGhlIHNlcnZlciBhbGwgcmVjb3Zlcg0KPj4+Pj4+Pj4+Pj4+Pj4g
-Y29ycmVjdGx5LiBJbiBteSBjYXNlLCBpZiBSRU5FVyB3YXMgdGhlIG9uZSBoaXR0aW5nIHRoZSBB
-VVRIX0VSUiB0aGVuDQo+Pj4+Pj4+Pj4+Pj4+PiB0aGUgbmV3IGNvbnRleHQgaXMgZXN0YWJsaXNo
-ZWQgYW5kIHRoZW4gUkVORVcgdXNpbmcgaW50ZWdyaXR5IHNlcnZpY2UNCj4+Pj4+Pj4+Pj4+Pj4+
-IGlzIHJldHJpZWQgd2l0aCB0aGUgbmV3IGNvbnRleHQgd2hpY2ggZ2V0cyBFUlJfU1RBTEVfQ0xJ
-RU5USUQgd2hpY2gNCj4+Pj4+Pj4+Pj4+Pj4+IHRoZW4gY2xpZW50IHJlY292ZXJzIGZyb20uIElm
-IGl0J3MgYW4gb3BlcmF0aW9uIChJIGhhdmUgYSBHRVRBVFRSKQ0KPj4+Pj4+Pj4+Pj4+Pj4gdGhh
-dCBnZXRzIEFVVEhfRVJSLCB0aGVuIGl0IGdldHMgbmV3IGNvbnRleHQgYW5kIGlzIHJldHJpZWQg
-dXNpbmcgbm9uZQ0KPj4+Pj4+Pj4+Pj4+Pj4gc2VydmljZS4gVGhlbiBSRU5FVyBnZXRzIGl0cyBv
-d24gQVVUSF9FUlIgYXMgaXQgdXNlcyBhIGRpZmZlcmVudA0KPj4+Pj4+Pj4+Pj4+Pj4gY29udGV4
-dCwgYSBuZXcgY29udGV4dCBpcyBnb3R0ZW4sIFJFTkVXIGlzIHJldHJpZWQgb3ZlciBpbnRlZ3Jp
-dHkgYW5kDQo+Pj4+Pj4+Pj4+Pj4+PiBnZXRzIEVSUl9TVEFMRV9DTElFTlRJRCB3aGljaCBpdCBy
-ZWNvdmVycyBmcm9tLg0KPj4+Pj4+Pj4+Pj4+PiANCj4+Pj4+Pj4+Pj4+Pj4gSWYgb25lIG9wZXJh
-dGlvbiBpcyBhbGxvd2VkIHRvIGNvbXBsZXRlLCB0aGVuDQo+Pj4+Pj4+Pj4+Pj4+IHRoZSBvdGhl
-ciB3aWxsIGFsd2F5cyByZWNvZ25pemUgdGhhdCBhbm90aGVyDQo+Pj4+Pj4+Pj4+Pj4+IGZyZXNo
-IEdTUyBjb250ZXh0IGlzIG5lZWRlZC4gSWYgdHdvIGFyZSBzZW50DQo+Pj4+Pj4+Pj4+Pj4+IGF0
-IHRoZSBzYW1lIHRpbWUsIHRoZXkgcmFjZSBhbmQgb25lIGFsd2F5cw0KPj4+Pj4+Pj4+Pj4+PiBm
-YWlscy4NCj4+Pj4+Pj4+Pj4+Pj4gDQo+Pj4+Pj4+Pj4+Pj4+IEhlbGVuJ3MgdGVzdCBpbmNsdWRl
-cyBhIHNlY29uZCBpZGxlIG1vdW50IHBvaW50DQo+Pj4+Pj4+Pj4+Pj4+IChzZWM9a3JiNWkpIGFu
-ZCBtYXliZSB0aGF0IGlzIG5lZWRlZCB0byB0cmlnZ2VyDQo+Pj4+Pj4+Pj4+Pj4+IHRoZSByYWNl
-Pw0KPj4+Pj4+Pj4+Pj4+IA0KPj4+Pj4+Pj4+Pj4+IENodWNrLCBhbnkgY2hhbmNlIHRvIGdldCAi
-cnBjZGVidWcgLW0gcnBjIGF1dGgiIG91dHB1dCBkdXJpbmcgdGhlDQo+Pj4+Pj4+Pj4+Pj4gZmFp
-bHVyZSAoZ3NzZCBvcHRpb25hbGx5KSAoaSByZWFsaXplIHRoYXQgaXQgbWlnaHQgYWx0ZXIgdGhl
-IHRpbWluZ3MNCj4+Pj4+Pj4+Pj4+PiBhbmQgbm90IGhpdCB0aGUgaXNzdWUgYnV0IHdvcnRoIGEg
-c2hvdCk/DQo+Pj4+Pj4+Pj4+PiANCj4+Pj4+Pj4+Pj4+IEknbSBzdXJlIHRoYXQncyBmaW5lLiBB
-biBpbnRlcm5hbCB0ZXN0ZXIgaGl0IHRoaXMsDQo+Pj4+Pj4+Pj4+PiBub3QgYSBjdXN0b21lciwg
-c28gSSB3aWxsIGFzay4NCj4+Pj4+Pj4+Pj4+IA0KPj4+Pj4+Pj4+Pj4gSSBhZ3JlZSwgdGhvdWdo
-LCB0aGF0IHRpbWluZyBtaWdodCBiZSBhIHByb2JsZW06DQo+Pj4+Pj4+Pj4+PiB0aGVzZSBzeXN0
-ZW1zIGFsbCBoYXZlIHJlYWwgc2VyaWFsIGNvbnNvbGVzIHZpYQ0KPj4+Pj4+Pj4+Pj4gaUxPTSwg
-c28gL3YvbC9tIHRyYWZmaWMgZG9lcyBicmluZyBldmVyeXRoaW5nIHRvDQo+Pj4+Pj4+Pj4+PiBh
-IHN0YW5kc3RpbGwuDQo+Pj4+Pj4+Pj4+PiANCj4+Pj4+Pj4+Pj4+IE1lYW53aGlsZSwgd2hhdCdz
-IHlvdSdyZSBvcGluaW9uIGFib3V0IEFVVEhfRkFJTEVEPw0KPj4+Pj4+Pj4+Pj4gU2hvdWxkIHRo
-ZSBzZXJ2ZXIgcmV0dXJuIFJQQ1NFQ19HU1NfQ1RYUFJPQkxFTQ0KPj4+Pj4+Pj4+Pj4gaW4gdGhp
-cyBjYXNlIGluc3RlYWQ/IElmIGl0IGRpZCwgZG8geW91IHRoaW5rDQo+Pj4+Pj4+Pj4+PiB0aGUg
-TGludXggY2xpZW50IHdvdWxkIHJlY292ZXIgYnkgY3JlYXRpbmcgYQ0KPj4+Pj4+Pj4+Pj4gcmVw
-bGFjZW1lbnQgR1NTIGNvbnRleHQ/DQo+Pj4+Pj4+Pj4+IA0KPj4+Pj4+Pj4+PiBBaCwgeWVzLCBJ
-IGVxdWF0ZWQgQVVUSF9GQUlMRUQgQW5kIEFVVEhfRVJST1IgaW4gbXkgbWluZC4gSWYgY2xpZW50
-DQo+Pj4+Pj4+Pj4+IHJlY2VpdmVzIHRoZSByZWFzb24gYXMgQVVUSF9GQUlMRUQgYXMgb3Bwb3Nl
-IHRvIENUWFBST0JMRU0gaXQgd2lsbA0KPj4+Pj4+Pj4+PiBmYWlsIHdpdGggRUlPIGVycm9yIGFu
-ZCB3aWxsIG5vdCB0cnkgdG8gY3JlYXRlIGEgbmV3IEdTUyBjb250ZXh0LiBTbw0KPj4+Pj4+Pj4+
-PiB5ZXMsIEkgYmVsaWV2ZSBpdCB3b3VsZCBoZWxwIGlmIHRoZSBzZXJ2ZXIgcmV0dXJucyBhbnkg
-b2YgdGhlDQo+Pj4+Pj4+Pj4+IGZvbGxvd2luZyBlcnJvcnM6DQo+Pj4+Pj4+Pj4+ICAgICAgICAg
-ICAgIGNhc2UgUlBDX0FVVEhfUkVKRUNURURDUkVEOg0KPj4+Pj4+Pj4+PiAgICAgICAgICAgICBj
-YXNlIFJQQ19BVVRIX1JFSkVDVEVEVkVSRjoNCj4+Pj4+Pj4+Pj4gICAgICAgICAgICAgY2FzZSBS
-UENTRUNfR1NTX0NSRURQUk9CTEVNOg0KPj4+Pj4+Pj4+PiAgICAgICAgICAgICBjYXNlIFJQQ1NF
-Q19HU1NfQ1RYUFJPQkxFTToNCj4+Pj4+Pj4+Pj4gDQo+Pj4+Pj4+Pj4+IHRoZW4gdGhlIGNsaWVu
-dCB3aWxsIHJlY3JlYXRlIHRoZSBjb250ZXh0Lg0KPj4+Pj4+Pj4+IA0KPj4+Pj4+Pj4+IEFsc28g
-aW4gbXkgdGVzdGluZywgSSBjYW4gc2VlIHRoYXQgY3JlZGVudGlhbCBjYWNoZSBpcyBwZXIgZ3Nz
-IGZsYXZvci4NCj4+Pj4+Pj4+PiBKdXN0IHRvIGNoZWNrLCB3aGF0IGtlcm5lbCB2ZXJzaW9uIGlz
-IHRoaXMgcHJvYmxlbSBlbmNvdW50ZXJlZCBvbiAoSQ0KPj4+Pj4+Pj4+IGtub3cgeW91IHNhaWQg
-dXBzdHJlYW0pIGJ1dCBJIGp1c3Qgd2FudCB0byBkb3VibGUgY2hlY2sgc28gdGhhdCBJIGNhbg0K
-Pj4+Pj4+Pj4+IGxvb2sgYXQgdGhlIGNvcnJlY3Qgc291cmNlIGNvZGUuDQo+Pj4+Pj4+PiANCj4+
-Pj4+Pj4+IHY0LjEuMTIgKHN0YWJsZSkgSSB0aGluay4NCj4+Pj4+Pj4gDQo+Pj4+Pj4+IEFsc28s
-IGNhbiB5b3Ugc2hhcmUgdGhlIG5ldHdvcmsgdHJhY2U/DQo+Pj4+Pj4gDQo+Pj4+Pj4gSGkgQ2h1
-Y2ssDQo+Pj4+Pj4gDQo+Pj4+Pj4gSSB3YXMgZmluYWxseSBhYmxlIHRvIHJlcHJvZHVjZSB0aGUg
-Y29uZGl0aW9uIHlvdSB3ZXJlIHNlZWluZyAoaS5lLiwNCj4+Pj4+PiB0aGUgdXNlIG9mIHRoZSBz
-YW1lIGNvbnRleHQgZm9yIGRpZmZlcmVudCBnc3Mgc2VydmljZXMpLg0KPj4+Pj4+IA0KPj4+Pj4+
-IEkgZW5hYmxlZCBycGNkZWJ1ZyBycGMgYXV0aCBhbmQgSSBjYW4gc2VlIHRoYXQgdGhlIDJuZCBy
-ZXF1ZXN0IGVuZHMgdXANCj4+Pj4+PiBmaW5kaW5nIGEgZ3NzX3VwY2FsbCBtZXNzYWdlIGJlY2F1
-c2UgaXQncyBqdXN0IG1hdGNoZWQgYnkgdGhlIHVpZC4NCj4+Pj4+PiBUaGVyZSBpcyBldmVuIGEg
-Y29tbWVudCBpbiBhdXRoX2dzcy9hdXRoX2dzcy5jIGluIGdzc19hZGRfbXNnKCkgc2F5aW5nDQo+
-Pj4+Pj4gdGhhdCBpZiB0aGVyZSBpcyB1cGNhbGwgZm9yIGFuIHVpZCB0aGVuIGl0IHdvbid0IGFk
-ZCBhbm90aGVyIHVwY2FsbC4NCj4+Pj4+PiBTbyBJIHRoaW5rIHRoZSBkZWNpc2lvbiBpcyBtYWRl
-IHJpZ2h0IHRoZXJlIHRvIHNoYXJlIHRoZSBzYW1lIGNvbnRleHQNCj4+Pj4+PiBubyBtYXR0ZXIg
-dGhlIGdzcyBzZXJ2aWNlLg0KPj4+Pj4gDQo+Pj4+PiBJZiBJIHVuZGVyc3RhbmQgY29ycmVjdGx5
-LCB0aGF0J3MganVzdCB3aGF0IEFuZHkgcHJlZGljdGVkLg0KPj4+Pj4gDQo+Pj4+PiBUaGF0IGNo
-ZWNrIG5lZWRzIHRvIGJlIGNoYW5nZWQgdG8gYWxsb3cgYW5vdGhlciB1cGNhbGwgdG8gYmUNCj4+
-Pj4+IHF1ZXVlZCBpZiB0aGUgVUlEIG1hdGNoZXMgYnV0IHRoZSBHU1Mgc2VydmljZSBkb2VzIG5v
-dC4NCj4+Pj4gDQo+Pj4+IFlvdSBzaG91bGQgYmUgYWJsZSB0byB1c2UgdGhlIHNhbWUgY29udGV4
-dCB3aXRoIGRpZmZlcmVudCBzZXJ2aWNlcy4NCj4+Pj4gDQo+Pj4+IEFwb2xvZ2llcywgSSBoYXZl
-bid0IGNhdWdodCB1cCB3aXRoIHRoZSB3aG9sZSBkaXNjdXNzaW9uIGFib3ZlLCB0aGlzIG9uZQ0K
-Pj4+PiBwb2ludCBqdXN0IGp1bXBlZCBvdXQgYXQgbWUuICBJZiB5b3UncmUgdHJ5aW5nIHRvIHJl
-cXVlc3QgYSB3aG9sZSBuZXcNCj4+Pj4gZ3NzIGNvbnRleHQganVzdCBzbyB5b3UgY2FuIHVzZSwg
-ZS5nLiwgaW50ZWdyaXR5IGluc3RlYWQgb2YgcHJpdmFjeSwNCj4+Pj4gdGhlbiBzb21ldGhpbmcn
-cyB3cm9uZy4NCj4+PiANCj4+PiBUaGUgY2xpZW50IGNvZGUgaGFzIHNlcGFyYXRlIGdzc19jcmVk
-IGNhY2hlcyAoYW5kIHNvIHNlcGFyYXRlIGdzc19jb250ZXjigJlzKSBwZXIgZ3NzX2F1dGgsIHdo
-aWNoIGlzIHBlciBzZXJ2aWNlLiBBRkFJSyB0aGUgY2xpZW50IGhhcyBhbHdheXMgb2J0YWluZWQg
-YSBzZXBhcmF0ZSBjb250ZXh0IHBlciBzZXJ2aWNlIHBlciBzZXJ2ZXIuIFdoaWxlIHdlIGNhbiB1
-c2UgdGhlIHNhbWUgZ3NzIGNvbnRleHQgd2l0aCBkaWZmZXJlbnQgc2VydmljZXMsIHRoYXQgaXMg
-bm90IHRoZSBkZXNpZ24gY2hvaWNlLg0KPj4gDQo+PiBHaXZlbiB0aGUgY3VycmVudCBjb2RlLCBJ
-J2Qgc2F5IHRoYXQgaXQncyBub3QgY2xlYXIgd2hhdCB0aGUgZGVzaWduDQo+PiBjaG9pY2UgaXMu
-IFRoZSB1cGNhbGwgY29kZSBzdGF0ZXMgdGhhdCBpdCB3aWxsIG5vdCBkbyBhbm90aGVyIHVwY2Fs
-bA0KPj4gZm9yIGEgZ2l2ZW4gVUlEIGlmIGFub3RoZXIgdXBjYWxsIGlzIGFscmVhZHkgbWFkZS4g
-U28gaXQncyBwdXJlbHkNCj4+IHRpbWluZyBsdWNrIHRoYXQgd2UgaGF2ZSB0d28gZGlmZmVyZW50
-IGNvbnRleHRzIGZvciB0aGUgbW91bnQgd2hlbg0KPj4gc2VjPWtyYjUgYW5kIHRoZSBkZWZhdWx0
-IGZvciBsZWFzZSBvcGVyYXRpb25zIGlzICJpbnRlZ3JpdHkiLiBBbmQgd2UNCj4+IGRvbid0IHBh
-c3MgdGhlIEdTUyBzZXJ2aWNlIGJldHdlZW4gdGhlIGtlcm5lbCBhbmQgZ3NzZCBhbmQgdGh1cyBu
-byB3YXkNCj4+IGZvciB1cyB0byB0aWUgdGhlIHVwY2FsbCB0byB0aGUgc2VydmljZS4NCj4gDQo+
-IFdlbGwsIEkgd3JvdGUgc29tZSBvZiB0aGUgdXBjYWxsIGNvZGUsIGFuZCBJIHRob3VnaCAoaW5j
-b3JyZWN0bHksIEkNCj4gZ3Vlc3MpIHRoYXQgY2xpZW50cyBjb3VsZCByZXVzZSB0aGUgc2FtZSBj
-b250ZXh0IHdpdGggbXVsdGlwbGUgc2VydmljZXMsDQo+IHNvIHRoZSBjb25mdXNpb24gbWF5IGp1
-c3QgYmUgbXkgZmF1bHQuICBTbyB5b3UgdGhpbmsgdGhlIG9ubHkgZml4IGhlcmUNCj4gaXMgdG8g
-a2V5IHRoZSB1cGNhbGxzDQoNCk5vIG5lZWQgdG8gY2hhbmdlIHRoZSB1cGNhbGwsIGp1c3QgZG9u
-4oCZIHQgbGV0IHRoZSAybmQgcmVxdWVzdCB1c2UgdGhlIG5ldyBkb3duY2FsbCBnc3MgY29udGV4
-dCB1bmxlc3MgdGhlIHNlcnZpY2UgYXNzaWduZWQgdG8gaXQgbWF0Y2hlcy4gSSB3b3VsZCB0aGlu
-ayB5b3UgY291bGQgc2V0IHRoZSBzZXJ2aWNlIGltbWVkaWF0ZWx5IHVwb24gcmVjZWl2aW5nIHRo
-ZSBuZXcgZ3NzIGNvbnRleHQgZG93biBjYWxsIGFuZCB0aGVuIGNoZWNrIGl0IHByaW9yIHRvIHRo
-ZSAybmQgcmVxdWVzdCB1c2VzIGl0Lg0KDQrigJQ+QW5keQ0KDQoNCg0KPiBvbiAobWVjaGFuaXNt
-LCBzZXJ2aWNlLCB1aWQpIGluc3RlYWQgb2YganVzdA0KPiAobWVjaGFuaXNtLCB1aWQpPw0KPiAN
-Cj4gLS1iLg0KDQo=
+On Wed, Aug 3, 2016 at 4:06 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
+> On Wed, Aug 03, 2016 at 03:56:31PM -0400, Olga Kornievskaia wrote:
+>> On Wed, Aug 3, 2016 at 2:53 PM, Adamson, Andy
+>> <William.Adamson@netapp.com> wrote:
+>> >
+>> >> On Aug 2, 2016, at 2:06 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
+>> >>
+>> >> On Fri, Jul 29, 2016 at 12:38:34PM -0400, Chuck Lever wrote:
+>> >>>
+>> >>>> On Jul 29, 2016, at 12:27 PM, Olga Kornievskaia <aglo@umich.edu> wrote:
+>> >>>>
+>> >>>> On Mon, Jul 25, 2016 at 2:18 PM, Olga Kornievskaia <aglo@umich.edu> wrote:
+>> >>>>> On Thu, Jul 21, 2016 at 5:32 PM, Chuck Lever <chuck.lever@oracle.com> wrote:
+>> >>>>>>
+>> >>>>>>
+>> >>>>>>> On Jul 21, 2016, at 10:46 PM, Olga Kornievskaia <aglo@umich.edu> wrote:
+>> >>>>>>>
+>> >>>>>>>> On Thu, Jul 21, 2016 at 3:54 PM, Olga Kornievskaia <aglo@umich.edu> wrote:
+>> >>>>>>>>> On Thu, Jul 21, 2016 at 1:56 PM, Chuck Lever <chuck.lever@oracle.com> wrote:
+>> >>>>>>>>>
+>> >>>>>>>>>> On Jul 21, 2016, at 6:04 PM, Olga Kornievskaia <aglo@umich.edu> wrote:
+>> >>>>>>>>>>
+>> >>>>>>>>>> On Thu, Jul 21, 2016 at 2:55 AM, Chuck Lever <chuck.lever@oracle.com> wrote:
+>> >>>>>>>>>>>
+>> >>>>>>>>>>>> On Jul 20, 2016, at 6:56 PM, Olga Kornievskaia <aglo@umich.edu> wrote:
+>> >>>>>>>>>>>>
+>> >>>>>>>>>>>> On Wed, Jul 20, 2016 at 5:14 AM, Adamson, Andy
+>> >>>>>>>>>>>> <William.Adamson@netapp.com> wrote:
+>> >>>>>>>>>>>>>
+>> >>>>>>>>>>>>>> On Jul 19, 2016, at 10:51 AM, Chuck Lever <chuck.lever@oracle.com> wrote:
+>> >>>>>>>>>>>>>>
+>> >>>>>>>>>>>>>> Hi Andy-
+>> >>>>>>>>>>>>>>
+>> >>>>>>>>>>>>>> Thanks for taking the time to discuss this with me. I've
+>> >>>>>>>>>>>>>> copied linux-nfs to make this e-mail also an upstream bug
+>> >>>>>>>>>>>>>> report.
+>> >>>>>>>>>>>>>>
+>> >>>>>>>>>>>>>> As we saw in the network capture, recovery of GSS contexts
+>> >>>>>>>>>>>>>> after a server reboot fails in certain cases with NFSv4.0
+>> >>>>>>>>>>>>>> and NFSv4.1 mount points.
+>> >>>>>>>>>>>>>>
+>> >>>>>>>>>>>>>> The reproducer is a simple program that generates one NFS
+>> >>>>>>>>>>>>>> WRITE periodically, run while the server repeatedly reboots
+>> >>>>>>>>>>>>>> (or one cluster head fails over to the other and back). The
+>> >>>>>>>>>>>>>> goal of the reproducer is to identify problems with state
+>> >>>>>>>>>>>>>> recovery without a lot of other I/O going on to clutter up
+>> >>>>>>>>>>>>>> the network capture.
+>> >>>>>>>>>>>>>>
+>> >>>>>>>>>>>>>> In the failing case, sec=krb5 is specified on the mount
+>> >>>>>>>>>>>>>> point, and the reproducer is run as root. We've found this
+>> >>>>>>>>>>>>>> combination fails with both NFSv4.0 and NFSv4.1.
+>> >>>>>>>>>>>>>>
+>> >>>>>>>>>>>>>> At mount time, the client establishes a GSS context for
+>> >>>>>>>>>>>>>> lease management operations, which is bound to the client's
+>> >>>>>>>>>>>>>> NFS service principal and uses GSS service "integrity."
+>> >>>>>>>>>>>>>> Call this GSS context 1.
+>> >>>>>>>>>>>>>>
+>> >>>>>>>>>>>>>> When the reproducer starts, a second GSS context is
+>> >>>>>>>>>>>>>> established for NFS operations associated with that user.
+>> >>>>>>>>>>>>>> Since the reproducer is running as root, this context is
+>> >>>>>>>>>>>>>> also bound to the client's NFS service principal, but it
+>> >>>>>>>>>>>>>> uses the GSS service "none" (reflecting the explicit
+>> >>>>>>>>>>>>>> request for "sec=krb5"). Call this GSS context 2.
+>> >>>>>>>>>>>>>>
+>> >>>>>>>>>>>>>> After the server reboots, the client re-establishes a TCP
+>> >>>>>>>>>>>>>> connection with the server, and performs a RENEW
+>> >>>>>>>>>>>>>> operation using context 1. Thanks to the server reboot,
+>> >>>>>>>>>>>>>> contexts 1 and 2 are now stale. The server thus rejects
+>> >>>>>>>>>>>>>> the RPC with RPCSEC_GSS_CTXPROBLEM.
+>> >>>>>>>>>>>>>>
+>> >>>>>>>>>>>>>> The client performs a GSS_INIT_SEC_CONTEXT via an NFSv4
+>> >>>>>>>>>>>>>> NULL operation. Call this GSS context 3.
+>> >>>>>>>>>>>>>>
+>> >>>>>>>>>>>>>> Interestingly, the client does not resend the RENEW
+>> >>>>>>>>>>>>>> operation at this point (if it did, we wouldn't see this
+>> >>>>>>>>>>>>>> problem at all).
+>> >>>>>>>>>>>>>>
+>> >>>>>>>>>>>>>> The client then attempts to resume the reproducer workload.
+>> >>>>>>>>>>>>>> It sends an NFSv4 WRITE operation, using the first available
+>> >>>>>>>>>>>>>> GSS context in UID 0's credential cache, which is context 3,
+>> >>>>>>>>>>>>>> already bound to the client's NFS service principal. But GSS
+>> >>>>>>>>>>>>>> service "none" is used for this operation, since it is on
+>> >>>>>>>>>>>>>> behalf of the mount where sec=krb5 was specified.
+>> >>>>>>>>>>>>>>
+>> >>>>>>>>>>>>>> The RPC is accepted, but the server reports
+>> >>>>>>>>>>>>>> NFS4ERR_STALE_STATEID, since it has recently rebooted.
+>> >>>>>>>>>>>>>>
+>> >>>>>>>>>>>>>> The client responds by attempting state recovery. The
+>> >>>>>>>>>>>>>> first operation it tries is another RENEW. Since this is
+>> >>>>>>>>>>>>>> a lease management operation, the client looks in UID 0's
+>> >>>>>>>>>>>>>> credential cache again and finds the recently established
+>> >>>>>>>>>>>>>> context 3. It tries the RENEW operation using GSS context
+>> >>>>>>>>>>>>>> 3 with GSS service "integrity."
+>> >>>>>>>>>>>>>>
+>> >>>>>>>>>>>>>> The server rejects the RENEW RPC with AUTH_FAILED, and
+>> >>>>>>>>>>>>>> the client reports that "check lease failed" and
+>> >>>>>>>>>>>>>> terminates state recovery.
+>> >>>>>>>>>>>>>>
+>> >>>>>>>>>>>>>> The client re-drives the WRITE operation with the stale
+>> >>>>>>>>>>>>>> stateid with predictable results. The client again tries
+>> >>>>>>>>>>>>>> to recover state by sending a RENEW, and still uses the
+>> >>>>>>>>>>>>>> same GSS context 3 with service "integrity" and gets the
+>> >>>>>>>>>>>>>> same result. A (perhaps slow-motion) STALE_STATEID loop
+>> >>>>>>>>>>>>>> ensues, and the client mount point is deadlocked.
+>> >>>>>>>>>>>>>>
+>> >>>>>>>>>>>>>> Your analysis was that because the reproducer is run as
+>> >>>>>>>>>>>>>> root, both the reproducer's I/O operations, and lease
+>> >>>>>>>>>>>>>> management operations, attempt to use the same GSS context
+>> >>>>>>>>>>>>>> in UID 0's credential cache, but each uses different GSS
+>> >>>>>>>>>>>>>> services.
+>> >>>>>>>>>>>>>
+>> >>>>>>>>>>>>> As RFC2203 states, "In a creation request, the seq_num and service fields are undefined and both must be ignored by the server”
+>> >>>>>>>>>>>>> So a context creation request while kicked off by an operation with a service attached (e.g. WRITE uses rpc_gss_svc_none and RENEW uses rpc_gss_svc_integrity), can be used by either service level.
+>> >>>>>>>>>>>>> AFAICS a single GSS context could in theory be used for all service levels, but in practice, GSS contexts are restricted to a service level (by client? by server? ) once they are used.
+>> >>>>>>>>>>>>>
+>> >>>>>>>>>>>>>
+>> >>>>>>>>>>>>>> The key issue seems to be why, when the mount
+>> >>>>>>>>>>>>>> is first established, the client is correctly able to
+>> >>>>>>>>>>>>>> establish two separate GSS contexts for UID 0; but after
+>> >>>>>>>>>>>>>> a server reboot, the client attempts to use the same GSS
+>> >>>>>>>>>>>>>> context with two different GSS services.
+>> >>>>>>>>>>>>>
+>> >>>>>>>>>>>>> I speculate that it is a race between the WRITE and the RENEW to use the same newly created GSS context that has not been used yet, and so has no assigned service level, and the two requests race to set the service level.
+>> >>>>>>>>>>>>
+>> >>>>>>>>>>>> I agree with Andy. It must be a tight race.
+>> >>>>>>>>>>>
+>> >>>>>>>>>>> In one capture I see something like this after
+>> >>>>>>>>>>> the server restarts:
+>> >>>>>>>>>>>
+>> >>>>>>>>>>> SYN
+>> >>>>>>>>>>> SYN, ACK
+>> >>>>>>>>>>> ACK
+>> >>>>>>>>>>> C WRITE
+>> >>>>>>>>>>> C SEQUENCE
+>> >>>>>>>>>>> R WRITE -> CTX_PROBLEM
+>> >>>>>>>>>>> R SEQUENCE -> CTX_PROBLEM
+>> >>>>>>>>>>> C NULL (KRB5_AP_REQ)
+>> >>>>>>>>>>> R NULL (KRB5_AP_REP)
+>> >>>>>>>>>>> C WRITE
+>> >>>>>>>>>>> C SEQUENCE
+>> >>>>>>>>>>> R WRITE -> NFS4ERR_STALE_STATEID
+>> >>>>>>>>>>> R SEQUENCE -> AUTH_FAILED
+>> >>>>>>>>>>>
+>> >>>>>>>>>>> Andy's theory neatly explains this behavior.
+>> >>>>>>>>>>>
+>> >>>>>>>>>>>
+>> >>>>>>>>>>>> I have tried to reproduce
+>> >>>>>>>>>>>> your scenario and in my tests of rebooting the server all recover
+>> >>>>>>>>>>>> correctly. In my case, if RENEW was the one hitting the AUTH_ERR then
+>> >>>>>>>>>>>> the new context is established and then RENEW using integrity service
+>> >>>>>>>>>>>> is retried with the new context which gets ERR_STALE_CLIENTID which
+>> >>>>>>>>>>>> then client recovers from. If it's an operation (I have a GETATTR)
+>> >>>>>>>>>>>> that gets AUTH_ERR, then it gets new context and is retried using none
+>> >>>>>>>>>>>> service. Then RENEW gets its own AUTH_ERR as it uses a different
+>> >>>>>>>>>>>> context, a new context is gotten, RENEW is retried over integrity and
+>> >>>>>>>>>>>> gets ERR_STALE_CLIENTID which it recovers from.
+>> >>>>>>>>>>>
+>> >>>>>>>>>>> If one operation is allowed to complete, then
+>> >>>>>>>>>>> the other will always recognize that another
+>> >>>>>>>>>>> fresh GSS context is needed. If two are sent
+>> >>>>>>>>>>> at the same time, they race and one always
+>> >>>>>>>>>>> fails.
+>> >>>>>>>>>>>
+>> >>>>>>>>>>> Helen's test includes a second idle mount point
+>> >>>>>>>>>>> (sec=krb5i) and maybe that is needed to trigger
+>> >>>>>>>>>>> the race?
+>> >>>>>>>>>>
+>> >>>>>>>>>> Chuck, any chance to get "rpcdebug -m rpc auth" output during the
+>> >>>>>>>>>> failure (gssd optionally) (i realize that it might alter the timings
+>> >>>>>>>>>> and not hit the issue but worth a shot)?
+>> >>>>>>>>>
+>> >>>>>>>>> I'm sure that's fine. An internal tester hit this,
+>> >>>>>>>>> not a customer, so I will ask.
+>> >>>>>>>>>
+>> >>>>>>>>> I agree, though, that timing might be a problem:
+>> >>>>>>>>> these systems all have real serial consoles via
+>> >>>>>>>>> iLOM, so /v/l/m traffic does bring everything to
+>> >>>>>>>>> a standstill.
+>> >>>>>>>>>
+>> >>>>>>>>> Meanwhile, what's you're opinion about AUTH_FAILED?
+>> >>>>>>>>> Should the server return RPCSEC_GSS_CTXPROBLEM
+>> >>>>>>>>> in this case instead? If it did, do you think
+>> >>>>>>>>> the Linux client would recover by creating a
+>> >>>>>>>>> replacement GSS context?
+>> >>>>>>>>
+>> >>>>>>>> Ah, yes, I equated AUTH_FAILED And AUTH_ERROR in my mind. If client
+>> >>>>>>>> receives the reason as AUTH_FAILED as oppose to CTXPROBLEM it will
+>> >>>>>>>> fail with EIO error and will not try to create a new GSS context. So
+>> >>>>>>>> yes, I believe it would help if the server returns any of the
+>> >>>>>>>> following errors:
+>> >>>>>>>>              case RPC_AUTH_REJECTEDCRED:
+>> >>>>>>>>              case RPC_AUTH_REJECTEDVERF:
+>> >>>>>>>>              case RPCSEC_GSS_CREDPROBLEM:
+>> >>>>>>>>              case RPCSEC_GSS_CTXPROBLEM:
+>> >>>>>>>>
+>> >>>>>>>> then the client will recreate the context.
+>> >>>>>>>
+>> >>>>>>> Also in my testing, I can see that credential cache is per gss flavor.
+>> >>>>>>> Just to check, what kernel version is this problem encountered on (I
+>> >>>>>>> know you said upstream) but I just want to double check so that I can
+>> >>>>>>> look at the correct source code.
+>> >>>>>>
+>> >>>>>> v4.1.12 (stable) I think.
+>> >>>>>
+>> >>>>> Also, can you share the network trace?
+>> >>>>
+>> >>>> Hi Chuck,
+>> >>>>
+>> >>>> I was finally able to reproduce the condition you were seeing (i.e.,
+>> >>>> the use of the same context for different gss services).
+>> >>>>
+>> >>>> I enabled rpcdebug rpc auth and I can see that the 2nd request ends up
+>> >>>> finding a gss_upcall message because it's just matched by the uid.
+>> >>>> There is even a comment in auth_gss/auth_gss.c in gss_add_msg() saying
+>> >>>> that if there is upcall for an uid then it won't add another upcall.
+>> >>>> So I think the decision is made right there to share the same context
+>> >>>> no matter the gss service.
+>> >>>
+>> >>> If I understand correctly, that's just what Andy predicted.
+>> >>>
+>> >>> That check needs to be changed to allow another upcall to be
+>> >>> queued if the UID matches but the GSS service does not.
+>> >>
+>> >> You should be able to use the same context with different services.
+>> >>
+>> >> Apologies, I haven't caught up with the whole discussion above, this one
+>> >> point just jumped out at me.  If you're trying to request a whole new
+>> >> gss context just so you can use, e.g., integrity instead of privacy,
+>> >> then something's wrong.
+>> >
+>> > The client code has separate gss_cred caches (and so separate gss_contex’s) per gss_auth, which is per service. AFAIK the client has always obtained a separate context per service per server. While we can use the same gss context with different services, that is not the design choice.
+>>
+>> Given the current code, I'd say that it's not clear what the design
+>> choice is. The upcall code states that it will not do another upcall
+>> for a given UID if another upcall is already made. So it's purely
+>> timing luck that we have two different contexts for the mount when
+>> sec=krb5 and the default for lease operations is "integrity". And we
+>> don't pass the GSS service between the kernel and gssd and thus no way
+>> for us to tie the upcall to the service.
+>
+> Well, I wrote some of the upcall code, and I though (incorrectly, I
+> guess) that clients could reuse the same context with multiple services,
+> so the confusion may just be my fault.  So you think the only fix here
+> is to key the upcalls on (mechanism, service, uid) instead of just
+> (mechanism, uid)?
+
+Right now I'm going to check on the 'calling to gssd' if the existing
+upcall has the same UIDs but not the same gss service, then still
+place another upcall. But the lookup from the gssd is just based on
+the UID caz that's all we have. Maybe that'll work?
+
+>
+> --b.
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
