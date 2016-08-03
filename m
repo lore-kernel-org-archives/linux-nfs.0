@@ -1,141 +1,238 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from userp1040.oracle.com ([156.151.31.81]:51616 "EHLO
-	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753319AbcHCSQS (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 3 Aug 2016 14:16:18 -0400
-Content-Type: text/plain; charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 9.3 \(3124\))
-Subject: Re: [RFC PATCH] sunrpc: do not allow process to freeze within RPC state machine
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <1470245777.13804.34.camel@redhat.com>
-Date: Wed, 3 Aug 2016 14:14:06 -0400
-Cc: Stanislav Kinsburskiy <skinsbursky@virtuozzo.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        Anna Schumaker <anna.schumaker@netapp.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
-        gorcunov@virtuozzo.com, davem@davemloft.net, devel@openvz.org
-Message-Id: <620AF2C6-E9CD-4CD2-A2E5-C4EB0343A8C2@oracle.com>
-References: <20160803165412.22407.47399.stgit@localhost.localdomain> <1470245777.13804.34.camel@redhat.com>
-To: Jeff Layton <jlayton@redhat.com>
+Received: from mx144.netapp.com ([216.240.21.25]:30054 "EHLO mx144.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752575AbcHCS6L (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 3 Aug 2016 14:58:11 -0400
+From: "Adamson, Andy" <William.Adamson@netapp.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: Chuck Lever <chuck.lever@oracle.com>, Olga Kornievskaia <aglo@umich.edu>,
+        "Adamson, Andy" <William.Adamson@netapp.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: Problem re-establishing GSS contexts after a server reboot
+Date: Wed, 3 Aug 2016 18:53:38 +0000
+Message-ID: <C351F835-AD54-4E43-A831-3C00126E2739@netapp.com>
+References: <CAN-5tyE_yrspQDpftO1Ls9LxjaZPHGe9hH0V65xaFuNEyrbwig@mail.gmail.com>
+ <6BC3C19E-6F44-4C38-BF26-3E9A948D305C@oracle.com>
+ <CAN-5tyHWPvNeq-0kNErTY+nENqkfrbGXwutcMgaOYcvYL3fX7Q@mail.gmail.com>
+ <42FD3D54-79F9-485A-A2B4-FBFA65C2FC16@oracle.com>
+ <CAN-5tyGJ8YUesk-KBTK+DFqaRV9wNvjQp-4EkcoU4J58EmM7_A@mail.gmail.com>
+ <CAN-5tyEyg4aYXc5Zr-diLHxhkU1VnvYaaKS01qCH-vtxa8qzqg@mail.gmail.com>
+ <CC879117-DCA5-4BC1-8A70-FA859546CD01@oracle.com>
+ <CAN-5tyGnK7Zus2pBg5dO__XZ8NrM_h9k4EXzJERneHBBnn6VPg@mail.gmail.com>
+ <CAN-5tyGJQXrLm7L98UgJULT=gQjsuVM86KGwEkGPuS8GBTAGrA@mail.gmail.com>
+ <9E866C53-DD4B-419E-ABF0-64B04609C066@oracle.com>
+ <20160802180642.GA15324@fieldses.org>
+In-Reply-To: <20160802180642.GA15324@fieldses.org>
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-> On Aug 3, 2016, at 1:36 PM, Jeff Layton <jlayton@redhat.com> wrote:
-> 
-> On Wed, 2016-08-03 at 20:54 +0400, Stanislav Kinsburskiy wrote:
->> Otherwise freezer cgroup state might never become "FROZEN".
->> 
->> Here is a deadlock scheme for 2 processes in one freezer cgroup,
->> which is
->> freezing:
->> 
->> CPU 0                                   CPU 1
->> --------                                --------
->> do_last
->> inode_lock(dir->d_inode)
->> vfs_create
->> nfs_create
->> ...
->> __rpc_execute
->> rpc_wait_bit_killable
->> __refrigerator
->>                                         do_last
->>                                         inode_lock(dir->d_inode)
->> 
->> So, the problem is that one process takes directory inode mutex,
->> executes
->> creation request and goes to refrigerator.
->> Another one waits till directory lock is released, remains "thawed"
->> and thus
->> freezer cgroup state never becomes "FROZEN".
->> 
->> Notes:
->> 1) Interesting, that this is not a pure deadlock: one can thaw cgroup
->> and then
->> freeze it again.
->> 2) The issue was introduced by commit
->> d310310cbff18ec385c6ab4d58f33b100192a96a.
->> 3) This patch is not aimed to fix the issue, but to show the problem
->> root.
->> Look like this problem moght be applicable to other hunks from the
->> commit,
->> mentioned above.
->> 
->> 
->> Signed-off-by: Stanislav Kinsburskiy <skinsbursky@virtuozzo.com>
->> ---
->>  net/sunrpc/sched.c |    1 -
->>  1 file changed, 1 deletion(-)
->> 
->> diff --git a/net/sunrpc/sched.c b/net/sunrpc/sched.c
->> index 9ae5885..ec7ccc1 100644
->> --- a/net/sunrpc/sched.c
->> +++ b/net/sunrpc/sched.c
->> @@ -253,7 +253,6 @@ EXPORT_SYMBOL_GPL(rpc_destroy_wait_queue);
->>  
->>  static int rpc_wait_bit_killable(struct wait_bit_key *key, int mode)
->>  {
->> -	freezable_schedule_unsafe();
->>  	if (signal_pending_state(mode, current))
->>  		return -ERESTARTSYS;
->>  	return 0;
->> 
-> 
-> Ummm...so what actually does the schedule() with this patch?
-> 
-> There was a bit of discussion on this recently -- see the thread with
-> this subject line in linux-nfs:
-> 
->     Re: Hang due to nfs letting tasks freeze with locked inodes
-> 
-> Basically it comes down to this:
-> 
-> All of the proposals so far to fix this problem just switch out the
-> freezable_schedule_unsafe (and similar) calls for those that don't
-> allow the process to freeze.
-> 
-> The problem there is that we originally added that stuff in response to
-> bug reports about machines failing to suspend. What often happens is
-> that the network interfaces come down, and then the freezer runs over
-> all of the processes, which never return because they're blocked
-> waiting on the server to reply.
-> 
-> ...shrug...
-> 
-> Maybe we should just go ahead and do it (and to CIFS as well). Just be
-> prepared for the inevitable complaints about laptops failing to suspend
-> once you do.
-> 
-> Part of the fix, I think is to add a return code (similar to
-> ERESTARTSYS) that gets interpreted near the kernel-userland boundary
-> as: "allow the process to be frozen, and then retry the call once it's
-> resumed".
-> 
-> With that, filesystems could return the error code when they want to
-> redrive the entire syscall from that level. That won't work for non-
-> idempotent requests though. We'd need to do something more elaborate
-> there.
-
-There is a similar problem with NFS/RDMA.
-
-An IB device driver can be unloaded at any time. The driver performs
-an upcall to all consumers to request that they release all RDMA
-resources associated with the device.
-
-For RPC-over-RDMA, we could kill all running RPCs at this point. Or,
-the RPCs could be suspended in place. The latter is desirable if the
-device were re-inserted, or there were an alternate path to the NFS
-server: then there would be no workload interruption.
-
-Signals would have to be allowed so that ^C and soft timeouts still
-work as expected.
-
-
---
-Chuck Lever
-
-
-
+DQo+IE9uIEF1ZyAyLCAyMDE2LCBhdCAyOjA2IFBNLCBKLiBCcnVjZSBGaWVsZHMgPGJmaWVsZHNA
+ZmllbGRzZXMub3JnPiB3cm90ZToNCj4gDQo+IE9uIEZyaSwgSnVsIDI5LCAyMDE2IGF0IDEyOjM4
+OjM0UE0gLTA0MDAsIENodWNrIExldmVyIHdyb3RlOg0KPj4gDQo+Pj4gT24gSnVsIDI5LCAyMDE2
+LCBhdCAxMjoyNyBQTSwgT2xnYSBLb3JuaWV2c2thaWEgPGFnbG9AdW1pY2guZWR1PiB3cm90ZToN
+Cj4+PiANCj4+PiBPbiBNb24sIEp1bCAyNSwgMjAxNiBhdCAyOjE4IFBNLCBPbGdhIEtvcm5pZXZz
+a2FpYSA8YWdsb0B1bWljaC5lZHU+IHdyb3RlOg0KPj4+PiBPbiBUaHUsIEp1bCAyMSwgMjAxNiBh
+dCA1OjMyIFBNLCBDaHVjayBMZXZlciA8Y2h1Y2subGV2ZXJAb3JhY2xlLmNvbT4gd3JvdGU6DQo+
+Pj4+PiANCj4+Pj4+IA0KPj4+Pj4+IE9uIEp1bCAyMSwgMjAxNiwgYXQgMTA6NDYgUE0sIE9sZ2Eg
+S29ybmlldnNrYWlhIDxhZ2xvQHVtaWNoLmVkdT4gd3JvdGU6DQo+Pj4+Pj4gDQo+Pj4+Pj4+IE9u
+IFRodSwgSnVsIDIxLCAyMDE2IGF0IDM6NTQgUE0sIE9sZ2EgS29ybmlldnNrYWlhIDxhZ2xvQHVt
+aWNoLmVkdT4gd3JvdGU6DQo+Pj4+Pj4+PiBPbiBUaHUsIEp1bCAyMSwgMjAxNiBhdCAxOjU2IFBN
+LCBDaHVjayBMZXZlciA8Y2h1Y2subGV2ZXJAb3JhY2xlLmNvbT4gd3JvdGU6DQo+Pj4+Pj4+PiAN
+Cj4+Pj4+Pj4+PiBPbiBKdWwgMjEsIDIwMTYsIGF0IDY6MDQgUE0sIE9sZ2EgS29ybmlldnNrYWlh
+IDxhZ2xvQHVtaWNoLmVkdT4gd3JvdGU6DQo+Pj4+Pj4+Pj4gDQo+Pj4+Pj4+Pj4gT24gVGh1LCBK
+dWwgMjEsIDIwMTYgYXQgMjo1NSBBTSwgQ2h1Y2sgTGV2ZXIgPGNodWNrLmxldmVyQG9yYWNsZS5j
+b20+IHdyb3RlOg0KPj4+Pj4+Pj4+PiANCj4+Pj4+Pj4+Pj4+IE9uIEp1bCAyMCwgMjAxNiwgYXQg
+Njo1NiBQTSwgT2xnYSBLb3JuaWV2c2thaWEgPGFnbG9AdW1pY2guZWR1PiB3cm90ZToNCj4+Pj4+
+Pj4+Pj4+IA0KPj4+Pj4+Pj4+Pj4gT24gV2VkLCBKdWwgMjAsIDIwMTYgYXQgNToxNCBBTSwgQWRh
+bXNvbiwgQW5keQ0KPj4+Pj4+Pj4+Pj4gPFdpbGxpYW0uQWRhbXNvbkBuZXRhcHAuY29tPiB3cm90
+ZToNCj4+Pj4+Pj4+Pj4+PiANCj4+Pj4+Pj4+Pj4+Pj4gT24gSnVsIDE5LCAyMDE2LCBhdCAxMDo1
+MSBBTSwgQ2h1Y2sgTGV2ZXIgPGNodWNrLmxldmVyQG9yYWNsZS5jb20+IHdyb3RlOg0KPj4+Pj4+
+Pj4+Pj4+PiANCj4+Pj4+Pj4+Pj4+Pj4gSGkgQW5keS0NCj4+Pj4+Pj4+Pj4+Pj4gDQo+Pj4+Pj4+
+Pj4+Pj4+IFRoYW5rcyBmb3IgdGFraW5nIHRoZSB0aW1lIHRvIGRpc2N1c3MgdGhpcyB3aXRoIG1l
+LiBJJ3ZlDQo+Pj4+Pj4+Pj4+Pj4+IGNvcGllZCBsaW51eC1uZnMgdG8gbWFrZSB0aGlzIGUtbWFp
+bCBhbHNvIGFuIHVwc3RyZWFtIGJ1Zw0KPj4+Pj4+Pj4+Pj4+PiByZXBvcnQuDQo+Pj4+Pj4+Pj4+
+Pj4+IA0KPj4+Pj4+Pj4+Pj4+PiBBcyB3ZSBzYXcgaW4gdGhlIG5ldHdvcmsgY2FwdHVyZSwgcmVj
+b3Zlcnkgb2YgR1NTIGNvbnRleHRzDQo+Pj4+Pj4+Pj4+Pj4+IGFmdGVyIGEgc2VydmVyIHJlYm9v
+dCBmYWlscyBpbiBjZXJ0YWluIGNhc2VzIHdpdGggTkZTdjQuMA0KPj4+Pj4+Pj4+Pj4+PiBhbmQg
+TkZTdjQuMSBtb3VudCBwb2ludHMuDQo+Pj4+Pj4+Pj4+Pj4+IA0KPj4+Pj4+Pj4+Pj4+PiBUaGUg
+cmVwcm9kdWNlciBpcyBhIHNpbXBsZSBwcm9ncmFtIHRoYXQgZ2VuZXJhdGVzIG9uZSBORlMNCj4+
+Pj4+Pj4+Pj4+Pj4gV1JJVEUgcGVyaW9kaWNhbGx5LCBydW4gd2hpbGUgdGhlIHNlcnZlciByZXBl
+YXRlZGx5IHJlYm9vdHMNCj4+Pj4+Pj4+Pj4+Pj4gKG9yIG9uZSBjbHVzdGVyIGhlYWQgZmFpbHMg
+b3ZlciB0byB0aGUgb3RoZXIgYW5kIGJhY2spLiBUaGUNCj4+Pj4+Pj4+Pj4+Pj4gZ29hbCBvZiB0
+aGUgcmVwcm9kdWNlciBpcyB0byBpZGVudGlmeSBwcm9ibGVtcyB3aXRoIHN0YXRlDQo+Pj4+Pj4+
+Pj4+Pj4+IHJlY292ZXJ5IHdpdGhvdXQgYSBsb3Qgb2Ygb3RoZXIgSS9PIGdvaW5nIG9uIHRvIGNs
+dXR0ZXIgdXANCj4+Pj4+Pj4+Pj4+Pj4gdGhlIG5ldHdvcmsgY2FwdHVyZS4NCj4+Pj4+Pj4+Pj4+
+Pj4gDQo+Pj4+Pj4+Pj4+Pj4+IEluIHRoZSBmYWlsaW5nIGNhc2UsIHNlYz1rcmI1IGlzIHNwZWNp
+ZmllZCBvbiB0aGUgbW91bnQNCj4+Pj4+Pj4+Pj4+Pj4gcG9pbnQsIGFuZCB0aGUgcmVwcm9kdWNl
+ciBpcyBydW4gYXMgcm9vdC4gV2UndmUgZm91bmQgdGhpcw0KPj4+Pj4+Pj4+Pj4+PiBjb21iaW5h
+dGlvbiBmYWlscyB3aXRoIGJvdGggTkZTdjQuMCBhbmQgTkZTdjQuMS4NCj4+Pj4+Pj4+Pj4+Pj4g
+DQo+Pj4+Pj4+Pj4+Pj4+IEF0IG1vdW50IHRpbWUsIHRoZSBjbGllbnQgZXN0YWJsaXNoZXMgYSBH
+U1MgY29udGV4dCBmb3INCj4+Pj4+Pj4+Pj4+Pj4gbGVhc2UgbWFuYWdlbWVudCBvcGVyYXRpb25z
+LCB3aGljaCBpcyBib3VuZCB0byB0aGUgY2xpZW50J3MNCj4+Pj4+Pj4+Pj4+Pj4gTkZTIHNlcnZp
+Y2UgcHJpbmNpcGFsIGFuZCB1c2VzIEdTUyBzZXJ2aWNlICJpbnRlZ3JpdHkuIg0KPj4+Pj4+Pj4+
+Pj4+PiBDYWxsIHRoaXMgR1NTIGNvbnRleHQgMS4NCj4+Pj4+Pj4+Pj4+Pj4gDQo+Pj4+Pj4+Pj4+
+Pj4+IFdoZW4gdGhlIHJlcHJvZHVjZXIgc3RhcnRzLCBhIHNlY29uZCBHU1MgY29udGV4dCBpcw0K
+Pj4+Pj4+Pj4+Pj4+PiBlc3RhYmxpc2hlZCBmb3IgTkZTIG9wZXJhdGlvbnMgYXNzb2NpYXRlZCB3
+aXRoIHRoYXQgdXNlci4NCj4+Pj4+Pj4+Pj4+Pj4gU2luY2UgdGhlIHJlcHJvZHVjZXIgaXMgcnVu
+bmluZyBhcyByb290LCB0aGlzIGNvbnRleHQgaXMNCj4+Pj4+Pj4+Pj4+Pj4gYWxzbyBib3VuZCB0
+byB0aGUgY2xpZW50J3MgTkZTIHNlcnZpY2UgcHJpbmNpcGFsLCBidXQgaXQNCj4+Pj4+Pj4+Pj4+
+Pj4gdXNlcyB0aGUgR1NTIHNlcnZpY2UgIm5vbmUiIChyZWZsZWN0aW5nIHRoZSBleHBsaWNpdA0K
+Pj4+Pj4+Pj4+Pj4+PiByZXF1ZXN0IGZvciAic2VjPWtyYjUiKS4gQ2FsbCB0aGlzIEdTUyBjb250
+ZXh0IDIuDQo+Pj4+Pj4+Pj4+Pj4+IA0KPj4+Pj4+Pj4+Pj4+PiBBZnRlciB0aGUgc2VydmVyIHJl
+Ym9vdHMsIHRoZSBjbGllbnQgcmUtZXN0YWJsaXNoZXMgYSBUQ1ANCj4+Pj4+Pj4+Pj4+Pj4gY29u
+bmVjdGlvbiB3aXRoIHRoZSBzZXJ2ZXIsIGFuZCBwZXJmb3JtcyBhIFJFTkVXDQo+Pj4+Pj4+Pj4+
+Pj4+IG9wZXJhdGlvbiB1c2luZyBjb250ZXh0IDEuIFRoYW5rcyB0byB0aGUgc2VydmVyIHJlYm9v
+dCwNCj4+Pj4+Pj4+Pj4+Pj4gY29udGV4dHMgMSBhbmQgMiBhcmUgbm93IHN0YWxlLiBUaGUgc2Vy
+dmVyIHRodXMgcmVqZWN0cw0KPj4+Pj4+Pj4+Pj4+PiB0aGUgUlBDIHdpdGggUlBDU0VDX0dTU19D
+VFhQUk9CTEVNLg0KPj4+Pj4+Pj4+Pj4+PiANCj4+Pj4+Pj4+Pj4+Pj4gVGhlIGNsaWVudCBwZXJm
+b3JtcyBhIEdTU19JTklUX1NFQ19DT05URVhUIHZpYSBhbiBORlN2NA0KPj4+Pj4+Pj4+Pj4+PiBO
+VUxMIG9wZXJhdGlvbi4gQ2FsbCB0aGlzIEdTUyBjb250ZXh0IDMuDQo+Pj4+Pj4+Pj4+Pj4+IA0K
+Pj4+Pj4+Pj4+Pj4+PiBJbnRlcmVzdGluZ2x5LCB0aGUgY2xpZW50IGRvZXMgbm90IHJlc2VuZCB0
+aGUgUkVORVcNCj4+Pj4+Pj4+Pj4+Pj4gb3BlcmF0aW9uIGF0IHRoaXMgcG9pbnQgKGlmIGl0IGRp
+ZCwgd2Ugd291bGRuJ3Qgc2VlIHRoaXMNCj4+Pj4+Pj4+Pj4+Pj4gcHJvYmxlbSBhdCBhbGwpLg0K
+Pj4+Pj4+Pj4+Pj4+PiANCj4+Pj4+Pj4+Pj4+Pj4gVGhlIGNsaWVudCB0aGVuIGF0dGVtcHRzIHRv
+IHJlc3VtZSB0aGUgcmVwcm9kdWNlciB3b3JrbG9hZC4NCj4+Pj4+Pj4+Pj4+Pj4gSXQgc2VuZHMg
+YW4gTkZTdjQgV1JJVEUgb3BlcmF0aW9uLCB1c2luZyB0aGUgZmlyc3QgYXZhaWxhYmxlDQo+Pj4+
+Pj4+Pj4+Pj4+IEdTUyBjb250ZXh0IGluIFVJRCAwJ3MgY3JlZGVudGlhbCBjYWNoZSwgd2hpY2gg
+aXMgY29udGV4dCAzLA0KPj4+Pj4+Pj4+Pj4+PiBhbHJlYWR5IGJvdW5kIHRvIHRoZSBjbGllbnQn
+cyBORlMgc2VydmljZSBwcmluY2lwYWwuIEJ1dCBHU1MNCj4+Pj4+Pj4+Pj4+Pj4gc2VydmljZSAi
+bm9uZSIgaXMgdXNlZCBmb3IgdGhpcyBvcGVyYXRpb24sIHNpbmNlIGl0IGlzIG9uDQo+Pj4+Pj4+
+Pj4+Pj4+IGJlaGFsZiBvZiB0aGUgbW91bnQgd2hlcmUgc2VjPWtyYjUgd2FzIHNwZWNpZmllZC4N
+Cj4+Pj4+Pj4+Pj4+Pj4gDQo+Pj4+Pj4+Pj4+Pj4+IFRoZSBSUEMgaXMgYWNjZXB0ZWQsIGJ1dCB0
+aGUgc2VydmVyIHJlcG9ydHMNCj4+Pj4+Pj4+Pj4+Pj4gTkZTNEVSUl9TVEFMRV9TVEFURUlELCBz
+aW5jZSBpdCBoYXMgcmVjZW50bHkgcmVib290ZWQuDQo+Pj4+Pj4+Pj4+Pj4+IA0KPj4+Pj4+Pj4+
+Pj4+PiBUaGUgY2xpZW50IHJlc3BvbmRzIGJ5IGF0dGVtcHRpbmcgc3RhdGUgcmVjb3ZlcnkuIFRo
+ZQ0KPj4+Pj4+Pj4+Pj4+PiBmaXJzdCBvcGVyYXRpb24gaXQgdHJpZXMgaXMgYW5vdGhlciBSRU5F
+Vy4gU2luY2UgdGhpcyBpcw0KPj4+Pj4+Pj4+Pj4+PiBhIGxlYXNlIG1hbmFnZW1lbnQgb3BlcmF0
+aW9uLCB0aGUgY2xpZW50IGxvb2tzIGluIFVJRCAwJ3MNCj4+Pj4+Pj4+Pj4+Pj4gY3JlZGVudGlh
+bCBjYWNoZSBhZ2FpbiBhbmQgZmluZHMgdGhlIHJlY2VudGx5IGVzdGFibGlzaGVkDQo+Pj4+Pj4+
+Pj4+Pj4+IGNvbnRleHQgMy4gSXQgdHJpZXMgdGhlIFJFTkVXIG9wZXJhdGlvbiB1c2luZyBHU1Mg
+Y29udGV4dA0KPj4+Pj4+Pj4+Pj4+PiAzIHdpdGggR1NTIHNlcnZpY2UgImludGVncml0eS4iDQo+
+Pj4+Pj4+Pj4+Pj4+IA0KPj4+Pj4+Pj4+Pj4+PiBUaGUgc2VydmVyIHJlamVjdHMgdGhlIFJFTkVX
+IFJQQyB3aXRoIEFVVEhfRkFJTEVELCBhbmQNCj4+Pj4+Pj4+Pj4+Pj4gdGhlIGNsaWVudCByZXBv
+cnRzIHRoYXQgImNoZWNrIGxlYXNlIGZhaWxlZCIgYW5kDQo+Pj4+Pj4+Pj4+Pj4+IHRlcm1pbmF0
+ZXMgc3RhdGUgcmVjb3ZlcnkuDQo+Pj4+Pj4+Pj4+Pj4+IA0KPj4+Pj4+Pj4+Pj4+PiBUaGUgY2xp
+ZW50IHJlLWRyaXZlcyB0aGUgV1JJVEUgb3BlcmF0aW9uIHdpdGggdGhlIHN0YWxlDQo+Pj4+Pj4+
+Pj4+Pj4+IHN0YXRlaWQgd2l0aCBwcmVkaWN0YWJsZSByZXN1bHRzLiBUaGUgY2xpZW50IGFnYWlu
+IHRyaWVzDQo+Pj4+Pj4+Pj4+Pj4+IHRvIHJlY292ZXIgc3RhdGUgYnkgc2VuZGluZyBhIFJFTkVX
+LCBhbmQgc3RpbGwgdXNlcyB0aGUNCj4+Pj4+Pj4+Pj4+Pj4gc2FtZSBHU1MgY29udGV4dCAzIHdp
+dGggc2VydmljZSAiaW50ZWdyaXR5IiBhbmQgZ2V0cyB0aGUNCj4+Pj4+Pj4+Pj4+Pj4gc2FtZSBy
+ZXN1bHQuIEEgKHBlcmhhcHMgc2xvdy1tb3Rpb24pIFNUQUxFX1NUQVRFSUQgbG9vcA0KPj4+Pj4+
+Pj4+Pj4+PiBlbnN1ZXMsIGFuZCB0aGUgY2xpZW50IG1vdW50IHBvaW50IGlzIGRlYWRsb2NrZWQu
+DQo+Pj4+Pj4+Pj4+Pj4+IA0KPj4+Pj4+Pj4+Pj4+PiBZb3VyIGFuYWx5c2lzIHdhcyB0aGF0IGJl
+Y2F1c2UgdGhlIHJlcHJvZHVjZXIgaXMgcnVuIGFzDQo+Pj4+Pj4+Pj4+Pj4+IHJvb3QsIGJvdGgg
+dGhlIHJlcHJvZHVjZXIncyBJL08gb3BlcmF0aW9ucywgYW5kIGxlYXNlDQo+Pj4+Pj4+Pj4+Pj4+
+IG1hbmFnZW1lbnQgb3BlcmF0aW9ucywgYXR0ZW1wdCB0byB1c2UgdGhlIHNhbWUgR1NTIGNvbnRl
+eHQNCj4+Pj4+Pj4+Pj4+Pj4gaW4gVUlEIDAncyBjcmVkZW50aWFsIGNhY2hlLCBidXQgZWFjaCB1
+c2VzIGRpZmZlcmVudCBHU1MNCj4+Pj4+Pj4+Pj4+Pj4gc2VydmljZXMuDQo+Pj4+Pj4+Pj4+Pj4g
+DQo+Pj4+Pj4+Pj4+Pj4gQXMgUkZDMjIwMyBzdGF0ZXMsICJJbiBhIGNyZWF0aW9uIHJlcXVlc3Qs
+IHRoZSBzZXFfbnVtIGFuZCBzZXJ2aWNlIGZpZWxkcyBhcmUgdW5kZWZpbmVkIGFuZCBib3RoIG11
+c3QgYmUgaWdub3JlZCBieSB0aGUgc2VydmVy4oCdDQo+Pj4+Pj4+Pj4+Pj4gU28gYSBjb250ZXh0
+IGNyZWF0aW9uIHJlcXVlc3Qgd2hpbGUga2lja2VkIG9mZiBieSBhbiBvcGVyYXRpb24gd2l0aCBh
+IHNlcnZpY2UgYXR0YWNoZWQgKGUuZy4gV1JJVEUgdXNlcyBycGNfZ3NzX3N2Y19ub25lIGFuZCBS
+RU5FVyB1c2VzIHJwY19nc3Nfc3ZjX2ludGVncml0eSksIGNhbiBiZSB1c2VkIGJ5IGVpdGhlciBz
+ZXJ2aWNlIGxldmVsLg0KPj4+Pj4+Pj4+Pj4+IEFGQUlDUyBhIHNpbmdsZSBHU1MgY29udGV4dCBj
+b3VsZCBpbiB0aGVvcnkgYmUgdXNlZCBmb3IgYWxsIHNlcnZpY2UgbGV2ZWxzLCBidXQgaW4gcHJh
+Y3RpY2UsIEdTUyBjb250ZXh0cyBhcmUgcmVzdHJpY3RlZCB0byBhIHNlcnZpY2UgbGV2ZWwgKGJ5
+IGNsaWVudD8gYnkgc2VydmVyPyApIG9uY2UgdGhleSBhcmUgdXNlZC4NCj4+Pj4+Pj4+Pj4+PiAN
+Cj4+Pj4+Pj4+Pj4+PiANCj4+Pj4+Pj4+Pj4+Pj4gVGhlIGtleSBpc3N1ZSBzZWVtcyB0byBiZSB3
+aHksIHdoZW4gdGhlIG1vdW50DQo+Pj4+Pj4+Pj4+Pj4+IGlzIGZpcnN0IGVzdGFibGlzaGVkLCB0
+aGUgY2xpZW50IGlzIGNvcnJlY3RseSBhYmxlIHRvDQo+Pj4+Pj4+Pj4+Pj4+IGVzdGFibGlzaCB0
+d28gc2VwYXJhdGUgR1NTIGNvbnRleHRzIGZvciBVSUQgMDsgYnV0IGFmdGVyDQo+Pj4+Pj4+Pj4+
+Pj4+IGEgc2VydmVyIHJlYm9vdCwgdGhlIGNsaWVudCBhdHRlbXB0cyB0byB1c2UgdGhlIHNhbWUg
+R1NTDQo+Pj4+Pj4+Pj4+Pj4+IGNvbnRleHQgd2l0aCB0d28gZGlmZmVyZW50IEdTUyBzZXJ2aWNl
+cy4NCj4+Pj4+Pj4+Pj4+PiANCj4+Pj4+Pj4+Pj4+PiBJIHNwZWN1bGF0ZSB0aGF0IGl0IGlzIGEg
+cmFjZSBiZXR3ZWVuIHRoZSBXUklURSBhbmQgdGhlIFJFTkVXIHRvIHVzZSB0aGUgc2FtZSBuZXds
+eSBjcmVhdGVkIEdTUyBjb250ZXh0IHRoYXQgaGFzIG5vdCBiZWVuIHVzZWQgeWV0LCBhbmQgc28g
+aGFzIG5vIGFzc2lnbmVkIHNlcnZpY2UgbGV2ZWwsIGFuZCB0aGUgdHdvIHJlcXVlc3RzIHJhY2Ug
+dG8gc2V0IHRoZSBzZXJ2aWNlIGxldmVsLg0KPj4+Pj4+Pj4+Pj4gDQo+Pj4+Pj4+Pj4+PiBJIGFn
+cmVlIHdpdGggQW5keS4gSXQgbXVzdCBiZSBhIHRpZ2h0IHJhY2UuDQo+Pj4+Pj4+Pj4+IA0KPj4+
+Pj4+Pj4+PiBJbiBvbmUgY2FwdHVyZSBJIHNlZSBzb21ldGhpbmcgbGlrZSB0aGlzIGFmdGVyDQo+
+Pj4+Pj4+Pj4+IHRoZSBzZXJ2ZXIgcmVzdGFydHM6DQo+Pj4+Pj4+Pj4+IA0KPj4+Pj4+Pj4+PiBT
+WU4NCj4+Pj4+Pj4+Pj4gU1lOLCBBQ0sNCj4+Pj4+Pj4+Pj4gQUNLDQo+Pj4+Pj4+Pj4+IEMgV1JJ
+VEUNCj4+Pj4+Pj4+Pj4gQyBTRVFVRU5DRQ0KPj4+Pj4+Pj4+PiBSIFdSSVRFIC0+IENUWF9QUk9C
+TEVNDQo+Pj4+Pj4+Pj4+IFIgU0VRVUVOQ0UgLT4gQ1RYX1BST0JMRU0NCj4+Pj4+Pj4+Pj4gQyBO
+VUxMIChLUkI1X0FQX1JFUSkNCj4+Pj4+Pj4+Pj4gUiBOVUxMIChLUkI1X0FQX1JFUCkNCj4+Pj4+
+Pj4+Pj4gQyBXUklURQ0KPj4+Pj4+Pj4+PiBDIFNFUVVFTkNFDQo+Pj4+Pj4+Pj4+IFIgV1JJVEUg
+LT4gTkZTNEVSUl9TVEFMRV9TVEFURUlEDQo+Pj4+Pj4+Pj4+IFIgU0VRVUVOQ0UgLT4gQVVUSF9G
+QUlMRUQNCj4+Pj4+Pj4+Pj4gDQo+Pj4+Pj4+Pj4+IEFuZHkncyB0aGVvcnkgbmVhdGx5IGV4cGxh
+aW5zIHRoaXMgYmVoYXZpb3IuDQo+Pj4+Pj4+Pj4+IA0KPj4+Pj4+Pj4+PiANCj4+Pj4+Pj4+Pj4+
+IEkgaGF2ZSB0cmllZCB0byByZXByb2R1Y2UNCj4+Pj4+Pj4+Pj4+IHlvdXIgc2NlbmFyaW8gYW5k
+IGluIG15IHRlc3RzIG9mIHJlYm9vdGluZyB0aGUgc2VydmVyIGFsbCByZWNvdmVyDQo+Pj4+Pj4+
+Pj4+PiBjb3JyZWN0bHkuIEluIG15IGNhc2UsIGlmIFJFTkVXIHdhcyB0aGUgb25lIGhpdHRpbmcg
+dGhlIEFVVEhfRVJSIHRoZW4NCj4+Pj4+Pj4+Pj4+IHRoZSBuZXcgY29udGV4dCBpcyBlc3RhYmxp
+c2hlZCBhbmQgdGhlbiBSRU5FVyB1c2luZyBpbnRlZ3JpdHkgc2VydmljZQ0KPj4+Pj4+Pj4+Pj4g
+aXMgcmV0cmllZCB3aXRoIHRoZSBuZXcgY29udGV4dCB3aGljaCBnZXRzIEVSUl9TVEFMRV9DTElF
+TlRJRCB3aGljaA0KPj4+Pj4+Pj4+Pj4gdGhlbiBjbGllbnQgcmVjb3ZlcnMgZnJvbS4gSWYgaXQn
+cyBhbiBvcGVyYXRpb24gKEkgaGF2ZSBhIEdFVEFUVFIpDQo+Pj4+Pj4+Pj4+PiB0aGF0IGdldHMg
+QVVUSF9FUlIsIHRoZW4gaXQgZ2V0cyBuZXcgY29udGV4dCBhbmQgaXMgcmV0cmllZCB1c2luZyBu
+b25lDQo+Pj4+Pj4+Pj4+PiBzZXJ2aWNlLiBUaGVuIFJFTkVXIGdldHMgaXRzIG93biBBVVRIX0VS
+UiBhcyBpdCB1c2VzIGEgZGlmZmVyZW50DQo+Pj4+Pj4+Pj4+PiBjb250ZXh0LCBhIG5ldyBjb250
+ZXh0IGlzIGdvdHRlbiwgUkVORVcgaXMgcmV0cmllZCBvdmVyIGludGVncml0eSBhbmQNCj4+Pj4+
+Pj4+Pj4+IGdldHMgRVJSX1NUQUxFX0NMSUVOVElEIHdoaWNoIGl0IHJlY292ZXJzIGZyb20uDQo+
+Pj4+Pj4+Pj4+IA0KPj4+Pj4+Pj4+PiBJZiBvbmUgb3BlcmF0aW9uIGlzIGFsbG93ZWQgdG8gY29t
+cGxldGUsIHRoZW4NCj4+Pj4+Pj4+Pj4gdGhlIG90aGVyIHdpbGwgYWx3YXlzIHJlY29nbml6ZSB0
+aGF0IGFub3RoZXINCj4+Pj4+Pj4+Pj4gZnJlc2ggR1NTIGNvbnRleHQgaXMgbmVlZGVkLiBJZiB0
+d28gYXJlIHNlbnQNCj4+Pj4+Pj4+Pj4gYXQgdGhlIHNhbWUgdGltZSwgdGhleSByYWNlIGFuZCBv
+bmUgYWx3YXlzDQo+Pj4+Pj4+Pj4+IGZhaWxzLg0KPj4+Pj4+Pj4+PiANCj4+Pj4+Pj4+Pj4gSGVs
+ZW4ncyB0ZXN0IGluY2x1ZGVzIGEgc2Vjb25kIGlkbGUgbW91bnQgcG9pbnQNCj4+Pj4+Pj4+Pj4g
+KHNlYz1rcmI1aSkgYW5kIG1heWJlIHRoYXQgaXMgbmVlZGVkIHRvIHRyaWdnZXINCj4+Pj4+Pj4+
+Pj4gdGhlIHJhY2U/DQo+Pj4+Pj4+Pj4gDQo+Pj4+Pj4+Pj4gQ2h1Y2ssIGFueSBjaGFuY2UgdG8g
+Z2V0ICJycGNkZWJ1ZyAtbSBycGMgYXV0aCIgb3V0cHV0IGR1cmluZyB0aGUNCj4+Pj4+Pj4+PiBm
+YWlsdXJlIChnc3NkIG9wdGlvbmFsbHkpIChpIHJlYWxpemUgdGhhdCBpdCBtaWdodCBhbHRlciB0
+aGUgdGltaW5ncw0KPj4+Pj4+Pj4+IGFuZCBub3QgaGl0IHRoZSBpc3N1ZSBidXQgd29ydGggYSBz
+aG90KT8NCj4+Pj4+Pj4+IA0KPj4+Pj4+Pj4gSSdtIHN1cmUgdGhhdCdzIGZpbmUuIEFuIGludGVy
+bmFsIHRlc3RlciBoaXQgdGhpcywNCj4+Pj4+Pj4+IG5vdCBhIGN1c3RvbWVyLCBzbyBJIHdpbGwg
+YXNrLg0KPj4+Pj4+Pj4gDQo+Pj4+Pj4+PiBJIGFncmVlLCB0aG91Z2gsIHRoYXQgdGltaW5nIG1p
+Z2h0IGJlIGEgcHJvYmxlbToNCj4+Pj4+Pj4+IHRoZXNlIHN5c3RlbXMgYWxsIGhhdmUgcmVhbCBz
+ZXJpYWwgY29uc29sZXMgdmlhDQo+Pj4+Pj4+PiBpTE9NLCBzbyAvdi9sL20gdHJhZmZpYyBkb2Vz
+IGJyaW5nIGV2ZXJ5dGhpbmcgdG8NCj4+Pj4+Pj4+IGEgc3RhbmRzdGlsbC4NCj4+Pj4+Pj4+IA0K
+Pj4+Pj4+Pj4gTWVhbndoaWxlLCB3aGF0J3MgeW91J3JlIG9waW5pb24gYWJvdXQgQVVUSF9GQUlM
+RUQ/DQo+Pj4+Pj4+PiBTaG91bGQgdGhlIHNlcnZlciByZXR1cm4gUlBDU0VDX0dTU19DVFhQUk9C
+TEVNDQo+Pj4+Pj4+PiBpbiB0aGlzIGNhc2UgaW5zdGVhZD8gSWYgaXQgZGlkLCBkbyB5b3UgdGhp
+bmsNCj4+Pj4+Pj4+IHRoZSBMaW51eCBjbGllbnQgd291bGQgcmVjb3ZlciBieSBjcmVhdGluZyBh
+DQo+Pj4+Pj4+PiByZXBsYWNlbWVudCBHU1MgY29udGV4dD8NCj4+Pj4+Pj4gDQo+Pj4+Pj4+IEFo
+LCB5ZXMsIEkgZXF1YXRlZCBBVVRIX0ZBSUxFRCBBbmQgQVVUSF9FUlJPUiBpbiBteSBtaW5kLiBJ
+ZiBjbGllbnQNCj4+Pj4+Pj4gcmVjZWl2ZXMgdGhlIHJlYXNvbiBhcyBBVVRIX0ZBSUxFRCBhcyBv
+cHBvc2UgdG8gQ1RYUFJPQkxFTSBpdCB3aWxsDQo+Pj4+Pj4+IGZhaWwgd2l0aCBFSU8gZXJyb3Ig
+YW5kIHdpbGwgbm90IHRyeSB0byBjcmVhdGUgYSBuZXcgR1NTIGNvbnRleHQuIFNvDQo+Pj4+Pj4+
+IHllcywgSSBiZWxpZXZlIGl0IHdvdWxkIGhlbHAgaWYgdGhlIHNlcnZlciByZXR1cm5zIGFueSBv
+ZiB0aGUNCj4+Pj4+Pj4gZm9sbG93aW5nIGVycm9yczoNCj4+Pj4+Pj4gICAgICAgICAgICAgIGNh
+c2UgUlBDX0FVVEhfUkVKRUNURURDUkVEOg0KPj4+Pj4+PiAgICAgICAgICAgICAgY2FzZSBSUENf
+QVVUSF9SRUpFQ1RFRFZFUkY6DQo+Pj4+Pj4+ICAgICAgICAgICAgICBjYXNlIFJQQ1NFQ19HU1Nf
+Q1JFRFBST0JMRU06DQo+Pj4+Pj4+ICAgICAgICAgICAgICBjYXNlIFJQQ1NFQ19HU1NfQ1RYUFJP
+QkxFTToNCj4+Pj4+Pj4gDQo+Pj4+Pj4+IHRoZW4gdGhlIGNsaWVudCB3aWxsIHJlY3JlYXRlIHRo
+ZSBjb250ZXh0Lg0KPj4+Pj4+IA0KPj4+Pj4+IEFsc28gaW4gbXkgdGVzdGluZywgSSBjYW4gc2Vl
+IHRoYXQgY3JlZGVudGlhbCBjYWNoZSBpcyBwZXIgZ3NzIGZsYXZvci4NCj4+Pj4+PiBKdXN0IHRv
+IGNoZWNrLCB3aGF0IGtlcm5lbCB2ZXJzaW9uIGlzIHRoaXMgcHJvYmxlbSBlbmNvdW50ZXJlZCBv
+biAoSQ0KPj4+Pj4+IGtub3cgeW91IHNhaWQgdXBzdHJlYW0pIGJ1dCBJIGp1c3Qgd2FudCB0byBk
+b3VibGUgY2hlY2sgc28gdGhhdCBJIGNhbg0KPj4+Pj4+IGxvb2sgYXQgdGhlIGNvcnJlY3Qgc291
+cmNlIGNvZGUuDQo+Pj4+PiANCj4+Pj4+IHY0LjEuMTIgKHN0YWJsZSkgSSB0aGluay4NCj4+Pj4g
+DQo+Pj4+IEFsc28sIGNhbiB5b3Ugc2hhcmUgdGhlIG5ldHdvcmsgdHJhY2U/DQo+Pj4gDQo+Pj4g
+SGkgQ2h1Y2ssDQo+Pj4gDQo+Pj4gSSB3YXMgZmluYWxseSBhYmxlIHRvIHJlcHJvZHVjZSB0aGUg
+Y29uZGl0aW9uIHlvdSB3ZXJlIHNlZWluZyAoaS5lLiwNCj4+PiB0aGUgdXNlIG9mIHRoZSBzYW1l
+IGNvbnRleHQgZm9yIGRpZmZlcmVudCBnc3Mgc2VydmljZXMpLg0KPj4+IA0KPj4+IEkgZW5hYmxl
+ZCBycGNkZWJ1ZyBycGMgYXV0aCBhbmQgSSBjYW4gc2VlIHRoYXQgdGhlIDJuZCByZXF1ZXN0IGVu
+ZHMgdXANCj4+PiBmaW5kaW5nIGEgZ3NzX3VwY2FsbCBtZXNzYWdlIGJlY2F1c2UgaXQncyBqdXN0
+IG1hdGNoZWQgYnkgdGhlIHVpZC4NCj4+PiBUaGVyZSBpcyBldmVuIGEgY29tbWVudCBpbiBhdXRo
+X2dzcy9hdXRoX2dzcy5jIGluIGdzc19hZGRfbXNnKCkgc2F5aW5nDQo+Pj4gdGhhdCBpZiB0aGVy
+ZSBpcyB1cGNhbGwgZm9yIGFuIHVpZCB0aGVuIGl0IHdvbid0IGFkZCBhbm90aGVyIHVwY2FsbC4N
+Cj4+PiBTbyBJIHRoaW5rIHRoZSBkZWNpc2lvbiBpcyBtYWRlIHJpZ2h0IHRoZXJlIHRvIHNoYXJl
+IHRoZSBzYW1lIGNvbnRleHQNCj4+PiBubyBtYXR0ZXIgdGhlIGdzcyBzZXJ2aWNlLg0KPj4gDQo+
+PiBJZiBJIHVuZGVyc3RhbmQgY29ycmVjdGx5LCB0aGF0J3MganVzdCB3aGF0IEFuZHkgcHJlZGlj
+dGVkLg0KPj4gDQo+PiBUaGF0IGNoZWNrIG5lZWRzIHRvIGJlIGNoYW5nZWQgdG8gYWxsb3cgYW5v
+dGhlciB1cGNhbGwgdG8gYmUNCj4+IHF1ZXVlZCBpZiB0aGUgVUlEIG1hdGNoZXMgYnV0IHRoZSBH
+U1Mgc2VydmljZSBkb2VzIG5vdC4NCj4gDQo+IFlvdSBzaG91bGQgYmUgYWJsZSB0byB1c2UgdGhl
+IHNhbWUgY29udGV4dCB3aXRoIGRpZmZlcmVudCBzZXJ2aWNlcy4NCj4gDQo+IEFwb2xvZ2llcywg
+SSBoYXZlbid0IGNhdWdodCB1cCB3aXRoIHRoZSB3aG9sZSBkaXNjdXNzaW9uIGFib3ZlLCB0aGlz
+IG9uZQ0KPiBwb2ludCBqdXN0IGp1bXBlZCBvdXQgYXQgbWUuICBJZiB5b3UncmUgdHJ5aW5nIHRv
+IHJlcXVlc3QgYSB3aG9sZSBuZXcNCj4gZ3NzIGNvbnRleHQganVzdCBzbyB5b3UgY2FuIHVzZSwg
+ZS5nLiwgaW50ZWdyaXR5IGluc3RlYWQgb2YgcHJpdmFjeSwNCj4gdGhlbiBzb21ldGhpbmcncyB3
+cm9uZy4NCg0KVGhlIGNsaWVudCBjb2RlIGhhcyBzZXBhcmF0ZSBnc3NfY3JlZCBjYWNoZXMgKGFu
+ZCBzbyBzZXBhcmF0ZSBnc3NfY29udGV44oCZcykgcGVyIGdzc19hdXRoLCB3aGljaCBpcyBwZXIg
+c2VydmljZS4gQUZBSUsgdGhlIGNsaWVudCBoYXMgYWx3YXlzIG9idGFpbmVkIGEgc2VwYXJhdGUg
+Y29udGV4dCBwZXIgc2VydmljZSBwZXIgc2VydmVyLiBXaGlsZSB3ZSBjYW4gdXNlIHRoZSBzYW1l
+IGdzcyBjb250ZXh0IHdpdGggZGlmZmVyZW50IHNlcnZpY2VzLCB0aGF0IGlzIG5vdCB0aGUgZGVz
+aWduIGNob2ljZS4NCg0K4oCUPkFuZHkNCg0KDQo+IA0KPiAtLWIuDQoNCg==
