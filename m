@@ -1,85 +1,75 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from us-smtp-delivery-194.mimecast.com ([216.205.24.194]:48221 "EHLO
-	us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1755167AbcHCWTJ convert rfc822-to-8bit
-	(ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 3 Aug 2016 18:19:09 -0400
-From: Trond Myklebust <trondmy@primarydata.com>
-To: Kornievskaia Olga <kolga@netapp.com>
-CC: Trond Myklebust <trondmy@primarydata.com>,
-        List Linux NFS Mailing <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 1/1] SUNRPC: allow for upcalls for same uid but different
- gss service
-Date: Wed, 3 Aug 2016 22:19:02 +0000
-Message-ID: <D13C7BE9-5431-46F0-B0A7-CE731E00DB5F@primarydata.com>
-References: <1470260832-15662-1-git-send-email-kolga@netapp.com>
-In-Reply-To: <1470260832-15662-1-git-send-email-kolga@netapp.com>
+Received: from mx2.suse.de ([195.135.220.15]:37858 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932669AbcHCXxl (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 3 Aug 2016 19:53:41 -0400
+From: NeilBrown <neilb@suse.com>
+To: Trond Myklebust <trondmy@primarydata.com>
+Date: Thu, 04 Aug 2016 09:33:15 +1000
+Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: [PATCH] Revert "SUNRPC: xs_sock_mark_closed() does not need to trigger socket autoclose"
+Message-ID: <87a8gtpgw4.fsf@notabene.neil.brown.name>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=WINDOWS-1252
+Content-Type: multipart/signed; boundary="=-=-=";
+	micalg=pgp-sha256; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+--=-=-=
+Content-Type: text/plain
+Content-Transfer-Encoding: quoted-printable
 
-> On Aug 3, 2016, at 17:47, Olga Kornievskaia <kolga@netapp.com> wrote:
-> 
-> It's possible to have simultaneous upcalls for the same UIDs but
-> different GSS service. In that case, we need to allow for the
-> upcall to gssd to proceed so that not the same context is used
-> by two different GSS services. Some servers lock the use of context
-> to the GSS service.
-> 
-> Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
-> ---
-> net/sunrpc/auth_gss/auth_gss.c | 8 +++++---
-> 1 file changed, 5 insertions(+), 3 deletions(-)
-> 
-> diff --git a/net/sunrpc/auth_gss/auth_gss.c b/net/sunrpc/auth_gss/auth_gss.c
-> index 23c8e7c..5b60112 100644
-> --- a/net/sunrpc/auth_gss/auth_gss.c
-> +++ b/net/sunrpc/auth_gss/auth_gss.c
-> @@ -340,12 +340,14 @@ gss_release_msg(struct gss_upcall_msg *gss_msg)
-> }
-> 
-> static struct gss_upcall_msg *
-> -__gss_find_upcall(struct rpc_pipe *pipe, kuid_t uid)
-> +__gss_find_upcall(struct rpc_pipe *pipe, kuid_t uid, int service)
 
-Can you please make that a pointer to a const struct gss_auth *?
+This reverts commit 4b0ab51db32eba0f48b7618254742f143364a28d.
 
-> {
-> 	struct gss_upcall_msg *pos;
-> 	list_for_each_entry(pos, &pipe->in_downcall, list) {
-> 		if (!uid_eq(pos->uid, uid))
-> 			continue;
-> +		if (service != -1 && pos->auth->service != service)
+This change causes 'rpc.nfsd' to hang for long time if rpcbind is not
+available.
+If
+   --no-nfs-version 2 --no-nfs-version 3
+is given, the delay is about 6.5 minutes.  When trying to register
+all versions, the delay is over half an hour.
+Before this commit, and after reverting it, nfsd fails (when v3 is
+requested) or succeeds (when only v4 is requested) immediately.
 
-…so that we don’t need a “magic” value for “service” here. Just test for auth == NULL.
+Signed-off-by: NeilBrown <neilb@suse.com>
+=2D--
+ net/sunrpc/xprtsock.c | 1 +
+ 1 file changed, 1 insertion(+)
 
-> +			continue;
-> 		atomic_inc(&pos->count);
-> 		dprintk("RPC:       %s found msg %p\n", __func__, pos);
-> 		return pos;
-> @@ -365,7 +367,7 @@ gss_add_msg(struct gss_upcall_msg *gss_msg)
-> 	struct gss_upcall_msg *old;
-> 
-> 	spin_lock(&pipe->lock);
-> -	old = __gss_find_upcall(pipe, gss_msg->uid);
-> +	old = __gss_find_upcall(pipe, gss_msg->uid, gss_msg->auth->service);
-> 	if (old == NULL) {
-> 		atomic_inc(&gss_msg->count);
-> 		list_add(&gss_msg->list, &pipe->in_downcall);
-> @@ -714,7 +716,7 @@ gss_pipe_downcall(struct file *filp, const char __user *src, size_t mlen)
-> 	err = -ENOENT;
-> 	/* Find a matching upcall */
-> 	spin_lock(&pipe->lock);
-> -	gss_msg = __gss_find_upcall(pipe, uid);
-> +	gss_msg = __gss_find_upcall(pipe, uid, -1);
-> 	if (gss_msg == NULL) {
-> 		spin_unlock(&pipe->lock);
-> 		goto err_put_ctx;
-> -- 
-> 1.8.3.1
-> 
+diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
+index 111767ab124a..2a938055e95b 100644
+=2D-- a/net/sunrpc/xprtsock.c
++++ b/net/sunrpc/xprtsock.c
+@@ -795,6 +795,7 @@ static void xs_sock_mark_closed(struct rpc_xprt *xprt)
+ 	xs_sock_reset_connection_flags(xprt);
+ 	/* Mark transport as closed and wake up all pending tasks */
+ 	xprt_disconnect_done(xprt);
++	xprt_force_disconnect(xprt);
+ }
+=20
+ /**
+=2D-=20
+2.9.2
 
-Otherwise ACK, this is what we need.
 
+--=-=-=
+Content-Type: application/pgp-signature; name="signature.asc"
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v2
+
+iQIcBAEBCAAGBQJXon88AAoJEDnsnt1WYoG5P/QQAKJocPLcwiqBMZslj3JaY0Wu
+10vl0Gyx2YeIELsXQyJGFy87V1ZMK14bKX/LSr0pDqJTtBdHn2ZhNcE1EsBRLQqx
+iAbsOGcNh54fc4vKRjCNqUdhDzTs9QAdx/In1Y07sPqweSMGp/oPUMOqHIp5Qrth
+TMBk4+KVxdIE2F7gxmof0XdJGE9/scohZk5plGao6cII1Pp0jNKwSw+j/O41S51D
+mePzKkuJd+ixR7NLz+cG235FKljq4lE275uO/MRcxzvTkF2aszrCGX3s6BxhAHLa
+ljk1hQ/ikw92SrVflawMou5hGo2Cb1nspEBJXWmq90d+jzAzv5gIa4FFQrh/dAhH
+0Aosrx3R/7rFDxQTJ34wpEt1cAslK1gDJD+OC1jCnDcmAnVtSZDVPH1hQolhF3Xa
+cA6FHsLOWshCfx3QnID0bmU3cMT2FvLBVnJ1xmK0+ToYD9Jf8DJxdupM1oqfPtr2
+El7YMsO2F9hxeCWj1yp1IaVM9fsH9JtX/P7//8UNa8vBo7zgtN5+4fu0co9dJdhv
+rqy/XpML9E7zduSdOmpbwp/w/elxhLi94GoC5ZQD4K0c6TOoFpENWmYngUFmtYwf
+jO4EqxylFrRwkRaQ9SX3SMv3bY0NZtYbEWsKXQpG9Bttzwk3fiVM8KBu7lwFFDRS
+SzXD/FqbJ0cruJBZmYJf
+=GNKY
+-----END PGP SIGNATURE-----
+--=-=-=--
