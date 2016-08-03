@@ -1,118 +1,23 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:40560 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:33110 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754915AbcHCQ5n (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 3 Aug 2016 12:57:43 -0400
-Subject: [PATCH] cachefiles: Fix race between inactivating and culling a
- cache object
+	id S1751351AbcHCRE6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 3 Aug 2016 13:04:58 -0400
 From: David Howells <dhowells@redhat.com>
+In-Reply-To: <147024267321.18382.7819777976766779016.stgit@warthog.procyon.org.uk>
+References: <147024267321.18382.7819777976766779016.stgit@warthog.procyon.org.uk>
 To: viro@zeniv.linux.org.uk
-Cc: linux-nfs@vger.kernel.org, Jeff Layton <jlayton@redhat.com>,
-        linux-kernel@vger.kernel.org, Jianhong Yin <jiyin@redhat.com>,
-        Steve Dickson <steved@redhat.com>, dhowells@redhat.com,
-        linux-cachefs@redhat.com, stable@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org
-Date: Wed, 03 Aug 2016 17:57:39 +0100
-Message-ID: <147024345952.19927.3613766301915316442.stgit@warthog.procyon.org.uk>
+Cc: dhowells@redhat.com, linux-fsdevel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, linux-cachefs@redhat.com,
+        linux-kernel@vger.kernel.org
+Subject: Re: [PATCH] cachefiles: Fix race between inactivating and culling a cache object
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain; charset="us-ascii"
+Date: Wed, 03 Aug 2016 18:04:55 +0100
+Message-ID: <25399.1470243895@warthog.procyon.org.uk>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-There's a race between cachefiles_mark_object_inactive() and
-cachefiles_cull():
+Please ignore this message.  I'll repost with Fixes and stable included.
 
- (1) cachefiles_cull() can't delete a backing file until the cache object
-     is marked inactive, but as soon as that's the case it's fair game.
-
- (2) cachefiles_mark_object_inactive() marks the object as being inactive
-     and *only then* reads the i_blocks on the backing inode - but
-     cachefiles_cull() might've managed to delete it by this point.
-
-Fix this by making sure cachefiles_mark_object_inactive() gets any data it
-needs from the backing inode before deactivating the object.
-
-Without this, the following oops may occur:
-
-BUG: unable to handle kernel NULL pointer dereference at 0000000000000098
-IP: [<ffffffffa06c5cc1>] cachefiles_mark_object_inactive+0x61/0xb0 [cachefiles]
-...
-CPU: 11 PID: 527 Comm: kworker/u64:4 Tainted: G          I    ------------   3.10.0-470.el7.x86_64 #1
-Hardware name: Hewlett-Packard HP Z600 Workstation/0B54h, BIOS 786G4 v03.19 03/11/2011
-Workqueue: fscache_object fscache_object_work_func [fscache]
-task: ffff880035edaf10 ti: ffff8800b77c0000 task.ti: ffff8800b77c0000
-RIP: 0010:[<ffffffffa06c5cc1>] cachefiles_mark_object_inactive+0x61/0xb0 [cachefiles]
-RSP: 0018:ffff8800b77c3d70  EFLAGS: 00010246
-RAX: 0000000000000000 RBX: ffff8800bf6cc400 RCX: 0000000000000034
-RDX: 0000000000000000 RSI: ffff880090ffc710 RDI: ffff8800bf761ef8
-RBP: ffff8800b77c3d88 R08: 2000000000000000 R09: 0090ffc710000000
-R10: ff51005d2ff1c400 R11: 0000000000000000 R12: ffff880090ffc600
-R13: ffff8800bf6cc520 R14: ffff8800bf6cc400 R15: ffff8800bf6cc498
-FS:  0000000000000000(0000) GS:ffff8800bb8c0000(0000) knlGS:0000000000000000
-CS:  0010 DS: 0000 ES: 0000 CR0: 000000008005003b
-CR2: 0000000000000098 CR3: 00000000019ba000 CR4: 00000000000007e0
-DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
-DR3: 0000000000000000 DR6: 00000000ffff0ff0 DR7: 0000000000000400
-Stack:
- ffff880090ffc600 ffff8800bf6cc400 ffff8800867df140 ffff8800b77c3db0
- ffffffffa06c48cb ffff880090ffc600 ffff880090ffc180 ffff880090ffc658
- ffff8800b77c3df0 ffffffffa085d846 ffff8800a96b8150 ffff880090ffc600
-Call Trace:
- [<ffffffffa06c48cb>] cachefiles_drop_object+0x6b/0xf0 [cachefiles]
- [<ffffffffa085d846>] fscache_drop_object+0xd6/0x1e0 [fscache]
- [<ffffffffa085d615>] fscache_object_work_func+0xa5/0x200 [fscache]
- [<ffffffff810a605b>] process_one_work+0x17b/0x470
- [<ffffffff810a6e96>] worker_thread+0x126/0x410
- [<ffffffff810a6d70>] ? rescuer_thread+0x460/0x460
- [<ffffffff810ae64f>] kthread+0xcf/0xe0
- [<ffffffff810ae580>] ? kthread_create_on_node+0x140/0x140
- [<ffffffff81695418>] ret_from_fork+0x58/0x90
- [<ffffffff810ae580>] ? kthread_create_on_node+0x140/0x140
-
-The oopsing code shows:
-
-	callq  0xffffffff810af6a0 <wake_up_bit>
-	mov    0xf8(%r12),%rax
-	mov    0x30(%rax),%rax
-	mov    0x98(%rax),%rax   <---- oops here
-	lock add %rax,0x130(%rbx)
-
-where this is:
-
-	d_backing_inode(object->dentry)->i_blocks
-
-Fixes: a5b3a80b899bda0f456f1246c4c5a1191ea01519 (CacheFiles: Provide read-and-reset release counters for cachefilesd)
-Reported-by: Jianhong Yin <jiyin@redhat.com>
-Signed-off-by: David Howells <dhowells@redhat.com>
-Reviewed-by: Jeff Layton <jlayton@redhat.com>
-Reviewed-by: Steve Dickson <steved@redhat.com>
-cc: stable@vger.kernel.org
----
-
- fs/cachefiles/namei.c |    5 +++--
- 1 file changed, 3 insertions(+), 2 deletions(-)
-
-diff --git a/fs/cachefiles/namei.c b/fs/cachefiles/namei.c
-index 4ae75006e73b..3f7c2cd41f8f 100644
---- a/fs/cachefiles/namei.c
-+++ b/fs/cachefiles/namei.c
-@@ -263,6 +263,8 @@ requeue:
- void cachefiles_mark_object_inactive(struct cachefiles_cache *cache,
- 				     struct cachefiles_object *object)
- {
-+	blkcnt_t i_blocks = d_backing_inode(object->dentry)->i_blocks;
-+
- 	write_lock(&cache->active_lock);
- 	rb_erase(&object->active_node, &cache->active_nodes);
- 	clear_bit(CACHEFILES_OBJECT_ACTIVE, &object->flags);
-@@ -273,8 +275,7 @@ void cachefiles_mark_object_inactive(struct cachefiles_cache *cache,
- 	/* This object can now be culled, so we need to let the daemon know
- 	 * that there is something it can remove if it needs to.
- 	 */
--	atomic_long_add(d_backing_inode(object->dentry)->i_blocks,
--			&cache->b_released);
-+	atomic_long_add(i_blocks, &cache->b_released);
- 	if (atomic_inc_return(&cache->f_released))
- 		cachefiles_state_changed(cache);
- }
-
+David
