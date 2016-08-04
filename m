@@ -1,16 +1,14 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:42612 "EHLO mx2.suse.de"
+Received: from mx2.suse.de ([195.135.220.15]:49800 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932253AbcHDCko (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 3 Aug 2016 22:40:44 -0400
+	id S1752312AbcHDGYl (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 4 Aug 2016 02:24:41 -0400
 From: NeilBrown <neilb@suse.com>
 To: Trond Myklebust <trondmy@primarydata.com>
-Date: Thu, 04 Aug 2016 12:35:50 +1000
+Date: Thu, 04 Aug 2016 16:24:28 +1000
 Cc: Linux List <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] Revert "SUNRPC: xs_sock_mark_closed() does not need to trigger socket autoclose"
-In-Reply-To: <A059233E-0EFD-472A-9CCB-7BE8411BFC03@primarydata.com>
-References: <87a8gtpgw4.fsf@notabene.neil.brown.name> <A059233E-0EFD-472A-9CCB-7BE8411BFC03@primarydata.com>
-Message-ID: <871t25p8ft.fsf@notabene.neil.brown.name>
+Subject: [PATCH] SUNRPC: disable the use of IPv6 temporary addresses.
+Message-ID: <87d1lpnjab.fsf@notabene.neil.brown.name>
 MIME-Version: 1.0
 Content-Type: multipart/signed; boundary="=-=-=";
 	micalg=pgp-sha256; protocol="application/pgp-signature"
@@ -21,57 +19,72 @@ List-ID: <linux-nfs.vger.kernel.org>
 Content-Type: text/plain
 Content-Transfer-Encoding: quoted-printable
 
-On Thu, Aug 04 2016, Trond Myklebust wrote:
 
->> On Aug 3, 2016, at 19:33, NeilBrown <neilb@suse.com> wrote:
->>=20
->>=20
->> This reverts commit 4b0ab51db32eba0f48b7618254742f143364a28d.
->>=20
->> This change causes 'rpc.nfsd' to hang for long time if rpcbind is not
->> available.
->> If
->>   --no-nfs-version 2 --no-nfs-version 3
->> is given, the delay is about 6.5 minutes.  When trying to register
->> all versions, the delay is over half an hour.
->> Before this commit, and after reverting it, nfsd fails (when v3 is
->> requested) or succeeds (when only v4 is requested) immediately.
->>=20
->> Signed-off-by: NeilBrown <neilb@suse.com>
->> ---
->> net/sunrpc/xprtsock.c | 1 +
->> 1 file changed, 1 insertion(+)
->>=20
->> diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
->> index 111767ab124a..2a938055e95b 100644
->> --- a/net/sunrpc/xprtsock.c
->> +++ b/net/sunrpc/xprtsock.c
->> @@ -795,6 +795,7 @@ static void xs_sock_mark_closed(struct rpc_xprt *xpr=
-t)
->> 	xs_sock_reset_connection_flags(xprt);
->> 	/* Mark transport as closed and wake up all pending tasks */
->> 	xprt_disconnect_done(xprt);
->> +	xprt_force_disconnect(xprt);
->> }
->>=20
->
-> If there is an outstanding request, then _that_ is supposed to redrive th=
-e connection. Why is the xprt_disconnect_done() not functioning as per the =
-comment above it?
+If the net.ipv6.conf.*.use_temp_addr sysctl is set to '2',
+then TCP connections over IPv6 will prefer a 'private' source
+address.
+These eventually expire and become invalid, typically after a week,
+but the time is configurable.
 
-No idea, sorry.  I haven't tried to follow though exactly what is
-happening.
-The symptom is trivial to reproduce:
-  rpc.nfsd 0
-  killall rpcbind
-  rpc.nfsd 8
+When the local address becomes invalid the client will not be able to
+receive replies from the server.  Eventually the connection will timeout
+or break and a new connection will be established, but this can take
+half an hour (typically TCP connection break time).
 
-This will either complete immediately with kernel log messages, or block
-for a long time.
-I might try to figure out what is happening, but I suspect there are
-others who know this code a lot better than I do.
+RFC 4941, which describes private IPv6 addresses, acknowledges that some
+applications might not work well with them and that the application may
+explicitly a request non-temporary (i.e. "public") address.
 
-NeilBrown
+I believe this is correct for SUNRPC clients.  Without this change, a
+client will occasionally experience a long delay if private addresses
+have been enabled.
+
+The privacy offered by private addresses is of little value for an NFS
+server which requires client authentication.
+
+For NFSv3 this will often not be a problem because idle connections are
+closed after 5 minutes.  For NFSv4 connections never go idle due to the
+period RENEW (or equivalent) request.
+
+Signed-off-by: NeilBrown <neilb@suse.com>
+=2D--
+ net/sunrpc/xprtsock.c | 11 +++++++++++
+ 1 file changed, 11 insertions(+)
+
+diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
+index 2a938055e95b..7fc063355c9f 100644
+=2D-- a/net/sunrpc/xprtsock.c
++++ b/net/sunrpc/xprtsock.c
+@@ -2237,6 +2237,7 @@ static int xs_tcp_finish_connecting(struct rpc_xprt *=
+xprt, struct socket *sock)
+ 		unsigned int keepcnt =3D xprt->timeout->to_retries + 1;
+ 		unsigned int opt_on =3D 1;
+ 		unsigned int timeo;
++		unsigned int addr_pref =3D IPV6_PREFER_SRC_PUBLIC;
+=20
+ 		/* TCP Keepalive options */
+ 		kernel_setsockopt(sock, SOL_SOCKET, SO_KEEPALIVE,
+@@ -2248,6 +2249,16 @@ static int xs_tcp_finish_connecting(struct rpc_xprt =
+*xprt, struct socket *sock)
+ 		kernel_setsockopt(sock, SOL_TCP, TCP_KEEPCNT,
+ 				(char *)&keepcnt, sizeof(keepcnt));
+=20
++		/* Avoid temporary address, they are bad for long-lived
++		 * connections such as NFS mounts.
++		 * RFC4941, section 3.6 suggests that:
++		 *    Individual applications, which have specific
++		 *    knowledge about the normal duration of connections,
++		 *    MAY override this as appropriate.
++		 */
++		kernel_setsockopt(sock, SOL_IPV6, IPV6_ADDR_PREFERENCES,
++				(char *)&addr_pref, sizeof(addr_pref));
++
+ 		/* TCP user timeout (see RFC5482) */
+ 		timeo =3D jiffies_to_msecs(xprt->timeout->to_initval) *
+ 			(xprt->timeout->to_retries + 1);
+=2D-=20
+2.9.2
+
 
 --=-=-=
 Content-Type: application/pgp-signature; name="signature.asc"
@@ -79,18 +92,18 @@ Content-Type: application/pgp-signature; name="signature.asc"
 -----BEGIN PGP SIGNATURE-----
 Version: GnuPG v2
 
-iQIcBAEBCAAGBQJXoqoGAAoJEDnsnt1WYoG5fdYP/R16AtggM8uPOzEBuPzazmY7
-7DYxKg080XZdZvjVR4ynnjSUrTLscwLpeMKFicTxpoORYiPAVT+/tQ01MvGiODbc
-6jgJfZh0jiBrV1zs39YA3EIMzJcHYI2LHRYfJRDwq8sCCkjUBaQv4VBN8CdoBFF9
-fFO/cFfkMksJuwOHT1tgcBOqB0cUDoZkFFP/3Zm7I5+g5Mf0JP3btQvd9R7f9Kf6
-RwmMOfT6iTsPVO5iGxaaq2WVgviX38FlnU+u6Rh2pHdih8OODk/iLvYhS4nu/u9y
-aUaY4EuiJzzBaatlFSIH95AuLrA6sJ02w/eivUhhp3IX4dxJMsEcscKBFUsc5PQu
-kaTEIXKqGdZZOQaq+piles7z0+UKGHJaaAq87kTDFS/E0IxddUx45CbMqA/xbfKA
-3EpjGcrpkZtADqnIX8CWtnXiBiatVyj3v+cMgxeZ3T21qHTb9cRx2ff5NXXGX1so
-DTkdcspeohsWsEDx8KqW57cb/K43bzASQUfalaK0iZcUeE3FCN32Hxwd7+MmL6wS
-hgGVVXa96DqsHPV0ZshjKGnQ8feIuuL56MbEnaImVv7CjUKSpSDvoA+cJmWCpwTt
-txXVoho3VCMdVPxqB15nL4FVNBQVqxvZ4bX4YBiHt2wDGcmCP3oxNvIQ0/L5tSEJ
-Vz2rVLP+lpntHzHTQf/L
-=sW50
+iQIcBAEBCAAGBQJXot+cAAoJEDnsnt1WYoG5DlcP/3DdloLGv9XIborErFtaXplf
+RCD6ajIhYzisaZV4U+55etGRrIqfQt/I1OZZJxQNtKOnhFF+QJoh9dDRVUDvMOT0
+JDejM231RCEcmaRrapsOgTrEZHygilKASOdYIPev6QXzWQ8CGWREEQeZiQXzNlhj
+S5Ciw41X5l3L/rinAaMd8Crb11KVg3iiF8QwMIEBUS2RJQmT6634wTO+SufJ6r4M
+Zt7gNwRvRDPV+fEGpVLUXaV8KxFO5baGjioGs7U1NOO6brFWeMt3UCibjm3Y+RbF
+4GPusIW5JKdm9YznbJ5M6svNaApUp7vL3n/GXmIPCX1vFKuU/sBYEFMDYSlN05C0
+E9BugYHY3iHrz6M/qUg0XpB8R8amn0pp30PLn+QknAtbwGtV8ieq0t6hogi/Xv9P
+p3hZX2CywpCZ9dzUrZ/0+6uP84HjpK55nYdoAKfYcrwbx4w8GCmnGFE1UVaam91X
+ybqXccU17/Whnkl1qOPVaPHSCyvlHHqeP1R1BmYZ42vBgQnQaby2VpneKv7cL1iA
+WEv3UHlh3lFsqlo6TBh9/8R2iRMZB+lkhs/b5CevZ/xG0xeq82WY1GGr1fMQ99I0
+/xPRN54h9PDnn667Qm1lM2EUQviFw/+XWPSiFn/1Isr2Kk5j91SLYS9LvxbLu0Kx
+njJcxB6m7bIGIS6vG4y+
+=FbWB
 -----END PGP SIGNATURE-----
 --=-=-=--
