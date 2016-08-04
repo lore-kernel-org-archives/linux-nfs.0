@@ -1,85 +1,64 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:55622 "EHLO mx1.redhat.com"
+Received: from mx2.suse.de ([195.135.220.15]:51293 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752457AbcHDLuo (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 4 Aug 2016 07:50:44 -0400
-Subject: Re: [PATCH 0/7] Assorted mount/mountd nfs-utils patches - V2
-To: NeilBrown <neilb@suse.com>
-References: <146976807524.20186.8871903418718212567.stgit@noble>
+	id S1756647AbcHDMoW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 4 Aug 2016 08:44:22 -0400
+From: NeilBrown <neilb@suse.com>
+To: Steve Dickson <SteveD@redhat.com>
+Date: Thu, 04 Aug 2016 22:06:54 +1000
 Cc: "J. Bruce Fields" <bfields@fieldses.org>,
         Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-From: Steve Dickson <SteveD@redhat.com>
-Message-ID: <ebff995f-0de7-900f-d240-bd6dfc7d9930@RedHat.com>
-Date: Thu, 4 Aug 2016 07:50:03 -0400
+Subject: Re: [PATCH 0/7] Assorted mount/mountd nfs-utils patches - V2
+In-Reply-To: <ebff995f-0de7-900f-d240-bd6dfc7d9930@RedHat.com>
+References: <146976807524.20186.8871903418718212567.stgit@noble> <ebff995f-0de7-900f-d240-bd6dfc7d9930@RedHat.com>
+Message-ID: <87zios3fhd.fsf@notabene.neil.brown.name>
 MIME-Version: 1.0
-In-Reply-To: <146976807524.20186.8871903418718212567.stgit@noble>
-Content-Type: text/plain; charset=utf-8
+Content-Type: multipart/signed; boundary="=-=-=";
+	micalg=pgp-sha256; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+--=-=-=
+Content-Type: text/plain
+Content-Transfer-Encoding: quoted-printable
 
+On Thu, Aug 04 2016, Steve Dickson <SteveD@redhat.com> wrote:
+>>=20
+>> NeilBrown (7):
+>>       nfs.man: clarify effect of 'retry' option.
+>>       mountd: remove the --exports-file option
+>>       mount: don't treat temporary name resolution failure as permanent.
+>>       mount: use a public address for IPv6 callback.
+>>       mount: fix memory leak in v4root_add_parents
+>>       mountd: allow alternate ttl to be specified for dump_to_cache.
+>>       mountd: fail nfsd.export lookup for path to unmounted exportpoint
+> The patch series committed...=20
 
-On 07/29/2016 01:03 AM, NeilBrown wrote:
-> Hi,
->  here is a revision of a recent patch series.
->  Thanks to Bruce's uncompromising review I have significantly reduced
->  the changes to mountpoint handling to just that which is needed.
-> 
->  If we assume the NFSv3 behavior is "correct" (because it has been
->  that way for over a decade), the NFSv4 behavior differs
->  particularly in that a mount request arrives as a lookup from an
->  pseduo-root parent.  This is seen by rpc.mountd as an upcall through
->  nfsd.export.
->  The nfsd_export() handled was ignoring the mountpoint option, and
->  that is incorrect.  So a patch in this series handles the option correctly.
-> 
->  The changes to blocking and ESTALE return, and the monitoring of
->  /proc/mounts have all been removed.
-> 
->  It might be beneficial to change the kernel so that the reported
->  mtime of V4ROOT directories is that last time any change was made to
->  any V4ROOT export.  That might allow the client to see changes in
->  exports more quickly.
-> 
->  It might also be generally useful for mountd to monitor /proc/mounts
->  (using e.g. select()) and flush the export cache shortly after any
->  changes.  Again, this would allow the client to see changes more
->  promptly.
-> 
->  However I don't plan either of these immediately, which means they
->  almost certainly won't happen unless the issue is raised again for
->  some reason.
-> 
-> Thanks,
-> NeilBrown
-> 
-> ---
-> 
-> NeilBrown (7):
->       nfs.man: clarify effect of 'retry' option.
->       mountd: remove the --exports-file option
->       mount: don't treat temporary name resolution failure as permanent.
->       mount: use a public address for IPv6 callback.
->       mount: fix memory leak in v4root_add_parents
->       mountd: allow alternate ttl to be specified for dump_to_cache.
->       mountd: fail nfsd.export lookup for path to unmounted exportpoint
-The patch series committed... 
+Thanks!  Have you any idea when 1.3.4 might be released.  I want
+several bits for openSUSE and I'm wondering whether to take them
+piece-meal, or to wait for a new release.
 
-steved.
+Thanks,
+NeilBrown
 
-> 
-> 
->  utils/mount/network.c   |    5 ++++
->  utils/mount/nfs.man     |   14 ++++++++++--
->  utils/mount/stropts.c   |   54 +++++++++++++++++++++++++++--------------------
->  utils/mountd/auth.c     |    5 +---
->  utils/mountd/cache.c    |   36 ++++++++++++++++++++++++-------
->  utils/mountd/mountd.c   |   11 +++-------
->  utils/mountd/mountd.h   |    2 +-
->  utils/mountd/mountd.man |    8 -------
->  utils/mountd/v4root.c   |    6 +++--
->  9 files changed, 84 insertions(+), 57 deletions(-)
-> 
-> --
-> Signature
-> 
+--=-=-=
+Content-Type: application/pgp-signature; name="signature.asc"
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v2
+
+iQIcBAEBCAAGBQJXoy/eAAoJEDnsnt1WYoG5ho4P/iGCfLsIFkaWROqYfC9TxLy4
+N4/XMUekSjJ+JknLiNzyqSrZ5+QPu8gb4e1BfRvCPpZeeDZHKYnXzHClV7T8QvkC
+ra8Ud04fHdgqGHKY36NVG9h69U37x0qeLiH0X6QEID+A9Cf203lAljCRS/UIEPoF
+eSwRi94MamNsnTeDQHC6ugF8XmDTzDLE6/akNdAloi4uvMXLgFfm67m6DkeHttS0
+0shXIy17KhlyCPebtKw6KK17Dxkm1yuvB5+ch3jJnD8KP6Cl8R/lDuA+KCe85NcH
+H4x5zfpJX5hw4eeT3CpNfQVrcUvHoD/mbK21flK9gnR8JpCMvz0dFdu+dzS1rT2L
+RobN3C/h3irg3RSdMt7i2RZaJL1HkbDzsnvXCYvuk2kKvpi9faueVdUH/rhVeZPL
+SgeWmnFs/I9R/kfu6ihZJZVznrFuZ3irpGyLb9OVz8dIabvO+sfEvGE5tC0DU3nQ
+Xn+RmPPJzK0MqsLG5tCCfD5rlnPD6HOeE6nSJvBGYnq6M4valfygeCx4tFbXCkZY
+LRskRXY5XFB+PCO+NpiERPkEEc1rh4vteB1eb5+id9ODjERM+wxZOj0dcQ+8iW3y
+g2MANhOgTqv7XJj9uZl0hT51lIdJJx/2LvgNJOQTr3JIhpUWbuHvge7eXEjVXbeP
+CqXK9E7gv5Vdpu5EX1wt
+=OTQ6
+-----END PGP SIGNATURE-----
+--=-=-=--
