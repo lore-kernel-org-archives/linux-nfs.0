@@ -1,81 +1,64 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx143.netapp.com ([216.240.21.24]:60767 "EHLO mx143.netapp.com"
+Received: from fieldses.org ([173.255.197.46]:54774 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S934045AbcHDT0p (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 4 Aug 2016 15:26:45 -0400
-Subject: Re: [PATCH Version 7 6/8] SUNRPC add an RPC null call to test session
- trunking connection
-To: <andros@netapp.com>, <trond.myklebust@primarydata.com>
-References: <1469645000-19791-1-git-send-email-andros@netapp.com>
- <1469645000-19791-7-git-send-email-andros@netapp.com>
-CC: <linux-nfs@vger.kernel.org>
-From: Anna Schumaker <Anna.Schumaker@netapp.com>
-Message-ID: <c3229909-cafb-6234-df63-3a6785cf8ab2@Netapp.com>
-Date: Thu, 4 Aug 2016 15:26:41 -0400
+	id S1758997AbcHDUMw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 4 Aug 2016 16:12:52 -0400
+Date: Thu, 4 Aug 2016 16:12:50 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Christoph Hellwig <hch@infradead.org>
+Cc: NeilBrown <neilb@suse.com>, fdmanana@kernel.org,
+        linux-btrfs@vger.kernel.org, NFS List <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] exportfs: be careful to only return expected errors.
+Message-ID: <20160804201250.GA3907@fieldses.org>
+References: <1465491191-28102-1-git-send-email-fdmanana@kernel.org>
+ <874m7i8oou.fsf@notabene.neil.brown.name>
+ <20160722015904.GB29969@fieldses.org>
+ <87bn1q75ut.fsf@notabene.neil.brown.name>
+ <20160722200843.GA7463@fieldses.org>
+ <877fbxperp.fsf@notabene.neil.brown.name>
+ <20160804124719.GA5676@infradead.org>
 MIME-Version: 1.0
-In-Reply-To: <1469645000-19791-7-git-send-email-andros@netapp.com>
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20160804124719.GA5676@infradead.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Andy,
-
-On 07/27/2016 02:43 PM, andros@netapp.com wrote:
-> From: Andy Adamson <andros@netapp.com>
+On Thu, Aug 04, 2016 at 05:47:19AM -0700, Christoph Hellwig wrote:
+> On Thu, Aug 04, 2016 at 10:19:06AM +1000, NeilBrown wrote:
+> > 
+> > 
+> > When nfsd calls fh_to_dentry, it expect ESTALE or ENOMEM as errors.
+> > In particular it can be tempting to return ENOENT, but this is not
+> > handled well by nfsd.
+> > 
+> > Rather than requiring strict adherence to error code code filesystems,
+> > treat all unexpected error codes the same as ESTALE.  This is safest.
+> > 
+> > Signed-off-by: NeilBrown <neilb@suse.com>
+> > ---
+> > 
+> > I didn't add a dprintk for unexpected error messages, partly
+> > because dprintk isn't usable in exportfs.  I could have used pr_debug()
+> > but I really didn't see much value.
+> > 
+> > This has been tested together with the btrfs change, and it restores
+> > correct functionality.
 > 
-> Signed-off-by: Andy Adamson <andros@netapp.com>
-> ---
->  include/linux/sunrpc/clnt.h |  2 ++
->  net/sunrpc/clnt.c           | 18 ++++++++++++++++++
->  2 files changed, 20 insertions(+)
-> 
-> diff --git a/include/linux/sunrpc/clnt.h b/include/linux/sunrpc/clnt.h
-> index 99410bb..ebc83df 100644
-> --- a/include/linux/sunrpc/clnt.h
-> +++ b/include/linux/sunrpc/clnt.h
-> @@ -189,6 +189,8 @@ int 		rpc_clnt_test_and_add_xprt(struct rpc_clnt *clnt,
->  			struct rpc_xprt_switch *xps,
->  			struct rpc_xprt *xprt,
->  			void *dummy);
-> +int		rpc_clnt_test_xprt(struct rpc_clnt *clnt,
-> +			struct rpc_xprt *xprt);
->  int		rpc_clnt_add_xprt(struct rpc_clnt *, struct xprt_create *,
->  			int (*setup)(struct rpc_clnt *,
->  				struct rpc_xprt_switch *,
-> diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
-> index 459f9b1..822060f 100644
-> --- a/net/sunrpc/clnt.c
-> +++ b/net/sunrpc/clnt.c
-> @@ -2614,6 +2614,24 @@ int rpc_clnt_test_and_add_xprt(struct rpc_clnt *clnt,
->  }
->  EXPORT_SYMBOL_GPL(rpc_clnt_test_and_add_xprt);
->  
-> +int rpc_clnt_test_xprt(struct rpc_clnt *clnt, struct rpc_xprt *xprt)
+> I don't really like all this magic which is partially historic.  I think
+> we should instead allow the fs to return any error from the export
+> operations,
 
-Looks like rpc_clnt_test_and_add_xprt() runs the same testing code.  Can you swap the order of these functions in clnt.c and then have test_and_add_xprt() call test_xprt()?
+What errors other than ENOENT and ENOMEM do you think are reasonable?
 
-Thanks,
-Anna
+ENOENT is going to screw up both nfsd and open_by_fhandle_at, which are
+the only callers.
 
-> +{
-> +	struct rpc_cred *cred;
-> +	struct rpc_task *task;
-> +	int status;
-> +
-> +	cred = authnull_ops.lookup_cred(NULL, NULL, 0);
-> +	task = rpc_call_null_helper(clnt, xprt, cred,
-> +				RPC_TASK_SOFT | RPC_TASK_SOFTCONN, NULL, NULL);
-> +	put_rpccred(cred);
-> +	if (IS_ERR(task))
-> +		return PTR_ERR(task);
-> +	status = task->tk_status;
-> +	rpc_put_task(task);
-> +	return status;
-> +}
-> +EXPORT_SYMBOL_GPL(rpc_clnt_test_xprt);
-> +
->  /**
->   * rpc_clnt_add_xprt - Add a new transport to a rpc_clnt
->   * @clnt: pointer to struct rpc_clnt
-> 
+> and forbid returning NULL entirely.  Then the actualy caller
+> (nfsd) can sort out which errors it wants to send over the wire.
 
+The needs of those two callers don't look very different to me, and I
+can't recall seeing a correct use of an error other than ESTALE or
+ENOMEM, so I've been thinking of it more of a question of how to best
+handle a misbehaving filesystem.
+
+--b.
