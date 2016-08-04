@@ -1,64 +1,49 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:51293 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756647AbcHDMoW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 4 Aug 2016 08:44:22 -0400
-From: NeilBrown <neilb@suse.com>
-To: Steve Dickson <SteveD@redhat.com>
-Date: Thu, 04 Aug 2016 22:06:54 +1000
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-        Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 0/7] Assorted mount/mountd nfs-utils patches - V2
-In-Reply-To: <ebff995f-0de7-900f-d240-bd6dfc7d9930@RedHat.com>
-References: <146976807524.20186.8871903418718212567.stgit@noble> <ebff995f-0de7-900f-d240-bd6dfc7d9930@RedHat.com>
-Message-ID: <87zios3fhd.fsf@notabene.neil.brown.name>
+Received: from bombadil.infradead.org ([198.137.202.9]:32903 "EHLO
+	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756378AbcHDMrl (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 4 Aug 2016 08:47:41 -0400
+Date: Thu, 4 Aug 2016 05:47:19 -0700
+From: Christoph Hellwig <hch@infradead.org>
+To: NeilBrown <neilb@suse.com>
+Cc: "J. Bruce Fields" <bfields@fieldses.org>, fdmanana@kernel.org,
+        linux-btrfs@vger.kernel.org, NFS List <linux-nfs@vger.kernel.org>,
+        Christoph Hellwig <hch@infradead.org>
+Subject: Re: [PATCH] exportfs: be careful to only return expected errors.
+Message-ID: <20160804124719.GA5676@infradead.org>
+References: <1465491191-28102-1-git-send-email-fdmanana@kernel.org>
+ <874m7i8oou.fsf@notabene.neil.brown.name>
+ <20160722015904.GB29969@fieldses.org>
+ <87bn1q75ut.fsf@notabene.neil.brown.name>
+ <20160722200843.GA7463@fieldses.org>
+ <877fbxperp.fsf@notabene.neil.brown.name>
 MIME-Version: 1.0
-Content-Type: multipart/signed; boundary="=-=-=";
-	micalg=pgp-sha256; protocol="application/pgp-signature"
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <877fbxperp.fsf@notabene.neil.brown.name>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---=-=-=
-Content-Type: text/plain
-Content-Transfer-Encoding: quoted-printable
+On Thu, Aug 04, 2016 at 10:19:06AM +1000, NeilBrown wrote:
+> 
+> 
+> When nfsd calls fh_to_dentry, it expect ESTALE or ENOMEM as errors.
+> In particular it can be tempting to return ENOENT, but this is not
+> handled well by nfsd.
+> 
+> Rather than requiring strict adherence to error code code filesystems,
+> treat all unexpected error codes the same as ESTALE.  This is safest.
+> 
+> Signed-off-by: NeilBrown <neilb@suse.com>
+> ---
+> 
+> I didn't add a dprintk for unexpected error messages, partly
+> because dprintk isn't usable in exportfs.  I could have used pr_debug()
+> but I really didn't see much value.
+> 
+> This has been tested together with the btrfs change, and it restores
+> correct functionality.
 
-On Thu, Aug 04 2016, Steve Dickson <SteveD@redhat.com> wrote:
->>=20
->> NeilBrown (7):
->>       nfs.man: clarify effect of 'retry' option.
->>       mountd: remove the --exports-file option
->>       mount: don't treat temporary name resolution failure as permanent.
->>       mount: use a public address for IPv6 callback.
->>       mount: fix memory leak in v4root_add_parents
->>       mountd: allow alternate ttl to be specified for dump_to_cache.
->>       mountd: fail nfsd.export lookup for path to unmounted exportpoint
-> The patch series committed...=20
-
-Thanks!  Have you any idea when 1.3.4 might be released.  I want
-several bits for openSUSE and I'm wondering whether to take them
-piece-meal, or to wait for a new release.
-
-Thanks,
-NeilBrown
-
---=-=-=
-Content-Type: application/pgp-signature; name="signature.asc"
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v2
-
-iQIcBAEBCAAGBQJXoy/eAAoJEDnsnt1WYoG5ho4P/iGCfLsIFkaWROqYfC9TxLy4
-N4/XMUekSjJ+JknLiNzyqSrZ5+QPu8gb4e1BfRvCPpZeeDZHKYnXzHClV7T8QvkC
-ra8Ud04fHdgqGHKY36NVG9h69U37x0qeLiH0X6QEID+A9Cf203lAljCRS/UIEPoF
-eSwRi94MamNsnTeDQHC6ugF8XmDTzDLE6/akNdAloi4uvMXLgFfm67m6DkeHttS0
-0shXIy17KhlyCPebtKw6KK17Dxkm1yuvB5+ch3jJnD8KP6Cl8R/lDuA+KCe85NcH
-H4x5zfpJX5hw4eeT3CpNfQVrcUvHoD/mbK21flK9gnR8JpCMvz0dFdu+dzS1rT2L
-RobN3C/h3irg3RSdMt7i2RZaJL1HkbDzsnvXCYvuk2kKvpi9faueVdUH/rhVeZPL
-SgeWmnFs/I9R/kfu6ihZJZVznrFuZ3irpGyLb9OVz8dIabvO+sfEvGE5tC0DU3nQ
-Xn+RmPPJzK0MqsLG5tCCfD5rlnPD6HOeE6nSJvBGYnq6M4valfygeCx4tFbXCkZY
-LRskRXY5XFB+PCO+NpiERPkEEc1rh4vteB1eb5+id9ODjERM+wxZOj0dcQ+8iW3y
-g2MANhOgTqv7XJj9uZl0hT51lIdJJx/2LvgNJOQTr3JIhpUWbuHvge7eXEjVXbeP
-CqXK9E7gv5Vdpu5EX1wt
-=OTQ6
------END PGP SIGNATURE-----
---=-=-=--
+I don't really like all this magic which is partially historic.  I think
+we should instead allow the fs to return any error from the export
+operations, and forbid returning NULL entirely.  Then the actualy caller
+(nfsd) can sort out which errors it wants to send over the wire.
