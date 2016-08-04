@@ -1,73 +1,42 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:33980 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:57162 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S965289AbcHDQxo (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 4 Aug 2016 12:53:44 -0400
-Received: from int-mx14.intmail.prod.int.phx2.redhat.com (int-mx14.intmail.prod.int.phx2.redhat.com [10.5.11.27])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
-	(No client certificate requested)
-	by mx1.redhat.com (Postfix) with ESMTPS id B116980085
-	for <linux-nfs@vger.kernel.org>; Thu,  4 Aug 2016 16:53:43 +0000 (UTC)
-Received: from steved.boston.devel.redhat.com (steved.boston.devel.redhat.com [10.19.60.47])
-	by int-mx14.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id u74GrheQ004702
-	for <linux-nfs@vger.kernel.org>; Thu, 4 Aug 2016 12:53:43 -0400
-Subject: Re: Monthly Linux NFS Town Hall meeting: *Today* - Thur Aug 4
-To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-References: <6511ed5a-c451-d59e-aa67-b4f8c350163e@RedHat.com>
+	id S933762AbcHDR30 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 4 Aug 2016 13:29:26 -0400
+Subject: Re: [PATCH 0/7] Assorted mount/mountd nfs-utils patches - V2
+To: NeilBrown <neilb@suse.com>
+References: <146976807524.20186.8871903418718212567.stgit@noble>
+ <ebff995f-0de7-900f-d240-bd6dfc7d9930@RedHat.com>
+ <87zios3fhd.fsf@notabene.neil.brown.name>
+Cc: "J. Bruce Fields" <bfields@fieldses.org>,
+        Linux NFS Mailing list <linux-nfs@vger.kernel.org>
 From: Steve Dickson <SteveD@redhat.com>
-Message-ID: <ae8b0519-49fa-235c-9b67-f79c161b8b7a@RedHat.com>
-Date: Thu, 4 Aug 2016 12:53:43 -0400
+Message-ID: <ae9b5636-1cd2-b00d-c8fe-500e6faa4a13@RedHat.com>
+Date: Thu, 4 Aug 2016 13:29:06 -0400
 MIME-Version: 1.0
-In-Reply-To: <6511ed5a-c451-d59e-aa67-b4f8c350163e@RedHat.com>
+In-Reply-To: <87zios3fhd.fsf@notabene.neil.brown.name>
 Content-Type: text/plain; charset=windows-1252
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This will be starting in a few... If interested... 
 
-steved
 
-On 08/04/2016 07:26 AM, Steve Dickson wrote:
-> Hello,
+On 08/04/2016 08:06 AM, NeilBrown wrote:
+> On Thu, Aug 04 2016, Steve Dickson <SteveD@redhat.com> wrote:
+>>>
+>>> NeilBrown (7):
+>>>       nfs.man: clarify effect of 'retry' option.
+>>>       mountd: remove the --exports-file option
+>>>       mount: don't treat temporary name resolution failure as permanent.
+>>>       mount: use a public address for IPv6 callback.
+>>>       mount: fix memory leak in v4root_add_parents
+>>>       mountd: allow alternate ttl to be specified for dump_to_cache.
+>>>       mountd: fail nfsd.export lookup for path to unmounted exportpoint
+>> The patch series committed... 
 > 
-> We have not had one of these for a while so lets see
-> what everyone is up to... 
-> 
-> The meeting will be *Today* at 
-> 
->    *01:00 pm EST (10:00am PST)*
-> 
-> The usual agenda will apply. The maintainers will give
-> a quick status of what is happening in their worlds.
-> 
-> Next we'll get updates from major contributors on what
-> they have been doing and are planing on doing.
->   
-> Finally, we'll open the floor to questions, comments, 
-> concerns from the community.  
-> 
-> Generally the meeting lasts between 30 to 45 mins, with 
-> a very hard stop at 60mins. 
-> 
-> Please feel to attend and participate!
-> 
-> Again the Time: 10:00 am PST (01:00 pm EST)
-> 
-> BlueJeans Video Link:
->     https://bluejeans.com/5642721552/
-> 
-> The call in numbers are:
-> 
-> U.S. and Canada: (800) 451-8679
-> World wide toll free numbers
->    https://www.intercallonline.com/listNumbersByCode.action?confCode=5642721552
-> 
-> Conference code: 564.272.1552
-> 
-> steved.
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
+> Thanks!  Have you any idea when 1.3.4 might be released.  I want
+> several bits for openSUSE and I'm wondering whether to take them
+> piece-meal, or to wait for a new release.
+I plan doing that this weekend... 
+
+steved.
