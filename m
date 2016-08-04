@@ -1,42 +1,157 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:57162 "EHLO mx1.redhat.com"
+Received: from mx141.netapp.com ([216.240.21.12]:63490 "EHLO mx141.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S933762AbcHDR30 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 4 Aug 2016 13:29:26 -0400
-Subject: Re: [PATCH 0/7] Assorted mount/mountd nfs-utils patches - V2
-To: NeilBrown <neilb@suse.com>
-References: <146976807524.20186.8871903418718212567.stgit@noble>
- <ebff995f-0de7-900f-d240-bd6dfc7d9930@RedHat.com>
- <87zios3fhd.fsf@notabene.neil.brown.name>
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-        Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-From: Steve Dickson <SteveD@redhat.com>
-Message-ID: <ae9b5636-1cd2-b00d-c8fe-500e6faa4a13@RedHat.com>
-Date: Thu, 4 Aug 2016 13:29:06 -0400
+	id S1753644AbcHDSvM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 4 Aug 2016 14:51:12 -0400
+Subject: Re: [PATCH Version 7 4/8] NFS detect session trunking
+To: <andros@netapp.com>, <trond.myklebust@primarydata.com>
+References: <1469645000-19791-1-git-send-email-andros@netapp.com>
+ <1469645000-19791-5-git-send-email-andros@netapp.com>
+CC: <linux-nfs@vger.kernel.org>
+From: Anna Schumaker <Anna.Schumaker@netapp.com>
+Message-ID: <c45e4938-a114-ed52-1ec5-83f9d3a741bd@Netapp.com>
+Date: Thu, 4 Aug 2016 14:51:08 -0400
 MIME-Version: 1.0
-In-Reply-To: <87zios3fhd.fsf@notabene.neil.brown.name>
-Content-Type: text/plain; charset=windows-1252
+In-Reply-To: <1469645000-19791-5-git-send-email-andros@netapp.com>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Hi Andy,
 
+One small typo below:
 
-On 08/04/2016 08:06 AM, NeilBrown wrote:
-> On Thu, Aug 04 2016, Steve Dickson <SteveD@redhat.com> wrote:
->>>
->>> NeilBrown (7):
->>>       nfs.man: clarify effect of 'retry' option.
->>>       mountd: remove the --exports-file option
->>>       mount: don't treat temporary name resolution failure as permanent.
->>>       mount: use a public address for IPv6 callback.
->>>       mount: fix memory leak in v4root_add_parents
->>>       mountd: allow alternate ttl to be specified for dump_to_cache.
->>>       mountd: fail nfsd.export lookup for path to unmounted exportpoint
->> The patch series committed... 
+On 07/27/2016 02:43 PM, andros@netapp.com wrote:
+> From: Andy Adamson <andros@netapp.com>
 > 
-> Thanks!  Have you any idea when 1.3.4 might be released.  I want
-> several bits for openSUSE and I'm wondering whether to take them
-> piece-meal, or to wait for a new release.
-I plan doing that this weekend... 
+> Signed-off-by: Andy Adamson <andros@netapp.com>
+> ---
+>  fs/nfs/nfs4_fs.h    |  2 ++
+>  fs/nfs/nfs4client.c | 93 +++++++++++++++++++++++++++++++++++++++++++++++++++++
+>  2 files changed, 95 insertions(+)
+> 
+> diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
+> index 4be567a..eb315e1 100644
+> --- a/fs/nfs/nfs4_fs.h
+> +++ b/fs/nfs/nfs4_fs.h
+> @@ -277,6 +277,8 @@ extern int nfs4_proc_get_lease_time(struct nfs_client *clp,
+>  		struct nfs_fsinfo *fsinfo);
+>  extern int nfs4_proc_layoutcommit(struct nfs4_layoutcommit_data *data,
+>  				  bool sync);
+> +extern int nfs4_detect_session_trunking(struct nfs_client *clp,
+> +		struct nfs41_exchange_id_res *res, struct rpc_xprt *xprt);
+>  
+>  static inline bool
+>  is_ds_only_client(struct nfs_client *clp)
+> diff --git a/fs/nfs/nfs4client.c b/fs/nfs/nfs4client.c
+> index f356d50..37a9416 100644
+> --- a/fs/nfs/nfs4client.c
+> +++ b/fs/nfs/nfs4client.c
+> @@ -595,6 +595,99 @@ out_major_mismatch:
+>  	return false;
+>  }
+>  
+> +/*
+> + * Returns true if server minor ids match
+> + */
+> +static bool
+> +nfs4_check_serverowner_minor_id(struct nfs41_server_owner *o1,
+> +				struct nfs41_server_owner *o2)
+> +{
+> +	/* Check eir_server_owner so_minor_id */
+> +	if (o1->minor_id != o2->minor_id)
+> +		goto out_minor_mismatch;
+> +
+> +	dprintk("NFS: --> %s server owner minor IDs s match\n", __func__);
+                                                   ^^^
+You have an extra "s" in this dprintk().
 
-steved.
+Thanks,
+Anna
+
+> +	return true;
+> +
+> +out_minor_mismatch:
+> +	dprintk("NFS: --> %s server owner minor IDs do not match\n", __func__);
+> +	return false;
+> +}
+> +
+> +/*
+> + * Returns true if the server scopes match
+> + */
+> +static bool
+> +nfs4_check_server_scope(struct nfs41_server_scope *s1,
+> +			struct nfs41_server_scope *s2)
+> +{
+> +	if (s1->server_scope_sz != s2->server_scope_sz)
+> +		goto out_scope_mismatch;
+> +	if (memcmp(s1->server_scope, s2->server_scope,
+> +		   s1->server_scope_sz) != 0)
+> +		goto out_scope_mismatch;
+> +
+> +	dprintk("NFS: --> %s server scopes match\n", __func__);
+> +	return true;
+> +
+> +out_scope_mismatch:
+> +	dprintk("NFS: --> %s server scopes do not match\n",
+> +		__func__);
+> +	return false;
+> +}
+> +
+> +/**
+> + * nfs4_detect_session_trunking - Checks for ssession trunking called
+> + * after a successuful EXCHANGE_ID testing a multi-addr connection to be
+> + * potentially added as a session trunk
+> + *
+> + * @clp:    original mount nfs_client
+> + * @res:    result structure from an exchange_id using the original mount
+> + *          nfs_client with a new multi_addr transport
+> + *
+> + * Returns zero on success, otherwise -EINVAL
+> + *
+> + * Note: since the exchange_id for the new multi_addr transport uses the
+> + * same nfs_client from the original mount, the cl_owner_id is reused,
+> + * so eir_clientowner is the same.
+> + */
+> +int nfs4_detect_session_trunking(struct nfs_client *clp,
+> +				 struct nfs41_exchange_id_res *res,
+> +				 struct rpc_xprt *xprt)
+> +{
+> +	int status = -EINVAL;
+> +	/* Check eir_clientid */
+> +	if (!nfs4_match_clientids(clp->cl_clientid, res->clientid))
+> +		goto out;
+> +
+> +	/* Check eir_server_owner so_major_id */
+> +	if (!nfs4_check_serverowner_major_id(clp->cl_serverowner,
+> +					     res->server_owner))
+> +		goto out;
+> +
+> +	/* Check eir_server_owner so_minor_id */
+> +	if (!nfs4_check_serverowner_minor_id(clp->cl_serverowner,
+> +					     res->server_owner))
+> +		goto out;
+> +
+> +	/* Check eir_server_scope */
+> +	if (!nfs4_check_server_scope(clp->cl_serverscope, res->server_scope))
+> +		goto out;
+> +
+> +	status = 0;
+> +out:
+> +	if (status)
+> +		pr_info("NFS:  %s: Session trunking failed for %s status %d\n",
+> +			clp->cl_hostname,
+> +			xprt->address_strings[RPC_DISPLAY_ADDR], status);
+> +	else
+> +		pr_info("NFS:  %s: Session trunking succeeded for %s\n",
+> +			clp->cl_hostname,
+> +			xprt->address_strings[RPC_DISPLAY_ADDR]);
+> +
+> +	return status;
+> +}
+> +
+>  /**
+>   * nfs41_walk_client_list - Find nfs_client that matches a client/server owner
+>   *
+> 
+
