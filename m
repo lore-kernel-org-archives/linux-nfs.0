@@ -1,49 +1,92 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from bombadil.infradead.org ([198.137.202.9]:32903 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756378AbcHDMrl (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 4 Aug 2016 08:47:41 -0400
-Date: Thu, 4 Aug 2016 05:47:19 -0700
-From: Christoph Hellwig <hch@infradead.org>
-To: NeilBrown <neilb@suse.com>
-Cc: "J. Bruce Fields" <bfields@fieldses.org>, fdmanana@kernel.org,
-        linux-btrfs@vger.kernel.org, NFS List <linux-nfs@vger.kernel.org>,
-        Christoph Hellwig <hch@infradead.org>
-Subject: Re: [PATCH] exportfs: be careful to only return expected errors.
-Message-ID: <20160804124719.GA5676@infradead.org>
-References: <1465491191-28102-1-git-send-email-fdmanana@kernel.org>
- <874m7i8oou.fsf@notabene.neil.brown.name>
- <20160722015904.GB29969@fieldses.org>
- <87bn1q75ut.fsf@notabene.neil.brown.name>
- <20160722200843.GA7463@fieldses.org>
- <877fbxperp.fsf@notabene.neil.brown.name>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <877fbxperp.fsf@notabene.neil.brown.name>
+Received: from mail-io0-f196.google.com ([209.85.223.196]:34165 "EHLO
+	mail-io0-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S933543AbcHDNBt (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 4 Aug 2016 09:01:49 -0400
+Received: by mail-io0-f196.google.com with SMTP id g86so21673767ioj.1
+        for <linux-nfs@vger.kernel.org>; Thu, 04 Aug 2016 06:01:49 -0700 (PDT)
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 1/2] SUNRPC: Fix reconnection timeouts
+Date: Thu,  4 Aug 2016 09:00:59 -0400
+Message-Id: <1470315660-37206-1-git-send-email-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Aug 04, 2016 at 10:19:06AM +1000, NeilBrown wrote:
-> 
-> 
-> When nfsd calls fh_to_dentry, it expect ESTALE or ENOMEM as errors.
-> In particular it can be tempting to return ENOENT, but this is not
-> handled well by nfsd.
-> 
-> Rather than requiring strict adherence to error code code filesystems,
-> treat all unexpected error codes the same as ESTALE.  This is safest.
-> 
-> Signed-off-by: NeilBrown <neilb@suse.com>
-> ---
-> 
-> I didn't add a dprintk for unexpected error messages, partly
-> because dprintk isn't usable in exportfs.  I could have used pr_debug()
-> but I really didn't see much value.
-> 
-> This has been tested together with the btrfs change, and it restores
-> correct functionality.
+When the connect attempt fails and backs off, we should start the clock
+at the last connection attempt, not time at which we queue up the
+reconnect job.
 
-I don't really like all this magic which is partially historic.  I think
-we should instead allow the fs to return any error from the export
-operations, and forbid returning NULL entirely.  Then the actualy caller
-(nfsd) can sort out which errors it wants to send over the wire.
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+---
+ net/sunrpc/xprtsock.c | 27 ++++++++++++++++++++-------
+ 1 file changed, 20 insertions(+), 7 deletions(-)
+
+diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
+index c6b1d48c4319..5eebf48cffa0 100644
+--- a/net/sunrpc/xprtsock.c
++++ b/net/sunrpc/xprtsock.c
+@@ -2173,6 +2173,8 @@ static void xs_udp_finish_connecting(struct rpc_xprt *xprt, struct socket *sock)
+ 		write_unlock_bh(&sk->sk_callback_lock);
+ 	}
+ 	xs_udp_do_set_buffer_size(xprt);
++
++	xprt->stat.connect_start = jiffies;
+ }
+ 
+ static void xs_udp_setup_socket(struct work_struct *work)
+@@ -2373,6 +2375,16 @@ out:
+ 	xprt_wake_pending_tasks(xprt, status);
+ }
+ 
++static unsigned long xs_reconnect_delay(const struct rpc_xprt *xprt)
++{
++	unsigned long start, now = jiffies;
++
++	start = xprt->stat.connect_start + xprt->reestablish_timeout;
++	if (time_after(start, now))
++		return start - now;
++	return 0;
++}
++
+ /**
+  * xs_connect - connect a socket to a remote endpoint
+  * @xprt: pointer to transport structure
+@@ -2390,6 +2402,7 @@ out:
+ static void xs_connect(struct rpc_xprt *xprt, struct rpc_task *task)
+ {
+ 	struct sock_xprt *transport = container_of(xprt, struct sock_xprt, xprt);
++	unsigned long delay = 0;
+ 
+ 	WARN_ON_ONCE(!xprt_lock_connect(xprt, task, transport));
+ 
+@@ -2401,19 +2414,19 @@ static void xs_connect(struct rpc_xprt *xprt, struct rpc_task *task)
+ 		/* Start by resetting any existing state */
+ 		xs_reset_transport(transport);
+ 
+-		queue_delayed_work(xprtiod_workqueue,
+-				   &transport->connect_worker,
+-				   xprt->reestablish_timeout);
++		delay = xs_reconnect_delay(xprt);
++
+ 		xprt->reestablish_timeout <<= 1;
+ 		if (xprt->reestablish_timeout < XS_TCP_INIT_REEST_TO)
+ 			xprt->reestablish_timeout = XS_TCP_INIT_REEST_TO;
+ 		if (xprt->reestablish_timeout > XS_TCP_MAX_REEST_TO)
+ 			xprt->reestablish_timeout = XS_TCP_MAX_REEST_TO;
+-	} else {
++	} else
+ 		dprintk("RPC:       xs_connect scheduled xprt %p\n", xprt);
+-		queue_delayed_work(xprtiod_workqueue,
+-				   &transport->connect_worker, 0);
+-	}
++
++	queue_delayed_work(xprtiod_workqueue,
++			&transport->connect_worker,
++			delay);
+ }
+ 
+ /**
+-- 
+2.7.4
+
