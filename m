@@ -1,104 +1,218 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx142.netapp.com ([216.240.21.19]:43665 "EHLO mx142.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758974AbcHDTCx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 4 Aug 2016 15:02:53 -0400
-Subject: Re: [PATCH Version 7 5/8] SUNRPC add remove xprt flag to
- rpc_task_release_client
-To: <andros@netapp.com>, <trond.myklebust@primarydata.com>
-References: <1469645000-19791-1-git-send-email-andros@netapp.com>
- <1469645000-19791-6-git-send-email-andros@netapp.com>
-CC: <linux-nfs@vger.kernel.org>
-From: Anna Schumaker <Anna.Schumaker@netapp.com>
-Message-ID: <091623e3-77bb-b551-f12f-01ea9ba3a7d7@Netapp.com>
-Date: Thu, 4 Aug 2016 15:02:30 -0400
+Received: from mail-it0-f54.google.com ([209.85.214.54]:35443 "EHLO
+	mail-it0-f54.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1758910AbcHDTHd convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 4 Aug 2016 15:07:33 -0400
+Received: by mail-it0-f54.google.com with SMTP id u186so3829797ita.0
+        for <linux-nfs@vger.kernel.org>; Thu, 04 Aug 2016 12:07:33 -0700 (PDT)
 MIME-Version: 1.0
-In-Reply-To: <1469645000-19791-6-git-send-email-andros@netapp.com>
-Content-Type: text/plain; charset="utf-8"
+In-Reply-To: <748748607.4225721.1470323081028.JavaMail.zimbra@desy.de>
+References: <1485779983.22627050.1467888579184.JavaMail.zimbra@desy.de>
+ <34F13011-FB4A-4ACD-9DDC-BAD3F7EC9B56@netapp.com> <1826288060.966410.1468428541658.JavaMail.zimbra@desy.de>
+ <CAN-5tyEKDpciUS81QEQwS_ioufndrjDKzPwtcYkQ8O8hvtWiQQ@mail.gmail.com>
+ <1548681850.3694730.1470049705230.JavaMail.zimbra@desy.de>
+ <CAN-5tyGMXCob2a222_PJr5vnzaMtb0UKNPH-QASq8a8v3U2ebA@mail.gmail.com> <748748607.4225721.1470323081028.JavaMail.zimbra@desy.de>
+From: Olga Kornievskaia <aglo@umich.edu>
+Date: Thu, 4 Aug 2016 15:00:49 -0400
+Message-ID: <CAN-5tyGMQC2izY5+WSE-drqk2hp=v8i07ZXr7UZgzcNR-0BH1A@mail.gmail.com>
+Subject: Re: Lost CLOSE with NFSv4.1 on RHEL7 ( and bejond?)
+To: "Mkrtchyan, Tigran" <tigran.mkrtchyan@desy.de>
+Cc: Andy Adamson <William.Adamson@netapp.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        Steve Dickson <steved@redhat.com>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Andy,
+On Thu, Aug 4, 2016 at 11:04 AM, Mkrtchyan, Tigran
+<tigran.mkrtchyan@desy.de> wrote:
+>
+> Hi Olga et al.
+>
+> Finally I was able to to create a reproducer (attached)!
+>
+> It looks like, if on close client application is interrupted by
+> Ctrl+C or SIGINT, then nfs client does not sends CLOSE. I can
+> 100% reproduce it on RHEL7 and Fedora24 with 4.6 kernel. The 4.7
+> kernel works (side effect of some other change?).
+>
+> The attached application reads file in a loop. On the second
+> iteration a thread is started, which will send SIGINT
+> to itself. When CLOSE is lost, you still can read the
+> file. Client even won't send any OPEN. So it looks like
+> that some where file is marked as open, but corresponding
+> process does not exist any more. Even re-mount does not help.
+>
 
-On 07/27/2016 02:43 PM, andros@netapp.com wrote:
-> From: Andy Adamson <andros@netapp.com>
-> 
-> Want to specify which rpc_xprt to use in rpc_run_task.
-> 
-> Don't pass in an rpc_xprt in rpc_init_task just to have it not used as it
-> is removed in rpc_task_release_client.
-> 
-> Signed-off-by: Andy Adamson <andros@netapp.com>
-> ---
->  include/linux/sunrpc/clnt.h | 2 +-
->  net/sunrpc/clnt.c           | 7 +++----
->  net/sunrpc/sched.c          | 2 +-
->  3 files changed, 5 insertions(+), 6 deletions(-)
-> 
-> diff --git a/include/linux/sunrpc/clnt.h b/include/linux/sunrpc/clnt.h
-> index b6810c9..99410bb 100644
-> --- a/include/linux/sunrpc/clnt.h
-> +++ b/include/linux/sunrpc/clnt.h
-> @@ -148,7 +148,7 @@ int		rpc_switch_client_transport(struct rpc_clnt *,
->  
->  void		rpc_shutdown_client(struct rpc_clnt *);
->  void		rpc_release_client(struct rpc_clnt *);
-> -void		rpc_task_release_client(struct rpc_task *);
-> +void		rpc_task_release_client(struct rpc_task *, int);
+Thank you Tigran for a reproducer, I'll check it out and get back to you.
 
-Can you change the new parameter to a bool instead of an int, please?
-
-Thanks,
-Anna
-
->  
->  int		rpcb_create_local(struct net *);
->  void		rpcb_put_local(struct net *);
-> diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
-> index cb49898..459f9b1 100644
-> --- a/net/sunrpc/clnt.c
-> +++ b/net/sunrpc/clnt.c
-> @@ -961,7 +961,7 @@ out:
->  }
->  EXPORT_SYMBOL_GPL(rpc_bind_new_program);
->  
-> -void rpc_task_release_client(struct rpc_task *task)
-> +void rpc_task_release_client(struct rpc_task *task, int rm_xprt)
->  {
->  	struct rpc_clnt *clnt = task->tk_client;
->  	struct rpc_xprt *xprt = task->tk_xprt;
-> @@ -976,9 +976,8 @@ void rpc_task_release_client(struct rpc_task *task)
->  		rpc_release_client(clnt);
->  	}
->  
-> -	if (xprt != NULL) {
-> +	if (rm_xprt && xprt) {
->  		task->tk_xprt = NULL;
-> -
->  		xprt_put(xprt);
->  	}
->  }
-> @@ -988,7 +987,7 @@ void rpc_task_set_client(struct rpc_task *task, struct rpc_clnt *clnt)
->  {
->  
->  	if (clnt != NULL) {
-> -		rpc_task_release_client(task);
-> +		rpc_task_release_client(task, 0);
->  		if (task->tk_xprt == NULL)
->  			task->tk_xprt = xprt_iter_get_next(&clnt->cl_xpi);
->  		task->tk_client = clnt;
-> diff --git a/net/sunrpc/sched.c b/net/sunrpc/sched.c
-> index 9ae5885..575b254 100644
-> --- a/net/sunrpc/sched.c
-> +++ b/net/sunrpc/sched.c
-> @@ -1017,7 +1017,7 @@ static void rpc_release_resources_task(struct rpc_task *task)
->  		put_rpccred(task->tk_msg.rpc_cred);
->  		task->tk_msg.rpc_cred = NULL;
->  	}
-> -	rpc_task_release_client(task);
-> +	rpc_task_release_client(task, 1);
->  }
->  
->  static void rpc_final_put_task(struct rpc_task *task,
-> 
-
+> Best regards,
+>    Tigran.
+>
+> ----- Original Message -----
+>> From: "Olga Kornievskaia" <aglo@umich.edu>
+>> To: "Mkrtchyan, Tigran" <tigran.mkrtchyan@desy.de>
+>> Cc: "Andy Adamson" <William.Adamson@netapp.com>, "Linux NFS Mailing List" <linux-nfs@vger.kernel.org>, "Trond Myklebust"
+>> <trond.myklebust@primarydata.com>, "Steve Dickson" <steved@redhat.com>
+>> Sent: Monday, August 1, 2016 11:22:10 PM
+>> Subject: Re: Lost CLOSE with NFSv4.1 on RHEL7 ( and bejond?)
+>
+>> On Mon, Aug 1, 2016 at 7:08 AM, Mkrtchyan, Tigran
+>> <tigran.mkrtchyan@desy.de> wrote:
+>>> Hi Olga,
+>>>
+>>> we have installed kernel 4.7.0 on one of the nodes and don't see missing
+>>> closes from that node.
+>>>
+>>> Nevertheless, I don't think that the commit you have mentioned is fixing that,
+>>> as it fixes OPEN_DOWNGRADE, but we have a sequence of OPEN->CLOSE->OPEN. The
+>>> OPEN_DOWNGRADE is not expected - file is already closed when a second open
+>>> is sent and both requests using the same session slot.
+>>>
+>>> Have you seen a similar issue on vanilla or rhel kernel?
+>>
+>> I had a hard time triggering it consistently. I believe I have seen it
+>> on RHEL7.2 kernel but I think I was more consistently seeing it on
+>> some upstream (Trond's) kernel version (I think it was around 4.2).
+>> The problem was seen by Netapp QA on 4.3-rc7 version.
+>>
+>> Thanks for testing on the 4.7 version. I'll see what else went in that
+>> might explain the failure on the older kernel.
+>>
+>>>
+>>> Thanks a lot,
+>>>    Tigran.
+>>>
+>>> ----- Original Message -----
+>>>> From: "Olga Kornievskaia" <aglo@umich.edu>
+>>>> To: "Mkrtchyan, Tigran" <tigran.mkrtchyan@desy.de>
+>>>> Cc: "Andy Adamson" <William.Adamson@netapp.com>, "Linux NFS Mailing List"
+>>>> <linux-nfs@vger.kernel.org>, "Trond Myklebust"
+>>>> <trond.myklebust@primarydata.com>, "Steve Dickson" <steved@redhat.com>
+>>>> Sent: Thursday, July 14, 2016 4:52:59 PM
+>>>> Subject: Re: Lost CLOSE with NFSv4.1 on RHEL7 ( and bejond?)
+>>>
+>>>> Hi Tigran,
+>>>>
+>>>> On Wed, Jul 13, 2016 at 12:49 PM, Mkrtchyan, Tigran
+>>>> <tigran.mkrtchyan@desy.de> wrote:
+>>>>>
+>>>>>
+>>>>> Hi Andy,
+>>>>>
+>>>>> I will try to get upstream kernel on one of the nodes. It will take
+>>>>> some time as we need to add a new host into the cluster and get
+>>>>> some traffic go through it.
+>>>>>
+>>>>> In the mean while, with RHEL7 we get it easy reproduced - about 10
+>>>>> such cases per day. Is there any tool that will help us to see where
+>>>>> it happens? Some traces points? Call trace from vfs close to NFS close?
+>>>>
+>>>> There are NFS tracepoints but I don't know think there are VFS
+>>>> tracepoints. Unfortunately, there was a bug in the OPEN tracepoints
+>>>> that caused a kernel crash. I had a bugzilla out for RHEL7.2. It says
+>>>> it's fixed in the later kernel (.381) but it's currently not back
+>>>> ported to RHEL7.2z but hopefully will be soon (just chatted with Steve
+>>>> about getting the fix into zstream). I made no progress in figuring
+>>>> out what could be causing the lack of CLOSE and it was hard for me to
+>>>> reproduce.
+>>>>
+>>>> Just recently Trond fixed a problem where a CLOSE that was suppose to
+>>>> be sent as an OPEN_DOWNGRADE wasn't sent (commit 0979bc2a59) . I
+>>>> wonder if that can be fixing this problem....
+>>>>
+>>>>> There is a one comment in the kernel code, which sounds similar:
+>>>>> (http://git.linux-nfs.org/?p=trondmy/linux-nfs.git;a=blob;f=fs/nfs/nfs4proc.c;h=519368b987622ea23bea210929bebfd0c327e14e;hb=refs/heads/linux-next#l2955)
+>>>>>
+>>>>> nfs4proc.c: 2954
+>>>>> ====
+>>>>>
+>>>>> /*
+>>>>>  * It is possible for data to be read/written from a mem-mapped file
+>>>>>  * after the sys_close call (which hits the vfs layer as a flush).
+>>>>>  * This means that we can't safely call nfsv4 close on a file until
+>>>>>  * the inode is cleared. This in turn means that we are not good
+>>>>>  * NFSv4 citizens - we do not indicate to the server to update the file's
+>>>>>  * share state even when we are done with one of the three share
+>>>>>  * stateid's in the inode.
+>>>>>  *
+>>>>>  * NOTE: Caller must be holding the sp->so_owner semaphore!
+>>>>>  */
+>>>>> int nfs4_do_close(struct nfs4_state *state, gfp_t gfp_mask, int wait)
+>>>>>
+>>>>
+>>>> I'm not sure if the comment means to say that there is a possibility
+>>>> that NFS won't send a CLOSE (or at least I hope not). I thought that
+>>>> because we keep a reference count on the inode and send the CLOSE when
+>>>> it goes down to 0. Basically the last WRITE will trigger the nfs close
+>>>> not the vfs_close.
+>>>>
+>>>>
+>>>>> ====
+>>>>>
+>>>>>
+>>>>> Tigran.
+>>>>>
+>>>>>
+>>>>> ----- Original Message -----
+>>>>>> From: "Andy Adamson" <William.Adamson@netapp.com>
+>>>>>> To: "Mkrtchyan, Tigran" <tigran.mkrtchyan@desy.de>
+>>>>>> Cc: "Linux NFS Mailing List" <linux-nfs@vger.kernel.org>, "Andy Adamson"
+>>>>>> <William.Adamson@netapp.com>, "Trond Myklebust"
+>>>>>> <trond.myklebust@primarydata.com>, "Steve Dickson" <steved@redhat.com>
+>>>>>> Sent: Tuesday, July 12, 2016 7:16:19 PM
+>>>>>> Subject: Re: Lost CLOSE with NFSv4.1 on RHEL7 ( and bejond?)
+>>>>>
+>>>>>> Hi Tigran
+>>>>>>
+>>>>>> Can you test with an upstream kernel? Olga has seen issues around no CLOSE being
+>>>>>> sent - it is really hard to reproduce….
+>>>>>>
+>>>>>> —>Andy
+>>>>>>
+>>>>>>
+>>>>>>> On Jul 7, 2016, at 6:49 AM, Mkrtchyan, Tigran <tigran.mkrtchyan@desy.de> wrote:
+>>>>>>>
+>>>>>>>
+>>>>>>>
+>>>>>>> Dear NFS folks,
+>>>>>>>
+>>>>>>> we observe orphan open-states on our deployment with nfsv4.1.
+>>>>>>> Our setup - two client nodes, running RHEL-7.2 with kernel
+>>>>>>> 3.10.0-327.22.2.el7.x86_64. Both nodes running ownCloud (like
+>>>>>>> a dropbox) which nfsv4.1 mounts to dCache storage. Some clients
+>>>>>>> connected to node1, others to node2.
+>>>>>>>
+>>>>>>> Time-to-time we see some 'active' transfers on data our DS
+>>>>>>> which do nothing. There is a corresponding state on MDS.
+>>>>>>>
+>>>>>>> I have traced one one such cases:
+>>>>>>>
+>>>>>>>  - node1 uploads the file.
+>>>>>>>  - node2 reads the file couple of times, OPEN+LAYOUTGET+CLOSE
+>>>>>>>  - node2 sends OPEN+LAYOUTGET
+>>>>>>>  - there is no open file on node2 which points to it.
+>>>>>>>  - CLOSE never send to the server.
+>>>>>>>  - node1 eventually removes the removes the file
+>>>>>>>
+>>>>>>> We have many other cases where file is not removed, but this one I was
+>>>>>>> able to trace. The link to capture files:
+>>>>>>>
+>>>>>>> https://desycloud.desy.de/index.php/s/YldowcRzTGJeLbN
+>>>>>>>
+>>>>>>> We had ~ 10^6 transfers in last 2 days and 29 files in such state (~0.0029%).
+>>>>>>>
+>>>>>> > Tigran.
+>>>>> --
+>>>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>>>>> the body of a message to majordomo@vger.kernel.org
+>>>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>>>> --
+>>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>>>> the body of a message to majordomo@vger.kernel.org
+>>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
