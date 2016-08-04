@@ -1,230 +1,140 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-it0-f50.google.com ([209.85.214.50]:38334 "EHLO
-	mail-it0-f50.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S965926AbcHDVVS convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 4 Aug 2016 17:21:18 -0400
-Received: by mail-it0-f50.google.com with SMTP id j124so7569510ith.1
-        for <linux-nfs@vger.kernel.org>; Thu, 04 Aug 2016 14:20:55 -0700 (PDT)
+Received: from fieldses.org ([173.255.197.46]:54834 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S934031AbcHDVYs (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 4 Aug 2016 17:24:48 -0400
+Date: Thu, 4 Aug 2016 17:24:44 -0400
+To: Linus Torvalds <torvalds@linux-foundation.org>
+Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
+Subject: [GIT PULL] nfsd changes for 4.8
+Message-ID: <20160804212444.GC3907@fieldses.org>
 MIME-Version: 1.0
-In-Reply-To: <CAN-5tyGMQC2izY5+WSE-drqk2hp=v8i07ZXr7UZgzcNR-0BH1A@mail.gmail.com>
-References: <1485779983.22627050.1467888579184.JavaMail.zimbra@desy.de>
- <34F13011-FB4A-4ACD-9DDC-BAD3F7EC9B56@netapp.com> <1826288060.966410.1468428541658.JavaMail.zimbra@desy.de>
- <CAN-5tyEKDpciUS81QEQwS_ioufndrjDKzPwtcYkQ8O8hvtWiQQ@mail.gmail.com>
- <1548681850.3694730.1470049705230.JavaMail.zimbra@desy.de>
- <CAN-5tyGMXCob2a222_PJr5vnzaMtb0UKNPH-QASq8a8v3U2ebA@mail.gmail.com>
- <748748607.4225721.1470323081028.JavaMail.zimbra@desy.de> <CAN-5tyGMQC2izY5+WSE-drqk2hp=v8i07ZXr7UZgzcNR-0BH1A@mail.gmail.com>
-From: Olga Kornievskaia <aglo@umich.edu>
-Date: Thu, 4 Aug 2016 17:20:54 -0400
-Message-ID: <CAN-5tyGCirr39rKxjfEOV50J12xJBnbJepmpAz8Wy78BSU6BVg@mail.gmail.com>
-Subject: Re: Lost CLOSE with NFSv4.1 on RHEL7 ( and bejond?)
-To: "Mkrtchyan, Tigran" <tigran.mkrtchyan@desy.de>
-Cc: Andy Adamson <William.Adamson@netapp.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        Steve Dickson <steved@redhat.com>
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=us-ascii
+From: bfields@fieldses.org (J. Bruce Fields)
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Aug 4, 2016 at 3:00 PM, Olga Kornievskaia <aglo@umich.edu> wrote:
-> On Thu, Aug 4, 2016 at 11:04 AM, Mkrtchyan, Tigran
-> <tigran.mkrtchyan@desy.de> wrote:
->>
->> Hi Olga et al.
->>
->> Finally I was able to to create a reproducer (attached)!
->>
->> It looks like, if on close client application is interrupted by
->> Ctrl+C or SIGINT, then nfs client does not sends CLOSE. I can
->> 100% reproduce it on RHEL7 and Fedora24 with 4.6 kernel. The 4.7
->> kernel works (side effect of some other change?).
->>
->> The attached application reads file in a loop. On the second
->> iteration a thread is started, which will send SIGINT
->> to itself. When CLOSE is lost, you still can read the
->> file. Client even won't send any OPEN. So it looks like
->> that some where file is marked as open, but corresponding
->> process does not exist any more. Even re-mount does not help.
->>
->
-> Thank you Tigran for a reproducer, I'll check it out and get back to you.
+Please pull:
 
-I tried your example. I ran this on 3.10.0-327.4.4. In my run, I see
-OPEN, GETLAYOUT, GETDEVINFO, READ, CLOSE. Since I get a delegation,
-then when the file is read again, there won't be able an OPEN on the
-network trace in the next loop iteration. There won't be a read as
-it'll be read from the cache. So I'm not should what ctrl-c is
-accomplishing. What am I missing?
+  git://linux-nfs.org/~bfields/linux.git tags/nfsd-4.8
 
-Thanks.
+for nfsd changes for 4.8.
 
->
->> Best regards,
->>    Tigran.
->>
->> ----- Original Message -----
->>> From: "Olga Kornievskaia" <aglo@umich.edu>
->>> To: "Mkrtchyan, Tigran" <tigran.mkrtchyan@desy.de>
->>> Cc: "Andy Adamson" <William.Adamson@netapp.com>, "Linux NFS Mailing List" <linux-nfs@vger.kernel.org>, "Trond Myklebust"
->>> <trond.myklebust@primarydata.com>, "Steve Dickson" <steved@redhat.com>
->>> Sent: Monday, August 1, 2016 11:22:10 PM
->>> Subject: Re: Lost CLOSE with NFSv4.1 on RHEL7 ( and bejond?)
->>
->>> On Mon, Aug 1, 2016 at 7:08 AM, Mkrtchyan, Tigran
->>> <tigran.mkrtchyan@desy.de> wrote:
->>>> Hi Olga,
->>>>
->>>> we have installed kernel 4.7.0 on one of the nodes and don't see missing
->>>> closes from that node.
->>>>
->>>> Nevertheless, I don't think that the commit you have mentioned is fixing that,
->>>> as it fixes OPEN_DOWNGRADE, but we have a sequence of OPEN->CLOSE->OPEN. The
->>>> OPEN_DOWNGRADE is not expected - file is already closed when a second open
->>>> is sent and both requests using the same session slot.
->>>>
->>>> Have you seen a similar issue on vanilla or rhel kernel?
->>>
->>> I had a hard time triggering it consistently. I believe I have seen it
->>> on RHEL7.2 kernel but I think I was more consistently seeing it on
->>> some upstream (Trond's) kernel version (I think it was around 4.2).
->>> The problem was seen by Netapp QA on 4.3-rc7 version.
->>>
->>> Thanks for testing on the 4.7 version. I'll see what else went in that
->>> might explain the failure on the older kernel.
->>>
->>>>
->>>> Thanks a lot,
->>>>    Tigran.
->>>>
->>>> ----- Original Message -----
->>>>> From: "Olga Kornievskaia" <aglo@umich.edu>
->>>>> To: "Mkrtchyan, Tigran" <tigran.mkrtchyan@desy.de>
->>>>> Cc: "Andy Adamson" <William.Adamson@netapp.com>, "Linux NFS Mailing List"
->>>>> <linux-nfs@vger.kernel.org>, "Trond Myklebust"
->>>>> <trond.myklebust@primarydata.com>, "Steve Dickson" <steved@redhat.com>
->>>>> Sent: Thursday, July 14, 2016 4:52:59 PM
->>>>> Subject: Re: Lost CLOSE with NFSv4.1 on RHEL7 ( and bejond?)
->>>>
->>>>> Hi Tigran,
->>>>>
->>>>> On Wed, Jul 13, 2016 at 12:49 PM, Mkrtchyan, Tigran
->>>>> <tigran.mkrtchyan@desy.de> wrote:
->>>>>>
->>>>>>
->>>>>> Hi Andy,
->>>>>>
->>>>>> I will try to get upstream kernel on one of the nodes. It will take
->>>>>> some time as we need to add a new host into the cluster and get
->>>>>> some traffic go through it.
->>>>>>
->>>>>> In the mean while, with RHEL7 we get it easy reproduced - about 10
->>>>>> such cases per day. Is there any tool that will help us to see where
->>>>>> it happens? Some traces points? Call trace from vfs close to NFS close?
->>>>>
->>>>> There are NFS tracepoints but I don't know think there are VFS
->>>>> tracepoints. Unfortunately, there was a bug in the OPEN tracepoints
->>>>> that caused a kernel crash. I had a bugzilla out for RHEL7.2. It says
->>>>> it's fixed in the later kernel (.381) but it's currently not back
->>>>> ported to RHEL7.2z but hopefully will be soon (just chatted with Steve
->>>>> about getting the fix into zstream). I made no progress in figuring
->>>>> out what could be causing the lack of CLOSE and it was hard for me to
->>>>> reproduce.
->>>>>
->>>>> Just recently Trond fixed a problem where a CLOSE that was suppose to
->>>>> be sent as an OPEN_DOWNGRADE wasn't sent (commit 0979bc2a59) . I
->>>>> wonder if that can be fixing this problem....
->>>>>
->>>>>> There is a one comment in the kernel code, which sounds similar:
->>>>>> (http://git.linux-nfs.org/?p=trondmy/linux-nfs.git;a=blob;f=fs/nfs/nfs4proc.c;h=519368b987622ea23bea210929bebfd0c327e14e;hb=refs/heads/linux-next#l2955)
->>>>>>
->>>>>> nfs4proc.c: 2954
->>>>>> ====
->>>>>>
->>>>>> /*
->>>>>>  * It is possible for data to be read/written from a mem-mapped file
->>>>>>  * after the sys_close call (which hits the vfs layer as a flush).
->>>>>>  * This means that we can't safely call nfsv4 close on a file until
->>>>>>  * the inode is cleared. This in turn means that we are not good
->>>>>>  * NFSv4 citizens - we do not indicate to the server to update the file's
->>>>>>  * share state even when we are done with one of the three share
->>>>>>  * stateid's in the inode.
->>>>>>  *
->>>>>>  * NOTE: Caller must be holding the sp->so_owner semaphore!
->>>>>>  */
->>>>>> int nfs4_do_close(struct nfs4_state *state, gfp_t gfp_mask, int wait)
->>>>>>
->>>>>
->>>>> I'm not sure if the comment means to say that there is a possibility
->>>>> that NFS won't send a CLOSE (or at least I hope not). I thought that
->>>>> because we keep a reference count on the inode and send the CLOSE when
->>>>> it goes down to 0. Basically the last WRITE will trigger the nfs close
->>>>> not the vfs_close.
->>>>>
->>>>>
->>>>>> ====
->>>>>>
->>>>>>
->>>>>> Tigran.
->>>>>>
->>>>>>
->>>>>> ----- Original Message -----
->>>>>>> From: "Andy Adamson" <William.Adamson@netapp.com>
->>>>>>> To: "Mkrtchyan, Tigran" <tigran.mkrtchyan@desy.de>
->>>>>>> Cc: "Linux NFS Mailing List" <linux-nfs@vger.kernel.org>, "Andy Adamson"
->>>>>>> <William.Adamson@netapp.com>, "Trond Myklebust"
->>>>>>> <trond.myklebust@primarydata.com>, "Steve Dickson" <steved@redhat.com>
->>>>>>> Sent: Tuesday, July 12, 2016 7:16:19 PM
->>>>>>> Subject: Re: Lost CLOSE with NFSv4.1 on RHEL7 ( and bejond?)
->>>>>>
->>>>>>> Hi Tigran
->>>>>>>
->>>>>>> Can you test with an upstream kernel? Olga has seen issues around no CLOSE being
->>>>>>> sent - it is really hard to reproduce….
->>>>>>>
->>>>>>> —>Andy
->>>>>>>
->>>>>>>
->>>>>>>> On Jul 7, 2016, at 6:49 AM, Mkrtchyan, Tigran <tigran.mkrtchyan@desy.de> wrote:
->>>>>>>>
->>>>>>>>
->>>>>>>>
->>>>>>>> Dear NFS folks,
->>>>>>>>
->>>>>>>> we observe orphan open-states on our deployment with nfsv4.1.
->>>>>>>> Our setup - two client nodes, running RHEL-7.2 with kernel
->>>>>>>> 3.10.0-327.22.2.el7.x86_64. Both nodes running ownCloud (like
->>>>>>>> a dropbox) which nfsv4.1 mounts to dCache storage. Some clients
->>>>>>>> connected to node1, others to node2.
->>>>>>>>
->>>>>>>> Time-to-time we see some 'active' transfers on data our DS
->>>>>>>> which do nothing. There is a corresponding state on MDS.
->>>>>>>>
->>>>>>>> I have traced one one such cases:
->>>>>>>>
->>>>>>>>  - node1 uploads the file.
->>>>>>>>  - node2 reads the file couple of times, OPEN+LAYOUTGET+CLOSE
->>>>>>>>  - node2 sends OPEN+LAYOUTGET
->>>>>>>>  - there is no open file on node2 which points to it.
->>>>>>>>  - CLOSE never send to the server.
->>>>>>>>  - node1 eventually removes the removes the file
->>>>>>>>
->>>>>>>> We have many other cases where file is not removed, but this one I was
->>>>>>>> able to trace. The link to capture files:
->>>>>>>>
->>>>>>>> https://desycloud.desy.de/index.php/s/YldowcRzTGJeLbN
->>>>>>>>
->>>>>>>> We had ~ 10^6 transfers in last 2 days and 29 files in such state (~0.0029%).
->>>>>>>>
->>>>>>> > Tigran.
->>>>>> --
->>>>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->>>>>> the body of a message to majordomo@vger.kernel.org
->>>>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->>>>> --
->>>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->>>>> the body of a message to majordomo@vger.kernel.org
->>>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->>> --
->>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->>> the body of a message to majordomo@vger.kernel.org
->>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+--b.
+
+----------------------------------------------------------------
+Highlights:
+
+	Trond made a change to the server's tcp logic that allows a fast
+	client to better take advantage of high bandwidth networks, but
+	may increase the risk that a single client could starve other
+	clients; a new sunrpc.svc_rpc_per_connection_limit parameter
+	should help mitigate this in the (hopefully unlikely) event this
+	becomes a problem in practice.
+
+	Tom Haynes added a minimal flex-layout pnfs server, which is of
+	no use in production for now--don't build it unless you're doing
+	client testing or further server development.
+
+----------------------------------------------------------------
+Andrew Elble (3):
+      nfs/nfsd: Move useful bitfield ops to a commonly accessible place
+      nfsd: allow mach_creds_match to be used more broadly
+      nfsd: implement machine credential support for some operations
+
+Benjamin Coddington (1):
+      xfs: abstract block export operations from nfsd layouts
+
+Christophe JAILLET (1):
+      nfsd: Fix some indent inconsistancy
+
+Chuck Lever (1):
+      nfsd: Close race between nfsd4_release_lockowner and nfsd4_lock
+
+Dan Carpenter (1):
+      nfsd: remove some dead code in nfsd_create_locked()
+
+J. Bruce Fields (6):
+      nfsd: remove redundant zero-length check from create
+      nfsd: check d_can_lookup in fh_verify of directories
+      nfsd: reorganize nfsd_create
+      nfsd: remove unnecessary positive-dentry check
+      nfsd: clean up bad-type check in nfsd_create_locked
+      nfsd: drop unnecessary MAY_EXEC check from create
+
+Jeff Layton (1):
+      nfsd: allow nfsd to advertise multiple layout types
+
+Kinglong Mee (1):
+      nfsd/blocklayout: Make sure calculate signature/designator length aligned
+
+NeilBrown (1):
+      sunrpc: remove 'inuse' flag from struct cache_detail.
+
+Oleg Drokin (2):
+      nfsd: Correct a comment for NFSD_MAY_ defines location
+      nfsd: Make creates return EEXIST instead of EACCES
+
+Scott Mayhew (1):
+      sunrpc: add gss minor status to svcauth_gss_proxy_init
+
+Tom Haynes (2):
+      nfsd: flex file device id encoding will need the server address
+      nfsd: Add a super simple flex file server
+
+Trond Myklebust (11):
+      SUNRPC: Don't allocate a full sockaddr_storage for tracing
+      SUNRPC: Add a tracepoint for server socket out-of-space conditions
+      SUNRPC: Add tracepoints for dropped and deferred requests
+      SUNRPC: lock the socket while detaching it
+      SUNRPC: Call the default socket callbacks instead of open coding
+      SUNRPC: Micro optimisation for svc_data_ready
+      SUNRPC: Add a server side per-connection limit
+      SUNRPC: Change TCP socket space reservation
+      SUNRPC: Remove unused callback xpo_adjust_wspace()
+      SUNRPC: accept() may return sockets that are still in SYN_RECV
+      SUNRPC: Detect immediate closure of accepted sockets
+
+ Documentation/kernel-parameters.txt |   6 ++
+ fs/Kconfig                          |   6 ++
+ fs/nfsd/Kconfig                     |  19 +++++
+ fs/nfsd/Makefile                    |   1 +
+ fs/nfsd/blocklayout.c               |   2 +
+ fs/nfsd/blocklayoutxdr.c            |   4 +-
+ fs/nfsd/export.c                    |  14 +++-
+ fs/nfsd/export.h                    |   2 +-
+ fs/nfsd/flexfilelayout.c            | 133 ++++++++++++++++++++++++++++++++
+ fs/nfsd/flexfilelayoutxdr.c         | 115 +++++++++++++++++++++++++++
+ fs/nfsd/flexfilelayoutxdr.h         |  49 ++++++++++++
+ fs/nfsd/nfs4layouts.c               |  16 +++-
+ fs/nfsd/nfs4proc.c                  |  48 ++++++++++--
+ fs/nfsd/nfs4state.c                 |  74 ++++++++++--------
+ fs/nfsd/nfs4xdr.c                   |  81 +++++++++----------
+ fs/nfsd/nfsd.h                      |   5 ++
+ fs/nfsd/nfsfh.c                     |  18 +++--
+ fs/nfsd/nfsproc.c                   |   7 +-
+ fs/nfsd/nfsxdr.c                    |   2 +-
+ fs/nfsd/pnfs.h                      |   4 +
+ fs/nfsd/state.h                     |   1 +
+ fs/nfsd/vfs.c                       | 142 +++++++++++++++-------------------
+ fs/nfsd/vfs.h                       |   3 +
+ fs/nfsd/xdr4.h                      |   5 ++
+ fs/xfs/Makefile                     |   3 +-
+ fs/xfs/xfs_export.c                 |   2 +-
+ fs/xfs/xfs_pnfs.h                   |   4 +-
+ include/linux/nfs4.h                |  11 +++
+ include/linux/nfs_xdr.h             |  11 ---
+ include/linux/sunrpc/cache.h        |   2 -
+ include/linux/sunrpc/svc.h          |   1 +
+ include/linux/sunrpc/svc_xprt.h     |   2 +-
+ include/trace/events/sunrpc.h       | 118 ++++++++++++++++++++++++----
+ net/sunrpc/auth_gss/svcauth_gss.c   |   5 +-
+ net/sunrpc/cache.c                  |   2 +-
+ net/sunrpc/svc_xprt.c               |  51 ++++++++++--
+ net/sunrpc/svcsock.c                | 150 +++++++++---------------------------
+ 37 files changed, 784 insertions(+), 335 deletions(-)
+ create mode 100644 fs/nfsd/flexfilelayout.c
+ create mode 100644 fs/nfsd/flexfilelayoutxdr.c
+ create mode 100644 fs/nfsd/flexfilelayoutxdr.h
+
+--b.
