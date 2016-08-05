@@ -1,43 +1,68 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-cys01nam02hn0227.outbound.protection.outlook.com ([104.47.37.227]:59750
-	"EHLO NAM02-CY1-obe.outbound.protection.outlook.com"
-	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-	id S934745AbcHEKu3 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 5 Aug 2016 06:50:29 -0400
-From: "Tyler, Avery Carson" <ATyler290@flagler.edu>
-To: "Tyler, Avery Carson" <ATyler290@flagler.edu>
-Subject: RE: NEWS UPDATE!!!
-Date: Fri, 5 Aug 2016 09:35:11 +0000
-Message-ID: <6539C9ABDF40554CA798F91B784702BA229F4F@FC-EXCH1.flagler.edu>
-References: <6539C9ABDF40554CA798F91B784702BA2267BB@FC-EXCH1.flagler.edu>
-In-Reply-To: <6539C9ABDF40554CA798F91B784702BA2267BB@FC-EXCH1.flagler.edu>
-Content-Type: text/plain; charset="iso-8859-1"
+Received: from mx144.netapp.com ([216.240.21.25]:36286 "EHLO mx144.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1759895AbcHEQlL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 5 Aug 2016 12:41:11 -0400
+From: "Adamson, Andy" <William.Adamson@netapp.com>
+To: "Schumaker, Anna" <Anna.Schumaker@netapp.com>
+CC: Trond Myklebust <trond.myklebust@primarydata.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH Version 7 6/8] SUNRPC add an RPC null call to test session
+ trunking connection
+Date: Fri, 5 Aug 2016 16:41:08 +0000
+Message-ID: <F10330FF-4D9E-4DEE-8420-54F508865303@netapp.com>
+References: <1469645000-19791-1-git-send-email-andros@netapp.com>
+ <1469645000-19791-7-git-send-email-andros@netapp.com>
+ <c3229909-cafb-6234-df63-3a6785cf8ab2@Netapp.com>
+In-Reply-To: <c3229909-cafb-6234-df63-3a6785cf8ab2@Netapp.com>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-________________________________
-From: Tyler, Avery Carson
-Sent: Friday, August 05, 2016 4:03 AM
-Subject: NEWS UPDATE!!!
-
-Dear Email User
-
-New security updates need to be performed on our servers, due to the rate of phishing and spam mails received. Please CLICK HERE<http://upgrademailaccount.sitey.me/> and sign in to the IT Help server for maintenance and update of your mailbox.
-
-If your mailbox is not updated soon, Your account will be inactive and cannot send or receive messages.
-
-On behalf of the IT department, this IT Alert Notification was brought to you by the Help Desk Department. This is a group email account and its been monitored 24/7, therefore, please do not ignore this notification, because its very compulsory.
-
-Sincerely,
-IT Department
-
-©2016 ASMicrosoft Outlook. All Rights Reserved.
-
-
-________________________________
-
-
-
-This email contains CONFIDENTIAL information intended only for the use of the addressee(s) named above. If you are not the intended recipient of this email, you are hereby notified that any dissemination or copying of this email is strictly prohibited. If you have received this email in error, please notify us by reply email and delete this email from your records. Furthermore, the contents of this email do not necessarily represent official policy of Flagler College.
+DQo+IE9uIEF1ZyA0LCAyMDE2LCBhdCAzOjI2IFBNLCBTY2h1bWFrZXIsIEFubmEgPEFubmEuU2No
+dW1ha2VyQG5ldGFwcC5jb20+IHdyb3RlOg0KPiANCj4gSGkgQW5keSwNCj4gDQo+IE9uIDA3LzI3
+LzIwMTYgMDI6NDMgUE0sIGFuZHJvc0BuZXRhcHAuY29tIHdyb3RlOg0KPj4gRnJvbTogQW5keSBB
+ZGFtc29uIDxhbmRyb3NAbmV0YXBwLmNvbT4NCj4+IA0KPj4gU2lnbmVkLW9mZi1ieTogQW5keSBB
+ZGFtc29uIDxhbmRyb3NAbmV0YXBwLmNvbT4NCj4+IC0tLQ0KPj4gaW5jbHVkZS9saW51eC9zdW5y
+cGMvY2xudC5oIHwgIDIgKysNCj4+IG5ldC9zdW5ycGMvY2xudC5jICAgICAgICAgICB8IDE4ICsr
+KysrKysrKysrKysrKysrKw0KPj4gMiBmaWxlcyBjaGFuZ2VkLCAyMCBpbnNlcnRpb25zKCspDQo+
+PiANCj4+IGRpZmYgLS1naXQgYS9pbmNsdWRlL2xpbnV4L3N1bnJwYy9jbG50LmggYi9pbmNsdWRl
+L2xpbnV4L3N1bnJwYy9jbG50LmgNCj4+IGluZGV4IDk5NDEwYmIuLmViYzgzZGYgMTAwNjQ0DQo+
+PiAtLS0gYS9pbmNsdWRlL2xpbnV4L3N1bnJwYy9jbG50LmgNCj4+ICsrKyBiL2luY2x1ZGUvbGlu
+dXgvc3VucnBjL2NsbnQuaA0KPj4gQEAgLTE4OSw2ICsxODksOCBAQCBpbnQgCQlycGNfY2xudF90
+ZXN0X2FuZF9hZGRfeHBydChzdHJ1Y3QgcnBjX2NsbnQgKmNsbnQsDQo+PiAJCQlzdHJ1Y3QgcnBj
+X3hwcnRfc3dpdGNoICp4cHMsDQo+PiAJCQlzdHJ1Y3QgcnBjX3hwcnQgKnhwcnQsDQo+PiAJCQl2
+b2lkICpkdW1teSk7DQo+PiAraW50CQlycGNfY2xudF90ZXN0X3hwcnQoc3RydWN0IHJwY19jbG50
+ICpjbG50LA0KPj4gKwkJCXN0cnVjdCBycGNfeHBydCAqeHBydCk7DQo+PiBpbnQJCXJwY19jbG50
+X2FkZF94cHJ0KHN0cnVjdCBycGNfY2xudCAqLCBzdHJ1Y3QgeHBydF9jcmVhdGUgKiwNCj4+IAkJ
+CWludCAoKnNldHVwKShzdHJ1Y3QgcnBjX2NsbnQgKiwNCj4+IAkJCQlzdHJ1Y3QgcnBjX3hwcnRf
+c3dpdGNoICosDQo+PiBkaWZmIC0tZ2l0IGEvbmV0L3N1bnJwYy9jbG50LmMgYi9uZXQvc3VucnBj
+L2NsbnQuYw0KPj4gaW5kZXggNDU5ZjliMS4uODIyMDYwZiAxMDA2NDQNCj4+IC0tLSBhL25ldC9z
+dW5ycGMvY2xudC5jDQo+PiArKysgYi9uZXQvc3VucnBjL2NsbnQuYw0KPj4gQEAgLTI2MTQsNiAr
+MjYxNCwyNCBAQCBpbnQgcnBjX2NsbnRfdGVzdF9hbmRfYWRkX3hwcnQoc3RydWN0IHJwY19jbG50
+ICpjbG50LA0KPj4gfQ0KPj4gRVhQT1JUX1NZTUJPTF9HUEwocnBjX2NsbnRfdGVzdF9hbmRfYWRk
+X3hwcnQpOw0KPj4gDQo+PiAraW50IHJwY19jbG50X3Rlc3RfeHBydChzdHJ1Y3QgcnBjX2NsbnQg
+KmNsbnQsIHN0cnVjdCBycGNfeHBydCAqeHBydCkNCj4gDQo+IExvb2tzIGxpa2UgcnBjX2NsbnRf
+dGVzdF9hbmRfYWRkX3hwcnQoKSBydW5zIHRoZSBzYW1lIHRlc3RpbmcgY29kZS4gIENhbiB5b3Ug
+c3dhcCB0aGUgb3JkZXIgb2YgdGhlc2UgZnVuY3Rpb25zIGluIGNsbnQuYyBhbmQgdGhlbiBoYXZl
+IHRlc3RfYW5kX2FkZF94cHJ0KCkgY2FsbCB0ZXN0X3hwcnQoKT8NCg0KcnBjX2NsbnRfdGVzdF94
+cHJ0IHVzZXMgYSBTWU5DIG51bGwgY2FsbCB3aGlsZSB0ZXN0X2FuZF9hZGRfeHBydCB1c2VzIGFu
+IEFTWU5DIGNhbGwuIEZ1dGhlcm1vcmUsIHdoaWxlIGJvdGggdGVzdF94cHJ0IGFuZCB0ZXN0X2Fu
+ZF9hZGRfeHBydCByZXR1cm4gYW4gZXJyb3IgaWYgdGhlIHJwY19jYWxsX251bGxfaGVscGVyIHRh
+c2sgY2Fubm90IGJlIGFsbG9jYXRlZCAoRVJSX1BUUih0YXNrKSBpbiBycGNfbmV3X3Rhc2spLCB0
+ZXN0X2FuZF9hZGRfeHBydCBpZ25vcmVzIHRoZSB0a19zdGF0dXMgYW5kIHJldHVybnMgMSB3aGls
+ZSB0ZXN0X3hwcnQgcmV0dXJucyB0aGUgdGtfc3RhdHVzLg0KDQpGb3IgdGhlc2UgcmVhc29ucyBJ
+IHRoaW5rIGl0IGlzIGNsZWFuZXIgYW5kIGVhc2llciB0byByZWFkIHRvIGtlZXAgdGhlbSBzZXBh
+cmF0ZSBmdW5jdGlvbnMuDQoNCuKAlD5BbmR5DQo6DQo+IA0KPiBUaGFua3MsDQo+IEFubmENCj4g
+DQo+PiArew0KPj4gKwlzdHJ1Y3QgcnBjX2NyZWQgKmNyZWQ7DQo+PiArCXN0cnVjdCBycGNfdGFz
+ayAqdGFzazsNCj4+ICsJaW50IHN0YXR1czsNCj4+ICsNCj4+ICsJY3JlZCA9IGF1dGhudWxsX29w
+cy5sb29rdXBfY3JlZChOVUxMLCBOVUxMLCAwKTsNCj4+ICsJdGFzayA9IHJwY19jYWxsX251bGxf
+aGVscGVyKGNsbnQsIHhwcnQsIGNyZWQsDQo+PiArCQkJCVJQQ19UQVNLX1NPRlQgfCBSUENfVEFT
+S19TT0ZUQ09OTiwgTlVMTCwgTlVMTCk7DQo+PiArCXB1dF9ycGNjcmVkKGNyZWQpOw0KPj4gKwlp
+ZiAoSVNfRVJSKHRhc2spKQ0KPj4gKwkJcmV0dXJuIFBUUl9FUlIodGFzayk7DQo+PiArCXN0YXR1
+cyA9IHRhc2stPnRrX3N0YXR1czsNCj4+ICsJcnBjX3B1dF90YXNrKHRhc2spOw0KPj4gKwlyZXR1
+cm4gc3RhdHVzOw0KPj4gK30NCj4+ICtFWFBPUlRfU1lNQk9MX0dQTChycGNfY2xudF90ZXN0X3hw
+cnQpOw0KPj4gKw0KPj4gLyoqDQo+PiAgKiBycGNfY2xudF9hZGRfeHBydCAtIEFkZCBhIG5ldyB0
+cmFuc3BvcnQgdG8gYSBycGNfY2xudA0KPj4gICogQGNsbnQ6IHBvaW50ZXIgdG8gc3RydWN0IHJw
+Y19jbG50DQoNCg==
