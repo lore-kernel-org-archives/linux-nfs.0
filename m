@@ -1,91 +1,93 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f196.google.com ([209.85.223.196]:34459 "EHLO
+Received: from mail-io0-f196.google.com ([209.85.223.196]:34419 "EHLO
 	mail-io0-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751042AbcHFXeY (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 6 Aug 2016 19:34:24 -0400
-Received: by mail-io0-f196.google.com with SMTP id i199so4357989ioi.1
-        for <linux-nfs@vger.kernel.org>; Sat, 06 Aug 2016 16:34:24 -0700 (PDT)
-Received: from klimt.1015granger.net ([2604:8800:100:81fc:ec4:7aff:fe6c:6aa0])
-        by smtp.gmail.com with ESMTPSA id h63sm5125763ita.12.2016.08.05.19.26.35
-        for <linux-nfs@vger.kernel.org>
-        (version=TLS1_2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128/128);
-        Fri, 05 Aug 2016 19:26:36 -0700 (PDT)
-Subject: [PATCH v1] nfsd: Fix race between FREE_STATEID and LOCK
-From: Chuck Lever <chuck.lever@oracle.com>
+	with ESMTP id S1750933AbcHFXqs (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 6 Aug 2016 19:46:48 -0400
+Received: by mail-io0-f196.google.com with SMTP id i199so4368148ioi.1
+        for <linux-nfs@vger.kernel.org>; Sat, 06 Aug 2016 16:46:48 -0700 (PDT)
+From: Trond Myklebust <trond.myklebust@primarydata.com>
 To: linux-nfs@vger.kernel.org
-Date: Fri, 05 Aug 2016 22:26:35 -0400
-Message-ID: <20160806022349.3381.8042.stgit@klimt.1015granger.net>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Subject: [PATCH v2 3/3] NFSv4: Cap the transport reconnection timer at 1/2 lease period
+Date: Fri,  5 Aug 2016 19:37:35 -0400
+Message-Id: <1470440255-8612-4-git-send-email-trond.myklebust@primarydata.com>
+In-Reply-To: <1470440255-8612-3-git-send-email-trond.myklebust@primarydata.com>
+References: <1470440255-8612-1-git-send-email-trond.myklebust@primarydata.com>
+ <1470440255-8612-2-git-send-email-trond.myklebust@primarydata.com>
+ <1470440255-8612-3-git-send-email-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Using LTP's nfslock01 test, one of our internal testers found that
-the Linux client can send a LOCK and a FREE_STATEID request at the
-same time. The LOCK uses the same lockowner as the stateid sent in
-the FREE_STATEID request.
+We don't want to miss a lease period renewal due to the TCP connection
+failing to reconnect in a timely fashion. To ensure this doesn't happen,
+cap the reconnection timer so that we retry the connection attempt
+at least every 1/2 lease period.
 
-The outcome is:
-
-Frame 115025 C FREE_STATEID stateid 2/A
-Frame 115026 C LOCK offset 672128 len 64
-Frame 115029 R FREE_STATEID NFS4_OK
-Frame 115030 R LOCK stateid 3/A
-Frame 115034 C WRITE stateid 0/A offset 672128 len 64
-Frame 115038 R WRITE NFS4ERR_BAD_STATEID
-
-In other words, the server returns stateid A in the LOCK reply, but
-it has already released it. Subsequent uses of the stateid fail.
-
-To address this, protect the logic in nfsd4_free_stateid with the
-st_mutex. This should guarantee that only one of two outcomes
-occurs: either LOCK returns a fresh valid stateid, or FREE_STATEID
-returns NFS4ERR_LOCKS_HELD.
-
-Reported-by: Alexey Kodanev <alexey.kodanev@oracle.com>
-Fix-suggested-by: Jeff Layton <jlayton@redhat.com>
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
 ---
+ fs/nfs/nfs4renewd.c         |  3 +++
+ include/linux/sunrpc/clnt.h |  2 ++
+ net/sunrpc/clnt.c           | 21 +++++++++++++++++++++
+ 3 files changed, 26 insertions(+)
 
-Before I pass this along to Alexey for testing, I'd appreciate some
-review of the proposed fix.
-
-
- fs/nfsd/nfs4state.c |   18 +++++++++++++-----
- 1 file changed, 13 insertions(+), 5 deletions(-)
-
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index b921123..a9e0606 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -4911,16 +4911,24 @@ nfsd4_free_stateid(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 		ret = nfserr_locks_held;
- 		break;
- 	case NFS4_LOCK_STID:
--		ret = check_stateid_generation(stateid, &s->sc_stateid, 1);
--		if (ret)
--			break;
-+		spin_unlock(&cl->cl_lock);
- 		stp = openlockstateid(s);
-+		mutex_lock(&stp->st_mutex);
-+		ret = check_stateid_generation(stateid, &s->sc_stateid, 1);
-+		if (ret) {
-+			mutex_unlock(&stp->st_mutex);
-+			goto out;
-+		}
- 		ret = nfserr_locks_held;
- 		if (check_for_locks(stp->st_stid.sc_file,
--				    lockowner(stp->st_stateowner)))
--			break;
-+				    lockowner(stp->st_stateowner))) {
-+			mutex_unlock(&stp->st_mutex);
-+			goto out;
-+		}
-+		spin_lock(&cl->cl_lock);
- 		WARN_ON(!unhash_lock_stateid(stp));
- 		spin_unlock(&cl->cl_lock);
-+		mutex_unlock(&stp->st_mutex);
- 		nfs4_put_stid(s);
- 		ret = nfs_ok;
- 		goto out;
+diff --git a/fs/nfs/nfs4renewd.c b/fs/nfs/nfs4renewd.c
+index 062029ab344a..82e77198d17e 100644
+--- a/fs/nfs/nfs4renewd.c
++++ b/fs/nfs/nfs4renewd.c
+@@ -151,6 +151,9 @@ void nfs4_set_lease_period(struct nfs_client *clp,
+ 	clp->cl_lease_time = lease;
+ 	clp->cl_last_renewal = lastrenewed;
+ 	spin_unlock(&clp->cl_lock);
++
++	/* Cap maximum reconnect timeout at 1/2 lease period */
++	rpc_cap_max_reconnect_timeout(clp->cl_rpcclient, lease >> 1);
+ }
+ 
+ /*
+diff --git a/include/linux/sunrpc/clnt.h b/include/linux/sunrpc/clnt.h
+index b6810c92b8bb..5c02b0691587 100644
+--- a/include/linux/sunrpc/clnt.h
++++ b/include/linux/sunrpc/clnt.h
+@@ -195,6 +195,8 @@ int		rpc_clnt_add_xprt(struct rpc_clnt *, struct xprt_create *,
+ 				struct rpc_xprt *,
+ 				void *),
+ 			void *data);
++void		rpc_cap_max_reconnect_timeout(struct rpc_clnt *clnt,
++			unsigned long timeo);
+ 
+ const char *rpc_proc_name(const struct rpc_task *task);
+ #endif /* __KERNEL__ */
+diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+index faac5472d14d..7f79fb7dc6a0 100644
+--- a/net/sunrpc/clnt.c
++++ b/net/sunrpc/clnt.c
+@@ -2676,6 +2676,27 @@ out_put_switch:
+ }
+ EXPORT_SYMBOL_GPL(rpc_clnt_add_xprt);
+ 
++static int
++rpc_xprt_cap_max_reconnect_timeout(struct rpc_clnt *clnt,
++		struct rpc_xprt *xprt,
++		void *data)
++{
++	unsigned long timeout = *((unsigned long *)data);
++
++	if (timeout < xprt->max_reconnect_timeout)
++		xprt->max_reconnect_timeout = timeout;
++	return 0;
++}
++
++void
++rpc_cap_max_reconnect_timeout(struct rpc_clnt *clnt, unsigned long timeo)
++{
++	rpc_clnt_iterate_for_each_xprt(clnt,
++			rpc_xprt_cap_max_reconnect_timeout,
++			&timeo);
++}
++EXPORT_SYMBOL_GPL(rpc_cap_max_reconnect_timeout);
++
+ #if IS_ENABLED(CONFIG_SUNRPC_DEBUG)
+ static void rpc_show_header(void)
+ {
+-- 
+2.7.4
 
