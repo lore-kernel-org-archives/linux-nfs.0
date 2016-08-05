@@ -1,39 +1,37 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:37808 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751019AbcHFUMI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sat, 6 Aug 2016 16:12:08 -0400
-From: Steve Dickson <SteveD@redhat.com>
-Subject: ANNOUNCE: nfs-utils-1.3.4 released.
-To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Cc: "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>
-Message-ID: <a1567e14-49e0-32a4-37fb-64d908025f12@RedHat.com>
-Date: Sat, 6 Aug 2016 14:56:28 -0400
-MIME-Version: 1.0
-Content-Type: text/plain; charset=windows-1252
+Received: from mail-io0-f193.google.com ([209.85.223.193]:36154 "EHLO
+	mail-io0-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750969AbcHFUil (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 6 Aug 2016 16:38:41 -0400
+Received: by mail-io0-f193.google.com with SMTP id y34so26434195ioi.3
+        for <linux-nfs@vger.kernel.org>; Sat, 06 Aug 2016 13:38:41 -0700 (PDT)
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH v2 0/3] Client reconnection fixes
+Date: Fri,  5 Aug 2016 19:37:32 -0400
+Message-Id: <1470440255-8612-1-git-send-email-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hello,
+v1: Cap the backoff timer to the max RPC message timeout
+v2: Add a cap at 1/2 NFSv4 lease period to ensure we don't miss lease renewal
 
-nfs-utils-1.3.4 has just been released. Mostly bug fixes and 
-some new debugging was added... but nothing too exciting.
+Trond Myklebust (3):
+  SUNRPC: Limit the reconnect backoff timer to the max RPC message
+    timeout
+  NFSv4: Cleanup the setting of the nfs4 lease period
+  NFSv4: Cap the transport reconnection timer at 1/2 lease period
 
-Thanks to everyone who contributed! 
+ fs/nfs/nfs4_fs.h            |  4 ++++
+ fs/nfs/nfs4proc.c           |  9 +++------
+ fs/nfs/nfs4renewd.c         | 20 ++++++++++++++++++++
+ fs/nfs/nfs4state.c          |  9 +++------
+ include/linux/sunrpc/clnt.h |  2 ++
+ include/linux/sunrpc/xprt.h |  3 ++-
+ net/sunrpc/clnt.c           | 24 ++++++++++++++++++++++++
+ net/sunrpc/xprtsock.c       | 18 ++++++++++++------
+ 8 files changed, 70 insertions(+), 19 deletions(-)
 
-The tarballs can be found in
-  https://www.kernel.org/pub/linux/utils/nfs-utils/1.3.4/
-or
-  http://sourceforge.net/projects/nfs/files/nfs-utils/1.3.4
+-- 
+2.7.4
 
-The change log is in
-   https://www.kernel.org/pub/linux/utils/nfs-utils/1.3.4/1.3.4-Changelog
-or
-   http://sourceforge.net/projects/nfs/files/nfs-utils/1.3.4/
-
-The git tree is at:
-   git://linux-nfs.org/nfs-utils
-
-Please send comments/bugs to linux-nfs@vger.kernel.org
-
-steved.
