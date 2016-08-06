@@ -1,37 +1,91 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f193.google.com ([209.85.223.193]:36154 "EHLO
-	mail-io0-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750969AbcHFUil (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 6 Aug 2016 16:38:41 -0400
-Received: by mail-io0-f193.google.com with SMTP id y34so26434195ioi.3
-        for <linux-nfs@vger.kernel.org>; Sat, 06 Aug 2016 13:38:41 -0700 (PDT)
-From: Trond Myklebust <trond.myklebust@primarydata.com>
+Received: from mail-io0-f196.google.com ([209.85.223.196]:34459 "EHLO
+	mail-io0-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751042AbcHFXeY (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 6 Aug 2016 19:34:24 -0400
+Received: by mail-io0-f196.google.com with SMTP id i199so4357989ioi.1
+        for <linux-nfs@vger.kernel.org>; Sat, 06 Aug 2016 16:34:24 -0700 (PDT)
+Received: from klimt.1015granger.net ([2604:8800:100:81fc:ec4:7aff:fe6c:6aa0])
+        by smtp.gmail.com with ESMTPSA id h63sm5125763ita.12.2016.08.05.19.26.35
+        for <linux-nfs@vger.kernel.org>
+        (version=TLS1_2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128/128);
+        Fri, 05 Aug 2016 19:26:36 -0700 (PDT)
+Subject: [PATCH v1] nfsd: Fix race between FREE_STATEID and LOCK
+From: Chuck Lever <chuck.lever@oracle.com>
 To: linux-nfs@vger.kernel.org
-Subject: [PATCH v2 0/3] Client reconnection fixes
-Date: Fri,  5 Aug 2016 19:37:32 -0400
-Message-Id: <1470440255-8612-1-git-send-email-trond.myklebust@primarydata.com>
+Date: Fri, 05 Aug 2016 22:26:35 -0400
+Message-ID: <20160806022349.3381.8042.stgit@klimt.1015granger.net>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-v1: Cap the backoff timer to the max RPC message timeout
-v2: Add a cap at 1/2 NFSv4 lease period to ensure we don't miss lease renewal
+Using LTP's nfslock01 test, one of our internal testers found that
+the Linux client can send a LOCK and a FREE_STATEID request at the
+same time. The LOCK uses the same lockowner as the stateid sent in
+the FREE_STATEID request.
 
-Trond Myklebust (3):
-  SUNRPC: Limit the reconnect backoff timer to the max RPC message
-    timeout
-  NFSv4: Cleanup the setting of the nfs4 lease period
-  NFSv4: Cap the transport reconnection timer at 1/2 lease period
+The outcome is:
 
- fs/nfs/nfs4_fs.h            |  4 ++++
- fs/nfs/nfs4proc.c           |  9 +++------
- fs/nfs/nfs4renewd.c         | 20 ++++++++++++++++++++
- fs/nfs/nfs4state.c          |  9 +++------
- include/linux/sunrpc/clnt.h |  2 ++
- include/linux/sunrpc/xprt.h |  3 ++-
- net/sunrpc/clnt.c           | 24 ++++++++++++++++++++++++
- net/sunrpc/xprtsock.c       | 18 ++++++++++++------
- 8 files changed, 70 insertions(+), 19 deletions(-)
+Frame 115025 C FREE_STATEID stateid 2/A
+Frame 115026 C LOCK offset 672128 len 64
+Frame 115029 R FREE_STATEID NFS4_OK
+Frame 115030 R LOCK stateid 3/A
+Frame 115034 C WRITE stateid 0/A offset 672128 len 64
+Frame 115038 R WRITE NFS4ERR_BAD_STATEID
 
--- 
-2.7.4
+In other words, the server returns stateid A in the LOCK reply, but
+it has already released it. Subsequent uses of the stateid fail.
+
+To address this, protect the logic in nfsd4_free_stateid with the
+st_mutex. This should guarantee that only one of two outcomes
+occurs: either LOCK returns a fresh valid stateid, or FREE_STATEID
+returns NFS4ERR_LOCKS_HELD.
+
+Reported-by: Alexey Kodanev <alexey.kodanev@oracle.com>
+Fix-suggested-by: Jeff Layton <jlayton@redhat.com>
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
+
+Before I pass this along to Alexey for testing, I'd appreciate some
+review of the proposed fix.
+
+
+ fs/nfsd/nfs4state.c |   18 +++++++++++++-----
+ 1 file changed, 13 insertions(+), 5 deletions(-)
+
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index b921123..a9e0606 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -4911,16 +4911,24 @@ nfsd4_free_stateid(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 		ret = nfserr_locks_held;
+ 		break;
+ 	case NFS4_LOCK_STID:
+-		ret = check_stateid_generation(stateid, &s->sc_stateid, 1);
+-		if (ret)
+-			break;
++		spin_unlock(&cl->cl_lock);
+ 		stp = openlockstateid(s);
++		mutex_lock(&stp->st_mutex);
++		ret = check_stateid_generation(stateid, &s->sc_stateid, 1);
++		if (ret) {
++			mutex_unlock(&stp->st_mutex);
++			goto out;
++		}
+ 		ret = nfserr_locks_held;
+ 		if (check_for_locks(stp->st_stid.sc_file,
+-				    lockowner(stp->st_stateowner)))
+-			break;
++				    lockowner(stp->st_stateowner))) {
++			mutex_unlock(&stp->st_mutex);
++			goto out;
++		}
++		spin_lock(&cl->cl_lock);
+ 		WARN_ON(!unhash_lock_stateid(stp));
+ 		spin_unlock(&cl->cl_lock);
++		mutex_unlock(&stp->st_mutex);
+ 		nfs4_put_stid(s);
+ 		ret = nfs_ok;
+ 		goto out;
 
