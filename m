@@ -1,123 +1,105 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f195.google.com ([209.85.223.195]:33122 "EHLO
-	mail-io0-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750954AbcHGBN5 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 6 Aug 2016 21:13:57 -0400
-Received: by mail-io0-f195.google.com with SMTP id y195so26647041iod.0
-        for <linux-nfs@vger.kernel.org>; Sat, 06 Aug 2016 18:13:57 -0700 (PDT)
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH v2 2/3] NFSv4: Cleanup the setting of the nfs4 lease period
-Date: Fri,  5 Aug 2016 19:37:34 -0400
-Message-Id: <1470440255-8612-3-git-send-email-trond.myklebust@primarydata.com>
-In-Reply-To: <1470440255-8612-2-git-send-email-trond.myklebust@primarydata.com>
-References: <1470440255-8612-1-git-send-email-trond.myklebust@primarydata.com>
- <1470440255-8612-2-git-send-email-trond.myklebust@primarydata.com>
+Received: from mail-qk0-f195.google.com ([209.85.220.195]:35750 "EHLO
+	mail-qk0-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751506AbcHGCBT (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 6 Aug 2016 22:01:19 -0400
+Received: by mail-qk0-f195.google.com with SMTP id q62so26466765qkf.2
+        for <linux-nfs@vger.kernel.org>; Sat, 06 Aug 2016 19:01:19 -0700 (PDT)
+Message-ID: <1470535273.27316.7.camel@poochiereds.net>
+Subject: Re: [PATCH v1] nfsd: Fix race between FREE_STATEID and LOCK
+From: Jeff Layton <jlayton@poochiereds.net>
+To: Chuck Lever <chuck.lever@oracle.com>, linux-nfs@vger.kernel.org
+Date: Sat, 06 Aug 2016 22:01:13 -0400
+In-Reply-To: <20160806022349.3381.8042.stgit@klimt.1015granger.net>
+References: <20160806022349.3381.8042.stgit@klimt.1015granger.net>
+Content-Type: text/plain; charset="UTF-8"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Make a helper function nfs4_set_lease_period() and have
-nfs41_setup_state_renewal() and nfs4_do_fsinfo() use it.
+On Fri, 2016-08-05 at 22:26 -0400, Chuck Lever wrote:
+> Using LTP's nfslock01 test, one of our internal testers found that
+> the Linux client can send a LOCK and a FREE_STATEID request at the
+> same time. The LOCK uses the same lockowner as the stateid sent in
+> the FREE_STATEID request.
+> 
+> The outcome is:
+> 
+> Frame 115025 C FREE_STATEID stateid 2/A
+> Frame 115026 C LOCK offset 672128 len 64
+> Frame 115029 R FREE_STATEID NFS4_OK
+> Frame 115030 R LOCK stateid 3/A
+> Frame 115034 C WRITE stateid 0/A offset 672128 len 64
+> Frame 115038 R WRITE NFS4ERR_BAD_STATEID
+> 
+> In other words, the server returns stateid A in the LOCK reply, but
+> it has already released it. Subsequent uses of the stateid fail.
+> 
+> To address this, protect the logic in nfsd4_free_stateid with the
+> st_mutex. This should guarantee that only one of two outcomes
+> occurs: either LOCK returns a fresh valid stateid, or FREE_STATEID
+> returns NFS4ERR_LOCKS_HELD.
+> 
+> > Reported-by: Alexey Kodanev <alexey.kodanev@oracle.com>
+> > Fix-suggested-by: Jeff Layton <jlayton@redhat.com>
+> > Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+> ---
+> 
+> Before I pass this along to Alexey for testing, I'd appreciate some
+> review of the proposed fix.
+> 
+> 
+>  fs/nfsd/nfs4state.c |   18 +++++++++++++-----
+>  1 file changed, 13 insertions(+), 5 deletions(-)
+> 
+> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+> index b921123..a9e0606 100644
+> --- a/fs/nfsd/nfs4state.c
+> +++ b/fs/nfsd/nfs4state.c
+> @@ -4911,16 +4911,24 @@ nfsd4_free_stateid(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+> >  		ret = nfserr_locks_held;
+> >  		break;
+> >  	case NFS4_LOCK_STID:
+> > -		ret = check_stateid_generation(stateid, &s->sc_stateid, 1);
+> > -		if (ret)
+> > -			break;
+> > > +		spin_unlock(&cl->cl_lock);
 
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
----
- fs/nfs/nfs4_fs.h    |  4 ++++
- fs/nfs/nfs4proc.c   |  9 +++------
- fs/nfs/nfs4renewd.c | 17 +++++++++++++++++
- fs/nfs/nfs4state.c  |  9 +++------
- 4 files changed, 27 insertions(+), 12 deletions(-)
+Once you drop the spinlock, you don't hold a reference to the stateid
+anymore. You'll want to bump the refcount and then put the extra
+reference when you're done.
 
-diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
-index 4be567a54958..74a0e34e5ded 100644
---- a/fs/nfs/nfs4_fs.h
-+++ b/fs/nfs/nfs4_fs.h
-@@ -395,6 +395,10 @@ extern void nfs4_schedule_state_renewal(struct nfs_client *);
- extern void nfs4_renewd_prepare_shutdown(struct nfs_server *);
- extern void nfs4_kill_renewd(struct nfs_client *);
- extern void nfs4_renew_state(struct work_struct *);
-+extern void nfs4_set_lease_period(struct nfs_client *clp,
-+		unsigned long lease,
-+		unsigned long lastrenewed);
-+
- 
- /* nfs4state.c */
- struct rpc_cred *nfs4_get_clid_cred(struct nfs_client *clp);
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index da5c9e58e907..b9e18679af50 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -4237,12 +4237,9 @@ static int nfs4_do_fsinfo(struct nfs_server *server, struct nfs_fh *fhandle, str
- 		err = _nfs4_do_fsinfo(server, fhandle, fsinfo);
- 		trace_nfs4_fsinfo(server, fhandle, fsinfo->fattr, err);
- 		if (err == 0) {
--			struct nfs_client *clp = server->nfs_client;
--
--			spin_lock(&clp->cl_lock);
--			clp->cl_lease_time = fsinfo->lease_time * HZ;
--			clp->cl_last_renewal = now;
--			spin_unlock(&clp->cl_lock);
-+			nfs4_set_lease_period(server->nfs_client,
-+					fsinfo->lease_time * HZ,
-+					now);
- 			break;
- 		}
- 		err = nfs4_handle_exception(server, err, &exception);
-diff --git a/fs/nfs/nfs4renewd.c b/fs/nfs/nfs4renewd.c
-index e1ba58c3d1ad..062029ab344a 100644
---- a/fs/nfs/nfs4renewd.c
-+++ b/fs/nfs/nfs4renewd.c
-@@ -136,6 +136,23 @@ nfs4_kill_renewd(struct nfs_client *clp)
- 	cancel_delayed_work_sync(&clp->cl_renewd);
- }
- 
-+/**
-+ * nfs4_set_lease_period - Sets the lease period on a nfs_client
-+ *
-+ * @clp: pointer to nfs_client
-+ * @lease: new value for lease period
-+ * @lastrenewed: time at which lease was last renewed
-+ */
-+void nfs4_set_lease_period(struct nfs_client *clp,
-+		unsigned long lease,
-+		unsigned long lastrenewed)
-+{
-+	spin_lock(&clp->cl_lock);
-+	clp->cl_lease_time = lease;
-+	clp->cl_last_renewal = lastrenewed;
-+	spin_unlock(&clp->cl_lock);
-+}
-+
- /*
-  * Local variables:
-  *   c-basic-offset: 8
-diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
-index 834b875900d6..cada00aa5096 100644
---- a/fs/nfs/nfs4state.c
-+++ b/fs/nfs/nfs4state.c
-@@ -277,20 +277,17 @@ static int nfs41_setup_state_renewal(struct nfs_client *clp)
- {
- 	int status;
- 	struct nfs_fsinfo fsinfo;
-+	unsigned long now;
- 
- 	if (!test_bit(NFS_CS_CHECK_LEASE_TIME, &clp->cl_res_state)) {
- 		nfs4_schedule_state_renewal(clp);
- 		return 0;
- 	}
- 
-+	now = jiffies;
- 	status = nfs4_proc_get_lease_time(clp, &fsinfo);
- 	if (status == 0) {
--		/* Update lease time and schedule renewal */
--		spin_lock(&clp->cl_lock);
--		clp->cl_lease_time = fsinfo.lease_time * HZ;
--		clp->cl_last_renewal = jiffies;
--		spin_unlock(&clp->cl_lock);
--
-+		nfs4_set_lease_period(clp, fsinfo.lease_time * HZ, now);
- 		nfs4_schedule_state_renewal(clp);
- 	}
- 
+> > >  		stp = openlockstateid(s);
+> > +		mutex_lock(&stp->st_mutex);
+> > +		ret = check_stateid_generation(stateid, &s->sc_stateid, 1);
+> > +		if (ret) {
+> > +			mutex_unlock(&stp->st_mutex);
+> > +			goto out;
+> > +		}
+> >  		ret = nfserr_locks_held;
+> >  		if (check_for_locks(stp->st_stid.sc_file,
+> > -				    lockowner(stp->st_stateowner)))
+> > -			break;
+> > +				    lockowner(stp->st_stateowner))) {
+> > +			mutex_unlock(&stp->st_mutex);
+> > +			goto out;
+> > +		}
+> > +		spin_lock(&cl->cl_lock);
+> >  		WARN_ON(!unhash_lock_stateid(stp));
+> > >  		spin_unlock(&cl->cl_lock);
+
+Now that you're dropping the spinlock, it could be unhashed before you
+take it again. Probably should convert this and the following put to a
+release_lock_stateid call.
+
+> > > +		mutex_unlock(&stp->st_mutex);
+> >  		nfs4_put_stid(s);
+> >  		ret = nfs_ok;
+> >  		goto out;
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 -- 
-2.7.4
-
+Jeff Layton <jlayton@poochiereds.net>
