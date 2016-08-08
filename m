@@ -1,163 +1,72 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx141.netapp.com ([216.240.21.12]:56287 "EHLO mx141.netapp.com"
+Received: from fieldses.org ([173.255.197.46]:59356 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752541AbcHHT5Y convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 8 Aug 2016 15:57:24 -0400
-From: "Adamson, Andy" <William.Adamson@netapp.com>
-To: Trond Myklebust <trondmy@primarydata.com>
-CC: "Schumaker, Anna" <Anna.Schumaker@netapp.com>,
-        List Linux NFS Mailing <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH Version 7 8/8] NFS pnfs data server multipath session
- trunking
-Date: Mon, 8 Aug 2016 19:57:22 +0000
-Message-ID: <98C59F48-4F4B-4933-B2EC-64AF156452A3@netapp.com>
-References: <1469645000-19791-1-git-send-email-andros@netapp.com>
- <1469645000-19791-9-git-send-email-andros@netapp.com>
- <DDDED45E-EB74-45DE-8D8D-41F4BFADD086@primarydata.com>
-In-Reply-To: <DDDED45E-EB74-45DE-8D8D-41F4BFADD086@primarydata.com>
-Content-Type: text/plain; charset="Windows-1252"
+	id S932150AbcHHT7t (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 8 Aug 2016 15:59:49 -0400
+Date: Mon, 8 Aug 2016 15:59:48 -0400
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH v3 0/2] Eliminate race between LOCK and FREE_STATEID
+Message-ID: <20160808195948.GB6539@fieldses.org>
+References: <20160808184711.11661.86427.stgit@klimt.1015granger.net>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20160808184711.11661.86427.stgit@klimt.1015granger.net>
+From: bfields@fieldses.org (J. Bruce Fields)
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Mon, Aug 08, 2016 at 02:59:35PM -0400, Chuck Lever wrote:
+> This series passes light testing in my lab. If it looks good I will
+> pass it along to Alexey to confirm it closes the race.
+> 
+> To aid distributors and stable kernel maintainers, wondering if a
+> Fixes: tag should be added. Alexey first observed this issue in v4.1
+> kernels (UEK4). But looks like the race could have been introduced
+> as early as v3.17. Maybe this one?
 
-> On Aug 5, 2016, at 6:05 PM, Trond Myklebust <trondmy@primarydata.com> wrote:
+The other reason we didn't see this till now might be client-side
+changes (maybe b4019c0e219b "NFSv4.1: Allow parallel LOCK/LOCKU
+calls"?).  (Not trying to dodge responsibility for a server-side bug
+here, but that might still be useful information for the changelog (not
+the Fixes: line) if it's correct.)
+
+--b.
+
+> 
+> commit fc5a96c3b70d00c863f69ff4ea7f5dfddbcbc0d8
+> Author: Jeff Layton <jlayton@primarydata.com>
+> Date:   Tue Jul 29 21:34:40 2014 -0400
+> 
+>     nfsd: close potential race in nfsd4_free_stateid
+> 
+> There have been a lot of changes since then. It's hard to say if the
+> race can be attributed to a single commit.
 > 
 > 
->> On Jul 27, 2016, at 14:43, andros@netapp.com wrote:
->> 
->> From: Andy Adamson <andros@netapp.com>
->> 
->> Try all multipath addresses for a data server. The first address that
->> successfully connects and creates a session is the DS mount address.
->> All subsequent addresses are tested for session trunking and
->> added as aliases.
->> 
->> Signed-off-by: Andy Adamson <andros@netapp.com>
->> ---
->> fs/nfs/nfs4_fs.h  |  2 ++
->> fs/nfs/nfs4proc.c |  2 ++
->> fs/nfs/pnfs_nfs.c | 52 ++++++++++++++++++++++++++++++++++++++--------------
->> 3 files changed, 42 insertions(+), 14 deletions(-)
->> 
->> diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
->> index b2a94ca..8e4343f 100644
->> --- a/fs/nfs/nfs4_fs.h
->> +++ b/fs/nfs/nfs4_fs.h
->> @@ -59,6 +59,8 @@ struct nfs4_minor_version_ops {
->> 			struct nfs4_lock_state *);
->> 	struct nfs_seqid *
->> 		(*alloc_seqid)(struct nfs_seqid_counter *, gfp_t);
->> +	int	(*session_trunk)(struct rpc_clnt *, struct rpc_xprt_switch *,
->> +			struct rpc_xprt *, void *);
->> 	const struct rpc_call_ops *call_sync_ops;
->> 	const struct nfs4_state_recovery_ops *reboot_recovery_ops;
->> 	const struct nfs4_state_recovery_ops *nograce_recovery_ops;
->> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
->> index fa9ae75..8767720 100644
->> --- a/fs/nfs/nfs4proc.c
->> +++ b/fs/nfs/nfs4proc.c
->> @@ -8934,6 +8934,7 @@ static const struct nfs4_minor_version_ops nfs_v4_1_minor_ops = {
->> 	.find_root_sec = nfs41_find_root_sec,
->> 	.free_lock_state = nfs41_free_lock_state,
->> 	.alloc_seqid = nfs_alloc_no_seqid,
->> +	.session_trunk = nfs4_test_session_trunk,
->> 	.call_sync_ops = &nfs41_call_sync_ops,
->> 	.reboot_recovery_ops = &nfs41_reboot_recovery_ops,
->> 	.nograce_recovery_ops = &nfs41_nograce_recovery_ops,
->> @@ -8963,6 +8964,7 @@ static const struct nfs4_minor_version_ops nfs_v4_2_minor_ops = {
->> 	.free_lock_state = nfs41_free_lock_state,
->> 	.call_sync_ops = &nfs41_call_sync_ops,
->> 	.alloc_seqid = nfs_alloc_no_seqid,
->> +	.session_trunk = nfs4_test_session_trunk,
->> 	.reboot_recovery_ops = &nfs41_reboot_recovery_ops,
->> 	.nograce_recovery_ops = &nfs41_nograce_recovery_ops,
->> 	.state_renewal_ops = &nfs41_state_renewal_ops,
->> diff --git a/fs/nfs/pnfs_nfs.c b/fs/nfs/pnfs_nfs.c
->> index f3468b5..7cc1c4d 100644
->> --- a/fs/nfs/pnfs_nfs.c
->> +++ b/fs/nfs/pnfs_nfs.c
->> @@ -690,13 +690,44 @@ static int _nfs4_pnfs_v4_ds_connect(struct nfs_server *mds_srv,
->> 		dprintk("%s: DS %s: trying address %s\n",
->> 			__func__, ds->ds_remotestr, da->da_remotestr);
->> 
->> -		clp = nfs4_set_ds_client(mds_srv,
->> -					(struct sockaddr *)&da->da_addr,
->> -					da->da_addrlen, IPPROTO_TCP,
->> -					timeo, retrans, minor_version,
->> -					au_flavor);
->> -		if (!IS_ERR(clp))
->> -			break;
->> +		if (!IS_ERR(clp) && clp->cl_mvops->session_trunk) {
->> +			struct xprt_create xprt_args = {
->> +				.ident = XPRT_TRANSPORT_TCP,
->> +				.net = clp->cl_net,
->> +				.dstaddr = (struct sockaddr *)&da->da_addr,
->> +				.addrlen = da->da_addrlen,
->> +				.servername = clp->cl_hostname,
->> +			};
->> +			struct nfs4_add_xprt_data xprtdata = {
->> +				.clp = clp,
->> +			};
->> +			xprtdata.cred = nfs4_get_clid_cred(clp);
->> +
->> +			/**
->> +			* Test this address for session trunking and
->> +			* add as an alias
->> +			*/
->> +			rpc_clnt_add_xprt(clp->cl_rpcclient, &xprt_args,
->> +					  clp->cl_mvops->session_trunk,
->> +					  &xprtdata);
->> +		} else {
->> +			clp = nfs4_set_ds_client(mds_srv,
->> +						(struct sockaddr *)&da->da_addr,
->> +						da->da_addrlen, IPPROTO_TCP,
->> +						timeo, retrans, minor_version,
->> +						au_flavor);
->> +			if (IS_ERR(clp))
->> +				continue;
->> +
->> +			status = nfs4_init_ds_session(clp,
->> +					mds_srv->nfs_client->cl_lease_time);
->> +			if (status) {
->> +				nfs_put_client(clp);
->> +				clp = ERR_PTR(-EIO);
->> +				continue;
->> +			}
->> +
->> +		}
->> 	}
->> 
->> 	if (IS_ERR(clp)) {
->> @@ -704,18 +735,11 @@ static int _nfs4_pnfs_v4_ds_connect(struct nfs_server *mds_srv,
->> 		goto out;
->> 	}
->> 
->> -	status = nfs4_init_ds_session(clp, mds_srv->nfs_client->cl_lease_time);
->> -	if (status)
->> -		goto out_put;
->> -
->> 	smp_wmb();
->> 	ds->ds_clp = clp;
->> 	dprintk("%s [new] addr: %s\n", __func__, ds->ds_remotestr);
->> out:
->> 	return status;
->> -out_put:
->> -	nfs_put_client(clp);
->> -	goto out;
->> }
+> Changes since v2:
+> - Move NFS4_LOCK_STID arm into a helper, for clarity
+> - Add more detail to patch description
+> - Add Jeff's patch to fix similar race in nfsd4_lock
 > 
-> Is there something which checks whether or not a particular transport has already been added?
-
-Is there a reason that rpc_switch_xprt_add_xprt() doesn’t check to see if the xprt has already been added? IOW should I add the check to rpc_switch_xprt_add_xprt() or have a new interface?
-
-
-> Also, doesn’t something need to change in nfs_match_client() so that we can find the struct nfs_client using any of the IP addresses that are registered to it?
-
-OK
-
-—>Andy
- 
+> Changes since v1:
+> - Use s->sc_count to preserve stateid while cl_lock is dropped
+> 
+> ---
+> 
+> Chuck Lever (1):
+>       nfsd: Fix race between FREE_STATEID and LOCK
+> 
+> Jeff Layton (1):
+>       nfsd: don't return an unhashed lock stateid after taking mutex
 > 
 > 
-
+>  fs/nfsd/nfs4state.c |   65 ++++++++++++++++++++++++++++++++++++++-------------
+>  1 file changed, 48 insertions(+), 17 deletions(-)
+> 
+> --
+> Chuck Lever
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
