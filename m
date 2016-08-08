@@ -1,168 +1,292 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from us-smtp-delivery-194.mimecast.com ([216.205.24.194]:48264 "EHLO
-	us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1750929AbcHHUSV convert rfc822-to-8bit
-	(ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 8 Aug 2016 16:18:21 -0400
-From: Trond Myklebust <trondmy@primarydata.com>
-To: Adamson William Andros <William.Adamson@netapp.com>
-CC: Schumaker Anna <Anna.Schumaker@netapp.com>,
-        List Linux NFS Mailing <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH Version 7 8/8] NFS pnfs data server multipath session
- trunking
-Date: Mon, 8 Aug 2016 20:18:14 +0000
-Message-ID: <32C4EFF3-FE31-4ADB-B77B-BEED69F7CD4B@primarydata.com>
-References: <1469645000-19791-1-git-send-email-andros@netapp.com>
- <1469645000-19791-9-git-send-email-andros@netapp.com>
- <DDDED45E-EB74-45DE-8D8D-41F4BFADD086@primarydata.com>
- <98C59F48-4F4B-4933-B2EC-64AF156452A3@netapp.com>
-In-Reply-To: <98C59F48-4F4B-4933-B2EC-64AF156452A3@netapp.com>
+Received: from mx141.netapp.com ([216.240.21.12]:20571 "EHLO mx141.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751651AbcHHUoY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 8 Aug 2016 16:44:24 -0400
+From: Anna Schumaker <Anna.Schumaker@netapp.com>
+Subject: Re: [PATCH v3 3/3][resend] pnfs: add a new mechanism to select a
+ layout driver according to an ordered list
+To: Jeff Layton <jlayton@redhat.com>, <trond.myklebust@primarydata.com>,
+        <anna.schumaker@netapp.com>, <bfields@fieldses.org>
+References: <1468180560-13004-1-git-send-email-jlayton@redhat.com>
+ <1468180560-13004-4-git-send-email-jlayton@redhat.com>
+CC: <tigran.mkrtchyan@desy.de>, <thomas.haynes@primarydata.com>,
+        <linux-nfs@vger.kernel.org>
+Message-ID: <35e65f1e-3172-61cd-a112-641105c47969@Netapp.com>
+Date: Mon, 8 Aug 2016 16:43:58 -0400
 MIME-Version: 1.0
-Content-Type: text/plain; charset=WINDOWS-1252
+In-Reply-To: <1468180560-13004-4-git-send-email-jlayton@redhat.com>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Hi Jeff,
 
-> On Aug 8, 2016, at 15:57, Adamson, Andy <William.Adamson@netapp.com> wrote:
+On 07/10/2016 03:56 PM, Jeff Layton wrote:
+> From: Jeff Layton <jlayton@poochiereds.net>
 > 
->> 
->> On Aug 5, 2016, at 6:05 PM, Trond Myklebust <trondmy@primarydata.com> wrote:
->> 
->> 
->>> On Jul 27, 2016, at 14:43, andros@netapp.com wrote:
->>> 
->>> From: Andy Adamson <andros@netapp.com>
->>> 
->>> Try all multipath addresses for a data server. The first address that
->>> successfully connects and creates a session is the DS mount address.
->>> All subsequent addresses are tested for session trunking and
->>> added as aliases.
->>> 
->>> Signed-off-by: Andy Adamson <andros@netapp.com>
->>> ---
->>> fs/nfs/nfs4_fs.h  |  2 ++
->>> fs/nfs/nfs4proc.c |  2 ++
->>> fs/nfs/pnfs_nfs.c | 52 ++++++++++++++++++++++++++++++++++++++--------------
->>> 3 files changed, 42 insertions(+), 14 deletions(-)
->>> 
->>> diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
->>> index b2a94ca..8e4343f 100644
->>> --- a/fs/nfs/nfs4_fs.h
->>> +++ b/fs/nfs/nfs4_fs.h
->>> @@ -59,6 +59,8 @@ struct nfs4_minor_version_ops {
->>> 			struct nfs4_lock_state *);
->>> 	struct nfs_seqid *
->>> 		(*alloc_seqid)(struct nfs_seqid_counter *, gfp_t);
->>> +	int	(*session_trunk)(struct rpc_clnt *, struct rpc_xprt_switch *,
->>> +			struct rpc_xprt *, void *);
->>> 	const struct rpc_call_ops *call_sync_ops;
->>> 	const struct nfs4_state_recovery_ops *reboot_recovery_ops;
->>> 	const struct nfs4_state_recovery_ops *nograce_recovery_ops;
->>> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
->>> index fa9ae75..8767720 100644
->>> --- a/fs/nfs/nfs4proc.c
->>> +++ b/fs/nfs/nfs4proc.c
->>> @@ -8934,6 +8934,7 @@ static const struct nfs4_minor_version_ops nfs_v4_1_minor_ops = {
->>> 	.find_root_sec = nfs41_find_root_sec,
->>> 	.free_lock_state = nfs41_free_lock_state,
->>> 	.alloc_seqid = nfs_alloc_no_seqid,
->>> +	.session_trunk = nfs4_test_session_trunk,
->>> 	.call_sync_ops = &nfs41_call_sync_ops,
->>> 	.reboot_recovery_ops = &nfs41_reboot_recovery_ops,
->>> 	.nograce_recovery_ops = &nfs41_nograce_recovery_ops,
->>> @@ -8963,6 +8964,7 @@ static const struct nfs4_minor_version_ops nfs_v4_2_minor_ops = {
->>> 	.free_lock_state = nfs41_free_lock_state,
->>> 	.call_sync_ops = &nfs41_call_sync_ops,
->>> 	.alloc_seqid = nfs_alloc_no_seqid,
->>> +	.session_trunk = nfs4_test_session_trunk,
->>> 	.reboot_recovery_ops = &nfs41_reboot_recovery_ops,
->>> 	.nograce_recovery_ops = &nfs41_nograce_recovery_ops,
->>> 	.state_renewal_ops = &nfs41_state_renewal_ops,
->>> diff --git a/fs/nfs/pnfs_nfs.c b/fs/nfs/pnfs_nfs.c
->>> index f3468b5..7cc1c4d 100644
->>> --- a/fs/nfs/pnfs_nfs.c
->>> +++ b/fs/nfs/pnfs_nfs.c
->>> @@ -690,13 +690,44 @@ static int _nfs4_pnfs_v4_ds_connect(struct nfs_server *mds_srv,
->>> 		dprintk("%s: DS %s: trying address %s\n",
->>> 			__func__, ds->ds_remotestr, da->da_remotestr);
->>> 
->>> -		clp = nfs4_set_ds_client(mds_srv,
->>> -					(struct sockaddr *)&da->da_addr,
->>> -					da->da_addrlen, IPPROTO_TCP,
->>> -					timeo, retrans, minor_version,
->>> -					au_flavor);
->>> -		if (!IS_ERR(clp))
->>> -			break;
->>> +		if (!IS_ERR(clp) && clp->cl_mvops->session_trunk) {
->>> +			struct xprt_create xprt_args = {
->>> +				.ident = XPRT_TRANSPORT_TCP,
->>> +				.net = clp->cl_net,
->>> +				.dstaddr = (struct sockaddr *)&da->da_addr,
->>> +				.addrlen = da->da_addrlen,
->>> +				.servername = clp->cl_hostname,
->>> +			};
->>> +			struct nfs4_add_xprt_data xprtdata = {
->>> +				.clp = clp,
->>> +			};
->>> +			xprtdata.cred = nfs4_get_clid_cred(clp);
->>> +
->>> +			/**
->>> +			* Test this address for session trunking and
->>> +			* add as an alias
->>> +			*/
->>> +			rpc_clnt_add_xprt(clp->cl_rpcclient, &xprt_args,
->>> +					  clp->cl_mvops->session_trunk,
->>> +					  &xprtdata);
->>> +		} else {
->>> +			clp = nfs4_set_ds_client(mds_srv,
->>> +						(struct sockaddr *)&da->da_addr,
->>> +						da->da_addrlen, IPPROTO_TCP,
->>> +						timeo, retrans, minor_version,
->>> +						au_flavor);
->>> +			if (IS_ERR(clp))
->>> +				continue;
->>> +
->>> +			status = nfs4_init_ds_session(clp,
->>> +					mds_srv->nfs_client->cl_lease_time);
->>> +			if (status) {
->>> +				nfs_put_client(clp);
->>> +				clp = ERR_PTR(-EIO);
->>> +				continue;
->>> +			}
->>> +
->>> +		}
->>> 	}
->>> 
->>> 	if (IS_ERR(clp)) {
->>> @@ -704,18 +735,11 @@ static int _nfs4_pnfs_v4_ds_connect(struct nfs_server *mds_srv,
->>> 		goto out;
->>> 	}
->>> 
->>> -	status = nfs4_init_ds_session(clp, mds_srv->nfs_client->cl_lease_time);
->>> -	if (status)
->>> -		goto out_put;
->>> -
->>> 	smp_wmb();
->>> 	ds->ds_clp = clp;
->>> 	dprintk("%s [new] addr: %s\n", __func__, ds->ds_remotestr);
->>> out:
->>> 	return status;
->>> -out_put:
->>> -	nfs_put_client(clp);
->>> -	goto out;
->>> }
->> 
->> Is there something which checks whether or not a particular transport has already been added?
+> Currently, the layout driver selection code always chooses the first one
+> from the list. That's not really ideal however, as the server can send
+> the list of layout types in any order that it likes. It's up to the
+> client to select the best one for its needs.
 > 
-> Is there a reason that rpc_switch_xprt_add_xprt() doesn’t check to see if the xprt has already been added? IOW should I add the check to rpc_switch_xprt_add_xprt() or have a new interface?
+> This patch adds an ordered list of preferred driver types and has the
+> selection code sort the list of avaiable layout drivers according to it.
+> Any unrecognized layout type is sorted to the end of the list.
 > 
+> For now, the order of preference is hardcoded, but it should be possible
+> to make this configurable in the future.
+> 
+> Signed-off-by: Jeff Layton <jlayton@poochiereds.net>
+> ---
+>  fs/nfs/client.c         |  1 +
+>  fs/nfs/nfs4proc.c       |  3 ++-
+>  fs/nfs/nfs4xdr.c        | 29 +++++++++++++++-----------
+>  fs/nfs/pnfs.c           | 54 +++++++++++++++++++++++++++++++++++++++++--------
+>  fs/nfs/pnfs.h           |  5 +++--
+>  include/linux/nfs_xdr.h |  1 +
+>  6 files changed, 70 insertions(+), 23 deletions(-)
+> 
+> diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+> index 067f489aab3f..2525d8f770d2 100644
+> --- a/fs/nfs/client.c
+> +++ b/fs/nfs/client.c
+> @@ -787,6 +787,7 @@ int nfs_probe_fsinfo(struct nfs_server *server, struct nfs_fh *mntfh, struct nfs
+>  	}
+>  
+>  	fsinfo.fattr = fattr;
+> +	fsinfo.nlayouttypes = 0;
+>  	memset(fsinfo.layouttype, 0, sizeof(fsinfo.layouttype));
+>  	error = clp->rpc_ops->fsinfo(server, mntfh, &fsinfo);
+>  	if (error < 0)
+> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+> index de97567795a5..a1d6d4bd0d50 100644
+> --- a/fs/nfs/nfs4proc.c
+> +++ b/fs/nfs/nfs4proc.c
+> @@ -4252,7 +4252,8 @@ static int nfs4_proc_fsinfo(struct nfs_server *server, struct nfs_fh *fhandle, s
+>  	if (error == 0) {
+>  		/* block layout checks this! */
+>  		server->pnfs_blksize = fsinfo->blksize;
+> -		set_pnfs_layoutdriver(server, fhandle, fsinfo->layouttype);
+> +		set_pnfs_layoutdriver(server, fhandle, fsinfo->nlayouttypes,
+> +					fsinfo->layouttype);
 
-Adding it to rpc_switch_xprt_add_xprt() should be OK.
+I think it might be a little cleaner to pass the fsinfo structure here instead of adding more variables to the function.
 
+>  	}
+>  
+>  	return error;
+> diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+> index b2c698499ad9..4eee3a32e070 100644
+> --- a/fs/nfs/nfs4xdr.c
+> +++ b/fs/nfs/nfs4xdr.c
+> @@ -4723,28 +4723,32 @@ static int decode_getfattr(struct xdr_stream *xdr, struct nfs_fattr *fattr,
+>   * Decode potentially multiple layout types.
+>   */
+>  static int decode_pnfs_layout_types(struct xdr_stream *xdr,
+> -					 uint32_t *layouttype)
+> +				uint32_t *nlayouttypes, uint32_t *layouttype)
+
+Same thing here with decoding.
+
+>  {
+>  	__be32 *p;
+> -	uint32_t num, i;
+> +	uint32_t i;
+>  
+>  	p = xdr_inline_decode(xdr, 4);
+>  	if (unlikely(!p))
+>  		goto out_overflow;
+> -	num = be32_to_cpup(p);
+> +	*nlayouttypes = be32_to_cpup(p);
+>  
+>  	/* pNFS is not supported by the underlying file system */
+> -	if (num == 0) {
+> +	if (*nlayouttypes == 0)
+>  		return 0;
+> -	}
+> -	if (num > NFS_MAX_LAYOUT_TYPES)
+> -		printk(KERN_INFO "NFS: %s: Warning: Too many (%d) pNFS layout types\n", __func__, num);
+>  
+>  	/* Decode and set first layout type, move xdr->p past unused types */
+> -	p = xdr_inline_decode(xdr, num * 4);
+> +	p = xdr_inline_decode(xdr, *nlayouttypes * 4);
+>  	if (unlikely(!p))
+>  		goto out_overflow;
+> -	for(i = 0; i < num && i < NFS_MAX_LAYOUT_TYPES; i++)
+> +
+> +	/* If we get too many, then just cap it at the max */
+> +	if (*nlayouttypes > NFS_MAX_LAYOUT_TYPES) {
+> +		printk(KERN_INFO "NFS: %s: Warning: Too many (%u) pNFS layout types\n", __func__, *nlayouttypes);
+> +		*nlayouttypes = NFS_MAX_LAYOUT_TYPES;
+> +	}
+> +
+> +	for(i = 0; i < *nlayouttypes; ++i)
+>  		layouttype[i] = be32_to_cpup(p++);
+>  	return 0;
+>  out_overflow:
+> @@ -4757,7 +4761,7 @@ out_overflow:
+>   * Note we must ensure that layouttype is set in any non-error case.
+>   */
+>  static int decode_attr_pnfstype(struct xdr_stream *xdr, uint32_t *bitmap,
+> -				uint32_t *layouttype)
+> +				uint32_t *nlayouttypes, uint32_t *layouttype)
+>  {
+>  	int status = 0;
+>  
+> @@ -4765,7 +4769,7 @@ static int decode_attr_pnfstype(struct xdr_stream *xdr, uint32_t *bitmap,
+>  	if (unlikely(bitmap[1] & (FATTR4_WORD1_FS_LAYOUT_TYPES - 1U)))
+>  		return -EIO;
+>  	if (bitmap[1] & FATTR4_WORD1_FS_LAYOUT_TYPES) {
+> -		status = decode_pnfs_layout_types(xdr, layouttype);
+> +		status = decode_pnfs_layout_types(xdr, nlayouttypes, layouttype);
+>  		bitmap[1] &= ~FATTR4_WORD1_FS_LAYOUT_TYPES;
+>  	}
+>  	return status;
+> @@ -4848,7 +4852,8 @@ static int decode_fsinfo(struct xdr_stream *xdr, struct nfs_fsinfo *fsinfo)
+>  	status = decode_attr_time_delta(xdr, bitmap, &fsinfo->time_delta);
+>  	if (status != 0)
+>  		goto xdr_error;
+> -	status = decode_attr_pnfstype(xdr, bitmap, fsinfo->layouttype);
+> +	status = decode_attr_pnfstype(xdr, bitmap, &fsinfo->nlayouttypes,
+> +					fsinfo->layouttype);
+>  	if (status != 0)
+>  		goto xdr_error;
+>  
+> diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+> index 2fc1b9354345..11e56225e6d2 100644
+> --- a/fs/nfs/pnfs.c
+> +++ b/fs/nfs/pnfs.c
+> @@ -30,6 +30,7 @@
+>  #include <linux/nfs_fs.h>
+>  #include <linux/nfs_page.h>
+>  #include <linux/module.h>
+> +#include <linux/sort.h>
+>  #include "internal.h"
+>  #include "pnfs.h"
+>  #include "iostat.h"
+> @@ -99,6 +100,38 @@ unset_pnfs_layoutdriver(struct nfs_server *nfss)
+>  }
+>  
+>  /*
+> + * When the server sends a list of layout types, we choose one in the order
+> + * given in the list below.
+> + *
+> + * FIXME: should this list be configurable via module_param or mount option?
+> + */
+> +static const u32 ld_prefs[] = {
+> +	LAYOUT_SCSI,
+> +	LAYOUT_BLOCK_VOLUME,
+> +	LAYOUT_OSD2_OBJECTS,
+> +	LAYOUT_FLEX_FILES,
+> +	LAYOUT_NFSV4_1_FILES,
+> +	0
+> +};
+> +
+> +static int
+> +ld_cmp(const void *e1, const void *e2)
+> +{
+> +	u32 ld1 = *((u32 *)e1);
+> +	u32 ld2 = *((u32 *)e2);
+
+Looks like this conversion is used pretty frequently.  I wish there was a "POINTER_TO_UINT" macro to make it clearer what's going on.
+
+Thanks,
+Anna
+
+> +	int i;
+> +
+> +	for (i = 0; ld_prefs[i] != 0; i++) {
+> +		if (ld1 == ld_prefs[i])
+> +			return -1;
+> +
+> +		if (ld2 == ld_prefs[i])
+> +			return 1;
+> +	}
+> +	return 0;
+> +}
+> +
+> +/*
+>   * Try to set the server's pnfs module to the pnfs layout type specified by id.
+>   * Currently only one pNFS layout driver per filesystem is supported.
+>   *
+> @@ -106,10 +139,11 @@ unset_pnfs_layoutdriver(struct nfs_server *nfss)
+>   */
+>  void
+>  set_pnfs_layoutdriver(struct nfs_server *server, const struct nfs_fh *mntfh,
+> -		      u32 *ids)
+> +		      u32 nids, u32 *ids)
+>  {
+>  	struct pnfs_layoutdriver_type *ld_type = NULL;
+>  	u32 id;
+> +	int i;
+>  
+>  	if (!(server->nfs_client->cl_exchange_flags &
+>  		 (EXCHGID4_FLAG_USE_NON_PNFS | EXCHGID4_FLAG_USE_PNFS_MDS))) {
+> @@ -118,18 +152,22 @@ set_pnfs_layoutdriver(struct nfs_server *server, const struct nfs_fh *mntfh,
+>  		goto out_no_driver;
+>  	}
+>  
+> -	id = ids[0];
+> -	if (!id)
+> -		goto out_no_driver;
+> +	sort(ids, nids, sizeof(*ids), ld_cmp, NULL);
+>  
+> -	ld_type = find_pnfs_driver(id);
+> -	if (!ld_type) {
+> -		request_module("%s-%u", LAYOUT_NFSV4_1_MODULE_PREFIX, id);
+> +	for (i = 0; i < nids; i++) {
+> +		id = ids[i];
+>  		ld_type = find_pnfs_driver(id);
+> +		if (!ld_type) {
+> +			request_module("%s-%u", LAYOUT_NFSV4_1_MODULE_PREFIX,
+> +					id);
+> +			ld_type = find_pnfs_driver(id);
+> +		}
+> +		if (ld_type)
+> +			break;
+>  	}
+>  
+>  	if (!ld_type) {
+> -		dprintk("%s: No pNFS module found for %u.\n", __func__, id);
+> +		dprintk("%s: No pNFS module found!\n", __func__);
+>  		goto out_no_driver;
+>  	}
+>  
+> diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+> index 500473c87e82..a879e747f708 100644
+> --- a/fs/nfs/pnfs.h
+> +++ b/fs/nfs/pnfs.h
+> @@ -236,7 +236,7 @@ void pnfs_get_layout_hdr(struct pnfs_layout_hdr *lo);
+>  void pnfs_put_lseg(struct pnfs_layout_segment *lseg);
+>  void pnfs_put_lseg_locked(struct pnfs_layout_segment *lseg);
+>  
+> -void set_pnfs_layoutdriver(struct nfs_server *, const struct nfs_fh *, u32 *);
+> +void set_pnfs_layoutdriver(struct nfs_server *, const struct nfs_fh *, u32, u32 *);
+>  void unset_pnfs_layoutdriver(struct nfs_server *);
+>  void pnfs_generic_pg_init_read(struct nfs_pageio_descriptor *, struct nfs_page *);
+>  int pnfs_generic_pg_readpages(struct nfs_pageio_descriptor *desc);
+> @@ -656,7 +656,8 @@ pnfs_wait_on_layoutreturn(struct inode *ino, struct rpc_task *task)
+>  }
+>  
+>  static inline void set_pnfs_layoutdriver(struct nfs_server *s,
+> -					 const struct nfs_fh *mntfh, u32 *ids)
+> +					 const struct nfs_fh *mntfh,
+> +					 u32 nids, u32 *ids)
+>  {
+>  }
+>  
+> diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+> index 4eef590200c3..a7e6739ac936 100644
+> --- a/include/linux/nfs_xdr.h
+> +++ b/include/linux/nfs_xdr.h
+> @@ -144,6 +144,7 @@ struct nfs_fsinfo {
+>  	__u64			maxfilesize;
+>  	struct timespec		time_delta; /* server time granularity */
+>  	__u32			lease_time; /* in seconds */
+> +	__u32			nlayouttypes; /* number of layouttypes */
+>  	__u32			layouttype[NFS_MAX_LAYOUT_TYPES]; /* supported pnfs layout driver */
+>  	__u32			blksize; /* preferred pnfs io block size */
+>  	__u32			clone_blksize; /* granularity of a CLONE operation */
 > 
->> Also, doesn’t something need to change in nfs_match_client() so that we can find the struct nfs_client using any of the IP addresses that are registered to it?
-> 
-> OK
-> 
-> —>Andy
 
