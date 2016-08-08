@@ -1,62 +1,56 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx142.netapp.com ([216.240.21.19]:8556 "EHLO mx142.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751473AbcHHPGY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 8 Aug 2016 11:06:24 -0400
+Received: from us-smtp-delivery-194.mimecast.com ([63.128.21.194]:54421 "EHLO
+	us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1752054AbcHHPKZ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 8 Aug 2016 11:10:25 -0400
+From: Trond Myklebust <trondmy@primarydata.com>
+To: Schumaker Anna <Anna.Schumaker@netapp.com>
+CC: List Linux NFS Mailing <linux-nfs@vger.kernel.org>
 Subject: Re: [PATCH v2 0/3] Client reconnection fixes
-To: Trond Myklebust <trondmy@primarydata.com>
+Date: Mon, 8 Aug 2016 15:10:17 +0000
+Message-ID: <E79FD6C8-6511-4900-AB13-6C16D30F532B@primarydata.com>
 References: <1470440255-8612-1-git-send-email-trond.myklebust@primarydata.com>
  <963f74cb-9e46-72c8-5168-840021dc0453@Netapp.com>
  <26FE1038-A417-464E-AA40-882FD96ACEE7@primarydata.com>
-CC: List Linux NFS Mailing <linux-nfs@vger.kernel.org>
-From: Anna Schumaker <Anna.Schumaker@netapp.com>
-Message-ID: <f88bd344-decb-8a16-3d7c-1adb543a9d58@Netapp.com>
-Date: Mon, 8 Aug 2016 11:06:21 -0400
+ <f88bd344-decb-8a16-3d7c-1adb543a9d58@Netapp.com>
+In-Reply-To: <f88bd344-decb-8a16-3d7c-1adb543a9d58@Netapp.com>
 MIME-Version: 1.0
-In-Reply-To: <26FE1038-A417-464E-AA40-882FD96ACEE7@primarydata.com>
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Applying these three directly on 4.8-rc1 gave me problems.  Looks like I'm missing xs_reconnect_delay() in my git tree which was added by "SUNRPC: Fix reconnection timeouts" in v1 of your patches (but missing in this series).
-
-Anna
-
-On 08/08/2016 10:58 AM, Trond Myklebust wrote:
-> There are no particular dependencies beyond 4.8-rc1 that I’m aware of. I have applied them to my linux-next branch:
-> 
->  http://git.linux-nfs.org/?p=trondmy/linux-nfs.git;a=shortlog;h=refs/heads/linux-next
-> 
-> 
->> On Aug 8, 2016, at 10:26, Anna Schumaker <Anna.Schumaker@netapp.com> wrote:
->>
->> Hi Trond,
->>
->> Do these patches depend on another patch set?  I tried applying the first patch, but my git tree is missing sha1 information for net/sunrpc/xprtsock.c.
->>
->> Thanks,
->> Anna
->>
->> On 08/05/2016 07:37 PM, Trond Myklebust wrote:
->>> v1: Cap the backoff timer to the max RPC message timeout
->>> v2: Add a cap at 1/2 NFSv4 lease period to ensure we don't miss lease renewal
->>>
->>> Trond Myklebust (3):
->>>  SUNRPC: Limit the reconnect backoff timer to the max RPC message
->>>    timeout
->>>  NFSv4: Cleanup the setting of the nfs4 lease period
->>>  NFSv4: Cap the transport reconnection timer at 1/2 lease period
->>>
->>> fs/nfs/nfs4_fs.h            |  4 ++++
->>> fs/nfs/nfs4proc.c           |  9 +++------
->>> fs/nfs/nfs4renewd.c         | 20 ++++++++++++++++++++
->>> fs/nfs/nfs4state.c          |  9 +++------
->>> include/linux/sunrpc/clnt.h |  2 ++
->>> include/linux/sunrpc/xprt.h |  3 ++-
->>> net/sunrpc/clnt.c           | 24 ++++++++++++++++++++++++
->>> net/sunrpc/xprtsock.c       | 18 ++++++++++++------
->>> 8 files changed, 70 insertions(+), 19 deletions(-)
->>>
->>
-> 
+U29ycnksIHllcyB0aGVyZSBpcyBhIGRlcGVuZGVuY3kgdGhlcmUuDQoNCj4gT24gQXVnIDgsIDIw
+MTYsIGF0IDExOjA2LCBBbm5hIFNjaHVtYWtlciA8QW5uYS5TY2h1bWFrZXJAbmV0YXBwLmNvbT4g
+d3JvdGU6DQo+IA0KPiBBcHBseWluZyB0aGVzZSB0aHJlZSBkaXJlY3RseSBvbiA0LjgtcmMxIGdh
+dmUgbWUgcHJvYmxlbXMuICBMb29rcyBsaWtlIEknbSBtaXNzaW5nIHhzX3JlY29ubmVjdF9kZWxh
+eSgpIGluIG15IGdpdCB0cmVlIHdoaWNoIHdhcyBhZGRlZCBieSAiU1VOUlBDOiBGaXggcmVjb25u
+ZWN0aW9uIHRpbWVvdXRzIiBpbiB2MSBvZiB5b3VyIHBhdGNoZXMgKGJ1dCBtaXNzaW5nIGluIHRo
+aXMgc2VyaWVzKS4NCj4gDQo+IEFubmENCj4gDQo+IE9uIDA4LzA4LzIwMTYgMTA6NTggQU0sIFRy
+b25kIE15a2xlYnVzdCB3cm90ZToNCj4+IFRoZXJlIGFyZSBubyBwYXJ0aWN1bGFyIGRlcGVuZGVu
+Y2llcyBiZXlvbmQgNC44LXJjMSB0aGF0IEnigJltIGF3YXJlIG9mLiBJIGhhdmUgYXBwbGllZCB0
+aGVtIHRvIG15IGxpbnV4LW5leHQgYnJhbmNoOg0KPj4gDQo+PiBodHRwOi8vZ2l0LmxpbnV4LW5m
+cy5vcmcvP3A9dHJvbmRteS9saW51eC1uZnMuZ2l0O2E9c2hvcnRsb2c7aD1yZWZzL2hlYWRzL2xp
+bnV4LW5leHQNCj4+IA0KPj4gDQo+Pj4gT24gQXVnIDgsIDIwMTYsIGF0IDEwOjI2LCBBbm5hIFNj
+aHVtYWtlciA8QW5uYS5TY2h1bWFrZXJAbmV0YXBwLmNvbT4gd3JvdGU6DQo+Pj4gDQo+Pj4gSGkg
+VHJvbmQsDQo+Pj4gDQo+Pj4gRG8gdGhlc2UgcGF0Y2hlcyBkZXBlbmQgb24gYW5vdGhlciBwYXRj
+aCBzZXQ/ICBJIHRyaWVkIGFwcGx5aW5nIHRoZSBmaXJzdCBwYXRjaCwgYnV0IG15IGdpdCB0cmVl
+IGlzIG1pc3Npbmcgc2hhMSBpbmZvcm1hdGlvbiBmb3IgbmV0L3N1bnJwYy94cHJ0c29jay5jLg0K
+Pj4+IA0KPj4+IFRoYW5rcywNCj4+PiBBbm5hDQo+Pj4gDQo+Pj4gT24gMDgvMDUvMjAxNiAwNzoz
+NyBQTSwgVHJvbmQgTXlrbGVidXN0IHdyb3RlOg0KPj4+PiB2MTogQ2FwIHRoZSBiYWNrb2ZmIHRp
+bWVyIHRvIHRoZSBtYXggUlBDIG1lc3NhZ2UgdGltZW91dA0KPj4+PiB2MjogQWRkIGEgY2FwIGF0
+IDEvMiBORlN2NCBsZWFzZSBwZXJpb2QgdG8gZW5zdXJlIHdlIGRvbid0IG1pc3MgbGVhc2UgcmVu
+ZXdhbA0KPj4+PiANCj4+Pj4gVHJvbmQgTXlrbGVidXN0ICgzKToNCj4+Pj4gU1VOUlBDOiBMaW1p
+dCB0aGUgcmVjb25uZWN0IGJhY2tvZmYgdGltZXIgdG8gdGhlIG1heCBSUEMgbWVzc2FnZQ0KPj4+
+PiAgIHRpbWVvdXQNCj4+Pj4gTkZTdjQ6IENsZWFudXAgdGhlIHNldHRpbmcgb2YgdGhlIG5mczQg
+bGVhc2UgcGVyaW9kDQo+Pj4+IE5GU3Y0OiBDYXAgdGhlIHRyYW5zcG9ydCByZWNvbm5lY3Rpb24g
+dGltZXIgYXQgMS8yIGxlYXNlIHBlcmlvZA0KPj4+PiANCj4+Pj4gZnMvbmZzL25mczRfZnMuaCAg
+ICAgICAgICAgIHwgIDQgKysrKw0KPj4+PiBmcy9uZnMvbmZzNHByb2MuYyAgICAgICAgICAgfCAg
+OSArKystLS0tLS0NCj4+Pj4gZnMvbmZzL25mczRyZW5ld2QuYyAgICAgICAgIHwgMjAgKysrKysr
+KysrKysrKysrKysrKysNCj4+Pj4gZnMvbmZzL25mczRzdGF0ZS5jICAgICAgICAgIHwgIDkgKysr
+LS0tLS0tDQo+Pj4+IGluY2x1ZGUvbGludXgvc3VucnBjL2NsbnQuaCB8ICAyICsrDQo+Pj4+IGlu
+Y2x1ZGUvbGludXgvc3VucnBjL3hwcnQuaCB8ICAzICsrLQ0KPj4+PiBuZXQvc3VucnBjL2NsbnQu
+YyAgICAgICAgICAgfCAyNCArKysrKysrKysrKysrKysrKysrKysrKysNCj4+Pj4gbmV0L3N1bnJw
+Yy94cHJ0c29jay5jICAgICAgIHwgMTggKysrKysrKysrKysrLS0tLS0tDQo+Pj4+IDggZmlsZXMg
+Y2hhbmdlZCwgNzAgaW5zZXJ0aW9ucygrKSwgMTkgZGVsZXRpb25zKC0pDQo+Pj4+IA0KPj4+IA0K
+Pj4gDQo+IA0KDQo=
 
