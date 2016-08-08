@@ -1,316 +1,168 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qk0-f181.google.com ([209.85.220.181]:34449 "EHLO
-	mail-qk0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751433AbcHHURK (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 8 Aug 2016 16:17:10 -0400
-Received: by mail-qk0-f181.google.com with SMTP id p186so207820627qkd.1
-        for <linux-nfs@vger.kernel.org>; Mon, 08 Aug 2016 13:17:09 -0700 (PDT)
-Message-ID: <1470687425.30036.8.camel@redhat.com>
-Subject: Re: [PATCH v2] nfsd: Fix race between FREE_STATEID and LOCK
-From: Jeff Layton <jlayton@redhat.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>,
-        Chuck Lever <chuck.lever@oracle.com>
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Date: Mon, 08 Aug 2016 16:17:05 -0400
-In-Reply-To: <20160808195300.GA6539@fieldses.org>
-References: <20160807185024.11705.10864.stgit@klimt.1015granger.net>
-	 <1470608556.2975.8.camel@redhat.com> <1470662355.844.10.camel@redhat.com>
-	 <BEA4C71F-F4C6-4D17-B2A8-60D198824D84@oracle.com>
-	 <20160808195300.GA6539@fieldses.org>
-Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
+Received: from us-smtp-delivery-194.mimecast.com ([216.205.24.194]:48264 "EHLO
+	us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1750929AbcHHUSV convert rfc822-to-8bit
+	(ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 8 Aug 2016 16:18:21 -0400
+From: Trond Myklebust <trondmy@primarydata.com>
+To: Adamson William Andros <William.Adamson@netapp.com>
+CC: Schumaker Anna <Anna.Schumaker@netapp.com>,
+        List Linux NFS Mailing <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH Version 7 8/8] NFS pnfs data server multipath session
+ trunking
+Date: Mon, 8 Aug 2016 20:18:14 +0000
+Message-ID: <32C4EFF3-FE31-4ADB-B77B-BEED69F7CD4B@primarydata.com>
+References: <1469645000-19791-1-git-send-email-andros@netapp.com>
+ <1469645000-19791-9-git-send-email-andros@netapp.com>
+ <DDDED45E-EB74-45DE-8D8D-41F4BFADD086@primarydata.com>
+ <98C59F48-4F4B-4933-B2EC-64AF156452A3@netapp.com>
+In-Reply-To: <98C59F48-4F4B-4933-B2EC-64AF156452A3@netapp.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=WINDOWS-1252
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, 2016-08-08 at 15:53 -0400, J. Bruce Fields wrote:
-> On Mon, Aug 08, 2016 at 12:14:36PM -0400, Chuck Lever wrote:
-> > 
-> > 
-> > > 
-> > > On Aug 8, 2016, at 9:19 AM, Jeff Layton <jlayton@redhat.com>
-> > > wrote:
-> > > 
-> > > On Sun, 2016-08-07 at 18:22 -0400, Jeff Layton wrote:
-> > > > 
-> > > > On Sun, 2016-08-07 at 14:53 -0400, Chuck Lever wrote:
-> > > > > 
-> > > > > 
-> > > > > When running LTP's nfslock01 test, the Linux client can send
-> > > > > a LOCK
-> > > > > and a FREE_STATEID request at the same time. The LOCK uses
-> > > > > the same
-> > > > > lockowner as the stateid sent in the FREE_STATEID request.
-> > > > > 
-> > > > > The outcome is:
-> > > > > 
-> > > > > Frame 115025 C FREE_STATEID stateid 2/A
-> > > > > Frame 115026 C LOCK offset 672128 len 64
-> > > > > Frame 115029 R FREE_STATEID NFS4_OK
-> > > > > Frame 115030 R LOCK stateid 3/A
-> > > 
-> > > Oh, to be clear here -- I assume this a lk_is_new lock (with an
-> > > open
-> > > stateid in it). Right?
-> > 
-> >         Opcode: LOCK (12)
-> >             locktype: WRITEW_LT (4)
-> >             reclaim?: No
-> >             offset: 672000
-> >             length: 64
-> >             new lock owner?: Yes
-> >             seqid: 0x00000000
-> >             stateid
-> >                 [StateID Hash: 0x6f7e]
-> >                 seqid: 0x00000002
-> >                 Data: a95169579501000007000000
-> >             lock_seqid: 0x00000000
-> >             Owner
-> >                 clientid: 0xa951695795010000
-> >                 Data: <DATA>
-> >                     length: 20
-> >                     contents: <DATA>
-> > 
-> > The first appearance of that stateid is in an earlier OPEN reply:
-> > 
-> >         Opcode: OPEN (18)
-> >             Status: NFS4_OK (0)
-> >             stateid
-> >                 [StateID Hash: 0x6f7e]
-> >                 seqid: 0x00000002
-> >                 Data: a95169579501000007000000
-> >             change_info
-> >                 Atomic: No
-> >                 changeid (before): 0
-> >                 changeid (after): 0
-> >             result flags: 0x00000004, locktype posix
-> >                 .... .... .... .... .... .... .... ..0. = confirm:
-> > False
-> >                 .... .... .... .... .... .... .... .1.. = locktype
-> > posix: True
-> >                 .... .... .... .... .... .... .... 0... = preserve
-> > unlinked: False
-> >                 .... .... .... .... .... .... ..0. .... = may
-> > notify lock: False
-> >             Delegation Type: OPEN_DELEGATE_NONE (0)
+
+> On Aug 8, 2016, at 15:57, Adamson, Andy <William.Adamson@netapp.com> wrote:
 > 
-> Oh, the client behavior makes more sense, then.
+>> 
+>> On Aug 5, 2016, at 6:05 PM, Trond Myklebust <trondmy@primarydata.com> wrote:
+>> 
+>> 
+>>> On Jul 27, 2016, at 14:43, andros@netapp.com wrote:
+>>> 
+>>> From: Andy Adamson <andros@netapp.com>
+>>> 
+>>> Try all multipath addresses for a data server. The first address that
+>>> successfully connects and creates a session is the DS mount address.
+>>> All subsequent addresses are tested for session trunking and
+>>> added as aliases.
+>>> 
+>>> Signed-off-by: Andy Adamson <andros@netapp.com>
+>>> ---
+>>> fs/nfs/nfs4_fs.h  |  2 ++
+>>> fs/nfs/nfs4proc.c |  2 ++
+>>> fs/nfs/pnfs_nfs.c | 52 ++++++++++++++++++++++++++++++++++++++--------------
+>>> 3 files changed, 42 insertions(+), 14 deletions(-)
+>>> 
+>>> diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
+>>> index b2a94ca..8e4343f 100644
+>>> --- a/fs/nfs/nfs4_fs.h
+>>> +++ b/fs/nfs/nfs4_fs.h
+>>> @@ -59,6 +59,8 @@ struct nfs4_minor_version_ops {
+>>> 			struct nfs4_lock_state *);
+>>> 	struct nfs_seqid *
+>>> 		(*alloc_seqid)(struct nfs_seqid_counter *, gfp_t);
+>>> +	int	(*session_trunk)(struct rpc_clnt *, struct rpc_xprt_switch *,
+>>> +			struct rpc_xprt *, void *);
+>>> 	const struct rpc_call_ops *call_sync_ops;
+>>> 	const struct nfs4_state_recovery_ops *reboot_recovery_ops;
+>>> 	const struct nfs4_state_recovery_ops *nograce_recovery_ops;
+>>> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+>>> index fa9ae75..8767720 100644
+>>> --- a/fs/nfs/nfs4proc.c
+>>> +++ b/fs/nfs/nfs4proc.c
+>>> @@ -8934,6 +8934,7 @@ static const struct nfs4_minor_version_ops nfs_v4_1_minor_ops = {
+>>> 	.find_root_sec = nfs41_find_root_sec,
+>>> 	.free_lock_state = nfs41_free_lock_state,
+>>> 	.alloc_seqid = nfs_alloc_no_seqid,
+>>> +	.session_trunk = nfs4_test_session_trunk,
+>>> 	.call_sync_ops = &nfs41_call_sync_ops,
+>>> 	.reboot_recovery_ops = &nfs41_reboot_recovery_ops,
+>>> 	.nograce_recovery_ops = &nfs41_nograce_recovery_ops,
+>>> @@ -8963,6 +8964,7 @@ static const struct nfs4_minor_version_ops nfs_v4_2_minor_ops = {
+>>> 	.free_lock_state = nfs41_free_lock_state,
+>>> 	.call_sync_ops = &nfs41_call_sync_ops,
+>>> 	.alloc_seqid = nfs_alloc_no_seqid,
+>>> +	.session_trunk = nfs4_test_session_trunk,
+>>> 	.reboot_recovery_ops = &nfs41_reboot_recovery_ops,
+>>> 	.nograce_recovery_ops = &nfs41_nograce_recovery_ops,
+>>> 	.state_renewal_ops = &nfs41_state_renewal_ops,
+>>> diff --git a/fs/nfs/pnfs_nfs.c b/fs/nfs/pnfs_nfs.c
+>>> index f3468b5..7cc1c4d 100644
+>>> --- a/fs/nfs/pnfs_nfs.c
+>>> +++ b/fs/nfs/pnfs_nfs.c
+>>> @@ -690,13 +690,44 @@ static int _nfs4_pnfs_v4_ds_connect(struct nfs_server *mds_srv,
+>>> 		dprintk("%s: DS %s: trying address %s\n",
+>>> 			__func__, ds->ds_remotestr, da->da_remotestr);
+>>> 
+>>> -		clp = nfs4_set_ds_client(mds_srv,
+>>> -					(struct sockaddr *)&da->da_addr,
+>>> -					da->da_addrlen, IPPROTO_TCP,
+>>> -					timeo, retrans, minor_version,
+>>> -					au_flavor);
+>>> -		if (!IS_ERR(clp))
+>>> -			break;
+>>> +		if (!IS_ERR(clp) && clp->cl_mvops->session_trunk) {
+>>> +			struct xprt_create xprt_args = {
+>>> +				.ident = XPRT_TRANSPORT_TCP,
+>>> +				.net = clp->cl_net,
+>>> +				.dstaddr = (struct sockaddr *)&da->da_addr,
+>>> +				.addrlen = da->da_addrlen,
+>>> +				.servername = clp->cl_hostname,
+>>> +			};
+>>> +			struct nfs4_add_xprt_data xprtdata = {
+>>> +				.clp = clp,
+>>> +			};
+>>> +			xprtdata.cred = nfs4_get_clid_cred(clp);
+>>> +
+>>> +			/**
+>>> +			* Test this address for session trunking and
+>>> +			* add as an alias
+>>> +			*/
+>>> +			rpc_clnt_add_xprt(clp->cl_rpcclient, &xprt_args,
+>>> +					  clp->cl_mvops->session_trunk,
+>>> +					  &xprtdata);
+>>> +		} else {
+>>> +			clp = nfs4_set_ds_client(mds_srv,
+>>> +						(struct sockaddr *)&da->da_addr,
+>>> +						da->da_addrlen, IPPROTO_TCP,
+>>> +						timeo, retrans, minor_version,
+>>> +						au_flavor);
+>>> +			if (IS_ERR(clp))
+>>> +				continue;
+>>> +
+>>> +			status = nfs4_init_ds_session(clp,
+>>> +					mds_srv->nfs_client->cl_lease_time);
+>>> +			if (status) {
+>>> +				nfs_put_client(clp);
+>>> +				clp = ERR_PTR(-EIO);
+>>> +				continue;
+>>> +			}
+>>> +
+>>> +		}
+>>> 	}
+>>> 
+>>> 	if (IS_ERR(clp)) {
+>>> @@ -704,18 +735,11 @@ static int _nfs4_pnfs_v4_ds_connect(struct nfs_server *mds_srv,
+>>> 		goto out;
+>>> 	}
+>>> 
+>>> -	status = nfs4_init_ds_session(clp, mds_srv->nfs_client->cl_lease_time);
+>>> -	if (status)
+>>> -		goto out_put;
+>>> -
+>>> 	smp_wmb();
+>>> 	ds->ds_clp = clp;
+>>> 	dprintk("%s [new] addr: %s\n", __func__, ds->ds_remotestr);
+>>> out:
+>>> 	return status;
+>>> -out_put:
+>>> -	nfs_put_client(clp);
+>>> -	goto out;
+>>> }
+>> 
+>> Is there something which checks whether or not a particular transport has already been added?
 > 
-> Still, did we establish for certain that the client isn't required to
-> serialize here?
-> 
-> We'd want it fixed either way, but it'd be nice to know.
-> 
-> --b.
+> Is there a reason that rpc_switch_xprt_add_xprt() doesn�t check to see if the xprt has already been added? IOW should I add the check to rpc_switch_xprt_add_xprt() or have a new interface?
 > 
 
-I don't _think_ it is, since we aren't using a LOCK stateid at this
-point. There's really nothing to serialize this against, other than
-pending FREE_STATEID calls. I don't think we'd want to serialize LOCK
-and FREE_STATEID though as that would prevent the client from lazily
-freeing them. I think this is probably a better option.
+Adding it to rpc_switch_xprt_add_xprt() should be OK.
 
-> > 
-> > 
-> > > 
-> > > > 
-> > > > > 
-> > > > > Frame 115034 C WRITE stateid 0/A offset 672128 len 64
-> > > > > Frame 115038 R WRITE NFS4ERR_BAD_STATEID
-> > > > > 
-> > > > > In other words, the server returns stateid A in a successful
-> > > > > LOCK
-> > > > > reply, but it has already released it. Subsequent uses of the
-> > > > > stateid fail.
-> > > > > 
-> > > > > To address this, protect the generation check in
-> > > > > nfsd4_free_stateid
-> > > > > with the st_mutex. This should guarantee that only one of two
-> > > > > outcomes occurs: either LOCK returns a fresh valid stateid,
-> > > > > or
-> > > > > FREE_STATEID returns NFS4ERR_LOCKS_HELD.
-> > > > > 
-> > > > > Reported-by: Alexey Kodanev <alexey.kodanev@oracle.com>
-> > > > > Fix-suggested-by: Jeff Layton <jlayton@redhat.com>
-> > > > > Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-> > > > > ---
-> > > > >  fs/nfsd/nfs4state.c |   19 ++++++++++++-------
-> > > > >  1 file changed, 12 insertions(+), 7 deletions(-)
-> > > > > 
-> > > > > diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-> > > > > index b921123..07dc1aa 100644
-> > > > > --- a/fs/nfsd/nfs4state.c
-> > > > > +++ b/fs/nfsd/nfs4state.c
-> > > > > @@ -4911,19 +4911,20 @@ nfsd4_free_stateid(struct svc_rqst
-> > > > > *rqstp,
-> > > > > struct nfsd4_compound_state *cstate,
-> > > > >  		ret = nfserr_locks_held;
-> > > > >  		break;
-> > > > >  	case NFS4_LOCK_STID:
-> > > > > +		atomic_inc(&s->sc_count);
-> > > > > +		spin_unlock(&cl->cl_lock);
-> > > > > +		stp = openlockstateid(s);
-> > > > > +		mutex_lock(&stp->st_mutex);
-> > > > >  		ret = check_stateid_generation(stateid, &s-
-> > > > > > 
-> > > > > > 
-> > > > > > sc_stateid, 1);
-> > > > >  		if (ret)
-> > > > > -			break;
-> > > > > -		stp = openlockstateid(s);
-> > > > > +			goto out_mutex_unlock;
-> > > > >  		ret = nfserr_locks_held;
-> > > > >  		if (check_for_locks(stp->st_stid.sc_file,
-> > > > >  				    lockowner(stp-
-> > > > > > 
-> > > > > > st_stateowner)))
-> > > > > -			break;
-> > > > > -		WARN_ON(!unhash_lock_stateid(stp));
-> > > > > -		spin_unlock(&cl->cl_lock);
-> > > > > -		nfs4_put_stid(s);
-> > > > > +			goto out_mutex_unlock;
-> > > > > +		release_lock_stateid(stp);
-> > > > >  		ret = nfs_ok;
-> > > > > -		goto out;
-> > > > > +		goto out_mutex_unlock;
-> > > > >  	case NFS4_REVOKED_DELEG_STID:
-> > > > >  		dp = delegstateid(s);
-> > > > >  		list_del_init(&dp->dl_recall_lru);
-> > > > > @@ -4937,6 +4938,10 @@ out_unlock:
-> > > > >  	spin_unlock(&cl->cl_lock);
-> > > > >  out:
-> > > > >  	return ret;
-> > > > > +out_mutex_unlock:
-> > > > > +	mutex_unlock(&stp->st_mutex);
-> > > > > +	nfs4_put_stid(s);
-> > > > > +	goto out;
-> > > > >  }
-> > > > >  
-> > > > >  static inline int
-> > > > > 
-> > > > >  
-> > > > 
-> > > > Looks good to me.
-> > > > 
-> > > > Reviewed-by: Jeff Layton <jlayton@redhat.com>
-> > > 
-> > > Hmm...I think this is not a complete fix though. We also need
-> > > something
-> > > like this patch:
-> > 
-> > OK, I'll create a series and add this patch.
-> > 
-> > 
-> > > 
-> > > --------------[snip]---------------
-> > > 
-> > > [PATCH] nfsd: don't return an already-unhashed lock stateid after
-> > > taking mutex
-> > > 
-> > > nfsd4_lock will take the st_mutex before working with the stateid
-> > > it
-> > > gets, but between the time when we drop the cl_lock and take the
-> > > mutex,
-> > > the stateid could become unhashed (a'la FREE_STATEID). If that
-> > > happens
-> > > the lock stateid returned to the client will be forgotten.
-> > > 
-> > > Fix this by first moving the st_mutex acquisition into
-> > > lookup_or_create_lock_state. Then, have it check to see if the
-> > > lock
-> > > stateid is still hashed after taking the mutex. If it's not, then
-> > > put
-> > > the stateid and try the find/create again.
-> > > 
-> > > Signed-off-by: Jeff Layton <jlayton@redhat.com>
-> > > ---
-> > > fs/nfsd/nfs4state.c | 25 ++++++++++++++++++++-----
-> > > 1 file changed, 20 insertions(+), 5 deletions(-)
-> > > 
-> > > diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-> > > index 5d6a28af0f42..1235b1661703 100644
-> > > --- a/fs/nfsd/nfs4state.c
-> > > +++ b/fs/nfsd/nfs4state.c
-> > > @@ -5653,7 +5653,7 @@ static __be32
-> > > lookup_or_create_lock_state(struct nfsd4_compound_state *cstate,
-> > > 			    struct nfs4_ol_stateid *ost,
-> > > 			    struct nfsd4_lock *lock,
-> > > -			    struct nfs4_ol_stateid **lst, bool
-> > > *new)
-> > > +			    struct nfs4_ol_stateid **plst, bool
-> > > *new)
-> > > {
-> > > 	__be32 status;
-> > > 	struct nfs4_file *fi = ost->st_stid.sc_file;
-> > > @@ -5661,7 +5661,9 @@ lookup_or_create_lock_state(struct
-> > > nfsd4_compound_state *cstate,
-> > > 	struct nfs4_client *cl = oo->oo_owner.so_client;
-> > > 	struct inode *inode = d_inode(cstate->current_fh.fh_dentry);
-> > > 	struct nfs4_lockowner *lo;
-> > > +	struct nfs4_ol_stateid *lst;
-> > > 	unsigned int strhashval;
-> > > +	bool hashed;
-> > > 
-> > > 	lo = find_lockowner_str(cl, &lock->lk_new_owner);
-> > > 	if (!lo) {
-> > > @@ -5677,12 +5679,27 @@ lookup_or_create_lock_state(struct
-> > > nfsd4_compound_state *cstate,
-> > > 			goto out;
-> > > 	}
-> > > 
-> > > -	*lst = find_or_create_lock_stateid(lo, fi, inode, ost,
-> > > new);
-> > > -	if (*lst == NULL) {
-> > > +retry:
-> > > +	lst = find_or_create_lock_stateid(lo, fi, inode, ost,
-> > > new);
-> > > +	if (lst == NULL) {
-> > > 		status = nfserr_jukebox;
-> > > 		goto out;
-> > > 	}
-> > > +
-> > > +	mutex_lock(&lst->st_mutex);
-> > > +
-> > > +	/* See if it's still hashed to avoid race with
-> > > FREE_STATEID */
-> > > +	spin_lock(&cl->cl_lock);
-> > > +	hashed = list_empty(&lst->st_perfile);
-> > > +	spin_unlock(&cl->cl_lock);
-> > > +
-> > > +	if (!hashed) {
-> > > +		mutex_unlock(&lst->st_mutex);
-> > > +		nfs4_put_stid(&lst->st_stid);
-> > > +		goto retry;
-> > > +	}
-> > > 	status = nfs_ok;
-> > > +	*plst = lst;
-> > > out:
-> > > 	nfs4_put_stateowner(&lo->lo_owner);
-> > > 	return status;
-> > > @@ -5752,8 +5769,6 @@ nfsd4_lock(struct svc_rqst *rqstp, struct
-> > > nfsd4_compound_state *cstate,
-> > > 			goto out;
-> > > 		status = lookup_or_create_lock_state(cstate, open_stp,
-> > > lock,
-> > > 							&lock_stp,
-> > > &new);
-> > > -		if (status == nfs_ok)
-> > > -			mutex_lock(&lock_stp->st_mutex);
-> > > 	} else {
-> > > 		status = nfs4_preprocess_seqid_op(cstate,
-> > > 				       lock->lk_old_lock_seqid,
-> > > -- 
-> > > 2.7.4
-> > 
-> > --
-> > Chuck Lever
-> > 
-> > 
-> > 
-> > --
-> > To unsubscribe from this list: send the line "unsubscribe linux-
-> > nfs" in
-> > the body of a message to majordomo@vger.kernel.org
-> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
+>> Also, doesn�t something need to change in nfs_match_client() so that we can find the struct nfs_client using any of the IP addresses that are registered to it?
+> 
+> OK
+> 
+> �>Andy
 
--- 
-Jeff Layton <jlayton@redhat.com>
