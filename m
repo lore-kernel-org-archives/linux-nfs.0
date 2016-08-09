@@ -1,253 +1,174 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp-o-1.desy.de ([131.169.56.154]:42258 "EHLO smtp-o-1.desy.de"
+Received: from mx1.redhat.com ([209.132.183.28]:35322 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750804AbcHIK5s convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 9 Aug 2016 06:57:48 -0400
-Received: from smtp-map-1.desy.de (smtp-map-1.desy.de [131.169.56.66])
-	by smtp-o-1.desy.de (DESY-O-1) with ESMTP id DB855280AEF
-	for <linux-nfs@vger.kernel.org>; Tue,  9 Aug 2016 12:57:44 +0200 (CEST)
-Received: from ZITSWEEP4.win.desy.de (zitsweep4.win.desy.de [131.169.97.98])
-	by smtp-map-1.desy.de (DESY_MAP_1) with ESMTP id CCA8D13E81
-	for <linux-nfs@vger.kernel.org>; Tue,  9 Aug 2016 12:57:43 +0200 (MEST)
-Date: Tue, 9 Aug 2016 12:57:43 +0200 (CEST)
-From: "Mkrtchyan, Tigran" <tigran.mkrtchyan@desy.de>
-To: Olga Kornievskaia <aglo@umich.edu>
-Cc: Andy Adamson <William.Adamson@netapp.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        Steve Dickson <steved@redhat.com>
-Message-ID: <1121714353.4640107.1470740263311.JavaMail.zimbra@desy.de>
-In-Reply-To: <CAN-5tyGCirr39rKxjfEOV50J12xJBnbJepmpAz8Wy78BSU6BVg@mail.gmail.com>
-References: <1485779983.22627050.1467888579184.JavaMail.zimbra@desy.de> <1826288060.966410.1468428541658.JavaMail.zimbra@desy.de> <CAN-5tyEKDpciUS81QEQwS_ioufndrjDKzPwtcYkQ8O8hvtWiQQ@mail.gmail.com> <1548681850.3694730.1470049705230.JavaMail.zimbra@desy.de> <CAN-5tyGMXCob2a222_PJr5vnzaMtb0UKNPH-QASq8a8v3U2ebA@mail.gmail.com> <748748607.4225721.1470323081028.JavaMail.zimbra@desy.de> <CAN-5tyGMQC2izY5+WSE-drqk2hp=v8i07ZXr7UZgzcNR-0BH1A@mail.gmail.com> <CAN-5tyGCirr39rKxjfEOV50J12xJBnbJepmpAz8Wy78BSU6BVg@mail.gmail.com>
-Subject: Re: Lost CLOSE with NFSv4.1 on RHEL7 ( and bejond?)
+	id S1752576AbcHIMtt (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 9 Aug 2016 08:49:49 -0400
+Subject: [PATCH] cachefiles: Fix attempt to read i_blocks after deleting file
+From: David Howells <dhowells@redhat.com>
+To: viro@zeniv.linux.org.uk
+Cc: linux-nfs@vger.kernel.org, Jeff Layton <jlayton@redhat.com>,
+        linux-kernel@vger.kernel.org, Jianhong Yin <jiyin@redhat.com>,
+        Steve Dickson <steved@redhat.com>, dhowells@redhat.com,
+        linux-cachefs@redhat.com, stable@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org
+Date: Tue, 09 Aug 2016 13:49:46 +0100
+Message-ID: <147074698645.18102.17742162122820513623.stgit@warthog.procyon.org.uk>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-I cant reproduce it with 4.6.5 kernel any more. The nfs related changes are:
+An NULL-pointer dereference happens in cachefiles_mark_object_inactive()
+when it tries to read i_blocks so that it can tell the cachefilesd daemon
+how much space it's making available.
 
-NFS: Fix another OPEN_DOWNGRADE bug (e547f2628327fec6afd2e03b46f113f614cca05b)
-NFS: Fix a double page unlock (cbebaf897e5c4862567eb799dc84acc5d7ee2678)
+The problem is that cachefiles_drop_object() calls
+cachefiles_mark_object_inactive() after calling cachefiles_delete_object()
+because the object being marked active staves off attempts to (re-)use the
+file at that filename until after it has been deleted.  This means that
+d_inode is NULL by the time we come to try to access it.
 
-The second one fixes the source of missing close in 4.6.
+To fix the problem, have the caller of cachefiles_mark_object_inactive()
+supply the number of blocks freed up.
 
-I will try to chase it RHEL7.
+Without this, the following oops may occur:
 
-Tigran.
+BUG: unable to handle kernel NULL pointer dereference at 0000000000000098
+IP: [<ffffffffa06c5cc1>] cachefiles_mark_object_inactive+0x61/0xb0 [cachefiles]
+...
+CPU: 11 PID: 527 Comm: kworker/u64:4 Tainted: G          I    ------------   3.10.0-470.el7.x86_64 #1
+Hardware name: Hewlett-Packard HP Z600 Workstation/0B54h, BIOS 786G4 v03.19 03/11/2011
+Workqueue: fscache_object fscache_object_work_func [fscache]
+task: ffff880035edaf10 ti: ffff8800b77c0000 task.ti: ffff8800b77c0000
+RIP: 0010:[<ffffffffa06c5cc1>] cachefiles_mark_object_inactive+0x61/0xb0 [cachefiles]
+RSP: 0018:ffff8800b77c3d70  EFLAGS: 00010246
+RAX: 0000000000000000 RBX: ffff8800bf6cc400 RCX: 0000000000000034
+RDX: 0000000000000000 RSI: ffff880090ffc710 RDI: ffff8800bf761ef8
+RBP: ffff8800b77c3d88 R08: 2000000000000000 R09: 0090ffc710000000
+R10: ff51005d2ff1c400 R11: 0000000000000000 R12: ffff880090ffc600
+R13: ffff8800bf6cc520 R14: ffff8800bf6cc400 R15: ffff8800bf6cc498
+FS:  0000000000000000(0000) GS:ffff8800bb8c0000(0000) knlGS:0000000000000000
+CS:  0010 DS: 0000 ES: 0000 CR0: 000000008005003b
+CR2: 0000000000000098 CR3: 00000000019ba000 CR4: 00000000000007e0
+DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
+DR3: 0000000000000000 DR6: 00000000ffff0ff0 DR7: 0000000000000400
+Stack:
+ ffff880090ffc600 ffff8800bf6cc400 ffff8800867df140 ffff8800b77c3db0
+ ffffffffa06c48cb ffff880090ffc600 ffff880090ffc180 ffff880090ffc658
+ ffff8800b77c3df0 ffffffffa085d846 ffff8800a96b8150 ffff880090ffc600
+Call Trace:
+ [<ffffffffa06c48cb>] cachefiles_drop_object+0x6b/0xf0 [cachefiles]
+ [<ffffffffa085d846>] fscache_drop_object+0xd6/0x1e0 [fscache]
+ [<ffffffffa085d615>] fscache_object_work_func+0xa5/0x200 [fscache]
+ [<ffffffff810a605b>] process_one_work+0x17b/0x470
+ [<ffffffff810a6e96>] worker_thread+0x126/0x410
+ [<ffffffff810a6d70>] ? rescuer_thread+0x460/0x460
+ [<ffffffff810ae64f>] kthread+0xcf/0xe0
+ [<ffffffff810ae580>] ? kthread_create_on_node+0x140/0x140
+ [<ffffffff81695418>] ret_from_fork+0x58/0x90
+ [<ffffffff810ae580>] ? kthread_create_on_node+0x140/0x140
 
------ Original Message -----
-> From: "Olga Kornievskaia" <aglo@umich.edu>
-> To: "Mkrtchyan, Tigran" <tigran.mkrtchyan@desy.de>
-> Cc: "Andy Adamson" <William.Adamson@netapp.com>, "Linux NFS Mailing List" <linux-nfs@vger.kernel.org>, "Trond Myklebust"
-> <trond.myklebust@primarydata.com>, "Steve Dickson" <steved@redhat.com>
-> Sent: Thursday, August 4, 2016 11:20:54 PM
-> Subject: Re: Lost CLOSE with NFSv4.1 on RHEL7 ( and bejond?)
+The oopsing code shows:
 
-> On Thu, Aug 4, 2016 at 3:00 PM, Olga Kornievskaia <aglo@umich.edu> wrote:
->> On Thu, Aug 4, 2016 at 11:04 AM, Mkrtchyan, Tigran
->> <tigran.mkrtchyan@desy.de> wrote:
->>>
->>> Hi Olga et al.
->>>
->>> Finally I was able to to create a reproducer (attached)!
->>>
->>> It looks like, if on close client application is interrupted by
->>> Ctrl+C or SIGINT, then nfs client does not sends CLOSE. I can
->>> 100% reproduce it on RHEL7 and Fedora24 with 4.6 kernel. The 4.7
->>> kernel works (side effect of some other change?).
->>>
->>> The attached application reads file in a loop. On the second
->>> iteration a thread is started, which will send SIGINT
->>> to itself. When CLOSE is lost, you still can read the
->>> file. Client even won't send any OPEN. So it looks like
->>> that some where file is marked as open, but corresponding
->>> process does not exist any more. Even re-mount does not help.
->>>
->>
->> Thank you Tigran for a reproducer, I'll check it out and get back to you.
-> 
-> I tried your example. I ran this on 3.10.0-327.4.4. In my run, I see
-> OPEN, GETLAYOUT, GETDEVINFO, READ, CLOSE. Since I get a delegation,
-> then when the file is read again, there won't be able an OPEN on the
-> network trace in the next loop iteration. There won't be a read as
-> it'll be read from the cache. So I'm not should what ctrl-c is
-> accomplishing. What am I missing?
-> 
-> Thanks.
-> 
->>
->>> Best regards,
->>>    Tigran.
->>>
->>> ----- Original Message -----
->>>> From: "Olga Kornievskaia" <aglo@umich.edu>
->>>> To: "Mkrtchyan, Tigran" <tigran.mkrtchyan@desy.de>
->>>> Cc: "Andy Adamson" <William.Adamson@netapp.com>, "Linux NFS Mailing List"
->>>> <linux-nfs@vger.kernel.org>, "Trond Myklebust"
->>>> <trond.myklebust@primarydata.com>, "Steve Dickson" <steved@redhat.com>
->>>> Sent: Monday, August 1, 2016 11:22:10 PM
->>>> Subject: Re: Lost CLOSE with NFSv4.1 on RHEL7 ( and bejond?)
->>>
->>>> On Mon, Aug 1, 2016 at 7:08 AM, Mkrtchyan, Tigran
->>>> <tigran.mkrtchyan@desy.de> wrote:
->>>>> Hi Olga,
->>>>>
->>>>> we have installed kernel 4.7.0 on one of the nodes and don't see missing
->>>>> closes from that node.
->>>>>
->>>>> Nevertheless, I don't think that the commit you have mentioned is fixing that,
->>>>> as it fixes OPEN_DOWNGRADE, but we have a sequence of OPEN->CLOSE->OPEN. The
->>>>> OPEN_DOWNGRADE is not expected - file is already closed when a second open
->>>>> is sent and both requests using the same session slot.
->>>>>
->>>>> Have you seen a similar issue on vanilla or rhel kernel?
->>>>
->>>> I had a hard time triggering it consistently. I believe I have seen it
->>>> on RHEL7.2 kernel but I think I was more consistently seeing it on
->>>> some upstream (Trond's) kernel version (I think it was around 4.2).
->>>> The problem was seen by Netapp QA on 4.3-rc7 version.
->>>>
->>>> Thanks for testing on the 4.7 version. I'll see what else went in that
->>>> might explain the failure on the older kernel.
->>>>
->>>>>
->>>>> Thanks a lot,
->>>>>    Tigran.
->>>>>
->>>>> ----- Original Message -----
->>>>>> From: "Olga Kornievskaia" <aglo@umich.edu>
->>>>>> To: "Mkrtchyan, Tigran" <tigran.mkrtchyan@desy.de>
->>>>>> Cc: "Andy Adamson" <William.Adamson@netapp.com>, "Linux NFS Mailing List"
->>>>>> <linux-nfs@vger.kernel.org>, "Trond Myklebust"
->>>>>> <trond.myklebust@primarydata.com>, "Steve Dickson" <steved@redhat.com>
->>>>>> Sent: Thursday, July 14, 2016 4:52:59 PM
->>>>>> Subject: Re: Lost CLOSE with NFSv4.1 on RHEL7 ( and bejond?)
->>>>>
->>>>>> Hi Tigran,
->>>>>>
->>>>>> On Wed, Jul 13, 2016 at 12:49 PM, Mkrtchyan, Tigran
->>>>>> <tigran.mkrtchyan@desy.de> wrote:
->>>>>>>
->>>>>>>
->>>>>>> Hi Andy,
->>>>>>>
->>>>>>> I will try to get upstream kernel on one of the nodes. It will take
->>>>>>> some time as we need to add a new host into the cluster and get
->>>>>>> some traffic go through it.
->>>>>>>
->>>>>>> In the mean while, with RHEL7 we get it easy reproduced - about 10
->>>>>>> such cases per day. Is there any tool that will help us to see where
->>>>>>> it happens? Some traces points? Call trace from vfs close to NFS close?
->>>>>>
->>>>>> There are NFS tracepoints but I don't know think there are VFS
->>>>>> tracepoints. Unfortunately, there was a bug in the OPEN tracepoints
->>>>>> that caused a kernel crash. I had a bugzilla out for RHEL7.2. It says
->>>>>> it's fixed in the later kernel (.381) but it's currently not back
->>>>>> ported to RHEL7.2z but hopefully will be soon (just chatted with Steve
->>>>>> about getting the fix into zstream). I made no progress in figuring
->>>>>> out what could be causing the lack of CLOSE and it was hard for me to
->>>>>> reproduce.
->>>>>>
->>>>>> Just recently Trond fixed a problem where a CLOSE that was suppose to
->>>>>> be sent as an OPEN_DOWNGRADE wasn't sent (commit 0979bc2a59) . I
->>>>>> wonder if that can be fixing this problem....
->>>>>>
->>>>>>> There is a one comment in the kernel code, which sounds similar:
->>>>>>> (http://git.linux-nfs.org/?p=trondmy/linux-nfs.git;a=blob;f=fs/nfs/nfs4proc.c;h=519368b987622ea23bea210929bebfd0c327e14e;hb=refs/heads/linux-next#l2955)
->>>>>>>
->>>>>>> nfs4proc.c: 2954
->>>>>>> ====
->>>>>>>
->>>>>>> /*
->>>>>>>  * It is possible for data to be read/written from a mem-mapped file
->>>>>>>  * after the sys_close call (which hits the vfs layer as a flush).
->>>>>>>  * This means that we can't safely call nfsv4 close on a file until
->>>>>>>  * the inode is cleared. This in turn means that we are not good
->>>>>>>  * NFSv4 citizens - we do not indicate to the server to update the file's
->>>>>>>  * share state even when we are done with one of the three share
->>>>>>>  * stateid's in the inode.
->>>>>>>  *
->>>>>>>  * NOTE: Caller must be holding the sp->so_owner semaphore!
->>>>>>>  */
->>>>>>> int nfs4_do_close(struct nfs4_state *state, gfp_t gfp_mask, int wait)
->>>>>>>
->>>>>>
->>>>>> I'm not sure if the comment means to say that there is a possibility
->>>>>> that NFS won't send a CLOSE (or at least I hope not). I thought that
->>>>>> because we keep a reference count on the inode and send the CLOSE when
->>>>>> it goes down to 0. Basically the last WRITE will trigger the nfs close
->>>>>> not the vfs_close.
->>>>>>
->>>>>>
->>>>>>> ====
->>>>>>>
->>>>>>>
->>>>>>> Tigran.
->>>>>>>
->>>>>>>
->>>>>>> ----- Original Message -----
->>>>>>>> From: "Andy Adamson" <William.Adamson@netapp.com>
->>>>>>>> To: "Mkrtchyan, Tigran" <tigran.mkrtchyan@desy.de>
->>>>>>>> Cc: "Linux NFS Mailing List" <linux-nfs@vger.kernel.org>, "Andy Adamson"
->>>>>>>> <William.Adamson@netapp.com>, "Trond Myklebust"
->>>>>>>> <trond.myklebust@primarydata.com>, "Steve Dickson" <steved@redhat.com>
->>>>>>>> Sent: Tuesday, July 12, 2016 7:16:19 PM
->>>>>>>> Subject: Re: Lost CLOSE with NFSv4.1 on RHEL7 ( and bejond?)
->>>>>>>
->>>>>>>> Hi Tigran
->>>>>>>>
->>>>>>>> Can you test with an upstream kernel? Olga has seen issues around no CLOSE being
->>>>>>>> sent - it is really hard to reproduce….
->>>>>>>>
->>>>>>>> —>Andy
->>>>>>>>
->>>>>>>>
->>>>>>>>> On Jul 7, 2016, at 6:49 AM, Mkrtchyan, Tigran <tigran.mkrtchyan@desy.de> wrote:
->>>>>>>>>
->>>>>>>>>
->>>>>>>>>
->>>>>>>>> Dear NFS folks,
->>>>>>>>>
->>>>>>>>> we observe orphan open-states on our deployment with nfsv4.1.
->>>>>>>>> Our setup - two client nodes, running RHEL-7.2 with kernel
->>>>>>>>> 3.10.0-327.22.2.el7.x86_64. Both nodes running ownCloud (like
->>>>>>>>> a dropbox) which nfsv4.1 mounts to dCache storage. Some clients
->>>>>>>>> connected to node1, others to node2.
->>>>>>>>>
->>>>>>>>> Time-to-time we see some 'active' transfers on data our DS
->>>>>>>>> which do nothing. There is a corresponding state on MDS.
->>>>>>>>>
->>>>>>>>> I have traced one one such cases:
->>>>>>>>>
->>>>>>>>>  - node1 uploads the file.
->>>>>>>>>  - node2 reads the file couple of times, OPEN+LAYOUTGET+CLOSE
->>>>>>>>>  - node2 sends OPEN+LAYOUTGET
->>>>>>>>>  - there is no open file on node2 which points to it.
->>>>>>>>>  - CLOSE never send to the server.
->>>>>>>>>  - node1 eventually removes the removes the file
->>>>>>>>>
->>>>>>>>> We have many other cases where file is not removed, but this one I was
->>>>>>>>> able to trace. The link to capture files:
->>>>>>>>>
->>>>>>>>> https://desycloud.desy.de/index.php/s/YldowcRzTGJeLbN
->>>>>>>>>
->>>>>>>>> We had ~ 10^6 transfers in last 2 days and 29 files in such state (~0.0029%).
->>>>>>>>>
->>>>>>>> > Tigran.
->>>>>>> --
->>>>>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->>>>>>> the body of a message to majordomo@vger.kernel.org
->>>>>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->>>>>> --
->>>>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->>>>>> the body of a message to majordomo@vger.kernel.org
->>>>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->>>> --
->>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->>>> the body of a message to majordomo@vger.kernel.org
->>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+	callq  0xffffffff810af6a0 <wake_up_bit>
+	mov    0xf8(%r12),%rax
+	mov    0x30(%rax),%rax
+	mov    0x98(%rax),%rax   <---- oops here
+	lock add %rax,0x130(%rbx)
+
+where this is:
+
+	d_backing_inode(object->dentry)->i_blocks
+
+Fixes: a5b3a80b899bda0f456f1246c4c5a1191ea01519 (CacheFiles: Provide read-and-reset release counters for cachefilesd)
+Reported-by: Jianhong Yin <jiyin@redhat.com>
+Signed-off-by: David Howells <dhowells@redhat.com>
+Reviewed-by: Jeff Layton <jlayton@redhat.com>
+Reviewed-by: Steve Dickson <steved@redhat.com>
+cc: stable@vger.kernel.org
+---
+
+ fs/cachefiles/interface.c |    8 +++++++-
+ fs/cachefiles/internal.h  |    3 ++-
+ fs/cachefiles/namei.c     |   11 ++++++++---
+ 3 files changed, 17 insertions(+), 5 deletions(-)
+
+diff --git a/fs/cachefiles/interface.c b/fs/cachefiles/interface.c
+index ce5f345d70f5..e7f16a77a22a 100644
+--- a/fs/cachefiles/interface.c
++++ b/fs/cachefiles/interface.c
+@@ -253,6 +253,8 @@ static void cachefiles_drop_object(struct fscache_object *_object)
+ 	struct cachefiles_object *object;
+ 	struct cachefiles_cache *cache;
+ 	const struct cred *saved_cred;
++	struct inode *inode;
++	blkcnt_t i_blocks = 0;
+ 
+ 	ASSERT(_object);
+ 
+@@ -279,6 +281,10 @@ static void cachefiles_drop_object(struct fscache_object *_object)
+ 		    _object != cache->cache.fsdef
+ 		    ) {
+ 			_debug("- retire object OBJ%x", object->fscache.debug_id);
++			inode = d_backing_inode(object->dentry);
++			if (inode)
++				i_blocks = inode->i_blocks;
++
+ 			cachefiles_begin_secure(cache, &saved_cred);
+ 			cachefiles_delete_object(cache, object);
+ 			cachefiles_end_secure(cache, saved_cred);
+@@ -292,7 +298,7 @@ static void cachefiles_drop_object(struct fscache_object *_object)
+ 
+ 	/* note that the object is now inactive */
+ 	if (test_bit(CACHEFILES_OBJECT_ACTIVE, &object->flags))
+-		cachefiles_mark_object_inactive(cache, object);
++		cachefiles_mark_object_inactive(cache, object, i_blocks);
+ 
+ 	dput(object->dentry);
+ 	object->dentry = NULL;
+diff --git a/fs/cachefiles/internal.h b/fs/cachefiles/internal.h
+index 2fcde1a34b7c..cd1effee8a49 100644
+--- a/fs/cachefiles/internal.h
++++ b/fs/cachefiles/internal.h
+@@ -160,7 +160,8 @@ extern char *cachefiles_cook_key(const u8 *raw, int keylen, uint8_t type);
+  * namei.c
+  */
+ extern void cachefiles_mark_object_inactive(struct cachefiles_cache *cache,
+-					    struct cachefiles_object *object);
++					    struct cachefiles_object *object,
++					    blkcnt_t i_blocks);
+ extern int cachefiles_delete_object(struct cachefiles_cache *cache,
+ 				    struct cachefiles_object *object);
+ extern int cachefiles_walk_to_object(struct cachefiles_object *parent,
+diff --git a/fs/cachefiles/namei.c b/fs/cachefiles/namei.c
+index 3f7c2cd41f8f..f9d2226689d1 100644
+--- a/fs/cachefiles/namei.c
++++ b/fs/cachefiles/namei.c
+@@ -261,10 +261,14 @@ requeue:
+  * Mark an object as being inactive.
+  */
+ void cachefiles_mark_object_inactive(struct cachefiles_cache *cache,
+-				     struct cachefiles_object *object)
++				     struct cachefiles_object *object,
++				     blkcnt_t i_blocks)
+ {
+-	blkcnt_t i_blocks = d_backing_inode(object->dentry)->i_blocks;
++	struct dentry *dentry = object->dentry;
+ 
++	trace_cachefiles_mark_inactive(object, dentry,
++				       d_backing_inode(dentry));
++	
+ 	write_lock(&cache->active_lock);
+ 	rb_erase(&object->active_node, &cache->active_nodes);
+ 	clear_bit(CACHEFILES_OBJECT_ACTIVE, &object->flags);
+@@ -707,7 +711,8 @@ mark_active_timed_out:
+ 
+ check_error:
+ 	_debug("check error %d", ret);
+-	cachefiles_mark_object_inactive(cache, object);
++	cachefiles_mark_object_inactive(
++		cache, object, d_backing_inode(object->dentry)->i_blocks);
+ release_dentry:
+ 	dput(object->dentry);
+ 	object->dentry = NULL;
+
