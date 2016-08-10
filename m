@@ -1,171 +1,187 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:44502 "EHLO mx1.redhat.com"
+Received: from mx2.suse.de ([195.135.220.15]:60561 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932179AbcHIQlT (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 9 Aug 2016 12:41:19 -0400
-Subject: [PATCH] cachefiles: Fix attempt to read i_blocks after deleting
- file [ver #2]
-From: David Howells <dhowells@redhat.com>
-To: viro@zeniv.linux.org.uk
-Cc: linux-nfs@vger.kernel.org, Jeff Layton <jlayton@redhat.com>,
-        linux-kernel@vger.kernel.org, Jianhong Yin <jiyin@redhat.com>,
-        Steve Dickson <steved@redhat.com>, dhowells@redhat.com,
-        linux-cachefs@redhat.com, stable@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org
-Date: Tue, 09 Aug 2016 17:41:16 +0100
-Message-ID: <147076087603.30030.2270220632226043875.stgit@warthog.procyon.org.uk>
+	id S932540AbcHJCFk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 9 Aug 2016 22:05:40 -0400
+From: NeilBrown <neilb@suse.com>
+To: Trond Myklebust <trondmy@primarydata.com>
+Date: Wed, 10 Aug 2016 12:05:31 +1000
+Cc: Linux List <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] Revert "SUNRPC: xs_sock_mark_closed() does not need to trigger socket autoclose"
+In-Reply-To: <A059233E-0EFD-472A-9CCB-7BE8411BFC03@primarydata.com>
+References: <87a8gtpgw4.fsf@notabene.neil.brown.name> <A059233E-0EFD-472A-9CCB-7BE8411BFC03@primarydata.com>
+Message-ID: <87d1lhml90.fsf@notabene.neil.brown.name>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Content-Type: multipart/signed; boundary="=-=-=";
+	micalg=pgp-sha256; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-An NULL-pointer dereference happens in cachefiles_mark_object_inactive()
-when it tries to read i_blocks so that it can tell the cachefilesd daemon
-how much space it's making available.
+--=-=-=
+Content-Type: text/plain
+Content-Transfer-Encoding: quoted-printable
 
-The problem is that cachefiles_drop_object() calls
-cachefiles_mark_object_inactive() after calling cachefiles_delete_object()
-because the object being marked active staves off attempts to (re-)use the
-file at that filename until after it has been deleted.  This means that
-d_inode is NULL by the time we come to try to access it.
+On Thu, Aug 04 2016, Trond Myklebust wrote:
 
-To fix the problem, have the caller of cachefiles_mark_object_inactive()
-supply the number of blocks freed up.
+>> On Aug 3, 2016, at 19:33, NeilBrown <neilb@suse.com> wrote:
+>>=20
+>>=20
+>> This reverts commit 4b0ab51db32eba0f48b7618254742f143364a28d.
+>>=20
+>> This change causes 'rpc.nfsd' to hang for long time if rpcbind is not
+>> available.
+>> If
+>>   --no-nfs-version 2 --no-nfs-version 3
+>> is given, the delay is about 6.5 minutes.  When trying to register
+>> all versions, the delay is over half an hour.
+>> Before this commit, and after reverting it, nfsd fails (when v3 is
+>> requested) or succeeds (when only v4 is requested) immediately.
+>>=20
+>> Signed-off-by: NeilBrown <neilb@suse.com>
+>> ---
+>> net/sunrpc/xprtsock.c | 1 +
+>> 1 file changed, 1 insertion(+)
+>>=20
+>> diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
+>> index 111767ab124a..2a938055e95b 100644
+>> --- a/net/sunrpc/xprtsock.c
+>> +++ b/net/sunrpc/xprtsock.c
+>> @@ -795,6 +795,7 @@ static void xs_sock_mark_closed(struct rpc_xprt *xpr=
+t)
+>> 	xs_sock_reset_connection_flags(xprt);
+>> 	/* Mark transport as closed and wake up all pending tasks */
+>> 	xprt_disconnect_done(xprt);
+>> +	xprt_force_disconnect(xprt);
+>> }
+>>=20
+>
+> If there is an outstanding request, then _that_ is supposed to redrive th=
+e connection. Why is the xprt_disconnect_done() not functioning as per the =
+comment above it?
 
-Without this, the following oops may occur:
+I made some time to look at this and have a somewhat clearer
+understanding.
 
-BUG: unable to handle kernel NULL pointer dereference at 0000000000000098
-IP: [<ffffffffa06c5cc1>] cachefiles_mark_object_inactive+0x61/0xb0 [cachefiles]
-...
-CPU: 11 PID: 527 Comm: kworker/u64:4 Tainted: G          I    ------------   3.10.0-470.el7.x86_64 #1
-Hardware name: Hewlett-Packard HP Z600 Workstation/0B54h, BIOS 786G4 v03.19 03/11/2011
-Workqueue: fscache_object fscache_object_work_func [fscache]
-task: ffff880035edaf10 ti: ffff8800b77c0000 task.ti: ffff8800b77c0000
-RIP: 0010:[<ffffffffa06c5cc1>] cachefiles_mark_object_inactive+0x61/0xb0 [cachefiles]
-RSP: 0018:ffff8800b77c3d70  EFLAGS: 00010246
-RAX: 0000000000000000 RBX: ffff8800bf6cc400 RCX: 0000000000000034
-RDX: 0000000000000000 RSI: ffff880090ffc710 RDI: ffff8800bf761ef8
-RBP: ffff8800b77c3d88 R08: 2000000000000000 R09: 0090ffc710000000
-R10: ff51005d2ff1c400 R11: 0000000000000000 R12: ffff880090ffc600
-R13: ffff8800bf6cc520 R14: ffff8800bf6cc400 R15: ffff8800bf6cc498
-FS:  0000000000000000(0000) GS:ffff8800bb8c0000(0000) knlGS:0000000000000000
-CS:  0010 DS: 0000 ES: 0000 CR0: 000000008005003b
-CR2: 0000000000000098 CR3: 00000000019ba000 CR4: 00000000000007e0
-DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
-DR3: 0000000000000000 DR6: 00000000ffff0ff0 DR7: 0000000000000400
-Stack:
- ffff880090ffc600 ffff8800bf6cc400 ffff8800867df140 ffff8800b77c3db0
- ffffffffa06c48cb ffff880090ffc600 ffff880090ffc180 ffff880090ffc658
- ffff8800b77c3df0 ffffffffa085d846 ffff8800a96b8150 ffff880090ffc600
-Call Trace:
- [<ffffffffa06c48cb>] cachefiles_drop_object+0x6b/0xf0 [cachefiles]
- [<ffffffffa085d846>] fscache_drop_object+0xd6/0x1e0 [fscache]
- [<ffffffffa085d615>] fscache_object_work_func+0xa5/0x200 [fscache]
- [<ffffffff810a605b>] process_one_work+0x17b/0x470
- [<ffffffff810a6e96>] worker_thread+0x126/0x410
- [<ffffffff810a6d70>] ? rescuer_thread+0x460/0x460
- [<ffffffff810ae64f>] kthread+0xcf/0xe0
- [<ffffffff810ae580>] ? kthread_create_on_node+0x140/0x140
- [<ffffffff81695418>] ret_from_fork+0x58/0x90
- [<ffffffff810ae580>] ? kthread_create_on_node+0x140/0x140
+The rpcbind code makes about 24 requests, include NULL pings, UNSET
+requests to clear any old registrations, and SET requests.
 
-The oopsing code shows:
+The first (a NULL) fails immediately due to ECONNREFUSED.  Others aren't
+even attempted for a growing number of seconds because xs_connect()
+finds that transport->sock is not NULL, so it delays before trying.
+Once it tries, it failed immediately and we move on to the next request.
 
-	callq  0xffffffff810af6a0 <wake_up_bit>
-	mov    0xf8(%r12),%rax
-	mov    0x30(%rax),%rax
-	mov    0x98(%rax),%rax   <---- oops here
-	lock add %rax,0x130(%rbx)
+transport->sock is set to NULL by xs_reset_transport() which xs_connect() c=
+alls
+as part of the the timeout, but ->reestablish_timeout is not reset.
+The next time xs_connect is called, ->sock will be non-NULL again as
+transport->reestablish_timeout will be longer.
 
-where this is:
+transport->sock is only set to NULL *before* the test in xs_connect() by a
+call to xs_close() or ->close().  But nothing in triggering this.
 
-	d_backing_inode(object->dentry)->i_blocks
+xs_sock_mark_closed() currently doesn't actually mark the socket as
+closed (XPRT_CLOSE_WAITING), or close it directly.
 
-Fixes: a5b3a80b899bda0f456f1246c4c5a1191ea01519 (CacheFiles: Provide read-and-reset release counters for cachefilesd)
-Reported-by: Jianhong Yin <jiyin@redhat.com>
-Signed-off-by: David Howells <dhowells@redhat.com>
-Reviewed-by: Jeff Layton <jlayton@redhat.com>
-Reviewed-by: Steve Dickson <steved@redhat.com>
-cc: stable@vger.kernel.org
----
+static void xs_sock_mark_closed(struct rpc_xprt *xprt)
+{
+	xs_sock_reset_connection_flags(xprt);
+	/* Mark transport as closed and wake up all pending tasks */
+	xprt_disconnect_done(xprt);
+}
 
- fs/cachefiles/interface.c |    8 +++++++-
- fs/cachefiles/internal.h  |    3 ++-
- fs/cachefiles/namei.c     |    8 ++++----
- 3 files changed, 13 insertions(+), 6 deletions(-)
+xs_sock_reset_connection_flags() clears XPRT_CLOSE_WAITING,
+XPRT_CLOSING, and XPRT_SOCK_DATA_READY, and adds some memory barrier.
 
-diff --git a/fs/cachefiles/interface.c b/fs/cachefiles/interface.c
-index ce5f345d70f5..e7f16a77a22a 100644
---- a/fs/cachefiles/interface.c
-+++ b/fs/cachefiles/interface.c
-@@ -253,6 +253,8 @@ static void cachefiles_drop_object(struct fscache_object *_object)
- 	struct cachefiles_object *object;
- 	struct cachefiles_cache *cache;
- 	const struct cred *saved_cred;
-+	struct inode *inode;
-+	blkcnt_t i_blocks = 0;
- 
- 	ASSERT(_object);
- 
-@@ -279,6 +281,10 @@ static void cachefiles_drop_object(struct fscache_object *_object)
- 		    _object != cache->cache.fsdef
- 		    ) {
- 			_debug("- retire object OBJ%x", object->fscache.debug_id);
-+			inode = d_backing_inode(object->dentry);
-+			if (inode)
-+				i_blocks = inode->i_blocks;
-+
- 			cachefiles_begin_secure(cache, &saved_cred);
- 			cachefiles_delete_object(cache, object);
- 			cachefiles_end_secure(cache, saved_cred);
-@@ -292,7 +298,7 @@ static void cachefiles_drop_object(struct fscache_object *_object)
- 
- 	/* note that the object is now inactive */
- 	if (test_bit(CACHEFILES_OBJECT_ACTIVE, &object->flags))
--		cachefiles_mark_object_inactive(cache, object);
-+		cachefiles_mark_object_inactive(cache, object, i_blocks);
- 
- 	dput(object->dentry);
- 	object->dentry = NULL;
-diff --git a/fs/cachefiles/internal.h b/fs/cachefiles/internal.h
-index 2fcde1a34b7c..cd1effee8a49 100644
---- a/fs/cachefiles/internal.h
-+++ b/fs/cachefiles/internal.h
-@@ -160,7 +160,8 @@ extern char *cachefiles_cook_key(const u8 *raw, int keylen, uint8_t type);
-  * namei.c
-  */
- extern void cachefiles_mark_object_inactive(struct cachefiles_cache *cache,
--					    struct cachefiles_object *object);
-+					    struct cachefiles_object *object,
-+					    blkcnt_t i_blocks);
- extern int cachefiles_delete_object(struct cachefiles_cache *cache,
- 				    struct cachefiles_object *object);
- extern int cachefiles_walk_to_object(struct cachefiles_object *parent,
-diff --git a/fs/cachefiles/namei.c b/fs/cachefiles/namei.c
-index 3f7c2cd41f8f..c6ee4b5fb7e6 100644
---- a/fs/cachefiles/namei.c
-+++ b/fs/cachefiles/namei.c
-@@ -261,10 +261,9 @@ requeue:
-  * Mark an object as being inactive.
-  */
- void cachefiles_mark_object_inactive(struct cachefiles_cache *cache,
--				     struct cachefiles_object *object)
-+				     struct cachefiles_object *object,
-+				     blkcnt_t i_blocks)
- {
--	blkcnt_t i_blocks = d_backing_inode(object->dentry)->i_blocks;
--
- 	write_lock(&cache->active_lock);
- 	rb_erase(&object->active_node, &cache->active_nodes);
- 	clear_bit(CACHEFILES_OBJECT_ACTIVE, &object->flags);
-@@ -707,7 +706,8 @@ mark_active_timed_out:
- 
- check_error:
- 	_debug("check error %d", ret);
--	cachefiles_mark_object_inactive(cache, object);
-+	cachefiles_mark_object_inactive(
-+		cache, object, d_backing_inode(object->dentry)->i_blocks);
- release_dentry:
- 	dput(object->dentry);
- 	object->dentry = NULL;
+xprt_disconnect_done() clears XPRT_CONNECTED and wakes up the task.
 
+So none of this will "Mark transport as closed" like the comment
+suggests.  They just mark it as disconnected.
+xs_sock_reset_connection_flags() even *clears* XPRT_CLOSE_WAITING, which
+we really want to be set.
+
+The commit said:
+=20=20=20
+    Under all conditions, it should be quite sufficient just to mark
+    the socket as disconnected. It will then be closed by the
+    transport shutdown or reconnect code.
+
+The "reconnect code" is presumably xprt_connect()?  This will close the
+socket if XPRT_CLOSE_WAIT is set., but not if the socket is marked as
+disconnected.  When marked as disconnected, it tries to reconnect -
+which incurs a timeout.
+
+The "transport shutdown" code is presumably xprt_destroy()?  Yes, that
+would close the socket, but that doesn't straight away.  The rpcbind
+client can try 10 UNSET calls before destroying the transport.
+
+
+It is possible that __svc_unregister should return an error so that
+svc_unregister() can abort the loop on error.  That would reduce the
+timeouts to some extent, but not completely as we would still get a
+timeout when trying to register.  It might make sense that if the
+svc_unregister() in svc_rpcb_setup() fails due to ECONNREFUSED, then it
+should fail so we never even try to register.  Plumbing that status
+through nfsd so that it doesn't abort in the V4-only case when rpcbind
+isn't available could be done, but seems like a lot of work for little gain.
+
+Also, the error that comes through to __svc_unregister is "-EAGAIN"
+rather then -ECONNREFUSED.
+
+I think that the easiest solution is to make sure reconnection attempts
+on an RPC_IS_SOFTCONN tasks do not trigger a delay in xs_connect().
+call_connect_status() already adds a 3second delay for other tasks, so
+simply forcing a close in xs_sock_marked_close() should be sufficient.
+The revert I posted would do that, or we could just add
+
+	set_bit(XPRT_CLOSE_WAIT, &xprt->state);
+
+so that the comment would be correct.  That is sufficient.
+
+Another approach which works is:
+diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+index 7f79fb7dc6a0..f80b135b4830 100644
+=2D-- a/net/sunrpc/clnt.c
++++ b/net/sunrpc/clnt.c
+@@ -1936,8 +1936,10 @@ call_connect_status(struct rpc_task *task)
+ 	case -EADDRINUSE:
+ 	case -ENOBUFS:
+ 	case -EPIPE:
+=2D		if (RPC_IS_SOFTCONN(task))
++		if (RPC_IS_SOFTCONN(task)) {
++			xprt_force_disconnect(task->tk_rqstp->rq_xprt);
+ 			break;
++		}
+ 		/* retry with existing socket, after a delay */
+ 		rpc_delay(task, 3*HZ);
+ 	case -EAGAIN:
+
+so that we force a disconnect precisely when a connection attempt fails
+on a SOFTCONN task.
+
+Which of these solutions do you prefer?
+
+Thanks,
+NeilBrown
+
+
+--=-=-=
+Content-Type: application/pgp-signature; name="signature.asc"
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v2
+
+iQIcBAEBCAAGBQJXqovsAAoJEDnsnt1WYoG5HpIP/1uxYFiuiMp7qPa1d56nj5df
+k5tB+tQuYd1t64slj3pEhdYo44XG6fMlrYXycTjvIqcyFnuVn85mwJHPPiSpnmy/
+XwlSnB6lggtypwxj6jTit1CGrf9Sy4NfZQlQ2qYxOebAKD45gR/bwhzAamR2I305
+XMzLtLvOE8AElYC5bjM4JY4UTpt/RePb1kW+1c5gicrJAVC7zogTB356bwnUvBNk
+Ije/7ImEGuQB9JdfagwWveUFGhPTn2NB1D/N2Vc5eWyZ6+AvncTimtURJOEZdkOu
+bL2cYKRYAeSDGTmtk1ngaoEtxigMlrYuaMvDrIgOmQfz+4RFCzxgp3ljfiduYbAN
+AdJMN1AlLu7FwO/FzffJzrcRAlv1aue6AYeIM0xF7IyWAoGsUL75n5+PrtwxxHRh
+N98/IYG9D/mdJaA3EtEsmp8nLlPf30OwkfvSS3evb+D82zmwXPr9P99l+2nIyr/V
+FpAIw8fMm9UDtJjiidlQrwFTaIj4FfqkoBJmJxyR7A6QyctOAHwnNidCYOB/qgrT
+nkQ0siM4VX45RFqbJmrxnWKKa9TB8olhIEQOKuFgrQi9ZT1fhwEQyvsJTmrzrUbz
+egyBpbOhph8ygCY/H8DoGFqPbTOSzrbs+gGPH7jMBO1SE17qJAQ6uN7bGN1PMDwr
+UOw5vg2R/+Xz11/iZObG
+=u4Qr
+-----END PGP SIGNATURE-----
+--=-=-=--
