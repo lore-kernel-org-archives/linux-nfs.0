@@ -1,8 +1,8 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx0b-00082601.pphosted.com ([67.231.153.30]:5005 "EHLO
+Received: from mx0b-00082601.pphosted.com ([67.231.153.30]:9507 "EHLO
 	mx0a-00082601.pphosted.com" rhost-flags-OK-OK-OK-FAIL)
-	by vger.kernel.org with ESMTP id S933734AbcHJSeV (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 10 Aug 2016 14:34:21 -0400
+	by vger.kernel.org with ESMTP id S1753724AbcHJSsc (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 10 Aug 2016 14:48:32 -0400
 Subject: Re: [lkp] [nfsd] b44061d0b9: BUG: Dentry
  ffff880027d7c540{i=1846f,n=0a} still in use (1) [unmount of btrfs vda]
 To: Linus Torvalds <torvalds@linux-foundation.org>
@@ -18,8 +18,8 @@ CC: kernel test robot <xiaolong.ye@intel.com>,
         linux-btrfs <linux-btrfs@vger.kernel.org>,
         Linux NFS Mailing List <linux-nfs@vger.kernel.org>
 From: Josef Bacik <jbacik@fb.com>
-Message-ID: <b7111dc6-a077-0100-1f99-2af09f126f73@fb.com>
-Date: Wed, 10 Aug 2016 14:32:47 -0400
+Message-ID: <e6fb50d4-2a27-13cd-02c8-5b8439a16b3f@fb.com>
+Date: Wed, 10 Aug 2016 14:46:27 -0400
 MIME-Version: 1.0
 In-Reply-To: <CA+55aFzdTMBc7f5=bQLRUtceu-Kg-MGmzWrAv1r96_ra8yutJA@mail.gmail.com>
 Content-Type: text/plain; charset="utf-8"; format=flowed
@@ -39,11 +39,45 @@ On 08/10/2016 02:25 PM, Linus Torvalds wrote:
 > Done.
 >
 
-Looks like an NFS problem.  Before in the !resfhp->fh_dentry case we would do a 
-lookup_one_len() and carry on.  Now we do the lookup_one_len(), call into 
-nfsd_create_locked() and do a dget on resfhp->f_dentry, which from looks of it 
-is the dentry we just did a lookup_one_len() on, so we have one more ref on the 
-dentry than we did previously.  Thanks,
+So my naive fix would be something like this
 
-Josef
+
+From: Josef Bacik <jbacik@fb.com>
+Date: Wed, 10 Aug 2016 14:43:08 -0400
+Subject: [PATCH] nfsd: fix dentry refcounting problem
+
+b44061d0b9 introduced a dentry ref counting bug, previously we were grabbing one
+ref to dchild in nfsd_create(), but with the creation of nfsd_create_locked() we
+have a ref for dchild from the lookup in nfsd_create(), and then another ref in
+nfsd_create_locked().  The ref from the lookup in nfsd_create() is never dropped
+and results in dentries still in use at unmount.
+
+Signed-off-by: Josef Bacik <jbacik@fb.com>
+---
+  fs/nfsd/vfs.c | 9 ++++++---
+  1 file changed, 6 insertions(+), 3 deletions(-)
+
+diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
+index ba944123..ff476e6 100644
+--- a/fs/nfsd/vfs.c
++++ b/fs/nfsd/vfs.c
+@@ -1252,10 +1252,13 @@ nfsd_create(struct svc_rqst *rqstp, struct svc_fh *fhp,
+  	if (IS_ERR(dchild))
+  		return nfserrno(host_err);
+  	err = fh_compose(resfhp, fhp->fh_export, dchild, fhp);
+-	if (err) {
+-		dput(dchild);
++	/*
++	 * We unconditionally drop our ref to dchild as fh_compose will have
++	 * already grabbed its own ref for it.
++	 */
++	dput(dchild);
++	if (err)
+  		return err;
+-	}
+  	return nfsd_create_locked(rqstp, fhp, fname, flen, iap, type,
+  					rdev, resfhp);
+  }
+-- 
+2.5.5
 
