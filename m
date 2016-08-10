@@ -1,42 +1,48 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-oi0-f67.google.com ([209.85.218.67]:35240 "EHLO
-	mail-oi0-f67.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S965113AbcHJS4R (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 10 Aug 2016 14:56:17 -0400
-MIME-Version: 1.0
-In-Reply-To: <e6fb50d4-2a27-13cd-02c8-5b8439a16b3f@fb.com>
-References: <20160810053947.GG21941@yexl-desktop> <CA+55aFxdcG4y4zWTFFT8SekEtxsvx12P+e=11kTCFc=zS__bXQ@mail.gmail.com>
- <dc406145-b465-b7e9-e370-91910abb8e6a@fb.com> <CA+55aFzdTMBc7f5=bQLRUtceu-Kg-MGmzWrAv1r96_ra8yutJA@mail.gmail.com>
- <e6fb50d4-2a27-13cd-02c8-5b8439a16b3f@fb.com>
-From: Linus Torvalds <torvalds@linux-foundation.org>
-Date: Wed, 10 Aug 2016 11:56:15 -0700
-Message-ID: <CA+55aFw5DczMkEYP47h=-9f6U2V5aQUhSxqPjtTbNp1Dd=gZwQ@mail.gmail.com>
-Subject: Re: [lkp] [nfsd] b44061d0b9: BUG: Dentry ffff880027d7c540{i=1846f,n=0a}
- still in use (1) [unmount of btrfs vda]
-To: Josef Bacik <jbacik@fb.com>
-Cc: kernel test robot <xiaolong.ye@intel.com>,
-        Al Viro <viro@zeniv.linux.org.uk>, Chris Mason <clm@fb.com>,
-        David Sterba <dsterba@suse.com>,
-        "J. Bruce Fields" <bfields@redhat.com>,
-        LKML <linux-kernel@vger.kernel.org>, LKP <lkp@01.org>,
-        linux-btrfs <linux-btrfs@vger.kernel.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=UTF-8
+Received: from mx1.redhat.com ([209.132.183.28]:50696 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S935567AbcHJT61 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 10 Aug 2016 15:58:27 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: trond.myklebust@primarydata.com, anna.schumaker@netapp.com
+Cc: linux-nfs@vger.kernel.org, tigran.mkrtchyan@desy.de
+Subject: [PATCH v4 0/2] pnfs: allow client to handle multiple layout types per filesystem
+Date: Wed, 10 Aug 2016 15:58:23 -0400
+Message-Id: <1470859105-32383-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Aug 10, 2016 at 11:46 AM, Josef Bacik <jbacik@fb.com> wrote:
->
-> So my naive fix would be something like this
+v4:
+- pass around fsinfo instead of separate array and length args
 
-Bruce? Josef's patch looks ObviouslyCorrect(tm) to me now that I look
-at it - all the other callers of fh_compose() also seem to just drop
-the dentry unconditionally, knowing that fh_compose() took a ref to it
-if needed.
+v3:
+- use sort() from lib/sort.c to sort the list
 
-In fact, the only thing I'd do differently would be to not even put
-the comment there at all, since this call site isn't any different
-from any of the others. If anything, it could go on fh_compose() if we
-want to add comments.
+v2:
+- rework Tigran's patch to preserve existing selection behaviour
+- simplify layout driver selection by sorting the list
 
-             Linus
+This is v4 of the patchset. The main change is the change to pass
+around the fsinfo instead of separate array pointer and length args.
+
+Only lightly tested by mounting a server that sends both flexfiles and
+block layouts. The client successfully selected the block layout in most
+cases, but if I blacklist blocklayoutdriver then it selects flexfiles
+instead.
+
+Jeff Layton (2):
+  pnfs: track multiple layout types in fsinfo structure
+  pnfs: add a new mechanism to select a layout driver according to an
+    ordered list
+
+ fs/nfs/client.c         |  3 ++-
+ fs/nfs/nfs4proc.c       |  2 +-
+ fs/nfs/nfs4xdr.c        | 40 +++++++++++++++--------------
+ fs/nfs/pnfs.c           | 68 ++++++++++++++++++++++++++++++++++++++++---------
+ fs/nfs/pnfs.h           |  5 ++--
+ include/linux/nfs_xdr.h |  8 +++++-
+ 6 files changed, 90 insertions(+), 36 deletions(-)
+
+-- 
+2.7.4
+
