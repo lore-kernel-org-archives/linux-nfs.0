@@ -1,15 +1,15 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
 Received: from mx143.netapp.com ([216.240.21.24]:21904 "EHLO mx143.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752547AbcHKVl0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 11 Aug 2016 17:41:26 -0400
+	id S1751443AbcHKVl1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 11 Aug 2016 17:41:27 -0400
 From: <andros@netapp.com>
 To: <trond.myklebust@primarydata.com>
 CC: <anna.schumaker@netapp.com>, <linux-nfs@vger.kernel.org>,
         Andy Adamson <andros@netapp.com>
-Subject: [PATCH Version 8 09/12] SUNRPC: rpc_clnt_add_xprt setup function for NFS layer
-Date: Thu, 11 Aug 2016 17:39:31 -0400
-Message-ID: <1470951574-18441-10-git-send-email-andros@netapp.com>
+Subject: [PATCH Version 8 10/12] NFS add xprt switch addrs test to match client
+Date: Thu, 11 Aug 2016 17:39:32 -0400
+Message-ID: <1470951574-18441-11-git-send-email-andros@netapp.com>
 In-Reply-To: <1470951574-18441-1-git-send-email-andros@netapp.com>
 References: <1470951574-18441-1-git-send-email-andros@netapp.com>
 MIME-Version: 1.0
@@ -19,124 +19,27 @@ List-ID: <linux-nfs.vger.kernel.org>
 
 From: Andy Adamson <andros@netapp.com>
 
-Use a setup function to call into the NFS layer to test an rpc_xprt
-for session trunking so as to not leak the rpc_xprt_switch into
-the nfs layer.
-
-Search for the address in the rpc_xprt_switch first so as not to
-put an unnecessary EXCHANGE_ID on the wire.
-
 Signed-off-by: Andy Adamson <andros@netapp.com>
 ---
- include/linux/sunrpc/clnt.h | 12 +++++++++
- net/sunrpc/clnt.c           | 64 +++++++++++++++++++++++++++++++++++++++++++++
- 2 files changed, 76 insertions(+)
+ fs/nfs/client.c | 5 ++++-
+ 1 file changed, 4 insertions(+), 1 deletion(-)
 
-diff --git a/include/linux/sunrpc/clnt.h b/include/linux/sunrpc/clnt.h
-index 2db687c..c05c351 100644
---- a/include/linux/sunrpc/clnt.h
-+++ b/include/linux/sunrpc/clnt.h
-@@ -125,6 +125,13 @@ struct rpc_create_args {
- 	struct svc_xprt		*bc_xprt;	/* NFSv4.1 backchannel */
- };
+diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+index 4849d0f..21413a9 100644
+--- a/fs/nfs/client.c
++++ b/fs/nfs/client.c
+@@ -313,7 +313,10 @@ static struct nfs_client *nfs_match_client(const struct nfs_client_initdata *dat
+ 			continue;
+ 		/* Match the full socket address */
+ 		if (!rpc_cmp_addr_port(sap, clap))
+-			continue;
++			/* Match all xprt_switch full socket addresses */
++			if (!rpc_clnt_xprt_switch_find_addr(clp->cl_rpcclient,
++							    sap))
++				continue;
  
-+struct rpc_add_xprt_test {
-+	int (*add_xprt_test)(struct rpc_clnt *,
-+		struct rpc_xprt *,
-+		void *calldata);
-+	void *data;
-+};
-+
- /* Values for "flags" field */
- #define RPC_CLNT_CREATE_HARDRTRY	(1UL << 0)
- #define RPC_CLNT_CREATE_AUTOBIND	(1UL << 2)
-@@ -196,6 +203,11 @@ int		rpc_clnt_add_xprt(struct rpc_clnt *, struct xprt_create *,
- 				void *),
- 			void *data);
- 
-+int		rpc_clnt_setup_test_and_add_xprt(struct rpc_clnt *,
-+			struct rpc_xprt_switch *,
-+			struct rpc_xprt *,
-+			void *);
-+
- const char *rpc_proc_name(const struct rpc_task *task);
- 
- void rpc_clnt_xprt_switch_put(struct rpc_clnt *);
-diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
-index e3cfced..09d36d6 100644
---- a/net/sunrpc/clnt.c
-+++ b/net/sunrpc/clnt.c
-@@ -2615,6 +2615,70 @@ int rpc_clnt_test_and_add_xprt(struct rpc_clnt *clnt,
- EXPORT_SYMBOL_GPL(rpc_clnt_test_and_add_xprt);
- 
- /**
-+ * rpc_clnt_setup_test_and_add_xprt()
-+ *
-+ * This is an rpc_clnt_add_xprt setup() function which returns 1 so:
-+ *   1) caller of the test function must dereference the rpc_xprt_switch
-+ *   and the rpc_xprt.
-+ *   2) test function must call rpc_xprt_switch_add_xprt, usually in
-+ *   the rpc_call_done routine.
-+ *
-+ * Upon success (return of 1), the test function adds the new
-+ * transport to the rpc_clnt xprt switch
-+ *
-+ * @clnt: struct rpc_clnt to get the new transport
-+ * @xps:  the rpc_xprt_switch to hold the new transport
-+ * @xprt: the rpc_xprt to test
-+ * @data: a struct rpc_add_xprt_test pointer that holds the test function
-+ *        and test function call data
-+ */
-+int rpc_clnt_setup_test_and_add_xprt(struct rpc_clnt *clnt,
-+				     struct rpc_xprt_switch *xps,
-+				     struct rpc_xprt *xprt,
-+				     void *data)
-+{
-+	struct rpc_cred *cred;
-+	struct rpc_task *task;
-+	struct rpc_add_xprt_test *xtest = (struct rpc_add_xprt_test *)data;
-+	int status = -EADDRINUSE;
-+
-+	xprt = xprt_get(xprt);
-+	xprt_switch_get(xps);
-+
-+	if (rpc_xprt_switch_find_addr(xps, (struct sockaddr *)&xprt->addr))
-+		goto out_err;
-+
-+	/* Test the connection */
-+	cred = authnull_ops.lookup_cred(NULL, NULL, 0);
-+	task = rpc_call_null_helper(clnt, xprt, cred,
-+				    RPC_TASK_SOFT | RPC_TASK_SOFTCONN,
-+				    NULL, NULL);
-+	put_rpccred(cred);
-+	if (IS_ERR(task)) {
-+		status = PTR_ERR(task);
-+		goto out_err;
-+	}
-+	status = task->tk_status;
-+	rpc_put_task(task);
-+
-+	if (status < 0)
-+		goto out_err;
-+
-+	/* rpc_xprt_switch and rpc_xprt are deferrenced by add_xprt_test() */
-+	xtest->add_xprt_test(clnt, xprt, xtest->data);
-+
-+	/* so that rpc_clnt_add_xprt does not call rpc_xprt_switch_add_xprt */
-+	return 1;
-+out_err:
-+	xprt_put(xprt);
-+	xprt_switch_put(xps);
-+	pr_info("RPC:   rpc_clnt_test_xprt failed: %d addr %s not added\n",
-+		status, xprt->address_strings[RPC_DISPLAY_ADDR]);
-+	return status;
-+}
-+EXPORT_SYMBOL_GPL(rpc_clnt_setup_test_and_add_xprt);
-+
-+/**
-  * rpc_clnt_add_xprt - Add a new transport to a rpc_clnt
-  * @clnt: pointer to struct rpc_clnt
-  * @xprtargs: pointer to struct xprt_create
+ 		atomic_inc(&clp->cl_count);
+ 		return clp;
 -- 
 1.8.3.1
 
