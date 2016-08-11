@@ -1,162 +1,130 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qk0-f176.google.com ([209.85.220.176]:36241 "EHLO
-	mail-qk0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751059AbcHKQGq (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 11 Aug 2016 12:06:46 -0400
-Received: by mail-qk0-f176.google.com with SMTP id l2so8994753qkf.3
-        for <linux-nfs@vger.kernel.org>; Thu, 11 Aug 2016 09:06:45 -0700 (PDT)
-Message-ID: <1470931603.30238.25.camel@redhat.com>
-Subject: Re: CB_LAYOUTRECALL "deadlock" with in-kernel flexfiles server and
- XFS
-From: Jeff Layton <jlayton@redhat.com>
-To: Trond Myklebust <trondmy@primarydata.com>
-Cc: List Linux NFS Mailing <linux-nfs@vger.kernel.org>,
+Received: from us-smtp-delivery-194.mimecast.com ([63.128.21.194]:47471 "EHLO
+	us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S932277AbcHKQUi (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 11 Aug 2016 12:20:38 -0400
+From: Trond Myklebust <trondmy@primarydata.com>
+To: Jeff Layton <jlayton@redhat.com>
+CC: List Linux NFS Mailing <linux-nfs@vger.kernel.org>,
         Thomas Haynes <loghyr@primarydata.com>, hch <hch@lst.de>,
         Fields Bruce James <bfields@fieldses.org>
-Date: Thu, 11 Aug 2016 12:06:43 -0400
-In-Reply-To: <CA55873C-4CF9-42F8-A35E-07C9CB685800@primarydata.com>
+Subject: Re: CB_LAYOUTRECALL "deadlock" with in-kernel flexfiles server and
+ XFS
+Date: Thu, 11 Aug 2016 16:20:30 +0000
+Message-ID: <66A7F612-4704-43CB-AE93-6C1A8A52D6DA@primarydata.com>
 References: <1470929036.30238.14.camel@redhat.com>
-	 <CA55873C-4CF9-42F8-A35E-07C9CB685800@primarydata.com>
-Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
+ <CA55873C-4CF9-42F8-A35E-07C9CB685800@primarydata.com>
+ <1470931603.30238.25.camel@redhat.com>
+In-Reply-To: <1470931603.30238.25.camel@redhat.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 2016-08-11 at 15:55 +0000, Trond Myklebust wrote:
-> > 
-> > On Aug 11, 2016, at 11:23, Jeff Layton <jlayton@redhat.com> wrote:
-> > 
-> > I was playing around with the in-kernel flexfiles server today, and
-> > I
-> > seem to be hitting a deadlock when using it on an XFS-exported
-> > filesystem. Here's the stack trace of how the CB_LAYOUTRECALL
-> > occurs:
-> > 
-> > [  928.736139] CPU: 0 PID: 846 Comm: nfsd Tainted:
-> > G           OE   4.8.0-rc1+ #3
-> > [  928.737040] Hardware name: QEMU Standard PC (i440FX + PIIX,
-> > 1996), BIOS 1.9.1-1.fc24 04/01/2014
-> > [  928.738009]  0000000000000286 000000006125f50e ffff91153845b878
-> > ffffffff8f463853
-> > [  928.738906]  ffff91152ec194d0 ffff91152d31d9c0 ffff91153845b8a8
-> > ffffffffc045936f
-> > [  928.739788]  ffff91152c051980 ffff91152d31d9c0 ffff91152c051540
-> > ffff9115361b8a58
-> > [  928.740697] Call Trace:
-> > [  928.740998]  [<ffffffff8f463853>] dump_stack+0x86/0xc3
-> > [  928.741570]  [<ffffffffc045936f>]
-> > nfsd4_recall_file_layout+0x17f/0x190 [nfsd]
-> > [  928.742380]  [<ffffffffc045939d>]
-> > nfsd4_layout_lm_break+0x1d/0x30 [nfsd]
-> > [  928.743115]  [<ffffffff8f3056d8>] __break_lease+0x118/0x6a0
-> > [  928.743759]  [<ffffffffc02dea69>] xfs_break_layouts+0x79/0x120
-> > [xfs]
-> > [  928.744462]  [<ffffffffc029ea04>]
-> > xfs_file_aio_write_checks+0x94/0x1f0 [xfs]
-> > [  928.745251]  [<ffffffffc029f36b>]
-> > xfs_file_buffered_aio_write+0x7b/0x330 [xfs]
-> > [  928.746063]  [<ffffffffc029f70c>] xfs_file_write_iter+0xec/0x140
-> > [xfs]
-> > [  928.746803]  [<ffffffff8f2a0599>]
-> > do_iter_readv_writev+0xb9/0x140
-> > [  928.747478]  [<ffffffff8f2a126b>] do_readv_writev+0x19b/0x240
-> > [  928.748146]  [<ffffffffc029f620>] ?
-> > xfs_file_buffered_aio_write+0x330/0x330 [xfs]
-> > [  928.748956]  [<ffffffff8f29e02b>] ? do_dentry_open+0x28b/0x310
-> > [  928.749614]  [<ffffffffc029c800>] ?
-> > xfs_extent_busy_ag_cmp+0x20/0x20 [xfs]
-> > [  928.750367]  [<ffffffff8f2a156f>] vfs_writev+0x3f/0x50
-> > [  928.750934]  [<ffffffffc04276ca>] nfsd_vfs_write+0xca/0x3a0
-> > [nfsd]
-> > [  928.751608]  [<ffffffffc0429ec5>] nfsd_write+0x485/0x780 [nfsd]
-> > [  928.752263]  [<ffffffffc043144c>] nfsd3_proc_write+0xbc/0x150
-> > [nfsd]
-> > [  928.752973]  [<ffffffffc0421388>] nfsd_dispatch+0xb8/0x1f0
-> > [nfsd]
-> > [  928.753642]  [<ffffffffc036d78f>] svc_process_common+0x42f/0x690
-> > [sunrpc]
-> > [  928.754395]  [<ffffffffc036e8e8>] svc_process+0x118/0x330
-> > [sunrpc]
-> > [  928.755080]  [<ffffffffc04208ac>] nfsd+0x19c/0x2b0 [nfsd]
-> > [  928.755681]  [<ffffffffc0420715>] ? nfsd+0x5/0x2b0 [nfsd]
-> > [  928.756274]  [<ffffffffc0420710>] ? nfsd_destroy+0x190/0x190
-> > [nfsd]
-> > [  928.756991]  [<ffffffff8f0d5891>] kthread+0x101/0x120
-> > [  928.757563]  [<ffffffff8f10dcc5>] ?
-> > trace_hardirqs_on_caller+0xf5/0x1b0
-> > [  928.758282]  [<ffffffff8f8f2fef>] ret_from_fork+0x1f/0x40
-> > [  928.758875]  [<ffffffff8f0d5790>] ?
-> > kthread_create_on_node+0x250/0x250
-> > 
-> > 
-> > So the client gets a flexfiles layout, and then tries to issue a v3
-> > WRITE against the file. XFS then recalls the layout, but the client
-> > can't return the layout until the v3 WRITE completes. Eventually
-> > this
-> > should resolve itself after 2 lease periods, but that's quite a
-> > long
-> > time.
-> 
-> What’s the sequence of operations here? If the client has outstanding
-> I/O, I should now be returning NFS_OK, and then completing the recall
-> with a LAYOUTRETURN as soon as the outstanding I/O (and layoutcommit,
-> if one is due) is done.
-> 
-> The server is expected to return NFS4ERR_RECALLCONFLICT to any
-> LAYOUTGET attempts that occur before the LAYOUTRETURN.
-> 
+DQo+IE9uIEF1ZyAxMSwgMjAxNiwgYXQgMTI6MDYsIEplZmYgTGF5dG9uIDxqbGF5dG9uQHJlZGhh
+dC5jb20+IHdyb3RlOg0KPiANCj4gT24gVGh1LCAyMDE2LTA4LTExIGF0IDE1OjU1ICswMDAwLCBU
+cm9uZCBNeWtsZWJ1c3Qgd3JvdGU6DQo+Pj4gDQo+Pj4gT24gQXVnIDExLCAyMDE2LCBhdCAxMToy
+MywgSmVmZiBMYXl0b24gPGpsYXl0b25AcmVkaGF0LmNvbT4gd3JvdGU6DQo+Pj4gDQo+Pj4gSSB3
+YXMgcGxheWluZyBhcm91bmQgd2l0aCB0aGUgaW4ta2VybmVsIGZsZXhmaWxlcyBzZXJ2ZXIgdG9k
+YXksIGFuZA0KPj4+IEkNCj4+PiBzZWVtIHRvIGJlIGhpdHRpbmcgYSBkZWFkbG9jayB3aGVuIHVz
+aW5nIGl0IG9uIGFuIFhGUy1leHBvcnRlZA0KPj4+IGZpbGVzeXN0ZW0uIEhlcmUncyB0aGUgc3Rh
+Y2sgdHJhY2Ugb2YgaG93IHRoZSBDQl9MQVlPVVRSRUNBTEwNCj4+PiBvY2N1cnM6DQo+Pj4gDQo+
+Pj4gWyAgOTI4LjczNjEzOV0gQ1BVOiAwIFBJRDogODQ2IENvbW06IG5mc2QgVGFpbnRlZDoNCj4+
+PiBHICAgICAgICAgICBPRSAgIDQuOC4wLXJjMSsgIzMNCj4+PiBbICA5MjguNzM3MDQwXSBIYXJk
+d2FyZSBuYW1lOiBRRU1VIFN0YW5kYXJkIFBDIChpNDQwRlggKyBQSUlYLA0KPj4+IDE5OTYpLCBC
+SU9TIDEuOS4xLTEuZmMyNCAwNC8wMS8yMDE0DQo+Pj4gWyAgOTI4LjczODAwOV0gIDAwMDAwMDAw
+MDAwMDAyODYgMDAwMDAwMDA2MTI1ZjUwZSBmZmZmOTExNTM4NDViODc4DQo+Pj4gZmZmZmZmZmY4
+ZjQ2Mzg1Mw0KPj4+IFsgIDkyOC43Mzg5MDZdICBmZmZmOTExNTJlYzE5NGQwIGZmZmY5MTE1MmQz
+MWQ5YzAgZmZmZjkxMTUzODQ1YjhhOA0KPj4+IGZmZmZmZmZmYzA0NTkzNmYNCj4+PiBbICA5Mjgu
+NzM5Nzg4XSAgZmZmZjkxMTUyYzA1MTk4MCBmZmZmOTExNTJkMzFkOWMwIGZmZmY5MTE1MmMwNTE1
+NDANCj4+PiBmZmZmOTExNTM2MWI4YTU4DQo+Pj4gWyAgOTI4Ljc0MDY5N10gQ2FsbCBUcmFjZToN
+Cj4+PiBbICA5MjguNzQwOTk4XSAgWzxmZmZmZmZmZjhmNDYzODUzPl0gZHVtcF9zdGFjaysweDg2
+LzB4YzMNCj4+PiBbICA5MjguNzQxNTcwXSAgWzxmZmZmZmZmZmMwNDU5MzZmPl0NCj4+PiBuZnNk
+NF9yZWNhbGxfZmlsZV9sYXlvdXQrMHgxN2YvMHgxOTAgW25mc2RdDQo+Pj4gWyAgOTI4Ljc0MjM4
+MF0gIFs8ZmZmZmZmZmZjMDQ1OTM5ZD5dDQo+Pj4gbmZzZDRfbGF5b3V0X2xtX2JyZWFrKzB4MWQv
+MHgzMCBbbmZzZF0NCj4+PiBbICA5MjguNzQzMTE1XSAgWzxmZmZmZmZmZjhmMzA1NmQ4Pl0gX19i
+cmVha19sZWFzZSsweDExOC8weDZhMA0KPj4+IFsgIDkyOC43NDM3NTldICBbPGZmZmZmZmZmYzAy
+ZGVhNjk+XSB4ZnNfYnJlYWtfbGF5b3V0cysweDc5LzB4MTIwDQo+Pj4gW3hmc10NCj4+PiBbICA5
+MjguNzQ0NDYyXSAgWzxmZmZmZmZmZmMwMjllYTA0Pl0NCj4+PiB4ZnNfZmlsZV9haW9fd3JpdGVf
+Y2hlY2tzKzB4OTQvMHgxZjAgW3hmc10NCj4+PiBbICA5MjguNzQ1MjUxXSAgWzxmZmZmZmZmZmMw
+MjlmMzZiPl0NCj4+PiB4ZnNfZmlsZV9idWZmZXJlZF9haW9fd3JpdGUrMHg3Yi8weDMzMCBbeGZz
+XQ0KPj4+IFsgIDkyOC43NDYwNjNdICBbPGZmZmZmZmZmYzAyOWY3MGM+XSB4ZnNfZmlsZV93cml0
+ZV9pdGVyKzB4ZWMvMHgxNDANCj4+PiBbeGZzXQ0KPj4+IFsgIDkyOC43NDY4MDNdICBbPGZmZmZm
+ZmZmOGYyYTA1OTk+XQ0KPj4+IGRvX2l0ZXJfcmVhZHZfd3JpdGV2KzB4YjkvMHgxNDANCj4+PiBb
+ICA5MjguNzQ3NDc4XSAgWzxmZmZmZmZmZjhmMmExMjZiPl0gZG9fcmVhZHZfd3JpdGV2KzB4MTli
+LzB4MjQwDQo+Pj4gWyAgOTI4Ljc0ODE0Nl0gIFs8ZmZmZmZmZmZjMDI5ZjYyMD5dID8NCj4+PiB4
+ZnNfZmlsZV9idWZmZXJlZF9haW9fd3JpdGUrMHgzMzAvMHgzMzAgW3hmc10NCj4+PiBbICA5Mjgu
+NzQ4OTU2XSAgWzxmZmZmZmZmZjhmMjllMDJiPl0gPyBkb19kZW50cnlfb3BlbisweDI4Yi8weDMx
+MA0KPj4+IFsgIDkyOC43NDk2MTRdICBbPGZmZmZmZmZmYzAyOWM4MDA+XSA/DQo+Pj4geGZzX2V4
+dGVudF9idXN5X2FnX2NtcCsweDIwLzB4MjAgW3hmc10NCj4+PiBbICA5MjguNzUwMzY3XSAgWzxm
+ZmZmZmZmZjhmMmExNTZmPl0gdmZzX3dyaXRldisweDNmLzB4NTANCj4+PiBbICA5MjguNzUwOTM0
+XSAgWzxmZmZmZmZmZmMwNDI3NmNhPl0gbmZzZF92ZnNfd3JpdGUrMHhjYS8weDNhMA0KPj4+IFtu
+ZnNkXQ0KPj4+IFsgIDkyOC43NTE2MDhdICBbPGZmZmZmZmZmYzA0MjllYzU+XSBuZnNkX3dyaXRl
+KzB4NDg1LzB4NzgwIFtuZnNkXQ0KPj4+IFsgIDkyOC43NTIyNjNdICBbPGZmZmZmZmZmYzA0MzE0
+NGM+XSBuZnNkM19wcm9jX3dyaXRlKzB4YmMvMHgxNTANCj4+PiBbbmZzZF0NCj4+PiBbICA5Mjgu
+NzUyOTczXSAgWzxmZmZmZmZmZmMwNDIxMzg4Pl0gbmZzZF9kaXNwYXRjaCsweGI4LzB4MWYwDQo+
+Pj4gW25mc2RdDQo+Pj4gWyAgOTI4Ljc1MzY0Ml0gIFs8ZmZmZmZmZmZjMDM2ZDc4Zj5dIHN2Y19w
+cm9jZXNzX2NvbW1vbisweDQyZi8weDY5MA0KPj4+IFtzdW5ycGNdDQo+Pj4gWyAgOTI4Ljc1NDM5
+NV0gIFs8ZmZmZmZmZmZjMDM2ZThlOD5dIHN2Y19wcm9jZXNzKzB4MTE4LzB4MzMwDQo+Pj4gW3N1
+bnJwY10NCj4+PiBbICA5MjguNzU1MDgwXSAgWzxmZmZmZmZmZmMwNDIwOGFjPl0gbmZzZCsweDE5
+Yy8weDJiMCBbbmZzZF0NCj4+PiBbICA5MjguNzU1NjgxXSAgWzxmZmZmZmZmZmMwNDIwNzE1Pl0g
+PyBuZnNkKzB4NS8weDJiMCBbbmZzZF0NCj4+PiBbICA5MjguNzU2Mjc0XSAgWzxmZmZmZmZmZmMw
+NDIwNzEwPl0gPyBuZnNkX2Rlc3Ryb3krMHgxOTAvMHgxOTANCj4+PiBbbmZzZF0NCj4+PiBbICA5
+MjguNzU2OTkxXSAgWzxmZmZmZmZmZjhmMGQ1ODkxPl0ga3RocmVhZCsweDEwMS8weDEyMA0KPj4+
+IFsgIDkyOC43NTc1NjNdICBbPGZmZmZmZmZmOGYxMGRjYzU+XSA/DQo+Pj4gdHJhY2VfaGFyZGly
+cXNfb25fY2FsbGVyKzB4ZjUvMHgxYjANCj4+PiBbICA5MjguNzU4MjgyXSAgWzxmZmZmZmZmZjhm
+OGYyZmVmPl0gcmV0X2Zyb21fZm9yaysweDFmLzB4NDANCj4+PiBbICA5MjguNzU4ODc1XSAgWzxm
+ZmZmZmZmZjhmMGQ1NzkwPl0gPw0KPj4+IGt0aHJlYWRfY3JlYXRlX29uX25vZGUrMHgyNTAvMHgy
+NTANCj4+PiANCj4+PiANCj4+PiBTbyB0aGUgY2xpZW50IGdldHMgYSBmbGV4ZmlsZXMgbGF5b3V0
+LCBhbmQgdGhlbiB0cmllcyB0byBpc3N1ZSBhIHYzDQo+Pj4gV1JJVEUgYWdhaW5zdCB0aGUgZmls
+ZS4gWEZTIHRoZW4gcmVjYWxscyB0aGUgbGF5b3V0LCBidXQgdGhlIGNsaWVudA0KPj4+IGNhbid0
+IHJldHVybiB0aGUgbGF5b3V0IHVudGlsIHRoZSB2MyBXUklURSBjb21wbGV0ZXMuIEV2ZW50dWFs
+bHkNCj4+PiB0aGlzDQo+Pj4gc2hvdWxkIHJlc29sdmUgaXRzZWxmIGFmdGVyIDIgbGVhc2UgcGVy
+aW9kcywgYnV0IHRoYXQncyBxdWl0ZSBhDQo+Pj4gbG9uZw0KPj4+IHRpbWUuDQo+PiANCj4+IFdo
+YXTigJlzIHRoZSBzZXF1ZW5jZSBvZiBvcGVyYXRpb25zIGhlcmU/IElmIHRoZSBjbGllbnQgaGFz
+IG91dHN0YW5kaW5nDQo+PiBJL08sIEkgc2hvdWxkIG5vdyBiZSByZXR1cm5pbmcgTkZTX09LLCBh
+bmQgdGhlbiBjb21wbGV0aW5nIHRoZSByZWNhbGwNCj4+IHdpdGggYSBMQVlPVVRSRVRVUk4gYXMg
+c29vbiBhcyB0aGUgb3V0c3RhbmRpbmcgSS9PIChhbmQgbGF5b3V0Y29tbWl0LA0KPj4gaWYgb25l
+IGlzIGR1ZSkgaXMgZG9uZS4NCj4+IA0KPj4gVGhlIHNlcnZlciBpcyBleHBlY3RlZCB0byByZXR1
+cm4gTkZTNEVSUl9SRUNBTExDT05GTElDVCB0byBhbnkNCj4+IExBWU9VVEdFVCBhdHRlbXB0cyB0
+aGF0IG9jY3VyIGJlZm9yZSB0aGUgTEFZT1VUUkVUVVJOLg0KPj4gDQo+IA0KPiBCYXNpY2FsbHks
+IEknbSBqdXN0IGRvaW5nIHRoaXMgb24gdGhlIGNsaWVudDoNCj4gDQo+ICAgICAkIGVjaG8gImZv
+byIgPiAvbW50L2tuZnNkc3J2L3Rlc3RmaWxlDQo+IA0KPiANCj4gVGhlIGNsaWVudCBkb2VzOg0K
+PiANCj4gT1BFTg0KPiBMQVlPVVRHRVQgKGZvciBSVykNCj4gR0VUREVWSUNFSU5GTw0KPiANCj4g
+Li4uYW5kIHRoZW4gYSB2MyBXUklURSB1bmRlciB0aGUgYWVnaXMgb2YgdGhlIGxheW91dCBpdCBn
+b3QuDQo+IA0KPiBUaGUgc2VydmVyIHRoZW4gaXNzdWVzIGEgQ0JfTEFZT1VUUkVDQUxMIChiZWNh
+dXNlIFhGUyB3YW50cyB0byBkbyB0aGF0DQo+IHdoZW5ldmVyIHRoZXJlIGlzIGEgbG9jYWwgd3Jp
+dGUsIGFwcGFyZW50bHkpLiBUaGUgY2xpZW50IHJldHVybnMNCj4gTkZTX09LLCBidXQgaXQgY2Fu
+J3QgcmV0dXJuIHRoZSBsYXlvdXQgdW50aWwgdGhlIHYzIFdSSVRFIGNvbXBsZXRlcy4NCj4gVGhl
+IHYzIHdyaXRlIGlzIGh1bmcgdGhvdWdoIGJlY2F1c2UgaXQncyB3YWl0aW5nIGZvciB0aGUgbGF5
+b3V0IHRvIGJlDQo+IHJldHVybmVkLg0KDQpPaOKApiBTbyB0aGlzIGlzIGFuIGFydGlmYWN0IG9m
+IHRoZSB3cml0ZSBiZWluZyBsb2NhbCwgYW5kIFhGUyBoYXZpbmcgYSBwYXRoIHRvIHJlY2FsbCB0
+aGUgbGF5b3V0IHRoYXQgaXQgcmVhbGx5IHNob3VsZG7igJl0IGhhdmUgaW4gdGhlIGZsZXhmaWxl
+cyBjYXNlPw0KDQo+IA0KPj4+IA0KPj4+IA0KPj4+IEkgZ3Vlc3MgWEZTIHJlcXVpcmVzIHJlY2Fs
+bGluZyBibG9jayBhbmQgU0NTSSBsYXlvdXRzIHdoZW4gdGhlDQo+Pj4gc2VydmVyDQo+Pj4gd2Fu
+dHMgdG8gaXNzdWUgYSB3cml0ZSAob3Igc29tZW9uZSB3cml0ZXMgdG8gaXQgbG9jYWxseSksIGJ1
+dCB0aGF0DQo+Pj4gc2VlbXMgbGlrZSBpdCBzaG91bGRuJ3QgYmUgaGFwcGVuaW5nIHdoZW4gdGhl
+IGxheW91dCBpcyBhIGZsZXhmaWxlcw0KPj4+IGxheW91dC4NCj4+PiANCj4+PiBBbnkgdGhvdWdo
+dHMgb24gd2hhdCB0aGUgcmlnaHQgZml4IGlzIGhlcmU/DQo+Pj4gDQo+Pj4gT24gYSByZWxhdGVk
+IG5vdGUsIGtuZnNkIHdpbGwgc3BhbSB0aGUgaGVjayBvdXQgb2YgdGhlIGNsaWVudCB3aXRoDQo+
+Pj4gQ0JfTEFZT1VUUkVDQUxMcyBkdXJpbmcgdGhpcyB0aW1lLiBJIHRoaW5rIHdlIG91Z2h0IHRv
+IGNvbnNpZGVyDQo+Pj4gZml4aW5nDQo+Pj4gdGhlIHNlcnZlciBub3QgdG8gdHJlYXQgYW4gTkZT
+X09LIHJldHVybiBmcm9tIHRoZSBjbGllbnQgbGlrZQ0KPj4+IE5GUzRFUlJfREVMQVkgdGhlcmUs
+IGJ1dCB0aGF0IHdvdWxkIG1lYW4gYSBkaWZmZXJlbnQgbWVjaGFuaXNtIGZvcg0KPj4+IHRpbWlu
+ZyBvdXQgYSBDQl9MQVlPVVRSRUNBTEwuDQo+PiANCj4+IFRoZXJlIGlzIGEgYmlnIGRpZmZlcmVu
+Y2UgYmV0d2VlbiBORlNfT0sgYW5kIE5GUzRFUlJfREVMQVkgYXMgZmFyIGFzDQo+PiB0aGUgc2Vy
+dmVyIGlzIGNvbmNlcm5lZDoNCj4+IA0KPj4gLSBORlNfT0sgbWVhbnMgdGhhdCB0aGUgY2xpZW50
+IGhhcyBub3cgc2VlbiB0aGUgc3RhdGVpZCB3aXRoIHRoZQ0KPj4gdXBkYXRlZCBzZXF1ZW5jZSBp
+ZCB0aGF0IHdhcyBzZW50IGluIENCX0xBWU9VVFJFQ0FMTCwgYW5kIGlzDQo+PiBwcm9jZXNzaW5n
+IGl0LiBObyByZXNlbmQgb2YgdGhlIENCX0xBWU9VVFJFQ0FMTCBpcyByZXF1aXJlZC4NCj4+IC0g
+T1RPSCwgTkZTNEVSUl9ERUxBWSBtZWFucyB0aGUgc2FtZSB0aGluZyBpbiB0aGUgYmFjayBjaGFu
+bmVsIGFzIGl0DQo+PiBkb2VzIGluIHRoZSBmb3J3YXJkIGNoYW5uZWw6IEnigJltIGJ1c3kgYW5k
+IGNhbm5vdCBwcm9jZXNzIHlvdXINCj4+IHJlcXVlc3QsIHBsZWFzZSByZXNlbmQgaXQgbGF0ZXIu
+DQo+IA0KPiBSaWdodC4gVGhlIGN1cnJlbnQgY29kZSBiYXNpY2FsbHkganVzdCB0cmVhdHMgdGhl
+bSB0aGUgc2FtZSBhcyBhDQo+IG1lY2hhbmlzbSB0byBoYW5kbGUgZXZlbnR1YWxseSB0aW1pbmcg
+b3V0IHRoZSBsYXlvdXRyZWNhbGwuIFRoZSBleHRyYQ0KPiBDQl9MQVlPVVRSRUNBTExzIGFyZSBl
+bnRpcmVseSBzdXBlcmZsdW91cy4gSXQncyBwcm9iYWJseSBub3QgdG9vIGhhcmQNCj4gdG8gZml4
+LCBidXQgd2UnZCBuZWVkIHRvIGNvbWUgdXAgd2l0aCBzb21lIG90aGVyIG1lY2hhbmlzbSBmb3Ig
+dGltaW5nDQo+IG91dCB0aGUgbGF5b3V0cmVjYWxsLg0KPiANCj4gLS0gDQo+IEplZmYgTGF5dG9u
+IDxqbGF5dG9uQHJlZGhhdC5jb20+DQoNCg==
 
-Basically, I'm just doing this on the client:
-
-    $ echo "foo" > /mnt/knfsdsrv/testfile
-
-
-The client does:
-
-OPEN
-LAYOUTGET (for RW)
-GETDEVICEINFO
-
-...and then a v3 WRITE under the aegis of the layout it got.
-
-The server then issues a CB_LAYOUTRECALL (because XFS wants to do that
-whenever there is a local write, apparently). The client returns
-NFS_OK, but it can't return the layout until the v3 WRITE completes.
-The v3 write is hung though because it's waiting for the layout to be
-returned.
-
-> > 
-> > 
-> > I guess XFS requires recalling block and SCSI layouts when the
-> > server
-> > wants to issue a write (or someone writes to it locally), but that
-> > seems like it shouldn't be happening when the layout is a flexfiles
-> > layout.
-> > 
-> > Any thoughts on what the right fix is here?
-> > 
-> > On a related note, knfsd will spam the heck out of the client with
-> > CB_LAYOUTRECALLs during this time. I think we ought to consider
-> > fixing
-> > the server not to treat an NFS_OK return from the client like
-> > NFS4ERR_DELAY there, but that would mean a different mechanism for
-> > timing out a CB_LAYOUTRECALL.
-> 
-> There is a big difference between NFS_OK and NFS4ERR_DELAY as far as
-> the server is concerned:
-> 
-> - NFS_OK means that the client has now seen the stateid with the
-> updated sequence id that was sent in CB_LAYOUTRECALL, and is
-> processing it. No resend of the CB_LAYOUTRECALL is required.
-> - OTOH, NFS4ERR_DELAY means the same thing in the back channel as it
-> does in the forward channel: I’m busy and cannot process your
-> request, please resend it later.
-
-Right. The current code basically just treats them the same as a
-mechanism to handle eventually timing out the layoutrecall. The extra
-CB_LAYOUTRECALLs are entirely superfluous. It's probably not too hard
-to fix, but we'd need to come up with some other mechanism for timing
-out the layoutrecall.
-
--- 
-Jeff Layton <jlayton@redhat.com>
