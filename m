@@ -1,37 +1,61 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:34760 "EHLO fieldses.org"
+Received: from fieldses.org ([173.255.197.46]:34810 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751062AbcHKSOw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 11 Aug 2016 14:14:52 -0400
-Date: Thu, 11 Aug 2016 14:14:00 -0400
+	id S1751590AbcHKT5b (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 11 Aug 2016 15:57:31 -0400
+Date: Thu, 11 Aug 2016 15:57:29 -0400
 From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Jeff Layton <jlayton@redhat.com>
-Cc: Christoph Hellwig <hch@lst.de>, linux-nfs@vger.kernel.org,
-        Trond Myklebust <trondmy@primarydata.com>
-Subject: Re: [PATCH] nfsd: don't set a FL_LAYOUT lease for flexfiles layouts
-Message-ID: <20160811181400.GA2114@fieldses.org>
-References: <1470936982-14409-1-git-send-email-jlayton@redhat.com>
- <20160811173846.GA26263@lst.de>
- <1470937318.30238.44.camel@redhat.com>
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH v4 0/2] Eliminate race between LOCK and FREE_STATEID
+Message-ID: <20160811195729.GB2114@fieldses.org>
+References: <20160811143205.20488.82396.stgit@klimt.1015granger.net>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1470937318.30238.44.camel@redhat.com>
+In-Reply-To: <20160811143205.20488.82396.stgit@klimt.1015granger.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Aug 11, 2016 at 01:41:58PM -0400, Jeff Layton wrote:
-> On Thu, 2016-08-11 at 19:38 +0200, Christoph Hellwig wrote:
-> > This looks fine to me, although it might be a good idea to just
-> > have a flags field in the layout_ops structure for additional
-> > quirks in the future instead of the boolean.
+On Thu, Aug 11, 2016 at 10:37:21AM -0400, Chuck Lever wrote:
+> Hi Bruce-
 > 
-> 
-> Sure...that's reasonable. If and when the need arises for more flags we
-> can always do the conversion to a flags field then as well.
-> 
-> I'll Bruce make the call on which he'd rather see...
+> IMO this series is both safe and effective and thus is ready to merge.
 
-I don't really care, so... I'll take your version as is barring other
-objections.
+Thanks for the care taken with this series....
+
+I'll queue it up for 4.8 and stable, unless there's objections.
 
 --b.
+
+> 
+> Alexey reports:
+> 
+> @ All 500 nfslock test runs passed, also run other related NFS tests with 
+> @ different configurations, as a result they passed as well. 
+> 
+> 
+> Changes since v3:
+> - Add Tested-by tags
+> 
+> Changes since v2:
+> - Move NFS4_LOCK_STID arm into a helper, for clarity
+> - Add more detail to patch description
+> - Add Jeff's patch to fix similar race in nfsd4_lock
+> 
+> Changes since v1:
+> - Use s->sc_count to preserve stateid while cl_lock is dropped
+> 
+> ---
+> 
+> Chuck Lever (1):
+>       nfsd: Fix race between FREE_STATEID and LOCK
+> 
+> Jeff Layton (1):
+>       nfsd: don't return an unhashed lock stateid after taking mutex
+> 
+> 
+>  fs/nfsd/nfs4state.c |   65 ++++++++++++++++++++++++++++++++++++++-------------
+>  1 file changed, 48 insertions(+), 17 deletions(-)
+> 
+> --
+> Chuck Lever
