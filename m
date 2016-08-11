@@ -1,81 +1,173 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from userp1040.oracle.com ([156.151.31.81]:48830 "EHLO
-	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752098AbcHKUBE convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 11 Aug 2016 16:01:04 -0400
-Content-Type: text/plain; charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 9.3 \(3124\))
-Subject: Re: [PATCH v4 0/2] Eliminate race between LOCK and FREE_STATEID
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <20160811195729.GB2114@fieldses.org>
-Date: Thu, 11 Aug 2016 16:00:52 -0400
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <AF8D2AEF-1108-42D9-B97B-5D7B50F169CF@oracle.com>
-References: <20160811143205.20488.82396.stgit@klimt.1015granger.net> <20160811195729.GB2114@fieldses.org>
-To: "J. Bruce Fields" <bfields@fieldses.org>
+Received: from mx1.redhat.com ([209.132.183.28]:38610 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751474AbcHKV0R (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 11 Aug 2016 17:26:17 -0400
+Received: from int-mx11.intmail.prod.int.phx2.redhat.com (int-mx11.intmail.prod.int.phx2.redhat.com [10.5.11.24])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+	(No client certificate requested)
+	by mx1.redhat.com (Postfix) with ESMTPS id 1BA20C04D292
+	for <linux-nfs@vger.kernel.org>; Thu, 11 Aug 2016 21:26:17 +0000 (UTC)
+Received: from steved.boston.devel.redhat.com (vpn-55-31.rdu2.redhat.com [10.10.55.31])
+	by int-mx11.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id u7BLQG7q024013
+	for <linux-nfs@vger.kernel.org>; Thu, 11 Aug 2016 17:26:16 -0400
+From: Steve Dickson <steved@redhat.com>
+To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: [PATCH] libnfsidmap: Query DNS for the the NFSv4 domain
+Date: Thu, 11 Aug 2016 17:26:14 -0400
+Message-Id: <1470950774-3649-1-git-send-email-steved@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+In domain_from_dns(), when at the hostname is a FQHN
+query the DNS server for the _nfsv4idmapdomain TXT
+record. If the record exists, use that as the
+NFSv4 domain.
 
-> On Aug 11, 2016, at 3:57 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
-> 
-> On Thu, Aug 11, 2016 at 10:37:21AM -0400, Chuck Lever wrote:
->> Hi Bruce-
->> 
->> IMO this series is both safe and effective and thus is ready to merge.
-> 
-> Thanks for the care taken with this series....
-> 
-> I'll queue it up for 4.8 and stable, unless there's objections.
+Note, this query will only happen if the domain name
+is not set in the /etc/idmapd.conf
 
-Excellent, thanks.
+Signed-off-by: Steve Dickson <steved@redhat.com>
+---
+ libnfsidmap.c | 104 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++-
+ 1 file changed, 103 insertions(+), 1 deletion(-)
 
-Re: stable: Alexey tells me that: v4.7-rc4 commit feb9dad5
-("nfsd: Always lock state  exclusively.") is required for this
-series to apply successfully to v4.1-stable.
-
-
-> --b.
-> 
->> 
->> Alexey reports:
->> 
->> @ All 500 nfslock test runs passed, also run other related NFS tests with 
->> @ different configurations, as a result they passed as well. 
->> 
->> 
->> Changes since v3:
->> - Add Tested-by tags
->> 
->> Changes since v2:
->> - Move NFS4_LOCK_STID arm into a helper, for clarity
->> - Add more detail to patch description
->> - Add Jeff's patch to fix similar race in nfsd4_lock
->> 
->> Changes since v1:
->> - Use s->sc_count to preserve stateid while cl_lock is dropped
->> 
->> ---
->> 
->> Chuck Lever (1):
->>      nfsd: Fix race between FREE_STATEID and LOCK
->> 
->> Jeff Layton (1):
->>      nfsd: don't return an unhashed lock stateid after taking mutex
->> 
->> 
->> fs/nfsd/nfs4state.c |   65 ++++++++++++++++++++++++++++++++++++++-------------
->> 1 file changed, 48 insertions(+), 17 deletions(-)
->> 
->> --
->> Chuck Lever
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
---
-Chuck Lever
-
-
+diff --git a/libnfsidmap.c b/libnfsidmap.c
+index 2db4d13..7b8c0ed 100644
+--- a/libnfsidmap.c
++++ b/libnfsidmap.c
+@@ -53,6 +53,10 @@
+ #include <stdarg.h>
+ #include <dlfcn.h>
+ #include <ctype.h>
++#include <resolv.h>
++#include <arpa/nameser.h>
++#include <arpa/nameser_compat.h>
++
+ #include "nfsidmap.h"
+ #include "nfsidmap_internal.h"
+ #include "cfg.h"
+@@ -79,6 +83,11 @@ gid_t nobody_gid = (gid_t)-1;
+ #define IDMAPD_DEFAULT_DOMAIN "localdomain"
+ #endif
+ 
++#ifndef NFS4DNSTXTREC
++#define NFS4DNSTXTREC "_nfsv4idmapdomain"
++#endif
++
++
+ /* Default logging fuction */
+ static void default_logger(const char *fmt, ...)
+ {
+@@ -114,6 +123,93 @@ static int id_as_chars(char *name, uid_t *id)
+ 	return 1;
+ }
+ 
++static int dns_txt_query(char *domain, char **nfs4domain)
++{
++	char *txtname = NFS4DNSTXTREC;
++	char *msg, *answ, *eom, *mptr; 
++	int len, status = -1;
++	HEADER *hdr;
++	
++	msg = calloc(1, NS_MAXMSG);
++	if (msg == NULL)
++		return -1;
++
++	answ = calloc(1, NS_MAXMSG);
++	if (answ == NULL) {
++		free(msg);
++		return -1;
++	}
++
++	if (res_init() < 0) {
++		IDMAP_LOG(2, ("libnfsidmap: res_init() failed for %s.%s: %s\n",
++			txtname, domain, hstrerror(h_errno)));
++		goto freemem;
++	}
++	len = res_querydomain(txtname, domain, C_IN, T_TXT, msg, NS_MAXMSG);
++	if (len < 0) {
++		IDMAP_LOG(2, ("libnfsidmap: res_querydomain() failed for %s.%s: %s\n",
++			txtname, domain, hstrerror(h_errno)));
++		goto freemem;
++	}
++	hdr = (HEADER *)msg;
++
++	/* See if there is an answer */
++	if (ntohs(hdr->ancount) < 1) {
++		IDMAP_LOG(2, ("libnfsidmap: No TXT record for %s.%s\n",
++			txtname, domain));
++		goto freemem;
++	}
++	/* find the EndOfMessage */
++	eom = msg + len;
++
++	/* skip header */
++	mptr = &msg[HFIXEDSZ];
++
++	/* skip name field in question section */
++	mptr += dn_skipname(mptr, eom) + QFIXEDSZ;
++
++	/* read in the question */
++	len = dn_expand(msg, eom, mptr, answ, NS_MAXDNAME);
++	if (len < 0) { /* does this really matter?? */
++		IDMAP_LOG(2, ("libnfsidmap: No question section for %s.%s: %s\n",
++			txtname, domain, hstrerror(h_errno)));
++		goto freemem;
++	}
++
++	/*
++	 * Now, dissect the answer section, Note: if there
++	 * are more than one answer only the first
++	 * one will be used. 
++	 */
++
++	/* skip passed the name field  */
++	mptr += dn_skipname(mptr, eom);
++	/* skip pass the type class and ttl fields */
++	mptr += 2 + 2 + 4;
++
++	/* make sure there is some data */
++	GETSHORT(len, mptr);
++	if (len < 0) {
++		IDMAP_LOG(2, ("libnfsidmap: No data in answer for %s.%s\n",
++			txtname, domain));
++		goto freemem;
++	}
++	/* get the lenght field */
++	len = (int)*mptr++;
++	/* copy the data */
++	memcpy(answ, mptr, len);
++	answ[len] = '\0';
++	
++	*nfs4domain = strdup(answ);
++	status = 0;
++
++freemem:
++	free(msg);
++	free(answ);
++
++	return (status);
++}
++
+ static int domain_from_dns(char **domain)
+ {
+ 	struct hostent *he;
+@@ -125,7 +221,13 @@ static int domain_from_dns(char **domain)
+ 		return -1;
+ 	if ((c = strchr(he->h_name, '.')) == NULL || *++c == '\0')
+ 		return -1;
+-	*domain = strdup(c);
++	/* 
++	 * Query DNS to see if the _nfsv4idmapdomain TXT record exists
++	 * If so use it... 
++	 */
++	if (dns_txt_query(c, domain) < 0)
++		*domain = strdup(c);
++
+ 	return 0;
+ }
+ 
+-- 
+2.7.4
 
