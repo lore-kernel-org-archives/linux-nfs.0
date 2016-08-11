@@ -1,130 +1,62 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:34418 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751423AbcHJSB2 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 10 Aug 2016 14:01:28 -0400
-Content-Type: text/plain; charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 9.3 \(3124\))
-Subject: Re: WARN_ON added to rpc_create()
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <5E7D6A55-B7F3-411D-A74B-E8BCE04BCF02@oracle.com>
-Date: Wed, 10 Aug 2016 14:01:20 -0400
-Cc: "J. Bruce Fields" <bfields@redhat.com>,
+Received: from zeniv.linux.org.uk ([195.92.253.2]:46982 "EHLO
+	ZenIV.linux.org.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932146AbcHKCT1 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 10 Aug 2016 22:19:27 -0400
+Date: Thu, 11 Aug 2016 03:19:09 +0100
+From: Al Viro <viro@ZenIV.linux.org.uk>
+To: Josef Bacik <jbacik@fb.com>
+Cc: Linus Torvalds <torvalds@linux-foundation.org>,
+        kernel test robot <xiaolong.ye@intel.com>, Chris Mason <clm@fb.com>,
+        David Sterba <dsterba@suse.com>,
+        "J. Bruce Fields" <bfields@redhat.com>,
+        LKML <linux-kernel@vger.kernel.org>, LKP <lkp@01.org>,
+        linux-btrfs <linux-btrfs@vger.kernel.org>,
         Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <20F73E14-8CEC-4ED1-8A04-203343839860@oracle.com>
-References: <42D0C152-58F9-4467-B86D-2A7A25544CE4@oracle.com> <20160803174724.GA5993@fieldses.org> <5E7D6A55-B7F3-411D-A74B-E8BCE04BCF02@oracle.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [lkp] [nfsd] b44061d0b9: BUG: Dentry
+ ffff880027d7c540{i=1846f,n=0a} still in use (1) [unmount of btrfs vda]
+Message-ID: <20160811021909.GR2356@ZenIV.linux.org.uk>
+References: <20160810053947.GG21941@yexl-desktop>
+ <CA+55aFxdcG4y4zWTFFT8SekEtxsvx12P+e=11kTCFc=zS__bXQ@mail.gmail.com>
+ <dc406145-b465-b7e9-e370-91910abb8e6a@fb.com>
+ <CA+55aFzdTMBc7f5=bQLRUtceu-Kg-MGmzWrAv1r96_ra8yutJA@mail.gmail.com>
+ <e6fb50d4-2a27-13cd-02c8-5b8439a16b3f@fb.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <e6fb50d4-2a27-13cd-02c8-5b8439a16b3f@fb.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Following up.
+On Wed, Aug 10, 2016 at 02:46:27PM -0400, Josef Bacik wrote:
+> On 08/10/2016 02:25 PM, Linus Torvalds wrote:
+> > On Wed, Aug 10, 2016 at 11:22 AM, Josef Bacik <jbacik@fb.com> wrote:
+> > > On 08/10/2016 02:06 PM, Linus Torvalds wrote:
+> > > > 
+> > > > More information in the original email on lkml.
+> > > 
+> > > I'm not subscribed to lkml and for some reason I can't find the original
+> > > email in any of the lkml/linux-nfs archives.  Could you forward more of the
+> > > details?
+> > 
+> > Done.
+> > 
+> 
+> So my naive fix would be something like this
+> 
+> 
+> From: Josef Bacik <jbacik@fb.com>
+> Date: Wed, 10 Aug 2016 14:43:08 -0400
+> Subject: [PATCH] nfsd: fix dentry refcounting problem
+> 
+> b44061d0b9 introduced a dentry ref counting bug, previously we were grabbing one
+> ref to dchild in nfsd_create(), but with the creation of nfsd_create_locked() we
+> have a ref for dchild from the lookup in nfsd_create(), and then another ref in
+> nfsd_create_locked().  The ref from the lookup in nfsd_create() is never dropped
+> and results in dentries still in use at unmount.
+> 
+> Signed-off-by: Josef Bacik <jbacik@fb.com>
 
+[sorry, had been off-line since yesterday]
 
-> On Aug 3, 2016, at 3:40 PM, Chuck Lever <chuck.lever@oracle.com> wrote:
-> 
->> 
->> On Aug 3, 2016, at 1:47 PM, bfields@fieldses.org wrote:
->> 
->> On Wed, Aug 03, 2016 at 11:27:47AM -0400, Chuck Lever wrote:
->>> Hi Bruce-
->>> 
->>> I see that commit 39a9beab5acb83176e8b9a4f0778749a09341f1f
->>> Author:     J. Bruce Fields <bfields@redhat.com>
->>> AuthorDate: Tue May 17 12:38:21 2016 -0400
->>> 
->>>   rpc: share one xps between all backchannels
->>> 
->>> has added this piece of code:
->>> 
->>> @@ -452,10 +452,20 @@ static struct rpc_clnt *rpc_create_xprt(struct rpc_create_args *args,
->>>       struct rpc_clnt *clnt = NULL;
->>>       struct rpc_xprt_switch *xps;
->>> 
->>> -       xps = xprt_switch_alloc(xprt, GFP_KERNEL);
->>> -       if (xps == NULL) {
->>> -               xprt_put(xprt);
->>> -               return ERR_PTR(-ENOMEM);
->>> +       if (args->bc_xprt && args->bc_xprt->xpt_bc_xps) {
->>> +               WARN_ON(args->protocol != XPRT_TRANSPORT_BC_TCP);
->>> +               xps = args->bc_xprt->xpt_bc_xps;
->>> +               xprt_switch_get(xps);
->>> +       } else {
->>> 
->>> 
->>> the WARN_ON here fires on the server whenever I use NFSv4.1 on RDMA.
->>> 
->>> Can you say why it was added? Is there something RPC/RDMA needs to
->>> do to make the code safe?
->> 
->> What is args->protocol in this case?
->> 
->> Digging around...  OK, I missed that BC_TCP and BC_RDMA were defined as
->> OR's of an XPRT_TRANSPORT_BC bit with the identifier of the underlying
->> transport.  That makes sense.
->> 
->> So, I should have just used XPRT_TRANSPORT_BC there--I think all I meant
->> was "is this a backchannel".
->> 
->> Does that fix the problem?
-> 
-> This simple fix eliminates the log noise:
-> 
-> diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
-> index 2808d55..f94caf7 100644
-> --- a/net/sunrpc/clnt.c
-> +++ b/net/sunrpc/clnt.c
-> @@ -520,7 +520,7 @@ struct rpc_clnt *rpc_create(struct rpc_create_args *args)
->        char servername[48];
-> 
->        if (args->bc_xprt) {
-> -               WARN_ON(args->protocol != XPRT_TRANSPORT_BC_TCP);
-> +               WARN_ON(!(args->protocol & XPRT_TRANSPORT_BC));
->                xprt = args->bc_xprt->xpt_bc_xprt;
->                if (xprt) {
->                        xprt_get(xprt);
-> 
-> 
-> This code seems to come from:
-> 
-> commit d50039ea5ee63c589b0434baa5ecf6e5075bb6f9
-> Author:     J. Bruce Fields <bfields@redhat.com>
-> AuthorDate: Mon May 16 17:03:42 2016 -0400
-> 
->    nfsd4/rpc: move backchannel create logic into rpc code
-> 
-> 
-> Where it may have been copied from:
-> 
-> -static struct rpc_clnt *create_backchannel_client(struct rpc_create_args *args)
-> -{
-> -       struct rpc_xprt *xprt;
-> -
-> -       if (args->protocol != XPRT_TRANSPORT_BC_TCP)
-> -               return rpc_create(args);
-> -
-> -       xprt = args->bc_xprt->xpt_bc_xprt;
-> -       if (xprt) {
-> -               xprt_get(xprt);
-> -               return rpc_create_xprt(args, xprt);
-> -       }
-> -
-> -       return rpc_create(args);
-> -}
-> 
-> There's no warning here. In fact, protocol != BC_TCP seems to
-> be expected.
-> 
-> I'm wondering if the warning is needed at all?
-
-Using NFSv4.1/RDMA against my v4.7 NFS server seems to result
-in a system deadlock in short order on the server. I haven't
-looked further into this because you mentioned you were going
-to have a look at these commits that change the backchannel
-code.
-
-
---
-Chuck Lever
-
-
-
+Patch looks sane; feel free to slap Acked-by: Al Viro <viro@zeniv.linux.org.uk>
+on it.  I think it should go through nfsd tree.
