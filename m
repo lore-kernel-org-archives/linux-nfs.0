@@ -1,173 +1,77 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:38610 "EHLO mx1.redhat.com"
+Received: from mx143.netapp.com ([216.240.21.24]:21904 "EHLO mx143.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751474AbcHKV0R (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 11 Aug 2016 17:26:17 -0400
-Received: from int-mx11.intmail.prod.int.phx2.redhat.com (int-mx11.intmail.prod.int.phx2.redhat.com [10.5.11.24])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
-	(No client certificate requested)
-	by mx1.redhat.com (Postfix) with ESMTPS id 1BA20C04D292
-	for <linux-nfs@vger.kernel.org>; Thu, 11 Aug 2016 21:26:17 +0000 (UTC)
-Received: from steved.boston.devel.redhat.com (vpn-55-31.rdu2.redhat.com [10.10.55.31])
-	by int-mx11.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id u7BLQG7q024013
-	for <linux-nfs@vger.kernel.org>; Thu, 11 Aug 2016 17:26:16 -0400
-From: Steve Dickson <steved@redhat.com>
-To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: [PATCH] libnfsidmap: Query DNS for the the NFSv4 domain
-Date: Thu, 11 Aug 2016 17:26:14 -0400
-Message-Id: <1470950774-3649-1-git-send-email-steved@redhat.com>
+	id S1751993AbcHKVlU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 11 Aug 2016 17:41:20 -0400
+From: <andros@netapp.com>
+To: <trond.myklebust@primarydata.com>
+CC: <anna.schumaker@netapp.com>, <linux-nfs@vger.kernel.org>,
+        Andy Adamson <andros@netapp.com>
+Subject: [PATCH Version 8 00/12] pNFS file layout session trunking
+Date: Thu, 11 Aug 2016 17:39:22 -0400
+Message-ID: <1470951574-18441-1-git-send-email-andros@netapp.com>
+MIME-Version: 1.0
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-In domain_from_dns(), when at the hostname is a FQHN
-query the DNS server for the _nfsv4idmapdomain TXT
-record. If the record exists, use that as the
-NFSv4 domain.
+From: Andy Adamson <andros@netapp.com>
 
-Note, this query will only happen if the domain name
-is not set in the /etc/idmapd.conf
+Responded to version-7 comments:
 
-Signed-off-by: Steve Dickson <steved@redhat.com>
----
- libnfsidmap.c | 104 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++-
- 1 file changed, 103 insertions(+), 1 deletion(-)
+- Removed call to rpc_task_release_client from rpc_task_set_client
 
-diff --git a/libnfsidmap.c b/libnfsidmap.c
-index 2db4d13..7b8c0ed 100644
---- a/libnfsidmap.c
-+++ b/libnfsidmap.c
-@@ -53,6 +53,10 @@
- #include <stdarg.h>
- #include <dlfcn.h>
- #include <ctype.h>
-+#include <resolv.h>
-+#include <arpa/nameser.h>
-+#include <arpa/nameser_compat.h>
-+
- #include "nfsidmap.h"
- #include "nfsidmap_internal.h"
- #include "cfg.h"
-@@ -79,6 +83,11 @@ gid_t nobody_gid = (gid_t)-1;
- #define IDMAPD_DEFAULT_DOMAIN "localdomain"
- #endif
- 
-+#ifndef NFS4DNSTXTREC
-+#define NFS4DNSTXTREC "_nfsv4idmapdomain"
-+#endif
-+
-+
- /* Default logging fuction */
- static void default_logger(const char *fmt, ...)
- {
-@@ -114,6 +123,93 @@ static int id_as_chars(char *name, uid_t *id)
- 	return 1;
- }
- 
-+static int dns_txt_query(char *domain, char **nfs4domain)
-+{
-+	char *txtname = NFS4DNSTXTREC;
-+	char *msg, *answ, *eom, *mptr; 
-+	int len, status = -1;
-+	HEADER *hdr;
-+	
-+	msg = calloc(1, NS_MAXMSG);
-+	if (msg == NULL)
-+		return -1;
-+
-+	answ = calloc(1, NS_MAXMSG);
-+	if (answ == NULL) {
-+		free(msg);
-+		return -1;
-+	}
-+
-+	if (res_init() < 0) {
-+		IDMAP_LOG(2, ("libnfsidmap: res_init() failed for %s.%s: %s\n",
-+			txtname, domain, hstrerror(h_errno)));
-+		goto freemem;
-+	}
-+	len = res_querydomain(txtname, domain, C_IN, T_TXT, msg, NS_MAXMSG);
-+	if (len < 0) {
-+		IDMAP_LOG(2, ("libnfsidmap: res_querydomain() failed for %s.%s: %s\n",
-+			txtname, domain, hstrerror(h_errno)));
-+		goto freemem;
-+	}
-+	hdr = (HEADER *)msg;
-+
-+	/* See if there is an answer */
-+	if (ntohs(hdr->ancount) < 1) {
-+		IDMAP_LOG(2, ("libnfsidmap: No TXT record for %s.%s\n",
-+			txtname, domain));
-+		goto freemem;
-+	}
-+	/* find the EndOfMessage */
-+	eom = msg + len;
-+
-+	/* skip header */
-+	mptr = &msg[HFIXEDSZ];
-+
-+	/* skip name field in question section */
-+	mptr += dn_skipname(mptr, eom) + QFIXEDSZ;
-+
-+	/* read in the question */
-+	len = dn_expand(msg, eom, mptr, answ, NS_MAXDNAME);
-+	if (len < 0) { /* does this really matter?? */
-+		IDMAP_LOG(2, ("libnfsidmap: No question section for %s.%s: %s\n",
-+			txtname, domain, hstrerror(h_errno)));
-+		goto freemem;
-+	}
-+
-+	/*
-+	 * Now, dissect the answer section, Note: if there
-+	 * are more than one answer only the first
-+	 * one will be used. 
-+	 */
-+
-+	/* skip passed the name field  */
-+	mptr += dn_skipname(mptr, eom);
-+	/* skip pass the type class and ttl fields */
-+	mptr += 2 + 2 + 4;
-+
-+	/* make sure there is some data */
-+	GETSHORT(len, mptr);
-+	if (len < 0) {
-+		IDMAP_LOG(2, ("libnfsidmap: No data in answer for %s.%s\n",
-+			txtname, domain));
-+		goto freemem;
-+	}
-+	/* get the lenght field */
-+	len = (int)*mptr++;
-+	/* copy the data */
-+	memcpy(answ, mptr, len);
-+	answ[len] = '\0';
-+	
-+	*nfs4domain = strdup(answ);
-+	status = 0;
-+
-+freemem:
-+	free(msg);
-+	free(answ);
-+
-+	return (status);
-+}
-+
- static int domain_from_dns(char **domain)
- {
- 	struct hostent *he;
-@@ -125,7 +221,13 @@ static int domain_from_dns(char **domain)
- 		return -1;
- 	if ((c = strchr(he->h_name, '.')) == NULL || *++c == '\0')
- 		return -1;
--	*domain = strdup(c);
-+	/* 
-+	 * Query DNS to see if the _nfsv4idmapdomain TXT record exists
-+	 * If so use it... 
-+	 */
-+	if (dns_txt_query(c, domain) < 0)
-+		*domain = strdup(c);
-+
- 	return 0;
- }
- 
+- Don't leak the rpc_xprt_switch to the NFS layer
+  Added wrappers in net/sunrpc/clnt.c  including a new
+  rpc_clnt_add_xprt setup function to call into the NFS
+  layer.
+
+- Check if a transport has already been added to the xprt switch
+  This is done in rpc_xprt_switch_add_xprt. Also done in the first
+  new rpc_clnt_add_xprt setup function to avoid an unnecessary
+  EXCHANGE_ID.
+
+- Added rpc_xprt_switch test in nfs_match_client so we find an
+  nfs_client that is using an rpc_xprt_switch address.
+
+Also:
+- The new rpc_clnt_add_xprt setup function returns 1 and added a
+  call to rpc_xprt_switch_add_xprt to the session trunk
+  case of nfs4_exchange_id_done.
+
+- Saved the mount exchange id verifier in cl_confirm and use it
+  in session trunking exchange id's
+
+Testing: pynfs server configured with pnfs mulitpath data servers
+- tested working, unconfigured, and repeated ipv4 multipath
+   addresses
+
+Andy Adamson (12):
+  NFS setup async exchange_id
+  NFS refactor nfs4_match_clientids
+  NFS refactor nfs4_check_serverowner_major_id
+  NFS detect session trunking
+  SUNRPC remove rpc_task_release_client from rpc_task_set_client
+  SUNRPC rpc_clnt_xprt_switch_put
+  SUNRPC rpc_clnt_xprt_switch_add_xprt
+  SUNRPC search xprt switch for sockaddr
+  SUNRPC: rpc_clnt_add_xprt setup function for NFS layer
+  NFS add xprt switch addrs test to match client
+  NFS test session trunking with exchange id
+  NFS pnfs data server multipath session trunking
+
+ fs/nfs/client.c                      |   5 +-
+ fs/nfs/internal.h                    |   3 +
+ fs/nfs/nfs4_fs.h                     |   8 +
+ fs/nfs/nfs4client.c                  | 114 ++++++++++++--
+ fs/nfs/nfs4proc.c                    | 294 +++++++++++++++++++++++++----------
+ fs/nfs/pnfs_nfs.c                    |  56 +++++--
+ include/linux/sunrpc/clnt.h          |  17 ++
+ include/linux/sunrpc/xprtmultipath.h |   2 +
+ net/sunrpc/clnt.c                    |  93 ++++++++++-
+ net/sunrpc/xprtmultipath.c           |  24 ++-
+ 10 files changed, 502 insertions(+), 114 deletions(-)
+
 -- 
-2.7.4
+1.8.3.1
 
