@@ -1,161 +1,61 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx142.netapp.com ([216.240.21.19]:51035 "EHLO mx142.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751722AbcHLS5y (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 12 Aug 2016 14:57:54 -0400
-Subject: Re: [PATCH Version 8 04/12] NFS detect session trunking
-To: <andros@netapp.com>, <trond.myklebust@primarydata.com>
-References: <1470951574-18441-1-git-send-email-andros@netapp.com>
- <1470951574-18441-5-git-send-email-andros@netapp.com>
-CC: <linux-nfs@vger.kernel.org>
-From: Anna Schumaker <Anna.Schumaker@netapp.com>
-Message-ID: <85744ba4-e17a-2062-1dbe-b2195afcd354@Netapp.com>
-Date: Fri, 12 Aug 2016 14:57:50 -0400
+Received: from us-smtp-delivery-194.mimecast.com ([216.205.24.194]:39692 "EHLO
+	us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1752238AbcHLTIE (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 12 Aug 2016 15:08:04 -0400
+From: Trond Myklebust <trondmy@primarydata.com>
+To: "torvalds@linux-foundation.org" <torvalds@linux-foundation.org>
+CC: "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: [GIT PULL] Please pull NFS client bugfixes for Linux 4.8
+Date: Fri, 12 Aug 2016 19:05:48 +0000
+Message-ID: <1471028747.8433.1.camel@primarydata.com>
 MIME-Version: 1.0
-In-Reply-To: <1470951574-18441-5-git-send-email-andros@netapp.com>
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Andy,
-
-I noticed a few typos:
-
-On 08/11/2016 05:39 PM, andros@netapp.com wrote:
-> From: Andy Adamson <andros@netapp.com>
-> 
-> Signed-off-by: Andy Adamson <andros@netapp.com>
-> ---
->  fs/nfs/nfs4_fs.h    |  2 ++
->  fs/nfs/nfs4client.c | 93 +++++++++++++++++++++++++++++++++++++++++++++++++++++
->  2 files changed, 95 insertions(+)
-> 
-> diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
-> index 4be567a..eb315e1 100644
-> --- a/fs/nfs/nfs4_fs.h
-> +++ b/fs/nfs/nfs4_fs.h
-> @@ -277,6 +277,8 @@ extern int nfs4_proc_get_lease_time(struct nfs_client *clp,
->  		struct nfs_fsinfo *fsinfo);
->  extern int nfs4_proc_layoutcommit(struct nfs4_layoutcommit_data *data,
->  				  bool sync);
-> +extern int nfs4_detect_session_trunking(struct nfs_client *clp,
-> +		struct nfs41_exchange_id_res *res, struct rpc_xprt *xprt);
->  
->  static inline bool
->  is_ds_only_client(struct nfs_client *clp)
-> diff --git a/fs/nfs/nfs4client.c b/fs/nfs/nfs4client.c
-> index f356d50..5907b14 100644
-> --- a/fs/nfs/nfs4client.c
-> +++ b/fs/nfs/nfs4client.c
-> @@ -595,6 +595,99 @@ out_major_mismatch:
->  	return false;
->  }
->  
-> +/*
-> + * Returns true if server minor ids match
-> + */
-> +static bool
-> +nfs4_check_serverowner_minor_id(struct nfs41_server_owner *o1,
-> +				struct nfs41_server_owner *o2)
-> +{
-> +	/* Check eir_server_owner so_minor_id */
-> +	if (o1->minor_id != o2->minor_id)
-> +		goto out_minor_mismatch;
-> +
-> +	dprintk("NFS: --> %s server owner minor IDs match\n", __func__);
-> +	return true;
-> +
-> +out_minor_mismatch:
-> +	dprintk("NFS: --> %s server owner minor IDs do not match\n", __func__);
-> +	return false;
-> +}
-> +
-> +/*
-> + * Returns true if the server scopes match
-> + */
-> +static bool
-> +nfs4_check_server_scope(struct nfs41_server_scope *s1,
-> +			struct nfs41_server_scope *s2)
-> +{
-> +	if (s1->server_scope_sz != s2->server_scope_sz)
-> +		goto out_scope_mismatch;
-> +	if (memcmp(s1->server_scope, s2->server_scope,
-> +		   s1->server_scope_sz) != 0)
-> +		goto out_scope_mismatch;
-> +
-> +	dprintk("NFS: --> %s server scopes match\n", __func__);
-> +	return true;
-> +
-> +out_scope_mismatch:
-> +	dprintk("NFS: --> %s server scopes do not match\n",
-> +		__func__);
-> +	return false;
-> +}
-> +
-> +/**
-> + * nfs4_detect_session_trunking - Checks for ssession trunking called
-                                                ^^^^^^^^
-You have an extra "s" at the beginning of "session".
-
-
-> + * after a successuful EXCHANGE_ID testing a multi-addr connection to be
-              ^^^^^^^^^^^
-Should be "successful", without the extra "u".
-
-Thanks,
-Anna
-
-> + * potentially added as a session trunk
-> + *
-> + * @clp:    original mount nfs_client
-> + * @res:    result structure from an exchange_id using the original mount
-> + *          nfs_client with a new multi_addr transport
-> + *
-> + * Returns zero on success, otherwise -EINVAL
-> + *
-> + * Note: since the exchange_id for the new multi_addr transport uses the
-> + * same nfs_client from the original mount, the cl_owner_id is reused,
-> + * so eir_clientowner is the same.
-> + */
-> +int nfs4_detect_session_trunking(struct nfs_client *clp,
-> +				 struct nfs41_exchange_id_res *res,
-> +				 struct rpc_xprt *xprt)
-> +{
-> +	int status = -EINVAL;
-> +	/* Check eir_clientid */
-> +	if (!nfs4_match_clientids(clp->cl_clientid, res->clientid))
-> +		goto out;
-> +
-> +	/* Check eir_server_owner so_major_id */
-> +	if (!nfs4_check_serverowner_major_id(clp->cl_serverowner,
-> +					     res->server_owner))
-> +		goto out;
-> +
-> +	/* Check eir_server_owner so_minor_id */
-> +	if (!nfs4_check_serverowner_minor_id(clp->cl_serverowner,
-> +					     res->server_owner))
-> +		goto out;
-> +
-> +	/* Check eir_server_scope */
-> +	if (!nfs4_check_server_scope(clp->cl_serverscope, res->server_scope))
-> +		goto out;
-> +
-> +	status = 0;
-> +out:
-> +	if (status)
-> +		pr_info("NFS:  %s: Session trunking failed for %s status %d\n",
-> +			clp->cl_hostname,
-> +			xprt->address_strings[RPC_DISPLAY_ADDR], status);
-> +	else
-> +		pr_info("NFS:  %s: Session trunking succeeded for %s\n",
-> +			clp->cl_hostname,
-> +			xprt->address_strings[RPC_DISPLAY_ADDR]);
-> +
-> +	return status;
-> +}
-> +
->  /**
->   * nfs41_walk_client_list - Find nfs_client that matches a client/server owner
->   *
-> 
+SGkgTGludXMsDQoNClRoZSBmb2xsb3dpbmcgY2hhbmdlcyBzaW5jZSBjb21taXQgOTQ0MTcxY2Jm
+NDk5ZDM0NDVjNzQ5ZjdjMTNjNDZkZTBhNTY0YTkwNToNCg0KICBwTkZTOiBBY3RpdmVseSBzZXQg
+YXR0cmlidXRlcyBhcyBpbnZhbGlkIGlmIExBWU9VVENPTU1JVCBpcyBvdXRzdGFuZGluZyAoMjAx
+Ni0wNy0yOCAxNDo0OTowOCAtMDQwMCkNCg0KYXJlIGF2YWlsYWJsZSBpbiB0aGUgZ2l0IHJlcG9z
+aXRvcnkgYXQ6DQoNCiAgZ2l0Oi8vZ2l0LmxpbnV4LW5mcy5vcmcvcHJvamVjdHMvdHJvbmRteS9s
+aW51eC1uZnMuZ2l0IHRhZ3MvbmZzLWZvci00LjgtMg0KDQpmb3IgeW91IHRvIGZldGNoIGNoYW5n
+ZXMgdXAgdG8gOGQ0ODAzMjZjM2Q2OTIxZmY1ZjFjYzk4OGM5OTNiZDU3MjI0OGRlYjoNCg0KICBO
+RlN2NDogQ2FwIHRoZSB0cmFuc3BvcnQgcmVjb25uZWN0aW9uIHRpbWVyIGF0IDEvMiBsZWFzZSBw
+ZXJpb2QgKDIwMTYtMDgtMDUgMTk6MjI6MjIgLTA0MDApDQoNCi0tLS0tLS0tLS0tLS0tLS0tLS0t
+LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0NCk5GUyBjbGllbnQg
+YnVnZml4ZXMgZm9yIExpbnV4IDQuOA0KDQpIaWdobGlnaHRzIGluY2x1ZGU6DQoNCi0gU3RhYmxl
+IHBhdGNoIGZyb20gT2xnYSB0byBmaXggUlBDU0VDX0dTUyB1cGNhbGxzIHdoZW4gdGhlIHNhbWUg
+dXNlciBuZWVkcw0KICBtdWx0aXBsZSBkaWZmZXJlbnQgc2VjdXJpdHkgc2VydmljZXMgKGUuZy4g
+a3JiNWkgYW5kIGtyYjVwKS4NCi0gU3RhYmxlIHBhdGNoIHRvIGZpeCBhIHJlZ3Jlc3Npb24gaW50
+cm9kdWNlZCBieSB0aGUgdXNlIG9mIFNPX1JFVVNFUE9SVCwNCiAgYW5kIHRoYXQgcHJldmVudGVk
+IHRoZSB1c2Ugb2YgbXVsdGlwbGUgZGlmZmVyZW50IE5GUyB2ZXJzaW9ucyB0byB0aGUNCiAgc2Ft
+ZSBzZXJ2ZXIuDQotIFRDUCBzb2NrZXQgcmVjb25uZWN0aW9uIHRpbWVyIGZpeGVzLg0KLSBQYXRj
+aCBmcm9tIE5laWwgdG8gZGlzYWJsZSB0aGUgdXNlIG9mIElQdjYgdGVtcG9yYXJ5IGFkZHJlc3Nl
+cy4NCg0KQ2hlZXJzDQogIFRyb25kDQoNCi0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
+LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0NCk5laWxCcm93biAoMSk6DQogICAgICBT
+VU5SUEM6IGRpc2FibGUgdGhlIHVzZSBvZiBJUHY2IHRlbXBvcmFyeSBhZGRyZXNzZXMuDQoNCk9s
+Z2EgS29ybmlldnNrYWlhICgxKToNCiAgICAgIFNVTlJQQzogYWxsb3cgZm9yIHVwY2FsbHMgZm9y
+IHNhbWUgdWlkIGJ1dCBkaWZmZXJlbnQgZ3NzIHNlcnZpY2UNCg0KVHJvbmQgTXlrbGVidXN0ICg3
+KToNCiAgICAgIFNVTlJQQzogSGFuZGxlIEVBRERSTk9UQVZBSUwgb24gY29ubmVjdGlvbiBmYWls
+dXJlcw0KICAgICAgU1VOUlBDOiBGaXggdXAgc29ja2V0IGF1dG9kaXNjb25uZWN0DQogICAgICBO
+RlN2NC4yOiBMQVlPVVRTVEFUUyBtYXkgcmV0dXJuIE5GUzRFUlJfQURNSU4vREVMRUdfUkVWT0tF
+RA0KICAgICAgU1VOUlBDOiBGaXggcmVjb25uZWN0aW9uIHRpbWVvdXRzDQogICAgICBTVU5SUEM6
+IExpbWl0IHRoZSByZWNvbm5lY3QgYmFja29mZiB0aW1lciB0byB0aGUgbWF4IFJQQyBtZXNzYWdl
+IHRpbWVvdXQNCiAgICAgIE5GU3Y0OiBDbGVhbnVwIHRoZSBzZXR0aW5nIG9mIHRoZSBuZnM0IGxl
+YXNlIHBlcmlvZA0KICAgICAgTkZTdjQ6IENhcCB0aGUgdHJhbnNwb3J0IHJlY29ubmVjdGlvbiB0
+aW1lciBhdCAxLzIgbGVhc2UgcGVyaW9kDQoNCiBmcy9uZnMvbmZzNDJwcm9jLmMgICAgICAgICAg
+ICAgfCAgMiArKw0KIGZzL25mcy9uZnM0X2ZzLmggICAgICAgICAgICAgICB8ICA0ICsrKw0KIGZz
+L25mcy9uZnM0cHJvYy5jICAgICAgICAgICAgICB8ICA5ICsrKy0tLS0NCiBmcy9uZnMvbmZzNHJl
+bmV3ZC5jICAgICAgICAgICAgfCAyMCArKysrKysrKysrKysrKw0KIGZzL25mcy9uZnM0c3RhdGUu
+YyAgICAgICAgICAgICB8ICA5ICsrKy0tLS0NCiBpbmNsdWRlL2xpbnV4L3N1bnJwYy9jbG50Lmgg
+ICAgfCAgMiArKw0KIGluY2x1ZGUvbGludXgvc3VucnBjL3hwcnQuaCAgICB8ICAzICsrLQ0KIG5l
+dC9zdW5ycGMvYXV0aF9nc3MvYXV0aF9nc3MuYyB8ICA4ICsrKy0tLQ0KIG5ldC9zdW5ycGMvY2xu
+dC5jICAgICAgICAgICAgICB8IDI0ICsrKysrKysrKysrKysrKysrDQogbmV0L3N1bnJwYy94cHJ0
+LmMgICAgICAgICAgICAgIHwgMjYgKysrKysrKysrKysrLS0tLS0tDQogbmV0L3N1bnJwYy94cHJ0
+c29jay5jICAgICAgICAgIHwgNjAgKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrLS0t
+LS0tLS0tDQogMTEgZmlsZXMgY2hhbmdlZCwgMTMwIGluc2VydGlvbnMoKyksIDM3IGRlbGV0aW9u
+cygtKQ0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFpbnRhaW5lciwg
+UHJpbWFyeURhdGENCnRyb25kLm15a2xlYnVzdEBwcmltYXJ5ZGF0YS5jb20NCg==
 
