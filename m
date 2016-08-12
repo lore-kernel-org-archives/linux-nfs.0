@@ -1,61 +1,141 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from us-smtp-delivery-194.mimecast.com ([216.205.24.194]:39692 "EHLO
-	us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1752238AbcHLTIE (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 12 Aug 2016 15:08:04 -0400
-From: Trond Myklebust <trondmy@primarydata.com>
-To: "torvalds@linux-foundation.org" <torvalds@linux-foundation.org>
-CC: "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: [GIT PULL] Please pull NFS client bugfixes for Linux 4.8
-Date: Fri, 12 Aug 2016 19:05:48 +0000
-Message-ID: <1471028747.8433.1.camel@primarydata.com>
+Received: from mx143.netapp.com ([216.240.21.24]:20237 "EHLO mx143.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752387AbcHLUh5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 12 Aug 2016 16:37:57 -0400
+Subject: Re: [PATCH Version 8 08/12] SUNRPC search xprt switch for sockaddr
+To: <andros@netapp.com>, <trond.myklebust@primarydata.com>
+References: <1470951574-18441-1-git-send-email-andros@netapp.com>
+ <1470951574-18441-9-git-send-email-andros@netapp.com>
+CC: <linux-nfs@vger.kernel.org>
+From: Anna Schumaker <Anna.Schumaker@netapp.com>
+Message-ID: <9fd093b5-3367-5ff2-4302-029a6158d3e1@Netapp.com>
+Date: Fri, 12 Aug 2016 16:37:53 -0400
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+In-Reply-To: <1470951574-18441-9-git-send-email-andros@netapp.com>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-SGkgTGludXMsDQoNClRoZSBmb2xsb3dpbmcgY2hhbmdlcyBzaW5jZSBjb21taXQgOTQ0MTcxY2Jm
-NDk5ZDM0NDVjNzQ5ZjdjMTNjNDZkZTBhNTY0YTkwNToNCg0KICBwTkZTOiBBY3RpdmVseSBzZXQg
-YXR0cmlidXRlcyBhcyBpbnZhbGlkIGlmIExBWU9VVENPTU1JVCBpcyBvdXRzdGFuZGluZyAoMjAx
-Ni0wNy0yOCAxNDo0OTowOCAtMDQwMCkNCg0KYXJlIGF2YWlsYWJsZSBpbiB0aGUgZ2l0IHJlcG9z
-aXRvcnkgYXQ6DQoNCiAgZ2l0Oi8vZ2l0LmxpbnV4LW5mcy5vcmcvcHJvamVjdHMvdHJvbmRteS9s
-aW51eC1uZnMuZ2l0IHRhZ3MvbmZzLWZvci00LjgtMg0KDQpmb3IgeW91IHRvIGZldGNoIGNoYW5n
-ZXMgdXAgdG8gOGQ0ODAzMjZjM2Q2OTIxZmY1ZjFjYzk4OGM5OTNiZDU3MjI0OGRlYjoNCg0KICBO
-RlN2NDogQ2FwIHRoZSB0cmFuc3BvcnQgcmVjb25uZWN0aW9uIHRpbWVyIGF0IDEvMiBsZWFzZSBw
-ZXJpb2QgKDIwMTYtMDgtMDUgMTk6MjI6MjIgLTA0MDApDQoNCi0tLS0tLS0tLS0tLS0tLS0tLS0t
-LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0NCk5GUyBjbGllbnQg
-YnVnZml4ZXMgZm9yIExpbnV4IDQuOA0KDQpIaWdobGlnaHRzIGluY2x1ZGU6DQoNCi0gU3RhYmxl
-IHBhdGNoIGZyb20gT2xnYSB0byBmaXggUlBDU0VDX0dTUyB1cGNhbGxzIHdoZW4gdGhlIHNhbWUg
-dXNlciBuZWVkcw0KICBtdWx0aXBsZSBkaWZmZXJlbnQgc2VjdXJpdHkgc2VydmljZXMgKGUuZy4g
-a3JiNWkgYW5kIGtyYjVwKS4NCi0gU3RhYmxlIHBhdGNoIHRvIGZpeCBhIHJlZ3Jlc3Npb24gaW50
-cm9kdWNlZCBieSB0aGUgdXNlIG9mIFNPX1JFVVNFUE9SVCwNCiAgYW5kIHRoYXQgcHJldmVudGVk
-IHRoZSB1c2Ugb2YgbXVsdGlwbGUgZGlmZmVyZW50IE5GUyB2ZXJzaW9ucyB0byB0aGUNCiAgc2Ft
-ZSBzZXJ2ZXIuDQotIFRDUCBzb2NrZXQgcmVjb25uZWN0aW9uIHRpbWVyIGZpeGVzLg0KLSBQYXRj
-aCBmcm9tIE5laWwgdG8gZGlzYWJsZSB0aGUgdXNlIG9mIElQdjYgdGVtcG9yYXJ5IGFkZHJlc3Nl
-cy4NCg0KQ2hlZXJzDQogIFRyb25kDQoNCi0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
-LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0NCk5laWxCcm93biAoMSk6DQogICAgICBT
-VU5SUEM6IGRpc2FibGUgdGhlIHVzZSBvZiBJUHY2IHRlbXBvcmFyeSBhZGRyZXNzZXMuDQoNCk9s
-Z2EgS29ybmlldnNrYWlhICgxKToNCiAgICAgIFNVTlJQQzogYWxsb3cgZm9yIHVwY2FsbHMgZm9y
-IHNhbWUgdWlkIGJ1dCBkaWZmZXJlbnQgZ3NzIHNlcnZpY2UNCg0KVHJvbmQgTXlrbGVidXN0ICg3
-KToNCiAgICAgIFNVTlJQQzogSGFuZGxlIEVBRERSTk9UQVZBSUwgb24gY29ubmVjdGlvbiBmYWls
-dXJlcw0KICAgICAgU1VOUlBDOiBGaXggdXAgc29ja2V0IGF1dG9kaXNjb25uZWN0DQogICAgICBO
-RlN2NC4yOiBMQVlPVVRTVEFUUyBtYXkgcmV0dXJuIE5GUzRFUlJfQURNSU4vREVMRUdfUkVWT0tF
-RA0KICAgICAgU1VOUlBDOiBGaXggcmVjb25uZWN0aW9uIHRpbWVvdXRzDQogICAgICBTVU5SUEM6
-IExpbWl0IHRoZSByZWNvbm5lY3QgYmFja29mZiB0aW1lciB0byB0aGUgbWF4IFJQQyBtZXNzYWdl
-IHRpbWVvdXQNCiAgICAgIE5GU3Y0OiBDbGVhbnVwIHRoZSBzZXR0aW5nIG9mIHRoZSBuZnM0IGxl
-YXNlIHBlcmlvZA0KICAgICAgTkZTdjQ6IENhcCB0aGUgdHJhbnNwb3J0IHJlY29ubmVjdGlvbiB0
-aW1lciBhdCAxLzIgbGVhc2UgcGVyaW9kDQoNCiBmcy9uZnMvbmZzNDJwcm9jLmMgICAgICAgICAg
-ICAgfCAgMiArKw0KIGZzL25mcy9uZnM0X2ZzLmggICAgICAgICAgICAgICB8ICA0ICsrKw0KIGZz
-L25mcy9uZnM0cHJvYy5jICAgICAgICAgICAgICB8ICA5ICsrKy0tLS0NCiBmcy9uZnMvbmZzNHJl
-bmV3ZC5jICAgICAgICAgICAgfCAyMCArKysrKysrKysrKysrKw0KIGZzL25mcy9uZnM0c3RhdGUu
-YyAgICAgICAgICAgICB8ICA5ICsrKy0tLS0NCiBpbmNsdWRlL2xpbnV4L3N1bnJwYy9jbG50Lmgg
-ICAgfCAgMiArKw0KIGluY2x1ZGUvbGludXgvc3VucnBjL3hwcnQuaCAgICB8ICAzICsrLQ0KIG5l
-dC9zdW5ycGMvYXV0aF9nc3MvYXV0aF9nc3MuYyB8ICA4ICsrKy0tLQ0KIG5ldC9zdW5ycGMvY2xu
-dC5jICAgICAgICAgICAgICB8IDI0ICsrKysrKysrKysrKysrKysrDQogbmV0L3N1bnJwYy94cHJ0
-LmMgICAgICAgICAgICAgIHwgMjYgKysrKysrKysrKysrLS0tLS0tDQogbmV0L3N1bnJwYy94cHJ0
-c29jay5jICAgICAgICAgIHwgNjAgKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrLS0t
-LS0tLS0tDQogMTEgZmlsZXMgY2hhbmdlZCwgMTMwIGluc2VydGlvbnMoKyksIDM3IGRlbGV0aW9u
-cygtKQ0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFpbnRhaW5lciwg
-UHJpbWFyeURhdGENCnRyb25kLm15a2xlYnVzdEBwcmltYXJ5ZGF0YS5jb20NCg==
+Hi Andy,
+
+On 08/11/2016 05:39 PM, andros@netapp.com wrote:
+> From: Andy Adamson <andros@netapp.com>
+> 
+> Signed-off-by: Andy Adamson <andros@netapp.com>
+> ---
+>  include/linux/sunrpc/clnt.h          |  2 ++
+>  include/linux/sunrpc/xprtmultipath.h |  2 ++
+>  net/sunrpc/clnt.c                    | 15 +++++++++++++++
+>  net/sunrpc/xprtmultipath.c           | 24 +++++++++++++++++++++++-
+>  4 files changed, 42 insertions(+), 1 deletion(-)
+> 
+> diff --git a/include/linux/sunrpc/clnt.h b/include/linux/sunrpc/clnt.h
+> index 28cbc81..2db687c 100644
+> --- a/include/linux/sunrpc/clnt.h
+> +++ b/include/linux/sunrpc/clnt.h
+> @@ -200,5 +200,7 @@ const char *rpc_proc_name(const struct rpc_task *task);
+>  
+>  void rpc_clnt_xprt_switch_put(struct rpc_clnt *);
+>  void rpc_clnt_xprt_switch_add_xprt(struct rpc_clnt *, struct rpc_xprt *);
+> +bool rpc_clnt_xprt_switch_find_addr(struct rpc_clnt *clnt,
+> +			const struct sockaddr *sap);
+>  #endif /* __KERNEL__ */
+>  #endif /* _LINUX_SUNRPC_CLNT_H */
+> diff --git a/include/linux/sunrpc/xprtmultipath.h b/include/linux/sunrpc/xprtmultipath.h
+> index 5a9acff..bc354bd 100644
+> --- a/include/linux/sunrpc/xprtmultipath.h
+> +++ b/include/linux/sunrpc/xprtmultipath.h
+> @@ -66,4 +66,6 @@ extern struct rpc_xprt *xprt_iter_xprt(struct rpc_xprt_iter *xpi);
+>  extern struct rpc_xprt *xprt_iter_get_xprt(struct rpc_xprt_iter *xpi);
+>  extern struct rpc_xprt *xprt_iter_get_next(struct rpc_xprt_iter *xpi);
+>  
+> +extern bool rpc_xprt_switch_find_addr(struct rpc_xprt_switch *xps,
+> +		const struct sockaddr *sap);
+>  #endif
+> diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+> index 35df635..e3cfced 100644
+> --- a/net/sunrpc/clnt.c
+> +++ b/net/sunrpc/clnt.c
+> @@ -2685,6 +2685,21 @@ void rpc_clnt_xprt_switch_add_xprt(struct rpc_clnt *clnt, struct rpc_xprt *xprt)
+>  }
+>  EXPORT_SYMBOL_GPL(rpc_clnt_xprt_switch_add_xprt);
+>  
+> +bool rpc_clnt_xprt_switch_find_addr(struct rpc_clnt *clnt,
+> +				    const struct sockaddr *sap)
+
+Since this is only returning a yes/no answer, can you rename it to rpc_clnt_xprt_switch_has_addr()?
+
+> +{
+> +	struct rpc_xprt_switch *xps;
+> +	bool ret;
+> +
+> +	xps = rcu_dereference(clnt->cl_xpi.xpi_xpswitch);
+> +
+> +	rcu_read_lock();
+> +	ret = rpc_xprt_switch_find_addr(xps, sap);
+> +	rcu_read_unlock();
+> +	return ret;
+> +}
+> +EXPORT_SYMBOL_GPL(rpc_clnt_xprt_switch_find_addr);
+> +
+>  #if IS_ENABLED(CONFIG_SUNRPC_DEBUG)
+>  static void rpc_show_header(void)
+>  {
+> diff --git a/net/sunrpc/xprtmultipath.c b/net/sunrpc/xprtmultipath.c
+> index 66c9d63..8798726 100644
+> --- a/net/sunrpc/xprtmultipath.c
+> +++ b/net/sunrpc/xprtmultipath.c
+> @@ -15,6 +15,7 @@
+>  #include <asm/cmpxchg.h>
+>  #include <linux/spinlock.h>
+>  #include <linux/sunrpc/xprt.h>
+> +#include <linux/sunrpc/addr.h>
+>  #include <linux/sunrpc/xprtmultipath.h>
+>  
+>  typedef struct rpc_xprt *(*xprt_switch_find_xprt_t)(struct list_head *head,
+> @@ -49,7 +50,8 @@ void rpc_xprt_switch_add_xprt(struct rpc_xprt_switch *xps,
+>  	if (xprt == NULL)
+>  		return;
+>  	spin_lock(&xps->xps_lock);
+> -	if (xps->xps_net == xprt->xprt_net || xps->xps_net == NULL)
+> +	if ((xps->xps_net == xprt->xprt_net || xps->xps_net == NULL) &&
+> +	    !rpc_xprt_switch_find_addr(xps, (struct sockaddr *)&xprt->addr))
+>  		xprt_switch_add_xprt_locked(xps, xprt);
+>  	spin_unlock(&xps->xps_lock);
+>  }
+> @@ -232,6 +234,26 @@ struct rpc_xprt *xprt_iter_current_entry(struct rpc_xprt_iter *xpi)
+>  	return xprt_switch_find_current_entry(head, xpi->xpi_cursor);
+>  }
+>  
+> +bool rpc_xprt_switch_find_addr(struct rpc_xprt_switch *xps,
+> +			       const struct sockaddr *sap)
+
+Same here:  rpc_xprt_switch_has_addr()
+
+Thanks,
+Anna
+
+> +{
+> +	struct list_head *head;
+> +	struct rpc_xprt *pos;
+> +
+> +	if (xps == NULL || sap == NULL)
+> +		return false;
+> +
+> +	head = &xps->xps_xprt_list;
+> +	list_for_each_entry_rcu(pos, head, xprt_switch) {
+> +		if (rpc_cmp_addr_port(sap, (struct sockaddr *)&pos->addr)) {
+> +			pr_info("RPC:   addr %s already in xprt switch\n",
+> +				pos->address_strings[RPC_DISPLAY_ADDR]);
+> +			return true;
+> +		}
+> +	}
+> +	return false;
+> +}
+> +
+>  static
+>  struct rpc_xprt *xprt_switch_find_next_entry(struct list_head *head,
+>  		const struct rpc_xprt *cur)
+> 
 
