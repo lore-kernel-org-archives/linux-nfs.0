@@ -1,206 +1,82 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:45798 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751243AbcHNS7f (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 14 Aug 2016 14:59:35 -0400
-Content-Type: text/plain; charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 9.3 \(3124\))
-Subject: Re: [PATCH] libnfsidmap: Query DNS for the the NFSv4 domain
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <1470950774-3649-1-git-send-email-steved@redhat.com>
-Date: Sun, 14 Aug 2016 14:59:23 -0400
+Received: from mail-wm0-f65.google.com ([74.125.82.65]:36209 "EHLO
+	mail-wm0-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751788AbcHNWN4 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 14 Aug 2016 18:13:56 -0400
+Received: by mail-wm0-f65.google.com with SMTP id i138so8182488wmf.3
+        for <linux-nfs@vger.kernel.org>; Sun, 14 Aug 2016 15:13:55 -0700 (PDT)
+Date: Mon, 15 Aug 2016 00:13:52 +0200
+From: "Yann E. MORIN" <yann.morin.1998@free.fr>
+To: Chuck Lever <chuck.lever@oracle.com>
 Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <CBF9A3DE-7B43-4838-BA27-9B9E60AB54FB@oracle.com>
-References: <1470950774-3649-1-git-send-email-steved@redhat.com>
-To: Steve Dickson <SteveD@redhat.com>
+Subject: Re: [PATCH rpcbind] src: include cdefs.h for the __P() macro
+Message-ID: <20160814221352.GI30771@free.fr>
+References: <1471097125-13193-1-git-send-email-yann.morin.1998@free.fr>
+ <7736F23D-7AA5-4ABD-9693-99C9DCE03B91@oracle.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=utf-8
+In-Reply-To: <7736F23D-7AA5-4ABD-9693-99C9DCE03B91@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hey Steve-
+Chuck, All,
 
-Sorry for the delay, and thanks for putting this together!
-
-
-> On Aug 11, 2016, at 5:26 PM, Steve Dickson <SteveD@redhat.com> wrote:
+On 2016-08-14 14:30 -0400, Chuck Lever spake thusly:
+> > On Aug 13, 2016, at 10:05 AM, Yann E. MORIN <yann.morin.1998@free.fr> wrote:
+> > 
+> > The __P() macro is defined in cdefs.h, so we must include it explicitly
+> > rather than relying on it being included by another header.
+> > 
+> > cdefs.h is a glibc-ism; glibc includes it almost everywhere from its own
+> > headers. So it automatically gets included for glibc.
+> > 
+> > However, cdefs.h is not present in musl, so its headers do not include
+> > it. We must thus include it when we need __P() (of course, one will have
+> > to provide his own cdefs.h in this case).
 > 
-> In domain_from_dns(), when at the hostname is a FQHN
-> query the DNS server for the _nfsv4idmapdomain TXT
-> record. If the record exists, use that as the
-> NFSv4 domain.
-> 
-> Note, this query will only happen if the domain name
-> is not set in the /etc/idmapd.conf
+> Simply adding "#include <sys/cdefs.h>" seems like the wrong approach.
+> If cdefs.h is not guaranteed to exist, the appropriate thing to do
+> is provide some autoconf machinery to define __P() in its absence.
 
-Is there a man page update that goes with this? The order in
-which the library searches for the domain name should be
-documented. idmapd.conf(5), maybe.
+OpenEmbedded provides comaptibility headers:
+    http://git.openembedded.org/openembedded-core/tree/meta/recipes-core/bsd-headers/bsd-headers
 
-Also, some indication of when a change to the TXT record can
-be observed by users could be mentioned.
+In Buildroot, we're adding them too (not yet applied, WIP):
+    http://lists.busybox.net/pipermail/buildroot/2016-August/169722.html
 
-I recall that the server-side ID mapper is a little different
-than the client side. Does this TXT record affect server
-idmapper behavior too? If so, when does a TXT record change
-take effect?
+Other embedded buildsystem may each have their own fix in a way or
+another...
 
-Each time nfsidmap is invoked, it will now fire off a DNS
-lookup. That might have performance implications, but of
-course the fix is to ensure the domain is set locally.
+Mainstream distros are more-or-less all based on glibc, except for a few
+outliers, like Alpine Linux (also based on musl), and they've gone on
+the "remove __P()" route:
+    http://git.alpinelinux.org/cgit/aports/tree/main/rpcbind/0001-Avoid-use-of-glibc-sys-cdefs.h-header.patch
 
-Can that DNS lookup ever happen before the network is up?
+> On the other hand, I wonder if we need to continue to preserve K&R C
+> compatibility in this code base. Perhaps instead the uses of __P()
+> should be eliminated?
 
+I tried to provide a minimalist approach, that consists in assuming that
+cdefs.h is present.
 
-> Signed-off-by: Steve Dickson <steved@redhat.com>
-> ---
-> libnfsidmap.c | 104 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++-
-> 1 file changed, 103 insertions(+), 1 deletion(-)
-> 
-> diff --git a/libnfsidmap.c b/libnfsidmap.c
-> index 2db4d13..7b8c0ed 100644
-> --- a/libnfsidmap.c
-> +++ b/libnfsidmap.c
-> @@ -53,6 +53,10 @@
-> #include <stdarg.h>
-> #include <dlfcn.h>
-> #include <ctype.h>
-> +#include <resolv.h>
-> +#include <arpa/nameser.h>
-> +#include <arpa/nameser_compat.h>
-> +
-> #include "nfsidmap.h"
-> #include "nfsidmap_internal.h"
-> #include "cfg.h"
-> @@ -79,6 +83,11 @@ gid_t nobody_gid = (gid_t)-1;
-> #define IDMAPD_DEFAULT_DOMAIN "localdomain"
-> #endif
-> 
-> +#ifndef NFS4DNSTXTREC
-> +#define NFS4DNSTXTREC "_nfsv4idmapdomain"
-> +#endif
-> +
-> +
-> /* Default logging fuction */
-> static void default_logger(const char *fmt, ...)
-> {
-> @@ -114,6 +123,93 @@ static int id_as_chars(char *name, uid_t *id)
-> 	return 1;
-> }
-> 
-> +static int dns_txt_query(char *domain, char **nfs4domain)
-> +{
-> +	char *txtname = NFS4DNSTXTREC;
-> +	char *msg, *answ, *eom, *mptr; 
-> +	int len, status = -1;
-> +	HEADER *hdr;
-> +	
-> +	msg = calloc(1, NS_MAXMSG);
-> +	if (msg == NULL)
-> +		return -1;
-> +
-> +	answ = calloc(1, NS_MAXMSG);
-> +	if (answ == NULL) {
-> +		free(msg);
-> +		return -1;
-> +	}
-> +
-> +	if (res_init() < 0) {
-> +		IDMAP_LOG(2, ("libnfsidmap: res_init() failed for %s.%s: %s\n",
-> +			txtname, domain, hstrerror(h_errno)));
-> +		goto freemem;
-> +	}
-> +	len = res_querydomain(txtname, domain, C_IN, T_TXT, msg, NS_MAXMSG);
-> +	if (len < 0) {
-> +		IDMAP_LOG(2, ("libnfsidmap: res_querydomain() failed for %s.%s: %s\n",
-> +			txtname, domain, hstrerror(h_errno)));
-> +		goto freemem;
-> +	}
-> +	hdr = (HEADER *)msg;
-> +
-> +	/* See if there is an answer */
-> +	if (ntohs(hdr->ancount) < 1) {
-> +		IDMAP_LOG(2, ("libnfsidmap: No TXT record for %s.%s\n",
-> +			txtname, domain));
-> +		goto freemem;
-> +	}
-> +	/* find the EndOfMessage */
-> +	eom = msg + len;
-> +
-> +	/* skip header */
-> +	mptr = &msg[HFIXEDSZ];
-> +
-> +	/* skip name field in question section */
-> +	mptr += dn_skipname(mptr, eom) + QFIXEDSZ;
-> +
-> +	/* read in the question */
-> +	len = dn_expand(msg, eom, mptr, answ, NS_MAXDNAME);
-> +	if (len < 0) { /* does this really matter?? */
-> +		IDMAP_LOG(2, ("libnfsidmap: No question section for %s.%s: %s\n",
-> +			txtname, domain, hstrerror(h_errno)));
-> +		goto freemem;
-> +	}
-> +
-> +	/*
-> +	 * Now, dissect the answer section, Note: if there
-> +	 * are more than one answer only the first
-> +	 * one will be used. 
-> +	 */
-> +
-> +	/* skip passed the name field  */
-> +	mptr += dn_skipname(mptr, eom);
-> +	/* skip pass the type class and ttl fields */
-> +	mptr += 2 + 2 + 4;
-> +
-> +	/* make sure there is some data */
-> +	GETSHORT(len, mptr);
-> +	if (len < 0) {
-> +		IDMAP_LOG(2, ("libnfsidmap: No data in answer for %s.%s\n",
-> +			txtname, domain));
-> +		goto freemem;
-> +	}
-> +	/* get the lenght field */
-> +	len = (int)*mptr++;
-> +	/* copy the data */
-> +	memcpy(answ, mptr, len);
-> +	answ[len] = '\0';
-> +	
-> +	*nfs4domain = strdup(answ);
-> +	status = 0;
-> +
-> +freemem:
-> +	free(msg);
-> +	free(answ);
-> +
-> +	return (status);
-> +}
-> +
-> static int domain_from_dns(char **domain)
-> {
-> 	struct hostent *he;
-> @@ -125,7 +221,13 @@ static int domain_from_dns(char **domain)
-> 		return -1;
-> 	if ((c = strchr(he->h_name, '.')) == NULL || *++c == '\0')
-> 		return -1;
-> -	*domain = strdup(c);
-> +	/* 
-> +	 * Query DNS to see if the _nfsv4idmapdomain TXT record exists
-> +	 * If so use it... 
-> +	 */
-> +	if (dns_txt_query(c, domain) < 0)
-> +		*domain = strdup(c);
-> +
-> 	return 0;
-> }
-> 
-> -- 
-> 2.7.4
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+But I do agree that pre-ANSI compatibility is probably a little tiny
+wee bit excessive nowadays. Virtually all current compilers do accept
+function prototypes, nowadays...
 
---
-Chuck Lever
+I can work on a patch that does just get rid of the use of __P(). (we
+can't really vampirise the patch from Alpine, as there's no SoB or such
+origin information on it; not that redoing the patch would be too
+difficult either...).
 
+So, what route, now? ;-)
 
+Regards,
+Yann E. MORIN.
 
+-- 
+.-----------------.--------------------.------------------.--------------------.
+|  Yann E. MORIN  | Real-Time Embedded | /"\ ASCII RIBBON | Erics' conspiracy: |
+| +33 662 376 056 | Software  Designer | \ / CAMPAIGN     |  ___               |
+| +33 223 225 172 `------------.-------:  X  AGAINST      |  \e/  There is no  |
+| http://ymorin.is-a-geek.org/ | _/*\_ | / \ HTML MAIL    |   v   conspiracy.  |
+'------------------------------^-------^------------------^--------------------'
