@@ -1,153 +1,196 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:42944 "EHLO
+Received: from aserp1040.oracle.com ([141.146.126.69]:45798 "EHLO
 	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932205AbcHNSau (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 14 Aug 2016 14:30:50 -0400
+	with ESMTP id S1751243AbcHNS7f (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 14 Aug 2016 14:59:35 -0400
 Content-Type: text/plain; charset=us-ascii
 Mime-Version: 1.0 (Mac OS X Mail 9.3 \(3124\))
-Subject: Re: [PATCH rpcbind] src: include cdefs.h for the __P() macro
+Subject: Re: [PATCH] libnfsidmap: Query DNS for the the NFSv4 domain
 From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <1471097125-13193-1-git-send-email-yann.morin.1998@free.fr>
-Date: Sun, 14 Aug 2016 14:30:43 -0400
+In-Reply-To: <1470950774-3649-1-git-send-email-steved@redhat.com>
+Date: Sun, 14 Aug 2016 14:59:23 -0400
 Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <7736F23D-7AA5-4ABD-9693-99C9DCE03B91@oracle.com>
-References: <1471097125-13193-1-git-send-email-yann.morin.1998@free.fr>
-To: "Yann E. MORIN" <yann.morin.1998@free.fr>
+Message-Id: <CBF9A3DE-7B43-4838-BA27-9B9E60AB54FB@oracle.com>
+References: <1470950774-3649-1-git-send-email-steved@redhat.com>
+To: Steve Dickson <SteveD@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Yann-
+Hey Steve-
+
+Sorry for the delay, and thanks for putting this together!
 
 
-> On Aug 13, 2016, at 10:05 AM, Yann E. MORIN <yann.morin.1998@free.fr> wrote:
+> On Aug 11, 2016, at 5:26 PM, Steve Dickson <SteveD@redhat.com> wrote:
 > 
-> The __P() macro is defined in cdefs.h, so we must include it explicitly
-> rather than relying on it being included by another header.
+> In domain_from_dns(), when at the hostname is a FQHN
+> query the DNS server for the _nfsv4idmapdomain TXT
+> record. If the record exists, use that as the
+> NFSv4 domain.
 > 
-> cdefs.h is a glibc-ism; glibc includes it almost everywhere from its own
-> headers. So it automatically gets included for glibc.
-> 
-> However, cdefs.h is not present in musl, so its headers do not include
-> it. We must thus include it when we need __P() (of course, one will have
-> to provide his own cdefs.h in this case).
+> Note, this query will only happen if the domain name
+> is not set in the /etc/idmapd.conf
 
-Simply adding "#include <sys/cdefs.h>" seems like the wrong approach.
-If cdefs.h is not guaranteed to exist, the appropriate thing to do
-is provide some autoconf machinery to define __P() in its absence.
+Is there a man page update that goes with this? The order in
+which the library searches for the domain name should be
+documented. idmapd.conf(5), maybe.
 
-On the other hand, I wonder if we need to continue to preserve K&R C
-compatibility in this code base. Perhaps instead the uses of __P()
-should be eliminated?
+Also, some indication of when a change to the TXT record can
+be observed by users could be mentioned.
+
+I recall that the server-side ID mapper is a little different
+than the client side. Does this TXT record affect server
+idmapper behavior too? If so, when does a TXT record change
+take effect?
+
+Each time nfsidmap is invoked, it will now fire off a DNS
+lookup. That might have performance implications, but of
+course the fix is to ensure the domain is set locally.
+
+Can that DNS lookup ever happen before the network is up?
 
 
-> Signed-off-by: "Yann E. MORIN" <yann.morin.1998@free.fr>
+> Signed-off-by: Steve Dickson <steved@redhat.com>
 > ---
-> src/check_bound.c  | 1 +
-> src/pmap_svc.c     | 1 +
-> src/rpcb_svc.c     | 1 +
-> src/rpcb_svc_4.c   | 1 +
-> src/rpcb_svc_com.c | 1 +
-> src/rpcbind.c      | 1 +
-> src/util.c         | 1 +
-> src/warmstart.c    | 1 +
-> 8 files changed, 8 insertions(+)
+> libnfsidmap.c | 104 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++-
+> 1 file changed, 103 insertions(+), 1 deletion(-)
 > 
-> diff --git a/src/check_bound.c b/src/check_bound.c
-> index c70b845..df14fbc 100644
-> --- a/src/check_bound.c
-> +++ b/src/check_bound.c
-> @@ -49,6 +49,7 @@ static	char sccsid[] = "@(#)check_bound.c 1.11 89/04/21 Copyr 1989 Sun Micro";
+> diff --git a/libnfsidmap.c b/libnfsidmap.c
+> index 2db4d13..7b8c0ed 100644
+> --- a/libnfsidmap.c
+> +++ b/libnfsidmap.c
+> @@ -53,6 +53,10 @@
+> #include <stdarg.h>
+> #include <dlfcn.h>
+> #include <ctype.h>
+> +#include <resolv.h>
+> +#include <arpa/nameser.h>
+> +#include <arpa/nameser_compat.h>
+> +
+> #include "nfsidmap.h"
+> #include "nfsidmap_internal.h"
+> #include "cfg.h"
+> @@ -79,6 +83,11 @@ gid_t nobody_gid = (gid_t)-1;
+> #define IDMAPD_DEFAULT_DOMAIN "localdomain"
+> #endif
 > 
-> #include <sys/types.h>
-> #include <sys/socket.h>
-> +#include <sys/cdefs.h>
-> #include <rpc/rpc.h>
-> #include <stdio.h>
-> #include <netconfig.h>
-> diff --git a/src/pmap_svc.c b/src/pmap_svc.c
-> index ad28b93..5993c0b 100644
-> --- a/src/pmap_svc.c
-> +++ b/src/pmap_svc.c
-> @@ -49,6 +49,7 @@ static	char sccsid[] = "@(#)pmap_svc.c 1.23 89/04/05 Copyr 1984 Sun Micro";
-> #ifdef PORTMAP
-> #include <sys/types.h>
-> #include <sys/socket.h>
-> +#include <sys/cdefs.h>
-> #include <stdio.h>
-> #include <rpc/rpc.h>
-> #include <rpc/pmap_prot.h>
-> diff --git a/src/rpcb_svc.c b/src/rpcb_svc.c
-> index bd92201..eb5b49c 100644
-> --- a/src/rpcb_svc.c
-> +++ b/src/rpcb_svc.c
-> @@ -42,6 +42,7 @@
->  * version 3 of rpcbind.
->  */
-> #include <sys/types.h>
-> +#include <sys/cdefs.h>
-> #include <rpc/rpc.h>
-> #include <rpc/rpcb_prot.h>
-> #include <netconfig.h>
-> diff --git a/src/rpcb_svc_4.c b/src/rpcb_svc_4.c
-> index b673452..69d75e3 100644
-> --- a/src/rpcb_svc_4.c
-> +++ b/src/rpcb_svc_4.c
-> @@ -44,6 +44,7 @@
+> +#ifndef NFS4DNSTXTREC
+> +#define NFS4DNSTXTREC "_nfsv4idmapdomain"
+> +#endif
+> +
+> +
+> /* Default logging fuction */
+> static void default_logger(const char *fmt, ...)
+> {
+> @@ -114,6 +123,93 @@ static int id_as_chars(char *name, uid_t *id)
+> 	return 1;
+> }
 > 
-> #include <sys/types.h>
-> #include <sys/stat.h>
-> +#include <sys/cdefs.h>
-> #include <rpc/rpc.h>
-> #include <stdio.h>
-> #include <unistd.h>
-> diff --git a/src/rpcb_svc_com.c b/src/rpcb_svc_com.c
-> index 148fe42..9369e27 100644
-> --- a/src/rpcb_svc_com.c
-> +++ b/src/rpcb_svc_com.c
-> @@ -43,6 +43,7 @@
-> #include <sys/stat.h>
-> #include <sys/param.h>
-> #include <sys/poll.h>
-> +#include <sys/cdefs.h>
-> #include <bits/poll.h>
-> #include <sys/socket.h>
-> #include <rpc/rpc.h>
-> diff --git a/src/rpcbind.c b/src/rpcbind.c
-> index c4265cd..37fc660 100644
-> --- a/src/rpcbind.c
-> +++ b/src/rpcbind.c
-> @@ -50,6 +50,7 @@
-> #include <sys/file.h>
-> #include <sys/socket.h>
-> #include <sys/un.h>
-> +#include <sys/cdefs.h>
-> #include <netinet/in.h>
-> #include <rpc/rpc.h>
-> #include <rpc/rpc_com.h>
-> diff --git a/src/util.c b/src/util.c
-> index a6c835b..5bbec1d 100644
-> --- a/src/util.c
-> +++ b/src/util.c
-> @@ -42,6 +42,7 @@
-> #include <sys/types.h>
-> #include <sys/socket.h>
-> #include <sys/queue.h>
-> +#include <sys/cdefs.h>
-> #include <net/if.h>
-> #include <netinet/in.h>
-> #include <ifaddrs.h>
-> diff --git a/src/warmstart.c b/src/warmstart.c
-> index b6eb73e..f3a9c29 100644
-> --- a/src/warmstart.c
-> +++ b/src/warmstart.c
-> @@ -34,6 +34,7 @@
+> +static int dns_txt_query(char *domain, char **nfs4domain)
+> +{
+> +	char *txtname = NFS4DNSTXTREC;
+> +	char *msg, *answ, *eom, *mptr; 
+> +	int len, status = -1;
+> +	HEADER *hdr;
+> +	
+> +	msg = calloc(1, NS_MAXMSG);
+> +	if (msg == NULL)
+> +		return -1;
+> +
+> +	answ = calloc(1, NS_MAXMSG);
+> +	if (answ == NULL) {
+> +		free(msg);
+> +		return -1;
+> +	}
+> +
+> +	if (res_init() < 0) {
+> +		IDMAP_LOG(2, ("libnfsidmap: res_init() failed for %s.%s: %s\n",
+> +			txtname, domain, hstrerror(h_errno)));
+> +		goto freemem;
+> +	}
+> +	len = res_querydomain(txtname, domain, C_IN, T_TXT, msg, NS_MAXMSG);
+> +	if (len < 0) {
+> +		IDMAP_LOG(2, ("libnfsidmap: res_querydomain() failed for %s.%s: %s\n",
+> +			txtname, domain, hstrerror(h_errno)));
+> +		goto freemem;
+> +	}
+> +	hdr = (HEADER *)msg;
+> +
+> +	/* See if there is an answer */
+> +	if (ntohs(hdr->ancount) < 1) {
+> +		IDMAP_LOG(2, ("libnfsidmap: No TXT record for %s.%s\n",
+> +			txtname, domain));
+> +		goto freemem;
+> +	}
+> +	/* find the EndOfMessage */
+> +	eom = msg + len;
+> +
+> +	/* skip header */
+> +	mptr = &msg[HFIXEDSZ];
+> +
+> +	/* skip name field in question section */
+> +	mptr += dn_skipname(mptr, eom) + QFIXEDSZ;
+> +
+> +	/* read in the question */
+> +	len = dn_expand(msg, eom, mptr, answ, NS_MAXDNAME);
+> +	if (len < 0) { /* does this really matter?? */
+> +		IDMAP_LOG(2, ("libnfsidmap: No question section for %s.%s: %s\n",
+> +			txtname, domain, hstrerror(h_errno)));
+> +		goto freemem;
+> +	}
+> +
+> +	/*
+> +	 * Now, dissect the answer section, Note: if there
+> +	 * are more than one answer only the first
+> +	 * one will be used. 
+> +	 */
+> +
+> +	/* skip passed the name field  */
+> +	mptr += dn_skipname(mptr, eom);
+> +	/* skip pass the type class and ttl fields */
+> +	mptr += 2 + 2 + 4;
+> +
+> +	/* make sure there is some data */
+> +	GETSHORT(len, mptr);
+> +	if (len < 0) {
+> +		IDMAP_LOG(2, ("libnfsidmap: No data in answer for %s.%s\n",
+> +			txtname, domain));
+> +		goto freemem;
+> +	}
+> +	/* get the lenght field */
+> +	len = (int)*mptr++;
+> +	/* copy the data */
+> +	memcpy(answ, mptr, len);
+> +	answ[len] = '\0';
+> +	
+> +	*nfs4domain = strdup(answ);
+> +	status = 0;
+> +
+> +freemem:
+> +	free(msg);
+> +	free(answ);
+> +
+> +	return (status);
+> +}
+> +
+> static int domain_from_dns(char **domain)
+> {
+> 	struct hostent *he;
+> @@ -125,7 +221,13 @@ static int domain_from_dns(char **domain)
+> 		return -1;
+> 	if ((c = strchr(he->h_name, '.')) == NULL || *++c == '\0')
+> 		return -1;
+> -	*domain = strdup(c);
+> +	/* 
+> +	 * Query DNS to see if the _nfsv4idmapdomain TXT record exists
+> +	 * If so use it... 
+> +	 */
+> +	if (dns_txt_query(c, domain) < 0)
+> +		*domain = strdup(c);
+> +
+> 	return 0;
+> }
 > 
-> #include <sys/types.h>
-> #include <sys/stat.h>
-> +#include <sys/cdefs.h>
-> #include <stdio.h>
-> #include <rpc/rpc.h>
-> #include <rpc/rpcb_prot.h>
 > -- 
 > 2.7.4
 > 
