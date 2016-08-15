@@ -1,46 +1,85 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f196.google.com ([209.85.223.196]:35323 "EHLO
-	mail-io0-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932182AbcHOU6B (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 15 Aug 2016 16:58:01 -0400
-Subject: [PATCH v1 0/3] server-side NFS/RDMA patches proposed for v4.9
+Received: from mail-it0-f66.google.com ([209.85.214.66]:33284 "EHLO
+	mail-it0-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932182AbcHOU6K (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 15 Aug 2016 16:58:10 -0400
+Subject: [PATCH v1 1/3] rpcrdma: RDMA/CM private message data structure
 From: Chuck Lever <chuck.lever@oracle.com>
 To: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Mon, 15 Aug 2016 16:57:58 -0400
-Message-ID: <20160815205032.11731.16708.stgit@klimt.1015granger.net>
+Date: Mon, 15 Aug 2016 16:58:07 -0400
+Message-ID: <20160815205807.11731.64933.stgit@klimt.1015granger.net>
+In-Reply-To: <20160815205032.11731.16708.stgit@klimt.1015granger.net>
+References: <20160815205032.11731.16708.stgit@klimt.1015granger.net>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Posted for review, the following patch series makes these changes:
+Introduce data structure used by both client and server to exchange
+implementation details during RDMA/CM connection establishment.
 
-- Introduce simple RDMA-CM private message exchange
-- Support Remote Invalidation
+This is an experimental out-of-band exchange between Linux
+RPC-over-RDMA Version One implementations, replacing the deprecated
+CCP (see RFC 5666bis). The purpose of this extension is to enable
+prototyping of features that might be introduced in a subsequent
+version of RPC-over-RDMA.
 
-Available in the "nfsd-rdma-for-4.9" topic branch of this git repo:
+Suggested by Christoph Hellwig and Devesh Sharma.
 
-git://git.linux-nfs.org/projects/cel/cel-2.6.git
-
-
-Or for browsing:
-
-http://git.linux-nfs.org/?p=cel/cel-2.6.git;a=log;h=refs/heads/nfsd-rdma-for-4.9
-
-
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
+ include/linux/sunrpc/rpc_rdma.h |   35 +++++++++++++++++++++++++++++++++++
+ 1 file changed, 35 insertions(+)
 
-Chuck Lever (3):
-      rpcrdma: RDMA/CM private message data structure
-      svcrdma: Server-side support for rpcrdma_connect_private
-      svcrdma: support Remote Invalidation for prototyping
+diff --git a/include/linux/sunrpc/rpc_rdma.h b/include/linux/sunrpc/rpc_rdma.h
+index 3b1ff38..a7da6bf 100644
+--- a/include/linux/sunrpc/rpc_rdma.h
++++ b/include/linux/sunrpc/rpc_rdma.h
+@@ -41,6 +41,7 @@
+ #define _LINUX_SUNRPC_RPC_RDMA_H
+ 
+ #include <linux/types.h>
++#include <linux/bitops.h>
+ 
+ #define RPCRDMA_VERSION		1
+ #define rpcrdma_version		cpu_to_be32(RPCRDMA_VERSION)
+@@ -129,4 +130,38 @@ enum rpcrdma_proc {
+ #define rdma_done	cpu_to_be32(RDMA_DONE)
+ #define rdma_error	cpu_to_be32(RDMA_ERROR)
+ 
++/*
++ * Private extension to RPC-over-RDMA Version One.
++ * Message passed during RDMA-CM connection set-up.
++ *
++ * Add new fields at the end, and don't permute existing
++ * fields.
++ */
++struct rpcrdma_connect_private {
++	__be32			cp_magic;
++	u8			cp_version;
++	u8			cp_flags;
++	u8			cp_send_size;
++	u8			cp_recv_size;
++} __packed;
++
++#define rpcrdma_cmp_magic	__cpu_to_be32(0xf6ab0e18)
++
++enum {
++	RPCRDMA_CMP_VERSION		= 1,
++	RPCRDMA_CMP_F_SND_W_INV_OK	= BIT(0),
++};
++
++static inline u8
++rpcrdma_encode_buffer_size(unsigned int size)
++{
++	return (size >> 10) - 1;
++}
++
++static inline unsigned int
++rpcrdma_decode_buffer_size(u8 val)
++{
++	return ((unsigned int)val + 1) << 10;
++}
++
+ #endif				/* _LINUX_SUNRPC_RPC_RDMA_H */
 
-
- include/linux/sunrpc/rpc_rdma.h          |   35 ++++++++++++++++++
- include/linux/sunrpc/svc_rdma.h          |    1 +
- net/sunrpc/xprtrdma/svc_rdma_sendto.c    |   58 ++++++++++++++++++++++++++++--
- net/sunrpc/xprtrdma/svc_rdma_transport.c |   42 +++++++++++++++++++---
- 4 files changed, 128 insertions(+), 8 deletions(-)
-
---
-Chuck Lever
