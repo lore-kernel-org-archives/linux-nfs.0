@@ -1,262 +1,185 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-wm0-f68.google.com ([74.125.82.68]:36030 "EHLO
-	mail-wm0-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932115AbcHOUt7 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 15 Aug 2016 16:49:59 -0400
-Received: by mail-wm0-f68.google.com with SMTP id i138so12969214wmf.3
-        for <linux-nfs@vger.kernel.org>; Mon, 15 Aug 2016 13:49:58 -0700 (PDT)
-From: "Yann E. MORIN" <yann.morin.1998@free.fr>
-To: linux-nfs@vger.kernel.org
-Cc: libtirpc-devel@lists.sourceforge.net,
-        "Yann E. MORIN" <yann.morin.1998@free.fr>,
-        Chuck Lever <chuck.lever@oracle.com>,
-        Steve Dickson <SteveD@redhat.com>, Mike Frysinger <vapier@gentoo.org>
-Subject: [PATCHv2] src: remove use of the __P() macro
-Date: Mon, 15 Aug 2016 22:49:51 +0200
-Message-Id: <1471294191-17800-1-git-send-email-yann.morin.1998@free.fr>
+Received: from mail-it0-f68.google.com ([209.85.214.68]:33860 "EHLO
+	mail-it0-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932256AbcHOUuQ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 15 Aug 2016 16:50:16 -0400
+Subject: [PATCH v1 00/22] client-side NFS/RDMA patches proposed for v4.9
+From: Chuck Lever <chuck.lever@oracle.com>
+To: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
+Date: Mon, 15 Aug 2016 16:50:10 -0400
+Message-ID: <20160815195649.11652.32252.stgit@manet.1015granger.net>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The __P() macro is a legacy compatibility macro aimed making pre-ANSI
-(i.e. K&R) compilers that do not support function prototypes happy,
-while still allowing such prototypes for ANSI-compliant compilers.
+Posted for review, the following patch series makes these changes:
 
-Since virtually all compilers have been ANSI-compliant for a few decades
-now, use of __P() is totally useless.
+- Correct use of DMA API
+- Delay DMA mapping to permit device driver unload
+- Introduce simple RDMA-CM private message exchange
+- Support Remote Invalidation
+- Support s/g list when sending RPC calls
 
-Furthermore, __P() is defined in the non-standard sys/cdefs.h header.
-This header is present in glibc and uClibc, and both have it included
-from many of their headers. So, sys/cdefs.h is automagically included in
-most cases and its macros are available.
 
-However, the musl C library does not provide this sys/cdefs.h header.
-Thus, the build breaks on musl.
+Available in the "nfs-rdma-for-4.9" topic branch of this git repo:
 
-For all the above reasons, get rid of __P() wherever it is used; just
-always declare real function prototypes.
+git://git.linux-nfs.org/projects/cel/cel-2.6.git
 
-Signed-off-by: "Yann E. MORIN" <yann.morin.1998@free.fr>
-Cc: Chuck Lever <chuck.lever@oracle.com>
-Cc: Steve Dickson <SteveD@redhat.com>
-Cc: Mike Frysinger <vapier@gentoo.org>
+
+Or for browsing:
+
+http://git.linux-nfs.org/?p=cel/cel-2.6.git;a=log;h=refs/heads/nfs-rdma-for-4.9
+
+
+== Performance results ==
+
+This is NFSv3 / RDMA, CX-3 Pro (FRWR) on a 12-core dual-socket
+client and an 8-core single-socket server. The exported fs is a
+tmpfs. Note that iozone reports latency for a system call, not
+RPC round-trip.
+
+Test #1: The inline threshold is set to 1KB, and Remote Invalidation
+is disabled (RPC-over-RDMA Version One baseline).
+
+    O_DIRECT feature enabled
+    Microseconds/op Mode. Output is in microseconds per operation.
+    Command line used: /home/cel/bin/iozone -i0 -i1 -s128m -y1k -az -I -N
+
+              KB  reclen   write rewrite    read    reread
+          131072       1      61      62       51       51
+          131072       2      63      62       51       51
+          131072       4      64      63       52       51
+          131072       8      67      66       54       52
+          131072      16      71      70       56       56
+          131072      32      83      80       63       63
+          131072      64     104     100       83       82
+
+    O_DIRECT feature enabled
+    OPS Mode. Output is in operations per second.
+    Command line used: /home/cel/bin/iozone -i0 -i1 -s16m -r4k -t12 -I -O
+    Throughput test with 12 processes
+    Each process writes a 16384 Kbyte file in 4 Kbyte records
+
+    Children see throughput for 12 readers =   84198.24 ops/sec
+    Parent sees throughput for 12 readers  =   84065.36 ops/sec
+    Min throughput per process             =    5925.38 ops/sec
+    Max throughput per process             =    7346.19 ops/sec
+    Avg throughput per process             =    7016.52 ops/sec
+    Min xfer                               =    3300.00 ops
+
+Test #2: The inline threshold is set to 4KB, and Remote Invalidation
+is enabled. This means I/O payloads smaller than about 3.9KB do not
+use explicit RDMA at all, and no LOCAL_INV WR is needed for operations
+that do use RDMA.
+
+    O_DIRECT feature enabled
+    Microseconds/op Mode. Output is in microseconds per operation.
+    Command line used: /home/cel/bin/iozone -i0 -i1 -s128m -y1k -az -I -N
+
+              KB  reclen   write rewrite    read    reread
+          131072       1      41      43       37       37
+          131072       2      44      44       37       37
+          131072       4      61      59       41       41
+          131072       8      63      62       43       43
+          131072      16      68      66       47       47
+          131072      32      76      72       53       53
+          131072      64     100      95       70       70
+
+    O_DIRECT feature enabled
+    OPS Mode. Output is in operations per second.
+    Command line used: /home/cel/bin/iozone -i0 -i1 -s16m -r4k -t12 -I -O
+    Throughput test with 12 processes
+    Each process writes a 16384 Kbyte file in 4 Kbyte records
+
+    Children see throughput for 12 readers =  111520.52 ops/sec
+    Parent sees throughput for 12 readers  =  111250.80 ops/sec
+    Min throughput per process             =    8463.72 ops/sec
+    Max throughput per process             =    9658.81 ops/sec
+    Avg throughput per process             =    9293.38 ops/sec
+    Min xfer                               =    3596.00 ops
+
+== Analysis ==
+
+To understand these results, note that:
+
+Typical round-trip latency in this configuration for LOOKUP, ACCESS
+and GETATTR (which bear no data payload) is 30-35us.
+
+- An NFS READ call is a pure inline RDMA Send
+- A small NFS READ reply is a pure inline RDMA Send
+- A large NFS READ reply is an RDMA Write followed by an RDMA Send
+
+- A small NFS WRITE call is a pure inline RDMA Send
+- A large NFS WRITE call is an RDMA Send followed by the
+server doing an RDMA Read
+- An NFS WRITE reply is a pure inline RDMA Send
+
+In Test #2, the 1KB and 2KB I/Os are all pure inline. No explicit
+RDMA operation is involved. At 4KB and above, explicit RDMA is used
+with a single STag. The server invalidates each RPC's STag, so no
+LOCAL_INV WR is needed on the client for Test #2.
+
+The key take-aways are that:
+
+- For small payloads, NFS READ using RDMA Write with Remote
+Invalidation is nearly as fast as pure inline; both modes take
+about 40usec per RPC
+
+- The NFS READ improvement with Remote Invalidation enabled is
+effective even at 8KB payloads and above, but 10us is relatively
+small compared to other transmission costs
+
+- For small payloads, the RDMA Read round-trip still adds
+significant per-WRITE latency
 
 ---
-Changes v1 -> v2:
-  - don't include sys/cdefs.h; instead, get rid of the __P() use.
----
- src/check_bound.c  |  2 +-
- src/pmap_svc.c     | 10 +++++-----
- src/rpcb_svc.c     | 10 +++++-----
- src/rpcb_svc_4.c   | 14 ++++++--------
- src/rpcb_svc_com.c | 46 +++++++++++++++++++++++-----------------------
- src/rpcbind.c      | 12 ++++++------
- src/util.c         |  2 +-
- src/warmstart.c    |  4 ++--
- 8 files changed, 49 insertions(+), 51 deletions(-)
 
-diff --git a/src/check_bound.c b/src/check_bound.c
-index c70b845..92bfd36 100644
---- a/src/check_bound.c
-+++ b/src/check_bound.c
-@@ -70,7 +70,7 @@ static struct fdlist *fdhead;	/* Link list of the check fd's */
- static struct fdlist *fdtail;
- static char *nullstring = "";
- 
--static bool_t check_bound __P((struct fdlist *, char *uaddr));
-+static bool_t check_bound(struct fdlist *, char *uaddr);
- 
- /*
-  * Returns 1 if the given address is bound for the given addr & transport
-diff --git a/src/pmap_svc.c b/src/pmap_svc.c
-index ad28b93..4c744fe 100644
---- a/src/pmap_svc.c
-+++ b/src/pmap_svc.c
-@@ -60,11 +60,11 @@ static	char sccsid[] = "@(#)pmap_svc.c 1.23 89/04/05 Copyr 1984 Sun Micro";
- #include "rpcbind.h"
- #include "xlog.h"
- #include <rpc/svc_soc.h> /* svc_getcaller routine definition */
--static struct pmaplist *find_service_pmap __P((rpcprog_t, rpcvers_t,
--					       rpcprot_t));
--static bool_t pmapproc_change __P((struct svc_req *, SVCXPRT *, u_long));
--static bool_t pmapproc_getport __P((struct svc_req *, SVCXPRT *));
--static bool_t pmapproc_dump __P((struct svc_req *, SVCXPRT *));
-+static struct pmaplist *find_service_pmap(rpcprog_t, rpcvers_t,
-+					       rpcprot_t);
-+static bool_t pmapproc_change(struct svc_req *, SVCXPRT *, u_long);
-+static bool_t pmapproc_getport(struct svc_req *, SVCXPRT *);
-+static bool_t pmapproc_dump(struct svc_req *, SVCXPRT *);
- 
- /*
-  * Called for all the version 2 inquiries.
-diff --git a/src/rpcb_svc.c b/src/rpcb_svc.c
-index bd92201..709e3fb 100644
---- a/src/rpcb_svc.c
-+++ b/src/rpcb_svc.c
-@@ -53,10 +53,10 @@
- #include "rpcbind.h"
- #include "xlog.h"
- 
--static void *rpcbproc_getaddr_3_local __P((void *, struct svc_req *, SVCXPRT *,
--					   rpcvers_t));
--static void *rpcbproc_dump_3_local __P((void *, struct svc_req *, SVCXPRT *,
--					rpcvers_t));
-+static void *rpcbproc_getaddr_3_local(void *, struct svc_req *, SVCXPRT *,
-+					   rpcvers_t);
-+static void *rpcbproc_dump_3_local(void *, struct svc_req *, SVCXPRT *,
-+					rpcvers_t);
- 
- /*
-  * Called by svc_getreqset. There is a separate server handle for
-@@ -75,7 +75,7 @@ rpcb_service_3(struct svc_req *rqstp, SVCXPRT *transp)
- 	} argument;
- 	char *result;
- 	xdrproc_t xdr_argument, xdr_result;
--	void *(*local) __P((void *, struct svc_req *, SVCXPRT *, rpcvers_t));
-+	void *(*local)(void *, struct svc_req *, SVCXPRT *, rpcvers_t);
- 	rpcprog_t setprog = 0;
- 
- 	rpcbs_procinfo(RPCBVERS_3_STAT, rqstp->rq_proc);
-diff --git a/src/rpcb_svc_4.c b/src/rpcb_svc_4.c
-index b673452..5094879 100644
---- a/src/rpcb_svc_4.c
-+++ b/src/rpcb_svc_4.c
-@@ -54,13 +54,11 @@
- #include "rpcbind.h"
- #include "xlog.h"
- 
--static void *rpcbproc_getaddr_4_local __P((void *, struct svc_req *, SVCXPRT *,
--				      rpcvers_t));
--static void *rpcbproc_getversaddr_4_local __P((void *, struct svc_req *, SVCXPRT *, rpcvers_t));
--static void *rpcbproc_getaddrlist_4_local
--	__P((void *, struct svc_req *, SVCXPRT *, rpcvers_t));
--static void free_rpcb_entry_list __P((rpcb_entry_list_ptr *));
--static void *rpcbproc_dump_4_local __P((void *, struct svc_req *, SVCXPRT *, rpcvers_t));
-+static void *rpcbproc_getaddr_4_local(void *, struct svc_req *, SVCXPRT *, rpcvers_t);
-+static void *rpcbproc_getversaddr_4_local(void *, struct svc_req *, SVCXPRT *, rpcvers_t);
-+static void *rpcbproc_getaddrlist_4_local(void *, struct svc_req *, SVCXPRT *, rpcvers_t);
-+static void free_rpcb_entry_list(rpcb_entry_list_ptr *);
-+static void *rpcbproc_dump_4_local(void *, struct svc_req *, SVCXPRT *, rpcvers_t);
- 
- /*
-  * Called by svc_getreqset. There is a separate server handle for
-@@ -78,7 +76,7 @@ rpcb_service_4(struct svc_req *rqstp, SVCXPRT *transp)
- 	} argument;
- 	char *result;
- 	xdrproc_t xdr_argument, xdr_result;
--	void *(*local) __P((void *, struct svc_req *, SVCXPRT *, rpcvers_t));
-+	void *(*local)(void *, struct svc_req *, SVCXPRT *, rpcvers_t);
- 	rpcprog_t setprog = 0;
- 
- 	rpcbs_procinfo(RPCBVERS_4_STAT, rqstp->rq_proc);
-diff --git a/src/rpcb_svc_com.c b/src/rpcb_svc_com.c
-index 148fe42..5862c26 100644
---- a/src/rpcb_svc_com.c
-+++ b/src/rpcb_svc_com.c
-@@ -100,29 +100,29 @@ struct finfo {
- static struct finfo     FINFO[NFORWARD];
- 
- 
--static bool_t xdr_encap_parms __P((XDR *, struct encap_parms *));
--static bool_t xdr_rmtcall_args __P((XDR *, struct r_rmtcall_args *));
--static bool_t xdr_rmtcall_result __P((XDR *, struct r_rmtcall_args *));
--static bool_t xdr_opaque_parms __P((XDR *, struct r_rmtcall_args *));
--static int find_rmtcallfd_by_netid __P((char *));
--static SVCXPRT *find_rmtcallxprt_by_fd __P((int));
--static int forward_register __P((u_int32_t, struct netbuf *, int, char *,
--    rpcproc_t, rpcvers_t, u_int32_t *));
--static struct finfo *forward_find __P((u_int32_t));
--static int free_slot_by_xid __P((u_int32_t));
--static int free_slot_by_index __P((int));
--static int netbufcmp __P((struct netbuf *, struct netbuf *));
--static struct netbuf *netbufdup __P((struct netbuf *));
--static void netbuffree __P((struct netbuf *));
--static int check_rmtcalls __P((struct pollfd *, int));
--static void xprt_set_caller __P((SVCXPRT *, struct finfo *));
--static void send_svcsyserr __P((SVCXPRT *, struct finfo *));
--static void handle_reply __P((int, SVCXPRT *));
--static void find_versions __P((rpcprog_t, char *, rpcvers_t *, rpcvers_t *));
--static rpcblist_ptr find_service __P((rpcprog_t, rpcvers_t, char *));
--static char *getowner __P((SVCXPRT *, char *, size_t));
--static int add_pmaplist __P((RPCB *));
--static int del_pmaplist __P((RPCB *));
-+static bool_t xdr_encap_parms(XDR *, struct encap_parms *);
-+static bool_t xdr_rmtcall_args(XDR *, struct r_rmtcall_args *);
-+static bool_t xdr_rmtcall_result(XDR *, struct r_rmtcall_args *);
-+static bool_t xdr_opaque_parms(XDR *, struct r_rmtcall_args *);
-+static int find_rmtcallfd_by_netid(char *);
-+static SVCXPRT *find_rmtcallxprt_by_fd(int);
-+static int forward_register(u_int32_t, struct netbuf *, int, char *,
-+    rpcproc_t, rpcvers_t, u_int32_t *);
-+static struct finfo *forward_find(u_int32_t);
-+static int free_slot_by_xid(u_int32_t);
-+static int free_slot_by_index(int);
-+static int netbufcmp(struct netbuf *, struct netbuf *);
-+static struct netbuf *netbufdup(struct netbuf *);
-+static void netbuffree(struct netbuf *);
-+static int check_rmtcalls(struct pollfd *, int);
-+static void xprt_set_caller(SVCXPRT *, struct finfo *);
-+static void send_svcsyserr(SVCXPRT *, struct finfo *);
-+static void handle_reply(int, SVCXPRT *);
-+static void find_versions(rpcprog_t, char *, rpcvers_t *, rpcvers_t *);
-+static rpcblist_ptr find_service(rpcprog_t, rpcvers_t, char *);
-+static char *getowner(SVCXPRT *, char *, size_t);
-+static int add_pmaplist(RPCB *);
-+static int del_pmaplist(RPCB *);
- 
- /*
-  * Set a mapping of program, version, netid
-diff --git a/src/rpcbind.c b/src/rpcbind.c
-index c4265cd..87ccdc2 100644
---- a/src/rpcbind.c
-+++ b/src/rpcbind.c
-@@ -136,13 +136,13 @@ char *tcp_uaddr;	/* Universal TCP address */
- static char servname[] = "rpcbind";
- static char superuser[] = "superuser";
- 
--int main __P((int, char *[]));
-+int main(int, char *[]);
- 
--static int init_transport __P((struct netconfig *));
--static void rbllist_add __P((rpcprog_t, rpcvers_t, struct netconfig *,
--			     struct netbuf *));
--static void terminate __P((int));
--static void parseargs __P((int, char *[]));
-+static int init_transport(struct netconfig *);
-+static void rbllist_add(rpcprog_t, rpcvers_t, struct netconfig *,
-+			     struct netbuf *);
-+static void terminate(int);
-+static void parseargs(int, char *[]);
- 
- int
- main(int argc, char *argv[])
-diff --git a/src/util.c b/src/util.c
-index a6c835b..74b0284 100644
---- a/src/util.c
-+++ b/src/util.c
-@@ -70,7 +70,7 @@ static struct sockaddr_in *local_in4;
- static struct sockaddr_in6 *local_in6;
- #endif
- 
--static int bitmaskcmp __P((void *, void *, void *, int));
-+static int bitmaskcmp(void *, void *, void *, int);
- 
- /*
-  * For all bits set in "mask", compare the corresponding bits in
-diff --git a/src/warmstart.c b/src/warmstart.c
-index b6eb73e..122a058 100644
---- a/src/warmstart.c
-+++ b/src/warmstart.c
-@@ -58,8 +58,8 @@
- #define	PMAPFILE	RPCBIND_STATEDIR "/portmap.xdr"
- #endif
- 
--static bool_t write_struct __P((char *, xdrproc_t, void *));
--static bool_t read_struct __P((char *, xdrproc_t, void *));
-+static bool_t write_struct(char *, xdrproc_t, void *);
-+static bool_t read_struct(char *, xdrproc_t, void *);
- 
- static bool_t
- write_struct(char *filename, xdrproc_t structproc, void *list)
--- 
-2.7.4
+Chuck Lever (22):
+      xprtrdma: Eliminate INLINE_THRESHOLD macros
+      SUNRPC: Refactor rpc_xdr_buf_init()
+      SUNRPC: Generalize the RPC buffer allocation API
+      SUNRPC: Generalize the RPC buffer release API
+      SUNRPC: Separate buffer pointers for RPC Call and Reply messages
+      SUNRPC: Add a transport-specific private field in rpc_rqst
+      xprtrdma: Initialize separate RPC call and reply buffers
+      xprtrdma: Use smaller buffers for RPC-over-RDMA headers
+      xprtrdma: Replace DMA_BIDIRECTIONAL
+      xprtrdma: Delay DMA mapping Send and Receive buffers
+      xprtrdma: Eliminate "ia" argument in rpcrdma_{alloc,free}_regbuf
+      xprtrdma: Simplify rpcrdma_ep_post_recv()
+      xprtrdma: Move send_wr to struct rpcrdma_req
+      xprtrdma: Move recv_wr to struct rpcrdma_rep
+      xprtrmda: Report address of frmr, not mw
+      rpcrdma: RDMA/CM private message data structure
+      xprtrdma: Client-side support for rpcrdma_connect_private
+      xprtrdma: Basic support for Remote Invalidation
+      xprtrdma: Use gathered Send for large inline messages
+      xprtrdma: Support larger inline thresholds
+      xprtrdma: Rename rpcrdma_receive_wc()
+      xprtrdma: Eliminate rpcrdma_receive_worker()
 
+
+ include/linux/sunrpc/rpc_rdma.h            |   39 ++++
+ include/linux/sunrpc/sched.h               |    4 
+ include/linux/sunrpc/xdr.h                 |   10 +
+ include/linux/sunrpc/xprt.h                |   12 +
+ include/linux/sunrpc/xprtrdma.h            |    4 
+ net/sunrpc/backchannel_rqst.c              |    8 -
+ net/sunrpc/clnt.c                          |   36 +--
+ net/sunrpc/sched.c                         |   36 ++-
+ net/sunrpc/sunrpc.h                        |    2 
+ net/sunrpc/xprt.c                          |    2 
+ net/sunrpc/xprtrdma/backchannel.c          |   48 ++--
+ net/sunrpc/xprtrdma/fmr_ops.c              |    7 -
+ net/sunrpc/xprtrdma/frwr_ops.c             |   27 ++-
+ net/sunrpc/xprtrdma/rpc_rdma.c             |  299 ++++++++++++++++++++--------
+ net/sunrpc/xprtrdma/svc_rdma_backchannel.c |   19 +-
+ net/sunrpc/xprtrdma/transport.c            |  201 +++++++++++--------
+ net/sunrpc/xprtrdma/verbs.c                |  238 +++++++++++++---------
+ net/sunrpc/xprtrdma/xprt_rdma.h            |  102 ++++++----
+ net/sunrpc/xprtsock.c                      |   23 +-
+ 19 files changed, 700 insertions(+), 417 deletions(-)
+
+--
+Chuck Lever
