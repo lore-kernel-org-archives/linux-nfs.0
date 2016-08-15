@@ -1,13 +1,14 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-it0-f66.google.com ([209.85.214.66]:33284 "EHLO
-	mail-it0-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932182AbcHOU6K (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 15 Aug 2016 16:58:10 -0400
-Subject: [PATCH v1 1/3] rpcrdma: RDMA/CM private message data structure
+Received: from mail-it0-f67.google.com ([209.85.214.67]:34130 "EHLO
+	mail-it0-f67.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932182AbcHOU6S (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 15 Aug 2016 16:58:18 -0400
+Subject: [PATCH v1 2/3] svcrdma: Server-side support for
+ rpcrdma_connect_private
 From: Chuck Lever <chuck.lever@oracle.com>
 To: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Mon, 15 Aug 2016 16:58:07 -0400
-Message-ID: <20160815205807.11731.64933.stgit@klimt.1015granger.net>
+Date: Mon, 15 Aug 2016 16:58:16 -0400
+Message-ID: <20160815205816.11731.99696.stgit@klimt.1015granger.net>
 In-Reply-To: <20160815205032.11731.16708.stgit@klimt.1015granger.net>
 References: <20160815205032.11731.16708.stgit@klimt.1015granger.net>
 MIME-Version: 1.0
@@ -15,71 +16,103 @@ Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Introduce data structure used by both client and server to exchange
-implementation details during RDMA/CM connection establishment.
+Prepare to receive an RDMA-CM private message when handling a new
+connection attempt, and send a similar message as part of connection
+acceptance.
 
-This is an experimental out-of-band exchange between Linux
-RPC-over-RDMA Version One implementations, replacing the deprecated
-CCP (see RFC 5666bis). The purpose of this extension is to enable
-prototyping of features that might be introduced in a subsequent
-version of RPC-over-RDMA.
-
-Suggested by Christoph Hellwig and Devesh Sharma.
+Both sides can communicate their various implementation limits.
+Implementations that don't support this sideband protocol ignore it.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- include/linux/sunrpc/rpc_rdma.h |   35 +++++++++++++++++++++++++++++++++++
- 1 file changed, 35 insertions(+)
+ net/sunrpc/xprtrdma/svc_rdma_transport.c |   34 ++++++++++++++++++++++++++----
+ 1 file changed, 30 insertions(+), 4 deletions(-)
 
-diff --git a/include/linux/sunrpc/rpc_rdma.h b/include/linux/sunrpc/rpc_rdma.h
-index 3b1ff38..a7da6bf 100644
---- a/include/linux/sunrpc/rpc_rdma.h
-+++ b/include/linux/sunrpc/rpc_rdma.h
-@@ -41,6 +41,7 @@
- #define _LINUX_SUNRPC_RPC_RDMA_H
+diff --git a/net/sunrpc/xprtrdma/svc_rdma_transport.c b/net/sunrpc/xprtrdma/svc_rdma_transport.c
+index dd94401..4843824 100644
+--- a/net/sunrpc/xprtrdma/svc_rdma_transport.c
++++ b/net/sunrpc/xprtrdma/svc_rdma_transport.c
+@@ -642,6 +642,21 @@ int svc_rdma_repost_recv(struct svcxprt_rdma *xprt, gfp_t flags)
+ 	return ret;
+ }
  
- #include <linux/types.h>
-+#include <linux/bitops.h>
- 
- #define RPCRDMA_VERSION		1
- #define rpcrdma_version		cpu_to_be32(RPCRDMA_VERSION)
-@@ -129,4 +130,38 @@ enum rpcrdma_proc {
- #define rdma_done	cpu_to_be32(RDMA_DONE)
- #define rdma_error	cpu_to_be32(RDMA_ERROR)
- 
-+/*
-+ * Private extension to RPC-over-RDMA Version One.
-+ * Message passed during RDMA-CM connection set-up.
-+ *
-+ * Add new fields at the end, and don't permute existing
-+ * fields.
-+ */
-+struct rpcrdma_connect_private {
-+	__be32			cp_magic;
-+	u8			cp_version;
-+	u8			cp_flags;
-+	u8			cp_send_size;
-+	u8			cp_recv_size;
-+} __packed;
-+
-+#define rpcrdma_cmp_magic	__cpu_to_be32(0xf6ab0e18)
-+
-+enum {
-+	RPCRDMA_CMP_VERSION		= 1,
-+	RPCRDMA_CMP_F_SND_W_INV_OK	= BIT(0),
-+};
-+
-+static inline u8
-+rpcrdma_encode_buffer_size(unsigned int size)
++static void
++svc_rdma_parse_connect_private(struct svcxprt_rdma *newxprt,
++			       struct rdma_conn_param *param)
 +{
-+	return (size >> 10) - 1;
++	const struct rpcrdma_connect_private *pmsg = param->private_data;
++
++	if (pmsg &&
++	    pmsg->cp_magic == rpcrdma_cmp_magic &&
++	    pmsg->cp_version == RPCRDMA_CMP_VERSION) {
++		dprintk("svcrdma: client send_size %u, recv_size %u\n",
++			rpcrdma_decode_buffer_size(pmsg->cp_send_size),
++			rpcrdma_decode_buffer_size(pmsg->cp_recv_size));
++	}
 +}
 +
-+static inline unsigned int
-+rpcrdma_decode_buffer_size(u8 val)
-+{
-+	return ((unsigned int)val + 1) << 10;
-+}
+ /*
+  * This function handles the CONNECT_REQUEST event on a listening
+  * endpoint. It is passed the cma_id for the _new_ connection. The context in
+@@ -653,7 +668,8 @@ int svc_rdma_repost_recv(struct svcxprt_rdma *xprt, gfp_t flags)
+  * will call the recvfrom method on the listen xprt which will accept the new
+  * connection.
+  */
+-static void handle_connect_req(struct rdma_cm_id *new_cma_id, size_t client_ird)
++static void handle_connect_req(struct rdma_cm_id *new_cma_id,
++			       struct rdma_conn_param *param)
+ {
+ 	struct svcxprt_rdma *listen_xprt = new_cma_id->context;
+ 	struct svcxprt_rdma *newxprt;
+@@ -669,9 +685,10 @@ static void handle_connect_req(struct rdma_cm_id *new_cma_id, size_t client_ird)
+ 	new_cma_id->context = newxprt;
+ 	dprintk("svcrdma: Creating newxprt=%p, cm_id=%p, listenxprt=%p\n",
+ 		newxprt, newxprt->sc_cm_id, listen_xprt);
++	svc_rdma_parse_connect_private(newxprt, param);
+ 
+ 	/* Save client advertised inbound read limit for use later in accept. */
+-	newxprt->sc_ord = client_ird;
++	newxprt->sc_ord = param->initiator_depth;
+ 
+ 	/* Set the local and remote addresses in the transport */
+ 	sa = (struct sockaddr *)&newxprt->sc_cm_id->route.addr.dst_addr;
+@@ -706,8 +723,7 @@ static int rdma_listen_handler(struct rdma_cm_id *cma_id,
+ 		dprintk("svcrdma: Connect request on cma_id=%p, xprt = %p, "
+ 			"event = %s (%d)\n", cma_id, cma_id->context,
+ 			rdma_event_msg(event->event), event->event);
+-		handle_connect_req(cma_id,
+-				   event->param.conn.initiator_depth);
++		handle_connect_req(cma_id, &event->param.conn);
+ 		break;
+ 
+ 	case RDMA_CM_EVENT_ESTABLISHED:
+@@ -941,6 +957,7 @@ static struct svc_xprt *svc_rdma_accept(struct svc_xprt *xprt)
+ 	struct svcxprt_rdma *listen_rdma;
+ 	struct svcxprt_rdma *newxprt = NULL;
+ 	struct rdma_conn_param conn_param;
++	struct rpcrdma_connect_private pmsg;
+ 	struct ib_qp_init_attr qp_attr;
+ 	struct ib_device *dev;
+ 	unsigned int i;
+@@ -1094,11 +1111,20 @@ static struct svc_xprt *svc_rdma_accept(struct svc_xprt *xprt)
+ 	/* Swap out the handler */
+ 	newxprt->sc_cm_id->event_handler = rdma_cma_handler;
+ 
++	/* Construct RDMA-CM private message */
++	pmsg.cp_magic = rpcrdma_cmp_magic;
++	pmsg.cp_version = RPCRDMA_CMP_VERSION;
++	pmsg.cp_flags = 0;
++	pmsg.cp_send_size = pmsg.cp_recv_size =
++		rpcrdma_encode_buffer_size(newxprt->sc_max_req_size);
 +
- #endif				/* _LINUX_SUNRPC_RPC_RDMA_H */
+ 	/* Accept Connection */
+ 	set_bit(RDMAXPRT_CONN_PENDING, &newxprt->sc_flags);
+ 	memset(&conn_param, 0, sizeof conn_param);
+ 	conn_param.responder_resources = 0;
+ 	conn_param.initiator_depth = newxprt->sc_ord;
++	conn_param.private_data = &pmsg;
++	conn_param.private_data_len = sizeof(pmsg);
+ 	ret = rdma_accept(newxprt->sc_cm_id, &conn_param);
+ 	if (ret) {
+ 		dprintk("svcrdma: failed to accept new connection, ret=%d\n",
 
