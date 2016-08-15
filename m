@@ -1,13 +1,13 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f193.google.com ([209.85.223.193]:36423 "EHLO
+Received: from mail-io0-f193.google.com ([209.85.223.193]:36450 "EHLO
 	mail-io0-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932182AbcHOUwS (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 15 Aug 2016 16:52:18 -0400
-Subject: [PATCH v1 15/22] xprtrmda: Report address of frmr, not mw
+	with ESMTP id S932182AbcHOUw1 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 15 Aug 2016 16:52:27 -0400
+Subject: [PATCH v1 16/22] rpcrdma: RDMA/CM private message data structure
 From: Chuck Lever <chuck.lever@oracle.com>
 To: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Mon, 15 Aug 2016 16:52:16 -0400
-Message-ID: <20160815205216.11652.98289.stgit@manet.1015granger.net>
+Date: Mon, 15 Aug 2016 16:52:24 -0400
+Message-ID: <20160815205224.11652.41650.stgit@manet.1015granger.net>
 In-Reply-To: <20160815195649.11652.32252.stgit@manet.1015granger.net>
 References: <20160815195649.11652.32252.stgit@manet.1015granger.net>
 MIME-Version: 1.0
@@ -15,53 +15,71 @@ Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Tie frwr debugging messages together by always reporting the address
-of the frwr.
+Introduce data structure used by both client and server to exchange
+implementation details during RDMA/CM connection establishment.
+
+This is an experimental out-of-band exchange between Linux
+RPC-over-RDMA Version One implementations, replacing the deprecated
+CCP (see RFC 5666bis). The purpose of this extension is to enable
+prototyping of features that might be introduced in a subsequent
+version of RPC-over-RDMA.
+
+Suggested by Christoph Hellwig and Devesh Sharma.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- net/sunrpc/xprtrdma/frwr_ops.c |    9 +++++++--
- 1 file changed, 7 insertions(+), 2 deletions(-)
+ include/linux/sunrpc/rpc_rdma.h |   35 +++++++++++++++++++++++++++++++++++
+ 1 file changed, 35 insertions(+)
 
-diff --git a/net/sunrpc/xprtrdma/frwr_ops.c b/net/sunrpc/xprtrdma/frwr_ops.c
-index 892b5e1..ab9a752 100644
---- a/net/sunrpc/xprtrdma/frwr_ops.c
-+++ b/net/sunrpc/xprtrdma/frwr_ops.c
-@@ -161,7 +161,7 @@ __frwr_reset_mr(struct rpcrdma_ia *ia, struct rpcrdma_mw *r)
- 		return PTR_ERR(f->fr_mr);
- 	}
+diff --git a/include/linux/sunrpc/rpc_rdma.h b/include/linux/sunrpc/rpc_rdma.h
+index 3b1ff38..a7da6bf 100644
+--- a/include/linux/sunrpc/rpc_rdma.h
++++ b/include/linux/sunrpc/rpc_rdma.h
+@@ -41,6 +41,7 @@
+ #define _LINUX_SUNRPC_RPC_RDMA_H
  
--	dprintk("RPC:       %s: recovered FRMR %p\n", __func__, r);
-+	dprintk("RPC:       %s: recovered FRMR %p\n", __func__, f);
- 	f->fr_state = FRMR_IS_INVALID;
- 	return 0;
- }
-@@ -396,7 +396,7 @@ frwr_op_map(struct rpcrdma_xprt *r_xprt, struct rpcrdma_mr_seg *seg,
- 		goto out_mapmr_err;
+ #include <linux/types.h>
++#include <linux/bitops.h>
  
- 	dprintk("RPC:       %s: Using frmr %p to map %u segments (%u bytes)\n",
--		__func__, mw, mw->mw_nents, mr->length);
-+		__func__, frmr, mw->mw_nents, mr->length);
+ #define RPCRDMA_VERSION		1
+ #define rpcrdma_version		cpu_to_be32(RPCRDMA_VERSION)
+@@ -129,4 +130,38 @@ enum rpcrdma_proc {
+ #define rdma_done	cpu_to_be32(RDMA_DONE)
+ #define rdma_error	cpu_to_be32(RDMA_ERROR)
  
- 	key = (u8)(mr->rkey & 0x000000FF);
- 	ib_update_fast_reg_key(mr, ++key);
-@@ -449,6 +449,9 @@ __frwr_prepare_linv_wr(struct rpcrdma_mw *mw)
- 	struct rpcrdma_frmr *f = &mw->frmr;
- 	struct ib_send_wr *invalidate_wr;
- 
-+	dprintk("RPC:       %s: invalidating frmr %p\n",
-+		__func__, f);
++/*
++ * Private extension to RPC-over-RDMA Version One.
++ * Message passed during RDMA-CM connection set-up.
++ *
++ * Add new fields at the end, and don't permute existing
++ * fields.
++ */
++struct rpcrdma_connect_private {
++	__be32			cp_magic;
++	u8			cp_version;
++	u8			cp_flags;
++	u8			cp_send_size;
++	u8			cp_recv_size;
++} __packed;
 +
- 	f->fr_state = FRMR_IS_INVALID;
- 	invalidate_wr = &f->fr_invwr;
- 
-@@ -521,6 +524,8 @@ frwr_op_unmap_sync(struct rpcrdma_xprt *r_xprt, struct rpcrdma_req *req)
- 	 */
- unmap:
- 	list_for_each_entry_safe(mw, tmp, &req->rl_registered, mw_list) {
-+		dprintk("RPC:       %s: unmapping frmr %p\n",
-+			__func__, &mw->frmr);
- 		list_del_init(&mw->mw_list);
- 		ib_dma_unmap_sg(ia->ri_device,
- 				mw->mw_sg, mw->mw_nents, mw->mw_dir);
++#define rpcrdma_cmp_magic	__cpu_to_be32(0xf6ab0e18)
++
++enum {
++	RPCRDMA_CMP_VERSION		= 1,
++	RPCRDMA_CMP_F_SND_W_INV_OK	= BIT(0),
++};
++
++static inline u8
++rpcrdma_encode_buffer_size(unsigned int size)
++{
++	return (size >> 10) - 1;
++}
++
++static inline unsigned int
++rpcrdma_decode_buffer_size(u8 val)
++{
++	return ((unsigned int)val + 1) << 10;
++}
++
+ #endif				/* _LINUX_SUNRPC_RPC_RDMA_H */
 
