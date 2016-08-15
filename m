@@ -1,82 +1,85 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-wm0-f65.google.com ([74.125.82.65]:36209 "EHLO
-	mail-wm0-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751788AbcHNWN4 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 14 Aug 2016 18:13:56 -0400
-Received: by mail-wm0-f65.google.com with SMTP id i138so8182488wmf.3
-        for <linux-nfs@vger.kernel.org>; Sun, 14 Aug 2016 15:13:55 -0700 (PDT)
-Date: Mon, 15 Aug 2016 00:13:52 +0200
-From: "Yann E. MORIN" <yann.morin.1998@free.fr>
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH rpcbind] src: include cdefs.h for the __P() macro
-Message-ID: <20160814221352.GI30771@free.fr>
-References: <1471097125-13193-1-git-send-email-yann.morin.1998@free.fr>
- <7736F23D-7AA5-4ABD-9693-99C9DCE03B91@oracle.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-In-Reply-To: <7736F23D-7AA5-4ABD-9693-99C9DCE03B91@oracle.com>
+Received: from mail-it0-f68.google.com ([209.85.214.68]:36462 "EHLO
+	mail-it0-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752170AbcHODFq (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 14 Aug 2016 23:05:46 -0400
+Received: by mail-it0-f68.google.com with SMTP id j124so2702052ith.3
+        for <linux-nfs@vger.kernel.org>; Sun, 14 Aug 2016 20:05:46 -0700 (PDT)
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH] pNFS/flexfiles: Fix layoutstat periodic reporting
+Date: Sun, 14 Aug 2016 23:05:21 -0400
+Message-Id: <1471230321-3066-1-git-send-email-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Chuck, All,
+Putting the periodicity timer in the mirror instances is causing
+non-scalable reporting behaviour and missed reporting intervals.
+When you recall layouts and/or implement client side mirroring, it
+leads to consecutive reports with only a few ms between RPC calls.
 
-On 2016-08-14 14:30 -0400, Chuck Lever spake thusly:
-> > On Aug 13, 2016, at 10:05 AM, Yann E. MORIN <yann.morin.1998@free.fr> wrote:
-> > 
-> > The __P() macro is defined in cdefs.h, so we must include it explicitly
-> > rather than relying on it being included by another header.
-> > 
-> > cdefs.h is a glibc-ism; glibc includes it almost everywhere from its own
-> > headers. So it automatically gets included for glibc.
-> > 
-> > However, cdefs.h is not present in musl, so its headers do not include
-> > it. We must thus include it when we need __P() (of course, one will have
-> > to provide his own cdefs.h in this case).
-> 
-> Simply adding "#include <sys/cdefs.h>" seems like the wrong approach.
-> If cdefs.h is not guaranteed to exist, the appropriate thing to do
-> is provide some autoconf machinery to define __P() in its absence.
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+Fixes: d0379a5d066a9 ("pNFS/flexfiles: Support server-supplied...")
+---
+ fs/nfs/flexfilelayout/flexfilelayout.c | 8 ++++----
+ fs/nfs/flexfilelayout/flexfilelayout.h | 2 +-
+ 2 files changed, 5 insertions(+), 5 deletions(-)
 
-OpenEmbedded provides comaptibility headers:
-    http://git.openembedded.org/openembedded-core/tree/meta/recipes-core/bsd-headers/bsd-headers
-
-In Buildroot, we're adding them too (not yet applied, WIP):
-    http://lists.busybox.net/pipermail/buildroot/2016-August/169722.html
-
-Other embedded buildsystem may each have their own fix in a way or
-another...
-
-Mainstream distros are more-or-less all based on glibc, except for a few
-outliers, like Alpine Linux (also based on musl), and they've gone on
-the "remove __P()" route:
-    http://git.alpinelinux.org/cgit/aports/tree/main/rpcbind/0001-Avoid-use-of-glibc-sys-cdefs.h-header.patch
-
-> On the other hand, I wonder if we need to continue to preserve K&R C
-> compatibility in this code base. Perhaps instead the uses of __P()
-> should be eliminated?
-
-I tried to provide a minimalist approach, that consists in assuming that
-cdefs.h is present.
-
-But I do agree that pre-ANSI compatibility is probably a little tiny
-wee bit excessive nowadays. Virtually all current compilers do accept
-function prototypes, nowadays...
-
-I can work on a patch that does just get rid of the use of __P(). (we
-can't really vampirise the patch from Alpine, as there's no SoB or such
-origin information on it; not that redoing the patch would be too
-difficult either...).
-
-So, what route, now? ;-)
-
-Regards,
-Yann E. MORIN.
-
+diff --git a/fs/nfs/flexfilelayout/flexfilelayout.c b/fs/nfs/flexfilelayout/flexfilelayout.c
+index e6206eaf2bdf..ee1c94c7614c 100644
+--- a/fs/nfs/flexfilelayout/flexfilelayout.c
++++ b/fs/nfs/flexfilelayout/flexfilelayout.c
+@@ -37,6 +37,7 @@ ff_layout_alloc_layout_hdr(struct inode *inode, gfp_t gfp_flags)
+ 	if (ffl) {
+ 		INIT_LIST_HEAD(&ffl->error_list);
+ 		INIT_LIST_HEAD(&ffl->mirrors);
++		ffl->last_report_time = ktime_get();
+ 		return &ffl->generic_hdr;
+ 	} else
+ 		return NULL;
+@@ -640,19 +641,18 @@ nfs4_ff_layoutstat_start_io(struct nfs4_ff_layout_mirror *mirror,
+ {
+ 	static const ktime_t notime = {0};
+ 	s64 report_interval = FF_LAYOUTSTATS_REPORT_INTERVAL;
++	struct nfs4_flexfile_layout *ffl = FF_LAYOUT_FROM_HDR(mirror->layout);
+ 
+ 	nfs4_ff_start_busy_timer(&layoutstat->busy_timer, now);
+ 	if (ktime_equal(mirror->start_time, notime))
+ 		mirror->start_time = now;
+-	if (ktime_equal(mirror->last_report_time, notime))
+-		mirror->last_report_time = now;
+ 	if (mirror->report_interval != 0)
+ 		report_interval = (s64)mirror->report_interval * 1000LL;
+ 	else if (layoutstats_timer != 0)
+ 		report_interval = (s64)layoutstats_timer * 1000LL;
+-	if (ktime_to_ms(ktime_sub(now, mirror->last_report_time)) >=
++	if (ktime_to_ms(ktime_sub(now, ffl->last_report_time)) >=
+ 			report_interval) {
+-		mirror->last_report_time = now;
++		ffl->last_report_time = now;
+ 		return true;
+ 	}
+ 
+diff --git a/fs/nfs/flexfilelayout/flexfilelayout.h b/fs/nfs/flexfilelayout/flexfilelayout.h
+index 1bcdb15d0c41..3ee0c9fcea76 100644
+--- a/fs/nfs/flexfilelayout/flexfilelayout.h
++++ b/fs/nfs/flexfilelayout/flexfilelayout.h
+@@ -84,7 +84,6 @@ struct nfs4_ff_layout_mirror {
+ 	struct nfs4_ff_layoutstat	read_stat;
+ 	struct nfs4_ff_layoutstat	write_stat;
+ 	ktime_t				start_time;
+-	ktime_t				last_report_time;
+ 	u32				report_interval;
+ };
+ 
+@@ -101,6 +100,7 @@ struct nfs4_flexfile_layout {
+ 	struct pnfs_ds_commit_info commit_info;
+ 	struct list_head	mirrors;
+ 	struct list_head	error_list; /* nfs4_ff_layout_ds_err */
++	ktime_t			last_report_time; /* Layoutstat report times */
+ };
+ 
+ static inline struct nfs4_flexfile_layout *
 -- 
-.-----------------.--------------------.------------------.--------------------.
-|  Yann E. MORIN  | Real-Time Embedded | /"\ ASCII RIBBON | Erics' conspiracy: |
-| +33 662 376 056 | Software  Designer | \ / CAMPAIGN     |  ___               |
-| +33 223 225 172 `------------.-------:  X  AGAINST      |  \e/  There is no  |
-| http://ymorin.is-a-geek.org/ | _/*\_ | / \ HTML MAIL    |   v   conspiracy.  |
-'------------------------------^-------^------------------^--------------------'
+2.7.4
+
