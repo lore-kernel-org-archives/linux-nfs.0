@@ -1,14 +1,13 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f196.google.com ([209.85.223.196]:35480 "EHLO
-	mail-io0-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932182AbcHOUwf (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 15 Aug 2016 16:52:35 -0400
-Subject: [PATCH v1 17/22] xprtrdma: Client-side support for
- rpcrdma_connect_private
+Received: from mail-io0-f193.google.com ([209.85.223.193]:33696 "EHLO
+	mail-io0-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932182AbcHOUwn (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 15 Aug 2016 16:52:43 -0400
+Subject: [PATCH v1 18/22] xprtrdma: Basic support for Remote Invalidation
 From: Chuck Lever <chuck.lever@oracle.com>
 To: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Mon, 15 Aug 2016 16:52:33 -0400
-Message-ID: <20160815205233.11652.28841.stgit@manet.1015granger.net>
+Date: Mon, 15 Aug 2016 16:52:41 -0400
+Message-ID: <20160815205241.11652.22010.stgit@manet.1015granger.net>
 In-Reply-To: <20160815195649.11652.32252.stgit@manet.1015granger.net>
 References: <20160815195649.11652.32252.stgit@manet.1015granger.net>
 MIME-Version: 1.0
@@ -16,197 +15,247 @@ Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Send an RDMA-CM private message on connect, and look for one during
-a connection-established event.
+Have frwr's ro_unmap_sync recognize an invalidated rkey that appears
+as part of a Receive completion. Local invalidation can be skipped
+for that rkey.
 
-Both sides can communicate their various implementation limits.
-Implementations that don't support this sideband protocol ignore it.
-
-Once the client knows the server's inline threshold maxima, it can
-adjust the use of Reply chunks, and eliminate most use of Position
-Zero Read chunks. Moderately-sized I/O can be done using a pure
-inline RDMA Send instead of RDMA operations that require memory
-registration.
+Use an out-of-band signaling mechanism to indicate to the server
+that the client is prepared to receive RDMA Send With Invalidate.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- include/linux/sunrpc/rpc_rdma.h |    4 ++++
- net/sunrpc/xprtrdma/fmr_ops.c   |    5 ++---
- net/sunrpc/xprtrdma/frwr_ops.c  |    5 ++---
- net/sunrpc/xprtrdma/rpc_rdma.c  |    8 +++++---
- net/sunrpc/xprtrdma/verbs.c     |   41 ++++++++++++++++++++++++++++++++++++---
- net/sunrpc/xprtrdma/xprt_rdma.h |    6 +++---
- 6 files changed, 54 insertions(+), 15 deletions(-)
+ net/sunrpc/xprtrdma/fmr_ops.c   |    2 ++
+ net/sunrpc/xprtrdma/frwr_ops.c  |   13 +++++++++++++
+ net/sunrpc/xprtrdma/rpc_rdma.c  |   18 ++++++++++++++----
+ net/sunrpc/xprtrdma/transport.c |    5 +++--
+ net/sunrpc/xprtrdma/verbs.c     |    8 +++++++-
+ net/sunrpc/xprtrdma/xprt_rdma.h |    5 +++++
+ 6 files changed, 44 insertions(+), 7 deletions(-)
 
-diff --git a/include/linux/sunrpc/rpc_rdma.h b/include/linux/sunrpc/rpc_rdma.h
-index a7da6bf..cfda6ad 100644
---- a/include/linux/sunrpc/rpc_rdma.h
-+++ b/include/linux/sunrpc/rpc_rdma.h
-@@ -46,6 +46,10 @@
- #define RPCRDMA_VERSION		1
- #define rpcrdma_version		cpu_to_be32(RPCRDMA_VERSION)
- 
-+enum {
-+	RPCRDMA_V1_DEF_INLINE_SIZE	= 1024,
-+};
-+
- struct rpcrdma_segment {
- 	__be32 rs_handle;	/* Registered memory handle */
- 	__be32 rs_length;	/* Length of the chunk in bytes */
 diff --git a/net/sunrpc/xprtrdma/fmr_ops.c b/net/sunrpc/xprtrdma/fmr_ops.c
-index 21cb3b1..16690a1 100644
+index 16690a1..1ebb09e 100644
 --- a/net/sunrpc/xprtrdma/fmr_ops.c
 +++ b/net/sunrpc/xprtrdma/fmr_ops.c
-@@ -160,9 +160,8 @@ static int
- fmr_op_open(struct rpcrdma_ia *ia, struct rpcrdma_ep *ep,
- 	    struct rpcrdma_create_data_internal *cdata)
- {
--	rpcrdma_set_max_header_sizes(ia, cdata, max_t(unsigned int, 1,
--						      RPCRDMA_MAX_DATA_SEGS /
--						      RPCRDMA_MAX_FMR_SGES));
-+	ia->ri_max_segs = max_t(unsigned int, 1, RPCRDMA_MAX_DATA_SEGS /
-+				RPCRDMA_MAX_FMR_SGES);
- 	return 0;
- }
- 
+@@ -273,6 +273,7 @@ fmr_op_unmap_sync(struct rpcrdma_xprt *r_xprt, struct rpcrdma_req *req)
+ 	 */
+ 	list_for_each_entry(mw, &req->rl_registered, mw_list)
+ 		list_add_tail(&mw->fmr.fm_mr->list, &unmap_list);
++	r_xprt->rx_stats.local_inv_needed++;
+ 	rc = ib_unmap_fmr(&unmap_list);
+ 	if (rc)
+ 		goto out_reset;
+@@ -330,4 +331,5 @@ const struct rpcrdma_memreg_ops rpcrdma_fmr_memreg_ops = {
+ 	.ro_init_mr			= fmr_op_init_mr,
+ 	.ro_release_mr			= fmr_op_release_mr,
+ 	.ro_displayname			= "fmr",
++	.ro_send_w_inv_ok		= 0,
+ };
 diff --git a/net/sunrpc/xprtrdma/frwr_ops.c b/net/sunrpc/xprtrdma/frwr_ops.c
-index ab9a752..977d56a 100644
+index 977d56a..2e51ef5 100644
 --- a/net/sunrpc/xprtrdma/frwr_ops.c
 +++ b/net/sunrpc/xprtrdma/frwr_ops.c
-@@ -242,9 +242,8 @@ frwr_op_open(struct rpcrdma_ia *ia, struct rpcrdma_ep *ep,
- 					       depth;
+@@ -67,6 +67,8 @@
+  * pending send queue WRs before the transport is reconnected.
+  */
+ 
++#include <linux/sunrpc/rpc_rdma.h>
++
+ #include "xprt_rdma.h"
+ 
+ #if IS_ENABLED(CONFIG_SUNRPC_DEBUG)
+@@ -474,6 +476,7 @@ static void
+ frwr_op_unmap_sync(struct rpcrdma_xprt *r_xprt, struct rpcrdma_req *req)
+ {
+ 	struct ib_send_wr *invalidate_wrs, *pos, *prev, *bad_wr;
++	struct rpcrdma_rep *rep = req->rl_reply;
+ 	struct rpcrdma_ia *ia = &r_xprt->rx_ia;
+ 	struct rpcrdma_mw *mw, *tmp;
+ 	struct rpcrdma_frmr *f;
+@@ -489,6 +492,12 @@ frwr_op_unmap_sync(struct rpcrdma_xprt *r_xprt, struct rpcrdma_req *req)
+ 	f = NULL;
+ 	invalidate_wrs = pos = prev = NULL;
+ 	list_for_each_entry(mw, &req->rl_registered, mw_list) {
++		if ((rep->rr_wc_flags & IB_WC_WITH_INVALIDATE) &&
++		    (mw->mw_handle == rep->rr_inv_rkey)) {
++			mw->frmr.fr_state = FRMR_IS_INVALID;
++			continue;
++		}
++
+ 		pos = __frwr_prepare_linv_wr(mw);
+ 
+ 		if (!invalidate_wrs)
+@@ -498,6 +507,8 @@ frwr_op_unmap_sync(struct rpcrdma_xprt *r_xprt, struct rpcrdma_req *req)
+ 		prev = pos;
+ 		f = &mw->frmr;
  	}
++	if (!f)
++		goto unmap;
  
--	rpcrdma_set_max_header_sizes(ia, cdata, max_t(unsigned int, 1,
--						      RPCRDMA_MAX_DATA_SEGS /
--						      ia->ri_max_frmr_depth));
-+	ia->ri_max_segs = max_t(unsigned int, 1, RPCRDMA_MAX_DATA_SEGS /
-+				ia->ri_max_frmr_depth);
- 	return 0;
- }
- 
+ 	/* Strong send queue ordering guarantees that when the
+ 	 * last WR in the chain completes, all WRs in the chain
+@@ -512,6 +523,7 @@ frwr_op_unmap_sync(struct rpcrdma_xprt *r_xprt, struct rpcrdma_req *req)
+ 	 * replaces the QP. The RPC reply handler won't call us
+ 	 * unless ri_id->qp is a valid pointer.
+ 	 */
++	r_xprt->rx_stats.local_inv_needed++;
+ 	rc = ib_post_send(ia->ri_id->qp, invalidate_wrs, &bad_wr);
+ 	if (rc)
+ 		goto reset_mrs;
+@@ -580,4 +592,5 @@ const struct rpcrdma_memreg_ops rpcrdma_frwr_memreg_ops = {
+ 	.ro_init_mr			= frwr_op_init_mr,
+ 	.ro_release_mr			= frwr_op_release_mr,
+ 	.ro_displayname			= "frwr",
++	.ro_send_w_inv_ok		= RPCRDMA_CMP_F_SND_W_INV_OK,
+ };
 diff --git a/net/sunrpc/xprtrdma/rpc_rdma.c b/net/sunrpc/xprtrdma/rpc_rdma.c
-index c2906e3..ea734c2 100644
+index ea734c2..31a434d 100644
 --- a/net/sunrpc/xprtrdma/rpc_rdma.c
 +++ b/net/sunrpc/xprtrdma/rpc_rdma.c
-@@ -118,10 +118,12 @@ static unsigned int rpcrdma_max_reply_header_size(unsigned int maxsegs)
- 	return size;
+@@ -231,7 +231,8 @@ rpcrdma_convert_kvec(struct kvec *vec, struct rpcrdma_mr_seg *seg, int n)
+ 
+ static int
+ rpcrdma_convert_iovs(struct xdr_buf *xdrbuf, unsigned int pos,
+-	enum rpcrdma_chunktype type, struct rpcrdma_mr_seg *seg)
++	enum rpcrdma_chunktype type, struct rpcrdma_mr_seg *seg,
++	bool reminv_expected)
+ {
+ 	int len, n, p, page_base;
+ 	struct page **ppages;
+@@ -273,6 +274,13 @@ rpcrdma_convert_iovs(struct xdr_buf *xdrbuf, unsigned int pos,
+ 	if (type == rpcrdma_readch)
+ 		return n;
+ 
++	/* When encoding the Write list, some servers need to see an extra
++	 * segment for odd-length Write chunks. The upper layer provides
++	 * space in the tail iovec for this purpose.
++	 */
++	if (type == rpcrdma_writech && reminv_expected)
++		return n;
++
+ 	if (xdrbuf->tail[0].iov_len) {
+ 		/* the rpcrdma protocol allows us to omit any trailing
+ 		 * xdr pad bytes, saving the server an RDMA operation. */
+@@ -329,7 +337,7 @@ rpcrdma_encode_read_list(struct rpcrdma_xprt *r_xprt,
+ 	if (rtype == rpcrdma_areadch)
+ 		pos = 0;
+ 	seg = req->rl_segments;
+-	nsegs = rpcrdma_convert_iovs(&rqst->rq_snd_buf, pos, rtype, seg);
++	nsegs = rpcrdma_convert_iovs(&rqst->rq_snd_buf, pos, rtype, seg, false);
+ 	if (nsegs < 0)
+ 		return ERR_PTR(nsegs);
+ 
+@@ -393,7 +401,8 @@ rpcrdma_encode_write_list(struct rpcrdma_xprt *r_xprt, struct rpcrdma_req *req,
+ 	seg = req->rl_segments;
+ 	nsegs = rpcrdma_convert_iovs(&rqst->rq_rcv_buf,
+ 				     rqst->rq_rcv_buf.head[0].iov_len,
+-				     wtype, seg);
++				     wtype, seg,
++				     r_xprt->rx_ia.ri_reminv_expected);
+ 	if (nsegs < 0)
+ 		return ERR_PTR(nsegs);
+ 
+@@ -458,7 +467,8 @@ rpcrdma_encode_reply_chunk(struct rpcrdma_xprt *r_xprt,
+ 	}
+ 
+ 	seg = req->rl_segments;
+-	nsegs = rpcrdma_convert_iovs(&rqst->rq_rcv_buf, 0, wtype, seg);
++	nsegs = rpcrdma_convert_iovs(&rqst->rq_rcv_buf, 0, wtype, seg,
++				     r_xprt->rx_ia.ri_reminv_expected);
+ 	if (nsegs < 0)
+ 		return ERR_PTR(nsegs);
+ 
+diff --git a/net/sunrpc/xprtrdma/transport.c b/net/sunrpc/xprtrdma/transport.c
+index 3f50c83..0ee841f 100644
+--- a/net/sunrpc/xprtrdma/transport.c
++++ b/net/sunrpc/xprtrdma/transport.c
+@@ -729,10 +729,11 @@ void xprt_rdma_print_stats(struct rpc_xprt *xprt, struct seq_file *seq)
+ 		   r_xprt->rx_stats.failed_marshal_count,
+ 		   r_xprt->rx_stats.bad_reply_count,
+ 		   r_xprt->rx_stats.nomsg_call_count);
+-	seq_printf(seq, "%lu %lu %lu\n",
++	seq_printf(seq, "%lu %lu %lu %lu\n",
+ 		   r_xprt->rx_stats.mrs_recovered,
+ 		   r_xprt->rx_stats.mrs_orphaned,
+-		   r_xprt->rx_stats.mrs_allocated);
++		   r_xprt->rx_stats.mrs_allocated,
++		   r_xprt->rx_stats.local_inv_needed);
  }
  
--void rpcrdma_set_max_header_sizes(struct rpcrdma_ia *ia,
--				  struct rpcrdma_create_data_internal *cdata,
--				  unsigned int maxsegs)
-+void rpcrdma_set_max_header_sizes(struct rpcrdma_xprt *r_xprt)
- {
-+	struct rpcrdma_create_data_internal *cdata = &r_xprt->rx_data;
-+	struct rpcrdma_ia *ia = &r_xprt->rx_ia;
-+	unsigned int maxsegs = ia->ri_max_segs;
-+
- 	ia->ri_max_inline_write = cdata->inline_wsize -
- 				  rpcrdma_max_call_header_size(maxsegs);
- 	ia->ri_max_inline_read = cdata->inline_rsize -
+ static int
 diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
-index edc81ac..431d16d 100644
+index 431d16d..55ce5a8 100644
 --- a/net/sunrpc/xprtrdma/verbs.c
 +++ b/net/sunrpc/xprtrdma/verbs.c
-@@ -203,6 +203,34 @@ out_fail:
- 	goto out_schedule;
- }
+@@ -184,6 +184,9 @@ rpcrdma_receive_wc(struct ib_cq *cq, struct ib_wc *wc)
+ 		__func__, rep, wc->byte_len);
  
-+static void
-+rpcrdma_update_connect_private(struct rpcrdma_xprt *r_xprt,
-+			       struct rdma_conn_param *param)
-+{
-+	struct rpcrdma_create_data_internal *cdata = &r_xprt->rx_data;
-+	const struct rpcrdma_connect_private *pmsg = param->private_data;
-+	unsigned int rsize, wsize;
+ 	rep->rr_len = wc->byte_len;
++	rep->rr_wc_flags = wc->wc_flags;
++	rep->rr_inv_rkey = wc->ex.invalidate_rkey;
 +
-+	rsize = RPCRDMA_V1_DEF_INLINE_SIZE;
-+	wsize = RPCRDMA_V1_DEF_INLINE_SIZE;
-+
-+	if (pmsg &&
-+	    pmsg->cp_magic == rpcrdma_cmp_magic &&
-+	    pmsg->cp_version == RPCRDMA_CMP_VERSION) {
-+		rsize = rpcrdma_decode_buffer_size(pmsg->cp_send_size);
-+		wsize = rpcrdma_decode_buffer_size(pmsg->cp_recv_size);
-+
-+		pr_info("rpcrdma: server reports rsize %u, wsize %u\n",
-+			rsize, wsize);
-+	}
-+
-+	if (rsize < cdata->inline_rsize)
-+		cdata->inline_rsize = rsize;
-+	if (wsize < cdata->inline_wsize)
-+		cdata->inline_wsize = wsize;
-+	rpcrdma_set_max_header_sizes(r_xprt);
-+}
-+
- static int
- rpcrdma_conn_upcall(struct rdma_cm_id *id, struct rdma_cm_event *event)
- {
-@@ -243,6 +271,7 @@ rpcrdma_conn_upcall(struct rdma_cm_id *id, struct rdma_cm_event *event)
- 			" (%d initiator)\n",
- 			__func__, attr->max_dest_rd_atomic,
- 			attr->max_rd_atomic);
-+		rpcrdma_update_connect_private(xprt, &event->param.conn);
- 		goto connected;
- 	case RDMA_CM_EVENT_CONNECT_ERROR:
- 		connstate = -ENOTCONN;
-@@ -453,6 +482,7 @@ int
- rpcrdma_ep_create(struct rpcrdma_ep *ep, struct rpcrdma_ia *ia,
- 				struct rpcrdma_create_data_internal *cdata)
- {
-+	struct rpcrdma_connect_private *pmsg = &ep->rep_cm_private;
- 	struct ib_cq *sendcq, *recvcq;
- 	unsigned int max_qp_wr;
- 	int rc;
-@@ -535,9 +565,14 @@ rpcrdma_ep_create(struct rpcrdma_ep *ep, struct rpcrdma_ia *ia,
- 	/* Initialize cma parameters */
- 	memset(&ep->rep_remote_cma, 0, sizeof(ep->rep_remote_cma));
+ 	ib_dma_sync_single_for_cpu(rep->rr_device,
+ 				   rdmab_addr(rep->rr_rdmabuf),
+ 				   rep->rr_len, DMA_FROM_DEVICE);
+@@ -211,12 +214,15 @@ rpcrdma_update_connect_private(struct rpcrdma_xprt *r_xprt,
+ 	const struct rpcrdma_connect_private *pmsg = param->private_data;
+ 	unsigned int rsize, wsize;
  
--	/* RPC/RDMA does not use private data */
--	ep->rep_remote_cma.private_data = NULL;
--	ep->rep_remote_cma.private_data_len = 0;
-+	/* Prepare RDMA-CM private message */
-+	pmsg->cp_magic = rpcrdma_cmp_magic;
-+	pmsg->cp_version = RPCRDMA_CMP_VERSION;
-+	pmsg->cp_flags = 0;
-+	pmsg->cp_send_size = rpcrdma_encode_buffer_size(cdata->inline_wsize);
-+	pmsg->cp_recv_size = rpcrdma_encode_buffer_size(cdata->inline_rsize);
-+	ep->rep_remote_cma.private_data = pmsg;
-+	ep->rep_remote_cma.private_data_len = sizeof(*pmsg);
++	/* Default settings for RPC-over-RDMA Version One */
++	r_xprt->rx_ia.ri_reminv_expected = false;
+ 	rsize = RPCRDMA_V1_DEF_INLINE_SIZE;
+ 	wsize = RPCRDMA_V1_DEF_INLINE_SIZE;
  
- 	/* Client offers RDMA Read but does not initiate */
- 	ep->rep_remote_cma.initiator_depth = 0;
+ 	if (pmsg &&
+ 	    pmsg->cp_magic == rpcrdma_cmp_magic &&
+ 	    pmsg->cp_version == RPCRDMA_CMP_VERSION) {
++		r_xprt->rx_ia.ri_reminv_expected = true;
+ 		rsize = rpcrdma_decode_buffer_size(pmsg->cp_send_size);
+ 		wsize = rpcrdma_decode_buffer_size(pmsg->cp_recv_size);
+ 
+@@ -568,7 +574,7 @@ rpcrdma_ep_create(struct rpcrdma_ep *ep, struct rpcrdma_ia *ia,
+ 	/* Prepare RDMA-CM private message */
+ 	pmsg->cp_magic = rpcrdma_cmp_magic;
+ 	pmsg->cp_version = RPCRDMA_CMP_VERSION;
+-	pmsg->cp_flags = 0;
++	pmsg->cp_flags |= ia->ri_ops->ro_send_w_inv_ok;
+ 	pmsg->cp_send_size = rpcrdma_encode_buffer_size(cdata->inline_wsize);
+ 	pmsg->cp_recv_size = rpcrdma_encode_buffer_size(cdata->inline_rsize);
+ 	ep->rep_remote_cma.private_data = pmsg;
 diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
-index b8d0dea..a41dac2 100644
+index a41dac2..36b7180 100644
 --- a/net/sunrpc/xprtrdma/xprt_rdma.h
 +++ b/net/sunrpc/xprtrdma/xprt_rdma.h
-@@ -70,6 +70,7 @@ struct rpcrdma_ia {
- 	struct ib_pd		*ri_pd;
- 	struct completion	ri_done;
- 	int			ri_async_rc;
-+	unsigned int		ri_max_segs;
+@@ -74,6 +74,7 @@ struct rpcrdma_ia {
  	unsigned int		ri_max_frmr_depth;
  	unsigned int		ri_max_inline_write;
  	unsigned int		ri_max_inline_read;
-@@ -87,6 +88,7 @@ struct rpcrdma_ep {
- 	int			rep_connected;
- 	struct ib_qp_init_attr	rep_attr;
- 	wait_queue_head_t 	rep_connect_wait;
-+	struct rpcrdma_connect_private	rep_cm_private;
- 	struct rdma_conn_param	rep_remote_cma;
- 	struct sockaddr_storage	rep_remote_addr;
- 	struct delayed_work	rep_connect_worker;
-@@ -522,9 +524,7 @@ void rpcrdma_reply_handler(struct rpcrdma_rep *);
-  * RPC/RDMA protocol calls - xprtrdma/rpc_rdma.c
-  */
- int rpcrdma_marshal_req(struct rpc_rqst *);
--void rpcrdma_set_max_header_sizes(struct rpcrdma_ia *,
--				  struct rpcrdma_create_data_internal *,
--				  unsigned int);
-+void rpcrdma_set_max_header_sizes(struct rpcrdma_xprt *);
++	bool			ri_reminv_expected;
+ 	struct ib_qp_attr	ri_qp_attr;
+ 	struct ib_qp_init_attr	ri_qp_init_attr;
+ };
+@@ -187,6 +188,8 @@ enum {
+ struct rpcrdma_rep {
+ 	struct ib_cqe		rr_cqe;
+ 	unsigned int		rr_len;
++	int			rr_wc_flags;
++	u32			rr_inv_rkey;
+ 	struct ib_device	*rr_device;
+ 	struct rpcrdma_xprt	*rr_rxprt;
+ 	struct work_struct	rr_work;
+@@ -384,6 +387,7 @@ struct rpcrdma_stats {
+ 	unsigned long		mrs_recovered;
+ 	unsigned long		mrs_orphaned;
+ 	unsigned long		mrs_allocated;
++	unsigned long		local_inv_needed;
+ };
  
- /* RPC/RDMA module init - xprtrdma/transport.c
-  */
+ /*
+@@ -407,6 +411,7 @@ struct rpcrdma_memreg_ops {
+ 				      struct rpcrdma_mw *);
+ 	void		(*ro_release_mr)(struct rpcrdma_mw *);
+ 	const char	*ro_displayname;
++	const int	ro_send_w_inv_ok;
+ };
+ 
+ extern const struct rpcrdma_memreg_ops rpcrdma_fmr_memreg_ops;
 
