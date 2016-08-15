@@ -1,117 +1,109 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-wm0-f41.google.com ([74.125.82.41]:35669 "EHLO
-	mail-wm0-f41.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932199AbcHORlL (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 15 Aug 2016 13:41:11 -0400
-Received: by mail-wm0-f41.google.com with SMTP id f65so101011532wmi.0
-        for <linux-nfs@vger.kernel.org>; Mon, 15 Aug 2016 10:41:10 -0700 (PDT)
-Date: Mon, 15 Aug 2016 19:41:06 +0200
-From: "Yann E. MORIN" <yann.morin.1998@free.fr>
+Received: from userp1040.oracle.com ([156.151.31.81]:47328 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750791AbcHOSdV (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 15 Aug 2016 14:33:21 -0400
+Content-Type: text/plain; charset=windows-1252
+Mime-Version: 1.0 (Mac OS X Mail 9.3 \(3124\))
+Subject: Re: [PATCH] libnfsidmap: Query DNS for the the NFSv4 domain
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <0950c4ed-e4a9-4b6c-010d-b1c5f75b8dd8@RedHat.com>
+Date: Mon, 15 Aug 2016 14:33:15 -0400
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Message-Id: <7454EDBA-6557-4C6E-856B-5BB5243B9502@oracle.com>
+References: <1470950774-3649-1-git-send-email-steved@redhat.com> <CBF9A3DE-7B43-4838-BA27-9B9E60AB54FB@oracle.com> <910b6aed-a955-5fd1-982f-b5d4541f107e@RedHat.com> <7B86C63A-EB63-42EF-A0A6-34CFFAC10B96@oracle.com> <0950c4ed-e4a9-4b6c-010d-b1c5f75b8dd8@RedHat.com>
 To: Steve Dickson <SteveD@redhat.com>
-Cc: Chuck Lever <chuck.lever@oracle.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        libtirpc List <libtirpc-devel@lists.sourceforge.net>
-Subject: Re: [Libtirpc-devel] [PATCH rpcbind] src: include cdefs.h for the
- __P() macro
-Message-ID: <20160815174106.GJ5822@free.fr>
-References: <1471097125-13193-1-git-send-email-yann.morin.1998@free.fr>
- <7736F23D-7AA5-4ABD-9693-99C9DCE03B91@oracle.com>
- <20160814221352.GI30771@free.fr>
- <5769F8D5-D7F9-4528-BC5C-B1EF921F52CD@oracle.com>
- <88231b80-c3cd-8486-9e1a-a0abb127a826@RedHat.com>
- <20160815154845.GH5822@free.fr>
- <a64169e9-7e67-b555-1d8f-bf13e1b00a87@RedHat.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-In-Reply-To: <a64169e9-7e67-b555-1d8f-bf13e1b00a87@RedHat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Steve, All,
 
-Thanks for the feedback! :-)
+> On Aug 15, 2016, at 1:00 PM, Steve Dickson <SteveD@redhat.com> wrote:
+> 
+> 
+> 
+> On 08/15/2016 11:16 AM, Chuck Lever wrote:
+>> 
+>>> On Aug 15, 2016, at 10:57 AM, Steve Dickson <SteveD@redhat.com> wrote:
+>>> 
+>>> 
+>>> 
+>>> On 08/14/2016 02:59 PM, Chuck Lever wrote:
+>>>> Hey Steve-
+>>>> 
+>>>> Sorry for the delay, and thanks for putting this together!
+>>>> 
+>>>> 
+>>>>> On Aug 11, 2016, at 5:26 PM, Steve Dickson <SteveD@redhat.com> wrote:
+>>>>> 
+>>>>> In domain_from_dns(), when at the hostname is a FQHN
+>>>>> query the DNS server for the _nfsv4idmapdomain TXT
+>>>>> record. If the record exists, use that as the
+>>>>> NFSv4 domain.
+>>>>> 
+>>>>> Note, this query will only happen if the domain name
+>>>>> is not set in the /etc/idmapd.conf
+>>>> 
+>>>> Is there a man page update that goes with this? The order in
+>>>> which the library searches for the domain name should be
+>>>> documented. idmapd.conf(5), maybe.
+>>> Yes... I should have made this an RFC patch since I just
+>>> wanted to get core out there for for comments... 
+>>> The man page needs to updated as well as the configure.ac.
+>> 
+>> To enable this feature IMO a better choice is to use a command
+>> line option on nfsidmap and rpc.idmapd.
+> With Solaris, is this on by default or off? If needed.. (a big if)
+> I think I would rather have a way to disable it.
 
-On 2016-08-15 12:30 -0400, Steve Dickson spake thusly:
-> On 08/15/2016 11:48 AM, Yann E. MORIN wrote:
-> > On 2016-08-15 11:16 -0400, Steve Dickson spake thusly:
-[--SNIP--]
-> >> Any idea what could break by removing them??
-> > 
-> > Virtually nothing. If you look at the glibc code, __P(arg) just expands
-> > to its argument arg:
-> > 
-> >     /* These two macros are not used in glibc anymore.  They are kept here
-> >        only because some other projects expect the macros to be defined.  */
-> >     #define __P(args)       args
-> >     #define __PMT(args)     args
-[--SNIP--]
-> hmm... it just worries me to remove things from code that
-> is this aged ;-) 9 out 10 times something break.
+In Solaris I don't know if there's even a way to turn it off,
+but specifying the domain name locally seems like it would be
+an effective way to prevent the TXT query. So, maybe there's
+no need for any command line control?
 
-Yes, I understand your position. "If it aint' broke, don't fix it."
-But I argue it is broken. ;-)
+I was just guessing at what you had in mind for configure.ac.
 
-Just to expand on my position, I did some more research. glibc has
-dropped K&R support since 2000 (16 yeas ago!):
 
-    commit 7f4e0e588681d0670c78472f81c21e63bb5772d6
-    Author: Ulrich Drepper <drepper@redhat.com>
-    Date:   Fri Mar 31 04:17:54 2000 +0000
+>>>> Also, some indication of when a change to the TXT record can
+>>>> be observed by users could be mentioned.
+>>> I'm not sure what you are asking here... There is the TTL time
+>>> for TXT that is returned in the query but that is completely
+>>> controlled by the admin...
+>> 
+>> Mostly this is about what might go into a man page update.
+>> 
+>> After the TXT record is changed, how long before the client
+>> moves a mapped user ID from the old domain to the new one? 
+> From a DNS standpoint all depends on the TTL on the TXT record
+> From an NFS standpoint the next call to DNS.
 
-        Update.
+Point is, it's not immediate: from questions I've gotten from
+Solaris testers about Linux idmapping, I expect to see one or
+two about "how long does it take before it's effective". Having
+some docs to point to would be nice.
 
-        2000-03-30  Andreas Jaeger  <aj@suse.de>
 
-            * misc/sys/cdefs.h: Remove K&R support.
+>> How long before all the mapped user IDs are converted to the new
+>> domain? (I think I know the answer, but what should the man
+>> page say about it).
+> The keys all have timeouts on them... so when they timeout... 
+> I guess maybe the key chain can be invalidate when a
+> change is noticed? That would be easy with a daemon not
+> so easy with a command.
+> 
+>> 
+>> For instance, the kernel's cache of keys delays the effect of
+>> changing the result of that TXT query. Should the man page
+>> recommend a flush of that cache on clients?
+> Hmm... adding a second step.. it probably should be automatic.
 
-And since then, __P() has been defined to just expand to its argument.
+That would be nice, but seems like it would be difficult
+when using TXT, unless the host stored the previous query
+result somewhere so it could be compared with the latest
+one.
 
-The current code was commited in 2004, in d19687d6 (which touches a lot
-of files, unfortunately, so not reproducing it here...)
 
-So, trying a little thought experiment now. All versions of gcc that we
-are supposed to encounter nowadays are ANSI-compliant; they don;t need
-__P().
+--
+Chuck Lever
 
-The other compiler worth investigating is clang. I haven't checked, but
-I would expect it is ANSI-compliant too.
 
-Just as a joke, tinycc claims to be C99, so ANSI-compliant as well.
 
-We're left with obscur or commercial compilers now. Which one would not
-be ANSI-compliant and would still use K&R rules? If that was the case,
-they would not be able to build even 1% of the corpus of open source
-code available.
-
-And even if such a compiler existed, would we want to support it?
-
-> >>> Post both to the mailing lists and folks here can decide which is
-> >>> better.
-> >>>
-> >>> You might not have time for all that ;-) so you could pick one and
-> >>> add a strong technical argument in the patch description why that
-> >>> is the best choice.
-> >>>
-> >>> I think I like 2. overall as it should leave the rpcbind source
-> >>> code a little easier to read, no new autoconf logic is needed, and
-> >>> there appears to be one distro that is already going that way.
-> >> I lean more toward taking the patch as is and failing the
-> >> configuration if the header file does not exist.. 
-> > 
-> > Still the case with the above explanations?
-> I do see your points... It still worries me but lets hope
-> nothing breaks when they are removed... 
-
-So, does that mean you're OK with a patch to get rid of them (at least
-to review it)?
-
-Regards,
-Yann E. MORIN.
-
--- 
-.-----------------.--------------------.------------------.--------------------.
-|  Yann E. MORIN  | Real-Time Embedded | /"\ ASCII RIBBON | Erics' conspiracy: |
-| +33 662 376 056 | Software  Designer | \ / CAMPAIGN     |  ___               |
-| +33 223 225 172 `------------.-------:  X  AGAINST      |  \e/  There is no  |
-| http://ymorin.is-a-geek.org/ | _/*\_ | / \ HTML MAIL    |   v   conspiracy.  |
-'------------------------------^-------^------------------^--------------------'
