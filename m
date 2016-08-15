@@ -1,63 +1,262 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp.gentoo.org ([140.211.166.183]:33300 "EHLO smtp.gentoo.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752842AbcHOTiO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 15 Aug 2016 15:38:14 -0400
-Date: Tue, 16 Aug 2016 03:38:12 +0800
-From: Mike Frysinger <vapier@gentoo.org>
-To: "Yann E. MORIN" <yann.morin.1998@free.fr>
-Cc: Steve Dickson <SteveD@redhat.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+Received: from mail-wm0-f68.google.com ([74.125.82.68]:36030 "EHLO
+	mail-wm0-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932115AbcHOUt7 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 15 Aug 2016 16:49:59 -0400
+Received: by mail-wm0-f68.google.com with SMTP id i138so12969214wmf.3
+        for <linux-nfs@vger.kernel.org>; Mon, 15 Aug 2016 13:49:58 -0700 (PDT)
+From: "Yann E. MORIN" <yann.morin.1998@free.fr>
+To: linux-nfs@vger.kernel.org
+Cc: libtirpc-devel@lists.sourceforge.net,
+        "Yann E. MORIN" <yann.morin.1998@free.fr>,
         Chuck Lever <chuck.lever@oracle.com>,
-        libtirpc List <libtirpc-devel@lists.sourceforge.net>
-Subject: Re: [Libtirpc-devel] [PATCH rpcbind] src: include cdefs.h for the
- __P() macro
-Message-ID: <20160815193812.GE30544@vapier.lan>
-References: <1471097125-13193-1-git-send-email-yann.morin.1998@free.fr>
- <7736F23D-7AA5-4ABD-9693-99C9DCE03B91@oracle.com>
- <20160814221352.GI30771@free.fr>
- <5769F8D5-D7F9-4528-BC5C-B1EF921F52CD@oracle.com>
- <88231b80-c3cd-8486-9e1a-a0abb127a826@RedHat.com>
- <20160815154845.GH5822@free.fr>
- <a64169e9-7e67-b555-1d8f-bf13e1b00a87@RedHat.com>
- <20160815174106.GJ5822@free.fr>
-MIME-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-sha256;
-	protocol="application/pgp-signature"; boundary="xNm6VWMD3PcA105u"
-In-Reply-To: <20160815174106.GJ5822@free.fr>
+        Steve Dickson <SteveD@redhat.com>, Mike Frysinger <vapier@gentoo.org>
+Subject: [PATCHv2] src: remove use of the __P() macro
+Date: Mon, 15 Aug 2016 22:49:51 +0200
+Message-Id: <1471294191-17800-1-git-send-email-yann.morin.1998@free.fr>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+The __P() macro is a legacy compatibility macro aimed making pre-ANSI
+(i.e. K&R) compilers that do not support function prototypes happy,
+while still allowing such prototypes for ANSI-compliant compilers.
 
---xNm6VWMD3PcA105u
-Content-Type: text/plain; charset=utf-8
-Content-Disposition: inline
+Since virtually all compilers have been ANSI-compliant for a few decades
+now, use of __P() is totally useless.
 
-GNU projects have been dropping the __P cruft for a while now, and that
-includes autoconf and gnulib, both of which are more or less the "gold"
-standard when it comes to portability.
--mike
+Furthermore, __P() is defined in the non-standard sys/cdefs.h header.
+This header is present in glibc and uClibc, and both have it included
+from many of their headers. So, sys/cdefs.h is automagically included in
+most cases and its macros are available.
 
---xNm6VWMD3PcA105u
-Content-Type: application/pgp-signature; name="signature.asc"
-Content-Description: Digital signature
+However, the musl C library does not provide this sys/cdefs.h header.
+Thus, the build breaks on musl.
 
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v2
+For all the above reasons, get rid of __P() wherever it is used; just
+always declare real function prototypes.
 
-iQIcBAEBCAAGBQJXshokAAoJEEFjO5/oN/WBuIgQAN0Yty24R/YXZ6/NzREw8f8s
-yUQ445/jUKOCnEAoGsbrDBol/95RbuzxxUtGPoc5djMQo5uMBr47JQBLv3LVmNRI
-r+xMj4EfyGkWkOWJSPVuacKNmCIWOv9OXh2LdOmSHndv5G2OvCjZplHE5AeueCrD
-//CdyjkAv4KddWDtB/ZL9xraiSW4wzNFvNn9bu1r9Ou0P8zA1Y3yQlffTvi74S35
-TMFP50bbFrdJBXeUOZO0uZIvnj05Xtct0UVQOj6WdtHfwzEgvPTETBYeqdYkqBCp
-9gHRjCFOptyQqVDq/yHg8MrYysqr7MXitYHNcfBWt9D8g3ycQogp0s9IYexV45PQ
-OX/oxI0axzNEKN2gunNB9UuiJESfS4p8yS9AWFu4AgxMfC9o3U9fF34mlVtG1qRM
-1eFGloq7PxM+cR6G4AbqmVQff4B0lajDqg/MHOpOiUm1Akb1PFB8ATwmE38+BeJX
-xiGd2BXZLzVR3z8GU1SSBznzfMuxICpAdyzk2Yto6RPXVTyAH02P6Ie8AGxZB54i
-K3WwKscLEyPdE1w7nwa56cjyqMU7hzzMTVdDHzGnoY/ynCG1WbuPexk0Un1uECCh
-ADS7kiDJXNjihoBv8X6GGFZppyObe9xrla79ZpdNXf02Xc5D67PW9Bqr3ZsxwYW5
-BURXrrqcB4cDr8L1YeSK
-=NjzF
------END PGP SIGNATURE-----
+Signed-off-by: "Yann E. MORIN" <yann.morin.1998@free.fr>
+Cc: Chuck Lever <chuck.lever@oracle.com>
+Cc: Steve Dickson <SteveD@redhat.com>
+Cc: Mike Frysinger <vapier@gentoo.org>
 
---xNm6VWMD3PcA105u--
+---
+Changes v1 -> v2:
+  - don't include sys/cdefs.h; instead, get rid of the __P() use.
+---
+ src/check_bound.c  |  2 +-
+ src/pmap_svc.c     | 10 +++++-----
+ src/rpcb_svc.c     | 10 +++++-----
+ src/rpcb_svc_4.c   | 14 ++++++--------
+ src/rpcb_svc_com.c | 46 +++++++++++++++++++++++-----------------------
+ src/rpcbind.c      | 12 ++++++------
+ src/util.c         |  2 +-
+ src/warmstart.c    |  4 ++--
+ 8 files changed, 49 insertions(+), 51 deletions(-)
+
+diff --git a/src/check_bound.c b/src/check_bound.c
+index c70b845..92bfd36 100644
+--- a/src/check_bound.c
++++ b/src/check_bound.c
+@@ -70,7 +70,7 @@ static struct fdlist *fdhead;	/* Link list of the check fd's */
+ static struct fdlist *fdtail;
+ static char *nullstring = "";
+ 
+-static bool_t check_bound __P((struct fdlist *, char *uaddr));
++static bool_t check_bound(struct fdlist *, char *uaddr);
+ 
+ /*
+  * Returns 1 if the given address is bound for the given addr & transport
+diff --git a/src/pmap_svc.c b/src/pmap_svc.c
+index ad28b93..4c744fe 100644
+--- a/src/pmap_svc.c
++++ b/src/pmap_svc.c
+@@ -60,11 +60,11 @@ static	char sccsid[] = "@(#)pmap_svc.c 1.23 89/04/05 Copyr 1984 Sun Micro";
+ #include "rpcbind.h"
+ #include "xlog.h"
+ #include <rpc/svc_soc.h> /* svc_getcaller routine definition */
+-static struct pmaplist *find_service_pmap __P((rpcprog_t, rpcvers_t,
+-					       rpcprot_t));
+-static bool_t pmapproc_change __P((struct svc_req *, SVCXPRT *, u_long));
+-static bool_t pmapproc_getport __P((struct svc_req *, SVCXPRT *));
+-static bool_t pmapproc_dump __P((struct svc_req *, SVCXPRT *));
++static struct pmaplist *find_service_pmap(rpcprog_t, rpcvers_t,
++					       rpcprot_t);
++static bool_t pmapproc_change(struct svc_req *, SVCXPRT *, u_long);
++static bool_t pmapproc_getport(struct svc_req *, SVCXPRT *);
++static bool_t pmapproc_dump(struct svc_req *, SVCXPRT *);
+ 
+ /*
+  * Called for all the version 2 inquiries.
+diff --git a/src/rpcb_svc.c b/src/rpcb_svc.c
+index bd92201..709e3fb 100644
+--- a/src/rpcb_svc.c
++++ b/src/rpcb_svc.c
+@@ -53,10 +53,10 @@
+ #include "rpcbind.h"
+ #include "xlog.h"
+ 
+-static void *rpcbproc_getaddr_3_local __P((void *, struct svc_req *, SVCXPRT *,
+-					   rpcvers_t));
+-static void *rpcbproc_dump_3_local __P((void *, struct svc_req *, SVCXPRT *,
+-					rpcvers_t));
++static void *rpcbproc_getaddr_3_local(void *, struct svc_req *, SVCXPRT *,
++					   rpcvers_t);
++static void *rpcbproc_dump_3_local(void *, struct svc_req *, SVCXPRT *,
++					rpcvers_t);
+ 
+ /*
+  * Called by svc_getreqset. There is a separate server handle for
+@@ -75,7 +75,7 @@ rpcb_service_3(struct svc_req *rqstp, SVCXPRT *transp)
+ 	} argument;
+ 	char *result;
+ 	xdrproc_t xdr_argument, xdr_result;
+-	void *(*local) __P((void *, struct svc_req *, SVCXPRT *, rpcvers_t));
++	void *(*local)(void *, struct svc_req *, SVCXPRT *, rpcvers_t);
+ 	rpcprog_t setprog = 0;
+ 
+ 	rpcbs_procinfo(RPCBVERS_3_STAT, rqstp->rq_proc);
+diff --git a/src/rpcb_svc_4.c b/src/rpcb_svc_4.c
+index b673452..5094879 100644
+--- a/src/rpcb_svc_4.c
++++ b/src/rpcb_svc_4.c
+@@ -54,13 +54,11 @@
+ #include "rpcbind.h"
+ #include "xlog.h"
+ 
+-static void *rpcbproc_getaddr_4_local __P((void *, struct svc_req *, SVCXPRT *,
+-				      rpcvers_t));
+-static void *rpcbproc_getversaddr_4_local __P((void *, struct svc_req *, SVCXPRT *, rpcvers_t));
+-static void *rpcbproc_getaddrlist_4_local
+-	__P((void *, struct svc_req *, SVCXPRT *, rpcvers_t));
+-static void free_rpcb_entry_list __P((rpcb_entry_list_ptr *));
+-static void *rpcbproc_dump_4_local __P((void *, struct svc_req *, SVCXPRT *, rpcvers_t));
++static void *rpcbproc_getaddr_4_local(void *, struct svc_req *, SVCXPRT *, rpcvers_t);
++static void *rpcbproc_getversaddr_4_local(void *, struct svc_req *, SVCXPRT *, rpcvers_t);
++static void *rpcbproc_getaddrlist_4_local(void *, struct svc_req *, SVCXPRT *, rpcvers_t);
++static void free_rpcb_entry_list(rpcb_entry_list_ptr *);
++static void *rpcbproc_dump_4_local(void *, struct svc_req *, SVCXPRT *, rpcvers_t);
+ 
+ /*
+  * Called by svc_getreqset. There is a separate server handle for
+@@ -78,7 +76,7 @@ rpcb_service_4(struct svc_req *rqstp, SVCXPRT *transp)
+ 	} argument;
+ 	char *result;
+ 	xdrproc_t xdr_argument, xdr_result;
+-	void *(*local) __P((void *, struct svc_req *, SVCXPRT *, rpcvers_t));
++	void *(*local)(void *, struct svc_req *, SVCXPRT *, rpcvers_t);
+ 	rpcprog_t setprog = 0;
+ 
+ 	rpcbs_procinfo(RPCBVERS_4_STAT, rqstp->rq_proc);
+diff --git a/src/rpcb_svc_com.c b/src/rpcb_svc_com.c
+index 148fe42..5862c26 100644
+--- a/src/rpcb_svc_com.c
++++ b/src/rpcb_svc_com.c
+@@ -100,29 +100,29 @@ struct finfo {
+ static struct finfo     FINFO[NFORWARD];
+ 
+ 
+-static bool_t xdr_encap_parms __P((XDR *, struct encap_parms *));
+-static bool_t xdr_rmtcall_args __P((XDR *, struct r_rmtcall_args *));
+-static bool_t xdr_rmtcall_result __P((XDR *, struct r_rmtcall_args *));
+-static bool_t xdr_opaque_parms __P((XDR *, struct r_rmtcall_args *));
+-static int find_rmtcallfd_by_netid __P((char *));
+-static SVCXPRT *find_rmtcallxprt_by_fd __P((int));
+-static int forward_register __P((u_int32_t, struct netbuf *, int, char *,
+-    rpcproc_t, rpcvers_t, u_int32_t *));
+-static struct finfo *forward_find __P((u_int32_t));
+-static int free_slot_by_xid __P((u_int32_t));
+-static int free_slot_by_index __P((int));
+-static int netbufcmp __P((struct netbuf *, struct netbuf *));
+-static struct netbuf *netbufdup __P((struct netbuf *));
+-static void netbuffree __P((struct netbuf *));
+-static int check_rmtcalls __P((struct pollfd *, int));
+-static void xprt_set_caller __P((SVCXPRT *, struct finfo *));
+-static void send_svcsyserr __P((SVCXPRT *, struct finfo *));
+-static void handle_reply __P((int, SVCXPRT *));
+-static void find_versions __P((rpcprog_t, char *, rpcvers_t *, rpcvers_t *));
+-static rpcblist_ptr find_service __P((rpcprog_t, rpcvers_t, char *));
+-static char *getowner __P((SVCXPRT *, char *, size_t));
+-static int add_pmaplist __P((RPCB *));
+-static int del_pmaplist __P((RPCB *));
++static bool_t xdr_encap_parms(XDR *, struct encap_parms *);
++static bool_t xdr_rmtcall_args(XDR *, struct r_rmtcall_args *);
++static bool_t xdr_rmtcall_result(XDR *, struct r_rmtcall_args *);
++static bool_t xdr_opaque_parms(XDR *, struct r_rmtcall_args *);
++static int find_rmtcallfd_by_netid(char *);
++static SVCXPRT *find_rmtcallxprt_by_fd(int);
++static int forward_register(u_int32_t, struct netbuf *, int, char *,
++    rpcproc_t, rpcvers_t, u_int32_t *);
++static struct finfo *forward_find(u_int32_t);
++static int free_slot_by_xid(u_int32_t);
++static int free_slot_by_index(int);
++static int netbufcmp(struct netbuf *, struct netbuf *);
++static struct netbuf *netbufdup(struct netbuf *);
++static void netbuffree(struct netbuf *);
++static int check_rmtcalls(struct pollfd *, int);
++static void xprt_set_caller(SVCXPRT *, struct finfo *);
++static void send_svcsyserr(SVCXPRT *, struct finfo *);
++static void handle_reply(int, SVCXPRT *);
++static void find_versions(rpcprog_t, char *, rpcvers_t *, rpcvers_t *);
++static rpcblist_ptr find_service(rpcprog_t, rpcvers_t, char *);
++static char *getowner(SVCXPRT *, char *, size_t);
++static int add_pmaplist(RPCB *);
++static int del_pmaplist(RPCB *);
+ 
+ /*
+  * Set a mapping of program, version, netid
+diff --git a/src/rpcbind.c b/src/rpcbind.c
+index c4265cd..87ccdc2 100644
+--- a/src/rpcbind.c
++++ b/src/rpcbind.c
+@@ -136,13 +136,13 @@ char *tcp_uaddr;	/* Universal TCP address */
+ static char servname[] = "rpcbind";
+ static char superuser[] = "superuser";
+ 
+-int main __P((int, char *[]));
++int main(int, char *[]);
+ 
+-static int init_transport __P((struct netconfig *));
+-static void rbllist_add __P((rpcprog_t, rpcvers_t, struct netconfig *,
+-			     struct netbuf *));
+-static void terminate __P((int));
+-static void parseargs __P((int, char *[]));
++static int init_transport(struct netconfig *);
++static void rbllist_add(rpcprog_t, rpcvers_t, struct netconfig *,
++			     struct netbuf *);
++static void terminate(int);
++static void parseargs(int, char *[]);
+ 
+ int
+ main(int argc, char *argv[])
+diff --git a/src/util.c b/src/util.c
+index a6c835b..74b0284 100644
+--- a/src/util.c
++++ b/src/util.c
+@@ -70,7 +70,7 @@ static struct sockaddr_in *local_in4;
+ static struct sockaddr_in6 *local_in6;
+ #endif
+ 
+-static int bitmaskcmp __P((void *, void *, void *, int));
++static int bitmaskcmp(void *, void *, void *, int);
+ 
+ /*
+  * For all bits set in "mask", compare the corresponding bits in
+diff --git a/src/warmstart.c b/src/warmstart.c
+index b6eb73e..122a058 100644
+--- a/src/warmstart.c
++++ b/src/warmstart.c
+@@ -58,8 +58,8 @@
+ #define	PMAPFILE	RPCBIND_STATEDIR "/portmap.xdr"
+ #endif
+ 
+-static bool_t write_struct __P((char *, xdrproc_t, void *));
+-static bool_t read_struct __P((char *, xdrproc_t, void *));
++static bool_t write_struct(char *, xdrproc_t, void *);
++static bool_t read_struct(char *, xdrproc_t, void *);
+ 
+ static bool_t
+ write_struct(char *filename, xdrproc_t structproc, void *list)
+-- 
+2.7.4
+
