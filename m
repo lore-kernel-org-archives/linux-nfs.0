@@ -1,77 +1,58 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:50188 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:53144 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751464AbcHPR33 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 16 Aug 2016 13:29:29 -0400
+	id S1753431AbcHPRe3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 16 Aug 2016 13:34:29 -0400
 From: Jeff Layton <jlayton@redhat.com>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH] nfsd: eliminate cb_minorversion field
-Date: Tue, 16 Aug 2016 13:29:27 -0400
-Message-Id: <1471368567-28954-1-git-send-email-jlayton@redhat.com>
+To: linux-nfs@vger.kernel.org
+Cc: bfields@fieldses.org, hch@lst.de
+Subject: [RFC PATCH] nfsd: fix error handling for clients that fail to return the layout
+Date: Tue, 16 Aug 2016 13:34:27 -0400
+Message-Id: <1471368867-29362-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-We already have that info in the client pointer. No need to pass around
-a copy.
+Currently, when the client fails to return the layout we'll eventually
+give up trying but leave the layout in place. What we really need to
+do here is fence the client in this case. Have it fall through to that
+code in that case instead of into the NFS4ERR_NOMATCHING_LAYOUT case.
 
 Signed-off-by: Jeff Layton <jlayton@redhat.com>
 ---
- fs/nfsd/nfs4callback.c | 7 +++----
- fs/nfsd/state.h        | 1 -
- 2 files changed, 3 insertions(+), 5 deletions(-)
+ fs/nfsd/nfs4layouts.c | 8 ++++----
+ 1 file changed, 4 insertions(+), 4 deletions(-)
 
-diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
-index 04c68d900324..dbef646c6a2d 100644
---- a/fs/nfsd/nfs4callback.c
-+++ b/fs/nfsd/nfs4callback.c
-@@ -448,7 +448,7 @@ static int decode_cb_sequence4res(struct xdr_stream *xdr,
- {
- 	int status;
+Note that this patch is untested, other than for compilation as I
+don't have a block/scsi pnfs setup on which to do so. Still, I think
+it makes more sense to fence clients that don't return the layout
+instead of just giving up.
+
+diff --git a/fs/nfsd/nfs4layouts.c b/fs/nfsd/nfs4layouts.c
+index 42aace4fc4c8..596205d939a1 100644
+--- a/fs/nfsd/nfs4layouts.c
++++ b/fs/nfsd/nfs4layouts.c
+@@ -686,10 +686,6 @@ nfsd4_cb_layout_done(struct nfsd4_callback *cb, struct rpc_task *task)
+ 			return 0;
+ 		}
+ 		/* Fallthrough */
+-	case -NFS4ERR_NOMATCHING_LAYOUT:
+-		trace_layout_recall_done(&ls->ls_stid.sc_stateid);
+-		task->tk_status = 0;
+-		return 1;
+ 	default:
+ 		/*
+ 		 * Unknown error or non-responding client, we'll need to fence.
+@@ -702,6 +698,10 @@ nfsd4_cb_layout_done(struct nfsd4_callback *cb, struct rpc_task *task)
+ 		else
+ 			nfsd4_cb_layout_fail(ls);
+ 		return -1;
++	case -NFS4ERR_NOMATCHING_LAYOUT:
++		trace_layout_recall_done(&ls->ls_stid.sc_stateid);
++		task->tk_status = 0;
++		return 1;
+ 	}
+ }
  
--	if (cb->cb_minorversion == 0)
-+	if (cb->cb_clp->cl_minorversion == 0)
- 		return 0;
- 
- 	status = decode_cb_op_status(xdr, OP_CB_SEQUENCE, &cb->cb_seq_status);
-@@ -485,7 +485,7 @@ static void nfs4_xdr_enc_cb_recall(struct rpc_rqst *req, struct xdr_stream *xdr,
- 	const struct nfs4_delegation *dp = cb_to_delegation(cb);
- 	struct nfs4_cb_compound_hdr hdr = {
- 		.ident = cb->cb_clp->cl_cb_ident,
--		.minorversion = cb->cb_minorversion,
-+		.minorversion = cb->cb_clp->cl_minorversion,
- 	};
- 
- 	encode_cb_compound4args(xdr, &hdr);
-@@ -594,7 +594,7 @@ static void nfs4_xdr_enc_cb_layout(struct rpc_rqst *req,
- 		container_of(cb, struct nfs4_layout_stateid, ls_recall);
- 	struct nfs4_cb_compound_hdr hdr = {
- 		.ident = 0,
--		.minorversion = cb->cb_minorversion,
-+		.minorversion = cb->cb_clp->cl_minorversion,
- 	};
- 
- 	encode_cb_compound4args(xdr, &hdr);
-@@ -862,7 +862,6 @@ static void nfsd4_cb_prepare(struct rpc_task *task, void *calldata)
- 	struct nfs4_client *clp = cb->cb_clp;
- 	u32 minorversion = clp->cl_minorversion;
- 
--	cb->cb_minorversion = minorversion;
- 	/*
- 	 * cb_seq_status is only set in decode_cb_sequence4res,
- 	 * and so will remain 1 if an rpc level failure occurs.
-diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
-index b95adf9a1595..0bdc79cb359c 100644
---- a/fs/nfsd/state.h
-+++ b/fs/nfsd/state.h
-@@ -63,7 +63,6 @@ typedef struct {
- 
- struct nfsd4_callback {
- 	struct nfs4_client *cb_clp;
--	u32 cb_minorversion;
- 	struct rpc_message cb_msg;
- 	const struct nfsd4_callback_ops *cb_ops;
- 	struct work_struct cb_work;
 -- 
 2.7.4
 
