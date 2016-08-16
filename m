@@ -1,58 +1,82 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:53144 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753431AbcHPRe3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 16 Aug 2016 13:34:29 -0400
-From: Jeff Layton <jlayton@redhat.com>
-To: linux-nfs@vger.kernel.org
-Cc: bfields@fieldses.org, hch@lst.de
-Subject: [RFC PATCH] nfsd: fix error handling for clients that fail to return the layout
-Date: Tue, 16 Aug 2016 13:34:27 -0400
-Message-Id: <1471368867-29362-1-git-send-email-jlayton@redhat.com>
+Received: from mail-it0-f68.google.com ([209.85.214.68]:34728 "EHLO
+	mail-it0-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752700AbcHPSSy (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 16 Aug 2016 14:18:54 -0400
+MIME-Version: 1.0
+In-Reply-To: <20160815162312.GA19794@kroah.com>
+References: <1471128518-24075-1-git-send-email-deepa.kernel@gmail.com> <20160815162312.GA19794@kroah.com>
+From: Deepa Dinamani <deepa.kernel@gmail.com>
+Date: Tue, 16 Aug 2016 11:18:52 -0700
+Message-ID: <CABeXuvp027DZR0=zQPp86oGdi2B+Gh16z8_FyoY5UDUdHXAngA@mail.gmail.com>
+Subject: Re: [GIT PULL] [PATCH v4 00/26] Delete CURRENT_TIME and
+ CURRENT_TIME_SEC macros
+To: Greg KH <gregkh@linuxfoundation.org>
+Cc: Linux FS-devel Mailing List <linux-fsdevel@vger.kernel.org>,
+        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
+        Arnd Bergmann <arnd@arndb.de>, Thomas Gleixner <tglx@linutronix.de>,
+        Linus Torvalds <torvalds@linux-foundation.org>,
+        "Theodore Ts'o" <tytso@mit.edu>,
+        Alexander Viro <viro@zeniv.linux.org.uk>,
+        y2038 Mailman List <y2038@lists.linaro.org>,
+        Andreas Dilger <adilger.kernel@dilger.ca>,
+        Adrian Hunter <adrian.hunter@intel.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>,
+        Brian Uchino <buchino@cisco.com>,
+        ceph-devel <ceph-devel@vger.kernel.org>, Chris Mason <clm@fb.com>,
+        Changman Lee <cm224.lee@samsung.com>,
+        Artem Bityutskiy <dedekind1@gmail.com>,
+        David Sterba <dsterba@suse.com>, Evgeniy Dushistov <dushistov@mail.ru>,
+        Alex Elder <elder@kernel.org>, Eric Paris <eparis@redhat.com>,
+        Hiral Patel <hiralpat@cisco.com>, Ilya Dryomov <idryomov@gmail.com>,
+        Jan Kara <jack@suse.com>, Jaegeuk Kim <jaegeuk@kernel.org>,
+        Josef Bacik <jbacik@fb.com>,
+        "James E.J. Bottomley" <jejb@linux.vnet.ibm.com>,
+        jfs-discussion@lists.sourceforge.net, Joel Becker <jlbec@evilplan.org>,
+        John Stultz <john.stultz@linaro.org>, linux-audit@redhat.com,
+        linux-btrfs <linux-btrfs@vger.kernel.org>, linux-ext4@vger.kernel.org,
+        "Linux F2FS DEV, Mailing List"
+	<linux-f2fs-devel@lists.sourceforge.net>,
+        linux-mtd <linux-mtd@lists.infradead.org>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        Linux SCSI List <linux-scsi@vger.kernel.org>,
+        lustre-devel@lists.lustre.org,
+        "Martin K. Petersen" <martin.petersen@oracle.com>,
+        Mark Fasheh <mfasheh@suse.com>, ocfs2-devel@oss.oracle.com,
+        Paul Moore <paul@paul-moore.com>, Sage Weil <sage@redhat.com>,
+        Steve French <sfrench@samba.org>, Dave Kleikamp <shaggy@kernel.org>,
+        Suma Ramars <sramars@cisco.com>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        "Yan, Zheng" <zyan@redhat.com>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Currently, when the client fails to return the layout we'll eventually
-give up trying but leave the layout in place. What we really need to
-do here is fence the client in this case. Have it fall through to that
-code in that case instead of into the NFS4ERR_NOMATCHING_LAYOUT case.
+Thank you for the suggestion.
 
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
----
- fs/nfsd/nfs4layouts.c | 8 ++++----
- 1 file changed, 4 insertions(+), 4 deletions(-)
+> Who are you execting to pull this huge patch series?
 
-Note that this patch is untested, other than for compilation as I
-don't have a block/scsi pnfs setup on which to do so. Still, I think
-it makes more sense to fence clients that don't return the layout
-instead of just giving up.
+The last pull request was addressed to Al as per Arnd's suggestion.
+I'm not completely sure who should it be addressed to.
 
-diff --git a/fs/nfsd/nfs4layouts.c b/fs/nfsd/nfs4layouts.c
-index 42aace4fc4c8..596205d939a1 100644
---- a/fs/nfsd/nfs4layouts.c
-+++ b/fs/nfsd/nfs4layouts.c
-@@ -686,10 +686,6 @@ nfsd4_cb_layout_done(struct nfsd4_callback *cb, struct rpc_task *task)
- 			return 0;
- 		}
- 		/* Fallthrough */
--	case -NFS4ERR_NOMATCHING_LAYOUT:
--		trace_layout_recall_done(&ls->ls_stid.sc_stateid);
--		task->tk_status = 0;
--		return 1;
- 	default:
- 		/*
- 		 * Unknown error or non-responding client, we'll need to fence.
-@@ -702,6 +698,10 @@ nfsd4_cb_layout_done(struct nfsd4_callback *cb, struct rpc_task *task)
- 		else
- 			nfsd4_cb_layout_fail(ls);
- 		return -1;
-+	case -NFS4ERR_NOMATCHING_LAYOUT:
-+		trace_layout_recall_done(&ls->ls_stid.sc_stateid);
-+		task->tk_status = 0;
-+		return 1;
- 	}
- }
- 
--- 
-2.7.4
+> Why not just introduce the new api call, wait for that to be merged, and
+> then push the individual patches through the different subsystems?
+> After half of those get ignored, then provide a single set of patches
+> that can go through Andrew or my trees.
 
+Arnd and I tried to do this a few ways.
+
+We can try to introduce the api first like you suggest.
+
+There are a few Acks already on the patches.
+And, patches 2-5 also need to be merged through some common tree like
+yours or Andrew's as you suggest.
+
+So, if everyone is ok, I could do the following:
+
+1. Post patches 1-5 for rc-2.
+2. Post all other patches to respective maintainers after rc-2
+3. Then after patches get ignored or merged, post remaining as a
+series for you or Andrew to pick up.
+
+-Deepa
