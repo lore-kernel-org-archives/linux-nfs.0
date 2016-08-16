@@ -1,7 +1,7 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:48848 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:48850 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751944AbcHPLNQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	id S1753267AbcHPLNQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
 	Tue, 16 Aug 2016 07:13:16 -0400
 From: Andreas Gruenbacher <agruenba@redhat.com>
 To: Alexander Viro <viro@zeniv.linux.org.uk>
@@ -16,188 +16,236 @@ Cc: Andreas Gruenbacher <agruenba@redhat.com>,
         xfs@oss.sgi.com, linux-kernel@vger.kernel.org,
         linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
         linux-cifs@vger.kernel.org, linux-api@vger.kernel.org
-Subject: [PATCH v25 16/22] richacl: Automatic Inheritance
-Date: Tue, 16 Aug 2016 13:02:57 +0200
-Message-Id: <1471345383-15334-17-git-send-email-agruenba@redhat.com>
+Subject: [PATCH v25 20/22] vfs: Move check_posix_acl and check_richacl out of fs/namei.c
+Date: Tue, 16 Aug 2016 13:03:01 +0200
+Message-Id: <1471345383-15334-21-git-send-email-agruenba@redhat.com>
 In-Reply-To: <1471345383-15334-1-git-send-email-agruenba@redhat.com>
 References: <1471345383-15334-1-git-send-email-agruenba@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Automatic Inheritance (AI) allows changes to the acl of a directory to
-propagate down to children.
+By moving those functions into fs/posix_acl.c and fs/richacl.c, the
+ifdefs can be moved into include/linux/posix_acl.h and
+include/linux/richacl.h.  This may be seen as a small improvement.
 
-This is mostly implemented in user space: when a process changes the
-permissions of a directory and Automatic Inheritance is enabled for that
-directory, the process must propagate those changes to all children,
-recursively.
-
-The kernel enables this by keeping track of which permissions have been
-inherited at create time.  In addition, it makes sure that permission
-propagation is turned off when the permissions are set explicitly (for
-example, upon create or chmod).
-
-Automatic Inheritance works as follows:
-
- - When the RICHACL_AUTO_INHERIT flag in the acl of a file or directory
-   is not set, the file or directory is not affected by AI.
-
- - When the RICHACL_AUTO_INHERIT flag in the acl of a directory is set
-   and a file or subdirectory is created in that directory, the
-   inherited acl will have the RICHACL_AUTO_INHERIT flag set, and all
-   inherited aces will have the RICHACE_INHERITED_ACE flag set.  This
-   allows user space to distinguish between aces which have been
-   inherited and aces which have been explicitly added.
-
- - When the RICHACL_PROTECTED acl flag in the acl of a file or directory
-   is set, AI will not modify the acl.  This does not affect propagation
-   of permissions from the file to its children (if the file is a
-   directory).
-
-Linux does not have a way of creating files or directories without setting the
-file permission bits, so all files created inside a directory with
-RICHACL_AUTO_INHERIT set will have the RICHACL_PROTECTED flag set.  This
-effectively disables Automatic Inheritance.
-
-Protocols which support creating files without specifying permissions can
-explicitly clear the RICHACL_PROTECTED flag after creating a file and reset the
-file masks to "undo" applying the create mode; see richacl_compute_max_masks().
-They should set the RICHACL_DEFAULTED flag.  (A mechanism that would allow to
-indicate to the kernel to ignore the create mode in the first place when there
-are inherited permissions would be nice to have.)
-
+Suggested-by: Jeff Layton <jlayton@redhat.com>
 Signed-off-by: Andreas Gruenbacher <agruenba@redhat.com>
-Reviewed-by: Jeff Layton <jlayton@redhat.com>
 ---
- fs/richacl.c                 | 20 +++++++++++++++++++-
- include/linux/richacl.h      | 12 ++++++++++++
- include/uapi/linux/richacl.h | 11 ++++++++++-
- 3 files changed, 41 insertions(+), 2 deletions(-)
+ fs/namei.c                | 72 ++++-------------------------------------------
+ fs/posix_acl.c            | 28 ++++++++++++++++++
+ fs/richacl.c              | 28 ++++++++++++++++++
+ include/linux/posix_acl.h |  5 ++++
+ include/linux/richacl.h   |  8 ++++++
+ 5 files changed, 74 insertions(+), 67 deletions(-)
 
+diff --git a/fs/namei.c b/fs/namei.c
+index 63feb3c..3830ef1 100644
+--- a/fs/namei.c
++++ b/fs/namei.c
+@@ -258,73 +258,6 @@ void putname(struct filename *name)
+ 		__putname(name);
+ }
+ 
+-static int check_richacl(struct inode *inode, int mask)
+-{
+-#ifdef CONFIG_FS_RICHACL
+-	if (mask & MAY_NOT_BLOCK) {
+-		struct base_acl *base_acl;
+-
+-		base_acl = rcu_dereference(inode->i_acl);
+-		if (!base_acl)
+-			goto no_acl;
+-		/* no ->get_richacl() calls in RCU mode... */
+-		if (is_uncached_acl(base_acl))
+-			return -ECHILD;
+-		return richacl_permission(inode, richacl(base_acl),
+-					  mask & ~MAY_NOT_BLOCK);
+-	} else {
+-		struct richacl *acl;
+-
+-		acl = get_richacl(inode);
+-		if (IS_ERR(acl))
+-			return PTR_ERR(acl);
+-		if (acl) {
+-			int error = richacl_permission(inode, acl, mask);
+-			richacl_put(acl);
+-			return error;
+-		}
+-	}
+-no_acl:
+-#endif
+-	if (mask & (MAY_DELETE_SELF | MAY_TAKE_OWNERSHIP |
+-		    MAY_CHMOD | MAY_SET_TIMES)) {
+-		/* File permission bits cannot grant this. */
+-		return -EACCES;
+-	}
+-	return -EAGAIN;
+-}
+-
+-static int check_posix_acl(struct inode *inode, int mask)
+-{
+-#ifdef CONFIG_FS_POSIX_ACL
+-	if (mask & MAY_NOT_BLOCK) {
+-		struct base_acl *base_acl;
+-
+-		base_acl = rcu_dereference(inode->i_acl);
+-	        if (!base_acl)
+-	                return -EAGAIN;
+-		/* no ->get_acl() calls in RCU mode... */
+-		if (is_uncached_acl(base_acl))
+-			return -ECHILD;
+-	        return posix_acl_permission(inode, posix_acl(base_acl),
+-					    mask & ~MAY_NOT_BLOCK);
+-	} else {
+-		struct posix_acl *acl;
+-
+-		acl = get_acl(inode, ACL_TYPE_ACCESS);
+-		if (IS_ERR(acl))
+-			return PTR_ERR(acl);
+-		if (acl) {
+-			int error = posix_acl_permission(inode, acl, mask);
+-			posix_acl_release(acl);
+-			return error;
+-		}
+-	}
+-#endif
+-
+-	return -EAGAIN;
+-}
+-
+ /*
+  * This does the basic permission checking
+  */
+@@ -344,6 +277,11 @@ static int acl_permission_check(struct inode *inode, int mask)
+ 		int error = check_richacl(inode, mask);
+ 		if (error != -EAGAIN)
+ 			return error;
++		if (mask & (MAY_DELETE_SELF | MAY_TAKE_OWNERSHIP |
++			    MAY_CHMOD | MAY_SET_TIMES)) {
++			/* File permission bits cannot grant this. */
++			return -EACCES;
++		}
+ 	}
+ 	if (likely(uid_eq(current_fsuid(), inode->i_uid)))
+ 		mode >>= 6;
+diff --git a/fs/posix_acl.c b/fs/posix_acl.c
+index f7e1a29..6415675 100644
+--- a/fs/posix_acl.c
++++ b/fs/posix_acl.c
+@@ -374,6 +374,34 @@ check_perm:
+ 	return -EACCES;
+ }
+ 
++int check_posix_acl(struct inode *inode, int mask)
++{
++	if (mask & MAY_NOT_BLOCK) {
++		struct base_acl *base_acl;
++
++		base_acl = rcu_dereference(inode->i_acl);
++	        if (!base_acl)
++	                return -EAGAIN;
++		/* no ->get_acl() calls in RCU mode... */
++		if (is_uncached_acl(base_acl))
++			return -ECHILD;
++	        return posix_acl_permission(inode, posix_acl(base_acl),
++					    mask & ~MAY_NOT_BLOCK);
++	} else {
++		struct posix_acl *acl;
++
++		acl = get_acl(inode, ACL_TYPE_ACCESS);
++		if (IS_ERR(acl))
++			return PTR_ERR(acl);
++		if (acl) {
++			int error = posix_acl_permission(inode, acl, mask);
++			posix_acl_release(acl);
++			return error;
++		}
++	}
++	return -EAGAIN;
++}
++
+ /*
+  * Modify acl when creating a new inode. The caller must ensure the acl is
+  * only referenced once.
 diff --git a/fs/richacl.c b/fs/richacl.c
-index 8051181..4edce8b 100644
+index 1945691..ece9d0b 100644
 --- a/fs/richacl.c
 +++ b/fs/richacl.c
-@@ -567,7 +567,8 @@ __richacl_chmod(struct richacl *acl, umode_t mode)
- 	    acl->a_group_mask == group_mask &&
- 	    acl->a_other_mask == other_mask &&
- 	    (acl->a_flags & RICHACL_MASKED) &&
--	    (acl->a_flags & RICHACL_WRITE_THROUGH))
-+	    (acl->a_flags & RICHACL_WRITE_THROUGH) &&
-+	    (!richacl_is_auto_inherit(acl) || richacl_is_protected(acl)))
- 		return acl;
- 
- 	clone = richacl_clone(acl, GFP_KERNEL);
-@@ -579,6 +580,8 @@ __richacl_chmod(struct richacl *acl, umode_t mode)
- 	clone->a_owner_mask = owner_mask;
- 	clone->a_group_mask = group_mask;
- 	clone->a_other_mask = other_mask;
-+	if (richacl_is_auto_inherit(clone))
-+		clone->a_flags |= RICHACL_PROTECTED;
- 
- 	return clone;
+@@ -385,6 +385,34 @@ out:
  }
-@@ -794,6 +797,14 @@ richacl_inherit(const struct richacl *dir_acl, int isdir)
- 			ace++;
- 		}
- 	}
-+	if (richacl_is_auto_inherit(dir_acl)) {
-+		acl->a_flags = RICHACL_AUTO_INHERIT;
-+		richacl_for_each_entry(ace, acl)
-+			ace->e_flags |= RICHACE_INHERITED_ACE;
-+	} else {
-+		richacl_for_each_entry(ace, acl)
-+			ace->e_flags &= ~RICHACE_INHERITED_ACE;
-+	}
+ EXPORT_SYMBOL_GPL(richacl_permission);
  
- 	return acl;
- }
-@@ -822,6 +833,13 @@ richacl_inherit_inode(const struct richacl *dir_acl, umode_t *mode_p)
- 			richacl_put(acl);
- 			acl = NULL;
- 		} else {
-+			/*
-+			 * We need to set RICHACL_PROTECTED because we are
-+			 * doing an implicit chmod
-+			 */
-+			if (richacl_is_auto_inherit(acl))
-+				acl->a_flags |= RICHACL_PROTECTED;
++int check_richacl(struct inode *inode, int mask)
++{
++	if (mask & MAY_NOT_BLOCK) {
++		struct base_acl *base_acl;
 +
- 			richacl_compute_max_masks(acl);
- 			/*
- 			 * Ensure that the acl will not grant any permissions
++		base_acl = rcu_dereference(inode->i_acl);
++		if (!base_acl)
++			return -EAGAIN;
++		/* no ->get_richacl() calls in RCU mode... */
++		if (is_uncached_acl(base_acl))
++			return -ECHILD;
++		return richacl_permission(inode, richacl(base_acl),
++					  mask & ~MAY_NOT_BLOCK);
++	} else {
++		struct richacl *acl;
++
++		acl = get_richacl(inode);
++		if (IS_ERR(acl))
++			return PTR_ERR(acl);
++		if (acl) {
++			int error = richacl_permission(inode, acl, mask);
++			richacl_put(acl);
++			return error;
++		}
++	}
++	return -EAGAIN;
++}
++
+ /*
+  * Note: functions like richacl_allowed_to_who(), richacl_group_class_allowed(),
+  * and richacl_compute_max_masks() iterate through the entire acl in reverse
+diff --git a/include/linux/posix_acl.h b/include/linux/posix_acl.h
+index eafb358..07225c1 100644
+--- a/include/linux/posix_acl.h
++++ b/include/linux/posix_acl.h
+@@ -94,6 +94,7 @@ extern struct posix_acl *get_posix_acl(struct inode *, int);
+ extern int set_posix_acl(struct inode *, int, struct posix_acl *);
+ 
+ #ifdef CONFIG_FS_POSIX_ACL
++extern int check_posix_acl(struct inode *, int);
+ extern int posix_acl_chmod(struct inode *, umode_t);
+ extern int posix_acl_create(struct inode *, umode_t *, struct posix_acl **,
+ 		struct posix_acl **);
+@@ -112,6 +113,10 @@ static inline void cache_no_acl(struct inode *inode)
+ 	inode->i_default_acl = NULL;
+ }
+ #else
++static inline int check_posix_acl(struct inode *inode, int mask) {
++	return -EAGAIN;
++}
++
+ static inline int posix_acl_chmod(struct inode *inode, umode_t mode)
+ {
+ 	return 0;
 diff --git a/include/linux/richacl.h b/include/linux/richacl.h
-index 6354ef0..737513b 100644
+index 7530920..368e918 100644
 --- a/include/linux/richacl.h
 +++ b/include/linux/richacl.h
-@@ -81,6 +81,18 @@ extern void set_cached_richacl(struct inode *, struct richacl *);
- extern void forget_cached_richacl(struct inode *);
- extern struct richacl *get_richacl(struct inode *);
+@@ -207,4 +207,12 @@ extern struct richacl *richacl_inherit(const struct richacl *, int);
+ extern struct richacl *richacl_create(umode_t *, struct inode *);
+ extern int set_richacl(struct inode *, struct richacl *);
  
-+static inline int
-+richacl_is_auto_inherit(const struct richacl *acl)
-+{
-+	return acl->a_flags & RICHACL_AUTO_INHERIT;
++#ifdef CONFIG_FS_RICHACL
++extern int check_richacl(struct inode *, int);
++#else
++static inline int check_richacl(struct inode *inode, int mask) {
++	return -EAGAIN;
 +}
++#endif  /* CONFIG_FS_RICHACL */
 +
-+static inline int
-+richacl_is_protected(const struct richacl *acl)
-+{
-+	return acl->a_flags & RICHACL_PROTECTED;
-+}
-+
- /**
-  * richace_is_owner  -  check if @ace is an OWNER@ entry
-  */
-diff --git a/include/uapi/linux/richacl.h b/include/uapi/linux/richacl.h
-index 1ed48ac..8849a53 100644
---- a/include/uapi/linux/richacl.h
-+++ b/include/uapi/linux/richacl.h
-@@ -18,6 +18,9 @@
- #define __UAPI_RICHACL_H
- 
- /* a_flags values */
-+#define RICHACL_AUTO_INHERIT			0x01
-+#define RICHACL_PROTECTED			0x02
-+#define RICHACL_DEFAULTED			0x04
- #define RICHACL_WRITE_THROUGH			0x40
- #define RICHACL_MASKED				0x80
- 
-@@ -31,6 +34,7 @@
- #define RICHACE_NO_PROPAGATE_INHERIT_ACE	0x0004
- #define RICHACE_INHERIT_ONLY_ACE		0x0008
- #define RICHACE_IDENTIFIER_GROUP		0x0040
-+#define RICHACE_INHERITED_ACE			0x0080
- #define RICHACE_SPECIAL_WHO			0x4000
- 
- /* e_mask bitflags */
-@@ -60,6 +64,9 @@
- #define RICHACE_EVERYONE_SPECIAL_ID		2
- 
- #define RICHACL_VALID_FLAGS (					\
-+	RICHACL_AUTO_INHERIT |					\
-+	RICHACL_PROTECTED |					\
-+	RICHACL_DEFAULTED |					\
- 	RICHACL_WRITE_THROUGH |					\
- 	RICHACL_MASKED )
- 
-@@ -69,13 +76,15 @@
- 	RICHACE_NO_PROPAGATE_INHERIT_ACE |			\
- 	RICHACE_INHERIT_ONLY_ACE |				\
- 	RICHACE_IDENTIFIER_GROUP |				\
-+	RICHACE_INHERITED_ACE |					\
- 	RICHACE_SPECIAL_WHO )
- 
- #define RICHACE_INHERITANCE_FLAGS (				\
- 	RICHACE_FILE_INHERIT_ACE |				\
- 	RICHACE_DIRECTORY_INHERIT_ACE |				\
- 	RICHACE_NO_PROPAGATE_INHERIT_ACE |			\
--	RICHACE_INHERIT_ONLY_ACE )
-+	RICHACE_INHERIT_ONLY_ACE |				\
-+	RICHACE_INHERITED_ACE )
- 
- /* Valid RICHACE_* flags for directories and non-directories */
- #define RICHACE_VALID_MASK (					\
+ #endif /* __RICHACL_H */
 -- 
 2.7.4
 
