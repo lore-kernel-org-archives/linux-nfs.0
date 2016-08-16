@@ -1,191 +1,276 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:19181 "EHLO
+Received: from aserp1040.oracle.com ([141.146.126.69]:26396 "EHLO
 	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932206AbcHPBZA (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 15 Aug 2016 21:25:00 -0400
-Content-Type: text/plain; charset=windows-1252
+	with ESMTP id S1752742AbcHPBwa (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 15 Aug 2016 21:52:30 -0400
+Content-Type: text/plain; charset=us-ascii
 Mime-Version: 1.0 (Mac OS X Mail 9.3 \(3124\))
-Subject: Re: [PATCH v1 02/22] SUNRPC: Refactor rpc_xdr_buf_init()
+Subject: Re: [PATCHv2] src: remove use of the __P() macro
 From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <0750E5E3-335B-4D49-8B17-45DC0A616225@primarydata.com>
-Date: Mon, 15 Aug 2016 21:24:54 -0400
-Cc: List Linux RDMA Mailing <linux-rdma@vger.kernel.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <C38EAEDC-8CAD-48CB-9245-E33BA416047D@oracle.com>
-References: <20160815195649.11652.32252.stgit@manet.1015granger.net> <20160815205030.11652.6620.stgit@manet.1015granger.net> <0750E5E3-335B-4D49-8B17-45DC0A616225@primarydata.com>
-To: Trond Myklebust <trondmy@primarydata.com>
+In-Reply-To: <1471294191-17800-1-git-send-email-yann.morin.1998@free.fr>
+Date: Mon, 15 Aug 2016 21:51:57 -0400
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        libtirpc List <libtirpc-devel@lists.sourceforge.net>,
+        Steve Dickson <SteveD@redhat.com>, Mike Frysinger <vapier@gentoo.org>
+Message-Id: <CE443C75-063B-4B8B-B211-8DA0299881CA@oracle.com>
+References: <1471294191-17800-1-git-send-email-yann.morin.1998@free.fr>
+To: "Yann E. MORIN" <yann.morin.1998@free.fr>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
-> On Aug 15, 2016, at 5:51 PM, Trond Myklebust <trondmy@primarydata.com> wrote:
+> On Aug 15, 2016, at 4:49 PM, Yann E. MORIN <yann.morin.1998@free.fr> wrote:
 > 
->> 
->> On Aug 15, 2016, at 16:50, Chuck Lever <chuck.lever@oracle.com> wrote:
->> 
->> Clean up: there is some XDR initialization logic that is commoon
->> to the forward channel and backchannel. Move it to an XDR header
->> so it can be shared.
->> 
->> rpc_rqst::rq_buffer points to a buffer containing big-endian data.
->> Update its annotation as part of the clean up.
->> 
->> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
->> ---
->> include/linux/sunrpc/xdr.h        |   10 ++++++++++
->> include/linux/sunrpc/xprt.h       |    2 +-
->> net/sunrpc/backchannel_rqst.c     |    8 +-------
->> net/sunrpc/clnt.c                 |   24 ++++++------------------
->> net/sunrpc/xprtrdma/backchannel.c |   12 +-----------
->> 5 files changed, 19 insertions(+), 37 deletions(-)
->> 
->> diff --git a/include/linux/sunrpc/xdr.h b/include/linux/sunrpc/xdr.h
->> index 70c6b92..551569c 100644
->> --- a/include/linux/sunrpc/xdr.h
->> +++ b/include/linux/sunrpc/xdr.h
->> @@ -67,6 +67,16 @@ struct xdr_buf {
->> 			len;		/* Length of XDR encoded message */
->> };
->> 
->> +static inline void
->> +xdr_buf_init(struct xdr_buf *buf, __be32 *start, size_t len)
->> +{
->> +	memset(buf, 0, sizeof(*buf));
+> The __P() macro is a legacy compatibility macro aimed making pre-ANSI
+> (i.e. K&R) compilers that do not support function prototypes happy,
+> while still allowing such prototypes for ANSI-compliant compilers.
 > 
-> Can we please leave this as it was. There is no need to zero out unused fields such as the pages pointer, the tail iov_base, etc.
-
-In the next version, I'll make this look exactly like rpc_xdr_buf_init().
-
-
->> +
->> +	buf->head[0].iov_base = start;
->> +	buf->head[0].iov_len = len;
->> +	buf->buflen = len;
->> +}
->> +
->> /*
->> * pre-xdr'ed macros.
->> */
->> diff --git a/include/linux/sunrpc/xprt.h b/include/linux/sunrpc/xprt.h
->> index a16070d..559dad3 100644
->> --- a/include/linux/sunrpc/xprt.h
->> +++ b/include/linux/sunrpc/xprt.h
->> @@ -83,7 +83,7 @@ struct rpc_rqst {
->> 	void (*rq_release_snd_buf)(struct rpc_rqst *); /* release rq_enc_pages */
->> 	struct list_head	rq_list;
->> 
->> -	__u32 *			rq_buffer;	/* XDR encode buffer */
->> +	__be32			*rq_buffer;	/* Call XDR encode buffer */
+> Since virtually all compilers have been ANSI-compliant for a few decades
+> now, use of __P() is totally useless.
 > 
-> If changing it, why not make it a void* ? Nothing should ever be touching the contents of this buffer directly.
+> Furthermore, __P() is defined in the non-standard sys/cdefs.h header.
+> This header is present in glibc and uClibc, and both have it included
+> from many of their headers. So, sys/cdefs.h is automagically included in
+> most cases and its macros are available.
+> 
+> However, the musl C library does not provide this sys/cdefs.h header.
+> Thus, the build breaks on musl.
+> 
+> For all the above reasons, get rid of __P() wherever it is used; just
+> always declare real function prototypes.
+> 
+> Signed-off-by: "Yann E. MORIN" <yann.morin.1998@free.fr>
+> Cc: Chuck Lever <chuck.lever@oracle.com>
+> Cc: Steve Dickson <SteveD@redhat.com>
+> Cc: Mike Frysinger <vapier@gentoo.org>
 
-I'll consider void *, I think that can be assigned to
-without an explicit type cast.
+This seems like a reasonable approach.
+
+Reviewed-by: Chuck Lever <chuck.lever@oracle.com>
 
 
->> 	size_t			rq_callsize,
->> 				rq_rcvsize;
->> 	size_t			rq_xmit_bytes_sent;	/* total bytes sent */
->> diff --git a/net/sunrpc/backchannel_rqst.c b/net/sunrpc/backchannel_rqst.c
->> index 229956b..ac701c2 100644
->> --- a/net/sunrpc/backchannel_rqst.c
->> +++ b/net/sunrpc/backchannel_rqst.c
->> @@ -76,13 +76,7 @@ static int xprt_alloc_xdr_buf(struct xdr_buf *buf, gfp_t gfp_flags)
->> 	page = alloc_page(gfp_flags);
->> 	if (page == NULL)
->> 		return -ENOMEM;
->> -	buf->head[0].iov_base = page_address(page);
->> -	buf->head[0].iov_len = PAGE_SIZE;
->> -	buf->tail[0].iov_base = NULL;
->> -	buf->tail[0].iov_len = 0;
->> -	buf->page_len = 0;
->> -	buf->len = 0;
->> -	buf->buflen = PAGE_SIZE;
->> +	xdr_buf_init(buf, page_address(page), PAGE_SIZE);
->> 	return 0;
->> }
->> 
->> diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
->> index 7f79fb7..0e75369 100644
->> --- a/net/sunrpc/clnt.c
->> +++ b/net/sunrpc/clnt.c
->> @@ -1748,18 +1748,6 @@ rpc_task_force_reencode(struct rpc_task *task)
->> 	task->tk_rqstp->rq_bytes_sent = 0;
->> }
->> 
->> -static inline void
->> -rpc_xdr_buf_init(struct xdr_buf *buf, void *start, size_t len)
->> -{
->> -	buf->head[0].iov_base = start;
->> -	buf->head[0].iov_len = len;
->> -	buf->tail[0].iov_len = 0;
->> -	buf->page_len = 0;
->> -	buf->flags = 0;
->> -	buf->len = 0;
->> -	buf->buflen = len;
->> -}
->> -
->> /*
->> * 3.	Encode arguments of an RPC call
->> */
->> @@ -1772,12 +1760,12 @@ rpc_xdr_encode(struct rpc_task *task)
->> 
->> 	dprint_status(task);
->> 
->> -	rpc_xdr_buf_init(&req->rq_snd_buf,
->> -			 req->rq_buffer,
->> -			 req->rq_callsize);
->> -	rpc_xdr_buf_init(&req->rq_rcv_buf,
->> -			 (char *)req->rq_buffer + req->rq_callsize,
->> -			 req->rq_rcvsize);
->> +	xdr_buf_init(&req->rq_snd_buf,
->> +		     req->rq_buffer,
->> +		     req->rq_callsize);
->> +	xdr_buf_init(&req->rq_rcv_buf,
->> +		     (__be32 *)((char *)req->rq_buffer + req->rq_callsize),
->> +		     req->rq_rcvsize);
->> 
->> 	p = rpc_encode_header(task);
->> 	if (p == NULL) {
->> diff --git a/net/sunrpc/xprtrdma/backchannel.c b/net/sunrpc/xprtrdma/backchannel.c
->> index 5f60ab2..d3cfaf2 100644
->> --- a/net/sunrpc/xprtrdma/backchannel.c
->> +++ b/net/sunrpc/xprtrdma/backchannel.c
->> @@ -38,7 +38,6 @@ static int rpcrdma_bc_setup_rqst(struct rpcrdma_xprt *r_xprt,
->> 	struct rpcrdma_ia *ia = &r_xprt->rx_ia;
->> 	struct rpcrdma_regbuf *rb;
->> 	struct rpcrdma_req *req;
->> -	struct xdr_buf *buf;
->> 	size_t size;
->> 
->> 	req = rpcrdma_create_req(r_xprt);
->> @@ -60,16 +59,7 @@ static int rpcrdma_bc_setup_rqst(struct rpcrdma_xprt *r_xprt,
->> 	req->rl_sendbuf = rb;
->> 	/* so that rpcr_to_rdmar works when receiving a request */
->> 	rqst->rq_buffer = (void *)req->rl_sendbuf->rg_base;
->> -
->> -	buf = &rqst->rq_snd_buf;
->> -	buf->head[0].iov_base = rqst->rq_buffer;
->> -	buf->head[0].iov_len = 0;
->> -	buf->tail[0].iov_base = NULL;
->> -	buf->tail[0].iov_len = 0;
->> -	buf->page_len = 0;
->> -	buf->len = 0;
->> -	buf->buflen = size;
->> -
->> +	xdr_buf_init(&rqst->rq_snd_buf, rqst->rq_buffer, size);
->> 	return 0;
->> 
->> out_fail:
->> 
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->> 
+> ---
+> Changes v1 -> v2:
+>  - don't include sys/cdefs.h; instead, get rid of the __P() use.
+> ---
+> src/check_bound.c  |  2 +-
+> src/pmap_svc.c     | 10 +++++-----
+> src/rpcb_svc.c     | 10 +++++-----
+> src/rpcb_svc_4.c   | 14 ++++++--------
+> src/rpcb_svc_com.c | 46 +++++++++++++++++++++++-----------------------
+> src/rpcbind.c      | 12 ++++++------
+> src/util.c         |  2 +-
+> src/warmstart.c    |  4 ++--
+> 8 files changed, 49 insertions(+), 51 deletions(-)
+> 
+> diff --git a/src/check_bound.c b/src/check_bound.c
+> index c70b845..92bfd36 100644
+> --- a/src/check_bound.c
+> +++ b/src/check_bound.c
+> @@ -70,7 +70,7 @@ static struct fdlist *fdhead;	/* Link list of the check fd's */
+> static struct fdlist *fdtail;
+> static char *nullstring = "";
+> 
+> -static bool_t check_bound __P((struct fdlist *, char *uaddr));
+> +static bool_t check_bound(struct fdlist *, char *uaddr);
+> 
+> /*
+>  * Returns 1 if the given address is bound for the given addr & transport
+> diff --git a/src/pmap_svc.c b/src/pmap_svc.c
+> index ad28b93..4c744fe 100644
+> --- a/src/pmap_svc.c
+> +++ b/src/pmap_svc.c
+> @@ -60,11 +60,11 @@ static	char sccsid[] = "@(#)pmap_svc.c 1.23 89/04/05 Copyr 1984 Sun Micro";
+> #include "rpcbind.h"
+> #include "xlog.h"
+> #include <rpc/svc_soc.h> /* svc_getcaller routine definition */
+> -static struct pmaplist *find_service_pmap __P((rpcprog_t, rpcvers_t,
+> -					       rpcprot_t));
+> -static bool_t pmapproc_change __P((struct svc_req *, SVCXPRT *, u_long));
+> -static bool_t pmapproc_getport __P((struct svc_req *, SVCXPRT *));
+> -static bool_t pmapproc_dump __P((struct svc_req *, SVCXPRT *));
+> +static struct pmaplist *find_service_pmap(rpcprog_t, rpcvers_t,
+> +					       rpcprot_t);
+> +static bool_t pmapproc_change(struct svc_req *, SVCXPRT *, u_long);
+> +static bool_t pmapproc_getport(struct svc_req *, SVCXPRT *);
+> +static bool_t pmapproc_dump(struct svc_req *, SVCXPRT *);
+> 
+> /*
+>  * Called for all the version 2 inquiries.
+> diff --git a/src/rpcb_svc.c b/src/rpcb_svc.c
+> index bd92201..709e3fb 100644
+> --- a/src/rpcb_svc.c
+> +++ b/src/rpcb_svc.c
+> @@ -53,10 +53,10 @@
+> #include "rpcbind.h"
+> #include "xlog.h"
+> 
+> -static void *rpcbproc_getaddr_3_local __P((void *, struct svc_req *, SVCXPRT *,
+> -					   rpcvers_t));
+> -static void *rpcbproc_dump_3_local __P((void *, struct svc_req *, SVCXPRT *,
+> -					rpcvers_t));
+> +static void *rpcbproc_getaddr_3_local(void *, struct svc_req *, SVCXPRT *,
+> +					   rpcvers_t);
+> +static void *rpcbproc_dump_3_local(void *, struct svc_req *, SVCXPRT *,
+> +					rpcvers_t);
+> 
+> /*
+>  * Called by svc_getreqset. There is a separate server handle for
+> @@ -75,7 +75,7 @@ rpcb_service_3(struct svc_req *rqstp, SVCXPRT *transp)
+> 	} argument;
+> 	char *result;
+> 	xdrproc_t xdr_argument, xdr_result;
+> -	void *(*local) __P((void *, struct svc_req *, SVCXPRT *, rpcvers_t));
+> +	void *(*local)(void *, struct svc_req *, SVCXPRT *, rpcvers_t);
+> 	rpcprog_t setprog = 0;
+> 
+> 	rpcbs_procinfo(RPCBVERS_3_STAT, rqstp->rq_proc);
+> diff --git a/src/rpcb_svc_4.c b/src/rpcb_svc_4.c
+> index b673452..5094879 100644
+> --- a/src/rpcb_svc_4.c
+> +++ b/src/rpcb_svc_4.c
+> @@ -54,13 +54,11 @@
+> #include "rpcbind.h"
+> #include "xlog.h"
+> 
+> -static void *rpcbproc_getaddr_4_local __P((void *, struct svc_req *, SVCXPRT *,
+> -				      rpcvers_t));
+> -static void *rpcbproc_getversaddr_4_local __P((void *, struct svc_req *, SVCXPRT *, rpcvers_t));
+> -static void *rpcbproc_getaddrlist_4_local
+> -	__P((void *, struct svc_req *, SVCXPRT *, rpcvers_t));
+> -static void free_rpcb_entry_list __P((rpcb_entry_list_ptr *));
+> -static void *rpcbproc_dump_4_local __P((void *, struct svc_req *, SVCXPRT *, rpcvers_t));
+> +static void *rpcbproc_getaddr_4_local(void *, struct svc_req *, SVCXPRT *, rpcvers_t);
+> +static void *rpcbproc_getversaddr_4_local(void *, struct svc_req *, SVCXPRT *, rpcvers_t);
+> +static void *rpcbproc_getaddrlist_4_local(void *, struct svc_req *, SVCXPRT *, rpcvers_t);
+> +static void free_rpcb_entry_list(rpcb_entry_list_ptr *);
+> +static void *rpcbproc_dump_4_local(void *, struct svc_req *, SVCXPRT *, rpcvers_t);
+> 
+> /*
+>  * Called by svc_getreqset. There is a separate server handle for
+> @@ -78,7 +76,7 @@ rpcb_service_4(struct svc_req *rqstp, SVCXPRT *transp)
+> 	} argument;
+> 	char *result;
+> 	xdrproc_t xdr_argument, xdr_result;
+> -	void *(*local) __P((void *, struct svc_req *, SVCXPRT *, rpcvers_t));
+> +	void *(*local)(void *, struct svc_req *, SVCXPRT *, rpcvers_t);
+> 	rpcprog_t setprog = 0;
+> 
+> 	rpcbs_procinfo(RPCBVERS_4_STAT, rqstp->rq_proc);
+> diff --git a/src/rpcb_svc_com.c b/src/rpcb_svc_com.c
+> index 148fe42..5862c26 100644
+> --- a/src/rpcb_svc_com.c
+> +++ b/src/rpcb_svc_com.c
+> @@ -100,29 +100,29 @@ struct finfo {
+> static struct finfo     FINFO[NFORWARD];
+> 
+> 
+> -static bool_t xdr_encap_parms __P((XDR *, struct encap_parms *));
+> -static bool_t xdr_rmtcall_args __P((XDR *, struct r_rmtcall_args *));
+> -static bool_t xdr_rmtcall_result __P((XDR *, struct r_rmtcall_args *));
+> -static bool_t xdr_opaque_parms __P((XDR *, struct r_rmtcall_args *));
+> -static int find_rmtcallfd_by_netid __P((char *));
+> -static SVCXPRT *find_rmtcallxprt_by_fd __P((int));
+> -static int forward_register __P((u_int32_t, struct netbuf *, int, char *,
+> -    rpcproc_t, rpcvers_t, u_int32_t *));
+> -static struct finfo *forward_find __P((u_int32_t));
+> -static int free_slot_by_xid __P((u_int32_t));
+> -static int free_slot_by_index __P((int));
+> -static int netbufcmp __P((struct netbuf *, struct netbuf *));
+> -static struct netbuf *netbufdup __P((struct netbuf *));
+> -static void netbuffree __P((struct netbuf *));
+> -static int check_rmtcalls __P((struct pollfd *, int));
+> -static void xprt_set_caller __P((SVCXPRT *, struct finfo *));
+> -static void send_svcsyserr __P((SVCXPRT *, struct finfo *));
+> -static void handle_reply __P((int, SVCXPRT *));
+> -static void find_versions __P((rpcprog_t, char *, rpcvers_t *, rpcvers_t *));
+> -static rpcblist_ptr find_service __P((rpcprog_t, rpcvers_t, char *));
+> -static char *getowner __P((SVCXPRT *, char *, size_t));
+> -static int add_pmaplist __P((RPCB *));
+> -static int del_pmaplist __P((RPCB *));
+> +static bool_t xdr_encap_parms(XDR *, struct encap_parms *);
+> +static bool_t xdr_rmtcall_args(XDR *, struct r_rmtcall_args *);
+> +static bool_t xdr_rmtcall_result(XDR *, struct r_rmtcall_args *);
+> +static bool_t xdr_opaque_parms(XDR *, struct r_rmtcall_args *);
+> +static int find_rmtcallfd_by_netid(char *);
+> +static SVCXPRT *find_rmtcallxprt_by_fd(int);
+> +static int forward_register(u_int32_t, struct netbuf *, int, char *,
+> +    rpcproc_t, rpcvers_t, u_int32_t *);
+> +static struct finfo *forward_find(u_int32_t);
+> +static int free_slot_by_xid(u_int32_t);
+> +static int free_slot_by_index(int);
+> +static int netbufcmp(struct netbuf *, struct netbuf *);
+> +static struct netbuf *netbufdup(struct netbuf *);
+> +static void netbuffree(struct netbuf *);
+> +static int check_rmtcalls(struct pollfd *, int);
+> +static void xprt_set_caller(SVCXPRT *, struct finfo *);
+> +static void send_svcsyserr(SVCXPRT *, struct finfo *);
+> +static void handle_reply(int, SVCXPRT *);
+> +static void find_versions(rpcprog_t, char *, rpcvers_t *, rpcvers_t *);
+> +static rpcblist_ptr find_service(rpcprog_t, rpcvers_t, char *);
+> +static char *getowner(SVCXPRT *, char *, size_t);
+> +static int add_pmaplist(RPCB *);
+> +static int del_pmaplist(RPCB *);
+> 
+> /*
+>  * Set a mapping of program, version, netid
+> diff --git a/src/rpcbind.c b/src/rpcbind.c
+> index c4265cd..87ccdc2 100644
+> --- a/src/rpcbind.c
+> +++ b/src/rpcbind.c
+> @@ -136,13 +136,13 @@ char *tcp_uaddr;	/* Universal TCP address */
+> static char servname[] = "rpcbind";
+> static char superuser[] = "superuser";
+> 
+> -int main __P((int, char *[]));
+> +int main(int, char *[]);
+> 
+> -static int init_transport __P((struct netconfig *));
+> -static void rbllist_add __P((rpcprog_t, rpcvers_t, struct netconfig *,
+> -			     struct netbuf *));
+> -static void terminate __P((int));
+> -static void parseargs __P((int, char *[]));
+> +static int init_transport(struct netconfig *);
+> +static void rbllist_add(rpcprog_t, rpcvers_t, struct netconfig *,
+> +			     struct netbuf *);
+> +static void terminate(int);
+> +static void parseargs(int, char *[]);
+> 
+> int
+> main(int argc, char *argv[])
+> diff --git a/src/util.c b/src/util.c
+> index a6c835b..74b0284 100644
+> --- a/src/util.c
+> +++ b/src/util.c
+> @@ -70,7 +70,7 @@ static struct sockaddr_in *local_in4;
+> static struct sockaddr_in6 *local_in6;
+> #endif
+> 
+> -static int bitmaskcmp __P((void *, void *, void *, int));
+> +static int bitmaskcmp(void *, void *, void *, int);
+> 
+> /*
+>  * For all bits set in "mask", compare the corresponding bits in
+> diff --git a/src/warmstart.c b/src/warmstart.c
+> index b6eb73e..122a058 100644
+> --- a/src/warmstart.c
+> +++ b/src/warmstart.c
+> @@ -58,8 +58,8 @@
+> #define	PMAPFILE	RPCBIND_STATEDIR "/portmap.xdr"
+> #endif
+> 
+> -static bool_t write_struct __P((char *, xdrproc_t, void *));
+> -static bool_t read_struct __P((char *, xdrproc_t, void *));
+> +static bool_t write_struct(char *, xdrproc_t, void *);
+> +static bool_t read_struct(char *, xdrproc_t, void *);
+> 
+> static bool_t
+> write_struct(char *filename, xdrproc_t structproc, void *list)
+> -- 
+> 2.7.4
 > 
 > --
-> To unsubscribe from this list: send the line "unsubscribe linux-rdma" in
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
 > the body of a message to majordomo@vger.kernel.org
 > More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
