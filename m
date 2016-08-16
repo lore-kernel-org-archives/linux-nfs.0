@@ -1,8 +1,8 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:35028 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:59696 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753832AbcHPLMH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 16 Aug 2016 07:12:07 -0400
+	id S1753193AbcHPLLa (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 16 Aug 2016 07:11:30 -0400
 From: Andreas Gruenbacher <agruenba@redhat.com>
 To: Alexander Viro <viro@zeniv.linux.org.uk>
 Cc: Andreas Gruenbacher <agruenba@redhat.com>,
@@ -16,200 +16,151 @@ Cc: Andreas Gruenbacher <agruenba@redhat.com>,
         xfs@oss.sgi.com, linux-kernel@vger.kernel.org,
         linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
         linux-cifs@vger.kernel.org, linux-api@vger.kernel.org
-Subject: [PATCH v25 15/22] richacl: Create-time inheritance
-Date: Tue, 16 Aug 2016 13:02:56 +0200
-Message-Id: <1471345383-15334-16-git-send-email-agruenba@redhat.com>
+Subject: [PATCH v25 05/22] vfs: Add permission flags for setting file attributes
+Date: Tue, 16 Aug 2016 13:02:46 +0200
+Message-Id: <1471345383-15334-6-git-send-email-agruenba@redhat.com>
 In-Reply-To: <1471345383-15334-1-git-send-email-agruenba@redhat.com>
 References: <1471345383-15334-1-git-send-email-agruenba@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-When a new file is created, it can inherit an acl from its parent
-directory; this is similar to how default acls work in POSIX ACLs.
-
-As with POSIX ACLs, if a file inherits an acl from its parent directory,
-the intersection between the create mode and the permissions granted by
-the inherited acl determines the file masks and file permission bits,
-and the umask is ignored.
+Richacls support permissions that allow to take ownership of a file,
+change the file permissions, and set the file timestamps.  Support that
+by introducing new permission mask flags and by checking for those mask
+flags in inode_change_ok().
 
 Signed-off-by: Andreas Gruenbacher <agruenba@redhat.com>
+Reviewed-by: J. Bruce Fields <bfields@redhat.com>
+Reviewed-by: Steve French <steve.french@primarydata.com>
 Reviewed-by: Jeff Layton <jlayton@redhat.com>
 ---
- fs/richacl.c            | 151 ++++++++++++++++++++++++++++++++++++++++++++++++
- include/linux/richacl.h |   2 +
- 2 files changed, 153 insertions(+)
+ fs/attr.c          | 79 +++++++++++++++++++++++++++++++++++++++++++++---------
+ include/linux/fs.h |  3 +++
+ 2 files changed, 70 insertions(+), 12 deletions(-)
 
-diff --git a/fs/richacl.c b/fs/richacl.c
-index 1022983..8051181 100644
---- a/fs/richacl.c
-+++ b/fs/richacl.c
-@@ -716,3 +716,154 @@ richacl_equiv_mode(const struct richacl *acl, umode_t *mode_p)
- 	return 0;
- }
- EXPORT_SYMBOL_GPL(richacl_equiv_mode);
-+
-+static inline bool
-+ace_inherits_to_directory(const struct richace *ace)
+diff --git a/fs/attr.c b/fs/attr.c
+index a4b7d2f..6b175e8 100644
+--- a/fs/attr.c
++++ b/fs/attr.c
+@@ -17,6 +17,65 @@
+ #include <linux/ima.h>
+ 
+ /**
++ * inode_extended_permission  -  permissions beyond read/write/execute
++ *
++ * Check for permissions that only richacls can currently grant.
++ */
++static int inode_extended_permission(struct inode *inode, int mask)
 +{
-+	if (ace->e_flags & RICHACE_DIRECTORY_INHERIT_ACE)
++	if (!IS_RICHACL(inode))
++		return -EPERM;
++	return inode_permission(inode, mask);
++}
++
++static bool inode_uid_change_ok(struct inode *inode, kuid_t ia_uid)
++{
++	if (uid_eq(current_fsuid(), inode->i_uid) &&
++	    uid_eq(ia_uid, inode->i_uid))
 +		return true;
-+	if ((ace->e_flags & RICHACE_FILE_INHERIT_ACE) &&
-+	    !(ace->e_flags & RICHACE_NO_PROPAGATE_INHERIT_ACE))
++	if (uid_eq(current_fsuid(), ia_uid) &&
++	    inode_extended_permission(inode, MAY_TAKE_OWNERSHIP) == 0)
++		return true;
++	if (capable_wrt_inode_uidgid(inode, CAP_CHOWN))
++		return true;
++	return false;
++}
++
++static bool inode_gid_change_ok(struct inode *inode, kgid_t ia_gid)
++{
++	int in_group = in_group_p(ia_gid);
++	if (uid_eq(current_fsuid(), inode->i_uid) &&
++	    (in_group || gid_eq(ia_gid, inode->i_gid)))
++		return true;
++	if (in_group && inode_extended_permission(inode, MAY_TAKE_OWNERSHIP) == 0)
++		return true;
++	if (capable_wrt_inode_uidgid(inode, CAP_CHOWN))
 +		return true;
 +	return false;
 +}
 +
 +/**
-+ * richacl_inherit  -  compute the inherited acl of a new file
-+ * @dir_acl:	acl of the containing directory
-+ * @isdir:	inherit by a directory or non-directory?
++ * inode_owner_permitted_or_capable
 + *
-+ * A directory can have acl entries which files and/or directories created
-+ * inside the directory will inherit.  This function computes the acl for such
-+ * a new file.  If there is no inheritable acl, it will return %NULL.
++ * Check for permissions implicitly granted to the owner, like MAY_CHMOD or
++ * MAY_SET_TIMES.  Equivalent to inode_owner_or_capable for file systems
++ * without support for those permissions.
 + */
-+struct richacl *
-+richacl_inherit(const struct richacl *dir_acl, int isdir)
++static bool inode_owner_permitted_or_capable(struct inode *inode, int mask)
 +{
-+	const struct richace *dir_ace;
-+	struct richacl *acl = NULL;
-+	struct richace *ace;
-+	int count = 0;
++	struct user_namespace *ns;
 +
-+	if (isdir) {
-+		richacl_for_each_entry(dir_ace, dir_acl) {
-+			if (!ace_inherits_to_directory(dir_ace))
-+				continue;
-+			count++;
-+		}
-+		if (!count)
-+			return NULL;
-+		acl = richacl_alloc(count, GFP_KERNEL);
-+		if (!acl)
-+			return ERR_PTR(-ENOMEM);
-+		ace = acl->a_entries;
-+		richacl_for_each_entry(dir_ace, dir_acl) {
-+			if (!ace_inherits_to_directory(dir_ace))
-+				continue;
-+			richace_copy(ace, dir_ace);
-+			if (dir_ace->e_flags & RICHACE_NO_PROPAGATE_INHERIT_ACE)
-+				ace->e_flags &= ~RICHACE_INHERITANCE_FLAGS;
-+			else if (dir_ace->e_flags & RICHACE_DIRECTORY_INHERIT_ACE)
-+				ace->e_flags &= ~RICHACE_INHERIT_ONLY_ACE;
-+			else
-+				ace->e_flags |= RICHACE_INHERIT_ONLY_ACE;
-+			ace++;
-+		}
-+	} else {
-+		richacl_for_each_entry(dir_ace, dir_acl) {
-+			if (!(dir_ace->e_flags & RICHACE_FILE_INHERIT_ACE))
-+				continue;
-+			count++;
-+		}
-+		if (!count)
-+			return NULL;
-+		acl = richacl_alloc(count, GFP_KERNEL);
-+		if (!acl)
-+			return ERR_PTR(-ENOMEM);
-+		ace = acl->a_entries;
-+		richacl_for_each_entry(dir_ace, dir_acl) {
-+			if (!(dir_ace->e_flags & RICHACE_FILE_INHERIT_ACE))
-+				continue;
-+			richace_copy(ace, dir_ace);
-+			ace->e_flags &= ~RICHACE_INHERITANCE_FLAGS;
-+			/*
-+			 * RICHACE_DELETE_CHILD is meaningless for
-+			 * non-directories, so clear it.
-+			 */
-+			ace->e_mask &= ~RICHACE_DELETE_CHILD;
-+			ace++;
-+		}
-+	}
-+
-+	return acl;
-+}
-+
-+/*
-+ * richacl_inherit_inode  -  compute inherited acl and file mode
-+ * @dir_acl:	acl of the containing directory
-+ * @mode_p:	mode of the new inode
-+ *
-+ * The file permission bits in @mode_p must be set to the create mode by the
-+ * caller.
-+ *
-+ * If there is an inheritable acl, the maximum permissions that the acl grants
-+ * are computed and the file masks of the new acl are set accordingly.
-+ */
-+static struct richacl *
-+richacl_inherit_inode(const struct richacl *dir_acl, umode_t *mode_p)
-+{
-+	struct richacl *acl;
-+	umode_t mode = *mode_p;
-+
-+	acl = richacl_inherit(dir_acl, S_ISDIR(mode));
-+	if (acl) {
-+		if (richacl_equiv_mode(acl, &mode) == 0) {
-+			*mode_p &= mode;
-+			richacl_put(acl);
-+			acl = NULL;
-+		} else {
-+			richacl_compute_max_masks(acl);
-+			/*
-+			 * Ensure that the acl will not grant any permissions
-+			 * beyond the create mode.
-+			 */
-+			acl->a_flags |= RICHACL_MASKED;
-+			acl->a_owner_mask &=
-+				richacl_mode_to_mask(mode >> 6);
-+			acl->a_group_mask &=
-+				richacl_mode_to_mask(mode >> 3);
-+			acl->a_other_mask &=
-+				richacl_mode_to_mask(mode);
-+		}
-+	} else
-+		*mode_p &= ~current_umask();
-+
-+	return acl;
++	if (uid_eq(current_fsuid(), inode->i_uid))
++		return true;
++	if (inode_extended_permission(inode, mask) == 0)
++		return true;
++	ns = current_user_ns();
++	if (ns_capable(ns, CAP_FOWNER) && kuid_has_mapping(ns, inode->i_uid))
++		return true;
++	return false;
 +}
 +
 +/**
-+ * richacl_create  -  filesystem create helper
-+ * @mode_p:	mode of the new inode
-+ * @dir:	containing directory
-+ *
-+ * Compute the inherited acl for a new inode.  If there is no acl to inherit,
-+ * apply the umask.  Use when creating a new inode on a richacl enabled file
-+ * system.
-+ */
-+struct richacl *richacl_create(umode_t *mode_p, struct inode *dir)
-+{
-+	struct richacl *dir_acl, *acl = NULL;
-+
-+	if (S_ISLNK(*mode_p))
-+		return NULL;
-+	dir_acl = get_richacl(dir);
-+	if (dir_acl) {
-+		if (IS_ERR(dir_acl))
-+			return dir_acl;
-+		acl = richacl_inherit_inode(dir_acl, mode_p);
-+		richacl_put(dir_acl);
-+	} else
-+		*mode_p &= ~current_umask();
-+	return acl;
-+}
-+EXPORT_SYMBOL_GPL(richacl_create);
-diff --git a/include/linux/richacl.h b/include/linux/richacl.h
-index a865f37..6354ef0 100644
---- a/include/linux/richacl.h
-+++ b/include/linux/richacl.h
-@@ -191,5 +191,7 @@ extern int richacl_permission(struct inode *, const struct richacl *, int);
- extern void richacl_compute_max_masks(struct richacl *);
- extern int richacl_chmod(struct inode *, umode_t);
- extern int richacl_equiv_mode(const struct richacl *, umode_t *);
-+extern struct richacl *richacl_inherit(const struct richacl *, int);
-+extern struct richacl *richacl_create(umode_t *, struct inode *);
+  * inode_change_ok - check if attribute changes to an inode are allowed
+  * @inode:	inode to check
+  * @attr:	attributes to change
+@@ -47,22 +106,18 @@ int inode_change_ok(struct inode *inode, struct iattr *attr)
+ 		return 0;
  
- #endif /* __RICHACL_H */
+ 	/* Make sure a caller can chown. */
+-	if ((ia_valid & ATTR_UID) &&
+-	    (!uid_eq(current_fsuid(), inode->i_uid) ||
+-	     !uid_eq(attr->ia_uid, inode->i_uid)) &&
+-	    !capable_wrt_inode_uidgid(inode, CAP_CHOWN))
+-		return -EPERM;
++	if (ia_valid & ATTR_UID)
++		if (!inode_uid_change_ok(inode, attr->ia_uid))
++			return -EPERM;
+ 
+ 	/* Make sure caller can chgrp. */
+-	if ((ia_valid & ATTR_GID) &&
+-	    (!uid_eq(current_fsuid(), inode->i_uid) ||
+-	    (!in_group_p(attr->ia_gid) && !gid_eq(attr->ia_gid, inode->i_gid))) &&
+-	    !capable_wrt_inode_uidgid(inode, CAP_CHOWN))
+-		return -EPERM;
++	if (ia_valid & ATTR_GID)
++		if (!inode_gid_change_ok(inode, attr->ia_gid))
++			return -EPERM;
+ 
+ 	/* Make sure a caller can chmod. */
+ 	if (ia_valid & ATTR_MODE) {
+-		if (!inode_owner_or_capable(inode))
++		if (!inode_owner_permitted_or_capable(inode, MAY_CHMOD))
+ 			return -EPERM;
+ 		/* Also check the setgid bit! */
+ 		if (!in_group_p((ia_valid & ATTR_GID) ? attr->ia_gid :
+@@ -73,7 +128,7 @@ int inode_change_ok(struct inode *inode, struct iattr *attr)
+ 
+ 	/* Check for setting the inode time. */
+ 	if (ia_valid & (ATTR_MTIME_SET | ATTR_ATIME_SET | ATTR_TIMES_SET)) {
+-		if (!inode_owner_or_capable(inode))
++		if (!inode_owner_permitted_or_capable(inode, MAY_SET_TIMES))
+ 			return -EPERM;
+ 	}
+ 
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index 0d6ac2c..cb15cb2 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -88,6 +88,9 @@ typedef int (dio_iodone_t)(struct kiocb *iocb, loff_t offset,
+ #define MAY_CREATE_DIR		0x00000200
+ #define MAY_DELETE_CHILD	0x00000400
+ #define MAY_DELETE_SELF		0x00000800
++#define MAY_TAKE_OWNERSHIP	0x00001000
++#define MAY_CHMOD		0x00002000
++#define MAY_SET_TIMES		0x00004000
+ 
+ /*
+  * flags in file.f_mode.  Note that FMODE_READ and FMODE_WRITE must correspond
 -- 
 2.7.4
 
