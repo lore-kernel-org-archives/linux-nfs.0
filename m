@@ -1,91 +1,84 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.linuxfoundation.org ([140.211.169.12]:34977 "EHLO
-	mail.linuxfoundation.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750822AbcHPSxL (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 16 Aug 2016 14:53:11 -0400
-Date: Tue, 16 Aug 2016 20:53:20 +0200
-From: Greg KH <gregkh@linuxfoundation.org>
-To: Deepa Dinamani <deepa.kernel@gmail.com>
-Cc: Linux FS-devel Mailing List <linux-fsdevel@vger.kernel.org>,
-        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
-        Arnd Bergmann <arnd@arndb.de>, Thomas Gleixner <tglx@linutronix.de>,
-        Linus Torvalds <torvalds@linux-foundation.org>,
-        "Theodore Ts'o" <tytso@mit.edu>,
-        Alexander Viro <viro@zeniv.linux.org.uk>,
-        y2038 Mailman List <y2038@lists.linaro.org>,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        Adrian Hunter <adrian.hunter@intel.com>,
-        Anna Schumaker <anna.schumaker@netapp.com>,
-        Brian Uchino <buchino@cisco.com>,
-        ceph-devel <ceph-devel@vger.kernel.org>, Chris Mason <clm@fb.com>,
-        Changman Lee <cm224.lee@samsung.com>,
-        Artem Bityutskiy <dedekind1@gmail.com>,
-        David Sterba <dsterba@suse.com>, Evgeniy Dushistov <dushistov@mail.ru>,
-        Alex Elder <elder@kernel.org>, Eric Paris <eparis@redhat.com>,
-        Hiral Patel <hiralpat@cisco.com>, Ilya Dryomov <idryomov@gmail.com>,
-        Jan Kara <jack@suse.com>, Jaegeuk Kim <jaegeuk@kernel.org>,
-        Josef Bacik <jbacik@fb.com>,
-        "James E.J. Bottomley" <jejb@linux.vnet.ibm.com>,
-        jfs-discussion@lists.sourceforge.net, Joel Becker <jlbec@evilplan.org>,
-        John Stultz <john.stultz@linaro.org>, linux-audit@redhat.com,
-        linux-btrfs <linux-btrfs@vger.kernel.org>, linux-ext4@vger.kernel.org,
-        "Linux F2FS DEV, Mailing List"
-	<linux-f2fs-devel@lists.sourceforge.net>,
-        linux-mtd <linux-mtd@lists.infradead.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Linux SCSI List <linux-scsi@vger.kernel.org>,
-        lustre-devel@lists.lustre.org,
-        "Martin K. Petersen" <martin.petersen@oracle.com>,
-        Mark Fasheh <mfasheh@suse.com>, ocfs2-devel@oss.oracle.com,
-        Paul Moore <paul@paul-moore.com>, Sage Weil <sage@redhat.com>,
-        Steve French <sfrench@samba.org>, Dave Kleikamp <shaggy@kernel.org>,
-        Suma Ramars <sramars@cisco.com>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        "Yan, Zheng" <zyan@redhat.com>
-Subject: Re: [GIT PULL] [PATCH v4 00/26] Delete CURRENT_TIME and
- CURRENT_TIME_SEC macros
-Message-ID: <20160816185320.GB6513@kroah.com>
-References: <1471128518-24075-1-git-send-email-deepa.kernel@gmail.com>
- <20160815162312.GA19794@kroah.com>
- <CABeXuvp027DZR0=zQPp86oGdi2B+Gh16z8_FyoY5UDUdHXAngA@mail.gmail.com>
+Received: from fieldses.org ([173.255.197.46]:57924 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752053AbcHPTOU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 16 Aug 2016 15:14:20 -0400
+Date: Tue, 16 Aug 2016 15:14:19 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Jeff Layton <jlayton@redhat.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] nfsd: eliminate cb_minorversion field
+Message-ID: <20160816191419.GA32722@fieldses.org>
+References: <1471368567-28954-1-git-send-email-jlayton@redhat.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <CABeXuvp027DZR0=zQPp86oGdi2B+Gh16z8_FyoY5UDUdHXAngA@mail.gmail.com>
+In-Reply-To: <1471368567-28954-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Aug 16, 2016 at 11:18:52AM -0700, Deepa Dinamani wrote:
-> Thank you for the suggestion.
-> 
-> > Who are you execting to pull this huge patch series?
-> 
-> The last pull request was addressed to Al as per Arnd's suggestion.
-> I'm not completely sure who should it be addressed to.
-> 
-> > Why not just introduce the new api call, wait for that to be merged, and
-> > then push the individual patches through the different subsystems?
-> > After half of those get ignored, then provide a single set of patches
-> > that can go through Andrew or my trees.
-> 
-> Arnd and I tried to do this a few ways.
-> 
-> We can try to introduce the api first like you suggest.
-> 
-> There are a few Acks already on the patches.
-> And, patches 2-5 also need to be merged through some common tree like
-> yours or Andrew's as you suggest.
-> 
-> So, if everyone is ok, I could do the following:
-> 
-> 1. Post patches 1-5 for rc-2.
+On Tue, Aug 16, 2016 at 01:29:27PM -0400, Jeff Layton wrote:
+> We already have that info in the client pointer. No need to pass around
+> a copy.
 
--rc2 is already released, and we aren't adding new apis this late in the
-release cycle, sorry.
+Thanks, applying for 4.9.--b.
 
-> 2. Post all other patches to respective maintainers after rc-2
-> 3. Then after patches get ignored or merged, post remaining as a
-> series for you or Andrew to pick up.
-
-The apis need to be aimed for 4.9-rc1, it's too late for 4.8, sorry.
-
-greg k-h
+> 
+> Signed-off-by: Jeff Layton <jlayton@redhat.com>
+> ---
+>  fs/nfsd/nfs4callback.c | 7 +++----
+>  fs/nfsd/state.h        | 1 -
+>  2 files changed, 3 insertions(+), 5 deletions(-)
+> 
+> diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
+> index 04c68d900324..dbef646c6a2d 100644
+> --- a/fs/nfsd/nfs4callback.c
+> +++ b/fs/nfsd/nfs4callback.c
+> @@ -448,7 +448,7 @@ static int decode_cb_sequence4res(struct xdr_stream *xdr,
+>  {
+>  	int status;
+>  
+> -	if (cb->cb_minorversion == 0)
+> +	if (cb->cb_clp->cl_minorversion == 0)
+>  		return 0;
+>  
+>  	status = decode_cb_op_status(xdr, OP_CB_SEQUENCE, &cb->cb_seq_status);
+> @@ -485,7 +485,7 @@ static void nfs4_xdr_enc_cb_recall(struct rpc_rqst *req, struct xdr_stream *xdr,
+>  	const struct nfs4_delegation *dp = cb_to_delegation(cb);
+>  	struct nfs4_cb_compound_hdr hdr = {
+>  		.ident = cb->cb_clp->cl_cb_ident,
+> -		.minorversion = cb->cb_minorversion,
+> +		.minorversion = cb->cb_clp->cl_minorversion,
+>  	};
+>  
+>  	encode_cb_compound4args(xdr, &hdr);
+> @@ -594,7 +594,7 @@ static void nfs4_xdr_enc_cb_layout(struct rpc_rqst *req,
+>  		container_of(cb, struct nfs4_layout_stateid, ls_recall);
+>  	struct nfs4_cb_compound_hdr hdr = {
+>  		.ident = 0,
+> -		.minorversion = cb->cb_minorversion,
+> +		.minorversion = cb->cb_clp->cl_minorversion,
+>  	};
+>  
+>  	encode_cb_compound4args(xdr, &hdr);
+> @@ -862,7 +862,6 @@ static void nfsd4_cb_prepare(struct rpc_task *task, void *calldata)
+>  	struct nfs4_client *clp = cb->cb_clp;
+>  	u32 minorversion = clp->cl_minorversion;
+>  
+> -	cb->cb_minorversion = minorversion;
+>  	/*
+>  	 * cb_seq_status is only set in decode_cb_sequence4res,
+>  	 * and so will remain 1 if an rpc level failure occurs.
+> diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
+> index b95adf9a1595..0bdc79cb359c 100644
+> --- a/fs/nfsd/state.h
+> +++ b/fs/nfsd/state.h
+> @@ -63,7 +63,6 @@ typedef struct {
+>  
+>  struct nfsd4_callback {
+>  	struct nfs4_client *cb_clp;
+> -	u32 cb_minorversion;
+>  	struct rpc_message cb_msg;
+>  	const struct nfsd4_callback_ops *cb_ops;
+>  	struct work_struct cb_work;
+> -- 
+> 2.7.4
