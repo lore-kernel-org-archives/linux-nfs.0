@@ -1,17 +1,11 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-it0-f68.google.com ([209.85.214.68]:34728 "EHLO
-	mail-it0-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752700AbcHPSSy (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 16 Aug 2016 14:18:54 -0400
-MIME-Version: 1.0
-In-Reply-To: <20160815162312.GA19794@kroah.com>
-References: <1471128518-24075-1-git-send-email-deepa.kernel@gmail.com> <20160815162312.GA19794@kroah.com>
-From: Deepa Dinamani <deepa.kernel@gmail.com>
-Date: Tue, 16 Aug 2016 11:18:52 -0700
-Message-ID: <CABeXuvp027DZR0=zQPp86oGdi2B+Gh16z8_FyoY5UDUdHXAngA@mail.gmail.com>
-Subject: Re: [GIT PULL] [PATCH v4 00/26] Delete CURRENT_TIME and
- CURRENT_TIME_SEC macros
-To: Greg KH <gregkh@linuxfoundation.org>
+Received: from mail.linuxfoundation.org ([140.211.169.12]:34977 "EHLO
+	mail.linuxfoundation.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750822AbcHPSxL (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 16 Aug 2016 14:53:11 -0400
+Date: Tue, 16 Aug 2016 20:53:20 +0200
+From: Greg KH <gregkh@linuxfoundation.org>
+To: Deepa Dinamani <deepa.kernel@gmail.com>
 Cc: Linux FS-devel Mailing List <linux-fsdevel@vger.kernel.org>,
         Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
         Arnd Bergmann <arnd@arndb.de>, Thomas Gleixner <tglx@linutronix.de>,
@@ -48,35 +42,50 @@ Cc: Linux FS-devel Mailing List <linux-fsdevel@vger.kernel.org>,
         Suma Ramars <sramars@cisco.com>,
         Trond Myklebust <trond.myklebust@primarydata.com>,
         "Yan, Zheng" <zyan@redhat.com>
-Content-Type: text/plain; charset=UTF-8
+Subject: Re: [GIT PULL] [PATCH v4 00/26] Delete CURRENT_TIME and
+ CURRENT_TIME_SEC macros
+Message-ID: <20160816185320.GB6513@kroah.com>
+References: <1471128518-24075-1-git-send-email-deepa.kernel@gmail.com>
+ <20160815162312.GA19794@kroah.com>
+ <CABeXuvp027DZR0=zQPp86oGdi2B+Gh16z8_FyoY5UDUdHXAngA@mail.gmail.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <CABeXuvp027DZR0=zQPp86oGdi2B+Gh16z8_FyoY5UDUdHXAngA@mail.gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Thank you for the suggestion.
+On Tue, Aug 16, 2016 at 11:18:52AM -0700, Deepa Dinamani wrote:
+> Thank you for the suggestion.
+> 
+> > Who are you execting to pull this huge patch series?
+> 
+> The last pull request was addressed to Al as per Arnd's suggestion.
+> I'm not completely sure who should it be addressed to.
+> 
+> > Why not just introduce the new api call, wait for that to be merged, and
+> > then push the individual patches through the different subsystems?
+> > After half of those get ignored, then provide a single set of patches
+> > that can go through Andrew or my trees.
+> 
+> Arnd and I tried to do this a few ways.
+> 
+> We can try to introduce the api first like you suggest.
+> 
+> There are a few Acks already on the patches.
+> And, patches 2-5 also need to be merged through some common tree like
+> yours or Andrew's as you suggest.
+> 
+> So, if everyone is ok, I could do the following:
+> 
+> 1. Post patches 1-5 for rc-2.
 
-> Who are you execting to pull this huge patch series?
+-rc2 is already released, and we aren't adding new apis this late in the
+release cycle, sorry.
 
-The last pull request was addressed to Al as per Arnd's suggestion.
-I'm not completely sure who should it be addressed to.
+> 2. Post all other patches to respective maintainers after rc-2
+> 3. Then after patches get ignored or merged, post remaining as a
+> series for you or Andrew to pick up.
 
-> Why not just introduce the new api call, wait for that to be merged, and
-> then push the individual patches through the different subsystems?
-> After half of those get ignored, then provide a single set of patches
-> that can go through Andrew or my trees.
+The apis need to be aimed for 4.9-rc1, it's too late for 4.8, sorry.
 
-Arnd and I tried to do this a few ways.
-
-We can try to introduce the api first like you suggest.
-
-There are a few Acks already on the patches.
-And, patches 2-5 also need to be merged through some common tree like
-yours or Andrew's as you suggest.
-
-So, if everyone is ok, I could do the following:
-
-1. Post patches 1-5 for rc-2.
-2. Post all other patches to respective maintainers after rc-2
-3. Then after patches get ignored or merged, post remaining as a
-series for you or Andrew to pick up.
-
--Deepa
+greg k-h
