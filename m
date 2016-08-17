@@ -1,93 +1,83 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:58040 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752344AbcHPVRr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 16 Aug 2016 17:17:47 -0400
-Date: Tue, 16 Aug 2016 17:17:45 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Jeff Layton <jlayton@redhat.com>
-Cc: linux-nfs@vger.kernel.org, hch@lst.de
-Subject: Re: [RFC PATCH] nfsd: fix error handling for clients that fail to
- return the layout
-Message-ID: <20160816211745.GA795@fieldses.org>
-References: <1471368867-29362-1-git-send-email-jlayton@redhat.com>
+Received: from mail-it0-f68.google.com ([209.85.214.68]:34512 "EHLO
+	mail-it0-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752435AbcHQMOO (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 17 Aug 2016 08:14:14 -0400
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1471368867-29362-1-git-send-email-jlayton@redhat.com>
+From: Geert Uytterhoeven <geert@linux-m68k.org>
+Date: Wed, 17 Aug 2016 14:13:44 +0200
+Message-ID: <CAMuHMdU+j50GFT=DUWsx_dz1VJJ5zY2EVJi4cX4ZhVVLRMyjCA@mail.gmail.com>
+Subject: usercopy: kernel memory exposure attempt detected
+To: Kees Cook <keescook@chromium.org>, Al Viro <viro@zeniv.linux.org.uk>
+Cc: Linux MM <linux-mm@kvack.org>,
+        "open list:NFS, SUNRPC, AND..." <linux-nfs@vger.kernel.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Aug 16, 2016 at 01:34:27PM -0400, Jeff Layton wrote:
-> Currently, when the client fails to return the layout we'll eventually
-> give up trying but leave the layout in place.
+Hi Kees, Al,
 
-Maybe I'm not reading the code right, but I think the layout is
-eventually removed unconditionally in every case, by
-nfsd4_cb_layout_release--were you seeing something else?
+Saw this when using NFS root on r8a7791/koelsch, using a tree based on
+renesas-drivers-2016-08-16-v4.8-rc2:
 
-> What we really need to
-> do here is fence the client in this case. Have it fall through to that
-> code in that case instead of into the NFS4ERR_NOMATCHING_LAYOUT case.
+usercopy: kernel memory exposure attempt detected from c01ff000
+(<kernel text>) (4096 bytes)
+------------[ cut here ]------------
+kernel BUG at mm/usercopy.c:75!
+Internal error: Oops - BUG: 0 [#1] SMP ARM
+Modules linked in:
+CPU: 1 PID: 1636 Comm: exim4 Not tainted
+4.8.0-rc2-koelsch-00407-g7a4ab698caefa57a-dirty #2901
+Hardware name: Generic R8A7791 (Flattened Device Tree)
+task: eeae7100 task.stack: eeace000
+PC is at __check_object_size+0x2d0/0x390
+LR is at __check_object_size+0x2d0/0x390
+pc : [<c02d33fc>]    lr : [<c02d33fc>]    psr: 600f0013
+sp : eeacfe28  ip : 00000000  fp : c0200000
+r10: b6f9c000  r9 : eeacff0c  r8 : 00000001
+r7 : c0e05444  r6 : c01fffff  r5 : 00001000  r4 : c01ff000
+r3 : 00000001  r2 : 2ed71000  r1 : ef9b43f0  r0 : 0000005c
+Flags: nZCv  IRQs on  FIQs on  Mode SVC_32  ISA ARM  Segment user
+Control: 30c5387d  Table: 6dcd62c0  DAC: 55555555
+Process exim4 (pid: 1636, stack limit = 0xeeace210)
+Stack: (0xeeacfe28 to 0xeead0000)
+fe20:                   c095c004 00001000 00000002 ef9fcc80 eeacfe38 00001000
+fe40: c01ff000 00001000 00000000 eeacff14 eeacff0c b6f9c000 ef22d4ac c03eea60
+fe60: 00000001 00000000 00000000 ee78bf00 eeacff28 ef9fcfe0 00001000 c029c914
+fe80: 00000004 00000001 00000000 eeacff14 00000000 ef22d3b8 00001000 00000000
+fea0: ee78bf88 00000002 ef22d3b8 c06afb3c 00000000 c038a9c8 c0c4b780 c02a0cd8
+fec0: effce060 eeacff28 ef22d3b8 00000000 eeacff14 c0206ce4 eeace000 00000000
+fee0: 00000000 c0387698 c0387644 00000000 ee78bf00 eeacff88 00001000 c02d5550
+ff00: 00001000 c06afb3c 00000001 b6f9c000 00001000 00000000 00000000 00001000
+ff20: eeacff0c 00000001 ee78bf00 00000000 00001000 00000000 00000000 00000000
+ff40: 00000000 00000000 ef365e38 00001000 ee78bf00 b6f9c000 eeacff88 c02d6080
+ff60: ee78bf00 b6f9c000 00001000 ee78bf00 ee78bf00 00001000 b6f9c000 c0206ce4
+ff80: eeace000 c02d6cd8 00001000 00000000 00001000 7f723250 b6c2bbfc 00003fdf
+ffa0: 00000003 c0206b40 7f723250 b6c2bbfc 00000004 b6f9c000 00001000 00000000
+ffc0: 7f723250 b6c2bbfc 00003fdf 00000003 7f71efdf 0000000a 7f71efc0 00000000
+ffe0: 00000000 be80f4ac b6b90817 b6bcadd6 400f0030 00000004 30133e52 60547340
+[<c02d33fc>] (__check_object_size) from [<c03eea60>]
+(copy_page_to_iter+0x114/0x1f0)
+[<c03eea60>] (copy_page_to_iter) from [<c029c914>]
+(generic_file_read_iter+0x3a0/0x7e8)
+[<c029c914>] (generic_file_read_iter) from [<c0387698>]
+(nfs_file_read+0x54/0x98)
+[<c0387698>] (nfs_file_read) from [<c02d5550>] (__vfs_read+0xdc/0x104)
+[<c02d5550>] (__vfs_read) from [<c02d6080>] (vfs_read+0x94/0x100)
+[<c02d6080>] (vfs_read) from [<c02d6cd8>] (SyS_read+0x40/0x80)
+[<c02d6cd8>] (SyS_read) from [<c0206b40>] (ret_fast_syscall+0x0/0x34)
+Code: e88d0021 e1a03004 e59f00b0 ebff176b (e7f001f2)
 
-So the only change here is to fence in the case a client keeps
-responding with DELAY, right?
+Despite the BUG(), the system continues working.
 
-That does seem like an improvement.
+Gr{oetje,eeting}s,
 
-I wonder if the result is completely correct.
+                        Geert
 
-In the list_empty(&ls->ls_layouts) case, shouldn't we also call
-trace_layout_recall_done()?
+--
+Geert Uytterhoeven -- There's lots of Linux beyond ia32 -- geert@linux-m68k.org
 
-Does it really make sense to retry the callback in the case the callback
-succeeds but the client hasn't returned yet?
-
-If the client returns the layout but returns a status other than 0,
-DELAY, or NOMATCHING_LAYOUT, is it really correct to fence it?
-
-If trunking's in effect and we have to change the callback connection
-while waiting for the return, do we do the right thing?  (Looking at
-it... Actually, I think nfsd4_cb_sequence_done should handle these cases
-for us, OK, maybe I'm less worried.)
-
---b.
-
-> 
-> Signed-off-by: Jeff Layton <jlayton@redhat.com>
-> ---
->  fs/nfsd/nfs4layouts.c | 8 ++++----
->  1 file changed, 4 insertions(+), 4 deletions(-)
-> 
-> Note that this patch is untested, other than for compilation as I
-> don't have a block/scsi pnfs setup on which to do so. Still, I think
-> it makes more sense to fence clients that don't return the layout
-> instead of just giving up.
-> 
-> diff --git a/fs/nfsd/nfs4layouts.c b/fs/nfsd/nfs4layouts.c
-> index 42aace4fc4c8..596205d939a1 100644
-> --- a/fs/nfsd/nfs4layouts.c
-> +++ b/fs/nfsd/nfs4layouts.c
-> @@ -686,10 +686,6 @@ nfsd4_cb_layout_done(struct nfsd4_callback *cb, struct rpc_task *task)
->  			return 0;
->  		}
->  		/* Fallthrough */
-> -	case -NFS4ERR_NOMATCHING_LAYOUT:
-> -		trace_layout_recall_done(&ls->ls_stid.sc_stateid);
-> -		task->tk_status = 0;
-> -		return 1;
->  	default:
->  		/*
->  		 * Unknown error or non-responding client, we'll need to fence.
-> @@ -702,6 +698,10 @@ nfsd4_cb_layout_done(struct nfsd4_callback *cb, struct rpc_task *task)
->  		else
->  			nfsd4_cb_layout_fail(ls);
->  		return -1;
-> +	case -NFS4ERR_NOMATCHING_LAYOUT:
-> +		trace_layout_recall_done(&ls->ls_stid.sc_stateid);
-> +		task->tk_status = 0;
-> +		return 1;
->  	}
->  }
->  
-> -- 
-> 2.7.4
+In personal conversations with technical people, I call myself a hacker. But
+when I'm talking to journalists I just say "programmer" or something like that.
+                                -- Linus Torvalds
