@@ -1,140 +1,173 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from aserp1050.oracle.com ([141.146.126.70]:30537 "EHLO
-        aserp1050.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1754065AbcHSCXn (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 18 Aug 2016 22:23:43 -0400
-Received: from aserp1040.oracle.com (aserp1040.oracle.com [141.146.126.69])
-        by aserp1050.oracle.com (Sentrion-MTA-4.3.2/Sentrion-MTA-4.3.2) with ESMTP id u7IMC6S2022345
-        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK)
-        for <linux-nfs@vger.kernel.org>; Thu, 18 Aug 2016 22:12:06 GMT
-Content-Type: text/plain; charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 9.3 \(3124\))
-Subject: Re: WARN_ON added to rpc_create()
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <20160818215611.GA25052@fieldses.org>
-Date: Thu, 18 Aug 2016 18:11:43 -0400
-Cc: "J. Bruce Fields" <bfields@redhat.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <FA0D14B1-EC11-4345-887C-413EDC403E3A@oracle.com>
-References: <42D0C152-58F9-4467-B86D-2A7A25544CE4@oracle.com> <20160803174724.GA5993@fieldses.org> <5E7D6A55-B7F3-411D-A74B-E8BCE04BCF02@oracle.com> <20160818215611.GA25052@fieldses.org>
-To: "J. Bruce Fields" <bfields@fieldses.org>
+Received: from mx1.redhat.com ([209.132.183.28]:40546 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1754448AbcHSCxj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 18 Aug 2016 22:53:39 -0400
+Received: from int-mx13.intmail.prod.int.phx2.redhat.com (int-mx13.intmail.prod.int.phx2.redhat.com [10.5.11.26])
+        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+        (No client certificate requested)
+        by mx1.redhat.com (Postfix) with ESMTPS id 50ADCCA633
+        for <linux-nfs@vger.kernel.org>; Thu, 18 Aug 2016 18:37:17 +0000 (UTC)
+Received: from steved.boston.devel.redhat.com (steved.boston.devel.redhat.com [10.19.60.47])
+        by int-mx13.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id u7IIbGGS014077
+        for <linux-nfs@vger.kernel.org>; Thu, 18 Aug 2016 14:37:17 -0400
+From: Steve Dickson <steved@redhat.com>
+To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: [RFC PATCH 1/3] libnfsidmap: Query DNS for the the NFSv4 domain
+Date: Thu, 18 Aug 2016 14:37:13 -0400
+Message-Id: <1471545435-15543-1-git-send-email-steved@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+In domain_from_dns(), when at the hostname is a FQHN
+query the DNS server for the _nfsv4idmapdomain TXT
+record. If the record exists, use that as the
+NFSv4 domain.
 
-> On Aug 18, 2016, at 5:56 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
-> 
-> On Wed, Aug 03, 2016 at 03:40:11PM -0400, Chuck Lever wrote:
->> 
->>> On Aug 3, 2016, at 1:47 PM, bfields@fieldses.org wrote:
->>> 
->>> On Wed, Aug 03, 2016 at 11:27:47AM -0400, Chuck Lever wrote:
->>>> Hi Bruce-
->>>> 
->>>> I see that commit 39a9beab5acb83176e8b9a4f0778749a09341f1f
->>>> Author:     J. Bruce Fields <bfields@redhat.com>
->>>> AuthorDate: Tue May 17 12:38:21 2016 -0400
->>>> 
->>>>   rpc: share one xps between all backchannels
->>>> 
->>>> has added this piece of code:
->>>> 
->>>> @@ -452,10 +452,20 @@ static struct rpc_clnt *rpc_create_xprt(struct rpc_create_args *args,
->>>>       struct rpc_clnt *clnt = NULL;
->>>>       struct rpc_xprt_switch *xps;
->>>> 
->>>> -       xps = xprt_switch_alloc(xprt, GFP_KERNEL);
->>>> -       if (xps == NULL) {
->>>> -               xprt_put(xprt);
->>>> -               return ERR_PTR(-ENOMEM);
->>>> +       if (args->bc_xprt && args->bc_xprt->xpt_bc_xps) {
->>>> +               WARN_ON(args->protocol != XPRT_TRANSPORT_BC_TCP);
->>>> +               xps = args->bc_xprt->xpt_bc_xps;
->>>> +               xprt_switch_get(xps);
->>>> +       } else {
->>>> 
->>>> 
->>>> the WARN_ON here fires on the server whenever I use NFSv4.1 on RDMA.
->>>> 
->>>> Can you say why it was added? Is there something RPC/RDMA needs to
->>>> do to make the code safe?
->>> 
->>> What is args->protocol in this case?
->>> 
->>> Digging around...  OK, I missed that BC_TCP and BC_RDMA were defined as
->>> OR's of an XPRT_TRANSPORT_BC bit with the identifier of the underlying
->>> transport.  That makes sense.
->>> 
->>> So, I should have just used XPRT_TRANSPORT_BC there--I think all I meant
->>> was "is this a backchannel".
->>> 
->>> Does that fix the problem?
->> 
->> This simple fix eliminates the log noise:
->> 
->> diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
->> index 2808d55..f94caf7 100644
->> --- a/net/sunrpc/clnt.c
->> +++ b/net/sunrpc/clnt.c
->> @@ -520,7 +520,7 @@ struct rpc_clnt *rpc_create(struct rpc_create_args *args)
->>        char servername[48];
->> 
->>        if (args->bc_xprt) {
->> -               WARN_ON(args->protocol != XPRT_TRANSPORT_BC_TCP);
->> +               WARN_ON(!(args->protocol & XPRT_TRANSPORT_BC));
->>                xprt = args->bc_xprt->xpt_bc_xprt;
->>                if (xprt) {
->>                        xprt_get(xprt);
->> 
->> 
->> This code seems to come from:
->> 
->> commit d50039ea5ee63c589b0434baa5ecf6e5075bb6f9
->> Author:     J. Bruce Fields <bfields@redhat.com>
->> AuthorDate: Mon May 16 17:03:42 2016 -0400
->> 
->>    nfsd4/rpc: move backchannel create logic into rpc code
->> 
->> 
->> Where it may have been copied from:
->> 
->> -static struct rpc_clnt *create_backchannel_client(struct rpc_create_args *args)
->> -{
->> -       struct rpc_xprt *xprt;
->> -
->> -       if (args->protocol != XPRT_TRANSPORT_BC_TCP)
->> -               return rpc_create(args);
->> -
->> -       xprt = args->bc_xprt->xpt_bc_xprt;
->> -       if (xprt) {
->> -               xprt_get(xprt);
->> -               return rpc_create_xprt(args, xprt);
->> -       }
->> -
->> -       return rpc_create(args);
->> -}
->> 
->> There's no warning here. In fact, protocol != BC_TCP seems to
->> be expected.
-> 
-> The protocol should be BC_TCP (OK, actually just BC) if and only if
-> bc_xprt is set.
-> 
-> (The BC_TCP case is the 4.1+ case, the other is the 4.0 case.  In the
-> 4.1+ case, the new client uses an existing (client-initiated)
-> connection, in the 4.0 case, the new client must also have a new
-> connection.
-> 
-> In the 4.0 case we'll always create a new xprt, in the 4.1 case we might
-> or might not--depends on whether that particular connection has been
-> used for a backchannel previously.)
+Note, this query will only happen if the domain name
+is not set in the /etc/idmapd.conf
 
-OK, but why is a WARN_ON needed here? Why not return -EINVAL,
-for example (once you've corrected BC_TCP -> BC) ?
+Signed-off-by: Steve Dickson <steved@redhat.com>
+---
+ libnfsidmap.c | 104 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++-
+ 1 file changed, 103 insertions(+), 1 deletion(-)
 
-
---
-Chuck Lever
-
-
+diff --git a/libnfsidmap.c b/libnfsidmap.c
+index 2db4d13..7b8c0ed 100644
+--- a/libnfsidmap.c
++++ b/libnfsidmap.c
+@@ -53,6 +53,10 @@
+ #include <stdarg.h>
+ #include <dlfcn.h>
+ #include <ctype.h>
++#include <resolv.h>
++#include <arpa/nameser.h>
++#include <arpa/nameser_compat.h>
++
+ #include "nfsidmap.h"
+ #include "nfsidmap_internal.h"
+ #include "cfg.h"
+@@ -79,6 +83,11 @@ gid_t nobody_gid = (gid_t)-1;
+ #define IDMAPD_DEFAULT_DOMAIN "localdomain"
+ #endif
+ 
++#ifndef NFS4DNSTXTREC
++#define NFS4DNSTXTREC "_nfsv4idmapdomain"
++#endif
++
++
+ /* Default logging fuction */
+ static void default_logger(const char *fmt, ...)
+ {
+@@ -114,6 +123,93 @@ static int id_as_chars(char *name, uid_t *id)
+ 	return 1;
+ }
+ 
++static int dns_txt_query(char *domain, char **nfs4domain)
++{
++	char *txtname = NFS4DNSTXTREC;
++	char *msg, *answ, *eom, *mptr; 
++	int len, status = -1;
++	HEADER *hdr;
++	
++	msg = calloc(1, NS_MAXMSG);
++	if (msg == NULL)
++		return -1;
++
++	answ = calloc(1, NS_MAXMSG);
++	if (answ == NULL) {
++		free(msg);
++		return -1;
++	}
++
++	if (res_init() < 0) {
++		IDMAP_LOG(2, ("libnfsidmap: res_init() failed for %s.%s: %s\n",
++			txtname, domain, hstrerror(h_errno)));
++		goto freemem;
++	}
++	len = res_querydomain(txtname, domain, C_IN, T_TXT, msg, NS_MAXMSG);
++	if (len < 0) {
++		IDMAP_LOG(2, ("libnfsidmap: res_querydomain() failed for %s.%s: %s\n",
++			txtname, domain, hstrerror(h_errno)));
++		goto freemem;
++	}
++	hdr = (HEADER *)msg;
++
++	/* See if there is an answer */
++	if (ntohs(hdr->ancount) < 1) {
++		IDMAP_LOG(2, ("libnfsidmap: No TXT record for %s.%s\n",
++			txtname, domain));
++		goto freemem;
++	}
++	/* find the EndOfMessage */
++	eom = msg + len;
++
++	/* skip header */
++	mptr = &msg[HFIXEDSZ];
++
++	/* skip name field in question section */
++	mptr += dn_skipname(mptr, eom) + QFIXEDSZ;
++
++	/* read in the question */
++	len = dn_expand(msg, eom, mptr, answ, NS_MAXDNAME);
++	if (len < 0) { /* does this really matter?? */
++		IDMAP_LOG(2, ("libnfsidmap: No question section for %s.%s: %s\n",
++			txtname, domain, hstrerror(h_errno)));
++		goto freemem;
++	}
++
++	/*
++	 * Now, dissect the answer section, Note: if there
++	 * are more than one answer only the first
++	 * one will be used. 
++	 */
++
++	/* skip passed the name field  */
++	mptr += dn_skipname(mptr, eom);
++	/* skip pass the type class and ttl fields */
++	mptr += 2 + 2 + 4;
++
++	/* make sure there is some data */
++	GETSHORT(len, mptr);
++	if (len < 0) {
++		IDMAP_LOG(2, ("libnfsidmap: No data in answer for %s.%s\n",
++			txtname, domain));
++		goto freemem;
++	}
++	/* get the lenght field */
++	len = (int)*mptr++;
++	/* copy the data */
++	memcpy(answ, mptr, len);
++	answ[len] = '\0';
++	
++	*nfs4domain = strdup(answ);
++	status = 0;
++
++freemem:
++	free(msg);
++	free(answ);
++
++	return (status);
++}
++
+ static int domain_from_dns(char **domain)
+ {
+ 	struct hostent *he;
+@@ -125,7 +221,13 @@ static int domain_from_dns(char **domain)
+ 		return -1;
+ 	if ((c = strchr(he->h_name, '.')) == NULL || *++c == '\0')
+ 		return -1;
+-	*domain = strdup(c);
++	/* 
++	 * Query DNS to see if the _nfsv4idmapdomain TXT record exists
++	 * If so use it... 
++	 */
++	if (dns_txt_query(c, domain) < 0)
++		*domain = strdup(c);
++
+ 	return 0;
+ }
+ 
+-- 
+2.7.4
 
