@@ -1,69 +1,81 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from userp1050.oracle.com ([156.151.31.82]:41782 "EHLO
-        userp1050.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1754584AbcHSBKc (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 18 Aug 2016 21:10:32 -0400
-Received: from userp1040.oracle.com (userp1040.oracle.com [156.151.31.81])
-        by userp1050.oracle.com (Sentrion-MTA-4.3.2/Sentrion-MTA-4.3.2) with ESMTP id u7IFR3W7023395
-        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK)
-        for <linux-nfs@vger.kernel.org>; Thu, 18 Aug 2016 15:27:04 GMT
-Content-Type: text/plain; charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 9.3 \(3124\))
-Subject: Re: Is NFSv4.2 now compatible & stable with rdma?
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <CA+X5Wn4f8b+DXGT-OpPWmF=uZ=8m+mh27SfCJNMrven_DZtRVg@mail.gmail.com>
-Date: Thu, 18 Aug 2016 11:26:38 -0400
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <173CD366-84D2-42B5-8903-3B5E5131095B@oracle.com>
-References: <CA+X5Wn4f8b+DXGT-OpPWmF=uZ=8m+mh27SfCJNMrven_DZtRVg@mail.gmail.com>
-To: james harvey <jamespharvey20@gmail.com>
+Received: from mx1.redhat.com ([209.132.183.28]:40884 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S932265AbcHSBWH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 18 Aug 2016 21:22:07 -0400
+From: Benjamin Coddington <bcodding@redhat.com>
+To: linux-nfs@vger.kernel.org
+Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>,
+        Christoph Hellwig <hch@lst.de>
+Subject: [PATCH] pnfs/blocklayout: update last_write_offset atomically with extents
+Date: Thu, 18 Aug 2016 11:55:53 -0400
+Message-Id: <a754067b5a8252a10a0bcfa23c4229cf3d7b1adf.1471535578.git.bcodding@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi James-
+Block/SCSI layout write completion may add committable extents to the
+extent tree before updating the layout's last-written byte under the inode
+lock.  If a sync happens before this value is updated, then
+prepare_layoutcommit may find and encode these extents which would produce
+a LAYOUTCOMMIT request whose encoded extents are larger than the request's
+loca_length.
 
+Fix this by holding the i_lock while marking extents writeable and updating
+the value of the last written byte.  Then extending the i_lock over
+prepare_layoutcommit in pnfs_layoutcommit_inode() ensures we won't find
+extents starting beyond the current last written byte.
 
-> On Aug 18, 2016, at 12:09 AM, james harvey <jamespharvey20@gmail.com> wrote:
-> 
-> A year ago, on 7/30/2015, Chuck Lever said NFS/RDMA wasn't yet working
-> with NFSv4.1 and NFSv4.2, as a known issue.
-> 
-> I was able to use "vers=4.0" to get around the issue.
-> 
-> I see v4.2 seems to mount properly, but before switching over to it, I
-> wanted to see if it's considered stable, or still to be avoided.
+Signed-off-by: Benjamin Coddington <bcodding@redhat.com>
+---
+ fs/nfs/blocklayout/blocklayout.c | 3 +++
+ fs/nfs/pnfs.c                    | 4 +---
+ 2 files changed, 4 insertions(+), 3 deletions(-)
 
-Can you tell why you'd like to use it? Which NFSv4.2 feature is interesting
-to you?
-
-I don't test it regularly, simply because
-
-- The complete tests on each version take a long time to run
-
-- NFSv4.2 features are all optional, and the Linux NFSv4.2 implementation
-adds only a couple that probably won't be affected by RDMA. READ_PLUS will
-need some attention at some point, but I think Anna is still polishing the
-upper layer implementation.
-
-- I don't have any specific tests for security labels, which add to the
-size of the NFSv4 GETATTR receive buffer whether labels are actually
-retrieved or not. So there is a little NFSv4.2 testing we get for free just
-by using NFSv4.0.
-
-- There's yet a lot of non-version-specific work to do on RPC-over-RDMA.
-
-The main blocker before was support for bi-directional RPC, which all
-minorversions of NFSv4 use after mv 1, and that should be working as well
-as it does for NFSv4.1.
-
-NFSv4.2 itself should work, but I might choose to stay with NFSv4.1 for
-now if it were up to me, unless you have need of one of the new features.
-For example, there is no standard specification describing how READ_PLUS
-is supposed to work on RPC-over-RDMA (that's in the works).
-
-
---
-Chuck Lever
-
-
+diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
+index 17a42e4eb872..36923b55f4f8 100644
+--- a/fs/nfs/blocklayout/blocklayout.c
++++ b/fs/nfs/blocklayout/blocklayout.c
+@@ -343,8 +343,11 @@ static void bl_write_cleanup(struct work_struct *work)
+ 		u64 end = (hdr->args.offset + hdr->args.count +
+ 			PAGE_SIZE - 1) & (loff_t)PAGE_MASK;
+ 
++		spin_lock(&hdr->inode->i_lock);
++		bl->bl_layout.plh_lwb = hdr->args.offset + hdr->res.count;
+ 		ext_tree_mark_written(bl, start >> SECTOR_SHIFT,
+ 					(end - start) >> SECTOR_SHIFT);
++		spin_unlock(&hdr->inode->i_lock);
+ 	}
+ 
+ 	pnfs_ld_write_done(hdr);
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index 4110c1dc8f68..978df68c498c 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -2386,7 +2386,6 @@ pnfs_layoutcommit_inode(struct inode *inode, bool sync)
+ 	end_pos = nfsi->layout->plh_lwb;
+ 
+ 	nfs4_stateid_copy(&data->args.stateid, &nfsi->layout->plh_stateid);
+-	spin_unlock(&inode->i_lock);
+ 
+ 	data->args.inode = inode;
+ 	data->cred = get_rpccred(nfsi->layout->plh_lc_cred);
+@@ -2403,14 +2402,13 @@ pnfs_layoutcommit_inode(struct inode *inode, bool sync)
+ 		status = ld->prepare_layoutcommit(&data->args);
+ 		if (status) {
+ 			put_rpccred(data->cred);
+-			spin_lock(&inode->i_lock);
+ 			set_bit(NFS_INO_LAYOUTCOMMIT, &nfsi->flags);
+ 			if (end_pos > nfsi->layout->plh_lwb)
+ 				nfsi->layout->plh_lwb = end_pos;
+ 			goto out_unlock;
+ 		}
+ 	}
+-
++	spin_unlock(&inode->i_lock);
+ 
+ 	status = nfs4_proc_layoutcommit(data, sync);
+ out:
+-- 
+2.5.5
 
