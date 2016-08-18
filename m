@@ -1,114 +1,127 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:40966 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([173.255.197.46]:60506 "EHLO fieldses.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1754802AbcHSBvY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 18 Aug 2016 21:51:24 -0400
-From: "Benjamin Coddington" <bcodding@redhat.com>
-To: "Trond Myklebust" <trondmy@primarydata.com>
-Cc: "List Linux NFS Mailing" <linux-nfs@vger.kernel.org>,
-        "Schumaker Anna" <anna.schumaker@netapp.com>, hch <hch@lst.de>
-Subject: Re: [PATCH] pnfs/blocklayout: update last_write_offset atomically
- with extents
-Date: Thu, 18 Aug 2016 14:46:06 -0400
-Message-ID: <B8E10864-3B08-4A93-B517-720184E5C36E@redhat.com>
-In-Reply-To: <FF778D94-8CA1-4FEE-A4EE-C170ECA4E1C2@primarydata.com>
-References: <a754067b5a8252a10a0bcfa23c4229cf3d7b1adf.1471535578.git.bcodding@redhat.com>
- <FF778D94-8CA1-4FEE-A4EE-C170ECA4E1C2@primarydata.com>
+        id S1754018AbcHSBxM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 18 Aug 2016 21:53:12 -0400
+Date: Thu, 18 Aug 2016 17:56:11 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: "J. Bruce Fields" <bfields@redhat.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: WARN_ON added to rpc_create()
+Message-ID: <20160818215611.GA25052@fieldses.org>
+References: <42D0C152-58F9-4467-B86D-2A7A25544CE4@oracle.com>
+ <20160803174724.GA5993@fieldses.org>
+ <5E7D6A55-B7F3-411D-A74B-E8BCE04BCF02@oracle.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8; format=flowed
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <5E7D6A55-B7F3-411D-A74B-E8BCE04BCF02@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Wed, Aug 03, 2016 at 03:40:11PM -0400, Chuck Lever wrote:
+> 
+> > On Aug 3, 2016, at 1:47 PM, bfields@fieldses.org wrote:
+> > 
+> > On Wed, Aug 03, 2016 at 11:27:47AM -0400, Chuck Lever wrote:
+> >> Hi Bruce-
+> >> 
+> >> I see that commit 39a9beab5acb83176e8b9a4f0778749a09341f1f
+> >> Author:     J. Bruce Fields <bfields@redhat.com>
+> >> AuthorDate: Tue May 17 12:38:21 2016 -0400
+> >> 
+> >>    rpc: share one xps between all backchannels
+> >> 
+> >> has added this piece of code:
+> >> 
+> >> @@ -452,10 +452,20 @@ static struct rpc_clnt *rpc_create_xprt(struct rpc_create_args *args,
+> >>        struct rpc_clnt *clnt = NULL;
+> >>        struct rpc_xprt_switch *xps;
+> >> 
+> >> -       xps = xprt_switch_alloc(xprt, GFP_KERNEL);
+> >> -       if (xps == NULL) {
+> >> -               xprt_put(xprt);
+> >> -               return ERR_PTR(-ENOMEM);
+> >> +       if (args->bc_xprt && args->bc_xprt->xpt_bc_xps) {
+> >> +               WARN_ON(args->protocol != XPRT_TRANSPORT_BC_TCP);
+> >> +               xps = args->bc_xprt->xpt_bc_xps;
+> >> +               xprt_switch_get(xps);
+> >> +       } else {
+> >> 
+> >> 
+> >> the WARN_ON here fires on the server whenever I use NFSv4.1 on RDMA.
+> >> 
+> >> Can you say why it was added? Is there something RPC/RDMA needs to
+> >> do to make the code safe?
+> > 
+> > What is args->protocol in this case?
+> > 
+> > Digging around...  OK, I missed that BC_TCP and BC_RDMA were defined as
+> > OR's of an XPRT_TRANSPORT_BC bit with the identifier of the underlying
+> > transport.  That makes sense.
+> > 
+> > So, I should have just used XPRT_TRANSPORT_BC there--I think all I meant
+> > was "is this a backchannel".
+> > 
+> > Does that fix the problem?
+> 
+> This simple fix eliminates the log noise:
+> 
+> diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+> index 2808d55..f94caf7 100644
+> --- a/net/sunrpc/clnt.c
+> +++ b/net/sunrpc/clnt.c
+> @@ -520,7 +520,7 @@ struct rpc_clnt *rpc_create(struct rpc_create_args *args)
+>         char servername[48];
+>  
+>         if (args->bc_xprt) {
+> -               WARN_ON(args->protocol != XPRT_TRANSPORT_BC_TCP);
+> +               WARN_ON(!(args->protocol & XPRT_TRANSPORT_BC));
+>                 xprt = args->bc_xprt->xpt_bc_xprt;
+>                 if (xprt) {
+>                         xprt_get(xprt);
+> 
+> 
+> This code seems to come from:
+> 
+> commit d50039ea5ee63c589b0434baa5ecf6e5075bb6f9
+> Author:     J. Bruce Fields <bfields@redhat.com>
+> AuthorDate: Mon May 16 17:03:42 2016 -0400
+> 
+>     nfsd4/rpc: move backchannel create logic into rpc code
+> 
+> 
+> Where it may have been copied from:
+> 
+> -static struct rpc_clnt *create_backchannel_client(struct rpc_create_args *args)
+> -{
+> -       struct rpc_xprt *xprt;
+> -
+> -       if (args->protocol != XPRT_TRANSPORT_BC_TCP)
+> -               return rpc_create(args);
+> -
+> -       xprt = args->bc_xprt->xpt_bc_xprt;
+> -       if (xprt) {
+> -               xprt_get(xprt);
+> -               return rpc_create_xprt(args, xprt);
+> -       }
+> -
+> -       return rpc_create(args);
+> -}
+> 
+> There's no warning here. In fact, protocol != BC_TCP seems to
+> be expected.
 
-On 18 Aug 2016, at 14:19, Trond Myklebust wrote:
+The protocol should be BC_TCP (OK, actually just BC) if and only if
+bc_xprt is set.
 
-> Hi Ben,
->
-> Thanks for continuing to work on this.
->
->> On Aug 18, 2016, at 11:55, Benjamin Coddington <bcodding@redhat.com> 
->> wrote:
->>
->> Block/SCSI layout write completion may add committable extents to the
->> extent tree before updating the layout's last-written byte under the 
->> inode
->> lock.  If a sync happens before this value is updated, then
->> prepare_layoutcommit may find and encode these extents which would 
->> produce
->> a LAYOUTCOMMIT request whose encoded extents are larger than the 
->> request's
->> loca_length.
->>
->> Fix this by holding the i_lock while marking extents writeable and 
->> updating
->> the value of the last written byte.  Then extending the i_lock over
->> prepare_layoutcommit in pnfs_layoutcommit_inode() ensures we won't 
->> find
->> extents starting beyond the current last written byte.
->>
->> Signed-off-by: Benjamin Coddington <bcodding@redhat.com>
->> ---
->> fs/nfs/blocklayout/blocklayout.c | 3 +++
->> fs/nfs/pnfs.c                    | 4 +---
->> 2 files changed, 4 insertions(+), 3 deletions(-)
->>
->> diff --git a/fs/nfs/blocklayout/blocklayout.c 
->> b/fs/nfs/blocklayout/blocklayout.c
->> index 17a42e4eb872..36923b55f4f8 100644
->> --- a/fs/nfs/blocklayout/blocklayout.c
->> +++ b/fs/nfs/blocklayout/blocklayout.c
->> @@ -343,8 +343,11 @@ static void bl_write_cleanup(struct work_struct 
->> *work)
->> 		u64 end = (hdr->args.offset + hdr->args.count +
->> 			PAGE_SIZE - 1) & (loff_t)PAGE_MASK;
->>
->> +		spin_lock(&hdr->inode->i_lock);
->> +		bl->bl_layout.plh_lwb = hdr->args.offset + hdr->res.count;
->> 		ext_tree_mark_written(bl, start >> SECTOR_SHIFT,
->> 					(end - start) >> SECTOR_SHIFT);
->> +		spin_unlock(&hdr->inode->i_lock);
->> 	}
->>
->> 	pnfs_ld_write_done(hdr);
->> diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
->> index 4110c1dc8f68..978df68c498c 100644
->> --- a/fs/nfs/pnfs.c
->> +++ b/fs/nfs/pnfs.c
->> @@ -2386,7 +2386,6 @@ pnfs_layoutcommit_inode(struct inode *inode, 
->> bool sync)
->> 	end_pos = nfsi->layout->plh_lwb;
->>
->> 	nfs4_stateid_copy(&data->args.stateid, &nfsi->layout->plh_stateid);
->> -	spin_unlock(&inode->i_lock);
->>
->> 	data->args.inode = inode;
->> 	data->cred = get_rpccred(nfsi->layout->plh_lc_cred);
->> @@ -2403,14 +2402,13 @@ pnfs_layoutcommit_inode(struct inode *inode, 
->> bool sync)
->> 		status = ld->prepare_layoutcommit(&data->args);
->
-> Doesn’t ext_tree_prepare_commit() contain a GFP_NOFS allocation that 
-> could sleep?
+(The BC_TCP case is the 4.1+ case, the other is the 4.0 case.  In the
+4.1+ case, the new client uses an existing (client-initiated)
+connection, in the 4.0 case, the new client must also have a new
+connection.
 
-Ah, yes it does.  I'll look for another way to fix this.
+In the 4.0 case we'll always create a new xprt, in the 4.1 case we might
+or might not--depends on whether that particular connection has been
+used for a backchannel previously.)
 
-Ben
-
->
->> 		if (status) {
->> 			put_rpccred(data->cred);
->> -			spin_lock(&inode->i_lock);
->> 			set_bit(NFS_INO_LAYOUTCOMMIT, &nfsi->flags);
->> 			if (end_pos > nfsi->layout->plh_lwb)
->> 				nfsi->layout->plh_lwb = end_pos;
->> 			goto out_unlock;
->> 		}
->> 	}
->> -
->> +	spin_unlock(&inode->i_lock);
->>
->> 	status = nfs4_proc_layoutcommit(data, sync);
->> out:
->> -- 
->> 2.5.5
->>
+--b.
