@@ -1,43 +1,75 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:40086 "EHLO mx1.redhat.com"
+Received: from mx2.suse.de ([195.135.220.15]:39247 "EHLO mx2.suse.de"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1755231AbcHSB5J (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 18 Aug 2016 21:57:09 -0400
-Received: from int-mx13.intmail.prod.int.phx2.redhat.com (int-mx13.intmail.prod.int.phx2.redhat.com [10.5.11.26])
-        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
-        (No client certificate requested)
-        by mx1.redhat.com (Postfix) with ESMTPS id B250D79718
-        for <linux-nfs@vger.kernel.org>; Thu, 18 Aug 2016 18:37:17 +0000 (UTC)
-Received: from steved.boston.devel.redhat.com (steved.boston.devel.redhat.com [10.19.60.47])
-        by int-mx13.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id u7IIbGGT014077
-        for <linux-nfs@vger.kernel.org>; Thu, 18 Aug 2016 14:37:17 -0400
-From: Steve Dickson <steved@redhat.com>
-To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: [RFC PATCH 2/3] configure.ac: Ensure the resolver library is installed
-Date: Thu, 18 Aug 2016 14:37:14 -0400
-Message-Id: <1471545435-15543-2-git-send-email-steved@redhat.com>
-In-Reply-To: <1471545435-15543-1-git-send-email-steved@redhat.com>
-References: <1471545435-15543-1-git-send-email-steved@redhat.com>
+        id S1754926AbcHSCEK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 18 Aug 2016 22:04:10 -0400
+From: NeilBrown <neilb@suse.com>
+To: Steve Dickson <SteveD@redhat.com>
+Date: Fri, 19 Aug 2016 11:45:56 +1000
+Subject: [PATCH 2/2] mount: RPC_PROGNOTREGISTERED should not be a permanent
+ error
+Cc: "J. Bruce Fields" <bfields@fieldses.org>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        Martin Pitt <martin.pitt@ubuntu.com>
+Message-ID: <147157115640.26568.2934329194247787636.stgit@noble>
+In-Reply-To: <147157095612.26568.14161646901346011334.stgit@noble>
+References: <147157095612.26568.14161646901346011334.stgit@noble>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Signed-off-by: Steve Dickson <steved@redhat.com>
----
- configure.ac | 1 +
- 1 file changed, 1 insertion(+)
+Commit: bf66c9facb8e ("mounts.nfs: v2 and v3 background mounts should retry when server is down.")
 
-diff --git a/configure.ac b/configure.ac
-index 5944166..52e12c8 100644
---- a/configure.ac
-+++ b/configure.ac
-@@ -13,6 +13,7 @@ LT_INIT
- AC_PROG_CC
+changed the behaviour of "bg" mounts so that RPC_PROGNOTREGISTERED,
+which maps to EOPNOTSUPP, is not a permanent error.
+This useful because when an NFS server starts up there is a small window between
+the moment that rpcbind (or portmap) starts responding to lookup requests,
+and the moment when nfsd registers with rpcbind.  During that window
+rpcbind will reply with RPC_PROGNOTREGISTERED, but mount should not give up.
+
+This same reasoning applies to foreground mounts.  They don't wait for
+as long, but could still hit the window and fail prematurely.
+
+So revert the above patch and instead add EOPNOTSUPP to the list of
+temporary errors known to nfs_is_permanent_error.
+
+Signed-off-by: NeilBrown <neilb@suse.com>
+---
+ utils/mount/stropts.c |    7 +++----
+ 1 file changed, 3 insertions(+), 4 deletions(-)
+
+diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
+index 9de6794c6177..d5dfb5e4a669 100644
+--- a/utils/mount/stropts.c
++++ b/utils/mount/stropts.c
+@@ -948,6 +948,7 @@ static int nfs_is_permanent_error(int error)
+ 	case ETIMEDOUT:
+ 	case ECONNREFUSED:
+ 	case EHOSTUNREACH:
++	case EOPNOTSUPP:	/* aka RPC_PROGNOTREGISTERED */
+ 	case EAGAIN:
+ 		return 0;	/* temporary */
+ 	default:
+@@ -1019,8 +1020,7 @@ static int nfsmount_parent(struct nfsmount_info *mi)
+ 	if (nfs_try_mount(mi))
+ 		return EX_SUCCESS;
  
- # Checks for libraries.
-+AC_CHECK_LIB([resolv], [res_querydomain])
+-	/* retry background mounts when the server is not up */
+-	if (nfs_is_permanent_error(errno) && errno != EOPNOTSUPP) {
++	if (nfs_is_permanent_error(errno)) {
+ 		mount_error(mi->spec, mi->node, errno);
+ 		return EX_FAIL;
+ 	}
+@@ -1055,8 +1055,7 @@ static int nfsmount_child(struct nfsmount_info *mi)
+ 		if (nfs_try_mount(mi))
+ 			return EX_SUCCESS;
  
- AC_ARG_ENABLE([ldap],
- 	[AS_HELP_STRING([--disable-ldap],[Disable support for LDAP @<:@default=detect@:>@])])
--- 
-2.7.4
+-		/* retry background mounts when the server is not up */
+-		if (nfs_is_permanent_error(errno) && errno != EOPNOTSUPP)
++		if (nfs_is_permanent_error(errno))
+ 			break;
+ 
+ 		if (time(NULL) > timeout)
+
 
