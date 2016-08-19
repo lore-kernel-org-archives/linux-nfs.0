@@ -1,67 +1,86 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-wm0-f44.google.com ([74.125.82.44]:38773 "EHLO
-        mail-wm0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1754146AbcHSVDv (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 19 Aug 2016 17:03:51 -0400
-Received: by mail-wm0-f44.google.com with SMTP id o80so58134778wme.1
-        for <linux-nfs@vger.kernel.org>; Fri, 19 Aug 2016 14:03:04 -0700 (PDT)
+Received: from fieldses.org ([173.255.197.46]:33148 "EHLO fieldses.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1755411AbcHSVIN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 19 Aug 2016 17:08:13 -0400
+Date: Fri, 19 Aug 2016 16:59:53 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: NeilBrown <neilb@suse.com>
+Cc: Steve Dickson <SteveD@redhat.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        Martin Pitt <martin.pitt@ubuntu.com>
+Subject: Re: [PATCH 2/2] mount: RPC_PROGNOTREGISTERED should not be a
+ permanent error
+Message-ID: <20160819205953.GO32329@fieldses.org>
+References: <147157095612.26568.14161646901346011334.stgit@noble>
+ <147157115640.26568.2934329194247787636.stgit@noble>
 MIME-Version: 1.0
-In-Reply-To: <CAMuHMdURgo0UB6961bZXkb-HV5P3wDT8hgHy=TcPRhA10GT2iw@mail.gmail.com>
-References: <CAMuHMdU+j50GFT=DUWsx_dz1VJJ5zY2EVJi4cX4ZhVVLRMyjCA@mail.gmail.com>
- <CAGXu5jJ0OCR995Xu41SQvw2YQX-JUO5BhVyOuy0=wJ3Su07puw@mail.gmail.com> <CAMuHMdURgo0UB6961bZXkb-HV5P3wDT8hgHy=TcPRhA10GT2iw@mail.gmail.com>
-From: Kees Cook <keescook@chromium.org>
-Date: Fri, 19 Aug 2016 14:03:02 -0700
-Message-ID: <CAGXu5jKhm4tLS=hmXk1FQfTM+7YCR-O886yEeNziLE_9ECHokw@mail.gmail.com>
-Subject: Re: usercopy: kernel memory exposure attempt detected
-To: Geert Uytterhoeven <geert@linux-m68k.org>
-Cc: Al Viro <viro@zeniv.linux.org.uk>, Linux MM <linux-mm@kvack.org>,
-        "open list:NFS, SUNRPC, AND..." <linux-nfs@vger.kernel.org>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        Rik van Riel <riel@redhat.com>
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <147157115640.26568.2934329194247787636.stgit@noble>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Aug 17, 2016 at 8:14 AM, Geert Uytterhoeven
-<geert@linux-m68k.org> wrote:
-> Hi Kees,
->
-> On Wed, Aug 17, 2016 at 4:52 PM, Kees Cook <keescook@chromium.org> wrote:
->> On Wed, Aug 17, 2016 at 5:13 AM, Geert Uytterhoeven
->> <geert@linux-m68k.org> wrote:
->>> Saw this when using NFS root on r8a7791/koelsch, using a tree based on
->>> renesas-drivers-2016-08-16-v4.8-rc2:
->>>
->>> usercopy: kernel memory exposure attempt detected from c01ff000
->>> (<kernel text>) (4096 bytes)
->>
->> Hmmm, the kernel text exposure on ARM usually means the hardened
->> usercopy patchset was applied to an ARM tree without the _etext patch:
->> http://git.kernel.org/linus/14c4a533e0996f95a0a64dfd0b6252d788cebc74
->>
->> If you _do_ have this patch already (and based on the comment below, I
->> suspect you do: usually the missing _etext makes the system entirely
->> unbootable), then we need to dig further.
->
-> Yes, I do have that patch.
->
->>> Despite the BUG(), the system continues working.
->>
->> I assume exim4 got killed, though?
->
-> Possibly. I don't really use email on the development boards.
-> Just a debootstrapped Debian NFS root.
->
->> If you can figure out what bytes are present at c01ff000, that may
->> give us a clue.
->
-> I've added a print_hex_dump(), so we'll find out when it happens again...
+Just one more thought about this one....
 
-Any news on this? If you still have it, I'd love to see the .config
-and kernel image. I've still not been able to reproduce this.
+If you mistakenly attempt to mount a server that's using rpc for some
+service other than nfs, then this will result in a hang where we
+previously got a useful error, right?
 
--Kees
+Maybe that's a rare enough case not to worry about these days.
 
--- 
-Kees Cook
-Nexus Security
+--b.
+
+On Fri, Aug 19, 2016 at 11:45:56AM +1000, NeilBrown wrote:
+> Commit: bf66c9facb8e ("mounts.nfs: v2 and v3 background mounts should retry when server is down.")
+> 
+> changed the behaviour of "bg" mounts so that RPC_PROGNOTREGISTERED,
+> which maps to EOPNOTSUPP, is not a permanent error.
+> This useful because when an NFS server starts up there is a small window between
+> the moment that rpcbind (or portmap) starts responding to lookup requests,
+> and the moment when nfsd registers with rpcbind.  During that window
+> rpcbind will reply with RPC_PROGNOTREGISTERED, but mount should not give up.
+> 
+> This same reasoning applies to foreground mounts.  They don't wait for
+> as long, but could still hit the window and fail prematurely.
+> 
+> So revert the above patch and instead add EOPNOTSUPP to the list of
+> temporary errors known to nfs_is_permanent_error.
+> 
+> Signed-off-by: NeilBrown <neilb@suse.com>
+> ---
+>  utils/mount/stropts.c |    7 +++----
+>  1 file changed, 3 insertions(+), 4 deletions(-)
+> 
+> diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
+> index 9de6794c6177..d5dfb5e4a669 100644
+> --- a/utils/mount/stropts.c
+> +++ b/utils/mount/stropts.c
+> @@ -948,6 +948,7 @@ static int nfs_is_permanent_error(int error)
+>  	case ETIMEDOUT:
+>  	case ECONNREFUSED:
+>  	case EHOSTUNREACH:
+> +	case EOPNOTSUPP:	/* aka RPC_PROGNOTREGISTERED */
+>  	case EAGAIN:
+>  		return 0;	/* temporary */
+>  	default:
+> @@ -1019,8 +1020,7 @@ static int nfsmount_parent(struct nfsmount_info *mi)
+>  	if (nfs_try_mount(mi))
+>  		return EX_SUCCESS;
+>  
+> -	/* retry background mounts when the server is not up */
+> -	if (nfs_is_permanent_error(errno) && errno != EOPNOTSUPP) {
+> +	if (nfs_is_permanent_error(errno)) {
+>  		mount_error(mi->spec, mi->node, errno);
+>  		return EX_FAIL;
+>  	}
+> @@ -1055,8 +1055,7 @@ static int nfsmount_child(struct nfsmount_info *mi)
+>  		if (nfs_try_mount(mi))
+>  			return EX_SUCCESS;
+>  
+> -		/* retry background mounts when the server is not up */
+> -		if (nfs_is_permanent_error(errno) && errno != EOPNOTSUPP)
+> +		if (nfs_is_permanent_error(errno))
+>  			break;
+>  
+>  		if (time(NULL) > timeout)
+> 
