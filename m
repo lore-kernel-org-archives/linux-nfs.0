@@ -1,55 +1,67 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:33136 "EHLO fieldses.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1755317AbcHSVCQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 19 Aug 2016 17:02:16 -0400
-Date: Fri, 19 Aug 2016 17:01:52 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: NeilBrown <neilb@suse.com>
-Cc: Steve Dickson <SteveD@redhat.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Martin Pitt <martin.pitt@ubuntu.com>
-Subject: Re: [PATCH 0/2] nfs-utils patches relating to server startup
-Message-ID: <20160819210152.GP32329@fieldses.org>
-References: <147157095612.26568.14161646901346011334.stgit@noble>
+Received: from mail-wm0-f44.google.com ([74.125.82.44]:38773 "EHLO
+        mail-wm0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1754146AbcHSVDv (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 19 Aug 2016 17:03:51 -0400
+Received: by mail-wm0-f44.google.com with SMTP id o80so58134778wme.1
+        for <linux-nfs@vger.kernel.org>; Fri, 19 Aug 2016 14:03:04 -0700 (PDT)
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <147157095612.26568.14161646901346011334.stgit@noble>
+In-Reply-To: <CAMuHMdURgo0UB6961bZXkb-HV5P3wDT8hgHy=TcPRhA10GT2iw@mail.gmail.com>
+References: <CAMuHMdU+j50GFT=DUWsx_dz1VJJ5zY2EVJi4cX4ZhVVLRMyjCA@mail.gmail.com>
+ <CAGXu5jJ0OCR995Xu41SQvw2YQX-JUO5BhVyOuy0=wJ3Su07puw@mail.gmail.com> <CAMuHMdURgo0UB6961bZXkb-HV5P3wDT8hgHy=TcPRhA10GT2iw@mail.gmail.com>
+From: Kees Cook <keescook@chromium.org>
+Date: Fri, 19 Aug 2016 14:03:02 -0700
+Message-ID: <CAGXu5jKhm4tLS=hmXk1FQfTM+7YCR-O886yEeNziLE_9ECHokw@mail.gmail.com>
+Subject: Re: usercopy: kernel memory exposure attempt detected
+To: Geert Uytterhoeven <geert@linux-m68k.org>
+Cc: Al Viro <viro@zeniv.linux.org.uk>, Linux MM <linux-mm@kvack.org>,
+        "open list:NFS, SUNRPC, AND..." <linux-nfs@vger.kernel.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        Rik van Riel <riel@redhat.com>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Aug 19, 2016 at 11:45:56AM +1000, NeilBrown wrote:
-> Two patches for recently discussed functionality.
-> Both revert earlier patches and provide a more complete
-> solution.
-> 
-> The first adds a new program.  I've placed this in "systemd/" rather
-> than "utils/something" because that seemed to make sense.  Is it
-> inelegant putting code in a directory with unit files?
+On Wed, Aug 17, 2016 at 8:14 AM, Geert Uytterhoeven
+<geert@linux-m68k.org> wrote:
+> Hi Kees,
+>
+> On Wed, Aug 17, 2016 at 4:52 PM, Kees Cook <keescook@chromium.org> wrote:
+>> On Wed, Aug 17, 2016 at 5:13 AM, Geert Uytterhoeven
+>> <geert@linux-m68k.org> wrote:
+>>> Saw this when using NFS root on r8a7791/koelsch, using a tree based on
+>>> renesas-drivers-2016-08-16-v4.8-rc2:
+>>>
+>>> usercopy: kernel memory exposure attempt detected from c01ff000
+>>> (<kernel text>) (4096 bytes)
+>>
+>> Hmmm, the kernel text exposure on ARM usually means the hardened
+>> usercopy patchset was applied to an ARM tree without the _etext patch:
+>> http://git.kernel.org/linus/14c4a533e0996f95a0a64dfd0b6252d788cebc74
+>>
+>> If you _do_ have this patch already (and based on the comment below, I
+>> suspect you do: usually the missing _etext makes the system entirely
+>> unbootable), then we need to dig further.
+>
+> Yes, I do have that patch.
+>
+>>> Despite the BUG(), the system continues working.
+>>
+>> I assume exim4 got killed, though?
+>
+> Possibly. I don't really use email on the development boards.
+> Just a debootstrapped Debian NFS root.
+>
+>> If you can figure out what bytes are present at c01ff000, that may
+>> give us a clue.
+>
+> I've added a print_hex_dump(), so we'll find out when it happens again...
 
-Seems to me like a logical enough spot in this case.--b.
+Any news on this? If you still have it, I'd love to see the .config
+and kernel image. I've still not been able to reproduce this.
 
-> 
-> I don't do a lot of automake coding so if someone were to make sure I
-> didn't do anything non-standard in the Makefile.am, that would be
-> appreciated.
-> 
-> Thanks,
-> NeilBrown
-> 
-> ---
-> 
-> NeilBrown (2):
->       systemd: improve ordering between nfs-server and various mounts
->       mount: RPC_PROGNOTREGISTERED should not be a permanent error
-> 
-> 
->  systemd/Makefile.am            |    8 ++
->  systemd/nfs-server-generator.c |  144 ++++++++++++++++++++++++++++++++++++++++
->  systemd/nfs-server.service     |    3 -
->  utils/mount/stropts.c          |    7 +-
->  4 files changed, 155 insertions(+), 7 deletions(-)
->  create mode 100644 systemd/nfs-server-generator.c
-> 
-> --
-> Signature
+-Kees
+
+-- 
+Kees Cook
+Nexus Security
