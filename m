@@ -1,53 +1,66 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from us-smtp-delivery-194.mimecast.com ([216.205.24.194]:47158 "EHLO
-        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1755669AbcHSPpZ (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 19 Aug 2016 11:45:25 -0400
-From: Trond Myklebust <trondmy@primarydata.com>
-To: Kornievskaia Olga <aglo@umich.edu>
-CC: Kinglong Mee <kinglongmee@gmail.com>,
-        List Linux NFS Mailing <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH v2 1/2] NFSv4: Ensure that we drain the session before
- shutting it down
-Date: Fri, 19 Aug 2016 15:45:13 +0000
-Message-ID: <9E62B7D6-D683-4F92-BA63-8183D21498FF@primarydata.com>
-References: <CAHQdGtTn5me9ZBfv9D8qZOmp6MFc29ppn4DqD8hOuMqRgRY8Rg@mail.gmail.com>
- <1427142109-91216-1-git-send-email-trond.myklebust@primarydata.com>
- <CAN-5tyEK-Ua=-TuGHO=o4Mo7C5bs5Wi0AzmJo6vC6bsTV9czZQ@mail.gmail.com>
-In-Reply-To: <CAN-5tyEK-Ua=-TuGHO=o4Mo7C5bs5Wi0AzmJo6vC6bsTV9czZQ@mail.gmail.com>
+Received: from fieldses.org ([173.255.197.46]:32832 "EHLO fieldses.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1752067AbcHSPrW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 19 Aug 2016 11:47:22 -0400
+Date: Fri, 19 Aug 2016 11:47:21 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: "J. Bruce Fields" <bfields@redhat.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: WARN_ON added to rpc_create()
+Message-ID: <20160819154721.GF32329@fieldses.org>
+References: <42D0C152-58F9-4467-B86D-2A7A25544CE4@oracle.com>
+ <20160803174724.GA5993@fieldses.org>
+ <5E7D6A55-B7F3-411D-A74B-E8BCE04BCF02@oracle.com>
+ <20160818215611.GA25052@fieldses.org>
+ <FA0D14B1-EC11-4345-887C-413EDC403E3A@oracle.com>
+ <20160819145055.GA2956@parsley.fieldses.org>
+ <77E4C34B-23DD-4F3B-9D6B-670855E3DC0D@oracle.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=WINDOWS-1252
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <77E4C34B-23DD-4F3B-9D6B-670855E3DC0D@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Fri, Aug 19, 2016 at 11:06:16AM -0400, Chuck Lever wrote:
+> > On Aug 19, 2016, at 10:50 AM, J. Bruce Fields <bfields@redhat.com> wrote:
+> > On Thu, Aug 18, 2016 at 06:11:43PM -0400, Chuck Lever wrote:
+> >> OK, but why is a WARN_ON needed here? Why not return -EINVAL,
+> >> for example (once you've corrected BC_TCP -> BC) ?
+> > 
+> > Well, it would be a programming bug, so I'd want a WARN_ON or similar
+> > somewhere, I don't care particularly where it is if you see a better way
+> > to organize things.
+> 
+> The way it works now, the WARN_ON fires, but the logic goes ahead
+> and creates the transport anyway.
+> 
+> If this is a programming bug, it should fail and return an error,
 
-> On Aug 19, 2016, at 09:41, Olga Kornievskaia <aglo@umich.edu> wrote:
->=20
-> Hi Trond, Kinglong,
->=20
-> What has happened to this patch?
+I haven't been following that rule.
 
-It was dropped, since it should be unnecessary. The delegreturn calls from =
-nfs4_evict_inode() should now be synchronous, and other calls should normal=
-ly grab a reference to the inode+super block.
+Once upon a time, I would have put a BUG() there.  Then Linus pointed
+out that sometimes a BUG() can bork the machine badly enough that the
+backtrace doesn't even make it to the logs, rendering it useless.  (And
+I believe that could be the case here since this is running as a work
+item.)  So, I stick a WARN() there instead and don't worry much what
+happens afterwards.
 
->=20
-> I believe the lack of this patch is causing the following problem on
-> the nfsv4.1 mount:
-> 1. client has delegations
-> 2. unmount is initiated which as Kinglong points out:
-> -- initiates asynchronous DELEGRETURNs.
-> -- then in nfs_free_server() it ends up killing ongoing rpc tasks with
-> DELEGRETURN.
-> -- nfs41_proc_sequence() takes a reference on the client structure.
-> However since the RPCs are killed there is no call to nfs_put_client()
-> which is done in the nfs4_sequence_release()
+> If it is not a programming bug (which is implied by the fact that
+> a transport is created anyway) then no WARN_ON is needed.
 
-task->tk_ops->rpc_release() is guaranteed to be run.
+So, could we just agree that WARN_ON means "there's a programming
+error", regardless of what happens next?  Backtraces should never happen
+on a working kernel.
 
-> -- then in nfs_put_client() the reference count doesn't go down to 0
-> and DESTROY_SESSION isn't called. The user's umount succeeds but we
-> still have the client structure with a session.
+And then ignore the following code path.  Unless it's something that's
+obviously going to immediately oops in the warned case, in which case if
+we really want the warning then we should return if that looks safer.
 
+But I don't have really strong feelings about this case, the warning may
+be academic since setup_callback_client() makes this look obviously
+impossible, so if you want to reorganize this somehow, feel free to give
+it a shot.
 
-
+--b.
