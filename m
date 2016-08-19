@@ -1,97 +1,189 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:57408 "EHLO mx2.suse.de"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1754127AbcHSUno (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 19 Aug 2016 16:43:44 -0400
-From: NeilBrown <neilb@suse.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Date: Sat, 20 Aug 2016 06:43:37 +1000
-Cc: Steve Dickson <SteveD@redhat.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Martin Pitt <martin.pitt@ubuntu.com>
-Subject: Re: [PATCH 1/2] systemd: improve ordering between nfs-server and various mounts
-In-Reply-To: <20160819173830.GK32329@fieldses.org>
-References: <147157095612.26568.14161646901346011334.stgit@noble> <147157115637.26568.2867884353016441810.stgit@noble> <20160819173830.GK32329@fieldses.org>
-Message-ID: <87r39kh4li.fsf@notabene.neil.brown.name>
-MIME-Version: 1.0
-Content-Type: multipart/signed; boundary="=-=-=";
-        micalg=pgp-sha256; protocol="application/pgp-signature"
+Received: from aserp1040.oracle.com ([141.146.126.69]:44800 "EHLO
+        aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1755321AbcHSU44 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 19 Aug 2016 16:56:56 -0400
+Content-Type: text/plain; charset=us-ascii
+Mime-Version: 1.0 (Mac OS X Mail 9.3 \(3124\))
+Subject: Re: [RFC PATCH 1/3] libnfsidmap: Query DNS for the the NFSv4 domain
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <1471545435-15543-1-git-send-email-steved@redhat.com>
+Date: Fri, 19 Aug 2016 16:56:32 -0400
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Message-Id: <8AE29A85-1437-470F-BF7D-087641728511@oracle.com>
+References: <1471545435-15543-1-git-send-email-steved@redhat.com>
+To: Steve Dickson <SteveD@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---=-=-=
-Content-Type: text/plain
-Content-Transfer-Encoding: quoted-printable
 
-On Sat, Aug 20 2016, J. Bruce Fields wrote:
+> On Aug 18, 2016, at 2:37 PM, Steve Dickson <SteveD@redhat.com> wrote:
+> 
+> In domain_from_dns(), when at the hostname is a FQHN
+> query the DNS server for the _nfsv4idmapdomain TXT
+> record. If the record exists, use that as the
+> NFSv4 domain.
+> 
+> Note, this query will only happen if the domain name
+> is not set in the /etc/idmapd.conf
+> 
+> Signed-off-by: Steve Dickson <steved@redhat.com>
 
-> On Fri, Aug 19, 2016 at 11:45:56AM +1000, NeilBrown wrote:
->> Commit: 1e41488f428c ("systemd: Order NFS server before client")
->>=20
->> added an ordering dependency between network mounts and nfs-server.
->> This is good for loop-back NFS mounts as it ensures the server
->> will remain until after the mountpoint is unmounted.
->>=20
->> However is is bad for _net mounts (such as those via iSCSI) which
->> are being NFS exported.
->>=20
->> nfs-server needs to be start *after* exported filesystems are mounted,
->> and *before* NFS filesystems are mounted.  systemd isn't able to make
->> this distinction natively, so we need to help it.
->>=20
->> This patch adds a systemd generator which creates a drop-in for
->> nfs-server.services so that it is started "After" any "nfs" or "nfs4"
->
-> s/After/Before/ ?
+All three:
 
-Yes.  I suspect this was caused by the fact that my goal was for
-nfs-server to stop After nfs mounts.  The concepts start to blur.
-It is a bit like doing a git-bisect to find out where some bug was
-fixed.  good=3D=3Dbad, bad=3D=3Dgood
-
->
-> The code's right:
-
-I remember fixing the code....
-
-Steve: if there are no other revisions, would you still like me to
-resend to fix this, or will you just correct it when you eventually
-commit it?
-
-Thanks,
-NeilBrown
+Reviewed-by: Chuck Lever <chuck.lever@oracle.com>
 
 
->
->> +	fstab =3D setmntent("/etc/fstab", "r");
->> +	while ((mnt =3D getmntent(fstab)) !=3D NULL) {
->> +		if (strcmp(mnt->mnt_type, "nfs") !=3D 0 &&
->> +		    strcmp(mnt->mnt_type, "nfs4") !=3D 0)
->> +			continue;
->> +		fprintf(f, "Before=3D ");
->> +		systemd_escape(f, mnt->mnt_dir);
->> +		fprintf(f, ".mount\n");
->
-> --b.
+> ---
+> libnfsidmap.c | 104 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++-
+> 1 file changed, 103 insertions(+), 1 deletion(-)
+> 
+> diff --git a/libnfsidmap.c b/libnfsidmap.c
+> index 2db4d13..7b8c0ed 100644
+> --- a/libnfsidmap.c
+> +++ b/libnfsidmap.c
+> @@ -53,6 +53,10 @@
+> #include <stdarg.h>
+> #include <dlfcn.h>
+> #include <ctype.h>
+> +#include <resolv.h>
+> +#include <arpa/nameser.h>
+> +#include <arpa/nameser_compat.h>
+> +
+> #include "nfsidmap.h"
+> #include "nfsidmap_internal.h"
+> #include "cfg.h"
+> @@ -79,6 +83,11 @@ gid_t nobody_gid = (gid_t)-1;
+> #define IDMAPD_DEFAULT_DOMAIN "localdomain"
+> #endif
+> 
+> +#ifndef NFS4DNSTXTREC
+> +#define NFS4DNSTXTREC "_nfsv4idmapdomain"
+> +#endif
+> +
+> +
+> /* Default logging fuction */
+> static void default_logger(const char *fmt, ...)
+> {
+> @@ -114,6 +123,93 @@ static int id_as_chars(char *name, uid_t *id)
+> 	return 1;
+> }
+> 
+> +static int dns_txt_query(char *domain, char **nfs4domain)
+> +{
+> +	char *txtname = NFS4DNSTXTREC;
+> +	char *msg, *answ, *eom, *mptr; 
+> +	int len, status = -1;
+> +	HEADER *hdr;
+> +	
+> +	msg = calloc(1, NS_MAXMSG);
+> +	if (msg == NULL)
+> +		return -1;
+> +
+> +	answ = calloc(1, NS_MAXMSG);
+> +	if (answ == NULL) {
+> +		free(msg);
+> +		return -1;
+> +	}
+> +
+> +	if (res_init() < 0) {
+> +		IDMAP_LOG(2, ("libnfsidmap: res_init() failed for %s.%s: %s\n",
+> +			txtname, domain, hstrerror(h_errno)));
+> +		goto freemem;
+> +	}
+> +	len = res_querydomain(txtname, domain, C_IN, T_TXT, msg, NS_MAXMSG);
+> +	if (len < 0) {
+> +		IDMAP_LOG(2, ("libnfsidmap: res_querydomain() failed for %s.%s: %s\n",
+> +			txtname, domain, hstrerror(h_errno)));
+> +		goto freemem;
+> +	}
+> +	hdr = (HEADER *)msg;
+> +
+> +	/* See if there is an answer */
+> +	if (ntohs(hdr->ancount) < 1) {
+> +		IDMAP_LOG(2, ("libnfsidmap: No TXT record for %s.%s\n",
+> +			txtname, domain));
+> +		goto freemem;
+> +	}
+> +	/* find the EndOfMessage */
+> +	eom = msg + len;
+> +
+> +	/* skip header */
+> +	mptr = &msg[HFIXEDSZ];
+> +
+> +	/* skip name field in question section */
+> +	mptr += dn_skipname(mptr, eom) + QFIXEDSZ;
+> +
+> +	/* read in the question */
+> +	len = dn_expand(msg, eom, mptr, answ, NS_MAXDNAME);
+> +	if (len < 0) { /* does this really matter?? */
+> +		IDMAP_LOG(2, ("libnfsidmap: No question section for %s.%s: %s\n",
+> +			txtname, domain, hstrerror(h_errno)));
+> +		goto freemem;
+> +	}
+> +
+> +	/*
+> +	 * Now, dissect the answer section, Note: if there
+> +	 * are more than one answer only the first
+> +	 * one will be used. 
+> +	 */
+> +
+> +	/* skip passed the name field  */
+> +	mptr += dn_skipname(mptr, eom);
+> +	/* skip pass the type class and ttl fields */
+> +	mptr += 2 + 2 + 4;
+> +
+> +	/* make sure there is some data */
+> +	GETSHORT(len, mptr);
+> +	if (len < 0) {
+> +		IDMAP_LOG(2, ("libnfsidmap: No data in answer for %s.%s\n",
+> +			txtname, domain));
+> +		goto freemem;
+> +	}
+> +	/* get the lenght field */
+> +	len = (int)*mptr++;
+> +	/* copy the data */
+> +	memcpy(answ, mptr, len);
+> +	answ[len] = '\0';
+> +	
+> +	*nfs4domain = strdup(answ);
+> +	status = 0;
+> +
+> +freemem:
+> +	free(msg);
+> +	free(answ);
+> +
+> +	return (status);
+> +}
+> +
+> static int domain_from_dns(char **domain)
+> {
+> 	struct hostent *he;
+> @@ -125,7 +221,13 @@ static int domain_from_dns(char **domain)
+> 		return -1;
+> 	if ((c = strchr(he->h_name, '.')) == NULL || *++c == '\0')
+> 		return -1;
+> -	*domain = strdup(c);
+> +	/* 
+> +	 * Query DNS to see if the _nfsv4idmapdomain TXT record exists
+> +	 * If so use it... 
+> +	 */
+> +	if (dns_txt_query(c, domain) < 0)
+> +		*domain = strdup(c);
+> +
+> 	return 0;
+> }
+> 
+> -- 
+> 2.7.4
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
---=-=-=
-Content-Type: application/pgp-signature; name="signature.asc"
+--
+Chuck Lever
 
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v2
 
-iQIcBAEBCAAGBQJXt295AAoJEDnsnt1WYoG5Zh8P/06H+lRKUF/eSK/c3qIljwEP
-HOLedfgxA8E6RhJoyMnjlsD6//NZQb4e82sKrlKOq5lQWEiBZNOxrTZlOUHCe90v
-fS/WR0DC19LSZBrrhNb3nlSsuBrgSBU4nphsH2RxOM74QL0Geon3h024F6DNBIps
-BbnnuDNFiZWKUdAPSHR2me3F0/G8vKzJURyyzFl0N31/GKCbzGXxv+PVoRwpB63c
-+7V9DQC3tVSpi6187lDGXY52SlI8sG4PgseanCenPJjtPUKmIuMAU6fDdccXcBSl
-LlUpbsbSKAgRWZGVypeC0g1xBC8wEJn9DikIgEpVbCZSVVr1kN51tC2oTuKNcedm
-gsnydZRscQUUBFo7bAt+iReQsENdnequMzJDhXGsbZWqRY+Pzt8jTUHd2SrrtcXV
-GHbcHroeFleNU3Xr+OLniF7yJ4r+s1gaRyOlPlynch8Y8M/yahNm8skH0po8AOLW
-btFViM/lkGIRBnDvP+toRT5W8LptAASmGximYl34L7rU9aBH1hnJ/n8tO5jbyDYW
-J2hKiA0EOVu/YYfk2yLRcsj9QnqiZpXzD+CGzbgABkBlM13F/sdNAXQ3iobnx5nG
-yPSBDrFfgwYIORp30uOmUWE+nTxIlW4RSc7sq7auds//NJ3q4rcMlEduv2Qb1Snx
-wyF/wGWzmCvVpulUdAcF
-=Nwx5
------END PGP SIGNATURE-----
---=-=-=--
+
