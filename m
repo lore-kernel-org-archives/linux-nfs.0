@@ -1,65 +1,80 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from userp1050.oracle.com ([156.151.31.82]:19511 "EHLO
-        userp1050.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1752848AbcHSFAy (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 19 Aug 2016 01:00:54 -0400
-Received: from userp1040.oracle.com (userp1040.oracle.com [156.151.31.81])
-        by userp1050.oracle.com (Sentrion-MTA-4.3.2/Sentrion-MTA-4.3.2) with ESMTP id u7IGsksW000414
-        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK)
-        for <linux-nfs@vger.kernel.org>; Thu, 18 Aug 2016 16:54:46 GMT
-Content-Type: text/plain; charset=windows-1252
-Mime-Version: 1.0 (Mac OS X Mail 9.3 \(3124\))
-Subject: Re: [PATCH] libnfsidmap: Query DNS for the the NFSv4 domain
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <a452c0af-1c23-73a5-0fe7-a4d622099a6b@RedHat.com>
-Date: Thu, 18 Aug 2016 12:54:36 -0400
+Received: from mail-ua0-f179.google.com ([209.85.217.179]:34762 "EHLO
+        mail-ua0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1753990AbcHSFfA (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 19 Aug 2016 01:35:00 -0400
+Received: by mail-ua0-f179.google.com with SMTP id k90so63587525uak.1
+        for <linux-nfs@vger.kernel.org>; Thu, 18 Aug 2016 22:34:59 -0700 (PDT)
+MIME-Version: 1.0
+In-Reply-To: <173CD366-84D2-42B5-8903-3B5E5131095B@oracle.com>
+References: <CA+X5Wn4f8b+DXGT-OpPWmF=uZ=8m+mh27SfCJNMrven_DZtRVg@mail.gmail.com>
+ <173CD366-84D2-42B5-8903-3B5E5131095B@oracle.com>
+From: james harvey <jamespharvey20@gmail.com>
+Date: Fri, 19 Aug 2016 01:06:38 -0400
+Message-ID: <CA+X5Wn6eGxib1GzmfbWMgNsuvu4HXYrh_iBTdgNR+0oPLu_Vdg@mail.gmail.com>
+Subject: Re: Is NFSv4.2 now compatible & stable with rdma?
+To: Chuck Lever <chuck.lever@oracle.com>
 Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <1557E393-F99D-44E3-B2E1-A7C7660A949F@oracle.com>
-References: <1470950774-3649-1-git-send-email-steved@redhat.com> <CBF9A3DE-7B43-4838-BA27-9B9E60AB54FB@oracle.com> <910b6aed-a955-5fd1-982f-b5d4541f107e@RedHat.com> <7B86C63A-EB63-42EF-A0A6-34CFFAC10B96@oracle.com> <a452c0af-1c23-73a5-0fe7-a4d622099a6b@RedHat.com>
-To: Steve Dickson <SteveD@redhat.com>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hey bud-
+Full sparse support would be nice, but certainly not critical.  I'd
+rather stay with what was considered least problematic.
 
-> On Aug 18, 2016, at 12:40 PM, Steve Dickson <SteveD@redhat.com> wrote:
-> 
-> 
-> 
-> On 08/15/2016 11:16 AM, Chuck Lever wrote:
->>>>> On Aug 11, 2016, at 5:26 PM, Steve Dickson <SteveD@redhat.com> wrote:
->>>>>>>> 
->>>>>>>> In domain_from_dns(), when at the hostname is a FQHN
->>>>>>>> query the DNS server for the _nfsv4idmapdomain TXT
->>>>>>>> record. If the record exists, use that as the
->>>>>>>> NFSv4 domain.
->>>>>>>> 
->>>>>>>> Note, this query will only happen if the domain name
->>>>>>>> is not set in the /etc/idmapd.conf
->>>>>> 
->>>>>> Is there a man page update that goes with this? The order in
->>>>>> which the library searches for the domain name should be
->>>>>> documented. idmapd.conf(5), maybe.
->>>> Yes... I should have made this an RFC patch since I just
->>>> wanted to get core out there for for comments... 
->>>> The man page needs to updated as well as the configure.ac.
->> To enable this feature IMO a better choice is to use a command
->> line option on nfsidmap and rpc.idmapd.
-> I've be thinking about this... I don't think a command line 
-> option is possible... How does a command line option tell a 
-> internal library routine what to do? w/out creating new interface
-> which is something I don't think we want to do...
+I'm re-examining any workarounds we use, to see if any of the issues
+have been resolved so any workarounds are no longer needed.  As a
+general rule, without a reason to do otherwise, I like letting
+something run with defaults (where it would pick 4.2) rather than
+overriding something.
 
-I may have mentioned this elsewhere, but I changed my mind about this
-already:
+So, with RDMA on 4.7.1+, no reason to stay on NFSv4.0 instead of NFSv4.1?
 
-There's probably no need to have a command line option or a build-time
-setting here, because setting the Domain = variable in /etc/idmapd.conf
-is enough to disable the new query.
-
-
---
-Chuck Lever
-
-
-
+On Thu, Aug 18, 2016 at 11:26 AM, Chuck Lever <chuck.lever@oracle.com> wrote:
+> Hi James-
+>
+>
+>> On Aug 18, 2016, at 12:09 AM, james harvey <jamespharvey20@gmail.com> wrote:
+>>
+>> A year ago, on 7/30/2015, Chuck Lever said NFS/RDMA wasn't yet working
+>> with NFSv4.1 and NFSv4.2, as a known issue.
+>>
+>> I was able to use "vers=4.0" to get around the issue.
+>>
+>> I see v4.2 seems to mount properly, but before switching over to it, I
+>> wanted to see if it's considered stable, or still to be avoided.
+>
+> Can you tell why you'd like to use it? Which NFSv4.2 feature is interesting
+> to you?
+>
+> I don't test it regularly, simply because
+>
+> - The complete tests on each version take a long time to run
+>
+> - NFSv4.2 features are all optional, and the Linux NFSv4.2 implementation
+> adds only a couple that probably won't be affected by RDMA. READ_PLUS will
+> need some attention at some point, but I think Anna is still polishing the
+> upper layer implementation.
+>
+> - I don't have any specific tests for security labels, which add to the
+> size of the NFSv4 GETATTR receive buffer whether labels are actually
+> retrieved or not. So there is a little NFSv4.2 testing we get for free just
+> by using NFSv4.0.
+>
+> - There's yet a lot of non-version-specific work to do on RPC-over-RDMA.
+>
+> The main blocker before was support for bi-directional RPC, which all
+> minorversions of NFSv4 use after mv 1, and that should be working as well
+> as it does for NFSv4.1.
+>
+> NFSv4.2 itself should work, but I might choose to stay with NFSv4.1 for
+> now if it were up to me, unless you have need of one of the new features.
+> For example, there is no standard specification describing how READ_PLUS
+> is supposed to work on RPC-over-RDMA (that's in the works).
+>
+>
+> --
+> Chuck Lever
+>
+>
+>
