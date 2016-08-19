@@ -1,77 +1,228 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from comal.ext.ti.com ([198.47.26.152]:59291 "EHLO comal.ext.ti.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1750889AbcHSLSC (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 19 Aug 2016 07:18:02 -0400
-Subject: Re: Kernel NFS boot failure
-To: netdev <netdev@vger.kernel.org>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        <linux-nfs@vger.kernel.org>,
-        Anna Schumaker <anna.schumaker@netapp.com>
-References: <674e6841-d2c5-ccae-6633-a699e848e6d2@ti.com>
- <57A1DE28.7020604@arm.com> <c234fc25-ef5b-eecc-450f-34d01410f9de@ti.com>
- <a094b3c3-0441-4e7f-7e51-f6ee5d6bb2f1@ti.com>
-CC: Vladimir Murzin <vladimir.murzin@arm.com>,
-        "linux-omap@vger.kernel.org" <linux-omap@vger.kernel.org>,
-        Sekhar Nori <nsekhar@ti.com>, open list <linux-kernel@vger.kernel.org>,
-        linux-arm <linux-arm-kernel@lists.infradead.org>,
-        Neil Brown <neilb@suse.de>
-From: Grygorii Strashko <grygorii.strashko@ti.com>
-Message-ID: <478afde3-32ce-27e6-e865-9fbb893c2836@ti.com>
-Date: Fri, 19 Aug 2016 14:14:27 +0300
+Received: from mail-io0-f195.google.com ([209.85.223.195]:36521 "EHLO
+        mail-io0-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1755295AbcHSNlq (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 19 Aug 2016 09:41:46 -0400
+Received: by mail-io0-f195.google.com with SMTP id y34so4747685ioi.3
+        for <linux-nfs@vger.kernel.org>; Fri, 19 Aug 2016 06:41:45 -0700 (PDT)
 MIME-Version: 1.0
-In-Reply-To: <a094b3c3-0441-4e7f-7e51-f6ee5d6bb2f1@ti.com>
-Content-Type: text/plain; charset="windows-1252"
+In-Reply-To: <1427142109-91216-1-git-send-email-trond.myklebust@primarydata.com>
+References: <CAHQdGtTn5me9ZBfv9D8qZOmp6MFc29ppn4DqD8hOuMqRgRY8Rg@mail.gmail.com>
+ <1427142109-91216-1-git-send-email-trond.myklebust@primarydata.com>
+From: Olga Kornievskaia <aglo@umich.edu>
+Date: Fri, 19 Aug 2016 09:41:44 -0400
+Message-ID: <CAN-5tyEK-Ua=-TuGHO=o4Mo7C5bs5Wi0AzmJo6vC6bsTV9czZQ@mail.gmail.com>
+Subject: Re: [PATCH v2 1/2] NFSv4: Ensure that we drain the session before
+ shutting it down
+To: Trond Myklebust <trond.myklebust@primarydata.com>
+Cc: Kinglong Mee <kinglongmee@gmail.com>,
+        linux-nfs <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi All,
-On 08/11/2016 07:25 PM, Grygorii Strashko wrote:
-> On 08/03/2016 06:04 PM, Grygorii Strashko wrote:
->> Hi Vladimir,
->>
->> On 08/03/2016 03:06 PM, Vladimir Murzin wrote:
->>> On 03/08/16 12:41, Grygorii Strashko wrote:
->>>> We observe Kernel boot failure while running NFS boot stress test (1000 iterations):
->>>> - Linux version 4.7.0 
->>
->> I'd like to pay your attention that this issue also reproducible with
->> Kernel 4.7.0!
->> The same can be seen from the log I've provided in first e-mail:
->> [    0.000000] Linux version 4.7.0 (lcpdbld@dflsdit-build06.dal.design.ti.com) (gcc version 4.9.3 20150413 (prerelease) (Linaro GCC 4.9-2015.05) ) #1 SMP Fri Jul 29 17:41:27 CDT 2016
->>
->>
->> I've not run the test with current master at it's not been tagged yet.
-> 
-> Still in progress. rc1 unstable on my platforms due to other issues :(
-> 
->>
->>>> - am335x-evm (TI AM335x EVM)
->>>> - failure rate 10-20 times per test.
->>>> Originally this issue was reproduced using TI Kernel 4.4
->>>> ( git://git.ti.com/ti-linux-kernel/ti-linux-kernel.git, branch: ti-linux-4.4.y)
->>>> on both am335x-evm and am57xx-beagle-x15(am57xx-evm) platforms.
->>>> This issues has not been reproduced with TI Kernel 4.1 before.
->>>>
->>>> The SysRq shows that system stuck in nfs_fs_mount()
->>>>
->>>> [  207.904632] [<c07ab34c>] (schedule) from [<c0783554>] (rpc_wait_bit_killable+0x2c/0xd8)
->>>> [  207.912996] [<c0783554>] (rpc_wait_bit_killable) from [<c07ab7f0>] (__wait_on_bit+0x84/0xc0)
->>>> [  207.921812] [<c07ab7f0>] (__wait_on_bit) from [<c07ab890>] (out_of_line_wait_on_bit+0x64/0x70)
->>>> [  207.930810] [<c07ab890>] (out_of_line_wait_on_bit) from [<c07843f4>] (__rpc_execute+0x18c/0x544)
->>>> [  207.939988] [<c07843f4>] (__rpc_execute) from [<c0779f24>] (rpc_run_task+0x13c/0x158)
->>>> [  207.948166] [<c0779f24>] (rpc_run_task) from [<c0779f84>] (rpc_call_sync+0x44/0xc4)
->>>> [  207.956163] [<c0779f84>] (rpc_call_sync) from [<c077a04c>] (rpc_ping+0x48/0x68)
->>>> [  207.963796] [<c077a04c>] (rpc_ping) from [<c077a158>] (rpc_create_xprt+0xec/0x164)
->>>> [  207.971702] [<c077a158>] (rpc_create_xprt) from [<c077a2c0>] (rpc_create+0xf0/0x1a0)
->>>> [  207.979794] [<c077a2c0>] (rpc_create) from [<c0393088>] (nfs_create_rpc_client+0xd4/0xec)
->>>> [  207.988338] [<c0393088>] (nfs_create_rpc_client) from [<c0394d10>] (nfs_init_client+0x20/0x78)
->>>> [  207.997332] [<c0394d10>] (nfs_init_client) from [<c03949d4>] (nfs_create_server+0xa0/0x3bc)
->>>> [  208.006057] [<c03949d4>] (nfs_create_server) from [<c03b197c>] (nfs3_create_server+0x8/0x20)
->>>> [  208.014879] [<c03b197c>] (nfs3_create_server) from [<c03a34c4>] (nfs_try_mount+0xc4/0x1f0)
->>>> [  208.023513] [<c03a34c4>] (nfs_try_mount) from [<c03a2c48>] (nfs_fs_mount+0x290/0x910)
->>>> [  208.031702] [<c03a2c48>] (nfs_fs_mount) from [<c0294d24>] (mount_fs+0x44/0x168)
->>>>
+Hi Trond, Kinglong,
 
-I was able to reproduce this issue with NFS/SUNRPC debug logs enabled using TI kernel 4.4.
-I'd be appreciated for any help :( and be happy to run any kind of tests or check debug patches if needed.
+What has happened to this patch?
+
+I believe the lack of this patch is causing the following problem on
+the nfsv4.1 mount:
+1. client has delegations
+2. unmount is initiated which as Kinglong points out:
+-- initiates asynchronous DELEGRETURNs.
+-- then in nfs_free_server() it ends up killing ongoing rpc tasks with
+DELEGRETURN.
+-- nfs41_proc_sequence() takes a reference on the client structure.
+However since the RPCs are killed there is no call to nfs_put_client()
+which is done in the nfs4_sequence_release()
+-- then in nfs_put_client() the reference count doesn't go down to 0
+and DESTROY_SESSION isn't called. The user's umount succeeds but we
+still have the client structure with a session.
+
+I believe this patch that waits for the session to be drained would
+not have the reference count problem.
+
+
+On Mon, Mar 23, 2015 at 4:21 PM, Trond Myklebust
+<trond.myklebust@primarydata.com> wrote:
+> Kinglong Mee reports that the call to DESTROY_SESSION in NFSv4.1
+> are racing with the asynchronous DELEGRETURN calls that precede it.
+> This points to the root cause being that we're not waiting for the
+> session to drain before we destroy it.
+>
+> This patch ensures that we do so for both NFSv4 and NFSv4.1.
+>
+> Reported-by: Kinglong Mee <kinglongmee@gmail.com>
+> Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+> ---
+>  fs/nfs/nfs4client.c  |  7 ++-----
+>  fs/nfs/nfs4session.c | 45 +++++++++++++++++++++++++++++++++++++++++++--
+>  fs/nfs/nfs4session.h |  4 ++++
+>  fs/nfs/nfs4state.c   | 15 ++++++++++++---
+>  4 files changed, 61 insertions(+), 10 deletions(-)
+>
+> diff --git a/fs/nfs/nfs4client.c b/fs/nfs/nfs4client.c
+> index 86d6214ea022..ffb12efb1596 100644
+> --- a/fs/nfs/nfs4client.c
+> +++ b/fs/nfs/nfs4client.c
+> @@ -160,7 +160,7 @@ void nfs41_shutdown_client(struct nfs_client *clp)
+>  {
+>         if (nfs4_has_session(clp)) {
+>                 nfs4_shutdown_ds_clients(clp);
+> -               nfs4_destroy_session(clp->cl_session);
+> +               nfs41_shutdown_session(clp->cl_session);
+>                 nfs4_destroy_clientid(clp);
+>         }
+>
+> @@ -169,10 +169,7 @@ void nfs41_shutdown_client(struct nfs_client *clp)
+>
+>  void nfs40_shutdown_client(struct nfs_client *clp)
+>  {
+> -       if (clp->cl_slot_tbl) {
+> -               nfs4_shutdown_slot_table(clp->cl_slot_tbl);
+> -               kfree(clp->cl_slot_tbl);
+> -       }
+> +       nfs40_shutdown_session(clp);
+>  }
+>
+>  struct nfs_client *nfs4_alloc_client(const struct nfs_client_initdata *cl_init)
+> diff --git a/fs/nfs/nfs4session.c b/fs/nfs/nfs4session.c
+> index e23366effcfb..67c002a24d8f 100644
+> --- a/fs/nfs/nfs4session.c
+> +++ b/fs/nfs/nfs4session.c
+> @@ -59,8 +59,14 @@ static void nfs4_shrink_slot_table(struct nfs4_slot_table  *tbl, u32 newsize)
+>   */
+>  void nfs4_slot_tbl_drain_complete(struct nfs4_slot_table *tbl)
+>  {
+> -       if (nfs4_slot_tbl_draining(tbl))
+> -               complete(&tbl->complete);
+> +       /* Note: no need for atomicity between test and clear, so we can
+> +        * optimise for the read-only case where NFS4_SLOT_TBL_WAIT_EMPTY
+> +        * is not set.
+> +        */
+> +       if (test_bit(NFS4_SLOT_TBL_WAIT_EMPTY, &tbl->slot_tbl_state)) {
+> +               clear_bit(NFS4_SLOT_TBL_WAIT_EMPTY, &tbl->slot_tbl_state);
+> +               complete_all(&tbl->complete);
+> +       }
+>  }
+>
+>  /*
+> @@ -319,7 +325,42 @@ void nfs41_wake_slot_table(struct nfs4_slot_table *tbl)
+>         }
+>  }
+>
+> +void nfs40_shutdown_session(struct nfs_client *clp)
+> +{
+> +       struct nfs4_slot_table  *tbl = clp->cl_slot_tbl;
+> +
+> +       if (tbl) {
+> +               nfs4_wait_empty_slot_tbl(tbl);
+> +               nfs4_shutdown_slot_table(tbl);
+> +               clp->cl_slot_tbl = NULL;
+> +               kfree(tbl);
+> +       }
+> +}
+> +
+>  #if defined(CONFIG_NFS_V4_1)
+> +static void nfs41_shutdown_session_bc(struct nfs4_session *session)
+> +{
+> +       if (session->flags & SESSION4_BACK_CHAN) {
+> +               session->flags &= ~SESSION4_BACK_CHAN;
+> +               /* wait for back channel to drain */
+> +               nfs4_wait_empty_slot_tbl(&session->bc_slot_table);
+> +       }
+> +}
+> +
+> +static void nfs41_shutdown_session_fc(struct nfs4_session *session)
+> +{
+> +       /* just wait for forward channel to drain */
+> +       nfs4_wait_empty_slot_tbl(&session->bc_slot_table);
+> +}
+> +
+> +void nfs41_shutdown_session(struct nfs4_session *session)
+> +{
+> +       if (!test_bit(NFS4_SESSION_ESTABLISHED, &session->session_state))
+> +               return;
+> +       nfs41_shutdown_session_bc(session);
+> +       nfs41_shutdown_session_fc(session);
+> +       nfs4_destroy_session(session);
+> +}
+>
+>  static void nfs41_set_max_slotid_locked(struct nfs4_slot_table *tbl,
+>                 u32 target_highest_slotid)
+> diff --git a/fs/nfs/nfs4session.h b/fs/nfs/nfs4session.h
+> index e3ea2c5324d6..1912b250fcab 100644
+> --- a/fs/nfs/nfs4session.h
+> +++ b/fs/nfs/nfs4session.h
+> @@ -27,6 +27,7 @@ struct nfs4_slot {
+>  /* Sessions */
+>  enum nfs4_slot_tbl_state {
+>         NFS4_SLOT_TBL_DRAINING,
+> +       NFS4_SLOT_TBL_WAIT_EMPTY,
+>  };
+>
+>  #define SLOT_TABLE_SZ DIV_ROUND_UP(NFS4_MAX_SLOT_TABLE, 8*sizeof(long))
+> @@ -78,10 +79,12 @@ extern int nfs4_setup_slot_table(struct nfs4_slot_table *tbl,
+>  extern void nfs4_shutdown_slot_table(struct nfs4_slot_table *tbl);
+>  extern struct nfs4_slot *nfs4_alloc_slot(struct nfs4_slot_table *tbl);
+>  extern void nfs4_free_slot(struct nfs4_slot_table *tbl, struct nfs4_slot *slot);
+> +extern int nfs4_wait_empty_slot_tbl(struct nfs4_slot_table *tbl);
+>  extern void nfs4_slot_tbl_drain_complete(struct nfs4_slot_table *tbl);
+>  bool nfs41_wake_and_assign_slot(struct nfs4_slot_table *tbl,
+>                 struct nfs4_slot *slot);
+>  void nfs41_wake_slot_table(struct nfs4_slot_table *tbl);
+> +extern void nfs40_shutdown_session(struct nfs_client *clp);
+>
+>  static inline bool nfs4_slot_tbl_draining(struct nfs4_slot_table *tbl)
+>  {
+> @@ -101,6 +104,7 @@ extern struct nfs4_session *nfs4_alloc_session(struct nfs_client *clp);
+>  extern void nfs4_destroy_session(struct nfs4_session *session);
+>  extern int nfs4_init_session(struct nfs_client *clp);
+>  extern int nfs4_init_ds_session(struct nfs_client *, unsigned long);
+> +extern void nfs41_shutdown_session(struct nfs4_session *session);
+>
+>  /*
+>   * Determine if sessions are in use.
+> diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
+> index f95e3b58bbc3..bd5293db4e5b 100644
+> --- a/fs/nfs/nfs4state.c
+> +++ b/fs/nfs/nfs4state.c
+> @@ -239,12 +239,13 @@ static void nfs4_end_drain_session(struct nfs_client *clp)
+>         }
+>  }
+>
+> -static int nfs4_drain_slot_tbl(struct nfs4_slot_table *tbl)
+> +int nfs4_wait_empty_slot_tbl(struct nfs4_slot_table *tbl)
+>  {
+> -       set_bit(NFS4_SLOT_TBL_DRAINING, &tbl->slot_tbl_state);
+>         spin_lock(&tbl->slot_tbl_lock);
+>         if (tbl->highest_used_slotid != NFS4_NO_SLOT) {
+> -               reinit_completion(&tbl->complete);
+> +               if (!test_and_set_bit(NFS4_SLOT_TBL_WAIT_EMPTY,
+> +                                       &tbl->slot_tbl_state))
+> +                       reinit_completion(&tbl->complete);
+>                 spin_unlock(&tbl->slot_tbl_lock);
+>                 return wait_for_completion_interruptible(&tbl->complete);
+>         }
+> @@ -252,6 +253,14 @@ static int nfs4_drain_slot_tbl(struct nfs4_slot_table *tbl)
+>         return 0;
+>  }
+>
+> +int nfs4_drain_slot_tbl(struct nfs4_slot_table *tbl)
+> +{
+> +       /* Block new RPC calls */
+> +       set_bit(NFS4_SLOT_TBL_DRAINING, &tbl->slot_tbl_state);
+> +       /* Wait on outstanding RPC calls to complete */
+> +       return nfs4_wait_empty_slot_tbl(tbl);
+> +}
+> +
+>  static int nfs4_begin_drain_session(struct nfs_client *clp)
+>  {
+>         struct nfs4_session *ses = clp->cl_session;
+> --
+> 2.1.0
+>
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
