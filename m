@@ -1,42 +1,42 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from such.a.cut3.name ([176.9.57.153]:49563 "EHLO such.a.cut3.name"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751532AbcHTTTG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Sat, 20 Aug 2016 15:19:06 -0400
-To: linux-nfs@vger.kernel.org
-From: Karsten Hohmeier <karsten@hohmatik.de>
-Subject: Un-unmountable NFS mountpoints with "Stale NFS file handle" - is this
- normal behavior?
-Message-ID: <b0e2b37b-5d90-ea9c-46e9-be577c4da634@hohmatik.de>
-Date: Sat, 20 Aug 2016 21:03:36 +0200
+Received: from nm41-vm9.bullet.mail.ne1.yahoo.com ([98.138.120.213]:58890 "EHLO
+        nm41-vm9.bullet.mail.ne1.yahoo.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1751618AbcHUGrW (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sun, 21 Aug 2016 02:47:22 -0400
+Date: Sun, 21 Aug 2016 06:39:16 +0000 (UTC)
+From: Robert David <clarkraymond377@gmail.com>
+Reply-To: Robert David <dhlservicesbenindhl@gmail.com>
+Message-ID: <986692845.452456.1471761556678@mail.yahoo.com>
+Subject: Attention Beneficially
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
+Content-Type: text/plain; charset=UTF-8
+References: <986692845.452456.1471761556678.ref@mail.yahoo.com>
+To: unlisted-recipients:; (no To-header on input)@mail.corp.redhat.com
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Dear NFS list members,
 
-I recently contacted a few active NFS devs with an issue i ran into:
 
-We run a XenServer 6.5 (Kernel 3.10) with an older version of nfs-utils
-(1.0.9). NFS mountpoints on that machine acting as a client can not be
-unmounted (not even forcibly or lazy) after the connection to the NFS
-server broke for some reason.
+Attention Beneficially
 
-Most commands fail with "Stale NFS file handle".
 
-The Internet tells me this situation is unfixable and requires a reboot
-of the client to resolve. This is a pretty bad solution on a heavily
-loaded virtualization host.
+WESTERN UNION
 
-The response of Bruce Fields was: "Sounds like normal behavior, ..."
-(Sorry for not posting to the list in the first place, btw.)
+This is very urgent Our Operation manager has sent your first payment of $5000.00 to you. Here is what we need from you to complete the
+transfer, Your Name, Your Address,A Copy Of Your ID and Your Telephone Number: Noted That Only Fee Request from You Is to
+Reactivate Transfer Files which is Sum Of $65Only, No More Fee again after that.
+Western Union Agent: Mr. Peterson Godwin
+Direct phone line is: + 229 98782817
+E-mail ::(westernunion8087@gmail.com)
 
-I'm still looking for some explanation why this happens, how it can be
-considered "normal behavior" and if it can be fixed/avoided/mitigated
-without rebooting.
+Bellow is your first payment for $5000usd sent today in your name.
+Sender Name: Mr. 
+MTCN: 
+Question
+Answer
+Amount Sent: $5000.00
 
-Best regards
+You can use this link to confirm the payment,
 
-Karsten Hohmeier
-
+Best Regards,
+Mr.Joseph Ezo
