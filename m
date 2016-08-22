@@ -1,13 +1,13 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-it0-f66.google.com ([209.85.214.66]:33917 "EHLO
-        mail-it0-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1753423AbcHVS7T (ORCPT
+Received: from mail-it0-f65.google.com ([209.85.214.65]:33330 "EHLO
+        mail-it0-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1752866AbcHVS7T (ORCPT
         <rfc822;linux-nfs@vger.kernel.org>); Mon, 22 Aug 2016 14:59:19 -0400
-Subject: [PATCH v2 4/6] rpcrdma: RDMA/CM private message data structure
+Subject: [PATCH v2 6/6] svcrdma: support Remote Invalidation for prototyping
 From: Chuck Lever <chuck.lever@oracle.com>
 To: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Mon, 22 Aug 2016 14:58:07 -0400
-Message-ID: <20160822185807.12076.55914.stgit@klimt.1015granger.net>
+Date: Mon, 22 Aug 2016 14:58:23 -0400
+Message-ID: <20160822185823.12076.5952.stgit@klimt.1015granger.net>
 In-Reply-To: <20160822185459.12076.43516.stgit@klimt.1015granger.net>
 References: <20160822185459.12076.43516.stgit@klimt.1015granger.net>
 MIME-Version: 1.0
@@ -15,72 +15,176 @@ Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Introduce data structure used by both client and server to exchange
-implementation details during RDMA/CM connection establishment.
+To allow testing, add a sysctl that enables the use of Send With
+Invalidate in place of Send when transmitting RPC replies. The
+invalidate_rkey is arbitrarily chosen from among rkeys present
+in the RPC-over-RDMA header's chunk lists.
 
-This is an experimental out-of-band exchange between Linux
-RPC-over-RDMA Version One implementations, replacing the deprecated
-CCP (see RFC 5666bis). The purpose of this extension is to enable
-prototyping of features that might be introduced in a subsequent
-version of RPC-over-RDMA.
+Send With Invalidate can be enabled when all client and server HCAs
+support it, and the client does not send persistently registered
+rkeys (like a local DMA rkey).
 
-Suggested by Christoph Hellwig and Devesh Sharma.
+Send With Invalidate improves performance only when clients can
+recognize, while processing an RPC reply, that an rkey has already
+been invalidated. That is a separate change.
+
+In the future, the RPC-over-RDMA protocol might support Remote
+Invalidation properly. The protocol needs to enable signaling
+between peers to indicate when Remote Invalidation can be used.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 Reviewed-by: Sagi Grimberg <sagi@grimberg.me>
 ---
- include/linux/sunrpc/rpc_rdma.h |   35 +++++++++++++++++++++++++++++++++++
- 1 file changed, 35 insertions(+)
+ include/linux/sunrpc/svc_rdma.h          |    1 +
+ net/sunrpc/xprtrdma/svc_rdma_sendto.c    |   58 ++++++++++++++++++++++++++++--
+ net/sunrpc/xprtrdma/svc_rdma_transport.c |   12 +++++-
+ 3 files changed, 65 insertions(+), 6 deletions(-)
 
-diff --git a/include/linux/sunrpc/rpc_rdma.h b/include/linux/sunrpc/rpc_rdma.h
-index 3b1ff38..a7da6bf 100644
---- a/include/linux/sunrpc/rpc_rdma.h
-+++ b/include/linux/sunrpc/rpc_rdma.h
-@@ -41,6 +41,7 @@
- #define _LINUX_SUNRPC_RPC_RDMA_H
+diff --git a/include/linux/sunrpc/svc_rdma.h b/include/linux/sunrpc/svc_rdma.h
+index 3584bc8..cc3ae16 100644
+--- a/include/linux/sunrpc/svc_rdma.h
++++ b/include/linux/sunrpc/svc_rdma.h
+@@ -137,6 +137,7 @@ struct svcxprt_rdma {
+ 	int		     sc_ord;		/* RDMA read limit */
+ 	int                  sc_max_sge;
+ 	int                  sc_max_sge_rd;	/* max sge for read target */
++	bool		     sc_snd_w_inv;	/* OK to use Send With Invalidate */
  
- #include <linux/types.h>
-+#include <linux/bitops.h>
+ 	atomic_t             sc_sq_count;	/* Number of SQ WR on queue */
+ 	unsigned int	     sc_sq_depth;	/* Depth of SQ */
+diff --git a/net/sunrpc/xprtrdma/svc_rdma_sendto.c b/net/sunrpc/xprtrdma/svc_rdma_sendto.c
+index 3b95b19..f5a91ed 100644
+--- a/net/sunrpc/xprtrdma/svc_rdma_sendto.c
++++ b/net/sunrpc/xprtrdma/svc_rdma_sendto.c
+@@ -225,6 +225,48 @@ svc_rdma_get_reply_array(struct rpcrdma_msg *rmsgp,
+ 	return rp_ary;
+ }
  
- #define RPCRDMA_VERSION		1
- #define rpcrdma_version		cpu_to_be32(RPCRDMA_VERSION)
-@@ -129,4 +130,38 @@ enum rpcrdma_proc {
- #define rdma_done	cpu_to_be32(RDMA_DONE)
- #define rdma_error	cpu_to_be32(RDMA_ERROR)
- 
-+/*
-+ * Private extension to RPC-over-RDMA Version One.
-+ * Message passed during RDMA-CM connection set-up.
++/* RPC-over-RDMA Version One private extension: Remote Invalidation.
++ * Responder's choice: requester signals it can handle Send With
++ * Invalidate, and responder chooses one rkey to invalidate.
 + *
-+ * Add new fields at the end, and don't permute existing
-+ * fields.
++ * Find a candidate rkey to invalidate when sending a reply.  Picks the
++ * first rkey it finds in the chunks lists.
++ *
++ * Returns zero if RPC's chunk lists are empty.
 + */
-+struct rpcrdma_connect_private {
-+	__be32			cp_magic;
-+	u8			cp_version;
-+	u8			cp_flags;
-+	u8			cp_send_size;
-+	u8			cp_recv_size;
-+} __packed;
-+
-+#define rpcrdma_cmp_magic	__cpu_to_be32(0xf6ab0e18)
-+
-+enum {
-+	RPCRDMA_CMP_VERSION		= 1,
-+	RPCRDMA_CMP_F_SND_W_INV_OK	= BIT(0),
-+};
-+
-+static inline u8
-+rpcrdma_encode_buffer_size(unsigned int size)
++static u32 svc_rdma_get_inv_rkey(struct rpcrdma_msg *rdma_argp,
++				 struct rpcrdma_write_array *wr_ary,
++				 struct rpcrdma_write_array *rp_ary)
 +{
-+	return (size >> 10) - 1;
++	struct rpcrdma_read_chunk *rd_ary;
++	struct rpcrdma_segment *arg_ch;
++	u32 inv_rkey;
++
++	inv_rkey = 0;
++
++	rd_ary = svc_rdma_get_read_chunk(rdma_argp);
++	if (rd_ary) {
++		inv_rkey = be32_to_cpu(rd_ary->rc_target.rs_handle);
++		goto out;
++	}
++
++	if (wr_ary && be32_to_cpu(wr_ary->wc_nchunks)) {
++		arg_ch = &wr_ary->wc_array[0].wc_target;
++		inv_rkey = be32_to_cpu(arg_ch->rs_handle);
++		goto out;
++	}
++
++	if (rp_ary && be32_to_cpu(rp_ary->wc_nchunks)) {
++		arg_ch = &rp_ary->wc_array[0].wc_target;
++		inv_rkey = be32_to_cpu(arg_ch->rs_handle);
++		goto out;
++	}
++
++out:
++	dprintk("svcrdma: Send With Invalidate rkey=%08x\n", inv_rkey);
++	return inv_rkey;
 +}
 +
-+static inline unsigned int
-+rpcrdma_decode_buffer_size(u8 val)
-+{
-+	return ((unsigned int)val + 1) << 10;
-+}
+ /* Assumptions:
+  * - The specified write_len can be represented in sc_max_sge * PAGE_SIZE
+  */
+@@ -464,7 +506,8 @@ static int send_reply(struct svcxprt_rdma *rdma,
+ 		      struct page *page,
+ 		      struct rpcrdma_msg *rdma_resp,
+ 		      struct svc_rdma_req_map *vec,
+-		      int byte_count)
++		      int byte_count,
++		      u32 inv_rkey)
+ {
+ 	struct svc_rdma_op_ctxt *ctxt;
+ 	struct ib_send_wr send_wr;
+@@ -535,7 +578,11 @@ static int send_reply(struct svcxprt_rdma *rdma,
+ 	send_wr.wr_cqe = &ctxt->cqe;
+ 	send_wr.sg_list = ctxt->sge;
+ 	send_wr.num_sge = sge_no;
+-	send_wr.opcode = IB_WR_SEND;
++	if (inv_rkey) {
++		send_wr.opcode = IB_WR_SEND_WITH_INV;
++		send_wr.ex.invalidate_rkey = inv_rkey;
++	} else
++		send_wr.opcode = IB_WR_SEND;
+ 	send_wr.send_flags =  IB_SEND_SIGNALED;
+ 
+ 	ret = svc_rdma_send(rdma, &send_wr);
+@@ -567,6 +614,7 @@ int svc_rdma_sendto(struct svc_rqst *rqstp)
+ 	int inline_bytes;
+ 	struct page *res_page;
+ 	struct svc_rdma_req_map *vec;
++	u32 inv_rkey;
+ 
+ 	dprintk("svcrdma: sending response for rqstp=%p\n", rqstp);
+ 
+@@ -577,6 +625,10 @@ int svc_rdma_sendto(struct svc_rqst *rqstp)
+ 	wr_ary = svc_rdma_get_write_array(rdma_argp);
+ 	rp_ary = svc_rdma_get_reply_array(rdma_argp, wr_ary);
+ 
++	inv_rkey = 0;
++	if (rdma->sc_snd_w_inv)
++		inv_rkey = svc_rdma_get_inv_rkey(rdma_argp, wr_ary, rp_ary);
 +
- #endif				/* _LINUX_SUNRPC_RPC_RDMA_H */
+ 	/* Build an req vec for the XDR */
+ 	vec = svc_rdma_get_req_map(rdma);
+ 	ret = svc_rdma_map_xdr(rdma, &rqstp->rq_res, vec, wr_ary != NULL);
+@@ -619,7 +671,7 @@ int svc_rdma_sendto(struct svc_rqst *rqstp)
+ 		goto err1;
+ 
+ 	ret = send_reply(rdma, rqstp, res_page, rdma_resp, vec,
+-			 inline_bytes);
++			 inline_bytes, inv_rkey);
+ 	if (ret < 0)
+ 		goto err0;
+ 
+diff --git a/net/sunrpc/xprtrdma/svc_rdma_transport.c b/net/sunrpc/xprtrdma/svc_rdma_transport.c
+index f51e98a..b2464fc 100644
+--- a/net/sunrpc/xprtrdma/svc_rdma_transport.c
++++ b/net/sunrpc/xprtrdma/svc_rdma_transport.c
+@@ -657,9 +657,14 @@ svc_rdma_parse_connect_private(struct svcxprt_rdma *newxprt,
+ 	if (pmsg &&
+ 	    pmsg->cp_magic == rpcrdma_cmp_magic &&
+ 	    pmsg->cp_version == RPCRDMA_CMP_VERSION) {
+-		dprintk("svcrdma: client send_size %u, recv_size %u\n",
++		newxprt->sc_snd_w_inv = pmsg->cp_flags &
++					RPCRDMA_CMP_F_SND_W_INV_OK;
++
++		dprintk("svcrdma: client send_size %u, recv_size %u "
++			"remote inv %ssupported\n",
+ 			rpcrdma_decode_buffer_size(pmsg->cp_send_size),
+-			rpcrdma_decode_buffer_size(pmsg->cp_recv_size));
++			rpcrdma_decode_buffer_size(pmsg->cp_recv_size),
++			newxprt->sc_snd_w_inv ? "" : "un");
+ 	}
+ }
+ 
+@@ -1093,7 +1098,8 @@ static struct svc_xprt *svc_rdma_accept(struct svc_xprt *xprt)
+ 			dev->attrs.max_fast_reg_page_list_len;
+ 		newxprt->sc_dev_caps |= SVCRDMA_DEVCAP_FAST_REG;
+ 		newxprt->sc_reader = rdma_read_chunk_frmr;
+-	}
++	} else
++		newxprt->sc_snd_w_inv = false;
+ 
+ 	/*
+ 	 * Determine if a DMA MR is required and if so, what privs are required
 
