@@ -1,13 +1,14 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-it0-f65.google.com ([209.85.214.65]:33330 "EHLO
-        mail-it0-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1752866AbcHVS7T (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 22 Aug 2016 14:59:19 -0400
-Subject: [PATCH v2 6/6] svcrdma: support Remote Invalidation for prototyping
+Received: from mail-it0-f66.google.com ([209.85.214.66]:35655 "EHLO
+        mail-it0-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1753017AbcHVTOe (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 22 Aug 2016 15:14:34 -0400
+Subject: [PATCH v2 5/6] svcrdma: Server-side support for
+ rpcrdma_connect_private
 From: Chuck Lever <chuck.lever@oracle.com>
 To: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Mon, 22 Aug 2016 14:58:23 -0400
-Message-ID: <20160822185823.12076.5952.stgit@klimt.1015granger.net>
+Date: Mon, 22 Aug 2016 14:58:15 -0400
+Message-ID: <20160822185815.12076.77878.stgit@klimt.1015granger.net>
 In-Reply-To: <20160822185459.12076.43516.stgit@klimt.1015granger.net>
 References: <20160822185459.12076.43516.stgit@klimt.1015granger.net>
 MIME-Version: 1.0
@@ -15,176 +16,104 @@ Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-To allow testing, add a sysctl that enables the use of Send With
-Invalidate in place of Send when transmitting RPC replies. The
-invalidate_rkey is arbitrarily chosen from among rkeys present
-in the RPC-over-RDMA header's chunk lists.
+Prepare to receive an RDMA-CM private message when handling a new
+connection attempt, and send a similar message as part of connection
+acceptance.
 
-Send With Invalidate can be enabled when all client and server HCAs
-support it, and the client does not send persistently registered
-rkeys (like a local DMA rkey).
-
-Send With Invalidate improves performance only when clients can
-recognize, while processing an RPC reply, that an rkey has already
-been invalidated. That is a separate change.
-
-In the future, the RPC-over-RDMA protocol might support Remote
-Invalidation properly. The protocol needs to enable signaling
-between peers to indicate when Remote Invalidation can be used.
+Both sides can communicate their various implementation limits.
+Implementations that don't support this sideband protocol ignore it.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 Reviewed-by: Sagi Grimberg <sagi@grimberg.me>
 ---
- include/linux/sunrpc/svc_rdma.h          |    1 +
- net/sunrpc/xprtrdma/svc_rdma_sendto.c    |   58 ++++++++++++++++++++++++++++--
- net/sunrpc/xprtrdma/svc_rdma_transport.c |   12 +++++-
- 3 files changed, 65 insertions(+), 6 deletions(-)
+ net/sunrpc/xprtrdma/svc_rdma_transport.c |   34 ++++++++++++++++++++++++++----
+ 1 file changed, 30 insertions(+), 4 deletions(-)
 
-diff --git a/include/linux/sunrpc/svc_rdma.h b/include/linux/sunrpc/svc_rdma.h
-index 3584bc8..cc3ae16 100644
---- a/include/linux/sunrpc/svc_rdma.h
-+++ b/include/linux/sunrpc/svc_rdma.h
-@@ -137,6 +137,7 @@ struct svcxprt_rdma {
- 	int		     sc_ord;		/* RDMA read limit */
- 	int                  sc_max_sge;
- 	int                  sc_max_sge_rd;	/* max sge for read target */
-+	bool		     sc_snd_w_inv;	/* OK to use Send With Invalidate */
- 
- 	atomic_t             sc_sq_count;	/* Number of SQ WR on queue */
- 	unsigned int	     sc_sq_depth;	/* Depth of SQ */
-diff --git a/net/sunrpc/xprtrdma/svc_rdma_sendto.c b/net/sunrpc/xprtrdma/svc_rdma_sendto.c
-index 3b95b19..f5a91ed 100644
---- a/net/sunrpc/xprtrdma/svc_rdma_sendto.c
-+++ b/net/sunrpc/xprtrdma/svc_rdma_sendto.c
-@@ -225,6 +225,48 @@ svc_rdma_get_reply_array(struct rpcrdma_msg *rmsgp,
- 	return rp_ary;
- }
- 
-+/* RPC-over-RDMA Version One private extension: Remote Invalidation.
-+ * Responder's choice: requester signals it can handle Send With
-+ * Invalidate, and responder chooses one rkey to invalidate.
-+ *
-+ * Find a candidate rkey to invalidate when sending a reply.  Picks the
-+ * first rkey it finds in the chunks lists.
-+ *
-+ * Returns zero if RPC's chunk lists are empty.
-+ */
-+static u32 svc_rdma_get_inv_rkey(struct rpcrdma_msg *rdma_argp,
-+				 struct rpcrdma_write_array *wr_ary,
-+				 struct rpcrdma_write_array *rp_ary)
-+{
-+	struct rpcrdma_read_chunk *rd_ary;
-+	struct rpcrdma_segment *arg_ch;
-+	u32 inv_rkey;
-+
-+	inv_rkey = 0;
-+
-+	rd_ary = svc_rdma_get_read_chunk(rdma_argp);
-+	if (rd_ary) {
-+		inv_rkey = be32_to_cpu(rd_ary->rc_target.rs_handle);
-+		goto out;
-+	}
-+
-+	if (wr_ary && be32_to_cpu(wr_ary->wc_nchunks)) {
-+		arg_ch = &wr_ary->wc_array[0].wc_target;
-+		inv_rkey = be32_to_cpu(arg_ch->rs_handle);
-+		goto out;
-+	}
-+
-+	if (rp_ary && be32_to_cpu(rp_ary->wc_nchunks)) {
-+		arg_ch = &rp_ary->wc_array[0].wc_target;
-+		inv_rkey = be32_to_cpu(arg_ch->rs_handle);
-+		goto out;
-+	}
-+
-+out:
-+	dprintk("svcrdma: Send With Invalidate rkey=%08x\n", inv_rkey);
-+	return inv_rkey;
-+}
-+
- /* Assumptions:
-  * - The specified write_len can be represented in sc_max_sge * PAGE_SIZE
-  */
-@@ -464,7 +506,8 @@ static int send_reply(struct svcxprt_rdma *rdma,
- 		      struct page *page,
- 		      struct rpcrdma_msg *rdma_resp,
- 		      struct svc_rdma_req_map *vec,
--		      int byte_count)
-+		      int byte_count,
-+		      u32 inv_rkey)
- {
- 	struct svc_rdma_op_ctxt *ctxt;
- 	struct ib_send_wr send_wr;
-@@ -535,7 +578,11 @@ static int send_reply(struct svcxprt_rdma *rdma,
- 	send_wr.wr_cqe = &ctxt->cqe;
- 	send_wr.sg_list = ctxt->sge;
- 	send_wr.num_sge = sge_no;
--	send_wr.opcode = IB_WR_SEND;
-+	if (inv_rkey) {
-+		send_wr.opcode = IB_WR_SEND_WITH_INV;
-+		send_wr.ex.invalidate_rkey = inv_rkey;
-+	} else
-+		send_wr.opcode = IB_WR_SEND;
- 	send_wr.send_flags =  IB_SEND_SIGNALED;
- 
- 	ret = svc_rdma_send(rdma, &send_wr);
-@@ -567,6 +614,7 @@ int svc_rdma_sendto(struct svc_rqst *rqstp)
- 	int inline_bytes;
- 	struct page *res_page;
- 	struct svc_rdma_req_map *vec;
-+	u32 inv_rkey;
- 
- 	dprintk("svcrdma: sending response for rqstp=%p\n", rqstp);
- 
-@@ -577,6 +625,10 @@ int svc_rdma_sendto(struct svc_rqst *rqstp)
- 	wr_ary = svc_rdma_get_write_array(rdma_argp);
- 	rp_ary = svc_rdma_get_reply_array(rdma_argp, wr_ary);
- 
-+	inv_rkey = 0;
-+	if (rdma->sc_snd_w_inv)
-+		inv_rkey = svc_rdma_get_inv_rkey(rdma_argp, wr_ary, rp_ary);
-+
- 	/* Build an req vec for the XDR */
- 	vec = svc_rdma_get_req_map(rdma);
- 	ret = svc_rdma_map_xdr(rdma, &rqstp->rq_res, vec, wr_ary != NULL);
-@@ -619,7 +671,7 @@ int svc_rdma_sendto(struct svc_rqst *rqstp)
- 		goto err1;
- 
- 	ret = send_reply(rdma, rqstp, res_page, rdma_resp, vec,
--			 inline_bytes);
-+			 inline_bytes, inv_rkey);
- 	if (ret < 0)
- 		goto err0;
- 
 diff --git a/net/sunrpc/xprtrdma/svc_rdma_transport.c b/net/sunrpc/xprtrdma/svc_rdma_transport.c
-index f51e98a..b2464fc 100644
+index 924271c..f51e98a 100644
 --- a/net/sunrpc/xprtrdma/svc_rdma_transport.c
 +++ b/net/sunrpc/xprtrdma/svc_rdma_transport.c
-@@ -657,9 +657,14 @@ svc_rdma_parse_connect_private(struct svcxprt_rdma *newxprt,
- 	if (pmsg &&
- 	    pmsg->cp_magic == rpcrdma_cmp_magic &&
- 	    pmsg->cp_version == RPCRDMA_CMP_VERSION) {
--		dprintk("svcrdma: client send_size %u, recv_size %u\n",
-+		newxprt->sc_snd_w_inv = pmsg->cp_flags &
-+					RPCRDMA_CMP_F_SND_W_INV_OK;
-+
-+		dprintk("svcrdma: client send_size %u, recv_size %u "
-+			"remote inv %ssupported\n",
- 			rpcrdma_decode_buffer_size(pmsg->cp_send_size),
--			rpcrdma_decode_buffer_size(pmsg->cp_recv_size));
-+			rpcrdma_decode_buffer_size(pmsg->cp_recv_size),
-+			newxprt->sc_snd_w_inv ? "" : "un");
- 	}
+@@ -648,6 +648,21 @@ int svc_rdma_repost_recv(struct svcxprt_rdma *xprt, gfp_t flags)
+ 	return ret;
  }
  
-@@ -1093,7 +1098,8 @@ static struct svc_xprt *svc_rdma_accept(struct svc_xprt *xprt)
- 			dev->attrs.max_fast_reg_page_list_len;
- 		newxprt->sc_dev_caps |= SVCRDMA_DEVCAP_FAST_REG;
- 		newxprt->sc_reader = rdma_read_chunk_frmr;
--	}
-+	} else
-+		newxprt->sc_snd_w_inv = false;
++static void
++svc_rdma_parse_connect_private(struct svcxprt_rdma *newxprt,
++			       struct rdma_conn_param *param)
++{
++	const struct rpcrdma_connect_private *pmsg = param->private_data;
++
++	if (pmsg &&
++	    pmsg->cp_magic == rpcrdma_cmp_magic &&
++	    pmsg->cp_version == RPCRDMA_CMP_VERSION) {
++		dprintk("svcrdma: client send_size %u, recv_size %u\n",
++			rpcrdma_decode_buffer_size(pmsg->cp_send_size),
++			rpcrdma_decode_buffer_size(pmsg->cp_recv_size));
++	}
++}
++
+ /*
+  * This function handles the CONNECT_REQUEST event on a listening
+  * endpoint. It is passed the cma_id for the _new_ connection. The context in
+@@ -659,7 +674,8 @@ int svc_rdma_repost_recv(struct svcxprt_rdma *xprt, gfp_t flags)
+  * will call the recvfrom method on the listen xprt which will accept the new
+  * connection.
+  */
+-static void handle_connect_req(struct rdma_cm_id *new_cma_id, size_t client_ird)
++static void handle_connect_req(struct rdma_cm_id *new_cma_id,
++			       struct rdma_conn_param *param)
+ {
+ 	struct svcxprt_rdma *listen_xprt = new_cma_id->context;
+ 	struct svcxprt_rdma *newxprt;
+@@ -675,9 +691,10 @@ static void handle_connect_req(struct rdma_cm_id *new_cma_id, size_t client_ird)
+ 	new_cma_id->context = newxprt;
+ 	dprintk("svcrdma: Creating newxprt=%p, cm_id=%p, listenxprt=%p\n",
+ 		newxprt, newxprt->sc_cm_id, listen_xprt);
++	svc_rdma_parse_connect_private(newxprt, param);
  
- 	/*
- 	 * Determine if a DMA MR is required and if so, what privs are required
+ 	/* Save client advertised inbound read limit for use later in accept. */
+-	newxprt->sc_ord = client_ird;
++	newxprt->sc_ord = param->initiator_depth;
+ 
+ 	/* Set the local and remote addresses in the transport */
+ 	sa = (struct sockaddr *)&newxprt->sc_cm_id->route.addr.dst_addr;
+@@ -712,8 +729,7 @@ static int rdma_listen_handler(struct rdma_cm_id *cma_id,
+ 		dprintk("svcrdma: Connect request on cma_id=%p, xprt = %p, "
+ 			"event = %s (%d)\n", cma_id, cma_id->context,
+ 			rdma_event_msg(event->event), event->event);
+-		handle_connect_req(cma_id,
+-				   event->param.conn.initiator_depth);
++		handle_connect_req(cma_id, &event->param.conn);
+ 		break;
+ 
+ 	case RDMA_CM_EVENT_ESTABLISHED:
+@@ -947,6 +963,7 @@ static struct svc_xprt *svc_rdma_accept(struct svc_xprt *xprt)
+ 	struct svcxprt_rdma *listen_rdma;
+ 	struct svcxprt_rdma *newxprt = NULL;
+ 	struct rdma_conn_param conn_param;
++	struct rpcrdma_connect_private pmsg;
+ 	struct ib_qp_init_attr qp_attr;
+ 	struct ib_device *dev;
+ 	unsigned int i;
+@@ -1100,11 +1117,20 @@ static struct svc_xprt *svc_rdma_accept(struct svc_xprt *xprt)
+ 	/* Swap out the handler */
+ 	newxprt->sc_cm_id->event_handler = rdma_cma_handler;
+ 
++	/* Construct RDMA-CM private message */
++	pmsg.cp_magic = rpcrdma_cmp_magic;
++	pmsg.cp_version = RPCRDMA_CMP_VERSION;
++	pmsg.cp_flags = 0;
++	pmsg.cp_send_size = pmsg.cp_recv_size =
++		rpcrdma_encode_buffer_size(newxprt->sc_max_req_size);
++
+ 	/* Accept Connection */
+ 	set_bit(RDMAXPRT_CONN_PENDING, &newxprt->sc_flags);
+ 	memset(&conn_param, 0, sizeof conn_param);
+ 	conn_param.responder_resources = 0;
+ 	conn_param.initiator_depth = newxprt->sc_ord;
++	conn_param.private_data = &pmsg;
++	conn_param.private_data_len = sizeof(pmsg);
+ 	ret = rdma_accept(newxprt->sc_cm_id, &conn_param);
+ 	if (ret) {
+ 		dprintk("svcrdma: failed to accept new connection, ret=%d\n",
 
