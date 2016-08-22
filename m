@@ -1,59 +1,127 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:57050 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:35890 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1754766AbcHVMyu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 22 Aug 2016 08:54:50 -0400
-Subject: Re: [PATCH 0/2] nfs-utils patches relating to server startup
-To: NeilBrown <neilb@suse.com>
-References: <147157095612.26568.14161646901346011334.stgit@noble>
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Martin Pitt <martin.pitt@ubuntu.com>
-From: Steve Dickson <SteveD@redhat.com>
-Message-ID: <3a681593-891e-cb0c-cd0b-76e2358f72cd@RedHat.com>
-Date: Mon, 22 Aug 2016 08:54:48 -0400
-MIME-Version: 1.0
-In-Reply-To: <147157095612.26568.14161646901346011334.stgit@noble>
-Content-Type: text/plain; charset=utf-8
+        id S1752158AbcHVNsP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 22 Aug 2016 09:48:15 -0400
+From: Benjamin Coddington <bcodding@redhat.com>
+To: linux-nfs@vger.kernel.org
+Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>,
+        Christoph Hellwig <hch@lst.de>
+Subject: [PATCH v2] pnfs/blocklayout: update last_write_offset atomically with extents
+Date: Mon, 22 Aug 2016 09:48:12 -0400
+Message-Id: <d589c4985ebf916dcaf70a1c5e3bea809d2df696.1471873308.git.bcodding@redhat.com>
+References: <a754067b5a8252a10a0bcfa23c4229cf3d7b1adf.1471535578.git.bcodding@redhat.com>
+In-Reply-To: <a754067b5a8252a10a0bcfa23c4229cf3d7b1adf.1471535578.git.bcodding@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Change from v1:
 
+Instead of moving the i_lock protected region around, store last written
+byte for block layouts on struct pnfs_block_layout and use that when
+encoding LAYOUTCOMMIT.
 
-On 08/18/2016 09:45 PM, NeilBrown wrote:
-> Two patches for recently discussed functionality.
-> Both revert earlier patches and provide a more complete
-> solution.
-> 
-> The first adds a new program.  I've placed this in "systemd/" rather
-> than "utils/something" because that seemed to make sense.  Is it
-> inelegant putting code in a directory with unit files?
-> 
-> I don't do a lot of automake coding so if someone were to make sure I
-> didn't do anything non-standard in the Makefile.am, that would be
-> appreciated.
-All three patches committed under the nfs-utils-1-3-5-rc1 tag... 
+8<------------------------------------------------------------------------
 
-steved
+Block/SCSI layout write completion may add committable extents to the
+extent tree before updating the layout's last-written byte under the inode
+lock.  If a sync happens before this value is updated, then
+prepare_layoutcommit may find and encode these extents which would produce
+a LAYOUTCOMMIT request whose encoded extents are larger than the request's
+loca_length.
 
-> 
-> Thanks,
-> NeilBrown
-> 
-> ---
-> 
-> NeilBrown (2):
->       systemd: improve ordering between nfs-server and various mounts
->       mount: RPC_PROGNOTREGISTERED should not be a permanent error
-> 
-> 
->  systemd/Makefile.am            |    8 ++
->  systemd/nfs-server-generator.c |  144 ++++++++++++++++++++++++++++++++++++++++
->  systemd/nfs-server.service     |    3 -
->  utils/mount/stropts.c          |    7 +-
->  4 files changed, 155 insertions(+), 7 deletions(-)
->  create mode 100644 systemd/nfs-server-generator.c
-> 
-> --
-> Signature
-> 
+Fix this by using a last-written byte value that is updated atomically with
+the extent tree.
+
+Signed-off-by: Benjamin Coddington <bcodding@redhat.com>
+---
+ fs/nfs/blocklayout/blocklayout.c | 2 +-
+ fs/nfs/blocklayout/blocklayout.h | 3 ++-
+ fs/nfs/blocklayout/extent_tree.c | 8 +++++---
+ 3 files changed, 8 insertions(+), 5 deletions(-)
+
+diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
+index 17a42e4eb872..25cdd559831c 100644
+--- a/fs/nfs/blocklayout/blocklayout.c
++++ b/fs/nfs/blocklayout/blocklayout.c
+@@ -344,7 +344,7 @@ static void bl_write_cleanup(struct work_struct *work)
+ 			PAGE_SIZE - 1) & (loff_t)PAGE_MASK;
+ 
+ 		ext_tree_mark_written(bl, start >> SECTOR_SHIFT,
+-					(end - start) >> SECTOR_SHIFT);
++					(end - start) >> SECTOR_SHIFT, end);
+ 	}
+ 
+ 	pnfs_ld_write_done(hdr);
+diff --git a/fs/nfs/blocklayout/blocklayout.h b/fs/nfs/blocklayout/blocklayout.h
+index 18e6fd0b9506..efc007f00742 100644
+--- a/fs/nfs/blocklayout/blocklayout.h
++++ b/fs/nfs/blocklayout/blocklayout.h
+@@ -141,6 +141,7 @@ struct pnfs_block_layout {
+ 	struct rb_root		bl_ext_ro;
+ 	spinlock_t		bl_ext_lock;   /* Protects list manipulation */
+ 	bool			bl_scsi_layout;
++	u64			bl_lwb;
+ };
+ 
+ static inline struct pnfs_block_layout *
+@@ -182,7 +183,7 @@ int ext_tree_insert(struct pnfs_block_layout *bl,
+ int ext_tree_remove(struct pnfs_block_layout *bl, bool rw, sector_t start,
+ 		sector_t end);
+ int ext_tree_mark_written(struct pnfs_block_layout *bl, sector_t start,
+-		sector_t len);
++		sector_t len, u64 lwb);
+ bool ext_tree_lookup(struct pnfs_block_layout *bl, sector_t isect,
+ 		struct pnfs_block_extent *ret, bool rw);
+ int ext_tree_prepare_commit(struct nfs4_layoutcommit_args *arg);
+diff --git a/fs/nfs/blocklayout/extent_tree.c b/fs/nfs/blocklayout/extent_tree.c
+index 992bcb19c11e..8d08dfe1e057 100644
+--- a/fs/nfs/blocklayout/extent_tree.c
++++ b/fs/nfs/blocklayout/extent_tree.c
+@@ -402,7 +402,7 @@ ext_tree_split(struct rb_root *root, struct pnfs_block_extent *be,
+ 
+ int
+ ext_tree_mark_written(struct pnfs_block_layout *bl, sector_t start,
+-		sector_t len)
++		sector_t len, u64 lwb)
+ {
+ 	struct rb_root *root = &bl->bl_ext_rw;
+ 	sector_t end = start + len;
+@@ -471,6 +471,7 @@ ext_tree_mark_written(struct pnfs_block_layout *bl, sector_t start,
+ 		}
+ 	}
+ out:
++	bl->bl_lwb = lwb;
+ 	spin_unlock(&bl->bl_ext_lock);
+ 
+ 	__ext_put_deviceids(&tmp);
+@@ -518,7 +519,7 @@ static __be32 *encode_scsi_range(struct pnfs_block_extent *be, __be32 *p)
+ }
+ 
+ static int ext_tree_encode_commit(struct pnfs_block_layout *bl, __be32 *p,
+-		size_t buffer_size, size_t *count)
++		size_t buffer_size, size_t *count, __u64 *lastbyte)
+ {
+ 	struct pnfs_block_extent *be;
+ 	int ret = 0;
+@@ -541,6 +542,7 @@ static int ext_tree_encode_commit(struct pnfs_block_layout *bl, __be32 *p,
+ 		else
+ 			p = encode_block_extent(be, p);
+ 		be->be_tag = EXTENT_COMMITTING;
++		*lastbyte = bl->bl_lwb - 1;
+ 	}
+ 	spin_unlock(&bl->bl_ext_lock);
+ 
+@@ -564,7 +566,7 @@ ext_tree_prepare_commit(struct nfs4_layoutcommit_args *arg)
+ 	arg->layoutupdate_pages = &arg->layoutupdate_page;
+ 
+ retry:
+-	ret = ext_tree_encode_commit(bl, start_p + 1, buffer_size, &count);
++	ret = ext_tree_encode_commit(bl, start_p + 1, buffer_size, &count, &arg->lastbytewritten);
+ 	if (unlikely(ret)) {
+ 		ext_tree_free_commitdata(arg, buffer_size);
+ 
+-- 
+2.5.5
+
