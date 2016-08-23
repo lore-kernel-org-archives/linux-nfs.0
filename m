@@ -1,51 +1,44 @@
-Return-Path: <trondmy@primarydata.com>
-From: Trond Myklebust <trondmy@primarydata.com>
-To: Coddington Benjamin <bcodding@redhat.com>
-CC: List Linux NFS Mailing <linux-nfs@vger.kernel.org>
-Subject: Re: I can't get no readdir satisfaction
-Date: Tue, 23 Aug 2016 15:36:40 +0000
-Message-ID: <F9D0E173-9E64-4BC4-87FB-0F6F4EEBF4C7@primarydata.com>
-References: <778246F3-8F24-48FD-AEA9-0BCC0DCD93B3@redhat.com>
-In-Reply-To: <778246F3-8F24-48FD-AEA9-0BCC0DCD93B3@redhat.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=WINDOWS-1252
+Return-Path: <linux-nfs-owner@vger.kernel.org>
+Received: from mail-it0-f65.google.com ([209.85.214.65]:34189 "EHLO
+        mail-it0-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1754476AbcHWPkR (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 23 Aug 2016 11:40:17 -0400
+Received: by mail-it0-f65.google.com with SMTP id e63so8426956ith.1
+        for <linux-nfs@vger.kernel.org>; Tue, 23 Aug 2016 08:40:16 -0700 (PDT)
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH] pNFS: The client must not do I/O to the DS if it's lease has expired
+Date: Tue, 23 Aug 2016 11:39:33 -0400
+Message-Id: <1471966773-10022-1-git-send-email-trond.myklebust@primarydata.com>
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Ensure that the client conforms to the normative behaviour described in
+RFC5661 Section 12.7.2: "If a client believes its lease has expired,
+it MUST NOT send I/O to the storage device until it has validated its
+lease."
 
-> On Aug 23, 2016, at 11:09, Benjamin Coddington <bcodding@redhat.com> wrot=
-e:
->=20
-> Hi linux-nfs,
->=20
-> 311324ad1713 ("NFS: Be more aggressive in using readdirplus for 'ls -l'
-> situations") changed when nfs_readdir() decides to revalidate the
-> directory's mapping, which contains all the entries.  In addition to just
-> checking if the attribute cache has expired, it includes a check to see i=
-f
-> NFS_INO_INVALID_DATA is set on the directory.
->=20
-> Well, customers that have directories with very many dentries and that sa=
-me
-> directory's attributes are frequently updated are now grouchy that `ls -l=
-`
-> takes so long since any update of the directory causes the mapping to be
-> invalidated and we have to start over filling the directory's mapping.
->=20
-> I actually haven't put real hard thought into it yet (because often for m=
-e
-> that just wastes a lot of time), so I am doing the lazy thing by asking t=
-his
-> question:
->=20
-> Can we go back to just the using the attribute cache timeout, or should w=
-e
-> get all heuristical about readdir?
->=20
+So ensure that we wait for the lease to be validated before using
+the layout.
 
-We are all heuristical at this point. How are the heuristics failing?
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+Cc: stable@vger.kernel.org # v3.20+
+---
+ fs/nfs/pnfs.c | 1 +
+ 1 file changed, 1 insertion(+)
 
-The original problem those heuristics were designed to solve was that all t=
-he stat() calls took forever to complete, since they are all synchronous; T=
-igran showed some very convincing numbers for a large directory where the d=
-ifference in performance was an order of magnitude improved by using readdi=
-rplus instead of readdir=85
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index bf98f1b2595f..6daf034645c8 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -1555,6 +1555,7 @@ pnfs_update_layout(struct inode *ino,
+ 	}
+ 
+ lookup_again:
++	nfs4_client_recover_expired_lease(clp);
+ 	first = false;
+ 	spin_lock(&ino->i_lock);
+ 	lo = pnfs_find_alloc_layout(ino, ctx, gfp_flags);
+-- 
+2.7.4
+
