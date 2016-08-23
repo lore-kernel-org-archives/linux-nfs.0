@@ -1,13 +1,14 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-it0-f65.google.com ([209.85.214.65]:32835 "EHLO
-        mail-it0-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S932342AbcHWR4j (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 23 Aug 2016 13:56:39 -0400
-Subject: [PATCH v2 22/22] xprtrdma: Eliminate rpcrdma_receive_worker()
+Received: from mail-it0-f66.google.com ([209.85.214.66]:34870 "EHLO
+        mail-it0-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1752154AbcHWSF4 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 23 Aug 2016 14:05:56 -0400
+Subject: [PATCH v2 06/22] SUNRPC: Add a transport-specific private field in
+ rpc_rqst
 From: Chuck Lever <chuck.lever@oracle.com>
 To: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Tue, 23 Aug 2016 13:55:03 -0400
-Message-ID: <20160823175503.13038.17633.stgit@manet.1015granger.net>
+Date: Tue, 23 Aug 2016 13:52:53 -0400
+Message-ID: <20160823175253.13038.61533.stgit@manet.1015granger.net>
 In-Reply-To: <20160823174402.13038.84561.stgit@manet.1015granger.net>
 References: <20160823174402.13038.84561.stgit@manet.1015granger.net>
 MIME-Version: 1.0
@@ -15,71 +16,124 @@ Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Clean up: the extra layer of indirection doesn't add value.
+Currently there's a hidden and indirect mechanism for finding the
+rpcrdma_req that goes with an rpc_rqst. It depends on getting from
+the rq_buffer pointer in struct rpc_rqst to the struct
+rpcrdma_regbuf that controls that buffer, and then to the struct
+rpcrdma_req it goes with.
+
+This was done back in the day to avoid the need to add a per-rqst
+pointer or to alter the buf_free API when support for RPC-over-RDMA
+was introduced.
+
+I'm about to change the way regbuf's work to support larger inline
+thresholds. Now is a good time to replace this indirect mechanism
+with something that is more straightforward. I guess this should be
+considered a clean up.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- net/sunrpc/xprtrdma/rpc_rdma.c  |    4 +++-
- net/sunrpc/xprtrdma/verbs.c     |   11 +----------
- net/sunrpc/xprtrdma/xprt_rdma.h |    2 +-
- 3 files changed, 5 insertions(+), 12 deletions(-)
+ include/linux/sunrpc/xprt.h       |    1 +
+ net/sunrpc/xprtrdma/backchannel.c |    6 ++----
+ net/sunrpc/xprtrdma/transport.c   |    2 +-
+ net/sunrpc/xprtrdma/verbs.c       |    1 -
+ net/sunrpc/xprtrdma/xprt_rdma.h   |   13 +++++++------
+ 5 files changed, 11 insertions(+), 12 deletions(-)
 
-diff --git a/net/sunrpc/xprtrdma/rpc_rdma.c b/net/sunrpc/xprtrdma/rpc_rdma.c
-index 20115ad..e210fe6 100644
---- a/net/sunrpc/xprtrdma/rpc_rdma.c
-+++ b/net/sunrpc/xprtrdma/rpc_rdma.c
-@@ -977,8 +977,10 @@ rpcrdma_conn_func(struct rpcrdma_ep *ep)
-  * allowed to timeout, to discover the errors at that time.
-  */
- void
--rpcrdma_reply_handler(struct rpcrdma_rep *rep)
-+rpcrdma_reply_handler(struct work_struct *work)
- {
-+	struct rpcrdma_rep *rep =
-+			container_of(work, struct rpcrdma_rep, rr_work);
- 	struct rpcrdma_msg *headerp;
- 	struct rpcrdma_req *req;
- 	struct rpc_rqst *rqst;
+diff --git a/include/linux/sunrpc/xprt.h b/include/linux/sunrpc/xprt.h
+index 46f069e..a5da60b 100644
+--- a/include/linux/sunrpc/xprt.h
++++ b/include/linux/sunrpc/xprt.h
+@@ -83,6 +83,7 @@ struct rpc_rqst {
+ 	void (*rq_release_snd_buf)(struct rpc_rqst *); /* release rq_enc_pages */
+ 	struct list_head	rq_list;
+ 
++	void			*rq_xprtdata;	/* Per-xprt private data */
+ 	void			*rq_buffer;	/* Call XDR encode buffer */
+ 	size_t			rq_callsize;
+ 	void			*rq_rbuffer;	/* Reply XDR decode buffer */
+diff --git a/net/sunrpc/xprtrdma/backchannel.c b/net/sunrpc/xprtrdma/backchannel.c
+index d3cfaf2..c4904f8 100644
+--- a/net/sunrpc/xprtrdma/backchannel.c
++++ b/net/sunrpc/xprtrdma/backchannel.c
+@@ -55,11 +55,9 @@ static int rpcrdma_bc_setup_rqst(struct rpcrdma_xprt *r_xprt,
+ 	rb = rpcrdma_alloc_regbuf(ia, size, GFP_KERNEL);
+ 	if (IS_ERR(rb))
+ 		goto out_fail;
+-	rb->rg_owner = req;
+ 	req->rl_sendbuf = rb;
+-	/* so that rpcr_to_rdmar works when receiving a request */
+-	rqst->rq_buffer = (void *)req->rl_sendbuf->rg_base;
+-	xdr_buf_init(&rqst->rq_snd_buf, rqst->rq_buffer, size);
++	xdr_buf_init(&rqst->rq_snd_buf, rb->rg_base, size);
++	rpcrdma_set_xprtdata(rqst, req);
+ 	return 0;
+ 
+ out_fail:
+diff --git a/net/sunrpc/xprtrdma/transport.c b/net/sunrpc/xprtrdma/transport.c
+index 136caf3..d83bffa 100644
+--- a/net/sunrpc/xprtrdma/transport.c
++++ b/net/sunrpc/xprtrdma/transport.c
+@@ -523,6 +523,7 @@ xprt_rdma_allocate(struct rpc_task *task)
+ out:
+ 	dprintk("RPC:       %s: size %zd, request 0x%p\n", __func__, size, req);
+ 	req->rl_connect_cookie = 0;	/* our reserved value */
++	rpcrdma_set_xprtdata(rqst, req);
+ 	rqst->rq_buffer = req->rl_sendbuf->rg_base;
+ 	rqst->rq_rbuffer = (char *)rqst->rq_buffer + rqst->rq_rcvsize;
+ 	return 0;
+@@ -559,7 +560,6 @@ out_sendbuf:
+ 	rb = rpcrdma_alloc_regbuf(&r_xprt->rx_ia, size, flags);
+ 	if (IS_ERR(rb))
+ 		goto out_fail;
+-	rb->rg_owner = req;
+ 
+ 	r_xprt->rx_stats.hardway_register_count += size;
+ 	rpcrdma_free_regbuf(&r_xprt->rx_ia, req->rl_sendbuf);
 diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
-index 83f7886..4a1b341 100644
+index 536d0be..baf7f43 100644
 --- a/net/sunrpc/xprtrdma/verbs.c
 +++ b/net/sunrpc/xprtrdma/verbs.c
-@@ -128,15 +128,6 @@ rpcrdma_wc_send(struct ib_cq *cq, struct ib_wc *wc)
- 		       wc->status, wc->vendor_err);
- }
+@@ -1191,7 +1191,6 @@ rpcrdma_alloc_regbuf(struct rpcrdma_ia *ia, size_t size, gfp_t flags)
+ 	iov->length = size;
+ 	iov->lkey = ia->ri_pd->local_dma_lkey;
+ 	rb->rg_size = size;
+-	rb->rg_owner = NULL;
+ 	return rb;
  
--static void
--rpcrdma_receive_worker(struct work_struct *work)
--{
--	struct rpcrdma_rep *rep =
--			container_of(work, struct rpcrdma_rep, rr_work);
--
--	rpcrdma_reply_handler(rep);
--}
--
- /* Perform basic sanity checking to avoid using garbage
-  * to update the credit grant value.
-  */
-@@ -918,7 +909,7 @@ rpcrdma_create_rep(struct rpcrdma_xprt *r_xprt)
- 	rep->rr_device = ia->ri_device;
- 	rep->rr_cqe.done = rpcrdma_wc_receive;
- 	rep->rr_rxprt = r_xprt;
--	INIT_WORK(&rep->rr_work, rpcrdma_receive_worker);
-+	INIT_WORK(&rep->rr_work, rpcrdma_reply_handler);
- 	rep->rr_recv_wr.next = NULL;
- 	rep->rr_recv_wr.wr_cqe = &rep->rr_cqe;
- 	rep->rr_recv_wr.sg_list = &rep->rr_rdmabuf->rg_iov;
+ out_free:
 diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
-index 0278f38..94c7ab5 100644
+index 296d9ab..99b6839 100644
 --- a/net/sunrpc/xprtrdma/xprt_rdma.h
 +++ b/net/sunrpc/xprtrdma/xprt_rdma.h
-@@ -534,7 +534,7 @@ rpcrdma_data_dir(bool writing)
-  */
- void rpcrdma_connect_worker(struct work_struct *);
- void rpcrdma_conn_func(struct rpcrdma_ep *);
--void rpcrdma_reply_handler(struct rpcrdma_rep *);
-+void rpcrdma_reply_handler(struct work_struct *);
+@@ -113,7 +113,6 @@ struct rpcrdma_ep {
+ 
+ struct rpcrdma_regbuf {
+ 	size_t			rg_size;
+-	struct rpcrdma_req	*rg_owner;
+ 	struct ib_sge		rg_iov;
+ 	__be32			rg_base[0] __attribute__ ((aligned(256)));
+ };
+@@ -297,14 +296,16 @@ struct rpcrdma_req {
+ 	struct rpcrdma_mr_seg	rl_segments[RPCRDMA_MAX_SEGS];
+ };
+ 
++static inline void
++rpcrdma_set_xprtdata(struct rpc_rqst *rqst, struct rpcrdma_req *req)
++{
++	rqst->rq_xprtdata = req;
++}
++
+ static inline struct rpcrdma_req *
+ rpcr_to_rdmar(struct rpc_rqst *rqst)
+ {
+-	void *buffer = rqst->rq_buffer;
+-	struct rpcrdma_regbuf *rb;
+-
+-	rb = container_of(buffer, struct rpcrdma_regbuf, rg_base);
+-	return rb->rg_owner;
++	return rqst->rq_xprtdata;
+ }
  
  /*
-  * RPC/RDMA protocol calls - xprtrdma/rpc_rdma.c
 
