@@ -1,14 +1,13 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-it0-f65.google.com ([209.85.214.65]:34740 "EHLO
-        mail-it0-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1752156AbcHWRy3 (ORCPT
+Received: from mail-it0-f67.google.com ([209.85.214.67]:36315 "EHLO
+        mail-it0-f67.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1752877AbcHWRy3 (ORCPT
         <rfc822;linux-nfs@vger.kernel.org>); Tue, 23 Aug 2016 13:54:29 -0400
-Subject: [PATCH v2 10/22] xprtrdma: Delay DMA mapping Send and Receive
- buffers
+Subject: [PATCH v2 13/22] xprtrdma: Move send_wr to struct rpcrdma_req
 From: Chuck Lever <chuck.lever@oracle.com>
 To: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Tue, 23 Aug 2016 13:53:25 -0400
-Message-ID: <20160823175325.13038.53046.stgit@manet.1015granger.net>
+Date: Tue, 23 Aug 2016 13:53:50 -0400
+Message-ID: <20160823175350.13038.83307.stgit@manet.1015granger.net>
 In-Reply-To: <20160823174402.13038.84561.stgit@manet.1015granger.net>
 References: <20160823174402.13038.84561.stgit@manet.1015granger.net>
 MIME-Version: 1.0
@@ -16,252 +15,145 @@ Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Currently, each regbuf is allocated and DMA mapped at the same time.
-This is done during transport creation.
-
-When a device driver is unloaded, every DMA-mapped buffer in use by
-a transport has to be unmapped, and then remapped to the new
-device if the driver is loaded again. Remapping will have to be done
-_after_ the connect worker has set up the new device.
-
-But there's an ordering problem:
-
-call_allocate, which invokes xprt_rdma_allocate which calls
-rpcrdma_alloc_regbuf to allocate Send buffers, happens _before_
-the connect worker can run to set up the new device.
-
-Instead, at transport creation, allocate each buffer, but leave it
-unmapped. Once the RPC carries these buffers into ->send_request, by
-which time a transport connection should have been established,
-check to see that the RPC's buffers have been DMA mapped. If not,
-map them there.
-
-When device driver unplug support is added, it will simply unmap all
-the transport's regbufs, but it doesn't have to deallocate the
-underlying memory.
+Clean up: Most of the fields in each send_wr do not vary. There is
+no need to initialize them before each ib_post_send(). This removes
+a large-ish data structure from the stack.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- net/sunrpc/xprtrdma/backchannel.c |    8 ++++
- net/sunrpc/xprtrdma/rpc_rdma.c    |    9 +++++
- net/sunrpc/xprtrdma/verbs.c       |   71 +++++++++++++++++++++++--------------
- net/sunrpc/xprtrdma/xprt_rdma.h   |   16 ++++++++
- 4 files changed, 78 insertions(+), 26 deletions(-)
+ net/sunrpc/xprtrdma/backchannel.c |    3 ++-
+ net/sunrpc/xprtrdma/rpc_rdma.c    |    5 +++--
+ net/sunrpc/xprtrdma/verbs.c       |   36 +++++++++++++++++-------------------
+ net/sunrpc/xprtrdma/xprt_rdma.h   |    4 ++--
+ 4 files changed, 24 insertions(+), 24 deletions(-)
 
 diff --git a/net/sunrpc/xprtrdma/backchannel.c b/net/sunrpc/xprtrdma/backchannel.c
-index ceae872..8bc249e 100644
+index 887ef44..61a58f5 100644
 --- a/net/sunrpc/xprtrdma/backchannel.c
 +++ b/net/sunrpc/xprtrdma/backchannel.c
-@@ -230,16 +230,24 @@ int rpcrdma_bc_marshal_reply(struct rpc_rqst *rqst)
- 		__func__, (int)rpclen, rqst->rq_svec[0].iov_base);
- #endif
- 
-+	if (!rpcrdma_dma_map_regbuf(&r_xprt->rx_ia, req->rl_rdmabuf))
-+		goto out_map;
- 	req->rl_send_iov[0].addr = rdmab_addr(req->rl_rdmabuf);
- 	req->rl_send_iov[0].length = RPCRDMA_HDRLEN_MIN;
- 	req->rl_send_iov[0].lkey = rdmab_lkey(req->rl_rdmabuf);
- 
-+	if (!rpcrdma_dma_map_regbuf(&r_xprt->rx_ia, req->rl_sendbuf))
-+		goto out_map;
- 	req->rl_send_iov[1].addr = rdmab_addr(req->rl_sendbuf);
+@@ -241,7 +241,8 @@ int rpcrdma_bc_marshal_reply(struct rpc_rqst *rqst)
  	req->rl_send_iov[1].length = rpclen;
  	req->rl_send_iov[1].lkey = rdmab_lkey(req->rl_sendbuf);
  
- 	req->rl_niovs = 2;
- 	return 0;
+-	req->rl_niovs = 2;
++	req->rl_send_wr.num_sge = 2;
 +
-+out_map:
-+	pr_err("rpcrdma: failed to DMA map a Send buffer\n");
-+	return -EIO;
- }
+ 	return 0;
  
- /**
+ out_map:
 diff --git a/net/sunrpc/xprtrdma/rpc_rdma.c b/net/sunrpc/xprtrdma/rpc_rdma.c
-index 845586f..68a39c0 100644
+index 6187cee..c2906e3 100644
 --- a/net/sunrpc/xprtrdma/rpc_rdma.c
 +++ b/net/sunrpc/xprtrdma/rpc_rdma.c
-@@ -681,6 +681,8 @@ rpcrdma_marshal_req(struct rpc_rqst *rqst)
- 		transfertypes[rtype], transfertypes[wtype],
- 		hdrlen, rpclen);
- 
-+	if (!rpcrdma_dma_map_regbuf(&r_xprt->rx_ia, req->rl_rdmabuf))
-+		goto out_map;
- 	req->rl_send_iov[0].addr = rdmab_addr(req->rl_rdmabuf);
+@@ -687,7 +687,7 @@ rpcrdma_marshal_req(struct rpc_rqst *rqst)
  	req->rl_send_iov[0].length = hdrlen;
  	req->rl_send_iov[0].lkey = rdmab_lkey(req->rl_rdmabuf);
-@@ -689,6 +691,8 @@ rpcrdma_marshal_req(struct rpc_rqst *rqst)
+ 
+-	req->rl_niovs = 1;
++	req->rl_send_wr.num_sge = 1;
  	if (rtype == rpcrdma_areadch)
  		return 0;
  
-+	if (!rpcrdma_dma_map_regbuf(&r_xprt->rx_ia, req->rl_sendbuf))
-+		goto out_map;
- 	req->rl_send_iov[1].addr = rdmab_addr(req->rl_sendbuf);
+@@ -697,7 +697,8 @@ rpcrdma_marshal_req(struct rpc_rqst *rqst)
  	req->rl_send_iov[1].length = rpclen;
  	req->rl_send_iov[1].lkey = rdmab_lkey(req->rl_sendbuf);
-@@ -704,6 +708,11 @@ out_overflow:
- out_unmap:
- 	r_xprt->rx_ia.ri_ops->ro_unmap_safe(r_xprt, req, false);
- 	return PTR_ERR(iptr);
+ 
+-	req->rl_niovs = 2;
++	req->rl_send_wr.num_sge = 2;
 +
-+out_map:
-+	pr_err("rpcrdma: failed to DMA map a Send buffer\n");
-+	iptr = ERR_PTR(-EIO);
-+	goto out_unmap;
- }
- 
- /*
-diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
-index 0bd2ace..b88bcf4 100644
---- a/net/sunrpc/xprtrdma/verbs.c
-+++ b/net/sunrpc/xprtrdma/verbs.c
-@@ -1160,9 +1160,8 @@ rpcrdma_recv_buffer_put(struct rpcrdma_rep *rep)
-  * @direction: direction of data movement
-  * @flags: GFP flags
-  *
-- * Returns an ERR_PTR, or a pointer to a regbuf, which is a
-- * contiguous memory region that is DMA mapped persistently, and
-- * is registered for local I/O.
-+ * Returns an ERR_PTR, or a pointer to a regbuf, a buffer that
-+ * can be persistently DMA-mapped for I/O.
-  *
-  * xprtrdma uses a regbuf for posting an outgoing RDMA SEND, or for
-  * receiving the payload of RDMA RECV operations. During Long Calls
-@@ -1173,32 +1172,50 @@ rpcrdma_alloc_regbuf(struct rpcrdma_ia *ia, size_t size,
- 		     enum dma_data_direction direction, gfp_t flags)
- {
- 	struct rpcrdma_regbuf *rb;
--	struct ib_sge *iov;
- 
- 	rb = kmalloc(sizeof(*rb) + size, flags);
- 	if (rb == NULL)
--		goto out;
-+		return ERR_PTR(-ENOMEM);
- 
-+	rb->rg_device = NULL;
- 	rb->rg_direction = direction;
--	iov = &rb->rg_iov;
--	iov->length = size;
--	iov->lkey = ia->ri_pd->local_dma_lkey;
--
--	if (direction != DMA_NONE) {
--		iov->addr = ib_dma_map_single(ia->ri_device,
--					      (void *)rb->rg_base,
--					      rdmab_length(rb),
--					      rb->rg_direction);
--		if (ib_dma_mapping_error(ia->ri_device, iov->addr))
--			goto out_free;
--	}
-+	rb->rg_iov.length = size;
- 
- 	return rb;
-+}
- 
--out_free:
--	kfree(rb);
--out:
--	return ERR_PTR(-ENOMEM);
-+/**
-+ * __rpcrdma_map_regbuf - DMA-map a regbuf
-+ * @ia: controlling rpcrdma_ia
-+ * @rb: regbuf to be mapped
-+ */
-+bool
-+__rpcrdma_dma_map_regbuf(struct rpcrdma_ia *ia, struct rpcrdma_regbuf *rb)
-+{
-+	if (rb->rg_direction == DMA_NONE)
-+		return false;
-+
-+	rb->rg_iov.addr = ib_dma_map_single(ia->ri_device,
-+					    (void *)rb->rg_base,
-+					    rdmab_length(rb),
-+					    rb->rg_direction);
-+	if (ib_dma_mapping_error(ia->ri_device, rdmab_addr(rb)))
-+		return false;
-+
-+	rb->rg_device = ia->ri_device;
-+	rb->rg_iov.lkey = ia->ri_pd->local_dma_lkey;
-+	return true;
-+}
-+
-+static void
-+rpcrdma_dma_unmap_regbuf(struct rpcrdma_regbuf *rb)
-+{
-+	if (!rpcrdma_regbuf_is_mapped(rb))
-+		return;
-+
-+	ib_dma_unmap_single(rb->rg_device, rdmab_addr(rb),
-+			    rdmab_length(rb), rb->rg_direction);
-+	rb->rg_device = NULL;
- }
- 
- /**
-@@ -1212,11 +1229,7 @@ rpcrdma_free_regbuf(struct rpcrdma_ia *ia, struct rpcrdma_regbuf *rb)
- 	if (!rb)
- 		return;
- 
--	if (rb->rg_direction != DMA_NONE) {
--		ib_dma_unmap_single(ia->ri_device, rdmab_addr(rb),
--				    rdmab_length(rb), rb->rg_direction);
--	}
--
-+	rpcrdma_dma_unmap_regbuf(rb);
- 	kfree(rb);
- }
- 
-@@ -1288,11 +1301,17 @@ rpcrdma_ep_post_recv(struct rpcrdma_ia *ia,
- 	recv_wr.sg_list = &rep->rr_rdmabuf->rg_iov;
- 	recv_wr.num_sge = 1;
- 
-+	if (!rpcrdma_dma_map_regbuf(ia, rep->rr_rdmabuf))
-+		goto out_map;
- 	rc = ib_post_recv(ia->ri_id->qp, &recv_wr, &recv_wr_fail);
- 	if (rc)
- 		goto out_postrecv;
  	return 0;
  
-+out_map:
-+	pr_err("rpcrdma: failed to DMA map the Receive buffer\n");
-+	return -EIO;
-+
- out_postrecv:
- 	pr_err("rpcrdma: ib_post_recv returned %i\n", rc);
- 	return -ENOTCONN;
+ out_overflow:
+diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
+index 81cae65..d5e88ee 100644
+--- a/net/sunrpc/xprtrdma/verbs.c
++++ b/net/sunrpc/xprtrdma/verbs.c
+@@ -848,6 +848,10 @@ rpcrdma_create_req(struct rpcrdma_xprt *r_xprt)
+ 	req->rl_cqe.done = rpcrdma_wc_send;
+ 	req->rl_buffer = &r_xprt->rx_buf;
+ 	INIT_LIST_HEAD(&req->rl_registered);
++	req->rl_send_wr.next = NULL;
++	req->rl_send_wr.wr_cqe = &req->rl_cqe;
++	req->rl_send_wr.sg_list = req->rl_send_iov;
++	req->rl_send_wr.opcode = IB_WR_SEND;
+ 	return req;
+ }
+ 
+@@ -1112,7 +1116,7 @@ rpcrdma_buffer_put(struct rpcrdma_req *req)
+ 	struct rpcrdma_buffer *buffers = req->rl_buffer;
+ 	struct rpcrdma_rep *rep = req->rl_reply;
+ 
+-	req->rl_niovs = 0;
++	req->rl_send_wr.num_sge = 0;
+ 	req->rl_reply = NULL;
+ 
+ 	spin_lock(&buffers->rb_lock);
+@@ -1240,38 +1244,32 @@ rpcrdma_ep_post(struct rpcrdma_ia *ia,
+ 		struct rpcrdma_req *req)
+ {
+ 	struct ib_device *device = ia->ri_device;
+-	struct ib_send_wr send_wr, *send_wr_fail;
+-	struct rpcrdma_rep *rep = req->rl_reply;
+-	struct ib_sge *iov = req->rl_send_iov;
++	struct ib_send_wr *send_wr = &req->rl_send_wr;
++	struct ib_send_wr *send_wr_fail;
++	struct ib_sge *sge = req->rl_send_iov;
+ 	int i, rc;
+ 
+-	if (rep) {
+-		rc = rpcrdma_ep_post_recv(ia, rep);
++	if (req->rl_reply) {
++		rc = rpcrdma_ep_post_recv(ia, req->rl_reply);
+ 		if (rc)
+ 			return rc;
+ 		req->rl_reply = NULL;
+ 	}
+ 
+-	send_wr.next = NULL;
+-	send_wr.wr_cqe = &req->rl_cqe;
+-	send_wr.sg_list = iov;
+-	send_wr.num_sge = req->rl_niovs;
+-	send_wr.opcode = IB_WR_SEND;
+-
+-	for (i = 0; i < send_wr.num_sge; i++)
+-		ib_dma_sync_single_for_device(device, iov[i].addr,
+-					      iov[i].length, DMA_TO_DEVICE);
++	for (i = 0; i < send_wr->num_sge; i++)
++		ib_dma_sync_single_for_device(device, sge[i].addr,
++					      sge[i].length, DMA_TO_DEVICE);
+ 	dprintk("RPC:       %s: posting %d s/g entries\n",
+-		__func__, send_wr.num_sge);
++		__func__, send_wr->num_sge);
+ 
+ 	if (DECR_CQCOUNT(ep) > 0)
+-		send_wr.send_flags = 0;
++		send_wr->send_flags = 0;
+ 	else { /* Provider must take a send completion every now and then */
+ 		INIT_CQCOUNT(ep);
+-		send_wr.send_flags = IB_SEND_SIGNALED;
++		send_wr->send_flags = IB_SEND_SIGNALED;
+ 	}
+ 
+-	rc = ib_post_send(ia->ri_id->qp, &send_wr, &send_wr_fail);
++	rc = ib_post_send(ia->ri_id->qp, send_wr, &send_wr_fail);
+ 	if (rc)
+ 		goto out_postsend_err;
+ 	return 0;
 diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
-index eea7d9d..66f47b2 100644
+index 44efff7..a6a0336 100644
 --- a/net/sunrpc/xprtrdma/xprt_rdma.h
 +++ b/net/sunrpc/xprtrdma/xprt_rdma.h
-@@ -113,6 +113,7 @@ struct rpcrdma_ep {
- 
- struct rpcrdma_regbuf {
- 	struct ib_sge		rg_iov;
-+	struct ib_device	*rg_device;
- 	enum dma_data_direction	rg_direction;
- 	__be32			rg_base[0] __attribute__ ((aligned(256)));
- };
-@@ -479,9 +480,24 @@ void rpcrdma_defer_mr_recovery(struct rpcrdma_mw *);
- struct rpcrdma_regbuf *rpcrdma_alloc_regbuf(struct rpcrdma_ia *,
- 					    size_t, enum dma_data_direction,
- 					    gfp_t);
-+bool __rpcrdma_dma_map_regbuf(struct rpcrdma_ia *, struct rpcrdma_regbuf *);
- void rpcrdma_free_regbuf(struct rpcrdma_ia *,
- 			 struct rpcrdma_regbuf *);
- 
-+static inline bool
-+rpcrdma_regbuf_is_mapped(struct rpcrdma_regbuf *rb)
-+{
-+	return rb->rg_device != NULL;
-+}
-+
-+static inline bool
-+rpcrdma_dma_map_regbuf(struct rpcrdma_ia *ia, struct rpcrdma_regbuf *rb)
-+{
-+	if (likely(rpcrdma_regbuf_is_mapped(rb)))
-+		return true;
-+	return __rpcrdma_dma_map_regbuf(ia, rb);
-+}
-+
- int rpcrdma_ep_post_extra_recv(struct rpcrdma_xprt *, unsigned int);
- 
- int rpcrdma_alloc_wq(void);
+@@ -284,10 +284,10 @@ struct rpcrdma_mr_seg {		/* chunk descriptors */
+ struct rpcrdma_buffer;
+ struct rpcrdma_req {
+ 	struct list_head	rl_free;
+-	unsigned int		rl_niovs;
+ 	unsigned int		rl_connect_cookie;
+ 	struct rpcrdma_buffer	*rl_buffer;
+-	struct rpcrdma_rep	*rl_reply;/* holder for reply buffer */
++	struct rpcrdma_rep	*rl_reply;
++	struct ib_send_wr	rl_send_wr;
+ 	struct ib_sge		rl_send_iov[RPCRDMA_MAX_IOVS];
+ 	struct rpcrdma_regbuf	*rl_rdmabuf;	/* xprt header */
+ 	struct rpcrdma_regbuf	*rl_sendbuf;	/* rq_snd_buf */
 
