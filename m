@@ -1,195 +1,132 @@
-Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:53102 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1754440AbcHXOQg (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 24 Aug 2016 10:16:36 -0400
-From: "Benjamin Coddington" <bcodding@redhat.com>
-To: "Trond Myklebust" <trondmy@primarydata.com>
-Cc: "Fields Bruce James" <bfields@fieldses.org>,
-        "List Linux NFS Mailing" <linux-nfs@vger.kernel.org>
+Return-Path: <trondmy@primarydata.com>
+From: Trond Myklebust <trondmy@primarydata.com>
+To: Coddington Benjamin <bcodding@redhat.com>
+CC: Fields Bruce James <bfields@fieldses.org>,
+        List Linux NFS Mailing
+	<linux-nfs@vger.kernel.org>
 Subject: Re: I can't get no readdir satisfaction
-Date: Wed, 24 Aug 2016 10:16:17 -0400
-Message-ID: <E0E81C86-D228-438F-9066-79AAF4098896@redhat.com>
-In-Reply-To: <9AB01AA0-9E40-4DD9-8C97-0EB4519E7816@primarydata.com>
+Date: Wed, 24 Aug 2016 14:19:49 +0000
+Message-ID: <AEE88498-1DF6-4E79-BA5A-CEECB4B7CAD4@primarydata.com>
 References: <778246F3-8F24-48FD-AEA9-0BCC0DCD93B3@redhat.com>
  <F9D0E173-9E64-4BC4-87FB-0F6F4EEBF4C7@primarydata.com>
  <98E39192-4203-4EB8-BDE0-2A4ABFCAA92B@redhat.com>
  <81D2E080-0697-4B26-BE38-5E8AC35C2EA4@primarydata.com>
  <20160824135603.GF3938@fieldses.org>
  <9AB01AA0-9E40-4DD9-8C97-0EB4519E7816@primarydata.com>
+ <E0E81C86-D228-438F-9066-79AAF4098896@redhat.com>
+In-Reply-To: <E0E81C86-D228-438F-9066-79AAF4098896@redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8; format=flowed
-Sender: linux-nfs-owner@vger.kernel.org
+Content-Type: text/plain; charset=UTF-8
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 24 Aug 2016, at 10:02, Trond Myklebust wrote:
-
->> On Aug 24, 2016, at 09:56, J. Bruce Fields <bfields@fieldses.org> 
->> wrote:
->>
->> On Wed, Aug 24, 2016 at 12:18:04PM +0000, Trond Myklebust wrote:
->>>
->>>> On Aug 23, 2016, at 17:21, Benjamin Coddington 
->>>> <bcodding@redhat.com> wrote:
->>>>
->>>>
->>>>
->>>> On 23 Aug 2016, at 11:36, Trond Myklebust wrote:
->>>>
->>>>>> On Aug 23, 2016, at 11:09, Benjamin Coddington 
->>>>>> <bcodding@redhat.com> wrote:
->>>>>>
->>>>>> Hi linux-nfs,
->>>>>>
->>>>>> 311324ad1713 ("NFS: Be more aggressive in using readdirplus for 
->>>>>> 'ls -l'
->>>>>> situations") changed when nfs_readdir() decides to revalidate the
->>>>>> directory's mapping, which contains all the entries.  In addition 
->>>>>> to just
->>>>>> checking if the attribute cache has expired, it includes a check 
->>>>>> to see if
->>>>>> NFS_INO_INVALID_DATA is set on the directory.
->>>>>>
->>>>>> Well, customers that have directories with very many dentries and 
->>>>>> that same
->>>>>> directory's attributes are frequently updated are now grouchy 
->>>>>> that `ls -l`
->>>>>> takes so long since any update of the directory causes the 
->>>>>> mapping to be
->>>>>> invalidated and we have to start over filling the directory's 
->>>>>> mapping.
->>>>>>
->>>>>> I actually haven't put real hard thought into it yet (because 
->>>>>> often for me
->>>>>> that just wastes a lot of time), so I am doing the lazy thing by 
->>>>>> asking this
->>>>>> question:
->>>>>>
->>>>>> Can we go back to just the using the attribute cache timeout, or 
->>>>>> should we
->>>>>> get all heuristical about readdir?
->>>>>>
->>>>>
->>>>> We are all heuristical at this point. How are the heuristics 
->>>>> failing?
->>>>>
->>>>> The original problem those heuristics were designed to solve was 
->>>>> that all
->>>>> the stat() calls took forever to complete, since they are all 
->>>>> synchronous;
->>>>> Tigran showed some very convincing numbers for a large directory 
->>>>> where the
->>>>> difference in performance was an order of magnitude improved by 
->>>>> using
->>>>> readdirplus instead of readdir…
->>>>
->>>> I'll try to present a better explanation.  While `ls -l` is walking 
->>>> through
->>>> a directory repeatedly entering nfs_readdir(), a CREATE response 
->>>> send us
->>>> through nfs_post_op_update_inode_locked():
->>>>
->>>> 1531     if (S_ISDIR(inode->i_mode))
->>>> 1532         invalid |= NFS_INO_INVALID_DATA;
->>>> 1533     nfs_set_cache_invalid(inode, invalid);
->>>>
->>>> Now, the next entry into nfs_readdir() has us do 
->>>> nfs_revalidate_mapping(),
->>>> which will do nfs_invalidate_mapping() for the directory, and so we 
->>>> have to
->>>> start over with cookie 0 sending READDIRPLUS to re-fill the 
->>>> directory's
->>>> mapping to get back to where we are for the current nfs_readdir().
->>>>
->>>> This process repeats for every entry into nfs_readdir() if the 
->>>> directory
->>>> keeps getting updated, and it becomes more likely that it will be 
->>>> updated as
->>>> each pass takes longer and longer to re-fill the mapping as the 
->>>> current
->>>> nfs_readdir() invocation is further along.
->>>>
->>>> READDIRPLUS isn't the problem, the problem is invalidating the 
->>>> directory
->>>> mapping in the middle of a series of getdents() if we do a CREATE.  
->>>> Also, I
->>>> think a similar thing happens if the directory's mtime or ctime is 
->>>> updated -
->>>> but in that case we set NFS_INO_INVALID_DATA because the 
->>>> change_attr
->>>> updates.
->>>>
->>>> So, for directories with a large number of entries that updates 
->>>> often, it can
->>>> be very slow to list the directory.
->>>>
->>>> Why did 311324ad1713 change nfs_readdir from
->>>>
->>>> if (nfs_attribute_cache_expired(inode))
->>>>   nfs_revalidate_mapping(inode, file->f_mapping);
->>>> to
->>>>
->>>> if (nfs_attribute_cache_expired(inode) || nfsi->cache_validity & 
->>>> NFS_INO_INVALID_DATA)
->>>>   nfs_revalidate_mapping(inode, file->f_mapping);
->>>
->>> As the commit message says, the whole purpose was to use READDIRPLUS 
->>> as a substitute for multiple GETATTR calls when the heuristic tells 
->>> us that the user is performing an ‘ls -l’ style of workload.
->>>
->>>>
->>>> .. and can we go back to the way it was before?
->>>
->>> Not without slowing down ‘ls -l’ on large directories.
->>>
->>>>
->>>> OK.. I understand why -- it is more correct since if we know the 
->>>> directory has
->>>> changed, we might as well fetch the change.  Otherwise, we might be 
->>>> creating
->>>> files and then wondering why they aren't listed.
->>>>
->>>> It might be nicer to not invalidate the mapping we're currently 
->>>> using for
->>>> readdir, though.  Maybe there's a way to keep the mapping for the 
->>>> currently
->>>> opened directory and invalidate it once it's closed.
->>>
->>
->>> POSIX requires that you revalidate on opendir() and rewinddir(), and
->>> leaves behaviour w.r.t. file addition and removal after the call to
->>> opendir()/rewinddir() undefined
->>> (http://pubs.opengroup.org/onlinepubs/9699919799/functions/readdir.html).
->>
->> It is only undefined whether the added or removed entry is returned.
->> Other entries still need to returned exactly once.
->>
->> In this case we're restarting the read of the directory from 
->> scratch--I
->> don't understand how that's possible while avoiding skipped or
->> duplicated entries.
->>
->> Surely the only safe thing to do is to continue reading using the 
->> last
->> cookie returned from the server.
->
-> Why? The client should be able to restart using any cookie at any 
-> time,
-> and we rely on the cookies being unique to each entry. If you want 
-> more
-> relaxed cookie semantics then be prepared to have to set up a stateful 
-> NFS
-> readdir protocol.
-
-It looks to me as if I send in a non-zero position to nfs_readdir(), but 
-the mapping
-has been invalidated, then the client starts over at cookie 0 sending
-READDIRs to the server and reading the directory entries into the page 
-cache
-in order to figure out which position maps to which entry/cookie.
-
-It seems possible to get duplicated or skipped entries.
-
-Ben
-
-
+DQo+IE9uIEF1ZyAyNCwgMjAxNiwgYXQgMTA6MTYsIEJlbmphbWluIENvZGRpbmd0b24gPGJjb2Rk
+aW5nQHJlZGhhdC5jb20+IHdyb3RlOg0KPiANCj4gT24gMjQgQXVnIDIwMTYsIGF0IDEwOjAyLCBU
+cm9uZCBNeWtsZWJ1c3Qgd3JvdGU6DQo+IA0KPj4+IE9uIEF1ZyAyNCwgMjAxNiwgYXQgMDk6NTYs
+IEouIEJydWNlIEZpZWxkcyA8YmZpZWxkc0BmaWVsZHNlcy5vcmc+IHdyb3RlOg0KPj4+IA0KPj4+
+IE9uIFdlZCwgQXVnIDI0LCAyMDE2IGF0IDEyOjE4OjA0UE0gKzAwMDAsIFRyb25kIE15a2xlYnVz
+dCB3cm90ZToNCj4+Pj4gDQo+Pj4+PiBPbiBBdWcgMjMsIDIwMTYsIGF0IDE3OjIxLCBCZW5qYW1p
+biBDb2RkaW5ndG9uIDxiY29kZGluZ0ByZWRoYXQuY29tPiB3cm90ZToNCj4+Pj4+IA0KPj4+Pj4g
+DQo+Pj4+PiANCj4+Pj4+IE9uIDIzIEF1ZyAyMDE2LCBhdCAxMTozNiwgVHJvbmQgTXlrbGVidXN0
+IHdyb3RlOg0KPj4+Pj4gDQo+Pj4+Pj4+IE9uIEF1ZyAyMywgMjAxNiwgYXQgMTE6MDksIEJlbmph
+bWluIENvZGRpbmd0b24gPGJjb2RkaW5nQHJlZGhhdC5jb20+IHdyb3RlOg0KPj4+Pj4+PiANCj4+
+Pj4+Pj4gSGkgbGludXgtbmZzLA0KPj4+Pj4+PiANCj4+Pj4+Pj4gMzExMzI0YWQxNzEzICgiTkZT
+OiBCZSBtb3JlIGFnZ3Jlc3NpdmUgaW4gdXNpbmcgcmVhZGRpcnBsdXMgZm9yICdscyAtbCcNCj4+
+Pj4+Pj4gc2l0dWF0aW9ucyIpIGNoYW5nZWQgd2hlbiBuZnNfcmVhZGRpcigpIGRlY2lkZXMgdG8g
+cmV2YWxpZGF0ZSB0aGUNCj4+Pj4+Pj4gZGlyZWN0b3J5J3MgbWFwcGluZywgd2hpY2ggY29udGFp
+bnMgYWxsIHRoZSBlbnRyaWVzLiAgSW4gYWRkaXRpb24gdG8ganVzdA0KPj4+Pj4+PiBjaGVja2lu
+ZyBpZiB0aGUgYXR0cmlidXRlIGNhY2hlIGhhcyBleHBpcmVkLCBpdCBpbmNsdWRlcyBhIGNoZWNr
+IHRvIHNlZSBpZg0KPj4+Pj4+PiBORlNfSU5PX0lOVkFMSURfREFUQSBpcyBzZXQgb24gdGhlIGRp
+cmVjdG9yeS4NCj4+Pj4+Pj4gDQo+Pj4+Pj4+IFdlbGwsIGN1c3RvbWVycyB0aGF0IGhhdmUgZGly
+ZWN0b3JpZXMgd2l0aCB2ZXJ5IG1hbnkgZGVudHJpZXMgYW5kIHRoYXQgc2FtZQ0KPj4+Pj4+PiBk
+aXJlY3RvcnkncyBhdHRyaWJ1dGVzIGFyZSBmcmVxdWVudGx5IHVwZGF0ZWQgYXJlIG5vdyBncm91
+Y2h5IHRoYXQgYGxzIC1sYA0KPj4+Pj4+PiB0YWtlcyBzbyBsb25nIHNpbmNlIGFueSB1cGRhdGUg
+b2YgdGhlIGRpcmVjdG9yeSBjYXVzZXMgdGhlIG1hcHBpbmcgdG8gYmUNCj4+Pj4+Pj4gaW52YWxp
+ZGF0ZWQgYW5kIHdlIGhhdmUgdG8gc3RhcnQgb3ZlciBmaWxsaW5nIHRoZSBkaXJlY3RvcnkncyBt
+YXBwaW5nLg0KPj4+Pj4+PiANCj4+Pj4+Pj4gSSBhY3R1YWxseSBoYXZlbid0IHB1dCByZWFsIGhh
+cmQgdGhvdWdodCBpbnRvIGl0IHlldCAoYmVjYXVzZSBvZnRlbiBmb3IgbWUNCj4+Pj4+Pj4gdGhh
+dCBqdXN0IHdhc3RlcyBhIGxvdCBvZiB0aW1lKSwgc28gSSBhbSBkb2luZyB0aGUgbGF6eSB0aGlu
+ZyBieSBhc2tpbmcgdGhpcw0KPj4+Pj4+PiBxdWVzdGlvbjoNCj4+Pj4+Pj4gDQo+Pj4+Pj4+IENh
+biB3ZSBnbyBiYWNrIHRvIGp1c3QgdGhlIHVzaW5nIHRoZSBhdHRyaWJ1dGUgY2FjaGUgdGltZW91
+dCwgb3Igc2hvdWxkIHdlDQo+Pj4+Pj4+IGdldCBhbGwgaGV1cmlzdGljYWwgYWJvdXQgcmVhZGRp
+cj8NCj4+Pj4+Pj4gDQo+Pj4+Pj4gDQo+Pj4+Pj4gV2UgYXJlIGFsbCBoZXVyaXN0aWNhbCBhdCB0
+aGlzIHBvaW50LiBIb3cgYXJlIHRoZSBoZXVyaXN0aWNzIGZhaWxpbmc/DQo+Pj4+Pj4gDQo+Pj4+
+Pj4gVGhlIG9yaWdpbmFsIHByb2JsZW0gdGhvc2UgaGV1cmlzdGljcyB3ZXJlIGRlc2lnbmVkIHRv
+IHNvbHZlIHdhcyB0aGF0IGFsbA0KPj4+Pj4+IHRoZSBzdGF0KCkgY2FsbHMgdG9vayBmb3JldmVy
+IHRvIGNvbXBsZXRlLCBzaW5jZSB0aGV5IGFyZSBhbGwgc3luY2hyb25vdXM7DQo+Pj4+Pj4gVGln
+cmFuIHNob3dlZCBzb21lIHZlcnkgY29udmluY2luZyBudW1iZXJzIGZvciBhIGxhcmdlIGRpcmVj
+dG9yeSB3aGVyZSB0aGUNCj4+Pj4+PiBkaWZmZXJlbmNlIGluIHBlcmZvcm1hbmNlIHdhcyBhbiBv
+cmRlciBvZiBtYWduaXR1ZGUgaW1wcm92ZWQgYnkgdXNpbmcNCj4+Pj4+PiByZWFkZGlycGx1cyBp
+bnN0ZWFkIG9mIHJlYWRkaXLigKYNCj4+Pj4+IA0KPj4+Pj4gSSdsbCB0cnkgdG8gcHJlc2VudCBh
+IGJldHRlciBleHBsYW5hdGlvbi4gIFdoaWxlIGBscyAtbGAgaXMgd2Fsa2luZyB0aHJvdWdoDQo+
+Pj4+PiBhIGRpcmVjdG9yeSByZXBlYXRlZGx5IGVudGVyaW5nIG5mc19yZWFkZGlyKCksIGEgQ1JF
+QVRFIHJlc3BvbnNlIHNlbmQgdXMNCj4+Pj4+IHRocm91Z2ggbmZzX3Bvc3Rfb3BfdXBkYXRlX2lu
+b2RlX2xvY2tlZCgpOg0KPj4+Pj4gDQo+Pj4+PiAxNTMxICAgICBpZiAoU19JU0RJUihpbm9kZS0+
+aV9tb2RlKSkNCj4+Pj4+IDE1MzIgICAgICAgICBpbnZhbGlkIHw9IE5GU19JTk9fSU5WQUxJRF9E
+QVRBOw0KPj4+Pj4gMTUzMyAgICAgbmZzX3NldF9jYWNoZV9pbnZhbGlkKGlub2RlLCBpbnZhbGlk
+KTsNCj4+Pj4+IA0KPj4+Pj4gTm93LCB0aGUgbmV4dCBlbnRyeSBpbnRvIG5mc19yZWFkZGlyKCkg
+aGFzIHVzIGRvIG5mc19yZXZhbGlkYXRlX21hcHBpbmcoKSwNCj4+Pj4+IHdoaWNoIHdpbGwgZG8g
+bmZzX2ludmFsaWRhdGVfbWFwcGluZygpIGZvciB0aGUgZGlyZWN0b3J5LCBhbmQgc28gd2UgaGF2
+ZSB0bw0KPj4+Pj4gc3RhcnQgb3ZlciB3aXRoIGNvb2tpZSAwIHNlbmRpbmcgUkVBRERJUlBMVVMg
+dG8gcmUtZmlsbCB0aGUgZGlyZWN0b3J5J3MNCj4+Pj4+IG1hcHBpbmcgdG8gZ2V0IGJhY2sgdG8g
+d2hlcmUgd2UgYXJlIGZvciB0aGUgY3VycmVudCBuZnNfcmVhZGRpcigpLg0KPj4+Pj4gDQo+Pj4+
+PiBUaGlzIHByb2Nlc3MgcmVwZWF0cyBmb3IgZXZlcnkgZW50cnkgaW50byBuZnNfcmVhZGRpcigp
+IGlmIHRoZSBkaXJlY3RvcnkNCj4+Pj4+IGtlZXBzIGdldHRpbmcgdXBkYXRlZCwgYW5kIGl0IGJl
+Y29tZXMgbW9yZSBsaWtlbHkgdGhhdCBpdCB3aWxsIGJlIHVwZGF0ZWQgYXMNCj4+Pj4+IGVhY2gg
+cGFzcyB0YWtlcyBsb25nZXIgYW5kIGxvbmdlciB0byByZS1maWxsIHRoZSBtYXBwaW5nIGFzIHRo
+ZSBjdXJyZW50DQo+Pj4+PiBuZnNfcmVhZGRpcigpIGludm9jYXRpb24gaXMgZnVydGhlciBhbG9u
+Zy4NCj4+Pj4+IA0KPj4+Pj4gUkVBRERJUlBMVVMgaXNuJ3QgdGhlIHByb2JsZW0sIHRoZSBwcm9i
+bGVtIGlzIGludmFsaWRhdGluZyB0aGUgZGlyZWN0b3J5DQo+Pj4+PiBtYXBwaW5nIGluIHRoZSBt
+aWRkbGUgb2YgYSBzZXJpZXMgb2YgZ2V0ZGVudHMoKSBpZiB3ZSBkbyBhIENSRUFURS4gIEFsc28s
+IEkNCj4+Pj4+IHRoaW5rIGEgc2ltaWxhciB0aGluZyBoYXBwZW5zIGlmIHRoZSBkaXJlY3Rvcnkn
+cyBtdGltZSBvciBjdGltZSBpcyB1cGRhdGVkIC0NCj4+Pj4+IGJ1dCBpbiB0aGF0IGNhc2Ugd2Ug
+c2V0IE5GU19JTk9fSU5WQUxJRF9EQVRBIGJlY2F1c2UgdGhlIGNoYW5nZV9hdHRyDQo+Pj4+PiB1
+cGRhdGVzLg0KPj4+Pj4gDQo+Pj4+PiBTbywgZm9yIGRpcmVjdG9yaWVzIHdpdGggYSBsYXJnZSBu
+dW1iZXIgb2YgZW50cmllcyB0aGF0IHVwZGF0ZXMgb2Z0ZW4sIGl0IGNhbg0KPj4+Pj4gYmUgdmVy
+eSBzbG93IHRvIGxpc3QgdGhlIGRpcmVjdG9yeS4NCj4+Pj4+IA0KPj4+Pj4gV2h5IGRpZCAzMTEz
+MjRhZDE3MTMgY2hhbmdlIG5mc19yZWFkZGlyIGZyb20NCj4+Pj4+IA0KPj4+Pj4gaWYgKG5mc19h
+dHRyaWJ1dGVfY2FjaGVfZXhwaXJlZChpbm9kZSkpDQo+Pj4+PiAgbmZzX3JldmFsaWRhdGVfbWFw
+cGluZyhpbm9kZSwgZmlsZS0+Zl9tYXBwaW5nKTsNCj4+Pj4+IHRvDQo+Pj4+PiANCj4+Pj4+IGlm
+IChuZnNfYXR0cmlidXRlX2NhY2hlX2V4cGlyZWQoaW5vZGUpIHx8IG5mc2ktPmNhY2hlX3ZhbGlk
+aXR5ICYgTkZTX0lOT19JTlZBTElEX0RBVEEpDQo+Pj4+PiAgbmZzX3JldmFsaWRhdGVfbWFwcGlu
+Zyhpbm9kZSwgZmlsZS0+Zl9tYXBwaW5nKTsNCj4+Pj4gDQo+Pj4+IEFzIHRoZSBjb21taXQgbWVz
+c2FnZSBzYXlzLCB0aGUgd2hvbGUgcHVycG9zZSB3YXMgdG8gdXNlIFJFQURESVJQTFVTIGFzIGEg
+c3Vic3RpdHV0ZSBmb3IgbXVsdGlwbGUgR0VUQVRUUiBjYWxscyB3aGVuIHRoZSBoZXVyaXN0aWMg
+dGVsbHMgdXMgdGhhdCB0aGUgdXNlciBpcyBwZXJmb3JtaW5nIGFuIOKAmGxzIC1s4oCZIHN0eWxl
+IG9mIHdvcmtsb2FkLg0KPj4+PiANCj4+Pj4+IA0KPj4+Pj4gLi4gYW5kIGNhbiB3ZSBnbyBiYWNr
+IHRvIHRoZSB3YXkgaXQgd2FzIGJlZm9yZT8NCj4+Pj4gDQo+Pj4+IE5vdCB3aXRob3V0IHNsb3dp
+bmcgZG93biDigJhscyAtbOKAmSBvbiBsYXJnZSBkaXJlY3Rvcmllcy4NCj4+Pj4gDQo+Pj4+PiAN
+Cj4+Pj4+IE9LLi4gSSB1bmRlcnN0YW5kIHdoeSAtLSBpdCBpcyBtb3JlIGNvcnJlY3Qgc2luY2Ug
+aWYgd2Uga25vdyB0aGUgZGlyZWN0b3J5IGhhcw0KPj4+Pj4gY2hhbmdlZCwgd2UgbWlnaHQgYXMg
+d2VsbCBmZXRjaCB0aGUgY2hhbmdlLiAgT3RoZXJ3aXNlLCB3ZSBtaWdodCBiZSBjcmVhdGluZw0K
+Pj4+Pj4gZmlsZXMgYW5kIHRoZW4gd29uZGVyaW5nIHdoeSB0aGV5IGFyZW4ndCBsaXN0ZWQuDQo+
+Pj4+PiANCj4+Pj4+IEl0IG1pZ2h0IGJlIG5pY2VyIHRvIG5vdCBpbnZhbGlkYXRlIHRoZSBtYXBw
+aW5nIHdlJ3JlIGN1cnJlbnRseSB1c2luZyBmb3INCj4+Pj4+IHJlYWRkaXIsIHRob3VnaC4gIE1h
+eWJlIHRoZXJlJ3MgYSB3YXkgdG8ga2VlcCB0aGUgbWFwcGluZyBmb3IgdGhlIGN1cnJlbnRseQ0K
+Pj4+Pj4gb3BlbmVkIGRpcmVjdG9yeSBhbmQgaW52YWxpZGF0ZSBpdCBvbmNlIGl0J3MgY2xvc2Vk
+Lg0KPj4+PiANCj4+PiANCj4+Pj4gUE9TSVggcmVxdWlyZXMgdGhhdCB5b3UgcmV2YWxpZGF0ZSBv
+biBvcGVuZGlyKCkgYW5kIHJld2luZGRpcigpLCBhbmQNCj4+Pj4gbGVhdmVzIGJlaGF2aW91ciB3
+LnIudC4gZmlsZSBhZGRpdGlvbiBhbmQgcmVtb3ZhbCBhZnRlciB0aGUgY2FsbCB0bw0KPj4+PiBv
+cGVuZGlyKCkvcmV3aW5kZGlyKCkgdW5kZWZpbmVkDQo+Pj4+IChodHRwOi8vcHVicy5vcGVuZ3Jv
+dXAub3JnL29ubGluZXB1YnMvOTY5OTkxOTc5OS9mdW5jdGlvbnMvcmVhZGRpci5odG1sKS4NCj4+
+PiANCj4+PiBJdCBpcyBvbmx5IHVuZGVmaW5lZCB3aGV0aGVyIHRoZSBhZGRlZCBvciByZW1vdmVk
+IGVudHJ5IGlzIHJldHVybmVkLg0KPj4+IE90aGVyIGVudHJpZXMgc3RpbGwgbmVlZCB0byByZXR1
+cm5lZCBleGFjdGx5IG9uY2UuDQo+Pj4gDQo+Pj4gSW4gdGhpcyBjYXNlIHdlJ3JlIHJlc3RhcnRp
+bmcgdGhlIHJlYWQgb2YgdGhlIGRpcmVjdG9yeSBmcm9tIHNjcmF0Y2gtLUkNCj4+PiBkb24ndCB1
+bmRlcnN0YW5kIGhvdyB0aGF0J3MgcG9zc2libGUgd2hpbGUgYXZvaWRpbmcgc2tpcHBlZCBvcg0K
+Pj4+IGR1cGxpY2F0ZWQgZW50cmllcy4NCj4+PiANCj4+PiBTdXJlbHkgdGhlIG9ubHkgc2FmZSB0
+aGluZyB0byBkbyBpcyB0byBjb250aW51ZSByZWFkaW5nIHVzaW5nIHRoZSBsYXN0DQo+Pj4gY29v
+a2llIHJldHVybmVkIGZyb20gdGhlIHNlcnZlci4NCj4+IA0KPj4gV2h5PyBUaGUgY2xpZW50IHNo
+b3VsZCBiZSBhYmxlIHRvIHJlc3RhcnQgdXNpbmcgYW55IGNvb2tpZSBhdCBhbnkgdGltZSwNCj4+
+IGFuZCB3ZSByZWx5IG9uIHRoZSBjb29raWVzIGJlaW5nIHVuaXF1ZSB0byBlYWNoIGVudHJ5LiBJ
+ZiB5b3Ugd2FudCBtb3JlDQo+PiByZWxheGVkIGNvb2tpZSBzZW1hbnRpY3MgdGhlbiBiZSBwcmVw
+YXJlZCB0byBoYXZlIHRvIHNldCB1cCBhIHN0YXRlZnVsIE5GUw0KPj4gcmVhZGRpciBwcm90b2Nv
+bC4NCj4gDQo+IEl0IGxvb2tzIHRvIG1lIGFzIGlmIEkgc2VuZCBpbiBhIG5vbi16ZXJvIHBvc2l0
+aW9uIHRvIG5mc19yZWFkZGlyKCksIGJ1dCB0aGUgbWFwcGluZw0KPiBoYXMgYmVlbiBpbnZhbGlk
+YXRlZCwgdGhlbiB0aGUgY2xpZW50IHN0YXJ0cyBvdmVyIGF0IGNvb2tpZSAwIHNlbmRpbmcNCj4g
+UkVBRERJUnMgdG8gdGhlIHNlcnZlciBhbmQgcmVhZGluZyB0aGUgZGlyZWN0b3J5IGVudHJpZXMg
+aW50byB0aGUgcGFnZSBjYWNoZQ0KPiBpbiBvcmRlciB0byBmaWd1cmUgb3V0IHdoaWNoIHBvc2l0
+aW9uIG1hcHMgdG8gd2hpY2ggZW50cnkvY29va2llLg0KDQpZZXMuDQoNCj4gSXQgc2VlbXMgcG9z
+c2libGUgdG8gZ2V0IGR1cGxpY2F0ZWQgb3Igc2tpcHBlZCBlbnRyaWVzLg0KDQpUaGVyZSBpcyBh
+IGxvZ2ljYWwgc3RlcCBtaXNzaW5nIGhlcmUuIEhvdyBkbyB5b3UgZ2V0IGZyb20g4oCcd2UgY2Fu
+IGVuZCB1cCByZS1maWxsaW5nIHRoZSBjYWNoZSBmcm9tIHNjcmF0Y2jigJ0gdG8g4oCcdGhlcmUg
+Y2FuIGJlIGR1cGxpY2F0ZSBvciBza2lwcGVkIGVudHJpZXPigJ0/DQoNCg0K
