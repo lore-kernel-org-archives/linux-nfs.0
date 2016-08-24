@@ -1,109 +1,65 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from userp1040.oracle.com ([156.151.31.81]:27319 "EHLO
-        userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1755176AbcHXQfR (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 24 Aug 2016 12:35:17 -0400
-Content-Type: text/plain; charset=windows-1252
-Mime-Version: 1.0 (Mac OS X Mail 9.3 \(3124\))
-Subject: Re: [PATCH v2 1/6] SUNRPC: Silence WARN_ON when NFSv4.1 over RDMA is in use
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <BB84506B-BC92-4325-A81C-4BC7D39F471C@primarydata.com>
-Date: Wed, 24 Aug 2016 12:34:58 -0400
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
+Received: from mx1.redhat.com ([209.132.183.28]:39636 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1754589AbcHXR1L (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 24 Aug 2016 13:27:11 -0400
+From: Benjamin Coddington <bcodding@redhat.com>
+To: linux-nfs@vger.kernel.org
+Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
         Anna Schumaker <anna.schumaker@netapp.com>,
-        List Linux RDMA Mailing <linux-rdma@vger.kernel.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <B946F013-A8DD-433A-836D-655608AA9AD1@oracle.com>
-References: <20160822185459.12076.43516.stgit@klimt.1015granger.net> <20160822185742.12076.34446.stgit@klimt.1015granger.net> <3E0207D8-CFB2-4233-B92B-165B10E9920E@oracle.com> <20160823205355.GA29452@fieldses.org> <AD25F201-01A4-4F4F-BAE7-9E984E12EE8D@oracle.com> <BB84506B-BC92-4325-A81C-4BC7D39F471C@primarydata.com>
-To: Trond Myklebust <trondmy@primarydata.com>
+        Scott Mayhew <smayhew@redhat.com>
+Subject: [PATCH] NFS: Don't invalidate directory mapping until attributes expire
+Date: Wed, 24 Aug 2016 13:27:09 -0400
+Message-Id: <67cfa1f7f028229bfd4b1ac2619bc85b9e34ef7f.1472059583.git.bcodding@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Commit 311324ad1713666a6e803aecf0d4e1a136a5b34a ("NFS: Be more aggressive
+in using readdirplus for 'ls -l' situations") removed the optimization
+added by commit 07b5ce8ef2d87f1914054804720d6facbaa3f4ce ("NFS: Make nfs_readdir
+revalidate less often") to bypass the revalidation of the directory mapping
+on subsequent calls into nfs_readdir().  Add that optimization back here.
 
-> On Aug 23, 2016, at 6:21 PM, Trond Myklebust <trondmy@primarydata.com> wrote:
-> 
->> 
->> On Aug 23, 2016, at 17:05, Chuck Lever <chuck.lever@oracle.com> wrote:
->> 
->>> 
->>> On Aug 23, 2016, at 4:53 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
->>> 
->>> On Tue, Aug 23, 2016 at 01:39:15PM -0400, Chuck Lever wrote:
->>>> Hi Bruce-
->>>> 
->>>> 
->>>>> On Aug 22, 2016, at 2:57 PM, Chuck Lever <chuck.lever@oracle.com> wrote:
->>>>> 
->>>>> Using NFSv4.1 on RDMA should be safe, so broaden the new checks in
->>>>> rpc_create().
->>>>> 
->>>>> WARN_ON_ONCE is used, matching most other WARN call sites in clnt.c.
->>>>> 
->>>>> Fixes: 39a9beab5acb ("rpc: share one xps between all backchannels")
->>>>> Fixes: d50039ea5ee6 ("nfsd4/rpc: move backchannel create logic...")
->>>>> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
->>>>> ---
->>>> 
->>>> Do you want to take this, or should it go through Trond/Anna ?
->>> 
->>> I don't care, feel free to add my reviewed-by: if it goes through
->>> someone else.
->>> 
->>> Looks like this should be for 4.8 (and stable), not 4.9?
->> 
->> I won't disagree with that.
->> 
->> I think Trond or Anna need to weigh in on all questions
->> (who takes it, does it go to stable as well).
-> 
-> If you want it in for 4.8, then I can pull it in together with the current bugfixes. Does that work for everyone?
+A directory modified once every second and containing 40k entries takes my
+system around 80 seconds to list.  With this patch, that time is reduced to
+7 seconds.
 
-Thanks, that's perfect!
+Signed-off-by: Benjamin Coddington <bcodding@redhat.com>
+---
+ fs/nfs/dir.c | 13 +------------
+ 1 file changed, 1 insertion(+), 12 deletions(-)
 
-
->>> --b.
->>> 
->>>> 
->>>> 
->>>>> net/sunrpc/clnt.c |    4 ++--
->>>>> 1 file changed, 2 insertions(+), 2 deletions(-)
->>>>> 
->>>>> diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
->>>>> index 7f79fb7..66f23b3 100644
->>>>> --- a/net/sunrpc/clnt.c
->>>>> +++ b/net/sunrpc/clnt.c
->>>>> @@ -453,7 +453,7 @@ static struct rpc_clnt *rpc_create_xprt(struct rpc_create_args *args,
->>>>> 	struct rpc_xprt_switch *xps;
->>>>> 
->>>>> 	if (args->bc_xprt && args->bc_xprt->xpt_bc_xps) {
->>>>> -		WARN_ON(args->protocol != XPRT_TRANSPORT_BC_TCP);
->>>>> +		WARN_ON_ONCE(!(args->protocol & XPRT_TRANSPORT_BC));
->>>>> 		xps = args->bc_xprt->xpt_bc_xps;
->>>>> 		xprt_switch_get(xps);
->>>>> 	} else {
->>>>> @@ -520,7 +520,7 @@ struct rpc_clnt *rpc_create(struct rpc_create_args *args)
->>>>> 	char servername[48];
->>>>> 
->>>>> 	if (args->bc_xprt) {
->>>>> -		WARN_ON(args->protocol != XPRT_TRANSPORT_BC_TCP);
->>>>> +		WARN_ON_ONCE(!(args->protocol & XPRT_TRANSPORT_BC));
->>>>> 		xprt = args->bc_xprt->xpt_bc_xprt;
->>>>> 		if (xprt) {
->>>>> 			xprt_get(xprt);
->>>>> 
->>>>> --
->>>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->>>>> the body of a message to majordomo@vger.kernel.org
->>>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->>>> 
->>>> --
->>>> Chuck Lever
->> 
->> --
->> Chuck Lever
-
---
-Chuck Lever
-
-
+diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
+index 19d93d0cd400..9a036dc6caa3 100644
+--- a/fs/nfs/dir.c
++++ b/fs/nfs/dir.c
+@@ -872,17 +872,6 @@ int uncached_readdir(nfs_readdir_descriptor_t *desc)
+ 	goto out;
+ }
+ 
+-static bool nfs_dir_mapping_need_revalidate(struct inode *dir)
+-{
+-	struct nfs_inode *nfsi = NFS_I(dir);
+-
+-	if (nfs_attribute_cache_expired(dir))
+-		return true;
+-	if (nfsi->cache_validity & NFS_INO_INVALID_DATA)
+-		return true;
+-	return false;
+-}
+-
+ /* The file offset position represents the dirent entry number.  A
+    last cookie cache takes care of the common case of reading the
+    whole directory.
+@@ -914,7 +903,7 @@ static int nfs_readdir(struct file *file, struct dir_context *ctx)
+ 	desc->decode = NFS_PROTO(inode)->decode_dirent;
+ 	desc->plus = nfs_use_readdirplus(inode, ctx) ? 1 : 0;
+ 
+-	if (ctx->pos == 0 || nfs_dir_mapping_need_revalidate(inode))
++	if (ctx->pos == 0 || nfs_attribute_cache_expired(inode))
+ 		res = nfs_revalidate_mapping(inode, file->f_mapping);
+ 	if (res < 0)
+ 		goto out;
+-- 
+2.5.5
 
