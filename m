@@ -1,98 +1,166 @@
-Return-Path: <trondmy@primarydata.com>
-From: Trond Myklebust <trondmy@primarydata.com>
-To: Coddington Benjamin <bcodding@redhat.com>
-CC: List Linux NFS Mailing <linux-nfs@vger.kernel.org>
+Return-Path: <linux-nfs-owner@vger.kernel.org>
+Received: from mx1.redhat.com ([209.132.183.28]:43716 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S932368AbcHXNCm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 24 Aug 2016 09:02:42 -0400
+From: "Benjamin Coddington" <bcodding@redhat.com>
+To: "Trond Myklebust" <trondmy@primarydata.com>
+Cc: "List Linux NFS Mailing" <linux-nfs@vger.kernel.org>
 Subject: Re: I can't get no readdir satisfaction
-Date: Wed, 24 Aug 2016 12:18:04 +0000
-Message-ID: <81D2E080-0697-4B26-BE38-5E8AC35C2EA4@primarydata.com>
+Date: Wed, 24 Aug 2016 09:02:27 -0400
+Message-ID: <1AC30A78-C716-4A0A-B1C8-AB5FF094C77F@redhat.com>
+In-Reply-To: <98E39192-4203-4EB8-BDE0-2A4ABFCAA92B@redhat.com>
 References: <778246F3-8F24-48FD-AEA9-0BCC0DCD93B3@redhat.com>
  <F9D0E173-9E64-4BC4-87FB-0F6F4EEBF4C7@primarydata.com>
  <98E39192-4203-4EB8-BDE0-2A4ABFCAA92B@redhat.com>
-In-Reply-To: <98E39192-4203-4EB8-BDE0-2A4ABFCAA92B@redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=utf-8; format=flowed
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-DQo+IE9uIEF1ZyAyMywgMjAxNiwgYXQgMTc6MjEsIEJlbmphbWluIENvZGRpbmd0b24gPGJjb2Rk
-aW5nQHJlZGhhdC5jb20+IHdyb3RlOg0KPiANCj4gDQo+IA0KPiBPbiAyMyBBdWcgMjAxNiwgYXQg
-MTE6MzYsIFRyb25kIE15a2xlYnVzdCB3cm90ZToNCj4gDQo+Pj4gT24gQXVnIDIzLCAyMDE2LCBh
-dCAxMTowOSwgQmVuamFtaW4gQ29kZGluZ3RvbiA8YmNvZGRpbmdAcmVkaGF0LmNvbT4gd3JvdGU6
-DQo+Pj4gDQo+Pj4gSGkgbGludXgtbmZzLA0KPj4+IA0KPj4+IDMxMTMyNGFkMTcxMyAoIk5GUzog
-QmUgbW9yZSBhZ2dyZXNzaXZlIGluIHVzaW5nIHJlYWRkaXJwbHVzIGZvciAnbHMgLWwnDQo+Pj4g
-c2l0dWF0aW9ucyIpIGNoYW5nZWQgd2hlbiBuZnNfcmVhZGRpcigpIGRlY2lkZXMgdG8gcmV2YWxp
-ZGF0ZSB0aGUNCj4+PiBkaXJlY3RvcnkncyBtYXBwaW5nLCB3aGljaCBjb250YWlucyBhbGwgdGhl
-IGVudHJpZXMuICBJbiBhZGRpdGlvbiB0byBqdXN0DQo+Pj4gY2hlY2tpbmcgaWYgdGhlIGF0dHJp
-YnV0ZSBjYWNoZSBoYXMgZXhwaXJlZCwgaXQgaW5jbHVkZXMgYSBjaGVjayB0byBzZWUgaWYNCj4+
-PiBORlNfSU5PX0lOVkFMSURfREFUQSBpcyBzZXQgb24gdGhlIGRpcmVjdG9yeS4NCj4+PiANCj4+
-PiBXZWxsLCBjdXN0b21lcnMgdGhhdCBoYXZlIGRpcmVjdG9yaWVzIHdpdGggdmVyeSBtYW55IGRl
-bnRyaWVzIGFuZCB0aGF0IHNhbWUNCj4+PiBkaXJlY3RvcnkncyBhdHRyaWJ1dGVzIGFyZSBmcmVx
-dWVudGx5IHVwZGF0ZWQgYXJlIG5vdyBncm91Y2h5IHRoYXQgYGxzIC1sYA0KPj4+IHRha2VzIHNv
-IGxvbmcgc2luY2UgYW55IHVwZGF0ZSBvZiB0aGUgZGlyZWN0b3J5IGNhdXNlcyB0aGUgbWFwcGlu
-ZyB0byBiZQ0KPj4+IGludmFsaWRhdGVkIGFuZCB3ZSBoYXZlIHRvIHN0YXJ0IG92ZXIgZmlsbGlu
-ZyB0aGUgZGlyZWN0b3J5J3MgbWFwcGluZy4NCj4+PiANCj4+PiBJIGFjdHVhbGx5IGhhdmVuJ3Qg
-cHV0IHJlYWwgaGFyZCB0aG91Z2h0IGludG8gaXQgeWV0IChiZWNhdXNlIG9mdGVuIGZvciBtZQ0K
-Pj4+IHRoYXQganVzdCB3YXN0ZXMgYSBsb3Qgb2YgdGltZSksIHNvIEkgYW0gZG9pbmcgdGhlIGxh
-enkgdGhpbmcgYnkgYXNraW5nIHRoaXMNCj4+PiBxdWVzdGlvbjoNCj4+PiANCj4+PiBDYW4gd2Ug
-Z28gYmFjayB0byBqdXN0IHRoZSB1c2luZyB0aGUgYXR0cmlidXRlIGNhY2hlIHRpbWVvdXQsIG9y
-IHNob3VsZCB3ZQ0KPj4+IGdldCBhbGwgaGV1cmlzdGljYWwgYWJvdXQgcmVhZGRpcj8NCj4+PiAN
-Cj4+IA0KPj4gV2UgYXJlIGFsbCBoZXVyaXN0aWNhbCBhdCB0aGlzIHBvaW50LiBIb3cgYXJlIHRo
-ZSBoZXVyaXN0aWNzIGZhaWxpbmc/DQo+PiANCj4+IFRoZSBvcmlnaW5hbCBwcm9ibGVtIHRob3Nl
-IGhldXJpc3RpY3Mgd2VyZSBkZXNpZ25lZCB0byBzb2x2ZSB3YXMgdGhhdCBhbGwNCj4+IHRoZSBz
-dGF0KCkgY2FsbHMgdG9vayBmb3JldmVyIHRvIGNvbXBsZXRlLCBzaW5jZSB0aGV5IGFyZSBhbGwg
-c3luY2hyb25vdXM7DQo+PiBUaWdyYW4gc2hvd2VkIHNvbWUgdmVyeSBjb252aW5jaW5nIG51bWJl
-cnMgZm9yIGEgbGFyZ2UgZGlyZWN0b3J5IHdoZXJlIHRoZQ0KPj4gZGlmZmVyZW5jZSBpbiBwZXJm
-b3JtYW5jZSB3YXMgYW4gb3JkZXIgb2YgbWFnbml0dWRlIGltcHJvdmVkIGJ5IHVzaW5nDQo+PiBy
-ZWFkZGlycGx1cyBpbnN0ZWFkIG9mIHJlYWRkaXLigKYNCj4gDQo+IEknbGwgdHJ5IHRvIHByZXNl
-bnQgYSBiZXR0ZXIgZXhwbGFuYXRpb24uICBXaGlsZSBgbHMgLWxgIGlzIHdhbGtpbmcgdGhyb3Vn
-aA0KPiBhIGRpcmVjdG9yeSByZXBlYXRlZGx5IGVudGVyaW5nIG5mc19yZWFkZGlyKCksIGEgQ1JF
-QVRFIHJlc3BvbnNlIHNlbmQgdXMNCj4gdGhyb3VnaCBuZnNfcG9zdF9vcF91cGRhdGVfaW5vZGVf
-bG9ja2VkKCk6DQo+IA0KPiAxNTMxICAgICBpZiAoU19JU0RJUihpbm9kZS0+aV9tb2RlKSkNCj4g
-MTUzMiAgICAgICAgIGludmFsaWQgfD0gTkZTX0lOT19JTlZBTElEX0RBVEE7DQo+IDE1MzMgICAg
-IG5mc19zZXRfY2FjaGVfaW52YWxpZChpbm9kZSwgaW52YWxpZCk7DQo+IA0KPiBOb3csIHRoZSBu
-ZXh0IGVudHJ5IGludG8gbmZzX3JlYWRkaXIoKSBoYXMgdXMgZG8gbmZzX3JldmFsaWRhdGVfbWFw
-cGluZygpLA0KPiB3aGljaCB3aWxsIGRvIG5mc19pbnZhbGlkYXRlX21hcHBpbmcoKSBmb3IgdGhl
-IGRpcmVjdG9yeSwgYW5kIHNvIHdlIGhhdmUgdG8NCj4gc3RhcnQgb3ZlciB3aXRoIGNvb2tpZSAw
-IHNlbmRpbmcgUkVBRERJUlBMVVMgdG8gcmUtZmlsbCB0aGUgZGlyZWN0b3J5J3MNCj4gbWFwcGlu
-ZyB0byBnZXQgYmFjayB0byB3aGVyZSB3ZSBhcmUgZm9yIHRoZSBjdXJyZW50IG5mc19yZWFkZGly
-KCkuDQo+IA0KPiBUaGlzIHByb2Nlc3MgcmVwZWF0cyBmb3IgZXZlcnkgZW50cnkgaW50byBuZnNf
-cmVhZGRpcigpIGlmIHRoZSBkaXJlY3RvcnkNCj4ga2VlcHMgZ2V0dGluZyB1cGRhdGVkLCBhbmQg
-aXQgYmVjb21lcyBtb3JlIGxpa2VseSB0aGF0IGl0IHdpbGwgYmUgdXBkYXRlZCBhcw0KPiBlYWNo
-IHBhc3MgdGFrZXMgbG9uZ2VyIGFuZCBsb25nZXIgdG8gcmUtZmlsbCB0aGUgbWFwcGluZyBhcyB0
-aGUgY3VycmVudA0KPiBuZnNfcmVhZGRpcigpIGludm9jYXRpb24gaXMgZnVydGhlciBhbG9uZy4N
-Cj4gDQo+IFJFQURESVJQTFVTIGlzbid0IHRoZSBwcm9ibGVtLCB0aGUgcHJvYmxlbSBpcyBpbnZh
-bGlkYXRpbmcgdGhlIGRpcmVjdG9yeQ0KPiBtYXBwaW5nIGluIHRoZSBtaWRkbGUgb2YgYSBzZXJp
-ZXMgb2YgZ2V0ZGVudHMoKSBpZiB3ZSBkbyBhIENSRUFURS4gIEFsc28sIEkNCj4gdGhpbmsgYSBz
-aW1pbGFyIHRoaW5nIGhhcHBlbnMgaWYgdGhlIGRpcmVjdG9yeSdzIG10aW1lIG9yIGN0aW1lIGlz
-IHVwZGF0ZWQgLQ0KPiBidXQgaW4gdGhhdCBjYXNlIHdlIHNldCBORlNfSU5PX0lOVkFMSURfREFU
-QSBiZWNhdXNlIHRoZSBjaGFuZ2VfYXR0cg0KPiB1cGRhdGVzLg0KPiANCj4gU28sIGZvciBkaXJl
-Y3RvcmllcyB3aXRoIGEgbGFyZ2UgbnVtYmVyIG9mIGVudHJpZXMgdGhhdCB1cGRhdGVzIG9mdGVu
-LCBpdCBjYW4NCj4gYmUgdmVyeSBzbG93IHRvIGxpc3QgdGhlIGRpcmVjdG9yeS4NCj4gDQo+IFdo
-eSBkaWQgMzExMzI0YWQxNzEzIGNoYW5nZSBuZnNfcmVhZGRpciBmcm9tDQo+IA0KPiBpZiAobmZz
-X2F0dHJpYnV0ZV9jYWNoZV9leHBpcmVkKGlub2RlKSkNCj4gICAgbmZzX3JldmFsaWRhdGVfbWFw
-cGluZyhpbm9kZSwgZmlsZS0+Zl9tYXBwaW5nKTsNCj4gdG8NCj4gDQo+IGlmIChuZnNfYXR0cmli
-dXRlX2NhY2hlX2V4cGlyZWQoaW5vZGUpIHx8IG5mc2ktPmNhY2hlX3ZhbGlkaXR5ICYgTkZTX0lO
-T19JTlZBTElEX0RBVEEpDQo+ICAgIG5mc19yZXZhbGlkYXRlX21hcHBpbmcoaW5vZGUsIGZpbGUt
-PmZfbWFwcGluZyk7DQoNCkFzIHRoZSBjb21taXQgbWVzc2FnZSBzYXlzLCB0aGUgd2hvbGUgcHVy
-cG9zZSB3YXMgdG8gdXNlIFJFQURESVJQTFVTIGFzIGEgc3Vic3RpdHV0ZSBmb3IgbXVsdGlwbGUg
-R0VUQVRUUiBjYWxscyB3aGVuIHRoZSBoZXVyaXN0aWMgdGVsbHMgdXMgdGhhdCB0aGUgdXNlciBp
-cyBwZXJmb3JtaW5nIGFuIOKAmGxzIC1s4oCZIHN0eWxlIG9mIHdvcmtsb2FkLg0KDQo+IA0KPiAu
-LiBhbmQgY2FuIHdlIGdvIGJhY2sgdG8gdGhlIHdheSBpdCB3YXMgYmVmb3JlPw0KDQpOb3Qgd2l0
-aG91dCBzbG93aW5nIGRvd24g4oCYbHMgLWzigJkgb24gbGFyZ2UgZGlyZWN0b3JpZXMuDQoNCj4g
-DQo+IE9LLi4gSSB1bmRlcnN0YW5kIHdoeSAtLSBpdCBpcyBtb3JlIGNvcnJlY3Qgc2luY2UgaWYg
-d2Uga25vdyB0aGUgZGlyZWN0b3J5IGhhcw0KPiBjaGFuZ2VkLCB3ZSBtaWdodCBhcyB3ZWxsIGZl
-dGNoIHRoZSBjaGFuZ2UuICBPdGhlcndpc2UsIHdlIG1pZ2h0IGJlIGNyZWF0aW5nDQo+IGZpbGVz
-IGFuZCB0aGVuIHdvbmRlcmluZyB3aHkgdGhleSBhcmVuJ3QgbGlzdGVkLg0KPiANCj4gSXQgbWln
-aHQgYmUgbmljZXIgdG8gbm90IGludmFsaWRhdGUgdGhlIG1hcHBpbmcgd2UncmUgY3VycmVudGx5
-IHVzaW5nIGZvcg0KPiByZWFkZGlyLCB0aG91Z2guICBNYXliZSB0aGVyZSdzIGEgd2F5IHRvIGtl
-ZXAgdGhlIG1hcHBpbmcgZm9yIHRoZSBjdXJyZW50bHkNCj4gb3BlbmVkIGRpcmVjdG9yeSBhbmQg
-aW52YWxpZGF0ZSBpdCBvbmNlIGl0J3MgY2xvc2VkLg0KDQogUE9TSVggcmVxdWlyZXMgdGhhdCB5
-b3UgcmV2YWxpZGF0ZSBvbiBvcGVuZGlyKCkgYW5kIHJld2luZGRpcigpLCBhbmQgbGVhdmVzIGJl
-aGF2aW91ciB3LnIudC4gZmlsZSBhZGRpdGlvbiBhbmQgcmVtb3ZhbCBhZnRlciB0aGUgY2FsbCB0
-byBvcGVuZGlyKCkvcmV3aW5kZGlyKCkgdW5kZWZpbmVkIChodHRwOi8vcHVicy5vcGVuZ3JvdXAu
-b3JnL29ubGluZXB1YnMvOTY5OTkxOTc5OS9mdW5jdGlvbnMvcmVhZGRpci5odG1sKS4gSSBiZWxp
-ZXZlIG1vc3QgZmlsZXN5c3RlbXMgdW5kZXIgTGludXggd2lsbCBlbnN1cmUgdGhhdCBpZiBhIGZp
-bGUgaXMgcmVtb3ZlZCwgaXQgaXMgbm8gbG9uZ2VyIHNlZW4gaW4gdGhlIHJlYWRkaXIgc3RyZWFt
-LCBhbmQgYSBmaWxlIHRoYXQgaXMgYWRkZWQgd2lsbCBiZSBzZWVuIHVubGVzcyB0aGUgcmVhZGRp
-ciBjdXJzb3IgaGFzIGFscmVhZHkgcGFzc2VkIGl0LCBzbyB0aGVyZSBpcyB0aGF0IHRvIGNvbnNp
-ZGVyLg0KDQpIb3dldmVyIGNvcnJlY3RuZXNzIHdhcyBub3QgdGhlIG1haW4gaXNzdWUgaGVyZS4N
-Cg0K
+On 23 Aug 2016, at 17:21, Benjamin Coddington wrote:
+
+> On 23 Aug 2016, at 11:36, Trond Myklebust wrote:
+>
+>>> On Aug 23, 2016, at 11:09, Benjamin Coddington <bcodding@redhat.com> 
+>>> wrote:
+>>>
+>>> Hi linux-nfs,
+>>>
+>>> 311324ad1713 ("NFS: Be more aggressive in using readdirplus for 'ls 
+>>> -l'
+>>> situations") changed when nfs_readdir() decides to revalidate the
+>>> directory's mapping, which contains all the entries.  In addition to 
+>>> just
+>>> checking if the attribute cache has expired, it includes a check to 
+>>> see if
+>>> NFS_INO_INVALID_DATA is set on the directory.
+>>>
+>>> Well, customers that have directories with very many dentries and 
+>>> that same
+>>> directory's attributes are frequently updated are now grouchy that 
+>>> `ls -l`
+>>> takes so long since any update of the directory causes the mapping 
+>>> to be
+>>> invalidated and we have to start over filling the directory's 
+>>> mapping.
+>>>
+>>> I actually haven't put real hard thought into it yet (because often 
+>>> for me
+>>> that just wastes a lot of time), so I am doing the lazy thing by 
+>>> asking this
+>>> question:
+>>>
+>>> Can we go back to just the using the attribute cache timeout, or 
+>>> should we
+>>> get all heuristical about readdir?
+>>>
+>>
+>> We are all heuristical at this point. How are the heuristics failing?
+>>
+>> The original problem those heuristics were designed to solve was that 
+>> all
+>> the stat() calls took forever to complete, since they are all 
+>> synchronous;
+>> Tigran showed some very convincing numbers for a large directory 
+>> where the
+>> difference in performance was an order of magnitude improved by using
+>> readdirplus instead of readdir…
+>
+> I'll try to present a better explanation.  While `ls -l` is walking 
+> through
+> a directory repeatedly entering nfs_readdir(), a CREATE response send 
+> us
+> through nfs_post_op_update_inode_locked():
+>
+> 1531     if (S_ISDIR(inode->i_mode))
+> 1532         invalid |= NFS_INO_INVALID_DATA;
+> 1533     nfs_set_cache_invalid(inode, invalid);
+>
+> Now, the next entry into nfs_readdir() has us do 
+> nfs_revalidate_mapping(),
+> which will do nfs_invalidate_mapping() for the directory, and so we 
+> have to
+> start over with cookie 0 sending READDIRPLUS to re-fill the 
+> directory's
+> mapping to get back to where we are for the current nfs_readdir().
+>
+> This process repeats for every entry into nfs_readdir() if the 
+> directory
+> keeps getting updated, and it becomes more likely that it will be 
+> updated as
+> each pass takes longer and longer to re-fill the mapping as the 
+> current
+> nfs_readdir() invocation is further along.
+>
+> READDIRPLUS isn't the problem, the problem is invalidating the 
+> directory
+> mapping in the middle of a series of getdents() if we do a CREATE.  
+> Also, I
+> think a similar thing happens if the directory's mtime or ctime is 
+> updated -
+> but in that case we set NFS_INO_INVALID_DATA because the change_attr
+> updates.
+>
+> So, for directories with a large number of entries that updates often, 
+> it can
+> be very slow to list the directory.
+>
+> Why did 311324ad1713 change nfs_readdir from
+>
+> if (nfs_attribute_cache_expired(inode))
+>     nfs_revalidate_mapping(inode, file->f_mapping);
+> to
+>
+> if (nfs_attribute_cache_expired(inode) || nfsi->cache_validity & 
+> NFS_INO_INVALID_DATA)
+>     nfs_revalidate_mapping(inode, file->f_mapping);
+>
+> .. and can we go back to the way it was before?
+>
+> OK.. I understand why -- it is more correct since if we know the 
+> directory has
+> changed, we might as well fetch the change.  Otherwise, we might be 
+> creating
+> files and then wondering why they aren't listed.
+
+But that won't happen unless a process deliberately starts over at 
+position
+0..  I think a user creating a file, then listing the directory would 
+work
+as expected.
+
+Scott Mayhew already addressed this problem in:
+
+07b5ce8ef2d8 ("NFS: Make nfs_readdir revalidate less often")
+
+So, from 3.10 to 3.14 we had the behavior where we wouldn't clear the
+mapping unless pos = 0 or the attribute cache expired.
+
+> It might be nicer to not invalidate the mapping we're currently using 
+> for
+> readdir, though.  Maybe there's a way to keep the mapping for the 
+> currently
+> opened directory and invalidate it once it's closed.
+
+POSIX readdir says:
+
+     If a file is removed from or added to the directory after the most 
+recent
+     call to opendir() or rewinddir(), whether a subsequent call to 
+readdir()
+     returns an entry for that file is unspecified.
+
+However, RFC 1813 says:
+
+     The client should be careful to avoid holding directory entry 
+cookies
+     across operations that modify the directory contents, such as 
+REMOVE and
+     CREATE.
+
+Ideally, we would keep using the same cookieverf until the server sends
+NFS3ERR_BAD_COOKIE, and maybe just keep track of the last position/entry
+cookie so we could pick up where we left off after invalidation.
+
+Ben
