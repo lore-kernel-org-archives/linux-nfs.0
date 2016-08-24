@@ -1,136 +1,114 @@
-Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from hoggar.fisica.ufpr.br ([200.238.171.242]:35674 "EHLO
-        hoggar.fisica.ufpr.br" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1755624AbcHXN53 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 24 Aug 2016 09:57:29 -0400
-Date: Wed, 24 Aug 2016 10:57:26 -0300
-From: Carlos Carvalho <carlos@fisica.ufpr.br>
-To: linux-nfs@vger.kernel.org
-Subject: Re: crashes in 4.6.5
-Message-ID: <20160824135725.5fcto7cy34zqhwsl@fisica.ufpr.br>
-References: <20160804203612.xqzevnqyzkfxwfv3@fisica.ufpr.br>
- <20160824134020.GE3938@fieldses.org>
+Return-Path: <trondmy@primarydata.com>
+From: Trond Myklebust <trondmy@primarydata.com>
+To: Fields Bruce James <bfields@fieldses.org>
+CC: Coddington Benjamin <bcodding@redhat.com>,
+        List Linux NFS Mailing
+	<linux-nfs@vger.kernel.org>
+Subject: Re: I can't get no readdir satisfaction
+Date: Wed, 24 Aug 2016 14:02:04 +0000
+Message-ID: <9AB01AA0-9E40-4DD9-8C97-0EB4519E7816@primarydata.com>
+References: <778246F3-8F24-48FD-AEA9-0BCC0DCD93B3@redhat.com>
+ <F9D0E173-9E64-4BC4-87FB-0F6F4EEBF4C7@primarydata.com>
+ <98E39192-4203-4EB8-BDE0-2A4ABFCAA92B@redhat.com>
+ <81D2E080-0697-4B26-BE38-5E8AC35C2EA4@primarydata.com>
+ <20160824135603.GF3938@fieldses.org>
+In-Reply-To: <20160824135603.GF3938@fieldses.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-In-Reply-To: <20160824134020.GE3938@fieldses.org>
-Sender: linux-nfs-owner@vger.kernel.org
+Content-Type: text/plain; charset=UTF-8
 List-ID: <linux-nfs.vger.kernel.org>
 
-J. Bruce Fields (bfields@fieldses.org) wrote on Wed, Aug 24, 2016 at 10:40:20AM BRT:
-> On Thu, Aug 04, 2016 at 05:36:12PM -0300, Carlos Carvalho wrote:
-> > Our nfs server, running 4.6.5, doesn't last more than 2-3 days. There are
-> > several errors in the log that seem to be nfs4 related.
-> 
-> What's the very first error of any kind?
-
-I sent all that's in the log; the dumps start with general protection fault,
-and INFO: rcu_sched for the stalls. The latest one, 4.7.2 in a nfs3-only
-machine that I reported yesterday, just outputs a few lines with rcu_sched
-stall warnings, only to the console and nothing in logs. I didn't write them
-down this time. The machine still reacted to SysRq commands; I used a forced
-umount and then an immediate reboot. However there was still non-negligible
-filesystem corruption...
-
-> --b.
-> 
-> > After many of these
-> > errors the machine eventually crashes:
-> > 
-> > Aug  4 07:39:57 urquell kernel: general protection fault: 0000 [#2] SMP 
-> > Aug  4 07:39:57 urquell kernel: Modules linked in:
-> > Aug  4 07:39:57 urquell kernel: CPU: 0 PID: 19621 Comm: nfsd Tainted: G      D   I     4.6.5 #1
-> > Aug  4 07:39:57 urquell kernel: Hardware name: SGI.COM SGI MIS Server/S2600JF, BIOS SE5C600.86B.01.03.0002.062020121504 06/20/2012
-> > Aug  4 07:39:57 urquell kernel: task: ffff881fe24dd940 ti: ffff880e61bd8000 task.ti: ffff880e61bd8000
-> > Aug  4 07:39:57 urquell kernel: RIP: 0010:[<ffffffff81252ef2>]  [<ffffffff81252ef2>] nfsd4_del_conns+0x72/0xc0
-> > Aug  4 07:39:57 urquell kernel: RSP: 0018:ffff880e61bdbce0  EFLAGS: 00010246
-> > Aug  4 07:39:57 urquell kernel: RAX: ffff880b8a34b758 RBX: ffff880b8a34b740 RCX: dead000000000100
-> > Aug  4 07:39:57 urquell kernel: RDX: dead000000000200 RSI: 0000000000000001 RDI: ffff880e22af6078
-> > Aug  4 07:39:57 urquell kernel: RBP: ffff880e22af6000 R08: 0000000000000001 R09: 00004c0ca729bd38
-> > Aug  4 07:39:57 urquell kernel: R10: 0000000000000001 R11: 0000000000000001 R12: ffff881aaa9c4800
-> > Aug  4 07:39:57 urquell kernel: R13: ffff880fe21ab298 R14: ffff881aaa9c4b30 R15: ffff880fe21ab200
-> > Aug  4 07:39:57 urquell kernel: FS:  0000000000000000(0000) GS:ffff880fffc00000(0000) knlGS:0000000000000000
-> > Aug  4 07:39:57 urquell kernel: CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
-> > Aug  4 07:39:57 urquell kernel: CR2: 00007f716a49c000 CR3: 0000000001c06000 CR4: 00000000000406f0
-> > Aug  4 07:39:57 urquell kernel: Stack:
-> > Aug  4 07:39:57 urquell kernel: ffff880fe21ab218 ffff881aaa9c4800 ffff880fe21ab200 ffff881aaa9c4b38
-> > Aug  4 07:39:57 urquell kernel: ffff880c9ace8c80 0000000000000000 ffffffff812532a6 ffff881aaa9c4830
-> > Aug  4 07:39:57 urquell kernel: ffff881aaa9c4800 ffff880e61bdbd40 ffff881aaa9c4868 ffffffff81254c7f
-> > Aug  4 07:39:57 urquell kernel: Call Trace:
-> > Aug  4 07:39:57 urquell kernel: [<ffffffff812532a6>] ? free_client+0x26/0x150
-> > Aug  4 07:39:57 urquell kernel: [<ffffffff81254c7f>] ? __destroy_client+0x14f/0x160
-> > Aug  4 07:39:57 urquell kernel: [<ffffffff81255ad9>] ? nfsd4_create_session+0x659/0x850
-> > Aug  4 07:39:57 urquell kernel: [<ffffffff8124b1d2>] ? nfsd4_proc_compound+0x302/0x560
-> > Aug  4 07:39:57 urquell kernel: [<ffffffff8123c7ae>] ? nfsd_dispatch+0x7e/0x160
-> > Aug  4 07:39:57 urquell kernel: [<ffffffff8171f80d>] ? svc_process_common+0x38d/0x510
-> > Aug  4 07:39:57 urquell kernel: [<ffffffff8171fa6d>] ? svc_process+0xdd/0xf0
-> > Aug  4 07:39:57 urquell kernel: [<ffffffff8123c284>] ? nfsd+0xe4/0x150
-> > Aug  4 07:39:57 urquell kernel: [<ffffffff8123c1a0>] ? nfsd_destroy+0x60/0x60
-> > Aug  4 07:39:57 urquell kernel: [<ffffffff810976ca>] ? kthread+0xca/0xe0
-> > Aug  4 07:39:57 urquell kernel: [<ffffffff81252e00>] ? nfsd4_put_drc_mem+0x40/0x40
-> > Aug  4 07:39:57 urquell kernel: [<ffffffff81744192>] ? ret_from_fork+0x22/0x40
-> > Aug  4 07:39:57 urquell kernel: [<ffffffff81097600>] ? kthread_park+0x50/0x50
-> > Aug  4 07:39:57 urquell kernel: Code: 89 10 48 89 1b 48 89 5b 08 41 c6 84 24 30 03 00 00 00 48 8b 6b 10 48 8d 7d 78 e8 1a 0f 4f 00 48 8b 4b 18 48 8d 43 18 48 8b 53 20 <48> 89 51 08 48 89 0a 48 89 43 18 48 89 43 20 c6 45 78 00 48 8b 
-> > Aug  4 07:39:57 urquell kernel: RIP  [<ffffffff81252ef2>] nfsd4_del_conns+0x72/0xc0
-> > Aug  4 07:39:57 urquell kernel: RSP <ffff880e61bdbce0>
-> > Aug  4 07:39:57 urquell kernel: ---[ end trace bbec43f5aa22f6e3 ]---
-> > 
-> > There are also cpu stalls:
-> > 
-> > Aug  4 10:46:14 urquell kernel: INFO: rcu_sched self-detected stall on CPU
-> > Aug  4 10:46:14 urquell kernel: 	4-...: (14997 ticks this GP) idle=76b/140000000000001/0 softirq=30513439/30513439 fqs=13790 
-> > Aug  4 10:46:14 urquell kernel: 	 (t=15000 jiffies g=10123193 c=10123192 q=4324508)
-> > Aug  4 10:46:14 urquell kernel: Task dump for CPU 4:
-> > Aug  4 10:46:14 urquell kernel: nfsd            R  running task        0 19618      2 0x00000008
-> > Aug  4 10:46:14 urquell kernel: ffffffff81c37240 ffffffff810bfc4b ffff880fffc94880 ffffffff81c37240
-> > Aug  4 10:46:14 urquell kernel: 0000000000000000 ffff881fe24dbfc0 ffffffff810c2adc ffff880fffc93bc0
-> > Aug  4 10:46:14 urquell kernel: 0000000000013bc0 0000000000000004 ffff880fffc83e90 ffff880fffc83e90
-> > Aug  4 10:46:14 urquell kernel: Call Trace:
-> > Aug  4 10:46:14 urquell kernel: <IRQ>  [<ffffffff810bfc4b>] ? rcu_dump_cpu_stacks+0x7b/0xb0
-> > Aug  4 10:46:14 urquell kernel: [<ffffffff810c2adc>] ? rcu_check_callbacks+0x3bc/0x680
-> > Aug  4 10:46:14 urquell kernel: [<ffffffff810c467d>] ? update_process_times+0x2d/0x50
-> > Aug  4 10:46:14 urquell kernel: [<ffffffff810d1301>] ? tick_sched_timer+0x41/0x160
-> > Aug  4 10:46:14 urquell kernel: [<ffffffff810c4c13>] ? __hrtimer_run_queues+0xb3/0x150
-> > Aug  4 10:46:14 urquell kernel: [<ffffffff810c5124>] ? hrtimer_interrupt+0x94/0x170
-> > Aug  4 10:46:14 urquell kernel: [<ffffffff8106c4e4>] ? smp_apic_timer_interrupt+0x34/0x50
-> > Aug  4 10:46:14 urquell kernel: [<ffffffff81744b4f>] ? apic_timer_interrupt+0x7f/0x90
-> > Aug  4 10:46:14 urquell kernel: <EOI>  [<ffffffff81091a47>] ? queue_work_on+0x17/0x20
-> > Aug  4 10:46:14 urquell kernel: [<ffffffff81252e66>] ? nfsd4_conn_lost+0x66/0x80
-> > Aug  4 10:46:14 urquell kernel: [<ffffffff8172c9fd>] ? svc_delete_xprt+0xcd/0x130
-> > Aug  4 10:46:14 urquell kernel: [<ffffffff8172d1f9>] ? svc_recv+0x5f9/0x950
-> > Aug  4 10:46:14 urquell kernel: [<ffffffff8172c74f>] ? svc_xprt_release+0x8f/0xf0
-> > Aug  4 10:46:14 urquell kernel: [<ffffffff8123c272>] ? nfsd+0xd2/0x150
-> > Aug  4 10:46:14 urquell kernel: [<ffffffff8123c1a0>] ? nfsd_destroy+0x60/0x60
-> > Aug  4 10:46:14 urquell kernel: [<ffffffff810976ca>] ? kthread+0xca/0xe0
-> > Aug  4 10:46:14 urquell kernel: [<ffffffff81744192>] ? ret_from_fork+0x22/0x40
-> > Aug  4 10:46:14 urquell kernel: [<ffffffff81097600>] ? kthread_park+0x50/0x50
-> > Aug  4 10:46:14 urquell kernel: INFO: rcu_sched detected stalls on CPUs/tasks:
-> > Aug  4 10:46:14 urquell kernel: 	4-...: (14998 ticks this GP) idle=76b/140000000000000/0 softirq=30513439/30513439 fqs=13791 
-> > Aug  4 10:46:14 urquell kernel: 	(detected by 20, t=15004 jiffies, g=10123193, c=10123192, q=4324792)
-> > Aug  4 10:46:14 urquell kernel: Task dump for CPU 4:
-> > Aug  4 10:46:14 urquell kernel: nfsd            R  running task        0 19618      2 0x00000008
-> > Aug  4 10:46:14 urquell kernel: ffff880fff800060 ffff88029099cb00 0001881ff5bc4f00 ffff8805e78f6ac0
-> > Aug  4 10:46:14 urquell kernel: ffff8800bbbe8600 000000000000e3b0 0000000000000040 ffff880fff811800
-> > Aug  4 10:46:14 urquell kernel: ffffffff810917d9 ffffea002ec51bc0 0000000000000206 ffff881a63046800
-> > Aug  4 10:46:14 urquell kernel: Call Trace:
-> > Aug  4 10:46:14 urquell kernel: [<ffffffff810917d9>] ? __queue_work+0x119/0x370
-> > Aug  4 10:46:14 urquell kernel: [<ffffffff81091a40>] ? queue_work_on+0x10/0x20
-> > Aug  4 10:46:14 urquell kernel: [<ffffffff81252e66>] ? nfsd4_conn_lost+0x66/0x80
-> > Aug  4 10:46:14 urquell kernel: [<ffffffff8172c9fd>] ? svc_delete_xprt+0xcd/0x130
-> > Aug  4 10:46:14 urquell kernel: [<ffffffff8172d1f9>] ? svc_recv+0x5f9/0x950
-> > Aug  4 10:46:14 urquell kernel: [<ffffffff8172c74f>] ? svc_xprt_release+0x8f/0xf0
-> > Aug  4 10:46:14 urquell kernel: [<ffffffff8123c272>] ? nfsd+0xd2/0x150
-> > Aug  4 10:46:14 urquell kernel: [<ffffffff8123c1a0>] ? nfsd_destroy+0x60/0x60
-> > Aug  4 10:46:14 urquell kernel: [<ffffffff810976ca>] ? kthread+0xca/0xe0
-> > Aug  4 10:46:14 urquell kernel: [<ffffffff81744192>] ? ret_from_fork+0x22/0x40
-> > Aug  4 10:46:14 urquell kernel: [<ffffffff81097600>] ? kthread_park+0x50/0x50
-> > 
-> > This is the only machine with problems running 4.6.5, and the only one that
-> > uses nfs4.
-> > --
-> > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> > the body of a message to majordomo@vger.kernel.org
-> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+DQo+IE9uIEF1ZyAyNCwgMjAxNiwgYXQgMDk6NTYsIEouIEJydWNlIEZpZWxkcyA8YmZpZWxkc0Bm
+aWVsZHNlcy5vcmc+IHdyb3RlOg0KPiANCj4gT24gV2VkLCBBdWcgMjQsIDIwMTYgYXQgMTI6MTg6
+MDRQTSArMDAwMCwgVHJvbmQgTXlrbGVidXN0IHdyb3RlOg0KPj4gDQo+Pj4gT24gQXVnIDIzLCAy
+MDE2LCBhdCAxNzoyMSwgQmVuamFtaW4gQ29kZGluZ3RvbiA8YmNvZGRpbmdAcmVkaGF0LmNvbT4g
+d3JvdGU6DQo+Pj4gDQo+Pj4gDQo+Pj4gDQo+Pj4gT24gMjMgQXVnIDIwMTYsIGF0IDExOjM2LCBU
+cm9uZCBNeWtsZWJ1c3Qgd3JvdGU6DQo+Pj4gDQo+Pj4+PiBPbiBBdWcgMjMsIDIwMTYsIGF0IDEx
+OjA5LCBCZW5qYW1pbiBDb2RkaW5ndG9uIDxiY29kZGluZ0ByZWRoYXQuY29tPiB3cm90ZToNCj4+
+Pj4+IA0KPj4+Pj4gSGkgbGludXgtbmZzLA0KPj4+Pj4gDQo+Pj4+PiAzMTEzMjRhZDE3MTMgKCJO
+RlM6IEJlIG1vcmUgYWdncmVzc2l2ZSBpbiB1c2luZyByZWFkZGlycGx1cyBmb3IgJ2xzIC1sJw0K
+Pj4+Pj4gc2l0dWF0aW9ucyIpIGNoYW5nZWQgd2hlbiBuZnNfcmVhZGRpcigpIGRlY2lkZXMgdG8g
+cmV2YWxpZGF0ZSB0aGUNCj4+Pj4+IGRpcmVjdG9yeSdzIG1hcHBpbmcsIHdoaWNoIGNvbnRhaW5z
+IGFsbCB0aGUgZW50cmllcy4gIEluIGFkZGl0aW9uIHRvIGp1c3QNCj4+Pj4+IGNoZWNraW5nIGlm
+IHRoZSBhdHRyaWJ1dGUgY2FjaGUgaGFzIGV4cGlyZWQsIGl0IGluY2x1ZGVzIGEgY2hlY2sgdG8g
+c2VlIGlmDQo+Pj4+PiBORlNfSU5PX0lOVkFMSURfREFUQSBpcyBzZXQgb24gdGhlIGRpcmVjdG9y
+eS4NCj4+Pj4+IA0KPj4+Pj4gV2VsbCwgY3VzdG9tZXJzIHRoYXQgaGF2ZSBkaXJlY3RvcmllcyB3
+aXRoIHZlcnkgbWFueSBkZW50cmllcyBhbmQgdGhhdCBzYW1lDQo+Pj4+PiBkaXJlY3RvcnkncyBh
+dHRyaWJ1dGVzIGFyZSBmcmVxdWVudGx5IHVwZGF0ZWQgYXJlIG5vdyBncm91Y2h5IHRoYXQgYGxz
+IC1sYA0KPj4+Pj4gdGFrZXMgc28gbG9uZyBzaW5jZSBhbnkgdXBkYXRlIG9mIHRoZSBkaXJlY3Rv
+cnkgY2F1c2VzIHRoZSBtYXBwaW5nIHRvIGJlDQo+Pj4+PiBpbnZhbGlkYXRlZCBhbmQgd2UgaGF2
+ZSB0byBzdGFydCBvdmVyIGZpbGxpbmcgdGhlIGRpcmVjdG9yeSdzIG1hcHBpbmcuDQo+Pj4+PiAN
+Cj4+Pj4+IEkgYWN0dWFsbHkgaGF2ZW4ndCBwdXQgcmVhbCBoYXJkIHRob3VnaHQgaW50byBpdCB5
+ZXQgKGJlY2F1c2Ugb2Z0ZW4gZm9yIG1lDQo+Pj4+PiB0aGF0IGp1c3Qgd2FzdGVzIGEgbG90IG9m
+IHRpbWUpLCBzbyBJIGFtIGRvaW5nIHRoZSBsYXp5IHRoaW5nIGJ5IGFza2luZyB0aGlzDQo+Pj4+
+PiBxdWVzdGlvbjoNCj4+Pj4+IA0KPj4+Pj4gQ2FuIHdlIGdvIGJhY2sgdG8ganVzdCB0aGUgdXNp
+bmcgdGhlIGF0dHJpYnV0ZSBjYWNoZSB0aW1lb3V0LCBvciBzaG91bGQgd2UNCj4+Pj4+IGdldCBh
+bGwgaGV1cmlzdGljYWwgYWJvdXQgcmVhZGRpcj8NCj4+Pj4+IA0KPj4+PiANCj4+Pj4gV2UgYXJl
+IGFsbCBoZXVyaXN0aWNhbCBhdCB0aGlzIHBvaW50LiBIb3cgYXJlIHRoZSBoZXVyaXN0aWNzIGZh
+aWxpbmc/DQo+Pj4+IA0KPj4+PiBUaGUgb3JpZ2luYWwgcHJvYmxlbSB0aG9zZSBoZXVyaXN0aWNz
+IHdlcmUgZGVzaWduZWQgdG8gc29sdmUgd2FzIHRoYXQgYWxsDQo+Pj4+IHRoZSBzdGF0KCkgY2Fs
+bHMgdG9vayBmb3JldmVyIHRvIGNvbXBsZXRlLCBzaW5jZSB0aGV5IGFyZSBhbGwgc3luY2hyb25v
+dXM7DQo+Pj4+IFRpZ3JhbiBzaG93ZWQgc29tZSB2ZXJ5IGNvbnZpbmNpbmcgbnVtYmVycyBmb3Ig
+YSBsYXJnZSBkaXJlY3Rvcnkgd2hlcmUgdGhlDQo+Pj4+IGRpZmZlcmVuY2UgaW4gcGVyZm9ybWFu
+Y2Ugd2FzIGFuIG9yZGVyIG9mIG1hZ25pdHVkZSBpbXByb3ZlZCBieSB1c2luZw0KPj4+PiByZWFk
+ZGlycGx1cyBpbnN0ZWFkIG9mIHJlYWRkaXLigKYNCj4+PiANCj4+PiBJJ2xsIHRyeSB0byBwcmVz
+ZW50IGEgYmV0dGVyIGV4cGxhbmF0aW9uLiAgV2hpbGUgYGxzIC1sYCBpcyB3YWxraW5nIHRocm91
+Z2gNCj4+PiBhIGRpcmVjdG9yeSByZXBlYXRlZGx5IGVudGVyaW5nIG5mc19yZWFkZGlyKCksIGEg
+Q1JFQVRFIHJlc3BvbnNlIHNlbmQgdXMNCj4+PiB0aHJvdWdoIG5mc19wb3N0X29wX3VwZGF0ZV9p
+bm9kZV9sb2NrZWQoKToNCj4+PiANCj4+PiAxNTMxICAgICBpZiAoU19JU0RJUihpbm9kZS0+aV9t
+b2RlKSkNCj4+PiAxNTMyICAgICAgICAgaW52YWxpZCB8PSBORlNfSU5PX0lOVkFMSURfREFUQTsN
+Cj4+PiAxNTMzICAgICBuZnNfc2V0X2NhY2hlX2ludmFsaWQoaW5vZGUsIGludmFsaWQpOw0KPj4+
+IA0KPj4+IE5vdywgdGhlIG5leHQgZW50cnkgaW50byBuZnNfcmVhZGRpcigpIGhhcyB1cyBkbyBu
+ZnNfcmV2YWxpZGF0ZV9tYXBwaW5nKCksDQo+Pj4gd2hpY2ggd2lsbCBkbyBuZnNfaW52YWxpZGF0
+ZV9tYXBwaW5nKCkgZm9yIHRoZSBkaXJlY3RvcnksIGFuZCBzbyB3ZSBoYXZlIHRvDQo+Pj4gc3Rh
+cnQgb3ZlciB3aXRoIGNvb2tpZSAwIHNlbmRpbmcgUkVBRERJUlBMVVMgdG8gcmUtZmlsbCB0aGUg
+ZGlyZWN0b3J5J3MNCj4+PiBtYXBwaW5nIHRvIGdldCBiYWNrIHRvIHdoZXJlIHdlIGFyZSBmb3Ig
+dGhlIGN1cnJlbnQgbmZzX3JlYWRkaXIoKS4NCj4+PiANCj4+PiBUaGlzIHByb2Nlc3MgcmVwZWF0
+cyBmb3IgZXZlcnkgZW50cnkgaW50byBuZnNfcmVhZGRpcigpIGlmIHRoZSBkaXJlY3RvcnkNCj4+
+PiBrZWVwcyBnZXR0aW5nIHVwZGF0ZWQsIGFuZCBpdCBiZWNvbWVzIG1vcmUgbGlrZWx5IHRoYXQg
+aXQgd2lsbCBiZSB1cGRhdGVkIGFzDQo+Pj4gZWFjaCBwYXNzIHRha2VzIGxvbmdlciBhbmQgbG9u
+Z2VyIHRvIHJlLWZpbGwgdGhlIG1hcHBpbmcgYXMgdGhlIGN1cnJlbnQNCj4+PiBuZnNfcmVhZGRp
+cigpIGludm9jYXRpb24gaXMgZnVydGhlciBhbG9uZy4NCj4+PiANCj4+PiBSRUFERElSUExVUyBp
+c24ndCB0aGUgcHJvYmxlbSwgdGhlIHByb2JsZW0gaXMgaW52YWxpZGF0aW5nIHRoZSBkaXJlY3Rv
+cnkNCj4+PiBtYXBwaW5nIGluIHRoZSBtaWRkbGUgb2YgYSBzZXJpZXMgb2YgZ2V0ZGVudHMoKSBp
+ZiB3ZSBkbyBhIENSRUFURS4gIEFsc28sIEkNCj4+PiB0aGluayBhIHNpbWlsYXIgdGhpbmcgaGFw
+cGVucyBpZiB0aGUgZGlyZWN0b3J5J3MgbXRpbWUgb3IgY3RpbWUgaXMgdXBkYXRlZCAtDQo+Pj4g
+YnV0IGluIHRoYXQgY2FzZSB3ZSBzZXQgTkZTX0lOT19JTlZBTElEX0RBVEEgYmVjYXVzZSB0aGUg
+Y2hhbmdlX2F0dHINCj4+PiB1cGRhdGVzLg0KPj4+IA0KPj4+IFNvLCBmb3IgZGlyZWN0b3JpZXMg
+d2l0aCBhIGxhcmdlIG51bWJlciBvZiBlbnRyaWVzIHRoYXQgdXBkYXRlcyBvZnRlbiwgaXQgY2Fu
+DQo+Pj4gYmUgdmVyeSBzbG93IHRvIGxpc3QgdGhlIGRpcmVjdG9yeS4NCj4+PiANCj4+PiBXaHkg
+ZGlkIDMxMTMyNGFkMTcxMyBjaGFuZ2UgbmZzX3JlYWRkaXIgZnJvbQ0KPj4+IA0KPj4+IGlmIChu
+ZnNfYXR0cmlidXRlX2NhY2hlX2V4cGlyZWQoaW5vZGUpKQ0KPj4+ICAgbmZzX3JldmFsaWRhdGVf
+bWFwcGluZyhpbm9kZSwgZmlsZS0+Zl9tYXBwaW5nKTsNCj4+PiB0bw0KPj4+IA0KPj4+IGlmIChu
+ZnNfYXR0cmlidXRlX2NhY2hlX2V4cGlyZWQoaW5vZGUpIHx8IG5mc2ktPmNhY2hlX3ZhbGlkaXR5
+ICYgTkZTX0lOT19JTlZBTElEX0RBVEEpDQo+Pj4gICBuZnNfcmV2YWxpZGF0ZV9tYXBwaW5nKGlu
+b2RlLCBmaWxlLT5mX21hcHBpbmcpOw0KPj4gDQo+PiBBcyB0aGUgY29tbWl0IG1lc3NhZ2Ugc2F5
+cywgdGhlIHdob2xlIHB1cnBvc2Ugd2FzIHRvIHVzZSBSRUFERElSUExVUyBhcyBhIHN1YnN0aXR1
+dGUgZm9yIG11bHRpcGxlIEdFVEFUVFIgY2FsbHMgd2hlbiB0aGUgaGV1cmlzdGljIHRlbGxzIHVz
+IHRoYXQgdGhlIHVzZXIgaXMgcGVyZm9ybWluZyBhbiDigJhscyAtbOKAmSBzdHlsZSBvZiB3b3Jr
+bG9hZC4NCj4+IA0KPj4+IA0KPj4+IC4uIGFuZCBjYW4gd2UgZ28gYmFjayB0byB0aGUgd2F5IGl0
+IHdhcyBiZWZvcmU/DQo+PiANCj4+IE5vdCB3aXRob3V0IHNsb3dpbmcgZG93biDigJhscyAtbOKA
+mSBvbiBsYXJnZSBkaXJlY3Rvcmllcy4NCj4+IA0KPj4+IA0KPj4+IE9LLi4gSSB1bmRlcnN0YW5k
+IHdoeSAtLSBpdCBpcyBtb3JlIGNvcnJlY3Qgc2luY2UgaWYgd2Uga25vdyB0aGUgZGlyZWN0b3J5
+IGhhcw0KPj4+IGNoYW5nZWQsIHdlIG1pZ2h0IGFzIHdlbGwgZmV0Y2ggdGhlIGNoYW5nZS4gIE90
+aGVyd2lzZSwgd2UgbWlnaHQgYmUgY3JlYXRpbmcNCj4+PiBmaWxlcyBhbmQgdGhlbiB3b25kZXJp
+bmcgd2h5IHRoZXkgYXJlbid0IGxpc3RlZC4NCj4+PiANCj4+PiBJdCBtaWdodCBiZSBuaWNlciB0
+byBub3QgaW52YWxpZGF0ZSB0aGUgbWFwcGluZyB3ZSdyZSBjdXJyZW50bHkgdXNpbmcgZm9yDQo+
+Pj4gcmVhZGRpciwgdGhvdWdoLiAgTWF5YmUgdGhlcmUncyBhIHdheSB0byBrZWVwIHRoZSBtYXBw
+aW5nIGZvciB0aGUgY3VycmVudGx5DQo+Pj4gb3BlbmVkIGRpcmVjdG9yeSBhbmQgaW52YWxpZGF0
+ZSBpdCBvbmNlIGl0J3MgY2xvc2VkLg0KPj4gDQo+IA0KPj4gUE9TSVggcmVxdWlyZXMgdGhhdCB5
+b3UgcmV2YWxpZGF0ZSBvbiBvcGVuZGlyKCkgYW5kIHJld2luZGRpcigpLCBhbmQNCj4+IGxlYXZl
+cyBiZWhhdmlvdXIgdy5yLnQuIGZpbGUgYWRkaXRpb24gYW5kIHJlbW92YWwgYWZ0ZXIgdGhlIGNh
+bGwgdG8NCj4+IG9wZW5kaXIoKS9yZXdpbmRkaXIoKSB1bmRlZmluZWQNCj4+IChodHRwOi8vcHVi
+cy5vcGVuZ3JvdXAub3JnL29ubGluZXB1YnMvOTY5OTkxOTc5OS9mdW5jdGlvbnMvcmVhZGRpci5o
+dG1sKS4NCj4gDQo+IEl0IGlzIG9ubHkgdW5kZWZpbmVkIHdoZXRoZXIgdGhlIGFkZGVkIG9yIHJl
+bW92ZWQgZW50cnkgaXMgcmV0dXJuZWQuDQo+IE90aGVyIGVudHJpZXMgc3RpbGwgbmVlZCB0byBy
+ZXR1cm5lZCBleGFjdGx5IG9uY2UuDQo+IA0KPiBJbiB0aGlzIGNhc2Ugd2UncmUgcmVzdGFydGlu
+ZyB0aGUgcmVhZCBvZiB0aGUgZGlyZWN0b3J5IGZyb20gc2NyYXRjaC0tSQ0KPiBkb24ndCB1bmRl
+cnN0YW5kIGhvdyB0aGF0J3MgcG9zc2libGUgd2hpbGUgYXZvaWRpbmcgc2tpcHBlZCBvcg0KPiBk
+dXBsaWNhdGVkIGVudHJpZXMuDQo+IA0KPiBTdXJlbHkgdGhlIG9ubHkgc2FmZSB0aGluZyB0byBk
+byBpcyB0byBjb250aW51ZSByZWFkaW5nIHVzaW5nIHRoZSBsYXN0DQo+IGNvb2tpZSByZXR1cm5l
+ZCBmcm9tIHRoZSBzZXJ2ZXIuDQoNCldoeT8gVGhlIGNsaWVudCBzaG91bGQgYmUgYWJsZSB0byBy
+ZXN0YXJ0IHVzaW5nIGFueSBjb29raWUgYXQgYW55IHRpbWUsIGFuZCB3ZSByZWx5IG9uIHRoZSBj
+b29raWVzIGJlaW5nIHVuaXF1ZSB0byBlYWNoIGVudHJ5LiBJZiB5b3Ugd2FudCBtb3JlIHJlbGF4
+ZWQgY29va2llIHNlbWFudGljcyB0aGVuIGJlIHByZXBhcmVkIHRvIGhhdmUgdG8gc2V0IHVwIGEg
+c3RhdGVmdWwgTkZTIHJlYWRkaXIgcHJvdG9jb2wuDQoNClRyb25k
