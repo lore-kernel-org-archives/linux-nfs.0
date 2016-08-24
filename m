@@ -1,49 +1,60 @@
-Return-Path: <trondmy@primarydata.com>
-From: Trond Myklebust <trondmy@primarydata.com>
-To: Fields Bruce James <bfields@fieldses.org>
-CC: Coddington Benjamin <bcodding@redhat.com>,
-        List Linux NFS Mailing
-	<linux-nfs@vger.kernel.org>
-Subject: Re: I can't get no readdir satisfaction
-Date: Wed, 24 Aug 2016 14:53:10 +0000
-Message-ID: <A52A7ED8-D2B6-424D-87FE-9F77C14BEC93@primarydata.com>
-References: <778246F3-8F24-48FD-AEA9-0BCC0DCD93B3@redhat.com>
- <F9D0E173-9E64-4BC4-87FB-0F6F4EEBF4C7@primarydata.com>
- <98E39192-4203-4EB8-BDE0-2A4ABFCAA92B@redhat.com>
- <81D2E080-0697-4B26-BE38-5E8AC35C2EA4@primarydata.com>
- <20160824135603.GF3938@fieldses.org>
- <9AB01AA0-9E40-4DD9-8C97-0EB4519E7816@primarydata.com>
- <20160824142049.GG3938@fieldses.org>
- <0876C5BD-5BF1-400B-9BDE-0D7C3CC943FD@primarydata.com>
- <20160824144024.GH3938@fieldses.org>
-In-Reply-To: <20160824144024.GH3938@fieldses.org>
+Return-Path: <linux-nfs-owner@vger.kernel.org>
+Received: from hoggar.fisica.ufpr.br ([200.238.171.242]:36254 "EHLO
+        hoggar.fisica.ufpr.br" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1755085AbcHXPB4 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 24 Aug 2016 11:01:56 -0400
+Date: Wed, 24 Aug 2016 12:01:51 -0300
+From: Carlos Carvalho <carlos@fisica.ufpr.br>
+To: linux-nfs@vger.kernel.org
+Subject: Re: crashes in 4.6.5
+Message-ID: <20160824150151.3ps3g3iv7rttkhwd@fisica.ufpr.br>
+References: <20160804203612.xqzevnqyzkfxwfv3@fisica.ufpr.br>
+ <20160824134020.GE3938@fieldses.org>
+ <20160824135725.5fcto7cy34zqhwsl@fisica.ufpr.br>
+ <20160824144300.GI3938@fieldses.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=utf-8
+In-Reply-To: <20160824144300.GI3938@fieldses.org>
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-DQo+IE9uIEF1ZyAyNCwgMjAxNiwgYXQgMTA6NDAsIEouIEJydWNlIEZpZWxkcyA8YmZpZWxkc0Bm
-aWVsZHNlcy5vcmc+IHdyb3RlOg0KPiANCj4gT24gV2VkLCBBdWcgMjQsIDIwMTYgYXQgMDI6MjY6
-MjFQTSArMDAwMCwgVHJvbmQgTXlrbGVidXN0IHdyb3RlOg0KPj4gDQo+Pj4gT24gQXVnIDI0LCAy
-MDE2LCBhdCAxMDoyMCwgPGJmaWVsZHNAZmllbGRzZXMub3JnPiB3cm90ZToNCj4+PiBJIG1heSBi
-ZSBtaXN1bmRlcnN0YW5kaW5nIHdoYXQgdGhlIGNsaWVudCdzIGRvaW5nLiAgSWYgaXQncyBkb2lu
-Zw0KPj4+IHNvbWV0aGluZyBsaWtlIHRoaXM6DQo+Pj4gDQo+Pj4gCS0gcmV0dXJuIGZpcnN0IGh1
-bmRyZWQgZW50cmllcyB0byB1c2VyDQo+Pj4gCS0gdGhyb3cgb3V0IGNhY2hlLCByZXN0YXJ0IHJl
-YWRkaXIgd2l0aCBjb29raWUgMC4NCj4+PiAJLSBza2lwIGZpcnN0IGh1bmRyZWQgZW50cmllcywg
-cmV0dXJuIGVudHJpZXMgMTAxLTIwMCB0byB1c2VyLg0KPj4gDQo+PiBOby4gSWYgdGhlIGNsaWVu
-dCBoYXMgYSBjYWNoZWQgY29va2llIGFjdGluZyBhcyB0aGUgY3Vyc29yLCB0aGVuIHdlIGxvb2sg
-Zm9yIHRoYXQgY29va2llIGluIHRoZSBuZXcgc3RyZWFtLiBJZiB3ZSBkb27igJl0IGZpbmQgdGhh
-dCBjb29raWUsIHRoZW4gd2UgZG8gYW5vdGhlciByZWFkZGlyIHdoZXJlIHRoYXQgY29va2llIGFj
-dHMgYXMgYW4gYXJndW1lbnQsIGFuZCB1c2UgdGhhdCB0byBmaWd1cmUgb3V0IHdoZXJlIHRoZSBz
-dHJlYW0gbm93IGNvbnRpbnVlcy4NCj4gDQo+IEdvdCBpdCwgdGhhbmtzLCBzbyB0aGUgc3RydWN0
-IGZpbGUgY2FjaGVzIHRoZSByZWFsIHNlcnZlciBzaWRlIGNvb2tpZQ0KPiBldmVuIGFmdGVyIHlv
-dSB0aHJvdyBvdXQgdGhlIGNhY2hlZCBlbnRyaWVzPyAgT0ssIEkgZ3Vlc3MgSSBuZWVkIHRvIG1h
-a2UNCj4gYW5vdGhlciBhdHRlbXB0IGF0IHVuZGVyc3RhbmRpbmcgdGhlIGFjdHVhbCBjb2RlLCBh
-cG9sb2dpZXMuDQo+IA0KPiAoRG9lc24ndCB0aGF0IG1lYW4gdGhhdCBpbiB0aGUgY2FzZSB5b3Vy
-IGxhc3QgcG9zaXRpb24gd2FzIGEgZGVsZXRlZA0KPiBmaWxlLCB5b3UncmUgcHJvYmFibHkgZ29p
-bmcgdG8gaGF2ZSB0byByZWFkIHRoZSBlbnRpcmUgZGlyZWN0b3J5IHRvIGZpbmQNCj4gb3V0IHRo
-ZSBjb29raWUncyBub3QgdGhlcmU/ICBJdCBzZWVtcyBzbyBtdWNoIG1vcmUgcGFpbmZ1bCB0aGFu
-IHN0YXJ0aW5nDQo+IG9mZiB3aXRoIHRoZSBsYXN0IGNvb2tpZS4pDQoNCkhvdyBkbyB5b3UgY2Fj
-aGUgdGhlIHJlc3VsdHMgb2Ygc3VjaCBhIHJlYWRkaXI/IFlvdSdsbCBoYXZlIG5vIHJlZmVyZW5j
-ZSBwb2ludCB0byBmaWd1cmUgb3V0IHdoZXJlIHlvdSBhcmUgaW4gdGhlIHN0cmVhbS4NCkFsc28s
-IGhvdyBkbyB5b3UgY29udmVydCB0aGF0IGNvb2tpZSBpbnRvIGFuIG9mZnNldCB0aGF0IHRlbGxk
-aXIoKSBjYW4gdXNlPw0KDQoNCg==
+J. Bruce Fields (bfields@fieldses.org) wrote on Wed, Aug 24, 2016 at 11:43:00AM BRT:
+> On Wed, Aug 24, 2016 at 10:57:26AM -0300, Carlos Carvalho wrote:
+> > The latest one, 4.7.2 in a nfs3-only
+> > machine that I reported yesterday, just outputs a few lines with rcu_sched
+> > stall warnings, only to the console and nothing in logs. I didn't write them
+> > down this time. The machine still reacted to SysRq commands; I used a forced
+> > umount and then an immediate reboot. However there was still non-negligible
+> > filesystem corruption...
+> 
+> What kind of filesystem corruption, and what filesystem is this?  I'm a
+> little surprised that what looks like a crash in NFSv4 state code should
+> be corrupting the filesystem.
+
+I think that what corrupted the filesystem is the unclean reboot. I typed
+Alt+SysRq+u, waited for the prompt and then typed Alt+SysRq+b. Apparently the
+Alt+SysRq+u didn't properly flush to the disks. I only mentioned the corruption
+to show that the machine was really frozen.
+
+Also note that this happened on a nfs3-only machine, running 4.7.2, and the
+ONLY message, in the console only, was the rcu_sched stall warning. This is my
+second report; the first one was about another machine, which does both nf3 and
+nfs4+kerberos and was running 4.6.5 at the moment. That machine shows both the
+rcu_sched stalls and general protection fault. We tried many 4.* versions and
+they all crash in the same way. Now it's been running 3.16.0 from Debian for 14
+days and is stable.
+
+At first I thought the problem was nfs4-related because that machine was the
+only crashing one. However, on Monday I tried 4.7.2 on the nfs3-only machine
+and it also crashed, so now I have no idea at all.
+
+4.7.0 didn't last 5min in the nfs3/nfs4+kerberos machine, so it seems the
+problem is worse with 4.7 than with previous versions.
+
+I saw someone mention a gib change from 3.16->3.17 about a new lockless nfs.
+Could it be at the root of this problem?
+
+Furthermore, the crashes only happen on high load servers. It seems to be load
+dependent but I cannot demonstrate it. Also, the only reason to look at nfs is
+that these are the only crashing ones. We run 4.6.5 on other machines with
+really big loads (and the same hardware) without any problem.
