@@ -1,109 +1,76 @@
-Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:60550 "EHLO fieldses.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S932820AbcHXNid (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 24 Aug 2016 09:38:33 -0400
-Date: Wed, 24 Aug 2016 09:38:30 -0400
-From: Fields Bruce James <bfields@fieldses.org>
-To: Trond Myklebust <trondmy@primarydata.com>
-Cc: Lever Chuck <chuck.lever@oracle.com>,
-        Schumaker Anna <anna.schumaker@netapp.com>,
-        List Linux RDMA Mailing <linux-rdma@vger.kernel.org>,
-        List Linux NFS Mailing <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH v2 1/6] SUNRPC: Silence WARN_ON when NFSv4.1 over RDMA is
- in use
-Message-ID: <20160824133830.GD3938@fieldses.org>
-References: <20160822185459.12076.43516.stgit@klimt.1015granger.net>
- <20160822185742.12076.34446.stgit@klimt.1015granger.net>
- <3E0207D8-CFB2-4233-B92B-165B10E9920E@oracle.com>
- <20160823205355.GA29452@fieldses.org>
- <AD25F201-01A4-4F4F-BAE7-9E984E12EE8D@oracle.com>
- <BB84506B-BC92-4325-A81C-4BC7D39F471C@primarydata.com>
+Return-Path: <trondmy@primarydata.com>
+From: Trond Myklebust <trondmy@primarydata.com>
+To: Coddington Benjamin <bcodding@redhat.com>
+CC: List Linux NFS Mailing <linux-nfs@vger.kernel.org>
+Subject: Re: I can't get no readdir satisfaction
+Date: Wed, 24 Aug 2016 13:39:18 +0000
+Message-ID: <ECA57789-48E3-4989-86C8-CAA6A84AF1AA@primarydata.com>
+References: <778246F3-8F24-48FD-AEA9-0BCC0DCD93B3@redhat.com>
+ <F9D0E173-9E64-4BC4-87FB-0F6F4EEBF4C7@primarydata.com>
+ <98E39192-4203-4EB8-BDE0-2A4ABFCAA92B@redhat.com>
+ <81D2E080-0697-4B26-BE38-5E8AC35C2EA4@primarydata.com>
+ <DAD7F8C9-4C16-495F-B7CE-CE7AC34EDF92@redhat.com>
+In-Reply-To: <DAD7F8C9-4C16-495F-B7CE-CE7AC34EDF92@redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <BB84506B-BC92-4325-A81C-4BC7D39F471C@primarydata.com>
-Sender: linux-nfs-owner@vger.kernel.org
+Content-Type: text/plain; charset=UTF-8
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Aug 23, 2016 at 10:21:40PM +0000, Trond Myklebust wrote:
-> 
-> > On Aug 23, 2016, at 17:05, Chuck Lever <chuck.lever@oracle.com> wrote:
-> > 
-> >> 
-> >> On Aug 23, 2016, at 4:53 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
-> >> 
-> >> On Tue, Aug 23, 2016 at 01:39:15PM -0400, Chuck Lever wrote:
-> >>> Hi Bruce-
-> >>> 
-> >>> 
-> >>>> On Aug 22, 2016, at 2:57 PM, Chuck Lever <chuck.lever@oracle.com> wrote:
-> >>>> 
-> >>>> Using NFSv4.1 on RDMA should be safe, so broaden the new checks in
-> >>>> rpc_create().
-> >>>> 
-> >>>> WARN_ON_ONCE is used, matching most other WARN call sites in clnt.c.
-> >>>> 
-> >>>> Fixes: 39a9beab5acb ("rpc: share one xps between all backchannels")
-> >>>> Fixes: d50039ea5ee6 ("nfsd4/rpc: move backchannel create logic...")
-> >>>> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-> >>>> ---
-> >>> 
-> >>> Do you want to take this, or should it go through Trond/Anna ?
-> >> 
-> >> I don't care, feel free to add my reviewed-by: if it goes through
-> >> someone else.
-> >> 
-> >> Looks like this should be for 4.8 (and stable), not 4.9?
-> > 
-> > I won't disagree with that.
-> > 
-> > I think Trond or Anna need to weigh in on all questions
-> > (who takes it, does it go to stable as well).
-> 
-> If you want it in for 4.8, then I can pull it in together with the current bugfixes. Does that work for everyone?
-
-That'd be great, thanks.--b.
-
-> 
-> > 
-> > 
-> >> --b.
-> >> 
-> >>> 
-> >>> 
-> >>>> net/sunrpc/clnt.c |    4 ++--
-> >>>> 1 file changed, 2 insertions(+), 2 deletions(-)
-> >>>> 
-> >>>> diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
-> >>>> index 7f79fb7..66f23b3 100644
-> >>>> --- a/net/sunrpc/clnt.c
-> >>>> +++ b/net/sunrpc/clnt.c
-> >>>> @@ -453,7 +453,7 @@ static struct rpc_clnt *rpc_create_xprt(struct rpc_create_args *args,
-> >>>> 	struct rpc_xprt_switch *xps;
-> >>>> 
-> >>>> 	if (args->bc_xprt && args->bc_xprt->xpt_bc_xps) {
-> >>>> -		WARN_ON(args->protocol != XPRT_TRANSPORT_BC_TCP);
-> >>>> +		WARN_ON_ONCE(!(args->protocol & XPRT_TRANSPORT_BC));
-> >>>> 		xps = args->bc_xprt->xpt_bc_xps;
-> >>>> 		xprt_switch_get(xps);
-> >>>> 	} else {
-> >>>> @@ -520,7 +520,7 @@ struct rpc_clnt *rpc_create(struct rpc_create_args *args)
-> >>>> 	char servername[48];
-> >>>> 
-> >>>> 	if (args->bc_xprt) {
-> >>>> -		WARN_ON(args->protocol != XPRT_TRANSPORT_BC_TCP);
-> >>>> +		WARN_ON_ONCE(!(args->protocol & XPRT_TRANSPORT_BC));
-> >>>> 		xprt = args->bc_xprt->xpt_bc_xprt;
-> >>>> 		if (xprt) {
-> >>>> 			xprt_get(xprt);
-> >>>> 
-> >>>> --
-> >>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> >>>> the body of a message to majordomo@vger.kernel.org
-> >>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> >>> 
-> >>> --
-> >>> Chuck Lever
-> > 
-> > --
-> > Chuck Lever
+DQo+IE9uIEF1ZyAyNCwgMjAxNiwgYXQgMDk6MTUsIEJlbmphbWluIENvZGRpbmd0b24gPGJjb2Rk
+aW5nQHJlZGhhdC5jb20+IHdyb3RlOg0KPiANCj4gQXBvbG9naWVzIGZvciB0aGUgb3ZlcmxhcHBp
+bmcgbWVzc2FnZXMuLiBJIGhhZCBhIG1haWxlciBpc3N1ZSB0aGF0IGNhdXNlZCBtZQ0KPiB0byBt
+aXNzIHRoaXMgbWVzc2FnZS4NCj4gDQo+IE9uIDI0IEF1ZyAyMDE2LCBhdCA4OjE4LCBUcm9uZCBN
+eWtsZWJ1c3Qgd3JvdGU6DQo+Pj4gT24gQXVnIDIzLCAyMDE2LCBhdCAxNzoyMSwgQmVuamFtaW4g
+Q29kZGluZ3RvbiA8YmNvZGRpbmdAcmVkaGF0LmNvbT4gd3JvdGU6DQo+Pj4gU28sIGZvciBkaXJl
+Y3RvcmllcyB3aXRoIGEgbGFyZ2UgbnVtYmVyIG9mIGVudHJpZXMgdGhhdCB1cGRhdGVzIG9mdGVu
+LCBpdCBjYW4NCj4+PiBiZSB2ZXJ5IHNsb3cgdG8gbGlzdCB0aGUgZGlyZWN0b3J5Lg0KPj4+IA0K
+Pj4+IFdoeSBkaWQgMzExMzI0YWQxNzEzIGNoYW5nZSBuZnNfcmVhZGRpciBmcm9tDQo+Pj4gDQo+
+Pj4gaWYgKG5mc19hdHRyaWJ1dGVfY2FjaGVfZXhwaXJlZChpbm9kZSkpDQo+Pj4gICBuZnNfcmV2
+YWxpZGF0ZV9tYXBwaW5nKGlub2RlLCBmaWxlLT5mX21hcHBpbmcpOw0KPj4+IHRvDQo+Pj4gDQo+
+Pj4gaWYgKG5mc19hdHRyaWJ1dGVfY2FjaGVfZXhwaXJlZChpbm9kZSkgfHwgbmZzaS0+Y2FjaGVf
+dmFsaWRpdHkgJiBORlNfSU5PX0lOVkFMSURfREFUQSkNCj4+PiAgIG5mc19yZXZhbGlkYXRlX21h
+cHBpbmcoaW5vZGUsIGZpbGUtPmZfbWFwcGluZyk7DQo+PiANCj4+IEFzIHRoZSBjb21taXQgbWVz
+c2FnZSBzYXlzLCB0aGUgd2hvbGUgcHVycG9zZSB3YXMgdG8gdXNlIFJFQURESVJQTFVTIGFzIGEg
+c3Vic3RpdHV0ZSBmb3IgbXVsdGlwbGUgR0VUQVRUUiBjYWxscyB3aGVuIHRoZSBoZXVyaXN0aWMg
+dGVsbHMgdXMgdGhhdCB0aGUgdXNlciBpcyBwZXJmb3JtaW5nIGFuIOKAmGxzIC1s4oCZIHN0eWxl
+IG9mIHdvcmtsb2FkLg0KPj4gDQo+Pj4gDQo+Pj4gLi4gYW5kIGNhbiB3ZSBnbyBiYWNrIHRvIHRo
+ZSB3YXkgaXQgd2FzIGJlZm9yZT8NCj4+IA0KPj4gTm90IHdpdGhvdXQgc2xvd2luZyBkb3duIOKA
+mGxzIC1s4oCZIG9uIGxhcmdlIGRpcmVjdG9yaWVzLg0KPiANCj4gQWgsIHNvIG15IG11c2luZyBp
+cyBub3QgYWJvdXQgcmV2ZXJ0aW5nIHRoZSBSRUFERElSUExVUyBvcHRpbWl6YXRpb24sIGp1c3QN
+Cj4gdGhlIGJpdCB3aGVyZSB3ZSByZXZhbGlkYXRlIHRoZSBtYXBwaW5nIGlmIE5GU19JTk9fSU5W
+QUxJRF9EQVRBLg0KPiANCj4gSSdsbCBzZW5kIGEgcGF0Y2ggZm9yIHRoYXQsIGxldCdzIHNlZSB3
+aGF0IGhhcHBlbnMgdG8gaXQhDQo+IA0KPj4+IE9LLi4gSSB1bmRlcnN0YW5kIHdoeSAtLSBpdCBp
+cyBtb3JlIGNvcnJlY3Qgc2luY2UgaWYgd2Uga25vdyB0aGUgZGlyZWN0b3J5IGhhcw0KPj4+IGNo
+YW5nZWQsIHdlIG1pZ2h0IGFzIHdlbGwgZmV0Y2ggdGhlIGNoYW5nZS4gIE90aGVyd2lzZSwgd2Ug
+bWlnaHQgYmUgY3JlYXRpbmcNCj4+PiBmaWxlcyBhbmQgdGhlbiB3b25kZXJpbmcgd2h5IHRoZXkg
+YXJlbid0IGxpc3RlZC4NCj4+PiANCj4+PiBJdCBtaWdodCBiZSBuaWNlciB0byBub3QgaW52YWxp
+ZGF0ZSB0aGUgbWFwcGluZyB3ZSdyZSBjdXJyZW50bHkgdXNpbmcgZm9yDQo+Pj4gcmVhZGRpciwg
+dGhvdWdoLiAgTWF5YmUgdGhlcmUncyBhIHdheSB0byBrZWVwIHRoZSBtYXBwaW5nIGZvciB0aGUg
+Y3VycmVudGx5DQo+Pj4gb3BlbmVkIGRpcmVjdG9yeSBhbmQgaW52YWxpZGF0ZSBpdCBvbmNlIGl0
+J3MgY2xvc2VkLg0KPj4gDQo+PiBQT1NJWCByZXF1aXJlcyB0aGF0IHlvdSByZXZhbGlkYXRlIG9u
+IG9wZW5kaXIoKSBhbmQgcmV3aW5kZGlyKCksIGFuZA0KPj4gbGVhdmVzIGJlaGF2aW91ciB3LnIu
+dC4gZmlsZSBhZGRpdGlvbiBhbmQgcmVtb3ZhbCBhZnRlciB0aGUgY2FsbCB0bw0KPj4gb3BlbmRp
+cigpL3Jld2luZGRpcigpIHVuZGVmaW5lZA0KPj4gKGh0dHA6Ly9wdWJzLm9wZW5ncm91cC5vcmcv
+b25saW5lcHVicy85Njk5OTE5Nzk5L2Z1bmN0aW9ucy9yZWFkZGlyLmh0bWwpLg0KPj4gSSBiZWxp
+ZXZlIG1vc3QgZmlsZXN5c3RlbXMgdW5kZXIgTGludXggd2lsbCBlbnN1cmUgdGhhdCBpZiBhIGZp
+bGUgaXMNCj4+IHJlbW92ZWQsIGl0IGlzIG5vIGxvbmdlciBzZWVuIGluIHRoZSByZWFkZGlyIHN0
+cmVhbSwgYW5kIGEgZmlsZSB0aGF0IGlzDQo+PiBhZGRlZCB3aWxsIGJlIHNlZW4gdW5sZXNzIHRo
+ZSByZWFkZGlyIGN1cnNvciBoYXMgYWxyZWFkeSBwYXNzZWQgaXQsIHNvDQo+PiB0aGVyZSBpcyB0
+aGF0IHRvIGNvbnNpZGVyLg0KPiANCj4gSW4gdGhlIE5GUyBjYXNlIGl0IHdvdWxkIGJlIHVwIHRv
+IHRoZSBzZXJ2ZXIgdG8gZGVjaWRlIGlmIGl0IHdhbnRzIHRvIHRocm93DQo+IG91dCB0aGUgaW4t
+dXNlIGNvb2tpdmVyZiB3aXRoIEJBRENPT0tJRSwgb3IganVzdCBpbmNsdWRlIHRoZSBuZXcgZmls
+ZSBhdA0KPiBzb21lIGxhdGVyIGVudHJ5IGNvb2tpZS4gIEkgdGhpbmsgaWYgdGhlIHNlcnZlciB3
+YW50ZWQgdG8gaW5zZXJ0IHRoZSBlbnRyeSwNCj4gaXQgbXVzdCBpbnZhbGlkYXRlIGFsbCBjdXJy
+ZW50bHkgaW4tdXNlIGNvb2tpZXZlcmYgdmFsdWVzLg0KDQpUaGUgd2hvbGUgcmVhZGRpciB2ZXJp
+ZmllciBjcmFwIGlzIG5vdCBzdXBwb3J0ZWQgb3IgaW1wbGVtZW50ZWQgaW4gdGhlIExpbnV4IGNs
+aWVudC4gU2VlIHRoZSBwbGV0aG9yYSBvZiBoaXN0b3JpY2FsIHRocmVhZHMgb24gdGhpcyB0b3Bp
+YyBhbmQgd2h5IHlvdSBjYW5ub3Qgc3VwcG9ydCB0ZWxsZGlyKCkvc2Vla2RpcigpIHNlbWFudGlj
+cyB3aXRoIGNvb2tpZXMgdGhhdCBjaGFuZ2Ugd2lsbHkgbmlsbHkuLi4gDQoNCj4gDQo+PiBIb3dl
+dmVyIGNvcnJlY3RuZXNzIHdhcyBub3QgdGhlIG1haW4gaXNzdWUgaGVyZS4NCj4gDQo+IEkgdGhp
+bmsgYnkgImhlcmUiIHlvdSBtZWFuIHRoZSBSRUFERElSUExVUyBvcHRpbWl6YXRpb24sIGFuZCBu
+b3QgdGhlIFBPU0lYDQo+IHVuZGVmaW5lZCBiZWhhdmlvciwgaW4gd2hpY2ggY2FzZSBJIHRha2Ug
+eW91IHRvIG1lYW4gdGhhdCB0aGUgbWFpbiBpc3N1ZSB3YXMNCj4gcGVyZm9ybWFuY2UuICBUaGF0
+J3MgdGhlIGlzc3VlIGF0IGhhbmQgZm9yIHRoZSBjYXNlIEkgZGVzY3JpYmVkIGFzIHdlbGwuDQo+
+IERyb3BwaW5nIHRoZSBtaWQtZGlyZWN0b3J5IHJldmFsaWRhdGlvbiBzaG91bGQga2VlcCB0aGUg
+b3B0aW1pemF0aW9uIGZvcg0KPiB5b3VyIGNhc2UgYW5kIHJlc3RvcmUgdGhlIG9wdGltaXphdGlv
+biBmb3IgdGhpcyBjYXNlLg0KPiANCj4gQWdhaW4sIGFwb2xvZ2llcyBmb3IgdGhlIG1lc3N5IG1h
+aWwgdGhyZWFkLiAgOi8NCj4gDQo+IEJlbg0KDQo=
