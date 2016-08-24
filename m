@@ -1,55 +1,77 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx141.netapp.com ([216.240.21.12]:31949 "EHLO mx141.netapp.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S932428AbcHXSnW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 24 Aug 2016 14:43:22 -0400
-From: "Adamson, Andy" <William.Adamson@netapp.com>
-To: Christoph Hellwig <hch@lst.de>
-CC: "J. Bruce Fields" <bfields@fieldses.org>,
-        "trondmy.myklebust@primarydata.com"
-        <trondmy.myklebust@primarydata.com>,
-        "Schumaker, Anna" <Anna.Schumaker@netapp.com>,
-        List Linux NFS Mailing <linux-nfs@vger.kernel.org>,
-        Andy Adamson <andros@rhel7-2-ga-3.androsad.fake>,
-        "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>
-Subject: Re: [PATCH Version-2 03/12] VFS permit cross device
-        vfs_copy_file_range
-Date: Wed, 24 Aug 2016 18:38:10 +0000
-Message-ID: <A5646713-CB18-4492-831F-0D2D3BC5BAE9@netapp.com>
-References: <1471627512-4102-1-git-send-email-andros@netapp.com>
- <1471627512-4102-4-git-send-email-andros@netapp.com>
- <20160819210844.GR32329@fieldses.org> <20160820061833.GA6812@lst.de>
-In-Reply-To: <20160820061833.GA6812@lst.de>
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
+Received: from userp1040.oracle.com ([156.151.31.81]:41857 "EHLO
+        userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1755657AbcHXSrx (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 24 Aug 2016 14:47:53 -0400
+Content-Type: text/plain; charset=windows-1252
+Mime-Version: 1.0 (Mac OS X Mail 9.3 \(3124\))
+Subject: Re: READ during state recovery uses zero stateid
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <87A94B50-A9D5-44FF-9F78-F916C98E6767@primarydata.com>
+Date: Wed, 24 Aug 2016 14:47:39 -0400
+Cc: Anna Schumaker <anna.schumaker@netapp.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Message-Id: <182FCDA3-1BD7-436F-88A3-B29AAD7E6BAE@oracle.com>
+References: <AB29A5B8-1564-4C31-A843-F0C5CC4C91F1@oracle.com> <87A94B50-A9D5-44FF-9F78-F916C98E6767@primarydata.com>
+To: Trond Myklebust <trondmy@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-DQo+IE9uIEF1ZyAyMCwgMjAxNiwgYXQgMjoxOCBBTSwgQ2hyaXN0b3BoIEhlbGx3aWcgPGhjaEBs
-c3QuZGU+IHdyb3RlOg0KPiANCj4gT24gRnJpLCBBdWcgMTksIDIwMTYgYXQgMDU6MDg6NDRQTSAt
-MDQwMCwgSi4gQnJ1Y2UgRmllbGRzIHdyb3RlOg0KPj4gSSB0aG91Z2h0IEkgcmVtZW1iZXJlZCBD
-aHJpc3RvcGggKGNjJ2QpIGFyZ3VpbmcgYXQgdGhlIDIwMTUgbHNmL21tIHRoYXQNCj4+IHRoZXJl
-IHdlcmUgc29tZSBtb3JlIGlzc3VlcyB0aGF0IHdvdWxkIG5lZWQgdG8gYmUgdGFrZW4gY2FyZSBv
-ZiBiZWZvcmUNCj4+IHdlIGNvdWxkIHR1cm4gb24gY3Jvc3MtZGV2aWNlIGNvcGllcy4NCj4gDQo+
-IFllcy4gIE5vaSBvdGhlciBWRlMgb3BlcmF0aW9uIGlzIHN1cHBvcnRlZCBiZXR3ZWVuIG1vdW50
-cG9pbnQsIHNvDQo+IGNvcHlfZmlsZV9yYW5nZSBzaG91bGRuJ3QgYmUgZWl0aGVyLg0KDQpIaSBD
-aHJpc3RvcGgNCg0KQXMgeW91IGtub3cgKGJlY2F1c2UgeW91IHJldmlld2VkIHRoZSBwYXRjaCks
-IHRoZSBvcmlnaW5hbCBpbnRlbnQgb2YgdnNfY29weV9maWxlX3JhbmdlIGFzIHN0YXRlZCBpbiB0
-aGUgc3lzY2FsbCBzdWJtaXNzaW9uIGZyb20gWmFjaCBCcm93biAoY29tbWl0OiA4ODRhMTJhNTk3
-MmZjODY3YTkzZjdhZGY3YThhYzJhZGU1ZDM4ZmZmICkgaXMgdG8gYWxsb3cgY29waWVzIGJldHdl
-ZW4gZmlsZSBzeXN0ZW1zIOKAnG9uY2Ugd2UgZ2V0IGltcGxlbWVudGF0aW9ucyB3aGljaCBjb3B5
-IGJldHdlZW4gdGlsZSBzeXN0ZW1zIHNhZmVseeKAnQ0KDQpORlN2NCBpbnRlciBzZXJ2ZXIgdG8g
-c2VydmVyIGNvcHkgd2lsbCBwcm92aWRlIGFuIGltcGxlbWVudGF0aW9uIHdoaWNoIGNhbiBjb3B5
-IGJldHdlZW4gdGlsZSBzeXN0ZW1zIHNhZmVseSAtIHNvIEkgZG9u4oCZdCB1bmRlcnN0YW5kIHlv
-dXIgb2JqZWN0aW9uIHRvIHRoaXMgZXZlbnR1YWwgdXNlIG9mIHZmc19jb3B5X2ZpbGVfcmFuZ2Uu
-DQoNCj4gDQo+IEFsc28gYSBnZW5lcmFsIE5BSyB0byBhbnkgbmV3IGNvcHlfZmlsZV9yYW5nZSB3
-b3JrIGJlZm9yZSB3ZSBoYXZlDQo+IHByb3BlciB4ZnN0ZXN0cyBjb3ZlcmFnZS4gIEFuZCBpdCdz
-IG5vdCBsaWtlIHRoZSBjb3ZlcmFnZSBpcyBoYXJkLA0KPiB3ZSBhbHJlYWR5IGhhdmUgMTAwcyBv
-ZiB0ZXN0cyBmb3IgY2xvbmUsIHdoaWNoIGluIG1hbnkgd2F5IGlzIHZlcnkNCj4gc2ltaWxhciBh
-bmQgY291bGQgYmUgcGFydGlhbGx5IHJldXNlZC4NCg0KWWVzIC0gYWdyZWVkLiBBbm5hIGlzIHdv
-cmtpbmcgb24gdXBkYXRlZCB4ZnN0ZXN0cyBmb3IgTkZTdjQgaW50cmEgc2VydmVyIHRvIHNlcnZl
-ciBjb3B5IGFzIHdlbGwgYXMgZXhwYW5kaW5nIHRoZSB4ZnN0ZXN0cyBmb3Igb3RoZXIgdmZzX2Nv
-cHlfZmlsZV9yYW5nZSBmZWF0dXJlcy4gV2UgY2FuIGxvb2sgYXQgZXhwYW5kaW5nIHRoZSB0ZXN0
-cyBmb3IgdGhlIGludGVyIHNlcnZlciB0byBzZXJ2ZXIgY2FzZS4gIEpvcmdlIE1vcmEgYXV0aG9y
-IG9mIE5GU1Rlc3RzIGlzIGFsc28gd29ya2luZyBvbiBhIHRlc3Qgc3VpdGUgZm9yIGludGVyIHNl
-cnZlciB0byBzZXJ2ZXIgY29weS4gDQoNCg==
+
+> On Aug 24, 2016, at 2:23 PM, Trond Myklebust <trondmy@primarydata.com> wrote:
+> 
+>> 
+>> On Aug 24, 2016, at 14:10, Chuck Lever <chuck.lever@oracle.com> wrote:
+>> 
+>> Hi-
+>> 
+>> I have a wire capture that shows this race while a simple I/O workload is
+>> running:
+>> 
+>> 0. The client reconnects after a network partition
+>> 1. The client sends a couple of READ requests
+>> 2. The client independently discovers its lease has expired
+>> 3. The client establishes a fresh lease
+>> 4. The client destroys open, lock, and delegation stateids for the file
+>> that was open under the previous lease
+>> 5. The client issues a new OPEN to recover state for that file
+>> 6. The server replies to the READs in step 1. with NFS4ERR_EXPIRED
+>> 7. The client turns the READs around immediately using the current open
+>> stateid for that file, which is the zero stateid
+>> 8. The server replies NFS4_OK to the OPEN from step 5
+>> 
+>> If I understand the code correctly, if the server happened to send those
+>> READ replies after its OPEN reply (rather than before), the client would
+>> have used the recovered open stateid instead of the zero stateid when
+>> resending the READ requests.
+>> 
+>> Would it be better if the client recognized there is state recovery in
+>> progress, and then waited for recovery to complete, before retrying the
+>> READs?
+>> 
+> 
+> Why isn’t the session draining taking care of ensuring the READs don’t happen until after recovery is done?
+
+This is NFSv4.0. (Apologies, I recalled NFS4ERR_EXPIRED had been removed
+from NFSv4.1, but I see that I was mistaken).
+
+Here's step 1 and 2, exactly. After the partition heals, the client sends:
+
+C READ
+C GETATTR
+C READ
+C RENEW
+
+The server responds to the RENEW first with GSS_CTXPROBLEM. The client's
+gssd connects and establishes a fresh GSS context. The client sends the
+RENEW again with the fresh context, and the server responds NFS4ERR_EXPIRED.
+This triggers step 3.
+
+The replies for those READ calls are in step 6., after state recovery
+has started.
+
+--
+Chuck Lever
+
+
+
