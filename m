@@ -1,164 +1,136 @@
-Return-Path: <bfields@fieldses.org>
-Date: Wed, 24 Aug 2016 09:56:03 -0400
-To: Trond Myklebust <trondmy@primarydata.com>
-Cc: Coddington Benjamin <bcodding@redhat.com>,
-        List Linux NFS Mailing <linux-nfs@vger.kernel.org>
-Subject: Re: I can't get no readdir satisfaction
-Message-ID: <20160824135603.GF3938@fieldses.org>
-References: <778246F3-8F24-48FD-AEA9-0BCC0DCD93B3@redhat.com>
- <F9D0E173-9E64-4BC4-87FB-0F6F4EEBF4C7@primarydata.com>
- <98E39192-4203-4EB8-BDE0-2A4ABFCAA92B@redhat.com>
- <81D2E080-0697-4B26-BE38-5E8AC35C2EA4@primarydata.com>
+Return-Path: <linux-nfs-owner@vger.kernel.org>
+Received: from hoggar.fisica.ufpr.br ([200.238.171.242]:35674 "EHLO
+        hoggar.fisica.ufpr.br" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1755624AbcHXN53 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 24 Aug 2016 09:57:29 -0400
+Date: Wed, 24 Aug 2016 10:57:26 -0300
+From: Carlos Carvalho <carlos@fisica.ufpr.br>
+To: linux-nfs@vger.kernel.org
+Subject: Re: crashes in 4.6.5
+Message-ID: <20160824135725.5fcto7cy34zqhwsl@fisica.ufpr.br>
+References: <20160804203612.xqzevnqyzkfxwfv3@fisica.ufpr.br>
+ <20160824134020.GE3938@fieldses.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=utf-8
-In-Reply-To: <81D2E080-0697-4B26-BE38-5E8AC35C2EA4@primarydata.com>
-From: bfields@fieldses.org (J. Bruce Fields)
+In-Reply-To: <20160824134020.GE3938@fieldses.org>
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Aug 24, 2016 at 12:18:04PM +0000, Trond Myklebust wrote:
->=20
-> > On Aug 23, 2016, at 17:21, Benjamin Coddington <bcodding@redhat.com> wr=
-ote:
-> >=20
-> >=20
-> >=20
-> > On 23 Aug 2016, at 11:36, Trond Myklebust wrote:
-> >=20
-> >>> On Aug 23, 2016, at 11:09, Benjamin Coddington <bcodding@redhat.com> =
-wrote:
-> >>>=20
-> >>> Hi linux-nfs,
-> >>>=20
-> >>> 311324ad1713 ("NFS: Be more aggressive in using readdirplus for 'ls -=
-l'
-> >>> situations") changed when nfs_readdir() decides to revalidate the
-> >>> directory's mapping, which contains all the entries.  In addition to =
-just
-> >>> checking if the attribute cache has expired, it includes a check to s=
-ee if
-> >>> NFS_INO_INVALID_DATA is set on the directory.
-> >>>=20
-> >>> Well, customers that have directories with very many dentries and tha=
-t same
-> >>> directory's attributes are frequently updated are now grouchy that `l=
-s -l`
-> >>> takes so long since any update of the directory causes the mapping to=
- be
-> >>> invalidated and we have to start over filling the directory's mapping.
-> >>>=20
-> >>> I actually haven't put real hard thought into it yet (because often f=
-or me
-> >>> that just wastes a lot of time), so I am doing the lazy thing by aski=
-ng this
-> >>> question:
-> >>>=20
-> >>> Can we go back to just the using the attribute cache timeout, or shou=
-ld we
-> >>> get all heuristical about readdir?
-> >>>=20
-> >>=20
-> >> We are all heuristical at this point. How are the heuristics failing?
-> >>=20
-> >> The original problem those heuristics were designed to solve was that =
-all
-> >> the stat() calls took forever to complete, since they are all synchron=
-ous;
-> >> Tigran showed some very convincing numbers for a large directory where=
- the
-> >> difference in performance was an order of magnitude improved by using
-> >> readdirplus instead of readdir=E2=80=A6
-> >=20
-> > I'll try to present a better explanation.  While `ls -l` is walking thr=
-ough
-> > a directory repeatedly entering nfs_readdir(), a CREATE response send us
-> > through nfs_post_op_update_inode_locked():
-> >=20
-> > 1531     if (S_ISDIR(inode->i_mode))
-> > 1532         invalid |=3D NFS_INO_INVALID_DATA;
-> > 1533     nfs_set_cache_invalid(inode, invalid);
-> >=20
-> > Now, the next entry into nfs_readdir() has us do nfs_revalidate_mapping=
-(),
-> > which will do nfs_invalidate_mapping() for the directory, and so we hav=
-e to
-> > start over with cookie 0 sending READDIRPLUS to re-fill the directory's
-> > mapping to get back to where we are for the current nfs_readdir().
-> >=20
-> > This process repeats for every entry into nfs_readdir() if the directory
-> > keeps getting updated, and it becomes more likely that it will be updat=
-ed as
-> > each pass takes longer and longer to re-fill the mapping as the current
-> > nfs_readdir() invocation is further along.
-> >=20
-> > READDIRPLUS isn't the problem, the problem is invalidating the directory
-> > mapping in the middle of a series of getdents() if we do a CREATE.  Als=
-o, I
-> > think a similar thing happens if the directory's mtime or ctime is upda=
-ted -
-> > but in that case we set NFS_INO_INVALID_DATA because the change_attr
-> > updates.
-> >=20
-> > So, for directories with a large number of entries that updates often, =
-it can
-> > be very slow to list the directory.
-> >=20
-> > Why did 311324ad1713 change nfs_readdir from
-> >=20
-> > if (nfs_attribute_cache_expired(inode))
-> >    nfs_revalidate_mapping(inode, file->f_mapping);
-> > to
-> >=20
-> > if (nfs_attribute_cache_expired(inode) || nfsi->cache_validity & NFS_IN=
-O_INVALID_DATA)
-> >    nfs_revalidate_mapping(inode, file->f_mapping);
->=20
-> As the commit message says, the whole purpose was to use READDIRPLUS as a=
- substitute for multiple GETATTR calls when the heuristic tells us that the=
- user is performing an =E2=80=98ls -l=E2=80=99 style of workload.
->=20
-> >=20
-> > .. and can we go back to the way it was before?
->=20
-> Not without slowing down =E2=80=98ls -l=E2=80=99 on large directories.
->=20
-> >=20
-> > OK.. I understand why -- it is more correct since if we know the direct=
-ory has
-> > changed, we might as well fetch the change.  Otherwise, we might be cre=
-ating
-> > files and then wondering why they aren't listed.
-> >=20
-> > It might be nicer to not invalidate the mapping we're currently using f=
-or
-> > readdir, though.  Maybe there's a way to keep the mapping for the curre=
-ntly
-> > opened directory and invalidate it once it's closed.
->=20
+J. Bruce Fields (bfields@fieldses.org) wrote on Wed, Aug 24, 2016 at 10:40:20AM BRT:
+> On Thu, Aug 04, 2016 at 05:36:12PM -0300, Carlos Carvalho wrote:
+> > Our nfs server, running 4.6.5, doesn't last more than 2-3 days. There are
+> > several errors in the log that seem to be nfs4 related.
+> 
+> What's the very first error of any kind?
 
->  POSIX requires that you revalidate on opendir() and rewinddir(), and
->  leaves behaviour w.r.t. file addition and removal after the call to
->  opendir()/rewinddir() undefined
->  (http://pubs.opengroup.org/onlinepubs/9699919799/functions/readdir.html).
+I sent all that's in the log; the dumps start with general protection fault,
+and INFO: rcu_sched for the stalls. The latest one, 4.7.2 in a nfs3-only
+machine that I reported yesterday, just outputs a few lines with rcu_sched
+stall warnings, only to the console and nothing in logs. I didn't write them
+down this time. The machine still reacted to SysRq commands; I used a forced
+umount and then an immediate reboot. However there was still non-negligible
+filesystem corruption...
 
-It is only undefined whether the added or removed entry is returned.
-Other entries still need to returned exactly once.
-
-In this case we're restarting the read of the directory from scratch--I
-don't understand how that's possible while avoiding skipped or
-duplicated entries.
-
-Surely the only safe thing to do is to continue reading using the last
-cookie returned from the server.
-
---b.
-
->  I believe most filesystems under Linux will ensure that if a file is
->  removed, it is no longer seen in the readdir stream, and a file that
->  is added will be seen unless the readdir cursor has already passed
->  it, so there is that to consider.
-
->=20
-> However correctness was not the main issue here.
->=20
-> N?????r??y????b?X??=C7=A7v?^?)=DE=BA{.n?+????{???"??^n?r???z?=1A??h?????&=
-??=1E?G???h?=03(?=E9=9A=8E?=DD=A2j"??=1A?=1Bm??????z?=DE=96???f???h???~?m
+> --b.
+> 
+> > After many of these
+> > errors the machine eventually crashes:
+> > 
+> > Aug  4 07:39:57 urquell kernel: general protection fault: 0000 [#2] SMP 
+> > Aug  4 07:39:57 urquell kernel: Modules linked in:
+> > Aug  4 07:39:57 urquell kernel: CPU: 0 PID: 19621 Comm: nfsd Tainted: G      D   I     4.6.5 #1
+> > Aug  4 07:39:57 urquell kernel: Hardware name: SGI.COM SGI MIS Server/S2600JF, BIOS SE5C600.86B.01.03.0002.062020121504 06/20/2012
+> > Aug  4 07:39:57 urquell kernel: task: ffff881fe24dd940 ti: ffff880e61bd8000 task.ti: ffff880e61bd8000
+> > Aug  4 07:39:57 urquell kernel: RIP: 0010:[<ffffffff81252ef2>]  [<ffffffff81252ef2>] nfsd4_del_conns+0x72/0xc0
+> > Aug  4 07:39:57 urquell kernel: RSP: 0018:ffff880e61bdbce0  EFLAGS: 00010246
+> > Aug  4 07:39:57 urquell kernel: RAX: ffff880b8a34b758 RBX: ffff880b8a34b740 RCX: dead000000000100
+> > Aug  4 07:39:57 urquell kernel: RDX: dead000000000200 RSI: 0000000000000001 RDI: ffff880e22af6078
+> > Aug  4 07:39:57 urquell kernel: RBP: ffff880e22af6000 R08: 0000000000000001 R09: 00004c0ca729bd38
+> > Aug  4 07:39:57 urquell kernel: R10: 0000000000000001 R11: 0000000000000001 R12: ffff881aaa9c4800
+> > Aug  4 07:39:57 urquell kernel: R13: ffff880fe21ab298 R14: ffff881aaa9c4b30 R15: ffff880fe21ab200
+> > Aug  4 07:39:57 urquell kernel: FS:  0000000000000000(0000) GS:ffff880fffc00000(0000) knlGS:0000000000000000
+> > Aug  4 07:39:57 urquell kernel: CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
+> > Aug  4 07:39:57 urquell kernel: CR2: 00007f716a49c000 CR3: 0000000001c06000 CR4: 00000000000406f0
+> > Aug  4 07:39:57 urquell kernel: Stack:
+> > Aug  4 07:39:57 urquell kernel: ffff880fe21ab218 ffff881aaa9c4800 ffff880fe21ab200 ffff881aaa9c4b38
+> > Aug  4 07:39:57 urquell kernel: ffff880c9ace8c80 0000000000000000 ffffffff812532a6 ffff881aaa9c4830
+> > Aug  4 07:39:57 urquell kernel: ffff881aaa9c4800 ffff880e61bdbd40 ffff881aaa9c4868 ffffffff81254c7f
+> > Aug  4 07:39:57 urquell kernel: Call Trace:
+> > Aug  4 07:39:57 urquell kernel: [<ffffffff812532a6>] ? free_client+0x26/0x150
+> > Aug  4 07:39:57 urquell kernel: [<ffffffff81254c7f>] ? __destroy_client+0x14f/0x160
+> > Aug  4 07:39:57 urquell kernel: [<ffffffff81255ad9>] ? nfsd4_create_session+0x659/0x850
+> > Aug  4 07:39:57 urquell kernel: [<ffffffff8124b1d2>] ? nfsd4_proc_compound+0x302/0x560
+> > Aug  4 07:39:57 urquell kernel: [<ffffffff8123c7ae>] ? nfsd_dispatch+0x7e/0x160
+> > Aug  4 07:39:57 urquell kernel: [<ffffffff8171f80d>] ? svc_process_common+0x38d/0x510
+> > Aug  4 07:39:57 urquell kernel: [<ffffffff8171fa6d>] ? svc_process+0xdd/0xf0
+> > Aug  4 07:39:57 urquell kernel: [<ffffffff8123c284>] ? nfsd+0xe4/0x150
+> > Aug  4 07:39:57 urquell kernel: [<ffffffff8123c1a0>] ? nfsd_destroy+0x60/0x60
+> > Aug  4 07:39:57 urquell kernel: [<ffffffff810976ca>] ? kthread+0xca/0xe0
+> > Aug  4 07:39:57 urquell kernel: [<ffffffff81252e00>] ? nfsd4_put_drc_mem+0x40/0x40
+> > Aug  4 07:39:57 urquell kernel: [<ffffffff81744192>] ? ret_from_fork+0x22/0x40
+> > Aug  4 07:39:57 urquell kernel: [<ffffffff81097600>] ? kthread_park+0x50/0x50
+> > Aug  4 07:39:57 urquell kernel: Code: 89 10 48 89 1b 48 89 5b 08 41 c6 84 24 30 03 00 00 00 48 8b 6b 10 48 8d 7d 78 e8 1a 0f 4f 00 48 8b 4b 18 48 8d 43 18 48 8b 53 20 <48> 89 51 08 48 89 0a 48 89 43 18 48 89 43 20 c6 45 78 00 48 8b 
+> > Aug  4 07:39:57 urquell kernel: RIP  [<ffffffff81252ef2>] nfsd4_del_conns+0x72/0xc0
+> > Aug  4 07:39:57 urquell kernel: RSP <ffff880e61bdbce0>
+> > Aug  4 07:39:57 urquell kernel: ---[ end trace bbec43f5aa22f6e3 ]---
+> > 
+> > There are also cpu stalls:
+> > 
+> > Aug  4 10:46:14 urquell kernel: INFO: rcu_sched self-detected stall on CPU
+> > Aug  4 10:46:14 urquell kernel: 	4-...: (14997 ticks this GP) idle=76b/140000000000001/0 softirq=30513439/30513439 fqs=13790 
+> > Aug  4 10:46:14 urquell kernel: 	 (t=15000 jiffies g=10123193 c=10123192 q=4324508)
+> > Aug  4 10:46:14 urquell kernel: Task dump for CPU 4:
+> > Aug  4 10:46:14 urquell kernel: nfsd            R  running task        0 19618      2 0x00000008
+> > Aug  4 10:46:14 urquell kernel: ffffffff81c37240 ffffffff810bfc4b ffff880fffc94880 ffffffff81c37240
+> > Aug  4 10:46:14 urquell kernel: 0000000000000000 ffff881fe24dbfc0 ffffffff810c2adc ffff880fffc93bc0
+> > Aug  4 10:46:14 urquell kernel: 0000000000013bc0 0000000000000004 ffff880fffc83e90 ffff880fffc83e90
+> > Aug  4 10:46:14 urquell kernel: Call Trace:
+> > Aug  4 10:46:14 urquell kernel: <IRQ>  [<ffffffff810bfc4b>] ? rcu_dump_cpu_stacks+0x7b/0xb0
+> > Aug  4 10:46:14 urquell kernel: [<ffffffff810c2adc>] ? rcu_check_callbacks+0x3bc/0x680
+> > Aug  4 10:46:14 urquell kernel: [<ffffffff810c467d>] ? update_process_times+0x2d/0x50
+> > Aug  4 10:46:14 urquell kernel: [<ffffffff810d1301>] ? tick_sched_timer+0x41/0x160
+> > Aug  4 10:46:14 urquell kernel: [<ffffffff810c4c13>] ? __hrtimer_run_queues+0xb3/0x150
+> > Aug  4 10:46:14 urquell kernel: [<ffffffff810c5124>] ? hrtimer_interrupt+0x94/0x170
+> > Aug  4 10:46:14 urquell kernel: [<ffffffff8106c4e4>] ? smp_apic_timer_interrupt+0x34/0x50
+> > Aug  4 10:46:14 urquell kernel: [<ffffffff81744b4f>] ? apic_timer_interrupt+0x7f/0x90
+> > Aug  4 10:46:14 urquell kernel: <EOI>  [<ffffffff81091a47>] ? queue_work_on+0x17/0x20
+> > Aug  4 10:46:14 urquell kernel: [<ffffffff81252e66>] ? nfsd4_conn_lost+0x66/0x80
+> > Aug  4 10:46:14 urquell kernel: [<ffffffff8172c9fd>] ? svc_delete_xprt+0xcd/0x130
+> > Aug  4 10:46:14 urquell kernel: [<ffffffff8172d1f9>] ? svc_recv+0x5f9/0x950
+> > Aug  4 10:46:14 urquell kernel: [<ffffffff8172c74f>] ? svc_xprt_release+0x8f/0xf0
+> > Aug  4 10:46:14 urquell kernel: [<ffffffff8123c272>] ? nfsd+0xd2/0x150
+> > Aug  4 10:46:14 urquell kernel: [<ffffffff8123c1a0>] ? nfsd_destroy+0x60/0x60
+> > Aug  4 10:46:14 urquell kernel: [<ffffffff810976ca>] ? kthread+0xca/0xe0
+> > Aug  4 10:46:14 urquell kernel: [<ffffffff81744192>] ? ret_from_fork+0x22/0x40
+> > Aug  4 10:46:14 urquell kernel: [<ffffffff81097600>] ? kthread_park+0x50/0x50
+> > Aug  4 10:46:14 urquell kernel: INFO: rcu_sched detected stalls on CPUs/tasks:
+> > Aug  4 10:46:14 urquell kernel: 	4-...: (14998 ticks this GP) idle=76b/140000000000000/0 softirq=30513439/30513439 fqs=13791 
+> > Aug  4 10:46:14 urquell kernel: 	(detected by 20, t=15004 jiffies, g=10123193, c=10123192, q=4324792)
+> > Aug  4 10:46:14 urquell kernel: Task dump for CPU 4:
+> > Aug  4 10:46:14 urquell kernel: nfsd            R  running task        0 19618      2 0x00000008
+> > Aug  4 10:46:14 urquell kernel: ffff880fff800060 ffff88029099cb00 0001881ff5bc4f00 ffff8805e78f6ac0
+> > Aug  4 10:46:14 urquell kernel: ffff8800bbbe8600 000000000000e3b0 0000000000000040 ffff880fff811800
+> > Aug  4 10:46:14 urquell kernel: ffffffff810917d9 ffffea002ec51bc0 0000000000000206 ffff881a63046800
+> > Aug  4 10:46:14 urquell kernel: Call Trace:
+> > Aug  4 10:46:14 urquell kernel: [<ffffffff810917d9>] ? __queue_work+0x119/0x370
+> > Aug  4 10:46:14 urquell kernel: [<ffffffff81091a40>] ? queue_work_on+0x10/0x20
+> > Aug  4 10:46:14 urquell kernel: [<ffffffff81252e66>] ? nfsd4_conn_lost+0x66/0x80
+> > Aug  4 10:46:14 urquell kernel: [<ffffffff8172c9fd>] ? svc_delete_xprt+0xcd/0x130
+> > Aug  4 10:46:14 urquell kernel: [<ffffffff8172d1f9>] ? svc_recv+0x5f9/0x950
+> > Aug  4 10:46:14 urquell kernel: [<ffffffff8172c74f>] ? svc_xprt_release+0x8f/0xf0
+> > Aug  4 10:46:14 urquell kernel: [<ffffffff8123c272>] ? nfsd+0xd2/0x150
+> > Aug  4 10:46:14 urquell kernel: [<ffffffff8123c1a0>] ? nfsd_destroy+0x60/0x60
+> > Aug  4 10:46:14 urquell kernel: [<ffffffff810976ca>] ? kthread+0xca/0xe0
+> > Aug  4 10:46:14 urquell kernel: [<ffffffff81744192>] ? ret_from_fork+0x22/0x40
+> > Aug  4 10:46:14 urquell kernel: [<ffffffff81097600>] ? kthread_park+0x50/0x50
+> > 
+> > This is the only machine with problems running 4.6.5, and the only one that
+> > uses nfs4.
+> > --
+> > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> > the body of a message to majordomo@vger.kernel.org
+> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
