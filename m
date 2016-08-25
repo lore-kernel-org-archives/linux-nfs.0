@@ -1,97 +1,128 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:48367 "EHLO
-        aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751789AbcHXTh1 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 24 Aug 2016 15:37:27 -0400
+Received: from mx1.redhat.com ([209.132.183.28]:53258 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1757820AbcHYLpa (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 25 Aug 2016 07:45:30 -0400
+Received: from int-mx14.intmail.prod.int.phx2.redhat.com (int-mx14.intmail.prod.int.phx2.redhat.com [10.5.11.27])
+        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+        (No client certificate requested)
+        by mx1.redhat.com (Postfix) with ESMTPS id F2FDD3407F6
+        for <linux-nfs@vger.kernel.org>; Thu, 25 Aug 2016 11:45:29 +0000 (UTC)
+Received: from steved.boston.devel.redhat.com (vpn-58-14.rdu2.redhat.com [10.10.58.14])
+        by int-mx14.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id u7PBjTjQ001047
+        for <linux-nfs@vger.kernel.org>; Thu, 25 Aug 2016 07:45:29 -0400
+Subject: Re: [PATCH] rpc-gssd: Make the path to the keytab configurable.
+To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+References: <1472066095-15650-1-git-send-email-steved@redhat.com>
+From: Steve Dickson <SteveD@redhat.com>
+Message-ID: <22dde429-8352-b734-d761-d71a50423af8@RedHat.com>
+Date: Thu, 25 Aug 2016 07:45:29 -0400
+MIME-Version: 1.0
+In-Reply-To: <1472066095-15650-1-git-send-email-steved@redhat.com>
 Content-Type: text/plain; charset=windows-1252
-Mime-Version: 1.0 (Mac OS X Mail 9.3 \(3124\))
-Subject: Re: READ during state recovery uses zero stateid
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <832771A7-EF94-475C-871E-EE9499EC75B3@primarydata.com>
-Date: Wed, 24 Aug 2016 15:37:18 -0400
-Cc: Anna Schumaker <anna.schumaker@netapp.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <56448609-05CA-493F-B98A-A2DCAB7909E9@oracle.com>
-References: <AB29A5B8-1564-4C31-A843-F0C5CC4C91F1@oracle.com> <87A94B50-A9D5-44FF-9F78-F916C98E6767@primarydata.com> <182FCDA3-1BD7-436F-88A3-B29AAD7E6BAE@oracle.com> <832771A7-EF94-475C-871E-EE9499EC75B3@primarydata.com>
-To: Trond Myklebust <trondmy@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
-> On Aug 24, 2016, at 3:05 PM, Trond Myklebust <trondmy@primarydata.com> wrote:
+
+On 08/24/2016 03:14 PM, Steve Dickson wrote:
+> Kerberos keytabs don't always live in the '/etc'
+> directory. Allow --sysconfdir flag to define where
+> the keytab directory is in rpc-gssd.service
 > 
->> 
->> On Aug 24, 2016, at 14:47, Chuck Lever <chuck.lever@oracle.com> wrote:
->> 
->> 
->>> On Aug 24, 2016, at 2:23 PM, Trond Myklebust <trondmy@primarydata.com> wrote:
->>> 
->>>> 
->>>> On Aug 24, 2016, at 14:10, Chuck Lever <chuck.lever@oracle.com> wrote:
->>>> 
->>>> Hi-
->>>> 
->>>> I have a wire capture that shows this race while a simple I/O workload is
->>>> running:
->>>> 
->>>> 0. The client reconnects after a network partition
->>>> 1. The client sends a couple of READ requests
->>>> 2. The client independently discovers its lease has expired
->>>> 3. The client establishes a fresh lease
->>>> 4. The client destroys open, lock, and delegation stateids for the file
->>>> that was open under the previous lease
->>>> 5. The client issues a new OPEN to recover state for that file
->>>> 6. The server replies to the READs in step 1. with NFS4ERR_EXPIRED
->>>> 7. The client turns the READs around immediately using the current open
->>>> stateid for that file, which is the zero stateid
->>>> 8. The server replies NFS4_OK to the OPEN from step 5
->>>> 
->>>> If I understand the code correctly, if the server happened to send those
->>>> READ replies after its OPEN reply (rather than before), the client would
->>>> have used the recovered open stateid instead of the zero stateid when
->>>> resending the READ requests.
->>>> 
->>>> Would it be better if the client recognized there is state recovery in
->>>> progress, and then waited for recovery to complete, before retrying the
->>>> READs?
->>>> 
->>> 
->>> Why isn’t the session draining taking care of ensuring the READs don’t happen until after recovery is done?
->> 
->> This is NFSv4.0. (Apologies, I recalled NFS4ERR_EXPIRED had been removed
->> from NFSv4.1, but I see that I was mistaken).
->> 
->> Here's step 1 and 2, exactly. After the partition heals, the client sends:
->> 
->> C READ
->> C GETATTR
->> C READ
->> C RENEW
->> 
->> The server responds to the RENEW first with GSS_CTXPROBLEM. The client's
->> gssd connects and establishes a fresh GSS context. The client sends the
->> RENEW again with the fresh context, and the server responds NFS4ERR_EXPIRED.
->> This triggers step 3.
->> 
->> The replies for those READ calls are in step 6., after state recovery
->> has started.
+> Signed-off-by: Steve Dickson <steved@redhat.com>
+Committed.... 
+
+steved.
+> ---
+>  .gitignore                  |  1 +
+>  configure.ac                |  6 ++++++
+>  systemd/rpc-gssd.service    | 19 -------------------
+>  systemd/rpc-gssd.service.in | 19 +++++++++++++++++++
+>  4 files changed, 26 insertions(+), 19 deletions(-)
+>  delete mode 100644 systemd/rpc-gssd.service
+>  create mode 100644 systemd/rpc-gssd.service.in
 > 
-> This is what I’m confused about: Normally, I’d expect the NFSv4.0 code to drain, due to the checks in nfs40_setup_sequence().
+> diff --git a/.gitignore b/.gitignore
+> index c247561..126d12c 100644
+> --- a/.gitignore
+> +++ b/.gitignore
+> @@ -71,6 +71,7 @@ tests/nsm_client/nlm_sm_inter_xdr.c
+>  utils/nfsidmap/nfsidmap
+>  systemd/nfs-server-generator
+>  systemd/nfs-config.service
+> +systemd/rpc-gssd.service
+>  # cscope database files
+>  cscope.*
+>  # generic editor backup et al
+> diff --git a/configure.ac b/configure.ac
+> index 4fb108f..d60f3a2 100644
+> --- a/configure.ac
+> +++ b/configure.ac
+> @@ -516,9 +516,15 @@ AC_SUBST([ACLOCAL_AMFLAGS], ["-I $ac_macro_dir \$(ACLOCAL_FLAGS)"])
+>  AC_SUBST([_libexecdir])
+>  AC_CONFIG_COMMANDS_PRE([eval eval _libexecdir=$libexecdir])
+>  
+> +# make _sysconfdir available for substituion in config files
+> +# 2 "evals" needed late to expand variable names.
+> +AC_SUBST([_sysconfdir])
+> +AC_CONFIG_COMMANDS_PRE([eval eval _sysconfdir=$sysconfdir])
+> +
+>  AC_CONFIG_FILES([
+>  	Makefile
+>  	systemd/nfs-config.service
+> +	systemd/rpc-gssd.service
+>  	linux-nfs/Makefile
+>  	support/Makefile
+>  	support/export/Makefile
+> diff --git a/systemd/rpc-gssd.service b/systemd/rpc-gssd.service
+> deleted file mode 100644
+> index d4a3819..0000000
+> --- a/systemd/rpc-gssd.service
+> +++ /dev/null
+> @@ -1,19 +0,0 @@
+> -[Unit]
+> -Description=RPC security service for NFS client and server
+> -DefaultDependencies=no
+> -Conflicts=umount.target
+> -Requires=var-lib-nfs-rpc_pipefs.mount
+> -After=var-lib-nfs-rpc_pipefs.mount
+> -
+> -ConditionPathExists=/etc/krb5.keytab
+> -
+> -PartOf=nfs-utils.service
+> -
+> -Wants=nfs-config.service
+> -After=nfs-config.service
+> -
+> -[Service]
+> -EnvironmentFile=-/run/sysconfig/nfs-utils
+> -
+> -Type=forking
+> -ExecStart=/usr/sbin/rpc.gssd $GSSDARGS
+> diff --git a/systemd/rpc-gssd.service.in b/systemd/rpc-gssd.service.in
+> new file mode 100644
+> index 0000000..1a7911c
+> --- /dev/null
+> +++ b/systemd/rpc-gssd.service.in
+> @@ -0,0 +1,19 @@
+> +[Unit]
+> +Description=RPC security service for NFS client and server
+> +DefaultDependencies=no
+> +Conflicts=umount.target
+> +Requires=var-lib-nfs-rpc_pipefs.mount
+> +After=var-lib-nfs-rpc_pipefs.mount
+> +
+> +ConditionPathExists=@_sysconfdir@/krb5.keytab
+> +
+> +PartOf=nfs-utils.service
+> +
+> +Wants=nfs-config.service
+> +After=nfs-config.service
+> +
+> +[Service]
+> +EnvironmentFile=-/run/sysconfig/nfs-utils
+> +
+> +Type=forking
+> +ExecStart=/usr/sbin/rpc.gssd $GSSDARGS
 > 
-> IOW: there should be 2 steps
-> 
->   2.5) Call nfs4_drain_slot_tbl() and wait for operations to complete
->   2.6) Process the NFS4ERR_EXPIRED errors returned by the READ requests sent in (1).
-> 
-> before we get to recovering the lease in (3)...
-
-My kernel is missing commit 5cae02f42793 ("NFSv4: Always drain the slot
-table before re-establishing the lease"). I can give that a try, thank
-you!
-
-
---
-Chuck Lever
-
-
-
