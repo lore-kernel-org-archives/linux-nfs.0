@@ -1,145 +1,176 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx143.netapp.com ([216.240.21.24]:15135 "EHLO mx143.netapp.com"
+Received: from mx144.netapp.com ([216.240.21.25]:17743 "EHLO mx144.netapp.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751559AbcHZUgQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 26 Aug 2016 16:36:16 -0400
-Subject: Re: [PATCH v4 0/3] NFSv4.2: Add support for the COPY operation
-To: "J. Bruce Fields" <bfields@fieldses.org>
-References: <1461962533-26534-1-git-send-email-Anna.Schumaker@Netapp.com>
- <20160501173733.GA556@infradead.org> <20160513203135.GE5658@fieldses.org>
- <8d09611c-31c1-baca-8e8f-6dc599731c8c@Netapp.com>
- <20160729185933.GA7964@fieldses.org>
- <613202c0-68ed-2ec0-2de9-136003309cb5@Netapp.com>
- <20160729202024.GD7964@fieldses.org>
-CC: Christoph Hellwig <hch@infradead.org>, <linux-nfs@vger.kernel.org>,
-        <Trond.Myklebust@primarydata.com>
+        id S1752158AbcHZVGB (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 26 Aug 2016 17:06:01 -0400
+Subject: Re: [PATCH v2 02/22] SUNRPC: Refactor rpc_xdr_buf_init()
+To: Chuck Lever <chuck.lever@oracle.com>, <linux-rdma@vger.kernel.org>,
+        <linux-nfs@vger.kernel.org>
+References: <20160823174402.13038.84561.stgit@manet.1015granger.net>
+ <20160823175219.13038.22735.stgit@manet.1015granger.net>
 From: Anna Schumaker <Anna.Schumaker@netapp.com>
-Message-ID: <e62ae2e1-96d3-4759-c2d1-e449cdb7a945@Netapp.com>
-Date: Fri, 26 Aug 2016 16:32:06 -0400
+Message-ID: <82e56623-ddab-7eb7-0c0b-e2adc177af76@Netapp.com>
+Date: Fri, 26 Aug 2016 17:05:20 -0400
 MIME-Version: 1.0
-In-Reply-To: <20160729202024.GD7964@fieldses.org>
+In-Reply-To: <20160823175219.13038.22735.stgit@manet.1015granger.net>
 Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 07/29/2016 04:20 PM, J. Bruce Fields wrote:
-> On Fri, Jul 29, 2016 at 03:40:00PM -0400, Anna Schumaker wrote:
->> On 07/29/2016 02:59 PM, J. Bruce Fields wrote:
->>> On Fri, May 13, 2016 at 04:58:06PM -0400, Anna Schumaker wrote:
->>>> On 05/13/2016 04:31 PM, J. Bruce Fields wrote:
->>>>> On Sun, May 01, 2016 at 10:37:33AM -0700, Christoph Hellwig wrote:
->>>>>> I might sound like a broken record, but I'd feel much happier if this
->>>>>> had extensive xfstests coverage.  Xfstests has over one hundred tests for
->>>>>> file clones, and many of them should be easily adapatable.
->>>>>
->>>>> Anna, have you looked at this yet?
->>>>
->>>> Yep!  I just sent out what I came up with :)
->>>
->>> Sorry for the lack of response.  For some reason I don't seem to have
->>> the updated version in my mailboxes.  Do you have a more recent version?
->>
->> I'm not sure, so I'll make sure my code still works and then resubmit!
->>
->>>
->>>>> I don't see any obvious problem with the nfsd code, other than the
->>>>> obvious issue with large synchronous copies tying up server threads and
->>>>> leaving clients waiting--but maybe we should just see how people end up
->>>>> using it and deal with the problems as they come up.
->>>
->>> I'm still worrying about this, though.
->>>
->>> As a simple stopgap, could we just set *some* maximum on the size of the
->>> copy?  Or better yet on the time?--that'd let filesystems with
->>> clone-like features copy the whole file without blocking an nfsd thread
->>> indefinitely in the case of other filesystems.
->>
->> Would there be a good way of figuring out the time a copy would take?
-> 
-> Can we set some sort of timer to signal our thread after a limit?  Then
-> hopefully the copy loop gets interrupted and we can return the amount
-> copied so far.  (And hopefully the client has actually set the
-> contiguous flag so it can continue where it left off.)
-> 
->> Capping with an arbitrary size would definitely be simpler, so I'll
->> look into adding that.
-> 
-> I'm not sure how to set the limit.  The downside (assuming the
-> client/application handle the short copy correctly) is that data can
-> stop flowing while we wait for the client to send us the next copy, but
-> I'm not sure how high the cap needs to be before that becomes
-> negligible.
+On 08/23/2016 01:52 PM, Chuck Lever wrote:
+> Clean up: there is some XDR initialization logic that is commoon
+                                                           ^^^^^^^
+nit: "common" has an extra "o"
 
-I've been playing around with copy caps and I found that a 4MB cap has performance pretty close to no cap at all.  Here is my performance data (averages across several runs):
-
-|-------|---------|---------|---------|---------|---------|---------|---------|
-|NFSv4.1|  512 MB | 1024 MB | 1536 MB | 2048 MB | 2560 MB | 3072 MB | 5120 MB |
-|-------|---------|---------|---------|---------|---------|---------|---------|
-|user   |   0.00s |   0.00s |   0.00s |   0.00s |   0.00s |   0.00s |   0.00s |
-|system |   0.28s |   0.48s |   0.72s |   0.94s |   1.17s |   1.42s |   2.37s |
-|cpu    |     18% |     14% |     14% |     14% |     14% |     13% |     13% |
-|total  |  1.547s |  3.269s |  5.040s |  6.690s |  8.363s | 10.146s | 16.729s |
-|-------|---------|---------|---------|---------|---------|---------|---------|
-|read   |   4096  |   8192  |  12288  |  16384  |  20480  |  24576  |  40960  |
-|write  |   4098  |   8203  |  12302  |  16402  |  20497  |  24668  |  40996  |
-|commit |      9  |     18  |     27  |     36  |     46  |     55  |     93  |
-|-------|---------|---------|---------|---------|---------|---------|---------|
-
-|-------|---------|---------|---------|---------|---------|---------|---------|
-|No Cap |  512 MB | 1024 MB | 1536 MB | 2048 MB | 2560 MB | 3072 MB | 5120 MB |
-|-------|---------|---------|---------|---------|---------|---------|---------|
-|user   |   0.00s |   0.00s |   0.00s |   0.00s |   0.00s |   0.00s |   0.00s |
-|system |   0.00s |   0.00s |   0.00s |   0.00s |   0.00s |   0.00s |   0.00s |
-|cpu    |      0% |      0% |      0% |      0% |      0% |      0% |      0% |
-|total  |  1.476s |  3.068s |  4.569s |  6.123s |  7.701s |  9.265s | 15.438s |
-|-------|---------|---------|---------|---------|---------|---------|---------|
-|copy   |      1  |      1  |      1  |      2  |      2  |      2  |      3  |
-|commit |      1  |      1  |      1  |      2  |      2  |      2  |      3  |
-|-------|---------|---------|---------|---------|---------|---------|---------|
-
-|-------|---------|---------|---------|---------|---------|---------|---------|
-|1MB Cap|  512 MB | 1024 MB | 1536 MB | 2048 MB | 2560 MB | 3072 MB | 5120 MB |
-|-------|---------|---------|---------|---------|---------|---------|---------|
-|user   |   0.00s |   0.00s |   0.00s |   0.00s |   0.00s |   0.00s |   0.00s |
-|system |   0.01s |   0.02s |   0.03s |   0.04s |   0.05s |   0.07s |   0.10s |
-|cpu    |      0% |      0% |      0% |      0% |      0% |      0% |      0% |
-|total  |  1.659s |  3.118s |  4.930s |  6.647s |  8.110s |  9.637s | 16.030s |
-|-------|---------|---------|---------|---------|---------|---------|---------|
-|copy   |    512  |   1024  |   1536  |   2048  |   2560  |   3072  |   5120  |
-|commit |    512  |   1024  |   1536  |   2048  |   2560  |   3072  |   5120  |
-|-------|---------|---------|---------|---------|---------|---------|---------|
-
-|-------|---------|---------|---------|---------|---------|---------|---------|
-|2MB Cap|  512 MB | 1024 MB | 1536 MB | 2048 MB | 2560 MB | 3072 MB | 5120 MB |
-|-------|---------|---------|---------|---------|---------|---------|---------|
-|user   |   0.00s |   0.00s |   0.00s |   0.00s |   0.00s |   0.00s |   0.00s |
-|system |   0.01s |   0.01s |   0.02s |   0.03s |   0.03s |   0.04s |   0.07s |
-|cpu    |      0% |      0% |      0% |      0% |      0% |      0% |      0% |
-|total  |  1.757s |  3.351s |  4.791s |  6.522s |  8.090s |  9.594s | 15.977s |
-|-------|---------|---------|---------|---------|---------|---------|---------|
-|copy   |    256  |    512  |    768  |   1024  |   1280  |   1536  |   2560  |
-|commit |    256  |    512  |    768  |   1024  |   1280  |   1536  |   2560  |
-|-------|---------|---------|---------|---------|---------|---------|---------|
-
-|-------|---------|---------|---------|---------|---------|---------|---------|
-|4MB Cap|  512 MB | 1024 MB | 1536 MB | 2048 MB | 2560 MB | 3072 MB | 5120 MB |
-|-------|---------|---------|---------|---------|---------|---------|---------|
-|user   |   0.00s |   0.00s |   0.00s |   0.00s |   0.00s |   0.00s |   0.00s |
-|system |   0.00s |   0.01s |   0.01s |   0.01s |   0.02s |   0.02s |   0.04s |
-|cpu    |      0% |      0% |      0% |      0% |      0% |      0% |      0% |
-|total  |  1.475s |  3.046s |  4.643s |  6.159s |  7.779s |  9.340s | 15.476s |
-|-------|---------|---------|---------|---------|---------|---------|---------|
-|copy   |    128  |    256  |    384  |    512  |    640  |    768  |   1280  |
-|commit |    128  |    256  |    384  |    512  |    640  |    768  |   1280  |
-|-------|---------|---------|---------|---------|---------|---------|---------|
-
-
-If you don't have any objections then I'll put in the 4MB cap with a comment that it's to keep from holding open the RPC slot too long.  Then I'll resubmit that along with the xfstests I've written (and one vfs fix).
-
-Thoughts?
+Looks okay to me otherwise,
 Anna
 
+> to the forward channel and backchannel. Move it to an XDR header
+> so it can be shared.
 > 
-> --b.
+> rpc_rqst::rq_buffer points to a buffer containing big-endian data.
+> Update its annotation as part of the clean up.
+> 
+> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+> ---
+>  include/linux/sunrpc/xdr.h        |   12 ++++++++++++
+>  include/linux/sunrpc/xprt.h       |    2 +-
+>  net/sunrpc/backchannel_rqst.c     |    8 +-------
+>  net/sunrpc/clnt.c                 |   24 ++++++------------------
+>  net/sunrpc/xprtrdma/backchannel.c |   12 +-----------
+>  5 files changed, 21 insertions(+), 37 deletions(-)
+> 
+> diff --git a/include/linux/sunrpc/xdr.h b/include/linux/sunrpc/xdr.h
+> index 70c6b92..56c48c8 100644
+> --- a/include/linux/sunrpc/xdr.h
+> +++ b/include/linux/sunrpc/xdr.h
+> @@ -67,6 +67,18 @@ struct xdr_buf {
+>  			len;		/* Length of XDR encoded message */
+>  };
+>  
+> +static inline void
+> +xdr_buf_init(struct xdr_buf *buf, void *start, size_t len)
+> +{
+> +	buf->head[0].iov_base = start;
+> +	buf->head[0].iov_len = len;
+> +	buf->tail[0].iov_len = 0;
+> +	buf->page_len = 0;
+> +	buf->flags = 0;
+> +	buf->len = 0;
+> +	buf->buflen = len;
+> +}
+> +
+>  /*
+>   * pre-xdr'ed macros.
+>   */
+> diff --git a/include/linux/sunrpc/xprt.h b/include/linux/sunrpc/xprt.h
+> index a16070d..6f1d41b 100644
+> --- a/include/linux/sunrpc/xprt.h
+> +++ b/include/linux/sunrpc/xprt.h
+> @@ -83,7 +83,7 @@ struct rpc_rqst {
+>  	void (*rq_release_snd_buf)(struct rpc_rqst *); /* release rq_enc_pages */
+>  	struct list_head	rq_list;
+>  
+> -	__u32 *			rq_buffer;	/* XDR encode buffer */
+> +	void			*rq_buffer;	/* Call XDR encode buffer */
+>  	size_t			rq_callsize,
+>  				rq_rcvsize;
+>  	size_t			rq_xmit_bytes_sent;	/* total bytes sent */
+> diff --git a/net/sunrpc/backchannel_rqst.c b/net/sunrpc/backchannel_rqst.c
+> index 229956b..ac701c2 100644
+> --- a/net/sunrpc/backchannel_rqst.c
+> +++ b/net/sunrpc/backchannel_rqst.c
+> @@ -76,13 +76,7 @@ static int xprt_alloc_xdr_buf(struct xdr_buf *buf, gfp_t gfp_flags)
+>  	page = alloc_page(gfp_flags);
+>  	if (page == NULL)
+>  		return -ENOMEM;
+> -	buf->head[0].iov_base = page_address(page);
+> -	buf->head[0].iov_len = PAGE_SIZE;
+> -	buf->tail[0].iov_base = NULL;
+> -	buf->tail[0].iov_len = 0;
+> -	buf->page_len = 0;
+> -	buf->len = 0;
+> -	buf->buflen = PAGE_SIZE;
+> +	xdr_buf_init(buf, page_address(page), PAGE_SIZE);
+>  	return 0;
+>  }
+>  
+> diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+> index 7f79fb7..236f9ff 100644
+> --- a/net/sunrpc/clnt.c
+> +++ b/net/sunrpc/clnt.c
+> @@ -1748,18 +1748,6 @@ rpc_task_force_reencode(struct rpc_task *task)
+>  	task->tk_rqstp->rq_bytes_sent = 0;
+>  }
+>  
+> -static inline void
+> -rpc_xdr_buf_init(struct xdr_buf *buf, void *start, size_t len)
+> -{
+> -	buf->head[0].iov_base = start;
+> -	buf->head[0].iov_len = len;
+> -	buf->tail[0].iov_len = 0;
+> -	buf->page_len = 0;
+> -	buf->flags = 0;
+> -	buf->len = 0;
+> -	buf->buflen = len;
+> -}
+> -
+>  /*
+>   * 3.	Encode arguments of an RPC call
+>   */
+> @@ -1772,12 +1760,12 @@ rpc_xdr_encode(struct rpc_task *task)
+>  
+>  	dprint_status(task);
+>  
+> -	rpc_xdr_buf_init(&req->rq_snd_buf,
+> -			 req->rq_buffer,
+> -			 req->rq_callsize);
+> -	rpc_xdr_buf_init(&req->rq_rcv_buf,
+> -			 (char *)req->rq_buffer + req->rq_callsize,
+> -			 req->rq_rcvsize);
+> +	xdr_buf_init(&req->rq_snd_buf,
+> +		     req->rq_buffer,
+> +		     req->rq_callsize);
+> +	xdr_buf_init(&req->rq_rcv_buf,
+> +		     (char *)req->rq_buffer + req->rq_callsize,
+> +		     req->rq_rcvsize);
+>  
+>  	p = rpc_encode_header(task);
+>  	if (p == NULL) {
+> diff --git a/net/sunrpc/xprtrdma/backchannel.c b/net/sunrpc/xprtrdma/backchannel.c
+> index 5f60ab2..d3cfaf2 100644
+> --- a/net/sunrpc/xprtrdma/backchannel.c
+> +++ b/net/sunrpc/xprtrdma/backchannel.c
+> @@ -38,7 +38,6 @@ static int rpcrdma_bc_setup_rqst(struct rpcrdma_xprt *r_xprt,
+>  	struct rpcrdma_ia *ia = &r_xprt->rx_ia;
+>  	struct rpcrdma_regbuf *rb;
+>  	struct rpcrdma_req *req;
+> -	struct xdr_buf *buf;
+>  	size_t size;
+>  
+>  	req = rpcrdma_create_req(r_xprt);
+> @@ -60,16 +59,7 @@ static int rpcrdma_bc_setup_rqst(struct rpcrdma_xprt *r_xprt,
+>  	req->rl_sendbuf = rb;
+>  	/* so that rpcr_to_rdmar works when receiving a request */
+>  	rqst->rq_buffer = (void *)req->rl_sendbuf->rg_base;
+> -
+> -	buf = &rqst->rq_snd_buf;
+> -	buf->head[0].iov_base = rqst->rq_buffer;
+> -	buf->head[0].iov_len = 0;
+> -	buf->tail[0].iov_base = NULL;
+> -	buf->tail[0].iov_len = 0;
+> -	buf->page_len = 0;
+> -	buf->len = 0;
+> -	buf->buflen = size;
+> -
+> +	xdr_buf_init(&rqst->rq_snd_buf, rqst->rq_buffer, size);
+>  	return 0;
+>  
+>  out_fail:
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 > 
 
