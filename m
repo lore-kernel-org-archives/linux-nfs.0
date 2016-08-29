@@ -1,169 +1,87 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx141.netapp.com ([216.240.21.12]:53490 "EHLO mx141.netapp.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751691AbcH2PsO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 29 Aug 2016 11:48:14 -0400
-Subject: Re: [PATCH v2 05/22] SUNRPC: Separate buffer pointers for RPC Call
- and Reply messages
-To: Chuck Lever <chuck.lever@oracle.com>
-References: <20160823174402.13038.84561.stgit@manet.1015granger.net>
- <20160823175244.13038.39619.stgit@manet.1015granger.net>
- <1e9440d8-111a-4252-c706-2e3c26f7b09a@Netapp.com>
- <10EFE631-06F6-4E4E-9EBC-F7ABFDF2C742@oracle.com>
-CC: List Linux RDMA Mailing <linux-rdma@vger.kernel.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-From: Anna Schumaker <Anna.Schumaker@netapp.com>
-Message-ID: <14ed937b-6d21-b5e2-9160-a9580c8307ca@Netapp.com>
-Date: Mon, 29 Aug 2016 11:44:57 -0400
+Received: from mail-oi0-f41.google.com ([209.85.218.41]:35392 "EHLO
+        mail-oi0-f41.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751277AbcH2R2M (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 29 Aug 2016 13:28:12 -0400
 MIME-Version: 1.0
-In-Reply-To: <10EFE631-06F6-4E4E-9EBC-F7ABFDF2C742@oracle.com>
-Content-Type: text/plain; charset="utf-8"
+In-Reply-To: <20160829145203.GA30660@aepfle.de>
+References: <20160822093249.GA14916@dhcp22.suse.cz> <20160822093707.GG13596@dhcp22.suse.cz>
+ <20160822100528.GB11890@kroah.com> <20160822105441.GH13596@dhcp22.suse.cz>
+ <20160822133114.GA15302@kroah.com> <20160822134227.GM13596@dhcp22.suse.cz>
+ <20160822150517.62dc7cce74f1af6c1f204549@linux-foundation.org>
+ <20160823074339.GB23577@dhcp22.suse.cz> <20160825071103.GC4230@dhcp22.suse.cz>
+ <20160825071728.GA3169@aepfle.de> <20160829145203.GA30660@aepfle.de>
+From: Linus Torvalds <torvalds@linux-foundation.org>
+Date: Mon, 29 Aug 2016 10:28:10 -0700
+Message-ID: <CA+55aFxbBszp+O9=9MrwXxp_fNw6xzNjQ0Kktm-8ipgqbido8w@mail.gmail.com>
+Subject: Re: OOM detection regressions since 4.7
+To: Olaf Hering <olaf@aepfle.de>, Bruce Fields <bfields@fieldses.org>,
+        Jeff Layton <jlayton@poochiereds.net>
+Cc: Michal Hocko <mhocko@kernel.org>,
+        Andrew Morton <akpm@linux-foundation.org>,
+        Markus Trippelsdorf <markus@trippelsdorf.de>,
+        Arkadiusz Miskiewicz <a.miskiewicz@gmail.com>,
+        Ralf-Peter Rohbeck <Ralf-Peter.Rohbeck@quantum.com>,
+        Jiri Slaby <jslaby@suse.com>, Greg KH <gregkh@linuxfoundation.org>,
+        Vlastimil Babka <vbabka@suse.cz>, Joonsoo Kim <js1304@gmail.com>,
+        linux-mm <linux-mm@kvack.org>, LKML <linux-kernel@vger.kernel.org>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 08/29/2016 11:33 AM, Chuck Lever wrote:
-> 
->> On Aug 29, 2016, at 10:23 AM, Anna Schumaker <Anna.Schumaker@netapp.com> wrote:
->>
->> Hi Chuck,
->>
->> On 08/23/2016 01:52 PM, Chuck Lever wrote:
->>> For xprtrdma, the RPC Call and Reply buffers are involved in real
->>> I/O operations.
->>>
->>> To start with, the DMA direction of the I/O for a Call is opposite
->>> that of a Reply.
->>>
->>> In the current arrangement, the Reply buffer address is on a
->>> four-byte alignment just past the call buffer. Would be friendlier
->>> on some platforms if that was at a DMA cache alignment instead.
->>>
->>> Because the current arrangement allocates a single memory region
->>> which contains both buffers, the RPC Reply buffer often contains a
->>> page boundary in it when the Call buffer is large enough (which is
->>> frequent).
->>>
->>> It would be a little nicer for setting up DMA operations (and
->>> possible registration of the Reply buffer) if the two buffers were
->>> separated, well-aligned, and contained as few page boundaries as
->>> possible.
->>>
->>> Now, I could just pad out the single memory region used for the pair
->>> of buffers. But frequently that would mean a lot of unused space to
->>> ensure the Reply buffer did not have a page boundary.
->>>
->>> Add a separate pointer to rpc_rqst that points right to the RPC
->>> Reply buffer. This makes no difference to xprtsock, but it will help
->>> xprtrdma in subsequent patches.
->>>
->>> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
->>> ---
->>> include/linux/sunrpc/xprt.h     |    5 +++--
->>> net/sunrpc/clnt.c               |    2 +-
->>> net/sunrpc/sched.c              |    1 +
->>> net/sunrpc/xprtrdma/transport.c |    1 +
->>> 4 files changed, 6 insertions(+), 3 deletions(-)
->>>
->>> diff --git a/include/linux/sunrpc/xprt.h b/include/linux/sunrpc/xprt.h
->>> index 72c2aeb..46f069e 100644
->>> --- a/include/linux/sunrpc/xprt.h
->>> +++ b/include/linux/sunrpc/xprt.h
->>> @@ -84,8 +84,9 @@ struct rpc_rqst {
->>> 	struct list_head	rq_list;
->>>
->>> 	void			*rq_buffer;	/* Call XDR encode buffer */
->>> -	size_t			rq_callsize,
->>> -				rq_rcvsize;
->>> +	size_t			rq_callsize;
->>> +	void			*rq_rbuffer;	/* Reply XDR decode buffer */
->>> +	size_t			rq_rcvsize;
->>
->> Just a nit-picky question :)  Is there any reason that you're adding the buffer between rq_callsize and rq_rcvsize?  It seems like you could leave those alone and add the pointer either before or after them.
-> 
-> Hi Anna-
-> 
-> Keeping related fields together is usually more important than an extra
-> line or two in a commit. At the very least, the function of these fields
-> is more clear (to me, anyway) in this order.
-> 
-> Generally it's good practice to keep together structure fields that are
-> used at the same time. These four fields might appear in the same CPU
-> cacheline, though that can change as fields are introduced or removed
-> earlier in struct rpc_rqst.
-> 
-> An argument can be made that the code is just as easy to read this way:
-> 
->         void                    *rq_buffer, *rq_rbuffer;
->         size_t                  rq_callsize, rq_rcvsize;
-> 
-> If that's your preference as maintainer, I will change it in the next
-> version of this series.
+On Mon, Aug 29, 2016 at 7:52 AM, Olaf Hering <olaf@aepfle.de> wrote:
+>
+> Today I noticed the nfsserver was disabled, probably since months already.
+> Starting it gives a OOM, not sure if this is new with 4.7+.
 
-Got it.  The cacheline reason is good enough for me, so you don't need to change the patch.
+That's not an oom, that's just an allocation failure.
 
-Thanks,
-Anna
+And with order-4, that's actually pretty normal. Nobody should use
+order-4 (that's 16 contiguous pages, fragmentation can easily make
+that hard - *much* harder than the small order-2 or order-2 cases that
+we should largely be able to rely on).
 
-> 
-> 
->> Thanks,
->> Anna
->>
->>> 	size_t			rq_xmit_bytes_sent;	/* total bytes sent */
->>> 	size_t			rq_reply_bytes_recvd;	/* total reply bytes */
->>> 							/* received */
->>> diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
->>> index ab467c0..fd389c0 100644
->>> --- a/net/sunrpc/clnt.c
->>> +++ b/net/sunrpc/clnt.c
->>> @@ -1768,7 +1768,7 @@ rpc_xdr_encode(struct rpc_task *task)
->>> 		     req->rq_buffer,
->>> 		     req->rq_callsize);
->>> 	xdr_buf_init(&req->rq_rcv_buf,
->>> -		     (char *)req->rq_buffer + req->rq_callsize,
->>> +		     req->rq_rbuffer,
->>> 		     req->rq_rcvsize);
->>>
->>> 	p = rpc_encode_header(task);
->>> diff --git a/net/sunrpc/sched.c b/net/sunrpc/sched.c
->>> index 6690ebc..5db68b3 100644
->>> --- a/net/sunrpc/sched.c
->>> +++ b/net/sunrpc/sched.c
->>> @@ -891,6 +891,7 @@ int rpc_malloc(struct rpc_task *task)
->>> 	dprintk("RPC: %5u allocated buffer of size %zu at %p\n",
->>> 			task->tk_pid, size, buf);
->>> 	rqst->rq_buffer = buf->data;
->>> +	rqst->rq_rbuffer = (char *)rqst->rq_buffer + rqst->rq_callsize;
->>> 	return 0;
->>> }
->>> EXPORT_SYMBOL_GPL(rpc_malloc);
->>> diff --git a/net/sunrpc/xprtrdma/transport.c b/net/sunrpc/xprtrdma/transport.c
->>> index ebf14ba..136caf3 100644
->>> --- a/net/sunrpc/xprtrdma/transport.c
->>> +++ b/net/sunrpc/xprtrdma/transport.c
->>> @@ -524,6 +524,7 @@ out:
->>> 	dprintk("RPC:       %s: size %zd, request 0x%p\n", __func__, size, req);
->>> 	req->rl_connect_cookie = 0;	/* our reserved value */
->>> 	rqst->rq_buffer = req->rl_sendbuf->rg_base;
->>> +	rqst->rq_rbuffer = (char *)rqst->rq_buffer + rqst->rq_rcvsize;
->>> 	return 0;
->>>
->>> out_rdmabuf:
->>>
->>> --
->>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->>> the body of a message to majordomo@vger.kernel.org
->>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->>>
->>
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
-> --
-> Chuck Lever
-> 
-> 
-> 
+In fact, people who do multi-order allocations should always have a
+fallback, and use __GFP_NOWARN.
 
+> [93348.306406] Call Trace:
+> [93348.306490]  [<ffffffff81198cef>] __alloc_pages_slowpath+0x1af/0xa10
+> [93348.306501]  [<ffffffff811997a0>] __alloc_pages_nodemask+0x250/0x290
+> [93348.306511]  [<ffffffff811f1c3d>] cache_grow_begin+0x8d/0x540
+> [93348.306520]  [<ffffffff811f23d1>] fallback_alloc+0x161/0x200
+> [93348.306530]  [<ffffffff811f43f2>] __kmalloc+0x1d2/0x570
+> [93348.306589]  [<ffffffffa08f025a>] nfsd_reply_cache_init+0xaa/0x110 [nfsd]
+
+Hmm. That's kmalloc itself falling back after already failing to grow
+the slab cache earlier (the earlier allocations *were* done with
+NOWARN afaik).
+
+It does look like nfsdstarts out by allocating the hash table with one
+single fairly big allocation, and has no fallback position.
+
+I suspect the code expects to be started at boot time, when this just
+isn't an issue. The fact that you loaded the nfsd kernel module with
+memory already fragmented after heavy use is likely why nobody else
+has seen this.
+
+Adding the nfsd people to the cc, because just from a robustness
+standpoint I suspect it would be better if the code did something like
+
+ (a) shrink the hash table if the allocation fails (we've got some
+examples of that elsewhere)
+
+or
+
+ (b) fall back on a vmalloc allocation (that's certainly the simpler model)
+
+We do have a "kvfree()" helper function for the "free either a kmalloc
+or vmalloc allocation" but we don't actually have a good helper
+pattern for the allocation side. People just do it by hand, at least
+partly because we have so many different ways to allocate things -
+zeroing, non-zeroing, node-specific or not, atomic or not (atomic
+cannot fall back to vmalloc, obviously) etc etc.
+
+Bruce, Jeff, comments?
+
+             Linus
