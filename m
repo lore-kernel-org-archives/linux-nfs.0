@@ -1,99 +1,92 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from userp1040.oracle.com ([156.151.31.81]:20965 "EHLO
+Received: from userp1040.oracle.com ([156.151.31.81]:27049 "EHLO
         userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1754167AbcH2UCg (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 29 Aug 2016 16:02:36 -0400
+        with ESMTP id S1750786AbcH2UNT (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 29 Aug 2016 16:13:19 -0400
 Content-Type: text/plain; charset=us-ascii
 Mime-Version: 1.0 (Mac OS X Mail 9.3 \(3124\))
-Subject: Re: [PATCH v2 19/22] xprtrdma: Support larger inline thresholds
+Subject: Re: [PATCH v2 20/22] xprtrmda: Report address of frmr, not mw
 From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <c922120b-35f3-65bf-e778-3cef645cee48@Netapp.com>
-Date: Mon, 29 Aug 2016 16:02:28 -0400
-Cc: List Linux RDMA Mailing <linux-rdma@vger.kernel.org>,
+In-Reply-To: <7f92664a-a16c-6c44-b8f8-391e4fec0a89@Netapp.com>
+Date: Mon, 29 Aug 2016 16:13:14 -0400
+Cc: linux-rdma@vger.kernel.org,
         Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <741D8723-D193-4F52-826F-807F89DC19C7@oracle.com>
-References: <20160823174402.13038.84561.stgit@manet.1015granger.net> <20160823175438.13038.1624.stgit@manet.1015granger.net> <c922120b-35f3-65bf-e778-3cef645cee48@Netapp.com>
-To: Anna Schumaker <Anna.Schumaker@netapp.com>
+Message-Id: <4053F4B8-115E-4C5D-988D-DBEB750F1C7E@oracle.com>
+References: <20160823174402.13038.84561.stgit@manet.1015granger.net> <20160823175446.13038.58792.stgit@manet.1015granger.net> <7f92664a-a16c-6c44-b8f8-391e4fec0a89@Netapp.com>
+To: Anna Schumaker <anna.schumaker@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
-> On Aug 29, 2016, at 3:52 PM, Anna Schumaker <Anna.Schumaker@netapp.com> wrote:
+> On Aug 29, 2016, at 3:54 PM, Anna Schumaker <anna.schumaker@netapp.com> wrote:
 > 
 > Hi Chuck,
 > 
 > On 08/23/2016 01:54 PM, Chuck Lever wrote:
->> RPC-over-RDMA Version Two will likely require at least a 4KB inline
->> threshold by default. The Version One inline threshold is still 1KB,
->> and it's automatically negotiated down to in
->> rpcrdma_update_connect_private.
+>> Tie frwr debugging messages together by always reporting the address
+>> of the frwr.
+>> 
+>> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+>> ---
+>> net/sunrpc/xprtrdma/frwr_ops.c |    9 +++++++--
+>> 1 file changed, 7 insertions(+), 2 deletions(-)
+>> 
+>> diff --git a/net/sunrpc/xprtrdma/frwr_ops.c b/net/sunrpc/xprtrdma/frwr_ops.c
+>> index e82d5cf..2e51ef5 100644
+>> --- a/net/sunrpc/xprtrdma/frwr_ops.c
+>> +++ b/net/sunrpc/xprtrdma/frwr_ops.c
+>> @@ -163,7 +163,7 @@ __frwr_reset_mr(struct rpcrdma_ia *ia, struct rpcrdma_mw *r)
+>> 		return PTR_ERR(f->fr_mr);
+>> 	}
+>> 
+>> -	dprintk("RPC:       %s: recovered FRMR %p\n", __func__, r);
+>> +	dprintk("RPC:       %s: recovered FRMR %p\n", __func__, f);
+>> 	f->fr_state = FRMR_IS_INVALID;
+>> 	return 0;
+>> }
+>> @@ -397,7 +397,7 @@ frwr_op_map(struct rpcrdma_xprt *r_xprt, struct rpcrdma_mr_seg *seg,
+>> 		goto out_mapmr_err;
+>> 
+>> 	dprintk("RPC:       %s: Using frmr %p to map %u segments (%u bytes)\n",
+>> -		__func__, mw, mw->mw_nents, mr->length);
+>> +		__func__, frmr, mw->mw_nents, mr->length);
+>> 
+>> 	key = (u8)(mr->rkey & 0x000000FF);
+>> 	ib_update_fast_reg_key(mr, ++key);
+>> @@ -450,6 +450,9 @@ __frwr_prepare_linv_wr(struct rpcrdma_mw *mw)
+>> 	struct rpcrdma_frmr *f = &mw->frmr;
+>> 	struct ib_send_wr *invalidate_wr;
+>> 
+>> +	dprintk("RPC:       %s: invalidating frmr %p\n",
+>> +		__func__, f);
+>> +
 > 
-> I'm curious, what is the status of RPCoRDMA v2?
+> Any reason this is broken into two lines?
 
-There is a personal draft published:
+No. It can be re-arranged.
 
-  https://datatracker.ietf.org/doc/draft-cel-nfsv4-rpcrdma-version-two/
 
-And being discussed actively in the nfsv4 Working Group.
+>> 	f->fr_state = FRMR_IS_INVALID;
+>> 	invalidate_wr = &f->fr_invwr;
+>> 
+>> @@ -532,6 +535,8 @@ frwr_op_unmap_sync(struct rpcrdma_xprt *r_xprt, struct rpcrdma_req *req)
+>> 	 */
+>> unmap:
+>> 	list_for_each_entry_safe(mw, tmp, &req->rl_registered, mw_list) {
+>> +		dprintk("RPC:       %s: unmapping frmr %p\n",
+>> +			__func__, &mw->frmr);
+> 
+> Same question here.
 
-The features added in this series are usable with the Linux V1 implementation
-too; the point being to experiment with these new facilities before we finish
-RPC-over-RDMA Version Two.
+On one line, the dprintk invocation is longer than 80 characters.
+Just avoiding a checkpatch.pl complaint.
 
 
 > Thanks,
 > Anna
-> 
->> 
->> The maximum is somewhat arbitrary. There's no fundamental
->> architectural limit I'm aware of, but it's good to keep the size of
->> Receive buffers reasonable. Now that Send can use a s/g list, a
->> Send buffer is only as large as each RPC requires. Receive buffers
->> are always the size of the inline threshold, however.
->> 
->> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
->> ---
->> include/linux/sunrpc/xprtrdma.h |    4 ++--
->> net/sunrpc/xprtrdma/transport.c |    4 ++--
->> 2 files changed, 4 insertions(+), 4 deletions(-)
->> 
->> diff --git a/include/linux/sunrpc/xprtrdma.h b/include/linux/sunrpc/xprtrdma.h
->> index 39267dc..221b7a2 100644
->> --- a/include/linux/sunrpc/xprtrdma.h
->> +++ b/include/linux/sunrpc/xprtrdma.h
->> @@ -53,8 +53,8 @@
->> #define RPCRDMA_MAX_SLOT_TABLE	(256U)
->> 
->> #define RPCRDMA_MIN_INLINE  (1024)	/* min inline thresh */
->> -#define RPCRDMA_DEF_INLINE  (1024)	/* default inline thresh */
->> -#define RPCRDMA_MAX_INLINE  (3068)	/* max inline thresh */
->> +#define RPCRDMA_DEF_INLINE  (4096)	/* default inline thresh */
->> +#define RPCRDMA_MAX_INLINE  (65536)	/* max inline thresh */
->> 
->> /* Memory registration strategies, by number.
->>  * This is part of a kernel / user space API. Do not remove. */
->> diff --git a/net/sunrpc/xprtrdma/transport.c b/net/sunrpc/xprtrdma/transport.c
->> index 6a358ab..ed5e285 100644
->> --- a/net/sunrpc/xprtrdma/transport.c
->> +++ b/net/sunrpc/xprtrdma/transport.c
->> @@ -97,7 +97,7 @@ static struct ctl_table xr_tunables_table[] = {
->> 		.data		= &xprt_rdma_max_inline_read,
->> 		.maxlen		= sizeof(unsigned int),
->> 		.mode		= 0644,
->> -		.proc_handler	= proc_dointvec,
->> +		.proc_handler	= proc_dointvec_minmax,
->> 		.extra1		= &min_inline_size,
->> 		.extra2		= &max_inline_size,
->> 	},
->> @@ -106,7 +106,7 @@ static struct ctl_table xr_tunables_table[] = {
->> 		.data		= &xprt_rdma_max_inline_write,
->> 		.maxlen		= sizeof(unsigned int),
->> 		.mode		= 0644,
->> -		.proc_handler	= proc_dointvec,
->> +		.proc_handler	= proc_dointvec_minmax,
->> 		.extra1		= &min_inline_size,
->> 		.extra2		= &max_inline_size,
->> 	},
+>> 		list_del_init(&mw->mw_list);
+>> 		ib_dma_unmap_sg(ia->ri_device,
+>> 				mw->mw_sg, mw->mw_nents, mw->mw_dir);
 >> 
 >> --
 >> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
