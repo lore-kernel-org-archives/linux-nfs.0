@@ -1,47 +1,91 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:39158 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:53392 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1757773AbcH3LNy (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 30 Aug 2016 07:13:54 -0400
-From: Benjamin Coddington <bcodding@redhat.com>
-To: linux-nfs@vger.kernel.org
-Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
-        Anna Schumaker <anna.schumaker@netapp.com>
-Subject: [PATCH] NFS4: Avoid migration loops
-Date: Tue, 30 Aug 2016 07:13:51 -0400
-Message-Id: <C654261E-107D-4CB0-A345-E45BC4401F65@redhat.com>
-In-Reply-To: <5BAC7822-0023-4A20-A896-A353483E75C2@redhat.com>
+        id S1758156AbcH3Ls0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 30 Aug 2016 07:48:26 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
+        Olaf Hering <olaf@aepfle.de>,
+        Linus Torvalds <torvalds@linux-foundation.org>
+Subject: [PATCH] nfsd: more robust allocation failure handling in nfsd_reply_cache_init
+Date: Tue, 30 Aug 2016 07:48:23 -0400
+Message-Id: <1472557703-5985-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-If a server returns itself as a location while migrating the client may
-end up getting stuck attempting to migrate twice to the same server.  Catch
-this by checking if the nfs_client found is the same as the existing
-client.  For the other two callers to nfs4_set_client, the nfs_client will
-always be ERR_PTR(-EINVAL);
+Currently, we try to allocate the cache as a single, large chunk, which
+can fail if no big chunks of memory are available. We _do_ try to size
+it according to the amount of memory in the box, but if the server is
+started well after boot time, then the allocation can fail due to memory
+fragmentation.
 
-Signed-off-by: Benjamin Coddington <bcodding@redhat.com>
+Try to handle this more gracefully by cutting the max_drc_entries in
+half and then retrying if the allocation fails. Only give up if the
+failed allocation is smaller than a page.
+
+Reported-by: Olaf Hering <olaf@aepfle.de>
+Cc: Linus Torvalds <torvalds@linux-foundation.org>
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
 ---
- fs/nfs/nfs4client.c | 6 ++++++
- 1 file changed, 6 insertions(+)
+ fs/nfsd/nfscache.c | 27 +++++++++++++++++++++++----
+ 1 file changed, 23 insertions(+), 4 deletions(-)
 
-diff --git a/fs/nfs/nfs4client.c b/fs/nfs/nfs4client.c
-index 8d7d08d4f95f..ec8afc43d849 100644
---- a/fs/nfs/nfs4client.c
-+++ b/fs/nfs/nfs4client.c
-@@ -817,6 +817,12 @@ static int nfs4_set_client(struct nfs_server *server,
- 		goto error;
- 	}
+While this would be good to get in, I don't see any particular urgency
+here. This seems like it'd be reasonable for v4.9.
+
+diff --git a/fs/nfsd/nfscache.c b/fs/nfsd/nfscache.c
+index 54cde9a5864e..b8aaa7a71412 100644
+--- a/fs/nfsd/nfscache.c
++++ b/fs/nfsd/nfscache.c
+@@ -155,14 +155,12 @@ nfsd_reply_cache_free(struct nfsd_drc_bucket *b, struct svc_cacherep *rp)
  
-+	/* This client is already set, is there a migration loop? */
-+	if (server->nfs_client == clp) {
-+		error = -EEXIST;
-+		goto error;
-+	}
+ int nfsd_reply_cache_init(void)
+ {
+-	unsigned int hashsize;
++	unsigned int hashsize, target_hashsize;
+ 	unsigned int i;
+ 	int status = 0;
+ 
+ 	max_drc_entries = nfsd_cache_size_limit();
+ 	atomic_set(&num_drc_entries, 0);
+-	hashsize = nfsd_hashsize(max_drc_entries);
+-	maskbits = ilog2(hashsize);
+ 
+ 	status = register_shrinker(&nfsd_reply_cache_shrinker);
+ 	if (status)
+@@ -173,9 +171,30 @@ int nfsd_reply_cache_init(void)
+ 	if (!drc_slab)
+ 		goto out_nomem;
+ 
+-	drc_hashtbl = kcalloc(hashsize, sizeof(*drc_hashtbl), GFP_KERNEL);
++	/*
++	 * Attempt to allocate the hashtable, and progressively shrink the
++	 * size as the allocations fail. If the allocation size ends up being
++	 * smaller than a page however, then just give up.
++	 */
++	target_hashsize = nfsd_hashsize(max_drc_entries);
++	hashsize = target_hashsize;
++	do {
++		maskbits = ilog2(hashsize);
++		drc_hashtbl = kcalloc(hashsize, sizeof(*drc_hashtbl),
++					GFP_KERNEL|__GFP_NOWARN);
++		if (drc_hashtbl)
++			break;
++		max_drc_entries /= 2;
++		hashsize = nfsd_hashsize(max_drc_entries);
++	} while ((hashsize * sizeof(*drc_hashtbl)) >= PAGE_SIZE);
 +
- 	/*
- 	 * Query for the lease time on clientid setup or renewal
- 	 *
+ 	if (!drc_hashtbl)
+ 		goto out_nomem;
++
++	if (hashsize != target_hashsize)
++		pr_warn("NFSD: had to shrink reply cache hashtable (wanted %u, got %u)\n",
++			target_hashsize, hashsize);
++
+ 	for (i = 0; i < hashsize; i++) {
+ 		INIT_LIST_HEAD(&drc_hashtbl[i].lru_head);
+ 		spin_lock_init(&drc_hashtbl[i].cache_lock);
 -- 
-2.5.5
+2.7.4
 
