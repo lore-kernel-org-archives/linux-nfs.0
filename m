@@ -1,75 +1,80 @@
-Return-Path: <chuck.lever@oracle.com>
-Content-Type: text/plain; charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 9.3 \(3124\))
-Subject: Re: [PATCH v2] NFS4: Avoid migration loops
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <2d5aa23805b845cff3c28c4d6c71bb06173f0f15.1472563050.git.bcodding@redhat.com>
-Date: Tue, 30 Aug 2016 12:39:43 -0400
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        Anna Schumaker <anna.schumaker@netapp.com>
-Message-Id: <11F118A6-7FE3-462A-9217-17B7C45411CA@oracle.com>
-References: <C654261E-107D-4CB0-A345-E45BC4401F65@redhat.com> <2d5aa23805b845cff3c28c4d6c71bb06173f0f15.1472563050.git.bcodding@redhat.com>
-To: Benjamin Coddington <bcodding@redhat.com>
+Return-Path: <linux-nfs-owner@vger.kernel.org>
+Received: from us-smtp-delivery-194.mimecast.com ([63.128.21.194]:32041 "EHLO
+        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1757841AbcH3Q5x (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 30 Aug 2016 12:57:53 -0400
+From: Trond Myklebust <trondmy@primarydata.com>
+To: "torvalds@linux-foundation.org" <torvalds@linux-foundation.org>
+CC: "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: [GIT PULL] Please pull NFS client bugfixes for Linux 4.8
+Date: Tue, 30 Aug 2016 16:57:45 +0000
+Message-ID: <1472576264.5378.1.camel@primarydata.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+SGkgTGludXMsDQoNClRoZSBmb2xsb3dpbmcgY2hhbmdlcyBzaW5jZSBjb21taXQgNjk0ZDBkMGJi
+MjAzMGQyZTM2ZGY3M2UyZDIzZDU3NzA1MTFkYmM4ZDoNCg0KICBMaW51eCA0LjgtcmMyICgyMDE2
+LTA4LTE0IDE5OjExOjM2IC0wNzAwKQ0KDQphcmUgYXZhaWxhYmxlIGluIHRoZSBnaXQgcmVwb3Np
+dG9yeSBhdDoNCg0KICBnaXQ6Ly9naXQubGludXgtbmZzLm9yZy9wcm9qZWN0cy90cm9uZG15L2xp
+bnV4LW5mcy5naXQgdGFncy9uZnMtZm9yLTQuOC0zDQoNCmZvciB5b3UgdG8gZmV0Y2ggY2hhbmdl
+cyB1cCB0byA5OGIwZjgwYzIzOTYyMjRiYmJlZDgxNzkyYjUyNmU2YzcyYmE5ZWZhOg0KDQogIE5G
+U3Y0Lng6IEZpeCBhIHJlZmNvdW50IGxlYWsgaW4gbmZzX2NhbGxiYWNrX3VwX25ldCAoMjAxNi0w
+OC0zMCAwOToyNjo1NyAtMDQwMCkNCg0KQ2hlZXJzLA0KICBUcm9uZA0KDQotLS0tLS0tLS0tLS0t
+LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tDQpORlMg
+Y2xpZW50IGJ1Z2ZpeGVzIGZvciA0LjgNCg0KSGlnaGxpZ2h0cyBpbmNsdWRlOg0KDQpTdGFibGUg
+cGF0Y2hlczoNCi0gRml4IGEgcmVmY291bnQgbGVhayBpbiBuZnNfY2FsbGJhY2tfdXBfbmV0DQot
+IEZpeCBhbiBPb3BzYWJsZSBjb25kaXRpb24gd2hlbiB0aGUgZmxleGZpbGUgcE5GUyBkcml2ZXIg
+Y29ubmVjdGlvbiB0bw0KICB0aGUgRFMgZmFpbHMNCi0gRml4IGFuIE9vcHNhYmxlIGNvbmRpdGlv
+biBpbiBORlN2NC4xIHNlcnZlciBjYWxsYmFjayByYWNlcw0KLSBFbnN1cmUgcE5GUyBjbGllbnRz
+IHN0b3AgZG9pbmcgSS9PIHRvIHRoZSBEUyBpZiB0aGVpciBsZWFzZSBoYXMgZXhwaXJlZCwNCiAg
+YXMgcmVxdWlyZWQgYnkgdGhlIE5GU3Y0LjEgcHJvdG9jb2wNCg0KQnVnZml4ZXM6DQotIEZpeCBw
+b3RlbnRpYWwgbG9vcGluZyBpbiB0aGUgTkZTdjQueCBtaWdyYXRpb24gY29kZQ0KLSBQYXRjaCBz
+ZXJpZXMgdG8gY2xvc2UgY2FsbGJhY2sgcmFjZXMgZm9yIE9QRU4sIExBWU9VVEdFVCBhbmQgTEFZ
+T1VUUkVUVVJODQotIFNpbGVuY2UgV0FSTl9PTiB3aGVuIE5GU3Y0LjEgb3ZlciBSRE1BIGlzIGlu
+IHVzZQ0KLSBGaXggYSBMQVlPVVRDT01NSVQgcmFjZSBpbiB0aGUgcE5GUy9ibG9ja3MgY2xpZW50
+DQotIEZpeCBwTkZTIHRpbWVvdXQgaXNzdWVzIHdoZW4gdGhlIERTIGZhaWxzDQoNCi0tLS0tLS0t
+LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0N
+CkJlbmphbWluIENvZGRpbmd0b24gKDIpOg0KICAgICAgcG5mcy9ibG9ja2xheW91dDogdXBkYXRl
+IGxhc3Rfd3JpdGVfb2Zmc2V0IGF0b21pY2FsbHkgd2l0aCBleHRlbnRzDQogICAgICBORlM0OiBB
+dm9pZCBtaWdyYXRpb24gbG9vcHMNCg0KQ2h1Y2sgTGV2ZXIgKDEpOg0KICAgICAgU1VOUlBDOiBT
+aWxlbmNlIFdBUk5fT04gd2hlbiBORlN2NC4xIG92ZXIgUkRNQSBpcyBpbiB1c2UNCg0KVHJvbmQg
+TXlrbGVidXN0ICgxMik6DQogICAgICBwTkZTL2ZsZXhmaWxlczogRml4IGxheW91dHN0YXQgcGVy
+aW9kaWMgcmVwb3J0aW5nDQogICAgICBORlM6IEFsbG93IHRoZSBtb3VudCBvcHRpb24gcmV0cmFu
+cz0wDQogICAgICBwTkZTL2ZsZXhmaWxlczogU2V0IHJlYXNvbmFibGUgZGVmYXVsdCByZXRyYW5z
+IHZhbHVlcyBmb3IgdGhlIGRhdGEgY2hhbm5lbA0KICAgICAgcE5GUzogSGFuZGxlIE5GUzRFUlJf
+T0xEX1NUQVRFSUQgY29ycmVjdGx5IGluIExBWU9VVFNUQVQgY2FsbHMNCiAgICAgIHBORlM6IFRo
+ZSBjbGllbnQgbXVzdCBub3QgZG8gSS9PIHRvIHRoZSBEUyBpZiBpdCdzIGxlYXNlIGhhcyBleHBp
+cmVkDQogICAgICBORlN2NC4xOiBGaXggT29wc2FibGUgY29uZGl0aW9uIGluIHNlcnZlciBjYWxs
+YmFjayByYWNlcw0KICAgICAgTkZTdjQuMTogRGVsYXkgY2FsbGJhY2sgcHJvY2Vzc2luZyB3aGVu
+IHRoZXJlIGFyZSByZWZlcnJpbmcgdHJpcGxlcw0KICAgICAgTkZTdjQuMTogRGVmZXIgYnVtcGlu
+ZyB0aGUgc2xvdCBzZXF1ZW5jZSBudW1iZXIgdW50aWwgd2UgZnJlZSB0aGUgc2xvdA0KICAgICAg
+TkZTdjQuMTogQ2xvc2UgY2FsbGJhY2sgcmFjZXMgZm9yIE9QRU4sIExBWU9VVEdFVCBhbmQgTEFZ
+T1VUUkVUVVJODQogICAgICBORlN2NC4xOiBSZW1vdmUgb2Jzb2xldGUgYW5kIGluY29ycnJlY3Qg
+YXNzaWdubWVudCBpbiBuZnM0X2NhbGxiYWNrX3NlcXVlbmNlDQogICAgICBwTkZTL2ZsZXhmaWxl
+czogRml4IGFuIE9vcHNhYmxlIGNvbmRpdGlvbiB3aGVuIGNvbm5lY3Rpb24gdG8gdGhlIERTIGZh
+aWxzDQogICAgICBORlN2NC54OiBGaXggYSByZWZjb3VudCBsZWFrIGluIG5mc19jYWxsYmFja191
+cF9uZXQNCg0KIGZzL25mcy9ibG9ja2xheW91dC9ibG9ja2xheW91dC5jICAgICAgICAgIHwgIDIg
+Ky0NCiBmcy9uZnMvYmxvY2tsYXlvdXQvYmxvY2tsYXlvdXQuaCAgICAgICAgICB8ICAzICstDQog
+ZnMvbmZzL2Jsb2NrbGF5b3V0L2V4dGVudF90cmVlLmMgICAgICAgICAgfCAxMCArKy0tDQogZnMv
+bmZzL2NhbGxiYWNrLmMgICAgICAgICAgICAgICAgICAgICAgICAgfCAgMSArDQogZnMvbmZzL2Nh
+bGxiYWNrX3Byb2MuYyAgICAgICAgICAgICAgICAgICAgfCAgOCArLS0NCiBmcy9uZnMvY2xpZW50
+LmMgICAgICAgICAgICAgICAgICAgICAgICAgICB8IDEwICsrLS0NCiBmcy9uZnMvZmxleGZpbGVs
+YXlvdXQvZmxleGZpbGVsYXlvdXQuYyAgICB8IDQ1ICsrKysrKysrLS0tLS0tLS0NCiBmcy9uZnMv
+ZmxleGZpbGVsYXlvdXQvZmxleGZpbGVsYXlvdXQuaCAgICB8ICAyICstDQogZnMvbmZzL2ZsZXhm
+aWxlbGF5b3V0L2ZsZXhmaWxlbGF5b3V0ZGV2LmMgfCAyMyArKysrLS0tLQ0KIGZzL25mcy9pbnRl
+cm5hbC5oICAgICAgICAgICAgICAgICAgICAgICAgIHwgIDUgKy0NCiBmcy9uZnMvbmZzNDJwcm9j
+LmMgICAgICAgICAgICAgICAgICAgICAgICB8IDM0ICsrKysrKysrKystLQ0KIGZzL25mcy9uZnM0
+Y2xpZW50LmMgICAgICAgICAgICAgICAgICAgICAgIHwgIDUgKysNCiBmcy9uZnMvbmZzNHByb2Mu
+YyAgICAgICAgICAgICAgICAgICAgICAgICB8IDg5ICsrKysrKysrKysrKysrKysrKysrKysrKyst
+LS0tLS0NCiBmcy9uZnMvbmZzNHNlc3Npb24uYyAgICAgICAgICAgICAgICAgICAgICB8IDUzICsr
+KysrKysrKysrKysrKysrKw0KIGZzL25mcy9uZnM0c2Vzc2lvbi5oICAgICAgICAgICAgICAgICAg
+ICAgIHwgIDcgKystDQogZnMvbmZzL3BuZnMuYyAgICAgICAgICAgICAgICAgICAgICAgICAgICAg
+fCAgMiArLQ0KIGZzL25mcy9zdXBlci5jICAgICAgICAgICAgICAgICAgICAgICAgICAgIHwgMTkg
+KysrKysrLQ0KIG5ldC9zdW5ycGMvY2xudC5jICAgICAgICAgICAgICAgICAgICAgICAgIHwgIDQg
+Ky0NCiAxOCBmaWxlcyBjaGFuZ2VkLCAyNDQgaW5zZXJ0aW9ucygrKSwgNzggZGVsZXRpb25zKC0p
+DQotLSANClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyLCBQcmlt
+YXJ5RGF0YQ0KdHJvbmQubXlrbGVidXN0QHByaW1hcnlkYXRhLmNvbQ0K
 
-> On Aug 30, 2016, at 9:20 AM, Benjamin Coddington <bcodding@redhat.com> =
-wrote:
->=20
-> Change from v1:
-> 	Use ELOOP rather than EEXIST, and drop the now-redundant =
-comment.
->=20
-> =
-8<------------------------------------------------------------------------=
--
->=20
-> If a server returns itself as a location while migrating, the client =
-may
-> end up getting stuck attempting to migrate twice to the same server.  =
-Catch
-> this by checking if the nfs_client found is the same as the existing
-> client.  For the other two callers to nfs4_set_client, the nfs_client =
-will
-> always be ERR_PTR(-EINVAL).
->=20
-> Signed-off-by: Benjamin Coddington <bcodding@redhat.com>
-
-I don't have any objection.
-
-Reviewed-by: Chuck Lever <chuck.lever@oracle.com>
-
-
-> ---
-> fs/nfs/nfs4client.c | 5 +++++
-> 1 file changed, 5 insertions(+)
->=20
-> diff --git a/fs/nfs/nfs4client.c b/fs/nfs/nfs4client.c
-> index 8d7d08d4f95f..cd3b7cfdde16 100644
-> --- a/fs/nfs/nfs4client.c
-> +++ b/fs/nfs/nfs4client.c
-> @@ -817,6 +817,11 @@ static int nfs4_set_client(struct nfs_server =
-*server,
-> 		goto error;
-> 	}
->=20
-> +	if (server->nfs_client =3D=3D clp) {
-> +		error =3D -ELOOP;
-> +		goto error;
-> +	}
-> +
-> 	/*
-> 	 * Query for the lease time on clientid setup or renewal
-> 	 *
-> --=20
-> 2.5.5
->=20
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" =
-in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
---
-Chuck Lever
