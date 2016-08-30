@@ -1,80 +1,31 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from us-smtp-delivery-194.mimecast.com ([63.128.21.194]:32041 "EHLO
-        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1757841AbcH3Q5x (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 30 Aug 2016 12:57:53 -0400
-From: Trond Myklebust <trondmy@primarydata.com>
-To: "torvalds@linux-foundation.org" <torvalds@linux-foundation.org>
-CC: "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: [GIT PULL] Please pull NFS client bugfixes for Linux 4.8
-Date: Tue, 30 Aug 2016 16:57:45 +0000
-Message-ID: <1472576264.5378.1.camel@primarydata.com>
+Received: from mail-oi0-f41.google.com ([209.85.218.41]:34414 "EHLO
+        mail-oi0-f41.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1753924AbcH3SXh (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 30 Aug 2016 14:23:37 -0400
 MIME-Version: 1.0
+In-Reply-To: <1472557703-5985-1-git-send-email-jlayton@redhat.com>
+References: <1472557703-5985-1-git-send-email-jlayton@redhat.com>
+From: Linus Torvalds <torvalds@linux-foundation.org>
+Date: Tue, 30 Aug 2016 11:23:36 -0700
+Message-ID: <CA+55aFzVnBqtk5Az3VNMQ=HfTUBSYyOVejHykU2c63K70s24=A@mail.gmail.com>
+Subject: Re: [PATCH] nfsd: more robust allocation failure handling in nfsd_reply_cache_init
+To: Jeff Layton <jlayton@redhat.com>
+Cc: Bruce Fields <bfields@fieldses.org>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
+        Olaf Hering <olaf@aepfle.de>
 Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-SGkgTGludXMsDQoNClRoZSBmb2xsb3dpbmcgY2hhbmdlcyBzaW5jZSBjb21taXQgNjk0ZDBkMGJi
-MjAzMGQyZTM2ZGY3M2UyZDIzZDU3NzA1MTFkYmM4ZDoNCg0KICBMaW51eCA0LjgtcmMyICgyMDE2
-LTA4LTE0IDE5OjExOjM2IC0wNzAwKQ0KDQphcmUgYXZhaWxhYmxlIGluIHRoZSBnaXQgcmVwb3Np
-dG9yeSBhdDoNCg0KICBnaXQ6Ly9naXQubGludXgtbmZzLm9yZy9wcm9qZWN0cy90cm9uZG15L2xp
-bnV4LW5mcy5naXQgdGFncy9uZnMtZm9yLTQuOC0zDQoNCmZvciB5b3UgdG8gZmV0Y2ggY2hhbmdl
-cyB1cCB0byA5OGIwZjgwYzIzOTYyMjRiYmJlZDgxNzkyYjUyNmU2YzcyYmE5ZWZhOg0KDQogIE5G
-U3Y0Lng6IEZpeCBhIHJlZmNvdW50IGxlYWsgaW4gbmZzX2NhbGxiYWNrX3VwX25ldCAoMjAxNi0w
-OC0zMCAwOToyNjo1NyAtMDQwMCkNCg0KQ2hlZXJzLA0KICBUcm9uZA0KDQotLS0tLS0tLS0tLS0t
-LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tDQpORlMg
-Y2xpZW50IGJ1Z2ZpeGVzIGZvciA0LjgNCg0KSGlnaGxpZ2h0cyBpbmNsdWRlOg0KDQpTdGFibGUg
-cGF0Y2hlczoNCi0gRml4IGEgcmVmY291bnQgbGVhayBpbiBuZnNfY2FsbGJhY2tfdXBfbmV0DQot
-IEZpeCBhbiBPb3BzYWJsZSBjb25kaXRpb24gd2hlbiB0aGUgZmxleGZpbGUgcE5GUyBkcml2ZXIg
-Y29ubmVjdGlvbiB0bw0KICB0aGUgRFMgZmFpbHMNCi0gRml4IGFuIE9vcHNhYmxlIGNvbmRpdGlv
-biBpbiBORlN2NC4xIHNlcnZlciBjYWxsYmFjayByYWNlcw0KLSBFbnN1cmUgcE5GUyBjbGllbnRz
-IHN0b3AgZG9pbmcgSS9PIHRvIHRoZSBEUyBpZiB0aGVpciBsZWFzZSBoYXMgZXhwaXJlZCwNCiAg
-YXMgcmVxdWlyZWQgYnkgdGhlIE5GU3Y0LjEgcHJvdG9jb2wNCg0KQnVnZml4ZXM6DQotIEZpeCBw
-b3RlbnRpYWwgbG9vcGluZyBpbiB0aGUgTkZTdjQueCBtaWdyYXRpb24gY29kZQ0KLSBQYXRjaCBz
-ZXJpZXMgdG8gY2xvc2UgY2FsbGJhY2sgcmFjZXMgZm9yIE9QRU4sIExBWU9VVEdFVCBhbmQgTEFZ
-T1VUUkVUVVJODQotIFNpbGVuY2UgV0FSTl9PTiB3aGVuIE5GU3Y0LjEgb3ZlciBSRE1BIGlzIGlu
-IHVzZQ0KLSBGaXggYSBMQVlPVVRDT01NSVQgcmFjZSBpbiB0aGUgcE5GUy9ibG9ja3MgY2xpZW50
-DQotIEZpeCBwTkZTIHRpbWVvdXQgaXNzdWVzIHdoZW4gdGhlIERTIGZhaWxzDQoNCi0tLS0tLS0t
-LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0N
-CkJlbmphbWluIENvZGRpbmd0b24gKDIpOg0KICAgICAgcG5mcy9ibG9ja2xheW91dDogdXBkYXRl
-IGxhc3Rfd3JpdGVfb2Zmc2V0IGF0b21pY2FsbHkgd2l0aCBleHRlbnRzDQogICAgICBORlM0OiBB
-dm9pZCBtaWdyYXRpb24gbG9vcHMNCg0KQ2h1Y2sgTGV2ZXIgKDEpOg0KICAgICAgU1VOUlBDOiBT
-aWxlbmNlIFdBUk5fT04gd2hlbiBORlN2NC4xIG92ZXIgUkRNQSBpcyBpbiB1c2UNCg0KVHJvbmQg
-TXlrbGVidXN0ICgxMik6DQogICAgICBwTkZTL2ZsZXhmaWxlczogRml4IGxheW91dHN0YXQgcGVy
-aW9kaWMgcmVwb3J0aW5nDQogICAgICBORlM6IEFsbG93IHRoZSBtb3VudCBvcHRpb24gcmV0cmFu
-cz0wDQogICAgICBwTkZTL2ZsZXhmaWxlczogU2V0IHJlYXNvbmFibGUgZGVmYXVsdCByZXRyYW5z
-IHZhbHVlcyBmb3IgdGhlIGRhdGEgY2hhbm5lbA0KICAgICAgcE5GUzogSGFuZGxlIE5GUzRFUlJf
-T0xEX1NUQVRFSUQgY29ycmVjdGx5IGluIExBWU9VVFNUQVQgY2FsbHMNCiAgICAgIHBORlM6IFRo
-ZSBjbGllbnQgbXVzdCBub3QgZG8gSS9PIHRvIHRoZSBEUyBpZiBpdCdzIGxlYXNlIGhhcyBleHBp
-cmVkDQogICAgICBORlN2NC4xOiBGaXggT29wc2FibGUgY29uZGl0aW9uIGluIHNlcnZlciBjYWxs
-YmFjayByYWNlcw0KICAgICAgTkZTdjQuMTogRGVsYXkgY2FsbGJhY2sgcHJvY2Vzc2luZyB3aGVu
-IHRoZXJlIGFyZSByZWZlcnJpbmcgdHJpcGxlcw0KICAgICAgTkZTdjQuMTogRGVmZXIgYnVtcGlu
-ZyB0aGUgc2xvdCBzZXF1ZW5jZSBudW1iZXIgdW50aWwgd2UgZnJlZSB0aGUgc2xvdA0KICAgICAg
-TkZTdjQuMTogQ2xvc2UgY2FsbGJhY2sgcmFjZXMgZm9yIE9QRU4sIExBWU9VVEdFVCBhbmQgTEFZ
-T1VUUkVUVVJODQogICAgICBORlN2NC4xOiBSZW1vdmUgb2Jzb2xldGUgYW5kIGluY29ycnJlY3Qg
-YXNzaWdubWVudCBpbiBuZnM0X2NhbGxiYWNrX3NlcXVlbmNlDQogICAgICBwTkZTL2ZsZXhmaWxl
-czogRml4IGFuIE9vcHNhYmxlIGNvbmRpdGlvbiB3aGVuIGNvbm5lY3Rpb24gdG8gdGhlIERTIGZh
-aWxzDQogICAgICBORlN2NC54OiBGaXggYSByZWZjb3VudCBsZWFrIGluIG5mc19jYWxsYmFja191
-cF9uZXQNCg0KIGZzL25mcy9ibG9ja2xheW91dC9ibG9ja2xheW91dC5jICAgICAgICAgIHwgIDIg
-Ky0NCiBmcy9uZnMvYmxvY2tsYXlvdXQvYmxvY2tsYXlvdXQuaCAgICAgICAgICB8ICAzICstDQog
-ZnMvbmZzL2Jsb2NrbGF5b3V0L2V4dGVudF90cmVlLmMgICAgICAgICAgfCAxMCArKy0tDQogZnMv
-bmZzL2NhbGxiYWNrLmMgICAgICAgICAgICAgICAgICAgICAgICAgfCAgMSArDQogZnMvbmZzL2Nh
-bGxiYWNrX3Byb2MuYyAgICAgICAgICAgICAgICAgICAgfCAgOCArLS0NCiBmcy9uZnMvY2xpZW50
-LmMgICAgICAgICAgICAgICAgICAgICAgICAgICB8IDEwICsrLS0NCiBmcy9uZnMvZmxleGZpbGVs
-YXlvdXQvZmxleGZpbGVsYXlvdXQuYyAgICB8IDQ1ICsrKysrKysrLS0tLS0tLS0NCiBmcy9uZnMv
-ZmxleGZpbGVsYXlvdXQvZmxleGZpbGVsYXlvdXQuaCAgICB8ICAyICstDQogZnMvbmZzL2ZsZXhm
-aWxlbGF5b3V0L2ZsZXhmaWxlbGF5b3V0ZGV2LmMgfCAyMyArKysrLS0tLQ0KIGZzL25mcy9pbnRl
-cm5hbC5oICAgICAgICAgICAgICAgICAgICAgICAgIHwgIDUgKy0NCiBmcy9uZnMvbmZzNDJwcm9j
-LmMgICAgICAgICAgICAgICAgICAgICAgICB8IDM0ICsrKysrKysrKystLQ0KIGZzL25mcy9uZnM0
-Y2xpZW50LmMgICAgICAgICAgICAgICAgICAgICAgIHwgIDUgKysNCiBmcy9uZnMvbmZzNHByb2Mu
-YyAgICAgICAgICAgICAgICAgICAgICAgICB8IDg5ICsrKysrKysrKysrKysrKysrKysrKysrKyst
-LS0tLS0NCiBmcy9uZnMvbmZzNHNlc3Npb24uYyAgICAgICAgICAgICAgICAgICAgICB8IDUzICsr
-KysrKysrKysrKysrKysrKw0KIGZzL25mcy9uZnM0c2Vzc2lvbi5oICAgICAgICAgICAgICAgICAg
-ICAgIHwgIDcgKystDQogZnMvbmZzL3BuZnMuYyAgICAgICAgICAgICAgICAgICAgICAgICAgICAg
-fCAgMiArLQ0KIGZzL25mcy9zdXBlci5jICAgICAgICAgICAgICAgICAgICAgICAgICAgIHwgMTkg
-KysrKysrLQ0KIG5ldC9zdW5ycGMvY2xudC5jICAgICAgICAgICAgICAgICAgICAgICAgIHwgIDQg
-Ky0NCiAxOCBmaWxlcyBjaGFuZ2VkLCAyNDQgaW5zZXJ0aW9ucygrKSwgNzggZGVsZXRpb25zKC0p
-DQotLSANClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyLCBQcmlt
-YXJ5RGF0YQ0KdHJvbmQubXlrbGVidXN0QHByaW1hcnlkYXRhLmNvbQ0K
+On Tue, Aug 30, 2016 at 4:48 AM, Jeff Layton <jlayton@redhat.com> wrote:
+>
+> While this would be good to get in, I don't see any particular urgency
+> here. This seems like it'd be reasonable for v4.9.
 
+Agreed, looks ok to me. It certainly does not look like a new
+regression or like a serious problem issue in practice. So 4.9 sounds
+appropriate.
+
+            Linus
