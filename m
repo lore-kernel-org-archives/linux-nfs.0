@@ -1,33 +1,52 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:38070 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:7447 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751420AbcH3NGo (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 30 Aug 2016 09:06:44 -0400
-Received: from int-mx09.intmail.prod.int.phx2.redhat.com (int-mx09.intmail.prod.int.phx2.redhat.com [10.5.11.22])
-        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
-        (No client certificate requested)
-        by mx1.redhat.com (Postfix) with ESMTPS id C9C65BAEE
-        for <linux-nfs@vger.kernel.org>; Tue, 30 Aug 2016 13:06:43 +0000 (UTC)
-Received: from steved.boston.devel.redhat.com (vpn-61-63.rdu2.redhat.com [10.10.61.63])
-        by int-mx09.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id u7UD6hmo027869
-        for <linux-nfs@vger.kernel.org>; Tue, 30 Aug 2016 09:06:43 -0400
-From: Steve Dickson <SteveD@redhat.com>
-Subject: Monthly Linux NFS Town Hall meeting: Canceled
-To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Message-ID: <c2ff212b-f6b7-dabe-0288-bb76ab22a465@RedHat.com>
-Date: Tue, 30 Aug 2016 09:06:42 -0400
-MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
+        id S1750969AbcH3NUe (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 30 Aug 2016 09:20:34 -0400
+From: Benjamin Coddington <bcodding@redhat.com>
+To: linux-nfs@vger.kernel.org
+Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>
+Subject: [PATCH v2] NFS4: Avoid migration loops
+Date: Tue, 30 Aug 2016 09:20:32 -0400
+Message-Id: <2d5aa23805b845cff3c28c4d6c71bb06173f0f15.1472563050.git.bcodding@redhat.com>
+References: <C654261E-107D-4CB0-A345-E45BC4401F65@redhat.com>
+In-Reply-To: <C654261E-107D-4CB0-A345-E45BC4401F65@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hello,
+Change from v1:
+	Use ELOOP rather than EEXIST, and drop the now-redundant comment.
 
-This week's Town Hall meeting is canceled due 
-me being on holiday until Sept 11
+8<-------------------------------------------------------------------------
 
-A quick reminder the block rates for this fall's
-bakeathon end Sept 17... I hope to see you there!
-  
-steved.
+If a server returns itself as a location while migrating, the client may
+end up getting stuck attempting to migrate twice to the same server.  Catch
+this by checking if the nfs_client found is the same as the existing
+client.  For the other two callers to nfs4_set_client, the nfs_client will
+always be ERR_PTR(-EINVAL).
+
+Signed-off-by: Benjamin Coddington <bcodding@redhat.com>
+---
+ fs/nfs/nfs4client.c | 5 +++++
+ 1 file changed, 5 insertions(+)
+
+diff --git a/fs/nfs/nfs4client.c b/fs/nfs/nfs4client.c
+index 8d7d08d4f95f..cd3b7cfdde16 100644
+--- a/fs/nfs/nfs4client.c
++++ b/fs/nfs/nfs4client.c
+@@ -817,6 +817,11 @@ static int nfs4_set_client(struct nfs_server *server,
+ 		goto error;
+ 	}
+ 
++	if (server->nfs_client == clp) {
++		error = -ELOOP;
++		goto error;
++	}
++
+ 	/*
+ 	 * Query for the lease time on clientid setup or renewal
+ 	 *
+-- 
+2.5.5
 
