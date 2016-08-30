@@ -1,31 +1,56 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-oi0-f41.google.com ([209.85.218.41]:34414 "EHLO
-        mail-oi0-f41.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1753924AbcH3SXh (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 30 Aug 2016 14:23:37 -0400
+Received: from mail-pa0-f67.google.com ([209.85.220.67]:33493 "EHLO
+        mail-pa0-f67.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1750859AbcH3Uxx (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 30 Aug 2016 16:53:53 -0400
+Date: Wed, 31 Aug 2016 02:23:48 +0530
+From: Bhaktipriya Shridhar <bhaktipriya96@gmail.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>,
+        Jeff Layton <jlayton@poochiereds.net>
+Cc: Tejun Heo <tj@kernel.org>, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org
+Subject: [PATCH v2] fs/nfsd/nfs4callback: Remove deprecated
+ create_singlethread_workqueue
+Message-ID: <20160830205348.GA31915@Karyakshetra>
 MIME-Version: 1.0
-In-Reply-To: <1472557703-5985-1-git-send-email-jlayton@redhat.com>
-References: <1472557703-5985-1-git-send-email-jlayton@redhat.com>
-From: Linus Torvalds <torvalds@linux-foundation.org>
-Date: Tue, 30 Aug 2016 11:23:36 -0700
-Message-ID: <CA+55aFzVnBqtk5Az3VNMQ=HfTUBSYyOVejHykU2c63K70s24=A@mail.gmail.com>
-Subject: Re: [PATCH] nfsd: more robust allocation failure handling in nfsd_reply_cache_init
-To: Jeff Layton <jlayton@redhat.com>
-Cc: Bruce Fields <bfields@fieldses.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
-        Olaf Hering <olaf@aepfle.de>
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=us-ascii
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Aug 30, 2016 at 4:48 AM, Jeff Layton <jlayton@redhat.com> wrote:
->
-> While this would be good to get in, I don't see any particular urgency
-> here. This seems like it'd be reasonable for v4.9.
+The workqueue "callback_wq" queues a single work item &cb->cb_work per
+nfsd4_callback instance and thus, it doesn't require execution ordering.
+Hence, alloc_workqueue has been used to replace the
+deprecated create_singlethread_workqueue instance.
 
-Agreed, looks ok to me. It certainly does not look like a new
-regression or like a serious problem issue in practice. So 4.9 sounds
-appropriate.
+The WQ_MEM_RECLAIM flag has not been set since this is an in-kernel nfs
+server and isn't involved in memory reclaim operations on the local
+host.
 
-            Linus
+Since there are fixed number of work items, explicit concurrency
+limit is unnecessary here.
+
+Signed-off-by: Bhaktipriya Shridhar <bhaktipriya96@gmail.com>
+---
+ Changes in v2:
+	- No change. Made this a separate patch (categorised based on
+	  directories).
+
+ fs/nfsd/nfs4callback.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
+index 7389cb1..a6611c6 100644
+--- a/fs/nfsd/nfs4callback.c
++++ b/fs/nfsd/nfs4callback.c
+@@ -1021,7 +1021,7 @@ static const struct rpc_call_ops nfsd4_cb_ops = {
+
+ int nfsd4_create_callback_queue(void)
+ {
+-	callback_wq = create_singlethread_workqueue("nfsd4_callbacks");
++	callback_wq = alloc_workqueue("nfsd4_callbacks", 0, 0);
+ 	if (!callback_wq)
+ 		return -ENOMEM;
+ 	return 0;
+--
+2.1.4
+
