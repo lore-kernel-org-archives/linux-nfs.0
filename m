@@ -1,59 +1,56 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qk0-f171.google.com ([209.85.220.171]:34915 "EHLO
-        mail-qk0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S964851AbcHaPB3 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 31 Aug 2016 11:01:29 -0400
-Received: by mail-qk0-f171.google.com with SMTP id v123so53867926qkh.2
-        for <linux-nfs@vger.kernel.org>; Wed, 31 Aug 2016 08:01:28 -0700 (PDT)
-Message-ID: <1472655685.5795.10.camel@redhat.com>
-Subject: Re: [PATCH v2] fs/nfsd/nfs4callback: Remove deprecated
- create_singlethread_workqueue
-From: Jeff Layton <jlayton@redhat.com>
-To: Tejun Heo <tj@kernel.org>
-Cc: Bhaktipriya Shridhar <bhaktipriya96@gmail.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-Date: Wed, 31 Aug 2016 11:01:25 -0400
-In-Reply-To: <20160831143953.GV12660@htj.duckdns.org>
-References: <20160830205348.GA31915@Karyakshetra>
-         <1472591243.4095.7.camel@poochiereds.net>
-         <20160831143953.GV12660@htj.duckdns.org>
-Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
+Received: from us-smtp-delivery-194.mimecast.com ([216.205.24.194]:57845 "EHLO
+        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S935159AbcHaPCx (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 31 Aug 2016 11:02:53 -0400
+From: Trond Myklebust <trondmy@primarydata.com>
+To: Arnd Bergmann <arnd@arndb.de>
+CC: Schumaker Anna <anna.schumaker@netapp.com>,
+        "List Linux Network Devel Mailing" <netdev@vger.kernel.org>,
+        List Linux NFS Mailing <linux-nfs@vger.kernel.org>,
+        List Linux Kernel Mailing <linux-kernel@vger.kernel.org>
+Subject: Re: [PATCH 1/2] NFSv4.1: work around -Wmaybe-uninitialized warning
+Date: Wed, 31 Aug 2016 15:02:42 +0000
+Message-ID: <DC57A918-AB14-483B-87EF-A88469193855@primarydata.com>
+References: <20160831123911.3467676-1-arnd@arndb.de>
+ <9F99A562-A4F6-457A-A78F-44BAC3B5734F@primarydata.com>
+ <5024842.0SZmq2hZxe@wuerfel>
+In-Reply-To: <5024842.0SZmq2hZxe@wuerfel>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, 2016-08-31 at 10:39 -0400, Tejun Heo wrote:
-> Hello, Jeff.
-> 
-> On Tue, Aug 30, 2016 at 05:07:23PM -0400, Jeff Layton wrote:
-> > 
-> > Hah! I have almost exactly the same patch in my tree. I've only not
-> > sent it because I haven't had the chance to test it well.
-> > 
-> > The only difference in mine is that it passes in WQ_UNBOUND. ISTM
-> > that
-> > we don't really need a bound workqueue here since we only use this
-> > to
-> > kick off callbacks to the client. I doubt we'd get much out of
-> > strictly
-> > maintaining cache locality here, and we're better off just sending
-> > it
-> > the callback as quickly as possible.
-> 
-> We recently broke strong locality guarantee for users which don't use
-> queue_work_on(), so the default locality is now only for optimization
-> instead of correctness anyway.  Unless there are actual benefits to
-> using WQ_UNBOUND, I think in general it's better to stick with as
-> little attributes as possible so that we have more maneuvering room
-> down the line.  But, yeah, if this can impact performance in subtle
-> ways, it could be best to just do an identity conversion at least for
-> now.
-> 
-> Thanks.
-> 
+DQo+IE9uIEF1ZyAzMSwgMjAxNiwgYXQgMDk6MzcsIEFybmQgQmVyZ21hbm4gPGFybmRAYXJuZGIu
+ZGU+IHdyb3RlOg0KPiANCj4gT24gV2VkbmVzZGF5LCBBdWd1c3QgMzEsIDIwMTYgMToxNzo0OCBQ
+TSBDRVNUIFRyb25kIE15a2xlYnVzdCB3cm90ZToNCj4+IFdoYXQgdmVyc2lvbiBvZiBnY2MgYXJl
+IHlvdSB1c2luZz8gSeKAmW0gdW5hYmxlIHRvIHJlcHJvZHVjZSB3aXRoIGdjYyA2LjEuMS4uDQo+
+IA0KPiBUaGlzIGlzIGFsc28gb24gNi4xLjEgZm9yIEFSTS4gTm90ZSB0aGF0IDZlOGQ2NjZlOTI1
+MyAoIkRpc2FibGUNCj4gIm1heWJlLXVuaW5pdGlhbGl6ZWQiIHdhcm5pbmcgZ2xvYmFsbHkiKSB0
+dXJuZWQgb2ZmIHRob3NlIHdhcm5pbmdzLCBzbw0KPiB1bmxlc3MgeW91IGV4cGxpY2l0bHkgcGFz
+cyAtV21heWJlLXVuaW5pdGlhbGl6ZWQgKGUuZy4gYnkgYnVpbGRpbmcgd2l0aA0KPiAibWFrZSBX
+PTEiKSwgeW91IHdvbid0IGdldCBpdC4NCj4gDQoNCknigJltIG5vdCBnZXR0aW5nIHRoYXQgZXJy
+b3Igb24gZ2NjIDYuMS4xIGZvciB4ODZfNjQgd2l0aCBlaXRoZXIg4oCcbWFrZSBXPTHigJ0gb3Ig
+4oCcbWFrZSBXPTLigJ0uDQrigJxtYWtlIFc9M+KAnSBkb2VzIGdpdmVzIHJpc2UgdG8gb25lIHdh
+cm5pbmcgaW4gbmZzNF9zbG90X2dldF9zZXFpZDoNCg0KL2hvbWUvdHJvbmRteS9kZXZlbC9rZXJu
+ZWwvbGludXgvZnMvbmZzL25mczRzZXNzaW9uLmM6IEluIGZ1bmN0aW9uIOKAmG5mczRfc2xvdF9n
+ZXRfc2VxaWTigJk6DQovaG9tZS90cm9uZG15L2RldmVsL2tlcm5lbC9saW51eC9mcy9uZnMvbmZz
+NHNlc3Npb24uYzoxODQ6MTA6IHdhcm5pbmc6IGNvbnZlcnNpb24gdG8g4oCYaW504oCZIGZyb20g
+4oCYbG9uZyBpbnTigJkgbWF5IGFsdGVyIGl0cyB2YWx1ZSBbLVdjb252ZXJzaW9uXQ0KICAgcmV0
+dXJuIFBUUl9FUlIoc2xvdCk7DQogICAgICAgICAgXn5+fn5+fn5+fn5+fg0KDQood2hpY2ggaXMg
+YW5vdGhlciBmYWxzZSBwb3NpdGl2ZSkgYnV0IHRoYXTigJlzIGFsbC4uLg0KDQo+IFRoZSByZWFz
+b24gSSdtIHN0aWxsIHNlbmRpbmcgdGhlIHBhdGNoZXMgZm9yIHRoaXMgd2FybmluZyBpcyB0aGF0
+DQo+IHdlIGRvIGdldCBhIG51bWJlciBvZiB2YWxpZCBvbmVzICh0aGlzIHdhcyB0aGUgb25seSBm
+YWxzZSBwb3NpdGl2ZQ0KPiBvdXQgb2YgdGhlIHNldmVuIHN1Y2ggd2FybmluZ3Mgc2luY2UgbGFz
+dCB3ZWVrKS4NCg0KVGhlcmUgaXMgYSBaZW4tbGlrZSBxdWFsaXR5IHRvIElTX0VSUigpIHdoZW4g
+aXQgY2FzdHMgYSBjb25zdCBwb2ludGVyIHRvIGFuIHVuc2lnbmVkIGxvbmcsIGJhY2sgdG8gYSBu
+b24tY29uc3QgcG9pbnRlciwgYW5kIHRoZW4gYmFjayB0byBhbiB1bnNpZ25lZCBsb25nIGJlZm9y
+ZSBjb21wYXJpbmcgaXQgdG8gYW5vdGhlciB1bnNpZ25lZCBsb25nIGNhc3QgY29uc3RhbnQgbmVn
+YXRpdmUgaW50ZWdlci4gSG93ZXZlciwgSeKAmW0gbm90IHN1cmUgdGhlIEM5OSBzdGFuZGFyZCB3
+b3VsZCBhZ3JlZSB0aGF0IGEgcG9zaXRpdmUgdGVzdCByZXN1bHQgaW1wbGllcyB3ZSBjYW4gYXNz
+dW1lIHRoYXQgYSBzaW1wbGUgY2FzdCBvZiB0aGUgc2FtZSBwb2ludGVyIHRvIGEgc2lnbmVkIGxv
+bmcgd2lsbCByZXN1bHQgaW4gYSBuZWdhdGl2ZSwgbm9uLXplcm8gdmFsdWVkIGVycm5vLg0KDQpJ
+IHN1c3BlY3QgdGhhdCBpZiB3ZSByZWFsbHkgd2FudCB0byBmaXggdGhlc2UgZmFsc2UgbmVnYXRp
+dmVzLCB3ZSBzaG91bGQgcHJvYmFibHkgYWRkcmVzcyB0aGF0IGlzc3VlLg0KDQpDaGVlcnMNCiAg
+VHJvbmQ=
 
-Ahh ok, thanks...that's good to know. If you think we don't need
-WQ_UNBOUND then this is fine with me.
-
-Reviewed-by: Jeff Layton <jlayton@redhat.com>
