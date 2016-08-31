@@ -1,79 +1,50 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qt0-f194.google.com ([209.85.216.194]:35721 "EHLO
-        mail-qt0-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751998AbcH3VHa (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 30 Aug 2016 17:07:30 -0400
-Received: by mail-qt0-f194.google.com with SMTP id q11so1071246qtb.2
-        for <linux-nfs@vger.kernel.org>; Tue, 30 Aug 2016 14:07:29 -0700 (PDT)
-Message-ID: <1472591243.4095.7.camel@poochiereds.net>
-Subject: Re: [PATCH v2] fs/nfsd/nfs4callback: Remove deprecated
- create_singlethread_workqueue
-From: Jeff Layton <jlayton@poochiereds.net>
-To: Bhaktipriya Shridhar <bhaktipriya96@gmail.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>
-Cc: Tejun Heo <tj@kernel.org>, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-Date: Tue, 30 Aug 2016 17:07:23 -0400
-In-Reply-To: <20160830205348.GA31915@Karyakshetra>
-References: <20160830205348.GA31915@Karyakshetra>
-Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
+Received: from mail-it0-f67.google.com ([209.85.214.67]:34154 "EHLO
+        mail-it0-f67.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1757562AbcHaCMN (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 30 Aug 2016 22:12:13 -0400
+Received: by mail-it0-f67.google.com with SMTP id e124so1140819ith.1
+        for <linux-nfs@vger.kernel.org>; Tue, 30 Aug 2016 19:12:13 -0700 (PDT)
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: anna.schumaker@netapp.com
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH 0/7] Fix delegation behaviour when server revokes some state
+Date: Tue, 30 Aug 2016 22:11:37 -0400
+Message-Id: <1472609504-69094-1-git-send-email-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, 2016-08-31 at 02:23 +0530, Bhaktipriya Shridhar wrote:
-> The workqueue "callback_wq" queues a single work item &cb->cb_work
-> per
-> nfsd4_callback instance and thus, it doesn't require execution
-> ordering.
-> Hence, alloc_workqueue has been used to replace the
-> deprecated create_singlethread_workqueue instance.
-> 
-> The WQ_MEM_RECLAIM flag has not been set since this is an in-kernel
-> nfs
-> server and isn't involved in memory reclaim operations on the local
-> host.
-> 
-> Since there are fixed number of work items, explicit concurrency
-> limit is unnecessary here.
-> 
-> Signed-off-by: Bhaktipriya Shridhar <bhaktipriya96@gmail.com>
-> ---
->  Changes in v2:
-> 	- No change. Made this a separate patch (categorised based on
-> 	  directories).
-> 
->  fs/nfsd/nfs4callback.c | 2 +-
->  1 file changed, 1 insertion(+), 1 deletion(-)
-> 
-> diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
-> index 7389cb1..a6611c6 100644
-> --- a/fs/nfsd/nfs4callback.c
-> +++ b/fs/nfsd/nfs4callback.c
-> @@ -1021,7 +1021,7 @@ static const struct rpc_call_ops nfsd4_cb_ops =
-> {
-> 
->  int nfsd4_create_callback_queue(void)
->  {
-> -	callback_wq =
-> create_singlethread_workqueue("nfsd4_callbacks");
-> +	callback_wq = alloc_workqueue("nfsd4_callbacks", 0, 0);
->  	if (!callback_wq)
->  		return -ENOMEM;
->  	return 0;
-> --
-> 2.1.4
-> 
+According to RFC5661, if any of the SEQUENCE status bits
+SEQ4_STATUS_EXPIRED_ALL_STATE_REVOKED,
+SEQ4_STATUS_EXPIRED_SOME_STATE_REVOKED, SEQ4_STATUS_ADMIN_STATE_REVOKED,
+or SEQ4_STATUS_RECALLABLE_STATE_REVOKED are set, then we need to use
+TEST_STATEID to figure out which stateids have been revoked, so we
+can acknowledge the loss of state using FREE_STATEID.
 
-Hah! I have almost exactly the same patch in my tree. I've only not
-sent it because I haven't had the chance to test it well.
+While we already do this for open and lock state, we have not been doing
+so for all the delegations.
 
-The only difference in mine is that it passes in WQ_UNBOUND. ISTM that
-we don't really need a bound workqueue here since we only use this to
-kick off callbacks to the client. I doubt we'd get much out of strictly
-maintaining cache locality here, and we're better off just sending it
-the callback as quickly as possible.
 
-Thoughts?
--- 
-Jeff Layton <jlayton@poochiereds.net>
+Trond Myklebust (7):
+  NFSv4.1: Don't check delegations that are already marked as revoked
+  NFSv4.1: Allow test_stateid to handle session errors without waiting
+  NFSv4.1: Add a helper function to deal with expired stateids
+  NFSv4.x: Allow callers of nfs_remove_bad_delegation() to specify a
+    stateid
+  NFSv4.1: Test delegation stateids when server declares "some state
+    revoked"
+  NFSv4.1: Deal with server reboots during delegation expiration
+    recovery
+  NFSv4.1: Don't recheck delegations that have already been checked
+
+ fs/nfs/delegation.c                    | 153 +++++++++++++++++++++++++++++++--
+ fs/nfs/delegation.h                    |   6 +-
+ fs/nfs/flexfilelayout/flexfilelayout.c |   2 +-
+ fs/nfs/nfs4_fs.h                       |   3 +
+ fs/nfs/nfs4proc.c                      |  95 ++++++++++++++------
+ fs/nfs/nfs4state.c                     |  17 ++--
+ 6 files changed, 230 insertions(+), 46 deletions(-)
+
+-- 
+2.7.4
+
