@@ -1,86 +1,55 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-it0-f65.google.com ([209.85.214.65]:33732 "EHLO
-        mail-it0-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1758233AbcHaCMS (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 30 Aug 2016 22:12:18 -0400
-Received: by mail-it0-f65.google.com with SMTP id n75so4101554ith.0
-        for <linux-nfs@vger.kernel.org>; Tue, 30 Aug 2016 19:12:17 -0700 (PDT)
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: anna.schumaker@netapp.com
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH 6/7] NFSv4.1: Deal with server reboots during delegation expiration recovery
-Date: Tue, 30 Aug 2016 22:11:43 -0400
-Message-Id: <1472609504-69094-7-git-send-email-trond.myklebust@primarydata.com>
-In-Reply-To: <1472609504-69094-6-git-send-email-trond.myklebust@primarydata.com>
-References: <1472609504-69094-1-git-send-email-trond.myklebust@primarydata.com>
- <1472609504-69094-2-git-send-email-trond.myklebust@primarydata.com>
- <1472609504-69094-3-git-send-email-trond.myklebust@primarydata.com>
- <1472609504-69094-4-git-send-email-trond.myklebust@primarydata.com>
- <1472609504-69094-5-git-send-email-trond.myklebust@primarydata.com>
- <1472609504-69094-6-git-send-email-trond.myklebust@primarydata.com>
+Received: from mx1.redhat.com ([209.132.183.28]:38380 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S932341AbcHaLpz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 31 Aug 2016 07:45:55 -0400
+Message-ID: <1472643951.4775.6.camel@redhat.com>
+Subject: Re: [PATCH net] sunrpc: fix UDP memory accounting
+From: Paolo Abeni <pabeni@redhat.com>
+To: Benjamin Coddington <bcodding@redhat.com>
+Cc: netdev@vger.kernel.org,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>,
+        Jeff Layton <jlayton@poochiereds.net>,
+        "David S. Miller" <davem@davemloft.net>, linux-nfs@vger.kernel.org,
+        Jan Stancek <jstancek@redhat.com>
+Date: Wed, 31 Aug 2016 13:45:51 +0200
+In-Reply-To: <F9224521-4FC7-4647-8BB8-C92A841EE23D@redhat.com>
+References: <32a391a2469b4161dc2375c6b6374b8229b3dd37.1472126188.git.pabeni@redhat.com>
+         <F9224521-4FC7-4647-8BB8-C92A841EE23D@redhat.com>
+Content-Type: text/plain; charset="UTF-8"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Ensure that if the server reboots while we're testing and recovering
-from revoked delegations, we exit to allow the state manager to
-handle matters.
+On Tue, 2016-08-30 at 12:28 -0400, Benjamin Coddington wrote:
+> On 25 Aug 2016, at 12:42, Paolo Abeni wrote:
+> 
+> > The commit f9b2ee714c5c ("SUNRPC: Move UDP receive data path
+> > into a workqueue context"), as a side effect, moved the
+> > skb_free_datagram() call outside the scope of the related socket
+> > lock, but UDP sockets require such lock to be held for proper
+> > memory accounting.
+> > Fix it by replacing skb_free_datagram() with
+> > skb_free_datagram_locked().
+> >
+> > Fixes: f9b2ee714c5c ("SUNRPC: Move UDP receive data path into a 
+> > workqueue context")
+> > Reported-and-tested-by: Jan Stancek <jstancek@redhat.com>
+> > Signed-off-by: Paolo Abeni <pabeni@redhat.com>
+> 
+> Thanks for finding this. A similar fix in 2009 for svcsock.c was done by 
+> Eric Dumazet:
+> 9d410c796067 ("net: fix sk_forward_alloc corruption")
+> 
+> skb_free_datagram_locked() is used for all xprt types in svcsock.c, 
+> should we use
+> it for the xs_local_transport as well in xprtsock.c?
 
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
----
- fs/nfs/delegation.c | 26 ++++++++++++++++++++++++++
- 1 file changed, 26 insertions(+)
+AFAICS a similar fix is _not_ needed for xs_local_transport(), since it
+uses AF_LOCAL sockets and such family does not support protocol's memory
+accounting.
 
-diff --git a/fs/nfs/delegation.c b/fs/nfs/delegation.c
-index ff0c1a0feb9d..b873271c613a 100644
---- a/fs/nfs/delegation.c
-+++ b/fs/nfs/delegation.c
-@@ -874,6 +874,13 @@ restart:
- 	rcu_read_unlock();
- }
- 
-+static inline bool nfs4_server_rebooted(const struct nfs_client *clp)
-+{
-+	return (clp->cl_state & (BIT(NFS4CLNT_CHECK_LEASE) |
-+				BIT(NFS4CLNT_LEASE_EXPIRED) |
-+				BIT(NFS4CLNT_SESSION_RESET))) != 0;
-+}
-+
- static void nfs_mark_test_expired_delegation(struct nfs_server *server,
- 	    struct nfs_delegation *delegation)
- {
-@@ -882,6 +889,19 @@ static void nfs_mark_test_expired_delegation(struct nfs_server *server,
- 	set_bit(NFS4CLNT_DELEGATION_EXPIRED, &server->nfs_client->cl_state);
- }
- 
-+static void nfs_inode_mark_test_expired_delegation(struct nfs_server *server,
-+		struct inode *inode)
-+{
-+	struct nfs_delegation *delegation;
-+
-+	rcu_read_lock();
-+	delegation = rcu_dereference(NFS_I(inode)->delegation);
-+	if (delegation)
-+		nfs_mark_test_expired_delegation(server, delegation);
-+	rcu_read_unlock();
-+
-+}
-+
- static void nfs_delegation_mark_test_expired_server(struct nfs_server *server)
- {
- 	struct nfs_delegation *delegation;
-@@ -954,6 +974,12 @@ restart:
- 				nfs_inode_find_state_and_recover(inode, &stateid);
- 			}
- 			put_rpccred(cred);
-+			if (nfs4_server_rebooted(clp)) {
-+				nfs_inode_mark_test_expired_delegation(server,inode);
-+				iput(inode);
-+				nfs_sb_deactive(server->super);
-+				return;
-+			}
- 			iput(inode);
- 			nfs_sb_deactive(server->super);
- 			goto restart;
--- 
-2.7.4
+Paolo
 
