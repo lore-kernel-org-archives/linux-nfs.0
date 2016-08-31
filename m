@@ -1,34 +1,47 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mout.kundenserver.de ([212.227.17.13]:51525 "EHLO
-        mout.kundenserver.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S933787AbcHaNh1 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 31 Aug 2016 09:37:27 -0400
-From: Arnd Bergmann <arnd@arndb.de>
-To: Trond Myklebust <trondmy@primarydata.com>
-Cc: Schumaker Anna <anna.schumaker@netapp.com>,
-        List Linux Network Devel Mailing <netdev@vger.kernel.org>,
-        List Linux NFS Mailing <linux-nfs@vger.kernel.org>,
-        List Linux Kernel Mailing <linux-kernel@vger.kernel.org>
-Subject: Re: [PATCH 1/2] NFSv4.1: work around -Wmaybe-uninitialized warning
-Date: Wed, 31 Aug 2016 15:37:28 +0200
-Message-ID: <5024842.0SZmq2hZxe@wuerfel>
-In-Reply-To: <9F99A562-A4F6-457A-A78F-44BAC3B5734F@primarydata.com>
-References: <20160831123911.3467676-1-arnd@arndb.de> <9F99A562-A4F6-457A-A78F-44BAC3B5734F@primarydata.com>
+Received: from mail-qk0-f193.google.com ([209.85.220.193]:34967 "EHLO
+        mail-qk0-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S935093AbcHaOj4 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 31 Aug 2016 10:39:56 -0400
+Date: Wed, 31 Aug 2016 10:39:53 -0400
+From: Tejun Heo <tj@kernel.org>
+To: Jeff Layton <jlayton@poochiereds.net>
+Cc: Bhaktipriya Shridhar <bhaktipriya96@gmail.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org
+Subject: Re: [PATCH v2] fs/nfsd/nfs4callback: Remove deprecated
+ create_singlethread_workqueue
+Message-ID: <20160831143953.GV12660@htj.duckdns.org>
+References: <20160830205348.GA31915@Karyakshetra>
+ <1472591243.4095.7.camel@poochiereds.net>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1472591243.4095.7.camel@poochiereds.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wednesday, August 31, 2016 1:17:48 PM CEST Trond Myklebust wrote:
-> What version of gcc are you using? I’m unable to reproduce with gcc 6.1.1..
+Hello, Jeff.
 
-This is also on 6.1.1 for ARM. Note that 6e8d666e9253 ("Disable
-"maybe-uninitialized" warning globally") turned off those warnings, so
-unless you explicitly pass -Wmaybe-uninitialized (e.g. by building with
-"make W=1"), you won't get it.
+On Tue, Aug 30, 2016 at 05:07:23PM -0400, Jeff Layton wrote:
+> Hah! I have almost exactly the same patch in my tree. I've only not
+> sent it because I haven't had the chance to test it well.
+> 
+> The only difference in mine is that it passes in WQ_UNBOUND. ISTM that
+> we don't really need a bound workqueue here since we only use this to
+> kick off callbacks to the client. I doubt we'd get much out of strictly
+> maintaining cache locality here, and we're better off just sending it
+> the callback as quickly as possible.
 
-The reason I'm still sending the patches for this warning is that
-we do get a number of valid ones (this was the only false positive
-out of the seven such warnings since last week).
+We recently broke strong locality guarantee for users which don't use
+queue_work_on(), so the default locality is now only for optimization
+instead of correctness anyway.  Unless there are actual benefits to
+using WQ_UNBOUND, I think in general it's better to stick with as
+little attributes as possible so that we have more maneuvering room
+down the line.  But, yeah, if this can impact performance in subtle
+ways, it could be best to just do an identity conversion at least for
+now.
 
-	Arnd
+Thanks.
+
+-- 
+tejun
