@@ -1,56 +1,70 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from us-smtp-delivery-194.mimecast.com ([216.205.24.194]:57845 "EHLO
-        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S935159AbcHaPCx (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 31 Aug 2016 11:02:53 -0400
-From: Trond Myklebust <trondmy@primarydata.com>
-To: Arnd Bergmann <arnd@arndb.de>
-CC: Schumaker Anna <anna.schumaker@netapp.com>,
-        "List Linux Network Devel Mailing" <netdev@vger.kernel.org>,
+Received: from mout.kundenserver.de ([212.227.126.133]:55134 "EHLO
+        mout.kundenserver.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S933887AbcHaPwK (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 31 Aug 2016 11:52:10 -0400
+From: Arnd Bergmann <arnd@arndb.de>
+To: Trond Myklebust <trondmy@primarydata.com>
+Cc: Schumaker Anna <anna.schumaker@netapp.com>,
+        List Linux Network Devel Mailing <netdev@vger.kernel.org>,
         List Linux NFS Mailing <linux-nfs@vger.kernel.org>,
         List Linux Kernel Mailing <linux-kernel@vger.kernel.org>
 Subject: Re: [PATCH 1/2] NFSv4.1: work around -Wmaybe-uninitialized warning
-Date: Wed, 31 Aug 2016 15:02:42 +0000
-Message-ID: <DC57A918-AB14-483B-87EF-A88469193855@primarydata.com>
-References: <20160831123911.3467676-1-arnd@arndb.de>
- <9F99A562-A4F6-457A-A78F-44BAC3B5734F@primarydata.com>
- <5024842.0SZmq2hZxe@wuerfel>
-In-Reply-To: <5024842.0SZmq2hZxe@wuerfel>
+Date: Wed, 31 Aug 2016 17:52:08 +0200
+Message-ID: <4865077.USSZu2CAsg@wuerfel>
+In-Reply-To: <DC57A918-AB14-483B-87EF-A88469193855@primarydata.com>
+References: <20160831123911.3467676-1-arnd@arndb.de> <5024842.0SZmq2hZxe@wuerfel> <DC57A918-AB14-483B-87EF-A88469193855@primarydata.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-DQo+IE9uIEF1ZyAzMSwgMjAxNiwgYXQgMDk6MzcsIEFybmQgQmVyZ21hbm4gPGFybmRAYXJuZGIu
-ZGU+IHdyb3RlOg0KPiANCj4gT24gV2VkbmVzZGF5LCBBdWd1c3QgMzEsIDIwMTYgMToxNzo0OCBQ
-TSBDRVNUIFRyb25kIE15a2xlYnVzdCB3cm90ZToNCj4+IFdoYXQgdmVyc2lvbiBvZiBnY2MgYXJl
-IHlvdSB1c2luZz8gSeKAmW0gdW5hYmxlIHRvIHJlcHJvZHVjZSB3aXRoIGdjYyA2LjEuMS4uDQo+
-IA0KPiBUaGlzIGlzIGFsc28gb24gNi4xLjEgZm9yIEFSTS4gTm90ZSB0aGF0IDZlOGQ2NjZlOTI1
-MyAoIkRpc2FibGUNCj4gIm1heWJlLXVuaW5pdGlhbGl6ZWQiIHdhcm5pbmcgZ2xvYmFsbHkiKSB0
-dXJuZWQgb2ZmIHRob3NlIHdhcm5pbmdzLCBzbw0KPiB1bmxlc3MgeW91IGV4cGxpY2l0bHkgcGFz
-cyAtV21heWJlLXVuaW5pdGlhbGl6ZWQgKGUuZy4gYnkgYnVpbGRpbmcgd2l0aA0KPiAibWFrZSBX
-PTEiKSwgeW91IHdvbid0IGdldCBpdC4NCj4gDQoNCknigJltIG5vdCBnZXR0aW5nIHRoYXQgZXJy
-b3Igb24gZ2NjIDYuMS4xIGZvciB4ODZfNjQgd2l0aCBlaXRoZXIg4oCcbWFrZSBXPTHigJ0gb3Ig
-4oCcbWFrZSBXPTLigJ0uDQrigJxtYWtlIFc9M+KAnSBkb2VzIGdpdmVzIHJpc2UgdG8gb25lIHdh
-cm5pbmcgaW4gbmZzNF9zbG90X2dldF9zZXFpZDoNCg0KL2hvbWUvdHJvbmRteS9kZXZlbC9rZXJu
-ZWwvbGludXgvZnMvbmZzL25mczRzZXNzaW9uLmM6IEluIGZ1bmN0aW9uIOKAmG5mczRfc2xvdF9n
-ZXRfc2VxaWTigJk6DQovaG9tZS90cm9uZG15L2RldmVsL2tlcm5lbC9saW51eC9mcy9uZnMvbmZz
-NHNlc3Npb24uYzoxODQ6MTA6IHdhcm5pbmc6IGNvbnZlcnNpb24gdG8g4oCYaW504oCZIGZyb20g
-4oCYbG9uZyBpbnTigJkgbWF5IGFsdGVyIGl0cyB2YWx1ZSBbLVdjb252ZXJzaW9uXQ0KICAgcmV0
-dXJuIFBUUl9FUlIoc2xvdCk7DQogICAgICAgICAgXn5+fn5+fn5+fn5+fg0KDQood2hpY2ggaXMg
-YW5vdGhlciBmYWxzZSBwb3NpdGl2ZSkgYnV0IHRoYXTigJlzIGFsbC4uLg0KDQo+IFRoZSByZWFz
-b24gSSdtIHN0aWxsIHNlbmRpbmcgdGhlIHBhdGNoZXMgZm9yIHRoaXMgd2FybmluZyBpcyB0aGF0
-DQo+IHdlIGRvIGdldCBhIG51bWJlciBvZiB2YWxpZCBvbmVzICh0aGlzIHdhcyB0aGUgb25seSBm
-YWxzZSBwb3NpdGl2ZQ0KPiBvdXQgb2YgdGhlIHNldmVuIHN1Y2ggd2FybmluZ3Mgc2luY2UgbGFz
-dCB3ZWVrKS4NCg0KVGhlcmUgaXMgYSBaZW4tbGlrZSBxdWFsaXR5IHRvIElTX0VSUigpIHdoZW4g
-aXQgY2FzdHMgYSBjb25zdCBwb2ludGVyIHRvIGFuIHVuc2lnbmVkIGxvbmcsIGJhY2sgdG8gYSBu
-b24tY29uc3QgcG9pbnRlciwgYW5kIHRoZW4gYmFjayB0byBhbiB1bnNpZ25lZCBsb25nIGJlZm9y
-ZSBjb21wYXJpbmcgaXQgdG8gYW5vdGhlciB1bnNpZ25lZCBsb25nIGNhc3QgY29uc3RhbnQgbmVn
-YXRpdmUgaW50ZWdlci4gSG93ZXZlciwgSeKAmW0gbm90IHN1cmUgdGhlIEM5OSBzdGFuZGFyZCB3
-b3VsZCBhZ3JlZSB0aGF0IGEgcG9zaXRpdmUgdGVzdCByZXN1bHQgaW1wbGllcyB3ZSBjYW4gYXNz
-dW1lIHRoYXQgYSBzaW1wbGUgY2FzdCBvZiB0aGUgc2FtZSBwb2ludGVyIHRvIGEgc2lnbmVkIGxv
-bmcgd2lsbCByZXN1bHQgaW4gYSBuZWdhdGl2ZSwgbm9uLXplcm8gdmFsdWVkIGVycm5vLg0KDQpJ
-IHN1c3BlY3QgdGhhdCBpZiB3ZSByZWFsbHkgd2FudCB0byBmaXggdGhlc2UgZmFsc2UgbmVnYXRp
-dmVzLCB3ZSBzaG91bGQgcHJvYmFibHkgYWRkcmVzcyB0aGF0IGlzc3VlLg0KDQpDaGVlcnMNCiAg
-VHJvbmQ=
+On Wednesday, August 31, 2016 3:02:42 PM CEST Trond Myklebust wrote:
+> > On Aug 31, 2016, at 09:37, Arnd Bergmann <arnd@arndb.de> wrote:
+> > 
+> > On Wednesday, August 31, 2016 1:17:48 PM CEST Trond Myklebust wrote:
+> >> What version of gcc are you using? I’m unable to reproduce with gcc 6.1.1..
+> > 
+> > This is also on 6.1.1 for ARM. Note that 6e8d666e9253 ("Disable
+> > "maybe-uninitialized" warning globally") turned off those warnings, so
+> > unless you explicitly pass -Wmaybe-uninitialized (e.g. by building with
+> > "make W=1"), you won't get it.
+> > 
+> 
+> I’m not getting that error on gcc 6.1.1 for x86_64 with either “make W=1” or “make W=2”.
+> “make W=3” does gives rise to one warning in nfs4_slot_get_seqid:
 
+Ok, I had not realized that the patch that Linus did disabled the warning
+for all levels, I'll try to come up a patch to bring it back at W=1 level.
+
+On my system, I had simply reverted the patch that turned off the
+warning, but I have now verified that I get it with
+"make EXTRA_CFLAGS=-Wmaybe-uninitialized" on an x86 defconfig with gcc-5 and
+gcc-6.
+
+> /home/trondmy/devel/kernel/linux/fs/nfs/nfs4session.c: In function ‘nfs4_slot_get_seqid’:
+> /home/trondmy/devel/kernel/linux/fs/nfs/nfs4session.c:184:10: warning: conversion to ‘int’ from ‘long int’ may alter its value [-Wconversion]
+>    return PTR_ERR(slot);
+>           ^~~~~~~~~~~~~
+> 
+> (which is another false positive) but that’s all...
+
+sure, W=3 is useless.
+
+> > The reason I'm still sending the patches for this warning is that
+> > we do get a number of valid ones (this was the only false positive
+> > out of the seven such warnings since last week).
+> 
+> There is a Zen-like quality to IS_ERR() when it casts a const pointer to an unsigned long, back to a non-const pointer, and then back to an unsigned long before comparing it to another unsigned long cast constant negative integer. However, I’m not sure the C99 standard would agree that a positive test result implies we can assume that a simple cast of the same pointer to a signed long will result in a negative, non-zero valued errno.
+> 
+> I suspect that if we really want to fix these false negatives, we should probably address that issue.
+
+I've looked into this before, as we've had a couple of these cases (I
+think less than 10 in the whole kernel, but they keep coming up every
+few releases), and I couldn't find a way to make IS_ERR more transparent.
+
+Using IS_ERR_OR_ZERO() seems like a good enough solution, and will
+probably result in slightly better code (I have not checked this
+specific case though), as we can also skip the second runtime check.
+
+	Arnd
