@@ -1,63 +1,86 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-pa0-f68.google.com ([209.85.220.68]:33460 "EHLO
-        mail-pa0-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751589AbcIAHaf (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 1 Sep 2016 03:30:35 -0400
-From: Chunyan Zhang <zhang.lyra@gmail.com>
-To: trond.myklebust@primarydata.com, anna.schumaker@netapp.com,
-        davem@davemloft.net
-Cc: linux-nfs@vger.kernel.org, netdev@vger.kernel.org,
-        linux-kernel@vger.kernel.org, zhang.lyra@gmail.com,
-        ke.wang@spreadtrum.com
-Subject: [PATCH] sunrpc: queue work on system_power_efficient_wq
-Date: Thu,  1 Sep 2016 15:30:26 +0800
-Message-Id: <1472715026-11397-1-git-send-email-zhang.lyra@gmail.com>
+Received: from mx2.suse.de ([195.135.220.15]:40828 "EHLO mx2.suse.de"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1754911AbcIAIJ6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 1 Sep 2016 04:09:58 -0400
+From: NeilBrown <neilb@suse.com>
+To: Karsten Hohmeier <karsten@hohmatik.de>, linux-nfs@vger.kernel.org
+Date: Thu, 01 Sep 2016 18:09:50 +1000
+Subject: Re: Un-unmountable NFS mountpoints with "Stale NFS file handle" - is this normal behavior?
+In-Reply-To: <b0e2b37b-5d90-ea9c-46e9-be577c4da634@hohmatik.de>
+References: <b0e2b37b-5d90-ea9c-46e9-be577c4da634@hohmatik.de>
+Message-ID: <87a8fsca7l.fsf@notabene.neil.brown.name>
+MIME-Version: 1.0
+Content-Type: multipart/signed; boundary="=-=-=";
+        micalg=pgp-sha256; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Ke Wang <ke.wang@spreadtrum.com>
+--=-=-=
+Content-Type: text/plain
 
-sunrpc uses workqueue to clean cache regulary. There is no real dependency
-of executing work on the cpu which queueing it.
+On Sun, Aug 21 2016, Karsten Hohmeier wrote:
 
-On a idle system, especially for a heterogeneous systems like big.LITTLE,
-it is observed that the big idle cpu was woke up many times just to service
-this work, which against the principle of power saving. It would be better
-if we can schedule it on a cpu which the scheduler believes to be the most
-appropriate one.
+> Dear NFS list members,
+>
+> I recently contacted a few active NFS devs with an issue i ran into:
+>
+> We run a XenServer 6.5 (Kernel 3.10) with an older version of nfs-utils
+> (1.0.9). NFS mountpoints on that machine acting as a client can not be
+> unmounted (not even forcibly or lazy) after the connection to the NFS
+> server broke for some reason.
+>
+> Most commands fail with "Stale NFS file handle".
+>
+> The Internet tells me this situation is unfixable and requires a reboot
+> of the client to resolve. This is a pretty bad solution on a heavily
+> loaded virtualization host.
+>
+> The response of Bruce Fields was: "Sounds like normal behavior, ..."
+> (Sorry for not posting to the list in the first place, btw.)
+>
+> I'm still looking for some explanation why this happens, how it can be
+> considered "normal behavior" and if it can be fixed/avoided/mitigated
+> without rebooting.
 
-After apply this patch, system_wq will be replaced by
-system_power_efficient_wq for sunrpc. This functionality is enabled when
-CONFIG_WQ_POWER_EFFICIENT is selected.
+This was fixed 3 years ago in Linux 3.12
 
-Signed-off-by: Ke Wang <ke.wang@spreadtrum.com>
----
- net/sunrpc/cache.c | 5 +++--
- 1 file changed, 3 insertions(+), 2 deletions(-)
+Commit: 8033426e6bdb ("vfs: allow umount to handle mountpoints without revalidating them")
 
-diff --git a/net/sunrpc/cache.c b/net/sunrpc/cache.c
-index 4d8e11f..8aabe12 100644
---- a/net/sunrpc/cache.c
-+++ b/net/sunrpc/cache.c
-@@ -353,7 +353,7 @@ void sunrpc_init_cache_detail(struct cache_detail *cd)
- 	spin_unlock(&cache_list_lock);
- 
- 	/* start the cleaning process */
--	schedule_delayed_work(&cache_cleaner, 0);
-+	queue_delayed_work(system_power_efficient_wq, &cache_cleaner, 0);
- }
- EXPORT_SYMBOL_GPL(sunrpc_init_cache_detail);
- 
-@@ -476,7 +476,8 @@ static void do_cache_clean(struct work_struct *work)
- 		delay = 0;
- 
- 	if (delay)
--		schedule_delayed_work(&cache_cleaner, delay);
-+		queue_delayed_work(system_power_efficient_wq,
-+				   &cache_cleaner, delay);
- }
- 
- 
--- 
-2.7.4
+(and probably a few other related patches).
 
+You need to be sure you have a version of util-linux where "umount -f"
+and "umount -l" don't stat() the mount point.
+
+NeilBrown
+
+>
+> Best regards
+>
+> Karsten Hohmeier
+>
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+--=-=-=
+Content-Type: application/pgp-signature; name="signature.asc"
+
+-----BEGIN PGP SIGNATURE-----
+
+iQIcBAEBCAAGBQJXx+JOAAoJEDnsnt1WYoG58DEP/2B9YaT0uVtBE5xwiRj62WpX
+pu5gAJw5VokmKh79BipBNicYTIoAkRv0orpBB81zgWrCBOU2c9/pUj5M5XTaDDMj
+y39vjjP+W1le5yGGfKpx4dP2fHzgiaWs19q+8znlPHqxmNVeCX4O2s3vTsyTSRnD
+b8bUUBaLVCfxtwZVl7gstRZUr1mrsfTHyZXTicq9Z3OHosOcH1bJglZ/AcLDj3fL
+5Zd7h6sFVrT8R8ZXvuuFCn20+YIyY4icLG5okGO/SzzWO+7gI1MLlcZeKkRVhqIL
+L8MX6xPndcpYvp+0FQR4mD7viYni7jUKBpV+2ffhlHA+l/d/Xsg5oAkb+jhyBLF0
+LbCjID8HmQOjvvzybQkatcCP2tkB6BzpBKE7OFWIPGc8mr6DTIxQB3Gs+3s43yfg
+Icj+0MV5Oa/Lz47Kqd8txv16aHYColZ3sh7pM9Hx5dGD8iAiIxrAojssOMpZM5Ml
+PNAbrHOAiAqhAYpu2zmc6MBDPwmHrO9GGUNhkHN1PbNHxkEbP3+JsqPhKetqjxhI
+8MGLGGSaY5hW15lKiebvuX8NvaHPjfrjNUX7h2RYQYPPDqEdlMmhK/5uodh9TTro
+VtiId0BPZGxtbG0vB+zjG6q5Ej2jysNwQQ7eFVtxUpGosWhNI6H1qEQB4sokBHf5
+AIGPECjdtBzvTaX+ClP+
+=VAZC
+-----END PGP SIGNATURE-----
+--=-=-=--
