@@ -1,41 +1,73 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from such.a.cut3.name ([176.9.57.153]:59260 "EHLO such.a.cut3.name"
+Received: from mx142.netapp.com ([216.240.21.19]:5603 "EHLO mx142.netapp.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1752063AbcIAU63 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 1 Sep 2016 16:58:29 -0400
-Subject: Re: Un-unmountable NFS mountpoints with "Stale NFS file handle" - is
- this normal behavior?
-To: NeilBrown <neilb@suse.com>, linux-nfs@vger.kernel.org
-References: <b0e2b37b-5d90-ea9c-46e9-be577c4da634@hohmatik.de>
- <87a8fsca7l.fsf@notabene.neil.brown.name>
-From: Karsten Hohmeier <karsten@hohmatik.de>
-Message-ID: <4777cda9-014d-0e58-048e-cfa903fff2da@hohmatik.de>
-Date: Thu, 1 Sep 2016 21:07:01 +0200
+        id S1752250AbcIAVPz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 1 Sep 2016 17:15:55 -0400
+Subject: Re: [PATCH] sunrpc: queue work on system_power_efficient_wq
+To: Chunyan Zhang <zhang.lyra@gmail.com>,
+        <trond.myklebust@primarydata.com>, <anna.schumaker@netapp.com>,
+        <davem@davemloft.net>
+References: <1472715026-11397-1-git-send-email-zhang.lyra@gmail.com>
+CC: <linux-nfs@vger.kernel.org>, <netdev@vger.kernel.org>,
+        <linux-kernel@vger.kernel.org>, <ke.wang@spreadtrum.com>
+From: Anna Schumaker <Anna.Schumaker@netapp.com>
+Message-ID: <544e309c-9893-a0ed-ab8a-ccbf5d342dc6@Netapp.com>
+Date: Thu, 1 Sep 2016 14:46:35 -0400
 MIME-Version: 1.0
-In-Reply-To: <87a8fsca7l.fsf@notabene.neil.brown.name>
-Content-Type: text/plain; charset=iso-8859-15
+In-Reply-To: <1472715026-11397-1-git-send-email-zhang.lyra@gmail.com>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Thanks for the helpful answer!
+On 09/01/2016 03:30 AM, Chunyan Zhang wrote:
+> From: Ke Wang <ke.wang@spreadtrum.com>
+> 
+> sunrpc uses workqueue to clean cache regulary. There is no real dependency
+> of executing work on the cpu which queueing it.
+> 
+> On a idle system, especially for a heterogeneous systems like big.LITTLE,
+> it is observed that the big idle cpu was woke up many times just to service
+> this work, which against the principle of power saving. It would be better
+> if we can schedule it on a cpu which the scheduler believes to be the most
+> appropriate one.
+> 
+> After apply this patch, system_wq will be replaced by
+> system_power_efficient_wq for sunrpc. This functionality is enabled when
+> CONFIG_WQ_POWER_EFFICIENT is selected.
 
-> This was fixed 3 years ago in Linux 3.12
+Makes sense to me, but I'm a little surprised that there isn't a "schedule_delayed_power_efficient_work()" function to match how the normal workqueue is used.
 
-I guess it is time to update that machine then ...
+Thanks,
+Anna
 
 > 
-> Commit: 8033426e6bdb ("vfs: allow umount to handle mountpoints without revalidating them")
+> Signed-off-by: Ke Wang <ke.wang@spreadtrum.com>
+> ---
+>  net/sunrpc/cache.c | 5 +++--
+>  1 file changed, 3 insertions(+), 2 deletions(-)
 > 
-> (and probably a few other related patches).
+> diff --git a/net/sunrpc/cache.c b/net/sunrpc/cache.c
+> index 4d8e11f..8aabe12 100644
+> --- a/net/sunrpc/cache.c
+> +++ b/net/sunrpc/cache.c
+> @@ -353,7 +353,7 @@ void sunrpc_init_cache_detail(struct cache_detail *cd)
+>  	spin_unlock(&cache_list_lock);
+>  
+>  	/* start the cleaning process */
+> -	schedule_delayed_work(&cache_cleaner, 0);
+> +	queue_delayed_work(system_power_efficient_wq, &cache_cleaner, 0);
+>  }
+>  EXPORT_SYMBOL_GPL(sunrpc_init_cache_detail);
+>  
+> @@ -476,7 +476,8 @@ static void do_cache_clean(struct work_struct *work)
+>  		delay = 0;
+>  
+>  	if (delay)
+> -		schedule_delayed_work(&cache_cleaner, delay);
+> +		queue_delayed_work(system_power_efficient_wq,
+> +				   &cache_cleaner, delay);
+>  }
+>  
+>  
 > 
-> You need to be sure you have a version of util-linux where "umount -f"
-> and "umount -l" don't stat() the mount point.
-> 
-> NeilBrown
-
-In dev. time terms digging this up is pretty much archeology.
-
-Best regards
-
-Karsten Hohmeier
 
