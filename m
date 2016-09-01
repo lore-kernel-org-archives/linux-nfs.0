@@ -1,15 +1,15 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx144.netapp.com ([216.240.21.25]:49462 "EHLO mx144.netapp.com"
+Received: from mx141.netapp.com ([216.240.21.12]:3489 "EHLO mx141.netapp.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S933132AbcIAPqt (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 1 Sep 2016 11:46:49 -0400
+        id S933132AbcIAPqr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 1 Sep 2016 11:46:47 -0400
 From: <andros@netapp.com>
 To: <trondmy@primarydata.com>
 CC: <anna.schumaker@netapp.com>, <linux-nfs@vger.kernel.org>,
         Andy Adamson <andros@netapp.com>
-Subject: [PATCH Version 9 RESEND 06/12] SUNRPC rpc_clnt_xprt_switch_put
-Date: Thu, 1 Sep 2016 11:44:47 -0400
-Message-ID: <1472744693-124241-7-git-send-email-andros@netapp.com>
+Subject: [PATCH Version 9 RESEND 11/12] NFS test session trunking with exchange id
+Date: Thu, 1 Sep 2016 11:44:52 -0400
+Message-ID: <1472744693-124241-12-git-send-email-andros@netapp.com>
 In-Reply-To: <1472744693-124241-1-git-send-email-andros@netapp.com>
 References: <1472744693-124241-1-git-send-email-andros@netapp.com>
 MIME-Version: 1.0
@@ -19,43 +19,180 @@ List-ID: <linux-nfs.vger.kernel.org>
 
 From: Andy Adamson <andros@netapp.com>
 
-Give the NFS layer access to the xprt_switch_put function
+Use an async exchange id call to test for session trunking
+
+To conform with RFC 5661 section 18.35.4, the Non-Update on
+Existing Clientid case, save the exchange id verifier in
+cl_confirm and use it for the session trunking exhange id test.
 
 Signed-off-by: Andy Adamson <andros@netapp.com>
 ---
- include/linux/sunrpc/clnt.h | 2 ++
- net/sunrpc/clnt.c           | 6 ++++++
- 2 files changed, 8 insertions(+)
+ fs/nfs/nfs4_fs.h    |  5 +++++
+ fs/nfs/nfs4client.c |  7 +++++--
+ fs/nfs/nfs4proc.c   | 45 +++++++++++++++++++++++++++++++++++++--------
+ 3 files changed, 47 insertions(+), 10 deletions(-)
 
-diff --git a/include/linux/sunrpc/clnt.h b/include/linux/sunrpc/clnt.h
-index b6810c9..6005095 100644
---- a/include/linux/sunrpc/clnt.h
-+++ b/include/linux/sunrpc/clnt.h
-@@ -197,5 +197,7 @@ int		rpc_clnt_add_xprt(struct rpc_clnt *, struct xprt_create *,
- 			void *data);
+diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
+index eb315e1..b2a94ca 100644
+--- a/fs/nfs/nfs4_fs.h
++++ b/fs/nfs/nfs4_fs.h
+@@ -203,6 +203,11 @@ struct nfs4_state_recovery_ops {
+ 		struct rpc_cred *);
+ };
  
- const char *rpc_proc_name(const struct rpc_task *task);
++struct nfs4_add_xprt_data {
++	struct nfs_client	*clp;
++	struct rpc_cred		*cred;
++};
 +
-+void rpc_clnt_xprt_switch_put(struct rpc_clnt *);
- #endif /* __KERNEL__ */
- #endif /* _LINUX_SUNRPC_CLNT_H */
-diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
-index 163b8f4..83ab914 100644
---- a/net/sunrpc/clnt.c
-+++ b/net/sunrpc/clnt.c
-@@ -2672,6 +2672,12 @@ out_put_switch:
+ struct nfs4_state_maintenance_ops {
+ 	int (*sched_state_renewal)(struct nfs_client *, struct rpc_cred *, unsigned);
+ 	struct rpc_cred * (*get_state_renewal_cred_locked)(struct nfs_client *);
+diff --git a/fs/nfs/nfs4client.c b/fs/nfs/nfs4client.c
+index 4e15ae1..71cf59d 100644
+--- a/fs/nfs/nfs4client.c
++++ b/fs/nfs/nfs4client.c
+@@ -638,8 +638,8 @@ out_scope_mismatch:
+ 
+ /**
+  * nfs4_detect_session_trunking - Checks for session trunking called
+- * after a successful EXCHANGE_ID testing a multi-addr connection to be
+- * potentially added as a session trunk
++ * after a successful EXCHANGE_ID testing a multi-addr connection.
++ * Upon success, add the transport.
+  *
+  * @clp:    original mount nfs_client
+  * @res:    result structure from an exchange_id using the original mount
+@@ -674,6 +674,9 @@ int nfs4_detect_session_trunking(struct nfs_client *clp,
+ 	if (!nfs4_check_server_scope(clp->cl_serverscope, res->server_scope))
+ 		goto out;
+ 
++	/* Session trunking passed, add the xprt */
++	rpc_clnt_xprt_switch_add_xprt(clp->cl_rpcclient, xprt);
++
+ 	status = 0;
+ out:
+ 	if (status)
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index e29f5ce..7b5000a 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -7054,6 +7054,7 @@ static int nfs4_sp4_select_mode(struct nfs_client *clp,
+ struct nfs41_exchange_id_data {
+ 	struct nfs41_exchange_id_res res;
+ 	struct nfs41_exchange_id_args args;
++	struct rpc_xprt *xprt;
+ 	int rpc_status;
+ };
+ 
+@@ -7068,6 +7069,13 @@ static void nfs4_exchange_id_done(struct rpc_task *task, void *data)
+ 
+ 	if (status == 0)
+ 		status = nfs4_check_cl_exchange_flags(cdata->res.flags);
++
++	if (cdata->xprt && status == 0) {
++		status = nfs4_detect_session_trunking(clp, &cdata->res,
++						      cdata->xprt);
++		goto out;
++	}
++
+ 	if (status  == 0)
+ 		status = nfs4_sp4_select_mode(clp, &cdata->res.state_protect);
+ 
+@@ -7104,8 +7112,13 @@ static void nfs4_exchange_id_done(struct rpc_task *task, void *data)
+ 			clp->cl_serverscope = cdata->res.server_scope;
+ 			cdata->res.server_scope = NULL;
+ 		}
++		/* Save the EXCHANGE_ID verifier session trunk tests */
++		memcpy(clp->cl_confirm.data, cdata->args.verifier->data,
++		       sizeof(clp->cl_confirm.data));
+ 	}
++out:
+ 	cdata->rpc_status = status;
++	return;
  }
- EXPORT_SYMBOL_GPL(rpc_clnt_add_xprt);
  
-+void rpc_clnt_xprt_switch_put(struct rpc_clnt *clnt)
-+{
-+	xprt_switch_put(rcu_dereference(clnt->cl_xpi.xpi_xpswitch));
-+}
-+EXPORT_SYMBOL_GPL(rpc_clnt_xprt_switch_put);
-+
- #if IS_ENABLED(CONFIG_SUNRPC_DEBUG)
- static void rpc_show_header(void)
+ static void nfs4_exchange_id_release(void *data)
+@@ -7114,6 +7127,10 @@ static void nfs4_exchange_id_release(void *data)
+ 					(struct nfs41_exchange_id_data *)data;
+ 
+ 	nfs_put_client(cdata->args.client);
++	if (cdata->xprt) {
++		xprt_put(cdata->xprt);
++		rpc_clnt_xprt_switch_put(cdata->args.client->cl_rpcclient);
++	}
+ 	kfree(cdata->res.impl_id);
+ 	kfree(cdata->res.server_scope);
+ 	kfree(cdata->res.server_owner);
+@@ -7131,7 +7148,7 @@ static const struct rpc_call_ops nfs4_exchange_id_call_ops = {
+  * Wrapper for EXCHANGE_ID operation.
+  */
+ static int _nfs4_proc_exchange_id(struct nfs_client *clp, struct rpc_cred *cred,
+-	u32 sp4_how)
++			u32 sp4_how, struct rpc_xprt *xprt)
  {
+ 	nfs4_verifier verifier;
+ 	struct rpc_message msg = {
+@@ -7156,7 +7173,8 @@ static int _nfs4_proc_exchange_id(struct nfs_client *clp, struct rpc_cred *cred,
+ 	if (!calldata)
+ 		goto out;
+ 
+-	nfs4_init_boot_verifier(clp, &verifier);
++	if (!xprt)
++		nfs4_init_boot_verifier(clp, &verifier);
+ 
+ 	status = nfs4_init_uniform_client_string(clp);
+ 	if (status)
+@@ -7196,8 +7214,15 @@ static int _nfs4_proc_exchange_id(struct nfs_client *clp, struct rpc_cred *cred,
+ 		status = -EINVAL;
+ 		goto out_impl_id;
+ 	}
+-
+-	calldata->args.verifier = &verifier;
++	if (xprt) {
++		calldata->xprt = xprt;
++		task_setup_data.rpc_xprt = xprt;
++		task_setup_data.flags =
++				RPC_TASK_SOFT|RPC_TASK_SOFTCONN|RPC_TASK_ASYNC;
++		calldata->args.verifier = &clp->cl_confirm;
++	} else {
++		calldata->args.verifier = &verifier;
++	}
+ 	calldata->args.client = clp;
+ #ifdef CONFIG_NFS_V4_1_MIGRATION
+ 	calldata->args.flags = EXCHGID4_FLAG_SUPP_MOVED_REFER |
+@@ -7217,9 +7242,13 @@ static int _nfs4_proc_exchange_id(struct nfs_client *clp, struct rpc_cred *cred,
+ 		goto out_impl_id;
+ 	}
+ 
+-	status = rpc_wait_for_completion_task(task);
+-	if (!status)
++	if (!xprt) {
++		status = rpc_wait_for_completion_task(task);
++		if (!status)
++			status = calldata->rpc_status;
++	} else	/* session trunking test */
+ 		status = calldata->rpc_status;
++
+ 	rpc_put_task(task);
+ out:
+ 	if (clp->cl_implid != NULL)
+@@ -7262,13 +7291,13 @@ int nfs4_proc_exchange_id(struct nfs_client *clp, struct rpc_cred *cred)
+ 	/* try SP4_MACH_CRED if krb5i/p	*/
+ 	if (authflavor == RPC_AUTH_GSS_KRB5I ||
+ 	    authflavor == RPC_AUTH_GSS_KRB5P) {
+-		status = _nfs4_proc_exchange_id(clp, cred, SP4_MACH_CRED);
++		status = _nfs4_proc_exchange_id(clp, cred, SP4_MACH_CRED, NULL);
+ 		if (!status)
+ 			return 0;
+ 	}
+ 
+ 	/* try SP4_NONE */
+-	return _nfs4_proc_exchange_id(clp, cred, SP4_NONE);
++	return _nfs4_proc_exchange_id(clp, cred, SP4_NONE, NULL);
+ }
+ 
+ static int _nfs4_proc_destroy_clientid(struct nfs_client *clp,
 -- 
 1.8.3.1
 
