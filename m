@@ -1,48 +1,53 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-pa0-f47.google.com ([209.85.220.47]:32969 "EHLO
-        mail-pa0-f47.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1750754AbcIBEAJ (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 2 Sep 2016 00:00:09 -0400
-Received: by mail-pa0-f47.google.com with SMTP id cy9so36271652pac.0
-        for <linux-nfs@vger.kernel.org>; Thu, 01 Sep 2016 21:00:08 -0700 (PDT)
-Date: Thu, 1 Sep 2016 23:59:56 -0400
-From: Noah Misch <noah@leadboat.com>
-To: Jeff Layton <jlayton@redhat.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: EACCES race when opening just-created file
-Message-ID: <20160902035956.GA3426167@tornado.leadboat.com>
-References: <20160723201238.GA2134756@tornado.leadboat.com>
- <1469307057.2514.6.camel@redhat.com>
- <20160726030432.GA2215551@tornado.leadboat.com>
+Received: from mx1.redhat.com ([209.132.183.28]:58820 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1752007AbcIBObb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 2 Sep 2016 10:31:31 -0400
+Subject: Re: The Fall Bakeathon in Westford, Ma
+To: NFSv4 <nfsv4@ietf.org>,
+        Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+References: <ce08c91a-5dbd-8363-59e5-39b554ce3e04@RedHat.com>
+From: Steve Dickson <SteveD@redhat.com>
+Message-ID: <26e66b7d-2cc1-b1a6-7680-74a22fc653d9@RedHat.com>
+Date: Fri, 2 Sep 2016 10:31:30 -0400
 MIME-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-In-Reply-To: <20160726030432.GA2215551@tornado.leadboat.com>
+In-Reply-To: <ce08c91a-5dbd-8363-59e5-39b554ce3e04@RedHat.com>
+Content-Type: text/plain; charset=windows-1252
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Jul 25, 2016 at 11:04:32PM -0400, Noah Misch wrote:
-> On Sat, Jul 23, 2016 at 04:50:57PM -0400, Jeff Layton wrote:
-> > On Sat, 2016-07-23 at 16:12 -0400, Noah Misch wrote:
-> > > With the Linux kernel as both NFS client and server, I'm seeing a race
-> > > condition where open() can return EACCES for a just-created file.  Is this
-> > > expected behavior?  POSIX implicitly allows it, but I failed to locate any
-> > > discussion of it.  I have attached a test program; here, it witnesses the race
-> > > for roughly a dozen of the 4096 files it creates (different files each time).
-> 
-> > This is due to a limitation of NFSv3 and NFSv4.0. When you do an
-> > exclusive create, the atime and mtime get set to a particular set of
-> > values (the verifier), and the client is expected to override those
-> > values with a follow-on SETATTR call once it gets those values back.
-> > This is to prevent problems during certain server reboot scenarios. 
-> > 
-> > The NFS server also sets the mode to 0000 during this time (since the
-> > client can't even set the mode during the operation).
-> 
-> Interesting; that fully explains it.  Thanks.
-> 
-> > NFSv4.1 is less subject to this problem. You may want to try using that
-> > and see if it's any better.
-> 
-> I will look into that.
 
-Mounting with vers=4.1 eliminated the unwanted behavior.  Thanks for the tip.
+A quick reminder... the block rates for this fall's
+bakeathon ends Sat Sept 17... I hope to see you there!
+
+steved.
+
+On 07/28/2016 09:06 AM, Steve Dickson wrote:
+> Red Hat is pleased to announce the Fall NFS Bake-a-ton will be
+> hosted by Red Hat in Westford, MA office 
+> The Date: *Oct 17th - 21th*
+> 
+> Details and registration info:
+>     http://nfsv4bat.org/Events/2016/October/BAT/index.html
+> 
+> Again, RDMA testing will be done as well as the normal
+> NFSv4.x testing. 
+> 
+> This year I've added another hotel to the list.
+>     * Residence Inn Marriott - closest; w/ shuttle; full kitchen; free breakfast ($129.00)
+>     * Westford Regency Inn - w/bar ; w/shuttle ($105.00)
+>     * Hampton Inn - free breakfast ($119.00)
+> 
+> The block reservations all expire on *Sept 17* on month before
+> the event. So please book as soon as can. 
+> 
+> When registering (i.e. replying to this email) please give me
+>    * Company Name
+>    * How engineers are coming
+>    * T-shirt sizes
+>    * Hotel you will be staying in
+> 
+> I hope to see you in October!!!
+> 
+> steved.
+> 
