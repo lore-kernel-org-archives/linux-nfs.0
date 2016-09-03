@@ -1,53 +1,87 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:58820 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:56332 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1752007AbcIBObb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 2 Sep 2016 10:31:31 -0400
-Subject: Re: The Fall Bakeathon in Westford, Ma
-To: NFSv4 <nfsv4@ietf.org>,
-        Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-References: <ce08c91a-5dbd-8363-59e5-39b554ce3e04@RedHat.com>
+        id S1751762AbcICAiZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 2 Sep 2016 20:38:25 -0400
+Subject: Re: nfs-server (v4.x only) takes extra 6 minutes to start without
+ rpcbind
+To: james harvey <jamespharvey20@gmail.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+References: <CA+X5Wn7oiaPyO+dN4ARb+Y4JuOqR90283par7-2NQvOtO_HOiQ@mail.gmail.com>
+ <CA+X5Wn48mD-2hVwFsBSWhExmaMxL1HUAcB8MhXtnoVuFSWBBgQ@mail.gmail.com>
 From: Steve Dickson <SteveD@redhat.com>
-Message-ID: <26e66b7d-2cc1-b1a6-7680-74a22fc653d9@RedHat.com>
-Date: Fri, 2 Sep 2016 10:31:30 -0400
+Message-ID: <74a1f425-5ed2-2558-3233-558458fa69f2@RedHat.com>
+Date: Fri, 2 Sep 2016 20:38:23 -0400
 MIME-Version: 1.0
-In-Reply-To: <ce08c91a-5dbd-8363-59e5-39b554ce3e04@RedHat.com>
-Content-Type: text/plain; charset=windows-1252
+In-Reply-To: <CA+X5Wn48mD-2hVwFsBSWhExmaMxL1HUAcB8MhXtnoVuFSWBBgQ@mail.gmail.com>
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Hello,
 
-A quick reminder... the block rates for this fall's
-bakeathon ends Sat Sept 17... I hope to see you there!
+On 09/01/2016 08:50 PM, james harvey wrote:
+> On Thu, Sep 1, 2016 at 7:22 AM, james harvey <jamespharvey20@gmail.com> wrote:
+>> Up to date Arch.  Kernel 4.7.2 (-1 Arch).  nfs-utils 1.3.4 (-1 Arch).
+>> No firewall running on this system.
+>>
+>> I started writing that an nfs-server configured for v4.x only would
+>> never start if there was no rpcbind, BUT wound up finding out it does
+>> start, it just takes ~ 6 minutes when with rpcbind it's "instant" /
+>> less than 1 second.
+> 
+> Replicated on Fedora 24, kernel 4.6.7 (-300.fc24.x86_64), nfs-utils
+> 1.3.4 (-1.rc2.fc24), and rpcbind 0.2.3 (-11.rc1.fc24).
+> 
+> {{{ fresh network iso install, using minimal install selection in
+> install GUI }}}
+> # yum install nfs-utils
+> # systemctl enable nfs-server
+> # vi /etc/sysconfig/nfs
+> {{{ RPCNFSDARGS="-N 2 -N 3" \ RPCMOUNTDOPTS="-N 2 -N 3" }}}
+> {{{ I've tried -N options with and without spaces, as I've seen it both ways }}}
+> # systemctl reboot
+> 
+> Well, Fedora (as Arch does) starts nfs-server for v4.x just fine with
+> rpcbind.  Fedora fails to start nfs-idmapd with "/usr/sbin/rpc.idmapd:
+> symbol lookup error: /lib64/libnfsidmap.so.0: undefined symbol:
+> __dn_expand".  nfs-idmapd starts fine on Arch.
+This has been fixed by https://bodhi.fedoraproject.org/updates/FEDORA-2016-625bd99661
+
+> 
+> Starting to started is "instant" (less than 1 second.)
+> 
+> 
+> But, moving on:
+> # systemctl mask rpcbind.service rpcbind.socket
+> # systemctl reboot
+There has been problems with systemd starting the listening 
+socket... I wonder if this is yea another one... 
+
+> 
+> # systemctl status nfs-server
+> Sep 01 20:29:00 fedora systemd[1]: Starting NFS server and services...
+> Sep 01 20:35:22 fedora systemd[1]: Started NFS server and services
+> 
+> 
+> Then to strace:
+> # systemctl disable nfs-server
+> # systemctl reboot
+> # systemctl start nfs-config.service
+> {{{ proc-fs-nfsd.mount and var-lib-nfsd-rpc_pipefs.mount are already active }}}
+> # systemctl start nfs-idmapd
+> {{{ still fails with undefined symbol __dn_expand }}}
+Again this has been fixed... 
+
+> 
+> # rpc.mountd --foreground -N 2 -N 3
+> 
+> {{{ another tty }}}
+> # strace rpc.nfsd --debug -N 2 -N 3 8
+> 
+> Gives the attached strace output, which shows the same two really long
+> delays when reading or writing /proc/fs/nfsd/portlist.
+> 
+I don't see the attachment... 
 
 steved.
-
-On 07/28/2016 09:06 AM, Steve Dickson wrote:
-> Red Hat is pleased to announce the Fall NFS Bake-a-ton will be
-> hosted by Red Hat in Westford, MA office 
-> The Date: *Oct 17th - 21th*
-> 
-> Details and registration info:
->     http://nfsv4bat.org/Events/2016/October/BAT/index.html
-> 
-> Again, RDMA testing will be done as well as the normal
-> NFSv4.x testing. 
-> 
-> This year I've added another hotel to the list.
->     * Residence Inn Marriott - closest; w/ shuttle; full kitchen; free breakfast ($129.00)
->     * Westford Regency Inn - w/bar ; w/shuttle ($105.00)
->     * Hampton Inn - free breakfast ($119.00)
-> 
-> The block reservations all expire on *Sept 17* on month before
-> the event. So please book as soon as can. 
-> 
-> When registering (i.e. replying to this email) please give me
->    * Company Name
->    * How engineers are coming
->    * T-shirt sizes
->    * Hotel you will be staying in
-> 
-> I hope to see you in October!!!
-> 
-> steved.
-> 
