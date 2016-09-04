@@ -1,56 +1,26 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from us-smtp-delivery-194.mimecast.com ([216.205.24.194]:52628 "EHLO
-        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1753960AbcICQQ6 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sat, 3 Sep 2016 12:16:58 -0400
-From: Trond Myklebust <trondmy@primarydata.com>
-To: "anna.schumaker@netapp.com" <anna.schumaker@netapp.com>,
-        "hooanon05g@gmail.com" <hooanon05g@gmail.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Received: from mail03-md.ns.itscom.net ([175.177.155.113]:44469 "EHLO
+        mail03-md.ns.itscom.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1752138AbcIDS6Y (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sun, 4 Sep 2016 14:58:24 -0400
+From: "J. R. Okajima" <hooanon05g@gmail.com>
 Subject: Re: 4.8-rcN nfs O_DYSNC, write(2) doesn't return ENOSPC
-Date: Sat, 3 Sep 2016 16:13:17 +0000
-Message-ID: <1472919194.11308.1.camel@primarydata.com>
-References: <3647.1472877116@jrobl>
-In-Reply-To: <3647.1472877116@jrobl>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+To: Trond Myklebust <trondmy@primarydata.com>
+Cc: "anna.schumaker@netapp.com" <anna.schumaker@netapp.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+In-Reply-To: <1472919194.11308.1.camel@primarydata.com>
+References: <3647.1472877116@jrobl> <1472919194.11308.1.camel@primarydata.com>
+Date: Mon, 05 Sep 2016 03:58:19 +0900
+Message-ID: <8571.1473015499@jrobl>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gU2F0LCAyMDE2LTA5LTAzIGF0IDEzOjMxICswOTAwLCBKLiBSLiBPa2FqaW1hIHdyb3RlOg0K
-PiBIZWxsbyBORlMgZm9sa3MsDQo+IA0KPiBJIGFtIG5vdCBzdWJzY3JpYmluZyB0aGlzIE1MLiBQ
-bGVhc2UgQ0MgdG8gbWUgZXhwbGljaXRseSB3aGVuIHlvdQ0KPiByZXBseS4NCj4gDQo+IEkgZm91
-bmQgYSBwcm9ibGVtIG9mIE5GUyBpbiBsaW51eC12NC44LXJjWzEyM10uIEhlcmUgaXMgYQ0KPiBy
-ZXByb2R1Y2libGUNCj4gc2VxdWVuY2UuDQo+IA0KPiAtIG1vdW50IGEgcmF0aGVyIHNtYWxsIHRt
-cGZzLCBmb3IgZXhhbXBsZSAvdG1wL3NydnINCj4gLSBleHBvcnQgaXQgdG8gbG9jYWxob3N0DQo+
-IC0gbW91bnQgbG9jYWxob3N0Oi90bXAvc3J2ciAvdG1wL2NsbnQNCj4gLSBkZCBpZj0vZGV2L3pl
-cm8gb2Y9L3RtcC9jbG50L2Z1bGwNCj4gDQo+IEFmdGVyIGEgd2hpbGUsIGRkIGVuZHMgd2l0aCBF
-Tk9TUEMgZXhwZWN0ZWRseS4gQnV0IGlmIEkgYWRkDQo+ICJvZmxhZz1kc3luYyINCj4gdG8gZGQo
-MSksIGl0IG5ldmVyIGVuZHMuIHN0cmFjZSgxKSBzaG93cyBkZCByZXBlYXRzIHdyaXRlKDUxMmJ5
-dGVzKQ0KPiBhbmQNCj4gZ2V0cyB0aGUgdmFsdWUgNTEyLg0KPiANCj4gSWYgdGhpcyBpcyBhIGtu
-b3duIGlzc3VlLCBwbGVhc2UgdGVsbCBtZSB0aGUgY29tbWl0IGlkIG9mIHRoZSBmaXguDQo+wqAN
-Cg0KVGhhbmtzIGZvciB0ZXN0aW5nISBEb2VzIHRoZSBmb2xsb3dpbmcgcGF0Y2ggZml4IHRoZSBp
-c3N1ZSBmb3IgeW91Pw0KDQpDaGVlcnMNCsKgIFRyb25kDQoNCjg8LS0tLS0tLS0tLS0tLS0tLS0t
-LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLQ0KRnJvbSBjNDll
-ZGVjZDUxMzY5M2VhNzUzMGFiMThlZmJkN2Q2ZDViN2NiZjkwIE1vbiBTZXAgMTcgMDA6MDA6MDAg
-MjAwMQ0KRnJvbTogVHJvbmQgTXlrbGVidXN0IDx0cm9uZC5teWtsZWJ1c3RAcHJpbWFyeWRhdGEu
-Y29tPg0KRGF0ZTogU2F0LCAzIFNlcCAyMDE2IDEyOjA1OjMxIC0wNDAwDQpTdWJqZWN0OiBbUEFU
-Q0hdIE5GUzogRml4IGVycm9yIHJlcG9ydGluZyBpbiBuZnNfZmlsZV93cml0ZSgpDQoNCldoZW4g
-ZG9pbmcgT19EU1lOQyB3cml0ZXMsIHRoZSBhY3R1YWwgd3JpdGUgZXJyb3JzIGFyZSByZXBvcnRl
-ZCB0aHJvdWdoDQpnZW5lcmljX3dyaXRlX3N5bmMoKSwgc28gd2UgbXVzdCB0ZXN0IHRoZSByZXN1
-bHQuDQoNClJlcG9ydGVkLWJ5OiBKLiBSLiBPa2FqaW1hIDxob29hbm9uMDVnQGdtYWlsLmNvbT4N
-CkZpeGVzOiAxODI5MDY1MGIxYzggKCJORlM6IE1vdmUgYnVmZmVyZWQgSS9PIGxvY2tpbmcgaW50
-byBuZnNfZmlsZV93cml0ZSgpIikNClNpZ25lZC1vZmYtYnk6IFRyb25kIE15a2xlYnVzdCA8dHJv
-bmQubXlrbGVidXN0QHByaW1hcnlkYXRhLmNvbT4NCi0tLQ0KIGZzL25mcy9maWxlLmMgfCA1ICsr
-KystDQogMSBmaWxlIGNoYW5nZWQsIDQgaW5zZXJ0aW9ucygrKSwgMSBkZWxldGlvbigtKQ0KDQpk
-aWZmIC0tZ2l0IGEvZnMvbmZzL2ZpbGUuYyBiL2ZzL25mcy9maWxlLmMNCmluZGV4IDdkNjIwOTcw
-ZjJlMS4uY2E2OTlkZGMxMWMxIDEwMDY0NA0KLS0tIGEvZnMvbmZzL2ZpbGUuYw0KKysrIGIvZnMv
-bmZzL2ZpbGUuYw0KQEAgLTY1Nyw3ICs2NTcsMTAgQEAgc3NpemVfdCBuZnNfZmlsZV93cml0ZShz
-dHJ1Y3Qga2lvY2IgKmlvY2IsIHN0cnVjdCBpb3ZfaXRlciAqZnJvbSkNCiAJaWYgKHJlc3VsdCA8
-PSAwKQ0KIAkJZ290byBvdXQ7DQogDQotCXdyaXR0ZW4gPSBnZW5lcmljX3dyaXRlX3N5bmMoaW9j
-YiwgcmVzdWx0KTsNCisJcmVzdWx0ID0gZ2VuZXJpY193cml0ZV9zeW5jKGlvY2IsIHJlc3VsdCk7
-DQorCWlmIChyZXN1bHQgPCAwKQ0KKwkJZ290byBvdXQ7DQorCXdyaXR0ZW4gPSByZXN1bHQ7DQog
-CWlvY2ItPmtpX3BvcyArPSB3cml0dGVuOw0KIA0KIAkvKiBSZXR1cm4gZXJyb3IgdmFsdWVzICov
-DQotLSANCjIuNy40DQotLSANClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWlu
-dGFpbmVyLCBQcmltYXJ5RGF0YQ0KdHJvbmQubXlrbGVidXN0QHByaW1hcnlkYXRhLmNvbQ0K
 
+Trond Myklebust:
+> Thanks for testing! Does the following patch fix the issue for you?
+
+Thank you for quick response and the patch.
+It worked!
+
+
+J. R. Okajima
