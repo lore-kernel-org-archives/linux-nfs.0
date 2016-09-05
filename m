@@ -1,52 +1,61 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-it0-f66.google.com ([209.85.214.66]:34235 "EHLO
+Received: from mail-it0-f66.google.com ([209.85.214.66]:34238 "EHLO
         mail-it0-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S932294AbcIENqy (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 5 Sep 2016 09:46:54 -0400
-Received: by mail-it0-f66.google.com with SMTP id e124so8909907ith.1
-        for <linux-nfs@vger.kernel.org>; Mon, 05 Sep 2016 06:46:54 -0700 (PDT)
+        with ESMTP id S932294AbcIENrA (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 5 Sep 2016 09:47:00 -0400
+Received: by mail-it0-f66.google.com with SMTP id e124so8909945ith.1
+        for <linux-nfs@vger.kernel.org>; Mon, 05 Sep 2016 06:47:00 -0700 (PDT)
 From: Trond Myklebust <trond.myklebust@primarydata.com>
 To: linux-nfs@vger.kernel.org
-Subject: [PATCH 3/4] pNFS: Clear out all layout segments if the server unsets lrp->res.lrs_present
-Date: Mon,  5 Sep 2016 09:46:01 -0400
-Message-Id: <1473083162-4697-4-git-send-email-trond.myklebust@primarydata.com>
-In-Reply-To: <1473083162-4697-3-git-send-email-trond.myklebust@primarydata.com>
+Subject: [PATCH 4/4] pNFS: Don't forget the layout stateid if there are outstanding LAYOUTGETs
+Date: Mon,  5 Sep 2016 09:46:02 -0400
+Message-Id: <1473083162-4697-5-git-send-email-trond.myklebust@primarydata.com>
+In-Reply-To: <1473083162-4697-4-git-send-email-trond.myklebust@primarydata.com>
 References: <1473083162-4697-1-git-send-email-trond.myklebust@primarydata.com>
  <1473083162-4697-2-git-send-email-trond.myklebust@primarydata.com>
  <1473083162-4697-3-git-send-email-trond.myklebust@primarydata.com>
+ <1473083162-4697-4-git-send-email-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-If the server fails to set lrp->res.lrs_present in the LAYOUTRETURN reply,
-then that means it believes the client holds no more layout state for that
-file, and that the layout stateid is now invalid.
+If there are outstanding LAYOUTGET rpc calls, then we want to ensure that
+we keep the layout stateid around so we that don't inadvertently pick up
+an old/misordered sequence id.
+The race is as follows:
+
+Client				Server
+======				======
+LAYOUTGET(seqid)
+LAYOUTGET(seqid)
+				return LAYOUTGET(seqid+1)
+				return LAYOUTGET(seqid+2)
+process LAYOUTGET(seqid+2)
+	forget layout
+process LAYOUTGET(seqid+1)
+
+If it forgets the layout stateid before processing seqid+1, then
+the client will not check the layout->plh_barrier, and so will set
+the stateid with seqid+1.
 
 Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
 ---
- fs/nfs/nfs4proc.c | 9 ++++++---
- 1 file changed, 6 insertions(+), 3 deletions(-)
+ fs/nfs/pnfs.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index f5aecaabcb7c..c380d2ee4137 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -8190,10 +8190,13 @@ static void nfs4_layoutreturn_release(void *calldata)
- 
- 	dprintk("--> %s\n", __func__);
- 	spin_lock(&lo->plh_inode->i_lock);
--	pnfs_mark_matching_lsegs_invalid(lo, &freeme, &lrp->args.range,
--			be32_to_cpu(lrp->args.stateid.seqid));
--	if (lrp->res.lrs_present && pnfs_layout_is_valid(lo))
-+	if (lrp->res.lrs_present) {
-+		pnfs_mark_matching_lsegs_invalid(lo, &freeme,
-+				&lrp->args.range,
-+				be32_to_cpu(lrp->args.stateid.seqid));
- 		pnfs_set_layout_stateid(lo, &lrp->res.stateid, true);
-+	} else
-+		pnfs_mark_layout_stateid_invalid(lo, &freeme);
- 	pnfs_clear_layoutreturn_waitbit(lo);
- 	spin_unlock(&lo->plh_inode->i_lock);
- 	nfs4_sequence_free_slot(&lrp->res.seq_res);
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index cd8b5fca33f6..2c93a85eda51 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -365,7 +365,8 @@ pnfs_layout_remove_lseg(struct pnfs_layout_hdr *lo,
+ 	/* Matched by pnfs_get_layout_hdr in pnfs_layout_insert_lseg */
+ 	atomic_dec(&lo->plh_refcount);
+ 	if (list_empty(&lo->plh_segs)) {
+-		set_bit(NFS_LAYOUT_INVALID_STID, &lo->plh_flags);
++		if (atomic_read(&lo->plh_outstanding) == 0)
++			set_bit(NFS_LAYOUT_INVALID_STID, &lo->plh_flags);
+ 		clear_bit(NFS_LAYOUT_BULK_RECALL, &lo->plh_flags);
+ 	}
+ 	rpc_wake_up(&NFS_SERVER(inode)->roc_rpcwaitq);
 -- 
 2.7.4
 
