@@ -1,65 +1,72 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qk0-f175.google.com ([209.85.220.175]:34591 "EHLO
-        mail-qk0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S934842AbcIFWvw (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 6 Sep 2016 18:51:52 -0400
-Received: by mail-qk0-f175.google.com with SMTP id t7so234441443qkh.1
-        for <linux-nfs@vger.kernel.org>; Tue, 06 Sep 2016 15:51:52 -0700 (PDT)
-Message-ID: <1473202308.2505.8.camel@redhat.com>
-Subject: Re: 4.6, 4.7 slow ifs export with more than one client.
-From: Jeff Layton <jlayton@redhat.com>
-To: Oleg Drokin <green@linuxhacker.ru>
-Cc: linux-nfs@vger.kernel.org
-Date: Tue, 06 Sep 2016 18:51:48 -0400
-In-Reply-To: <3362C9C5-7F87-462C-B1C4-D704B45B84BE@linuxhacker.ru>
-References: <6C329B27-111A-4B16-84F4-7357940EBC01@linuxhacker.ru>
-         <1473172215.13234.8.camel@redhat.com>
-         <A7375479-E5A6-47FE-915E-8E2B6E5CF012@linuxhacker.ru>
-         <1473175124.13234.16.camel@redhat.com>
-         <05AA5CE8-143C-4CB7-AFF0-36BE495AA328@linuxhacker.ru>
-         <1473177653.13234.22.camel@redhat.com>
-         <3362C9C5-7F87-462C-B1C4-D704B45B84BE@linuxhacker.ru>
-Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
+Received: from mx1.redhat.com ([209.132.183.28]:50020 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1751221AbcIFXtn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 6 Sep 2016 19:49:43 -0400
+From: "Benjamin Coddington" <bcodding@redhat.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>,
+        "Chuck Lever" <chuck.lever@oracle.com>
+Cc: "Linux NFS Mailing List" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] svcauth_gss: Revert 64c59a3726f2 ("Remove unnecessary
+ allocation")
+Date: Tue, 06 Sep 2016 19:49:31 -0400
+Message-ID: <9417A81A-BEBF-4B46-AF44-98B59D23D183@redhat.com>
+In-Reply-To: <B18D986B-5CC2-4D73-AD9C-525DBB4B93AD@oracle.com>
+References: <20160901144839.6035.63068.stgit@klimt.1015granger.net>
+ <20160906204238.GA30260@fieldses.org>
+ <F9C6309A-2444-4B40-82D0-4BE90F19490A@oracle.com>
+ <20160906210149.GB30260@fieldses.org>
+ <B18D986B-5CC2-4D73-AD9C-525DBB4B93AD@oracle.com>
+MIME-Version: 1.0
+Content-Type: text/plain; markup=markdown
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 2016-09-06 at 12:29 -0400, Oleg Drokin wrote:
-> On Sep 6, 2016, at 12:00 PM, Jeff Layton wrote:
-> > 
-> > 
-> > Shrug...feel free to propose a better scheme for generating unique
-> > ids
-> > if you can think of one. Unfortunately, there are always cases when
-> > these mechanisms for getting a persistent+unique id break down.
-> > 
-> > That's the reason that nfs provides an interface to allow setting a
-> > uniquifier from userland via module param.
-> 
-> Fair enough, though I guess module parameter is not really a super
-> convenient place
-> for it when you run off nfs-root.
-> I guess you were not really enticed with the mac address idea too ;)
-> 
+On 6 Sep 2016, at 17:25, Chuck Lever wrote:
 
-Which mac address? It's not always a given that the host will initialze
-them in the same order when you have multiple interfaces, even if the
-hardware doesn't change out from under you.
+>> On Sep 6, 2016, at 5:01 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
+>>
+>> On Tue, Sep 06, 2016 at 04:49:33PM -0400, Chuck Lever wrote:
+>>>
+>>> On Sep 6, 2016, at 4:42 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
+>>>> Apologies, I wasn't thinking when I wrote that patch.  The problem is
+>>>> probably that rsc_lookup steals the passed-in memory to avoid doing an
+>>>> allocation of its own, so we can't just pass in a pointer to memory that
+>>>> someone else is using....
+>>>>
+>>>> If we really want to avoid allocation there then maybe we should
+>>>> preallocate somwhere, or reference count these handles.
+>>>>
+>>>> For now reverting sounds like the right thing to do.
+>>>
+>>> NP, thanks for confirming!
+>>>
+>>>
+>>>> Ben, did you ever confirm whether this helped with the problem you were
+>>>> seeing?  (If I remember correctly, unnpredictable delays here could
+>>>> cause the request to be dropped if later requests push the rpcsec_gss
+>>>> sequence window too far.)  If so then we could look into reference
+>>>> counting.
 
-This is just one of those classic "punt the solution to userland" sort
-of problems that's just really hard to fix in the kernel in a way that
-will always work.
+I somehow missed this; I haven't tested it.
 
-> Anyway, thank you very much for your help, now I have some better
-> idea of what's going on and what to try next.
+>>> Well that's interesting.
+>>>
+>>> When a request is dropped, would the server disconnect? Because if it
+>>> doesn't, the client will wait forever.
+>>
+>> Checking... gss_verify_header returns SVC_DROP, which is just a silent
+>> close (SVC_CLOSE would close the connection).
+>>
+>> I'm not sure what's correct there.
+>
+> Right, we may not get any guidance from the RPCSEC GSS specifications.
+>
+> However, the Linux NFS client retransmit code was changed in 2013 so that
+> NFSv4 never retransmits until the server drops the connection, starting
+> around commit 8a19a0b6cb2e2216afd68ef2047f30260cc8a220.
 
-No problem. Diagnosing these sorts of problems can be pretty difficult.
+That is the behavior I was seeing.
 
-Note too that earlier versions of the client had a length limitation on
-this string, which could cause similar problems even when the hostnames
-are already set if they were very long names and only differed at the
-end. commit 873e385116b2cc5c7daca8f51881371fadb90970 fixes that
-problem.
+Ben
 
--- 
-Jeff Layton <jlayton@redhat.com>
