@@ -1,89 +1,72 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:47404 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:51512 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S933877AbcIFPMu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 6 Sep 2016 11:12:50 -0400
+        id S933523AbcIFPMv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 6 Sep 2016 11:12:51 -0400
 From: Jeff Layton <jlayton@redhat.com>
 To: trond.myklebust@primarydata.com
 Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH 8/9] nfs: ensure that the filehandle in CB_NOTIFY_LOCK request matches the inode
-Date: Tue,  6 Sep 2016 11:12:39 -0400
-Message-Id: <1473174760-29859-9-git-send-email-jlayton@redhat.com>
+Subject: [PATCH 9/9] nfs: track whether server sets MAY_NOTIFY_LOCK flag
+Date: Tue,  6 Sep 2016 11:12:40 -0400
+Message-Id: <1473174760-29859-10-git-send-email-jlayton@redhat.com>
 In-Reply-To: <1473174760-29859-1-git-send-email-jlayton@redhat.com>
 References: <1473174760-29859-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+If it does, then always have the client sleep for the max time before
+repolling for the lock.
+
 Signed-off-by: Jeff Layton <jlayton@redhat.com>
 ---
- fs/nfs/callback_proc.c |  2 +-
- fs/nfs/nfs4proc.c      | 13 +++++++++++--
- 2 files changed, 12 insertions(+), 3 deletions(-)
+ fs/nfs/nfs4_fs.h  | 1 +
+ fs/nfs/nfs4proc.c | 7 ++++++-
+ 2 files changed, 7 insertions(+), 1 deletion(-)
 
-diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
-index 4ba6a8763f91..39a34d5083fe 100644
---- a/fs/nfs/callback_proc.c
-+++ b/fs/nfs/callback_proc.c
-@@ -645,7 +645,7 @@ __be32 nfs4_callback_notify_lock(struct cb_notify_lock_args *args, void *dummy,
- 	fc_tbl = &cps->clp->cl_session->fc_slot_table;
+diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
+index 9bf64eacba5b..91e4f135a5f2 100644
+--- a/fs/nfs/nfs4_fs.h
++++ b/fs/nfs/nfs4_fs.h
+@@ -156,6 +156,7 @@ enum {
+ 	NFS_STATE_RECLAIM_NOGRACE,	/* OPEN stateid needs to recover state */
+ 	NFS_STATE_POSIX_LOCKS,		/* Posix locks are supported */
+ 	NFS_STATE_RECOVERY_FAILED,	/* OPEN stateid state recovery failed */
++	NFS_STATE_MAY_NOTIFY_LOCK,	/* server may CB_NOTIFY_LOCK */
+ };
  
- 	status = htonl(NFS4_OK);
--	__wake_up(&cps->clp->cl_lock_waitq, TASK_NORMAL, 0, &args->cbnl_owner);
-+	__wake_up(&cps->clp->cl_lock_waitq, TASK_NORMAL, 0, args);
- 	return status;
- }
- #endif /* CONFIG_NFS_V4_1 */
+ struct nfs4_state {
 diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 3a6669063c44..6829b998776d 100644
+index 6829b998776d..ecd00431fe0c 100644
 --- a/fs/nfs/nfs4proc.c
 +++ b/fs/nfs/nfs4proc.c
-@@ -5533,6 +5533,7 @@ int nfs4_proc_delegreturn(struct inode *inode, struct rpc_cred *cred, const nfs4
+@@ -2537,6 +2537,8 @@ static int _nfs4_open_and_get_state(struct nfs4_opendata *opendata,
+ 		goto out;
+ 	if (server->caps & NFS_CAP_POSIX_LOCK)
+ 		set_bit(NFS_STATE_POSIX_LOCKS, &state->flags);
++	if (opendata->o_res.rflags & NFS4_OPEN_RESULT_MAY_NOTIFY_LOCK)
++		set_bit(NFS_STATE_MAY_NOTIFY_LOCK, &state->flags);
  
- struct nfs4_lock_waiter {
- 	struct task_struct	*task;
-+	struct inode		*inode;
- 	struct nfs_lowner	*owner;
- 	bool			notified;
- };
-@@ -5541,8 +5542,10 @@ static int
- nfs4_wake_lock_waiter(wait_queue_t *wait, unsigned int mode, int flags, void *key)
+ 	dentry = opendata->dentry;
+ 	if (d_really_is_negative(dentry)) {
+@@ -6230,7 +6232,7 @@ nfs4_proc_lock(struct file *filp, int cmd, struct file_lock *request)
  {
- 	int ret;
-+	struct cb_notify_lock_args *cbnl = key;
- 	struct nfs4_lock_waiter	*waiter	= wait->private;
--	struct nfs_lowner	*lowner = key, *wowner = waiter->owner;
-+	struct nfs_lowner	*lowner = &cbnl->cbnl_owner,
-+				*wowner = waiter->owner;
+ 	struct nfs_open_context *ctx;
+ 	struct nfs4_state *state;
+-	unsigned long timeout = NFS4_LOCK_MINTIMEOUT;
++	unsigned long timeout;
+ 	int status;
  
- 	/* Don't wake anybody if the string looked bogus */
- 	if (!lowner->id && !lowner->s_dev)
-@@ -5554,6 +5557,10 @@ nfs4_wake_lock_waiter(wait_queue_t *wait, unsigned int mode, int flags, void *ke
- 	    lowner->s_dev != wowner->s_dev)
- 		return 0;
+ 	/* verify open state */
+@@ -6279,6 +6281,9 @@ nfs4_proc_lock(struct file *filp, int cmd, struct file_lock *request)
+ 	if (status != 0)
+ 		return status;
  
-+	/* Make sure it's for the right inode */
-+	if (nfs_compare_fh(NFS_FH(waiter->inode), &cbnl->cbnl_fh))
-+		return 0;
++	timeout = test_bit(NFS_STATE_MAY_NOTIFY_LOCK, &state->flags) ?
++				NFS4_LOCK_MAXTIMEOUT : NFS4_LOCK_MINTIMEOUT;
 +
- 	waiter->notified = true;
- 
- 	/* override "private" so we can use default_wake_function */
-@@ -6274,12 +6281,14 @@ nfs4_proc_lock(struct file *filp, int cmd, struct file_lock *request)
- 
  	do {
  		struct nfs4_lock_state *lsp = request->fl_u.nfs4_fl.owner;
--		struct nfs_server *server = NFS_SERVER(lsp->ls_state->inode);
-+		struct inode *inode = lsp->ls_state->inode;
-+		struct nfs_server *server = NFS_SERVER(inode);
- 		struct nfs_client *clp = server->nfs_client;
- 		struct nfs_lowner owner = { .clientid = clp->cl_clientid,
- 					    .id = lsp->ls_seqid.owner_id,
- 					    .s_dev = server->s_dev };
- 		struct nfs4_lock_waiter waiter = { .task  = current,
-+						   .inode = inode,
- 						   .owner = &owner,
- 						   .notified = false };
- 		wait_queue_t wait;
+ 		struct inode *inode = lsp->ls_state->inode;
 -- 
 2.7.4
 
