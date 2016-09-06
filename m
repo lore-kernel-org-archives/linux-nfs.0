@@ -1,342 +1,195 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:53630 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:56402 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1753966AbcIFPEw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        id S1754028AbcIFPEw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
         Tue, 6 Sep 2016 11:04:52 -0400
 From: Jeff Layton <jlayton@redhat.com>
 To: bfields@fieldses.org
 Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v2 2/4] nfsd: have nfsd4_lock use blocking locks for v4.1+ locks
-Date: Tue,  6 Sep 2016 11:04:48 -0400
-Message-Id: <1473174290-29612-3-git-send-email-jlayton@redhat.com>
+Subject: [PATCH v2 3/4] nfsd: add a LRU list for blocked locks
+Date: Tue,  6 Sep 2016 11:04:49 -0400
+Message-Id: <1473174290-29612-4-git-send-email-jlayton@redhat.com>
 In-Reply-To: <1473174290-29612-1-git-send-email-jlayton@redhat.com>
 References: <1473174290-29612-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Create a new per-lockowner+per-inode structure that contains a
-file_lock. Have nfsd4_lock add this structure to the lockowner's list
-prior to setting the lock. Then call the vfs and request a blocking lock
-(by setting FL_SLEEP). If we get anything besides FILE_LOCK_DEFERRED
-back, then we dequeue the block structure and free it. When the next
-lock request comes in, we'll look for an existing block for the same
-filehandle and dequeue and reuse it if there is one.
+It's possible for a client to call in on a lock that is blocked for a
+long time, but discontinue polling for it. A malicious client could
+even set a lock on a file, and then spam the server with failing lock
+requests from different lockowners that pile up in a DoS attack.
 
-When the lock comes free (a'la an lm_notify call), we dequeue it
-from the lockowner's list and kick off a CB_NOTIFY_LOCK callback to
-inform the client that it should retry the lock request.
+Add the blocked lock structures to a per-net namespace LRU when hashing
+them, and timestamp them. If the lock request is not revisited after a
+lease period, we'll drop it under the assumption that the client is no
+longer interested.
+
+This also gives us a mechanism to clean up these objects at server
+shutdown time as well.
 
 Signed-off-by: Jeff Layton <jlayton@redhat.com>
 ---
- fs/nfsd/nfs4state.c | 164 ++++++++++++++++++++++++++++++++++++++++++++++------
- fs/nfsd/state.h     |  12 +++-
- 2 files changed, 156 insertions(+), 20 deletions(-)
+ fs/nfsd/netns.h     |  1 +
+ fs/nfsd/nfs4state.c | 62 +++++++++++++++++++++++++++++++++++++++++++++++++++++
+ fs/nfsd/state.h     |  2 ++
+ 3 files changed, 65 insertions(+)
 
+diff --git a/fs/nfsd/netns.h b/fs/nfsd/netns.h
+index 5fbf3bbd00d0..b10d557f9c9e 100644
+--- a/fs/nfsd/netns.h
++++ b/fs/nfsd/netns.h
+@@ -84,6 +84,7 @@ struct nfsd_net {
+ 	struct list_head client_lru;
+ 	struct list_head close_lru;
+ 	struct list_head del_recall_lru;
++	struct list_head blocked_locks_lru;
+ 
+ 	struct delayed_work laundromat_work;
+ 
 diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index a204d7e109d4..ca0db4974e5b 100644
+index ca0db4974e5b..6c74d9a45163 100644
 --- a/fs/nfsd/nfs4state.c
 +++ b/fs/nfsd/nfs4state.c
-@@ -99,6 +99,7 @@ static struct kmem_cache *odstate_slab;
- static void free_session(struct nfsd4_session *);
- 
- static const struct nfsd4_callback_ops nfsd4_cb_recall_ops;
-+static const struct nfsd4_callback_ops nfsd4_cb_notify_lock_ops;
- 
- static bool is_session_dead(struct nfsd4_session *ses)
- {
-@@ -210,6 +211,84 @@ static void nfsd4_put_session(struct nfsd4_session *ses)
+@@ -221,6 +221,7 @@ find_blocked_lock(struct nfs4_lockowner *lo, struct knfsd_fh *fh,
+ 	list_for_each_entry(cur, &lo->lo_blocked, nbl_list) {
+ 		if (fh_match(fh, &cur->nbl_fh)) {
+ 			list_del_init(&cur->nbl_list);
++			list_del_init(&cur->nbl_lru);
+ 			found = cur;
+ 			break;
+ 		}
+@@ -4580,6 +4581,7 @@ nfs4_laundromat(struct nfsd_net *nn)
+ 	struct nfs4_openowner *oo;
+ 	struct nfs4_delegation *dp;
+ 	struct nfs4_ol_stateid *stp;
++	struct nfsd4_blocked_lock *nbl;
+ 	struct list_head *pos, *next, reaplist;
+ 	time_t cutoff = get_seconds() - nn->nfsd4_lease;
+ 	time_t t, new_timeo = nn->nfsd4_lease;
+@@ -4648,6 +4650,41 @@ nfs4_laundromat(struct nfsd_net *nn)
+ 	}
  	spin_unlock(&nn->client_lock);
- }
  
-+static struct nfsd4_blocked_lock *
-+find_blocked_lock(struct nfs4_lockowner *lo, struct knfsd_fh *fh,
-+			struct nfsd_net *nn)
-+{
-+	struct nfsd4_blocked_lock *cur, *found = NULL;
-+
++	/*
++	 * It's possible for a client to try and acquire an already held lock
++	 * that is being held for a long time, and then lose interest in it.
++	 * So, we clean out any un-revisited request after a lease period
++	 * under the assumption that the client is no longer interested.
++	 *
++	 * RFC5661, sec. 9.6 states that the client must not rely on getting
++	 * notifications and must continue to poll for locks, even when the
++	 * server supports them. Thus this shouldn't lead to clients blocking
++	 * indefinitely once the lock does become free.
++	 */
++	BUG_ON(!list_empty(&reaplist));
 +	spin_lock(&nn->client_lock);
-+	list_for_each_entry(cur, &lo->lo_blocked, nbl_list) {
-+		if (fh_match(fh, &cur->nbl_fh)) {
-+			list_del_init(&cur->nbl_list);
-+			found = cur;
++	while (!list_empty(&nn->blocked_locks_lru)) {
++		nbl = list_first_entry(&nn->blocked_locks_lru,
++					struct nfsd4_blocked_lock, nbl_lru);
++		if (time_after((unsigned long)nbl->nbl_time,
++			       (unsigned long)cutoff)) {
++			t = nbl->nbl_time - cutoff;
++			new_timeo = min(new_timeo, t);
 +			break;
 +		}
-+	}
-+	spin_unlock(&nn->client_lock);
-+	if (found)
-+		posix_unblock_lock(&found->nbl_lock);
-+	return found;
-+}
-+
-+static struct nfsd4_blocked_lock *
-+find_or_allocate_block(struct nfs4_lockowner *lo, struct knfsd_fh *fh,
-+			struct nfsd_net *nn)
-+{
-+	struct nfsd4_blocked_lock *nbl;
-+
-+	nbl = find_blocked_lock(lo, fh, nn);
-+	if (!nbl) {
-+		nbl= kmalloc(sizeof(*nbl), GFP_KERNEL);
-+		if (nbl) {
-+			fh_copy_shallow(&nbl->nbl_fh, fh);
-+			locks_init_lock(&nbl->nbl_lock);
-+			nfsd4_init_cb(&nbl->nbl_cb, lo->lo_owner.so_client,
-+					&nfsd4_cb_notify_lock_ops,
-+					NFSPROC4_CLNT_CB_NOTIFY_LOCK);
-+		}
-+	}
-+	return nbl;
-+}
-+
-+static void
-+free_blocked_lock(struct nfsd4_blocked_lock *nbl)
-+{
-+	locks_release_private(&nbl->nbl_lock);
-+	kfree(nbl);
-+}
-+
-+static int
-+nfsd4_cb_notify_lock_done(struct nfsd4_callback *cb, struct rpc_task *task)
-+{
-+	/*
-+	 * Since this is just an optimization, we don't try very hard if it
-+	 * turns out not to succeed. We'll requeue it on NFS4ERR_DELAY, and
-+	 * just quit trying on anything else.
-+	 */
-+	switch (task->tk_status) {
-+	case -NFS4ERR_DELAY:
-+		rpc_delay(task, 1 * HZ);
-+		return 0;
-+	default:
-+		return 1;
-+	}
-+}
-+
-+static void
-+nfsd4_cb_notify_lock_release(struct nfsd4_callback *cb)
-+{
-+	struct nfsd4_blocked_lock	*nbl = container_of(cb,
-+						struct nfsd4_blocked_lock, nbl_cb);
-+
-+	free_blocked_lock(nbl);
-+}
-+
-+static const struct nfsd4_callback_ops nfsd4_cb_notify_lock_ops = {
-+	.done		= nfsd4_cb_notify_lock_done,
-+	.release	= nfsd4_cb_notify_lock_release,
-+};
-+
- static inline struct nfs4_stateowner *
- nfs4_get_stateowner(struct nfs4_stateowner *sop)
- {
-@@ -5309,7 +5388,29 @@ nfsd4_fl_put_owner(fl_owner_t owner)
- 		nfs4_put_stateowner(&lo->lo_owner);
- }
- 
-+static void
-+nfsd4_lm_notify(struct file_lock *fl)
-+{
-+	struct nfs4_lockowner		*lo = (struct nfs4_lockowner *)fl->fl_owner;
-+	struct net			*net = lo->lo_owner.so_client->net;
-+	struct nfsd_net			*nn = net_generic(net, nfsd_net_id);
-+	struct nfsd4_blocked_lock	*nbl = container_of(fl,
-+						struct nfsd4_blocked_lock, nbl_lock);
-+	bool queue = false;
-+
-+	spin_lock(&nn->client_lock);
-+	if (!list_empty(&nbl->nbl_list)) {
++		list_move(&nbl->nbl_lru, &reaplist);
 +		list_del_init(&nbl->nbl_list);
-+		queue = true;
 +	}
 +	spin_unlock(&nn->client_lock);
 +
-+	if (queue)
-+		nfsd4_run_cb(&nbl->nbl_cb);
-+}
-+
- static const struct lock_manager_operations nfsd_posix_mng_ops  = {
-+	.lm_notify = nfsd4_lm_notify,
- 	.lm_get_owner = nfsd4_fl_get_owner,
- 	.lm_put_owner = nfsd4_fl_put_owner,
- };
-@@ -5407,6 +5508,7 @@ alloc_init_lock_stateowner(unsigned int strhashval, struct nfs4_client *clp,
- 	lo = alloc_stateowner(lockowner_slab, &lock->lk_new_owner, clp);
- 	if (!lo)
- 		return NULL;
-+	INIT_LIST_HEAD(&lo->lo_blocked);
- 	INIT_LIST_HEAD(&lo->lo_owner.so_stateids);
- 	lo->lo_owner.so_is_open_owner = 0;
- 	lo->lo_owner.so_seqid = lock->lk_new_lock_seqid;
-@@ -5588,12 +5690,15 @@ nfsd4_lock(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 	struct nfs4_ol_stateid *open_stp = NULL;
- 	struct nfs4_file *fp;
- 	struct file *filp = NULL;
-+	struct nfsd4_blocked_lock *nbl = NULL;
- 	struct file_lock *file_lock = NULL;
- 	struct file_lock *conflock = NULL;
- 	__be32 status = 0;
- 	int lkflg;
- 	int err;
- 	bool new = false;
-+	unsigned char fl_type;
-+	unsigned int fl_flags = FL_POSIX;
- 	struct net *net = SVC_NET(rqstp);
- 	struct nfsd_net *nn = net_generic(net, nfsd_net_id);
- 
-@@ -5658,46 +5763,55 @@ nfsd4_lock(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 	if (!locks_in_grace(net) && lock->lk_reclaim)
- 		goto out;
- 
--	file_lock = locks_alloc_lock();
--	if (!file_lock) {
--		dprintk("NFSD: %s: unable to allocate lock!\n", __func__);
--		status = nfserr_jukebox;
--		goto out;
--	}
--
- 	fp = lock_stp->st_stid.sc_file;
- 	switch (lock->lk_type) {
--		case NFS4_READ_LT:
- 		case NFS4_READW_LT:
-+			if (nfsd4_has_session(cstate))
-+				fl_flags |= FL_SLEEP;
-+			/* Fallthrough */
-+		case NFS4_READ_LT:
- 			spin_lock(&fp->fi_lock);
- 			filp = find_readable_file_locked(fp);
- 			if (filp)
- 				get_lock_access(lock_stp, NFS4_SHARE_ACCESS_READ);
- 			spin_unlock(&fp->fi_lock);
--			file_lock->fl_type = F_RDLCK;
-+			fl_type = F_RDLCK;
- 			break;
--		case NFS4_WRITE_LT:
- 		case NFS4_WRITEW_LT:
-+			if (nfsd4_has_session(cstate))
-+				fl_flags |= FL_SLEEP;
-+			/* Fallthrough */
-+		case NFS4_WRITE_LT:
- 			spin_lock(&fp->fi_lock);
- 			filp = find_writeable_file_locked(fp);
- 			if (filp)
- 				get_lock_access(lock_stp, NFS4_SHARE_ACCESS_WRITE);
- 			spin_unlock(&fp->fi_lock);
--			file_lock->fl_type = F_WRLCK;
-+			fl_type = F_WRLCK;
- 			break;
- 		default:
- 			status = nfserr_inval;
- 		goto out;
- 	}
-+
- 	if (!filp) {
- 		status = nfserr_openmode;
- 		goto out;
- 	}
- 
-+	nbl = find_or_allocate_block(lock_sop, &fp->fi_fhandle, nn);
-+	if (!nbl) {
-+		dprintk("NFSD: %s: unable to allocate block!\n", __func__);
-+		status = nfserr_jukebox;
-+		goto out;
-+	}
-+
-+	file_lock = &nbl->nbl_lock;
-+	file_lock->fl_type = fl_type;
- 	file_lock->fl_owner = (fl_owner_t)lockowner(nfs4_get_stateowner(&lock_sop->lo_owner));
- 	file_lock->fl_pid = current->tgid;
- 	file_lock->fl_file = filp;
--	file_lock->fl_flags = FL_POSIX;
-+	file_lock->fl_flags = fl_flags;
- 	file_lock->fl_lmops = &nfsd_posix_mng_ops;
- 	file_lock->fl_start = lock->lk_offset;
- 	file_lock->fl_end = last_byte_offset(lock->lk_offset, lock->lk_length);
-@@ -5710,18 +5824,27 @@ nfsd4_lock(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 		goto out;
- 	}
- 
-+	if (fl_flags & FL_SLEEP) {
-+		spin_lock(&nn->client_lock);
-+		list_add_tail(&nbl->nbl_list, &lock_sop->lo_blocked);
-+		spin_unlock(&nn->client_lock);
-+	}
-+
- 	err = vfs_lock_file(filp, F_SETLK, file_lock, conflock);
--	switch (-err) {
-+	switch (err) {
- 	case 0: /* success! */
- 		nfs4_inc_and_copy_stateid(&lock->lk_resp_stateid, &lock_stp->st_stid);
- 		status = 0;
- 		break;
--	case (EAGAIN):		/* conflock holds conflicting lock */
-+	case FILE_LOCK_DEFERRED:
-+		nbl = NULL;
-+		/* Fallthrough */
-+	case -EAGAIN:		/* conflock holds conflicting lock */
- 		status = nfserr_denied;
- 		dprintk("NFSD: nfsd4_lock: conflicting lock found!\n");
- 		nfs4_set_lock_denied(conflock, &lock->lk_denied);
- 		break;
--	case (EDEADLK):
-+	case -EDEADLK:
- 		status = nfserr_deadlock;
- 		break;
- 	default:
-@@ -5730,6 +5853,15 @@ nfsd4_lock(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 		break;
- 	}
- out:
-+	if (nbl) {
-+		/* dequeue it if we queued it before */
-+		if (fl_flags & FL_SLEEP) {
-+			spin_lock(&nn->client_lock);
-+			list_del_init(&nbl->nbl_list);
-+			spin_unlock(&nn->client_lock);
-+		}
++	while (!list_empty(&reaplist)) {
++		nbl = list_first_entry(&nn->blocked_locks_lru,
++					struct nfsd4_blocked_lock, nbl_lru);
++		list_del_init(&nbl->nbl_lru);
++		posix_unblock_lock(&nbl->nbl_lock);
 +		free_blocked_lock(nbl);
 +	}
- 	if (filp)
- 		fput(filp);
- 	if (lock_stp) {
-@@ -5753,8 +5885,6 @@ out:
- 	if (open_stp)
- 		nfs4_put_stid(&open_stp->st_stid);
- 	nfsd4_bump_seqid(cstate, status);
--	if (file_lock)
--		locks_free_lock(file_lock);
- 	if (conflock)
- 		locks_free_lock(conflock);
- 	return status;
++
+ 	new_timeo = max_t(time_t, new_timeo, NFSD_LAUNDROMAT_MINTIMEOUT);
+ 	return new_timeo;
+ }
+@@ -5398,9 +5435,11 @@ nfsd4_lm_notify(struct file_lock *fl)
+ 						struct nfsd4_blocked_lock, nbl_lock);
+ 	bool queue = false;
+ 
++	/* An empty list means that something else is going to be using it */
+ 	spin_lock(&nn->client_lock);
+ 	if (!list_empty(&nbl->nbl_list)) {
+ 		list_del_init(&nbl->nbl_list);
++		list_del_init(&nbl->nbl_lru);
+ 		queue = true;
+ 	}
+ 	spin_unlock(&nn->client_lock);
+@@ -5825,8 +5864,10 @@ nfsd4_lock(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 	}
+ 
+ 	if (fl_flags & FL_SLEEP) {
++		nbl->nbl_time = jiffies;
+ 		spin_lock(&nn->client_lock);
+ 		list_add_tail(&nbl->nbl_list, &lock_sop->lo_blocked);
++		list_add_tail(&nbl->nbl_lru, &nn->blocked_locks_lru);
+ 		spin_unlock(&nn->client_lock);
+ 	}
+ 
+@@ -5858,6 +5899,7 @@ out:
+ 		if (fl_flags & FL_SLEEP) {
+ 			spin_lock(&nn->client_lock);
+ 			list_del_init(&nbl->nbl_list);
++			list_del_init(&nbl->nbl_lru);
+ 			spin_unlock(&nn->client_lock);
+ 		}
+ 		free_blocked_lock(nbl);
+@@ -6898,6 +6940,7 @@ static int nfs4_state_create_net(struct net *net)
+ 	INIT_LIST_HEAD(&nn->client_lru);
+ 	INIT_LIST_HEAD(&nn->close_lru);
+ 	INIT_LIST_HEAD(&nn->del_recall_lru);
++	INIT_LIST_HEAD(&nn->blocked_locks_lru);
+ 	spin_lock_init(&nn->client_lock);
+ 
+ 	INIT_DELAYED_WORK(&nn->laundromat_work, laundromat_main);
+@@ -6995,6 +7038,7 @@ nfs4_state_shutdown_net(struct net *net)
+ 	struct nfs4_delegation *dp = NULL;
+ 	struct list_head *pos, *next, reaplist;
+ 	struct nfsd_net *nn = net_generic(net, nfsd_net_id);
++	struct nfsd4_blocked_lock *nbl;
+ 
+ 	cancel_delayed_work_sync(&nn->laundromat_work);
+ 	locks_end_grace(&nn->nfsd4_manager);
+@@ -7015,6 +7059,24 @@ nfs4_state_shutdown_net(struct net *net)
+ 		nfs4_put_stid(&dp->dl_stid);
+ 	}
+ 
++	BUG_ON(!list_empty(&reaplist));
++	spin_lock(&nn->client_lock);
++	while (!list_empty(&nn->blocked_locks_lru)) {
++		nbl = list_first_entry(&nn->blocked_locks_lru,
++					struct nfsd4_blocked_lock, nbl_lru);
++		list_move(&nbl->nbl_lru, &reaplist);
++		list_del_init(&nbl->nbl_list);
++	}
++	spin_unlock(&nn->client_lock);
++
++	while (!list_empty(&reaplist)) {
++		nbl = list_first_entry(&nn->blocked_locks_lru,
++					struct nfsd4_blocked_lock, nbl_lru);
++		list_del_init(&nbl->nbl_lru);
++		posix_unblock_lock(&nbl->nbl_lock);
++		free_blocked_lock(nbl);
++	}
++
+ 	nfsd4_client_tracking_exit(net);
+ 	nfs4_state_destroy_net(net);
+ }
 diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
-index 127cc84ca5a3..f6ffeac391f4 100644
+index f6ffeac391f4..abf0fe251f50 100644
 --- a/fs/nfsd/state.h
 +++ b/fs/nfsd/state.h
-@@ -441,11 +441,11 @@ struct nfs4_openowner {
- /*
-  * Represents a generic "lockowner". Similar to an openowner. References to it
-  * are held by the lock stateids that are created on its behalf. This object is
-- * a superset of the nfs4_stateowner struct (or would be if it needed any extra
-- * fields).
-+ * a superset of the nfs4_stateowner struct.
+@@ -588,6 +588,8 @@ static inline bool nfsd4_stateid_generation_after(stateid_t *a, stateid_t *b)
   */
- struct nfs4_lockowner {
--	struct nfs4_stateowner	lo_owner; /* must be first element */
-+	struct nfs4_stateowner	lo_owner;	/* must be first element */
-+	struct list_head	lo_blocked;	/* blocked file_locks */
- };
- 
- static inline struct nfs4_openowner * openowner(struct nfs4_stateowner *so)
-@@ -581,7 +581,13 @@ static inline bool nfsd4_stateid_generation_after(stateid_t *a, stateid_t *b)
- 	return (s32)(a->si_generation - b->si_generation) > 0;
- }
- 
-+/*
-+ * When a client tries to get a lock on a file, we set one of these objects
-+ * on the blocking lock. When the lock becomes free, we can then issue a
-+ * CB_NOTIFY_LOCK to the server.
-+ */
  struct nfsd4_blocked_lock {
-+	struct list_head	nbl_list;
+ 	struct list_head	nbl_list;
++	struct list_head	nbl_lru;
++	unsigned long		nbl_time;
  	struct file_lock	nbl_lock;
  	struct knfsd_fh		nbl_fh;
  	struct nfsd4_callback	nbl_cb;
