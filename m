@@ -1,43 +1,64 @@
-Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx144.netapp.com ([216.240.21.25]:63178 "EHLO mx144.netapp.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1752040AbcIGUKg (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 7 Sep 2016 16:10:36 -0400
-From: Anna Schumaker <Anna.Schumaker@netapp.com>
-To: <linux-fsdevel@vger.kernel.org>, <linux-nfs@vger.kernel.org>,
-        <viro@zeniv.linux.org.uk>
-Subject: [PATCH] vfs: Don't copy beyond the end of the file
-Date: Wed, 7 Sep 2016 16:10:31 -0400
-Message-ID: <20160907201031.27512-1-Anna.Schumaker@Netapp.com>
+Return-Path: <chucklever@gmail.com>
+Sender: Chuck Lever <chucklever@gmail.com>
+Subject: [PATCH v1] svcauth_gss: Close connection when dropping an incoming
+ message
+From: Chuck Lever <chuck.lever@oracle.com>
+To: bfields@fieldses.org
+Cc: bcodding@redhat.com, linux-nfs@vger.kernel.org
+Date: Wed, 07 Sep 2016 16:36:19 -0400
+Message-ID: <20160907202552.15084.40866.stgit@klimt.1015granger.net>
 MIME-Version: 1.0
-Content-Type: text/plain
-Sender: linux-nfs-owner@vger.kernel.org
+Content-Type: text/plain; charset="utf-8"
 List-ID: <linux-nfs.vger.kernel.org>
 
-According to `man 2 copy_file_range`, EINVAL should be returned if the
-"requested range extends beyond the end of the source file".  Falling
-back on do_splice_direct() will return 0 in this case, so let's add an
-explicit check to match the behavior documented in the man page.
+S5.3.3.1 of RFC 2203 requires that an incoming GSS-wrapped message
+whose sequence number lies outside the current window is dropped.
+The rationale is:
 
-Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
+  The reason for discarding requests silently is that the server
+  is unable to determine if the duplicate or out of range request
+  was due to a sequencing problem in the client, network, or the
+  operating system, or due to some quirk in routing, or a replay
+  attack by an intruder.  Discarding the request allows the client
+  to recover after timing out, if indeed the duplication was
+  unintentional or well intended.
+
+However, clients may rely on the server dropping the connection to
+indicate that a retransmit is needed. Without a connection reset, a
+client can wait forever without retransmitting, and the workload
+just stops dead. I've reproduced this behavior by running xfstests
+generic/323 on an NFSv4.0 mount with proto=rdma and sec=krb5i.
+
+To address this issue, have the server close the connection when it
+silently discards an incoming message due to a GSS sequence number
+problem.
+
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Cc: Benjamin Coddington <bcodding@redhat.com>
 ---
- fs/read_write.c | 3 +++
- 1 file changed, 3 insertions(+)
+Hi-
 
-diff --git a/fs/read_write.c b/fs/read_write.c
-index 66215a7..1cbab4e 100644
---- a/fs/read_write.c
-+++ b/fs/read_write.c
-@@ -1497,6 +1497,9 @@ ssize_t vfs_copy_file_range(struct file *file_in, loff_t pos_in,
- 	if (unlikely(ret))
- 		return ret;
- 
-+	if (pos_in >= i_size_read(inode_in))
-+		return -EINVAL;
-+
- 	if (!(file_in->f_mode & FMODE_READ) ||
- 	    !(file_out->f_mode & FMODE_WRITE) ||
- 	    (file_out->f_flags & O_APPEND))
--- 
-2.9.3
+Passed testing with my reproducer: 10 runs of generic/323 with
+proto=rdma and sec=krb5i, with NFSv3, NFSv4.0, and NFSv4.1.
+generic/323 is 120 seconds or so of a heavy aio workload.
 
+I tested with that dprintk replaced with pr_warn to confirm that the
+reproducer hits this path one or more times per test run.
+
+ net/sunrpc/auth_gss/svcauth_gss.c |    3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/net/sunrpc/auth_gss/svcauth_gss.c b/net/sunrpc/auth_gss/svcauth_gss.c
+index d858202..3ff52ec 100644
+--- a/net/sunrpc/auth_gss/svcauth_gss.c
++++ b/net/sunrpc/auth_gss/svcauth_gss.c
+@@ -696,7 +696,8 @@ gss_verify_header(struct svc_rqst *rqstp, struct rsc *rsci,
+ 	if (!gss_check_seq_num(rsci, gc->gc_seq)) {
+ 		dprintk("RPC:       svcauth_gss: discarding request with "
+ 				"old sequence number %d\n", gc->gc_seq);
+-		return SVC_DROP;
++		/* Signal to the client that an RPC message was lost */
++		return SVC_CLOSE;
+ 	}
+ 	return SVC_OK;
+ }
