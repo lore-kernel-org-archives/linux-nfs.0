@@ -1,53 +1,178 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
 Received: from mx142.netapp.com ([216.240.21.19]:27109 "EHLO mx142.netapp.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751372AbcIGT4W (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 7 Sep 2016 15:56:22 -0400
+        id S1756340AbcIGT4X (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 7 Sep 2016 15:56:23 -0400
 From: Anna Schumaker <Anna.Schumaker@netapp.com>
 To: <fstests@vger.kernel.org>
 CC: <Anna.Schumaker@netapp.com>, <linux-nfs@vger.kernel.org>,
         <hch@infradead.org>
-Subject: [PATCH v2 0/4] Add copy_file_range() tests
-Date: Wed, 7 Sep 2016 15:56:15 -0400
-Message-ID: <20160907195619.25914-1-Anna.Schumaker@Netapp.com>
+Subject: [PATCH v2 1/4] generic/377: Add copy to new file test
+Date: Wed, 7 Sep 2016 15:56:16 -0400
+Message-ID: <20160907195619.25914-2-Anna.Schumaker@Netapp.com>
+In-Reply-To: <20160907195619.25914-1-Anna.Schumaker@Netapp.com>
+References: <20160907195619.25914-1-Anna.Schumaker@Netapp.com>
 MIME-Version: 1.0
 Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-These tests exercise the copy_file_range() system call, and check copying
-data to both a new file and overwriting data inside an existing file.  I use
-the xfs_io "copy_range" command for the actual copies, so running these
-tests requires an up-to-date version of xfsprogs.
+This test copies data from various points in a source file to a new
+file.  This is useful for testing the basics of copy_file_range().
 
-Thanks,
-Anna
-
-Anna Schumaker (4):
-  generic/377: Add copy to new file test
-  generic/378: Add small copies to new file test
-  generic/379: Add copy test that overwrites data
-  generic/380: Add a copy test for overwriting small amounts of data
-
- tests/generic/377     | 102 +++++++++++++++++++++++++++++++++++++++++++++++
- tests/generic/377.out |  21 ++++++++++
- tests/generic/378     |  88 +++++++++++++++++++++++++++++++++++++++++
- tests/generic/378.out |  14 +++++++
- tests/generic/379     | 107 ++++++++++++++++++++++++++++++++++++++++++++++++++
- tests/generic/379.out |  17 ++++++++
- tests/generic/380     |  94 ++++++++++++++++++++++++++++++++++++++++++++
- tests/generic/380.out |  17 ++++++++
- tests/generic/group   |   4 ++
- 9 files changed, 464 insertions(+)
+Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
+---
+ tests/generic/377     | 102 ++++++++++++++++++++++++++++++++++++++++++++++++++
+ tests/generic/377.out |  21 +++++++++++
+ tests/generic/group   |   1 +
+ 3 files changed, 124 insertions(+)
  create mode 100644 tests/generic/377
  create mode 100644 tests/generic/377.out
- create mode 100644 tests/generic/378
- create mode 100644 tests/generic/378.out
- create mode 100644 tests/generic/379
- create mode 100644 tests/generic/379.out
- create mode 100644 tests/generic/380
- create mode 100644 tests/generic/380.out
 
+diff --git a/tests/generic/377 b/tests/generic/377
+new file mode 100644
+index 0000000..352b9bb
+--- /dev/null
++++ b/tests/generic/377
+@@ -0,0 +1,102 @@
++#!/bin/bash
++# FS QA Test No. 377
++#
++# Tests vfs_copy_file_range():
++#   - Copy a file
++#   - Copy beginning of original to new file
++#   - Copy middle of original to a new file
++#   - Copy end of original to new file
++#-----------------------------------------------------------------------
++# Copyright (c) 2016 Netapp, Inc. All rights reserved.
++#
++# This program is free software; you can redistribute it and/or
++# modify it under the terms of the GNU General Public License as
++# published by the Free Software Foundation.
++#
++# This program is distributed in the hope that it would be useful,
++# but WITHOUT ANY WARRANTY; without even the implied warranty of
++# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++# GNU General Public License for more details.
++#
++# You should have received a copy of the GNU General Public License
++# along with this program; if not, write the Free Software Foundation,
++# Inc.,  51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
++#-----------------------------------------------------------------------
++#
++
++seq=`basename $0`
++seqres=$RESULT_DIR/$seq
++echo "QA output created by $seq"
++
++here=`pwd`
++tmp=/tmp/$$
++status=1    # failure is the default!
++trap "_cleanup; exit \$status" 0 1 2 3 15
++
++_cleanup()
++{
++	cd /
++	rm -rf $tmp.*
++}
++
++# get standard environment
++. common/rc
++. common/filter
++
++# real QA test starts here
++_supported_os Linux
++
++_require_xfs_io_command "copy_range"
++_require_test
++
++testdir=$TEST_DIR/test-$seq
++rm -rf $testdir
++mkdir $testdir
++
++_checksum_files()
++{
++	for f in $*; do
++		md5sum $testdir/$f | _filter_test_dir
++	done
++}
++
++rm -f $seqres.full
++
++echo "Create the original file and then copy"
++$XFS_IO_PROG -f -c 'pwrite -S 0x61 0    1000' $testdir/file >> $seqres.full 2>&1
++$XFS_IO_PROG -f -c 'pwrite -S 0x62 1000 1000' $testdir/file >> $seqres.full 2>&1
++$XFS_IO_PROG -f -c 'pwrite -S 0x63 2000 1000' $testdir/file >> $seqres.full 2>&1
++$XFS_IO_PROG -f -c 'pwrite -S 0x64 3000 1000' $testdir/file >> $seqres.full 2>&1
++$XFS_IO_PROG -f -c 'pwrite -S 0x65 4000 1000' $testdir/file >> $seqres.full 2>&1
++$XFS_IO_PROG -f -c "copy_range $testdir/file" "$testdir/copy"
++cmp $testdir/file $testdir/copy
++echo "Original md5sums:"
++_checksum_files file copy
++
++echo "Copy beginning of original file"
++$XFS_IO_PROG -f -c "copy_range -l 1000 $testdir/file" "$testdir/beginning"
++cmp -n 1000 $testdir/file $testdir/beginning
++echo "md5sums after copying beginning:"
++_checksum_files file beginning
++
++echo "Copy middle of original file"
++$XFS_IO_PROG -f -c "copy_range -s 1000 -l 3000 $testdir/file" "$testdir/middle"
++cmp -n 3000 $testdir/file $testdir/middle 1000
++echo "md5sums after copying middle:"
++_checksum_files file middle
++
++echo "Copy end of original file"
++$XFS_IO_PROG -f -c "copy_range -s 4000 -l 1000 $testdir/file" "$testdir/end"
++cmp -n 1000 $testdir/file $testdir/end 4000
++echo "md5sums after copying end:"
++_checksum_files file end
++
++echo "Copy beyond end of original file"
++$XFS_IO_PROG -f -c "copy_range -s 4000 -l 2000 $testdir/file" "$testdir/beyond"
++cmp -n 1000 $testdir/file $testdir/end 4000
++echo "md5sums after copying beyond:"
++_checksum_files file beyond
++
++#success, all done
++status=0
++exit
+diff --git a/tests/generic/377.out b/tests/generic/377.out
+new file mode 100644
+index 0000000..8ad8b53
+--- /dev/null
++++ b/tests/generic/377.out
+@@ -0,0 +1,21 @@
++QA output created by 377
++Create the original file and then copy
++Original md5sums:
++e11fbace556cba26bf0076e74cab90a3  TEST_DIR/test-377/file
++e11fbace556cba26bf0076e74cab90a3  TEST_DIR/test-377/copy
++Copy beginning of original file
++md5sums after copying beginning:
++e11fbace556cba26bf0076e74cab90a3  TEST_DIR/test-377/file
++cabe45dcc9ae5b66ba86600cca6b8ba8  TEST_DIR/test-377/beginning
++Copy middle of original file
++md5sums after copying middle:
++e11fbace556cba26bf0076e74cab90a3  TEST_DIR/test-377/file
++4197de9da5badfc302715486b82bcdf1  TEST_DIR/test-377/middle
++Copy end of original file
++md5sums after copying end:
++e11fbace556cba26bf0076e74cab90a3  TEST_DIR/test-377/file
++e68d4a150c4e42f4f9ea3ffe4c9cf4ed  TEST_DIR/test-377/end
++Copy beyond end of original file
++md5sums after copying beyond:
++e11fbace556cba26bf0076e74cab90a3  TEST_DIR/test-377/file
++e68d4a150c4e42f4f9ea3ffe4c9cf4ed  TEST_DIR/test-377/beyond
+diff --git a/tests/generic/group b/tests/generic/group
+index bad71bc..dec0d64 100644
+--- a/tests/generic/group
++++ b/tests/generic/group
+@@ -379,3 +379,4 @@
+ 374 auto quick clone dedupe
+ 375 auto quick acl
+ 376 auto quick metadata
++377 auto quick copy
 -- 
 2.9.3
 
