@@ -1,19 +1,18 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx144.netapp.com ([216.240.21.25]:59276 "EHLO mx144.netapp.com"
+Received: from mx143.netapp.com ([216.240.21.24]:47083 "EHLO mx143.netapp.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751574AbcIHUHL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 8 Sep 2016 16:07:11 -0400
-Subject: Re: [PATCH 8/9] nfs: ensure that the filehandle in CB_NOTIFY_LOCK
- request matches the inode
+        id S1757693AbcIHULd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 8 Sep 2016 16:11:33 -0400
+Subject: Re: [PATCH 5/9] nfs: add handling for CB_NOTIFY_LOCK in client
 To: Jeff Layton <jlayton@redhat.com>, <trond.myklebust@primarydata.com>
 References: <1473174760-29859-1-git-send-email-jlayton@redhat.com>
- <1473174760-29859-9-git-send-email-jlayton@redhat.com>
+ <1473174760-29859-6-git-send-email-jlayton@redhat.com>
 CC: <linux-nfs@vger.kernel.org>
 From: Anna Schumaker <Anna.Schumaker@netapp.com>
-Message-ID: <f366315b-817d-4040-64d5-8338a7f405dc@Netapp.com>
-Date: Thu, 8 Sep 2016 16:07:07 -0400
+Message-ID: <37cef528-37d5-4b73-f8aa-f65cccd30c4d@Netapp.com>
+Date: Thu, 8 Sep 2016 16:11:28 -0400
 MIME-Version: 1.0
-In-Reply-To: <1473174760-29859-9-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1473174760-29859-6-git-send-email-jlayton@redhat.com>
 Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
@@ -21,86 +20,162 @@ List-ID: <linux-nfs.vger.kernel.org>
 Hi Jeff,
 
 On 09/06/2016 11:12 AM, Jeff Layton wrote:
+> For now, the callback doesn't do anything. Support for that will be
+> added in later patches.
+> 
 > Signed-off-by: Jeff Layton <jlayton@redhat.com>
 > ---
->  fs/nfs/callback_proc.c |  2 +-
->  fs/nfs/nfs4proc.c      | 13 +++++++++++--
->  2 files changed, 12 insertions(+), 3 deletions(-)
+>  fs/nfs/callback.h      |  8 ++++++++
+>  fs/nfs/callback_proc.c | 19 +++++++++++++++++++
+>  fs/nfs/callback_xdr.c  | 49 ++++++++++++++++++++++++++++++++++++++++++++++++-
+>  3 files changed, 75 insertions(+), 1 deletion(-)
 > 
+> diff --git a/fs/nfs/callback.h b/fs/nfs/callback.h
+> index 5fe1cecbf9f0..b486848306f0 100644
+> --- a/fs/nfs/callback.h
+> +++ b/fs/nfs/callback.h
+> @@ -179,6 +179,14 @@ extern __be32 nfs4_callback_devicenotify(
+>  	struct cb_devicenotifyargs *args,
+>  	void *dummy, struct cb_process_state *cps);
+>  
+> +struct cb_notify_lock_args {
+> +	struct nfs_fh			cbnl_fh;
+> +	struct nfs_lowner		cbnl_owner;
+> +};
+> +
+> +extern __be32 nfs4_callback_notify_lock(struct cb_notify_lock_args *args,
+> +					 void *dummy,
+> +					 struct cb_process_state *cps);
+>  #endif /* CONFIG_NFS_V4_1 */
+>  extern int check_gss_callback_principal(struct nfs_client *, struct svc_rqst *);
+>  extern __be32 nfs4_callback_getattr(struct cb_getattrargs *args,
 > diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
-> index 4ba6a8763f91..39a34d5083fe 100644
+> index f953ef6b2f2e..a211af339f32 100644
 > --- a/fs/nfs/callback_proc.c
 > +++ b/fs/nfs/callback_proc.c
-> @@ -645,7 +645,7 @@ __be32 nfs4_callback_notify_lock(struct cb_notify_lock_args *args, void *dummy,
->  	fc_tbl = &cps->clp->cl_session->fc_slot_table;
->  
->  	status = htonl(NFS4_OK);
-> -	__wake_up(&cps->clp->cl_lock_waitq, TASK_NORMAL, 0, &args->cbnl_owner);
-> +	__wake_up(&cps->clp->cl_lock_waitq, TASK_NORMAL, 0, args);
+> @@ -628,4 +628,23 @@ out:
+>  	dprintk("%s: exit with status = %d\n", __func__, ntohl(status));
 >  	return status;
 >  }
->  #endif /* CONFIG_NFS_V4_1 */
-> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-> index 3a6669063c44..6829b998776d 100644
-> --- a/fs/nfs/nfs4proc.c
-> +++ b/fs/nfs/nfs4proc.c
-> @@ -5533,6 +5533,7 @@ int nfs4_proc_delegreturn(struct inode *inode, struct rpc_cred *cred, const nfs4
->  
->  struct nfs4_lock_waiter {
->  	struct task_struct	*task;
-> +	struct inode		*inode;
->  	struct nfs_lowner	*owner;
->  	bool			notified;
->  };
-> @@ -5541,8 +5542,10 @@ static int
->  nfs4_wake_lock_waiter(wait_queue_t *wait, unsigned int mode, int flags, void *key)
->  {
->  	int ret;
-> +	struct cb_notify_lock_args *cbnl = key;
-
-I get this when I try compiling with CONFIG_NFS_V4=m but CONFIG_NFS_V4_1=n:
-
-fs/nfs/nfs4proc.c: In function 'nfs4_wake_lock_waiter':
-fs/nfs/nfs4proc.c:5491:35: error: dereferencing pointer to incomplete type 'struct cb_notify_lock_args'
-  struct nfs_lowner *lowner = &cbnl->cbnl_owner,
-
-
-Just thought you should know :)
-Anna
-                                   ^~
->  	struct nfs4_lock_waiter	*waiter	= wait->private;
-> -	struct nfs_lowner	*lowner = key, *wowner = waiter->owner;
-> +	struct nfs_lowner	*lowner = &cbnl->cbnl_owner,
-> +				*wowner = waiter->owner;
->  
->  	/* Don't wake anybody if the string looked bogus */
->  	if (!lowner->id && !lowner->s_dev)
-> @@ -5554,6 +5557,10 @@ nfs4_wake_lock_waiter(wait_queue_t *wait, unsigned int mode, int flags, void *ke
->  	    lowner->s_dev != wowner->s_dev)
->  		return 0;
->  
-> +	/* Make sure it's for the right inode */
-> +	if (nfs_compare_fh(NFS_FH(waiter->inode), &cbnl->cbnl_fh))
-> +		return 0;
 > +
->  	waiter->notified = true;
+> +__be32 nfs4_callback_notify_lock(struct cb_notify_lock_args *args, void *dummy,
+> +				 struct cb_process_state *cps)
+> +{
+> +	struct nfs4_slot_table	*fc_tbl;
+> +	__be32			status;
+> +
+> +	status = htonl(NFS4ERR_OP_NOT_IN_SESSION);
+> +	if (!cps->clp) /* set in cb_sequence */
+> +		return status;
+
+Maybe we can "return hotnl(NFS4ERR_OP_NOT_IN_SESSION)" directly, rather than going through the status variable?
+
+> +
+> +	dprintk_rcu("NFS: CB_RECALL_NOTIFY_LOCK request from %s\n",
+> +		rpc_peeraddr2str(cps->clp->cl_rpcclient, RPC_DISPLAY_ADDR));
+> +
+> +	fc_tbl = &cps->clp->cl_session->fc_slot_table;
+
+Looks like you never do anything with the fc_tbl variable in this function.  Can you remove it?
+
+> +
+> +	status = htonl(NFS4_OK);
+
+And maybe just "return htonl(NFS4_OK)" directly here, too?
+
+Thanks,
+Anna
+
+> +	return status;
+> +}
+>  #endif /* CONFIG_NFS_V4_1 */
+> diff --git a/fs/nfs/callback_xdr.c b/fs/nfs/callback_xdr.c
+> index d6a40c06ec26..d3c0485cf437 100644
+> --- a/fs/nfs/callback_xdr.c
+> +++ b/fs/nfs/callback_xdr.c
+> @@ -35,6 +35,7 @@
+>  					 (1 + 3) * 4) // seqid, 3 slotids
+>  #define CB_OP_RECALLANY_RES_MAXSZ	(CB_OP_HDR_RES_MAXSZ)
+>  #define CB_OP_RECALLSLOT_RES_MAXSZ	(CB_OP_HDR_RES_MAXSZ)
+> +#define CB_OP_NOTIFY_LOCK_RES_MAXSZ	(CB_OP_HDR_RES_MAXSZ)
+>  #endif /* CONFIG_NFS_V4_1 */
 >  
->  	/* override "private" so we can use default_wake_function */
-> @@ -6274,12 +6281,14 @@ nfs4_proc_lock(struct file *filp, int cmd, struct file_lock *request)
+>  #define NFSDBG_FACILITY NFSDBG_CALLBACK
+> @@ -534,6 +535,47 @@ static __be32 decode_recallslot_args(struct svc_rqst *rqstp,
+>  	return 0;
+>  }
 >  
->  	do {
->  		struct nfs4_lock_state *lsp = request->fl_u.nfs4_fl.owner;
-> -		struct nfs_server *server = NFS_SERVER(lsp->ls_state->inode);
-> +		struct inode *inode = lsp->ls_state->inode;
-> +		struct nfs_server *server = NFS_SERVER(inode);
->  		struct nfs_client *clp = server->nfs_client;
->  		struct nfs_lowner owner = { .clientid = clp->cl_clientid,
->  					    .id = lsp->ls_seqid.owner_id,
->  					    .s_dev = server->s_dev };
->  		struct nfs4_lock_waiter waiter = { .task  = current,
-> +						   .inode = inode,
->  						   .owner = &owner,
->  						   .notified = false };
->  		wait_queue_t wait;
+> +static __be32 decode_lockowner(struct xdr_stream *xdr, struct cb_notify_lock_args *args)
+> +{
+> +	__be32		*p;
+> +	unsigned int	len;
+> +
+> +	p = read_buf(xdr, 12);
+> +	if (unlikely(p == NULL))
+> +		return htonl(NFS4ERR_BADXDR);
+> +
+> +	p = xdr_decode_hyper(p, &args->cbnl_owner.clientid);
+> +	len = be32_to_cpu(*p);
+> +
+> +	p = read_buf(xdr, len);
+> +	if (unlikely(p == NULL))
+> +		return htonl(NFS4ERR_BADXDR);
+> +
+> +	/* Only try to decode if the length is right */
+> +	if (len == 20) {
+> +		p += 2;	/* skip "lock id:" */
+> +		args->cbnl_owner.s_dev = be32_to_cpu(*p++);
+> +		xdr_decode_hyper(p, &args->cbnl_owner.id);
+> +	} else {
+> +		args->cbnl_owner.s_dev = 0;
+> +		args->cbnl_owner.id = 0;
+> +	}
+> +	return 0;
+> +}
+> +
+> +static __be32 decode_notify_lock_args(struct svc_rqst *rqstp, struct xdr_stream *xdr, struct cb_notify_lock_args *args)
+> +{
+> +	__be32 status;
+> +
+> +	status = decode_fh(xdr, &args->cbnl_fh);
+> +	if (unlikely(status != 0))
+> +		goto out;
+> +	status = decode_lockowner(xdr, args);
+> +out:
+> +	dprintk("%s: exit with status = %d\n", __func__, ntohl(status));
+> +	return status;
+> +}
+> +
+>  #endif /* CONFIG_NFS_V4_1 */
+>  
+>  static __be32 encode_string(struct xdr_stream *xdr, unsigned int len, const char *str)
+> @@ -746,6 +788,7 @@ preprocess_nfs41_op(int nop, unsigned int op_nr, struct callback_op **op)
+>  	case OP_CB_RECALL_SLOT:
+>  	case OP_CB_LAYOUTRECALL:
+>  	case OP_CB_NOTIFY_DEVICEID:
+> +	case OP_CB_NOTIFY_LOCK:
+>  		*op = &callback_ops[op_nr];
+>  		break;
+>  
+> @@ -753,7 +796,6 @@ preprocess_nfs41_op(int nop, unsigned int op_nr, struct callback_op **op)
+>  	case OP_CB_PUSH_DELEG:
+>  	case OP_CB_RECALLABLE_OBJ_AVAIL:
+>  	case OP_CB_WANTS_CANCELLED:
+> -	case OP_CB_NOTIFY_LOCK:
+>  		return htonl(NFS4ERR_NOTSUPP);
+>  
+>  	default:
+> @@ -1006,6 +1048,11 @@ static struct callback_op callback_ops[] = {
+>  		.decode_args = (callback_decode_arg_t)decode_recallslot_args,
+>  		.res_maxsize = CB_OP_RECALLSLOT_RES_MAXSZ,
+>  	},
+> +	[OP_CB_NOTIFY_LOCK] = {
+> +		.process_op = (callback_process_op_t)nfs4_callback_notify_lock,
+> +		.decode_args = (callback_decode_arg_t)decode_notify_lock_args,
+> +		.res_maxsize = CB_OP_NOTIFY_LOCK_RES_MAXSZ,
+> +	},
+>  #endif /* CONFIG_NFS_V4_1 */
+>  };
+>  
 > 
 
