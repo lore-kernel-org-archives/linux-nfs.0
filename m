@@ -1,34 +1,49 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from linuxhacker.ru ([217.76.32.60]:58272 "EHLO fiona.linuxhacker.ru"
+Received: from mx141.netapp.com ([216.240.21.12]:62451 "EHLO mx141.netapp.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S932500AbcIHO4A (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 8 Sep 2016 10:56:00 -0400
-Subject: Re: NFS client stuck in a tight loop
-Mime-Version: 1.0 (Apple Message framework v1283)
-Content-Type: text/plain; charset=windows-1252
-From: Oleg Drokin <green@linuxhacker.ru>
-In-Reply-To: <59CD8653-D109-408E-A5BA-124220051094@primarydata.com>
-Date: Thu, 8 Sep 2016 10:55:50 -0400
-Cc: List Linux NFS Mailing <linux-nfs@vger.kernel.org>
-Message-Id: <730673D2-B564-4B0A-B69F-170192BB5302@linuxhacker.ru>
-References: <0ABF496B-2E1F-46B6-A3EA-55C447F71073@linuxhacker.ru> <59CD8653-D109-408E-A5BA-124220051094@primarydata.com>
-To: Trond Myklebust <trondmy@primarydata.com>
+        id S1751302AbcIHRjY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 8 Sep 2016 13:39:24 -0400
+From: Anna Schumaker <Anna.Schumaker@netapp.com>
+Subject: Re: [PATCH 1/9] nfs: the length argument to read_buf should be
+ unsigned
+To: Jeff Layton <jlayton@redhat.com>, <trond.myklebust@primarydata.com>
+References: <1473174760-29859-1-git-send-email-jlayton@redhat.com>
+ <1473174760-29859-2-git-send-email-jlayton@redhat.com>
+CC: <linux-nfs@vger.kernel.org>
+Message-ID: <ed805f06-e8e4-4e96-6d4d-0d374437ed7f@Netapp.com>
+Date: Thu, 8 Sep 2016 13:39:20 -0400
+MIME-Version: 1.0
+In-Reply-To: <1473174760-29859-2-git-send-email-jlayton@redhat.com>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Hi Jeff,
 
-On Sep 7, 2016, at 10:35 AM, Trond Myklebust wrote:
->> You can do umount -f and then unmount does work on the second try,
->> this also results in the following dmesg message:
->> [155381.995368] NFS: nfs4_reclaim_open_state: unhandled error -5
->> 
->> I don't know this code well enough to take my own stab at a fix, but I can
->> help testing if needed.
+On 09/06/2016 11:12 AM, Jeff Layton wrote:
+> Signed-off-by: Jeff Layton <jlayton@redhat.com>
+> ---
+>  fs/nfs/callback_xdr.c | 2 +-
+>  1 file changed, 1 insertion(+), 1 deletion(-)
 > 
-> I did send out a set of patches a week ago that addresses an issue in this area, and I know of a couple more holes that need to be plugged.
+> diff --git a/fs/nfs/callback_xdr.c b/fs/nfs/callback_xdr.c
+> index 656f68f7fe53..d6a40c06ec26 100644
+> --- a/fs/nfs/callback_xdr.c
+> +++ b/fs/nfs/callback_xdr.c
+> @@ -72,7 +72,7 @@ static int nfs4_encode_void(struct svc_rqst *rqstp, __be32 *p, void *dummy)
+>  	return xdr_ressize_check(rqstp, p);
+>  }
+>  
+> -static __be32 *read_buf(struct xdr_stream *xdr, int nbytes)
+> +static __be32 *read_buf(struct xdr_stream *xdr, unsigned int nbytes)
 
-I tried the tip of your testing branch (hash 05c974669ecec510a85d8534099bb75404e82c41)
-and the problem is still there, though possibly a bit harder to trigger.
+Looks like the nbytes argument is only used by xdr_inline_decode(), which expects a size_t instead of an unsigned int.  If we're changing argument types, then maybe we should change it to a size_t instead.
 
-Bye,
-    Oleg
+Thoughts?
+Anna
+
+>  {
+>  	__be32 *p;
+>  
+> 
+
