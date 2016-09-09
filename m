@@ -1,65 +1,69 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx61.netapp.com ([216.240.31.181]:7628 "EHLO mx61.netapp.com"
+Received: from mx144.netapp.com ([216.240.21.25]:54756 "EHLO mx144.netapp.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1750768AbcIINeA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 9 Sep 2016 09:34:00 -0400
-From: <andros@netapp.com>
-To: <anna.schumaker@netapp.com>
-CC: <trond.myklebust@primarydata.com>, <linux-nfs@vger.kernel.org>,
-        Andy Adamson <andros@netapp.com>
-Subject: [PATCH Version 10 02/12] NFS refactor nfs4_match_clientids
-Date: Fri, 9 Sep 2016 09:22:19 -0400
-Message-ID: <1473427349-13265-3-git-send-email-andros@netapp.com>
-In-Reply-To: <1473427349-13265-1-git-send-email-andros@netapp.com>
-References: <1473427349-13265-1-git-send-email-andros@netapp.com>
+        id S1750848AbcIIPLQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 9 Sep 2016 11:11:16 -0400
+From: "Adamson, Andy" <William.Adamson@netapp.com>
+To: "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        Christoph Hellwig <hch@lst.de>,
+        "Schumaker, Anna" <Anna.Schumaker@netapp.com>
+Subject: vfs_copy_file_range and NFSv4.2 server-side copy
+Date: Fri, 9 Sep 2016 15:11:14 +0000
+Message-ID: <3AEAF467-E0CF-463B-8917-3DE2FDDF4A9A@netapp.com>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Andy Adamson <andros@netapp.com>
-
-For session trunking, to compare nfs41_exchange_id_res with
-exiting nfs_client.
-
-Signed-off-by: Andy Adamson <andros@netapp.com>
----
- fs/nfs/nfs4client.c | 10 +++++-----
- 1 file changed, 5 insertions(+), 5 deletions(-)
-
-diff --git a/fs/nfs/nfs4client.c b/fs/nfs/nfs4client.c
-index 8d7d08d..d77a1ad 100644
---- a/fs/nfs/nfs4client.c
-+++ b/fs/nfs/nfs4client.c
-@@ -562,15 +562,15 @@ out:
- /*
-  * Returns true if the client IDs match
-  */
--static bool nfs4_match_clientids(struct nfs_client *a, struct nfs_client *b)
-+static bool nfs4_match_clientids(u64 a, u64 b)
- {
--	if (a->cl_clientid != b->cl_clientid) {
-+	if (a != b) {
- 		dprintk("NFS: --> %s client ID %llx does not match %llx\n",
--			__func__, a->cl_clientid, b->cl_clientid);
-+			__func__, a, b);
- 		return false;
- 	}
- 	dprintk("NFS: --> %s client ID %llx matches %llx\n",
--		__func__, a->cl_clientid, b->cl_clientid);
-+		__func__, a, b);
- 	return true;
- }
- 
-@@ -650,7 +650,7 @@ int nfs41_walk_client_list(struct nfs_client *new,
- 		if (pos->cl_cons_state != NFS_CS_READY)
- 			continue;
- 
--		if (!nfs4_match_clientids(pos, new))
-+		if (!nfs4_match_clientids(pos->cl_clientid, new->cl_clientid))
- 			continue;
- 
- 		/*
--- 
-1.8.3.1
-
+VGhlIE5GU3Y0LjIgc2VydmVyLXNpZGUgY29weSBmZWF0dXJlIHdhcyBvbmUgb2YgdGhlIG9yaWdp
+bmFsIHVzZSBjYXNlcyB0aGF0IHZmc19jb3B5X2ZpbGVfcmFuZ2Ugd2FzIGRlc2lnbmVkIHRvIHNl
+cnZpY2UuDQoNCkFzIG5vdGVkIGluIFNlY3Rpb24gNCBvZiBkcmFmdC1pZXRmLW5mc3Y0LW1pbm9y
+dmVyc2lvbjItNDEgKHNvb24gdG8gYmVjb21lIFJGQzc4NjIpOg0KDQogIFRoZSBzZXJ2ZXItc2lk
+ZSBjb3B5IGZlYXR1cmVzIHByb3ZpZGUgbWVjaGFuaXNtcyB3aGljaCBhbGxvdyBhbiBORlMNCiAg
+IGNsaWVudCB0byBjb3B5IGZpbGUgZGF0YSBvbiBhIHNlcnZlciBvciBiZXR3ZWVuIHR3byBzZXJ2
+ZXJzIHdpdGhvdXQNCiAgIHRoZSBkYXRhIGJlaW5nIHRyYW5zbWl0dGVkIGJhY2sgYW5kIGZvcnRo
+IG92ZXIgdGhlIG5ldHdvcmsgdGhyb3VnaA0KICAgdGhlIE5GUyBjbGllbnQuDQoNClRoZSBORlN2
+NC4yIElOVFJBIHNlcnZlci1zaWRlIGNvcHkgZmVhdHVyZSBvZmYtbG9hZHMgYSBjb3B5IHRvIGEg
+c2VydmVyIHdoZW4gdGhlIGNvcHkgc291cmNlIGFuZCBkZXN0aW5hdGlvbiBmaWxlcyByZXNpZGUg
+b24gdGhlIHNhbWUgTkZTIHNlcnZlci4NCg0KVGhlIE5GU3Y0LjIgSU5URVIgc2VydmVyLXNpZGUg
+Y29weSBmZWF0dXJlIG9mZi1sb2FkcyBhIGNvcHkgYnkgaGF2aW5nIHRoZSBkZXN0aW5hdGlvbiBz
+ZXJ2ZXIgZmlyc3QgUkVBRCB0aGUgZmlsZSBmcm9tIHRoZSBORlMgc291cmNlIHNlcnZlciBhbmQg
+dGhlbiBXUklURSB0aGUgZmlsZSB0byB0aGUgbG9jYWwgZGVzdGluYXRpb24gc2VydmVyIGZpbGUg
+c3lzdGVtLg0KDQpJbiBpdOKAmXMgY3VycmVudCBmb3JtLCB2ZnNfY29weV9maWxlX3JhbmdlIGhh
+cyBhIHN1cGVyYmxvY2sgZXF1aXZhbGVuY2UgdGVzdCB3aGljaCByZXR1cm5zIC1FWERFViBpZiBp
+dCBmYWlscy4NCg0KICAgICAgIC8qIHRoaXMgY291bGQgYmUgcmVsYXhlZCBvbmNlIGEgbWV0aG9k
+IHN1cHBvcnRzIGNyb3NzLWZzIGNvcGllcyAqLw0KICAgICAgICBpZiAoaW5vZGVfaW4tPmlfc2Ig
+IT0gaW5vZGVfb3V0LT5pX3NiKQ0KICAgICAgICAgICAgICAgIHJldHVybiAtRVhERVY7DQoNClRo
+ZSBjdXJyZW50IHVwc3RyZWFtIE5GU3Y0LjIgSU5UUkEgc2VydmVyLXNpZGUgY29weSBmZWF0dXJl
+IHVzZXMgdmZzX2NvcHlfZmlsZV9yYW5nZSwgYW5kIGJlY2F1c2Ugb2YgdGhlIGFib3ZlIGNoZWNr
+IGlzIGN1cnJlbnRseSBsaW1pdGVkIHRvIGZpbGVzIHRoYXQgbm90IG9ubHkgcmVzaWRlIG9uIHRo
+ZSBzYW1lIE5GUyBzZXJ2ZXIsIGJ1dCByZXNpZGUgb24gdGhlIHNhbWUgZmlsZSBzeXN0ZW0gb24g
+dGhlIE5GUyBzZXJ2ZXIuDQoNClRvIGZ1bGx5IHNlcnZpY2UgdGhlIE5GU3Y0LjIgSU5UUkEgc2Vy
+dmVyLXNpZGUgY29weSBmZWF0dXJlLCB2ZnNfY29weV9maWxlX3JhbmdlIHdvdWxkIG5lZWQgdG8g
+cmVtb3ZlIHRoZSAtRVhERVYgY2hlY2sgYXMgcGVyIHRoZSBjb21tZW50Lg0KDQpUaGUgTkZTdjQu
+MiBJTlRFUiBzZXJ2ZXItc2lkZSBjb3B5IGZlYXR1cmUgcHJvdG90eXBlIGFsc28gdXNlcyB2ZnNf
+Y29weV9maWxlX3JhbmdlLCBhbmQgb2YgY291cnNlIHJlbW92ZXMgdGhlIGFib3ZlIC1FWERFViBj
+aGVjayB0byBjb3B5IGJldHdlZW4gdGhlIHNvdXJjZSBhbmQgZGVzdGluYXRpb24gTkZTIHNlcnZl
+cnMuDQoNCkluIGEgcmVjZW50IHJldmlldyBvZiB0aGUgSU5URVIgc2VydmVyLXNpZGUgY29weSBw
+cm90b3R5cGUgcGF0Y2hlcywgQ2hyaXN0b3BoIGNvbW1lbnRlZDoNCg0K4oCU4oCU4oCU4oCUDQpP
+biBBdWcgMjAsIDIwMTYsIGF0IDI6MTggQU0sIENocmlzdG9waCBIZWxsd2lnIDxoY2hAbHN0LmRl
+PiB3cm90ZToNCg0KT24gRnJpLCBBdWcgMTksIDIwMTYgYXQgMDU6MDg6NDRQTSAtMDQwMCwgSi4g
+QnJ1Y2UgRmllbGRzIHdyb3RlOg0KPiBJIHRob3VnaHQgSSByZW1lbWJlcmVkIENocmlzdG9waCAo
+Y2MnZCkgYXJndWluZyBhdCB0aGUgMjAxNSBsc2YvbW0gdGhhdA0KPiB0aGVyZSB3ZXJlIHNvbWUg
+bW9yZSBpc3N1ZXMgdGhhdCB3b3VsZCBuZWVkIHRvIGJlIHRha2VuIGNhcmUgb2YgYmVmb3JlDQo+
+IHdlIGNvdWxkIHR1cm4gb24gY3Jvc3MtZGV2aWNlIGNvcGllcy4NCg0KWWVzLiAgTm9pIG90aGVy
+IFZGUyBvcGVyYXRpb24gaXMgc3VwcG9ydGVkIGJldHdlZW4gbW91bnRwb2ludCwgc28NCmNvcHlf
+ZmlsZV9yYW5nZSBzaG91bGRuJ3QgYmUgZWl0aGVyLg0K4oCU4oCU4oCU4oCUDQoNCkFzIHdlIHB1
+cnN1ZSBmdWxsIE5GU3Y0LjIgc2VydmVyLXNpZGUgY29weSBmdW5jdGlvbmFsaXR5IGluIExpbnV4
+LCB3ZSBuZWVkIHRvIGFuIGludGVyZmFjZSB0aGF0IGFsbG93cyB0aGUgQ09QWSBvcGVyYXRpb24g
+KGJvdGggSU5UUkEgYW5kIElOVEVSKSB0byBvcGVyYXRlIGJldHdlZW4gbW91bnRwb2ludHMuICBX
+aGlsZSBJIGFncmVlIHdpdGggQ2hyaXN0b3BoIHRoYXQgbm8gb3RoZXIgVkZTIG9wZXJhdGlvbiBp
+cyBzdXBwb3J0ZWQgYmV0d2VlbiBtb3VudHBvaW50cywgSSBkb27igJl0IGFncmVlIHRoYXQgaXMg
+YW4gYXJndW1lbnQgZm9yIG5vdCBhbGxvd2luZyB2ZnNfY29weV9maWxlX3JhbmdlIHRvIG9wZXJh
+dGUgYWNyb3NzIG1vdW50cG9pbnRzLg0KDQpJ4oCZZCBsaWtlIG9waW5pb25zIG9uIHR3byBxdWVz
+dGlvbnMgcGxlYXNlOg0KDQoxKSBEb2VzIHRoZSBmYWN0IHRoYXQgbm8gVkZTIG9wZXJhdGlvbiBv
+cGVyYXRlcyBhY3Jvc3MgbW91bnRwb2ludHMgc3RvcCB2ZnNfY29weV9maWxlX3JhbmdlIGZyb20g
+b3BlcmF0aW5nIGFjcm9zcyBtb3VudCBwb2ludHM/DQoNCjIpICBXaGF0IG90aGVyIGlzc3VlcyBh
+cmUgaW4gdGhlIHdheSBvZiB2ZnNfY29weV9maWxlX3JhbmdlIG9wZXJhdGluZyBhY3Jvc3MgbW91
+bnQgcG9pbnRzPw0KDQpUaGFuayB5b3UNCg0K4oCUPkFuZHkNCg0KDQo=
