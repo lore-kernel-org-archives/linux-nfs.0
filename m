@@ -1,46 +1,60 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-oi0-f67.google.com ([209.85.218.67]:33711 "EHLO
+Received: from mail-oi0-f67.google.com ([209.85.218.67]:34576 "EHLO
         mail-oi0-f67.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1752196AbcIISEn (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 9 Sep 2016 14:04:43 -0400
-Received: by mail-oi0-f67.google.com with SMTP id y2so7217973oie.0
-        for <linux-nfs@vger.kernel.org>; Fri, 09 Sep 2016 11:04:43 -0700 (PDT)
+        with ESMTP id S1751463AbcIISEm (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 9 Sep 2016 14:04:42 -0400
+Received: by mail-oi0-f67.google.com with SMTP id a144so3249741oii.1
+        for <linux-nfs@vger.kernel.org>; Fri, 09 Sep 2016 11:04:41 -0700 (PDT)
 From: Trond Myklebust <trond.myklebust@primarydata.com>
 To: linux-nfs@vger.kernel.org
 Cc: Oleg Drokin <green@linuxhacker.ru>
-Subject: [PATCH v3 02/12] NFSv4.1: Don't check delegations that are already marked as revoked
-Date: Fri,  9 Sep 2016 14:04:03 -0400
-Message-Id: <1473444253-12433-3-git-send-email-trond.myklebust@primarydata.com>
-In-Reply-To: <1473444253-12433-2-git-send-email-trond.myklebust@primarydata.com>
-References: <1473444253-12433-1-git-send-email-trond.myklebust@primarydata.com>
- <1473444253-12433-2-git-send-email-trond.myklebust@primarydata.com>
+Subject: [PATCH v3 00/12] Fix delegation behaviour when server revokes some state
+Date: Fri,  9 Sep 2016 14:04:01 -0400
+Message-Id: <1473444253-12433-1-git-send-email-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-If the delegation has been marked as revoked, we don't have to test
-it, because we should already have called FREE_STATEID on it.
+According to RFC5661, if any of the SEQUENCE status bits
+SEQ4_STATUS_EXPIRED_ALL_STATE_REVOKED,
+SEQ4_STATUS_EXPIRED_SOME_STATE_REVOKED, SEQ4_STATUS_ADMIN_STATE_REVOKED,
+or SEQ4_STATUS_RECALLABLE_STATE_REVOKED are set, then we need to use
+TEST_STATEID to figure out which stateids have been revoked, so we
+can acknowledge the loss of state using FREE_STATEID.
 
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
----
- fs/nfs/nfs4proc.c | 5 +++++
- 1 file changed, 5 insertions(+)
+While we already do this for open and lock state, we have not been doing
+so for all the delegations.
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index bd33777f03c4..254ab545c391 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -2423,6 +2423,11 @@ static void nfs41_check_delegation_stateid(struct nfs4_state *state)
- 		rcu_read_unlock();
- 		return;
- 	}
-+	if (test_bit(NFS_DELEGATION_REVOKED, &delegation->flags)) {
-+		rcu_read_unlock();
-+		nfs_finish_clear_delegation_stateid(state);
-+		return;
-+	}
- 
- 	nfs4_stateid_copy(&stateid, &delegation->stateid);
- 	cred = get_rpccred(delegation->cred);
+v2: nfs_v4_2_minor_ops needs to set .test_and_free_expired too
+v3: Now with added lock revoke fixes and close/delegreturn/locku fixes
+
+Trond Myklebust (12):
+  NFSv4.1: Don't deadlock the state manager on the SEQUENCE status flags
+  NFSv4.1: Don't check delegations that are already marked as revoked
+  NFSv4.1: Allow test_stateid to handle session errors without waiting
+  NFSv4.1: Add a helper function to deal with expired stateids
+  NFSv4.x: Allow callers of nfs_remove_bad_delegation() to specify a
+    stateid
+  NFSv4.1: Test delegation stateids when server declares "some state
+    revoked"
+  NFSv4.1: Deal with server reboots during delegation expiration
+    recovery
+  NFSv4.1: Don't recheck delegations that have already been checked
+  NFSv4.1: Allow revoked stateids to skip the call to TEST_STATEID
+  NFSv4.1: Ensure we always run TEST/FREE_STATEID on locks
+  NFSv4.1: FREE_STATEID can be asynchronous
+  NFSv4.1: Ensure we call FREE_STATEID if needed on
+    close/delegreturn/locku
+
+ fs/nfs/delegation.c                    | 153 ++++++++++++++++++-
+ fs/nfs/delegation.h                    |   6 +-
+ fs/nfs/flexfilelayout/flexfilelayout.c |   2 +-
+ fs/nfs/nfs4_fs.h                       |   5 +-
+ fs/nfs/nfs4proc.c                      | 258 ++++++++++++++++++++++-----------
+ fs/nfs/nfs4session.h                   |   1 +
+ fs/nfs/nfs4state.c                     |  29 ++--
+ include/linux/nfs4.h                   |   1 +
+ 8 files changed, 348 insertions(+), 107 deletions(-)
+
 -- 
 2.7.4
 
