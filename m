@@ -1,120 +1,63 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from us-smtp-delivery-194.mimecast.com ([216.205.24.194]:41167 "EHLO
-        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1752015AbcIIScU (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 9 Sep 2016 14:32:20 -0400
-From: Trond Myklebust <trondmy@primarydata.com>
-To: Kornievskaia Olga <aglo@umich.edu>
-CC: Trond Myklebust <trondmy@primarydata.com>,
-        List Linux NFS Mailing <linux-nfs@vger.kernel.org>,
-        Oleg Drokin <green@linuxhacker.ru>
-Subject: Re: [PATCH v3 01/12] NFSv4.1: Don't deadlock the state manager on the
- SEQUENCE status flags
-Date: Fri, 9 Sep 2016 18:32:00 +0000
-Message-ID: <2B803ECE-B38B-4842-9D39-9907D9F2B4AC@primarydata.com>
-References: <1473444253-12433-1-git-send-email-trond.myklebust@primarydata.com>
- <1473444253-12433-2-git-send-email-trond.myklebust@primarydata.com>
- <CAN-5tyGt707WXutT+vr-Yy4iRNTzDB=F0J41L3e0FomMGf4unA@mail.gmail.com>
-In-Reply-To: <CAN-5tyGt707WXutT+vr-Yy4iRNTzDB=F0J41L3e0FomMGf4unA@mail.gmail.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+Received: from mx1.redhat.com ([209.132.183.28]:41614 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1753226AbcIISrw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 9 Sep 2016 14:47:52 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: trond.myklebust@primarydata.com, Anna.Schumaker@netapp.com
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH v2 00/10] nfs: add CB_NOTIFY_LOCK support to nfs client
+Date: Fri,  9 Sep 2016 14:47:41 -0400
+Message-Id: <1473446870-1831-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-DQo+IE9uIFNlcCA5LCAyMDE2LCBhdCAxNDoyNiwgT2xnYSBLb3JuaWV2c2thaWEgPGFnbG9AdW1p
-Y2guZWR1PiB3cm90ZToNCj4gDQo+IE9uIEZyaSwgU2VwIDksIDIwMTYgYXQgMjowNCBQTSwgVHJv
-bmQgTXlrbGVidXN0DQo+IDx0cm9uZC5teWtsZWJ1c3RAcHJpbWFyeWRhdGEuY29tPiB3cm90ZToN
-Cj4+IEFzIGRlc2NyaWJlZCBpbiBSRkM1NjYxLCBzZWN0aW9uIDE4LjQ2LCBzb21lIG9mIHRoZSBz
-dGF0dXMgZmxhZ3MgZXhpc3QNCj4+IGluIG9yZGVyIHRvIHRlbGwgdGhlIGNsaWVudCB3aGVuIGl0
-IG5lZWRzIHRvIGFja25vd2xlZGdlIHRoZSBleGlzdGVuY2Ugb2YNCj4+IHJldm9rZWQgc3RhdGUg
-b24gdGhlIHNlcnZlciBhbmQvb3IgdG8gcmVjb3ZlciBzdGF0ZS4NCj4+IFRob3NlIGZsYWdzIHdp
-bGwgdGhlbiByZW1haW4gc2V0IHVudGlsIHRoZSByZWNvdmVyeSBwcm9jZWR1cmUgaXMgZG9uZS4N
-Cj4+IA0KPj4gSW4gb3JkZXIgdG8gYXZvaWQgbG9vcGluZywgdGhlIGNsaWVudCB0aGVyZWZvcmUg
-bmVlZHMgdG8gaWdub3JlDQo+PiB0aG9zZSBwYXJ0aWN1bGFyIGZsYWdzIHdoaWxlIHJlY292ZXJp
-bmcuDQo+PiANCj4+IFNpZ25lZC1vZmYtYnk6IFRyb25kIE15a2xlYnVzdCA8dHJvbmQubXlrbGVi
-dXN0QHByaW1hcnlkYXRhLmNvbT4NCj4+IC0tLQ0KPj4gZnMvbmZzL25mczRfZnMuaCAgICAgfCAg
-MiArLQ0KPj4gZnMvbmZzL25mczRwcm9jLmMgICAgfCAgNSArKysrLQ0KPj4gZnMvbmZzL25mczRz
-ZXNzaW9uLmggfCAgMSArDQo+PiBmcy9uZnMvbmZzNHN0YXRlLmMgICB8IDEyICsrKysrKysrKysr
-LQ0KPj4gNCBmaWxlcyBjaGFuZ2VkLCAxNyBpbnNlcnRpb25zKCspLCAzIGRlbGV0aW9ucygtKQ0K
-Pj4gDQo+PiBkaWZmIC0tZ2l0IGEvZnMvbmZzL25mczRfZnMuaCBiL2ZzL25mcy9uZnM0X2ZzLmgN
-Cj4+IGluZGV4IGYyMzBhYTYyY2E1OS4uNDM5MGQ3M2E5MmU1IDEwMDY0NA0KPj4gLS0tIGEvZnMv
-bmZzL25mczRfZnMuaA0KPj4gKysrIGIvZnMvbmZzL25mczRfZnMuaA0KPj4gQEAgLTQzOSw3ICs0
-MzksNyBAQCBleHRlcm4gdm9pZCBuZnM0X3NjaGVkdWxlX3BhdGhfZG93bl9yZWNvdmVyeShzdHJ1
-Y3QgbmZzX2NsaWVudCAqY2xwKTsNCj4+IGV4dGVybiBpbnQgbmZzNF9zY2hlZHVsZV9zdGF0ZWlk
-X3JlY292ZXJ5KGNvbnN0IHN0cnVjdCBuZnNfc2VydmVyICosIHN0cnVjdCBuZnM0X3N0YXRlICop
-Ow0KPj4gZXh0ZXJuIGludCBuZnM0X3NjaGVkdWxlX21pZ3JhdGlvbl9yZWNvdmVyeShjb25zdCBz
-dHJ1Y3QgbmZzX3NlcnZlciAqKTsNCj4+IGV4dGVybiB2b2lkIG5mczRfc2NoZWR1bGVfbGVhc2Vf
-bW92ZWRfcmVjb3Zlcnkoc3RydWN0IG5mc19jbGllbnQgKik7DQo+PiAtZXh0ZXJuIHZvaWQgbmZz
-NDFfaGFuZGxlX3NlcXVlbmNlX2ZsYWdfZXJyb3JzKHN0cnVjdCBuZnNfY2xpZW50ICpjbHAsIHUz
-MiBmbGFncyk7DQo+PiArZXh0ZXJuIHZvaWQgbmZzNDFfaGFuZGxlX3NlcXVlbmNlX2ZsYWdfZXJy
-b3JzKHN0cnVjdCBuZnNfY2xpZW50ICpjbHAsIHUzMiBmbGFncywgYm9vbCk7DQo+PiBleHRlcm4g
-dm9pZCBuZnM0MV9oYW5kbGVfc2VydmVyX3Njb3BlKHN0cnVjdCBuZnNfY2xpZW50ICosDQo+PiAg
-ICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgc3RydWN0IG5mczQxX3NlcnZlcl9z
-Y29wZSAqKik7DQo+PiBleHRlcm4gdm9pZCBuZnM0X3B1dF9sb2NrX3N0YXRlKHN0cnVjdCBuZnM0
-X2xvY2tfc3RhdGUgKmxzcCk7DQo+PiBkaWZmIC0tZ2l0IGEvZnMvbmZzL25mczRwcm9jLmMgYi9m
-cy9uZnMvbmZzNHByb2MuYw0KPj4gaW5kZXggMjVhMmFmNzA3MjMzLi5iZDMzNzc3ZjAzYzQgMTAw
-NjQ0DQo+PiAtLS0gYS9mcy9uZnMvbmZzNHByb2MuYw0KPj4gKysrIGIvZnMvbmZzL25mczRwcm9j
-LmMNCj4+IEBAIC02MTYsNiArNjE2LDcgQEAgaW50IG5mczQwX3NldHVwX3NlcXVlbmNlKHN0cnVj
-dCBuZnM0X3Nsb3RfdGFibGUgKnRibCwNCj4+ICAgICAgICB9DQo+PiAgICAgICAgc3Bpbl91bmxv
-Y2soJnRibC0+c2xvdF90YmxfbG9jayk7DQo+PiANCj4+ICsgICAgICAgc2xvdC0+cHJpdmlsZWdl
-ZCA9IGFyZ3MtPnNhX3ByaXZpbGVnZWQgPyAxIDogMDsNCj4+ICAgICAgICBhcmdzLT5zYV9zbG90
-ID0gc2xvdDsNCj4+ICAgICAgICByZXMtPnNyX3Nsb3QgPSBzbG90Ow0KPj4gDQo+PiBAQCAtNzI4
-LDcgKzcyOSw4IEBAIHN0YXRpYyBpbnQgbmZzNDFfc2VxdWVuY2VfcHJvY2VzcyhzdHJ1Y3QgcnBj
-X3Rhc2sgKnRhc2ssDQo+PiAgICAgICAgICAgICAgICBjbHAgPSBzZXNzaW9uLT5jbHA7DQo+PiAg
-ICAgICAgICAgICAgICBkb19yZW5ld19sZWFzZShjbHAsIHJlcy0+c3JfdGltZXN0YW1wKTsNCj4+
-ICAgICAgICAgICAgICAgIC8qIENoZWNrIHNlcXVlbmNlIGZsYWdzICovDQo+PiAtICAgICAgICAg
-ICAgICAgbmZzNDFfaGFuZGxlX3NlcXVlbmNlX2ZsYWdfZXJyb3JzKGNscCwgcmVzLT5zcl9zdGF0
-dXNfZmxhZ3MpOw0KPj4gKyAgICAgICAgICAgICAgIG5mczQxX2hhbmRsZV9zZXF1ZW5jZV9mbGFn
-X2Vycm9ycyhjbHAsIHJlcy0+c3Jfc3RhdHVzX2ZsYWdzLA0KPj4gKyAgICAgICAgICAgICAgICAg
-ICAgICAgICAgICAgICAhIXNsb3QtPnByaXZpbGVnZWQpOw0KPiANCj4gSXMgdGhpcyBzdXBwb3Nl
-IHRvIGJlICIhIeKAnT8NCg0KWWVzLiBJdCBjb252ZXJ0cyB0byBhIGJvb2xlYW4uDQoNCj4gDQo+
-PiAgICAgICAgICAgICAgICBuZnM0MV91cGRhdGVfdGFyZ2V0X3Nsb3RpZChzbG90LT50YWJsZSwg
-c2xvdCwgcmVzKTsNCj4+ICAgICAgICAgICAgICAgIGJyZWFrOw0KPj4gICAgICAgIGNhc2UgMToN
-Cj4+IEBAIC04NzUsNiArODc3LDcgQEAgaW50IG5mczQxX3NldHVwX3NlcXVlbmNlKHN0cnVjdCBu
-ZnM0X3Nlc3Npb24gKnNlc3Npb24sDQo+PiAgICAgICAgfQ0KPj4gICAgICAgIHNwaW5fdW5sb2Nr
-KCZ0YmwtPnNsb3RfdGJsX2xvY2spOw0KPj4gDQo+PiArICAgICAgIHNsb3QtPnByaXZpbGVnZWQg
-PSBhcmdzLT5zYV9wcml2aWxlZ2VkID8gMSA6IDA7DQo+PiAgICAgICAgYXJncy0+c2Ffc2xvdCA9
-IHNsb3Q7DQo+PiANCj4+ICAgICAgICBkcHJpbnRrKCI8LS0gJXMgc2xvdGlkPSV1IHNlcWlkPSV1
-XG4iLCBfX2Z1bmNfXywNCj4+IGRpZmYgLS1naXQgYS9mcy9uZnMvbmZzNHNlc3Npb24uaCBiL2Zz
-L25mcy9uZnM0c2Vzc2lvbi5oDQo+PiBpbmRleCAzYmI2YWY3MDk3M2MuLmRhZTM4NTUwMDAwNSAx
-MDA2NDQNCj4+IC0tLSBhL2ZzL25mcy9uZnM0c2Vzc2lvbi5oDQo+PiArKysgYi9mcy9uZnMvbmZz
-NHNlc3Npb24uaA0KPj4gQEAgLTIzLDYgKzIzLDcgQEAgc3RydWN0IG5mczRfc2xvdCB7DQo+PiAg
-ICAgICAgdTMyICAgICAgICAgICAgICAgICAgICAgc2xvdF9ucjsNCj4+ICAgICAgICB1MzIgICAg
-ICAgICAgICAgICAgICAgICBzZXFfbnI7DQo+PiAgICAgICAgdW5zaWduZWQgaW50ICAgICAgICAg
-ICAgaW50ZXJydXB0ZWQgOiAxLA0KPj4gKyAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICBw
-cml2aWxlZ2VkIDogMSwNCj4+ICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICBzZXFfZG9u
-ZSA6IDE7DQo+PiB9Ow0KPj4gDQo+PiBkaWZmIC0tZ2l0IGEvZnMvbmZzL25mczRzdGF0ZS5jIGIv
-ZnMvbmZzL25mczRzdGF0ZS5jDQo+PiBpbmRleCBjYWRhMDBhYTUwOTYuLjk4MDFiNWJiNWZhYyAx
-MDA2NDQNCj4+IC0tLSBhL2ZzL25mcy9uZnM0c3RhdGUuYw0KPj4gKysrIGIvZnMvbmZzL25mczRz
-dGF0ZS5jDQo+PiBAQCAtMjIyNywxMyArMjIyNywyMiBAQCBzdGF0aWMgdm9pZCBuZnM0MV9oYW5k
-bGVfY2JfcGF0aF9kb3duKHN0cnVjdCBuZnNfY2xpZW50ICpjbHApDQo+PiAgICAgICAgICAgICAg
-ICBuZnM0X3NjaGVkdWxlX3N0YXRlX21hbmFnZXIoY2xwKTsNCj4+IH0NCj4+IA0KPj4gLXZvaWQg
-bmZzNDFfaGFuZGxlX3NlcXVlbmNlX2ZsYWdfZXJyb3JzKHN0cnVjdCBuZnNfY2xpZW50ICpjbHAs
-IHUzMiBmbGFncykNCj4+ICt2b2lkIG5mczQxX2hhbmRsZV9zZXF1ZW5jZV9mbGFnX2Vycm9ycyhz
-dHJ1Y3QgbmZzX2NsaWVudCAqY2xwLCB1MzIgZmxhZ3MsDQo+PiArICAgICAgICAgICAgICAgYm9v
-bCByZWNvdmVyeSkNCj4+IHsNCj4+ICAgICAgICBpZiAoIWZsYWdzKQ0KPj4gICAgICAgICAgICAg
-ICAgcmV0dXJuOw0KPj4gDQo+PiAgICAgICAgZHByaW50aygiJXM6IFwiJXNcIiAoY2xpZW50IElE
-ICVsbHgpIGZsYWdzPTB4JTA4eFxuIiwNCj4+ICAgICAgICAgICAgICAgIF9fZnVuY19fLCBjbHAt
-PmNsX2hvc3RuYW1lLCBjbHAtPmNsX2NsaWVudGlkLCBmbGFncyk7DQo+PiArICAgICAgIC8qDQo+
-PiArICAgICAgICAqIElmIHdlJ3JlIGNhbGxlZCBmcm9tIHRoZSBzdGF0ZSBtYW5hZ2VyIHRocmVh
-ZCwgdGhlbiBhc3N1bWUgd2UncmUNCj4+ICsgICAgICAgICogYWxyZWFkeSBoYW5kbGluZyB0aGUg
-UkVDTEFJTV9ORUVERUQgYW5kL29yIFNUQVRFX1JFVk9LRUQuDQo+PiArICAgICAgICAqIFRob3Nl
-IGZsYWdzIGFyZSBleHBlY3RlZCB0byByZW1haW4gc2V0IHVudGlsIHdlJ3JlIGRvbmUNCj4+ICsg
-ICAgICAgICogcmVjb3ZlcmluZyAoc2VlIFJGQzU2NjEsIHNlY3Rpb24gMTguNDYuMykuDQo+PiAr
-ICAgICAgICAqLw0KPj4gKyAgICAgICBpZiAocmVjb3ZlcnkpDQo+PiArICAgICAgICAgICAgICAg
-Z290byBvdXRfcmVjb3Zlcnk7DQo+PiANCj4+ICAgICAgICBpZiAoZmxhZ3MgJiBTRVE0X1NUQVRV
-U19SRVNUQVJUX1JFQ0xBSU1fTkVFREVEKQ0KPj4gICAgICAgICAgICAgICAgbmZzNDFfaGFuZGxl
-X3NlcnZlcl9yZWJvb3QoY2xwKTsNCj4+IEBAIC0yMjQ2LDYgKzIyNTUsNyBAQCB2b2lkIG5mczQx
-X2hhbmRsZV9zZXF1ZW5jZV9mbGFnX2Vycm9ycyhzdHJ1Y3QgbmZzX2NsaWVudCAqY2xwLCB1MzIg
-ZmxhZ3MpDQo+PiAgICAgICAgICAgICAgICBuZnM0X3NjaGVkdWxlX2xlYXNlX21vdmVkX3JlY292
-ZXJ5KGNscCk7DQo+PiAgICAgICAgaWYgKGZsYWdzICYgU0VRNF9TVEFUVVNfUkVDQUxMQUJMRV9T
-VEFURV9SRVZPS0VEKQ0KPj4gICAgICAgICAgICAgICAgbmZzNDFfaGFuZGxlX3JlY2FsbGFibGVf
-c3RhdGVfcmV2b2tlZChjbHApOw0KPj4gK291dF9yZWNvdmVyeToNCj4+ICAgICAgICBpZiAoZmxh
-Z3MgJiBTRVE0X1NUQVRVU19CQUNLQ0hBTk5FTF9GQVVMVCkNCj4+ICAgICAgICAgICAgICAgIG5m
-czQxX2hhbmRsZV9iYWNrY2hhbm5lbF9mYXVsdChjbHApOw0KPj4gICAgICAgIGVsc2UgaWYgKGZs
-YWdzICYgKFNFUTRfU1RBVFVTX0NCX1BBVEhfRE9XTiB8DQo+PiAtLQ0KPj4gMi43LjQNCj4+IA0K
-Pj4gLS0NCj4+IFRvIHVuc3Vic2NyaWJlIGZyb20gdGhpcyBsaXN0OiBzZW5kIHRoZSBsaW5lICJ1
-bnN1YnNjcmliZSBsaW51eC1uZnMiIGluDQo+PiB0aGUgYm9keSBvZiBhIG1lc3NhZ2UgdG8gbWFq
-b3Jkb21vQHZnZXIua2VybmVsLm9yZw0KPj4gTW9yZSBtYWpvcmRvbW8gaW5mbyBhdCAgaHR0cDov
-L3ZnZXIua2VybmVsLm9yZy9tYWpvcmRvbW8taW5mby5odG1sDQoNCg==
+v2:
+- don't use *_unsafe sleep in setlk retry code
+- better encapsulate retry logic into helper functions
+- don't bother with waitqueue handling if we aren't expecting callback
+- fix build when CONFIG_NFS_V4_1 is not set
+- address several other style comments
+
+This is the second posting of this patchset. Most of the changes from
+the v1 set are to address Anna's review comments. Original cover letter
+text follows.
+
+This patchset adds support for CB_NOTIFY_LOCK callbacks to the NFS
+client. The basic idea is to add a waitqueue to the nfs_client and then
+have blocking lock waiters wait on that queue for callbacks.
+
+When a callback comes in, we use a keyed wakeup to wake any waiters. The
+waitqueue handling is necessarily more "manual" than I would like, but I
+don't see a real alternative there given that we need to insert the
+waiters onto the waitqueue prior to sending the lock request, and
+sending a lock request can involve blocking operations.
+
+Tested in conjunction with the corresponding knfsd server-side patchset.
+
+Jeff Layton (10):
+  nfs: the length argument to read_buf should be unsigned
+  nfs: eliminate pointless and confusing do_vfs_lock wrappers
+  nfs: check for POSIX lock capability on server even for flock locks
+  nfs: use safe, interruptible sleeps when waiting to retry LOCK
+  nfs: track whether server sets MAY_NOTIFY_LOCK flag
+  nfs: add handling for CB_NOTIFY_LOCK in client
+  nfs: move nfs4_set_lock_state call into caller
+  nfs: move nfs4 lock retry attempt loop to a separate function
+  nfs: add code to allow client to wait on lock callbacks
+  nfs: ensure that the filehandle in CB_NOTIFY_LOCK request matches the
+    inode
+
+ fs/nfs/callback.h         |   8 +++
+ fs/nfs/callback_proc.c    |  18 +++++
+ fs/nfs/callback_xdr.c     |  51 ++++++++++++-
+ fs/nfs/file.c             |   9 +--
+ fs/nfs/nfs4_fs.h          |   1 +
+ fs/nfs/nfs4client.c       |   3 +
+ fs/nfs/nfs4proc.c         | 179 ++++++++++++++++++++++++++++++++++------------
+ include/linux/nfs_fs_sb.h |   3 +
+ 8 files changed, 218 insertions(+), 54 deletions(-)
+
+-- 
+2.7.4
 
