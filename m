@@ -1,69 +1,128 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx144.netapp.com ([216.240.21.25]:54756 "EHLO mx144.netapp.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1750848AbcIIPLQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 9 Sep 2016 11:11:16 -0400
-From: "Adamson, Andy" <William.Adamson@netapp.com>
-To: "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        Christoph Hellwig <hch@lst.de>,
-        "Schumaker, Anna" <Anna.Schumaker@netapp.com>
-Subject: vfs_copy_file_range and NFSv4.2 server-side copy
-Date: Fri, 9 Sep 2016 15:11:14 +0000
-Message-ID: <3AEAF467-E0CF-463B-8917-3DE2FDDF4A9A@netapp.com>
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
+Received: from mail-oi0-f67.google.com ([209.85.218.67]:34833 "EHLO
+        mail-oi0-f67.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1752151AbcIISEm (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 9 Sep 2016 14:04:42 -0400
+Received: by mail-oi0-f67.google.com with SMTP id 2so11307441oif.2
+        for <linux-nfs@vger.kernel.org>; Fri, 09 Sep 2016 11:04:42 -0700 (PDT)
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: linux-nfs@vger.kernel.org
+Cc: Oleg Drokin <green@linuxhacker.ru>
+Subject: [PATCH v3 01/12] NFSv4.1: Don't deadlock the state manager on the SEQUENCE status flags
+Date: Fri,  9 Sep 2016 14:04:02 -0400
+Message-Id: <1473444253-12433-2-git-send-email-trond.myklebust@primarydata.com>
+In-Reply-To: <1473444253-12433-1-git-send-email-trond.myklebust@primarydata.com>
+References: <1473444253-12433-1-git-send-email-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-VGhlIE5GU3Y0LjIgc2VydmVyLXNpZGUgY29weSBmZWF0dXJlIHdhcyBvbmUgb2YgdGhlIG9yaWdp
-bmFsIHVzZSBjYXNlcyB0aGF0IHZmc19jb3B5X2ZpbGVfcmFuZ2Ugd2FzIGRlc2lnbmVkIHRvIHNl
-cnZpY2UuDQoNCkFzIG5vdGVkIGluIFNlY3Rpb24gNCBvZiBkcmFmdC1pZXRmLW5mc3Y0LW1pbm9y
-dmVyc2lvbjItNDEgKHNvb24gdG8gYmVjb21lIFJGQzc4NjIpOg0KDQogIFRoZSBzZXJ2ZXItc2lk
-ZSBjb3B5IGZlYXR1cmVzIHByb3ZpZGUgbWVjaGFuaXNtcyB3aGljaCBhbGxvdyBhbiBORlMNCiAg
-IGNsaWVudCB0byBjb3B5IGZpbGUgZGF0YSBvbiBhIHNlcnZlciBvciBiZXR3ZWVuIHR3byBzZXJ2
-ZXJzIHdpdGhvdXQNCiAgIHRoZSBkYXRhIGJlaW5nIHRyYW5zbWl0dGVkIGJhY2sgYW5kIGZvcnRo
-IG92ZXIgdGhlIG5ldHdvcmsgdGhyb3VnaA0KICAgdGhlIE5GUyBjbGllbnQuDQoNClRoZSBORlN2
-NC4yIElOVFJBIHNlcnZlci1zaWRlIGNvcHkgZmVhdHVyZSBvZmYtbG9hZHMgYSBjb3B5IHRvIGEg
-c2VydmVyIHdoZW4gdGhlIGNvcHkgc291cmNlIGFuZCBkZXN0aW5hdGlvbiBmaWxlcyByZXNpZGUg
-b24gdGhlIHNhbWUgTkZTIHNlcnZlci4NCg0KVGhlIE5GU3Y0LjIgSU5URVIgc2VydmVyLXNpZGUg
-Y29weSBmZWF0dXJlIG9mZi1sb2FkcyBhIGNvcHkgYnkgaGF2aW5nIHRoZSBkZXN0aW5hdGlvbiBz
-ZXJ2ZXIgZmlyc3QgUkVBRCB0aGUgZmlsZSBmcm9tIHRoZSBORlMgc291cmNlIHNlcnZlciBhbmQg
-dGhlbiBXUklURSB0aGUgZmlsZSB0byB0aGUgbG9jYWwgZGVzdGluYXRpb24gc2VydmVyIGZpbGUg
-c3lzdGVtLg0KDQpJbiBpdOKAmXMgY3VycmVudCBmb3JtLCB2ZnNfY29weV9maWxlX3JhbmdlIGhh
-cyBhIHN1cGVyYmxvY2sgZXF1aXZhbGVuY2UgdGVzdCB3aGljaCByZXR1cm5zIC1FWERFViBpZiBp
-dCBmYWlscy4NCg0KICAgICAgIC8qIHRoaXMgY291bGQgYmUgcmVsYXhlZCBvbmNlIGEgbWV0aG9k
-IHN1cHBvcnRzIGNyb3NzLWZzIGNvcGllcyAqLw0KICAgICAgICBpZiAoaW5vZGVfaW4tPmlfc2Ig
-IT0gaW5vZGVfb3V0LT5pX3NiKQ0KICAgICAgICAgICAgICAgIHJldHVybiAtRVhERVY7DQoNClRo
-ZSBjdXJyZW50IHVwc3RyZWFtIE5GU3Y0LjIgSU5UUkEgc2VydmVyLXNpZGUgY29weSBmZWF0dXJl
-IHVzZXMgdmZzX2NvcHlfZmlsZV9yYW5nZSwgYW5kIGJlY2F1c2Ugb2YgdGhlIGFib3ZlIGNoZWNr
-IGlzIGN1cnJlbnRseSBsaW1pdGVkIHRvIGZpbGVzIHRoYXQgbm90IG9ubHkgcmVzaWRlIG9uIHRo
-ZSBzYW1lIE5GUyBzZXJ2ZXIsIGJ1dCByZXNpZGUgb24gdGhlIHNhbWUgZmlsZSBzeXN0ZW0gb24g
-dGhlIE5GUyBzZXJ2ZXIuDQoNClRvIGZ1bGx5IHNlcnZpY2UgdGhlIE5GU3Y0LjIgSU5UUkEgc2Vy
-dmVyLXNpZGUgY29weSBmZWF0dXJlLCB2ZnNfY29weV9maWxlX3JhbmdlIHdvdWxkIG5lZWQgdG8g
-cmVtb3ZlIHRoZSAtRVhERVYgY2hlY2sgYXMgcGVyIHRoZSBjb21tZW50Lg0KDQpUaGUgTkZTdjQu
-MiBJTlRFUiBzZXJ2ZXItc2lkZSBjb3B5IGZlYXR1cmUgcHJvdG90eXBlIGFsc28gdXNlcyB2ZnNf
-Y29weV9maWxlX3JhbmdlLCBhbmQgb2YgY291cnNlIHJlbW92ZXMgdGhlIGFib3ZlIC1FWERFViBj
-aGVjayB0byBjb3B5IGJldHdlZW4gdGhlIHNvdXJjZSBhbmQgZGVzdGluYXRpb24gTkZTIHNlcnZl
-cnMuDQoNCkluIGEgcmVjZW50IHJldmlldyBvZiB0aGUgSU5URVIgc2VydmVyLXNpZGUgY29weSBw
-cm90b3R5cGUgcGF0Y2hlcywgQ2hyaXN0b3BoIGNvbW1lbnRlZDoNCg0K4oCU4oCU4oCU4oCUDQpP
-biBBdWcgMjAsIDIwMTYsIGF0IDI6MTggQU0sIENocmlzdG9waCBIZWxsd2lnIDxoY2hAbHN0LmRl
-PiB3cm90ZToNCg0KT24gRnJpLCBBdWcgMTksIDIwMTYgYXQgMDU6MDg6NDRQTSAtMDQwMCwgSi4g
-QnJ1Y2UgRmllbGRzIHdyb3RlOg0KPiBJIHRob3VnaHQgSSByZW1lbWJlcmVkIENocmlzdG9waCAo
-Y2MnZCkgYXJndWluZyBhdCB0aGUgMjAxNSBsc2YvbW0gdGhhdA0KPiB0aGVyZSB3ZXJlIHNvbWUg
-bW9yZSBpc3N1ZXMgdGhhdCB3b3VsZCBuZWVkIHRvIGJlIHRha2VuIGNhcmUgb2YgYmVmb3JlDQo+
-IHdlIGNvdWxkIHR1cm4gb24gY3Jvc3MtZGV2aWNlIGNvcGllcy4NCg0KWWVzLiAgTm9pIG90aGVy
-IFZGUyBvcGVyYXRpb24gaXMgc3VwcG9ydGVkIGJldHdlZW4gbW91bnRwb2ludCwgc28NCmNvcHlf
-ZmlsZV9yYW5nZSBzaG91bGRuJ3QgYmUgZWl0aGVyLg0K4oCU4oCU4oCU4oCUDQoNCkFzIHdlIHB1
-cnN1ZSBmdWxsIE5GU3Y0LjIgc2VydmVyLXNpZGUgY29weSBmdW5jdGlvbmFsaXR5IGluIExpbnV4
-LCB3ZSBuZWVkIHRvIGFuIGludGVyZmFjZSB0aGF0IGFsbG93cyB0aGUgQ09QWSBvcGVyYXRpb24g
-KGJvdGggSU5UUkEgYW5kIElOVEVSKSB0byBvcGVyYXRlIGJldHdlZW4gbW91bnRwb2ludHMuICBX
-aGlsZSBJIGFncmVlIHdpdGggQ2hyaXN0b3BoIHRoYXQgbm8gb3RoZXIgVkZTIG9wZXJhdGlvbiBp
-cyBzdXBwb3J0ZWQgYmV0d2VlbiBtb3VudHBvaW50cywgSSBkb27igJl0IGFncmVlIHRoYXQgaXMg
-YW4gYXJndW1lbnQgZm9yIG5vdCBhbGxvd2luZyB2ZnNfY29weV9maWxlX3JhbmdlIHRvIG9wZXJh
-dGUgYWNyb3NzIG1vdW50cG9pbnRzLg0KDQpJ4oCZZCBsaWtlIG9waW5pb25zIG9uIHR3byBxdWVz
-dGlvbnMgcGxlYXNlOg0KDQoxKSBEb2VzIHRoZSBmYWN0IHRoYXQgbm8gVkZTIG9wZXJhdGlvbiBv
-cGVyYXRlcyBhY3Jvc3MgbW91bnRwb2ludHMgc3RvcCB2ZnNfY29weV9maWxlX3JhbmdlIGZyb20g
-b3BlcmF0aW5nIGFjcm9zcyBtb3VudCBwb2ludHM/DQoNCjIpICBXaGF0IG90aGVyIGlzc3VlcyBh
-cmUgaW4gdGhlIHdheSBvZiB2ZnNfY29weV9maWxlX3JhbmdlIG9wZXJhdGluZyBhY3Jvc3MgbW91
-bnQgcG9pbnRzPw0KDQpUaGFuayB5b3UNCg0K4oCUPkFuZHkNCg0KDQo=
+As described in RFC5661, section 18.46, some of the status flags exist
+in order to tell the client when it needs to acknowledge the existence of
+revoked state on the server and/or to recover state.
+Those flags will then remain set until the recovery procedure is done.
+
+In order to avoid looping, the client therefore needs to ignore
+those particular flags while recovering.
+
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+---
+ fs/nfs/nfs4_fs.h     |  2 +-
+ fs/nfs/nfs4proc.c    |  5 ++++-
+ fs/nfs/nfs4session.h |  1 +
+ fs/nfs/nfs4state.c   | 12 +++++++++++-
+ 4 files changed, 17 insertions(+), 3 deletions(-)
+
+diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
+index f230aa62ca59..4390d73a92e5 100644
+--- a/fs/nfs/nfs4_fs.h
++++ b/fs/nfs/nfs4_fs.h
+@@ -439,7 +439,7 @@ extern void nfs4_schedule_path_down_recovery(struct nfs_client *clp);
+ extern int nfs4_schedule_stateid_recovery(const struct nfs_server *, struct nfs4_state *);
+ extern int nfs4_schedule_migration_recovery(const struct nfs_server *);
+ extern void nfs4_schedule_lease_moved_recovery(struct nfs_client *);
+-extern void nfs41_handle_sequence_flag_errors(struct nfs_client *clp, u32 flags);
++extern void nfs41_handle_sequence_flag_errors(struct nfs_client *clp, u32 flags, bool);
+ extern void nfs41_handle_server_scope(struct nfs_client *,
+ 				      struct nfs41_server_scope **);
+ extern void nfs4_put_lock_state(struct nfs4_lock_state *lsp);
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 25a2af707233..bd33777f03c4 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -616,6 +616,7 @@ int nfs40_setup_sequence(struct nfs4_slot_table *tbl,
+ 	}
+ 	spin_unlock(&tbl->slot_tbl_lock);
+ 
++	slot->privileged = args->sa_privileged ? 1 : 0;
+ 	args->sa_slot = slot;
+ 	res->sr_slot = slot;
+ 
+@@ -728,7 +729,8 @@ static int nfs41_sequence_process(struct rpc_task *task,
+ 		clp = session->clp;
+ 		do_renew_lease(clp, res->sr_timestamp);
+ 		/* Check sequence flags */
+-		nfs41_handle_sequence_flag_errors(clp, res->sr_status_flags);
++		nfs41_handle_sequence_flag_errors(clp, res->sr_status_flags,
++				!!slot->privileged);
+ 		nfs41_update_target_slotid(slot->table, slot, res);
+ 		break;
+ 	case 1:
+@@ -875,6 +877,7 @@ int nfs41_setup_sequence(struct nfs4_session *session,
+ 	}
+ 	spin_unlock(&tbl->slot_tbl_lock);
+ 
++	slot->privileged = args->sa_privileged ? 1 : 0;
+ 	args->sa_slot = slot;
+ 
+ 	dprintk("<-- %s slotid=%u seqid=%u\n", __func__,
+diff --git a/fs/nfs/nfs4session.h b/fs/nfs/nfs4session.h
+index 3bb6af70973c..dae385500005 100644
+--- a/fs/nfs/nfs4session.h
++++ b/fs/nfs/nfs4session.h
+@@ -23,6 +23,7 @@ struct nfs4_slot {
+ 	u32			slot_nr;
+ 	u32		 	seq_nr;
+ 	unsigned int		interrupted : 1,
++				privileged : 1,
+ 				seq_done : 1;
+ };
+ 
+diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
+index cada00aa5096..9801b5bb5fac 100644
+--- a/fs/nfs/nfs4state.c
++++ b/fs/nfs/nfs4state.c
+@@ -2227,13 +2227,22 @@ static void nfs41_handle_cb_path_down(struct nfs_client *clp)
+ 		nfs4_schedule_state_manager(clp);
+ }
+ 
+-void nfs41_handle_sequence_flag_errors(struct nfs_client *clp, u32 flags)
++void nfs41_handle_sequence_flag_errors(struct nfs_client *clp, u32 flags,
++		bool recovery)
+ {
+ 	if (!flags)
+ 		return;
+ 
+ 	dprintk("%s: \"%s\" (client ID %llx) flags=0x%08x\n",
+ 		__func__, clp->cl_hostname, clp->cl_clientid, flags);
++	/*
++	 * If we're called from the state manager thread, then assume we're
++	 * already handling the RECLAIM_NEEDED and/or STATE_REVOKED.
++	 * Those flags are expected to remain set until we're done
++	 * recovering (see RFC5661, section 18.46.3).
++	 */
++	if (recovery)
++		goto out_recovery;
+ 
+ 	if (flags & SEQ4_STATUS_RESTART_RECLAIM_NEEDED)
+ 		nfs41_handle_server_reboot(clp);
+@@ -2246,6 +2255,7 @@ void nfs41_handle_sequence_flag_errors(struct nfs_client *clp, u32 flags)
+ 		nfs4_schedule_lease_moved_recovery(clp);
+ 	if (flags & SEQ4_STATUS_RECALLABLE_STATE_REVOKED)
+ 		nfs41_handle_recallable_state_revoked(clp);
++out_recovery:
+ 	if (flags & SEQ4_STATUS_BACKCHANNEL_FAULT)
+ 		nfs41_handle_backchannel_fault(clp);
+ 	else if (flags & (SEQ4_STATUS_CB_PATH_DOWN |
+-- 
+2.7.4
+
