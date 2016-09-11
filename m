@@ -1,56 +1,59 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-oi0-f67.google.com ([209.85.218.67]:35614 "EHLO
-        mail-oi0-f67.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S932160AbcIKTMT (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sun, 11 Sep 2016 15:12:19 -0400
-Received: by mail-oi0-f67.google.com with SMTP id 2so18854172oif.2
-        for <linux-nfs@vger.kernel.org>; Sun, 11 Sep 2016 12:12:19 -0700 (PDT)
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH] NFSv4.1: Fix the CREATE_SESSION slot number accounting
-Date: Sun, 11 Sep 2016 15:11:50 -0400
-Message-Id: <1473621110-51372-1-git-send-email-trond.myklebust@primarydata.com>
+Received: from ipmail05.adl6.internode.on.net ([150.101.137.143]:6918 "EHLO
+        ipmail05.adl6.internode.on.net" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1752545AbcIKXKl (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sun, 11 Sep 2016 19:10:41 -0400
+Date: Mon, 12 Sep 2016 09:10:37 +1000
+From: Dave Chinner <david@fromorbit.com>
+To: Eryu Guan <eguan@redhat.com>
+Cc: "Darrick J. Wong" <darrick.wong@oracle.com>,
+        Anna Schumaker <Anna.Schumaker@netapp.com>, fstests@vger.kernel.org,
+        linux-nfs@vger.kernel.org, hch@infradead.org
+Subject: Re: [PATCH v2 1/4] generic/377: Add copy to new file test
+Message-ID: <20160911231037.GI22388@dastard>
+References: <20160907195619.25914-1-Anna.Schumaker@Netapp.com>
+ <20160907195619.25914-2-Anna.Schumaker@Netapp.com>
+ <20160909062136.GY27776@eguan.usersys.redhat.com>
+ <20160909062925.GC9312@birch.djwong.org>
+ <20160909070146.GZ27776@eguan.usersys.redhat.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20160909070146.GZ27776@eguan.usersys.redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Ensure that we conform to the algorithm described in RFC5661, section
-18.36.4 for when to bump the sequence id. In essence we do it for all
-cases except when the RPC call timed out, or in case of the server returning
-NFS4ERR_DELAY or NFS4ERR_STALE_CLIENTID.
+On Fri, Sep 09, 2016 at 03:01:46PM +0800, Eryu Guan wrote:
+> On Thu, Sep 08, 2016 at 11:29:25PM -0700, Darrick J. Wong wrote:
+> > > > +
+> > > > +_require_xfs_io_command "copy_range"
+> > > 
+> > > Do we need to test the support status on kernel side? e.g. what happens
+> > > if filesystems have no "copy_file_range" implemented? Seems
+> > > copy_file_range falls back to splice in this case, but I'm not sure. If
+> > > so I think it's OK to have no kernel side detection.
+> > 
+> > But... it's a totally new syscall, so _require_io_command should actually try
+> > calling it so that we can _notrun on old kernels.
+> 
+> The only reason that I think it's OK to check xfs_io support only is
+> that the "copy_range" subcommand won't be even compiled in xfs_io if
+> kernel has no copy_file_range syscall support.
 
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
-Cc: stable@vger.kernel.org
----
- fs/nfs/nfs4proc.c | 12 ++++++++++--
- 1 file changed, 10 insertions(+), 2 deletions(-)
+It's not uncommon to have an xfs_io that will support a new syscall
+or syscall flags by directly coding the support when it's
+not found by the configure script. e.g. io/prealloc.c support for
+all the different fallocate flags, regardless of whether the
+underlying kernel or userspace headers support them.
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index c380d2ee4137..a9dec32ba9ba 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -7570,12 +7570,20 @@ static int _nfs4_proc_create_session(struct nfs_client *clp,
- 	status = rpc_call_sync(session->clp->cl_rpcclient, &msg, RPC_TASK_TIMEOUT);
- 	trace_nfs4_create_session(clp, status);
- 
-+	switch (status) {
-+	case -NFS4ERR_STALE_CLIENTID:
-+	case -NFS4ERR_DELAY:
-+	case -ETIMEDOUT:
-+	case -EACCES:
-+	case -EAGAIN:
-+		goto out;
-+	};
-+
-+	clp->cl_seqid++;
- 	if (!status) {
- 		/* Verify the session's negotiated channel_attrs values */
- 		status = nfs4_verify_channel_attrs(&args, &res);
- 		/* Increment the clientid slot sequence id */
--		if (clp->cl_seqid == res.seqid)
--			clp->cl_seqid++;
- 		if (status)
- 			goto out;
- 		nfs4_update_session(session, &res);
+> But yeah, I agree that calling it and see how kernel handles it would be
+> the best option, like how we handle falloc, fpunch in
+> _require_xfs_io_command.
+
+Which we do for precisely the reason above. :P
+
+Cheers,
+
+Dave.
 -- 
-2.7.4
-
+Dave Chinner
+david@fromorbit.com
