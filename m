@@ -1,59 +1,66 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from ipmail05.adl6.internode.on.net ([150.101.137.143]:6918 "EHLO
-        ipmail05.adl6.internode.on.net" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1752545AbcIKXKl (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sun, 11 Sep 2016 19:10:41 -0400
-Date: Mon, 12 Sep 2016 09:10:37 +1000
-From: Dave Chinner <david@fromorbit.com>
-To: Eryu Guan <eguan@redhat.com>
-Cc: "Darrick J. Wong" <darrick.wong@oracle.com>,
-        Anna Schumaker <Anna.Schumaker@netapp.com>, fstests@vger.kernel.org,
-        linux-nfs@vger.kernel.org, hch@infradead.org
-Subject: Re: [PATCH v2 1/4] generic/377: Add copy to new file test
-Message-ID: <20160911231037.GI22388@dastard>
-References: <20160907195619.25914-1-Anna.Schumaker@Netapp.com>
- <20160907195619.25914-2-Anna.Schumaker@Netapp.com>
- <20160909062136.GY27776@eguan.usersys.redhat.com>
- <20160909062925.GC9312@birch.djwong.org>
- <20160909070146.GZ27776@eguan.usersys.redhat.com>
+Received: from smtp-o-1.desy.de ([131.169.56.154]:49784 "EHLO smtp-o-1.desy.de"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S932302AbcILHEg (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 12 Sep 2016 03:04:36 -0400
+Received: from smtp-map-1.desy.de (smtp-map-1.desy.de [131.169.56.66])
+        by smtp-o-1.desy.de (DESY-O-1) with ESMTP id C74E5280366
+        for <linux-nfs@vger.kernel.org>; Mon, 12 Sep 2016 09:04:33 +0200 (CEST)
+Received: from ZITSWEEP2.win.desy.de (zitsweep2.win.desy.de [131.169.97.96])
+        by smtp-map-1.desy.de (DESY_MAP_1) with ESMTP id BA41213EB6
+        for <linux-nfs@vger.kernel.org>; Mon, 12 Sep 2016 09:04:33 +0200 (MEST)
+Date: Mon, 12 Sep 2016 09:04:33 +0200 (CEST)
+From: "Mkrtchyan, Tigran" <tigran.mkrtchyan@desy.de>
+To: "Fu, Yong" <yong.fu@intel.com>
+Cc: linux-nfs@vger.kernel.org
+Message-ID: <1919782444.9045061.1473663873082.JavaMail.zimbra@desy.de>
+In-Reply-To: <E55525BD360D9249AC15FA039225DF5F2F2481A0@SHSMSX101.ccr.corp.intel.com>
+References: <E55525BD360D9249AC15FA039225DF5F2F2481A0@SHSMSX101.ccr.corp.intel.com>
+Subject: Re: NFS write throughput not constant
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20160909070146.GZ27776@eguan.usersys.redhat.com>
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Sep 09, 2016 at 03:01:46PM +0800, Eryu Guan wrote:
-> On Thu, Sep 08, 2016 at 11:29:25PM -0700, Darrick J. Wong wrote:
-> > > > +
-> > > > +_require_xfs_io_command "copy_range"
-> > > 
-> > > Do we need to test the support status on kernel side? e.g. what happens
-> > > if filesystems have no "copy_file_range" implemented? Seems
-> > > copy_file_range falls back to splice in this case, but I'm not sure. If
-> > > so I think it's OK to have no kernel side detection.
-> > 
-> > But... it's a totally new syscall, so _require_io_command should actually try
-> > calling it so that we can _notrun on old kernels.
+
+Can be related to flushing of dirty pages. 
+How much memory do you have on the clients?
+
+You can play with vm.dirty_background_bytes
+kernel parameter to get better performance.
+Linux default is 10% of the RAM
+(vm.dirty_background_ratio ), which can produce
+spikes on IO if too much data accumulated in
+fs cache, while you, probably, smooth continues
+writing.
+
+Tigran.
+
+
+----- Original Message -----
+> From: "Fu, Yong" <yong.fu@intel.com>
+> To: linux-nfs@vger.kernel.org
+> Sent: Friday, September 9, 2016 7:34:54 AM
+> Subject: NFS write throughput not constant
+
+> Hi,
+> I have some test on 10Gbe against NFS-based storage recently, and found the
+> throughput of writing was not constant, the performance of writing drop down
+> periodically.
+> My nfs client(version 3 and version 4 all tried) resident CentOS
+> 6.6(2.6.32-504.el6.x86_64), NFS server is OpenMediaVault(5 ssd with stripe)
 > 
-> The only reason that I think it's OK to check xfs_io support only is
-> that the "copy_range" subcommand won't be even compiled in xfs_io if
-> kernel has no copy_file_range syscall support.
-
-It's not uncommon to have an xfs_io that will support a new syscall
-or syscall flags by directly coding the support when it's
-not found by the configure script. e.g. io/prealloc.c support for
-all the different fallocate flags, regardless of whether the
-underlying kernel or userspace headers support them.
-
-> But yeah, I agree that calling it and see how kernel handles it would be
-> the best option, like how we handle falloc, fpunch in
-> _require_xfs_io_command.
-
-Which we do for precisely the reason above. :P
-
-Cheers,
-
-Dave.
--- 
-Dave Chinner
-david@fromorbit.com
+> On a single mount point(or single nfs client), the avg throughput only can reach
+> 430 MB/s, and two nfs clients aggregation can reach 700 MB/s, I can see there
+> is periodical drop of network traffic graph both client and server side, and I
+> am sure it's a nfs issue by lots of other tests.
+> 
+> I also found the nfs client commit procedure happened at the time that writing
+> performance also dropped, and I have read B7
+> section(http://nfs.sourceforge.net) and think the relationship between them,
+> but no many ideas,  can someone help me pinpoint the root cause of this issue?
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
