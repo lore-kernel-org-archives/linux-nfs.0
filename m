@@ -1,58 +1,66 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from us-smtp-delivery-194.mimecast.com ([216.205.24.194]:53044 "EHLO
-        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S932404AbcILT2h (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 12 Sep 2016 15:28:37 -0400
-From: Trond Myklebust <trondmy@primarydata.com>
-To: "torvalds@linux-foundation.org" <torvalds@linux-foundation.org>
-CC: "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: [GIT PULL] Please pull NFS client fixes
-Date: Mon, 12 Sep 2016 19:28:24 +0000
-Message-ID: <1473708502.6434.1.camel@primarydata.com>
+Received: from mx143.netapp.com ([216.240.21.24]:34233 "EHLO mx143.netapp.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1750832AbcILUTr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 12 Sep 2016 16:19:47 -0400
+From: Anna Schumaker <Anna.Schumaker@netapp.com>
+Subject: Re: [PATCH v2 05/10] nfs: track whether server sets MAY_NOTIFY_LOCK
+ flag
+To: Jeff Layton <jlayton@redhat.com>, <trond.myklebust@primarydata.com>,
+        <Anna.Schumaker@netapp.com>
+References: <1473446870-1831-1-git-send-email-jlayton@redhat.com>
+ <1473446870-1831-6-git-send-email-jlayton@redhat.com>
+CC: <linux-nfs@vger.kernel.org>
+Message-ID: <68634996-8fba-5bcd-27e3-5d6ab5f881ba@Netapp.com>
+Date: Mon, 12 Sep 2016 16:19:39 -0400
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+In-Reply-To: <1473446870-1831-6-git-send-email-jlayton@redhat.com>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-SGkgTGludXMsDQoNClRoZSBmb2xsb3dpbmcgY2hhbmdlcyBzaW5jZSBjb21taXQgOThiMGY4MGMy
-Mzk2MjI0YmJiZWQ4MTc5MmI1MjZlNmM3MmJhOWVmYToNCg0KICBORlN2NC54OiBGaXggYSByZWZj
-b3VudCBsZWFrIGluIG5mc19jYWxsYmFja191cF9uZXQgKDIwMTYtMDgtMzAgMDk6MjY6NTcgLTA0
-MDApDQoNCmFyZSBhdmFpbGFibGUgaW4gdGhlIGdpdCByZXBvc2l0b3J5IGF0Og0KDQogIGdpdDov
-L2dpdC5saW51eC1uZnMub3JnL3Byb2plY3RzL3Ryb25kbXkvbGludXgtbmZzLmdpdCB0YWdzL25m
-cy1mb3ItNC44LTQNCg0KZm9yIHlvdSB0byBmZXRjaCBjaGFuZ2VzIHVwIHRvIGI1MTlkNDA4ZWEz
-MjA0MGIxYzdlMTBiMTU1YTNlZTlhMzY2NjA5NDc6DQoNCiAgTkZTdjQuMTogRml4IHRoZSBDUkVB
-VEVfU0VTU0lPTiBzbG90IG51bWJlciBhY2NvdW50aW5nICgyMDE2LTA5LTExIDE0OjU2OjQ0IC0w
-NDAwKQ0KDQpDaGVlcnMNCiAgVHJvbmQNCg0KLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
-LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLQ0KTkZTIGNsaWVudCBidWdmaXhlcyBm
-b3IgNC44DQoNCkhpZ2hsaWdodHMgaW5jbHVkZToNCg0KU3RhYmxlIHBhdGNoZXM6DQotIFdlIG11
-c3Qgc2VyaWFsaXNlIExBWU9VVEdFVCBhbmQgTEFZT1VUUkVUVVJOIHRvIGVuc3VyZSBjb3JyZWN0
-IHN0YXRlDQogIGFjY291bnRpbmcNCi0gRml4IHRoZSBDUkVBVEVfU0VTU0lPTiBzbG90IG51bWJl
-cg0KDQpCdWdmaXhlczoNCi0gc3VucnBjOiBmaXggYSBVRFAgbWVtb3J5IGFjY291bnRpbmcgcmVn
-cmVzc2lvbg0KLSBORlM6IEZpeCBhbiBlcnJvciByZXBvcnRpbmcgcmVncmVzc2lvbiBpbiBuZnNf
-ZmlsZV93cml0ZSgpDQotIHBORlM6IEZpeCBmdXJ0aGVyIGxheW91dCBzdGF0ZWlkIGlzc3Vlcw0K
-LSBSUEMvcmRtYTogUmV2ZXJ0IDNkNGNmMzViZDRmYSAoInhwcnRyZG1hOiBSZXBseSBidWZmZXIg
-ZXhoYXVzdGlvbi4uLiIpDQotIFJQQy9yZG1hOiBGaXggcmVjZWl2ZSBidWZmZXIgYWNjb3VudGlu
-Zw0KDQotLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
-LS0tLS0tLS0tLS0tDQpDaHVjayBMZXZlciAoMik6DQogICAgICB4cHJ0cmRtYTogUmV2ZXJ0IDNk
-NGNmMzViZDRmYSAoInhwcnRyZG1hOiBSZXBseSBidWZmZXIgZXhoYXVzdGlvbi4uLiIpDQogICAg
-ICB4cHJ0cmRtYTogRml4IHJlY2VpdmUgYnVmZmVyIGFjY291bnRpbmcNCg0KUGFvbG8gQWJlbmkg
-KDEpOg0KICAgICAgc3VucnBjOiBmaXggVURQIG1lbW9yeSBhY2NvdW50aW5nDQoNClRyb25kIE15
-a2xlYnVzdCAoNik6DQogICAgICBORlM6IEZpeCBlcnJvciByZXBvcnRpbmcgaW4gbmZzX2ZpbGVf
-d3JpdGUoKQ0KICAgICAgcE5GUzogRW5zdXJlIExBWU9VVEdFVCBhbmQgTEFZT1VUUkVUVVJOIGFy
-ZSBwcm9wZXJseSBzZXJpYWxpc2VkDQogICAgICBwTkZTOiBGaXggcG5mc19zZXRfbGF5b3V0X3N0
-YXRlaWQoKSB0byBjbGVhciBORlNfTEFZT1VUX0lOVkFMSURfU1RJRA0KICAgICAgcE5GUzogQ2xl
-YXIgb3V0IGFsbCBsYXlvdXQgc2VnbWVudHMgaWYgdGhlIHNlcnZlciB1bnNldHMgbHJwLT5yZXMu
-bHJzX3ByZXNlbnQNCiAgICAgIHBORlM6IERvbid0IGZvcmdldCB0aGUgbGF5b3V0IHN0YXRlaWQg
-aWYgdGhlcmUgYXJlIG91dHN0YW5kaW5nIExBWU9VVEdFVHMNCiAgICAgIE5GU3Y0LjE6IEZpeCB0
-aGUgQ1JFQVRFX1NFU1NJT04gc2xvdCBudW1iZXIgYWNjb3VudGluZw0KDQogZnMvbmZzL2ZpbGUu
-YyAgICAgICAgICAgICAgICAgICB8ICA1ICsrKystDQogZnMvbmZzL25mczRwcm9jLmMgICAgICAg
-ICAgICAgICB8IDIxICsrKysrKysrKysrKysrLS0tLS0NCiBmcy9uZnMvcG5mcy5jICAgICAgICAg
-ICAgICAgICAgIHwgNDIgKysrKysrKysrKysrKysrKysrKysrLS0tLS0tLS0tLS0tLS0tLS0NCiBu
-ZXQvc3VucnBjL3hwcnRyZG1hL3ZlcmJzLmMgICAgIHwgNDUgKysrKysrKysrKysrKysrKysrKysr
-KysrKysrKystLS0tLS0tLS0tLS0NCiBuZXQvc3VucnBjL3hwcnRyZG1hL3hwcnRfcmRtYS5oIHwg
-IDEgKw0KIG5ldC9zdW5ycGMveHBydHNvY2suYyAgICAgICAgICAgfCAgMiArLQ0KIDYgZmlsZXMg
-Y2hhbmdlZCwgNzggaW5zZXJ0aW9ucygrKSwgMzggZGVsZXRpb25zKC0pDQotLSANClRyb25kIE15
-a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyLCBQcmltYXJ5RGF0YQ0KdHJvbmQu
-bXlrbGVidXN0QHByaW1hcnlkYXRhLmNvbQ0K
+Hi Jeff,
+
+On 09/09/2016 02:47 PM, Jeff Layton wrote:
+> If it does, then always have the client sleep for the max time before
+> repolling for the lock. If it doesn't then we can skip all of the
+> waitqueue handling as well.
+> 
+> Signed-off-by: Jeff Layton <jlayton@redhat.com>
+> ---
+>  fs/nfs/nfs4_fs.h  | 1 +
+>  fs/nfs/nfs4proc.c | 2 ++
+>  2 files changed, 3 insertions(+)
+> 
+> diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
+> index 9bf64eacba5b..91e4f135a5f2 100644
+> --- a/fs/nfs/nfs4_fs.h
+> +++ b/fs/nfs/nfs4_fs.h
+> @@ -156,6 +156,7 @@ enum {
+>  	NFS_STATE_RECLAIM_NOGRACE,	/* OPEN stateid needs to recover state */
+>  	NFS_STATE_POSIX_LOCKS,		/* Posix locks are supported */
+>  	NFS_STATE_RECOVERY_FAILED,	/* OPEN stateid state recovery failed */
+> +	NFS_STATE_MAY_NOTIFY_LOCK,	/* server may CB_NOTIFY_LOCK */
+
+Looks like the reason I don't have this flag is because it's added as part of the server patches.  I'll coordinate with the nfsd merge to make sure everything is added in the right order!
+
+Thanks,
+Anna
+>  };
+>  
+>  struct nfs4_state {
+> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+> index 90e8ded0ef82..627a9185822f 100644
+> --- a/fs/nfs/nfs4proc.c
+> +++ b/fs/nfs/nfs4proc.c
+> @@ -2537,6 +2537,8 @@ static int _nfs4_open_and_get_state(struct nfs4_opendata *opendata,
+>  		goto out;
+>  	if (server->caps & NFS_CAP_POSIX_LOCK)
+>  		set_bit(NFS_STATE_POSIX_LOCKS, &state->flags);
+> +	if (opendata->o_res.rflags & NFS4_OPEN_RESULT_MAY_NOTIFY_LOCK)
+> +		set_bit(NFS_STATE_MAY_NOTIFY_LOCK, &state->flags);
+>  
+>  	dentry = opendata->dentry;
+>  	if (d_really_is_negative(dentry)) {
+> 
 
