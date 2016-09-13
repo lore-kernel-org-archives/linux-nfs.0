@@ -1,15 +1,14 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-it0-f65.google.com ([209.85.214.65]:34636 "EHLO
+Received: from mail-it0-f65.google.com ([209.85.214.65]:35846 "EHLO
         mail-it0-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751745AbcIMOwt (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 13 Sep 2016 10:52:49 -0400
-Subject: [PATCH v3 1/6] svcauth_gss: Revert 64c59a3726f2 ("Remove
- unnecessary allocation")
+        with ESMTP id S1753562AbcIMOwx (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 13 Sep 2016 10:52:53 -0400
+Subject: [PATCH v3 2/6] svcrdma: Tail iovec leaves an orphaned DMA mapping
 From: Chuck Lever <chuck.lever@oracle.com>
 To: bfields@fieldses.org
 Cc: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Tue, 13 Sep 2016 10:52:42 -0400
-Message-ID: <20160913145242.5733.90096.stgit@klimt.1015granger.net>
+Date: Tue, 13 Sep 2016 10:52:50 -0400
+Message-ID: <20160913145250.5733.30777.stgit@klimt.1015granger.net>
 In-Reply-To: <20160913144246.5733.66229.stgit@klimt.1015granger.net>
 References: <20160913144246.5733.66229.stgit@klimt.1015granger.net>
 MIME-Version: 1.0
@@ -17,68 +16,204 @@ Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On occasion I see this on my server:
+The ctxt's count field is overloaded to mean the number of pages in
+the ctxt->page array and the number of SGEs in the ctxt->sge array.
+Typically these two numbers are the same.
 
-kernel: kernel BUG at /home/cel/src/linux/linux-2.6/mm/slub.c:3851!
-kernel: invalid opcode: 0000 [#1] SMP
-kernel: Modules linked in: cts rpcsec_gss_krb5 sb_edac edac_core x86_pkg_temp_thermal intel_powerclamp coretemp kvm_intel kvm irqbypass crct10dif_pclmul crc32_pclmul ghash_clmulni_intel aesni_intel lrw gf128mul glue_helper ablk_helper cryptd btrfs xor iTCO_wdt iTCO_vendor_support raid6_pq pcspkr i2c_i801 i2c_smbus lpc_ich mfd_core mei_me sg mei shpchp wmi ioatdma ipmi_si ipmi_msghandler acpi_pad acpi_power_meter rpcrdma ib_ipoib rdma_ucm ib_ucm ib_uverbs ib_umad rdma_cm ib_cm iw_cm nfsd nfs_acl lockd grace auth_rpcgss sunrpc ip_tables xfs libcrc32c mlx4_ib mlx4_en ib_core sr_mod cdrom sd_mod ast drm_kms_helper syscopyarea sysfillrect sysimgblt fb_sys_fops ttm drm crc32c_intel igb mlx4_core ahci libahci libata ptp pps_core dca i2c_algo_bit i2c_core dm_mirror dm_region_hash dm_log dm_mod
-kernel: CPU: 7 PID: 145 Comm: kworker/7:2 Not tainted 4.8.0-rc4-00006-g9d06b0b #15
-kernel: Hardware name: Supermicro Super Server/X10SRL-F, BIOS 1.0c 09/09/2015
-kernel: Workqueue: events do_cache_clean [sunrpc]
-kernel: task: ffff8808541d8000 task.stack: ffff880854344000
-kernel: RIP: 0010:[<ffffffff811e7075>]  [<ffffffff811e7075>] kfree+0x155/0x180
-kernel: RSP: 0018:ffff880854347d70  EFLAGS: 00010246
-kernel: RAX: ffffea0020fe7660 RBX: ffff88083f9db064 RCX: 146ff0f9d5ec5600
-kernel: RDX: 000077ff80000000 RSI: ffff880853f01500 RDI: ffff88083f9db064
-kernel: RBP: ffff880854347d88 R08: ffff8808594ee000 R09: ffff88087fdd8780
-kernel: R10: 0000000000000000 R11: ffffea0020fe76c0 R12: ffff880853f01500
-kernel: R13: ffffffffa013cf76 R14: ffffffffa013cff0 R15: ffffffffa04253a0
-kernel: FS:  0000000000000000(0000) GS:ffff88087fdc0000(0000) knlGS:0000000000000000
-kernel: CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
-kernel: CR2: 00007fed60b020c3 CR3: 0000000001c06000 CR4: 00000000001406e0
-kernel: Stack:
-kernel: ffff8808589f2f00 ffff880853f01500 0000000000000001 ffff880854347da0
-kernel: ffffffffa013cf76 ffff8808589f2f00 ffff880854347db8 ffffffffa013d006
-kernel: ffff8808589f2f20 ffff880854347e00 ffffffffa0406f60 0000000057c7044f
-kernel: Call Trace:
-kernel: [<ffffffffa013cf76>] rsc_free+0x16/0x90 [auth_rpcgss]
-kernel: [<ffffffffa013d006>] rsc_put+0x16/0x30 [auth_rpcgss]
-kernel: [<ffffffffa0406f60>] cache_clean+0x2e0/0x300 [sunrpc]
-kernel: [<ffffffffa04073ee>] do_cache_clean+0xe/0x70 [sunrpc]
-kernel: [<ffffffff8109a70f>] process_one_work+0x1ff/0x3b0
-kernel: [<ffffffff8109b15c>] worker_thread+0x2bc/0x4a0
-kernel: [<ffffffff8109aea0>] ? rescuer_thread+0x3a0/0x3a0
-kernel: [<ffffffff810a0ba4>] kthread+0xe4/0xf0
-kernel: [<ffffffff8169c47f>] ret_from_fork+0x1f/0x40
-kernel: [<ffffffff810a0ac0>] ? kthread_stop+0x110/0x110
-kernel: Code: f7 ff ff eb 3b 65 8b 05 da 30 e2 7e 89 c0 48 0f a3 05 a0 38 b8 00 0f 92 c0 84 c0 0f 85 d1 fe ff ff 0f 1f 44 00 00 e9 f5 fe ff ff <0f> 0b 49 8b 03 31 f6 f6 c4 40 0f 85 62 ff ff ff e9 61 ff ff ff
-kernel: RIP  [<ffffffff811e7075>] kfree+0x155/0x180
-kernel: RSP <ffff880854347d70>
-kernel: ---[ end trace 3fdec044969def26 ]---
+However, when an inline RPC reply is constructed from an xdr_buf
+with a tail iovec, the head and tail often occupy the same page,
+but each are DMA mapped independently. In that case, ->count equals
+the number of pages, but it does not equal the number of SGEs.
+There's one more SGE, for the tail iovec. Hence there is one more
+DMA mapping than there are pages in the ctxt->page array.
 
-It seems to be most common after a server reboot where a client has been
-using a Kerberos mount, and reconnects to continue its workload.
+This isn't a real problem until the server's iommu is enabled. Then
+each RPC reply that has content in that iovec orphans a DMA mapping
+that consists of real resources.
 
+krb5i and krb5p always populate that tail iovec. After a couple
+million sent krb5i/p RPC replies, the NFS server starts behaving
+erratically. Reboot is needed to clear the problem.
+
+Fixes: 9d11b51ce7c1 ("svcrdma: Fix send_reply() scatter/gather set-up")
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- net/sunrpc/auth_gss/svcauth_gss.c |    5 +++--
- 1 file changed, 3 insertions(+), 2 deletions(-)
+ include/linux/sunrpc/svc_rdma.h            |    9 +++++++++
+ net/sunrpc/xprtrdma/svc_rdma_backchannel.c |    2 +-
+ net/sunrpc/xprtrdma/svc_rdma_recvfrom.c    |    2 +-
+ net/sunrpc/xprtrdma/svc_rdma_sendto.c      |   22 ++++------------------
+ net/sunrpc/xprtrdma/svc_rdma_transport.c   |   18 ++++++++++++------
+ 5 files changed, 27 insertions(+), 26 deletions(-)
 
-diff --git a/net/sunrpc/auth_gss/svcauth_gss.c b/net/sunrpc/auth_gss/svcauth_gss.c
-index 1d28181..d858202 100644
---- a/net/sunrpc/auth_gss/svcauth_gss.c
-+++ b/net/sunrpc/auth_gss/svcauth_gss.c
-@@ -569,9 +569,10 @@ gss_svc_searchbyctx(struct cache_detail *cd, struct xdr_netobj *handle)
- 	struct rsc *found;
+diff --git a/include/linux/sunrpc/svc_rdma.h b/include/linux/sunrpc/svc_rdma.h
+index d6917b8..3584bc8 100644
+--- a/include/linux/sunrpc/svc_rdma.h
++++ b/include/linux/sunrpc/svc_rdma.h
+@@ -86,6 +86,7 @@ struct svc_rdma_op_ctxt {
+ 	unsigned long flags;
+ 	enum dma_data_direction direction;
+ 	int count;
++	unsigned int mapped_sges;
+ 	struct ib_sge sge[RPCSVC_MAXPAGES];
+ 	struct page *pages[RPCSVC_MAXPAGES];
+ };
+@@ -193,6 +194,14 @@ struct svcxprt_rdma {
  
- 	memset(&rsci, 0, sizeof(rsci));
--	rsci.handle.data = handle->data;
--	rsci.handle.len = handle->len;
-+	if (dup_to_netobj(&rsci.handle, handle->data, handle->len))
-+		return NULL;
- 	found = rsc_lookup(cd, &rsci);
-+	rsc_free(&rsci);
- 	if (!found)
- 		return NULL;
- 	if (cache_check(cd, &found->h, NULL))
+ #define RPCSVC_MAXPAYLOAD_RDMA	RPCSVC_MAXPAYLOAD
+ 
++/* Track DMA maps for this transport and context */
++static inline void svc_rdma_count_mappings(struct svcxprt_rdma *rdma,
++					   struct svc_rdma_op_ctxt *ctxt)
++{
++	ctxt->mapped_sges++;
++	atomic_inc(&rdma->sc_dma_used);
++}
++
+ /* svc_rdma_backchannel.c */
+ extern int svc_rdma_handle_bc_reply(struct rpc_xprt *xprt,
+ 				    struct rpcrdma_msg *rmsgp,
+diff --git a/net/sunrpc/xprtrdma/svc_rdma_backchannel.c b/net/sunrpc/xprtrdma/svc_rdma_backchannel.c
+index a2a7519..cd0c558 100644
+--- a/net/sunrpc/xprtrdma/svc_rdma_backchannel.c
++++ b/net/sunrpc/xprtrdma/svc_rdma_backchannel.c
+@@ -129,7 +129,7 @@ static int svc_rdma_bc_sendto(struct svcxprt_rdma *rdma,
+ 		ret = -EIO;
+ 		goto out_unmap;
+ 	}
+-	atomic_inc(&rdma->sc_dma_used);
++	svc_rdma_count_mappings(rdma, ctxt);
+ 
+ 	memset(&send_wr, 0, sizeof(send_wr));
+ 	ctxt->cqe.done = svc_rdma_wc_send;
+diff --git a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
+index 2c25606..ad1df97 100644
+--- a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
++++ b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
+@@ -159,7 +159,7 @@ int rdma_read_chunk_lcl(struct svcxprt_rdma *xprt,
+ 					   ctxt->sge[pno].addr);
+ 		if (ret)
+ 			goto err;
+-		atomic_inc(&xprt->sc_dma_used);
++		svc_rdma_count_mappings(xprt, ctxt);
+ 
+ 		ctxt->sge[pno].lkey = xprt->sc_pd->local_dma_lkey;
+ 		ctxt->sge[pno].length = len;
+diff --git a/net/sunrpc/xprtrdma/svc_rdma_sendto.c b/net/sunrpc/xprtrdma/svc_rdma_sendto.c
+index 54d53330..e5b49e6 100644
+--- a/net/sunrpc/xprtrdma/svc_rdma_sendto.c
++++ b/net/sunrpc/xprtrdma/svc_rdma_sendto.c
+@@ -280,7 +280,7 @@ static int send_write(struct svcxprt_rdma *xprt, struct svc_rqst *rqstp,
+ 		if (ib_dma_mapping_error(xprt->sc_cm_id->device,
+ 					 sge[sge_no].addr))
+ 			goto err;
+-		atomic_inc(&xprt->sc_dma_used);
++		svc_rdma_count_mappings(xprt, ctxt);
+ 		sge[sge_no].lkey = xprt->sc_pd->local_dma_lkey;
+ 		ctxt->count++;
+ 		sge_off = 0;
+@@ -489,7 +489,7 @@ static int send_reply(struct svcxprt_rdma *rdma,
+ 			    ctxt->sge[0].length, DMA_TO_DEVICE);
+ 	if (ib_dma_mapping_error(rdma->sc_cm_id->device, ctxt->sge[0].addr))
+ 		goto err;
+-	atomic_inc(&rdma->sc_dma_used);
++	svc_rdma_count_mappings(rdma, ctxt);
+ 
+ 	ctxt->direction = DMA_TO_DEVICE;
+ 
+@@ -505,7 +505,7 @@ static int send_reply(struct svcxprt_rdma *rdma,
+ 		if (ib_dma_mapping_error(rdma->sc_cm_id->device,
+ 					 ctxt->sge[sge_no].addr))
+ 			goto err;
+-		atomic_inc(&rdma->sc_dma_used);
++		svc_rdma_count_mappings(rdma, ctxt);
+ 		ctxt->sge[sge_no].lkey = rdma->sc_pd->local_dma_lkey;
+ 		ctxt->sge[sge_no].length = sge_bytes;
+ 	}
+@@ -523,23 +523,9 @@ static int send_reply(struct svcxprt_rdma *rdma,
+ 		ctxt->pages[page_no+1] = rqstp->rq_respages[page_no];
+ 		ctxt->count++;
+ 		rqstp->rq_respages[page_no] = NULL;
+-		/*
+-		 * If there are more pages than SGE, terminate SGE
+-		 * list so that svc_rdma_unmap_dma doesn't attempt to
+-		 * unmap garbage.
+-		 */
+-		if (page_no+1 >= sge_no)
+-			ctxt->sge[page_no+1].length = 0;
+ 	}
+ 	rqstp->rq_next_page = rqstp->rq_respages + 1;
+ 
+-	/* The loop above bumps sc_dma_used for each sge. The
+-	 * xdr_buf.tail gets a separate sge, but resides in the
+-	 * same page as xdr_buf.head. Don't count it twice.
+-	 */
+-	if (sge_no > ctxt->count)
+-		atomic_dec(&rdma->sc_dma_used);
+-
+ 	if (sge_no > rdma->sc_max_sge) {
+ 		pr_err("svcrdma: Too many sges (%d)\n", sge_no);
+ 		goto err;
+@@ -692,7 +678,7 @@ void svc_rdma_send_error(struct svcxprt_rdma *xprt, struct rpcrdma_msg *rmsgp,
+ 		svc_rdma_put_context(ctxt, 1);
+ 		return;
+ 	}
+-	atomic_inc(&xprt->sc_dma_used);
++	svc_rdma_count_mappings(xprt, ctxt);
+ 
+ 	/* Prepare SEND WR */
+ 	memset(&err_wr, 0, sizeof(err_wr));
+diff --git a/net/sunrpc/xprtrdma/svc_rdma_transport.c b/net/sunrpc/xprtrdma/svc_rdma_transport.c
+index dd94401..924271c 100644
+--- a/net/sunrpc/xprtrdma/svc_rdma_transport.c
++++ b/net/sunrpc/xprtrdma/svc_rdma_transport.c
+@@ -198,6 +198,7 @@ struct svc_rdma_op_ctxt *svc_rdma_get_context(struct svcxprt_rdma *xprt)
+ 
+ out:
+ 	ctxt->count = 0;
++	ctxt->mapped_sges = 0;
+ 	ctxt->frmr = NULL;
+ 	return ctxt;
+ 
+@@ -221,22 +222,27 @@ out_empty:
+ void svc_rdma_unmap_dma(struct svc_rdma_op_ctxt *ctxt)
+ {
+ 	struct svcxprt_rdma *xprt = ctxt->xprt;
+-	int i;
+-	for (i = 0; i < ctxt->count && ctxt->sge[i].length; i++) {
++	struct ib_device *device = xprt->sc_cm_id->device;
++	u32 lkey = xprt->sc_pd->local_dma_lkey;
++	unsigned int i, count;
++
++	for (count = 0, i = 0; i < ctxt->mapped_sges; i++) {
+ 		/*
+ 		 * Unmap the DMA addr in the SGE if the lkey matches
+ 		 * the local_dma_lkey, otherwise, ignore it since it is
+ 		 * an FRMR lkey and will be unmapped later when the
+ 		 * last WR that uses it completes.
+ 		 */
+-		if (ctxt->sge[i].lkey == xprt->sc_pd->local_dma_lkey) {
+-			atomic_dec(&xprt->sc_dma_used);
+-			ib_dma_unmap_page(xprt->sc_cm_id->device,
++		if (ctxt->sge[i].lkey == lkey) {
++			count++;
++			ib_dma_unmap_page(device,
+ 					    ctxt->sge[i].addr,
+ 					    ctxt->sge[i].length,
+ 					    ctxt->direction);
+ 		}
+ 	}
++	ctxt->mapped_sges = 0;
++	atomic_sub(count, &xprt->sc_dma_used);
+ }
+ 
+ void svc_rdma_put_context(struct svc_rdma_op_ctxt *ctxt, int free_pages)
+@@ -600,7 +606,7 @@ int svc_rdma_post_recv(struct svcxprt_rdma *xprt, gfp_t flags)
+ 				     DMA_FROM_DEVICE);
+ 		if (ib_dma_mapping_error(xprt->sc_cm_id->device, pa))
+ 			goto err_put_ctxt;
+-		atomic_inc(&xprt->sc_dma_used);
++		svc_rdma_count_mappings(xprt, ctxt);
+ 		ctxt->sge[sge_no].addr = pa;
+ 		ctxt->sge[sge_no].length = PAGE_SIZE;
+ 		ctxt->sge[sge_no].lkey = xprt->sc_pd->local_dma_lkey;
 
