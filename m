@@ -1,69 +1,84 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-it0-f66.google.com ([209.85.214.66]:34596 "EHLO
-        mail-it0-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1758832AbcIMOwg (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 13 Sep 2016 10:52:36 -0400
-Subject: [PATCH v3 0/6] server-side NFS/RDMA patches proposed for v4.9
+Received: from mail-it0-f65.google.com ([209.85.214.65]:34636 "EHLO
+        mail-it0-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751745AbcIMOwt (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 13 Sep 2016 10:52:49 -0400
+Subject: [PATCH v3 1/6] svcauth_gss: Revert 64c59a3726f2 ("Remove
+ unnecessary allocation")
 From: Chuck Lever <chuck.lever@oracle.com>
 To: bfields@fieldses.org
 Cc: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Tue, 13 Sep 2016 10:52:33 -0400
-Message-ID: <20160913144246.5733.66229.stgit@klimt.1015granger.net>
+Date: Tue, 13 Sep 2016 10:52:42 -0400
+Message-ID: <20160913145242.5733.90096.stgit@klimt.1015granger.net>
+In-Reply-To: <20160913144246.5733.66229.stgit@klimt.1015granger.net>
+References: <20160913144246.5733.66229.stgit@klimt.1015granger.net>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Bruce-
+On occasion I see this on my server:
 
-These are ready for you to consider for your "for v4.9" branch. They
-include:
+kernel: kernel BUG at /home/cel/src/linux/linux-2.6/mm/slub.c:3851!
+kernel: invalid opcode: 0000 [#1] SMP
+kernel: Modules linked in: cts rpcsec_gss_krb5 sb_edac edac_core x86_pkg_temp_thermal intel_powerclamp coretemp kvm_intel kvm irqbypass crct10dif_pclmul crc32_pclmul ghash_clmulni_intel aesni_intel lrw gf128mul glue_helper ablk_helper cryptd btrfs xor iTCO_wdt iTCO_vendor_support raid6_pq pcspkr i2c_i801 i2c_smbus lpc_ich mfd_core mei_me sg mei shpchp wmi ioatdma ipmi_si ipmi_msghandler acpi_pad acpi_power_meter rpcrdma ib_ipoib rdma_ucm ib_ucm ib_uverbs ib_umad rdma_cm ib_cm iw_cm nfsd nfs_acl lockd grace auth_rpcgss sunrpc ip_tables xfs libcrc32c mlx4_ib mlx4_en ib_core sr_mod cdrom sd_mod ast drm_kms_helper syscopyarea sysfillrect sysimgblt fb_sys_fops ttm drm crc32c_intel igb mlx4_core ahci libahci libata ptp pps_core dca i2c_algo_bit i2c_core dm_mirror dm_region_hash dm_log dm_mod
+kernel: CPU: 7 PID: 145 Comm: kworker/7:2 Not tainted 4.8.0-rc4-00006-g9d06b0b #15
+kernel: Hardware name: Supermicro Super Server/X10SRL-F, BIOS 1.0c 09/09/2015
+kernel: Workqueue: events do_cache_clean [sunrpc]
+kernel: task: ffff8808541d8000 task.stack: ffff880854344000
+kernel: RIP: 0010:[<ffffffff811e7075>]  [<ffffffff811e7075>] kfree+0x155/0x180
+kernel: RSP: 0018:ffff880854347d70  EFLAGS: 00010246
+kernel: RAX: ffffea0020fe7660 RBX: ffff88083f9db064 RCX: 146ff0f9d5ec5600
+kernel: RDX: 000077ff80000000 RSI: ffff880853f01500 RDI: ffff88083f9db064
+kernel: RBP: ffff880854347d88 R08: ffff8808594ee000 R09: ffff88087fdd8780
+kernel: R10: 0000000000000000 R11: ffffea0020fe76c0 R12: ffff880853f01500
+kernel: R13: ffffffffa013cf76 R14: ffffffffa013cff0 R15: ffffffffa04253a0
+kernel: FS:  0000000000000000(0000) GS:ffff88087fdc0000(0000) knlGS:0000000000000000
+kernel: CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
+kernel: CR2: 00007fed60b020c3 CR3: 0000000001c06000 CR4: 00000000001406e0
+kernel: Stack:
+kernel: ffff8808589f2f00 ffff880853f01500 0000000000000001 ffff880854347da0
+kernel: ffffffffa013cf76 ffff8808589f2f00 ffff880854347db8 ffffffffa013d006
+kernel: ffff8808589f2f20 ffff880854347e00 ffffffffa0406f60 0000000057c7044f
+kernel: Call Trace:
+kernel: [<ffffffffa013cf76>] rsc_free+0x16/0x90 [auth_rpcgss]
+kernel: [<ffffffffa013d006>] rsc_put+0x16/0x30 [auth_rpcgss]
+kernel: [<ffffffffa0406f60>] cache_clean+0x2e0/0x300 [sunrpc]
+kernel: [<ffffffffa04073ee>] do_cache_clean+0xe/0x70 [sunrpc]
+kernel: [<ffffffff8109a70f>] process_one_work+0x1ff/0x3b0
+kernel: [<ffffffff8109b15c>] worker_thread+0x2bc/0x4a0
+kernel: [<ffffffff8109aea0>] ? rescuer_thread+0x3a0/0x3a0
+kernel: [<ffffffff810a0ba4>] kthread+0xe4/0xf0
+kernel: [<ffffffff8169c47f>] ret_from_fork+0x1f/0x40
+kernel: [<ffffffff810a0ac0>] ? kthread_stop+0x110/0x110
+kernel: Code: f7 ff ff eb 3b 65 8b 05 da 30 e2 7e 89 c0 48 0f a3 05 a0 38 b8 00 0f 92 c0 84 c0 0f 85 d1 fe ff ff 0f 1f 44 00 00 e9 f5 fe ff ff <0f> 0b 49 8b 03 31 f6 f6 c4 40 0f 85 62 ff ff ff e9 61 ff ff ff
+kernel: RIP  [<ffffffff811e7075>] kfree+0x155/0x180
+kernel: RSP <ffff880854347d70>
+kernel: ---[ end trace 3fdec044969def26 ]---
 
-- Fix a couple of reference counting issues
-- Introduce simple RDMA-CM private message exchange
-- Support Remote Invalidation
+It seems to be most common after a server reboot where a client has been
+using a Kerberos mount, and reconnects to continue its workload.
 
-Available in the "nfsd-rdma-for-4.9" topic branch of this git repo:
-
-git://git.linux-nfs.org/projects/cel/cel-2.6.git
-
-
-Or for browsing:
-
-http://git.linux-nfs.org/?p=cel/cel-2.6.git;a=log;h=refs/heads/nfsd-rdma-for-4.9
-
-
-Changes since v2:
-- Rebased on v4.8-rc6
-- "SUNRPC: Silence WARN_ON when NFSv4.1 over RDMA is in use" has been merged
-- Revert 64c59a3726f2 (add a "Cc: stable" if you think that's appropriate)
-
-
-Changes since v1:
-- Rebased on v4.8-rc3
-- Added Reviewed-by tags
-- Fixed additional bugs found in v4.8
-
-
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
+ net/sunrpc/auth_gss/svcauth_gss.c |    5 +++--
+ 1 file changed, 3 insertions(+), 2 deletions(-)
 
-Chuck Lever (6):
-      svcauth_gss: Revert 64c59a3726f2 ("Remove unnecessary allocation")
-      svcrdma: Tail iovec leaves an orphaned DMA mapping
-      svcrdma: Skip put_page() when send_reply() fails
-      rpcrdma: RDMA/CM private message data structure
-      svcrdma: Server-side support for rpcrdma_connect_private
-      svcrdma: support Remote Invalidation
+diff --git a/net/sunrpc/auth_gss/svcauth_gss.c b/net/sunrpc/auth_gss/svcauth_gss.c
+index 1d28181..d858202 100644
+--- a/net/sunrpc/auth_gss/svcauth_gss.c
++++ b/net/sunrpc/auth_gss/svcauth_gss.c
+@@ -569,9 +569,10 @@ gss_svc_searchbyctx(struct cache_detail *cd, struct xdr_netobj *handle)
+ 	struct rsc *found;
+ 
+ 	memset(&rsci, 0, sizeof(rsci));
+-	rsci.handle.data = handle->data;
+-	rsci.handle.len = handle->len;
++	if (dup_to_netobj(&rsci.handle, handle->data, handle->len))
++		return NULL;
+ 	found = rsc_lookup(cd, &rsci);
++	rsc_free(&rsci);
+ 	if (!found)
+ 		return NULL;
+ 	if (cache_check(cd, &found->h, NULL))
 
-
- include/linux/sunrpc/rpc_rdma.h            |   35 ++++++++++++
- include/linux/sunrpc/svc_rdma.h            |   10 +++
- net/sunrpc/auth_gss/svcauth_gss.c          |    5 +-
- net/sunrpc/xprtrdma/svc_rdma_backchannel.c |    2 -
- net/sunrpc/xprtrdma/svc_rdma_recvfrom.c    |    2 -
- net/sunrpc/xprtrdma/svc_rdma_sendto.c      |   82 ++++++++++++++++++++--------
- net/sunrpc/xprtrdma/svc_rdma_transport.c   |   60 +++++++++++++++++---
- 7 files changed, 159 insertions(+), 37 deletions(-)
-
---
-Chuck Lever
