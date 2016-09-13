@@ -1,92 +1,69 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx144.netapp.com ([216.240.21.25]:37933 "EHLO mx144.netapp.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1754666AbcILUjA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 12 Sep 2016 16:39:00 -0400
-Subject: Re: [PATCH v2 05/10] nfs: track whether server sets MAY_NOTIFY_LOCK
- flag
-To: Jeff Layton <jlayton@redhat.com>, <trond.myklebust@primarydata.com>
-References: <1473446870-1831-1-git-send-email-jlayton@redhat.com>
- <1473446870-1831-6-git-send-email-jlayton@redhat.com>
- <68634996-8fba-5bcd-27e3-5d6ab5f881ba@Netapp.com>
- <1473712223.8504.2.camel@redhat.com>
-CC: <linux-nfs@vger.kernel.org>
-From: Anna Schumaker <Anna.Schumaker@netapp.com>
-Message-ID: <9c175d1b-51bb-c9ef-7c03-98a6e6c813c0@Netapp.com>
-Date: Mon, 12 Sep 2016 16:38:48 -0400
+Received: from mail-it0-f66.google.com ([209.85.214.66]:34596 "EHLO
+        mail-it0-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1758832AbcIMOwg (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 13 Sep 2016 10:52:36 -0400
+Subject: [PATCH v3 0/6] server-side NFS/RDMA patches proposed for v4.9
+From: Chuck Lever <chuck.lever@oracle.com>
+To: bfields@fieldses.org
+Cc: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
+Date: Tue, 13 Sep 2016 10:52:33 -0400
+Message-ID: <20160913144246.5733.66229.stgit@klimt.1015granger.net>
 MIME-Version: 1.0
-In-Reply-To: <1473712223.8504.2.camel@redhat.com>
 Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 09/12/2016 04:30 PM, Jeff Layton wrote:
-> On Mon, 2016-09-12 at 16:19 -0400, Anna Schumaker wrote:
->> Hi Jeff,
->>
->> On 09/09/2016 02:47 PM, Jeff Layton wrote:
->>>
->>> If it does, then always have the client sleep for the max time before
->>> repolling for the lock. If it doesn't then we can skip all of the
->>> waitqueue handling as well.
->>>
->>>>> Signed-off-by: Jeff Layton <jlayton@redhat.com>
->>> ---
->>>  fs/nfs/nfs4_fs.h  | 1 +
->>>  fs/nfs/nfs4proc.c | 2 ++
->>>  2 files changed, 3 insertions(+)
->>>
->>> diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
->>> index 9bf64eacba5b..91e4f135a5f2 100644
->>> --- a/fs/nfs/nfs4_fs.h
->>> +++ b/fs/nfs/nfs4_fs.h
->>> @@ -156,6 +156,7 @@ enum {
->>>>>>>  	NFS_STATE_RECLAIM_NOGRACE,	/* OPEN stateid needs to recover state */
->>>>>>>  	NFS_STATE_POSIX_LOCKS,		/* Posix locks are supported */
->>>>>>>  	NFS_STATE_RECOVERY_FAILED,	/* OPEN stateid state recovery failed */
->>>>>>> +	NFS_STATE_MAY_NOTIFY_LOCK,	/* server may CB_NOTIFY_LOCK */
->>
->> Looks like the reason I don't have this flag is because it's added as part of the server patches.  I'll coordinate with the nfsd merge to make sure everything is added in the right order!
->>
->> Thanks,
->> Anna
-> 
-> Oh! Yes, that would explain it -- sorry...
-> 
-> Would it help at all to break out the addition of that field into a
-> separate patch? Just wondering what the right approach is for future
-> reference.
+Hi Bruce-
 
-Hmm ... it might, actually.  I think we've done that in the past with changes to other common files, and then merge order doesn't matter as much.
+These are ready for you to consider for your "for v4.9" branch. They
+include:
 
-Thanks,
-Anna
+- Fix a couple of reference counting issues
+- Introduce simple RDMA-CM private message exchange
+- Support Remote Invalidation
 
-> 
-> Thanks,
-> Jeff
-> 
->>>
->>>  };
->>>  
->>>  struct nfs4_state {
->>> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
->>> index 90e8ded0ef82..627a9185822f 100644
->>> --- a/fs/nfs/nfs4proc.c
->>> +++ b/fs/nfs/nfs4proc.c
->>> @@ -2537,6 +2537,8 @@ static int _nfs4_open_and_get_state(struct nfs4_opendata *opendata,
->>>>>  		goto out;
->>>>>  	if (server->caps & NFS_CAP_POSIX_LOCK)
->>>>>  		set_bit(NFS_STATE_POSIX_LOCKS, &state->flags);
->>>>> +	if (opendata->o_res.rflags & NFS4_OPEN_RESULT_MAY_NOTIFY_LOCK)
->>>>> +		set_bit(NFS_STATE_MAY_NOTIFY_LOCK, &state->flags);
->>>  
->>>>>  	dentry = opendata->dentry;
->>>>>  	if (d_really_is_negative(dentry)) {
->>>
->>
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Available in the "nfsd-rdma-for-4.9" topic branch of this git repo:
 
+git://git.linux-nfs.org/projects/cel/cel-2.6.git
+
+
+Or for browsing:
+
+http://git.linux-nfs.org/?p=cel/cel-2.6.git;a=log;h=refs/heads/nfsd-rdma-for-4.9
+
+
+Changes since v2:
+- Rebased on v4.8-rc6
+- "SUNRPC: Silence WARN_ON when NFSv4.1 over RDMA is in use" has been merged
+- Revert 64c59a3726f2 (add a "Cc: stable" if you think that's appropriate)
+
+
+Changes since v1:
+- Rebased on v4.8-rc3
+- Added Reviewed-by tags
+- Fixed additional bugs found in v4.8
+
+
+---
+
+Chuck Lever (6):
+      svcauth_gss: Revert 64c59a3726f2 ("Remove unnecessary allocation")
+      svcrdma: Tail iovec leaves an orphaned DMA mapping
+      svcrdma: Skip put_page() when send_reply() fails
+      rpcrdma: RDMA/CM private message data structure
+      svcrdma: Server-side support for rpcrdma_connect_private
+      svcrdma: support Remote Invalidation
+
+
+ include/linux/sunrpc/rpc_rdma.h            |   35 ++++++++++++
+ include/linux/sunrpc/svc_rdma.h            |   10 +++
+ net/sunrpc/auth_gss/svcauth_gss.c          |    5 +-
+ net/sunrpc/xprtrdma/svc_rdma_backchannel.c |    2 -
+ net/sunrpc/xprtrdma/svc_rdma_recvfrom.c    |    2 -
+ net/sunrpc/xprtrdma/svc_rdma_sendto.c      |   82 ++++++++++++++++++++--------
+ net/sunrpc/xprtrdma/svc_rdma_transport.c   |   60 +++++++++++++++++---
+ 7 files changed, 159 insertions(+), 37 deletions(-)
+
+--
+Chuck Lever
