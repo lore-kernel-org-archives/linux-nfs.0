@@ -1,14 +1,14 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-it0-f68.google.com ([209.85.214.68]:35897 "EHLO
-        mail-it0-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1758839AbcIMOxB (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 13 Sep 2016 10:53:01 -0400
-Subject: [PATCH v3 3/6] svcrdma: Skip put_page() when send_reply() fails
+Received: from mail-it0-f66.google.com ([209.85.214.66]:35932 "EHLO
+        mail-it0-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1758881AbcIMOxJ (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 13 Sep 2016 10:53:09 -0400
+Subject: [PATCH v3 4/6] rpcrdma: RDMA/CM private message data structure
 From: Chuck Lever <chuck.lever@oracle.com>
 To: bfields@fieldses.org
 Cc: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Tue, 13 Sep 2016 10:52:59 -0400
-Message-ID: <20160913145259.5733.47591.stgit@klimt.1015granger.net>
+Date: Tue, 13 Sep 2016 10:53:07 -0400
+Message-ID: <20160913145307.5733.62842.stgit@klimt.1015granger.net>
 In-Reply-To: <20160913144246.5733.66229.stgit@klimt.1015granger.net>
 References: <20160913144246.5733.66229.stgit@klimt.1015granger.net>
 MIME-Version: 1.0
@@ -16,36 +16,72 @@ Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Message from syslogd@klimt at Aug 18 17:00:37 ...
- kernel:page:ffffea0020639b00 count:0 mapcount:0 mapping:          (null) index:0x0
-Aug 18 17:00:37 klimt kernel: flags: 0x2fffff80000000()
-Aug 18 17:00:37 klimt kernel: page dumped because: VM_BUG_ON_PAGE(page_ref_count(page) == 0)
+Introduce data structure used by both client and server to exchange
+implementation details during RDMA/CM connection establishment.
 
-Aug 18 17:00:37 klimt kernel: kernel BUG at /home/cel/src/linux/linux-2.6/include/linux/mm.h:445!
-Aug 18 17:00:37 klimt kernel: RIP: 0010:[<ffffffffa05c21c1>] svc_rdma_sendto+0x641/0x820 [rpcrdma]
+This is an experimental out-of-band exchange between Linux
+RPC-over-RDMA Version One implementations, replacing the deprecated
+CCP (see RFC 5666bis). The purpose of this extension is to enable
+prototyping of features that might be introduced in a subsequent
+version of RPC-over-RDMA.
 
-send_reply() assigns its page argument as the first page of ctxt. On
-error, send_reply() already invokes svc_rdma_put_context(ctxt, 1);
-which does a put_page() on that very page. No need to do that again
-as svc_rdma_sendto exits.
+Suggested by Christoph Hellwig and Devesh Sharma.
 
-Fixes: 3e1eeb980822 ("svcrdma: Close connection when a send error occurs")
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Reviewed-by: Sagi Grimberg <sagi@grimberg.me>
 ---
- net/sunrpc/xprtrdma/svc_rdma_sendto.c |    2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ include/linux/sunrpc/rpc_rdma.h |   35 +++++++++++++++++++++++++++++++++++
+ 1 file changed, 35 insertions(+)
 
-diff --git a/net/sunrpc/xprtrdma/svc_rdma_sendto.c b/net/sunrpc/xprtrdma/svc_rdma_sendto.c
-index e5b49e6..3b95b19 100644
---- a/net/sunrpc/xprtrdma/svc_rdma_sendto.c
-+++ b/net/sunrpc/xprtrdma/svc_rdma_sendto.c
-@@ -621,7 +621,7 @@ int svc_rdma_sendto(struct svc_rqst *rqstp)
- 	ret = send_reply(rdma, rqstp, res_page, rdma_resp, vec,
- 			 inline_bytes);
- 	if (ret < 0)
--		goto err1;
-+		goto err0;
+diff --git a/include/linux/sunrpc/rpc_rdma.h b/include/linux/sunrpc/rpc_rdma.h
+index 3b1ff38..a7da6bf 100644
+--- a/include/linux/sunrpc/rpc_rdma.h
++++ b/include/linux/sunrpc/rpc_rdma.h
+@@ -41,6 +41,7 @@
+ #define _LINUX_SUNRPC_RPC_RDMA_H
  
- 	svc_rdma_put_req_map(rdma, vec);
- 	dprintk("svcrdma: send_reply returns %d\n", ret);
+ #include <linux/types.h>
++#include <linux/bitops.h>
+ 
+ #define RPCRDMA_VERSION		1
+ #define rpcrdma_version		cpu_to_be32(RPCRDMA_VERSION)
+@@ -129,4 +130,38 @@ enum rpcrdma_proc {
+ #define rdma_done	cpu_to_be32(RDMA_DONE)
+ #define rdma_error	cpu_to_be32(RDMA_ERROR)
+ 
++/*
++ * Private extension to RPC-over-RDMA Version One.
++ * Message passed during RDMA-CM connection set-up.
++ *
++ * Add new fields at the end, and don't permute existing
++ * fields.
++ */
++struct rpcrdma_connect_private {
++	__be32			cp_magic;
++	u8			cp_version;
++	u8			cp_flags;
++	u8			cp_send_size;
++	u8			cp_recv_size;
++} __packed;
++
++#define rpcrdma_cmp_magic	__cpu_to_be32(0xf6ab0e18)
++
++enum {
++	RPCRDMA_CMP_VERSION		= 1,
++	RPCRDMA_CMP_F_SND_W_INV_OK	= BIT(0),
++};
++
++static inline u8
++rpcrdma_encode_buffer_size(unsigned int size)
++{
++	return (size >> 10) - 1;
++}
++
++static inline unsigned int
++rpcrdma_decode_buffer_size(u8 val)
++{
++	return ((unsigned int)val + 1) << 10;
++}
++
+ #endif				/* _LINUX_SUNRPC_RPC_RDMA_H */
 
