@@ -1,189 +1,47 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-it0-f68.google.com ([209.85.214.68]:34812 "EHLO
-        mail-it0-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1752677AbcIMOxZ (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 13 Sep 2016 10:53:25 -0400
-Subject: [PATCH v3 6/6] svcrdma: support Remote Invalidation
+Received: from aserp1040.oracle.com ([141.146.126.69]:30061 "EHLO
+        aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1758636AbcIMPmm (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 13 Sep 2016 11:42:42 -0400
 From: Chuck Lever <chuck.lever@oracle.com>
-To: bfields@fieldses.org
-Cc: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Tue, 13 Sep 2016 10:53:23 -0400
-Message-ID: <20160913145323.5733.71581.stgit@klimt.1015granger.net>
-In-Reply-To: <20160913144246.5733.66229.stgit@klimt.1015granger.net>
-References: <20160913144246.5733.66229.stgit@klimt.1015granger.net>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain; charset=utf-8
+Subject: audit of the use of SVC_DROP in server reply path
+Date: Tue, 13 Sep 2016 11:42:37 -0400
+Message-Id: <B5EAA4EA-81E3-4F57-9899-951F2A8180B3@oracle.com>
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+To: Bruce Fields <bfields@fieldses.org>
+Mime-Version: 1.0 (Mac OS X Mail 9.3 \(3124\))
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Support Remote Invalidation. A private message is exchanged with
-the client upon RDMA transport connect that indicates whether
-Send With Invalidation may be used by the server to send RPC
-replies. The invalidate_rkey is arbitrarily chosen from among
-rkeys present in the RPC-over-RDMA header's chunk lists.
+Hi Bruce-
 
-Send With Invalidate improves performance only when clients can
-recognize, while processing an RPC reply, that an rkey has already
-been invalidated. That has been submitted as a separate change.
+I think the two interesting cases are svc_set_client and svc_authorise.
 
-In the future, the RPC-over-RDMA protocol might support Remote
-Invalidation properly. The protocol needs to enable signaling
-between peers to indicate when Remote Invalidation can be used
-for each individual RPC.
+Who does a "goto dropit;" inside svc_process_common?
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-Reviewed-by: Sagi Grimberg <sagi@grimberg.me>
----
- include/linux/sunrpc/svc_rdma.h          |    1 +
- net/sunrpc/xprtrdma/svc_rdma_sendto.c    |   58 ++++++++++++++++++++++++++++--
- net/sunrpc/xprtrdma/svc_rdma_transport.c |   12 +++++-
- 3 files changed, 65 insertions(+), 6 deletions(-)
+	• svc_set_client returns SVC_DROP
+		• When svcauth_gss_set_client calls svc_unix_set_client, which can return SVC_DROP
+			• When svc_unix_set_client calls cache_check, and it returns -EAGAIN
+			• When svc_unix_set_client calls unix_gid_find, and it returns -EAGAIN
+		• svcauth_gss_accept
+			• when gc_proc == RPC_GSS_PROC_DATA or RPC_GSS_PROC_DESTROY, and gss_check_seq_num fails
+			• when gc_proc == RPC_GSS_PROC_DESTROY and the result length is larger than a page
+	• pc_func returns rpc_drop_reply - only used by NLM
+	• vs_dispatch returns 0
+		• When nfsd_cache_lookup returns RC_DROPIT (the RPC is already in progress, or the client has retransmitted too soon): the server is going to reply anyway, safe to drop
+		• pc_func returns nfserr_dropit (NFSv2's JUKEBOX)
+		• RQ_DROPME is set (deferred requests?)
+	• pc_encode is NULL - probably rare and inconsequential
+	• svc_authorise returns non-zero
+		• svcauth_gss_release returns a negative errno when integrity or privacy reply wrapping fails; i think this needs a connection reset
+	• incoming RPC header is shorter than 24 bytes - connection reset would be better here anyway, IMO
 
-diff --git a/include/linux/sunrpc/svc_rdma.h b/include/linux/sunrpc/svc_rdma.h
-index 3584bc8..cc3ae16 100644
---- a/include/linux/sunrpc/svc_rdma.h
-+++ b/include/linux/sunrpc/svc_rdma.h
-@@ -137,6 +137,7 @@ struct svcxprt_rdma {
- 	int		     sc_ord;		/* RDMA read limit */
- 	int                  sc_max_sge;
- 	int                  sc_max_sge_rd;	/* max sge for read target */
-+	bool		     sc_snd_w_inv;	/* OK to use Send With Invalidate */
- 
- 	atomic_t             sc_sq_count;	/* Number of SQ WR on queue */
- 	unsigned int	     sc_sq_depth;	/* Depth of SQ */
-diff --git a/net/sunrpc/xprtrdma/svc_rdma_sendto.c b/net/sunrpc/xprtrdma/svc_rdma_sendto.c
-index 3b95b19..f5a91ed 100644
---- a/net/sunrpc/xprtrdma/svc_rdma_sendto.c
-+++ b/net/sunrpc/xprtrdma/svc_rdma_sendto.c
-@@ -225,6 +225,48 @@ svc_rdma_get_reply_array(struct rpcrdma_msg *rmsgp,
- 	return rp_ary;
- }
- 
-+/* RPC-over-RDMA Version One private extension: Remote Invalidation.
-+ * Responder's choice: requester signals it can handle Send With
-+ * Invalidate, and responder chooses one rkey to invalidate.
-+ *
-+ * Find a candidate rkey to invalidate when sending a reply.  Picks the
-+ * first rkey it finds in the chunks lists.
-+ *
-+ * Returns zero if RPC's chunk lists are empty.
-+ */
-+static u32 svc_rdma_get_inv_rkey(struct rpcrdma_msg *rdma_argp,
-+				 struct rpcrdma_write_array *wr_ary,
-+				 struct rpcrdma_write_array *rp_ary)
-+{
-+	struct rpcrdma_read_chunk *rd_ary;
-+	struct rpcrdma_segment *arg_ch;
-+	u32 inv_rkey;
-+
-+	inv_rkey = 0;
-+
-+	rd_ary = svc_rdma_get_read_chunk(rdma_argp);
-+	if (rd_ary) {
-+		inv_rkey = be32_to_cpu(rd_ary->rc_target.rs_handle);
-+		goto out;
-+	}
-+
-+	if (wr_ary && be32_to_cpu(wr_ary->wc_nchunks)) {
-+		arg_ch = &wr_ary->wc_array[0].wc_target;
-+		inv_rkey = be32_to_cpu(arg_ch->rs_handle);
-+		goto out;
-+	}
-+
-+	if (rp_ary && be32_to_cpu(rp_ary->wc_nchunks)) {
-+		arg_ch = &rp_ary->wc_array[0].wc_target;
-+		inv_rkey = be32_to_cpu(arg_ch->rs_handle);
-+		goto out;
-+	}
-+
-+out:
-+	dprintk("svcrdma: Send With Invalidate rkey=%08x\n", inv_rkey);
-+	return inv_rkey;
-+}
-+
- /* Assumptions:
-  * - The specified write_len can be represented in sc_max_sge * PAGE_SIZE
-  */
-@@ -464,7 +506,8 @@ static int send_reply(struct svcxprt_rdma *rdma,
- 		      struct page *page,
- 		      struct rpcrdma_msg *rdma_resp,
- 		      struct svc_rdma_req_map *vec,
--		      int byte_count)
-+		      int byte_count,
-+		      u32 inv_rkey)
- {
- 	struct svc_rdma_op_ctxt *ctxt;
- 	struct ib_send_wr send_wr;
-@@ -535,7 +578,11 @@ static int send_reply(struct svcxprt_rdma *rdma,
- 	send_wr.wr_cqe = &ctxt->cqe;
- 	send_wr.sg_list = ctxt->sge;
- 	send_wr.num_sge = sge_no;
--	send_wr.opcode = IB_WR_SEND;
-+	if (inv_rkey) {
-+		send_wr.opcode = IB_WR_SEND_WITH_INV;
-+		send_wr.ex.invalidate_rkey = inv_rkey;
-+	} else
-+		send_wr.opcode = IB_WR_SEND;
- 	send_wr.send_flags =  IB_SEND_SIGNALED;
- 
- 	ret = svc_rdma_send(rdma, &send_wr);
-@@ -567,6 +614,7 @@ int svc_rdma_sendto(struct svc_rqst *rqstp)
- 	int inline_bytes;
- 	struct page *res_page;
- 	struct svc_rdma_req_map *vec;
-+	u32 inv_rkey;
- 
- 	dprintk("svcrdma: sending response for rqstp=%p\n", rqstp);
- 
-@@ -577,6 +625,10 @@ int svc_rdma_sendto(struct svc_rqst *rqstp)
- 	wr_ary = svc_rdma_get_write_array(rdma_argp);
- 	rp_ary = svc_rdma_get_reply_array(rdma_argp, wr_ary);
- 
-+	inv_rkey = 0;
-+	if (rdma->sc_snd_w_inv)
-+		inv_rkey = svc_rdma_get_inv_rkey(rdma_argp, wr_ary, rp_ary);
-+
- 	/* Build an req vec for the XDR */
- 	vec = svc_rdma_get_req_map(rdma);
- 	ret = svc_rdma_map_xdr(rdma, &rqstp->rq_res, vec, wr_ary != NULL);
-@@ -619,7 +671,7 @@ int svc_rdma_sendto(struct svc_rqst *rqstp)
- 		goto err1;
- 
- 	ret = send_reply(rdma, rqstp, res_page, rdma_resp, vec,
--			 inline_bytes);
-+			 inline_bytes, inv_rkey);
- 	if (ret < 0)
- 		goto err0;
- 
-diff --git a/net/sunrpc/xprtrdma/svc_rdma_transport.c b/net/sunrpc/xprtrdma/svc_rdma_transport.c
-index f51e98a..b2464fc 100644
---- a/net/sunrpc/xprtrdma/svc_rdma_transport.c
-+++ b/net/sunrpc/xprtrdma/svc_rdma_transport.c
-@@ -657,9 +657,14 @@ svc_rdma_parse_connect_private(struct svcxprt_rdma *newxprt,
- 	if (pmsg &&
- 	    pmsg->cp_magic == rpcrdma_cmp_magic &&
- 	    pmsg->cp_version == RPCRDMA_CMP_VERSION) {
--		dprintk("svcrdma: client send_size %u, recv_size %u\n",
-+		newxprt->sc_snd_w_inv = pmsg->cp_flags &
-+					RPCRDMA_CMP_F_SND_W_INV_OK;
-+
-+		dprintk("svcrdma: client send_size %u, recv_size %u "
-+			"remote inv %ssupported\n",
- 			rpcrdma_decode_buffer_size(pmsg->cp_send_size),
--			rpcrdma_decode_buffer_size(pmsg->cp_recv_size));
-+			rpcrdma_decode_buffer_size(pmsg->cp_recv_size),
-+			newxprt->sc_snd_w_inv ? "" : "un");
- 	}
- }
- 
-@@ -1093,7 +1098,8 @@ static struct svc_xprt *svc_rdma_accept(struct svc_xprt *xprt)
- 			dev->attrs.max_fast_reg_page_list_len;
- 		newxprt->sc_dev_caps |= SVCRDMA_DEVCAP_FAST_REG;
- 		newxprt->sc_reader = rdma_read_chunk_frmr;
--	}
-+	} else
-+		newxprt->sc_snd_w_inv = false;
- 
- 	/*
- 	 * Determine if a DMA MR is required and if so, what privs are required
+The question I have is what does SVC_CLOSE mean for a UDP transport?
+
+
+--
+Chuck Lever
+
+
 
