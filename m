@@ -1,54 +1,59 @@
-Return-Path: <bfields@fieldses.org>
-Date: Tue, 13 Sep 2016 16:39:01 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Benjamin Coddington <bcodding@redhat.com>
-Cc: Chuck Lever <chuck.lever@oracle.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] svcauth_gss: Revert 64c59a3726f2 ("Remove unnecessary
- allocation")
-Message-ID: <20160913203901.GA21176@fieldses.org>
-References: <20160901144839.6035.63068.stgit@klimt.1015granger.net>
- <20160906204238.GA30260@fieldses.org>
- <F9C6309A-2444-4B40-82D0-4BE90F19490A@oracle.com>
- <20160906210149.GB30260@fieldses.org>
- <B18D986B-5CC2-4D73-AD9C-525DBB4B93AD@oracle.com>
- <9417A81A-BEBF-4B46-AF44-98B59D23D183@redhat.com>
+Return-Path: <linux-nfs-owner@vger.kernel.org>
+Received: from mx1.redhat.com ([209.132.183.28]:56056 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1755671AbcINRkQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 14 Sep 2016 13:40:16 -0400
+Subject: Re: The Fall Bakeathon in Westford, Ma
+To: NFSv4 <nfsv4@ietf.org>,
+        Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+References: <ce08c91a-5dbd-8363-59e5-39b554ce3e04@RedHat.com>
+From: Steve Dickson <SteveD@redhat.com>
+Message-ID: <b5388b25-2efd-1e35-0f5b-5b202de50ab5@RedHat.com>
+Date: Wed, 14 Sep 2016 13:40:15 -0400
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <9417A81A-BEBF-4B46-AF44-98B59D23D183@redhat.com>
+In-Reply-To: <ce08c91a-5dbd-8363-59e5-39b554ce3e04@RedHat.com>
+Content-Type: text/plain; charset=windows-1252
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Sep 06, 2016 at 07:49:31PM -0400, Benjamin Coddington wrote:
-> On 6 Sep 2016, at 17:25, Chuck Lever wrote:
-> 
-> >> On Sep 6, 2016, at 5:01 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
-> >>
-> >> On Tue, Sep 06, 2016 at 04:49:33PM -0400, Chuck Lever wrote:
-> >>>
-> >>> On Sep 6, 2016, at 4:42 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
-> >>>> Apologies, I wasn't thinking when I wrote that patch.  The problem is
-> >>>> probably that rsc_lookup steals the passed-in memory to avoid doing an
-> >>>> allocation of its own, so we can't just pass in a pointer to memory that
-> >>>> someone else is using....
-> >>>>
-> >>>> If we really want to avoid allocation there then maybe we should
-> >>>> preallocate somwhere, or reference count these handles.
-> >>>>
-> >>>> For now reverting sounds like the right thing to do.
-> >>>
-> >>> NP, thanks for confirming!
-> >>>
-> >>>
-> >>>> Ben, did you ever confirm whether this helped with the problem you were
-> >>>> seeing?  (If I remember correctly, unnpredictable delays here could
-> >>>> cause the request to be dropped if later requests push the rpcsec_gss
-> >>>> sequence window too far.)  If so then we could look into reference
-> >>>> counting.
-> 
-> I somehow missed this; I haven't tested it.
+Just a quick reminder the block reservations will
+be expiring for both the  Marriott and Hampton
+in two days... This *Fri Sept 16*
 
-OK.  If you get a reliable reproducer for the reordering problem, we can
-revisit this, till then I'm not going to worry about it (and meanwhile
-Chuck's work to close on dropping should mitigate the symptoms).
+Use code: 'red' for the Hampton and Marriott for the online reservations
+Call them if there problems with the online reservs... 
 
---b.
+Hampton: +1.978.392.1555
+Marriott: +1.978.392.1407
+
+steved.
+
+On 07/28/2016 09:06 AM, Steve Dickson wrote:
+> Red Hat is pleased to announce the Fall NFS Bake-a-ton will be
+> hosted by Red Hat in Westford, MA office 
+> The Date: *Oct 17th - 21th*
+> 
+> Details and registration info:
+>     http://nfsv4bat.org/Events/2016/October/BAT/index.html
+> 
+> Again, RDMA testing will be done as well as the normal
+> NFSv4.x testing. 
+> 
+> This year I've added another hotel to the list.
+>     * Residence Inn Marriott - closest; w/ shuttle; full kitchen; free breakfast ($129.00)
+>     * Westford Regency Inn - w/bar ; w/shuttle ($105.00)
+>     * Hampton Inn - free breakfast ($119.00)
+> 
+> The block reservations all expire on *Sept 17* on month before
+> the event. So please book as soon as can. 
+> 
+> When registering (i.e. replying to this email) please give me
+>    * Company Name
+>    * How engineers are coming
+>    * T-shirt sizes
+>    * Hotel you will be staying in
+> 
+> I hope to see you in October!!!
+> 
+> steved.
+> 
