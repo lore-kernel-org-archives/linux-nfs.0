@@ -1,73 +1,128 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-it0-f66.google.com ([209.85.214.66]:35152 "EHLO
-        mail-it0-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751861AbcIOQqE (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 15 Sep 2016 12:46:04 -0400
-Received: by mail-it0-f66.google.com with SMTP id e20so4991477itc.2
-        for <linux-nfs@vger.kernel.org>; Thu, 15 Sep 2016 09:46:04 -0700 (PDT)
+Received: from mail-it0-f65.google.com ([209.85.214.65]:35909 "EHLO
+        mail-it0-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751861AbcIOQqG (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 15 Sep 2016 12:46:06 -0400
+Received: by mail-it0-f65.google.com with SMTP id n143so5022818ita.3
+        for <linux-nfs@vger.kernel.org>; Thu, 15 Sep 2016 09:46:05 -0700 (PDT)
 From: Trond Myklebust <trond.myklebust@primarydata.com>
 To: anna.schumaker@netapp.com
 Cc: linux-nfs@vger.kernel.org, Oleg Drokin <green@linuxhacker.ru>
-Subject: [PATCH v4 00/20] Fix delegation behaviour when server revokes some state
-Date: Thu, 15 Sep 2016 12:45:40 -0400
-Message-Id: <1473957960-10001-1-git-send-email-trond.myklebust@primarydata.com>
+Subject: [PATCH v4 01/20] NFSv4.1: Don't deadlock the state manager on the SEQUENCE status flags
+Date: Thu, 15 Sep 2016 12:45:41 -0400
+Message-Id: <1473957960-10001-2-git-send-email-trond.myklebust@primarydata.com>
+In-Reply-To: <1473957960-10001-1-git-send-email-trond.myklebust@primarydata.com>
+References: <1473957960-10001-1-git-send-email-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-According to RFC5661, if any of the SEQUENCE status bits
-SEQ4_STATUS_EXPIRED_ALL_STATE_REVOKED,
-SEQ4_STATUS_EXPIRED_SOME_STATE_REVOKED, SEQ4_STATUS_ADMIN_STATE_REVOKED,
-or SEQ4_STATUS_RECALLABLE_STATE_REVOKED are set, then we need to use
-TEST_STATEID to figure out which stateids have been revoked, so we
-can acknowledge the loss of state using FREE_STATEID.
+As described in RFC5661, section 18.46, some of the status flags exist
+in order to tell the client when it needs to acknowledge the existence of
+revoked state on the server and/or to recover state.
+Those flags will then remain set until the recovery procedure is done.
 
-While we already do this for open and lock state, we have not been doing
-so for all the delegations.
+In order to avoid looping, the client therefore needs to ignore
+those particular flags while recovering.
 
-v2: nfs_v4_2_minor_ops needs to set .test_and_free_expired too
-v3: Now with added lock revoke fixes and close/delegreturn/locku fixes
-v4: Close a bunch of corner cases
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+---
+ fs/nfs/nfs4_fs.h     |  2 +-
+ fs/nfs/nfs4proc.c    |  5 ++++-
+ fs/nfs/nfs4session.h |  1 +
+ fs/nfs/nfs4state.c   | 12 +++++++++++-
+ 4 files changed, 17 insertions(+), 3 deletions(-)
 
-Trond Myklebust (20):
-  NFSv4.1: Don't deadlock the state manager on the SEQUENCE status flags
-  NFSv4.1: Don't check delegations that are already marked as revoked
-  NFSv4.1: Allow test_stateid to handle session errors without waiting
-  NFSv4.1: Add a helper function to deal with expired stateids
-  NFSv4.x: Allow callers of nfs_remove_bad_delegation() to specify a
-    stateid
-  NFSv4.1: Test delegation stateids when server declares "some state
-    revoked"
-  NFSv4.1: Deal with server reboots during delegation expiration
-    recovery
-  NFSv4.1: Don't recheck delegations that have already been checked
-  NFSv4.1: Allow revoked stateids to skip the call to TEST_STATEID
-  NFSv4.1: Ensure we always run TEST/FREE_STATEID on locks
-  NFSv4.1: FREE_STATEID can be asynchronous
-  NFSv4.1: Ensure we call FREE_STATEID if needed on
-    close/delegreturn/locku
-  NFSv4: nfs_inode_find_delegation_state_and_recover() should check all
-    stateids
-  NFSv4: nfs4_do_handle_exception() handle revoke/expiry of a single
-    stateid
-  NFSv4: nfs4_handle_delegation_recall_error() handle expiration as
-    revoke case
-  NFSv4: nfs4_handle_setlk_error() handle expiration as revoke case
-  NFSv4.1: nfs4_layoutget_handle_exception handle revoked state
-  NFSv4: Pass the stateid to the exception handler in
-    nfs4_read/write_done_cb
-  NFSv4: Fix a race in nfs_inode_reclaim_delegation()
-  NFSv4: Fix a race when updating an open_stateid
-
- fs/nfs/delegation.c                    | 183 +++++++++++++++--
- fs/nfs/delegation.h                    |   8 +-
- fs/nfs/flexfilelayout/flexfilelayout.c |   2 +-
- fs/nfs/nfs4_fs.h                       |   5 +-
- fs/nfs/nfs4proc.c                      | 364 ++++++++++++++++++++++-----------
- fs/nfs/nfs4session.h                   |   1 +
- fs/nfs/nfs4state.c                     |  73 +++++--
- include/linux/nfs4.h                   |   1 +
- 8 files changed, 490 insertions(+), 147 deletions(-)
-
+diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
+index f230aa62ca59..4390d73a92e5 100644
+--- a/fs/nfs/nfs4_fs.h
++++ b/fs/nfs/nfs4_fs.h
+@@ -439,7 +439,7 @@ extern void nfs4_schedule_path_down_recovery(struct nfs_client *clp);
+ extern int nfs4_schedule_stateid_recovery(const struct nfs_server *, struct nfs4_state *);
+ extern int nfs4_schedule_migration_recovery(const struct nfs_server *);
+ extern void nfs4_schedule_lease_moved_recovery(struct nfs_client *);
+-extern void nfs41_handle_sequence_flag_errors(struct nfs_client *clp, u32 flags);
++extern void nfs41_handle_sequence_flag_errors(struct nfs_client *clp, u32 flags, bool);
+ extern void nfs41_handle_server_scope(struct nfs_client *,
+ 				      struct nfs41_server_scope **);
+ extern void nfs4_put_lock_state(struct nfs4_lock_state *lsp);
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 251e48e7ba16..6b700c59eede 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -616,6 +616,7 @@ int nfs40_setup_sequence(struct nfs4_slot_table *tbl,
+ 	}
+ 	spin_unlock(&tbl->slot_tbl_lock);
+ 
++	slot->privileged = args->sa_privileged ? 1 : 0;
+ 	args->sa_slot = slot;
+ 	res->sr_slot = slot;
+ 
+@@ -728,7 +729,8 @@ static int nfs41_sequence_process(struct rpc_task *task,
+ 		clp = session->clp;
+ 		do_renew_lease(clp, res->sr_timestamp);
+ 		/* Check sequence flags */
+-		nfs41_handle_sequence_flag_errors(clp, res->sr_status_flags);
++		nfs41_handle_sequence_flag_errors(clp, res->sr_status_flags,
++				!!slot->privileged);
+ 		nfs41_update_target_slotid(slot->table, slot, res);
+ 		break;
+ 	case 1:
+@@ -875,6 +877,7 @@ int nfs41_setup_sequence(struct nfs4_session *session,
+ 	}
+ 	spin_unlock(&tbl->slot_tbl_lock);
+ 
++	slot->privileged = args->sa_privileged ? 1 : 0;
+ 	args->sa_slot = slot;
+ 
+ 	dprintk("<-- %s slotid=%u seqid=%u\n", __func__,
+diff --git a/fs/nfs/nfs4session.h b/fs/nfs/nfs4session.h
+index 3bb6af70973c..dae385500005 100644
+--- a/fs/nfs/nfs4session.h
++++ b/fs/nfs/nfs4session.h
+@@ -23,6 +23,7 @@ struct nfs4_slot {
+ 	u32			slot_nr;
+ 	u32		 	seq_nr;
+ 	unsigned int		interrupted : 1,
++				privileged : 1,
+ 				seq_done : 1;
+ };
+ 
+diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
+index cada00aa5096..9801b5bb5fac 100644
+--- a/fs/nfs/nfs4state.c
++++ b/fs/nfs/nfs4state.c
+@@ -2227,13 +2227,22 @@ static void nfs41_handle_cb_path_down(struct nfs_client *clp)
+ 		nfs4_schedule_state_manager(clp);
+ }
+ 
+-void nfs41_handle_sequence_flag_errors(struct nfs_client *clp, u32 flags)
++void nfs41_handle_sequence_flag_errors(struct nfs_client *clp, u32 flags,
++		bool recovery)
+ {
+ 	if (!flags)
+ 		return;
+ 
+ 	dprintk("%s: \"%s\" (client ID %llx) flags=0x%08x\n",
+ 		__func__, clp->cl_hostname, clp->cl_clientid, flags);
++	/*
++	 * If we're called from the state manager thread, then assume we're
++	 * already handling the RECLAIM_NEEDED and/or STATE_REVOKED.
++	 * Those flags are expected to remain set until we're done
++	 * recovering (see RFC5661, section 18.46.3).
++	 */
++	if (recovery)
++		goto out_recovery;
+ 
+ 	if (flags & SEQ4_STATUS_RESTART_RECLAIM_NEEDED)
+ 		nfs41_handle_server_reboot(clp);
+@@ -2246,6 +2255,7 @@ void nfs41_handle_sequence_flag_errors(struct nfs_client *clp, u32 flags)
+ 		nfs4_schedule_lease_moved_recovery(clp);
+ 	if (flags & SEQ4_STATUS_RECALLABLE_STATE_REVOKED)
+ 		nfs41_handle_recallable_state_revoked(clp);
++out_recovery:
+ 	if (flags & SEQ4_STATUS_BACKCHANNEL_FAULT)
+ 		nfs41_handle_backchannel_fault(clp);
+ 	else if (flags & (SEQ4_STATUS_CB_PATH_DOWN |
 -- 
 2.7.4
 
