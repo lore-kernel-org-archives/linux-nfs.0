@@ -1,72 +1,52 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-it0-f68.google.com ([209.85.214.68]:33392 "EHLO
-        mail-it0-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1754148AbcIOQq1 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 15 Sep 2016 12:46:27 -0400
-Received: by mail-it0-f68.google.com with SMTP id x192so5064055itb.0
-        for <linux-nfs@vger.kernel.org>; Thu, 15 Sep 2016 09:46:26 -0700 (PDT)
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: anna.schumaker@netapp.com
-Cc: linux-nfs@vger.kernel.org, Oleg Drokin <green@linuxhacker.ru>
-Subject: [PATCH v4 19/20] NFSv4: Fix a race in nfs_inode_reclaim_delegation()
-Date: Thu, 15 Sep 2016 12:45:59 -0400
-Message-Id: <1473957960-10001-20-git-send-email-trond.myklebust@primarydata.com>
-In-Reply-To: <1473957960-10001-19-git-send-email-trond.myklebust@primarydata.com>
-References: <1473957960-10001-1-git-send-email-trond.myklebust@primarydata.com>
- <1473957960-10001-2-git-send-email-trond.myklebust@primarydata.com>
- <1473957960-10001-3-git-send-email-trond.myklebust@primarydata.com>
- <1473957960-10001-4-git-send-email-trond.myklebust@primarydata.com>
- <1473957960-10001-5-git-send-email-trond.myklebust@primarydata.com>
- <1473957960-10001-6-git-send-email-trond.myklebust@primarydata.com>
- <1473957960-10001-7-git-send-email-trond.myklebust@primarydata.com>
- <1473957960-10001-8-git-send-email-trond.myklebust@primarydata.com>
- <1473957960-10001-9-git-send-email-trond.myklebust@primarydata.com>
- <1473957960-10001-10-git-send-email-trond.myklebust@primarydata.com>
- <1473957960-10001-11-git-send-email-trond.myklebust@primarydata.com>
- <1473957960-10001-12-git-send-email-trond.myklebust@primarydata.com>
- <1473957960-10001-13-git-send-email-trond.myklebust@primarydata.com>
- <1473957960-10001-14-git-send-email-trond.myklebust@primarydata.com>
- <1473957960-10001-15-git-send-email-trond.myklebust@primarydata.com>
- <1473957960-10001-16-git-send-email-trond.myklebust@primarydata.com>
- <1473957960-10001-17-git-send-email-trond.myklebust@primarydata.com>
- <1473957960-10001-18-git-send-email-trond.myklebust@primarydata.com>
- <1473957960-10001-19-git-send-email-trond.myklebust@primarydata.com>
+Received: from mx1.redhat.com ([209.132.183.28]:54498 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1751098AbcIOSkv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 15 Sep 2016 14:40:51 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: trond.myklebust@primarydata.com, anna.schumaker@netapp.com
+Cc: linux-nfs@vger.kernel.org, tigran.mkrtchyan@desy.de
+Subject: [PATCH v4 resend 0/2] pnfs: allow client to support servers that send multiple layout types
+Date: Thu, 15 Sep 2016 14:40:47 -0400
+Message-Id: <1473964849-3194-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-If we race with a delegreturn before taking the spin lock, we
-currently end up dropping the delegation stateid.
+Resending as I noticed that Anna had merged the first of the two
+patches into her linux-next branch, but not the second one. Were
+there any further concerns with it?
 
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
----
- fs/nfs/delegation.c | 12 +++++-------
- 1 file changed, 5 insertions(+), 7 deletions(-)
+v4:
+- pass around fsinfo instead of separate array and length args
 
-diff --git a/fs/nfs/delegation.c b/fs/nfs/delegation.c
-index efd50159ab4a..a17d9a15eb3b 100644
---- a/fs/nfs/delegation.c
-+++ b/fs/nfs/delegation.c
-@@ -185,15 +185,13 @@ void nfs_inode_reclaim_delegation(struct inode *inode, struct rpc_cred *cred,
- 			rcu_read_unlock();
- 			put_rpccred(oldcred);
- 			trace_nfs4_reclaim_delegation(inode, res->delegation_type);
--		} else {
--			/* We appear to have raced with a delegation return. */
--			spin_unlock(&delegation->lock);
--			rcu_read_unlock();
--			nfs_inode_set_delegation(inode, cred, res);
-+			return;
- 		}
--	} else {
--		rcu_read_unlock();
-+		/* We appear to have raced with a delegation return. */
-+		spin_unlock(&delegation->lock);
- 	}
-+	rcu_read_unlock();
-+	nfs_inode_set_delegation(inode, cred, res);
- }
- 
- static int nfs_do_return_delegation(struct inode *inode, struct nfs_delegation *delegation, int issync)
+v3:
+- use sort() from lib/sort.c to sort the list
+
+v2:
+- rework Tigran's patch to preserve existing selection behaviour
+- simplify layout driver selection by sorting the list
+
+This is v4 of the patchset. The main change is the change to pass
+around the fsinfo instead of separate array pointer and length args.
+
+Only lightly tested by mounting a server that sends both flexfiles and
+block layouts. The client successfully selected the block layout in most
+cases, but if I blacklist blocklayoutdriver then it selects flexfiles
+instead.
+
+Jeff Layton (2):
+  pnfs: track multiple layout types in fsinfo structure
+  pnfs: add a new mechanism to select a layout driver according to an
+    ordered list
+
+ fs/nfs/client.c         |  3 ++-
+ fs/nfs/nfs4proc.c       |  2 +-
+ fs/nfs/nfs4xdr.c        | 40 ++++++++++++++--------------
+ fs/nfs/pnfs.c           | 69 ++++++++++++++++++++++++++++++++++++++++---------
+ fs/nfs/pnfs.h           |  5 ++--
+ include/linux/nfs_xdr.h |  8 +++++-
+ 6 files changed, 91 insertions(+), 36 deletions(-)
+
 -- 
 2.7.4
 
