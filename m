@@ -1,15 +1,15 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-it0-f65.google.com ([209.85.214.65]:35625 "EHLO
+Received: from mail-it0-f65.google.com ([209.85.214.65]:35659 "EHLO
         mail-it0-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1752099AbcIOOzj (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 15 Sep 2016 10:55:39 -0400
-Subject: [PATCH v3 05/22] SUNRPC: Separate buffer pointers for RPC Call and
- Reply messages
+        with ESMTP id S1751627AbcIOOzs (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 15 Sep 2016 10:55:48 -0400
+Subject: [PATCH v3 06/22] SUNRPC: Add a transport-specific private field in
+ rpc_rqst
 From: Chuck Lever <chuck.lever@oracle.com>
 To: anna.schumaker@netapp.com
 Cc: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Thu, 15 Sep 2016 10:55:37 -0400
-Message-ID: <20160915145537.11080.82121.stgit@manet.1015granger.net>
+Date: Thu, 15 Sep 2016 10:55:45 -0400
+Message-ID: <20160915145545.11080.49016.stgit@manet.1015granger.net>
 In-Reply-To: <20160915143440.11080.89241.stgit@manet.1015granger.net>
 References: <20160915143440.11080.89241.stgit@manet.1015granger.net>
 MIME-Version: 1.0
@@ -17,93 +17,124 @@ Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-For xprtrdma, the RPC Call and Reply buffers are involved in real
-I/O operations.
+Currently there's a hidden and indirect mechanism for finding the
+rpcrdma_req that goes with an rpc_rqst. It depends on getting from
+the rq_buffer pointer in struct rpc_rqst to the struct
+rpcrdma_regbuf that controls that buffer, and then to the struct
+rpcrdma_req it goes with.
 
-To start with, the DMA direction of the I/O for a Call is opposite
-that of a Reply.
+This was done back in the day to avoid the need to add a per-rqst
+pointer or to alter the buf_free API when support for RPC-over-RDMA
+was introduced.
 
-In the current arrangement, the Reply buffer address is on a
-four-byte alignment just past the call buffer. Would be friendlier
-on some platforms if that was at a DMA cache alignment instead.
-
-Because the current arrangement allocates a single memory region
-which contains both buffers, the RPC Reply buffer often contains a
-page boundary in it when the Call buffer is large enough (which is
-frequent).
-
-It would be a little nicer for setting up DMA operations (and
-possible registration of the Reply buffer) if the two buffers were
-separated, well-aligned, and contained as few page boundaries as
-possible.
-
-Now, I could just pad out the single memory region used for the pair
-of buffers. But frequently that would mean a lot of unused space to
-ensure the Reply buffer did not have a page boundary.
-
-Add a separate pointer to rpc_rqst that points right to the RPC
-Reply buffer. This makes no difference to xprtsock, but it will help
-xprtrdma in subsequent patches.
+I'm about to change the way regbuf's work to support larger inline
+thresholds. Now is a good time to replace this indirect mechanism
+with something that is more straightforward. I guess this should be
+considered a clean up.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- include/linux/sunrpc/xprt.h     |    5 +++--
- net/sunrpc/clnt.c               |    2 +-
- net/sunrpc/sched.c              |    1 +
- net/sunrpc/xprtrdma/transport.c |    1 +
- 4 files changed, 6 insertions(+), 3 deletions(-)
+ include/linux/sunrpc/xprt.h       |    1 +
+ net/sunrpc/xprtrdma/backchannel.c |    6 ++----
+ net/sunrpc/xprtrdma/transport.c   |    2 +-
+ net/sunrpc/xprtrdma/verbs.c       |    1 -
+ net/sunrpc/xprtrdma/xprt_rdma.h   |   13 +++++++------
+ 5 files changed, 11 insertions(+), 12 deletions(-)
 
 diff --git a/include/linux/sunrpc/xprt.h b/include/linux/sunrpc/xprt.h
-index 72c2aeb..46f069e 100644
+index 46f069e..a5da60b 100644
 --- a/include/linux/sunrpc/xprt.h
 +++ b/include/linux/sunrpc/xprt.h
-@@ -84,8 +84,9 @@ struct rpc_rqst {
+@@ -83,6 +83,7 @@ struct rpc_rqst {
+ 	void (*rq_release_snd_buf)(struct rpc_rqst *); /* release rq_enc_pages */
  	struct list_head	rq_list;
  
++	void			*rq_xprtdata;	/* Per-xprt private data */
  	void			*rq_buffer;	/* Call XDR encode buffer */
--	size_t			rq_callsize,
--				rq_rcvsize;
-+	size_t			rq_callsize;
-+	void			*rq_rbuffer;	/* Reply XDR decode buffer */
-+	size_t			rq_rcvsize;
- 	size_t			rq_xmit_bytes_sent;	/* total bytes sent */
- 	size_t			rq_reply_bytes_recvd;	/* total reply bytes */
- 							/* received */
-diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
-index 4dc7ed7..07d0faa 100644
---- a/net/sunrpc/clnt.c
-+++ b/net/sunrpc/clnt.c
-@@ -1768,7 +1768,7 @@ rpc_xdr_encode(struct rpc_task *task)
- 		     req->rq_buffer,
- 		     req->rq_callsize);
- 	xdr_buf_init(&req->rq_rcv_buf,
--		     (char *)req->rq_buffer + req->rq_callsize,
-+		     req->rq_rbuffer,
- 		     req->rq_rcvsize);
- 
- 	p = rpc_encode_header(task);
-diff --git a/net/sunrpc/sched.c b/net/sunrpc/sched.c
-index 6690ebc..5db68b3 100644
---- a/net/sunrpc/sched.c
-+++ b/net/sunrpc/sched.c
-@@ -891,6 +891,7 @@ int rpc_malloc(struct rpc_task *task)
- 	dprintk("RPC: %5u allocated buffer of size %zu at %p\n",
- 			task->tk_pid, size, buf);
- 	rqst->rq_buffer = buf->data;
-+	rqst->rq_rbuffer = (char *)rqst->rq_buffer + rqst->rq_callsize;
+ 	size_t			rq_callsize;
+ 	void			*rq_rbuffer;	/* Reply XDR decode buffer */
+diff --git a/net/sunrpc/xprtrdma/backchannel.c b/net/sunrpc/xprtrdma/backchannel.c
+index d3cfaf2..c4904f8 100644
+--- a/net/sunrpc/xprtrdma/backchannel.c
++++ b/net/sunrpc/xprtrdma/backchannel.c
+@@ -55,11 +55,9 @@ static int rpcrdma_bc_setup_rqst(struct rpcrdma_xprt *r_xprt,
+ 	rb = rpcrdma_alloc_regbuf(ia, size, GFP_KERNEL);
+ 	if (IS_ERR(rb))
+ 		goto out_fail;
+-	rb->rg_owner = req;
+ 	req->rl_sendbuf = rb;
+-	/* so that rpcr_to_rdmar works when receiving a request */
+-	rqst->rq_buffer = (void *)req->rl_sendbuf->rg_base;
+-	xdr_buf_init(&rqst->rq_snd_buf, rqst->rq_buffer, size);
++	xdr_buf_init(&rqst->rq_snd_buf, rb->rg_base, size);
++	rpcrdma_set_xprtdata(rqst, req);
  	return 0;
- }
- EXPORT_SYMBOL_GPL(rpc_malloc);
+ 
+ out_fail:
 diff --git a/net/sunrpc/xprtrdma/transport.c b/net/sunrpc/xprtrdma/transport.c
-index ebf14ba..136caf3 100644
+index 136caf3..d83bffa 100644
 --- a/net/sunrpc/xprtrdma/transport.c
 +++ b/net/sunrpc/xprtrdma/transport.c
-@@ -524,6 +524,7 @@ out:
+@@ -523,6 +523,7 @@ xprt_rdma_allocate(struct rpc_task *task)
+ out:
  	dprintk("RPC:       %s: size %zd, request 0x%p\n", __func__, size, req);
  	req->rl_connect_cookie = 0;	/* our reserved value */
++	rpcrdma_set_xprtdata(rqst, req);
  	rqst->rq_buffer = req->rl_sendbuf->rg_base;
-+	rqst->rq_rbuffer = (char *)rqst->rq_buffer + rqst->rq_rcvsize;
+ 	rqst->rq_rbuffer = (char *)rqst->rq_buffer + rqst->rq_rcvsize;
  	return 0;
+@@ -559,7 +560,6 @@ out_sendbuf:
+ 	rb = rpcrdma_alloc_regbuf(&r_xprt->rx_ia, size, flags);
+ 	if (IS_ERR(rb))
+ 		goto out_fail;
+-	rb->rg_owner = req;
  
- out_rdmabuf:
+ 	r_xprt->rx_stats.hardway_register_count += size;
+ 	rpcrdma_free_regbuf(&r_xprt->rx_ia, req->rl_sendbuf);
+diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
+index 799cce6..93def0b 100644
+--- a/net/sunrpc/xprtrdma/verbs.c
++++ b/net/sunrpc/xprtrdma/verbs.c
+@@ -1210,7 +1210,6 @@ rpcrdma_alloc_regbuf(struct rpcrdma_ia *ia, size_t size, gfp_t flags)
+ 	iov->length = size;
+ 	iov->lkey = ia->ri_pd->local_dma_lkey;
+ 	rb->rg_size = size;
+-	rb->rg_owner = NULL;
+ 	return rb;
+ 
+ out_free:
+diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
+index 4838a85..484855e 100644
+--- a/net/sunrpc/xprtrdma/xprt_rdma.h
++++ b/net/sunrpc/xprtrdma/xprt_rdma.h
+@@ -113,7 +113,6 @@ struct rpcrdma_ep {
+ 
+ struct rpcrdma_regbuf {
+ 	size_t			rg_size;
+-	struct rpcrdma_req	*rg_owner;
+ 	struct ib_sge		rg_iov;
+ 	__be32			rg_base[0] __attribute__ ((aligned(256)));
+ };
+@@ -297,14 +296,16 @@ struct rpcrdma_req {
+ 	struct rpcrdma_mr_seg	rl_segments[RPCRDMA_MAX_SEGS];
+ };
+ 
++static inline void
++rpcrdma_set_xprtdata(struct rpc_rqst *rqst, struct rpcrdma_req *req)
++{
++	rqst->rq_xprtdata = req;
++}
++
+ static inline struct rpcrdma_req *
+ rpcr_to_rdmar(struct rpc_rqst *rqst)
+ {
+-	void *buffer = rqst->rq_buffer;
+-	struct rpcrdma_regbuf *rb;
+-
+-	rb = container_of(buffer, struct rpcrdma_regbuf, rg_base);
+-	return rb->rg_owner;
++	return rqst->rq_xprtdata;
+ }
+ 
+ /*
 
