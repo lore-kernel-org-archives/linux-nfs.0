@@ -1,87 +1,71 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-it0-f68.google.com ([209.85.214.68]:33822 "EHLO
+Received: from mail-it0-f68.google.com ([209.85.214.68]:33283 "EHLO
         mail-it0-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1752938AbcIOQqO (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 15 Sep 2016 12:46:14 -0400
-Received: by mail-it0-f68.google.com with SMTP id 186so5035159itf.1
-        for <linux-nfs@vger.kernel.org>; Thu, 15 Sep 2016 09:46:13 -0700 (PDT)
+        with ESMTP id S1752717AbcIOQqI (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 15 Sep 2016 12:46:08 -0400
+Received: by mail-it0-f68.google.com with SMTP id x192so5063237itb.0
+        for <linux-nfs@vger.kernel.org>; Thu, 15 Sep 2016 09:46:08 -0700 (PDT)
 From: Trond Myklebust <trond.myklebust@primarydata.com>
 To: anna.schumaker@netapp.com
 Cc: linux-nfs@vger.kernel.org, Oleg Drokin <green@linuxhacker.ru>
-Subject: [PATCH v4 07/20] NFSv4.1: Deal with server reboots during delegation expiration recovery
-Date: Thu, 15 Sep 2016 12:45:47 -0400
-Message-Id: <1473957960-10001-8-git-send-email-trond.myklebust@primarydata.com>
-In-Reply-To: <1473957960-10001-7-git-send-email-trond.myklebust@primarydata.com>
+Subject: [PATCH v4 03/20] NFSv4.1: Allow test_stateid to handle session errors without waiting
+Date: Thu, 15 Sep 2016 12:45:43 -0400
+Message-Id: <1473957960-10001-4-git-send-email-trond.myklebust@primarydata.com>
+In-Reply-To: <1473957960-10001-3-git-send-email-trond.myklebust@primarydata.com>
 References: <1473957960-10001-1-git-send-email-trond.myklebust@primarydata.com>
  <1473957960-10001-2-git-send-email-trond.myklebust@primarydata.com>
  <1473957960-10001-3-git-send-email-trond.myklebust@primarydata.com>
- <1473957960-10001-4-git-send-email-trond.myklebust@primarydata.com>
- <1473957960-10001-5-git-send-email-trond.myklebust@primarydata.com>
- <1473957960-10001-6-git-send-email-trond.myklebust@primarydata.com>
- <1473957960-10001-7-git-send-email-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Ensure that if the server reboots while we're testing and recovering
-from revoked delegations, we exit to allow the state manager to
-handle matters.
+If the server crashes while we're testing stateids for validity, then
+we want to initiate session recovery. Usually, we will be calling from
+a state manager thread, though, so we don't really want to wait.
 
 Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
 ---
- fs/nfs/delegation.c | 26 ++++++++++++++++++++++++++
- 1 file changed, 26 insertions(+)
+ fs/nfs/nfs4proc.c | 21 ++++++++++++++++++---
+ 1 file changed, 18 insertions(+), 3 deletions(-)
 
-diff --git a/fs/nfs/delegation.c b/fs/nfs/delegation.c
-index ff0c1a0feb9d..b873271c613a 100644
---- a/fs/nfs/delegation.c
-+++ b/fs/nfs/delegation.c
-@@ -874,6 +874,13 @@ restart:
- 	rcu_read_unlock();
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index a026156434ae..2b569d5fb3e2 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -8598,6 +8598,23 @@ static int _nfs41_test_stateid(struct nfs_server *server,
+ 	return -res.status;
  }
  
-+static inline bool nfs4_server_rebooted(const struct nfs_client *clp)
++static void nfs4_handle_delay_or_session_error(struct nfs_server *server,
++		int err, struct nfs4_exception *exception)
 +{
-+	return (clp->cl_state & (BIT(NFS4CLNT_CHECK_LEASE) |
-+				BIT(NFS4CLNT_LEASE_EXPIRED) |
-+				BIT(NFS4CLNT_SESSION_RESET))) != 0;
++	exception->retry = 0;
++	switch(err) {
++	case -NFS4ERR_DELAY:
++		nfs4_handle_exception(server, err, exception);
++		break;
++	case -NFS4ERR_BADSESSION:
++	case -NFS4ERR_BADSLOT:
++	case -NFS4ERR_BAD_HIGH_SLOT:
++	case -NFS4ERR_CONN_NOT_BOUND_TO_SESSION:
++	case -NFS4ERR_DEADSESSION:
++		nfs4_do_handle_exception(server, err, exception);
++	}
 +}
 +
- static void nfs_mark_test_expired_delegation(struct nfs_server *server,
- 	    struct nfs_delegation *delegation)
- {
-@@ -882,6 +889,19 @@ static void nfs_mark_test_expired_delegation(struct nfs_server *server,
- 	set_bit(NFS4CLNT_DELEGATION_EXPIRED, &server->nfs_client->cl_state);
+ /**
+  * nfs41_test_stateid - perform a TEST_STATEID operation
+  *
+@@ -8617,9 +8634,7 @@ static int nfs41_test_stateid(struct nfs_server *server,
+ 	int err;
+ 	do {
+ 		err = _nfs41_test_stateid(server, stateid, cred);
+-		if (err != -NFS4ERR_DELAY)
+-			break;
+-		nfs4_handle_exception(server, err, &exception);
++		nfs4_handle_delay_or_session_error(server, err, &exception);
+ 	} while (exception.retry);
+ 	return err;
  }
- 
-+static void nfs_inode_mark_test_expired_delegation(struct nfs_server *server,
-+		struct inode *inode)
-+{
-+	struct nfs_delegation *delegation;
-+
-+	rcu_read_lock();
-+	delegation = rcu_dereference(NFS_I(inode)->delegation);
-+	if (delegation)
-+		nfs_mark_test_expired_delegation(server, delegation);
-+	rcu_read_unlock();
-+
-+}
-+
- static void nfs_delegation_mark_test_expired_server(struct nfs_server *server)
- {
- 	struct nfs_delegation *delegation;
-@@ -954,6 +974,12 @@ restart:
- 				nfs_inode_find_state_and_recover(inode, &stateid);
- 			}
- 			put_rpccred(cred);
-+			if (nfs4_server_rebooted(clp)) {
-+				nfs_inode_mark_test_expired_delegation(server,inode);
-+				iput(inode);
-+				nfs_sb_deactive(server->super);
-+				return;
-+			}
- 			iput(inode);
- 			nfs_sb_deactive(server->super);
- 			goto restart;
 -- 
 2.7.4
 
