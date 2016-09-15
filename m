@@ -1,218 +1,300 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:39262 "EHLO mx1.redhat.com"
+Received: from mga14.intel.com ([192.55.52.115]:37947 "EHLO mga14.intel.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751098AbcIOSkx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 15 Sep 2016 14:40:53 -0400
-From: Jeff Layton <jlayton@redhat.com>
-To: trond.myklebust@primarydata.com, anna.schumaker@netapp.com
-Cc: linux-nfs@vger.kernel.org, tigran.mkrtchyan@desy.de
-Subject: [PATCH v4 resend 1/2] pnfs: track multiple layout types in fsinfo structure
-Date: Thu, 15 Sep 2016 14:40:48 -0400
-Message-Id: <1473964849-3194-2-git-send-email-jlayton@redhat.com>
-In-Reply-To: <1473964849-3194-1-git-send-email-jlayton@redhat.com>
-References: <1473964849-3194-1-git-send-email-jlayton@redhat.com>
+        id S1755340AbcIOWRh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 15 Sep 2016 18:17:37 -0400
+Date: Fri, 16 Sep 2016 06:17:11 +0800
+From: kbuild test robot <lkp@intel.com>
+To: Trond Myklebust <trond.myklebust@primarydata.com>
+Cc: kbuild-all@01.org, anna.schumaker@netapp.com,
+        linux-nfs@vger.kernel.org, Oleg Drokin <green@linuxhacker.ru>
+Subject: Re: [PATCH v4 20/20] NFSv4: Fix a race when updating an open_stateid
+Message-ID: <201609160640.LCbdSjO1%fengguang.wu@intel.com>
+MIME-Version: 1.0
+Content-Type: multipart/mixed; boundary="bg08WKrSYDhXBjb5"
+In-Reply-To: <1473957960-10001-21-git-send-email-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Current NFSv4.1/pNFS client assumes that MDS supports only one layout
-type. While it's true for most existing servers, this may not always be
-the case.
 
-For now, this patch just plumbs in the ability to track a list of
-layouts in the fsinfo structure. The existing behavior of the client
-is preserved, by having it just select the first entry in the list.
+--bg08WKrSYDhXBjb5
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
 
-Signed-off-by: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
-Signed-off-by: Jeff Layton <jlayton@poochiereds.net>
-Reviewed-by: J. Bruce Fields <bfields@fieldses.org>
+Hi Trond,
+
+[auto build test WARNING on nfs/linux-next]
+[also build test WARNING on v4.8-rc6 next-20160915]
+[if your patch is applied to the wrong git tree, please drop us a note to help improve the system]
+[Suggest to use git(>=2.9.0) format-patch --base=<commit> (or --base=auto for convenience) to record what (public, well-known) commit your patch series was built on]
+[Check https://git-scm.com/docs/git-format-patch for more information]
+
+url:    https://github.com/0day-ci/linux/commits/Trond-Myklebust/Fix-delegation-behaviour-when-server-revokes-some-state/20160916-050650
+base:   git://git.linux-nfs.org/projects/trondmy/linux-nfs.git linux-next
+config: m68k-sun3_defconfig (attached as .config)
+compiler: m68k-linux-gcc (GCC) 4.9.0
+reproduce:
+        wget https://git.kernel.org/cgit/linux/kernel/git/wfg/lkp-tests.git/plain/sbin/make.cross -O ~/bin/make.cross
+        chmod +x ~/bin/make.cross
+        # save the attached .config to linux build tree
+        make.cross ARCH=m68k 
+
+All warnings (new ones prefixed by >>):
+
+   fs/nfs/nfs4proc.c: In function 'update_open_stateid':
+>> fs/nfs/nfs4proc.c:1524:2: warning: missing braces around initializer [-Wmissing-braces]
+     nfs4_stateid freeme = {0};
+     ^
+   fs/nfs/nfs4proc.c:1524:2: warning: (near initialization for 'freeme.<anonymous>') [-Wmissing-braces]
+
+vim +1524 fs/nfs/nfs4proc.c
+
+  1508		if (open_stateid != NULL)
+  1509			nfs_set_open_stateid_locked(state, open_stateid, fmode, freeme);
+  1510		write_sequnlock(&state->seqlock);
+  1511		update_open_stateflags(state, fmode);
+  1512		spin_unlock(&state->owner->so_lock);
+  1513	}
+  1514	
+  1515	static int update_open_stateid(struct nfs4_state *state,
+  1516			const nfs4_stateid *open_stateid,
+  1517			const nfs4_stateid *delegation,
+  1518			fmode_t fmode)
+  1519	{
+  1520		struct nfs_server *server = NFS_SERVER(state->inode);
+  1521		struct nfs_client *clp = server->nfs_client;
+  1522		struct nfs_inode *nfsi = NFS_I(state->inode);
+  1523		struct nfs_delegation *deleg_cur;
+> 1524		nfs4_stateid freeme = {0};
+  1525		int ret = 0;
+  1526	
+  1527		fmode &= (FMODE_READ|FMODE_WRITE);
+  1528	
+  1529		rcu_read_lock();
+  1530		deleg_cur = rcu_dereference(nfsi->delegation);
+  1531		if (deleg_cur == NULL)
+  1532			goto no_delegation;
+
 ---
- fs/nfs/client.c         |  2 +-
- fs/nfs/nfs4xdr.c        | 23 ++++++++++-------------
- fs/nfs/pnfs.c           | 27 ++++++++++++++++-----------
- fs/nfs/pnfs.h           |  4 ++--
- include/linux/nfs_xdr.h |  7 ++++++-
- 5 files changed, 35 insertions(+), 28 deletions(-)
+0-DAY kernel test infrastructure                Open Source Technology Center
+https://lists.01.org/pipermail/kbuild-all                   Intel Corporation
 
-diff --git a/fs/nfs/client.c b/fs/nfs/client.c
-index 1e106780a237..0c1b3a002dc2 100644
---- a/fs/nfs/client.c
-+++ b/fs/nfs/client.c
-@@ -785,7 +785,7 @@ int nfs_probe_fsinfo(struct nfs_server *server, struct nfs_fh *mntfh, struct nfs
- 	}
- 
- 	fsinfo.fattr = fattr;
--	fsinfo.layouttype = 0;
-+	memset(fsinfo.layouttype, 0, sizeof(fsinfo.layouttype));
- 	error = clp->rpc_ops->fsinfo(server, mntfh, &fsinfo);
- 	if (error < 0)
- 		goto out_error;
-diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index 7bd3a5c09d31..41a02f994976 100644
---- a/fs/nfs/nfs4xdr.c
-+++ b/fs/nfs/nfs4xdr.c
-@@ -4725,14 +4725,13 @@ static int decode_getfattr(struct xdr_stream *xdr, struct nfs_fattr *fattr,
- }
- 
- /*
-- * Decode potentially multiple layout types. Currently we only support
-- * one layout driver per file system.
-+ * Decode potentially multiple layout types.
-  */
--static int decode_first_pnfs_layout_type(struct xdr_stream *xdr,
-+static int decode_pnfs_layout_types(struct xdr_stream *xdr,
- 					 uint32_t *layouttype)
- {
- 	__be32 *p;
--	int num;
-+	uint32_t num, i;
- 
- 	p = xdr_inline_decode(xdr, 4);
- 	if (unlikely(!p))
-@@ -4741,18 +4740,17 @@ static int decode_first_pnfs_layout_type(struct xdr_stream *xdr,
- 
- 	/* pNFS is not supported by the underlying file system */
- 	if (num == 0) {
--		*layouttype = 0;
- 		return 0;
- 	}
--	if (num > 1)
--		printk(KERN_INFO "NFS: %s: Warning: Multiple pNFS layout "
--			"drivers per filesystem not supported\n", __func__);
-+	if (num > NFS_MAX_LAYOUT_TYPES)
-+		printk(KERN_INFO "NFS: %s: Warning: Too many (%d) pNFS layout types\n", __func__, num);
- 
- 	/* Decode and set first layout type, move xdr->p past unused types */
- 	p = xdr_inline_decode(xdr, num * 4);
- 	if (unlikely(!p))
- 		goto out_overflow;
--	*layouttype = be32_to_cpup(p);
-+	for(i = 0; i < num && i < NFS_MAX_LAYOUT_TYPES; i++)
-+		layouttype[i] = be32_to_cpup(p++);
- 	return 0;
- out_overflow:
- 	print_overflow_msg(__func__, xdr);
-@@ -4772,10 +4770,9 @@ static int decode_attr_pnfstype(struct xdr_stream *xdr, uint32_t *bitmap,
- 	if (unlikely(bitmap[1] & (FATTR4_WORD1_FS_LAYOUT_TYPES - 1U)))
- 		return -EIO;
- 	if (bitmap[1] & FATTR4_WORD1_FS_LAYOUT_TYPES) {
--		status = decode_first_pnfs_layout_type(xdr, layouttype);
-+		status = decode_pnfs_layout_types(xdr, layouttype);
- 		bitmap[1] &= ~FATTR4_WORD1_FS_LAYOUT_TYPES;
--	} else
--		*layouttype = 0;
-+	}
- 	return status;
- }
- 
-@@ -4856,7 +4853,7 @@ static int decode_fsinfo(struct xdr_stream *xdr, struct nfs_fsinfo *fsinfo)
- 	status = decode_attr_time_delta(xdr, bitmap, &fsinfo->time_delta);
- 	if (status != 0)
- 		goto xdr_error;
--	status = decode_attr_pnfstype(xdr, bitmap, &fsinfo->layouttype);
-+	status = decode_attr_pnfstype(xdr, bitmap, fsinfo->layouttype);
- 	if (status != 0)
- 		goto xdr_error;
- 
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index 2c93a85eda51..a6a683fbd230 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -102,32 +102,37 @@ unset_pnfs_layoutdriver(struct nfs_server *nfss)
-  * Try to set the server's pnfs module to the pnfs layout type specified by id.
-  * Currently only one pNFS layout driver per filesystem is supported.
-  *
-- * @id layout type. Zero (illegal layout type) indicates pNFS not in use.
-+ * @ids array of layout types supported by MDS.
-  */
- void
- set_pnfs_layoutdriver(struct nfs_server *server, const struct nfs_fh *mntfh,
--		      u32 id)
-+		      u32 *ids)
- {
- 	struct pnfs_layoutdriver_type *ld_type = NULL;
-+	u32 id;
- 
--	if (id == 0)
--		goto out_no_driver;
- 	if (!(server->nfs_client->cl_exchange_flags &
- 		 (EXCHGID4_FLAG_USE_NON_PNFS | EXCHGID4_FLAG_USE_PNFS_MDS))) {
--		printk(KERN_ERR "NFS: %s: id %u cl_exchange_flags 0x%x\n",
--			__func__, id, server->nfs_client->cl_exchange_flags);
-+		printk(KERN_ERR "NFS: %s: cl_exchange_flags 0x%x\n",
-+			__func__, server->nfs_client->cl_exchange_flags);
- 		goto out_no_driver;
- 	}
-+
-+	id = ids[0];
-+	if (!id)
-+		goto out_no_driver;
-+
- 	ld_type = find_pnfs_driver(id);
- 	if (!ld_type) {
- 		request_module("%s-%u", LAYOUT_NFSV4_1_MODULE_PREFIX, id);
- 		ld_type = find_pnfs_driver(id);
--		if (!ld_type) {
--			dprintk("%s: No pNFS module found for %u.\n",
--				__func__, id);
--			goto out_no_driver;
--		}
- 	}
-+
-+	if (!ld_type) {
-+		dprintk("%s: No pNFS module found for %u.\n", __func__, id);
-+		goto out_no_driver;
-+	}
-+
- 	server->pnfs_curr_ld = ld_type;
- 	if (ld_type->set_layoutdriver
- 	    && ld_type->set_layoutdriver(server, mntfh)) {
-diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
-index 31d99b2927b0..be515e6a3823 100644
---- a/fs/nfs/pnfs.h
-+++ b/fs/nfs/pnfs.h
-@@ -236,7 +236,7 @@ void pnfs_get_layout_hdr(struct pnfs_layout_hdr *lo);
- void pnfs_put_lseg(struct pnfs_layout_segment *lseg);
- void pnfs_put_lseg_locked(struct pnfs_layout_segment *lseg);
- 
--void set_pnfs_layoutdriver(struct nfs_server *, const struct nfs_fh *, u32);
-+void set_pnfs_layoutdriver(struct nfs_server *, const struct nfs_fh *, u32 *);
- void unset_pnfs_layoutdriver(struct nfs_server *);
- void pnfs_generic_pg_init_read(struct nfs_pageio_descriptor *, struct nfs_page *);
- int pnfs_generic_pg_readpages(struct nfs_pageio_descriptor *desc);
-@@ -657,7 +657,7 @@ pnfs_wait_on_layoutreturn(struct inode *ino, struct rpc_task *task)
- }
- 
- static inline void set_pnfs_layoutdriver(struct nfs_server *s,
--					 const struct nfs_fh *mntfh, u32 id)
-+					 const struct nfs_fh *mntfh, u32 *ids)
- {
- }
- 
-diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-index 7cc0deee5bde..f11b26ed001b 100644
---- a/include/linux/nfs_xdr.h
-+++ b/include/linux/nfs_xdr.h
-@@ -125,6 +125,11 @@ struct nfs_fattr {
- 		| NFS_ATTR_FATTR_V4_SECURITY_LABEL)
- 
- /*
-+ * Maximal number of supported layout drivers.
-+ */
-+#define NFS_MAX_LAYOUT_TYPES 8
-+
-+/*
-  * Info on the file system
-  */
- struct nfs_fsinfo {
-@@ -139,7 +144,7 @@ struct nfs_fsinfo {
- 	__u64			maxfilesize;
- 	struct timespec		time_delta; /* server time granularity */
- 	__u32			lease_time; /* in seconds */
--	__u32			layouttype; /* supported pnfs layout driver */
-+	__u32			layouttype[NFS_MAX_LAYOUT_TYPES]; /* supported pnfs layout driver */
- 	__u32			blksize; /* preferred pnfs io block size */
- 	__u32			clone_blksize; /* granularity of a CLONE operation */
- };
--- 
-2.7.4
+--bg08WKrSYDhXBjb5
+Content-Type: application/octet-stream
+Content-Disposition: attachment; filename=".config.gz"
+Content-Transfer-Encoding: base64
 
+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
+
+--bg08WKrSYDhXBjb5--
