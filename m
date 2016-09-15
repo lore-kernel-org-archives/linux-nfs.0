@@ -1,50 +1,76 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from us-smtp-delivery-194.mimecast.com ([216.205.24.194]:26634 "EHLO
-        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1752207AbcIOXAx (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 15 Sep 2016 19:00:53 -0400
-From: Trond Myklebust <trondmy@primarydata.com>
-To: Ben Greear <greearb@candelatech.com>
-CC: List Linux NFS Mailing <linux-nfs@vger.kernel.org>
+Received: from mail2.candelatech.com ([208.74.158.173]:54190 "EHLO
+        mail2.candelatech.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1752194AbcIOXGy (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 15 Sep 2016 19:06:54 -0400
 Subject: Re: nfs broken on Fedora-24, 32-bit?
-Date: Thu, 15 Sep 2016 23:00:47 +0000
-Message-ID: <DE7D6150-4E55-4940-8BD8-3FF2484E3313@primarydata.com>
+To: Trond Myklebust <trondmy@primarydata.com>
 References: <de68a5b5-fa21-1ca4-68e9-feeea009e6d3@candelatech.com>
-In-Reply-To: <de68a5b5-fa21-1ca4-68e9-feeea009e6d3@candelatech.com>
+ <DE7D6150-4E55-4940-8BD8-3FF2484E3313@primarydata.com>
+Cc: List Linux NFS Mailing <linux-nfs@vger.kernel.org>
+From: Ben Greear <greearb@candelatech.com>
+Message-ID: <1a99ef05-d1f2-8d3d-6dca-3a81728708ef@candelatech.com>
+Date: Thu, 15 Sep 2016 16:06:52 -0700
 MIME-Version: 1.0
-Content-Type: text/plain; charset=WINDOWS-1252
+In-Reply-To: <DE7D6150-4E55-4940-8BD8-3FF2484E3313@primarydata.com>
+Content-Type: text/plain; charset=windows-1252; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Ben,
+On 09/15/2016 04:00 PM, Trond Myklebust wrote:
+> Hi Ben,
+>
+>> On Sep 15, 2016, at 18:32, Ben Greear <greearb@candelatech.com> wrote:
+>>
+>> I have a Fedora-24 machine mounting an NFS server running Fedora-13 (kernel 2.6.34.9-69.fc13.x86_64).
+>>
+>> F24 machine has this in /etc/fstab:
+>>
+>> 192.168.100.3:/mnt/d2 /mnt/d2                   nfs     nfsvers=3       0 0
+>>
+>> When I copy a file from f24-32 to the F-13 machine, the file size is the same,
+>> but the file is corrupted on the file server.  I see a different md5sum each time.
+>>
+>> Various other systems (F21, F19, etc) can all copy to the F13 machine fine.
+>>
+>> And, F24-64 machine can copy to the F13 machine fine.
+>>
+>> Anyone seen something similar?
+>
+> Do you know if the corruption is happening on the read()s or on the write()s? Do you, for instance get the same corruption if you copy from a local file on the F-24 client to the server? ..or if you copy from a file on the server to a local directory on the F-24 client?
+>
+> Cheers
+>   Trond
+>
 
-> On Sep 15, 2016, at 18:32, Ben Greear <greearb@candelatech.com> wrote:
->=20
-> I have a Fedora-24 machine mounting an NFS server running Fedora-13 (kern=
-el 2.6.34.9-69.fc13.x86_64).
->=20
-> F24 machine has this in /etc/fstab:
->=20
-> 192.168.100.3:/mnt/d2 /mnt/d2                   nfs     nfsvers=3D3      =
- 0 0
->=20
-> When I copy a file from f24-32 to the F-13 machine, the file size is the =
-same,
-> but the file is corrupted on the file server.  I see a different md5sum e=
-ach time.
->=20
-> Various other systems (F21, F19, etc) can all copy to the F13 machine fin=
-e.
->=20
-> And, F24-64 machine can copy to the F13 machine fine.
->=20
-> Anyone seen something similar?
+Seems to be a write issue:
 
-Do you know if the corruption is happening on the read()s or on the write()=
-s? Do you, for instance get the same corruption if you copy from a local fi=
-le on the F-24 client to the server? ..or if you copy from a file on the se=
-rver to a local directory on the F-24 client?
+# This is the nfs server:
 
-Cheers
-  Trond
+[greearb@fs3 candela_cdrom.5.3.5]$ md5sum gua-f21-32
+ad4073fa8b806bb82b85a645e21f5e67  gua-f21-32
+[greearb@fs3 candela_cdrom.5.3.5]$ md5sum ../greearb/tmp/gua-f21-32
+582bfea0cc8cc52aa38dc0f5048d0156  ../greearb/tmp/gua-f21-32
+[greearb@fs3 candela_cdrom.5.3.5]$
+
+
+# This is the v-f24-32 client:
+
+greearb@v-f24-32 ~]$ cp /mnt/d2/pub/candela_cdrom.5.3.5/gua-f21-32 ./
+[greearb@v-f24-32 ~]$ md5sum gua-f21-32
+ad4073fa8b806bb82b85a645e21f5e67  gua-f21-32
+[greearb@v-f24-32 ~]$ cp gua-f21-32 /mnt/d2/pub/greearb/tmp/
+[greearb@v-f24-32 ~]$ md5sum /mnt/d2/pub/greearb/tmp/gua-f21-32
+ad4073fa8b806bb82b85a645e21f5e67  /mnt/d2/pub/greearb/tmp/gua-f21-32
+
+
+Interesting that the client reads back the file it copied over as if it were correct, but
+it shows up wrong on the nfs server.  Maybe it is just reading a local cache?
+
+Thanks,
+Ben
+
+-- 
+Ben Greear <greearb@candelatech.com>
+Candela Technologies Inc  http://www.candelatech.com
 
