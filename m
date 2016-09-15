@@ -1,14 +1,14 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-it0-f67.google.com ([209.85.214.67]:32999 "EHLO
-        mail-it0-f67.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751754AbcIOO5e (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 15 Sep 2016 10:57:34 -0400
-Subject: [PATCH v3 19/22] xprtrdma: Support larger inline thresholds
+Received: from mail-it0-f68.google.com ([209.85.214.68]:35325 "EHLO
+        mail-it0-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751731AbcIOO5m (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 15 Sep 2016 10:57:42 -0400
+Subject: [PATCH v3 20/22] xprtrmda: Report address of frmr, not mw
 From: Chuck Lever <chuck.lever@oracle.com>
 To: anna.schumaker@netapp.com
 Cc: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Thu, 15 Sep 2016 10:57:32 -0400
-Message-ID: <20160915145732.11080.28375.stgit@manet.1015granger.net>
+Date: Thu, 15 Sep 2016 10:57:40 -0400
+Message-ID: <20160915145740.11080.38297.stgit@manet.1015granger.net>
 In-Reply-To: <20160915143440.11080.89241.stgit@manet.1015granger.net>
 References: <20160915143440.11080.89241.stgit@manet.1015granger.net>
 MIME-Version: 1.0
@@ -16,56 +16,52 @@ Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The Version One default inline threshold is still 1KB. But allow
-testing with thresholds up to 64KB.
-
-This maximum is somewhat arbitrary. There's no fundamental
-architectural limit I'm aware of, but it's good to keep the size of
-Receive buffers reasonable. Now that Send can use a s/g list, a
-Send buffer is only as large as each RPC requires. Receive buffers
-are always the size of the inline threshold, however.
+Tie frwr debugging messages together by always reporting the address
+of the frwr.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- include/linux/sunrpc/xprtrdma.h |    4 ++--
- net/sunrpc/xprtrdma/transport.c |    4 ++--
- 2 files changed, 4 insertions(+), 4 deletions(-)
+ net/sunrpc/xprtrdma/frwr_ops.c |    8 ++++++--
+ 1 file changed, 6 insertions(+), 2 deletions(-)
 
-diff --git a/include/linux/sunrpc/xprtrdma.h b/include/linux/sunrpc/xprtrdma.h
-index 39267dc..221b7a2 100644
---- a/include/linux/sunrpc/xprtrdma.h
-+++ b/include/linux/sunrpc/xprtrdma.h
-@@ -53,8 +53,8 @@
- #define RPCRDMA_MAX_SLOT_TABLE	(256U)
+diff --git a/net/sunrpc/xprtrdma/frwr_ops.c b/net/sunrpc/xprtrdma/frwr_ops.c
+index e82d5cf..ad70a87 100644
+--- a/net/sunrpc/xprtrdma/frwr_ops.c
++++ b/net/sunrpc/xprtrdma/frwr_ops.c
+@@ -163,7 +163,7 @@ __frwr_reset_mr(struct rpcrdma_ia *ia, struct rpcrdma_mw *r)
+ 		return PTR_ERR(f->fr_mr);
+ 	}
  
- #define RPCRDMA_MIN_INLINE  (1024)	/* min inline thresh */
--#define RPCRDMA_DEF_INLINE  (1024)	/* default inline thresh */
--#define RPCRDMA_MAX_INLINE  (3068)	/* max inline thresh */
-+#define RPCRDMA_DEF_INLINE  (4096)	/* default inline thresh */
-+#define RPCRDMA_MAX_INLINE  (65536)	/* max inline thresh */
+-	dprintk("RPC:       %s: recovered FRMR %p\n", __func__, r);
++	dprintk("RPC:       %s: recovered FRMR %p\n", __func__, f);
+ 	f->fr_state = FRMR_IS_INVALID;
+ 	return 0;
+ }
+@@ -397,7 +397,7 @@ frwr_op_map(struct rpcrdma_xprt *r_xprt, struct rpcrdma_mr_seg *seg,
+ 		goto out_mapmr_err;
  
- /* Memory registration strategies, by number.
-  * This is part of a kernel / user space API. Do not remove. */
-diff --git a/net/sunrpc/xprtrdma/transport.c b/net/sunrpc/xprtrdma/transport.c
-index 6a358ab..ed5e285 100644
---- a/net/sunrpc/xprtrdma/transport.c
-+++ b/net/sunrpc/xprtrdma/transport.c
-@@ -97,7 +97,7 @@ static struct ctl_table xr_tunables_table[] = {
- 		.data		= &xprt_rdma_max_inline_read,
- 		.maxlen		= sizeof(unsigned int),
- 		.mode		= 0644,
--		.proc_handler	= proc_dointvec,
-+		.proc_handler	= proc_dointvec_minmax,
- 		.extra1		= &min_inline_size,
- 		.extra2		= &max_inline_size,
- 	},
-@@ -106,7 +106,7 @@ static struct ctl_table xr_tunables_table[] = {
- 		.data		= &xprt_rdma_max_inline_write,
- 		.maxlen		= sizeof(unsigned int),
- 		.mode		= 0644,
--		.proc_handler	= proc_dointvec,
-+		.proc_handler	= proc_dointvec_minmax,
- 		.extra1		= &min_inline_size,
- 		.extra2		= &max_inline_size,
- 	},
+ 	dprintk("RPC:       %s: Using frmr %p to map %u segments (%u bytes)\n",
+-		__func__, mw, mw->mw_nents, mr->length);
++		__func__, frmr, mw->mw_nents, mr->length);
+ 
+ 	key = (u8)(mr->rkey & 0x000000FF);
+ 	ib_update_fast_reg_key(mr, ++key);
+@@ -450,6 +450,8 @@ __frwr_prepare_linv_wr(struct rpcrdma_mw *mw)
+ 	struct rpcrdma_frmr *f = &mw->frmr;
+ 	struct ib_send_wr *invalidate_wr;
+ 
++	dprintk("RPC:       %s: invalidating frmr %p\n", __func__, f);
++
+ 	f->fr_state = FRMR_IS_INVALID;
+ 	invalidate_wr = &f->fr_invwr;
+ 
+@@ -532,6 +534,8 @@ frwr_op_unmap_sync(struct rpcrdma_xprt *r_xprt, struct rpcrdma_req *req)
+ 	 */
+ unmap:
+ 	list_for_each_entry_safe(mw, tmp, &req->rl_registered, mw_list) {
++		dprintk("RPC:       %s: unmapping frmr %p\n",
++			__func__, &mw->frmr);
+ 		list_del_init(&mw->mw_list);
+ 		ib_dma_unmap_sg(ia->ri_device,
+ 				mw->mw_sg, mw->mw_nents, mw->mw_dir);
 
