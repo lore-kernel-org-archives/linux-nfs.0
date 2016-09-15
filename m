@@ -1,14 +1,14 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-it0-f67.google.com ([209.85.214.67]:36713 "EHLO
+Received: from mail-it0-f67.google.com ([209.85.214.67]:35014 "EHLO
         mail-it0-f67.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1752497AbcIOO4q (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 15 Sep 2016 10:56:46 -0400
-Subject: [PATCH v3 13/22] xprtrdma: Move send_wr to struct rpcrdma_req
+        with ESMTP id S1752365AbcIOO4x (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 15 Sep 2016 10:56:53 -0400
+Subject: [PATCH v3 14/22] xprtrdma: Move recv_wr to struct rpcrdma_rep
 From: Chuck Lever <chuck.lever@oracle.com>
 To: anna.schumaker@netapp.com
 Cc: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Thu, 15 Sep 2016 10:56:43 -0400
-Message-ID: <20160915145643.11080.71281.stgit@manet.1015granger.net>
+Date: Thu, 15 Sep 2016 10:56:51 -0400
+Message-ID: <20160915145651.11080.57786.stgit@manet.1015granger.net>
 In-Reply-To: <20160915143440.11080.89241.stgit@manet.1015granger.net>
 References: <20160915143440.11080.89241.stgit@manet.1015granger.net>
 MIME-Version: 1.0
@@ -16,145 +16,61 @@ Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Clean up: Most of the fields in each send_wr do not vary. There is
-no need to initialize them before each ib_post_send(). This removes
-a large-ish data structure from the stack.
+Clean up: The fields in the recv_wr do not vary. There is no need to
+initialize them before each ib_post_recv(). This removes a large-ish
+data structure from the stack.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- net/sunrpc/xprtrdma/backchannel.c |    3 ++-
- net/sunrpc/xprtrdma/rpc_rdma.c    |    5 +++--
- net/sunrpc/xprtrdma/verbs.c       |   36 +++++++++++++++++-------------------
- net/sunrpc/xprtrdma/xprt_rdma.h   |    4 ++--
- 4 files changed, 24 insertions(+), 24 deletions(-)
+ net/sunrpc/xprtrdma/verbs.c     |   13 ++++++-------
+ net/sunrpc/xprtrdma/xprt_rdma.h |    1 +
+ 2 files changed, 7 insertions(+), 7 deletions(-)
 
-diff --git a/net/sunrpc/xprtrdma/backchannel.c b/net/sunrpc/xprtrdma/backchannel.c
-index 887ef44..61a58f5 100644
---- a/net/sunrpc/xprtrdma/backchannel.c
-+++ b/net/sunrpc/xprtrdma/backchannel.c
-@@ -241,7 +241,8 @@ int rpcrdma_bc_marshal_reply(struct rpc_rqst *rqst)
- 	req->rl_send_iov[1].length = rpclen;
- 	req->rl_send_iov[1].lkey = rdmab_lkey(req->rl_sendbuf);
- 
--	req->rl_niovs = 2;
-+	req->rl_send_wr.num_sge = 2;
-+
- 	return 0;
- 
- out_map:
-diff --git a/net/sunrpc/xprtrdma/rpc_rdma.c b/net/sunrpc/xprtrdma/rpc_rdma.c
-index 6187cee..c2906e3 100644
---- a/net/sunrpc/xprtrdma/rpc_rdma.c
-+++ b/net/sunrpc/xprtrdma/rpc_rdma.c
-@@ -687,7 +687,7 @@ rpcrdma_marshal_req(struct rpc_rqst *rqst)
- 	req->rl_send_iov[0].length = hdrlen;
- 	req->rl_send_iov[0].lkey = rdmab_lkey(req->rl_rdmabuf);
- 
--	req->rl_niovs = 1;
-+	req->rl_send_wr.num_sge = 1;
- 	if (rtype == rpcrdma_areadch)
- 		return 0;
- 
-@@ -697,7 +697,8 @@ rpcrdma_marshal_req(struct rpc_rqst *rqst)
- 	req->rl_send_iov[1].length = rpclen;
- 	req->rl_send_iov[1].lkey = rdmab_lkey(req->rl_sendbuf);
- 
--	req->rl_niovs = 2;
-+	req->rl_send_wr.num_sge = 2;
-+
- 	return 0;
- 
- out_overflow:
 diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
-index 7b189fe..79a6346 100644
+index 79a6346..a49c788 100644
 --- a/net/sunrpc/xprtrdma/verbs.c
 +++ b/net/sunrpc/xprtrdma/verbs.c
-@@ -849,6 +849,10 @@ rpcrdma_create_req(struct rpcrdma_xprt *r_xprt)
- 	req->rl_cqe.done = rpcrdma_wc_send;
- 	req->rl_buffer = &r_xprt->rx_buf;
- 	INIT_LIST_HEAD(&req->rl_registered);
-+	req->rl_send_wr.next = NULL;
-+	req->rl_send_wr.wr_cqe = &req->rl_cqe;
-+	req->rl_send_wr.sg_list = req->rl_send_iov;
-+	req->rl_send_wr.opcode = IB_WR_SEND;
- 	return req;
- }
+@@ -880,6 +880,10 @@ rpcrdma_create_rep(struct rpcrdma_xprt *r_xprt)
+ 	rep->rr_cqe.done = rpcrdma_receive_wc;
+ 	rep->rr_rxprt = r_xprt;
+ 	INIT_WORK(&rep->rr_work, rpcrdma_receive_worker);
++	rep->rr_recv_wr.next = NULL;
++	rep->rr_recv_wr.wr_cqe = &rep->rr_cqe;
++	rep->rr_recv_wr.sg_list = &rep->rr_rdmabuf->rg_iov;
++	rep->rr_recv_wr.num_sge = 1;
+ 	return rep;
  
-@@ -1128,7 +1132,7 @@ rpcrdma_buffer_put(struct rpcrdma_req *req)
- 	struct rpcrdma_buffer *buffers = req->rl_buffer;
- 	struct rpcrdma_rep *rep = req->rl_reply;
- 
--	req->rl_niovs = 0;
-+	req->rl_send_wr.num_sge = 0;
- 	req->rl_reply = NULL;
- 
- 	spin_lock(&buffers->rb_lock);
-@@ -1259,38 +1263,32 @@ rpcrdma_ep_post(struct rpcrdma_ia *ia,
- 		struct rpcrdma_req *req)
+ out_free:
+@@ -1302,17 +1306,12 @@ int
+ rpcrdma_ep_post_recv(struct rpcrdma_ia *ia,
+ 		     struct rpcrdma_rep *rep)
  {
- 	struct ib_device *device = ia->ri_device;
--	struct ib_send_wr send_wr, *send_wr_fail;
--	struct rpcrdma_rep *rep = req->rl_reply;
--	struct ib_sge *iov = req->rl_send_iov;
-+	struct ib_send_wr *send_wr = &req->rl_send_wr;
-+	struct ib_send_wr *send_wr_fail;
-+	struct ib_sge *sge = req->rl_send_iov;
- 	int i, rc;
+-	struct ib_recv_wr recv_wr, *recv_wr_fail;
++	struct ib_recv_wr *recv_wr_fail;
+ 	int rc;
  
--	if (rep) {
--		rc = rpcrdma_ep_post_recv(ia, rep);
-+	if (req->rl_reply) {
-+		rc = rpcrdma_ep_post_recv(ia, req->rl_reply);
- 		if (rc)
- 			return rc;
- 		req->rl_reply = NULL;
- 	}
- 
--	send_wr.next = NULL;
--	send_wr.wr_cqe = &req->rl_cqe;
--	send_wr.sg_list = iov;
--	send_wr.num_sge = req->rl_niovs;
--	send_wr.opcode = IB_WR_SEND;
+-	recv_wr.next = NULL;
+-	recv_wr.wr_cqe = &rep->rr_cqe;
+-	recv_wr.sg_list = &rep->rr_rdmabuf->rg_iov;
+-	recv_wr.num_sge = 1;
 -
--	for (i = 0; i < send_wr.num_sge; i++)
--		ib_dma_sync_single_for_device(device, iov[i].addr,
--					      iov[i].length, DMA_TO_DEVICE);
-+	for (i = 0; i < send_wr->num_sge; i++)
-+		ib_dma_sync_single_for_device(device, sge[i].addr,
-+					      sge[i].length, DMA_TO_DEVICE);
- 	dprintk("RPC:       %s: posting %d s/g entries\n",
--		__func__, send_wr.num_sge);
-+		__func__, send_wr->num_sge);
- 
- 	if (DECR_CQCOUNT(ep) > 0)
--		send_wr.send_flags = 0;
-+		send_wr->send_flags = 0;
- 	else { /* Provider must take a send completion every now and then */
- 		INIT_CQCOUNT(ep);
--		send_wr.send_flags = IB_SEND_SIGNALED;
-+		send_wr->send_flags = IB_SEND_SIGNALED;
- 	}
- 
--	rc = ib_post_send(ia->ri_id->qp, &send_wr, &send_wr_fail);
-+	rc = ib_post_send(ia->ri_id->qp, send_wr, &send_wr_fail);
+ 	if (!rpcrdma_dma_map_regbuf(ia, rep->rr_rdmabuf))
+ 		goto out_map;
+-	rc = ib_post_recv(ia->ri_id->qp, &recv_wr, &recv_wr_fail);
++	rc = ib_post_recv(ia->ri_id->qp, &rep->rr_recv_wr, &recv_wr_fail);
  	if (rc)
- 		goto out_postsend_err;
+ 		goto out_postrecv;
  	return 0;
 diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
-index decd134..3c5a89a 100644
+index 3c5a89a..9aabca6 100644
 --- a/net/sunrpc/xprtrdma/xprt_rdma.h
 +++ b/net/sunrpc/xprtrdma/xprt_rdma.h
-@@ -284,10 +284,10 @@ struct rpcrdma_mr_seg {		/* chunk descriptors */
- struct rpcrdma_buffer;
- struct rpcrdma_req {
- 	struct list_head	rl_free;
--	unsigned int		rl_niovs;
- 	unsigned int		rl_connect_cookie;
- 	struct rpcrdma_buffer	*rl_buffer;
--	struct rpcrdma_rep	*rl_reply;/* holder for reply buffer */
-+	struct rpcrdma_rep	*rl_reply;
-+	struct ib_send_wr	rl_send_wr;
- 	struct ib_sge		rl_send_iov[RPCRDMA_MAX_IOVS];
- 	struct rpcrdma_regbuf	*rl_rdmabuf;	/* xprt header */
- 	struct rpcrdma_regbuf	*rl_sendbuf;	/* rq_snd_buf */
+@@ -189,6 +189,7 @@ struct rpcrdma_rep {
+ 	struct rpcrdma_xprt	*rr_rxprt;
+ 	struct work_struct	rr_work;
+ 	struct list_head	rr_list;
++	struct ib_recv_wr	rr_recv_wr;
+ 	struct rpcrdma_regbuf	*rr_rdmabuf;
+ };
+ 
 
