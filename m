@@ -1,14 +1,15 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-it0-f66.google.com ([209.85.214.66]:35156 "EHLO
-        mail-it0-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751979AbcIOO5S (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 15 Sep 2016 10:57:18 -0400
-Subject: [PATCH v3 17/22] xprtrdma: Basic support for Remote Invalidation
+Received: from mail-it0-f65.google.com ([209.85.214.65]:32949 "EHLO
+        mail-it0-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751754AbcIOO50 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 15 Sep 2016 10:57:26 -0400
+Subject: [PATCH v3 18/22] xprtrdma: Use gathered Send for large inline
+ messages
 From: Chuck Lever <chuck.lever@oracle.com>
 To: anna.schumaker@netapp.com
 Cc: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Thu, 15 Sep 2016 10:57:16 -0400
-Message-ID: <20160915145716.11080.65525.stgit@manet.1015granger.net>
+Date: Thu, 15 Sep 2016 10:57:24 -0400
+Message-ID: <20160915145724.11080.78191.stgit@manet.1015granger.net>
 In-Reply-To: <20160915143440.11080.89241.stgit@manet.1015granger.net>
 References: <20160915143440.11080.89241.stgit@manet.1015granger.net>
 MIME-Version: 1.0
@@ -16,247 +17,630 @@ Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Have frwr's ro_unmap_sync recognize an invalidated rkey that appears
-as part of a Receive completion. Local invalidation can be skipped
-for that rkey.
+An RPC Call message that is sent inline but that has a data payload
+(ie, one or more items in rq_snd_buf's page list) must be "pulled
+up:"
 
-Use an out-of-band signaling mechanism to indicate to the server
-that the client is prepared to receive RDMA Send With Invalidate.
+- call_allocate has to reserve enough RPC Call buffer space to
+accommodate the data payload
+
+- call_transmit has to memcopy the rq_snd_buf's page list and tail
+into its head iovec before it is sent
+
+As the inline threshold is increased beyond its current 1KB default,
+however, this means data payloads of more than a few KB are copied
+by the host CPU. For example, if the inline threshold is increased
+just to 4KB, then NFS WRITE requests up to 4KB would involve a
+memcpy of the NFS WRITE's payload data into the RPC Call buffer.
+This is an undesirable amount of participation by the host CPU.
+
+The inline threshold may be much larger than 4KB in the future,
+after negotiation with a peer server.
+
+Instead of copying the components of rq_snd_buf into its head iovec,
+construct a gather list of these components, and send them all in
+place. The same approach is already used in the Linux server's
+RPC-over-RDMA reply path.
+
+This mechanism also eliminates the need for rpcrdma_tail_pullup,
+which is used to manage the XDR pad and trailing inline content when
+a Read list is present.
+
+This requires that the pages in rq_snd_buf's page list be DMA-mapped
+during marshaling, and unmapped when a data-bearing RPC is
+completed. This is slightly less efficient for very small I/O
+payloads, but significantly more efficient as data payload size and
+inline threshold increase past a kilobyte.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- net/sunrpc/xprtrdma/fmr_ops.c   |    2 ++
- net/sunrpc/xprtrdma/frwr_ops.c  |   13 +++++++++++++
- net/sunrpc/xprtrdma/rpc_rdma.c  |   18 ++++++++++++++----
- net/sunrpc/xprtrdma/transport.c |    5 +++--
- net/sunrpc/xprtrdma/verbs.c     |    8 +++++++-
- net/sunrpc/xprtrdma/xprt_rdma.h |    5 +++++
- 6 files changed, 44 insertions(+), 7 deletions(-)
+ net/sunrpc/xprtrdma/backchannel.c |   33 ----
+ net/sunrpc/xprtrdma/rpc_rdma.c    |  301 +++++++++++++++++++++----------------
+ net/sunrpc/xprtrdma/transport.c   |   18 +-
+ net/sunrpc/xprtrdma/verbs.c       |   13 --
+ net/sunrpc/xprtrdma/xprt_rdma.h   |   27 +++
+ 5 files changed, 207 insertions(+), 185 deletions(-)
 
-diff --git a/net/sunrpc/xprtrdma/fmr_ops.c b/net/sunrpc/xprtrdma/fmr_ops.c
-index 16690a1..1ebb09e 100644
---- a/net/sunrpc/xprtrdma/fmr_ops.c
-+++ b/net/sunrpc/xprtrdma/fmr_ops.c
-@@ -273,6 +273,7 @@ fmr_op_unmap_sync(struct rpcrdma_xprt *r_xprt, struct rpcrdma_req *req)
- 	 */
- 	list_for_each_entry(mw, &req->rl_registered, mw_list)
- 		list_add_tail(&mw->fmr.fm_mr->list, &unmap_list);
-+	r_xprt->rx_stats.local_inv_needed++;
- 	rc = ib_unmap_fmr(&unmap_list);
- 	if (rc)
- 		goto out_reset;
-@@ -330,4 +331,5 @@ const struct rpcrdma_memreg_ops rpcrdma_fmr_memreg_ops = {
- 	.ro_init_mr			= fmr_op_init_mr,
- 	.ro_release_mr			= fmr_op_release_mr,
- 	.ro_displayname			= "fmr",
-+	.ro_send_w_inv_ok		= 0,
- };
-diff --git a/net/sunrpc/xprtrdma/frwr_ops.c b/net/sunrpc/xprtrdma/frwr_ops.c
-index fcfcf3a..e82d5cf 100644
---- a/net/sunrpc/xprtrdma/frwr_ops.c
-+++ b/net/sunrpc/xprtrdma/frwr_ops.c
-@@ -67,6 +67,8 @@
-  * pending send queue WRs before the transport is reconnected.
-  */
+diff --git a/net/sunrpc/xprtrdma/backchannel.c b/net/sunrpc/xprtrdma/backchannel.c
+index 61a58f5..2c472e1 100644
+--- a/net/sunrpc/xprtrdma/backchannel.c
++++ b/net/sunrpc/xprtrdma/backchannel.c
+@@ -206,7 +206,6 @@ int rpcrdma_bc_marshal_reply(struct rpc_rqst *rqst)
+ 	struct rpcrdma_xprt *r_xprt = rpcx_to_rdmax(xprt);
+ 	struct rpcrdma_req *req = rpcr_to_rdmar(rqst);
+ 	struct rpcrdma_msg *headerp;
+-	size_t rpclen;
  
-+#include <linux/sunrpc/rpc_rdma.h>
-+
- #include "xprt_rdma.h"
+ 	headerp = rdmab_to_msg(req->rl_rdmabuf);
+ 	headerp->rm_xid = rqst->rq_xid;
+@@ -218,36 +217,10 @@ int rpcrdma_bc_marshal_reply(struct rpc_rqst *rqst)
+ 	headerp->rm_body.rm_chunks[1] = xdr_zero;
+ 	headerp->rm_body.rm_chunks[2] = xdr_zero;
  
- #if IS_ENABLED(CONFIG_SUNRPC_DEBUG)
-@@ -471,6 +473,7 @@ static void
- frwr_op_unmap_sync(struct rpcrdma_xprt *r_xprt, struct rpcrdma_req *req)
- {
- 	struct ib_send_wr *invalidate_wrs, *pos, *prev, *bad_wr;
-+	struct rpcrdma_rep *rep = req->rl_reply;
- 	struct rpcrdma_ia *ia = &r_xprt->rx_ia;
- 	struct rpcrdma_mw *mw, *tmp;
- 	struct rpcrdma_frmr *f;
-@@ -486,6 +489,12 @@ frwr_op_unmap_sync(struct rpcrdma_xprt *r_xprt, struct rpcrdma_req *req)
- 	f = NULL;
- 	invalidate_wrs = pos = prev = NULL;
- 	list_for_each_entry(mw, &req->rl_registered, mw_list) {
-+		if ((rep->rr_wc_flags & IB_WC_WITH_INVALIDATE) &&
-+		    (mw->mw_handle == rep->rr_inv_rkey)) {
-+			mw->frmr.fr_state = FRMR_IS_INVALID;
-+			continue;
-+		}
-+
- 		pos = __frwr_prepare_linv_wr(mw);
- 
- 		if (!invalidate_wrs)
-@@ -495,6 +504,8 @@ frwr_op_unmap_sync(struct rpcrdma_xprt *r_xprt, struct rpcrdma_req *req)
- 		prev = pos;
- 		f = &mw->frmr;
- 	}
-+	if (!f)
-+		goto unmap;
- 
- 	/* Strong send queue ordering guarantees that when the
- 	 * last WR in the chain completes, all WRs in the chain
-@@ -509,6 +520,7 @@ frwr_op_unmap_sync(struct rpcrdma_xprt *r_xprt, struct rpcrdma_req *req)
- 	 * replaces the QP. The RPC reply handler won't call us
- 	 * unless ri_id->qp is a valid pointer.
- 	 */
-+	r_xprt->rx_stats.local_inv_needed++;
- 	rc = ib_post_send(ia->ri_id->qp, invalidate_wrs, &bad_wr);
- 	if (rc)
- 		goto reset_mrs;
-@@ -575,4 +587,5 @@ const struct rpcrdma_memreg_ops rpcrdma_frwr_memreg_ops = {
- 	.ro_init_mr			= frwr_op_init_mr,
- 	.ro_release_mr			= frwr_op_release_mr,
- 	.ro_displayname			= "frwr",
-+	.ro_send_w_inv_ok		= RPCRDMA_CMP_F_SND_W_INV_OK,
- };
-diff --git a/net/sunrpc/xprtrdma/rpc_rdma.c b/net/sunrpc/xprtrdma/rpc_rdma.c
-index ea734c2..31a434d 100644
---- a/net/sunrpc/xprtrdma/rpc_rdma.c
-+++ b/net/sunrpc/xprtrdma/rpc_rdma.c
-@@ -231,7 +231,8 @@ rpcrdma_convert_kvec(struct kvec *vec, struct rpcrdma_mr_seg *seg, int n)
- 
- static int
- rpcrdma_convert_iovs(struct xdr_buf *xdrbuf, unsigned int pos,
--	enum rpcrdma_chunktype type, struct rpcrdma_mr_seg *seg)
-+	enum rpcrdma_chunktype type, struct rpcrdma_mr_seg *seg,
-+	bool reminv_expected)
- {
- 	int len, n, p, page_base;
- 	struct page **ppages;
-@@ -273,6 +274,13 @@ rpcrdma_convert_iovs(struct xdr_buf *xdrbuf, unsigned int pos,
- 	if (type == rpcrdma_readch)
- 		return n;
- 
-+	/* When encoding the Write list, some servers need to see an extra
-+	 * segment for odd-length Write chunks. The upper layer provides
-+	 * space in the tail iovec for this purpose.
-+	 */
-+	if (type == rpcrdma_writech && reminv_expected)
-+		return n;
-+
- 	if (xdrbuf->tail[0].iov_len) {
- 		/* the rpcrdma protocol allows us to omit any trailing
- 		 * xdr pad bytes, saving the server an RDMA operation. */
-@@ -329,7 +337,7 @@ rpcrdma_encode_read_list(struct rpcrdma_xprt *r_xprt,
- 	if (rtype == rpcrdma_areadch)
- 		pos = 0;
- 	seg = req->rl_segments;
--	nsegs = rpcrdma_convert_iovs(&rqst->rq_snd_buf, pos, rtype, seg);
-+	nsegs = rpcrdma_convert_iovs(&rqst->rq_snd_buf, pos, rtype, seg, false);
- 	if (nsegs < 0)
- 		return ERR_PTR(nsegs);
- 
-@@ -393,7 +401,8 @@ rpcrdma_encode_write_list(struct rpcrdma_xprt *r_xprt, struct rpcrdma_req *req,
- 	seg = req->rl_segments;
- 	nsegs = rpcrdma_convert_iovs(&rqst->rq_rcv_buf,
- 				     rqst->rq_rcv_buf.head[0].iov_len,
--				     wtype, seg);
-+				     wtype, seg,
-+				     r_xprt->rx_ia.ri_reminv_expected);
- 	if (nsegs < 0)
- 		return ERR_PTR(nsegs);
- 
-@@ -458,7 +467,8 @@ rpcrdma_encode_reply_chunk(struct rpcrdma_xprt *r_xprt,
- 	}
- 
- 	seg = req->rl_segments;
--	nsegs = rpcrdma_convert_iovs(&rqst->rq_rcv_buf, 0, wtype, seg);
-+	nsegs = rpcrdma_convert_iovs(&rqst->rq_rcv_buf, 0, wtype, seg,
-+				     r_xprt->rx_ia.ri_reminv_expected);
- 	if (nsegs < 0)
- 		return ERR_PTR(nsegs);
- 
-diff --git a/net/sunrpc/xprtrdma/transport.c b/net/sunrpc/xprtrdma/transport.c
-index 5adaa1d..7e11d71 100644
---- a/net/sunrpc/xprtrdma/transport.c
-+++ b/net/sunrpc/xprtrdma/transport.c
-@@ -730,10 +730,11 @@ void xprt_rdma_print_stats(struct rpc_xprt *xprt, struct seq_file *seq)
- 		   r_xprt->rx_stats.failed_marshal_count,
- 		   r_xprt->rx_stats.bad_reply_count,
- 		   r_xprt->rx_stats.nomsg_call_count);
--	seq_printf(seq, "%lu %lu %lu\n",
-+	seq_printf(seq, "%lu %lu %lu %lu\n",
- 		   r_xprt->rx_stats.mrs_recovered,
- 		   r_xprt->rx_stats.mrs_orphaned,
--		   r_xprt->rx_stats.mrs_allocated);
-+		   r_xprt->rx_stats.mrs_allocated,
-+		   r_xprt->rx_stats.local_inv_needed);
+-	rpclen = rqst->rq_svec[0].iov_len;
+-
+-#ifdef RPCRDMA_BACKCHANNEL_DEBUG
+-	pr_info("RPC:       %s: rpclen %zd headerp 0x%p lkey 0x%x\n",
+-		__func__, rpclen, headerp, rdmab_lkey(req->rl_rdmabuf));
+-	pr_info("RPC:       %s: RPC/RDMA: %*ph\n",
+-		__func__, (int)RPCRDMA_HDRLEN_MIN, headerp);
+-	pr_info("RPC:       %s:      RPC: %*ph\n",
+-		__func__, (int)rpclen, rqst->rq_svec[0].iov_base);
+-#endif
+-
+-	if (!rpcrdma_dma_map_regbuf(&r_xprt->rx_ia, req->rl_rdmabuf))
+-		goto out_map;
+-	req->rl_send_iov[0].addr = rdmab_addr(req->rl_rdmabuf);
+-	req->rl_send_iov[0].length = RPCRDMA_HDRLEN_MIN;
+-	req->rl_send_iov[0].lkey = rdmab_lkey(req->rl_rdmabuf);
+-
+-	if (!rpcrdma_dma_map_regbuf(&r_xprt->rx_ia, req->rl_sendbuf))
+-		goto out_map;
+-	req->rl_send_iov[1].addr = rdmab_addr(req->rl_sendbuf);
+-	req->rl_send_iov[1].length = rpclen;
+-	req->rl_send_iov[1].lkey = rdmab_lkey(req->rl_sendbuf);
+-
+-	req->rl_send_wr.num_sge = 2;
+-
++	if (!rpcrdma_prepare_send_sges(&r_xprt->rx_ia, req, RPCRDMA_HDRLEN_MIN,
++				       &rqst->rq_snd_buf, rpcrdma_noch))
++		return -EIO;
+ 	return 0;
+-
+-out_map:
+-	pr_err("rpcrdma: failed to DMA map a Send buffer\n");
+-	return -EIO;
  }
  
- static int
-diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
-index 6bab841..e2d6390 100644
---- a/net/sunrpc/xprtrdma/verbs.c
-+++ b/net/sunrpc/xprtrdma/verbs.c
-@@ -185,6 +185,9 @@ rpcrdma_receive_wc(struct ib_cq *cq, struct ib_wc *wc)
- 		__func__, rep, wc->byte_len);
+ /**
+diff --git a/net/sunrpc/xprtrdma/rpc_rdma.c b/net/sunrpc/xprtrdma/rpc_rdma.c
+index 31a434d..63bf011 100644
+--- a/net/sunrpc/xprtrdma/rpc_rdma.c
++++ b/net/sunrpc/xprtrdma/rpc_rdma.c
+@@ -53,14 +53,6 @@
+ # define RPCDBG_FACILITY	RPCDBG_TRANS
+ #endif
  
- 	rep->rr_len = wc->byte_len;
-+	rep->rr_wc_flags = wc->wc_flags;
-+	rep->rr_inv_rkey = wc->ex.invalidate_rkey;
+-enum rpcrdma_chunktype {
+-	rpcrdma_noch = 0,
+-	rpcrdma_readch,
+-	rpcrdma_areadch,
+-	rpcrdma_writech,
+-	rpcrdma_replych
+-};
+-
+ static const char transfertypes[][12] = {
+ 	"inline",	/* no chunks */
+ 	"read list",	/* some argument via rdma read */
+@@ -157,42 +149,6 @@ static bool rpcrdma_results_inline(struct rpcrdma_xprt *r_xprt,
+ 	return rqst->rq_rcv_buf.buflen <= ia->ri_max_inline_read;
+ }
+ 
+-static int
+-rpcrdma_tail_pullup(struct xdr_buf *buf)
+-{
+-	size_t tlen = buf->tail[0].iov_len;
+-	size_t skip = tlen & 3;
+-
+-	/* Do not include the tail if it is only an XDR pad */
+-	if (tlen < 4)
+-		return 0;
+-
+-	/* xdr_write_pages() adds a pad at the beginning of the tail
+-	 * if the content in "buf->pages" is unaligned. Force the
+-	 * tail's actual content to land at the next XDR position
+-	 * after the head instead.
+-	 */
+-	if (skip) {
+-		unsigned char *src, *dst;
+-		unsigned int count;
+-
+-		src = buf->tail[0].iov_base;
+-		dst = buf->head[0].iov_base;
+-		dst += buf->head[0].iov_len;
+-
+-		src += skip;
+-		tlen -= skip;
+-
+-		dprintk("RPC:       %s: skip=%zu, memmove(%p, %p, %zu)\n",
+-			__func__, skip, dst, src, tlen);
+-
+-		for (count = tlen; count; count--)
+-			*dst++ = *src++;
+-	}
+-
+-	return tlen;
+-}
+-
+ /* Split "vec" on page boundaries into segments. FMR registers pages,
+  * not a byte range. Other modes coalesce these segments into a single
+  * MR when they can.
+@@ -503,74 +459,184 @@ rpcrdma_encode_reply_chunk(struct rpcrdma_xprt *r_xprt,
+ 	return iptr;
+ }
+ 
+-/*
+- * Copy write data inline.
+- * This function is used for "small" requests. Data which is passed
+- * to RPC via iovecs (or page list) is copied directly into the
+- * pre-registered memory buffer for this request. For small amounts
+- * of data, this is efficient. The cutoff value is tunable.
++/* Prepare the RPC-over-RDMA header SGE.
+  */
+-static void rpcrdma_inline_pullup(struct rpc_rqst *rqst)
++static bool
++rpcrdma_prepare_hdr_sge(struct rpcrdma_ia *ia, struct rpcrdma_req *req,
++			u32 len)
+ {
+-	int i, npages, curlen;
+-	int copy_len;
+-	unsigned char *srcp, *destp;
+-	struct rpcrdma_xprt *r_xprt = rpcx_to_rdmax(rqst->rq_xprt);
+-	int page_base;
+-	struct page **ppages;
++	struct rpcrdma_regbuf *rb = req->rl_rdmabuf;
++	struct ib_sge *sge = &req->rl_send_sge[0];
 +
- 	ib_dma_sync_single_for_cpu(rep->rr_device,
- 				   rdmab_addr(rep->rr_rdmabuf),
- 				   rep->rr_len, DMA_FROM_DEVICE);
-@@ -212,12 +215,15 @@ rpcrdma_update_connect_private(struct rpcrdma_xprt *r_xprt,
- 	const struct rpcrdma_connect_private *pmsg = param->private_data;
- 	unsigned int rsize, wsize;
++	if (unlikely(!rpcrdma_regbuf_is_mapped(rb))) {
++		if (!__rpcrdma_dma_map_regbuf(ia, rb))
++			return false;
++		sge->addr = rdmab_addr(rb);
++		sge->lkey = rdmab_lkey(rb);
++	}
++	sge->length = len;
  
-+	/* Default settings for RPC-over-RDMA Version One */
-+	r_xprt->rx_ia.ri_reminv_expected = false;
- 	rsize = RPCRDMA_V1_DEF_INLINE_SIZE;
- 	wsize = RPCRDMA_V1_DEF_INLINE_SIZE;
+-	destp = rqst->rq_svec[0].iov_base;
+-	curlen = rqst->rq_svec[0].iov_len;
+-	destp += curlen;
++	ib_dma_sync_single_for_device(ia->ri_device, sge->addr,
++				      sge->length, DMA_TO_DEVICE);
++	req->rl_send_wr.num_sge++;
++	return true;
++}
  
- 	if (pmsg &&
- 	    pmsg->cp_magic == rpcrdma_cmp_magic &&
- 	    pmsg->cp_version == RPCRDMA_CMP_VERSION) {
-+		r_xprt->rx_ia.ri_reminv_expected = true;
- 		rsize = rpcrdma_decode_buffer_size(pmsg->cp_send_size);
- 		wsize = rpcrdma_decode_buffer_size(pmsg->cp_recv_size);
+-	dprintk("RPC:       %s: destp 0x%p len %d hdrlen %d\n",
+-		__func__, destp, rqst->rq_slen, curlen);
++/* Prepare the Send SGEs. The head and tail iovec, and each entry
++ * in the page list, gets its own SGE.
++ */
++static bool
++rpcrdma_prepare_msg_sges(struct rpcrdma_ia *ia, struct rpcrdma_req *req,
++			 struct xdr_buf *xdr, enum rpcrdma_chunktype rtype)
++{
++	unsigned int sge_no, page_base, len, remaining;
++	struct rpcrdma_regbuf *rb = req->rl_sendbuf;
++	struct ib_device *device = ia->ri_device;
++	struct ib_sge *sge = req->rl_send_sge;
++	u32 lkey = ia->ri_pd->local_dma_lkey;
++	struct page *page, **ppages;
++
++	/* The head iovec is straightforward, as it is already
++	 * DMA-mapped. Sync the content that has changed.
++	 */
++	if (!rpcrdma_dma_map_regbuf(ia, rb))
++		return false;
++	sge_no = 1;
++	sge[sge_no].addr = rdmab_addr(rb);
++	sge[sge_no].length = xdr->head[0].iov_len;
++	sge[sge_no].lkey = rdmab_lkey(rb);
++	ib_dma_sync_single_for_device(device, sge[sge_no].addr,
++				      sge[sge_no].length, DMA_TO_DEVICE);
++
++	/* If there is a Read chunk, the page list is being handled
++	 * via explicit RDMA, and thus is skipped here. However, the
++	 * tail iovec may include an XDR pad for the page list, as
++	 * well as additional content, and may not reside in the
++	 * same page as the head iovec.
++	 */
++	if (rtype == rpcrdma_readch) {
++		len = xdr->tail[0].iov_len;
+ 
+-	copy_len = rqst->rq_snd_buf.page_len;
++		/* Do not include the tail if it is only an XDR pad */
++		if (len < 4)
++			goto out;
+ 
+-	if (rqst->rq_snd_buf.tail[0].iov_len) {
+-		curlen = rqst->rq_snd_buf.tail[0].iov_len;
+-		if (destp + copy_len != rqst->rq_snd_buf.tail[0].iov_base) {
+-			memmove(destp + copy_len,
+-				rqst->rq_snd_buf.tail[0].iov_base, curlen);
+-			r_xprt->rx_stats.pullup_copy_count += curlen;
++		page = virt_to_page(xdr->tail[0].iov_base);
++		page_base = (unsigned long)xdr->tail[0].iov_base & ~PAGE_MASK;
++
++		/* If the content in the page list is an odd length,
++		 * xdr_write_pages() has added a pad at the beginning
++		 * of the tail iovec. Force the tail's non-pad content
++		 * to land at the next XDR position in the Send message.
++		 */
++		page_base += len & 3;
++		len -= len & 3;
++		goto map_tail;
++	}
++
++	/* If there is a page list present, temporarily DMA map
++	 * and prepare an SGE for each page to be sent.
++	 */
++	if (xdr->page_len) {
++		ppages = xdr->pages + (xdr->page_base >> PAGE_SHIFT);
++		page_base = xdr->page_base & ~PAGE_MASK;
++		remaining = xdr->page_len;
++		while (remaining) {
++			sge_no++;
++			if (sge_no > RPCRDMA_MAX_SEND_SGES - 2)
++				goto out_mapping_overflow;
++
++			len = min_t(u32, PAGE_SIZE - page_base, remaining);
++			sge[sge_no].addr = ib_dma_map_page(device, *ppages,
++							   page_base, len,
++							   DMA_TO_DEVICE);
++			if (ib_dma_mapping_error(device, sge[sge_no].addr))
++				goto out_mapping_err;
++			sge[sge_no].length = len;
++			sge[sge_no].lkey = lkey;
++
++			req->rl_mapped_sges++;
++			ppages++;
++			remaining -= len;
++			page_base = 0;
+ 		}
+-		dprintk("RPC:       %s: tail destp 0x%p len %d\n",
+-			__func__, destp + copy_len, curlen);
+-		rqst->rq_svec[0].iov_len += curlen;
  	}
-@@ -568,7 +574,7 @@ rpcrdma_ep_create(struct rpcrdma_ep *ep, struct rpcrdma_ia *ia,
- 	/* Prepare RDMA-CM private message */
- 	pmsg->cp_magic = rpcrdma_cmp_magic;
- 	pmsg->cp_version = RPCRDMA_CMP_VERSION;
--	pmsg->cp_flags = 0;
-+	pmsg->cp_flags |= ia->ri_ops->ro_send_w_inv_ok;
- 	pmsg->cp_send_size = rpcrdma_encode_buffer_size(cdata->inline_wsize);
- 	pmsg->cp_recv_size = rpcrdma_encode_buffer_size(cdata->inline_rsize);
- 	ep->rep_remote_cma.private_data = pmsg;
-diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
-index 89df168..64b4e22 100644
---- a/net/sunrpc/xprtrdma/xprt_rdma.h
-+++ b/net/sunrpc/xprtrdma/xprt_rdma.h
-@@ -74,6 +74,7 @@ struct rpcrdma_ia {
- 	unsigned int		ri_max_frmr_depth;
- 	unsigned int		ri_max_inline_write;
- 	unsigned int		ri_max_inline_read;
-+	bool			ri_reminv_expected;
- 	struct ib_qp_attr	ri_qp_attr;
- 	struct ib_qp_init_attr	ri_qp_init_attr;
- };
-@@ -187,6 +188,8 @@ enum {
- struct rpcrdma_rep {
- 	struct ib_cqe		rr_cqe;
- 	unsigned int		rr_len;
-+	int			rr_wc_flags;
-+	u32			rr_inv_rkey;
- 	struct ib_device	*rr_device;
- 	struct rpcrdma_xprt	*rr_rxprt;
- 	struct work_struct	rr_work;
-@@ -385,6 +388,7 @@ struct rpcrdma_stats {
- 	unsigned long		mrs_recovered;
- 	unsigned long		mrs_orphaned;
- 	unsigned long		mrs_allocated;
-+	unsigned long		local_inv_needed;
- };
+-	r_xprt->rx_stats.pullup_copy_count += copy_len;
+ 
+-	page_base = rqst->rq_snd_buf.page_base;
+-	ppages = rqst->rq_snd_buf.pages + (page_base >> PAGE_SHIFT);
+-	page_base &= ~PAGE_MASK;
+-	npages = PAGE_ALIGN(page_base+copy_len) >> PAGE_SHIFT;
+-	for (i = 0; copy_len && i < npages; i++) {
+-		curlen = PAGE_SIZE - page_base;
+-		if (curlen > copy_len)
+-			curlen = copy_len;
+-		dprintk("RPC:       %s: page %d destp 0x%p len %d curlen %d\n",
+-			__func__, i, destp, copy_len, curlen);
+-		srcp = kmap_atomic(ppages[i]);
+-		memcpy(destp, srcp+page_base, curlen);
+-		kunmap_atomic(srcp);
+-		rqst->rq_svec[0].iov_len += curlen;
+-		destp += curlen;
+-		copy_len -= curlen;
+-		page_base = 0;
++	/* The tail iovec is not always constructed in the same
++	 * page where the head iovec resides (see, for example,
++	 * gss_wrap_req_priv). To neatly accommodate that case,
++	 * DMA map it separately.
++	 */
++	if (xdr->tail[0].iov_len) {
++		page = virt_to_page(xdr->tail[0].iov_base);
++		page_base = (unsigned long)xdr->tail[0].iov_base & ~PAGE_MASK;
++		len = xdr->tail[0].iov_len;
++
++map_tail:
++		sge_no++;
++		sge[sge_no].addr = ib_dma_map_page(device, page,
++						   page_base, len,
++						   DMA_TO_DEVICE);
++		if (ib_dma_mapping_error(device, sge[sge_no].addr))
++			goto out_mapping_err;
++		sge[sge_no].length = len;
++		sge[sge_no].lkey = lkey;
++		req->rl_mapped_sges++;
+ 	}
+-	/* header now contains entire send message */
++
++out:
++	req->rl_send_wr.num_sge = sge_no + 1;
++	return true;
++
++out_mapping_overflow:
++	pr_err("rpcrdma: too many Send SGEs (%u)\n", sge_no);
++	return false;
++
++out_mapping_err:
++	pr_err("rpcrdma: Send mapping error\n");
++	return false;
++}
++
++bool
++rpcrdma_prepare_send_sges(struct rpcrdma_ia *ia, struct rpcrdma_req *req,
++			  u32 hdrlen, struct xdr_buf *xdr,
++			  enum rpcrdma_chunktype rtype)
++{
++	req->rl_send_wr.num_sge = 0;
++	req->rl_mapped_sges = 0;
++
++	if (!rpcrdma_prepare_hdr_sge(ia, req, hdrlen))
++		goto out_map;
++
++	if (rtype != rpcrdma_areadch)
++		if (!rpcrdma_prepare_msg_sges(ia, req, xdr, rtype))
++			goto out_map;
++
++	return true;
++
++out_map:
++	pr_err("rpcrdma: failed to DMA map a Send buffer\n");
++	return false;
++}
++
++void
++rpcrdma_unmap_sges(struct rpcrdma_ia *ia, struct rpcrdma_req *req)
++{
++	struct ib_device *device = ia->ri_device;
++	struct ib_sge *sge;
++	int count;
++
++	sge = &req->rl_send_sge[2];
++	for (count = req->rl_mapped_sges; count--; sge++)
++		ib_dma_unmap_page(device, sge->addr, sge->length,
++				  DMA_TO_DEVICE);
++	req->rl_mapped_sges = 0;
+ }
  
  /*
-@@ -408,6 +412,7 @@ struct rpcrdma_memreg_ops {
- 				      struct rpcrdma_mw *);
- 	void		(*ro_release_mr)(struct rpcrdma_mw *);
- 	const char	*ro_displayname;
-+	const int	ro_send_w_inv_ok;
+  * Marshal a request: the primary job of this routine is to choose
+  * the transfer modes. See comments below.
+  *
+- * Prepares up to two IOVs per Call message:
+- *
+- *  [0] -- RPC RDMA header
+- *  [1] -- the RPC header/data
+- *
+  * Returns zero on success, otherwise a negative errno.
+  */
+ 
+@@ -638,12 +704,11 @@ rpcrdma_marshal_req(struct rpc_rqst *rqst)
+ 	 */
+ 	if (rpcrdma_args_inline(r_xprt, rqst)) {
+ 		rtype = rpcrdma_noch;
+-		rpcrdma_inline_pullup(rqst);
+-		rpclen = rqst->rq_svec[0].iov_len;
++		rpclen = rqst->rq_snd_buf.len;
+ 	} else if (ddp_allowed && rqst->rq_snd_buf.flags & XDRBUF_WRITE) {
+ 		rtype = rpcrdma_readch;
+-		rpclen = rqst->rq_svec[0].iov_len;
+-		rpclen += rpcrdma_tail_pullup(&rqst->rq_snd_buf);
++		rpclen = rqst->rq_snd_buf.head[0].iov_len +
++			 rqst->rq_snd_buf.tail[0].iov_len;
+ 	} else {
+ 		r_xprt->rx_stats.nomsg_call_count++;
+ 		headerp->rm_type = htonl(RDMA_NOMSG);
+@@ -685,47 +750,21 @@ rpcrdma_marshal_req(struct rpc_rqst *rqst)
+ 		goto out_unmap;
+ 	hdrlen = (unsigned char *)iptr - (unsigned char *)headerp;
+ 
+-	if (hdrlen + rpclen > r_xprt->rx_data.inline_wsize)
+-		goto out_overflow;
+-
+ 	dprintk("RPC: %5u %s: %s/%s: hdrlen %zd rpclen %zd\n",
+ 		rqst->rq_task->tk_pid, __func__,
+ 		transfertypes[rtype], transfertypes[wtype],
+ 		hdrlen, rpclen);
+ 
+-	if (!rpcrdma_dma_map_regbuf(&r_xprt->rx_ia, req->rl_rdmabuf))
+-		goto out_map;
+-	req->rl_send_iov[0].addr = rdmab_addr(req->rl_rdmabuf);
+-	req->rl_send_iov[0].length = hdrlen;
+-	req->rl_send_iov[0].lkey = rdmab_lkey(req->rl_rdmabuf);
+-
+-	req->rl_send_wr.num_sge = 1;
+-	if (rtype == rpcrdma_areadch)
+-		return 0;
+-
+-	if (!rpcrdma_dma_map_regbuf(&r_xprt->rx_ia, req->rl_sendbuf))
+-		goto out_map;
+-	req->rl_send_iov[1].addr = rdmab_addr(req->rl_sendbuf);
+-	req->rl_send_iov[1].length = rpclen;
+-	req->rl_send_iov[1].lkey = rdmab_lkey(req->rl_sendbuf);
+-
+-	req->rl_send_wr.num_sge = 2;
+-
++	if (!rpcrdma_prepare_send_sges(&r_xprt->rx_ia, req, hdrlen,
++				       &rqst->rq_snd_buf, rtype)) {
++		iptr = ERR_PTR(-EIO);
++		goto out_unmap;
++	}
+ 	return 0;
+ 
+-out_overflow:
+-	pr_err("rpcrdma: send overflow: hdrlen %zd rpclen %zu %s/%s\n",
+-		hdrlen, rpclen, transfertypes[rtype], transfertypes[wtype]);
+-	iptr = ERR_PTR(-EIO);
+-
+ out_unmap:
+ 	r_xprt->rx_ia.ri_ops->ro_unmap_safe(r_xprt, req, false);
+ 	return PTR_ERR(iptr);
+-
+-out_map:
+-	pr_err("rpcrdma: failed to DMA map a Send buffer\n");
+-	iptr = ERR_PTR(-EIO);
+-	goto out_unmap;
+ }
+ 
+ /*
+diff --git a/net/sunrpc/xprtrdma/transport.c b/net/sunrpc/xprtrdma/transport.c
+index 7e11d71..6a358ab 100644
+--- a/net/sunrpc/xprtrdma/transport.c
++++ b/net/sunrpc/xprtrdma/transport.c
+@@ -499,30 +499,21 @@ rpcrdma_get_rdmabuf(struct rpcrdma_xprt *r_xprt, struct rpcrdma_req *req,
+ 	return true;
+ }
+ 
+-/* RPC/RDMA marshaling may choose to send payload bearing ops inline,
+- * if the resulting Call message is smaller than the inline threshold.
+- * The value of the "rq_callsize" argument accounts for RPC header
+- * requirements, but not for the data payload in these cases.
+- *
+- * See rpcrdma_inline_pullup.
+- */
+ static bool
+ rpcrdma_get_sendbuf(struct rpcrdma_xprt *r_xprt, struct rpcrdma_req *req,
+ 		    size_t size, gfp_t flags)
+ {
+ 	struct rpcrdma_regbuf *rb;
+-	size_t min_size;
+ 
+ 	if (req->rl_sendbuf && rdmab_length(req->rl_sendbuf) >= size)
+ 		return true;
+ 
+-	min_size = max_t(size_t, size, r_xprt->rx_data.inline_wsize);
+-	rb = rpcrdma_alloc_regbuf(min_size, DMA_TO_DEVICE, flags);
++	rb = rpcrdma_alloc_regbuf(size, DMA_TO_DEVICE, flags);
+ 	if (IS_ERR(rb))
+ 		return false;
+ 
+ 	rpcrdma_free_regbuf(req->rl_sendbuf);
+-	r_xprt->rx_stats.hardway_register_count += min_size;
++	r_xprt->rx_stats.hardway_register_count += size;
+ 	req->rl_sendbuf = rb;
+ 	return true;
+ }
+@@ -623,14 +614,15 @@ xprt_rdma_free(struct rpc_task *task)
+ 	struct rpc_rqst *rqst = task->tk_rqstp;
+ 	struct rpcrdma_xprt *r_xprt = rpcx_to_rdmax(rqst->rq_xprt);
+ 	struct rpcrdma_req *req = rpcr_to_rdmar(rqst);
++	struct rpcrdma_ia *ia = &r_xprt->rx_ia;
+ 
+ 	if (req->rl_backchannel)
+ 		return;
+ 
+ 	dprintk("RPC:       %s: called on 0x%p\n", __func__, req->rl_reply);
+ 
+-	r_xprt->rx_ia.ri_ops->ro_unmap_safe(r_xprt, req,
+-					    !RPC_IS_ASYNC(task));
++	ia->ri_ops->ro_unmap_safe(r_xprt, req, !RPC_IS_ASYNC(task));
++	rpcrdma_unmap_sges(ia, req);
+ 	rpcrdma_buffer_put(req);
+ }
+ 
+diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
+index e2d6390..eeaca9c 100644
+--- a/net/sunrpc/xprtrdma/verbs.c
++++ b/net/sunrpc/xprtrdma/verbs.c
+@@ -493,7 +493,7 @@ rpcrdma_ep_create(struct rpcrdma_ep *ep, struct rpcrdma_ia *ia,
+ 	unsigned int max_qp_wr;
+ 	int rc;
+ 
+-	if (ia->ri_device->attrs.max_sge < RPCRDMA_MAX_IOVS) {
++	if (ia->ri_device->attrs.max_sge < RPCRDMA_MAX_SEND_SGES) {
+ 		dprintk("RPC:       %s: insufficient sge's available\n",
+ 			__func__);
+ 		return -ENOMEM;
+@@ -522,7 +522,7 @@ rpcrdma_ep_create(struct rpcrdma_ep *ep, struct rpcrdma_ia *ia,
+ 	ep->rep_attr.cap.max_recv_wr = cdata->max_requests;
+ 	ep->rep_attr.cap.max_recv_wr += RPCRDMA_BACKWARD_WRS;
+ 	ep->rep_attr.cap.max_recv_wr += 1;	/* drain cqe */
+-	ep->rep_attr.cap.max_send_sge = RPCRDMA_MAX_IOVS;
++	ep->rep_attr.cap.max_send_sge = RPCRDMA_MAX_SEND_SGES;
+ 	ep->rep_attr.cap.max_recv_sge = 1;
+ 	ep->rep_attr.cap.max_inline_data = 0;
+ 	ep->rep_attr.sq_sig_type = IB_SIGNAL_REQ_WR;
+@@ -891,7 +891,7 @@ rpcrdma_create_req(struct rpcrdma_xprt *r_xprt)
+ 	INIT_LIST_HEAD(&req->rl_registered);
+ 	req->rl_send_wr.next = NULL;
+ 	req->rl_send_wr.wr_cqe = &req->rl_cqe;
+-	req->rl_send_wr.sg_list = req->rl_send_iov;
++	req->rl_send_wr.sg_list = req->rl_send_sge;
+ 	req->rl_send_wr.opcode = IB_WR_SEND;
+ 	return req;
+ }
+@@ -1306,11 +1306,9 @@ rpcrdma_ep_post(struct rpcrdma_ia *ia,
+ 		struct rpcrdma_ep *ep,
+ 		struct rpcrdma_req *req)
+ {
+-	struct ib_device *device = ia->ri_device;
+ 	struct ib_send_wr *send_wr = &req->rl_send_wr;
+ 	struct ib_send_wr *send_wr_fail;
+-	struct ib_sge *sge = req->rl_send_iov;
+-	int i, rc;
++	int rc;
+ 
+ 	if (req->rl_reply) {
+ 		rc = rpcrdma_ep_post_recv(ia, req->rl_reply);
+@@ -1319,9 +1317,6 @@ rpcrdma_ep_post(struct rpcrdma_ia *ia,
+ 		req->rl_reply = NULL;
+ 	}
+ 
+-	for (i = 0; i < send_wr->num_sge; i++)
+-		ib_dma_sync_single_for_device(device, sge[i].addr,
+-					      sge[i].length, DMA_TO_DEVICE);
+ 	dprintk("RPC:       %s: posting %d s/g entries\n",
+ 		__func__, send_wr->num_sge);
+ 
+diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
+index 64b4e22..b2823d9 100644
+--- a/net/sunrpc/xprtrdma/xprt_rdma.h
++++ b/net/sunrpc/xprtrdma/xprt_rdma.h
+@@ -285,16 +285,27 @@ struct rpcrdma_mr_seg {		/* chunk descriptors */
+ 	char		*mr_offset;	/* kva if no page, else offset */
  };
  
- extern const struct rpcrdma_memreg_ops rpcrdma_fmr_memreg_ops;
+-#define RPCRDMA_MAX_IOVS	(2)
++/* Reserve enough Send SGEs to send a maximum size inline request:
++ * - RPC-over-RDMA header
++ * - xdr_buf head iovec
++ * - RPCRDMA_MAX_INLINE bytes, possibly unaligned, in pages
++ * - xdr_buf tail iovec
++ */
++enum {
++	RPCRDMA_MAX_SEND_PAGES = PAGE_SIZE + RPCRDMA_MAX_INLINE - 1,
++	RPCRDMA_MAX_PAGE_SGES = (RPCRDMA_MAX_SEND_PAGES >> PAGE_SHIFT) + 1,
++	RPCRDMA_MAX_SEND_SGES = 1 + 1 + RPCRDMA_MAX_PAGE_SGES + 1,
++};
+ 
+ struct rpcrdma_buffer;
+ struct rpcrdma_req {
+ 	struct list_head	rl_free;
++	unsigned int		rl_mapped_sges;
+ 	unsigned int		rl_connect_cookie;
+ 	struct rpcrdma_buffer	*rl_buffer;
+ 	struct rpcrdma_rep	*rl_reply;
+ 	struct ib_send_wr	rl_send_wr;
+-	struct ib_sge		rl_send_iov[RPCRDMA_MAX_IOVS];
++	struct ib_sge		rl_send_sge[RPCRDMA_MAX_SEND_SGES];
+ 	struct rpcrdma_regbuf	*rl_rdmabuf;	/* xprt header */
+ 	struct rpcrdma_regbuf	*rl_sendbuf;	/* rq_snd_buf */
+ 	struct rpcrdma_regbuf	*rl_recvbuf;	/* rq_rcv_buf */
+@@ -529,6 +540,18 @@ void rpcrdma_reply_handler(struct rpcrdma_rep *);
+ /*
+  * RPC/RDMA protocol calls - xprtrdma/rpc_rdma.c
+  */
++
++enum rpcrdma_chunktype {
++	rpcrdma_noch = 0,
++	rpcrdma_readch,
++	rpcrdma_areadch,
++	rpcrdma_writech,
++	rpcrdma_replych
++};
++
++bool rpcrdma_prepare_send_sges(struct rpcrdma_ia *, struct rpcrdma_req *,
++			       u32, struct xdr_buf *, enum rpcrdma_chunktype);
++void rpcrdma_unmap_sges(struct rpcrdma_ia *, struct rpcrdma_req *);
+ int rpcrdma_marshal_req(struct rpc_rqst *);
+ void rpcrdma_set_max_header_sizes(struct rpcrdma_xprt *);
+ 
 
