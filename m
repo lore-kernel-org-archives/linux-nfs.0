@@ -1,69 +1,66 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:43736 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:44358 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S965550AbcIPUL1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 16 Sep 2016 16:11:27 -0400
-Received: from int-mx10.intmail.prod.int.phx2.redhat.com (int-mx10.intmail.prod.int.phx2.redhat.com [10.5.11.23])
-        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
-        (No client certificate requested)
-        by mx1.redhat.com (Postfix) with ESMTPS id 595761B18
-        for <linux-nfs@vger.kernel.org>; Fri, 16 Sep 2016 20:11:25 +0000 (UTC)
-Received: from hut.sorensonfamily.com.redhat.com (ovpn-116-43.rdu2.redhat.com [10.10.116.43])
-        by int-mx10.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id u8GKBOSG002839
-        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NO)
-        for <linux-nfs@vger.kernel.org>; Fri, 16 Sep 2016 16:11:24 -0400
-From: Frank Sorenson <sorenson@redhat.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH] sunrpc: include gid in the rpc_cred_cache hash
-Date: Fri, 16 Sep 2016 15:12:15 -0500
-Message-Id: <1474056735-4008-1-git-send-email-sorenson@redhat.com>
+        id S1753480AbcIPU1M (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 16 Sep 2016 16:27:12 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: trond.myklebust@primarydata.com, anna.schumaker@netapp.com
+Cc: linux-nfs@vger.kernel.org, bfields@fieldses.org
+Subject: [PATCH v3 0/9] nfs: add CB_NOTIFY_LOCK support to nfs client
+Date: Fri, 16 Sep 2016 16:27:02 -0400
+Message-Id: <1474057631-31209-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The current rpc_cred_cache hashtable uses only the uid in the hash
-computation.  rpc_creds created with the same uid but different
-gids will all go on the same hash chain.
+v3:
+- add NFS4_OPEN_RESULT_MAY_NOTIFY_LOCK in a separate patch
+- a little cleanup and patch squashing
+- changelog cleanups
 
-In certain usage patterns, such as the following, this can lead to
-extremely long hash chains for these uids, while the rest of the
-hashtable remains nearly empty. This causes very high cpu usage
-in rpcauth_lookup_credcache, and slow performance for that uid.
+v2:
+- don't use *_unsafe sleep in setlk retry code
+- better encapsulate retry logic into helper functions
+- don't bother with waitqueue handling if we aren't expecting callback
+- fix build when CONFIG_NFS_V4_1 is not set
+- address several other style comments
 
-    for (i = 0 ; i < 100000 ; i++) {
-        setregid(-1, i);
-        stat(path, &st);
-    }
+This is the third posting of this patchset. The only real change is a
+separate patch to add the NFS4_OPEN_RESULT_MAY_NOTIFY_LOCK constant.
 
-Add the gid to the hash algorithm to distribute the rpc_creds
-throughout the cache to avoid long individual hash chains.
+This patchset adds support for CB_NOTIFY_LOCK callbacks to the NFS
+client. The basic idea is to add a waitqueue to the nfs_client and then
+have blocking lock waiters wait on that queue for callbacks.
 
-Signed-off-by: Frank Sorenson <sorenson@redhat.com>
+When a callback comes in, we use a keyed wakeup to wake any waiters. The
+waitqueue handling is necessarily more "manual" than I would like, but I
+don't see a real alternative there given that we need to insert the
+waiters onto the waitqueue prior to sending the lock request, and
+sending a lock request can involve blocking operations.
 
-diff --git a/net/sunrpc/auth.c b/net/sunrpc/auth.c
-index a7e42f9..2260e58 100644
---- a/net/sunrpc/auth.c
-+++ b/net/sunrpc/auth.c
-@@ -538,6 +538,14 @@ rpcauth_cache_enforce_limit(void)
- 	rpcauth_cache_do_shrink(nr_to_scan);
- }
- 
-+static unsigned int
-+rpcauth_hash_acred(struct auth_cred *acred, unsigned int hashbits)
-+{
-+	return hash_64(from_kgid(&init_user_ns, acred->gid) |
-+		(from_kuid(&init_user_ns, acred->uid) << (sizeof(gid_t) * 8)),
-+		hashbits);
-+}
-+
- /*
-  * Look up a process' credentials in the authentication cache
-  */
-@@ -551,7 +559,7 @@ rpcauth_lookup_credcache(struct rpc_auth *auth, struct auth_cred * acred,
- 			*entry, *new;
- 	unsigned int nr;
- 
--	nr = hash_long(from_kuid(&init_user_ns, acred->uid), cache->hashbits);
-+	nr = rpcauth_hash_acred(acred, cache->hashbits);
- 
- 	rcu_read_lock();
- 	hlist_for_each_entry_rcu(entry, &cache->hashtable[nr], cr_hash) {
+Tested in conjunction with the corresponding knfsd server-side patchset.
+
+Jeff Layton (9):
+  nfs: eliminate pointless and confusing do_vfs_lock wrappers
+  nfs: check for POSIX lock capability on server even for flock locks
+  nfs: use safe, interruptible sleeps when waiting to retry LOCK
+  nfs: add a new NFS4_OPEN_RESULT_MAY_NOTIFY_LOCK constant
+  nfs: track whether server sets MAY_NOTIFY_LOCK flag
+  nfs: add handling for CB_NOTIFY_LOCK in client
+  nfs: move nfs4_set_lock_state call into caller
+  nfs: move nfs4 lock retry attempt loop to a separate function
+  nfs: add code to allow client to wait on lock callbacks
+
+ fs/nfs/callback.h         |   8 +++
+ fs/nfs/callback_proc.c    |  18 +++++
+ fs/nfs/callback_xdr.c     |  49 ++++++++++++-
+ fs/nfs/file.c             |   9 +--
+ fs/nfs/nfs4_fs.h          |   1 +
+ fs/nfs/nfs4client.c       |   3 +
+ fs/nfs/nfs4proc.c         | 179 ++++++++++++++++++++++++++++++++++------------
+ include/linux/nfs_fs_sb.h |   3 +
+ include/uapi/linux/nfs4.h |   5 +-
+ 9 files changed, 220 insertions(+), 55 deletions(-)
+
+-- 
+2.7.4
+
