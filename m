@@ -1,62 +1,80 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from us-smtp-delivery-194.mimecast.com ([63.128.21.194]:32435 "EHLO
-        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1751968AbcIPVhu (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 16 Sep 2016 17:37:50 -0400
-From: Trond Myklebust <trondmy@primarydata.com>
-To: Frank Sorenson <sorenson@redhat.com>
-CC: List Linux NFS Mailing <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] sunrpc: include gid in the rpc_cred_cache hash
-Date: Fri, 16 Sep 2016 21:37:39 +0000
-Message-ID: <7EC0B2B1-CE1A-4509-9FE2-A5D6529626DA@primarydata.com>
-References: <1474056735-4008-1-git-send-email-sorenson@redhat.com>
-In-Reply-To: <1474056735-4008-1-git-send-email-sorenson@redhat.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=WINDOWS-1252
+Received: from mail-qk0-f179.google.com ([209.85.220.179]:34965 "EHLO
+        mail-qk0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1754074AbcIPVqI (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 16 Sep 2016 17:46:08 -0400
+Received: by mail-qk0-f179.google.com with SMTP id t7so101174925qkh.2
+        for <linux-nfs@vger.kernel.org>; Fri, 16 Sep 2016 14:46:07 -0700 (PDT)
+Message-ID: <1474062362.13386.13.camel@redhat.com>
+Subject: Re: [PATCH v3 2/9] nfs: check for POSIX lock capability on server
+ even for flock locks
+From: Jeff Layton <jlayton@redhat.com>
+To: Trond Myklebust <trondmy@primarydata.com>
+Cc: Schumaker Anna <anna.schumaker@netapp.com>,
+        List Linux NFS Mailing <linux-nfs@vger.kernel.org>,
+        Fields Bruce James <bfields@fieldses.org>
+Date: Fri, 16 Sep 2016 17:46:02 -0400
+In-Reply-To: <AEF00C6F-ECDD-4292-BDC2-A635D4EBB1B4@primarydata.com>
+References: <1474057631-31209-1-git-send-email-jlayton@redhat.com>
+         <1474057631-31209-3-git-send-email-jlayton@redhat.com>
+         <AEF00C6F-ECDD-4292-BDC2-A635D4EBB1B4@primarydata.com>
+Content-Type: text/plain; charset="UTF-8"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Fri, 2016-09-16 at 21:14 +0000, Trond Myklebust wrote:
+> > 
+> > > > On Sep 16, 2016, at 16:27, Jeff Layton <jlayton@redhat.com> wrote:
+> > 
+> > We may end up in here with a FL_FLOCK lock request. We translate those
+> > to whole-file NFSv4 locks and send them on to the server, so we need to
+> > verify that the server supports them no matter what sort of lock request
+> > this is.
+> > 
+> > > > Signed-off-by: Jeff Layton <jlayton@redhat.com>
+> > ---
+> > fs/nfs/nfs4proc.c | 3 +--
+> > 1 file changed, 1 insertion(+), 2 deletions(-)
+> > 
+> > diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+> > index 9d38366666f4..a0f25185c78c 100644
+> > --- a/fs/nfs/nfs4proc.c
+> > +++ b/fs/nfs/nfs4proc.c
+> > @@ -6135,8 +6135,7 @@ static int _nfs4_proc_setlk(struct nfs4_state *state, int cmd, struct file_lock
+> > 	unsigned char fl_flags = request->fl_flags;
+> > 	int status = -ENOLCK;
+> > 
+> > > > -	if ((fl_flags & FL_POSIX) &&
+> > > > -			!test_bit(NFS_STATE_POSIX_LOCKS, &state->flags))
+> > > > +	if (!test_bit(NFS_STATE_POSIX_LOCKS, &state->flags))
+> > > > 		goto out;
+> > 	/* Is this a delegated open? */
+> > 	status = nfs4_set_lock_state(state, request);
+> > -- 
+> > 2.7.4
+> 
+> The ability to support FL_FLOCK locks does not depend on the server’s
+> support for POSIX locking semantics. FL_FLOCK can also use stacked
+> lock semantics, precisely because they always cover the whole file.
 
-> On Sep 16, 2016, at 16:12, Frank Sorenson <sorenson@redhat.com> wrote:
->=20
-> The current rpc_cred_cache hashtable uses only the uid in the hash
-> computation.  rpc_creds created with the same uid but different
-> gids will all go on the same hash chain.
->=20
-> In certain usage patterns, such as the following, this can lead to
-> extremely long hash chains for these uids, while the rest of the
-> hashtable remains nearly empty. This causes very high cpu usage
-> in rpcauth_lookup_credcache, and slow performance for that uid.
->=20
->    for (i =3D 0 ; i < 100000 ; i++) {
->        setregid(-1, i);
->        stat(path, &st);
->    }
->=20
-> Add the gid to the hash algorithm to distribute the rpc_creds
-> throughout the cache to avoid long individual hash chains.
->=20
-> Signed-off-by: Frank Sorenson <sorenson@redhat.com>
->=20
-> diff --git a/net/sunrpc/auth.c b/net/sunrpc/auth.c
-> index a7e42f9..2260e58 100644
-> --- a/net/sunrpc/auth.c
-> +++ b/net/sunrpc/auth.c
-> @@ -538,6 +538,14 @@ rpcauth_cache_enforce_limit(void)
-> =09rpcauth_cache_do_shrink(nr_to_scan);
-> }
->=20
-> +static unsigned int
-> +rpcauth_hash_acred(struct auth_cred *acred, unsigned int hashbits)
-> +{
-> +=09return hash_64(from_kgid(&init_user_ns, acred->gid) |
-> +=09=09(from_kuid(&init_user_ns, acred->uid) << (sizeof(gid_t) * 8)),
-> +=09=09hashbits);
-> +}
-> +
+Oh! I had always thought this flags absence basically meant "I don't
+support file locking at all, so don't bother sending any LOCK
+requests". Now that I look though, all RFC5661 says is:
 
-NACK. The choice of only using the uid when hashing was deliberate; RPCSEC_=
-GSS is keyed only on the uid=85=20
-If you want to do this in order to accelerate AUTH_SYS lookups, then you ne=
-ed to push the hashing down to the auth flavour ops.
 
+   o  OPEN4_RESULT_LOCKTYPE_POSIX indicates that the server's byte-range
+      locking behavior supports the complete set of POSIX locking
+      techniques [24].  From this, the client can choose to manage byte-
+      range locking state in a way to handle a mismatch of byte-range
+      locking management.
+
+If this flag isn't there, I guess we can't infer anything about how the
+server's locks are implemented. That's just super.
+
+So, ok. If you think this logic is more correct as-is, then I'm fine
+with dropping this patch. This check gets moved in a later patch
+though, so I'll need to fix that up as well.
+
+-- 
+Jeff Layton <jlayton@redhat.com>
