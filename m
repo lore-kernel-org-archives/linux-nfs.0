@@ -1,78 +1,71 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:43938 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1756624AbcIPNPg (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 16 Sep 2016 09:15:36 -0400
-Subject: Re: [nfsv4] The Fall Bakeathon in Westford, Ma
-To: NFSv4 <nfsv4@ietf.org>,
-        Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-References: <ce08c91a-5dbd-8363-59e5-39b554ce3e04@RedHat.com>
- <b5388b25-2efd-1e35-0f5b-5b202de50ab5@RedHat.com>
-From: Steve Dickson <SteveD@redhat.com>
-Message-ID: <691fdaa5-4511-5af8-3c52-85f25664d72e@RedHat.com>
-Date: Fri, 16 Sep 2016 09:15:34 -0400
+Received: from us-smtp-delivery-194.mimecast.com ([216.205.24.194]:45831 "EHLO
+        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1757207AbcIPPhT (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 16 Sep 2016 11:37:19 -0400
+From: Trond Myklebust <trondmy@primarydata.com>
+To: Trond Myklebust <trondmy@primarydata.com>,
+        "green@linuxhacker.ru" <green@linuxhacker.ru>
+CC: "anna.schumaker@netapp.com" <anna.schumaker@netapp.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH v4 00/20] Fix delegation behaviour when server revokes
+ some state
+Date: Fri, 16 Sep 2016 15:36:49 +0000
+Message-ID: <1474040207.75849.1.camel@primarydata.com>
+References: <1473957960-10001-1-git-send-email-trond.myklebust@primarydata.com>
+         <F3BA1CBE-EADB-4B0A-8DE6-A3B5FB2E2156@linuxhacker.ru>
+In-Reply-To: <F3BA1CBE-EADB-4B0A-8DE6-A3B5FB2E2156@linuxhacker.ru>
 MIME-Version: 1.0
-In-Reply-To: <b5388b25-2efd-1e35-0f5b-5b202de50ab5@RedHat.com>
-Content-Type: text/plain; charset=windows-1252
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+T24gRnJpLCAyMDE2LTA5LTE2IGF0IDAwOjM4IC0wNDAwLCBPbGVnIERyb2tpbiB3cm90ZToNCj4g
+T24gU2VwIDE1LCAyMDE2LCBhdCAxMjo0NSBQTSwgVHJvbmQgTXlrbGVidXN0IHdyb3RlOg0KPiAN
+Cj4gPiANCj4gPiBBY2NvcmRpbmcgdG8gUkZDNTY2MSwgaWYgYW55IG9mIHRoZSBTRVFVRU5DRSBz
+dGF0dXMgYml0cw0KPiA+IFNFUTRfU1RBVFVTX0VYUElSRURfQUxMX1NUQVRFX1JFVk9LRUQsDQo+
+ID4gU0VRNF9TVEFUVVNfRVhQSVJFRF9TT01FX1NUQVRFX1JFVk9LRUQsDQo+ID4gU0VRNF9TVEFU
+VVNfQURNSU5fU1RBVEVfUkVWT0tFRCwNCj4gPiBvciBTRVE0X1NUQVRVU19SRUNBTExBQkxFX1NU
+QVRFX1JFVk9LRUQgYXJlIHNldCwgdGhlbiB3ZSBuZWVkIHRvDQo+ID4gdXNlDQo+ID4gVEVTVF9T
+VEFURUlEIHRvIGZpZ3VyZSBvdXQgd2hpY2ggc3RhdGVpZHMgaGF2ZSBiZWVuIHJldm9rZWQsIHNv
+IHdlDQo+ID4gY2FuIGFja25vd2xlZGdlIHRoZSBsb3NzIG9mIHN0YXRlIHVzaW5nIEZSRUVfU1RB
+VEVJRC4NCj4gPiANCj4gPiBXaGlsZSB3ZSBhbHJlYWR5IGRvIHRoaXMgZm9yIG9wZW4gYW5kIGxv
+Y2sgc3RhdGUsIHdlIGhhdmUgbm90IGJlZW4NCj4gPiBkb2luZw0KPiA+IHNvIGZvciBhbGwgdGhl
+IGRlbGVnYXRpb25zLg0KPiA+IA0KPiA+IHYyOiBuZnNfdjRfMl9taW5vcl9vcHMgbmVlZHMgdG8g
+c2V0IC50ZXN0X2FuZF9mcmVlX2V4cGlyZWQgdG9vDQo+ID4gdjM6IE5vdyB3aXRoIGFkZGVkIGxv
+Y2sgcmV2b2tlIGZpeGVzIGFuZCBjbG9zZS9kZWxlZ3JldHVybi9sb2NrdQ0KPiA+IGZpeGVzDQo+
+ID4gdjQ6IENsb3NlIGEgYnVuY2ggb2YgY29ybmVyIGNhc2VzDQo+IA0KPiBUaGlzIG9uZSBzZWVt
+cyB0byBiZSBsb29waW5nIG9uIHRoZSBjbGllbnQgaW4gYSB3YXkgdmVyeSBzaW1pbGFyDQo+IHRv
+IHRoZSBmaXJzdCBmYWlsdXJlIGluIHRoYXQgaXQncyB0aGUgc2VydmVyaXAtbmFtZWQgcHJvY2Vz
+cyB0aGF0J3MNCj4gdXNpbmcgdGhlIGNwdSwgYnV0IHRoZSBkZWJ1ZyBsb2cgaXMgdmVyeSBzaW1p
+bGFyIHRvIHRoZSBzZWNvbmQNCj4gZmFpbHVyZQ0KPiBpbiB0ZXN0IHN0YXRlaWQsIGV4Y2VwdCB0
+aGlzIHRpbWUgaXQncyBub3QgInN1Y2Nlc3MgMCIsIGJ1dCAic3VjY2Vzcw0KPiAtMTAwMjUiOg0K
+PsKgDQpBaC4uLiBJIHRoaW5rIEkgc2VlIHdoYXQgdGhlIGlzc3VlIGlzLi4uIERvZXMgdGhlIGZv
+bGxvd2luZyBoZWxwPw0KDQpDaGVlcnMNCsKgIFRyb25kDQoNCjg8LS0tLS0tLS0tLS0tLS0tLS0t
+LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tDQpGcm9tIGQ5ODg3
+MzQ1ZGJlZmZjYzdiOGJkZTE3YjA2ZGY4ZjA3NjdmMjFhYmYgTW9uIFNlcCAxNyAwMDowMDowMCAy
+MDAxDQpGcm9tOiBUcm9uZCBNeWtsZWJ1c3QgPHRyb25kLm15a2xlYnVzdEBwcmltYXJ5ZGF0YS5j
+b20+DQpEYXRlOiBGcmksIDE2IFNlcCAyMDE2IDExOjE3OjA0IC0wNDAwDQpTdWJqZWN0OiBbUEFU
+Q0ggdjUgMTQvMjJdIE5GU3Y0OiBFbnN1cmUgd2UgZG9uJ3QgcmUtdGVzdCByZXZva2VkIGFuZCBm
+cmVlZA0KIHN0YXRlaWRzDQoNClRoaXMgZml4ZXMgYSBwb3RlbnRpYWwgaW5maW5pdGUgbG9vcCBp
+biBuZnNfcmVhcF9leHBpcmVkX2RlbGVnYXRpb25zLg0KDQpTaWduZWQtb2ZmLWJ5OiBUcm9uZCBN
+eWtsZWJ1c3QgPHRyb25kLm15a2xlYnVzdEBwcmltYXJ5ZGF0YS5jb20+DQotLS0NCiBmcy9uZnMv
+ZGVsZWdhdGlvbi5jIHwgMyArKysNCiAxIGZpbGUgY2hhbmdlZCwgMyBpbnNlcnRpb25zKCspDQoN
+CmRpZmYgLS1naXQgYS9mcy9uZnMvZGVsZWdhdGlvbi5jIGIvZnMvbmZzL2RlbGVnYXRpb24uYw0K
+aW5kZXggZjQzMWZkZTEzZTkwLi4zNGFhNWRmYmU5OWUgMTAwNjQ0DQotLS0gYS9mcy9uZnMvZGVs
+ZWdhdGlvbi5jDQorKysgYi9mcy9uZnMvZGVsZWdhdGlvbi5jDQpAQCAtNjQ3LDYgKzY0Nyw3IEBA
+IHN0YXRpYyB2b2lkIG5mc19tYXJrX2RlbGVnYXRpb25fcmV2b2tlZChzdHJ1Y3QgbmZzX3NlcnZl
+ciAqc2VydmVyLA0KIAkJc3RydWN0IG5mc19kZWxlZ2F0aW9uICpkZWxlZ2F0aW9uKQ0KIHsNCiAJ
+c2V0X2JpdChORlNfREVMRUdBVElPTl9SRVZPS0VELCAmZGVsZWdhdGlvbi0+ZmxhZ3MpOw0KKwlk
+ZWxlZ2F0aW9uLT5zdGF0ZWlkLnR5cGUgPSBORlM0X0lOVkFMSURfU1RBVEVJRF9UWVBFOw0KIAlu
+ZnNfbWFya19yZXR1cm5fZGVsZWdhdGlvbihzZXJ2ZXIsIGRlbGVnYXRpb24pOw0KIH0NCiANCkBA
+IC04ODUsNiArODg2LDggQEAgc3RhdGljIGlubGluZSBib29sIG5mczRfc2VydmVyX3JlYm9vdGVk
+KGNvbnN0IHN0cnVjdCBuZnNfY2xpZW50ICpjbHApDQogc3RhdGljIHZvaWQgbmZzX21hcmtfdGVz
+dF9leHBpcmVkX2RlbGVnYXRpb24oc3RydWN0IG5mc19zZXJ2ZXIgKnNlcnZlciwNCiAJICAgIHN0
+cnVjdCBuZnNfZGVsZWdhdGlvbiAqZGVsZWdhdGlvbikNCiB7DQorCWlmIChkZWxlZ2F0aW9uLT5z
+dGF0ZWlkLnR5cGUgPT0gTkZTNF9JTlZBTElEX1NUQVRFSURfVFlQRSkNCisJCXJldHVybjsNCiAJ
+Y2xlYXJfYml0KE5GU19ERUxFR0FUSU9OX05FRURfUkVDTEFJTSwgJmRlbGVnYXRpb24tPmZsYWdz
+KTsNCiAJc2V0X2JpdChORlNfREVMRUdBVElPTl9URVNUX0VYUElSRUQsICZkZWxlZ2F0aW9uLT5m
+bGFncyk7DQogCXNldF9iaXQoTkZTNENMTlRfREVMRUdBVElPTl9FWFBJUkVELCAmc2VydmVyLT5u
+ZnNfY2xpZW50LT5jbF9zdGF0ZSk7DQotLSANCjIuNy40
 
-On 09/14/2016 01:40 PM, Steve Dickson wrote:
-> Just a quick reminder the block reservations will
-> be expiring for both the  Marriott and Hampton
-> in two days... This *Fri Sept 16*
-> 
-> Use code: 'red' for the Hampton and Marriott for the online reservations
-> Call them if there problems with the online reservs... 
-> 
-> Hampton: +1.978.392.1555
-> Marriott: +1.978.392.1407
-Today is the last day for these block reservations rates. 
-Let me know if there are any problems... 
-
-I believe there is still availability at the Wesford Regency
-be sure ask for the "Red Hat Rates".
-
-I hope see you next month... 
-
-steved.
- 
-> 
-> steved.
-> 
-> On 07/28/2016 09:06 AM, Steve Dickson wrote:
->> Red Hat is pleased to announce the Fall NFS Bake-a-ton will be
->> hosted by Red Hat in Westford, MA office 
->> The Date: *Oct 17th - 21th*
->>
->> Details and registration info:
->>     http://nfsv4bat.org/Events/2016/October/BAT/index.html
->>
->> Again, RDMA testing will be done as well as the normal
->> NFSv4.x testing. 
->>
->> This year I've added another hotel to the list.
->>     * Residence Inn Marriott - closest; w/ shuttle; full kitchen; free breakfast ($129.00)
->>     * Westford Regency Inn - w/bar ; w/shuttle ($105.00)
->>     * Hampton Inn - free breakfast ($119.00)
->>
->> The block reservations all expire on *Sept 17* on month before
->> the event. So please book as soon as can. 
->>
->> When registering (i.e. replying to this email) please give me
->>    * Company Name
->>    * How engineers are coming
->>    * T-shirt sizes
->>    * Hotel you will be staying in
->>
->> I hope to see you in October!!!
->>
->> steved.
->>
-> 
-> _______________________________________________
-> nfsv4 mailing list
-> nfsv4@ietf.org
-> https://www.ietf.org/mailman/listinfo/nfsv4
-> 
