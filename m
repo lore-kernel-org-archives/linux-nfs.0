@@ -1,80 +1,146 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from linuxhacker.ru ([217.76.32.60]:52298 "EHLO fiona.linuxhacker.ru"
+Received: from smtp.citrix.com ([66.165.176.89]:21646 "EHLO SMTP.CITRIX.COM"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751223AbcIPEiz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 16 Sep 2016 00:38:55 -0400
-Subject: Re: [PATCH v4 00/20] Fix delegation behaviour when server revokes some state
-Mime-Version: 1.0 (Apple Message framework v1283)
-Content-Type: text/plain; charset=us-ascii
-From: Oleg Drokin <green@linuxhacker.ru>
-In-Reply-To: <1473957960-10001-1-git-send-email-trond.myklebust@primarydata.com>
-Date: Fri, 16 Sep 2016 00:38:35 -0400
-Cc: anna.schumaker@netapp.com, linux-nfs@vger.kernel.org
-Message-Id: <F3BA1CBE-EADB-4B0A-8DE6-A3B5FB2E2156@linuxhacker.ru>
-References: <1473957960-10001-1-git-send-email-trond.myklebust@primarydata.com>
-To: Trond Myklebust <trond.myklebust@primarydata.com>
+        id S934024AbcIPM2m (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 16 Sep 2016 08:28:42 -0400
+From: David Vrabel <david.vrabel@citrix.com>
+To: <linux-nfs@vger.kernel.org>
+CC: David Vrabel <david.vrabel@citrix.com>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>, <netdev@vger.kernel.org>
+Subject: [PATCHv1] sunrpc: fix write space race causing stalls
+Date: Fri, 16 Sep 2016 13:28:22 +0100
+Message-ID: <1474028902-19838-1-git-send-email-david.vrabel@citrix.com>
+MIME-Version: 1.0
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sep 15, 2016, at 12:45 PM, Trond Myklebust wrote:
+Write space becoming available may race with putting the task to sleep
+in xprt_wait_for_buffer_space().  The existing mechanism to avoid the
+race does not work.
 
-> According to RFC5661, if any of the SEQUENCE status bits
-> SEQ4_STATUS_EXPIRED_ALL_STATE_REVOKED,
-> SEQ4_STATUS_EXPIRED_SOME_STATE_REVOKED, SEQ4_STATUS_ADMIN_STATE_REVOKED,
-> or SEQ4_STATUS_RECALLABLE_STATE_REVOKED are set, then we need to use
-> TEST_STATEID to figure out which stateids have been revoked, so we
-> can acknowledge the loss of state using FREE_STATEID.
-> 
-> While we already do this for open and lock state, we have not been doing
-> so for all the delegations.
-> 
-> v2: nfs_v4_2_minor_ops needs to set .test_and_free_expired too
-> v3: Now with added lock revoke fixes and close/delegreturn/locku fixes
-> v4: Close a bunch of corner cases
+This (edited) partial trace illustrates the problem:
 
-This one seems to be looping on the client in a way very similar
-to the first failure in that it's the serverip-named process that's
-using the cpu, but the debug log is very similar to the second failure
-in test stateid, except this time it's not "success 0", but "success -10025":
+   [1] rpc_task_run_action: task:43546@5 ... action=call_transmit
+   [2] xs_write_space <-xs_tcp_write_space
+   [3] xprt_write_space <-xs_write_space
+   [4] rpc_task_sleep: task:43546@5 ...
+   [5] xs_write_space <-xs_tcp_write_space
 
-[21114.650534] NFS call  test_stateid ffff8800ca2f3da4
-[21114.650537] --> nfs41_call_sync_prepare data->seq_server ffff880099003000
-[21114.650538] --> nfs41_setup_sequence
-[21114.650538] --> nfs4_alloc_slot used_slots=0000 highest_used=4294967295 max_slots=31
-[21114.650539] <-- nfs4_alloc_slot used_slots=0001 highest_used=0 slotid=0
-[21114.650539] <-- nfs41_setup_sequence slotid=0 seqid=160421364
-[21114.650544] encode_sequence: sessionid=1473979571:1:2:0 seqid=160421364 slotid=0 max_slotid=0 cache_this=0
-[21114.650646] --> nfs4_alloc_slot used_slots=0001 highest_used=0 max_slots=31
-[21114.650646] <-- nfs4_alloc_slot used_slots=0003 highest_used=1 slotid=1
-[21114.650647] nfs4_free_slot: slotid 1 highest_used_slotid 0
-[21114.650648] nfs41_sequence_process: Error 0 free the slot 
-[21114.650648] nfs4_free_slot: slotid 0 highest_used_slotid 4294967295
-[21114.650660] NFS reply test_stateid: succeeded, -10025
-[21114.650663] NFS call  test_stateid ffff8800ca2f3da4
-[21114.650666] --> nfs41_call_sync_prepare data->seq_server ffff880099003000
-[21114.650666] --> nfs41_setup_sequence
-[21114.650667] --> nfs4_alloc_slot used_slots=0000 highest_used=4294967295 max_slots=31
-[21114.650667] <-- nfs4_alloc_slot used_slots=0001 highest_used=0 slotid=0
-[21114.650667] <-- nfs41_setup_sequence slotid=0 seqid=160421365
-[21114.650673] encode_sequence: sessionid=1473979571:1:2:0 seqid=160421365 slotid=0 max_slotid=0 cache_this=0
-[21114.650792] --> nfs4_alloc_slot used_slots=0001 highest_used=0 max_slots=31
-[21114.650792] <-- nfs4_alloc_slot used_slots=0003 highest_used=1 slotid=1
-[21114.650793] nfs4_free_slot: slotid 1 highest_used_slotid 0
-[21114.650793] nfs41_sequence_process: Error 0 free the slot 
-[21114.650794] nfs4_free_slot: slotid 0 highest_used_slotid 4294967295
-[21114.650806] NFS reply test_stateid: succeeded, -10025
-[21114.650809] NFS call  test_stateid ffff8800ca2f3da4
-[21114.650812] --> nfs41_call_sync_prepare data->seq_server ffff880099003000
-[21114.650812] --> nfs41_setup_sequence
-[21114.650812] --> nfs4_alloc_slot used_slots=0000 highest_used=4294967295 max_slots=31
-[21114.650813] <-- nfs4_alloc_slot used_slots=0001 highest_used=0 slotid=0
-[21114.650813] <-- nfs41_setup_sequence slotid=0 seqid=160421366
-[21114.650819] encode_sequence: sessionid=1473979571:1:2:0 seqid=160421366 slotid=0 max_slotid=0 cache_this=0
-[21114.650922] --> nfs4_alloc_slot used_slots=0001 highest_used=0 max_slots=31
-[21114.650922] <-- nfs4_alloc_slot used_slots=0003 highest_used=1 slotid=1
-[21114.650923] nfs4_free_slot: slotid 1 highest_used_slotid 0
-[21114.650923] nfs41_sequence_process: Error 0 free the slot 
-[21114.650924] nfs4_free_slot: slotid 0 highest_used_slotid 4294967295
-[21114.650936] NFS reply test_stateid: succeeded, -10025
+[1] Task 43546 runs but is out of write space.
 
+[2] Space becomes available, xs_write_space() clears the
+    SOCKWQ_ASYNC_NOSPACE bit.
+
+[3] xprt_write_space() attemts to wake xprt->snd_task (== 43546), but
+    this has not yet been queued and the wake up is lost.
+
+[4] xs_nospace() is called which calls xprt_wait_for_buffer_space()
+    which queues task 43546.
+
+[5] The call to sk->sk_write_space() at the end of xs_nospace() (which
+    is supposed to handle the above race) does not call
+    xprt_write_space() as the SOCKWQ_ASYNC_NOSPACE bit is clear and
+    thus the task is not woken.
+
+Fix the race by have xprt_wait_for_buffer_space() check for write
+space after putting the task to sleep.
+
+Signed-off-by: David Vrabel <david.vrabel@citrix.com>
+---
+ include/linux/sunrpc/xprt.h |  1 +
+ net/sunrpc/xprt.c           |  4 ++++
+ net/sunrpc/xprtsock.c       | 21 +++++++++++++++++++--
+ 3 files changed, 24 insertions(+), 2 deletions(-)
+
+diff --git a/include/linux/sunrpc/xprt.h b/include/linux/sunrpc/xprt.h
+index a16070d..621e74b 100644
+--- a/include/linux/sunrpc/xprt.h
++++ b/include/linux/sunrpc/xprt.h
+@@ -129,6 +129,7 @@ struct rpc_xprt_ops {
+ 	void		(*connect)(struct rpc_xprt *xprt, struct rpc_task *task);
+ 	void *		(*buf_alloc)(struct rpc_task *task, size_t size);
+ 	void		(*buf_free)(void *buffer);
++	bool            (*have_write_space)(struct rpc_xprt *task);
+ 	int		(*send_request)(struct rpc_task *task);
+ 	void		(*set_retrans_timeout)(struct rpc_task *task);
+ 	void		(*timer)(struct rpc_xprt *xprt, struct rpc_task *task);
+diff --git a/net/sunrpc/xprt.c b/net/sunrpc/xprt.c
+index ea244b2..d3c1b1e 100644
+--- a/net/sunrpc/xprt.c
++++ b/net/sunrpc/xprt.c
+@@ -502,6 +502,10 @@ void xprt_wait_for_buffer_space(struct rpc_task *task, rpc_action action)
+ 
+ 	task->tk_timeout = RPC_IS_SOFT(task) ? req->rq_timeout : 0;
+ 	rpc_sleep_on(&xprt->pending, task, action);
++
++	/* Write space notification may race with putting task to sleep. */
++	if (xprt->ops->have_write_space(xprt))
++		rpc_wake_up_queued_task(&xprt->pending, task);
+ }
+ EXPORT_SYMBOL_GPL(xprt_wait_for_buffer_space);
+ 
+diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
+index bf16883..211de5b 100644
+--- a/net/sunrpc/xprtsock.c
++++ b/net/sunrpc/xprtsock.c
+@@ -472,8 +472,6 @@ static int xs_nospace(struct rpc_task *task)
+ 
+ 	spin_unlock_bh(&xprt->transport_lock);
+ 
+-	/* Race breaker in case memory is freed before above code is called */
+-	sk->sk_write_space(sk);
+ 	return ret;
+ }
+ 
+@@ -1679,6 +1677,22 @@ static void xs_tcp_write_space(struct sock *sk)
+ 	read_unlock_bh(&sk->sk_callback_lock);
+ }
+ 
++static bool xs_udp_have_write_space(struct rpc_xprt *xprt)
++{
++	struct sock_xprt *transport = container_of(xprt, struct sock_xprt, xprt);
++	struct sock *sk = transport->inet;
++
++	return sock_writeable(sk);
++}
++
++static bool xs_tcp_have_write_space(struct rpc_xprt *xprt)
++{
++	struct sock_xprt *transport = container_of(xprt, struct sock_xprt, xprt);
++	struct sock *sk = transport->inet;
++
++	return sk_stream_is_writeable(sk);
++}
++
+ static void xs_udp_do_set_buffer_size(struct rpc_xprt *xprt)
+ {
+ 	struct sock_xprt *transport = container_of(xprt, struct sock_xprt, xprt);
+@@ -2664,6 +2678,7 @@ static struct rpc_xprt_ops xs_local_ops = {
+ 	.connect		= xs_local_connect,
+ 	.buf_alloc		= rpc_malloc,
+ 	.buf_free		= rpc_free,
++	.have_write_space       = xs_udp_have_write_space,
+ 	.send_request		= xs_local_send_request,
+ 	.set_retrans_timeout	= xprt_set_retrans_timeout_def,
+ 	.close			= xs_close,
+@@ -2683,6 +2698,7 @@ static struct rpc_xprt_ops xs_udp_ops = {
+ 	.connect		= xs_connect,
+ 	.buf_alloc		= rpc_malloc,
+ 	.buf_free		= rpc_free,
++	.have_write_space       = xs_udp_have_write_space,
+ 	.send_request		= xs_udp_send_request,
+ 	.set_retrans_timeout	= xprt_set_retrans_timeout_rtt,
+ 	.timer			= xs_udp_timer,
+@@ -2704,6 +2720,7 @@ static struct rpc_xprt_ops xs_tcp_ops = {
+ 	.connect		= xs_connect,
+ 	.buf_alloc		= rpc_malloc,
+ 	.buf_free		= rpc_free,
++	.have_write_space       = xs_tcp_have_write_space,
+ 	.send_request		= xs_tcp_send_request,
+ 	.set_retrans_timeout	= xprt_set_retrans_timeout_def,
+ 	.close			= xs_tcp_shutdown,
+-- 
+2.1.4
 
