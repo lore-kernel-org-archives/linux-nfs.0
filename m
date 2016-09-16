@@ -1,71 +1,111 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from us-smtp-delivery-194.mimecast.com ([216.205.24.194]:45831 "EHLO
+Received: from us-smtp-delivery-194.mimecast.com ([216.205.24.194]:39213 "EHLO
         us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1757207AbcIPPhT (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 16 Sep 2016 11:37:19 -0400
+        by vger.kernel.org with ESMTP id S1754848AbcIPQBf (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 16 Sep 2016 12:01:35 -0400
 From: Trond Myklebust <trondmy@primarydata.com>
-To: Trond Myklebust <trondmy@primarydata.com>,
-        "green@linuxhacker.ru" <green@linuxhacker.ru>
-CC: "anna.schumaker@netapp.com" <anna.schumaker@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH v4 00/20] Fix delegation behaviour when server revokes
- some state
-Date: Fri, 16 Sep 2016 15:36:49 +0000
-Message-ID: <1474040207.75849.1.camel@primarydata.com>
-References: <1473957960-10001-1-git-send-email-trond.myklebust@primarydata.com>
-         <F3BA1CBE-EADB-4B0A-8DE6-A3B5FB2E2156@linuxhacker.ru>
-In-Reply-To: <F3BA1CBE-EADB-4B0A-8DE6-A3B5FB2E2156@linuxhacker.ru>
+To: David Vrabel <david.vrabel@citrix.com>
+CC: List Linux NFS Mailing <linux-nfs@vger.kernel.org>,
+        Trond Myklebust <trondmy@primarydata.com>,
+        Schumaker Anna <anna.schumaker@netapp.com>,
+        "List Linux Network Devel Mailing" <netdev@vger.kernel.org>
+Subject: Re: [PATCHv1] sunrpc: fix write space race causing stalls
+Date: Fri, 16 Sep 2016 16:01:26 +0000
+Message-ID: <DCD6291A-CE72-4888-AD77-37BB259CD026@primarydata.com>
+References: <1474028902-19838-1-git-send-email-david.vrabel@citrix.com>
+In-Reply-To: <1474028902-19838-1-git-send-email-david.vrabel@citrix.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=WINDOWS-1252
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gRnJpLCAyMDE2LTA5LTE2IGF0IDAwOjM4IC0wNDAwLCBPbGVnIERyb2tpbiB3cm90ZToNCj4g
-T24gU2VwIDE1LCAyMDE2LCBhdCAxMjo0NSBQTSwgVHJvbmQgTXlrbGVidXN0IHdyb3RlOg0KPiAN
-Cj4gPiANCj4gPiBBY2NvcmRpbmcgdG8gUkZDNTY2MSwgaWYgYW55IG9mIHRoZSBTRVFVRU5DRSBz
-dGF0dXMgYml0cw0KPiA+IFNFUTRfU1RBVFVTX0VYUElSRURfQUxMX1NUQVRFX1JFVk9LRUQsDQo+
-ID4gU0VRNF9TVEFUVVNfRVhQSVJFRF9TT01FX1NUQVRFX1JFVk9LRUQsDQo+ID4gU0VRNF9TVEFU
-VVNfQURNSU5fU1RBVEVfUkVWT0tFRCwNCj4gPiBvciBTRVE0X1NUQVRVU19SRUNBTExBQkxFX1NU
-QVRFX1JFVk9LRUQgYXJlIHNldCwgdGhlbiB3ZSBuZWVkIHRvDQo+ID4gdXNlDQo+ID4gVEVTVF9T
-VEFURUlEIHRvIGZpZ3VyZSBvdXQgd2hpY2ggc3RhdGVpZHMgaGF2ZSBiZWVuIHJldm9rZWQsIHNv
-IHdlDQo+ID4gY2FuIGFja25vd2xlZGdlIHRoZSBsb3NzIG9mIHN0YXRlIHVzaW5nIEZSRUVfU1RB
-VEVJRC4NCj4gPiANCj4gPiBXaGlsZSB3ZSBhbHJlYWR5IGRvIHRoaXMgZm9yIG9wZW4gYW5kIGxv
-Y2sgc3RhdGUsIHdlIGhhdmUgbm90IGJlZW4NCj4gPiBkb2luZw0KPiA+IHNvIGZvciBhbGwgdGhl
-IGRlbGVnYXRpb25zLg0KPiA+IA0KPiA+IHYyOiBuZnNfdjRfMl9taW5vcl9vcHMgbmVlZHMgdG8g
-c2V0IC50ZXN0X2FuZF9mcmVlX2V4cGlyZWQgdG9vDQo+ID4gdjM6IE5vdyB3aXRoIGFkZGVkIGxv
-Y2sgcmV2b2tlIGZpeGVzIGFuZCBjbG9zZS9kZWxlZ3JldHVybi9sb2NrdQ0KPiA+IGZpeGVzDQo+
-ID4gdjQ6IENsb3NlIGEgYnVuY2ggb2YgY29ybmVyIGNhc2VzDQo+IA0KPiBUaGlzIG9uZSBzZWVt
-cyB0byBiZSBsb29waW5nIG9uIHRoZSBjbGllbnQgaW4gYSB3YXkgdmVyeSBzaW1pbGFyDQo+IHRv
-IHRoZSBmaXJzdCBmYWlsdXJlIGluIHRoYXQgaXQncyB0aGUgc2VydmVyaXAtbmFtZWQgcHJvY2Vz
-cyB0aGF0J3MNCj4gdXNpbmcgdGhlIGNwdSwgYnV0IHRoZSBkZWJ1ZyBsb2cgaXMgdmVyeSBzaW1p
-bGFyIHRvIHRoZSBzZWNvbmQNCj4gZmFpbHVyZQ0KPiBpbiB0ZXN0IHN0YXRlaWQsIGV4Y2VwdCB0
-aGlzIHRpbWUgaXQncyBub3QgInN1Y2Nlc3MgMCIsIGJ1dCAic3VjY2Vzcw0KPiAtMTAwMjUiOg0K
-PsKgDQpBaC4uLiBJIHRoaW5rIEkgc2VlIHdoYXQgdGhlIGlzc3VlIGlzLi4uIERvZXMgdGhlIGZv
-bGxvd2luZyBoZWxwPw0KDQpDaGVlcnMNCsKgIFRyb25kDQoNCjg8LS0tLS0tLS0tLS0tLS0tLS0t
-LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tDQpGcm9tIGQ5ODg3
-MzQ1ZGJlZmZjYzdiOGJkZTE3YjA2ZGY4ZjA3NjdmMjFhYmYgTW9uIFNlcCAxNyAwMDowMDowMCAy
-MDAxDQpGcm9tOiBUcm9uZCBNeWtsZWJ1c3QgPHRyb25kLm15a2xlYnVzdEBwcmltYXJ5ZGF0YS5j
-b20+DQpEYXRlOiBGcmksIDE2IFNlcCAyMDE2IDExOjE3OjA0IC0wNDAwDQpTdWJqZWN0OiBbUEFU
-Q0ggdjUgMTQvMjJdIE5GU3Y0OiBFbnN1cmUgd2UgZG9uJ3QgcmUtdGVzdCByZXZva2VkIGFuZCBm
-cmVlZA0KIHN0YXRlaWRzDQoNClRoaXMgZml4ZXMgYSBwb3RlbnRpYWwgaW5maW5pdGUgbG9vcCBp
-biBuZnNfcmVhcF9leHBpcmVkX2RlbGVnYXRpb25zLg0KDQpTaWduZWQtb2ZmLWJ5OiBUcm9uZCBN
-eWtsZWJ1c3QgPHRyb25kLm15a2xlYnVzdEBwcmltYXJ5ZGF0YS5jb20+DQotLS0NCiBmcy9uZnMv
-ZGVsZWdhdGlvbi5jIHwgMyArKysNCiAxIGZpbGUgY2hhbmdlZCwgMyBpbnNlcnRpb25zKCspDQoN
-CmRpZmYgLS1naXQgYS9mcy9uZnMvZGVsZWdhdGlvbi5jIGIvZnMvbmZzL2RlbGVnYXRpb24uYw0K
-aW5kZXggZjQzMWZkZTEzZTkwLi4zNGFhNWRmYmU5OWUgMTAwNjQ0DQotLS0gYS9mcy9uZnMvZGVs
-ZWdhdGlvbi5jDQorKysgYi9mcy9uZnMvZGVsZWdhdGlvbi5jDQpAQCAtNjQ3LDYgKzY0Nyw3IEBA
-IHN0YXRpYyB2b2lkIG5mc19tYXJrX2RlbGVnYXRpb25fcmV2b2tlZChzdHJ1Y3QgbmZzX3NlcnZl
-ciAqc2VydmVyLA0KIAkJc3RydWN0IG5mc19kZWxlZ2F0aW9uICpkZWxlZ2F0aW9uKQ0KIHsNCiAJ
-c2V0X2JpdChORlNfREVMRUdBVElPTl9SRVZPS0VELCAmZGVsZWdhdGlvbi0+ZmxhZ3MpOw0KKwlk
-ZWxlZ2F0aW9uLT5zdGF0ZWlkLnR5cGUgPSBORlM0X0lOVkFMSURfU1RBVEVJRF9UWVBFOw0KIAlu
-ZnNfbWFya19yZXR1cm5fZGVsZWdhdGlvbihzZXJ2ZXIsIGRlbGVnYXRpb24pOw0KIH0NCiANCkBA
-IC04ODUsNiArODg2LDggQEAgc3RhdGljIGlubGluZSBib29sIG5mczRfc2VydmVyX3JlYm9vdGVk
-KGNvbnN0IHN0cnVjdCBuZnNfY2xpZW50ICpjbHApDQogc3RhdGljIHZvaWQgbmZzX21hcmtfdGVz
-dF9leHBpcmVkX2RlbGVnYXRpb24oc3RydWN0IG5mc19zZXJ2ZXIgKnNlcnZlciwNCiAJICAgIHN0
-cnVjdCBuZnNfZGVsZWdhdGlvbiAqZGVsZWdhdGlvbikNCiB7DQorCWlmIChkZWxlZ2F0aW9uLT5z
-dGF0ZWlkLnR5cGUgPT0gTkZTNF9JTlZBTElEX1NUQVRFSURfVFlQRSkNCisJCXJldHVybjsNCiAJ
-Y2xlYXJfYml0KE5GU19ERUxFR0FUSU9OX05FRURfUkVDTEFJTSwgJmRlbGVnYXRpb24tPmZsYWdz
-KTsNCiAJc2V0X2JpdChORlNfREVMRUdBVElPTl9URVNUX0VYUElSRUQsICZkZWxlZ2F0aW9uLT5m
-bGFncyk7DQogCXNldF9iaXQoTkZTNENMTlRfREVMRUdBVElPTl9FWFBJUkVELCAmc2VydmVyLT5u
-ZnNfY2xpZW50LT5jbF9zdGF0ZSk7DQotLSANCjIuNy40
+
+> On Sep 16, 2016, at 08:28, David Vrabel <david.vrabel@citrix.com> wrote:
+>=20
+> Write space becoming available may race with putting the task to sleep
+> in xprt_wait_for_buffer_space().  The existing mechanism to avoid the
+> race does not work.
+>=20
+> This (edited) partial trace illustrates the problem:
+>=20
+>   [1] rpc_task_run_action: task:43546@5 ... action=3Dcall_transmit
+>   [2] xs_write_space <-xs_tcp_write_space
+>   [3] xprt_write_space <-xs_write_space
+>   [4] rpc_task_sleep: task:43546@5 ...
+>   [5] xs_write_space <-xs_tcp_write_space
+>=20
+> [1] Task 43546 runs but is out of write space.
+>=20
+> [2] Space becomes available, xs_write_space() clears the
+>    SOCKWQ_ASYNC_NOSPACE bit.
+>=20
+> [3] xprt_write_space() attemts to wake xprt->snd_task (=3D=3D 43546), but
+>    this has not yet been queued and the wake up is lost.
+>=20
+> [4] xs_nospace() is called which calls xprt_wait_for_buffer_space()
+>    which queues task 43546.
+>=20
+> [5] The call to sk->sk_write_space() at the end of xs_nospace() (which
+>    is supposed to handle the above race) does not call
+>    xprt_write_space() as the SOCKWQ_ASYNC_NOSPACE bit is clear and
+>    thus the task is not woken.
+>=20
+> Fix the race by have xprt_wait_for_buffer_space() check for write
+> space after putting the task to sleep.
+>=20
+> Signed-off-by: David Vrabel <david.vrabel@citrix.com>
+> ---
+> include/linux/sunrpc/xprt.h |  1 +
+> net/sunrpc/xprt.c           |  4 ++++
+> net/sunrpc/xprtsock.c       | 21 +++++++++++++++++++--
+> 3 files changed, 24 insertions(+), 2 deletions(-)
+>=20
+> diff --git a/include/linux/sunrpc/xprt.h b/include/linux/sunrpc/xprt.h
+> index a16070d..621e74b 100644
+> --- a/include/linux/sunrpc/xprt.h
+> +++ b/include/linux/sunrpc/xprt.h
+> @@ -129,6 +129,7 @@ struct rpc_xprt_ops {
+> =09void=09=09(*connect)(struct rpc_xprt *xprt, struct rpc_task *task);
+> =09void *=09=09(*buf_alloc)(struct rpc_task *task, size_t size);
+> =09void=09=09(*buf_free)(void *buffer);
+> +=09bool            (*have_write_space)(struct rpc_xprt *task);
+> =09int=09=09(*send_request)(struct rpc_task *task);
+> =09void=09=09(*set_retrans_timeout)(struct rpc_task *task);
+> =09void=09=09(*timer)(struct rpc_xprt *xprt, struct rpc_task *task);
+> diff --git a/net/sunrpc/xprt.c b/net/sunrpc/xprt.c
+> index ea244b2..d3c1b1e 100644
+> --- a/net/sunrpc/xprt.c
+> +++ b/net/sunrpc/xprt.c
+> @@ -502,6 +502,10 @@ void xprt_wait_for_buffer_space(struct rpc_task *tas=
+k, rpc_action action)
+>=20
+> =09task->tk_timeout =3D RPC_IS_SOFT(task) ? req->rq_timeout : 0;
+> =09rpc_sleep_on(&xprt->pending, task, action);
+> +
+> +=09/* Write space notification may race with putting task to sleep. */
+> +=09if (xprt->ops->have_write_space(xprt))
+> +=09=09rpc_wake_up_queued_task(&xprt->pending, task);
+> }
+> EXPORT_SYMBOL_GPL(xprt_wait_for_buffer_space);
+>=20
+> diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
+> index bf16883..211de5b 100644
+> --- a/net/sunrpc/xprtsock.c
+> +++ b/net/sunrpc/xprtsock.c
+> @@ -472,8 +472,6 @@ static int xs_nospace(struct rpc_task *task)
+>=20
+> =09spin_unlock_bh(&xprt->transport_lock);
+>=20
+> -=09/* Race breaker in case memory is freed before above code is called *=
+/
+> -=09sk->sk_write_space(sk);
+> =09return ret;
+> }
+
+Instead of these callbacks, why not just add a call to sk_set_bit(SOCKWQ_AS=
+YNC_WAITDATA, sk) after queueing the task in xs_nospace()? Won=92t that fix=
+ the existing race breaker?
+
+Cheers
+  Trond
 
