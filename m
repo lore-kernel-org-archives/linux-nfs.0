@@ -1,79 +1,92 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from us-smtp-delivery-194.mimecast.com ([63.128.21.194]:26470 "EHLO
-        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1750945AbcIPV7J (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 16 Sep 2016 17:59:09 -0400
-From: Trond Myklebust <trondmy@primarydata.com>
-To: Jeff Layton <jlayton@redhat.com>
-CC: Schumaker Anna <anna.schumaker@netapp.com>,
-        List Linux NFS Mailing <linux-nfs@vger.kernel.org>,
-        Fields Bruce James <bfields@fieldses.org>
-Subject: Re: [PATCH v3 2/9] nfs: check for POSIX lock capability on server
- even for flock locks
-Date: Fri, 16 Sep 2016 21:59:01 +0000
-Message-ID: <18E0EDFB-5127-46AA-A078-CD084872A99B@primarydata.com>
-References: <1474057631-31209-1-git-send-email-jlayton@redhat.com>
- <1474057631-31209-3-git-send-email-jlayton@redhat.com>
- <AEF00C6F-ECDD-4292-BDC2-A635D4EBB1B4@primarydata.com>
- <1474062362.13386.13.camel@redhat.com>
-In-Reply-To: <1474062362.13386.13.camel@redhat.com>
+Received: from mail2.candelatech.com ([208.74.158.173]:39243 "EHLO
+        mail2.candelatech.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1754384AbcIPXbz (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 16 Sep 2016 19:31:55 -0400
+Subject: Re: nfs broken on Fedora-24, 32-bit?
+To: Trond Myklebust <trondmy@primarydata.com>
+References: <de68a5b5-fa21-1ca4-68e9-feeea009e6d3@candelatech.com>
+ <DE7D6150-4E55-4940-8BD8-3FF2484E3313@primarydata.com>
+ <1a99ef05-d1f2-8d3d-6dca-3a81728708ef@candelatech.com>
+Cc: List Linux NFS Mailing <linux-nfs@vger.kernel.org>
+From: Ben Greear <greearb@candelatech.com>
+Message-ID: <08ad07ee-72e2-b478-d70d-87b08c24452f@candelatech.com>
+Date: Fri, 16 Sep 2016 16:31:51 -0700
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+In-Reply-To: <1a99ef05-d1f2-8d3d-6dca-3a81728708ef@candelatech.com>
+Content-Type: text/plain; charset=windows-1252; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-DQo+IE9uIFNlcCAxNiwgMjAxNiwgYXQgMTc6NDYsIEplZmYgTGF5dG9uIDxqbGF5dG9uQHJlZGhh
-dC5jb20+IHdyb3RlOg0KPiANCj4gT24gRnJpLCAyMDE2LTA5LTE2IGF0IDIxOjE0ICswMDAwLCBU
-cm9uZCBNeWtsZWJ1c3Qgd3JvdGU6DQo+Pj4gDQo+Pj4+PiBPbiBTZXAgMTYsIDIwMTYsIGF0IDE2
-OjI3LCBKZWZmIExheXRvbiA8amxheXRvbkByZWRoYXQuY29tPiB3cm90ZToNCj4+PiANCj4+PiBX
-ZSBtYXkgZW5kIHVwIGluIGhlcmUgd2l0aCBhIEZMX0ZMT0NLIGxvY2sgcmVxdWVzdC4gV2UgdHJh
-bnNsYXRlIHRob3NlDQo+Pj4gdG8gd2hvbGUtZmlsZSBORlN2NCBsb2NrcyBhbmQgc2VuZCB0aGVt
-IG9uIHRvIHRoZSBzZXJ2ZXIsIHNvIHdlIG5lZWQgdG8NCj4+PiB2ZXJpZnkgdGhhdCB0aGUgc2Vy
-dmVyIHN1cHBvcnRzIHRoZW0gbm8gbWF0dGVyIHdoYXQgc29ydCBvZiBsb2NrIHJlcXVlc3QNCj4+
-PiB0aGlzIGlzLg0KPj4+IA0KPj4+Pj4gU2lnbmVkLW9mZi1ieTogSmVmZiBMYXl0b24gPGpsYXl0
-b25AcmVkaGF0LmNvbT4NCj4+PiAtLS0NCj4+PiBmcy9uZnMvbmZzNHByb2MuYyB8IDMgKy0tDQo+
-Pj4gMSBmaWxlIGNoYW5nZWQsIDEgaW5zZXJ0aW9uKCspLCAyIGRlbGV0aW9ucygtKQ0KPj4+IA0K
-Pj4+IGRpZmYgLS1naXQgYS9mcy9uZnMvbmZzNHByb2MuYyBiL2ZzL25mcy9uZnM0cHJvYy5jDQo+
-Pj4gaW5kZXggOWQzODM2NjY2NmY0Li5hMGYyNTE4NWM3OGMgMTAwNjQ0DQo+Pj4gLS0tIGEvZnMv
-bmZzL25mczRwcm9jLmMNCj4+PiArKysgYi9mcy9uZnMvbmZzNHByb2MuYw0KPj4+IEBAIC02MTM1
-LDggKzYxMzUsNyBAQCBzdGF0aWMgaW50IF9uZnM0X3Byb2Nfc2V0bGsoc3RydWN0IG5mczRfc3Rh
-dGUgKnN0YXRlLCBpbnQgY21kLCBzdHJ1Y3QgZmlsZV9sb2NrDQo+Pj4gCXVuc2lnbmVkIGNoYXIg
-ZmxfZmxhZ3MgPSByZXF1ZXN0LT5mbF9mbGFnczsNCj4+PiAJaW50IHN0YXR1cyA9IC1FTk9MQ0s7
-DQo+Pj4gDQo+Pj4+PiAtCWlmICgoZmxfZmxhZ3MgJiBGTF9QT1NJWCkgJiYNCj4+Pj4+IC0JCQkh
-dGVzdF9iaXQoTkZTX1NUQVRFX1BPU0lYX0xPQ0tTLCAmc3RhdGUtPmZsYWdzKSkNCj4+Pj4+ICsJ
-aWYgKCF0ZXN0X2JpdChORlNfU1RBVEVfUE9TSVhfTE9DS1MsICZzdGF0ZS0+ZmxhZ3MpKQ0KPj4+
-Pj4gCQlnb3RvIG91dDsNCj4+PiAJLyogSXMgdGhpcyBhIGRlbGVnYXRlZCBvcGVuPyAqLw0KPj4+
-IAlzdGF0dXMgPSBuZnM0X3NldF9sb2NrX3N0YXRlKHN0YXRlLCByZXF1ZXN0KTsNCj4+PiAtLSAN
-Cj4+PiAyLjcuNA0KPj4gDQo+PiBUaGUgYWJpbGl0eSB0byBzdXBwb3J0IEZMX0ZMT0NLIGxvY2tz
-IGRvZXMgbm90IGRlcGVuZCBvbiB0aGUgc2VydmVy4oCZcw0KPj4gc3VwcG9ydCBmb3IgUE9TSVgg
-bG9ja2luZyBzZW1hbnRpY3MuIEZMX0ZMT0NLIGNhbiBhbHNvIHVzZSBzdGFja2VkDQo+PiBsb2Nr
-IHNlbWFudGljcywgcHJlY2lzZWx5IGJlY2F1c2UgdGhleSBhbHdheXMgY292ZXIgdGhlIHdob2xl
-IGZpbGUuDQo+IA0KPiBPaCEgSSBoYWQgYWx3YXlzIHRob3VnaHQgdGhpcyBmbGFncyBhYnNlbmNl
-IGJhc2ljYWxseSBtZWFudCAiSSBkb24ndA0KPiBzdXBwb3J0IGZpbGUgbG9ja2luZyBhdCBhbGws
-IHNvIGRvbid0IGJvdGhlciBzZW5kaW5nIGFueSBMT0NLDQo+IHJlcXVlc3RzIi4gTm93IHRoYXQg
-SSBsb29rIHRob3VnaCwgYWxsIFJGQzU2NjEgc2F5cyBpczoNCj4gDQo+IA0KPiAgICBvICBPUEVO
-NF9SRVNVTFRfTE9DS1RZUEVfUE9TSVggaW5kaWNhdGVzIHRoYXQgdGhlIHNlcnZlcidzIGJ5dGUt
-cmFuZ2UNCj4gICAgICAgbG9ja2luZyBiZWhhdmlvciBzdXBwb3J0cyB0aGUgY29tcGxldGUgc2V0
-IG9mIFBPU0lYIGxvY2tpbmcNCj4gICAgICAgdGVjaG5pcXVlcyBbMjRdLiAgRnJvbSB0aGlzLCB0
-aGUgY2xpZW50IGNhbiBjaG9vc2UgdG8gbWFuYWdlIGJ5dGUtDQo+ICAgICAgIHJhbmdlIGxvY2tp
-bmcgc3RhdGUgaW4gYSB3YXkgdG8gaGFuZGxlIGEgbWlzbWF0Y2ggb2YgYnl0ZS1yYW5nZQ0KPiAg
-ICAgICBsb2NraW5nIG1hbmFnZW1lbnQuDQoNClJpZ2h0LiBZb3UgYWxzbyBoYXZlOg0KDQoxNS4x
-LjguNy4gIE5GUzRFUlJfTE9DS19SQU5HRSAoRXJyb3IgQ29kZSAxMDAyOCkNCg0KICAgQSBMT0NL
-IG9wZXJhdGlvbiBpcyBvcGVyYXRpbmcgb24gYSByYW5nZSB0aGF0IG92ZXJsYXBzIGluIHBhcnQg
-YQ0KICAgY3VycmVudGx5IGhlbGQgYnl0ZS1yYW5nZSBsb2NrIGZvciB0aGUgY3VycmVudCBsb2Nr
-LW93bmVyIGFuZCBkb2VzDQogICBub3QgcHJlY2lzZWx5IG1hdGNoIGEgc2luZ2xlIHN1Y2ggYnl0
-ZS1yYW5nZSBsb2NrIHdoZXJlIHRoZSBzZXJ2ZXINCiAgIGRvZXMgbm90IHN1cHBvcnQgdGhpcyB0
-eXBlIG9mIHJlcXVlc3QsIGFuZCB0aHVzIGRvZXMgbm90IGltcGxlbWVudA0KICAgUE9TSVggbG9j
-a2luZyBzZW1hbnRpY3MgWzI0XS4gIFNlZSBTZWN0aW9ucyAxOC4xMC40LCAxOC4xMS40LCBhbmQN
-CiAgIDE4LjEyLjQgZm9yIGEgZGlzY3Vzc2lvbiBvZiBob3cgdGhpcyBhcHBsaWVzIHRvIExPQ0ss
-IExPQ0tULCBhbmQNCiAgIExPQ0tVIHJlc3BlY3RpdmVseS4NCg0KDQo+IA0KPiBJZiB0aGlzIGZs
-YWcgaXNuJ3QgdGhlcmUsIEkgZ3Vlc3Mgd2UgY2FuJ3QgaW5mZXIgYW55dGhpbmcgYWJvdXQgaG93
-IHRoZQ0KPiBzZXJ2ZXIncyBsb2NrcyBhcmUgaW1wbGVtZW50ZWQuIFRoYXQncyBqdXN0IHN1cGVy
-Lg0KPiANCj4gU28sIG9rLiBJZiB5b3UgdGhpbmsgdGhpcyBsb2dpYyBpcyBtb3JlIGNvcnJlY3Qg
-YXMtaXMsIHRoZW4gSSdtIGZpbmUNCj4gd2l0aCBkcm9wcGluZyB0aGlzIHBhdGNoLiBUaGlzIGNo
-ZWNrIGdldHMgbW92ZWQgaW4gYSBsYXRlciBwYXRjaA0KPiB0aG91Z2gsIHNvIEknbGwgbmVlZCB0
-byBmaXggdGhhdCB1cCBhcyB3ZWxsLg0KDQpUaGUgY3VycmVudCBjb2RlIHdhcyBkZXNpZ25lZCwg
-YXMgSSBzYWlkLCB0byBhbGxvdyBmbG9jaygpIGxvY2tzIGF0IGxlYXN0IHRvIHdvcmsgd2l0aCBh
-IHNlcnZlciB0aGF0IG9ubHkgc3VwcG9ydHMgV2luZG93cyBzdGFja2VkIGxvY2tzIGFuZC9vciBu
-YXRpdmUgQlNEIGxvY2tzLg0KDQo=
+On 09/15/2016 04:06 PM, Ben Greear wrote:
+> On 09/15/2016 04:00 PM, Trond Myklebust wrote:
+>> Hi Ben,
+>>
+>>> On Sep 15, 2016, at 18:32, Ben Greear <greearb@candelatech.com> wrote:
+>>>
+>>> I have a Fedora-24 machine mounting an NFS server running Fedora-13 (kernel 2.6.34.9-69.fc13.x86_64).
+>>>
+>>> F24 machine has this in /etc/fstab:
+>>>
+>>> 192.168.100.3:/mnt/d2 /mnt/d2                   nfs     nfsvers=3       0 0
+>>>
+>>> When I copy a file from f24-32 to the F-13 machine, the file size is the same,
+>>> but the file is corrupted on the file server.  I see a different md5sum each time.
+>>>
+>>> Various other systems (F21, F19, etc) can all copy to the F13 machine fine.
+>>>
+>>> And, F24-64 machine can copy to the F13 machine fine.
+>>>
+>>> Anyone seen something similar?
+>>
+>> Do you know if the corruption is happening on the read()s or on the write()s? Do you, for instance get the same corruption if you copy from a local file on
+>> the F-24 client to the server? ..or if you copy from a file on the server to a local directory on the F-24 client?
+>>
+>> Cheers
+>>   Trond
+>>
+>
+> Seems to be a write issue:
+>
+> # This is the nfs server:
+>
+> [greearb@fs3 candela_cdrom.5.3.5]$ md5sum gua-f21-32
+> ad4073fa8b806bb82b85a645e21f5e67  gua-f21-32
+> [greearb@fs3 candela_cdrom.5.3.5]$ md5sum ../greearb/tmp/gua-f21-32
+> 582bfea0cc8cc52aa38dc0f5048d0156  ../greearb/tmp/gua-f21-32
+> [greearb@fs3 candela_cdrom.5.3.5]$
+>
+>
+> # This is the v-f24-32 client:
+>
+> greearb@v-f24-32 ~]$ cp /mnt/d2/pub/candela_cdrom.5.3.5/gua-f21-32 ./
+> [greearb@v-f24-32 ~]$ md5sum gua-f21-32
+> ad4073fa8b806bb82b85a645e21f5e67  gua-f21-32
+> [greearb@v-f24-32 ~]$ cp gua-f21-32 /mnt/d2/pub/greearb/tmp/
+> [greearb@v-f24-32 ~]$ md5sum /mnt/d2/pub/greearb/tmp/gua-f21-32
+> ad4073fa8b806bb82b85a645e21f5e67  /mnt/d2/pub/greearb/tmp/gua-f21-32
+>
+>
+> Interesting that the client reads back the file it copied over as if it were correct, but
+> it shows up wrong on the nfs server.  Maybe it is just reading a local cache?
+>
+> Thanks,
+> Ben
+>
+
+Here is some more info on this:
+
+We can only reproduce this on virtual machines using the KVM infrastructure, and only
+when we use the rtl8139 virtual hardware (in bridge mode).  With the e1000 virtual hardware
+we cannot reproduce the problem.
+
+Also, multiple different nfs servers (including much newer kernels) all show the same
+behaviour with this broken nfs client.
+
+Thanks,
+Ben
+
+-- 
+Ben Greear <greearb@candelatech.com>
+Candela Technologies Inc  http://www.candelatech.com
 
