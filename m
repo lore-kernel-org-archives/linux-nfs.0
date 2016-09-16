@@ -1,43 +1,47 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:48890 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:53780 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S965229AbcIPU1O (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        id S965224AbcIPU1O (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
         Fri, 16 Sep 2016 16:27:14 -0400
 From: Jeff Layton <jlayton@redhat.com>
 To: trond.myklebust@primarydata.com, anna.schumaker@netapp.com
 Cc: linux-nfs@vger.kernel.org, bfields@fieldses.org
-Subject: [PATCH v3 2/9] nfs: check for POSIX lock capability on server even for flock locks
-Date: Fri, 16 Sep 2016 16:27:04 -0400
-Message-Id: <1474057631-31209-3-git-send-email-jlayton@redhat.com>
+Subject: [PATCH v3 3/9] nfs: use safe, interruptible sleeps when waiting to retry LOCK
+Date: Fri, 16 Sep 2016 16:27:05 -0400
+Message-Id: <1474057631-31209-4-git-send-email-jlayton@redhat.com>
 In-Reply-To: <1474057631-31209-1-git-send-email-jlayton@redhat.com>
 References: <1474057631-31209-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-We may end up in here with a FL_FLOCK lock request. We translate those
-to whole-file NFSv4 locks and send them on to the server, so we need to
-verify that the server supports them no matter what sort of lock request
-this is.
+We actually want to use TASK_INTERRUPTIBLE sleeps when we're in the
+process of polling for a NFSv4 lock. If there is a signal pending when
+the task wakes up, then we'll be returning an error anyway. So, we might
+as well wake up immediately for non-fatal signals as well. That allows
+us to return to userland more quickly in that case, but won't change the
+error that userland sees.
+
+Also, there is no need to use the *_unsafe sleep variants here, as no
+vfs-layer locks should be held at this point.
 
 Signed-off-by: Jeff Layton <jlayton@redhat.com>
 ---
- fs/nfs/nfs4proc.c | 3 +--
- 1 file changed, 1 insertion(+), 2 deletions(-)
+ fs/nfs/nfs4proc.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
 diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 9d38366666f4..a0f25185c78c 100644
+index a0f25185c78c..253b0c09fb02 100644
 --- a/fs/nfs/nfs4proc.c
 +++ b/fs/nfs/nfs4proc.c
-@@ -6135,8 +6135,7 @@ static int _nfs4_proc_setlk(struct nfs4_state *state, int cmd, struct file_lock
- 	unsigned char fl_flags = request->fl_flags;
- 	int status = -ENOLCK;
- 
--	if ((fl_flags & FL_POSIX) &&
--			!test_bit(NFS_STATE_POSIX_LOCKS, &state->flags))
-+	if (!test_bit(NFS_STATE_POSIX_LOCKS, &state->flags))
- 		goto out;
- 	/* Is this a delegated open? */
- 	status = nfs4_set_lock_state(state, request);
+@@ -5537,7 +5537,7 @@ int nfs4_proc_delegreturn(struct inode *inode, struct rpc_cred *cred, const nfs4
+ static unsigned long
+ nfs4_set_lock_task_retry(unsigned long timeout)
+ {
+-	freezable_schedule_timeout_killable_unsafe(timeout);
++	freezable_schedule_timeout_interruptible(timeout);
+ 	timeout <<= 1;
+ 	if (timeout > NFS4_LOCK_MAXTIMEOUT)
+ 		return NFS4_LOCK_MAXTIMEOUT;
 -- 
 2.7.4
 
