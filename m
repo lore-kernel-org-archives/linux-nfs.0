@@ -1,17 +1,17 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-it0-f67.google.com ([209.85.214.67]:35805 "EHLO
+Received: from mail-it0-f67.google.com ([209.85.214.67]:33943 "EHLO
         mail-it0-f67.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1756486AbcIQFNv (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sat, 17 Sep 2016 01:13:51 -0400
-Received: by mail-it0-f67.google.com with SMTP id e20so1839482itc.2
-        for <linux-nfs@vger.kernel.org>; Fri, 16 Sep 2016 22:13:51 -0700 (PDT)
+        with ESMTP id S1756504AbcIQFNw (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sat, 17 Sep 2016 01:13:52 -0400
+Received: by mail-it0-f67.google.com with SMTP id 186so1845758itf.1
+        for <linux-nfs@vger.kernel.org>; Fri, 16 Sep 2016 22:13:52 -0700 (PDT)
 From: Trond Myklebust <trond.myklebust@primarydata.com>
 To: anna.schumaker@netapp.com
 Cc: linux-nfs@vger.kernel.org, Oleg Drokin <green@linuxhacker.ru>
-Subject: [PATCH v5 16/25] NFSv4: nfs4_do_handle_exception() handle revoke/expiry of a single stateid
-Date: Sat, 17 Sep 2016 01:13:24 -0400
-Message-Id: <1474089213-104014-17-git-send-email-trond.myklebust@primarydata.com>
-In-Reply-To: <1474089213-104014-16-git-send-email-trond.myklebust@primarydata.com>
+Subject: [PATCH v5 17/25] NFSv4: nfs4_handle_delegation_recall_error() handle expiration as revoke case
+Date: Sat, 17 Sep 2016 01:13:25 -0400
+Message-Id: <1474089213-104014-18-git-send-email-trond.myklebust@primarydata.com>
+In-Reply-To: <1474089213-104014-17-git-send-email-trond.myklebust@primarydata.com>
 References: <1474089213-104014-1-git-send-email-trond.myklebust@primarydata.com>
  <1474089213-104014-2-git-send-email-trond.myklebust@primarydata.com>
  <1474089213-104014-3-git-send-email-trond.myklebust@primarydata.com>
@@ -28,52 +28,38 @@ References: <1474089213-104014-1-git-send-email-trond.myklebust@primarydata.com>
  <1474089213-104014-14-git-send-email-trond.myklebust@primarydata.com>
  <1474089213-104014-15-git-send-email-trond.myklebust@primarydata.com>
  <1474089213-104014-16-git-send-email-trond.myklebust@primarydata.com>
+ <1474089213-104014-17-git-send-email-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-If we're not yet sure that all state has expired or been revoked, we
-should try to do a minimal recovery on just the one stateid.
+If the server tells us our stateid has expired, then handle that as if
+it was revoked.
 
 Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
 ---
- fs/nfs/nfs4proc.c | 14 +++++++-------
- 1 file changed, 7 insertions(+), 7 deletions(-)
+ fs/nfs/nfs4proc.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
 diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index f79d4f55d83f..84ee836a976c 100644
+index 84ee836a976c..75edf90455b4 100644
 --- a/fs/nfs/nfs4proc.c
 +++ b/fs/nfs/nfs4proc.c
-@@ -400,10 +400,16 @@ static int nfs4_do_handle_exception(struct nfs_server *server,
- 	switch(errorcode) {
- 		case 0:
- 			return 0;
--		case -NFS4ERR_OPENMODE:
+@@ -1919,7 +1919,6 @@ static int nfs4_handle_delegation_recall_error(struct nfs_server *server, struct
+ 		case -NFS4ERR_STALE_CLIENTID:
+ 		case -NFS4ERR_STALE_STATEID:
+ 			set_bit(NFS_DELEGATED_STATE, &state->flags);
+-		case -NFS4ERR_EXPIRED:
+ 			/* Don't recall a delegation if it was lost */
+ 			nfs4_schedule_lease_recovery(server->nfs_client);
+ 			return -EAGAIN;
+@@ -1931,6 +1930,7 @@ static int nfs4_handle_delegation_recall_error(struct nfs_server *server, struct
+ 			return -EAGAIN;
  		case -NFS4ERR_DELEG_REVOKED:
  		case -NFS4ERR_ADMIN_REVOKED:
 +		case -NFS4ERR_EXPIRED:
  		case -NFS4ERR_BAD_STATEID:
-+			if (inode != NULL && stateid != NULL) {
-+				nfs_inode_find_delegation_state_and_recover(inode,
-+						stateid);
-+				goto wait_on_recovery;
-+			}
-+		case -NFS4ERR_OPENMODE:
- 			if (inode) {
- 				int err;
- 
-@@ -422,12 +428,6 @@ static int nfs4_do_handle_exception(struct nfs_server *server,
- 			if (ret < 0)
- 				break;
- 			goto wait_on_recovery;
--		case -NFS4ERR_EXPIRED:
--			if (state != NULL) {
--				ret = nfs4_schedule_stateid_recovery(server, state);
--				if (ret < 0)
--					break;
--			}
- 		case -NFS4ERR_STALE_STATEID:
- 		case -NFS4ERR_STALE_CLIENTID:
- 			nfs4_schedule_lease_recovery(clp);
+ 		case -NFS4ERR_OPENMODE:
+ 			nfs_inode_find_state_and_recover(state->inode,
 -- 
 2.7.4
 
