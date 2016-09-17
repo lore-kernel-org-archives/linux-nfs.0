@@ -1,74 +1,120 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:37648 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:37652 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1754719AbcIQWRl (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Sat, 17 Sep 2016 18:17:41 -0400
+        id S1754733AbcIQWRn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Sat, 17 Sep 2016 18:17:43 -0400
 From: Jeff Layton <jlayton@redhat.com>
 To: trond.myklebust@primarydata.com, anna.schumaker@netapp.com
 Cc: linux-nfs@vger.kernel.org, bfields@fieldses.org
-Subject: [PATCH v4 0/9] nfs: add CB_NOTIFY_LOCK support to nfs client
-Date: Sat, 17 Sep 2016 18:17:30 -0400
-Message-Id: <1474150659-23894-1-git-send-email-jlayton@redhat.com>
+Subject: [PATCH v4 2/9] nfs: eliminate pointless and confusing do_vfs_lock wrappers
+Date: Sat, 17 Sep 2016 18:17:32 -0400
+Message-Id: <1474150659-23894-3-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1474150659-23894-1-git-send-email-jlayton@redhat.com>
+References: <1474150659-23894-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-v4:
-- reinstate patch to fix read_buf args
-- drop patch to check NFS_STATE_POSIX_LOCKS on FL_FLOCK locks
-- clean up retry loops. Use while loops instead of do..while
-  and use !signalled() as the condition.
-- add a cbnl_valid flag to cb_notify_lock_args to indicate whether
-  decoding worked. s_dev and id could legitimately both be zero.
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ fs/nfs/file.c     |  9 ++-------
+ fs/nfs/nfs4proc.c | 15 +++++----------
+ 2 files changed, 7 insertions(+), 17 deletions(-)
 
-v3:
-- add NFS4_OPEN_RESULT_MAY_NOTIFY_LOCK in a separate patch
-- a little cleanup and patch squashing
-- changelog cleanups
-
-v2:
-- don't use *_unsafe sleep in setlk retry code
-- better encapsulate retry logic into helper functions
-- don't bother with waitqueue handling if we aren't expecting callback
-- fix build when CONFIG_NFS_V4_1 is not set
-- address several other style comments
-
-This is the third posting of this patchset. The only real change is a
-separate patch to add the NFS4_OPEN_RESULT_MAY_NOTIFY_LOCK constant.
-
-This patchset adds support for CB_NOTIFY_LOCK callbacks to the NFS
-client. The basic idea is to add a waitqueue to the nfs_client and then
-have blocking lock waiters wait on that queue for callbacks.
-
-When a callback comes in, we use a keyed wakeup to wake any waiters. The
-waitqueue handling is necessarily more "manual" than I would like, but I
-don't see a real alternative there given that we need to insert the
-waiters onto the waitqueue prior to sending the lock request, and
-sending a lock request can involve blocking operations.
-
-Tested in conjunction with the corresponding knfsd server-side patchset.
-
-Jeff Layton (9):
-  nfs: the length argument to read_buf should be unsigned
-  nfs: eliminate pointless and confusing do_vfs_lock wrappers
-  nfs: use safe, interruptible sleeps when waiting to retry LOCK
-  nfs: add a new NFS4_OPEN_RESULT_MAY_NOTIFY_LOCK constant
-  nfs: track whether server sets MAY_NOTIFY_LOCK flag
-  nfs: add handling for CB_NOTIFY_LOCK in client
-  nfs: move nfs4_set_lock_state call into caller
-  nfs: move nfs4 lock retry attempt loop to a separate function
-  nfs: allow blocking locks to be awoken by lock callbacks
-
- fs/nfs/callback.h         |   9 +++
- fs/nfs/callback_proc.c    |  16 +++++
- fs/nfs/callback_xdr.c     |  53 +++++++++++++-
- fs/nfs/file.c             |   9 +--
- fs/nfs/nfs4_fs.h          |   1 +
- fs/nfs/nfs4client.c       |   3 +
- fs/nfs/nfs4proc.c         | 176 ++++++++++++++++++++++++++++++++++------------
- include/linux/nfs_fs_sb.h |   3 +
- include/uapi/linux/nfs4.h |   5 +-
- 9 files changed, 219 insertions(+), 56 deletions(-)
-
+diff --git a/fs/nfs/file.c b/fs/nfs/file.c
+index ca699ddc11c1..2a747f6c252d 100644
+--- a/fs/nfs/file.c
++++ b/fs/nfs/file.c
+@@ -708,11 +708,6 @@ out_noconflict:
+ 	goto out;
+ }
+ 
+-static int do_vfs_lock(struct file *file, struct file_lock *fl)
+-{
+-	return locks_lock_file_wait(file, fl);
+-}
+-
+ static int
+ do_unlk(struct file *filp, int cmd, struct file_lock *fl, int is_local)
+ {
+@@ -745,7 +740,7 @@ do_unlk(struct file *filp, int cmd, struct file_lock *fl, int is_local)
+ 	if (!is_local)
+ 		status = NFS_PROTO(inode)->lock(filp, cmd, fl);
+ 	else
+-		status = do_vfs_lock(filp, fl);
++		status = locks_lock_file_wait(filp, fl);
+ 	return status;
+ }
+ 
+@@ -770,7 +765,7 @@ do_setlk(struct file *filp, int cmd, struct file_lock *fl, int is_local)
+ 	if (!is_local)
+ 		status = NFS_PROTO(inode)->lock(filp, cmd, fl);
+ 	else
+-		status = do_vfs_lock(filp, fl);
++		status = locks_lock_file_wait(filp, fl);
+ 	if (status < 0)
+ 		goto out;
+ 
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index a9dec32ba9ba..9d38366666f4 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -5600,11 +5600,6 @@ static int nfs4_proc_getlk(struct nfs4_state *state, int cmd, struct file_lock *
+ 	return err;
+ }
+ 
+-static int do_vfs_lock(struct inode *inode, struct file_lock *fl)
+-{
+-	return locks_lock_inode_wait(inode, fl);
+-}
+-
+ struct nfs4_unlockdata {
+ 	struct nfs_locku_args arg;
+ 	struct nfs_locku_res res;
+@@ -5657,7 +5652,7 @@ static void nfs4_locku_done(struct rpc_task *task, void *data)
+ 	switch (task->tk_status) {
+ 		case 0:
+ 			renew_lease(calldata->server, calldata->timestamp);
+-			do_vfs_lock(calldata->lsp->ls_state->inode, &calldata->fl);
++			locks_lock_inode_wait(calldata->lsp->ls_state->inode, &calldata->fl);
+ 			if (nfs4_update_lock_stateid(calldata->lsp,
+ 					&calldata->res.stateid))
+ 				break;
+@@ -5765,7 +5760,7 @@ static int nfs4_proc_unlck(struct nfs4_state *state, int cmd, struct file_lock *
+ 	mutex_lock(&sp->so_delegreturn_mutex);
+ 	/* Exclude nfs4_reclaim_open_stateid() - note nesting! */
+ 	down_read(&nfsi->rwsem);
+-	if (do_vfs_lock(inode, request) == -ENOENT) {
++	if (locks_lock_inode_wait(inode, request) == -ENOENT) {
+ 		up_read(&nfsi->rwsem);
+ 		mutex_unlock(&sp->so_delegreturn_mutex);
+ 		goto out;
+@@ -5906,7 +5901,7 @@ static void nfs4_lock_done(struct rpc_task *task, void *calldata)
+ 				data->timestamp);
+ 		if (data->arg.new_lock) {
+ 			data->fl.fl_flags &= ~(FL_SLEEP | FL_ACCESS);
+-			if (do_vfs_lock(lsp->ls_state->inode, &data->fl) < 0) {
++			if (locks_lock_inode_wait(lsp->ls_state->inode, &data->fl) < 0) {
+ 				rpc_restart_call_prepare(task);
+ 				break;
+ 			}
+@@ -6148,7 +6143,7 @@ static int _nfs4_proc_setlk(struct nfs4_state *state, int cmd, struct file_lock
+ 	if (status != 0)
+ 		goto out;
+ 	request->fl_flags |= FL_ACCESS;
+-	status = do_vfs_lock(state->inode, request);
++	status = locks_lock_inode_wait(state->inode, request);
+ 	if (status < 0)
+ 		goto out;
+ 	mutex_lock(&sp->so_delegreturn_mutex);
+@@ -6157,7 +6152,7 @@ static int _nfs4_proc_setlk(struct nfs4_state *state, int cmd, struct file_lock
+ 		/* Yes: cache locks! */
+ 		/* ...but avoid races with delegation recall... */
+ 		request->fl_flags = fl_flags & ~FL_SLEEP;
+-		status = do_vfs_lock(state->inode, request);
++		status = locks_lock_inode_wait(state->inode, request);
+ 		up_read(&nfsi->rwsem);
+ 		mutex_unlock(&sp->so_delegreturn_mutex);
+ 		goto out;
 -- 
 2.7.4
 
