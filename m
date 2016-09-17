@@ -1,160 +1,212 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from us-smtp-delivery-194.mimecast.com ([63.128.21.194]:26069 "EHLO
-        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S932119AbcIQVpm (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sat, 17 Sep 2016 17:45:42 -0400
-From: Trond Myklebust <trondmy@primarydata.com>
-To: "green@linuxhacker.ru" <green@linuxhacker.ru>
-CC: "anna.schumaker@netapp.com" <anna.schumaker@netapp.com>,
+Received: from linuxhacker.ru ([217.76.32.60]:33988 "EHLO fiona.linuxhacker.ru"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S932231AbcIQV4I (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Sat, 17 Sep 2016 17:56:08 -0400
+Subject: Re: [PATCH v5 00/25] Fix delegation behaviour when server revokes some state
+Mime-Version: 1.0 (Apple Message framework v1283)
+Content-Type: text/plain; charset=windows-1252
+From: Oleg Drokin <green@linuxhacker.ru>
+In-Reply-To: <1474148731.7526.3.camel@primarydata.com>
+Date: Sat, 17 Sep 2016 17:55:51 -0400
+Cc: "anna.schumaker@netapp.com" <anna.schumaker@netapp.com>,
         "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH v5 00/25] Fix delegation behaviour when server revokes
- some state
-Date: Sat, 17 Sep 2016 21:45:33 +0000
-Message-ID: <1474148731.7526.3.camel@primarydata.com>
-References: <1474089213-104014-1-git-send-email-trond.myklebust@primarydata.com>
-         <838E325D-2DA1-4229-A046-76316302F813@linuxhacker.ru>
-         <CCA85800-84C2-4B80-A44D-966F79EC5892@primarydata.com>
-         <E84E083B-293E-4990-921A-FF37C282FA15@linuxhacker.ru>
-         <1474140727.7526.1.camel@primarydata.com>
-In-Reply-To: <1474140727.7526.1.camel@primarydata.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+Message-Id: <96CBC4AF-B0EA-4AFA-8068-E93CBACD1B0B@linuxhacker.ru>
+References: <1474089213-104014-1-git-send-email-trond.myklebust@primarydata.com> <838E325D-2DA1-4229-A046-76316302F813@linuxhacker.ru> <CCA85800-84C2-4B80-A44D-966F79EC5892@primarydata.com> <E84E083B-293E-4990-921A-FF37C282FA15@linuxhacker.ru> <1474140727.7526.1.camel@primarydata.com> <1474148731.7526.3.camel@primarydata.com>
+To: Trond Myklebust <trondmy@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gU2F0LCAyMDE2LTA5LTE3IGF0IDE1OjMyIC0wNDAwLCBUcm9uZCBNeWtsZWJ1c3Qgd3JvdGU6
-DQo+IE9uIFNhdCwgMjAxNi0wOS0xNyBhdCAxNToxNiAtMDQwMCwgT2xlZyBEcm9raW4gd3JvdGU6
-DQo+ID4gDQo+ID4gT24gU2VwIDE3LCAyMDE2LCBhdCAyOjE4IFBNLCBUcm9uZCBNeWtsZWJ1c3Qg
-d3JvdGU6DQo+ID4gDQo+ID4gPiANCj4gPiA+IA0KPiA+ID4gDQo+ID4gPiA+IA0KPiA+ID4gPiAN
-Cj4gPiA+ID4gT24gU2VwIDE3LCAyMDE2LCBhdCAxNDowNCwgT2xlZyBEcm9raW4gPGdyZWVuQGxp
-bnV4aGFja2VyLnJ1Pg0KPiA+ID4gPiB3cm90ZToNCj4gPiA+ID4gDQo+ID4gPiA+IA0KPiA+ID4g
-PiBPbiBTZXAgMTcsIDIwMTYsIGF0IDE6MTMgQU0sIFRyb25kIE15a2xlYnVzdCB3cm90ZToNCj4g
-PiA+ID4gDQo+ID4gPiA+ID4gDQo+ID4gPiA+ID4gDQo+ID4gPiA+ID4gQWNjb3JkaW5nIHRvIFJG
-QzU2NjEsIGlmIGFueSBvZiB0aGUgU0VRVUVOQ0Ugc3RhdHVzIGJpdHMNCj4gPiA+ID4gPiBTRVE0
-X1NUQVRVU19FWFBJUkVEX0FMTF9TVEFURV9SRVZPS0VELA0KPiA+ID4gPiA+IFNFUTRfU1RBVFVT
-X0VYUElSRURfU09NRV9TVEFURV9SRVZPS0VELA0KPiA+ID4gPiA+IFNFUTRfU1RBVFVTX0FETUlO
-X1NUQVRFX1JFVk9LRUQsDQo+ID4gPiA+ID4gb3IgU0VRNF9TVEFUVVNfUkVDQUxMQUJMRV9TVEFU
-RV9SRVZPS0VEIGFyZSBzZXQsIHRoZW4gd2UgbmVlZA0KPiA+ID4gPiA+IHRvIHVzZQ0KPiA+ID4g
-PiA+IFRFU1RfU1RBVEVJRCB0byBmaWd1cmUgb3V0IHdoaWNoIHN0YXRlaWRzIGhhdmUgYmVlbiBy
-ZXZva2VkLA0KPiA+ID4gPiA+IHNvDQo+ID4gPiA+ID4gd2UNCj4gPiA+ID4gPiBjYW4gYWNrbm93
-bGVkZ2UgdGhlIGxvc3Mgb2Ygc3RhdGUgdXNpbmcgRlJFRV9TVEFURUlELg0KPiA+ID4gPiA+IA0K
-PiA+ID4gPiA+IFdoaWxlIHdlIGFscmVhZHkgZG8gdGhpcyBmb3Igb3BlbiBhbmQgbG9jayBzdGF0
-ZSwgd2UgaGF2ZSBub3QNCj4gPiA+ID4gPiBiZWVuIGRvaW5nDQo+ID4gPiA+ID4gc28gZm9yIGFs
-bCB0aGUgZGVsZWdhdGlvbnMuDQo+ID4gPiA+ID4gDQo+ID4gPiA+ID4gdjI6IG5mc192NF8yX21p
-bm9yX29wcyBuZWVkcyB0byBzZXQgLnRlc3RfYW5kX2ZyZWVfZXhwaXJlZA0KPiA+ID4gPiA+IHRv
-bw0KPiA+ID4gPiA+IHYzOiBOb3cgd2l0aCBhZGRlZCBsb2NrIHJldm9rZSBmaXhlcyBhbmQNCj4g
-PiA+ID4gPiBjbG9zZS9kZWxlZ3JldHVybi9sb2NrdSBmaXhlcw0KPiA+ID4gPiA+IHY0OiBDbG9z
-ZSBhIGJ1bmNoIG9mIGNvcm5lciBjYXNlcw0KPiA+ID4gPiA+IHY1OiBSZXBvcnQgcmV2b2tlZCBk
-ZWxlZ2F0aW9ucyBhcyBpbnZhbGlkIGluDQo+ID4gPiA+ID4gbmZzX2hhdmVfZGVsZWdhdGlvbigp
-DQo+ID4gPiA+ID4gwqBGaXggYW4gaW5maW5pdGUgbG9vcCBpbiBuZnNfcmVhcF9leHBpcmVkX2Rl
-bGVnYXRpb25zLg0KPiA+ID4gPiA+IMKgRml4ZXMgZm9yIG90aGVyIGxvb3BpbmcgYmVoYXZpb3Vy
-DQo+ID4gPiA+IA0KPiA+ID4gPiBUaGlzIHRpbWUgYXJvdW5kIHRoZSBsb29wIHNlZW1zIHRvIGJl
-IG1vcmUgdGlnaHQsDQo+ID4gPiA+IGluIHVzZXJzcGFjZSBwcm9jZXNzOg0KPiA+ID4gPiANCj4g
-PiA+ID4gWyA5MTk3LjI1NjU3MV0gLS0+IG5mczQxX2NhbGxfc3luY19wcmVwYXJlIGRhdGEtPnNl
-cV9zZXJ2ZXINCj4gPiA+ID4gZmZmZjg4MDBhNzNjZTAwMA0KPiA+ID4gPiBbIDkxOTcuMjU2NTcy
-XSAtLT4gbmZzNDFfc2V0dXBfc2VxdWVuY2UNCj4gPiA+ID4gWyA5MTk3LjI1NjU3M10gLS0+IG5m
-czRfYWxsb2Nfc2xvdCB1c2VkX3Nsb3RzPTAwMDANCj4gPiA+ID4gaGlnaGVzdF91c2VkPTQyOTQ5
-NjcyOTUgbWF4X3Nsb3RzPTMxDQo+ID4gPiA+IFsgOTE5Ny4yNTY1NzRdIDwtLSBuZnM0X2FsbG9j
-X3Nsb3QgdXNlZF9zbG90cz0wMDAxDQo+ID4gPiA+IGhpZ2hlc3RfdXNlZD0wDQo+ID4gPiA+IHNs
-b3RpZD0wDQo+ID4gPiA+IFsgOTE5Ny4yNTY1NzRdIDwtLSBuZnM0MV9zZXR1cF9zZXF1ZW5jZSBz
-bG90aWQ9MCBzZXFpZD0xNDAxMzgwMA0KPiA+ID4gPiBbIDkxOTcuMjU2NTgyXSBlbmNvZGVfc2Vx
-dWVuY2U6IHNlc3Npb25pZD0xNDc0MTI2MTcwOjE6MjowDQo+ID4gPiA+IHNlcWlkPTE0MDEzODAw
-IHNsb3RpZD0wIG1heF9zbG90aWQ9MCBjYWNoZV90aGlzPTENCj4gPiA+ID4gWyA5MTk3LjI1Njc1
-NV0gLS0+IG5mczRfYWxsb2Nfc2xvdCB1c2VkX3Nsb3RzPTAwMDENCj4gPiA+ID4gaGlnaGVzdF91
-c2VkPTANCj4gPiA+ID4gbWF4X3Nsb3RzPTMxDQo+ID4gPiA+IFsgOTE5Ny4yNTY3NTZdIDwtLSBu
-ZnM0X2FsbG9jX3Nsb3QgdXNlZF9zbG90cz0wMDAzDQo+ID4gPiA+IGhpZ2hlc3RfdXNlZD0xDQo+
-ID4gPiA+IHNsb3RpZD0xDQo+ID4gPiA+IFsgOTE5Ny4yNTY3NTddIG5mczRfZnJlZV9zbG90OiBz
-bG90aWQgMSBoaWdoZXN0X3VzZWRfc2xvdGlkIDANCj4gPiA+ID4gWyA5MTk3LjI1Njc1OF0gbmZz
-NDFfc2VxdWVuY2VfcHJvY2VzczogRXJyb3IgMCBmcmVlIHRoZSBzbG90wqANCj4gPiA+ID4gWyA5
-MTk3LjI1Njc2MF0gbmZzNF9mcmVlX3Nsb3Q6IHNsb3RpZCAwIGhpZ2hlc3RfdXNlZF9zbG90aWQN
-Cj4gPiA+ID4gNDI5NDk2NzI5NQ0KPiA+ID4gPiBbIDkxOTcuMjU2Nzc5XSAtLT4gbmZzX3B1dF9j
-bGllbnQoezJ9KQ0KPiA+ID4gDQo+ID4gPiBXaGF0IG9wZXJhdGlvbiBpcyB0aGUgdXNlcnNwYWNl
-IHByb2Nlc3MgaGFuZ2luZyBvbj8gRG8geW91IGhhdmUgYQ0KPiA+ID4gc3RhY2sgdHJhY2UgZm9y
-IGl0Pw0KPiA+IA0KPiA+IHNlZW1zIHRvIGJlIG9wZW5fY3JlYXRlLT50cnVuY2F0ZS0+c3NldGF0
-dHIgY29taW5nIGZyb206DQo+ID4gY3AgL2Jpbi9zbGVlcCAvbW50L25mczIvcmFjZXIvMTINCj4g
-PiANCj4gPiAoZ2RiKSBidA0KPiA+ICMwwqDCoG5mczQxX3NldHVwX3NlcXVlbmNlIChzZXNzaW9u
-PTB4ZmZmZjg4MDA1YTg1MzgwMCwNCj4gPiBhcmdzPTB4ZmZmZjg4MDBhNzI1M2I4MCzCoA0KPiA+
-IMKgwqDCoMKgcmVzPTB4ZmZmZjg4MDBhNzI1M2I0OCwgdGFzaz0weGZmZmY4ODAwYjBlYjBmMDAp
-DQo+ID4gwqDCoMKgwqBhdCAvaG9tZS9ncmVlbi9iay9saW51eC10ZXN0L2ZzL25mcy9uZnM0cHJv
-Yy5jOjg3Ng0KPiA+ICMxwqDCoDB4ZmZmZmZmZmY4MTNhNzUxYyBpbiBuZnM0MV9jYWxsX3N5bmNf
-cHJlcGFyZSAodGFzaz08b3B0aW1pemVkDQo+ID4gb3V0PizCoA0KPiA+IMKgwqDCoMKgY2FsbGRh
-dGE9MHhmZmZmODgwMGE3MjUzYjgwKQ0KPiA+IMKgwqDCoMKgYXQgL2hvbWUvZ3JlZW4vYmsvbGlu
-dXgtdGVzdC9mcy9uZnMvbmZzNHByb2MuYzo5NjYNCj4gPiAjMsKgwqAweGZmZmZmZmZmODE4NWM2
-MzkgaW4gcnBjX3ByZXBhcmVfdGFzayAodGFzaz08b3B0aW1pemVkIG91dD4pDQo+ID4gwqDCoMKg
-wqBhdCAvaG9tZS9ncmVlbi9iay9saW51eC10ZXN0L25ldC9zdW5ycGMvc2NoZWQuYzo2ODMNCj4g
-PiAjM8KgwqAweGZmZmZmZmZmODE4NWYxMmIgaW4gX19ycGNfZXhlY3V0ZSAodGFzaz0weGZmZmY4
-ODAwNWE4NTM4MDApDQo+ID4gwqDCoMKgwqBhdCAvaG9tZS9ncmVlbi9iay9saW51eC10ZXN0L25l
-dC9zdW5ycGMvc2NoZWQuYzo3NzUNCj4gPiAjNMKgwqAweGZmZmZmZmZmODE4NjE3YjQgaW4gcnBj
-X2V4ZWN1dGUgKHRhc2s9MHhmZmZmODgwMDVhODUzODAwKQ0KPiA+IMKgwqDCoMKgYXQgL2hvbWUv
-Z3JlZW4vYmsvbGludXgtdGVzdC9uZXQvc3VucnBjL3NjaGVkLmM6ODQzDQo+ID4gIzXCoMKgMHhm
-ZmZmZmZmZjgxODUzOWI5IGluIHJwY19ydW5fdGFzaw0KPiA+ICh0YXNrX3NldHVwX2RhdGE9MHhm
-ZmZmODgwMGE3MjUzYTUwKQ0KPiA+IMKgwqDCoMKgYXQgL2hvbWUvZ3JlZW4vYmsvbGludXgtdGVz
-dC9uZXQvc3VucnBjL2NsbnQuYzoxMDUyDQo+ID4gIzbCoMKgMHhmZmZmZmZmZjgxM2E3NWUzIGlu
-IG5mczRfY2FsbF9zeW5jX3NlcXVlbmNlIChjbG50PTxvcHRpbWl6ZWQNCj4gPiBvdXQ+LMKgDQo+
-ID4gwqDCoMKgwqBzZXJ2ZXI9PG9wdGltaXplZCBvdXQ+LCBtc2c9PG9wdGltaXplZCBvdXQ+LCBh
-cmdzPTxvcHRpbWl6ZWQNCj4gPiBvdXQ+LMKgDQo+ID4gwqDCoMKgwqByZXM9PG9wdGltaXplZCBv
-dXQ+KSBhdCAvaG9tZS9ncmVlbi9iay9saW51eC0NCj4gPiB0ZXN0L2ZzL25mcy9uZnM0cHJvYy5j
-OjEwNTENCj4gPiAjN8KgwqAweGZmZmZmZmZmODEzYjQ2NDUgaW4gbmZzNF9jYWxsX3N5bmMgKGNh
-Y2hlX3JlcGx5PTxvcHRpbWl6ZWQNCj4gPiBvdXQ+LMKgDQo+ID4gwqDCoMKgwqByZXM9PG9wdGlt
-aXplZCBvdXQ+LCBhcmdzPTxvcHRpbWl6ZWQgb3V0PiwgbXNnPTxvcHRpbWl6ZWQNCj4gPiBvdXQ+
-LMKgDQo+ID4gwqDCoMKgwqBzZXJ2ZXI9PG9wdGltaXplZCBvdXQ+LCBjbG50PTxvcHRpbWl6ZWQg
-b3V0PikNCj4gPiDCoMKgwqDCoGF0IC9ob21lL2dyZWVuL2JrL2xpbnV4LXRlc3QvZnMvbmZzL25m
-czRwcm9jLmM6MTA2OQ0KPiA+ICM4wqDCoF9uZnM0X2RvX3NldGF0dHIgKHN0YXRlPTxvcHRpbWl6
-ZWQgb3V0PiwgY3JlZD08b3B0aW1pemVkIG91dD4swqANCj4gPiDCoMKgwqDCoHJlcz08b3B0aW1p
-emVkIG91dD4sIGFyZz08b3B0aW1pemVkIG91dD4sIGlub2RlPTxvcHRpbWl6ZWQNCj4gPiBvdXQ+
-KQ0KPiA+IC0tLVR5cGUgPHJldHVybj4gdG8gY29udGludWUsIG9yIHEgPHJldHVybj4gdG8gcXVp
-dC0tLQ0KPiA+IMKgwqDCoMKgYXQgL2hvbWUvZ3JlZW4vYmsvbGludXgtdGVzdC9mcy9uZnMvbmZz
-NHByb2MuYzoyOTE2DQo+ID4gIznCoMKgbmZzNF9kb19zZXRhdHRyIChpbm9kZT0weGZmZmY4ODAw
-NzliMTUyYTgsIGNyZWQ9PG9wdGltaXplZA0KPiA+IG91dD4swqANCj4gPiDCoMKgwqDCoGZhdHRy
-PTxvcHRpbWl6ZWQgb3V0Piwgc2F0dHI9PG9wdGltaXplZCBvdXQ+LA0KPiA+IHN0YXRlPTB4ZmZm
-Zjg4MDA2MDU4OGUwMCzCoA0KPiA+IMKgwqDCoMKgaWxhYmVsPTxvcHRpbWl6ZWQgb3V0Piwgb2xh
-YmVsPTB4MCA8aXJxX3N0YWNrX3VuaW9uPikNCj4gPiDCoMKgwqDCoGF0IC9ob21lL2dyZWVuL2Jr
-L2xpbnV4LXRlc3QvZnMvbmZzL25mczRwcm9jLmM6Mjk1NQ0KPiA+ICMxMCAweGZmZmZmZmZmODEz
-YjRhMTYgaW4gbmZzNF9wcm9jX3NldGF0dHIgKGRlbnRyeT08b3B0aW1pemVkDQo+ID4gb3V0PizC
-oA0KPiA+IMKgwqDCoMKgZmF0dHI9MHhmZmZmODgwMGE3MjUzYjgwLCBzYXR0cj0weGZmZmY4ODAw
-YTcyNTNiNDgpDQo+ID4gwqDCoMKgwqBhdCAvaG9tZS9ncmVlbi9iay9saW51eC10ZXN0L2ZzL25m
-cy9uZnM0cHJvYy5jOjM2ODQNCj4gPiAjMTEgMHhmZmZmZmZmZjgxMzhmMWNiIGluIG5mc19zZXRh
-dHRyIChkZW50cnk9MHhmZmZmODgwMDc0MGMxMDAwLMKgDQo+ID4gwqANCj4gDQo+IENvb2whIERv
-ZXMgdGhlIGZvbGxvd2luZyBoZWxwPw0KDQpHcnJyLi4uIFRoZXJlIGlzIGFub3RoZXIgYnVnIHRo
-ZXJlLi4uDQoNCjg8LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
-LS0tLS0tLS0tLS0tLS0tLS0tLS0NCkZyb20gY2E1ZmQyZTA1NWNjMGZkNDlkOWE1ZDQ0ZjRkMDFj
-OWNhMDFmYWQ5OCBNb24gU2VwIDE3IDAwOjAwOjAwIDIwMDENCkZyb206IFRyb25kIE15a2xlYnVz
-dCA8dHJvbmQubXlrbGVidXN0QHByaW1hcnlkYXRhLmNvbT4NCkRhdGU6IFNhdCwgMTcgU2VwIDIw
-MTYgMTc6Mzc6NDcgLTA0MDANClN1YmplY3Q6IFtQQVRDSF0gTkZTdjQ6IG5mczRfY29weV9kZWxl
-Z2F0aW9uX3N0YXRlaWQoKSBtdXN0IGZhaWwgaWYgdGhlDQogZGVsZWdhdGlvbiBpcyBpbnZhbGlk
-DQoNCldlIG11c3Qgbm90IGFsbG93IHRoZSB1c2Ugb2YgZGVsZWdhdGlvbnMgdGhhdCBoYXZlIGJl
-ZW4gcmV2b2tlZCBvciBhcmUNCmJlaW5nIHJldHVybmVkLg0KDQpTaWduZWQtb2ZmLWJ5OiBUcm9u
-ZCBNeWtsZWJ1c3QgPHRyb25kLm15a2xlYnVzdEBwcmltYXJ5ZGF0YS5jb20+DQotLS0NCiBmcy9u
-ZnMvZGVsZWdhdGlvbi5jIHwgMTcgKysrKysrKysrKysrKy0tLS0NCiAxIGZpbGUgY2hhbmdlZCwg
-MTMgaW5zZXJ0aW9ucygrKSwgNCBkZWxldGlvbnMoLSkNCg0KZGlmZiAtLWdpdCBhL2ZzL25mcy9k
-ZWxlZ2F0aW9uLmMgYi9mcy9uZnMvZGVsZWdhdGlvbi5jDQppbmRleCA2MmIyMjE1YTMwYjkuLjAw
-NzM4NDhiNWFkMyAxMDA2NDQNCi0tLSBhL2ZzL25mcy9kZWxlZ2F0aW9uLmMNCisrKyBiL2ZzL25m
-cy9kZWxlZ2F0aW9uLmMNCkBAIC00MSw2ICs0MSwxNyBAQCB2b2lkIG5mc19tYXJrX2RlbGVnYXRp
-b25fcmVmZXJlbmNlZChzdHJ1Y3QgbmZzX2RlbGVnYXRpb24gKmRlbGVnYXRpb24pDQogCXNldF9i
-aXQoTkZTX0RFTEVHQVRJT05fUkVGRVJFTkNFRCwgJmRlbGVnYXRpb24tPmZsYWdzKTsNCiB9DQog
-DQorc3RhdGljIGJvb2wNCituZnM0X2lzX3ZhbGlkX2RlbGVnYXRpb24oY29uc3Qgc3RydWN0IG5m
-c19kZWxlZ2F0aW9uICpkZWxlZ2F0aW9uLA0KKwkJZm1vZGVfdCBmbGFncykNCit7DQorCWlmIChk
-ZWxlZ2F0aW9uICE9IE5VTEwgJiYgKGRlbGVnYXRpb24tPnR5cGUgJiBmbGFncykgPT0gZmxhZ3Mg
-JiYNCisJICAgICF0ZXN0X2JpdChORlNfREVMRUdBVElPTl9SRVZPS0VELCAmZGVsZWdhdGlvbi0+
-ZmxhZ3MpICYmDQorCSAgICAhdGVzdF9iaXQoTkZTX0RFTEVHQVRJT05fUkVUVVJOSU5HLCAmZGVs
-ZWdhdGlvbi0+ZmxhZ3MpKQ0KKwkJcmV0dXJuIHRydWU7DQorCXJldHVybiBmYWxzZTsNCit9DQor
-DQogc3RhdGljIGludA0KIG5mczRfZG9fY2hlY2tfZGVsZWdhdGlvbihzdHJ1Y3QgaW5vZGUgKmlu
-b2RlLCBmbW9kZV90IGZsYWdzLCBib29sIG1hcmspDQogew0KQEAgLTUwLDkgKzYxLDcgQEAgbmZz
-NF9kb19jaGVja19kZWxlZ2F0aW9uKHN0cnVjdCBpbm9kZSAqaW5vZGUsIGZtb2RlX3QgZmxhZ3Ms
-IGJvb2wgbWFyaykNCiAJZmxhZ3MgJj0gRk1PREVfUkVBRHxGTU9ERV9XUklURTsNCiAJcmN1X3Jl
-YWRfbG9jaygpOw0KIAlkZWxlZ2F0aW9uID0gcmN1X2RlcmVmZXJlbmNlKE5GU19JKGlub2RlKS0+
-ZGVsZWdhdGlvbik7DQotCWlmIChkZWxlZ2F0aW9uICE9IE5VTEwgJiYgKGRlbGVnYXRpb24tPnR5
-cGUgJiBmbGFncykgPT0gZmxhZ3MgJiYNCi0JICAgICF0ZXN0X2JpdChORlNfREVMRUdBVElPTl9S
-RVZPS0VELCAmZGVsZWdhdGlvbi0+ZmxhZ3MpICYmDQotCSAgICAhdGVzdF9iaXQoTkZTX0RFTEVH
-QVRJT05fUkVUVVJOSU5HLCAmZGVsZWdhdGlvbi0+ZmxhZ3MpKSB7DQorCWlmIChuZnM0X2lzX3Zh
-bGlkX2RlbGVnYXRpb24oZGVsZWdhdGlvbiwgZmxhZ3MpKSB7DQogCQlpZiAobWFyaykNCiAJCQlu
-ZnNfbWFya19kZWxlZ2F0aW9uX3JlZmVyZW5jZWQoZGVsZWdhdGlvbik7DQogCQlyZXQgPSAxOw0K
-QEAgLTEwNTQsNyArMTA2Myw3IEBAIGJvb2wgbmZzNF9jb3B5X2RlbGVnYXRpb25fc3RhdGVpZChz
-dHJ1Y3QgaW5vZGUgKmlub2RlLCBmbW9kZV90IGZsYWdzLA0KIAlmbGFncyAmPSBGTU9ERV9SRUFE
-fEZNT0RFX1dSSVRFOw0KIAlyY3VfcmVhZF9sb2NrKCk7DQogCWRlbGVnYXRpb24gPSByY3VfZGVy
-ZWZlcmVuY2UobmZzaS0+ZGVsZWdhdGlvbik7DQotCXJldCA9IChkZWxlZ2F0aW9uICE9IE5VTEwg
-JiYgKGRlbGVnYXRpb24tPnR5cGUgJiBmbGFncykgPT0gZmxhZ3MpOw0KKwlyZXQgPSBuZnM0X2lz
-X3ZhbGlkX2RlbGVnYXRpb24oZGVsZWdhdGlvbiwgZmxhZ3MpOw0KIAlpZiAocmV0KSB7DQogCQlu
-ZnM0X3N0YXRlaWRfY29weShkc3QsICZkZWxlZ2F0aW9uLT5zdGF0ZWlkKTsNCiAJCW5mc19tYXJr
-X2RlbGVnYXRpb25fcmVmZXJlbmNlZChkZWxlZ2F0aW9uKTsNCi0tIA0KMi43LjQ=
+
+On Sep 17, 2016, at 5:45 PM, Trond Myklebust wrote:
+
+> On Sat, 2016-09-17 at 15:32 -0400, Trond Myklebust wrote:
+>> On Sat, 2016-09-17 at 15:16 -0400, Oleg Drokin wrote:
+>>> 
+>>> On Sep 17, 2016, at 2:18 PM, Trond Myklebust wrote:
+>>> 
+>>>> 
+>>>> 
+>>>> 
+>>>>> 
+>>>>> 
+>>>>> On Sep 17, 2016, at 14:04, Oleg Drokin <green@linuxhacker.ru>
+>>>>> wrote:
+>>>>> 
+>>>>> 
+>>>>> On Sep 17, 2016, at 1:13 AM, Trond Myklebust wrote:
+>>>>> 
+>>>>>> 
+>>>>>> 
+>>>>>> According to RFC5661, if any of the SEQUENCE status bits
+>>>>>> SEQ4_STATUS_EXPIRED_ALL_STATE_REVOKED,
+>>>>>> SEQ4_STATUS_EXPIRED_SOME_STATE_REVOKED,
+>>>>>> SEQ4_STATUS_ADMIN_STATE_REVOKED,
+>>>>>> or SEQ4_STATUS_RECALLABLE_STATE_REVOKED are set, then we need
+>>>>>> to use
+>>>>>> TEST_STATEID to figure out which stateids have been revoked,
+>>>>>> so
+>>>>>> we
+>>>>>> can acknowledge the loss of state using FREE_STATEID.
+>>>>>> 
+>>>>>> While we already do this for open and lock state, we have not
+>>>>>> been doing
+>>>>>> so for all the delegations.
+>>>>>> 
+>>>>>> v2: nfs_v4_2_minor_ops needs to set .test_and_free_expired
+>>>>>> too
+>>>>>> v3: Now with added lock revoke fixes and
+>>>>>> close/delegreturn/locku fixes
+>>>>>> v4: Close a bunch of corner cases
+>>>>>> v5: Report revoked delegations as invalid in
+>>>>>> nfs_have_delegation()
+>>>>>>  Fix an infinite loop in nfs_reap_expired_delegations.
+>>>>>>  Fixes for other looping behaviour
+>>>>> 
+>>>>> This time around the loop seems to be more tight,
+>>>>> in userspace process:
+>>>>> 
+>>>>> [ 9197.256571] --> nfs41_call_sync_prepare data->seq_server
+>>>>> ffff8800a73ce000
+>>>>> [ 9197.256572] --> nfs41_setup_sequence
+>>>>> [ 9197.256573] --> nfs4_alloc_slot used_slots=0000
+>>>>> highest_used=4294967295 max_slots=31
+>>>>> [ 9197.256574] <-- nfs4_alloc_slot used_slots=0001
+>>>>> highest_used=0
+>>>>> slotid=0
+>>>>> [ 9197.256574] <-- nfs41_setup_sequence slotid=0 seqid=14013800
+>>>>> [ 9197.256582] encode_sequence: sessionid=1474126170:1:2:0
+>>>>> seqid=14013800 slotid=0 max_slotid=0 cache_this=1
+>>>>> [ 9197.256755] --> nfs4_alloc_slot used_slots=0001
+>>>>> highest_used=0
+>>>>> max_slots=31
+>>>>> [ 9197.256756] <-- nfs4_alloc_slot used_slots=0003
+>>>>> highest_used=1
+>>>>> slotid=1
+>>>>> [ 9197.256757] nfs4_free_slot: slotid 1 highest_used_slotid 0
+>>>>> [ 9197.256758] nfs41_sequence_process: Error 0 free the slot 
+>>>>> [ 9197.256760] nfs4_free_slot: slotid 0 highest_used_slotid
+>>>>> 4294967295
+>>>>> [ 9197.256779] --> nfs_put_client({2})
+>>>> 
+>>>> What operation is the userspace process hanging on? Do you have a
+>>>> stack trace for it?
+>>> 
+>>> seems to be open_create->truncate->ssetattr coming from:
+>>> cp /bin/sleep /mnt/nfs2/racer/12
+>>> 
+>>> (gdb) bt
+>>> #0  nfs41_setup_sequence (session=0xffff88005a853800,
+>>> args=0xffff8800a7253b80, 
+>>>     res=0xffff8800a7253b48, task=0xffff8800b0eb0f00)
+>>>     at /home/green/bk/linux-test/fs/nfs/nfs4proc.c:876
+>>> #1  0xffffffff813a751c in nfs41_call_sync_prepare (task=<optimized
+>>> out>, 
+>>>     calldata=0xffff8800a7253b80)
+>>>     at /home/green/bk/linux-test/fs/nfs/nfs4proc.c:966
+>>> #2  0xffffffff8185c639 in rpc_prepare_task (task=<optimized out>)
+>>>     at /home/green/bk/linux-test/net/sunrpc/sched.c:683
+>>> #3  0xffffffff8185f12b in __rpc_execute (task=0xffff88005a853800)
+>>>     at /home/green/bk/linux-test/net/sunrpc/sched.c:775
+>>> #4  0xffffffff818617b4 in rpc_execute (task=0xffff88005a853800)
+>>>     at /home/green/bk/linux-test/net/sunrpc/sched.c:843
+>>> #5  0xffffffff818539b9 in rpc_run_task
+>>> (task_setup_data=0xffff8800a7253a50)
+>>>     at /home/green/bk/linux-test/net/sunrpc/clnt.c:1052
+>>> #6  0xffffffff813a75e3 in nfs4_call_sync_sequence (clnt=<optimized
+>>> out>, 
+>>>     server=<optimized out>, msg=<optimized out>, args=<optimized
+>>> out>, 
+>>>     res=<optimized out>) at /home/green/bk/linux-
+>>> test/fs/nfs/nfs4proc.c:1051
+>>> #7  0xffffffff813b4645 in nfs4_call_sync (cache_reply=<optimized
+>>> out>, 
+>>>     res=<optimized out>, args=<optimized out>, msg=<optimized
+>>> out>, 
+>>>     server=<optimized out>, clnt=<optimized out>)
+>>>     at /home/green/bk/linux-test/fs/nfs/nfs4proc.c:1069
+>>> #8  _nfs4_do_setattr (state=<optimized out>, cred=<optimized out>, 
+>>>     res=<optimized out>, arg=<optimized out>, inode=<optimized
+>>> out>)
+>>> ---Type <return> to continue, or q <return> to quit---
+>>>     at /home/green/bk/linux-test/fs/nfs/nfs4proc.c:2916
+>>> #9  nfs4_do_setattr (inode=0xffff880079b152a8, cred=<optimized
+>>> out>, 
+>>>     fattr=<optimized out>, sattr=<optimized out>,
+>>> state=0xffff880060588e00, 
+>>>     ilabel=<optimized out>, olabel=0x0 <irq_stack_union>)
+>>>     at /home/green/bk/linux-test/fs/nfs/nfs4proc.c:2955
+>>> #10 0xffffffff813b4a16 in nfs4_proc_setattr (dentry=<optimized
+>>> out>, 
+>>>     fattr=0xffff8800a7253b80, sattr=0xffff8800a7253b48)
+>>>     at /home/green/bk/linux-test/fs/nfs/nfs4proc.c:3684
+>>> #11 0xffffffff8138f1cb in nfs_setattr (dentry=0xffff8800740c1000, 
+>>>  
+>> 
+>> Cool! Does the following help?
+> 
+> Grrr... There is another bug there…
+
+Is this in addition to the previous patch or instead of?
+
+> 
+> 8<-----------------------------------------------------------------
+>> From ca5fd2e055cc0fd49d9a5d44f4d01c9ca01fad98 Mon Sep 17 00:00:00 2001
+> From: Trond Myklebust <trond.myklebust@primarydata.com>
+> Date: Sat, 17 Sep 2016 17:37:47 -0400
+> Subject: [PATCH] NFSv4: nfs4_copy_delegation_stateid() must fail if the
+> delegation is invalid
+> 
+> We must not allow the use of delegations that have been revoked or are
+> being returned.
+> 
+> Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+> ---
+> fs/nfs/delegation.c | 17 +++++++++++++----
+> 1 file changed, 13 insertions(+), 4 deletions(-)
+> 
+> diff --git a/fs/nfs/delegation.c b/fs/nfs/delegation.c
+> index 62b2215a30b9..0073848b5ad3 100644
+> --- a/fs/nfs/delegation.c
+> +++ b/fs/nfs/delegation.c
+> @@ -41,6 +41,17 @@ void nfs_mark_delegation_referenced(struct nfs_delegation *delegation)
+> 	set_bit(NFS_DELEGATION_REFERENCED, &delegation->flags);
+> }
+> 
+> +static bool
+> +nfs4_is_valid_delegation(const struct nfs_delegation *delegation,
+> +		fmode_t flags)
+> +{
+> +	if (delegation != NULL && (delegation->type & flags) == flags &&
+> +	    !test_bit(NFS_DELEGATION_REVOKED, &delegation->flags) &&
+> +	    !test_bit(NFS_DELEGATION_RETURNING, &delegation->flags))
+> +		return true;
+> +	return false;
+> +}
+> +
+> static int
+> nfs4_do_check_delegation(struct inode *inode, fmode_t flags, bool mark)
+> {
+> @@ -50,9 +61,7 @@ nfs4_do_check_delegation(struct inode *inode, fmode_t flags, bool mark)
+> 	flags &= FMODE_READ|FMODE_WRITE;
+> 	rcu_read_lock();
+> 	delegation = rcu_dereference(NFS_I(inode)->delegation);
+> -	if (delegation != NULL && (delegation->type & flags) == flags &&
+> -	    !test_bit(NFS_DELEGATION_REVOKED, &delegation->flags) &&
+> -	    !test_bit(NFS_DELEGATION_RETURNING, &delegation->flags)) {
+> +	if (nfs4_is_valid_delegation(delegation, flags)) {
+> 		if (mark)
+> 			nfs_mark_delegation_referenced(delegation);
+> 		ret = 1;
+> @@ -1054,7 +1063,7 @@ bool nfs4_copy_delegation_stateid(struct inode *inode, fmode_t flags,
+> 	flags &= FMODE_READ|FMODE_WRITE;
+> 	rcu_read_lock();
+> 	delegation = rcu_dereference(nfsi->delegation);
+> -	ret = (delegation != NULL && (delegation->type & flags) == flags);
+> +	ret = nfs4_is_valid_delegation(delegation, flags);
+> 	if (ret) {
+> 		nfs4_stateid_copy(dst, &delegation->stateid);
+> 		nfs_mark_delegation_referenced(delegation);
+> -- 
+> 2.7.4
 
