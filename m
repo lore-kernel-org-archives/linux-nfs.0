@@ -1,47 +1,42 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:37662 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:37658 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1754725AbcIQWRn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Sat, 17 Sep 2016 18:17:43 -0400
+        id S1754733AbcIQWRo (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Sat, 17 Sep 2016 18:17:44 -0400
 From: Jeff Layton <jlayton@redhat.com>
 To: trond.myklebust@primarydata.com, anna.schumaker@netapp.com
 Cc: linux-nfs@vger.kernel.org, bfields@fieldses.org
-Subject: [PATCH v4 3/9] nfs: use safe, interruptible sleeps when waiting to retry LOCK
-Date: Sat, 17 Sep 2016 18:17:33 -0400
-Message-Id: <1474150659-23894-4-git-send-email-jlayton@redhat.com>
+Subject: [PATCH v4 4/9] nfs: add a new NFS4_OPEN_RESULT_MAY_NOTIFY_LOCK constant
+Date: Sat, 17 Sep 2016 18:17:34 -0400
+Message-Id: <1474150659-23894-5-git-send-email-jlayton@redhat.com>
 In-Reply-To: <1474150659-23894-1-git-send-email-jlayton@redhat.com>
 References: <1474150659-23894-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-We actually want to use TASK_INTERRUPTIBLE sleeps when we're in the
-process of polling for a NFSv4 lock. If there is a signal pending when
-the task wakes up, then we'll be returning an error anyway. So, we might
-as well wake up immediately for non-fatal signals as well. That allows
-us to return to userland more quickly in that case, but won't change the
-error that userland sees.
-
-Also, there is no need to use the *_unsafe sleep variants here, as no
-vfs-layer locks should be held at this point.
+As defined in RFC 5661, section 18.16.
 
 Signed-off-by: Jeff Layton <jlayton@redhat.com>
 ---
- fs/nfs/nfs4proc.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ include/uapi/linux/nfs4.h | 5 +++--
+ 1 file changed, 3 insertions(+), 2 deletions(-)
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 9d38366666f4..73b2c883558e 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -5537,7 +5537,7 @@ int nfs4_proc_delegreturn(struct inode *inode, struct rpc_cred *cred, const nfs4
- static unsigned long
- nfs4_set_lock_task_retry(unsigned long timeout)
- {
--	freezable_schedule_timeout_killable_unsafe(timeout);
-+	freezable_schedule_timeout_interruptible(timeout);
- 	timeout <<= 1;
- 	if (timeout > NFS4_LOCK_MAXTIMEOUT)
- 		return NFS4_LOCK_MAXTIMEOUT;
+diff --git a/include/uapi/linux/nfs4.h b/include/uapi/linux/nfs4.h
+index 2b871e0858d9..4ae62796bfde 100644
+--- a/include/uapi/linux/nfs4.h
++++ b/include/uapi/linux/nfs4.h
+@@ -39,8 +39,9 @@
+ #define NFS4_FH_VOL_MIGRATION		0x0004
+ #define NFS4_FH_VOL_RENAME		0x0008
+ 
+-#define NFS4_OPEN_RESULT_CONFIRM 0x0002
+-#define NFS4_OPEN_RESULT_LOCKTYPE_POSIX 0x0004
++#define NFS4_OPEN_RESULT_CONFIRM		0x0002
++#define NFS4_OPEN_RESULT_LOCKTYPE_POSIX		0x0004
++#define NFS4_OPEN_RESULT_MAY_NOTIFY_LOCK	0x0020
+ 
+ #define NFS4_SHARE_ACCESS_MASK	0x000F
+ #define NFS4_SHARE_ACCESS_READ	0x0001
 -- 
 2.7.4
 
