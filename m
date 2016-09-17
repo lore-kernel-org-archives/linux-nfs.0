@@ -1,17 +1,17 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f194.google.com ([209.85.223.194]:33408 "EHLO
+Received: from mail-io0-f194.google.com ([209.85.223.194]:34312 "EHLO
         mail-io0-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1756504AbcIQFNz (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sat, 17 Sep 2016 01:13:55 -0400
-Received: by mail-io0-f194.google.com with SMTP id r145so2386821ior.0
-        for <linux-nfs@vger.kernel.org>; Fri, 16 Sep 2016 22:13:55 -0700 (PDT)
+        with ESMTP id S1757077AbcIQFN4 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sat, 17 Sep 2016 01:13:56 -0400
+Received: by mail-io0-f194.google.com with SMTP id y139so2395557ioy.1
+        for <linux-nfs@vger.kernel.org>; Fri, 16 Sep 2016 22:13:56 -0700 (PDT)
 From: Trond Myklebust <trond.myklebust@primarydata.com>
 To: anna.schumaker@netapp.com
 Cc: linux-nfs@vger.kernel.org, Oleg Drokin <green@linuxhacker.ru>
-Subject: [PATCH v5 20/25] NFSv4: Pass the stateid to the exception handler in nfs4_read/write_done_cb
-Date: Sat, 17 Sep 2016 01:13:28 -0400
-Message-Id: <1474089213-104014-21-git-send-email-trond.myklebust@primarydata.com>
-In-Reply-To: <1474089213-104014-20-git-send-email-trond.myklebust@primarydata.com>
+Subject: [PATCH v5 21/25] NFSv4: Fix a race in nfs_inode_reclaim_delegation()
+Date: Sat, 17 Sep 2016 01:13:29 -0400
+Message-Id: <1474089213-104014-22-git-send-email-trond.myklebust@primarydata.com>
+In-Reply-To: <1474089213-104014-21-git-send-email-trond.myklebust@primarydata.com>
 References: <1474089213-104014-1-git-send-email-trond.myklebust@primarydata.com>
  <1474089213-104014-2-git-send-email-trond.myklebust@primarydata.com>
  <1474089213-104014-3-git-send-email-trond.myklebust@primarydata.com>
@@ -32,73 +32,43 @@ References: <1474089213-104014-1-git-send-email-trond.myklebust@primarydata.com>
  <1474089213-104014-18-git-send-email-trond.myklebust@primarydata.com>
  <1474089213-104014-19-git-send-email-trond.myklebust@primarydata.com>
  <1474089213-104014-20-git-send-email-trond.myklebust@primarydata.com>
+ <1474089213-104014-21-git-send-email-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The actual stateid used in the READ or WRITE can represent a delegation,
-a lock or a stateid, so it is useful to pass it as an argument to the
-exception handler when an expired/revoked response is received from the
-server. It also ensures that we don't re-label the state as needing
-recovery if that has already occurred.
+If we race with a delegreturn before taking the spin lock, we
+currently end up dropping the delegation stateid.
 
 Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
 ---
- fs/nfs/nfs4proc.c | 35 +++++++++++++++++++++++++----------
- 1 file changed, 25 insertions(+), 10 deletions(-)
+ fs/nfs/delegation.c | 12 +++++-------
+ 1 file changed, 5 insertions(+), 7 deletions(-)
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index e2ab6f665dba..82449e578608 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -4523,11 +4523,18 @@ static int nfs4_read_done_cb(struct rpc_task *task, struct nfs_pgio_header *hdr)
- 	struct nfs_server *server = NFS_SERVER(hdr->inode);
- 
- 	trace_nfs4_read(hdr, task->tk_status);
--	if (nfs4_async_handle_error(task, server,
--				    hdr->args.context->state,
--				    NULL) == -EAGAIN) {
--		rpc_restart_call_prepare(task);
--		return -EAGAIN;
-+	if (task->tk_status < 0) {
-+		struct nfs4_exception exception = {
-+			.inode = hdr->inode,
-+			.state = hdr->args.context->state,
-+			.stateid = &hdr->args.stateid,
-+		};
-+		task->tk_status = nfs4_async_handle_exception(task,
-+				server, task->tk_status, &exception);
-+		if (exception.retry) {
-+			rpc_restart_call_prepare(task);
-+			return -EAGAIN;
-+		}
+diff --git a/fs/nfs/delegation.c b/fs/nfs/delegation.c
+index 11d49e1aa41b..45b97cf4bab1 100644
+--- a/fs/nfs/delegation.c
++++ b/fs/nfs/delegation.c
+@@ -186,15 +186,13 @@ void nfs_inode_reclaim_delegation(struct inode *inode, struct rpc_cred *cred,
+ 			rcu_read_unlock();
+ 			put_rpccred(oldcred);
+ 			trace_nfs4_reclaim_delegation(inode, res->delegation_type);
+-		} else {
+-			/* We appear to have raced with a delegation return. */
+-			spin_unlock(&delegation->lock);
+-			rcu_read_unlock();
+-			nfs_inode_set_delegation(inode, cred, res);
++			return;
+ 		}
+-	} else {
+-		rcu_read_unlock();
++		/* We appear to have raced with a delegation return. */
++		spin_unlock(&delegation->lock);
  	}
++	rcu_read_unlock();
++	nfs_inode_set_delegation(inode, cred, res);
+ }
  
- 	__nfs4_read_done_cb(hdr);
-@@ -4596,11 +4603,19 @@ static int nfs4_write_done_cb(struct rpc_task *task,
- 	struct inode *inode = hdr->inode;
- 
- 	trace_nfs4_write(hdr, task->tk_status);
--	if (nfs4_async_handle_error(task, NFS_SERVER(inode),
--				    hdr->args.context->state,
--				    NULL) == -EAGAIN) {
--		rpc_restart_call_prepare(task);
--		return -EAGAIN;
-+	if (task->tk_status < 0) {
-+		struct nfs4_exception exception = {
-+			.inode = hdr->inode,
-+			.state = hdr->args.context->state,
-+			.stateid = &hdr->args.stateid,
-+		};
-+		task->tk_status = nfs4_async_handle_exception(task,
-+				NFS_SERVER(inode), task->tk_status,
-+				&exception);
-+		if (exception.retry) {
-+			rpc_restart_call_prepare(task);
-+			return -EAGAIN;
-+		}
- 	}
- 	if (task->tk_status >= 0) {
- 		renew_lease(NFS_SERVER(inode), hdr->timestamp);
+ static int nfs_do_return_delegation(struct inode *inode, struct nfs_delegation *delegation, int issync)
 -- 
 2.7.4
 
