@@ -1,73 +1,200 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:34214 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:34222 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1754773AbcIQWRq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Sat, 17 Sep 2016 18:17:46 -0400
+        id S1754765AbcIQWRr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Sat, 17 Sep 2016 18:17:47 -0400
 From: Jeff Layton <jlayton@redhat.com>
 To: trond.myklebust@primarydata.com, anna.schumaker@netapp.com
 Cc: linux-nfs@vger.kernel.org, bfields@fieldses.org
-Subject: [PATCH v4 7/9] nfs: move nfs4_set_lock_state call into caller
-Date: Sat, 17 Sep 2016 18:17:37 -0400
-Message-Id: <1474150659-23894-8-git-send-email-jlayton@redhat.com>
+Subject: [PATCH v4 9/9] nfs: allow blocking locks to be awoken by lock callbacks
+Date: Sat, 17 Sep 2016 18:17:39 -0400
+Message-Id: <1474150659-23894-10-git-send-email-jlayton@redhat.com>
 In-Reply-To: <1474150659-23894-1-git-send-email-jlayton@redhat.com>
 References: <1474150659-23894-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-We need to have this info set up before adding the waiter to the
-waitqueue, so move this out of the _nfs4_proc_setlk and into the
-caller. That's more efficient anyway since we don't need to do
-this more than once if we end up waiting on the lock.
+Add a waitqueue head to the client structure. Have clients set a wait
+on that queue prior to requesting a lock from the server. If the lock
+is blocked, then we can use that to wait for wakeups.
+
+Note that we do need to do this "manually" since we need to set the
+wait on the waitqueue prior to requesting the lock, but requesting a
+lock can involve activities that can block.
+
+However, only do that for NFSv4.1 locks, either by compiling out
+all of the waitqueue handling when CONFIG_NFS_V4_1 is disabled, or
+skipping all of it at runtime if we're dealing with v4.0, or v4.1
+servers that don't send lock callbacks.
+
+Note too that even when we expect to get a lock callback, RFC5661
+section 20.11.4 is pretty clear that we still need to poll for them,
+so we do still sleep on a timeout. We do however always poll at the
+longest interval in that case.
 
 Signed-off-by: Jeff Layton <jlayton@redhat.com>
 ---
- fs/nfs/nfs4proc.c | 18 ++++++++++--------
- 1 file changed, 10 insertions(+), 8 deletions(-)
+ fs/nfs/callback_proc.c    |  4 ++
+ fs/nfs/nfs4client.c       |  3 ++
+ fs/nfs/nfs4proc.c         | 94 ++++++++++++++++++++++++++++++++++++++++++++++-
+ include/linux/nfs_fs_sb.h |  3 ++
+ 4 files changed, 103 insertions(+), 1 deletion(-)
 
+diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
+index 974881824414..e9aa235e9d10 100644
+--- a/fs/nfs/callback_proc.c
++++ b/fs/nfs/callback_proc.c
+@@ -638,6 +638,10 @@ __be32 nfs4_callback_notify_lock(struct cb_notify_lock_args *args, void *dummy,
+ 	dprintk_rcu("NFS: CB_NOTIFY_LOCK request from %s\n",
+ 		rpc_peeraddr2str(cps->clp->cl_rpcclient, RPC_DISPLAY_ADDR));
+ 
++	/* Don't wake anybody if the string looked bogus */
++	if (args->cbnl_valid)
++		__wake_up(&cps->clp->cl_lock_waitq, TASK_NORMAL, 0, args);
++
+ 	return htonl(NFS4_OK);
+ }
+ #endif /* CONFIG_NFS_V4_1 */
+diff --git a/fs/nfs/nfs4client.c b/fs/nfs/nfs4client.c
+index cd3b7cfdde16..9f62df5feb7d 100644
+--- a/fs/nfs/nfs4client.c
++++ b/fs/nfs/nfs4client.c
+@@ -199,6 +199,9 @@ struct nfs_client *nfs4_alloc_client(const struct nfs_client_initdata *cl_init)
+ 	clp->cl_minorversion = cl_init->minorversion;
+ 	clp->cl_mvops = nfs_v4_minor_ops[cl_init->minorversion];
+ 	clp->cl_mig_gen = 1;
++#if IS_ENABLED(CONFIG_NFS_V4_1)
++	init_waitqueue_head(&clp->cl_lock_waitq);
++#endif
+ 	return clp;
+ 
+ error:
 diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 74d8acadfd89..7a0d81b17eda 100644
+index e6a098976612..60daeaa92983 100644
 --- a/fs/nfs/nfs4proc.c
 +++ b/fs/nfs/nfs4proc.c
-@@ -6135,15 +6135,8 @@ static int _nfs4_proc_setlk(struct nfs4_state *state, int cmd, struct file_lock
- 	struct nfs_inode *nfsi = NFS_I(state->inode);
- 	struct nfs4_state_owner *sp = state->owner;
- 	unsigned char fl_flags = request->fl_flags;
--	int status = -ENOLCK;
+@@ -6166,7 +6166,8 @@ static int nfs4_proc_setlk(struct nfs4_state *state, int cmd, struct file_lock *
+ #define NFS4_LOCK_MAXTIMEOUT (30 * HZ)
+ 
+ static int
+-nfs4_retry_setlk(struct nfs4_state *state, int cmd, struct file_lock *request)
++nfs4_retry_setlk_simple(struct nfs4_state *state, int cmd,
++			struct file_lock *request)
+ {
+ 	int		status = -ERESTARTSYS;
+ 	unsigned long	timeout = NFS4_LOCK_MINTIMEOUT;
+@@ -6183,6 +6184,97 @@ nfs4_retry_setlk(struct nfs4_state *state, int cmd, struct file_lock *request)
+ 	return status;
+ }
+ 
++#ifdef CONFIG_NFS_V4_1
++struct nfs4_lock_waiter {
++	struct task_struct	*task;
++	struct inode		*inode;
++	struct nfs_lowner	*owner;
++	bool			notified;
++};
++
++static int
++nfs4_wake_lock_waiter(wait_queue_t *wait, unsigned int mode, int flags, void *key)
++{
++	int ret;
++	struct cb_notify_lock_args *cbnl = key;
++	struct nfs4_lock_waiter	*waiter	= wait->private;
++	struct nfs_lowner	*lowner = &cbnl->cbnl_owner,
++				*wowner = waiter->owner;
++
++	/* Only wake if the callback was for the same owner */
++	if (lowner->clientid != wowner->clientid ||
++	    lowner->id != wowner->id		 ||
++	    lowner->s_dev != wowner->s_dev)
++		return 0;
++
++	/* Make sure it's for the right inode */
++	if (nfs_compare_fh(NFS_FH(waiter->inode), &cbnl->cbnl_fh))
++		return 0;
++
++	waiter->notified = true;
++
++	/* override "private" so we can use default_wake_function */
++	wait->private = waiter->task;
++	ret = autoremove_wake_function(wait, mode, flags, key);
++	wait->private = waiter;
++	return ret;
++}
++
++static int
++nfs4_retry_setlk(struct nfs4_state *state, int cmd, struct file_lock *request)
++{
 +	int status;
- 
--	if ((fl_flags & FL_POSIX) &&
--			!test_bit(NFS_STATE_POSIX_LOCKS, &state->flags))
--		goto out;
--	/* Is this a delegated open? */
--	status = nfs4_set_lock_state(state, request);
--	if (status != 0)
--		goto out;
- 	request->fl_flags |= FL_ACCESS;
- 	status = locks_lock_inode_wait(state->inode, request);
- 	if (status < 0)
-@@ -6217,6 +6210,11 @@ nfs4_proc_lock(struct file *filp, int cmd, struct file_lock *request)
- 
- 	if (state == NULL)
- 		return -ENOLCK;
++	unsigned long flags;
++	struct nfs4_lock_state *lsp = request->fl_u.nfs4_fl.owner;
++	struct nfs_server *server = NFS_SERVER(state->inode);
++	struct nfs_client *clp = server->nfs_client;
++	wait_queue_head_t *q = &clp->cl_lock_waitq;
++	struct nfs_lowner owner = { .clientid = clp->cl_clientid,
++				    .id = lsp->ls_seqid.owner_id,
++				    .s_dev = server->s_dev };
++	struct nfs4_lock_waiter waiter = { .task  = current,
++					   .inode = state->inode,
++					   .owner = &owner,
++					   .notified = false };
++	wait_queue_t wait;
 +
-+	if ((request->fl_flags & FL_POSIX) &&
-+	    !test_bit(NFS_STATE_POSIX_LOCKS, &state->flags))
-+		return -ENOLCK;
++	/* Don't bother with waitqueue if we don't expect a callback */
++	if (!test_bit(NFS_STATE_MAY_NOTIFY_LOCK, &state->flags))
++		return nfs4_retry_setlk_simple(state, cmd, request);
 +
- 	/*
- 	 * Don't rely on the VFS having checked the file open mode,
- 	 * since it won't do this for flock() locks.
-@@ -6231,6 +6229,10 @@ nfs4_proc_lock(struct file *filp, int cmd, struct file_lock *request)
- 			return -EBADF;
- 	}
++	init_wait(&wait);
++	wait.private = &waiter;
++	wait.func = nfs4_wake_lock_waiter;
++	add_wait_queue(q, &wait);
++
++	while(!signalled()) {
++		status = nfs4_proc_setlk(state, cmd, request);
++		if ((status != -EAGAIN) || IS_SETLK(cmd))
++			break;
++
++		status = -ERESTARTSYS;
++		spin_lock_irqsave(&q->lock, flags);
++		if (waiter.notified) {
++			spin_unlock_irqrestore(&q->lock, flags);
++			continue;
++		}
++		set_current_state(TASK_INTERRUPTIBLE);
++		spin_unlock_irqrestore(&q->lock, flags);
++
++		freezable_schedule_timeout_interruptible(NFS4_LOCK_MAXTIMEOUT);
++	}
++
++	finish_wait(q, &wait);
++	return status;
++}
++#else /* !CONFIG_NFS_V4_1 */
++static inline int
++nfs4_retry_setlk(struct nfs4_state *state, int cmd, struct file_lock *request)
++{
++	return nfs4_retry_setlk_simple(state, cmd, request);
++}
++#endif
++
+ static int
+ nfs4_proc_lock(struct file *filp, int cmd, struct file_lock *request)
+ {
+diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
+index 14a762d2734d..b34097c67848 100644
+--- a/include/linux/nfs_fs_sb.h
++++ b/include/linux/nfs_fs_sb.h
+@@ -103,6 +103,9 @@ struct nfs_client {
+ #define NFS_SP4_MACH_CRED_WRITE    5	/* WRITE */
+ #define NFS_SP4_MACH_CRED_COMMIT   6	/* COMMIT */
+ #define NFS_SP4_MACH_CRED_PNFS_CLEANUP  7 /* LAYOUTRETURN */
++#if IS_ENABLED(CONFIG_NFS_V4_1)
++	wait_queue_head_t	cl_lock_waitq;
++#endif /* CONFIG_NFS_V4_1 */
+ #endif /* CONFIG_NFS_V4 */
  
-+	status = nfs4_set_lock_state(state, request);
-+	if (status != 0)
-+		return status;
-+
- 	do {
- 		status = nfs4_proc_setlk(state, cmd, request);
- 		if ((status != -EAGAIN) || IS_SETLK(cmd))
+ 	/* Our own IP address, as a null-terminated string.
 -- 
 2.7.4
 
