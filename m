@@ -1,200 +1,278 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:34222 "EHLO mx1.redhat.com"
+Received: from linuxhacker.ru ([217.76.32.60]:39550 "EHLO fiona.linuxhacker.ru"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1754765AbcIQWRr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Sat, 17 Sep 2016 18:17:47 -0400
-From: Jeff Layton <jlayton@redhat.com>
-To: trond.myklebust@primarydata.com, anna.schumaker@netapp.com
-Cc: linux-nfs@vger.kernel.org, bfields@fieldses.org
-Subject: [PATCH v4 9/9] nfs: allow blocking locks to be awoken by lock callbacks
-Date: Sat, 17 Sep 2016 18:17:39 -0400
-Message-Id: <1474150659-23894-10-git-send-email-jlayton@redhat.com>
-In-Reply-To: <1474150659-23894-1-git-send-email-jlayton@redhat.com>
-References: <1474150659-23894-1-git-send-email-jlayton@redhat.com>
+        id S1753082AbcIRBT3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Sat, 17 Sep 2016 21:19:29 -0400
+Subject: Re: [PATCH v5 00/25] Fix delegation behaviour when server revokes some state
+Mime-Version: 1.0 (Apple Message framework v1283)
+Content-Type: text/plain; charset=windows-1252
+From: Oleg Drokin <green@linuxhacker.ru>
+In-Reply-To: <C2E081FE-712D-4B99-AE18-A2BBC33739FA@primarydata.com>
+Date: Sat, 17 Sep 2016 21:19:12 -0400
+Cc: Schumaker Anna <anna.schumaker@netapp.com>,
+        List Linux NFS Mailing <linux-nfs@vger.kernel.org>
+Message-Id: <E7C7924A-9C31-4D95-A2AF-63D4806D27B2@linuxhacker.ru>
+References: <1474089213-104014-1-git-send-email-trond.myklebust@primarydata.com> <838E325D-2DA1-4229-A046-76316302F813@linuxhacker.ru> <CCA85800-84C2-4B80-A44D-966F79EC5892@primarydata.com> <E84E083B-293E-4990-921A-FF37C282FA15@linuxhacker.ru> <1474140727.7526.1.camel@primarydata.com> <1474148731.7526.3.camel@primarydata.com> <96CBC4AF-B0EA-4AFA-8068-E93CBACD1B0B@linuxhacker.ru> <C2E081FE-712D-4B99-AE18-A2BBC33739FA@primarydata.com>
+To: Trond Myklebust <trondmy@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Add a waitqueue head to the client structure. Have clients set a wait
-on that queue prior to requesting a lock from the server. If the lock
-is blocked, then we can use that to wait for wakeups.
 
-Note that we do need to do this "manually" since we need to set the
-wait on the waitqueue prior to requesting the lock, but requesting a
-lock can involve activities that can block.
+On Sep 17, 2016, at 5:59 PM, Trond Myklebust wrote:
 
-However, only do that for NFSv4.1 locks, either by compiling out
-all of the waitqueue handling when CONFIG_NFS_V4_1 is disabled, or
-skipping all of it at runtime if we're dealing with v4.0, or v4.1
-servers that don't send lock callbacks.
+> 
+>> On Sep 17, 2016, at 17:55, Oleg Drokin <green@linuxhacker.ru> wrote:
+>> 
+>> 
+>> On Sep 17, 2016, at 5:45 PM, Trond Myklebust wrote:
+>> 
+>>> On Sat, 2016-09-17 at 15:32 -0400, Trond Myklebust wrote:
+>>>> On Sat, 2016-09-17 at 15:16 -0400, Oleg Drokin wrote:
+>>>>> 
+>>>>> On Sep 17, 2016, at 2:18 PM, Trond Myklebust wrote:
+>>>>> 
+>>>>>> 
+>>>>>> 
+>>>>>> 
+>>>>>>> 
+>>>>>>> 
+>>>>>>> On Sep 17, 2016, at 14:04, Oleg Drokin <green@linuxhacker.ru>
+>>>>>>> wrote:
+>>>>>>> 
+>>>>>>> 
+>>>>>>> On Sep 17, 2016, at 1:13 AM, Trond Myklebust wrote:
+>>>>>>> 
+>>>>>>>> 
+>>>>>>>> 
+>>>>>>>> According to RFC5661, if any of the SEQUENCE status bits
+>>>>>>>> SEQ4_STATUS_EXPIRED_ALL_STATE_REVOKED,
+>>>>>>>> SEQ4_STATUS_EXPIRED_SOME_STATE_REVOKED,
+>>>>>>>> SEQ4_STATUS_ADMIN_STATE_REVOKED,
+>>>>>>>> or SEQ4_STATUS_RECALLABLE_STATE_REVOKED are set, then we need
+>>>>>>>> to use
+>>>>>>>> TEST_STATEID to figure out which stateids have been revoked,
+>>>>>>>> so
+>>>>>>>> we
+>>>>>>>> can acknowledge the loss of state using FREE_STATEID.
+>>>>>>>> 
+>>>>>>>> While we already do this for open and lock state, we have not
+>>>>>>>> been doing
+>>>>>>>> so for all the delegations.
+>>>>>>>> 
+>>>>>>>> v2: nfs_v4_2_minor_ops needs to set .test_and_free_expired
+>>>>>>>> too
+>>>>>>>> v3: Now with added lock revoke fixes and
+>>>>>>>> close/delegreturn/locku fixes
+>>>>>>>> v4: Close a bunch of corner cases
+>>>>>>>> v5: Report revoked delegations as invalid in
+>>>>>>>> nfs_have_delegation()
+>>>>>>>> Fix an infinite loop in nfs_reap_expired_delegations.
+>>>>>>>> Fixes for other looping behaviour
+>>>>>>> 
+>>>>>>> This time around the loop seems to be more tight,
+>>>>>>> in userspace process:
+>>>>>>> 
+>>>>>>> [ 9197.256571] --> nfs41_call_sync_prepare data->seq_server
+>>>>>>> ffff8800a73ce000
+>>>>>>> [ 9197.256572] --> nfs41_setup_sequence
+>>>>>>> [ 9197.256573] --> nfs4_alloc_slot used_slots=0000
+>>>>>>> highest_used=4294967295 max_slots=31
+>>>>>>> [ 9197.256574] <-- nfs4_alloc_slot used_slots=0001
+>>>>>>> highest_used=0
+>>>>>>> slotid=0
+>>>>>>> [ 9197.256574] <-- nfs41_setup_sequence slotid=0 seqid=14013800
+>>>>>>> [ 9197.256582] encode_sequence: sessionid=1474126170:1:2:0
+>>>>>>> seqid=14013800 slotid=0 max_slotid=0 cache_this=1
+>>>>>>> [ 9197.256755] --> nfs4_alloc_slot used_slots=0001
+>>>>>>> highest_used=0
+>>>>>>> max_slots=31
+>>>>>>> [ 9197.256756] <-- nfs4_alloc_slot used_slots=0003
+>>>>>>> highest_used=1
+>>>>>>> slotid=1
+>>>>>>> [ 9197.256757] nfs4_free_slot: slotid 1 highest_used_slotid 0
+>>>>>>> [ 9197.256758] nfs41_sequence_process: Error 0 free the slot 
+>>>>>>> [ 9197.256760] nfs4_free_slot: slotid 0 highest_used_slotid
+>>>>>>> 4294967295
+>>>>>>> [ 9197.256779] --> nfs_put_client({2})
+>>>>>> 
+>>>>>> What operation is the userspace process hanging on? Do you have a
+>>>>>> stack trace for it?
+>>>>> 
+>>>>> seems to be open_create->truncate->ssetattr coming from:
+>>>>> cp /bin/sleep /mnt/nfs2/racer/12
+>>>>> 
+>>>>> (gdb) bt
+>>>>> #0  nfs41_setup_sequence (session=0xffff88005a853800,
+>>>>> args=0xffff8800a7253b80, 
+>>>>>   res=0xffff8800a7253b48, task=0xffff8800b0eb0f00)
+>>>>>   at /home/green/bk/linux-test/fs/nfs/nfs4proc.c:876
+>>>>> #1  0xffffffff813a751c in nfs41_call_sync_prepare (task=<optimized
+>>>>> out>, 
+>>>>>   calldata=0xffff8800a7253b80)
+>>>>>   at /home/green/bk/linux-test/fs/nfs/nfs4proc.c:966
+>>>>> #2  0xffffffff8185c639 in rpc_prepare_task (task=<optimized out>)
+>>>>>   at /home/green/bk/linux-test/net/sunrpc/sched.c:683
+>>>>> #3  0xffffffff8185f12b in __rpc_execute (task=0xffff88005a853800)
+>>>>>   at /home/green/bk/linux-test/net/sunrpc/sched.c:775
+>>>>> #4  0xffffffff818617b4 in rpc_execute (task=0xffff88005a853800)
+>>>>>   at /home/green/bk/linux-test/net/sunrpc/sched.c:843
+>>>>> #5  0xffffffff818539b9 in rpc_run_task
+>>>>> (task_setup_data=0xffff8800a7253a50)
+>>>>>   at /home/green/bk/linux-test/net/sunrpc/clnt.c:1052
+>>>>> #6  0xffffffff813a75e3 in nfs4_call_sync_sequence (clnt=<optimized
+>>>>> out>, 
+>>>>>   server=<optimized out>, msg=<optimized out>, args=<optimized
+>>>>> out>, 
+>>>>>   res=<optimized out>) at /home/green/bk/linux-
+>>>>> test/fs/nfs/nfs4proc.c:1051
+>>>>> #7  0xffffffff813b4645 in nfs4_call_sync (cache_reply=<optimized
+>>>>> out>, 
+>>>>>   res=<optimized out>, args=<optimized out>, msg=<optimized
+>>>>> out>, 
+>>>>>   server=<optimized out>, clnt=<optimized out>)
+>>>>>   at /home/green/bk/linux-test/fs/nfs/nfs4proc.c:1069
+>>>>> #8  _nfs4_do_setattr (state=<optimized out>, cred=<optimized out>, 
+>>>>>   res=<optimized out>, arg=<optimized out>, inode=<optimized
+>>>>> out>)
+>>>>> ---Type <return> to continue, or q <return> to quit---
+>>>>>   at /home/green/bk/linux-test/fs/nfs/nfs4proc.c:2916
+>>>>> #9  nfs4_do_setattr (inode=0xffff880079b152a8, cred=<optimized
+>>>>> out>, 
+>>>>>   fattr=<optimized out>, sattr=<optimized out>,
+>>>>> state=0xffff880060588e00, 
+>>>>>   ilabel=<optimized out>, olabel=0x0 <irq_stack_union>)
+>>>>>   at /home/green/bk/linux-test/fs/nfs/nfs4proc.c:2955
+>>>>> #10 0xffffffff813b4a16 in nfs4_proc_setattr (dentry=<optimized
+>>>>> out>, 
+>>>>>   fattr=0xffff8800a7253b80, sattr=0xffff8800a7253b48)
+>>>>>   at /home/green/bk/linux-test/fs/nfs/nfs4proc.c:3684
+>>>>> #11 0xffffffff8138f1cb in nfs_setattr (dentry=0xffff8800740c1000, 
+>>>>> 
+>>>> 
+>>>> Cool! Does the following help?
+>>> 
+>>> Grrr... There is another bug there…
+>> 
+>> Is this in addition to the previous patch or instead of?
+> 
+> It can apply on top of it. The two patches fix different bugs.
 
-Note too that even when we expect to get a lock callback, RFC5661
-section 20.11.4 is pretty clear that we still need to poll for them,
-so we do still sleep on a timeout. We do however always poll at the
-longest interval in that case.
+Ok, it does not seem to have helped:
+[11397.552805] --> nfs41_call_sync_prepare data->seq_server ffff880085b17000
+[11397.552806] --> nfs41_setup_sequence
+[11397.552807] --> nfs4_alloc_slot used_slots=0000 highest_used=4294967295 max_slots=31
+[11397.552808] <-- nfs4_alloc_slot used_slots=0001 highest_used=0 slotid=0
+[11397.552809] <-- nfs41_setup_sequence slotid=0 seqid=8829382
+[11397.552817] encode_sequence: sessionid=1474153431:3:4:0 seqid=8829382 slotid=0 max_slotid=0 cache_this=1
+[11397.553032] --> nfs4_alloc_slot used_slots=0001 highest_used=0 max_slots=31
+[11397.553033] <-- nfs4_alloc_slot used_slots=0003 highest_used=1 slotid=1
+[11397.553034] nfs4_free_slot: slotid 1 highest_used_slotid 0
+[11397.553035] nfs41_sequence_process: Error 0 free the slot 
+[11397.553036] nfs4_free_slot: slotid 0 highest_used_slotid 4294967295
+[11397.553056] --> nfs_put_client({2})
+[11397.553062] --> nfs41_call_sync_prepare data->seq_server ffff880085b17000
+[11397.553063] --> nfs41_setup_sequence
+[11397.553064] --> nfs4_alloc_slot used_slots=0000 highest_used=4294967295 max_slots=31
+[11397.553065] <-- nfs4_alloc_slot used_slots=0001 highest_used=0 slotid=0
+[11397.553066] <-- nfs41_setup_sequence slotid=0 seqid=8829383
+[11397.553074] encode_sequence: sessionid=1474153431:3:4:0 seqid=8829383 slotid=0 max_slotid=0 cache_this=1
+[11397.553290] --> nfs4_alloc_slot used_slots=0001 highest_used=0 max_slots=31
+[11397.553291] <-- nfs4_alloc_slot used_slots=0003 highest_used=1 slotid=1
+[11397.553292] nfs4_free_slot: slotid 1 highest_used_slotid 0
+[11397.553293] nfs41_sequence_process: Error 0 free the slot 
+[11397.553294] nfs4_free_slot: slotid 0 highest_used_slotid 4294967295
+[11397.553316] --> nfs_put_client({2})
+[11397.553322] --> nfs41_call_sync_prepare data->seq_server ffff880085b17000
+[11397.553322] --> nfs41_setup_sequence
+[11397.553324] --> nfs4_alloc_slot used_slots=0000 highest_used=4294967295 max_slots=31
+[11397.553324] <-- nfs4_alloc_slot used_slots=0001 highest_used=0 slotid=0
+[11397.553325] <-- nfs41_setup_sequence slotid=0 seqid=8829384
+[11397.553333] encode_sequence: sessionid=1474153431:3:4:0 seqid=8829384 slotid=0 max_slotid=0 cache_this=1
+[11397.553575] --> nfs4_alloc_slot used_slots=0001 highest_used=0 max_slots=31
+[11397.553576] <-- nfs4_alloc_slot used_slots=0003 highest_used=1 slotid=1
+[11397.553577] nfs4_free_slot: slotid 1 highest_used_slotid 0
+[11397.553578] nfs41_sequence_process: Error 0 free the slot 
+[11397.553580] nfs4_free_slot: slotid 0 highest_used_slotid 4294967295
+[11397.553602] --> nfs_put_client({2})
+[11397.553607] --> nfs41_call_sync_prepare data->seq_server ffff880085b17000
+[11397.553608] --> nfs41_setup_sequence
+[11397.553609] --> nfs4_alloc_slot used_slots=0000 highest_used=4294967295 max_slots=31
+[11397.553610] <-- nfs4_alloc_slot used_slots=0001 highest_used=0 slotid=0
+[11397.553611] <-- nfs41_setup_sequence slotid=0 seqid=8829385
+[11397.553619] encode_sequence: sessionid=1474153431:3:4:0 seqid=8829385 slotid=0 max_slotid=0 cache_this=1
+[11397.560057] --> nfs4_alloc_slot used_slots=0001 highest_used=0 max_slots=31
+[11397.560059] <-- nfs4_alloc_slot used_slots=0003 highest_used=1 slotid=1
+[11397.560061] nfs4_free_slot: slotid 1 highest_used_slotid 0
+[11397.560062] nfs41_sequence_process: Error 0 free the slot 
+[11397.560064] nfs4_free_slot: slotid 0 highest_used_slotid 4294967295
+[11397.560094] --> nfs_put_client({2})
+[11397.560103] --> nfs41_call_sync_prepare data->seq_server ffff880085b17000
+[11397.560103] --> nfs41_setup_sequence
+[11397.560104] --> nfs4_alloc_slot used_slots=0000 highest_used=4294967295 max_slots=31
+[11397.560105] <-- nfs4_alloc_slot used_slots=0001 highest_used=0 slotid=0
+[11397.560106] <-- nfs41_setup_sequence slotid=0 seqid=8829386
+[11397.560120] encode_sequence: sessionid=1474153431:3:4:0 seqid=8829386 slotid=0 max_slotid=0 cache_this=1
+[11397.560388] --> nfs4_alloc_slot used_slots=0001 highest_used=0 max_slots=31
+[11397.560389] <-- nfs4_alloc_slot used_slots=0003 highest_used=1 slotid=1
+[11397.560391] nfs4_free_slot: slotid 1 highest_used_slotid 0
+[11397.560391] nfs41_sequence_process: Error 0 free the slot 
+[11397.560393] nfs4_free_slot: slotid 0 highest_used_slotid 4294967295
+[11397.560415] --> nfs_put_client({2})
 
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
----
- fs/nfs/callback_proc.c    |  4 ++
- fs/nfs/nfs4client.c       |  3 ++
- fs/nfs/nfs4proc.c         | 94 ++++++++++++++++++++++++++++++++++++++++++++++-
- include/linux/nfs_fs_sb.h |  3 ++
- 4 files changed, 103 insertions(+), 1 deletion(-)
 
-diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
-index 974881824414..e9aa235e9d10 100644
---- a/fs/nfs/callback_proc.c
-+++ b/fs/nfs/callback_proc.c
-@@ -638,6 +638,10 @@ __be32 nfs4_callback_notify_lock(struct cb_notify_lock_args *args, void *dummy,
- 	dprintk_rcu("NFS: CB_NOTIFY_LOCK request from %s\n",
- 		rpc_peeraddr2str(cps->clp->cl_rpcclient, RPC_DISPLAY_ADDR));
- 
-+	/* Don't wake anybody if the string looked bogus */
-+	if (args->cbnl_valid)
-+		__wake_up(&cps->clp->cl_lock_waitq, TASK_NORMAL, 0, args);
-+
- 	return htonl(NFS4_OK);
- }
- #endif /* CONFIG_NFS_V4_1 */
-diff --git a/fs/nfs/nfs4client.c b/fs/nfs/nfs4client.c
-index cd3b7cfdde16..9f62df5feb7d 100644
---- a/fs/nfs/nfs4client.c
-+++ b/fs/nfs/nfs4client.c
-@@ -199,6 +199,9 @@ struct nfs_client *nfs4_alloc_client(const struct nfs_client_initdata *cl_init)
- 	clp->cl_minorversion = cl_init->minorversion;
- 	clp->cl_mvops = nfs_v4_minor_ops[cl_init->minorversion];
- 	clp->cl_mig_gen = 1;
-+#if IS_ENABLED(CONFIG_NFS_V4_1)
-+	init_waitqueue_head(&clp->cl_lock_waitq);
-+#endif
- 	return clp;
- 
- error:
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index e6a098976612..60daeaa92983 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -6166,7 +6166,8 @@ static int nfs4_proc_setlk(struct nfs4_state *state, int cmd, struct file_lock *
- #define NFS4_LOCK_MAXTIMEOUT (30 * HZ)
- 
- static int
--nfs4_retry_setlk(struct nfs4_state *state, int cmd, struct file_lock *request)
-+nfs4_retry_setlk_simple(struct nfs4_state *state, int cmd,
-+			struct file_lock *request)
- {
- 	int		status = -ERESTARTSYS;
- 	unsigned long	timeout = NFS4_LOCK_MINTIMEOUT;
-@@ -6183,6 +6184,97 @@ nfs4_retry_setlk(struct nfs4_state *state, int cmd, struct file_lock *request)
- 	return status;
- }
- 
-+#ifdef CONFIG_NFS_V4_1
-+struct nfs4_lock_waiter {
-+	struct task_struct	*task;
-+	struct inode		*inode;
-+	struct nfs_lowner	*owner;
-+	bool			notified;
-+};
-+
-+static int
-+nfs4_wake_lock_waiter(wait_queue_t *wait, unsigned int mode, int flags, void *key)
-+{
-+	int ret;
-+	struct cb_notify_lock_args *cbnl = key;
-+	struct nfs4_lock_waiter	*waiter	= wait->private;
-+	struct nfs_lowner	*lowner = &cbnl->cbnl_owner,
-+				*wowner = waiter->owner;
-+
-+	/* Only wake if the callback was for the same owner */
-+	if (lowner->clientid != wowner->clientid ||
-+	    lowner->id != wowner->id		 ||
-+	    lowner->s_dev != wowner->s_dev)
-+		return 0;
-+
-+	/* Make sure it's for the right inode */
-+	if (nfs_compare_fh(NFS_FH(waiter->inode), &cbnl->cbnl_fh))
-+		return 0;
-+
-+	waiter->notified = true;
-+
-+	/* override "private" so we can use default_wake_function */
-+	wait->private = waiter->task;
-+	ret = autoremove_wake_function(wait, mode, flags, key);
-+	wait->private = waiter;
-+	return ret;
-+}
-+
-+static int
-+nfs4_retry_setlk(struct nfs4_state *state, int cmd, struct file_lock *request)
-+{
-+	int status;
-+	unsigned long flags;
-+	struct nfs4_lock_state *lsp = request->fl_u.nfs4_fl.owner;
-+	struct nfs_server *server = NFS_SERVER(state->inode);
-+	struct nfs_client *clp = server->nfs_client;
-+	wait_queue_head_t *q = &clp->cl_lock_waitq;
-+	struct nfs_lowner owner = { .clientid = clp->cl_clientid,
-+				    .id = lsp->ls_seqid.owner_id,
-+				    .s_dev = server->s_dev };
-+	struct nfs4_lock_waiter waiter = { .task  = current,
-+					   .inode = state->inode,
-+					   .owner = &owner,
-+					   .notified = false };
-+	wait_queue_t wait;
-+
-+	/* Don't bother with waitqueue if we don't expect a callback */
-+	if (!test_bit(NFS_STATE_MAY_NOTIFY_LOCK, &state->flags))
-+		return nfs4_retry_setlk_simple(state, cmd, request);
-+
-+	init_wait(&wait);
-+	wait.private = &waiter;
-+	wait.func = nfs4_wake_lock_waiter;
-+	add_wait_queue(q, &wait);
-+
-+	while(!signalled()) {
-+		status = nfs4_proc_setlk(state, cmd, request);
-+		if ((status != -EAGAIN) || IS_SETLK(cmd))
-+			break;
-+
-+		status = -ERESTARTSYS;
-+		spin_lock_irqsave(&q->lock, flags);
-+		if (waiter.notified) {
-+			spin_unlock_irqrestore(&q->lock, flags);
-+			continue;
-+		}
-+		set_current_state(TASK_INTERRUPTIBLE);
-+		spin_unlock_irqrestore(&q->lock, flags);
-+
-+		freezable_schedule_timeout_interruptible(NFS4_LOCK_MAXTIMEOUT);
-+	}
-+
-+	finish_wait(q, &wait);
-+	return status;
-+}
-+#else /* !CONFIG_NFS_V4_1 */
-+static inline int
-+nfs4_retry_setlk(struct nfs4_state *state, int cmd, struct file_lock *request)
-+{
-+	return nfs4_retry_setlk_simple(state, cmd, request);
-+}
-+#endif
-+
- static int
- nfs4_proc_lock(struct file *filp, int cmd, struct file_lock *request)
- {
-diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
-index 14a762d2734d..b34097c67848 100644
---- a/include/linux/nfs_fs_sb.h
-+++ b/include/linux/nfs_fs_sb.h
-@@ -103,6 +103,9 @@ struct nfs_client {
- #define NFS_SP4_MACH_CRED_WRITE    5	/* WRITE */
- #define NFS_SP4_MACH_CRED_COMMIT   6	/* COMMIT */
- #define NFS_SP4_MACH_CRED_PNFS_CLEANUP  7 /* LAYOUTRETURN */
-+#if IS_ENABLED(CONFIG_NFS_V4_1)
-+	wait_queue_head_t	cl_lock_waitq;
-+#endif /* CONFIG_NFS_V4_1 */
- #endif /* CONFIG_NFS_V4 */
- 
- 	/* Our own IP address, as a null-terminated string.
--- 
-2.7.4
+bt looks about the same:
+#0  xprt_get (xprt=0x0 <irq_stack_union>)
+    at /home/green/bk/linux-test/net/sunrpc/xprt.c:1435
+#1  0xffffffff8186196f in rpc_init_task (task_setup_data=<optimized out>, 
+    task=<optimized out>) at /home/green/bk/linux-test/net/sunrpc/sched.c:936
+#2  rpc_new_task (setup_data=0x0 <irq_stack_union>)
+    at /home/green/bk/linux-test/net/sunrpc/sched.c:971
+#3  0xffffffff818538c8 in rpc_run_task (task_setup_data=0xffff88007236ba50)
+    at /home/green/bk/linux-test/net/sunrpc/clnt.c:1041
+#4  0xffffffff813a75e3 in nfs4_call_sync_sequence (clnt=<optimized out>, 
+    server=<optimized out>, msg=<optimized out>, args=<optimized out>, 
+    res=<optimized out>) at /home/green/bk/linux-test/fs/nfs/nfs4proc.c:1055
+#5  0xffffffff813b4675 in nfs4_call_sync (cache_reply=<optimized out>, 
+    res=<optimized out>, args=<optimized out>, msg=<optimized out>, 
+    server=<optimized out>, clnt=<optimized out>)
+    at /home/green/bk/linux-test/fs/nfs/nfs4proc.c:1073
+#6  _nfs4_do_setattr (state=<optimized out>, cred=<optimized out>, 
+    res=<optimized out>, arg=<optimized out>, inode=<optimized out>)
+    at /home/green/bk/linux-test/fs/nfs/nfs4proc.c:2920
+#7  nfs4_do_setattr (inode=0xffff8800640f82a8, cred=<optimized out>, 
+    fattr=<optimized out>, sattr=<optimized out>, state=0xffff88005a95be00, 
+    ilabel=<optimized out>, olabel=0x0 <irq_stack_union>)
+    at /home/green/bk/linux-test/fs/nfs/nfs4proc.c:2959
+#8  0xffffffff813b4a46 in nfs4_proc_setattr (dentry=<optimized out>, 
+---Type <return> to continue, or q <return> to quit---
+    fattr=0xf8 <irq_stack_union+248>, sattr=0x1 <irq_stack_union+1>)
+    at /home/green/bk/linux-test/fs/nfs/nfs4proc.c:3688
+#9  0xffffffff8138f1cb in nfs_setattr (dentry=0xffff8800119c0000, 
+    attr=0xffff88007236bce8) at /home/green/bk/linux-test/fs/nfs/inode.c:556
+#10 0xffffffff81298d6b in notify_change (dentry=0xffff8800119c0000, 
+    attr=0xffff88007236bce8, delegated_inode=<optimized out>)
+    at /home/green/bk/linux-test/fs/attr.c:285
+#11 0xffffffff812734e3 in do_truncate (dentry=0x0 <irq_stack_union>, 
+    length=<optimized out>, time_attrs=<optimized out>, filp=<optimized out>)
+    at /home/green/bk/linux-test/fs/open.c:63
+#12 0xffffffff81287459 in handle_truncate (filp=<optimized out>)
+    at /home/green/bk/linux-test/fs/namei.c:2960
+#13 do_last (opened=<optimized out>, op=<optimized out>, file=<optimized out>, 
+    nd=<optimized out>) at /home/green/bk/linux-test/fs/namei.c:3383
+#14 path_openat (nd=0xffff88007236bde0, op=<optimized out>, 
+    flags=<optimized out>) at /home/green/bk/linux-test/fs/namei.c:3497
+#15 0xffffffff81288b01 in do_filp_open (dfd=<optimized out>, 
+    pathname=<optimized out>, op=0xffff88007236bef4)
+    at /home/green/bk/linux-test/fs/namei.c:3532
+#16 0xffffffff81274ab0 in do_sys_open (dfd=-100, filename=<optimized out>, 
+    flags=<optimized out>, mode=<optimized out>)
+    at /home/green/bk/linux-test/fs/open.c:1036
+#17 0xffffffff81274bbe in SYSC_open (mode=<optimized out>, 
+---Type <return> to continue, or q <return> to quit---
+    flags=<optimized out>, filename=<optimized out>)
+    at /home/green/bk/linux-test/fs/open.c:1054
+#18 SyS_open (filename=<optimized out>, flags=<optimized out>, 
+    mode=<optimized out>) at /home/green/bk/linux-test/fs/open.c:1049
+#19 0xffffffff8189f03c in entry_SYSCALL_64_fastpath ()
+
 
