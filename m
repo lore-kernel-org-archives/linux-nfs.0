@@ -1,60 +1,24 @@
-Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from us-smtp-delivery-194.mimecast.com ([63.128.21.194]:59925 "EHLO
-        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1751817AbcISOtJ (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 19 Sep 2016 10:49:09 -0400
-From: Trond Myklebust <trondmy@primarydata.com>
-To: Frank Sorenson <sorenson@redhat.com>
-CC: List Linux NFS Mailing <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] sunrpc: include gid in the rpc_cred_cache hash
-Date: Mon, 19 Sep 2016 14:49:02 +0000
-Message-ID: <FF4A1D11-89A1-45DB-ABAE-03692244A4B1@primarydata.com>
-References: <1474056735-4008-1-git-send-email-sorenson@redhat.com>
- <7EC0B2B1-CE1A-4509-9FE2-A5D6529626DA@primarydata.com>
- <1272446089.121606.1474290650680.JavaMail.zimbra@redhat.com>
-In-Reply-To: <1272446089.121606.1474290650680.JavaMail.zimbra@redhat.com>
+Return-Path: <BATV+c607ca0c23ba1afaeb0c+4775+infradead.org+hch@bombadil.srs.infradead.org>
+Date: Mon, 19 Sep 2016 07:58:06 -0700
+From: Christoph Hellwig <hch@infradead.org>
+To: Benjamin Coddington <bcodding@redhat.com>
+Cc: linux-nfs@vger.kernel.org,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>,
+        Christoph Hellwig <hch@lst.de>
+Subject: Re: [PATCH v3] pnfs/blocklayout: update last_write_offset atomically
+ with extents
+Message-ID: <20160919145806.GA12452@infradead.org>
+References: <a754067b5a8252a10a0bcfa23c4229cf3d7b1adf.1471535578.git.bcodding@redhat.com>
+ <f50699da22fbcd977842a4fa5dd40b27295fcfcf.1471889187.git.bcodding@redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Sender: linux-nfs-owner@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <f50699da22fbcd977842a4fa5dd40b27295fcfcf.1471889187.git.bcodding@redhat.com>
 List-ID: <linux-nfs.vger.kernel.org>
 
-DQo+IE9uIFNlcCAxOSwgMjAxNiwgYXQgMDk6MTAsIEZyYW5rIFNvcmVuc29uIDxzb3JlbnNvbkBy
-ZWRoYXQuY29tPiB3cm90ZToNCj4gDQo+IA0KPiAtLS0tLSBPcmlnaW5hbCBNZXNzYWdlIC0tLS0t
-DQo+PiBGcm9tOiAiVHJvbmQgTXlrbGVidXN0IiA8dHJvbmRteUBwcmltYXJ5ZGF0YS5jb20+DQo+
-PiBUbzogIkZyYW5rIFNvcmVuc29uIiA8c29yZW5zb25AcmVkaGF0LmNvbT4NCj4+IENjOiAiTGlz
-dCBMaW51eCBORlMgTWFpbGluZyIgPGxpbnV4LW5mc0B2Z2VyLmtlcm5lbC5vcmc+DQo+PiBTZW50
-OiBGcmlkYXksIFNlcHRlbWJlciAxNiwgMjAxNiA0OjM3OjM5IFBNDQo+PiBTdWJqZWN0OiBSZTog
-W1BBVENIXSBzdW5ycGM6IGluY2x1ZGUgZ2lkIGluIHRoZSBycGNfY3JlZF9jYWNoZSBoYXNoDQo+
-IA0KPj4+ICtycGNhdXRoX2hhc2hfYWNyZWQoc3RydWN0IGF1dGhfY3JlZCAqYWNyZWQsIHVuc2ln
-bmVkIGludCBoYXNoYml0cykNCj4+PiArew0KPj4+ICsJcmV0dXJuIGhhc2hfNjQoZnJvbV9rZ2lk
-KCZpbml0X3VzZXJfbnMsIGFjcmVkLT5naWQpIHwNCj4+PiArCQkoZnJvbV9rdWlkKCZpbml0X3Vz
-ZXJfbnMsIGFjcmVkLT51aWQpIDw8IChzaXplb2YoZ2lkX3QpICogOCkpLA0KPj4+ICsJCWhhc2hi
-aXRzKTsNCj4+PiArfQ0KPj4+ICsNCj4gDQo+PiBOQUNLLiBUaGUgY2hvaWNlIG9mIG9ubHkgdXNp
-bmcgdGhlIHVpZCB3aGVuIGhhc2hpbmcgd2FzIGRlbGliZXJhdGU7DQo+PiBSUENTRUNfR1NTIGlz
-IGtleWVkIG9ubHkgb24gdGhlIHVpZOKApg0KPj4gSWYgeW91IHdhbnQgdG8gZG8gdGhpcyBpbiBv
-cmRlciB0byBhY2NlbGVyYXRlIEFVVEhfU1lTIGxvb2t1cHMsIHRoZW4geW91IG5lZWQNCj4+IHRv
-IHB1c2ggdGhlIGhhc2hpbmcgZG93biB0byB0aGUgYXV0aCBmbGF2b3VyIG9wcy4NCj4gDQo+IEkg
-cmVjb2duaXplIHRoYXQgUlBDU0VDX0dTUyBvbmx5IHVzZXMgdGhlIHVpZCBhcyBhIGtleS4gIEhv
-d2V2ZXIsIFJQQ1NFQ19HU1MNCj4gY2FsbHMgcnBjYXV0aF9sb29rdXBfY3JlZGNhY2hlIHdpdGgg
-YW4gYXV0aF9jcmVkLCBqdXN0IGxpa2UgQVVUSF9TWVMsIG9ubHkgd2l0aA0KPiB0aGUgZ2lkIHNl
-dCB0byAwLiAgSW5jbHVkaW5nIHRoZSBnaWQgaW4gdGhlIGhhc2ggaGFzIG5vIGVmZmVjdCBvbiBS
-UENTRUNfR1NTOw0KPiBpZiB0aGUgZnVuY3Rpb24gaXMgZmxpcHBlZCB0byBzaGlmdCB0aGUgZ2lk
-IGluc3RlYWQgb2YgdGhlIHVpZCwgaXQgZXZlbiBoYXNoZXMNCj4gdG8gdGhlIHNhbWUgcmVzdWx0
-IGFzIGl0IGRpZCBwcmV2aW91c2x5Lg0KPiANCg0KQUZBSUssIGJvdGggZ2VuZXJpY19iaW5kX2Ny
-ZWQoKSBhbmQgcnBjYXV0aF9sb29rdXBjcmVkKCkgY2FuIG1ha2UgaW5kaXJlY3QgY2FsbHMgdG8g
-Z3NzX2xvb2t1cF9jcmVkKCkgd2l0aCBhIGJvZyBzdGFuZGFyZCBjcmVkZW50aWFsIChhY3JlZC0+
-Z2lkID09IGN1cnJlbnRfY3JlZCgpLT5mc2dpZCkuIEFtIEkgbWlzc2luZyBzb21ldGhpbmc/DQoN
-Cj4gQWRkaW5nIGEgc2hpZnQgYW5kIGJpdHdpc2UgT1IgdG8gdGhlIGhhc2ggaXMgbW9yZSBzdHJh
-aWdodGZvcndhcmQgYW5kDQo+IGVmZmljaWVudCB0aGFuIGFkZGluZyB0aGUgbG9naWMgdG8gcHJv
-dmlkZSBhIHBlci1hdXRoIGZsYXZvdXIgaGFzaCBvcCB0aGF0DQo+IGRpZmZlcnMgb25seSBpbiB0
-aGF0IGl0IGRvZXNuJ3Qgc2hpZnQgYW5kIE9SIGEgMCB2YWx1ZS4NCj4gDQo+IE9yIGFyZSB0aGVy
-ZSBhZGRpdGlvbmFsIGJlbmVmaXRzIHRvIGJlIGdhaW5lZCBmcm9tIGVhY2ggaGF2aW5nIGl0cyBv
-d24gaGFzaA0KPiBmdW5jdGlvbj8NCj4gDQo+IA0KPiBUaGFua3MsDQo+IA0KPiBGcmFuaw0KPiAt
-LQ0KPiBGcmFuayBTb3JlbnNvbg0KPiBzb3JlbnNvbkByZWRoYXQuY29tDQo+IFNlbmlvciBTb2Z0
-d2FyZSBNYWludGVuYW5jZSBFbmdpbmVlcg0KPiBHbG9iYWwgU3VwcG9ydCBTZXJ2aWNlcyAtIGZp
-bGVzeXN0ZW1zDQo+IFJlZCBIYXQNCj4gLS0NCj4gVG8gdW5zdWJzY3JpYmUgZnJvbSB0aGlzIGxp
-c3Q6IHNlbmQgdGhlIGxpbmUgInVuc3Vic2NyaWJlIGxpbnV4LW5mcyIgaW4NCj4gdGhlIGJvZHkg
-b2YgYSBtZXNzYWdlIHRvIG1ham9yZG9tb0B2Z2VyLmtlcm5lbC5vcmcNCj4gTW9yZSBtYWpvcmRv
-bW8gaW5mbyBhdCAgaHR0cDovL3ZnZXIua2VybmVsLm9yZy9tYWpvcmRvbW8taW5mby5odG1sDQoN
-Cg==
+So it looks like this patch go in, but when I did my usually NFS
+regression tests that I stopped for a few weeks aover the summer it
+broke down badly: all the fsx and some other data integrity tests now
+fail in xfstests over pNFS blocklayout.
 
+Given how close it is to 4.8-final can we revert it for now?
