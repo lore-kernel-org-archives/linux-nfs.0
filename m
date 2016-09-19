@@ -1,61 +1,50 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx142.netapp.com ([216.240.21.19]:5402 "EHLO mx142.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:43414 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1750750AbcISRif (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 19 Sep 2016 13:38:35 -0400
-Subject: Re: [PATCH] nfs: add missing CONFIG_MIGRATION for nfs_migrate_page
-To: Chao Yu <yuchao0@huawei.com>, <trond.myklebust@primarydata.com>
-References: <20160919120917.29844-1-yuchao0@huawei.com>
-CC: <linux-nfs@vger.kernel.org>, <linux-kernel@vger.kernel.org>
-From: Anna Schumaker <Anna.Schumaker@netapp.com>
-Message-ID: <fb5f4957-7d01-4c69-aca2-0e704104d921@Netapp.com>
-Date: Mon, 19 Sep 2016 13:38:31 -0400
+        id S1751888AbcISTE7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 19 Sep 2016 15:04:59 -0400
+From: "Benjamin Coddington" <bcodding@redhat.com>
+To: "Christoph Hellwig" <hch@infradead.org>
+Cc: linux-nfs@vger.kernel.org,
+        "Trond Myklebust" <trond.myklebust@primarydata.com>,
+        "Anna Schumaker" <anna.schumaker@netapp.com>,
+        "Christoph Hellwig" <hch@lst.de>
+Subject: Re: [PATCH v3] pnfs/blocklayout: update last_write_offset atomically
+ with extents
+Date: Mon, 19 Sep 2016 15:04:52 -0400
+Message-ID: <8ECEF67B-FB4D-4289-A656-D98D3175B85E@redhat.com>
+In-Reply-To: <20160919145806.GA12452@infradead.org>
+References: <a754067b5a8252a10a0bcfa23c4229cf3d7b1adf.1471535578.git.bcodding@redhat.com>
+ <f50699da22fbcd977842a4fa5dd40b27295fcfcf.1471889187.git.bcodding@redhat.com>
+ <20160919145806.GA12452@infradead.org>
 MIME-Version: 1.0
-In-Reply-To: <20160919120917.29844-1-yuchao0@huawei.com>
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain; markup=markdown
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Chao,
 
-On 09/19/2016 08:09 AM, Chao Yu wrote:
-> We'd better to use CONFIG_MIGRATION to cover nfs_migrate_page, otherwise
-> when CONFIG_MIGRATION is not defined, unused nfs_migrate_page will still
-> be compiled into kernel.
 
-I don't think that nfs_migrate_page is still compiled into the kernel when CONFIG_MIGRATION=n.  The file fs/nfs/internal.h has:
+On 19 Sep 2016, at 10:58, Christoph Hellwig wrote:
 
-  #ifdef CONFIG_MIGRATION
-  extern int nfs_migrate_page(struct address_space *,
-                  struct page *, struct page *, enum migrate_mode);
-  #else
-  #define nfs_migrate_page NULL
-  #endif
+> So it looks like this patch go in, but when I did my usually NFS
+> regression tests that I stopped for a few weeks aover the summer it
+> broke down badly: all the fsx and some other data integrity tests now
+> fail in xfstests over pNFS blocklayout.
+>
+> Given how close it is to 4.8-final can we revert it for now?
 
-So it looks like we're just setting the variable to a NULL pointer in this case.  I'm not opposed to your change, since it better matches how we've done things in other parts of the client, but can you please clean up internal.h while you're at it?
+Are you sure this patch is the problem?  I just tested and things are
+broken for me too, but I think it has something to do with the client
+choosing the block layout over SCSI now that the server is returning
+multiple layout types.
 
-Thanks,
-Anna
+I don't have block layout configured properly, but still I don't think
+I should be getting -EIO if it isn't configured.  Shouldn't IO fall back
+to the MDS?
 
-> 
-> Signed-off-by: Chao Yu <yuchao0@huawei.com>
-> ---
->  fs/nfs/file.c | 2 ++
->  1 file changed, 2 insertions(+)
-> 
-> diff --git a/fs/nfs/file.c b/fs/nfs/file.c
-> index 7d62097..6cfb83e 100644
-> --- a/fs/nfs/file.c
-> +++ b/fs/nfs/file.c
-> @@ -543,7 +543,9 @@ const struct address_space_operations nfs_file_aops = {
->  	.invalidatepage = nfs_invalidate_page,
->  	.releasepage = nfs_release_page,
->  	.direct_IO = nfs_direct_IO,
-> +#ifdef CONFIG_MIGRATION
->  	.migratepage = nfs_migrate_page,
-> +#endif
->  	.launder_page = nfs_launder_page,
->  	.is_dirty_writeback = nfs_check_dirty_writeback,
->  	.error_remove_page = generic_error_remove_page,
-> 
+It works if the server only returns SCSI layout type.. unless you're testing
+something I'm not..
 
+Just wondering if you reverted this patch and saw the problem go away.
+
+Ben
