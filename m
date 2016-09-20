@@ -1,17 +1,17 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qk0-f195.google.com ([209.85.220.195]:36075 "EHLO
-        mail-qk0-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S932340AbcITQ4l (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 20 Sep 2016 12:56:41 -0400
-Received: by mail-qk0-f195.google.com with SMTP id z143so1432557qka.3
-        for <linux-nfs@vger.kernel.org>; Tue, 20 Sep 2016 09:56:41 -0700 (PDT)
+Received: from mail-qt0-f194.google.com ([209.85.216.194]:35036 "EHLO
+        mail-qt0-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S932368AbcITQ4o (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 20 Sep 2016 12:56:44 -0400
+Received: by mail-qt0-f194.google.com with SMTP id 38so723239qte.2
+        for <linux-nfs@vger.kernel.org>; Tue, 20 Sep 2016 09:56:44 -0700 (PDT)
 From: Trond Myklebust <trond.myklebust@primarydata.com>
 To: anna.schumaker@netapp.com
 Cc: linux-nfs@vger.kernel.org, Oleg Drokin <green@linuxhacker.ru>
-Subject: [PATCH v6 18/29] NFSv4: nfs4_handle_delegation_recall_error() handle expiration as revoke case
-Date: Tue, 20 Sep 2016 12:56:00 -0400
-Message-Id: <1474390571-17106-19-git-send-email-trond.myklebust@primarydata.com>
-In-Reply-To: <1474390571-17106-18-git-send-email-trond.myklebust@primarydata.com>
+Subject: [PATCH v6 20/29] NFSv4.1: nfs4_layoutget_handle_exception handle revoked state
+Date: Tue, 20 Sep 2016 12:56:02 -0400
+Message-Id: <1474390571-17106-21-git-send-email-trond.myklebust@primarydata.com>
+In-Reply-To: <1474390571-17106-20-git-send-email-trond.myklebust@primarydata.com>
 References: <1474390571-17106-1-git-send-email-trond.myklebust@primarydata.com>
  <1474390571-17106-2-git-send-email-trond.myklebust@primarydata.com>
  <1474390571-17106-3-git-send-email-trond.myklebust@primarydata.com>
@@ -30,37 +30,40 @@ References: <1474390571-17106-1-git-send-email-trond.myklebust@primarydata.com>
  <1474390571-17106-16-git-send-email-trond.myklebust@primarydata.com>
  <1474390571-17106-17-git-send-email-trond.myklebust@primarydata.com>
  <1474390571-17106-18-git-send-email-trond.myklebust@primarydata.com>
+ <1474390571-17106-19-git-send-email-trond.myklebust@primarydata.com>
+ <1474390571-17106-20-git-send-email-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-If the server tells us our stateid has expired, then handle that as if
-it was revoked.
+Handle revoked open/lock/delegation stateids when LAYOUTGET tells us
+the state was revoked.
 
 Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
 ---
- fs/nfs/nfs4proc.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ fs/nfs/nfs4proc.c | 3 +++
+ 1 file changed, 3 insertions(+)
 
 diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index f79d4f55d83f..75dc389c9719 100644
+index f0c5442401d7..e5b35e57a8ff 100644
 --- a/fs/nfs/nfs4proc.c
 +++ b/fs/nfs/nfs4proc.c
-@@ -1919,7 +1919,6 @@ static int nfs4_handle_delegation_recall_error(struct nfs_server *server, struct
- 		case -NFS4ERR_STALE_CLIENTID:
- 		case -NFS4ERR_STALE_STATEID:
- 			set_bit(NFS_DELEGATED_STATE, &state->flags);
--		case -NFS4ERR_EXPIRED:
- 			/* Don't recall a delegation if it was lost */
- 			nfs4_schedule_lease_recovery(server->nfs_client);
- 			return -EAGAIN;
-@@ -1931,6 +1930,7 @@ static int nfs4_handle_delegation_recall_error(struct nfs_server *server, struct
- 			return -EAGAIN;
- 		case -NFS4ERR_DELEG_REVOKED:
- 		case -NFS4ERR_ADMIN_REVOKED:
-+		case -NFS4ERR_EXPIRED:
- 		case -NFS4ERR_BAD_STATEID:
- 		case -NFS4ERR_OPENMODE:
- 			nfs_inode_find_state_and_recover(state->inode,
+@@ -8069,6 +8069,8 @@ nfs4_layoutget_handle_exception(struct rpc_task *task,
+ 	case -NFS4ERR_RECALLCONFLICT:
+ 		status = -ERECALLCONFLICT;
+ 		break;
++	case -NFS4ERR_DELEG_REVOKED:
++	case -NFS4ERR_ADMIN_REVOKED:
+ 	case -NFS4ERR_EXPIRED:
+ 	case -NFS4ERR_BAD_STATEID:
+ 		exception->timeout = 0;
+@@ -8080,6 +8082,7 @@ nfs4_layoutget_handle_exception(struct rpc_task *task,
+ 					&lgp->args.ctx->state->stateid)) {
+ 			spin_unlock(&inode->i_lock);
+ 			exception->state = lgp->args.ctx->state;
++			exception->stateid = &lgp->args.stateid;
+ 			break;
+ 		}
+ 
 -- 
 2.7.4
 
