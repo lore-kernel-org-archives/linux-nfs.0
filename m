@@ -1,17 +1,17 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qt0-f194.google.com ([209.85.216.194]:35048 "EHLO
-        mail-qt0-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S932855AbcITQ4v (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 20 Sep 2016 12:56:51 -0400
-Received: by mail-qt0-f194.google.com with SMTP id 38so723332qte.2
-        for <linux-nfs@vger.kernel.org>; Tue, 20 Sep 2016 09:56:51 -0700 (PDT)
+Received: from mail-qk0-f193.google.com ([209.85.220.193]:35062 "EHLO
+        mail-qk0-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S932692AbcITQ4w (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 20 Sep 2016 12:56:52 -0400
+Received: by mail-qk0-f193.google.com with SMTP id w204so1432716qka.2
+        for <linux-nfs@vger.kernel.org>; Tue, 20 Sep 2016 09:56:52 -0700 (PDT)
 From: Trond Myklebust <trond.myklebust@primarydata.com>
 To: anna.schumaker@netapp.com
 Cc: linux-nfs@vger.kernel.org, Oleg Drokin <green@linuxhacker.ru>
-Subject: [PATCH v6 25/29] NFSv4: nfs4_do_handle_exception() handle revoke/expiry of a single stateid
-Date: Tue, 20 Sep 2016 12:56:07 -0400
-Message-Id: <1474390571-17106-26-git-send-email-trond.myklebust@primarydata.com>
-In-Reply-To: <1474390571-17106-25-git-send-email-trond.myklebust@primarydata.com>
+Subject: [PATCH v6 26/29] NFSv4: Don't test open_stateid unless it is set
+Date: Tue, 20 Sep 2016 12:56:08 -0400
+Message-Id: <1474390571-17106-27-git-send-email-trond.myklebust@primarydata.com>
+In-Reply-To: <1474390571-17106-26-git-send-email-trond.myklebust@primarydata.com>
 References: <1474390571-17106-1-git-send-email-trond.myklebust@primarydata.com>
  <1474390571-17106-2-git-send-email-trond.myklebust@primarydata.com>
  <1474390571-17106-3-git-send-email-trond.myklebust@primarydata.com>
@@ -37,59 +37,34 @@ References: <1474390571-17106-1-git-send-email-trond.myklebust@primarydata.com>
  <1474390571-17106-23-git-send-email-trond.myklebust@primarydata.com>
  <1474390571-17106-24-git-send-email-trond.myklebust@primarydata.com>
  <1474390571-17106-25-git-send-email-trond.myklebust@primarydata.com>
+ <1474390571-17106-26-git-send-email-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-If we're not yet sure that all state has expired or been revoked, we
-should try to do a minimal recovery on just the one stateid.
+We need to test the NFS_OPEN_STATE flag for whether or not the
+open_stateid is valid.
 
 Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
 ---
- fs/nfs/nfs4proc.c | 18 +++++++++++-------
- 1 file changed, 11 insertions(+), 7 deletions(-)
+ fs/nfs/nfs4proc.c | 5 +++++
+ 1 file changed, 5 insertions(+)
 
 diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 338684195e95..552bea2af811 100644
+index 552bea2af811..995b646c9aea 100644
 --- a/fs/nfs/nfs4proc.c
 +++ b/fs/nfs/nfs4proc.c
-@@ -397,13 +397,23 @@ static int nfs4_do_handle_exception(struct nfs_server *server,
- 	exception->delay = 0;
- 	exception->recovering = 0;
- 	exception->retry = 0;
-+
-+	if (stateid == NULL && state != NULL)
-+		stateid = &state->stateid;
-+
- 	switch(errorcode) {
- 		case 0:
- 			return 0;
--		case -NFS4ERR_OPENMODE:
- 		case -NFS4ERR_DELEG_REVOKED:
- 		case -NFS4ERR_ADMIN_REVOKED:
-+		case -NFS4ERR_EXPIRED:
- 		case -NFS4ERR_BAD_STATEID:
-+			if (inode != NULL && stateid != NULL) {
-+				nfs_inode_find_state_and_recover(inode,
-+						stateid);
-+				goto wait_on_recovery;
-+			}
-+		case -NFS4ERR_OPENMODE:
- 			if (inode) {
- 				int err;
+@@ -2587,6 +2587,11 @@ static int nfs41_check_open_stateid(struct nfs4_state *state)
+ 	struct rpc_cred *cred = state->owner->so_cred;
+ 	int status;
  
-@@ -422,12 +432,6 @@ static int nfs4_do_handle_exception(struct nfs_server *server,
- 			if (ret < 0)
- 				break;
- 			goto wait_on_recovery;
--		case -NFS4ERR_EXPIRED:
--			if (state != NULL) {
--				ret = nfs4_schedule_stateid_recovery(server, state);
--				if (ret < 0)
--					break;
--			}
- 		case -NFS4ERR_STALE_STATEID:
- 		case -NFS4ERR_STALE_CLIENTID:
- 			nfs4_schedule_lease_recovery(clp);
++	if (test_bit(NFS_OPEN_STATE, &state->flags) == 0) {
++		if (test_bit(NFS_DELEGATED_STATE, &state->flags) == 0)
++			return NFS_OK;
++		return -NFS4ERR_BAD_STATEID;
++	}
+ 	/* If a state reset has been done, test_stateid is unneeded */
+ 	if ((test_bit(NFS_O_RDONLY_STATE, &state->flags) == 0) &&
+ 	    (test_bit(NFS_O_WRONLY_STATE, &state->flags) == 0) &&
 -- 
 2.7.4
 
