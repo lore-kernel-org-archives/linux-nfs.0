@@ -1,17 +1,17 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qt0-f196.google.com ([209.85.216.196]:35032 "EHLO
-        mail-qt0-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S932368AbcITQ4m (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 20 Sep 2016 12:56:42 -0400
-Received: by mail-qt0-f196.google.com with SMTP id 38so723220qte.2
-        for <linux-nfs@vger.kernel.org>; Tue, 20 Sep 2016 09:56:42 -0700 (PDT)
+Received: from mail-qk0-f195.google.com ([209.85.220.195]:36075 "EHLO
+        mail-qk0-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S932340AbcITQ4l (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 20 Sep 2016 12:56:41 -0400
+Received: by mail-qk0-f195.google.com with SMTP id z143so1432557qka.3
+        for <linux-nfs@vger.kernel.org>; Tue, 20 Sep 2016 09:56:41 -0700 (PDT)
 From: Trond Myklebust <trond.myklebust@primarydata.com>
 To: anna.schumaker@netapp.com
 Cc: linux-nfs@vger.kernel.org, Oleg Drokin <green@linuxhacker.ru>
-Subject: [PATCH v6 19/29] NFSv4: nfs4_handle_setlk_error() handle expiration as revoke case
-Date: Tue, 20 Sep 2016 12:56:01 -0400
-Message-Id: <1474390571-17106-20-git-send-email-trond.myklebust@primarydata.com>
-In-Reply-To: <1474390571-17106-19-git-send-email-trond.myklebust@primarydata.com>
+Subject: [PATCH v6 18/29] NFSv4: nfs4_handle_delegation_recall_error() handle expiration as revoke case
+Date: Tue, 20 Sep 2016 12:56:00 -0400
+Message-Id: <1474390571-17106-19-git-send-email-trond.myklebust@primarydata.com>
+In-Reply-To: <1474390571-17106-18-git-send-email-trond.myklebust@primarydata.com>
 References: <1474390571-17106-1-git-send-email-trond.myklebust@primarydata.com>
  <1474390571-17106-2-git-send-email-trond.myklebust@primarydata.com>
  <1474390571-17106-3-git-send-email-trond.myklebust@primarydata.com>
@@ -30,7 +30,6 @@ References: <1474390571-17106-1-git-send-email-trond.myklebust@primarydata.com>
  <1474390571-17106-16-git-send-email-trond.myklebust@primarydata.com>
  <1474390571-17106-17-git-send-email-trond.myklebust@primarydata.com>
  <1474390571-17106-18-git-send-email-trond.myklebust@primarydata.com>
- <1474390571-17106-19-git-send-email-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
@@ -43,25 +42,25 @@ Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
  1 file changed, 1 insertion(+), 1 deletion(-)
 
 diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 75dc389c9719..f0c5442401d7 100644
+index f79d4f55d83f..75dc389c9719 100644
 --- a/fs/nfs/nfs4proc.c
 +++ b/fs/nfs/nfs4proc.c
-@@ -6086,6 +6086,7 @@ static void nfs4_handle_setlk_error(struct nfs_server *server, struct nfs4_lock_
- {
- 	switch (error) {
- 	case -NFS4ERR_ADMIN_REVOKED:
-+	case -NFS4ERR_EXPIRED:
- 	case -NFS4ERR_BAD_STATEID:
- 		lsp->ls_seqid.flags &= ~NFS_SEQID_CONFIRMED;
- 		if (new_lock_owner != 0 ||
-@@ -6094,7 +6095,6 @@ static void nfs4_handle_setlk_error(struct nfs_server *server, struct nfs4_lock_
- 		break;
- 	case -NFS4ERR_STALE_STATEID:
- 		lsp->ls_seqid.flags &= ~NFS_SEQID_CONFIRMED;
--	case -NFS4ERR_EXPIRED:
- 		nfs4_schedule_lease_recovery(server->nfs_client);
- 	};
- }
+@@ -1919,7 +1919,6 @@ static int nfs4_handle_delegation_recall_error(struct nfs_server *server, struct
+ 		case -NFS4ERR_STALE_CLIENTID:
+ 		case -NFS4ERR_STALE_STATEID:
+ 			set_bit(NFS_DELEGATED_STATE, &state->flags);
+-		case -NFS4ERR_EXPIRED:
+ 			/* Don't recall a delegation if it was lost */
+ 			nfs4_schedule_lease_recovery(server->nfs_client);
+ 			return -EAGAIN;
+@@ -1931,6 +1930,7 @@ static int nfs4_handle_delegation_recall_error(struct nfs_server *server, struct
+ 			return -EAGAIN;
+ 		case -NFS4ERR_DELEG_REVOKED:
+ 		case -NFS4ERR_ADMIN_REVOKED:
++		case -NFS4ERR_EXPIRED:
+ 		case -NFS4ERR_BAD_STATEID:
+ 		case -NFS4ERR_OPENMODE:
+ 			nfs_inode_find_state_and_recover(state->inode,
 -- 
 2.7.4
 
