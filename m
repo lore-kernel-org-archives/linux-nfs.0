@@ -1,50 +1,47 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qk0-f194.google.com ([209.85.220.194]:35804 "EHLO
-        mail-qk0-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1752045AbcITSdt (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 20 Sep 2016 14:33:49 -0400
-Received: by mail-qk0-f194.google.com with SMTP id w204so1596264qka.2
-        for <linux-nfs@vger.kernel.org>; Tue, 20 Sep 2016 11:33:49 -0700 (PDT)
+Received: from mail-qk0-f195.google.com ([209.85.220.195]:36337 "EHLO
+        mail-qk0-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1752045AbcITSe1 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 20 Sep 2016 14:34:27 -0400
+Received: by mail-qk0-f195.google.com with SMTP id z143so1600523qka.3
+        for <linux-nfs@vger.kernel.org>; Tue, 20 Sep 2016 11:34:27 -0700 (PDT)
 From: Trond Myklebust <trond.myklebust@primarydata.com>
 To: anna.schumaker@netapp.com
 Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH 2/2] SUNRPC: Fix setting of buffer length in xdr_set_next_buffer()
-Date: Tue, 20 Sep 2016 14:33:43 -0400
-Message-Id: <1474396423-19543-2-git-send-email-trond.myklebust@primarydata.com>
-In-Reply-To: <1474396423-19543-1-git-send-email-trond.myklebust@primarydata.com>
-References: <1474396423-19543-1-git-send-email-trond.myklebust@primarydata.com>
+Subject: [PATCH] NFS: nfs_prime_dcache must validate the filename
+Date: Tue, 20 Sep 2016 14:34:24 -0400
+Message-Id: <1474396464-19663-1-git-send-email-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Use xdr->nwords to tell us how much buffer remains.
+Before we try to stash it in the dcache, we need to at least check
+that the filename passed to us by the server is non-empty and doesn't
+contain any illegal '\0' or '/' characters.
 
 Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
 ---
- net/sunrpc/xdr.c | 4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
+ fs/nfs/dir.c | 8 ++++++++
+ 1 file changed, 8 insertions(+)
 
-diff --git a/net/sunrpc/xdr.c b/net/sunrpc/xdr.c
-index b8444860edf5..7f1071e103ca 100644
---- a/net/sunrpc/xdr.c
-+++ b/net/sunrpc/xdr.c
-@@ -767,7 +767,7 @@ static void xdr_set_next_page(struct xdr_stream *xdr)
- 	newbase -= xdr->buf->page_base;
- 
- 	if (xdr_set_page_base(xdr, newbase, PAGE_SIZE) < 0)
--		xdr_set_iov(xdr, xdr->buf->tail, xdr->buf->len);
-+		xdr_set_iov(xdr, xdr->buf->tail, xdr->nwords << 2);
- }
- 
- static bool xdr_set_next_buffer(struct xdr_stream *xdr)
-@@ -776,7 +776,7 @@ static bool xdr_set_next_buffer(struct xdr_stream *xdr)
- 		xdr_set_next_page(xdr);
- 	else if (xdr->iov == xdr->buf->head) {
- 		if (xdr_set_page_base(xdr, 0, PAGE_SIZE) < 0)
--			xdr_set_iov(xdr, xdr->buf->tail, xdr->buf->len);
-+			xdr_set_iov(xdr, xdr->buf->tail, xdr->nwords << 2);
- 	}
- 	return xdr->p != xdr->end;
- }
+diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
+index 578c8ce1aca1..f20460711546 100644
+--- a/fs/nfs/dir.c
++++ b/fs/nfs/dir.c
+@@ -496,6 +496,14 @@ void nfs_prime_dcache(struct dentry *parent, struct nfs_entry *entry)
+ 		return;
+ 	if (!(entry->fattr->valid & NFS_ATTR_FATTR_FSID))
+ 		return;
++	if (filename.len == 0)
++		return;
++	/* Validate that the name doesn't contain any illegal '\0' */
++	if (strnlen(filename.name, filename.len) != filename.len)
++		return;
++	/* ...or '/' */
++	if (strnchr(filename.name, filename.len, '/'))
++		return;
+ 	if (filename.name[0] == '.') {
+ 		if (filename.len == 1)
+ 			return;
 -- 
 2.7.4
 
