@@ -1,17 +1,17 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qt0-f195.google.com ([209.85.216.195]:35014 "EHLO
-        mail-qt0-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1753999AbcITQ4g (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 20 Sep 2016 12:56:36 -0400
-Received: by mail-qt0-f195.google.com with SMTP id 38so723095qte.2
-        for <linux-nfs@vger.kernel.org>; Tue, 20 Sep 2016 09:56:36 -0700 (PDT)
+Received: from mail-qk0-f196.google.com ([209.85.220.196]:33922 "EHLO
+        mail-qk0-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1753999AbcITQ4j (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 20 Sep 2016 12:56:39 -0400
+Received: by mail-qk0-f196.google.com with SMTP id b204so1439780qkc.1
+        for <linux-nfs@vger.kernel.org>; Tue, 20 Sep 2016 09:56:38 -0700 (PDT)
 From: Trond Myklebust <trond.myklebust@primarydata.com>
 To: anna.schumaker@netapp.com
 Cc: linux-nfs@vger.kernel.org, Oleg Drokin <green@linuxhacker.ru>
-Subject: [PATCH v6 14/29] NFSv4.1: FREE_STATEID can be asynchronous
-Date: Tue, 20 Sep 2016 12:55:56 -0400
-Message-Id: <1474390571-17106-15-git-send-email-trond.myklebust@primarydata.com>
-In-Reply-To: <1474390571-17106-14-git-send-email-trond.myklebust@primarydata.com>
+Subject: [PATCH v6 16/29] NFSv4: Ensure we don't re-test revoked and freed stateids
+Date: Tue, 20 Sep 2016 12:55:58 -0400
+Message-Id: <1474390571-17106-17-git-send-email-trond.myklebust@primarydata.com>
+In-Reply-To: <1474390571-17106-16-git-send-email-trond.myklebust@primarydata.com>
 References: <1474390571-17106-1-git-send-email-trond.myklebust@primarydata.com>
  <1474390571-17106-2-git-send-email-trond.myklebust@primarydata.com>
  <1474390571-17106-3-git-send-email-trond.myklebust@primarydata.com>
@@ -26,98 +26,39 @@ References: <1474390571-17106-1-git-send-email-trond.myklebust@primarydata.com>
  <1474390571-17106-12-git-send-email-trond.myklebust@primarydata.com>
  <1474390571-17106-13-git-send-email-trond.myklebust@primarydata.com>
  <1474390571-17106-14-git-send-email-trond.myklebust@primarydata.com>
+ <1474390571-17106-15-git-send-email-trond.myklebust@primarydata.com>
+ <1474390571-17106-16-git-send-email-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Nothing should need to be serialised with FREE_STATEID on the client,
-so let's make the RPC call always asynchronous. Also constify the
-stateid argument.
+This fixes a potential infinite loop in nfs_reap_expired_delegations.
 
 Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
 ---
- fs/nfs/nfs4proc.c | 31 ++++++++++++-------------------
- 1 file changed, 12 insertions(+), 19 deletions(-)
+ fs/nfs/delegation.c | 3 +++
+ 1 file changed, 3 insertions(+)
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 33ca6d768bd2..a53caeb73f75 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -99,8 +99,8 @@ static int nfs4_do_setattr(struct inode *inode, struct rpc_cred *cred,
- #ifdef CONFIG_NFS_V4_1
- static int nfs41_test_stateid(struct nfs_server *, nfs4_stateid *,
- 		struct rpc_cred *);
--static int nfs41_free_stateid(struct nfs_server *, nfs4_stateid *,
--		struct rpc_cred *);
-+static int nfs41_free_stateid(struct nfs_server *, const nfs4_stateid *,
-+		struct rpc_cred *, bool);
- #endif
- 
- #ifdef CONFIG_NFS_V4_SECURITY_LABEL
-@@ -2443,7 +2443,7 @@ static int nfs41_test_and_free_expired_stateid(struct nfs_server *server,
- 	}
- out_free:
- 	/* Ack the revoked state to the server */
--	nfs41_free_stateid(server, stateid, cred);
-+	nfs41_free_stateid(server, stateid, cred, true);
- 	return -NFS4ERR_EXPIRED;
+diff --git a/fs/nfs/delegation.c b/fs/nfs/delegation.c
+index 0ffead281555..484f14700108 100644
+--- a/fs/nfs/delegation.c
++++ b/fs/nfs/delegation.c
+@@ -656,6 +656,7 @@ static void nfs_mark_delegation_revoked(struct nfs_server *server,
+ 		struct nfs_delegation *delegation)
+ {
+ 	set_bit(NFS_DELEGATION_REVOKED, &delegation->flags);
++	delegation->stateid.type = NFS4_INVALID_STATEID_TYPE;
+ 	nfs_mark_return_delegation(server, delegation);
  }
  
-@@ -8722,7 +8722,7 @@ static const struct rpc_call_ops nfs41_free_stateid_ops = {
- };
- 
- static struct rpc_task *_nfs41_free_stateid(struct nfs_server *server,
--		nfs4_stateid *stateid,
-+		const nfs4_stateid *stateid,
- 		struct rpc_cred *cred,
- 		bool privileged)
+@@ -894,6 +895,8 @@ static inline bool nfs4_server_rebooted(const struct nfs_client *clp)
+ static void nfs_mark_test_expired_delegation(struct nfs_server *server,
+ 	    struct nfs_delegation *delegation)
  {
-@@ -8765,38 +8765,31 @@ static struct rpc_task *_nfs41_free_stateid(struct nfs_server *server,
-  * @server: server / transport on which to perform the operation
-  * @stateid: state ID to release
-  * @cred: credential
-+ * @is_recovery: set to true if this call needs to be privileged
-  *
-- * Returns NFS_OK if the server freed "stateid".  Otherwise a
-- * negative NFS4ERR value is returned.
-+ * Note: this function is always asynchronous.
-  */
- static int nfs41_free_stateid(struct nfs_server *server,
--		nfs4_stateid *stateid,
--		struct rpc_cred *cred)
-+		const nfs4_stateid *stateid,
-+		struct rpc_cred *cred,
-+		bool is_recovery)
- {
- 	struct rpc_task *task;
--	int ret;
- 
--	task = _nfs41_free_stateid(server, stateid, cred, true);
-+	task = _nfs41_free_stateid(server, stateid, cred, is_recovery);
- 	if (IS_ERR(task))
- 		return PTR_ERR(task);
--	ret = rpc_wait_for_completion_task(task);
--	if (!ret)
--		ret = task->tk_status;
- 	rpc_put_task(task);
--	return ret;
-+	return 0;
- }
- 
- static void
- nfs41_free_lock_state(struct nfs_server *server, struct nfs4_lock_state *lsp)
- {
--	struct rpc_task *task;
- 	struct rpc_cred *cred = lsp->ls_state->owner->so_cred;
- 
--	task = _nfs41_free_stateid(server, &lsp->ls_stateid, cred, false);
-+	nfs41_free_stateid(server, &lsp->ls_stateid, cred, false);
- 	nfs4_free_lock_state(server, lsp);
--	if (IS_ERR(task))
--		return;
--	rpc_put_task(task);
- }
- 
- static bool nfs41_match_stateid(const nfs4_stateid *s1,
++	if (delegation->stateid.type == NFS4_INVALID_STATEID_TYPE)
++		return;
+ 	clear_bit(NFS_DELEGATION_NEED_RECLAIM, &delegation->flags);
+ 	set_bit(NFS_DELEGATION_TEST_EXPIRED, &delegation->flags);
+ 	set_bit(NFS4CLNT_DELEGATION_EXPIRED, &server->nfs_client->cl_state);
 -- 
 2.7.4
 
