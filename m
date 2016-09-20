@@ -1,83 +1,26 @@
-Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from bombadil.infradead.org ([198.137.202.9]:56958 "EHLO
-        bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1754132AbcITQhR (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 20 Sep 2016 12:37:17 -0400
-Date: Tue, 20 Sep 2016 09:37:17 -0700
+Return-Path: <BATV+5b76f26bb9fb8bbdf5ea+4776+infradead.org+hch@bombadil.srs.infradead.org>
+Date: Tue, 20 Sep 2016 09:38:13 -0700
 From: Christoph Hellwig <hch@infradead.org>
-To: bfields@redhat.com, jlayton@redhat.com
-Cc: linux-nfs@vger.kernel.org
-Subject: nfsd crash when running xfstests/089
-Message-ID: <20160920163717.GA946@infradead.org>
+To: Benjamin Coddington <bcodding@redhat.com>
+Cc: Christoph Hellwig <hch@infradead.org>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] pnfs/blocklayout: last_write_offset incorrectly set to
+ end of extent
+Message-ID: <20160920163813.GA7005@infradead.org>
+References: <a754067b5a8252a10a0bcfa23c4229cf3d7b1adf.1471535578.git.bcodding@redhat.com>
+ <f50699da22fbcd977842a4fa5dd40b27295fcfcf.1471889187.git.bcodding@redhat.com>
+ <20160919145806.GA12452@infradead.org>
+ <8ECEF67B-FB4D-4289-A656-D98D3175B85E@redhat.com>
+ <20160919190610.GA3612@lst.de>
+ <9FD74439-878E-464E-9334-5F6782145248@redhat.com>
+ <ffe9a2cc97ead5b73b985aa4c16219351cac29d5.1474372904.git.bcodding@redhat.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Sender: linux-nfs-owner@vger.kernel.org
+In-Reply-To: <ffe9a2cc97ead5b73b985aa4c16219351cac29d5.1474372904.git.bcodding@redhat.com>
 List-ID: <linux-nfs.vger.kernel.org>
 
-Running a latest Linus tree with nfsv4.2 and the blocklayout driver
-against an XFS file system exported from the local machine I get
-this error when running generic/089 somewhat relatively reproducibly
-(doesn't happen on every run, but more often than not):
+This seems to fix the corruption issues.
 
-generic/089 133s ...[  387.409504] run fstests generic/089 at 2016-09-20 16:31:44
-[  462.789037] general protection fault: 0000 [#1] SMP
-[  462.790231] Modules linked in:
-[  462.790557] CPU: 2 PID: 3087 Comm: nfsd Tainted: G        W 4.8.0-rc6+ #1939
-[  462.791235] Hardware name: QEMU Standard PC (i440FX + PIIX, 1996), BIOS 1.7.5-20140531_083030-gandalf 04/01/2014
-[  462.792145] task: ffff880137fa1280 task.stack: ffff880137fa4000
-[  462.792163] RIP: 0010:[<ffffffff813fff4a>]  [<ffffffff813fff4a>] release_lock_stateid+0x1a/0x60
-[  462.792163] RSP: 0018:ffff880137fa7cd8  EFLAGS: 00010246
-[  462.792163] RAX: ffff880137d90548 RBX: ffff88013a7c7a88 RCX: ffff880137fa1a48
-[  462.792163] RDX: ffff880137fa1a48 RSI: 0000000000000000 RDI: ffff88013a7c7a88
-[  462.792163] RBP: ffff880137fa7cf0 R08: 0000000000000001 R09: 0000000000000000
-[  462.792163] R10: 0000000000000001 R11: 0000000000000000 R12: 6b6b6b6b6b6b6b6b
-[  462.792163] R13: 0000000000000000 R14: ffff88013ac08000 R15: 0000000000000021
-[  462.792163] FS:  0000000000000000(0000) GS:ffff88013fd00000(0000) knlGS:0000000000000000
-[  462.792163] CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
-[  462.792163] CR2: 00007fcf2d818000 CR3: 0000000135b0e000 CR4: 00000000000006e0
-[  462.792163] DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
-[  462.792163] DR3: 0000000000000000 DR6: 00000000fffe0ff0 DR7: 0000000000000400
-[  462.792163] Stack:
-[  462.792163]  ffff88013a7c7a88 ffff88013a7c7b40 0000000000000000 ffff880137fa7d18
-[  462.792163]  ffffffff81405b5a ffff880138ffd000 ffff880136dce000 ffff880138ffd068
-[  462.792163]  ffff880137fa7d70 ffffffff813f13f4 ffff88013ac08220 0000000000000870
-[  462.792163] Call Trace:
-[  462.792163]  [<ffffffff81405b5a>] nfsd4_free_stateid+0x16a/0x170
-[  462.792163]  [<ffffffff813f13f4>] nfsd4_proc_compound+0x344/0x630
-[  462.792163]  [<ffffffff813dc573>] nfsd_dispatch+0xb3/0x1f0
-[  462.792163]  [<ffffffff81dc0898>] svc_process_common+0x428/0x650
-[  462.792163]  [<ffffffff81dc0c15>] svc_process+0x155/0x340
-[  462.792163]  [<ffffffff813dbaf2>] nfsd+0x172/0x270
-[  462.792163]  [<ffffffff813db980>] ? nfsd_destroy+0x180/0x180
-[  462.792163]  [<ffffffff813db980>] ? nfsd_destroy+0x180/0x180
-[  462.792163]  [<ffffffff810fab91>] kthread+0xf1/0x110
-[  462.792163]  [<ffffffff81e01e6f>] ret_from_fork+0x1f/0x40
-[  462.792163]  [<ffffffff810faaa0>] ? kthread_create_on_node+0x200/0x200
-
-(gdb) l *(release_lock_stateid+0x1a)
-0xffffffff813fff4a is in release_lock_stateid
-(./include/linux/spinlock.h:302).
-297		raw_spin_lock_init(&(_lock)->rlock);		\
-298	} while (0)
-299	
-300	static __always_inline void spin_lock(spinlock_t *lock)
-301	{
-302		raw_spin_lock(&lock->rlock);
-303	}
-304	
-305	static __always_inline void spin_lock_bh(spinlock_t *lock)
-306	{
-(gdb) l *(nfsd4_free_stateid+0x16a)
-0xffffffff81405b5a is in nfsd4_free_stateid (fs/nfsd/nfs4state.c:4923).
-4918		ret = nfserr_locks_held;
-4919		if (check_for_locks(stp->st_stid.sc_file,
-4920				    lockowner(stp->st_stateowner)))
-4921			goto out;
-4922	
-4923		release_lock_stateid(stp);
-4924		ret = nfs_ok;
-4925	
-4926	out:
-4927		mutex_unlock(&stp->st_mutex);
-(gdb) 
-
+Reviewed-by: Christoph Hellwig <hch@lst.de>
+Tested-by: Christoph Hellwig <hch@lst.de>
