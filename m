@@ -1,17 +1,17 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qt0-f196.google.com ([209.85.216.196]:35011 "EHLO
-        mail-qt0-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1753999AbcITQ4e (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 20 Sep 2016 12:56:34 -0400
-Received: by mail-qt0-f196.google.com with SMTP id 38so723080qte.2
-        for <linux-nfs@vger.kernel.org>; Tue, 20 Sep 2016 09:56:34 -0700 (PDT)
+Received: from mail-qk0-f195.google.com ([209.85.220.195]:35011 "EHLO
+        mail-qk0-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1753999AbcITQ4h (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 20 Sep 2016 12:56:37 -0400
+Received: by mail-qk0-f195.google.com with SMTP id w204so1432365qka.2
+        for <linux-nfs@vger.kernel.org>; Tue, 20 Sep 2016 09:56:37 -0700 (PDT)
 From: Trond Myklebust <trond.myklebust@primarydata.com>
 To: anna.schumaker@netapp.com
 Cc: linux-nfs@vger.kernel.org, Oleg Drokin <green@linuxhacker.ru>
-Subject: [PATCH v6 13/29] NFSv4.1: Ensure we always run TEST/FREE_STATEID on locks
-Date: Tue, 20 Sep 2016 12:55:55 -0400
-Message-Id: <1474390571-17106-14-git-send-email-trond.myklebust@primarydata.com>
-In-Reply-To: <1474390571-17106-13-git-send-email-trond.myklebust@primarydata.com>
+Subject: [PATCH v6 15/29] NFSv4.1: Ensure we call FREE_STATEID if needed on close/delegreturn/locku
+Date: Tue, 20 Sep 2016 12:55:57 -0400
+Message-Id: <1474390571-17106-16-git-send-email-trond.myklebust@primarydata.com>
+In-Reply-To: <1474390571-17106-15-git-send-email-trond.myklebust@primarydata.com>
 References: <1474390571-17106-1-git-send-email-trond.myklebust@primarydata.com>
  <1474390571-17106-2-git-send-email-trond.myklebust@primarydata.com>
  <1474390571-17106-3-git-send-email-trond.myklebust@primarydata.com>
@@ -25,140 +25,103 @@ References: <1474390571-17106-1-git-send-email-trond.myklebust@primarydata.com>
  <1474390571-17106-11-git-send-email-trond.myklebust@primarydata.com>
  <1474390571-17106-12-git-send-email-trond.myklebust@primarydata.com>
  <1474390571-17106-13-git-send-email-trond.myklebust@primarydata.com>
+ <1474390571-17106-14-git-send-email-trond.myklebust@primarydata.com>
+ <1474390571-17106-15-git-send-email-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Right now, we're only running TEST/FREE_STATEID on the locks if
-the open stateid recovery succeeds. The protocol requires us to
-always do so.
-The fix would be to move the call to TEST/FREE_STATEID and do it
-before we attempt open recovery.
+If a server returns NFS4ERR_ADMIN_REVOKED, NFS4ERR_DELEG_REVOKED
+or NFS4ERR_EXPIRED on a call to close, open_downgrade, delegreturn, or
+locku, we should call FREE_STATEID before attempting to recover.
 
 Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
 ---
- fs/nfs/nfs4proc.c | 92 +++++++++++++++++++++++++++++++------------------------
- 1 file changed, 52 insertions(+), 40 deletions(-)
+ fs/nfs/nfs4proc.c | 43 ++++++++++++++++++++++++++++++++++++++++---
+ 1 file changed, 40 insertions(+), 3 deletions(-)
 
 diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 3c1b8cb7dd95..33ca6d768bd2 100644
+index a53caeb73f75..f79d4f55d83f 100644
 --- a/fs/nfs/nfs4proc.c
 +++ b/fs/nfs/nfs4proc.c
-@@ -2486,6 +2486,45 @@ static void nfs41_check_delegation_stateid(struct nfs4_state *state)
+@@ -328,6 +328,33 @@ static void nfs4_setup_readdir(u64 cookie, __be32 *verifier, struct dentry *dent
+ 	kunmap_atomic(start);
  }
  
- /**
-+ * nfs41_check_expired_locks - possibly free a lock stateid
-+ *
-+ * @state: NFSv4 state for an inode
-+ *
-+ * Returns NFS_OK if recovery for this stateid is now finished.
-+ * Otherwise a negative NFS4ERR value is returned.
-+ */
-+static int nfs41_check_expired_locks(struct nfs4_state *state)
++static void nfs4_test_and_free_stateid(struct nfs_server *server,
++		nfs4_stateid *stateid,
++		struct rpc_cred *cred)
 +{
-+	int status, ret = NFS_OK;
-+	struct nfs4_lock_state *lsp;
-+	struct nfs_server *server = NFS_SERVER(state->inode);
++	const struct nfs4_minor_version_ops *ops = server->nfs_client->cl_mvops;
 +
-+	if (!test_bit(LK_STATE_IN_USE, &state->flags))
-+		goto out;
-+	list_for_each_entry(lsp, &state->lock_states, ls_locks) {
-+		if (test_bit(NFS_LOCK_INITIALIZED, &lsp->ls_flags)) {
-+			struct rpc_cred *cred = lsp->ls_state->owner->so_cred;
-+
-+			status = nfs41_test_and_free_expired_stateid(server,
-+					&lsp->ls_stateid,
-+					cred);
-+			trace_nfs4_test_lock_stateid(state, lsp, status);
-+			if (status == -NFS4ERR_EXPIRED ||
-+			    status == -NFS4ERR_BAD_STATEID) {
-+				clear_bit(NFS_LOCK_INITIALIZED, &lsp->ls_flags);
-+				if (!recover_lost_locks)
-+					set_bit(NFS_LOCK_LOST, &lsp->ls_flags);
-+			} else if (status != NFS_OK) {
-+				ret = status;
-+				break;
-+			}
-+		}
-+	};
-+out:
-+	return ret;
++	ops->test_and_free_expired(server, stateid, cred);
 +}
 +
-+/**
-  * nfs41_check_open_stateid - possibly free an open stateid
-  *
-  * @state: NFSv4 state for an inode
-@@ -2522,6 +2561,9 @@ static int nfs41_open_expired(struct nfs4_state_owner *sp, struct nfs4_state *st
- 	int status;
- 
- 	nfs41_check_delegation_stateid(state);
-+	status = nfs41_check_expired_locks(state);
-+	if (status != NFS_OK)
-+		return status;
- 	status = nfs41_check_open_stateid(state);
- 	if (status != NFS_OK)
- 		status = nfs4_open_expired(sp, state);
-@@ -6125,49 +6167,19 @@ out:
- }
- 
- #if defined(CONFIG_NFS_V4_1)
--/**
-- * nfs41_check_expired_locks - possibly free a lock stateid
-- *
-- * @state: NFSv4 state for an inode
-- *
-- * Returns NFS_OK if recovery for this stateid is now finished.
-- * Otherwise a negative NFS4ERR value is returned.
-- */
--static int nfs41_check_expired_locks(struct nfs4_state *state)
--{
--	int status, ret = NFS_OK;
--	struct nfs4_lock_state *lsp;
--	struct nfs_server *server = NFS_SERVER(state->inode);
--
--	list_for_each_entry(lsp, &state->lock_states, ls_locks) {
--		if (test_bit(NFS_LOCK_INITIALIZED, &lsp->ls_flags)) {
--			struct rpc_cred *cred = lsp->ls_state->owner->so_cred;
--
--			status = nfs41_test_and_free_expired_stateid(server,
--					&lsp->ls_stateid,
--					cred);
--			trace_nfs4_test_lock_stateid(state, lsp, status);
--			if (status == -NFS4ERR_EXPIRED ||
--			    status == -NFS4ERR_BAD_STATEID)
--				clear_bit(NFS_LOCK_INITIALIZED, &lsp->ls_flags);
--			else if (status != NFS_OK) {
--				ret = status;
--				break;
--			}
--		}
--	};
--
--	return ret;
--}
--
- static int nfs41_lock_expired(struct nfs4_state *state, struct file_lock *request)
++static void __nfs4_free_revoked_stateid(struct nfs_server *server,
++		nfs4_stateid *stateid,
++		struct rpc_cred *cred)
++{
++	stateid->type = NFS4_REVOKED_STATEID_TYPE;
++	nfs4_test_and_free_stateid(server, stateid, cred);
++}
++
++static void nfs4_free_revoked_stateid(struct nfs_server *server,
++		const nfs4_stateid *stateid,
++		struct rpc_cred *cred)
++{
++	nfs4_stateid tmp;
++
++	nfs4_stateid_copy(&tmp, stateid);
++	__nfs4_free_revoked_stateid(server, &tmp, cred);
++}
++
+ static long nfs4_update_delay(long *timeout)
  {
--	int status = NFS_OK;
-+	struct nfs4_lock_state *lsp;
-+	int status;
- 
--	if (test_bit(LK_STATE_IN_USE, &state->flags))
--		status = nfs41_check_expired_locks(state);
--	if (status != NFS_OK)
--		status = nfs4_lock_expired(state, request);
-+	status = nfs4_set_lock_state(state, request);
-+	if (status != 0)
-+		return status;
-+	lsp = request->fl_u.nfs4_fl.owner;
-+	if (test_bit(NFS_LOCK_INITIALIZED, &lsp->ls_flags) ||
-+	    test_bit(NFS_LOCK_LOST, &lsp->ls_flags))
-+		return 0;
-+	status = nfs4_lock_expired(state, request);
- 	return status;
- }
- #endif
+ 	long ret;
+@@ -2983,9 +3010,12 @@ static void nfs4_close_done(struct rpc_task *task, void *data)
+ 			break;
+ 		case -NFS4ERR_ADMIN_REVOKED:
+ 		case -NFS4ERR_STALE_STATEID:
++		case -NFS4ERR_EXPIRED:
++			nfs4_free_revoked_stateid(server,
++					&calldata->arg.stateid,
++					task->tk_msg.rpc_cred);
+ 		case -NFS4ERR_OLD_STATEID:
+ 		case -NFS4ERR_BAD_STATEID:
+-		case -NFS4ERR_EXPIRED:
+ 			if (!nfs4_stateid_match(&calldata->arg.stateid,
+ 						&state->open_stateid)) {
+ 				rpc_restart_call_prepare(task);
+@@ -5477,10 +5507,13 @@ static void nfs4_delegreturn_done(struct rpc_task *task, void *calldata)
+ 		renew_lease(data->res.server, data->timestamp);
+ 	case -NFS4ERR_ADMIN_REVOKED:
+ 	case -NFS4ERR_DELEG_REVOKED:
++	case -NFS4ERR_EXPIRED:
++		nfs4_free_revoked_stateid(data->res.server,
++				data->args.stateid,
++				task->tk_msg.rpc_cred);
+ 	case -NFS4ERR_BAD_STATEID:
+ 	case -NFS4ERR_OLD_STATEID:
+ 	case -NFS4ERR_STALE_STATEID:
+-	case -NFS4ERR_EXPIRED:
+ 		task->tk_status = 0;
+ 		if (data->roc)
+ 			pnfs_roc_set_barrier(data->inode, data->roc_barrier);
+@@ -5745,10 +5778,14 @@ static void nfs4_locku_done(struct rpc_task *task, void *data)
+ 			if (nfs4_update_lock_stateid(calldata->lsp,
+ 					&calldata->res.stateid))
+ 				break;
++		case -NFS4ERR_ADMIN_REVOKED:
++		case -NFS4ERR_EXPIRED:
++			nfs4_free_revoked_stateid(calldata->server,
++					&calldata->arg.stateid,
++					task->tk_msg.rpc_cred);
+ 		case -NFS4ERR_BAD_STATEID:
+ 		case -NFS4ERR_OLD_STATEID:
+ 		case -NFS4ERR_STALE_STATEID:
+-		case -NFS4ERR_EXPIRED:
+ 			if (!nfs4_stateid_match(&calldata->arg.stateid,
+ 						&calldata->lsp->ls_stateid))
+ 				rpc_restart_call_prepare(task);
 -- 
 2.7.4
 
