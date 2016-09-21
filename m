@@ -1,8 +1,8 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:55060 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:37132 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1757837AbcIURYE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 21 Sep 2016 13:24:04 -0400
+        id S1757492AbcIURYI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 21 Sep 2016 13:24:08 -0400
 From: Paolo Abeni <pabeni@redhat.com>
 To: netdev@vger.kernel.org
 Cc: "David S. Miller" <davem@davemloft.net>,
@@ -13,259 +13,324 @@ Cc: "David S. Miller" <davem@davemloft.net>,
         Eric Dumazet <edumazet@google.com>, Tom Herbert <tom@herbertland.com>,
         Hannes Frederic Sowa <hannes@stressinduktion.org>,
         linux-nfs@vger.kernel.org
-Subject: [PATCH net-next 2/3] udp: implement memory accounting helpers
-Date: Wed, 21 Sep 2016 19:23:15 +0200
-Message-Id: <93ccb49b7f037461ef436a50b907185744b093d8.1474477902.git.pabeni@redhat.com>
+Subject: [PATCH net-next 3/3] udp: use it's own memory accounting schema
+Date: Wed, 21 Sep 2016 19:23:16 +0200
+Message-Id: <9e6a28cad6a0b68f8a11c5abb406bd8ede27b71e.1474477902.git.pabeni@redhat.com>
 In-Reply-To: <cover.1474477902.git.pabeni@redhat.com>
 References: <cover.1474477902.git.pabeni@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Avoid usage of common memory accounting functions, since
-the logic is pretty much different.
+Completely avoid default sock memory accounting and replace it
+with udp-specific accounting.
 
-To account for forward allocation, a couple of new atomic_t
-members are added to udp_sock: 'mem_alloced' and 'mem_freed'.
-The current forward allocation is estimated as 'mem_alloced'
- minus 'mem_freed' minus 'sk_rmem_alloc'.
+Since the new memory accounting model does not require socket
+locking, remove the lock on enqueue and free and avoid using the
+backlog on enqueue.
 
-When the forward allocation can't cope with the packet to be
-enqueued, 'mem_alloced' is incremented by the packet size
-rounded-up to the next SK_MEM_QUANTUM.
-After a dequeue, we try to partially reclaim of the forward
-allocated memory rounded down to an SK_MEM_QUANTUM and
-'mem_freed' is increased by that amount.
-sk->sk_forward_alloc is set after each allocated/freed memory
-update, to the currently estimated forward allocation, without
-any lock or protection.
-This value is updated/maintained only to expose some
-semi-reasonable value to the eventual reader, and is guaranteed
-to be 0 at socket destruction time.
-
-The above needs custom memory reclaiming on shutdown, provided
-by the udp_destruct_sock() helper, which completely reclaim
-the allocated forward memory.
-
-Helpers are provided for skb free, consume and purge, respecting
-the above constraints.
-
-The socket lock is still used to protect the updates to sk_peek_off,
-but is acquired only if peeking with offset is enabled.
-
-As a consequence of the above schema, enqueue to sk_error_queue
-will cause larger forward allocation on following normal data
-(due to sk_rmem_alloc grow), but this allows amortizing the cost
-of the atomic operation on SK_MEM_QUANTUM/skb->truesize packets.
-The use of separate atomics for 'mem_alloced' and 'mem_freed'
-allows the use of a single atomic operation to protect against
-concurrent dequeue.
+Be sure to clean-up rx queue memory on socket destruction, using
+udp its own sk_destruct.
 
 Acked-by: Hannes Frederic Sowa <hannes@stressinduktion.org>
 Signed-off-by: Paolo Abeni <pabeni@redhat.com>
 ---
- include/linux/udp.h |   2 +
- include/net/udp.h   |   5 ++
- net/ipv4/udp.c      | 151 ++++++++++++++++++++++++++++++++++++++++++++++++++++
- 3 files changed, 158 insertions(+)
+ net/ipv4/udp.c        | 39 ++++++++++-----------------------------
+ net/ipv6/udp.c        | 28 +++++++++-------------------
+ net/sunrpc/svcsock.c  | 22 ++++++++++++++++++----
+ net/sunrpc/xprtsock.c |  2 +-
+ 4 files changed, 38 insertions(+), 53 deletions(-)
 
-diff --git a/include/linux/udp.h b/include/linux/udp.h
-index d1fd8cd..cd72645 100644
---- a/include/linux/udp.h
-+++ b/include/linux/udp.h
-@@ -42,6 +42,8 @@ static inline u32 udp_hashfn(const struct net *net, u32 num, u32 mask)
- struct udp_sock {
- 	/* inet_sock has to be the first member */
- 	struct inet_sock inet;
-+	atomic_t	 mem_allocated;
-+	atomic_t	 mem_freed;
- #define udp_port_hash		inet.sk.__sk_common.skc_u16hashes[0]
- #define udp_portaddr_hash	inet.sk.__sk_common.skc_u16hashes[1]
- #define udp_portaddr_node	inet.sk.__sk_common.skc_portaddr_node
-diff --git a/include/net/udp.h b/include/net/udp.h
-index ea53a87..86307a4 100644
---- a/include/net/udp.h
-+++ b/include/net/udp.h
-@@ -246,6 +246,10 @@ static inline __be16 udp_flow_src_port(struct net *net, struct sk_buff *skb,
- }
- 
- /* net/ipv4/udp.c */
-+void skb_free_udp(struct sock *sk, struct sk_buff *skb);
-+void skb_consume_udp(struct sock *sk, struct sk_buff *skb, int len);
-+int udp_rmem_schedule(struct sock *sk, struct sk_buff *skb);
-+
- void udp_v4_early_demux(struct sk_buff *skb);
- int udp_get_port(struct sock *sk, unsigned short snum,
- 		 int (*saddr_cmp)(const struct sock *,
-@@ -258,6 +262,7 @@ void udp_flush_pending_frames(struct sock *sk);
- void udp4_hwcsum(struct sk_buff *skb, __be32 src, __be32 dst);
- int udp_rcv(struct sk_buff *skb);
- int udp_ioctl(struct sock *sk, int cmd, unsigned long arg);
-+int udp_init_sock(struct sock *sk);
- int udp_disconnect(struct sock *sk, int flags);
- unsigned int udp_poll(struct file *file, struct socket *sock, poll_table *wait);
- struct sk_buff *skb_udp_tunnel_segment(struct sk_buff *skb,
 diff --git a/net/ipv4/udp.c b/net/ipv4/udp.c
-index 058c312..98480af 100644
+index 98480af..cb617ee 100644
 --- a/net/ipv4/udp.c
 +++ b/net/ipv4/udp.c
-@@ -1178,6 +1178,157 @@ out:
- 	return ret;
+@@ -1358,13 +1358,8 @@ static int first_packet_length(struct sock *sk)
+ 	res = skb ? skb->len : -1;
+ 	spin_unlock_bh(&rcvq->lock);
+ 
+-	if (!skb_queue_empty(&list_kill)) {
+-		bool slow = lock_sock_fast(sk);
+-
+-		__skb_queue_purge(&list_kill);
+-		sk_mem_reclaim_partial(sk);
+-		unlock_sock_fast(sk, slow);
+-	}
++	if (!skb_queue_empty(&list_kill))
++		udp_queue_purge(sk, &list_kill, 1);
+ 	return res;
  }
  
-+static inline int __udp_forward(struct udp_sock *up, int freed, int rmem)
+@@ -1413,7 +1408,6 @@ int udp_recvmsg(struct sock *sk, struct msghdr *msg, size_t len, int noblock,
+ 	int err;
+ 	int is_udplite = IS_UDPLITE(sk);
+ 	bool checksum_valid = false;
+-	bool slow;
+ 
+ 	if (flags & MSG_ERRQUEUE)
+ 		return ip_recv_error(sk, msg, len, addr_len);
+@@ -1454,13 +1448,12 @@ try_again:
+ 	}
+ 
+ 	if (unlikely(err)) {
+-		trace_kfree_skb(skb, udp_recvmsg);
+ 		if (!peeked) {
+ 			atomic_inc(&sk->sk_drops);
+ 			UDP_INC_STATS(sock_net(sk),
+ 				      UDP_MIB_INERRORS, is_udplite);
+ 		}
+-		skb_free_datagram_locked(sk, skb);
++		skb_free_udp(sk, skb);
+ 		return err;
+ 	}
+ 
+@@ -1485,16 +1478,15 @@ try_again:
+ 	if (flags & MSG_TRUNC)
+ 		err = ulen;
+ 
+-	__skb_free_datagram_locked(sk, skb, peeking ? -err : err);
++	skb_consume_udp(sk, skb, peeking ? -err : err);
+ 	return err;
+ 
+ csum_copy_err:
+-	slow = lock_sock_fast(sk);
+-	if (!skb_kill_datagram(sk, skb, flags)) {
++	if (!__sk_queue_drop_skb(sk, skb, flags)) {
+ 		UDP_INC_STATS(sock_net(sk), UDP_MIB_CSUMERRORS, is_udplite);
+ 		UDP_INC_STATS(sock_net(sk), UDP_MIB_INERRORS, is_udplite);
+ 	}
+-	unlock_sock_fast(sk, slow);
++	skb_free_udp(sk, skb);
+ 
+ 	/* starting over for a new packet, but check if we need to yield */
+ 	cond_resched();
+@@ -1613,7 +1605,7 @@ static int __udp_queue_rcv_skb(struct sock *sk, struct sk_buff *skb)
+ 		sk_incoming_cpu_update(sk);
+ 	}
+ 
+-	rc = __sock_queue_rcv_skb(sk, skb);
++	rc = udp_rmem_schedule(sk, skb);
+ 	if (rc < 0) {
+ 		int is_udplite = IS_UDPLITE(sk);
+ 
+@@ -1627,8 +1619,8 @@ static int __udp_queue_rcv_skb(struct sock *sk, struct sk_buff *skb)
+ 		return -1;
+ 	}
+ 
++	__sock_enqueue_skb(sk, skb);
+ 	return 0;
+-
+ }
+ 
+ static struct static_key udp_encap_needed __read_mostly;
+@@ -1650,7 +1642,6 @@ EXPORT_SYMBOL(udp_encap_enable);
+ int udp_queue_rcv_skb(struct sock *sk, struct sk_buff *skb)
+ {
+ 	struct udp_sock *up = udp_sk(sk);
+-	int rc;
+ 	int is_udplite = IS_UDPLITE(sk);
+ 
+ 	/*
+@@ -1743,19 +1734,8 @@ int udp_queue_rcv_skb(struct sock *sk, struct sk_buff *skb)
+ 		goto drop;
+ 	}
+ 
+-	rc = 0;
+-
+ 	ipv4_pktinfo_prepare(sk, skb);
+-	bh_lock_sock(sk);
+-	if (!sock_owned_by_user(sk))
+-		rc = __udp_queue_rcv_skb(sk, skb);
+-	else if (sk_add_backlog(sk, skb, sk->sk_rcvbuf)) {
+-		bh_unlock_sock(sk);
+-		goto drop;
+-	}
+-	bh_unlock_sock(sk);
+-
+-	return rc;
++	return __udp_queue_rcv_skb(sk, skb);
+ 
+ csum_error:
+ 	__UDP_INC_STATS(sock_net(sk), UDP_MIB_CSUMERRORS, is_udplite);
+@@ -2365,6 +2345,7 @@ struct proto udp_prot = {
+ 	.connect	   = ip4_datagram_connect,
+ 	.disconnect	   = udp_disconnect,
+ 	.ioctl		   = udp_ioctl,
++	.init		   = udp_init_sock,
+ 	.destroy	   = udp_destroy_sock,
+ 	.setsockopt	   = udp_setsockopt,
+ 	.getsockopt	   = udp_getsockopt,
+diff --git a/net/ipv6/udp.c b/net/ipv6/udp.c
+index 9aa7c1c..6f8e160 100644
+--- a/net/ipv6/udp.c
++++ b/net/ipv6/udp.c
+@@ -334,7 +334,6 @@ int udpv6_recvmsg(struct sock *sk, struct msghdr *msg, size_t len,
+ 	int is_udplite = IS_UDPLITE(sk);
+ 	bool checksum_valid = false;
+ 	int is_udp4;
+-	bool slow;
+ 
+ 	if (flags & MSG_ERRQUEUE)
+ 		return ipv6_recv_error(sk, msg, len, addr_len);
+@@ -388,7 +387,7 @@ try_again:
+ 				UDP6_INC_STATS(sock_net(sk), UDP_MIB_INERRORS,
+ 					       is_udplite);
+ 		}
+-		skb_free_datagram_locked(sk, skb);
++		skb_free_udp(sk, skb);
+ 		return err;
+ 	}
+ 	if (!peeked) {
+@@ -437,12 +436,11 @@ try_again:
+ 	if (flags & MSG_TRUNC)
+ 		err = ulen;
+ 
+-	__skb_free_datagram_locked(sk, skb, peeking ? -err : err);
++	skb_consume_udp(sk, skb, peeking ? -err : err);
+ 	return err;
+ 
+ csum_copy_err:
+-	slow = lock_sock_fast(sk);
+-	if (!skb_kill_datagram(sk, skb, flags)) {
++	if (!__sk_queue_drop_skb(sk, skb, flags)) {
+ 		if (is_udp4) {
+ 			UDP_INC_STATS(sock_net(sk),
+ 				      UDP_MIB_CSUMERRORS, is_udplite);
+@@ -455,7 +453,7 @@ csum_copy_err:
+ 				       UDP_MIB_INERRORS, is_udplite);
+ 		}
+ 	}
+-	unlock_sock_fast(sk, slow);
++	skb_free_udp(sk, skb);
+ 
+ 	/* starting over for a new packet, but check if we need to yield */
+ 	cond_resched();
+@@ -523,7 +521,7 @@ static int __udpv6_queue_rcv_skb(struct sock *sk, struct sk_buff *skb)
+ 		sk_incoming_cpu_update(sk);
+ 	}
+ 
+-	rc = __sock_queue_rcv_skb(sk, skb);
++	rc = udp_rmem_schedule(sk, skb);
+ 	if (rc < 0) {
+ 		int is_udplite = IS_UDPLITE(sk);
+ 
+@@ -535,6 +533,8 @@ static int __udpv6_queue_rcv_skb(struct sock *sk, struct sk_buff *skb)
+ 		kfree_skb(skb);
+ 		return -1;
+ 	}
++
++	__sock_enqueue_skb(sk, skb);
+ 	return 0;
+ }
+ 
+@@ -556,7 +556,6 @@ EXPORT_SYMBOL(udpv6_encap_enable);
+ int udpv6_queue_rcv_skb(struct sock *sk, struct sk_buff *skb)
+ {
+ 	struct udp_sock *up = udp_sk(sk);
+-	int rc;
+ 	int is_udplite = IS_UDPLITE(sk);
+ 
+ 	if (!xfrm6_policy_check(sk, XFRM_POLICY_IN, skb))
+@@ -630,17 +629,7 @@ int udpv6_queue_rcv_skb(struct sock *sk, struct sk_buff *skb)
+ 
+ 	skb_dst_drop(skb);
+ 
+-	bh_lock_sock(sk);
+-	rc = 0;
+-	if (!sock_owned_by_user(sk))
+-		rc = __udpv6_queue_rcv_skb(sk, skb);
+-	else if (sk_add_backlog(sk, skb, sk->sk_rcvbuf)) {
+-		bh_unlock_sock(sk);
+-		goto drop;
+-	}
+-	bh_unlock_sock(sk);
+-
+-	return rc;
++	return __udpv6_queue_rcv_skb(sk, skb);
+ 
+ csum_error:
+ 	__UDP6_INC_STATS(sock_net(sk), UDP_MIB_CSUMERRORS, is_udplite);
+@@ -1433,6 +1422,7 @@ struct proto udpv6_prot = {
+ 	.connect	   = ip6_datagram_connect,
+ 	.disconnect	   = udp_disconnect,
+ 	.ioctl		   = udp_ioctl,
++	.init		   = udp_init_sock,
+ 	.destroy	   = udpv6_destroy_sock,
+ 	.setsockopt	   = udpv6_setsockopt,
+ 	.getsockopt	   = udpv6_getsockopt,
+diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
+index 57625f6..b5739c7 100644
+--- a/net/sunrpc/svcsock.c
++++ b/net/sunrpc/svcsock.c
+@@ -39,6 +39,7 @@
+ #include <net/checksum.h>
+ #include <net/ip.h>
+ #include <net/ipv6.h>
++#include <net/udp.h>
+ #include <net/tcp.h>
+ #include <net/tcp_states.h>
+ #include <asm/uaccess.h>
+@@ -129,6 +130,20 @@ static void svc_release_skb(struct svc_rqst *rqstp)
+ 	}
+ }
+ 
++static void svc_release_udp_skb(struct svc_rqst *rqstp)
 +{
-+	return atomic_read(&up->mem_allocated) - freed - rmem;
-+}
++	struct sk_buff *skb = rqstp->rq_xprt_ctxt;
 +
-+static int skb_unref(struct sk_buff *skb)
-+{
-+	if (likely(atomic_read(&skb->users) == 1))
-+		smp_rmb();
-+	else if (likely(!atomic_dec_and_test(&skb->users)))
-+		return 0;
++	if (skb) {
++		struct svc_sock *svsk =
++			container_of(rqstp->rq_xprt, struct svc_sock, sk_xprt);
++		rqstp->rq_xprt_ctxt = NULL;
 +
-+	return skb->truesize;
-+}
-+
-+static inline int udp_try_release(struct sock *sk, int *fwd, int partial)
-+{
-+	struct udp_sock *up = udp_sk(sk);
-+	int freed_old, freed_new, amt;
-+
-+	freed_old = atomic_read(&up->mem_freed);
-+	*fwd = __udp_forward(up, freed_old, atomic_read(&sk->sk_rmem_alloc));
-+	if (*fwd < SK_MEM_QUANTUM + partial)
-+		return 0;
-+
-+	/* we can have concurrent release; if we catch any conflict
-+	 * via atomic_cmpxchg, let only one of them relase the memory
-+	 */
-+	amt = sk_mem_pages(*fwd - partial) << SK_MEM_QUANTUM_SHIFT;
-+	freed_new = atomic_cmpxchg(&up->mem_freed, freed_old, freed_old + amt);
-+	return (freed_new == freed_old) ? amt : 0;
-+}
-+
-+/* reclaim the allocated forward memory, except 'partial' quanta */
-+static void skb_release_mem_udp(struct sock *sk, int partial)
-+{
-+	int fwd, delta = udp_try_release(sk, &fwd, partial);
-+
-+	if (delta)
-+		__sk_mem_reduce_allocated(sk, delta >> SK_MEM_QUANTUM_SHIFT);
-+	sk->sk_forward_alloc = fwd - delta;
-+}
-+
-+void skb_free_udp(struct sock *sk, struct sk_buff *skb)
-+{
-+	int size = skb_unref(skb);
-+
-+	if (!size)
-+		return;
-+
-+	trace_kfree_skb(skb, __builtin_return_address(0));
-+	__kfree_skb(skb);
-+	skb_release_mem_udp(sk, 1);
-+}
-+EXPORT_SYMBOL_GPL(skb_free_udp);
-+
-+void skb_consume_udp(struct sock *sk, struct sk_buff *skb, int len)
-+{
-+	int size = skb_unref(skb);
-+
-+	if (unlikely(READ_ONCE(sk->sk_peek_off) >= 0)) {
-+		bool slow = lock_sock_fast(sk);
-+
-+		sk_peek_offset_bwd(sk, len);
-+		unlock_sock_fast(sk, slow);
++		dprintk("svc: service %p, releasing skb %p\n", rqstp, skb);
++		skb_consume_udp(svsk->sk_sk, skb, 0);
 +	}
-+	if (!size)
-+		return;
-+
-+	__kfree_skb(skb);
-+	skb_release_mem_udp(sk, 1);
-+}
-+EXPORT_SYMBOL_GPL(skb_consume_udp);
-+
-+static void udp_queue_purge(struct sock *sk, struct sk_buff_head *list,
-+			    int partial)
-+{
-+	struct sk_buff *skb;
-+	int size;
-+
-+	while ((skb = __skb_dequeue(list)) != NULL) {
-+		size = skb_unref(skb);
-+		if (size) {
-+			trace_kfree_skb(skb, udp_queue_purge);
-+			__kfree_skb(skb);
-+		}
-+	}
-+	skb_release_mem_udp(sk, partial);
 +}
 +
-+int udp_rmem_schedule(struct sock *sk, struct sk_buff *skb)
-+{
-+	int alloc, freed, fwd, amt, delta, rmem, err = -ENOMEM;
-+	struct udp_sock *up = udp_sk(sk);
-+
-+	rmem = atomic_add_return(skb->truesize, &sk->sk_rmem_alloc);
-+	if (rmem > sk->sk_rcvbuf)
-+		goto drop;
-+
-+	freed = atomic_read(&up->mem_freed);
-+	fwd = __udp_forward(up, freed, rmem);
-+	if (fwd > 0)
-+		goto no_alloc;
-+
-+	amt = sk_mem_pages(skb->truesize);
-+	delta = amt << SK_MEM_QUANTUM_SHIFT;
-+	if (!__sk_mem_raise_allocated(sk, delta, amt, SK_MEM_RECV)) {
-+		err = -ENOBUFS;
-+		goto drop;
-+	}
-+
-+	/* if we have some skbs in the error queue, the forward allocation could
-+	 * be understimated, even below 0; avoid exporting such values
-+	 */
-+	alloc = atomic_add_return(delta, &up->mem_allocated);
-+	fwd = alloc - freed - rmem;
-+	if (fwd < 0)
-+		fwd = SK_MEM_QUANTUM;
-+
-+no_alloc:
-+	sk->sk_forward_alloc = fwd;
-+	skb_orphan(skb);
-+	skb->sk = sk;
-+	skb->destructor = sock_rmem_free;
-+	return 0;
-+
-+drop:
-+	atomic_sub(skb->truesize, &sk->sk_rmem_alloc);
-+	atomic_inc(&sk->sk_drops);
-+	return err;
-+}
-+EXPORT_SYMBOL_GPL(udp_rmem_schedule);
-+
-+static void udp_destruct_sock(struct sock *sk)
-+{
-+	/* reclaim completely the forward allocated memory */
-+	udp_queue_purge(sk, &sk->sk_receive_queue, 0);
-+	inet_sock_destruct(sk);
-+}
-+
-+int udp_init_sock(struct sock *sk)
-+{
-+	struct udp_sock *up = udp_sk(sk);
-+
-+	atomic_set(&up->mem_allocated, 0);
-+	atomic_set(&up->mem_freed, 0);
-+	sk->sk_destruct = udp_destruct_sock;
-+	return 0;
-+}
-+EXPORT_SYMBOL_GPL(udp_init_sock);
-+
- /**
-  *	first_packet_length	- return length of first packet in receive queue
-  *	@sk: socket
+ union svc_pktinfo_u {
+ 	struct in_pktinfo pkti;
+ 	struct in6_pktinfo pkti6;
+@@ -575,7 +590,7 @@ static int svc_udp_recvfrom(struct svc_rqst *rqstp)
+ 			goto out_free;
+ 		}
+ 		local_bh_enable();
+-		skb_free_datagram_locked(svsk->sk_sk, skb);
++		skb_consume_udp(svsk->sk_sk, skb, 0);
+ 	} else {
+ 		/* we can use it in-place */
+ 		rqstp->rq_arg.head[0].iov_base = skb->data;
+@@ -602,8 +617,7 @@ static int svc_udp_recvfrom(struct svc_rqst *rqstp)
+ 
+ 	return len;
+ out_free:
+-	trace_kfree_skb(skb, svc_udp_recvfrom);
+-	skb_free_datagram_locked(svsk->sk_sk, skb);
++	skb_free_udp(svsk->sk_sk, skb);
+ 	return 0;
+ }
+ 
+@@ -660,7 +674,7 @@ static struct svc_xprt_ops svc_udp_ops = {
+ 	.xpo_create = svc_udp_create,
+ 	.xpo_recvfrom = svc_udp_recvfrom,
+ 	.xpo_sendto = svc_udp_sendto,
+-	.xpo_release_rqst = svc_release_skb,
++	.xpo_release_rqst = svc_release_udp_skb,
+ 	.xpo_detach = svc_sock_detach,
+ 	.xpo_free = svc_sock_free,
+ 	.xpo_prep_reply_hdr = svc_udp_prep_reply_hdr,
+diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
+index 8ede3bc..b75c2c3 100644
+--- a/net/sunrpc/xprtsock.c
++++ b/net/sunrpc/xprtsock.c
+@@ -1074,7 +1074,7 @@ static void xs_udp_data_receive(struct sock_xprt *transport)
+ 		skb = skb_recv_datagram(sk, 0, 1, &err);
+ 		if (skb != NULL) {
+ 			xs_udp_data_read_skb(&transport->xprt, sk, skb);
+-			skb_free_datagram(sk, skb);
++			skb_consume_udp(sk, skb, 0);
+ 			continue;
+ 		}
+ 		if (!test_and_clear_bit(XPRT_SOCK_DATA_READY, &transport->sock_state))
 -- 
 1.8.3.1
 
