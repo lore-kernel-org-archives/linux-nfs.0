@@ -1,46 +1,62 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from us-smtp-delivery-194.mimecast.com ([63.128.21.194]:45670 "EHLO
-        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S933753AbcIUQjc (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 21 Sep 2016 12:39:32 -0400
-From: Trond Myklebust <trondmy@primarydata.com>
-To: Schumaker Anna <Anna.Schumaker@netapp.com>
-CC: Trond Myklebust <trondmy@primarydata.com>,
-        List Linux NFS Mailing <linux-nfs@vger.kernel.org>,
-        Oleg Drokin <green@linuxhacker.ru>
-Subject: Re: [PATCH v6 12/29] NFSv4.1: Allow revoked stateids to skip the call
- to TEST_STATEID
-Date: Wed, 21 Sep 2016 16:39:23 +0000
-Message-ID: <4DB78504-6883-47DE-9FB2-DD9014266450@primarydata.com>
-References: <1474390571-17106-1-git-send-email-trond.myklebust@primarydata.com>
- <1474390571-17106-2-git-send-email-trond.myklebust@primarydata.com>
- <1474390571-17106-3-git-send-email-trond.myklebust@primarydata.com>
- <1474390571-17106-4-git-send-email-trond.myklebust@primarydata.com>
- <1474390571-17106-5-git-send-email-trond.myklebust@primarydata.com>
- <1474390571-17106-6-git-send-email-trond.myklebust@primarydata.com>
- <1474390571-17106-7-git-send-email-trond.myklebust@primarydata.com>
- <1474390571-17106-8-git-send-email-trond.myklebust@primarydata.com>
- <1474390571-17106-9-git-send-email-trond.myklebust@primarydata.com>
- <1474390571-17106-10-git-send-email-trond.myklebust@primarydata.com>
- <1474390571-17106-11-git-send-email-trond.myklebust@primarydata.com>
- <1474390571-17106-12-git-send-email-trond.myklebust@primarydata.com>
- <1474390571-17106-13-git-send-email-trond.myklebust@primarydata.com>
- <ad05aaa3-ac5d-eda2-9218-942423d43a0b@Netapp.com>
-In-Reply-To: <ad05aaa3-ac5d-eda2-9218-942423d43a0b@Netapp.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+Received: from mx1.redhat.com ([209.132.183.28]:55004 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1752360AbcIURX7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 21 Sep 2016 13:23:59 -0400
+From: Paolo Abeni <pabeni@redhat.com>
+To: netdev@vger.kernel.org
+Cc: "David S. Miller" <davem@davemloft.net>,
+        James Morris <jmorris@namei.org>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        Alexander Duyck <aduyck@mirantis.com>,
+        Daniel Borkmann <daniel@iogearbox.net>,
+        Eric Dumazet <edumazet@google.com>, Tom Herbert <tom@herbertland.com>,
+        Hannes Frederic Sowa <hannes@stressinduktion.org>,
+        linux-nfs@vger.kernel.org
+Subject: [PATCH net-next 0/3] udp: refactor memory accounting
+Date: Wed, 21 Sep 2016 19:23:13 +0200
+Message-Id: <cover.1474477902.git.pabeni@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-DQo+IE9uIFNlcCAyMSwgMjAxNiwgYXQgMTI6MDMsIEFubmEgU2NodW1ha2VyIDxBbm5hLlNjaHVt
-YWtlckBuZXRhcHAuY29tPiB3cm90ZToNCj4gDQo+IEhpIFRyb25kLA0KPiANCj4gT24gMDkvMjAv
-MjAxNiAxMjo1NSBQTSwgVHJvbmQgTXlrbGVidXN0IHdyb3RlOg0KPj4gSW4gc29tZSBjYXNlcyAo
-ZS5nLiB3aGVuIHRoZSBTRVE0X1NUQVRVU19FWFBJUkVEX0FMTF9TVEFURV9SRVZPS0VEIHNlcXVl
-bmNlDQo+PiBmbGFnIGlzIHNldCkgd2UgbWF5IGFscmVhZHkga25vdyB0aGF0IHRoZSBzdGF0ZWlk
-IHdhcyByZXZva2VkIGFuZCB0aGF0IHRoZQ0KPj4gb25seSB2YWxpZCBvcGVyYXRpb24gd2UgY2Fu
-IGNhbGwgaXMgRlJFRV9TVEFURUlELiBJbiB0aG9zZSBjYXNlcywgYWxsb3cNCj4+IHRoZSBzdGF0
-ZWlkIHRvIGNhcnJ5IHRoZSBpbmZvcm1hdGlvbiBpbiB0aGUgdHlwZSBmaWVsZCwgc28gdGhhdCB3
-ZSBza2lwDQo+PiB0aGUgcmVkdW5kYW50IGNhbGwgdG8gVEVTVF9TVEFURUlELg0KPiANCj4gV291
-bGQgeW91IGxpa2UgdG8gYWRkIGEgU2lnbmVkLW9mZi1ieSB0byB0aGlzIHBhdGNoPyA6KQ0KDQpV
-bW3igKYuIFllc+KApiBTb3JyeS4uLg0KDQo=
+This patch series refactor the udp memory accounting, replacing the
+generic implementation with a custom one, in order to remove the needs for
+locking the socket on the enqueue and dequeue operations. The socket backlog
+usage is dropped, as well.
+
+The first patch factor out core pieces of some queue and memory management
+socket helpers, so that they can later be used by the udp memory accounting
+functions.
+The second patch adds the memory account helpers, without using them.
+The third patch replacse the old rx memory accounting path for udp over ipv4 and
+udp over ipv6. In kernel UDP users are updated, as well.
+
+The memory accounting schema is described in detail in the individual patch
+commit message.
+
+The performance gain depends on the specific scenario; with few flows (and
+little contention in the original code) the differences are in the noise range,
+while with several flows contending the same socket, the measured speed-up
+is relevant (e.g. even over 100% in case of extreme contention)
+
+Paolo Abeni (3):
+  net/socket: factor out helpers for memory and queue manipulation
+  udp: implement memory accounting helpers
+  udp: use it's own memory accounting schema
+
+ include/linux/skbuff.h |   2 +-
+ include/linux/udp.h    |   2 +
+ include/net/sock.h     |   5 ++
+ include/net/udp.h      |   5 ++
+ net/core/datagram.c    |  36 ++++++----
+ net/core/skbuff.c      |   3 +-
+ net/core/sock.c        |  96 ++++++++++++++++---------
+ net/ipv4/udp.c         | 190 +++++++++++++++++++++++++++++++++++++++++--------
+ net/ipv6/udp.c         |  28 +++-----
+ net/sunrpc/svcsock.c   |  22 ++++--
+ net/sunrpc/xprtsock.c  |   2 +-
+ 11 files changed, 290 insertions(+), 101 deletions(-)
+
+-- 
+1.8.3.1
 
