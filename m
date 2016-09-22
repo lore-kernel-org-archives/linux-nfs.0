@@ -1,156 +1,43 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f193.google.com ([209.85.223.193]:34285 "EHLO
-        mail-io0-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S965881AbcIVRjw (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 22 Sep 2016 13:39:52 -0400
-Received: by mail-io0-f193.google.com with SMTP id y139so5621286ioy.1
-        for <linux-nfs@vger.kernel.org>; Thu, 22 Sep 2016 10:39:52 -0700 (PDT)
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: anna.schumaker@netapp.com
-Cc: linux-nfs@vger.kernel.org, Oleg Drokin <green@linuxhacker.ru>
-Subject: [PATCH v7 17/31] NFSv4: nfs_inode_find_state_and_recover() should check all stateids
-Date: Thu, 22 Sep 2016 13:39:07 -0400
-Message-Id: <1474565961-21303-18-git-send-email-trond.myklebust@primarydata.com>
-In-Reply-To: <1474565961-21303-17-git-send-email-trond.myklebust@primarydata.com>
-References: <1474565961-21303-1-git-send-email-trond.myklebust@primarydata.com>
- <1474565961-21303-2-git-send-email-trond.myklebust@primarydata.com>
- <1474565961-21303-3-git-send-email-trond.myklebust@primarydata.com>
- <1474565961-21303-4-git-send-email-trond.myklebust@primarydata.com>
- <1474565961-21303-5-git-send-email-trond.myklebust@primarydata.com>
- <1474565961-21303-6-git-send-email-trond.myklebust@primarydata.com>
- <1474565961-21303-7-git-send-email-trond.myklebust@primarydata.com>
- <1474565961-21303-8-git-send-email-trond.myklebust@primarydata.com>
- <1474565961-21303-9-git-send-email-trond.myklebust@primarydata.com>
- <1474565961-21303-10-git-send-email-trond.myklebust@primarydata.com>
- <1474565961-21303-11-git-send-email-trond.myklebust@primarydata.com>
- <1474565961-21303-12-git-send-email-trond.myklebust@primarydata.com>
- <1474565961-21303-13-git-send-email-trond.myklebust@primarydata.com>
- <1474565961-21303-14-git-send-email-trond.myklebust@primarydata.com>
- <1474565961-21303-15-git-send-email-trond.myklebust@primarydata.com>
- <1474565961-21303-16-git-send-email-trond.myklebust@primarydata.com>
- <1474565961-21303-17-git-send-email-trond.myklebust@primarydata.com>
+Received: from mail-it0-f44.google.com ([209.85.214.44]:37545 "EHLO
+        mail-it0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S966869AbcIVTGn (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 22 Sep 2016 15:06:43 -0400
+Received: by mail-it0-f44.google.com with SMTP id 186so91559666itf.0
+        for <linux-nfs@vger.kernel.org>; Thu, 22 Sep 2016 12:06:43 -0700 (PDT)
+MIME-Version: 1.0
+In-Reply-To: <2C29AA79-AC3D-403B-B112-A8C3B5DA3687@primarydata.com>
+References: <CAN-5tyGvm9ZLcL2AGGzALCtJ90fEc1SHeod6V4ZpSf8WSHUJtQ@mail.gmail.com>
+ <2C29AA79-AC3D-403B-B112-A8C3B5DA3687@primarydata.com>
+From: Olga Kornievskaia <aglo@umich.edu>
+Date: Thu, 22 Sep 2016 15:06:42 -0400
+Message-ID: <CAN-5tyFvH3O=b+NS2SocHAOOeTmrRPj+CaJn1sUiqL_g_DrgDg@mail.gmail.com>
+Subject: Re: sunrpc's tcp_max_slot_table_entries
+To: Trond Myklebust <trondmy@primarydata.com>
+Cc: List Linux NFS Mailing <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Modify the helper nfs_inode_find_state_and_recover() so that it
-can check all open/lock/delegation state trackers on that inode for
-whether or not they need are affected by a revoked stateid error.
+On Thu, Sep 22, 2016 at 12:44 PM, Trond Myklebust
+<trondmy@primarydata.com> wrote:
+>
+> On Sep 22, 2016, at 12:19, Olga Kornievskaia <aglo@umich.edu> wrote:
+>
+> Hi folks,
+>
+> There used to be a configurable parameter in sunrpc called
+> "tcp_max_slot_table_entries" that no longer works (meaning that rpc
+> slot table is always created with 65536 slots regardless of what the
+> value is set to). Is the change intentional or a bug? A look thru git
+> log of xprtsock.c didn't reveal an entry stating of such change.
+>
+>
+>
+> See
+> https://git.kernel.org/cgit/linux/kernel/git/torvalds/linux.git/commit/?id=98f98cf571b7b
+>
+> Cheers
+>   Trond
 
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
----
- fs/nfs/delegation.c | 19 +++++++++++++++++++
- fs/nfs/delegation.h |  2 ++
- fs/nfs/nfs4state.c  | 44 +++++++++++++++++++++++++++++++++++++++-----
- 3 files changed, 60 insertions(+), 5 deletions(-)
-
-diff --git a/fs/nfs/delegation.c b/fs/nfs/delegation.c
-index 484f14700108..5de4cfb2ab07 100644
---- a/fs/nfs/delegation.c
-+++ b/fs/nfs/delegation.c
-@@ -1001,6 +1001,25 @@ restart:
- 	rcu_read_unlock();
- }
- 
-+void nfs_inode_find_delegation_state_and_recover(struct inode *inode,
-+		const nfs4_stateid *stateid)
-+{
-+	struct nfs_client *clp = NFS_SERVER(inode)->nfs_client;
-+	struct nfs_delegation *delegation;
-+	bool found = false;
-+
-+	rcu_read_lock();
-+	delegation = rcu_dereference(NFS_I(inode)->delegation);
-+	if (delegation &&
-+	    nfs4_stateid_match_other(&delegation->stateid, stateid)) {
-+		nfs_mark_test_expired_delegation(NFS_SERVER(inode), delegation);
-+		found = true;
-+	}
-+	rcu_read_unlock();
-+	if (found)
-+		nfs4_schedule_state_manager(clp);
-+}
-+
- /**
-  * nfs_delegations_present - check for existence of delegations
-  * @clp: client state handle
-diff --git a/fs/nfs/delegation.h b/fs/nfs/delegation.h
-index 1442e3b1521d..e9d555796873 100644
---- a/fs/nfs/delegation.h
-+++ b/fs/nfs/delegation.h
-@@ -66,6 +66,8 @@ void nfs_mark_delegation_referenced(struct nfs_delegation *delegation);
- int nfs4_have_delegation(struct inode *inode, fmode_t flags);
- int nfs4_check_delegation(struct inode *inode, fmode_t flags);
- bool nfs4_delegation_flush_on_close(const struct inode *inode);
-+void nfs_inode_find_delegation_state_and_recover(struct inode *inode,
-+		const nfs4_stateid *stateid);
- 
- #endif
- 
-diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
-index 63da0411e2af..4b538bb194f8 100644
---- a/fs/nfs/nfs4state.c
-+++ b/fs/nfs/nfs4state.c
-@@ -1337,6 +1337,35 @@ int nfs4_schedule_stateid_recovery(const struct nfs_server *server, struct nfs4_
- }
- EXPORT_SYMBOL_GPL(nfs4_schedule_stateid_recovery);
- 
-+static struct nfs4_lock_state *
-+nfs_state_find_lock_state_by_stateid(struct nfs4_state *state,
-+		const nfs4_stateid *stateid)
-+{
-+	struct nfs4_lock_state *pos;
-+
-+	list_for_each_entry(pos, &state->lock_states, ls_locks) {
-+		if (!test_bit(NFS_LOCK_INITIALIZED, &pos->ls_flags))
-+			continue;
-+		if (nfs4_stateid_match_other(&pos->ls_stateid, stateid))
-+			return pos;
-+	}
-+	return NULL;
-+}
-+
-+static bool nfs_state_lock_state_matches_stateid(struct nfs4_state *state,
-+		const nfs4_stateid *stateid)
-+{
-+	bool found = false;
-+
-+	if (test_bit(LK_STATE_IN_USE, &state->flags)) {
-+		spin_lock(&state->state_lock);
-+		if (nfs_state_find_lock_state_by_stateid(state, stateid))
-+			found = true;
-+		spin_unlock(&state->state_lock);
-+	}
-+	return found;
-+}
-+
- void nfs_inode_find_state_and_recover(struct inode *inode,
- 		const nfs4_stateid *stateid)
- {
-@@ -1351,14 +1380,19 @@ void nfs_inode_find_state_and_recover(struct inode *inode,
- 		state = ctx->state;
- 		if (state == NULL)
- 			continue;
--		if (!test_bit(NFS_DELEGATED_STATE, &state->flags))
--			continue;
--		if (!nfs4_stateid_match(&state->stateid, stateid))
-+		if (nfs4_stateid_match_other(&state->stateid, stateid)) {
-+			nfs4_state_mark_reclaim_nograce(clp, state);
-+			found = true;
- 			continue;
--		nfs4_state_mark_reclaim_nograce(clp, state);
--		found = true;
-+		}
-+		if (nfs_state_lock_state_matches_stateid(state, stateid)) {
-+			nfs4_state_mark_reclaim_nograce(clp, state);
-+			found = true;
-+		}
- 	}
- 	spin_unlock(&inode->i_lock);
-+
-+	nfs_inode_find_delegation_state_and_recover(inode, stateid);
- 	if (found)
- 		nfs4_schedule_state_manager(clp);
- }
--- 
-2.7.4
-
+Thanks Trond.
