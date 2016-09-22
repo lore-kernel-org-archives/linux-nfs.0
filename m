@@ -1,7 +1,7 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from atlantic540.startdedicated.de ([188.138.9.77]:43955 "EHLO
+Received: from atlantic540.startdedicated.de ([188.138.9.77]:43960 "EHLO
         atlantic540.startdedicated.de" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1753566AbcIVLy6 (ORCPT
+        by vger.kernel.org with ESMTP id S1754140AbcIVLy6 (ORCPT
         <rfc822;linux-nfs@vger.kernel.org>); Thu, 22 Sep 2016 07:54:58 -0400
 From: Daniel Wagner <wagi@monom.org>
 To: linux-nfs@vger.kernel.org
@@ -9,256 +9,82 @@ Cc: Anna Schumaker <anna.schumaker@netapp.com>,
         Trond Myklebust <trond.myklebust@primarydata.com>,
         linux-kernel@vger.kernel.org,
         Daniel Wagner <daniel.wagner@bmw-carit.de>
-Subject: [PATCH 0/2] NFS: Use complete() instead complete_all()
-Date: Thu, 22 Sep 2016 13:54:27 +0200
-Message-Id: <1474545269-8694-1-git-send-email-wagi@monom.org>
+Subject: [PATCH 1/2] NFS: direct: use complete() instead of complete_all()
+Date: Thu, 22 Sep 2016 13:54:28 +0200
+Message-Id: <1474545269-8694-2-git-send-email-wagi@monom.org>
+In-Reply-To: <1474545269-8694-1-git-send-email-wagi@monom.org>
+References: <1474545269-8694-1-git-send-email-wagi@monom.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 From: Daniel Wagner <daniel.wagner@bmw-carit.de>
 
-Hi,
+There is only one waiter for the completion, therefore there
+is no need to use complete_all(). Let's make that clear by
+using complete() instead of complete_all().
 
-Using complete_all() is not wrong per se but it suggest that there
-might be more than one waiter. For -rt I am reviewing all
-complete_all() users and would like to leave only the real ones in the
-tree. The main problem for -rt about complete_all() is that it can be
-uses inside IRQ context and that can lead to unbounded amount work
-inside the interrupt handler. That is a no no for -rt.
+nfs_file_direct_write() or nfs_file_direct_read() allocated a request
+object via nfs_direct_req_alloc(), which initializes the
+completion. The request object then is freed later in the exit path.
+Between the initialization and the release either
+nfs_direct_write_schedule_iovec() resp
+nfs_direct_read_schedule_iovec() are called which will asynchronously
+process the request. The calling function waits via nfs_direct_wait()
+till the async work has been done. Thus there is only one waiter on
+the completion.
 
-Besides trying to analys all the code paths to the wait_for_completion()
-call and convince myself that there is only one waiter, I also run
-a few tests:
+nfs_direct_pgio_init() and nfs_direct_read_completion() are passed via
+function pointers to nfs pageio. The first function does a ref
+counting (get_dreq() and put_dreq()) which ensures that
+nfs_direct_read_completion() and nfs_direct_read_schedule_iovec() only
+call the completion path once.
 
- - some fio benchmarks
- - pynfs
-  -cthon04
+The usage pattern of the completion is:
 
-Non of them exposed any blocking threads etc. pynfs did showed some
-failures but I am guessing that is just missing implementation:
+waiter context                          waker context
 
-pynfs/nfs4.1/testserver.py random:/home/nfs-test --force -v all
+nfs_file_direct_write()
+  dreq = nfs_direct_req_alloc()
+    init_completion()
+  nfs_direct_write_schedule_iovec()
+  nfs_direct_wait()
+    wait_for_completion_killable()
+
+                                        nfs_direct_write_schedule_work()
+                                          nfs_direct_complete()
+                                            complete()
+
+nfs_file_direct_read()
+  dreq = nfs_direct_req_all()
+    init_completion()
+  nfs_direct_read_schedule_iovec()
+  nfs_direct_wait()
+    wait_for_completion_killable()
+                                        nfs_direct_read_schedule_iovec()
+                                          nfs_direct_complete()
+                                            complete()
+
+                                        nfs_direct_read_completion()
+                                          nfs_direct_complete()
+                                            complete()
+
+Signed-off-by: Daniel Wagner <daniel.wagner@bmw-carit.de>
+---
+ fs/nfs/direct.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
+index 72b7d13..bd81bcf 100644
+--- a/fs/nfs/direct.c
++++ b/fs/nfs/direct.c
+@@ -387,7 +387,7 @@ static void nfs_direct_complete(struct nfs_direct_req *dreq)
+ 		dreq->iocb->ki_complete(dreq->iocb, res, 0);
+ 	}
  
-EID50    st_exchange_id.testSSV                                   : FAILURE
-           NFS4Error: OP_EXCHANGE_ID should return NFS4_OK,
-           instead got NFS4ERR_ENCR_ALG_UNSUPP
-LKPP1a   st_lookupp.testLink                                      : RUNNING
-LKPP1a   st_lookupp.testLink                                      : FAILURE
-           LOOKUPP with non-dir <cfh> should return
-           NFS4ERR_SYMLINK, instead got NFS4ERR_NOENT
-LKPP1b   st_lookupp.testBlock                                     : RUNNING
-LKPP1b   st_lookupp.testBlock                                     : FAILURE
-           LOOKUPP with non-dir <cfh> should return
-           NFS4ERR_NOTDIR, instead got NFS4ERR_NOENT
-LKPP1c   st_lookupp.testChar                                      : RUNNING
-LKPP1c   st_lookupp.testChar                                      : FAILURE
-           LOOKUPP with non-dir <cfh> should return
-           NFS4ERR_NOTDIR, instead got NFS4ERR_NOENT
-LKPP1d   st_lookupp.testLookupp                                   : RUNNING
-LKPP1d   st_lookupp.testLookupp                                   : PASS
-LKPP1f   st_lookupp.testFifo                                      : RUNNING
-LKPP1f   st_lookupp.testFifo                                      : FAILURE
-           LOOKUPP with non-dir <cfh> should return
-           NFS4ERR_NOTDIR, instead got NFS4ERR_NOENT
-LKPP1r   st_lookupp.testFile                                      : RUNNING
-LKPP1r   st_lookupp.testFile                                      : FAILURE
-           LOOKUPP with non-dir <cfh> should return
-           NFS4ERR_NOTDIR, instead got NFS4ERR_NOENT
-LKPP1s   st_lookupp.testSock                                      : RUNNING
-LKPP1s   st_lookupp.testSock                                      : FAILURE
-           LOOKUPP with non-dir <cfh> should return
-           NFS4ERR_NOTDIR, instead got NFS4ERR_NOENT
-
-
-PUTFH1a  st_putfh.testLink                                        : RUNNING
-PUTFH1a  st_putfh.testLink                                        : FAILURE
-           OP_LOOKUP should return NFS4_OK, instead got
-           NFS4ERR_NOENT
-PUTFH1b  st_putfh.testBlock                                       : RUNNING
-PUTFH1b  st_putfh.testBlock                                       : FAILURE
-           OP_LOOKUP should return NFS4_OK, instead got
-           NFS4ERR_NOENT
-PUTFH1c  st_putfh.testChar                                        : RUNNING
-PUTFH1c  st_putfh.testChar                                        : FAILURE
-           OP_LOOKUP should return NFS4_OK, instead got
-           NFS4ERR_NOENT
-PUTFH1d  st_putfh.testDir                                         : RUNNING
-PUTFH1d  st_putfh.testDir                                         : FAILURE
-           OP_LOOKUP should return NFS4_OK, instead got
-           NFS4ERR_NOENT
-PUTFH1f  st_putfh.testFifo                                        : RUNNING
-PUTFH1f  st_putfh.testFifo                                        : FAILURE
-           OP_LOOKUP should return NFS4_OK, instead got
-           NFS4ERR_NOENT
-PUTFH1r  st_putfh.testFile                                        : RUNNING
-PUTFH1r  st_putfh.testFile                                        : FAILURE
-           OP_LOOKUP should return NFS4_OK, instead got
-           NFS4ERR_NOENT
-PUTFH1s  st_putfh.testSocket                                      : RUNNING
-PUTFH1s  st_putfh.testSocket                                      : FAILURE
-           OP_LOOKUP should return NFS4_OK, instead got
-           NFS4ERR_NOENT
-
-
-RNM1b    st_rename.testValidBlock                                 : RUNNING
-RNM1b    st_rename.testValidBlock                                 : FAILURE
-           OP_CREATE should return NFS4_OK, instead got
-           NFS4ERR_PERM
-RNM1c    st_rename.testValidChar                                  : RUNNING
-RNM1c    st_rename.testValidChar                                  : FAILURE
-           OP_CREATE should return NFS4_OK, instead got
-           NFS4ERR_PERM
-
-RNM2a    st_rename.testSfhLink                                    : RUNNING
-RNM2a    st_rename.testSfhLink                                    : FAILURE
-           OP_LOOKUP should return NFS4_OK, instead got
-           NFS4ERR_NOENT
-RNM2b    st_rename.testSfhBlock                                   : RUNNING
-RNM2b    st_rename.testSfhBlock                                   : FAILURE
-           OP_LOOKUP should return NFS4_OK, instead got
-           NFS4ERR_NOENT
-RNM2c    st_rename.testSfhChar                                    : RUNNING
-RNM2c    st_rename.testSfhChar                                    : FAILURE
-           OP_LOOKUP should return NFS4_OK, instead got
-           NFS4ERR_NOENT
-RNM2f    st_rename.testSfhFifo                                    : RUNNING
-RNM2f    st_rename.testSfhFifo                                    : FAILURE
-           OP_LOOKUP should return NFS4_OK, instead got
-           NFS4ERR_NOENT
-RNM2r    st_rename.testSfhFile                                    : RUNNING
-RNM2r    st_rename.testSfhFile                                    : FAILURE
-           OP_LOOKUP should return NFS4_OK, instead got
-           NFS4ERR_NOENT
-RNM2s    st_rename.testSfhSocket                                  : RUNNING
-RNM2s    st_rename.testSfhSocket                                  : FAILURE
-           OP_LOOKUP should return NFS4_OK, instead got
-           NFS4ERR_NOENT
-RNM3a    st_rename.testCfhLink                                    : RUNNING
-RNM3a    st_rename.testCfhLink                                    : FAILURE
-           OP_LOOKUP should return NFS4_OK, instead got
-           NFS4ERR_NOENT
-RNM3b    st_rename.testCfhBlock                                   : RUNNING
-RNM3b    st_rename.testCfhBlock                                   : FAILURE
-           OP_LOOKUP should return NFS4_OK, instead got
-           NFS4ERR_NOENT
-RNM3c    st_rename.testCfhChar                                    : RUNNING
-RNM3c    st_rename.testCfhChar                                    : FAILURE
-           OP_LOOKUP should return NFS4_OK, instead got
-           NFS4ERR_NOENT
-RNM3f    st_rename.testCfhFifo                                    : RUNNING
-RNM3f    st_rename.testCfhFifo                                    : FAILURE
-           OP_LOOKUP should return NFS4_OK, instead got
-           NFS4ERR_NOENT
-RNM3r    st_rename.testCfhFile                                    : RUNNING
-RNM3r    st_rename.testCfhFile                                    : FAILURE
-           OP_LOOKUP should return NFS4_OK, instead got
-           NFS4ERR_NOENT
-RNM3s    st_rename.testCfhSocket                                  : RUNNING
-RNM3s    st_rename.testCfhSocket                                  : FAILURE
-           OP_LOOKUP should return NFS4_OK, instead got
-           NFS4ERR_NOENT
-
-EID50    st_exchange_id.testSSV                                   : FAILURE
-           NFS4Error: OP_EXCHANGE_ID should return NFS4_OK,
-           instead got NFS4ERR_ENCR_ALG_UNSUPP
-LKPP1a   st_lookupp.testLink                                      : FAILURE
-           LOOKUPP with non-dir <cfh> should return
-           NFS4ERR_SYMLINK, instead got NFS4ERR_NOENT
-LKPP1b   st_lookupp.testBlock                                     : FAILURE
-           LOOKUPP with non-dir <cfh> should return
-           NFS4ERR_NOTDIR, instead got NFS4ERR_NOENT
-LKPP1c   st_lookupp.testChar                                      : FAILURE
-           LOOKUPP with non-dir <cfh> should return
-           NFS4ERR_NOTDIR, instead got NFS4ERR_NOENT
-
-LKPP1f   st_lookupp.testFifo                                      : FAILURE
-           LOOKUPP with non-dir <cfh> should return
-           NFS4ERR_NOTDIR, instead got NFS4ERR_NOENT
-LKPP1r   st_lookupp.testFile                                      : FAILURE
-           LOOKUPP with non-dir <cfh> should return
-           NFS4ERR_NOTDIR, instead got NFS4ERR_NOENT
-LKPP1s   st_lookupp.testSock                                      : FAILURE
-           LOOKUPP with non-dir <cfh> should return
-           NFS4ERR_NOTDIR, instead got NFS4ERR_NOENT
-
-PUTFH1a  st_putfh.testLink                                        : FAILURE
-           OP_LOOKUP should return NFS4_OK, instead got
-           NFS4ERR_NOENT
-PUTFH1b  st_putfh.testBlock                                       : FAILURE
-           OP_LOOKUP should return NFS4_OK, instead got
-           NFS4ERR_NOENT
-PUTFH1c  st_putfh.testChar                                        : FAILURE
-           OP_LOOKUP should return NFS4_OK, instead got
-           NFS4ERR_NOENT
-PUTFH1d  st_putfh.testDir                                         : FAILURE
-           OP_LOOKUP should return NFS4_OK, instead got
-           NFS4ERR_NOENT
-PUTFH1f  st_putfh.testFifo                                        : FAILURE
-           OP_LOOKUP should return NFS4_OK, instead got
-           NFS4ERR_NOENT
-PUTFH1r  st_putfh.testFile                                        : FAILURE
-           OP_LOOKUP should return NFS4_OK, instead got
-           NFS4ERR_NOENT
-PUTFH1s  st_putfh.testSocket                                      : FAILURE
-           OP_LOOKUP should return NFS4_OK, instead got
-           NFS4ERR_NOENT
-
-RNM1b    st_rename.testValidBlock                                 : FAILURE
-           OP_CREATE should return NFS4_OK, instead got
-           NFS4ERR_PERM
-RNM1c    st_rename.testValidChar                                  : FAILURE
-           OP_CREATE should return NFS4_OK, instead got
-           NFS4ERR_PERM
-
-RNM2a    st_rename.testSfhLink                                    : FAILURE
-           OP_LOOKUP should return NFS4_OK, instead got
-           NFS4ERR_NOENT
-RNM2b    st_rename.testSfhBlock                                   : FAILURE
-           OP_LOOKUP should return NFS4_OK, instead got
-           NFS4ERR_NOENT
-RNM2c    st_rename.testSfhChar                                    : FAILURE
-           OP_LOOKUP should return NFS4_OK, instead got
-           NFS4ERR_NOENT
-RNM2f    st_rename.testSfhFifo                                    : FAILURE
-           OP_LOOKUP should return NFS4_OK, instead got
-           NFS4ERR_NOENT
-RNM2r    st_rename.testSfhFile                                    : FAILURE
-           OP_LOOKUP should return NFS4_OK, instead got
-           NFS4ERR_NOENT
-RNM2s    st_rename.testSfhSocket                                  : FAILURE
-           OP_LOOKUP should return NFS4_OK, instead got
-           NFS4ERR_NOENT
-RNM3a    st_rename.testCfhLink                                    : FAILURE
-           OP_LOOKUP should return NFS4_OK, instead got
-           NFS4ERR_NOENT
-RNM3b    st_rename.testCfhBlock                                   : FAILURE
-           OP_LOOKUP should return NFS4_OK, instead got
-           NFS4ERR_NOENT
-RNM3c    st_rename.testCfhChar                                    : FAILURE
-           OP_LOOKUP should return NFS4_OK, instead got
-           NFS4ERR_NOENT
-RNM3f    st_rename.testCfhFifo                                    : FAILURE
-           OP_LOOKUP should return NFS4_OK, instead got
-           NFS4ERR_NOENT
-RNM3r    st_rename.testCfhFile                                    : FAILURE
-           OP_LOOKUP should return NFS4_OK, instead got
-           NFS4ERR_NOENT
-RNM3s    st_rename.testCfhSocket                                  : FAILURE
-           OP_LOOKUP should return NFS4_OK, instead got
-           NFS4ERR_NOENT
-
-VF1r     st_verify.testMandFile                                   : FAILURE
-
-cheers,
-daniel
-
-Daniel Wagner (2):
-  NFS: direct: use complete() instead of complete_all()
-  NFS: cache_lib: use complete() instead of complete_all()
-
- fs/nfs/cache_lib.c | 2 +-
- fs/nfs/direct.c    | 2 +-
- 2 files changed, 2 insertions(+), 2 deletions(-)
-
+-	complete_all(&dreq->completion);
++	complete(&dreq->completion);
+ 
+ 	nfs_direct_req_release(dreq);
+ }
 -- 
 2.7.4
