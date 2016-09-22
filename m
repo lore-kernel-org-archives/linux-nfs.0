@@ -1,17 +1,17 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-it0-f67.google.com ([209.85.214.67]:36143 "EHLO
+Received: from mail-it0-f67.google.com ([209.85.214.67]:36137 "EHLO
         mail-it0-f67.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S965694AbcIVRkH (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 22 Sep 2016 13:40:07 -0400
-Received: by mail-it0-f67.google.com with SMTP id n143so5337153ita.3
-        for <linux-nfs@vger.kernel.org>; Thu, 22 Sep 2016 10:40:07 -0700 (PDT)
+        with ESMTP id S934960AbcIVRkL (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 22 Sep 2016 13:40:11 -0400
+Received: by mail-it0-f67.google.com with SMTP id n143so5337103ita.3
+        for <linux-nfs@vger.kernel.org>; Thu, 22 Sep 2016 10:40:11 -0700 (PDT)
 From: Trond Myklebust <trond.myklebust@primarydata.com>
 To: anna.schumaker@netapp.com
 Cc: linux-nfs@vger.kernel.org, Oleg Drokin <green@linuxhacker.ru>
-Subject: [PATCH v7 30/31] NFSv4: If recovery failed for a specific open stateid, then don't retry
-Date: Thu, 22 Sep 2016 13:39:20 -0400
-Message-Id: <1474565961-21303-31-git-send-email-trond.myklebust@primarydata.com>
-In-Reply-To: <1474565961-21303-30-git-send-email-trond.myklebust@primarydata.com>
+Subject: [PATCH v7 29/31] NFSv4: Fix retry issues with nfs41_test/free_stateid
+Date: Thu, 22 Sep 2016 13:39:19 -0400
+Message-Id: <1474565961-21303-30-git-send-email-trond.myklebust@primarydata.com>
+In-Reply-To: <1474565961-21303-29-git-send-email-trond.myklebust@primarydata.com>
 References: <1474565961-21303-1-git-send-email-trond.myklebust@primarydata.com>
  <1474565961-21303-2-git-send-email-trond.myklebust@primarydata.com>
  <1474565961-21303-3-git-send-email-trond.myklebust@primarydata.com>
@@ -41,76 +41,38 @@ References: <1474565961-21303-1-git-send-email-trond.myklebust@primarydata.com>
  <1474565961-21303-27-git-send-email-trond.myklebust@primarydata.com>
  <1474565961-21303-28-git-send-email-trond.myklebust@primarydata.com>
  <1474565961-21303-29-git-send-email-trond.myklebust@primarydata.com>
- <1474565961-21303-30-git-send-email-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+_nfs41_free_stateid() needs to be cached by the session, but
+nfs41_test_stateid() may return NFS4ERR_RETRY_UNCACHED_REP (in which
+case we should just retry).
+
 Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
 ---
- fs/nfs/nfs4state.c | 18 +++++++++++-------
- 1 file changed, 11 insertions(+), 7 deletions(-)
+ fs/nfs/nfs4proc.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
 
-diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
-index 0a25f70a3b0b..5f4281ec5f72 100644
---- a/fs/nfs/nfs4state.c
-+++ b/fs/nfs/nfs4state.c
-@@ -991,6 +991,8 @@ int nfs4_select_rw_stateid(struct nfs4_state *state,
- {
- 	int ret;
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 2e1f9c30b805..72858f900abf 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -8730,6 +8730,7 @@ static void nfs4_handle_delay_or_session_error(struct nfs_server *server,
+ 	exception->retry = 0;
+ 	switch(err) {
+ 	case -NFS4ERR_DELAY:
++	case -NFS4ERR_RETRY_UNCACHED_REP:
+ 		nfs4_handle_exception(server, err, exception);
+ 		break;
+ 	case -NFS4ERR_BADSESSION:
+@@ -8835,7 +8836,7 @@ static struct rpc_task *_nfs41_free_stateid(struct nfs_server *server,
  
-+	if (!nfs4_valid_open_stateid(state))
-+		return -EIO;
- 	if (cred != NULL)
- 		*cred = NULL;
- 	ret = nfs4_copy_lock_stateid(dst, state, lockowner);
-@@ -1303,6 +1305,8 @@ void nfs4_schedule_path_down_recovery(struct nfs_client *clp)
- static int nfs4_state_mark_reclaim_reboot(struct nfs_client *clp, struct nfs4_state *state)
- {
- 
-+	if (!nfs4_valid_open_stateid(state))
-+		return 0;
- 	set_bit(NFS_STATE_RECLAIM_REBOOT, &state->flags);
- 	/* Don't recover state that expired before the reboot */
- 	if (test_bit(NFS_STATE_RECLAIM_NOGRACE, &state->flags)) {
-@@ -1316,6 +1320,8 @@ static int nfs4_state_mark_reclaim_reboot(struct nfs_client *clp, struct nfs4_st
- 
- int nfs4_state_mark_reclaim_nograce(struct nfs_client *clp, struct nfs4_state *state)
- {
-+	if (!nfs4_valid_open_stateid(state))
-+		return 0;
- 	set_bit(NFS_STATE_RECLAIM_NOGRACE, &state->flags);
- 	clear_bit(NFS_STATE_RECLAIM_REBOOT, &state->flags);
- 	set_bit(NFS_OWNER_RECLAIM_NOGRACE, &state->owner->so_flags);
-@@ -1327,9 +1333,8 @@ int nfs4_schedule_stateid_recovery(const struct nfs_server *server, struct nfs4_
- {
- 	struct nfs_client *clp = server->nfs_client;
- 
--	if (!nfs4_valid_open_stateid(state))
-+	if (!nfs4_state_mark_reclaim_nograce(clp, state))
- 		return -EBADF;
--	nfs4_state_mark_reclaim_nograce(clp, state);
- 	dprintk("%s: scheduling stateid recovery for server %s\n", __func__,
- 			clp->cl_hostname);
- 	nfs4_schedule_state_manager(clp);
-@@ -1380,15 +1385,14 @@ void nfs_inode_find_state_and_recover(struct inode *inode,
- 		state = ctx->state;
- 		if (state == NULL)
- 			continue;
--		if (nfs4_stateid_match_other(&state->stateid, stateid)) {
--			nfs4_state_mark_reclaim_nograce(clp, state);
-+		if (nfs4_stateid_match_other(&state->stateid, stateid) &&
-+		    nfs4_state_mark_reclaim_nograce(clp, state)) {
- 			found = true;
- 			continue;
- 		}
--		if (nfs_state_lock_state_matches_stateid(state, stateid)) {
--			nfs4_state_mark_reclaim_nograce(clp, state);
-+		if (nfs_state_lock_state_matches_stateid(state, stateid) &&
-+		    nfs4_state_mark_reclaim_nograce(clp, state))
- 			found = true;
--		}
- 	}
- 	spin_unlock(&inode->i_lock);
+ 	msg.rpc_argp = &data->args;
+ 	msg.rpc_resp = &data->res;
+-	nfs4_init_sequence(&data->args.seq_args, &data->res.seq_res, 0);
++	nfs4_init_sequence(&data->args.seq_args, &data->res.seq_res, 1);
+ 	if (privileged)
+ 		nfs4_set_sequence_privileged(&data->args.seq_args);
  
 -- 
 2.7.4
