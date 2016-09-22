@@ -1,17 +1,17 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-it0-f66.google.com ([209.85.214.66]:35685 "EHLO
-        mail-it0-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S964779AbcIVRj4 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 22 Sep 2016 13:39:56 -0400
-Received: by mail-it0-f66.google.com with SMTP id e20so5326425itc.2
-        for <linux-nfs@vger.kernel.org>; Thu, 22 Sep 2016 10:39:55 -0700 (PDT)
+Received: from mail-it0-f67.google.com ([209.85.214.67]:34241 "EHLO
+        mail-it0-f67.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S965808AbcIVRkB (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 22 Sep 2016 13:40:01 -0400
+Received: by mail-it0-f67.google.com with SMTP id 186so5344028itf.1
+        for <linux-nfs@vger.kernel.org>; Thu, 22 Sep 2016 10:40:00 -0700 (PDT)
 From: Trond Myklebust <trond.myklebust@primarydata.com>
 To: anna.schumaker@netapp.com
 Cc: linux-nfs@vger.kernel.org, Oleg Drokin <green@linuxhacker.ru>
-Subject: [PATCH v7 20/31] NFSv4.1: nfs4_layoutget_handle_exception handle revoked state
-Date: Thu, 22 Sep 2016 13:39:10 -0400
-Message-Id: <1474565961-21303-21-git-send-email-trond.myklebust@primarydata.com>
-In-Reply-To: <1474565961-21303-20-git-send-email-trond.myklebust@primarydata.com>
+Subject: [PATCH v7 24/31] NFS: Always call nfs_inode_find_state_and_recover() when revoking a delegation
+Date: Thu, 22 Sep 2016 13:39:14 -0400
+Message-Id: <1474565961-21303-25-git-send-email-trond.myklebust@primarydata.com>
+In-Reply-To: <1474565961-21303-24-git-send-email-trond.myklebust@primarydata.com>
 References: <1474565961-21303-1-git-send-email-trond.myklebust@primarydata.com>
  <1474565961-21303-2-git-send-email-trond.myklebust@primarydata.com>
  <1474565961-21303-3-git-send-email-trond.myklebust@primarydata.com>
@@ -32,37 +32,61 @@ References: <1474565961-21303-1-git-send-email-trond.myklebust@primarydata.com>
  <1474565961-21303-18-git-send-email-trond.myklebust@primarydata.com>
  <1474565961-21303-19-git-send-email-trond.myklebust@primarydata.com>
  <1474565961-21303-20-git-send-email-trond.myklebust@primarydata.com>
+ <1474565961-21303-21-git-send-email-trond.myklebust@primarydata.com>
+ <1474565961-21303-22-git-send-email-trond.myklebust@primarydata.com>
+ <1474565961-21303-23-git-send-email-trond.myklebust@primarydata.com>
+ <1474565961-21303-24-git-send-email-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Handle revoked open/lock/delegation stateids when LAYOUTGET tells us
-the state was revoked.
+Don't rely on nfs_inode_detach_delegation() succeeding. That can race...
 
 Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
 ---
- fs/nfs/nfs4proc.c | 3 +++
- 1 file changed, 3 insertions(+)
+ fs/nfs/delegation.c | 12 ++++++++----
+ 1 file changed, 8 insertions(+), 4 deletions(-)
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index f0c5442401d7..e5b35e57a8ff 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -8069,6 +8069,8 @@ nfs4_layoutget_handle_exception(struct rpc_task *task,
- 	case -NFS4ERR_RECALLCONFLICT:
- 		status = -ERECALLCONFLICT;
- 		break;
-+	case -NFS4ERR_DELEG_REVOKED:
-+	case -NFS4ERR_ADMIN_REVOKED:
- 	case -NFS4ERR_EXPIRED:
- 	case -NFS4ERR_BAD_STATEID:
- 		exception->timeout = 0;
-@@ -8080,6 +8082,7 @@ nfs4_layoutget_handle_exception(struct rpc_task *task,
- 					&lgp->args.ctx->state->stateid)) {
- 			spin_unlock(&inode->i_lock);
- 			exception->state = lgp->args.ctx->state;
-+			exception->stateid = &lgp->args.stateid;
- 			break;
- 		}
+diff --git a/fs/nfs/delegation.c b/fs/nfs/delegation.c
+index 094e0efe6a82..dff600ae0d74 100644
+--- a/fs/nfs/delegation.c
++++ b/fs/nfs/delegation.c
+@@ -662,18 +662,24 @@ static bool nfs_revoke_delegation(struct inode *inode,
+ 		const nfs4_stateid *stateid)
+ {
+ 	struct nfs_delegation *delegation;
++	nfs4_stateid tmp;
+ 	bool ret = false;
+ 
+ 	rcu_read_lock();
+ 	delegation = rcu_dereference(NFS_I(inode)->delegation);
+ 	if (delegation == NULL)
+ 		goto out;
+-	if (stateid && !nfs4_stateid_match(stateid, &delegation->stateid))
++	if (stateid == NULL) {
++		nfs4_stateid_copy(&tmp, &delegation->stateid);
++		stateid = &tmp;
++	} else if (!nfs4_stateid_match(stateid, &delegation->stateid))
+ 		goto out;
+ 	nfs_mark_delegation_revoked(NFS_SERVER(inode), delegation);
+ 	ret = true;
+ out:
+ 	rcu_read_unlock();
++	if (ret)
++		nfs_inode_find_state_and_recover(inode, stateid);
+ 	return ret;
+ }
+ 
+@@ -685,10 +691,8 @@ void nfs_remove_bad_delegation(struct inode *inode,
+ 	if (!nfs_revoke_delegation(inode, stateid))
+ 		return;
+ 	delegation = nfs_inode_detach_delegation(inode);
+-	if (delegation) {
+-		nfs_inode_find_state_and_recover(inode, &delegation->stateid);
++	if (delegation)
+ 		nfs_free_delegation(delegation);
+-	}
+ }
+ EXPORT_SYMBOL_GPL(nfs_remove_bad_delegation);
  
 -- 
 2.7.4
