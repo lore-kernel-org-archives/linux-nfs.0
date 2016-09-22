@@ -1,38 +1,63 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:47312 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1753411AbcIVLTE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 22 Sep 2016 07:19:04 -0400
-From: Jeff Layton <jlayton@redhat.com>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH] nfsd: fix dprintk in nfsd4_encode_getdeviceinfo
-Date: Thu, 22 Sep 2016 07:19:02 -0400
-Message-Id: <1474543142-3534-1-git-send-email-jlayton@redhat.com>
+Received: from atlantic540.startdedicated.de ([188.138.9.77]:43963 "EHLO
+        atlantic540.startdedicated.de" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1753807AbcIVLy6 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 22 Sep 2016 07:54:58 -0400
+From: Daniel Wagner <wagi@monom.org>
+To: linux-nfs@vger.kernel.org
+Cc: Anna Schumaker <anna.schumaker@netapp.com>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        linux-kernel@vger.kernel.org,
+        Daniel Wagner <daniel.wagner@bmw-carit.de>
+Subject: [PATCH 2/2] NFS: cache_lib: use complete() instead of complete_all()
+Date: Thu, 22 Sep 2016 13:54:29 +0200
+Message-Id: <1474545269-8694-3-git-send-email-wagi@monom.org>
+In-Reply-To: <1474545269-8694-1-git-send-email-wagi@monom.org>
+References: <1474545269-8694-1-git-send-email-wagi@monom.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-nfserr is big-endian, so we should convert it to host-endian before
-printing it.
+From: Daniel Wagner <daniel.wagner@bmw-carit.de>
 
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
+There is only one waiter for the completion, therefore there
+is no need to use complete_all(). Let's make that clear by
+using complete() instead of complete_all().
+
+The generic caching code from sunrpc is calling revisit() only once.
+
+The usage pattern of the completion is:
+
+waiter context                          waker context
+
+do_cache_lookup_wait()
+  nfs_cache_defer_req_alloc()
+    init_completion()
+  do_cache_lookup()
+  nfs_cache_wait_for_upcall()
+    wait_for_completion_timeout()
+
+					nfs_dns_cache_revisit()
+					  complete()
+
+  nfs_cache_defer_req_put()
+
+Signed-off-by: Daniel Wagner <daniel.wagner@bmw-carit.de>
 ---
- fs/nfsd/nfs4xdr.c | 2 +-
+ fs/nfs/cache_lib.c | 2 +-
  1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index 0aa0236a1429..7f8232e32dc7 100644
---- a/fs/nfsd/nfs4xdr.c
-+++ b/fs/nfsd/nfs4xdr.c
-@@ -4062,7 +4062,7 @@ nfsd4_encode_getdeviceinfo(struct nfsd4_compoundres *resp, __be32 nfserr,
- 	u32 starting_len = xdr->buf->len, needed_len;
- 	__be32 *p;
+diff --git a/fs/nfs/cache_lib.c b/fs/nfs/cache_lib.c
+index 5f7b053..6de1570 100644
+--- a/fs/nfs/cache_lib.c
++++ b/fs/nfs/cache_lib.c
+@@ -76,7 +76,7 @@ static void nfs_dns_cache_revisit(struct cache_deferred_req *d, int toomany)
  
--	dprintk("%s: err %d\n", __func__, nfserr);
-+	dprintk("%s: err %d\n", __func__, be32_to_cpu(nfserr));
- 	if (nfserr)
- 		goto out;
+ 	dreq = container_of(d, struct nfs_cache_defer_req, deferred_req);
+ 
+-	complete_all(&dreq->completion);
++	complete(&dreq->completion);
+ 	nfs_cache_defer_req_put(dreq);
+ }
  
 -- 
 2.7.4
-
