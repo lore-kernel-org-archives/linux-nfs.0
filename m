@@ -1,85 +1,117 @@
-Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:45736 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S932348AbcI3SaQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 30 Sep 2016 14:30:16 -0400
-From: "Benjamin Coddington" <bcodding@redhat.com>
-To: "Jeff Layton" <jlayton@redhat.com>
-Cc: NeilBrown <neilb@suse.com>,
-        "Linux NFS Mailing List" <linux-nfs@vger.kernel.org>
-Subject: Re: wrong stateid used after flock lock taken
-Date: Fri, 30 Sep 2016 14:30:14 -0400
-Message-ID: <CBCD07C2-E6FE-475E-9899-683F06521F59@redhat.com>
-In-Reply-To: <1475234523.2541.10.camel@redhat.com>
-References: <87twcy5dyn.fsf@notabene.neil.brown.name>
- <1475234523.2541.10.camel@redhat.com>
-MIME-Version: 1.0
+Return-Path: linux-nfs-owner@vger.kernel.org
+Received: from mail-it0-f65.google.com ([209.85.214.65]:36148 "EHLO
+        mail-it0-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S965253AbcIVRkJ (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 22 Sep 2016 13:40:09 -0400
+Received: by mail-it0-f65.google.com with SMTP id n143so5337213ita.3
+        for <linux-nfs@vger.kernel.org>; Thu, 22 Sep 2016 10:40:08 -0700 (PDT)
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: anna.schumaker@netapp.com
+Cc: linux-nfs@vger.kernel.org, Oleg Drokin <green@linuxhacker.ru>
+Subject: [PATCH v7 31/31] NFSv4.1: Even if the stateid is OK, we may need to recover the open modes
+Date: Thu, 22 Sep 2016 13:39:21 -0400
+Message-Id: <1474565961-21303-32-git-send-email-trond.myklebust@primarydata.com>
+In-Reply-To: <1474565961-21303-31-git-send-email-trond.myklebust@primarydata.com>
+References: <1474565961-21303-1-git-send-email-trond.myklebust@primarydata.com>
+ <1474565961-21303-2-git-send-email-trond.myklebust@primarydata.com>
+ <1474565961-21303-3-git-send-email-trond.myklebust@primarydata.com>
+ <1474565961-21303-4-git-send-email-trond.myklebust@primarydata.com>
+ <1474565961-21303-5-git-send-email-trond.myklebust@primarydata.com>
+ <1474565961-21303-6-git-send-email-trond.myklebust@primarydata.com>
+ <1474565961-21303-7-git-send-email-trond.myklebust@primarydata.com>
+ <1474565961-21303-8-git-send-email-trond.myklebust@primarydata.com>
+ <1474565961-21303-9-git-send-email-trond.myklebust@primarydata.com>
+ <1474565961-21303-10-git-send-email-trond.myklebust@primarydata.com>
+ <1474565961-21303-11-git-send-email-trond.myklebust@primarydata.com>
+ <1474565961-21303-12-git-send-email-trond.myklebust@primarydata.com>
+ <1474565961-21303-13-git-send-email-trond.myklebust@primarydata.com>
+ <1474565961-21303-14-git-send-email-trond.myklebust@primarydata.com>
+ <1474565961-21303-15-git-send-email-trond.myklebust@primarydata.com>
+ <1474565961-21303-16-git-send-email-trond.myklebust@primarydata.com>
+ <1474565961-21303-17-git-send-email-trond.myklebust@primarydata.com>
+ <1474565961-21303-18-git-send-email-trond.myklebust@primarydata.com>
+ <1474565961-21303-19-git-send-email-trond.myklebust@primarydata.com>
+ <1474565961-21303-20-git-send-email-trond.myklebust@primarydata.com>
+ <1474565961-21303-21-git-send-email-trond.myklebust@primarydata.com>
+ <1474565961-21303-22-git-send-email-trond.myklebust@primarydata.com>
+ <1474565961-21303-23-git-send-email-trond.myklebust@primarydata.com>
+ <1474565961-21303-24-git-send-email-trond.myklebust@primarydata.com>
+ <1474565961-21303-25-git-send-email-trond.myklebust@primarydata.com>
+ <1474565961-21303-26-git-send-email-trond.myklebust@primarydata.com>
+ <1474565961-21303-27-git-send-email-trond.myklebust@primarydata.com>
+ <1474565961-21303-28-git-send-email-trond.myklebust@primarydata.com>
+ <1474565961-21303-29-git-send-email-trond.myklebust@primarydata.com>
+ <1474565961-21303-30-git-send-email-trond.myklebust@primarydata.com>
+ <1474565961-21303-31-git-send-email-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+TEST_STATEID only tells you that you have a valid open stateid. It doesn't
+tell the client anything about whether or not it holds the required share
+locks.
 
-On 30 Sep 2016, at 7:22, Jeff Layton wrote:
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+---
+ fs/nfs/nfs4proc.c | 30 +++++++++++++++++++++---------
+ 1 file changed, 21 insertions(+), 9 deletions(-)
 
-> On Fri, 2016-09-30 at 12:16 +1000, NeilBrown wrote:
->> Hi Jeff et al.
->>
->> I think your patch
->> Commit: 8003d3c4aaa5 ("nfs4: treat lock owners as opaque values")
->>
->> introduced a regression ... or maybe exposed a latent problem.
->>
->> The particular symptom that I can demonstrate is that if I open a file
->> with NFSv4, take a flock() exclusive lock, and then write to the file,
->> then the WRITE request uses the stateid returned by OPEN, not the one
->> returned by LOCK.
->>
->> The Linux NFS server doesn't have a problem with that, but some NFS
->> servers do (one returns NFS4ERR_LOCKED, which seems to imply it imposes
->> mandatory locking!).
->> In any case, this is the wrong stateid to use.
->>
->> The patch changed nfs4_copy_lock_stateid() so it was more restrictive in
->> the stateids it allowed.
->> I must admit that I find the code that you removed incredibly confusing.
->> I defined a union field
->> -               pid_t flock_owner;
->>
->> and I cannot understand how a pid_t would be relevant for a flock_owner,
->> as the flock is tied to the 'struct file', not the pid.
->>
->> Anyway, a write request includes an 'nfs_lock_context' and from that we
->> need to somehow find the correct stateid.
->> I'm wondering if nfs4_set_rw_stateid() should call
->> nfs4_select_rw_stateid() twice, once to look for a flock stated, and
->> once to look for a posix-lock stateid .... or something like that.
->>
->> I'll take a fresh look at the code next week and maybe it will be easier
->> to understand then, but meanwhile if you have any suggestions I'd be
->> very happy to hear them.
->>
->> Thanks,
->> NeilBrown
->
-> (cc'ing Ben...)
->
-> I'll plan to give this another look as well. Maybe there's some way to
-> do this more sanely that we can get Trond to accept? The catch is that
-> read and write are both hot paths to some degree so we don't want to
-> overly burden the client in those codepaths if we can help it...
->
-> Ben Coddington had some patches a a few months ago (April?) that would
-> have made OFD locks work properly witn NFSv4. Trond NAK'ed them at the
-> time, but perhaps we should give those another look. OFD and flock locks
-> both use the filp pointer as the owner, so those patches might also have
-> fixed this case.
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 72858f900abf..7b8054db5e0f 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -1387,6 +1387,17 @@ static void update_open_stateflags(struct nfs4_state *state, fmode_t fmode)
+ 	nfs4_state_set_mode_locked(state, state->state | fmode);
+ }
+ 
++static bool nfs_open_stateid_recover_openmode(struct nfs4_state *state)
++{
++	if (state->n_rdonly && !test_bit(NFS_O_RDONLY_STATE, &state->flags))
++		return true;
++	if (state->n_wronly && !test_bit(NFS_O_WRONLY_STATE, &state->flags))
++		return true;
++	if (state->n_rdwr && !test_bit(NFS_O_RDWR_STATE, &state->flags))
++		return true;
++	return false;
++}
++
+ static void nfs_test_and_clear_all_open_stateid(struct nfs4_state *state)
+ {
+ 	struct nfs_client *clp = state->owner->so_server->nfs_client;
+@@ -2589,16 +2600,13 @@ static int nfs41_check_open_stateid(struct nfs4_state *state)
+ 	int status;
+ 
+ 	if (test_bit(NFS_OPEN_STATE, &state->flags) == 0) {
+-		if (test_bit(NFS_DELEGATED_STATE, &state->flags) == 0)
+-			return NFS_OK;
++		if (test_bit(NFS_DELEGATED_STATE, &state->flags) == 0)  {
++			if (nfs4_have_delegation(state->inode, state->state))
++				return NFS_OK;
++			return -NFS4ERR_OPENMODE;
++		}
+ 		return -NFS4ERR_BAD_STATEID;
+ 	}
+-	/* If a state reset has been done, test_stateid is unneeded */
+-	if ((test_bit(NFS_O_RDONLY_STATE, &state->flags) == 0) &&
+-	    (test_bit(NFS_O_WRONLY_STATE, &state->flags) == 0) &&
+-	    (test_bit(NFS_O_RDWR_STATE, &state->flags) == 0))
+-		return -NFS4ERR_BAD_STATEID;
+-
+ 	status = nfs41_test_and_free_expired_stateid(server, stateid, cred);
+ 	trace_nfs4_test_open_stateid(state, NULL, status);
+ 	if (status == -NFS4ERR_EXPIRED || status == -NFS4ERR_BAD_STATEID) {
+@@ -2608,7 +2616,11 @@ static int nfs41_check_open_stateid(struct nfs4_state *state)
+ 		clear_bit(NFS_OPEN_STATE, &state->flags);
+ 		stateid->type = NFS4_INVALID_STATEID_TYPE;
+ 	}
+-	return status;
++	if (status != NFS_OK)
++		return status;
++	if (nfs_open_stateid_recover_openmode(state))
++		return -NFS4ERR_OPENMODE;
++	return NFS_OK;
+ }
+ 
+ static int nfs41_open_expired(struct nfs4_state_owner *sp, struct nfs4_state *state)
+-- 
+2.7.4
 
-I think they would fix this case.
-
-I thought the argument against was more about doing extra work for OFD,
-rather than inserting latency into the IO path.  I don't think that fix
-would have been much extra work for the client to do.. but I never
-benchmarked it.  I could have been totally misreading everything, however.
-
-I am very curious: What server is giving you NFS4ERR_LOCKED?
-
-Ben
