@@ -1,93 +1,95 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:40276 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([173.255.197.46]:37904 "EHLO fieldses.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1753398AbcIVQO2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 22 Sep 2016 12:14:28 -0400
-Message-ID: <1474560864.4845.78.camel@redhat.com>
-Subject: Re: [PATCH net-next 2/3] udp: implement memory accounting helpers
-From: Paolo Abeni <pabeni@redhat.com>
-To: Edward Cree <ecree@solarflare.com>
-Cc: Eric Dumazet <eric.dumazet@gmail.com>, netdev@vger.kernel.org,
-        "David S. Miller" <davem@davemloft.net>,
-        James Morris <jmorris@namei.org>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        Alexander Duyck <aduyck@mirantis.com>,
-        Daniel Borkmann <daniel@iogearbox.net>,
-        Eric Dumazet <edumazet@google.com>, Tom Herbert <tom@herbertland.com>,
-        Hannes Frederic Sowa <hannes@stressinduktion.org>,
-        linux-nfs@vger.kernel.org
-Date: Thu, 22 Sep 2016 18:14:24 +0200
-In-Reply-To: <589839b3-5930-2527-b0a3-315be254a175@solarflare.com>
-References: <cover.1474477902.git.pabeni@redhat.com>
-         <93ccb49b7f037461ef436a50b907185744b093d8.1474477902.git.pabeni@redhat.com>
-         <1474500682.23058.88.camel@edumazet-glaptop3.roam.corp.google.com>
-         <1474540415.4845.69.camel@redhat.com>
-         <589839b3-5930-2527-b0a3-315be254a175@solarflare.com>
-Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
+        id S1752681AbcIVQPN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 22 Sep 2016 12:15:13 -0400
+Date: Thu, 22 Sep 2016 12:15:07 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Jeff Layton <jlayton@redhat.com>
+Cc: Vasily Averin <vvs@virtuozzo.com>, linux-kernel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, Scott Mayhew <smayhew@redhat.com>
+Subject: Re: [PATCH 1/2] NFSD: notifiers registration cleanup
+Message-ID: <20160922161507.GH30401@fieldses.org>
+References: <6bce434f-4798-42bf-8d4f-e1f33ceb8ad6@virtuozzo.com>
+ <1474464010.32518.3.camel@redhat.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=utf-8
+In-Reply-To: <1474464010.32518.3.camel@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 2016-09-22 at 16:21 +0100, Edward Cree wrote:
-> On 22/09/16 11:33, Paolo Abeni wrote:
-> > Hi Eric,
-> >
-> > On Wed, 2016-09-21 at 16:31 -0700, Eric Dumazet wrote:
-> >> Also does inet_diag properly give the forward_alloc to user ?
-> >>
-> >> $ ss -mua
-> >> State      Recv-Q Send-Q Local Address:Port                 Peer Addres
-> >> s:Port
-> >> UNCONN     51584  0          *:52460      *:*                    
-> >> 	 skmem:(r51584,rb327680,t0,tb327680,f1664,w0,o0,bl0,d575)
-> > Thank you very much for reviewing this! 
-> >
-> > My bad, there is still a race which leads to temporary negative values
-> > of fwd. I feel the fix is trivial but it needs some investigation.
-> >
-> >> Couldn't we instead use an union of an atomic_t and int for
-> >> sk->sk_forward_alloc ?
-> > That was our first attempt, but we had some issue on mem scheduling; if
-> > we use:
-> >
-> >    if (atomic_sub_return(size, &sk->sk_forward_alloc_atomic) < 0) {
-> >         // fwd alloc
-> >    }
-> >
-> > that leads to inescapable, temporary, negative value for
-> > sk->sk_forward_alloc.
-> >
-> > Another option would be:
-> >
-> > again:
-> >         fwd = atomic_read(&sk->sk_forward_alloc_atomic);
-> >         if (fwd > size) {
-> > 		if (atomic_cmpxchg(&sk->sk_forward_alloc_atomic, fwd, fwd - size) != fwd)
-> > 			goto again;
-> >         } else 
-> >             // fwd alloc
-> >
-> > which would be bad under high contention.
-> Apologies if I'm misunderstanding the problem, but couldn't you have two
-> atomic_t fields, 'internal' and 'external' forward_alloc.  Then
->     if (atomic_sub_return(size, &sk->sk_forward_alloc_internal) < 0) {
->         atomic_sub(size, &sk->sk_forward_alloc);
->         // fwd alloc
->     } else {
->         atomic_add(size, &sk->sk_forward_alloc_internal);
->     }
-> or something like that.  Then sk->sk_forward_alloc never sees a negative
-> value, and is always >= sk->sk_forward_alloc_internal.  Of course places
-> that go the other way would have to add to sk->sk_forward_alloc first,
-> before adding to sk->sk_forward_alloc_internal, to maintain that invariant.
+On Wed, Sep 21, 2016 at 09:20:10AM -0400, Jeff Layton wrote:
+> On Wed, 2016-09-21 at 15:33 +0300, Vasily Averin wrote:
+> > By design notifier can be registered once only,
+> > however nfsd registers the same inetaddr notifiers per net-namespace.
+> > When this happen it corrupts list of notifiers,
+> > as result some notifiers can be not called on proper event,
+> > traverse on list can be cycled forever,
+> > and second unregister can access already freed memory.
+> > 
+> > fixes: 36684996 ("nfsd: Register callbacks on the inetaddr_chain and inet6addr_chain")
+> > > Signed-off-by: Vasily Averin <vvs@virtuozzo.com>
+> > ---
+> >  fs/nfsd/nfssvc.c | 17 +++++++++++++----
+> >  1 file changed, 13 insertions(+), 4 deletions(-)
+> > 
+> > diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
+> > index 45007ac..7f8914f 100644
+> > --- a/fs/nfsd/nfssvc.c
+> > +++ b/fs/nfsd/nfssvc.c
+> > @@ -366,14 +366,20 @@ static struct notifier_block nfsd_inet6addr_notifier = {
+> >  };
+> >  #endif
+> >  
+> > +static atomic_t nfsd_notifier_refcount = ATOMIC_INIT(0);
+> > +
+> >  static void nfsd_last_thread(struct svc_serv *serv, struct net *net)
+> >  {
+> > >  	struct nfsd_net *nn = net_generic(net, nfsd_net_id);
+> >  
+> > > -	unregister_inetaddr_notifier(&nfsd_inetaddr_notifier);
+> > > +	/* check if the notifier still has clients */
+> > > +	if (atomic_dec_return(&nfsd_notifier_refcount) == 0) {
+> > > +		unregister_inetaddr_notifier(&nfsd_inetaddr_notifier);
+> >  #if IS_ENABLED(CONFIG_IPV6)
+> > > -	unregister_inet6addr_notifier(&nfsd_inet6addr_notifier);
+> > > +		unregister_inet6addr_notifier(&nfsd_inet6addr_notifier);
+> >  #endif
+> > > +	}
+> > +
+> > >  	/*
+> > >  	 * write_ports can create the server without actually starting
+> > >  	 * any threads--if we get shut down before any threads are
+> > @@ -488,10 +494,13 @@ int nfsd_create_serv(struct net *net)
+> > >  	}
+> >  
+> > >  	set_max_drc();
+> > > -	register_inetaddr_notifier(&nfsd_inetaddr_notifier);
+> > > +	/* check if the notifier is already set */
+> > > +	if (atomic_inc_return(&nfsd_notifier_refcount) == 1) {
+> > > +		register_inetaddr_notifier(&nfsd_inetaddr_notifier);
+> >  #if IS_ENABLED(CONFIG_IPV6)
+> > > -	register_inet6addr_notifier(&nfsd_inet6addr_notifier);
+> > > +		register_inet6addr_notifier(&nfsd_inet6addr_notifier);
+> >  #endif
+> > > +	}
+> > > >  	do_gettimeofday(&nn->nfssvc_boot);		/* record boot time */
+> > >  	return 0;
+> >  }
+> 
+> Good catch. I'm not very fond of the refcounting this here but it
+> should
+> serve the purpose and I don't have anything better to suggest. FWIW, I
+> think the nfsd_mutex is held during all of these operations so we
+> probably don't need atomics for the refcount.
 
-I think that the idea behind using atomic ops directly on
-sk_forward_alloc is to avoid adding other fields to the udp_socket. 
+Inclined to apply with a note like:
 
-If we can add some fields to the udp_sock structure, the schema proposed
-in this patch should fit better (modulo bugs ;-), always requiring a
-single atomic operation at memory reclaiming time and at memory
-allocation time.
+	/* Only used under nfsd_mutex, so this atomic may be overkill: */
+	static atomic_t nfsd_notifier_refcount = ATOMIC_INIT(0);
+	...
 
-Paolo
-
+--b.
+> 
+> --
+> Jeff Layton <jlayton@redhat.com>
