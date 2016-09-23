@@ -1,70 +1,63 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f177.google.com ([209.85.223.177]:36007 "EHLO
-        mail-io0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S965388AbcIWSli (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 23 Sep 2016 14:41:38 -0400
-Received: by mail-io0-f177.google.com with SMTP id m79so127404265ioo.3
-        for <linux-nfs@vger.kernel.org>; Fri, 23 Sep 2016 11:41:38 -0700 (PDT)
-MIME-Version: 1.0
-In-Reply-To: <B8C98E5E-F9F5-4468-8E52-A3A4A550C1E3@primarydata.com>
-References: <CAN-5tyFQ2PiSHp41mOMHa=DSJ8SmXBo=Nk=v-k1hASPKRbbhzQ@mail.gmail.com>
- <AE6F91D9-2D4E-4AA0-A1F3-EB511E53F990@primarydata.com> <CAN-5tyF3HrY9+xWO7HDnN_dv13vS9nqcp0vZpA29T=i3cJMSZg@mail.gmail.com>
- <AE31C3DC-40B8-4BBE-A5A1-A62CB656268A@primarydata.com> <CAN-5tyHgJ9K7=RChVt=sLHQbjTCRj8MhEmMipreMKWzef4Wscw@mail.gmail.com>
- <B8C98E5E-F9F5-4468-8E52-A3A4A550C1E3@primarydata.com>
-From: Olga Kornievskaia <aglo@umich.edu>
-Date: Fri, 23 Sep 2016 14:41:37 -0400
-Message-ID: <CAN-5tyGC1MAq54yqQJffrNZoiaUppojmfgsqfQYrNwzhyFhoHg@mail.gmail.com>
+Received: from us-smtp-delivery-194.mimecast.com ([63.128.21.194]:26498 "EHLO
+        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1161434AbcIWTIH (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 23 Sep 2016 15:08:07 -0400
+From: Trond Myklebust <trondmy@primarydata.com>
+To: Kornievskaia Olga <aglo@umich.edu>
+CC: List Linux NFS Mailing <linux-nfs@vger.kernel.org>
 Subject: Re: reuse of slot and seq# when RPC was interrupted
-To: Trond Myklebust <trondmy@primarydata.com>
-Cc: List Linux NFS Mailing <linux-nfs@vger.kernel.org>
+Date: Fri, 23 Sep 2016 19:07:59 +0000
+Message-ID: <F5E207D8-B71F-45BB-8114-63FF0F43136B@primarydata.com>
+References: <CAN-5tyFQ2PiSHp41mOMHa=DSJ8SmXBo=Nk=v-k1hASPKRbbhzQ@mail.gmail.com>
+ <AE6F91D9-2D4E-4AA0-A1F3-EB511E53F990@primarydata.com>
+ <CAN-5tyF3HrY9+xWO7HDnN_dv13vS9nqcp0vZpA29T=i3cJMSZg@mail.gmail.com>
+ <AE31C3DC-40B8-4BBE-A5A1-A62CB656268A@primarydata.com>
+ <CAN-5tyHgJ9K7=RChVt=sLHQbjTCRj8MhEmMipreMKWzef4Wscw@mail.gmail.com>
+ <B8C98E5E-F9F5-4468-8E52-A3A4A550C1E3@primarydata.com>
+ <CAN-5tyGC1MAq54yqQJffrNZoiaUppojmfgsqfQYrNwzhyFhoHg@mail.gmail.com>
+In-Reply-To: <CAN-5tyGC1MAq54yqQJffrNZoiaUppojmfgsqfQYrNwzhyFhoHg@mail.gmail.com>
+MIME-Version: 1.0
 Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Sep 23, 2016 at 2:34 PM, Trond Myklebust
-<trondmy@primarydata.com> wrote:
->
->> On Sep 23, 2016, at 14:25, Olga Kornievskaia <aglo@umich.edu> wrote:
->>
->> On Fri, Sep 23, 2016 at 2:08 PM, Trond Myklebust
->> <trondmy@primarydata.com> wrote:
->>>
->>>> On Sep 23, 2016, at 13:59, Olga Kornievskaia <aglo@umich.edu> wrote:
->>>>
->>>> On Fri, Sep 23, 2016 at 1:45 PM, Trond Myklebust
->>>> <trondmy@primarydata.com> wrote:
->>>>>
->>>>>> On Sep 23, 2016, at 13:40, Olga Kornievskaia <aglo@umich.edu> wrote:
->>>>>>
->>>>>> If we instead bump the sequence number in the case of interrupted an=
-d do:
->>>>>
->>>>> You have no guarantees that the server has seen and processed the ope=
-ration.
->>>>
->>>> That is correct, i have tested the patch and made server never to
->>>> receive the operation and client have an interrupted slot. On the next
->>>> operation the server will complain back with SEQ_MISORDERED. Client
->>>> can recover from this operation. Client can not recover from "Remote
->>>> EIO=E2=80=9D.
->>>>
->>>
->>> Why not?
->>
->> When XDR layer returns EREMOTEIO it's not handled by the NFS error
->> recovery (are you suggesting we should?)  and returns that to the
->> application.
->>
->
-> I=E2=80=99m saying that if we get a SEQ_MISORDERED due to a previous inte=
-rrupt on that slot, then we should ignore the error in task->tk_status, and=
- just retry after bumping the slot seqid.
->
+DQo+IE9uIFNlcCAyMywgMjAxNiwgYXQgMTQ6NDEsIE9sZ2EgS29ybmlldnNrYWlhIDxhZ2xvQHVt
+aWNoLmVkdT4gd3JvdGU6DQo+IA0KPiBPbiBGcmksIFNlcCAyMywgMjAxNiBhdCAyOjM0IFBNLCBU
+cm9uZCBNeWtsZWJ1c3QNCj4gPHRyb25kbXlAcHJpbWFyeWRhdGEuY29tPiB3cm90ZToNCj4+IA0K
+Pj4+IE9uIFNlcCAyMywgMjAxNiwgYXQgMTQ6MjUsIE9sZ2EgS29ybmlldnNrYWlhIDxhZ2xvQHVt
+aWNoLmVkdT4gd3JvdGU6DQo+Pj4gDQo+Pj4gT24gRnJpLCBTZXAgMjMsIDIwMTYgYXQgMjowOCBQ
+TSwgVHJvbmQgTXlrbGVidXN0DQo+Pj4gPHRyb25kbXlAcHJpbWFyeWRhdGEuY29tPiB3cm90ZToN
+Cj4+Pj4gDQo+Pj4+PiBPbiBTZXAgMjMsIDIwMTYsIGF0IDEzOjU5LCBPbGdhIEtvcm5pZXZza2Fp
+YSA8YWdsb0B1bWljaC5lZHU+IHdyb3RlOg0KPj4+Pj4gDQo+Pj4+PiBPbiBGcmksIFNlcCAyMywg
+MjAxNiBhdCAxOjQ1IFBNLCBUcm9uZCBNeWtsZWJ1c3QNCj4+Pj4+IDx0cm9uZG15QHByaW1hcnlk
+YXRhLmNvbT4gd3JvdGU6DQo+Pj4+Pj4gDQo+Pj4+Pj4+IE9uIFNlcCAyMywgMjAxNiwgYXQgMTM6
+NDAsIE9sZ2EgS29ybmlldnNrYWlhIDxhZ2xvQHVtaWNoLmVkdT4gd3JvdGU6DQo+Pj4+Pj4+IA0K
+Pj4+Pj4+PiBJZiB3ZSBpbnN0ZWFkIGJ1bXAgdGhlIHNlcXVlbmNlIG51bWJlciBpbiB0aGUgY2Fz
+ZSBvZiBpbnRlcnJ1cHRlZCBhbmQgZG86DQo+Pj4+Pj4gDQo+Pj4+Pj4gWW91IGhhdmUgbm8gZ3Vh
+cmFudGVlcyB0aGF0IHRoZSBzZXJ2ZXIgaGFzIHNlZW4gYW5kIHByb2Nlc3NlZCB0aGUgb3BlcmF0
+aW9uLg0KPj4+Pj4gDQo+Pj4+PiBUaGF0IGlzIGNvcnJlY3QsIGkgaGF2ZSB0ZXN0ZWQgdGhlIHBh
+dGNoIGFuZCBtYWRlIHNlcnZlciBuZXZlciB0bw0KPj4+Pj4gcmVjZWl2ZSB0aGUgb3BlcmF0aW9u
+IGFuZCBjbGllbnQgaGF2ZSBhbiBpbnRlcnJ1cHRlZCBzbG90LiBPbiB0aGUgbmV4dA0KPj4+Pj4g
+b3BlcmF0aW9uIHRoZSBzZXJ2ZXIgd2lsbCBjb21wbGFpbiBiYWNrIHdpdGggU0VRX01JU09SREVS
+RUQuIENsaWVudA0KPj4+Pj4gY2FuIHJlY292ZXIgZnJvbSB0aGlzIG9wZXJhdGlvbi4gQ2xpZW50
+IGNhbiBub3QgcmVjb3ZlciBmcm9tICJSZW1vdGUNCj4+Pj4+IEVJT+KAnS4NCj4+Pj4+IA0KPj4+
+PiANCj4+Pj4gV2h5IG5vdD8NCj4+PiANCj4+PiBXaGVuIFhEUiBsYXllciByZXR1cm5zIEVSRU1P
+VEVJTyBpdCdzIG5vdCBoYW5kbGVkIGJ5IHRoZSBORlMgZXJyb3INCj4+PiByZWNvdmVyeSAoYXJl
+IHlvdSBzdWdnZXN0aW5nIHdlIHNob3VsZD8pICBhbmQgcmV0dXJucyB0aGF0IHRvIHRoZQ0KPj4+
+IGFwcGxpY2F0aW9uLg0KPj4+IA0KPj4gDQo+PiBJ4oCZbSBzYXlpbmcgdGhhdCBpZiB3ZSBnZXQg
+YSBTRVFfTUlTT1JERVJFRCBkdWUgdG8gYSBwcmV2aW91cyBpbnRlcnJ1cHQgb24gdGhhdCBzbG90
+LCB0aGVuIHdlIHNob3VsZCBpZ25vcmUgdGhlIGVycm9yIGluIHRhc2stPnRrX3N0YXR1cywgYW5k
+IGp1c3QgcmV0cnkgYWZ0ZXIgYnVtcGluZyB0aGUgc2xvdCBzZXFpZC4NCj4+IA0KPiANCj4gSSdt
+IGNvbmZ1c2VkIHdoZXJlIHlvdXIgb2JqZWN0aW9uIGxpZXMuIEFyZSB5b3Ugb2sgd2l0aCBidW1w
+aW5nIHRoZQ0KPiBzZXF1ZW5jZSAjIHdoZW4gdGFzay0+dGtfc3RhdHVzID0gMSBhbmQgc2F5aW5n
+IHRoYXQgd2Ugc2hvdWxkIHN0aWxsDQo+IGtlZXAgdGhlIGNvZGUgdGhhdCBJIGRlbGV0ZWQgaW4g
+dGhlIDJuZCBjaHVuayBvZiB0aGUgcGF0Y2ggdGhhdCBidW1wZWQNCj4gdGhlIHNlcWlkIG9uIGdl
+dHRpbmcgU0VRX01JU09SREVSRUQgZHVlIHRvIGEgcHJldmlvdXNseSBpbnRlcnJ1cHRlZA0KPiBz
+bG90Pw0KPiBXb3VsZG4ndCB0aGF0IGNyZWF0ZSBhIGRpZmZlcmVuY2Ugb2YgMiBzbG90cyBmb3Ig
+dGhlIHNlcnZlciB0aGF0IGhhcw0KPiByZWNlaXZlZCB0aGUgb3JpZ2luYWwgcmVxdWVzdD8NCj4g
+DQoNCknigJltIHNheWluZyBJ4oCZZCBwcmVmZXIgdG8ga2VlcCB0aGUgY3VycmVudCBjb2RlLCBi
+dXQgZml4IHRoZSByZXRyeSB0aGF0IGlzIGFwcGFyZW50bHkgYnJva2VuLiBJZiB3ZeKAmXJlIG5v
+dCBpZ25vcmluZyB0aGUgdGFzay0+dGtfZXJyb3Igd2hlbiB3ZSBkZWNpZGUgdG8gcmV0cnksIHRo
+ZW4gdGhhdOKAmXMgYSBidWcgaW4gbXkgb3Bpbmlvbi4=
 
-I'm confused where your objection lies. Are you ok with bumping the
-sequence # when task->tk_status =3D 1 and saying that we should still
-keep the code that I deleted in the 2nd chunk of the patch that bumped
-the seqid on getting SEQ_MISORDERED due to a previously interrupted
-slot?
-Wouldn't that create a difference of 2 slots for the server that has
-received the original request?
