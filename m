@@ -1,78 +1,43 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-it0-f46.google.com ([209.85.214.46]:35551 "EHLO
-        mail-it0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1759546AbcIWRkN (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 23 Sep 2016 13:40:13 -0400
-Received: by mail-it0-f46.google.com with SMTP id r192so21481319ita.0
-        for <linux-nfs@vger.kernel.org>; Fri, 23 Sep 2016 10:40:13 -0700 (PDT)
+Received: from mx1.redhat.com ([209.132.183.28]:33244 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S934778AbcIWRnC (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 23 Sep 2016 13:43:02 -0400
+From: "Benjamin Coddington" <bcodding@redhat.com>
+To: "Christoph Hellwig" <hch@infradead.org>
+Cc: "Jeff Layton" <jlayton@redhat.com>, bfields@redhat.com,
+        linux-nfs@vger.kernel.org
+Subject: Re: nfsd crash when running xfstests/089
+Date: Fri, 23 Sep 2016 13:42:59 -0400
+Message-ID: <5BC823A6-3E56-4664-9551-02EF7AF7B135@redhat.com>
+In-Reply-To: <20160923164054.GA31447@infradead.org>
+References: <20160920163717.GA946@infradead.org>
+ <1474561258.9454.8.camel@redhat.com> <20160923164054.GA31447@infradead.org>
 MIME-Version: 1.0
-From: Olga Kornievskaia <aglo@umich.edu>
-Date: Fri, 23 Sep 2016 13:40:12 -0400
-Message-ID: <CAN-5tyFQ2PiSHp41mOMHa=DSJ8SmXBo=Nk=v-k1hASPKRbbhzQ@mail.gmail.com>
-Subject: reuse of slot and seq# when RPC was interrupted
-To: linux-nfs <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi folks,
+On 23 Sep 2016, at 12:40, Christoph Hellwig wrote:
 
-I'd like to raise an issue with regards to nfs41_sequence_done()
-slot->interrupted case. There is a comment there saying the if the RPC
-was interrupted then we don't know if the server has processed the
-slot or not so mark the slot as interrupted. In that case the sequence
-is not bumped. Then later there is logic that if we received
-SEQ_MISORDERED and the slot was marked interrupted then bump the
-sequence.
+> On Thu, Sep 22, 2016 at 12:20:58PM -0400, Jeff Layton wrote:
+>> I had a go at reproducing this, but no luck. I'm running generic/089 on
+>> a KVM guest client and with the server running on a different KVM
+>> guest. I'm using vhost-scsi to emulate a disk (thanks to Ben Coddington
+>> for the help setting that up, btw...)
+>
+> FYI, I've just used a single guest with both client and server in it
+> to reproduce as well.  In that case I'll have to use blocklayout, though
+> as the scsilayout requires separate systems for the reservations.
+>
+>> In any case, I'll poke at it again if I get time. In the meantime, if
+>> you're able to get a vmcore, maybe take a look and see if you can
+>> figure out what's actually bad there? How far does it get in chasing
+>> the pointer to the cl_lock in release_lock_stateid?
+>
+> How do I get a vmcore under kvm?
 
-The problem comes when the sequence number is not increment the reply
-is not necessarily a SEQ_MISORDERED. Instead, the reply is a "cached"
-reply of the operation that was interrupted. That leads to the xdr
-returning "Remote EIO" (unrecoverable in some cases).
+If you are using libvirt, then virsh might work:
 
-If we bump the sequence number always then we should get the
-SEQ_MISORDERED error from which we can recover.
+virsh dump --memory-only VMname dumpfile
 
-A reproducer to see an operation reuse a seq# and getting cached reply
-is as follows:
-1. on the shell do "rm <file in nfs>"
-2. at the nfs_proxy delay the reply from the server enough to send a
-ctrl-c to the shell.
-3. do  something else on nfs.
-
-If we instead bump the sequence number in the case of interrupted and do:
-
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index a1a3b4c..b78dac5 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -728,6 +728,7 @@ int nfs41_sequence_done(struct rpc_task *task,
-struct nfs4_sequence_res *res)
-  * operation..
-  * Mark the slot as having hosted an interrupted RPC call.
-  */
-+ ++slot->seq_nr;
-  slot->interrupted = 1;
-  goto out;
-  case -NFS4ERR_DELAY:
-
-@@ -748,14 +749,6 @@ int nfs41_sequence_done(struct rpc_task *task,
-struct nfs4_sequence_res *res)
-  goto retry_nowait;
-  case -NFS4ERR_SEQ_MISORDERED:
-  /*
-- * Was the last operation on this sequence interrupted?
-- * If so, retry after bumping the sequence number.
-- */
-- if (interrupted) {
-- ++slot->seq_nr;
-- goto retry_nowait;
-- }
-- /*
-  * Could this slot have been previously retired?
-  * If so, then the server may be expecting seq_nr = 1!
-  */
-
-1. if the server received it, then we bump and next operation has correct number
-2. if the server didn't received and we bump, then next operation
-received SEQ_MISORDERED, it'll reset the slot/session?
+Ben
