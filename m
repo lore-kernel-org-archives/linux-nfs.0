@@ -1,75 +1,61 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:38036 "EHLO fieldses.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1757383AbcIVUi6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 22 Sep 2016 16:38:58 -0400
-Date: Thu, 22 Sep 2016 16:38:57 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v3 0/6] server-side NFS/RDMA patches proposed for v4.9
-Message-ID: <20160922203857.GB313@fieldses.org>
-References: <20160913144246.5733.66229.stgit@klimt.1015granger.net>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20160913144246.5733.66229.stgit@klimt.1015granger.net>
+Received: from atlantic540.startdedicated.de ([188.138.9.77]:47918 "EHLO
+        atlantic540.startdedicated.de" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S934439AbcIWImL (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 23 Sep 2016 04:42:11 -0400
+From: Daniel Wagner <wagi@monom.org>
+To: linux-nfs@vger.kernel.org
+Cc: linux-kernel@vger.kernel.org,
+        Daniel Wagner <daniel.wagner@bmw-carit.de>,
+        Anna Schumaker <Anna.Schumaker@Netapp.com>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        Chuck Lever <chuck.lever@oracle.com>, netdev@vger.kernel.org
+Subject: [PATCH] xprtrdma: use complete() instead complete_all()
+Date: Fri, 23 Sep 2016 10:41:57 +0200
+Message-Id: <1474620117-8749-1-git-send-email-wagi@monom.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Sep 13, 2016 at 10:52:33AM -0400, Chuck Lever wrote:
-> Hi Bruce-
-> 
-> These are ready for you to consider for your "for v4.9" branch. They
-> include:
+From: Daniel Wagner <daniel.wagner@bmw-carit.de>
 
-Sorry for the delay--applying for for 4.9.--b.
+There is only one waiter for the completion, therefore there
+is no need to use complete_all(). Let's make that clear by
+using complete() instead of complete_all().
 
-> 
-> - Fix a couple of reference counting issues
-> - Introduce simple RDMA-CM private message exchange
-> - Support Remote Invalidation
-> 
-> Available in the "nfsd-rdma-for-4.9" topic branch of this git repo:
-> 
-> git://git.linux-nfs.org/projects/cel/cel-2.6.git
-> 
-> 
-> Or for browsing:
-> 
-> http://git.linux-nfs.org/?p=cel/cel-2.6.git;a=log;h=refs/heads/nfsd-rdma-for-4.9
-> 
-> 
-> Changes since v2:
-> - Rebased on v4.8-rc6
-> - "SUNRPC: Silence WARN_ON when NFSv4.1 over RDMA is in use" has been merged
-> - Revert 64c59a3726f2 (add a "Cc: stable" if you think that's appropriate)
-> 
-> 
-> Changes since v1:
-> - Rebased on v4.8-rc3
-> - Added Reviewed-by tags
-> - Fixed additional bugs found in v4.8
-> 
-> 
-> ---
-> 
-> Chuck Lever (6):
->       svcauth_gss: Revert 64c59a3726f2 ("Remove unnecessary allocation")
->       svcrdma: Tail iovec leaves an orphaned DMA mapping
->       svcrdma: Skip put_page() when send_reply() fails
->       rpcrdma: RDMA/CM private message data structure
->       svcrdma: Server-side support for rpcrdma_connect_private
->       svcrdma: support Remote Invalidation
-> 
-> 
->  include/linux/sunrpc/rpc_rdma.h            |   35 ++++++++++++
->  include/linux/sunrpc/svc_rdma.h            |   10 +++
->  net/sunrpc/auth_gss/svcauth_gss.c          |    5 +-
->  net/sunrpc/xprtrdma/svc_rdma_backchannel.c |    2 -
->  net/sunrpc/xprtrdma/svc_rdma_recvfrom.c    |    2 -
->  net/sunrpc/xprtrdma/svc_rdma_sendto.c      |   82 ++++++++++++++++++++--------
->  net/sunrpc/xprtrdma/svc_rdma_transport.c   |   60 +++++++++++++++++---
->  7 files changed, 159 insertions(+), 37 deletions(-)
-> 
-> --
-> Chuck Lever
+The usage pattern of the completion is:
+
+waiter context                          waker context
+
+frwr_op_unmap_sync()
+  reinit_completion()
+  ib_post_send()
+  wait_for_completion()
+
+					frwr_wc_localinv_wake()
+					  complete()
+
+Signed-off-by: Daniel Wagner <daniel.wagner@bmw-carit.de>
+Cc: Anna Schumaker <Anna.Schumaker@Netapp.com>
+Cc: Trond Myklebust <trond.myklebust@primarydata.com>
+Cc: Chuck Lever <chuck.lever@oracle.com>
+Cc: linux-nfs@vger.kernel.org
+Cc: netdev@vger.kernel.org
+---
+ net/sunrpc/xprtrdma/frwr_ops.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/net/sunrpc/xprtrdma/frwr_ops.c b/net/sunrpc/xprtrdma/frwr_ops.c
+index 892b5e1..4a24f0e 100644
+--- a/net/sunrpc/xprtrdma/frwr_ops.c
++++ b/net/sunrpc/xprtrdma/frwr_ops.c
+@@ -329,7 +329,7 @@ frwr_wc_localinv_wake(struct ib_cq *cq, struct ib_wc *wc)
+ 	frmr = container_of(cqe, struct rpcrdma_frmr, fr_cqe);
+ 	if (wc->status != IB_WC_SUCCESS)
+ 		__frwr_sendcompletion_flush(wc, frmr, "localinv");
+-	complete_all(&frmr->fr_linv_done);
++	complete(&frmr->fr_linv_done);
+ }
+ 
+ /* Post a REG_MR Work Request to register a memory region
+-- 
+2.7.4
