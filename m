@@ -1,128 +1,104 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f181.google.com ([209.85.223.181]:33901 "EHLO
-        mail-io0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1034196AbcIWUZE (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 23 Sep 2016 16:25:04 -0400
-Received: by mail-io0-f181.google.com with SMTP id e66so40114786iod.1
-        for <linux-nfs@vger.kernel.org>; Fri, 23 Sep 2016 13:25:03 -0700 (PDT)
-MIME-Version: 1.0
-In-Reply-To: <CAN-5tyEcv_BF60jJtAFRv3q3u3Yrqzvdhe=XWkQ2z3zKHc5C7A@mail.gmail.com>
-References: <CAN-5tyFQ2PiSHp41mOMHa=DSJ8SmXBo=Nk=v-k1hASPKRbbhzQ@mail.gmail.com>
- <AE6F91D9-2D4E-4AA0-A1F3-EB511E53F990@primarydata.com> <CAN-5tyF3HrY9+xWO7HDnN_dv13vS9nqcp0vZpA29T=i3cJMSZg@mail.gmail.com>
- <AE31C3DC-40B8-4BBE-A5A1-A62CB656268A@primarydata.com> <CAN-5tyHgJ9K7=RChVt=sLHQbjTCRj8MhEmMipreMKWzef4Wscw@mail.gmail.com>
- <B8C98E5E-F9F5-4468-8E52-A3A4A550C1E3@primarydata.com> <CAN-5tyGC1MAq54yqQJffrNZoiaUppojmfgsqfQYrNwzhyFhoHg@mail.gmail.com>
- <F5E207D8-B71F-45BB-8114-63FF0F43136B@primarydata.com> <CAN-5tyFKk4VEdEb+P7qxGYwc6nnFvjyzCX304Jb4MAGzaJWKXA@mail.gmail.com>
- <9343A1DB-5895-41F4-8A37-504AA710D696@primarydata.com> <CAN-5tyEcv_BF60jJtAFRv3q3u3Yrqzvdhe=XWkQ2z3zKHc5C7A@mail.gmail.com>
-From: Olga Kornievskaia <aglo@umich.edu>
-Date: Fri, 23 Sep 2016 16:25:02 -0400
-Message-ID: <CAN-5tyEoMw79hMsihpuKG=auLzir82DPqUj0fA8EycnUfPSmnw@mail.gmail.com>
+Received: from us-smtp-delivery-194.mimecast.com ([216.205.24.194]:31045 "EHLO
+        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1758853AbcIWUez (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 23 Sep 2016 16:34:55 -0400
+From: Trond Myklebust <trondmy@primarydata.com>
+To: Kornievskaia Olga <aglo@umich.edu>
+CC: List Linux NFS Mailing <linux-nfs@vger.kernel.org>
 Subject: Re: reuse of slot and seq# when RPC was interrupted
-To: Trond Myklebust <trondmy@primarydata.com>
-Cc: List Linux NFS Mailing <linux-nfs@vger.kernel.org>
+Date: Fri, 23 Sep 2016 20:34:50 +0000
+Message-ID: <C81A4BCC-76A8-4732-AAC1-93EF379B3302@primarydata.com>
+References: <CAN-5tyFQ2PiSHp41mOMHa=DSJ8SmXBo=Nk=v-k1hASPKRbbhzQ@mail.gmail.com>
+ <AE6F91D9-2D4E-4AA0-A1F3-EB511E53F990@primarydata.com>
+ <CAN-5tyF3HrY9+xWO7HDnN_dv13vS9nqcp0vZpA29T=i3cJMSZg@mail.gmail.com>
+ <AE31C3DC-40B8-4BBE-A5A1-A62CB656268A@primarydata.com>
+ <CAN-5tyHgJ9K7=RChVt=sLHQbjTCRj8MhEmMipreMKWzef4Wscw@mail.gmail.com>
+ <B8C98E5E-F9F5-4468-8E52-A3A4A550C1E3@primarydata.com>
+ <CAN-5tyGC1MAq54yqQJffrNZoiaUppojmfgsqfQYrNwzhyFhoHg@mail.gmail.com>
+ <F5E207D8-B71F-45BB-8114-63FF0F43136B@primarydata.com>
+ <CAN-5tyFKk4VEdEb+P7qxGYwc6nnFvjyzCX304Jb4MAGzaJWKXA@mail.gmail.com>
+ <9343A1DB-5895-41F4-8A37-504AA710D696@primarydata.com>
+ <CAN-5tyEcv_BF60jJtAFRv3q3u3Yrqzvdhe=XWkQ2z3zKHc5C7A@mail.gmail.com>
+ <CAN-5tyEoMw79hMsihpuKG=auLzir82DPqUj0fA8EycnUfPSmnw@mail.gmail.com>
+In-Reply-To: <CAN-5tyEoMw79hMsihpuKG=auLzir82DPqUj0fA8EycnUfPSmnw@mail.gmail.com>
+MIME-Version: 1.0
 Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Sep 23, 2016 at 4:07 PM, Olga Kornievskaia <aglo@umich.edu> wrote:
-> On Fri, Sep 23, 2016 at 3:57 PM, Trond Myklebust
-> <trondmy@primarydata.com> wrote:
->>
->>> On Sep 23, 2016, at 15:27, Olga Kornievskaia <aglo@umich.edu> wrote:
->>>
->>> On Fri, Sep 23, 2016 at 3:07 PM, Trond Myklebust
->>> <trondmy@primarydata.com> wrote:
->>>>
->>>>> On Sep 23, 2016, at 14:41, Olga Kornievskaia <aglo@umich.edu> wrote:
->>>>>
->>>>> On Fri, Sep 23, 2016 at 2:34 PM, Trond Myklebust
->>>>> <trondmy@primarydata.com> wrote:
->>>>>>
->>>>>>> On Sep 23, 2016, at 14:25, Olga Kornievskaia <aglo@umich.edu> wrote=
-:
->>>>>>>
->>>>>>> On Fri, Sep 23, 2016 at 2:08 PM, Trond Myklebust
->>>>>>> <trondmy@primarydata.com> wrote:
->>>>>>>>
->>>>>>>>> On Sep 23, 2016, at 13:59, Olga Kornievskaia <aglo@umich.edu> wro=
-te:
->>>>>>>>>
->>>>>>>>> On Fri, Sep 23, 2016 at 1:45 PM, Trond Myklebust
->>>>>>>>> <trondmy@primarydata.com> wrote:
->>>>>>>>>>
->>>>>>>>>>> On Sep 23, 2016, at 13:40, Olga Kornievskaia <aglo@umich.edu> w=
-rote:
->>>>>>>>>>>
->>>>>>>>>>> If we instead bump the sequence number in the case of interrupt=
-ed and do:
->>>>>>>>>>
->>>>>>>>>> You have no guarantees that the server has seen and processed th=
-e operation.
->>>>>>>>>
->>>>>>>>> That is correct, i have tested the patch and made server never to
->>>>>>>>> receive the operation and client have an interrupted slot. On the=
- next
->>>>>>>>> operation the server will complain back with SEQ_MISORDERED. Clie=
-nt
->>>>>>>>> can recover from this operation. Client can not recover from "Rem=
-ote
->>>>>>>>> EIO=E2=80=9D.
->>>>>>>>>
->>>>>>>>
->>>>>>>> Why not?
->>>>>>>
->>>>>>> When XDR layer returns EREMOTEIO it's not handled by the NFS error
->>>>>>> recovery (are you suggesting we should?)  and returns that to the
->>>>>>> application.
->>>>>>>
->>>>>>
->>>>>> I=E2=80=99m saying that if we get a SEQ_MISORDERED due to a previous=
- interrupt on that slot, then we should ignore the error in task->tk_status=
-, and just retry after bumping the slot seqid.
->>>>>>
->>>>>
->>>>> I'm confused where your objection lies. Are you ok with bumping the
->>>>> sequence # when task->tk_status =3D 1 and saying that we should still
->>>>> keep the code that I deleted in the 2nd chunk of the patch that bumpe=
-d
->>>>> the seqid on getting SEQ_MISORDERED due to a previously interrupted
->>>>> slot?
->>>>> Wouldn't that create a difference of 2 slots for the server that has
->>>>> received the original request?
->>>>>
->>>>
->>>> I=E2=80=99m saying I=E2=80=99d prefer to keep the current code, but fi=
-x the retry that is apparently broken. If we=E2=80=99re not ignoring the ta=
-sk->tk_error when we decide to retry, then that=E2=80=99s a bug in my opini=
-on.
->>>
->>> I'm not understand what you are suggestion. I do better with example
->>> so allow me:
->>>
->>> REMOVE used slot 0 seq=3D00000036 received ctrl-c
->>> nfs41_sequence_done() gets called task->tk_status =3D 1:
->>> slot->interrupted is set to 1. slot is freed.
->>>
->>> next operation comes in, in my case it's ACCESS. initialization of the
->>> sequence uses slot 0 seq=3D00000036
->>> server replies with REMOVE
->>>
->>> client code xdr in decode_op_hrs() returns EREMOTEIO. decode_access()
->>> returns EREMOTEIO. handle error just returns that error.
->>>
->>> where do we retry?
->>>
->>
->> The retry should be happening when we exit from nfs41_sequence_done() by=
- restarting the RPC.
->
-> Are you suggestion that REMOVE is retried? Ok I can see that (though
-> I'm not sure why a killed task suppose to be retried. Wasn't it killed
-> for a reason?). But if you are saying ACCESS should be retried then I
-> don't see how it can fit into the code flow.
+DQo+IE9uIFNlcCAyMywgMjAxNiwgYXQgMTY6MjUsIE9sZ2EgS29ybmlldnNrYWlhIDxhZ2xvQHVt
+aWNoLmVkdT4gd3JvdGU6DQo+IA0KPiBPbiBGcmksIFNlcCAyMywgMjAxNiBhdCA0OjA3IFBNLCBP
+bGdhIEtvcm5pZXZza2FpYSA8YWdsb0B1bWljaC5lZHU+IHdyb3RlOg0KPj4gT24gRnJpLCBTZXAg
+MjMsIDIwMTYgYXQgMzo1NyBQTSwgVHJvbmQgTXlrbGVidXN0DQo+PiA8dHJvbmRteUBwcmltYXJ5
+ZGF0YS5jb20+IHdyb3RlOg0KPj4+IA0KPj4+PiBPbiBTZXAgMjMsIDIwMTYsIGF0IDE1OjI3LCBP
+bGdhIEtvcm5pZXZza2FpYSA8YWdsb0B1bWljaC5lZHU+IHdyb3RlOg0KPj4+PiANCj4+Pj4gT24g
+RnJpLCBTZXAgMjMsIDIwMTYgYXQgMzowNyBQTSwgVHJvbmQgTXlrbGVidXN0DQo+Pj4+IDx0cm9u
+ZG15QHByaW1hcnlkYXRhLmNvbT4gd3JvdGU6DQo+Pj4+PiANCj4+Pj4+PiBPbiBTZXAgMjMsIDIw
+MTYsIGF0IDE0OjQxLCBPbGdhIEtvcm5pZXZza2FpYSA8YWdsb0B1bWljaC5lZHU+IHdyb3RlOg0K
+Pj4+Pj4+IA0KPj4+Pj4+IE9uIEZyaSwgU2VwIDIzLCAyMDE2IGF0IDI6MzQgUE0sIFRyb25kIE15
+a2xlYnVzdA0KPj4+Pj4+IDx0cm9uZG15QHByaW1hcnlkYXRhLmNvbT4gd3JvdGU6DQo+Pj4+Pj4+
+IA0KPj4+Pj4+Pj4gT24gU2VwIDIzLCAyMDE2LCBhdCAxNDoyNSwgT2xnYSBLb3JuaWV2c2thaWEg
+PGFnbG9AdW1pY2guZWR1PiB3cm90ZToNCj4+Pj4+Pj4+IA0KPj4+Pj4+Pj4gT24gRnJpLCBTZXAg
+MjMsIDIwMTYgYXQgMjowOCBQTSwgVHJvbmQgTXlrbGVidXN0DQo+Pj4+Pj4+PiA8dHJvbmRteUBw
+cmltYXJ5ZGF0YS5jb20+IHdyb3RlOg0KPj4+Pj4+Pj4+IA0KPj4+Pj4+Pj4+PiBPbiBTZXAgMjMs
+IDIwMTYsIGF0IDEzOjU5LCBPbGdhIEtvcm5pZXZza2FpYSA8YWdsb0B1bWljaC5lZHU+IHdyb3Rl
+Og0KPj4+Pj4+Pj4+PiANCj4+Pj4+Pj4+Pj4gT24gRnJpLCBTZXAgMjMsIDIwMTYgYXQgMTo0NSBQ
+TSwgVHJvbmQgTXlrbGVidXN0DQo+Pj4+Pj4+Pj4+IDx0cm9uZG15QHByaW1hcnlkYXRhLmNvbT4g
+d3JvdGU6DQo+Pj4+Pj4+Pj4+PiANCj4+Pj4+Pj4+Pj4+PiBPbiBTZXAgMjMsIDIwMTYsIGF0IDEz
+OjQwLCBPbGdhIEtvcm5pZXZza2FpYSA8YWdsb0B1bWljaC5lZHU+IHdyb3RlOg0KPj4+Pj4+Pj4+
+Pj4+IA0KPj4+Pj4+Pj4+Pj4+IElmIHdlIGluc3RlYWQgYnVtcCB0aGUgc2VxdWVuY2UgbnVtYmVy
+IGluIHRoZSBjYXNlIG9mIGludGVycnVwdGVkIGFuZCBkbzoNCj4+Pj4+Pj4+Pj4+IA0KPj4+Pj4+
+Pj4+Pj4gWW91IGhhdmUgbm8gZ3VhcmFudGVlcyB0aGF0IHRoZSBzZXJ2ZXIgaGFzIHNlZW4gYW5k
+IHByb2Nlc3NlZCB0aGUgb3BlcmF0aW9uLg0KPj4+Pj4+Pj4+PiANCj4+Pj4+Pj4+Pj4gVGhhdCBp
+cyBjb3JyZWN0LCBpIGhhdmUgdGVzdGVkIHRoZSBwYXRjaCBhbmQgbWFkZSBzZXJ2ZXIgbmV2ZXIg
+dG8NCj4+Pj4+Pj4+Pj4gcmVjZWl2ZSB0aGUgb3BlcmF0aW9uIGFuZCBjbGllbnQgaGF2ZSBhbiBp
+bnRlcnJ1cHRlZCBzbG90LiBPbiB0aGUgbmV4dA0KPj4+Pj4+Pj4+PiBvcGVyYXRpb24gdGhlIHNl
+cnZlciB3aWxsIGNvbXBsYWluIGJhY2sgd2l0aCBTRVFfTUlTT1JERVJFRC4gQ2xpZW50DQo+Pj4+
+Pj4+Pj4+IGNhbiByZWNvdmVyIGZyb20gdGhpcyBvcGVyYXRpb24uIENsaWVudCBjYW4gbm90IHJl
+Y292ZXIgZnJvbSAiUmVtb3RlDQo+Pj4+Pj4+Pj4+IEVJT+KAnS4NCj4+Pj4+Pj4+Pj4gDQo+Pj4+
+Pj4+Pj4gDQo+Pj4+Pj4+Pj4gV2h5IG5vdD8NCj4+Pj4+Pj4+IA0KPj4+Pj4+Pj4gV2hlbiBYRFIg
+bGF5ZXIgcmV0dXJucyBFUkVNT1RFSU8gaXQncyBub3QgaGFuZGxlZCBieSB0aGUgTkZTIGVycm9y
+DQo+Pj4+Pj4+PiByZWNvdmVyeSAoYXJlIHlvdSBzdWdnZXN0aW5nIHdlIHNob3VsZD8pICBhbmQg
+cmV0dXJucyB0aGF0IHRvIHRoZQ0KPj4+Pj4+Pj4gYXBwbGljYXRpb24uDQo+Pj4+Pj4+PiANCj4+
+Pj4+Pj4gDQo+Pj4+Pj4+IEnigJltIHNheWluZyB0aGF0IGlmIHdlIGdldCBhIFNFUV9NSVNPUkRF
+UkVEIGR1ZSB0byBhIHByZXZpb3VzIGludGVycnVwdCBvbiB0aGF0IHNsb3QsIHRoZW4gd2Ugc2hv
+dWxkIGlnbm9yZSB0aGUgZXJyb3IgaW4gdGFzay0+dGtfc3RhdHVzLCBhbmQganVzdCByZXRyeSBh
+ZnRlciBidW1waW5nIHRoZSBzbG90IHNlcWlkLg0KPj4+Pj4+PiANCj4+Pj4+PiANCj4+Pj4+PiBJ
+J20gY29uZnVzZWQgd2hlcmUgeW91ciBvYmplY3Rpb24gbGllcy4gQXJlIHlvdSBvayB3aXRoIGJ1
+bXBpbmcgdGhlDQo+Pj4+Pj4gc2VxdWVuY2UgIyB3aGVuIHRhc2stPnRrX3N0YXR1cyA9IDEgYW5k
+IHNheWluZyB0aGF0IHdlIHNob3VsZCBzdGlsbA0KPj4+Pj4+IGtlZXAgdGhlIGNvZGUgdGhhdCBJ
+IGRlbGV0ZWQgaW4gdGhlIDJuZCBjaHVuayBvZiB0aGUgcGF0Y2ggdGhhdCBidW1wZWQNCj4+Pj4+
+PiB0aGUgc2VxaWQgb24gZ2V0dGluZyBTRVFfTUlTT1JERVJFRCBkdWUgdG8gYSBwcmV2aW91c2x5
+IGludGVycnVwdGVkDQo+Pj4+Pj4gc2xvdD8NCj4+Pj4+PiBXb3VsZG4ndCB0aGF0IGNyZWF0ZSBh
+IGRpZmZlcmVuY2Ugb2YgMiBzbG90cyBmb3IgdGhlIHNlcnZlciB0aGF0IGhhcw0KPj4+Pj4+IHJl
+Y2VpdmVkIHRoZSBvcmlnaW5hbCByZXF1ZXN0Pw0KPj4+Pj4+IA0KPj4+Pj4gDQo+Pj4+PiBJ4oCZ
+bSBzYXlpbmcgSeKAmWQgcHJlZmVyIHRvIGtlZXAgdGhlIGN1cnJlbnQgY29kZSwgYnV0IGZpeCB0
+aGUgcmV0cnkgdGhhdCBpcyBhcHBhcmVudGx5IGJyb2tlbi4gSWYgd2XigJlyZSBub3QgaWdub3Jp
+bmcgdGhlIHRhc2stPnRrX2Vycm9yIHdoZW4gd2UgZGVjaWRlIHRvIHJldHJ5LCB0aGVuIHRoYXTi
+gJlzIGEgYnVnIGluIG15IG9waW5pb24uDQo+Pj4+IA0KPj4+PiBJJ20gbm90IHVuZGVyc3RhbmQg
+d2hhdCB5b3UgYXJlIHN1Z2dlc3Rpb24uIEkgZG8gYmV0dGVyIHdpdGggZXhhbXBsZQ0KPj4+PiBz
+byBhbGxvdyBtZToNCj4+Pj4gDQo+Pj4+IFJFTU9WRSB1c2VkIHNsb3QgMCBzZXE9MDAwMDAwMzYg
+cmVjZWl2ZWQgY3RybC1jDQo+Pj4+IG5mczQxX3NlcXVlbmNlX2RvbmUoKSBnZXRzIGNhbGxlZCB0
+YXNrLT50a19zdGF0dXMgPSAxOg0KPj4+PiBzbG90LT5pbnRlcnJ1cHRlZCBpcyBzZXQgdG8gMS4g
+c2xvdCBpcyBmcmVlZC4NCj4+Pj4gDQo+Pj4+IG5leHQgb3BlcmF0aW9uIGNvbWVzIGluLCBpbiBt
+eSBjYXNlIGl0J3MgQUNDRVNTLiBpbml0aWFsaXphdGlvbiBvZiB0aGUNCj4+Pj4gc2VxdWVuY2Ug
+dXNlcyBzbG90IDAgc2VxPTAwMDAwMDM2DQo+Pj4+IHNlcnZlciByZXBsaWVzIHdpdGggUkVNT1ZF
+DQo+Pj4+IA0KPj4+PiBjbGllbnQgY29kZSB4ZHIgaW4gZGVjb2RlX29wX2hycygpIHJldHVybnMg
+RVJFTU9URUlPLiBkZWNvZGVfYWNjZXNzKCkNCj4+Pj4gcmV0dXJucyBFUkVNT1RFSU8uIGhhbmRs
+ZSBlcnJvciBqdXN0IHJldHVybnMgdGhhdCBlcnJvci4NCj4+Pj4gDQo+Pj4+IHdoZXJlIGRvIHdl
+IHJldHJ5Pw0KPj4+PiANCj4+PiANCj4+PiBUaGUgcmV0cnkgc2hvdWxkIGJlIGhhcHBlbmluZyB3
+aGVuIHdlIGV4aXQgZnJvbSBuZnM0MV9zZXF1ZW5jZV9kb25lKCkgYnkgcmVzdGFydGluZyB0aGUg
+UlBDLg0KPj4gDQo+PiBBcmUgeW91IHN1Z2dlc3Rpb24gdGhhdCBSRU1PVkUgaXMgcmV0cmllZD8g
+T2sgSSBjYW4gc2VlIHRoYXQgKHRob3VnaA0KPj4gSSdtIG5vdCBzdXJlIHdoeSBhIGtpbGxlZCB0
+YXNrIHN1cHBvc2UgdG8gYmUgcmV0cmllZC4gV2Fzbid0IGl0IGtpbGxlZA0KPj4gZm9yIGEgcmVh
+c29uPykuIEJ1dCBpZiB5b3UgYXJlIHNheWluZyBBQ0NFU1Mgc2hvdWxkIGJlIHJldHJpZWQgdGhl
+biBJDQo+PiBkb24ndCBzZWUgaG93IGl0IGNhbiBmaXQgaW50byB0aGUgY29kZSBmbG93Lg0KPiAN
+Cj4gSSdtIHN0aWxsIGh1bmcgdXAgb24gdGhlIGZhY3QgeW91ciBzdWdnZXN0aW9uIG9mICJyZXRy
+eSIuIFRoZXJlIGlzIG5vDQo+IHJldHJ5LiBZb3Ugd3JvdGUgImlmIHdlIGdldCBhIFNFUV9NSVNP
+UkRFUkVEIiB3ZSBuZXZlciBnZXQNCj4gIlNFUV9NSVNPUkRFUkVEIi4NCj4gDQo+IEkgY2FuIHNl
+ZSBpZiB5b3Ugd2FudCB0byBhZGQgdG8gZXJyb3JfaGFuZGxpbmcgdGhhdCB3ZSBjaGVjayBpZiBl
+cnJvcg0KPiBpcyBFUkVNT1RFSU8gYW5kIGNoZWNrIHRoYXQgc2xvdC0+aW50ZXJydXB0ZWQgaXMg
+c2V0LCB0aGVuIHdlIHRyeT8NCj4gDQoNClllcywgdGhhdOKAmXMgd2hhdCBJ4oCZZCBob3BlIHRv
+IHNlZS4NCg0K
 
-I'm still hung up on the fact your suggestion of "retry". There is no
-retry. You wrote "if we get a SEQ_MISORDERED" we never get
-"SEQ_MISORDERED".
-
-I can see if you want to add to error_handling that we check if error
-is EREMOTEIO and check that slot->interrupted is set, then we try?
