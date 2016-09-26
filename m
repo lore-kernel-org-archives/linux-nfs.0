@@ -1,55 +1,60 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx142.netapp.com ([216.240.21.19]:64604 "EHLO mx142.netapp.com"
+Received: from fieldses.org ([173.255.197.46]:42600 "EHLO fieldses.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S935875AbcIZNb7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 26 Sep 2016 09:31:59 -0400
-Subject: Re: [PATCH 0/2] NFS: Use complete() instead complete_all()
-To: Daniel Wagner <daniel.wagner@bmw-carit.de>,
-        Daniel Wagner <wagi@monom.org>, <linux-nfs@vger.kernel.org>
-References: <1474545269-8694-1-git-send-email-wagi@monom.org>
- <ca2d158b-ebdd-a709-a63a-421a11d8ca0a@Netapp.com>
- <74468e19-772d-41b8-b7df-c0aa845e52ab@bmw-carit.de>
-CC: Trond Myklebust <trond.myklebust@primarydata.com>,
-        <linux-kernel@vger.kernel.org>
-From: Anna Schumaker <Anna.Schumaker@netapp.com>
-Message-ID: <ded5c166-aa7e-ce61-8190-ffc15c7d1b12@Netapp.com>
-Date: Mon, 26 Sep 2016 09:31:54 -0400
+        id S1161142AbcIZQDa (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 26 Sep 2016 12:03:30 -0400
+Date: Mon, 26 Sep 2016 12:03:17 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Jeff Layton <jlayton@redhat.com>
+Cc: trond.myklebust@primarydata.com, anna.schumaker@netapp.com,
+        linux-nfs@vger.kernel.org
+Subject: Re: [PATCH v3 0/5] add CB_NOTIFY_LOCK support to knfsd
+Message-ID: <20160926160317.GA7235@fieldses.org>
+References: <1474057707-31286-1-git-send-email-jlayton@redhat.com>
+ <20160923210500.GA9998@fieldses.org>
+ <1474678106.29585.16.camel@redhat.com>
 MIME-Version: 1.0
-In-Reply-To: <74468e19-772d-41b8-b7df-c0aa845e52ab@bmw-carit.de>
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1474678106.29585.16.camel@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 09/26/2016 01:33 AM, Daniel Wagner wrote:
-> Hi Anna,
+On Fri, Sep 23, 2016 at 08:48:26PM -0400, Jeff Layton wrote:
+> On Fri, 2016-09-23 at 17:05 -0400, J. Bruce Fields wrote:
+> > On Fri, Sep 16, 2016 at 04:28:22PM -0400, Jeff Layton wrote:
+> > > 
+> > > v3:
+> > > - add NFS4_OPEN_RESULT_MAY_NOTIFY_LOCK in a separate patch
+> > > 
+> > > v2:
+> > > - small bugfixes
+> > > 
+> > > Very minor update to the patchset I sent a week or so ago. The only real
+> > > difference from the last is to move the addition of
+> > > NFS4_OPEN_RESULT_MAY_NOTIFY_LOCK to a separate patch.
+> > > 
+> > > The basic idea is to just add support for CB_NOTIFY_LOCK callbacks,
+> > > which just tell the client that it may want to retry a lock again
+> > > once it becomes available.
+> > > 
+> > > Tested in conjunction with the corresponding client-side patch
+> > > series.
+> > 
+> > What sort of test were you doing?
+> > 
 > 
-> On 09/23/2016 03:48 PM, Anna Schumaker wrote:
->>> Besides trying to analys all the code paths to the wait_for_completion()
->>> call and convince myself that there is only one waiter, I also run
->>> a few tests:
->>>
->>>  - some fio benchmarks
->>>  - pynfs
->>>   -cthon04
->>
->> Thanks for the patches, and for the extensive testing!  I haven't
->> tried them with xfstests yet, but They look okay to me otherwise.
->> Assuming I don't see any new failures there I'll plan on adding them
->> for v4.9.
+> I did several: cthon (of course), the lockperf suite (which still takes
+> quite a while to run). Mostly I just verified that I got callbacks when
+> expected and that the client acted on them using wireshark. Some testing
+> under more load would be great.
 > 
-> I tried a few tests from xfstests but I was not sure which make sense to run, that's why I went for the more NFS specific tests.
+> > Have you checked with wireshark's CB_NOTIFY_LOCK support is complete?
+> > 
 > 
-> I'll see what happens when I run the generic tests from xfstests. Should all of them pass?
-
-No, there are a handful that we know don't pass.  When I run on NFS v4.1, I get:
-
-        Failures: generic/035 generic/071 generic/128 generic/294 generic/306 generic/309 generic/310 generic/313 generic/314 generic/315 generic/316 generic/319 generic/337 generic/360 generic/375
-        Failed 15 of 92 tests
-
-Thanks,
-Anna
-
+> Just recently fixed:
 > 
-> cheers,
-> daniel
+> https://code.wireshark.org/review/gitweb?p=wireshark.git;a=commitdiff;h=1948f7bd7553f215dc2519a35dcd62e29e35a614
 
+Excellent, thanks!
+
+--b.
