@@ -1,37 +1,65 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from cit-hm8-mail01.bmw-carit.de ([212.118.206.84]:35474 "EHLO
-        cit-hm8-gw01.bmw-carit.de" rhost-flags-OK-OK-OK-FAIL)
-        by vger.kernel.org with ESMTP id S1751827AbcI0IdI (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 27 Sep 2016 04:33:08 -0400
-Subject: Re: [PATCH 0/2] NFS: Use complete() instead complete_all()
-To: Anna Schumaker <Anna.Schumaker@netapp.com>,
-        Daniel Wagner <wagi@monom.org>, <linux-nfs@vger.kernel.org>
-References: <1474545269-8694-1-git-send-email-wagi@monom.org>
- <ca2d158b-ebdd-a709-a63a-421a11d8ca0a@Netapp.com>
- <74468e19-772d-41b8-b7df-c0aa845e52ab@bmw-carit.de>
- <ded5c166-aa7e-ce61-8190-ffc15c7d1b12@Netapp.com>
- <3bb018a5-9257-ef95-e5bf-106a820120ea@bmw-carit.de>
-CC: Trond Myklebust <trond.myklebust@primarydata.com>,
-        <linux-kernel@vger.kernel.org>
-From: Daniel Wagner <daniel.wagner@bmw-carit.de>
-Message-ID: <99846ad0-6b62-0bc4-f03b-cdc98b702af5@bmw-carit.de>
-Date: Tue, 27 Sep 2016 10:33:03 +0200
-MIME-Version: 1.0
-In-Reply-To: <3bb018a5-9257-ef95-e5bf-106a820120ea@bmw-carit.de>
-Content-Type: text/plain; charset="utf-8"
+Received: from mx1.redhat.com ([209.132.183.28]:55704 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S933838AbcI0Q6Q (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 27 Sep 2016 12:58:16 -0400
+From: Paolo Abeni <pabeni@redhat.com>
+To: netdev@vger.kernel.org
+Cc: "David S. Miller" <davem@davemloft.net>,
+        James Morris <jmorris@namei.org>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        Alexander Duyck <aduyck@mirantis.com>,
+        Daniel Borkmann <daniel@iogearbox.net>,
+        Eric Dumazet <edumazet@google.com>, Tom Herbert <tom@herbertland.com>,
+        Hannes Frederic Sowa <hannes@stressinduktion.org>,
+        Edward Cree <ecree@solarflare.com>, linux-nfs@vger.kernel.org
+Subject: [PATCH net-next v2 0/3] udp: refactor memory accounting
+Date: Tue, 27 Sep 2016 18:57:59 +0200
+Message-Id: <cover.1474995024.git.pabeni@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 09/27/2016 09:42 AM, Daniel Wagner wrote:
-> Failures: generic/035 generic/087 generic/088 generic/089 generic/126 generic/184 generic/285 generic/347 generic/350
-> Failed 9 of 62 tests
-> 
-> Hmm, not sure if this good or bad. Does it help?
+This patch series refactor the udp memory accounting, replacing the
+generic implementation with a custom one, in order to remove the needs for
+locking the socket on the enqueue and dequeue operations. The socket backlog
+usage is dropped, as well.
 
-FWIW, running the same tests on non patched kernel gives the same result:
+The first patch factor out core pieces of some queue and memory management
+socket helpers, so that they can later be used by the udp memory accounting
+functions.
+The second patch adds the memory account helpers, without using them.
+The third patch replacse the old rx memory accounting path for udp over ipv4 and
+udp over ipv6. In kernel UDP users are updated, as well.
 
-Failures: generic/035 generic/087 generic/088 generic/089 generic/126 generic/184 generic/285 generic/347 generic/350
-Failed 9 of 62 tests
+The memory accounting schema is described in detail in the individual patch
+commit message.
 
+The performance gain depends on the specific scenario; with few flows (and
+little contention in the original code) the differences are in the noise range,
+while with several flows contending the same socket, the measured speed-up
+is relevant (e.g. even over 100% in case of extreme contention)
 
+v1 -> v2:
+ - changed slighly the memory accounting schema, we now perform lazy reclaim
+ - fixed forward_alloc updating issue
+ - fixed memory counter integer overflows
+
+Paolo Abeni (3):
+  net/socket: factor out helpers for memory and queue manipulation
+  udp: implement memory accounting helpers
+  udp: use it's own memory accounting schema
+
+ include/linux/udp.h   |   2 +
+ include/net/sock.h    |   5 ++
+ include/net/udp.h     |   7 ++
+ net/core/datagram.c   |  36 ++++++----
+ net/core/sock.c       |  96 ++++++++++++++++++---------
+ net/ipv4/udp.c        | 178 ++++++++++++++++++++++++++++++++++++++++++--------
+ net/ipv6/udp.c        |  32 ++++-----
+ net/sunrpc/svcsock.c  |  20 ++++--
+ net/sunrpc/xprtsock.c |   2 +-
+ 9 files changed, 279 insertions(+), 99 deletions(-)
+
+-- 
+1.8.3.1
 
