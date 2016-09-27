@@ -1,8 +1,9 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx143.netapp.com ([216.240.21.24]:18234 "EHLO mx143.netapp.com"
+Received: from mx141.netapp.com ([216.240.21.12]:63133 "EHLO mx141.netapp.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S936563AbcI0RTO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 27 Sep 2016 13:19:14 -0400
+        id S936596AbcI0RTU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 27 Sep 2016 13:19:20 -0400
+From: Anna Schumaker <Anna.Schumaker@netapp.com>
 Subject: Re: [PATCH 0/2] NFS: Use complete() instead complete_all()
 To: Daniel Wagner <daniel.wagner@bmw-carit.de>,
         Daniel Wagner <wagi@monom.org>, <linux-nfs@vger.kernel.org>
@@ -12,11 +13,9 @@ References: <1474545269-8694-1-git-send-email-wagi@monom.org>
  <ded5c166-aa7e-ce61-8190-ffc15c7d1b12@Netapp.com>
  <3bb018a5-9257-ef95-e5bf-106a820120ea@bmw-carit.de>
  <99846ad0-6b62-0bc4-f03b-cdc98b702af5@bmw-carit.de>
-CC: Trond Myklebust <trond.myklebust@primarydata.com>,
-        <linux-kernel@vger.kernel.org>
-From: Anna Schumaker <Anna.Schumaker@netapp.com>
-Message-ID: <f7075c3b-c640-e7ee-7dfb-2c37ff1a3caa@Netapp.com>
-Date: Tue, 27 Sep 2016 13:15:19 -0400
+CC: Trond Myklebust <trond.myklebust@primarydata.com>
+Message-ID: <e047bf37-2e6a-9eb5-bc6c-c0b7b2db806b@Netapp.com>
+Date: Tue, 27 Sep 2016 13:18:43 -0400
 MIME-Version: 1.0
 In-Reply-To: <99846ad0-6b62-0bc4-f03b-cdc98b702af5@bmw-carit.de>
 Content-Type: text/plain; charset="utf-8"
