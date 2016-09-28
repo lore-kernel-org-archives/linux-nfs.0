@@ -1,8 +1,8 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:41592 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:39632 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1752933AbcI1XaD (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 28 Sep 2016 19:30:03 -0400
+        id S1753175AbcI1XaJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 28 Sep 2016 19:30:09 -0400
 From: Andreas Gruenbacher <agruenba@redhat.com>
 To: Alexander Viro <viro@zeniv.linux.org.uk>
 Cc: Andreas Gruenbacher <agruenba@redhat.com>,
@@ -16,93 +16,148 @@ Cc: Andreas Gruenbacher <agruenba@redhat.com>,
         xfs@oss.sgi.com, linux-kernel@vger.kernel.org,
         linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
         linux-cifs@vger.kernel.org, linux-api@vger.kernel.org
-Subject: [PATCH v26 03/21] vfs: Add MAY_DELETE_SELF and MAY_DELETE_CHILD permission flags
-Date: Thu, 29 Sep 2016 01:29:22 +0200
-Message-Id: <1475105380-22837-4-git-send-email-agruenba@redhat.com>
+Subject: [PATCH v26 04/21] vfs: Add permission flags for setting file attributes
+Date: Thu, 29 Sep 2016 01:29:23 +0200
+Message-Id: <1475105380-22837-5-git-send-email-agruenba@redhat.com>
 In-Reply-To: <1475105380-22837-1-git-send-email-agruenba@redhat.com>
 References: <1475105380-22837-1-git-send-email-agruenba@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Normally, deleting a file requires MAY_WRITE access to the parent
-directory.  With richacls, a file may be deleted with MAY_DELETE_CHILD access
-to the parent directory or with MAY_DELETE_SELF access to the file.
-
-To support that, pass the MAY_DELETE_CHILD mask flag to inode_permission()
-when checking for delete access inside a directory, and MAY_DELETE_SELF
-when checking for delete access to a file itself.
-
-The MAY_DELETE_SELF permission overrides the sticky directory check.
+Richacls support permissions that allow to take ownership of a file,
+change the file permissions, and set the file timestamps.  Support that
+by introducing new permission mask flags and by checking for those mask
+flags in setattr_prepare().
 
 Signed-off-by: Andreas Gruenbacher <agruenba@redhat.com>
 Reviewed-by: J. Bruce Fields <bfields@redhat.com>
 Reviewed-by: Steve French <steve.french@primarydata.com>
 Reviewed-by: Jeff Layton <jlayton@redhat.com>
 ---
- fs/namei.c         | 20 +++++++++++++-------
- include/linux/fs.h |  2 ++
- 2 files changed, 15 insertions(+), 7 deletions(-)
+ fs/attr.c          | 79 +++++++++++++++++++++++++++++++++++++++++++++---------
+ include/linux/fs.h |  3 +++
+ 2 files changed, 70 insertions(+), 12 deletions(-)
 
-diff --git a/fs/namei.c b/fs/namei.c
-index 7290dea..c8bc9fd 100644
---- a/fs/namei.c
-+++ b/fs/namei.c
-@@ -463,9 +463,9 @@ static int sb_permission(struct super_block *sb, struct inode *inode, int mask)
-  * this, letting us set arbitrary permissions for filesystem access without
-  * changing the "normal" UIDs which are used for other things.
-  *
-- * MAY_WRITE must be set in @mask whenever MAY_APPEND, MAY_CREATE_FILE, or
-- * MAY_CREATE_DIR are set.  That way, file systems that don't support these
-- * permissions will check for MAY_WRITE instead.
-+ * MAY_WRITE must be set in @mask whenever MAY_APPEND, MAY_CREATE_FILE,
-+ * MAY_CREATE_DIR, or MAY_DELETE_CHILD are set.  That way, file systems that
-+ * don't support these permissions will check for MAY_WRITE instead.
-  */
- int inode_permission(struct inode *inode, int mask)
- {
-@@ -2780,14 +2780,20 @@ static int may_delete_or_replace(struct inode *dir, struct dentry *victim,
- 	BUG_ON(victim->d_parent->d_inode != dir);
- 	audit_inode_child(dir, victim, AUDIT_TYPE_CHILD_DELETE);
+diff --git a/fs/attr.c b/fs/attr.c
+index c902b3d..8fa9869 100644
+--- a/fs/attr.c
++++ b/fs/attr.c
+@@ -17,6 +17,65 @@
+ #include <linux/ima.h>
  
--	error = inode_permission(dir, mask);
-+	error = inode_permission(dir, mask | MAY_WRITE | MAY_DELETE_CHILD);
-+	if (!error && check_sticky(dir, inode))
-+		error = -EPERM;
-+	if (error && IS_RICHACL(inode) &&
-+	    inode_permission(inode, MAY_DELETE_SELF) == 0 &&
-+	    inode_permission(dir, mask) == 0)
-+		error = 0;
- 	if (error)
- 		return error;
- 	if (IS_APPEND(dir))
- 		return -EPERM;
+ /**
++ * inode_extended_permission  -  permissions beyond read/write/execute
++ *
++ * Check for permissions that only richacls can currently grant.
++ */
++static int inode_extended_permission(struct inode *inode, int mask)
++{
++	if (!IS_RICHACL(inode))
++		return -EPERM;
++	return inode_permission(inode, mask);
++}
++
++static bool inode_uid_change_ok(struct inode *inode, kuid_t ia_uid)
++{
++	if (uid_eq(current_fsuid(), inode->i_uid) &&
++	    uid_eq(ia_uid, inode->i_uid))
++		return true;
++	if (uid_eq(current_fsuid(), ia_uid) &&
++	    inode_extended_permission(inode, MAY_TAKE_OWNERSHIP) == 0)
++		return true;
++	if (capable_wrt_inode_uidgid(inode, CAP_CHOWN))
++		return true;
++	return false;
++}
++
++static bool inode_gid_change_ok(struct inode *inode, kgid_t ia_gid)
++{
++	int in_group = in_group_p(ia_gid);
++	if (uid_eq(current_fsuid(), inode->i_uid) &&
++	    (in_group || gid_eq(ia_gid, inode->i_gid)))
++		return true;
++	if (in_group && inode_extended_permission(inode, MAY_TAKE_OWNERSHIP) == 0)
++		return true;
++	if (capable_wrt_inode_uidgid(inode, CAP_CHOWN))
++		return true;
++	return false;
++}
++
++/**
++ * inode_owner_permitted_or_capable
++ *
++ * Check for permissions implicitly granted to the owner, like MAY_CHMOD or
++ * MAY_SET_TIMES.  Equivalent to inode_owner_or_capable for file systems
++ * without support for those permissions.
++ */
++static bool inode_owner_permitted_or_capable(struct inode *inode, int mask)
++{
++	struct user_namespace *ns;
++
++	if (uid_eq(current_fsuid(), inode->i_uid))
++		return true;
++	if (inode_extended_permission(inode, mask) == 0)
++		return true;
++	ns = current_user_ns();
++	if (ns_capable(ns, CAP_FOWNER) && kuid_has_mapping(ns, inode->i_uid))
++		return true;
++	return false;
++}
++
++/**
+  * setattr_prepare - check if attribute changes to a dentry are allowed
+  * @dentry:	dentry to check
+  * @attr:	attributes to change
+@@ -50,22 +109,18 @@ int setattr_prepare(struct dentry *dentry, struct iattr *attr)
+ 		goto kill_priv;
  
--	if (check_sticky(dir, inode) || IS_APPEND(inode) ||
--	    IS_IMMUTABLE(inode) || IS_SWAPFILE(inode) || HAS_UNMAPPED_ID(inode))
-+	if (IS_APPEND(inode) || IS_IMMUTABLE(inode) ||
-+	    IS_SWAPFILE(inode) || HAS_UNMAPPED_ID(inode))
- 		return -EPERM;
- 	if (isdir) {
- 		if (!d_is_dir(victim))
-@@ -2805,7 +2811,7 @@ static int may_delete_or_replace(struct inode *dir, struct dentry *victim,
+ 	/* Make sure a caller can chown. */
+-	if ((ia_valid & ATTR_UID) &&
+-	    (!uid_eq(current_fsuid(), inode->i_uid) ||
+-	     !uid_eq(attr->ia_uid, inode->i_uid)) &&
+-	    !capable_wrt_inode_uidgid(inode, CAP_CHOWN))
+-		return -EPERM;
++	if (ia_valid & ATTR_UID)
++		if (!inode_uid_change_ok(inode, attr->ia_uid))
++			return -EPERM;
  
- static int may_delete(struct inode *dir, struct dentry *victim, bool isdir)
- {
--	return may_delete_or_replace(dir, victim, isdir, MAY_WRITE | MAY_EXEC);
-+	return may_delete_or_replace(dir, victim, isdir, MAY_EXEC);
- }
+ 	/* Make sure caller can chgrp. */
+-	if ((ia_valid & ATTR_GID) &&
+-	    (!uid_eq(current_fsuid(), inode->i_uid) ||
+-	    (!in_group_p(attr->ia_gid) && !gid_eq(attr->ia_gid, inode->i_gid))) &&
+-	    !capable_wrt_inode_uidgid(inode, CAP_CHOWN))
+-		return -EPERM;
++	if (ia_valid & ATTR_GID)
++		if (!inode_gid_change_ok(inode, attr->ia_gid))
++			return -EPERM;
  
- static int may_replace(struct inode *dir, struct dentry *victim, bool isdir)
+ 	/* Make sure a caller can chmod. */
+ 	if (ia_valid & ATTR_MODE) {
+-		if (!inode_owner_or_capable(inode))
++		if (!inode_owner_permitted_or_capable(inode, MAY_CHMOD))
+ 			return -EPERM;
+ 		/* Also check the setgid bit! */
+ 		if (!in_group_p((ia_valid & ATTR_GID) ? attr->ia_gid :
+@@ -76,7 +131,7 @@ int setattr_prepare(struct dentry *dentry, struct iattr *attr)
+ 
+ 	/* Check for setting the inode time. */
+ 	if (ia_valid & (ATTR_MTIME_SET | ATTR_ATIME_SET | ATTR_TIMES_SET)) {
+-		if (!inode_owner_or_capable(inode))
++		if (!inode_owner_permitted_or_capable(inode, MAY_SET_TIMES))
+ 			return -EPERM;
+ 	}
+ 
 diff --git a/include/linux/fs.h b/include/linux/fs.h
-index 54b2a07..f3e21b0 100644
+index f3e21b0..3ab7372 100644
 --- a/include/linux/fs.h
 +++ b/include/linux/fs.h
-@@ -86,6 +86,8 @@ typedef int (dio_iodone_t)(struct kiocb *iocb, loff_t offset,
- #define MAY_NOT_BLOCK		0x00000080
- #define MAY_CREATE_FILE		0x00000100
+@@ -88,6 +88,9 @@ typedef int (dio_iodone_t)(struct kiocb *iocb, loff_t offset,
  #define MAY_CREATE_DIR		0x00000200
-+#define MAY_DELETE_CHILD	0x00000400
-+#define MAY_DELETE_SELF		0x00000800
+ #define MAY_DELETE_CHILD	0x00000400
+ #define MAY_DELETE_SELF		0x00000800
++#define MAY_TAKE_OWNERSHIP	0x00001000
++#define MAY_CHMOD		0x00002000
++#define MAY_SET_TIMES		0x00004000
  
  /*
   * flags in file.f_mode.  Note that FMODE_READ and FMODE_WRITE must correspond
