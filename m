@@ -1,11 +1,11 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:49210 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:36820 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1754721AbcI1Xbh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 28 Sep 2016 19:31:37 -0400
+        id S1752596AbcI1XcL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 28 Sep 2016 19:32:11 -0400
 From: Andreas Gruenbacher <agruenba@redhat.com>
 To: Alexander Viro <viro@zeniv.linux.org.uk>
-Cc: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
+Cc: Andreas Gruenbacher <agruenba@redhat.com>,
         Christoph Hellwig <hch@infradead.org>, "Theodore Ts'o" <tytso@mit.edu>,
         Andreas Dilger <adilger.kernel@dilger.ca>,
         "J. Bruce Fields" <bfields@fieldses.org>,
@@ -15,157 +15,124 @@ Cc: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
         Dave Chinner <david@fromorbit.com>, linux-ext4@vger.kernel.org,
         xfs@oss.sgi.com, linux-kernel@vger.kernel.org,
         linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-cifs@vger.kernel.org, linux-api@vger.kernel.org,
-        Andreas Gruenbacher <agruenba@redhat.com>
-Subject: [PATCH v26 21/21] ext4: Add richacl feature flag
-Date: Thu, 29 Sep 2016 01:29:40 +0200
-Message-Id: <1475105380-22837-22-git-send-email-agruenba@redhat.com>
-In-Reply-To: <1475105380-22837-1-git-send-email-agruenba@redhat.com>
-References: <1475105380-22837-1-git-send-email-agruenba@redhat.com>
+        linux-cifs@vger.kernel.org, linux-api@vger.kernel.org
+Subject: [PATCH v26 00/21] Richacls (Core and Ext4)
+Date: Thu, 29 Sep 2016 01:32:04 +0200
+Message-Id: <1475105524-22995-1-git-send-email-agruenba@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Here is another update of the richacl patches.  Changes since the last posting
+(http://lwn.net/Articles/697320/):
 
-This feature flag selects richacl instead of POSIX ACL support on the
-filesystem.  When this feature is off, the "acl" and "noacl" mount options
-control whether POSIX ACLs are enabled.  When it is on, richacls are
-automatically enabled and using the "noacl" mount option leads to an error.
+ * Rebase on top of the VFS for-next branch
+   (git://git.kernel.org/pub/scm/linux/kernel/git/viro/vfs.git for-next;
+   hash 6731cb0f).
 
-Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
-Signed-off-by: Andreas Gruenbacher <agruenba@redhat.com>
-Reviewed-by: Andreas Dilger <adilger@dilger.ca>
----
- fs/ext4/ext4.h  |  6 ++++--
- fs/ext4/super.c | 49 ++++++++++++++++++++++++++++++++++++++++---------
- 2 files changed, 44 insertions(+), 11 deletions(-)
+   (This patch queue does not conflict with the xattr inode operation removal
+   patches.)
+   
+ * Adjust for the {inode_change_ok => setattr_prepare} rename.
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index ea31931..a019d92 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -1114,7 +1114,7 @@ struct ext4_inode_info {
- #define EXT4_MOUNT_UPDATE_JOURNAL	0x01000	/* Update the journal format */
- #define EXT4_MOUNT_NO_UID32		0x02000  /* Disable 32-bit UIDs */
- #define EXT4_MOUNT_XATTR_USER		0x04000	/* Extended user attributes */
--#define EXT4_MOUNT_POSIX_ACL		0x08000	/* POSIX Access Control Lists */
-+#define EXT4_MOUNT_ACL			0x08000	/* Access Control Lists */
- #define EXT4_MOUNT_NO_AUTO_DA_ALLOC	0x10000	/* No auto delalloc mapping */
- #define EXT4_MOUNT_BARRIER		0x20000 /* Use block barriers */
- #define EXT4_MOUNT_QUOTA		0x80000 /* Some quota option set */
-@@ -1698,6 +1698,7 @@ static inline void ext4_clear_state_flags(struct ext4_inode_info *ei)
- #define EXT4_FEATURE_INCOMPAT_LARGEDIR		0x4000 /* >2GB or 3-lvl htree */
- #define EXT4_FEATURE_INCOMPAT_INLINE_DATA	0x8000 /* data in inode */
- #define EXT4_FEATURE_INCOMPAT_ENCRYPT		0x10000
-+#define EXT4_FEATURE_INCOMPAT_RICHACL		0x20000
- 
- #define EXT4_FEATURE_COMPAT_FUNCS(name, flagname) \
- static inline bool ext4_has_feature_##name(struct super_block *sb) \
-@@ -1812,7 +1813,8 @@ EXT4_FEATURE_INCOMPAT_FUNCS(encrypt,		ENCRYPT)
- 					 EXT4_FEATURE_INCOMPAT_MMP | \
- 					 EXT4_FEATURE_INCOMPAT_INLINE_DATA | \
- 					 EXT4_FEATURE_INCOMPAT_ENCRYPT | \
--					 EXT4_FEATURE_INCOMPAT_CSUM_SEED)
-+					 EXT4_FEATURE_INCOMPAT_CSUM_SEED | \
-+					 EXT4_FEATURE_INCOMPAT_RICHACL)
- #define EXT4_FEATURE_RO_COMPAT_SUPP	(EXT4_FEATURE_RO_COMPAT_SPARSE_SUPER| \
- 					 EXT4_FEATURE_RO_COMPAT_LARGE_FILE| \
- 					 EXT4_FEATURE_RO_COMPAT_GDT_CSUM| \
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 3ec8708..5de428c 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -1386,6 +1386,28 @@ static ext4_fsblk_t get_sb_block(void **data)
- 	return sb_block;
- }
- 
-+static int enable_acl(struct super_block *sb)
-+{
-+	sb->s_flags &= ~(MS_POSIXACL | MS_RICHACL);
-+	if (test_opt(sb, ACL)) {
-+		if (EXT4_HAS_INCOMPAT_FEATURE(sb,
-+					      EXT4_FEATURE_INCOMPAT_RICHACL)) {
-+#ifdef CONFIG_EXT4_FS_RICHACL
-+			sb->s_flags |= MS_RICHACL;
-+#else
-+			return -EOPNOTSUPP;
-+#endif
-+		} else {
-+#ifdef CONFIG_EXT4_FS_POSIX_ACL
-+			sb->s_flags |= MS_POSIXACL;
-+#else
-+			return -EOPNOTSUPP;
-+#endif
-+		}
-+	}
-+	return 0;
-+}
-+
- #define DEFAULT_JOURNAL_IOPRIO (IOPRIO_PRIO_VALUE(IOPRIO_CLASS_BE, 3))
- static char deprecated_msg[] = "Mount option \"%s\" will be removed by %s\n"
- 	"Contact linux-ext4@vger.kernel.org if you think we should keep it.\n";
-@@ -1532,9 +1554,9 @@ static const struct mount_opts {
- 	 MOPT_NO_EXT2 | MOPT_DATAJ},
- 	{Opt_user_xattr, EXT4_MOUNT_XATTR_USER, MOPT_SET},
- 	{Opt_nouser_xattr, EXT4_MOUNT_XATTR_USER, MOPT_CLEAR},
--#ifdef CONFIG_EXT4_FS_POSIX_ACL
--	{Opt_acl, EXT4_MOUNT_POSIX_ACL, MOPT_SET},
--	{Opt_noacl, EXT4_MOUNT_POSIX_ACL, MOPT_CLEAR},
-+#if defined(CONFIG_EXT4_FS_POSIX_ACL) || defined(CONFIG_EXT4_FS_RICHACL)
-+	{Opt_acl, EXT4_MOUNT_ACL, MOPT_SET},
-+	{Opt_noacl, EXT4_MOUNT_ACL, MOPT_CLEAR},
- #else
- 	{Opt_acl, 0, MOPT_NOSUPPORT},
- 	{Opt_noacl, 0, MOPT_NOSUPPORT},
-@@ -1582,6 +1604,13 @@ static int handle_mount_opt(struct super_block *sb, char *opt, int token,
- #endif
- 	switch (token) {
- 	case Opt_noacl:
-+#ifdef CONFIG_EXT4_FS_RICHACL
-+	if (EXT4_HAS_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_RICHACL)) {
-+		ext4_msg(sb, KERN_ERR, "Mount option \"%s\" incompatible "
-+			 "with richacl feature", opt);
-+		return -1;
-+	}
-+#endif
- 	case Opt_nouser_xattr:
- 		ext4_msg(sb, KERN_WARNING, deprecated_msg, opt, "3.5");
- 		break;
-@@ -3380,8 +3409,8 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
- 		set_opt(sb, NO_UID32);
- 	/* xattr user namespace & acls are now defaulted on */
- 	set_opt(sb, XATTR_USER);
--#ifdef CONFIG_EXT4_FS_POSIX_ACL
--	set_opt(sb, POSIX_ACL);
-+#if defined(CONFIG_EXT4_FS_POSIX_ACL) || defined(CONFIG_EXT4_FS_RICHACL)
-+	set_opt(sb, ACL);
- #endif
- 	/* don't forget to enable journal_csum when metadata_csum is enabled. */
- 	if (ext4_has_metadata_csum(sb))
-@@ -3464,8 +3493,9 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
- 		sb->s_iflags |= SB_I_CGROUPWB;
- 	}
- 
--	sb->s_flags = (sb->s_flags & ~MS_POSIXACL) |
--		(test_opt(sb, POSIX_ACL) ? MS_POSIXACL : 0);
-+	err = enable_acl(sb);
-+	if (err)
-+		goto failed_mount;
- 
- 	if (le32_to_cpu(es->s_rev_level) == EXT4_GOOD_OLD_REV &&
- 	    (ext4_has_compat_features(sb) ||
-@@ -4794,8 +4824,9 @@ static int ext4_remount(struct super_block *sb, int *flags, char *data)
- 	if (sbi->s_mount_flags & EXT4_MF_FS_ABORTED)
- 		ext4_abort(sb, "Abort forced by user");
- 
--	sb->s_flags = (sb->s_flags & ~MS_POSIXACL) |
--		(test_opt(sb, POSIX_ACL) ? MS_POSIXACL : 0);
-+	err = enable_acl(sb);
-+	if (err)
-+		goto restore_opts;
- 
- 	es = sbi->s_es;
- 
+The complete patch queue is available here:
+
+  git://git.kernel.org/pub/scm/linux/kernel/git/agruen/linux-richacl.git \
+	richacl-2016-09-29
+
+
+The richacl user-space utilitites, man pages, and test suite are available
+here:
+
+  https://github.com/andreas-gruenbacher/richacl
+
+
+Changes to other user-space packages for richacl:
+
+  https://github.com/andreas-gruenbacher/coreutils
+  https://github.com/andreas-gruenbacher/e2fsprogs
+  https://github.com/andreas-gruenbacher/samba
+  https://github.com/andreas-gruenbacher/xfsprogs-dev
+  https://github.com/andreas-gruenbacher/nfs-utils
+
+
+Please see the richacl homepage for more information:
+
+  http://www.bestbits.at/richacl/
+
+
+Thanks,
+Andreas
+
+Andreas Gruenbacher (19):
+  vfs: Add IS_ACL() and IS_RICHACL() tests
+  vfs: Add MAY_CREATE_FILE and MAY_CREATE_DIR permission flags
+  vfs: Add MAY_DELETE_SELF and MAY_DELETE_CHILD permission flags
+  vfs: Add permission flags for setting file attributes
+  richacl: In-memory representation and helper functions
+  richacl: Permission mapping functions
+  richacl: Permission check algorithm
+  richacl: Compute maximum file masks from an acl
+  vfs: Cache base_acl objects in inodes
+  vfs: Add get_richacl and set_richacl inode operations
+  vfs: Cache richacl in struct inode
+  richacl: Update the file masks in chmod()
+  richacl: Check if an acl is equivalent to a file mode
+  richacl: Create-time inheritance
+  richacl: Automatic Inheritance
+  richacl: xattr mapping functions
+  richacl: Add richacl xattr handler
+  vfs: Add richacl permission checking
+  vfs: Move check_posix_acl and check_richacl out of fs/namei.c
+
+Aneesh Kumar K.V (2):
+  ext4: Add richacl support
+  ext4: Add richacl feature flag
+
+ drivers/staging/lustre/lustre/llite/llite_lib.c |   2 +-
+ fs/9p/acl.c                                     |   8 +-
+ fs/Kconfig                                      |   3 +
+ fs/Makefile                                     |   1 +
+ fs/attr.c                                       |  79 +-
+ fs/ext4/Kconfig                                 |  11 +
+ fs/ext4/Makefile                                |   1 +
+ fs/ext4/ext4.h                                  |   6 +-
+ fs/ext4/file.c                                  |   3 +
+ fs/ext4/ialloc.c                                |  11 +-
+ fs/ext4/inode.c                                 |   5 +-
+ fs/ext4/namei.c                                 |   5 +
+ fs/ext4/richacl.c                               | 134 ++++
+ fs/ext4/richacl.h                               |  40 +
+ fs/ext4/super.c                                 |  49 +-
+ fs/ext4/xattr.c                                 |   7 +
+ fs/f2fs/acl.c                                   |   4 +-
+ fs/inode.c                                      |  43 +-
+ fs/jffs2/acl.c                                  |   6 +-
+ fs/namei.c                                      | 114 +--
+ fs/nfs/nfs3acl.c                                |  14 +-
+ fs/posix_acl.c                                  |  97 ++-
+ fs/richacl.c                                    | 937 ++++++++++++++++++++++++
+ fs/richacl_xattr.c                              | 222 ++++++
+ include/linux/acl.h                             |  15 +
+ include/linux/fs.h                              |  63 +-
+ include/linux/posix_acl.h                       |  24 +-
+ include/linux/richacl.h                         | 218 ++++++
+ include/linux/richacl_xattr.h                   |  31 +
+ include/uapi/linux/Kbuild                       |   2 +
+ include/uapi/linux/fs.h                         |   3 +-
+ include/uapi/linux/richacl.h                    | 152 ++++
+ include/uapi/linux/richacl_xattr.h              |  44 ++
+ include/uapi/linux/xattr.h                      |   2 +
+ 34 files changed, 2195 insertions(+), 161 deletions(-)
+ create mode 100644 fs/ext4/richacl.c
+ create mode 100644 fs/ext4/richacl.h
+ create mode 100644 fs/richacl.c
+ create mode 100644 fs/richacl_xattr.c
+ create mode 100644 include/linux/acl.h
+ create mode 100644 include/linux/richacl.h
+ create mode 100644 include/linux/richacl_xattr.h
+ create mode 100644 include/uapi/linux/richacl.h
+ create mode 100644 include/uapi/linux/richacl_xattr.h
+
 -- 
 2.7.4
 
