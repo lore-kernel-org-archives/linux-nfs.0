@@ -1,9 +1,9 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:49508 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:44681 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1754922AbcI2Her (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 29 Sep 2016 03:34:47 -0400
-Message-ID: <1475134482.4676.11.camel@redhat.com>
+        id S932451AbcI2Jb7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 29 Sep 2016 05:31:59 -0400
+Message-ID: <1475141514.4676.28.camel@redhat.com>
 Subject: Re: [PATCH net-next v3 2/3] udp: implement memory accounting helpers
 From: Paolo Abeni <pabeni@redhat.com>
 To: Eric Dumazet <eric.dumazet@gmail.com>
@@ -15,7 +15,7 @@ Cc: netdev@vger.kernel.org, "David S. Miller" <davem@davemloft.net>,
         Eric Dumazet <edumazet@google.com>, Tom Herbert <tom@herbertland.com>,
         Hannes Frederic Sowa <hannes@stressinduktion.org>,
         Edward Cree <ecree@solarflare.com>, linux-nfs@vger.kernel.org
-Date: Thu, 29 Sep 2016 09:34:42 +0200
+Date: Thu, 29 Sep 2016 11:31:54 +0200
 In-Reply-To: <1475113378.28155.124.camel@edumazet-glaptop3.roam.corp.google.com>
 References: <cover.1475048434.git.pabeni@redhat.com>
          <6f445861ef2ce2e626a1df4946bc3f43f3d43e3f.1475048434.git.pabeni@redhat.com>
@@ -24,8 +24,6 @@ Content-Type: text/plain; charset="UTF-8"
 Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-
-Hi Eric,
 
 On Wed, 2016-09-28 at 18:42 -0700, Eric Dumazet wrote:
 > On Wed, 2016-09-28 at 12:52 +0200, Paolo Abeni wrote:
@@ -57,24 +55,50 @@ On Wed, 2016-09-28 at 18:42 -0700, Eric Dumazet wrote:
 > > +	__sk_mem_reduce_allocated(sk, amt >> SK_MEM_QUANTUM_SHIFT);
 > > +	sk->sk_forward_alloc = fwd - amt;
 > > +}
+> 
+> 
+> This is racy... all these atomics make me nervous...
 
-Thank you for reviewing this!
+Ah, perhaps I got it: if we have a concurrent memory scheduling, we
+could end up with a value of mem_allocated below the real need. 
 
-> This is racy... 
+That mismatch will not drift: at worst we can end up with mem_allocated
+being single SK_MEM_QUANTUM below what is strictly needed.
 
-Could you please elaborate? 
+A possible alternative could be:
 
-> all these atomics make me nervous...
+static void udp_rmem_release(struct sock *sk, int partial)
+{
+	struct udp_sock *up = udp_sk(sk);
+	int fwd, amt, alloc_old, alloc;
 
-I'd like to drop some of them if possible.
+	if (partial && !udp_under_memory_pressure(sk))
+		return;
 
-atomic_inc(&up->can_reclaim);
+	alloc = atomic_read(&up->mem_allocated);
+	fwd = alloc - atomic_read(&sk->sk_rmem_alloc);
+	if (fwd < SK_MEM_QUANTUM + partial)
+		return;
 
-could probably be replaced with atomic_set(&up->can_reclaim, 1) since we
-don't have concurrent processes doing that and can_reclaim.counter is
-known to be 0 at that point.
-Performance wise the impact is minimal, since in normal condition we do
-the reclaim only on socket shutdown.
+	amt = (fwd - partial) & ~(SK_MEM_QUANTUM - 1);
+	alloc_old = atomic_cmpxchg(&up->mem_allocated, alloc, alloc - amt);
+	/* if a concurrent update is detected, just do nothing; if said update
+	 * is due to another memory release, that release take care of
+	 * reclaiming the memory for us, too.
+	 * Otherwise we will be able to release on later dequeue, since
+	 * we will eventually stop colliding with the writer when it will
+	 * consume all the fwd allocated memory
+	 */
+	if (alloc_old != alloc)
+		return;
 
-Paolo
+	__sk_mem_reduce_allocated(sk, amt >> SK_MEM_QUANTUM_SHIFT);
+	sk->sk_forward_alloc = fwd - amt;
+}
+
+which is even more lazy in reclaiming but should never underestimate the
+needed forward allocation, and under pressure should eventually free the
+needed memory.
+
+
 
