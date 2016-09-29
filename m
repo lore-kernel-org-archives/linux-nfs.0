@@ -1,50 +1,62 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:41014 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:34300 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1754412AbcI2Pnw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 29 Sep 2016 11:43:52 -0400
+        id S1755058AbcI2Pnx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 29 Sep 2016 11:43:53 -0400
 Received: from int-mx10.intmail.prod.int.phx2.redhat.com (int-mx10.intmail.prod.int.phx2.redhat.com [10.5.11.23])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by mx1.redhat.com (Postfix) with ESMTPS id 29B55C092193
+        by mx1.redhat.com (Postfix) with ESMTPS id C17DEA0B5B
         for <linux-nfs@vger.kernel.org>; Thu, 29 Sep 2016 15:43:52 +0000 (UTC)
 Received: from hut.sorensonfamily.com.redhat.com (ovpn-116-43.rdu2.redhat.com [10.10.116.43])
-        by int-mx10.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id u8TFhoxC007382
+        by int-mx10.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id u8TFhoxD007382
         (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NO)
-        for <linux-nfs@vger.kernel.org>; Thu, 29 Sep 2016 11:43:51 -0400
+        for <linux-nfs@vger.kernel.org>; Thu, 29 Sep 2016 11:43:52 -0400
 From: Frank Sorenson <sorenson@redhat.com>
 To: linux-nfs@vger.kernel.org
-Subject: [PATCH 1/5] sunrpc: add hash_cred() function to rpc_authops struct
-Date: Thu, 29 Sep 2016 10:44:37 -0500
-Message-Id: <1475163881-12438-2-git-send-email-sorenson@redhat.com>
+Subject: [PATCH 2/5] sunrpc: add generic_auth hash_cred() function
+Date: Thu, 29 Sep 2016 10:44:38 -0500
+Message-Id: <1475163881-12438-3-git-send-email-sorenson@redhat.com>
 In-Reply-To: <1475163881-12438-1-git-send-email-sorenson@redhat.com>
 References: <1475163881-12438-1-git-send-email-sorenson@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Currently, a single hash algorithm is used to hash the auth_cred for
-the credcache for all rpc_auth types.  Add a hash_cred() function to
-the rpc_authops struct to allow a hash function specific to each
-auth flavor.
-
+Add a hash_cred() function for generic_auth, using both the
+uid and gid from the auth_cred.
 
 Signed-off-by: Frank Sorenson <sorenson@redhat.com>
 ---
- include/linux/sunrpc/auth.h | 1 +
- 1 file changed, 1 insertion(+)
+ net/sunrpc/auth_generic.c | 9 +++++++++
+ 1 file changed, 9 insertions(+)
 
-diff --git a/include/linux/sunrpc/auth.h b/include/linux/sunrpc/auth.h
-index 4ccf184..b1bc62b 100644
---- a/include/linux/sunrpc/auth.h
-+++ b/include/linux/sunrpc/auth.h
-@@ -131,6 +131,7 @@ struct rpc_authops {
- 	struct rpc_auth *	(*create)(struct rpc_auth_create_args *, struct rpc_clnt *);
- 	void			(*destroy)(struct rpc_auth *);
+diff --git a/net/sunrpc/auth_generic.c b/net/sunrpc/auth_generic.c
+index 1682195..0494513 100644
+--- a/net/sunrpc/auth_generic.c
++++ b/net/sunrpc/auth_generic.c
+@@ -78,6 +78,14 @@ static struct rpc_cred *generic_bind_cred(struct rpc_task *task,
+ 	return auth->au_ops->lookup_cred(auth, acred, lookupflags);
+ }
  
-+	int			(*hash_cred)(struct auth_cred *, unsigned int);
- 	struct rpc_cred *	(*lookup_cred)(struct rpc_auth *, struct auth_cred *, int);
- 	struct rpc_cred *	(*crcreate)(struct rpc_auth*, struct auth_cred *, int, gfp_t);
- 	int			(*list_pseudoflavors)(rpc_authflavor_t *, int);
++static int
++generic_hash_cred(struct auth_cred *acred, unsigned int hashbits)
++{
++	return hash_64(from_kgid(&init_user_ns, acred->gid) |
++		((u64)from_kuid(&init_user_ns, acred->uid) <<
++			(sizeof(gid_t) * 8)), hashbits);
++}
++
+ /*
+  * Lookup generic creds for current process
+  */
+@@ -258,6 +266,7 @@ generic_key_timeout(struct rpc_auth *auth, struct rpc_cred *cred)
+ static const struct rpc_authops generic_auth_ops = {
+ 	.owner = THIS_MODULE,
+ 	.au_name = "Generic",
++	.hash_cred = generic_hash_cred,
+ 	.lookup_cred = generic_lookup_cred,
+ 	.crcreate = generic_create_cred,
+ 	.key_timeout = generic_key_timeout,
 -- 
 2.5.5
 
