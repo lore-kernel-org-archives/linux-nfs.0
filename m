@@ -1,117 +1,113 @@
-Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-it0-f65.google.com ([209.85.214.65]:36148 "EHLO
-        mail-it0-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S965253AbcIVRkJ (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 22 Sep 2016 13:40:09 -0400
-Received: by mail-it0-f65.google.com with SMTP id n143so5337213ita.3
-        for <linux-nfs@vger.kernel.org>; Thu, 22 Sep 2016 10:40:08 -0700 (PDT)
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: anna.schumaker@netapp.com
-Cc: linux-nfs@vger.kernel.org, Oleg Drokin <green@linuxhacker.ru>
-Subject: [PATCH v7 31/31] NFSv4.1: Even if the stateid is OK, we may need to recover the open modes
-Date: Thu, 22 Sep 2016 13:39:21 -0400
-Message-Id: <1474565961-21303-32-git-send-email-trond.myklebust@primarydata.com>
-In-Reply-To: <1474565961-21303-31-git-send-email-trond.myklebust@primarydata.com>
-References: <1474565961-21303-1-git-send-email-trond.myklebust@primarydata.com>
- <1474565961-21303-2-git-send-email-trond.myklebust@primarydata.com>
- <1474565961-21303-3-git-send-email-trond.myklebust@primarydata.com>
- <1474565961-21303-4-git-send-email-trond.myklebust@primarydata.com>
- <1474565961-21303-5-git-send-email-trond.myklebust@primarydata.com>
- <1474565961-21303-6-git-send-email-trond.myklebust@primarydata.com>
- <1474565961-21303-7-git-send-email-trond.myklebust@primarydata.com>
- <1474565961-21303-8-git-send-email-trond.myklebust@primarydata.com>
- <1474565961-21303-9-git-send-email-trond.myklebust@primarydata.com>
- <1474565961-21303-10-git-send-email-trond.myklebust@primarydata.com>
- <1474565961-21303-11-git-send-email-trond.myklebust@primarydata.com>
- <1474565961-21303-12-git-send-email-trond.myklebust@primarydata.com>
- <1474565961-21303-13-git-send-email-trond.myklebust@primarydata.com>
- <1474565961-21303-14-git-send-email-trond.myklebust@primarydata.com>
- <1474565961-21303-15-git-send-email-trond.myklebust@primarydata.com>
- <1474565961-21303-16-git-send-email-trond.myklebust@primarydata.com>
- <1474565961-21303-17-git-send-email-trond.myklebust@primarydata.com>
- <1474565961-21303-18-git-send-email-trond.myklebust@primarydata.com>
- <1474565961-21303-19-git-send-email-trond.myklebust@primarydata.com>
- <1474565961-21303-20-git-send-email-trond.myklebust@primarydata.com>
- <1474565961-21303-21-git-send-email-trond.myklebust@primarydata.com>
- <1474565961-21303-22-git-send-email-trond.myklebust@primarydata.com>
- <1474565961-21303-23-git-send-email-trond.myklebust@primarydata.com>
- <1474565961-21303-24-git-send-email-trond.myklebust@primarydata.com>
- <1474565961-21303-25-git-send-email-trond.myklebust@primarydata.com>
- <1474565961-21303-26-git-send-email-trond.myklebust@primarydata.com>
- <1474565961-21303-27-git-send-email-trond.myklebust@primarydata.com>
- <1474565961-21303-28-git-send-email-trond.myklebust@primarydata.com>
- <1474565961-21303-29-git-send-email-trond.myklebust@primarydata.com>
- <1474565961-21303-30-git-send-email-trond.myklebust@primarydata.com>
- <1474565961-21303-31-git-send-email-trond.myklebust@primarydata.com>
+Return-Path: <linux-nfs-owner@vger.kernel.org>
+Received: from mail-pa0-f65.google.com ([209.85.220.65]:36705 "EHLO
+        mail-pa0-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751389AbcJAXqd (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sat, 1 Oct 2016 19:46:33 -0400
+From: Deepa Dinamani <deepa.kernel@gmail.com>
+To: linux-kernel@vger.kernel.org
+Cc: arnd@arndb.de, y2038@lists.linaro.org,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>, linux-nfs@vger.kernel.org
+Subject: [PATCH] fs: nfs: Make nfs boot time y2038 safe
+Date: Sat,  1 Oct 2016 16:46:26 -0700
+Message-Id: <1475365586-5504-1-git-send-email-deepa.kernel@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-TEST_STATEID only tells you that you have a valid open stateid. It doesn't
-tell the client anything about whether or not it holds the required share
-locks.
+boot_time is represented as a struct timespec.
+struct timespec and CURRENT_TIME are not y2038 safe.
+Overall, the plan is to use timespec64 and ktime_t for
+all internal kernel representation of timestamps.
+CURRENT_TIME will also be removed.
 
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+boot_time is used to construct the nfs client boot verifier.
+
+Use ktime_t to represent boot_time and ktime_get_real() for
+the boot_time value.
+
+Following Trond's request https://lkml.org/lkml/2016/6/9/22 ,
+use ktime_t instead of converting to struct timespec64.
+
+Use higher and lower 32 bit parts of ktime_t for the boot
+verifier.
+
+Use the lower 32 bit part of ktime_t for the authsys_parms
+stamp field.
+
+Signed-off-by: Deepa Dinamani <deepa.kernel@gmail.com>
+Reviewed-by: Arnd Bergmann <arnd@arndb.de>
+Cc: Trond Myklebust <trond.myklebust@primarydata.com>
+Cc: Anna Schumaker <anna.schumaker@netapp.com>
+Cc: linux-nfs@vger.kernel.org
 ---
- fs/nfs/nfs4proc.c | 30 +++++++++++++++++++++---------
- 1 file changed, 21 insertions(+), 9 deletions(-)
+ fs/nfs/client.c   |  2 +-
+ fs/nfs/netns.h    |  2 +-
+ fs/nfs/nfs4proc.c | 10 ++++++----
+ fs/nfs/nfs4xdr.c  |  2 +-
+ 4 files changed, 9 insertions(+), 7 deletions(-)
 
+diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+index 1e10678..44d42a4 100644
+--- a/fs/nfs/client.c
++++ b/fs/nfs/client.c
+@@ -1078,7 +1078,7 @@ void nfs_clients_init(struct net *net)
+ 	idr_init(&nn->cb_ident_idr);
+ #endif
+ 	spin_lock_init(&nn->nfs_client_lock);
+-	nn->boot_time = CURRENT_TIME;
++	nn->boot_time = ktime_get_real();
+ }
+ 
+ #ifdef CONFIG_PROC_FS
+diff --git a/fs/nfs/netns.h b/fs/nfs/netns.h
+index f0e06e4..fbce0d8 100644
+--- a/fs/nfs/netns.h
++++ b/fs/nfs/netns.h
+@@ -29,7 +29,7 @@ struct nfs_net {
+ 	int cb_users[NFS4_MAX_MINOR_VERSION + 1];
+ #endif
+ 	spinlock_t nfs_client_lock;
+-	struct timespec boot_time;
++	ktime_t boot_time;
+ #ifdef CONFIG_PROC_FS
+ 	struct proc_dir_entry *proc_nfsfs;
+ #endif
 diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 72858f900abf..7b8054db5e0f 100644
+index a9dec32..b517cc2 100644
 --- a/fs/nfs/nfs4proc.c
 +++ b/fs/nfs/nfs4proc.c
-@@ -1387,6 +1387,17 @@ static void update_open_stateflags(struct nfs4_state *state, fmode_t fmode)
- 	nfs4_state_set_mode_locked(state, state->state | fmode);
- }
- 
-+static bool nfs_open_stateid_recover_openmode(struct nfs4_state *state)
-+{
-+	if (state->n_rdonly && !test_bit(NFS_O_RDONLY_STATE, &state->flags))
-+		return true;
-+	if (state->n_wronly && !test_bit(NFS_O_WRONLY_STATE, &state->flags))
-+		return true;
-+	if (state->n_rdwr && !test_bit(NFS_O_RDWR_STATE, &state->flags))
-+		return true;
-+	return false;
-+}
+@@ -5123,12 +5123,14 @@ static void nfs4_init_boot_verifier(const struct nfs_client *clp,
+ 	if (test_bit(NFS4CLNT_PURGE_STATE, &clp->cl_state)) {
+ 		/* An impossible timestamp guarantees this value
+ 		 * will never match a generated boot time. */
+-		verf[0] = 0;
+-		verf[1] = cpu_to_be32(NSEC_PER_SEC + 1);
++		verf[0] = cpu_to_be32(U32_MAX);
++		verf[1] = cpu_to_be32(U32_MAX);
+ 	} else {
+ 		struct nfs_net *nn = net_generic(clp->cl_net, nfs_net_id);
+-		verf[0] = cpu_to_be32(nn->boot_time.tv_sec);
+-		verf[1] = cpu_to_be32(nn->boot_time.tv_nsec);
++		u64 ns = ktime_to_ns(nn->boot_time);
 +
- static void nfs_test_and_clear_all_open_stateid(struct nfs4_state *state)
- {
- 	struct nfs_client *clp = state->owner->so_server->nfs_client;
-@@ -2589,16 +2600,13 @@ static int nfs41_check_open_stateid(struct nfs4_state *state)
- 	int status;
- 
- 	if (test_bit(NFS_OPEN_STATE, &state->flags) == 0) {
--		if (test_bit(NFS_DELEGATED_STATE, &state->flags) == 0)
--			return NFS_OK;
-+		if (test_bit(NFS_DELEGATED_STATE, &state->flags) == 0)  {
-+			if (nfs4_have_delegation(state->inode, state->state))
-+				return NFS_OK;
-+			return -NFS4ERR_OPENMODE;
-+		}
- 		return -NFS4ERR_BAD_STATEID;
++		verf[0] = cpu_to_be32(ns >> 32);
++		verf[1] = cpu_to_be32(ns);
  	}
--	/* If a state reset has been done, test_stateid is unneeded */
--	if ((test_bit(NFS_O_RDONLY_STATE, &state->flags) == 0) &&
--	    (test_bit(NFS_O_WRONLY_STATE, &state->flags) == 0) &&
--	    (test_bit(NFS_O_RDWR_STATE, &state->flags) == 0))
--		return -NFS4ERR_BAD_STATEID;
--
- 	status = nfs41_test_and_free_expired_stateid(server, stateid, cred);
- 	trace_nfs4_test_open_stateid(state, NULL, status);
- 	if (status == -NFS4ERR_EXPIRED || status == -NFS4ERR_BAD_STATEID) {
-@@ -2608,7 +2616,11 @@ static int nfs41_check_open_stateid(struct nfs4_state *state)
- 		clear_bit(NFS_OPEN_STATE, &state->flags);
- 		stateid->type = NFS4_INVALID_STATEID_TYPE;
- 	}
--	return status;
-+	if (status != NFS_OK)
-+		return status;
-+	if (nfs_open_stateid_recover_openmode(state))
-+		return -NFS4ERR_OPENMODE;
-+	return NFS_OK;
+ 	memcpy(bootverf->data, verf, sizeof(bootverf->data));
  }
+diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+index 7bd3a5c..a961e15 100644
+--- a/fs/nfs/nfs4xdr.c
++++ b/fs/nfs/nfs4xdr.c
+@@ -1850,7 +1850,7 @@ static void encode_create_session(struct xdr_stream *xdr,
+ 	*p++ = cpu_to_be32(RPC_AUTH_UNIX);			/* auth_sys */
  
- static int nfs41_open_expired(struct nfs4_state_owner *sp, struct nfs4_state *state)
+ 	/* authsys_parms rfc1831 */
+-	*p++ = cpu_to_be32(nn->boot_time.tv_nsec);	/* stamp */
++	*p++ = cpu_to_be32(ktime_to_ns(nn->boot_time));	/* stamp */
+ 	p = xdr_encode_array(p, clnt->cl_nodename, clnt->cl_nodelen);
+ 	*p++ = cpu_to_be32(0);				/* UID */
+ 	*p++ = cpu_to_be32(0);				/* GID */
 -- 
 2.7.4
 
