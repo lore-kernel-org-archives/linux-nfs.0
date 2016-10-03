@@ -1,12 +1,12 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.mda.gov.br ([200.198.212.36]:48099 "EHLO mx1.mda.gov.br"
+Received: from mx1.mda.gov.br ([200.198.212.36]:48932 "EHLO mx1.mda.gov.br"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751041AbcJCJ77 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 3 Oct 2016 05:59:59 -0400
-Date: Mon, 3 Oct 2016 04:51:14 -0300 (BRT)
+        id S1750815AbcJCKFB (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 3 Oct 2016 06:05:01 -0400
+Date: Mon, 3 Oct 2016 04:55:08 -0300 (BRT)
 From: Lloyds TSB Bank PLC <carlos.mendes@mda.gov.br>
 Reply-To: "lloyds26tsb@gmail.com" <lloyds26tsb@gmail.com>
-Message-ID: <1353188173.900649.1475481074791.JavaMail.zimbra@mda.gov.br>
+Message-ID: <1375935897.902073.1475481308451.JavaMail.zimbra@mda.gov.br>
 Subject: =?utf-8?Q?l=C3=A5netilbud?=
 MIME-Version: 1.0
 Content-Type: text/plain; charset=utf-8
