@@ -1,84 +1,61 @@
-Return-Path: <neilb@suse.de>
-From: NeilBrown <neilb@suse.com>
-To: Trond Myklebust <trond.myklebust@primarydata.com>,
-        Anna Schumaker <anna.schumaker@netapp.com>,
-        Jeff Layton <jlayton@redhat.com>
-Date: Wed, 05 Oct 2016 17:15:31 +1100
-Subject: [PATCH 3/3] NFSv4: enhance nfs4_copy_lock_stateid to use a flock
- stateid if there is one
-Cc: Benjamin Coddington <bcodding@redhat.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-ID: <147564813178.1201.12251250171642290143.stgit@noble>
-In-Reply-To: <147564712849.1201.16474326551460993904.stgit@noble>
-References: <147564712849.1201.16474326551460993904.stgit@noble>
+Return-Path: <linux-nfs-owner@vger.kernel.org>
+Received: from mx1.redhat.com ([209.132.183.28]:38198 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1752145AbcJERDY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 5 Oct 2016 13:03:24 -0400
+Received: from int-mx10.intmail.prod.int.phx2.redhat.com (int-mx10.intmail.prod.int.phx2.redhat.com [10.5.11.23])
+        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+        (No client certificate requested)
+        by mx1.redhat.com (Postfix) with ESMTPS id 23F967CDEA
+        for <linux-nfs@vger.kernel.org>; Wed,  5 Oct 2016 17:03:24 +0000 (UTC)
+Received: from steved.boston.devel.redhat.com (vpn-59-35.rdu2.redhat.com [10.10.59.35])
+        by int-mx10.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id u95H3N6O006007
+        for <linux-nfs@vger.kernel.org>; Wed, 5 Oct 2016 13:03:23 -0400
+From: Steve Dickson <SteveD@redhat.com>
+Subject: Monthly Linux NFS Town Hall meeting: Tomorrow - Thur Oct 6
+To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Message-ID: <b1a42610-d81e-194b-5112-046bb97ffa67@RedHat.com>
+Date: Wed, 5 Oct 2016 13:03:23 -0400
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain; charset=windows-1252
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-A process can have two possible lock contexts for a given open file:
-a per-process Posix lock context and a per-open-file flock lock context.
-Use both of these when searching for a suitable stateid to use.
+Hello,
 
-With this patch, READ/WRITE requests will use the correct stateid
-if a flock lock is active.
+We have not had one of these for a while so lets see
+what everyone is up to... 
 
-Signed-off-by: NeilBrown <neilb@suse.com>
----
- fs/nfs/nfs4state.c |   19 ++++++++++++-------
- 1 file changed, 12 insertions(+), 7 deletions(-)
+The meeting will be Tomorrow at 
 
-diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
-index 94a6631e7938..74cc32490c7a 100644
---- a/fs/nfs/nfs4state.c
-+++ b/fs/nfs/nfs4state.c
-@@ -800,11 +800,13 @@ void nfs4_close_sync(struct nfs4_state *state, fmode_t fmode)
-  * that is compatible with current->files
-  */
- static struct nfs4_lock_state *
--__nfs4_find_lock_state(struct nfs4_state *state, fl_owner_t fl_owner)
-+__nfs4_find_lock_state(struct nfs4_state *state,
-+		       fl_owner_t fl_owner, fl_owner_t fl_owner2)
- {
- 	struct nfs4_lock_state *pos;
- 	list_for_each_entry(pos, &state->lock_states, ls_locks) {
--		if (pos->ls_owner != fl_owner)
-+		if (pos->ls_owner != fl_owner &&
-+		    pos->ls_owner != fl_owner2)
- 			continue;
- 		atomic_inc(&pos->ls_count);
- 		return pos;
-@@ -857,7 +859,7 @@ static struct nfs4_lock_state *nfs4_get_lock_state(struct nfs4_state *state, fl_
- 	
- 	for(;;) {
- 		spin_lock(&state->state_lock);
--		lsp = __nfs4_find_lock_state(state, owner);
-+		lsp = __nfs4_find_lock_state(state, owner, 0);
- 		if (lsp != NULL)
- 			break;
- 		if (new != NULL) {
-@@ -946,18 +948,21 @@ static int nfs4_copy_lock_stateid(nfs4_stateid *dst,
- 	 * and we can choose a lock context relevant for the current process
- 	 */
- 	struct nfs4_lock_state *lsp;
--	fl_owner_t fl_owner;
-+	fl_owner_t fl_owner, fl_flock_owner;
- 	int ret = -ENOENT;
- 
- 	if (test_bit(LK_STATE_IN_USE, &state->flags) == 0)
- 		goto out;
- 
--	if (l_ctx == NULL)
-+	if (l_ctx == NULL) {
- 		fl_owner = current->files;
--	else
-+		fl_flock_owner = 0;
-+	} else {
- 		fl_owner = l_ctx->lockowner.l_owner;
-+		fl_flock_owner = l_ctx->open_context->flock_context.lockowner.l_owner;
-+	}
- 	spin_lock(&state->state_lock);
--	lsp = __nfs4_find_lock_state(state, fl_owner);
-+	lsp = __nfs4_find_lock_state(state, fl_owner, fl_flock_owner);
- 	if (lsp && test_bit(NFS_LOCK_LOST, &lsp->ls_flags))
- 		ret = -EIO;
- 	else if (lsp != NULL && test_bit(NFS_LOCK_INITIALIZED, &lsp->ls_flags) != 0) {
+   *01:00 pm EST (10:00am PST)*
+
+The usual agenda will apply. The maintainers will give
+a quick status of what is happening in their worlds.
+
+Next we'll get updates from major contributors on what
+they have been doing and are planing on doing.
+  
+Finally, we'll open the floor to questions, comments, 
+concerns from the community.  
+
+Generally the meeting lasts between 30 to 45 mins, with 
+a very hard stop at 60mins. 
+
+Please feel to attend and participate!
+
+Again the Time: 10:00 am PST (01:00 pm EST)
+
+BlueJeans Video Link:
+    https://bluejeans.com/5642721552/
+
+The call in numbers are:
+
+U.S. and Canada: (800) 451-8679
+World wide toll free numbers
+   https://www.intercallonline.com/listNumbersByCode.action?confCode=5642721552
+
+Conference code: 564.272.1552
+
+steved.
+
