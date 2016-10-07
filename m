@@ -1,101 +1,138 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:58330 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:53530 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1752385AbcJGKGr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 7 Oct 2016 06:06:47 -0400
+        id S1752385AbcJGKGt (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 7 Oct 2016 06:06:49 -0400
 From: Stefan Hajnoczi <stefanha@redhat.com>
 To: linux-nfs@vger.kernel.org
 Cc: Anna Schumaker <anna.schumaker@netapp.com>,
         "J. Bruce Fields" <bfields@fieldses.org>,
         Trond Myklebust <trond.myklebust@primarydata.com>,
         Stefan Hajnoczi <stefanha@redhat.com>
-Subject: [PATCH v2 07/10] SUNRPC: drop unnecessary svc_bc_tcp_create() helper
-Date: Fri,  7 Oct 2016 11:01:51 +0100
-Message-Id: <1475834514-4058-8-git-send-email-stefanha@redhat.com>
+Subject: [PATCH v2 08/10] SUNRPC: add AF_VSOCK support to svc_xprt.c
+Date: Fri,  7 Oct 2016 11:01:52 +0100
+Message-Id: <1475834514-4058-9-git-send-email-stefanha@redhat.com>
 In-Reply-To: <1475834514-4058-1-git-send-email-stefanha@redhat.com>
 References: <1475834514-4058-1-git-send-email-stefanha@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-svc_bc_tcp_create() is a helper function that simply calls
-svc_bc_create_socket() with an added IPPROTO_TCP argument.
-
-svc_bc_create_socket() then checks that the protocol argument is indeed
-IPPROTO_TCP.
-
-This isn't necessary since svc_bc_tcp_create() is the only
-svc_bc_create_socket() caller.  The next patch adds a second caller for
-AF_VSOCK where IPPROTO_TCP will not be used.
-
-Scrap this scheme and just call svc_bc_create_socket() directly.
+Allow creation of AF_VSOCK service xprts.  This is needed for the
+"vsock-bc" backchannel.
 
 Signed-off-by: Stefan Hajnoczi <stefanha@redhat.com>
 ---
- net/sunrpc/svcsock.c | 21 +++------------------
- 1 file changed, 3 insertions(+), 18 deletions(-)
+ include/linux/sunrpc/svc_xprt.h | 12 ++++++++++++
+ net/sunrpc/svc_xprt.c           | 18 ++++++++++++++++++
+ 2 files changed, 30 insertions(+)
 
-diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
-index 57625f6..7c14028 100644
---- a/net/sunrpc/svcsock.c
-+++ b/net/sunrpc/svcsock.c
-@@ -70,7 +70,7 @@ static struct svc_xprt *svc_create_socket(struct svc_serv *, int,
- 					  struct net *, struct sockaddr *,
- 					  int, int);
- #if defined(CONFIG_SUNRPC_BACKCHANNEL)
--static struct svc_xprt *svc_bc_create_socket(struct svc_serv *, int,
-+static struct svc_xprt *svc_bc_create_socket(struct svc_serv *,
- 					     struct net *, struct sockaddr *,
- 					     int, int);
- static void svc_bc_sock_free(struct svc_xprt *xprt);
-@@ -1180,25 +1180,17 @@ static struct svc_xprt *svc_tcp_create(struct svc_serv *serv,
- }
+diff --git a/include/linux/sunrpc/svc_xprt.h b/include/linux/sunrpc/svc_xprt.h
+index ab02a45..01834f2 100644
+--- a/include/linux/sunrpc/svc_xprt.h
++++ b/include/linux/sunrpc/svc_xprt.h
+@@ -8,6 +8,7 @@
+ #define SUNRPC_SVC_XPRT_H
  
- #if defined(CONFIG_SUNRPC_BACKCHANNEL)
--static struct svc_xprt *svc_bc_create_socket(struct svc_serv *, int,
-+static struct svc_xprt *svc_bc_create_socket(struct svc_serv *,
- 					     struct net *, struct sockaddr *,
- 					     int, int);
- static void svc_bc_sock_free(struct svc_xprt *xprt);
+ #include <linux/sunrpc/svc.h>
++#include <linux/vm_sockets.h>
  
--static struct svc_xprt *svc_bc_tcp_create(struct svc_serv *serv,
--				       struct net *net,
--				       struct sockaddr *sa, int salen,
--				       int flags)
--{
--	return svc_bc_create_socket(serv, IPPROTO_TCP, net, sa, salen, flags);
--}
--
- static void svc_bc_tcp_sock_detach(struct svc_xprt *xprt)
+ struct module;
+ 
+@@ -153,12 +154,15 @@ static inline unsigned short svc_addr_port(const struct sockaddr *sa)
  {
+ 	const struct sockaddr_in *sin = (const struct sockaddr_in *)sa;
+ 	const struct sockaddr_in6 *sin6 = (const struct sockaddr_in6 *)sa;
++	const struct sockaddr_vm *svm = (const struct sockaddr_vm *)sa;
+ 
+ 	switch (sa->sa_family) {
+ 	case AF_INET:
+ 		return ntohs(sin->sin_port);
+ 	case AF_INET6:
+ 		return ntohs(sin6->sin6_port);
++	case AF_VSOCK:
++		return svm->svm_port;
+ 	}
+ 
+ 	return 0;
+@@ -171,6 +175,8 @@ static inline size_t svc_addr_len(const struct sockaddr *sa)
+ 		return sizeof(struct sockaddr_in);
+ 	case AF_INET6:
+ 		return sizeof(struct sockaddr_in6);
++	case AF_VSOCK:
++		return sizeof(struct sockaddr_vm);
+ 	}
+ 	BUG();
  }
+@@ -190,6 +196,7 @@ static inline char *__svc_print_addr(const struct sockaddr *addr,
+ {
+ 	const struct sockaddr_in *sin = (const struct sockaddr_in *)addr;
+ 	const struct sockaddr_in6 *sin6 = (const struct sockaddr_in6 *)addr;
++	const struct sockaddr_vm *svm = (const struct sockaddr_vm *)addr;
  
- static struct svc_xprt_ops svc_tcp_bc_ops = {
--	.xpo_create = svc_bc_tcp_create,
-+	.xpo_create = svc_bc_create_socket,
- 	.xpo_detach = svc_bc_tcp_sock_detach,
- 	.xpo_free = svc_bc_sock_free,
- 	.xpo_prep_reply_hdr = svc_tcp_prep_reply_hdr,
-@@ -1581,7 +1573,6 @@ static void svc_sock_free(struct svc_xprt *xprt)
-  * Create a back channel svc_xprt which shares the fore channel socket.
-  */
- static struct svc_xprt *svc_bc_create_socket(struct svc_serv *serv,
--					     int protocol,
- 					     struct net *net,
- 					     struct sockaddr *sin, int len,
- 					     int flags)
-@@ -1589,12 +1580,6 @@ static struct svc_xprt *svc_bc_create_socket(struct svc_serv *serv,
- 	struct svc_sock *svsk;
- 	struct svc_xprt *xprt;
+ 	switch (addr->sa_family) {
+ 	case AF_INET:
+@@ -203,6 +210,11 @@ static inline char *__svc_print_addr(const struct sockaddr *addr,
+ 			ntohs(sin6->sin6_port));
+ 		break;
  
--	if (protocol != IPPROTO_TCP) {
--		printk(KERN_WARNING "svc: only TCP sockets"
--			" supported on shared back channel\n");
--		return ERR_PTR(-EINVAL);
--	}
--
- 	svsk = kzalloc(sizeof(*svsk), GFP_KERNEL);
- 	if (!svsk)
- 		return ERR_PTR(-ENOMEM);
++	case AF_VSOCK:
++		snprintf(buf, len, "%u, port=%u",
++			 svm->svm_cid, svm->svm_port);
++		break;
++
+ 	default:
+ 		snprintf(buf, len, "unknown address type: %d", addr->sa_family);
+ 		break;
+diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
+index c3f6523..d929bc7 100644
+--- a/net/sunrpc/svc_xprt.c
++++ b/net/sunrpc/svc_xprt.c
+@@ -10,6 +10,7 @@
+ #include <linux/kthread.h>
+ #include <linux/slab.h>
+ #include <net/sock.h>
++#include <net/af_vsock.h>
+ #include <linux/sunrpc/addr.h>
+ #include <linux/sunrpc/stats.h>
+ #include <linux/sunrpc/svc_xprt.h>
+@@ -195,6 +196,13 @@ static struct svc_xprt *__svc_xpo_create(struct svc_xprt_class *xcl,
+ 		.sin6_port		= htons(port),
+ 	};
+ #endif
++#ifdef CONFIG_SUNRPC_XPRT_VSOCK
++	struct sockaddr_vm svm = {
++		.svm_family		= AF_VSOCK,
++		.svm_cid		= VMADDR_CID_ANY,
++		.svm_port		= port,
++	};
++#endif
+ 	struct sockaddr *sap;
+ 	size_t len;
+ 
+@@ -209,6 +217,12 @@ static struct svc_xprt *__svc_xpo_create(struct svc_xprt_class *xcl,
+ 		len = sizeof(sin6);
+ 		break;
+ #endif
++#ifdef CONFIG_SUNRPC_XPRT_VSOCK
++	case AF_VSOCK:
++		sap = (struct sockaddr *)&svm;
++		len = sizeof(svm);
++		break;
++#endif
+ 	default:
+ 		return ERR_PTR(-EAFNOSUPPORT);
+ 	}
+@@ -595,6 +609,10 @@ int svc_port_is_privileged(struct sockaddr *sin)
+ 	case AF_INET6:
+ 		return ntohs(((struct sockaddr_in6 *)sin)->sin6_port)
+ 			< PROT_SOCK;
++	case AF_VSOCK:
++		return ((struct sockaddr_vm *)sin)->svm_port <=
++			LAST_RESERVED_PORT;
++
+ 	default:
+ 		return 0;
+ 	}
 -- 
 2.7.4
 
