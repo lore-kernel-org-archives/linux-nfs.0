@@ -1,138 +1,117 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:53530 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:58376 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1752385AbcJGKGt (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 7 Oct 2016 06:06:49 -0400
+        id S1752385AbcJGKGv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 7 Oct 2016 06:06:51 -0400
 From: Stefan Hajnoczi <stefanha@redhat.com>
 To: linux-nfs@vger.kernel.org
 Cc: Anna Schumaker <anna.schumaker@netapp.com>,
         "J. Bruce Fields" <bfields@fieldses.org>,
         Trond Myklebust <trond.myklebust@primarydata.com>,
         Stefan Hajnoczi <stefanha@redhat.com>
-Subject: [PATCH v2 08/10] SUNRPC: add AF_VSOCK support to svc_xprt.c
-Date: Fri,  7 Oct 2016 11:01:52 +0100
-Message-Id: <1475834514-4058-9-git-send-email-stefanha@redhat.com>
+Subject: [PATCH v2 09/10] SUNRPC: add AF_VSOCK backchannel support
+Date: Fri,  7 Oct 2016 11:01:53 +0100
+Message-Id: <1475834514-4058-10-git-send-email-stefanha@redhat.com>
 In-Reply-To: <1475834514-4058-1-git-send-email-stefanha@redhat.com>
 References: <1475834514-4058-1-git-send-email-stefanha@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Allow creation of AF_VSOCK service xprts.  This is needed for the
-"vsock-bc" backchannel.
-
 Signed-off-by: Stefan Hajnoczi <stefanha@redhat.com>
 ---
- include/linux/sunrpc/svc_xprt.h | 12 ++++++++++++
- net/sunrpc/svc_xprt.c           | 18 ++++++++++++++++++
- 2 files changed, 30 insertions(+)
+ net/sunrpc/svcsock.c  | 27 +++++++++++++++++++++++++++
+ net/sunrpc/xprtsock.c | 25 +++++++++++++++++++++++++
+ 2 files changed, 52 insertions(+)
 
-diff --git a/include/linux/sunrpc/svc_xprt.h b/include/linux/sunrpc/svc_xprt.h
-index ab02a45..01834f2 100644
---- a/include/linux/sunrpc/svc_xprt.h
-+++ b/include/linux/sunrpc/svc_xprt.h
-@@ -8,6 +8,7 @@
- #define SUNRPC_SVC_XPRT_H
+diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
+index 7c14028..857c38e 100644
+--- a/net/sunrpc/svcsock.c
++++ b/net/sunrpc/svcsock.c
+@@ -1204,14 +1204,41 @@ static struct svc_xprt_class svc_tcp_bc_class = {
+ 	.xcl_max_payload = RPCSVC_MAXPAYLOAD_TCP,
+ };
  
- #include <linux/sunrpc/svc.h>
-+#include <linux/vm_sockets.h>
- 
- struct module;
- 
-@@ -153,12 +154,15 @@ static inline unsigned short svc_addr_port(const struct sockaddr *sa)
++#ifdef CONFIG_SUNRPC_XPRT_VSOCK
++static void svc_bc_vsock_sock_detach(struct svc_xprt *xprt)
++{
++}
++
++static struct svc_xprt_ops svc_vsock_bc_ops = {
++	.xpo_create = svc_bc_create_socket,
++	.xpo_detach = svc_bc_vsock_sock_detach,
++	.xpo_free = svc_bc_sock_free,
++	.xpo_prep_reply_hdr = svc_tcp_prep_reply_hdr,
++	.xpo_secure_port = svc_sock_secure_port,
++};
++
++static struct svc_xprt_class svc_vsock_bc_class = {
++	.xcl_name = "vsock-bc",
++	.xcl_owner = THIS_MODULE,
++	.xcl_ops = &svc_vsock_bc_ops,
++	.xcl_max_payload = RPCSVC_MAXPAYLOAD,
++};
++#endif /* CONFIG_SUNRPC_XPRT_VSOCK */
++
+ static void svc_init_bc_xprt_sock(void)
  {
- 	const struct sockaddr_in *sin = (const struct sockaddr_in *)sa;
- 	const struct sockaddr_in6 *sin6 = (const struct sockaddr_in6 *)sa;
-+	const struct sockaddr_vm *svm = (const struct sockaddr_vm *)sa;
- 
- 	switch (sa->sa_family) {
- 	case AF_INET:
- 		return ntohs(sin->sin_port);
- 	case AF_INET6:
- 		return ntohs(sin6->sin6_port);
-+	case AF_VSOCK:
-+		return svm->svm_port;
- 	}
- 
- 	return 0;
-@@ -171,6 +175,8 @@ static inline size_t svc_addr_len(const struct sockaddr *sa)
- 		return sizeof(struct sockaddr_in);
- 	case AF_INET6:
- 		return sizeof(struct sockaddr_in6);
-+	case AF_VSOCK:
-+		return sizeof(struct sockaddr_vm);
- 	}
- 	BUG();
+ 	svc_reg_xprt_class(&svc_tcp_bc_class);
++#ifdef CONFIG_SUNRPC_XPRT_VSOCK
++	svc_reg_xprt_class(&svc_vsock_bc_class);
++#endif
  }
-@@ -190,6 +196,7 @@ static inline char *__svc_print_addr(const struct sockaddr *addr,
+ 
+ static void svc_cleanup_bc_xprt_sock(void)
  {
- 	const struct sockaddr_in *sin = (const struct sockaddr_in *)addr;
- 	const struct sockaddr_in6 *sin6 = (const struct sockaddr_in6 *)addr;
-+	const struct sockaddr_vm *svm = (const struct sockaddr_vm *)addr;
- 
- 	switch (addr->sa_family) {
- 	case AF_INET:
-@@ -203,6 +210,11 @@ static inline char *__svc_print_addr(const struct sockaddr *addr,
- 			ntohs(sin6->sin6_port));
- 		break;
- 
-+	case AF_VSOCK:
-+		snprintf(buf, len, "%u, port=%u",
-+			 svm->svm_cid, svm->svm_port);
-+		break;
-+
- 	default:
- 		snprintf(buf, len, "unknown address type: %d", addr->sa_family);
- 		break;
-diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
-index c3f6523..d929bc7 100644
---- a/net/sunrpc/svc_xprt.c
-+++ b/net/sunrpc/svc_xprt.c
-@@ -10,6 +10,7 @@
- #include <linux/kthread.h>
- #include <linux/slab.h>
- #include <net/sock.h>
-+#include <net/af_vsock.h>
- #include <linux/sunrpc/addr.h>
- #include <linux/sunrpc/stats.h>
- #include <linux/sunrpc/svc_xprt.h>
-@@ -195,6 +196,13 @@ static struct svc_xprt *__svc_xpo_create(struct svc_xprt_class *xcl,
- 		.sin6_port		= htons(port),
- 	};
- #endif
+ 	svc_unreg_xprt_class(&svc_tcp_bc_class);
 +#ifdef CONFIG_SUNRPC_XPRT_VSOCK
-+	struct sockaddr_vm svm = {
-+		.svm_family		= AF_VSOCK,
-+		.svm_cid		= VMADDR_CID_ANY,
-+		.svm_port		= port,
-+	};
++	svc_unreg_xprt_class(&svc_vsock_bc_class);
 +#endif
- 	struct sockaddr *sap;
- 	size_t len;
- 
-@@ -209,6 +217,12 @@ static struct svc_xprt *__svc_xpo_create(struct svc_xprt_class *xcl,
- 		len = sizeof(sin6);
- 		break;
- #endif
-+#ifdef CONFIG_SUNRPC_XPRT_VSOCK
-+	case AF_VSOCK:
-+		sap = (struct sockaddr *)&svm;
-+		len = sizeof(svm);
-+		break;
-+#endif
- 	default:
- 		return ERR_PTR(-EAFNOSUPPORT);
- 	}
-@@ -595,6 +609,10 @@ int svc_port_is_privileged(struct sockaddr *sin)
- 	case AF_INET6:
- 		return ntohs(((struct sockaddr_in6 *)sin)->sin6_port)
- 			< PROT_SOCK;
-+	case AF_VSOCK:
-+		return ((struct sockaddr_vm *)sin)->svm_port <=
-+			LAST_RESERVED_PORT;
+ }
+ #else /* CONFIG_SUNRPC_BACKCHANNEL */
+ static void svc_init_bc_xprt_sock(void)
+diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
+index c61a0ed..27df0e2 100644
+--- a/net/sunrpc/xprtsock.c
++++ b/net/sunrpc/xprtsock.c
+@@ -1416,6 +1416,24 @@ static size_t xs_tcp_bc_maxpayload(struct rpc_xprt *xprt)
+ {
+ 	return PAGE_SIZE;
+ }
 +
- 	default:
- 		return 0;
- 	}
++#ifdef CONFIG_SUNRPC_XPRT_VSOCK
++static int xs_vsock_bc_up(struct svc_serv *serv, struct net *net)
++{
++	int ret;
++
++	ret = svc_create_xprt(serv, "vsock-bc", net, AF_VSOCK, 0,
++			      SVC_SOCK_ANONYMOUS);
++	if (ret < 0)
++		return ret;
++	return 0;
++}
++
++static size_t xs_vsock_bc_maxpayload(struct rpc_xprt *xprt)
++{
++	return PAGE_SIZE;
++}
++#endif /* !CONFIG_SUNRPC_XPRT_VSOCK */
+ #else
+ static inline int _xs_stream_read_data(struct rpc_xprt *xprt,
+ 				       struct xdr_skb_reader *desc)
+@@ -3424,6 +3442,13 @@ static struct rpc_xprt_ops xs_vsock_ops = {
+ 	.close			= xs_tcp_shutdown,
+ 	.destroy		= xs_destroy,
+ 	.print_stats		= xs_vsock_print_stats,
++#ifdef CONFIG_SUNRPC_BACKCHANNEL
++	.bc_setup		= xprt_setup_bc,
++	.bc_up			= xs_vsock_bc_up,
++	.bc_maxpayload		= xs_vsock_bc_maxpayload,
++	.bc_free_rqst		= xprt_free_bc_rqst,
++	.bc_destroy		= xprt_destroy_bc,
++#endif
+ };
+ 
+ static const struct rpc_timeout xs_vsock_default_timeout = {
 -- 
 2.7.4
 
