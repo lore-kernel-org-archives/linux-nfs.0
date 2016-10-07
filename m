@@ -1,50 +1,57 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:50382 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:38646 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1752292AbcJGKDB (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 7 Oct 2016 06:03:01 -0400
-Received: from int-mx09.intmail.prod.int.phx2.redhat.com (int-mx09.intmail.prod.int.phx2.redhat.com [10.5.11.22])
+        id S1750866AbcJGKFB (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 7 Oct 2016 06:05:01 -0400
+Received: from int-mx13.intmail.prod.int.phx2.redhat.com (int-mx13.intmail.prod.int.phx2.redhat.com [10.5.11.26])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by mx1.redhat.com (Postfix) with ESMTPS id 1ECC27EAA2
-        for <linux-nfs@vger.kernel.org>; Fri,  7 Oct 2016 10:03:00 +0000 (UTC)
+        by mx1.redhat.com (Postfix) with ESMTPS id 2D01C3D94B
+        for <linux-nfs@vger.kernel.org>; Fri,  7 Oct 2016 10:03:32 +0000 (UTC)
 From: Stefan Hajnoczi <stefanha@redhat.com>
 To: linux-nfs@vger.kernel.org
 Cc: Stefan Hajnoczi <stefanha@redhat.com>
-Subject: [PATCH 1/4] mount: don't use IPPROTO_UDP for address resolution
-Date: Fri,  7 Oct 2016 11:01:40 +0100
-Message-Id: <1475834503-3984-2-git-send-email-stefanha@redhat.com>
+Subject: [PATCH 2/4] mount: present AF_VSOCK addresses
+Date: Fri,  7 Oct 2016 11:01:41 +0100
+Message-Id: <1475834503-3984-3-git-send-email-stefanha@redhat.com>
 In-Reply-To: <1475834503-3984-1-git-send-email-stefanha@redhat.com>
 References: <1475834503-3984-1-git-send-email-stefanha@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Although getaddrinfo(3) with IPPROTO_UDP works fine for AF_INET and
-AF_INET6, the AF_VSOCK address family does not support IPPROTO_UDP and
-produces an error.
-
-Drop IPPROTO_UDP and use the 0 default (TCP) which works for all address
-families.  Modern NFS uses TCP anyway so it's strange to specify UDP.
+Format vsock hosts as "vsock:<cid>" so the addresses can be easily
+distinguished from IPv4 and IPv6 addresses.
 
 Signed-off-by: Stefan Hajnoczi <stefanha@redhat.com>
 ---
- utils/mount/stropts.c | 4 +---
- 1 file changed, 1 insertion(+), 3 deletions(-)
+ utils/mount/network.c | 8 ++++++++
+ 1 file changed, 8 insertions(+)
 
-diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
-index d5dfb5e..ab2d37b 100644
---- a/utils/mount/stropts.c
-+++ b/utils/mount/stropts.c
-@@ -885,9 +885,7 @@ static int nfs_try_mount(struct nfsmount_info *mi)
- 	int result = 0;
+diff --git a/utils/mount/network.c b/utils/mount/network.c
+index 7dceb2d..dcc38ca 100644
+--- a/utils/mount/network.c
++++ b/utils/mount/network.c
+@@ -44,6 +44,8 @@
+ #include <rpc/pmap_prot.h>
+ #include <rpc/pmap_clnt.h>
  
- 	if (mi->address == NULL) {
--		struct addrinfo hint = {
--			.ai_protocol	= (int)IPPROTO_UDP,
--		};
-+		struct addrinfo hint = {};
- 		int error;
- 		struct addrinfo *address;
++#include <linux/vm_sockets.h>
++
+ #include "sockaddr.h"
+ #include "xcommon.h"
+ #include "mount.h"
+@@ -324,6 +326,12 @@ int nfs_string_to_sockaddr(const char *address, struct sockaddr *sap,
+ int nfs_present_sockaddr(const struct sockaddr *sap, const socklen_t salen,
+ 			 char *buf, const size_t buflen)
+ {
++	if (sap->sa_family == AF_VSOCK) {
++		snprintf(buf, buflen, "vsock:%u",
++			 ((struct sockaddr_vm *)sap)->svm_cid);
++		return 1;
++	}
++
+ #ifdef HAVE_GETNAMEINFO
+ 	int result;
  
 -- 
 2.7.4
