@@ -1,101 +1,42 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from us-smtp-delivery-194.mimecast.com ([216.205.24.194]:34698 "EHLO
-        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S932268AbcJGQVg (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 7 Oct 2016 12:21:36 -0400
-From: Trond Myklebust <trondmy@primarydata.com>
-To: NeilBrown <neilb@suse.com>
-CC: Schumaker Anna <anna.schumaker@netapp.com>,
-        List Linux NFS Mailing <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] NFS: Don't disconnect open-owner on NFS4ERR_BAD_SEQID
-Date: Fri, 7 Oct 2016 16:21:30 +0000
-Message-ID: <C37BA8D0-2EAF-41D7-9086-D8729D4BAD48@primarydata.com>
-References: <87y46monel.fsf@notabene.neil.brown.name>
- <87bmyx3q3u.fsf@notabene.neil.brown.name>
-In-Reply-To: <87bmyx3q3u.fsf@notabene.neil.brown.name>
+Received: from mail-it0-f41.google.com ([209.85.214.41]:35359 "EHLO
+        mail-it0-f41.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S965089AbcJGQnN (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 7 Oct 2016 12:43:13 -0400
+Received: by mail-it0-f41.google.com with SMTP id o21so20643050itb.0
+        for <linux-nfs@vger.kernel.org>; Fri, 07 Oct 2016 09:43:12 -0700 (PDT)
 MIME-Version: 1.0
+From: Matt Garman <matthew.garman@gmail.com>
+Date: Fri, 7 Oct 2016 11:43:11 -0500
+Message-ID: <CAJvUf-CSsxw0v5fncoM3fKxwdSp6Gv_WO3dszcz+Rjpopc77_g@mail.gmail.com>
+Subject: Kerberized NFS client and slow user write performance
+To: linux-nfs <linux-nfs@vger.kernel.org>
 Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-DQo+IE9uIE9jdCA2LCAyMDE2LCBhdCAyMToyNywgTmVpbEJyb3duIDxuZWlsYkBzdXNlLmNvbT4g
-d3JvdGU6DQo+IA0KPiANCj4gSGkgYWdhaW4sDQo+IEkgcG9zdGVkIGEgdmVyc2lvbiBvZiB0aGlz
-IHBhdGNoIDQgbW9udGhzIGFuZCBnb3Qgbm8gcmVwbHksIHNvDQo+IHRob3VnaHQgaXQgbWlnaHQg
-YmUgdGltZSB0byB0cnkgYWdhaW4uDQo+IFRoaXMgdmVyc2lvbiBpbmNsdWRlcyBhIHNtYWxsIGNo
-YW5nZSB0byBoYW5kbGUgdGhlIGNhc2Ugd2hlbiBhDQo+IGRlbGVnYXRpb24gc3RhdGVpZCBnZXRz
-IGEgQkFEX1NUQVRFSUQsIGluIHRoZSBjb250ZXh0IG9mIHRoZSBvcGVuLW93bmVyDQo+IGdldHRp
-bmcgYSBCQURfU0VRSUQuDQo+IE9idmlvdXNseSB0aGlzIHdob2xlIGlzc3VlIGNhbiBvbmx5IGhh
-cHBlbiBpZiB0aGUgc2VydmVyIGlzIGJ1Z2d5IChvcg0KPiBpZiB0aGUgY2xpZW50IGlzIGJ1Z2d5
-LCBidXQgSSBkb24ndCB0aGluayBpdCBpcyksIGJ1dCBpdCB3b3VsZCBiZSBiZXN0DQo+IHRvIGhh
-bmRsZSB0aGF0IGNhc2UgZ3JhY2VmdWxseS4gIEN1cnJlbnRseSBpdCBzcGlucyBpbmRlZmluaXRl
-bHkuDQo+IA0KPiBUaGFua3MsDQo+IE5laWxCcm93bg0KPiANCj4gRnJvbTogTmVpbEJyb3duIDxu
-ZWlsYkBzdXNlLmNvbT4NCj4gU3ViamVjdDogW1BBVENIXSBORlM6IERvbid0IGRpc2Nvbm5lY3Qg
-b3Blbi1vd25lciBvbiBORlM0RVJSX0JBRF9TRVFJRA0KPiANCj4gV2hlbiBhbiBORlM0RVJSX0JB
-RF9TRVFJRCBpcyByZWNlaXZlZCB0aGUgb3Blbi1vd25lciBpcyByZW1vdmVkIGZyb20NCj4gdGhl
-IC0+c3RhdGVfb3duZXJzIHJidHJlZSBzbyB0aGF0IGl0IHdpbGwgbm8gbG9uZ2VyIGJlIHVzZWQu
-DQo+IA0KPiBJZiBhbnkgc3RhdGVpZHMgYXR0YWNoZWQgdG8gdGhpcyBvcGVuLW93bmVyIGFyZSBz
-dGlsbCBpbiB1c2UsIGFuZCBpZiBhDQo+IHJlcXVlc3QgdXNpbmcgb25lIGdldCBhbiBORlM0RVJS
-X0JBRF9TVEFURUlEIHJlcGx5LCB0aGlzIGNhbiBmb3IgYmFkLg0KPiANCj4gVGhlIHN0YXRlIGlz
-IG1hcmtlZCBhcyBuZWVkaW5nIHJlY292ZXJ5IGFuZCB0aGUgbmZzNF9zdGF0ZV9tYW5hZ2VyKCkN
-Cj4gaXMgc2NoZWR1bGVkIHRvIGNsZWFuIHVwLiAgbmZzNF9zdGF0ZV9tYW5hZ2VyKCkgZmluZHMg
-c3RhdGVzIHRvIGJlDQo+IHJlY292ZXJlZCBieSB3YWxraW5nIHRoZSBzdGF0ZV9vd25lcnMgcmJ0
-cmVlLiAgQXMgdGhlIG9wZW4tb3duZXIgaXMNCj4gbm90IGluIHRoZSByYnRyZWUsIHRoZSBiYWQg
-c3RhdGUgaXMgbm90IGZvdW5kIHNvIG5mczRfc3RhdGVfbWFuYWdlcigpDQo+IGNvbXBsZXRlcyBo
-YXZpbmcgZG9uZSBub3RoaW5nLiAgVGhlIHJlcXVlc3QgaXMgdGhlbiByZXRyaWVkLCB3aXRoIGEN
-Cj4gcHJlZGljYXRhYmxlIHJlc3VsdCAoaW5kZWZpbml0ZSByZXRyaWVzKS4NCj4gDQo+IFRoaXMg
-cGF0Y2ggY2hhbmdlcyBORlM0RVJSX0JBRF9TRVFJRCBoYW5kbGluZyB0byBsZWF2ZSB0aGUgb3Bl
-bi1vd25lcg0KPiBpbiB0aGUgcmJ0cmVlIGJ1dCBtYXJrIGl0IGEgJ3N0YWxlJy4gIFdpdGggdGhp
-cyB0aGUgaW5kZWZpbml0ZSByZXRyaWVzDQo+IG5vIGxvbmdlciBoYXBwZW4uICBFcnJvcnMgZ2V0
-IHRvIHVzZXItc3BhY2UgaW5zdGVhZCBpZiByZWNvdmVyeQ0KPiBkb2Vzbid0IHdvcmsuDQo+IA0K
-PiBJZiB0aGUgc3RhdGVpZCBpcyBmb3IgYSBkZWxlZ2F0aW9uLCB0aGUgcmVzdWx0IGlzIG1vcmUg
-Y29tcGxleC4NCj4gbmZzNF9zdGF0ZV9tYW5hZ2VyKCkgdHJpZXMgdG8gcmV0dXJuIHRoZSBkZWxl
-Z2F0aW9uIGJ1dCB1c2VzIHRoZQ0KPiBvcGVuLW93bmVyIHdpdGggdGhlIGJhZCBzZXFpZCB0byBv
-cGVuIGZpbGVzIG9uIHRoZSBzZXJ2ZXIsIGFuZCB0aGlzDQo+IGZhaWxzIHdpdGggbW9yZSBCQURf
-U0VRSUQgZXJyb3JzLiAgVG8gYXZvaWQgdGhpcyB3ZSB1cGRhdGUgdGhlDQo+IHNvX3NlcWlkLmNy
-ZWF0ZV90aW1lIG9mIHRoZSBiYWQgb3Blbi1vd25lciBzbyB0aGF0IGl0IGxvb2tzIHRvIHRoZSBz
-ZXJ2ZXINCj4gbGlrZSBhIG5ldyBvcGVuLW93bmVyIGFuZCBhbiBPUEVOX0NPTkZJUk0gaXMgcmVx
-dWVzdGVkLiAgVGhpcyBhbGxvd3MNCj4gdGhlIHJldHVybiBvZiB0aGUgZGVsYWdhdGlvbiB0byBj
-b21wbGV0ZS4NCj4gDQo+IFNpZ25lZC1vZmYtYnk6IE5laWxCcm93biA8bmVpbGJAc3VzZS5jb20+
-DQo+IC0tLQ0KPiBmcy9uZnMvbmZzNF9mcy5oICAgfCAgMyArKy0NCj4gZnMvbmZzL25mczRzdGF0
-ZS5jIHwgMjIgKysrKysrKysrLS0tLS0tLS0tLS0tLQ0KPiAyIGZpbGVzIGNoYW5nZWQsIDExIGlu
-c2VydGlvbnMoKyksIDE0IGRlbGV0aW9ucygtKQ0KPiANCj4gZGlmZiAtLWdpdCBhL2ZzL25mcy9u
-ZnM0X2ZzLmggYi9mcy9uZnMvbmZzNF9mcy5oDQo+IGluZGV4IDNmMGU0NTlmMjQ5OS4uNmJlMTk4
-MTQ1NTNmIDEwMDY0NA0KPiAtLS0gYS9mcy9uZnMvbmZzNF9mcy5oDQo+ICsrKyBiL2ZzL25mcy9u
-ZnM0X2ZzLmgNCj4gQEAgLTExMyw3ICsxMTMsOCBAQCBzdHJ1Y3QgbmZzNF9zdGF0ZV9vd25lciB7
-DQo+IA0KPiBlbnVtIHsNCj4gCU5GU19PV05FUl9SRUNMQUlNX1JFQk9PVCwNCj4gLQlORlNfT1dO
-RVJfUkVDTEFJTV9OT0dSQUNFDQo+ICsJTkZTX09XTkVSX1JFQ0xBSU1fTk9HUkFDRSwNCj4gKwlO
-RlNfT1dORVJfU1RBTEUsDQo+IH07DQo+IA0KPiAjZGVmaW5lIE5GU19MT0NLX05FVwkJMA0KPiBk
-aWZmIC0tZ2l0IGEvZnMvbmZzL25mczRzdGF0ZS5jIGIvZnMvbmZzL25mczRzdGF0ZS5jDQo+IGlu
-ZGV4IDc0Y2MzMjQ5MGM3YS4uOGVkMjI4NWZjNTI3IDEwMDY0NA0KPiAtLS0gYS9mcy9uZnMvbmZz
-NHN0YXRlLmMNCj4gKysrIGIvZnMvbmZzL25mczRzdGF0ZS5jDQo+IEBAIC0zOTcsNiArMzk3LDgg
-QEAgbmZzNF9maW5kX3N0YXRlX293bmVyX2xvY2tlZChzdHJ1Y3QgbmZzX3NlcnZlciAqc2VydmVy
-LCBzdHJ1Y3QgcnBjX2NyZWQgKmNyZWQpDQo+IAkJCXAgPSAmcGFyZW50LT5yYl9sZWZ0Ow0KPiAJ
-CWVsc2UgaWYgKGNyZWQgPiBzcC0+c29fY3JlZCkNCj4gCQkJcCA9ICZwYXJlbnQtPnJiX3JpZ2h0
-Ow0KPiArCQllbHNlIGlmICh0ZXN0X2JpdChORlNfT1dORVJfU1RBTEUsICZzcC0+c29fZmxhZ3Mp
-KQ0KPiArCQkJcCA9ICZwYXJlbnQtPnJiX2xlZnQ7DQo+IAkJZWxzZSB7DQo+IAkJCWlmICghbGlz
-dF9lbXB0eSgmc3AtPnNvX2xydSkpDQo+IAkJCQlsaXN0X2RlbF9pbml0KCZzcC0+c29fbHJ1KTsN
-Cj4gQEAgLTQyNCw2ICs0MjYsOCBAQCBuZnM0X2luc2VydF9zdGF0ZV9vd25lcl9sb2NrZWQoc3Ry
-dWN0IG5mczRfc3RhdGVfb3duZXIgKm5ldykNCj4gCQkJcCA9ICZwYXJlbnQtPnJiX2xlZnQ7DQo+
-IAkJZWxzZSBpZiAobmV3LT5zb19jcmVkID4gc3AtPnNvX2NyZWQpDQo+IAkJCXAgPSAmcGFyZW50
-LT5yYl9yaWdodDsNCj4gKwkJZWxzZSBpZiAodGVzdF9iaXQoTkZTX09XTkVSX1NUQUxFLCAmc3At
-PnNvX2ZsYWdzKSkNCj4gKwkJCXAgPSAmcGFyZW50LT5yYl9sZWZ0Ow0KPiAJCWVsc2Ugew0KPiAJ
-CQlpZiAoIWxpc3RfZW1wdHkoJnNwLT5zb19scnUpKQ0KPiAJCQkJbGlzdF9kZWxfaW5pdCgmc3At
-PnNvX2xydSk7DQo+IEBAIC00OTYsMTkgKzUwMCwxMSBAQCBuZnM0X2FsbG9jX3N0YXRlX293bmVy
-KHN0cnVjdCBuZnNfc2VydmVyICpzZXJ2ZXIsDQo+IHN0YXRpYyB2b2lkDQo+IG5mczRfZHJvcF9z
-dGF0ZV9vd25lcihzdHJ1Y3QgbmZzNF9zdGF0ZV9vd25lciAqc3ApDQo+IHsNCj4gLQlzdHJ1Y3Qg
-cmJfbm9kZSAqcmJfbm9kZSA9ICZzcC0+c29fc2VydmVyX25vZGU7DQo+IC0NCj4gLQlpZiAoIVJC
-X0VNUFRZX05PREUocmJfbm9kZSkpIHsNCj4gLQkJc3RydWN0IG5mc19zZXJ2ZXIgKnNlcnZlciA9
-IHNwLT5zb19zZXJ2ZXI7DQo+IC0JCXN0cnVjdCBuZnNfY2xpZW50ICpjbHAgPSBzZXJ2ZXItPm5m
-c19jbGllbnQ7DQo+IC0NCj4gLQkJc3Bpbl9sb2NrKCZjbHAtPmNsX2xvY2spOw0KPiAtCQlpZiAo
-IVJCX0VNUFRZX05PREUocmJfbm9kZSkpIHsNCj4gLQkJCXJiX2VyYXNlKHJiX25vZGUsICZzZXJ2
-ZXItPnN0YXRlX293bmVycyk7DQo+IC0JCQlSQl9DTEVBUl9OT0RFKHJiX25vZGUpOw0KPiAtCQl9
-DQo+IC0JCXNwaW5fdW5sb2NrKCZjbHAtPmNsX2xvY2spOw0KPiAtCX0NCj4gKwlzZXRfYml0KE5G
-U19PV05FUl9TVEFMRSwgJnNwLT5zb19mbGFncyk7DQo+ICsJLyogRGVsZWdhdGlvbiByZWNhbGwg
-bWlnaHQgaW5zaXN0IG9uIHVzaW5nIHRoaXMgb3Blbl9vd25lcg0KPiArCSAqIHNvIHJlc2V0IGl0
-IHRvIGZvcmNlIGEgbmV3ICdjb25maXJtJyBzdGFnZSB0byBiZSBpbml0aWF0ZWQuDQo+ICsJICov
-DQo+ICsJc3AtPnNvX3NlcWlkLmNyZWF0ZV90aW1lID0ga3RpbWVfZ2V0KCk7DQoNCkhtbeKApi4g
-SWYgeW914oCZcmUgZ29pbmcgdG8gZG8gdGhpcywgdGhlbiB3aHkgbWFyayB0aGUgc3RhdGVfb3du
-ZXIgYXMgc3RhbGUgYXQgYWxsPyBXaHkgbm90IGp1c3QgcmVzZXQgc3AtPnNvX3NlcWlkLmZsYWdz
-IGFuZCBjYWxsIG5mczRfY2xlYXJfb3Blbl9zdGF0ZSgpIHRvIGxldCB0aGUgc3RhdGUgcmVjb3Zl
-cnkgdHJ5IHRvIGRvIHdoYXQgaXQgY2FuLg0KDQoNCg==
+We seem to be increasingly hit by this bug:
 
+https://access.redhat.com/solutions/2040223
+"On RHEL 6 NFS client usring kerberos (krb5), one user experiences
+slow write performance, another does not"
+
+You need a RH subscription to see that in its entirety.  But the
+subject basically says it all: randomly, one or more users will be
+subjected to *terrible* NFS write performance that persists until
+reboot.
+
+There is a root cause shown, but that is cryptic to non-kernel devs;
+it doesn't explain from a user perspective what triggers this state.
+(That's why it appears to be random to me.)
+
+There is no solution or workaround given.  This appears to be on a
+per-user + per-server basis, so a crude workaround is to migrate the
+user to a different server.  And we do regular reboots, which somewhat
+hides the problem.
+
+Does this bug also exist in upstream (i.e. non distro specific Linux
+NFS code)?  If so, is there any more detail on it, and/or a fix?
+
+Thanks,
+Matt
