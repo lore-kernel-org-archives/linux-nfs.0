@@ -1,68 +1,124 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:39428 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:43730 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751222AbcJGKCH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 7 Oct 2016 06:02:07 -0400
-Received: from int-mx10.intmail.prod.int.phx2.redhat.com (int-mx10.intmail.prod.int.phx2.redhat.com [10.5.11.23])
-        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
-        (No client certificate requested)
-        by mx1.redhat.com (Postfix) with ESMTPS id 284997971C
-        for <linux-nfs@vger.kernel.org>; Fri,  7 Oct 2016 10:02:07 +0000 (UTC)
+        id S1751222AbcJGKCc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 7 Oct 2016 06:02:32 -0400
 From: Stefan Hajnoczi <stefanha@redhat.com>
 To: linux-nfs@vger.kernel.org
-Cc: Stefan Hajnoczi <stefanha@redhat.com>
-Subject: [PATCH 0/4] nfs-utils mount: add AF_VSOCK support
-Date: Fri,  7 Oct 2016 11:01:39 +0100
-Message-Id: <1475834503-3984-1-git-send-email-stefanha@redhat.com>
+Cc: Anna Schumaker <anna.schumaker@netapp.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        Stefan Hajnoczi <stefanha@redhat.com>
+Subject: [PATCH v2 00/10] NFS: add AF_VSOCK support to NFS client
+Date: Fri,  7 Oct 2016 11:01:44 +0100
+Message-Id: <1475834514-4058-1-git-send-email-stefanha@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The AF_VSOCK address family allows virtual machines to communicate with the
-hypervisor using a zero-configuration transport.  Both KVM and VMware
-hypervisors support AF_VSOCK and it was introduced in Linux 3.9.
+This patch series enables AF_VSOCK address family support in the NFS client.
+You can also get the commits from the vsock-nfs branch at
+https://github.com/stefanha/linux.git.
 
-This patch series adds AF_VSOCK support to mount.nfs(8) and works together with
-the kernel NFS client patches that I am also posting to
-linux-nfs@vger.kernel.org.
+The AF_VSOCK address family provides dgram and stream socket communication
+between virtual machines and hypervisors.  VMware VMCI and virtio (for KVM)
+transports are available, see net/vmw_vsock.
 
-NFS over AF_VSOCK is useful for file system sharing between a virtual machine
-and the host.  Due to the zero-configuration nature of AF_VSOCK this is more
-transparent to the user and more robust than asking the user to set up NFS over
-TCP/IP.
+The goal of this work is sharing files between virtual machines and
+hypervisors.  AF_VSOCK is well-suited to this because it requires no
+configuration inside the virtual machine, making it simple to manage and
+reliable.
 
-A file system from the host (hypervisor) can be mounted inside a virtual
-machine over AF_VSOCK like this:
+Why NFS over AF_VSOCK?
+----------------------
+It is unusual to add a new NFS transport, only TCP, RDMA, and UDP are currently
+supported.  Here is the rationale for adding AF_VSOCK.
 
-  (guest)# mount.nfs 2:/export /mnt -v -o clientaddr=3,proto=vsock
+Sharing files with a virtual machine can be configured manually:
+1. Add a dedicated network card to the virtual machine.  It will be used for
+   NFS traffic.
+2. Configure a local subnet and assign IP addresses to the virtual machine and
+   hypervisor
+3. Configure an NFS export on the hypervisor and start the NFS server
+4. Mount the export inside the virtual machine
 
-The VM's cid (address) is 3 and the hypervisor is 2.
+Automating these steps poses a problem: modifying network configuration inside
+the virtual machine is invasive.  It's hard to add a network interface to an
+arbitrary running system in an automated fashion, considering the network
+management tools, firewall rules, IP address usage, etc.
 
-For testing it's easiest to tunnel AF_VSOCK to the AF_INET nfsd on the host.
-The following utility can do this:
-https://github.com/stefanha/linux/blob/vsock-extras/nc-vsock.c
+Furthermore, the user may disrupt file sharing by accident when they add
+firewall rules, restart networking, etc because the NFS network interface is
+visible alongside the network interfaces managed by the user.
 
-  (host)# nc-vsock -l 2049 -t 127.0.0.1 2049
+AF_VSOCK is a zero-configuration network transport that avoids these problems.
+Adding it to a virtual machine is non-invasive.  It also avoids accidental
+misconfiguration by the user.  This is why "guest agents" and other services in
+various hypervisors (KVM, Xen, VMware, VirtualBox) do not use regular network
+interfaces.
 
-I will post nfsd patches for both the kernel and nfs-utils once they are
-complete.
+This is why AF_VSOCK is appropriate for providing shared files as a hypervisor
+service.
 
-Alternatively you can use nfs-ganesha's AF_VSOCK support to run a native
-AF_VSOCK server.
+The approach in this series
+---------------------------
+AF_VSOCK stream sockets can be used for NFSv4.1 much in the same way as TCP.
+RFC 1831 record fragments divide messages since SOCK_STREAM semantics are
+present.  The backchannel shares the connection just like the default TCP
+configuration.
 
-Note that this patch series relies on the AF_VSOCK getaddrinfo(3) support I
-recently posted to glibc:
-https://patchwork.ozlabs.org/patch/676589/
+Addresses are <Context ID, Port Number> pairs.  These patches use "vsock:<cid>"
+string representation to distinguish AF_VSOCK addresses from IPv4 and IPv6
+numeric addresses.
 
-Stefan Hajnoczi (4):
-  mount: don't use IPPROTO_UDP for address resolution
-  mount: present AF_VSOCK addresses
-  mount: accept AF_VSOCK in nfs_verify_family()
-  getport: recognize "vsock" netid
+The following example mounts /export from the hypervisor (CID 2) inside the
+virtual machine (CID 3):
 
- support/nfs/getport.c | 16 ++++++++++++----
- utils/mount/network.c | 10 +++++++++-
- utils/mount/stropts.c |  4 +---
- 3 files changed, 22 insertions(+), 8 deletions(-)
+  # /sbin/mount.nfs 2:/export /mnt -o clientaddr=3,proto=vsock
+
+Please see the nfs-utils patch series I have just sent to
+linux-nfs@vger.kernel.org for the necessary patches.
+
+Status
+------
+The virtio-vsock transport was merged in Linux 4.8 and the vhost-vsock-pci
+device is available in QEMU git master.  This means the underlying AF_VSOCK
+transport for KVM is now available upstream.
+
+I have begun work on nfsd support in the kernel and nfs-utils.  This is not
+complete yet and will be sent as separate patch series.
+
+Stefan Hajnoczi (10):
+  SUNRPC: add AF_VSOCK support to addr.[ch]
+  SUNRPC: rename "TCP" record parser to "stream" parser
+  SUNRPC: abstract tcp_read_sock() in record fragment parser
+  SUNRPC: extract xs_stream_reset_state()
+  VSOCK: add tcp_read_sock()-like vsock_read_sock() function
+  SUNRPC: add AF_VSOCK support to xprtsock.c
+  SUNRPC: drop unnecessary svc_bc_tcp_create() helper
+  SUNRPC: add AF_VSOCK support to svc_xprt.c
+  SUNRPC: add AF_VSOCK backchannel support
+  NFS: add AF_VSOCK support to NFS client
+
+ drivers/vhost/vsock.c                   |   1 +
+ fs/nfs/client.c                         |   2 +
+ fs/nfs/super.c                          |  11 +-
+ include/linux/sunrpc/addr.h             |  44 ++
+ include/linux/sunrpc/svc_xprt.h         |  12 +
+ include/linux/sunrpc/xprt.h             |   1 +
+ include/linux/sunrpc/xprtsock.h         |  36 +-
+ include/linux/virtio_vsock.h            |   4 +
+ include/net/af_vsock.h                  |   5 +
+ include/trace/events/sunrpc.h           |  28 +-
+ net/sunrpc/Kconfig                      |  10 +
+ net/sunrpc/addr.c                       |  57 +++
+ net/sunrpc/svc_xprt.c                   |  18 +
+ net/sunrpc/svcsock.c                    |  48 ++-
+ net/sunrpc/xprtsock.c                   | 703 +++++++++++++++++++++++++-------
+ net/vmw_vsock/af_vsock.c                |  16 +
+ net/vmw_vsock/virtio_transport.c        |   1 +
+ net/vmw_vsock/virtio_transport_common.c |  66 +++
+ net/vmw_vsock/vmci_transport.c          |   8 +
+ 19 files changed, 880 insertions(+), 191 deletions(-)
 
 -- 
 2.7.4
