@@ -1,150 +1,225 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-pf0-f193.google.com ([209.85.192.193]:34914 "EHLO
-        mail-pf0-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S933053AbcJHAmT (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 7 Oct 2016 20:42:19 -0400
-Received: by mail-pf0-f193.google.com with SMTP id t25so3586761pfg.2
-        for <linux-nfs@vger.kernel.org>; Fri, 07 Oct 2016 17:42:19 -0700 (PDT)
-MIME-Version: 1.0
-In-Reply-To: <1475834514-4058-1-git-send-email-stefanha@redhat.com>
-References: <1475834514-4058-1-git-send-email-stefanha@redhat.com>
-From: Cedric Blancher <cedric.blancher@gmail.com>
-Date: Sat, 8 Oct 2016 02:42:17 +0200
-Message-ID: <CALXu0UdS_m6ag7VDdbc-aJWH+fK=42GM0FEWH1Ht9M-9xy9Xjw@mail.gmail.com>
-Subject: Re: [PATCH v2 00/10] NFS: add AF_VSOCK support to NFS client
-To: Stefan Hajnoczi <stefanha@redhat.com>
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Anna Schumaker <anna.schumaker@netapp.com>,
+Received: from mx1.redhat.com ([209.132.183.28]:58284 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1753534AbcJKMvO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 11 Oct 2016 08:51:14 -0400
+From: Andreas Gruenbacher <agruenba@redhat.com>
+To: Alexander Viro <viro@zeniv.linux.org.uk>
+Cc: Andreas Gruenbacher <agruenba@redhat.com>,
+        Christoph Hellwig <hch@infradead.org>, "Theodore Ts'o" <tytso@mit.edu>,
+        Andreas Dilger <adilger.kernel@dilger.ca>,
         "J. Bruce Fields" <bfields@fieldses.org>,
-        Trond Myklebust <trond.myklebust@primarydata.com>
-Content-Type: text/plain; charset=UTF-8
+        Jeff Layton <jlayton@poochiereds.net>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>,
+        Dave Chinner <david@fromorbit.com>, linux-ext4@vger.kernel.org,
+        xfs@oss.sgi.com, linux-kernel@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-cifs@vger.kernel.org, linux-api@vger.kernel.org
+Subject: [PATCH v27 02/21] vfs: Add MAY_CREATE_FILE and MAY_CREATE_DIR permission flags
+Date: Tue, 11 Oct 2016 14:50:37 +0200
+Message-Id: <1476190256-1677-3-git-send-email-agruenba@redhat.com>
+In-Reply-To: <1476190256-1677-1-git-send-email-agruenba@redhat.com>
+References: <1476190256-1677-1-git-send-email-agruenba@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-So basically you're creating a new (Red Hat) Linux-only wormhole which
-bypasses all network security between VM host and guest and needs
-extra work&thought&tool support (wireshark, valgrind, ...) to handle,
-trace, debug, monitor and secure?
+Richacls distinguish between creating non-directories and directories. To
+support that, add an isdir parameter to may_create(). When checking
+inode_permission() for create permission, pass in an additional
+MAY_CREATE_FILE or MAY_CREATE_DIR mask flag.
 
-Ced
+Add may_replace() to allow checking for delete and create access when
+replacing an existing file in vfs_rename().
 
-On 7 October 2016 at 12:01, Stefan Hajnoczi <stefanha@redhat.com> wrote:
-> This patch series enables AF_VSOCK address family support in the NFS client.
-> You can also get the commits from the vsock-nfs branch at
-> https://github.com/stefanha/linux.git.
->
-> The AF_VSOCK address family provides dgram and stream socket communication
-> between virtual machines and hypervisors.  VMware VMCI and virtio (for KVM)
-> transports are available, see net/vmw_vsock.
->
-> The goal of this work is sharing files between virtual machines and
-> hypervisors.  AF_VSOCK is well-suited to this because it requires no
-> configuration inside the virtual machine, making it simple to manage and
-> reliable.
->
-> Why NFS over AF_VSOCK?
-> ----------------------
-> It is unusual to add a new NFS transport, only TCP, RDMA, and UDP are currently
-> supported.  Here is the rationale for adding AF_VSOCK.
->
-> Sharing files with a virtual machine can be configured manually:
-> 1. Add a dedicated network card to the virtual machine.  It will be used for
->    NFS traffic.
-> 2. Configure a local subnet and assign IP addresses to the virtual machine and
->    hypervisor
-> 3. Configure an NFS export on the hypervisor and start the NFS server
-> 4. Mount the export inside the virtual machine
->
-> Automating these steps poses a problem: modifying network configuration inside
-> the virtual machine is invasive.  It's hard to add a network interface to an
-> arbitrary running system in an automated fashion, considering the network
-> management tools, firewall rules, IP address usage, etc.
->
-> Furthermore, the user may disrupt file sharing by accident when they add
-> firewall rules, restart networking, etc because the NFS network interface is
-> visible alongside the network interfaces managed by the user.
->
-> AF_VSOCK is a zero-configuration network transport that avoids these problems.
-> Adding it to a virtual machine is non-invasive.  It also avoids accidental
-> misconfiguration by the user.  This is why "guest agents" and other services in
-> various hypervisors (KVM, Xen, VMware, VirtualBox) do not use regular network
-> interfaces.
->
-> This is why AF_VSOCK is appropriate for providing shared files as a hypervisor
-> service.
->
-> The approach in this series
-> ---------------------------
-> AF_VSOCK stream sockets can be used for NFSv4.1 much in the same way as TCP.
-> RFC 1831 record fragments divide messages since SOCK_STREAM semantics are
-> present.  The backchannel shares the connection just like the default TCP
-> configuration.
->
-> Addresses are <Context ID, Port Number> pairs.  These patches use "vsock:<cid>"
-> string representation to distinguish AF_VSOCK addresses from IPv4 and IPv6
-> numeric addresses.
->
-> The following example mounts /export from the hypervisor (CID 2) inside the
-> virtual machine (CID 3):
->
->   # /sbin/mount.nfs 2:/export /mnt -o clientaddr=3,proto=vsock
->
-> Please see the nfs-utils patch series I have just sent to
-> linux-nfs@vger.kernel.org for the necessary patches.
->
-> Status
-> ------
-> The virtio-vsock transport was merged in Linux 4.8 and the vhost-vsock-pci
-> device is available in QEMU git master.  This means the underlying AF_VSOCK
-> transport for KVM is now available upstream.
->
-> I have begun work on nfsd support in the kernel and nfs-utils.  This is not
-> complete yet and will be sent as separate patch series.
->
-> Stefan Hajnoczi (10):
->   SUNRPC: add AF_VSOCK support to addr.[ch]
->   SUNRPC: rename "TCP" record parser to "stream" parser
->   SUNRPC: abstract tcp_read_sock() in record fragment parser
->   SUNRPC: extract xs_stream_reset_state()
->   VSOCK: add tcp_read_sock()-like vsock_read_sock() function
->   SUNRPC: add AF_VSOCK support to xprtsock.c
->   SUNRPC: drop unnecessary svc_bc_tcp_create() helper
->   SUNRPC: add AF_VSOCK support to svc_xprt.c
->   SUNRPC: add AF_VSOCK backchannel support
->   NFS: add AF_VSOCK support to NFS client
->
->  drivers/vhost/vsock.c                   |   1 +
->  fs/nfs/client.c                         |   2 +
->  fs/nfs/super.c                          |  11 +-
->  include/linux/sunrpc/addr.h             |  44 ++
->  include/linux/sunrpc/svc_xprt.h         |  12 +
->  include/linux/sunrpc/xprt.h             |   1 +
->  include/linux/sunrpc/xprtsock.h         |  36 +-
->  include/linux/virtio_vsock.h            |   4 +
->  include/net/af_vsock.h                  |   5 +
->  include/trace/events/sunrpc.h           |  28 +-
->  net/sunrpc/Kconfig                      |  10 +
->  net/sunrpc/addr.c                       |  57 +++
->  net/sunrpc/svc_xprt.c                   |  18 +
->  net/sunrpc/svcsock.c                    |  48 ++-
->  net/sunrpc/xprtsock.c                   | 703 +++++++++++++++++++++++++-------
->  net/vmw_vsock/af_vsock.c                |  16 +
->  net/vmw_vsock/virtio_transport.c        |   1 +
->  net/vmw_vsock/virtio_transport_common.c |  66 +++
->  net/vmw_vsock/vmci_transport.c          |   8 +
->  19 files changed, 880 insertions(+), 191 deletions(-)
->
-> --
-> 2.7.4
->
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Signed-off-by: Andreas Gruenbacher <agruenba@redhat.com>
+Reviewed-by: J. Bruce Fields <bfields@redhat.com>
+Reviewed-by: Andreas Dilger <adilger@dilger.ca>
+Reviewed-by: Steve French <steve.french@primarydata.com>
+Reviewed-by: Jeff Layton <jlayton@redhat.com>
+---
+ fs/namei.c         | 49 +++++++++++++++++++++++++++++++++----------------
+ include/linux/fs.h |  2 ++
+ 2 files changed, 35 insertions(+), 16 deletions(-)
 
-
-
+diff --git a/fs/namei.c b/fs/namei.c
+index 33bdea7..7290dea 100644
+--- a/fs/namei.c
++++ b/fs/namei.c
+@@ -463,7 +463,9 @@ static int sb_permission(struct super_block *sb, struct inode *inode, int mask)
+  * this, letting us set arbitrary permissions for filesystem access without
+  * changing the "normal" UIDs which are used for other things.
+  *
+- * When checking for MAY_APPEND, MAY_WRITE must also be set in @mask.
++ * MAY_WRITE must be set in @mask whenever MAY_APPEND, MAY_CREATE_FILE, or
++ * MAY_CREATE_DIR are set.  That way, file systems that don't support these
++ * permissions will check for MAY_WRITE instead.
+  */
+ int inode_permission(struct inode *inode, int mask)
+ {
+@@ -2765,7 +2767,8 @@ EXPORT_SYMBOL(__check_sticky);
+  * 11. We don't allow removal of NFS sillyrenamed files; it's handled by
+  *     nfs_async_unlink().
+  */
+-static int may_delete(struct inode *dir, struct dentry *victim, bool isdir)
++static int may_delete_or_replace(struct inode *dir, struct dentry *victim,
++				 bool isdir, int mask)
+ {
+ 	struct inode *inode = d_backing_inode(victim);
+ 	int error;
+@@ -2777,7 +2780,7 @@ static int may_delete(struct inode *dir, struct dentry *victim, bool isdir)
+ 	BUG_ON(victim->d_parent->d_inode != dir);
+ 	audit_inode_child(dir, victim, AUDIT_TYPE_CHILD_DELETE);
+ 
+-	error = inode_permission(dir, MAY_WRITE | MAY_EXEC);
++	error = inode_permission(dir, mask);
+ 	if (error)
+ 		return error;
+ 	if (IS_APPEND(dir))
+@@ -2800,6 +2803,18 @@ static int may_delete(struct inode *dir, struct dentry *victim, bool isdir)
+ 	return 0;
+ }
+ 
++static int may_delete(struct inode *dir, struct dentry *victim, bool isdir)
++{
++	return may_delete_or_replace(dir, victim, isdir, MAY_WRITE | MAY_EXEC);
++}
++
++static int may_replace(struct inode *dir, struct dentry *victim, bool isdir)
++{
++	int mask = isdir ? MAY_CREATE_DIR : MAY_CREATE_FILE;
++
++	return may_delete_or_replace(dir, victim, isdir, mask | MAY_WRITE | MAY_EXEC);
++}
++
+ /*	Check whether we can create an object with dentry child in directory
+  *  dir.
+  *  1. We can't do it if child already exists (open has special treatment for
+@@ -2809,9 +2824,11 @@ static int may_delete(struct inode *dir, struct dentry *victim, bool isdir)
+  *  4. We should have write and exec permissions on dir
+  *  5. We can't do it if dir is immutable (done in permission())
+  */
+-static inline int may_create(struct inode *dir, struct dentry *child)
++static inline int may_create(struct inode *dir, struct dentry *child, bool isdir)
+ {
++	int mask = isdir ? MAY_CREATE_DIR : MAY_CREATE_FILE;
+ 	struct user_namespace *s_user_ns;
++
+ 	audit_inode_child(dir, child, AUDIT_TYPE_CHILD_CREATE);
+ 	if (child->d_inode)
+ 		return -EEXIST;
+@@ -2821,7 +2838,7 @@ static inline int may_create(struct inode *dir, struct dentry *child)
+ 	if (!kuid_has_mapping(s_user_ns, current_fsuid()) ||
+ 	    !kgid_has_mapping(s_user_ns, current_fsgid()))
+ 		return -EOVERFLOW;
+-	return inode_permission(dir, MAY_WRITE | MAY_EXEC);
++	return inode_permission(dir, MAY_WRITE | MAY_EXEC | mask);
+ }
+ 
+ /*
+@@ -2871,7 +2888,7 @@ EXPORT_SYMBOL(unlock_rename);
+ int vfs_create(struct inode *dir, struct dentry *dentry, umode_t mode,
+ 		bool want_excl)
+ {
+-	int error = may_create(dir, dentry);
++	int error = may_create(dir, dentry, false);
+ 	if (error)
+ 		return error;
+ 
+@@ -3664,7 +3681,7 @@ EXPORT_SYMBOL(user_path_create);
+ 
+ int vfs_mknod(struct inode *dir, struct dentry *dentry, umode_t mode, dev_t dev)
+ {
+-	int error = may_create(dir, dentry);
++	int error = may_create(dir, dentry, false);
+ 
+ 	if (error)
+ 		return error;
+@@ -3758,7 +3775,7 @@ SYSCALL_DEFINE3(mknod, const char __user *, filename, umode_t, mode, unsigned, d
+ 
+ int vfs_mkdir(struct inode *dir, struct dentry *dentry, umode_t mode)
+ {
+-	int error = may_create(dir, dentry);
++	int error = may_create(dir, dentry, true);
+ 	unsigned max_links = dir->i_sb->s_max_links;
+ 
+ 	if (error)
+@@ -3814,7 +3831,7 @@ SYSCALL_DEFINE2(mkdir, const char __user *, pathname, umode_t, mode)
+ 
+ int vfs_rmdir(struct inode *dir, struct dentry *dentry)
+ {
+-	int error = may_delete(dir, dentry, 1);
++	int error = may_delete(dir, dentry, true);
+ 
+ 	if (error)
+ 		return error;
+@@ -3936,7 +3953,7 @@ SYSCALL_DEFINE1(rmdir, const char __user *, pathname)
+ int vfs_unlink(struct inode *dir, struct dentry *dentry, struct inode **delegated_inode)
+ {
+ 	struct inode *target = dentry->d_inode;
+-	int error = may_delete(dir, dentry, 0);
++	int error = may_delete(dir, dentry, false);
+ 
+ 	if (error)
+ 		return error;
+@@ -4070,7 +4087,7 @@ SYSCALL_DEFINE1(unlink, const char __user *, pathname)
+ 
+ int vfs_symlink(struct inode *dir, struct dentry *dentry, const char *oldname)
+ {
+-	int error = may_create(dir, dentry);
++	int error = may_create(dir, dentry, false);
+ 
+ 	if (error)
+ 		return error;
+@@ -4153,7 +4170,7 @@ int vfs_link(struct dentry *old_dentry, struct inode *dir, struct dentry *new_de
+ 	if (!inode)
+ 		return -ENOENT;
+ 
+-	error = may_create(dir, new_dentry);
++	error = may_create(dir, new_dentry, false);
+ 	if (error)
+ 		return error;
+ 
+@@ -4357,14 +4374,14 @@ int vfs_rename(struct inode *old_dir, struct dentry *old_dentry,
+ 		return error;
+ 
+ 	if (!target) {
+-		error = may_create(new_dir, new_dentry);
++		error = may_create(new_dir, new_dentry, is_dir);
+ 	} else {
+ 		new_is_dir = d_is_dir(new_dentry);
+ 
+ 		if (!(flags & RENAME_EXCHANGE))
+-			error = may_delete(new_dir, new_dentry, is_dir);
++			error = may_replace(new_dir, new_dentry, is_dir);
+ 		else
+-			error = may_delete(new_dir, new_dentry, new_is_dir);
++			error = may_replace(new_dir, new_dentry, new_is_dir);
+ 	}
+ 	if (error)
+ 		return error;
+@@ -4618,7 +4635,7 @@ SYSCALL_DEFINE2(rename, const char __user *, oldname, const char __user *, newna
+ 
+ int vfs_whiteout(struct inode *dir, struct dentry *dentry)
+ {
+-	int error = may_create(dir, dentry);
++	int error = may_create(dir, dentry, false);
+ 	if (error)
+ 		return error;
+ 
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index b88225a..26455c6 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -84,6 +84,8 @@ typedef int (dio_iodone_t)(struct kiocb *iocb, loff_t offset,
+ #define MAY_CHDIR		0x00000040
+ /* called from RCU mode, don't block */
+ #define MAY_NOT_BLOCK		0x00000080
++#define MAY_CREATE_FILE		0x00000100
++#define MAY_CREATE_DIR		0x00000200
+ 
+ /*
+  * flags in file.f_mode.  Note that FMODE_READ and FMODE_WRITE must correspond
 -- 
-Cedric Blancher <cedric.blancher@gmail.com>
-[https://plus.google.com/u/0/+CedricBlancher/]
-Institute Pasteur
+2.7.4
+
