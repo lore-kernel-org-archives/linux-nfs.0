@@ -1,84 +1,151 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:39068 "EHLO mx2.suse.de"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751882AbcJMHdm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 13 Oct 2016 03:33:42 -0400
-Received: from relay2.suse.de (charybdis-ext.suse.de [195.135.220.254])
-        by mx2.suse.de (Postfix) with ESMTP id 916D1AC47
-        for <linux-nfs@vger.kernel.org>; Thu, 13 Oct 2016 07:18:09 +0000 (UTC)
-From: NeilBrown <neilb@suse.com>
-To: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Date: Thu, 13 Oct 2016 18:18:04 +1100
-Subject: Incorrect(?) use of open_state->stateid in pnfs
-Message-ID: <87zim8zphv.fsf@notabene.neil.brown.name>
+Received: from smtp.ctxuk.citrix.com ([185.25.65.24]:60807 "EHLO
+        SMTP.EU.CITRIX.COM" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1752572AbcJMJ3a (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 13 Oct 2016 05:29:30 -0400
+From: Stefano Panella <stefano.panella@citrix.com>
+To: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "netdev@vger.kernel.org" <netdev@vger.kernel.org>
+Subject: Possible regression on NSFv3/sunrpc timeouts when using
+ NFS_CS_DISCRTRY
+Date: Thu, 13 Oct 2016 09:29:27 +0000
+Message-ID: <294b7f15dea745818d91ad9eab16a30b@AMSPEX02CL03.citrite.net>
+Content-Type: text/plain; charset="iso-8859-1"
 MIME-Version: 1.0
-Content-Type: multipart/signed; boundary="=-=-=";
-        micalg=pgp-sha256; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---=-=-=
-Content-Type: text/plain
+Hi all,
+
+I think there has been a change in the net/sunrpc code introduced with 
+
+commit 9cbc94fb06f98de0e8d393eaff09c790f4c3ba46
+Author: Trond Myklebust <trond.myklebust@primarydata.com>
+Date:   Sun Feb 8 15:50:27 2015 -0500
+
+    SUNRPC: Remove TCP socket linger code
+
+    Now that we no longer use the partial shutdown code when closing the
+    socket, we no longer need to worry about the TCP linger2 state.
+
+    Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+
+which has caused some regressions removing the functionality which was mentioned 
+in the email thread I have attached below.
+
+We have exactly the same use case as the one in the email thread. We call
+    __set_bit(NFS_CS_DISCRTRY, &clp->cl_flags)
+also in NSFv3
+
+which means we have been relying on the lingering_timeout code to disconnect
+and be able to reconnect quickly if the client IP suddenly changes.
+
+As we stand, before moving to 4.4. kernel, where lingering_timeout functionality 
+has been removed, we were able to talk again with the NFSv3 share in 60 + 15 seconds
+(XS_TCP_LINGER_TO = 15 seconds) while now, after the commit above,  
+we need 60 + 924 seconds.
+
+This is because we are keeping the global /proc/sys/net/ipv4/tcp_retries2 = 15 as it is by 
+default and we would not want to risk to change it to something else.
+
+I have two questions:
+
+1) Can we say removing the lingering_timeout functionality caused a regression?
+2) Is there any way this could be fixed reintroducing it or putting a new mechanism in place
+so we can talk to the share using a new connection before the previous (with the old IP) times
+out with tcp_retries2 after 15 minutes?
+
+Please have a look at the thread I have included below and let me know what do you think
+about this problem.
+
+If you can recommend a way you would like this to be addressed, I would be happy to 
+contribute a patch.
+
+Thanks everyone,
+
+Stefano
 
 
-Suppose I open/create a file over pNFS and am given a WRITE delegation.
-I then chmod the file (as rsync is wont to do) so the delegation is
-immediately returned.
-I then proceed to write, which triggers a LAYOUT_GET request.  The
-stateid for that request it taken from state->stateid, which is still
-the delegation stateid.  Naturally it gets NFS4ERR_BAD_STATEID.
+THREAD I AM REFERRING TO:
+----------------------------------------------------------------------------------------------------------------------
 
-When an OPEN is given a delegation, the delegation stateid gets copied
-into ->stateid and the open stateid is left in ->open_stateid.
-When the delegation is returned, this it done by inode, not open_state,
-so it doesn't have easy access to reset the ->stateid.   It could find
-all the open_states and fix them up I guess it ....
+On Wed, 24 Sep 2014 16:39:55 +0100 Benjamin ESTRABAUD <be@xxxxxxxxxx> wrote:
 
-Other than this usage in pnfs (which dates back to commit b1f69b754e and
-is, I believe, incorrect) the ->stateid is *only* used to help find the
-write state to recover when an error is reported and the state needs to
-be recovered (... though the usage in nfs4_do_handle_exception()
-introduced by 272289a3df is a bit different).
+> Hi!
+> 
+> I've got a scenario where I'm connected to a NFS share on a client, have 
+> a file descriptor open as read only (could also be write) on a file from 
+> that share, and I'm suddenly changing the IP address of that client.
+> 
+> Obviously, the NFS share will hang, so if I now try to read the file 
+> descriptor I've got open (here in Python), the "read" call will also hang.
+> 
+> However, the driver seems to attempt to do something (maybe 
+> save/determine whether the existing connection can be saved) and then, 
+> after about 20 minutes the driver transparently reconnects to the NFS 
+> share (which is what I wanted anyways) and the "read" call instantiated 
+> earlier simply finishes (I don't even have to re-open the file again or 
+> even call "read" again).
+> 
+> The dmesg prints I get are as follow:
+> 
+> [ 4424.500380] nfs: server 10.0.2.17 not responding, still trying <-- 
+> changed IP address and started reading the file.
+> [ 4451.560467] nfs: server 10.0.2.17 OK <--- The NFS share was 
+> reconnected, the "read" call completes successfully.
 
-Anyway, no other code uses it when choosing a stateid to send in a
-request.  So no other code inadvertently uses the delegation stateid
-after it has been returned.
+The difference between these timestamps is 27 seconds, which is a lot less
+than the "20 minutes" that you quote.  That seems odd.
 
-How should this be fixed?
+If you adjust
+   /proc/sys/net/ipv4/tcp_retries2
 
-- have nfs_start_delegation_return() iterated over all open states
-  and copy the open_stateid over the stateid??
+you can reduce the current timeout.
+See Documentation/networking/ip-sysctl.txt for details on the setting.
 
-- have pnfs_update_layout() use ->open_stateid rather than ->stateid ??
-  I suspect that would be wrong.
+https://www.kernel.org/doc/Documentation/networking/ip-sysctl.txt
 
-- have pnfs_update_layout() use ->open_stateid if NFS_I()->delegation
-  is NULL ??
+It claims the default gives an effective timeout of 924 seconds or about 15
+minutes.
 
-Something else?
+I just tried and the timeout was 1047 seconds. This is probably the next
+retry after 924 seconds.
 
-The last seems easiest, but I'm not certain it is best.
+If I reduce tcp_retries2 to '3' (well below the recommended minimum) I get
+a timeout of 5 seconds.
+You can possibly find a suitable number that isn't too small...
 
-Thanks,
+Alternately you could use NFSv4.  It will close the connection on a timeout.
+In the default config I measure a 78 second timeout, which is probably more
+acceptable.  This number would respond to the timeo mount option.
+If I set that to 100, I get a 28 second timeout.
+
+The same effect could be provided for NFSv3 by setting:
+
+           __set_bit(NFS_CS_DISCRTRY, &clp->cl_flags);
+
+somewhere appropriate.  I wonder why that isn't being done for v3 already...
+Probably some subtle protocol difference.
+
 NeilBrown
 
---=-=-=
-Content-Type: application/pgp-signature; name="signature.asc"
-
------BEGIN PGP SIGNATURE-----
-
-iQIcBAEBCAAGBQJX/zUsAAoJEDnsnt1WYoG5vd4QAL/hD0l0IZe7w3qdGen+ocdZ
-0hLyL3rAJCfLlfeiz0jYxkgBm3SAwi5VX44hVuHZs+gbPXQGF0vcGjJr0vtDEuu8
-2rmiFZY9eweM+pXFFeunICajs0FpEWc7oZombLNhpVtmZVMJgcRbGB713QRTVj75
-hOtroc57paHQRcDd7zTRR4YDE9l3hLLsDapDcy7jxzZPDo12ia/d30vPFlOZ4/jU
-z3pyGUMS+WO/Qjba6dcBBCv+fX45B8MaZWcVfEUXrCt5yR7RncxoC8zShfjaLON+
-WmDnZxS+B9hK/v4oCFvUZQfWKyS+QtyBEQzUX8slBaYe37I+AKZ/ZDW6eSSioQn5
-GAyklW1/KvCLQ5WIq0YE+aSHqBVlONqmZ4QaUTVAi/7oNOESQ8p2F3QL+5CDh8mg
-i99RZGY1uDPcZ4YilFygp8SbBKTZjEnyN+cGuquyn8/TRDW9UjXDZVS/BsQO2TWL
-UCDprkSQpkNaklqtpRAWL6XX60rr3GXtTpmDZFBQ4JWC78/UG3pD/8oyl+Yj3Twj
-I57jMjDaMFFMlunkeNpGGtGwRy+z0ktx5DIu3YZic9pGo8hruyvzWiqx4VXws25h
-GDdcN0xvi+Ihch1FKhWIGxpNESmqGMHuqyAdcR1DjGoJHeEd5hyXw8UyfqMnh/hg
-db3IDUZ3uEmW9gvBb7DM
-=kQsD
------END PGP SIGNATURE-----
---=-=-=--
+ 
+> I would like to know if there was any way to tune this behaviour, 
+> telling the NFS driver to reconnect if a share is unavailable after say 
+> 10 seconds.
+> 
+> I tried the following options without any success:
+> 
+> retry=0; hard/soft; timeo=3; retrans=1; bg/fg
+> 
+> I am running on a custom distro (homemade embedded distro, not based on 
+> anything in particular) running stock kernel 3.10.18 compiled for i686.
+> 
+> Would anyone know what I could do to force NFS into reconnecting a 
+> seemingly "dead" session sooner?
+> 
+> Thanks in advance for your help.
+> 
+> Regards,
+> 
+> Ben - MPSTOR.
