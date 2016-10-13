@@ -1,15 +1,15 @@
 Return-Path: <neilb@suse.de>
 From: NeilBrown <neilb@suse.com>
-To: Anna Schumaker <Anna.Schumaker@netapp.com>,
-        Jeff Layton <jlayton@redhat.com>,
-        Trond Myklebust <trond.myklebust@primarydata.com>
-Date: Thu, 13 Oct 2016 15:04:48 +1100
+To: Jeff Layton <jlayton@redhat.com>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>
+Date: Thu, 13 Oct 2016 15:15:31 +1100
 Cc: Benjamin Coddington <bcodding@redhat.com>,
         Linux NFS Mailing List <linux-nfs@vger.kernel.org>
 Subject: Re: [PATCH 3/5] NFSv4: change nfs4_select_rw_stateid to take a lock_context inplace of lock_owner
-In-Reply-To: <3006e49d-0e09-96c1-74c6-9ffe789ce0e5@Netapp.com>
-References: <147623977637.19592.12766016823334433969.stgit@noble> <147623995856.19592.8461168656619949864.stgit@noble> <1476275602.2541.20.camel@redhat.com> <3006e49d-0e09-96c1-74c6-9ffe789ce0e5@Netapp.com>
-Message-ID: <87bmyo28tb.fsf@notabene.neil.brown.name>
+In-Reply-To: <1476275602.2541.20.camel@redhat.com>
+References: <147623977637.19592.12766016823334433969.stgit@noble> <147623995856.19592.8461168656619949864.stgit@noble> <1476275602.2541.20.camel@redhat.com>
+Message-ID: <878tts28bg.fsf@notabene.neil.brown.name>
 MIME-Version: 1.0
 Content-Type: multipart/signed; boundary="=-=-=";
 	micalg=pgp-sha256; protocol="application/pgp-signature"
@@ -17,27 +17,31 @@ List-ID: <linux-nfs.vger.kernel.org>
 
 --=-=-=
 Content-Type: text/plain
-Content-Transfer-Encoding: quoted-printable
 
-On Thu, Oct 13 2016, Anna Schumaker wrote:
->>=20
->> Also, as a side note: There were some changes around the NFS file
->> locking code that went into the CB_NOTIFY_LOCK patches. Those are in
->> linux-next now, and I _think_ Anna is going to merge them for v4.9. I
->> don't see any obvious conflicts here, but you may want to ensure that
->> you're basing this on top of linux-next to minimize them.
+On Wed, Oct 12 2016, Jeff Layton wrote:
+
+>> -	fl_owner = lockowner->l_owner;
+>> +	if (l_ctx == NULL)
+>> +		fl_owner = current->files;
+>> +	else
+>> +		fl_owner = l_ctx->lockowner.l_owner;
 >
-> Yep, they'll be in 4.9.  Updating against those changes wouldn't hurt :)
+>
+> This I'm less sure of. Suppose we have only a flock lock on a file and
+> then truncate it. This is going to miss finding that stateid, no?
+>
+> I wonder if we need to look harder at the state to determine which owner to use in this case?
 
-Ok....
-I note that
-  git://git.linux-nfs.org/projects/anna/linux-nfs.git#linux-next
+I didn't think this was possible with the current API, but I had
+forgotten about (or never knew about) ATTR_FILE.
+setattr does have access to the file, so it can find all the nfs state
+info needed.
+And when I modify the patch series to make use of that, it removes some
+ugly bits :-)
 
-isn't in
-  git://git.kernel.org/pub/scm/linux/kernel/git/next/linux-next.git
+I'll repost after a little testing.
 
-Should it be?
-
+Thanks,
 NeilBrown
 
 --=-=-=
@@ -45,18 +49,18 @@ Content-Type: application/pgp-signature; name="signature.asc"
 
 -----BEGIN PGP SIGNATURE-----
 
-iQIcBAEBCAAGBQJX/wfgAAoJEDnsnt1WYoG5gkgP/21wLo+IF2Ck1tWgnCljh9Fn
-aj3DvZHA9d5XGVpdn1Q/7+IZVjSLWr9i08qD83WbjQEBAEzNn6lP/xq7GDhKLgRf
-Fcvkqiri9o7Sg5BRZ1LFACck7F8mzkuy+FfZ6TcpAjJ3cWTasDbUTZm/oacpS4dE
-wPDsafbkKXb8i8vQLdERSNhv7I0Y9JGl0Tc6tsrYGwUY91GrMctn5hng1yB+sSS1
-9t2q46uKyNhfemD6DWVX7ktaKyKWZozm+zWQeWN5v9AignZgZMd8nDgtR/o+CIzd
-25s1Eh9dFgquV7aPb8xT0n7J8wAqMIwL6WKYEtqRKy/W+v250JbswxQGAMPnDRh5
-pTaz+l8uE5UsXALQeZsKyOw9lABMRlYO6jE91sAPqq4r9nmY1FjNW/JaaJY7tEYU
-Q2uI0LmmrlpnrFg7hQABcbbm4ZSqHNe1oS634DkeSYj1ICMchIVzoYFdVtZzgMox
-srvX/jL64jqRAIm7LwLvCkNEbmnZkBGraureAZnzbyt+RytyFkSVf3jP0NwUVCIo
-lZuDdFwzDp6uWKIfmsmXS5cUuJBeqJoxqE5oGhi21JMiW3UDg4896mccH4a+wPxt
-fBM1HYmZ1woyohHrmNO9fprNpHr4/LWxUF1J3Br7Tk35VEs+mms+K+LUyJICGGDI
-R7McSugHpPP9JK/y+W3o
-=ha2N
+iQIcBAEBCAAGBQJX/wpjAAoJEDnsnt1WYoG5aecP/3Wmwu/7Nk+LaR/qjDCwaTpu
+JFQawJhRXZK2xvVGG6f1xaeN/IGHPp0C9+k+rm+oQlzFZN2NUOR48pbhdMv3+i1b
+8K0buOUJfi4hcSSQ/bDYLN2gfInpK64LqTlQCSWV6lQLW6JTmYBgmGd6K8F2UCZ6
+foVVNAfnMvoCz3tflhKVl/UQ4FKKUNf6r7Kn53531doMSyQKd+OPBP9w4JDAB18g
+Mt3YM0AZxdK0AZiznfkH3vJwcUvj0kchl23ZSu07eODeWrL37zWdk9f6A53Cpzav
+alH3Ttf/quUegiMGRJ0rB4tm2mwoGc2g44w1PwUnTC7qTiHi9KtKX3DsoY7Etf13
+9mTC4963eGBrIl0Z5KriNeADTJgpNtudzdPzdEmGTDyr8HcQYiqYla2MKPudOSzd
+CHDTWolg7L35FubdPnWqhf6xi9CiB1pG+1QvffZDtUauN8zlDaE3j84tbKTJqqEU
+gNXkinq3u7Q8YtkNrPLmMgXCqWgIvXxUVVp/S+xXRkgknnfh0pQnQ2Pw7AW5ymwv
+7lu9iY7mlykW+Ebg/jDcVkT1Grnxte/nLm++09VloZzRvBgFskwuvqdS7ROxcndt
+z1m9kpjnXEibJIbFyZ8Se1RyXMWXAu5P+Xb0qG2vsmX5tM3D140NGJ0SohPH3Gqx
+E34sStA6vXOCONXWpXtZ
+=bTtm
 -----END PGP SIGNATURE-----
 --=-=-=--
