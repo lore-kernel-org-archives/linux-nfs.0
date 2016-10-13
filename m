@@ -1,107 +1,107 @@
-Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from userp1050.oracle.com ([156.151.31.82]:18219 "EHLO
-        userp1050.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751638AbcJMOeK (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 13 Oct 2016 10:34:10 -0400
-Received: from userp1040.oracle.com (userp1040.oracle.com [156.151.31.81])
-        by userp1050.oracle.com (Sentrion-MTA-4.3.2/Sentrion-MTA-4.3.2) with ESMTP id u9DEXrlU027362
-        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK)
-        for <linux-nfs@vger.kernel.org>; Thu, 13 Oct 2016 14:33:53 GMT
-Content-Type: text/plain; charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 9.3 \(3124\))
-Subject: Re: nfsd: managing pages under network I/O
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <4242E0B7-498C-4846-830F-835E1F347F85@oracle.com>
-Date: Thu, 13 Oct 2016 10:32:23 -0400
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <D958B5C8-D367-4B03-A729-29892C2D29BB@oracle.com>
-References: <BD4A3DBB-71B5-4C30-8976-43F4DD58CBBE@oracle.com> <20161013063535.GA7149@infradead.org> <4242E0B7-498C-4846-830F-835E1F347F85@oracle.com>
-To: Christoph Hellwig <hch@infradead.org>
-Sender: linux-nfs-owner@vger.kernel.org
+Return-Path: <jlayton@redhat.com>
+Message-ID: <1476372136.12134.12.camel@redhat.com>
+Subject: Re: [PATCH 5/6] NFSv4: enhance nfs4_copy_lock_stateid to use a
+ flock stateid if there is one
+From: Jeff Layton <jlayton@redhat.com>
+To: NeilBrown <neilb@suse.com>,
+        Trond Myklebust
+ <trond.myklebust@primarydata.com>,
+        Anna Schumaker
+ <anna.schumaker@netapp.com>
+Cc: Benjamin Coddington <bcodding@redhat.com>,
+        Linux NFS Mailing List
+	 <linux-nfs@vger.kernel.org>
+Date: Thu, 13 Oct 2016 11:22:16 -0400
+In-Reply-To: <147633280755.766.16463067741350482818.stgit@noble>
+References: <147633263771.766.17853370901003798934.stgit@noble>
+	 <147633280755.766.16463067741350482818.stgit@noble>
+Content-Type: text/plain; charset="UTF-8"
+Mime-Version: 1.0
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-> On Oct 13, 2016, at 9:36 AM, Chuck Lever <chuck.lever@oracle.com> wrote:
+On Thu, 2016-10-13 at 15:26 +1100, NeilBrown wrote:
+> A process can have two possible lock owner for a given open file:
+> a per-process Posix lock owner and a per-open-file flock owner
+> Use both of these when searching for a suitable stateid to use.
 > 
->> 
->> On Oct 13, 2016, at 2:35 AM, Christoph Hellwig <hch@infradead.org> wrote:
->> 
->> On Wed, Oct 12, 2016 at 01:42:26PM -0400, Chuck Lever wrote:
->>> I'm studying the way that the ->recvfrom and ->sendto calls work
->>> for RPC-over-RDMA.
->>> 
->>> The ->sendto path moves pages out of the svc_rqst before posting
->>> I/O (RDMA Write and Send). Once the work is posted, ->sendto
->>> returns, and looks like svc_rqst is released at that point. The
->>> subsequent completion of the Send then releases those moved pages.
->>> 
->>> I'm wondering if the transport can be simplified: instead of
->>> moving pages around, ->sendto could just wait until the Write and
->>> Send activity is complete, then return. The upper layer then
->>> releases everything.
->> 
->> I'd prefer not block for no reason at all.
+> With this patch, READ/WRITE requests will use the correct stateid
+> if a flock lock is active.
 > 
-> The reason to block is to wait for I/O to complete. Can you
-> elaborate: for example, are you leery of an extra context
-> switch?
+> Signed-off-by: NeilBrown <neilb@suse.com>
+> ---
+>  fs/nfs/nfs4state.c |   14 +++++++++-----
+>  1 file changed, 9 insertions(+), 5 deletions(-)
 > 
-> Note that in the Read/recvfrom case, RDMA Reads are posted,
-> and then svc_rdma_recvfrom returns "deferred." When the Reads
-> complete, the completion handler enqueues the work on the
-> svc_xprt and svc_rdma_recvfrom is called again. Can someone
-> explain why svc_rdma_recvfrom doesn't just wait for the
-> RDMA Reads to complete?
+> diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
+> index f25eee8202bf..ed39ee164f5f 100644
+> --- a/fs/nfs/nfs4state.c
+> +++ b/fs/nfs/nfs4state.c
+> @@ -800,11 +800,13 @@ void nfs4_close_sync(struct nfs4_state *state, fmode_t fmode)
+>   * that is compatible with current->files
+>   */
+>  static struct nfs4_lock_state *
+> -__nfs4_find_lock_state(struct nfs4_state *state, fl_owner_t fl_owner)
+> +__nfs4_find_lock_state(struct nfs4_state *state,
+> +		       fl_owner_t fl_owner, fl_owner_t fl_owner2)
+>  {
+>  	struct nfs4_lock_state *pos;
+>  	list_for_each_entry(pos, &state->lock_states, ls_locks) {
+> -		if (pos->ls_owner != fl_owner)
+> +		if (pos->ls_owner != fl_owner &&
+> +		    pos->ls_owner != fl_owner2)
+>  			continue;
+>  		atomic_inc(&pos->ls_count);
+>  		return pos;
+
+Ok, so we end up getting whatever is first on the list here. That's
+certainly fine when there are either flock/OFD locks or traditional
+POSIX locks in use.
+
+When there are both in use though, then things may be less predictable.
+That said, mixing flock/OFD and POSIX locks on the same fds from the
+same process is not a great idea in general, and I have a hard time
+coming up with a valid use-case there.
+
+So, I don't see that as a real problem, but it may be worth explaining
+that rationale in the comment block above this function in case we need
+to revisit it later.
+
+> @@ -857,7 +859,7 @@ static struct nfs4_lock_state *nfs4_get_lock_state(struct nfs4_state *state, fl_
+>  	
+>  	for(;;) {
+>  		spin_lock(&state->state_lock);
+> -		lsp = __nfs4_find_lock_state(state, owner);
+> +		lsp = __nfs4_find_lock_state(state, owner, 0);
+>  		if (lsp != NULL)
+>  			break;
+>  		if (new != NULL) {
+> @@ -942,7 +944,7 @@ static int nfs4_copy_lock_stateid(nfs4_stateid *dst,
+>  		const struct nfs_lock_context *l_ctx)
+>  {
+>  	struct nfs4_lock_state *lsp;
+> -	fl_owner_t fl_owner;
+> +	fl_owner_t fl_owner, fl_flock_owner;
+>  	int ret = -ENOENT;
+>  
+>  	if (l_ctx == NULL)
+> @@ -952,8 +954,10 @@ static int nfs4_copy_lock_stateid(nfs4_stateid *dst,
+>  		goto out;
+>  
+>  	fl_owner = l_ctx->lockowner.l_owner;
+> +	fl_flock_owner = l_ctx->open_context->flock_owner;
+> +
+>  	spin_lock(&state->state_lock);
+> -	lsp = __nfs4_find_lock_state(state, fl_owner);
+> +	lsp = __nfs4_find_lock_state(state, fl_owner, fl_flock_owner);
+>  	if (lsp && test_bit(NFS_LOCK_LOST, &lsp->ls_flags))
+>  		ret = -EIO;
+>  	else if (lsp != NULL && test_bit(NFS_LOCK_INITIALIZED, &lsp->ls_flags) != 0) {
 > 
-> What is the purpose of pulling the pages out of the svc_rqst
-> while waiting for the RDMA Reads?
 > 
-> 
->>> Another option would be for ->sendto to return a value that means
->>> the transport will release the svc_rqst and pages.
->> 
->> Or just let the transport always release it.  We only have two
->> different implementations of the relevant ops anyway.
-> 
-> If each transport is responsible for releasing svc_rqst and
-> pages, code is duplicated. Both transports need to do this
-> releasing, so it should be done in common code (the svc RPC
-> code).
-> 
-> I'd prefer not to have to touch the TCP transport in order
-> to improve the RDMA transport implementation. However, some
-> clean-up and refactoring in this area may be unavoidable.
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
-svc_send does this:
-
- 938         mutex_lock(&xprt->xpt_mutex);
-
- 943                 len = xprt->xpt_ops->xpo_sendto(rqstp);
- 944         mutex_unlock(&xprt->xpt_mutex);
- 945         rpc_wake_up(&xprt->xpt_bc_pending);
- 946         svc_xprt_release(rqstp);
-
-Thus waiting in sendto is indeed not good: it would hold up
-other replies.
-
-But I think you're suggesting that svc_xprt_release() should
-be invoked by the transport, and not by svc_send(). That
-could work if there isn't a hidden dependency on the ordering
-of lines 944-946.
-
-The socket transport appears to be able to complete send
-processing synchronously. Invoking svc_xprt_release() inside
-the mutex critical section would probably have a negative
-performance impact.
-
-We could add another xpo callout here. For sockets it would
-invoke svc_xprt_release, and for RDMA it would be a no-op.
-RDMA would then be responsible for invoking svc_xprt_release
-in its send completion handler.
-
-
---
-Chuck Lever
-
-
-
+-- 
+Jeff Layton <jlayton@redhat.com>
