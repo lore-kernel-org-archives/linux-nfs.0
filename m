@@ -1,76 +1,205 @@
-Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:45093 "EHLO mx2.suse.de"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1750926AbcJMWO7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 13 Oct 2016 18:14:59 -0400
+Return-Path: <neilb@suse.de>
 From: NeilBrown <neilb@suse.com>
-To: Trond Myklebust <trondmy@primarydata.com>
-Date: Fri, 14 Oct 2016 08:55:17 +1100
-Cc: List Linux NFS Mailing <linux-nfs@vger.kernel.org>
-Subject: Re: Incorrect(?) use of open_state->stateid in pnfs
-In-Reply-To: <48DEE414-C703-498E-9FAB-0C96C38F58D2@primarydata.com>
-References: <87zim8zphv.fsf@notabene.neil.brown.name> <48DEE414-C703-498E-9FAB-0C96C38F58D2@primarydata.com>
-Message-ID: <87vawvzzga.fsf@notabene.neil.brown.name>
+To: Jeff Layton <jlayton@redhat.com>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>
+Date: Fri, 14 Oct 2016 11:22:01 +1100
+Cc: Benjamin Coddington <bcodding@redhat.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 5/6] NFSv4: enhance nfs4_copy_lock_stateid to use a flock stateid if there is one
+In-Reply-To: <1476372136.12134.12.camel@redhat.com>
+References: <147633263771.766.17853370901003798934.stgit@noble> <147633280755.766.16463067741350482818.stgit@noble> <1476372136.12134.12.camel@redhat.com>
+Message-ID: <87shrzzsnq.fsf@notabene.neil.brown.name>
 MIME-Version: 1.0
 Content-Type: multipart/signed; boundary="=-=-=";
-        micalg=pgp-sha256; protocol="application/pgp-signature"
-Sender: linux-nfs-owner@vger.kernel.org
+	micalg=pgp-sha256; protocol="application/pgp-signature"
 List-ID: <linux-nfs.vger.kernel.org>
 
 --=-=-=
-Content-Type: text/plain; charset=utf-8
+Content-Type: text/plain
 Content-Transfer-Encoding: quoted-printable
 
-On Fri, Oct 14 2016, Trond Myklebust wrote:
+On Fri, Oct 14 2016, Jeff Layton wrote:
 
->> On Oct 13, 2016, at 03:18, NeilBrown <neilb@suse.com> wrote:
+> On Thu, 2016-10-13 at 15:26 +1100, NeilBrown wrote:
+>> A process can have two possible lock owner for a given open file:
+>> a per-process Posix lock owner and a per-open-file flock owner
+>> Use both of these when searching for a suitable stateid to use.
 >>=20
+>> With this patch, READ/WRITE requests will use the correct stateid
+>> if a flock lock is active.
 >>=20
->> Suppose I open/create a file over pNFS and am given a WRITE delegation.
->> I then chmod the file (as rsync is wont to do) so the delegation is
->> immediately returned.
->> I then proceed to write, which triggers a LAYOUT_GET request.  The
->> stateid for that request it taken from state->stateid, which is still
->> the delegation stateid.  Naturally it gets NFS4ERR_BAD_STATEID.
+>> Signed-off-by: NeilBrown <neilb@suse.com>
+>> ---
+>>  fs/nfs/nfs4state.c |   14 +++++++++-----
+>>  1 file changed, 9 insertions(+), 5 deletions(-)
+>>=20
+>> diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
+>> index f25eee8202bf..ed39ee164f5f 100644
+>> --- a/fs/nfs/nfs4state.c
+>> +++ b/fs/nfs/nfs4state.c
+>> @@ -800,11 +800,13 @@ void nfs4_close_sync(struct nfs4_state *state, fmo=
+de_t fmode)
+>>   * that is compatible with current->files
+>>   */
+>>  static struct nfs4_lock_state *
+>> -__nfs4_find_lock_state(struct nfs4_state *state, fl_owner_t fl_owner)
+>> +__nfs4_find_lock_state(struct nfs4_state *state,
+>> +		       fl_owner_t fl_owner, fl_owner_t fl_owner2)
+>>  {
+>>  	struct nfs4_lock_state *pos;
+>>  	list_for_each_entry(pos, &state->lock_states, ls_locks) {
+>> -		if (pos->ls_owner !=3D fl_owner)
+>> +		if (pos->ls_owner !=3D fl_owner &&
+>> +		    pos->ls_owner !=3D fl_owner2)
+>>  			continue;
+>>  		atomic_inc(&pos->ls_count);
+>>  		return pos;
 >
-> Umm=E2=80=A6 Why isn=E2=80=99t the client recovering open stateids as par=
-t of the delegation return? That would appear to be the root cause problem =
-here.
-
-Ahh.. that's where it happens.  Of course.  Thanks.
-I was thinking that where would be no opens to recover because the
-delegation wasn't used to complete any other opens.  But there is more
-to the recovery than that.
-
+> Ok, so we end up getting whatever is first on the list here. That's
+> certainly fine when there are either flock/OFD locks or traditional
+> POSIX locks in use.
 >
-> Is this the latest upstream kernel?
+> When there are both in use though, then things may be less predictable.
+> That said, mixing flock/OFD and POSIX locks on the same fds from the
+> same process is not a great idea in general, and I have a hard time
+> coming up with a valid use-case there.
 
-No, it is 3.12 based.  I now see that I am just missing
+Using two types of locks in the one application would be ... unusual.
+I wouldn't want to spend much of addressing any issues, but not being
+predictable isn't good.  Intermittent problems are so hard to debug.
 
-Commit: 5e99b532bb95 ("nfs4: reset states to use open_stateid when returnin=
-g delegation voluntarily")
+We should probably make sure it consistently chooses on or the other.
+As flock locks are always whole-file, it is always safe to choose the
+flock lock over the posix lock as you can be sure the IO is covered by
+the lock. OFD locks make that a little be less of a clear choice.
 
-Thanks!
+On the other hand, NFS locks were originally only Posix locks and flock
+locks were only supported much later.  So for historical consistency we
+should probably choose the Posix stateid preferentially.
 
+I find the second argument more convincing.   Here is the updated patch.
+
+Thanks,
 NeilBrown
+
+From: NeilBrown <neilb@suse.com>
+Subject: [PATCH] NFSv4: enhance nfs4_copy_lock_stateid to use a flock state=
+id
+ if there is one
+
+A process can have two possible lock owner for a given open file:
+a per-process Posix lock owner and a per-open-file flock owner
+Use both of these when searching for a suitable stateid to use.
+
+With this patch, READ/WRITE requests will use the correct stateid
+if a flock lock is active.
+
+Signed-off-by: NeilBrown <neilb@suse.com>
+=2D--
+ fs/nfs/nfs4state.c | 38 +++++++++++++++++++++++++++-----------
+ 1 file changed, 27 insertions(+), 11 deletions(-)
+
+diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
+index f25eee8202bf..bd29d4360660 100644
+=2D-- a/fs/nfs/nfs4state.c
++++ b/fs/nfs/nfs4state.c
+@@ -797,19 +797,33 @@ void nfs4_close_sync(struct nfs4_state *state, fmode_=
+t fmode)
+=20
+ /*
+  * Search the state->lock_states for an existing lock_owner
+=2D * that is compatible with current->files
++ * that is compatible with either of the given owners.
++ * If the second is non-zero, then the first refers to a Posix-lock
++ * owner (current->files) and the second refers to a flock/OFD
++ * owner (struct file*).  In that case, prefer a match for the first
++ * owner.
++ * If both sorts of locks are held on the one file we cannot know
++ * which stateid was intended to be used, so a "correct" choice cannot
++ * be made.  Failing that, a "consistent" choice is preferable.  The
++ * consistent choice we make is to prefer the first owner, that of a
++ * Posix lock.
+  */
+ static struct nfs4_lock_state *
+=2D__nfs4_find_lock_state(struct nfs4_state *state, fl_owner_t fl_owner)
++__nfs4_find_lock_state(struct nfs4_state *state,
++		       fl_owner_t fl_owner, fl_owner_t fl_owner2)
+ {
+=2D	struct nfs4_lock_state *pos;
++	struct nfs4_lock_state *pos, *ret =3D NULL;
+ 	list_for_each_entry(pos, &state->lock_states, ls_locks) {
+=2D		if (pos->ls_owner !=3D fl_owner)
+=2D			continue;
+=2D		atomic_inc(&pos->ls_count);
+=2D		return pos;
++		if (pos->ls_owner =3D=3D fl_owner) {
++			ret =3D pos;
++			break;
++		}
++		if (pos->ls_owner =3D=3D fl_owner2)
++			ret =3D pos;
+ 	}
+=2D	return NULL;
++	if (ret)
++		atomic_inc(&ret->ls_count);
++	return ret;
+ }
+=20
+ /*
+@@ -857,7 +871,7 @@ static struct nfs4_lock_state *nfs4_get_lock_state(stru=
+ct nfs4_state *state, fl_
+=20=09
+ 	for(;;) {
+ 		spin_lock(&state->state_lock);
+=2D		lsp =3D __nfs4_find_lock_state(state, owner);
++		lsp =3D __nfs4_find_lock_state(state, owner, 0);
+ 		if (lsp !=3D NULL)
+ 			break;
+ 		if (new !=3D NULL) {
+@@ -942,7 +956,7 @@ static int nfs4_copy_lock_stateid(nfs4_stateid *dst,
+ 		const struct nfs_lock_context *l_ctx)
+ {
+ 	struct nfs4_lock_state *lsp;
+=2D	fl_owner_t fl_owner;
++	fl_owner_t fl_owner, fl_flock_owner;
+ 	int ret =3D -ENOENT;
+=20
+ 	if (l_ctx =3D=3D NULL)
+@@ -952,8 +966,10 @@ static int nfs4_copy_lock_stateid(nfs4_stateid *dst,
+ 		goto out;
+=20
+ 	fl_owner =3D l_ctx->lockowner.l_owner;
++	fl_flock_owner =3D l_ctx->open_context->flock_owner;
++
+ 	spin_lock(&state->state_lock);
+=2D	lsp =3D __nfs4_find_lock_state(state, fl_owner);
++	lsp =3D __nfs4_find_lock_state(state, fl_owner, fl_flock_owner);
+ 	if (lsp && test_bit(NFS_LOCK_LOST, &lsp->ls_flags))
+ 		ret =3D -EIO;
+ 	else if (lsp !=3D NULL && test_bit(NFS_LOCK_INITIALIZED, &lsp->ls_flags) =
+!=3D 0) {
+=2D-=20
+2.10.0
+
 
 --=-=-=
 Content-Type: application/pgp-signature; name="signature.asc"
 
 -----BEGIN PGP SIGNATURE-----
 
-iQIcBAEBCAAGBQJYAALFAAoJEDnsnt1WYoG5bGoP/1H7wPyvN6GcSVRMyyLDowtX
-XDsPf0XDmPilrfRq3s6NlFe8Fu2UDHVYiCaZzrKJtQ8IuNP5AdPIEdtk8XQEqyu4
-V16NB1i/QvsMlgMnvlVWo+MKbMfoyKDJ2tadVnMzVWg9QNNrQponb8VhboO6+ovZ
-RpPJdUKbqkNJA1UhN7WfOB+CIyMAI1/CXmRrL0o+dNiSTOZpVnIUGx7vIXzybICc
-W8alhs2x9eJJDQ7YH+DUDJDUUTU6eDAebmSrkDx3KrruOsFvUBKeyRgwVUmbtgh7
-Q/XXBnHQ+hGX62GYMi8H/2mf0d/uoYf+tKQnM3C88lgH1jM9fOtKiOIJK85vi33L
-8h1GSHcjdIDPqjbCH1PIlcz/PPtczlGr1/+0JbdCIAVen+2Zn85rTkBnaEXq6+cP
-/2WPrNx6EiIdtEW0ELX0sepNp739vIZq2NEljSLWXc5qvg69b3vjZvd1jbDTvG7P
-F2W/jQPy9EeNKWfH64AmMAT3lllV4ziplc2jeX6UqMmBsm0j1AYEC+OQGX9PNwoO
-uALOUZETS+fX61xoCxdK91HqFkGzATXB+kxMQhqOD7OKEOFqISCSjgw8FmnF4Zv6
-bw46BT45hcBFfbYSimO6wKGChOSiUVhV64idcsK6mBQVMlOtDSs/tyDRGn5q89sG
-oa7yZXBJSBXVot73NcFA
-=U9Bf
+iQIcBAEBCAAGBQJYACUpAAoJEDnsnt1WYoG51rgQAI5eC/VKnDZVbJHrFC0YI/Uv
+juhYMg2z8NghVvaC5ACWoTTUxudGfudBk1wuVcxXiaEoskVYO75VUYTt/ZNQCNr0
+zmDDNwO4GqDCANTgm/ErsBiGfXCFUdYmOrtRCBFpyINLxdCal8pmkC/vz1RpefRh
+sssgeLtEHedoBd7t8xO5azm0heQiReyAxyk56k/BAfOb9Q1hb9uGvHXhdtpLIbr+
+cXLEtA9t9fhh8BnvGnpozGqN/JjcjYygoBCmGiGeFPpwNgs1+t/QSTYHbwtlh+Rd
+bq+7AAB5PUvYS5v/o9MqNT+HF9EZqIfzvJFasd1ZTIZf65bLCEtuvnm7UuyFSZKN
+EZZnaR27OkKPH1363QtAx6HxV7ispH44G/mhJFfTldfl3ywsLqolgC/sszlJTc5h
+Fcw1ZkDnVOfwUEXHwT2HLkPoCQTw4xup0Wgcv1IHwXxiYovWeGny1ObHePEB6Yv6
+vdijje6WXFCy+UDD2R/d4zLlI2Eub0MLqB6xK34mZ48J8nM0dbMTY8XHW1l33oxZ
+tIdKeTXWUOOerbz/5sq/vJ4L7n3nMRamTUZuRW4kbBYWrk8aDhUQNUH0jjGEjZv3
+NH78moNMQT4arVMVomqIwQOM5QikgWGErrEj5YcK7pPaJau+AngJTmMch5PYjkHq
+OIHHDQH5lvz4VClTypKV
+=1Ubf
 -----END PGP SIGNATURE-----
 --=-=-=--
