@@ -1,45 +1,135 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx141.netapp.com ([216.240.21.12]:5980 "EHLO mx141.netapp.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751158AbcJNPZB (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 14 Oct 2016 11:25:01 -0400
-Subject: Re: [GIT PULL] Please pull NFS client changes for Linux 4.9
-To: Linus Torvalds <torvalds@linux-foundation.org>
-References: <a0b6ab28-1a8a-8a0e-aebb-b750807707d5@Netapp.com>
- <CA+55aFw7Ck3NPXFATOtFgEX3_PU5ADp+dx+ySO6BbqSyH1DiJA@mail.gmail.com>
-CC: Trond Myklebust <trond.myklebust@primarydata.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
-From: Anna Schumaker <Anna.Schumaker@netapp.com>
-Message-ID: <4210a21a-9bb4-fa1e-93ed-28ab5cd54dd9@Netapp.com>
-Date: Fri, 14 Oct 2016 11:24:56 -0400
-MIME-Version: 1.0
-In-Reply-To: <CA+55aFw7Ck3NPXFATOtFgEX3_PU5ADp+dx+ySO6BbqSyH1DiJA@mail.gmail.com>
-Content-Type: text/plain; charset="utf-8"
+Received: from smtprelay0052.hostedemail.com ([216.40.44.52]:37515 "EHLO
+        smtprelay.hostedemail.com" rhost-flags-OK-OK-OK-FAIL)
+        by vger.kernel.org with ESMTP id S1751332AbcJOVJH (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sat, 15 Oct 2016 17:09:07 -0400
+Received: from smtprelay.hostedemail.com (10.5.19.251.rfc1918.com [10.5.19.251])
+        by smtpgrave03.hostedemail.com (Postfix) with ESMTP id 9A3BF28EF0D
+        for <linux-nfs@vger.kernel.org>; Sat, 15 Oct 2016 20:59:08 +0000 (UTC)
+From: Joe Perches <joe@perches.com>
+To: Trond Myklebust <trond.myklebust@primarydata.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>,
+        Jeff Layton <jlayton@poochiereds.net>
+Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
+Subject: [PATCH] sunrpc & nfs: Add and use dprintk_cont macros
+Date: Sat, 15 Oct 2016 13:59:03 -0700
+Message-Id: <bcb690c3e552f9f0fb9e89ef0261a38cc0dd85bb.1476564858.git.joe@perches.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 10/14/2016 12:24 AM, Linus Torvalds wrote:
-> On Thu, Oct 13, 2016 at 1:21 PM, Anna Schumaker
-> <Anna.Schumaker@netapp.com> wrote:
->>
->>   git://git.linux-nfs.org/projects/anna/linux-nfs.git tags/nfs-for-4.9-1
-> 
-> Please keep the summary of changes in the email too. I can see it in
-> the tag, and it will show up when I do a pull that way, but I'd
-> _really_ like to see it in the email too as I prepare to pull..
-> 
-> Pull requests shouldn't be like Kinder eggs or like Christmas. No
-> surprises, please.
-> 
-> (I'll pull it after my current build finishes, but for next time,
-> please double-check your scripts or workflows).
+Allow line continuations to work properly with KERN_CONT.
 
-Okay, I'll fix that up for next time.  Sorry about the extra hassle!
+Signed-off-by: Joe Perches <joe@perches.com>
+---
+ fs/nfs/write.c               |  6 ++---
+ include/linux/sunrpc/debug.h | 57 ++++++++++++++++++++++++++++++--------------
+ 2 files changed, 42 insertions(+), 21 deletions(-)
 
-Anna
-
-> 
->               Linus
-> 
+diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+index 53211838f72a..508efa813475 100644
+--- a/fs/nfs/write.c
++++ b/fs/nfs/write.c
+@@ -1788,7 +1788,7 @@ static void nfs_commit_release_pages(struct nfs_commit_data *data)
+ 		if (status < 0) {
+ 			nfs_context_set_write_error(req->wb_context, status);
+ 			nfs_inode_remove_request(req);
+-			dprintk(", error = %d\n", status);
++			dprintk_cont(", error = %d\n", status);
+ 			goto next;
+ 		}
+ 
+@@ -1797,11 +1797,11 @@ static void nfs_commit_release_pages(struct nfs_commit_data *data)
+ 		if (!nfs_write_verifier_cmp(&req->wb_verf, &data->verf.verifier)) {
+ 			/* We have a match */
+ 			nfs_inode_remove_request(req);
+-			dprintk(" OK\n");
++			dprintk_cont(" OK\n");
+ 			goto next;
+ 		}
+ 		/* We have a mismatch. Write the page again */
+-		dprintk(" mismatch\n");
++		dprintk_cont(" mismatch\n");
+ 		nfs_mark_request_dirty(req);
+ 		set_bit(NFS_CONTEXT_RESEND_WRITES, &req->wb_context->flags);
+ 	next:
+diff --git a/include/linux/sunrpc/debug.h b/include/linux/sunrpc/debug.h
+index 59a7889e15db..a44c479b09e0 100644
+--- a/include/linux/sunrpc/debug.h
++++ b/include/linux/sunrpc/debug.h
+@@ -20,33 +20,54 @@ extern unsigned int		nfsd_debug;
+ extern unsigned int		nlm_debug;
+ #endif
+ 
+-#define dprintk(args...)	dfprintk(FACILITY, ## args)
+-#define dprintk_rcu(args...)	dfprintk_rcu(FACILITY, ## args)
++#define dprintk(fmt, ...)						\
++	dfprintk(FACILITY, fmt, ##__VA_ARGS__)
++#define dprintk_cont(fmt, ...)						\
++	dfprintk_cont(FACILITY, fmt, ##__VA_ARGS__)
++#define dprintk_rcu(fmt, ...)						\
++	dfprintk_rcu(FACILITY, fmt, ##__VA_ARGS__)
++#define dprintk_rcu_cont(fmt, ...)					\
++	dfprintk_rcu_cont(FACILITY, fmt, ##__VA_ARGS__)
+ 
+ #undef ifdebug
+ #if IS_ENABLED(CONFIG_SUNRPC_DEBUG)
+ # define ifdebug(fac)		if (unlikely(rpc_debug & RPCDBG_##fac))
+ 
+-# define dfprintk(fac, args...)	\
+-	do { \
+-		ifdebug(fac) \
+-			printk(KERN_DEFAULT args); \
+-	} while (0)
+-
+-# define dfprintk_rcu(fac, args...)	\
+-	do { \
+-		ifdebug(fac) { \
+-			rcu_read_lock(); \
+-			printk(KERN_DEFAULT args); \
+-			rcu_read_unlock(); \
+-		} \
+-	} while (0)
++# define dfprintk(fac, fmt, ...)					\
++do {									\
++	ifdebug(fac)							\
++		printk(KERN_DEFAULT fmt, ##__VA_ARGS__);		\
++} while (0)
++
++# define dfprintk_cont(fac, fmt, ...)					\
++do {									\
++	ifdebug(fac)							\
++		printk(KERN_CONT fmt, ##__VA_ARGS__);			\
++} while (0)
++
++# define dfprintk_rcu(fac, fmt, ...)					\
++do {									\
++	ifdebug(fac) {							\
++		rcu_read_lock();					\
++		printk(KERN_DEFAULT fmt, ##__VA_ARGS__);		\
++		rcu_read_unlock();					\
++	}								\
++} while (0)
++
++# define dfprintk_rcu_cont(fac, fmt, ...)				\
++do {									\
++	ifdebug(fac) {							\
++		rcu_read_lock();					\
++		printk(KERN_CONT fmt, ##__VA_ARGS__);			\
++		rcu_read_unlock();					\
++	}								\
++} while (0)
+ 
+ # define RPC_IFDEBUG(x)		x
+ #else
+ # define ifdebug(fac)		if (0)
+-# define dfprintk(fac, args...)	do {} while (0)
+-# define dfprintk_rcu(fac, args...)	do {} while (0)
++# define dfprintk(fac, fmt, ...)	do {} while (0)
++# define dfprintk_rcu(fac, fmt, ...)	do {} while (0)
+ # define RPC_IFDEBUG(x)
+ #endif
+ 
+-- 
+2.10.0.rc2.1.g053435c
 
