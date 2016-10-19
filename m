@@ -1,71 +1,54 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:37038 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([173.255.197.46]:40778 "EHLO fieldses.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S944222AbcJSPRa (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 19 Oct 2016 11:17:30 -0400
-From: Paolo Abeni <pabeni@redhat.com>
-To: netdev@vger.kernel.org
-Cc: "David S. Miller" <davem@davemloft.net>,
-        James Morris <jmorris@namei.org>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        Alexander Duyck <aduyck@mirantis.com>,
-        Daniel Borkmann <daniel@iogearbox.net>,
-        Eric Dumazet <edumazet@google.com>, Tom Herbert <tom@herbertland.com>,
-        Hannes Frederic Sowa <hannes@stressinduktion.org>,
-        Edward Cree <ecree@solarflare.com>, linux-nfs@vger.kernel.org
-Subject: [PATCH net-next v4 0/3] udp: refactor memory accounting
-Date: Wed, 19 Oct 2016 14:46:59 +0200
-Message-Id: <cover.1476877189.git.pabeni@redhat.com>
+        id S941332AbcJSR0N (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 19 Oct 2016 13:26:13 -0400
+Date: Wed, 19 Oct 2016 13:26:11 -0400
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: nfsd: managing pages under network I/O
+Message-ID: <20161019172611.GA22783@fieldses.org>
+References: <BD4A3DBB-71B5-4C30-8976-43F4DD58CBBE@oracle.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <BD4A3DBB-71B5-4C30-8976-43F4DD58CBBE@oracle.com>
+From: bfields@fieldses.org (J. Bruce Fields)
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This patch series refactor the udp memory accounting, replacing the
-generic implementation with a custom one, in order to remove the needs for
-locking the socket on the enqueue and dequeue operations. The socket backlog
-usage is dropped, as well.
+On Wed, Oct 12, 2016 at 01:42:26PM -0400, Chuck Lever wrote:
+> I'm studying the way that the ->recvfrom and ->sendto calls work
+> for RPC-over-RDMA.
+> 
+> The ->sendto path moves pages out of the svc_rqst before posting
+> I/O (RDMA Write and Send). Once the work is posted, ->sendto
+> returns, and looks like svc_rqst is released at that point. The
+> subsequent completion of the Send then releases those moved pages.
+> 
+> I'm wondering if the transport can be simplified: instead of
+> moving pages around, ->sendto could just wait until the Write and
+> Send activity is complete, then return. The upper layer then
+> releases everything.
 
-The first patch factor out pieces of some queue and memory management
-socket helpers, so that they can later be used by the udp memory accounting
-functions.
-The second patch adds the memory account helpers, without using them.
-The third patch replacse the old rx memory accounting path for udp over ipv4 and
-udp over ipv6. In kernel UDP users are updated, as well.
+I don't understand what problem you're trying to fix.  Is "moving pages
+around" really especially complicated or expensive?
 
-The memory accounting schema is described in detail in the individual patch
-commit message.
+--b.
 
-The performance gain depends on the specific scenario; with few flows (and
-little contention in the original code) the differences are in the noise range,
-while with several flows contending the same socket, the measured speed-up
-is relevant (e.g. even over 100% in case of extreme contention)
-
-v3 -> v4:
- - simplified the locking schema, always use a plain spinlock
-
-v2 -> v3:
- - do not set the now unsed backlog_rcv callback
-
-v1 -> v2:
- - changed slighly the memory accounting schema, we now perform lazy reclaim
- - fixed forward_alloc updating issue
- - fixed memory counter integer overflows
-
-Paolo Abeni (3):
-  net/socket: factor out helpers for memory and queue manipulation
-  udp: implement memory accounting helpers
-  udp: use it's own memory accounting schema
-
- include/linux/udp.h   |   1 +
- include/net/sock.h    |   4 ++
- include/net/udp.h     |   4 ++
- net/core/datagram.c   |  36 +++++++-----
- net/core/sock.c       |  66 +++++++++++++++-------
- net/ipv4/udp.c        | 153 +++++++++++++++++++++++++++++++++++++++-----------
- net/ipv6/udp.c        |  34 +++--------
- net/sunrpc/svcsock.c  |  20 +++++--
- net/sunrpc/xprtsock.c |   2 +-
- 9 files changed, 221 insertions(+), 99 deletions(-)
-
--- 
-1.8.3.1
-
+> 
+> Another option would be for ->sendto to return a value that means
+> the transport will release the svc_rqst and pages.
+> 
+> Or, the svc_rqst could be reference counted.
+> 
+> Anyone have thoughts about this?
+> 
+> --
+> Chuck Lever
+> 
+> 
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
