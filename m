@@ -1,46 +1,59 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from userp1040.oracle.com ([156.151.31.81]:50602 "EHLO
-        userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1754077AbcJSS2p (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 19 Oct 2016 14:28:45 -0400
-Content-Type: text/plain; charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 9.3 \(3124\))
-Subject: Re: nfsd: managing pages under network I/O
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <20161019172611.GA22783@fieldses.org>
-Date: Wed, 19 Oct 2016 14:28:40 -0400
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <CFE1B548-5AC0-451E-BC9D-253395443355@oracle.com>
-References: <BD4A3DBB-71B5-4C30-8976-43F4DD58CBBE@oracle.com> <20161019172611.GA22783@fieldses.org>
-To: "J. Bruce Fields" <bfields@fieldses.org>
+Received: from mx143.netapp.com ([216.240.21.24]:40665 "EHLO mx143.netapp.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S935717AbcJSSv4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 19 Oct 2016 14:51:56 -0400
+From: Anna Schumaker <Anna.Schumaker@netapp.com>
+Subject: Re: [PATCH] nfs4: fix missing-braces warning
+To: Arnd Bergmann <arnd@arndb.de>,
+        Trond Myklebust <trond.myklebust@primarydata.com>
+References: <20161018152141.2774735-1-arnd@arndb.de>
+CC: Jeff Layton <jlayton@redhat.com>, Al Viro <viro@zeniv.linux.org.uk>,
+        Andreas Gruenbacher <agruenba@redhat.com>,
+        Andy Adamson <andros@netapp.com>, <linux-nfs@vger.kernel.org>,
+        <linux-kernel@vger.kernel.org>
+Message-ID: <e182f70d-c9ba-8e1d-fb7f-b81b2df98401@Netapp.com>
+Date: Wed, 19 Oct 2016 14:51:20 -0400
+MIME-Version: 1.0
+In-Reply-To: <20161018152141.2774735-1-arnd@arndb.de>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Hi Arnd (and Geert, if you're out there. I keep getting "relay access denied" when I try to CC you),
 
-> On Oct 19, 2016, at 1:26 PM, bfields@fieldses.org wrote:
+Thanks for the patches for this issue!  I've applied Arnd's version for 4.9-rc* since I think it looks a little cleaner.
+
+Cheers,
+Anna
+
+
+On 10/18/2016 11:21 AM, Arnd Bergmann wrote:
+> A bugfix introduced a harmless warning for update_open_stateid:
 > 
-> On Wed, Oct 12, 2016 at 01:42:26PM -0400, Chuck Lever wrote:
->> I'm studying the way that the ->recvfrom and ->sendto calls work
->> for RPC-over-RDMA.
->> 
->> The ->sendto path moves pages out of the svc_rqst before posting
->> I/O (RDMA Write and Send). Once the work is posted, ->sendto
->> returns, and looks like svc_rqst is released at that point. The
->> subsequent completion of the Send then releases those moved pages.
->> 
->> I'm wondering if the transport can be simplified: instead of
->> moving pages around, ->sendto could just wait until the Write and
->> Send activity is complete, then return. The upper layer then
->> releases everything.
+> fs/nfs/nfs4proc.c:1548:2: error: missing braces around initializer [-Werror=missing-braces]
 > 
-> I don't understand what problem you're trying to fix.  Is "moving pages
-> around" really especially complicated or expensive?
+> Removing the zero in the initializer will do the right thing here
+> and initialize the entire structure to zero.
+> 
+> Fixes: 1393d9612ba0 ("NFSv4: Fix a race when updating an open_stateid")
+> Signed-off-by: Arnd Bergmann <arnd@arndb.de>
+> ---
+>  fs/nfs/nfs4proc.c | 2 +-
+>  1 file changed, 1 insertion(+), 1 deletion(-)
+> 
+> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+> index ad917bd72b38..7897826d7c51 100644
+> --- a/fs/nfs/nfs4proc.c
+> +++ b/fs/nfs/nfs4proc.c
+> @@ -1545,7 +1545,7 @@ static int update_open_stateid(struct nfs4_state *state,
+>  	struct nfs_client *clp = server->nfs_client;
+>  	struct nfs_inode *nfsi = NFS_I(state->inode);
+>  	struct nfs_delegation *deleg_cur;
+> -	nfs4_stateid freeme = {0};
+> +	nfs4_stateid freeme = { };
+>  	int ret = 0;
+>  
+>  	fmode &= (FMODE_READ|FMODE_WRITE);
+> 
 
-Moving pages is complicated and undocumented, and adds host CPU and
-memory costs (loads and stores). There is also a whole lot of page
-allocator traffic in this code, and that will be enabling and
-disabling interrupts and bottom-halves with some frequency.
-
-The less involvement by the host CPU the better. The current RDMA
-transport code documents the RPC-over-RDMA protocol to some extent,
-but the need for moving the pages is to the reader's imagination.
