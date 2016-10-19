@@ -1,59 +1,107 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx143.netapp.com ([216.240.21.24]:40665 "EHLO mx143.netapp.com"
+Received: from fieldses.org ([173.255.197.46]:40892 "EHLO fieldses.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S935717AbcJSSv4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 19 Oct 2016 14:51:56 -0400
-From: Anna Schumaker <Anna.Schumaker@netapp.com>
-Subject: Re: [PATCH] nfs4: fix missing-braces warning
-To: Arnd Bergmann <arnd@arndb.de>,
-        Trond Myklebust <trond.myklebust@primarydata.com>
-References: <20161018152141.2774735-1-arnd@arndb.de>
-CC: Jeff Layton <jlayton@redhat.com>, Al Viro <viro@zeniv.linux.org.uk>,
-        Andreas Gruenbacher <agruenba@redhat.com>,
-        Andy Adamson <andros@netapp.com>, <linux-nfs@vger.kernel.org>,
-        <linux-kernel@vger.kernel.org>
-Message-ID: <e182f70d-c9ba-8e1d-fb7f-b81b2df98401@Netapp.com>
-Date: Wed, 19 Oct 2016 14:51:20 -0400
+        id S932977AbcJSTQK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 19 Oct 2016 15:16:10 -0400
+Date: Wed, 19 Oct 2016 15:16:08 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: nfsd: managing pages under network I/O
+Message-ID: <20161019191608.GD23282@fieldses.org>
+References: <BD4A3DBB-71B5-4C30-8976-43F4DD58CBBE@oracle.com>
+ <20161019172611.GA22783@fieldses.org>
+ <CFE1B548-5AC0-451E-BC9D-253395443355@oracle.com>
 MIME-Version: 1.0
-In-Reply-To: <20161018152141.2774735-1-arnd@arndb.de>
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <CFE1B548-5AC0-451E-BC9D-253395443355@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Arnd (and Geert, if you're out there. I keep getting "relay access denied" when I try to CC you),
-
-Thanks for the patches for this issue!  I've applied Arnd's version for 4.9-rc* since I think it looks a little cleaner.
-
-Cheers,
-Anna
-
-
-On 10/18/2016 11:21 AM, Arnd Bergmann wrote:
-> A bugfix introduced a harmless warning for update_open_stateid:
+On Wed, Oct 19, 2016 at 02:28:40PM -0400, Chuck Lever wrote:
 > 
-> fs/nfs/nfs4proc.c:1548:2: error: missing braces around initializer [-Werror=missing-braces]
+> > On Oct 19, 2016, at 1:26 PM, bfields@fieldses.org wrote:
+> > 
+> > On Wed, Oct 12, 2016 at 01:42:26PM -0400, Chuck Lever wrote:
+> >> I'm studying the way that the ->recvfrom and ->sendto calls work
+> >> for RPC-over-RDMA.
+> >> 
+> >> The ->sendto path moves pages out of the svc_rqst before posting
+> >> I/O (RDMA Write and Send). Once the work is posted, ->sendto
+> >> returns, and looks like svc_rqst is released at that point. The
+> >> subsequent completion of the Send then releases those moved pages.
+> >> 
+> >> I'm wondering if the transport can be simplified: instead of
+> >> moving pages around, ->sendto could just wait until the Write and
+> >> Send activity is complete, then return. The upper layer then
+> >> releases everything.
+> > 
+> > I don't understand what problem you're trying to fix.  Is "moving pages
+> > around" really especially complicated or expensive?
 > 
-> Removing the zero in the initializer will do the right thing here
-> and initialize the entire structure to zero.
-> 
-> Fixes: 1393d9612ba0 ("NFSv4: Fix a race when updating an open_stateid")
-> Signed-off-by: Arnd Bergmann <arnd@arndb.de>
-> ---
->  fs/nfs/nfs4proc.c | 2 +-
->  1 file changed, 1 insertion(+), 1 deletion(-)
-> 
-> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-> index ad917bd72b38..7897826d7c51 100644
-> --- a/fs/nfs/nfs4proc.c
-> +++ b/fs/nfs/nfs4proc.c
-> @@ -1545,7 +1545,7 @@ static int update_open_stateid(struct nfs4_state *state,
->  	struct nfs_client *clp = server->nfs_client;
->  	struct nfs_inode *nfsi = NFS_I(state->inode);
->  	struct nfs_delegation *deleg_cur;
-> -	nfs4_stateid freeme = {0};
-> +	nfs4_stateid freeme = { };
->  	int ret = 0;
->  
->  	fmode &= (FMODE_READ|FMODE_WRITE);
-> 
+> Moving pages is complicated and undocumented, and adds host CPU and
+> memory costs (loads and stores). There is also a whole lot of page
+> allocator traffic in this code, and that will be enabling and
+> disabling interrupts and bottom-halves with some frequency.
 
+I thought "moving pages around" here is basically just this, from
+isvc_rdma_sendto.c:send_reply():
+
+	pages = rqstp->rq_next_page - rqstp->rq_respages;
+        for (page_no = 0; page_no < pages; page_no++) {
+                ctxt->pages[page_no+1] = rqstp->rq_respages[page_no];
+		...
+                rqstp->rq_respages[page_no] = NULL;
+		...
+	}
+
+So we're just copying an array of page pointers from one place to
+another, and zeroing out the source array.
+
+For a short reply that could be 1 page or even none.  In the worst case
+(a 1MB read result) that could be 256 8-byte pointers, so 2K.
+
+Am I missing something?  Has that up-to-2K operation been a problem?
+
+--b.
+
+> 
+> The less involvement by the host CPU the better. The current RDMA
+> transport code documents the RPC-over-RDMA protocol to some extent,
+> but the need for moving the pages is to the reader's imagination.
+> 
+> From my code audit:
+> 
+> The svc_rqst is essentially a static piece of memory, and the calling
+> NFSD kthread will re-use it immediately when svc_sendto() returns. It
+> cannot be manipulated asynchronously. The recvfrom calls and the
+> sendto call for one RPC request can each use a different svc_rqst,
+> for example. So if the transport needs to use pages for longer the
+> length of one svc_sendto call (for example, to wait for RDMA Write to
+> complete) then it has to move those pages out of the svc_rqst before
+> it returns. (Let me know if I've got this wrong).
+> 
+> I'm falling back to looking at ways to clean up and document the
+> movement of these pages so it is better understood why it is done.
+> There also could be some opportunity to share page movement helpers
+> between the RDMA read and write path (and perhaps the TCP transport
+> too).
+> 
+> HTH.
+> 
+> 
+> > --b.
+> > 
+> >> 
+> >> Another option would be for ->sendto to return a value that means
+> >> the transport will release the svc_rqst and pages.
+> >> 
+> >> Or, the svc_rqst could be reference counted.
+> >> 
+> >> Anyone have thoughts about this?
+> 
+> 
+> --
+> Chuck Lever
+> 
+> 
