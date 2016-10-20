@@ -1,40 +1,57 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-it0-f68.google.com ([209.85.214.68]:36829 "EHLO
-        mail-it0-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S932213AbcJTQJl (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 20 Oct 2016 12:09:41 -0400
-MIME-Version: 1.0
-In-Reply-To: <20161020155231.GA4347@fieldses.org>
-References: <1472557703-5985-1-git-send-email-jlayton@redhat.com>
- <CA+55aFzVnBqtk5Az3VNMQ=HfTUBSYyOVejHykU2c63K70s24=A@mail.gmail.com> <20161020155231.GA4347@fieldses.org>
-From: Linus Torvalds <torvalds@linux-foundation.org>
-Date: Thu, 20 Oct 2016 09:09:40 -0700
-Message-ID: <CA+55aFw8ERWE13OJ7ejx=g=C5K1BtwZXA92wO-iSmLHyt1fDpw@mail.gmail.com>
-Subject: Re: [PATCH] nfsd: more robust allocation failure handling in nfsd_reply_cache_init
-To: Bruce Fields <bfields@fieldses.org>
-Cc: Jeff Layton <jlayton@redhat.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
-        Olaf Hering <olaf@aepfle.de>
-Content-Type: text/plain; charset=UTF-8
+Received: from mx1.redhat.com ([209.132.183.28]:44502 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1755389AbcJTQVf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 20 Oct 2016 12:21:35 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: bfields@fieldses.org
+Cc: hch@lst.de, linux-nfs@vger.kernel.org
+Subject: [PATCH] nfsd: fix error handling for clients that fail to return the layout
+Date: Thu, 20 Oct 2016 12:21:34 -0400
+Message-Id: <1476980494-2984-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Oct 20, 2016 at 8:52 AM, Bruce Fields <bfields@fieldses.org> wrote:
->
-> Jeff was also wondering whether we could instead just allocate this with
-> vmalloc--is there any drawback?  We only allocate this on nfsd startup,
-> so if the only drawback is the allocation itself being expensive then
-> that's no big deal.
+Currently, when the client continually returns NFS4ERR_DELAY on a
+CB_LAYOUTRECALL, we'll give up trying to retransmit after two lease
+periods, but leave the layout in place.
 
-vmalloc is ok. Generally if it's *usually* a small allocation, the
-best pattern tends to be to first try to kmalloc (of get_free_pages())
-using __GFP_NORETRY | __GFP_NOWARN, and then fall back on vmalloc().
-That way you don't end up doing vmalloc's for things that really don't
-need it.
+What we really need to do here is fence the client in this case. Have it
+fall through to that code in that case instead of into the
+NFS4ERR_NOMATCHING_LAYOUT case.
 
-If you do that, we have a "kvfree()" helper that is "free either
-kmalloc or vmalloc area", so you don't have to track after-the-fact
-which one you did.
+Cc: Christoph Hellwig <hch@lst.de>
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ fs/nfsd/nfs4layouts.c | 8 ++++----
+ 1 file changed, 4 insertions(+), 4 deletions(-)
 
-               Linus
+diff --git a/fs/nfsd/nfs4layouts.c b/fs/nfsd/nfs4layouts.c
+index 42aace4fc4c8..596205d939a1 100644
+--- a/fs/nfsd/nfs4layouts.c
++++ b/fs/nfsd/nfs4layouts.c
+@@ -686,10 +686,6 @@ nfsd4_cb_layout_done(struct nfsd4_callback *cb, struct rpc_task *task)
+ 			return 0;
+ 		}
+ 		/* Fallthrough */
+-	case -NFS4ERR_NOMATCHING_LAYOUT:
+-		trace_layout_recall_done(&ls->ls_stid.sc_stateid);
+-		task->tk_status = 0;
+-		return 1;
+ 	default:
+ 		/*
+ 		 * Unknown error or non-responding client, we'll need to fence.
+@@ -702,6 +698,10 @@ nfsd4_cb_layout_done(struct nfsd4_callback *cb, struct rpc_task *task)
+ 		else
+ 			nfsd4_cb_layout_fail(ls);
+ 		return -1;
++	case -NFS4ERR_NOMATCHING_LAYOUT:
++		trace_layout_recall_done(&ls->ls_stid.sc_stateid);
++		task->tk_status = 0;
++		return 1;
+ 	}
+ }
+ 
+-- 
+2.7.4
+
