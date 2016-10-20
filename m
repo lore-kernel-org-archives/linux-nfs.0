@@ -1,9 +1,9 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:41236 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:33360 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1752344AbcJTHCg (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 20 Oct 2016 03:02:36 -0400
-Message-ID: <1476946950.5656.4.camel@redhat.com>
+        id S1759565AbcJTKSP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 20 Oct 2016 06:18:15 -0400
+Message-ID: <1476958689.5656.33.camel@redhat.com>
 Subject: Re: [PATCH net-next v4 2/3] udp: implement memory accounting helpers
 From: Paolo Abeni <pabeni@redhat.com>
 To: Eric Dumazet <eric.dumazet@gmail.com>
@@ -15,7 +15,7 @@ Cc: netdev@vger.kernel.org, "David S. Miller" <davem@davemloft.net>,
         Eric Dumazet <edumazet@google.com>, Tom Herbert <tom@herbertland.com>,
         Hannes Frederic Sowa <hannes@stressinduktion.org>,
         Edward Cree <ecree@solarflare.com>, linux-nfs@vger.kernel.org
-Date: Thu, 20 Oct 2016 09:02:30 +0200
+Date: Thu, 20 Oct 2016 12:18:09 +0200
 In-Reply-To: <1476938622.5650.111.camel@edumazet-glaptop3.roam.corp.google.com>
 References: <cover.1476877189.git.pabeni@redhat.com>
          <c5a425a33f7dc8cda35f19c0979cf3ea5c10fc96.1476877189.git.pabeni@redhat.com>
@@ -150,13 +150,67 @@ On Wed, 2016-10-19 at 21:43 -0700, Eric Dumazet wrote:
 > 
 > With your code we might drop all packets even if receive queue is empty,
 > this might add regressions for some apps.
+> 
+> > +
+> > +	spin_lock(&up->mem_lock);
+> > +	if (size < sk->sk_forward_alloc)
+> > +		goto unlock;
+> 
+> Strange label name, since you do "sk->sk_forward_alloc -= size;"before
+> unlock.
+> 
+> You could avoid the goto by :
+> 
+> 	if (size >= sk->sk_forward_alloc) {
+>              amt = sk_mem_pages(size);
+>              ...
+>         }
+>         sk->sk_forward_alloc += delta;k_mem_schedule(
+> 
+> > +
+> > +	amt = sk_mem_pages(size);
+> > +	delta = amt << SK_MEM_QUANTUM_SHIFT;
+> > +	if (!__sk_mem_raise_allocated(sk, delta, amt, SK_MEM_RECV)) {
+> > +		err = -ENOBUFS;
+> > +		spin_unlock(&up->mem_lock);
+> > +		goto uncharge_drop;
+> > +	}
+> > +
+> > +	sk->sk_forward_alloc += delta;
+> > +
+> > +unlock:
+> > +	sk->sk_forward_alloc -= size;
+> > +	spin_unlock(&up->mem_lock);
+> > +
+> > +	/* the skb owner in now the udp socket */
+> > +	skb_orphan(skb);
+> > +	skb->sk = sk;
+> > +	skb->destructor = udp_rmem_free;
+> 
+> > +
+> > +	skb->dev = NULL;
+> > +	sock_skb_set_dropcount(sk, skb);
+> > +
+> > +	spin_lock(&list->lock);
+> 
+> Since we acquire this lock anyway to store the packet,
+> why not protecting sk_forward_alloc as well with this spinlock,
+> and get rid of up->mem_lock.
+> 
+> Ideally a single spin_lock() should be enough.
 
-Thank you for reviewing this! 
+I thought that would hit us back, since udp_recvmsg() needs to acquire
+it twice and we are increasing the bh lock scope, but a quick test
+showed otherwise!!!
 
-I missed that point. I'll take care of it (and of your others comments)
-in v5.
+> Then almost all other atomic ops could be transformed to non atomic ops.
 
-Regards,
+I'm not sure which atomic operations you refer to ?!? AFAICS we still
+need them to manipulate udp_memory_allocated, sk_rmem_alloc, and
+sk_drops. Can you please hint which ones ?
+
+Thank you,
 
 Paolo
+
 
