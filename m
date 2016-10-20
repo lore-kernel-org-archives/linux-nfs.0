@@ -1,11 +1,13 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:54256 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1755434AbcJTUcb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 20 Oct 2016 16:32:31 -0400
-From: Paolo Abeni <pabeni@redhat.com>
-To: netdev@vger.kernel.org
-Cc: "David S. Miller" <davem@davemloft.net>,
+Received: from mail-pf0-f194.google.com ([209.85.192.194]:35820 "EHLO
+        mail-pf0-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1754474AbcJTVKg (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 20 Oct 2016 17:10:36 -0400
+Message-ID: <1476997834.7065.35.camel@edumazet-glaptop3.roam.corp.google.com>
+Subject: Re: [PATCH net-next v5 2/3] udp: implement memory accounting helpers
+From: Eric Dumazet <eric.dumazet@gmail.com>
+To: Paolo Abeni <pabeni@redhat.com>
+Cc: netdev@vger.kernel.org, "David S. Miller" <davem@davemloft.net>,
         James Morris <jmorris@namei.org>,
         Trond Myklebust <trond.myklebust@primarydata.com>,
         Alexander Duyck <aduyck@mirantis.com>,
@@ -13,378 +15,43 @@ Cc: "David S. Miller" <davem@davemloft.net>,
         Eric Dumazet <edumazet@google.com>, Tom Herbert <tom@herbertland.com>,
         Hannes Frederic Sowa <hannes@stressinduktion.org>,
         Edward Cree <ecree@solarflare.com>, linux-nfs@vger.kernel.org
-Subject: [PATCH net-next v5 3/3] udp: use it's own memory accounting schema
-Date: Thu, 20 Oct 2016 22:31:10 +0200
-Message-Id: <e5477e28625f4c793eadfe8a59576c485ff42b08.1476979679.git.pabeni@redhat.com>
-In-Reply-To: <cover.1476979679.git.pabeni@redhat.com>
+Date: Thu, 20 Oct 2016 14:10:34 -0700
+In-Reply-To: <d932905c2581df9415449216eceeed1566290e3e.1476979679.git.pabeni@redhat.com>
 References: <cover.1476979679.git.pabeni@redhat.com>
+         <d932905c2581df9415449216eceeed1566290e3e.1476979679.git.pabeni@redhat.com>
+Content-Type: text/plain; charset="UTF-8"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Completely avoid default sock memory accounting and replace it
-with udp-specific accounting.
+On Thu, 2016-10-20 at 22:31 +0200, Paolo Abeni wrote:
 
-Since the new memory accounting model encapsulates completely
-the required locking, remove the socket lock on both enqueue and
-dequeue, and avoid using the backlog on enqueue.
+> +
+> +int __udp_enqueue_schedule_skb(struct sock *sk, struct sk_buff *skb)
+> +{
+> +	struct sk_buff_head *list = &sk->sk_receive_queue;
+> +	int rmem, delta, amt, err = -ENOMEM;
+> +	int size = skb->truesize;
+> +
+> +	/* try to avoid the costly atomic add/sub pair when the receive
+> +	 * queue is full; always allow at least a packet
+> +	 */
+> +	rmem = atomic_read(&sk->sk_rmem_alloc);
+> +	if (rmem && (rmem + size > sk->sk_rcvbuf))
+> +		goto drop;
+> +
+> +	/* we drop only if the receive buf is full and the receive
+> +	 * queue contains some other skb
+> +	 */
+> +	rmem = atomic_add_return(size, &sk->sk_rmem_alloc);
+> +	if ((rmem > sk->sk_rcvbuf) && (rmem > size))
+> +		goto uncharge_drop;
+> +
+> +	skb_orphan(skb);
 
-Be sure to clean-up rx queue memory on socket destruction, using
-udp its own sk_destruct.
+Minor point :
 
-Tested using pktgen with random src port, 64 bytes packet,
-wire-speed on a 10G link as sender and udp_sink as the receiver,
-using an l4 tuple rxhash to stress the contention, and one or more
-udp_sink instances with reuseport.
+UDP should already have orphaned skbs ? (it uses skb_steal_sock())
 
-nr readers      Kpps (vanilla)  Kpps (patched)
-1               170             440
-3               1250            2150
-6               3000            3650
-9               4200            4450
-12              5700            6250
 
-v4 -> v5:
-  - avoid unneeded test in first_packet_length
-
-v3 -> v4:
-  - remove useless sk_rcvqueues_full() call
-
-v2 -> v3:
-  - do not set the now unsed backlog_rcv callback
-
-v1 -> v2:
-  - add memory pressure support
-  - fixed dropwatch accounting for ipv6
-
-Acked-by: Hannes Frederic Sowa <hannes@stressinduktion.org>
-Signed-off-by: Paolo Abeni <pabeni@redhat.com>
----
- net/ipv4/udp.c        | 43 ++++++++-----------------------------------
- net/ipv6/udp.c        | 34 ++++++++--------------------------
- net/sunrpc/svcsock.c  | 20 ++++++++++++++++----
- net/sunrpc/xprtsock.c |  2 +-
- 4 files changed, 33 insertions(+), 66 deletions(-)
-
-diff --git a/net/ipv4/udp.c b/net/ipv4/udp.c
-index 5e79992..73d33a8 100644
---- a/net/ipv4/udp.c
-+++ b/net/ipv4/udp.c
-@@ -1309,13 +1309,7 @@ static int first_packet_length(struct sock *sk)
- 	res = skb ? skb->len : -1;
- 	spin_unlock_bh(&rcvq->lock);
- 
--	if (!skb_queue_empty(&list_kill)) {
--		bool slow = lock_sock_fast(sk);
--
--		__skb_queue_purge(&list_kill);
--		sk_mem_reclaim_partial(sk);
--		unlock_sock_fast(sk, slow);
--	}
-+	__skb_queue_purge(&list_kill);
- 	return res;
- }
- 
-@@ -1364,7 +1358,6 @@ int udp_recvmsg(struct sock *sk, struct msghdr *msg, size_t len, int noblock,
- 	int err;
- 	int is_udplite = IS_UDPLITE(sk);
- 	bool checksum_valid = false;
--	bool slow;
- 
- 	if (flags & MSG_ERRQUEUE)
- 		return ip_recv_error(sk, msg, len, addr_len);
-@@ -1405,13 +1398,12 @@ int udp_recvmsg(struct sock *sk, struct msghdr *msg, size_t len, int noblock,
- 	}
- 
- 	if (unlikely(err)) {
--		trace_kfree_skb(skb, udp_recvmsg);
- 		if (!peeked) {
- 			atomic_inc(&sk->sk_drops);
- 			UDP_INC_STATS(sock_net(sk),
- 				      UDP_MIB_INERRORS, is_udplite);
- 		}
--		skb_free_datagram_locked(sk, skb);
-+		kfree_skb(skb);
- 		return err;
- 	}
- 
-@@ -1436,16 +1428,15 @@ int udp_recvmsg(struct sock *sk, struct msghdr *msg, size_t len, int noblock,
- 	if (flags & MSG_TRUNC)
- 		err = ulen;
- 
--	__skb_free_datagram_locked(sk, skb, peeking ? -err : err);
-+	skb_consume_udp(sk, skb, peeking ? -err : err);
- 	return err;
- 
- csum_copy_err:
--	slow = lock_sock_fast(sk);
--	if (!skb_kill_datagram(sk, skb, flags)) {
-+	if (!__sk_queue_drop_skb(sk, skb, flags)) {
- 		UDP_INC_STATS(sock_net(sk), UDP_MIB_CSUMERRORS, is_udplite);
- 		UDP_INC_STATS(sock_net(sk), UDP_MIB_INERRORS, is_udplite);
- 	}
--	unlock_sock_fast(sk, slow);
-+	kfree_skb(skb);
- 
- 	/* starting over for a new packet, but check if we need to yield */
- 	cond_resched();
-@@ -1564,7 +1555,7 @@ static int __udp_queue_rcv_skb(struct sock *sk, struct sk_buff *skb)
- 		sk_incoming_cpu_update(sk);
- 	}
- 
--	rc = __sock_queue_rcv_skb(sk, skb);
-+	rc = __udp_enqueue_schedule_skb(sk, skb);
- 	if (rc < 0) {
- 		int is_udplite = IS_UDPLITE(sk);
- 
-@@ -1579,7 +1570,6 @@ static int __udp_queue_rcv_skb(struct sock *sk, struct sk_buff *skb)
- 	}
- 
- 	return 0;
--
- }
- 
- static struct static_key udp_encap_needed __read_mostly;
-@@ -1601,7 +1591,6 @@ void udp_encap_enable(void)
- int udp_queue_rcv_skb(struct sock *sk, struct sk_buff *skb)
- {
- 	struct udp_sock *up = udp_sk(sk);
--	int rc;
- 	int is_udplite = IS_UDPLITE(sk);
- 
- 	/*
-@@ -1688,25 +1677,9 @@ int udp_queue_rcv_skb(struct sock *sk, struct sk_buff *skb)
- 		goto drop;
- 
- 	udp_csum_pull_header(skb);
--	if (sk_rcvqueues_full(sk, sk->sk_rcvbuf)) {
--		__UDP_INC_STATS(sock_net(sk), UDP_MIB_RCVBUFERRORS,
--				is_udplite);
--		goto drop;
--	}
--
--	rc = 0;
- 
- 	ipv4_pktinfo_prepare(sk, skb);
--	bh_lock_sock(sk);
--	if (!sock_owned_by_user(sk))
--		rc = __udp_queue_rcv_skb(sk, skb);
--	else if (sk_add_backlog(sk, skb, sk->sk_rcvbuf)) {
--		bh_unlock_sock(sk);
--		goto drop;
--	}
--	bh_unlock_sock(sk);
--
--	return rc;
-+	return __udp_queue_rcv_skb(sk, skb);
- 
- csum_error:
- 	__UDP_INC_STATS(sock_net(sk), UDP_MIB_CSUMERRORS, is_udplite);
-@@ -2316,13 +2289,13 @@ struct proto udp_prot = {
- 	.connect	   = ip4_datagram_connect,
- 	.disconnect	   = udp_disconnect,
- 	.ioctl		   = udp_ioctl,
-+	.init		   = udp_init_sock,
- 	.destroy	   = udp_destroy_sock,
- 	.setsockopt	   = udp_setsockopt,
- 	.getsockopt	   = udp_getsockopt,
- 	.sendmsg	   = udp_sendmsg,
- 	.recvmsg	   = udp_recvmsg,
- 	.sendpage	   = udp_sendpage,
--	.backlog_rcv	   = __udp_queue_rcv_skb,
- 	.release_cb	   = ip4_datagram_release_cb,
- 	.hash		   = udp_lib_hash,
- 	.unhash		   = udp_lib_unhash,
-diff --git a/net/ipv6/udp.c b/net/ipv6/udp.c
-index 9aa7c1c..71963b2 100644
---- a/net/ipv6/udp.c
-+++ b/net/ipv6/udp.c
-@@ -334,7 +334,6 @@ int udpv6_recvmsg(struct sock *sk, struct msghdr *msg, size_t len,
- 	int is_udplite = IS_UDPLITE(sk);
- 	bool checksum_valid = false;
- 	int is_udp4;
--	bool slow;
- 
- 	if (flags & MSG_ERRQUEUE)
- 		return ipv6_recv_error(sk, msg, len, addr_len);
-@@ -378,7 +377,6 @@ int udpv6_recvmsg(struct sock *sk, struct msghdr *msg, size_t len,
- 			goto csum_copy_err;
- 	}
- 	if (unlikely(err)) {
--		trace_kfree_skb(skb, udpv6_recvmsg);
- 		if (!peeked) {
- 			atomic_inc(&sk->sk_drops);
- 			if (is_udp4)
-@@ -388,7 +386,7 @@ int udpv6_recvmsg(struct sock *sk, struct msghdr *msg, size_t len,
- 				UDP6_INC_STATS(sock_net(sk), UDP_MIB_INERRORS,
- 					       is_udplite);
- 		}
--		skb_free_datagram_locked(sk, skb);
-+		kfree_skb(skb);
- 		return err;
- 	}
- 	if (!peeked) {
-@@ -437,12 +435,11 @@ int udpv6_recvmsg(struct sock *sk, struct msghdr *msg, size_t len,
- 	if (flags & MSG_TRUNC)
- 		err = ulen;
- 
--	__skb_free_datagram_locked(sk, skb, peeking ? -err : err);
-+	skb_consume_udp(sk, skb, peeking ? -err : err);
- 	return err;
- 
- csum_copy_err:
--	slow = lock_sock_fast(sk);
--	if (!skb_kill_datagram(sk, skb, flags)) {
-+	if (!__sk_queue_drop_skb(sk, skb, flags)) {
- 		if (is_udp4) {
- 			UDP_INC_STATS(sock_net(sk),
- 				      UDP_MIB_CSUMERRORS, is_udplite);
-@@ -455,7 +452,7 @@ int udpv6_recvmsg(struct sock *sk, struct msghdr *msg, size_t len,
- 				       UDP_MIB_INERRORS, is_udplite);
- 		}
- 	}
--	unlock_sock_fast(sk, slow);
-+	kfree_skb(skb);
- 
- 	/* starting over for a new packet, but check if we need to yield */
- 	cond_resched();
-@@ -523,7 +520,7 @@ static int __udpv6_queue_rcv_skb(struct sock *sk, struct sk_buff *skb)
- 		sk_incoming_cpu_update(sk);
- 	}
- 
--	rc = __sock_queue_rcv_skb(sk, skb);
-+	rc = __udp_enqueue_schedule_skb(sk, skb);
- 	if (rc < 0) {
- 		int is_udplite = IS_UDPLITE(sk);
- 
-@@ -535,6 +532,7 @@ static int __udpv6_queue_rcv_skb(struct sock *sk, struct sk_buff *skb)
- 		kfree_skb(skb);
- 		return -1;
- 	}
-+
- 	return 0;
- }
- 
-@@ -556,7 +554,6 @@ void udpv6_encap_enable(void)
- int udpv6_queue_rcv_skb(struct sock *sk, struct sk_buff *skb)
- {
- 	struct udp_sock *up = udp_sk(sk);
--	int rc;
- 	int is_udplite = IS_UDPLITE(sk);
- 
- 	if (!xfrm6_policy_check(sk, XFRM_POLICY_IN, skb))
-@@ -622,25 +619,10 @@ int udpv6_queue_rcv_skb(struct sock *sk, struct sk_buff *skb)
- 		goto drop;
- 
- 	udp_csum_pull_header(skb);
--	if (sk_rcvqueues_full(sk, sk->sk_rcvbuf)) {
--		__UDP6_INC_STATS(sock_net(sk),
--				 UDP_MIB_RCVBUFERRORS, is_udplite);
--		goto drop;
--	}
- 
- 	skb_dst_drop(skb);
- 
--	bh_lock_sock(sk);
--	rc = 0;
--	if (!sock_owned_by_user(sk))
--		rc = __udpv6_queue_rcv_skb(sk, skb);
--	else if (sk_add_backlog(sk, skb, sk->sk_rcvbuf)) {
--		bh_unlock_sock(sk);
--		goto drop;
--	}
--	bh_unlock_sock(sk);
--
--	return rc;
-+	return __udpv6_queue_rcv_skb(sk, skb);
- 
- csum_error:
- 	__UDP6_INC_STATS(sock_net(sk), UDP_MIB_CSUMERRORS, is_udplite);
-@@ -1433,12 +1415,12 @@ struct proto udpv6_prot = {
- 	.connect	   = ip6_datagram_connect,
- 	.disconnect	   = udp_disconnect,
- 	.ioctl		   = udp_ioctl,
-+	.init		   = udp_init_sock,
- 	.destroy	   = udpv6_destroy_sock,
- 	.setsockopt	   = udpv6_setsockopt,
- 	.getsockopt	   = udpv6_getsockopt,
- 	.sendmsg	   = udpv6_sendmsg,
- 	.recvmsg	   = udpv6_recvmsg,
--	.backlog_rcv	   = __udpv6_queue_rcv_skb,
- 	.release_cb	   = ip6_datagram_release_cb,
- 	.hash		   = udp_lib_hash,
- 	.unhash		   = udp_lib_unhash,
-diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
-index 57625f6..e2a55dc 100644
---- a/net/sunrpc/svcsock.c
-+++ b/net/sunrpc/svcsock.c
-@@ -39,6 +39,7 @@
- #include <net/checksum.h>
- #include <net/ip.h>
- #include <net/ipv6.h>
-+#include <net/udp.h>
- #include <net/tcp.h>
- #include <net/tcp_states.h>
- #include <asm/uaccess.h>
-@@ -129,6 +130,18 @@ static void svc_release_skb(struct svc_rqst *rqstp)
- 	}
- }
- 
-+static void svc_release_udp_skb(struct svc_rqst *rqstp)
-+{
-+	struct sk_buff *skb = rqstp->rq_xprt_ctxt;
-+
-+	if (skb) {
-+		rqstp->rq_xprt_ctxt = NULL;
-+
-+		dprintk("svc: service %p, releasing skb %p\n", rqstp, skb);
-+		consume_skb(skb);
-+	}
-+}
-+
- union svc_pktinfo_u {
- 	struct in_pktinfo pkti;
- 	struct in6_pktinfo pkti6;
-@@ -575,7 +588,7 @@ static int svc_udp_recvfrom(struct svc_rqst *rqstp)
- 			goto out_free;
- 		}
- 		local_bh_enable();
--		skb_free_datagram_locked(svsk->sk_sk, skb);
-+		consume_skb(skb);
- 	} else {
- 		/* we can use it in-place */
- 		rqstp->rq_arg.head[0].iov_base = skb->data;
-@@ -602,8 +615,7 @@ static int svc_udp_recvfrom(struct svc_rqst *rqstp)
- 
- 	return len;
- out_free:
--	trace_kfree_skb(skb, svc_udp_recvfrom);
--	skb_free_datagram_locked(svsk->sk_sk, skb);
-+	kfree_skb(skb);
- 	return 0;
- }
- 
-@@ -660,7 +672,7 @@ static struct svc_xprt *svc_udp_create(struct svc_serv *serv,
- 	.xpo_create = svc_udp_create,
- 	.xpo_recvfrom = svc_udp_recvfrom,
- 	.xpo_sendto = svc_udp_sendto,
--	.xpo_release_rqst = svc_release_skb,
-+	.xpo_release_rqst = svc_release_udp_skb,
- 	.xpo_detach = svc_sock_detach,
- 	.xpo_free = svc_sock_free,
- 	.xpo_prep_reply_hdr = svc_udp_prep_reply_hdr,
-diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
-index bf16883..8e04a43 100644
---- a/net/sunrpc/xprtsock.c
-+++ b/net/sunrpc/xprtsock.c
-@@ -1074,7 +1074,7 @@ static void xs_udp_data_receive(struct sock_xprt *transport)
- 		skb = skb_recv_datagram(sk, 0, 1, &err);
- 		if (skb != NULL) {
- 			xs_udp_data_read_skb(&transport->xprt, sk, skb);
--			skb_free_datagram_locked(sk, skb);
-+			consume_skb(skb);
- 			continue;
- 		}
- 		if (!test_and_clear_bit(XPRT_SOCK_DATA_READY, &transport->sock_state))
--- 
-1.8.3.1
 
