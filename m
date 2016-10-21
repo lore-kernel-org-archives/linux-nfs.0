@@ -1,81 +1,66 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:44968 "EHLO mx2.suse.de"
+Received: from mx1.redhat.com ([209.132.183.28]:48660 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1753520AbcJUABX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 20 Oct 2016 20:01:23 -0400
-From: NeilBrown <neilb@suse.com>
-To: Andy Adamson <andros@netapp.com>,
+        id S1752880AbcJULnq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 21 Oct 2016 07:43:46 -0400
+Message-ID: <1477050221.4606.6.camel@redhat.com>
+Subject: Re: [PATCH net-next v5 2/3] udp: implement memory accounting helpers
+From: Paolo Abeni <pabeni@redhat.com>
+To: Eric Dumazet <eric.dumazet@gmail.com>
+Cc: netdev@vger.kernel.org, "David S. Miller" <davem@davemloft.net>,
+        James Morris <jmorris@namei.org>,
         Trond Myklebust <trond.myklebust@primarydata.com>,
-        Anna Schumaker <anna.schumaker@netapp.com>
-Date: Fri, 21 Oct 2016 11:01:13 +1100
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: [PATCH] NFSv4.1: nfs4_fl_prepare_ds must be careful about reporting
- success.
-Message-ID: <87lgxiwoxi.fsf@notabene.neil.brown.name>
-MIME-Version: 1.0
-Content-Type: multipart/signed; boundary="=-=-=";
-        micalg=pgp-sha256; protocol="application/pgp-signature"
+        Alexander Duyck <aduyck@mirantis.com>,
+        Daniel Borkmann <daniel@iogearbox.net>,
+        Eric Dumazet <edumazet@google.com>, Tom Herbert <tom@herbertland.com>,
+        Hannes Frederic Sowa <hannes@stressinduktion.org>,
+        Edward Cree <ecree@solarflare.com>, linux-nfs@vger.kernel.org
+Date: Fri, 21 Oct 2016 13:43:41 +0200
+In-Reply-To: <1476997834.7065.35.camel@edumazet-glaptop3.roam.corp.google.com>
+References: <cover.1476979679.git.pabeni@redhat.com>
+         <d932905c2581df9415449216eceeed1566290e3e.1476979679.git.pabeni@redhat.com>
+         <1476997834.7065.35.camel@edumazet-glaptop3.roam.corp.google.com>
+Content-Type: text/plain; charset="UTF-8"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---=-=-=
-Content-Type: text/plain
-Content-Transfer-Encoding: quoted-printable
+On Thu, 2016-10-20 at 14:10 -0700, Eric Dumazet wrote:
+> On Thu, 2016-10-20 at 22:31 +0200, Paolo Abeni wrote:
+> 
+> > +
+> > +int __udp_enqueue_schedule_skb(struct sock *sk, struct sk_buff *skb)
+> > +{
+> > +	struct sk_buff_head *list = &sk->sk_receive_queue;
+> > +	int rmem, delta, amt, err = -ENOMEM;
+> > +	int size = skb->truesize;
+> > +
+> > +	/* try to avoid the costly atomic add/sub pair when the receive
+> > +	 * queue is full; always allow at least a packet
+> > +	 */
+> > +	rmem = atomic_read(&sk->sk_rmem_alloc);
+> > +	if (rmem && (rmem + size > sk->sk_rcvbuf))
+> > +		goto drop;
+> > +
+> > +	/* we drop only if the receive buf is full and the receive
+> > +	 * queue contains some other skb
+> > +	 */
+> > +	rmem = atomic_add_return(size, &sk->sk_rmem_alloc);
+> > +	if ((rmem > sk->sk_rcvbuf) && (rmem > size))
+> > +		goto uncharge_drop;
+> > +
+> > +	skb_orphan(skb);
+> 
+> Minor point :
+> 
+> UDP should already have orphaned skbs ? (it uses skb_steal_sock())
+
+You are right, the skb_orphan() call is redundant. 
+
+I'll send the v6 soon.
+
+Thank you,
+
+Paolo
 
 
-Various places assume that if nfs4_fl_prepare_ds() turns a non-NULL
-'ds', then ds->ds_clp will also be non-NULL.
-
-This is not necessasrily true in the case when the process received a
-fatal signal while nfs4_pnfs_ds_connect is waiting in
-nfs4_wait_ds_connect().  In that case ->ds_clp may not be set, and the
-devid may not recently have been marked unavailable.
-
-So add a test for ->ds_clp =3D=3D NULL and return NULL in that case.
-
-Fixes: c23266d532b4 ("NFS4.1 Fix data server connection race")
-Signed-off-by: NeilBrown <neilb@suse.com>
-=2D--
- fs/nfs/filelayout/filelayoutdev.c | 3 ++-
- 1 file changed, 2 insertions(+), 1 deletion(-)
-
-diff --git a/fs/nfs/filelayout/filelayoutdev.c b/fs/nfs/filelayout/filelayo=
-utdev.c
-index 4946ef40ba87..85ef38f9765f 100644
-=2D-- a/fs/nfs/filelayout/filelayoutdev.c
-+++ b/fs/nfs/filelayout/filelayoutdev.c
-@@ -283,7 +283,8 @@ nfs4_fl_prepare_ds(struct pnfs_layout_segment *lseg, u3=
-2 ds_idx)
- 			     s->nfs_client->cl_rpcclient->cl_auth->au_flavor);
-=20
- out_test_devid:
-=2D	if (filelayout_test_devid_unavailable(devid))
-+	if (ret->ds_clp =3D=3D NULL ||
-+	    filelayout_test_devid_unavailable(devid))
- 		ret =3D NULL;
- out:
- 	return ret;
-=2D-=20
-2.10.1
-
-
---=-=-=
-Content-Type: application/pgp-signature; name="signature.asc"
-
------BEGIN PGP SIGNATURE-----
-
-iQIcBAEBCAAGBQJYCVrJAAoJEDnsnt1WYoG5n04QAJQlCoiUj5YGbrR7jAyQS+mY
-UGj0rWKWmAqKZUf789SY8SvQuHe7pD9a1MHi+XLQwBDv+ggrY/iBjdmOfC+iwKGI
-tyJzGVdcN66oiVVTcWj58Z0irQHoEBlOCKEJGEHvF/xgVskxVhHQNv5Yr8nkNSR1
-i1vYIBVNzU+WdYEjl1+90FdNlmmk8/wfnZ6xIXp1ZI8s/65GAcEviK5lMZC/rQo8
-ZeG4vtOb8zsZsUId1KqzR6kb5jEjQEArKOvKGRIfhWayVij+kEZnBdQHKTt4hQt/
-uv7Y529DgG973V448uurwoUQTRB5NBtNsfUoVsFSLIz8Wg4UoYwhbGbrVJ36PPhU
-7RkGMJjs1OiFxtIC72jlmvHUN7Z3iLq8+6n5RqetOcRWm0oiXXaRymXNj6s08dZr
-P/RDqFxwHNU/R8y9HoPU+jkc1Z3m9M0q1/Rwmmp7czOjuxeI6EDxBpJRQlNZC2NO
-kjHTJey60Smemep1JZu41+X2CmvbHMmGMPFt8b+nBy/9F3gh5Gg5SK5FLzSc4Dpj
-7Ow8wYzTzKu20rGLVuB12RQGIIOo6QExjLusDyhQClTYl7ZC7dA6OdGEFGGxDjbC
-0D6KNijmhsfopwCDeevdSOgxXpYEvrUfcXVoM18fbqKrvas8gYSqVg+tyd1Y6K+u
-CVGA81ZHfX9YQ9kqtYWL
-=fdFt
------END PGP SIGNATURE-----
---=-=-=--
