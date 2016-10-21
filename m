@@ -1,26 +1,79 @@
-Return-Path: <BATV+f53f61f65086c731f931+4807+infradead.org+hch@bombadil.srs.infradead.org>
-Date: Fri, 21 Oct 2016 05:18:47 -0700
-From: Christoph Hellwig <hch@infradead.org>
-To: Anna Schumaker <Anna.Schumaker@netapp.com>
-Cc: Christoph Hellwig <hch@infradead.org>,
-        Benjamin Coddington <bcodding@redhat.com>,
+Return-Path: <linux-nfs-owner@vger.kernel.org>
+Received: from mail-pf0-f193.google.com ([209.85.192.193]:34019 "EHLO
+        mail-pf0-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1754619AbcJUMYF (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 21 Oct 2016 08:24:05 -0400
+Message-ID: <1477052642.7065.63.camel@edumazet-glaptop3.roam.corp.google.com>
+Subject: Re: [PATCH net-next v6 2/3] udp: implement memory accounting helpers
+From: Eric Dumazet <eric.dumazet@gmail.com>
+To: Paolo Abeni <pabeni@redhat.com>
+Cc: netdev@vger.kernel.org, "David S. Miller" <davem@davemloft.net>,
+        James Morris <jmorris@namei.org>,
         Trond Myklebust <trond.myklebust@primarydata.com>,
-        linux-nfs@vger.kernel.org
-Subject: Re: [PATCH][RESEND] pnfs/blocklayout: fix last_write_offset
- incorrectly set to page boundary
-Message-ID: <20161021121847.GA13905@infradead.org>
-References: <ffe9a2cc97ead5b73b985aa4c16219351cac29d5.1476215430.git.bcodding@redhat.com>
- <20161011201719.GA25383@infradead.org>
- <bf99210e-7aea-74ee-799c-64c7f190b4e4@Netapp.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <bf99210e-7aea-74ee-799c-64c7f190b4e4@Netapp.com>
+        Alexander Duyck <aduyck@mirantis.com>,
+        Daniel Borkmann <daniel@iogearbox.net>,
+        Eric Dumazet <edumazet@google.com>, Tom Herbert <tom@herbertland.com>,
+        Hannes Frederic Sowa <hannes@stressinduktion.org>,
+        Edward Cree <ecree@solarflare.com>, linux-nfs@vger.kernel.org
+Date: Fri, 21 Oct 2016 05:24:02 -0700
+In-Reply-To: <4d2e0fc8f5c3d1309b0fb71bc65a2719a8e82825.1477043395.git.pabeni@redhat.com>
+References: <cover.1477043395.git.pabeni@redhat.com>
+         <4d2e0fc8f5c3d1309b0fb71bc65a2719a8e82825.1477043395.git.pabeni@redhat.com>
+Content-Type: text/plain; charset="UTF-8"
+Mime-Version: 1.0
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Oct 13, 2016 at 04:46:19PM -0400, Anna Schumaker wrote:
-> Hi Ben,
+On Fri, 2016-10-21 at 13:55 +0200, Paolo Abeni wrote:
+> Avoid using the generic helpers.
+> Use the receive queue spin lock to protect the memory
+> accounting operation, both on enqueue and on dequeue.
 > 
-> Thanks for the patch!  It didn't make it into my initial pull request for 4.9, but I am planning on sending it for an rc along with any bakeathon changes from next week.
+> On dequeue perform partial memory reclaiming, trying to
+> leave a quantum of forward allocated memory.
+> 
+> On enqueue use a custom helper, to allow some optimizations:
+> - use a plain spin_lock() variant instead of the slightly
+>   costly spin_lock_irqsave(),
+> - avoid dst_force check, since the calling code has already
+>   dropped the skb dst
+> - avoid orphaning the skb, since skb_steal_sock() already did
+>   the work for us
 
-Any progress on that?  I'd really like to get the fix in before at least
--rc2.
+>  
+> +static void udp_rmem_release(struct sock *sk, int size, int partial)
+> +{
+> +	int amt;
+> +
+> +	atomic_sub(size, &sk->sk_rmem_alloc);
+> +
+> +	spin_lock_bh(&sk->sk_receive_queue.lock);
+> +	sk->sk_forward_alloc += size;
+> +	amt = (sk->sk_forward_alloc - partial) & ~(SK_MEM_QUANTUM - 1);
+> +	sk->sk_forward_alloc -= amt;
+> +	spin_unlock_bh(&sk->sk_receive_queue.lock);
+> +
+> +	if (amt)
+> +		__sk_mem_reduce_allocated(sk, amt >> SK_MEM_QUANTUM_SHIFT);
+> +}
+> +
+> +static void udp_rmem_free(struct sk_buff *skb)
+> +{
+> +	udp_rmem_release(skb->sk, skb->truesize, 1);
+> +}
+> +
+
+
+It looks like you are acquiring/releasing sk_receive_queue.lock twice
+per packet in recvmsg() (the second time in the destructor above)
+
+We could do slightly better if :
+
+We do not set skb->destructor at all, and manage
+sk_rmem_alloc/sk_forward_alloc changes at the time we dequeue skb
+ (if !MSG_PEEK), before copy to user space.
+
+
+
+
+
