@@ -1,53 +1,48 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx143.netapp.com ([216.240.21.24]:5407 "EHLO mx143.netapp.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1754619AbcJUUac (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 21 Oct 2016 16:30:32 -0400
-From: Anna Schumaker <Anna.Schumaker@Netapp.com>
-Subject: [GIT PULL] Please pull NFS client bugfixes
-To: Linus Torvalds <torvalds@linux-foundation.org>
-CC: Trond Myklebust <trond.myklebust@primarydata.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
-Message-ID: <a2ad29b2-0e76-018d-4155-58e52b80d8a2@Netapp.com>
-Date: Fri, 21 Oct 2016 16:30:03 -0400
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Received: from mail-pf0-f196.google.com ([209.85.192.196]:35464 "EHLO
+        mail-pf0-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S933253AbcJUVNF (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 21 Oct 2016 17:13:05 -0400
+Message-ID: <1477084383.7065.87.camel@edumazet-glaptop3.roam.corp.google.com>
+Subject: Re: [PATCH net-next v6 1/3] net/socket: factor out helpers for
+ memory and queue manipulation
+From: Eric Dumazet <eric.dumazet@gmail.com>
+To: Paolo Abeni <pabeni@redhat.com>
+Cc: netdev@vger.kernel.org, "David S. Miller" <davem@davemloft.net>,
+        James Morris <jmorris@namei.org>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        Alexander Duyck <aduyck@mirantis.com>,
+        Daniel Borkmann <daniel@iogearbox.net>,
+        Eric Dumazet <edumazet@google.com>, Tom Herbert <tom@herbertland.com>,
+        Hannes Frederic Sowa <hannes@stressinduktion.org>,
+        Edward Cree <ecree@solarflare.com>, linux-nfs@vger.kernel.org
+Date: Fri, 21 Oct 2016 14:13:03 -0700
+In-Reply-To: <14784e6382342c2184929ef2959e7c11faf8ff8e.1477043395.git.pabeni@redhat.com>
+References: <cover.1477043395.git.pabeni@redhat.com>
+         <14784e6382342c2184929ef2959e7c11faf8ff8e.1477043395.git.pabeni@redhat.com>
+Content-Type: text/plain; charset="UTF-8"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Linus,
+On Fri, 2016-10-21 at 13:55 +0200, Paolo Abeni wrote:
+> Basic sock operations that udp code can use with its own
+> memory accounting schema. No functional change is introduced
+> in the existing APIs.
+> 
+> v4 -> v5:
+>   - avoid whitespace changes
+> 
+> v2 -> v4:
+>   - avoid exporting __sock_enqueue_skb
+> 
+> v1 -> v2:
+>   - avoid export sock_rmem_free
+> 
+> Acked-by: Hannes Frederic Sowa <hannes@stressinduktion.org>
+> Signed-off-by: Paolo Abeni <pabeni@redhat.com>
+> ---
 
-The following changes since commit 3f807e5ae5597bd65a6fff684083e8eaa21f3fa7:
+Acked-by: Eric Dumazet <edumazet@google.com>
 
-  NFSv4.2: Fix a reference leak in nfs42_proc_layoutstats_generic (2016-10-04 16:30:54 -0400)
 
-are available in the git repository at:
-
-  git://git.linux-nfs.org/projects/anna/linux-nfs.git tags/nfs-for-4.9-2
-
-for you to fetch changes up to 83aa3e0f791d458a28f91d7a50f92926f971ef7c:
-
-  nfs4: fix missing-braces warning (2016-10-19 14:39:15 -0400)
-
-----------------------------------------------------------------
-Just two bugfixes this time:
-
-Stable bugfix:
-- Fix last_write_offset incorrectly set to page boundary
-
-Other bugfix:
-- Fix missing-braces warning
-
-Thanks,
-Anna
-----------------------------------------------------------------
-Arnd Bergmann (1):
-      nfs4: fix missing-braces warning
-
-Benjamin Coddington (1):
-      pnfs/blocklayout: fix last_write_offset incorrectly set to page boundary
-
- fs/nfs/blocklayout/blocklayout.c | 3 ++-
- fs/nfs/nfs4proc.c                | 2 +-
- 2 files changed, 3 insertions(+), 2 deletions(-)
