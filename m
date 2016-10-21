@@ -1,79 +1,36 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-pf0-f193.google.com ([209.85.192.193]:34019 "EHLO
-        mail-pf0-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1754619AbcJUMYF (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 21 Oct 2016 08:24:05 -0400
-Message-ID: <1477052642.7065.63.camel@edumazet-glaptop3.roam.corp.google.com>
-Subject: Re: [PATCH net-next v6 2/3] udp: implement memory accounting helpers
-From: Eric Dumazet <eric.dumazet@gmail.com>
-To: Paolo Abeni <pabeni@redhat.com>
-Cc: netdev@vger.kernel.org, "David S. Miller" <davem@davemloft.net>,
-        James Morris <jmorris@namei.org>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        Alexander Duyck <aduyck@mirantis.com>,
-        Daniel Borkmann <daniel@iogearbox.net>,
-        Eric Dumazet <edumazet@google.com>, Tom Herbert <tom@herbertland.com>,
-        Hannes Frederic Sowa <hannes@stressinduktion.org>,
-        Edward Cree <ecree@solarflare.com>, linux-nfs@vger.kernel.org
-Date: Fri, 21 Oct 2016 05:24:02 -0700
-In-Reply-To: <4d2e0fc8f5c3d1309b0fb71bc65a2719a8e82825.1477043395.git.pabeni@redhat.com>
-References: <cover.1477043395.git.pabeni@redhat.com>
-         <4d2e0fc8f5c3d1309b0fb71bc65a2719a8e82825.1477043395.git.pabeni@redhat.com>
-Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
+Received: from bombadil.infradead.org ([198.137.202.9]:46554 "EHLO
+        bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S932726AbcJUM0R (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 21 Oct 2016 08:26:17 -0400
+Date: Fri, 21 Oct 2016 05:26:14 -0700
+From: Christoph Hellwig <hch@infradead.org>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: Christoph Hellwig <hch@infradead.org>,
+        Rusty Russell <rusty@rustcorp.com.au>, linux-nfs@vger.kernel.org,
+        linux-crypto@vger.kernel.org
+Subject: Re: sg_set_buf
+Message-ID: <20161021122614.GA28059@infradead.org>
+References: <20161018213755.GA10777@fieldses.org>
+ <20161020102200.GA6628@infradead.org>
+ <20161020132030.GA2868@fieldses.org>
+ <20161020133107.GA11993@infradead.org>
+ <20161020214219.GC4347@fieldses.org>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20161020214219.GC4347@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, 2016-10-21 at 13:55 +0200, Paolo Abeni wrote:
-> Avoid using the generic helpers.
-> Use the receive queue spin lock to protect the memory
-> accounting operation, both on enqueue and on dequeue.
+On Thu, Oct 20, 2016 at 05:42:19PM -0400, J. Bruce Fields wrote:
+> Turns out there are several places in the kerberos code where it just
+> needs to encrypt one small checksum or sequence number, and it's been
+> doing that on the stack.
 > 
-> On dequeue perform partial memory reclaiming, trying to
-> leave a quantum of forward allocated memory.
-> 
-> On enqueue use a custom helper, to allow some optimizations:
-> - use a plain spin_lock() variant instead of the slightly
->   costly spin_lock_irqsave(),
-> - avoid dst_force check, since the calling code has already
->   dropped the skb dst
-> - avoid orphaning the skb, since skb_steal_sock() already did
->   the work for us
+> For now I'll just sprinkle kmalloc()'s all over.  Eventually we'll need
+> to find something better.
 
->  
-> +static void udp_rmem_release(struct sock *sk, int size, int partial)
-> +{
-> +	int amt;
-> +
-> +	atomic_sub(size, &sk->sk_rmem_alloc);
-> +
-> +	spin_lock_bh(&sk->sk_receive_queue.lock);
-> +	sk->sk_forward_alloc += size;
-> +	amt = (sk->sk_forward_alloc - partial) & ~(SK_MEM_QUANTUM - 1);
-> +	sk->sk_forward_alloc -= amt;
-> +	spin_unlock_bh(&sk->sk_receive_queue.lock);
-> +
-> +	if (amt)
-> +		__sk_mem_reduce_allocated(sk, amt >> SK_MEM_QUANTUM_SHIFT);
-> +}
-> +
-> +static void udp_rmem_free(struct sk_buff *skb)
-> +{
-> +	udp_rmem_release(skb->sk, skb->truesize, 1);
-> +}
-> +
-
-
-It looks like you are acquiring/releasing sk_receive_queue.lock twice
-per packet in recvmsg() (the second time in the destructor above)
-
-We could do slightly better if :
-
-We do not set skb->destructor at all, and manage
-sk_rmem_alloc/sk_forward_alloc changes at the time we dequeue skb
- (if !MSG_PEEK), before copy to user space.
-
-
-
-
-
+I agree that it would be nice to be able to hash small objects on the
+stack.  But unless I've missed something there is no way to do that
+without using struct scatterlist.  I've added linux-crypto to the cc
+list to confirm that I really didn't miss anything.
