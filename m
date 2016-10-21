@@ -1,41 +1,81 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:42286 "EHLO fieldses.org"
+Received: from mx2.suse.de ([195.135.220.15]:44968 "EHLO mx2.suse.de"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1753520AbcJTVmV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 20 Oct 2016 17:42:21 -0400
-Date: Thu, 20 Oct 2016 17:42:19 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Christoph Hellwig <hch@infradead.org>
-Cc: Rusty Russell <rusty@rustcorp.com.au>, linux-nfs@vger.kernel.org
-Subject: Re: sg_set_buf
-Message-ID: <20161020214219.GC4347@fieldses.org>
-References: <20161018213755.GA10777@fieldses.org>
- <20161020102200.GA6628@infradead.org>
- <20161020132030.GA2868@fieldses.org>
- <20161020133107.GA11993@infradead.org>
+        id S1753520AbcJUABX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 20 Oct 2016 20:01:23 -0400
+From: NeilBrown <neilb@suse.com>
+To: Andy Adamson <andros@netapp.com>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>
+Date: Fri, 21 Oct 2016 11:01:13 +1100
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: [PATCH] NFSv4.1: nfs4_fl_prepare_ds must be careful about reporting
+ success.
+Message-ID: <87lgxiwoxi.fsf@notabene.neil.brown.name>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20161020133107.GA11993@infradead.org>
+Content-Type: multipart/signed; boundary="=-=-=";
+        micalg=pgp-sha256; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Oct 20, 2016 at 06:31:07AM -0700, Christoph Hellwig wrote:
-> On Thu, Oct 20, 2016 at 09:20:30AM -0400, J. Bruce Fields wrote:
-> > The crypto code isn't actually doing that though, is it?
-> > 
-> > (Or is there a chance it could be passing the data to separate crypto
-> > hardware?  Do people do that these days?)
-> 
-> Yes, there are tons of crypto accelarators, and they are built around
-> using struct scatterlist.
+--=-=-=
+Content-Type: text/plain
+Content-Transfer-Encoding: quoted-printable
 
-OK, thanks.
 
-Turns out there are several places in the kerberos code where it just
-needs to encrypt one small checksum or sequence number, and it's been
-doing that on the stack.
+Various places assume that if nfs4_fl_prepare_ds() turns a non-NULL
+'ds', then ds->ds_clp will also be non-NULL.
 
-For now I'll just sprinkle kmalloc()'s all over.  Eventually we'll need
-to find something better.
+This is not necessasrily true in the case when the process received a
+fatal signal while nfs4_pnfs_ds_connect is waiting in
+nfs4_wait_ds_connect().  In that case ->ds_clp may not be set, and the
+devid may not recently have been marked unavailable.
 
---b.
+So add a test for ->ds_clp =3D=3D NULL and return NULL in that case.
+
+Fixes: c23266d532b4 ("NFS4.1 Fix data server connection race")
+Signed-off-by: NeilBrown <neilb@suse.com>
+=2D--
+ fs/nfs/filelayout/filelayoutdev.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/fs/nfs/filelayout/filelayoutdev.c b/fs/nfs/filelayout/filelayo=
+utdev.c
+index 4946ef40ba87..85ef38f9765f 100644
+=2D-- a/fs/nfs/filelayout/filelayoutdev.c
++++ b/fs/nfs/filelayout/filelayoutdev.c
+@@ -283,7 +283,8 @@ nfs4_fl_prepare_ds(struct pnfs_layout_segment *lseg, u3=
+2 ds_idx)
+ 			     s->nfs_client->cl_rpcclient->cl_auth->au_flavor);
+=20
+ out_test_devid:
+=2D	if (filelayout_test_devid_unavailable(devid))
++	if (ret->ds_clp =3D=3D NULL ||
++	    filelayout_test_devid_unavailable(devid))
+ 		ret =3D NULL;
+ out:
+ 	return ret;
+=2D-=20
+2.10.1
+
+
+--=-=-=
+Content-Type: application/pgp-signature; name="signature.asc"
+
+-----BEGIN PGP SIGNATURE-----
+
+iQIcBAEBCAAGBQJYCVrJAAoJEDnsnt1WYoG5n04QAJQlCoiUj5YGbrR7jAyQS+mY
+UGj0rWKWmAqKZUf789SY8SvQuHe7pD9a1MHi+XLQwBDv+ggrY/iBjdmOfC+iwKGI
+tyJzGVdcN66oiVVTcWj58Z0irQHoEBlOCKEJGEHvF/xgVskxVhHQNv5Yr8nkNSR1
+i1vYIBVNzU+WdYEjl1+90FdNlmmk8/wfnZ6xIXp1ZI8s/65GAcEviK5lMZC/rQo8
+ZeG4vtOb8zsZsUId1KqzR6kb5jEjQEArKOvKGRIfhWayVij+kEZnBdQHKTt4hQt/
+uv7Y529DgG973V448uurwoUQTRB5NBtNsfUoVsFSLIz8Wg4UoYwhbGbrVJ36PPhU
+7RkGMJjs1OiFxtIC72jlmvHUN7Z3iLq8+6n5RqetOcRWm0oiXXaRymXNj6s08dZr
+P/RDqFxwHNU/R8y9HoPU+jkc1Z3m9M0q1/Rwmmp7czOjuxeI6EDxBpJRQlNZC2NO
+kjHTJey60Smemep1JZu41+X2CmvbHMmGMPFt8b+nBy/9F3gh5Gg5SK5FLzSc4Dpj
+7Ow8wYzTzKu20rGLVuB12RQGIIOo6QExjLusDyhQClTYl7ZC7dA6OdGEFGGxDjbC
+0D6KNijmhsfopwCDeevdSOgxXpYEvrUfcXVoM18fbqKrvas8gYSqVg+tyd1Y6K+u
+CVGA81ZHfX9YQ9kqtYWL
+=fdFt
+-----END PGP SIGNATURE-----
+--=-=-=--
