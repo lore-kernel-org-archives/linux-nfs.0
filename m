@@ -1,13 +1,11 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:48660 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:54992 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1752880AbcJULnq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 21 Oct 2016 07:43:46 -0400
-Message-ID: <1477050221.4606.6.camel@redhat.com>
-Subject: Re: [PATCH net-next v5 2/3] udp: implement memory accounting helpers
+        id S1753669AbcJULz5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 21 Oct 2016 07:55:57 -0400
 From: Paolo Abeni <pabeni@redhat.com>
-To: Eric Dumazet <eric.dumazet@gmail.com>
-Cc: netdev@vger.kernel.org, "David S. Miller" <davem@davemloft.net>,
+To: netdev@vger.kernel.org
+Cc: "David S. Miller" <davem@davemloft.net>,
         James Morris <jmorris@namei.org>,
         Trond Myklebust <trond.myklebust@primarydata.com>,
         Alexander Duyck <aduyck@mirantis.com>,
@@ -15,52 +13,68 @@ Cc: netdev@vger.kernel.org, "David S. Miller" <davem@davemloft.net>,
         Eric Dumazet <edumazet@google.com>, Tom Herbert <tom@herbertland.com>,
         Hannes Frederic Sowa <hannes@stressinduktion.org>,
         Edward Cree <ecree@solarflare.com>, linux-nfs@vger.kernel.org
-Date: Fri, 21 Oct 2016 13:43:41 +0200
-In-Reply-To: <1476997834.7065.35.camel@edumazet-glaptop3.roam.corp.google.com>
-References: <cover.1476979679.git.pabeni@redhat.com>
-         <d932905c2581df9415449216eceeed1566290e3e.1476979679.git.pabeni@redhat.com>
-         <1476997834.7065.35.camel@edumazet-glaptop3.roam.corp.google.com>
-Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
+Subject: [PATCH net-next v6 0/3] udp: refactor memory accounting
+Date: Fri, 21 Oct 2016 13:55:44 +0200
+Message-Id: <cover.1477043395.git.pabeni@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 2016-10-20 at 14:10 -0700, Eric Dumazet wrote:
-> On Thu, 2016-10-20 at 22:31 +0200, Paolo Abeni wrote:
-> 
-> > +
-> > +int __udp_enqueue_schedule_skb(struct sock *sk, struct sk_buff *skb)
-> > +{
-> > +	struct sk_buff_head *list = &sk->sk_receive_queue;
-> > +	int rmem, delta, amt, err = -ENOMEM;
-> > +	int size = skb->truesize;
-> > +
-> > +	/* try to avoid the costly atomic add/sub pair when the receive
-> > +	 * queue is full; always allow at least a packet
-> > +	 */
-> > +	rmem = atomic_read(&sk->sk_rmem_alloc);
-> > +	if (rmem && (rmem + size > sk->sk_rcvbuf))
-> > +		goto drop;
-> > +
-> > +	/* we drop only if the receive buf is full and the receive
-> > +	 * queue contains some other skb
-> > +	 */
-> > +	rmem = atomic_add_return(size, &sk->sk_rmem_alloc);
-> > +	if ((rmem > sk->sk_rcvbuf) && (rmem > size))
-> > +		goto uncharge_drop;
-> > +
-> > +	skb_orphan(skb);
-> 
-> Minor point :
-> 
-> UDP should already have orphaned skbs ? (it uses skb_steal_sock())
+This patch series refactor the udp memory accounting, replacing the
+generic implementation with a custom one, in order to remove the needs for
+locking the socket on the enqueue and dequeue operations. The socket backlog
+usage is dropped, as well.
 
-You are right, the skb_orphan() call is redundant. 
+The first patch factor out pieces of some queue and memory management
+socket helpers, so that they can later be used by the udp memory accounting
+functions.
+The second patch adds the memory account helpers, without using them.
+The third patch replacse the old rx memory accounting path for udp over ipv4 and
+udp over ipv6. In kernel UDP users are updated, as well.
 
-I'll send the v6 soon.
+The memory accounting schema is described in detail in the individual patch
+commit message.
 
-Thank you,
+The performance gain depends on the specific scenario; with few flows (and
+little contention in the original code) the differences are in the noise range,
+while with several flows contending the same socket, the measured speed-up
+is relevant (e.g. even over 100% in case of extreme contention)
 
-Paolo
+Many thanks to Eric Dumazet for the reiterated reviews and suggestions.
 
+v5 -> v6:
+ - do not orphan the skb on enqueue, skb_steal_sock() already did
+   the work for us
+
+v4 -> v5:
+ - use the receive queue spin lock to protect the memory accounting
+ - several minor clean-up
+
+v3 -> v4:
+ - simplified the locking schema, always use a plain spinlock
+
+v2 -> v3:
+ - do not set the now unsed backlog_rcv callback
+
+v1 -> v2:
+ - changed slighly the memory accounting schema, we now perform lazy reclaim
+ - fixed forward_alloc updating issue
+ - fixed memory counter integer overflows
+
+Paolo Abeni (3):
+  net/socket: factor out helpers for memory and queue manipulation
+  udp: implement memory accounting helpers
+  udp: use it's own memory accounting schema
+
+ include/net/sock.h    |   4 ++
+ include/net/udp.h     |   4 ++
+ net/core/datagram.c   |  36 +++++++-----
+ net/core/sock.c       |  64 +++++++++++++++-------
+ net/ipv4/udp.c        | 149 ++++++++++++++++++++++++++++++++++++++------------
+ net/ipv6/udp.c        |  34 +++---------
+ net/sunrpc/svcsock.c  |  20 +++++--
+ net/sunrpc/xprtsock.c |   2 +-
+ 8 files changed, 214 insertions(+), 99 deletions(-)
+
+-- 
+1.8.3.1
 
