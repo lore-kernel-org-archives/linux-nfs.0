@@ -1,32 +1,65 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from shards.monkeyblade.net ([184.105.139.130]:45948 "EHLO
-        shards.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1754877AbcJVUug (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sat, 22 Oct 2016 16:50:36 -0400
-Date: Sat, 22 Oct 2016 16:50:28 -0400 (EDT)
-Message-Id: <20161022.165028.1826469214601163183.davem@davemloft.net>
-To: pabeni@redhat.com
-Cc: netdev@vger.kernel.org, jmorris@namei.org,
-        trond.myklebust@primarydata.com, aduyck@mirantis.com,
-        daniel@iogearbox.net, edumazet@google.com, tom@herbertland.com,
-        hannes@stressinduktion.org, ecree@solarflare.com,
-        linux-nfs@vger.kernel.org
-Subject: Re: [PATCH net-next v6 0/3] udp: refactor memory accounting
-From: David Miller <davem@davemloft.net>
-In-Reply-To: <cover.1477043395.git.pabeni@redhat.com>
-References: <cover.1477043395.git.pabeni@redhat.com>
-Mime-Version: 1.0
-Content-Type: Text/Plain; charset=us-ascii
+Received: from fieldses.org ([173.255.197.46]:45972 "EHLO fieldses.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1756565AbcJWSVQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Sun, 23 Oct 2016 14:21:16 -0400
+Date: Sun, 23 Oct 2016 14:21:15 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: Jeff Layton <jlayton@redhat.com>, linux-nfs@vger.kernel.org
+Subject: upstream server crash
+Message-ID: <20161023182115.GA14481@fieldses.org>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Paolo Abeni <pabeni@redhat.com>
-Date: Fri, 21 Oct 2016 13:55:44 +0200
+I'm getting an intermittent crash in the nfs server as of
+68778945e46f143ed7974b427a8065f69a4ce944 "SUNRPC: Separate buffer
+pointers for RPC Call and Reply messages".
 
-> This patch series refactor the udp memory accounting, replacing the
-> generic implementation with a custom one, in order to remove the needs for
-> locking the socket on the enqueue and dequeue operations. The socket backlog
-> usage is dropped, as well.
- ...
+I haven't tried to understand that commit or why it would be a problem yet, I
+don't see an obvious connection--I can take a closer look Monday.
 
-Series applied, thank you.
+Could even be that I just landed on this commit by chance, the problem is a
+little hard to reproduce so I don't completely trust my testing.
+
+--b.
+
+BUG: unable to handle kernel NULL pointer dereference at           (null)
+IP: [<ffffffff816937d2>] __memcpy+0x12/0x20
+PGD 0
+Oops: 0002 [#1] PREEMPT SMP
+Modules linked in: rpcsec_gss_krb5 nfsd auth_rpcgss oid_registry nfs_acl lockd grace sunrpc
+CPU: 0 PID: 4437 Comm: nfsd Not tainted 4.9.0-rc1-00075-gae0340c #766
+Hardware name: QEMU Standard PC (i440FX + PIIX, 1996), BIOS 1.9.1-1.fc24 04/01/2014
+task: ffff88006d810d40 task.stack: ffffc90000644000
+RIP: 0010:[<ffffffff816937d2>]  [<ffffffff816937d2>] __memcpy+0x12/0x20
+RSP: 0018:ffffc90000647d60  EFLAGS: 00010202
+RAX: 0000000000000000 RBX: ffff88007b5ca000 RCX: 000000000000000a
+RDX: 0000000000000004 RSI: ffff88007bab7000 RDI: 0000000000000000
+RBP: ffffc90000647db8 R08: 0000000000000001 R09: 0000000000000000
+R10: 0000000000000000 R11: 0000000000000000 R12: ffff880078535000
+R13: ffff880035d02000 R14: ffff88007b4775b0 R15: ffff88007b477000
+FS:  0000000000000000(0000) GS:ffff88007fc00000(0000) knlGS:0000000000000000
+CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
+CR2: 0000000000000000 CR3: 00000000787de000 CR4: 00000000000406f0
+Stack:
+ ffffffffa00191ab ffff88006d810d40 ffff880001000000 ffff88007b435a00
+ ffff880078535378 0000000000000004 ffff880078535000 0000000078535000
+ ffff88007b5ca000 0000000000000000 ffffffffa0028626 ffffc90000647e30
+Call Trace:
+ [<ffffffffa00191ab>] ? svc_tcp_recvfrom+0x6eb/0x820 [sunrpc]
+ [<ffffffffa0028626>] ? svc_recv+0x1e6/0xf00 [sunrpc]
+ [<ffffffffa0029240>] svc_recv+0xe00/0xf00 [sunrpc]
+ [<ffffffffa00b57ff>] nfsd+0x16f/0x280 [nfsd]
+ [<ffffffffa00b5695>] ? nfsd+0x5/0x280 [nfsd]
+ [<ffffffffa00b5690>] ? nfsd_destroy+0x190/0x190 [nfsd]
+ [<ffffffff810a6c00>] kthread+0xf0/0x110
+ [<ffffffff810a6b10>] ? kthread_park+0x60/0x60
+ [<ffffffff81b39607>] ret_from_fork+0x27/0x40
+Code: c3 e8 53 fb ff ff 48 8b 43 60 48 2b 43 50 88 43 4e 5b 5d eb ea 90 90 90 90 66 66 90 66 90 48 89 f8 48 89 d1 48 c1 e9 03 83 e2 07 <f3> 48 a5 89 d1 f3 a4 c3 66 0f 1f 44 00 00 48 89 f8 48 89 d1 f3
+RIP  [<ffffffff816937d2>] __memcpy+0x12/0x20
+ RSP <ffffc90000647d60>
+CR2: 0000000000000000
+
