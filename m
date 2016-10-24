@@ -1,113 +1,111 @@
-Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from userp1040.oracle.com ([156.151.31.81]:25362 "EHLO
-        userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S938803AbcJXPzk (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 24 Oct 2016 11:55:40 -0400
-Content-Type: text/plain; charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 9.3 \(3124\))
-Subject: Re: upstream server crash
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <1477322680.14828.6.camel@redhat.com>
-Date: Mon, 24 Oct 2016 11:55:27 -0400
-Cc: Eryu Guan <guaneryu@gmail.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <77DD7993-E81D-445B-9874-3C6C32C5C2F3@oracle.com>
-References: <20161023182115.GA14481@fieldses.org> <20161024031519.GN2462@eguan.usersys.redhat.com> <1477315868.2625.37.camel@redhat.com> <7B3F94BF-CAA1-4001-BEBC-C93965A81DE4@oracle.com> <1477322377.14828.4.camel@redhat.com> <1477322680.14828.6.camel@redhat.com>
-To: Jeff Layton <jlayton@redhat.com>
-Sender: linux-nfs-owner@vger.kernel.org
+Return-Path: <Anna.Schumaker@netapp.com>
+Subject: Re: [PATCH] Trim extra slash in v4 nfs_path
+To: Benjamin Coddington <bcodding@redhat.com>
+References: <1cb38ee043176bca8ded7e18120776f8cf6a722d.1466017326.git.bcodding@redhat.com>
+ <f4f47844-5a28-acbc-0779-fcd66ea6c028@Netapp.com>
+ <AE75E577-5BF1-40E5-A9FA-7C40DB029989@redhat.com>
+ <D8D9A61C-B01F-4E72-BB5F-2E524608B3BB@redhat.com>
+ <01b31d32-ffbf-673c-4838-67e2205f75aa@Netapp.com>
+ <4671E84D-E1E1-4799-97A2-BE5BD5C224DE@redhat.com>
+CC: <linux-nfs@vger.kernel.org>,
+        Trond Myklebust
+	<trond.myklebust@primarydata.com>
+From: Anna Schumaker <Anna.Schumaker@netapp.com>
+Message-ID: <65a4c862-996b-9f4f-367e-8f72779cd59c@Netapp.com>
+Date: Mon, 24 Oct 2016 12:07:03 -0400
+MIME-Version: 1.0
+In-Reply-To: <4671E84D-E1E1-4799-97A2-BE5BD5C224DE@redhat.com>
+Content-Type: text/plain; charset="utf-8"
 List-ID: <linux-nfs.vger.kernel.org>
 
+Hi Ben,
 
-> On Oct 24, 2016, at 11:24 AM, Jeff Layton <jlayton@redhat.com> wrote:
+On 10/21/2016 12:16 PM, Benjamin Coddington wrote:
+> Hi Anna, will this one go in for rc1 as well?
+
+Sorry I didn't see this before sending the pull request!  I'll make sure it's included in the next one.
+
+Thanks,
+Anna
+
 > 
-> On Mon, 2016-10-24 at 11:19 -0400, Jeff Layton wrote:
->> On Mon, 2016-10-24 at 09:51 -0400, Chuck Lever wrote:
->>> 
->>>> 
->>>> 
->>>> On Oct 24, 2016, at 9:31 AM, Jeff Layton <jlayton@redhat.com> wrote:
->>>> 
->>>> On Mon, 2016-10-24 at 11:15 +0800, Eryu Guan wrote:
->>>>> 
->>>>> 
->>>>> On Sun, Oct 23, 2016 at 02:21:15PM -0400, J. Bruce Fields wrote:
->>>>>> 
->>>>>> 
->>>>>> 
->>>>>> I'm getting an intermittent crash in the nfs server as of
->>>>>> 68778945e46f143ed7974b427a8065f69a4ce944 "SUNRPC: Separate buffer
->>>>>> pointers for RPC Call and Reply messages".
->>>>>> 
->>>>>> I haven't tried to understand that commit or why it would be a problem yet, I
->>>>>> don't see an obvious connection--I can take a closer look Monday.
->>>>>> 
->>>>>> Could even be that I just landed on this commit by chance, the problem is a
->>>>>> little hard to reproduce so I don't completely trust my testing.
->>>>> 
->>>>> I've hit the same crash on 4.9-rc1 kernel, and it's reproduced for me
->>>>> reliably by running xfstests generic/013 case, on a loopback mounted
->>>>> NFSv4.1 (or NFSv4.2), XFS is the underlying exported fs. More details
->>>>> please see
->>>>> 
->>>>> http://marc.info/?l=linux-nfs&m=147714320129362&w=2
->>>>> 
->>>> 
->>>> Looks like you landed at the same commit as Bruce, so that's probably
->>>> legit. That commit is very small though. The only real change that
->>>> doesn't affect the new field is this:
->>>> 
->>>> 
->>>> @@ -1766,7 +1766,7 @@ rpc_xdr_encode(struct rpc_task *task)
->>>>                     req->rq_buffer,
->>>>                     req->rq_callsize);
->>>>        xdr_buf_init(&req->rq_rcv_buf,
->>>> -                    (char *)req->rq_buffer + req->rq_callsize,
->>>> +                    req->rq_rbuffer,
->>>>                     req->rq_rcvsize);
->>>> 
->>>> 
->>>> So I'm guessing this is breaking the callback channel somehow?
->>> 
->>> Could be the TCP backchannel code is using rq_buffer in a different
->>> way than RDMA backchannel or the forward channel code.
->>> 
->> 
->> Well, it basically allocates a page per rpc_rqst and then maps that.
->> 
->> One thing I notice is that this patch ensures that rq_rbuffer gets set
->> up in rpc_malloc and xprt_rdma_allocate, but it looks like
->> xprt_alloc_bc_req didn't get the same treatment.
->> 
->> I suspect that that may be the problem...
->> 
-> In fact, maybe we just need this here? (untested and probably
-> whitespace damaged):
+> Ben
 > 
-> diff --git a/net/sunrpc/backchannel_rqst.c b/net/sunrpc/backchannel_rqst.c
-> index ac701c28f44f..c561aa8ce05b 100644
-> --- a/net/sunrpc/backchannel_rqst.c
-> +++ b/net/sunrpc/backchannel_rqst.c
-> @@ -100,6 +100,7 @@ struct rpc_rqst *xprt_alloc_bc_req(struct rpc_xprt *xprt, gfp_t gfp_flags)
->                goto out_free;
->        }
->        req->rq_rcv_buf.len = PAGE_SIZE;
-> +       req->rq_rbuffer = req->rq_rcv_buf.head[0].iov_base;
-
-That looks plausible! Basically that is needed after xdr_buf_init()
-is done for a backchannel rpc_rqst's receive buffer.
-
-net/sunrpc/xprtrdma/backchannel.c might need a similar change. I saw
-crashes with generic/013 at bake-a-thon last week, but as the iommu
-was involved with those, I've been looking in a different place. Will
-give this a try.
-
-
->        /* Preallocate one XDR send buffer */
->        if (xprt_alloc_xdr_buf(&req->rq_snd_buf, gfp_flags) < 0) {
-
---
-Chuck Lever
-
-
-
+> 
+> On 1 Aug 2016, at 15:11, Anna Schumaker wrote:
+> 
+>> Hi Ben,
+>>
+>> On 07/26/2016 06:58 AM, Benjamin Coddington wrote:
+>>> Hi Anna,
+>>>
+>>> On 20 Jun 2016, at 11:38, Benjamin Coddington wrote:
+>>>
+>>>> On 20 Jun 2016, at 11:08, Anna Schumaker wrote:
+>>>>
+>>>>> Hi Ben,
+>>>>>
+>>>>> On 06/15/2016 03:02 PM, Benjamin Coddington wrote:
+>>>>>> A NFSv4 mount of a subdirectory will show an extra slash (as in
+>>>>>> 'server://path') in proc's mountinfo which will not match the device name
+>>>>>> and path.  This can cause problems for programs searching for the mount.
+>>>>>> Fix this by checking for a leading slash in the dentry path, if so trim
+>>>>>> away any trailing slashes in the device name.
+>>>>>>
+>>>>>> Signed-off-by: Benjamin Coddington <bcodding@redhat.com>
+>>>>>> ---
+>>>>>>  fs/nfs/namespace.c | 2 +-
+>>>>>>  1 file changed, 1 insertion(+), 1 deletion(-)
+>>>>>>
+>>>>>> diff --git a/fs/nfs/namespace.c b/fs/nfs/namespace.c
+>>>>>> index c8162c660c44..5551e8ef67fd 100644
+>>>>>> --- a/fs/nfs/namespace.c
+>>>>>> +++ b/fs/nfs/namespace.c
+>>>>>> @@ -98,7 +98,7 @@ rename_retry:
+>>>>>>          return end;
+>>>>>>      }
+>>>>>>      namelen = strlen(base);
+>>>>>> -    if (flags & NFS_PATH_CANONICAL) {
+>>>>>> +    if (*end == '/') {
+>>>>>
+>>>>> Are we getting here through nfs_show_devname()?  Because it looks like that function is passing 0 for flags instead of NFS_PATH_CANONICAL.
+>>>>
+>>>> We can get here with or withount NFS_PATH_CANONICAL, through
+>>>> nfs_show_devname() or nfs4_path() or nfs_do_submount().
+>>>>
+>>>>>
+>>>>> Earlier in this function we have a check for:
+>>>>>     if ((flags & NFS_PATH_CANONICAL) && *end != '/')
+>>>>>
+>>>>> Should we be checking if NFS_PATH_CANONICAL is set here, too?
+>>>>
+>>>> I don't think we need it.
+>>>>
+>>>> The "if (flags & NFS_PATH_CANONICAL) {" was meant to cover the case where
+>>>> NFS_PATH_CANONICAL had earlier added a leading '/' to the path, and so would
+>>>> trim away any trailing '/' from the base.  So, don't combine server:/ and
+>>>> /path into server://path after adding a leading '/' to the path.
+>>>>
+>>>> The logic here is simplified such that we should _never_ concat these two:
+>>>> a base:/ and a /path, otherwise we'll have server://path.
+>>>>
+>>>> Further confusing the matter is that for v3 mounts, the base is server:/path
+>>>> and the path is '/' (which is added by NFS_PATH_CANONICAL), but for v4
+>>>> mounts the base is server:/ and the path is /path/to/export
+>>>
+>>> Did this make any sense, or should I try to make it clearer or rework this?
+>>
+>> Your explanation made sense to me, and if tests are failing without this patch then we should probably go with it.
+>>
+>> Thanks,
+>> Anna
+>>
+>>>
+>>> This patch seems like just a minor fix, but the double slashes breaks some mount parsing in tests we have.
+>>>
+>>> Ben
+>>> -- 
+>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>>> the body of a message to majordomo@vger.kernel.org
+>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>>
