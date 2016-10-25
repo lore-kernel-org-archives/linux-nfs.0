@@ -1,41 +1,54 @@
-Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from us-smtp-delivery-194.mimecast.com ([216.205.24.194]:57394 "EHLO
-        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1752842AbcJYTev (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 25 Oct 2016 15:34:51 -0400
-From: Trond Myklebust <trondmy@primarydata.com>
-To: Fields Bruce James <bfields@fieldses.org>
-CC: List Linux NFS Mailing <linux-nfs@vger.kernel.org>,
-        Rusty Russell <rusty@rustcorp.com.au>,
-        Christoph Hellwig <hch@infradead.org>,
-        "linux-crypto@vger.kernel.org" <linux-crypto@vger.kernel.org>
-Subject: Re: [PATCH] sunrpc: don't pass on-stack memory to sg_set_buf
-Date: Tue, 25 Oct 2016 19:34:43 +0000
-Message-ID: <A4086E5B-B808-4828-A25D-4AAB2504EC57@primarydata.com>
-References: <20161025184538.GA4612@fieldses.org>
-In-Reply-To: <20161025184538.GA4612@fieldses.org>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Sender: linux-nfs-owner@vger.kernel.org
+Return-Path: <jlayton@redhat.com>
+Message-ID: <1477424971.2654.14.camel@redhat.com>
+Subject: Re: [PATCH 3/5] NFSv4: change nfs4_select_rw_stateid to take a
+ lock_context inplace of lock_owner
+From: Jeff Layton <jlayton@redhat.com>
+To: NeilBrown <neilb@suse.com>, Anna Schumaker <Anna.Schumaker@netapp.com>,
+        Trond Myklebust <trond.myklebust@primarydata.com>
+Cc: Benjamin Coddington <bcodding@redhat.com>,
+        Linux NFS Mailing List
+ <linux-nfs@vger.kernel.org>,
+        Bruce Fields <bfields@fieldses.org>,
+        Chuck
+ Lever <chuck.lever@oracle.com>
+Date: Tue, 25 Oct 2016 15:49:31 -0400
+In-Reply-To: <87bmyo28tb.fsf@notabene.neil.brown.name>
+References: <147623977637.19592.12766016823334433969.stgit@noble>
+	 <147623995856.19592.8461168656619949864.stgit@noble>
+	 <1476275602.2541.20.camel@redhat.com>
+	 <3006e49d-0e09-96c1-74c6-9ffe789ce0e5@Netapp.com>
+	 <87bmyo28tb.fsf@notabene.neil.brown.name>
+Content-Type: text/plain; charset="UTF-8"
+Mime-Version: 1.0
 List-ID: <linux-nfs.vger.kernel.org>
 
-DQo+IE9uIE9jdCAyNSwgMjAxNiwgYXQgMTQ6NDUsIEouIEJydWNlIEZpZWxkcyA8YmZpZWxkc0Bm
-aWVsZHNlcy5vcmc+IHdyb3RlOg0KPiANCj4gRnJvbTogIkouIEJydWNlIEZpZWxkcyIgPGJmaWVs
-ZHNAcmVkaGF0LmNvbT4NCj4gDQo+IEFzIG9mIGFjNGU5N2FiY2U5YiAic2NhdHRlcmxpc3Q6IHNn
-X3NldF9idWYoKSBhcmd1bWVudCBtdXN0IGJlIGluIGxpbmVhcg0KPiBtYXBwaW5nIiwgc2dfc2V0
-X2J1ZiBoaXRzIGEgQlVHIHdoZW4gbWFrZV9jaGVja3N1bV92Mi0+eGRyX3Byb2Nlc3NfYnVmLA0K
-PiBhbW9uZyBvdGhlciBjYWxsZXJzLCBwYXNzZXMgaXQgbWVtb3J5IG9uIHRoZSBzdGFjay4NCj4g
-DQo+IFdlIG9ubHkgbmVlZCBhIHNjYXR0ZXJsaXN0IHRvIHBhc3MgdGhpcyB0byB0aGUgY3J5cHRv
-IGNvZGUsIGFuZCBpdCBzZWVtcw0KPiBsaWtlIG92ZXJraWxsIHRvIHJlcXVpcmUga21hbGxvYydk
-IG1lbW9yeSBqdXN0IHRvIGVuY3J5cHQgYSBmZXcgYnl0ZXMsDQo+IGJ1dCBmb3Igbm93IHRoaXMg
-c2VlbXMgdGhlIGJlc3QgZml4Lg0KPiANCj4gTm90ZSBtYW55IG9mIHRoZXNlIGNhbGxlcnMgYXJl
-IGluIHRoZSBORlMgd3JpdGUgcGF0aHMsIHNvIHdlIHNob3VsZG4ndA0KPiByZWFsbHkgYmUgYWxs
-b2NhdGluZyBHRlBfS0VSTkVMLiAgQnV0IHdlIGFscmVhZHkgaGF2ZSBvdGhlciBhbGxvY2F0aW9u
-cw0KPiBpbiB0aGVzZSBjb2RlIHBhdGhzLiAgQSBsYXJnZXIgcmVkZXNpZ24gbWF5IGJlIG5lY2Vz
-c2FyeSB0byBhbGxvdw0KPiBhbGxvY2F0aW9ucyB0byBiZSBkb25lIGVhcmxpZXIuDQoNCk5BQ0vi
-gKYgIEkgYWdyZWUgdGhhdCB0aGVyZSBtYXkgYWxyZWFkeSBiZSBib3JrYWdlIGluIFJQQ1NFQ19H
-U1MtbGFuZCwgYnV0IHRoYXTigJlzIG5vdCBhIHJlYXNvbiB0byBiZSBhZGRpbmcgdG8gdGhlIHBp
-bGUgb2YgdGhpbmdzIHRoYXQgbmVlZCB0byBiZSBmaXhlZOKApiBUaGUgYWxsb2NhdGlvbnMgdGhh
-dCBsaWUgaW4gdGhlIFJQQyBjbGllbnTigJlzIGVuY29kZS9kZWNvZGUgcGF0aCBkbyBuZWVkIHRv
-IGJlIEdGUF9OT0ZT4oCmLg0KDQo=
+On Thu, 2016-10-13 at 15:04 +1100, NeilBrown wrote:
+> On Thu, Oct 13 2016, Anna Schumaker wrote:
+> > 
+> > > 
+> > > 
+> > > Also, as a side note: There were some changes around the NFS file
+> > > locking code that went into the CB_NOTIFY_LOCK patches. Those are in
+> > > linux-next now, and I _think_ Anna is going to merge them for v4.9. I
+> > > don't see any obvious conflicts here, but you may want to ensure that
+> > > you're basing this on top of linux-next to minimize them.
+> > 
+> > Yep, they'll be in 4.9.  Updating against those changes wouldn't hurt :)
+> 
+> Ok....
+> I note that
+>   git://git.linux-nfs.org/projects/anna/linux-nfs.git#linux-next
+> 
+> isn't in
+>   git://git.kernel.org/pub/scm/linux/kernel/git/next/linux-next.git
+> 
+> Should it be?
+> 
+> NeilBrown
 
+Yes, it seems like that should be going into -next.
+
+Anna, do you and Trond have something worked out where the patches in
+your pull requests are going into -next through Trond's tree?
+-- 
+Jeff Layton <jlayton@redhat.com>
