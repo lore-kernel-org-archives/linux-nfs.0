@@ -1,117 +1,219 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:37278 "EHLO
-        aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1756293AbcJYAyG (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 24 Oct 2016 20:54:06 -0400
-Content-Type: text/plain; charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 9.3 \(3124\))
-Subject: Re: [PATCH] sunrpc: fix some missing rq_rbuffer assignments
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <1477355603-28642-1-git-send-email-jlayton@redhat.com>
-Date: Mon, 24 Oct 2016 20:53:59 -0400
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>, guaneryu@gmail.com
-Message-Id: <0556F824-45A6-4180-B1E9-D829CD7CEF81@oracle.com>
-References: <1477355603-28642-1-git-send-email-jlayton@redhat.com>
-To: Jeff Layton <jlayton@redhat.com>
+Received: from mail-qk0-f175.google.com ([209.85.220.175]:35882 "EHLO
+        mail-qk0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1755987AbcJYA5E (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 24 Oct 2016 20:57:04 -0400
+Received: by mail-qk0-f175.google.com with SMTP id o68so251187854qkf.3
+        for <linux-nfs@vger.kernel.org>; Mon, 24 Oct 2016 17:57:04 -0700 (PDT)
+Message-ID: <1477357020.23530.5.camel@redhat.com>
+Subject: Re: upstream server crash
+From: Jeff Layton <jlayton@redhat.com>
+To: Chuck Lever <chuck.lever@oracle.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>
+Cc: Eryu Guan <guaneryu@gmail.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Date: Mon, 24 Oct 2016 20:57:00 -0400
+In-Reply-To: <58FE664A-94BE-4589-A3D1-D734284272A0@oracle.com>
+References: <20161023182115.GA14481@fieldses.org>
+         <20161024031519.GN2462@eguan.usersys.redhat.com>
+         <1477315868.2625.37.camel@redhat.com>
+         <7B3F94BF-CAA1-4001-BEBC-C93965A81DE4@oracle.com>
+         <1477322377.14828.4.camel@redhat.com> <1477322680.14828.6.camel@redhat.com>
+         <20161024180858.GA27359@fieldses.org> <1477336654.21854.9.camel@redhat.com>
+         <20161024204022.GB27359@fieldses.org>
+         <58FE664A-94BE-4589-A3D1-D734284272A0@oracle.com>
+Content-Type: text/plain; charset="UTF-8"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Mon, 2016-10-24 at 17:38 -0400, Chuck Lever wrote:
+> > 
+> > On Oct 24, 2016, at 4:40 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
+> > 
+> > On Mon, Oct 24, 2016 at 03:17:34PM -0400, Jeff Layton wrote:
+> > > 
+> > > On Mon, 2016-10-24 at 14:08 -0400, J. Bruce Fields wrote:
+> > > > 
+> > > > On Mon, Oct 24, 2016 at 11:24:40AM -0400, Jeff Layton wrote:
+> > > > > 
+> > > > > 
+> > > > > On Mon, 2016-10-24 at 11:19 -0400, Jeff Layton wrote:
+> > > > > > 
+> > > > > > 
+> > > > > > On Mon, 2016-10-24 at 09:51 -0400, Chuck Lever wrote:
+> > > > > > > 
+> > > > > > > 
+> > > > > > > 
+> > > > > > > > 
+> > > > > > > > 
+> > > > > > > > 
+> > > > > > > > 
+> > > > > > > > On Oct 24, 2016, at 9:31 AM, Jeff Layton <jlayton@redhat.com> wrote:
+> > > > > > > > 
+> > > > > > > > On Mon, 2016-10-24 at 11:15 +0800, Eryu Guan wrote:
+> > > > > > > > > 
+> > > > > > > > > 
+> > > > > > > > > 
+> > > > > > > > > 
+> > > > > > > > > On Sun, Oct 23, 2016 at 02:21:15PM -0400, J. Bruce Fields wrote:
+> > > > > > > > > > 
+> > > > > > > > > > 
+> > > > > > > > > > 
+> > > > > > > > > > 
+> > > > > > > > > > 
+> > > > > > > > > > I'm getting an intermittent crash in the nfs server as of
+> > > > > > > > > > 68778945e46f143ed7974b427a8065f69a4ce944 "SUNRPC: Separate buffer
+> > > > > > > > > > pointers for RPC Call and Reply messages".
+> > > > > > > > > > 
+> > > > > > > > > > I haven't tried to understand that commit or why it would be a problem yet, I
+> > > > > > > > > > don't see an obvious connection--I can take a closer look Monday.
+> > > > > > > > > > 
+> > > > > > > > > > Could even be that I just landed on this commit by chance, the problem is a
+> > > > > > > > > > little hard to reproduce so I don't completely trust my testing.
+> > > > > > > > > 
+> > > > > > > > > I've hit the same crash on 4.9-rc1 kernel, and it's reproduced for me
+> > > > > > > > > reliably by running xfstests generic/013 case, on a loopback mounted
+> > > > > > > > > NFSv4.1 (or NFSv4.2), XFS is the underlying exported fs. More details
+> > > > > > > > > please see
+> > > > > > > > > 
+> > > > > > > > > http://marc.info/?l=linux-nfs&m=147714320129362&w=2
+> > > > > > > > > 
+> > > > > > > > 
+> > > > > > > > Looks like you landed at the same commit as Bruce, so that's probably
+> > > > > > > > legit. That commit is very small though. The only real change that
+> > > > > > > > doesn't affect the new field is this:
+> > > > > > > > 
+> > > > > > > > 
+> > > > > > > > @@ -1766,7 +1766,7 @@ rpc_xdr_encode(struct rpc_task *task)
+> > > > > > > >                     req->rq_buffer,
+> > > > > > > >                     req->rq_callsize);
+> > > > > > > >        xdr_buf_init(&req->rq_rcv_buf,
+> > > > > > > > -                    (char *)req->rq_buffer + req->rq_callsize,
+> > > > > > > > +                    req->rq_rbuffer,
+> > > > > > > >                     req->rq_rcvsize);
+> > > > > > > > 
+> > > > > > > > 
+> > > > > > > > So I'm guessing this is breaking the callback channel somehow?
+> > > > > > > 
+> > > > > > > Could be the TCP backchannel code is using rq_buffer in a different
+> > > > > > > way than RDMA backchannel or the forward channel code.
+> > > > > > > 
+> > > > > > 
+> > > > > > Well, it basically allocates a page per rpc_rqst and then maps that.
+> > > > > > 
+> > > > > > One thing I notice is that this patch ensures that rq_rbuffer gets set
+> > > > > > up in rpc_malloc and xprt_rdma_allocate, but it looks like
+> > > > > > xprt_alloc_bc_req didn't get the same treatment.
+> > > > > > 
+> > > > > > I suspect that that may be the problem...
+> > > > > > 
+> > > > > In fact, maybe we just need this here? (untested and probably
+> > > > > whitespace damaged):
+> > > > 
+> > > > No change in results for me.
+> > > > 
+> > > > --b.
+> > > > > 
+> > > > > 
+> > > > > 
+> > > > > diff --git a/net/sunrpc/backchannel_rqst.c b/net/sunrpc/backchannel_rqst.c
+> > > > > index ac701c28f44f..c561aa8ce05b 100644
+> > > > > --- a/net/sunrpc/backchannel_rqst.c
+> > > > > +++ b/net/sunrpc/backchannel_rqst.c
+> > > > > @@ -100,6 +100,7 @@ struct rpc_rqst *xprt_alloc_bc_req(struct rpc_xprt *xprt, gfp_t gfp_flags)
+> > > > >                goto out_free;
+> > > > >        }
+> > > > >        req->rq_rcv_buf.len = PAGE_SIZE;
+> > > > > +       req->rq_rbuffer = req->rq_rcv_buf.head[0].iov_base;
+> > > > > 
+> > > > >        /* Preallocate one XDR send buffer */
+> > > > >        if (xprt_alloc_xdr_buf(&req->rq_snd_buf, gfp_flags) < 0) {
+> > > 
+> > > Ahh ok, I think I see.
+> > > 
+> > > We probably also need to set rq_rbuffer in bc_malloc and and
+> > > xprt_rdma_bc_allocate.
+> > > 
+> > > My guess is that we're ending up in rpc_xdr_encode with a NULL
+> > > rq_rbuffer pointer, so the right fix would seem to be to ensure that it
+> > > is properly set whenever rq_buffer is set.
+> > > 
+> > > So I think this may be what we want, actually. I'll plan to test it out
+> > > but may not get to it before tomorrow.
+> > 
+> > It passes here.
+> 
+> Without Jeff's patch, my server locks up during generic/013 with NFS/RDMA
+> and NFSv4.1. With it, I get all the way to generic/089, and then encounter
+> this:
+> 
 
-> On Oct 24, 2016, at 8:33 PM, Jeff Layton <jlayton@redhat.com> wrote:
-> 
-> We've been seeing some crashes in testing that look like this:
-> 
-> BUG: unable to handle kernel NULL pointer dereference at           (null)
-> IP: [<ffffffff8135ce99>] memcpy_orig+0x29/0x110
-> PGD 212ca2067 PUD 212ca3067 PMD 0
-> Oops: 0002 [#1] SMP
-> Modules linked in: rpcsec_gss_krb5 nfsv4 dns_resolver nfs fscache ppdev parport_pc i2c_piix4 sg parport i2c_core virtio_balloon pcspkr acpi_cpufreq nfsd auth_rpcgss nfs_acl lockd grace sunrpc ip_tables xfs libcrc32c sd_mod ata_generic pata_acpi virtio_scsi 8139too ata_piix libata 8139cp mii virtio_pci floppy virtio_ring serio_raw virtio
-> CPU: 1 PID: 1540 Comm: nfsd Not tainted 4.9.0-rc1 #39
-> Hardware name: Red Hat KVM, BIOS 0.5.1 01/01/2007
-> task: ffff88020d7ed200 task.stack: ffff880211838000
-> RIP: 0010:[<ffffffff8135ce99>]  [<ffffffff8135ce99>] memcpy_orig+0x29/0x110
-> RSP: 0018:ffff88021183bdd0  EFLAGS: 00010206
-> RAX: 0000000000000000 RBX: ffff88020d7fa000 RCX: 000000f400000000
-> RDX: 0000000000000014 RSI: ffff880212927020 RDI: 0000000000000000
-> RBP: ffff88021183be30 R08: 01000000ef896996 R09: 0000000000000000
-> R10: 0000000000000000 R11: 0000000000000000 R12: ffff880211704ca8
-> R13: ffff88021473f000 R14: 00000000ef896996 R15: ffff880211704800
-> FS:  0000000000000000(0000) GS:ffff88021fc80000(0000) knlGS:0000000000000000
-> CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
-> CR2: 0000000000000000 CR3: 0000000212ca1000 CR4: 00000000000006e0
-> Stack:
-> ffffffffa01ea087 ffffffff63400001 ffff880215145e00 ffff880211bacd00
-> ffff88021473f2b8 0000000000000004 00000000d0679d67 ffff880211bacd00
-> ffff88020d7fa000 ffff88021473f000 0000000000000000 ffff88020d7faa30
-> Call Trace:
-> [<ffffffffa01ea087>] ? svc_tcp_recvfrom+0x5a7/0x790 [sunrpc]
-> [<ffffffffa01f84d8>] svc_recv+0xad8/0xbd0 [sunrpc]
-> [<ffffffffa0262d5e>] nfsd+0xde/0x160 [nfsd]
-> [<ffffffffa0262c80>] ? nfsd_destroy+0x60/0x60 [nfsd]
-> [<ffffffff810a9418>] kthread+0xd8/0xf0
-> [<ffffffff816dbdbf>] ret_from_fork+0x1f/0x40
-> [<ffffffff810a9340>] ? kthread_park+0x60/0x60
-> Code: 00 00 48 89 f8 48 83 fa 20 72 7e 40 38 fe 7c 35 48 83 ea 20 48 83 ea 20 4c 8b 06 4c 8b 4e 08 4c 8b 56 10 4c 8b 5e 18 48 8d 76 20 <4c> 89 07 4c 89 4f 08 4c 89 57 10 4c 89 5f 18 48 8d 7f 20 73 d4
-> RIP  [<ffffffff8135ce99>] memcpy_orig+0x29/0x110
-> RSP <ffff88021183bdd0>
-> CR2: 0000000000000000
-> 
-> Both Bruce and Eryu ran a bisect here and found that the problematic
-> patch was 68778945e46 (SUNRPC: Separate buffer pointers for RPC Call and
-> Reply messages).
-> 
-> That patch changed rpc_xdr_encode to use a new rq_rbuffer pointer to
-> set up the receive buffer, but didn't change all of the necessary
-> codepaths to set it properly. In particular the backchannel setup was
-> missing.
-> 
-> We need to set rq_rbuffer whenever rq_buffer is set. Ensure that it is.
-> 
-> Cc: Chuck Lever <chuck.lever@oracle.com>
-
-Reviewed-by: Chuck Lever <chuck.lever@oracle.com>
-Tested-by: Chuck Lever <chuck.lever@oracle.com>
+Thanks for testing. I just sent an "official" patch submission with the
+same patch.
 
 
-> Reported-by: Eryu Guan <guaneryu@gmail.com>
-> Reported-by: J. Bruce Fields <bfields@fieldses.org>
-> Signed-off-by: Jeff Layton <jlayton@redhat.com>
-> ---
-> net/sunrpc/xprtrdma/svc_rdma_backchannel.c | 1 +
-> net/sunrpc/xprtsock.c                      | 1 +
-> 2 files changed, 2 insertions(+)
+> Oct 24 17:31:11 klimt kernel: general protection fault: 0000 [#1] SMP
+> Oct 24 17:31:11 klimt kernel: Modules linked in: cts rpcsec_gss_krb5 sb_edac edac_core x86_pkg_temp_thermal intel_powerclamp coretemp kvm_intel kvm btrfs irqbypass crct10dif_pclmul crc32_pclmul ghash_clmulni_intel iTCO_wdt iTCO_vendor_support aesni_intel lrw gf128mul glue_helper ablk_helper cryptd xor raid6_pq rpcrdma pcspkr i2c_i801 lpc_ich ib_ipoib i2c_smbus mfd_core mei_me sg mei rdma_ucm shpchp ioatdma wmi ib_ucm ipmi_si ipmi_msghandler ib_uverbs ib_umad rdma_cm ib_cm iw_cm acpi_pad acpi_power_meter nfsd auth_rpcgss nfs_acl lockd grace sunrpc ip_tables xfs libcrc32c mlx4_ib ib_core mlx4_en sd_mod sr_mod cdrom ast drm_kms_helper syscopyarea sysfillrect sysimgblt fb_sys_fops ttm drm mlx4_core ahci libahci igb crc32c_intel ptp libata pps_core dca i2c_algo_bit i2c_core dm_mirror dm_region_hash dm_log dm_mod
+> Oct 24 17:31:11 klimt kernel: CPU: 3 PID: 1681 Comm: nfsd Not tainted 4.9.0-rc2-00006-g0e8f985 #2
+> Oct 24 17:31:11 klimt kernel: Hardware name: Supermicro Super Server/X10SRL-F, BIOS 1.0c 09/09/2015
+> Oct 24 17:31:11 klimt kernel: task: ffff88083feb15c0 task.stack: ffffc900058a0000
+> Oct 24 17:31:11 klimt kernel: RIP: 0010:[<ffffffff811ed1f0>]  [<ffffffff811ed1f0>] __kmalloc_track_caller+0x1b0/0x220
+> Oct 24 17:31:11 klimt kernel: RSP: 0018:ffffc900058a3b88  EFLAGS: 00010286
+> Oct 24 17:31:11 klimt kernel: RAX: 0000000000000000 RBX: 00000000024000c0 RCX: 0000000000293b6b
+> Oct 24 17:31:11 klimt kernel: RDX: 0000000000293b6a RSI: 0000000000000000 RDI: 0000000000000002
+> Oct 24 17:31:11 klimt kernel: RBP: ffffc900058a3bc8 R08: 000000000001c560 R09: ffff88085f003a40
+> Oct 24 17:31:11 klimt kernel: R10: ffff88085f003a40 R11: ffff88083fc9b3c0 R12: 00000000024000c0
+> Oct 24 17:31:11 klimt kernel: R13: 0000000000000018 R14: ffff88081993d600 R15: c0d435750e5f8620
+> Oct 24 17:31:11 klimt kernel: FS:  0000000000000000(0000) GS:ffff88087fcc0000(0000) knlGS:0000000000000000
+> Oct 24 17:31:11 klimt kernel: CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
+> Oct 24 17:31:11 klimt kernel: CR2: 00007fca9725a298 CR3: 0000000001c06000 CR4: 00000000001406e0
+> Oct 24 17:31:11 klimt kernel: Stack:
+> Oct 24 17:31:11 klimt kernel: ffff88085f003a40 ffff88085f003a40 ffffffff812c227b 0000000000000018
+> Oct 24 17:31:11 klimt kernel: ffff880852ee6b00 ffff88085583a000 ffff88081993d600 ffff880839a95840
+> Oct 24 17:31:11 klimt kernel: ffffc900058a3be8 ffffffff811a65d0 ffff88081993d600 00000000024000c0
+> Oct 24 17:31:11 klimt kernel: Call Trace:
+> Oct 24 17:31:11 klimt kernel: [<ffffffff812c227b>] ? selinux_cred_prepare+0x1b/0x30
+> Oct 24 17:31:11 klimt kernel: [<ffffffff811a65d0>] kmemdup+0x20/0x50
+> Oct 24 17:31:11 klimt kernel: [<ffffffff812c227b>] selinux_cred_prepare+0x1b/0x30
+> Oct 24 17:31:11 klimt kernel: [<ffffffff812bd3f9>] security_prepare_creds+0x39/0x60
+> Oct 24 17:31:11 klimt kernel: [<ffffffff810a486f>] prepare_creds+0x12f/0x150
+> Oct 24 17:31:11 klimt kernel: [<ffffffffa043ee6c>] nfsd_setuser+0x8c/0x250 [nfsd]
+> Oct 24 17:31:11 klimt kernel: [<ffffffffa0438077>] nfsd_setuser_and_check_port+0x77/0xa0 [nfsd]
+> Oct 24 17:31:11 klimt kernel: [<ffffffff812bd3f9>] ? security_prepare_creds+0x39/0x60
+> Oct 24 17:31:11 klimt kernel: [<ffffffffa04a33f6>] ? write_bytes_to_xdr_buf+0xa6/0xd0 [sunrpc]
+> Oct 24 17:31:11 klimt kernel: [<ffffffffa0438dcc>] fh_verify+0x5cc/0x610 [nfsd]
+> Oct 24 17:31:11 klimt kernel: [<ffffffffa044659b>] nfsd4_getattr+0x1b/0x80 [nfsd]
+> Oct 24 17:31:11 klimt kernel: [<ffffffffa04481fd>] nfsd4_proc_compound+0x40d/0x690 [nfsd]
+> Oct 24 17:31:11 klimt kernel: [<ffffffffa04352b4>] nfsd_dispatch+0xd4/0x1d0 [nfsd]
+> Oct 24 17:31:11 klimt kernel: [<ffffffffa049b249>] svc_process_common+0x3d9/0x700 [sunrpc]
+> Oct 24 17:31:11 klimt kernel: [<ffffffffa049c0c1>] svc_process+0xf1/0x1d0 [sunrpc]
+> Oct 24 17:31:11 klimt kernel: [<ffffffffa0434d4f>] nfsd+0xff/0x160 [nfsd]
+> Oct 24 17:31:11 klimt kernel: [<ffffffffa0434c50>] ? nfsd_destroy+0x60/0x60 [nfsd]
+> Oct 24 17:31:11 klimt kernel: [<ffffffff810a2235>] kthread+0xe5/0xf0
+> Oct 24 17:31:11 klimt kernel: [<ffffffff810a2150>] ? kthread_stop+0x120/0x120
+> Oct 24 17:31:11 klimt kernel: [<ffffffff816aa795>] ret_from_fork+0x25/0x30
+> Oct 24 17:31:11 klimt kernel: Code: 85 d2 75 dd eb d3 48 89 c3 66 90 eb 6e 81 e3 00 00 10 00 0f 84 e4 fe ff ff 66 90 e9 e7 fe ff ff 49 63 42 20 48 8d 4a 01 4d 8b 02 <49> 8b 1c 07 4c 89 f8 65 49 0f c7 08 0f 94 c0 84 c0 0f 85 3b ff 
+> Oct 24 17:31:11 klimt kernel: RIP  [<ffffffff811ed1f0>] __kmalloc_track_caller+0x1b0/0x220
+> Oct 24 17:31:11 klimt kernel: RSP <ffffc900058a3b88>
+> Oct 24 17:31:11 klimt kernel: ---[ end trace af2b44f9db7f5a36 ]---
 > 
-> diff --git a/net/sunrpc/xprtrdma/svc_rdma_backchannel.c b/net/sunrpc/xprtrdma/svc_rdma_backchannel.c
-> index 2d8545c34095..fc4535ead7c2 100644
-> --- a/net/sunrpc/xprtrdma/svc_rdma_backchannel.c
-> +++ b/net/sunrpc/xprtrdma/svc_rdma_backchannel.c
-> @@ -182,6 +182,7 @@ xprt_rdma_bc_allocate(struct rpc_task *task)
-> 		return -ENOMEM;
+> This appears to be unrelated. Maybe.
 > 
-> 	rqst->rq_buffer = page_address(page);
-> +	rqst->rq_rbuffer = (char *)rqst->rq_buffer + rqst->rq_callsize;
-> 	return 0;
-> }
+> Bruce, do you have CONFIG_VMAP_STACK set? I took the default, just
+> wondering if that was an especially safe thing to try.
 > 
-> diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
-> index 0137af1c0916..e01c825bc683 100644
-> --- a/net/sunrpc/xprtsock.c
-> +++ b/net/sunrpc/xprtsock.c
-> @@ -2563,6 +2563,7 @@ static int bc_malloc(struct rpc_task *task)
-> 	buf->len = PAGE_SIZE;
-> 
-> 	rqst->rq_buffer = buf->data;
-> +	rqst->rq_rbuffer = (char *)rqst->rq_buffer + rqst->rq_callsize;
-> 	return 0;
-> }
-> 
-> -- 
-> 2.7.4
 > 
 
---
-Chuck Lever
+Yeah, looks unrelated to me too. It died down in the kmalloc code, so
+I'd have to wonder if there is some slab corruption or something?
 
+Chuck, can you do something like this on the kernel where you saw this
+panic?
 
+    $ gdb vmlinux
+    gdb> list *(__kmalloc_track_caller+0x1b0)
 
+It'd be good to see where this crashed.
+-- 
+Jeff Layton <jlayton@redhat.com>
