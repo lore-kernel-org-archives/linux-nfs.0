@@ -1,43 +1,91 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-wm0-f66.google.com ([74.125.82.66]:33982 "EHLO
-        mail-wm0-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S932388AbcJ0BFh (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 26 Oct 2016 21:05:37 -0400
-Received: by mail-wm0-f66.google.com with SMTP id y138so179536wme.1
-        for <linux-nfs@vger.kernel.org>; Wed, 26 Oct 2016 18:05:37 -0700 (PDT)
+Received: from mail-db5eur01on0086.outbound.protection.outlook.com ([104.47.2.86]:59493
+        "EHLO EUR01-DB5-obe.outbound.protection.outlook.com"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S933978AbcJ0HGg (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 27 Oct 2016 03:06:36 -0400
+From: Yotam Gigi <yotamg@mellanox.com>
+To: Anna Schumaker <Anna.Schumaker@Netapp.com>,
+        Jakub Kicinski <kubakici@wp.pl>
+CC: Andy Adamson <andros@Netapp.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "netdev@vger.kernel.org" <netdev@vger.kernel.org>,
+        Trond Myklebust <Trond.Myklebust@Netapp.com>,
+        Yotam Gigi <yotam.gi@gmail.com>, mlxsw <mlxsw@mellanox.com>
+Subject: RE: nfs NULL-dereferencing in net-next
+Date: Thu, 27 Oct 2016 06:50:22 +0000
+Message-ID: <DB3PR05MB0764F0409AE75E0172ABFE2EACAA0@DB3PR05MB0764.eurprd05.prod.outlook.com>
+References: <20161017201943.64529739@jkicinski-Precision-T1700>
+ <DB3PR05MB0764DF28BC53A4A4E78A4DD8ACA80@DB3PR05MB0764.eurprd05.prod.outlook.com>
+ <817e43c5-d88d-e616-7074-5715de29d319@Netapp.com>
+ <DB3PR05MB0764B39F6EDF851A8A52EBACACAB0@DB3PR05MB0764.eurprd05.prod.outlook.com>
+ <20161026190840.3d46dad8@jkicinski-Precision-T1700>
+ <0ab5021c-84eb-cb9f-c7f5-4d856fdb0f4b@Netapp.com>
+In-Reply-To: <0ab5021c-84eb-cb9f-c7f5-4d856fdb0f4b@Netapp.com>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-In-Reply-To: <20161020143603.GC2733@stefanha-x1.localdomain>
-References: <1475834514-4058-1-git-send-email-stefanha@redhat.com>
- <CALXu0UdS_m6ag7VDdbc-aJWH+fK=42GM0FEWH1Ht9M-9xy9Xjw@mail.gmail.com> <20161020143603.GC2733@stefanha-x1.localdomain>
-From: Cedric Blancher <cedric.blancher@gmail.com>
-Date: Thu, 27 Oct 2016 03:05:35 +0200
-Message-ID: <CALXu0UeW6Cssiij_+VW8afnHre3zwvBcg5OR=J7A2WKUv9fRWA@mail.gmail.com>
-Subject: Re: [PATCH v2 00/10] NFS: add AF_VSOCK support to NFS client
-To: Stefan Hajnoczi <stefanha@redhat.com>
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Anna Schumaker <anna.schumaker@netapp.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        Trond Myklebust <trond.myklebust@primarydata.com>
-Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 20 October 2016 at 16:36, Stefan Hajnoczi <stefanha@redhat.com> wrote:
-> On Sat, Oct 08, 2016 at 02:42:17AM +0200, Cedric Blancher wrote:
->> So basically you're creating a new (Red Hat) Linux-only wormhole which
->> bypasses all network security between VM host and guest and needs
->> extra work&thought&tool support (wireshark, valgrind, ...) to handle,
->> trace, debug, monitor and secure?
->
-> vsock is not Linux-only and not Red Hat-only.
-
-This is clearly Red Hat only. Debian and Ubuntu folks already have
-rejected this out of security concerns, so why are you pressing this?
-Where is support for other operating systems, like Windows, FreeBSD or
-Solaris/Illumos?
-
-Ced
--- 
-Cedric Blancher <cedric.blancher@gmail.com>
-[https://plus.google.com/u/0/+CedricBlancher/]
-Institute Pasteur
+DQoNCj4tLS0tLU9yaWdpbmFsIE1lc3NhZ2UtLS0tLQ0KPkZyb206IEFubmEgU2NodW1ha2VyIFtt
+YWlsdG86QW5uYS5TY2h1bWFrZXJATmV0YXBwLmNvbV0NCj5TZW50OiBXZWRuZXNkYXksIE9jdG9i
+ZXIgMjYsIDIwMTYgOToxNyBQTQ0KPlRvOiBKYWt1YiBLaWNpbnNraSA8a3ViYWtpY2lAd3AucGw+
+DQo+Q2M6IFlvdGFtIEdpZ2kgPHlvdGFtZ0BtZWxsYW5veC5jb20+OyBBbmR5IEFkYW1zb24gPGFu
+ZHJvc0BuZXRhcHAuY29tPjsNCj5saW51eC1uZnNAdmdlci5rZXJuZWwub3JnOyBuZXRkZXZAdmdl
+ci5rZXJuZWwub3JnOyBUcm9uZCBNeWtsZWJ1c3QNCj48VHJvbmQuTXlrbGVidXN0QG5ldGFwcC5j
+b20+OyBZb3RhbSBHaWdpIDx5b3RhbS5naUBnbWFpbC5jb20+OyBtbHhzdw0KPjxtbHhzd0BtZWxs
+YW5veC5jb20+DQo+U3ViamVjdDogUmU6IG5mcyBOVUxMLWRlcmVmZXJlbmNpbmcgaW4gbmV0LW5l
+eHQNCj4NCj5PbiAxMC8yNi8yMDE2IDAyOjA4IFBNLCBKYWt1YiBLaWNpbnNraSB3cm90ZToNCj4+
+IE9uIFdlZCwgMjYgT2N0IDIwMTYgMTY6MTU6MjQgKzAwMDAsIFlvdGFtIEdpZ2kgd3JvdGU6DQo+
+Pj4+IC0tLS0tT3JpZ2luYWwgTWVzc2FnZS0tLS0tDQo+Pj4+IEZyb206IEFubmEgU2NodW1ha2Vy
+IFttYWlsdG86QW5uYS5TY2h1bWFrZXJATmV0YXBwLmNvbV0NCj4+Pj4gU2VudDogV2VkbmVzZGF5
+LCBPY3RvYmVyIDI2LCAyMDE2IDU6NDAgUE0NCj4+Pj4gVG86IFlvdGFtIEdpZ2kgPHlvdGFtZ0Bt
+ZWxsYW5veC5jb20+OyBKYWt1YiBLaWNpbnNraSA8a3ViYWtpY2lAd3AucGw+Ow0KPkFuZHkNCj4+
+Pj4gQWRhbXNvbiA8YW5kcm9zQG5ldGFwcC5jb20+OyBBbm5hIFNjaHVtYWtlcg0KPj4+PiA8QW5u
+YS5TY2h1bWFrZXJATmV0YXBwLmNvbT47IGxpbnV4LW5mc0B2Z2VyLmtlcm5lbC5vcmcNCj4+Pj4g
+Q2M6IG5ldGRldkB2Z2VyLmtlcm5lbC5vcmc7IFRyb25kIE15a2xlYnVzdA0KPjxUcm9uZC5NeWts
+ZWJ1c3RAbmV0YXBwLmNvbT47DQo+Pj4+IFlvdGFtIEdpZ2kgPHlvdGFtLmdpQGdtYWlsLmNvbT47
+IG1seHN3IDxtbHhzd0BtZWxsYW5veC5jb20+DQo+Pj4+IFN1YmplY3Q6IFJlOiBuZnMgTlVMTC1k
+ZXJlZmVyZW5jaW5nIGluIG5ldC1uZXh0DQo+Pj4+DQo+Pj4+IE9uIDEwLzI1LzIwMTYgMDE6MTkg
+UE0sIFlvdGFtIEdpZ2kgd3JvdGU6DQo+Pj4+Pg0KPj4+Pj4+IC0tLS0tT3JpZ2luYWwgTWVzc2Fn
+ZS0tLS0tDQo+Pj4+Pj4gRnJvbTogbmV0ZGV2LW93bmVyQHZnZXIua2VybmVsLm9yZyBbbWFpbHRv
+Om5ldGRldi0NCj5vd25lckB2Z2VyLmtlcm5lbC5vcmddDQo+Pj4+IE9uDQo+Pj4+Pj4gQmVoYWxm
+IE9mIEpha3ViIEtpY2luc2tpDQo+Pj4+Pj4gU2VudDogTW9uZGF5LCBPY3RvYmVyIDE3LCAyMDE2
+IDEwOjIwIFBNDQo+Pj4+Pj4gVG86IEFuZHkgQWRhbXNvbiA8YW5kcm9zQG5ldGFwcC5jb20+OyBB
+bm5hIFNjaHVtYWtlcg0KPj4+Pj4+IDxBbm5hLlNjaHVtYWtlckBOZXRhcHAuY29tPjsgbGludXgt
+bmZzQHZnZXIua2VybmVsLm9yZw0KPj4+Pj4+IENjOiBuZXRkZXZAdmdlci5rZXJuZWwub3JnOyBU
+cm9uZCBNeWtsZWJ1c3QNCj4+Pj4gPFRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tPg0KPj4+Pj4+
+IFN1YmplY3Q6IG5mcyBOVUxMLWRlcmVmZXJlbmNpbmcgaW4gbmV0LW5leHQNCj4+Pj4+Pg0KPj4+
+Pj4+IEhpIQ0KPj4+Pj4+DQo+Pj4+Pj4gSSdtIGhpdHRpbmcgdGhpcyByZWxpYWJseSBvbiBuZXQt
+bmV4dCwgSEVBRCBhdCAzZjMxNzdiYjY4MGYNCj4+Pj4+PiAoImZzbC9mbWFuOiBmaXggZXJyb3Ig
+cmV0dXJuIGNvZGUgaW4gbWFjX3Byb2JlKCkiKS4NCj4+Pj4+DQo+Pj4+Pg0KPj4+Pj4gSSBzZWUg
+dGhlIHNhbWUgdGhpbmcuIEl0IGhhcHBlbnMgY29uc3RhbnRseSBvbiBzb21lIG9mIG15IG1hY2hp
+bmVzLCBtYWtpbmcNCj4+Pj4gdGhlbQ0KPj4+Pj4gY29tcGxldGVseSB1bnVzYWJsZS4NCj4+Pj4+
+DQo+Pj4+PiBJIGJpc2VjdGVkIGl0IGFuZCBnb3QgdG8gdGhlIGNvbW1pdDoNCj4+Pj4+DQo+Pj4+
+PiBjb21taXQgMDRlYTFiM2U2ZDhlZDQ5NzhiYjYwOGMxNzQ4NTMwYWYzZGU4YzI3NA0KPj4+Pj4g
+QXV0aG9yOiBBbmR5IEFkYW1zb24gPGFuZHJvc0BuZXRhcHAuY29tPg0KPj4+Pj4gRGF0ZTogICBG
+cmkgU2VwIDkgMDk6MjI6MjcgMjAxNiAtMDQwMA0KPj4+Pj4NCj4+Pj4+ICAgICBORlMgYWRkIHhw
+cnQgc3dpdGNoIGFkZHJzIHRlc3QgdG8gbWF0Y2ggY2xpZW50DQo+Pj4+Pg0KPj4+Pj4gICAgIFNp
+Z25lZC1vZmYtYnk6IEFuZHkgQWRhbXNvbiA8YW5kcm9zQG5ldGFwcC5jb20+DQo+Pj4+PiAgICAg
+U2lnbmVkLW9mZi1ieTogQW5uYSBTY2h1bWFrZXIgPEFubmEuU2NodW1ha2VyQE5ldGFwcC5jb20+
+DQo+Pj4+DQo+Pj4+IFRoYW5rcyBmb3IgcmVwb3J0aW5nIG9uIHRoaXMgZXZlcnlvbmUhICBEb2Vz
+IHRoaXMgcGF0Y2ggaGVscD8NCj4+Pg0KPj4+IEFjdHVhbGx5LCBJIHN0aWxsIHNlZSB0aGUgc2Ft
+ZSBidWcgd2l0aCB0aGUgc2FtZSB0cmFjZS4NCj4NCj5XZWxsLCBpdCB3YXMgd29ydGggYSBzaG90
+LiAgSSdsbCBrZWVwIHBva2luZyBhdCBpdC4NCj4NCj4+DQo+PiBJIHJlYnVpbGQgdGhlIGxhdGVz
+dCBuZXQtbmV4dCBhbmQgSSdtIG5vdCBzZWVpbmcgdGhlIHRyYWNlIGFueSBtb3JlLi4uDQo+PiBJ
+J20gb25seSBzZWVpbmcgdGhpcyAod2l0aCBvciB3aXRob3V0IHlvdXIgcGF0Y2gpOg0KPj4NCj4+
+IFsgICAyMy40NjU4NzddIE5GUzogc2V0X3BuZnNfbGF5b3V0ZHJpdmVyOiBjbF9leGNoYW5nZV9m
+bGFncyAweDANCj4+IFsgICAyMy40NzM3ODRdIE5GUzogc2V0X3BuZnNfbGF5b3V0ZHJpdmVyOiBj
+bF9leGNoYW5nZV9mbGFncyAweDANCj4+IFsgICAyMy41ODg4OTBdIE5GUzogc2V0X3BuZnNfbGF5
+b3V0ZHJpdmVyOiBjbF9leGNoYW5nZV9mbGFncyAweDANCj4+IFsgICAyMy41OTY3NDZdIE5GUzog
+c2V0X3BuZnNfbGF5b3V0ZHJpdmVyOiBjbF9leGNoYW5nZV9mbGFncyAweDANCj4+IFsgICAyMy43
+ODE1NzRdIE5GUzogc2V0X3BuZnNfbGF5b3V0ZHJpdmVyOiBjbF9leGNoYW5nZV9mbGFncyAweDAN
+Cj4+IFsgICAyMy43ODk1OTldIE5GUzogc2V0X3BuZnNfbGF5b3V0ZHJpdmVyOiBjbF9leGNoYW5n
+ZV9mbGFncyAweDANCj4NCj5JbnRlcmVzdGluZywgSSBnZXQgdGhhdCB0b28gd2hlbiBJIHRyeSB0
+byB1c2UgTkZTIHY0LjEuICBJdCdzIHdlaXJkIHRoYXQgdGhlIGNyYXNoIHdvdWxkDQo+c3RvcCBo
+YXBwZW5pbmcgbGlrZSB0aGF0LCBzbyBtYXliZSBzb21ldGhpbmcgaXMgcmFjeSBpbiB0aGlzIGFy
+ZWEuDQo+DQo+VGhhbmtzIGZvciB0ZXN0aW5nLCBZb3RhbSBhbmQgSmFrdWIhDQo+QW5uYQ0KDQpJ
+IGp1c3QgZm91bmQgb3V0IHRoYXQgaXQgaGFwcGVucyBvbiBhbnkgb2YgbXkgbWFjaGluZXMsIG9u
+Y2UgSSBwdXQgdHdvIG5mcyBlbnRyaWVzIGluDQpteSBmc3RhYi4gSWYgSSBwdXQgb25seSBvbmUs
+IEkgZG9uJ3Qgc2VlIHRoZSBwcm9ibGVtLiANCg0KSSBob3BlIGl0IG1pZ2h0IGJlIGhlbHBmdWwg
+OikNCg0KPg0KPj4NCj4+IEhUSA0KPj4NCg0K
