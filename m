@@ -1,180 +1,139 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from Galois.linutronix.de ([146.0.238.70]:48450 "EHLO
-        Galois.linutronix.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1756712AbcJ1Ven (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 28 Oct 2016 17:34:43 -0400
-Date: Fri, 28 Oct 2016 23:05:11 +0200
-From: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-Cc: Anna Schumaker <anna.schumaker@netapp.com>, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org, tglx@linutronix.de
-Subject: [PATCH v2] NFSv4: replace seqcount_t with a seqlock_t
-Message-ID: <20161028210511.k7hrsfxovti7gqtu@linutronix.de>
-References: <20161021164727.24485-1-bigeasy@linutronix.de>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-In-Reply-To: <20161021164727.24485-1-bigeasy@linutronix.de>
+Received: from userp1040.oracle.com ([156.151.31.81]:50856 "EHLO
+        userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1761476AbcJ1VpL (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 28 Oct 2016 17:45:11 -0400
+Content-Type: text/plain; charset=us-ascii
+Mime-Version: 1.0 (Mac OS X Mail 9.3 \(3124\))
+Subject: Re: upstream server crash
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <1477336654.21854.9.camel@redhat.com>
+Date: Fri, 28 Oct 2016 17:45:04 -0400
+Cc: "J. Bruce Fields" <bfields@fieldses.org>,
+        Eryu Guan <guaneryu@gmail.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Message-Id: <89F7A9E2-9AC1-4F6C-8D6D-5A7D8060057F@oracle.com>
+References: <20161023182115.GA14481@fieldses.org> <20161024031519.GN2462@eguan.usersys.redhat.com> <1477315868.2625.37.camel@redhat.com> <7B3F94BF-CAA1-4001-BEBC-C93965A81DE4@oracle.com> <1477322377.14828.4.camel@redhat.com> <1477322680.14828.6.camel@redhat.com> <20161024180858.GA27359@fieldses.org> <1477336654.21854.9.camel@redhat.com>
+To: Jeff Layton <jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The raw_write_seqcount_begin() in nfs4_reclaim_open_state() bugs me
-because it maps to preempt_disable() in -RT which I can't have at this
-point. So I took a look at the code.
-It the lockdep part was removed in commit abbec2da13f0 ("NFS: Use
-raw_write_seqcount_begin/end int nfs4_reclaim_open_state") because
-lockdep complained. The whole seqcount thing was introduced in commit
-c137afabe330 ("NFSv4: Allow the state manager to mark an open_owner as
-being recovered").
-I don't understand how it is possible that we don't end up with two
-writers for the same ressource because the `sp->so_lock' lock is dropped
-is soon in the list_for_each_entry() loop. It might be the
-test_and_clear_bit() check in nfs4_do_reclaim() but it might clear one
-bit on each iteration so I *think* we could have two invocations of the
-same struct nfs4_state_owner in nfs4_reclaim_open_state().
-So there is that.
 
-But back to the list_for_each_entry() macro.
-It seems that this lock protects the ->so_states list among other
-atomic_t & flags members. So at the begin of the loop we inc ->count
-ensuring that this field is not removed while we use it. So we drop the
-->so_lock loc during the loop it seems. And after nfs4_reclaim_locks()
-invocation we nfs4_put_open_state() and grab the ->so_lock again. So if
-we were the last user of this struct and we remove it, then the
-following list_next_entry() invocation is a use-after-free. Even if we
-use list_for_each_entry_safe() there is no guarantee that the following
-member is still valid because it might have been removed by another
-writer, right?
-So there is this.
+> On Oct 24, 2016, at 3:17 PM, Jeff Layton <jlayton@redhat.com> wrote:
+> 
+> On Mon, 2016-10-24 at 14:08 -0400, J. Bruce Fields wrote:
+>> On Mon, Oct 24, 2016 at 11:24:40AM -0400, Jeff Layton wrote:
+>>> 
+>>> On Mon, 2016-10-24 at 11:19 -0400, Jeff Layton wrote:
+>>>> 
+>>>> On Mon, 2016-10-24 at 09:51 -0400, Chuck Lever wrote:
+>>>>> 
+>>>>> 
+>>>>>> 
+>>>>>> 
+>>>>>> 
+>>>>>> On Oct 24, 2016, at 9:31 AM, Jeff Layton <jlayton@redhat.com> wrote:
+>>>>>> 
+>>>>>> On Mon, 2016-10-24 at 11:15 +0800, Eryu Guan wrote:
+>>>>>>> 
+>>>>>>> 
+>>>>>>> 
+>>>>>>> On Sun, Oct 23, 2016 at 02:21:15PM -0400, J. Bruce Fields wrote:
+>>>>>>>> 
+>>>>>>>> 
+>>>>>>>> 
+>>>>>>>> 
+>>>>>>>> I'm getting an intermittent crash in the nfs server as of
+>>>>>>>> 68778945e46f143ed7974b427a8065f69a4ce944 "SUNRPC: Separate buffer
+>>>>>>>> pointers for RPC Call and Reply messages".
+>>>>>>>> 
+>>>>>>>> I haven't tried to understand that commit or why it would be a problem yet, I
+>>>>>>>> don't see an obvious connection--I can take a closer look Monday.
+>>>>>>>> 
+>>>>>>>> Could even be that I just landed on this commit by chance, the problem is a
+>>>>>>>> little hard to reproduce so I don't completely trust my testing.
+>>>>>>> 
+>>>>>>> I've hit the same crash on 4.9-rc1 kernel, and it's reproduced for me
+>>>>>>> reliably by running xfstests generic/013 case, on a loopback mounted
+>>>>>>> NFSv4.1 (or NFSv4.2), XFS is the underlying exported fs. More details
+>>>>>>> please see
+>>>>>>> 
+>>>>>>> http://marc.info/?l=linux-nfs&m=147714320129362&w=2
+>>>>>>> 
+>>>>>> 
+>>>>>> Looks like you landed at the same commit as Bruce, so that's probably
+>>>>>> legit. That commit is very small though. The only real change that
+>>>>>> doesn't affect the new field is this:
+>>>>>> 
+>>>>>> 
+>>>>>> @@ -1766,7 +1766,7 @@ rpc_xdr_encode(struct rpc_task *task)
+>>>>>>                     req->rq_buffer,
+>>>>>>                     req->rq_callsize);
+>>>>>>        xdr_buf_init(&req->rq_rcv_buf,
+>>>>>> -                    (char *)req->rq_buffer + req->rq_callsize,
+>>>>>> +                    req->rq_rbuffer,
+>>>>>>                     req->rq_rcvsize);
+>>>>>> 
+>>>>>> 
+>>>>>> So I'm guessing this is breaking the callback channel somehow?
+>>>>> 
+>>>>> Could be the TCP backchannel code is using rq_buffer in a different
+>>>>> way than RDMA backchannel or the forward channel code.
+>>>>> 
+>>>> 
+>>>> Well, it basically allocates a page per rpc_rqst and then maps that.
+>>>> 
+>>>> One thing I notice is that this patch ensures that rq_rbuffer gets set
+>>>> up in rpc_malloc and xprt_rdma_allocate, but it looks like
+>>>> xprt_alloc_bc_req didn't get the same treatment.
+>>>> 
+>>>> I suspect that that may be the problem...
+>>>> 
+>>> In fact, maybe we just need this here? (untested and probably
+>>> whitespace damaged):
+>> 
+>> No change in results for me.
+>> 
+>> --b.
+>>> 
+>>> 
+>>> diff --git a/net/sunrpc/backchannel_rqst.c b/net/sunrpc/backchannel_rqst.c
+>>> index ac701c28f44f..c561aa8ce05b 100644
+>>> --- a/net/sunrpc/backchannel_rqst.c
+>>> +++ b/net/sunrpc/backchannel_rqst.c
+>>> @@ -100,6 +100,7 @@ struct rpc_rqst *xprt_alloc_bc_req(struct rpc_xprt *xprt, gfp_t gfp_flags)
+>>>                goto out_free;
+>>>        }
+>>>        req->rq_rcv_buf.len = PAGE_SIZE;
+>>> +       req->rq_rbuffer = req->rq_rcv_buf.head[0].iov_base;
+>>> 
+>>>        /* Preallocate one XDR send buffer */
+>>>        if (xprt_alloc_xdr_buf(&req->rq_snd_buf, gfp_flags) < 0) {
+> 
+> Ahh ok, I think I see.
+> 
+> We probably also need to set rq_rbuffer in bc_malloc and and
+> xprt_rdma_bc_allocate.
+> 
+> My guess is that we're ending up in rpc_xdr_encode with a NULL
+> rq_rbuffer pointer, so the right fix would seem to be to ensure that it
+> is properly set whenever rq_buffer is set.
+> 
+> So I think this may be what we want, actually. I'll plan to test it out
+> but may not get to it before tomorrow.
+> 
+> -- 
+> Jeff Layton <jlayton@redhat.com><0001-sunrpc-fix-some-missing-rq_rbuffer-assignments.patch>
 
-However to address my initial problem I have here a patch :) So it uses
-a seqlock_t which ensures that there is only one writer at a time. So it
-should be basically what is happening now plus a tiny tiny tiny lock
-plus lockdep coverage. I tried to this myself but I don't manage to get
-into this code path at all so I might be doing something wrong.
+This may not be working as well as I thought (at least for NFS/RDMA).
+xprt_rdma_bc_send_request releases the page allocated by
+xprt_rdma_bc_allocate before the reply arrives. call_decode
+then tries to dereference rq_rbuffer, but that's now a pointer
+to freed memory.
 
-Could you please check if this patch is working for you and whether my
-list_for_each_entry() observation is correct or not?
 
-v1…v2: write_seqlock() disables preemption and some function need it
-(thread_run(), non-GFP_ATOMIC memory alloction()). We don't want
-preemption enabled because a preempted writer would stall the reader
-spinning. This is a duct tape mutex. Maybe the seqlock should go.
+--
+Chuck Lever
 
-Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
----
- fs/nfs/delegation.c |  4 ++--
- fs/nfs/nfs4_fs.h    |  3 ++-
- fs/nfs/nfs4proc.c   |  4 ++--
- fs/nfs/nfs4state.c  | 23 +++++++++++++++++------
- 4 files changed, 23 insertions(+), 11 deletions(-)
 
-diff --git a/fs/nfs/delegation.c b/fs/nfs/delegation.c
-index dff600ae0d74..d726d2e09353 100644
---- a/fs/nfs/delegation.c
-+++ b/fs/nfs/delegation.c
-@@ -150,11 +150,11 @@ static int nfs_delegation_claim_opens(struct inode *inode,
- 		sp = state->owner;
- 		/* Block nfs4_proc_unlck */
- 		mutex_lock(&sp->so_delegreturn_mutex);
--		seq = raw_seqcount_begin(&sp->so_reclaim_seqcount);
-+		seq = read_seqbegin(&sp->so_reclaim_seqlock);
- 		err = nfs4_open_delegation_recall(ctx, state, stateid, type);
- 		if (!err)
- 			err = nfs_delegation_claim_locks(ctx, state, stateid);
--		if (!err && read_seqcount_retry(&sp->so_reclaim_seqcount, seq))
-+		if (!err && read_seqretry(&sp->so_reclaim_seqlock, seq))
- 			err = -EAGAIN;
- 		mutex_unlock(&sp->so_delegreturn_mutex);
- 		put_nfs_open_context(ctx);
-diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
-index 9b3a82abab07..2fee1a2e8b57 100644
---- a/fs/nfs/nfs4_fs.h
-+++ b/fs/nfs/nfs4_fs.h
-@@ -111,7 +111,8 @@ struct nfs4_state_owner {
- 	unsigned long	     so_flags;
- 	struct list_head     so_states;
- 	struct nfs_seqid_counter so_seqid;
--	seqcount_t	     so_reclaim_seqcount;
-+	seqlock_t	     so_reclaim_seqlock;
-+	struct mutex	     so_reclaim_seqlock_mutex;
- 	struct mutex	     so_delegreturn_mutex;
- };
- 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 7897826d7c51..9b9d53cd85f9 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -2685,7 +2685,7 @@ static int _nfs4_open_and_get_state(struct nfs4_opendata *opendata,
- 	unsigned int seq;
- 	int ret;
- 
--	seq = raw_seqcount_begin(&sp->so_reclaim_seqcount);
-+	seq = raw_seqcount_begin(&sp->so_reclaim_seqlock.seqcount);
- 
- 	ret = _nfs4_proc_open(opendata);
- 	if (ret != 0)
-@@ -2723,7 +2723,7 @@ static int _nfs4_open_and_get_state(struct nfs4_opendata *opendata,
- 	ctx->state = state;
- 	if (d_inode(dentry) == state->inode) {
- 		nfs_inode_attach_open_context(ctx);
--		if (read_seqcount_retry(&sp->so_reclaim_seqcount, seq))
-+		if (read_seqretry(&sp->so_reclaim_seqlock, seq))
- 			nfs4_schedule_stateid_recovery(server, state);
- 	}
- out:
-diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
-index 5f4281ec5f72..a442d9867942 100644
---- a/fs/nfs/nfs4state.c
-+++ b/fs/nfs/nfs4state.c
-@@ -488,7 +488,8 @@ nfs4_alloc_state_owner(struct nfs_server *server,
- 	nfs4_init_seqid_counter(&sp->so_seqid);
- 	atomic_set(&sp->so_count, 1);
- 	INIT_LIST_HEAD(&sp->so_lru);
--	seqcount_init(&sp->so_reclaim_seqcount);
-+	seqlock_init(&sp->so_reclaim_seqlock);
-+	mutex_init(&sp->so_reclaim_seqlock_mutex);
- 	mutex_init(&sp->so_delegreturn_mutex);
- 	return sp;
- }
-@@ -1497,8 +1498,18 @@ static int nfs4_reclaim_open_state(struct nfs4_state_owner *sp, const struct nfs
- 	 * recovering after a network partition or a reboot from a
- 	 * server that doesn't support a grace period.
- 	 */
-+	/*
-+	 * XXX
-+	 * This mutex is wrong. It protects against multiple writer. However
-+	 * write_seqlock() should have been used for this task. This would avoid
-+	 * preemption while the seqlock is held which is good because the writer
-+	 * shouldn't be preempted as it would let the reader spin for no good
-+	 * reason. There are a few memory allocations and kthread_run() so we
-+	 * have this mutex now.
-+	 */
-+	mutex_lock(&sp->so_reclaim_seqlock_mutex);
-+	write_seqcount_begin(&sp->so_reclaim_seqlock.seqcount);
- 	spin_lock(&sp->so_lock);
--	raw_write_seqcount_begin(&sp->so_reclaim_seqcount);
- restart:
- 	list_for_each_entry(state, &sp->so_states, open_states) {
- 		if (!test_and_clear_bit(ops->state_flag_bit, &state->flags))
-@@ -1566,14 +1577,14 @@ static int nfs4_reclaim_open_state(struct nfs4_state_owner *sp, const struct nfs
- 		spin_lock(&sp->so_lock);
- 		goto restart;
- 	}
--	raw_write_seqcount_end(&sp->so_reclaim_seqcount);
- 	spin_unlock(&sp->so_lock);
-+	write_seqcount_end(&sp->so_reclaim_seqlock.seqcount);
-+	mutex_unlock(&sp->so_reclaim_seqlock_mutex);
- 	return 0;
- out_err:
- 	nfs4_put_open_state(state);
--	spin_lock(&sp->so_lock);
--	raw_write_seqcount_end(&sp->so_reclaim_seqcount);
--	spin_unlock(&sp->so_lock);
-+	write_seqcount_end(&sp->so_reclaim_seqlock.seqcount);
-+	mutex_unlock(&sp->so_reclaim_seqlock_mutex);
- 	return status;
- }
- 
--- 
-2.10.1
 
