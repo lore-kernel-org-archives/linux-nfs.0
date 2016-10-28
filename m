@@ -1,139 +1,159 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from userp1040.oracle.com ([156.151.31.81]:50856 "EHLO
-        userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1761476AbcJ1VpL (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 28 Oct 2016 17:45:11 -0400
-Content-Type: text/plain; charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 9.3 \(3124\))
-Subject: Re: upstream server crash
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <1477336654.21854.9.camel@redhat.com>
-Date: Fri, 28 Oct 2016 17:45:04 -0400
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-        Eryu Guan <guaneryu@gmail.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <89F7A9E2-9AC1-4F6C-8D6D-5A7D8060057F@oracle.com>
-References: <20161023182115.GA14481@fieldses.org> <20161024031519.GN2462@eguan.usersys.redhat.com> <1477315868.2625.37.camel@redhat.com> <7B3F94BF-CAA1-4001-BEBC-C93965A81DE4@oracle.com> <1477322377.14828.4.camel@redhat.com> <1477322680.14828.6.camel@redhat.com> <20161024180858.GA27359@fieldses.org> <1477336654.21854.9.camel@redhat.com>
-To: Jeff Layton <jlayton@redhat.com>
+Received: from us-smtp-delivery-194.mimecast.com ([63.128.21.194]:59446 "EHLO
+        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1756697AbcJ1WY7 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 28 Oct 2016 18:24:59 -0400
+From: Trond Myklebust <trondmy@primarydata.com>
+To: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
+CC: Schumaker Anna <anna.schumaker@netapp.com>,
+        List Linux NFS Mailing <linux-nfs@vger.kernel.org>,
+        List Linux Kernel Mailing <linux-kernel@vger.kernel.org>,
+        "tglx@linutronix.de" <tglx@linutronix.de>
+Subject: Re: [PATCH v2] NFSv4: replace seqcount_t with a seqlock_t
+Date: Fri, 28 Oct 2016 22:24:52 +0000
+Message-ID: <747E2CCB-3D83-40FD-8B31-46AB5A5E8592@primarydata.com>
+References: <20161021164727.24485-1-bigeasy@linutronix.de>
+ <20161028210511.k7hrsfxovti7gqtu@linutronix.de>
+In-Reply-To: <20161028210511.k7hrsfxovti7gqtu@linutronix.de>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-> On Oct 24, 2016, at 3:17 PM, Jeff Layton <jlayton@redhat.com> wrote:
-> 
-> On Mon, 2016-10-24 at 14:08 -0400, J. Bruce Fields wrote:
->> On Mon, Oct 24, 2016 at 11:24:40AM -0400, Jeff Layton wrote:
->>> 
->>> On Mon, 2016-10-24 at 11:19 -0400, Jeff Layton wrote:
->>>> 
->>>> On Mon, 2016-10-24 at 09:51 -0400, Chuck Lever wrote:
->>>>> 
->>>>> 
->>>>>> 
->>>>>> 
->>>>>> 
->>>>>> On Oct 24, 2016, at 9:31 AM, Jeff Layton <jlayton@redhat.com> wrote:
->>>>>> 
->>>>>> On Mon, 2016-10-24 at 11:15 +0800, Eryu Guan wrote:
->>>>>>> 
->>>>>>> 
->>>>>>> 
->>>>>>> On Sun, Oct 23, 2016 at 02:21:15PM -0400, J. Bruce Fields wrote:
->>>>>>>> 
->>>>>>>> 
->>>>>>>> 
->>>>>>>> 
->>>>>>>> I'm getting an intermittent crash in the nfs server as of
->>>>>>>> 68778945e46f143ed7974b427a8065f69a4ce944 "SUNRPC: Separate buffer
->>>>>>>> pointers for RPC Call and Reply messages".
->>>>>>>> 
->>>>>>>> I haven't tried to understand that commit or why it would be a problem yet, I
->>>>>>>> don't see an obvious connection--I can take a closer look Monday.
->>>>>>>> 
->>>>>>>> Could even be that I just landed on this commit by chance, the problem is a
->>>>>>>> little hard to reproduce so I don't completely trust my testing.
->>>>>>> 
->>>>>>> I've hit the same crash on 4.9-rc1 kernel, and it's reproduced for me
->>>>>>> reliably by running xfstests generic/013 case, on a loopback mounted
->>>>>>> NFSv4.1 (or NFSv4.2), XFS is the underlying exported fs. More details
->>>>>>> please see
->>>>>>> 
->>>>>>> http://marc.info/?l=linux-nfs&m=147714320129362&w=2
->>>>>>> 
->>>>>> 
->>>>>> Looks like you landed at the same commit as Bruce, so that's probably
->>>>>> legit. That commit is very small though. The only real change that
->>>>>> doesn't affect the new field is this:
->>>>>> 
->>>>>> 
->>>>>> @@ -1766,7 +1766,7 @@ rpc_xdr_encode(struct rpc_task *task)
->>>>>>                     req->rq_buffer,
->>>>>>                     req->rq_callsize);
->>>>>>        xdr_buf_init(&req->rq_rcv_buf,
->>>>>> -                    (char *)req->rq_buffer + req->rq_callsize,
->>>>>> +                    req->rq_rbuffer,
->>>>>>                     req->rq_rcvsize);
->>>>>> 
->>>>>> 
->>>>>> So I'm guessing this is breaking the callback channel somehow?
->>>>> 
->>>>> Could be the TCP backchannel code is using rq_buffer in a different
->>>>> way than RDMA backchannel or the forward channel code.
->>>>> 
->>>> 
->>>> Well, it basically allocates a page per rpc_rqst and then maps that.
->>>> 
->>>> One thing I notice is that this patch ensures that rq_rbuffer gets set
->>>> up in rpc_malloc and xprt_rdma_allocate, but it looks like
->>>> xprt_alloc_bc_req didn't get the same treatment.
->>>> 
->>>> I suspect that that may be the problem...
->>>> 
->>> In fact, maybe we just need this here? (untested and probably
->>> whitespace damaged):
->> 
->> No change in results for me.
->> 
->> --b.
->>> 
->>> 
->>> diff --git a/net/sunrpc/backchannel_rqst.c b/net/sunrpc/backchannel_rqst.c
->>> index ac701c28f44f..c561aa8ce05b 100644
->>> --- a/net/sunrpc/backchannel_rqst.c
->>> +++ b/net/sunrpc/backchannel_rqst.c
->>> @@ -100,6 +100,7 @@ struct rpc_rqst *xprt_alloc_bc_req(struct rpc_xprt *xprt, gfp_t gfp_flags)
->>>                goto out_free;
->>>        }
->>>        req->rq_rcv_buf.len = PAGE_SIZE;
->>> +       req->rq_rbuffer = req->rq_rcv_buf.head[0].iov_base;
->>> 
->>>        /* Preallocate one XDR send buffer */
->>>        if (xprt_alloc_xdr_buf(&req->rq_snd_buf, gfp_flags) < 0) {
-> 
-> Ahh ok, I think I see.
-> 
-> We probably also need to set rq_rbuffer in bc_malloc and and
-> xprt_rdma_bc_allocate.
-> 
-> My guess is that we're ending up in rpc_xdr_encode with a NULL
-> rq_rbuffer pointer, so the right fix would seem to be to ensure that it
-> is properly set whenever rq_buffer is set.
-> 
-> So I think this may be what we want, actually. I'll plan to test it out
-> but may not get to it before tomorrow.
-> 
-> -- 
-> Jeff Layton <jlayton@redhat.com><0001-sunrpc-fix-some-missing-rq_rbuffer-assignments.patch>
-
-This may not be working as well as I thought (at least for NFS/RDMA).
-xprt_rdma_bc_send_request releases the page allocated by
-xprt_rdma_bc_allocate before the reply arrives. call_decode
-then tries to dereference rq_rbuffer, but that's now a pointer
-to freed memory.
-
-
---
-Chuck Lever
-
-
+DQo+IE9uIE9jdCAyOCwgMjAxNiwgYXQgMTc6MDUsIFNlYmFzdGlhbiBBbmRyemVqIFNpZXdpb3Ig
+PGJpZ2Vhc3lAbGludXRyb25peC5kZT4gd3JvdGU6DQo+IA0KPiBUaGUgcmF3X3dyaXRlX3NlcWNv
+dW50X2JlZ2luKCkgaW4gbmZzNF9yZWNsYWltX29wZW5fc3RhdGUoKSBidWdzIG1lDQo+IGJlY2F1
+c2UgaXQgbWFwcyB0byBwcmVlbXB0X2Rpc2FibGUoKSBpbiAtUlQgd2hpY2ggSSBjYW4ndCBoYXZl
+IGF0IHRoaXMNCj4gcG9pbnQuIFNvIEkgdG9vayBhIGxvb2sgYXQgdGhlIGNvZGUuDQo+IEl0IHRo
+ZSBsb2NrZGVwIHBhcnQgd2FzIHJlbW92ZWQgaW4gY29tbWl0IGFiYmVjMmRhMTNmMCAoIk5GUzog
+VXNlDQo+IHJhd193cml0ZV9zZXFjb3VudF9iZWdpbi9lbmQgaW50IG5mczRfcmVjbGFpbV9vcGVu
+X3N0YXRlIikgYmVjYXVzZQ0KPiBsb2NrZGVwIGNvbXBsYWluZWQuIFRoZSB3aG9sZSBzZXFjb3Vu
+dCB0aGluZyB3YXMgaW50cm9kdWNlZCBpbiBjb21taXQNCj4gYzEzN2FmYWJlMzMwICgiTkZTdjQ6
+IEFsbG93IHRoZSBzdGF0ZSBtYW5hZ2VyIHRvIG1hcmsgYW4gb3Blbl9vd25lciBhcw0KPiBiZWlu
+ZyByZWNvdmVyZWQiKS4NCj4gSSBkb24ndCB1bmRlcnN0YW5kIGhvdyBpdCBpcyBwb3NzaWJsZSB0
+aGF0IHdlIGRvbid0IGVuZCB1cCB3aXRoIHR3bw0KPiB3cml0ZXJzIGZvciB0aGUgc2FtZSByZXNz
+b3VyY2UgYmVjYXVzZSB0aGUgYHNwLT5zb19sb2NrJyBsb2NrIGlzIGRyb3BwZWQNCj4gaXMgc29v
+biBpbiB0aGUgbGlzdF9mb3JfZWFjaF9lbnRyeSgpIGxvb3AuIEl0IG1pZ2h0IGJlIHRoZQ0KPiB0
+ZXN0X2FuZF9jbGVhcl9iaXQoKSBjaGVjayBpbiBuZnM0X2RvX3JlY2xhaW0oKSBidXQgaXQgbWln
+aHQgY2xlYXIgb25lDQo+IGJpdCBvbiBlYWNoIGl0ZXJhdGlvbiBzbyBJICp0aGluayogd2UgY291
+bGQgaGF2ZSB0d28gaW52b2NhdGlvbnMgb2YgdGhlDQo+IHNhbWUgc3RydWN0IG5mczRfc3RhdGVf
+b3duZXIgaW4gbmZzNF9yZWNsYWltX29wZW5fc3RhdGUoKS4NCj4gU28gdGhlcmUgaXMgdGhhdC4N
+Cj4gDQo+IEJ1dCBiYWNrIHRvIHRoZSBsaXN0X2Zvcl9lYWNoX2VudHJ5KCkgbWFjcm8uDQo+IEl0
+IHNlZW1zIHRoYXQgdGhpcyBsb2NrIHByb3RlY3RzIHRoZSAtPnNvX3N0YXRlcyBsaXN0IGFtb25n
+IG90aGVyDQo+IGF0b21pY190ICYgZmxhZ3MgbWVtYmVycy4gU28gYXQgdGhlIGJlZ2luIG9mIHRo
+ZSBsb29wIHdlIGluYyAtPmNvdW50DQo+IGVuc3VyaW5nIHRoYXQgdGhpcyBmaWVsZCBpcyBub3Qg
+cmVtb3ZlZCB3aGlsZSB3ZSB1c2UgaXQuIFNvIHdlIGRyb3AgdGhlDQo+IC0+c29fbG9jayBsb2Mg
+ZHVyaW5nIHRoZSBsb29wIGl0IHNlZW1zLiBBbmQgYWZ0ZXIgbmZzNF9yZWNsYWltX2xvY2tzKCkN
+Cj4gaW52b2NhdGlvbiB3ZSBuZnM0X3B1dF9vcGVuX3N0YXRlKCkgYW5kIGdyYWIgdGhlIC0+c29f
+bG9jayBhZ2Fpbi4gU28gaWYNCj4gd2Ugd2VyZSB0aGUgbGFzdCB1c2VyIG9mIHRoaXMgc3RydWN0
+IGFuZCB3ZSByZW1vdmUgaXQsIHRoZW4gdGhlDQo+IGZvbGxvd2luZyBsaXN0X25leHRfZW50cnko
+KSBpbnZvY2F0aW9uIGlzIGEgdXNlLWFmdGVyLWZyZWUuIEV2ZW4gaWYgd2UNCj4gdXNlIGxpc3Rf
+Zm9yX2VhY2hfZW50cnlfc2FmZSgpIHRoZXJlIGlzIG5vIGd1YXJhbnRlZSB0aGF0IHRoZSBmb2xs
+b3dpbmcNCj4gbWVtYmVyIGlzIHN0aWxsIHZhbGlkIGJlY2F1c2UgaXQgbWlnaHQgaGF2ZSBiZWVu
+IHJlbW92ZWQgYnkgYW5vdGhlcg0KPiB3cml0ZXIsIHJpZ2h0Pw0KPiBTbyB0aGVyZSBpcyB0aGlz
+Lg0KPiANCj4gSG93ZXZlciB0byBhZGRyZXNzIG15IGluaXRpYWwgcHJvYmxlbSBJIGhhdmUgaGVy
+ZSBhIHBhdGNoIDopIFNvIGl0IHVzZXMNCj4gYSBzZXFsb2NrX3Qgd2hpY2ggZW5zdXJlcyB0aGF0
+IHRoZXJlIGlzIG9ubHkgb25lIHdyaXRlciBhdCBhIHRpbWUuIFNvIGl0DQo+IHNob3VsZCBiZSBi
+YXNpY2FsbHkgd2hhdCBpcyBoYXBwZW5pbmcgbm93IHBsdXMgYSB0aW55IHRpbnkgdGlueSBsb2Nr
+DQo+IHBsdXMgbG9ja2RlcCBjb3ZlcmFnZS4gSSB0cmllZCB0byB0aGlzIG15c2VsZiBidXQgSSBk
+b24ndCBtYW5hZ2UgdG8gZ2V0DQo+IGludG8gdGhpcyBjb2RlIHBhdGggYXQgYWxsIHNvIEkgbWln
+aHQgYmUgZG9pbmcgc29tZXRoaW5nIHdyb25nLg0KPiANCj4gQ291bGQgeW91IHBsZWFzZSBjaGVj
+ayBpZiB0aGlzIHBhdGNoIGlzIHdvcmtpbmcgZm9yIHlvdSBhbmQgd2hldGhlciBteQ0KPiBsaXN0
+X2Zvcl9lYWNoX2VudHJ5KCkgb2JzZXJ2YXRpb24gaXMgY29ycmVjdCBvciBub3Q/DQo+IA0KPiB2
+MeKApnYyOiB3cml0ZV9zZXFsb2NrKCkgZGlzYWJsZXMgcHJlZW1wdGlvbiBhbmQgc29tZSBmdW5j
+dGlvbiBuZWVkIGl0DQo+ICh0aHJlYWRfcnVuKCksIG5vbi1HRlBfQVRPTUlDIG1lbW9yeSBhbGxv
+Y3Rpb24oKSkuIFdlIGRvbid0IHdhbnQNCj4gcHJlZW1wdGlvbiBlbmFibGVkIGJlY2F1c2UgYSBw
+cmVlbXB0ZWQgd3JpdGVyIHdvdWxkIHN0YWxsIHRoZSByZWFkZXINCj4gc3Bpbm5pbmcuIFRoaXMg
+aXMgYSBkdWN0IHRhcGUgbXV0ZXguIE1heWJlIHRoZSBzZXFsb2NrIHNob3VsZCBnby4NCj4gDQo+
+IFNpZ25lZC1vZmYtYnk6IFNlYmFzdGlhbiBBbmRyemVqIFNpZXdpb3IgPGJpZ2Vhc3lAbGludXRy
+b25peC5kZT4NCj4gLS0tDQo+IGZzL25mcy9kZWxlZ2F0aW9uLmMgfCAgNCArKy0tDQo+IGZzL25m
+cy9uZnM0X2ZzLmggICAgfCAgMyArKy0NCj4gZnMvbmZzL25mczRwcm9jLmMgICB8ICA0ICsrLS0N
+Cj4gZnMvbmZzL25mczRzdGF0ZS5jICB8IDIzICsrKysrKysrKysrKysrKysrLS0tLS0tDQo+IDQg
+ZmlsZXMgY2hhbmdlZCwgMjMgaW5zZXJ0aW9ucygrKSwgMTEgZGVsZXRpb25zKC0pDQo+IA0KPiBk
+aWZmIC0tZ2l0IGEvZnMvbmZzL2RlbGVnYXRpb24uYyBiL2ZzL25mcy9kZWxlZ2F0aW9uLmMNCj4g
+aW5kZXggZGZmNjAwYWUwZDc0Li5kNzI2ZDJlMDkzNTMgMTAwNjQ0DQo+IC0tLSBhL2ZzL25mcy9k
+ZWxlZ2F0aW9uLmMNCj4gKysrIGIvZnMvbmZzL2RlbGVnYXRpb24uYw0KPiBAQCAtMTUwLDExICsx
+NTAsMTEgQEAgc3RhdGljIGludCBuZnNfZGVsZWdhdGlvbl9jbGFpbV9vcGVucyhzdHJ1Y3QgaW5v
+ZGUgKmlub2RlLA0KPiAJCXNwID0gc3RhdGUtPm93bmVyOw0KPiAJCS8qIEJsb2NrIG5mczRfcHJv
+Y191bmxjayAqLw0KPiAJCW11dGV4X2xvY2soJnNwLT5zb19kZWxlZ3JldHVybl9tdXRleCk7DQo+
+IC0JCXNlcSA9IHJhd19zZXFjb3VudF9iZWdpbigmc3AtPnNvX3JlY2xhaW1fc2VxY291bnQpOw0K
+PiArCQlzZXEgPSByZWFkX3NlcWJlZ2luKCZzcC0+c29fcmVjbGFpbV9zZXFsb2NrKTsNCj4gCQll
+cnIgPSBuZnM0X29wZW5fZGVsZWdhdGlvbl9yZWNhbGwoY3R4LCBzdGF0ZSwgc3RhdGVpZCwgdHlw
+ZSk7DQo+IAkJaWYgKCFlcnIpDQo+IAkJCWVyciA9IG5mc19kZWxlZ2F0aW9uX2NsYWltX2xvY2tz
+KGN0eCwgc3RhdGUsIHN0YXRlaWQpOw0KPiAtCQlpZiAoIWVyciAmJiByZWFkX3NlcWNvdW50X3Jl
+dHJ5KCZzcC0+c29fcmVjbGFpbV9zZXFjb3VudCwgc2VxKSkNCj4gKwkJaWYgKCFlcnIgJiYgcmVh
+ZF9zZXFyZXRyeSgmc3AtPnNvX3JlY2xhaW1fc2VxbG9jaywgc2VxKSkNCj4gCQkJZXJyID0gLUVB
+R0FJTjsNCj4gCQltdXRleF91bmxvY2soJnNwLT5zb19kZWxlZ3JldHVybl9tdXRleCk7DQo+IAkJ
+cHV0X25mc19vcGVuX2NvbnRleHQoY3R4KTsNCj4gZGlmZiAtLWdpdCBhL2ZzL25mcy9uZnM0X2Zz
+LmggYi9mcy9uZnMvbmZzNF9mcy5oDQo+IGluZGV4IDliM2E4MmFiYWIwNy4uMmZlZTFhMmU4YjU3
+IDEwMDY0NA0KPiAtLS0gYS9mcy9uZnMvbmZzNF9mcy5oDQo+ICsrKyBiL2ZzL25mcy9uZnM0X2Zz
+LmgNCj4gQEAgLTExMSw3ICsxMTEsOCBAQCBzdHJ1Y3QgbmZzNF9zdGF0ZV9vd25lciB7DQo+IAl1
+bnNpZ25lZCBsb25nCSAgICAgc29fZmxhZ3M7DQo+IAlzdHJ1Y3QgbGlzdF9oZWFkICAgICBzb19z
+dGF0ZXM7DQo+IAlzdHJ1Y3QgbmZzX3NlcWlkX2NvdW50ZXIgc29fc2VxaWQ7DQo+IC0Jc2VxY291
+bnRfdAkgICAgIHNvX3JlY2xhaW1fc2VxY291bnQ7DQo+ICsJc2VxbG9ja190CSAgICAgc29fcmVj
+bGFpbV9zZXFsb2NrOw0KPiArCXN0cnVjdCBtdXRleAkgICAgIHNvX3JlY2xhaW1fc2VxbG9ja19t
+dXRleDsNCj4gCXN0cnVjdCBtdXRleAkgICAgIHNvX2RlbGVncmV0dXJuX211dGV4Ow0KPiB9Ow0K
+PiANCj4gZGlmZiAtLWdpdCBhL2ZzL25mcy9uZnM0cHJvYy5jIGIvZnMvbmZzL25mczRwcm9jLmMN
+Cj4gaW5kZXggNzg5NzgyNmQ3YzUxLi45YjlkNTNjZDg1ZjkgMTAwNjQ0DQo+IC0tLSBhL2ZzL25m
+cy9uZnM0cHJvYy5jDQo+ICsrKyBiL2ZzL25mcy9uZnM0cHJvYy5jDQo+IEBAIC0yNjg1LDcgKzI2
+ODUsNyBAQCBzdGF0aWMgaW50IF9uZnM0X29wZW5fYW5kX2dldF9zdGF0ZShzdHJ1Y3QgbmZzNF9v
+cGVuZGF0YSAqb3BlbmRhdGEsDQo+IAl1bnNpZ25lZCBpbnQgc2VxOw0KPiAJaW50IHJldDsNCj4g
+DQo+IC0Jc2VxID0gcmF3X3NlcWNvdW50X2JlZ2luKCZzcC0+c29fcmVjbGFpbV9zZXFjb3VudCk7
+DQo+ICsJc2VxID0gcmF3X3NlcWNvdW50X2JlZ2luKCZzcC0+c29fcmVjbGFpbV9zZXFsb2NrLnNl
+cWNvdW50KTsNCj4gDQo+IAlyZXQgPSBfbmZzNF9wcm9jX29wZW4ob3BlbmRhdGEpOw0KPiAJaWYg
+KHJldCAhPSAwKQ0KPiBAQCAtMjcyMyw3ICsyNzIzLDcgQEAgc3RhdGljIGludCBfbmZzNF9vcGVu
+X2FuZF9nZXRfc3RhdGUoc3RydWN0IG5mczRfb3BlbmRhdGEgKm9wZW5kYXRhLA0KPiAJY3R4LT5z
+dGF0ZSA9IHN0YXRlOw0KPiAJaWYgKGRfaW5vZGUoZGVudHJ5KSA9PSBzdGF0ZS0+aW5vZGUpIHsN
+Cj4gCQluZnNfaW5vZGVfYXR0YWNoX29wZW5fY29udGV4dChjdHgpOw0KPiAtCQlpZiAocmVhZF9z
+ZXFjb3VudF9yZXRyeSgmc3AtPnNvX3JlY2xhaW1fc2VxY291bnQsIHNlcSkpDQo+ICsJCWlmIChy
+ZWFkX3NlcXJldHJ5KCZzcC0+c29fcmVjbGFpbV9zZXFsb2NrLCBzZXEpKQ0KPiAJCQluZnM0X3Nj
+aGVkdWxlX3N0YXRlaWRfcmVjb3Zlcnkoc2VydmVyLCBzdGF0ZSk7DQo+IAl9DQo+IG91dDoNCj4g
+ZGlmZiAtLWdpdCBhL2ZzL25mcy9uZnM0c3RhdGUuYyBiL2ZzL25mcy9uZnM0c3RhdGUuYw0KPiBp
+bmRleCA1ZjQyODFlYzVmNzIuLmE0NDJkOTg2Nzk0MiAxMDA2NDQNCj4gLS0tIGEvZnMvbmZzL25m
+czRzdGF0ZS5jDQo+ICsrKyBiL2ZzL25mcy9uZnM0c3RhdGUuYw0KPiBAQCAtNDg4LDcgKzQ4OCw4
+IEBAIG5mczRfYWxsb2Nfc3RhdGVfb3duZXIoc3RydWN0IG5mc19zZXJ2ZXIgKnNlcnZlciwNCj4g
+CW5mczRfaW5pdF9zZXFpZF9jb3VudGVyKCZzcC0+c29fc2VxaWQpOw0KPiAJYXRvbWljX3NldCgm
+c3AtPnNvX2NvdW50LCAxKTsNCj4gCUlOSVRfTElTVF9IRUFEKCZzcC0+c29fbHJ1KTsNCj4gLQlz
+ZXFjb3VudF9pbml0KCZzcC0+c29fcmVjbGFpbV9zZXFjb3VudCk7DQo+ICsJc2VxbG9ja19pbml0
+KCZzcC0+c29fcmVjbGFpbV9zZXFsb2NrKTsNCj4gKwltdXRleF9pbml0KCZzcC0+c29fcmVjbGFp
+bV9zZXFsb2NrX211dGV4KTsNCj4gCW11dGV4X2luaXQoJnNwLT5zb19kZWxlZ3JldHVybl9tdXRl
+eCk7DQo+IAlyZXR1cm4gc3A7DQo+IH0NCj4gQEAgLTE0OTcsOCArMTQ5OCwxOCBAQCBzdGF0aWMg
+aW50IG5mczRfcmVjbGFpbV9vcGVuX3N0YXRlKHN0cnVjdCBuZnM0X3N0YXRlX293bmVyICpzcCwg
+Y29uc3Qgc3RydWN0IG5mcw0KPiAJICogcmVjb3ZlcmluZyBhZnRlciBhIG5ldHdvcmsgcGFydGl0
+aW9uIG9yIGEgcmVib290IGZyb20gYQ0KPiAJICogc2VydmVyIHRoYXQgZG9lc24ndCBzdXBwb3J0
+IGEgZ3JhY2UgcGVyaW9kLg0KPiAJICovDQo+ICsJLyoNCj4gKwkgKiBYWFgNCj4gKwkgKiBUaGlz
+IG11dGV4IGlzIHdyb25nLiBJdCBwcm90ZWN0cyBhZ2FpbnN0IG11bHRpcGxlIHdyaXRlci4gSG93
+ZXZlcg0KDQpUaGVyZSBpcyBvbmx5IDEgcmVjb3ZlcnkgdGhyZWFkIHBlciBjbGllbnQvc2VydmVy
+IHBhaXIsIHdoaWNoIGlzIHdoeSB3ZSBrbm93IHRoZXJlIGlzIG9ubHkgYSBzaW5nbGUgd3JpdGVy
+LiBObyBuZWVkIGZvciBhIG11dGV4IGhlcmUuDQoNCj4gKwkgKiB3cml0ZV9zZXFsb2NrKCkgc2hv
+dWxkIGhhdmUgYmVlbiB1c2VkIGZvciB0aGlzIHRhc2suIFRoaXMgd291bGQgYXZvaWQNCj4gKwkg
+KiBwcmVlbXB0aW9uIHdoaWxlIHRoZSBzZXFsb2NrIGlzIGhlbGQgd2hpY2ggaXMgZ29vZCBiZWNh
+dXNlIHRoZSB3cml0ZXINCj4gKwkgKiBzaG91bGRuJ3QgYmUgcHJlZW1wdGVkIGFzIGl0IHdvdWxk
+IGxldCB0aGUgcmVhZGVyIHNwaW4gZm9yIG5vIGdvb2QNCg0KUmVjb3ZlcnkgaW52b2x2ZXMgc2Vu
+ZGluZyBSUEMgY2FsbHMgdG8gYSBzZXJ2ZXIuIFRoZXJlIGlzIG5vIGF2b2lkaW5nIHByZWVtcHRp
+b24gaWYgd2UgaGF2ZSB0byByZWNvdmVyIHN0YXRlLiBUaGUgcG9pbnQgb2YgdGhlIHNlcXVlbmNl
+IGNvdW50ZXIgaXMgdG8gc2lnbmFsIHRvIHByb2Nlc3NlcyB0aGF0IG1heSBoYXZlIHJhY2VkIHdp
+dGggdGhpcyByZWNvdmVyeSB0aHJlYWQgdGhhdCB0aGV5IG1heSBuZWVkIHRvIHJlcGxheSB0aGVp
+ciBsb2Nrcy4NCg0KPiArCSAqIHJlYXNvbi4gVGhlcmUgYXJlIGEgZmV3IG1lbW9yeSBhbGxvY2F0
+aW9ucyBhbmQga3RocmVhZF9ydW4oKSBzbyB3ZQ0KPiArCSAqIGhhdmUgdGhpcyBtdXRleCBub3cu
+DQo+ICsJICovDQo+ICsJbXV0ZXhfbG9jaygmc3AtPnNvX3JlY2xhaW1fc2VxbG9ja19tdXRleCk7
+DQo+ICsJd3JpdGVfc2VxY291bnRfYmVnaW4oJnNwLT5zb19yZWNsYWltX3NlcWxvY2suc2VxY291
+bnQpOw0KPiAJc3Bpbl9sb2NrKCZzcC0+c29fbG9jayk7DQo+IC0JcmF3X3dyaXRlX3NlcWNvdW50
+X2JlZ2luKCZzcC0+c29fcmVjbGFpbV9zZXFjb3VudCk7DQo+IHJlc3RhcnQ6DQo+IAlsaXN0X2Zv
+cl9lYWNoX2VudHJ5KHN0YXRlLCAmc3AtPnNvX3N0YXRlcywgb3Blbl9zdGF0ZXMpIHsNCj4gCQlp
+ZiAoIXRlc3RfYW5kX2NsZWFyX2JpdChvcHMtPnN0YXRlX2ZsYWdfYml0LCAmc3RhdGUtPmZsYWdz
+KSkNCj4gQEAgLTE1NjYsMTQgKzE1NzcsMTQgQEAgc3RhdGljIGludCBuZnM0X3JlY2xhaW1fb3Bl
+bl9zdGF0ZShzdHJ1Y3QgbmZzNF9zdGF0ZV9vd25lciAqc3AsIGNvbnN0IHN0cnVjdCBuZnMNCj4g
+CQlzcGluX2xvY2soJnNwLT5zb19sb2NrKTsNCj4gCQlnb3RvIHJlc3RhcnQ7DQo+IAl9DQo+IC0J
+cmF3X3dyaXRlX3NlcWNvdW50X2VuZCgmc3AtPnNvX3JlY2xhaW1fc2VxY291bnQpOw0KPiAJc3Bp
+bl91bmxvY2soJnNwLT5zb19sb2NrKTsNCj4gKwl3cml0ZV9zZXFjb3VudF9lbmQoJnNwLT5zb19y
+ZWNsYWltX3NlcWxvY2suc2VxY291bnQpOw0KDQpUaGlzIHdpbGwgcmVpbnRyb2R1Y2UgbG9ja2Rl
+cCBjaGVja2luZy4gV2UgZG9u4oCZdCBuZWVkIG9yIHdhbnQgdGhhdC4uLg0KDQo+ICsJbXV0ZXhf
+dW5sb2NrKCZzcC0+c29fcmVjbGFpbV9zZXFsb2NrX211dGV4KTsNCj4gCXJldHVybiAwOw0KPiBv
+dXRfZXJyOg0KPiAJbmZzNF9wdXRfb3Blbl9zdGF0ZShzdGF0ZSk7DQo+IC0Jc3Bpbl9sb2NrKCZz
+cC0+c29fbG9jayk7DQo+IC0JcmF3X3dyaXRlX3NlcWNvdW50X2VuZCgmc3AtPnNvX3JlY2xhaW1f
+c2VxY291bnQpOw0KPiAtCXNwaW5fdW5sb2NrKCZzcC0+c29fbG9jayk7DQo+ICsJd3JpdGVfc2Vx
+Y291bnRfZW5kKCZzcC0+c29fcmVjbGFpbV9zZXFsb2NrLnNlcWNvdW50KTsNCj4gKwltdXRleF91
+bmxvY2soJnNwLT5zb19yZWNsYWltX3NlcWxvY2tfbXV0ZXgpOw0KPiAJcmV0dXJuIHN0YXR1czsN
+Cj4gfQ0KPiANCj4gLS0gDQo+IDIuMTAuMQ0KPiANCg0K
 
