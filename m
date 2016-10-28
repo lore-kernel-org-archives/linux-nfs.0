@@ -1,134 +1,385 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:51338 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:41025 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751795AbcJ1NWS (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 28 Oct 2016 09:22:18 -0400
-Date: Fri, 28 Oct 2016 09:22:17 -0400
-From: Fields Bruce James <bfields@fieldses.org>
-To: Trond Myklebust <trondmy@primarydata.com>
-Cc: List Linux NFS Mailing <linux-nfs@vger.kernel.org>,
-        Rusty Russell <rusty@rustcorp.com.au>,
-        Christoph Hellwig <hch@infradead.org>,
-        "linux-crypto@vger.kernel.org" <linux-crypto@vger.kernel.org>
-Subject: Re: [PATCH] sunrpc: don't pass on-stack memory to sg_set_buf
-Message-ID: <20161028132217.GB8154@fieldses.org>
-References: <20161025184538.GA4612@fieldses.org>
- <A4086E5B-B808-4828-A25D-4AAB2504EC57@primarydata.com>
- <20161025195930.GB5129@fieldses.org>
- <DB39073B-8C4B-48BC-8D46-7B6173966037@primarydata.com>
- <20161028132008.GA8154@fieldses.org>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-In-Reply-To: <20161028132008.GA8154@fieldses.org>
+        id S1751795AbcJ1NXG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 28 Oct 2016 09:23:06 -0400
+From: Paolo Abeni <pabeni@redhat.com>
+To: netdev@vger.kernel.org
+Cc: "David S. Miller" <davem@davemloft.net>,
+        James Morris <jmorris@namei.org>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        Alexander Duyck <alexander.duyck@gmail.com>,
+        Daniel Borkmann <daniel@iogearbox.net>,
+        Eric Dumazet <edumazet@google.com>, Tom Herbert <tom@herbertland.com>,
+        Hannes Frederic Sowa <hannes@stressinduktion.org>,
+        linux-nfs@vger.kernel.org
+Subject: [PATCH net-next] udp: do fwd memory scheduling on dequeue
+Date: Fri, 28 Oct 2016 15:20:19 +0200
+Message-Id: <95bb1b780be2e35ff04fb9e1e2c41470a0a15582.1477660091.git.pabeni@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Oct 28, 2016 at 09:20:08AM -0400, Fields Bruce James wrote:
-> On Tue, Oct 25, 2016 at 09:47:16PM +0000, Trond Myklebust wrote:
-> > 
-> > > On Oct 25, 2016, at 15:59, Fields Bruce James <bfields@fieldses.org> wrote:
-> > > 
-> > > On Tue, Oct 25, 2016 at 07:34:43PM +0000, Trond Myklebust wrote:
-> > >> NACK…  I agree that there may already be borkage in RPCSEC_GSS-land, but that’s not a reason to be adding to the pile of things that need to be fixed… The allocations that lie in the RPC client’s encode/decode path do need to be GFP_NOFS….
-> > > 
-> > > OK.  Any disadvantage to keeping this patch with just GFP_NOFS
-> > > allocations everywhere that might be in the write path?
-> > 
-> > It’s what we have to do everywhere else in the RPC client, so I can’t see why it should be a problem.
-> 
-> OK, the below is what I intend to merge if nobody spots another problem.
+A new argument is added to __skb_recv_datagram, it allows
+the caller to perform protocol specific action on dequeue
+under the receive queue spinlock.
+The UDP protocol uses such argument to perform fwd memory
+reclaiming on dequeue, while protocol memory and rmem updatating
+is delayed after the lock release, to keep the time spent
+under the lock as low as possible.
+The UDP specific skb desctructor is not used anymore, instead
+explicit memory reclaiming is performed at close() time and
+when skbs are removed from the receive queue.
+The in kernel UDP procotol users now need to use an
+skb_recv_udp() variant instead of skb_recv_datagram() to
+properly perform memory accounting on dequeue.
 
-And we may as well fix up some more easy stuff while we're there.
+Overall, this allows acquiring only once the receive queue
+lock on dequeue.
 
-And actually moving the other crypto_alloc_* calls may be pretty easy
-too, I'll see if I can get to it later....
+Tested using pktgen with random src port, 64 bytes packet,
+wire-speed on a 10G link as sender and udp_sink as the receiver,
+using an l4 tuple rxhash to stress the contention, and one or more
+udp_sink instances with reuseport.
 
---b.
+nr sinks	vanilla		patched
+1		440		560
+3		2150		2300
+6		3650		3800
+9		4450		4600
+12		6250		6450
 
-commit 7e72f3a7c4db
-Author: J. Bruce Fields <bfields@redhat.com>
-Date:   Wed Oct 26 16:03:00 2016 -0400
+Suggested-by: Eric Dumazet <edumazet@google.com>
+Acked-by: Hannes Frederic Sowa <hannes@stressinduktion.org>
+Signed-off-by: Paolo Abeni <pabeni@redhat.com>
+---
+ include/linux/skbuff.h |  4 ++++
+ include/net/udp.h      | 10 ++++++++
+ net/core/datagram.c    | 11 ++++++---
+ net/ipv4/udp.c         | 65 ++++++++++++++++++++++++++++++++++++++++----------
+ net/ipv6/udp.c         |  3 +--
+ net/rxrpc/input.c      |  7 +++---
+ net/sunrpc/svcsock.c   |  2 +-
+ net/sunrpc/xprtsock.c  |  2 +-
+ net/unix/af_unix.c     |  4 ++--
+ 9 files changed, 83 insertions(+), 25 deletions(-)
 
-    sunrpc: GFP_KERNEL should be GFP_NOFS in crypto code
-    
-    Writes may depend on the auth_gss crypto code, so we shouldn't be
-    allocating with GFP_KERNEL there.
-    
-    This still leaves some crypto_alloc_* calls which end up doing
-    GFP_KERNEL allocations in the crypto code.  Those could probably done at
-    crypto import time.
-    
-    Signed-off-by: J. Bruce Fields <bfields@redhat.com>
-
-diff --git a/net/sunrpc/auth_gss/gss_krb5_crypto.c b/net/sunrpc/auth_gss/gss_krb5_crypto.c
-index 90115ceefd49..fb39284ec174 100644
---- a/net/sunrpc/auth_gss/gss_krb5_crypto.c
-+++ b/net/sunrpc/auth_gss/gss_krb5_crypto.c
-@@ -200,7 +200,7 @@ make_checksum_hmac_md5(struct krb5_ctx *kctx, char *header, int hdrlen,
- 	if (IS_ERR(hmac_md5))
- 		goto out_free_md5;
+diff --git a/include/linux/skbuff.h b/include/linux/skbuff.h
+index 601258f..dd171a9 100644
+--- a/include/linux/skbuff.h
++++ b/include/linux/skbuff.h
+@@ -3028,13 +3028,17 @@ static inline void skb_frag_list_init(struct sk_buff *skb)
+ #define skb_walk_frags(skb, iter)	\
+ 	for (iter = skb_shinfo(skb)->frag_list; iter; iter = iter->next)
  
--	req = ahash_request_alloc(md5, GFP_KERNEL);
-+	req = ahash_request_alloc(md5, GFP_NOFS);
- 	if (!req)
- 		goto out_free_hmac_md5;
++typedef void (*skb_dequeue_cb_t)(struct sock *sk, struct sk_buff *skb,
++				 int flags);
  
-@@ -230,7 +230,7 @@ make_checksum_hmac_md5(struct krb5_ctx *kctx, char *header, int hdrlen,
+ int __skb_wait_for_more_packets(struct sock *sk, int *err, long *timeo_p,
+ 				const struct sk_buff *skb);
+ struct sk_buff *__skb_try_recv_datagram(struct sock *sk, unsigned flags,
++					skb_dequeue_cb_t dequeue_cb,
+ 					int *peeked, int *off, int *err,
+ 					struct sk_buff **last);
+ struct sk_buff *__skb_recv_datagram(struct sock *sk, unsigned flags,
++				    skb_dequeue_cb_t dequeue_cb,
+ 				    int *peeked, int *off, int *err);
+ struct sk_buff *skb_recv_datagram(struct sock *sk, unsigned flags, int noblock,
+ 				  int *err);
+diff --git a/include/net/udp.h b/include/net/udp.h
+index 18f1e6b..983c861 100644
+--- a/include/net/udp.h
++++ b/include/net/udp.h
+@@ -48,6 +48,7 @@ struct udp_skb_cb {
+ 	} header;
+ 	__u16		cscov;
+ 	__u8		partial_cov;
++	int		fwd_memory_released;
+ };
+ #define UDP_SKB_CB(__skb)	((struct udp_skb_cb *)((__skb)->cb))
+ 
+@@ -248,6 +249,15 @@ static inline __be16 udp_flow_src_port(struct net *net, struct sk_buff *skb,
+ /* net/ipv4/udp.c */
+ void skb_consume_udp(struct sock *sk, struct sk_buff *skb, int len);
+ int __udp_enqueue_schedule_skb(struct sock *sk, struct sk_buff *skb);
++struct sk_buff *__skb_recv_udp(struct sock *sk, unsigned int flags, int noblock,
++			       int *peeked, int *off, int *err);
++static inline struct sk_buff *skb_recv_udp(struct sock *sk, unsigned int flags,
++					   int noblock, int *err)
++{
++	int peeked, off = 0;
++
++	return __skb_recv_udp(sk, flags, noblock, &peeked, &off, err);
++}
+ 
+ void udp_v4_early_demux(struct sk_buff *skb);
+ int udp_get_port(struct sock *sk, unsigned short snum,
+diff --git a/net/core/datagram.c b/net/core/datagram.c
+index bfb973a..226548b 100644
+--- a/net/core/datagram.c
++++ b/net/core/datagram.c
+@@ -165,6 +165,7 @@ static struct sk_buff *skb_set_peeked(struct sk_buff *skb)
+  *	__skb_try_recv_datagram - Receive a datagram skbuff
+  *	@sk: socket
+  *	@flags: MSG_ flags
++ *	@dequeue_cb: invoked under the receive lock on successful dequeue
+  *	@peeked: returns non-zero if this packet has been seen before
+  *	@off: an offset in bytes to peek skb from. Returns an offset
+  *	      within an skb where data actually starts
+@@ -197,6 +198,7 @@ static struct sk_buff *skb_set_peeked(struct sk_buff *skb)
+  *	the standard around please.
+  */
+ struct sk_buff *__skb_try_recv_datagram(struct sock *sk, unsigned int flags,
++					skb_dequeue_cb_t dequeue_cb,
+ 					int *peeked, int *off, int *err,
+ 					struct sk_buff **last)
+ {
+@@ -244,6 +246,8 @@ struct sk_buff *__skb_try_recv_datagram(struct sock *sk, unsigned int flags,
+ 			} else
+ 				__skb_unlink(skb, queue);
+ 
++			if (dequeue_cb)
++				dequeue_cb(sk, skb, flags);
+ 			spin_unlock_irqrestore(&queue->lock, cpu_flags);
+ 			*off = _off;
+ 			return skb;
+@@ -262,6 +266,7 @@ struct sk_buff *__skb_try_recv_datagram(struct sock *sk, unsigned int flags,
+ EXPORT_SYMBOL(__skb_try_recv_datagram);
+ 
+ struct sk_buff *__skb_recv_datagram(struct sock *sk, unsigned int flags,
++				    skb_dequeue_cb_t dequeue_cb,
+ 				    int *peeked, int *off, int *err)
+ {
+ 	struct sk_buff *skb, *last;
+@@ -270,8 +275,8 @@ struct sk_buff *__skb_recv_datagram(struct sock *sk, unsigned int flags,
+ 	timeo = sock_rcvtimeo(sk, flags & MSG_DONTWAIT);
+ 
+ 	do {
+-		skb = __skb_try_recv_datagram(sk, flags, peeked, off, err,
+-					      &last);
++		skb = __skb_try_recv_datagram(sk, flags, dequeue_cb, peeked,
++					      off, err, &last);
+ 		if (skb)
+ 			return skb;
+ 
+@@ -290,7 +295,7 @@ struct sk_buff *skb_recv_datagram(struct sock *sk, unsigned int flags,
+ 	int peeked, off = 0;
+ 
+ 	return __skb_recv_datagram(sk, flags | (noblock ? MSG_DONTWAIT : 0),
+-				   &peeked, &off, err);
++				   NULL, &peeked, &off, err);
+ }
+ EXPORT_SYMBOL(skb_recv_datagram);
+ 
+diff --git a/net/ipv4/udp.c b/net/ipv4/udp.c
+index c833271..2f1a727 100644
+--- a/net/ipv4/udp.c
++++ b/net/ipv4/udp.c
+@@ -1172,26 +1172,61 @@ int udp_sendpage(struct sock *sk, struct page *page, int offset,
+ 	return ret;
+ }
+ 
++/* fully reclaim rmem/fwd memory allocated for skb */
+ static void udp_rmem_release(struct sock *sk, int size, int partial)
+ {
+ 	int amt;
+ 
+ 	atomic_sub(size, &sk->sk_rmem_alloc);
+-
+-	spin_lock_bh(&sk->sk_receive_queue.lock);
+ 	sk->sk_forward_alloc += size;
+ 	amt = (sk->sk_forward_alloc - partial) & ~(SK_MEM_QUANTUM - 1);
+ 	sk->sk_forward_alloc -= amt;
+-	spin_unlock_bh(&sk->sk_receive_queue.lock);
+ 
+ 	if (amt)
+ 		__sk_mem_reduce_allocated(sk, amt >> SK_MEM_QUANTUM_SHIFT);
+ }
+ 
+-static void udp_rmem_free(struct sk_buff *skb)
++/* if we are not peeking the skb, reclaim fwd allocated memory;
++ * rmem and protocol memory updating is delayed outside the lock
++ */
++static void udp_dequeue(struct sock *sk, struct sk_buff *skb, int flags)
++{
++	int amt;
++
++	if (flags & MSG_PEEK)
++		return;
++
++	sk->sk_forward_alloc += skb->truesize;
++	amt = (sk->sk_forward_alloc - 1) & ~(SK_MEM_QUANTUM - 1);
++	sk->sk_forward_alloc -= amt;
++	UDP_SKB_CB(skb)->fwd_memory_released = amt >> SK_MEM_QUANTUM_SHIFT;
++}
++
++/* complete the memory reclaiming started with udp_dequeue */
++static void __udp_rmem_release(struct sock *sk, struct sk_buff *skb, int flags)
++{
++	int amt = UDP_SKB_CB(skb)->fwd_memory_released;
++
++	if (flags & MSG_PEEK)
++		return;
++
++	atomic_sub(skb->truesize, &sk->sk_rmem_alloc);
++	if (amt)
++		__sk_mem_reduce_allocated(sk, amt);
++}
++
++struct sk_buff *__skb_recv_udp(struct sock *sk, unsigned int flags,
++			       int noblock, int *peeked, int *off, int *err)
+ {
+-	udp_rmem_release(skb->sk, skb->truesize, 1);
++	struct sk_buff *skb;
++
++	skb = __skb_recv_datagram(sk, flags | (noblock ? MSG_DONTWAIT : 0),
++				  udp_dequeue, peeked, off, err);
++	if (skb)
++		__udp_rmem_release(sk, skb, flags);
++	return skb;
+ }
++EXPORT_SYMBOL(__skb_recv_udp);
+ 
+ int __udp_enqueue_schedule_skb(struct sock *sk, struct sk_buff *skb)
+ {
+@@ -1230,7 +1265,6 @@ int __udp_enqueue_schedule_skb(struct sock *sk, struct sk_buff *skb)
+ 
+ 	/* the skb owner in now the udp socket */
+ 	skb->sk = sk;
+-	skb->destructor = udp_rmem_free;
+ 	skb->dev = NULL;
+ 	sock_skb_set_dropcount(sk, skb);
+ 
+@@ -1254,8 +1288,13 @@ int __udp_enqueue_schedule_skb(struct sock *sk, struct sk_buff *skb)
+ static void udp_destruct_sock(struct sock *sk)
+ {
+ 	/* reclaim completely the forward allocated memory */
+-	__skb_queue_purge(&sk->sk_receive_queue);
+-	udp_rmem_release(sk, 0, 0);
++	struct sk_buff *skb;
++
++	while ((skb = __skb_dequeue(&sk->sk_receive_queue)) != NULL) {
++		udp_rmem_release(sk, skb->truesize, 0);
++		kfree_skb(skb);
++	}
++
+ 	inet_sock_destruct(sk);
+ }
+ 
+@@ -1303,11 +1342,11 @@ static int first_packet_length(struct sock *sk)
+ 		atomic_inc(&sk->sk_drops);
+ 		__skb_unlink(skb, rcvq);
+ 		__skb_queue_tail(&list_kill, skb);
++		udp_rmem_release(sk, skb->truesize, 1);
++		kfree_skb(skb);
+ 	}
+ 	res = skb ? skb->len : -1;
+ 	spin_unlock_bh(&rcvq->lock);
+-
+-	__skb_queue_purge(&list_kill);
+ 	return res;
+ }
+ 
+@@ -1362,8 +1401,7 @@ int udp_recvmsg(struct sock *sk, struct msghdr *msg, size_t len, int noblock,
+ 
+ try_again:
+ 	peeking = off = sk_peek_offset(sk, flags);
+-	skb = __skb_recv_datagram(sk, flags | (noblock ? MSG_DONTWAIT : 0),
+-				  &peeked, &off, &err);
++	skb = __skb_recv_udp(sk, flags, noblock, &peeked, &off, &err);
+ 	if (!skb)
+ 		return err;
+ 
+@@ -2583,6 +2621,9 @@ void __init udp_init(void)
+ {
+ 	unsigned long limit;
+ 
++	BUILD_BUG_ON(sizeof(struct udp_skb_cb) >
++		     FIELD_SIZEOF(struct sk_buff, cb));
++
+ 	udp_table_init(&udp_table, "UDP");
+ 	limit = nr_free_buffer_pages() / 8;
+ 	limit = max(limit, 128UL);
+diff --git a/net/ipv6/udp.c b/net/ipv6/udp.c
+index 71963b2..273a806 100644
+--- a/net/ipv6/udp.c
++++ b/net/ipv6/udp.c
+@@ -343,8 +343,7 @@ int udpv6_recvmsg(struct sock *sk, struct msghdr *msg, size_t len,
+ 
+ try_again:
+ 	peeking = off = sk_peek_offset(sk, flags);
+-	skb = __skb_recv_datagram(sk, flags | (noblock ? MSG_DONTWAIT : 0),
+-				  &peeked, &off, &err);
++	skb = __skb_recv_udp(sk, flags, noblock, &peeked, &off, &err);
+ 	if (!skb)
+ 		return err;
+ 
+diff --git a/net/rxrpc/input.c b/net/rxrpc/input.c
+index 44fb8d8..4c36112 100644
+--- a/net/rxrpc/input.c
++++ b/net/rxrpc/input.c
+@@ -1053,7 +1053,7 @@ void rxrpc_data_ready(struct sock *udp_sk)
+ 
+ 	ASSERT(!irqs_disabled());
+ 
+-	skb = skb_recv_datagram(udp_sk, 0, 1, &ret);
++	skb = skb_recv_udp(udp_sk, 0, 1, &ret);
+ 	if (!skb) {
+ 		if (ret == -EAGAIN)
+ 			return;
+@@ -1075,10 +1075,9 @@ void rxrpc_data_ready(struct sock *udp_sk)
+ 
+ 	__UDP_INC_STATS(&init_net, UDP_MIB_INDATAGRAMS, 0);
+ 
+-	/* The socket buffer we have is owned by UDP, with UDP's data all over
+-	 * it, but we really want our own data there.
++	/* The UDP protocol already released all skb resources;
++	 * we are free to add own data there.
+ 	 */
+-	skb_orphan(skb);
+ 	sp = rxrpc_skb(skb);
+ 
+ 	/* dig out the RxRPC connection details */
+diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
+index e2a55dc..78da4ae 100644
+--- a/net/sunrpc/svcsock.c
++++ b/net/sunrpc/svcsock.c
+@@ -547,7 +547,7 @@ static int svc_udp_recvfrom(struct svc_rqst *rqstp)
+ 	err = kernel_recvmsg(svsk->sk_sock, &msg, NULL,
+ 			     0, 0, MSG_PEEK | MSG_DONTWAIT);
+ 	if (err >= 0)
+-		skb = skb_recv_datagram(svsk->sk_sk, 0, 1, &err);
++		skb = skb_recv_udp(svsk->sk_sk, 0, 1, &err);
+ 
+ 	if (skb == NULL) {
+ 		if (err != -EAGAIN) {
+diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
+index 1758665..7178d0a 100644
+--- a/net/sunrpc/xprtsock.c
++++ b/net/sunrpc/xprtsock.c
+@@ -1080,7 +1080,7 @@ static void xs_udp_data_receive(struct sock_xprt *transport)
+ 	if (sk == NULL)
  		goto out;
+ 	for (;;) {
+-		skb = skb_recv_datagram(sk, 0, 1, &err);
++		skb = skb_recv_udp(sk, 0, 1, &err);
+ 		if (skb != NULL) {
+ 			xs_udp_data_read_skb(&transport->xprt, sk, skb);
+ 			consume_skb(skb);
+diff --git a/net/unix/af_unix.c b/net/unix/af_unix.c
+index 145082e..8762018 100644
+--- a/net/unix/af_unix.c
++++ b/net/unix/af_unix.c
+@@ -2113,8 +2113,8 @@ static int unix_dgram_recvmsg(struct socket *sock, struct msghdr *msg,
+ 		mutex_lock(&u->iolock);
  
- 	ahash_request_free(req);
--	req = ahash_request_alloc(hmac_md5, GFP_KERNEL);
-+	req = ahash_request_alloc(hmac_md5, GFP_NOFS);
- 	if (!req)
- 		goto out_free_hmac_md5;
+ 		skip = sk_peek_offset(sk, flags);
+-		skb = __skb_try_recv_datagram(sk, flags, &peeked, &skip, &err,
+-					      &last);
++		skb = __skb_try_recv_datagram(sk, flags, NULL, &peeked, &skip,
++					      &err, &last);
+ 		if (skb)
+ 			break;
  
-@@ -299,7 +299,7 @@ make_checksum(struct krb5_ctx *kctx, char *header, int hdrlen,
- 	if (IS_ERR(tfm))
- 		goto out_free_cksum;
- 
--	req = ahash_request_alloc(tfm, GFP_KERNEL);
-+	req = ahash_request_alloc(tfm, GFP_NOFS);
- 	if (!req)
- 		goto out_free_ahash;
- 
-@@ -397,7 +397,7 @@ make_checksum_v2(struct krb5_ctx *kctx, char *header, int hdrlen,
- 		goto out_free_cksum;
- 	checksumlen = crypto_ahash_digestsize(tfm);
- 
--	req = ahash_request_alloc(tfm, GFP_KERNEL);
-+	req = ahash_request_alloc(tfm, GFP_NOFS);
- 	if (!req)
- 		goto out_free_ahash;
- 
-@@ -963,7 +963,7 @@ krb5_rc4_setup_seq_key(struct krb5_ctx *kctx, struct crypto_skcipher *cipher,
- 	}
- 
- 	desc = kmalloc(sizeof(*desc) + crypto_shash_descsize(hmac),
--		       GFP_KERNEL);
-+		       GFP_NOFS);
- 	if (!desc) {
- 		dprintk("%s: failed to allocate shash descriptor for '%s'\n",
- 			__func__, kctx->gk5e->cksum_name);
-@@ -1030,7 +1030,7 @@ krb5_rc4_setup_enc_key(struct krb5_ctx *kctx, struct crypto_skcipher *cipher,
- 	}
- 
- 	desc = kmalloc(sizeof(*desc) + crypto_shash_descsize(hmac),
--		       GFP_KERNEL);
-+		       GFP_NOFS);
- 	if (!desc) {
- 		dprintk("%s: failed to allocate shash descriptor for '%s'\n",
- 			__func__, kctx->gk5e->cksum_name);
-diff --git a/net/sunrpc/auth_gss/gss_krb5_mech.c b/net/sunrpc/auth_gss/gss_krb5_mech.c
-index 60595835317a..7bb2514aadd9 100644
---- a/net/sunrpc/auth_gss/gss_krb5_mech.c
-+++ b/net/sunrpc/auth_gss/gss_krb5_mech.c
-@@ -451,8 +451,7 @@ context_derive_keys_rc4(struct krb5_ctx *ctx)
- 		goto out_err_free_hmac;
- 
- 
--	desc = kmalloc(sizeof(*desc) + crypto_shash_descsize(hmac),
--		       GFP_KERNEL);
-+	desc = kmalloc(sizeof(*desc) + crypto_shash_descsize(hmac), GFP_NOFS);
- 	if (!desc) {
- 		dprintk("%s: failed to allocate hash descriptor for '%s'\n",
- 			__func__, ctx->gk5e->cksum_name);
+-- 
+1.8.3.1
+
