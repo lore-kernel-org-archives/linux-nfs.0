@@ -1,159 +1,101 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from us-smtp-delivery-194.mimecast.com ([63.128.21.194]:59446 "EHLO
-        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1756697AbcJ1WY7 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 28 Oct 2016 18:24:59 -0400
-From: Trond Myklebust <trondmy@primarydata.com>
-To: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
-CC: Schumaker Anna <anna.schumaker@netapp.com>,
-        List Linux NFS Mailing <linux-nfs@vger.kernel.org>,
-        List Linux Kernel Mailing <linux-kernel@vger.kernel.org>,
-        "tglx@linutronix.de" <tglx@linutronix.de>
-Subject: Re: [PATCH v2] NFSv4: replace seqcount_t with a seqlock_t
-Date: Fri, 28 Oct 2016 22:24:52 +0000
-Message-ID: <747E2CCB-3D83-40FD-8B31-46AB5A5E8592@primarydata.com>
-References: <20161021164727.24485-1-bigeasy@linutronix.de>
- <20161028210511.k7hrsfxovti7gqtu@linutronix.de>
-In-Reply-To: <20161028210511.k7hrsfxovti7gqtu@linutronix.de>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+Received: from aserp1040.oracle.com ([141.146.126.69]:29359 "EHLO
+        aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1752313AbcJ2COT (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 28 Oct 2016 22:14:19 -0400
+From: Chuck Lever <chuck.lever@oracle.com>
+Content-Type: text/plain; charset=us-ascii
+Subject: general protection fault in release_lock_stateid
+Date: Fri, 28 Oct 2016 22:14:13 -0400
+Message-Id: <17B7F931-8BD0-422B-B4B5-68C6940C838D@oracle.com>
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+To: Jeff Layton <jlayton@redhat.com>
+Mime-Version: 1.0 (Mac OS X Mail 9.3 \(3124\))
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-DQo+IE9uIE9jdCAyOCwgMjAxNiwgYXQgMTc6MDUsIFNlYmFzdGlhbiBBbmRyemVqIFNpZXdpb3Ig
-PGJpZ2Vhc3lAbGludXRyb25peC5kZT4gd3JvdGU6DQo+IA0KPiBUaGUgcmF3X3dyaXRlX3NlcWNv
-dW50X2JlZ2luKCkgaW4gbmZzNF9yZWNsYWltX29wZW5fc3RhdGUoKSBidWdzIG1lDQo+IGJlY2F1
-c2UgaXQgbWFwcyB0byBwcmVlbXB0X2Rpc2FibGUoKSBpbiAtUlQgd2hpY2ggSSBjYW4ndCBoYXZl
-IGF0IHRoaXMNCj4gcG9pbnQuIFNvIEkgdG9vayBhIGxvb2sgYXQgdGhlIGNvZGUuDQo+IEl0IHRo
-ZSBsb2NrZGVwIHBhcnQgd2FzIHJlbW92ZWQgaW4gY29tbWl0IGFiYmVjMmRhMTNmMCAoIk5GUzog
-VXNlDQo+IHJhd193cml0ZV9zZXFjb3VudF9iZWdpbi9lbmQgaW50IG5mczRfcmVjbGFpbV9vcGVu
-X3N0YXRlIikgYmVjYXVzZQ0KPiBsb2NrZGVwIGNvbXBsYWluZWQuIFRoZSB3aG9sZSBzZXFjb3Vu
-dCB0aGluZyB3YXMgaW50cm9kdWNlZCBpbiBjb21taXQNCj4gYzEzN2FmYWJlMzMwICgiTkZTdjQ6
-IEFsbG93IHRoZSBzdGF0ZSBtYW5hZ2VyIHRvIG1hcmsgYW4gb3Blbl9vd25lciBhcw0KPiBiZWlu
-ZyByZWNvdmVyZWQiKS4NCj4gSSBkb24ndCB1bmRlcnN0YW5kIGhvdyBpdCBpcyBwb3NzaWJsZSB0
-aGF0IHdlIGRvbid0IGVuZCB1cCB3aXRoIHR3bw0KPiB3cml0ZXJzIGZvciB0aGUgc2FtZSByZXNz
-b3VyY2UgYmVjYXVzZSB0aGUgYHNwLT5zb19sb2NrJyBsb2NrIGlzIGRyb3BwZWQNCj4gaXMgc29v
-biBpbiB0aGUgbGlzdF9mb3JfZWFjaF9lbnRyeSgpIGxvb3AuIEl0IG1pZ2h0IGJlIHRoZQ0KPiB0
-ZXN0X2FuZF9jbGVhcl9iaXQoKSBjaGVjayBpbiBuZnM0X2RvX3JlY2xhaW0oKSBidXQgaXQgbWln
-aHQgY2xlYXIgb25lDQo+IGJpdCBvbiBlYWNoIGl0ZXJhdGlvbiBzbyBJICp0aGluayogd2UgY291
-bGQgaGF2ZSB0d28gaW52b2NhdGlvbnMgb2YgdGhlDQo+IHNhbWUgc3RydWN0IG5mczRfc3RhdGVf
-b3duZXIgaW4gbmZzNF9yZWNsYWltX29wZW5fc3RhdGUoKS4NCj4gU28gdGhlcmUgaXMgdGhhdC4N
-Cj4gDQo+IEJ1dCBiYWNrIHRvIHRoZSBsaXN0X2Zvcl9lYWNoX2VudHJ5KCkgbWFjcm8uDQo+IEl0
-IHNlZW1zIHRoYXQgdGhpcyBsb2NrIHByb3RlY3RzIHRoZSAtPnNvX3N0YXRlcyBsaXN0IGFtb25n
-IG90aGVyDQo+IGF0b21pY190ICYgZmxhZ3MgbWVtYmVycy4gU28gYXQgdGhlIGJlZ2luIG9mIHRo
-ZSBsb29wIHdlIGluYyAtPmNvdW50DQo+IGVuc3VyaW5nIHRoYXQgdGhpcyBmaWVsZCBpcyBub3Qg
-cmVtb3ZlZCB3aGlsZSB3ZSB1c2UgaXQuIFNvIHdlIGRyb3AgdGhlDQo+IC0+c29fbG9jayBsb2Mg
-ZHVyaW5nIHRoZSBsb29wIGl0IHNlZW1zLiBBbmQgYWZ0ZXIgbmZzNF9yZWNsYWltX2xvY2tzKCkN
-Cj4gaW52b2NhdGlvbiB3ZSBuZnM0X3B1dF9vcGVuX3N0YXRlKCkgYW5kIGdyYWIgdGhlIC0+c29f
-bG9jayBhZ2Fpbi4gU28gaWYNCj4gd2Ugd2VyZSB0aGUgbGFzdCB1c2VyIG9mIHRoaXMgc3RydWN0
-IGFuZCB3ZSByZW1vdmUgaXQsIHRoZW4gdGhlDQo+IGZvbGxvd2luZyBsaXN0X25leHRfZW50cnko
-KSBpbnZvY2F0aW9uIGlzIGEgdXNlLWFmdGVyLWZyZWUuIEV2ZW4gaWYgd2UNCj4gdXNlIGxpc3Rf
-Zm9yX2VhY2hfZW50cnlfc2FmZSgpIHRoZXJlIGlzIG5vIGd1YXJhbnRlZSB0aGF0IHRoZSBmb2xs
-b3dpbmcNCj4gbWVtYmVyIGlzIHN0aWxsIHZhbGlkIGJlY2F1c2UgaXQgbWlnaHQgaGF2ZSBiZWVu
-IHJlbW92ZWQgYnkgYW5vdGhlcg0KPiB3cml0ZXIsIHJpZ2h0Pw0KPiBTbyB0aGVyZSBpcyB0aGlz
-Lg0KPiANCj4gSG93ZXZlciB0byBhZGRyZXNzIG15IGluaXRpYWwgcHJvYmxlbSBJIGhhdmUgaGVy
-ZSBhIHBhdGNoIDopIFNvIGl0IHVzZXMNCj4gYSBzZXFsb2NrX3Qgd2hpY2ggZW5zdXJlcyB0aGF0
-IHRoZXJlIGlzIG9ubHkgb25lIHdyaXRlciBhdCBhIHRpbWUuIFNvIGl0DQo+IHNob3VsZCBiZSBi
-YXNpY2FsbHkgd2hhdCBpcyBoYXBwZW5pbmcgbm93IHBsdXMgYSB0aW55IHRpbnkgdGlueSBsb2Nr
-DQo+IHBsdXMgbG9ja2RlcCBjb3ZlcmFnZS4gSSB0cmllZCB0byB0aGlzIG15c2VsZiBidXQgSSBk
-b24ndCBtYW5hZ2UgdG8gZ2V0DQo+IGludG8gdGhpcyBjb2RlIHBhdGggYXQgYWxsIHNvIEkgbWln
-aHQgYmUgZG9pbmcgc29tZXRoaW5nIHdyb25nLg0KPiANCj4gQ291bGQgeW91IHBsZWFzZSBjaGVj
-ayBpZiB0aGlzIHBhdGNoIGlzIHdvcmtpbmcgZm9yIHlvdSBhbmQgd2hldGhlciBteQ0KPiBsaXN0
-X2Zvcl9lYWNoX2VudHJ5KCkgb2JzZXJ2YXRpb24gaXMgY29ycmVjdCBvciBub3Q/DQo+IA0KPiB2
-MeKApnYyOiB3cml0ZV9zZXFsb2NrKCkgZGlzYWJsZXMgcHJlZW1wdGlvbiBhbmQgc29tZSBmdW5j
-dGlvbiBuZWVkIGl0DQo+ICh0aHJlYWRfcnVuKCksIG5vbi1HRlBfQVRPTUlDIG1lbW9yeSBhbGxv
-Y3Rpb24oKSkuIFdlIGRvbid0IHdhbnQNCj4gcHJlZW1wdGlvbiBlbmFibGVkIGJlY2F1c2UgYSBw
-cmVlbXB0ZWQgd3JpdGVyIHdvdWxkIHN0YWxsIHRoZSByZWFkZXINCj4gc3Bpbm5pbmcuIFRoaXMg
-aXMgYSBkdWN0IHRhcGUgbXV0ZXguIE1heWJlIHRoZSBzZXFsb2NrIHNob3VsZCBnby4NCj4gDQo+
-IFNpZ25lZC1vZmYtYnk6IFNlYmFzdGlhbiBBbmRyemVqIFNpZXdpb3IgPGJpZ2Vhc3lAbGludXRy
-b25peC5kZT4NCj4gLS0tDQo+IGZzL25mcy9kZWxlZ2F0aW9uLmMgfCAgNCArKy0tDQo+IGZzL25m
-cy9uZnM0X2ZzLmggICAgfCAgMyArKy0NCj4gZnMvbmZzL25mczRwcm9jLmMgICB8ICA0ICsrLS0N
-Cj4gZnMvbmZzL25mczRzdGF0ZS5jICB8IDIzICsrKysrKysrKysrKysrKysrLS0tLS0tDQo+IDQg
-ZmlsZXMgY2hhbmdlZCwgMjMgaW5zZXJ0aW9ucygrKSwgMTEgZGVsZXRpb25zKC0pDQo+IA0KPiBk
-aWZmIC0tZ2l0IGEvZnMvbmZzL2RlbGVnYXRpb24uYyBiL2ZzL25mcy9kZWxlZ2F0aW9uLmMNCj4g
-aW5kZXggZGZmNjAwYWUwZDc0Li5kNzI2ZDJlMDkzNTMgMTAwNjQ0DQo+IC0tLSBhL2ZzL25mcy9k
-ZWxlZ2F0aW9uLmMNCj4gKysrIGIvZnMvbmZzL2RlbGVnYXRpb24uYw0KPiBAQCAtMTUwLDExICsx
-NTAsMTEgQEAgc3RhdGljIGludCBuZnNfZGVsZWdhdGlvbl9jbGFpbV9vcGVucyhzdHJ1Y3QgaW5v
-ZGUgKmlub2RlLA0KPiAJCXNwID0gc3RhdGUtPm93bmVyOw0KPiAJCS8qIEJsb2NrIG5mczRfcHJv
-Y191bmxjayAqLw0KPiAJCW11dGV4X2xvY2soJnNwLT5zb19kZWxlZ3JldHVybl9tdXRleCk7DQo+
-IC0JCXNlcSA9IHJhd19zZXFjb3VudF9iZWdpbigmc3AtPnNvX3JlY2xhaW1fc2VxY291bnQpOw0K
-PiArCQlzZXEgPSByZWFkX3NlcWJlZ2luKCZzcC0+c29fcmVjbGFpbV9zZXFsb2NrKTsNCj4gCQll
-cnIgPSBuZnM0X29wZW5fZGVsZWdhdGlvbl9yZWNhbGwoY3R4LCBzdGF0ZSwgc3RhdGVpZCwgdHlw
-ZSk7DQo+IAkJaWYgKCFlcnIpDQo+IAkJCWVyciA9IG5mc19kZWxlZ2F0aW9uX2NsYWltX2xvY2tz
-KGN0eCwgc3RhdGUsIHN0YXRlaWQpOw0KPiAtCQlpZiAoIWVyciAmJiByZWFkX3NlcWNvdW50X3Jl
-dHJ5KCZzcC0+c29fcmVjbGFpbV9zZXFjb3VudCwgc2VxKSkNCj4gKwkJaWYgKCFlcnIgJiYgcmVh
-ZF9zZXFyZXRyeSgmc3AtPnNvX3JlY2xhaW1fc2VxbG9jaywgc2VxKSkNCj4gCQkJZXJyID0gLUVB
-R0FJTjsNCj4gCQltdXRleF91bmxvY2soJnNwLT5zb19kZWxlZ3JldHVybl9tdXRleCk7DQo+IAkJ
-cHV0X25mc19vcGVuX2NvbnRleHQoY3R4KTsNCj4gZGlmZiAtLWdpdCBhL2ZzL25mcy9uZnM0X2Zz
-LmggYi9mcy9uZnMvbmZzNF9mcy5oDQo+IGluZGV4IDliM2E4MmFiYWIwNy4uMmZlZTFhMmU4YjU3
-IDEwMDY0NA0KPiAtLS0gYS9mcy9uZnMvbmZzNF9mcy5oDQo+ICsrKyBiL2ZzL25mcy9uZnM0X2Zz
-LmgNCj4gQEAgLTExMSw3ICsxMTEsOCBAQCBzdHJ1Y3QgbmZzNF9zdGF0ZV9vd25lciB7DQo+IAl1
-bnNpZ25lZCBsb25nCSAgICAgc29fZmxhZ3M7DQo+IAlzdHJ1Y3QgbGlzdF9oZWFkICAgICBzb19z
-dGF0ZXM7DQo+IAlzdHJ1Y3QgbmZzX3NlcWlkX2NvdW50ZXIgc29fc2VxaWQ7DQo+IC0Jc2VxY291
-bnRfdAkgICAgIHNvX3JlY2xhaW1fc2VxY291bnQ7DQo+ICsJc2VxbG9ja190CSAgICAgc29fcmVj
-bGFpbV9zZXFsb2NrOw0KPiArCXN0cnVjdCBtdXRleAkgICAgIHNvX3JlY2xhaW1fc2VxbG9ja19t
-dXRleDsNCj4gCXN0cnVjdCBtdXRleAkgICAgIHNvX2RlbGVncmV0dXJuX211dGV4Ow0KPiB9Ow0K
-PiANCj4gZGlmZiAtLWdpdCBhL2ZzL25mcy9uZnM0cHJvYy5jIGIvZnMvbmZzL25mczRwcm9jLmMN
-Cj4gaW5kZXggNzg5NzgyNmQ3YzUxLi45YjlkNTNjZDg1ZjkgMTAwNjQ0DQo+IC0tLSBhL2ZzL25m
-cy9uZnM0cHJvYy5jDQo+ICsrKyBiL2ZzL25mcy9uZnM0cHJvYy5jDQo+IEBAIC0yNjg1LDcgKzI2
-ODUsNyBAQCBzdGF0aWMgaW50IF9uZnM0X29wZW5fYW5kX2dldF9zdGF0ZShzdHJ1Y3QgbmZzNF9v
-cGVuZGF0YSAqb3BlbmRhdGEsDQo+IAl1bnNpZ25lZCBpbnQgc2VxOw0KPiAJaW50IHJldDsNCj4g
-DQo+IC0Jc2VxID0gcmF3X3NlcWNvdW50X2JlZ2luKCZzcC0+c29fcmVjbGFpbV9zZXFjb3VudCk7
-DQo+ICsJc2VxID0gcmF3X3NlcWNvdW50X2JlZ2luKCZzcC0+c29fcmVjbGFpbV9zZXFsb2NrLnNl
-cWNvdW50KTsNCj4gDQo+IAlyZXQgPSBfbmZzNF9wcm9jX29wZW4ob3BlbmRhdGEpOw0KPiAJaWYg
-KHJldCAhPSAwKQ0KPiBAQCAtMjcyMyw3ICsyNzIzLDcgQEAgc3RhdGljIGludCBfbmZzNF9vcGVu
-X2FuZF9nZXRfc3RhdGUoc3RydWN0IG5mczRfb3BlbmRhdGEgKm9wZW5kYXRhLA0KPiAJY3R4LT5z
-dGF0ZSA9IHN0YXRlOw0KPiAJaWYgKGRfaW5vZGUoZGVudHJ5KSA9PSBzdGF0ZS0+aW5vZGUpIHsN
-Cj4gCQluZnNfaW5vZGVfYXR0YWNoX29wZW5fY29udGV4dChjdHgpOw0KPiAtCQlpZiAocmVhZF9z
-ZXFjb3VudF9yZXRyeSgmc3AtPnNvX3JlY2xhaW1fc2VxY291bnQsIHNlcSkpDQo+ICsJCWlmIChy
-ZWFkX3NlcXJldHJ5KCZzcC0+c29fcmVjbGFpbV9zZXFsb2NrLCBzZXEpKQ0KPiAJCQluZnM0X3Nj
-aGVkdWxlX3N0YXRlaWRfcmVjb3Zlcnkoc2VydmVyLCBzdGF0ZSk7DQo+IAl9DQo+IG91dDoNCj4g
-ZGlmZiAtLWdpdCBhL2ZzL25mcy9uZnM0c3RhdGUuYyBiL2ZzL25mcy9uZnM0c3RhdGUuYw0KPiBp
-bmRleCA1ZjQyODFlYzVmNzIuLmE0NDJkOTg2Nzk0MiAxMDA2NDQNCj4gLS0tIGEvZnMvbmZzL25m
-czRzdGF0ZS5jDQo+ICsrKyBiL2ZzL25mcy9uZnM0c3RhdGUuYw0KPiBAQCAtNDg4LDcgKzQ4OCw4
-IEBAIG5mczRfYWxsb2Nfc3RhdGVfb3duZXIoc3RydWN0IG5mc19zZXJ2ZXIgKnNlcnZlciwNCj4g
-CW5mczRfaW5pdF9zZXFpZF9jb3VudGVyKCZzcC0+c29fc2VxaWQpOw0KPiAJYXRvbWljX3NldCgm
-c3AtPnNvX2NvdW50LCAxKTsNCj4gCUlOSVRfTElTVF9IRUFEKCZzcC0+c29fbHJ1KTsNCj4gLQlz
-ZXFjb3VudF9pbml0KCZzcC0+c29fcmVjbGFpbV9zZXFjb3VudCk7DQo+ICsJc2VxbG9ja19pbml0
-KCZzcC0+c29fcmVjbGFpbV9zZXFsb2NrKTsNCj4gKwltdXRleF9pbml0KCZzcC0+c29fcmVjbGFp
-bV9zZXFsb2NrX211dGV4KTsNCj4gCW11dGV4X2luaXQoJnNwLT5zb19kZWxlZ3JldHVybl9tdXRl
-eCk7DQo+IAlyZXR1cm4gc3A7DQo+IH0NCj4gQEAgLTE0OTcsOCArMTQ5OCwxOCBAQCBzdGF0aWMg
-aW50IG5mczRfcmVjbGFpbV9vcGVuX3N0YXRlKHN0cnVjdCBuZnM0X3N0YXRlX293bmVyICpzcCwg
-Y29uc3Qgc3RydWN0IG5mcw0KPiAJICogcmVjb3ZlcmluZyBhZnRlciBhIG5ldHdvcmsgcGFydGl0
-aW9uIG9yIGEgcmVib290IGZyb20gYQ0KPiAJICogc2VydmVyIHRoYXQgZG9lc24ndCBzdXBwb3J0
-IGEgZ3JhY2UgcGVyaW9kLg0KPiAJICovDQo+ICsJLyoNCj4gKwkgKiBYWFgNCj4gKwkgKiBUaGlz
-IG11dGV4IGlzIHdyb25nLiBJdCBwcm90ZWN0cyBhZ2FpbnN0IG11bHRpcGxlIHdyaXRlci4gSG93
-ZXZlcg0KDQpUaGVyZSBpcyBvbmx5IDEgcmVjb3ZlcnkgdGhyZWFkIHBlciBjbGllbnQvc2VydmVy
-IHBhaXIsIHdoaWNoIGlzIHdoeSB3ZSBrbm93IHRoZXJlIGlzIG9ubHkgYSBzaW5nbGUgd3JpdGVy
-LiBObyBuZWVkIGZvciBhIG11dGV4IGhlcmUuDQoNCj4gKwkgKiB3cml0ZV9zZXFsb2NrKCkgc2hv
-dWxkIGhhdmUgYmVlbiB1c2VkIGZvciB0aGlzIHRhc2suIFRoaXMgd291bGQgYXZvaWQNCj4gKwkg
-KiBwcmVlbXB0aW9uIHdoaWxlIHRoZSBzZXFsb2NrIGlzIGhlbGQgd2hpY2ggaXMgZ29vZCBiZWNh
-dXNlIHRoZSB3cml0ZXINCj4gKwkgKiBzaG91bGRuJ3QgYmUgcHJlZW1wdGVkIGFzIGl0IHdvdWxk
-IGxldCB0aGUgcmVhZGVyIHNwaW4gZm9yIG5vIGdvb2QNCg0KUmVjb3ZlcnkgaW52b2x2ZXMgc2Vu
-ZGluZyBSUEMgY2FsbHMgdG8gYSBzZXJ2ZXIuIFRoZXJlIGlzIG5vIGF2b2lkaW5nIHByZWVtcHRp
-b24gaWYgd2UgaGF2ZSB0byByZWNvdmVyIHN0YXRlLiBUaGUgcG9pbnQgb2YgdGhlIHNlcXVlbmNl
-IGNvdW50ZXIgaXMgdG8gc2lnbmFsIHRvIHByb2Nlc3NlcyB0aGF0IG1heSBoYXZlIHJhY2VkIHdp
-dGggdGhpcyByZWNvdmVyeSB0aHJlYWQgdGhhdCB0aGV5IG1heSBuZWVkIHRvIHJlcGxheSB0aGVp
-ciBsb2Nrcy4NCg0KPiArCSAqIHJlYXNvbi4gVGhlcmUgYXJlIGEgZmV3IG1lbW9yeSBhbGxvY2F0
-aW9ucyBhbmQga3RocmVhZF9ydW4oKSBzbyB3ZQ0KPiArCSAqIGhhdmUgdGhpcyBtdXRleCBub3cu
-DQo+ICsJICovDQo+ICsJbXV0ZXhfbG9jaygmc3AtPnNvX3JlY2xhaW1fc2VxbG9ja19tdXRleCk7
-DQo+ICsJd3JpdGVfc2VxY291bnRfYmVnaW4oJnNwLT5zb19yZWNsYWltX3NlcWxvY2suc2VxY291
-bnQpOw0KPiAJc3Bpbl9sb2NrKCZzcC0+c29fbG9jayk7DQo+IC0JcmF3X3dyaXRlX3NlcWNvdW50
-X2JlZ2luKCZzcC0+c29fcmVjbGFpbV9zZXFjb3VudCk7DQo+IHJlc3RhcnQ6DQo+IAlsaXN0X2Zv
-cl9lYWNoX2VudHJ5KHN0YXRlLCAmc3AtPnNvX3N0YXRlcywgb3Blbl9zdGF0ZXMpIHsNCj4gCQlp
-ZiAoIXRlc3RfYW5kX2NsZWFyX2JpdChvcHMtPnN0YXRlX2ZsYWdfYml0LCAmc3RhdGUtPmZsYWdz
-KSkNCj4gQEAgLTE1NjYsMTQgKzE1NzcsMTQgQEAgc3RhdGljIGludCBuZnM0X3JlY2xhaW1fb3Bl
-bl9zdGF0ZShzdHJ1Y3QgbmZzNF9zdGF0ZV9vd25lciAqc3AsIGNvbnN0IHN0cnVjdCBuZnMNCj4g
-CQlzcGluX2xvY2soJnNwLT5zb19sb2NrKTsNCj4gCQlnb3RvIHJlc3RhcnQ7DQo+IAl9DQo+IC0J
-cmF3X3dyaXRlX3NlcWNvdW50X2VuZCgmc3AtPnNvX3JlY2xhaW1fc2VxY291bnQpOw0KPiAJc3Bp
-bl91bmxvY2soJnNwLT5zb19sb2NrKTsNCj4gKwl3cml0ZV9zZXFjb3VudF9lbmQoJnNwLT5zb19y
-ZWNsYWltX3NlcWxvY2suc2VxY291bnQpOw0KDQpUaGlzIHdpbGwgcmVpbnRyb2R1Y2UgbG9ja2Rl
-cCBjaGVja2luZy4gV2UgZG9u4oCZdCBuZWVkIG9yIHdhbnQgdGhhdC4uLg0KDQo+ICsJbXV0ZXhf
-dW5sb2NrKCZzcC0+c29fcmVjbGFpbV9zZXFsb2NrX211dGV4KTsNCj4gCXJldHVybiAwOw0KPiBv
-dXRfZXJyOg0KPiAJbmZzNF9wdXRfb3Blbl9zdGF0ZShzdGF0ZSk7DQo+IC0Jc3Bpbl9sb2NrKCZz
-cC0+c29fbG9jayk7DQo+IC0JcmF3X3dyaXRlX3NlcWNvdW50X2VuZCgmc3AtPnNvX3JlY2xhaW1f
-c2VxY291bnQpOw0KPiAtCXNwaW5fdW5sb2NrKCZzcC0+c29fbG9jayk7DQo+ICsJd3JpdGVfc2Vx
-Y291bnRfZW5kKCZzcC0+c29fcmVjbGFpbV9zZXFsb2NrLnNlcWNvdW50KTsNCj4gKwltdXRleF91
-bmxvY2soJnNwLT5zb19yZWNsYWltX3NlcWxvY2tfbXV0ZXgpOw0KPiAJcmV0dXJuIHN0YXR1czsN
-Cj4gfQ0KPiANCj4gLS0gDQo+IDIuMTAuMQ0KPiANCg0K
+Hi Jeff-
+
+When I push NFSv4.1 / RDMA hard, (xfstests generic/089, for example),
+I get this crash on the server:
+
+Oct 28 22:04:30 klimt kernel: general protection fault: 0000 [#1] SMP DEBUG_PAGEALLOC
+Oct 28 22:04:30 klimt kernel: Modules linked in: cts rpcsec_gss_krb5 iTCO_wdt iTCO_vendor_support sb_edac edac_core x86_pkg_temp_thermal intel_powerclamp coretemp kvm_intel kvm btrfs irqbypass crct10dif_pclmul crc32_pclmul ghash_clmulni_intel aesni_intel lrw gf128mul glue_helper ablk_helper cryptd xor pcspkr raid6_pq i2c_i801 i2c_smbus lpc_ich mfd_core sg mei_me mei ioatdma shpchp wmi ipmi_si ipmi_msghandler rpcrdma ib_ipoib rdma_ucm acpi_power_meter acpi_pad ib_ucm ib_uverbs ib_umad rdma_cm ib_cm iw_cm nfsd auth_rpcgss nfs_acl lockd grace sunrpc ip_tables xfs libcrc32c mlx4_ib mlx4_en ib_core sr_mod cdrom sd_mod ast drm_kms_helper syscopyarea sysfillrect sysimgblt fb_sys_fops ttm drm crc32c_intel igb ahci libahci ptp mlx4_core pps_core dca libata i2c_algo_bit i2c_core dm_mirror dm_region_hash dm_log dm_mod
+Oct 28 22:04:30 klimt kernel: CPU: 7 PID: 1558 Comm: nfsd Not tainted 4.9.0-rc2-00005-g82cd754 #8
+Oct 28 22:04:30 klimt kernel: Hardware name: Supermicro Super Server/X10SRL-F, BIOS 1.0c 09/09/2015
+Oct 28 22:04:30 klimt kernel: task: ffff880835c3a100 task.stack: ffff8808420d8000
+Oct 28 22:04:30 klimt kernel: RIP: 0010:[<ffffffffa05a759f>]  [<ffffffffa05a759f>] release_lock_stateid+0x1f/0x60 [nfsd]
+Oct 28 22:04:30 klimt kernel: RSP: 0018:ffff8808420dbce0  EFLAGS: 00010246
+Oct 28 22:04:30 klimt kernel: RAX: ffff88084e6660f0 RBX: ffff88084e667020 RCX: 0000000000000000
+Oct 28 22:04:30 klimt kernel: RDX: 0000000000000007 RSI: 0000000000000000 RDI: ffff88084e667020
+Oct 28 22:04:30 klimt kernel: RBP: ffff8808420dbcf8 R08: 0000000000000001 R09: 0000000000000000
+Oct 28 22:04:30 klimt kernel: R10: ffff880835c3a100 R11: ffff880835c3aca8 R12: 6b6b6b6b6b6b6b6b
+Oct 28 22:04:30 klimt kernel: R13: ffff88084e6670d8 R14: ffff880835f546f0 R15: ffff880835f1c548
+Oct 28 22:04:30 klimt kernel: FS:  0000000000000000(0000) GS:ffff88087bdc0000(0000) knlGS:0000000000000000
+Oct 28 22:04:30 klimt kernel: CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
+Oct 28 22:04:30 klimt kernel: CR2: 00007ff020389000 CR3: 0000000001c06000 CR4: 00000000001406e0
+Oct 28 22:04:30 klimt kernel: Stack:
+Oct 28 22:04:30 klimt kernel: ffff88084e667020 0000000000000000 ffff88084e6670d8 ffff8808420dbd20
+Oct 28 22:04:30 klimt kernel: ffffffffa05ac80d ffff880835f54548 ffff88084e640008 ffff880835f545b0
+Oct 28 22:04:30 klimt kernel: ffff8808420dbd70 ffffffffa059803d ffff880835f1c768 0000000000000870
+Oct 28 22:04:30 klimt kernel: Call Trace:
+Oct 28 22:04:30 klimt kernel: [<ffffffffa05ac80d>] nfsd4_free_stateid+0xfd/0x1b0 [nfsd]
+Oct 28 22:04:30 klimt kernel: [<ffffffffa059803d>] nfsd4_proc_compound+0x40d/0x690 [nfsd]
+Oct 28 22:04:30 klimt kernel: [<ffffffffa0583114>] nfsd_dispatch+0xd4/0x1d0 [nfsd]
+Oct 28 22:04:30 klimt kernel: [<ffffffffa047bbf9>] svc_process_common+0x3d9/0x700 [sunrpc]
+Oct 28 22:04:30 klimt kernel: [<ffffffffa047ca64>] svc_process+0xf4/0x330 [sunrpc]
+Oct 28 22:04:30 klimt kernel: [<ffffffffa05827ca>] nfsd+0xfa/0x160 [nfsd]
+Oct 28 22:04:30 klimt kernel: [<ffffffffa05826d0>] ? nfsd_destroy+0x170/0x170 [nfsd]
+Oct 28 22:04:30 klimt kernel: [<ffffffff810b367b>] kthread+0x10b/0x120
+Oct 28 22:04:30 klimt kernel: [<ffffffff810b3570>] ? kthread_stop+0x280/0x280
+Oct 28 22:04:30 klimt kernel: [<ffffffff8174e8ba>] ret_from_fork+0x2a/0x40
+Oct 28 22:04:30 klimt kernel: Code: c3 66 66 2e 0f 1f 84 00 00 00 00 00 0f 1f 44 00 00 55 48 89 e5 41 55 41 54 53 48 8b 87 b0 00 00 00 48 89 fb 4c 8b a0 98 00 00 00 <49> 8b 44 24 20 48 8d b8 80 03 00 00 e8 10 66 1a e1 48 89 df e8 
+Oct 28 22:04:30 klimt kernel: RIP  [<ffffffffa05a759f>] release_lock_stateid+0x1f/0x60 [nfsd]
+Oct 28 22:04:30 klimt kernel: RSP <ffff8808420dbce0>
+Oct 28 22:04:30 klimt kernel: ---[ end trace cf5d0b371973e167 ]---
+
+[cel@klimt nfsd]$ gdb nfsd.ko 
+GNU gdb (GDB) Red Hat Enterprise Linux 7.6.1-80.el7
+Copyright (C) 2013 Free Software Foundation, Inc.
+License GPLv3+: GNU GPL version 3 or later <http://gnu.org/licenses/gpl.html>
+This is free software: you are free to change and redistribute it.
+There is NO WARRANTY, to the extent permitted by law.  Type "show copying"
+and "show warranty" for details.
+This GDB was configured as "x86_64-redhat-linux-gnu".
+For bug reporting instructions, please see:
+<http://www.gnu.org/software/gdb/bugs/>...
+Reading symbols from /usr/lib/modules/4.9.0-rc2-00005-g82cd754/kernel/fs/nfsd/nfsd.ko...done.
+(gdb) list *(release_lock_stateid+0x1f)
+0x265cf is in release_lock_stateid (/home/cel/src/linux/linux-2.6/include/linux/spinlock.h:302).
+297		raw_spin_lock_init(&(_lock)->rlock);		\
+298	} while (0)
+299	
+300	static __always_inline void spin_lock(spinlock_t *lock)
+301	{
+302		raw_spin_lock(&lock->rlock);
+303	}
+304	
+305	static __always_inline void spin_lock_bh(spinlock_t *lock)
+306	{
+(gdb)
+
+1239 static void release_lock_stateid(struct nfs4_ol_stateid *stp)
+1240 {
+1241         struct nfs4_openowner *oo = openowner(stp->st_openstp->st_stateowner);
+1242         bool unhashed;
+1243 
+1244         spin_lock(&oo->oo_owner.so_client->cl_lock);
+1245         unhashed = unhash_lock_stateid(stp);
+1246         spin_unlock(&oo->oo_owner.so_client->cl_lock);
+1247         if (unhashed)
+1248                 nfs4_put_stid(&stp->st_stid);
+1249 }
+
+This is the new code we added to deal with the race between FREE_STATEID and LOCK.
+
+
+--
+Chuck Lever
+
+
 
