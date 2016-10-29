@@ -1,148 +1,101 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:25566 "EHLO
-        aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S932255AbcJ2QVI (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sat, 29 Oct 2016 12:21:08 -0400
+Received: from mail-it0-f68.google.com ([209.85.214.68]:34249 "EHLO
+        mail-it0-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S932486AbcJ2SbQ (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sat, 29 Oct 2016 14:31:16 -0400
+Received: by mail-it0-f68.google.com with SMTP id q124so2020152itd.1
+        for <linux-nfs@vger.kernel.org>; Sat, 29 Oct 2016 11:31:15 -0700 (PDT)
+Subject: [PATCH] nfsd: Fix general protection fault in release_lock_stateid()
 From: Chuck Lever <chuck.lever@oracle.com>
-Content-Type: text/plain; charset=us-ascii
-Subject: svc_xprt_put is no longer BH-safe
-Date: Sat, 29 Oct 2016 12:21:03 -0400
-Message-Id: <1934654A-78D7-4180-A0AA-4B144254BFC2@oracle.com>
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Mime-Version: 1.0 (Mac OS X Mail 9.3 \(3124\))
+To: jlayton@redhat.com
+Cc: linux-nfs@vger.kernel.org
+Date: Sat, 29 Oct 2016 14:31:13 -0400
+Message-ID: <20161029183113.12077.81804.stgit@klimt.1015granger.net>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Bruce-
+When I push NFSv4.1 / RDMA hard, (xfstests generic/089, for example),
+I get this crash on the server:
 
-I hit this lockdep splat this morning
+Oct 28 22:04:30 klimt kernel: general protection fault: 0000 [#1] SMP DEBUG_PAGEALLOC
+Oct 28 22:04:30 klimt kernel: Modules linked in: cts rpcsec_gss_krb5 iTCO_wdt iTCO_vendor_support sb_edac edac_core x86_pkg_temp_thermal intel_powerclamp coretemp kvm_intel kvm btrfs irqbypass crct10dif_pclmul crc32_pclmul ghash_clmulni_intel aesni_intel lrw gf128mul glue_helper ablk_helper cryptd xor pcspkr raid6_pq i2c_i801 i2c_smbus lpc_ich mfd_core sg mei_me mei ioatdma shpchp wmi ipmi_si ipmi_msghandler rpcrdma ib_ipoib rdma_ucm acpi_power_meter acpi_pad ib_ucm ib_uverbs ib_umad rdma_cm ib_cm iw_cm nfsd auth_rpcgss nfs_acl lockd grace sunrpc ip_tables xfs libcrc32c mlx4_ib mlx4_en ib_core sr_mod cdrom sd_mod ast drm_kms_helper syscopyarea sysfillrect sysimgblt fb_sys_fops ttm drm crc32c_intel igb ahci libahci ptp mlx4_core pps_core dca libata i2c_algo_bit i2c_core dm_mirror dm_region_hash dm_log dm_mod
+Oct 28 22:04:30 klimt kernel: CPU: 7 PID: 1558 Comm: nfsd Not tainted 4.9.0-rc2-00005-g82cd754 #8
+Oct 28 22:04:30 klimt kernel: Hardware name: Supermicro Super Server/X10SRL-F, BIOS 1.0c 09/09/2015
+Oct 28 22:04:30 klimt kernel: task: ffff880835c3a100 task.stack: ffff8808420d8000
+Oct 28 22:04:30 klimt kernel: RIP: 0010:[<ffffffffa05a759f>]  [<ffffffffa05a759f>] release_lock_stateid+0x1f/0x60 [nfsd]
+Oct 28 22:04:30 klimt kernel: RSP: 0018:ffff8808420dbce0  EFLAGS: 00010246
+Oct 28 22:04:30 klimt kernel: RAX: ffff88084e6660f0 RBX: ffff88084e667020 RCX: 0000000000000000
+Oct 28 22:04:30 klimt kernel: RDX: 0000000000000007 RSI: 0000000000000000 RDI: ffff88084e667020
+Oct 28 22:04:30 klimt kernel: RBP: ffff8808420dbcf8 R08: 0000000000000001 R09: 0000000000000000
+Oct 28 22:04:30 klimt kernel: R10: ffff880835c3a100 R11: ffff880835c3aca8 R12: 6b6b6b6b6b6b6b6b
+Oct 28 22:04:30 klimt kernel: R13: ffff88084e6670d8 R14: ffff880835f546f0 R15: ffff880835f1c548
+Oct 28 22:04:30 klimt kernel: FS:  0000000000000000(0000) GS:ffff88087bdc0000(0000) knlGS:0000000000000000
+Oct 28 22:04:30 klimt kernel: CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
+Oct 28 22:04:30 klimt kernel: CR2: 00007ff020389000 CR3: 0000000001c06000 CR4: 00000000001406e0
+Oct 28 22:04:30 klimt kernel: Stack:
+Oct 28 22:04:30 klimt kernel: ffff88084e667020 0000000000000000 ffff88084e6670d8 ffff8808420dbd20
+Oct 28 22:04:30 klimt kernel: ffffffffa05ac80d ffff880835f54548 ffff88084e640008 ffff880835f545b0
+Oct 28 22:04:30 klimt kernel: ffff8808420dbd70 ffffffffa059803d ffff880835f1c768 0000000000000870
+Oct 28 22:04:30 klimt kernel: Call Trace:
+Oct 28 22:04:30 klimt kernel: [<ffffffffa05ac80d>] nfsd4_free_stateid+0xfd/0x1b0 [nfsd]
+Oct 28 22:04:30 klimt kernel: [<ffffffffa059803d>] nfsd4_proc_compound+0x40d/0x690 [nfsd]
+Oct 28 22:04:30 klimt kernel: [<ffffffffa0583114>] nfsd_dispatch+0xd4/0x1d0 [nfsd]
+Oct 28 22:04:30 klimt kernel: [<ffffffffa047bbf9>] svc_process_common+0x3d9/0x700 [sunrpc]
+Oct 28 22:04:30 klimt kernel: [<ffffffffa047ca64>] svc_process+0xf4/0x330 [sunrpc]
+Oct 28 22:04:30 klimt kernel: [<ffffffffa05827ca>] nfsd+0xfa/0x160 [nfsd]
+Oct 28 22:04:30 klimt kernel: [<ffffffffa05826d0>] ? nfsd_destroy+0x170/0x170 [nfsd]
+Oct 28 22:04:30 klimt kernel: [<ffffffff810b367b>] kthread+0x10b/0x120
+Oct 28 22:04:30 klimt kernel: [<ffffffff810b3570>] ? kthread_stop+0x280/0x280
+Oct 28 22:04:30 klimt kernel: [<ffffffff8174e8ba>] ret_from_fork+0x2a/0x40
+Oct 28 22:04:30 klimt kernel: Code: c3 66 66 2e 0f 1f 84 00 00 00 00 00 0f 1f 44 00 00 55 48 89 e5 41 55 41 54 53 48 8b 87 b0 00 00 00 48 89 fb 4c 8b a0 98 00 00 00 <49> 8b 44 24 20 48 8d b8 80 03 00 00 e8 10 66 1a e1 48 89 df e8
+Oct 28 22:04:30 klimt kernel: RIP  [<ffffffffa05a759f>] release_lock_stateid+0x1f/0x60 [nfsd]
+Oct 28 22:04:30 klimt kernel: RSP <ffff8808420dbce0>
+Oct 28 22:04:30 klimt kernel: ---[ end trace cf5d0b371973e167 ]---
 
-Oct 29 11:38:25 klimt kernel: =================================
-Oct 29 11:38:25 klimt kernel: [ INFO: inconsistent lock state ]
-Oct 29 11:38:25 klimt kernel: 4.9.0-rc2-00003-g114ddae #9 Not tainted
-Oct 29 11:38:25 klimt kernel: ---------------------------------
-Oct 29 11:38:25 klimt kernel: inconsistent {SOFTIRQ-ON-W} -> {IN-SOFTIRQ-W} usage.
-Oct 29 11:38:25 klimt kernel: swapper/6/0 [HC0[0]:SC1[1]:HE1:SE0] takes:
-Oct 29 11:38:25 klimt kernel: (
-Oct 29 11:38:25 klimt kernel: &(&xps->xps_lock)->rlock
-Oct 29 11:38:25 klimt kernel: ){+.?...}
-Oct 29 11:38:25 klimt kernel: , at: 
-Oct 29 11:38:25 klimt kernel: [<ffffffffa0488056>] xprt_switch_free+0x26/0xb0 [sunrpc]
-Oct 29 11:38:25 klimt kernel: {SOFTIRQ-ON-W} state was registered at:
-Oct 29 11:38:25 klimt kernel:  
-Oct 29 11:38:25 klimt kernel: [<ffffffff810e2483>] __lock_acquire+0x343/0x1670
-Oct 29 11:38:25 klimt kernel:  
-Oct 29 11:38:25 klimt kernel: [<ffffffff810e3c97>] lock_acquire+0x197/0x1f0
-Oct 29 11:38:25 klimt kernel:  
-Oct 29 11:38:25 klimt kernel: [<ffffffff8174cbf8>] _raw_spin_lock+0x38/0x50
-Oct 29 11:38:25 klimt kernel:  
-Oct 29 11:38:25 klimt kernel: [<ffffffffa0488056>] xprt_switch_free+0x26/0xb0 [sunrpc]
-Oct 29 11:38:25 klimt kernel:  
-Oct 29 11:38:25 klimt kernel: [<ffffffffa0488242>] xprt_switch_put+0x22/0x30 [sunrpc]
-Oct 29 11:38:25 klimt kernel:  
-Oct 29 11:38:25 klimt kernel: [<ffffffffa048492d>] svc_xprt_free+0x5d/0x80 [sunrpc]
-Oct 29 11:38:25 klimt kernel:  
-Oct 29 11:38:25 klimt kernel: [<ffffffffa048554a>] svc_xprt_release+0x12a/0x140 [sunrpc]
-Oct 29 11:38:25 klimt kernel:  
-Oct 29 11:38:25 klimt kernel: [<ffffffffa0487242>] svc_recv+0xcb2/0xed0 [sunrpc]
-Oct 29 11:38:25 klimt kernel:  
-Oct 29 11:38:25 klimt kernel: [<ffffffffa04d57b8>] nfsd+0xe8/0x160 [nfsd]
-Oct 29 11:38:25 klimt kernel:  
-Oct 29 11:38:25 klimt kernel: [<ffffffff810b267b>] kthread+0x10b/0x120
-Oct 29 11:38:25 klimt kernel:  
-Oct 29 11:38:25 klimt kernel: [<ffffffff8174d8ba>] ret_from_fork+0x2a/0x40
-Oct 29 11:38:25 klimt kernel: irq event stamp: 483745258
-Oct 29 11:38:25 klimt kernel: hardirqs last  enabled at (483745258): 
-Oct 29 11:38:25 klimt kernel: [<ffffffff81093a45>] __local_bh_enable_ip+0x95/0xd0
-Oct 29 11:38:25 klimt kernel: hardirqs last disabled at (483745257): 
-Oct 29 11:38:25 klimt kernel: [<ffffffff81093a05>] __local_bh_enable_ip+0x55/0xd0
-Oct 29 11:38:25 klimt kernel: softirqs last  enabled at (483744848): 
-Oct 29 11:38:25 klimt kernel: [<ffffffff81092a52>] _local_bh_enable+0x42/0x50
-Oct 29 11:38:25 klimt kernel: softirqs last disabled at (483744849): 
-Oct 29 11:38:25 klimt kernel: [<ffffffff81093b4b>] irq_exit+0x5b/0xf0
-Oct 29 11:38:25 klimt kernel: #012other info that might help us debug this:
-Oct 29 11:38:25 klimt kernel: Possible unsafe locking scenario:
-Oct 29 11:38:25 klimt kernel:       CPU0
-Oct 29 11:38:25 klimt kernel:       ----
-Oct 29 11:38:25 klimt kernel:  lock(
-Oct 29 11:38:25 klimt kernel: &(&xps->xps_lock)->rlock
-Oct 29 11:38:25 klimt kernel: );
-Oct 29 11:38:25 klimt kernel:  <Interrupt>
-Oct 29 11:38:25 klimt kernel:    lock(
-Oct 29 11:38:25 klimt kernel: &(&xps->xps_lock)->rlock
-Oct 29 11:38:25 klimt kernel: );
-Oct 29 11:38:25 klimt kernel: #012 *** DEADLOCK ***
-Oct 29 11:38:25 klimt kernel: no locks held by swapper/6/0.
-Oct 29 11:38:25 klimt kernel: #012stack backtrace:
-Oct 29 11:38:25 klimt kernel: CPU: 6 PID: 0 Comm: swapper/6 Not tainted 4.9.0-rc2-00003-g114ddae #9
-Oct 29 11:38:25 klimt kernel: Hardware name: Supermicro Super Server/X10SRL-F, BIOS 1.0c 09/09/2015
-Oct 29 11:38:25 klimt kernel: ffff88087bd83be8 ffffffff81392e51 ffff880857008040 ffffffff827e2500
-Oct 29 11:38:25 klimt kernel: ffff88087bd83c38 ffffffff811b3e76 0000000000000001 0000000000000001
-Oct 29 11:38:25 klimt kernel: 0000000000000000 0000000000000006 ffff880857008040 ffffffff810e1060
-Oct 29 11:38:25 klimt kernel: Call Trace:
-Oct 29 11:38:25 klimt kernel: <IRQ> 
-Oct 29 11:38:25 klimt kernel: [<ffffffff81392e51>] dump_stack+0x85/0xc4
-Oct 29 11:38:25 klimt kernel: [<ffffffff811b3e76>] print_usage_bug+0x1eb/0x1fc
-Oct 29 11:38:25 klimt kernel: [<ffffffff810e1060>] ? print_irq_inversion_bug+0x200/0x200
-Oct 29 11:38:25 klimt kernel: [<ffffffff810e1a65>] mark_lock+0x175/0x290
-Oct 29 11:38:25 klimt kernel: [<ffffffff810e23cf>] __lock_acquire+0x28f/0x1670
-Oct 29 11:38:25 klimt kernel: [<ffffffff810e3c97>] lock_acquire+0x197/0x1f0
-Oct 29 11:38:25 klimt kernel: [<ffffffffa0488056>] ? xprt_switch_free+0x26/0xb0 [sunrpc]
-Oct 29 11:38:25 klimt kernel: [<ffffffff8174cbf8>] _raw_spin_lock+0x38/0x50
-Oct 29 11:38:25 klimt kernel: [<ffffffffa0488056>] ? xprt_switch_free+0x26/0xb0 [sunrpc]
-Oct 29 11:38:25 klimt kernel: [<ffffffffa0488056>] xprt_switch_free+0x26/0xb0 [sunrpc]
-Oct 29 11:38:25 klimt kernel: [<ffffffffa0488242>] xprt_switch_put+0x22/0x30 [sunrpc]
-Oct 29 11:38:25 klimt kernel: [<ffffffffa048492d>] svc_xprt_free+0x5d/0x80 [sunrpc]
-Oct 29 11:38:25 klimt kernel: [<ffffffffa048501d>] svc_xprt_put+0x1d/0x20 [sunrpc]
-Oct 29 11:38:25 klimt kernel: [<ffffffffa05753db>] svc_rdma_wc_receive+0xcb/0xe0 [rpcrdma]
-Oct 29 11:38:25 klimt kernel: [<ffffffffa0240d55>] __ib_process_cq+0x35/0xc0 [ib_core]
-Oct 29 11:38:25 klimt kernel: [<ffffffffa0240ed2>] ib_poll_handler+0x22/0x60 [ib_core]
-Oct 29 11:38:25 klimt kernel: [<ffffffff813c8bb5>] irq_poll_softirq+0x85/0x100
-Oct 29 11:38:25 klimt kernel: [<ffffffff817507a9>] __do_softirq+0x1f9/0x425
-Oct 29 11:38:25 klimt kernel: [<ffffffff81093b4b>] irq_exit+0x5b/0xf0
-Oct 29 11:38:25 klimt kernel: [<ffffffff817502df>] do_IRQ+0xef/0x110
-Oct 29 11:38:25 klimt kernel: [<ffffffff8174e016>] common_interrupt+0x96/0x96
-Oct 29 11:38:25 klimt kernel: <EOI> 
-Oct 29 11:38:25 klimt kernel: [<ffffffff815b996c>] ? cpuidle_enter_state+0x22c/0x300
-Oct 29 11:38:25 klimt kernel: [<ffffffff815b9a77>] cpuidle_enter+0x17/0x20
-Oct 29 11:38:25 klimt kernel: [<ffffffff810dbe7d>] call_cpuidle+0x3d/0x50
-Oct 29 11:38:25 klimt kernel: [<ffffffff810dc13e>] cpu_startup_entry+0x19e/0x240
-Oct 29 11:38:25 klimt kernel: [<ffffffff81059590>] start_secondary+0x160/0x1a0
+Jeff Layton says:
+> Hm...now that I look though, this is a little suspicious:
+>
+>    struct nfs4_openowner *oo = openowner(stp->st_openstp->st_stateowner);
+>
+> I wonder if it's possible for the openstateid to have already been
+> destroyed at this point.
+>
+> We might be better off doing something like this to get the client pointer:
+>
+>    stp->st_stid.sc_client;
+>
+> ...which should be more direct and less dependent on other stateids
+> staying valid.
 
+With the suggested change, I am no longer able to reproduce the above oops.
 
-In commit 39a9beab5acb83176e8b9a4f0778749a09341f1f ('rpc: share one xps between
-all backchannels') you added:
+Fix-suggested-by: Jeff Layton <jlayton@redhat.com>
+Fixes: 42691398be08 ('nfsd: Fix race between FREE_STATEID and LOCK')
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
+ fs/nfsd/nfs4state.c |    6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
 
-diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
-index f5572e3..4f01f63 100644
---- a/net/sunrpc/svc_xprt.c
-+++ b/net/sunrpc/svc_xprt.c
-@@ -136,6 +136,8 @@ static void svc_xprt_free(struct kref *kref)
-        /* See comment on corresponding get in xs_setup_bc_tcp(): */
-        if (xprt->xpt_bc_xprt)
-                xprt_put(xprt->xpt_bc_xprt);
-+       if (xprt->xpt_bc_xps)
-+               xprt_switch_put(xprt->xpt_bc_xps);
-        xprt->xpt_ops->xpo_free(xprt);
-        module_put(owner);
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 9752beb..34b38fc 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -1238,12 +1238,12 @@ static bool unhash_lock_stateid(struct nfs4_ol_stateid *stp)
+ 
+ static void release_lock_stateid(struct nfs4_ol_stateid *stp)
+ {
+-	struct nfs4_openowner *oo = openowner(stp->st_openstp->st_stateowner);
++	struct nfs4_client *clp = stp->st_stid.sc_client;
+ 	bool unhashed;
+ 
+-	spin_lock(&oo->oo_owner.so_client->cl_lock);
++	spin_lock(&clp->cl_lock);
+ 	unhashed = unhash_lock_stateid(stp);
+-	spin_unlock(&oo->oo_owner.so_client->cl_lock);
++	spin_unlock(&clp->cl_lock);
+ 	if (unhashed)
+ 		nfs4_put_stid(&stp->st_stid);
  }
-
-svc_xprt_free() is invoked by svc_xprt_put(). svc_xprt_put() is called
-from svc_rdma in soft IRQ context (eg. svc_rdma_wc_receive).
-
-However, xprt_switch_put() takes a spin lock (xps_lock) which is locked
-everywhere without disabling BHs.
-
-It looks to me like 39a9beab5acb makes svc_xprt_put() no longer BH-safe?
-Not sure if svc_xprt_put() was intended to be BH-safe beforehand.
-
-Maybe xprt_switch_put() could be invoked in ->xpo_free, but that seems
-like a temporary solution.
-
-
---
-Chuck Lever
-
-
 
