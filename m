@@ -1,101 +1,78 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:29359 "EHLO
-        aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1752313AbcJ2COT (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 28 Oct 2016 22:14:19 -0400
+Received: from mail-it0-f66.google.com ([209.85.214.66]:33641 "EHLO
+        mail-it0-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1752313AbcJ2CWg (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 28 Oct 2016 22:22:36 -0400
+Received: by mail-it0-f66.google.com with SMTP id e187so474746itc.0
+        for <linux-nfs@vger.kernel.org>; Fri, 28 Oct 2016 19:22:35 -0700 (PDT)
+Subject: [PATCH] svcrdma: backchannel cannot share a page for send and rcv
+ buffers
 From: Chuck Lever <chuck.lever@oracle.com>
-Content-Type: text/plain; charset=us-ascii
-Subject: general protection fault in release_lock_stateid
-Date: Fri, 28 Oct 2016 22:14:13 -0400
-Message-Id: <17B7F931-8BD0-422B-B4B5-68C6940C838D@oracle.com>
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-To: Jeff Layton <jlayton@redhat.com>
-Mime-Version: 1.0 (Mac OS X Mail 9.3 \(3124\))
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org, jlayton@redhat.com
+Date: Fri, 28 Oct 2016 22:22:33 -0400
+Message-ID: <20161029021531.2673.6849.stgit@klimt.1015granger.net>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Jeff-
+The underlying transport releases the page pointed to by rq_buffer
+during xprt_rdma_bc_send_request. When the backchannel reply arrives,
+rq_rbuffer then points to freed memory.
 
-When I push NFSv4.1 / RDMA hard, (xfstests generic/089, for example),
-I get this crash on the server:
+Fixes: 68778945e46f ('SUNRPC: Separate buffer pointers for RPC ...')
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Cc: Jeff Layton <jlayton@redhat.com>
+---
+ net/sunrpc/xprtrdma/svc_rdma_backchannel.c |   13 ++++++++++---
+ 1 file changed, 10 insertions(+), 3 deletions(-)
 
-Oct 28 22:04:30 klimt kernel: general protection fault: 0000 [#1] SMP DEBUG_PAGEALLOC
-Oct 28 22:04:30 klimt kernel: Modules linked in: cts rpcsec_gss_krb5 iTCO_wdt iTCO_vendor_support sb_edac edac_core x86_pkg_temp_thermal intel_powerclamp coretemp kvm_intel kvm btrfs irqbypass crct10dif_pclmul crc32_pclmul ghash_clmulni_intel aesni_intel lrw gf128mul glue_helper ablk_helper cryptd xor pcspkr raid6_pq i2c_i801 i2c_smbus lpc_ich mfd_core sg mei_me mei ioatdma shpchp wmi ipmi_si ipmi_msghandler rpcrdma ib_ipoib rdma_ucm acpi_power_meter acpi_pad ib_ucm ib_uverbs ib_umad rdma_cm ib_cm iw_cm nfsd auth_rpcgss nfs_acl lockd grace sunrpc ip_tables xfs libcrc32c mlx4_ib mlx4_en ib_core sr_mod cdrom sd_mod ast drm_kms_helper syscopyarea sysfillrect sysimgblt fb_sys_fops ttm drm crc32c_intel igb ahci libahci ptp mlx4_core pps_core dca libata i2c_algo_bit i2c_core dm_mirror dm_region_hash dm_log dm_mod
-Oct 28 22:04:30 klimt kernel: CPU: 7 PID: 1558 Comm: nfsd Not tainted 4.9.0-rc2-00005-g82cd754 #8
-Oct 28 22:04:30 klimt kernel: Hardware name: Supermicro Super Server/X10SRL-F, BIOS 1.0c 09/09/2015
-Oct 28 22:04:30 klimt kernel: task: ffff880835c3a100 task.stack: ffff8808420d8000
-Oct 28 22:04:30 klimt kernel: RIP: 0010:[<ffffffffa05a759f>]  [<ffffffffa05a759f>] release_lock_stateid+0x1f/0x60 [nfsd]
-Oct 28 22:04:30 klimt kernel: RSP: 0018:ffff8808420dbce0  EFLAGS: 00010246
-Oct 28 22:04:30 klimt kernel: RAX: ffff88084e6660f0 RBX: ffff88084e667020 RCX: 0000000000000000
-Oct 28 22:04:30 klimt kernel: RDX: 0000000000000007 RSI: 0000000000000000 RDI: ffff88084e667020
-Oct 28 22:04:30 klimt kernel: RBP: ffff8808420dbcf8 R08: 0000000000000001 R09: 0000000000000000
-Oct 28 22:04:30 klimt kernel: R10: ffff880835c3a100 R11: ffff880835c3aca8 R12: 6b6b6b6b6b6b6b6b
-Oct 28 22:04:30 klimt kernel: R13: ffff88084e6670d8 R14: ffff880835f546f0 R15: ffff880835f1c548
-Oct 28 22:04:30 klimt kernel: FS:  0000000000000000(0000) GS:ffff88087bdc0000(0000) knlGS:0000000000000000
-Oct 28 22:04:30 klimt kernel: CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
-Oct 28 22:04:30 klimt kernel: CR2: 00007ff020389000 CR3: 0000000001c06000 CR4: 00000000001406e0
-Oct 28 22:04:30 klimt kernel: Stack:
-Oct 28 22:04:30 klimt kernel: ffff88084e667020 0000000000000000 ffff88084e6670d8 ffff8808420dbd20
-Oct 28 22:04:30 klimt kernel: ffffffffa05ac80d ffff880835f54548 ffff88084e640008 ffff880835f545b0
-Oct 28 22:04:30 klimt kernel: ffff8808420dbd70 ffffffffa059803d ffff880835f1c768 0000000000000870
-Oct 28 22:04:30 klimt kernel: Call Trace:
-Oct 28 22:04:30 klimt kernel: [<ffffffffa05ac80d>] nfsd4_free_stateid+0xfd/0x1b0 [nfsd]
-Oct 28 22:04:30 klimt kernel: [<ffffffffa059803d>] nfsd4_proc_compound+0x40d/0x690 [nfsd]
-Oct 28 22:04:30 klimt kernel: [<ffffffffa0583114>] nfsd_dispatch+0xd4/0x1d0 [nfsd]
-Oct 28 22:04:30 klimt kernel: [<ffffffffa047bbf9>] svc_process_common+0x3d9/0x700 [sunrpc]
-Oct 28 22:04:30 klimt kernel: [<ffffffffa047ca64>] svc_process+0xf4/0x330 [sunrpc]
-Oct 28 22:04:30 klimt kernel: [<ffffffffa05827ca>] nfsd+0xfa/0x160 [nfsd]
-Oct 28 22:04:30 klimt kernel: [<ffffffffa05826d0>] ? nfsd_destroy+0x170/0x170 [nfsd]
-Oct 28 22:04:30 klimt kernel: [<ffffffff810b367b>] kthread+0x10b/0x120
-Oct 28 22:04:30 klimt kernel: [<ffffffff810b3570>] ? kthread_stop+0x280/0x280
-Oct 28 22:04:30 klimt kernel: [<ffffffff8174e8ba>] ret_from_fork+0x2a/0x40
-Oct 28 22:04:30 klimt kernel: Code: c3 66 66 2e 0f 1f 84 00 00 00 00 00 0f 1f 44 00 00 55 48 89 e5 41 55 41 54 53 48 8b 87 b0 00 00 00 48 89 fb 4c 8b a0 98 00 00 00 <49> 8b 44 24 20 48 8d b8 80 03 00 00 e8 10 66 1a e1 48 89 df e8 
-Oct 28 22:04:30 klimt kernel: RIP  [<ffffffffa05a759f>] release_lock_stateid+0x1f/0x60 [nfsd]
-Oct 28 22:04:30 klimt kernel: RSP <ffff8808420dbce0>
-Oct 28 22:04:30 klimt kernel: ---[ end trace cf5d0b371973e167 ]---
+Hi Bruce-
 
-[cel@klimt nfsd]$ gdb nfsd.ko 
-GNU gdb (GDB) Red Hat Enterprise Linux 7.6.1-80.el7
-Copyright (C) 2013 Free Software Foundation, Inc.
-License GPLv3+: GNU GPL version 3 or later <http://gnu.org/licenses/gpl.html>
-This is free software: you are free to change and redistribute it.
-There is NO WARRANTY, to the extent permitted by law.  Type "show copying"
-and "show warranty" for details.
-This GDB was configured as "x86_64-redhat-linux-gnu".
-For bug reporting instructions, please see:
-<http://www.gnu.org/software/gdb/bugs/>...
-Reading symbols from /usr/lib/modules/4.9.0-rc2-00005-g82cd754/kernel/fs/nfsd/nfsd.ko...done.
-(gdb) list *(release_lock_stateid+0x1f)
-0x265cf is in release_lock_stateid (/home/cel/src/linux/linux-2.6/include/linux/spinlock.h:302).
-297		raw_spin_lock_init(&(_lock)->rlock);		\
-298	} while (0)
-299	
-300	static __always_inline void spin_lock(spinlock_t *lock)
-301	{
-302		raw_spin_lock(&lock->rlock);
-303	}
-304	
-305	static __always_inline void spin_lock_bh(spinlock_t *lock)
-306	{
-(gdb)
+This applies on top of Jeff's recent patch in the same area. It's
+an obvious quick fix rather than a deep review of that code path.
 
-1239 static void release_lock_stateid(struct nfs4_ol_stateid *stp)
-1240 {
-1241         struct nfs4_openowner *oo = openowner(stp->st_openstp->st_stateowner);
-1242         bool unhashed;
-1243 
-1244         spin_lock(&oo->oo_owner.so_client->cl_lock);
-1245         unhashed = unhash_lock_stateid(stp);
-1246         spin_unlock(&oo->oo_owner.so_client->cl_lock);
-1247         if (unhashed)
-1248                 nfs4_put_stid(&stp->st_stid);
-1249 }
+I've tested with iozone, git "make test", and some xfstests with
+NFSv4.1 / RDMA; I ran into another crasher that is preventing more
+extensive testing. The prepare_creds crash has not re-appeared so
+far.
 
-This is the new code we added to deal with the race between FREE_STATEID and LOCK.
+I enabled RPC client debugging on the server during these tests to
+confirm that the CB_RECALL operations were successful.
 
-
---
-Chuck Lever
-
-
+diff --git a/net/sunrpc/xprtrdma/svc_rdma_backchannel.c b/net/sunrpc/xprtrdma/svc_rdma_backchannel.c
+index fc4535e..20027f8 100644
+--- a/net/sunrpc/xprtrdma/svc_rdma_backchannel.c
++++ b/net/sunrpc/xprtrdma/svc_rdma_backchannel.c
+@@ -177,19 +177,26 @@ static int svc_rdma_bc_sendto(struct svcxprt_rdma *rdma,
+ 		return -EINVAL;
+ 	}
+ 
++	/* svc_rdma_sendto releases this page */
+ 	page = alloc_page(RPCRDMA_DEF_GFP);
+ 	if (!page)
+ 		return -ENOMEM;
+-
+ 	rqst->rq_buffer = page_address(page);
+-	rqst->rq_rbuffer = (char *)rqst->rq_buffer + rqst->rq_callsize;
++
++	rqst->rq_rbuffer = kmalloc(rqst->rq_rcvsize, RPCRDMA_DEF_GFP);
++	if (!rqst->rq_rbuffer) {
++		put_page(page);
++		return -ENOMEM;
++	}
+ 	return 0;
+ }
+ 
+ static void
+ xprt_rdma_bc_free(struct rpc_task *task)
+ {
+-	/* No-op: ctxt and page have already been freed. */
++	struct rpc_rqst *rqst = task->tk_rqstp;
++
++	kfree(rqst->rq_rbuffer);
+ }
+ 
+ static int
 
