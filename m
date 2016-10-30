@@ -1,168 +1,123 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:38008 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1755628AbcJ2WVA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Sat, 29 Oct 2016 18:21:00 -0400
-From: Andreas Gruenbacher <agruenba@redhat.com>
-To: linux-nfs@vger.kernel.org
-Cc: Andreas Gruenbacher <agruenba@redhat.com>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        Anna Schumaker <schumakeranna@gmail.com>,
-        "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 2/2] nfsd: add support for the umask attribute
-Date: Sun, 30 Oct 2016 00:20:52 +0200
-Message-Id: <1477779652-29859-3-git-send-email-agruenba@redhat.com>
-In-Reply-To: <1477779652-29859-1-git-send-email-agruenba@redhat.com>
-References: <1477779652-29859-1-git-send-email-agruenba@redhat.com>
-References: <1477686228-12158-1-git-send-email-bfields@redhat.com>
+Received: from mail-qk0-f170.google.com ([209.85.220.170]:36345 "EHLO
+        mail-qk0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1754496AbcJ3CaX (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sat, 29 Oct 2016 22:30:23 -0400
+Received: by mail-qk0-f170.google.com with SMTP id o68so129044645qkf.3
+        for <linux-nfs@vger.kernel.org>; Sat, 29 Oct 2016 19:30:23 -0700 (PDT)
+Message-ID: <1477794618.14127.0.camel@redhat.com>
+Subject: Re: [PATCH v2] nfsd: Fix general protection fault in
+ release_lock_stateid()
+From: Jeff Layton <jlayton@redhat.com>
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: linux-nfs@vger.kernel.org
+Date: Sat, 29 Oct 2016 22:30:18 -0400
+In-Reply-To: <20161029221626.2850.77011.stgit@klimt.1015granger.net>
+References: <20161029221626.2850.77011.stgit@klimt.1015granger.net>
+Content-Type: text/plain; charset="UTF-8"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Clients can set the umask attribute when creating files to cause the
-server to apply it always except when inheriting permissions from the
-parent directory.  That way, the new files will end up with the same
-permissions as files created locally.
+On Sat, 2016-10-29 at 18:19 -0400, Chuck Lever wrote:
+> When I push NFSv4.1 / RDMA hard, (xfstests generic/089, for example),
+> I get this crash on the server:
+> 
+> Oct 28 22:04:30 klimt kernel: general protection fault: 0000 [#1] SMP DEBUG_PAGEALLOC
+> Oct 28 22:04:30 klimt kernel: Modules linked in: cts rpcsec_gss_krb5 iTCO_wdt iTCO_vendor_support sb_edac edac_core x86_pkg_temp_thermal intel_powerclamp coretemp kvm_intel kvm btrfs irqbypass crct10dif_pclmul crc32_pclmul ghash_clmulni_intel aesni_intel lrw gf128mul glue_helper ablk_helper cryptd xor pcspkr raid6_pq i2c_i801 i2c_smbus lpc_ich mfd_core sg mei_me mei ioatdma shpchp wmi ipmi_si ipmi_msghandler rpcrdma ib_ipoib rdma_ucm acpi_power_meter acpi_pad ib_ucm ib_uverbs ib_umad rdma_cm ib_cm iw_cm nfsd auth_rpcgss nfs_acl lockd grace sunrpc ip_tables xfs libcrc32c mlx4_ib mlx4_en ib_core sr_mod cdrom sd_mod ast drm_kms_helper syscopyarea sysfillrect sysimgblt fb_sys_fops ttm drm crc32c_intel igb ahci libahci ptp mlx4_core pps_core dca libata i2c_algo_bit i2c_core dm_mirror dm_region_hash dm_log dm_mod
+> Oct 28 22:04:30 klimt kernel: CPU: 7 PID: 1558 Comm: nfsd Not tainted 4.9.0-rc2-00005-g82cd754 #8
+> Oct 28 22:04:30 klimt kernel: Hardware name: Supermicro Super Server/X10SRL-F, BIOS 1.0c 09/09/2015
+> Oct 28 22:04:30 klimt kernel: task: ffff880835c3a100 task.stack: ffff8808420d8000
+> Oct 28 22:04:30 klimt kernel: RIP: 0010:[<ffffffffa05a759f>]  [<ffffffffa05a759f>] release_lock_stateid+0x1f/0x60 [nfsd]
+> Oct 28 22:04:30 klimt kernel: RSP: 0018:ffff8808420dbce0  EFLAGS: 00010246
+> Oct 28 22:04:30 klimt kernel: RAX: ffff88084e6660f0 RBX: ffff88084e667020 RCX: 0000000000000000
+> Oct 28 22:04:30 klimt kernel: RDX: 0000000000000007 RSI: 0000000000000000 RDI: ffff88084e667020
+> Oct 28 22:04:30 klimt kernel: RBP: ffff8808420dbcf8 R08: 0000000000000001 R09: 0000000000000000
+> Oct 28 22:04:30 klimt kernel: R10: ffff880835c3a100 R11: ffff880835c3aca8 R12: 6b6b6b6b6b6b6b6b
+> Oct 28 22:04:30 klimt kernel: R13: ffff88084e6670d8 R14: ffff880835f546f0 R15: ffff880835f1c548
+> Oct 28 22:04:30 klimt kernel: FS:  0000000000000000(0000) GS:ffff88087bdc0000(0000) knlGS:0000000000000000
+> Oct 28 22:04:30 klimt kernel: CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
+> Oct 28 22:04:30 klimt kernel: CR2: 00007ff020389000 CR3: 0000000001c06000 CR4: 00000000001406e0
+> Oct 28 22:04:30 klimt kernel: Stack:
+> Oct 28 22:04:30 klimt kernel: ffff88084e667020 0000000000000000 ffff88084e6670d8 ffff8808420dbd20
+> Oct 28 22:04:30 klimt kernel: ffffffffa05ac80d ffff880835f54548 ffff88084e640008 ffff880835f545b0
+> Oct 28 22:04:30 klimt kernel: ffff8808420dbd70 ffffffffa059803d ffff880835f1c768 0000000000000870
+> Oct 28 22:04:30 klimt kernel: Call Trace:
+> Oct 28 22:04:30 klimt kernel: [<ffffffffa05ac80d>] nfsd4_free_stateid+0xfd/0x1b0 [nfsd]
+> Oct 28 22:04:30 klimt kernel: [<ffffffffa059803d>] nfsd4_proc_compound+0x40d/0x690 [nfsd]
+> Oct 28 22:04:30 klimt kernel: [<ffffffffa0583114>] nfsd_dispatch+0xd4/0x1d0 [nfsd]
+> Oct 28 22:04:30 klimt kernel: [<ffffffffa047bbf9>] svc_process_common+0x3d9/0x700 [sunrpc]
+> Oct 28 22:04:30 klimt kernel: [<ffffffffa047ca64>] svc_process+0xf4/0x330 [sunrpc]
+> Oct 28 22:04:30 klimt kernel: [<ffffffffa05827ca>] nfsd+0xfa/0x160 [nfsd]
+> Oct 28 22:04:30 klimt kernel: [<ffffffffa05826d0>] ? nfsd_destroy+0x170/0x170 [nfsd]
+> Oct 28 22:04:30 klimt kernel: [<ffffffff810b367b>] kthread+0x10b/0x120
+> Oct 28 22:04:30 klimt kernel: [<ffffffff810b3570>] ? kthread_stop+0x280/0x280
+> Oct 28 22:04:30 klimt kernel: [<ffffffff8174e8ba>] ret_from_fork+0x2a/0x40
+> Oct 28 22:04:30 klimt kernel: Code: c3 66 66 2e 0f 1f 84 00 00 00 00 00 0f 1f 44 00 00 55 48 89 e5 41 55 41 54 53 48 8b 87 b0 00 00 00 48 89 fb 4c 8b a0 98 00 00 00 <49> 8b 44 24 20 48 8d b8 80 03 00 00 e8 10 66 1a e1 48 89 df e8
+> Oct 28 22:04:30 klimt kernel: RIP  [<ffffffffa05a759f>] release_lock_stateid+0x1f/0x60 [nfsd]
+> Oct 28 22:04:30 klimt kernel: RSP <ffff8808420dbce0>
+> Oct 28 22:04:30 klimt kernel: ---[ end trace cf5d0b371973e167 ]---
+> 
+> Jeff Layton says:
+> > Hm...now that I look though, this is a little suspicious:
+> > 
+> >    struct nfs4_openowner *oo = openowner(stp->st_openstp->st_stateowner);
+> > 
+> > I wonder if it's possible for the openstateid to have already been
+> > destroyed at this point.
+> > 
+> > We might be better off doing something like this to get the client pointer:
+> > 
+> >    stp->st_stid.sc_client;
+> > 
+> > ...which should be more direct and less dependent on other stateids
+> > staying valid.
+> 
+> With the suggested change, I am no longer able to reproduce the above oops.
+> 
+> v2: Fix unhash_lock_stateid() as well
+> 
+> Fix-suggested-by: Jeff Layton <jlayton@redhat.com>
+> Fixes: 42691398be08 ('nfsd: Fix race between FREE_STATEID and LOCK')
+> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+> ---
+>  fs/nfsd/nfs4state.c |   10 ++++------
+>  1 file changed, 4 insertions(+), 6 deletions(-)
+> 
+> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+> index 9752beb..ea930ca 100644
+> --- a/fs/nfsd/nfs4state.c
+> +++ b/fs/nfsd/nfs4state.c
+> @@ -1227,9 +1227,7 @@ static void put_ol_stateid_locked(struct nfs4_ol_stateid *stp,
+>  
+>  static bool unhash_lock_stateid(struct nfs4_ol_stateid *stp)
+>  {
+> -	struct nfs4_openowner *oo = openowner(stp->st_openstp->st_stateowner);
+> -
+> -	lockdep_assert_held(&oo->oo_owner.so_client->cl_lock);
+> +	lockdep_assert_held(&stp->st_stid.sc_client->cl_lock);
+>  
+>  	list_del_init(&stp->st_locks);
+>  	nfs4_unhash_stid(&stp->st_stid);
+> @@ -1238,12 +1236,12 @@ static bool unhash_lock_stateid(struct nfs4_ol_stateid *stp)
+>  
+>  static void release_lock_stateid(struct nfs4_ol_stateid *stp)
+>  {
+> -	struct nfs4_openowner *oo = openowner(stp->st_openstp->st_stateowner);
+> +	struct nfs4_client *clp = stp->st_stid.sc_client;
+>  	bool unhashed;
+>  
+> -	spin_lock(&oo->oo_owner.so_client->cl_lock);
+> +	spin_lock(&clp->cl_lock);
+>  	unhashed = unhash_lock_stateid(stp);
+> -	spin_unlock(&oo->oo_owner.so_client->cl_lock);
+> +	spin_unlock(&clp->cl_lock);
+>  	if (unhashed)
+>  		nfs4_put_stid(&stp->st_stid);
+>  }
+> 
+> 
 
-See https://tools.ietf.org/html/draft-ietf-nfsv4-umask-02 for more
-details.
+Looks good!
 
-Signed-off-by: Andreas Gruenbacher <agruenba@redhat.com>
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- fs/nfsd/nfs4xdr.c | 26 +++++++++++++++++++++-----
- fs/nfsd/nfsd.h    |  9 +++++++--
- fs/nfsd/nfssvc.c  |  4 ++--
- 3 files changed, 30 insertions(+), 9 deletions(-)
-
-diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index c2d2895..26779cf 100644
---- a/fs/nfsd/nfs4xdr.c
-+++ b/fs/nfsd/nfs4xdr.c
-@@ -33,6 +33,7 @@
-  *  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-  */
- 
-+#include <linux/fs_struct.h>
- #include <linux/file.h>
- #include <linux/slab.h>
- #include <linux/namei.h>
-@@ -285,7 +286,7 @@ nfsd4_decode_bitmap(struct nfsd4_compoundargs *argp, u32 *bmval)
- static __be32
- nfsd4_decode_fattr(struct nfsd4_compoundargs *argp, u32 *bmval,
- 		   struct iattr *iattr, struct nfs4_acl **acl,
--		   struct xdr_netobj *label)
-+		   struct xdr_netobj *label, int *umask)
- {
- 	int expected_len, len = 0;
- 	u32 dummy32;
-@@ -435,6 +436,17 @@ nfsd4_decode_fattr(struct nfsd4_compoundargs *argp, u32 *bmval,
- 			return nfserr_jukebox;
- 	}
- #endif
-+	if (bmval[2] & FATTR4_WORD2_MODE_UMASK) {
-+		if (!umask)
-+			goto xdr_error;
-+		READ_BUF(8);
-+		len += 8;
-+		dummy32 = be32_to_cpup(p++);
-+		iattr->ia_mode = dummy32 & (S_IFMT | S_IALLUGO);
-+		dummy32 = be32_to_cpup(p++);
-+		*umask = dummy32 & S_IRWXUGO;
-+		iattr->ia_valid |= ATTR_MODE;
-+	}
- 
- 	if (bmval[0] & ~NFSD_WRITEABLE_ATTRS_WORD0
- 	    || bmval[1] & ~NFSD_WRITEABLE_ATTRS_WORD1
-@@ -634,7 +646,8 @@ nfsd4_decode_create(struct nfsd4_compoundargs *argp, struct nfsd4_create *create
- 		return status;
- 
- 	status = nfsd4_decode_fattr(argp, create->cr_bmval, &create->cr_iattr,
--				    &create->cr_acl, &create->cr_label);
-+				    &create->cr_acl, &create->cr_label,
-+				    &current->fs->umask);
- 	if (status)
- 		goto out;
- 
-@@ -879,13 +892,15 @@ nfsd4_decode_open(struct nfsd4_compoundargs *argp, struct nfsd4_open *open)
- 	case NFS4_OPEN_NOCREATE:
- 		break;
- 	case NFS4_OPEN_CREATE:
-+		current->fs->umask = 0;
- 		READ_BUF(4);
- 		open->op_createmode = be32_to_cpup(p++);
- 		switch (open->op_createmode) {
- 		case NFS4_CREATE_UNCHECKED:
- 		case NFS4_CREATE_GUARDED:
- 			status = nfsd4_decode_fattr(argp, open->op_bmval,
--				&open->op_iattr, &open->op_acl, &open->op_label);
-+				&open->op_iattr, &open->op_acl, &open->op_label,
-+				&current->fs->umask);
- 			if (status)
- 				goto out;
- 			break;
-@@ -899,7 +914,8 @@ nfsd4_decode_open(struct nfsd4_compoundargs *argp, struct nfsd4_open *open)
- 			READ_BUF(NFS4_VERIFIER_SIZE);
- 			COPYMEM(open->op_verf.data, NFS4_VERIFIER_SIZE);
- 			status = nfsd4_decode_fattr(argp, open->op_bmval,
--				&open->op_iattr, &open->op_acl, &open->op_label);
-+				&open->op_iattr, &open->op_acl, &open->op_label,
-+				&current->fs->umask);
- 			if (status)
- 				goto out;
- 			break;
-@@ -1136,7 +1152,7 @@ nfsd4_decode_setattr(struct nfsd4_compoundargs *argp, struct nfsd4_setattr *seta
- 	if (status)
- 		return status;
- 	return nfsd4_decode_fattr(argp, setattr->sa_bmval, &setattr->sa_iattr,
--				  &setattr->sa_acl, &setattr->sa_label);
-+				  &setattr->sa_acl, &setattr->sa_label, NULL);
- }
- 
- static __be32
-diff --git a/fs/nfsd/nfsd.h b/fs/nfsd/nfsd.h
-index 9446849..f29b8d4 100644
---- a/fs/nfsd/nfsd.h
-+++ b/fs/nfsd/nfsd.h
-@@ -359,6 +359,7 @@ void		nfsd_lockd_shutdown(void);
- 
- #define NFSD4_2_SUPPORTED_ATTRS_WORD2 \
- 	(NFSD4_1_SUPPORTED_ATTRS_WORD2 | \
-+	FATTR4_WORD2_MODE_UMASK | \
- 	NFSD4_2_SECURITY_ATTRS)
- 
- static inline u32 nfsd_suppattrs0(u32 minorversion)
-@@ -393,10 +394,14 @@ static inline u32 nfsd_suppattrs2(u32 minorversion)
- 	(FATTR4_WORD1_MODE | FATTR4_WORD1_OWNER | FATTR4_WORD1_OWNER_GROUP \
- 	| FATTR4_WORD1_TIME_ACCESS_SET | FATTR4_WORD1_TIME_MODIFY_SET)
- #ifdef CONFIG_NFSD_V4_SECURITY_LABEL
--#define NFSD_WRITEABLE_ATTRS_WORD2 FATTR4_WORD2_SECURITY_LABEL
-+#define MAYBE_FATTR4_WORD2_SECURITY_LABEL \
-+	FATTR4_WORD2_SECURITY_LABEL
- #else
--#define NFSD_WRITEABLE_ATTRS_WORD2 0
-+#define MAYBE_FATTR4_WORD2_SECURITY_LABEL 0
- #endif
-+#define NFSD_WRITEABLE_ATTRS_WORD2 \
-+	(FATTR4_WORD2_MODE_UMASK \
-+	| MAYBE_FATTR4_WORD2_SECURITY_LABEL)
- 
- #define NFSD_SUPPATTR_EXCLCREAT_WORD0 \
- 	NFSD_WRITEABLE_ATTRS_WORD0
-diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
-index a2b65fc..e6bfd96 100644
---- a/fs/nfsd/nfssvc.c
-+++ b/fs/nfsd/nfssvc.c
-@@ -661,8 +661,8 @@ nfsd(void *vrqstp)
- 	mutex_lock(&nfsd_mutex);
- 
- 	/* At this point, the thread shares current->fs
--	 * with the init process. We need to create files with a
--	 * umask of 0 instead of init's umask. */
-+	 * with the init process. We need to create files with the
-+	 * umask as defined by the client instead of init's umask. */
- 	if (unshare_fs_struct() < 0) {
- 		printk("Unable to start nfsd thread: out of memory\n");
- 		goto out;
--- 
-2.7.4
-
+Reviewed-by: Jeff Layton <jlayton@redhat.com>
