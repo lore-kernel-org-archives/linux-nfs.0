@@ -1,95 +1,127 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-pf0-f193.google.com ([209.85.192.193]:36321 "EHLO
-        mail-pf0-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S943932AbcJaPQt (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 31 Oct 2016 11:16:49 -0400
-Message-ID: <1477927006.7065.304.camel@edumazet-glaptop3.roam.corp.google.com>
-Subject: Re: [PATCH net-next] udp: do fwd memory scheduling on dequeue
-From: Eric Dumazet <eric.dumazet@gmail.com>
-To: Paolo Abeni <pabeni@redhat.com>
-Cc: netdev@vger.kernel.org, "David S. Miller" <davem@davemloft.net>,
-        James Morris <jmorris@namei.org>,
+Received: from mx4.wp.pl ([212.77.101.11]:4661 "EHLO mx4.wp.pl"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S943729AbcJaP0A (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 31 Oct 2016 11:26:00 -0400
+Date: Mon, 31 Oct 2016 15:25:50 +0000
+From: Jakub Kicinski <kubakici@wp.pl>
+To: Anna Schumaker <Anna.Schumaker@Netapp.com>
+Cc: Yotam Gigi <yotamg@mellanox.com>, Andy Adamson <andros@Netapp.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "netdev@vger.kernel.org" <netdev@vger.kernel.org>,
         Trond Myklebust <trond.myklebust@primarydata.com>,
-        Alexander Duyck <alexander.duyck@gmail.com>,
-        Daniel Borkmann <daniel@iogearbox.net>,
-        Eric Dumazet <edumazet@google.com>, Tom Herbert <tom@herbertland.com>,
-        Hannes Frederic Sowa <hannes@stressinduktion.org>,
-        linux-nfs@vger.kernel.org
-Date: Mon, 31 Oct 2016 08:16:46 -0700
-In-Reply-To: <1477926132.6655.10.camel@redhat.com>
-References: <95bb1b780be2e35ff04fb9e1e2c41470a0a15582.1477660091.git.pabeni@redhat.com>
-         <1477674975.7065.245.camel@edumazet-glaptop3.roam.corp.google.com>
-         <1477677030.7065.250.camel@edumazet-glaptop3.roam.corp.google.com>
-         <1477729045.5306.11.camel@redhat.com>
-         <1477745013.7065.270.camel@edumazet-glaptop3.roam.corp.google.com>
-         <1477926132.6655.10.camel@redhat.com>
-Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
+        "Yotam Gigi" <yotam.gi@gmail.com>, mlxsw <mlxsw@mellanox.com>
+Subject: Re: nfs NULL-dereferencing in net-next
+Message-ID: <20161031152550.10acb7e0@jkicinski-Precision-T1700>
+In-Reply-To: <DB3PR05MB0764F0409AE75E0172ABFE2EACAA0@DB3PR05MB0764.eurprd05.prod.outlook.com>
+References: <20161017201943.64529739@jkicinski-Precision-T1700>
+        <DB3PR05MB0764DF28BC53A4A4E78A4DD8ACA80@DB3PR05MB0764.eurprd05.prod.outlook.com>
+        <817e43c5-d88d-e616-7074-5715de29d319@Netapp.com>
+        <DB3PR05MB0764B39F6EDF851A8A52EBACACAB0@DB3PR05MB0764.eurprd05.prod.outlook.com>
+        <20161026190840.3d46dad8@jkicinski-Precision-T1700>
+        <0ab5021c-84eb-cb9f-c7f5-4d856fdb0f4b@Netapp.com>
+        <DB3PR05MB0764F0409AE75E0172ABFE2EACAA0@DB3PR05MB0764.eurprd05.prod.outlook.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, 2016-10-31 at 16:02 +0100, Paolo Abeni wrote:
-
+On Thu, 27 Oct 2016 06:50:22 +0000, Yotam Gigi wrote:
+> >-----Original Message-----
+> >From: Anna Schumaker [mailto:Anna.Schumaker@Netapp.com]
+> >Sent: Wednesday, October 26, 2016 9:17 PM
+> >To: Jakub Kicinski <kubakici@wp.pl>
+> >Cc: Yotam Gigi <yotamg@mellanox.com>; Andy Adamson <andros@netapp.com>;
+> >linux-nfs@vger.kernel.org; netdev@vger.kernel.org; Trond Myklebust
+> ><Trond.Myklebust@netapp.com>; Yotam Gigi <yotam.gi@gmail.com>; mlxsw
+> ><mlxsw@mellanox.com>
+> >Subject: Re: nfs NULL-dereferencing in net-next
+> >
+> >On 10/26/2016 02:08 PM, Jakub Kicinski wrote:  
+> >> On Wed, 26 Oct 2016 16:15:24 +0000, Yotam Gigi wrote:  
+> >>>> -----Original Message-----
+> >>>> From: Anna Schumaker [mailto:Anna.Schumaker@Netapp.com]
+> >>>> Sent: Wednesday, October 26, 2016 5:40 PM
+> >>>> To: Yotam Gigi <yotamg@mellanox.com>; Jakub Kicinski <kubakici@wp.pl>;  
+> >Andy  
+> >>>> Adamson <andros@netapp.com>; Anna Schumaker
+> >>>> <Anna.Schumaker@Netapp.com>; linux-nfs@vger.kernel.org
+> >>>> Cc: netdev@vger.kernel.org; Trond Myklebust  
+> ><Trond.Myklebust@netapp.com>;  
+> >>>> Yotam Gigi <yotam.gi@gmail.com>; mlxsw <mlxsw@mellanox.com>
+> >>>> Subject: Re: nfs NULL-dereferencing in net-next
+> >>>>
+> >>>> On 10/25/2016 01:19 PM, Yotam Gigi wrote:  
+> >>>>>  
+> >>>>>> -----Original Message-----
+> >>>>>> From: netdev-owner@vger.kernel.org [mailto:netdev-  
+> >owner@vger.kernel.org]  
+> >>>> On  
+> >>>>>> Behalf Of Jakub Kicinski
+> >>>>>> Sent: Monday, October 17, 2016 10:20 PM
+> >>>>>> To: Andy Adamson <andros@netapp.com>; Anna Schumaker
+> >>>>>> <Anna.Schumaker@Netapp.com>; linux-nfs@vger.kernel.org
+> >>>>>> Cc: netdev@vger.kernel.org; Trond Myklebust  
+> >>>> <Trond.Myklebust@netapp.com>  
+> >>>>>> Subject: nfs NULL-dereferencing in net-next
+> >>>>>>
+> >>>>>> Hi!
+> >>>>>>
+> >>>>>> I'm hitting this reliably on net-next, HEAD at 3f3177bb680f
+> >>>>>> ("fsl/fman: fix error return code in mac_probe()").  
+> >>>>>
+> >>>>>
+> >>>>> I see the same thing. It happens constantly on some of my machines, making  
+> >>>> them  
+> >>>>> completely unusable.
+> >>>>>
+> >>>>> I bisected it and got to the commit:
+> >>>>>
+> >>>>> commit 04ea1b3e6d8ed4978bb608c1748530af3de8c274
+> >>>>> Author: Andy Adamson <andros@netapp.com>
+> >>>>> Date:   Fri Sep 9 09:22:27 2016 -0400
+> >>>>>
+> >>>>>     NFS add xprt switch addrs test to match client
+> >>>>>
+> >>>>>     Signed-off-by: Andy Adamson <andros@netapp.com>
+> >>>>>     Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>  
+> >>>>
+> >>>> Thanks for reporting on this everyone!  Does this patch help?  
+> >>>
+> >>> Actually, I still see the same bug with the same trace.  
+> >
+> >Well, it was worth a shot.  I'll keep poking at it.
+> >  
+> >>
+> >> I rebuild the latest net-next and I'm not seeing the trace any more...
+> >> I'm only seeing this (with or without your patch):
+> >>
+> >> [   23.465877] NFS: set_pnfs_layoutdriver: cl_exchange_flags 0x0
+> >> [   23.473784] NFS: set_pnfs_layoutdriver: cl_exchange_flags 0x0
+> >> [   23.588890] NFS: set_pnfs_layoutdriver: cl_exchange_flags 0x0
+> >> [   23.596746] NFS: set_pnfs_layoutdriver: cl_exchange_flags 0x0
+> >> [   23.781574] NFS: set_pnfs_layoutdriver: cl_exchange_flags 0x0
+> >> [   23.789599] NFS: set_pnfs_layoutdriver: cl_exchange_flags 0x0  
+> >
+> >Interesting, I get that too when I try to use NFS v4.1.  It's weird that the crash would
+> >stop happening like that, so maybe something is racy in this area.
+> >
+> >Thanks for testing, Yotam and Jakub!
+> >Anna  
 > 
-> No problem at all with incremental patches ;-)
+> I just found out that it happens on any of my machines, once I put two nfs entries in
+> my fstab. If I put only one, I don't see the problem. 
 > 
-> In our experiment, touching udp_memory_allocated is only a part of the
-> the source of contention, with the biggest source of contention being
-> the sk_rmem_alloc update - which happens on every dequeue.
-> 
-> We experimented doing fwd alloc of the whole sk_rcvbuf; even in that
-> scenario we hit relevant contention if sk_rmem_alloc update was done
-> under the lock, while full sk_rcvbuf forward allocation and
-> sk_rmem_alloc update outside the spinlock gave very similar performance
-> to our posted patch.
+> I hope it might be helpful :)
 
+Hi Anna,
 
-> I think that the next step (after the double lock on dequeue removal)
-> should be moving sk_rmem_alloc outside the lock: the needed changes for
-> doing that on top of double lock on dequeue removal are very small
-> (would add ~10 lines of code).
-> 
+any updates on this one?  The crash came back half an hour after I
+reported that it was gone...
 
-During my load tests, one of the major factor was sk_drops being
-incremented like crazy, dirtying a critical cache line, hurting
-sk_filter reads for example.
-
-        /* --- cacheline 6 boundary (384 bytes) --- */
-        struct {
-                atomic_t           rmem_alloc;           /* 0x180   0x4 */
-                int                len;                  /* 0x184   0x4 */
-                struct sk_buff *   head;                 /* 0x188   0x8 */
-                struct sk_buff *   tail;                 /* 0x190   0x8 */
-        } sk_backlog;                                    /* 0x180  0x18 */
-        int                        sk_forward_alloc;     /* 0x198   0x4 */
-        __u32                      sk_txhash;            /* 0x19c   0x4 */
-        unsigned int               sk_napi_id;           /* 0x1a0   0x4 */
-        unsigned int               sk_ll_usec;           /* 0x1a4   0x4 */
-        atomic_t                   sk_drops;             /* 0x1a8   0x4 */
-        int                        sk_rcvbuf;            /* 0x1ac   0x4 */
-        struct sk_filter *         sk_filter;            /* 0x1b0   0x8 */
-        union {
-                struct socket_wq * sk_wq;                /*         0x8 */
-                struct socket_wq * sk_wq_raw;            /*         0x8 */
-        };                                               /* 0x1b8   0x8 */
-
-I was playing moving this field elsewhere and not reading it if not
-necessary.
-
-diff --git a/include/net/sock.h b/include/net/sock.h
-index f13ac87a8015cb18c5d3fe5fdcf2d6a0592428f4..a901df591eb45e153517cdb8b409b61563d1a4e3 100644
---- a/include/net/sock.h
-+++ b/include/net/sock.h
-@@ -2112,7 +2112,8 @@ struct sock_skb_cb {
- static inline void
- sock_skb_set_dropcount(const struct sock *sk, struct sk_buff *skb)
- {
--	SOCK_SKB_CB(skb)->dropcount = atomic_read(&sk->sk_drops);
-+	SOCK_SKB_CB(skb)->dropcount = sock_flag(sk, SOCK_RXQ_OVFL) ?
-+					atomic_read(&sk->sk_drops) : 0;
- }
- 
- static inline void sk_drops_add(struct sock *sk, const struct sk_buff *skb)
-
-
-
+Over the weekend David Miller rebased net-next on top of 4.9.0-rc3 and
+the bug is still there :(  FWIW I also have multiple nfs mounts on my
+setup, 2 in fstab and one in a startup script.  Following Yotam I
+dropped one of the fstab entries and things seem to be working (even
+though I still have multiple mounts, the other one just comes a bit
+later).
