@@ -1,74 +1,55 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from us-smtp-delivery-194.mimecast.com ([216.205.24.194]:46810 "EHLO
-        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1756936AbcJaQLI (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 31 Oct 2016 12:11:08 -0400
-From: Trond Myklebust <trondmy@primarydata.com>
-To: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
-CC: Schumaker Anna <anna.schumaker@netapp.com>,
-        List Linux NFS Mailing <linux-nfs@vger.kernel.org>,
-        List Linux Kernel Mailing <linux-kernel@vger.kernel.org>,
-        "tglx@linutronix.de" <tglx@linutronix.de>
-Subject: Re: [PATCH v3] NFSv4: replace seqcount_t with a rw_semaphore
-Date: Mon, 31 Oct 2016 16:11:02 +0000
-Message-ID: <40147FA4-9FD8-4349-B309-751DFCE875A2@primarydata.com>
-References: <20161021164727.24485-1-bigeasy@linutronix.de>
- <20161028210511.k7hrsfxovti7gqtu@linutronix.de>
- <747E2CCB-3D83-40FD-8B31-46AB5A5E8592@primarydata.com>
- <20161031131958.mrrez5t7sow75p6v@linutronix.de>
- <51E3F753-2D1F-4370-BFEB-BD8356D622A1@primarydata.com>
- <20161031155616.fqbqy53bwpanufhn@linutronix.de>
-In-Reply-To: <20161031155616.fqbqy53bwpanufhn@linutronix.de>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+Received: from mail-qt0-f173.google.com ([209.85.216.173]:33186 "EHLO
+        mail-qt0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S944994AbcJaRbL (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 31 Oct 2016 13:31:11 -0400
+Received: by mail-qt0-f173.google.com with SMTP id p16so77740400qta.0
+        for <linux-nfs@vger.kernel.org>; Mon, 31 Oct 2016 10:31:11 -0700 (PDT)
+Subject: Re: [PATCH] NFSv41: fix NULL dereference in nfs40_setup_sequence
+Mime-Version: 1.0 (Mac OS X Mail 8.2 \(2104\))
+Content-Type: text/plain; charset=utf-8
+From: Vitaliy Gusev <gusev.vitaliy@gmail.com>
+In-Reply-To: <5D2E82C6-FBF5-4590-B674-B6C904CBB449@primarydata.com>
+Date: Mon, 31 Oct 2016 20:31:07 +0300
+Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        Schumaker Anna <anna.schumaker@netapp.com>
+Message-Id: <9CC2D174-84E5-4820-B6B7-AC885753AC91@gmail.com>
+References: <0A7143CE-0592-444D-BA53-9CBB33E4373F@gmail.com> <5D2E82C6-FBF5-4590-B674-B6C904CBB449@primarydata.com>
+To: Trond Myklebust <trondmy@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-DQo+IE9uIE9jdCAzMSwgMjAxNiwgYXQgMTE6NTYsIFNlYmFzdGlhbiBBbmRyemVqIFNpZXdpb3Ig
-PGJpZ2Vhc3lAbGludXRyb25peC5kZT4gd3JvdGU6DQo+IA0KPiBPbiAyMDE2LTEwLTMxIDE1OjMw
-OjAyIFsrMDAwMF0sIFRyb25kIE15a2xlYnVzdCB3cm90ZToNCj4+PiBPbiBPY3QgMzEsIDIwMTYs
-IGF0IDA5OjE5LCBTZWJhc3RpYW4gQW5kcnplaiBTaWV3aW9yIDxiaWdlYXN5QGxpbnV0cm9uaXgu
-ZGU+IHdyb3RlOg0KPj4+IFRoZSBsaXN0X2Zvcl9lYWNoX2VudHJ5KCkgaW4gbmZzNF9yZWNsYWlt
-X29wZW5fc3RhdGU6DQo+Pj4gSXQgc2VlbXMgdGhhdCB0aGlzIGxvY2sgcHJvdGVjdHMgdGhlIC0+
-c29fc3RhdGVzIGxpc3QgYW1vbmcgb3RoZXINCj4+PiBhdG9taWNfdCAmIGZsYWdzIG1lbWJlcnMu
-IFNvIGF0IHRoZSBiZWdpbiBvZiB0aGUgbG9vcCB3ZSBpbmMgLT5jb3VudA0KPj4+IGVuc3VyaW5n
-IHRoYXQgdGhpcyBmaWVsZCBpcyBub3QgcmVtb3ZlZCB3aGlsZSB3ZSB1c2UgaXQuIFNvIHdlIGRy
-b3AgdGhlDQo+Pj4gLT5zb19sb2NrIGxvYyBkdXJpbmcgdGhlIGxvb3AgaXQgc2VlbXMuIEFuZCBh
-ZnRlciBuZnM0X3JlY2xhaW1fbG9ja3MoKQ0KPj4+IGludm9jYXRpb24gd2UgbmZzNF9wdXRfb3Bl
-bl9zdGF0ZSgpIGFuZCBncmFiIHRoZSAtPnNvX2xvY2sgYWdhaW4uIFNvIGlmDQo+Pj4gd2Ugd2Vy
-ZSB0aGUgbGFzdCB1c2VyIG9mIHRoaXMgc3RydWN0IGFuZCB3ZSByZW1vdmUgaXQsIHRoZW4gdGhl
-DQo+Pj4gZm9sbG93aW5nIGxpc3RfbmV4dF9lbnRyeSgpIGludm9jYXRpb24gaXMgYSB1c2UtYWZ0
-ZXItZnJlZS4gRXZlbiBpZiB3ZQ0KPj4+IHVzZSBsaXN0X2Zvcl9lYWNoX2VudHJ5X3NhZmUoKSB0
-aGVyZSBpcyBubyBndWFyYW50ZWUgdGhhdCB0aGUgZm9sbG93aW5nDQo+Pj4gbWVtYmVyIGlzIHN0
-aWxsIHZhbGlkIGJlY2F1c2UgaXQgbWlnaHQgaGF2ZSBiZWVuIHJlbW92ZWQgYnkgc29tZW9uZQ0K
-Pj4+IGludm9raW5nIG5mczRfcHV0X29wZW5fc3RhdGUoKSBvbiBpdCwgcmlnaHQ/DQo+Pj4gU28g
-dGhlcmUgaXMgdGhpcy4NCj4+PiANCj4+PiBIb3dldmVyIHRvIGFkZHJlc3MgbXkgaW5pdGlhbCBw
-cm9ibGVtIEkgaGF2ZSBoZXJlIGEgcGF0Y2ggOikgU28gaXQgdXNlcw0KPj4+IGEgcndfc2VtYXBo
-b3JlIHdoaWNoIGVuc3VyZXMgdGhhdCB0aGVyZSBpcyBvbmx5IG9uZSB3cml0ZXIgYXQgYSB0aW1l
-IG9yDQo+Pj4gbXVsdGlwbGUgcmVhZGVyLiBTbyBpdCBzaG91bGQgYmUgYmFzaWNhbGx5IHdoYXQg
-aXMgaGFwcGVuaW5nIG5vdyBwbHVzIGENCj4+PiB0aW55IHRpbnkgdGlueSBsb2NrIHBsdXMgbG9j
-a2RlcCBjb3ZlcmFnZS4gSSB0cmllZCB0byB0aGlzIG15c2VsZiBidXQgSQ0KPj4+IGRvbid0IG1h
-bmFnZSB0byBnZXQgaW50byB0aGlzIGNvZGUgcGF0aCBhdCBhbGwgc28gSSBtaWdodCBiZSBkb2lu
-Zw0KPj4+IHNvbWV0aGluZyB3cm9uZy4NCj4+PiANCj4+PiBDb3VsZCB5b3UgcGxlYXNlIGNoZWNr
-IGlmIHRoaXMgcGF0Y2ggaXMgd29ya2luZyBmb3IgeW91IGFuZCB3aGV0aGVyIG15DQo+Pj4gbGlz
-dF9mb3JfZWFjaF9lbnRyeSgpIG9ic2VydmF0aW9uIGlzIGNvcnJlY3Qgb3Igbm90Pw0KPj4+IA0K
-Pj4+IHYy4oCmdjM6IHJlcGxhY2UgdGhlIHNlcWxvY2sgd2l0aCBhIFJXIHNlbWFwaG9yZS4NCj4+
-PiANCj4+IA0KPj4gTkFDSy4gVGhhdCB3aWxsIGRlYWRsb2NrLiBUaGUgcmVhc29uIHdoeSB3ZSB1
-c2UgYSBzZXFsb2NrIHRoZXJlIGlzIHByZWNpc2VseSBiZWNhdXNlIHdlIGNhbm5vdCBhbGxvdyBv
-cmRpbmFyeSBSUEMgY2FsbHMgdG8gbG9jayBvdXQgdGhlIHJlY292ZXJ5IHRocmVhZC4gDQo+IEht
-bW0uIFNvIHRoaXMgaXMgZ2V0dGluZyBpbnZva2VkIGlmIEkgcmVib290IHRoZSBzZXJ2ZXI/IEEg
-cmVzdGFydCBvZg0KPiBuZnMta2VybmVsLXNlcnZlciBpcyB0aGUgc2FtZSB0aGluZz8NCj4gSXMg
-dGhlIGxpc3RfZm9yX2VhY2hfZW50cnkoKSBvYnNlcnZhdGlvbiBJIG1hZGUgY29ycmVjdD8NCg0K
-WWVzLCBhbmQgeWVzLiBXZSBjYW7igJl0IHJlbHkgb24gdGhlIGxpc3QgcG9pbnRlcnMgcmVtYWlu
-aW5nIGNvcnJlY3QsIHNvIHdlIHJlc3RhcnQgdGhlIGxpc3Qgc2NhbiBhbmQgd2UgdXNlIHRoZSBv
-cHMtPnN0YXRlX2ZsYWdfYml0IHRvIHNpZ25hbCB3aGV0aGVyIG9yIG5vdCBzdGF0ZSBoYXMgYmVl
-biByZWNvdmVyZWQgZm9yIHRoZSBlbnRyeSBiZWluZyBzY2FubmVkLg0KDQo+IA0KPj4gSWYgdGhl
-IHNlcnZlciByZWJvb3RzLCB0aGVuIG9yZGluYXJ5IFJQQyBjYWxscyB3aWxsIGZhaWwgdW50aWwg
-dGhlIHJlY292ZXJ5IHRocmVhZCBoYXMgaGFkIGEgY2hhbmNlIHRvIHJlLWVzdGFibGlzaCB0aGUg
-c3RhdGUuDQo+IA0KPiBUaGlzIG1lYW5zIHRoYXQgdGhlIG9yZGluYXJ5IFJQQyBjYWxsIHdvbid0
-IHJldHVybiBhbmQgZmFpbCBidXQgd2FpdA0KPiB3aXRoIHRoZSBsb2NrIGhlbGQgdW50aWwgdGhl
-IHJlY292ZXJ5IHRocmVhZCBkaWQgaXRzIHRoaW5nPw0KDQpJdCB1c2VzIHRoZSBzZXFjb3VudF90
-IHRvIGZpZ3VyZSBvdXQgaWYgYSByZWNvdmVyeSBvY2N1cnJlZCB3aGlsZSBhbiBPUEVOIG9yIENM
-T1NFIHdhcyBiZWluZyBwcm9jZXNzZWQuIElmIHNvLCBpdCBzY2hlZHVsZXMgYSBuZXcgcmVjb3Zl
-cnkgb2YgdGhlIHN0YXRlaWRzIGluIHF1ZXN0aW9uLg==
+
+> On 31 Oct 2016, at 18:46, Trond Myklebust <trondmy@primarydata.com> =
+wrote:
+>=20
+>=20
+>> On Oct 30, 2016, at 21:18, Vitaliy Gusev <gusev.vitaliy@gmail.com> =
+wrote:
+>>=20
+>> Hi.
+>>=20
+>> During some tests I=E2=80=99ve seen nfs-client crashes. It was just =
+reading file via NFSv4.1 protocol.=20
+>>=20
+>> The panic message is below,  fixing patch is attached.
+>=20
+> Why does this need to be fixed on the client? It looks like a server =
+bug=E2=80=A6 In any case, the fix you propose is going to leave the =
+client with broken open state.
+
+Do you like to get crash every time a remote side sends improper datas? =
+I believe not.
+
+I proposed just ignore the flag OPEN4_RESULT_CONFIRM  for nfs4.1+ =
+clients.
+RFC5661 has description that allows a client to do that:
+
+   o  OPEN4_RESULT_CONFIRM is deprecated and MUST NOT be returned by an
+       NFSv4.1 server.
+
+=E2=80=94=E2=80=94=E2=80=94
+
+Thanks,
+Vitaliy Gusev
 
