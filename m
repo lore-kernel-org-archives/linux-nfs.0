@@ -1,127 +1,67 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx4.wp.pl ([212.77.101.11]:4661 "EHLO mx4.wp.pl"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S943729AbcJaP0A (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 31 Oct 2016 11:26:00 -0400
-Date: Mon, 31 Oct 2016 15:25:50 +0000
-From: Jakub Kicinski <kubakici@wp.pl>
-To: Anna Schumaker <Anna.Schumaker@Netapp.com>
-Cc: Yotam Gigi <yotamg@mellanox.com>, Andy Adamson <andros@Netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "netdev@vger.kernel.org" <netdev@vger.kernel.org>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        "Yotam Gigi" <yotam.gi@gmail.com>, mlxsw <mlxsw@mellanox.com>
-Subject: Re: nfs NULL-dereferencing in net-next
-Message-ID: <20161031152550.10acb7e0@jkicinski-Precision-T1700>
-In-Reply-To: <DB3PR05MB0764F0409AE75E0172ABFE2EACAA0@DB3PR05MB0764.eurprd05.prod.outlook.com>
-References: <20161017201943.64529739@jkicinski-Precision-T1700>
-        <DB3PR05MB0764DF28BC53A4A4E78A4DD8ACA80@DB3PR05MB0764.eurprd05.prod.outlook.com>
-        <817e43c5-d88d-e616-7074-5715de29d319@Netapp.com>
-        <DB3PR05MB0764B39F6EDF851A8A52EBACACAB0@DB3PR05MB0764.eurprd05.prod.outlook.com>
-        <20161026190840.3d46dad8@jkicinski-Precision-T1700>
-        <0ab5021c-84eb-cb9f-c7f5-4d856fdb0f4b@Netapp.com>
-        <DB3PR05MB0764F0409AE75E0172ABFE2EACAA0@DB3PR05MB0764.eurprd05.prod.outlook.com>
+Received: from us-smtp-delivery-194.mimecast.com ([63.128.21.194]:33913 "EHLO
+        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S944068AbcJaPaM (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 31 Oct 2016 11:30:12 -0400
+From: Trond Myklebust <trondmy@primarydata.com>
+To: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
+CC: Schumaker Anna <anna.schumaker@netapp.com>,
+        List Linux NFS Mailing <linux-nfs@vger.kernel.org>,
+        List Linux Kernel Mailing <linux-kernel@vger.kernel.org>,
+        "tglx@linutronix.de" <tglx@linutronix.de>
+Subject: Re: [PATCH v3] NFSv4: replace seqcount_t with a rw_semaphore
+Date: Mon, 31 Oct 2016 15:30:02 +0000
+Message-ID: <51E3F753-2D1F-4370-BFEB-BD8356D622A1@primarydata.com>
+References: <20161021164727.24485-1-bigeasy@linutronix.de>
+ <20161028210511.k7hrsfxovti7gqtu@linutronix.de>
+ <747E2CCB-3D83-40FD-8B31-46AB5A5E8592@primarydata.com>
+ <20161031131958.mrrez5t7sow75p6v@linutronix.de>
+In-Reply-To: <20161031131958.mrrez5t7sow75p6v@linutronix.de>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 27 Oct 2016 06:50:22 +0000, Yotam Gigi wrote:
-> >-----Original Message-----
-> >From: Anna Schumaker [mailto:Anna.Schumaker@Netapp.com]
-> >Sent: Wednesday, October 26, 2016 9:17 PM
-> >To: Jakub Kicinski <kubakici@wp.pl>
-> >Cc: Yotam Gigi <yotamg@mellanox.com>; Andy Adamson <andros@netapp.com>;
-> >linux-nfs@vger.kernel.org; netdev@vger.kernel.org; Trond Myklebust
-> ><Trond.Myklebust@netapp.com>; Yotam Gigi <yotam.gi@gmail.com>; mlxsw
-> ><mlxsw@mellanox.com>
-> >Subject: Re: nfs NULL-dereferencing in net-next
-> >
-> >On 10/26/2016 02:08 PM, Jakub Kicinski wrote:  
-> >> On Wed, 26 Oct 2016 16:15:24 +0000, Yotam Gigi wrote:  
-> >>>> -----Original Message-----
-> >>>> From: Anna Schumaker [mailto:Anna.Schumaker@Netapp.com]
-> >>>> Sent: Wednesday, October 26, 2016 5:40 PM
-> >>>> To: Yotam Gigi <yotamg@mellanox.com>; Jakub Kicinski <kubakici@wp.pl>;  
-> >Andy  
-> >>>> Adamson <andros@netapp.com>; Anna Schumaker
-> >>>> <Anna.Schumaker@Netapp.com>; linux-nfs@vger.kernel.org
-> >>>> Cc: netdev@vger.kernel.org; Trond Myklebust  
-> ><Trond.Myklebust@netapp.com>;  
-> >>>> Yotam Gigi <yotam.gi@gmail.com>; mlxsw <mlxsw@mellanox.com>
-> >>>> Subject: Re: nfs NULL-dereferencing in net-next
-> >>>>
-> >>>> On 10/25/2016 01:19 PM, Yotam Gigi wrote:  
-> >>>>>  
-> >>>>>> -----Original Message-----
-> >>>>>> From: netdev-owner@vger.kernel.org [mailto:netdev-  
-> >owner@vger.kernel.org]  
-> >>>> On  
-> >>>>>> Behalf Of Jakub Kicinski
-> >>>>>> Sent: Monday, October 17, 2016 10:20 PM
-> >>>>>> To: Andy Adamson <andros@netapp.com>; Anna Schumaker
-> >>>>>> <Anna.Schumaker@Netapp.com>; linux-nfs@vger.kernel.org
-> >>>>>> Cc: netdev@vger.kernel.org; Trond Myklebust  
-> >>>> <Trond.Myklebust@netapp.com>  
-> >>>>>> Subject: nfs NULL-dereferencing in net-next
-> >>>>>>
-> >>>>>> Hi!
-> >>>>>>
-> >>>>>> I'm hitting this reliably on net-next, HEAD at 3f3177bb680f
-> >>>>>> ("fsl/fman: fix error return code in mac_probe()").  
-> >>>>>
-> >>>>>
-> >>>>> I see the same thing. It happens constantly on some of my machines, making  
-> >>>> them  
-> >>>>> completely unusable.
-> >>>>>
-> >>>>> I bisected it and got to the commit:
-> >>>>>
-> >>>>> commit 04ea1b3e6d8ed4978bb608c1748530af3de8c274
-> >>>>> Author: Andy Adamson <andros@netapp.com>
-> >>>>> Date:   Fri Sep 9 09:22:27 2016 -0400
-> >>>>>
-> >>>>>     NFS add xprt switch addrs test to match client
-> >>>>>
-> >>>>>     Signed-off-by: Andy Adamson <andros@netapp.com>
-> >>>>>     Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>  
-> >>>>
-> >>>> Thanks for reporting on this everyone!  Does this patch help?  
-> >>>
-> >>> Actually, I still see the same bug with the same trace.  
-> >
-> >Well, it was worth a shot.  I'll keep poking at it.
-> >  
-> >>
-> >> I rebuild the latest net-next and I'm not seeing the trace any more...
-> >> I'm only seeing this (with or without your patch):
-> >>
-> >> [   23.465877] NFS: set_pnfs_layoutdriver: cl_exchange_flags 0x0
-> >> [   23.473784] NFS: set_pnfs_layoutdriver: cl_exchange_flags 0x0
-> >> [   23.588890] NFS: set_pnfs_layoutdriver: cl_exchange_flags 0x0
-> >> [   23.596746] NFS: set_pnfs_layoutdriver: cl_exchange_flags 0x0
-> >> [   23.781574] NFS: set_pnfs_layoutdriver: cl_exchange_flags 0x0
-> >> [   23.789599] NFS: set_pnfs_layoutdriver: cl_exchange_flags 0x0  
-> >
-> >Interesting, I get that too when I try to use NFS v4.1.  It's weird that the crash would
-> >stop happening like that, so maybe something is racy in this area.
-> >
-> >Thanks for testing, Yotam and Jakub!
-> >Anna  
-> 
-> I just found out that it happens on any of my machines, once I put two nfs entries in
-> my fstab. If I put only one, I don't see the problem. 
-> 
-> I hope it might be helpful :)
+DQo+IE9uIE9jdCAzMSwgMjAxNiwgYXQgMDk6MTksIFNlYmFzdGlhbiBBbmRyemVqIFNpZXdpb3Ig
+PGJpZ2Vhc3lAbGludXRyb25peC5kZT4gd3JvdGU6DQo+IA0KPiBUaGUgcmF3X3dyaXRlX3NlcWNv
+dW50X2JlZ2luKCkgaW4gbmZzNF9yZWNsYWltX29wZW5fc3RhdGUoKSBidWdzIG1lDQo+IGJlY2F1
+c2UgaXQgbWFwcyB0byBwcmVlbXB0X2Rpc2FibGUoKSBpbiAtUlQgd2hpY2ggSSBjYW4ndCBoYXZl
+IGF0IHRoaXMNCj4gcG9pbnQuIFNvIEkgdG9vayBhIGxvb2sgYXQgdGhlIGNvZGUuDQo+IEl0IHRo
+ZSBsb2NrZGVwIHBhcnQgd2FzIHJlbW92ZWQgaW4gY29tbWl0IGFiYmVjMmRhMTNmMCAoIk5GUzog
+VXNlDQo+IHJhd193cml0ZV9zZXFjb3VudF9iZWdpbi9lbmQgaW50IG5mczRfcmVjbGFpbV9vcGVu
+X3N0YXRlIikgYmVjYXVzZQ0KPiBsb2NrZGVwIGNvbXBsYWluZWQuIFRoZSB3aG9sZSBzZXFjb3Vu
+dCB0aGluZyB3YXMgaW50cm9kdWNlZCBpbiBjb21taXQNCj4gYzEzN2FmYWJlMzMwICgiTkZTdjQ6
+IEFsbG93IHRoZSBzdGF0ZSBtYW5hZ2VyIHRvIG1hcmsgYW4gb3Blbl9vd25lciBhcw0KPiBiZWlu
+ZyByZWNvdmVyZWQiKS4NCj4gVHJvbmQgTXlrbGVidXN0IGNvbmZpcm1zIHRoYXQgdGhlcmUgaSBv
+bmx5IG9uZSB3cml0ZXIgdGhyZWFkIGF0DQo+IG5mczRfcmVjbGFpbV9vcGVuX3N0YXRlKCkNCj4g
+DQo+IFRoZSBsaXN0X2Zvcl9lYWNoX2VudHJ5KCkgaW4gbmZzNF9yZWNsYWltX29wZW5fc3RhdGU6
+DQo+IEl0IHNlZW1zIHRoYXQgdGhpcyBsb2NrIHByb3RlY3RzIHRoZSAtPnNvX3N0YXRlcyBsaXN0
+IGFtb25nIG90aGVyDQo+IGF0b21pY190ICYgZmxhZ3MgbWVtYmVycy4gU28gYXQgdGhlIGJlZ2lu
+IG9mIHRoZSBsb29wIHdlIGluYyAtPmNvdW50DQo+IGVuc3VyaW5nIHRoYXQgdGhpcyBmaWVsZCBp
+cyBub3QgcmVtb3ZlZCB3aGlsZSB3ZSB1c2UgaXQuIFNvIHdlIGRyb3AgdGhlDQo+IC0+c29fbG9j
+ayBsb2MgZHVyaW5nIHRoZSBsb29wIGl0IHNlZW1zLiBBbmQgYWZ0ZXIgbmZzNF9yZWNsYWltX2xv
+Y2tzKCkNCj4gaW52b2NhdGlvbiB3ZSBuZnM0X3B1dF9vcGVuX3N0YXRlKCkgYW5kIGdyYWIgdGhl
+IC0+c29fbG9jayBhZ2Fpbi4gU28gaWYNCj4gd2Ugd2VyZSB0aGUgbGFzdCB1c2VyIG9mIHRoaXMg
+c3RydWN0IGFuZCB3ZSByZW1vdmUgaXQsIHRoZW4gdGhlDQo+IGZvbGxvd2luZyBsaXN0X25leHRf
+ZW50cnkoKSBpbnZvY2F0aW9uIGlzIGEgdXNlLWFmdGVyLWZyZWUuIEV2ZW4gaWYgd2UNCj4gdXNl
+IGxpc3RfZm9yX2VhY2hfZW50cnlfc2FmZSgpIHRoZXJlIGlzIG5vIGd1YXJhbnRlZSB0aGF0IHRo
+ZSBmb2xsb3dpbmcNCj4gbWVtYmVyIGlzIHN0aWxsIHZhbGlkIGJlY2F1c2UgaXQgbWlnaHQgaGF2
+ZSBiZWVuIHJlbW92ZWQgYnkgc29tZW9uZQ0KPiBpbnZva2luZyBuZnM0X3B1dF9vcGVuX3N0YXRl
+KCkgb24gaXQsIHJpZ2h0Pw0KPiBTbyB0aGVyZSBpcyB0aGlzLg0KPiANCj4gSG93ZXZlciB0byBh
+ZGRyZXNzIG15IGluaXRpYWwgcHJvYmxlbSBJIGhhdmUgaGVyZSBhIHBhdGNoIDopIFNvIGl0IHVz
+ZXMNCj4gYSByd19zZW1hcGhvcmUgd2hpY2ggZW5zdXJlcyB0aGF0IHRoZXJlIGlzIG9ubHkgb25l
+IHdyaXRlciBhdCBhIHRpbWUgb3INCj4gbXVsdGlwbGUgcmVhZGVyLiBTbyBpdCBzaG91bGQgYmUg
+YmFzaWNhbGx5IHdoYXQgaXMgaGFwcGVuaW5nIG5vdyBwbHVzIGENCj4gdGlueSB0aW55IHRpbnkg
+bG9jayBwbHVzIGxvY2tkZXAgY292ZXJhZ2UuIEkgdHJpZWQgdG8gdGhpcyBteXNlbGYgYnV0IEkN
+Cj4gZG9uJ3QgbWFuYWdlIHRvIGdldCBpbnRvIHRoaXMgY29kZSBwYXRoIGF0IGFsbCBzbyBJIG1p
+Z2h0IGJlIGRvaW5nDQo+IHNvbWV0aGluZyB3cm9uZy4NCj4gDQo+IENvdWxkIHlvdSBwbGVhc2Ug
+Y2hlY2sgaWYgdGhpcyBwYXRjaCBpcyB3b3JraW5nIGZvciB5b3UgYW5kIHdoZXRoZXIgbXkNCj4g
+bGlzdF9mb3JfZWFjaF9lbnRyeSgpIG9ic2VydmF0aW9uIGlzIGNvcnJlY3Qgb3Igbm90Pw0KPiAN
+Cj4gdjLigKZ2MzogcmVwbGFjZSB0aGUgc2VxbG9jayB3aXRoIGEgUlcgc2VtYXBob3JlLg0KPiAN
+Cg0KTkFDSy4gVGhhdCB3aWxsIGRlYWRsb2NrLiBUaGUgcmVhc29uIHdoeSB3ZSB1c2UgYSBzZXFs
+b2NrIHRoZXJlIGlzIHByZWNpc2VseSBiZWNhdXNlIHdlIGNhbm5vdCBhbGxvdyBvcmRpbmFyeSBS
+UEMgY2FsbHMgdG8gbG9jayBvdXQgdGhlIHJlY292ZXJ5IHRocmVhZC4gSWYgdGhlIHNlcnZlciBy
+ZWJvb3RzLCB0aGVuIG9yZGluYXJ5IFJQQyBjYWxscyB3aWxsIGZhaWwgdW50aWwgdGhlIHJlY292
+ZXJ5IHRocmVhZCBoYXMgaGFkIGEgY2hhbmNlIHRvIHJlLWVzdGFibGlzaCB0aGUgc3RhdGUuDQoN
+Cg0K
 
-Hi Anna,
-
-any updates on this one?  The crash came back half an hour after I
-reported that it was gone...
-
-Over the weekend David Miller rebased net-next on top of 4.9.0-rc3 and
-the bug is still there :(  FWIW I also have multiple nfs mounts on my
-setup, 2 in fstab and one in a startup script.  Following Yotam I
-dropped one of the fstab entries and things seem to be working (even
-though I still have multiple mounts, the other one just comes a bit
-later).
