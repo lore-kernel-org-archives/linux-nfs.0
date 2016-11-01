@@ -1,79 +1,109 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:46914 "EHLO mx2.suse.de"
+Received: from mx1.redhat.com ([209.132.183.28]:47786 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1754301AbcKAUEO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 1 Nov 2016 16:04:14 -0400
-From: NeilBrown <neilb@suse.com>
-To: Steve Dickson <SteveD@redhat.com>
-Date: Wed, 02 Nov 2016 07:04:07 +1100
-Cc: libtirpc-devel@lists.sourceforge.net, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH - rpcbind] Provide systemd unit files for rpcbind
-In-Reply-To: <8c1fa65d-9efc-462a-b6c8-7ed518f0dfe4@RedHat.com>
-References: <87oa2q14yc.fsf@notabene.neil.brown.name> <8c1fa65d-9efc-462a-b6c8-7ed518f0dfe4@RedHat.com>
-Message-ID: <87r36vq85k.fsf@notabene.neil.brown.name>
+        id S1751050AbcKAWDN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 1 Nov 2016 18:03:13 -0400
+Subject: Re: [PATCH nfs-utils] nfs-server-generator: avoid using external
+ services.
+To: NeilBrown <neilb@suse.com>
+References: <8737k0215d.fsf@notabene.neil.brown.name>
+ <4a004767-e7cd-d427-706e-4e144b7bdbbb@RedHat.com>
+ <87wpgnq8jx.fsf@notabene.neil.brown.name>
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+From: Steve Dickson <SteveD@redhat.com>
+Message-ID: <d58fc30b-bd9a-c280-c8a3-0358e9f1de01@RedHat.com>
+Date: Tue, 1 Nov 2016 18:03:12 -0400
 MIME-Version: 1.0
-Content-Type: multipart/signed; boundary="=-=-=";
-        micalg=pgp-sha256; protocol="application/pgp-signature"
+In-Reply-To: <87wpgnq8jx.fsf@notabene.neil.brown.name>
+Content-Type: text/plain; charset=windows-1252
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---=-=-=
-Content-Type: text/plain
-Content-Transfer-Encoding: quoted-printable
 
-On Wed, Nov 02 2016, Steve Dickson wrote:
 
->> diff --git a/systemd/rpcbind.service.in b/systemd/rpcbind.service.in
->> new file mode 100644
->> index 000000000000..4706b5a77abf
->> --- /dev/null
->> +++ b/systemd/rpcbind.service.in
->> @@ -0,0 +1,17 @@
->> +[Unit]
->> +Description=3DRPC Bind
->> +Documentation=3Dman:rpcbind(8)
->> +DefaultDependencies=3Dno
->> +RequiresMountsFor=3D/var/run /run
->> +# Make sure we use the IP addresses listed for
->> +# rpcbind.socket, no matter how this unit is started.
->> +Wants=3Drpcbind.socket
->> +After=3Drpcbind.socket
->> +
->> +[Service]
->> +Type=3Dnotify
->> +# distro can provide a drop-in adding EnvironmentFile=3D-/??? if needed.
->> +ExecStart=3D@_bindir@/rpcbind $RPCBIND_OPTIONS -w -f
-> This macro puts rpcbind in /usr/bin, but in the Red Hat
-> distros rpcbind lives /usr/sbin. I could easily patch
-> it to do the right thing... but is this a typo or does=20
-> rpcbind live in /usr/bin in other distros?=20
+On 11/01/2016 03:55 PM, NeilBrown wrote:
+> On Wed, Nov 02 2016, Steve Dickson wrote:
+> 
+>> Hello,
+>>
+>> On 10/13/2016 02:50 AM, NeilBrown wrote:
+>>>
+>>> nfs-server-generator is run very early when a lot of services
+>>> are not yet started, so it mustn't depend on them.
+>>> Currently it can try to use hostname lookup and syslog.
+>>>
+>>> Hostname-lookup is not needed, as we don't use the host issue,
+>>> and sending message to stderr is sufficient for the generator.
+>>>
+>>> Disabling syslog is easy - call a function that sets a static variable.
+>>>
+>>> Disabling hostname lookup isn't quite so easy, so add a static variable
+>>> which can be set to disable it.
+>>>
+>>> Signed-off-by: NeilBrown <neilb@suse.com>
+>>> ---
+>>>
+>>> hi,
+>>>  I contemplated passing another arg to export_read() and export_d_read()
+>>>  to resolve this, but it didn't seem worth it.
+>>>
+>>>  Is this approach OK to people?
+>> It's not the most eloquent interface I've 
+>> ever seen... ;-) 
+>>
+>> What are the failures this is fixing? When a
+>> hostname lookup is done what happens? Failure
+>> hangs stopping the server from coming up?
+> 
+>  I never actually reproduced it myself, but I think that when hostname
+>  lookup failed (possibly after a timeout) it tried to log an error via
+>  syslog and writing to syslog blocked indefinitely.
+>  The systemd.generator manpage explicitly rules out trying to talk to
+>  syslog.
+This makes sense... 
 
-oops, posted previous reply too quickly.
+> 
+> 
+>>
+>>  
+>>>
+>>> Thanks,
+>>> NeilBrown
+>>>
+>>>
+>>>  support/export/export.c        | 12 ++++++++++--
+>>>  support/include/exportfs.h     |  1 +
+>>>  systemd/nfs-server-generator.c |  4 ++++
+>>>  3 files changed, 15 insertions(+), 2 deletions(-)
+>>>
+>>> diff --git a/support/export/export.c b/support/export/export.c
+>>> index 0b8a858c2c74..c65dc8807a4e 100644
+>>> --- a/support/export/export.c
+>>> +++ b/support/export/export.c
+>>> @@ -67,6 +67,14 @@ static void warn_duplicated_exports(nfs_export *exp, struct exportent *eep)
+>>>  	}
+>>>  }
+>> If we do have to stay with this approach, 
+>> I definitely think comment explaining
+>> why its needed and what it does.
+> 
+> That's sensible.  I'll resend with some nice friendly comments.
+Thanks! 
 
-Hmm.. I have rpcbind in /sbin, but my rpm spec file
-runs configure with "--bindir=3D/sbin"
-The rpcbind makefile just installs rpcbind (and rpcbind) in bindir.
-So presumably you run configure with --bindir=3D/usr/sbin ??
+> 
+>>
+>> Finally, on an unrelated issue I'm seeing 
+>> SELinux preventing nfs-server-generator from 
+>> accessing nfs-server.service.d/order-with-mounts.conf
+>> because of a labeling issue. I guess the label
+>> should be nfsd_unit_file_t not systemd_unit_file_t
+> 
+> I wouldn't know about that :-(
+I'll figure this out... 
 
-NeilBrown
+steved.
 
---=-=-=
-Content-Type: application/pgp-signature; name="signature.asc"
-
------BEGIN PGP SIGNATURE-----
-
-iQIcBAEBCAAGBQJYGPU3AAoJEDnsnt1WYoG5bHkP/1i+p4/CoiPC/EMNUmiur5wE
-mLeSMAeVCHst6HXX/wByC0svcW5tzBOzjQsTyXyXNkQY+FAl55q3hiH5qdy3OmSF
-lFHdsz14GxTY4x+Ej263Jcc3l+43/kjluvaBsrOj10ax9o48gCGjVXgVTh37Wc+k
-HllV+u0ZQ9VHiLI6gc+BDKoHMO36BXYWeR4us3mX0DVlt7EtWSRP2i9nqWkesd6V
-hXRQ3Usu8Kn77QKsnq8SP9EDXaa2RhvhbhelWK1DEGcBeO3WB70TbldUviQyzBZI
-7H8BF7XCasMuSiWXTa2LfdCWH1hCuisNZObXljFIK6ysnpzSsE7kM0uND+z2AkhQ
-ta7sCy3bphBR5iyplfQN2Ck0lKlTJCVPRYn44DvuU1dJWMlllolcE7fBQv2l4dDE
-5CupLTYQ8/ww+itaUUcbfeol+TVWNwIJ0pVp9UEVFakmLBN7UuhXIIbNu5PjGFsG
-NuJxir/e/hjJB1zSI/2oeEHG2EfLoFjFRI6CGftZk7ILRDp/fgiwegQkEnP7iU/K
-yCk5Wlh41axFfKvquI+kHNy7S3DmbI63HokMKqj1FXENua2ur6ehTUOMUK+YBtxP
-q55UoggzXtEhc1LEeFF3s+wYF096pbovdw+QzEfFaFkNL5AFSdq5TrEcyNuFPE/k
-Uszx0pw7DNVUvnzGXJEP
-=yaT9
------END PGP SIGNATURE-----
---=-=-=--
+> 
+> Thanks,
+> NeilBrown
+> 
