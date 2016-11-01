@@ -1,157 +1,131 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:51314 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:59702 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751723AbcKAQva (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 1 Nov 2016 12:51:30 -0400
-Subject: Re: [PATCH - rpcbind] Provide systemd unit files for rpcbind
+        id S1750971AbcKASpH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 1 Nov 2016 14:45:07 -0400
+Subject: Re: [PATCH nfs-utils] nfs-server-generator: avoid using external
+ services.
 To: NeilBrown <neilb@suse.com>
-References: <87oa2q14yc.fsf@notabene.neil.brown.name>
-Cc: libtirpc-devel@lists.sourceforge.net, linux-nfs@vger.kernel.org
+References: <8737k0215d.fsf@notabene.neil.brown.name>
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
 From: Steve Dickson <SteveD@redhat.com>
-Message-ID: <8c1fa65d-9efc-462a-b6c8-7ed518f0dfe4@RedHat.com>
-Date: Tue, 1 Nov 2016 12:51:29 -0400
+Message-ID: <4a004767-e7cd-d427-706e-4e144b7bdbbb@RedHat.com>
+Date: Tue, 1 Nov 2016 14:45:06 -0400
 MIME-Version: 1.0
-In-Reply-To: <87oa2q14yc.fsf@notabene.neil.brown.name>
+In-Reply-To: <8737k0215d.fsf@notabene.neil.brown.name>
 Content-Type: text/plain; charset=windows-1252
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 Hello,
 
-My apologies for not getting to this sooner... 
-A rough a couple of weeks... 
-On 10/12/2016 02:01 AM, NeilBrown wrote:
+On 10/13/2016 02:50 AM, NeilBrown wrote:
 > 
+> nfs-server-generator is run very early when a lot of services
+> are not yet started, so it mustn't depend on them.
+> Currently it can try to use hostname lookup and syslog.
 > 
-> To encourage uniformity across distributions, provide
-> systemd unit files.
+> Hostname-lookup is not needed, as we don't use the host issue,
+> and sending message to stderr is sufficient for the generator.
 > 
-> If extra arguments are wanted for rpcbind, a drop-in should be used
-> to set the Environment= or read and EnvironmentFile=
+> Disabling syslog is easy - call a function that sets a static variable.
 > 
-> As the "run" directory could be /run or /var/run we RequiresMountsFor
-> both of these.
-Talking with the systemd folks they strongly sugguest we just
-use /run (not /var/run) and drop the RequiresMountsFor.
-
-> 
-> rpcbind.service pulls in rpcbind.socket so that the listening sockets
-> chosen there will always be used.
+> Disabling hostname lookup isn't quite so easy, so add a static variable
+> which can be set to disable it.
 > 
 > Signed-off-by: NeilBrown <neilb@suse.com>
 > ---
->  .gitignore                 |  1 +
->  Makefile.am                |  4 ++++
->  configure.ac               |  7 ++++++-
->  systemd/rpcbind.service.in | 17 +++++++++++++++++
->  systemd/rpcbind.socket     | 19 +++++++++++++++++++
->  5 files changed, 47 insertions(+), 1 deletion(-)
->  create mode 100644 systemd/rpcbind.service.in
->  create mode 100644 systemd/rpcbind.socket
 > 
 > hi,
->  these are based on the unit files in use a SUSE, though I have made a
->  few "improvements".
->  If anyone has differences in their distros that you think we should
->  have in mainline, I'd love to hear about it.
+>  I contemplated passing another arg to export_read() and export_d_read()
+>  to resolve this, but it didn't seem worth it.
+> 
+>  Is this approach OK to people?
+It's not the most eloquent interface I've 
+ever seen... ;-) 
+
+What are the failures this is fixing? When a
+hostname lookup is done what happens? Failure
+hangs stopping the server from coming up?
+
+ 
 > 
 > Thanks,
 > NeilBrown
 > 
 > 
-> diff --git a/.gitignore b/.gitignore
-> index 321dff64a57d..a8f1fed2acb6 100644
-> --- a/.gitignore
-> +++ b/.gitignore
-> @@ -27,3 +27,4 @@ rpcbind
->  rpcinfo
->  # cscope database files
->  cscope.*
-> +systemd/rpcbind.service
-> diff --git a/Makefile.am b/Makefile.am
-> index 5ec8cd66b689..43c27100ceae 100644
-> --- a/Makefile.am
-> +++ b/Makefile.am
-> @@ -50,6 +50,10 @@ if SYSTEMD
->  AM_CPPFLAGS += $(SYSTEMD_CFLAGS) -DSYSTEMD
->  
->  rpcbind_LDADD += $(SYSTEMD_LIBS)
-> +
-> +systemdsystemunit_DATA = \
-> +	systemd/rpcbind.service \
-> +	systemd/rpcbind.socket
->  endif
->  
->  rpcinfo_SOURCES =       src/rpcinfo.c
-> diff --git a/configure.ac b/configure.ac
-> index af4b74b31c9a..0892d8246a12 100644
-> --- a/configure.ac
-> +++ b/configure.ac
-> @@ -61,4 +61,9 @@ AC_SEARCH_LIBS([pthread_create], [pthread])
->  
->  AC_CHECK_HEADERS([nss.h rpcsvc/mount.h])
->  
-> -AC_OUTPUT([Makefile])
-> +# make bindir available for substitution in config file
-> +# 2 "evals" needed to expand variable names
-> +AC_SUBST([_bindir])
-> +AC_CONFIG_COMMANDS_PRE([eval eval _bindir=$bindir])
-> +
-> +AC_OUTPUT([Makefile systemd/rpcbind.service])
-> diff --git a/systemd/rpcbind.service.in b/systemd/rpcbind.service.in
-> new file mode 100644
-> index 000000000000..4706b5a77abf
-> --- /dev/null
-> +++ b/systemd/rpcbind.service.in
-> @@ -0,0 +1,17 @@
-> +[Unit]
-> +Description=RPC Bind
-> +Documentation=man:rpcbind(8)
-> +DefaultDependencies=no
-> +RequiresMountsFor=/var/run /run
-> +# Make sure we use the IP addresses listed for
-> +# rpcbind.socket, no matter how this unit is started.
-> +Wants=rpcbind.socket
-> +After=rpcbind.socket
-> +
-> +[Service]
-> +Type=notify
-> +# distro can provide a drop-in adding EnvironmentFile=-/??? if needed.
-> +ExecStart=@_bindir@/rpcbind $RPCBIND_OPTIONS -w -f
-This macro puts rpcbind in /usr/bin, but in the Red Hat
-distros rpcbind lives /usr/sbin. I could easily patch
-it to do the right thing... but is this a typo or does 
-rpcbind live in /usr/bin in other distros? 
+>  support/export/export.c        | 12 ++++++++++--
+>  support/include/exportfs.h     |  1 +
+>  systemd/nfs-server-generator.c |  4 ++++
+>  3 files changed, 15 insertions(+), 2 deletions(-)
+> 
+> diff --git a/support/export/export.c b/support/export/export.c
+> index 0b8a858c2c74..c65dc8807a4e 100644
+> --- a/support/export/export.c
+> +++ b/support/export/export.c
+> @@ -67,6 +67,14 @@ static void warn_duplicated_exports(nfs_export *exp, struct exportent *eep)
+>  	}
+>  }
+If we do have to stay with this approach, 
+I definitely think comment explaining
+why its needed and what it does.
 
-steved.
+Finally, on an unrelated issue I'm seeing 
+SELinux preventing nfs-server-generator from 
+accessing nfs-server.service.d/order-with-mounts.conf
+because of a labeling issue. I guess the label
+should be nfsd_unit_file_t not systemd_unit_file_t
 
-
+steved. 
+>  
+> +static int assume_canonical = 0;
 > +
-> +[Install]
-> +WantedBy=multi-user.target
-> diff --git a/systemd/rpcbind.socket b/systemd/rpcbind.socket
-> new file mode 100644
-> index 000000000000..7204c97efa6f
-> --- /dev/null
-> +++ b/systemd/rpcbind.socket
-> @@ -0,0 +1,19 @@
-> +[Unit]
-> +Description=RPCbind Server Activation Socket
-> +DefaultDependencies=no
-> +RequiresMountsFor=/var/run /run
-> +Wants=rpcbind.target
-> +Before=rpcbind.target
+> +void
+> +export_avoid_host_lookup(int i)
+> +{
+> +	assume_canonical = i;
+> +}
 > +
-> +[Socket]
-> +ListenStream=/var/run/rpcbind.sock
+>  /**
+>   * export_read - read entries from /etc/exports
+>   * @fname: name of file to read from
+> @@ -83,9 +91,9 @@ export_read(char *fname)
+>  
+>  	setexportent(fname, "r");
+>  	while ((eep = getexportent(0,1)) != NULL) {
+> -		exp = export_lookup(eep->e_hostname, eep->e_path, 0);
+> +		exp = export_lookup(eep->e_hostname, eep->e_path, assume_canonical);
+>  		if (!exp) {
+> -			if (export_create(eep, 0))
+> +			if (export_create(eep, assume_canonical))
+>  				/* possible complaints already logged */
+>  				volumes++;
+>  		}
+> diff --git a/support/include/exportfs.h b/support/include/exportfs.h
+> index f033329b5fd2..ba45b2dee199 100644
+> --- a/support/include/exportfs.h
+> +++ b/support/include/exportfs.h
+> @@ -134,6 +134,7 @@ struct addrinfo *		client_resolve(const struct sockaddr *sap);
+>  int 				client_member(const char *client,
+>  						const char *name);
+>  
+> +void				export_avoid_host_lookup(int i);
+>  int				export_read(char *fname);
+>  int				export_d_read(const char *dname);
+>  void				export_reset(nfs_export *);
+> diff --git a/systemd/nfs-server-generator.c b/systemd/nfs-server-generator.c
+> index af8bb52bfbd7..7ae6dd1c4b20 100644
+> --- a/systemd/nfs-server-generator.c
+> +++ b/systemd/nfs-server-generator.c
+> @@ -93,6 +93,10 @@ int main(int argc, char *argv[])
+>  	FILE		*f, *fstab;
+>  	struct mntent	*mnt;
+>  
+> +	/* Avoid using any external services */
+> +	xlog_syslog(0);
+> +	export_avoid_host_lookup(1);
 > +
-> +# RPC netconfig can't handle ipv6/ipv4 dual sockets
-> +BindIPv6Only=ipv6-only
-> +ListenStream=0.0.0.0:111
-> +ListenDatagram=0.0.0.0:111
-> +ListenStream=[::]:111
-> +ListenDatagram=[::]:111
-> +
-> +[Install]
-> +WantedBy=sockets.target
+>  	if (argc != 4 || argv[1][0] != '/') {
+>  		fprintf(stderr, "nfs-server-generator: create systemd dependencies for nfs-server\n");
+>  		fprintf(stderr, "Usage: normal-dir early-dir late-dir\n");
 > 
