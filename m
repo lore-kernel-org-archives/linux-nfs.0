@@ -1,16 +1,16 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:45370 "EHLO mx2.suse.de"
+Received: from mx2.suse.de ([195.135.220.15]:45619 "EHLO mx2.suse.de"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1754531AbcKATzk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 1 Nov 2016 15:55:40 -0400
+        id S1754085AbcKAT53 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 1 Nov 2016 15:57:29 -0400
 From: NeilBrown <neilb@suse.com>
 To: Steve Dickson <SteveD@redhat.com>
-Date: Wed, 02 Nov 2016 06:55:30 +1100
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH nfs-utils] nfs-server-generator: avoid using external services.
-In-Reply-To: <4a004767-e7cd-d427-706e-4e144b7bdbbb@RedHat.com>
-References: <8737k0215d.fsf@notabene.neil.brown.name> <4a004767-e7cd-d427-706e-4e144b7bdbbb@RedHat.com>
-Message-ID: <87wpgnq8jx.fsf@notabene.neil.brown.name>
+Date: Wed, 02 Nov 2016 06:57:22 +1100
+Cc: libtirpc-devel@lists.sourceforge.net, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH - rpcbind] Provide systemd unit files for rpcbind
+In-Reply-To: <8c1fa65d-9efc-462a-b6c8-7ed518f0dfe4@RedHat.com>
+References: <87oa2q14yc.fsf@notabene.neil.brown.name> <8c1fa65d-9efc-462a-b6c8-7ed518f0dfe4@RedHat.com>
+Message-ID: <87twbrq8gt.fsf@notabene.neil.brown.name>
 MIME-Version: 1.0
 Content-Type: multipart/signed; boundary="=-=-=";
         micalg=pgp-sha256; protocol="application/pgp-signature"
@@ -25,97 +25,170 @@ On Wed, Nov 02 2016, Steve Dickson wrote:
 
 > Hello,
 >
-> On 10/13/2016 02:50 AM, NeilBrown wrote:
+> My apologies for not getting to this sooner...=20
+> A rough a couple of weeks...=20
+> On 10/12/2016 02:01 AM, NeilBrown wrote:
 >>=20
->> nfs-server-generator is run very early when a lot of services
->> are not yet started, so it mustn't depend on them.
->> Currently it can try to use hostname lookup and syslog.
 >>=20
->> Hostname-lookup is not needed, as we don't use the host issue,
->> and sending message to stderr is sufficient for the generator.
+>> To encourage uniformity across distributions, provide
+>> systemd unit files.
 >>=20
->> Disabling syslog is easy - call a function that sets a static variable.
+>> If extra arguments are wanted for rpcbind, a drop-in should be used
+>> to set the Environment=3D or read and EnvironmentFile=3D
 >>=20
->> Disabling hostname lookup isn't quite so easy, so add a static variable
->> which can be set to disable it.
+>> As the "run" directory could be /run or /var/run we RequiresMountsFor
+>> both of these.
+> Talking with the systemd folks they strongly sugguest we just
+> use /run (not /var/run) and drop the RequiresMountsFor.
+
+I'm fine with that.  While maybe not everyone has /run, everyone running
+systemd does.  I assume you'll just fix this rather than me
+resubmitting?
+
+Thanks,
+NeilBrown
+
+
+>
+>>=20
+>> rpcbind.service pulls in rpcbind.socket so that the listening sockets
+>> chosen there will always be used.
 >>=20
 >> Signed-off-by: NeilBrown <neilb@suse.com>
 >> ---
+>>  .gitignore                 |  1 +
+>>  Makefile.am                |  4 ++++
+>>  configure.ac               |  7 ++++++-
+>>  systemd/rpcbind.service.in | 17 +++++++++++++++++
+>>  systemd/rpcbind.socket     | 19 +++++++++++++++++++
+>>  5 files changed, 47 insertions(+), 1 deletion(-)
+>>  create mode 100644 systemd/rpcbind.service.in
+>>  create mode 100644 systemd/rpcbind.socket
 >>=20
 >> hi,
->>  I contemplated passing another arg to export_read() and export_d_read()
->>  to resolve this, but it didn't seem worth it.
->>=20
->>  Is this approach OK to people?
-> It's not the most eloquent interface I've=20
-> ever seen... ;-)=20
->
-> What are the failures this is fixing? When a
-> hostname lookup is done what happens? Failure
-> hangs stopping the server from coming up?
-
- I never actually reproduced it myself, but I think that when hostname
- lookup failed (possibly after a timeout) it tried to log an error via
- syslog and writing to syslog blocked indefinitely.
- The systemd.generator manpage explicitly rules out trying to talk to
- syslog.
-
-
->
->=20=20
+>>  these are based on the unit files in use a SUSE, though I have made a
+>>  few "improvements".
+>>  If anyone has differences in their distros that you think we should
+>>  have in mainline, I'd love to hear about it.
 >>=20
 >> Thanks,
 >> NeilBrown
 >>=20
 >>=20
->>  support/export/export.c        | 12 ++++++++++--
->>  support/include/exportfs.h     |  1 +
->>  systemd/nfs-server-generator.c |  4 ++++
->>  3 files changed, 15 insertions(+), 2 deletions(-)
->>=20
->> diff --git a/support/export/export.c b/support/export/export.c
->> index 0b8a858c2c74..c65dc8807a4e 100644
->> --- a/support/export/export.c
->> +++ b/support/export/export.c
->> @@ -67,6 +67,14 @@ static void warn_duplicated_exports(nfs_export *exp, =
-struct exportent *eep)
->>  	}
->>  }
-> If we do have to stay with this approach,=20
-> I definitely think comment explaining
-> why its needed and what it does.
-
-That's sensible.  I'll resend with some nice friendly comments.
-
+>> diff --git a/.gitignore b/.gitignore
+>> index 321dff64a57d..a8f1fed2acb6 100644
+>> --- a/.gitignore
+>> +++ b/.gitignore
+>> @@ -27,3 +27,4 @@ rpcbind
+>>  rpcinfo
+>>  # cscope database files
+>>  cscope.*
+>> +systemd/rpcbind.service
+>> diff --git a/Makefile.am b/Makefile.am
+>> index 5ec8cd66b689..43c27100ceae 100644
+>> --- a/Makefile.am
+>> +++ b/Makefile.am
+>> @@ -50,6 +50,10 @@ if SYSTEMD
+>>  AM_CPPFLAGS +=3D $(SYSTEMD_CFLAGS) -DSYSTEMD
+>>=20=20
+>>  rpcbind_LDADD +=3D $(SYSTEMD_LIBS)
+>> +
+>> +systemdsystemunit_DATA =3D \
+>> +	systemd/rpcbind.service \
+>> +	systemd/rpcbind.socket
+>>  endif
+>>=20=20
+>>  rpcinfo_SOURCES =3D       src/rpcinfo.c
+>> diff --git a/configure.ac b/configure.ac
+>> index af4b74b31c9a..0892d8246a12 100644
+>> --- a/configure.ac
+>> +++ b/configure.ac
+>> @@ -61,4 +61,9 @@ AC_SEARCH_LIBS([pthread_create], [pthread])
+>>=20=20
+>>  AC_CHECK_HEADERS([nss.h rpcsvc/mount.h])
+>>=20=20
+>> -AC_OUTPUT([Makefile])
+>> +# make bindir available for substitution in config file
+>> +# 2 "evals" needed to expand variable names
+>> +AC_SUBST([_bindir])
+>> +AC_CONFIG_COMMANDS_PRE([eval eval _bindir=3D$bindir])
+>> +
+>> +AC_OUTPUT([Makefile systemd/rpcbind.service])
+>> diff --git a/systemd/rpcbind.service.in b/systemd/rpcbind.service.in
+>> new file mode 100644
+>> index 000000000000..4706b5a77abf
+>> --- /dev/null
+>> +++ b/systemd/rpcbind.service.in
+>> @@ -0,0 +1,17 @@
+>> +[Unit]
+>> +Description=3DRPC Bind
+>> +Documentation=3Dman:rpcbind(8)
+>> +DefaultDependencies=3Dno
+>> +RequiresMountsFor=3D/var/run /run
+>> +# Make sure we use the IP addresses listed for
+>> +# rpcbind.socket, no matter how this unit is started.
+>> +Wants=3Drpcbind.socket
+>> +After=3Drpcbind.socket
+>> +
+>> +[Service]
+>> +Type=3Dnotify
+>> +# distro can provide a drop-in adding EnvironmentFile=3D-/??? if needed.
+>> +ExecStart=3D@_bindir@/rpcbind $RPCBIND_OPTIONS -w -f
+> This macro puts rpcbind in /usr/bin, but in the Red Hat
+> distros rpcbind lives /usr/sbin. I could easily patch
+> it to do the right thing... but is this a typo or does=20
+> rpcbind live in /usr/bin in other distros?=20
 >
-> Finally, on an unrelated issue I'm seeing=20
-> SELinux preventing nfs-server-generator from=20
-> accessing nfs-server.service.d/order-with-mounts.conf
-> because of a labeling issue. I guess the label
-> should be nfsd_unit_file_t not systemd_unit_file_t
-
-I wouldn't know about that :-(
-
-Thanks,
-NeilBrown
+> steved.
+>
+>
+>> +
+>> +[Install]
+>> +WantedBy=3Dmulti-user.target
+>> diff --git a/systemd/rpcbind.socket b/systemd/rpcbind.socket
+>> new file mode 100644
+>> index 000000000000..7204c97efa6f
+>> --- /dev/null
+>> +++ b/systemd/rpcbind.socket
+>> @@ -0,0 +1,19 @@
+>> +[Unit]
+>> +Description=3DRPCbind Server Activation Socket
+>> +DefaultDependencies=3Dno
+>> +RequiresMountsFor=3D/var/run /run
+>> +Wants=3Drpcbind.target
+>> +Before=3Drpcbind.target
+>> +
+>> +[Socket]
+>> +ListenStream=3D/var/run/rpcbind.sock
+>> +
+>> +# RPC netconfig can't handle ipv6/ipv4 dual sockets
+>> +BindIPv6Only=3Dipv6-only
+>> +ListenStream=3D0.0.0.0:111
+>> +ListenDatagram=3D0.0.0.0:111
+>> +ListenStream=3D[::]:111
+>> +ListenDatagram=3D[::]:111
+>> +
+>> +[Install]
+>> +WantedBy=3Dsockets.target
+>>=20
 
 --=-=-=
 Content-Type: application/pgp-signature; name="signature.asc"
 
 -----BEGIN PGP SIGNATURE-----
 
-iQIbBAEBCAAGBQJYGPMzAAoJEDnsnt1WYoG5OogP+MBSBwfwOJV+XDB5ypjelG4c
-BpkURvzdiKpKXGk6vrrHNFcdxmmI7tEbiXlaJA5DR2aT+ydRD99BjQqIW2iAvZMe
-AkbGoacogVI9BZQSdGJf8W5CXGbMNFIgygbFuSO+I8J4fEkqfU6P88Gbtk5A0PaN
-atETsNmniT2NzA6V2rxn58+GMuaFqmg00I5NX2kKIjuiSOfyw/i2/NCseWbYalz6
-WoXrS+tFk7PZfrkLeDzEZufQfGP6v1MBZVQcic4fmemxyaMWk2lafBQ82SwC0f4y
-VG4AOaA91fA0dOO/QfMy2q71Y25wLRicj+bOGcsTaxebdHdluyDQn9HPRHwglQ4b
-KauaKPbIMApD5ZI1v6nEY1jkxMVwV6/jZatDbE+hLEqqPjJXXOvWD4kU18BXN41G
-m2bRCGo4gFcvOEjw2UmvC8QGT4WyKP1Gtz8Op9z9A99/WoVjfQd4/e2WHvLpyrtN
-R+8tbUKqO94WMosJdMLkTuQabR7NkKT6CPn93K4bjt3s0rVe8Eu3WPut2v2ja3vT
-FHQmYBRzMK6NnKagbUmR58QmErzFRyuaUaqf5xFoBVzrpeP0vGaoxPcAJLODNZ1S
-JGduTOqCGiQ7NDBHPMiKDne/fVG2PFa+lwq2v9FWpXoTEuNiJ6M3fZ6pJK/4Gtl2
-FXfXyALceOyXCg1f1q0=
-=lvUT
+iQIcBAEBCAAGBQJYGPOiAAoJEDnsnt1WYoG5diMQAKVfbOAf/nsMUBQXrxKbB1D6
+RR1rAl6lxEkz/CZz0/+AXqBUEoKQieR8FTWvptie/ahJqF9rfFEgPewTSKhe1Hw8
+GSw7DqHwInogmUJSkQqz16AhIaQHizFZ+wd4535o3Nf/rKRqOjd1V9Aq6x+Eb/6S
+5wiTZKPG4lApuvWyvfsA2XHGyOyZgk+o7C6Vl5D5nu1wx73Ac7dwgvW2908WvlW0
+VWf2UZLQZVSptdounGNDdwUJXAM4mMaYFOKgcRrnhE7VmIvbr1J9Rs4bqDMdvsXJ
+6f6kUBGunJ+uTOFkoGt6KjfYjFuJ1EsFzlUlECk7y0lTm7rNoRox3iNr45/BRKmG
+pu4iiGOTHhJuC6nxdN4zA3z5BolBcnJ2BAsxMuoeGy/QqWeE5T4qhYxqknosVI38
+J6eSmwLk7EePf61uFOcHWuQT/LZ9jCI8ctBnfcnFQXmmk3JOLJ/tQ1L263D5XhWr
+YEnUy+Mu0TkePVfalAKHILcnwqo/sUluNUMfgPH6TPpe7RLzGycWCGtQgpSrnK2y
+Q28HpGs5i1W8mFOPKb4FzEIsmaj28CC+kIsNaTFDfWaOb+3p4eVvkFpHWXA9UYWJ
+d7h/w0ZUuhek7GydEah98PcHGpEW5DFzjgz+Mzq8e3/P9bied6d3Zi9OaCxBluls
+RqTE5DL/kRSwmegQZ+hc
+=7O53
 -----END PGP SIGNATURE-----
 --=-=-=--
