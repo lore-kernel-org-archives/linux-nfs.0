@@ -1,65 +1,157 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qk0-f196.google.com ([209.85.220.196]:34383 "EHLO
-        mail-qk0-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S946373AbcJaUal (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 31 Oct 2016 16:30:41 -0400
-Received: by mail-qk0-f196.google.com with SMTP id o68so7738795qkf.1
-        for <linux-nfs@vger.kernel.org>; Mon, 31 Oct 2016 13:30:40 -0700 (PDT)
-Subject: Re: [PATCH] NFSv41: fix NULL dereference in nfs40_setup_sequence
-Mime-Version: 1.0 (Mac OS X Mail 8.2 \(2104\))
-Content-Type: text/plain; charset=utf-8
-From: Vitaliy Gusev <gusev.vitaliy@gmail.com>
-In-Reply-To: <4E199BAA-DBDF-42CE-8B26-AF9787467796@primarydata.com>
-Date: Mon, 31 Oct 2016 23:30:35 +0300
-Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        Schumaker Anna <anna.schumaker@netapp.com>
-Message-Id: <6792CF54-FC7B-4287-B698-5FDD19CF7C69@gmail.com>
-References: <0A7143CE-0592-444D-BA53-9CBB33E4373F@gmail.com> <5D2E82C6-FBF5-4590-B674-B6C904CBB449@primarydata.com> <9CC2D174-84E5-4820-B6B7-AC885753AC91@gmail.com> <4E199BAA-DBDF-42CE-8B26-AF9787467796@primarydata.com>
-To: Trond Myklebust <trondmy@primarydata.com>
+Received: from mx1.redhat.com ([209.132.183.28]:51314 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1751723AbcKAQva (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 1 Nov 2016 12:51:30 -0400
+Subject: Re: [PATCH - rpcbind] Provide systemd unit files for rpcbind
+To: NeilBrown <neilb@suse.com>
+References: <87oa2q14yc.fsf@notabene.neil.brown.name>
+Cc: libtirpc-devel@lists.sourceforge.net, linux-nfs@vger.kernel.org
+From: Steve Dickson <SteveD@redhat.com>
+Message-ID: <8c1fa65d-9efc-462a-b6c8-7ed518f0dfe4@RedHat.com>
+Date: Tue, 1 Nov 2016 12:51:29 -0400
+MIME-Version: 1.0
+In-Reply-To: <87oa2q14yc.fsf@notabene.neil.brown.name>
+Content-Type: text/plain; charset=windows-1252
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Hello,
 
-> On 31 Oct 2016, at 20:54, Trond Myklebust <trondmy@primarydata.com> =
-wrote:
->=20
->>=20
->> On Oct 31, 2016, at 13:31, Vitaliy Gusev <gusev.vitaliy@gmail.com> =
-wrote:
->> Do you like to get crash every time a remote side sends improper =
-datas? I believe not.
->=20
-> There are a million other ways to screw a client over if your server =
-is buggy or compromised.
+My apologies for not getting to this sooner... 
+A rough a couple of weeks... 
+On 10/12/2016 02:01 AM, NeilBrown wrote:
+> 
+> 
+> To encourage uniformity across distributions, provide
+> systemd unit files.
+> 
+> If extra arguments are wanted for rpcbind, a drop-in should be used
+> to set the Environment= or read and EnvironmentFile=
+> 
+> As the "run" directory could be /run or /var/run we RequiresMountsFor
+> both of these.
+Talking with the systemd folks they strongly sugguest we just
+use /run (not /var/run) and drop the RequiresMountsFor.
 
-I agree, but crashes are not right way to work with incorrect datas and =
-that=E2=80=99s why I reported problem.=20
+> 
+> rpcbind.service pulls in rpcbind.socket so that the listening sockets
+> chosen there will always be used.
+> 
+> Signed-off-by: NeilBrown <neilb@suse.com>
+> ---
+>  .gitignore                 |  1 +
+>  Makefile.am                |  4 ++++
+>  configure.ac               |  7 ++++++-
+>  systemd/rpcbind.service.in | 17 +++++++++++++++++
+>  systemd/rpcbind.socket     | 19 +++++++++++++++++++
+>  5 files changed, 47 insertions(+), 1 deletion(-)
+>  create mode 100644 systemd/rpcbind.service.in
+>  create mode 100644 systemd/rpcbind.socket
+> 
+> hi,
+>  these are based on the unit files in use a SUSE, though I have made a
+>  few "improvements".
+>  If anyone has differences in their distros that you think we should
+>  have in mainline, I'd love to hear about it.
+> 
+> Thanks,
+> NeilBrown
+> 
+> 
+> diff --git a/.gitignore b/.gitignore
+> index 321dff64a57d..a8f1fed2acb6 100644
+> --- a/.gitignore
+> +++ b/.gitignore
+> @@ -27,3 +27,4 @@ rpcbind
+>  rpcinfo
+>  # cscope database files
+>  cscope.*
+> +systemd/rpcbind.service
+> diff --git a/Makefile.am b/Makefile.am
+> index 5ec8cd66b689..43c27100ceae 100644
+> --- a/Makefile.am
+> +++ b/Makefile.am
+> @@ -50,6 +50,10 @@ if SYSTEMD
+>  AM_CPPFLAGS += $(SYSTEMD_CFLAGS) -DSYSTEMD
+>  
+>  rpcbind_LDADD += $(SYSTEMD_LIBS)
+> +
+> +systemdsystemunit_DATA = \
+> +	systemd/rpcbind.service \
+> +	systemd/rpcbind.socket
+>  endif
+>  
+>  rpcinfo_SOURCES =       src/rpcinfo.c
+> diff --git a/configure.ac b/configure.ac
+> index af4b74b31c9a..0892d8246a12 100644
+> --- a/configure.ac
+> +++ b/configure.ac
+> @@ -61,4 +61,9 @@ AC_SEARCH_LIBS([pthread_create], [pthread])
+>  
+>  AC_CHECK_HEADERS([nss.h rpcsvc/mount.h])
+>  
+> -AC_OUTPUT([Makefile])
+> +# make bindir available for substitution in config file
+> +# 2 "evals" needed to expand variable names
+> +AC_SUBST([_bindir])
+> +AC_CONFIG_COMMANDS_PRE([eval eval _bindir=$bindir])
+> +
+> +AC_OUTPUT([Makefile systemd/rpcbind.service])
+> diff --git a/systemd/rpcbind.service.in b/systemd/rpcbind.service.in
+> new file mode 100644
+> index 000000000000..4706b5a77abf
+> --- /dev/null
+> +++ b/systemd/rpcbind.service.in
+> @@ -0,0 +1,17 @@
+> +[Unit]
+> +Description=RPC Bind
+> +Documentation=man:rpcbind(8)
+> +DefaultDependencies=no
+> +RequiresMountsFor=/var/run /run
+> +# Make sure we use the IP addresses listed for
+> +# rpcbind.socket, no matter how this unit is started.
+> +Wants=rpcbind.socket
+> +After=rpcbind.socket
+> +
+> +[Service]
+> +Type=notify
+> +# distro can provide a drop-in adding EnvironmentFile=-/??? if needed.
+> +ExecStart=@_bindir@/rpcbind $RPCBIND_OPTIONS -w -f
+This macro puts rpcbind in /usr/bin, but in the Red Hat
+distros rpcbind lives /usr/sbin. I could easily patch
+it to do the right thing... but is this a typo or does 
+rpcbind live in /usr/bin in other distros? 
+
+steved.
 
 
->>=20
->> I proposed just ignore the flag OPEN4_RESULT_CONFIRM  for nfs4.1+ =
-clients.
->> RFC5661 has description that allows a client to do that:
->>=20
->>  o  OPEN4_RESULT_CONFIRM is deprecated and MUST NOT be returned by an
->>      NFSv4.1 server.
->=20
-> I know what the spec says. The point is that the client will leak =
-memory, and fail to handle the situation correctly when the server =
-returns OPEN4_RESULT_CONFIRM with or with the patch that you are =
-proposing.
-> The right thing to do here would rather be to print out a big fat =
-warning to the user, and then possibly also to kill the mount.
-
-That=E2=80=99s a good point. What if return error for OPEN operation =
-instead of kill the mount?
-
-=E2=80=94=E2=80=94=E2=80=94
-Thanks,
-Vitaliy Gusev
-
-
----
-Vitaliy Gusev
-
-
+> +
+> +[Install]
+> +WantedBy=multi-user.target
+> diff --git a/systemd/rpcbind.socket b/systemd/rpcbind.socket
+> new file mode 100644
+> index 000000000000..7204c97efa6f
+> --- /dev/null
+> +++ b/systemd/rpcbind.socket
+> @@ -0,0 +1,19 @@
+> +[Unit]
+> +Description=RPCbind Server Activation Socket
+> +DefaultDependencies=no
+> +RequiresMountsFor=/var/run /run
+> +Wants=rpcbind.target
+> +Before=rpcbind.target
+> +
+> +[Socket]
+> +ListenStream=/var/run/rpcbind.sock
+> +
+> +# RPC netconfig can't handle ipv6/ipv4 dual sockets
+> +BindIPv6Only=ipv6-only
+> +ListenStream=0.0.0.0:111
+> +ListenDatagram=0.0.0.0:111
+> +ListenStream=[::]:111
+> +ListenDatagram=[::]:111
+> +
+> +[Install]
+> +WantedBy=sockets.target
+> 
