@@ -1,80 +1,112 @@
-Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:12717 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751214AbcKBVb1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 2 Nov 2016 17:31:27 -0400
-Subject: Re: [Libtirpc-devel] [PATCH - rpcbind] Provide systemd unit files for
- rpcbind
-To: NeilBrown <neilb@suse.com>, Thorsten Kukuk <kukuk@suse.de>
-References: <87oa2q14yc.fsf@notabene.neil.brown.name>
- <8c1fa65d-9efc-462a-b6c8-7ed518f0dfe4@RedHat.com>
- <87r36vq85k.fsf@notabene.neil.brown.name>
- <ff5e0322-2f5e-9102-326f-1f23968cb0a8@RedHat.com>
- <20161102134902.GA6446@suse.de>
- <34b0c398-c77f-41e3-4719-158f2190661c@RedHat.com>
- <87a8dhr39t.fsf@notabene.neil.brown.name>
-Cc: linux-nfs@vger.kernel.org, libtirpc-devel@lists.sourceforge.net
-From: Steve Dickson <SteveD@redhat.com>
-Message-ID: <bf20e38d-6129-688f-42b8-aad97334daea@RedHat.com>
-Date: Wed, 2 Nov 2016 17:31:25 -0400
+Return-Path: <neilb@suse.de>
+From: NeilBrown <neilb@suse.com>
+To: Benjamin Coddington <bcodding@redhat.com>
+Date: Thu, 03 Nov 2016 10:34:56 +1100
+Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>,
+        Jeff Layton <jlayton@redhat.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 3/6] NFSv4: change nfs4_do_setattr to take an open_context instead of a nfs4_state.
+In-Reply-To: <0773ADA2-C1DE-4D01-8B3C-5883A6A62C2E@redhat.com>
+References: <147633263771.766.17853370901003798934.stgit@noble> <147633280745.766.9047567139865023402.stgit@noble> <0773ADA2-C1DE-4D01-8B3C-5883A6A62C2E@redhat.com>
+Message-ID: <877f8lqwv3.fsf@notabene.neil.brown.name>
 MIME-Version: 1.0
-In-Reply-To: <87a8dhr39t.fsf@notabene.neil.brown.name>
-Content-Type: text/plain; charset=windows-1252
-Sender: linux-nfs-owner@vger.kernel.org
+Content-Type: multipart/signed; boundary="=-=-=";
+	micalg=pgp-sha256; protocol="application/pgp-signature"
 List-ID: <linux-nfs.vger.kernel.org>
 
+--=-=-=
+Content-Type: text/plain
+Content-Transfer-Encoding: quoted-printable
 
+On Thu, Nov 03 2016, Benjamin Coddington wrote:
 
-On 11/02/2016 05:16 PM, NeilBrown wrote:
-> On Thu, Nov 03 2016, Steve Dickson wrote:
->
->> On 11/02/2016 09:49 AM, Thorsten Kukuk wrote:
->>> On Wed, Nov 02, Steve Dickson wrote:
->>>
->>>> I just took a look and we don't set that... Here is what we
->>>> set in Fedora
->>>>
->>>> RPCBDIR=/tmp
->>>> %configure CFLAGS="$CFLAGS" LDFLAGS="-pie" \
->>>>     --enable-warmstarts \
->>>>     --with-statedir="$RPCBDIR" \
->>>>     --with-rpcuser="$RPCBUSR" \
->>>>     --with-nss-modules="files altfiles" \
->>>>     --enable-libwrap \
->>>>     --enable-debug
->>> The rpcbind Makefile has:
->>> bin_PROGRAMS = rpcbind rpcinfo
->>>
->>> So per default, "make install" should install it into /usr/bin
->>> and the patch from Niel with bin is correct.
->> You are correct... In  %install does the following
+> On 13 Oct 2016, at 0:26, NeilBrown wrote:
+
+>> @@ -3694,20 +3695,17 @@ nfs4_proc_setattr(struct dentry *dentry,=20
+>> struct nfs_fattr *fattr,
 >>
->> mv -f ${RPM_BUILD_ROOT}%{_bindir}/rpcbind ${RPM_BUI
->>> Thanks,
->>> NeilBrown
->> LD_ROOT}/sbin
->> mv -f ${RPM_BUILD_ROOT}%{_bindir}/rpcinfo ${RPM_BUILD_ROOT}%{_sbindir}
+>>  	/* Search for an existing open(O_WRITE) file */
+>>  	if (sattr->ia_valid & ATTR_FILE) {
+>> -		struct nfs_open_context *ctx;
 >>
->> Since rpcbind lives in /usr/sbin in the majority distro
->> I'm going to change the Makefile.am so "make install" 
->> will do the right thing... Any objections?
-> If you do it by changing the default for bindir, or by introducing an
-> sbindir that can be changed with configure, then no objections from me.
-> I'm not sure it really needs fixing, but I don't object to be being
-> fixed.
+>>  		ctx =3D nfs_file_open_context(sattr->ia_file);
+>> -		if (ctx) {
+>> +		if (ctx)
+>>  			cred =3D ctx->cred;
+>> -			state =3D ctx->state;
+>> -		}
+>>  	}
 >
-Yes... basically
- 
--bin_PROGRAMS = rpcbind rpcinfo
-+sbin_PROGRAMS = rpcbind rpcinfo
+>
+> Does this need a get_nfs_open_context() there to make sure the open=20
+> context
+> doesn't drop away?
 
-and that seems to work... all this means the rpm spec file
-will have to be tweaked when a new release is made.
+I can't see why you would.  The ia_file must hold a reference to the
+ctx, and this code doesn't keep any reference to the ctx after
+nfs4_proc_setattr completes - does it?
 
-All I'll for checking in these systemd file with the comments
-from the systemd people and the bin=>sbin change.
 
-How about a respin?
 
-steved.
+>     I'm getting this on generic/089:
+>
+> [  651.855291] run fstests generic/089 at 2016-11-01 11:15:57
+> [  652.645828] NFS: nfs4_reclaim_open_state: Lock reclaim failed!
+> [  653.166259] NFSD: client ::1 testing state ID with incorrect client=20
+> ID
+> [  653.167218] BUG: unable to handle kernel NULL pointer dereference at=20
+> 0000000000000018
 
+I think this BUG is happening in nfs41_check_expired_locks.
+This:
+	list_for_each_entry(lsp, &state->lock_states, ls_locks) {
+walks off the end of a list, finding a NULL on a list which should never
+have a NULL pointer.  That does suggest a use-after-free of an
+nfs4_lock_state, or possibly of an nfs4_state.
+
+I can't see it in the code yet though.
+
+>
+> Something else is also wrong there.. wrapping that with
+> get_nfs_open_context() makes the crash go away, but there are still=20
+> several
+> "NFS: nfs4_reclaim_open_state: Lock reclaim failed!" in the log.   Why=20
+> would
+> we be doing reclaim at all?  I'll look at a network capture next.
+
+The
+> [  653.166259] NFSD: client ::1 testing state ID with incorrect client ID
+
+errors suggests that the client is sending a stateid that doesn't match
+the client id, so the server reports and error and the client enters
+state recovery.
+Maybe one thread is dropping a flock lock while another thread is using
+it for some IO and they race?  I think there are refcounts in place to
+protect that but something might be missing.
+
+I look forward to seeing the network capture.
+
+Thanks,
+NeilBrown
+
+--=-=-=
+Content-Type: application/pgp-signature; name="signature.asc"
+
+-----BEGIN PGP SIGNATURE-----
+
+iQIcBAEBCAAGBQJYGnggAAoJEDnsnt1WYoG5I8cQALxeE0REU2vvGdoF9IGQf/sA
+gkjIKVKpbSJfBN+xUuxsQsLndab4jS4iXOEnF2zvut6v8KtKwU+SeysyXrO7Jpu1
+fqo0l4rGsAHidb/ZW1+ns+rEo6kSnAr919jW7nWMtkpM1dhfM8cTJ3v4b3x+gVqm
+DgghT7JAuncPg8tabVCOkho41J5ZQ88OzNobi9G1xBb+0aqccrnwu0kQTgQizOAv
+QHkKDxZUavtqANKoMEAQ3maU0Dty6vx17Efy0xJV3G1Szc7FATwms/3ibBVZlds8
+vD8S1wUkgsqHmVzjivWyiVHVPs1hpR+KiR+UvgoGCXkxFHEIGJ0CuMwAnxNwpf+g
+t+va8CP24R61FZavn8GZb4db5QbChJ4SuCJgRxwA8+u7yXix+BxzsR/IEMz3AUB6
+j/zwzTldnJxdZ7jdiBVTuDBWkKzPXoEuaVC4fbg3tWYVVbHZVErqdIfAI+NKx6eV
+UhzK4hHICsK5fb++e4OLhyppSSXSLDByhKqlNaPcHYDEPZG2WUs6bUYbDihJRuYJ
+4DyKmCR351EITMO8PhLyCCr2gMETVFDkHDTMgN51qT0O7GPAcFbROm/kMpTty91+
+WSkJOBCPNjrJkxDgf2h6YPlSOYyusqoPWjaXe9N5BTLR0BUhXlvuh91NfEccIJeO
+DgVdLpz5ymODjFV8w25D
+=APDV
+-----END PGP SIGNATURE-----
+--=-=-=--
