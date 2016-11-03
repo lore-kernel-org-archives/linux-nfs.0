@@ -1,137 +1,108 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx142.netapp.com ([216.240.21.19]:64480 "EHLO mx142.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:35966 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1756642AbcKCNGi (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 3 Nov 2016 09:06:38 -0400
-Subject: Re: nfs NULL-dereferencing in net-next
-To: Jakub Kicinski <kubakici@wp.pl>
-References: <20161017201943.64529739@jkicinski-Precision-T1700>
- <DB3PR05MB0764DF28BC53A4A4E78A4DD8ACA80@DB3PR05MB0764.eurprd05.prod.outlook.com>
- <817e43c5-d88d-e616-7074-5715de29d319@Netapp.com>
- <DB3PR05MB0764B39F6EDF851A8A52EBACACAB0@DB3PR05MB0764.eurprd05.prod.outlook.com>
- <20161026190840.3d46dad8@jkicinski-Precision-T1700>
- <0ab5021c-84eb-cb9f-c7f5-4d856fdb0f4b@Netapp.com>
- <DB3PR05MB0764F0409AE75E0172ABFE2EACAA0@DB3PR05MB0764.eurprd05.prod.outlook.com>
- <20161031152550.10acb7e0@jkicinski-Precision-T1700>
-CC: Yotam Gigi <yotamg@mellanox.com>, Andy Adamson <andros@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "netdev@vger.kernel.org" <netdev@vger.kernel.org>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        Yotam Gigi <yotam.gi@gmail.com>, mlxsw <mlxsw@mellanox.com>
-From: Anna Schumaker <Anna.Schumaker@netapp.com>
-Message-ID: <e80aa023-b8e3-c663-1ef4-110f8a1368ab@Netapp.com>
-Date: Thu, 3 Nov 2016 09:06:09 -0400
+        id S1757970AbcKCQis (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 3 Nov 2016 12:38:48 -0400
+From: "Benjamin Coddington" <bcodding@redhat.com>
+To: NeilBrown <neilb@suse.com>
+Cc: "Trond Myklebust" <trond.myklebust@primarydata.com>,
+        "Anna Schumaker" <anna.schumaker@netapp.com>,
+        "Jeff Layton" <jlayton@redhat.com>,
+        "Linux NFS Mailing List" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 3/6] NFSv4: change nfs4_do_setattr to take an open_context
+ instead of a nfs4_state.
+Date: Thu, 03 Nov 2016 12:38:45 -0400
+Message-ID: <82FF393E-B8F1-4357-9DBC-F467F7082DB7@redhat.com>
+In-Reply-To: <877f8lqwv3.fsf@notabene.neil.brown.name>
+References: <147633263771.766.17853370901003798934.stgit@noble>
+ <147633280745.766.9047567139865023402.stgit@noble>
+ <0773ADA2-C1DE-4D01-8B3C-5883A6A62C2E@redhat.com>
+ <877f8lqwv3.fsf@notabene.neil.brown.name>
 MIME-Version: 1.0
-In-Reply-To: <20161031152550.10acb7e0@jkicinski-Precision-T1700>
-Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 10/31/2016 11:25 AM, Jakub Kicinski wrote:
-> On Thu, 27 Oct 2016 06:50:22 +0000, Yotam Gigi wrote:
->>> -----Original Message-----
->>> From: Anna Schumaker [mailto:Anna.Schumaker@Netapp.com]
->>> Sent: Wednesday, October 26, 2016 9:17 PM
->>> To: Jakub Kicinski <kubakici@wp.pl>
->>> Cc: Yotam Gigi <yotamg@mellanox.com>; Andy Adamson <andros@netapp.com>;
->>> linux-nfs@vger.kernel.org; netdev@vger.kernel.org; Trond Myklebust
->>> <Trond.Myklebust@netapp.com>; Yotam Gigi <yotam.gi@gmail.com>; mlxsw
->>> <mlxsw@mellanox.com>
->>> Subject: Re: nfs NULL-dereferencing in net-next
+On 2 Nov 2016, at 19:34, NeilBrown wrote:
+
+> On Thu, Nov 03 2016, Benjamin Coddington wrote:
+>
+>> On 13 Oct 2016, at 0:26, NeilBrown wrote:
+>
+>>> @@ -3694,20 +3695,17 @@ nfs4_proc_setattr(struct dentry *dentry,
+>>> struct nfs_fattr *fattr,
 >>>
->>> On 10/26/2016 02:08 PM, Jakub Kicinski wrote:  
->>>> On Wed, 26 Oct 2016 16:15:24 +0000, Yotam Gigi wrote:  
->>>>>> -----Original Message-----
->>>>>> From: Anna Schumaker [mailto:Anna.Schumaker@Netapp.com]
->>>>>> Sent: Wednesday, October 26, 2016 5:40 PM
->>>>>> To: Yotam Gigi <yotamg@mellanox.com>; Jakub Kicinski <kubakici@wp.pl>;  
->>> Andy  
->>>>>> Adamson <andros@netapp.com>; Anna Schumaker
->>>>>> <Anna.Schumaker@Netapp.com>; linux-nfs@vger.kernel.org
->>>>>> Cc: netdev@vger.kernel.org; Trond Myklebust  
->>> <Trond.Myklebust@netapp.com>;  
->>>>>> Yotam Gigi <yotam.gi@gmail.com>; mlxsw <mlxsw@mellanox.com>
->>>>>> Subject: Re: nfs NULL-dereferencing in net-next
->>>>>>
->>>>>> On 10/25/2016 01:19 PM, Yotam Gigi wrote:  
->>>>>>>  
->>>>>>>> -----Original Message-----
->>>>>>>> From: netdev-owner@vger.kernel.org [mailto:netdev-  
->>> owner@vger.kernel.org]  
->>>>>> On  
->>>>>>>> Behalf Of Jakub Kicinski
->>>>>>>> Sent: Monday, October 17, 2016 10:20 PM
->>>>>>>> To: Andy Adamson <andros@netapp.com>; Anna Schumaker
->>>>>>>> <Anna.Schumaker@Netapp.com>; linux-nfs@vger.kernel.org
->>>>>>>> Cc: netdev@vger.kernel.org; Trond Myklebust  
->>>>>> <Trond.Myklebust@netapp.com>  
->>>>>>>> Subject: nfs NULL-dereferencing in net-next
->>>>>>>>
->>>>>>>> Hi!
->>>>>>>>
->>>>>>>> I'm hitting this reliably on net-next, HEAD at 3f3177bb680f
->>>>>>>> ("fsl/fman: fix error return code in mac_probe()").  
->>>>>>>
->>>>>>>
->>>>>>> I see the same thing. It happens constantly on some of my machines, making  
->>>>>> them  
->>>>>>> completely unusable.
->>>>>>>
->>>>>>> I bisected it and got to the commit:
->>>>>>>
->>>>>>> commit 04ea1b3e6d8ed4978bb608c1748530af3de8c274
->>>>>>> Author: Andy Adamson <andros@netapp.com>
->>>>>>> Date:   Fri Sep 9 09:22:27 2016 -0400
->>>>>>>
->>>>>>>     NFS add xprt switch addrs test to match client
->>>>>>>
->>>>>>>     Signed-off-by: Andy Adamson <andros@netapp.com>
->>>>>>>     Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>  
->>>>>>
->>>>>> Thanks for reporting on this everyone!  Does this patch help?  
->>>>>
->>>>> Actually, I still see the same bug with the same trace.  
+>>>  	/* Search for an existing open(O_WRITE) file */
+>>>  	if (sattr->ia_valid & ATTR_FILE) {
+>>> -		struct nfs_open_context *ctx;
 >>>
->>> Well, it was worth a shot.  I'll keep poking at it.
->>>  
->>>>
->>>> I rebuild the latest net-next and I'm not seeing the trace any more...
->>>> I'm only seeing this (with or without your patch):
->>>>
->>>> [   23.465877] NFS: set_pnfs_layoutdriver: cl_exchange_flags 0x0
->>>> [   23.473784] NFS: set_pnfs_layoutdriver: cl_exchange_flags 0x0
->>>> [   23.588890] NFS: set_pnfs_layoutdriver: cl_exchange_flags 0x0
->>>> [   23.596746] NFS: set_pnfs_layoutdriver: cl_exchange_flags 0x0
->>>> [   23.781574] NFS: set_pnfs_layoutdriver: cl_exchange_flags 0x0
->>>> [   23.789599] NFS: set_pnfs_layoutdriver: cl_exchange_flags 0x0  
->>>
->>> Interesting, I get that too when I try to use NFS v4.1.  It's weird that the crash would
->>> stop happening like that, so maybe something is racy in this area.
->>>
->>> Thanks for testing, Yotam and Jakub!
->>> Anna  
+>>>  		ctx = nfs_file_open_context(sattr->ia_file);
+>>> -		if (ctx) {
+>>> +		if (ctx)
+>>>  			cred = ctx->cred;
+>>> -			state = ctx->state;
+>>> -		}
+>>>  	}
 >>
->> I just found out that it happens on any of my machines, once I put two nfs entries in
->> my fstab. If I put only one, I don't see the problem. 
 >>
->> I hope it might be helpful :)
-> 
-> Hi Anna,
-> 
-> any updates on this one?  The crash came back half an hour after I
-> reported that it was gone...
+>> Does this need a get_nfs_open_context() there to make sure the open
+>> context
+>> doesn't drop away?
+>
+> I can't see why you would.  The ia_file must hold a reference to the
+> ctx, and this code doesn't keep any reference to the ctx after
+> nfs4_proc_setattr completes - does it?
 
-Aww, I was hoping that patch would work.  It still seemed to fix some issues for me when mounting multiple servers, so I'm planning to keep it.  Unfortunately I'm out of town this week, so I haven't had much of a chance to keep poking at this issue.  I should be able to get back to it next week!
+I had a thought that the file pointer could be shared, and just checking to
+see if the file's private data was set didn't mean that this task set it.
+I'm probably wrong about that, and I'm definitely wrong about the fix, since
+it will crash taking a reference.  It just took much longer this time.
 
-Thanks for the update!
-Anna
+>>     I'm getting this on generic/089:
+>>
+>> [  651.855291] run fstests generic/089 at 2016-11-01 11:15:57
+>> [  652.645828] NFS: nfs4_reclaim_open_state: Lock reclaim failed!
+>> [  653.166259] NFSD: client ::1 testing state ID with incorrect client
+>> ID
+>> [  653.167218] BUG: unable to handle kernel NULL pointer dereference at
+>> 0000000000000018
+>
+> I think this BUG is happening in nfs41_check_expired_locks.
+> This:
+> 	list_for_each_entry(lsp, &state->lock_states, ls_locks) {
+> walks off the end of a list, finding a NULL on a list which should never
+> have a NULL pointer.  That does suggest a use-after-free of an
+> nfs4_lock_state, or possibly of an nfs4_state.
+>
+> I can't see it in the code yet though.
 
-> 
-> Over the weekend David Miller rebased net-next on top of 4.9.0-rc3 and
-> the bug is still there :(  FWIW I also have multiple nfs mounts on my
-> setup, 2 in fstab and one in a startup script.  Following Yotam I
-> dropped one of the fstab entries and things seem to be working (even
-> though I still have multiple mounts, the other one just comes a bit
-> later).
-> 
+Yes, walking off the list, and I had some idea that we were getting
+duplicate fl_owners from a bad lock_context, but today that doesn't make
+any sense to me.  I can't see how this can happen either.
+
+>>
+>> Something else is also wrong there.. wrapping that with
+>> get_nfs_open_context() makes the crash go away, but there are still
+>> several
+>> "NFS: nfs4_reclaim_open_state: Lock reclaim failed!" in the log.   Why
+>> would
+>> we be doing reclaim at all?  I'll look at a network capture next.
+>
+> The
+>> [  653.166259] NFSD: client ::1 testing state ID with incorrect client ID
+>
+> errors suggests that the client is sending a stateid that doesn't match
+> the client id, so the server reports and error and the client enters
+> state recovery.
+> Maybe one thread is dropping a flock lock while another thread is using
+> it for some IO and they race?  I think there are refcounts in place to
+> protect that but something might be missing.
+>
+> I look forward to seeing the network capture.
+
+The network capture isn't very enlightening.. or I haven't been able to find
+where the problem happens in the 800Mb of capture.  I probably need to make
+the box panic on oops and capture externally so the problem is right at the
+end of the capture.  I'll keep plugging away at this as I can.
+
+Ben
 
