@@ -1,103 +1,47 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:52640 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:56590 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S932203AbcKDK3T (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 4 Nov 2016 06:29:19 -0400
+        id S932203AbcKDK3R (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 4 Nov 2016 06:29:17 -0400
 From: Paolo Abeni <pabeni@redhat.com>
 To: netdev@vger.kernel.org
 Cc: "David S. Miller" <davem@davemloft.net>,
         Eric Dumazet <edumazet@google.com>,
         Hannes Frederic Sowa <hannes@stressinduktion.org>,
         linux-nfs@vger.kernel.org
-Subject: [PATCH net-next v2 1/2] net/sock: add an explicit sk argument for ip_cmsg_recv_offset()
-Date: Fri,  4 Nov 2016 11:28:58 +0100
-Message-Id: <1b4e5292a0c15494515423245e8eeb7adf2ebcea.1478254512.git.pabeni@redhat.com>
-In-Reply-To: <cover.1478254512.git.pabeni@redhat.com>
-References: <cover.1478254512.git.pabeni@redhat.com>
+Subject: [PATCH net-next 0/2] udp: do fwd memory scheduling on dequeue
+Date: Fri,  4 Nov 2016 11:28:57 +0100
+Message-Id: <cover.1478254512.git.pabeni@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-So that we can use it even after orphaining the skbuff.
+After commit 850cbaddb52d ("udp: use it's own memory accounting schema"),
+the udp code needs to acquire twice the receive queue spinlock on dequeue.
 
-Suggested-by: Eric Dumazet <eric.dumazet@gmail.com>
-Signed-off-by: Paolo Abeni <pabeni@redhat.com>
----
-@Eric, please add your signed off by when you feel comfortable with the patch
-as you basically authored it
+This patch series remove the need for the second lock at skb free time,
+moving the udp memory scheduling inside the dequeue operation; the skb
+destructor field is not used anymore and an additional sk argument is added
+to ip_cmsg_recv_offset() to cope with null skb->sk after dequeue.
 
- include/net/ip.h       | 5 +++--
- net/ipv4/ip_sockglue.c | 6 +++---
- net/ipv4/udp.c         | 2 +-
- net/ipv6/udp.c         | 2 +-
- 4 files changed, 8 insertions(+), 7 deletions(-)
+Many thanks to Eric Dumazed for suggesting pretty all much the above.
 
-diff --git a/include/net/ip.h b/include/net/ip.h
-index 5413883..f25c662 100644
---- a/include/net/ip.h
-+++ b/include/net/ip.h
-@@ -578,7 +578,8 @@ int ip_options_get_from_user(struct net *net, struct ip_options_rcu **optp,
-  */
- 
- void ipv4_pktinfo_prepare(const struct sock *sk, struct sk_buff *skb);
--void ip_cmsg_recv_offset(struct msghdr *msg, struct sk_buff *skb, int tlen, int offset);
-+void ip_cmsg_recv_offset(struct msghdr *msg, struct sock *sk,
-+			 struct sk_buff *skb, int tlen, int offset);
- int ip_cmsg_send(struct sock *sk, struct msghdr *msg,
- 		 struct ipcm_cookie *ipc, bool allow_ipv6);
- int ip_setsockopt(struct sock *sk, int level, int optname, char __user *optval,
-@@ -600,7 +601,7 @@ void ip_local_error(struct sock *sk, int err, __be32 daddr, __be16 dport,
- 
- static inline void ip_cmsg_recv(struct msghdr *msg, struct sk_buff *skb)
- {
--	ip_cmsg_recv_offset(msg, skb, 0, 0);
-+	ip_cmsg_recv_offset(msg, skb->sk, skb, 0, 0);
- }
- 
- bool icmp_global_allow(void);
-diff --git a/net/ipv4/ip_sockglue.c b/net/ipv4/ip_sockglue.c
-index b8a2d63..940257f 100644
---- a/net/ipv4/ip_sockglue.c
-+++ b/net/ipv4/ip_sockglue.c
-@@ -153,10 +153,10 @@ static void ip_cmsg_recv_dstaddr(struct msghdr *msg, struct sk_buff *skb)
- 	put_cmsg(msg, SOL_IP, IP_ORIGDSTADDR, sizeof(sin), &sin);
- }
- 
--void ip_cmsg_recv_offset(struct msghdr *msg, struct sk_buff *skb,
--			 int tlen, int offset)
-+void ip_cmsg_recv_offset(struct msghdr *msg, struct sock *sk,
-+			 struct sk_buff *skb, int tlen, int offset)
- {
--	struct inet_sock *inet = inet_sk(skb->sk);
-+	struct inet_sock *inet = inet_sk(sk);
- 	unsigned int flags = inet->cmsg_flags;
- 
- 	/* Ordered by supposed usage frequency */
-diff --git a/net/ipv4/udp.c b/net/ipv4/udp.c
-index 195992e..55f2d7c 100644
---- a/net/ipv4/udp.c
-+++ b/net/ipv4/udp.c
-@@ -1420,7 +1420,7 @@ int udp_recvmsg(struct sock *sk, struct msghdr *msg, size_t len, int noblock,
- 		*addr_len = sizeof(*sin);
- 	}
- 	if (inet->cmsg_flags)
--		ip_cmsg_recv_offset(msg, skb, sizeof(struct udphdr), off);
-+		ip_cmsg_recv_offset(msg, sk, skb, sizeof(struct udphdr), off);
- 
- 	err = copied;
- 	if (flags & MSG_TRUNC)
-diff --git a/net/ipv6/udp.c b/net/ipv6/udp.c
-index a7700bb..cb73533 100644
---- a/net/ipv6/udp.c
-+++ b/net/ipv6/udp.c
-@@ -425,7 +425,7 @@ int udpv6_recvmsg(struct sock *sk, struct msghdr *msg, size_t len,
- 
- 	if (is_udp4) {
- 		if (inet->cmsg_flags)
--			ip_cmsg_recv_offset(msg, skb,
-+			ip_cmsg_recv_offset(msg, sk, skb,
- 					    sizeof(struct udphdr), off);
- 	} else {
- 		if (np->rxopt.all)
+Paolo Abeni (2):
+  net/sock: add an explicit sk argument for ip_cmsg_recv_offset()
+  udp: do fwd memory scheduling on dequeue
+
+ include/linux/skbuff.h |  4 ++++
+ include/net/ip.h       |  5 +++--
+ include/net/udp.h      | 15 +++++++++++++++
+ net/core/datagram.c    | 17 ++++++++++++-----
+ net/ipv4/ip_sockglue.c |  6 +++---
+ net/ipv4/udp.c         | 44 +++++++++++++++++++++++++-------------------
+ net/ipv6/udp.c         |  5 ++---
+ net/rxrpc/input.c      |  7 +++----
+ net/sunrpc/svcsock.c   |  2 +-
+ net/sunrpc/xprtsock.c  |  2 +-
+ net/unix/af_unix.c     |  4 ++--
+ 11 files changed, 71 insertions(+), 40 deletions(-)
+
 -- 
 1.8.3.1
 
