@@ -1,67 +1,49 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-pf0-f196.google.com ([209.85.192.196]:33447 "EHLO
-        mail-pf0-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1755967AbcKDMia (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 4 Nov 2016 08:38:30 -0400
-Message-ID: <1478263108.7065.460.camel@edumazet-glaptop3.roam.corp.google.com>
-Subject: Re: [PATCH net-next v2 2/2] udp: do fwd memory scheduling on dequeue
-From: Eric Dumazet <eric.dumazet@gmail.com>
-To: Paolo Abeni <pabeni@redhat.com>
-Cc: netdev@vger.kernel.org, "David S. Miller" <davem@davemloft.net>,
-        Eric Dumazet <edumazet@google.com>,
-        Hannes Frederic Sowa <hannes@stressinduktion.org>,
-        linux-nfs@vger.kernel.org
-Date: Fri, 04 Nov 2016 05:38:28 -0700
-In-Reply-To: <762f142043b48daf282316dd88ff099fbd9729e4.1478254512.git.pabeni@redhat.com>
-References: <cover.1478254512.git.pabeni@redhat.com>
-         <762f142043b48daf282316dd88ff099fbd9729e4.1478254512.git.pabeni@redhat.com>
-Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
+Received: from mx141.netapp.com ([216.240.21.12]:46358 "EHLO mx141.netapp.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1754278AbcKDNJL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 4 Nov 2016 09:09:11 -0400
+From: <Anna.Schumaker@Netapp.com>
+To: <linux-nfs@vger.kernel.org>
+CC: <Anna.Schumaker@Netapp.com>, <jlayton@redhat.com>
+Subject: [PATCH] NFS: Don't print a pNFS error if we aren't using pNFS
+Date: Fri, 4 Nov 2016 09:08:41 -0400
+Message-ID: <20161104130841.17150-1-Anna.Schumaker@Netapp.com>
+MIME-Version: 1.0
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, 2016-11-04 at 11:28 +0100, Paolo Abeni wrote:
-> A new argument is added to __skb_recv_datagram to provide
-> an explicit skb destructor, invoked under the receive queue
-> lock.
-> The UDP protocol uses such argument to perform memory
-> reclaiming on dequeue, so that the UDP protocol does not
-> set anymore skb->desctructor.
-> Instead explicit memory reclaiming is performed at close() time and
-> when skbs are removed from the receive queue.
-> The in kernel UDP protocol users now need to call a
-> skb_recv_udp() variant instead of skb_recv_datagram() to
-> properly perform memory accounting on dequeue.
-> 
-> Overall, this allows acquiring only once the receive queue
-> lock on dequeue.
-> 
-> Tested using pktgen with random src port, 64 bytes packet,
-> wire-speed on a 10G link as sender and udp_sink as the receiver,
-> using an l4 tuple rxhash to stress the contention, and one or more
-> udp_sink instances with reuseport.
-> 
-> nr sinks	vanilla		patched
-> 1		440		560
-> 3		2150		2300
-> 6		3650		3800
-> 9		4450		4600
-> 12		6250		6450
-> 
-> v1 -> v2:
->  - do rmem and allocated memory scheduling under the receive lock
->  - do bulk scheduling in first_packet_length() and in udp_destruct_sock()
->  - avoid the typdef for the dequeue callback
-> 
-> Suggested-by: Eric Dumazet <edumazet@google.com>
-> Acked-by: Hannes Frederic Sowa <hannes@stressinduktion.org>
-> Signed-off-by: Paolo Abeni <pabeni@redhat.com>
-> ---
-> @Eric, please add your signed off by when you feel comfortable with the patch
-> as you authored some of the code
+From: Anna Schumaker <Anna.Schumaker@Netapp.com>
 
-SGTM, thanks Paolo and Hannes !
+We used to check for a valid layout type id before verifying pNFS flags
+as an indicator for if we are using pNFS.  This changed in 3132e49ece
+with the introduction of multiple layout types, since now we are passing
+an array of ids instead of just one.  Since then, users have been seeing
+a KERN_ERR printk show up whenever mounting NFS v4 without pNFS.  This
+patch restores the original behavior of exiting set_pnfs_layoutdriver()
+early if we aren't using pNFS.
 
-Acked-by: Eric Dumazet <edumazet@google.com>
+Fixes 3132e49ece ("pnfs: track multiple layout types in fsinfo
+structure")
+Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
+---
+ fs/nfs/pnfs.c | 2 ++
+ 1 file changed, 2 insertions(+)
 
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index 56b2d96..259ef85 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -146,6 +146,8 @@ set_pnfs_layoutdriver(struct nfs_server *server, const struct nfs_fh *mntfh,
+ 	u32 id;
+ 	int i;
+ 
++	if (fsinfo->nlayouttypes == 0)
++		goto out_no_driver;
+ 	if (!(server->nfs_client->cl_exchange_flags &
+ 		 (EXCHGID4_FLAG_USE_NON_PNFS | EXCHGID4_FLAG_USE_PNFS_MDS))) {
+ 		printk(KERN_ERR "NFS: %s: cl_exchange_flags 0x%x\n",
+-- 
+2.10.1
 
