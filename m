@@ -1,46 +1,33 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:60764 "EHLO fieldses.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S933672AbcKDTOa (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 4 Nov 2016 15:14:30 -0400
-Date: Fri, 4 Nov 2016 15:14:29 -0400
-To: Linus Torvalds <torvalds@linux-foundation.org>
-Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: [GIT PULL] nfsd bugfixes for 4.9
-Message-ID: <20161104191429.GA4601@fieldses.org>
+Received: from ec2-52-27-115-49.us-west-2.compute.amazonaws.com ([52.27.115.49]:55524
+        "EHLO osg.samsung.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+        with ESMTP id S1754523AbcKEM7c (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sat, 5 Nov 2016 08:59:32 -0400
+Message-ID: <581DD7B0.8080906@osg.samsung.com>
+Date: Sat, 05 Nov 2016 12:59:28 +0000
+From: Luis de Bethencourt <luisbg@osg.samsung.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-From: bfields@fieldses.org (J. Bruce Fields)
+To: linux-fsdevel@vger.kernel.org
+CC: Richard Weinberger <richard@nod.at>, linux-nfs@vger.kernel.org
+Subject: When is export_operations.get_parent triggered?
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Please pull nfsd bugfixes from
+Hi all,
 
-  git://linux-nfs.org/~bfields/linux.git tags/nfsd-4.9-1
+I recently played with adding the basics to make befs exportable via NFS [0].
 
---b.
+I want to implement the get_parent member of the export_operations struct as
+well, but I can't seem to trigger this member being called. I have implemented
+a solution which I feel is wrong [1], but want to be able to test it before
+moving forward.
 
-----------------------------------------------------------------
-Fixes for some recent regressions including fallout from the vmalloc'd
-stack change (after which we can no longer encrypt stuff on the stack).
+When is this member triggered? Any advice?
 
-----------------------------------------------------------------
-Chuck Lever (2):
-      svcrdma: backchannel cannot share a page for send and rcv buffers
-      nfsd: Fix general protection fault in release_lock_stateid()
+Thanks,
+Luis
 
-J. Bruce Fields (1):
-      sunrpc: don't pass on-stack memory to sg_set_buf
 
-Jeff Layton (2):
-      nfsd: move blocked lock handling under a dedicated spinlock
-      sunrpc: fix some missing rq_rbuffer assignments
-
- fs/nfsd/netns.h                            |  5 ++
- fs/nfsd/nfs4state.c                        | 38 +++++++-------
- net/sunrpc/auth_gss/auth_gss.c             | 13 +++--
- net/sunrpc/auth_gss/gss_krb5_crypto.c      | 82 +++++++++++++++++-------------
- net/sunrpc/auth_gss/svcauth_gss.c          | 21 +++++---
- net/sunrpc/xprtrdma/svc_rdma_backchannel.c | 12 ++++-
- net/sunrpc/xprtsock.c                      |  1 +
- 7 files changed, 106 insertions(+), 66 deletions(-)
+[0] https://lkml.org/lkml/2016/11/5/40
+[1] https://github.com/luisbg/linux-befs/commit/a7d92c746469f1bd60dd1c905587915ecf9884f5
