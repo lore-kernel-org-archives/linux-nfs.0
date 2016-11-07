@@ -1,201 +1,164 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from userp1040.oracle.com ([156.151.31.81]:23611 "EHLO
-        userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S932849AbcKGTGK (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 7 Nov 2016 14:06:10 -0500
-Content-Type: text/plain; charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 9.3 \(3124\))
-Subject: Re: [PATCH] sunrpc: svc_age_temp_xprts_now should skip non-tcp transports
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <1478544454-46146-1-git-send-email-smayhew@redhat.com>
-Date: Mon, 7 Nov 2016 14:06:01 -0500
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-        Jeff Layton <jlayton@poochiereds.net>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <C40A3090-F45E-4899-9E32-39F68BAE2676@oracle.com>
-References: <1478544454-46146-1-git-send-email-smayhew@redhat.com>
-To: Scott Mayhew <smayhew@redhat.com>
+Received: from mx1.redhat.com ([209.132.183.28]:34470 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S933173AbcKGTQ6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 7 Nov 2016 14:16:58 -0500
+Subject: Re: [PATCH nfs-utils v2] nfs-server-generator: avoid using external
+ services.
+To: NeilBrown <neilb@suse.com>
+References: <8737k0215d.fsf@notabene.neil.brown.name>
+ <4a004767-e7cd-d427-706e-4e144b7bdbbb@RedHat.com>
+ <87wpgnq8jx.fsf@notabene.neil.brown.name>
+ <d58fc30b-bd9a-c280-c8a3-0358e9f1de01@RedHat.com>
+ <87lgx2ram0.fsf@notabene.neil.brown.name>
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+From: Steve Dickson <SteveD@redhat.com>
+Message-ID: <9cc0dda7-f00f-2725-2898-5939aac7bb02@RedHat.com>
+Date: Mon, 7 Nov 2016 14:16:07 -0500
+MIME-Version: 1.0
+In-Reply-To: <87lgx2ram0.fsf@notabene.neil.brown.name>
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
-> On Nov 7, 2016, at 1:47 PM, Scott Mayhew <smayhew@redhat.com> wrote:
-> 
-> This fixes the following panic that can occur with NFSoRDMA.
-> 
-> general protection fault: 0000 [#1] SMP
-> Modules linked in: rpcrdma ib_isert iscsi_target_mod ib_iser libiscsi
-> scsi_transport_iscsi ib_srpt target_core_mod ib_srp scsi_transport_srp
-> scsi_tgt ib_ipoib rdma_ucm ib_ucm ib_uverbs ib_umad rdma_cm ib_cm iw_cm
-> mlx5_ib ib_core intel_powerclamp coretemp kvm_intel kvm sg ioatdma
-> ipmi_devintf ipmi_ssif dcdbas iTCO_wdt iTCO_vendor_support pcspkr
-> irqbypass sb_edac shpchp dca crc32_pclmul ghash_clmulni_intel edac_core
-> lpc_ich aesni_intel lrw gf128mul glue_helper ablk_helper mei_me mei
-> ipmi_si cryptd wmi ipmi_msghandler acpi_pad acpi_power_meter nfsd
-> auth_rpcgss nfs_acl lockd grace sunrpc ip_tables xfs libcrc32c sd_mod
-> crc_t10dif crct10dif_generic mgag200 i2c_algo_bit drm_kms_helper
-> syscopyarea sysfillrect sysimgblt ahci fb_sys_fops ttm libahci mlx5_core
-> tg3 crct10dif_pclmul drm crct10dif_common
-> ptp i2c_core libata crc32c_intel pps_core fjes dm_mirror dm_region_hash
-> dm_log dm_mod
-> CPU: 1 PID: 120 Comm: kworker/1:1 Not tainted 3.10.0-514.el7.x86_64 #1
-> Hardware name: Dell Inc. PowerEdge R320/0KM5PX, BIOS 2.4.2 01/29/2015
-> Workqueue: events check_lifetime
-> task: ffff88031f506dd0 ti: ffff88031f584000 task.ti: ffff88031f584000
-> RIP: 0010:[<ffffffff8168d847>]  [<ffffffff8168d847>]
-> _raw_spin_lock_bh+0x17/0x50
-> RSP: 0018:ffff88031f587ba8  EFLAGS: 00010206
-> RAX: 0000000000020000 RBX: 20041fac02080072 RCX: ffff88031f587fd8
-> RDX: 0000000000000000 RSI: 0000000000000000 RDI: 20041fac02080072
-> RBP: ffff88031f587bb0 R08: 0000000000000008 R09: ffffffff8155be77
-> R10: ffff880322a59b00 R11: ffffea000bf39f00 R12: 20041fac02080072
-> R13: 000000000000000d R14: ffff8800c4fbd800 R15: 0000000000000001
-> FS:  0000000000000000(0000) GS:ffff880322a40000(0000)
-> knlGS:0000000000000000
-> CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
-> CR2: 00007f3c52d4547e CR3: 00000000019ba000 CR4: 00000000001407e0
-> DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
-> DR3: 0000000000000000 DR6: 00000000ffff0ff0 DR7: 0000000000000400
-> Stack:
-> 20041fac02080002 ffff88031f587bd0 ffffffff81557830 20041fac02080002
-> ffff88031f587c78 ffff88031f587c40 ffffffff8155ae08 000000010157df32
-> 0000000800000001 ffff88031f587c20 ffffffff81096acb ffffffff81aa37d0
-> Call Trace:
-> [<ffffffff81557830>] lock_sock_nested+0x20/0x50
-> [<ffffffff8155ae08>] sock_setsockopt+0x78/0x940
-> [<ffffffff81096acb>] ? lock_timer_base.isra.33+0x2b/0x50
-> [<ffffffff8155397d>] kernel_setsockopt+0x4d/0x50
-> [<ffffffffa0386284>] svc_age_temp_xprts_now+0x174/0x1e0 [sunrpc]
-> [<ffffffffa03b681d>] nfsd_inetaddr_event+0x9d/0xd0 [nfsd]
-> [<ffffffff81691ebc>] notifier_call_chain+0x4c/0x70
-> [<ffffffff810b687d>] __blocking_notifier_call_chain+0x4d/0x70
-> [<ffffffff810b68b6>] blocking_notifier_call_chain+0x16/0x20
-> [<ffffffff815e8538>] __inet_del_ifa+0x168/0x2d0
-> [<ffffffff815e8cef>] check_lifetime+0x25f/0x270
-> [<ffffffff810a7f3b>] process_one_work+0x17b/0x470
-> [<ffffffff810a8d76>] worker_thread+0x126/0x410
-> [<ffffffff810a8c50>] ? rescuer_thread+0x460/0x460
-> [<ffffffff810b052f>] kthread+0xcf/0xe0
-> [<ffffffff810b0460>] ? kthread_create_on_node+0x140/0x140
-> [<ffffffff81696418>] ret_from_fork+0x58/0x90
-> [<ffffffff810b0460>] ? kthread_create_on_node+0x140/0x140
-> Code: ca 75 f1 5d c3 0f 1f 80 00 00 00 00 eb d9 66 0f 1f 44 00 00 0f 1f
-> 44 00 00 55 48 89 e5 53 48 89 fb e8 7e 04 a0 ff b8 00 00 02 00 <f0> 0f
-> c1 03 89 c2 c1 ea 10 66 39 c2 75 03 5b 5d c3 83 e2 fe 0f
-> RIP  [<ffffffff8168d847>] _raw_spin_lock_bh+0x17/0x50
-> RSP <ffff88031f587ba8>
-> 
-> Signed-off-by: Scott Mayhew <smayhew@redhat.com>
-> Fixes: c3d4879e ("sunrpc: Add a function to close temporary transports immediately")
+
+On 11/01/2016 08:25 PM, NeilBrown wrote:
+> nfs-server-generator is run very early when a lot of services are not
+> yet started, so it mustn't depend on them.  Currently it can try to
+> use hostname lookup and syslog.  Using hostname lookup can cause
+> errors and when these are logged via syslog, it can cause the
+> generator to block indefinitely
+>
+> Hostname-lookup is not needed, as we don't use the host issue,
+> and sending message to stderr is sufficient for the generator.
+>
+> Disabling syslog is easy - call a function that sets a static variable.
+>
+> Disabling hostname lookup requires adding an "ignore_hosts" flags to
+> export_read and export_d_read().
+>
+> Signed-off-by: NeilBrown <neilb@suse.com>
+Committed!
+
+steved.
 > ---
-> include/linux/sunrpc/svc_xprt.h |  1 +
-> net/sunrpc/svc_xprt.c           | 14 +++-----------
-> net/sunrpc/svcsock.c            | 17 +++++++++++++++++
-> 3 files changed, 21 insertions(+), 11 deletions(-)
-> 
-> diff --git a/include/linux/sunrpc/svc_xprt.h b/include/linux/sunrpc/svc_xprt.h
-> index ab02a45..4dbe0c9 100644
-> --- a/include/linux/sunrpc/svc_xprt.h
-> +++ b/include/linux/sunrpc/svc_xprt.h
-> @@ -25,6 +25,7 @@ struct svc_xprt_ops {
-> 	void		(*xpo_detach)(struct svc_xprt *);
-> 	void		(*xpo_free)(struct svc_xprt *);
-> 	int		(*xpo_secure_port)(struct svc_rqst *);
-> +	void		(*xpo_notifier_cb)(struct svc_xprt *);
-
-I'd prefer a less generic name for this callout: xpo_idle_close maybe?
-
-
-> };
-> 
-> struct svc_xprt_class {
-> diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
-> index c3f6523..b3c26af 100644
-> --- a/net/sunrpc/svc_xprt.c
-> +++ b/net/sunrpc/svc_xprt.c
-> @@ -1002,18 +1002,14 @@ static void svc_age_temp_xprts(unsigned long closure)
-> void svc_age_temp_xprts_now(struct svc_serv *serv, struct sockaddr *server_addr)
-> {
-> 	struct svc_xprt *xprt;
-> -	struct svc_sock *svsk;
-> -	struct socket *sock;
-> 	struct list_head *le, *next;
-> 	LIST_HEAD(to_be_closed);
-> -	struct linger no_linger = {
-> -		.l_onoff = 1,
-> -		.l_linger = 0,
-> -	};
-> 
-> 	spin_lock_bh(&serv->sv_lock);
-> 	list_for_each_safe(le, next, &serv->sv_tempsocks) {
-> 		xprt = list_entry(le, struct svc_xprt, xpt_list);
-> +		if (!xprt->xpt_ops->xpo_notifier_cb)
-> +			continue;
-> 		if (rpc_cmp_addr(server_addr, (struct sockaddr *)
-> 				&xprt->xpt_local)) {
-> 			dprintk("svc_age_temp_xprts_now: found %p\n", xprt);
-> @@ -1027,11 +1023,7 @@ void svc_age_temp_xprts_now(struct svc_serv *serv, struct sockaddr *server_addr)
-> 		list_del_init(le);
-> 		xprt = list_entry(le, struct svc_xprt, xpt_list);
-> 		dprintk("svc_age_temp_xprts_now: closing %p\n", xprt);
-> -		svsk = container_of(xprt, struct svc_sock, sk_xprt);
-> -		sock = svsk->sk_sock;
-> -		kernel_setsockopt(sock, SOL_SOCKET, SO_LINGER,
-> -				  (char *)&no_linger, sizeof(no_linger));
-> -		svc_close_xprt(xprt);
-> +		xprt->xpt_ops->xpo_notifier_cb(xprt);
-
-Shouldn't RDMA transports be aged out too?
-
-
-> 	}
-> }
-> EXPORT_SYMBOL_GPL(svc_age_temp_xprts_now);
-> diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
-> index 57625f6..a65712c 100644
-> --- a/net/sunrpc/svcsock.c
-> +++ b/net/sunrpc/svcsock.c
-> @@ -438,6 +438,22 @@ static int svc_tcp_has_wspace(struct svc_xprt *xprt)
-> 	return !test_bit(SOCK_NOSPACE, &svsk->sk_sock->flags);
-> }
-> 
-> +static void svc_tcp_notifier_cb(struct svc_xprt *xprt)
-> +{
-> +	struct svc_sock *svsk;
-> +	struct socket *sock;
-> +	struct linger no_linger = {
-> +		.l_onoff = 1,
-> +		.l_linger = 0,
-> +	};
-> +
-> +	svsk = container_of(xprt, struct svc_sock, sk_xprt);
-> +	sock = svsk->sk_sock;
-> +	kernel_setsockopt(sock, SOL_SOCKET, SO_LINGER,
-> +			  (char *)&no_linger, sizeof(no_linger));
-> +	svc_close_xprt(xprt);
-> +}
-> +
-> /*
->  * See net/ipv6/ip_sockglue.c : ip_cmsg_recv_pktinfo
->  */
-> @@ -1242,6 +1258,7 @@ static struct svc_xprt_ops svc_tcp_ops = {
-> 	.xpo_has_wspace = svc_tcp_has_wspace,
-> 	.xpo_accept = svc_tcp_accept,
-> 	.xpo_secure_port = svc_sock_secure_port,
-> +	.xpo_notifier_cb = svc_tcp_notifier_cb,
-> };
-> 
-> static struct svc_xprt_class svc_tcp_class = {
-> -- 
-> 2.4.11
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
---
-Chuck Lever
-
-
+>
+> Hi Steve,
+>  I decided that you were right and the interface wasn't really very
+>  nice.
+>  And it wasn't that hard to make a more sensible interface.
+>  So I did that.  Less need for comments, but I put an appropriate
+>  comment in anyway.
+>
+> Thanks,
+> NeilBrown
+>
+>
+>  support/export/export.c        | 13 +++++++++----
+>  support/include/exportfs.h     |  4 ++--
+>  systemd/nfs-server-generator.c |  4 ++--
+>  utils/exportfs/exportfs.c      |  4 ++--
+>  4 files changed, 15 insertions(+), 10 deletions(-)
+>
+> diff --git a/support/export/export.c b/support/export/export.c
+> index 0b8a858c2c74..15e91cb3eb71 100644
+> --- a/support/export/export.c
+> +++ b/support/export/export.c
+> @@ -70,11 +70,15 @@ static void warn_duplicated_exports(nfs_export *exp, struct exportent *eep)
+>  /**
+>   * export_read - read entries from /etc/exports
+>   * @fname: name of file to read from
+> + * @ignore_hosts: don't check validity of host names
+>   *
+>   * Returns number of read entries.
+> + * @ignore_hosts can be set when the host names won't be used
+> + * and when getting delays or errors due to problems with
+> + * hostname looking is not acceptable.
+>   */
+>  int
+> -export_read(char *fname)
+> +export_read(char *fname, int ignore_hosts)
+>  {
+>  	struct exportent	*eep;
+>  	nfs_export		*exp;
+> @@ -83,7 +87,7 @@ export_read(char *fname)
+>  
+>  	setexportent(fname, "r");
+>  	while ((eep = getexportent(0,1)) != NULL) {
+> -		exp = export_lookup(eep->e_hostname, eep->e_path, 0);
+> +		exp = export_lookup(eep->e_hostname, eep->e_path, ignore_hosts);
+>  		if (!exp) {
+>  			if (export_create(eep, 0))
+>  				/* possible complaints already logged */
+> @@ -100,13 +104,14 @@ export_read(char *fname)
+>  /**
+>   * export_d_read - read entries from /etc/exports.
+>   * @fname: name of directory to read from
+> + * @ignore_hosts: don't check validity of host names
+>   *
+>   * Returns number of read entries.
+>   * Based on mnt_table_parse_dir() in
+>   *  util-linux-ng/shlibs/mount/src/tab_parse.c
+>   */
+>  int
+> -export_d_read(const char *dname)
+> +export_d_read(const char *dname, int ignore_hosts)
+>  {
+>  	int n = 0, i;
+>  	struct dirent **namelist = NULL;
+> @@ -150,7 +155,7 @@ export_d_read(const char *dname)
+>  			continue;
+>  		}
+>  
+> -		volumes += export_read(fname);
+> +		volumes += export_read(fname, ignore_hosts);
+>  	}
+>  
+>  	for (i = 0; i < n; i++)
+> diff --git a/support/include/exportfs.h b/support/include/exportfs.h
+> index f033329b5fd2..32d4fe95fd7e 100644
+> --- a/support/include/exportfs.h
+> +++ b/support/include/exportfs.h
+> @@ -134,8 +134,8 @@ struct addrinfo *		client_resolve(const struct sockaddr *sap);
+>  int 				client_member(const char *client,
+>  						const char *name);
+>  
+> -int				export_read(char *fname);
+> -int				export_d_read(const char *dname);
+> +int				export_read(char *fname, int ignore_hosts);
+> +int				export_d_read(const char *dname, int ignore_hosts);
+>  void				export_reset(nfs_export *);
+>  nfs_export *			export_lookup(char *hname, char *path, int caconical);
+>  nfs_export *			export_find(const struct addrinfo *ai,
+> diff --git a/systemd/nfs-server-generator.c b/systemd/nfs-server-generator.c
+> index af8bb52bfbd7..44895f1f8582 100644
+> --- a/systemd/nfs-server-generator.c
+> +++ b/systemd/nfs-server-generator.c
+> @@ -102,8 +102,8 @@ int main(int argc, char *argv[])
+>  	path = malloc(strlen(argv[1]) + sizeof(dirbase) + sizeof(filebase));
+>  	if (!path)
+>  		exit(2);
+> -	if (export_read(_PATH_EXPORTS) +
+> -	    export_d_read(_PATH_EXPORTS_D) == 0)
+> +	if (export_read(_PATH_EXPORTS, 1) +
+> +	    export_d_read(_PATH_EXPORTS_D, 1) == 0)
+>  		/* Nothing is exported, so nothing to do */
+>  		exit(0);
+>  
+> diff --git a/utils/exportfs/exportfs.c b/utils/exportfs/exportfs.c
+> index 4ac2c15ae13e..5136810029d0 100644
+> --- a/utils/exportfs/exportfs.c
+> +++ b/utils/exportfs/exportfs.c
+> @@ -183,8 +183,8 @@ main(int argc, char **argv)
+>  	atexit(release_lockfile);
+>  
+>  	if (f_export && ! f_ignore) {
+> -		if (! (export_read(_PATH_EXPORTS) +
+> -		       export_d_read(_PATH_EXPORTS_D))) {
+> +		if (! (export_read(_PATH_EXPORTS, 0) +
+> +		       export_d_read(_PATH_EXPORTS_D, 0))) {
+>  			if (f_verbose)
+>  				xlog(L_WARNING, "No file systems exported!");
+>  		}
 
