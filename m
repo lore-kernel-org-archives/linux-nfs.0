@@ -1,223 +1,246 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:38132 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751496AbcKGWI1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 7 Nov 2016 17:08:27 -0500
-Date: Mon, 7 Nov 2016 17:08:24 -0500
-From: Scott Mayhew <smayhew@redhat.com>
-To: Chuck Lever <chuck.lever@oracle.com>
+Received: from userp1040.oracle.com ([156.151.31.81]:44972 "EHLO
+        userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751783AbcKGWap (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 7 Nov 2016 17:30:45 -0500
+Content-Type: text/plain; charset=us-ascii
+Mime-Version: 1.0 (Mac OS X Mail 9.3 \(3124\))
+Subject: Re: [PATCH] sunrpc: svc_age_temp_xprts_now should skip non-tcp transports
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <20161107220824.edfl47u4lljdpjh3@tonberry.usersys.redhat.com>
+Date: Mon, 7 Nov 2016 17:30:33 -0500
 Cc: "J. Bruce Fields" <bfields@fieldses.org>,
         Jeff Layton <jlayton@poochiereds.net>,
         Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] sunrpc: svc_age_temp_xprts_now should skip non-tcp
- transports
-Message-ID: <20161107220824.edfl47u4lljdpjh3@tonberry.usersys.redhat.com>
-References: <1478544454-46146-1-git-send-email-smayhew@redhat.com>
- <C40A3090-F45E-4899-9E32-39F68BAE2676@oracle.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <C40A3090-F45E-4899-9E32-39F68BAE2676@oracle.com>
+Message-Id: <F44AFD88-A148-4513-ACCD-E4E6F83B9C3E@oracle.com>
+References: <1478544454-46146-1-git-send-email-smayhew@redhat.com> <C40A3090-F45E-4899-9E32-39F68BAE2676@oracle.com> <20161107220824.edfl47u4lljdpjh3@tonberry.usersys.redhat.com>
+To: Scott Mayhew <smayhew@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, 07 Nov 2016, Chuck Lever wrote:
 
+> On Nov 7, 2016, at 5:08 PM, Scott Mayhew <smayhew@redhat.com> wrote:
 > 
-> > On Nov 7, 2016, at 1:47 PM, Scott Mayhew <smayhew@redhat.com> wrote:
-> > 
-> > This fixes the following panic that can occur with NFSoRDMA.
-> > 
-> > general protection fault: 0000 [#1] SMP
-> > Modules linked in: rpcrdma ib_isert iscsi_target_mod ib_iser libiscsi
-> > scsi_transport_iscsi ib_srpt target_core_mod ib_srp scsi_transport_srp
-> > scsi_tgt ib_ipoib rdma_ucm ib_ucm ib_uverbs ib_umad rdma_cm ib_cm iw_cm
-> > mlx5_ib ib_core intel_powerclamp coretemp kvm_intel kvm sg ioatdma
-> > ipmi_devintf ipmi_ssif dcdbas iTCO_wdt iTCO_vendor_support pcspkr
-> > irqbypass sb_edac shpchp dca crc32_pclmul ghash_clmulni_intel edac_core
-> > lpc_ich aesni_intel lrw gf128mul glue_helper ablk_helper mei_me mei
-> > ipmi_si cryptd wmi ipmi_msghandler acpi_pad acpi_power_meter nfsd
-> > auth_rpcgss nfs_acl lockd grace sunrpc ip_tables xfs libcrc32c sd_mod
-> > crc_t10dif crct10dif_generic mgag200 i2c_algo_bit drm_kms_helper
-> > syscopyarea sysfillrect sysimgblt ahci fb_sys_fops ttm libahci mlx5_core
-> > tg3 crct10dif_pclmul drm crct10dif_common
-> > ptp i2c_core libata crc32c_intel pps_core fjes dm_mirror dm_region_hash
-> > dm_log dm_mod
-> > CPU: 1 PID: 120 Comm: kworker/1:1 Not tainted 3.10.0-514.el7.x86_64 #1
-> > Hardware name: Dell Inc. PowerEdge R320/0KM5PX, BIOS 2.4.2 01/29/2015
-> > Workqueue: events check_lifetime
-> > task: ffff88031f506dd0 ti: ffff88031f584000 task.ti: ffff88031f584000
-> > RIP: 0010:[<ffffffff8168d847>]  [<ffffffff8168d847>]
-> > _raw_spin_lock_bh+0x17/0x50
-> > RSP: 0018:ffff88031f587ba8  EFLAGS: 00010206
-> > RAX: 0000000000020000 RBX: 20041fac02080072 RCX: ffff88031f587fd8
-> > RDX: 0000000000000000 RSI: 0000000000000000 RDI: 20041fac02080072
-> > RBP: ffff88031f587bb0 R08: 0000000000000008 R09: ffffffff8155be77
-> > R10: ffff880322a59b00 R11: ffffea000bf39f00 R12: 20041fac02080072
-> > R13: 000000000000000d R14: ffff8800c4fbd800 R15: 0000000000000001
-> > FS:  0000000000000000(0000) GS:ffff880322a40000(0000)
-> > knlGS:0000000000000000
-> > CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
-> > CR2: 00007f3c52d4547e CR3: 00000000019ba000 CR4: 00000000001407e0
-> > DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
-> > DR3: 0000000000000000 DR6: 00000000ffff0ff0 DR7: 0000000000000400
-> > Stack:
-> > 20041fac02080002 ffff88031f587bd0 ffffffff81557830 20041fac02080002
-> > ffff88031f587c78 ffff88031f587c40 ffffffff8155ae08 000000010157df32
-> > 0000000800000001 ffff88031f587c20 ffffffff81096acb ffffffff81aa37d0
-> > Call Trace:
-> > [<ffffffff81557830>] lock_sock_nested+0x20/0x50
-> > [<ffffffff8155ae08>] sock_setsockopt+0x78/0x940
-> > [<ffffffff81096acb>] ? lock_timer_base.isra.33+0x2b/0x50
-> > [<ffffffff8155397d>] kernel_setsockopt+0x4d/0x50
-> > [<ffffffffa0386284>] svc_age_temp_xprts_now+0x174/0x1e0 [sunrpc]
-> > [<ffffffffa03b681d>] nfsd_inetaddr_event+0x9d/0xd0 [nfsd]
-> > [<ffffffff81691ebc>] notifier_call_chain+0x4c/0x70
-> > [<ffffffff810b687d>] __blocking_notifier_call_chain+0x4d/0x70
-> > [<ffffffff810b68b6>] blocking_notifier_call_chain+0x16/0x20
-> > [<ffffffff815e8538>] __inet_del_ifa+0x168/0x2d0
-> > [<ffffffff815e8cef>] check_lifetime+0x25f/0x270
-> > [<ffffffff810a7f3b>] process_one_work+0x17b/0x470
-> > [<ffffffff810a8d76>] worker_thread+0x126/0x410
-> > [<ffffffff810a8c50>] ? rescuer_thread+0x460/0x460
-> > [<ffffffff810b052f>] kthread+0xcf/0xe0
-> > [<ffffffff810b0460>] ? kthread_create_on_node+0x140/0x140
-> > [<ffffffff81696418>] ret_from_fork+0x58/0x90
-> > [<ffffffff810b0460>] ? kthread_create_on_node+0x140/0x140
-> > Code: ca 75 f1 5d c3 0f 1f 80 00 00 00 00 eb d9 66 0f 1f 44 00 00 0f 1f
-> > 44 00 00 55 48 89 e5 53 48 89 fb e8 7e 04 a0 ff b8 00 00 02 00 <f0> 0f
-> > c1 03 89 c2 c1 ea 10 66 39 c2 75 03 5b 5d c3 83 e2 fe 0f
-> > RIP  [<ffffffff8168d847>] _raw_spin_lock_bh+0x17/0x50
-> > RSP <ffff88031f587ba8>
-> > 
-> > Signed-off-by: Scott Mayhew <smayhew@redhat.com>
-> > Fixes: c3d4879e ("sunrpc: Add a function to close temporary transports immediately")
-> > ---
-> > include/linux/sunrpc/svc_xprt.h |  1 +
-> > net/sunrpc/svc_xprt.c           | 14 +++-----------
-> > net/sunrpc/svcsock.c            | 17 +++++++++++++++++
-> > 3 files changed, 21 insertions(+), 11 deletions(-)
-> > 
-> > diff --git a/include/linux/sunrpc/svc_xprt.h b/include/linux/sunrpc/svc_xprt.h
-> > index ab02a45..4dbe0c9 100644
-> > --- a/include/linux/sunrpc/svc_xprt.h
-> > +++ b/include/linux/sunrpc/svc_xprt.h
-> > @@ -25,6 +25,7 @@ struct svc_xprt_ops {
-> > 	void		(*xpo_detach)(struct svc_xprt *);
-> > 	void		(*xpo_free)(struct svc_xprt *);
-> > 	int		(*xpo_secure_port)(struct svc_rqst *);
-> > +	void		(*xpo_notifier_cb)(struct svc_xprt *);
+> On Mon, 07 Nov 2016, Chuck Lever wrote:
 > 
-> I'd prefer a less generic name for this callout: xpo_idle_close maybe?
+>> 
+>>> On Nov 7, 2016, at 1:47 PM, Scott Mayhew <smayhew@redhat.com> wrote:
+>>> 
+>>> This fixes the following panic that can occur with NFSoRDMA.
+>>> 
+>>> general protection fault: 0000 [#1] SMP
+>>> Modules linked in: rpcrdma ib_isert iscsi_target_mod ib_iser libiscsi
+>>> scsi_transport_iscsi ib_srpt target_core_mod ib_srp scsi_transport_srp
+>>> scsi_tgt ib_ipoib rdma_ucm ib_ucm ib_uverbs ib_umad rdma_cm ib_cm iw_cm
+>>> mlx5_ib ib_core intel_powerclamp coretemp kvm_intel kvm sg ioatdma
+>>> ipmi_devintf ipmi_ssif dcdbas iTCO_wdt iTCO_vendor_support pcspkr
+>>> irqbypass sb_edac shpchp dca crc32_pclmul ghash_clmulni_intel edac_core
+>>> lpc_ich aesni_intel lrw gf128mul glue_helper ablk_helper mei_me mei
+>>> ipmi_si cryptd wmi ipmi_msghandler acpi_pad acpi_power_meter nfsd
+>>> auth_rpcgss nfs_acl lockd grace sunrpc ip_tables xfs libcrc32c sd_mod
+>>> crc_t10dif crct10dif_generic mgag200 i2c_algo_bit drm_kms_helper
+>>> syscopyarea sysfillrect sysimgblt ahci fb_sys_fops ttm libahci mlx5_core
+>>> tg3 crct10dif_pclmul drm crct10dif_common
+>>> ptp i2c_core libata crc32c_intel pps_core fjes dm_mirror dm_region_hash
+>>> dm_log dm_mod
+>>> CPU: 1 PID: 120 Comm: kworker/1:1 Not tainted 3.10.0-514.el7.x86_64 #1
+>>> Hardware name: Dell Inc. PowerEdge R320/0KM5PX, BIOS 2.4.2 01/29/2015
+>>> Workqueue: events check_lifetime
+>>> task: ffff88031f506dd0 ti: ffff88031f584000 task.ti: ffff88031f584000
+>>> RIP: 0010:[<ffffffff8168d847>]  [<ffffffff8168d847>]
+>>> _raw_spin_lock_bh+0x17/0x50
+>>> RSP: 0018:ffff88031f587ba8  EFLAGS: 00010206
+>>> RAX: 0000000000020000 RBX: 20041fac02080072 RCX: ffff88031f587fd8
+>>> RDX: 0000000000000000 RSI: 0000000000000000 RDI: 20041fac02080072
+>>> RBP: ffff88031f587bb0 R08: 0000000000000008 R09: ffffffff8155be77
+>>> R10: ffff880322a59b00 R11: ffffea000bf39f00 R12: 20041fac02080072
+>>> R13: 000000000000000d R14: ffff8800c4fbd800 R15: 0000000000000001
+>>> FS:  0000000000000000(0000) GS:ffff880322a40000(0000)
+>>> knlGS:0000000000000000
+>>> CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
+>>> CR2: 00007f3c52d4547e CR3: 00000000019ba000 CR4: 00000000001407e0
+>>> DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
+>>> DR3: 0000000000000000 DR6: 00000000ffff0ff0 DR7: 0000000000000400
+>>> Stack:
+>>> 20041fac02080002 ffff88031f587bd0 ffffffff81557830 20041fac02080002
+>>> ffff88031f587c78 ffff88031f587c40 ffffffff8155ae08 000000010157df32
+>>> 0000000800000001 ffff88031f587c20 ffffffff81096acb ffffffff81aa37d0
+>>> Call Trace:
+>>> [<ffffffff81557830>] lock_sock_nested+0x20/0x50
+>>> [<ffffffff8155ae08>] sock_setsockopt+0x78/0x940
+>>> [<ffffffff81096acb>] ? lock_timer_base.isra.33+0x2b/0x50
+>>> [<ffffffff8155397d>] kernel_setsockopt+0x4d/0x50
+>>> [<ffffffffa0386284>] svc_age_temp_xprts_now+0x174/0x1e0 [sunrpc]
+>>> [<ffffffffa03b681d>] nfsd_inetaddr_event+0x9d/0xd0 [nfsd]
+>>> [<ffffffff81691ebc>] notifier_call_chain+0x4c/0x70
+>>> [<ffffffff810b687d>] __blocking_notifier_call_chain+0x4d/0x70
+>>> [<ffffffff810b68b6>] blocking_notifier_call_chain+0x16/0x20
+>>> [<ffffffff815e8538>] __inet_del_ifa+0x168/0x2d0
+>>> [<ffffffff815e8cef>] check_lifetime+0x25f/0x270
+>>> [<ffffffff810a7f3b>] process_one_work+0x17b/0x470
+>>> [<ffffffff810a8d76>] worker_thread+0x126/0x410
+>>> [<ffffffff810a8c50>] ? rescuer_thread+0x460/0x460
+>>> [<ffffffff810b052f>] kthread+0xcf/0xe0
+>>> [<ffffffff810b0460>] ? kthread_create_on_node+0x140/0x140
+>>> [<ffffffff81696418>] ret_from_fork+0x58/0x90
+>>> [<ffffffff810b0460>] ? kthread_create_on_node+0x140/0x140
+>>> Code: ca 75 f1 5d c3 0f 1f 80 00 00 00 00 eb d9 66 0f 1f 44 00 00 0f 1f
+>>> 44 00 00 55 48 89 e5 53 48 89 fb e8 7e 04 a0 ff b8 00 00 02 00 <f0> 0f
+>>> c1 03 89 c2 c1 ea 10 66 39 c2 75 03 5b 5d c3 83 e2 fe 0f
+>>> RIP  [<ffffffff8168d847>] _raw_spin_lock_bh+0x17/0x50
+>>> RSP <ffff88031f587ba8>
+>>> 
+>>> Signed-off-by: Scott Mayhew <smayhew@redhat.com>
+>>> Fixes: c3d4879e ("sunrpc: Add a function to close temporary transports immediately")
+>>> ---
+>>> include/linux/sunrpc/svc_xprt.h |  1 +
+>>> net/sunrpc/svc_xprt.c           | 14 +++-----------
+>>> net/sunrpc/svcsock.c            | 17 +++++++++++++++++
+>>> 3 files changed, 21 insertions(+), 11 deletions(-)
+>>> 
+>>> diff --git a/include/linux/sunrpc/svc_xprt.h b/include/linux/sunrpc/svc_xprt.h
+>>> index ab02a45..4dbe0c9 100644
+>>> --- a/include/linux/sunrpc/svc_xprt.h
+>>> +++ b/include/linux/sunrpc/svc_xprt.h
+>>> @@ -25,6 +25,7 @@ struct svc_xprt_ops {
+>>> 	void		(*xpo_detach)(struct svc_xprt *);
+>>> 	void		(*xpo_free)(struct svc_xprt *);
+>>> 	int		(*xpo_secure_port)(struct svc_rqst *);
+>>> +	void		(*xpo_notifier_cb)(struct svc_xprt *);
+>> 
+>> I'd prefer a less generic name for this callout: xpo_idle_close maybe?
+> 
+> I'm open to calling it something else, but it's not for the idle timer
+> though.  This is for when the NFS server has one of its IP addresses
+> yanked out from under it... for instance when
+> rgmanager/pacemaker/serviceguard/whatever does an 'ip addr del' as part
+> of the failover of an HA NFS service.
 
-I'm open to calling it something else, but it's not for the idle timer
-though.  This is for when the NFS server has one of its IP addresses
-yanked out from under it... for instance when
-rgmanager/pacemaker/serviceguard/whatever does an 'ip addr del' as part
-of the failover of an HA NFS service.
+xpo_remove_ip ?
 
-> 
-> 
-> > };
-> > 
-> > struct svc_xprt_class {
-> > diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
-> > index c3f6523..b3c26af 100644
-> > --- a/net/sunrpc/svc_xprt.c
-> > +++ b/net/sunrpc/svc_xprt.c
-> > @@ -1002,18 +1002,14 @@ static void svc_age_temp_xprts(unsigned long closure)
-> > void svc_age_temp_xprts_now(struct svc_serv *serv, struct sockaddr *server_addr)
-> > {
-> > 	struct svc_xprt *xprt;
-> > -	struct svc_sock *svsk;
-> > -	struct socket *sock;
-> > 	struct list_head *le, *next;
-> > 	LIST_HEAD(to_be_closed);
-> > -	struct linger no_linger = {
-> > -		.l_onoff = 1,
-> > -		.l_linger = 0,
-> > -	};
-> > 
-> > 	spin_lock_bh(&serv->sv_lock);
-> > 	list_for_each_safe(le, next, &serv->sv_tempsocks) {
-> > 		xprt = list_entry(le, struct svc_xprt, xpt_list);
-> > +		if (!xprt->xpt_ops->xpo_notifier_cb)
-> > +			continue;
-> > 		if (rpc_cmp_addr(server_addr, (struct sockaddr *)
-> > 				&xprt->xpt_local)) {
-> > 			dprintk("svc_age_temp_xprts_now: found %p\n", xprt);
-> > @@ -1027,11 +1023,7 @@ void svc_age_temp_xprts_now(struct svc_serv *serv, struct sockaddr *server_addr)
-> > 		list_del_init(le);
-> > 		xprt = list_entry(le, struct svc_xprt, xpt_list);
-> > 		dprintk("svc_age_temp_xprts_now: closing %p\n", xprt);
-> > -		svsk = container_of(xprt, struct svc_sock, sk_xprt);
-> > -		sock = svsk->sk_sock;
-> > -		kernel_setsockopt(sock, SOL_SOCKET, SO_LINGER,
-> > -				  (char *)&no_linger, sizeof(no_linger));
-> > -		svc_close_xprt(xprt);
-> > +		xprt->xpt_ops->xpo_notifier_cb(xprt);
-> 
-> Shouldn't RDMA transports be aged out too?
 
-The original patch was aimed at fixing a TCP-specific problem
-(http://nfsv4bat.org/Documents/ConnectAThon/1996/nfstcp.pdf page 16).
-I honestly didn't know if RDMA was susceptible to similar issues or not,
-so I decided just to skip non-TCP transports altogether.  My main
-concern is to make sure we don't pass something that's not a socket to
-kernel_setsockopt(), which is what was causing the panic with the original
-patch.  
+>>> };
+>>> 
+>>> struct svc_xprt_class {
+>>> diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
+>>> index c3f6523..b3c26af 100644
+>>> --- a/net/sunrpc/svc_xprt.c
+>>> +++ b/net/sunrpc/svc_xprt.c
+>>> @@ -1002,18 +1002,14 @@ static void svc_age_temp_xprts(unsigned long closure)
+>>> void svc_age_temp_xprts_now(struct svc_serv *serv, struct sockaddr *server_addr)
+>>> {
+>>> 	struct svc_xprt *xprt;
+>>> -	struct svc_sock *svsk;
+>>> -	struct socket *sock;
+>>> 	struct list_head *le, *next;
+>>> 	LIST_HEAD(to_be_closed);
+>>> -	struct linger no_linger = {
+>>> -		.l_onoff = 1,
+>>> -		.l_linger = 0,
+>>> -	};
+>>> 
+>>> 	spin_lock_bh(&serv->sv_lock);
+>>> 	list_for_each_safe(le, next, &serv->sv_tempsocks) {
+>>> 		xprt = list_entry(le, struct svc_xprt, xpt_list);
+>>> +		if (!xprt->xpt_ops->xpo_notifier_cb)
+>>> +			continue;
+>>> 		if (rpc_cmp_addr(server_addr, (struct sockaddr *)
+>>> 				&xprt->xpt_local)) {
+>>> 			dprintk("svc_age_temp_xprts_now: found %p\n", xprt);
+>>> @@ -1027,11 +1023,7 @@ void svc_age_temp_xprts_now(struct svc_serv *serv, struct sockaddr *server_addr)
+>>> 		list_del_init(le);
+>>> 		xprt = list_entry(le, struct svc_xprt, xpt_list);
+>>> 		dprintk("svc_age_temp_xprts_now: closing %p\n", xprt);
+>>> -		svsk = container_of(xprt, struct svc_sock, sk_xprt);
+>>> -		sock = svsk->sk_sock;
+>>> -		kernel_setsockopt(sock, SOL_SOCKET, SO_LINGER,
+>>> -				  (char *)&no_linger, sizeof(no_linger));
+>>> -		svc_close_xprt(xprt);
+>>> +		xprt->xpt_ops->xpo_notifier_cb(xprt);
+>> 
+>> Shouldn't RDMA transports be aged out too?
+> 
+> The original patch was aimed at fixing a TCP-specific problem
+> (http://nfsv4bat.org/Documents/ConnectAThon/1996/nfstcp.pdf page 16).
+> I honestly didn't know if RDMA was susceptible to similar issues or not,
+> so I decided just to skip non-TCP transports altogether.  My main
+> concern is to make sure we don't pass something that's not a socket to
+> kernel_setsockopt(), which is what was causing the panic with the original
+> patch.
 
--Scott
+It's not clear to me that non-TCP transports should be skipped, so
+you could be introducing another bug here. I think the best choice
+is to resolve the proper non-TCP behavior right now, to make sure
+all transports work as expected after your patch.
 
+Thinking out loud, you could get rid of the "if (!xpo_notifier_cb)
+then continue" lines, and keep svc_close_xprt() in this block of
+code. Then move the kernel_setsockopt call to the TCP callout,
+and give no-op callouts to the other transports.
+
+
+> -Scott
 > 
-> 
-> > 	}
-> > }
-> > EXPORT_SYMBOL_GPL(svc_age_temp_xprts_now);
-> > diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
-> > index 57625f6..a65712c 100644
-> > --- a/net/sunrpc/svcsock.c
-> > +++ b/net/sunrpc/svcsock.c
-> > @@ -438,6 +438,22 @@ static int svc_tcp_has_wspace(struct svc_xprt *xprt)
-> > 	return !test_bit(SOCK_NOSPACE, &svsk->sk_sock->flags);
-> > }
-> > 
-> > +static void svc_tcp_notifier_cb(struct svc_xprt *xprt)
-> > +{
-> > +	struct svc_sock *svsk;
-> > +	struct socket *sock;
-> > +	struct linger no_linger = {
-> > +		.l_onoff = 1,
-> > +		.l_linger = 0,
-> > +	};
-> > +
-> > +	svsk = container_of(xprt, struct svc_sock, sk_xprt);
-> > +	sock = svsk->sk_sock;
-> > +	kernel_setsockopt(sock, SOL_SOCKET, SO_LINGER,
-> > +			  (char *)&no_linger, sizeof(no_linger));
-> > +	svc_close_xprt(xprt);
-> > +}
-> > +
-> > /*
-> >  * See net/ipv6/ip_sockglue.c : ip_cmsg_recv_pktinfo
-> >  */
-> > @@ -1242,6 +1258,7 @@ static struct svc_xprt_ops svc_tcp_ops = {
-> > 	.xpo_has_wspace = svc_tcp_has_wspace,
-> > 	.xpo_accept = svc_tcp_accept,
-> > 	.xpo_secure_port = svc_sock_secure_port,
-> > +	.xpo_notifier_cb = svc_tcp_notifier_cb,
-> > };
-> > 
-> > static struct svc_xprt_class svc_tcp_class = {
-> > -- 
-> > 2.4.11
-> > 
-> > --
-> > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> > the body of a message to majordomo@vger.kernel.org
-> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
+>> 
+>> 
+>>> 	}
+>>> }
+>>> EXPORT_SYMBOL_GPL(svc_age_temp_xprts_now);
+>>> diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
+>>> index 57625f6..a65712c 100644
+>>> --- a/net/sunrpc/svcsock.c
+>>> +++ b/net/sunrpc/svcsock.c
+>>> @@ -438,6 +438,22 @@ static int svc_tcp_has_wspace(struct svc_xprt *xprt)
+>>> 	return !test_bit(SOCK_NOSPACE, &svsk->sk_sock->flags);
+>>> }
+>>> 
+>>> +static void svc_tcp_notifier_cb(struct svc_xprt *xprt)
+>>> +{
+>>> +	struct svc_sock *svsk;
+>>> +	struct socket *sock;
+>>> +	struct linger no_linger = {
+>>> +		.l_onoff = 1,
+>>> +		.l_linger = 0,
+>>> +	};
+>>> +
+>>> +	svsk = container_of(xprt, struct svc_sock, sk_xprt);
+>>> +	sock = svsk->sk_sock;
+>>> +	kernel_setsockopt(sock, SOL_SOCKET, SO_LINGER,
+>>> +			  (char *)&no_linger, sizeof(no_linger));
+>>> +	svc_close_xprt(xprt);
+>>> +}
+>>> +
+>>> /*
+>>> * See net/ipv6/ip_sockglue.c : ip_cmsg_recv_pktinfo
+>>> */
+>>> @@ -1242,6 +1258,7 @@ static struct svc_xprt_ops svc_tcp_ops = {
+>>> 	.xpo_has_wspace = svc_tcp_has_wspace,
+>>> 	.xpo_accept = svc_tcp_accept,
+>>> 	.xpo_secure_port = svc_sock_secure_port,
+>>> +	.xpo_notifier_cb = svc_tcp_notifier_cb,
+>>> };
+>>> 
+>>> static struct svc_xprt_class svc_tcp_class = {
+>>> -- 
+>>> 2.4.11
+>>> 
+>>> --
+>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>>> the body of a message to majordomo@vger.kernel.org
+>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>> 
+>> --
+>> Chuck Lever
+>> 
+>> 
+>> 
 > --
-> Chuck Lever
-> 
-> 
-> 
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+--
+Chuck Lever
+
+
+
