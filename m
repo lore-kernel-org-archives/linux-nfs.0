@@ -1,157 +1,223 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-it0-f65.google.com ([209.85.214.65]:33468 "EHLO
-        mail-it0-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1752027AbcKGVQ1 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 7 Nov 2016 16:16:27 -0500
-Subject: [PATCH] xprtrdma: Fix DMAR failure in frwr_op_map() after reconnect
-From: Chuck Lever <chuck.lever@oracle.com>
-To: trond.myklebust@primarydata.com, anna.schumaker@netapp.com
-Cc: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Mon, 07 Nov 2016 16:16:24 -0500
-Message-ID: <20161107210856.3822.23500.stgit@manet.1015granger.net>
+Received: from mx1.redhat.com ([209.132.183.28]:38132 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1751496AbcKGWI1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 7 Nov 2016 17:08:27 -0500
+Date: Mon, 7 Nov 2016 17:08:24 -0500
+From: Scott Mayhew <smayhew@redhat.com>
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: "J. Bruce Fields" <bfields@fieldses.org>,
+        Jeff Layton <jlayton@poochiereds.net>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] sunrpc: svc_age_temp_xprts_now should skip non-tcp
+ transports
+Message-ID: <20161107220824.edfl47u4lljdpjh3@tonberry.usersys.redhat.com>
+References: <1478544454-46146-1-git-send-email-smayhew@redhat.com>
+ <C40A3090-F45E-4899-9E32-39F68BAE2676@oracle.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <C40A3090-F45E-4899-9E32-39F68BAE2676@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-When a LOCALINV WR is flushed, the frmr is marked STALE, then
-frwr_op_unmap_sync DMA-unmaps the frmr's SGL. These STALE frmrs
-are then recovered when frwr_op_map hunts for an INVALID frmr to
-use.
+On Mon, 07 Nov 2016, Chuck Lever wrote:
 
-All other cases that need frmr recovery leave that SGL DMA-mapped.
-The FRMR recovery path unconditionally DMA-unmaps the frmr's SGL.
+> 
+> > On Nov 7, 2016, at 1:47 PM, Scott Mayhew <smayhew@redhat.com> wrote:
+> > 
+> > This fixes the following panic that can occur with NFSoRDMA.
+> > 
+> > general protection fault: 0000 [#1] SMP
+> > Modules linked in: rpcrdma ib_isert iscsi_target_mod ib_iser libiscsi
+> > scsi_transport_iscsi ib_srpt target_core_mod ib_srp scsi_transport_srp
+> > scsi_tgt ib_ipoib rdma_ucm ib_ucm ib_uverbs ib_umad rdma_cm ib_cm iw_cm
+> > mlx5_ib ib_core intel_powerclamp coretemp kvm_intel kvm sg ioatdma
+> > ipmi_devintf ipmi_ssif dcdbas iTCO_wdt iTCO_vendor_support pcspkr
+> > irqbypass sb_edac shpchp dca crc32_pclmul ghash_clmulni_intel edac_core
+> > lpc_ich aesni_intel lrw gf128mul glue_helper ablk_helper mei_me mei
+> > ipmi_si cryptd wmi ipmi_msghandler acpi_pad acpi_power_meter nfsd
+> > auth_rpcgss nfs_acl lockd grace sunrpc ip_tables xfs libcrc32c sd_mod
+> > crc_t10dif crct10dif_generic mgag200 i2c_algo_bit drm_kms_helper
+> > syscopyarea sysfillrect sysimgblt ahci fb_sys_fops ttm libahci mlx5_core
+> > tg3 crct10dif_pclmul drm crct10dif_common
+> > ptp i2c_core libata crc32c_intel pps_core fjes dm_mirror dm_region_hash
+> > dm_log dm_mod
+> > CPU: 1 PID: 120 Comm: kworker/1:1 Not tainted 3.10.0-514.el7.x86_64 #1
+> > Hardware name: Dell Inc. PowerEdge R320/0KM5PX, BIOS 2.4.2 01/29/2015
+> > Workqueue: events check_lifetime
+> > task: ffff88031f506dd0 ti: ffff88031f584000 task.ti: ffff88031f584000
+> > RIP: 0010:[<ffffffff8168d847>]  [<ffffffff8168d847>]
+> > _raw_spin_lock_bh+0x17/0x50
+> > RSP: 0018:ffff88031f587ba8  EFLAGS: 00010206
+> > RAX: 0000000000020000 RBX: 20041fac02080072 RCX: ffff88031f587fd8
+> > RDX: 0000000000000000 RSI: 0000000000000000 RDI: 20041fac02080072
+> > RBP: ffff88031f587bb0 R08: 0000000000000008 R09: ffffffff8155be77
+> > R10: ffff880322a59b00 R11: ffffea000bf39f00 R12: 20041fac02080072
+> > R13: 000000000000000d R14: ffff8800c4fbd800 R15: 0000000000000001
+> > FS:  0000000000000000(0000) GS:ffff880322a40000(0000)
+> > knlGS:0000000000000000
+> > CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
+> > CR2: 00007f3c52d4547e CR3: 00000000019ba000 CR4: 00000000001407e0
+> > DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
+> > DR3: 0000000000000000 DR6: 00000000ffff0ff0 DR7: 0000000000000400
+> > Stack:
+> > 20041fac02080002 ffff88031f587bd0 ffffffff81557830 20041fac02080002
+> > ffff88031f587c78 ffff88031f587c40 ffffffff8155ae08 000000010157df32
+> > 0000000800000001 ffff88031f587c20 ffffffff81096acb ffffffff81aa37d0
+> > Call Trace:
+> > [<ffffffff81557830>] lock_sock_nested+0x20/0x50
+> > [<ffffffff8155ae08>] sock_setsockopt+0x78/0x940
+> > [<ffffffff81096acb>] ? lock_timer_base.isra.33+0x2b/0x50
+> > [<ffffffff8155397d>] kernel_setsockopt+0x4d/0x50
+> > [<ffffffffa0386284>] svc_age_temp_xprts_now+0x174/0x1e0 [sunrpc]
+> > [<ffffffffa03b681d>] nfsd_inetaddr_event+0x9d/0xd0 [nfsd]
+> > [<ffffffff81691ebc>] notifier_call_chain+0x4c/0x70
+> > [<ffffffff810b687d>] __blocking_notifier_call_chain+0x4d/0x70
+> > [<ffffffff810b68b6>] blocking_notifier_call_chain+0x16/0x20
+> > [<ffffffff815e8538>] __inet_del_ifa+0x168/0x2d0
+> > [<ffffffff815e8cef>] check_lifetime+0x25f/0x270
+> > [<ffffffff810a7f3b>] process_one_work+0x17b/0x470
+> > [<ffffffff810a8d76>] worker_thread+0x126/0x410
+> > [<ffffffff810a8c50>] ? rescuer_thread+0x460/0x460
+> > [<ffffffff810b052f>] kthread+0xcf/0xe0
+> > [<ffffffff810b0460>] ? kthread_create_on_node+0x140/0x140
+> > [<ffffffff81696418>] ret_from_fork+0x58/0x90
+> > [<ffffffff810b0460>] ? kthread_create_on_node+0x140/0x140
+> > Code: ca 75 f1 5d c3 0f 1f 80 00 00 00 00 eb d9 66 0f 1f 44 00 00 0f 1f
+> > 44 00 00 55 48 89 e5 53 48 89 fb e8 7e 04 a0 ff b8 00 00 02 00 <f0> 0f
+> > c1 03 89 c2 c1 ea 10 66 39 c2 75 03 5b 5d c3 83 e2 fe 0f
+> > RIP  [<ffffffff8168d847>] _raw_spin_lock_bh+0x17/0x50
+> > RSP <ffff88031f587ba8>
+> > 
+> > Signed-off-by: Scott Mayhew <smayhew@redhat.com>
+> > Fixes: c3d4879e ("sunrpc: Add a function to close temporary transports immediately")
+> > ---
+> > include/linux/sunrpc/svc_xprt.h |  1 +
+> > net/sunrpc/svc_xprt.c           | 14 +++-----------
+> > net/sunrpc/svcsock.c            | 17 +++++++++++++++++
+> > 3 files changed, 21 insertions(+), 11 deletions(-)
+> > 
+> > diff --git a/include/linux/sunrpc/svc_xprt.h b/include/linux/sunrpc/svc_xprt.h
+> > index ab02a45..4dbe0c9 100644
+> > --- a/include/linux/sunrpc/svc_xprt.h
+> > +++ b/include/linux/sunrpc/svc_xprt.h
+> > @@ -25,6 +25,7 @@ struct svc_xprt_ops {
+> > 	void		(*xpo_detach)(struct svc_xprt *);
+> > 	void		(*xpo_free)(struct svc_xprt *);
+> > 	int		(*xpo_secure_port)(struct svc_rqst *);
+> > +	void		(*xpo_notifier_cb)(struct svc_xprt *);
+> 
+> I'd prefer a less generic name for this callout: xpo_idle_close maybe?
 
-To avoid DMA unmapping the SGL twice for flushed LOCAL_INV WRs,
-alter the recovery logic (rather than the hot frwr_op_unmap_sync
-path) to distinguish among these cases. This solution also takes
-care of the case where multiple LOCAL_INV WRs are issued for the
-same rpcrdma_req, some complete successfully, but some are flushed.
+I'm open to calling it something else, but it's not for the idle timer
+though.  This is for when the NFS server has one of its IP addresses
+yanked out from under it... for instance when
+rgmanager/pacemaker/serviceguard/whatever does an 'ip addr del' as part
+of the failover of an HA NFS service.
 
-Reported-by: Vasco Steinmetz <linux@kyberraum.net>
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-Tested-by: Vasco Steinmetz <linux@kyberraum.net>
----
+> 
+> 
+> > };
+> > 
+> > struct svc_xprt_class {
+> > diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
+> > index c3f6523..b3c26af 100644
+> > --- a/net/sunrpc/svc_xprt.c
+> > +++ b/net/sunrpc/svc_xprt.c
+> > @@ -1002,18 +1002,14 @@ static void svc_age_temp_xprts(unsigned long closure)
+> > void svc_age_temp_xprts_now(struct svc_serv *serv, struct sockaddr *server_addr)
+> > {
+> > 	struct svc_xprt *xprt;
+> > -	struct svc_sock *svsk;
+> > -	struct socket *sock;
+> > 	struct list_head *le, *next;
+> > 	LIST_HEAD(to_be_closed);
+> > -	struct linger no_linger = {
+> > -		.l_onoff = 1,
+> > -		.l_linger = 0,
+> > -	};
+> > 
+> > 	spin_lock_bh(&serv->sv_lock);
+> > 	list_for_each_safe(le, next, &serv->sv_tempsocks) {
+> > 		xprt = list_entry(le, struct svc_xprt, xpt_list);
+> > +		if (!xprt->xpt_ops->xpo_notifier_cb)
+> > +			continue;
+> > 		if (rpc_cmp_addr(server_addr, (struct sockaddr *)
+> > 				&xprt->xpt_local)) {
+> > 			dprintk("svc_age_temp_xprts_now: found %p\n", xprt);
+> > @@ -1027,11 +1023,7 @@ void svc_age_temp_xprts_now(struct svc_serv *serv, struct sockaddr *server_addr)
+> > 		list_del_init(le);
+> > 		xprt = list_entry(le, struct svc_xprt, xpt_list);
+> > 		dprintk("svc_age_temp_xprts_now: closing %p\n", xprt);
+> > -		svsk = container_of(xprt, struct svc_sock, sk_xprt);
+> > -		sock = svsk->sk_sock;
+> > -		kernel_setsockopt(sock, SOL_SOCKET, SO_LINGER,
+> > -				  (char *)&no_linger, sizeof(no_linger));
+> > -		svc_close_xprt(xprt);
+> > +		xprt->xpt_ops->xpo_notifier_cb(xprt);
+> 
+> Shouldn't RDMA transports be aged out too?
 
-I received a report of DMAR errors occurring on v4.8 and newer
-NFS/RDMA clients. I was able to reproduce the problem, and came up
-with this fix, against v4.9-rc. Please consider merging this into
-the next v4.9-rc bug fix series.
+The original patch was aimed at fixing a TCP-specific problem
+(http://nfsv4bat.org/Documents/ConnectAThon/1996/nfstcp.pdf page 16).
+I honestly didn't know if RDMA was susceptible to similar issues or not,
+so I decided just to skip non-TCP transports altogether.  My main
+concern is to make sure we don't pass something that's not a socket to
+kernel_setsockopt(), which is what was causing the panic with the original
+patch.  
 
-Vasco tells me this does not apply 100% cleanly to v4.8, but was
-tested there. I'm unsure whether to include a Cc: stable.
+-Scott
 
-
- net/sunrpc/xprtrdma/frwr_ops.c  |   37 ++++++++++++++++++++++---------------
- net/sunrpc/xprtrdma/xprt_rdma.h |    3 ++-
- 2 files changed, 24 insertions(+), 16 deletions(-)
-
-diff --git a/net/sunrpc/xprtrdma/frwr_ops.c b/net/sunrpc/xprtrdma/frwr_ops.c
-index 2109495..26b26be 100644
---- a/net/sunrpc/xprtrdma/frwr_ops.c
-+++ b/net/sunrpc/xprtrdma/frwr_ops.c
-@@ -44,18 +44,20 @@
-  * being done.
-  *
-  * When the underlying transport disconnects, MRs are left in one of
-- * three states:
-+ * four states:
-  *
-  * INVALID:	The MR was not in use before the QP entered ERROR state.
-- *		(Or, the LOCAL_INV WR has not completed or flushed yet).
-- *
-- * STALE:	The MR was being registered or unregistered when the QP
-- *		entered ERROR state, and the pending WR was flushed.
-  *
-  * VALID:	The MR was registered before the QP entered ERROR state.
-  *
-- * When frwr_op_map encounters STALE and VALID MRs, they are recovered
-- * with ib_dereg_mr and then are re-initialized. Beause MR recovery
-+ * FLUSHED_FR:	The MR was being registered when the QP entered ERROR
-+ *		state, and the pending WR was flushed.
-+ *
-+ * FLUSHED_LI:	The MR was being invalidated when the QP entered ERROR
-+ *		state, and the pending WR was flushed.
-+ *
-+ * When frwr_op_map encounters FLUSHED and VALID MRs, they are recovered
-+ * with ib_dereg_mr and then are re-initialized. Because MR recovery
-  * allocates fresh resources, it is deferred to a workqueue, and the
-  * recovered MRs are placed back on the rb_mws list when recovery is
-  * complete. frwr_op_map allocates another MR for the current RPC while
-@@ -177,12 +179,15 @@
- static void
- frwr_op_recover_mr(struct rpcrdma_mw *mw)
- {
-+	enum rpcrdma_frmr_state state = mw->frmr.fr_state;
- 	struct rpcrdma_xprt *r_xprt = mw->mw_xprt;
- 	struct rpcrdma_ia *ia = &r_xprt->rx_ia;
- 	int rc;
- 
- 	rc = __frwr_reset_mr(ia, mw);
--	ib_dma_unmap_sg(ia->ri_device, mw->mw_sg, mw->mw_nents, mw->mw_dir);
-+	if (state != FRMR_FLUSHED_LI)
-+		ib_dma_unmap_sg(ia->ri_device,
-+				mw->mw_sg, mw->mw_nents, mw->mw_dir);
- 	if (rc)
- 		goto out_release;
- 
-@@ -262,10 +267,8 @@
- }
- 
- static void
--__frwr_sendcompletion_flush(struct ib_wc *wc, struct rpcrdma_frmr *frmr,
--			    const char *wr)
-+__frwr_sendcompletion_flush(struct ib_wc *wc, const char *wr)
- {
--	frmr->fr_state = FRMR_IS_STALE;
- 	if (wc->status != IB_WC_WR_FLUSH_ERR)
- 		pr_err("rpcrdma: %s: %s (%u/0x%x)\n",
- 		       wr, ib_wc_status_msg(wc->status),
-@@ -288,7 +291,8 @@
- 	if (wc->status != IB_WC_SUCCESS) {
- 		cqe = wc->wr_cqe;
- 		frmr = container_of(cqe, struct rpcrdma_frmr, fr_cqe);
--		__frwr_sendcompletion_flush(wc, frmr, "fastreg");
-+		frmr->fr_state = FRMR_FLUSHED_FR;
-+		__frwr_sendcompletion_flush(wc, "fastreg");
- 	}
- }
- 
-@@ -308,7 +312,8 @@
- 	if (wc->status != IB_WC_SUCCESS) {
- 		cqe = wc->wr_cqe;
- 		frmr = container_of(cqe, struct rpcrdma_frmr, fr_cqe);
--		__frwr_sendcompletion_flush(wc, frmr, "localinv");
-+		frmr->fr_state = FRMR_FLUSHED_LI;
-+		__frwr_sendcompletion_flush(wc, "localinv");
- 	}
- }
- 
-@@ -328,8 +333,10 @@
- 	/* WARNING: Only wr_cqe and status are reliable at this point */
- 	cqe = wc->wr_cqe;
- 	frmr = container_of(cqe, struct rpcrdma_frmr, fr_cqe);
--	if (wc->status != IB_WC_SUCCESS)
--		__frwr_sendcompletion_flush(wc, frmr, "localinv");
-+	if (wc->status != IB_WC_SUCCESS) {
-+		frmr->fr_state = FRMR_FLUSHED_LI;
-+		__frwr_sendcompletion_flush(wc, "localinv");
-+	}
- 	complete(&frmr->fr_linv_done);
- }
- 
-diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
-index 0d35b76..6e1bba3 100644
---- a/net/sunrpc/xprtrdma/xprt_rdma.h
-+++ b/net/sunrpc/xprtrdma/xprt_rdma.h
-@@ -216,7 +216,8 @@ struct rpcrdma_rep {
- enum rpcrdma_frmr_state {
- 	FRMR_IS_INVALID,	/* ready to be used */
- 	FRMR_IS_VALID,		/* in use */
--	FRMR_IS_STALE,		/* failed completion */
-+	FRMR_FLUSHED_FR,	/* flushed FASTREG WR */
-+	FRMR_FLUSHED_LI,	/* flushed LOCALINV WR */
- };
- 
- struct rpcrdma_frmr {
-
+> 
+> 
+> > 	}
+> > }
+> > EXPORT_SYMBOL_GPL(svc_age_temp_xprts_now);
+> > diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
+> > index 57625f6..a65712c 100644
+> > --- a/net/sunrpc/svcsock.c
+> > +++ b/net/sunrpc/svcsock.c
+> > @@ -438,6 +438,22 @@ static int svc_tcp_has_wspace(struct svc_xprt *xprt)
+> > 	return !test_bit(SOCK_NOSPACE, &svsk->sk_sock->flags);
+> > }
+> > 
+> > +static void svc_tcp_notifier_cb(struct svc_xprt *xprt)
+> > +{
+> > +	struct svc_sock *svsk;
+> > +	struct socket *sock;
+> > +	struct linger no_linger = {
+> > +		.l_onoff = 1,
+> > +		.l_linger = 0,
+> > +	};
+> > +
+> > +	svsk = container_of(xprt, struct svc_sock, sk_xprt);
+> > +	sock = svsk->sk_sock;
+> > +	kernel_setsockopt(sock, SOL_SOCKET, SO_LINGER,
+> > +			  (char *)&no_linger, sizeof(no_linger));
+> > +	svc_close_xprt(xprt);
+> > +}
+> > +
+> > /*
+> >  * See net/ipv6/ip_sockglue.c : ip_cmsg_recv_pktinfo
+> >  */
+> > @@ -1242,6 +1258,7 @@ static struct svc_xprt_ops svc_tcp_ops = {
+> > 	.xpo_has_wspace = svc_tcp_has_wspace,
+> > 	.xpo_accept = svc_tcp_accept,
+> > 	.xpo_secure_port = svc_sock_secure_port,
+> > +	.xpo_notifier_cb = svc_tcp_notifier_cb,
+> > };
+> > 
+> > static struct svc_xprt_class svc_tcp_class = {
+> > -- 
+> > 2.4.11
+> > 
+> > --
+> > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> > the body of a message to majordomo@vger.kernel.org
+> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
+> --
+> Chuck Lever
+> 
+> 
+> 
