@@ -1,127 +1,44 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:38342 "EHLO fieldses.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751211AbcKHVmJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 8 Nov 2016 16:42:09 -0500
-Date: Tue, 8 Nov 2016 16:42:08 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: svc_xprt_put is no longer BH-safe
-Message-ID: <20161108214208.GB27681@fieldses.org>
-References: <1934654A-78D7-4180-A0AA-4B144254BFC2@oracle.com>
- <20161108200339.GA26589@fieldses.org>
- <7AB623FA-C766-4A1B-8A70-C54F4C8C80ED@oracle.com>
- <20161108202035.GC26589@fieldses.org>
- <8AD6B9DB-E777-46E4-BB7E-774F5FC8B2B6@oracle.com>
+Received: from mail-yb0-f176.google.com ([209.85.213.176]:34188 "EHLO
+        mail-yb0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751696AbcKHW6w (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 8 Nov 2016 17:58:52 -0500
+Date: Tue, 8 Nov 2016 17:52:21 -0500
+From: Tejun Heo <tj@kernel.org>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: Bhaktipriya Shridhar <bhaktipriya96@gmail.com>,
+        Jeff Layton <jlayton@poochiereds.net>, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org
+Subject: Re: [PATCH v2] fs/nfsd/nfs4callback: Remove deprecated
+ create_singlethread_workqueue
+Message-ID: <20161108225221.GB6460@htj.duckdns.org>
+References: <20160830205348.GA31915@Karyakshetra>
+ <20161108213911.GA27681@fieldses.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <8AD6B9DB-E777-46E4-BB7E-774F5FC8B2B6@oracle.com>
+In-Reply-To: <20161108213911.GA27681@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Nov 08, 2016 at 04:05:54PM -0500, Chuck Lever wrote:
-> 
-> > On Nov 8, 2016, at 3:20 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
-> > 
-> > On Tue, Nov 08, 2016 at 03:13:13PM -0500, Chuck Lever wrote:
-> >> 
-> >>> On Nov 8, 2016, at 3:03 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
-> >>> 
-> >>> On Sat, Oct 29, 2016 at 12:21:03PM -0400, Chuck Lever wrote:
-> >>>> Hi Bruce-
-> >>> 
-> >>> Sorry for the slow response!
-> >>> 
-> >>> ...
-> >>>> In commit 39a9beab5acb83176e8b9a4f0778749a09341f1f ('rpc: share one xps between
-> >>>> all backchannels') you added:
-> >>>> 
-> >>>> diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
-> >>>> index f5572e3..4f01f63 100644
-> >>>> --- a/net/sunrpc/svc_xprt.c
-> >>>> +++ b/net/sunrpc/svc_xprt.c
-> >>>> @@ -136,6 +136,8 @@ static void svc_xprt_free(struct kref *kref)
-> >>>>       /* See comment on corresponding get in xs_setup_bc_tcp(): */
-> >>>>       if (xprt->xpt_bc_xprt)
-> >>>>               xprt_put(xprt->xpt_bc_xprt);
-> >>>> +       if (xprt->xpt_bc_xps)
-> >>>> +               xprt_switch_put(xprt->xpt_bc_xps);
-> >>>>       xprt->xpt_ops->xpo_free(xprt);
-> >>>>       module_put(owner);
-> >>>> }
-> >>>> 
-> >>>> svc_xprt_free() is invoked by svc_xprt_put(). svc_xprt_put() is called
-> >>>> from svc_rdma in soft IRQ context (eg. svc_rdma_wc_receive).
-> >>> 
-> >>> Is that necessary?  I wonder why the svcrdma code seems to be taking so
-> >>> many of its own references on svc_xprts.
-> >> 
-> >> The idea is to keep the xprt around while Work Requests (I/O) are running,
-> >> so that the xprt is guaranteed to be there during work completions. The
-> >> completion handlers (where svc_xprt_put is often invoked) run in soft IRQ
-> >> context.
-> >> 
-> >> It's simple to change completions to use a Work Queue instead, but testing
-> >> so far shows that will result in a performance loss. I'm still studying it.
-> >> 
-> >> Is there another way to keep the xprt's ref count boosted while I/O is
-> >> going on?
-> > 
-> > Why do you need the svc_xprt in the completion?
-> 
-> 1. The svc_xprt contains the svcrdma_xprt, which contains the Send Queue
-> accounting mechanism. SQ accounting has to be updated for each completion:
-> the completion indicates that the SQ entry used by this Work Request is
-> now available, and that other callers waiting for enough SQEs can go ahead.
-> 
-> 2. When handling a Receive completion, the incoming RPC message is enqueued
-> on the svc_xprt via svc_xprt_enqueue, unless RDMA Reads are needed.
-> 
-> 3. When handling a Read completion, the incoming RPC message is enqueued on
-> the svc_xprt via svc_xprt_enqueue.
-> 
-> 
-> > Can the xpo_detach method wait for any pending completions?
-> 
-> So the completions would call wake_up on a waitqueue, or use a kernel
-> completion? That sounds more expensive than managing an atomic reference
-> count.
-> 
-> I suppose some other reference count could be used to trigger a work item
-> that would invoke xpo_detach.
-> 
-> But based on your comments, then, svc_xprt_put() was never intended to be
-> BH-safe.
+Hello, Bruce.
 
-I'm not sure what was intended.  It doesn't look to me like any other
-callers require it.
+On Tue, Nov 08, 2016 at 04:39:11PM -0500, J. Bruce Fields wrote:
+> Apologies, just cleaning out old mail and finding some I should have
+> responded to long ago:
+> 
+> On Wed, Aug 31, 2016 at 02:23:48AM +0530, Bhaktipriya Shridhar wrote:
+> > The workqueue "callback_wq" queues a single work item &cb->cb_work per
+> > nfsd4_callback instance and thus, it doesn't require execution ordering.
+> 
+> What's "execution ordering"?
+> 
+> We definitely do depend on the fact that at most one of these is running
+> at a time.
 
---b.
+If there can be multiple cb's and thus cb->cb_work's per callback_wq,
+it'd need explicit ordering.  Is that the case?
 
-> 
-> 
-> > --b.
-> > 
-> >> 
-> >> 
-> >>>> However, xprt_switch_put() takes a spin lock (xps_lock) which is locked
-> >>>> everywhere without disabling BHs.
-> >>>> 
-> >>>> It looks to me like 39a9beab5acb makes svc_xprt_put() no longer BH-safe?
-> >>>> Not sure if svc_xprt_put() was intended to be BH-safe beforehand.
-> >>>> 
-> >>>> Maybe xprt_switch_put() could be invoked in ->xpo_free, but that seems
-> >>>> like a temporary solution.
-> >>> 
-> >>> Since xpo_free is also called from svc_xprt_put that doesn't sound like
-> >>> it would change anything.  Or do we not trunk over RDMA for some reason?
-> >> 
-> >> It's quite desirable to trunk NFS/RDMA on multiple connections, and it
-> >> should work just like it does for TCP, but so far it's not been tested.
-> 
-> 
-> --
-> Chuck Lever
-> 
-> 
+Thanks.
+
+-- 
+tejun
