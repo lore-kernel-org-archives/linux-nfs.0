@@ -1,59 +1,117 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:38284 "EHLO fieldses.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S932125AbcKHUni (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 8 Nov 2016 15:43:38 -0500
-Date: Tue, 8 Nov 2016 15:36:12 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Jeff Layton <jlayton@poochiereds.net>
-Cc: Julia Lawall <Julia.Lawall@lip6.fr>, kernel-janitors@vger.kernel.org,
-        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: Re: [PATCH] nfsd: constify reply_cache_stats_operations structure
-Message-ID: <20161108203612.GD26589@fieldses.org>
-References: <1472416615-24079-1-git-send-email-Julia.Lawall@lip6.fr>
- <1472468267.2597.0.camel@poochiereds.net>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-In-Reply-To: <1472468267.2597.0.camel@poochiereds.net>
+Received: from userp1040.oracle.com ([156.151.31.81]:41782 "EHLO
+        userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751479AbcKHVF6 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 8 Nov 2016 16:05:58 -0500
+Content-Type: text/plain; charset=us-ascii
+Mime-Version: 1.0 (Mac OS X Mail 9.3 \(3124\))
+Subject: Re: svc_xprt_put is no longer BH-safe
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <20161108202035.GC26589@fieldses.org>
+Date: Tue, 8 Nov 2016 16:05:54 -0500
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Message-Id: <8AD6B9DB-E777-46E4-BB7E-774F5FC8B2B6@oracle.com>
+References: <1934654A-78D7-4180-A0AA-4B144254BFC2@oracle.com> <20161108200339.GA26589@fieldses.org> <7AB623FA-C766-4A1B-8A70-C54F4C8C80ED@oracle.com> <20161108202035.GC26589@fieldses.org>
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Aug 29, 2016 at 06:57:47AM -0400, Jeff Layton wrote:
-> On Sun, 2016-08-28 at 22:36 +0200, Julia Lawall wrote:
-> > reply_cache_stats_operations, of type struct file_operations, is
-> > never
-> > modified, so declare it as const.
-> > 
-> > Done with the help of Coccinelle.
-> > 
-> > Signed-off-by: Julia Lawall <Julia.Lawall@lip6.fr>
-> > 
-> > ---
-> >  fs/nfsd/nfsctl.c |    2 +-
-> >  1 file changed, 1 insertion(+), 1 deletion(-)
-> > 
-> > diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
-> > index 65ad016..3bc9693 100644
-> > --- a/fs/nfsd/nfsctl.c
-> > +++ b/fs/nfsd/nfsctl.c
-> > @@ -217,7 +217,7 @@ static const struct file_operations
-> > pool_stats_operations = {
-> >  	.release	= nfsd_pool_stats_release,
-> >  };
-> >  
-> > -static struct file_operations reply_cache_stats_operations = {
-> > +static const struct file_operations reply_cache_stats_operations = {
-> >  	.open		= nfsd_reply_cache_stats_open,
-> >  	.read		= seq_read,
-> >  	.llseek		= seq_lseek,
-> > 
+
+> On Nov 8, 2016, at 3:20 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
 > 
-> I'm pretty sure Bruce will pick this up for v4.9:
-
-Except, for some reason it's been languishing in my inbox.  Apologies,
-applying....
-
---b.
-
+> On Tue, Nov 08, 2016 at 03:13:13PM -0500, Chuck Lever wrote:
+>> 
+>>> On Nov 8, 2016, at 3:03 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
+>>> 
+>>> On Sat, Oct 29, 2016 at 12:21:03PM -0400, Chuck Lever wrote:
+>>>> Hi Bruce-
+>>> 
+>>> Sorry for the slow response!
+>>> 
+>>> ...
+>>>> In commit 39a9beab5acb83176e8b9a4f0778749a09341f1f ('rpc: share one xps between
+>>>> all backchannels') you added:
+>>>> 
+>>>> diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
+>>>> index f5572e3..4f01f63 100644
+>>>> --- a/net/sunrpc/svc_xprt.c
+>>>> +++ b/net/sunrpc/svc_xprt.c
+>>>> @@ -136,6 +136,8 @@ static void svc_xprt_free(struct kref *kref)
+>>>>       /* See comment on corresponding get in xs_setup_bc_tcp(): */
+>>>>       if (xprt->xpt_bc_xprt)
+>>>>               xprt_put(xprt->xpt_bc_xprt);
+>>>> +       if (xprt->xpt_bc_xps)
+>>>> +               xprt_switch_put(xprt->xpt_bc_xps);
+>>>>       xprt->xpt_ops->xpo_free(xprt);
+>>>>       module_put(owner);
+>>>> }
+>>>> 
+>>>> svc_xprt_free() is invoked by svc_xprt_put(). svc_xprt_put() is called
+>>>> from svc_rdma in soft IRQ context (eg. svc_rdma_wc_receive).
+>>> 
+>>> Is that necessary?  I wonder why the svcrdma code seems to be taking so
+>>> many of its own references on svc_xprts.
+>> 
+>> The idea is to keep the xprt around while Work Requests (I/O) are running,
+>> so that the xprt is guaranteed to be there during work completions. The
+>> completion handlers (where svc_xprt_put is often invoked) run in soft IRQ
+>> context.
+>> 
+>> It's simple to change completions to use a Work Queue instead, but testing
+>> so far shows that will result in a performance loss. I'm still studying it.
+>> 
+>> Is there another way to keep the xprt's ref count boosted while I/O is
+>> going on?
 > 
-> Reviewed-by: Jeff Layton <jlayton@poochiereds.net>
+> Why do you need the svc_xprt in the completion?
+
+1. The svc_xprt contains the svcrdma_xprt, which contains the Send Queue
+accounting mechanism. SQ accounting has to be updated for each completion:
+the completion indicates that the SQ entry used by this Work Request is
+now available, and that other callers waiting for enough SQEs can go ahead.
+
+2. When handling a Receive completion, the incoming RPC message is enqueued
+on the svc_xprt via svc_xprt_enqueue, unless RDMA Reads are needed.
+
+3. When handling a Read completion, the incoming RPC message is enqueued on
+the svc_xprt via svc_xprt_enqueue.
+
+
+> Can the xpo_detach method wait for any pending completions?
+
+So the completions would call wake_up on a waitqueue, or use a kernel
+completion? That sounds more expensive than managing an atomic reference
+count.
+
+I suppose some other reference count could be used to trigger a work item
+that would invoke xpo_detach.
+
+But based on your comments, then, svc_xprt_put() was never intended to be
+BH-safe.
+
+
+> --b.
+> 
+>> 
+>> 
+>>>> However, xprt_switch_put() takes a spin lock (xps_lock) which is locked
+>>>> everywhere without disabling BHs.
+>>>> 
+>>>> It looks to me like 39a9beab5acb makes svc_xprt_put() no longer BH-safe?
+>>>> Not sure if svc_xprt_put() was intended to be BH-safe beforehand.
+>>>> 
+>>>> Maybe xprt_switch_put() could be invoked in ->xpo_free, but that seems
+>>>> like a temporary solution.
+>>> 
+>>> Since xpo_free is also called from svc_xprt_put that doesn't sound like
+>>> it would change anything.  Or do we not trunk over RDMA for some reason?
+>> 
+>> It's quite desirable to trunk NFS/RDMA on multiple connections, and it
+>> should work just like it does for TCP, but so far it's not been tested.
+
+
+--
+Chuck Lever
+
+
+
