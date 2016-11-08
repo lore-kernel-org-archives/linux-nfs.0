@@ -1,154 +1,88 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:37016 "EHLO fieldses.org"
+Received: from mga02.intel.com ([134.134.136.20]:29449 "EHLO mga02.intel.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751479AbcKGWlD (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 7 Nov 2016 17:41:03 -0500
-Date: Mon, 7 Nov 2016 17:41:03 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: Scott Mayhew <smayhew@redhat.com>,
+        id S1752363AbcKHFmF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 8 Nov 2016 00:42:05 -0500
+Date: Mon, 7 Nov 2016 22:42:02 -0700
+From: Ross Zwisler <ross.zwisler@linux.intel.com>
+To: Trond Myklebust <trond.myklebust@primarydata.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>,
         Jeff Layton <jlayton@poochiereds.net>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] sunrpc: svc_age_temp_xprts_now should skip non-tcp
- transports
-Message-ID: <20161107224103.GB15804@fieldses.org>
-References: <1478544454-46146-1-git-send-email-smayhew@redhat.com>
- <C40A3090-F45E-4899-9E32-39F68BAE2676@oracle.com>
- <20161107220824.edfl47u4lljdpjh3@tonberry.usersys.redhat.com>
- <F44AFD88-A148-4513-ACCD-E4E6F83B9C3E@oracle.com>
+        "David S. Miller" <davem@davemloft.net>, linux-nfs@vger.kernel.org,
+        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
+        Andy Adamson <andros@netapp.com>
+Subject: net/sunrpc/clnt.c:2773 suspicious rcu_dereference_check() usage!
+Message-ID: <20161108054202.GA12406@linux.intel.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <F44AFD88-A148-4513-ACCD-E4E6F83B9C3E@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Nov 07, 2016 at 05:30:33PM -0500, Chuck Lever wrote:
-> 
-> > On Nov 7, 2016, at 5:08 PM, Scott Mayhew <smayhew@redhat.com> wrote:
-> > 
-> > On Mon, 07 Nov 2016, Chuck Lever wrote:
-> > 
-> >> 
-> >>> On Nov 7, 2016, at 1:47 PM, Scott Mayhew <smayhew@redhat.com> wrote:
-> >>> 
-> >>> This fixes the following panic that can occur with NFSoRDMA.
-> >>> 
-> >>> general protection fault: 0000 [#1] SMP
-> >>> Modules linked in: rpcrdma ib_isert iscsi_target_mod ib_iser libiscsi
-> >>> scsi_transport_iscsi ib_srpt target_core_mod ib_srp scsi_transport_srp
-> >>> scsi_tgt ib_ipoib rdma_ucm ib_ucm ib_uverbs ib_umad rdma_cm ib_cm iw_cm
-> >>> mlx5_ib ib_core intel_powerclamp coretemp kvm_intel kvm sg ioatdma
-> >>> ipmi_devintf ipmi_ssif dcdbas iTCO_wdt iTCO_vendor_support pcspkr
-> >>> irqbypass sb_edac shpchp dca crc32_pclmul ghash_clmulni_intel edac_core
-> >>> lpc_ich aesni_intel lrw gf128mul glue_helper ablk_helper mei_me mei
-> >>> ipmi_si cryptd wmi ipmi_msghandler acpi_pad acpi_power_meter nfsd
-> >>> auth_rpcgss nfs_acl lockd grace sunrpc ip_tables xfs libcrc32c sd_mod
-> >>> crc_t10dif crct10dif_generic mgag200 i2c_algo_bit drm_kms_helper
-> >>> syscopyarea sysfillrect sysimgblt ahci fb_sys_fops ttm libahci mlx5_core
-> >>> tg3 crct10dif_pclmul drm crct10dif_common
-> >>> ptp i2c_core libata crc32c_intel pps_core fjes dm_mirror dm_region_hash
-> >>> dm_log dm_mod
-> >>> CPU: 1 PID: 120 Comm: kworker/1:1 Not tainted 3.10.0-514.el7.x86_64 #1
-> >>> Hardware name: Dell Inc. PowerEdge R320/0KM5PX, BIOS 2.4.2 01/29/2015
-> >>> Workqueue: events check_lifetime
-> >>> task: ffff88031f506dd0 ti: ffff88031f584000 task.ti: ffff88031f584000
-> >>> RIP: 0010:[<ffffffff8168d847>]  [<ffffffff8168d847>]
-> >>> _raw_spin_lock_bh+0x17/0x50
-> >>> RSP: 0018:ffff88031f587ba8  EFLAGS: 00010206
-> >>> RAX: 0000000000020000 RBX: 20041fac02080072 RCX: ffff88031f587fd8
-> >>> RDX: 0000000000000000 RSI: 0000000000000000 RDI: 20041fac02080072
-> >>> RBP: ffff88031f587bb0 R08: 0000000000000008 R09: ffffffff8155be77
-> >>> R10: ffff880322a59b00 R11: ffffea000bf39f00 R12: 20041fac02080072
-> >>> R13: 000000000000000d R14: ffff8800c4fbd800 R15: 0000000000000001
-> >>> FS:  0000000000000000(0000) GS:ffff880322a40000(0000)
-> >>> knlGS:0000000000000000
-> >>> CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
-> >>> CR2: 00007f3c52d4547e CR3: 00000000019ba000 CR4: 00000000001407e0
-> >>> DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
-> >>> DR3: 0000000000000000 DR6: 00000000ffff0ff0 DR7: 0000000000000400
-> >>> Stack:
-> >>> 20041fac02080002 ffff88031f587bd0 ffffffff81557830 20041fac02080002
-> >>> ffff88031f587c78 ffff88031f587c40 ffffffff8155ae08 000000010157df32
-> >>> 0000000800000001 ffff88031f587c20 ffffffff81096acb ffffffff81aa37d0
-> >>> Call Trace:
-> >>> [<ffffffff81557830>] lock_sock_nested+0x20/0x50
-> >>> [<ffffffff8155ae08>] sock_setsockopt+0x78/0x940
-> >>> [<ffffffff81096acb>] ? lock_timer_base.isra.33+0x2b/0x50
-> >>> [<ffffffff8155397d>] kernel_setsockopt+0x4d/0x50
-> >>> [<ffffffffa0386284>] svc_age_temp_xprts_now+0x174/0x1e0 [sunrpc]
-> >>> [<ffffffffa03b681d>] nfsd_inetaddr_event+0x9d/0xd0 [nfsd]
-> >>> [<ffffffff81691ebc>] notifier_call_chain+0x4c/0x70
-> >>> [<ffffffff810b687d>] __blocking_notifier_call_chain+0x4d/0x70
-> >>> [<ffffffff810b68b6>] blocking_notifier_call_chain+0x16/0x20
-> >>> [<ffffffff815e8538>] __inet_del_ifa+0x168/0x2d0
-> >>> [<ffffffff815e8cef>] check_lifetime+0x25f/0x270
-> >>> [<ffffffff810a7f3b>] process_one_work+0x17b/0x470
-> >>> [<ffffffff810a8d76>] worker_thread+0x126/0x410
-> >>> [<ffffffff810a8c50>] ? rescuer_thread+0x460/0x460
-> >>> [<ffffffff810b052f>] kthread+0xcf/0xe0
-> >>> [<ffffffff810b0460>] ? kthread_create_on_node+0x140/0x140
-> >>> [<ffffffff81696418>] ret_from_fork+0x58/0x90
-> >>> [<ffffffff810b0460>] ? kthread_create_on_node+0x140/0x140
-> >>> Code: ca 75 f1 5d c3 0f 1f 80 00 00 00 00 eb d9 66 0f 1f 44 00 00 0f 1f
-> >>> 44 00 00 55 48 89 e5 53 48 89 fb e8 7e 04 a0 ff b8 00 00 02 00 <f0> 0f
-> >>> c1 03 89 c2 c1 ea 10 66 39 c2 75 03 5b 5d c3 83 e2 fe 0f
-> >>> RIP  [<ffffffff8168d847>] _raw_spin_lock_bh+0x17/0x50
-> >>> RSP <ffff88031f587ba8>
-> >>> 
-> >>> Signed-off-by: Scott Mayhew <smayhew@redhat.com>
-> >>> Fixes: c3d4879e ("sunrpc: Add a function to close temporary transports immediately")
-> >>> ---
-> >>> include/linux/sunrpc/svc_xprt.h |  1 +
-> >>> net/sunrpc/svc_xprt.c           | 14 +++-----------
-> >>> net/sunrpc/svcsock.c            | 17 +++++++++++++++++
-> >>> 3 files changed, 21 insertions(+), 11 deletions(-)
-> >>> 
-> >>> diff --git a/include/linux/sunrpc/svc_xprt.h b/include/linux/sunrpc/svc_xprt.h
-> >>> index ab02a45..4dbe0c9 100644
-> >>> --- a/include/linux/sunrpc/svc_xprt.h
-> >>> +++ b/include/linux/sunrpc/svc_xprt.h
-> >>> @@ -25,6 +25,7 @@ struct svc_xprt_ops {
-> >>> 	void		(*xpo_detach)(struct svc_xprt *);
-> >>> 	void		(*xpo_free)(struct svc_xprt *);
-> >>> 	int		(*xpo_secure_port)(struct svc_rqst *);
-> >>> +	void		(*xpo_notifier_cb)(struct svc_xprt *);
-> >> 
-> >> I'd prefer a less generic name for this callout: xpo_idle_close maybe?
-> > 
-> > I'm open to calling it something else, but it's not for the idle timer
-> > though.  This is for when the NFS server has one of its IP addresses
-> > yanked out from under it... for instance when
-> > rgmanager/pacemaker/serviceguard/whatever does an 'ip addr del' as part
-> > of the failover of an HA NFS service.
-> 
-> xpo_remove_ip ?
+I've got a virtual machine that has some NFS mounts, and with a newly compiled
+kernel based on v4.9-rc3 I see the following warning/info message:
 
-That'd be OK with me too.
+[   42.750181] ===============================
+[   42.750192] [ INFO: suspicious RCU usage. ]
+[   42.750203] 4.9.0-rc3-00002-g7b6e7de #3 Not tainted
+[   42.750213] -------------------------------
+[   42.750225] net/sunrpc/clnt.c:2773 suspicious rcu_dereference_check() usage!
+[   42.750235] 
+[   42.750235] other info that might help us debug this:
+[   42.750235] 
+[   42.750246] 
+[   42.750246] rcu_scheduler_active = 1, debug_locks = 0
+[   42.750257] 1 lock held by mount.nfs4/6440:
+[   42.750278]  #0: 
+[   42.750299]  (
+[   42.750319] &(&nn->nfs_client_lock)->rlock
+[   42.750340] ){+.+...}
+[   42.750362] , at: 
+[   42.750372] [<ffffffff813012b5>] nfs_get_client+0x105/0x5e0
+[   42.750383] 
+[   42.750383] stack backtrace:
+[   42.750394] CPU: 0 PID: 6440 Comm: mount.nfs4 Not tainted 4.9.0-rc3-00002-g7b6e7de #3
+[   42.750406] Hardware name: Intel Corporation PURLEY/PURLEY, BIOS PLYDCRB1.MBH.0096.D23.1608240105 08/24/2016
+[   42.750429]  ffffc9000092fa68 ffffffff8150730f ffff88014ec8da40 0000000000000001
+[   42.750452]  ffffc9000092fa98 ffffffff810bc3f7 ffff880150b0b228 ffff88015068dbb0
+[   42.750475]  ffffc9000092fb38 ffff88014fc99180 ffffc9000092fac0 ffffffff81b243e5
+[   42.750486] Call Trace:
+[   42.750498]  [<ffffffff8150730f>] dump_stack+0x67/0x98
+[   42.750511]  [<ffffffff810bc3f7>] lockdep_rcu_suspicious+0xe7/0x120
+[   42.750524]  [<ffffffff81b243e5>] rpc_clnt_xprt_switch_has_addr+0x115/0x150
+[   42.750536]  [<ffffffff813013f4>] nfs_get_client+0x244/0x5e0
+[   42.750549]  [<ffffffff813012ac>] ? nfs_get_client+0xfc/0x5e0
+[   42.750561]  [<ffffffff813568f8>] nfs4_set_client+0x98/0x130
+[   42.750574]  [<ffffffff8135872e>] nfs4_create_server+0x13e/0x390
+[   42.750588]  [<ffffffff8134cd0e>] nfs4_remote_mount+0x2e/0x60
+[   42.750600]  [<ffffffff811f3a29>] mount_fs+0x39/0x170
+[   42.750614]  [<ffffffff81214a0b>] vfs_kern_mount+0x6b/0x150
+[   42.750626]  [<ffffffff8134cbec>] ? nfs_do_root_mount+0x3c/0xc0
+[   42.750639]  [<ffffffff8134cc36>] nfs_do_root_mount+0x86/0xc0
+[   42.750652]  [<ffffffff8134d014>] nfs4_try_mount+0x44/0xc0
+[   42.750664]  [<ffffffff81302097>] ? get_nfs_version+0x27/0x90
+[   42.750677]  [<ffffffff81310f8c>] nfs_fs_mount+0x4ac/0xd80
+[   42.750689]  [<ffffffff810bb938>] ? lockdep_init_map+0x88/0x1f0
+[   42.750701]  [<ffffffff81311ac0>] ? nfs_clone_super+0x130/0x130
+[   42.750713]  [<ffffffff8130f300>] ? param_set_portnr+0x70/0x70
+[   42.750726]  [<ffffffff811f3a29>] mount_fs+0x39/0x170
+[   42.750740]  [<ffffffff81214a0b>] vfs_kern_mount+0x6b/0x150
+[   42.750752]  [<ffffffff812176f1>] do_mount+0x1f1/0xd10
+[   42.750765]  [<ffffffff81217441>] ? copy_mount_options+0xa1/0x140
+[   42.750777]  [<ffffffff81218543>] SyS_mount+0x83/0xd0
+[   42.750790]  [<ffffffff81002abc>] do_syscall_64+0x5c/0x130
+[   42.750802]  [<ffffffff81c479a4>] entry_SYSCALL64_slow_path+0x25/0x25
 
-> > The original patch was aimed at fixing a TCP-specific problem
-> > (http://nfsv4bat.org/Documents/ConnectAThon/1996/nfstcp.pdf page 16).
-> > I honestly didn't know if RDMA was susceptible to similar issues or not,
-> > so I decided just to skip non-TCP transports altogether.  My main
-> > concern is to make sure we don't pass something that's not a socket to
-> > kernel_setsockopt(), which is what was causing the panic with the original
-> > patch.
-> 
-> It's not clear to me that non-TCP transports should be skipped, so
-> you could be introducing another bug here.
+This rcu_dereference_check() was introduced by the following commit:
 
-In the RDMA case this patch fixes a crash and restores previous
-behavior, so it shouldn't be introducting a new bug.
+commit 39e5d2df959dd4aea81fa33d765d2a5cc67a0512
+Author: Andy Adamson <andros@netapp.com>
+Date:   Fri Sep 9 09:22:25 2016 -0400
 
-That said, yes we'd like to get this right for RDMA too, thanks for
-looking at that.
+    SUNRPC search xprt switch for sockaddr
+    
+    Signed-off-by: Andy Adamson <andros@netapp.com>
+    Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
 
---b.
-
-> I think the best choice
-> is to resolve the proper non-TCP behavior right now, to make sure
-> all transports work as expected after your patch.
-> 
-> Thinking out loud, you could get rid of the "if (!xpo_notifier_cb)
-> then continue" lines, and keep svc_close_xprt() in this block of
-> code. Then move the kernel_setsockopt call to the TCP callout,
-> and give no-op callouts to the other transports.
+Thanks,
+- Ross
