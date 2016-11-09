@@ -1,80 +1,100 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-yw0-f180.google.com ([209.85.161.180]:35794 "EHLO
-        mail-yw0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1754107AbcKIQmQ (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 9 Nov 2016 11:42:16 -0500
-MIME-Version: 1.0
-In-Reply-To: <2975B49B-2696-4E2A-B9D0-2D6CB607EC59@oracle.com>
-References: <2975B49B-2696-4E2A-B9D0-2D6CB607EC59@oracle.com>
-From: Parav Pandit <pandit.parav@gmail.com>
-Date: Wed, 9 Nov 2016 22:11:52 +0530
-Message-ID: <CAG53R5WQRCD32iEefGoaRqggAT1hyv_FSpCAN3c3Z7sVspzx1Q@mail.gmail.com>
-Subject: Re: wireshark's RPC-over-RDMA dissector
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        List Linux RDMA Mailing <linux-rdma@vger.kernel.org>
-Content-Type: text/plain; charset=UTF-8
+Received: from mail-qk0-f177.google.com ([209.85.220.177]:36526 "EHLO
+        mail-qk0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751243AbcKIRdj (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 9 Nov 2016 12:33:39 -0500
+Received: by mail-qk0-f177.google.com with SMTP id n21so153741385qka.3
+        for <linux-nfs@vger.kernel.org>; Wed, 09 Nov 2016 09:33:39 -0800 (PST)
+Message-ID: <1478712815.7930.28.camel@poochiereds.net>
+Subject: Re: [PATCH v2] fs/nfsd/nfs4callback: Remove deprecated
+ create_singlethread_workqueue
+From: Jeff Layton <jlayton@poochiereds.net>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: Tejun Heo <tj@kernel.org>,
+        Bhaktipriya Shridhar <bhaktipriya96@gmail.com>,
+        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
+Date: Wed, 09 Nov 2016 12:33:35 -0500
+In-Reply-To: <20161109162752.GA4952@fieldses.org>
+References: <20160830205348.GA31915@Karyakshetra>
+         <20161108213911.GA27681@fieldses.org>
+         <20161108225221.GB6460@htj.duckdns.org>
+         <20161109012725.GA29930@fieldses.org>
+         <1478697488.7930.7.camel@poochiereds.net>
+         <20161109162752.GA4952@fieldses.org>
+Content-Type: text/plain; charset="UTF-8"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Chuck,
+On Wed, 2016-11-09 at 11:27 -0500, J. Bruce Fields wrote:
+> On Wed, Nov 09, 2016 at 08:18:08AM -0500, Jeff Layton wrote:
+> > 
+> > On Tue, 2016-11-08 at 20:27 -0500, J. Bruce Fields wrote:
+> > > 
+> > > On Tue, Nov 08, 2016 at 05:52:21PM -0500, Tejun Heo wrote:
+> > > > 
+> > > > 
+> > > > Hello, Bruce.
+> > > > 
+> > > > On Tue, Nov 08, 2016 at 04:39:11PM -0500, J. Bruce Fields wrote:
+> > > > > 
+> > > > > 
+> > > > > Apologies, just cleaning out old mail and finding some I should have
+> > > > > responded to long ago:
+> > > > > 
+> > > > > On Wed, Aug 31, 2016 at 02:23:48AM +0530, Bhaktipriya Shridhar wrote:
+> > > > > > 
+> > > > > > 
+> > > > > > The workqueue "callback_wq" queues a single work item &cb->cb_work per
+> > > > > > nfsd4_callback instance and thus, it doesn't require execution ordering.
+> > > > > 
+> > > > > What's "execution ordering"?
+> > > > > 
+> > 
+> > AIUI, it means that jobs are always run in the order queued and are
+> > serialized.
+> > 
+> > > 
+> > > > 
+> > > > > 
+> > > > > We definitely do depend on the fact that at most one of these is running
+> > > > > at a time.
+> > > > 
+> > 
+> > We do?
+> > 
+> > > 
+> > > > 
+> > > > If there can be multiple cb's and thus cb->cb_work's per callback_wq,
+> > > > it'd need explicit ordering.  Is that the case?
+> > > 
+> > 
+> > These are basically client RPC tasks, and the cb_work just handles the
+> > submission into the client RPC state machine. Just because we're running
+> > several callbacks at the same time doesn't mean that they need to be
+> > strictly ordered. The client state machine can certainly handle running
+> > these in parallel.
+> 
+> I'm not worried about the rpc calls themselves, I'm worried about the
+> other stuff in nfsd4_run_cb_work(), especially
+> nfsd4_process_cb_update().
+> 
+> It's been a while since I thought about it and maybe it'd be OK with a
+> little bit of extra locking.
+> 
+> --b.
+> 
 
-Just FYI.
-I have committed few fixes in wireshark trunk for RoCE and IB
-dissectors which will in general benefit other ULPs as well (primary
-for statefulness of ULPs) last month.
+Ahh good point there. nfsd4_process_cb_update is a bit of a special
+case, and I hadn't considered that.
 
-I have few patches pending in my sandbox in area of RoCE and for other
-ULP that I will push in coming days, likely next week.
-I am currently actively testing them and have made steady progress so far.
+I think we could use the cl_lock to protect most of the fields that are
+affected there.
 
-I will try to find sometime to review them next week.
+I'm not sure how to handle setup_callback_client though. Should we
+serialize those calls so that we're only constructing one at a time and
+have other threads wait on it? We could use a cl_flags bit for a
+NFSD4_CLIENT_CB_CONSTRUCTING flag and serialize on those?
 
-Regards,
-Parav Pandit
-
-
-On Wed, Nov 9, 2016 at 9:35 PM, Chuck Lever <chuck.lever@oracle.com> wrote:
-> Hi-
->
-> Thanks to Yan Berman, for a couple of years now we've had a basic
-> RPC-over-RDMA dissector in wireshark that can be used with ibdump
-> captures. There have been some bugs noted, but no-one has had the
-> cycles to dig in and address.
->
-> Recently Tom Haynes helped me set up my own wireshark build so I
-> could help address some of the known issues.
->
-> http://git.linux-nfs.org/?p=3Dcel/wireshark.git;a=3Dshortlog;h=3Drefs/hea=
-ds/rpc-rdma-fixes
->
-> Posting here for review before I take the next steps to push these
-> to the wireshark community. Constructive critique and other
-> suggestions are welcome.
->
-> The fixes so far focus on dissecting transport headers correctly.
-> There continue to be significant open issues with the dissector:
->         =E2=80=A2 There does not appear to be any support for dissecting
->           RPC-over-RDMA on iWARP or RoCE
->         =E2=80=A2 The NFS dissector does not handle portions of the XDR
->           stream that were transmitted via RDMA Read/Write
->         =E2=80=A2 RPC messages conveyed via RDMA_NOMSG are not recognized
->           or dissected
->         =E2=80=A2 There is no association between RDMA Reads and Writes
->           and the RPC-over-RDMA message they go with
->         =E2=80=A2 A CREQ / CREP pair are needed to identify which QP
->           numbers are used for RPC-over-RDMA traffic
->         =E2=80=A2 With TCP, the dissector fully outdents the RPC and NFS
->           dissection results; but with RDMA, the dissector places
->           the results in the tree under the Infiniband header
->         =E2=80=A2 Not enough error detection in the dissector
->
-> --
-> Chuck Lever
->
->
->
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-rdma" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+-- 
+Jeff Layton <jlayton@poochiereds.net>
