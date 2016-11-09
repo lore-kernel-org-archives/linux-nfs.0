@@ -1,13 +1,13 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-it0-f68.google.com ([209.85.214.68]:36393 "EHLO
-        mail-it0-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751420AbcKIRfc (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 9 Nov 2016 12:35:32 -0500
-Subject: [PATCH v1 7/7] svcrdma: Break up dprintk format in svc_rdma_accept()
+Received: from mail-it0-f66.google.com ([209.85.214.66]:33328 "EHLO
+        mail-it0-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1752977AbcKIRqn (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 9 Nov 2016 12:46:43 -0500
+Subject: [PATCH v1 3/7] svcrdma: Renovate sendto chunk list parsing
 From: Chuck Lever <chuck.lever@oracle.com>
 To: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Wed, 09 Nov 2016 12:34:34 -0500
-Message-ID: <20161109173434.15735.49370.stgit@klimt.1015granger.net>
+Date: Wed, 09 Nov 2016 12:34:02 -0500
+Message-ID: <20161109173402.15735.43254.stgit@klimt.1015granger.net>
 In-Reply-To: <20161109165814.15735.47815.stgit@klimt.1015granger.net>
 References: <20161109165814.15735.47815.stgit@klimt.1015granger.net>
 MIME-Version: 1.0
@@ -15,104 +15,193 @@ Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The current code results in:
+The current sendto code appears to support clients that provide only
+one of a Read list, a Write list, or a Reply chunk. My reading of
+that code is that it doesn't support the following cases:
 
-Nov  7 14:50:19 klimt kernel: svcrdma: newxprt->sc_cm_id=ffff88085590c800, newxprt->sc_pd=ffff880852a7ce00#012    cm_id->device=ffff88084dd20000, sc_pd->device=ffff88084dd20000#012    cap.max_send_wr = 272#012    cap.max_recv_wr = 34#012    cap.max_send_sge = 32#012    cap.max_recv_sge = 32
-Nov  7 14:50:19 klimt kernel: svcrdma: new connection ffff880855908000 accepted with the following attributes:#012    local_ip        : 10.0.0.5#012    local_port#011     : 20049#012    remote_ip       : 10.0.0.2#012    remote_port     : 59909#012    max_sge         : 32#012    max_sge_rd      : 30#012    sq_depth        : 272#012    max_requests    : 32#012    ord             : 16
+ - Read list + Write list
+ - Read list + Reply chunk
+ - Write list + Reply chunk
+ - Read list + Write list + Reply chunk
 
-Split up the output over multiple dprintks and take the opportunity
-to fix the display of IPv6 addresses.
+The protocol allows more than one Read or Write chunk in those
+lists. Some clients do send a Read list and Reply chunk
+simultaneously. NFSv4 WRITE uses a Read list for the data payload,
+and a Reply chunk because the GETATTR result in the reply can
+contain a large object like an ACL.
+
+Generalize one of the sendto code paths needed to support all of
+the above cases, and attempt to ensure that only one pass is done
+through the RPC Call's transport header to gather chunk list
+information for building the reply.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- net/sunrpc/xprtrdma/svc_rdma_transport.c |   55 ++++++++++--------------------
- 1 file changed, 18 insertions(+), 37 deletions(-)
+ include/linux/sunrpc/svc_rdma.h         |    2 -
+ net/sunrpc/xprtrdma/svc_rdma_recvfrom.c |   14 +++++
+ net/sunrpc/xprtrdma/svc_rdma_sendto.c   |   92 ++++++++-----------------------
+ 3 files changed, 39 insertions(+), 69 deletions(-)
 
-diff --git a/net/sunrpc/xprtrdma/svc_rdma_transport.c b/net/sunrpc/xprtrdma/svc_rdma_transport.c
-index b7c9359..8efe452 100644
---- a/net/sunrpc/xprtrdma/svc_rdma_transport.c
-+++ b/net/sunrpc/xprtrdma/svc_rdma_transport.c
-@@ -41,6 +41,7 @@
+diff --git a/include/linux/sunrpc/svc_rdma.h b/include/linux/sunrpc/svc_rdma.h
+index cc3ae16..6aef63b 100644
+--- a/include/linux/sunrpc/svc_rdma.h
++++ b/include/linux/sunrpc/svc_rdma.h
+@@ -236,8 +236,6 @@ extern int rdma_read_chunk_frmr(struct svcxprt_rdma *, struct svc_rqst *,
+ extern int svc_rdma_map_xdr(struct svcxprt_rdma *, struct xdr_buf *,
+ 			    struct svc_rdma_req_map *, bool);
+ extern int svc_rdma_sendto(struct svc_rqst *);
+-extern struct rpcrdma_read_chunk *
+-	svc_rdma_get_read_chunk(struct rpcrdma_msg *);
+ extern void svc_rdma_send_error(struct svcxprt_rdma *, struct rpcrdma_msg *,
+ 				int);
+ 
+diff --git a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
+index ad1df97..5ac93cb 100644
+--- a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
++++ b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
+@@ -415,6 +415,20 @@ int rdma_read_chunk_frmr(struct svcxprt_rdma *xprt,
+ 	return 1;
+ }
+ 
++/* Returns the address of the first read chunk or <nul> if no read chunk
++ * is present
++ */
++struct rpcrdma_read_chunk *
++svc_rdma_get_read_chunk(struct rpcrdma_msg *rmsgp)
++{
++	struct rpcrdma_read_chunk *ch =
++		(struct rpcrdma_read_chunk *)&rmsgp->rm_body.rm_chunks[0];
++
++	if (ch->rc_discrim == xdr_zero)
++		return NULL;
++	return ch;
++}
++
+ static int rdma_read_chunks(struct svcxprt_rdma *xprt,
+ 			    struct rpcrdma_msg *rmsgp,
+ 			    struct svc_rqst *rqstp,
+diff --git a/net/sunrpc/xprtrdma/svc_rdma_sendto.c b/net/sunrpc/xprtrdma/svc_rdma_sendto.c
+index f5a91ed..0a58d40 100644
+--- a/net/sunrpc/xprtrdma/svc_rdma_sendto.c
++++ b/net/sunrpc/xprtrdma/svc_rdma_sendto.c
+@@ -153,76 +153,35 @@ static dma_addr_t dma_map_xdr(struct svcxprt_rdma *xprt,
+ 	return dma_addr;
+ }
+ 
+-/* Returns the address of the first read chunk or <nul> if no read chunk
+- * is present
++/* Parse the RPC Call's transport header.
   */
+-struct rpcrdma_read_chunk *
+-svc_rdma_get_read_chunk(struct rpcrdma_msg *rmsgp)
++static void svc_rdma_get_write_arrays(struct rpcrdma_msg *rmsgp,
++				      struct rpcrdma_write_array **write,
++				      struct rpcrdma_write_array **reply)
+ {
+-	struct rpcrdma_read_chunk *ch =
+-		(struct rpcrdma_read_chunk *)&rmsgp->rm_body.rm_chunks[0];
++	__be32 *p;
  
- #include <linux/sunrpc/svc_xprt.h>
-+#include <linux/sunrpc/addr.h>
- #include <linux/sunrpc/debug.h>
- #include <linux/sunrpc/rpc_rdma.h>
- #include <linux/interrupt.h>
-@@ -966,6 +967,7 @@ static struct svc_xprt *svc_rdma_accept(struct svc_xprt *xprt)
- 	struct rpcrdma_connect_private pmsg;
- 	struct ib_qp_init_attr qp_attr;
- 	struct ib_device *dev;
-+	struct sockaddr *sap;
- 	unsigned int i;
- 	int ret = 0;
+-	if (ch->rc_discrim == xdr_zero)
+-		return NULL;
+-	return ch;
+-}
+-
+-/* Returns the address of the first read write array element or <nul>
+- * if no write array list is present
+- */
+-static struct rpcrdma_write_array *
+-svc_rdma_get_write_array(struct rpcrdma_msg *rmsgp)
+-{
+-	if (rmsgp->rm_body.rm_chunks[0] != xdr_zero ||
+-	    rmsgp->rm_body.rm_chunks[1] == xdr_zero)
+-		return NULL;
+-	return (struct rpcrdma_write_array *)&rmsgp->rm_body.rm_chunks[1];
+-}
++	p = (__be32 *)&rmsgp->rm_body.rm_chunks[0];
  
-@@ -1046,18 +1048,12 @@ static struct svc_xprt *svc_rdma_accept(struct svc_xprt *xprt)
- 	qp_attr.qp_type = IB_QPT_RC;
- 	qp_attr.send_cq = newxprt->sc_sq_cq;
- 	qp_attr.recv_cq = newxprt->sc_rq_cq;
--	dprintk("svcrdma: newxprt->sc_cm_id=%p, newxprt->sc_pd=%p\n"
--		"    cm_id->device=%p, sc_pd->device=%p\n"
--		"    cap.max_send_wr = %d\n"
--		"    cap.max_recv_wr = %d\n"
--		"    cap.max_send_sge = %d\n"
--		"    cap.max_recv_sge = %d\n",
--		newxprt->sc_cm_id, newxprt->sc_pd,
--		dev, newxprt->sc_pd->device,
--		qp_attr.cap.max_send_wr,
--		qp_attr.cap.max_recv_wr,
--		qp_attr.cap.max_send_sge,
--		qp_attr.cap.max_recv_sge);
-+	dprintk("svcrdma: newxprt->sc_cm_id=%p, newxprt->sc_pd=%p\n",
-+		newxprt->sc_cm_id, newxprt->sc_pd);
-+	dprintk("    cap.max_send_wr = %d, cap.max_recv_wr = %d\n",
-+		qp_attr.cap.max_send_wr, qp_attr.cap.max_recv_wr);
-+	dprintk("    cap.max_send_sge = %d, cap.max_recv_sge = %d\n",
-+		qp_attr.cap.max_send_sge, qp_attr.cap.max_recv_sge);
+-/* Returns the address of the first reply array element or <nul> if no
+- * reply array is present
+- */
+-static struct rpcrdma_write_array *
+-svc_rdma_get_reply_array(struct rpcrdma_msg *rmsgp,
+-			 struct rpcrdma_write_array *wr_ary)
+-{
+-	struct rpcrdma_read_chunk *rch;
+-	struct rpcrdma_write_array *rp_ary;
++	/* Read list */
++	while (*p++ != xdr_zero)
++		p += 5;
  
- 	ret = rdma_create_qp(newxprt->sc_cm_id, newxprt->sc_pd, &qp_attr);
- 	if (ret) {
-@@ -1140,31 +1136,16 @@ static struct svc_xprt *svc_rdma_accept(struct svc_xprt *xprt)
- 		goto errout;
+-	/* XXX: Need to fix when reply chunk may occur with read list
+-	 *	and/or write list.
+-	 */
+-	if (rmsgp->rm_body.rm_chunks[0] != xdr_zero ||
+-	    rmsgp->rm_body.rm_chunks[1] != xdr_zero)
+-		return NULL;
+-
+-	rch = svc_rdma_get_read_chunk(rmsgp);
+-	if (rch) {
+-		while (rch->rc_discrim != xdr_zero)
+-			rch++;
+-
+-		/* The reply chunk follows an empty write array located
+-		 * at 'rc_position' here. The reply array is at rc_target.
+-		 */
+-		rp_ary = (struct rpcrdma_write_array *)&rch->rc_target;
+-		goto found_it;
+-	}
+-
+-	if (wr_ary) {
+-		int chunk = be32_to_cpu(wr_ary->wc_nchunks);
+-
+-		rp_ary = (struct rpcrdma_write_array *)
+-			 &wr_ary->wc_array[chunk].wc_target.rs_length;
+-		goto found_it;
++	/* Write list */
++	if (*p != xdr_zero) {
++		*write = (struct rpcrdma_write_array *)p;
++		while (*p++ != xdr_zero)
++			p += 1 + be32_to_cpu(*p) * 4;
++	} else {
++		*write = NULL;
++		p++;
  	}
  
--	dprintk("svcrdma: new connection %p accepted with the following "
--		"attributes:\n"
--		"    local_ip        : %pI4\n"
--		"    local_port	     : %d\n"
--		"    remote_ip       : %pI4\n"
--		"    remote_port     : %d\n"
--		"    max_sge         : %d\n"
--		"    max_sge_rd      : %d\n"
--		"    sq_depth        : %d\n"
--		"    max_requests    : %d\n"
--		"    ord             : %d\n",
--		newxprt,
--		&((struct sockaddr_in *)&newxprt->sc_cm_id->
--			 route.addr.src_addr)->sin_addr.s_addr,
--		ntohs(((struct sockaddr_in *)&newxprt->sc_cm_id->
--		       route.addr.src_addr)->sin_port),
--		&((struct sockaddr_in *)&newxprt->sc_cm_id->
--			 route.addr.dst_addr)->sin_addr.s_addr,
--		ntohs(((struct sockaddr_in *)&newxprt->sc_cm_id->
--		       route.addr.dst_addr)->sin_port),
--		newxprt->sc_max_sge,
--		newxprt->sc_max_sge_rd,
--		newxprt->sc_sq_depth,
--		newxprt->sc_max_requests,
--		newxprt->sc_ord);
-+	dprintk("svcrdma: new connection %p accepted:\n", newxprt);
-+	sap = (struct sockaddr *)&newxprt->sc_cm_id->route.addr.src_addr;
-+	dprintk("    local address   : %pIS:%u\n", sap, rpc_get_port(sap));
-+	sap = (struct sockaddr *)&newxprt->sc_cm_id->route.addr.dst_addr;
-+	dprintk("    remote address  : %pIS:%u\n", sap, rpc_get_port(sap));
-+	dprintk("    max_sge         : %d\n", newxprt->sc_max_sge);
-+	dprintk("    max_sge_rd      : %d\n", newxprt->sc_max_sge_rd);
-+	dprintk("    sq_depth        : %d\n", newxprt->sc_sq_depth);
-+	dprintk("    max_requests    : %d\n", newxprt->sc_max_requests);
-+	dprintk("    ord             : %d\n", newxprt->sc_ord);
+-	/* No read list, no write list */
+-	rp_ary = (struct rpcrdma_write_array *)&rmsgp->rm_body.rm_chunks[2];
+-
+- found_it:
+-	if (rp_ary->wc_discrim == xdr_zero)
+-		return NULL;
+-	return rp_ary;
++	/* Reply chunk */
++	if (*p != xdr_zero)
++		*reply = (struct rpcrdma_write_array *)p;
++	else
++		*reply = NULL;
+ }
  
- 	return &newxprt->sc_xprt;
+ /* RPC-over-RDMA Version One private extension: Remote Invalidation.
+@@ -244,8 +203,8 @@ static u32 svc_rdma_get_inv_rkey(struct rpcrdma_msg *rdma_argp,
  
+ 	inv_rkey = 0;
+ 
+-	rd_ary = svc_rdma_get_read_chunk(rdma_argp);
+-	if (rd_ary) {
++	rd_ary = (struct rpcrdma_read_chunk *)&rdma_argp->rm_body.rm_chunks[0];
++	if (rd_ary->rc_discrim != xdr_zero) {
+ 		inv_rkey = be32_to_cpu(rd_ary->rc_target.rs_handle);
+ 		goto out;
+ 	}
+@@ -622,8 +581,7 @@ int svc_rdma_sendto(struct svc_rqst *rqstp)
+ 	 * places this at the start of page 0.
+ 	 */
+ 	rdma_argp = page_address(rqstp->rq_pages[0]);
+-	wr_ary = svc_rdma_get_write_array(rdma_argp);
+-	rp_ary = svc_rdma_get_reply_array(rdma_argp, wr_ary);
++	svc_rdma_get_write_arrays(rdma_argp, &wr_ary, &rp_ary);
+ 
+ 	inv_rkey = 0;
+ 	if (rdma->sc_snd_w_inv)
 
