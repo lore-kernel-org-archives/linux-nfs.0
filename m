@@ -1,63 +1,118 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-it0-f65.google.com ([209.85.214.65]:33143 "EHLO
-        mail-it0-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1752126AbcKIRdk (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 9 Nov 2016 12:33:40 -0500
-Subject: [PATCH v1 0/7] server-side NFS/RDMA patches proposed for v4.10
+Received: from mail-it0-f68.google.com ([209.85.214.68]:36393 "EHLO
+        mail-it0-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751420AbcKIRfc (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 9 Nov 2016 12:35:32 -0500
+Subject: [PATCH v1 7/7] svcrdma: Break up dprintk format in svc_rdma_accept()
 From: Chuck Lever <chuck.lever@oracle.com>
 To: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Wed, 09 Nov 2016 12:33:37 -0500
-Message-ID: <20161109165814.15735.47815.stgit@klimt.1015granger.net>
+Date: Wed, 09 Nov 2016 12:34:34 -0500
+Message-ID: <20161109173434.15735.49370.stgit@klimt.1015granger.net>
+In-Reply-To: <20161109165814.15735.47815.stgit@klimt.1015granger.net>
+References: <20161109165814.15735.47815.stgit@klimt.1015granger.net>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-I'd like to propose these server-side changes for v4.10. They
-include:
+The current code results in:
 
-- Drop connection on GSS sequence window overflow
-- Remove unnecessary spin lock in the svc_rdma_send path
-- A number of minor clean-ups
+Nov  7 14:50:19 klimt kernel: svcrdma: newxprt->sc_cm_id=ffff88085590c800, newxprt->sc_pd=ffff880852a7ce00#012    cm_id->device=ffff88084dd20000, sc_pd->device=ffff88084dd20000#012    cap.max_send_wr = 272#012    cap.max_recv_wr = 34#012    cap.max_send_sge = 32#012    cap.max_recv_sge = 32
+Nov  7 14:50:19 klimt kernel: svcrdma: new connection ffff880855908000 accepted with the following attributes:#012    local_ip        : 10.0.0.5#012    local_port#011     : 20049#012    remote_ip       : 10.0.0.2#012    remote_port     : 59909#012    max_sge         : 32#012    max_sge_rd      : 30#012    sq_depth        : 272#012    max_requests    : 32#012    ord             : 16
 
-Available in the "nfsd-rdma-for-4.10" topic branch of this git repo:
+Split up the output over multiple dprintks and take the opportunity
+to fix the display of IPv6 addresses.
 
-git://git.linux-nfs.org/projects/cel/cel-2.6.git
-
-
-Or for browsing:
-
-http://git.linux-nfs.org/?p=cel/cel-2.6.git;a=log;h=refs/heads/nfsd-rdma-for-4.10
-
-
-Meanwhile, I've been working on converting the server-side RPC/RDMA
-transport to use the new generic R/W API. The prototype for the
-svc_rdma_sendto path works for some forms of the transport header,
-but still has a few bugs. The svc_rdma_recvfrom path will be next,
-but is an even larger task.
-
-When this work is further along I will publish a topic branch.
-
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
+ net/sunrpc/xprtrdma/svc_rdma_transport.c |   55 ++++++++++--------------------
+ 1 file changed, 18 insertions(+), 37 deletions(-)
 
-Chuck Lever (7):
-      svcrdma: Clear xpt_bc_xps in xprt_setup_rdma_bc() error exit arm
-      svcauth_gss: Close connection when dropping an incoming message
-      svcrdma: Renovate sendto chunk list parsing
-      svcrdma: Remove BH-disabled spin locking in svc_rdma_send()
-      svcrdma: Remove DMA map accounting
-      svcrdma: Remove svc_rdma_op_ctxt::wc_status
-      svcrdma: Break up dprintk format in svc_rdma_accept()
+diff --git a/net/sunrpc/xprtrdma/svc_rdma_transport.c b/net/sunrpc/xprtrdma/svc_rdma_transport.c
+index b7c9359..8efe452 100644
+--- a/net/sunrpc/xprtrdma/svc_rdma_transport.c
++++ b/net/sunrpc/xprtrdma/svc_rdma_transport.c
+@@ -41,6 +41,7 @@
+  */
+ 
+ #include <linux/sunrpc/svc_xprt.h>
++#include <linux/sunrpc/addr.h>
+ #include <linux/sunrpc/debug.h>
+ #include <linux/sunrpc/rpc_rdma.h>
+ #include <linux/interrupt.h>
+@@ -966,6 +967,7 @@ static struct svc_xprt *svc_rdma_accept(struct svc_xprt *xprt)
+ 	struct rpcrdma_connect_private pmsg;
+ 	struct ib_qp_init_attr qp_attr;
+ 	struct ib_device *dev;
++	struct sockaddr *sap;
+ 	unsigned int i;
+ 	int ret = 0;
+ 
+@@ -1046,18 +1048,12 @@ static struct svc_xprt *svc_rdma_accept(struct svc_xprt *xprt)
+ 	qp_attr.qp_type = IB_QPT_RC;
+ 	qp_attr.send_cq = newxprt->sc_sq_cq;
+ 	qp_attr.recv_cq = newxprt->sc_rq_cq;
+-	dprintk("svcrdma: newxprt->sc_cm_id=%p, newxprt->sc_pd=%p\n"
+-		"    cm_id->device=%p, sc_pd->device=%p\n"
+-		"    cap.max_send_wr = %d\n"
+-		"    cap.max_recv_wr = %d\n"
+-		"    cap.max_send_sge = %d\n"
+-		"    cap.max_recv_sge = %d\n",
+-		newxprt->sc_cm_id, newxprt->sc_pd,
+-		dev, newxprt->sc_pd->device,
+-		qp_attr.cap.max_send_wr,
+-		qp_attr.cap.max_recv_wr,
+-		qp_attr.cap.max_send_sge,
+-		qp_attr.cap.max_recv_sge);
++	dprintk("svcrdma: newxprt->sc_cm_id=%p, newxprt->sc_pd=%p\n",
++		newxprt->sc_cm_id, newxprt->sc_pd);
++	dprintk("    cap.max_send_wr = %d, cap.max_recv_wr = %d\n",
++		qp_attr.cap.max_send_wr, qp_attr.cap.max_recv_wr);
++	dprintk("    cap.max_send_sge = %d, cap.max_recv_sge = %d\n",
++		qp_attr.cap.max_send_sge, qp_attr.cap.max_recv_sge);
+ 
+ 	ret = rdma_create_qp(newxprt->sc_cm_id, newxprt->sc_pd, &qp_attr);
+ 	if (ret) {
+@@ -1140,31 +1136,16 @@ static struct svc_xprt *svc_rdma_accept(struct svc_xprt *xprt)
+ 		goto errout;
+ 	}
+ 
+-	dprintk("svcrdma: new connection %p accepted with the following "
+-		"attributes:\n"
+-		"    local_ip        : %pI4\n"
+-		"    local_port	     : %d\n"
+-		"    remote_ip       : %pI4\n"
+-		"    remote_port     : %d\n"
+-		"    max_sge         : %d\n"
+-		"    max_sge_rd      : %d\n"
+-		"    sq_depth        : %d\n"
+-		"    max_requests    : %d\n"
+-		"    ord             : %d\n",
+-		newxprt,
+-		&((struct sockaddr_in *)&newxprt->sc_cm_id->
+-			 route.addr.src_addr)->sin_addr.s_addr,
+-		ntohs(((struct sockaddr_in *)&newxprt->sc_cm_id->
+-		       route.addr.src_addr)->sin_port),
+-		&((struct sockaddr_in *)&newxprt->sc_cm_id->
+-			 route.addr.dst_addr)->sin_addr.s_addr,
+-		ntohs(((struct sockaddr_in *)&newxprt->sc_cm_id->
+-		       route.addr.dst_addr)->sin_port),
+-		newxprt->sc_max_sge,
+-		newxprt->sc_max_sge_rd,
+-		newxprt->sc_sq_depth,
+-		newxprt->sc_max_requests,
+-		newxprt->sc_ord);
++	dprintk("svcrdma: new connection %p accepted:\n", newxprt);
++	sap = (struct sockaddr *)&newxprt->sc_cm_id->route.addr.src_addr;
++	dprintk("    local address   : %pIS:%u\n", sap, rpc_get_port(sap));
++	sap = (struct sockaddr *)&newxprt->sc_cm_id->route.addr.dst_addr;
++	dprintk("    remote address  : %pIS:%u\n", sap, rpc_get_port(sap));
++	dprintk("    max_sge         : %d\n", newxprt->sc_max_sge);
++	dprintk("    max_sge_rd      : %d\n", newxprt->sc_max_sge_rd);
++	dprintk("    sq_depth        : %d\n", newxprt->sc_sq_depth);
++	dprintk("    max_requests    : %d\n", newxprt->sc_max_requests);
++	dprintk("    ord             : %d\n", newxprt->sc_ord);
+ 
+ 	return &newxprt->sc_xprt;
+ 
 
-
- include/linux/sunrpc/svc_rdma.h            |    7 --
- net/sunrpc/auth_gss/svcauth_gss.c          |    2 -
- net/sunrpc/svc.c                           |   14 +++-
- net/sunrpc/xprtrdma/svc_rdma_backchannel.c |    1 
- net/sunrpc/xprtrdma/svc_rdma_recvfrom.c    |   19 +++++
- net/sunrpc/xprtrdma/svc_rdma_sendto.c      |   99 +++++++++-------------------
- net/sunrpc/xprtrdma/svc_rdma_transport.c   |   87 ++++++++-----------------
- 7 files changed, 87 insertions(+), 142 deletions(-)
-
---
-Chuck Lever
