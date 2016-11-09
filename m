@@ -1,45 +1,60 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:38542 "EHLO fieldses.org"
+Received: from mx2.suse.de ([195.135.220.15]:38469 "EHLO mx2.suse.de"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751670AbcKIB10 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 8 Nov 2016 20:27:26 -0500
-Date: Tue, 8 Nov 2016 20:27:25 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Tejun Heo <tj@kernel.org>
-Cc: Bhaktipriya Shridhar <bhaktipriya96@gmail.com>,
-        Jeff Layton <jlayton@poochiereds.net>, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-Subject: Re: [PATCH v2] fs/nfsd/nfs4callback: Remove deprecated
- create_singlethread_workqueue
-Message-ID: <20161109012725.GA29930@fieldses.org>
-References: <20160830205348.GA31915@Karyakshetra>
- <20161108213911.GA27681@fieldses.org>
- <20161108225221.GB6460@htj.duckdns.org>
+        id S1751725AbcKIDqd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 8 Nov 2016 22:46:33 -0500
+From: NeilBrown <neilb@suse.com>
+To: Jeff Layton <jlayton@redhat.com>
+Date: Wed, 09 Nov 2016 14:46:25 +1100
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Question about nfsdcltrack --storagedir
+Message-ID: <87k2cdmi26.fsf@notabene.neil.brown.name>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20161108225221.GB6460@htj.duckdns.org>
+Content-Type: multipart/signed; boundary="=-=-=";
+        micalg=pgp-sha256; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Nov 08, 2016 at 05:52:21PM -0500, Tejun Heo wrote:
-> Hello, Bruce.
-> 
-> On Tue, Nov 08, 2016 at 04:39:11PM -0500, J. Bruce Fields wrote:
-> > Apologies, just cleaning out old mail and finding some I should have
-> > responded to long ago:
-> > 
-> > On Wed, Aug 31, 2016 at 02:23:48AM +0530, Bhaktipriya Shridhar wrote:
-> > > The workqueue "callback_wq" queues a single work item &cb->cb_work per
-> > > nfsd4_callback instance and thus, it doesn't require execution ordering.
-> > 
-> > What's "execution ordering"?
-> > 
-> > We definitely do depend on the fact that at most one of these is running
-> > at a time.
-> 
-> If there can be multiple cb's and thus cb->cb_work's per callback_wq,
-> it'd need explicit ordering.  Is that the case?
+--=-=-=
+Content-Type: text/plain
 
-Yes, there can be multiple cb_work's.
 
---b.
+Hi,
+ I notice that nfsdcltrack has a "--storagedir" option.
+ I wonder how this can be used, given the nfsdcltrack is only(?) called
+ from the kernel and there is no(?) mechanism to pass extra options.
+
+ In a clustered-server context it would make sense(?) to share the
+ database between cluster nodes and it is easiest to do this if the
+ file in a separate filesystem (mounted as part of fail-over) rather
+ than in /var.
+ This can(?) be achieved using a symlink, but rpm likes to remove
+ symlinks to non-existent locations.
+
+ With NFSv3 the equivalent is the state files maintained by statd, and
+ these can be relocated by passing the -P option to rpc.statd.
+ How does one do a similar thing for NFSv4???
+
+Thanks,
+NeilBrown
+
+--=-=-=
+Content-Type: application/pgp-signature; name="signature.asc"
+
+-----BEGIN PGP SIGNATURE-----
+
+iQIcBAEBCAAGBQJYIpwRAAoJEDnsnt1WYoG5Q9sQAKyo33XlMueu2RzHp/JLCr+z
+4C9SoOvEuyegYijs4ofA8eR7+nhP5/G48B3w6BTmOZyFsrXdP6ZGVp06zvI0RhXW
+1u08UxmFodgGyw+vQa8glmWD/b8iF68O0DcfEjDrOBYX9zyg5jS0BZE8PJDQUNAN
+KjHMPlXbHtKxG/gZ0bwSh5IEpW8CQjDFYjRkyqoEcQc4d8BGtiViLHCrETzuhVqK
+OFFnpn4gpmGYM+Ml0dXbp1A458b6BPZVLId7Rc5LDRccCrY3SSRMC5O04C5pHEVU
+UnI5JUaFdIQmOihjz0uKYeuVSCLVbWMmU7coTwnjil55nTKCucvNJZQQcAfO3ll9
+KFiAJMja7Cnbz03TdIga8hFsr7zhTWg/OsZPr8Z2AENjSi0ETY78sojy0lJe5Xjm
+vrQMPM0qEHld29cnqpWcaFXMTROBGMTtrvAEF94tXNKfKyF8Bg8YOu+nVMCQE8gA
+QxP1npx35vca7sjTt7P/vKZBSegzImLBTfN0qj3/DuomLh40GSdTnfxzU9iR2A/I
+JueWtupK/0SBGSmr2LA03lA1NrMmDL28GXNKHzqUtRpjxaCW7C9WHysMs0z+0nPb
+ydNrEx558tVSnNt8zokWxsGTySd3IhntvxupkQdJ+GW3oRCqUyplXl5JM+MVParx
+0rC5avhGEdHdkCVXAwAH
+=QI5S
+-----END PGP SIGNATURE-----
+--=-=-=--
