@@ -1,67 +1,79 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-it0-f68.google.com ([209.85.214.68]:35701 "EHLO
-        mail-it0-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1753760AbcKIRyG (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 9 Nov 2016 12:54:06 -0500
-Subject: [PATCH v1 6/7] svcrdma: Remove svc_rdma_op_ctxt::wc_status
+Received: from mail-it0-f66.google.com ([209.85.214.66]:34013 "EHLO
+        mail-it0-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1752871AbcKITEu (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 9 Nov 2016 14:04:50 -0500
+Subject: [PATCH v1 00/14] client-side NFS/RDMA patches proposed for v4.10
 From: Chuck Lever <chuck.lever@oracle.com>
 To: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Wed, 09 Nov 2016 12:34:26 -0500
-Message-ID: <20161109173426.15735.61869.stgit@klimt.1015granger.net>
-In-Reply-To: <20161109165814.15735.47815.stgit@klimt.1015granger.net>
-References: <20161109165814.15735.47815.stgit@klimt.1015granger.net>
+Date: Wed, 09 Nov 2016 14:04:48 -0500
+Message-ID: <20161109184735.15007.96507.stgit@manet.1015granger.net>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Clean up: Completion status is already reported in the individual
-completion handlers. Save a few bytes in struct svc_rdma_op_ctxt.
+The following patch series makes these changes:
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+- Support for devices that support SG_GAP
+- Several bug fixes
+- A number of clean-ups and optimizations
+
+SG_GAP devices allow the client transport implementation to register
+non-contiguous memory regions using one offset and handle. Scatter
+and gather from these regions are then managed entirely in hardware.
+
+Normally a Reply chunk for a READDIR or GETACL is built of multiple
+RDMA segments. Now, when our client wants to build a Reply chunk out
+of the xdr_buf's head, page list, and tail, it appears to the server
+as a single contiguous RDMA segment if the device supports SG_GAP.
+
+Instead of a separate Write WR for each of several RDMA segments,
+the server can then post a single Write WR to transmit the whole RPC
+Reply (assuming the Reply is smaller than the server RNIC's max_sge)
+and can invalidate the whole Reply chunk remotely.
+
+SG_GAP is currently supported by mlx5 devices when using the FRWR
+registration mechanism.
+
+
+Available in the "nfs-rdma-for-4.10" topic branch of this git repo:
+
+git://git.linux-nfs.org/projects/cel/cel-2.6.git
+
+
+Or for browsing:
+
+http://git.linux-nfs.org/?p=cel/cel-2.6.git;a=log;h=refs/heads/nfs-rdma-for-4.10
+
+
 ---
- include/linux/sunrpc/svc_rdma.h          |    1 -
- net/sunrpc/xprtrdma/svc_rdma_recvfrom.c  |    4 ++--
- net/sunrpc/xprtrdma/svc_rdma_transport.c |    1 -
- 3 files changed, 2 insertions(+), 4 deletions(-)
 
-diff --git a/include/linux/sunrpc/svc_rdma.h b/include/linux/sunrpc/svc_rdma.h
-index 43d7c70..757fb96 100644
---- a/include/linux/sunrpc/svc_rdma.h
-+++ b/include/linux/sunrpc/svc_rdma.h
-@@ -79,7 +79,6 @@ struct svc_rdma_op_ctxt {
- 	struct ib_cqe reg_cqe;
- 	struct ib_cqe inv_cqe;
- 	struct list_head dto_q;
--	enum ib_wc_status wc_status;
- 	u32 byte_len;
- 	u32 position;
- 	struct svcxprt_rdma *xprt;
-diff --git a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
-index bf18811..02215d6 100644
---- a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
-+++ b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
-@@ -640,8 +640,8 @@ int svc_rdma_recvfrom(struct svc_rqst *rqstp)
- 			goto defer;
- 		goto out;
- 	}
--	dprintk("svcrdma: processing ctxt=%p on xprt=%p, rqstp=%p, status=%d\n",
--		ctxt, rdma_xprt, rqstp, ctxt->wc_status);
-+	dprintk("svcrdma: processing ctxt=%p on xprt=%p, rqstp=%p\n",
-+		ctxt, rdma_xprt, rqstp);
- 	atomic_inc(&rdma_stat_recv);
- 
- 	/* Build up the XDR from the receive buffers. */
-diff --git a/net/sunrpc/xprtrdma/svc_rdma_transport.c b/net/sunrpc/xprtrdma/svc_rdma_transport.c
-index ceff814..b7c9359 100644
---- a/net/sunrpc/xprtrdma/svc_rdma_transport.c
-+++ b/net/sunrpc/xprtrdma/svc_rdma_transport.c
-@@ -393,7 +393,6 @@ static void svc_rdma_wc_receive(struct ib_cq *cq, struct ib_wc *wc)
- 
- 	/* WARNING: Only wc->wr_cqe and wc->status are reliable */
- 	ctxt = container_of(cqe, struct svc_rdma_op_ctxt, cqe);
--	ctxt->wc_status = wc->status;
- 	svc_rdma_unmap_dma(ctxt);
- 
- 	if (wc->status != IB_WC_SUCCESS)
+Chuck Lever (14):
+      xprtrdma: Fix DMAR failure in frwr_op_map() after reconnect
+      xprtrdma: Cap size of callback buffer resources
+      xprtrdma: Make FRWR send queue entry accounting more accurate
+      xprtrdma: Support for SG_GAP devices
+      SUNRPC: Proper metric accounting when RPC is not transmitted
+      xprtrdma: Address coverity complaint about wait_for_completion()
+      xprtrdma: Avoid calls to ro_unmap_safe()
+      xprtrdma: Squelch "max send, max recv" messages at connect time
+      xprtrdma: Shorten QP access error message
+      xprtrdma: Update dprintk in rpcrdma_count_chunks
+      xprtrdma: Relocate connection helper functions
+      xprtrdma: Simplify synopsis of rpcrdma_ep_connect()
+      xprtrdma: Refactor FRMR invalidation
+      xprtrdma: Update documenting comment
 
+
+ net/sunrpc/stats.c                |   10 ++-
+ net/sunrpc/xprtrdma/backchannel.c |    4 +
+ net/sunrpc/xprtrdma/frwr_ops.c    |  131 +++++++++++++++++++------------------
+ net/sunrpc/xprtrdma/rpc_rdma.c    |   36 ----------
+ net/sunrpc/xprtrdma/transport.c   |   36 +++++++++-
+ net/sunrpc/xprtrdma/verbs.c       |   54 ++++++++-------
+ net/sunrpc/xprtrdma/xprt_rdma.h   |   36 +++++++---
+ 7 files changed, 161 insertions(+), 146 deletions(-)
+
+--
+Chuck Lever
