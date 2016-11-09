@@ -1,13 +1,13 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-it0-f65.google.com ([209.85.214.65]:36559 "EHLO
-        mail-it0-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1752325AbcKITGa (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 9 Nov 2016 14:06:30 -0500
-Subject: [PATCH v1 12/14] xprtrdma: Simplify synopsis of rpcrdma_ep_connect()
+Received: from mail-it0-f67.google.com ([209.85.214.67]:34162 "EHLO
+        mail-it0-f67.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1752325AbcKITGi (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 9 Nov 2016 14:06:38 -0500
+Subject: [PATCH v1 13/14] xprtrdma: Refactor FRMR invalidation
 From: Chuck Lever <chuck.lever@oracle.com>
 To: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Wed, 09 Nov 2016 14:06:28 -0500
-Message-ID: <20161109190628.15007.67246.stgit@manet.1015granger.net>
+Date: Wed, 09 Nov 2016 14:06:36 -0500
+Message-ID: <20161109190636.15007.70567.stgit@manet.1015granger.net>
 In-Reply-To: <20161109184735.15007.96507.stgit@manet.1015granger.net>
 References: <20161109184735.15007.96507.stgit@manet.1015granger.net>
 MIME-Version: 1.0
@@ -15,92 +15,137 @@ Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Clean up: Make the rpcrdma_xprt visible in the whole function.
-The caller has it already, so eliminate the container_of noise, and
-just pass it in explicitly.
+Clean up: After some recent updates, clarifications can be made to
+the FRMR invalidation logic.
+
+- Both the remote and local invalidation case mark the frmr INVALID,
+  so make that a common path.
+
+- Manage the WR list more "tastefully" by replacing the conditional
+  that discriminates between the list head and ->next pointers.
+
+- Use mw->mw_handle in all cases, since that has the same value as
+  f->fr_mr->rkey, and is already in cache.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- net/sunrpc/xprtrdma/transport.c |    2 +-
- net/sunrpc/xprtrdma/verbs.c     |   17 +++++++----------
- net/sunrpc/xprtrdma/xprt_rdma.h |    2 +-
- 3 files changed, 9 insertions(+), 12 deletions(-)
+ net/sunrpc/xprtrdma/frwr_ops.c |   57 +++++++++++++++-------------------------
+ 1 file changed, 21 insertions(+), 36 deletions(-)
 
-diff --git a/net/sunrpc/xprtrdma/transport.c b/net/sunrpc/xprtrdma/transport.c
-index 534c178..349903b 100644
---- a/net/sunrpc/xprtrdma/transport.c
-+++ b/net/sunrpc/xprtrdma/transport.c
-@@ -259,7 +259,7 @@
- 
- 	dprintk("RPC:       %s: %sconnect\n", __func__,
- 			r_xprt->rx_ep.rep_connected != 0 ? "re" : "");
--	rc = rpcrdma_ep_connect(&r_xprt->rx_ep, &r_xprt->rx_ia);
-+	rc = rpcrdma_ep_connect(r_xprt);
- 	if (rc)
- 		xprt_wake_pending_tasks(xprt, rc);
- 
-diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
-index 11d0774..901c3ab 100644
---- a/net/sunrpc/xprtrdma/verbs.c
-+++ b/net/sunrpc/xprtrdma/verbs.c
-@@ -634,26 +634,25 @@ static void rpcrdma_destroy_id(struct rdma_cm_id *id)
- 	ib_free_cq(ep->rep_attr.send_cq);
+diff --git a/net/sunrpc/xprtrdma/frwr_ops.c b/net/sunrpc/xprtrdma/frwr_ops.c
+index e99bf61..900dc40 100644
+--- a/net/sunrpc/xprtrdma/frwr_ops.c
++++ b/net/sunrpc/xprtrdma/frwr_ops.c
+@@ -457,26 +457,6 @@
+ 	return -ENOTCONN;
  }
  
--/*
-- * Connect unconnected endpoint.
-- */
- int
--rpcrdma_ep_connect(struct rpcrdma_ep *ep, struct rpcrdma_ia *ia)
-+rpcrdma_ep_connect(struct rpcrdma_xprt *r_xprt)
+-static struct ib_send_wr *
+-__frwr_prepare_linv_wr(struct rpcrdma_mw *mw)
+-{
+-	struct rpcrdma_frmr *f = &mw->frmr;
+-	struct ib_send_wr *invalidate_wr;
+-
+-	dprintk("RPC:       %s: invalidating frmr %p\n", __func__, f);
+-
+-	f->fr_state = FRMR_IS_INVALID;
+-	invalidate_wr = &f->fr_invwr;
+-
+-	memset(invalidate_wr, 0, sizeof(*invalidate_wr));
+-	f->fr_cqe.done = frwr_wc_localinv;
+-	invalidate_wr->wr_cqe = &f->fr_cqe;
+-	invalidate_wr->opcode = IB_WR_LOCAL_INV;
+-	invalidate_wr->ex.invalidate_rkey = f->fr_mr->rkey;
+-
+-	return invalidate_wr;
+-}
+-
+ /* Invalidate all memory regions that were registered for "req".
+  *
+  * Sleeps until it is safe for the host CPU to access the
+@@ -487,7 +467,7 @@
+ static void
+ frwr_op_unmap_sync(struct rpcrdma_xprt *r_xprt, struct rpcrdma_req *req)
  {
-+	struct rpcrdma_ep *ep = &r_xprt->rx_ep;
-+	struct rpcrdma_ia *ia = &r_xprt->rx_ia;
- 	struct rdma_cm_id *id, *old;
- 	int rc = 0;
- 	int retry_count = 0;
- 
- 	if (ep->rep_connected != 0) {
--		struct rpcrdma_xprt *xprt;
-+		struct sockaddr *sap;
+-	struct ib_send_wr *invalidate_wrs, *pos, *prev, *bad_wr;
++	struct ib_send_wr *first, **prev, *last, *bad_wr;
+ 	struct rpcrdma_rep *rep = req->rl_reply;
+ 	struct rpcrdma_ia *ia = &r_xprt->rx_ia;
+ 	struct rpcrdma_mw *mw, *tmp;
+@@ -503,23 +483,28 @@
+ 	 */
+ 	f = NULL;
+ 	count = 0;
+-	invalidate_wrs = pos = prev = NULL;
++	prev = &first;
+ 	list_for_each_entry(mw, &req->rl_registered, mw_list) {
++		mw->frmr.fr_state = FRMR_IS_INVALID;
 +
- retry:
- 		dprintk("RPC:       %s: reconnecting...\n", __func__);
+ 		if ((rep->rr_wc_flags & IB_WC_WITH_INVALIDATE) &&
+-		    (mw->mw_handle == rep->rr_inv_rkey)) {
+-			mw->frmr.fr_state = FRMR_IS_INVALID;
++		    (mw->mw_handle == rep->rr_inv_rkey))
+ 			continue;
+-		}
  
- 		rpcrdma_ep_disconnect(ep, ia);
+-		pos = __frwr_prepare_linv_wr(mw);
++		f = &mw->frmr;
++		dprintk("RPC:       %s: invalidating frmr %p\n",
++			__func__, f);
++
++		f->fr_cqe.done = frwr_wc_localinv;
++		last = &f->fr_invwr;
++		memset(last, 0, sizeof(*last));
++		last->wr_cqe = &f->fr_cqe;
++		last->opcode = IB_WR_LOCAL_INV;
++		last->ex.invalidate_rkey = mw->mw_handle;
+ 		count++;
  
--		xprt = container_of(ia, struct rpcrdma_xprt, rx_ia);
--		id = rpcrdma_create_id(xprt, ia,
--				(struct sockaddr *)&xprt->rx_data.addr);
-+		sap = (struct sockaddr *)&r_xprt->rx_data.addr;
-+		id = rpcrdma_create_id(r_xprt, ia, sap);
- 		if (IS_ERR(id)) {
- 			rc = -EHOSTUNREACH;
- 			goto out;
-@@ -735,12 +734,10 @@ static void rpcrdma_destroy_id(struct rdma_cm_id *id)
+-		if (!invalidate_wrs)
+-			invalidate_wrs = pos;
+-		else
+-			prev->next = pos;
+-		prev = pos;
+-		f = &mw->frmr;
++		*prev = last;
++		prev = &last->next;
+ 	}
+ 	if (!f)
+ 		goto unmap;
+@@ -528,7 +513,7 @@
+ 	 * last WR in the chain completes, all WRs in the chain
+ 	 * are complete.
+ 	 */
+-	f->fr_invwr.send_flags = IB_SEND_SIGNALED;
++	last->send_flags = IB_SEND_SIGNALED;
+ 	f->fr_cqe.done = frwr_wc_localinv_wake;
+ 	reinit_completion(&f->fr_linv_done);
+ 
+@@ -543,7 +528,7 @@
+ 	 * unless ri_id->qp is a valid pointer.
+ 	 */
+ 	r_xprt->rx_stats.local_inv_needed++;
+-	rc = ib_post_send(ia->ri_id->qp, invalidate_wrs, &bad_wr);
++	rc = ib_post_send(ia->ri_id->qp, first, &bad_wr);
+ 	if (rc)
+ 		goto reset_mrs;
+ 
+@@ -554,7 +539,7 @@
+ 	 */
+ unmap:
+ 	list_for_each_entry_safe(mw, tmp, &req->rl_registered, mw_list) {
+-		dprintk("RPC:       %s: unmapping frmr %p\n",
++		dprintk("RPC:       %s: DMA unmapping frmr %p\n",
+ 			__func__, &mw->frmr);
+ 		list_del_init(&mw->mw_list);
+ 		ib_dma_unmap_sg(ia->ri_device,
+@@ -572,7 +557,7 @@
+ 	 */
+ 	list_for_each_entry(mw, &req->rl_registered, mw_list) {
+ 		f = &mw->frmr;
+-		if (mw->frmr.fr_mr->rkey == bad_wr->ex.invalidate_rkey) {
++		if (mw->mw_handle == bad_wr->ex.invalidate_rkey) {
+ 			__frwr_reset_mr(ia, mw);
+ 			bad_wr = bad_wr->next;
  		}
- 		rc = ep->rep_connected;
- 	} else {
--		struct rpcrdma_xprt *r_xprt;
- 		unsigned int extras;
- 
- 		dprintk("RPC:       %s: connected\n", __func__);
- 
--		r_xprt = container_of(ia, struct rpcrdma_xprt, rx_ia);
- 		extras = r_xprt->rx_buf.rb_bc_srv_max_requests;
- 
- 		if (extras) {
-diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
-index e35efd4..74760d9 100644
---- a/net/sunrpc/xprtrdma/xprt_rdma.h
-+++ b/net/sunrpc/xprtrdma/xprt_rdma.h
-@@ -489,7 +489,7 @@ struct rpcrdma_xprt {
- int rpcrdma_ep_create(struct rpcrdma_ep *, struct rpcrdma_ia *,
- 				struct rpcrdma_create_data_internal *);
- void rpcrdma_ep_destroy(struct rpcrdma_ep *, struct rpcrdma_ia *);
--int rpcrdma_ep_connect(struct rpcrdma_ep *, struct rpcrdma_ia *);
-+int rpcrdma_ep_connect(struct rpcrdma_xprt *r_xprt);
- void rpcrdma_conn_func(struct rpcrdma_ep *ep);
- void rpcrdma_ep_disconnect(struct rpcrdma_ep *, struct rpcrdma_ia *);
- 
 
