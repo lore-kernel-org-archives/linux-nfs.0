@@ -1,8 +1,8 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mout.kundenserver.de ([212.227.126.187]:59362 "EHLO
+Received: from mout.kundenserver.de ([212.227.126.131]:61240 "EHLO
         mout.kundenserver.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S964887AbcKJQru (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 10 Nov 2016 11:47:50 -0500
+        with ESMTP id S964878AbcKJQrr (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 10 Nov 2016 11:47:47 -0500
 From: Arnd Bergmann <arnd@arndb.de>
 To: Linus Torvalds <torvalds@linux-foundation.org>
 Cc: Andrew Morton <akpm@linux-foundation.org>,
@@ -24,45 +24,51 @@ Cc: Andrew Morton <akpm@linux-foundation.org>,
         linux-snps-arc@lists.infradead.org, nios2-dev@lists.rocketboards.org,
         linux-s390@vger.kernel.org, linux-crypto@vger.kernel.org,
         linux-media@vger.kernel.org, linux-nfs@vger.kernel.org
-Subject: [PATCH v2 07/11] [media] rc: print correct variable for z8f0811
-Date: Thu, 10 Nov 2016 17:44:50 +0100
-Message-Id: <20161110164454.293477-8-arnd@arndb.de>
+Subject: [PATCH v2 11/11] Kbuild: enable -Wmaybe-uninitialized warnings by default
+Date: Thu, 10 Nov 2016 17:44:54 +0100
+Message-Id: <20161110164454.293477-12-arnd@arndb.de>
 In-Reply-To: <20161110164454.293477-1-arnd@arndb.de>
 References: <20161110164454.293477-1-arnd@arndb.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-A recent rework accidentally left a debugging printk untouched
-while changing the meaning of the variables, leading to an
-uninitialized variable being printed:
+Previously the warnings were added back at the W=1 level and above,
+this now turns them on again by default, assuming that we have addressed
+all warnings and again have a clean build for v4.10.
 
-drivers/media/i2c/ir-kbd-i2c.c: In function 'get_key_haup_common':
-drivers/media/i2c/ir-kbd-i2c.c:62:2: error: 'toggle' may be used uninitialized in this function [-Werror=maybe-uninitialized]
+I found a number of new warnings in linux-next already and submitted
+bugfixes for those. Hopefully they are caught by the 0day builder
+in the future as soon as this patch is merged.
 
-This prints the correct one instead, as we did before the patch.
-
-Fixes: 00bb820755ed ("[media] rc: Hauppauge z8f0811 can decode RC6")
 Signed-off-by: Arnd Bergmann <arnd@arndb.de>
 ---
- drivers/media/i2c/ir-kbd-i2c.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+Please check if there are any remaining warnings with this
+patch before applying.
 
-I submitted this repeatedly as it is a v4.9 regression, but
-I never saw a reply for it.
+The one known issue right now is commit 32cb7d27e65d ("iio:
+maxim_thermocouple: detect invalid storage size in read()"), which
+is currently in linux-next but not yet in mainline.
 
-diff --git a/drivers/media/i2c/ir-kbd-i2c.c b/drivers/media/i2c/ir-kbd-i2c.c
-index f95a6bc..cede397 100644
---- a/drivers/media/i2c/ir-kbd-i2c.c
-+++ b/drivers/media/i2c/ir-kbd-i2c.c
-@@ -118,7 +118,7 @@ static int get_key_haup_common(struct IR_i2c *ir, enum rc_type *protocol,
- 			*protocol = RC_TYPE_RC6_MCE;
- 			dev &= 0x7f;
- 			dprintk(1, "ir hauppauge (rc6-mce): t%d vendor=%d dev=%d code=%d\n",
--						toggle, vendor, dev, code);
-+						*ptoggle, vendor, dev, code);
- 		} else {
- 			*ptoggle = 0;
- 			*protocol = RC_TYPE_RC6_6A_32;
+There are a couple of warnings that I get with randconfig builds,
+and I have submitted patches for all of them at some point and
+will follow up on them to make sure they get addressed eventually.
+---
+ scripts/Makefile.extrawarn | 2 --
+ 1 file changed, 2 deletions(-)
+
+diff --git a/scripts/Makefile.extrawarn b/scripts/Makefile.extrawarn
+index 7fc2c5a..7c321a6 100644
+--- a/scripts/Makefile.extrawarn
++++ b/scripts/Makefile.extrawarn
+@@ -60,8 +60,6 @@ endif
+ KBUILD_CFLAGS += $(warning)
+ else
+ 
+-KBUILD_CFLAGS += $(call cc-disable-warning, maybe-uninitialized)
+-
+ ifeq ($(cc-name),clang)
+ KBUILD_CFLAGS += $(call cc-disable-warning, initializer-overrides)
+ KBUILD_CFLAGS += $(call cc-disable-warning, unused-value)
 -- 
 2.9.0
 
