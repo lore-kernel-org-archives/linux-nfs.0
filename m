@@ -1,261 +1,131 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:40852 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:58046 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S934038AbcKJRFq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 10 Nov 2016 12:05:46 -0500
-Date: Thu, 10 Nov 2016 12:05:44 -0500
-To: NeilBrown <neilb@suse.com>
-Cc: Steve Dickson <SteveD@redhat.com>, Jeff Layton <jlayton@redhat.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH nfs-utils] Remove all use of /var/lib/nfs/xtab
-Message-ID: <20161110170544.GB16125@fieldses.org>
-References: <87eg2kma65.fsf@notabene.neil.brown.name>
+        id S964923AbcKJUSZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 10 Nov 2016 15:18:25 -0500
+From: "Benjamin Coddington" <bcodding@redhat.com>
+To: "Anna Schumaker" <Anna.Schumaker@Netapp.com>
+Cc: "Trond Myklebust" <trondmy@primarydata.com>,
+        "List Linux NFS Mailing" <linux-nfs@vger.kernel.org>,
+        "Oleg Drokin" <green@linuxhacker.ru>
+Subject: Re: [PATCH v7 13/31] NFSv4.1: Ensure we always run TEST/FREE_STATEID
+ on locks
+Date: Thu, 10 Nov 2016 15:18:21 -0500
+Message-ID: <BDCCD810-781F-4DD6-91E8-279A2C3377EF@redhat.com>
+In-Reply-To: <D4F8C627-7DDD-45FF-900E-253F4FB3F47B@redhat.com>
+References: <1474565961-21303-1-git-send-email-trond.myklebust@primarydata.com>
+ <1474565961-21303-7-git-send-email-trond.myklebust@primarydata.com>
+ <1474565961-21303-8-git-send-email-trond.myklebust@primarydata.com>
+ <1474565961-21303-9-git-send-email-trond.myklebust@primarydata.com>
+ <1474565961-21303-10-git-send-email-trond.myklebust@primarydata.com>
+ <1474565961-21303-11-git-send-email-trond.myklebust@primarydata.com>
+ <1474565961-21303-12-git-send-email-trond.myklebust@primarydata.com>
+ <1474565961-21303-13-git-send-email-trond.myklebust@primarydata.com>
+ <1474565961-21303-14-git-send-email-trond.myklebust@primarydata.com>
+ <599EE56B-46DD-411B-805D-11C2FB5E30A4@redhat.com>
+ <34B1D68A-1A1C-4B59-A19E-467D48F7A9D0@redhat.com>
+ <F1712484-1131-418A-98F0-272A4A1BAE59@redhat.com>
+ <AB669741-1EC9-4C08-86A8-479755398679@redhat.com>
+ <6ABCDB9B-997E-49C1-9363-D59AF9BEC0E9@primarydata.com>
+ <B41EEA6E-B168-4DE3-AC73-F4270287EF0D@redhat.com>
+ <806bf204-eb35-5a3a-30fa-612bf22fb09a@Netapp.com>
+ <D4F8C627-7DDD-45FF-900E-253F4FB3F47B@redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <87eg2kma65.fsf@notabene.neil.brown.name>
-From: bfields@fieldses.org (J. Bruce Fields)
+Content-Type: text/plain; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Nov 10, 2016 at 11:49:06AM +1100, NeilBrown wrote:
-> 
-> /var/lib/nfs/xtab is only used to find out what has been exported to
-> the kernel.  This is more reliably done by reading
-> /proc/fs/nfs{,d}/export and nfs-utils uses that file if is available.
-> So xtab is only need if you have an incredibly ancient kernel which
-> doesn't have /proc/fs/nfs/export (and so which only supports NFSv2) or if
-> /proc is not mounted.
-> 
-> Neither of these are credible contexts to run a modern nfs-utils,
-> so stop creating or reading the xtab file.
 
-OK with me.--b.
+On 10 Nov 2016, at 10:58, Benjamin Coddington wrote:
 
-> 
-> Signed-off-by: NeilBrown <neilb@suse.com>
-> ---
->  Makefile.am                |  3 +--
->  support/export/xtab.c      | 31 ++-----------------------------
->  support/include/exportfs.h |  4 +---
->  support/include/nfslib.h   |  9 ---------
->  utils/exportfs/exportfs.c  |  4 +---
->  utils/mountd/auth.c        |  1 -
->  utils/mountd/mountd.c      | 11 ++---------
->  7 files changed, 7 insertions(+), 56 deletions(-)
-> 
-> diff --git a/Makefile.am b/Makefile.am
-> index 4a2edc682de8..e1f39aab5f62 100644
-> --- a/Makefile.am
-> +++ b/Makefile.am
-> @@ -23,7 +23,6 @@ ACLOCAL_AMFLAGS = -I aclocal
->  
->  install-data-hook:
->  	if [ ! -d $(DESTDIR)$(statedir) ]; then mkdir -p $(DESTDIR)$(statedir); fi
-> -	touch $(DESTDIR)$(statedir)/xtab; chmod 644 $(DESTDIR)$(statedir)/xtab
->  	touch $(DESTDIR)$(statedir)/etab; chmod 644 $(DESTDIR)$(statedir)/etab
->  	touch $(DESTDIR)$(statedir)/rmtab; chmod 644 $(DESTDIR)$(statedir)/rmtab
->  	mkdir -p $(DESTDIR)$(statdpath)/sm $(DESTDIR)$(statdpath)/sm.bak
-> @@ -32,7 +31,7 @@ install-data-hook:
->  	-chown $(statduser) $(DESTDIR)$(statdpath)/sm $(DESTDIR)$(statdpath)/sm.bak $(DESTDIR)$(statdpath)/state
->  
->  uninstall-hook:
-> -	rm $(DESTDIR)$(statedir)/xtab
-> +	rm -f $(DESTDIR)$(statedir)/xtab
->  	rm $(DESTDIR)$(statedir)/etab
->  	rm $(DESTDIR)$(statedir)/rmtab
->  	rm $(DESTDIR)$(statdpath)/state
-> diff --git a/support/export/xtab.c b/support/export/xtab.c
-> index e953071ea901..10d9dbc5db15 100644
-> --- a/support/export/xtab.c
-> +++ b/support/export/xtab.c
-> @@ -1,7 +1,7 @@
->  /*
->   * support/export/xtab.c
->   *
-> - * Interface to the xtab file.
-> + * Interface to the etab/exports file.
->   *
->   * Copyright (C) 1995, 1996 Olaf Kirch <okir@monad.swb.de>
->   */
-> @@ -29,7 +29,6 @@ xtab_read(char *xtab, char *lockfn, int is_export)
->  {
->      /* is_export == 0  => reading /proc/fs/nfs/exports - we know these things are exported to kernel
->       * is_export == 1  => reading /var/lib/nfs/etab - these things are allowed to be exported
-> -     * is_export == 2  => reading /var/lib/nfs/xtab - these things might be known to kernel
->       */
->  	struct exportent	*xp;
->  	nfs_export		*exp;
-> @@ -55,9 +54,6 @@ xtab_read(char *xtab, char *lockfn, int is_export)
->  			if ((xp->e_flags & NFSEXP_FSID) && xp->e_fsid == 0)
->  				v4root_needed = 0;
->  			break;
-> -		case 2:
-> -			exp->m_exported = -1;/* may be exported */
-> -			break;
->  		}
->  	}
->  	endexportent();
-> @@ -79,7 +75,7 @@ xtab_mount_read(void)
->  		return xtab_read(_PATH_PROC_EXPORTS_ALT,
->  				 _PATH_PROC_EXPORTS_ALT, 0);
->  	} else
-> -		return xtab_read(_PATH_XTAB, _PATH_XTABLCK, 2);
-> +		return 0;
->  }
->  
->  int
-> @@ -135,29 +131,6 @@ xtab_export_write()
->  	return xtab_write(_PATH_ETAB, _PATH_ETABTMP, _PATH_ETABLCK, 1);
->  }
->  
-> -int
-> -xtab_mount_write()
-> -{
-> -	return xtab_write(_PATH_XTAB, _PATH_XTABTMP, _PATH_XTABLCK, 0);
-> -}
-> -
-> -void
-> -xtab_append(nfs_export *exp)
-> -{
-> -	struct exportent xe;
-> -	int		lockid;
-> -
-> -	if ((lockid = xflock(_PATH_XTABLCK, "w")) < 0)
-> -		return;
-> -	setexportent(_PATH_XTAB, "a");
-> -	xe = exp->m_export;
-> -	xe.e_hostname = exp->m_client->m_hostname;
-> -	putexportent(&xe);
-> -	endexportent();
-> -	xfunlock(lockid);
-> -	exp->m_xtabent = 1;
-> -}
-> -
->  /*
->   * rename newfile onto oldfile unless
->   * they are identical
-> diff --git a/support/include/exportfs.h b/support/include/exportfs.h
-> index 32d4fe95fd7e..08ef30a2f580 100644
-> --- a/support/include/exportfs.h
-> +++ b/support/include/exportfs.h
-> @@ -96,7 +96,7 @@ typedef struct mexport {
->  	struct mexport *	m_next;
->  	struct mclient *	m_client;
->  	struct exportent	m_export;
-> -	int			m_exported;	/* known to knfsd. -1 means not sure */
-> +	int			m_exported;	/* known to knfsd. */
->  	int			m_xtabent  : 1,	/* xtab entry exists */
->  				m_mayexport: 1,	/* derived from xtabbed */
->  				m_changed  : 1, /* options (may) have changed */
-> @@ -150,9 +150,7 @@ int				export_unexport(nfs_export *);
->  
->  int				xtab_mount_read(void);
->  int				xtab_export_read(void);
-> -int				xtab_mount_write(void);
->  int				xtab_export_write(void);
-> -void				xtab_append(nfs_export *);
->  
->  int				secinfo_addflavor(struct flav_info *, struct exportent *);
->  
-> diff --git a/support/include/nfslib.h b/support/include/nfslib.h
-> index ddd71ac94aa5..777f398c1486 100644
-> --- a/support/include/nfslib.h
-> +++ b/support/include/nfslib.h
-> @@ -35,15 +35,6 @@
->  #ifndef _PATH_IDMAPDCONF
->  #define _PATH_IDMAPDCONF	"/etc/idmapd.conf"
->  #endif
-> -#ifndef _PATH_XTAB
-> -#define _PATH_XTAB		NFS_STATEDIR "/xtab"
-> -#endif
-> -#ifndef _PATH_XTABTMP
-> -#define _PATH_XTABTMP		NFS_STATEDIR "/xtab.tmp"
-> -#endif
-> -#ifndef _PATH_XTABLCK
-> -#define _PATH_XTABLCK		NFS_STATEDIR "/.xtab.lock"
-> -#endif
->  #ifndef _PATH_ETAB
->  #define _PATH_ETAB		NFS_STATEDIR "/etab"
->  #endif
-> diff --git a/utils/exportfs/exportfs.c b/utils/exportfs/exportfs.c
-> index 5136810029d0..98368a5ef1e1 100644
-> --- a/utils/exportfs/exportfs.c
-> +++ b/utils/exportfs/exportfs.c
-> @@ -219,8 +219,6 @@ main(int argc, char **argv)
->  	xtab_export_write();
->  	if (new_cache)
->  		cache_flush(force_flush);
-> -	if (!new_cache)
-> -		xtab_mount_write();
->  
->  	return export_errno;
->  }
-> @@ -238,7 +236,7 @@ exports_update_one(nfs_export *exp, int verbose)
->  		       exp->m_export.e_path, exp->m_export.e_mountpoint);
->  		exp->m_mayexport = 0;
->  	}
-> -	if (exp->m_mayexport && ((exp->m_exported<1) || exp->m_changed)) {
-> +	if (exp->m_mayexport && exp->m_changed) {
->  		if (verbose)
->  			printf("%sexporting %s:%s to kernel\n",
->  			       exp->m_exported ?"re":"",
-> diff --git a/utils/mountd/auth.c b/utils/mountd/auth.c
-> index 0881d9a6edba..b612d88b6143 100644
-> --- a/utils/mountd/auth.c
-> +++ b/utils/mountd/auth.c
-> @@ -46,7 +46,6 @@ void
->  auth_init(void)
->  {
->  	auth_reload();
-> -	xtab_mount_write();
->  }
->  
->  /*
-> diff --git a/utils/mountd/mountd.c b/utils/mountd/mountd.c
-> index 7a51b093f66a..981abd456d91 100644
-> --- a/utils/mountd/mountd.c
-> +++ b/utils/mountd/mountd.c
-> @@ -107,7 +107,6 @@ unregister_services (void)
->  static void
->  cleanup_lockfiles (void)
->  {
-> -	unlink(_PATH_XTABLCK);
->  	unlink(_PATH_ETABLCK);
->  	unlink(_PATH_RMTABLCK);
->  }
-> @@ -289,7 +288,7 @@ mount_umntall_1_svc(struct svc_req *rqstp, void *UNUSED(argp),
->  	xlog(D_CALL, "Received UMNTALL request from %s",
->  		host_ntop(sap, buf, sizeof(buf)));
->  
-> -	/* Reload /etc/xtab if necessary */
-> +	/* Reload /etc/exports if necessary */
->  	auth_reload();
->  
->  	mountlist_del_all(nfs_getrpccaller(rqstp->rq_xprt));
-> @@ -350,7 +349,7 @@ mount_pathconf_2_svc(struct svc_req *rqstp, dirpath *path, ppathcnf *res)
->  	if (*p == '\0')
->  		p = "/";
->  
-> -	/* Reload /etc/xtab if necessary */
-> +	/* Reload /etc/exports if necessary */
->  	auth_reload();
->  
->  	/* Resolve symlinks */
-> @@ -531,12 +530,6 @@ get_rootfh(struct svc_req *rqstp, dirpath *path, nfs_export **expret,
->  	} else {
->  		int did_export = 0;
->  	retry:
-> -		if (exp->m_exported<1) {
-> -			export_export(exp);
-> -			did_export = 1;
-> -		}
-> -		if (!exp->m_xtabent)
-> -			xtab_append(exp);
->  
->  		if (v3)
->  			fh = getfh_size((struct sockaddr_in *)sap, p, 64);
-> -- 
-> 2.10.1
-> 
+> Hi Anna,
+>
+> On 10 Nov 2016, at 10:01, Anna Schumaker wrote:
+>> Do you have an estimate for when this patch will be ready?  I want to 
+>> include it in my next bugfix pull request for 4.9.
+>
+> I haven't posted because I am still trying to get to the bottom of 
+> another
+> problem where the client gets stuck in a loop sending the same stateid 
+> over
+> and over on NFS4ERR_OLD_STATEID.  I want to make sure this problem 
+> isn't
+> caused by this fix -- which I don't think it is, but I'd rather make 
+> sure.
+> If I don't make any progress on this problem by the end of today, I'll 
+> post
+> what I have.
+>
+> Read on if interested in this new problem:
+>
+> It looks like racing opens with the same openowner can be returned out 
+> of
+> order by the server, so the client sees stateid seqid of 2 before 1.  
+> Then a
+> LOCK sent with seqid 1 is endlessly retried if sent while doing 
+> recovery.
+>
+> It's hard to tell if I was able to capture all the moving parts to 
+> describe
+> this problem, though.  As it takes a very long time for me to 
+> reproduce, and
+> the packet captures were dropping frames.  I'm working on manually
+> reproducing it now.
 
+Anna,
 
+I haven't gotten to the bottom of it, and so I'm not confident it isn't 
+a
+problem created by the fix I've been testing, which is:
+
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index e809498..2aa9d86 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -2564,12 +2564,15 @@ static void 
+nfs41_check_delegation_stateid(struct
+nfs4_state *state)
+  static int nfs41_check_expired_locks(struct nfs4_state *state)
+  {
+         int status, ret = NFS_OK;
+-       struct nfs4_lock_state *lsp;
++       struct nfs4_lock_state *lsp, *tmp;
+         struct nfs_server *server = NFS_SERVER(state->inode);
+
+         if (!test_bit(LK_STATE_IN_USE, &state->flags))
+                 goto out;
+-       list_for_each_entry(lsp, &state->lock_states, ls_locks) {
++       spin_lock(&state->state_lock);
++       list_for_each_entry_safe(lsp, tmp, &state->lock_states, 
+ls_locks) {
++               atomic_inc(&lsp->ls_count);
++               spin_unlock(&state->state_lock);
+                 if (test_bit(NFS_LOCK_INITIALIZED, &lsp->ls_flags)) {
+                         struct rpc_cred *cred =
+lsp->ls_state->owner->so_cred;
+
+@@ -2588,7 +2591,10 @@ static int nfs41_check_expired_locks(struct
+nfs4_state *state)
+                                 break;
+                         }
+                 }
+-       };
++               nfs4_put_lock_state(lsp);
++               spin_lock(&state->state_lock);
++       }
++       spin_unlock(&state->state_lock);
+  out:
+         return ret;
+  }
+
+http://people.redhat.com/bcodding/old_stateid_loop is tshark output of 
+my
+only good wirecapture of the problem.  Without this patch, generic/089
+crashes long before this problem is reproduced, so I am stuck figuring 
+it
+out, I'm afraid.  Don't wait on my account.
+
+I plan on trying a bit more to reproduce tomorrow, and if I cannot, I'll
+write about it under separate cover.
+
+Ben
