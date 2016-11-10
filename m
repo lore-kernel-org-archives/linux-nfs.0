@@ -1,114 +1,175 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qt0-f171.google.com ([209.85.216.171]:32907 "EHLO
-        mail-qt0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1754857AbcKJA4D (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 9 Nov 2016 19:56:03 -0500
-Received: by mail-qt0-f171.google.com with SMTP id p16so137486270qta.0
-        for <linux-nfs@vger.kernel.org>; Wed, 09 Nov 2016 16:56:02 -0800 (PST)
-Message-ID: <1478739358.2442.1.camel@redhat.com>
-Subject: Re: Question about nfsdcltrack --storagedir
-From: Jeff Layton <jlayton@redhat.com>
-To: NeilBrown <neilb@suse.com>
+Received: from mx2.suse.de ([195.135.220.15]:35491 "EHLO mx2.suse.de"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1751498AbcKJE61 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 9 Nov 2016 23:58:27 -0500
+From: NeilBrown <neilb@suse.com>
+To: Jeff Layton <jlayton@redhat.com>
+Date: Thu, 10 Nov 2016 15:58:19 +1100
 Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Date: Wed, 09 Nov 2016 19:55:58 -0500
-In-Reply-To: <877f8c9pku.fsf@notabene.neil.brown.name>
-References: <87k2cdmi26.fsf@notabene.neil.brown.name>
-         <1478692626.2394.9.camel@redhat.com>
-         <877f8c9pku.fsf@notabene.neil.brown.name>
-Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
+Subject: [PATCH/RFC nfs-utils] nfsdcltrack: read configuration from a file
+In-Reply-To: <1478739358.2442.1.camel@redhat.com>
+References: <87k2cdmi26.fsf@notabene.neil.brown.name> <1478692626.2394.9.camel@redhat.com> <877f8c9pku.fsf@notabene.neil.brown.name> <1478739358.2442.1.camel@redhat.com>
+Message-ID: <8737j0lyms.fsf@notabene.neil.brown.name>
+MIME-Version: 1.0
+Content-Type: multipart/signed; boundary="=-=-=";
+        micalg=pgp-sha256; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 2016-11-10 at 10:54 +1100, NeilBrown wrote:
-> On Wed, Nov 09 2016, Jeff Layton wrote:
-> 
-> > On Wed, 2016-11-09 at 14:46 +1100, NeilBrown wrote:
-> > > Hi,
-> > >  I notice that nfsdcltrack has a "--storagedir" option.
-> > >  I wonder how this can be used, given the nfsdcltrack is only(?) called
-> > >  from the kernel and there is no(?) mechanism to pass extra options.
-> > > 
-> > >  In a clustered-server context it would make sense(?) to share the
-> > >  database between cluster nodes and it is easiest to do this if the
-> > >  file in a separate filesystem (mounted as part of fail-over) rather
-> > >  than in /var.
-> > >  This can(?) be achieved using a symlink, but rpm likes to remove
-> > >  symlinks to non-existent locations.
-> > > 
-> > >  With NFSv3 the equivalent is the state files maintained by statd, and
-> > >  these can be relocated by passing the -P option to rpc.statd.
-> > >  How does one do a similar thing for NFSv4???
-> > > 
-> > > 
-> > 
-> > Ahh, I added that option mostly for when I was testing it. I did a lot
-> > of the earlier testing running it by hand, and --storagedir let me use a
-> > different directory for the db. I did have a vague idea that we might
-> > use it in the situation you describe, but I never wired that up as I
-> > didn't have a real need for it.
-> > 
-> > We could add a new module parm that would set that option when the
-> > kernel does its callout, or allow passing the storagedir by environment
-> > variable.
-> > 
-> > What would make the most sense from a usability standpoint?
-> 
-> Maybe a config file in /etc/ which nfsdcltrack reads on start-up?
-> Though in some ways I'd rather that instead of running a program, the
-> kernel sent a message to user-space.  Possibly a u-event?
-> Then existing configuration mechanisms could be used to choose a program
-> and a context for it to run in.
-> I wonder if u-events handle namespaces at all.
-> 
-> This came up because a customer was symlinking all of /var/lib/nfs to
-> shared storage (and lost their symlink thanks to rpm).  That isn't a
-> solution that I really like, and it led me to reflect on other things in
-> /var/lib/nfs.
-> 
-> etab - holds a normalized copy of /etc/exports, plus ad hoc changes.
->        It would like in /run/nfs if we built this today
-> export-lock - lockfile to protect changes to above. Would also be
->        in /run if we built it today. (I wonder why that doesn't
->        use .etab.lock, which is already used for locking)
-> state, sm, sm.bak - statd state files.  These belong in /var/lib/nfs
->        but are easily relocated with args to rpc.statd and sm-notify.
-> v4recovery - the NFSv4 version of above
-> xtab - this hasn't been needed since we gained /proc/fs/nfs/exports
->        It is just a record of what should be in the kernel
->        We should remove this.  I'll make a patch.
-> rmtab - this hasn't been needed since the "new cache" and the
->        up-call mechanism were created.  It might be still used
->        to respond to "showmount" commands, but that was never reliable.
->        If we keep it, it should probably move to /run.
->        But what do people think if finally discarding the old
->        (non-new_cache) code and using that as an excuse to increment
->        the major version number of nfs-utils?
-> 
-> rpc_pipefs - mountpoint of NFS upcall filesystem.  This was another
->        source of problems when /var/lib/nfs is a symlink elsewhere.
->        It isn't nice to mount this filesystem on that shared storage.
->        While programs that access this can be told to use an alternate
->        directory, it is hard to tell systemd's unit files to mount
->        it somewhere special (previously an init script would just
->        mount it wherever the config file said)
->        I note that Debian mounts this at /run/rpc_pipefs.
->        That seems like a really good idea. What do people think of
->        making this the "official" mount point?
-> 
-> If we moved some things to /run and removed others, it would just leave
-> state,sm,sm.bak and v4recovery in /var/lib/nfs.  That is all the same
-> type of data, which is nice.
-> 
-> So there are lots of things we could do, but at a minimum -
-> /etc/nfsdcltrack.conf ??
-> 
-> Thanks,
-> NeilBrown
+--=-=-=
+Content-Type: text/plain
+Content-Transfer-Encoding: quoted-printable
 
-No objection here, especially if we make it so that we have existing
-behavior when there is no config file. nfs-utils even has some config
-file parsing routines now in support/nfs that should be sufficient.
 
--- 
-Jeff Layton <jlayton@redhat.com>
+As nfsdcltrack is normally run directly from the kernel
+there is no opportunity to change the default
+storage directory.  This can be useful in a cluster to
+locate the "storage directory" on shared storage.
+
+The easiest alternative is to allow configuration to be read from a
+file, particularly as nfs-utils already has code for parsing a config file.
+
+So read the config file "/etc/nfs.conf" (or as set by ./configure) and
+look for "storagedir" and "debug" in the "nfsdcltrack" section.
+These values can still be over-ridden by command line options.
+
+A generic name (nfs.conf) was changes for the config file so that
+other daemons can be enhanced to read configuration from there.
+This may be easier than passing command line arguments through systemd.
+
+Signed-off-by: NeilBrown <neilb@suse.com>
+=2D--
+ configure.ac                      |  7 +++++++
+ utils/nfsdcltrack/nfsdcltrack.c   | 12 ++++++++++++
+ utils/nfsdcltrack/nfsdcltrack.man | 14 ++++++++++++++
+ 3 files changed, 33 insertions(+)
+
+diff --git a/configure.ac b/configure.ac
+index d60f3a2f7efa..8a5aa2e5203b 100644
+=2D-- a/configure.ac
++++ b/configure.ac
+@@ -24,6 +24,12 @@ AC_ARG_WITH(statedir,
+ 	statedir=3D$withval,
+ 	statedir=3D/var/lib/nfs)
+ 	AC_SUBST(statedir)
++AC_ARG_WITH(nfsconfig,
++	[AC_HELP_STRING([--with-nfsconfig=3D/config/file],
++			[use general config file /config/file @<:@default=3D/etc/nfs.conf@:>@])=
+],
++	nfsconfig=3D$withval,
++	nfsconfig=3D/etc/nfs.conf)
++	AC_SUBST(nfsconfig)
+ AC_ARG_WITH(statdpath,
+ 	[AC_HELP_STRING([--with-statdpath=3D/foo],
+ 			[define the statd state dir as /foo instead of the NFS statedir @<:@def=
+ault=3D/var/lib/nfs@:>@])],
+@@ -468,6 +474,7 @@ dnl Export some path names to config.h
+ dnl *************************************************************
+ AC_DEFINE_UNQUOTED(NFS_STATEDIR, "$statedir", [This defines the location o=
+f the NFS state files. Warning: this must match definitions in config.mk!])
+ AC_DEFINE_UNQUOTED(NSM_DEFAULT_STATEDIR, "$statdpath", [Define this to the=
+ pathname where statd keeps its state file])
++AC_DEFINE_UNQUOTED(NFS_CONFFILE, "$nfsconfig", [This defines the location =
+of NFS daemon config file])
+=20
+ if test "x$cross_compiling" =3D "xno"; then
+ 	CFLAGS_FOR_BUILD=3D${CFLAGS_FOR_BUILD-"$CFLAGS"}
+diff --git a/utils/nfsdcltrack/nfsdcltrack.c b/utils/nfsdcltrack/nfsdcltrac=
+k.c
+index fcdda7f66b8b..e6e514b78316 100644
+=2D-- a/utils/nfsdcltrack/nfsdcltrack.c
++++ b/utils/nfsdcltrack/nfsdcltrack.c
+@@ -43,6 +43,7 @@
+ #include <sys/capability.h>
+ #endif
+=20
++#include "conffile.h"
+ #include "xlog.h"
+ #include "sqlite.h"
+=20
+@@ -55,6 +56,8 @@
+ /* defined by RFC 3530 */
+ #define NFS4_OPAQUE_LIMIT	1024
+=20
++char *conf_path =3D NFS_CONFFILE;
++
+ /* private data structures */
+ struct cltrack_cmd {
+ 	char *name;
+@@ -553,6 +556,7 @@ int
+ main(int argc, char **argv)
+ {
+ 	char arg;
++	char *val;
+ 	int rc =3D 0;
+ 	char *progname, *cmdarg =3D NULL;
+ 	struct cltrack_cmd *cmd;
+@@ -562,6 +566,14 @@ main(int argc, char **argv)
+ 	xlog_syslog(1);
+ 	xlog_stderr(0);
+=20
++	conf_init();
++	val =3D conf_get_str("nfsdcltrack", "storagedir");
++	if (val)
++		storagedir =3D val;
++	rc =3D conf_get_num("nfsdcltrack", "debug", 0);
++	if (rc > 0)
++		xlog_config(D_ALL, 1);
++
+ 	/* process command-line options */
+ 	while ((arg =3D getopt_long(argc, argv, "hdfs:", longopts,
+ 				  NULL)) !=3D EOF) {
+diff --git a/utils/nfsdcltrack/nfsdcltrack.man b/utils/nfsdcltrack/nfsdcltr=
+ack.man
+index 4b8f4d762a00..cc24b7a2c32e 100644
+=2D-- a/utils/nfsdcltrack/nfsdcltrack.man
++++ b/utils/nfsdcltrack/nfsdcltrack.man
+@@ -67,6 +67,20 @@ Check to see if a nfs_client_id4 is allowed to reclaim. =
+This command requires a
+ .IP "\fBgracedone\fR" 4
+ .IX Item "gracedone"
+ Remove any unreclaimed client records from the database. This command requ=
+ires a epoch boot time as an argument.
++.SH "EXTERNAL CONFIGURATION"
++The directory for stable storage information can be set via the file
++.B /etc/nfs.conf
++by setting the
++.B storagedir
++value in the
++.B nfsdcltrack
++section.  For example:
++.in +5
++[nfsdcltrack]
++.br
++  storagedir =3D /shared/nfs/nfsdcltrack
++.in -5
++Debuging to syslog can also be enabled by setting "debug =3D 1" in this fi=
+le.
+ .SH "LEGACY TRANSITION MECHANISM"
+ .IX Header "LEGACY TRANSITION MECHANISM"
+ The Linux kernel NFSv4 server has historically tracked this information
+=2D-=20
+2.10.1
+
+
+--=-=-=
+Content-Type: application/pgp-signature; name="signature.asc"
+
+-----BEGIN PGP SIGNATURE-----
+
+iQIcBAEBCAAGBQJYI/5rAAoJEDnsnt1WYoG5IfAP/jvx2js1lChZx/1gBpuSpFul
+6OSXv9gDZJNWUi8sRi6I6cWH7l33E/PfplN1eZpyq+WUWLtjQVQhFosmt2XHk88q
+xOCJ56jn3vtvrtmJpSwuQ3je6vMms+NeYCrRHvFVtUBwH7XUmvJEmbYJ6EKNEdG+
+T+XuTVmkM7bFZNgsgQr6svK0JOXq6nEfFzQIk6xpAqjwsUV8dj1+GVzCUEpF80t4
+DSanZ5oohIw5YCYGh5EctGfthaGgrAstlGmUxfo6Gjmlt/hvXCu1mb8tKuUi9iXZ
+hmLMYMkrQQDlPuE/p+FtlLeTfTLvAbIUGVZ2aO03OWHxOQmsAxbncYVt7EsjsoR0
+zzpx5eEcNhg7KrbhILgMWMvjGIXIYzD42zH3jpkC9Kpq46v9oTkurkW0nF1pkY6D
+Pq1JIreTZnwsXAQ+x7CmcARtaKm9484CJ2aWHseJOAQN68LfwKjdiPelOOjKmNwl
+phNbmAciBl5fn5Pz6BWPRzCOthY4sZUPQBeHdH0vMELvQ2mwIMeMn6ylezsFQVI1
+rKXZ9Mde6F34WqPE+eIU9NboNW541+lPPPr6Z78q8xs7oV+7msrcHdo3CLW63aFo
+ifikGDrhd2Pt+FLGIu08WuWkz+RU/kVJfqpK4DZ1aSz7DHFv4UA3fYyW52KM0D/S
+QDkd9tqYBCnpwRIqPXoa
+=rNug
+-----END PGP SIGNATURE-----
+--=-=-=--
