@@ -1,175 +1,61 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:35491 "EHLO mx2.suse.de"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751498AbcKJE61 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 9 Nov 2016 23:58:27 -0500
-From: NeilBrown <neilb@suse.com>
-To: Jeff Layton <jlayton@redhat.com>
-Date: Thu, 10 Nov 2016 15:58:19 +1100
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: [PATCH/RFC nfs-utils] nfsdcltrack: read configuration from a file
-In-Reply-To: <1478739358.2442.1.camel@redhat.com>
-References: <87k2cdmi26.fsf@notabene.neil.brown.name> <1478692626.2394.9.camel@redhat.com> <877f8c9pku.fsf@notabene.neil.brown.name> <1478739358.2442.1.camel@redhat.com>
-Message-ID: <8737j0lyms.fsf@notabene.neil.brown.name>
+Received: from mo4-p00-ob.smtp.rzone.de ([81.169.146.162]:8636 "EHLO
+        mo4-p00-ob.smtp.rzone.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S933033AbcKJOui (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 10 Nov 2016 09:50:38 -0500
+Date: Thu, 10 Nov 2016 15:47:21 +0100
+From: Olaf Hering <olaf@aepfle.de>
+To: Anna Schumaker <Anna.Schumaker@Netapp.com>
+Cc: Jakub Kicinski <kubakici@wp.pl>, Yotam Gigi <yotamg@mellanox.com>,
+        Andy Adamson <andros@Netapp.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "netdev@vger.kernel.org" <netdev@vger.kernel.org>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        Yotam Gigi <yotam.gi@gmail.com>, mlxsw <mlxsw@mellanox.com>
+Subject: Re: nfs NULL-dereferencing in net-next
+Message-ID: <20161110144721.GA30540@aepfle.de>
+References: <20161017201943.64529739@jkicinski-Precision-T1700>
+ <DB3PR05MB0764DF28BC53A4A4E78A4DD8ACA80@DB3PR05MB0764.eurprd05.prod.outlook.com>
+ <817e43c5-d88d-e616-7074-5715de29d319@Netapp.com>
+ <DB3PR05MB0764B39F6EDF851A8A52EBACACAB0@DB3PR05MB0764.eurprd05.prod.outlook.com>
+ <20161026190840.3d46dad8@jkicinski-Precision-T1700>
+ <0ab5021c-84eb-cb9f-c7f5-4d856fdb0f4b@Netapp.com>
+ <DB3PR05MB0764F0409AE75E0172ABFE2EACAA0@DB3PR05MB0764.eurprd05.prod.outlook.com>
+ <20161031152550.10acb7e0@jkicinski-Precision-T1700>
+ <e80aa023-b8e3-c663-1ef4-110f8a1368ab@Netapp.com>
 MIME-Version: 1.0
-Content-Type: multipart/signed; boundary="=-=-=";
-        micalg=pgp-sha256; protocol="application/pgp-signature"
+Content-Type: multipart/signed; micalg=pgp-sha1;
+        protocol="application/pgp-signature"; boundary="azLHFNyN32YCQGCU"
+In-Reply-To: <e80aa023-b8e3-c663-1ef4-110f8a1368ab@Netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---=-=-=
-Content-Type: text/plain
-Content-Transfer-Encoding: quoted-printable
 
+--azLHFNyN32YCQGCU
+Content-Type: text/plain; charset=utf-8
+Content-Disposition: inline
 
-As nfsdcltrack is normally run directly from the kernel
-there is no opportunity to change the default
-storage directory.  This can be useful in a cluster to
-locate the "storage directory" on shared storage.
+On Thu, Nov 03, Anna Schumaker wrote:
 
-The easiest alternative is to allow configuration to be read from a
-file, particularly as nfs-utils already has code for parsing a config file.
+> Aww, I was hoping that patch would work.  It still seemed to fix some
+> issues for me when mounting multiple servers, so I'm planning to keep
+> it.  Unfortunately I'm out of town this week, so I haven't had much of
+> a chance to keep poking at this issue.  I should be able to get back
+> to it next week!
 
-So read the config file "/etc/nfs.conf" (or as set by ./configure) and
-look for "storagedir" and "debug" in the "nfsdcltrack" section.
-These values can still be over-ridden by command line options.
+Is this supposed to be fixed already? I get an oops in
+rpc_clnt_xprt_switch_has_addr+0xc/0x40 with 4.9.0-rc4.
 
-A generic name (nfs.conf) was changes for the config file so that
-other daemons can be enhanced to read configuration from there.
-This may be easier than passing command line arguments through systemd.
+Olaf
 
-Signed-off-by: NeilBrown <neilb@suse.com>
-=2D--
- configure.ac                      |  7 +++++++
- utils/nfsdcltrack/nfsdcltrack.c   | 12 ++++++++++++
- utils/nfsdcltrack/nfsdcltrack.man | 14 ++++++++++++++
- 3 files changed, 33 insertions(+)
-
-diff --git a/configure.ac b/configure.ac
-index d60f3a2f7efa..8a5aa2e5203b 100644
-=2D-- a/configure.ac
-+++ b/configure.ac
-@@ -24,6 +24,12 @@ AC_ARG_WITH(statedir,
- 	statedir=3D$withval,
- 	statedir=3D/var/lib/nfs)
- 	AC_SUBST(statedir)
-+AC_ARG_WITH(nfsconfig,
-+	[AC_HELP_STRING([--with-nfsconfig=3D/config/file],
-+			[use general config file /config/file @<:@default=3D/etc/nfs.conf@:>@])=
-],
-+	nfsconfig=3D$withval,
-+	nfsconfig=3D/etc/nfs.conf)
-+	AC_SUBST(nfsconfig)
- AC_ARG_WITH(statdpath,
- 	[AC_HELP_STRING([--with-statdpath=3D/foo],
- 			[define the statd state dir as /foo instead of the NFS statedir @<:@def=
-ault=3D/var/lib/nfs@:>@])],
-@@ -468,6 +474,7 @@ dnl Export some path names to config.h
- dnl *************************************************************
- AC_DEFINE_UNQUOTED(NFS_STATEDIR, "$statedir", [This defines the location o=
-f the NFS state files. Warning: this must match definitions in config.mk!])
- AC_DEFINE_UNQUOTED(NSM_DEFAULT_STATEDIR, "$statdpath", [Define this to the=
- pathname where statd keeps its state file])
-+AC_DEFINE_UNQUOTED(NFS_CONFFILE, "$nfsconfig", [This defines the location =
-of NFS daemon config file])
-=20
- if test "x$cross_compiling" =3D "xno"; then
- 	CFLAGS_FOR_BUILD=3D${CFLAGS_FOR_BUILD-"$CFLAGS"}
-diff --git a/utils/nfsdcltrack/nfsdcltrack.c b/utils/nfsdcltrack/nfsdcltrac=
-k.c
-index fcdda7f66b8b..e6e514b78316 100644
-=2D-- a/utils/nfsdcltrack/nfsdcltrack.c
-+++ b/utils/nfsdcltrack/nfsdcltrack.c
-@@ -43,6 +43,7 @@
- #include <sys/capability.h>
- #endif
-=20
-+#include "conffile.h"
- #include "xlog.h"
- #include "sqlite.h"
-=20
-@@ -55,6 +56,8 @@
- /* defined by RFC 3530 */
- #define NFS4_OPAQUE_LIMIT	1024
-=20
-+char *conf_path =3D NFS_CONFFILE;
-+
- /* private data structures */
- struct cltrack_cmd {
- 	char *name;
-@@ -553,6 +556,7 @@ int
- main(int argc, char **argv)
- {
- 	char arg;
-+	char *val;
- 	int rc =3D 0;
- 	char *progname, *cmdarg =3D NULL;
- 	struct cltrack_cmd *cmd;
-@@ -562,6 +566,14 @@ main(int argc, char **argv)
- 	xlog_syslog(1);
- 	xlog_stderr(0);
-=20
-+	conf_init();
-+	val =3D conf_get_str("nfsdcltrack", "storagedir");
-+	if (val)
-+		storagedir =3D val;
-+	rc =3D conf_get_num("nfsdcltrack", "debug", 0);
-+	if (rc > 0)
-+		xlog_config(D_ALL, 1);
-+
- 	/* process command-line options */
- 	while ((arg =3D getopt_long(argc, argv, "hdfs:", longopts,
- 				  NULL)) !=3D EOF) {
-diff --git a/utils/nfsdcltrack/nfsdcltrack.man b/utils/nfsdcltrack/nfsdcltr=
-ack.man
-index 4b8f4d762a00..cc24b7a2c32e 100644
-=2D-- a/utils/nfsdcltrack/nfsdcltrack.man
-+++ b/utils/nfsdcltrack/nfsdcltrack.man
-@@ -67,6 +67,20 @@ Check to see if a nfs_client_id4 is allowed to reclaim. =
-This command requires a
- .IP "\fBgracedone\fR" 4
- .IX Item "gracedone"
- Remove any unreclaimed client records from the database. This command requ=
-ires a epoch boot time as an argument.
-+.SH "EXTERNAL CONFIGURATION"
-+The directory for stable storage information can be set via the file
-+.B /etc/nfs.conf
-+by setting the
-+.B storagedir
-+value in the
-+.B nfsdcltrack
-+section.  For example:
-+.in +5
-+[nfsdcltrack]
-+.br
-+  storagedir =3D /shared/nfs/nfsdcltrack
-+.in -5
-+Debuging to syslog can also be enabled by setting "debug =3D 1" in this fi=
-le.
- .SH "LEGACY TRANSITION MECHANISM"
- .IX Header "LEGACY TRANSITION MECHANISM"
- The Linux kernel NFSv4 server has historically tracked this information
-=2D-=20
-2.10.1
-
-
---=-=-=
+--azLHFNyN32YCQGCU
 Content-Type: application/pgp-signature; name="signature.asc"
 
 -----BEGIN PGP SIGNATURE-----
 
-iQIcBAEBCAAGBQJYI/5rAAoJEDnsnt1WYoG5IfAP/jvx2js1lChZx/1gBpuSpFul
-6OSXv9gDZJNWUi8sRi6I6cWH7l33E/PfplN1eZpyq+WUWLtjQVQhFosmt2XHk88q
-xOCJ56jn3vtvrtmJpSwuQ3je6vMms+NeYCrRHvFVtUBwH7XUmvJEmbYJ6EKNEdG+
-T+XuTVmkM7bFZNgsgQr6svK0JOXq6nEfFzQIk6xpAqjwsUV8dj1+GVzCUEpF80t4
-DSanZ5oohIw5YCYGh5EctGfthaGgrAstlGmUxfo6Gjmlt/hvXCu1mb8tKuUi9iXZ
-hmLMYMkrQQDlPuE/p+FtlLeTfTLvAbIUGVZ2aO03OWHxOQmsAxbncYVt7EsjsoR0
-zzpx5eEcNhg7KrbhILgMWMvjGIXIYzD42zH3jpkC9Kpq46v9oTkurkW0nF1pkY6D
-Pq1JIreTZnwsXAQ+x7CmcARtaKm9484CJ2aWHseJOAQN68LfwKjdiPelOOjKmNwl
-phNbmAciBl5fn5Pz6BWPRzCOthY4sZUPQBeHdH0vMELvQ2mwIMeMn6ylezsFQVI1
-rKXZ9Mde6F34WqPE+eIU9NboNW541+lPPPr6Z78q8xs7oV+7msrcHdo3CLW63aFo
-ifikGDrhd2Pt+FLGIu08WuWkz+RU/kVJfqpK4DZ1aSz7DHFv4UA3fYyW52KM0D/S
-QDkd9tqYBCnpwRIqPXoa
-=rNug
+iEYEARECAAYFAlgkiHYACgkQXUKg+qaYNn4YgwCg+PTAiU23ZAl7FDRL4SP8wiBY
+jb0AnA3o3qnOV6u347ZO84JlNo6X9mNC
+=PFPC
 -----END PGP SIGNATURE-----
---=-=-=--
+
+--azLHFNyN32YCQGCU--
