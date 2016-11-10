@@ -1,153 +1,136 @@
-Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qk0-f173.google.com ([209.85.220.173]:34488 "EHLO
-        mail-qk0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S933875AbcKJPA5 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 10 Nov 2016 10:00:57 -0500
-Received: by mail-qk0-f173.google.com with SMTP id q130so298982839qke.1
-        for <linux-nfs@vger.kernel.org>; Thu, 10 Nov 2016 07:00:57 -0800 (PST)
-Message-ID: <1478790053.2402.5.camel@redhat.com>
-Subject: Re: [PATCH/RFC nfs-utils] nfsdcltrack: read configuration from a
- file
-From: Jeff Layton <jlayton@redhat.com>
-To: NeilBrown <neilb@suse.com>
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Date: Thu, 10 Nov 2016 10:00:53 -0500
-In-Reply-To: <8737j0lyms.fsf@notabene.neil.brown.name>
-References: <87k2cdmi26.fsf@notabene.neil.brown.name>
-         <1478692626.2394.9.camel@redhat.com>
-         <877f8c9pku.fsf@notabene.neil.brown.name>
-         <1478739358.2442.1.camel@redhat.com>
-         <8737j0lyms.fsf@notabene.neil.brown.name>
-Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
-Sender: linux-nfs-owner@vger.kernel.org
+Return-Path: <Anna.Schumaker@netapp.com>
+Subject: Re: [PATCH v7 13/31] NFSv4.1: Ensure we always run TEST/FREE_STATEID
+ on locks
+To: Benjamin Coddington <bcodding@redhat.com>,
+        Trond Myklebust
+	<trondmy@primarydata.com>
+References: <1474565961-21303-1-git-send-email-trond.myklebust@primarydata.com>
+ <1474565961-21303-7-git-send-email-trond.myklebust@primarydata.com>
+ <1474565961-21303-8-git-send-email-trond.myklebust@primarydata.com>
+ <1474565961-21303-9-git-send-email-trond.myklebust@primarydata.com>
+ <1474565961-21303-10-git-send-email-trond.myklebust@primarydata.com>
+ <1474565961-21303-11-git-send-email-trond.myklebust@primarydata.com>
+ <1474565961-21303-12-git-send-email-trond.myklebust@primarydata.com>
+ <1474565961-21303-13-git-send-email-trond.myklebust@primarydata.com>
+ <1474565961-21303-14-git-send-email-trond.myklebust@primarydata.com>
+ <599EE56B-46DD-411B-805D-11C2FB5E30A4@redhat.com>
+ <34B1D68A-1A1C-4B59-A19E-467D48F7A9D0@redhat.com>
+ <F1712484-1131-418A-98F0-272A4A1BAE59@redhat.com>
+ <AB669741-1EC9-4C08-86A8-479755398679@redhat.com>
+ <6ABCDB9B-997E-49C1-9363-D59AF9BEC0E9@primarydata.com>
+ <B41EEA6E-B168-4DE3-AC73-F4270287EF0D@redhat.com>
+CC: List Linux NFS Mailing <linux-nfs@vger.kernel.org>,
+        Oleg Drokin
+	<green@linuxhacker.ru>
+From: Anna Schumaker <Anna.Schumaker@netapp.com>
+Message-ID: <806bf204-eb35-5a3a-30fa-612bf22fb09a@Netapp.com>
+Date: Thu, 10 Nov 2016 10:01:52 -0500
+MIME-Version: 1.0
+In-Reply-To: <B41EEA6E-B168-4DE3-AC73-F4270287EF0D@redhat.com>
+Content-Type: text/plain; charset="utf-8"
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 2016-11-10 at 15:58 +1100, NeilBrown wrote:
-> As nfsdcltrack is normally run directly from the kernel
-> there is no opportunity to change the default
-> storage directory.  This can be useful in a cluster to
-> locate the "storage directory" on shared storage.
-> 
-> The easiest alternative is to allow configuration to be read from a
-> file, particularly as nfs-utils already has code for parsing a config file.
-> 
-> So read the config file "/etc/nfs.conf" (or as set by ./configure) and
-> look for "storagedir" and "debug" in the "nfsdcltrack" section.
-> These values can still be over-ridden by command line options.
-> 
-> A generic name (nfs.conf) was changes for the config file so that
-> other daemons can be enhanced to read configuration from there.
-> This may be easier than passing command line arguments through systemd.
-> 
-I like the basic idea, but I'm not so sure we want to use a generic
-config file like this. What else do you envision using this file?
+Hi Ben,
 
-That said, if we are going to do this, we should probably make it clear
-that it's for server-side configuration. Maybe "nfsd.conf" or
-"nfs-server.conf" would be a better name?
-
-> Signed-off-by: NeilBrown <neilb@suse.com>
-> ---
->  configure.ac                      |  7 +++++++
->  utils/nfsdcltrack/nfsdcltrack.c   | 12 ++++++++++++
->  utils/nfsdcltrack/nfsdcltrack.man | 14 ++++++++++++++
->  3 files changed, 33 insertions(+)
+On 11/08/2016 10:10 AM, Benjamin Coddington wrote:
 > 
-> diff --git a/configure.ac b/configure.ac
-> index d60f3a2f7efa..8a5aa2e5203b 100644
-> --- a/configure.ac
-> +++ b/configure.ac
-> @@ -24,6 +24,12 @@ AC_ARG_WITH(statedir,
->  	statedir=$withval,
->  	statedir=/var/lib/nfs)
->  	AC_SUBST(statedir)
-> +AC_ARG_WITH(nfsconfig,
-> +	[AC_HELP_STRING([--with-nfsconfig=/config/file],
-> +			[use general config file /config/file @<:@default=/etc/nfs.conf@:>@])],
-> +	nfsconfig=$withval,
-> +	nfsconfig=/etc/nfs.conf)
-> +	AC_SUBST(nfsconfig)
->  AC_ARG_WITH(statdpath,
->  	[AC_HELP_STRING([--with-statdpath=/foo],
->  			[define the statd state dir as /foo instead of the NFS statedir @<:@default=/var/lib/nfs@:>@])],
-> @@ -468,6 +474,7 @@ dnl Export some path names to config.h
->  dnl *************************************************************
->  AC_DEFINE_UNQUOTED(NFS_STATEDIR, "$statedir", [This defines the location of the NFS state files. Warning: this must match definitions in config.mk!])
->  AC_DEFINE_UNQUOTED(NSM_DEFAULT_STATEDIR, "$statdpath", [Define this to the pathname where statd keeps its state file])
-> +AC_DEFINE_UNQUOTED(NFS_CONFFILE, "$nfsconfig", [This defines the location of NFS daemon config file])
->  
->  if test "x$cross_compiling" = "xno"; then
->  	CFLAGS_FOR_BUILD=${CFLAGS_FOR_BUILD-"$CFLAGS"}
-> diff --git a/utils/nfsdcltrack/nfsdcltrack.c b/utils/nfsdcltrack/nfsdcltrack.c
-> index fcdda7f66b8b..e6e514b78316 100644
-> --- a/utils/nfsdcltrack/nfsdcltrack.c
-> +++ b/utils/nfsdcltrack/nfsdcltrack.c
-> @@ -43,6 +43,7 @@
->  #include <sys/capability.h>
->  #endif
->  
-> +#include "conffile.h"
->  #include "xlog.h"
->  #include "sqlite.h"
->  
-> @@ -55,6 +56,8 @@
->  /* defined by RFC 3530 */
->  #define NFS4_OPAQUE_LIMIT	1024
->  
-> +char *conf_path = NFS_CONFFILE;
-> +
->  /* private data structures */
->  struct cltrack_cmd {
->  	char *name;
-> @@ -553,6 +556,7 @@ int
->  main(int argc, char **argv)
->  {
->  	char arg;
-> +	char *val;
->  	int rc = 0;
->  	char *progname, *cmdarg = NULL;
->  	struct cltrack_cmd *cmd;
-> @@ -562,6 +566,14 @@ main(int argc, char **argv)
->  	xlog_syslog(1);
->  	xlog_stderr(0);
->  
-> +	conf_init();
-> +	val = conf_get_str("nfsdcltrack", "storagedir");
-> +	if (val)
-> +		storagedir = val;
-> +	rc = conf_get_num("nfsdcltrack", "debug", 0);
-> +	if (rc > 0)
-> +		xlog_config(D_ALL, 1);
-> +
->  	/* process command-line options */
->  	while ((arg = getopt_long(argc, argv, "hdfs:", longopts,
->  				  NULL)) != EOF) {
-> diff --git a/utils/nfsdcltrack/nfsdcltrack.man b/utils/nfsdcltrack/nfsdcltrack.man
-> index 4b8f4d762a00..cc24b7a2c32e 100644
-> --- a/utils/nfsdcltrack/nfsdcltrack.man
-> +++ b/utils/nfsdcltrack/nfsdcltrack.man
-> @@ -67,6 +67,20 @@ Check to see if a nfs_client_id4 is allowed to reclaim. This command requires a
->  .IP "\fBgracedone\fR" 4
->  .IX Item "gracedone"
->  Remove any unreclaimed client records from the database. This command requires a epoch boot time as an argument.
-> +.SH "EXTERNAL CONFIGURATION"
-> +The directory for stable storage information can be set via the file
-> +.B /etc/nfs.conf
-> +by setting the
-> +.B storagedir
-> +value in the
-> +.B nfsdcltrack
-> +section.  For example:
-> +.in +5
-> +[nfsdcltrack]
-> +.br
-> +  storagedir = /shared/nfs/nfsdcltrack
-> +.in -5
-> +Debuging to syslog can also be enabled by setting "debug = 1" in this file.
->  .SH "LEGACY TRANSITION MECHANISM"
->  .IX Header "LEGACY TRANSITION MECHANISM"
->  The Linux kernel NFSv4 server has historically tracked this information
+> 
+> On 7 Nov 2016, at 9:59, Trond Myklebust wrote:
+> 
+>> On Nov 7, 2016, at 09:50, Benjamin Coddington <bcodding@redhat.com<mailto:bcodding@redhat.com>> wrote:
+>>
+>> On 7 Nov 2016, at 8:45, Benjamin Coddington wrote:
+>>
+>> On 7 Nov 2016, at 8:09, Benjamin Coddington wrote:
+>>
+>> On 4 Nov 2016, at 12:02, Benjamin Coddington wrote:
+>>
+>> Hi Trond,
+>>
+>> On 22 Sep 2016, at 13:39, Trond Myklebust wrote:
+>>
+>> Right now, we're only running TEST/FREE_STATEID on the locks if
+>> the open stateid recovery succeeds. The protocol requires us to
+>> always do so.
+>> The fix would be to move the call to TEST/FREE_STATEID and do it
+>> before we attempt open recovery.
+>>
+>> Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com<mailto:trond.myklebust@primarydata.com>>
+>> ---
+>> fs/nfs/nfs4proc.c | 92 +++++++++++++++++++++++++++++++------------------------
+>> 1 file changed, 52 insertions(+), 40 deletions(-)
+>>
+>> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+>> index 3c1b8cb7dd95..33ca6d768bd2 100644
+>> --- a/fs/nfs/nfs4proc.c
+>> +++ b/fs/nfs/nfs4proc.c
+>> @@ -2486,6 +2486,45 @@ static void nfs41_check_delegation_stateid(struct nfs4_state *state)
+>> }
+>>
+>> /**
+>> + * nfs41_check_expired_locks - possibly free a lock stateid
+>> + *
+>> + * @state: NFSv4 state for an inode
+>> + *
+>> + * Returns NFS_OK if recovery for this stateid is now finished.
+>> + * Otherwise a negative NFS4ERR value is returned.
+>> + */
+>> +static int nfs41_check_expired_locks(struct nfs4_state *state)
+>> +{
+>> + int status, ret = NFS_OK;
+>> + struct nfs4_lock_state *lsp;
+>> + struct nfs_server *server = NFS_SERVER(state->inode);
+>> +
+>> + if (!test_bit(LK_STATE_IN_USE, &state->flags))
+>> + goto out;
+>> + list_for_each_entry(lsp, &state->lock_states, ls_locks) {
+>> + if (test_bit(NFS_LOCK_INITIALIZED, &lsp->ls_flags)) {
+>>
+>> I bisected a crash to this patch (commit c5896fc8622d57b31e1e98545d67d7089019e478).
+>> I thought the problem was that this patch moved this path out from under the
+>> nfsi->rwsem in nfs4_reclaim_locks() so it ends up with a freed
+>> nfs4_lock_state here.
+>>
+>> I can reproduce this with generic/089.  Any ideas?
+>>
+>> Hit this on v4.9-rc4 this morning.  This probably needs to take the
+>> state_lock before traversing the lock_states list.  I guess we've never hit
+>> this before because the old path would serialize things somehow - maybe via
+>> taking flc_lock in nfs4_reclaim_locks()..   I'll test that fix.
+>>
+>> Well, that's no good either as it gets stuck in a NFS4ERR_OLD_STATEID loop
+>> in recovery since we'd want to retry in that case, but taking the state_lock
+>> means we won't use the new stateid.  So maybe we need both the state_lock to
+>> protect the list and the rwsem to stop new locks from being sent.  I'll try
+>> that now.
+>>
+>> That one got much further, but eventually soft-locked up on the state_lock
+>> when what looks like the state manager needed to have a TEST_STATEID wait on
+>> another lock to complete.
+>>
+>> The other question here is why are we doing recovery so much?  It seems like
+>> we're sending FREE_STATEID unnecessarily on successful DELEGRETURN and
+>> LOCKU, but that shouldn't be triggering state recovery..
+>>
+>> FREE_STATEID is required by the protocol after LOCKU, so that’s intentional.
+> 
+> I thought it wasn't required if we do CLOSE, but I checked again and that
+> wasn't what I was seeing. I am seeing LOCKU, FREE_STATEID, CLOSE, so it is
+> correct.
+> 
+>> It isn’t needed after DELEGRETURN, so I’m not sure why that is happening.
+> 
+> I think it's just falling through the case statement in
+> nfs4_delegreturn_done().  I'll send a patch for that.
+> 
+> I think the fix here is to manually increment ls_count for the current lock
+> state, and expect that the lock_states list can be modified while we walk
+> it.  I'll send a patch for that too if it runs though testing OK.
 
--- 
-Jeff Layton <jlayton@redhat.com>
+Do you have an estimate for when this patch will be ready?  I want to include it in my next bugfix pull request for 4.9.
+
+Thanks,
+Anna
+
+> 
+> Ben
