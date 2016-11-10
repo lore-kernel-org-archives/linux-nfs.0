@@ -1,8 +1,8 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mout.kundenserver.de ([212.227.126.135]:49928 "EHLO
+Received: from mout.kundenserver.de ([212.227.126.187]:65234 "EHLO
         mout.kundenserver.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S935225AbcKJQqu (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 10 Nov 2016 11:46:50 -0500
+        with ESMTP id S934921AbcKJQqq (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 10 Nov 2016 11:46:46 -0500
 From: Arnd Bergmann <arnd@arndb.de>
 To: Linus Torvalds <torvalds@linux-foundation.org>
 Cc: Andrew Morton <akpm@linux-foundation.org>,
@@ -24,134 +24,46 @@ Cc: Andrew Morton <akpm@linux-foundation.org>,
         linux-snps-arc@lists.infradead.org, nios2-dev@lists.rocketboards.org,
         linux-s390@vger.kernel.org, linux-crypto@vger.kernel.org,
         linux-media@vger.kernel.org, linux-nfs@vger.kernel.org
-Subject: [PATCH v2 09/11] [v3] infiniband: shut up a maybe-uninitialized warning
-Date: Thu, 10 Nov 2016 17:44:52 +0100
-Message-Id: <20161110164454.293477-10-arnd@arndb.de>
+Subject: [PATCH v2 05/11] s390: pci: don't print uninitialized data for debugging
+Date: Thu, 10 Nov 2016 17:44:48 +0100
+Message-Id: <20161110164454.293477-6-arnd@arndb.de>
 In-Reply-To: <20161110164454.293477-1-arnd@arndb.de>
 References: <20161110164454.293477-1-arnd@arndb.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Some configurations produce this harmless warning when built with
-gcc -Wmaybe-uninitialized:
+gcc correctly warns about an incorrect use of the 'pa' variable
+in case we pass an empty scatterlist to __s390_dma_map_sg:
 
-infiniband/core/cma.c: In function 'cma_get_net_dev':
-infiniband/core/cma.c:1242:12: warning: 'src_addr_storage.sin_addr.s_addr' may be used uninitialized in this function [-Wmaybe-uninitialized]
+arch/s390/pci/pci_dma.c: In function '__s390_dma_map_sg':
+arch/s390/pci/pci_dma.c:309:13: warning: 'pa' may be used uninitialized in this function [-Wmaybe-uninitialized]
 
-I previously reported this for the powerpc64 defconfig, but have now
-reproduced the same thing for x86 as well, using gcc-5 or higher.
+This adds a bogus initialization to the function to sanitize
+the debug output.  I would have preferred a solution without
+the initialization, but I only got the report from the
+kbuild bot after turning on the warning again, and didn't
+manage to reproduce it myself.
 
-The code looks correct to me, and this change just rearranges it
-by making sure we alway initialize the entire address structure
-to make the warning disappear. My first approach added an
-initialization at the time of the declaration, which Doug commented
-may be too costly, so I hope this version doesn't add overhead.
-
-Link: http://arm-soc.lixom.net/buildlogs/mainline/v4.7-rc6/buildall.powerpc.ppc64_defconfig.log.passed
-Link: https://patchwork.kernel.org/patch/9212825/
-Acked-by: Haggai Eran <haggaie@mellanox.com>
 Signed-off-by: Arnd Bergmann <arnd@arndb.de>
-
+Acked-by: Sebastian Ott <sebott@linux.vnet.ibm.com>
+Acked-by: Martin Schwidefsky <schwidefsky@de.ibm.com>
 ---
-This is marked v2 as the rest of the series but is actually version
-three of the patch as I had to do some other changes already.
+ arch/s390/pci/pci_dma.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-v3: remove accidental leftover change of the original patch
-
- drivers/infiniband/core/cma.c | 54 ++++++++++++++++++++++---------------------
- 1 file changed, 28 insertions(+), 26 deletions(-)
-
-diff --git a/drivers/infiniband/core/cma.c b/drivers/infiniband/core/cma.c
-index 36bf50e..89a6b05 100644
---- a/drivers/infiniband/core/cma.c
-+++ b/drivers/infiniband/core/cma.c
-@@ -1094,47 +1094,47 @@ static void cma_save_ib_info(struct sockaddr *src_addr,
- 	}
- }
+diff --git a/arch/s390/pci/pci_dma.c b/arch/s390/pci/pci_dma.c
+index 7350c8b..6b2f72f 100644
+--- a/arch/s390/pci/pci_dma.c
++++ b/arch/s390/pci/pci_dma.c
+@@ -423,7 +423,7 @@ static int __s390_dma_map_sg(struct device *dev, struct scatterlist *sg,
+ 	dma_addr_t dma_addr_base, dma_addr;
+ 	int flags = ZPCI_PTE_VALID;
+ 	struct scatterlist *s;
+-	unsigned long pa;
++	unsigned long pa = 0;
+ 	int ret;
  
--static void cma_save_ip4_info(struct sockaddr *src_addr,
--			      struct sockaddr *dst_addr,
-+static void cma_save_ip4_info(struct sockaddr_in *src_addr,
-+			      struct sockaddr_in *dst_addr,
- 			      struct cma_hdr *hdr,
- 			      __be16 local_port)
- {
--	struct sockaddr_in *ip4;
--
- 	if (src_addr) {
--		ip4 = (struct sockaddr_in *)src_addr;
--		ip4->sin_family = AF_INET;
--		ip4->sin_addr.s_addr = hdr->dst_addr.ip4.addr;
--		ip4->sin_port = local_port;
-+		*src_addr = (struct sockaddr_in) {
-+			.sin_family = AF_INET,
-+			.sin_addr.s_addr = hdr->dst_addr.ip4.addr,
-+			.sin_port = local_port,
-+		};
- 	}
- 
- 	if (dst_addr) {
--		ip4 = (struct sockaddr_in *)dst_addr;
--		ip4->sin_family = AF_INET;
--		ip4->sin_addr.s_addr = hdr->src_addr.ip4.addr;
--		ip4->sin_port = hdr->port;
-+		*dst_addr = (struct sockaddr_in) {
-+			.sin_family = AF_INET,
-+			.sin_addr.s_addr = hdr->src_addr.ip4.addr,
-+			.sin_port = hdr->port,
-+		};
- 	}
- }
- 
--static void cma_save_ip6_info(struct sockaddr *src_addr,
--			      struct sockaddr *dst_addr,
-+static void cma_save_ip6_info(struct sockaddr_in6 *src_addr,
-+			      struct sockaddr_in6 *dst_addr,
- 			      struct cma_hdr *hdr,
- 			      __be16 local_port)
- {
--	struct sockaddr_in6 *ip6;
--
- 	if (src_addr) {
--		ip6 = (struct sockaddr_in6 *)src_addr;
--		ip6->sin6_family = AF_INET6;
--		ip6->sin6_addr = hdr->dst_addr.ip6;
--		ip6->sin6_port = local_port;
-+		*src_addr = (struct sockaddr_in6) {
-+			.sin6_family = AF_INET6,
-+			.sin6_addr = hdr->dst_addr.ip6,
-+			.sin6_port = local_port,
-+		};
- 	}
- 
- 	if (dst_addr) {
--		ip6 = (struct sockaddr_in6 *)dst_addr;
--		ip6->sin6_family = AF_INET6;
--		ip6->sin6_addr = hdr->src_addr.ip6;
--		ip6->sin6_port = hdr->port;
-+		*dst_addr = (struct sockaddr_in6) {
-+			.sin6_family = AF_INET6,
-+			.sin6_addr = hdr->src_addr.ip6,
-+			.sin6_port = hdr->port,
-+		};
- 	}
- }
- 
-@@ -1159,10 +1159,12 @@ static int cma_save_ip_info(struct sockaddr *src_addr,
- 
- 	switch (cma_get_ip_ver(hdr)) {
- 	case 4:
--		cma_save_ip4_info(src_addr, dst_addr, hdr, port);
-+		cma_save_ip4_info((struct sockaddr_in *)src_addr,
-+				  (struct sockaddr_in *)dst_addr, hdr, port);
- 		break;
- 	case 6:
--		cma_save_ip6_info(src_addr, dst_addr, hdr, port);
-+		cma_save_ip6_info((struct sockaddr_in6 *)src_addr,
-+				  (struct sockaddr_in6 *)dst_addr, hdr, port);
- 		break;
- 	default:
- 		return -EAFNOSUPPORT;
+ 	size = PAGE_ALIGN(size);
 -- 
 2.9.0
 
