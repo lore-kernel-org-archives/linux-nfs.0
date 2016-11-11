@@ -1,65 +1,65 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp.gentoo.org ([140.211.166.183]:59964 "EHLO smtp.gentoo.org"
+Received: from fieldses.org ([173.255.197.46]:42530 "EHLO fieldses.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S965049AbcKKVAf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 11 Nov 2016 16:00:35 -0500
-Date: Fri, 11 Nov 2016 13:00:34 -0800
-From: Mike Frysinger <vapier@gentoo.org>
-To: NeilBrown <neilb@suse.com>
-Cc: Steve Dickson <SteveD@redhat.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        libtirpc-devel@lists.sourceforge.net
-Subject: Re: [Libtirpc-devel] [PATCH rpcbind] Move default state-dir to
- /run/rpcbind
-Message-ID: <20161111210034.GM21655@vapier.lan>
-References: <877f8almcf.fsf@notabene.neil.brown.name>
+        id S935747AbcKKWE0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 11 Nov 2016 17:04:26 -0500
+Date: Fri, 11 Nov 2016 17:04:25 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Omar Walid Llorente <omar@dit.upm.es>
+Cc: Soumya Koduri <skoduri@redhat.com>,
+        Jeff Layton <jlayton@poochiereds.net>, linux-nfs@vger.kernel.org,
+        =?utf-8?Q?administraci=C3=B3n_del_centro_de_c=C3=A1lculo?= del
+         dit <cdc@dit.upm.es>,
+        Miklos Szeredi <mszeredi@redhat.com>
+Subject: Re: possible bug in nfs-kernel-server
+Message-ID: <20161111220425.GA30914@fieldses.org>
+References: <56743FB6.80903@redhat.com>
+ <20151218200840.GA28692@fieldses.org>
+ <5677BCD4.4060009@redhat.com>
+ <20151221164752.GA7869@fieldses.org>
+ <56783DCC.1060201@redhat.com>
+ <20151221201403.GB7869@fieldses.org>
+ <2443f0d3-6937-ae92-d4d5-6e1f00a19e81@dit.upm.es>
+ <20161108201611.GB26589@fieldses.org>
+ <37f8eaf5-128c-ecd5-ae65-3b340c990171@dit.upm.es>
+ <20161111190332.GA28132@fieldses.org>
 MIME-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-sha256;
-        protocol="application/pgp-signature"; boundary="vJnATpogyuudK3Na"
-In-Reply-To: <877f8almcf.fsf@notabene.neil.brown.name>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20161111190332.GA28132@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Sorry, resending with Miklos's address fixed....
 
---vJnATpogyuudK3Na
-Content-Type: text/plain; charset=utf-8
-Content-Disposition: inline
-Content-Transfer-Encoding: quoted-printable
+On Fri, Nov 11, 2016 at 06:57:45PM +0100, Omar Walid Llorente wrote:
+> Hi Bruce, thanks for your answer, that is greatly appreciated.
+> 
+> This side of the problem feels a little bit lonely and maybe we can
+> manage to get to know what is happening if you have some time.
+>
+> We have been doing tests and we have found a way to replicate the
+> problem in a virtual environment without ZFS, only with glusterfs
+> and nfs-kernel-server, where we can give you root password or you
+> can replicate it at home.
+> 
+> It is closely related to non-root users (with root credentials the
+> problem does not happen).
+> 
+> If you think this is good news and feel like checking, tell me and
+> next week we will prepare it and I'll forward you the data for both
+> kind of tests.
 
-On 11 Nov 2016 14:36, NeilBrown wrote:
-> rpcbind can save state in a file to allow restart without forgetting
-> about running services.
->=20
-> The default location is currently "/tmp" which is an over-used
-> directory that isn't really suitable for system files.
-> The modern preferences would be a subdirectory of "/run", which can
-> be selected with a ./configure option.  That subdirectory would still need
-> to be created by something.
+So if I'm reading right, the setup is
 
-the portable path is /var/cache instead of /run.  i don't think libtirpc
-should be configuring itself to assume Linux by default.
--mike
+	nfs client---NFSv3--->knfsd---FUSE-->gluster
 
---vJnATpogyuudK3Na
-Content-Type: application/pgp-signature; name="signature.asc"
-Content-Description: Digital signature
+I hate to just pass the buck, but my bet is on the issue being either on
+the gluster side, or on limitations of the fuse protocol itself.
 
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v2
+Cc'ing Miklos as I believe he did the original fuse nfsd export
+implementation.  Miklos, does fuse has a way for file owners to override
+permissions?  We need this sometimes because for example, an application
+may hold a write open on a read-only file, but the server doesn't itself
+already have an open (which can happen for lots of reasons).
 
-iQIcBAEBCAAGBQJYJjFyAAoJEEFjO5/oN/WBjXMP/2wujFQri5J+Q57f+wmmMGDh
-Tj+QY67jzWIoepsnkAHiO0+zW20CtIS6mnIyhbpcOSrx0tBgHA/lb8KPa+ox04Cu
-LF8fX2T5/8C7hiePSgqUcQ1Gqkf9C95ADVfrjmB5Fbk3IjxcZfcRxT+zN/VzlbWC
-meG8kW/RtUk6154jAiGoRJmeTjAeHnuMYwCPZuP6DImpj+m0L6WN8JtLLnGpUebn
-K0cY7n/wq3/evbN2q7ksNJmo5E/jegj7cAnsvOl+1f7DtRxDRxsT3y4X7osII0Y2
-gTt0TXfJl5Oyt5dRPvUUsgyh53CdI+vRjMohXpLj8yQiHGMKIrwAknyP+tgIJ8I0
-wq1IvoImTkvMELvoiA5xlmf5w9VkHox81b09tA+Kcg0znoXYqmdoxa+SFf6h8lV7
-5azwWMyLBnNRgWLwuVlwAGQTnYNiJRskFufBE3F3/Add9BmoY7okvmdUguNSwmE6
-UvV11KlON+3p3gRYFttN7TL86GaSHDVHNRQV5GinOZso7kslLZ/VqcaIrIlpKA0n
-jd1zgwR8JFi28ChhEYmasV7ICOkUpMxT9F3+MicvfIH2hgdF6lZev7EmeCODAP7w
-kBluydqxl5sEDnwfvWXsjpU+nA50mf/heFuKsSCqN+S2iUHh6vX/Thp1bhtzVAAZ
-heM6dKDSFypQPUgqUjPr
-=4psh
------END PGP SIGNATURE-----
-
---vJnATpogyuudK3Na--
+--b.
