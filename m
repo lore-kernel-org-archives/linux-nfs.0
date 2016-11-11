@@ -1,107 +1,87 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:16582 "EHLO
-        aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1756816AbcKKQUh (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 11 Nov 2016 11:20:37 -0500
-Content-Type: text/plain; charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 9.3 \(3124\))
-Subject: Re: Question about nfsdcltrack --storagedir
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <87oa1nklug.fsf@notabene.neil.brown.name>
-Date: Fri, 11 Nov 2016 11:19:24 -0500
-Cc: Jeff Layton <jlayton@redhat.com>,
+Received: from mail-yw0-f193.google.com ([209.85.161.193]:33776 "EHLO
+        mail-yw0-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S934529AbcKKRNC (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 11 Nov 2016 12:13:02 -0500
+MIME-Version: 1.0
+In-Reply-To: <20161110164454.293477-1-arnd@arndb.de>
+References: <20161110164454.293477-1-arnd@arndb.de>
+From: Linus Torvalds <torvalds@linux-foundation.org>
+Date: Fri, 11 Nov 2016 09:13:00 -0800
+Message-ID: <CA+55aFx_scFVFKU__TBmoffw_iHvrdAU2dj5u1WKfWJXAkS4QA@mail.gmail.com>
+Subject: Re: [PATCH v2 00/11] getting back -Wmaybe-uninitialized
+To: Arnd Bergmann <arnd@arndb.de>,
+        Srinivas Kandagatla <srinivas.kandagatla@linaro.org>,
+        sayli karnik <karniksayli1995@gmail.com>,
+        Jonathan Cameron <jic23@kernel.org>, Mark Brown <broonie@kernel.org>
+Cc: Andrew Morton <akpm@linux-foundation.org>,
+        Anna Schumaker <anna.schumaker@netapp.com>,
+        "David S. Miller" <davem@davemloft.net>,
+        Herbert Xu <herbert@gondor.apana.org.au>,
+        Ilya Dryomov <idryomov@gmail.com>,
+        Javier Martinez Canillas <javier@osg.samsung.com>,
+        Jiri Kosina <jikos@kernel.org>, Ley Foon Tan <lftan@altera.com>,
+        "Luis R . Rodriguez" <mcgrof@kernel.org>,
+        Martin Schwidefsky <schwidefsky@de.ibm.com>,
+        Mauro Carvalho Chehab <mchehab@kernel.org>,
+        Michal Marek <mmarek@suse.com>, Russell King <linux@armlinux.org.uk>,
+        Sean Young <sean@mess.org>, Sebastian Ott <sebott@linux.vnet.ibm.com>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        "the arch/x86 maintainers" <x86@kernel.org>,
+        Linux Kbuild mailing list <linux-kbuild@vger.kernel.org>,
+        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
+        arcml <linux-snps-arc@lists.infradead.org>,
+        nios2-dev@lists.rocketboards.org,
+        linux-s390 <linux-s390@vger.kernel.org>,
+        Linux Crypto Mailing List <linux-crypto@vger.kernel.org>,
+        Linux Media Mailing List <linux-media@vger.kernel.org>,
         Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <B7F56198-AA01-453B-A6ED-407B8D266724@oracle.com>
-References: <87k2cdmi26.fsf@notabene.neil.brown.name> <1478692626.2394.9.camel@redhat.com> <877f8c9pku.fsf@notabene.neil.brown.name> <1478739358.2442.1.camel@redhat.com> <8B417571-FAA9-4793-AE5F-F71BCDF7ADD5@oracle.com> <87oa1nklug.fsf@notabene.neil.brown.name>
-To: NeilBrown <neilb@suse.com>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hiya Neil-
+On Thu, Nov 10, 2016 at 8:44 AM, Arnd Bergmann <arnd@arndb.de> wrote:
+>
+> Please merge these directly if you are happy with the result.
 
-> On Nov 10, 2016, at 5:32 PM, NeilBrown <neilb@suse.com> wrote:
-> 
-> On Fri, Nov 11 2016, Chuck Lever wrote:
-> 
->>> 
->>> No objection here, especially if we make it so that we have existing
->>> behavior when there is no config file. nfs-utils even has some config
->>> file parsing routines now in support/nfs that should be sufficient.
->> 
->> Just a general thought:
->> 
->> It's fine to store the configuration data under /etc, but for new
->> administrative interfaces, please create a command line UI which
->> is used to edit said configuration data. This makes it much easier
->> for users to script administrative changes, to build GUIs around,
->> and for our Q/A teams to construct automated tests.
-> 
-> If that is an important concern (and I don't disagree) then I would
-> suggest dropping the idea of a config file with sections and just have a
-> file with simple (case sensitive) "name=value" assignments.
+I will take this.
 
-I'm not necessarily advocating this, but we already have a single
-central key-value file that stores NFS configuration information
-(at least on RH-based distros), and that's /etc/sysconfig/nfs.
+I do see two warnings, but they both seem to be valid and recent,
+though, so I have no issues with the spurious cases.
 
+Warning #1:
 
-> Then sed
-> can be used to modify the file.
-> 
-> Or.... just use git to modify the config file.
-> 
->  sudo git config --file /etc/idmapd.conf mapping.nobody-user neilb
-> 
-> did what I expected it to do :-)
+  sound/soc/qcom/lpass-platform.c: In function =E2=80=98lpass_platform_pcmo=
+ps_open=E2=80=99:
+  sound/soc/qcom/lpass-platform.c:83:29: warning: =E2=80=98dma_ch=E2=80=99 =
+may be used
+uninitialized in this function [-Wmaybe-uninitialized]
+    drvdata->substream[dma_ch] =3D substream;
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~
 
-Clever! But to be a little more clear, this is not about the
-technology used to modify a config file.
+and 'dma_ch' usage there really is crazy and wrong. Broken by
+022d00ee0b55 ("ASoC: lpass-platform: Fix broken pcm data usage")
 
-After an administrator finds and modifies the correct file, there's
-a set of dodgy distribution-dependent instructions to figure out what
-daemons need to be poked with a sharp stick to pick up the new config.
+Warning #2 is not a real bug, but it's reasonable that gcc doesn't
+know that storage_bytes (chip->read_size) has to be 2/4. Again,
+introduced recently by commit 231147ee77f3 ("iio: maxim_thermocouple:
+Align 16 bit big endian value of raw reads"), so you didn't see it.
 
-For idmapd.conf changes, for example, it's going to be a different
-set of pokes depending on whether its server or client.
+  drivers/iio/temperature/maxim_thermocouple.c: In function
+=E2=80=98maxim_thermocouple_read_raw=E2=80=99:
+  drivers/iio/temperature/maxim_thermocouple.c:141:5: warning: =E2=80=98ret=
+=E2=80=99
+may be used uninitialized in this function [-Wmaybe-uninitialized]
+    if (ret)
+       ^
+  drivers/iio/temperature/maxim_thermocouple.c:128:6: note: =E2=80=98ret=E2=
+=80=99 was
+declared here
+    int ret;
+        ^~~
 
-A kernel cache has to be invalidated in some important cases. This
-is true for modifying things related to the FH or export cache, and
-that is already wrapped in an administrative CLI: exportfs.
+and I guess that code can just initialize 'ret' to '-EINVAL' or
+something to just make the theoretical "somehow we had a wrong
+chip->read_size" case error out cleanly.
 
-For gssd, Bruce recently showed me a series of (as far as I know,
-undocumented) systemctl commands that are needed to pick up changes
-to gssd command line options on RHEL 7.
-
-If I had a lot of time to explore this, my strategy would be:
-
-a) Provide one or a few well-known tools to edit NFS config files
-
-b) Mechanize the acts of putting said edits into effect, and integrate
-those mechanisms into the tools
-
-c) Tie the tools directly to documentation (--help or a man page)
-
-Among other benefits, this makes it so much easier for QA folks to
-automate tests of configuration adjustments. Also it hides the grimy
-details about how the NFS community or the Linux distributor has
-implemented these settings, making it easier to modify these
-mechanisms without unnecessarily exposing users to change.
-
-I've been encouraging this kind of direction with the nfsidmap
-command, for example.
-
-
-> I would lean towards a flat config file myself, but nfs-utils already
-> has code for structured config files, and that code ignores settings
-> before the first section.
-
-If there was a library that managed this for us, open-coded config
-file parsing for nfsmount.conf and for idmapd.conf in nfs-utils
-could be replaced.
-
-
---
-Chuck Lever
-
-
-
+                Linus
