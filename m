@@ -1,109 +1,107 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:37427 "EHLO mx2.suse.de"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S965233AbcKKDgJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 10 Nov 2016 22:36:09 -0500
-From: NeilBrown <neilb@suse.com>
-To: Steve Dickson <SteveD@redhat.com>
-Date: Fri, 11 Nov 2016 14:36:00 +1100
-Cc: libtirpc-devel@lists.sourceforge.net,
+Received: from aserp1040.oracle.com ([141.146.126.69]:16582 "EHLO
+        aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1756816AbcKKQUh (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 11 Nov 2016 11:20:37 -0500
+Content-Type: text/plain; charset=us-ascii
+Mime-Version: 1.0 (Mac OS X Mail 9.3 \(3124\))
+Subject: Re: Question about nfsdcltrack --storagedir
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <87oa1nklug.fsf@notabene.neil.brown.name>
+Date: Fri, 11 Nov 2016 11:19:24 -0500
+Cc: Jeff Layton <jlayton@redhat.com>,
         Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: [PATCH rpcbind] Move default state-dir to /run/rpcbind
-Message-ID: <877f8almcf.fsf@notabene.neil.brown.name>
-MIME-Version: 1.0
-Content-Type: multipart/signed; boundary="=-=-=";
-        micalg=pgp-sha256; protocol="application/pgp-signature"
+Message-Id: <B7F56198-AA01-453B-A6ED-407B8D266724@oracle.com>
+References: <87k2cdmi26.fsf@notabene.neil.brown.name> <1478692626.2394.9.camel@redhat.com> <877f8c9pku.fsf@notabene.neil.brown.name> <1478739358.2442.1.camel@redhat.com> <8B417571-FAA9-4793-AE5F-F71BCDF7ADD5@oracle.com> <87oa1nklug.fsf@notabene.neil.brown.name>
+To: NeilBrown <neilb@suse.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---=-=-=
-Content-Type: text/plain
-Content-Transfer-Encoding: quoted-printable
+Hiya Neil-
+
+> On Nov 10, 2016, at 5:32 PM, NeilBrown <neilb@suse.com> wrote:
+> 
+> On Fri, Nov 11 2016, Chuck Lever wrote:
+> 
+>>> 
+>>> No objection here, especially if we make it so that we have existing
+>>> behavior when there is no config file. nfs-utils even has some config
+>>> file parsing routines now in support/nfs that should be sufficient.
+>> 
+>> Just a general thought:
+>> 
+>> It's fine to store the configuration data under /etc, but for new
+>> administrative interfaces, please create a command line UI which
+>> is used to edit said configuration data. This makes it much easier
+>> for users to script administrative changes, to build GUIs around,
+>> and for our Q/A teams to construct automated tests.
+> 
+> If that is an important concern (and I don't disagree) then I would
+> suggest dropping the idea of a config file with sections and just have a
+> file with simple (case sensitive) "name=value" assignments.
+
+I'm not necessarily advocating this, but we already have a single
+central key-value file that stores NFS configuration information
+(at least on RH-based distros), and that's /etc/sysconfig/nfs.
 
 
-rpcbind can save state in a file to allow restart without forgetting
-about running services.
+> Then sed
+> can be used to modify the file.
+> 
+> Or.... just use git to modify the config file.
+> 
+>  sudo git config --file /etc/idmapd.conf mapping.nobody-user neilb
+> 
+> did what I expected it to do :-)
 
-The default location is currently "/tmp" which is an over-used
-directory that isn't really suitable for system files.
-The modern preferences would be a subdirectory of "/run", which can
-be selected with a ./configure option.  That subdirectory would still need
-to be created by something.
+Clever! But to be a little more clear, this is not about the
+technology used to modify a config file.
 
-It is trivial for rpcbind to create the directory itself, and harmless
-to try if it already exists, so:
-=2D add a "mkdir" when saving state data
-=2D change the default to /run/rpcbind (currently used by Debian)
-=2D remove the default settign in the code, just use the one
-  in configure.ac
+After an administrator finds and modifies the correct file, there's
+a set of dodgy distribution-dependent instructions to figure out what
+daemons need to be poked with a sharp stick to pick up the new config.
 
-Signed-off-by: NeilBrown <neilb@suse.com>
-=2D--
- configure.ac    | 4 ++--
- src/warmstart.c | 5 +----
- 2 files changed, 3 insertions(+), 6 deletions(-)
+For idmapd.conf changes, for example, it's going to be a different
+set of pokes depending on whether its server or client.
 
-diff --git a/configure.ac b/configure.ac
-index f84921eb27fb..fe7d0b068439 100644
-=2D-- a/configure.ac
-+++ b/configure.ac
-@@ -22,8 +22,8 @@ AC_ARG_ENABLE([warmstarts],
- AM_CONDITIONAL(WARMSTART, test x$enable_warmstarts =3D xyes)
-=20
- AC_ARG_WITH([statedir],
-=2D  AS_HELP_STRING([--with-statedir=3DARG], [use ARG as state dir @<:@defa=
-ult=3D/tmp@:>@])
-=2D  ,, [with_statedir=3D/tmp])
-+  AS_HELP_STRING([--with-statedir=3DARG], [use ARG as state dir @<:@defaul=
-t=3D/run/rpcbind@:>@])
-+  ,, [with_statedir=3D/run/rpcbind])
- AC_SUBST([statedir], [$with_statedir])
-=20
- AC_ARG_WITH([rpcuser],
-diff --git a/src/warmstart.c b/src/warmstart.c
-index 122a058b7954..3896027e62ba 100644
-=2D-- a/src/warmstart.c
-+++ b/src/warmstart.c
-@@ -48,10 +48,6 @@
-=20
- #include "rpcbind.h"
-=20
-=2D#ifndef RPCBIND_STATEDIR
-=2D#define RPCBIND_STATEDIR "/tmp"
-=2D#endif
-=2D
- /* These files keep the pmap_list and rpcb_list in XDR format */
- #define	RPCBFILE	RPCBIND_STATEDIR "/rpcbind.xdr"
- #ifdef PORTMAP
-@@ -141,6 +137,7 @@ error:
- void
- write_warmstart()
- {
-+	(void) mkdir(RPCBIND_STATEDIR, 0770);
- 	(void) write_struct(RPCBFILE, (xdrproc_t)xdr_rpcblist_ptr, &list_rbl);
- #ifdef PORTMAP
- 	(void) write_struct(PMAPFILE, (xdrproc_t)xdr_pmaplist_ptr, &list_pml);
-=2D-=20
-2.10.2
+A kernel cache has to be invalidated in some important cases. This
+is true for modifying things related to the FH or export cache, and
+that is already wrapped in an administrative CLI: exportfs.
+
+For gssd, Bruce recently showed me a series of (as far as I know,
+undocumented) systemctl commands that are needed to pick up changes
+to gssd command line options on RHEL 7.
+
+If I had a lot of time to explore this, my strategy would be:
+
+a) Provide one or a few well-known tools to edit NFS config files
+
+b) Mechanize the acts of putting said edits into effect, and integrate
+those mechanisms into the tools
+
+c) Tie the tools directly to documentation (--help or a man page)
+
+Among other benefits, this makes it so much easier for QA folks to
+automate tests of configuration adjustments. Also it hides the grimy
+details about how the NFS community or the Linux distributor has
+implemented these settings, making it easier to modify these
+mechanisms without unnecessarily exposing users to change.
+
+I've been encouraging this kind of direction with the nfsidmap
+command, for example.
 
 
---=-=-=
-Content-Type: application/pgp-signature; name="signature.asc"
+> I would lean towards a flat config file myself, but nfs-utils already
+> has code for structured config files, and that code ignores settings
+> before the first section.
 
------BEGIN PGP SIGNATURE-----
+If there was a library that managed this for us, open-coded config
+file parsing for nfsmount.conf and for idmapd.conf in nfs-utils
+could be replaced.
 
-iQIcBAEBCAAGBQJYJTygAAoJEDnsnt1WYoG5jfwP+wfrkAloWwetmx4RwIsrmipd
-XiToap/8hUf6qNZ89iFqrX5JquEFvgsgSOXddWj2IMFyMxGXF3M16D465uxCQoPH
-dHadGOHRsPmOIKcKwNVtkYXAPpRI8H+Qofd4nh9meiwxGKGG5LNRsl3HFLYNk6Ex
-hGxjCqDt/xvJIlOvLHUemRcSh/wjzPe43UwVdefqW/eYhMqlxjajc690eVNQXq1V
-vGFsHTCzUrj/7Qxytr/kfsB09i8M9HjWgBd6pIhl6qTZXmEKI+rCvHPnZTqFOsZf
-2aC5mBfA+0SSUbaHizP876be9NJLceti5QWbarYPmNzYkboab/uoBVMZj1sria41
-qwm4rlQdSxdanVuKiqdad1ZBh5sS7Y4UbmyCg+tfd8jl7mve7HZQCLwLU3A2fu7W
-Ome2VIMa2g4vukAcCLwN5m4So0xJSdxU67WEZWaduumRrh4yrcsOMGWs854qAY4O
-qyAhFpuudPyM9mFDfZUs3ZGHL0B/hFu4hXkPfmWiz2dPb05aehFftjR2NnfVXUdb
-nw34QfIZxAdiqwcNnWG0v3mXdDTqaeL9xH/aMZptTVJDtzr+nJv3JRz3Tj3A72PJ
-2UzwexIMvxwXyIQ7/yGla+tzj02mS++sTAmGwhcYNE4d9pQb9S27DdEYsnPob8qc
-WY7RL8ZEEpm5+4AslG5s
-=J5Xt
------END PGP SIGNATURE-----
---=-=-=--
+
+--
+Chuck Lever
+
+
+
