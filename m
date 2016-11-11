@@ -1,217 +1,648 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:53018 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([173.255.197.46]:42392 "EHLO fieldses.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S932697AbcKKSZD (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 11 Nov 2016 13:25:03 -0500
-From: Scott Mayhew <smayhew@redhat.com>
-To: bfields@fieldses.org, jlayton@poochiereds.net
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v2] sunrpc: svc_age_temp_xprts_now should not call setsockopt non-tcp transports
-Date: Fri, 11 Nov 2016 13:16:22 -0500
-Message-Id: <1478888182-12313-1-git-send-email-smayhew@redhat.com>
+        id S935005AbcKKTDf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 11 Nov 2016 14:03:35 -0500
+Date: Fri, 11 Nov 2016 14:03:32 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Omar Walid Llorente <omar@dit.upm.es>
+Cc: Soumya Koduri <skoduri@redhat.com>,
+        Jeff Layton <jlayton@poochiereds.net>, linux-nfs@vger.kernel.org,
+        =?utf-8?Q?administraci=C3=B3n_del_centro_de_c=C3=A1lculo?= del
+         dit <cdc@dit.upm.es>,
+        Miklos Szeredi <mszeredi@suse.cz>
+Subject: Re: possible bug in nfs-kernel-server
+Message-ID: <20161111190332.GA28132@fieldses.org>
+References: <20151218152039.GC25074@fieldses.org>
+ <56743FB6.80903@redhat.com>
+ <20151218200840.GA28692@fieldses.org>
+ <5677BCD4.4060009@redhat.com>
+ <20151221164752.GA7869@fieldses.org>
+ <56783DCC.1060201@redhat.com>
+ <20151221201403.GB7869@fieldses.org>
+ <2443f0d3-6937-ae92-d4d5-6e1f00a19e81@dit.upm.es>
+ <20161108201611.GB26589@fieldses.org>
+ <37f8eaf5-128c-ecd5-ae65-3b340c990171@dit.upm.es>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=utf-8
+In-Reply-To: <37f8eaf5-128c-ecd5-ae65-3b340c990171@dit.upm.es>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This fixes the following panic that can occur with NFSoRDMA.
+On Fri, Nov 11, 2016 at 06:57:45PM +0100, Omar Walid Llorente wrote:
+> Hi Bruce, thanks for your answer, that is greatly appreciated.
+> 
+> This side of the problem feels a little bit lonely and maybe we can
+> manage to get to know what is happening if you have some time.
+>
+> We have been doing tests and we have found a way to replicate the
+> problem in a virtual environment without ZFS, only with glusterfs
+> and nfs-kernel-server, where we can give you root password or you
+> can replicate it at home.
+> 
+> It is closely related to non-root users (with root credentials the
+> problem does not happen).
+> 
+> If you think this is good news and feel like checking, tell me and
+> next week we will prepare it and I'll forward you the data for both
+> kind of tests.
 
-general protection fault: 0000 [#1] SMP
-Modules linked in: rpcrdma ib_isert iscsi_target_mod ib_iser libiscsi
-scsi_transport_iscsi ib_srpt target_core_mod ib_srp scsi_transport_srp
-scsi_tgt ib_ipoib rdma_ucm ib_ucm ib_uverbs ib_umad rdma_cm ib_cm iw_cm
-mlx5_ib ib_core intel_powerclamp coretemp kvm_intel kvm sg ioatdma
-ipmi_devintf ipmi_ssif dcdbas iTCO_wdt iTCO_vendor_support pcspkr
-irqbypass sb_edac shpchp dca crc32_pclmul ghash_clmulni_intel edac_core
-lpc_ich aesni_intel lrw gf128mul glue_helper ablk_helper mei_me mei
-ipmi_si cryptd wmi ipmi_msghandler acpi_pad acpi_power_meter nfsd
-auth_rpcgss nfs_acl lockd grace sunrpc ip_tables xfs libcrc32c sd_mod
-crc_t10dif crct10dif_generic mgag200 i2c_algo_bit drm_kms_helper
-syscopyarea sysfillrect sysimgblt ahci fb_sys_fops ttm libahci mlx5_core
-tg3 crct10dif_pclmul drm crct10dif_common
-ptp i2c_core libata crc32c_intel pps_core fjes dm_mirror dm_region_hash
-dm_log dm_mod
-CPU: 1 PID: 120 Comm: kworker/1:1 Not tainted 3.10.0-514.el7.x86_64 #1
-Hardware name: Dell Inc. PowerEdge R320/0KM5PX, BIOS 2.4.2 01/29/2015
-Workqueue: events check_lifetime
-task: ffff88031f506dd0 ti: ffff88031f584000 task.ti: ffff88031f584000
-RIP: 0010:[<ffffffff8168d847>]  [<ffffffff8168d847>]
-_raw_spin_lock_bh+0x17/0x50
-RSP: 0018:ffff88031f587ba8  EFLAGS: 00010206
-RAX: 0000000000020000 RBX: 20041fac02080072 RCX: ffff88031f587fd8
-RDX: 0000000000000000 RSI: 0000000000000000 RDI: 20041fac02080072
-RBP: ffff88031f587bb0 R08: 0000000000000008 R09: ffffffff8155be77
-R10: ffff880322a59b00 R11: ffffea000bf39f00 R12: 20041fac02080072
-R13: 000000000000000d R14: ffff8800c4fbd800 R15: 0000000000000001
-FS:  0000000000000000(0000) GS:ffff880322a40000(0000)
-knlGS:0000000000000000
-CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
-CR2: 00007f3c52d4547e CR3: 00000000019ba000 CR4: 00000000001407e0
-DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
-DR3: 0000000000000000 DR6: 00000000ffff0ff0 DR7: 0000000000000400
-Stack:
-20041fac02080002 ffff88031f587bd0 ffffffff81557830 20041fac02080002
-ffff88031f587c78 ffff88031f587c40 ffffffff8155ae08 000000010157df32
-0000000800000001 ffff88031f587c20 ffffffff81096acb ffffffff81aa37d0
-Call Trace:
-[<ffffffff81557830>] lock_sock_nested+0x20/0x50
-[<ffffffff8155ae08>] sock_setsockopt+0x78/0x940
-[<ffffffff81096acb>] ? lock_timer_base.isra.33+0x2b/0x50
-[<ffffffff8155397d>] kernel_setsockopt+0x4d/0x50
-[<ffffffffa0386284>] svc_age_temp_xprts_now+0x174/0x1e0 [sunrpc]
-[<ffffffffa03b681d>] nfsd_inetaddr_event+0x9d/0xd0 [nfsd]
-[<ffffffff81691ebc>] notifier_call_chain+0x4c/0x70
-[<ffffffff810b687d>] __blocking_notifier_call_chain+0x4d/0x70
-[<ffffffff810b68b6>] blocking_notifier_call_chain+0x16/0x20
-[<ffffffff815e8538>] __inet_del_ifa+0x168/0x2d0
-[<ffffffff815e8cef>] check_lifetime+0x25f/0x270
-[<ffffffff810a7f3b>] process_one_work+0x17b/0x470
-[<ffffffff810a8d76>] worker_thread+0x126/0x410
-[<ffffffff810a8c50>] ? rescuer_thread+0x460/0x460
-[<ffffffff810b052f>] kthread+0xcf/0xe0
-[<ffffffff810b0460>] ? kthread_create_on_node+0x140/0x140
-[<ffffffff81696418>] ret_from_fork+0x58/0x90
-[<ffffffff810b0460>] ? kthread_create_on_node+0x140/0x140
-Code: ca 75 f1 5d c3 0f 1f 80 00 00 00 00 eb d9 66 0f 1f 44 00 00 0f 1f
-44 00 00 55 48 89 e5 53 48 89 fb e8 7e 04 a0 ff b8 00 00 02 00 <f0> 0f
-c1 03 89 c2 c1 ea 10 66 39 c2 75 03 5b 5d c3 83 e2 fe 0f
-RIP  [<ffffffff8168d847>] _raw_spin_lock_bh+0x17/0x50
-RSP <ffff88031f587ba8>
+So if I'm reading right, the setup is
 
-Signed-off-by: Scott Mayhew <smayhew@redhat.com>
-Fixes: c3d4879e ("sunrpc: Add a function to close temporary transports immediately")
----
- include/linux/sunrpc/svc_xprt.h          |  1 +
- net/sunrpc/svc_xprt.c                    | 11 +----------
- net/sunrpc/svcsock.c                     | 21 +++++++++++++++++++++
- net/sunrpc/xprtrdma/svc_rdma_transport.c |  6 ++++++
- 4 files changed, 29 insertions(+), 10 deletions(-)
+	nfs client---NFSv3--->knfsd---FUSE-->gluster
 
-diff --git a/include/linux/sunrpc/svc_xprt.h b/include/linux/sunrpc/svc_xprt.h
-index ab02a45..e5d1934 100644
---- a/include/linux/sunrpc/svc_xprt.h
-+++ b/include/linux/sunrpc/svc_xprt.h
-@@ -25,6 +25,7 @@ struct svc_xprt_ops {
- 	void		(*xpo_detach)(struct svc_xprt *);
- 	void		(*xpo_free)(struct svc_xprt *);
- 	int		(*xpo_secure_port)(struct svc_rqst *);
-+	void		(*xpo_kill_temp_xprt)(struct svc_xprt *);
- };
- 
- struct svc_xprt_class {
-diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
-index c3f6523..3bc1d61 100644
---- a/net/sunrpc/svc_xprt.c
-+++ b/net/sunrpc/svc_xprt.c
-@@ -1002,14 +1002,8 @@ static void svc_age_temp_xprts(unsigned long closure)
- void svc_age_temp_xprts_now(struct svc_serv *serv, struct sockaddr *server_addr)
- {
- 	struct svc_xprt *xprt;
--	struct svc_sock *svsk;
--	struct socket *sock;
- 	struct list_head *le, *next;
- 	LIST_HEAD(to_be_closed);
--	struct linger no_linger = {
--		.l_onoff = 1,
--		.l_linger = 0,
--	};
- 
- 	spin_lock_bh(&serv->sv_lock);
- 	list_for_each_safe(le, next, &serv->sv_tempsocks) {
-@@ -1027,10 +1021,7 @@ void svc_age_temp_xprts_now(struct svc_serv *serv, struct sockaddr *server_addr)
- 		list_del_init(le);
- 		xprt = list_entry(le, struct svc_xprt, xpt_list);
- 		dprintk("svc_age_temp_xprts_now: closing %p\n", xprt);
--		svsk = container_of(xprt, struct svc_sock, sk_xprt);
--		sock = svsk->sk_sock;
--		kernel_setsockopt(sock, SOL_SOCKET, SO_LINGER,
--				  (char *)&no_linger, sizeof(no_linger));
-+		xprt->xpt_ops->xpo_kill_temp_xprt(xprt);
- 		svc_close_xprt(xprt);
- 	}
- }
-diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
-index 57625f6..a4bc982 100644
---- a/net/sunrpc/svcsock.c
-+++ b/net/sunrpc/svcsock.c
-@@ -438,6 +438,21 @@ static int svc_tcp_has_wspace(struct svc_xprt *xprt)
- 	return !test_bit(SOCK_NOSPACE, &svsk->sk_sock->flags);
- }
- 
-+static void svc_tcp_kill_temp_xprt(struct svc_xprt *xprt)
-+{
-+	struct svc_sock *svsk;
-+	struct socket *sock;
-+	struct linger no_linger = {
-+		.l_onoff = 1,
-+		.l_linger = 0,
-+	};
-+
-+	svsk = container_of(xprt, struct svc_sock, sk_xprt);
-+	sock = svsk->sk_sock;
-+	kernel_setsockopt(sock, SOL_SOCKET, SO_LINGER,
-+			  (char *)&no_linger, sizeof(no_linger));
-+}
-+
- /*
-  * See net/ipv6/ip_sockglue.c : ip_cmsg_recv_pktinfo
-  */
-@@ -648,6 +663,10 @@ static struct svc_xprt *svc_udp_accept(struct svc_xprt *xprt)
- 	return NULL;
- }
- 
-+static void svc_udp_kill_temp_xprt(struct svc_xprt *xprt)
-+{
-+}
-+
- static struct svc_xprt *svc_udp_create(struct svc_serv *serv,
- 				       struct net *net,
- 				       struct sockaddr *sa, int salen,
-@@ -667,6 +686,7 @@ static struct svc_xprt_ops svc_udp_ops = {
- 	.xpo_has_wspace = svc_udp_has_wspace,
- 	.xpo_accept = svc_udp_accept,
- 	.xpo_secure_port = svc_sock_secure_port,
-+	.xpo_kill_temp_xprt = svc_udp_kill_temp_xprt,
- };
- 
- static struct svc_xprt_class svc_udp_class = {
-@@ -1242,6 +1262,7 @@ static struct svc_xprt_ops svc_tcp_ops = {
- 	.xpo_has_wspace = svc_tcp_has_wspace,
- 	.xpo_accept = svc_tcp_accept,
- 	.xpo_secure_port = svc_sock_secure_port,
-+	.xpo_kill_temp_xprt = svc_tcp_kill_temp_xprt,
- };
- 
- static struct svc_xprt_class svc_tcp_class = {
-diff --git a/net/sunrpc/xprtrdma/svc_rdma_transport.c b/net/sunrpc/xprtrdma/svc_rdma_transport.c
-index 6864fb9..1334de2 100644
---- a/net/sunrpc/xprtrdma/svc_rdma_transport.c
-+++ b/net/sunrpc/xprtrdma/svc_rdma_transport.c
-@@ -67,6 +67,7 @@ static void svc_rdma_detach(struct svc_xprt *xprt);
- static void svc_rdma_free(struct svc_xprt *xprt);
- static int svc_rdma_has_wspace(struct svc_xprt *xprt);
- static int svc_rdma_secure_port(struct svc_rqst *);
-+static void svc_rdma_kill_temp_xprt(struct svc_xprt *);
- 
- static struct svc_xprt_ops svc_rdma_ops = {
- 	.xpo_create = svc_rdma_create,
-@@ -79,6 +80,7 @@ static struct svc_xprt_ops svc_rdma_ops = {
- 	.xpo_has_wspace = svc_rdma_has_wspace,
- 	.xpo_accept = svc_rdma_accept,
- 	.xpo_secure_port = svc_rdma_secure_port,
-+	.xpo_kill_temp_xprt = svc_rdma_kill_temp_xprt,
- };
- 
- struct svc_xprt_class svc_rdma_class = {
-@@ -1317,6 +1319,10 @@ static int svc_rdma_secure_port(struct svc_rqst *rqstp)
- 	return 1;
- }
- 
-+static void svc_rdma_kill_temp_xprt(struct svc_xprt *xprt)
-+{
-+}
-+
- int svc_rdma_send(struct svcxprt_rdma *xprt, struct ib_send_wr *wr)
- {
- 	struct ib_send_wr *bad_wr, *n_wr;
--- 
-2.4.11
+I hate to just pass the buck, but my bet is on the issue being either on
+the gluster side, or on limitations of the fuse protocol itself.
 
+Cc'ing Miklos as I believe he did the original fuse nfsd export
+implementation.  Miklos, does fuse has a way for file owners to override
+permissions?  We need this sometimes because for example, an application
+may hold a write open on a read-only file, but the server doesn't itself
+already have an open (which can happen for lots of reasons).
+
+--b.
+
+> 
+> Thank you very much for your time.
+> 
+> Omar
+> 
+> 
+> El 08/11/16 a las 21:16, J. Bruce Fields escribió:
+> >On Wed, Oct 19, 2016 at 07:53:37PM +0200, Omar Walid Llorente wrote:
+> >>Resending because it has not been accepted by
+> >>linux-nfs@vger.kernel.org because of the HTML... Sorry if you get it
+> >>twice.
+> >>
+> >>Thanks again.
+> >>
+> >>Omar
+> >>
+> >>--- Forwarded message ---
+> >>
+> >>Hi Bruce, others.
+> >Sory for the delayed response.  This is a fairly complicated setup that
+> >may require people with nfs, gluster, and zfs experience to debug.
+> >
+> >The server does need to be able to bypass certain permission checks on
+> >open so that it can open a newly created read-only file for write.
+> >Probably one of those lower layers is insisting on permission checks
+> >where it shouldn't.  That's all I can say from a quick look.
+> >
+> >--b.
+> >
+> >>I come back to this issue again in the hope that these evidences I
+> >>bring can help to give some light to the problem.
+> >>
+> >>We have exactly the same environment that last year when I came to
+> >>you, but with upgraded versions of gluster (3.8) and
+> >>nfs-kernel-server (1.2.8) this time over an updated Ubuntu 16.04.
+> >>
+> >>(NOTE: Environment: glusterfs-cluster made of ZFS datasets exports
+> >>via glusterfs a distributed volume + nfs-kernel server mounts via
+> >>fuse that glusterfs volume and reexports it via nfs-v3 + nfs-common
+> >>client mounts via nfs that nfs exported volume)
+> >>
+> >>The errors I get by the user side are exactly the same, but in the
+> >>server side, I have different messages, which I forward to you.
+> >>
+> >>* /TESTS/ and errors by the user side:
+> >>
+> >>u056@l056:~$ rm -f kk.txt 444.txt; echo "prueba" > 444.txt; chmod
+> >>444 444.txt; cp -p 444.txt kk.txt; ls -ld 444.txt kk.txt
+> >>cp: cannot create regular file ‘kk.txt’: Permission denied
+> >>ls: cannot access kk.txt: No such file or directory
+> >>-r--r--r-- 1 u056 admincdc 7 oct 19  2016 444.txt
+> >>u056@l056:~$ ls -lrt
+> >>total 33
+> >>---------- 1 u056 admincdc    0 ene  4  1970 kk.txt
+> >>drwx------ 2 u056 alumno   4096 oct  3  2014 Desktop
+> >>drwxr-xr-x 2 u056 alumno   4096 sep 23 12:20 Público
+> >>drwxr-xr-x 2 u056 alumno   4096 sep 23 12:20 Descargas
+> >>drwxr-xr-x 2 u056 alumno   4096 sep 23 12:20 Documentos
+> >>drwxr-xr-x 2 u056 alumno   4096 sep 23 12:20 Vídeos
+> >>drwxr-xr-x 2 u056 alumno   4096 sep 23 12:20 Música
+> >>drwxr-xr-x 2 u056 alumno   4096 sep 23 12:20 Plantillas
+> >>drwxr-xr-x 2 u056 alumno   4096 sep 23 12:22 Imágenes
+> >>-r--r--r-- 1 u056 admincdc    7 oct 19 17:34 444.txt
+> >>
+> >>u056@l056:~$ mount | grep cuentas09
+> >>cuentas09:/home-3/u056 on /home/u056 type nfs (rw,noatime,intr,fsc,nolock,rsize=262140,wsize=262140,vers=4,addr=138.4.30.80,clientaddr=138.4.31.56)
+> >>u056@l056:~$ df -h | grep cuentas09
+> >>cuentas09:/home-3/u056              40T   55G   40T   1% /home/u056
+> >>u056@l056:~$
+> >>
+> >>* /LOGS/ by the glusterfs client side (server side), versions of the
+> >>software, info of the kernel and related kernel modules:
+> >>
+> >>root@cuentas09-lab:/var/log/glusterfs# tail home-3.log
+> >>[2016-10-19 15:33:38.091300] I [io-stats.c:1574:io_stats_dump_fd]
+> >>0-home-lab-3: --- fd stats ---
+> >>[2016-10-19 15:33:38.091331] I [io-stats.c:1579:io_stats_dump_fd]
+> >>0-home-lab-3:       Filename : /u056/444.txt
+> >>[2016-10-19 15:33:38.091344] I [io-stats.c:1594:io_stats_dump_fd]
+> >>0-home-lab-3:   BytesWritten : 7 bytes
+> >>[2016-10-19 15:33:38.091355] I [io-stats.c:1606:io_stats_dump_fd]
+> >>0-home-lab-3: Write 000004b+ : 1
+> >>[2016-10-19 15:34:13.199285] I [io-stats.c:1574:io_stats_dump_fd]
+> >>0-home-lab-3: --- fd stats ---
+> >>[2016-10-19 15:34:13.200291] I [io-stats.c:1579:io_stats_dump_fd]
+> >>0-home-lab-3:       Filename : /u056/444.txt
+> >>[2016-10-19 15:34:13.200313] I [io-stats.c:1594:io_stats_dump_fd]
+> >>0-home-lab-3:   BytesWritten : 7 bytes
+> >>[2016-10-19 15:34:13.200325] I [io-stats.c:1606:io_stats_dump_fd]
+> >>0-home-lab-3: Write 000004b+ : 1
+> >>[2016-10-19 15:34:13.211696] E [MSGID: 114031]
+> >>[client-rpc-fops.c:444:client3_3_open_cbk] 0-home-lab-3-client-0:
+> >>remote operation failed. Path: /u056/kk.txt
+> >>(d8fc54a3-f2eb-4538-889a-17afdcfbb255) [Permission denied]
+> >>[2016-10-19 15:34:13.211758] W [fuse-bridge.c:989:fuse_fd_cbk]
+> >>0-glusterfs-fuse: 630: OPEN() /u056/kk.txt => -1 (Permission denied)
+> >>
+> >>root@cuentas09-lab:/var/log/glusterfs# dpkg -l | grep -e gluster -e nfs
+> >>ii  glusterfs-client 3.8.5-ubuntu1~xenial1             amd64
+> >>clustered file-system (client package)
+> >>ii  glusterfs-common 3.8.5-ubuntu1~xenial1             amd64
+> >>GlusterFS common libraries and translator modules
+> >>ii  libnfsidmap2:amd64 0.25-5                            amd64
+> >>NFS idmapping library
+> >>ii  nfs-common 1:1.2.8-9ubuntu12                 amd64        NFS
+> >>support files common to client and server
+> >>ii  nfs-kernel-server 1:1.2.8-9ubuntu12                 amd64
+> >>support for NFS kernel server
+> >>
+> >>root@cuentas09-lab:/var/log/glusterfs# uname -a
+> >>Linux cuentas09-lab.lab.dit.upm.es 4.4.0-43-generic #63-Ubuntu SMP
+> >>Wed Oct 12 13:48:03 UTC 2016 x86_64 x86_64 x86_64 GNU/Linux
+> >>
+> >>root@cuentas09-lab:/var/log/glusterfs# lsmod | grep nfs
+> >>nfsd                  319488  13
+> >>auth_rpcgss            61440  1 nfsd
+> >>nfs_acl                16384  1 nfsd
+> >>lockd                  94208  1 nfsd
+> >>grace                  16384  2 nfsd,lockd
+> >>sunrpc                335872  21 nfsd,auth_rpcgss,lockd,nfs_acl
+> >>root@cuentas09-lab:/var/log/glusterfs#
+> >>
+> >>* /LOGS/ by the nfs-kernel server side and basic configuration of
+> >>the nfs-kernel-server:
+> >>
+> >>root@cuentas09-lab:~# less /var/log/kern.log
+> >>root@cuentas09-lab:~# tail -30 !$
+> >>tail -30 /var/log/kern.log
+> >>Oct 19 17:30:24 cuentas09-lab kernel: [ 1573.631498]
+> >>[<ffffffff810a0850>] ? kthread_create_on_node+0x1e0/0x1e0
+> >>Oct 19 17:30:24 cuentas09-lab kernel: [ 1573.631504]
+> >>[<ffffffff81831c4f>] ret_from_fork+0x3f/0x70
+> >>Oct 19 17:30:24 cuentas09-lab kernel: [ 1573.631507]
+> >>[<ffffffff810a0850>] ? kthread_create_on_node+0x1e0/0x1e0
+> >>Oct 19 17:30:24 cuentas09-lab kernel: [ 1573.631510] ---[ end trace
+> >>34db7650fa22d1d0 ]---
+> >>Oct 19 17:34:13 cuentas09-lab kernel: [ 1802.814898] ------------[
+> >>cut here ]------------
+> >>Oct 19 17:34:13 cuentas09-lab kernel: [ 1802.814948] WARNING: CPU: 0
+> >>PID: 1373 at /build/linux-BwgxJb/linux-4.4.0/fs/nfsd/nfs4proc.c:464
+> >>nfsd4_open+0x515/0x780 [nfsd]()
+> >>Oct 19 17:34:13 cuentas09-lab kernel: [ 1802.814951]
+> >>nfsd4_process_open2 failed to open newly-created file! status=13
+> >>Oct 19 17:34:13 cuentas09-lab kernel: [ 1802.814954] Modules linked
+> >>in: vmw_vsock_vmci_transport vsock ppdev vmw_balloon coretemp joydev
+> >>input_leds serio_raw irda 8250_fintek parport_pc shpchp parport
+> >>i2c_piix4 crc_ccitt vmw_vmci mac_hid ib_iser nfsd rdma_cm iw_cm
+> >>ib_cm auth_rpcgss nfs_acl lockd grace ib_sa sunrpc ib_mad ib_core
+> >>ib_addr iscsi_tcp libiscsi_tcp libiscsi scsi_transport_iscsi autofs4
+> >>btrfs raid10 raid456 async_raid6_recov async_memcpy async_pq
+> >>async_xor async_tx xor raid6_pq libcrc32c raid1 raid0 multipath
+> >>linear vmwgfx ttm psmouse drm_kms_helper syscopyarea sysfillrect
+> >>sysimgblt fb_sys_fops mptspi mptscsih mptbase drm e1000
+> >>scsi_transport_spi pata_acpi floppy fjes
+> >>Oct 19 17:34:13 cuentas09-lab kernel: [ 1802.815018] CPU: 0 PID:
+> >>1373 Comm: nfsd Tainted: G        W       4.4.0-43-generic
+> >>#63-Ubuntu
+> >>Oct 19 17:34:13 cuentas09-lab kernel: [ 1802.815021] Hardware name:
+> >>VMware, Inc. VMware Virtual Platform/440BX Desktop Reference
+> >>Platform, BIOS 6.00 09/22/2009
+> >>Oct 19 17:34:13 cuentas09-lab kernel: [ 1802.815024]
+> >>0000000000000286 00000000c0e912c3 ffff8800b93c7c80 ffffffff813f1f93
+> >>Oct 19 17:34:13 cuentas09-lab kernel: [ 1802.815028]
+> >>ffff8800b93c7cc8 ffffffffc047b668 ffff8800b93c7cb8 ffffffff81081212
+> >>Oct 19 17:34:13 cuentas09-lab kernel: [ 1802.815031]
+> >>ffff8800b9e43240 ffff8800b9e44068 000000000d000000 ffff8800b85e6000
+> >>Oct 19 17:34:13 cuentas09-lab kernel: [ 1802.815035] Call Trace:
+> >>Oct 19 17:34:13 cuentas09-lab kernel: [ 1802.815047]
+> >>[<ffffffff813f1f93>] dump_stack+0x63/0x90
+> >>Oct 19 17:34:13 cuentas09-lab kernel: [ 1802.815055]
+> >>[<ffffffff81081212>] warn_slowpath_common+0x82/0xc0
+> >>Oct 19 17:34:13 cuentas09-lab kernel: [ 1802.815058]
+> >>[<ffffffff810812ac>] warn_slowpath_fmt+0x5c/0x80
+> >>Oct 19 17:34:13 cuentas09-lab kernel: [ 1802.815073]
+> >>[<ffffffffc04665db>] ? nfs4_free_ol_stateid+0x3b/0x40 [nfsd]
+> >>Oct 19 17:34:13 cuentas09-lab kernel: [ 1802.815085]
+> >>[<ffffffffc0459d05>] nfsd4_open+0x515/0x780 [nfsd]
+> >>Oct 19 17:34:13 cuentas09-lab kernel: [ 1802.815098]
+> >>[<ffffffffc045a2fa>] nfsd4_proc_compound+0x38a/0x660 [nfsd]
+> >>Oct 19 17:34:13 cuentas09-lab kernel: [ 1802.815108]
+> >>[<ffffffffc0446e78>] nfsd_dispatch+0xb8/0x200 [nfsd]
+> >>Oct 19 17:34:13 cuentas09-lab kernel: [ 1802.815132]
+> >>[<ffffffffc039eeac>] svc_process_common+0x40c/0x650 [sunrpc]
+> >>Oct 19 17:34:13 cuentas09-lab kernel: [ 1802.815151]
+> >>[<ffffffffc03a0273>] svc_process+0x103/0x1c0 [sunrpc]
+> >>Oct 19 17:34:13 cuentas09-lab kernel: [ 1802.815160]
+> >>[<ffffffffc04468cf>] nfsd+0xef/0x160 [nfsd]
+> >>Oct 19 17:34:13 cuentas09-lab kernel: [ 1802.815170]
+> >>[<ffffffffc04467e0>] ? nfsd_destroy+0x60/0x60 [nfsd]
+> >>Oct 19 17:34:13 cuentas09-lab kernel: [ 1802.815174]
+> >>[<ffffffff810a0928>] kthread+0xd8/0xf0
+> >>Oct 19 17:34:13 cuentas09-lab kernel: [ 1802.815178]
+> >>[<ffffffff810a0850>] ? kthread_create_on_node+0x1e0/0x1e0
+> >>Oct 19 17:34:13 cuentas09-lab kernel: [ 1802.815184]
+> >>[<ffffffff81831c4f>] ret_from_fork+0x3f/0x70
+> >>Oct 19 17:34:13 cuentas09-lab kernel: [ 1802.815187]
+> >>[<ffffffff810a0850>] ? kthread_create_on_node+0x1e0/0x1e0
+> >>Oct 19 17:34:13 cuentas09-lab kernel: [ 1802.815190] ---[ end trace
+> >>34db7650fa22d1d1 ]---
+> >>root@cuentas09-lab:~#
+> >>
+> >>root@cuentas09-lab:~# showmount -e
+> >>Export list for cuentas09-lab.lab.dit.upm.es:
+> >>/home-4 138.4.30.0/23
+> >>/home-3 138.4.30.0/23
+> >>
+> >>root@cuentas09-lab:~# cat /etc/exports | grep -v ^#
+> >>/home-3 138.4.30.0/23(rw,fsid=3,insecure,no_subtree_check,async,no_root_squash)
+> >>/home-4 138.4.30.0/23(rw,fsid=4,insecure,no_subtree_check,async,no_root_squash)
+> >>root@cuentas09-lab:~#
+> >>
+> >>root@cuentas09-lab:~# cat /etc/default/nfs-kernel-server | grep -v ^#
+> >>RPCNFSDCOUNT="8 -V 3"
+> >>RPCNFSDPRIORITY=0
+> >>RPCMOUNTDOPTS="--manage-gids"
+> >>NEED_SVCGSSD=""
+> >>RPCSVCGSSDOPTS=""
+> >>RPCNFSDOPTS="-d -V 3"
+> >>root@cuentas09-lab:~#
+> >>
+> >>* LOGS by the glusterfs server side:
+> >>
+> >># for i in 10 11 12 13; do echo recipiente$i; ssh recipiente$i tail
+> >>/var/log/glusterfs/bricks/data-recipiente$i-gluster-home-lab-3.log;
+> >>done
+> >>recipiente10
+> >>[2016-10-19 15:27:48.172858] I [io-stats.c:1606:io_stats_dump_fd]
+> >>0-/data/recipiente10-gluster-home-lab-3: Write 000008b+ : 1
+> >>[2016-10-19 15:29:32.626450] I [io-stats.c:1574:io_stats_dump_fd]
+> >>0-/data/recipiente10-gluster-home-lab-3: --- fd stats ---
+> >>[2016-10-19 15:29:32.626545] I [io-stats.c:1579:io_stats_dump_fd]
+> >>0-/data/recipiente10-gluster-home-lab-3:       Filename :
+> >>/u056/.local/share/tracker/data/tracker-store.journal
+> >>[2016-10-19 15:29:32.626572] I [io-stats.c:1594:io_stats_dump_fd]
+> >>0-/data/recipiente10-gluster-home-lab-3:   BytesWritten : 8 bytes
+> >>[2016-10-19 15:29:32.626594] I [io-stats.c:1606:io_stats_dump_fd]
+> >>0-/data/recipiente10-gluster-home-lab-3: Write 000008b+ : 1
+> >>[2016-10-19 15:30:23.997592] E [MSGID: 115070]
+> >>[server-rpc-fops.c:1472:server_open_cbk] 0-home-lab-3-server: 372:
+> >>OPEN /u056/kk.txt (cc97d150-c725-42b6-9aa5-50328f281e06) ==>
+> >>(Permission denied) [Permission denied]
+> >>[2016-10-19 15:32:28.423380] I [io-stats.c:1574:io_stats_dump_fd]
+> >>0-/data/recipiente10-gluster-home-lab-3: --- fd stats ---
+> >>[2016-10-19 15:32:28.423478] I [io-stats.c:1579:io_stats_dump_fd]
+> >>0-/data/recipiente10-gluster-home-lab-3:       Filename :
+> >>/u056/.bashrc
+> >>[2016-10-19 15:32:28.423504] I [io-stats.c:1584:io_stats_dump_fd]
+> >>0-/data/recipiente10-gluster-home-lab-3:       Lifetime : 280secs,
+> >>232488usecs
+> >>[2016-10-19 15:34:13.176805] E [MSGID: 115070]
+> >>[server-rpc-fops.c:1472:server_open_cbk] 0-home-lab-3-server: 424:
+> >>OPEN /u056/kk.txt (d8fc54a3-f2eb-4538-889a-17afdcfbb255) ==>
+> >>(Permission denied) [Permission denied]
+> >>recipiente11
+> >>[2016-10-19 15:33:38.057524] I [io-stats.c:1579:io_stats_dump_fd]
+> >>0-/data/recipiente11-gluster-home-lab-3:       Filename :
+> >>/u056/444.txt
+> >>[2016-10-19 15:33:38.057548] I [io-stats.c:1594:io_stats_dump_fd]
+> >>0-/data/recipiente11-gluster-home-lab-3:   BytesWritten : 7 bytes
+> >>[2016-10-19 15:33:38.057570] I [io-stats.c:1606:io_stats_dump_fd]
+> >>0-/data/recipiente11-gluster-home-lab-3: Write 000004b+ : 1
+> >>[2016-10-19 15:34:13.164629] I [io-stats.c:1574:io_stats_dump_fd]
+> >>0-/data/recipiente11-gluster-home-lab-3: --- fd stats ---
+> >>[2016-10-19 15:34:13.164722] I [io-stats.c:1579:io_stats_dump_fd]
+> >>0-/data/recipiente11-gluster-home-lab-3:       Filename :
+> >>/u056/444.txt
+> >>[2016-10-19 15:34:13.164769] I [io-stats.c:1594:io_stats_dump_fd]
+> >>0-/data/recipiente11-gluster-home-lab-3:   BytesWritten : 7 bytes
+> >>[2016-10-19 15:34:13.164791] I [io-stats.c:1606:io_stats_dump_fd]
+> >>0-/data/recipiente11-gluster-home-lab-3: Write 000004b+ : 1
+> >>[2016-10-19 15:36:29.066078] I [io-stats.c:1574:io_stats_dump_fd]
+> >>0-/data/recipiente11-gluster-home-lab-3: --- fd stats ---
+> >>[2016-10-19 15:36:29.066180] I [io-stats.c:1579:io_stats_dump_fd]
+> >>0-/data/recipiente11-gluster-home-lab-3:       Filename :
+> >>/u056/444.txt
+> >>[2016-10-19 15:36:29.066206] I [io-stats.c:1584:io_stats_dump_fd]
+> >>0-/data/recipiente11-gluster-home-lab-3:       Lifetime : 136secs,
+> >>894418usecs
+> >>recipiente12
+> >>[2016-10-19 15:29:06.022950] I [io-stats.c:1594:io_stats_dump_fd]
+> >>0-/data/recipiente12-gluster-home-lab-3:   BytesWritten : 986 bytes
+> >>[2016-10-19 15:29:06.022972] I [io-stats.c:1606:io_stats_dump_fd]
+> >>0-/data/recipiente12-gluster-home-lab-3: Write 000512b+ : 1
+> >>[2016-10-19 15:29:32.646111] I [io-stats.c:1574:io_stats_dump_fd]
+> >>0-/data/recipiente12-gluster-home-lab-3: --- fd stats ---
+> >>[2016-10-19 15:29:32.646214] I [io-stats.c:1579:io_stats_dump_fd]
+> >>0-/data/recipiente12-gluster-home-lab-3:       Filename :
+> >>/u056/.profile
+> >>[2016-10-19 15:32:28.423115] I [io-stats.c:1574:io_stats_dump_fd]
+> >>0-/data/recipiente12-gluster-home-lab-3: --- fd stats ---
+> >>[2016-10-19 15:32:28.423219] I [io-stats.c:1579:io_stats_dump_fd]
+> >>0-/data/recipiente12-gluster-home-lab-3:       Filename :
+> >>/u056/.bash_logout
+> >>[2016-10-19 15:32:28.423247] I [io-stats.c:1584:io_stats_dump_fd]
+> >>0-/data/recipiente12-gluster-home-lab-3:       Lifetime : 202secs,
+> >>412682usecs
+> >>[2016-10-19 15:32:28.423345] I [io-stats.c:1574:io_stats_dump_fd]
+> >>0-/data/recipiente12-gluster-home-lab-3: --- fd stats ---
+> >>[2016-10-19 15:32:28.423378] I [io-stats.c:1579:io_stats_dump_fd]
+> >>0-/data/recipiente12-gluster-home-lab-3:       Filename :
+> >>/u056/.bash_history
+> >>[2016-10-19 15:32:28.423400] I [io-stats.c:1584:io_stats_dump_fd]
+> >>0-/data/recipiente12-gluster-home-lab-3:       Lifetime : 202secs,
+> >>399903usecs
+> >>recipiente13
+> >>[2016-10-19 15:04:26.825754] I [io-stats.c:1574:io_stats_dump_fd]
+> >>0-/data/recipiente13-gluster-home-lab-3: --- fd stats ---
+> >>[2016-10-19 15:04:26.825788] I [io-stats.c:1579:io_stats_dump_fd]
+> >>0-/data/recipiente13-gluster-home-lab-3:       Filename : /u056/pp
+> >>[2016-10-19 15:04:26.825799] I [MSGID: 101055]
+> >>[client_t.c:415:gf_client_unref] 0-home-lab-3-server: Shutting down
+> >>connection cuentas09-lab.lab.dit.upm.es-1578-2016/10/19-05:00:48:464910-home-lab-3-client-3-0-0
+> >>[2016-10-19 15:04:26.825813] I [io-stats.c:1584:io_stats_dump_fd]
+> >>0-/data/recipiente13-gluster-home-lab-3:       Lifetime : 25804secs,
+> >>917102usecs
+> >>[2016-10-19 15:04:26.825991] I [io-stats.c:1574:io_stats_dump_fd]
+> >>0-/data/recipiente13-gluster-home-lab-3: --- fd stats ---
+> >>[2016-10-19 15:04:26.826026] I [io-stats.c:1579:io_stats_dump_fd]
+> >>0-/data/recipiente13-gluster-home-lab-3:       Filename :
+> >>/u056/.local/share/evolution/tasks/system/tasks.ics
+> >>[2016-10-19 15:04:26.826050] I [io-stats.c:1584:io_stats_dump_fd]
+> >>0-/data/recipiente13-gluster-home-lab-3:       Lifetime : 25774secs,
+> >>172800usecs
+> >>[2016-10-19 15:04:48.333183] I [MSGID: 115029]
+> >>[server-handshake.c:692:server_setvolume] 0-home-lab-3-server:
+> >>accepted client from cuentas09-lab.lab.dit.upm.es-1610-2016/10/19-15:04:46:807972-home-lab-3-client-3-0-0
+> >>(version: 3.8.5)
+> >>[2016-10-19 15:27:27.763705] E [MSGID: 115070]
+> >>[server-rpc-fops.c:1472:server_open_cbk] 0-home-lab-3-server: 149:
+> >>OPEN /u056/.Xauthority-c (a4fa9bc4-a09e-4eb8-968b-b77cb6d49fd3) ==>
+> >>(Permission denied) [Permission denied]
+> >>[2016-10-19 15:29:12.202792] E [MSGID: 115070]
+> >>[server-rpc-fops.c:1472:server_open_cbk] 0-home-lab-3-server: 267:
+> >>OPEN /u056/.Xauthority-c (ce222a86-9f74-42d1-8e18-1f80f607d766) ==>
+> >>(Permission denied) [Permission denied]
+> >>root@admin2:~#
+> >>
+> >>As you can see, the glusterfs client part of the server
+> >>fuse-mounting the volume shows a "/u056/kk.txt => -1 (Permission
+> >>denied)" error that comes from a similar error in the glusterfs
+> >>cluster, while at the nfs-kernel server log we can see a kernel
+> >>trace directly related to the glusterfs fuse mount of the volume
+> >>that says "nfsd4_process_open2 failed to open newly-created file!
+> >>status=13".
+> >>
+> >>This error can be reproduced any number of times exactly the same,
+> >>is not sporadic.
+> >>
+> >>Other test I've done at the client side with no logs at all at the
+> >>server side, but the same error for the user, is the following:
+> >>
+> >>u056@l056:~$ rm -f 444.txt; echo "prueba" > 444.txt; chmod 444
+> >>444.txt; echo "kk" > 444.txt
+> >>-bash: 444.txt: Permission denied
+> >>u056@l056:~$
+> >>
+> >>We have been trying to reproduce this problem in a virtual
+> >>environment using KVM, nfs-kernel-server, glusterfs, and ZFS over
+> >>VFS, being unable to do it... This leads us to think that creating
+> >>glusterfs volumes over ZFS over phisical disks has something to do
+> >>with this problem, but we have no clue on how to track it down to
+> >>the ZFS level, as there are no traces on the kernel.log or the
+> >>syslog that we can use.
+> >>
+> >>Thank you for your time.
+> >>
+> >>Omar
+> >>
+> >>El 21/12/15 a las 21:14, J. Bruce Fields escribió:
+> >>>On Mon, Dec 21, 2015 at 11:28:36PM +0530, Soumya Koduri wrote:
+> >>>>On 12/21/2015 10:17 PM, J. Bruce Fields wrote:
+> >>>>>On Mon, Dec 21, 2015 at 02:18:20PM +0530, Soumya Koduri wrote:
+> >>>>>>On 12/19/2015 01:38 AM, J. Bruce Fields wrote:
+> >>>>>>>On Fri, Dec 18, 2015 at 10:47:42PM +0530, Soumya Koduri wrote:
+> >>>>>>>>On 12/18/2015 08:50 PM, J. Bruce Fields wrote:
+> >>>>>>>>>On Fri, Dec 18, 2015 at 02:13:40PM +0530, Soumya Koduri wrote:
+> >>>>>>>>>>On 12/18/2015 06:07 AM, Malahal Naineni wrote:
+> >>>>>>>>>>>IIRC, permission checks are done in open(). write/read syscalls should
+> >>>>>>>>>>>NOT do much access checks (at least based on POSIX). This is why once an
+> >>>>>>>>>>>open is done, you remove permissions for that process, but it should
+> >>>>>>>>>>>still be able to read/write based on the open flags it did when it
+> >>>>>>>>>>>opened the file.
+> >>>>>>>>>>>
+> >>>>>>>>>>>I don't know all the details of this defect, but gluster seems to be
+> >>>>>>>>>>>doing what it is supposed to do.
+> >>>>>>>>>>>
+> >>>>>>>>>>Right. Thanks for the correction. I assumed the behavior should be
+> >>>>>>>>>>same for both OPEN+WRITE vs CREATE+WRITE in the below scenario. But
+> >>>>>>>>>>looks like (from 'man creat')  the open() call that creates a
+> >>>>>>>>>>read-only file may well return a read/write file descriptor, which
+> >>>>>>>>>>is the reason the following WRITE can succeed.
+> >>>>>>>>>I forgot another complication, which is that knsfd actually does a
+> >>>>>>>>>temporary open before each read or write--I assume that's getting
+> >>>>>>>>>translated into fuse and gluster open operations?
+> >>>>>>>>>
+> >>>>>>>>yes. It is the OPEN done as part of NFS WRITE which fails with
+> >>>>>>>>EACCESS error (with both NFSv3 and NFSv4 mounts).
+> >>>>>>>Makes sense for v3, but I wouldn't normally expect the extra temporary
+> >>>>>>>open on v4 WRITEs.  Could you share any details?
+> >>>>>>>
+> >>>>>>I re-tried the test on v4 mount using Fedora23 machine, acting as
+> >>>>>>both NFS server and client (Linux#4.2.3-300.fc23.x86_64). Please
+> >>>>>>find the pkt trace attached.
+> >>>>>>
+> >>>>>>  56 07:23:25.567134          ::1 -> ::1          NFS 288 V4 Call
+> >>>>>>WRITE StateID: 0xf934 Offset: 0 Len: 7
+> >>>>>>  57 07:23:25.567233 192.168.122.17 -> 192.168.122.202 GlusterFS 188
+> >>>>>>V330 GETXATTR Call
+> >>>>>>  58 07:23:25.567732 192.168.122.202 -> 192.168.122.17 GlusterFS 112
+> >>>>>>V330 GETXATTR Reply (Call In 57)
+> >>>>>>  59 07:23:25.567881 192.168.122.17 -> 192.168.122.202 GlusterFS 164
+> >>>>>>V330 OPEN Call
+> >>>>>Remind me what kernel version your server is on?
+> >>>>NFS server is on fedora23 VM - Linux version 4.2.3-300.fc23.x86_64
+> >>>We did reshuffle the code that does the temporary open on WRITE around
+> >>>there--but it looks right to me, and I can't reproduce an open on WRITE
+> >>>on that kernel myself.
+> >>>
+> >>>Maybe there's some further fuse or gluster debugging that would help
+> >>>show where that open is coming from.
+> >>>
+> >>>--b.
+> >>>
+> >>>>Thanks,
+> >>>>Soumya
+> >>>>
+> >>>>>--b.
+> >>>>>
+> >>>>>
+> >>>>>>  60 07:23:25.568354 192.168.122.202 -> 192.168.122.17 GlusterFS 116
+> >>>>>>V330 OPEN Reply (Call In 59)
+> >>>>>>  61 07:23:25.568570          ::1 -> ::1          NFS 144 V4 Reply
+> >>>>>>(Call In 56) WRITE Status: NFS4ERR_ACCESS
+> >>>>>>
+> >>>>>>Thanks,
+> >>>>>>Soumya
+> >>>>>>
+> >>>>>>>--b.
+> >>>>>>>
+> >>>>>>>>  63 16:59:09.278651000          ::1 -> ::1          NFS 232 V3 WRITE
+> >>>>>>>>Call, FH: 0x49a35e54 Offset: 0 Len: 7 FILE_SYNC
+> >>>>>>>>  64 16:59:09.278926000 192.168.122.1 -> 192.168.122.202 GlusterFS
+> >>>>>>>>164 V330 OPEN Call
+> >>>>>>>>  65 16:59:09.278937000 192.168.122.1 -> 192.168.122.202 GlusterFS
+> >>>>>>>>164 [RPC retransmission of #64][TCP Retransmission] V330 OPEN Call
+> >>>>>>>>  66 16:59:09.279459000 192.168.122.202 -> 192.168.122.1 GlusterFS
+> >>>>>>>>116 V330 OPEN Reply (Call In 64)
+> >>>>>>>>  67 16:59:09.279459000 192.168.122.202 -> 192.168.122.1 GlusterFS
+> >>>>>>>>116 [RPC duplicate of #66][TCP Retransmission] V330 OPEN Reply (Call
+> >>>>>>>>In 64)
+> >>>>>>>>  68 16:59:09.279733000          ::1 -> ::1          NFS 212 V3 WRITE
+> >>>>>>>>Reply (Call In 63) Error: NFS3ERR_ACCES
+> >>>>>>>>
+> >>>>>>>>
+> >>>>>>>>Thanks,
+> >>>>>>>>Soumya
+> >>>>>>>>
+> >>>>>>>>>In which case it might be worth experimenting with NFSv4 or with Jeff
+> >>>>>>>>>Layton's filehandle-caching patches.  Neither's a real fix, but that
+> >>>>>>>>>could help confirm whether it's the temporary opens that are a problem.
+> >>>>>>>>>
+> >>>>>>>>>--b.
+> >>>>>>>>>
+> >>>>>>>>>>Thanks,
+> >>>>>>>>>>Soumya
+> >>>>>>>>>>
+> >>>>>>>>>>
+> >>>>>>>>>>>Regards, Malahal.
+> >>>>>>>>>>>
+> >>>>>>>>>>>Soumya Koduri [skoduri@redhat.com] wrote:
+> >>>>>>>>>>>>As mentioned by Bruce, GlusterFS doesn't have owner-override rule
+> >>>>>>>>>>>>except for setattr.
+> >>>>>>>>>>>>
+> >>>>>>>>>>>>I did few experiments to check why this test case passes on plain
+> >>>>>>>>>>>>glusterfs fuse mount & NFS-Ganesha but fails with kernel-NFS.
+> >>>>>>>>>>>>
+> >>>>>>>>>>>>NFS-Ganesha (for most of the FSALs) seem to be passing the actual
+> >>>>>>>>>>>>request credentials to the back-end filesystem only for
+> >>>>>>>>>>>>CREATE(-like) and UNLINK fops. For all the remaining fops, it does
+> >>>>>>>>>>>>the access check at its end and then perform the operation with root
+> >>>>>>>>>>>>credentials. That's the reason WRITE succeeded in your case as
+> >>>>>>>>>>>>NFS-Ganesha (like kernel-NFS) skipped the access check if the
+> >>>>>>>>>>>>request caller_uid proved to be the file's owner.
+> >>>>>>>>>>>>
+> >>>>>>>>>>>>In case of native GlusterFS FUSE mount, there is no OPEN fop
+> >>>>>>>>>>>>involved. WRITE is performed on the fd returned by CREATE. And
+> >>>>>>>>>>>>strangely GlusterFS seem to be doing certain access checks only
+> >>>>>>>>>>>>during OPEN but not for WRITE (this seems like a bug and probably
+> >>>>>>>>>>>>needs to be fixed in Gluster).
+> >>>>>>>>>>>>
+> >>>>>>>>>>>>Thanks,
+> >>>>>>>>>>>>Soumya
+> >>>>>>>>>>>>
+> >>>>>>>>>>>>On 12/14/2015 10:27 PM, Omar Walid Llorente wrote:
+> >>>>>>>>>>>>>Thank you Bruce, others, for the responses. I send attached a complete
+> >>>>>>>>>>>>>capture of the issue, including the glusterfs transactions.
+> >>>>>>>>>>>>>
+> >>>>>>>>>>>>>Hope this helps to clear where may it be...
+> >>>>>>>>>>>>>
+> >>>>>>>>>>>>>Omar
+> >>>>>>>>>>>>>
+> >>>>>>>>>>>>>El 10/12/15 a las 15:44, J. Bruce Fields escribió:
+> >>>>>>>>>>>>>>On Thu, Dec 10, 2015 at 05:59:33PM +0530, Soumya Koduri wrote:
+> >>>>>>>>>>>>>>>On 12/10/2015 04:02 PM, Omar Walid Llorente wrote:
+> >>>>>>>>>>>>>>>>Hi, Jeff, Bruce, finally I got some time to get the capture of the nfs
+> >>>>>>>>>>>>>>>>packets (you can find them in attached file nfs-problem-nks.pcap.zip).
+> >>>>>>>>>>>>>>>>Sorry for being so late.
+> >>>>>>>>>>>>>>>>
+> >>>>>>>>>>>>>>>>What I did was the following:
+> >>>>>>>>>>>>>>>>
+> >>>>>>>>>>>>>>>>1st) Create the RO file:
+> >>>>>>>>>>>>>>>>cdc@l056:~/prueba-git$ rm -f kk.txt 444.txt; echo "prueba" > 444.txt;
+> >>>>>>>>>>>>>>>>chmod 444 444.txt;
+> >>>>>>>>>>>>>>>>
+> >>>>>>>>>>>>>>>>2nd) Init the capture:
+> >>>>>>>>>>>>>>>>root@l056:~# tcpdump -i eth2 -w /tmp/nfs.pcap -s 512 port 2049
+> >>>>>>>>>>>>>>>>tcpdump: listening on eth2, link-type EN10MB (Ethernet), capture size
+> >>>>>>>>>>>>>>>>512 bytes
+> >>>>>>>>>>>>>>>>
+> >>>>>>>>>>>>>>>GlusterFS protocol is added to wireshark from version 1.8.0 [1]. It
+> >>>>>>>>>>>>>>>may be helpful to see what GlusterFS operations are being processed
+> >>>>>>>>>>>>>>>as part of NFS WRITE call (which has failed in this case).
+> >>>>>>>>>>>>>>>
+> >>>>>>>>>>>>>>>Could you please try taking the packet trace on the machine where
+> >>>>>>>>>>>>>>>NFS server is running (without filtering out based on the port
+> >>>>>>>>>>>>>>>number).
+> >>>>>>>>>>>>>>>
+> >>>>>>>>>>>>>>>Also I tried out the same test on Fedora22 machine, but haven't run
+> >>>>>>>>>>>>>>>into any issue. What are the fuse mount options you have used to
+> >>>>>>>>>>>>>>>mount gluster volume?
+> >>>>>>>>>>>>>>Oh, I think this is a simple problem (but maybe hard to fix).  The
+> >>>>>>>>>>>>>>capture shows NFSv3 traffic like:
+> >>>>>>>>>>>>>>
+> >>>>>>>>>>>>>>    CREATE -> OK
+> >>>>>>>>>>>>>>    SETATTR (mode set to 0400) -> OK
+> >>>>>>>>>>>>>>    WRITE -> NFS3ERR_ACCES
+> >>>>>>>>>>>>>>
+> >>>>>>>>>>>>>>That write would succeed locally (because the mode doesn't matter to a
+> >>>>>>>>>>>>>>local application that already holds the file open).  It would fail over
+> >>>>>>>>>>>>>>NFSv3, which doesn't know about the open--except that there's a hack for
+> >>>>>>>>>>>>>>this case: NFSv3 servers allow IO operations to ignore the mode, if the
+> >>>>>>>>>>>>>>operation comes from the owner of the file.  NFSv3 clients are then
+> >>>>>>>>>>>>>>careful to perform necessary access checks on open to ensure that this
+> >>>>>>>>>>>>>>owner-override rule doesn't grant too many permissions.
+> >>>>>>>>>>>>>>
+> >>>>>>>>>>>>>>That allows NFSv3 applications to see behavior that's mostly like a
+> >>>>>>>>>>>>>>local filesystem, without opening much of a security hole (since the
+> >>>>>>>>>>>>>>owner could always chmod anyway).
+> >>>>>>>>>>>>>>
+> >>>>>>>>>>>>>>So, knfsd is making this special exception--but gluster (which I believe
+> >>>>>>>>>>>>>>it's exporting in this case, via fuse?)--probably doesn't....  I'm not
+> >>>>>>>>>>>>>>sure what you can do about that.
+> >>>>>>>>>>>>>>
+> >>>>>>>>>>>>>>--b.
+> >>>>>>>>>>>>--
+> >>>>>>>>>>>>To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> >>>>>>>>>>>>the body of a message to majordomo@vger.kernel.org
+> >>>>>>>>>>>>More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> >>>>>>>>>>>>
+> >>>>>>>--
+> >>>>>>>To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> >>>>>>>the body of a message to majordomo@vger.kernel.org
+> >>>>>>>More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> >>>>>>>
+> >>-- 
+> >>----------------------------------------------------------------
+> >>Centro de Cálculo         Depto. Ingeniería Sistemas Telemáticos
+> >>E-mail: omar@dit.upm.es        Universidad Politécnica de Madrid
+> >>Fax:(+34) 913367333                 E.T.S. Ing. Telecomunicación
+> >>Tel:(+34) 915495700-Ext.3005                28040 Madrid (Spain)
+> >>Tel:(+34) 915495762-Ext.3005
+> >>Tel:(+34) 913367366-Ext.3005
+> >>----------------------------------------------------------------
+> >>
+> 
+> -- 
+> ----------------------------------------------------------------
+> Centro de Cálculo         Depto. Ingeniería Sistemas Telemáticos
+> E-mail: omar@dit.upm.es        Universidad Politécnica de Madrid
+> Fax:(+34) 913367333                 E.T.S. Ing. Telecomunicación
+> Tel:(+34) 915495700-Ext.3005                28040 Madrid (Spain)
+> Tel:(+34) 915495762-Ext.3005
+> Tel:(+34) 913367366-Ext.3005
+> ----------------------------------------------------------------
