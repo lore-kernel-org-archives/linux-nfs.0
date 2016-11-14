@@ -1,101 +1,60 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from us-smtp-delivery-194.mimecast.com ([216.205.24.194]:26535 "EHLO
-        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S934207AbcKNQss (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 14 Nov 2016 11:48:48 -0500
-From: Trond Myklebust <trondmy@primarydata.com>
-To: "jlayton@redhat.com" <jlayton@redhat.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-CC: "bcodding@redhat.com" <bcodding@redhat.com>
-Subject: Re: [PATCH 1/2] NFSv4: Fix CLOSE races with OPEN
-Date: Mon, 14 Nov 2016 16:48:41 +0000
-Message-ID: <1479142120.5653.9.camel@primarydata.com>
-References: <1479140396-17779-1-git-send-email-trond.myklebust@primarydata.com>
-         <1479140396-17779-2-git-send-email-trond.myklebust@primarydata.com>
-         <1479141648.2510.10.camel@redhat.com>
-In-Reply-To: <1479141648.2510.10.camel@redhat.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+Received: from mx1.redhat.com ([209.132.183.28]:46786 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1751532AbcKNQvq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 14 Nov 2016 11:51:46 -0500
+From: Benjamin Coddington <bcodding@redhat.com>
+To: Trond Myklebust <trond.myklebust@primarydata.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH] NFSv4.1: Don't allow a lock_state to be freed while checking
+Date: Mon, 14 Nov 2016 11:50:44 -0500
+Message-Id: <0e6e9dac991cd93e2ae3e6a4b4b41bd974a040cb.1479142099.git.bcodding@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gTW9uLCAyMDE2LTExLTE0IGF0IDExOjQwIC0wNTAwLCBKZWZmIExheXRvbiB3cm90ZToNCj4g
-T24gTW9uLCAyMDE2LTExLTE0IGF0IDExOjE5IC0wNTAwLCBUcm9uZCBNeWtsZWJ1c3Qgd3JvdGU6
-DQo+ID4gDQo+ID4gSWYgdGhlIHJlcGx5IHRvIGEgc3VjY2Vzc2Z1bCBDTE9TRSBjYWxsIHJhY2Vz
-IHdpdGggYW4gT1BFTiB0byB0aGUNCj4gPiBzYW1lDQo+ID4gZmlsZSwgd2UgY2FuIGVuZCB1cCBz
-Y3JpYmJsaW5nIG92ZXIgdGhlIHN0YXRlaWQgdGhhdCByZXByZXNlbnRzIHRoZQ0KPiA+IG5ldyBv
-cGVuIHN0YXRlLg0KPiA+IFRoZSByYWNlIGxvb2tzIGxpa2U6DQo+ID4gDQo+ID4gwqAgQ2xpZW50
-CQkJCVNlcnZlcg0KPiA+IMKgID09PT09PQkJCQk9PT09PT0NCj4gPiANCj4gPiDCoCBDTE9TRSBz
-dGF0ZWlkIEEgb24gZmlsZSAiZm9vIg0KPiA+IAkJCQkJQ0xPU0Ugc3RhdGVpZCBBLCByZXR1cm4g
-c3RhdGVpZA0KPiA+IEMNCj4gPiDCoCBPUEVOIGZpbGUgImZvbyINCj4gPiAJCQkJCU9QRU4gImZv
-byIsIHJldHVybiBzdGF0ZWlkIEINCj4gPiDCoCBSZWNlaXZlIHJlcGx5IHRvIE9QRU4NCj4gPiDC
-oCBSZXNldCBvcGVuIHN0YXRlIGZvciAiZm9vIg0KPiA+IMKgIEFzc29jaWF0ZSBzdGF0ZWlkIEIg
-dG8gImZvbyINCj4gPiANCj4gPiDCoCBSZWNlaXZlIENMT1NFIGZvciBBDQo+ID4gwqAgUmVzZXQg
-b3BlbiBzdGF0ZSBmb3IgImZvbyINCj4gPiDCoCBSZXBsYWNlIHN0YXRlaWQgQiB3aXRoIEMNCj4g
-PiANCj4gPiBUaGUgZml4IGlzIHRvIGV4YW1pbmUgdGhlIGFyZ3VtZW50IG9mIHRoZSBDTE9TRSwg
-YW5kIGNoZWNrIGZvciBhDQo+ID4gbWF0Y2gNCj4gPiB3aXRoIHRoZSBjdXJyZW50IHN0YXRlaWQg
-Im90aGVyIiBmaWVsZC4gSWYgdGhlIHR3byBkbyBub3QgbWF0Y2gsDQo+ID4gdGhlbg0KPiA+IHRo
-ZSBhYm92ZSByYWNlIG9jY3VycmVkLCBhbmQgd2Ugc2hvdWxkIGp1c3QgaWdub3JlIHRoZSBDTE9T
-RS4NCj4gPiANCj4gPiBSZXBvcnRlZC1ieTogQmVuamFtaW4gQ29kZGluZ3RvbiA8YmNvZGRpbmdA
-cmVkaGF0LmNvbT4NCj4gPiBTaWduZWQtb2ZmLWJ5OiBUcm9uZCBNeWtsZWJ1c3QgPHRyb25kLm15
-a2xlYnVzdEBwcmltYXJ5ZGF0YS5jb20+DQo+ID4gLS0tDQo+ID4gwqBmcy9uZnMvbmZzNF9mcy5o
-wqDCoHzCoMKgNyArKysrKysrDQo+ID4gwqBmcy9uZnMvbmZzNHByb2MuYyB8IDEyICsrKysrKy0t
-LS0tLQ0KPiA+IMKgMiBmaWxlcyBjaGFuZ2VkLCAxMyBpbnNlcnRpb25zKCspLCA2IGRlbGV0aW9u
-cygtKQ0KPiA+IA0KPiA+IGRpZmYgLS1naXQgYS9mcy9uZnMvbmZzNF9mcy5oIGIvZnMvbmZzL25m
-czRfZnMuaA0KPiA+IGluZGV4IDliM2E4MmFiYWIwNy4uMTQ1MjE3N2M4MjJkIDEwMDY0NA0KPiA+
-IC0tLSBhL2ZzL25mcy9uZnM0X2ZzLmgNCj4gPiArKysgYi9mcy9uZnMvbmZzNF9mcy5oDQo+ID4g
-QEAgLTU0Miw2ICs1NDIsMTMgQEAgc3RhdGljIGlubGluZSBib29sDQo+ID4gbmZzNF92YWxpZF9v
-cGVuX3N0YXRlaWQoY29uc3Qgc3RydWN0IG5mczRfc3RhdGUgKnN0YXRlKQ0KPiA+IMKgCXJldHVy
-biB0ZXN0X2JpdChORlNfU1RBVEVfUkVDT1ZFUllfRkFJTEVELCAmc3RhdGUtPmZsYWdzKQ0KPiA+
-ID09IDA7DQo+ID4gwqB9DQo+ID4gwqANCj4gPiArc3RhdGljIGlubGluZSBib29sIG5mczRfc3Rh
-dGVfbWF0Y2hfb3Blbl9zdGF0ZWlkX290aGVyKGNvbnN0DQo+ID4gc3RydWN0IG5mczRfc3RhdGUg
-KnN0YXRlLA0KPiA+ICsJCWNvbnN0IG5mczRfc3RhdGVpZCAqc3RhdGVpZCkNCj4gPiArew0KPiA+
-ICsJcmV0dXJuIHRlc3RfYml0KE5GU19PUEVOX1NUQVRFLCAmc3RhdGUtPmZsYWdzKSAmJg0KPiA+
-ICsJCW5mczRfc3RhdGVpZF9tYXRjaF9vdGhlcigmc3RhdGUtPm9wZW5fc3RhdGVpZCwNCj4gPiBz
-dGF0ZWlkKTsNCj4gPiArfQ0KPiA+ICsNCj4gPiDCoCNlbHNlDQo+ID4gwqANCj4gPiDCoCNkZWZp
-bmUgbmZzNF9jbG9zZV9zdGF0ZShhLCBiKSBkbyB7IH0gd2hpbGUgKDApDQo+ID4gZGlmZiAtLWdp
-dCBhL2ZzL25mcy9uZnM0cHJvYy5jIGIvZnMvbmZzL25mczRwcm9jLmMNCj4gPiBpbmRleCBmNTUw
-YWM2OWZmYTAuLmI3YjAwODA5NzdjMCAxMDA2NDQNCj4gPiAtLS0gYS9mcy9uZnMvbmZzNHByb2Mu
-Yw0KPiA+ICsrKyBiL2ZzL25mcy9uZnM0cHJvYy5jDQo+ID4gQEAgLTE0NTgsNyArMTQ1OCw2IEBA
-IHN0YXRpYyB2b2lkDQo+ID4gbmZzX3Jlc3luY19vcGVuX3N0YXRlaWRfbG9ja2VkKHN0cnVjdCBu
-ZnM0X3N0YXRlICpzdGF0ZSkNCj4gPiDCoH0NCj4gPiDCoA0KPiA+IMKgc3RhdGljIHZvaWQgbmZz
-X2NsZWFyX29wZW5fc3RhdGVpZF9sb2NrZWQoc3RydWN0IG5mczRfc3RhdGUNCj4gPiAqc3RhdGUs
-DQo+ID4gLQkJbmZzNF9zdGF0ZWlkICphcmdfc3RhdGVpZCwNCj4gPiDCoAkJbmZzNF9zdGF0ZWlk
-ICpzdGF0ZWlkLCBmbW9kZV90IGZtb2RlKQ0KPiA+IMKgew0KPiA+IMKgCWNsZWFyX2JpdChORlNf
-T19SRFdSX1NUQVRFLCAmc3RhdGUtPmZsYWdzKTsNCj4gPiBAQCAtMTQ3NiwxMCArMTQ3NSw5IEBA
-IHN0YXRpYyB2b2lkDQo+ID4gbmZzX2NsZWFyX29wZW5fc3RhdGVpZF9sb2NrZWQoc3RydWN0IG5m
-czRfc3RhdGUgKnN0YXRlLA0KPiA+IMKgCX0NCj4gPiDCoAlpZiAoc3RhdGVpZCA9PSBOVUxMKQ0K
-PiA+IMKgCQlyZXR1cm47DQo+ID4gLQkvKiBIYW5kbGUgcmFjZXMgd2l0aCBPUEVOICovDQo+ID4g
-LQlpZiAoIW5mczRfc3RhdGVpZF9tYXRjaF9vdGhlcihhcmdfc3RhdGVpZCwgJnN0YXRlLQ0KPiA+
-ID5vcGVuX3N0YXRlaWQpIHx8DQo+ID4gLQnCoMKgwqDCoChuZnM0X3N0YXRlaWRfbWF0Y2hfb3Ro
-ZXIoc3RhdGVpZCwgJnN0YXRlLQ0KPiA+ID5vcGVuX3N0YXRlaWQpICYmDQo+ID4gLQnCoMKgwqDC
-oCFuZnM0X3N0YXRlaWRfaXNfbmV3ZXIoc3RhdGVpZCwgJnN0YXRlLQ0KPiA+ID5vcGVuX3N0YXRl
-aWQpKSkgew0KPiA+ICsJLyogSGFuZGxlIE9QRU4rT1BFTl9ET1dOR1JBREUgcmFjZXMgKi8NCj4g
-PiArCWlmIChuZnM0X3N0YXRlaWRfbWF0Y2hfb3RoZXIoc3RhdGVpZCwgJnN0YXRlLQ0KPiA+ID5v
-cGVuX3N0YXRlaWQpICYmDQo+ID4gKwnCoMKgwqDCoCFuZnM0X3N0YXRlaWRfaXNfbmV3ZXIoc3Rh
-dGVpZCwgJnN0YXRlLT5vcGVuX3N0YXRlaWQpKSANCj4gPiB7DQo+ID4gwqAJCW5mc19yZXN5bmNf
-b3Blbl9zdGF0ZWlkX2xvY2tlZChzdGF0ZSk7DQo+ID4gwqAJCXJldHVybjsNCj4gPiDCoAl9DQo+
-ID4gQEAgLTE0OTMsNyArMTQ5MSw5IEBAIHN0YXRpYyB2b2lkIG5mc19jbGVhcl9vcGVuX3N0YXRl
-aWQoc3RydWN0DQo+ID4gbmZzNF9zdGF0ZSAqc3RhdGUsDQo+ID4gwqAJbmZzNF9zdGF0ZWlkICpz
-dGF0ZWlkLCBmbW9kZV90IGZtb2RlKQ0KPiA+IMKgew0KPiA+IMKgCXdyaXRlX3NlcWxvY2soJnN0
-YXRlLT5zZXFsb2NrKTsNCj4gPiAtCW5mc19jbGVhcl9vcGVuX3N0YXRlaWRfbG9ja2VkKHN0YXRl
-LCBhcmdfc3RhdGVpZCwgc3RhdGVpZCwNCj4gPiBmbW9kZSk7DQo+ID4gKwkvKiBJZ25vcmUsIGlm
-IHRoZSBDTE9TRSBhcmdtZW50IGRvZXNuJ3QgbWF0Y2ggdGhlIGN1cnJlbnQNCj4gPiBzdGF0ZWlk
-ICovDQo+ID4gKwlpZiAobmZzNF9zdGF0ZV9tYXRjaF9vcGVuX3N0YXRlaWRfb3RoZXIoc3RhdGUs
-DQo+ID4gYXJnX3N0YXRlaWQpKQ0KPiA+ICsJCW5mc19jbGVhcl9vcGVuX3N0YXRlaWRfbG9ja2Vk
-KHN0YXRlLCBzdGF0ZWlkLA0KPiA+IGZtb2RlKTsNCj4gPiDCoAl3cml0ZV9zZXF1bmxvY2soJnN0
-YXRlLT5zZXFsb2NrKTsNCj4gPiDCoAlpZiAodGVzdF9iaXQoTkZTX1NUQVRFX1JFQ0xBSU1fTk9H
-UkFDRSwgJnN0YXRlLT5mbGFncykpDQo+ID4gwqAJCW5mczRfc2NoZWR1bGVfc3RhdGVfbWFuYWdl
-cihzdGF0ZS0+b3duZXItDQo+ID4gPnNvX3NlcnZlci0+bmZzX2NsaWVudCk7DQo+IA0KPiBJIHN0
-aWxsIGRvbid0IHF1aXRlIGdldCBpdC4gV2hhdCdzIHRoZSBwb2ludCBvZiBwYXlpbmcgYW55IGF0
-dGVudGlvbg0KPiBhdA0KPiBhbGwgdG8gdGhlIHN0YXRlaWQgcmV0dXJuZWQgYnkgdGhlIHNlcnZl
-ciBpbiBhIENMT1NFIHJlc3BvbnNlPyBJdCdzDQo+IGVpdGhlcjoNCj4gDQo+IGEpIGNvbXBsZXRl
-bHkgYm9ndXMsIGlmIHRoZSBzZXJ2ZXIgaXMgZm9sbG93aW5nIHRoZSBTSE9VTEQgaW4NCj4gUkZD
-NTY2MSwNCj4gc2VjdGlvbiAxOC4yLjQNCj4gDQo+IC4uLm9yLi4uDQo+IA0KPiBiKSByZWZlcnMg
-dG8gYSBub3ctZGVmdW5jdCBzdGF0ZWlkIC0tIHByb2JhYmx5IGEgbGF0ZXIgdmVyc2lvbiBvZiB0
-aGUNCj4gb25lIHNlbnQgaW4gdGhlIHJlcXVlc3QsIGJ1dCB0aGUgc3BlYyBkb2Vzbid0IHJlYWxs
-eSBzcGVsbCB0aGF0IG91dCwNCj4gQUZBSUNULg0KPiANCj4gSW4gZWl0aGVyIGNhc2UsIEkgZG9u
-J3QgdGhpbmsgaXQgb3VnaHQgdG8gYmUgdHJ1c3RlZC4gV2h5IG5vdCBqdXN0DQo+IHVzZQ0KPiB0
-aGUgYXJnX3N0YXRlaWQgdW5pdmVyc2FsbHkgaGVyZT8NCj4gDQoNClRoZSBjb2RlIHBhdGggYWxz
-byBoYXMgdG8gaGFuZGxlIE9QRU5fRE9XTkdSQURFLg==
+While walking the list of lock_states, keep the current nfs4_lock_state
+referenced so that it isn't freed while checking.
+
+Signed-off-by: Benjamin Coddington <bcodding@redhat.com>
+---
+ fs/nfs/nfs4proc.c | 12 +++++++++---
+ 1 file changed, 9 insertions(+), 3 deletions(-)
+
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 7897826d7c51..9a1cb9e8c4fc 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -2564,12 +2564,15 @@ static void nfs41_check_delegation_stateid(struct nfs4_state *state)
+ static int nfs41_check_expired_locks(struct nfs4_state *state)
+ {
+ 	int status, ret = NFS_OK;
+-	struct nfs4_lock_state *lsp;
++	struct nfs4_lock_state *lsp, *tmp;
+ 	struct nfs_server *server = NFS_SERVER(state->inode);
+ 
+ 	if (!test_bit(LK_STATE_IN_USE, &state->flags))
+ 		goto out;
+-	list_for_each_entry(lsp, &state->lock_states, ls_locks) {
++	spin_lock(&state->state_lock);
++	list_for_each_entry_safe(lsp, tmp, &state->lock_states, ls_locks) {
++		atomic_inc(&lsp->ls_count);
++		spin_unlock(&state->state_lock);
+ 		if (test_bit(NFS_LOCK_INITIALIZED, &lsp->ls_flags)) {
+ 			struct rpc_cred *cred = lsp->ls_state->owner->so_cred;
+ 
+@@ -2588,7 +2591,10 @@ static int nfs41_check_expired_locks(struct nfs4_state *state)
+ 				break;
+ 			}
+ 		}
+-	};
++		nfs4_put_lock_state(lsp);
++		spin_lock(&state->state_lock);
++	}
++	spin_unlock(&state->state_lock);
+ out:
+ 	return ret;
+ }
+-- 
+2.5.5
 
