@@ -1,60 +1,39 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:46786 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:45934 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751532AbcKNQvq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        id S1754149AbcKNQvq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
         Mon, 14 Nov 2016 11:51:46 -0500
 From: Benjamin Coddington <bcodding@redhat.com>
 To: Trond Myklebust <trond.myklebust@primarydata.com>,
         Anna Schumaker <anna.schumaker@netapp.com>
 Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH] NFSv4.1: Don't allow a lock_state to be freed while checking
-Date: Mon, 14 Nov 2016 11:50:44 -0500
-Message-Id: <0e6e9dac991cd93e2ae3e6a4b4b41bd974a040cb.1479142099.git.bcodding@redhat.com>
+Subject: [PATCH] NFSv4.1: Handle NFS4ERR_OLD_STATEID in nfs4_reclaim_open_state
+Date: Mon, 14 Nov 2016 11:51:37 -0500
+Message-Id: <dae29a90096c7366d235135e8cfec6edc2c4a9b2.1479142267.git.bcodding@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-While walking the list of lock_states, keep the current nfs4_lock_state
-referenced so that it isn't freed while checking.
+Now that we're doing TEST_STATEID in nfs4_reclaim_open_state(), we can have
+a NFS4ERR_OLD_STATEID returned from nfs41_open_expired() .  Instead of
+marking state recovery as failed, mark the state for recovery again.
 
 Signed-off-by: Benjamin Coddington <bcodding@redhat.com>
 ---
- fs/nfs/nfs4proc.c | 12 +++++++++---
- 1 file changed, 9 insertions(+), 3 deletions(-)
+ fs/nfs/nfs4state.c | 1 +
+ 1 file changed, 1 insertion(+)
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 7897826d7c51..9a1cb9e8c4fc 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -2564,12 +2564,15 @@ static void nfs41_check_delegation_stateid(struct nfs4_state *state)
- static int nfs41_check_expired_locks(struct nfs4_state *state)
- {
- 	int status, ret = NFS_OK;
--	struct nfs4_lock_state *lsp;
-+	struct nfs4_lock_state *lsp, *tmp;
- 	struct nfs_server *server = NFS_SERVER(state->inode);
- 
- 	if (!test_bit(LK_STATE_IN_USE, &state->flags))
- 		goto out;
--	list_for_each_entry(lsp, &state->lock_states, ls_locks) {
-+	spin_lock(&state->state_lock);
-+	list_for_each_entry_safe(lsp, tmp, &state->lock_states, ls_locks) {
-+		atomic_inc(&lsp->ls_count);
-+		spin_unlock(&state->state_lock);
- 		if (test_bit(NFS_LOCK_INITIALIZED, &lsp->ls_flags)) {
- 			struct rpc_cred *cred = lsp->ls_state->owner->so_cred;
- 
-@@ -2588,7 +2591,10 @@ static int nfs41_check_expired_locks(struct nfs4_state *state)
- 				break;
- 			}
- 		}
--	};
-+		nfs4_put_lock_state(lsp);
-+		spin_lock(&state->state_lock);
-+	}
-+	spin_unlock(&state->state_lock);
- out:
- 	return ret;
- }
+diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
+index 5f4281ec5f72..0959c9661662 100644
+--- a/fs/nfs/nfs4state.c
++++ b/fs/nfs/nfs4state.c
+@@ -1547,6 +1547,7 @@ static int nfs4_reclaim_open_state(struct nfs4_state_owner *sp, const struct nfs
+ 				ssleep(1);
+ 			case -NFS4ERR_ADMIN_REVOKED:
+ 			case -NFS4ERR_STALE_STATEID:
++			case -NFS4ERR_OLD_STATEID:
+ 			case -NFS4ERR_BAD_STATEID:
+ 			case -NFS4ERR_RECLAIM_BAD:
+ 			case -NFS4ERR_RECLAIM_CONFLICT:
 -- 
 2.5.5
 
