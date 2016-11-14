@@ -1,175 +1,128 @@
-Return-Path: <trondmy@primarydata.com>
-From: Trond Myklebust <trondmy@primarydata.com>
-To: "bcodding@redhat.com" <bcodding@redhat.com>
-CC: "jlayton@redhat.com" <jlayton@redhat.com>,
-        "linux-nfs@vger.kernel.org"
-	<linux-nfs@vger.kernel.org>
-Subject: Re: CLOSE/OPEN race
-Date: Mon, 14 Nov 2016 16:29:39 +0000
-Message-ID: <1479140976.5653.3.camel@primarydata.com>
-References: <9E2B8A0D-7B0E-4AE5-800A-0EF3F7F7F694@redhat.com>
-	 <1478955250.2442.16.camel@redhat.com>
-	 <B050FA3F-5D9A-4053-BB9E-7668814846B7@redhat.com>
-	 <1478969565.2442.18.camel@redhat.com>
-	 <98C04570-5E22-4F6D-80AF-FA6EE48ED489@redhat.com>
-	 <1478985360.2442.29.camel@redhat.com> <1479005770.8210.4.camel@redhat.com>
-	 <1479048471.3146.10.camel@primarydata.com>
-	 <8153C306-D6B6-442B-B565-BC6BAEE9993F@redhat.com>
-In-Reply-To: <8153C306-D6B6-442B-B565-BC6BAEE9993F@redhat.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+Return-Path: <linux-nfs-owner@vger.kernel.org>
+Received: from mail-qt0-f182.google.com ([209.85.216.182]:33468 "EHLO
+        mail-qt0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1754379AbcKNQkw (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 14 Nov 2016 11:40:52 -0500
+Received: by mail-qt0-f182.google.com with SMTP id p16so50468743qta.0
+        for <linux-nfs@vger.kernel.org>; Mon, 14 Nov 2016 08:40:51 -0800 (PST)
+Message-ID: <1479141648.2510.10.camel@redhat.com>
+Subject: Re: [PATCH 1/2] NFSv4: Fix CLOSE races with OPEN
+From: Jeff Layton <jlayton@redhat.com>
+To: Trond Myklebust <trond.myklebust@primarydata.com>,
+        linux-nfs@vger.kernel.org
+Cc: Benjamin Coddington <bcodding@redhat.com>
+Date: Mon, 14 Nov 2016 11:40:48 -0500
+In-Reply-To: <1479140396-17779-2-git-send-email-trond.myklebust@primarydata.com>
+References: <1479140396-17779-1-git-send-email-trond.myklebust@primarydata.com>
+         <1479140396-17779-2-git-send-email-trond.myklebust@primarydata.com>
+Content-Type: text/plain; charset="UTF-8"
+Mime-Version: 1.0
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gTW9uLCAyMDE2LTExLTE0IGF0IDA5OjUzIC0wNTAwLCBCZW5qYW1pbiBDb2RkaW5ndG9uIHdy
-b3RlOg0KPiBPbiAxMyBOb3YgMjAxNiwgYXQgOTo0NywgVHJvbmQgTXlrbGVidXN0IHdyb3RlOg0K
-PiANCj4gPiANCj4gPiBPbiBTYXQsIDIwMTYtMTEtMTIgYXQgMjE6NTYgLTA1MDAsIEplZmYgTGF5
-dG9uIHdyb3RlOg0KPiA+ID4gDQo+ID4gPiBPbiBTYXQsIDIwMTYtMTEtMTIgYXQgMTY6MTYgLTA1
-MDAsIEplZmYgTGF5dG9uIHdyb3RlOg0KPiA+ID4gPiANCj4gPiA+ID4gDQo+ID4gPiA+IE9uIFNh
-dCwgMjAxNi0xMS0xMiBhdCAxMzowMyAtMDUwMCwgQmVuamFtaW4gQ29kZGluZ3RvbiB3cm90ZToN
-Cj4gPiA+ID4gPiANCj4gPiA+ID4gPiANCj4gPiA+ID4gPiANCj4gPiA+ID4gPiBPbiAxMiBOb3Yg
-MjAxNiwgYXQgMTE6NTIsIEplZmYgTGF5dG9uIHdyb3RlOg0KPiA+ID4gPiA+IA0KPiA+ID4gPiA+
-ID4gDQo+ID4gPiA+ID4gPiANCj4gPiA+ID4gPiA+IA0KPiA+ID4gPiA+ID4gT24gU2F0LCAyMDE2
-LTExLTEyIGF0IDEwOjMxIC0wNTAwLCBCZW5qYW1pbiBDb2RkaW5ndG9uDQo+ID4gPiA+ID4gPiB3
-cm90ZToNCj4gPiA+ID4gPiA+ID4gDQo+ID4gPiA+ID4gPiA+IA0KPiA+ID4gPiA+ID4gPiANCj4g
-PiA+ID4gPiA+ID4gT24gMTIgTm92IDIwMTYsIGF0IDc6NTQsIEplZmYgTGF5dG9uIHdyb3RlOg0K
-PiA+ID4gPiA+ID4gPiANCj4gPiA+ID4gPiA+ID4gPiANCj4gPiA+ID4gPiA+ID4gPiANCj4gPiA+
-ID4gPiA+ID4gPiANCj4gPiA+ID4gPiA+ID4gPiANCj4gPiA+ID4gPiA+ID4gPiBPbiBTYXQsIDIw
-MTYtMTEtMTIgYXQgMDY6MDggLTA1MDAsIEJlbmphbWluIENvZGRpbmd0b24NCj4gPiA+ID4gPiA+
-ID4gPiB3cm90ZToNCj4gPiA+ID4gPiA+ID4gPiA+IA0KPiA+ID4gPiA+ID4gPiA+ID4gDQo+ID4g
-PiA+ID4gPiA+ID4gPiANCj4gPiA+ID4gPiA+ID4gPiA+IA0KPiA+ID4gPiA+ID4gPiA+ID4gSSd2
-ZSBiZWVuIHNlZWluZyB0aGUgZm9sbG93aW5nIG9uIGEgbW9kaWZpZWQgdmVyc2lvbg0KPiA+ID4g
-PiA+ID4gPiA+ID4gb2YNCj4gPiA+ID4gPiA+ID4gPiA+IGdlbmVyaWMvMDg5DQo+ID4gPiA+ID4g
-PiA+ID4gPiB0aGF0IGdldHMgdGhlIGNsaWVudCBzdHVjayBzZW5kaW5nIExPQ0sgd2l0aA0KPiA+
-ID4gPiA+ID4gPiA+ID4gTkZTNEVSUl9PTERfU1RBVEVJRC4NCj4gPiA+ID4gPiA+ID4gPiA+IA0K
-PiA+ID4gPiA+ID4gPiA+ID4gMS4gQ2xpZW50IGhhcyBvcGVuIHN0YXRlaWQgQSwgc2VuZHMgYSBD
-TE9TRQ0KPiA+ID4gPiA+ID4gPiA+ID4gMi4gQ2xpZW50IHNlbmRzIE9QRU4gd2l0aCBzYW1lIG93
-bmVyDQo+ID4gPiA+ID4gPiA+ID4gPiAzLiBDbGllbnQgc2VuZHMgYW5vdGhlciBPUEVOIHdpdGgg
-c2FtZSBvd25lcg0KPiA+ID4gPiA+ID4gPiA+ID4gNC4gQ2xpZW50IGdldHMgYSByZXBseSB0byBP
-UEVOIGluIDMsIHN0YXRlaWQgaXMgQi4yDQo+ID4gPiA+ID4gPiA+ID4gPiAoc3RhdGVpZCBCDQo+
-ID4gPiA+ID4gPiA+ID4gPiBzZXF1ZW5jZSAyKQ0KPiA+ID4gPiA+ID4gPiA+ID4gNS4gQ2xpZW50
-IGRvZXMgTE9DSyxMT0NLVSxGUkVFX1NUQVRFSUQgZnJvbSBCLjINCj4gPiA+ID4gPiA+ID4gPiA+
-IDYuIENsaWVudCBnZXRzIGEgcmVwbHkgdG8gQ0xPU0UgaW4gMQ0KPiA+ID4gPiA+ID4gPiA+ID4g
-Ny4gQ2xpZW50IGdldHMgcmVwbHkgdG8gT1BFTiBpbiAyLCBzdGF0ZWlkIGlzIEIuMQ0KPiA+ID4g
-PiA+ID4gPiA+ID4gOC4gQ2xpZW50IHNlbmRzIExPQ0sgd2l0aCBCLjEgLSBPTERfU1RBVEVJRCwg
-bm93DQo+ID4gPiA+ID4gPiA+ID4gPiBzdHVjayBpbg0KPiA+ID4gPiA+ID4gPiA+ID4gYSBsb29w
-DQo+ID4gPiA+ID4gPiA+ID4gPiANCj4gPiA+ID4gPiA+ID4gPiA+IFRoZSBDTE9TRSByZXNwb25z
-ZSBpbiA2IGNhdXNlcyB1cyB0byBjbGVhcg0KPiA+ID4gPiA+ID4gPiA+ID4gTkZTX09QRU5fU1RB
-VEUsIHNvIHRoYXQNCj4gPiA+ID4gPiA+ID4gPiA+IHRoZSBPUEVODQo+ID4gPiA+ID4gPiA+ID4g
-PiByZXNwb25zZSBpbiA3IGlzIGFibGUgdG8gdXBkYXRlIHRoZSBvcGVuX3N0YXRlaWQgZXZlbg0K
-PiA+ID4gPiA+ID4gPiA+ID4gdGhvdWdoIGl0IGhhcyBhDQo+ID4gPiA+ID4gPiA+ID4gPiBsb3dl
-cg0KPiA+ID4gPiA+ID4gPiA+ID4gc2VxdWVuY2UgbnVtYmVyLg0KPiA+ID4gPiA+ID4gPiA+ID4g
-DQo+ID4gPiA+ID4gPiA+ID4gPiBJIHRoaW5rIHRoaXMgY2FzZSBjb3VsZCBiZSBoYW5kbGVkIGJ5
-IG5ldmVyIHVwZGF0aW5nDQo+ID4gPiA+ID4gPiA+ID4gPiB0aGUNCj4gPiA+ID4gPiA+ID4gPiA+
-IG9wZW5fc3RhdGVpZA0KPiA+ID4gPiA+ID4gPiA+ID4gaWYgdGhlDQo+ID4gPiA+ID4gPiA+ID4g
-PiBzdGF0ZWlkcyBtYXRjaCBidXQgdGhlIHNlcXVlbmNlIG51bWJlciBvZiB0aGUgbmV3DQo+ID4g
-PiA+ID4gPiA+ID4gPiBzdGF0ZQ0KPiA+ID4gPiA+ID4gPiA+ID4gaXMgbGVzcyB0aGFuDQo+ID4g
-PiA+ID4gPiA+ID4gPiB0aGUNCj4gPiA+ID4gPiA+ID4gPiA+IGN1cnJlbnQgb3Blbl9zdGF0ZS4N
-Cj4gPiA+ID4gPiA+ID4gPiA+IA0KPiA+ID4gPiA+ID4gPiA+IA0KPiA+ID4gPiA+ID4gPiA+IFdo
-YXQga2VybmVsIGlzIHRoaXMgb24/DQo+ID4gPiA+ID4gPiA+IA0KPiA+ID4gPiA+ID4gPiBPbiB2
-NC45LXJjMiB3aXRoIGEgY291cGxlIGZpeHVwcy7CoMKgV2l0aG91dCB0aGVtLCBJIGNhbid0DQo+
-ID4gPiA+ID4gPiA+IHRlc3QNCj4gPiA+ID4gPiA+ID4gbG9uZw0KPiA+ID4gPiA+ID4gPiBlbm91
-Z2ggdG8NCj4gPiA+ID4gPiA+ID4gcmVwcm9kdWNlIHRoaXMgcmFjZS7CoMKgSSBkb24ndCB0aGlu
-ayBhbnkgb2YgdGhvc2UgYXJlDQo+ID4gPiA+ID4gPiA+IGludm9sdmVkDQo+ID4gPiA+ID4gPiA+
-IGluIHRoaXMNCj4gPiA+ID4gPiA+ID4gcHJvYmxlbSwgdGhvdWdoLg0KPiA+ID4gPiA+ID4gPiAN
-Cj4gPiA+ID4gPiA+ID4gPiANCj4gPiA+ID4gPiA+ID4gPiANCj4gPiA+ID4gPiA+ID4gPiANCj4g
-PiA+ID4gPiA+ID4gPiANCj4gPiA+ID4gPiA+ID4gPiBZZXMsIHRoYXQgc2VlbXMgd3JvbmcuIFRo
-ZSBjbGllbnQgc2hvdWxkIGJlIHBpY2tpbmcgQi4yDQo+ID4gPiA+ID4gPiA+ID4gZm9yDQo+ID4g
-PiA+ID4gPiA+ID4gdGhlIG9wZW4NCj4gPiA+ID4gPiA+ID4gPiBzdGF0ZWlkIHRvIHVzZS4gSSB0
-aGluayB0aGF0IGRlY2lzaW9uIG9mIHdoZXRoZXIgdG8NCj4gPiA+ID4gPiA+ID4gPiB0YWtlIGEN
-Cj4gPiA+ID4gPiA+ID4gPiBzZXFpZCBpcw0KPiA+ID4gPiA+ID4gPiA+IG1hZGUNCj4gPiA+ID4g
-PiA+ID4gPiBpbsKgbmZzX25lZWRfdXBkYXRlX29wZW5fc3RhdGVpZC4gVGhlIGxvZ2ljIGluIHRo
-ZXJlDQo+ID4gPiA+ID4gPiA+ID4gbG9va3MNCj4gPiA+ID4gPiA+ID4gPiBjb3JyZWN0IHRvDQo+
-ID4gPiA+ID4gPiA+ID4gbWUNCj4gPiA+ID4gPiA+ID4gPiBhdCBmaXJzdCBnbGFuY2UgdGhvdWdo
-Lg0KPiA+ID4gPiA+ID4gPiANCj4gPiA+ID4gPiA+ID4gbmZzX25lZWRfdXBkYXRlX29wZW5fc3Rh
-dGVpZCgpIHdpbGwgcmV0dXJuIHRydWUgaWYNCj4gPiA+ID4gPiA+ID4gTkZTX09QRU5fU1RBVEUg
-aXMNCj4gPiA+ID4gPiA+ID4gdW5zZXQuDQo+ID4gPiA+ID4gPiA+IFRoYXQncyB0aGUgcHJlY29u
-ZGl0aW9uIHNldCB1cCBieSBzdGVwcyAxLTYuwqDCoFBlcmhhcHMgaXQNCj4gPiA+ID4gPiA+ID4g
-c2hvdWxkIG5vdA0KPiA+ID4gPiA+ID4gPiB1cGRhdGUNCj4gPiA+ID4gPiA+ID4gdGhlIHN0YXRl
-aWQgaWYgdGhleSBtYXRjaCBidXQgdGhlIHNlcXVlbmNlIG51bWJlciBpcw0KPiA+ID4gPiA+ID4g
-PiBsZXNzLA0KPiA+ID4gPiA+ID4gPiBhbmQgc3RpbGwgc2V0DQo+ID4gPiA+ID4gPiA+IE5GU19P
-UEVOX1NUQVRFIG9uY2UgbW9yZS7CoMKgVGhhdCB3aWxsIGZpeCBfdGhpc18NCj4gPiA+ID4gPiA+
-ID4gY2FzZS7CoMKgQXJlDQo+ID4gPiA+ID4gPiA+IHRoZXJlIG90aGVyDQo+ID4gPiA+ID4gPiA+
-IGNhc2VzDQo+ID4gPiA+ID4gPiA+IHdoZXJlIHRoYXQgd291bGQgYmUgYSBwcm9ibGVtPw0KPiA+
-ID4gPiA+ID4gPiANCj4gPiA+ID4gPiA+ID4gQmVuDQo+ID4gPiA+ID4gPiANCj4gPiA+ID4gPiA+
-IFRoYXQgc2VlbXMgd3JvbmcuDQo+ID4gPiA+ID4gDQo+ID4gPiA+ID4gSSdtIG5vdCBzdXJlIHdo
-YXQgeW91IG1lYW46IHdoYXQgc2VlbXMgd3Jvbmc/DQo+ID4gPiA+ID4gDQo+ID4gPiA+IA0KPiA+
-ID4gPiBTb3JyeSwgaXQgc2VlbXMgd3JvbmcgdGhhdCB0aGUgY2xpZW50IHdvdWxkIGlzc3VlIHRo
-ZSBMT0NLIHdpdGgNCj4gPiA+ID4gQi4xDQo+ID4gPiA+IHRoZXJlLg0KPiA+ID4gPiANCj4gPiA+
-ID4gPiANCj4gPiA+ID4gPiANCj4gPiA+ID4gPiA+IA0KPiA+ID4gPiA+ID4gDQo+ID4gPiA+ID4g
-PiANCj4gPiA+ID4gPiA+IFRoZSBvbmx5IGNsb3NlIHdhcyBzZW50IGluIHN0ZXAgMSwgYW5kIHRo
-YXQgd2FzIGZvciBhDQo+ID4gPiA+ID4gPiBjb21wbGV0ZWx5IGRpZmZlcmVudCBzdGF0ZWlkIChB
-IHJhdGhlciB0aGFuIEIpLiBJdCBzZWVtcw0KPiA+ID4gPiA+ID4gbGlrZWx5DQo+ID4gPiA+ID4g
-PiB0aGF0DQo+ID4gPiA+ID4gPiB0aGF0IGlzIHdoZXJlIHRoZSBidWcgaXMuDQo+ID4gPiA+ID4g
-DQo+ID4gPiA+ID4gSSdtIHN0aWxsIG5vdCBzdXJlIHdoYXQgcG9pbnQgeW91J3JlIHRyeWluZyB0
-byBtYWtlLi4NCj4gPiA+ID4gPiANCj4gPiA+ID4gPiBFdmVuIHRob3VnaCB0aGUgY2xvc2Ugd2Fz
-IHNlbnQgaW4gc3RlcCAxLCB0aGUgcmVzcG9uc2Ugd2Fzbid0DQo+ID4gPiA+ID4gcHJvY2Vzc2Vk
-DQo+ID4gPiA+ID4gdW50aWwgc3RlcCA2Li4NCj4gPiA+ID4gDQo+ID4gPiA+IE5vdCByZWFsbHkg
-YSBwb2ludCBwZXItc2UsIEkgd2FzIGp1c3Qgc2F5aW5nIHdoZXJlIEkgdGhpbmsgdGhlDQo+ID4g
-PiA+IGJ1Zw0KPiA+ID4gPiBtaWdodA0KPiA+ID4gPiBiZS4uLg0KPiA+ID4gPiANCj4gPiA+ID4g
-V2hlbiB5b3UgaXNzdWUgYSBDTE9TRSwgeW91IGlzc3VlIGl0IHZzLiBhIHBhcnRpY3VsYXIgc3Rh
-dGVpZA0KPiA+ID4gPiAoc3RhdGVpZA0KPiA+ID4gPiAiQSIgaW4gdGhpcyBjYXNlKS4gT25jZSB0
-aGUgb3BlbiBzdGF0ZWlkIGhhcyBiZWVuIHN1cGVyc2VkZWQgYnkNCj4gPiA+ID4gIkIiLCB0aGUN
-Cj4gPiA+ID4gY2xvc2luZyBvZiAiQSIgc2hvdWxkIGhhdmUgbm8gZWZmZWN0Lg0KPiA+ID4gPiAN
-Cj4gPiA+ID4gUGVyaGFwc8KgbmZzX2NsZWFyX29wZW5fc3RhdGVpZCBuZWVkcyB0byBjaGVjayBh
-bmQgc2VlIHdoZXRoZXINCj4gPiA+ID4gdGhlDQo+ID4gPiA+IG9wZW4NCj4gPiA+ID4gc3RhdGVp
-ZCBoYXMgYmVlbiBzdXBlcnNlZGVkIGJlZm9yZSBkb2luZyBpdHMgdGhpbmc/DQo+ID4gPiA+IA0K
-PiA+ID4gDQo+ID4gPiBPaywgSSBzZWUgc29tZXRoaW5nIHRoYXQgbWlnaHQgYmUgYSBwcm9ibGVt
-IGluIHRoaXMgY2FsbCBpbg0KPiA+ID4gbmZzNF9jbG9zZV9kb25lOg0KPiA+ID4gDQo+ID4gPiDC
-oMKgwqDCoMKgwqDCoG5mc19jbGVhcl9vcGVuX3N0YXRlaWQoc3RhdGUsICZjYWxsZGF0YS0+YXJn
-LnN0YXRlaWQsDQo+ID4gPiDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKg
-wqDCoMKgwqByZXNfc3RhdGVpZCzCoA0KPiA+ID4gY2FsbGRhdGEtPmFyZy5mbW9kZSk7DQo+ID4g
-PiANCj4gPiA+IE5vdGUgdGhhdCB3ZSBwYXNzIHR3byBuZnM0X3N0YXRlaWRzIHRvIHRoaXMgY2Fs
-bC4gVGhlIGZpcnN0IGlzDQo+ID4gPiB0aGUNCj4gPiA+IHN0YXRlaWQgdGhhdCBnb3Qgc2VudCBp
-biB0aGUgQ0xPU0UgY2FsbCwgYW5kIHRoZSBzZWNvbmQgaXMgdGhlDQo+ID4gPiBzdGF0ZWlkDQo+
-ID4gPiB0aGF0IGNhbWUgYmFjayBpbiB0aGUgQ0xPU0UgcmVzcG9uc2UuDQo+ID4gPiANCj4gPiA+
-IFJGQzU2NjEgYW5kIFJGQzc1MzAgYm90aCBpbmRpY2F0ZSB0aGF0IHRoZSBzdGF0ZWlkIGluIGEg
-Q0xPU0UNCj4gPiA+IHJlc3BvbnNlDQo+ID4gPiBzaG91bGQgYmUgaWdub3JlZC4NCj4gPiA+IA0K
-PiA+ID4gU28sIEkgdGhpbmsgYSBwYXRjaCBsaWtlIHRoaXMgbWF5IGJlIGluIG9yZGVyLiBBcyB0
-byB3aGV0aGVyIGl0DQo+ID4gPiB3aWxsDQo+ID4gPiBmaXggdGhpcyBidWcsIEkgc29ydCBvZiBk
-b3VidCBpdCwgYnV0IGl0IG1pZ2h0IG5vdCBodXJ0IHRvIHRlc3QNCj4gPiA+IGl0DQo+ID4gPiBv
-dXQ/DQo+ID4gPiANCj4gPiA+IC0tLS0tLS0tLS0tLS0tLS0tLS0tLS04PC0tLS0tLS0tLS0tLS0t
-LS0tLS0tLS0tLS0tDQo+ID4gPiANCj4gPiA+IFtSRkMgUEFUQ0hdIG5mczogcHJvcGVybHkgaWdu
-b3JlIHRoZSBzdGF0ZWlkIGluIGEgQ0xPU0UgcmVzcG9uc2UNCj4gPiA+IA0KPiA+ID4gU2lnbmVk
-LW9mZi1ieTogSmVmZiBMYXl0b27CoA0KPiA+ID4gLS0tDQo+ID4gPiDCoGZzL25mcy9uZnM0cHJv
-Yy5jIHwgMTQgKysrLS0tLS0tLS0tLS0NCj4gPiA+IMKgMSBmaWxlIGNoYW5nZWQsIDMgaW5zZXJ0
-aW9ucygrKSwgMTEgZGVsZXRpb25zKC0pDQo+ID4gPiANCj4gPiA+IGRpZmYgLS1naXQgYS9mcy9u
-ZnMvbmZzNHByb2MuYyBiL2ZzL25mcy9uZnM0cHJvYy5jDQo+ID4gPiBpbmRleCA3ODk3ODI2ZDdj
-NTEuLjU4NDEzYmQwYWFlMiAxMDA2NDQNCj4gPiA+IC0tLSBhL2ZzL25mcy9uZnM0cHJvYy5jDQo+
-ID4gPiArKysgYi9mcy9uZnMvbmZzNHByb2MuYw0KPiA+ID4gQEAgLTE0NTEsNyArMTQ1MSw2IEBA
-IHN0YXRpYyB2b2lkDQo+ID4gPiBuZnNfcmVzeW5jX29wZW5fc3RhdGVpZF9sb2NrZWQoc3RydWN0
-IG5mczRfc3RhdGUgKnN0YXRlKQ0KPiA+ID4gwqB9DQo+ID4gPiDCoA0KPiA+ID4gwqBzdGF0aWMg
-dm9pZCBuZnNfY2xlYXJfb3Blbl9zdGF0ZWlkX2xvY2tlZChzdHJ1Y3QgbmZzNF9zdGF0ZQ0KPiA+
-ID4gKnN0YXRlLA0KPiA+ID4gLQkJbmZzNF9zdGF0ZWlkICphcmdfc3RhdGVpZCwNCj4gPiA+IMKg
-CQluZnM0X3N0YXRlaWQgKnN0YXRlaWQsIGZtb2RlX3QgZm1vZGUpDQo+ID4gPiDCoHsNCj4gPiA+
-IMKgCWNsZWFyX2JpdChORlNfT19SRFdSX1NUQVRFLCAmc3RhdGUtPmZsYWdzKTsNCj4gPiA+IEBA
-IC0xNDY3LDEyICsxNDY2LDggQEAgc3RhdGljIHZvaWQNCj4gPiA+IG5mc19jbGVhcl9vcGVuX3N0
-YXRlaWRfbG9ja2VkKHN0cnVjdCBuZnM0X3N0YXRlICpzdGF0ZSwNCj4gPiA+IMKgCQljbGVhcl9i
-aXQoTkZTX09fV1JPTkxZX1NUQVRFLCAmc3RhdGUtPmZsYWdzKTsNCj4gPiA+IMKgCQljbGVhcl9i
-aXQoTkZTX09QRU5fU1RBVEUsICZzdGF0ZS0+ZmxhZ3MpOw0KPiA+ID4gwqAJfQ0KPiA+ID4gLQlp
-ZiAoc3RhdGVpZCA9PSBOVUxMKQ0KPiA+ID4gLQkJcmV0dXJuOw0KPiA+ID4gwqAJLyogSGFuZGxl
-IHJhY2VzIHdpdGggT1BFTiAqLw0KPiA+ID4gLQlpZiAoIW5mczRfc3RhdGVpZF9tYXRjaF9vdGhl
-cihhcmdfc3RhdGVpZCwgJnN0YXRlLQ0KPiA+ID4gPiANCj4gPiA+ID4gb3Blbl9zdGF0ZWlkKSB8
-fA0KPiA+ID4gLQnCoMKgwqDCoChuZnM0X3N0YXRlaWRfbWF0Y2hfb3RoZXIoc3RhdGVpZCwgJnN0
-YXRlLQ0KPiA+ID4gPm9wZW5fc3RhdGVpZCkNCj4gPiA+ICYmDQo+ID4gPiAtCcKgwqDCoMKgIW5m
-czRfc3RhdGVpZF9pc19uZXdlcihzdGF0ZWlkLCAmc3RhdGUtDQo+ID4gPiA+b3Blbl9zdGF0ZWlk
-KSkpDQo+ID4gPiB7DQo+ID4gPiArCWlmICghbmZzNF9zdGF0ZWlkX21hdGNoX290aGVyKHN0YXRl
-aWQsICZzdGF0ZS0NCj4gPiA+ID4gDQo+ID4gPiA+IG9wZW5fc3RhdGVpZCkpIHsNCj4gPiANCj4g
-PiBOby4gSSB0aGluayB3aGF0IHdlIHNob3VsZCBiZSBkb2luZyBoZXJlIGlzDQo+ID4gDQo+ID4g
-MSkgaWYgKG5mczRfc3RhdGVpZF9tYXRjaF9vdGhlcihhcmdfc3RhdGVpZCwgJnN0YXRlLT5vcGVu
-X3N0YXRlaWQpwqANCj4gPiB0aGVuDQo+IA0KPiBZb3UgbXVzdCBtZWFuICghbmZzNF9zdGF0ZWlk
-X21hdGNoX290aGVyKGFyZ19zdGF0ZWlkLMKgDQo+ICZzdGF0ZS0+b3Blbl9zdGF0ZWlkKQ0KDQpT
-b3JyeS4gWWVzLg0KDQo+ID4gDQo+ID4ganVzdCBpZ25vcmUgdGhlIHJlc3VsdCBhbmQgcmV0dXJu
-IGltbWVkaWF0ZWx5LCBiZWNhdXNlIGl0IGFwcGxpZXMNCj4gPiB0byBhDQo+ID4gY29tcGxldGVs
-eSBkaWZmZXJlbnQgc3RhdGVpZC4NCj4gPiANCj4gPiAyKSBpZiAobmZzNF9zdGF0ZWlkX21hdGNo
-X290aGVyKHN0YXRlaWQsICZzdGF0ZS0+b3Blbl9zdGF0ZWlkKQ0KPiA+ICYmwqAhbmZzNF9zdGF0
-ZWlkX2lzX25ld2VyKHN0YXRlaWQsICZzdGF0ZS0+b3Blbl9zdGF0ZWlkKSkpIHRoZW7CoA0KPiA+
-IHJlc3luYywNCj4gPiBiZWNhdXNlIHRoaXMgd2FzIGxpa2VseSBhbiBPUEVOX0RPV05HUkFERSB0
-aGF0IGhhcyByYWNlZCB3aXRoIG9uZQ0KPiA+IG9yDQo+ID4gbW9yZSBPUEVOIGNhbGxzLg0KPiAN
-Cj4gT0ssIGJ1dCB0aGVzZSBkbyBub3QgaGVscCB0aGUgb3JpZ2luYWxseSByZXBvcnRlZCByYWNl
-IGJlY2F1c2UgYXQNCj4gdGhlwqANCj4gdGltZQ0KPiB0aGF0IHRoZSBDTE9TRSByZXNwb25zZSBo
-YW5kbGluZyBkb2VzIGEgcmVzeW5jIC0gSSBwcmVzdW1lDQo+IG5mc19yZXN5bmNfb3Blbl9zdGF0
-ZWlkX2xvY2tlZCgpIC0gYWxsIHRoZSBzdGF0ZSBjb3VudGVycyBhcmUgemVybyzCoA0KPiB3aGlj
-aA0KPiBieXBhc3NlcyByZXNldHRpbmcgTkZTX09QRU5fU1RBVEUsIHdoaWNoLCBpZiB1bnNldCwg
-YWxsb3dzIGFueQ0KPiBzdGF0ZWlkwqANCj4gdG8NCj4gdXBkYXRlIHRoZSBvcGVuX3N0YXRlaWQu
-DQo+wqANCg0KUGxlYXNlIHNlZSB0aGUgMiBwYXRjaGVzIEkganVzdCBwb3N0ZWQuIFRoZXkgc2hv
-dWxkIGZpeCB0aGUgcHJvYmxlbS4=
+On Mon, 2016-11-14 at 11:19 -0500, Trond Myklebust wrote:
+> If the reply to a successful CLOSE call races with an OPEN to the same
+> file, we can end up scribbling over the stateid that represents the
+> new open state.
+> The race looks like:
+> 
+>   Client				Server
+>   ======				======
+> 
+>   CLOSE stateid A on file "foo"
+> 					CLOSE stateid A, return stateid C
+>   OPEN file "foo"
+> 					OPEN "foo", return stateid B
+>   Receive reply to OPEN
+>   Reset open state for "foo"
+>   Associate stateid B to "foo"
+> 
+>   Receive CLOSE for A
+>   Reset open state for "foo"
+>   Replace stateid B with C
+> 
+> The fix is to examine the argument of the CLOSE, and check for a match
+> with the current stateid "other" field. If the two do not match, then
+> the above race occurred, and we should just ignore the CLOSE.
+> 
+> Reported-by: Benjamin Coddington <bcodding@redhat.com>
+> Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+> ---
+>  fs/nfs/nfs4_fs.h  |  7 +++++++
+>  fs/nfs/nfs4proc.c | 12 ++++++------
+>  2 files changed, 13 insertions(+), 6 deletions(-)
+> 
+> diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
+> index 9b3a82abab07..1452177c822d 100644
+> --- a/fs/nfs/nfs4_fs.h
+> +++ b/fs/nfs/nfs4_fs.h
+> @@ -542,6 +542,13 @@ static inline bool nfs4_valid_open_stateid(const struct nfs4_state *state)
+>  	return test_bit(NFS_STATE_RECOVERY_FAILED, &state->flags) == 0;
+>  }
+>  
+> +static inline bool nfs4_state_match_open_stateid_other(const struct nfs4_state *state,
+> +		const nfs4_stateid *stateid)
+> +{
+> +	return test_bit(NFS_OPEN_STATE, &state->flags) &&
+> +		nfs4_stateid_match_other(&state->open_stateid, stateid);
+> +}
+> +
+>  #else
+>  
+>  #define nfs4_close_state(a, b) do { } while (0)
+> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+> index f550ac69ffa0..b7b0080977c0 100644
+> --- a/fs/nfs/nfs4proc.c
+> +++ b/fs/nfs/nfs4proc.c
+> @@ -1458,7 +1458,6 @@ static void nfs_resync_open_stateid_locked(struct nfs4_state *state)
+>  }
+>  
+>  static void nfs_clear_open_stateid_locked(struct nfs4_state *state,
+> -		nfs4_stateid *arg_stateid,
+>  		nfs4_stateid *stateid, fmode_t fmode)
+>  {
+>  	clear_bit(NFS_O_RDWR_STATE, &state->flags);
+> @@ -1476,10 +1475,9 @@ static void nfs_clear_open_stateid_locked(struct nfs4_state *state,
+>  	}
+>  	if (stateid == NULL)
+>  		return;
+> -	/* Handle races with OPEN */
+> -	if (!nfs4_stateid_match_other(arg_stateid, &state->open_stateid) ||
+> -	    (nfs4_stateid_match_other(stateid, &state->open_stateid) &&
+> -	    !nfs4_stateid_is_newer(stateid, &state->open_stateid))) {
+> +	/* Handle OPEN+OPEN_DOWNGRADE races */
+> +	if (nfs4_stateid_match_other(stateid, &state->open_stateid) &&
+> +	    !nfs4_stateid_is_newer(stateid, &state->open_stateid)) {
+>  		nfs_resync_open_stateid_locked(state);
+>  		return;
+>  	}
+> @@ -1493,7 +1491,9 @@ static void nfs_clear_open_stateid(struct nfs4_state *state,
+>  	nfs4_stateid *stateid, fmode_t fmode)
+>  {
+>  	write_seqlock(&state->seqlock);
+> -	nfs_clear_open_stateid_locked(state, arg_stateid, stateid, fmode);
+> +	/* Ignore, if the CLOSE argment doesn't match the current stateid */
+> +	if (nfs4_state_match_open_stateid_other(state, arg_stateid))
+> +		nfs_clear_open_stateid_locked(state, stateid, fmode);
+>  	write_sequnlock(&state->seqlock);
+>  	if (test_bit(NFS_STATE_RECLAIM_NOGRACE, &state->flags))
+>  		nfs4_schedule_state_manager(state->owner->so_server->nfs_client);
+
+I still don't quite get it. What's the point of paying any attention at
+all to the stateid returned by the server in a CLOSE response? It's
+either:
+
+a) completely bogus, if the server is following the SHOULD in RFC5661,
+section 18.2.4
+
+...or...
+
+b) refers to a now-defunct stateid -- probably a later version of the
+one sent in the request, but the spec doesn't really spell that out,
+AFAICT.
+
+In either case, I don't think it ought to be trusted. Why not just use
+the arg_stateid universally here?
+
+-- 
+Jeff Layton <jlayton@redhat.com>
