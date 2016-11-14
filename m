@@ -1,279 +1,249 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:60778 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([173.255.197.46]:45852 "EHLO fieldses.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751496AbcKNOyT (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 14 Nov 2016 09:54:19 -0500
-From: "Benjamin Coddington" <bcodding@redhat.com>
-To: "Trond Myklebust" <trondmy@primarydata.com>
-Cc: "jlayton@redhat.com" <jlayton@redhat.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: CLOSE/OPEN race
-Date: Mon, 14 Nov 2016 09:53:28 -0500
-Message-ID: <8153C306-D6B6-442B-B565-BC6BAEE9993F@redhat.com>
-In-Reply-To: <1479048471.3146.10.camel@primarydata.com>
-References: <9E2B8A0D-7B0E-4AE5-800A-0EF3F7F7F694@redhat.com>
- <1478955250.2442.16.camel@redhat.com>
- <B050FA3F-5D9A-4053-BB9E-7668814846B7@redhat.com>
- <1478969565.2442.18.camel@redhat.com>
- <98C04570-5E22-4F6D-80AF-FA6EE48ED489@redhat.com>
- <1478985360.2442.29.camel@redhat.com> <1479005770.8210.4.camel@redhat.com>
- <1479048471.3146.10.camel@primarydata.com>
+        id S1752246AbcKNPgy (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 14 Nov 2016 10:36:54 -0500
+Date: Mon, 14 Nov 2016 10:36:52 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: Scott Mayhew <smayhew@redhat.com>,
+        Jeff Layton <jlayton@poochiereds.net>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH v2] sunrpc: svc_age_temp_xprts_now should not call
+ setsockopt non-tcp transports
+Message-ID: <20161114153652.GA21754@fieldses.org>
+References: <1478888182-12313-1-git-send-email-smayhew@redhat.com>
+ <A0EDEA31-A820-435D-B95F-A68B74F6EEC2@oracle.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8; format=flowed
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <A0EDEA31-A820-435D-B95F-A68B74F6EEC2@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Fri, Nov 11, 2016 at 02:38:54PM -0500, Chuck Lever wrote:
+> 
+> > On Nov 11, 2016, at 1:16 PM, Scott Mayhew <smayhew@redhat.com> wrote:
+> > 
+> > This fixes the following panic that can occur with NFSoRDMA.
+> > 
+> > general protection fault: 0000 [#1] SMP
+> > Modules linked in: rpcrdma ib_isert iscsi_target_mod ib_iser libiscsi
+> > scsi_transport_iscsi ib_srpt target_core_mod ib_srp scsi_transport_srp
+> > scsi_tgt ib_ipoib rdma_ucm ib_ucm ib_uverbs ib_umad rdma_cm ib_cm iw_cm
+> > mlx5_ib ib_core intel_powerclamp coretemp kvm_intel kvm sg ioatdma
+> > ipmi_devintf ipmi_ssif dcdbas iTCO_wdt iTCO_vendor_support pcspkr
+> > irqbypass sb_edac shpchp dca crc32_pclmul ghash_clmulni_intel edac_core
+> > lpc_ich aesni_intel lrw gf128mul glue_helper ablk_helper mei_me mei
+> > ipmi_si cryptd wmi ipmi_msghandler acpi_pad acpi_power_meter nfsd
+> > auth_rpcgss nfs_acl lockd grace sunrpc ip_tables xfs libcrc32c sd_mod
+> > crc_t10dif crct10dif_generic mgag200 i2c_algo_bit drm_kms_helper
+> > syscopyarea sysfillrect sysimgblt ahci fb_sys_fops ttm libahci mlx5_core
+> > tg3 crct10dif_pclmul drm crct10dif_common
+> > ptp i2c_core libata crc32c_intel pps_core fjes dm_mirror dm_region_hash
+> > dm_log dm_mod
+> > CPU: 1 PID: 120 Comm: kworker/1:1 Not tainted 3.10.0-514.el7.x86_64 #1
+> > Hardware name: Dell Inc. PowerEdge R320/0KM5PX, BIOS 2.4.2 01/29/2015
+> > Workqueue: events check_lifetime
+> > task: ffff88031f506dd0 ti: ffff88031f584000 task.ti: ffff88031f584000
+> > RIP: 0010:[<ffffffff8168d847>]  [<ffffffff8168d847>]
+> > _raw_spin_lock_bh+0x17/0x50
+> > RSP: 0018:ffff88031f587ba8  EFLAGS: 00010206
+> > RAX: 0000000000020000 RBX: 20041fac02080072 RCX: ffff88031f587fd8
+> > RDX: 0000000000000000 RSI: 0000000000000000 RDI: 20041fac02080072
+> > RBP: ffff88031f587bb0 R08: 0000000000000008 R09: ffffffff8155be77
+> > R10: ffff880322a59b00 R11: ffffea000bf39f00 R12: 20041fac02080072
+> > R13: 000000000000000d R14: ffff8800c4fbd800 R15: 0000000000000001
+> > FS:  0000000000000000(0000) GS:ffff880322a40000(0000)
+> > knlGS:0000000000000000
+> > CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
+> > CR2: 00007f3c52d4547e CR3: 00000000019ba000 CR4: 00000000001407e0
+> > DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
+> > DR3: 0000000000000000 DR6: 00000000ffff0ff0 DR7: 0000000000000400
+> > Stack:
+> > 20041fac02080002 ffff88031f587bd0 ffffffff81557830 20041fac02080002
+> > ffff88031f587c78 ffff88031f587c40 ffffffff8155ae08 000000010157df32
+> > 0000000800000001 ffff88031f587c20 ffffffff81096acb ffffffff81aa37d0
+> > Call Trace:
+> > [<ffffffff81557830>] lock_sock_nested+0x20/0x50
+> > [<ffffffff8155ae08>] sock_setsockopt+0x78/0x940
+> > [<ffffffff81096acb>] ? lock_timer_base.isra.33+0x2b/0x50
+> > [<ffffffff8155397d>] kernel_setsockopt+0x4d/0x50
+> > [<ffffffffa0386284>] svc_age_temp_xprts_now+0x174/0x1e0 [sunrpc]
+> > [<ffffffffa03b681d>] nfsd_inetaddr_event+0x9d/0xd0 [nfsd]
+> > [<ffffffff81691ebc>] notifier_call_chain+0x4c/0x70
+> > [<ffffffff810b687d>] __blocking_notifier_call_chain+0x4d/0x70
+> > [<ffffffff810b68b6>] blocking_notifier_call_chain+0x16/0x20
+> > [<ffffffff815e8538>] __inet_del_ifa+0x168/0x2d0
+> > [<ffffffff815e8cef>] check_lifetime+0x25f/0x270
+> > [<ffffffff810a7f3b>] process_one_work+0x17b/0x470
+> > [<ffffffff810a8d76>] worker_thread+0x126/0x410
+> > [<ffffffff810a8c50>] ? rescuer_thread+0x460/0x460
+> > [<ffffffff810b052f>] kthread+0xcf/0xe0
+> > [<ffffffff810b0460>] ? kthread_create_on_node+0x140/0x140
+> > [<ffffffff81696418>] ret_from_fork+0x58/0x90
+> > [<ffffffff810b0460>] ? kthread_create_on_node+0x140/0x140
+> > Code: ca 75 f1 5d c3 0f 1f 80 00 00 00 00 eb d9 66 0f 1f 44 00 00 0f 1f
+> > 44 00 00 55 48 89 e5 53 48 89 fb e8 7e 04 a0 ff b8 00 00 02 00 <f0> 0f
+> > c1 03 89 c2 c1 ea 10 66 39 c2 75 03 5b 5d c3 83 e2 fe 0f
+> > RIP  [<ffffffff8168d847>] _raw_spin_lock_bh+0x17/0x50
+> > RSP <ffff88031f587ba8>
+> > 
+> > Signed-off-by: Scott Mayhew <smayhew@redhat.com>
+> > Fixes: c3d4879e ("sunrpc: Add a function to close temporary transports immediately")
+> 
+> Thanks, Scott. That's what I had in mind.
+> 
+> Reviewed-by: Chuck Lever <chuck.lever@oracle.com>
 
-On 13 Nov 2016, at 9:47, Trond Myklebust wrote:
+Thanks!  Queuing up for 4.9.
 
-> On Sat, 2016-11-12 at 21:56 -0500, Jeff Layton wrote:
->> On Sat, 2016-11-12 at 16:16 -0500, Jeff Layton wrote:
->>>
->>> On Sat, 2016-11-12 at 13:03 -0500, Benjamin Coddington wrote:
->>>>
->>>>
->>>> On 12 Nov 2016, at 11:52, Jeff Layton wrote:
->>>>
->>>>>
->>>>>
->>>>> On Sat, 2016-11-12 at 10:31 -0500, Benjamin Coddington wrote:
->>>>>>
->>>>>>
->>>>>> On 12 Nov 2016, at 7:54, Jeff Layton wrote:
->>>>>>
->>>>>>>
->>>>>>>
->>>>>>>
->>>>>>> On Sat, 2016-11-12 at 06:08 -0500, Benjamin Coddington
->>>>>>> wrote:
->>>>>>>>
->>>>>>>>
->>>>>>>>
->>>>>>>> I've been seeing the following on a modified version of
->>>>>>>> generic/089
->>>>>>>> that gets the client stuck sending LOCK with
->>>>>>>> NFS4ERR_OLD_STATEID.
->>>>>>>>
->>>>>>>> 1. Client has open stateid A, sends a CLOSE
->>>>>>>> 2. Client sends OPEN with same owner
->>>>>>>> 3. Client sends another OPEN with same owner
->>>>>>>> 4. Client gets a reply to OPEN in 3, stateid is B.2
->>>>>>>> (stateid B
->>>>>>>> sequence 2)
->>>>>>>> 5. Client does LOCK,LOCKU,FREE_STATEID from B.2
->>>>>>>> 6. Client gets a reply to CLOSE in 1
->>>>>>>> 7. Client gets reply to OPEN in 2, stateid is B.1
->>>>>>>> 8. Client sends LOCK with B.1 - OLD_STATEID, now stuck in
->>>>>>>> a loop
->>>>>>>>
->>>>>>>> The CLOSE response in 6 causes us to clear
->>>>>>>> NFS_OPEN_STATE, so that
->>>>>>>> the OPEN
->>>>>>>> response in 7 is able to update the open_stateid even
->>>>>>>> though it has a
->>>>>>>> lower
->>>>>>>> sequence number.
->>>>>>>>
->>>>>>>> I think this case could be handled by never updating the
->>>>>>>> open_stateid
->>>>>>>> if the
->>>>>>>> stateids match but the sequence number of the new state
->>>>>>>> is less than
->>>>>>>> the
->>>>>>>> current open_state.
->>>>>>>>
->>>>>>>
->>>>>>> What kernel is this on?
->>>>>>
->>>>>> On v4.9-rc2 with a couple fixups.  Without them, I can't test
->>>>>> long
->>>>>> enough to
->>>>>> reproduce this race.  I don't think any of those are involved
->>>>>> in this
->>>>>> problem, though.
->>>>>>
->>>>>>>
->>>>>>>
->>>>>>>
->>>>>>> Yes, that seems wrong. The client should be picking B.2 for
->>>>>>> the open
->>>>>>> stateid to use. I think that decision of whether to take a
->>>>>>> seqid is
->>>>>>> made
->>>>>>> in nfs_need_update_open_stateid. The logic in there looks
->>>>>>> correct to
->>>>>>> me
->>>>>>> at first glance though.
->>>>>>
->>>>>> nfs_need_update_open_stateid() will return true if
->>>>>> NFS_OPEN_STATE is
->>>>>> unset.
->>>>>> That's the precondition set up by steps 1-6.  Perhaps it
->>>>>> should not
->>>>>> update
->>>>>> the stateid if they match but the sequence number is less,
->>>>>> and still set
->>>>>> NFS_OPEN_STATE once more.  That will fix _this_ case.  Are
->>>>>> there other
->>>>>> cases
->>>>>> where that would be a problem?
->>>>>>
->>>>>> Ben
->>>>>
->>>>> That seems wrong.
->>>>
->>>> I'm not sure what you mean: what seems wrong?
->>>>
->>>
->>> Sorry, it seems wrong that the client would issue the LOCK with B.1
->>> there.
->>>
->>>>
->>>>>
->>>>>
->>>>> The only close was sent in step 1, and that was for a
->>>>> completely different stateid (A rather than B). It seems likely
->>>>> that
->>>>> that is where the bug is.
->>>>
->>>> I'm still not sure what point you're trying to make..
->>>>
->>>> Even though the close was sent in step 1, the response wasn't
->>>> processed
->>>> until step 6..
->>>
->>> Not really a point per-se, I was just saying where I think the bug
->>> might
->>> be...
->>>
->>> When you issue a CLOSE, you issue it vs. a particular stateid
->>> (stateid
->>> "A" in this case). Once the open stateid has been superseded by
->>> "B", the
->>> closing of "A" should have no effect.
->>>
->>> Perhaps nfs_clear_open_stateid needs to check and see whether the
->>> open
->>> stateid has been superseded before doing its thing?
->>>
->>
->> Ok, I see something that might be a problem in this call in
->> nfs4_close_done:
->>
->>        nfs_clear_open_stateid(state, &calldata->arg.stateid,
->>                         res_stateid, 
->> calldata->arg.fmode);
->>
->> Note that we pass two nfs4_stateids to this call. The first is the
->> stateid that got sent in the CLOSE call, and the second is the
->> stateid
->> that came back in the CLOSE response.
->>
->> RFC5661 and RFC7530 both indicate that the stateid in a CLOSE
->> response
->> should be ignored.
->>
->> So, I think a patch like this may be in order. As to whether it will
->> fix this bug, I sort of doubt it, but it might not hurt to test it
->> out?
->>
->> ----------------------8<--------------------------
->>
->> [RFC PATCH] nfs: properly ignore the stateid in a CLOSE response
->>
->> Signed-off-by: Jeff Layton 
->> ---
->>  fs/nfs/nfs4proc.c | 14 +++-----------
->>  1 file changed, 3 insertions(+), 11 deletions(-)
->>
->> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
->> index 7897826d7c51..58413bd0aae2 100644
->> --- a/fs/nfs/nfs4proc.c
->> +++ b/fs/nfs/nfs4proc.c
->> @@ -1451,7 +1451,6 @@ static void
->> nfs_resync_open_stateid_locked(struct nfs4_state *state)
->>  }
->>  
->>  static void nfs_clear_open_stateid_locked(struct nfs4_state *state,
->> -		nfs4_stateid *arg_stateid,
->>  		nfs4_stateid *stateid, fmode_t fmode)
->>  {
->>  	clear_bit(NFS_O_RDWR_STATE, &state->flags);
->> @@ -1467,12 +1466,8 @@ static void
->> nfs_clear_open_stateid_locked(struct nfs4_state *state,
->>  		clear_bit(NFS_O_WRONLY_STATE, &state->flags);
->>  		clear_bit(NFS_OPEN_STATE, &state->flags);
->>  	}
->> -	if (stateid == NULL)
->> -		return;
->>  	/* Handle races with OPEN */
->> -	if (!nfs4_stateid_match_other(arg_stateid, &state-
->>> open_stateid) ||
->> -	    (nfs4_stateid_match_other(stateid, &state->open_stateid)
->> &&
->> -	    !nfs4_stateid_is_newer(stateid, &state->open_stateid)))
->> {
->> +	if (!nfs4_stateid_match_other(stateid, &state-
->>> open_stateid)) {
->
-> No. I think what we should be doing here is
->
-> 1) if (nfs4_stateid_match_other(arg_stateid, &state->open_stateid) 
-> then
+--b.
 
-You must mean (!nfs4_stateid_match_other(arg_stateid, 
-&state->open_stateid)
-
-> just ignore the result and return immediately, because it applies to a
-> completely different stateid.
->
-> 2) if (nfs4_stateid_match_other(stateid, &state->open_stateid)
-> && !nfs4_stateid_is_newer(stateid, &state->open_stateid))) then 
-> resync,
-> because this was likely an OPEN_DOWNGRADE that has raced with one or
-> more OPEN calls.
-
-OK, but these do not help the originally reported race because at the 
-time
-that the CLOSE response handling does a resync - I presume
-nfs_resync_open_stateid_locked() - all the state counters are zero, 
-which
-bypasses resetting NFS_OPEN_STATE, which, if unset, allows any stateid 
-to
-update the open_stateid.
-
-I need something like:
-
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index a230764b7d07..c9aa166c45aa 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -1425,8 +1425,13 @@ static void 
-nfs_test_and_clear_all_open_stateid(struct nfs4_state *state)
-  static bool nfs_need_update_open_stateid(struct nfs4_state *state,
-                 const nfs4_stateid *stateid, nfs4_stateid *freeme)
-  {
--       if (test_and_set_bit(NFS_OPEN_STATE, &state->flags) == 0)
-+       if (test_and_set_bit(NFS_OPEN_STATE, &state->flags) == 0) {
-+               if (nfs4_stateid_match_other(stateid, 
-&state->open_stateid) &&
-+                       !nfs4_stateid_is_newer(stateid, 
-&state->open_stateid))
-+                       return false;
-                 return true;
-+       }
-+
-         if (!nfs4_stateid_match_other(stateid, &state->open_stateid)) {
-                 nfs4_stateid_copy(freeme, &state->open_stateid);
-                 nfs_test_and_clear_all_open_stateid(state);
-
-I've got that in testing, and I'll let it run for a day or so.
-
-Another way to simplify CLOSE/OPEN races might be to never reuse an
-openowner if we send a close.  Any opens after a close would have to use 
-a
-new mutated openowner, so the state always proceeds from open to close 
-and
-never back again.  Any reason not to do that?
-
-Ben
+> 
+> 
+> > ---
+> > include/linux/sunrpc/svc_xprt.h          |  1 +
+> > net/sunrpc/svc_xprt.c                    | 11 +----------
+> > net/sunrpc/svcsock.c                     | 21 +++++++++++++++++++++
+> > net/sunrpc/xprtrdma/svc_rdma_transport.c |  6 ++++++
+> > 4 files changed, 29 insertions(+), 10 deletions(-)
+> > 
+> > diff --git a/include/linux/sunrpc/svc_xprt.h b/include/linux/sunrpc/svc_xprt.h
+> > index ab02a45..e5d1934 100644
+> > --- a/include/linux/sunrpc/svc_xprt.h
+> > +++ b/include/linux/sunrpc/svc_xprt.h
+> > @@ -25,6 +25,7 @@ struct svc_xprt_ops {
+> > 	void		(*xpo_detach)(struct svc_xprt *);
+> > 	void		(*xpo_free)(struct svc_xprt *);
+> > 	int		(*xpo_secure_port)(struct svc_rqst *);
+> > +	void		(*xpo_kill_temp_xprt)(struct svc_xprt *);
+> > };
+> > 
+> > struct svc_xprt_class {
+> > diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
+> > index c3f6523..3bc1d61 100644
+> > --- a/net/sunrpc/svc_xprt.c
+> > +++ b/net/sunrpc/svc_xprt.c
+> > @@ -1002,14 +1002,8 @@ static void svc_age_temp_xprts(unsigned long closure)
+> > void svc_age_temp_xprts_now(struct svc_serv *serv, struct sockaddr *server_addr)
+> > {
+> > 	struct svc_xprt *xprt;
+> > -	struct svc_sock *svsk;
+> > -	struct socket *sock;
+> > 	struct list_head *le, *next;
+> > 	LIST_HEAD(to_be_closed);
+> > -	struct linger no_linger = {
+> > -		.l_onoff = 1,
+> > -		.l_linger = 0,
+> > -	};
+> > 
+> > 	spin_lock_bh(&serv->sv_lock);
+> > 	list_for_each_safe(le, next, &serv->sv_tempsocks) {
+> > @@ -1027,10 +1021,7 @@ void svc_age_temp_xprts_now(struct svc_serv *serv, struct sockaddr *server_addr)
+> > 		list_del_init(le);
+> > 		xprt = list_entry(le, struct svc_xprt, xpt_list);
+> > 		dprintk("svc_age_temp_xprts_now: closing %p\n", xprt);
+> > -		svsk = container_of(xprt, struct svc_sock, sk_xprt);
+> > -		sock = svsk->sk_sock;
+> > -		kernel_setsockopt(sock, SOL_SOCKET, SO_LINGER,
+> > -				  (char *)&no_linger, sizeof(no_linger));
+> > +		xprt->xpt_ops->xpo_kill_temp_xprt(xprt);
+> > 		svc_close_xprt(xprt);
+> > 	}
+> > }
+> > diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
+> > index 57625f6..a4bc982 100644
+> > --- a/net/sunrpc/svcsock.c
+> > +++ b/net/sunrpc/svcsock.c
+> > @@ -438,6 +438,21 @@ static int svc_tcp_has_wspace(struct svc_xprt *xprt)
+> > 	return !test_bit(SOCK_NOSPACE, &svsk->sk_sock->flags);
+> > }
+> > 
+> > +static void svc_tcp_kill_temp_xprt(struct svc_xprt *xprt)
+> > +{
+> > +	struct svc_sock *svsk;
+> > +	struct socket *sock;
+> > +	struct linger no_linger = {
+> > +		.l_onoff = 1,
+> > +		.l_linger = 0,
+> > +	};
+> > +
+> > +	svsk = container_of(xprt, struct svc_sock, sk_xprt);
+> > +	sock = svsk->sk_sock;
+> > +	kernel_setsockopt(sock, SOL_SOCKET, SO_LINGER,
+> > +			  (char *)&no_linger, sizeof(no_linger));
+> > +}
+> > +
+> > /*
+> >  * See net/ipv6/ip_sockglue.c : ip_cmsg_recv_pktinfo
+> >  */
+> > @@ -648,6 +663,10 @@ static struct svc_xprt *svc_udp_accept(struct svc_xprt *xprt)
+> > 	return NULL;
+> > }
+> > 
+> > +static void svc_udp_kill_temp_xprt(struct svc_xprt *xprt)
+> > +{
+> > +}
+> > +
+> > static struct svc_xprt *svc_udp_create(struct svc_serv *serv,
+> > 				       struct net *net,
+> > 				       struct sockaddr *sa, int salen,
+> > @@ -667,6 +686,7 @@ static struct svc_xprt_ops svc_udp_ops = {
+> > 	.xpo_has_wspace = svc_udp_has_wspace,
+> > 	.xpo_accept = svc_udp_accept,
+> > 	.xpo_secure_port = svc_sock_secure_port,
+> > +	.xpo_kill_temp_xprt = svc_udp_kill_temp_xprt,
+> > };
+> > 
+> > static struct svc_xprt_class svc_udp_class = {
+> > @@ -1242,6 +1262,7 @@ static struct svc_xprt_ops svc_tcp_ops = {
+> > 	.xpo_has_wspace = svc_tcp_has_wspace,
+> > 	.xpo_accept = svc_tcp_accept,
+> > 	.xpo_secure_port = svc_sock_secure_port,
+> > +	.xpo_kill_temp_xprt = svc_tcp_kill_temp_xprt,
+> > };
+> > 
+> > static struct svc_xprt_class svc_tcp_class = {
+> > diff --git a/net/sunrpc/xprtrdma/svc_rdma_transport.c b/net/sunrpc/xprtrdma/svc_rdma_transport.c
+> > index 6864fb9..1334de2 100644
+> > --- a/net/sunrpc/xprtrdma/svc_rdma_transport.c
+> > +++ b/net/sunrpc/xprtrdma/svc_rdma_transport.c
+> > @@ -67,6 +67,7 @@ static void svc_rdma_detach(struct svc_xprt *xprt);
+> > static void svc_rdma_free(struct svc_xprt *xprt);
+> > static int svc_rdma_has_wspace(struct svc_xprt *xprt);
+> > static int svc_rdma_secure_port(struct svc_rqst *);
+> > +static void svc_rdma_kill_temp_xprt(struct svc_xprt *);
+> > 
+> > static struct svc_xprt_ops svc_rdma_ops = {
+> > 	.xpo_create = svc_rdma_create,
+> > @@ -79,6 +80,7 @@ static struct svc_xprt_ops svc_rdma_ops = {
+> > 	.xpo_has_wspace = svc_rdma_has_wspace,
+> > 	.xpo_accept = svc_rdma_accept,
+> > 	.xpo_secure_port = svc_rdma_secure_port,
+> > +	.xpo_kill_temp_xprt = svc_rdma_kill_temp_xprt,
+> > };
+> > 
+> > struct svc_xprt_class svc_rdma_class = {
+> > @@ -1317,6 +1319,10 @@ static int svc_rdma_secure_port(struct svc_rqst *rqstp)
+> > 	return 1;
+> > }
+> > 
+> > +static void svc_rdma_kill_temp_xprt(struct svc_xprt *xprt)
+> > +{
+> > +}
+> > +
+> > int svc_rdma_send(struct svcxprt_rdma *xprt, struct ib_send_wr *wr)
+> > {
+> > 	struct ib_send_wr *bad_wr, *n_wr;
+> > -- 
+> > 2.4.11
+> > 
+> > --
+> > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> > the body of a message to majordomo@vger.kernel.org
+> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
+> --
+> Chuck Lever
+> 
+> 
