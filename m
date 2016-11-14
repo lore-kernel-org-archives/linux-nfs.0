@@ -1,128 +1,101 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qt0-f182.google.com ([209.85.216.182]:33468 "EHLO
-        mail-qt0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1754379AbcKNQkw (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 14 Nov 2016 11:40:52 -0500
-Received: by mail-qt0-f182.google.com with SMTP id p16so50468743qta.0
-        for <linux-nfs@vger.kernel.org>; Mon, 14 Nov 2016 08:40:51 -0800 (PST)
-Message-ID: <1479141648.2510.10.camel@redhat.com>
+Received: from us-smtp-delivery-194.mimecast.com ([216.205.24.194]:26535 "EHLO
+        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S934207AbcKNQss (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 14 Nov 2016 11:48:48 -0500
+From: Trond Myklebust <trondmy@primarydata.com>
+To: "jlayton@redhat.com" <jlayton@redhat.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+CC: "bcodding@redhat.com" <bcodding@redhat.com>
 Subject: Re: [PATCH 1/2] NFSv4: Fix CLOSE races with OPEN
-From: Jeff Layton <jlayton@redhat.com>
-To: Trond Myklebust <trond.myklebust@primarydata.com>,
-        linux-nfs@vger.kernel.org
-Cc: Benjamin Coddington <bcodding@redhat.com>
-Date: Mon, 14 Nov 2016 11:40:48 -0500
-In-Reply-To: <1479140396-17779-2-git-send-email-trond.myklebust@primarydata.com>
+Date: Mon, 14 Nov 2016 16:48:41 +0000
+Message-ID: <1479142120.5653.9.camel@primarydata.com>
 References: <1479140396-17779-1-git-send-email-trond.myklebust@primarydata.com>
          <1479140396-17779-2-git-send-email-trond.myklebust@primarydata.com>
-Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
+         <1479141648.2510.10.camel@redhat.com>
+In-Reply-To: <1479141648.2510.10.camel@redhat.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, 2016-11-14 at 11:19 -0500, Trond Myklebust wrote:
-> If the reply to a successful CLOSE call races with an OPEN to the same
-> file, we can end up scribbling over the stateid that represents the
-> new open state.
-> The race looks like:
-> 
->   Client				Server
->   ======				======
-> 
->   CLOSE stateid A on file "foo"
-> 					CLOSE stateid A, return stateid C
->   OPEN file "foo"
-> 					OPEN "foo", return stateid B
->   Receive reply to OPEN
->   Reset open state for "foo"
->   Associate stateid B to "foo"
-> 
->   Receive CLOSE for A
->   Reset open state for "foo"
->   Replace stateid B with C
-> 
-> The fix is to examine the argument of the CLOSE, and check for a match
-> with the current stateid "other" field. If the two do not match, then
-> the above race occurred, and we should just ignore the CLOSE.
-> 
-> Reported-by: Benjamin Coddington <bcodding@redhat.com>
-> Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
-> ---
->  fs/nfs/nfs4_fs.h  |  7 +++++++
->  fs/nfs/nfs4proc.c | 12 ++++++------
->  2 files changed, 13 insertions(+), 6 deletions(-)
-> 
-> diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
-> index 9b3a82abab07..1452177c822d 100644
-> --- a/fs/nfs/nfs4_fs.h
-> +++ b/fs/nfs/nfs4_fs.h
-> @@ -542,6 +542,13 @@ static inline bool nfs4_valid_open_stateid(const struct nfs4_state *state)
->  	return test_bit(NFS_STATE_RECOVERY_FAILED, &state->flags) == 0;
->  }
->  
-> +static inline bool nfs4_state_match_open_stateid_other(const struct nfs4_state *state,
-> +		const nfs4_stateid *stateid)
-> +{
-> +	return test_bit(NFS_OPEN_STATE, &state->flags) &&
-> +		nfs4_stateid_match_other(&state->open_stateid, stateid);
-> +}
-> +
->  #else
->  
->  #define nfs4_close_state(a, b) do { } while (0)
-> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-> index f550ac69ffa0..b7b0080977c0 100644
-> --- a/fs/nfs/nfs4proc.c
-> +++ b/fs/nfs/nfs4proc.c
-> @@ -1458,7 +1458,6 @@ static void nfs_resync_open_stateid_locked(struct nfs4_state *state)
->  }
->  
->  static void nfs_clear_open_stateid_locked(struct nfs4_state *state,
-> -		nfs4_stateid *arg_stateid,
->  		nfs4_stateid *stateid, fmode_t fmode)
->  {
->  	clear_bit(NFS_O_RDWR_STATE, &state->flags);
-> @@ -1476,10 +1475,9 @@ static void nfs_clear_open_stateid_locked(struct nfs4_state *state,
->  	}
->  	if (stateid == NULL)
->  		return;
-> -	/* Handle races with OPEN */
-> -	if (!nfs4_stateid_match_other(arg_stateid, &state->open_stateid) ||
-> -	    (nfs4_stateid_match_other(stateid, &state->open_stateid) &&
-> -	    !nfs4_stateid_is_newer(stateid, &state->open_stateid))) {
-> +	/* Handle OPEN+OPEN_DOWNGRADE races */
-> +	if (nfs4_stateid_match_other(stateid, &state->open_stateid) &&
-> +	    !nfs4_stateid_is_newer(stateid, &state->open_stateid)) {
->  		nfs_resync_open_stateid_locked(state);
->  		return;
->  	}
-> @@ -1493,7 +1491,9 @@ static void nfs_clear_open_stateid(struct nfs4_state *state,
->  	nfs4_stateid *stateid, fmode_t fmode)
->  {
->  	write_seqlock(&state->seqlock);
-> -	nfs_clear_open_stateid_locked(state, arg_stateid, stateid, fmode);
-> +	/* Ignore, if the CLOSE argment doesn't match the current stateid */
-> +	if (nfs4_state_match_open_stateid_other(state, arg_stateid))
-> +		nfs_clear_open_stateid_locked(state, stateid, fmode);
->  	write_sequnlock(&state->seqlock);
->  	if (test_bit(NFS_STATE_RECLAIM_NOGRACE, &state->flags))
->  		nfs4_schedule_state_manager(state->owner->so_server->nfs_client);
+T24gTW9uLCAyMDE2LTExLTE0IGF0IDExOjQwIC0wNTAwLCBKZWZmIExheXRvbiB3cm90ZToNCj4g
+T24gTW9uLCAyMDE2LTExLTE0IGF0IDExOjE5IC0wNTAwLCBUcm9uZCBNeWtsZWJ1c3Qgd3JvdGU6
+DQo+ID4gDQo+ID4gSWYgdGhlIHJlcGx5IHRvIGEgc3VjY2Vzc2Z1bCBDTE9TRSBjYWxsIHJhY2Vz
+IHdpdGggYW4gT1BFTiB0byB0aGUNCj4gPiBzYW1lDQo+ID4gZmlsZSwgd2UgY2FuIGVuZCB1cCBz
+Y3JpYmJsaW5nIG92ZXIgdGhlIHN0YXRlaWQgdGhhdCByZXByZXNlbnRzIHRoZQ0KPiA+IG5ldyBv
+cGVuIHN0YXRlLg0KPiA+IFRoZSByYWNlIGxvb2tzIGxpa2U6DQo+ID4gDQo+ID4gwqAgQ2xpZW50
+CQkJCVNlcnZlcg0KPiA+IMKgID09PT09PQkJCQk9PT09PT0NCj4gPiANCj4gPiDCoCBDTE9TRSBz
+dGF0ZWlkIEEgb24gZmlsZSAiZm9vIg0KPiA+IAkJCQkJQ0xPU0Ugc3RhdGVpZCBBLCByZXR1cm4g
+c3RhdGVpZA0KPiA+IEMNCj4gPiDCoCBPUEVOIGZpbGUgImZvbyINCj4gPiAJCQkJCU9QRU4gImZv
+byIsIHJldHVybiBzdGF0ZWlkIEINCj4gPiDCoCBSZWNlaXZlIHJlcGx5IHRvIE9QRU4NCj4gPiDC
+oCBSZXNldCBvcGVuIHN0YXRlIGZvciAiZm9vIg0KPiA+IMKgIEFzc29jaWF0ZSBzdGF0ZWlkIEIg
+dG8gImZvbyINCj4gPiANCj4gPiDCoCBSZWNlaXZlIENMT1NFIGZvciBBDQo+ID4gwqAgUmVzZXQg
+b3BlbiBzdGF0ZSBmb3IgImZvbyINCj4gPiDCoCBSZXBsYWNlIHN0YXRlaWQgQiB3aXRoIEMNCj4g
+PiANCj4gPiBUaGUgZml4IGlzIHRvIGV4YW1pbmUgdGhlIGFyZ3VtZW50IG9mIHRoZSBDTE9TRSwg
+YW5kIGNoZWNrIGZvciBhDQo+ID4gbWF0Y2gNCj4gPiB3aXRoIHRoZSBjdXJyZW50IHN0YXRlaWQg
+Im90aGVyIiBmaWVsZC4gSWYgdGhlIHR3byBkbyBub3QgbWF0Y2gsDQo+ID4gdGhlbg0KPiA+IHRo
+ZSBhYm92ZSByYWNlIG9jY3VycmVkLCBhbmQgd2Ugc2hvdWxkIGp1c3QgaWdub3JlIHRoZSBDTE9T
+RS4NCj4gPiANCj4gPiBSZXBvcnRlZC1ieTogQmVuamFtaW4gQ29kZGluZ3RvbiA8YmNvZGRpbmdA
+cmVkaGF0LmNvbT4NCj4gPiBTaWduZWQtb2ZmLWJ5OiBUcm9uZCBNeWtsZWJ1c3QgPHRyb25kLm15
+a2xlYnVzdEBwcmltYXJ5ZGF0YS5jb20+DQo+ID4gLS0tDQo+ID4gwqBmcy9uZnMvbmZzNF9mcy5o
+wqDCoHzCoMKgNyArKysrKysrDQo+ID4gwqBmcy9uZnMvbmZzNHByb2MuYyB8IDEyICsrKysrKy0t
+LS0tLQ0KPiA+IMKgMiBmaWxlcyBjaGFuZ2VkLCAxMyBpbnNlcnRpb25zKCspLCA2IGRlbGV0aW9u
+cygtKQ0KPiA+IA0KPiA+IGRpZmYgLS1naXQgYS9mcy9uZnMvbmZzNF9mcy5oIGIvZnMvbmZzL25m
+czRfZnMuaA0KPiA+IGluZGV4IDliM2E4MmFiYWIwNy4uMTQ1MjE3N2M4MjJkIDEwMDY0NA0KPiA+
+IC0tLSBhL2ZzL25mcy9uZnM0X2ZzLmgNCj4gPiArKysgYi9mcy9uZnMvbmZzNF9mcy5oDQo+ID4g
+QEAgLTU0Miw2ICs1NDIsMTMgQEAgc3RhdGljIGlubGluZSBib29sDQo+ID4gbmZzNF92YWxpZF9v
+cGVuX3N0YXRlaWQoY29uc3Qgc3RydWN0IG5mczRfc3RhdGUgKnN0YXRlKQ0KPiA+IMKgCXJldHVy
+biB0ZXN0X2JpdChORlNfU1RBVEVfUkVDT1ZFUllfRkFJTEVELCAmc3RhdGUtPmZsYWdzKQ0KPiA+
+ID09IDA7DQo+ID4gwqB9DQo+ID4gwqANCj4gPiArc3RhdGljIGlubGluZSBib29sIG5mczRfc3Rh
+dGVfbWF0Y2hfb3Blbl9zdGF0ZWlkX290aGVyKGNvbnN0DQo+ID4gc3RydWN0IG5mczRfc3RhdGUg
+KnN0YXRlLA0KPiA+ICsJCWNvbnN0IG5mczRfc3RhdGVpZCAqc3RhdGVpZCkNCj4gPiArew0KPiA+
+ICsJcmV0dXJuIHRlc3RfYml0KE5GU19PUEVOX1NUQVRFLCAmc3RhdGUtPmZsYWdzKSAmJg0KPiA+
+ICsJCW5mczRfc3RhdGVpZF9tYXRjaF9vdGhlcigmc3RhdGUtPm9wZW5fc3RhdGVpZCwNCj4gPiBz
+dGF0ZWlkKTsNCj4gPiArfQ0KPiA+ICsNCj4gPiDCoCNlbHNlDQo+ID4gwqANCj4gPiDCoCNkZWZp
+bmUgbmZzNF9jbG9zZV9zdGF0ZShhLCBiKSBkbyB7IH0gd2hpbGUgKDApDQo+ID4gZGlmZiAtLWdp
+dCBhL2ZzL25mcy9uZnM0cHJvYy5jIGIvZnMvbmZzL25mczRwcm9jLmMNCj4gPiBpbmRleCBmNTUw
+YWM2OWZmYTAuLmI3YjAwODA5NzdjMCAxMDA2NDQNCj4gPiAtLS0gYS9mcy9uZnMvbmZzNHByb2Mu
+Yw0KPiA+ICsrKyBiL2ZzL25mcy9uZnM0cHJvYy5jDQo+ID4gQEAgLTE0NTgsNyArMTQ1OCw2IEBA
+IHN0YXRpYyB2b2lkDQo+ID4gbmZzX3Jlc3luY19vcGVuX3N0YXRlaWRfbG9ja2VkKHN0cnVjdCBu
+ZnM0X3N0YXRlICpzdGF0ZSkNCj4gPiDCoH0NCj4gPiDCoA0KPiA+IMKgc3RhdGljIHZvaWQgbmZz
+X2NsZWFyX29wZW5fc3RhdGVpZF9sb2NrZWQoc3RydWN0IG5mczRfc3RhdGUNCj4gPiAqc3RhdGUs
+DQo+ID4gLQkJbmZzNF9zdGF0ZWlkICphcmdfc3RhdGVpZCwNCj4gPiDCoAkJbmZzNF9zdGF0ZWlk
+ICpzdGF0ZWlkLCBmbW9kZV90IGZtb2RlKQ0KPiA+IMKgew0KPiA+IMKgCWNsZWFyX2JpdChORlNf
+T19SRFdSX1NUQVRFLCAmc3RhdGUtPmZsYWdzKTsNCj4gPiBAQCAtMTQ3NiwxMCArMTQ3NSw5IEBA
+IHN0YXRpYyB2b2lkDQo+ID4gbmZzX2NsZWFyX29wZW5fc3RhdGVpZF9sb2NrZWQoc3RydWN0IG5m
+czRfc3RhdGUgKnN0YXRlLA0KPiA+IMKgCX0NCj4gPiDCoAlpZiAoc3RhdGVpZCA9PSBOVUxMKQ0K
+PiA+IMKgCQlyZXR1cm47DQo+ID4gLQkvKiBIYW5kbGUgcmFjZXMgd2l0aCBPUEVOICovDQo+ID4g
+LQlpZiAoIW5mczRfc3RhdGVpZF9tYXRjaF9vdGhlcihhcmdfc3RhdGVpZCwgJnN0YXRlLQ0KPiA+
+ID5vcGVuX3N0YXRlaWQpIHx8DQo+ID4gLQnCoMKgwqDCoChuZnM0X3N0YXRlaWRfbWF0Y2hfb3Ro
+ZXIoc3RhdGVpZCwgJnN0YXRlLQ0KPiA+ID5vcGVuX3N0YXRlaWQpICYmDQo+ID4gLQnCoMKgwqDC
+oCFuZnM0X3N0YXRlaWRfaXNfbmV3ZXIoc3RhdGVpZCwgJnN0YXRlLQ0KPiA+ID5vcGVuX3N0YXRl
+aWQpKSkgew0KPiA+ICsJLyogSGFuZGxlIE9QRU4rT1BFTl9ET1dOR1JBREUgcmFjZXMgKi8NCj4g
+PiArCWlmIChuZnM0X3N0YXRlaWRfbWF0Y2hfb3RoZXIoc3RhdGVpZCwgJnN0YXRlLQ0KPiA+ID5v
+cGVuX3N0YXRlaWQpICYmDQo+ID4gKwnCoMKgwqDCoCFuZnM0X3N0YXRlaWRfaXNfbmV3ZXIoc3Rh
+dGVpZCwgJnN0YXRlLT5vcGVuX3N0YXRlaWQpKSANCj4gPiB7DQo+ID4gwqAJCW5mc19yZXN5bmNf
+b3Blbl9zdGF0ZWlkX2xvY2tlZChzdGF0ZSk7DQo+ID4gwqAJCXJldHVybjsNCj4gPiDCoAl9DQo+
+ID4gQEAgLTE0OTMsNyArMTQ5MSw5IEBAIHN0YXRpYyB2b2lkIG5mc19jbGVhcl9vcGVuX3N0YXRl
+aWQoc3RydWN0DQo+ID4gbmZzNF9zdGF0ZSAqc3RhdGUsDQo+ID4gwqAJbmZzNF9zdGF0ZWlkICpz
+dGF0ZWlkLCBmbW9kZV90IGZtb2RlKQ0KPiA+IMKgew0KPiA+IMKgCXdyaXRlX3NlcWxvY2soJnN0
+YXRlLT5zZXFsb2NrKTsNCj4gPiAtCW5mc19jbGVhcl9vcGVuX3N0YXRlaWRfbG9ja2VkKHN0YXRl
+LCBhcmdfc3RhdGVpZCwgc3RhdGVpZCwNCj4gPiBmbW9kZSk7DQo+ID4gKwkvKiBJZ25vcmUsIGlm
+IHRoZSBDTE9TRSBhcmdtZW50IGRvZXNuJ3QgbWF0Y2ggdGhlIGN1cnJlbnQNCj4gPiBzdGF0ZWlk
+ICovDQo+ID4gKwlpZiAobmZzNF9zdGF0ZV9tYXRjaF9vcGVuX3N0YXRlaWRfb3RoZXIoc3RhdGUs
+DQo+ID4gYXJnX3N0YXRlaWQpKQ0KPiA+ICsJCW5mc19jbGVhcl9vcGVuX3N0YXRlaWRfbG9ja2Vk
+KHN0YXRlLCBzdGF0ZWlkLA0KPiA+IGZtb2RlKTsNCj4gPiDCoAl3cml0ZV9zZXF1bmxvY2soJnN0
+YXRlLT5zZXFsb2NrKTsNCj4gPiDCoAlpZiAodGVzdF9iaXQoTkZTX1NUQVRFX1JFQ0xBSU1fTk9H
+UkFDRSwgJnN0YXRlLT5mbGFncykpDQo+ID4gwqAJCW5mczRfc2NoZWR1bGVfc3RhdGVfbWFuYWdl
+cihzdGF0ZS0+b3duZXItDQo+ID4gPnNvX3NlcnZlci0+bmZzX2NsaWVudCk7DQo+IA0KPiBJIHN0
+aWxsIGRvbid0IHF1aXRlIGdldCBpdC4gV2hhdCdzIHRoZSBwb2ludCBvZiBwYXlpbmcgYW55IGF0
+dGVudGlvbg0KPiBhdA0KPiBhbGwgdG8gdGhlIHN0YXRlaWQgcmV0dXJuZWQgYnkgdGhlIHNlcnZl
+ciBpbiBhIENMT1NFIHJlc3BvbnNlPyBJdCdzDQo+IGVpdGhlcjoNCj4gDQo+IGEpIGNvbXBsZXRl
+bHkgYm9ndXMsIGlmIHRoZSBzZXJ2ZXIgaXMgZm9sbG93aW5nIHRoZSBTSE9VTEQgaW4NCj4gUkZD
+NTY2MSwNCj4gc2VjdGlvbiAxOC4yLjQNCj4gDQo+IC4uLm9yLi4uDQo+IA0KPiBiKSByZWZlcnMg
+dG8gYSBub3ctZGVmdW5jdCBzdGF0ZWlkIC0tIHByb2JhYmx5IGEgbGF0ZXIgdmVyc2lvbiBvZiB0
+aGUNCj4gb25lIHNlbnQgaW4gdGhlIHJlcXVlc3QsIGJ1dCB0aGUgc3BlYyBkb2Vzbid0IHJlYWxs
+eSBzcGVsbCB0aGF0IG91dCwNCj4gQUZBSUNULg0KPiANCj4gSW4gZWl0aGVyIGNhc2UsIEkgZG9u
+J3QgdGhpbmsgaXQgb3VnaHQgdG8gYmUgdHJ1c3RlZC4gV2h5IG5vdCBqdXN0DQo+IHVzZQ0KPiB0
+aGUgYXJnX3N0YXRlaWQgdW5pdmVyc2FsbHkgaGVyZT8NCj4gDQoNClRoZSBjb2RlIHBhdGggYWxz
+byBoYXMgdG8gaGFuZGxlIE9QRU5fRE9XTkdSQURFLg==
 
-I still don't quite get it. What's the point of paying any attention at
-all to the stateid returned by the server in a CLOSE response? It's
-either:
-
-a) completely bogus, if the server is following the SHOULD in RFC5661,
-section 18.2.4
-
-...or...
-
-b) refers to a now-defunct stateid -- probably a later version of the
-one sent in the request, but the spec doesn't really spell that out,
-AFAICT.
-
-In either case, I don't think it ought to be trusted. Why not just use
-the arg_stateid universally here?
-
--- 
-Jeff Layton <jlayton@redhat.com>
