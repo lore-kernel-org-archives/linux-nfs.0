@@ -1,76 +1,65 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-it0-f66.google.com ([209.85.214.66]:36006 "EHLO
-        mail-it0-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S932755AbcKNUzq (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 14 Nov 2016 15:55:46 -0500
-Received: by mail-it0-f66.google.com with SMTP id n68so16737789itn.3
-        for <linux-nfs@vger.kernel.org>; Mon, 14 Nov 2016 12:55:45 -0800 (PST)
+Received: from mail-it0-f67.google.com ([209.85.214.67]:34906 "EHLO
+        mail-it0-f67.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S932755AbcKNUzr (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 14 Nov 2016 15:55:47 -0500
+Received: by mail-it0-f67.google.com with SMTP id b123so16823696itb.2
+        for <linux-nfs@vger.kernel.org>; Mon, 14 Nov 2016 12:55:47 -0800 (PST)
 From: Trond Myklebust <trond.myklebust@primarydata.com>
 To: linux-nfs@vger.kernel.org
-Subject: [PATCH v2 4/5] NFSv4: Don't request close-to-open attribute when holding a delegation
-Date: Mon, 14 Nov 2016 15:55:34 -0500
-Message-Id: <1479156935-34479-5-git-send-email-trond.myklebust@primarydata.com>
-In-Reply-To: <1479156935-34479-4-git-send-email-trond.myklebust@primarydata.com>
+Subject: [PATCH v2 5/5] NFSv4: Optimise away forced revalidation when we know the attributes are OK
+Date: Mon, 14 Nov 2016 15:55:35 -0500
+Message-Id: <1479156935-34479-6-git-send-email-trond.myklebust@primarydata.com>
+In-Reply-To: <1479156935-34479-5-git-send-email-trond.myklebust@primarydata.com>
 References: <1479156935-34479-1-git-send-email-trond.myklebust@primarydata.com>
  <1479156935-34479-2-git-send-email-trond.myklebust@primarydata.com>
  <1479156935-34479-3-git-send-email-trond.myklebust@primarydata.com>
  <1479156935-34479-4-git-send-email-trond.myklebust@primarydata.com>
+ <1479156935-34479-5-git-send-email-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-If holding a delegation, we do not need to ask the server to return
-close-to-open cache consistency attributes as part of the CLOSE
-compound.
+The NFS_INO_REVAL_FORCED flag needs to be set if we just got a delegation,
+and we see that there might still be some ambiguity as to whether or not
+our attribute or data cache are valid.
+In practice, this means that a call to nfs_check_inode_attributes() will
+have noticed a discrepancy between cached attributes and measured ones,
+so let's move the setting of NFS_INO_REVAL_FORCED to there.
 
 Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
 ---
- fs/nfs/nfs4proc.c | 10 ++++++++--
- fs/nfs/nfs4xdr.c  |  3 ++-
- 2 files changed, 10 insertions(+), 3 deletions(-)
+ fs/nfs/delegation.c | 4 ----
+ fs/nfs/inode.c      | 2 +-
+ 2 files changed, 1 insertion(+), 5 deletions(-)
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 1897591689f6..a21b3cb87453 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -3144,8 +3144,15 @@ static void nfs4_close_prepare(struct rpc_task *task, void *data)
- 		goto out_wait;
- 	}
+diff --git a/fs/nfs/delegation.c b/fs/nfs/delegation.c
+index dff600ae0d74..d7df5e67b0c1 100644
+--- a/fs/nfs/delegation.c
++++ b/fs/nfs/delegation.c
+@@ -391,10 +391,6 @@ int nfs_inode_set_delegation(struct inode *inode, struct rpc_cred *cred, struct
+ 	rcu_assign_pointer(nfsi->delegation, delegation);
+ 	delegation = NULL;
  
--	if (calldata->arg.fmode == 0)
-+	if (calldata->arg.fmode == 0) {
- 		task->tk_msg.rpc_proc = &nfs4_procedures[NFSPROC4_CLNT_CLOSE];
-+
-+		/* Close-to-open cache consistency revalidation */
-+		if (!nfs4_have_delegation(inode, FMODE_READ))
-+			calldata->arg.bitmask = NFS_SERVER(inode)->cache_consistency_bitmask;
-+		else
-+			calldata->arg.bitmask = NULL;
-+	}
- 	if (calldata->roc)
- 		pnfs_roc_get_barrier(inode, &calldata->roc_barrier);
+-	/* Ensure we revalidate the attributes and page cache! */
+-	spin_lock(&inode->i_lock);
+-	nfsi->cache_validity |= NFS_INO_REVAL_FORCED;
+-	spin_unlock(&inode->i_lock);
+ 	trace_nfs4_set_delegation(inode, res->delegation_type);
  
-@@ -3228,7 +3235,6 @@ int nfs4_do_close(struct nfs4_state *state, gfp_t gfp_mask, int wait)
- 	if (IS_ERR(calldata->arg.seqid))
- 		goto out_free_calldata;
- 	calldata->arg.fmode = 0;
--	calldata->arg.bitmask = server->cache_consistency_bitmask;
- 	calldata->res.fattr = &calldata->fattr;
- 	calldata->res.seqid = calldata->arg.seqid;
- 	calldata->res.server = server;
-diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index 43cc989b5c06..a8bebb52df78 100644
---- a/fs/nfs/nfs4xdr.c
-+++ b/fs/nfs/nfs4xdr.c
-@@ -2250,7 +2250,8 @@ static void nfs4_xdr_enc_close(struct rpc_rqst *req, struct xdr_stream *xdr,
- 	encode_sequence(xdr, &args->seq_args, &hdr);
- 	encode_putfh(xdr, args->fh, &hdr);
- 	encode_close(xdr, args, &hdr);
--	encode_getfattr(xdr, args->bitmask, &hdr);
-+	if (args->bitmask != NULL)
-+		encode_getfattr(xdr, args->bitmask, &hdr);
- 	encode_nops(&hdr);
- }
+ out:
+diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
+index bf4ec5ecc97e..3575e3408bd7 100644
+--- a/fs/nfs/inode.c
++++ b/fs/nfs/inode.c
+@@ -1317,7 +1317,7 @@ static int nfs_check_inode_attributes(struct inode *inode, struct nfs_fattr *fat
+ 		invalid |= NFS_INO_INVALID_ATIME;
  
+ 	if (invalid != 0)
+-		nfs_set_cache_invalid(inode, invalid);
++		nfs_set_cache_invalid(inode, invalid | NFS_INO_REVAL_FORCED);
+ 
+ 	nfsi->read_cache_jiffies = fattr->time_start;
+ 	return 0;
 -- 
 2.7.4
 
