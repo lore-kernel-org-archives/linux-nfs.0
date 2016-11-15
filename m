@@ -1,65 +1,93 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-it0-f67.google.com ([209.85.214.67]:34906 "EHLO
-        mail-it0-f67.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S932755AbcKNUzr (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 14 Nov 2016 15:55:47 -0500
-Received: by mail-it0-f67.google.com with SMTP id b123so16823696itb.2
-        for <linux-nfs@vger.kernel.org>; Mon, 14 Nov 2016 12:55:47 -0800 (PST)
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH v2 5/5] NFSv4: Optimise away forced revalidation when we know the attributes are OK
-Date: Mon, 14 Nov 2016 15:55:35 -0500
-Message-Id: <1479156935-34479-6-git-send-email-trond.myklebust@primarydata.com>
-In-Reply-To: <1479156935-34479-5-git-send-email-trond.myklebust@primarydata.com>
-References: <1479156935-34479-1-git-send-email-trond.myklebust@primarydata.com>
- <1479156935-34479-2-git-send-email-trond.myklebust@primarydata.com>
- <1479156935-34479-3-git-send-email-trond.myklebust@primarydata.com>
- <1479156935-34479-4-git-send-email-trond.myklebust@primarydata.com>
- <1479156935-34479-5-git-send-email-trond.myklebust@primarydata.com>
+Received: from mx2.suse.de ([195.135.220.15]:41707 "EHLO mx2.suse.de"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1751605AbcKOGgT (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 15 Nov 2016 01:36:19 -0500
+From: NeilBrown <neilb@suse.com>
+To: Steve Dickson <SteveD@redhat.com>
+Date: Tue, 15 Nov 2016 17:36:10 +1100
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        libtirpc-devel@lists.sourceforge.net
+Subject: Re: [Libtirpc-devel] [PATCH rpcbind] Move default state-dir to /run/rpcbind
+In-Reply-To: <669e90b0-6011-7b82-4e37-f1e3bf292026@RedHat.com>
+References: <877f8almcf.fsf@notabene.neil.brown.name> <669e90b0-6011-7b82-4e37-f1e3bf292026@RedHat.com>
+Message-ID: <87k2c5i71h.fsf@notabene.neil.brown.name>
+MIME-Version: 1.0
+Content-Type: multipart/signed; boundary="=-=-=";
+        micalg=pgp-sha256; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The NFS_INO_REVAL_FORCED flag needs to be set if we just got a delegation,
-and we see that there might still be some ambiguity as to whether or not
-our attribute or data cache are valid.
-In practice, this means that a call to nfs_check_inode_attributes() will
-have noticed a discrepancy between cached attributes and measured ones,
-so let's move the setting of NFS_INO_REVAL_FORCED to there.
+--=-=-=
+Content-Type: text/plain
 
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
----
- fs/nfs/delegation.c | 4 ----
- fs/nfs/inode.c      | 2 +-
- 2 files changed, 1 insertion(+), 5 deletions(-)
+On Tue, Nov 15 2016, Steve Dickson wrote:
 
-diff --git a/fs/nfs/delegation.c b/fs/nfs/delegation.c
-index dff600ae0d74..d7df5e67b0c1 100644
---- a/fs/nfs/delegation.c
-+++ b/fs/nfs/delegation.c
-@@ -391,10 +391,6 @@ int nfs_inode_set_delegation(struct inode *inode, struct rpc_cred *cred, struct
- 	rcu_assign_pointer(nfsi->delegation, delegation);
- 	delegation = NULL;
- 
--	/* Ensure we revalidate the attributes and page cache! */
--	spin_lock(&inode->i_lock);
--	nfsi->cache_validity |= NFS_INO_REVAL_FORCED;
--	spin_unlock(&inode->i_lock);
- 	trace_nfs4_set_delegation(inode, res->delegation_type);
- 
- out:
-diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
-index bf4ec5ecc97e..3575e3408bd7 100644
---- a/fs/nfs/inode.c
-+++ b/fs/nfs/inode.c
-@@ -1317,7 +1317,7 @@ static int nfs_check_inode_attributes(struct inode *inode, struct nfs_fattr *fat
- 		invalid |= NFS_INO_INVALID_ATIME;
- 
- 	if (invalid != 0)
--		nfs_set_cache_invalid(inode, invalid);
-+		nfs_set_cache_invalid(inode, invalid | NFS_INO_REVAL_FORCED);
- 
- 	nfsi->read_cache_jiffies = fattr->time_start;
- 	return 0;
--- 
-2.7.4
+> On 11/10/2016 10:36 PM, NeilBrown wrote:
+>> rpcbind can save state in a file to allow restart without forgetting
+>> about running services.
+>>
+>> The default location is currently "/tmp" which is an over-used
+>> directory that isn't really suitable for system files.
+>> The modern preferences would be a subdirectory of "/run", which can
+>> be selected with a ./configure option.  That subdirectory would still need
+>> to be created by something.
+>>
+>> It is trivial for rpcbind to create the directory itself, and harmless
+>> to try if it already exists, so:
+>> - add a "mkdir" when saving state data
+>> - change the default to /run/rpcbind (currently used by Debian)
+>> - remove the default settign in the code, just use the one
+>>   in configure.ac
+> I'm all for move the warmstart directory to /run but why don't we have systemd
+> create the directory via a  tmpfiles.d( config file... some like
+>
+> #Type Path      Mode UID GID Age Argument
+> D  /run/rpcbind 0700 rpc rpc - -
+>
+> The only thing I'm not sure about is how it would get installed...
+> I guess it would some type of Makefile.ac entry??
 
+Because not everyone uses systemd?
+
+Someone at SUSE recently moved the state directory to /run/rpcbind and
+used tmpfiles.d exactly as you describe to create /run/rpcbind.  Then
+found they needed to do something extra and different for dracut.  I
+haven't looked into why, but it is presumably because while dracut does
+use systemd, it doesn't use it quite the same way that normal system boot
+uses it.
+I've found this with configuring mdadm too.  I got the udev and systemd
+configuration just right, and then found that while dracut uses udev and
+systemd, I still need to add extra stuff to dracut.  And then there was
+another boot environment which used udev but not systemd, so it needed
+different tweaking.
+
+So I think we are less likely to run into strange problems if we just
+get rpcbind to create its own directory.  Certainly rely on systemd to
+do the things that systemd does best (like start the service), but don't
+rely on it to do things we can easily do ourselves.
+
+Thanks,
+NeilBrown
+
+
+--=-=-=
+Content-Type: application/pgp-signature; name="signature.asc"
+
+-----BEGIN PGP SIGNATURE-----
+
+iQIcBAEBCAAGBQJYKqzbAAoJEDnsnt1WYoG5lhkP/0EUCP5J5xFYNyLSvA5j+IA1
+lWOPLDWG7KIuv9dnsquJR4/mKVKDDv3WH2/K+M6PsreNAtb3h0es21CEHebmdEyb
+E2mEt68cJvy/klwOogxffv6ybgx5Bbhd/ZPqyF9mDdScDJh/sQFIPjfXHhIYNZOk
+V8lNYCJpaonTnM7d2nAkq2PUxugtauOhfTxHKUJ2sary3mN4WX+DqUFCW/eOxuqI
+7txeAIeWkunYSHUsGDPeAbbG18Bf6MqFafV1RH5PC60b2ukKMrjBVEwtDhZmlUS4
++dMLvj8iqhscvbrIMxwdfT3wuf1RfIcaFAqvkgpBFsdDR4RYjxFdF2GvZ9XAUOHw
+hCicEVwfziY/gVCL1BpO9HiD1yOIDN654UFYa6mPIAzp8G+pM7xkfexhEMxe8+jP
+UIGHeUUUDvwIBMH1pRwiRm9AuD296Y3E0qKl+NCuJGrJRDjVXEWJRak2Vf0ZNHeR
+7qgW3VAtgQsUo0V1H6T29bsu60ZKkRnSCERMJVRb0+w6AxyJM6XqT/V10+6erlxp
+lIbNWZV2dEli0YbzGPICzIvhPGZ8MO81MM/++X/KRci0Al+MgN5ECtEw5g+0VJ/t
+GsaKjpnUYhERu4Ke6JMfW0e0famvF4iycyN7GMBE8IUUnUKaM1/R9eFD/QIeAEhb
+NoZyWgSj9tpud27c++j1
+=XazR
+-----END PGP SIGNATURE-----
+--=-=-=--
