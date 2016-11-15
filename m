@@ -1,175 +1,116 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:46078 "EHLO mx1.redhat.com"
+Received: from mx2.suse.de ([195.135.220.15]:51974 "EHLO mx2.suse.de"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751749AbcKOTyi (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 15 Nov 2016 14:54:38 -0500
-Subject: Re: [Libtirpc-devel] [PATCH rpcbind v2] Move default state-dir to a
- subdirectory of /tmp
-To: NeilBrown <neilb@suse.com>
-References: <877f8almcf.fsf@notabene.neil.brown.name>
- <20161111210034.GM21655@vapier.lan> <87polzj7sx.fsf@notabene.neil.brown.name>
- <87vavqilre.fsf@notabene.neil.brown.name>
-Cc: Mike Frysinger <vapier@gentoo.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        id S1751611AbcKOU2b (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 15 Nov 2016 15:28:31 -0500
+From: NeilBrown <neilb@suse.com>
+To: Steve Dickson <SteveD@redhat.com>
+Date: Wed, 16 Nov 2016 07:28:21 +1100
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
         libtirpc-devel@lists.sourceforge.net
-From: Steve Dickson <SteveD@redhat.com>
-Message-ID: <ed1f4f4c-fda6-6909-baab-5fbde2a5bc6c@RedHat.com>
-Date: Tue, 15 Nov 2016 14:54:37 -0500
+Subject: Re: [Libtirpc-devel] [PATCH rpcbind] Move default state-dir to /run/rpcbind
+In-Reply-To: <85b23fdd-8dd4-9614-88ef-9691c3cdba3b@RedHat.com>
+References: <877f8almcf.fsf@notabene.neil.brown.name> <669e90b0-6011-7b82-4e37-f1e3bf292026@RedHat.com> <87k2c5i71h.fsf@notabene.neil.brown.name> <85b23fdd-8dd4-9614-88ef-9691c3cdba3b@RedHat.com>
+Message-ID: <87h978ij2y.fsf@notabene.neil.brown.name>
 MIME-Version: 1.0
-In-Reply-To: <87vavqilre.fsf@notabene.neil.brown.name>
-Content-Type: text/plain; charset=windows-1252
+Content-Type: multipart/signed; boundary="=-=-=";
+        micalg=pgp-sha256; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+--=-=-=
+Content-Type: text/plain
+Content-Transfer-Encoding: quoted-printable
 
+On Wed, Nov 16 2016, Steve Dickson wrote:
 
-On 11/14/2016 02:05 AM, NeilBrown wrote:
-> rpcbind can save state in a file to allow restart without forgetting
-> about running services.
->
-> The default location is currently "/tmp" which is
-> not ideal for system files.  It is particularly unpleasant
-> to put simple files there rather than creating a directory
-> to contain them.
->
-> On a modern Linux system it is preferable to use /run, and there it is
-> even more consistent with practice to use a subdirectory.
->
-> This directory needs to be create one each boot, and while there are
-> tools (e.g. systemd-tmpfiles) which can do that it is cleaner to keep
-> rpcbind self-contained and have it create the directory.
->
-> So change the default location to /tmp/rpcbind, and create that
-> directory.  If a different user-id is used, we need to create
-> and chown the directory before dropping privileges.  We do this
-> with care so avoid chowning the wrong thing by mistake.
->
-> Signed-off-by: NeilBrown <neilb@suse.com>
-> ---
->
-> hi,
->  I realized that I hadn't allowed for the fact that rpcbind changes
->  it's uid, and we need to mkdir and chown before that.
->  I've also reverted the move to /run, but moved to /tmp/rpcbind
->  instead.  A subdirectory is a good idea, even in /tmp.
-I'm beginning to think put these files into a directory call /tmp/rpcbind
-is not a good idea...  Because if something in /tmp is called rpcbind (like a
-debugging binary ;-) ) the mkdirs will silently fail which is not good.
+> On 11/15/2016 01:36 AM, NeilBrown wrote:
+>> On Tue, Nov 15 2016, Steve Dickson wrote:
+>>
+>>> On 11/10/2016 10:36 PM, NeilBrown wrote:
+>>>> rpcbind can save state in a file to allow restart without forgetting
+>>>> about running services.
+>>>>
+>>>> The default location is currently "/tmp" which is an over-used
+>>>> directory that isn't really suitable for system files.
+>>>> The modern preferences would be a subdirectory of "/run", which can
+>>>> be selected with a ./configure option.  That subdirectory would still =
+need
+>>>> to be created by something.
+>>>>
+>>>> It is trivial for rpcbind to create the directory itself, and harmless
+>>>> to try if it already exists, so:
+>>>> - add a "mkdir" when saving state data
+>>>> - change the default to /run/rpcbind (currently used by Debian)
+>>>> - remove the default settign in the code, just use the one
+>>>>   in configure.ac
+>>> I'm all for move the warmstart directory to /run but why don't we have =
+systemd
+>>> create the directory via a  tmpfiles.d( config file... some like
+>>>
+>>> #Type Path      Mode UID GID Age Argument
+>>> D  /run/rpcbind 0700 rpc rpc - -
+>>>
+>>> The only thing I'm not sure about is how it would get installed...
+>>> I guess it would some type of Makefile.ac entry??
+>> Because not everyone uses systemd?
+> Yeah... I figured as much.
+>> Someone at SUSE recently moved the state directory to /run/rpcbind and
+>> used tmpfiles.d exactly as you describe to create /run/rpcbind.  Then
+>> found they needed to do something extra and different for dracut.  I
+>> haven't looked into why, but it is presumably because while dracut does
+>> use systemd, it doesn't use it quite the same way that normal system boot
+>> uses it.
+> I didn't have this problem when I move rpcbind in RHEL7 to use /run/rpcbi=
+nd via tmpfiles.d
+> The biggest problem I had was migrating the warmstart files to the new pl=
+ace.
+> Having /run/rpcbind exist after boot made that much easier.=20
 
-Here is what I would like to do.
+That would be a bit fiddlely.
+Might be easiest to create a symlink /run/rpcind -> old-location when
+the package is installed, then let the proper directory be created on
+boot.
+Only then you cannot clean up the old directory at install time.
 
-Move the directory into /run then create the /run/rpcbind when it
-does not exist... I think that should play nicely in both the
-systemd worlds and non-systemd worlds
+>> I've found this with configuring mdadm too.  I got the udev and systemd
+>> configuration just right, and then found that while dracut uses udev and
+>> systemd, I still need to add extra stuff to dracut.  And then there was
+>> another boot environment which used udev but not systemd, so it needed
+>> different tweaking.
+>>
+>> So I think we are less likely to run into strange problems if we just
+>> get rpcbind to create its own directory.  Certainly rely on systemd to
+>> do the things that systemd does best (like start the service), but don't
+>> rely on it to do things we can easily do ourselves.
+> Another potential problem is SElinux... Its never a fan of daemon creatin=
+g things
+> on the fly... but I guess that is my problem 8-)
 
-Thoughts?
+rpcbind would only create the directory if it doesn't exist.  If you
+need to create it with special SElinux things, there is no harm in doing
+that first.
 
-steved.
->
-> NeilBrown
->
->
->  configure.ac    |  4 ++--
->  src/rpcbind.c   |  5 +++++
->  src/rpcbind.h   |  1 +
->  src/warmstart.c | 25 +++++++++++++++++++++----
->  4 files changed, 29 insertions(+), 6 deletions(-)
->
-> diff --git a/configure.ac b/configure.ac
-> index f84921eb27fb..df931c720f93 100644
-> --- a/configure.ac
-> +++ b/configure.ac
-> @@ -22,8 +22,8 @@ AC_ARG_ENABLE([warmstarts],
->  AM_CONDITIONAL(WARMSTART, test x$enable_warmstarts = xyes)
->  
->  AC_ARG_WITH([statedir],
-> -  AS_HELP_STRING([--with-statedir=ARG], [use ARG as state dir @<:@default=/tmp@:>@])
-> -  ,, [with_statedir=/tmp])
-> +  AS_HELP_STRING([--with-statedir=ARG], [use ARG as state dir @<:@default=/tmp/rpcbind@:>@])
-> +  ,, [with_statedir=/tmp/rpcbind])
->  AC_SUBST([statedir], [$with_statedir])
->  
->  AC_ARG_WITH([rpcuser],
-> diff --git a/src/rpcbind.c b/src/rpcbind.c
-> index 87ccdc27e4c9..8db8dfc17c27 100644
-> --- a/src/rpcbind.c
-> +++ b/src/rpcbind.c
-> @@ -263,6 +263,11 @@ main(int argc, char *argv[])
->  			syslog(LOG_ERR, "cannot get uid of '%s': %m", id);
->  			exit(1);
->  		}
-> +#ifdef WARMSTART
-> +		if (warmstart) {
-> +			mkdir_warmstart(p->pw_uid);
-> +		}
-> +#endif
->                  if (setgid(p->pw_gid) == -1) {
->                          syslog(LOG_ERR, "setgid to '%s' (%d) failed: %m", id, p->pw_gid);
->                          exit(1);
-> diff --git a/src/rpcbind.h b/src/rpcbind.h
-> index 74f9591ae720..5b1a9bb8651a 100644
-> --- a/src/rpcbind.h
-> +++ b/src/rpcbind.h
-> @@ -129,6 +129,7 @@ int is_localroot(struct netbuf *);
->  extern void pmap_service(struct svc_req *, SVCXPRT *);
->  #endif
->  
-> +void mkdir_warmstart(int uid);
->  void write_warmstart(void);
->  void read_warmstart(void);
->  
-> diff --git a/src/warmstart.c b/src/warmstart.c
-> index 122a058b7954..3a6bcb5e34e1 100644
-> --- a/src/warmstart.c
-> +++ b/src/warmstart.c
-> @@ -45,19 +45,23 @@
->  #include <syslog.h>
->  #include <unistd.h>
->  #include <errno.h>
-> +#include <fcntl.h>
->  
->  #include "rpcbind.h"
->  
-> -#ifndef RPCBIND_STATEDIR
-> -#define RPCBIND_STATEDIR "/tmp"
-> -#endif
-> -
->  /* These files keep the pmap_list and rpcb_list in XDR format */
->  #define	RPCBFILE	RPCBIND_STATEDIR "/rpcbind.xdr"
->  #ifdef PORTMAP
->  #define	PMAPFILE	RPCBIND_STATEDIR "/portmap.xdr"
->  #endif
->  
-> +#ifndef O_DIRECTORY
-> +#define O_DIRECTORY 0
-> +#endif
-> +#ifndef O_NOFOLLOW
-> +#define O_NOFOLLOW 0
-> +#endif
-> +
->  static bool_t write_struct(char *, xdrproc_t, void *);
->  static bool_t read_struct(char *, xdrproc_t, void *);
->  
-> @@ -139,8 +143,21 @@ error:
->  }
->  
->  void
-> +mkdir_warmstart(int uid)
-> +{
-> +	if (mkdir(RPCBIND_STATEDIR, 0770) == 0) {
-> +		int fd = open(RPCBIND_STATEDIR, O_RDONLY | O_DIRECTORY | O_NOFOLLOW);
-> +		if (fd >= 0) {
-> +			fchown(fd, uid, -1);
-> +			close(fd);
-> +		}
-> +	}
-> +}
-> +
-> +void
->  write_warmstart()
->  {
-> +	(void) mkdir(RPCBIND_STATEDIR, 0770);
->  	(void) write_struct(RPCBFILE, (xdrproc_t)xdr_rpcblist_ptr, &list_rbl);
->  #ifdef PORTMAP
->  	(void) write_struct(PMAPFILE, (xdrproc_t)xdr_pmaplist_ptr, &list_pml);
+Thanks,
+NeilBrown
 
+--=-=-=
+Content-Type: application/pgp-signature; name="signature.asc"
+
+-----BEGIN PGP SIGNATURE-----
+
+iQIcBAEBCAAGBQJYK2/mAAoJEDnsnt1WYoG5VewP/jhPK8+4eB5HWSrAFPhNspiq
+wh6fmLfVAUm0VVxKrPVcKS2qORbpR1hgYaUSbebI5knxNGHEpIeoCelgTP0sGYGA
+A96gdBtwe5Vlj4+3QR/+/Qet/6T4KW1uUihxYTR3fbZZk2Tq+N0wAVWeqmiFGE+8
+vjtltbAJep+5eEnZBz01m4d3jRTk/kdRGy2LUIUQkXmWUjxxkoXg4znxt8zDbDhq
+S5wVByoOs9NIbXf+Ow8Pw/OgdLVKIiK8bUVJIDpgJzp4ziJTyX6oLbwO3+U5Z8G9
+2bUntfU0JRXz+d5j3sBJHHKE9ZMf4Fvow2HBNU3kk/LxmqMC2IbWK/EFMUE+1HZf
+ji5310X+l/SXr0AlUhM9UHSCyq05qakU5xHSp38Jt2hpagGPo3aYtW4ONB8LCdSv
+SzRIi/aaUI5j0mH3tvmeTUHPplTl4DuaiGrRpMf/MkylCwLMFVqM5hHqF4qUfkFh
+L/gl2GVUr6nOVd7okoY5J2q/yJz4gD97Mokx0NvMBipy0DpY7nn9lfFSpvuJ7sDm
+3noP77ITLcdDoV32uLlyW7SWrtZr+aRUi3/gbbDqmo2t4V2j33zIcEBDcc/jjfZc
+IMf28vxJPngA7wIQ1L/2KVXLV7Duk+fh6a4fSOeVtdV35nV/IgDB3GaeEMAQNmrI
+B37+97nQpstepL9ia4So
+=hm0I
+-----END PGP SIGNATURE-----
+--=-=-=--
