@@ -1,55 +1,84 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-wm0-f50.google.com ([74.125.82.50]:36967 "EHLO
-        mail-wm0-f50.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S941583AbcKOKN3 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 15 Nov 2016 05:13:29 -0500
-Received: by mail-wm0-f50.google.com with SMTP id t79so157840388wmt.0
-        for <linux-nfs@vger.kernel.org>; Tue, 15 Nov 2016 02:13:29 -0800 (PST)
+Received: from pandora.armlinux.org.uk ([78.32.30.218]:43706 "EHLO
+        pandora.armlinux.org.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751981AbcKOPH2 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 15 Nov 2016 10:07:28 -0500
+Date: Tue, 15 Nov 2016 15:07:07 +0000
+From: Russell King - ARM Linux <linux@armlinux.org.uk>
+To: Trond Myklebust <trond.myklebust@primarydata.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>,
+        "Paul E. McKenney" <paulmck@linux.vnet.ibm.com>,
+        Josh Triplett <josh@joshtriplett.org>
+Cc: linux-arm-kernel@lists.infradead.org, linux-kernel@vger.kernel.org,
+        linux-nfs@vger.kernel.org
+Subject: [BUG] Suspicious RCU usage: NFS client - 4.9-rc4
+Message-ID: <20161115150706.GW1041@n2100.armlinux.org.uk>
 MIME-Version: 1.0
-In-Reply-To: <20161111220425.GA30914@fieldses.org>
-References: <56743FB6.80903@redhat.com> <20151218200840.GA28692@fieldses.org>
- <5677BCD4.4060009@redhat.com> <20151221164752.GA7869@fieldses.org>
- <56783DCC.1060201@redhat.com> <20151221201403.GB7869@fieldses.org>
- <2443f0d3-6937-ae92-d4d5-6e1f00a19e81@dit.upm.es> <20161108201611.GB26589@fieldses.org>
- <37f8eaf5-128c-ecd5-ae65-3b340c990171@dit.upm.es> <20161111190332.GA28132@fieldses.org>
- <20161111220425.GA30914@fieldses.org>
-From: Miklos Szeredi <mszeredi@redhat.com>
-Date: Tue, 15 Nov 2016 11:13:27 +0100
-Message-ID: <CAOssrKfupMvmpfk5fV1J6Hv5_FUSCjU0euGkY8aeU3kxgzEXMQ@mail.gmail.com>
-Subject: Re: possible bug in nfs-kernel-server
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: Omar Walid Llorente <omar@dit.upm.es>,
-        Soumya Koduri <skoduri@redhat.com>,
-        Jeff Layton <jlayton@poochiereds.net>, linux-nfs@vger.kernel.org,
-        =?UTF-8?Q?administraci=C3=B3n_del_centro_de_c=C3=A1lculo_del_dit?=
-        <cdc@dit.upm.es>
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=us-ascii
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Nov 11, 2016 at 11:04 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
-> So if I'm reading right, the setup is
->
->         nfs client---NFSv3--->knfsd---FUSE-->gluster
->
-> I hate to just pass the buck, but my bet is on the issue being either on
-> the gluster side, or on limitations of the fuse protocol itself.
->
-> Cc'ing Miklos as I believe he did the original fuse nfsd export
-> implementation.  Miklos, does fuse has a way for file owners to override
-> permissions?  We need this sometimes because for example, an application
-> may hold a write open on a read-only file, but the server doesn't itself
-> already have an open (which can happen for lots of reasons).
+While booting two of my machines, I noticed this splat on the console.
+Not sure if this is due to a RCU change or NFS change, so adding folk
+on both sides.
 
-Is glusterfs using "default_permissions" fuse option?
+===============================
+[ INFO: suspicious RCU usage. ]
+4.9.0-rc4+ #2050 Not tainted
+-------------------------------
+net/sunrpc/clnt.c:2773 suspicious rcu_dereference_check() usage!
 
-If so, then the above shouldn't be an issue, since permission checking
-is done by generic_permission() which works the same for all
-filesystems.
+other info that might help us debug this:
 
-If not, then there's the same problem as re-exporting NFSv4 as NFSv3
-would have: the permissions are not checked in ->permission(), but in
-e.g. ->atomic_open() so nfsd's override mechanism wouldn't work.
 
-Thanks,
-Miklos
+rcu_scheduler_active = 1, debug_locks = 0
+1 lock held by mount.nfs/1499:
+ #0: 
+ (
+&(&nn->nfs_client_lock)->rlock
+){+.+...}
+, at: 
+[<c026c6d4>] nfs_get_client+0xe8/0x580
+
+stack backtrace:
+CPU: 1 PID: 1499 Comm: mount.nfs Not tainted 4.9.0-rc4+ #2050
+Hardware name: Freescale i.MX6 Quad/DualLite (Device Tree)
+Backtrace: 
+[<c0013b84>] (dump_backtrace) from [<c0013dc4>] (show_stack+0x18/0x1c)
+ r6:60010013 r5:ffffffff r4:00000000 r3:00000000
+[<c0013dac>] (show_stack) from [<c035d300>] (dump_stack+0xa4/0xdc)
+[<c035d25c>] (dump_stack) from [<c008093c>] (lockdep_rcu_suspicious+0xbc/0x11c)
+ r6:00000ad5 r5:c08f4078 r4:ee58a4c0 r3:ee58a4c0
+[<c0080880>] (lockdep_rcu_suspicious) from [<c0721ba4>] (rpc_clnt_xprt_switch_has_addr+0x134/0x15c)
+ r7:ef27dd80 r6:c0ae3972 r5:eeb5a110 r4:ee930400
+[<c0721a70>] (rpc_clnt_xprt_switch_has_addr) from [<c026c814>] (nfs_get_client+0x228/0x580)
+ r6:ef27ddd0 r5:eeb5a110 r4:00000000
+[<c026c5ec>] (nfs_get_client) from [<c026cc20>] (nfs_create_server+0xb4/0x3d4)
+ r10:edaebe6c r9:c0a84d54 r8:edaebd30 r7:edf7b480 r6:00000000 r5:ed50a000
+ r4:eeb5a000
+[<c026cb6c>] (nfs_create_server) from [<c028a2f8>] (nfs3_create_server+0x10/0x28)
+ r10:00000000 r9:edbea200 r8:c0a84d54 r7:edaebe6c r6:00000000 r5:00000001
+ r4:eeb5a000
+[<c028a2e8>] (nfs3_create_server) from [<c02792a0>] (nfs_try_mount+0x188/0x280)
+ r4:eeb5a000 r3:c028a2e8
+[<c0279118>] (nfs_try_mount) from [<c027b28c>] (nfs_fs_mount+0x420/0x8c0)
+ r10:00000000 r9:00000400 r8:edbea200 r7:edbea200 r6:c0a84d54 r5:edbea206
+ r4:eeb5a000
+[<c027ae6c>] (nfs_fs_mount) from [<c016eaf4>] (mount_fs+0x1c/0xa8)
+ r10:ed4f5000 r9:edbea340 r8:c0a82204 r7:c019091c r6:c0a82204 r5:edbea200
+ r4:ed8a3700
+[<c016ead8>] (mount_fs) from [<c018d6d0>] (vfs_kern_mount+0x5c/0x138)
+ r6:00000000 r5:edbea200 r4:ed8a3700
+[<c018d674>] (vfs_kern_mount) from [<c019091c>] (do_mount+0x164/0xc58)
+ r10:c0191774 r8:edbea200 r7:00000020 r6:ed4f5000 r5:c0a82204 r4:00000000
+[<c01907b8>] (do_mount) from [<c0191774>] (SyS_mount+0x7c/0xa4)
+ r10:00000000 r9:edaea000 r8:0078c0f8 r7:00000000 r6:ed4f5000 r5:edbea200
+ r4:edbea340
+[<c01916f8>] (SyS_mount) from [<c000fd60>] (ret_fast_syscall+0x0/0x1c)
+ r8:c000ff04 r7:00000015 r6:0078dd50 r5:bed2bad0 r4:007968a8
+
+
+-- 
+RMK's Patch system: http://www.armlinux.org.uk/developer/patches/
+FTTC broadband for 0.8mile line: currently at 9.6Mbps down 400kbps up
+according to speedtest.net.
