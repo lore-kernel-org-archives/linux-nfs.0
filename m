@@ -1,257 +1,97 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:50834 "EHLO mx1.redhat.com"
+Received: from mx2.suse.de ([195.135.220.15]:43634 "EHLO mx2.suse.de"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S932797AbcKOVtf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 15 Nov 2016 16:49:35 -0500
-Subject: Re: [PATCH nfs-utils] Remove all use of /var/lib/nfs/xtab
-To: NeilBrown <neilb@suse.com>, Jeff Layton <jlayton@redhat.com>
-References: <87eg2kma65.fsf@notabene.neil.brown.name>
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-From: Steve Dickson <SteveD@redhat.com>
-Message-ID: <63756e70-e862-ba83-95e8-6338f16b1870@RedHat.com>
-Date: Tue, 15 Nov 2016 16:49:34 -0500
+        id S1752028AbcKPBer (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 15 Nov 2016 20:34:47 -0500
+From: NeilBrown <neilb@suse.com>
+To: Steve Dickson <SteveD@redhat.com>
+Date: Wed, 16 Nov 2016 12:34:37 +1100
+Cc: Mike Frysinger <vapier@gentoo.org>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        libtirpc-devel@lists.sourceforge.net
+Subject: Re: [Libtirpc-devel] [PATCH rpcbind v2] Move default state-dir to a subdirectory of /tmp
+In-Reply-To: <ed1f4f4c-fda6-6909-baab-5fbde2a5bc6c@RedHat.com>
+References: <877f8almcf.fsf@notabene.neil.brown.name> <20161111210034.GM21655@vapier.lan> <87polzj7sx.fsf@notabene.neil.brown.name> <87vavqilre.fsf@notabene.neil.brown.name> <ed1f4f4c-fda6-6909-baab-5fbde2a5bc6c@RedHat.com>
+Message-ID: <8760noi4wi.fsf@notabene.neil.brown.name>
 MIME-Version: 1.0
-In-Reply-To: <87eg2kma65.fsf@notabene.neil.brown.name>
-Content-Type: text/plain; charset=windows-1252
+Content-Type: multipart/signed; boundary="=-=-=";
+        micalg=pgp-sha256; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+--=-=-=
+Content-Type: text/plain
 
+On Wed, Nov 16 2016, Steve Dickson wrote:
 
-On 11/09/2016 07:49 PM, NeilBrown wrote:
-> /var/lib/nfs/xtab is only used to find out what has been exported to
-> the kernel.  This is more reliably done by reading
-> /proc/fs/nfs{,d}/export and nfs-utils uses that file if is available.
-> So xtab is only need if you have an incredibly ancient kernel which
-> doesn't have /proc/fs/nfs/export (and so which only supports NFSv2) or if
-> /proc is not mounted.
+> On 11/14/2016 02:05 AM, NeilBrown wrote:
+>> rpcbind can save state in a file to allow restart without forgetting
+>> about running services.
+>>
+>> The default location is currently "/tmp" which is
+>> not ideal for system files.  It is particularly unpleasant
+>> to put simple files there rather than creating a directory
+>> to contain them.
+>>
+>> On a modern Linux system it is preferable to use /run, and there it is
+>> even more consistent with practice to use a subdirectory.
+>>
+>> This directory needs to be create one each boot, and while there are
+>> tools (e.g. systemd-tmpfiles) which can do that it is cleaner to keep
+>> rpcbind self-contained and have it create the directory.
+>>
+>> So change the default location to /tmp/rpcbind, and create that
+>> directory.  If a different user-id is used, we need to create
+>> and chown the directory before dropping privileges.  We do this
+>> with care so avoid chowning the wrong thing by mistake.
+>>
+>> Signed-off-by: NeilBrown <neilb@suse.com>
+>> ---
+>>
+>> hi,
+>>  I realized that I hadn't allowed for the fact that rpcbind changes
+>>  it's uid, and we need to mkdir and chown before that.
+>>  I've also reverted the move to /run, but moved to /tmp/rpcbind
+>>  instead.  A subdirectory is a good idea, even in /tmp.
+> I'm beginning to think put these files into a directory call /tmp/rpcbind
+> is not a good idea...  Because if something in /tmp is called rpcbind (like a
+> debugging binary ;-) ) the mkdirs will silently fail which is not good.
 >
-> Neither of these are credible contexts to run a modern nfs-utils,
-> so stop creating or reading the xtab file.
+> Here is what I would like to do.
 >
-> Signed-off-by: NeilBrown <neilb@suse.com>
-> ---
->  Makefile.am                |  3 +--
->  support/export/xtab.c      | 31 ++-----------------------------
->  support/include/exportfs.h |  4 +---
->  support/include/nfslib.h   |  9 ---------
->  utils/exportfs/exportfs.c  |  4 +---
->  utils/mountd/auth.c        |  1 -
->  utils/mountd/mountd.c      | 11 ++---------
->  7 files changed, 7 insertions(+), 56 deletions(-)
-Committed....
-
-steved.
+> Move the directory into /run then create the /run/rpcbind when it
+> does not exist... I think that should play nicely in both the
+> systemd worlds and non-systemd worlds
 >
-> diff --git a/Makefile.am b/Makefile.am
-> index 4a2edc682de8..e1f39aab5f62 100644
-> --- a/Makefile.am
-> +++ b/Makefile.am
-> @@ -23,7 +23,6 @@ ACLOCAL_AMFLAGS = -I aclocal
->  
->  install-data-hook:
->  	if [ ! -d $(DESTDIR)$(statedir) ]; then mkdir -p $(DESTDIR)$(statedir); fi
-> -	touch $(DESTDIR)$(statedir)/xtab; chmod 644 $(DESTDIR)$(statedir)/xtab
->  	touch $(DESTDIR)$(statedir)/etab; chmod 644 $(DESTDIR)$(statedir)/etab
->  	touch $(DESTDIR)$(statedir)/rmtab; chmod 644 $(DESTDIR)$(statedir)/rmtab
->  	mkdir -p $(DESTDIR)$(statdpath)/sm $(DESTDIR)$(statdpath)/sm.bak
-> @@ -32,7 +31,7 @@ install-data-hook:
->  	-chown $(statduser) $(DESTDIR)$(statdpath)/sm $(DESTDIR)$(statdpath)/sm.bak $(DESTDIR)$(statdpath)/state
->  
->  uninstall-hook:
-> -	rm $(DESTDIR)$(statedir)/xtab
-> +	rm -f $(DESTDIR)$(statedir)/xtab
->  	rm $(DESTDIR)$(statedir)/etab
->  	rm $(DESTDIR)$(statedir)/rmtab
->  	rm $(DESTDIR)$(statdpath)/state
-> diff --git a/support/export/xtab.c b/support/export/xtab.c
-> index e953071ea901..10d9dbc5db15 100644
-> --- a/support/export/xtab.c
-> +++ b/support/export/xtab.c
-> @@ -1,7 +1,7 @@
->  /*
->   * support/export/xtab.c
->   *
-> - * Interface to the xtab file.
-> + * Interface to the etab/exports file.
->   *
->   * Copyright (C) 1995, 1996 Olaf Kirch <okir@monad.swb.de>
->   */
-> @@ -29,7 +29,6 @@ xtab_read(char *xtab, char *lockfn, int is_export)
->  {
->      /* is_export == 0  => reading /proc/fs/nfs/exports - we know these things are exported to kernel
->       * is_export == 1  => reading /var/lib/nfs/etab - these things are allowed to be exported
-> -     * is_export == 2  => reading /var/lib/nfs/xtab - these things might be known to kernel
->       */
->  	struct exportent	*xp;
->  	nfs_export		*exp;
-> @@ -55,9 +54,6 @@ xtab_read(char *xtab, char *lockfn, int is_export)
->  			if ((xp->e_flags & NFSEXP_FSID) && xp->e_fsid == 0)
->  				v4root_needed = 0;
->  			break;
-> -		case 2:
-> -			exp->m_exported = -1;/* may be exported */
-> -			break;
->  		}
->  	}
->  	endexportent();
-> @@ -79,7 +75,7 @@ xtab_mount_read(void)
->  		return xtab_read(_PATH_PROC_EXPORTS_ALT,
->  				 _PATH_PROC_EXPORTS_ALT, 0);
->  	} else
-> -		return xtab_read(_PATH_XTAB, _PATH_XTABLCK, 2);
-> +		return 0;
->  }
->  
->  int
-> @@ -135,29 +131,6 @@ xtab_export_write()
->  	return xtab_write(_PATH_ETAB, _PATH_ETABTMP, _PATH_ETABLCK, 1);
->  }
->  
-> -int
-> -xtab_mount_write()
-> -{
-> -	return xtab_write(_PATH_XTAB, _PATH_XTABTMP, _PATH_XTABLCK, 0);
-> -}
-> -
-> -void
-> -xtab_append(nfs_export *exp)
-> -{
-> -	struct exportent xe;
-> -	int		lockid;
-> -
-> -	if ((lockid = xflock(_PATH_XTABLCK, "w")) < 0)
-> -		return;
-> -	setexportent(_PATH_XTAB, "a");
-> -	xe = exp->m_export;
-> -	xe.e_hostname = exp->m_client->m_hostname;
-> -	putexportent(&xe);
-> -	endexportent();
-> -	xfunlock(lockid);
-> -	exp->m_xtabent = 1;
-> -}
-> -
->  /*
->   * rename newfile onto oldfile unless
->   * they are identical
-> diff --git a/support/include/exportfs.h b/support/include/exportfs.h
-> index 32d4fe95fd7e..08ef30a2f580 100644
-> --- a/support/include/exportfs.h
-> +++ b/support/include/exportfs.h
-> @@ -96,7 +96,7 @@ typedef struct mexport {
->  	struct mexport *	m_next;
->  	struct mclient *	m_client;
->  	struct exportent	m_export;
-> -	int			m_exported;	/* known to knfsd. -1 means not sure */
-> +	int			m_exported;	/* known to knfsd. */
->  	int			m_xtabent  : 1,	/* xtab entry exists */
->  				m_mayexport: 1,	/* derived from xtabbed */
->  				m_changed  : 1, /* options (may) have changed */
-> @@ -150,9 +150,7 @@ int				export_unexport(nfs_export *);
->  
->  int				xtab_mount_read(void);
->  int				xtab_export_read(void);
-> -int				xtab_mount_write(void);
->  int				xtab_export_write(void);
-> -void				xtab_append(nfs_export *);
->  
->  int				secinfo_addflavor(struct flav_info *, struct exportent *);
->  
-> diff --git a/support/include/nfslib.h b/support/include/nfslib.h
-> index ddd71ac94aa5..777f398c1486 100644
-> --- a/support/include/nfslib.h
-> +++ b/support/include/nfslib.h
-> @@ -35,15 +35,6 @@
->  #ifndef _PATH_IDMAPDCONF
->  #define _PATH_IDMAPDCONF	"/etc/idmapd.conf"
->  #endif
-> -#ifndef _PATH_XTAB
-> -#define _PATH_XTAB		NFS_STATEDIR "/xtab"
-> -#endif
-> -#ifndef _PATH_XTABTMP
-> -#define _PATH_XTABTMP		NFS_STATEDIR "/xtab.tmp"
-> -#endif
-> -#ifndef _PATH_XTABLCK
-> -#define _PATH_XTABLCK		NFS_STATEDIR "/.xtab.lock"
-> -#endif
->  #ifndef _PATH_ETAB
->  #define _PATH_ETAB		NFS_STATEDIR "/etab"
->  #endif
-> diff --git a/utils/exportfs/exportfs.c b/utils/exportfs/exportfs.c
-> index 5136810029d0..98368a5ef1e1 100644
-> --- a/utils/exportfs/exportfs.c
-> +++ b/utils/exportfs/exportfs.c
-> @@ -219,8 +219,6 @@ main(int argc, char **argv)
->  	xtab_export_write();
->  	if (new_cache)
->  		cache_flush(force_flush);
-> -	if (!new_cache)
-> -		xtab_mount_write();
->  
->  	return export_errno;
->  }
-> @@ -238,7 +236,7 @@ exports_update_one(nfs_export *exp, int verbose)
->  		       exp->m_export.e_path, exp->m_export.e_mountpoint);
->  		exp->m_mayexport = 0;
->  	}
-> -	if (exp->m_mayexport && ((exp->m_exported<1) || exp->m_changed)) {
-> +	if (exp->m_mayexport && exp->m_changed) {
->  		if (verbose)
->  			printf("%sexporting %s:%s to kernel\n",
->  			       exp->m_exported ?"re":"",
-> diff --git a/utils/mountd/auth.c b/utils/mountd/auth.c
-> index 0881d9a6edba..b612d88b6143 100644
-> --- a/utils/mountd/auth.c
-> +++ b/utils/mountd/auth.c
-> @@ -46,7 +46,6 @@ void
->  auth_init(void)
->  {
->  	auth_reload();
-> -	xtab_mount_write();
->  }
->  
->  /*
-> diff --git a/utils/mountd/mountd.c b/utils/mountd/mountd.c
-> index 7a51b093f66a..981abd456d91 100644
-> --- a/utils/mountd/mountd.c
-> +++ b/utils/mountd/mountd.c
-> @@ -107,7 +107,6 @@ unregister_services (void)
->  static void
->  cleanup_lockfiles (void)
->  {
-> -	unlink(_PATH_XTABLCK);
->  	unlink(_PATH_ETABLCK);
->  	unlink(_PATH_RMTABLCK);
->  }
-> @@ -289,7 +288,7 @@ mount_umntall_1_svc(struct svc_req *rqstp, void *UNUSED(argp),
->  	xlog(D_CALL, "Received UMNTALL request from %s",
->  		host_ntop(sap, buf, sizeof(buf)));
->  
-> -	/* Reload /etc/xtab if necessary */
-> +	/* Reload /etc/exports if necessary */
->  	auth_reload();
->  
->  	mountlist_del_all(nfs_getrpccaller(rqstp->rq_xprt));
-> @@ -350,7 +349,7 @@ mount_pathconf_2_svc(struct svc_req *rqstp, dirpath *path, ppathcnf *res)
->  	if (*p == '\0')
->  		p = "/";
->  
-> -	/* Reload /etc/xtab if necessary */
-> +	/* Reload /etc/exports if necessary */
->  	auth_reload();
->  
->  	/* Resolve symlinks */
-> @@ -531,12 +530,6 @@ get_rootfh(struct svc_req *rqstp, dirpath *path, nfs_export **expret,
->  	} else {
->  		int did_export = 0;
->  	retry:
-> -		if (exp->m_exported<1) {
-> -			export_export(exp);
-> -			did_export = 1;
-> -		}
-> -		if (!exp->m_xtabent)
-> -			xtab_append(exp);
->  
->  		if (v3)
->  			fh = getfh_size((struct sockaddr_in *)sap, p, 64);
+> Thoughts?
 
+/var/run rather than /run seems to be a safer universal default.
+Linux distros can run ./configure --with-statedir=/run/rcpbind
+
+Otherwise, I think we are in agreement.
+
+You want I should respin with /tmp/rpcbind -> /var/run/rpcbind ??
+
+Thanks,
+NeilBrown
+
+--=-=-=
+Content-Type: application/pgp-signature; name="signature.asc"
+
+-----BEGIN PGP SIGNATURE-----
+
+iQIcBAEBCAAGBQJYK7etAAoJEDnsnt1WYoG5S7cQAKbh4SkExkOA2cS8cjoBOLai
+EzuLB4KvUcLZVpTI1llHc+u8n6h4E1s4JmQ7Id9se60bjnlJgGVRigPEoCTmXges
+65fK7eyEVK82EMNdL3Jt/b8KCdgZe+7Z7+MNqH8KRWY5TO5GHt9M3MKriuXf6euJ
+VxcIBKYXHPp5KFQKQki61XnAubHR1JHFy86rx+SsE8PP3dAfJqZo08moNw6jgI6i
+BvsxegUoyFmgTFIgiTdo9E5VIqFLmWKhOISWF99JSkZaJC3PznB7r6QmhZNd80//
+r8tp0H2e1zMcHx9CcUolJjOS28p4EgSOxbTA0zcrmOH71p7bv7GuQCt0sIrz2z23
+0XvSejZt28gcLTE0/oAU6qav3Oq8RkQGKkTzohf237mssFog27LdbEYimC5YfUl2
+kRkHWpZh41e0vmt62Xg3PVoAQHmonetSRTR2jpRE3cWVIntjZhbbfpi1oW37zF5+
+TVcLOYwz7JFFWr907fYeMPn5iwMJk8c/meIeK/X8NLUzUttNoF/TfB+g9cUW+jdc
+pJI2M9uhDqSiTM+Xb9gchU4YUG2PLz7aNOBUA7MBIAbjA8PHtfqdL1zVPPcWg4TN
++d/hbrGppVGOr2Ko5Ul0/J5LKLQ8ac2P1TfjaOZOZleZSOWkCM3mzflk8Ve+ZZ6f
+FRynRGltz9cusyNq2nJS
+=nTt9
+-----END PGP SIGNATURE-----
+--=-=-=--
