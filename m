@@ -1,189 +1,120 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:51810 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([173.255.197.46]:50454 "EHLO fieldses.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751088AbcKQVZC (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 17 Nov 2016 16:25:02 -0500
-From: "Benjamin Coddington" <bcodding@redhat.com>
-To: "Trond Myklebust" <trond.myklebust@primarydata.com>,
-        "Anna Schumaker" <anna.schumaker@netapp.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] NFSv4.1: Don't allow a lock_state to be freed while
- checking
-Date: Thu, 17 Nov 2016 16:24:59 -0500
-Message-ID: <5FE301AD-F745-48A3-9250-1E0E4ADA9E56@redhat.com>
-In-Reply-To: <BD7D9CEA-11BA-40BB-AD49-3EB7635E1BE0@redhat.com>
-References: <0e6e9dac991cd93e2ae3e6a4b4b41bd974a040cb.1479142099.git.bcodding@redhat.com>
- <00FD5260-0053-45B0-B0FB-2B2F53947E39@redhat.com>
- <BD7D9CEA-11BA-40BB-AD49-3EB7635E1BE0@redhat.com>
+        id S1751088AbcKQV0C (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 17 Nov 2016 16:26:02 -0500
+Date: Thu, 17 Nov 2016 16:26:01 -0500
+From: "bfields@fieldses.org" <bfields@fieldses.org>
+To: Olga Kornievskaia <aglo@umich.edu>
+Cc: Trond Myklebust <trondmy@primarydata.com>,
+        "tibbs@math.uh.edu" <tibbs@math.uh.edu>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: NFS: nfs4_reclaim_open_state: Lock reclaim failed! log spew
+Message-ID: <20161117212601.GA23130@fieldses.org>
+References: <ufapovfc8m4.fsf@epithumia.math.uh.edu>
+ <ufa1syb402e.fsf@epithumia.math.uh.edu>
+ <20161117163101.GA19161@fieldses.org>
+ <1479404750.33885.1.camel@primarydata.com>
+ <20161117193239.GD20937@fieldses.org>
+ <CAN-5tyFP8QapcfuG5pO2059ftf3wGhmaO=6RZAA+W_nYbVraPQ@mail.gmail.com>
+ <20161117201753.GF20937@fieldses.org>
+ <CAN-5tyHcaJCCdBaNbU4Mc=JuJXi9cDppuTVKKixrgVZMZS-DMg@mail.gmail.com>
+ <20161117204618.GG20937@fieldses.org>
+ <CAN-5tyHs1Xq4W2eJOMOW_Tv3=3hQLYhLdVwMDYixhGnaGsEH4Q@mail.gmail.com>
 MIME-Version: 1.0
-Content-Type: text/plain; format=flowed
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <CAN-5tyHs1Xq4W2eJOMOW_Tv3=3hQLYhLdVwMDYixhGnaGsEH4Q@mail.gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 15 Nov 2016, at 11:12, Benjamin Coddington wrote:
+On Thu, Nov 17, 2016 at 04:05:32PM -0500, Olga Kornievskaia wrote:
+> On Thu, Nov 17, 2016 at 3:46 PM, bfields@fieldses.org
+> <bfields@fieldses.org> wrote:
+> > On Thu, Nov 17, 2016 at 03:29:11PM -0500, Olga Kornievskaia wrote:
+> >> On Thu, Nov 17, 2016 at 3:17 PM, bfields@fieldses.org
+> >> <bfields@fieldses.org> wrote:
+> >> > On Thu, Nov 17, 2016 at 02:58:12PM -0500, Olga Kornievskaia wrote:
+> >> >> On Thu, Nov 17, 2016 at 2:32 PM, bfields@fieldses.org
+> >> >> <bfields@fieldses.org> wrote:
+> >> >> > On Thu, Nov 17, 2016 at 05:45:52PM +0000, Trond Myklebust wrote:
+> >> >> >> On Thu, 2016-11-17 at 11:31 -0500, J. Bruce Fields wrote:
+> >> >> >> > On Wed, Nov 16, 2016 at 02:55:05PM -0600, Jason L Tibbitts III wrote:
+> >> >> >> > >
+> >> >> >> > > I'm replying to a rather old message, but the issue has just now
+> >> >> >> > > popped
+> >> >> >> > > back up again.
+> >> >> >> > >
+> >> >> >> > > To recap, a client stops being able to access _any_ mount on a
+> >> >> >> > > particular server, and "NFS: nfs4_reclaim_open_state: Lock reclaim
+> >> >> >> > > failed!" appears several hundred times per second in the kernel
+> >> >> >> > > log.
+> >> >> >> > > The load goes up by one for ever process attempting to access any
+> >> >> >> > > mount
+> >> >> >> > > from that particular server.  Mounts to other servers are fine, and
+> >> >> >> > > other clients can mount things from that one server without
+> >> >> >> > > problems.
+> >> >> >> > >
+> >> >> >> > > When I kill every process keeping that particular mount active and
+> >> >> >> > > then
+> >> >> >> > > umount it, I see:
+> >> >> >> > >
+> >> >> >> > > NFS: nfs4_reclaim_open_state: unhandled error -10068
+> >> >> >> >
+> >> >> >> > NFS4ERR_RETRY_UNCACHED_REP.
+> >> >> >> >
+> >> >> >> > So, you're using NFSv4.1 or 4.2, and the server thinks that the
+> >> >> >> > client
+> >> >> >> > has reused a (slot, sequence number) pair, but the server doesn't
+> >> >> >> > have a
+> >> >> >> > cached response to return.
+> >> >> >> >
+> >> >> >> > Hard to know how that happened, and it's not shown in the below.
+> >> >> >> > Sounds like a bug, though.
+> >> >> >>
+> >> >> >> ...or a Ctrl-C....
+> >> >> >
+> >> >> > How does that happen?
+> >> >> >
+> >> >>
+> >> >> If I may chime in...
+> >> >>
+> >> >> Bruce, when an application sends a Ctrl-C and clients's session slot
+> >> >> has sent out an RPC but didn't process the reply, the client doesn't
+> >> >> know if the server processed that sequence id or not. In that case,
+> >> >> the client doesn't increment the sequence number. Normally the client
+> >> >> would handle getting such an error by retrying again (and resetting
+> >> >> the slots) but I think during recovery operation the client handles
+> >> >> errors differently (by just erroring). I believe the reasoning that we
+> >> >> don't want to be stuck trying to recover from the recovery from the
+> >> >> recovery etc...
+> >> >
+> >> > So in that case the client can end up sending a different rpc reusing
+> >> > the old slot and sequence number?
+> >>
+> >> Correct.
+> >
+> > So that could get UNCACHED_REP as the response.  But if you're very
+> > unlucky, couldn't this also happen?:
+> >
+> >         1) the compound previously sent on that slot was processed by
+> >         the server and cached
+> >         2) the compound you're sending now happens to have the same set
+> >         of operations
+> >
+> > with the result that the client doesn't detect that the reply was
+> > actually to some other rpc, and instead it returns bad data to the
+> > application?
+> 
+> If you are sending exactly the same operations and arguments, then why
+> is a reply from the cache would lead to bad data?
 
-> On 14 Nov 2016, at 15:18, Benjamin Coddington wrote:
->
->> On 14 Nov 2016, at 11:50, Benjamin Coddington wrote:
->>
->>> While walking the list of lock_states, keep the current 
->>> nfs4_lock_state
->>> referenced so that it isn't freed while checking.
->>>
->>> Signed-off-by: Benjamin Coddington <bcodding@redhat.com>
->>> ---
->>>  fs/nfs/nfs4proc.c | 12 +++++++++---
->>>  1 file changed, 9 insertions(+), 3 deletions(-)
->>>
->>> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
->>> index 7897826d7c51..9a1cb9e8c4fc 100644
->>> --- a/fs/nfs/nfs4proc.c
->>> +++ b/fs/nfs/nfs4proc.c
->>> @@ -2564,12 +2564,15 @@ static void 
->>> nfs41_check_delegation_stateid(struct nfs4_state *state)
->>>  static int nfs41_check_expired_locks(struct nfs4_state *state)
->>>  {
->>>  	int status, ret = NFS_OK;
->>> -	struct nfs4_lock_state *lsp;
->>> +	struct nfs4_lock_state *lsp, *tmp;
->>>  	struct nfs_server *server = NFS_SERVER(state->inode);
->>>
->>>  	if (!test_bit(LK_STATE_IN_USE, &state->flags))
->>>  		goto out;
->>> -	list_for_each_entry(lsp, &state->lock_states, ls_locks) {
->>> +	spin_lock(&state->state_lock);
->>> +	list_for_each_entry_safe(lsp, tmp, &state->lock_states, ls_locks) 
->>> {
->>> +		atomic_inc(&lsp->ls_count);
->>> +		spin_unlock(&state->state_lock);
->>>  		if (test_bit(NFS_LOCK_INITIALIZED, &lsp->ls_flags)) {
->>>  			struct rpc_cred *cred = lsp->ls_state->owner->so_cred;
->>>
->>> @@ -2588,7 +2591,10 @@ static int nfs41_check_expired_locks(struct 
->>> nfs4_state *state)
->>>  				break;
->>>  			}
->>>  		}
->>> -	};
->>> +		nfs4_put_lock_state(lsp);
->>> +		spin_lock(&state->state_lock);
->>> +	}
->>> +	spin_unlock(&state->state_lock);
->>>  out:
->>>  	return ret;
->>>  }
->>
->> Actually, something else may be wrong here.. after several more hours 
->> of
->> testing with this and Trond's two fixes for CLOSE races this popped 
->> up:
->
-> I've been an idiot.  This patch is wrong in two ways:
->
-> 1. list_for_each_entry_safe() won't keep the *next* entry from being 
-> freed
-> 2. There shouldn't be any reason (I think) it can't hold the state 
-> lock over
->    nfs41_test_and_free_expired_stateid(), so the much simpler fix is 
-> to hold it
->    the entire time. (I expect the problem I saw with that the first 
-> time was the
->    CLOSE/OPEN race recently fixed).
->
-> *ben goes off and tests what should be a simple fix again*
->
-> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-> index 7897826d7c51..34b36f148b65 100644
-> --- a/fs/nfs/nfs4proc.c
-> +++ b/fs/nfs/nfs4proc.c
-> @@ -2569,6 +2569,7 @@ static int nfs41_check_expired_locks(struct 
-> nfs4_state *state)
->
->         if (!test_bit(LK_STATE_IN_USE, &state->flags))
->                 goto out;
-> +       spin_lock(&state->state_lock);
->         list_for_each_entry(lsp, &state->lock_states, ls_locks) {
->                 if (test_bit(NFS_LOCK_INITIALIZED, &lsp->ls_flags)) {
->                         struct rpc_cred *cred = 
-> lsp->ls_state->owner->so_cred;
-> @@ -2588,7 +2589,8 @@ static int nfs41_check_expired_locks(struct 
-> nfs4_state *state)
->                                 break;
->                         }
->                 }
-> -       };
-> +       }
-> +       spin_unlock(&state->state_lock);
->  out:
->         return ret;
->  }
->
-> No, it /does/ soft lockup this time:
->
-> crash> bt 2514
-> PID: 2514   TASK: ffff880131560000  CPU: 2   COMMAND: "::1-manager"
->  #0 [ffffc90002a1b9d0] __schedule at ffffffff8182212e
->  #1 [ffffc90002a1ba50] schedule at ffffffff818225d6
->  #2 [ffffc90002a1ba68] rpc_wait_bit_killable at ffffffffa00d38f4 
-> [sunrpc]
->  #3 [ffffc90002a1ba88] __wait_on_bit at ffffffff818229e1
->  #4 [ffffc90002a1bac8] out_of_line_wait_on_bit at ffffffff81822b62
->  #5 [ffffc90002a1bb40] __rpc_execute at ffffffffa00d477a [sunrpc]
->  #6 [ffffc90002a1bba8] rpc_execute at ffffffffa00d6d41 [sunrpc]
->  #7 [ffffc90002a1bbd8] rpc_run_task at ffffffffa00c7d99 [sunrpc]
->  #8 [ffffc90002a1bc00] nfs4_call_sync_sequence at ffffffffa02d11e3 
-> [nfsv4]
->  #9 [ffffc90002a1bc78] _nfs41_test_stateid at ffffffffa02d9941 [nfsv4]
-> #10 [ffffc90002a1bd30] nfs41_test_and_free_expired_stateid at 
-> ffffffffa02db9b9 [nfsv4]
-> #11 [ffffc90002a1bd90] nfs41_open_expired at ffffffffa02dbdd7 [nfsv4]
-> #12 [ffffc90002a1bdf0] nfs4_do_reclaim at ffffffffa02f057f [nfsv4]
-> #13 [ffffc90002a1be88] nfs4_run_state_manager at ffffffffa02f0f10 
-> [nfsv4]
-> #14 [ffffc90002a1bec8] kthread at ffffffff810c96a9
-> #15 [ffffc90002a1bf50] ret_from_fork at ffffffff81827615
->
-> crash> l *(0xffffffffa00d477a)
-> 0xffffffffa00d477a is in __rpc_execute (net/sunrpc/sched.c:807).
-> 802                     /* sync task: sleep here */
-> 803                     dprintk("RPC: %5u sync task going to sleep\n", 
-> task->tk_pid);
-> 804                     status = 
-> out_of_line_wait_on_bit(&task->tk_runstate,
-> 805                                     RPC_TASK_QUEUED, 
-> rpc_wait_bit_killable,
-> 806                                     TASK_KILLABLE);
-> 807                     if (status == -ERESTARTSYS) {
-> 808                             /*
-> 809                              * When a sync task receives a signal, 
-> it exits with
-> 810                              * -ERESTARTSYS. In order to catch any 
-> callbacks that
-> 811                              * clean up after sleeping on some 
-> queue, we don't
->
-> Why it is queued here? Did the server return DELAY maybe?  
-> Investigations are
-> ongoing, advice welcomed.  I am going to resume email silence until I 
-> have
-> something worthwhile to contribute, rather than continue to reply to 
-> myself.
+That would probably be fine, I was wondering what would happen if you
+sent the same operation but different arguments.
 
-I feel I've wasted a lot of time learning something which should be 
-obvious:
-Don't hold a spinlock and then send a RPC, let alone several of them.
+So the original cancelled operation is something like
+PUTFH(fh1)+OPEN("foo")+GETFH, and the new one is
+PUTFH(fh2)+OPEN("bar")+GETFH.  In theory couldn't the second one succeed
+and leave the client thinking it had opened (fh2, bar) when the
+filehandle it got back was really for (fh1, foo)?
 
-Softlockup happens when rpciod is spinning on the state_lock in 
-locku_done,
-and then xprtiod is scheduled to receive data on the same CPU.  That 
-data
-would be the replies to TEST_STATEID which would complete TEST_STATEID 
-that
-would release the lock.
-
-So, please drop this patch.  I'll send another that takes a reference 
-and
-sets a flag on each lock state for testing.  Then the spin lock can be
-dropped while TEST_STATEID and possible FREE_STATEID are sent.
-
-Ben
+--b.
