@@ -1,127 +1,126 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mailsrv.ikr.uni-stuttgart.de ([129.69.170.2]:56640 "EHLO
-        mailsrv.ikr.uni-stuttgart.de" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1750714AbcKQVeW (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 17 Nov 2016 16:34:22 -0500
-From: Ulrich Gemkow <ulrich.gemkow@ikr.uni-stuttgart.de>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: NFS Server prevents access to files on different scenarios (lock problem?)
-Date: Thu, 17 Nov 2016 22:34:20 +0100
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-References: <201611172132.47523.ulrich.gemkow@ikr.uni-stuttgart.de> <20161117210435.GH20937@fieldses.org>
-In-Reply-To: <20161117210435.GH20937@fieldses.org>
+Received: from us-smtp-delivery-194.mimecast.com ([63.128.21.194]:46647 "EHLO
+        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1751389AbcKQVpi (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 17 Nov 2016 16:45:38 -0500
+From: Trond Myklebust <trondmy@primarydata.com>
+To: "bfields@fieldses.org" <bfields@fieldses.org>,
+        "aglo@umich.edu" <aglo@umich.edu>
+CC: "tibbs@math.uh.edu" <tibbs@math.uh.edu>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: NFS: nfs4_reclaim_open_state: Lock reclaim failed! log spew
+Date: Thu, 17 Nov 2016 21:45:30 +0000
+Message-ID: <1479419127.33885.5.camel@primarydata.com>
+References: <ufapovfc8m4.fsf@epithumia.math.uh.edu>
+         <ufa1syb402e.fsf@epithumia.math.uh.edu>
+         <20161117163101.GA19161@fieldses.org>
+         <1479404750.33885.1.camel@primarydata.com>
+         <20161117193239.GD20937@fieldses.org>
+         <CAN-5tyFP8QapcfuG5pO2059ftf3wGhmaO=6RZAA+W_nYbVraPQ@mail.gmail.com>
+         <20161117201753.GF20937@fieldses.org>
+         <CAN-5tyHcaJCCdBaNbU4Mc=JuJXi9cDppuTVKKixrgVZMZS-DMg@mail.gmail.com>
+         <20161117204618.GG20937@fieldses.org>
+         <CAN-5tyHs1Xq4W2eJOMOW_Tv3=3hQLYhLdVwMDYixhGnaGsEH4Q@mail.gmail.com>
+         <20161117212601.GA23130@fieldses.org>
+In-Reply-To: <20161117212601.GA23130@fieldses.org>
 MIME-Version: 1.0
-Content-Type: Text/Plain;
-  charset="iso-8859-1"
-Message-Id: <201611172234.20638.ulrich.gemkow@ikr.uni-stuttgart.de>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hello Bruce,
+T24gVGh1LCAyMDE2LTExLTE3IGF0IDE2OjI2IC0wNTAwLCBiZmllbGRzQGZpZWxkc2VzLm9yZyB3
+cm90ZToNCj4gT24gVGh1LCBOb3YgMTcsIDIwMTYgYXQgMDQ6MDU6MzJQTSAtMDUwMCwgT2xnYSBL
+b3JuaWV2c2thaWEgd3JvdGU6DQo+ID4gDQo+ID4gT24gVGh1LCBOb3YgMTcsIDIwMTYgYXQgMzo0
+NiBQTSwgYmZpZWxkc0BmaWVsZHNlcy5vcmcNCj4gPiA8YmZpZWxkc0BmaWVsZHNlcy5vcmc+IHdy
+b3RlOg0KPiA+ID4gDQo+ID4gPiBPbiBUaHUsIE5vdiAxNywgMjAxNiBhdCAwMzoyOToxMVBNIC0w
+NTAwLCBPbGdhIEtvcm5pZXZza2FpYQ0KPiA+ID4gd3JvdGU6DQo+ID4gPiA+IA0KPiA+ID4gPiBP
+biBUaHUsIE5vdiAxNywgMjAxNiBhdCAzOjE3IFBNLCBiZmllbGRzQGZpZWxkc2VzLm9yZw0KPiA+
+ID4gPiA8YmZpZWxkc0BmaWVsZHNlcy5vcmc+IHdyb3RlOg0KPiA+ID4gPiA+IA0KPiA+ID4gPiA+
+IE9uIFRodSwgTm92IDE3LCAyMDE2IGF0IDAyOjU4OjEyUE0gLTA1MDAsIE9sZ2EgS29ybmlldnNr
+YWlhDQo+ID4gPiA+ID4gd3JvdGU6DQo+ID4gPiA+ID4gPiANCj4gPiA+ID4gPiA+IE9uIFRodSwg
+Tm92IDE3LCAyMDE2IGF0IDI6MzIgUE0sIGJmaWVsZHNAZmllbGRzZXMub3JnDQo+ID4gPiA+ID4g
+PiA8YmZpZWxkc0BmaWVsZHNlcy5vcmc+IHdyb3RlOg0KPiA+ID4gPiA+ID4gPiANCj4gPiA+ID4g
+PiA+ID4gT24gVGh1LCBOb3YgMTcsIDIwMTYgYXQgMDU6NDU6NTJQTSArMDAwMCwgVHJvbmQgTXlr
+bGVidXN0DQo+ID4gPiA+ID4gPiA+IHdyb3RlOg0KPiA+ID4gPiA+ID4gPiA+IA0KPiA+ID4gPiA+
+ID4gPiA+IE9uIFRodSwgMjAxNi0xMS0xNyBhdCAxMTozMSAtMDUwMCwgSi4gQnJ1Y2UgRmllbGRz
+DQo+ID4gPiA+ID4gPiA+ID4gd3JvdGU6DQo+ID4gPiA+ID4gPiA+ID4gPiANCj4gPiA+ID4gPiA+
+ID4gPiA+IE9uIFdlZCwgTm92IDE2LCAyMDE2IGF0IDAyOjU1OjA1UE0gLTA2MDAsIEphc29uIEwN
+Cj4gPiA+ID4gPiA+ID4gPiA+IFRpYmJpdHRzIElJSSB3cm90ZToNCj4gPiA+ID4gPiA+ID4gPiA+
+ID4gDQo+ID4gPiA+ID4gPiA+ID4gPiA+IA0KPiA+ID4gPiA+ID4gPiA+ID4gPiBJJ20gcmVwbHlp
+bmcgdG8gYSByYXRoZXIgb2xkIG1lc3NhZ2UsIGJ1dCB0aGUgaXNzdWUNCj4gPiA+ID4gPiA+ID4g
+PiA+ID4gaGFzIGp1c3Qgbm93DQo+ID4gPiA+ID4gPiA+ID4gPiA+IHBvcHBlZA0KPiA+ID4gPiA+
+ID4gPiA+ID4gPiBiYWNrIHVwIGFnYWluLg0KPiA+ID4gPiA+ID4gPiA+ID4gPiANCj4gPiA+ID4g
+PiA+ID4gPiA+ID4gVG8gcmVjYXAsIGEgY2xpZW50IHN0b3BzIGJlaW5nIGFibGUgdG8gYWNjZXNz
+IF9hbnlfDQo+ID4gPiA+ID4gPiA+ID4gPiA+IG1vdW50IG9uIGENCj4gPiA+ID4gPiA+ID4gPiA+
+ID4gcGFydGljdWxhciBzZXJ2ZXIsIGFuZCAiTkZTOg0KPiA+ID4gPiA+ID4gPiA+ID4gPiBuZnM0
+X3JlY2xhaW1fb3Blbl9zdGF0ZTogTG9jayByZWNsYWltDQo+ID4gPiA+ID4gPiA+ID4gPiA+IGZh
+aWxlZCEiIGFwcGVhcnMgc2V2ZXJhbCBodW5kcmVkIHRpbWVzIHBlciBzZWNvbmQNCj4gPiA+ID4g
+PiA+ID4gPiA+ID4gaW4gdGhlIGtlcm5lbA0KPiA+ID4gPiA+ID4gPiA+ID4gPiBsb2cuDQo+ID4g
+PiA+ID4gPiA+ID4gPiA+IFRoZSBsb2FkIGdvZXMgdXAgYnkgb25lIGZvciBldmVyIHByb2Nlc3Mg
+YXR0ZW1wdGluZw0KPiA+ID4gPiA+ID4gPiA+ID4gPiB0byBhY2Nlc3MgYW55DQo+ID4gPiA+ID4g
+PiA+ID4gPiA+IG1vdW50DQo+ID4gPiA+ID4gPiA+ID4gPiA+IGZyb20gdGhhdCBwYXJ0aWN1bGFy
+IHNlcnZlci7CoMKgTW91bnRzIHRvIG90aGVyDQo+ID4gPiA+ID4gPiA+ID4gPiA+IHNlcnZlcnMg
+YXJlIGZpbmUsIGFuZA0KPiA+ID4gPiA+ID4gPiA+ID4gPiBvdGhlciBjbGllbnRzIGNhbiBtb3Vu
+dCB0aGluZ3MgZnJvbSB0aGF0IG9uZSBzZXJ2ZXINCj4gPiA+ID4gPiA+ID4gPiA+ID4gd2l0aG91
+dA0KPiA+ID4gPiA+ID4gPiA+ID4gPiBwcm9ibGVtcy4NCj4gPiA+ID4gPiA+ID4gPiA+ID4gDQo+
+ID4gPiA+ID4gPiA+ID4gPiA+IFdoZW4gSSBraWxsIGV2ZXJ5IHByb2Nlc3Mga2VlcGluZyB0aGF0
+IHBhcnRpY3VsYXINCj4gPiA+ID4gPiA+ID4gPiA+ID4gbW91bnQgYWN0aXZlIGFuZA0KPiA+ID4g
+PiA+ID4gPiA+ID4gPiB0aGVuDQo+ID4gPiA+ID4gPiA+ID4gPiA+IHVtb3VudCBpdCwgSSBzZWU6
+DQo+ID4gPiA+ID4gPiA+ID4gPiA+IA0KPiA+ID4gPiA+ID4gPiA+ID4gPiBORlM6IG5mczRfcmVj
+bGFpbV9vcGVuX3N0YXRlOiB1bmhhbmRsZWQgZXJyb3INCj4gPiA+ID4gPiA+ID4gPiA+ID4gLTEw
+MDY4DQo+ID4gPiA+ID4gPiA+ID4gPiANCj4gPiA+ID4gPiA+ID4gPiA+IE5GUzRFUlJfUkVUUllf
+VU5DQUNIRURfUkVQLg0KPiA+ID4gPiA+ID4gPiA+ID4gDQo+ID4gPiA+ID4gPiA+ID4gPiBTbywg
+eW91J3JlIHVzaW5nIE5GU3Y0LjEgb3IgNC4yLCBhbmQgdGhlIHNlcnZlcg0KPiA+ID4gPiA+ID4g
+PiA+ID4gdGhpbmtzIHRoYXQgdGhlDQo+ID4gPiA+ID4gPiA+ID4gPiBjbGllbnQNCj4gPiA+ID4g
+PiA+ID4gPiA+IGhhcyByZXVzZWQgYSAoc2xvdCwgc2VxdWVuY2UgbnVtYmVyKSBwYWlyLCBidXQg
+dGhlDQo+ID4gPiA+ID4gPiA+ID4gPiBzZXJ2ZXIgZG9lc24ndA0KPiA+ID4gPiA+ID4gPiA+ID4g
+aGF2ZSBhDQo+ID4gPiA+ID4gPiA+ID4gPiBjYWNoZWQgcmVzcG9uc2UgdG8gcmV0dXJuLg0KPiA+
+ID4gPiA+ID4gPiA+ID4gDQo+ID4gPiA+ID4gPiA+ID4gPiBIYXJkIHRvIGtub3cgaG93IHRoYXQg
+aGFwcGVuZWQsIGFuZCBpdCdzIG5vdCBzaG93biBpbg0KPiA+ID4gPiA+ID4gPiA+ID4gdGhlIGJl
+bG93Lg0KPiA+ID4gPiA+ID4gPiA+ID4gU291bmRzIGxpa2UgYSBidWcsIHRob3VnaC4NCj4gPiA+
+ID4gPiA+ID4gPiANCj4gPiA+ID4gPiA+ID4gPiAuLi5vciBhIEN0cmwtQy4uLi4NCj4gPiA+ID4g
+PiA+ID4gDQo+ID4gPiA+ID4gPiA+IEhvdyBkb2VzIHRoYXQgaGFwcGVuPw0KPiA+ID4gPiA+ID4g
+PiANCj4gPiA+ID4gPiA+IA0KPiA+ID4gPiA+ID4gSWYgSSBtYXkgY2hpbWUgaW4uLi4NCj4gPiA+
+ID4gPiA+IA0KPiA+ID4gPiA+ID4gQnJ1Y2UsIHdoZW4gYW4gYXBwbGljYXRpb24gc2VuZHMgYSBD
+dHJsLUMgYW5kIGNsaWVudHMncw0KPiA+ID4gPiA+ID4gc2Vzc2lvbiBzbG90DQo+ID4gPiA+ID4g
+PiBoYXMgc2VudCBvdXQgYW4gUlBDIGJ1dCBkaWRuJ3QgcHJvY2VzcyB0aGUgcmVwbHksIHRoZQ0K
+PiA+ID4gPiA+ID4gY2xpZW50IGRvZXNuJ3QNCj4gPiA+ID4gPiA+IGtub3cgaWYgdGhlIHNlcnZl
+ciBwcm9jZXNzZWQgdGhhdCBzZXF1ZW5jZSBpZCBvciBub3QuIEluDQo+ID4gPiA+ID4gPiB0aGF0
+IGNhc2UsDQo+ID4gPiA+ID4gPiB0aGUgY2xpZW50IGRvZXNuJ3QgaW5jcmVtZW50IHRoZSBzZXF1
+ZW5jZSBudW1iZXIuIE5vcm1hbGx5DQo+ID4gPiA+ID4gPiB0aGUgY2xpZW50DQo+ID4gPiA+ID4g
+PiB3b3VsZCBoYW5kbGUgZ2V0dGluZyBzdWNoIGFuIGVycm9yIGJ5IHJldHJ5aW5nIGFnYWluIChh
+bmQNCj4gPiA+ID4gPiA+IHJlc2V0dGluZw0KPiA+ID4gPiA+ID4gdGhlIHNsb3RzKSBidXQgSSB0
+aGluayBkdXJpbmcgcmVjb3Zlcnkgb3BlcmF0aW9uIHRoZSBjbGllbnQNCj4gPiA+ID4gPiA+IGhh
+bmRsZXMNCj4gPiA+ID4gPiA+IGVycm9ycyBkaWZmZXJlbnRseSAoYnkganVzdCBlcnJvcmluZyku
+IEkgYmVsaWV2ZSB0aGUNCj4gPiA+ID4gPiA+IHJlYXNvbmluZyB0aGF0IHdlDQo+ID4gPiA+ID4g
+PiBkb24ndCB3YW50IHRvIGJlIHN0dWNrIHRyeWluZyB0byByZWNvdmVyIGZyb20gdGhlIHJlY292
+ZXJ5DQo+ID4gPiA+ID4gPiBmcm9tIHRoZQ0KPiA+ID4gPiA+ID4gcmVjb3ZlcnkgZXRjLi4uDQo+
+ID4gPiA+ID4gDQo+ID4gPiA+ID4gU28gaW4gdGhhdCBjYXNlIHRoZSBjbGllbnQgY2FuIGVuZCB1
+cCBzZW5kaW5nIGEgZGlmZmVyZW50IHJwYw0KPiA+ID4gPiA+IHJldXNpbmcNCj4gPiA+ID4gPiB0
+aGUgb2xkIHNsb3QgYW5kIHNlcXVlbmNlIG51bWJlcj8NCj4gPiA+ID4gDQo+ID4gPiA+IENvcnJl
+Y3QuDQo+ID4gPiANCj4gPiA+IFNvIHRoYXQgY291bGQgZ2V0IFVOQ0FDSEVEX1JFUCBhcyB0aGUg
+cmVzcG9uc2UuwqDCoEJ1dCBpZiB5b3UncmUNCj4gPiA+IHZlcnkNCj4gPiA+IHVubHVja3ksIGNv
+dWxkbid0IHRoaXMgYWxzbyBoYXBwZW4/Og0KPiA+ID4gDQo+ID4gPiDCoMKgwqDCoMKgwqDCoMKg
+MSkgdGhlIGNvbXBvdW5kIHByZXZpb3VzbHkgc2VudCBvbiB0aGF0IHNsb3Qgd2FzDQo+ID4gPiBw
+cm9jZXNzZWQgYnkNCj4gPiA+IMKgwqDCoMKgwqDCoMKgwqB0aGUgc2VydmVyIGFuZCBjYWNoZWQN
+Cj4gPiA+IMKgwqDCoMKgwqDCoMKgwqAyKSB0aGUgY29tcG91bmQgeW91J3JlIHNlbmRpbmcgbm93
+IGhhcHBlbnMgdG8gaGF2ZSB0aGUNCj4gPiA+IHNhbWUgc2V0DQo+ID4gPiDCoMKgwqDCoMKgwqDC
+oMKgb2Ygb3BlcmF0aW9ucw0KPiA+ID4gDQo+ID4gPiB3aXRoIHRoZSByZXN1bHQgdGhhdCB0aGUg
+Y2xpZW50IGRvZXNuJ3QgZGV0ZWN0IHRoYXQgdGhlIHJlcGx5IHdhcw0KPiA+ID4gYWN0dWFsbHkg
+dG8gc29tZSBvdGhlciBycGMsIGFuZCBpbnN0ZWFkIGl0IHJldHVybnMgYmFkIGRhdGEgdG8NCj4g
+PiA+IHRoZQ0KPiA+ID4gYXBwbGljYXRpb24/DQo+ID4gDQo+ID4gSWYgeW91IGFyZSBzZW5kaW5n
+IGV4YWN0bHkgdGhlIHNhbWUgb3BlcmF0aW9ucyBhbmQgYXJndW1lbnRzLCB0aGVuDQo+ID4gd2h5
+DQo+ID4gaXMgYSByZXBseSBmcm9tIHRoZSBjYWNoZSB3b3VsZCBsZWFkIHRvIGJhZCBkYXRhPw0K
+PiANCj4gVGhhdCB3b3VsZCBwcm9iYWJseSBiZSBmaW5lLCBJIHdhcyB3b25kZXJpbmcgd2hhdCB3
+b3VsZCBoYXBwZW4gaWYgeW91DQo+IHNlbnQgdGhlIHNhbWUgb3BlcmF0aW9uIGJ1dCBkaWZmZXJl
+bnQgYXJndW1lbnRzLg0KDQo+IFNvIHRoZSBvcmlnaW5hbCBjYW5jZWxsZWQgb3BlcmF0aW9uIGlz
+IHNvbWV0aGluZyBsaWtlDQo+IFBVVEZIKGZoMSkrT1BFTigiZm9vIikrR0VURkgsIGFuZCB0aGUg
+bmV3IG9uZSBpcw0KPiBQVVRGSChmaDIpK09QRU4oImJhciIpK0dFVEZILsKgwqBJbiB0aGVvcnkg
+Y291bGRuJ3QgdGhlIHNlY29uZCBvbmUNCj4gc3VjY2VlZA0KPiBhbmQgbGVhdmUgdGhlIGNsaWVu
+dCB0aGlua2luZyBpdCBoYWQgb3BlbmVkIChmaDIsIGJhcikgd2hlbiB0aGUNCj4gZmlsZWhhbmRs
+ZSBpdCBnb3QgYmFjayB3YXMgcmVhbGx5IGZvciAoZmgxLCBmb28pPw0KPsKgDQoNClRoZSBjbGll
+bnQgd291bGQgcmVjZWl2ZSBhIGZpbGVoYW5kbGUgZm9yIGZoMS8iZm9vIiwgc28gaXQgd291bGQg
+YXBwbHkNCmFueSBzdGF0ZSBpdCB0aG91Z2h0IGl0IGhhZCByZWNlaXZlZCB0byB0aGF0IGZpbGUu
+IEhvd2V2ZXIsIG5vcm1hbGx5LA0KSSdkIGV4cGVjdCB0byBzZWUgYSBORlM0RVJSX0ZBTFNFX1JF
+VFJZIGluIHRoaXMgY2FzZS4=
 
-thanks...
-
-On Thursday 17 November 2016, J. Bruce Fields wrote:
-> On Thu, Nov 17, 2016 at 09:32:47PM +0100, Ulrich Gemkow wrote:
-> > Hello,
-> > 
-> > we use Linux NFS clients with a Linux NFS server in an configuration
-> > where NFS mounts are done on client boot _and_ on user login in a
-> > session; umounts are done on users logout from the session.
-> > 
-> > We see occasionally several different problems which all may have
-> > the same root cause:
-> > 
-> > - When a client accesses a file which was accessed before
-> >   from the same client in a previous session the server
-> >   prevents access to the file until a timeout happens.
-> > 
-> >   The timeout has a duration of about 1-3 minutes.
-> >   In this case the "blocked" file can not even be deleted
-> >   on the server.
-> > 
-> >   --> What causes this timeout? I found nothing in the
-> >       server code which has such a timeout How can I debug what
-> >       the server is waiting for or why he is blocking access
-> >       to the file?
-> > 
-> > - Sometimes client processes hang in the middle of a session
-> >   on some file. After a timeout the file is accessible again.
-> >   The timeout can take 1 upto several minutes. The file is
-> >   also blocked on the server, it cannot be accessed.
-> > 
-> > I think all theses problemes are caused by something like
-> > dangling locks or another invalid state on the server.
-> > 
-> > The clients show no network error like dropped packets
-> > or something like this.
-> > 
-> > --> How can I debug such hangs?
-> > 
-> > We use Linux NFS server and client from vanilla kernel 4.4.31
-> > with sec=sys.
-> > 
-> > Can anyone help? Does "a bell ring"?
-> 
-> The lease period is 90 seconds by default, and there are several cases
-> where you can end up waiting for a lease period.
-
-I found the 90sec lease time period but the timeout is sometimes
-much longer than 90 sec, often up to 3minutes or longer. Is there
-something which may cause these longer delays (I played with the
-90sec constant and it did not help :-)
-
-> For example, if the client held some delegations that it didn't return
-> on unmount, and then it denied knowledge of them when the server tried
-> to recall them, then the server would have to wait a lease period to
-> forcibly remove them.  But, the client should be returning delegations
-> on unmount, so I don't see how this happens.
-> 
-> For locks and opens and other state, again the client should be
-> returning them on unmount.  And anyway the server isn't going to
-> forcibly remove those ever, unless the entire client goes away
-> completely, e.g. in a client crash or network partition.
-> 
-> So, I don't know.  Are you sure there aren't client crashes or network
-> problems?
-
-It happens that clients crash but IMHO the server should notice this
-by dropped connections. We have no network problems in these cases.
-
-> Also I'd personally try to arrange things so you, say, just mount /home/
-> on boot instead of automounting /home/bfields when bfields logs in.
-> But, I don't know your situation.
-
-Sure, we can do this. But we are in an unsecure environment and it
-gives additional (required) security to use more specific mounts
-(we make the export on the server when the user has authenticated
-with our own daemon).
-
-What I really miss is an option to disable locks in NFSv4. Maybe
-you can point me to the right place in the source..?
-
-Any more ideas? 
-
-Thanks again and best regards
-
--Ulrich
-
-> 
-> --b.
-> 
-
-
-
--- 
-|-----------------------------------------------------------------------
-| Ulrich Gemkow
-|-----
-| Universität Stuttgart
-| Institut für Kommunikationsnetze und Rechnersysteme (IKR)
-|-----
-| University of Stuttgart
-| Institute of Communication Networks and Computer Engineering (IKR)
-|-----
-| Pfaffenwaldring 47, D 70569 Stuttgart, Germany
-| mailto:ulrich.gemkow@ikr.uni-stuttgart.de http://www.ikr.uni-stuttgart.de
-|-----------------------------------------------------------------------
