@@ -1,126 +1,182 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from us-smtp-delivery-194.mimecast.com ([63.128.21.194]:46647 "EHLO
-        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1751389AbcKQVpi (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 17 Nov 2016 16:45:38 -0500
-From: Trond Myklebust <trondmy@primarydata.com>
-To: "bfields@fieldses.org" <bfields@fieldses.org>,
-        "aglo@umich.edu" <aglo@umich.edu>
-CC: "tibbs@math.uh.edu" <tibbs@math.uh.edu>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: NFS: nfs4_reclaim_open_state: Lock reclaim failed! log spew
-Date: Thu, 17 Nov 2016 21:45:30 +0000
-Message-ID: <1479419127.33885.5.camel@primarydata.com>
-References: <ufapovfc8m4.fsf@epithumia.math.uh.edu>
-         <ufa1syb402e.fsf@epithumia.math.uh.edu>
-         <20161117163101.GA19161@fieldses.org>
-         <1479404750.33885.1.camel@primarydata.com>
-         <20161117193239.GD20937@fieldses.org>
-         <CAN-5tyFP8QapcfuG5pO2059ftf3wGhmaO=6RZAA+W_nYbVraPQ@mail.gmail.com>
-         <20161117201753.GF20937@fieldses.org>
-         <CAN-5tyHcaJCCdBaNbU4Mc=JuJXi9cDppuTVKKixrgVZMZS-DMg@mail.gmail.com>
-         <20161117204618.GG20937@fieldses.org>
-         <CAN-5tyHs1Xq4W2eJOMOW_Tv3=3hQLYhLdVwMDYixhGnaGsEH4Q@mail.gmail.com>
-         <20161117212601.GA23130@fieldses.org>
-In-Reply-To: <20161117212601.GA23130@fieldses.org>
+Received: from mail-it0-f66.google.com ([209.85.214.66]:34781 "EHLO
+        mail-it0-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1750785AbcKQVxq (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 17 Nov 2016 16:53:46 -0500
+Received: by mail-it0-f66.google.com with SMTP id o1so18140429ito.1
+        for <linux-nfs@vger.kernel.org>; Thu, 17 Nov 2016 13:53:45 -0800 (PST)
 MIME-Version: 1.0
+In-Reply-To: <1479419127.33885.5.camel@primarydata.com>
+References: <ufapovfc8m4.fsf@epithumia.math.uh.edu> <ufa1syb402e.fsf@epithumia.math.uh.edu>
+ <20161117163101.GA19161@fieldses.org> <1479404750.33885.1.camel@primarydata.com>
+ <20161117193239.GD20937@fieldses.org> <CAN-5tyFP8QapcfuG5pO2059ftf3wGhmaO=6RZAA+W_nYbVraPQ@mail.gmail.com>
+ <20161117201753.GF20937@fieldses.org> <CAN-5tyHcaJCCdBaNbU4Mc=JuJXi9cDppuTVKKixrgVZMZS-DMg@mail.gmail.com>
+ <20161117204618.GG20937@fieldses.org> <CAN-5tyHs1Xq4W2eJOMOW_Tv3=3hQLYhLdVwMDYixhGnaGsEH4Q@mail.gmail.com>
+ <20161117212601.GA23130@fieldses.org> <1479419127.33885.5.camel@primarydata.com>
+From: Olga Kornievskaia <aglo@umich.edu>
+Date: Thu, 17 Nov 2016 16:53:44 -0500
+Message-ID: <CAN-5tyFChQ0S4hUwGyWjaJ73hBpTZjJXVK3jm_M_4v1vgzVSjA@mail.gmail.com>
+Subject: Re: NFS: nfs4_reclaim_open_state: Lock reclaim failed! log spew
+To: Trond Myklebust <trondmy@primarydata.com>
+Cc: "bfields@fieldses.org" <bfields@fieldses.org>,
+        "tibbs@math.uh.edu" <tibbs@math.uh.edu>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
 Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVGh1LCAyMDE2LTExLTE3IGF0IDE2OjI2IC0wNTAwLCBiZmllbGRzQGZpZWxkc2VzLm9yZyB3
-cm90ZToNCj4gT24gVGh1LCBOb3YgMTcsIDIwMTYgYXQgMDQ6MDU6MzJQTSAtMDUwMCwgT2xnYSBL
-b3JuaWV2c2thaWEgd3JvdGU6DQo+ID4gDQo+ID4gT24gVGh1LCBOb3YgMTcsIDIwMTYgYXQgMzo0
-NiBQTSwgYmZpZWxkc0BmaWVsZHNlcy5vcmcNCj4gPiA8YmZpZWxkc0BmaWVsZHNlcy5vcmc+IHdy
-b3RlOg0KPiA+ID4gDQo+ID4gPiBPbiBUaHUsIE5vdiAxNywgMjAxNiBhdCAwMzoyOToxMVBNIC0w
-NTAwLCBPbGdhIEtvcm5pZXZza2FpYQ0KPiA+ID4gd3JvdGU6DQo+ID4gPiA+IA0KPiA+ID4gPiBP
-biBUaHUsIE5vdiAxNywgMjAxNiBhdCAzOjE3IFBNLCBiZmllbGRzQGZpZWxkc2VzLm9yZw0KPiA+
-ID4gPiA8YmZpZWxkc0BmaWVsZHNlcy5vcmc+IHdyb3RlOg0KPiA+ID4gPiA+IA0KPiA+ID4gPiA+
-IE9uIFRodSwgTm92IDE3LCAyMDE2IGF0IDAyOjU4OjEyUE0gLTA1MDAsIE9sZ2EgS29ybmlldnNr
-YWlhDQo+ID4gPiA+ID4gd3JvdGU6DQo+ID4gPiA+ID4gPiANCj4gPiA+ID4gPiA+IE9uIFRodSwg
-Tm92IDE3LCAyMDE2IGF0IDI6MzIgUE0sIGJmaWVsZHNAZmllbGRzZXMub3JnDQo+ID4gPiA+ID4g
-PiA8YmZpZWxkc0BmaWVsZHNlcy5vcmc+IHdyb3RlOg0KPiA+ID4gPiA+ID4gPiANCj4gPiA+ID4g
-PiA+ID4gT24gVGh1LCBOb3YgMTcsIDIwMTYgYXQgMDU6NDU6NTJQTSArMDAwMCwgVHJvbmQgTXlr
-bGVidXN0DQo+ID4gPiA+ID4gPiA+IHdyb3RlOg0KPiA+ID4gPiA+ID4gPiA+IA0KPiA+ID4gPiA+
-ID4gPiA+IE9uIFRodSwgMjAxNi0xMS0xNyBhdCAxMTozMSAtMDUwMCwgSi4gQnJ1Y2UgRmllbGRz
-DQo+ID4gPiA+ID4gPiA+ID4gd3JvdGU6DQo+ID4gPiA+ID4gPiA+ID4gPiANCj4gPiA+ID4gPiA+
-ID4gPiA+IE9uIFdlZCwgTm92IDE2LCAyMDE2IGF0IDAyOjU1OjA1UE0gLTA2MDAsIEphc29uIEwN
-Cj4gPiA+ID4gPiA+ID4gPiA+IFRpYmJpdHRzIElJSSB3cm90ZToNCj4gPiA+ID4gPiA+ID4gPiA+
-ID4gDQo+ID4gPiA+ID4gPiA+ID4gPiA+IA0KPiA+ID4gPiA+ID4gPiA+ID4gPiBJJ20gcmVwbHlp
-bmcgdG8gYSByYXRoZXIgb2xkIG1lc3NhZ2UsIGJ1dCB0aGUgaXNzdWUNCj4gPiA+ID4gPiA+ID4g
-PiA+ID4gaGFzIGp1c3Qgbm93DQo+ID4gPiA+ID4gPiA+ID4gPiA+IHBvcHBlZA0KPiA+ID4gPiA+
-ID4gPiA+ID4gPiBiYWNrIHVwIGFnYWluLg0KPiA+ID4gPiA+ID4gPiA+ID4gPiANCj4gPiA+ID4g
-PiA+ID4gPiA+ID4gVG8gcmVjYXAsIGEgY2xpZW50IHN0b3BzIGJlaW5nIGFibGUgdG8gYWNjZXNz
-IF9hbnlfDQo+ID4gPiA+ID4gPiA+ID4gPiA+IG1vdW50IG9uIGENCj4gPiA+ID4gPiA+ID4gPiA+
-ID4gcGFydGljdWxhciBzZXJ2ZXIsIGFuZCAiTkZTOg0KPiA+ID4gPiA+ID4gPiA+ID4gPiBuZnM0
-X3JlY2xhaW1fb3Blbl9zdGF0ZTogTG9jayByZWNsYWltDQo+ID4gPiA+ID4gPiA+ID4gPiA+IGZh
-aWxlZCEiIGFwcGVhcnMgc2V2ZXJhbCBodW5kcmVkIHRpbWVzIHBlciBzZWNvbmQNCj4gPiA+ID4g
-PiA+ID4gPiA+ID4gaW4gdGhlIGtlcm5lbA0KPiA+ID4gPiA+ID4gPiA+ID4gPiBsb2cuDQo+ID4g
-PiA+ID4gPiA+ID4gPiA+IFRoZSBsb2FkIGdvZXMgdXAgYnkgb25lIGZvciBldmVyIHByb2Nlc3Mg
-YXR0ZW1wdGluZw0KPiA+ID4gPiA+ID4gPiA+ID4gPiB0byBhY2Nlc3MgYW55DQo+ID4gPiA+ID4g
-PiA+ID4gPiA+IG1vdW50DQo+ID4gPiA+ID4gPiA+ID4gPiA+IGZyb20gdGhhdCBwYXJ0aWN1bGFy
-IHNlcnZlci7CoMKgTW91bnRzIHRvIG90aGVyDQo+ID4gPiA+ID4gPiA+ID4gPiA+IHNlcnZlcnMg
-YXJlIGZpbmUsIGFuZA0KPiA+ID4gPiA+ID4gPiA+ID4gPiBvdGhlciBjbGllbnRzIGNhbiBtb3Vu
-dCB0aGluZ3MgZnJvbSB0aGF0IG9uZSBzZXJ2ZXINCj4gPiA+ID4gPiA+ID4gPiA+ID4gd2l0aG91
-dA0KPiA+ID4gPiA+ID4gPiA+ID4gPiBwcm9ibGVtcy4NCj4gPiA+ID4gPiA+ID4gPiA+ID4gDQo+
-ID4gPiA+ID4gPiA+ID4gPiA+IFdoZW4gSSBraWxsIGV2ZXJ5IHByb2Nlc3Mga2VlcGluZyB0aGF0
-IHBhcnRpY3VsYXINCj4gPiA+ID4gPiA+ID4gPiA+ID4gbW91bnQgYWN0aXZlIGFuZA0KPiA+ID4g
-PiA+ID4gPiA+ID4gPiB0aGVuDQo+ID4gPiA+ID4gPiA+ID4gPiA+IHVtb3VudCBpdCwgSSBzZWU6
-DQo+ID4gPiA+ID4gPiA+ID4gPiA+IA0KPiA+ID4gPiA+ID4gPiA+ID4gPiBORlM6IG5mczRfcmVj
-bGFpbV9vcGVuX3N0YXRlOiB1bmhhbmRsZWQgZXJyb3INCj4gPiA+ID4gPiA+ID4gPiA+ID4gLTEw
-MDY4DQo+ID4gPiA+ID4gPiA+ID4gPiANCj4gPiA+ID4gPiA+ID4gPiA+IE5GUzRFUlJfUkVUUllf
-VU5DQUNIRURfUkVQLg0KPiA+ID4gPiA+ID4gPiA+ID4gDQo+ID4gPiA+ID4gPiA+ID4gPiBTbywg
-eW91J3JlIHVzaW5nIE5GU3Y0LjEgb3IgNC4yLCBhbmQgdGhlIHNlcnZlcg0KPiA+ID4gPiA+ID4g
-PiA+ID4gdGhpbmtzIHRoYXQgdGhlDQo+ID4gPiA+ID4gPiA+ID4gPiBjbGllbnQNCj4gPiA+ID4g
-PiA+ID4gPiA+IGhhcyByZXVzZWQgYSAoc2xvdCwgc2VxdWVuY2UgbnVtYmVyKSBwYWlyLCBidXQg
-dGhlDQo+ID4gPiA+ID4gPiA+ID4gPiBzZXJ2ZXIgZG9lc24ndA0KPiA+ID4gPiA+ID4gPiA+ID4g
-aGF2ZSBhDQo+ID4gPiA+ID4gPiA+ID4gPiBjYWNoZWQgcmVzcG9uc2UgdG8gcmV0dXJuLg0KPiA+
-ID4gPiA+ID4gPiA+ID4gDQo+ID4gPiA+ID4gPiA+ID4gPiBIYXJkIHRvIGtub3cgaG93IHRoYXQg
-aGFwcGVuZWQsIGFuZCBpdCdzIG5vdCBzaG93biBpbg0KPiA+ID4gPiA+ID4gPiA+ID4gdGhlIGJl
-bG93Lg0KPiA+ID4gPiA+ID4gPiA+ID4gU291bmRzIGxpa2UgYSBidWcsIHRob3VnaC4NCj4gPiA+
-ID4gPiA+ID4gPiANCj4gPiA+ID4gPiA+ID4gPiAuLi5vciBhIEN0cmwtQy4uLi4NCj4gPiA+ID4g
-PiA+ID4gDQo+ID4gPiA+ID4gPiA+IEhvdyBkb2VzIHRoYXQgaGFwcGVuPw0KPiA+ID4gPiA+ID4g
-PiANCj4gPiA+ID4gPiA+IA0KPiA+ID4gPiA+ID4gSWYgSSBtYXkgY2hpbWUgaW4uLi4NCj4gPiA+
-ID4gPiA+IA0KPiA+ID4gPiA+ID4gQnJ1Y2UsIHdoZW4gYW4gYXBwbGljYXRpb24gc2VuZHMgYSBD
-dHJsLUMgYW5kIGNsaWVudHMncw0KPiA+ID4gPiA+ID4gc2Vzc2lvbiBzbG90DQo+ID4gPiA+ID4g
-PiBoYXMgc2VudCBvdXQgYW4gUlBDIGJ1dCBkaWRuJ3QgcHJvY2VzcyB0aGUgcmVwbHksIHRoZQ0K
-PiA+ID4gPiA+ID4gY2xpZW50IGRvZXNuJ3QNCj4gPiA+ID4gPiA+IGtub3cgaWYgdGhlIHNlcnZl
-ciBwcm9jZXNzZWQgdGhhdCBzZXF1ZW5jZSBpZCBvciBub3QuIEluDQo+ID4gPiA+ID4gPiB0aGF0
-IGNhc2UsDQo+ID4gPiA+ID4gPiB0aGUgY2xpZW50IGRvZXNuJ3QgaW5jcmVtZW50IHRoZSBzZXF1
-ZW5jZSBudW1iZXIuIE5vcm1hbGx5DQo+ID4gPiA+ID4gPiB0aGUgY2xpZW50DQo+ID4gPiA+ID4g
-PiB3b3VsZCBoYW5kbGUgZ2V0dGluZyBzdWNoIGFuIGVycm9yIGJ5IHJldHJ5aW5nIGFnYWluIChh
-bmQNCj4gPiA+ID4gPiA+IHJlc2V0dGluZw0KPiA+ID4gPiA+ID4gdGhlIHNsb3RzKSBidXQgSSB0
-aGluayBkdXJpbmcgcmVjb3Zlcnkgb3BlcmF0aW9uIHRoZSBjbGllbnQNCj4gPiA+ID4gPiA+IGhh
-bmRsZXMNCj4gPiA+ID4gPiA+IGVycm9ycyBkaWZmZXJlbnRseSAoYnkganVzdCBlcnJvcmluZyku
-IEkgYmVsaWV2ZSB0aGUNCj4gPiA+ID4gPiA+IHJlYXNvbmluZyB0aGF0IHdlDQo+ID4gPiA+ID4g
-PiBkb24ndCB3YW50IHRvIGJlIHN0dWNrIHRyeWluZyB0byByZWNvdmVyIGZyb20gdGhlIHJlY292
-ZXJ5DQo+ID4gPiA+ID4gPiBmcm9tIHRoZQ0KPiA+ID4gPiA+ID4gcmVjb3ZlcnkgZXRjLi4uDQo+
-ID4gPiA+ID4gDQo+ID4gPiA+ID4gU28gaW4gdGhhdCBjYXNlIHRoZSBjbGllbnQgY2FuIGVuZCB1
-cCBzZW5kaW5nIGEgZGlmZmVyZW50IHJwYw0KPiA+ID4gPiA+IHJldXNpbmcNCj4gPiA+ID4gPiB0
-aGUgb2xkIHNsb3QgYW5kIHNlcXVlbmNlIG51bWJlcj8NCj4gPiA+ID4gDQo+ID4gPiA+IENvcnJl
-Y3QuDQo+ID4gPiANCj4gPiA+IFNvIHRoYXQgY291bGQgZ2V0IFVOQ0FDSEVEX1JFUCBhcyB0aGUg
-cmVzcG9uc2UuwqDCoEJ1dCBpZiB5b3UncmUNCj4gPiA+IHZlcnkNCj4gPiA+IHVubHVja3ksIGNv
-dWxkbid0IHRoaXMgYWxzbyBoYXBwZW4/Og0KPiA+ID4gDQo+ID4gPiDCoMKgwqDCoMKgwqDCoMKg
-MSkgdGhlIGNvbXBvdW5kIHByZXZpb3VzbHkgc2VudCBvbiB0aGF0IHNsb3Qgd2FzDQo+ID4gPiBw
-cm9jZXNzZWQgYnkNCj4gPiA+IMKgwqDCoMKgwqDCoMKgwqB0aGUgc2VydmVyIGFuZCBjYWNoZWQN
-Cj4gPiA+IMKgwqDCoMKgwqDCoMKgwqAyKSB0aGUgY29tcG91bmQgeW91J3JlIHNlbmRpbmcgbm93
-IGhhcHBlbnMgdG8gaGF2ZSB0aGUNCj4gPiA+IHNhbWUgc2V0DQo+ID4gPiDCoMKgwqDCoMKgwqDC
-oMKgb2Ygb3BlcmF0aW9ucw0KPiA+ID4gDQo+ID4gPiB3aXRoIHRoZSByZXN1bHQgdGhhdCB0aGUg
-Y2xpZW50IGRvZXNuJ3QgZGV0ZWN0IHRoYXQgdGhlIHJlcGx5IHdhcw0KPiA+ID4gYWN0dWFsbHkg
-dG8gc29tZSBvdGhlciBycGMsIGFuZCBpbnN0ZWFkIGl0IHJldHVybnMgYmFkIGRhdGEgdG8NCj4g
-PiA+IHRoZQ0KPiA+ID4gYXBwbGljYXRpb24/DQo+ID4gDQo+ID4gSWYgeW91IGFyZSBzZW5kaW5n
-IGV4YWN0bHkgdGhlIHNhbWUgb3BlcmF0aW9ucyBhbmQgYXJndW1lbnRzLCB0aGVuDQo+ID4gd2h5
-DQo+ID4gaXMgYSByZXBseSBmcm9tIHRoZSBjYWNoZSB3b3VsZCBsZWFkIHRvIGJhZCBkYXRhPw0K
-PiANCj4gVGhhdCB3b3VsZCBwcm9iYWJseSBiZSBmaW5lLCBJIHdhcyB3b25kZXJpbmcgd2hhdCB3
-b3VsZCBoYXBwZW4gaWYgeW91DQo+IHNlbnQgdGhlIHNhbWUgb3BlcmF0aW9uIGJ1dCBkaWZmZXJl
-bnQgYXJndW1lbnRzLg0KDQo+IFNvIHRoZSBvcmlnaW5hbCBjYW5jZWxsZWQgb3BlcmF0aW9uIGlz
-IHNvbWV0aGluZyBsaWtlDQo+IFBVVEZIKGZoMSkrT1BFTigiZm9vIikrR0VURkgsIGFuZCB0aGUg
-bmV3IG9uZSBpcw0KPiBQVVRGSChmaDIpK09QRU4oImJhciIpK0dFVEZILsKgwqBJbiB0aGVvcnkg
-Y291bGRuJ3QgdGhlIHNlY29uZCBvbmUNCj4gc3VjY2VlZA0KPiBhbmQgbGVhdmUgdGhlIGNsaWVu
-dCB0aGlua2luZyBpdCBoYWQgb3BlbmVkIChmaDIsIGJhcikgd2hlbiB0aGUNCj4gZmlsZWhhbmRs
-ZSBpdCBnb3QgYmFjayB3YXMgcmVhbGx5IGZvciAoZmgxLCBmb28pPw0KPsKgDQoNClRoZSBjbGll
-bnQgd291bGQgcmVjZWl2ZSBhIGZpbGVoYW5kbGUgZm9yIGZoMS8iZm9vIiwgc28gaXQgd291bGQg
-YXBwbHkNCmFueSBzdGF0ZSBpdCB0aG91Z2h0IGl0IGhhZCByZWNlaXZlZCB0byB0aGF0IGZpbGUu
-IEhvd2V2ZXIsIG5vcm1hbGx5LA0KSSdkIGV4cGVjdCB0byBzZWUgYSBORlM0RVJSX0ZBTFNFX1JF
-VFJZIGluIHRoaXMgY2FzZS4=
+On Thu, Nov 17, 2016 at 4:45 PM, Trond Myklebust
+<trondmy@primarydata.com> wrote:
+> On Thu, 2016-11-17 at 16:26 -0500, bfields@fieldses.org wrote:
+>> On Thu, Nov 17, 2016 at 04:05:32PM -0500, Olga Kornievskaia wrote:
+>> >
+>> > On Thu, Nov 17, 2016 at 3:46 PM, bfields@fieldses.org
+>> > <bfields@fieldses.org> wrote:
+>> > >
+>> > > On Thu, Nov 17, 2016 at 03:29:11PM -0500, Olga Kornievskaia
+>> > > wrote:
+>> > > >
+>> > > > On Thu, Nov 17, 2016 at 3:17 PM, bfields@fieldses.org
+>> > > > <bfields@fieldses.org> wrote:
+>> > > > >
+>> > > > > On Thu, Nov 17, 2016 at 02:58:12PM -0500, Olga Kornievskaia
+>> > > > > wrote:
+>> > > > > >
+>> > > > > > On Thu, Nov 17, 2016 at 2:32 PM, bfields@fieldses.org
+>> > > > > > <bfields@fieldses.org> wrote:
+>> > > > > > >
+>> > > > > > > On Thu, Nov 17, 2016 at 05:45:52PM +0000, Trond Myklebust
+>> > > > > > > wrote:
+>> > > > > > > >
+>> > > > > > > > On Thu, 2016-11-17 at 11:31 -0500, J. Bruce Fields
+>> > > > > > > > wrote:
+>> > > > > > > > >
+>> > > > > > > > > On Wed, Nov 16, 2016 at 02:55:05PM -0600, Jason L
+>> > > > > > > > > Tibbitts III wrote:
+>> > > > > > > > > >
+>> > > > > > > > > >
+>> > > > > > > > > > I'm replying to a rather old message, but the issue
+>> > > > > > > > > > has just now
+>> > > > > > > > > > popped
+>> > > > > > > > > > back up again.
+>> > > > > > > > > >
+>> > > > > > > > > > To recap, a client stops being able to access _any_
+>> > > > > > > > > > mount on a
+>> > > > > > > > > > particular server, and "NFS:
+>> > > > > > > > > > nfs4_reclaim_open_state: Lock reclaim
+>> > > > > > > > > > failed!" appears several hundred times per second
+>> > > > > > > > > > in the kernel
+>> > > > > > > > > > log.
+>> > > > > > > > > > The load goes up by one for ever process attempting
+>> > > > > > > > > > to access any
+>> > > > > > > > > > mount
+>> > > > > > > > > > from that particular server.  Mounts to other
+>> > > > > > > > > > servers are fine, and
+>> > > > > > > > > > other clients can mount things from that one server
+>> > > > > > > > > > without
+>> > > > > > > > > > problems.
+>> > > > > > > > > >
+>> > > > > > > > > > When I kill every process keeping that particular
+>> > > > > > > > > > mount active and
+>> > > > > > > > > > then
+>> > > > > > > > > > umount it, I see:
+>> > > > > > > > > >
+>> > > > > > > > > > NFS: nfs4_reclaim_open_state: unhandled error
+>> > > > > > > > > > -10068
+>> > > > > > > > >
+>> > > > > > > > > NFS4ERR_RETRY_UNCACHED_REP.
+>> > > > > > > > >
+>> > > > > > > > > So, you're using NFSv4.1 or 4.2, and the server
+>> > > > > > > > > thinks that the
+>> > > > > > > > > client
+>> > > > > > > > > has reused a (slot, sequence number) pair, but the
+>> > > > > > > > > server doesn't
+>> > > > > > > > > have a
+>> > > > > > > > > cached response to return.
+>> > > > > > > > >
+>> > > > > > > > > Hard to know how that happened, and it's not shown in
+>> > > > > > > > > the below.
+>> > > > > > > > > Sounds like a bug, though.
+>> > > > > > > >
+>> > > > > > > > ...or a Ctrl-C....
+>> > > > > > >
+>> > > > > > > How does that happen?
+>> > > > > > >
+>> > > > > >
+>> > > > > > If I may chime in...
+>> > > > > >
+>> > > > > > Bruce, when an application sends a Ctrl-C and clients's
+>> > > > > > session slot
+>> > > > > > has sent out an RPC but didn't process the reply, the
+>> > > > > > client doesn't
+>> > > > > > know if the server processed that sequence id or not. In
+>> > > > > > that case,
+>> > > > > > the client doesn't increment the sequence number. Normally
+>> > > > > > the client
+>> > > > > > would handle getting such an error by retrying again (and
+>> > > > > > resetting
+>> > > > > > the slots) but I think during recovery operation the client
+>> > > > > > handles
+>> > > > > > errors differently (by just erroring). I believe the
+>> > > > > > reasoning that we
+>> > > > > > don't want to be stuck trying to recover from the recovery
+>> > > > > > from the
+>> > > > > > recovery etc...
+>> > > > >
+>> > > > > So in that case the client can end up sending a different rpc
+>> > > > > reusing
+>> > > > > the old slot and sequence number?
+>> > > >
+>> > > > Correct.
+>> > >
+>> > > So that could get UNCACHED_REP as the response.  But if you're
+>> > > very
+>> > > unlucky, couldn't this also happen?:
+>> > >
+>> > >         1) the compound previously sent on that slot was
+>> > > processed by
+>> > >         the server and cached
+>> > >         2) the compound you're sending now happens to have the
+>> > > same set
+>> > >         of operations
+>> > >
+>> > > with the result that the client doesn't detect that the reply was
+>> > > actually to some other rpc, and instead it returns bad data to
+>> > > the
+>> > > application?
+>> >
+>> > If you are sending exactly the same operations and arguments, then
+>> > why
+>> > is a reply from the cache would lead to bad data?
+>>
+>> That would probably be fine, I was wondering what would happen if you
+>> sent the same operation but different arguments.
+>
+>> So the original cancelled operation is something like
+>> PUTFH(fh1)+OPEN("foo")+GETFH, and the new one is
+>> PUTFH(fh2)+OPEN("bar")+GETFH.  In theory couldn't the second one
+>> succeed
+>> and leave the client thinking it had opened (fh2, bar) when the
+>> filehandle it got back was really for (fh1, foo)?
+>>
+>
+> The client would receive a filehandle for fh1/"foo", so it would apply
+> any state it thought it had received to that file. However, normally,
+> I'd expect to see a NFS4ERR_FALSE_RETRY in this case.
 
+I see Bruce's point that if the server only looks up the cache based
+on the seqid and slot# and doesn't have like a hash of the content
+which I could see is expensive, then the client in this case would get
+into trouble of thinking it opened "bar" but really it's "foo". Spec
+says:
+
+Section 18.46.3
+If the client reuses a slot ID and sequence ID for a completely
+   different request, the server MAY treat the request as if it is a
+   retry of what it has already executed.  The server MAY however detect
+   the client's illegal reuse and return NFS4ERR_SEQ_FALSE_RETRY.
+
+What is "a completely different request". From the client's point of
+view sending different args would constitute a different request. But
+in any case it's a "MAY" so client can't depend on this being
+implemented.
