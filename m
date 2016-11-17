@@ -1,82 +1,128 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:50440 "EHLO fieldses.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1750866AbcKQVEh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 17 Nov 2016 16:04:37 -0500
-Date: Thu, 17 Nov 2016 16:04:35 -0500
-To: Ulrich Gemkow <ulrich.gemkow@ikr.uni-stuttgart.de>
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: NFS Server prevents access to files on different scenarios (lock
- problem?)
-Message-ID: <20161117210435.GH20937@fieldses.org>
-References: <201611172132.47523.ulrich.gemkow@ikr.uni-stuttgart.de>
+Received: from mail-it0-f66.google.com ([209.85.214.66]:33342 "EHLO
+        mail-it0-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751802AbcKQVFe (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 17 Nov 2016 16:05:34 -0500
+Received: by mail-it0-f66.google.com with SMTP id c20so17833311itb.0
+        for <linux-nfs@vger.kernel.org>; Thu, 17 Nov 2016 13:05:34 -0800 (PST)
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <201611172132.47523.ulrich.gemkow@ikr.uni-stuttgart.de>
-From: bfields@fieldses.org (J. Bruce Fields)
+In-Reply-To: <20161117204618.GG20937@fieldses.org>
+References: <ufay4a3c938.fsf@epithumia.math.uh.edu> <20160301010120.GB11952@fieldses.org>
+ <ufapovfc8m4.fsf@epithumia.math.uh.edu> <ufa1syb402e.fsf@epithumia.math.uh.edu>
+ <20161117163101.GA19161@fieldses.org> <1479404750.33885.1.camel@primarydata.com>
+ <20161117193239.GD20937@fieldses.org> <CAN-5tyFP8QapcfuG5pO2059ftf3wGhmaO=6RZAA+W_nYbVraPQ@mail.gmail.com>
+ <20161117201753.GF20937@fieldses.org> <CAN-5tyHcaJCCdBaNbU4Mc=JuJXi9cDppuTVKKixrgVZMZS-DMg@mail.gmail.com>
+ <20161117204618.GG20937@fieldses.org>
+From: Olga Kornievskaia <aglo@umich.edu>
+Date: Thu, 17 Nov 2016 16:05:32 -0500
+Message-ID: <CAN-5tyHs1Xq4W2eJOMOW_Tv3=3hQLYhLdVwMDYixhGnaGsEH4Q@mail.gmail.com>
+Subject: Re: NFS: nfs4_reclaim_open_state: Lock reclaim failed! log spew
+To: "bfields@fieldses.org" <bfields@fieldses.org>
+Cc: Trond Myklebust <trondmy@primarydata.com>,
+        "tibbs@math.uh.edu" <tibbs@math.uh.edu>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Nov 17, 2016 at 09:32:47PM +0100, Ulrich Gemkow wrote:
-> Hello,
-> 
-> we use Linux NFS clients with a Linux NFS server in an configuration
-> where NFS mounts are done on client boot _and_ on user login in a
-> session; umounts are done on users logout from the session.
-> 
-> We see occasionally several different problems which all may have
-> the same root cause:
-> 
-> - When a client accesses a file which was accessed before
->   from the same client in a previous session the server
->   prevents access to the file until a timeout happens.
-> 
->   The timeout has a duration of about 1-3 minutes.
->   In this case the "blocked" file can not even be deleted
->   on the server.
-> 
->   --> What causes this timeout? I found nothing in the
->       server code which has such a timeout How can I debug what
->       the server is waiting for or why he is blocking access
->       to the file?
-> 
-> - Sometimes client processes hang in the middle of a session
->   on some file. After a timeout the file is accessible again.
->   The timeout can take 1 upto several minutes. The file is
->   also blocked on the server, it cannot be accessed.
-> 
-> I think all theses problemes are caused by something like
-> dangling locks or another invalid state on the server.
-> 
-> The clients show no network error like dropped packets
-> or something like this.
-> 
-> --> How can I debug such hangs?
-> 
-> We use Linux NFS server and client from vanilla kernel 4.4.31
-> with sec=sys.
-> 
-> Can anyone help? Does "a bell ring"?
+On Thu, Nov 17, 2016 at 3:46 PM, bfields@fieldses.org
+<bfields@fieldses.org> wrote:
+> On Thu, Nov 17, 2016 at 03:29:11PM -0500, Olga Kornievskaia wrote:
+>> On Thu, Nov 17, 2016 at 3:17 PM, bfields@fieldses.org
+>> <bfields@fieldses.org> wrote:
+>> > On Thu, Nov 17, 2016 at 02:58:12PM -0500, Olga Kornievskaia wrote:
+>> >> On Thu, Nov 17, 2016 at 2:32 PM, bfields@fieldses.org
+>> >> <bfields@fieldses.org> wrote:
+>> >> > On Thu, Nov 17, 2016 at 05:45:52PM +0000, Trond Myklebust wrote:
+>> >> >> On Thu, 2016-11-17 at 11:31 -0500, J. Bruce Fields wrote:
+>> >> >> > On Wed, Nov 16, 2016 at 02:55:05PM -0600, Jason L Tibbitts III wrote:
+>> >> >> > >
+>> >> >> > > I'm replying to a rather old message, but the issue has just now
+>> >> >> > > popped
+>> >> >> > > back up again.
+>> >> >> > >
+>> >> >> > > To recap, a client stops being able to access _any_ mount on a
+>> >> >> > > particular server, and "NFS: nfs4_reclaim_open_state: Lock reclaim
+>> >> >> > > failed!" appears several hundred times per second in the kernel
+>> >> >> > > log.
+>> >> >> > > The load goes up by one for ever process attempting to access any
+>> >> >> > > mount
+>> >> >> > > from that particular server.  Mounts to other servers are fine, and
+>> >> >> > > other clients can mount things from that one server without
+>> >> >> > > problems.
+>> >> >> > >
+>> >> >> > > When I kill every process keeping that particular mount active and
+>> >> >> > > then
+>> >> >> > > umount it, I see:
+>> >> >> > >
+>> >> >> > > NFS: nfs4_reclaim_open_state: unhandled error -10068
+>> >> >> >
+>> >> >> > NFS4ERR_RETRY_UNCACHED_REP.
+>> >> >> >
+>> >> >> > So, you're using NFSv4.1 or 4.2, and the server thinks that the
+>> >> >> > client
+>> >> >> > has reused a (slot, sequence number) pair, but the server doesn't
+>> >> >> > have a
+>> >> >> > cached response to return.
+>> >> >> >
+>> >> >> > Hard to know how that happened, and it's not shown in the below.
+>> >> >> > Sounds like a bug, though.
+>> >> >>
+>> >> >> ...or a Ctrl-C....
+>> >> >
+>> >> > How does that happen?
+>> >> >
+>> >>
+>> >> If I may chime in...
+>> >>
+>> >> Bruce, when an application sends a Ctrl-C and clients's session slot
+>> >> has sent out an RPC but didn't process the reply, the client doesn't
+>> >> know if the server processed that sequence id or not. In that case,
+>> >> the client doesn't increment the sequence number. Normally the client
+>> >> would handle getting such an error by retrying again (and resetting
+>> >> the slots) but I think during recovery operation the client handles
+>> >> errors differently (by just erroring). I believe the reasoning that we
+>> >> don't want to be stuck trying to recover from the recovery from the
+>> >> recovery etc...
+>> >
+>> > So in that case the client can end up sending a different rpc reusing
+>> > the old slot and sequence number?
+>>
+>> Correct.
+>
+> So that could get UNCACHED_REP as the response.  But if you're very
+> unlucky, couldn't this also happen?:
+>
+>         1) the compound previously sent on that slot was processed by
+>         the server and cached
+>         2) the compound you're sending now happens to have the same set
+>         of operations
+>
+> with the result that the client doesn't detect that the reply was
+> actually to some other rpc, and instead it returns bad data to the
+> application?
 
-The lease period is 90 seconds by default, and there are several cases
-where you can end up waiting for a lease period.
+If you are sending exactly the same operations and arguments, then why
+is a reply from the cache would lead to bad data?
 
-For example, if the client held some delegations that it didn't return
-on unmount, and then it denied knowledge of them when the server tried
-to recall them, then the server would have to wait a lease period to
-forcibly remove them.  But, the client should be returning delegations
-on unmount, so I don't see how this happens.
-
-For locks and opens and other state, again the client should be
-returning them on unmount.  And anyway the server isn't going to
-forcibly remove those ever, unless the entire client goes away
-completely, e.g. in a client crash or network partition.
-
-So, I don't know.  Are you sure there aren't client crashes or network
-problems?
-
-Also I'd personally try to arrange things so you, say, just mount /home/
-on boot instead of automounting /home/bfields when bfields logs in.
-But, I don't know your situation.
-
---b.
+>
+> --b.
+>
+>>
+>> >>
+>> >> Jason,
+>> >>
+>> >> The UNCACHED_REP error is really not interesting as it's a consequence
+>> >> of you having a client that already failed with an error of "unable to
+>> >> reclaim the locks". I'm surprised that the application doesn't error
+>> >> at this point with EIO. But that aside, I think I've seen this kind of
+>> >> behavior due to client't callback channel going down (and not replying
+>> >> to the CB_RECALLs and then server revoking state).
+>> >>
+>> >>
+>> >>
+>> >> > --b.
+>> >> > --
+>> >> > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>> >> > the body of a message to majordomo@vger.kernel.org
+>> >> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
