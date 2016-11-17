@@ -1,120 +1,127 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:50454 "EHLO fieldses.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751088AbcKQV0C (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 17 Nov 2016 16:26:02 -0500
-Date: Thu, 17 Nov 2016 16:26:01 -0500
-From: "bfields@fieldses.org" <bfields@fieldses.org>
-To: Olga Kornievskaia <aglo@umich.edu>
-Cc: Trond Myklebust <trondmy@primarydata.com>,
-        "tibbs@math.uh.edu" <tibbs@math.uh.edu>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: NFS: nfs4_reclaim_open_state: Lock reclaim failed! log spew
-Message-ID: <20161117212601.GA23130@fieldses.org>
-References: <ufapovfc8m4.fsf@epithumia.math.uh.edu>
- <ufa1syb402e.fsf@epithumia.math.uh.edu>
- <20161117163101.GA19161@fieldses.org>
- <1479404750.33885.1.camel@primarydata.com>
- <20161117193239.GD20937@fieldses.org>
- <CAN-5tyFP8QapcfuG5pO2059ftf3wGhmaO=6RZAA+W_nYbVraPQ@mail.gmail.com>
- <20161117201753.GF20937@fieldses.org>
- <CAN-5tyHcaJCCdBaNbU4Mc=JuJXi9cDppuTVKKixrgVZMZS-DMg@mail.gmail.com>
- <20161117204618.GG20937@fieldses.org>
- <CAN-5tyHs1Xq4W2eJOMOW_Tv3=3hQLYhLdVwMDYixhGnaGsEH4Q@mail.gmail.com>
+Received: from mailsrv.ikr.uni-stuttgart.de ([129.69.170.2]:56640 "EHLO
+        mailsrv.ikr.uni-stuttgart.de" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1750714AbcKQVeW (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 17 Nov 2016 16:34:22 -0500
+From: Ulrich Gemkow <ulrich.gemkow@ikr.uni-stuttgart.de>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: NFS Server prevents access to files on different scenarios (lock problem?)
+Date: Thu, 17 Nov 2016 22:34:20 +0100
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+References: <201611172132.47523.ulrich.gemkow@ikr.uni-stuttgart.de> <20161117210435.GH20937@fieldses.org>
+In-Reply-To: <20161117210435.GH20937@fieldses.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <CAN-5tyHs1Xq4W2eJOMOW_Tv3=3hQLYhLdVwMDYixhGnaGsEH4Q@mail.gmail.com>
+Content-Type: Text/Plain;
+  charset="iso-8859-1"
+Message-Id: <201611172234.20638.ulrich.gemkow@ikr.uni-stuttgart.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Nov 17, 2016 at 04:05:32PM -0500, Olga Kornievskaia wrote:
-> On Thu, Nov 17, 2016 at 3:46 PM, bfields@fieldses.org
-> <bfields@fieldses.org> wrote:
-> > On Thu, Nov 17, 2016 at 03:29:11PM -0500, Olga Kornievskaia wrote:
-> >> On Thu, Nov 17, 2016 at 3:17 PM, bfields@fieldses.org
-> >> <bfields@fieldses.org> wrote:
-> >> > On Thu, Nov 17, 2016 at 02:58:12PM -0500, Olga Kornievskaia wrote:
-> >> >> On Thu, Nov 17, 2016 at 2:32 PM, bfields@fieldses.org
-> >> >> <bfields@fieldses.org> wrote:
-> >> >> > On Thu, Nov 17, 2016 at 05:45:52PM +0000, Trond Myklebust wrote:
-> >> >> >> On Thu, 2016-11-17 at 11:31 -0500, J. Bruce Fields wrote:
-> >> >> >> > On Wed, Nov 16, 2016 at 02:55:05PM -0600, Jason L Tibbitts III wrote:
-> >> >> >> > >
-> >> >> >> > > I'm replying to a rather old message, but the issue has just now
-> >> >> >> > > popped
-> >> >> >> > > back up again.
-> >> >> >> > >
-> >> >> >> > > To recap, a client stops being able to access _any_ mount on a
-> >> >> >> > > particular server, and "NFS: nfs4_reclaim_open_state: Lock reclaim
-> >> >> >> > > failed!" appears several hundred times per second in the kernel
-> >> >> >> > > log.
-> >> >> >> > > The load goes up by one for ever process attempting to access any
-> >> >> >> > > mount
-> >> >> >> > > from that particular server.  Mounts to other servers are fine, and
-> >> >> >> > > other clients can mount things from that one server without
-> >> >> >> > > problems.
-> >> >> >> > >
-> >> >> >> > > When I kill every process keeping that particular mount active and
-> >> >> >> > > then
-> >> >> >> > > umount it, I see:
-> >> >> >> > >
-> >> >> >> > > NFS: nfs4_reclaim_open_state: unhandled error -10068
-> >> >> >> >
-> >> >> >> > NFS4ERR_RETRY_UNCACHED_REP.
-> >> >> >> >
-> >> >> >> > So, you're using NFSv4.1 or 4.2, and the server thinks that the
-> >> >> >> > client
-> >> >> >> > has reused a (slot, sequence number) pair, but the server doesn't
-> >> >> >> > have a
-> >> >> >> > cached response to return.
-> >> >> >> >
-> >> >> >> > Hard to know how that happened, and it's not shown in the below.
-> >> >> >> > Sounds like a bug, though.
-> >> >> >>
-> >> >> >> ...or a Ctrl-C....
-> >> >> >
-> >> >> > How does that happen?
-> >> >> >
-> >> >>
-> >> >> If I may chime in...
-> >> >>
-> >> >> Bruce, when an application sends a Ctrl-C and clients's session slot
-> >> >> has sent out an RPC but didn't process the reply, the client doesn't
-> >> >> know if the server processed that sequence id or not. In that case,
-> >> >> the client doesn't increment the sequence number. Normally the client
-> >> >> would handle getting such an error by retrying again (and resetting
-> >> >> the slots) but I think during recovery operation the client handles
-> >> >> errors differently (by just erroring). I believe the reasoning that we
-> >> >> don't want to be stuck trying to recover from the recovery from the
-> >> >> recovery etc...
-> >> >
-> >> > So in that case the client can end up sending a different rpc reusing
-> >> > the old slot and sequence number?
-> >>
-> >> Correct.
-> >
-> > So that could get UNCACHED_REP as the response.  But if you're very
-> > unlucky, couldn't this also happen?:
-> >
-> >         1) the compound previously sent on that slot was processed by
-> >         the server and cached
-> >         2) the compound you're sending now happens to have the same set
-> >         of operations
-> >
-> > with the result that the client doesn't detect that the reply was
-> > actually to some other rpc, and instead it returns bad data to the
-> > application?
+Hello Bruce,
+
+thanks...
+
+On Thursday 17 November 2016, J. Bruce Fields wrote:
+> On Thu, Nov 17, 2016 at 09:32:47PM +0100, Ulrich Gemkow wrote:
+> > Hello,
+> > 
+> > we use Linux NFS clients with a Linux NFS server in an configuration
+> > where NFS mounts are done on client boot _and_ on user login in a
+> > session; umounts are done on users logout from the session.
+> > 
+> > We see occasionally several different problems which all may have
+> > the same root cause:
+> > 
+> > - When a client accesses a file which was accessed before
+> >   from the same client in a previous session the server
+> >   prevents access to the file until a timeout happens.
+> > 
+> >   The timeout has a duration of about 1-3 minutes.
+> >   In this case the "blocked" file can not even be deleted
+> >   on the server.
+> > 
+> >   --> What causes this timeout? I found nothing in the
+> >       server code which has such a timeout How can I debug what
+> >       the server is waiting for or why he is blocking access
+> >       to the file?
+> > 
+> > - Sometimes client processes hang in the middle of a session
+> >   on some file. After a timeout the file is accessible again.
+> >   The timeout can take 1 upto several minutes. The file is
+> >   also blocked on the server, it cannot be accessed.
+> > 
+> > I think all theses problemes are caused by something like
+> > dangling locks or another invalid state on the server.
+> > 
+> > The clients show no network error like dropped packets
+> > or something like this.
+> > 
+> > --> How can I debug such hangs?
+> > 
+> > We use Linux NFS server and client from vanilla kernel 4.4.31
+> > with sec=sys.
+> > 
+> > Can anyone help? Does "a bell ring"?
 > 
-> If you are sending exactly the same operations and arguments, then why
-> is a reply from the cache would lead to bad data?
+> The lease period is 90 seconds by default, and there are several cases
+> where you can end up waiting for a lease period.
 
-That would probably be fine, I was wondering what would happen if you
-sent the same operation but different arguments.
+I found the 90sec lease time period but the timeout is sometimes
+much longer than 90 sec, often up to 3minutes or longer. Is there
+something which may cause these longer delays (I played with the
+90sec constant and it did not help :-)
 
-So the original cancelled operation is something like
-PUTFH(fh1)+OPEN("foo")+GETFH, and the new one is
-PUTFH(fh2)+OPEN("bar")+GETFH.  In theory couldn't the second one succeed
-and leave the client thinking it had opened (fh2, bar) when the
-filehandle it got back was really for (fh1, foo)?
+> For example, if the client held some delegations that it didn't return
+> on unmount, and then it denied knowledge of them when the server tried
+> to recall them, then the server would have to wait a lease period to
+> forcibly remove them.  But, the client should be returning delegations
+> on unmount, so I don't see how this happens.
+> 
+> For locks and opens and other state, again the client should be
+> returning them on unmount.  And anyway the server isn't going to
+> forcibly remove those ever, unless the entire client goes away
+> completely, e.g. in a client crash or network partition.
+> 
+> So, I don't know.  Are you sure there aren't client crashes or network
+> problems?
 
---b.
+It happens that clients crash but IMHO the server should notice this
+by dropped connections. We have no network problems in these cases.
+
+> Also I'd personally try to arrange things so you, say, just mount /home/
+> on boot instead of automounting /home/bfields when bfields logs in.
+> But, I don't know your situation.
+
+Sure, we can do this. But we are in an unsecure environment and it
+gives additional (required) security to use more specific mounts
+(we make the export on the server when the user has authenticated
+with our own daemon).
+
+What I really miss is an option to disable locks in NFSv4. Maybe
+you can point me to the right place in the source..?
+
+Any more ideas? 
+
+Thanks again and best regards
+
+-Ulrich
+
+> 
+> --b.
+> 
+
+
+
+-- 
+|-----------------------------------------------------------------------
+| Ulrich Gemkow
+|-----
+| Universität Stuttgart
+| Institut für Kommunikationsnetze und Rechnersysteme (IKR)
+|-----
+| University of Stuttgart
+| Institute of Communication Networks and Computer Engineering (IKR)
+|-----
+| Pfaffenwaldring 47, D 70569 Stuttgart, Germany
+| mailto:ulrich.gemkow@ikr.uni-stuttgart.de http://www.ikr.uni-stuttgart.de
+|-----------------------------------------------------------------------
