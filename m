@@ -1,136 +1,92 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:51520 "EHLO fieldses.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1754199AbcKRQ6a (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 18 Nov 2016 11:58:30 -0500
-Date: Fri, 18 Nov 2016 11:58:28 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Ulrich Gemkow <ulrich.gemkow@ikr.uni-stuttgart.de>
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: NFS Server prevents access to files on different scenarios (lock
- problem?)
-Message-ID: <20161118165828.GA5424@fieldses.org>
-References: <201611172132.47523.ulrich.gemkow@ikr.uni-stuttgart.de>
- <20161117210435.GH20937@fieldses.org>
- <201611172234.20638.ulrich.gemkow@ikr.uni-stuttgart.de>
+Received: from mail-it0-f65.google.com ([209.85.214.65]:36347 "EHLO
+        mail-it0-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1752516AbcKRRek (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 18 Nov 2016 12:34:40 -0500
+Received: by mail-it0-f65.google.com with SMTP id n68so5670319itn.3
+        for <linux-nfs@vger.kernel.org>; Fri, 18 Nov 2016 09:34:39 -0800 (PST)
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <201611172234.20638.ulrich.gemkow@ikr.uni-stuttgart.de>
+In-Reply-To: <C9C69F9A-F0AD-4F76-B334-11C4E83D4155@primarydata.com>
+References: <87lgxiwoxi.fsf@notabene.neil.brown.name> <8760nlfkkq.fsf@notabene.neil.brown.name>
+ <C9C69F9A-F0AD-4F76-B334-11C4E83D4155@primarydata.com>
+From: Olga Kornievskaia <aglo@umich.edu>
+Date: Fri, 18 Nov 2016 12:34:38 -0500
+Message-ID: <CAN-5tyH+4=9y9a3v0po5-cW+5ABSp5Z1pXN=+eTZSnd0KORk2Q@mail.gmail.com>
+Subject: Re: [PATCH] NFSv4.1: nfs4_fl_prepare_ds must be careful about
+ reporting success.
+To: Trond Myklebust <trondmy@primarydata.com>
+Cc: NeilBrown <neilb@suse.com>, Adamson William <andros@netapp.com>,
+        Schumaker Anna <anna.schumaker@netapp.com>,
+        List Linux NFS Mailing <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Nov 17, 2016 at 10:34:20PM +0100, Ulrich Gemkow wrote:
-> Hello Bruce,
-> 
-> thanks...
-> 
-> On Thursday 17 November 2016, J. Bruce Fields wrote:
-> > On Thu, Nov 17, 2016 at 09:32:47PM +0100, Ulrich Gemkow wrote:
-> > > Hello,
-> > > 
-> > > we use Linux NFS clients with a Linux NFS server in an configuration
-> > > where NFS mounts are done on client boot _and_ on user login in a
-> > > session; umounts are done on users logout from the session.
-> > > 
-> > > We see occasionally several different problems which all may have
-> > > the same root cause:
-> > > 
-> > > - When a client accesses a file which was accessed before
-> > >   from the same client in a previous session the server
-> > >   prevents access to the file until a timeout happens.
-> > > 
-> > >   The timeout has a duration of about 1-3 minutes.
-> > >   In this case the "blocked" file can not even be deleted
-> > >   on the server.
-> > > 
-> > >   --> What causes this timeout? I found nothing in the
-> > >       server code which has such a timeout How can I debug what
-> > >       the server is waiting for or why he is blocking access
-> > >       to the file?
-> > > 
-> > > - Sometimes client processes hang in the middle of a session
-> > >   on some file. After a timeout the file is accessible again.
-> > >   The timeout can take 1 upto several minutes. The file is
-> > >   also blocked on the server, it cannot be accessed.
-> > > 
-> > > I think all theses problemes are caused by something like
-> > > dangling locks or another invalid state on the server.
-> > > 
-> > > The clients show no network error like dropped packets
-> > > or something like this.
-> > > 
-> > > --> How can I debug such hangs?
-> > > 
-> > > We use Linux NFS server and client from vanilla kernel 4.4.31
-> > > with sec=sys.
-> > > 
-> > > Can anyone help? Does "a bell ring"?
-> > 
-> > The lease period is 90 seconds by default, and there are several cases
-> > where you can end up waiting for a lease period.
-> 
-> I found the 90sec lease time period but the timeout is sometimes
-> much longer than 90 sec, often up to 3minutes or longer. Is there
-> something which may cause these longer delays (I played with the
-> 90sec constant and it did not help :-)
+On Fri, Nov 18, 2016 at 9:32 AM, Trond Myklebust
+<trondmy@primarydata.com> wrote:
+>
+>> On Nov 18, 2016, at 00:01, NeilBrown <neilb@suse.com> wrote:
+>>
+>>
+>> Ping?
+>> No sign of this in linux-next, and no replies=E2=80=A6.
+>
+> I=E2=80=99d like some confirmation from the NetApp folks on this. They ar=
+e the main stakeholders for the pNFS files implementation. I don=E2=80=99t =
+think we need an equivalent for flex files.
 
-A delegation is the only thing that I can think of that would prevent a
-file from being deleted on the server (by that you mean, not even a "rm
-blockfiled" run from a terminal on the server works?)  Delegations
-should definitely be forcibly revoked after the lease period passes.
-Note that you need to reboot (well, restart the nfs server) after
-changing the lease period, or the change will not take effect.
+Just to see if I understand this patch. If "ds" isn't NULL, then the
+client has an RPC client with the ds. But it doesn't have a valid NFS
+client? Looking at the code I really don't see how that can happen.
+Maybe there is a bug elsewhere? If we return here, is there a chance
+we are going to have a zombie RPC client with the ds? If that's not a
+problem then I don't think there an issue to assume that if there is
+no valid NFS client then we would want to return a NULL from
+nfs4_fl_prepare_ds().
 
-> 
-> > For example, if the client held some delegations that it didn't return
-> > on unmount, and then it denied knowledge of them when the server tried
-> > to recall them, then the server would have to wait a lease period to
-> > forcibly remove them.  But, the client should be returning delegations
-> > on unmount, so I don't see how this happens.
-> > 
-> > For locks and opens and other state, again the client should be
-> > returning them on unmount.  And anyway the server isn't going to
-> > forcibly remove those ever, unless the entire client goes away
-> > completely, e.g. in a client crash or network partition.
-> > 
-> > So, I don't know.  Are you sure there aren't client crashes or network
-> > problems?
-> 
-> It happens that clients crash
 
-I'm not sure what you mean there--do you mean clients are involved in
-all of these cases, or some of them?
-
-> but IMHO the server should notice this by dropped connections. We have
-> no network problems in these cases.
-
-By design, an NFS server won't drop locks on loss a TCP connection.
-They'll be dropped either:
-
-	- after a full lease period passes without the server hearing
-	  anything from the client, or
-	- if the client crashes and reboots; in this case the client
-	  should inform the server that it just rebooted and that all
-	  its old locks can be discarded.
-
-> 
-> > Also I'd personally try to arrange things so you, say, just mount /home/
-> > on boot instead of automounting /home/bfields when bfields logs in.
-> > But, I don't know your situation.
-> 
-> Sure, we can do this. But we are in an unsecure environment and it
-> gives additional (required) security to use more specific mounts
-> (we make the export on the server when the user has authenticated
-> with our own daemon).
-> 
-> What I really miss is an option to disable locks in NFSv4. Maybe
-> you can point me to the right place in the source..?
-
-Delegations can be turned off, by running this on the server before
-starting it:
-
-	echo 0 >/proc/sys/fs/leases-enable
-
-There's no way to turn off file locks.
-
---b.
+>
+>>
+>> Thanks,
+>> NeilBrown
+>>
+>>
+>> On Fri, Oct 21 2016, NeilBrown wrote:
+>>
+>>>
+>>> Various places assume that if nfs4_fl_prepare_ds() turns a non-NULL
+>>> 'ds', then ds->ds_clp will also be non-NULL.
+>>>
+>>> This is not necessasrily true in the case when the process received a
+>>> fatal signal while nfs4_pnfs_ds_connect is waiting in
+>>> nfs4_wait_ds_connect().  In that case ->ds_clp may not be set, and the
+>>> devid may not recently have been marked unavailable.
+>>>
+>>> So add a test for ->ds_clp =3D=3D NULL and return NULL in that case.
+>>>
+>>> Fixes: c23266d532b4 ("NFS4.1 Fix data server connection race")
+>>> Signed-off-by: NeilBrown <neilb@suse.com>
+>>> ---
+>>> fs/nfs/filelayout/filelayoutdev.c | 3 ++-
+>>> 1 file changed, 2 insertions(+), 1 deletion(-)
+>>>
+>>> diff --git a/fs/nfs/filelayout/filelayoutdev.c b/fs/nfs/filelayout/file=
+layoutdev.c
+>>> index 4946ef40ba87..85ef38f9765f 100644
+>>> --- a/fs/nfs/filelayout/filelayoutdev.c
+>>> +++ b/fs/nfs/filelayout/filelayoutdev.c
+>>> @@ -283,7 +283,8 @@ nfs4_fl_prepare_ds(struct pnfs_layout_segment *lseg=
+, u32 ds_idx)
+>>>                           s->nfs_client->cl_rpcclient->cl_auth->au_flav=
+or);
+>>>
+>>> out_test_devid:
+>>> -    if (filelayout_test_devid_unavailable(devid))
+>>> +    if (ret->ds_clp =3D=3D NULL ||
+>>> +        filelayout_test_devid_unavailable(devid))
+>>>              ret =3D NULL;
+>>> out:
+>>>      return ret;
+>>> --
+>>> 2.10.1
+>
