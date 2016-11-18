@@ -1,98 +1,45 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:51216 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1752174AbcKRN2e (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 18 Nov 2016 08:28:34 -0500
-From: "Benjamin Coddington" <bcodding@redhat.com>
-To: "Trond Myklebust" <trond.myklebust@primarydata.com>
-Cc: "Anna Schumaker" <anna.schumaker@netapp.com>,
-        linux-nfs@vger.kernel.org, "Scott Mayhew" <smayhew@redhat.com>
-Subject: Re: [PATCH v2] Don't invalidate directory mapping until attributes
- expire
-Date: Fri, 18 Nov 2016 08:28:31 -0500
-Message-ID: <34245253-C2E0-434F-A4FE-D74560EF93BA@redhat.com>
-In-Reply-To: <e0f959ab63372fef427e6d1cccf7e85d1f4b51c1.1472225243.git.bcodding@redhat.com>
-References: <67cfa1f7f028229bfd4b1ac2619bc85b9e34ef7f.1472059583.git.bcodding@redhat.com>
- <e0f959ab63372fef427e6d1cccf7e85d1f4b51c1.1472225243.git.bcodding@redhat.com>
+Received: from mail-wm0-f47.google.com ([74.125.82.47]:35686 "EHLO
+        mail-wm0-f47.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1752478AbcKROQ0 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 18 Nov 2016 09:16:26 -0500
+Received: by mail-wm0-f47.google.com with SMTP id a197so41073822wmd.0
+        for <linux-nfs@vger.kernel.org>; Fri, 18 Nov 2016 06:16:25 -0800 (PST)
 MIME-Version: 1.0
-Content-Type: text/plain; format=flowed
+In-Reply-To: <b702922d-c80c-799b-c83e-ff2d3cb74e08@dit.upm.es>
+References: <56743FB6.80903@redhat.com> <20151218200840.GA28692@fieldses.org>
+ <5677BCD4.4060009@redhat.com> <20151221164752.GA7869@fieldses.org>
+ <56783DCC.1060201@redhat.com> <20151221201403.GB7869@fieldses.org>
+ <2443f0d3-6937-ae92-d4d5-6e1f00a19e81@dit.upm.es> <20161108201611.GB26589@fieldses.org>
+ <37f8eaf5-128c-ecd5-ae65-3b340c990171@dit.upm.es> <20161111190332.GA28132@fieldses.org>
+ <20161111220425.GA30914@fieldses.org> <CAOssrKfupMvmpfk5fV1J6Hv5_FUSCjU0euGkY8aeU3kxgzEXMQ@mail.gmail.com>
+ <b702922d-c80c-799b-c83e-ff2d3cb74e08@dit.upm.es>
+From: Miklos Szeredi <mszeredi@redhat.com>
+Date: Fri, 18 Nov 2016 15:16:18 +0100
+Message-ID: <CAOssrKeMb7=d-gin1d7xiFSLX3Ak78WS4OJ09srVL_coWUH88g@mail.gmail.com>
+Subject: Re: possible bug in nfs-kernel-server
+To: Omar Walid Llorente <omar@dit.upm.es>
+Cc: "J. Bruce Fields" <bfields@fieldses.org>,
+        Soumya Koduri <skoduri@redhat.com>,
+        Jeff Layton <jlayton@poochiereds.net>, linux-nfs@vger.kernel.org,
+        administracion del centro de calculo del dit
+        <cdc@dit.upm.es>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Any issues with this one?
+On Wed, Nov 16, 2016 at 7:19 PM, Omar Walid Llorente <omar@dit.upm.es> wrote:
 
-On 26 Aug 2016, at 11:37, Benjamin Coddington wrote:
+> In any case, the kernel we are using (3.13.0-96-generic #143-Ubuntu SMP Mon
+> Aug 29 20:15:20 UTC 2016 x86_64 x86_64 x86_64 GNU/Linux) has fuse included
+> (not as a module) so if it would be necessary to change the fuse mount
+> options some help would be needed.
 
-> This approach uses another bit in the inode flags..  if that's too 
-> expensive
-> for this ls -l optimization, I will look for another way.
->
-> Change from v1:
-> 	Doesn't completely break the commit 311324ad1713 functionality.
->
-> 8<-----------------------------------------------------------------------------
->
-> Commit 311324ad1713666a6e803aecf0d4e1a136a5b34a ("NFS: Be more 
-> aggressive
-> in using readdirplus for 'ls -l' situations") removed the optimization
-> added by commit 07b5ce8ef2d87f1914054804720d6facbaa3f4ce ("NFS: Make 
-> nfs_readdir
-> revalidate less often") to bypass the revalidation of the directory 
-> mapping
-> on subsequent calls into nfs_readdir().  Add that optimization back 
-> here.
->
-> A directory modified once every second and containing 40k entries 
-> takes my
-> system around 80 seconds to list.  With this patch, that time is 
-> reduced to
-> 7 seconds.
->
-> Signed-off-by: Benjamin Coddington <bcodding@redhat.com>
-> ---
->  fs/nfs/dir.c           | 3 ++-
->  include/linux/nfs_fs.h | 1 +
->  2 files changed, 3 insertions(+), 1 deletion(-)
->
-> diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
-> index 19d93d0cd400..88f5dd561025 100644
-> --- a/fs/nfs/dir.c
-> +++ b/fs/nfs/dir.c
-> @@ -477,6 +477,7 @@ void nfs_force_use_readdirplus(struct inode *dir)
->  {
->  	if (!list_empty(&NFS_I(dir)->open_files)) {
->  		nfs_advise_use_readdirplus(dir);
-> +		set_bit(NFS_INO_FORCE_RDPLUS, &NFS_I(dir)->flags);
->  		nfs_zap_mapping(dir, dir->i_mapping);
->  	}
->  }
-> @@ -878,7 +879,7 @@ static bool nfs_dir_mapping_need_revalidate(struct 
-> inode *dir)
->
->  	if (nfs_attribute_cache_expired(dir))
->  		return true;
-> -	if (nfsi->cache_validity & NFS_INO_INVALID_DATA)
-> +	if (test_and_clear_bit(NFS_INO_FORCE_RDPLUS, &nfsi->flags))
->  		return true;
->  	return false;
->  }
-> diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
-> index d71278c3c5bd..729cddb7364f 100644
-> --- a/include/linux/nfs_fs.h
-> +++ b/include/linux/nfs_fs.h
-> @@ -211,6 +211,7 @@ struct nfs_inode {
->  #define NFS_INO_LAYOUTCOMMIT	(9)		/* layoutcommit required */
->  #define NFS_INO_LAYOUTCOMMITTING (10)		/* layoutcommit inflight */
->  #define NFS_INO_LAYOUTSTATS	(11)		/* layoutstats inflight */
-> +#define NFS_INO_FORCE_RDPLUS	(12)		/* force readdirplus */
->
->  static inline struct nfs_inode *NFS_I(const struct inode *inode)
->  {
-> -- 
-> 2.5.5
->
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" 
-> in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Can you reproduce this on latest (e.g 4.8) kernel?
+
+Also fuse debug logs (with whaterver kernel) could be useful; not sure
+how to enable it for glusterfs, usual convention for fuse filesystems
+is "-d".
+
+Thanks,
+Miklos
