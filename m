@@ -1,53 +1,85 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from us-smtp-delivery-194.mimecast.com ([63.128.21.194]:28558 "EHLO
-        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1752035AbcKROcm (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 18 Nov 2016 09:32:42 -0500
-From: Trond Myklebust <trondmy@primarydata.com>
-To: NeilBrown <neilb@suse.com>
-CC: Adamson William <andros@netapp.com>,
-        Schumaker Anna <anna.schumaker@netapp.com>,
-        List Linux NFS Mailing <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] NFSv4.1: nfs4_fl_prepare_ds must be careful about
- reporting success.
-Date: Fri, 18 Nov 2016 14:32:32 +0000
-Message-ID: <C9C69F9A-F0AD-4F76-B334-11C4E83D4155@primarydata.com>
-References: <87lgxiwoxi.fsf@notabene.neil.brown.name>
- <8760nlfkkq.fsf@notabene.neil.brown.name>
-In-Reply-To: <8760nlfkkq.fsf@notabene.neil.brown.name>
+Received: from mail-oi0-f67.google.com ([209.85.218.67]:35126 "EHLO
+        mail-oi0-f67.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751095AbcKRO65 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 18 Nov 2016 09:58:57 -0500
+Subject: [PATCH v2 00/12] client-side NFS/RDMA patches proposed for v4.10
+From: Chuck Lever <chuck.lever@oracle.com>
+To: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
+Date: Fri, 18 Nov 2016 09:58:55 -0500
+Message-ID: <20161118145547.10592.66470.stgit@manet.1015granger.net>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-DQo+IE9uIE5vdiAxOCwgMjAxNiwgYXQgMDA6MDEsIE5laWxCcm93biA8bmVpbGJAc3VzZS5jb20+
-IHdyb3RlOg0KPiANCj4gDQo+IFBpbmc/DQo+IE5vIHNpZ24gb2YgdGhpcyBpbiBsaW51eC1uZXh0
-LCBhbmQgbm8gcmVwbGllc+KApi4NCg0KSeKAmWQgbGlrZSBzb21lIGNvbmZpcm1hdGlvbiBmcm9t
-IHRoZSBOZXRBcHAgZm9sa3Mgb24gdGhpcy4gVGhleSBhcmUgdGhlIG1haW4gc3Rha2Vob2xkZXJz
-IGZvciB0aGUgcE5GUyBmaWxlcyBpbXBsZW1lbnRhdGlvbi4gSSBkb27igJl0IHRoaW5rIHdlIG5l
-ZWQgYW4gZXF1aXZhbGVudCBmb3IgZmxleGZpbGVzLg0KDQo+IA0KPiBUaGFua3MsDQo+IE5laWxC
-cm93bg0KPiANCj4gDQo+IE9uIEZyaSwgT2N0IDIxIDIwMTYsIE5laWxCcm93biB3cm90ZToNCj4g
-DQo+PiANCj4+IFZhcmlvdXMgcGxhY2VzIGFzc3VtZSB0aGF0IGlmIG5mczRfZmxfcHJlcGFyZV9k
-cygpIHR1cm5zIGEgbm9uLU5VTEwNCj4+ICdkcycsIHRoZW4gZHMtPmRzX2NscCB3aWxsIGFsc28g
-YmUgbm9uLU5VTEwuDQo+PiANCj4+IFRoaXMgaXMgbm90IG5lY2Vzc2FzcmlseSB0cnVlIGluIHRo
-ZSBjYXNlIHdoZW4gdGhlIHByb2Nlc3MgcmVjZWl2ZWQgYQ0KPj4gZmF0YWwgc2lnbmFsIHdoaWxl
-IG5mczRfcG5mc19kc19jb25uZWN0IGlzIHdhaXRpbmcgaW4NCj4+IG5mczRfd2FpdF9kc19jb25u
-ZWN0KCkuICBJbiB0aGF0IGNhc2UgLT5kc19jbHAgbWF5IG5vdCBiZSBzZXQsIGFuZCB0aGUNCj4+
-IGRldmlkIG1heSBub3QgcmVjZW50bHkgaGF2ZSBiZWVuIG1hcmtlZCB1bmF2YWlsYWJsZS4NCj4+
-IA0KPj4gU28gYWRkIGEgdGVzdCBmb3IgLT5kc19jbHAgPT0gTlVMTCBhbmQgcmV0dXJuIE5VTEwg
-aW4gdGhhdCBjYXNlLg0KPj4gDQo+PiBGaXhlczogYzIzMjY2ZDUzMmI0ICgiTkZTNC4xIEZpeCBk
-YXRhIHNlcnZlciBjb25uZWN0aW9uIHJhY2UiKQ0KPj4gU2lnbmVkLW9mZi1ieTogTmVpbEJyb3du
-IDxuZWlsYkBzdXNlLmNvbT4NCj4+IC0tLQ0KPj4gZnMvbmZzL2ZpbGVsYXlvdXQvZmlsZWxheW91
-dGRldi5jIHwgMyArKy0NCj4+IDEgZmlsZSBjaGFuZ2VkLCAyIGluc2VydGlvbnMoKyksIDEgZGVs
-ZXRpb24oLSkNCj4+IA0KPj4gZGlmZiAtLWdpdCBhL2ZzL25mcy9maWxlbGF5b3V0L2ZpbGVsYXlv
-dXRkZXYuYyBiL2ZzL25mcy9maWxlbGF5b3V0L2ZpbGVsYXlvdXRkZXYuYw0KPj4gaW5kZXggNDk0
-NmVmNDBiYTg3Li44NWVmMzhmOTc2NWYgMTAwNjQ0DQo+PiAtLS0gYS9mcy9uZnMvZmlsZWxheW91
-dC9maWxlbGF5b3V0ZGV2LmMNCj4+ICsrKyBiL2ZzL25mcy9maWxlbGF5b3V0L2ZpbGVsYXlvdXRk
-ZXYuYw0KPj4gQEAgLTI4Myw3ICsyODMsOCBAQCBuZnM0X2ZsX3ByZXBhcmVfZHMoc3RydWN0IHBu
-ZnNfbGF5b3V0X3NlZ21lbnQgKmxzZWcsIHUzMiBkc19pZHgpDQo+PiAJCQkgICAgIHMtPm5mc19j
-bGllbnQtPmNsX3JwY2NsaWVudC0+Y2xfYXV0aC0+YXVfZmxhdm9yKTsNCj4+IA0KPj4gb3V0X3Rl
-c3RfZGV2aWQ6DQo+PiAtCWlmIChmaWxlbGF5b3V0X3Rlc3RfZGV2aWRfdW5hdmFpbGFibGUoZGV2
-aWQpKQ0KPj4gKwlpZiAocmV0LT5kc19jbHAgPT0gTlVMTCB8fA0KPj4gKwkgICAgZmlsZWxheW91
-dF90ZXN0X2RldmlkX3VuYXZhaWxhYmxlKGRldmlkKSkNCj4+IAkJcmV0ID0gTlVMTDsNCj4+IG91
-dDoNCj4+IAlyZXR1cm4gcmV0Ow0KPj4gLS0gDQo+PiAyLjEwLjENCg0K
+The following patch series makes these changes:
 
+- Support for devices that support SG_GAP
+- Several bug fixes
+- A number of clean-ups and optimizations
+
+SG_GAP devices allow the client transport implementation to register
+non-contiguous memory regions using one offset and handle. Scatter
+and gather from these regions are then managed entirely in hardware.
+
+Normally a Reply chunk for a READDIR or GETACL is built of multiple
+RDMA segments. Now, when our client wants to build a Reply chunk out
+of the xdr_buf's head, page list, and tail, it appears to the server
+as a single contiguous RDMA segment if the device supports SG_GAP.
+
+Instead of a separate Write WR for each of several RDMA segments,
+the server can then post a single Write WR to transmit the whole RPC
+Reply (assuming the Reply is smaller than the server RNIC's max_sge)
+and can invalidate the whole Reply chunk remotely.
+
+SG_GAP is currently supported by mlx5 devices when using the FRWR
+registration mechanism.
+
+
+Available in the "nfs-rdma-for-4.10" topic branch of this git repo:
+
+git://git.linux-nfs.org/projects/cel/cel-2.6.git
+
+
+Or for browsing:
+
+http://git.linux-nfs.org/?p=cel/cel-2.6.git;a=log;h=refs/heads/nfs-rdma-for-4.10
+
+
+Client changes since v1:
+ - Rebase on v4.9-rc5
+ - "xprtrdma: Fix DMAR failure in frwr_op_map() after reconnect" was merged
+ - "xprtrdma: Simplify synopsis of rpcrdma_ep_connect()" was postponed
+ - Clean-ups re-ordered to the end of the series
+ - Editorial changes to patch descriptions
+
+
+---
+
+Chuck Lever (12):
+      xprtrdma: Cap size of callback buffer resources
+      xprtrdma: Make FRWR send queue entry accounting more accurate
+      xprtrdma: Support for SG_GAP devices
+      SUNRPC: Proper metric accounting when RPC is not transmitted
+      xprtrdma: Address coverity complaint about wait_for_completion()
+      xprtrdma: Avoid calls to ro_unmap_safe()
+      xprtrdma: Refactor FRMR invalidation
+      xprtrdma: Update documenting comment
+      xprtrdma: Squelch "max send, max recv" messages at connect time
+      xprtrdma: Shorten QP access error message
+      xprtrdma: Update dprintk in rpcrdma_count_chunks
+      xprtrdma: Relocate connection helper functions
+
+
+ net/sunrpc/stats.c                |   10 ++--
+ net/sunrpc/xprtrdma/backchannel.c |    4 +-
+ net/sunrpc/xprtrdma/frwr_ops.c    |   94 +++++++++++++++++--------------------
+ net/sunrpc/xprtrdma/rpc_rdma.c    |   36 --------------
+ net/sunrpc/xprtrdma/transport.c   |   34 +++++++++++++
+ net/sunrpc/xprtrdma/verbs.c       |   37 ++++++++-------
+ net/sunrpc/xprtrdma/xprt_rdma.h   |   31 +++++++++---
+ 7 files changed, 128 insertions(+), 118 deletions(-)
+
+--
+Chuck Lever
