@@ -1,66 +1,69 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:54242 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:46484 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751495AbcKRI6w (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 18 Nov 2016 03:58:52 -0500
-From: "Jianhong.Yin" <yin-jianhong@163.com>
-To: linux-nfs@vger.kernel.org
-Cc: steved@redhat.com, "Jianhong.Yin" <yin-jianhong@163.com>
-Subject: [PATCH] nfs-utils: exportfs remove redundant exports options output
-Date: Fri, 18 Nov 2016 16:58:43 +0800
-Message-Id: <1479459523-7649-1-git-send-email-yin-jianhong@163.com>
+        id S1751716AbcKRKDY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 18 Nov 2016 05:03:24 -0500
+From: Benjamin Coddington <bcodding@redhat.com>
+To: Trond Myklebust <trond.myklebust@primarydata.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH] NFSv4.1: Keep a reference on lock states while checking
+Date: Fri, 18 Nov 2016 05:03:22 -0500
+Message-Id: <6a50c9ed9077e43de5da454a2413769a0b383d58.1479427989.git.bcodding@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-before this commit, run 'exportfs -s' will output some
- options more than one time. for example:
- /path *(rw,no_root_squash,rw,secure,no_root_squash,no_all_squash)
- the options rw,no_root_squash,etc will be print twice.
-the reason is secinfo_show() will show these security options again
-this patch remove these redundant outputs.
+While walking the list of lock_states, keep a reference on each
+nfs4_lock_state to be checked, otherwise the lock state could be removed
+while the check performs TEST_STATEID and possible FREE_STATEID.
 
-Signed-off-by: Jianhong Yin <yin-jianhong@163.com>
+Signed-off-by: Benjamin Coddington <bcodding@redhat.com>
 ---
- utils/exportfs/exportfs.c | 18 ++++++------------
- 1 file changed, 6 insertions(+), 12 deletions(-)
+ fs/nfs/nfs4proc.c | 15 +++++++++++++--
+ 1 file changed, 13 insertions(+), 2 deletions(-)
 
-diff --git a/utils/exportfs/exportfs.c b/utils/exportfs/exportfs.c
-index 98368a5..b11f06b 100644
---- a/utils/exportfs/exportfs.c
-+++ b/utils/exportfs/exportfs.c
-@@ -747,26 +747,20 @@ dump(int verbose, int export_format)
- 				continue;
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 7897826d7c51..57d102d0f075 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -2564,15 +2564,23 @@ static void nfs41_check_delegation_stateid(struct nfs4_state *state)
+ static int nfs41_check_expired_locks(struct nfs4_state *state)
+ {
+ 	int status, ret = NFS_OK;
+-	struct nfs4_lock_state *lsp;
++	struct nfs4_lock_state *lsp, *prev = NULL;
+ 	struct nfs_server *server = NFS_SERVER(state->inode);
+ 
+ 	if (!test_bit(LK_STATE_IN_USE, &state->flags))
+ 		goto out;
++
++	spin_lock(&state->state_lock);
+ 	list_for_each_entry(lsp, &state->lock_states, ls_locks) {
+ 		if (test_bit(NFS_LOCK_INITIALIZED, &lsp->ls_flags)) {
+ 			struct rpc_cred *cred = lsp->ls_state->owner->so_cred;
+ 
++			atomic_inc(&lsp->ls_count);
++			spin_unlock(&state->state_lock);
++
++			nfs4_put_lock_state(prev);
++			prev = lsp;
++
+ 			status = nfs41_test_and_free_expired_stateid(server,
+ 					&lsp->ls_stateid,
+ 					cred);
+@@ -2587,8 +2595,11 @@ static int nfs41_check_expired_locks(struct nfs4_state *state)
+ 				ret = status;
+ 				break;
  			}
- 			c = '(';
--			if (ep->e_flags & NFSEXP_READONLY)
--				c = dumpopt(c, "ro");
--			else
--				c = dumpopt(c, "rw");
- 			if (ep->e_flags & NFSEXP_ASYNC)
- 				c = dumpopt(c, "async");
-+			else
-+				c = dumpopt(c, "sync");
- 			if (ep->e_flags & NFSEXP_GATHERED_WRITES)
- 				c = dumpopt(c, "wdelay");
-+			else
-+				c = dumpopt(c, "no_wdelay");
- 			if (ep->e_flags & NFSEXP_NOHIDE)
- 				c = dumpopt(c, "nohide");
-+			else
-+				c = dumpopt(c, "hide");
- 			if (ep->e_flags & NFSEXP_CROSSMOUNT)
- 				c = dumpopt(c, "crossmnt");
--			if (ep->e_flags & NFSEXP_INSECURE_PORT)
--				c = dumpopt(c, "insecure");
--			if (ep->e_flags & NFSEXP_ROOTSQUASH)
--				c = dumpopt(c, "root_squash");
--			else
--				c = dumpopt(c, "no_root_squash");
--			if (ep->e_flags & NFSEXP_ALLSQUASH)
--				c = dumpopt(c, "all_squash");
- 			if (ep->e_flags & NFSEXP_NOSUBTREECHECK)
- 				c = dumpopt(c, "no_subtree_check");
- 			if (ep->e_flags & NFSEXP_NOAUTHNLM)
++			spin_lock(&state->state_lock);
+ 		}
+-	};
++	}
++	spin_unlock(&state->state_lock);
++	nfs4_put_lock_state(prev);
+ out:
+ 	return ret;
+ }
 -- 
 2.5.5
 
