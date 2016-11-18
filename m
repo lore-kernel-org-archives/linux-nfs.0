@@ -1,88 +1,58 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:51772 "EHLO fieldses.org"
+Received: from fieldses.org ([173.255.197.46]:51778 "EHLO fieldses.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1752693AbcKRUrz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 18 Nov 2016 15:47:55 -0500
-Date: Fri, 18 Nov 2016 15:47:54 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Ulrich Gemkow <ulrich.gemkow@ikr.uni-stuttgart.de>
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: NFS Server prevents access to files on different scenarios (lock
- problem?)
-Message-ID: <20161118204754.GG5424@fieldses.org>
-References: <201611172132.47523.ulrich.gemkow@ikr.uni-stuttgart.de>
- <201611172234.20638.ulrich.gemkow@ikr.uni-stuttgart.de>
- <20161118165828.GA5424@fieldses.org>
- <201611181955.51758.ulrich.gemkow@ikr.uni-stuttgart.de>
+        id S1752668AbcKRUwj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 18 Nov 2016 15:52:39 -0500
+Date: Fri, 18 Nov 2016 15:52:39 -0500
+From: "bfields@fieldses.org" <bfields@fieldses.org>
+To: Trond Myklebust <trondmy@primarydata.com>
+Cc: "aglo@umich.edu" <aglo@umich.edu>,
+        "tibbs@math.uh.edu" <tibbs@math.uh.edu>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: NFS: nfs4_reclaim_open_state: Lock reclaim failed! log spew
+Message-ID: <20161118205239.GH5424@fieldses.org>
+References: <20161117201753.GF20937@fieldses.org>
+ <CAN-5tyHcaJCCdBaNbU4Mc=JuJXi9cDppuTVKKixrgVZMZS-DMg@mail.gmail.com>
+ <20161117204618.GG20937@fieldses.org>
+ <CAN-5tyHs1Xq4W2eJOMOW_Tv3=3hQLYhLdVwMDYixhGnaGsEH4Q@mail.gmail.com>
+ <20161117212601.GA23130@fieldses.org>
+ <1479419127.33885.5.camel@primarydata.com>
+ <CAN-5tyFChQ0S4hUwGyWjaJ73hBpTZjJXVK3jm_M_4v1vgzVSjA@mail.gmail.com>
+ <1479420942.33885.19.camel@primarydata.com>
+ <CAN-5tyFazrkcBVor7YvbOPKGWSCDPH1-NLUjZBKJPoKBrzoy-g@mail.gmail.com>
+ <1479422635.33885.30.camel@primarydata.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <201611181955.51758.ulrich.gemkow@ikr.uni-stuttgart.de>
+In-Reply-To: <1479422635.33885.30.camel@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Nov 18, 2016 at 07:55:50PM +0100, Ulrich Gemkow wrote:
-> On Friday 18 November 2016, J. Bruce Fields wrote:
-> > On Thu, Nov 17, 2016 at 10:34:20PM +0100, Ulrich Gemkow wrote:
-> > > I found the 90sec lease time period but the timeout is sometimes
-> > > much longer than 90 sec, often up to 3minutes or longer. Is there
-> > > something which may cause these longer delays (I played with the
-> > > 90sec constant and it did not help :-)
+On Thu, Nov 17, 2016 at 10:43:58PM +0000, Trond Myklebust wrote:
+> On Thu, 2016-11-17 at 17:27 -0500, Olga Kornievskaia wrote:
+> > On Thu, Nov 17, 2016 at 5:15 PM, Trond Myklebust
+> > <trondmy@primarydata.com> wrote:
+> > > What's the alternative? Assume the client pre-emptively bumps the
+> > > seqid
+> > > instead of retrying, then the user presses Ctrl-C again. Repeat a
+> > > few
+> > > more times. How do I now resync the seqids between the client and
+> > > server other than by trashing the session?
 > > 
-> > A delegation is the only thing that I can think of that would prevent a
-> > file from being deleted on the server (by that you mean, not even a "rm
-> > blockfiled" run from a terminal on the server works?)  Delegations
-> > should definitely be forcibly revoked after the lease period passes.
-> > Note that you need to reboot (well, restart the nfs server) after
-> > changing the lease period, or the change will not take effect.
-> 
-> Thanks for this hint, I will disable delegations. But - the timeout
-> is for sure longer than 90 seconds in many cases. Can the reason be
-> a bad interaction between dropped tcp-connections (which may require
-> some time to be noticed) and the nfs server state(s)?
+> > I don't see any alternatives than to reset in that case. But I think
+> > it's better then the possibility of accidentally opening a wrong
+> > file?
 
-If the problem is a delegation, then what happens is essentially:
+Remind me why you can't continue resending after the Ctrl-C?  (I thought
+this was already done for some lock and other cases?)
 
-	- you try to modify (or rename, or remove) the delated file.
-	- the server sets a timer for the lease time (90s by default).
-	- at the same time, the server notifies the client that it
-	  should return the delegation.
-	- if the timer expires then the server gives up and forcibly
-	  removes the delegation, allowing your original operation to
-	  proceed.
+> They sound equally bad to me which is why I'm not understanding how a
+> server would fail to implement some minimal form of false retry
+> checking.
+> The Linux NFSv3 DRC will, for instance, checksum at least some part of
+> the RPC arguments for _all_ RPC calls. Most NFSv4.x clients will only
+> ask that you checksum the non-idempotent RPC calls, which significantly
+> cuts down on the calculation overhead.
 
-So tcp connections and stuff are details, what matters to the server is
-how much time has elapsed since you attempted an operation that
-conflicts with the delegation.  If that's significantly more than the
-lease period, then something's wrong.  So if you have a case where
-that's reliably too long, that would be interesting.
-
-> > > > For example, if the client held some delegations that it didn't return
-> > > > on unmount, and then it denied knowledge of them when the server tried
-> > > > to recall them, then the server would have to wait a lease period to
-> > > > forcibly remove them.  But, the client should be returning delegations
-> > > > on unmount, so I don't see how this happens.
-> > > > 
-> > > > For locks and opens and other state, again the client should be
-> > > > returning them on unmount.  And anyway the server isn't going to
-> > > > forcibly remove those ever, unless the entire client goes away
-> > > > completely, e.g. in a client crash or network partition.
-> > > > 
-> > > > So, I don't know.  Are you sure there aren't client crashes or network
-> > > > problems?
-> > > 
-> > > It happens that clients crash
-> > 
-> > I'm not sure what you mean there--do you mean clients are involved in
-> > all of these cases, or some of them?
-> 
-> Cause for the client reboots are impatient users which switch power
-> off-and-on when a hang happens. So the crashes (reboots) are not
-> directly related but the hangs happen often after such unwanted
-> reboots.
-
-Hm.  So their stale state should be cleared out either 90 seconds after
-the client turned off, or as soon as the client comes back up and
-remounts, whichever comes first.  If that's not happening, again that
-sounds like a potentially interesting bug.
+I'll look at adding checksumming, it shouldn't be hard.
 
 --b.
