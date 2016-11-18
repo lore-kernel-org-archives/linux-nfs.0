@@ -1,14 +1,13 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-it0-f65.google.com ([209.85.214.65]:35216 "EHLO
-        mail-it0-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1752298AbcKRO7O (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 18 Nov 2016 09:59:14 -0500
-Subject: [PATCH v2 02/12] xprtrdma: Make FRWR send queue entry accounting
- more accurate
+Received: from mail-oi0-f66.google.com ([209.85.218.66]:33122 "EHLO
+        mail-oi0-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1753007AbcKRO7V (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 18 Nov 2016 09:59:21 -0500
+Subject: [PATCH v2 03/12] xprtrdma: Support for SG_GAP devices
 From: Chuck Lever <chuck.lever@oracle.com>
 To: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Fri, 18 Nov 2016 09:59:11 -0500
-Message-ID: <20161118145911.10592.50600.stgit@manet.1015granger.net>
+Date: Fri, 18 Nov 2016 09:59:20 -0500
+Message-ID: <20161118145919.10592.23011.stgit@manet.1015granger.net>
 In-Reply-To: <20161118145547.10592.66470.stgit@manet.1015granger.net>
 References: <20161118145547.10592.66470.stgit@manet.1015granger.net>
 MIME-Version: 1.0
@@ -16,148 +15,108 @@ Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Verbs providers may perform house-keeping on the Send Queue during
-each signaled send completion. It is necessary therefore for a verbs
-consumer (like xprtrdma) to occasionally force a signaled send
-completion if it runs unsignaled most of the time.
+Some devices (such as the Mellanox CX-4) can register, under a
+single R_key, a set of memory regions that are not contiguous. When
+this is done, all the segments in a Reply list, say, can then be
+invalidated in a single LocalInv Work Request (or via Remote
+Invalidation, which can invalidate exactly one R_key when completing
+a Receive).
 
-xprtrdma does not require signaled completions for Send or FastReg
-Work Requests, but does signal some LocalInv Work Requests. To
-ensure that Send Queue house-keeping can run before the Send Queue
-is more than half-consumed, xprtrdma forces a signaled completion
-on occasion by counting the number of Send Queue Entries it
-consumes. It currently does this by counting each ib_post_send as
-one Entry.
+This means a single FastReg WR is used to register, and one or zero
+LocalInv WRs can invalidate, the memory involved with RDMA transfers
+on behalf of an RPC.
 
-Commit c9918ff56dfb ("xprtrdma: Add ro_unmap_sync method for FRWR")
-introduced the ability for frwr_op_unmap_sync to post more than one
-Work Request with a single post_send. Thus the underlying assumption
-of one Send Queue Entry per ib_post_send is no longer true.
+In addition, xprtrdma constructs some Reply chunks from three or
+more segments. By registering them with SG_GAP, only one segment
+is needed for the Reply chunk, allowing the whole chunk to be
+invalidated remotely.
 
-Also, FastReg Work Requests are currently never signaled. They
-should be signaled once in a while, just as Send is, to keep the
-accounting of consumed SQEs accurate.
-
-While we're here, convert the CQCOUNT macros to the currently
-preferred kernel coding style, which is inline functions.
-
-Fixes: c9918ff56dfb ("xprtrdma: Add ro_unmap_sync method for FRWR")
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- net/sunrpc/xprtrdma/frwr_ops.c  |   13 ++++++++++---
- net/sunrpc/xprtrdma/verbs.c     |   10 ++--------
- net/sunrpc/xprtrdma/xprt_rdma.h |   20 ++++++++++++++++++--
- 3 files changed, 30 insertions(+), 13 deletions(-)
+ net/sunrpc/xprtrdma/frwr_ops.c  |   20 +++++++++++++-------
+ net/sunrpc/xprtrdma/xprt_rdma.h |    1 +
+ 2 files changed, 14 insertions(+), 7 deletions(-)
 
 diff --git a/net/sunrpc/xprtrdma/frwr_ops.c b/net/sunrpc/xprtrdma/frwr_ops.c
-index 26b26be..adbf52c 100644
+index adbf52c..e99bf61 100644
 --- a/net/sunrpc/xprtrdma/frwr_ops.c
 +++ b/net/sunrpc/xprtrdma/frwr_ops.c
-@@ -421,7 +421,7 @@
- 			 IB_ACCESS_REMOTE_WRITE | IB_ACCESS_LOCAL_WRITE :
- 			 IB_ACCESS_REMOTE_READ;
+@@ -101,7 +101,7 @@
+ 	struct rpcrdma_frmr *f = &r->frmr;
+ 	int rc;
  
--	DECR_CQCOUNT(&r_xprt->rx_ep);
-+	rpcrdma_set_signaled(&r_xprt->rx_ep, &reg_wr->wr);
- 	rc = ib_post_send(ia->ri_id->qp, &reg_wr->wr, &bad_wr);
- 	if (rc)
- 		goto out_senderr;
-@@ -486,7 +486,7 @@
- 	struct rpcrdma_ia *ia = &r_xprt->rx_ia;
- 	struct rpcrdma_mw *mw, *tmp;
- 	struct rpcrdma_frmr *f;
--	int rc;
-+	int count, rc;
+-	f->fr_mr = ib_alloc_mr(ia->ri_pd, IB_MR_TYPE_MEM_REG, depth);
++	f->fr_mr = ib_alloc_mr(ia->ri_pd, ia->ri_mrtype, depth);
+ 	if (IS_ERR(f->fr_mr))
+ 		goto out_mr_err;
  
- 	dprintk("RPC:       %s: req %p\n", __func__, req);
+@@ -157,7 +157,7 @@
+ 		return rc;
+ 	}
  
-@@ -496,6 +496,7 @@
- 	 * a single ib_post_send() call.
- 	 */
- 	f = NULL;
-+	count = 0;
- 	invalidate_wrs = pos = prev = NULL;
- 	list_for_each_entry(mw, &req->rl_registered, mw_list) {
- 		if ((rep->rr_wc_flags & IB_WC_WITH_INVALIDATE) &&
-@@ -505,6 +506,7 @@
- 		}
+-	f->fr_mr = ib_alloc_mr(ia->ri_pd, IB_MR_TYPE_MEM_REG,
++	f->fr_mr = ib_alloc_mr(ia->ri_pd, ia->ri_mrtype,
+ 			       ia->ri_max_frmr_depth);
+ 	if (IS_ERR(f->fr_mr)) {
+ 		pr_warn("rpcrdma: ib_alloc_mr status %ld, frwr %p orphaned\n",
+@@ -210,11 +210,16 @@
+ frwr_op_open(struct rpcrdma_ia *ia, struct rpcrdma_ep *ep,
+ 	     struct rpcrdma_create_data_internal *cdata)
+ {
++	struct ib_device_attr *attrs = &ia->ri_device->attrs;
+ 	int depth, delta;
  
- 		pos = __frwr_prepare_linv_wr(mw);
-+		count++;
- 
- 		if (!invalidate_wrs)
- 			invalidate_wrs = pos;
-@@ -523,7 +525,12 @@
- 	f->fr_invwr.send_flags = IB_SEND_SIGNALED;
- 	f->fr_cqe.done = frwr_wc_localinv_wake;
- 	reinit_completion(&f->fr_linv_done);
--	INIT_CQCOUNT(&r_xprt->rx_ep);
++	ia->ri_mrtype = IB_MR_TYPE_MEM_REG;
++	if (attrs->device_cap_flags & IB_DEVICE_SG_GAPS_REG)
++		ia->ri_mrtype = IB_MR_TYPE_SG_GAPS;
 +
-+	/* Initialize CQ count, since there is always a signaled
-+	 * WR being posted here.  The new cqcount depends on how
-+	 * many SQEs are about to be consumed.
-+	 */
-+	rpcrdma_init_cqcount(&r_xprt->rx_ep, count);
+ 	ia->ri_max_frmr_depth =
+ 			min_t(unsigned int, RPCRDMA_MAX_DATA_SEGS,
+-			      ia->ri_device->attrs.max_fast_reg_page_list_len);
++			      attrs->max_fast_reg_page_list_len);
+ 	dprintk("RPC:       %s: device's max FR page list len = %u\n",
+ 		__func__, ia->ri_max_frmr_depth);
  
- 	/* Transport disconnect drains the receive CQ before it
- 	 * replaces the QP. The RPC reply handler won't call us
-diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
-index ec74289..451f5f2 100644
---- a/net/sunrpc/xprtrdma/verbs.c
-+++ b/net/sunrpc/xprtrdma/verbs.c
-@@ -532,7 +532,7 @@ static void rpcrdma_destroy_id(struct rdma_cm_id *id)
- 	ep->rep_cqinit = ep->rep_attr.cap.max_send_wr/2 - 1;
- 	if (ep->rep_cqinit <= 2)
- 		ep->rep_cqinit = 0;	/* always signal? */
--	INIT_CQCOUNT(ep);
-+	rpcrdma_init_cqcount(ep, 0);
- 	init_waitqueue_head(&ep->rep_connect_wait);
- 	INIT_DELAYED_WORK(&ep->rep_connect_worker, rpcrdma_connect_worker);
+@@ -241,8 +246,8 @@
+ 	}
  
-@@ -1311,13 +1311,7 @@ struct rpcrdma_regbuf *
- 	dprintk("RPC:       %s: posting %d s/g entries\n",
- 		__func__, send_wr->num_sge);
+ 	ep->rep_attr.cap.max_send_wr *= depth;
+-	if (ep->rep_attr.cap.max_send_wr > ia->ri_device->attrs.max_qp_wr) {
+-		cdata->max_requests = ia->ri_device->attrs.max_qp_wr / depth;
++	if (ep->rep_attr.cap.max_send_wr > attrs->max_qp_wr) {
++		cdata->max_requests = attrs->max_qp_wr / depth;
+ 		if (!cdata->max_requests)
+ 			return -EINVAL;
+ 		ep->rep_attr.cap.max_send_wr = cdata->max_requests *
+@@ -348,6 +353,7 @@
+ 	    int nsegs, bool writing, struct rpcrdma_mw **out)
+ {
+ 	struct rpcrdma_ia *ia = &r_xprt->rx_ia;
++	bool holes_ok = ia->ri_mrtype == IB_MR_TYPE_SG_GAPS;
+ 	struct rpcrdma_mw *mw;
+ 	struct rpcrdma_frmr *frmr;
+ 	struct ib_mr *mr;
+@@ -383,8 +389,8 @@
  
--	if (DECR_CQCOUNT(ep) > 0)
--		send_wr->send_flags = 0;
--	else { /* Provider must take a send completion every now and then */
--		INIT_CQCOUNT(ep);
--		send_wr->send_flags = IB_SEND_SIGNALED;
--	}
+ 		++seg;
+ 		++i;
 -
-+	rpcrdma_set_signaled(ep, send_wr);
- 	rc = ib_post_send(ia->ri_id->qp, send_wr, &send_wr_fail);
- 	if (rc)
- 		goto out_postsend_err;
+-		/* Check for holes */
++		if (holes_ok)
++			continue;
+ 		if ((i < nsegs && offset_in_page(seg->mr_offset)) ||
+ 		    offset_in_page((seg-1)->mr_offset + (seg-1)->mr_len))
+ 			break;
 diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
-index 6e1bba3..f6ae1b2 100644
+index f6ae1b2..b8424fa 100644
 --- a/net/sunrpc/xprtrdma/xprt_rdma.h
 +++ b/net/sunrpc/xprtrdma/xprt_rdma.h
-@@ -95,8 +95,24 @@ struct rpcrdma_ep {
- 	struct delayed_work	rep_connect_worker;
+@@ -75,6 +75,7 @@ struct rpcrdma_ia {
+ 	unsigned int		ri_max_inline_write;
+ 	unsigned int		ri_max_inline_read;
+ 	bool			ri_reminv_expected;
++	enum ib_mr_type		ri_mrtype;
+ 	struct ib_qp_attr	ri_qp_attr;
+ 	struct ib_qp_init_attr	ri_qp_init_attr;
  };
- 
--#define INIT_CQCOUNT(ep) atomic_set(&(ep)->rep_cqcount, (ep)->rep_cqinit)
--#define DECR_CQCOUNT(ep) atomic_sub_return(1, &(ep)->rep_cqcount)
-+static inline void
-+rpcrdma_init_cqcount(struct rpcrdma_ep *ep, int count)
-+{
-+	atomic_set(&ep->rep_cqcount, ep->rep_cqinit - count);
-+}
-+
-+/* To update send queue accounting, provider must take a
-+ * send completion every now and then.
-+ */
-+static inline void
-+rpcrdma_set_signaled(struct rpcrdma_ep *ep, struct ib_send_wr *send_wr)
-+{
-+	send_wr->send_flags = 0;
-+	if (unlikely(atomic_sub_return(1, &ep->rep_cqcount) <= 0)) {
-+		rpcrdma_init_cqcount(ep, 0);
-+		send_wr->send_flags = IB_SEND_SIGNALED;
-+	}
-+}
- 
- /* Pre-allocate extra Work Requests for handling backward receives
-  * and sends. This is a fixed value because the Work Queues are
 
