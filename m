@@ -1,213 +1,120 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from us-smtp-delivery-194.mimecast.com ([63.128.21.194]:58709 "EHLO
-        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1752433AbcKQWoH (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 17 Nov 2016 17:44:07 -0500
-From: Trond Myklebust <trondmy@primarydata.com>
-To: "aglo@umich.edu" <aglo@umich.edu>
-CC: "bfields@fieldses.org" <bfields@fieldses.org>,
-        "tibbs@math.uh.edu" <tibbs@math.uh.edu>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: NFS: nfs4_reclaim_open_state: Lock reclaim failed! log spew
-Date: Thu, 17 Nov 2016 22:43:58 +0000
-Message-ID: <1479422635.33885.30.camel@primarydata.com>
-References: <ufapovfc8m4.fsf@epithumia.math.uh.edu>
-         <ufa1syb402e.fsf@epithumia.math.uh.edu>
-         <20161117163101.GA19161@fieldses.org>
-         <1479404750.33885.1.camel@primarydata.com>
-         <20161117193239.GD20937@fieldses.org>
-         <CAN-5tyFP8QapcfuG5pO2059ftf3wGhmaO=6RZAA+W_nYbVraPQ@mail.gmail.com>
-         <20161117201753.GF20937@fieldses.org>
-         <CAN-5tyHcaJCCdBaNbU4Mc=JuJXi9cDppuTVKKixrgVZMZS-DMg@mail.gmail.com>
-         <20161117204618.GG20937@fieldses.org>
-         <CAN-5tyHs1Xq4W2eJOMOW_Tv3=3hQLYhLdVwMDYixhGnaGsEH4Q@mail.gmail.com>
-         <20161117212601.GA23130@fieldses.org>
-         <1479419127.33885.5.camel@primarydata.com>
-         <CAN-5tyFChQ0S4hUwGyWjaJ73hBpTZjJXVK3jm_M_4v1vgzVSjA@mail.gmail.com>
-         <1479420942.33885.19.camel@primarydata.com>
-         <CAN-5tyFazrkcBVor7YvbOPKGWSCDPH1-NLUjZBKJPoKBrzoy-g@mail.gmail.com>
-In-Reply-To: <CAN-5tyFazrkcBVor7YvbOPKGWSCDPH1-NLUjZBKJPoKBrzoy-g@mail.gmail.com>
+Received: from mx2.suse.de ([195.135.220.15]:39262 "EHLO mx2.suse.de"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1751797AbcKREff (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 17 Nov 2016 23:35:35 -0500
+From: NeilBrown <neilb@suse.com>
+To: Trond Myklebust <trondmy@primarydata.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>
+Date: Fri, 18 Nov 2016 15:35:27 +1100
+Cc: Olaf Kirch <OKir@suse.com>, NFS List <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] NFS: flush data when locking a file to ensure cache coherence for mmap.
+In-Reply-To: <877fce8z0o.fsf@notabene.neil.brown.name>
+References: <871t4fosvh.fsf@notabene.neil.brown.name> <877fce8z0o.fsf@notabene.neil.brown.name>
+Message-ID: <87eg29flrk.fsf@notabene.neil.brown.name>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+Content-Type: multipart/signed; boundary="=-=-=";
+        micalg=pgp-sha256; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVGh1LCAyMDE2LTExLTE3IGF0IDE3OjI3IC0wNTAwLCBPbGdhIEtvcm5pZXZza2FpYSB3cm90
-ZToNCj4gT24gVGh1LCBOb3YgMTcsIDIwMTYgYXQgNToxNSBQTSwgVHJvbmQgTXlrbGVidXN0DQo+
-IDx0cm9uZG15QHByaW1hcnlkYXRhLmNvbT4gd3JvdGU6DQo+ID4gDQo+ID4gT24gVGh1LCAyMDE2
-LTExLTE3IGF0IDE2OjUzIC0wNTAwLCBPbGdhIEtvcm5pZXZza2FpYSB3cm90ZToNCj4gPiA+IA0K
-PiA+ID4gT24gVGh1LCBOb3YgMTcsIDIwMTYgYXQgNDo0NSBQTSwgVHJvbmQgTXlrbGVidXN0DQo+
-ID4gPiA8dHJvbmRteUBwcmltYXJ5ZGF0YS5jb20+IHdyb3RlOg0KPiA+ID4gPiANCj4gPiA+ID4g
-DQo+ID4gPiA+IE9uIFRodSwgMjAxNi0xMS0xNyBhdCAxNjoyNiAtMDUwMCwgYmZpZWxkc0BmaWVs
-ZHNlcy5vcmcgd3JvdGU6DQo+ID4gPiA+ID4gDQo+ID4gPiA+ID4gDQo+ID4gPiA+ID4gT24gVGh1
-LCBOb3YgMTcsIDIwMTYgYXQgMDQ6MDU6MzJQTSAtMDUwMCwgT2xnYSBLb3JuaWV2c2thaWENCj4g
-PiA+ID4gPiB3cm90ZToNCj4gPiA+ID4gPiA+IA0KPiA+ID4gPiA+ID4gDQo+ID4gPiA+ID4gPiAN
-Cj4gPiA+ID4gPiA+IE9uIFRodSwgTm92IDE3LCAyMDE2IGF0IDM6NDYgUE0sIGJmaWVsZHNAZmll
-bGRzZXMub3JnDQo+ID4gPiA+ID4gPiA8YmZpZWxkc0BmaWVsZHNlcy5vcmc+IHdyb3RlOg0KPiA+
-ID4gPiA+ID4gPiANCj4gPiA+ID4gPiA+ID4gDQo+ID4gPiA+ID4gPiA+IA0KPiA+ID4gPiA+ID4g
-PiBPbiBUaHUsIE5vdiAxNywgMjAxNiBhdCAwMzoyOToxMVBNIC0wNTAwLCBPbGdhDQo+ID4gPiA+
-ID4gPiA+IEtvcm5pZXZza2FpYQ0KPiA+ID4gPiA+ID4gPiB3cm90ZToNCj4gPiA+ID4gPiA+ID4g
-PiANCj4gPiA+ID4gPiA+ID4gPiANCj4gPiA+ID4gPiA+ID4gPiANCj4gPiA+ID4gPiA+ID4gPiBP
-biBUaHUsIE5vdiAxNywgMjAxNiBhdCAzOjE3IFBNLCBiZmllbGRzQGZpZWxkc2VzLm9yZw0KPiA+
-ID4gPiA+ID4gPiA+IDxiZmllbGRzQGZpZWxkc2VzLm9yZz4gd3JvdGU6DQo+ID4gPiA+ID4gPiA+
-ID4gPiANCj4gPiA+ID4gPiA+ID4gPiA+IA0KPiA+ID4gPiA+ID4gPiA+ID4gDQo+ID4gPiA+ID4g
-PiA+ID4gPiBPbiBUaHUsIE5vdiAxNywgMjAxNiBhdCAwMjo1ODoxMlBNIC0wNTAwLCBPbGdhDQo+
-ID4gPiA+ID4gPiA+ID4gPiBLb3JuaWV2c2thaWENCj4gPiA+ID4gPiA+ID4gPiA+IHdyb3RlOg0K
-PiA+ID4gPiA+ID4gPiA+ID4gPiANCj4gPiA+ID4gPiA+ID4gPiA+ID4gDQo+ID4gPiA+ID4gPiA+
-ID4gPiA+IA0KPiA+ID4gPiA+ID4gPiA+ID4gPiBPbiBUaHUsIE5vdiAxNywgMjAxNiBhdCAyOjMy
-IFBNLCBiZmllbGRzQGZpZWxkc2VzLm8NCj4gPiA+ID4gPiA+ID4gPiA+ID4gcmcNCj4gPiA+ID4g
-PiA+ID4gPiA+ID4gPGJmaWVsZHNAZmllbGRzZXMub3JnPiB3cm90ZToNCj4gPiA+ID4gPiA+ID4g
-PiA+ID4gPiANCj4gPiA+ID4gPiA+ID4gPiA+ID4gPiANCj4gPiA+ID4gPiA+ID4gPiA+ID4gPiAN
-Cj4gPiA+ID4gPiA+ID4gPiA+ID4gPiBPbiBUaHUsIE5vdiAxNywgMjAxNiBhdCAwNTo0NTo1MlBN
-ICswMDAwLCBUcm9uZA0KPiA+ID4gPiA+ID4gPiA+ID4gPiA+IE15a2xlYnVzdA0KPiA+ID4gPiA+
-ID4gPiA+ID4gPiA+IHdyb3RlOg0KPiA+ID4gPiA+ID4gPiA+ID4gPiA+ID4gDQo+ID4gPiA+ID4g
-PiA+ID4gPiA+ID4gPiANCj4gPiA+ID4gPiA+ID4gPiA+ID4gPiA+IA0KPiA+ID4gPiA+ID4gPiA+
-ID4gPiA+ID4gT24gVGh1LCAyMDE2LTExLTE3IGF0IDExOjMxIC0wNTAwLCBKLiBCcnVjZQ0KPiA+
-ID4gPiA+ID4gPiA+ID4gPiA+ID4gRmllbGRzDQo+ID4gPiA+ID4gPiA+ID4gPiA+ID4gPiB3cm90
-ZToNCj4gPiA+ID4gPiA+ID4gPiA+ID4gPiA+ID4gDQo+ID4gPiA+ID4gPiA+ID4gPiA+ID4gPiA+
-IA0KPiA+ID4gPiA+ID4gPiA+ID4gPiA+ID4gPiANCj4gPiA+ID4gPiA+ID4gPiA+ID4gPiA+ID4g
-T24gV2VkLCBOb3YgMTYsIDIwMTYgYXQgMDI6NTU6MDVQTSAtMDYwMCwNCj4gPiA+ID4gPiA+ID4g
-PiA+ID4gPiA+ID4gSmFzb24gTA0KPiA+ID4gPiA+ID4gPiA+ID4gPiA+ID4gPiBUaWJiaXR0cyBJ
-SUkgd3JvdGU6DQo+ID4gPiA+ID4gPiA+ID4gPiA+ID4gPiA+ID4gDQo+ID4gPiA+ID4gPiA+ID4g
-PiA+ID4gPiA+ID4gDQo+ID4gPiA+ID4gPiA+ID4gPiA+ID4gPiA+ID4gDQo+ID4gPiA+ID4gPiA+
-ID4gPiA+ID4gPiA+ID4gDQo+ID4gPiA+ID4gPiA+ID4gPiA+ID4gPiA+ID4gSSdtIHJlcGx5aW5n
-IHRvIGEgcmF0aGVyIG9sZCBtZXNzYWdlLCBidXQNCj4gPiA+ID4gPiA+ID4gPiA+ID4gPiA+ID4g
-PiB0aGUNCj4gPiA+ID4gPiA+ID4gPiA+ID4gPiA+ID4gPiBpc3N1ZQ0KPiA+ID4gPiA+ID4gPiA+
-ID4gPiA+ID4gPiA+IGhhcyBqdXN0IG5vdw0KPiA+ID4gPiA+ID4gPiA+ID4gPiA+ID4gPiA+IHBv
-cHBlZA0KPiA+ID4gPiA+ID4gPiA+ID4gPiA+ID4gPiA+IGJhY2sgdXAgYWdhaW4uDQo+ID4gPiA+
-ID4gPiA+ID4gPiA+ID4gPiA+ID4gDQo+ID4gPiA+ID4gPiA+ID4gPiA+ID4gPiA+ID4gVG8gcmVj
-YXAsIGEgY2xpZW50IHN0b3BzIGJlaW5nIGFibGUgdG8NCj4gPiA+ID4gPiA+ID4gPiA+ID4gPiA+
-ID4gPiBhY2Nlc3MNCj4gPiA+ID4gPiA+ID4gPiA+ID4gPiA+ID4gPiBfYW55Xw0KPiA+ID4gPiA+
-ID4gPiA+ID4gPiA+ID4gPiA+IG1vdW50IG9uIGENCj4gPiA+ID4gPiA+ID4gPiA+ID4gPiA+ID4g
-PiBwYXJ0aWN1bGFyIHNlcnZlciwgYW5kICJORlM6DQo+ID4gPiA+ID4gPiA+ID4gPiA+ID4gPiA+
-ID4gbmZzNF9yZWNsYWltX29wZW5fc3RhdGU6IExvY2sgcmVjbGFpbQ0KPiA+ID4gPiA+ID4gPiA+
-ID4gPiA+ID4gPiA+IGZhaWxlZCEiIGFwcGVhcnMgc2V2ZXJhbCBodW5kcmVkIHRpbWVzIHBlcg0K
-PiA+ID4gPiA+ID4gPiA+ID4gPiA+ID4gPiA+IHNlY29uZA0KPiA+ID4gPiA+ID4gPiA+ID4gPiA+
-ID4gPiA+IGluIHRoZSBrZXJuZWwNCj4gPiA+ID4gPiA+ID4gPiA+ID4gPiA+ID4gPiBsb2cuDQo+
-ID4gPiA+ID4gPiA+ID4gPiA+ID4gPiA+ID4gVGhlIGxvYWQgZ29lcyB1cCBieSBvbmUgZm9yIGV2
-ZXIgcHJvY2Vzcw0KPiA+ID4gPiA+ID4gPiA+ID4gPiA+ID4gPiA+IGF0dGVtcHRpbmcNCj4gPiA+
-ID4gPiA+ID4gPiA+ID4gPiA+ID4gPiB0byBhY2Nlc3MgYW55DQo+ID4gPiA+ID4gPiA+ID4gPiA+
-ID4gPiA+ID4gbW91bnQNCj4gPiA+ID4gPiA+ID4gPiA+ID4gPiA+ID4gPiBmcm9tIHRoYXQgcGFy
-dGljdWxhciBzZXJ2ZXIuwqDCoE1vdW50cyB0bw0KPiA+ID4gPiA+ID4gPiA+ID4gPiA+ID4gPiA+
-IG90aGVyDQo+ID4gPiA+ID4gPiA+ID4gPiA+ID4gPiA+ID4gc2VydmVycyBhcmUgZmluZSwgYW5k
-DQo+ID4gPiA+ID4gPiA+ID4gPiA+ID4gPiA+ID4gb3RoZXIgY2xpZW50cyBjYW4gbW91bnQgdGhp
-bmdzIGZyb20gdGhhdA0KPiA+ID4gPiA+ID4gPiA+ID4gPiA+ID4gPiA+IG9uZQ0KPiA+ID4gPiA+
-ID4gPiA+ID4gPiA+ID4gPiA+IHNlcnZlcg0KPiA+ID4gPiA+ID4gPiA+ID4gPiA+ID4gPiA+IHdp
-dGhvdXQNCj4gPiA+ID4gPiA+ID4gPiA+ID4gPiA+ID4gPiBwcm9ibGVtcy4NCj4gPiA+ID4gPiA+
-ID4gPiA+ID4gPiA+ID4gPiANCj4gPiA+ID4gPiA+ID4gPiA+ID4gPiA+ID4gPiBXaGVuIEkga2ls
-bCBldmVyeSBwcm9jZXNzIGtlZXBpbmcgdGhhdA0KPiA+ID4gPiA+ID4gPiA+ID4gPiA+ID4gPiA+
-IHBhcnRpY3VsYXINCj4gPiA+ID4gPiA+ID4gPiA+ID4gPiA+ID4gPiBtb3VudCBhY3RpdmUgYW5k
-DQo+ID4gPiA+ID4gPiA+ID4gPiA+ID4gPiA+ID4gdGhlbg0KPiA+ID4gPiA+ID4gPiA+ID4gPiA+
-ID4gPiA+IHVtb3VudCBpdCwgSSBzZWU6DQo+ID4gPiA+ID4gPiA+ID4gPiA+ID4gPiA+ID4gDQo+
-ID4gPiA+ID4gPiA+ID4gPiA+ID4gPiA+ID4gTkZTOiBuZnM0X3JlY2xhaW1fb3Blbl9zdGF0ZTog
-dW5oYW5kbGVkDQo+ID4gPiA+ID4gPiA+ID4gPiA+ID4gPiA+ID4gZXJyb3INCj4gPiA+ID4gPiA+
-ID4gPiA+ID4gPiA+ID4gPiAtMTAwNjgNCj4gPiA+ID4gPiA+ID4gPiA+ID4gPiA+ID4gDQo+ID4g
-PiA+ID4gPiA+ID4gPiA+ID4gPiA+IE5GUzRFUlJfUkVUUllfVU5DQUNIRURfUkVQLg0KPiA+ID4g
-PiA+ID4gPiA+ID4gPiA+ID4gPiANCj4gPiA+ID4gPiA+ID4gPiA+ID4gPiA+ID4gU28sIHlvdSdy
-ZSB1c2luZyBORlN2NC4xIG9yIDQuMiwgYW5kIHRoZQ0KPiA+ID4gPiA+ID4gPiA+ID4gPiA+ID4g
-PiBzZXJ2ZXINCj4gPiA+ID4gPiA+ID4gPiA+ID4gPiA+ID4gdGhpbmtzIHRoYXQgdGhlDQo+ID4g
-PiA+ID4gPiA+ID4gPiA+ID4gPiA+IGNsaWVudA0KPiA+ID4gPiA+ID4gPiA+ID4gPiA+ID4gPiBo
-YXMgcmV1c2VkIGEgKHNsb3QsIHNlcXVlbmNlIG51bWJlcikgcGFpciwNCj4gPiA+ID4gPiA+ID4g
-PiA+ID4gPiA+ID4gYnV0DQo+ID4gPiA+ID4gPiA+ID4gPiA+ID4gPiA+IHRoZQ0KPiA+ID4gPiA+
-ID4gPiA+ID4gPiA+ID4gPiBzZXJ2ZXIgZG9lc24ndA0KPiA+ID4gPiA+ID4gPiA+ID4gPiA+ID4g
-PiBoYXZlIGENCj4gPiA+ID4gPiA+ID4gPiA+ID4gPiA+ID4gY2FjaGVkIHJlc3BvbnNlIHRvIHJl
-dHVybi4NCj4gPiA+ID4gPiA+ID4gPiA+ID4gPiA+ID4gDQo+ID4gPiA+ID4gPiA+ID4gPiA+ID4g
-PiA+IEhhcmQgdG8ga25vdyBob3cgdGhhdCBoYXBwZW5lZCwgYW5kIGl0J3Mgbm90DQo+ID4gPiA+
-ID4gPiA+ID4gPiA+ID4gPiA+IHNob3duIGluDQo+ID4gPiA+ID4gPiA+ID4gPiA+ID4gPiA+IHRo
-ZSBiZWxvdy4NCj4gPiA+ID4gPiA+ID4gPiA+ID4gPiA+ID4gU291bmRzIGxpa2UgYSBidWcsIHRo
-b3VnaC4NCj4gPiA+ID4gPiA+ID4gPiA+ID4gPiA+IA0KPiA+ID4gPiA+ID4gPiA+ID4gPiA+ID4g
-Li4ub3IgYSBDdHJsLUMuLi4uDQo+ID4gPiA+ID4gPiA+ID4gPiA+ID4gDQo+ID4gPiA+ID4gPiA+
-ID4gPiA+ID4gSG93IGRvZXMgdGhhdCBoYXBwZW4/DQo+ID4gPiA+ID4gPiA+ID4gPiA+ID4gDQo+
-ID4gPiA+ID4gPiA+ID4gPiA+IA0KPiA+ID4gPiA+ID4gPiA+ID4gPiBJZiBJIG1heSBjaGltZSBp
-bi4uLg0KPiA+ID4gPiA+ID4gPiA+ID4gPiANCj4gPiA+ID4gPiA+ID4gPiA+ID4gQnJ1Y2UsIHdo
-ZW4gYW4gYXBwbGljYXRpb24gc2VuZHMgYSBDdHJsLUMgYW5kDQo+ID4gPiA+ID4gPiA+ID4gPiA+
-IGNsaWVudHMncw0KPiA+ID4gPiA+ID4gPiA+ID4gPiBzZXNzaW9uIHNsb3QNCj4gPiA+ID4gPiA+
-ID4gPiA+ID4gaGFzIHNlbnQgb3V0IGFuIFJQQyBidXQgZGlkbid0IHByb2Nlc3MgdGhlIHJlcGx5
-LA0KPiA+ID4gPiA+ID4gPiA+ID4gPiB0aGUNCj4gPiA+ID4gPiA+ID4gPiA+ID4gY2xpZW50IGRv
-ZXNuJ3QNCj4gPiA+ID4gPiA+ID4gPiA+ID4ga25vdyBpZiB0aGUgc2VydmVyIHByb2Nlc3NlZCB0
-aGF0IHNlcXVlbmNlIGlkIG9yDQo+ID4gPiA+ID4gPiA+ID4gPiA+IG5vdC4NCj4gPiA+ID4gPiA+
-ID4gPiA+ID4gSW4NCj4gPiA+ID4gPiA+ID4gPiA+ID4gdGhhdCBjYXNlLA0KPiA+ID4gPiA+ID4g
-PiA+ID4gPiB0aGUgY2xpZW50IGRvZXNuJ3QgaW5jcmVtZW50IHRoZSBzZXF1ZW5jZSBudW1iZXIu
-DQo+ID4gPiA+ID4gPiA+ID4gPiA+IE5vcm1hbGx5DQo+ID4gPiA+ID4gPiA+ID4gPiA+IHRoZSBj
-bGllbnQNCj4gPiA+ID4gPiA+ID4gPiA+ID4gd291bGQgaGFuZGxlIGdldHRpbmcgc3VjaCBhbiBl
-cnJvciBieSByZXRyeWluZw0KPiA+ID4gPiA+ID4gPiA+ID4gPiBhZ2Fpbg0KPiA+ID4gPiA+ID4g
-PiA+ID4gPiAoYW5kDQo+ID4gPiA+ID4gPiA+ID4gPiA+IHJlc2V0dGluZw0KPiA+ID4gPiA+ID4g
-PiA+ID4gPiB0aGUgc2xvdHMpIGJ1dCBJIHRoaW5rIGR1cmluZyByZWNvdmVyeSBvcGVyYXRpb24N
-Cj4gPiA+ID4gPiA+ID4gPiA+ID4gdGhlDQo+ID4gPiA+ID4gPiA+ID4gPiA+IGNsaWVudA0KPiA+
-ID4gPiA+ID4gPiA+ID4gPiBoYW5kbGVzDQo+ID4gPiA+ID4gPiA+ID4gPiA+IGVycm9ycyBkaWZm
-ZXJlbnRseSAoYnkganVzdCBlcnJvcmluZykuIEkgYmVsaWV2ZQ0KPiA+ID4gPiA+ID4gPiA+ID4g
-PiB0aGUNCj4gPiA+ID4gPiA+ID4gPiA+ID4gcmVhc29uaW5nIHRoYXQgd2UNCj4gPiA+ID4gPiA+
-ID4gPiA+ID4gZG9uJ3Qgd2FudCB0byBiZSBzdHVjayB0cnlpbmcgdG8gcmVjb3ZlciBmcm9tIHRo
-ZQ0KPiA+ID4gPiA+ID4gPiA+ID4gPiByZWNvdmVyeQ0KPiA+ID4gPiA+ID4gPiA+ID4gPiBmcm9t
-IHRoZQ0KPiA+ID4gPiA+ID4gPiA+ID4gPiByZWNvdmVyeSBldGMuLi4NCj4gPiA+ID4gPiA+ID4g
-PiA+IA0KPiA+ID4gPiA+ID4gPiA+ID4gU28gaW4gdGhhdCBjYXNlIHRoZSBjbGllbnQgY2FuIGVu
-ZCB1cCBzZW5kaW5nIGENCj4gPiA+ID4gPiA+ID4gPiA+IGRpZmZlcmVudA0KPiA+ID4gPiA+ID4g
-PiA+ID4gcnBjDQo+ID4gPiA+ID4gPiA+ID4gPiByZXVzaW5nDQo+ID4gPiA+ID4gPiA+ID4gPiB0
-aGUgb2xkIHNsb3QgYW5kIHNlcXVlbmNlIG51bWJlcj8NCj4gPiA+ID4gPiA+ID4gPiANCj4gPiA+
-ID4gPiA+ID4gPiBDb3JyZWN0Lg0KPiA+ID4gPiA+ID4gPiANCj4gPiA+ID4gPiA+ID4gU28gdGhh
-dCBjb3VsZCBnZXQgVU5DQUNIRURfUkVQIGFzIHRoZSByZXNwb25zZS7CoMKgQnV0IGlmDQo+ID4g
-PiA+ID4gPiA+IHlvdSdyZQ0KPiA+ID4gPiA+ID4gPiB2ZXJ5DQo+ID4gPiA+ID4gPiA+IHVubHVj
-a3ksIGNvdWxkbid0IHRoaXMgYWxzbyBoYXBwZW4/Og0KPiA+ID4gPiA+ID4gPiANCj4gPiA+ID4g
-PiA+ID4gwqDCoMKgwqDCoMKgwqDCoDEpIHRoZSBjb21wb3VuZCBwcmV2aW91c2x5IHNlbnQgb24g
-dGhhdCBzbG90IHdhcw0KPiA+ID4gPiA+ID4gPiBwcm9jZXNzZWQgYnkNCj4gPiA+ID4gPiA+ID4g
-wqDCoMKgwqDCoMKgwqDCoHRoZSBzZXJ2ZXIgYW5kIGNhY2hlZA0KPiA+ID4gPiA+ID4gPiDCoMKg
-wqDCoMKgwqDCoMKgMikgdGhlIGNvbXBvdW5kIHlvdSdyZSBzZW5kaW5nIG5vdyBoYXBwZW5zIHRv
-DQo+ID4gPiA+ID4gPiA+IGhhdmUNCj4gPiA+ID4gPiA+ID4gdGhlDQo+ID4gPiA+ID4gPiA+IHNh
-bWUgc2V0DQo+ID4gPiA+ID4gPiA+IMKgwqDCoMKgwqDCoMKgwqBvZiBvcGVyYXRpb25zDQo+ID4g
-PiA+ID4gPiA+IA0KPiA+ID4gPiA+ID4gPiB3aXRoIHRoZSByZXN1bHQgdGhhdCB0aGUgY2xpZW50
-IGRvZXNuJ3QgZGV0ZWN0IHRoYXQgdGhlDQo+ID4gPiA+ID4gPiA+IHJlcGx5DQo+ID4gPiA+ID4g
-PiA+IHdhcw0KPiA+ID4gPiA+ID4gPiBhY3R1YWxseSB0byBzb21lIG90aGVyIHJwYywgYW5kIGlu
-c3RlYWQgaXQgcmV0dXJucyBiYWQNCj4gPiA+ID4gPiA+ID4gZGF0YQ0KPiA+ID4gPiA+ID4gPiB0
-bw0KPiA+ID4gPiA+ID4gPiB0aGUNCj4gPiA+ID4gPiA+ID4gYXBwbGljYXRpb24/DQo+ID4gPiA+
-ID4gPiANCj4gPiA+ID4gPiA+IElmIHlvdSBhcmUgc2VuZGluZyBleGFjdGx5IHRoZSBzYW1lIG9w
-ZXJhdGlvbnMgYW5kDQo+ID4gPiA+ID4gPiBhcmd1bWVudHMsDQo+ID4gPiA+ID4gPiB0aGVuDQo+
-ID4gPiA+ID4gPiB3aHkNCj4gPiA+ID4gPiA+IGlzIGEgcmVwbHkgZnJvbSB0aGUgY2FjaGUgd291
-bGQgbGVhZCB0byBiYWQgZGF0YT8NCj4gPiA+ID4gPiANCj4gPiA+ID4gPiBUaGF0IHdvdWxkIHBy
-b2JhYmx5IGJlIGZpbmUsIEkgd2FzIHdvbmRlcmluZyB3aGF0IHdvdWxkDQo+ID4gPiA+ID4gaGFw
-cGVuIGlmDQo+ID4gPiA+ID4geW91DQo+ID4gPiA+ID4gc2VudCB0aGUgc2FtZSBvcGVyYXRpb24g
-YnV0IGRpZmZlcmVudCBhcmd1bWVudHMuDQo+ID4gPiA+IA0KPiA+ID4gPiA+IA0KPiA+ID4gPiA+
-IA0KPiA+ID4gPiA+IFNvIHRoZSBvcmlnaW5hbCBjYW5jZWxsZWQgb3BlcmF0aW9uIGlzIHNvbWV0
-aGluZyBsaWtlDQo+ID4gPiA+ID4gUFVURkgoZmgxKStPUEVOKCJmb28iKStHRVRGSCwgYW5kIHRo
-ZSBuZXcgb25lIGlzDQo+ID4gPiA+ID4gUFVURkgoZmgyKStPUEVOKCJiYXIiKStHRVRGSC7CoMKg
-SW4gdGhlb3J5IGNvdWxkbid0IHRoZSBzZWNvbmQNCj4gPiA+ID4gPiBvbmUNCj4gPiA+ID4gPiBz
-dWNjZWVkDQo+ID4gPiA+ID4gYW5kIGxlYXZlIHRoZSBjbGllbnQgdGhpbmtpbmcgaXQgaGFkIG9w
-ZW5lZCAoZmgyLCBiYXIpIHdoZW4NCj4gPiA+ID4gPiB0aGUNCj4gPiA+ID4gPiBmaWxlaGFuZGxl
-IGl0IGdvdCBiYWNrIHdhcyByZWFsbHkgZm9yIChmaDEsIGZvbyk/DQo+ID4gPiA+ID4gDQo+ID4g
-PiA+IA0KPiA+ID4gPiBUaGUgY2xpZW50IHdvdWxkIHJlY2VpdmUgYSBmaWxlaGFuZGxlIGZvciBm
-aDEvImZvbyIsIHNvIGl0DQo+ID4gPiA+IHdvdWxkDQo+ID4gPiA+IGFwcGx5DQo+ID4gPiA+IGFu
-eSBzdGF0ZSBpdCB0aG91Z2h0IGl0IGhhZCByZWNlaXZlZCB0byB0aGF0IGZpbGUuIEhvd2V2ZXIs
-DQo+ID4gPiA+IG5vcm1hbGx5LA0KPiA+ID4gPiBJJ2QgZXhwZWN0IHRvIHNlZSBhIE5GUzRFUlJf
-RkFMU0VfUkVUUlkgaW4gdGhpcyBjYXNlLg0KPiA+ID4gDQo+ID4gPiBJIHNlZSBCcnVjZSdzIHBv
-aW50IHRoYXQgaWYgdGhlIHNlcnZlciBvbmx5IGxvb2tzIHVwIHRoZSBjYWNoZQ0KPiA+ID4gYmFz
-ZWQNCj4gPiA+IG9uIHRoZSBzZXFpZCBhbmQgc2xvdCMgYW5kIGRvZXNuJ3QgaGF2ZSBsaWtlIGEg
-aGFzaCBvZiB0aGUNCj4gPiA+IGNvbnRlbnQNCj4gPiA+IHdoaWNoIEkgY291bGQgc2VlIGlzIGV4
-cGVuc2l2ZSwgdGhlbiB0aGUgY2xpZW50IGluIHRoaXMgY2FzZQ0KPiA+ID4gd291bGQNCj4gPiA+
-IGdldA0KPiA+ID4gaW50byB0cm91YmxlIG9mIHRoaW5raW5nIGl0IG9wZW5lZCAiYmFyIiBidXQg
-cmVhbGx5IGl0J3MgImZvbyIuDQo+ID4gPiBTcGVjDQo+ID4gPiBzYXlzOg0KPiA+ID4gDQo+ID4g
-PiBTZWN0aW9uIDE4LjQ2LjMNCj4gPiA+IElmIHRoZSBjbGllbnQgcmV1c2VzIGEgc2xvdCBJRCBh
-bmQgc2VxdWVuY2UgSUQgZm9yIGEgY29tcGxldGVseQ0KPiA+ID4gwqDCoMKgZGlmZmVyZW50IHJl
-cXVlc3QsIHRoZSBzZXJ2ZXIgTUFZIHRyZWF0IHRoZSByZXF1ZXN0IGFzIGlmIGl0DQo+ID4gPiBp
-cyBhDQo+ID4gPiDCoMKgwqByZXRyeSBvZiB3aGF0IGl0IGhhcyBhbHJlYWR5IGV4ZWN1dGVkLsKg
-wqBUaGUgc2VydmVyIE1BWSBob3dldmVyDQo+ID4gPiBkZXRlY3QNCj4gPiA+IMKgwqDCoHRoZSBj
-bGllbnQncyBpbGxlZ2FsIHJldXNlIGFuZCByZXR1cm4gTkZTNEVSUl9TRVFfRkFMU0VfUkVUUlku
-DQo+ID4gPiANCj4gPiA+IFdoYXQgaXMgImEgY29tcGxldGVseSBkaWZmZXJlbnQgcmVxdWVzdCIu
-IEZyb20gdGhlIGNsaWVudCdzIHBvaW50DQo+ID4gPiBvZg0KPiA+ID4gdmlldyBzZW5kaW5nIGRp
-ZmZlcmVudCBhcmdzIHdvdWxkIGNvbnN0aXR1dGUgYSBkaWZmZXJlbnQgcmVxdWVzdC4NCj4gPiA+
-IEJ1dA0KPiA+ID4gaW4gYW55IGNhc2UgaXQncyBhICJNQVkiIHNvIGNsaWVudCBjYW4ndCBkZXBl
-bmQgb24gdGhpcyBiZWluZw0KPiA+ID4gaW1wbGVtZW50ZWQuDQo+ID4gPiANCj4gPiANCj4gPiBX
-aGF0J3MgdGhlIGFsdGVybmF0aXZlPyBBc3N1bWUgdGhlIGNsaWVudCBwcmUtZW1wdGl2ZWx5IGJ1
-bXBzIHRoZQ0KPiA+IHNlcWlkDQo+ID4gaW5zdGVhZCBvZiByZXRyeWluZywgdGhlbiB0aGUgdXNl
-ciBwcmVzc2VzIEN0cmwtQyBhZ2Fpbi4gUmVwZWF0IGENCj4gPiBmZXcNCj4gPiBtb3JlIHRpbWVz
-LiBIb3cgZG8gSSBub3cgcmVzeW5jIHRoZSBzZXFpZHMgYmV0d2VlbiB0aGUgY2xpZW50IGFuZA0K
-PiA+IHNlcnZlciBvdGhlciB0aGFuIGJ5IHRyYXNoaW5nIHRoZSBzZXNzaW9uPw0KPiANCj4gSSBk
-b24ndCBzZWUgYW55IGFsdGVybmF0aXZlcyB0aGFuIHRvIHJlc2V0IGluIHRoYXQgY2FzZS4gQnV0
-IEkgdGhpbmsNCj4gaXQncyBiZXR0ZXIgdGhlbiB0aGUgcG9zc2liaWxpdHkgb2YgYWNjaWRlbnRh
-bGx5IG9wZW5pbmcgYSB3cm9uZw0KPiBmaWxlPw0KDQpUaGV5IHNvdW5kIGVxdWFsbHkgYmFkIHRv
-IG1lIHdoaWNoIGlzIHdoeSBJJ20gbm90IHVuZGVyc3RhbmRpbmcgaG93IGENCnNlcnZlciB3b3Vs
-ZCBmYWlsIHRvIGltcGxlbWVudCBzb21lIG1pbmltYWwgZm9ybSBvZiBmYWxzZSByZXRyeQ0KY2hl
-Y2tpbmcuDQpUaGUgTGludXggTkZTdjMgRFJDIHdpbGwsIGZvciBpbnN0YW5jZSwgY2hlY2tzdW0g
-YXQgbGVhc3Qgc29tZSBwYXJ0IG9mDQp0aGUgUlBDIGFyZ3VtZW50cyBmb3IgX2FsbF8gUlBDIGNh
-bGxzLiBNb3N0IE5GU3Y0LnggY2xpZW50cyB3aWxsIG9ubHkNCmFzayB0aGF0IHlvdSBjaGVja3N1
-bSB0aGUgbm9uLWlkZW1wb3RlbnQgUlBDIGNhbGxzLCB3aGljaCBzaWduaWZpY2FudGx5DQpjdXRz
-IGRvd24gb24gdGhlIGNhbGN1bGF0aW9uIG92ZXJoZWFkLg0K
+--=-=-=
+Content-Type: text/plain
+Content-Transfer-Encoding: quoted-printable
 
+
+PING again
+
+Thanks,
+NeilBrown
+
+On Fri, Jul 22 2016, NeilBrown wrote:
+
+> PING .... any comments on this patch, or the problem it tries to
+> address?
+>
+> Thanks,
+> NeilBrown
+>
+>
+> On Fri, Jun 03 2016, NeilBrown wrote:
+>
+>> When a byte range lock (or flock) is taken out on an NFS file, the
+>> validity of the cached data is checked and the inode is marked
+>> NFS_INODE_INVALID_DATA.  However the cached data isn't flushed from
+>> the page cache.
+>>
+>> This is sufficient for future read() requests or mmap() requests as
+>> they call nfs_revalidate_mapping() which performs the flush if
+>> necessary.
+>>
+>> However an existing mapping is not affected.  Accessing data through
+>> that mapping will continue to return old data even though the inode is
+>> marked NFS_INODE_INVALID_DATA.
+>>
+>> This can easily be confirmed using the 'nfs' tool in
+>>   git://github.com/okirch/twopence-nfs.git
+>> and running
+>>
+>>    nfs coherence FILENAME
+>> on one client, and
+>>    nfs coherence -r FILENAME
+>> on another client.
+>>
+>> It appears that prior to Linux 2.6.0 this worked correctly.
+>>
+>> However commit:
+>>
+>> http://git.kernel.org/cgit/linux/kernel/git/history/history.git/commit/?=
+id=3Dca9268fe3ddd075714005adecd4afbd7f9ab87d0
+>>
+>> removed the call to inode_invalidate_pages() from nfs_zap_caches().  I
+>> haven't tested this code, but inspection suggests that prior to this
+>> commit, file locking would invalidate all inode pages.
+>>
+>> This patch adds a call to nfs_revalidate_mapping_protected() after a
+>> successful SETLK so that invalid data is flushed.  With this patch the
+>> above test passes.
+>>
+>> Cc: Olaf Kirch <okir@suse.com>
+>> Signed-off-by: NeilBrown <neilb@suse.com>
+>> ---
+>>  fs/nfs/file.c | 1 +
+>>  1 file changed, 1 insertion(+)
+>>
+>> diff --git a/fs/nfs/file.c b/fs/nfs/file.c
+>> index 717a8d6af52d..781cc6c9c60b 100644
+>> --- a/fs/nfs/file.c
+>> +++ b/fs/nfs/file.c
+>> @@ -822,6 +822,7 @@ do_setlk(struct file *filp, int cmd, struct file_loc=
+k *fl, int is_local)
+>>  			__nfs_revalidate_inode(NFS_SERVER(inode), inode);
+>>  		else
+>>  			nfs_zap_caches(inode);
+>> +		nfs_revalidate_mapping_protected(inode, filp->f_mapping);
+>>  	}
+>>  out:
+>>  	return status;
+>> --=20
+>> 2.8.3
+
+--=-=-=
+Content-Type: application/pgp-signature; name="signature.asc"
+
+-----BEGIN PGP SIGNATURE-----
+
+iQIcBAEBCAAGBQJYLoUPAAoJEDnsnt1WYoG5ZIsQAI+14wJvtOQKQM92vC/hvOb4
+Ruhq4lGi9/34KHYCKqFSRRjLdjJbcl2zn122tfdKPbkwoWVFvjYAFbwirFJRq+Pd
+RayDBO1cp/cvWZMxuXhJr2E+GY+tofJdno0l97aseqwUM0s/WCmfW0s3M54qkgic
+nEFB11ERUpgWHRgLmoPxVxLPlYTH0ZK+w6Y9KAzmCK/sBlKug8YtNjzE57kAj4sD
+EFENO4S43cC1ek1i8zKRPgKYan2fSiRcy05V7B/TysR387JveLAJVEXa1/G7Y2RU
+Bm9yVNKoaKfoVZheWv7GlynlyiWfzR3/83776uK1NH7dIFzH42/0xEJBV/HrmRjk
+6G2AcIGkQDnrtP9Dya7XghQIJNq2vW2x3BBqCBys92QqtR6yYrAKqOIj+Pcmz4p4
+sr/KqZdgSghhBPKHa2gu8U5OgpBzEJfbAjgkWAG4ctTQaZaBoIMz2JAp6hmT38mX
+Bnou8WDAfnu8G+2oiw4f428mN2FuEKnEXFoW/iA64EyQykx03OIhHlw68BGZTwZ3
+Vpze23g1+MEIjwGwaYjNTM4HGtDcpwJhFh2EDZCqLsuWZ9h7xnQZNFErcrC/c1Fj
+VdKfHaqJ3d6e3n1hn88V0hQXT2DA1wSJ48MvwrUjAC6AAzc5BguAQmrnnnxxHR4J
+r8M/ckYmb7q/kJI6X8sD
+=XffX
+-----END PGP SIGNATURE-----
+--=-=-=--
