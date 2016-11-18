@@ -1,14 +1,13 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-it0-f68.google.com ([209.85.214.68]:33649 "EHLO
-        mail-it0-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1754339AbcKRPKo (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 18 Nov 2016 10:10:44 -0500
-Subject: [PATCH v2 04/10] svcrdma: Remove BH-disabled spin locking in
- svc_rdma_send()
+Received: from mail-oi0-f67.google.com ([209.85.218.67]:36073 "EHLO
+        mail-oi0-f67.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1754409AbcKRPLA (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 18 Nov 2016 10:11:00 -0500
+Subject: [PATCH v2 06/10] svcrdma: Remove svc_rdma_op_ctxt::wc_status
 From: Chuck Lever <chuck.lever@oracle.com>
 To: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Fri, 18 Nov 2016 10:10:42 -0500
-Message-ID: <20161118151042.13658.14175.stgit@klimt.1015granger.net>
+Date: Fri, 18 Nov 2016 10:10:58 -0500
+Message-ID: <20161118151058.13658.72946.stgit@klimt.1015granger.net>
 In-Reply-To: <20161118145940.13658.59105.stgit@klimt.1015granger.net>
 References: <20161118145940.13658.59105.stgit@klimt.1015granger.net>
 MIME-Version: 1.0
@@ -16,119 +15,53 @@ Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-svcrdma's current SQ accounting algorithm takes sc_lock and disables
-bottom-halves while posting all RDMA Read, Write, and Send WRs.
-
-This is relatively heavyweight serialization. And note that Write and
-Send are already fully serialized by the xpt_mutex.
-
-Using a single atomic_t should be all that is necessary to guarantee
-that ib_post_send() is called only when there is enough space on the
-send queue. This is what the other RDMA-enabled storage targets do.
+Clean up: Completion status is already reported in the individual
+completion handlers. Save a few bytes in struct svc_rdma_op_ctxt.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- include/linux/sunrpc/svc_rdma.h          |    2 +-
- net/sunrpc/xprtrdma/svc_rdma_sendto.c    |    7 ++++++-
- net/sunrpc/xprtrdma/svc_rdma_transport.c |   25 ++++++++++---------------
- 3 files changed, 17 insertions(+), 17 deletions(-)
+ include/linux/sunrpc/svc_rdma.h          |    1 -
+ net/sunrpc/xprtrdma/svc_rdma_recvfrom.c  |    4 ++--
+ net/sunrpc/xprtrdma/svc_rdma_transport.c |    1 -
+ 3 files changed, 2 insertions(+), 4 deletions(-)
 
 diff --git a/include/linux/sunrpc/svc_rdma.h b/include/linux/sunrpc/svc_rdma.h
-index 6aef63b..601cb07 100644
+index 43d7c70..757fb96 100644
 --- a/include/linux/sunrpc/svc_rdma.h
 +++ b/include/linux/sunrpc/svc_rdma.h
-@@ -139,7 +139,7 @@ struct svcxprt_rdma {
- 	int                  sc_max_sge_rd;	/* max sge for read target */
- 	bool		     sc_snd_w_inv;	/* OK to use Send With Invalidate */
+@@ -79,7 +79,6 @@ struct svc_rdma_op_ctxt {
+ 	struct ib_cqe reg_cqe;
+ 	struct ib_cqe inv_cqe;
+ 	struct list_head dto_q;
+-	enum ib_wc_status wc_status;
+ 	u32 byte_len;
+ 	u32 position;
+ 	struct svcxprt_rdma *xprt;
+diff --git a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
+index 283246e..428ab4ef 100644
+--- a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
++++ b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
+@@ -640,8 +640,8 @@ int svc_rdma_recvfrom(struct svc_rqst *rqstp)
+ 			goto defer;
+ 		goto out;
+ 	}
+-	dprintk("svcrdma: processing ctxt=%p on xprt=%p, rqstp=%p, status=%d\n",
+-		ctxt, rdma_xprt, rqstp, ctxt->wc_status);
++	dprintk("svcrdma: processing ctxt=%p on xprt=%p, rqstp=%p\n",
++		ctxt, rdma_xprt, rqstp);
+ 	atomic_inc(&rdma_stat_recv);
  
--	atomic_t             sc_sq_count;	/* Number of SQ WR on queue */
-+	atomic_t             sc_sq_avail;	/* SQEs ready to be consumed */
- 	unsigned int	     sc_sq_depth;	/* Depth of SQ */
- 	unsigned int	     sc_rq_depth;	/* Depth of RQ */
- 	u32		     sc_max_requests;	/* Forward credits */
-diff --git a/net/sunrpc/xprtrdma/svc_rdma_sendto.c b/net/sunrpc/xprtrdma/svc_rdma_sendto.c
-index 0a58d40..30eeab5 100644
---- a/net/sunrpc/xprtrdma/svc_rdma_sendto.c
-+++ b/net/sunrpc/xprtrdma/svc_rdma_sendto.c
-@@ -594,7 +594,12 @@ int svc_rdma_sendto(struct svc_rqst *rqstp)
- 		goto err0;
- 	inline_bytes = rqstp->rq_res.len;
- 
--	/* Create the RDMA response header */
-+	/* Create the RDMA response header. xprt->xpt_mutex,
-+	 * acquired in svc_send(), serializes RPC replies. The
-+	 * code path below that inserts the credit grant value
-+	 * into each transport header runs only inside this
-+	 * critical section.
-+	 */
- 	ret = -ENOMEM;
- 	res_page = alloc_page(GFP_KERNEL);
- 	if (!res_page)
+ 	/* Build up the XDR from the receive buffers. */
 diff --git a/net/sunrpc/xprtrdma/svc_rdma_transport.c b/net/sunrpc/xprtrdma/svc_rdma_transport.c
-index 6864fb9..da990d7 100644
+index a613ebd..f9d961c 100644
 --- a/net/sunrpc/xprtrdma/svc_rdma_transport.c
 +++ b/net/sunrpc/xprtrdma/svc_rdma_transport.c
-@@ -434,7 +434,7 @@ static void svc_rdma_send_wc_common(struct svcxprt_rdma *xprt,
- 		goto err;
+@@ -393,7 +393,6 @@ static void svc_rdma_wc_receive(struct ib_cq *cq, struct ib_wc *wc)
  
- out:
--	atomic_dec(&xprt->sc_sq_count);
-+	atomic_inc(&xprt->sc_sq_avail);
- 	wake_up(&xprt->sc_send_wait);
- 	return;
+ 	/* WARNING: Only wc->wr_cqe and wc->status are reliable */
+ 	ctxt = container_of(cqe, struct svc_rdma_op_ctxt, cqe);
+-	ctxt->wc_status = wc->status;
+ 	svc_rdma_unmap_dma(ctxt);
  
-@@ -1008,6 +1008,7 @@ static struct svc_xprt *svc_rdma_accept(struct svc_xprt *xprt)
- 	newxprt->sc_rq_depth = newxprt->sc_max_requests +
- 			       newxprt->sc_max_bc_requests;
- 	newxprt->sc_sq_depth = RPCRDMA_SQ_DEPTH_MULT * newxprt->sc_rq_depth;
-+	atomic_set(&newxprt->sc_sq_avail, newxprt->sc_sq_depth);
- 
- 	if (!svc_rdma_prealloc_ctxts(newxprt))
- 		goto errout;
-@@ -1333,15 +1334,13 @@ int svc_rdma_send(struct svcxprt_rdma *xprt, struct ib_send_wr *wr)
- 
- 	/* If the SQ is full, wait until an SQ entry is available */
- 	while (1) {
--		spin_lock_bh(&xprt->sc_lock);
--		if (xprt->sc_sq_depth < atomic_read(&xprt->sc_sq_count) + wr_count) {
--			spin_unlock_bh(&xprt->sc_lock);
-+		if ((atomic_sub_return(wr_count, &xprt->sc_sq_avail) < 0)) {
- 			atomic_inc(&rdma_stat_sq_starve);
- 
- 			/* Wait until SQ WR available if SQ still full */
-+			atomic_add(wr_count, &xprt->sc_sq_avail);
- 			wait_event(xprt->sc_send_wait,
--				   atomic_read(&xprt->sc_sq_count) <
--				   xprt->sc_sq_depth);
-+				   atomic_read(&xprt->sc_sq_avail) > wr_count);
- 			if (test_bit(XPT_CLOSE, &xprt->sc_xprt.xpt_flags))
- 				return -ENOTCONN;
- 			continue;
-@@ -1351,21 +1350,17 @@ int svc_rdma_send(struct svcxprt_rdma *xprt, struct ib_send_wr *wr)
- 			svc_xprt_get(&xprt->sc_xprt);
- 
- 		/* Bump used SQ WR count and post */
--		atomic_add(wr_count, &xprt->sc_sq_count);
- 		ret = ib_post_send(xprt->sc_qp, wr, &bad_wr);
- 		if (ret) {
- 			set_bit(XPT_CLOSE, &xprt->sc_xprt.xpt_flags);
--			atomic_sub(wr_count, &xprt->sc_sq_count);
- 			for (i = 0; i < wr_count; i ++)
- 				svc_xprt_put(&xprt->sc_xprt);
--			dprintk("svcrdma: failed to post SQ WR rc=%d, "
--			       "sc_sq_count=%d, sc_sq_depth=%d\n",
--			       ret, atomic_read(&xprt->sc_sq_count),
--			       xprt->sc_sq_depth);
--		}
--		spin_unlock_bh(&xprt->sc_lock);
--		if (ret)
-+			dprintk("svcrdma: failed to post SQ WR rc=%d\n", ret);
-+			dprintk("    sc_sq_avail=%d, sc_sq_depth=%d\n",
-+				atomic_read(&xprt->sc_sq_avail),
-+				xprt->sc_sq_depth);
- 			wake_up(&xprt->sc_send_wait);
-+		}
- 		break;
- 	}
- 	return ret;
+ 	if (wc->status != IB_WC_SUCCESS)
 
