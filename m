@@ -1,104 +1,91 @@
-Return-Path: <neilb@suse.de>
+Return-Path: <linux-nfs-owner@vger.kernel.org>
+Received: from mx2.suse.de ([195.135.220.15]:40963 "EHLO mx2.suse.de"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1751166AbcKRFBR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 18 Nov 2016 00:01:17 -0500
 From: NeilBrown <neilb@suse.com>
-To: Jeff Layton <jlayton@redhat.com>,
+To: Andy Adamson <andros@netapp.com>,
         Trond Myklebust <trond.myklebust@primarydata.com>,
         Anna Schumaker <anna.schumaker@netapp.com>
-Date: Fri, 18 Nov 2016 15:59:19 +1100
-Cc: Benjamin Coddington <bcodding@redhat.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 0/6] NFSv4: Fix stateid used when flock locks in use. - V2
-In-Reply-To: <8737jtz5nf.fsf@notabene.neil.brown.name>
-References: <147633263771.766.17853370901003798934.stgit@noble> <1476372661.12134.14.camel@redhat.com> <8737jtz5nf.fsf@notabene.neil.brown.name>
-Message-ID: <878tshfkns.fsf@notabene.neil.brown.name>
+Date: Fri, 18 Nov 2016 16:01:09 +1100
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] NFSv4.1: nfs4_fl_prepare_ds must be careful about reporting success.
+In-Reply-To: <87lgxiwoxi.fsf@notabene.neil.brown.name>
+References: <87lgxiwoxi.fsf@notabene.neil.brown.name>
+Message-ID: <8760nlfkkq.fsf@notabene.neil.brown.name>
 MIME-Version: 1.0
 Content-Type: multipart/signed; boundary="=-=-=";
-	micalg=pgp-sha256; protocol="application/pgp-signature"
+        micalg=pgp-sha256; protocol="application/pgp-signature"
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 --=-=-=
 Content-Type: text/plain
+Content-Transfer-Encoding: quoted-printable
 
 
-Hi all,
- what is the status here.  I don't see these in linux-next, nor do I see
- any issues raise with them.
- Is there any chance they can get into 4.10??
+Ping?
+No sign of this in linux-next, and no replies....
 
 Thanks,
 NeilBrown
 
 
-On Wed, Oct 19 2016, NeilBrown wrote:
+On Fri, Oct 21 2016, NeilBrown wrote:
 
-> [ Unknown signature status ]
-> On Fri, Oct 14 2016, Jeff Layton wrote:
 >
->>
->> This all looks good to me aside from some minor documentation nits.
->> Kudos too on doing this with a net removal of code. :)
->>
->> Reviewed-by: Jeff Layton <jlayton@redhat.com>
+> Various places assume that if nfs4_fl_prepare_ds() turns a non-NULL
+> 'ds', then ds->ds_clp will also be non-NULL.
 >
-> Thanks.
+> This is not necessasrily true in the case when the process received a
+> fatal signal while nfs4_pnfs_ds_connect is waiting in
+> nfs4_wait_ds_connect().  In that case ->ds_clp may not be set, and the
+> devid may not recently have been marked unavailable.
 >
-> The full series, with Reviewed-by added, is available as below if
-> a "git pull" is easier that plucking them out of emails
+> So add a test for ->ds_clp =3D=3D NULL and return NULL in that case.
 >
-> NeilBrown
+> Fixes: c23266d532b4 ("NFS4.1 Fix data server connection race")
+> Signed-off-by: NeilBrown <neilb@suse.com>
+> ---
+>  fs/nfs/filelayout/filelayoutdev.c | 3 ++-
+>  1 file changed, 2 insertions(+), 1 deletion(-)
 >
->
-> The following changes since commit 1001354ca34179f3db924eb66672442a173147dc:
->
->   Linux 4.9-rc1 (2016-10-15 12:17:50 -0700)
->
-> are available in the git repository at:
->
->   git://neil.brown.name/linux tags/nfs-flock-fix
->
-> for you to fetch changes up to 077829bfd0e32131b49d87476b69a189e8e13ae8:
->
->   NFS: discard nfs_lockowner structure. (2016-10-19 08:44:25 +1100)
->
-> ----------------------------------------------------------------
-> Series to fix NFSv4 stateid used for flock locks
->
-> ----------------------------------------------------------------
-> NeilBrown (6):
->       NFS: remove l_pid field from nfs_lockowner
->       NFSv4: add flock_owner to open context
->       NFSv4: change nfs4_do_setattr to take an open_context instead of a nfs4_state.
->       NFSv4: change nfs4_select_rw_stateid to take a lock_context inplace of lock_owner
->       NFSv4: enhance nfs4_copy_lock_stateid to use a flock stateid if there is one
->       NFS: discard nfs_lockowner structure.
->
->  fs/nfs/dir.c           |  6 +++---
->  fs/nfs/inode.c         | 14 +++++++-------
->  fs/nfs/nfs4_fs.h       |  2 +-
->  fs/nfs/nfs4file.c      |  2 +-
->  fs/nfs/nfs4proc.c      | 44 +++++++++++++++++++-------------------------
->  fs/nfs/nfs4state.c     | 49 ++++++++++++++++++++++++++++++++-----------------
->  fs/nfs/pagelist.c      |  3 +--
->  fs/nfs/write.c         |  3 +--
->  include/linux/nfs_fs.h | 10 +++-------
->  9 files changed, 68 insertions(+), 65 deletions(-)
+> diff --git a/fs/nfs/filelayout/filelayoutdev.c b/fs/nfs/filelayout/filela=
+youtdev.c
+> index 4946ef40ba87..85ef38f9765f 100644
+> --- a/fs/nfs/filelayout/filelayoutdev.c
+> +++ b/fs/nfs/filelayout/filelayoutdev.c
+> @@ -283,7 +283,8 @@ nfs4_fl_prepare_ds(struct pnfs_layout_segment *lseg, =
+u32 ds_idx)
+>  			     s->nfs_client->cl_rpcclient->cl_auth->au_flavor);
+>=20=20
+>  out_test_devid:
+> -	if (filelayout_test_devid_unavailable(devid))
+> +	if (ret->ds_clp =3D=3D NULL ||
+> +	    filelayout_test_devid_unavailable(devid))
+>  		ret =3D NULL;
+>  out:
+>  	return ret;
+> --=20
+> 2.10.1
 
 --=-=-=
 Content-Type: application/pgp-signature; name="signature.asc"
 
 -----BEGIN PGP SIGNATURE-----
 
-iQIcBAEBCAAGBQJYLoqnAAoJEDnsnt1WYoG5QDMP/Rky62kTTFXEECFSeSLJ//RO
-ZjBalBE2Ux+96NLED5TPOhXOagd56wEV6lNE9wiXslnNbNs9Z2cnS5sLU+3BXVsk
-uOsSGHxUF3HDtCohjxvekJ7ozy3yQelo3VwOipT84ayaT4bBtfaWcLbXzI8QV6m4
-arD5lHwY49hYbZdt4NkTSkFrUhHi3W4deswehP3hA/X3EZxRlvMKLDxBCKG8FPxd
-tY+oLWPOKhtqU0Qs+ppZjw9Hwib04k0JJgyLz9NE0EfnG45kEGpwdktKPqEKxLyi
-g4Rqlk3Zkyn/N3X9VS1E5W6qKZ6oIj/KNTXn5K2D6cNLWSiu3NBBS/DFchYV3AvJ
-OZe5KNUPrepYhfUEfPmQmLjiWjvyUxhT7ot+8GMFNGj740q4ppM8iZEGBj2vAy6G
-jpd0938xjGkGQaSDDXgq2OxVnt6uPvPVwnRjrV4NLkvDJtU6BRdj28UjxmgEaS4/
-rutwrjc170HMR/tjqLBqyJ90/5inPZBpAy8l0NTyo4kLPIebE0MftUaphnP6vkW8
-r1Hx0IUkpO3exUkWCzDuDiYy8qtJCoBsNBdH7g5o+m+t2N6gP06lPfVBTutckUQB
-AzK93cLFY+R1M0dWoJrF0zTSk+Ju0265FhmQTtN58MCRxN+NJ+/ivf2ay8LfoHoK
-5mrCH1hJdDRRYsPctUUU
-=y3Aq
+iQIcBAEBCAAGBQJYLosWAAoJEDnsnt1WYoG5C3EQAMSOb7i69dLdAdfagrVeFBwU
+3LM0uaYY8x2r4eS0qtbOATYZEXnW9Rg9dbDlaV5FjQPmxlL13vTpRAkVvssRV1nm
+yIqoYu/DweFZM0pbZTvCz2NWDkkhj5bb2GqQEln/ba+CJj/Jbv91N+DJgQ47cjtq
++BQoExKzDTDRI0ysKswqfIibcA5QUv/WqvqaOLzIYqjDG/s0aQwUSfuKAsf2n/ZS
+KpE4gJRhhVd3XI/zMKrb8GNdte2jc7sawt85dvz6IaqcYSWSusoutONOSPOCgVyP
+YOxMXIlu3onCxvQR0F2m1QB9COxcF99eK/qxknXsfxVlQdo6pF5TzVSYSzy2fC/o
++RqnyRyaC/lo7jl/T9AUE914Bw4ujt3QgsK/W+bBfhn1CPKo3XKNxpq2JHuw/NhV
+Y+FnBuyiYjhlXLe44RIiUALbN378m5W9VWuHG9/ZQxskS+NzXgItwS/FsLN1NAah
+W7bc27gp8RKAz6SSfFmeyE7QxxgDwxv6ZcQFF7nlK/wFPp5nfmpi5Fuw2zVa2g+s
+d3XxEOWiDEZAyXOznJoYr/kN4Ex2AyjaJ4bV9BtVPv0pFOzqB/iy1fjPCuUZHcYY
++5Ty5MFlyk2RNzMKczdgtIeXU4fFDlITFTu5YcSfV1kB+OtPF0a8tqjPU+OdH6/B
+Z7V9++sc3JZypOvushnN
+=I/Dl
 -----END PGP SIGNATURE-----
 --=-=-=--
