@@ -1,13 +1,14 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-it0-f66.google.com ([209.85.214.66]:35188 "EHLO
-        mail-it0-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1752314AbcKRO7G (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 18 Nov 2016 09:59:06 -0500
-Subject: [PATCH v2 01/12] xprtrdma: Cap size of callback buffer resources
+Received: from mail-it0-f65.google.com ([209.85.214.65]:35216 "EHLO
+        mail-it0-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1752298AbcKRO7O (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 18 Nov 2016 09:59:14 -0500
+Subject: [PATCH v2 02/12] xprtrdma: Make FRWR send queue entry accounting
+ more accurate
 From: Chuck Lever <chuck.lever@oracle.com>
 To: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Fri, 18 Nov 2016 09:59:03 -0500
-Message-ID: <20161118145903.10592.46014.stgit@manet.1015granger.net>
+Date: Fri, 18 Nov 2016 09:59:11 -0500
+Message-ID: <20161118145911.10592.50600.stgit@manet.1015granger.net>
 In-Reply-To: <20161118145547.10592.66470.stgit@manet.1015granger.net>
 References: <20161118145547.10592.66470.stgit@manet.1015granger.net>
 MIME-Version: 1.0
@@ -15,39 +16,148 @@ Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-When the inline threshold size is set to large values (say, 32KB)
-any NFSv4.1 CB request from the server gets a reply with status
-NFS4ERR_RESOURCE.
+Verbs providers may perform house-keeping on the Send Queue during
+each signaled send completion. It is necessary therefore for a verbs
+consumer (like xprtrdma) to occasionally force a signaled send
+completion if it runs unsignaled most of the time.
 
-Looks like there are some upper layer assumptions about the maximum
-size of a reply (for example, in process_op). Cap the size of the
-NFSv4 client's reply resources at a page.
+xprtrdma does not require signaled completions for Send or FastReg
+Work Requests, but does signal some LocalInv Work Requests. To
+ensure that Send Queue house-keeping can run before the Send Queue
+is more than half-consumed, xprtrdma forces a signaled completion
+on occasion by counting the number of Send Queue Entries it
+consumes. It currently does this by counting each ib_post_send as
+one Entry.
 
+Commit c9918ff56dfb ("xprtrdma: Add ro_unmap_sync method for FRWR")
+introduced the ability for frwr_op_unmap_sync to post more than one
+Work Request with a single post_send. Thus the underlying assumption
+of one Send Queue Entry per ib_post_send is no longer true.
+
+Also, FastReg Work Requests are currently never signaled. They
+should be signaled once in a while, just as Send is, to keep the
+accounting of consumed SQEs accurate.
+
+While we're here, convert the CQCOUNT macros to the currently
+preferred kernel coding style, which is inline functions.
+
+Fixes: c9918ff56dfb ("xprtrdma: Add ro_unmap_sync method for FRWR")
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- net/sunrpc/xprtrdma/backchannel.c |    4 +++-
- 1 file changed, 3 insertions(+), 1 deletion(-)
+ net/sunrpc/xprtrdma/frwr_ops.c  |   13 ++++++++++---
+ net/sunrpc/xprtrdma/verbs.c     |   10 ++--------
+ net/sunrpc/xprtrdma/xprt_rdma.h |   20 ++++++++++++++++++--
+ 3 files changed, 30 insertions(+), 13 deletions(-)
 
-diff --git a/net/sunrpc/xprtrdma/backchannel.c b/net/sunrpc/xprtrdma/backchannel.c
-index 2c472e1..24fedd4 100644
---- a/net/sunrpc/xprtrdma/backchannel.c
-+++ b/net/sunrpc/xprtrdma/backchannel.c
-@@ -55,7 +55,8 @@ static int rpcrdma_bc_setup_rqst(struct rpcrdma_xprt *r_xprt,
- 	if (IS_ERR(rb))
- 		goto out_fail;
- 	req->rl_sendbuf = rb;
--	xdr_buf_init(&rqst->rq_snd_buf, rb->rg_base, size);
-+	xdr_buf_init(&rqst->rq_snd_buf, rb->rg_base,
-+		     min_t(size_t, size, PAGE_SIZE));
- 	rpcrdma_set_xprtdata(rqst, req);
- 	return 0;
+diff --git a/net/sunrpc/xprtrdma/frwr_ops.c b/net/sunrpc/xprtrdma/frwr_ops.c
+index 26b26be..adbf52c 100644
+--- a/net/sunrpc/xprtrdma/frwr_ops.c
++++ b/net/sunrpc/xprtrdma/frwr_ops.c
+@@ -421,7 +421,7 @@
+ 			 IB_ACCESS_REMOTE_WRITE | IB_ACCESS_LOCAL_WRITE :
+ 			 IB_ACCESS_REMOTE_READ;
  
-@@ -191,6 +192,7 @@ size_t xprt_rdma_bc_maxpayload(struct rpc_xprt *xprt)
- 	size_t maxmsg;
+-	DECR_CQCOUNT(&r_xprt->rx_ep);
++	rpcrdma_set_signaled(&r_xprt->rx_ep, &reg_wr->wr);
+ 	rc = ib_post_send(ia->ri_id->qp, &reg_wr->wr, &bad_wr);
+ 	if (rc)
+ 		goto out_senderr;
+@@ -486,7 +486,7 @@
+ 	struct rpcrdma_ia *ia = &r_xprt->rx_ia;
+ 	struct rpcrdma_mw *mw, *tmp;
+ 	struct rpcrdma_frmr *f;
+-	int rc;
++	int count, rc;
  
- 	maxmsg = min_t(unsigned int, cdata->inline_rsize, cdata->inline_wsize);
-+	maxmsg = min_t(unsigned int, maxmsg, PAGE_SIZE);
- 	return maxmsg - RPCRDMA_HDRLEN_MIN;
- }
+ 	dprintk("RPC:       %s: req %p\n", __func__, req);
  
+@@ -496,6 +496,7 @@
+ 	 * a single ib_post_send() call.
+ 	 */
+ 	f = NULL;
++	count = 0;
+ 	invalidate_wrs = pos = prev = NULL;
+ 	list_for_each_entry(mw, &req->rl_registered, mw_list) {
+ 		if ((rep->rr_wc_flags & IB_WC_WITH_INVALIDATE) &&
+@@ -505,6 +506,7 @@
+ 		}
+ 
+ 		pos = __frwr_prepare_linv_wr(mw);
++		count++;
+ 
+ 		if (!invalidate_wrs)
+ 			invalidate_wrs = pos;
+@@ -523,7 +525,12 @@
+ 	f->fr_invwr.send_flags = IB_SEND_SIGNALED;
+ 	f->fr_cqe.done = frwr_wc_localinv_wake;
+ 	reinit_completion(&f->fr_linv_done);
+-	INIT_CQCOUNT(&r_xprt->rx_ep);
++
++	/* Initialize CQ count, since there is always a signaled
++	 * WR being posted here.  The new cqcount depends on how
++	 * many SQEs are about to be consumed.
++	 */
++	rpcrdma_init_cqcount(&r_xprt->rx_ep, count);
+ 
+ 	/* Transport disconnect drains the receive CQ before it
+ 	 * replaces the QP. The RPC reply handler won't call us
+diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
+index ec74289..451f5f2 100644
+--- a/net/sunrpc/xprtrdma/verbs.c
++++ b/net/sunrpc/xprtrdma/verbs.c
+@@ -532,7 +532,7 @@ static void rpcrdma_destroy_id(struct rdma_cm_id *id)
+ 	ep->rep_cqinit = ep->rep_attr.cap.max_send_wr/2 - 1;
+ 	if (ep->rep_cqinit <= 2)
+ 		ep->rep_cqinit = 0;	/* always signal? */
+-	INIT_CQCOUNT(ep);
++	rpcrdma_init_cqcount(ep, 0);
+ 	init_waitqueue_head(&ep->rep_connect_wait);
+ 	INIT_DELAYED_WORK(&ep->rep_connect_worker, rpcrdma_connect_worker);
+ 
+@@ -1311,13 +1311,7 @@ struct rpcrdma_regbuf *
+ 	dprintk("RPC:       %s: posting %d s/g entries\n",
+ 		__func__, send_wr->num_sge);
+ 
+-	if (DECR_CQCOUNT(ep) > 0)
+-		send_wr->send_flags = 0;
+-	else { /* Provider must take a send completion every now and then */
+-		INIT_CQCOUNT(ep);
+-		send_wr->send_flags = IB_SEND_SIGNALED;
+-	}
+-
++	rpcrdma_set_signaled(ep, send_wr);
+ 	rc = ib_post_send(ia->ri_id->qp, send_wr, &send_wr_fail);
+ 	if (rc)
+ 		goto out_postsend_err;
+diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
+index 6e1bba3..f6ae1b2 100644
+--- a/net/sunrpc/xprtrdma/xprt_rdma.h
++++ b/net/sunrpc/xprtrdma/xprt_rdma.h
+@@ -95,8 +95,24 @@ struct rpcrdma_ep {
+ 	struct delayed_work	rep_connect_worker;
+ };
+ 
+-#define INIT_CQCOUNT(ep) atomic_set(&(ep)->rep_cqcount, (ep)->rep_cqinit)
+-#define DECR_CQCOUNT(ep) atomic_sub_return(1, &(ep)->rep_cqcount)
++static inline void
++rpcrdma_init_cqcount(struct rpcrdma_ep *ep, int count)
++{
++	atomic_set(&ep->rep_cqcount, ep->rep_cqinit - count);
++}
++
++/* To update send queue accounting, provider must take a
++ * send completion every now and then.
++ */
++static inline void
++rpcrdma_set_signaled(struct rpcrdma_ep *ep, struct ib_send_wr *send_wr)
++{
++	send_wr->send_flags = 0;
++	if (unlikely(atomic_sub_return(1, &ep->rep_cqcount) <= 0)) {
++		rpcrdma_init_cqcount(ep, 0);
++		send_wr->send_flags = IB_SEND_SIGNALED;
++	}
++}
+ 
+ /* Pre-allocate extra Work Requests for handling backward receives
+  * and sends. This is a fixed value because the Work Queues are
 
