@@ -3,73 +3,96 @@ Sender: Trond Myklebust <trondmy@gmail.com>
 From: Trond Myklebust <trond.myklebust@primarydata.com>
 To: Benjamin Coddington <bcodding@redhat.com>
 Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH 1/3] NFS: Fix a performance regression in readdir
-Date: Sat, 19 Nov 2016 11:54:55 -0500
-Message-Id: <1479574497-38268-2-git-send-email-trond.myklebust@primarydata.com>
-In-Reply-To: <1479574497-38268-1-git-send-email-trond.myklebust@primarydata.com>
+Subject: [PATCH 2/3] NFS: Be more targeted about readdirplus use when doing lookup/revalidation
+Date: Sat, 19 Nov 2016 11:54:56 -0500
+Message-Id: <1479574497-38268-3-git-send-email-trond.myklebust@primarydata.com>
+In-Reply-To: <1479574497-38268-2-git-send-email-trond.myklebust@primarydata.com>
 References: <1479574497-38268-1-git-send-email-trond.myklebust@primarydata.com>
+ <1479574497-38268-2-git-send-email-trond.myklebust@primarydata.com>
 List-ID: <linux-nfs.vger.kernel.org>
 
-Ben Coddington reports that commit 311324ad1713, by adding the function
-nfs_dir_mapping_need_revalidate() that checks page cache validity on
-each call to nfs_readdir() causes a performance regression when
-the directory is being modified.
+There is little point in setting NFS_INO_ADVISE_RDPLUS in nfs_lookup and
+nfs_lookup_revalidate() unless a process is actually doing readdir on the
+parent directory.
+Furthermore, there is little point in using readdirplus if we're trying
+to revalidate a negative dentry.
 
-If the directory is changing while we're iterating through the directory,
-POSIX does not require us to invalidate the page cache unless the user
-calls rewinddir(). However, we still do want to ensure that we use
-readdirplus in order to avoid a load of stat() calls when the user
-is doing an 'ls -l' workload.
-
-The fix should be to invalidate the page cache immediately when we're
-setting the NFS_INO_ADVISE_RDPLUS bit.
-
-Reported-by: Benjamin Coddington <bcodding@redhat.com>
-Fixes: 311324ad1713 ("NFS: Be more aggressive in using readdirplus...")
 Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
 ---
- fs/nfs/dir.c | 15 ++-------------
- 1 file changed, 2 insertions(+), 13 deletions(-)
+ fs/nfs/dir.c | 28 +++++++++++++++++-----------
+ 1 file changed, 17 insertions(+), 11 deletions(-)
 
 diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
-index 5f1af4cd1a33..53e02b8bd9bd 100644
+index 53e02b8bd9bd..5befd382be7d 100644
 --- a/fs/nfs/dir.c
 +++ b/fs/nfs/dir.c
-@@ -477,7 +477,7 @@ void nfs_force_use_readdirplus(struct inode *dir)
+@@ -455,14 +455,23 @@ bool nfs_use_readdirplus(struct inode *dir, struct dir_context *ctx)
+ }
+ 
+ /*
+- * This function is called by the lookup code to request the use of
+- * readdirplus to accelerate any future lookups in the same
++ * This function is called by the lookup and getattr code to request the
++ * use of readdirplus to accelerate any future lookups in the same
+  * directory.
++ * Do this by checking if there is an active file descriptor
++ * and calling nfs_advise_use_readdirplus, then forcing a
++ * cache flush.
+  */
+ static
+ void nfs_advise_use_readdirplus(struct inode *dir)
  {
- 	if (!list_empty(&NFS_I(dir)->open_files)) {
- 		nfs_advise_use_readdirplus(dir);
--		nfs_zap_mapping(dir, dir->i_mapping);
+-	set_bit(NFS_INO_ADVISE_RDPLUS, &NFS_I(dir)->flags);
++	struct nfs_inode *nfsi = NFS_I(dir);
++
++	if (nfs_server_capable(dir, NFS_CAP_READDIRPLUS) &&
++	    !list_empty(&nfsi->open_files)) {
++		set_bit(NFS_INO_ADVISE_RDPLUS, &nfsi->flags);
 +		invalidate_mapping_pages(dir->i_mapping, 0, -1);
++	}
+ }
+ 
+ /*
+@@ -475,10 +484,7 @@ void nfs_advise_use_readdirplus(struct inode *dir)
+  */
+ void nfs_force_use_readdirplus(struct inode *dir)
+ {
+-	if (!list_empty(&NFS_I(dir)->open_files)) {
+-		nfs_advise_use_readdirplus(dir);
+-		invalidate_mapping_pages(dir->i_mapping, 0, -1);
+-	}
++	nfs_advise_use_readdirplus(dir);
+ }
+ 
+ static
+@@ -1150,7 +1156,7 @@ static int nfs_lookup_revalidate(struct dentry *dentry, unsigned int flags)
+ 				return -ECHILD;
+ 			goto out_bad;
+ 		}
+-		goto out_valid_noent;
++		goto out_valid;
  	}
- }
  
-@@ -886,17 +886,6 @@ int uncached_readdir(nfs_readdir_descriptor_t *desc)
- 	goto out;
- }
+ 	if (is_bad_inode(inode)) {
+@@ -1192,6 +1198,9 @@ static int nfs_lookup_revalidate(struct dentry *dentry, unsigned int flags)
+ 	if (IS_ERR(label))
+ 		goto out_error;
  
--static bool nfs_dir_mapping_need_revalidate(struct inode *dir)
--{
--	struct nfs_inode *nfsi = NFS_I(dir);
--
--	if (nfs_attribute_cache_expired(dir))
--		return true;
--	if (nfsi->cache_validity & NFS_INO_INVALID_DATA)
--		return true;
--	return false;
--}
--
- /* The file offset position represents the dirent entry number.  A
-    last cookie cache takes care of the common case of reading the
-    whole directory.
-@@ -928,7 +917,7 @@ static int nfs_readdir(struct file *file, struct dir_context *ctx)
- 	desc->decode = NFS_PROTO(inode)->decode_dirent;
- 	desc->plus = nfs_use_readdirplus(inode, ctx) ? 1 : 0;
- 
--	if (ctx->pos == 0 || nfs_dir_mapping_need_revalidate(inode))
-+	if (ctx->pos == 0 || nfs_attribute_cache_expired(inode))
- 		res = nfs_revalidate_mapping(inode, file->f_mapping);
- 	if (res < 0)
- 		goto out;
++	/* We need to force a revalidation: set a readdirplus hint */
++	nfs_advise_use_readdirplus(dir);
++
+ 	trace_nfs_lookup_revalidate_enter(dir, dentry, flags);
+ 	error = NFS_PROTO(dir)->lookup(dir, &dentry->d_name, fhandle, fattr, label);
+ 	trace_nfs_lookup_revalidate_exit(dir, dentry, flags, error);
+@@ -1211,9 +1220,6 @@ static int nfs_lookup_revalidate(struct dentry *dentry, unsigned int flags)
+ out_set_verifier:
+ 	nfs_set_verifier(dentry, nfs_save_change_attribute(dir));
+  out_valid:
+-	/* Success: notify readdir to use READDIRPLUS */
+-	nfs_advise_use_readdirplus(dir);
+- out_valid_noent:
+ 	if (flags & LOOKUP_RCU) {
+ 		if (parent != ACCESS_ONCE(dentry->d_parent))
+ 			return -ECHILD;
 -- 
 2.7.4
