@@ -3,96 +3,81 @@ Sender: Trond Myklebust <trondmy@gmail.com>
 From: Trond Myklebust <trond.myklebust@primarydata.com>
 To: Benjamin Coddington <bcodding@redhat.com>
 Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH 2/3] NFS: Be more targeted about readdirplus use when doing lookup/revalidation
-Date: Sat, 19 Nov 2016 11:54:56 -0500
-Message-Id: <1479574497-38268-3-git-send-email-trond.myklebust@primarydata.com>
-In-Reply-To: <1479574497-38268-2-git-send-email-trond.myklebust@primarydata.com>
+Subject: [PATCH 3/3] NFS: Replace nfs_force_use_readdirplus() with nfs_advise_use_readdirplus()
+Date: Sat, 19 Nov 2016 11:54:57 -0500
+Message-Id: <1479574497-38268-4-git-send-email-trond.myklebust@primarydata.com>
+In-Reply-To: <1479574497-38268-3-git-send-email-trond.myklebust@primarydata.com>
 References: <1479574497-38268-1-git-send-email-trond.myklebust@primarydata.com>
  <1479574497-38268-2-git-send-email-trond.myklebust@primarydata.com>
+ <1479574497-38268-3-git-send-email-trond.myklebust@primarydata.com>
 List-ID: <linux-nfs.vger.kernel.org>
 
-There is little point in setting NFS_INO_ADVISE_RDPLUS in nfs_lookup and
-nfs_lookup_revalidate() unless a process is actually doing readdir on the
-parent directory.
-Furthermore, there is little point in using readdirplus if we're trying
-to revalidate a negative dentry.
+Now that the two functions are the same, just merge them.
 
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com
 ---
- fs/nfs/dir.c | 28 +++++++++++++++++-----------
- 1 file changed, 17 insertions(+), 11 deletions(-)
+ fs/nfs/dir.c      | 14 --------------
+ fs/nfs/inode.c    |  2 +-
+ fs/nfs/internal.h |  2 +-
+ 3 files changed, 2 insertions(+), 16 deletions(-)
 
 diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
-index 53e02b8bd9bd..5befd382be7d 100644
+index 5befd382be7d..5ee9666fa8b4 100644
 --- a/fs/nfs/dir.c
 +++ b/fs/nfs/dir.c
-@@ -455,14 +455,23 @@ bool nfs_use_readdirplus(struct inode *dir, struct dir_context *ctx)
- }
- 
- /*
-- * This function is called by the lookup code to request the use of
-- * readdirplus to accelerate any future lookups in the same
-+ * This function is called by the lookup and getattr code to request the
-+ * use of readdirplus to accelerate any future lookups in the same
-  * directory.
-+ * Do this by checking if there is an active file descriptor
-+ * and calling nfs_advise_use_readdirplus, then forcing a
-+ * cache flush.
+@@ -462,7 +462,6 @@ bool nfs_use_readdirplus(struct inode *dir, struct dir_context *ctx)
+  * and calling nfs_advise_use_readdirplus, then forcing a
+  * cache flush.
   */
- static
+-static
  void nfs_advise_use_readdirplus(struct inode *dir)
  {
--	set_bit(NFS_INO_ADVISE_RDPLUS, &NFS_I(dir)->flags);
-+	struct nfs_inode *nfsi = NFS_I(dir);
-+
-+	if (nfs_server_capable(dir, NFS_CAP_READDIRPLUS) &&
-+	    !list_empty(&nfsi->open_files)) {
-+		set_bit(NFS_INO_ADVISE_RDPLUS, &nfsi->flags);
-+		invalidate_mapping_pages(dir->i_mapping, 0, -1);
-+	}
- }
- 
- /*
-@@ -475,10 +484,7 @@ void nfs_advise_use_readdirplus(struct inode *dir)
-  */
- void nfs_force_use_readdirplus(struct inode *dir)
- {
--	if (!list_empty(&NFS_I(dir)->open_files)) {
--		nfs_advise_use_readdirplus(dir);
--		invalidate_mapping_pages(dir->i_mapping, 0, -1);
--	}
-+	nfs_advise_use_readdirplus(dir);
- }
- 
- static
-@@ -1150,7 +1156,7 @@ static int nfs_lookup_revalidate(struct dentry *dentry, unsigned int flags)
- 				return -ECHILD;
- 			goto out_bad;
- 		}
--		goto out_valid_noent;
-+		goto out_valid;
+ 	struct nfs_inode *nfsi = NFS_I(dir);
+@@ -474,19 +473,6 @@ void nfs_advise_use_readdirplus(struct inode *dir)
  	}
+ }
  
- 	if (is_bad_inode(inode)) {
-@@ -1192,6 +1198,9 @@ static int nfs_lookup_revalidate(struct dentry *dentry, unsigned int flags)
- 	if (IS_ERR(label))
- 		goto out_error;
- 
-+	/* We need to force a revalidation: set a readdirplus hint */
-+	nfs_advise_use_readdirplus(dir);
-+
- 	trace_nfs_lookup_revalidate_enter(dir, dentry, flags);
- 	error = NFS_PROTO(dir)->lookup(dir, &dentry->d_name, fhandle, fattr, label);
- 	trace_nfs_lookup_revalidate_exit(dir, dentry, flags, error);
-@@ -1211,9 +1220,6 @@ static int nfs_lookup_revalidate(struct dentry *dentry, unsigned int flags)
- out_set_verifier:
- 	nfs_set_verifier(dentry, nfs_save_change_attribute(dir));
-  out_valid:
--	/* Success: notify readdir to use READDIRPLUS */
+-/*
+- * This function is mainly for use by nfs_getattr().
+- *
+- * If this is an 'ls -l', we want to force use of readdirplus.
+- * Do this by checking if there is an active file descriptor
+- * and calling nfs_advise_use_readdirplus, then forcing a
+- * cache flush.
+- */
+-void nfs_force_use_readdirplus(struct inode *dir)
+-{
 -	nfs_advise_use_readdirplus(dir);
-- out_valid_noent:
- 	if (flags & LOOKUP_RCU) {
- 		if (parent != ACCESS_ONCE(dentry->d_parent))
- 			return -ECHILD;
+-}
+-
+ static
+ void nfs_prime_dcache(struct dentry *parent, struct nfs_entry *entry)
+ {
+diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
+index 3575e3408bd7..02453d76bfea 100644
+--- a/fs/nfs/inode.c
++++ b/fs/nfs/inode.c
+@@ -639,7 +639,7 @@ static void nfs_request_parent_use_readdirplus(struct dentry *dentry)
+ 	struct dentry *parent;
+ 
+ 	parent = dget_parent(dentry);
+-	nfs_force_use_readdirplus(d_inode(parent));
++	nfs_advise_use_readdirplus(d_inode(parent));
+ 	dput(parent);
+ }
+ 
+diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
+index 80bcc0befb07..f625a7b2ef14 100644
+--- a/fs/nfs/internal.h
++++ b/fs/nfs/internal.h
+@@ -346,7 +346,7 @@ extern struct nfs_client *nfs_init_client(struct nfs_client *clp,
+ 			   const struct nfs_client_initdata *);
+ 
+ /* dir.c */
+-extern void nfs_force_use_readdirplus(struct inode *dir);
++extern void nfs_advise_use_readdirplus(struct inode *dir);
+ extern unsigned long nfs_access_cache_count(struct shrinker *shrink,
+ 					    struct shrink_control *sc);
+ extern unsigned long nfs_access_cache_scan(struct shrinker *shrink,
 -- 
 2.7.4
