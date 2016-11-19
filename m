@@ -1,152 +1,177 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:38385 "EHLO mx2.suse.de"
+Received: from mx1.redhat.com ([209.132.183.28]:59260 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751152AbcKSGdX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Sat, 19 Nov 2016 01:33:23 -0500
-From: NeilBrown <neilb@suse.com>
-To: Olga Kornievskaia <aglo@umich.edu>,
-        Trond Myklebust <trondmy@primarydata.com>
-Date: Sat, 19 Nov 2016 17:33:12 +1100
-Cc: Adamson William <andros@netapp.com>,
-        Schumaker Anna <anna.schumaker@netapp.com>,
-        List Linux NFS Mailing <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] NFSv4.1: nfs4_fl_prepare_ds must be careful about reporting success.
-In-Reply-To: <CAN-5tyH+4=9y9a3v0po5-cW+5ABSp5Z1pXN=+eTZSnd0KORk2Q@mail.gmail.com>
-References: <87lgxiwoxi.fsf@notabene.neil.brown.name> <8760nlfkkq.fsf@notabene.neil.brown.name> <C9C69F9A-F0AD-4F76-B334-11C4E83D4155@primarydata.com> <CAN-5tyH+4=9y9a3v0po5-cW+5ABSp5Z1pXN=+eTZSnd0KORk2Q@mail.gmail.com>
-Message-ID: <87wpg0dlnb.fsf@notabene.neil.brown.name>
+        id S1753031AbcKSPYD (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Sat, 19 Nov 2016 10:24:03 -0500
+Subject: Re: [PATCH v3] Move default state-dir to a subdirectory of /var/run
+To: Libtirpc-devel Mailing List <libtirpc-devel@lists.sourceforge.net>
+References: <1479312320-12359-1-git-send-email-steved@redhat.com>
+Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+From: Steve Dickson <SteveD@redhat.com>
+Message-ID: <604f32a4-f658-191b-0c63-2ed3ff42387d@RedHat.com>
+Date: Sat, 19 Nov 2016 10:23:59 -0500
 MIME-Version: 1.0
-Content-Type: multipart/signed; boundary="=-=-=";
-        micalg=pgp-sha256; protocol="application/pgp-signature"
+In-Reply-To: <1479312320-12359-1-git-send-email-steved@redhat.com>
+Content-Type: text/plain; charset=windows-1252
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---=-=-=
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: quoted-printable
 
-On Sat, Nov 19 2016, Olga Kornievskaia wrote:
 
-> On Fri, Nov 18, 2016 at 9:32 AM, Trond Myklebust
-> <trondmy@primarydata.com> wrote:
->>
->>> On Nov 18, 2016, at 00:01, NeilBrown <neilb@suse.com> wrote:
->>>
->>>
->>> Ping?
->>> No sign of this in linux-next, and no replies=E2=80=A6.
->>
->> I=E2=80=99d like some confirmation from the NetApp folks on this. They a=
-re the main stakeholders for the pNFS files implementation. I don=E2=80=99t=
- think we need an equivalent for flex files.
+On 11/16/2016 11:05 AM, Steve Dickson wrote:
+> From: NeilBrown <neilb@suse.com>
 >
-> Just to see if I understand this patch. If "ds" isn't NULL, then the
-> client has an RPC client with the ds. But it doesn't have a valid NFS
-> client? Looking at the code I really don't see how that can happen.
-
-I thought I explained that, but I was rather brief.
-
-nfs4_fl_prepare_ds() calls nfs4_pnfs_ds_connect() in order to create the
-NFS client.  The first time it is called it will set NFS4DS_CONNECTING
-and then call _nfs4_pnfs_v?_ds_connect() which will establish the
-connection and set ds->ds_clp.  If the server is unresponsive, this an
-block indefinitely.
-
-If a second thread then tries the same time, it will enter
-nfs4_pnfs_ds_connect() and will discovery that NFS4DS_CONNECTING is
-already set, so it will call nfs4_wait_ds_connect().
-
-As nfs4_wait_ds_connect() waits with TASK_KILLABLE, it will abort if the
-process is kill by an uncaught signal (such as SIGKILL).
-In this case it will return even though NFS4DS_CONNECTING is still set,
-and ds->ds_clp is still NULL.  i.e. the first thread hasn't established
-the connection yet.
-
-As the process has been killed, the 'ds' that it holds that doesn't have
-an NFS client handle will never be used.  But we need to be sure that
-the process will exit cleanly without trying to de-reference that NULL
-ds_clp.
-
-That is what the patch ensures.
-
-
-> Maybe there is a bug elsewhere? If we return here, is there a chance
-> we are going to have a zombie RPC client with the ds? If that's not a
-> problem then I don't think there an issue to assume that if there is
-> no valid NFS client then we would want to return a NULL from
-> nfs4_fl_prepare_ds().
-
-It isn't a "zombie RPC client", but rather an unborn RPC client, which
-still has NFS4DS_CONNECTING set.
-
-Thanks,
-NeilBrown
-
-
+> rpcbind can save state in a file to allow restart without forgetting
+> about running services.
 >
+> The default location is currently "/tmp" which is
+> not ideal for system files.  It is particularly unpleasant
+> to put simple files there rather than creating a directory
+> to contain them.
 >
->>
->>>
->>> Thanks,
->>> NeilBrown
->>>
->>>
->>> On Fri, Oct 21 2016, NeilBrown wrote:
->>>
->>>>
->>>> Various places assume that if nfs4_fl_prepare_ds() turns a non-NULL
->>>> 'ds', then ds->ds_clp will also be non-NULL.
->>>>
->>>> This is not necessasrily true in the case when the process received a
->>>> fatal signal while nfs4_pnfs_ds_connect is waiting in
->>>> nfs4_wait_ds_connect().  In that case ->ds_clp may not be set, and the
->>>> devid may not recently have been marked unavailable.
->>>>
->>>> So add a test for ->ds_clp =3D=3D NULL and return NULL in that case.
->>>>
->>>> Fixes: c23266d532b4 ("NFS4.1 Fix data server connection race")
->>>> Signed-off-by: NeilBrown <neilb@suse.com>
->>>> ---
->>>> fs/nfs/filelayout/filelayoutdev.c | 3 ++-
->>>> 1 file changed, 2 insertions(+), 1 deletion(-)
->>>>
->>>> diff --git a/fs/nfs/filelayout/filelayoutdev.c b/fs/nfs/filelayout/fil=
-elayoutdev.c
->>>> index 4946ef40ba87..85ef38f9765f 100644
->>>> --- a/fs/nfs/filelayout/filelayoutdev.c
->>>> +++ b/fs/nfs/filelayout/filelayoutdev.c
->>>> @@ -283,7 +283,8 @@ nfs4_fl_prepare_ds(struct pnfs_layout_segment *lse=
-g, u32 ds_idx)
->>>>                           s->nfs_client->cl_rpcclient->cl_auth->au_fla=
-vor);
->>>>
->>>> out_test_devid:
->>>> -    if (filelayout_test_devid_unavailable(devid))
->>>> +    if (ret->ds_clp =3D=3D NULL ||
->>>> +        filelayout_test_devid_unavailable(devid))
->>>>              ret =3D NULL;
->>>> out:
->>>>      return ret;
->>>> --
->>>> 2.10.1
->>
+> On a modern Linux system it is preferable to use /run, and there it is
+> even more consistent with practice to use a subdirectory.
+>
+> This directory needs to be create one each boot, and while there are
+> tools (e.g. systemd-tmpfiles) which can do that it is cleaner to keep
+> rpcbind self-contained and have it create the directory.
+>
+> So change the default location to /var/run/rpcbind, and create that
+> directory.  If a different user-id is used, we need to create
+> and chown the directory before dropping privileges.  We do this
+> with care so avoid chowning the wrong thing by mistake.
+>
+> Signed-off-by: NeilBrown <neilb@suse.com>
+> Signed-off-by: Steve Dickson <steved@redhat.com>
+Committed...
 
---=-=-=
-Content-Type: application/pgp-signature; name="signature.asc"
+steved.
+> ---
+>  configure.ac    |  4 ++--
+>  src/rpcbind.c   |  5 +++++
+>  src/rpcbind.h   |  1 +
+>  src/warmstart.c | 37 +++++++++++++++++++++++++++++++++----
+>  4 files changed, 41 insertions(+), 6 deletions(-)
+>
+> Hello,
+>
+> I made the following changes
+>
+> - Moved the stat dir from /tmp to /var/run
+>
+> - Check to see if the stat dir exists before
+>   trying to created it. This allows ditros 
+>   to use systemd-tmpfiles if they choose to
+>   and failure messages can be logged when
+>   the dir can not be created. 
+>
+> diff --git a/configure.ac b/configure.ac
+> index f84921e..acc6914 100644
+> --- a/configure.ac
+> +++ b/configure.ac
+> @@ -22,8 +22,8 @@ AC_ARG_ENABLE([warmstarts],
+>  AM_CONDITIONAL(WARMSTART, test x$enable_warmstarts = xyes)
+>  
+>  AC_ARG_WITH([statedir],
+> -  AS_HELP_STRING([--with-statedir=ARG], [use ARG as state dir @<:@default=/tmp@:>@])
+> -  ,, [with_statedir=/tmp])
+> +  AS_HELP_STRING([--with-statedir=ARG], [use ARG as state dir @<:@default=/var/run/rpcbind@:>@])
+> +  ,, [with_statedir=/var/run/rpcbind])
+>  AC_SUBST([statedir], [$with_statedir])
+>  
+>  AC_ARG_WITH([rpcuser],
+> diff --git a/src/rpcbind.c b/src/rpcbind.c
+> index 87ccdc2..8db8dfc 100644
+> --- a/src/rpcbind.c
+> +++ b/src/rpcbind.c
+> @@ -263,6 +263,11 @@ main(int argc, char *argv[])
+>  			syslog(LOG_ERR, "cannot get uid of '%s': %m", id);
+>  			exit(1);
+>  		}
+> +#ifdef WARMSTART
+> +		if (warmstart) {
+> +			mkdir_warmstart(p->pw_uid);
+> +		}
+> +#endif
+>                  if (setgid(p->pw_gid) == -1) {
+>                          syslog(LOG_ERR, "setgid to '%s' (%d) failed: %m", id, p->pw_gid);
+>                          exit(1);
+> diff --git a/src/rpcbind.h b/src/rpcbind.h
+> index 74f9591..5b1a9bb 100644
+> --- a/src/rpcbind.h
+> +++ b/src/rpcbind.h
+> @@ -129,6 +129,7 @@ int is_localroot(struct netbuf *);
+>  extern void pmap_service(struct svc_req *, SVCXPRT *);
+>  #endif
+>  
+> +void mkdir_warmstart(int uid);
+>  void write_warmstart(void);
+>  void read_warmstart(void);
+>  
+> diff --git a/src/warmstart.c b/src/warmstart.c
+> index 122a058..aafcb61 100644
+> --- a/src/warmstart.c
+> +++ b/src/warmstart.c
+> @@ -45,19 +45,23 @@
+>  #include <syslog.h>
+>  #include <unistd.h>
+>  #include <errno.h>
+> +#include <fcntl.h>
+>  
+>  #include "rpcbind.h"
+>  
+> -#ifndef RPCBIND_STATEDIR
+> -#define RPCBIND_STATEDIR "/tmp"
+> -#endif
+> -
+>  /* These files keep the pmap_list and rpcb_list in XDR format */
+>  #define	RPCBFILE	RPCBIND_STATEDIR "/rpcbind.xdr"
+>  #ifdef PORTMAP
+>  #define	PMAPFILE	RPCBIND_STATEDIR "/portmap.xdr"
+>  #endif
+>  
+> +#ifndef O_DIRECTORY
+> +#define O_DIRECTORY 0
+> +#endif
+> +#ifndef O_NOFOLLOW
+> +#define O_NOFOLLOW 0
+> +#endif
+> +
+>  static bool_t write_struct(char *, xdrproc_t, void *);
+>  static bool_t read_struct(char *, xdrproc_t, void *);
+>  
+> @@ -139,8 +143,33 @@ error:
+>  }
+>  
+>  void
+> +mkdir_warmstart(int uid)
+> +{
+> +	/* Already exists? */
+> +	if (access(RPCBIND_STATEDIR, X_OK) == 0)
+> +		return;
+> +
+> +	if (mkdir(RPCBIND_STATEDIR, 0770) == 0) {
+> +		int fd = open(RPCBIND_STATEDIR, O_RDONLY | O_DIRECTORY | O_NOFOLLOW);
+> +		if (fd >= 0) {
+> +			if (fchown(fd, uid, -1) < 0) {
+> +				syslog(LOG_ERR, 
+> +					"mkdir_warmstart: open failed '%s', errno %d (%s)", 
+> +					RPCBIND_STATEDIR, errno, strerror(errno));
+> +			}
+> +			close(fd);
+> +		} else
+> +			syslog(LOG_ERR, "mkdir_warmstart: open failed '%s', errno %d (%s)", 
+> +				RPCBIND_STATEDIR, errno, strerror(errno));
+> +	} else
+> +		syslog(LOG_ERR, "mkdir_warmstart: mkdir failed '%s', errno %d (%s)", 
+> +			RPCBIND_STATEDIR, errno, strerror(errno));
+> +}
+> +
+> +void
+>  write_warmstart()
+>  {
+> +	(void) mkdir(RPCBIND_STATEDIR, 0770);
+>  	(void) write_struct(RPCBFILE, (xdrproc_t)xdr_rpcblist_ptr, &list_rbl);
+>  #ifdef PORTMAP
+>  	(void) write_struct(PMAPFILE, (xdrproc_t)xdr_pmaplist_ptr, &list_pml);
 
------BEGIN PGP SIGNATURE-----
-
-iQIcBAEBCAAGBQJYL/IpAAoJEDnsnt1WYoG5PCMP/ik4FyqBJxSeGWqkSkrGSkpH
-EF6xZcSu33eZh/cHwHT3r5CbtXEDMz8f/YVMfvTjo47SR+LQbNxV74UxMsnH/88U
-CqxZem0Yr4kiV0LPpB0pV146RKDvb0UzJoODcsj4GernqXjGjOxWcGOUOJTw3EHA
-RhZdU2YNbrDEAdxEXamY4eF89dj6SL8/R/+pnanVNI0UHErwGQ+nXqLp6N0rFGD2
-qvAkxp/GgguBj+Cg9Gk+A8go15WptaV+9fFh1IP6NokdMlHbyk8P6te1U32HTISz
-P4PMi1DQ3MUjezZXywXf19EC2UxuumMMfohjrZ1ZClFLgOvvjU2qkAiVK7zdpriT
-uj7/j95vDWTJy+D/nLYJtDnqHItziuoNTFVJQaVRSf+apbxUmfX9AZC73+AtZ+We
-AlXWCDtFWU4Q9/p49WNdAokX1r4qv6hCZ6mGPmVzUlYXcTIYfsOgm2voMKLgpfE0
-Ywlp9U6RDoOwBemwjgkOa0MGKNMy5pFEW/yEn7WTCZ/l+knRUEYXEJ8NxMnr7SYx
-ewWRrN4FZP1zTpUS3J2TeBODKT3rmZMAOdsL8+yWTcU1mcKL/0Y+FL+iVlVP3ioB
-gztmunrj9nG0CZfKd+bozJELFXcDSKJ4OG78syGuYhEEztHFFkSQhG8Y5GQWYrTg
-yO+odXNf0RxzInc1niTK
-=kZdi
------END PGP SIGNATURE-----
---=-=-=--
