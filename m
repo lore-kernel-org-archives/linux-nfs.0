@@ -1,91 +1,75 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:55470 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:49464 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751986AbcKVRen (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 22 Nov 2016 12:34:43 -0500
-Received: from int-mx11.intmail.prod.int.phx2.redhat.com (int-mx11.intmail.prod.int.phx2.redhat.com [10.5.11.24])
-        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
-        (No client certificate requested)
-        by mx1.redhat.com (Postfix) with ESMTPS id CECB0F44E0
-        for <linux-nfs@vger.kernel.org>; Tue, 22 Nov 2016 17:33:56 +0000 (UTC)
-Received: from steved.boston.devel.redhat.com (steved.boston.devel.redhat.com [10.19.60.47])
-        by int-mx11.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id uAMHXuID031959
-        for <linux-nfs@vger.kernel.org>; Tue, 22 Nov 2016 12:33:56 -0500
-Subject: Re: [PATCH 2/2] mount: RPC_PROGNOTREGISTERED should not be a
- permanent error
-References: <147157095612.26568.14161646901346011334.stgit@noble>
- <147157115640.26568.2934329194247787636.stgit@noble>
-To: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+        id S1755492AbcKVTGU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 22 Nov 2016 14:06:20 -0500
+Subject: Re: [PATCH] nfs-utils: exportfs remove redundant exports options
+ output
+To: "Jianhong.Yin" <yin-jianhong@163.com>, linux-nfs@vger.kernel.org
+References: <1479459523-7649-1-git-send-email-yin-jianhong@163.com>
 From: Steve Dickson <SteveD@redhat.com>
-Message-ID: <8afd838e-328a-d110-b0f2-b4e3ea89e593@RedHat.com>
-Date: Tue, 22 Nov 2016 12:33:56 -0500
+Message-ID: <20775fcf-adc5-57c9-4238-2e1c3ea1facd@RedHat.com>
+Date: Tue, 22 Nov 2016 14:05:29 -0500
 MIME-Version: 1.0
-In-Reply-To: <147157115640.26568.2934329194247787636.stgit@noble>
-Content-Type: text/plain; charset=utf-8
+In-Reply-To: <1479459523-7649-1-git-send-email-yin-jianhong@163.com>
+Content-Type: text/plain; charset=windows-1252
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
 
-On 08/18/2016 09:45 PM, NeilBrown wrote:
-> Commit: bf66c9facb8e ("mounts.nfs: v2 and v3 background mounts should retry when server is down.")
+On 11/18/2016 03:58 AM, Jianhong.Yin wrote:
+> before this commit, run 'exportfs -s' will output some
+>  options more than one time. for example:
+>  /path *(rw,no_root_squash,rw,secure,no_root_squash,no_all_squash)
+>  the options rw,no_root_squash,etc will be print twice.
+> the reason is secinfo_show() will show these security options again
+> this patch remove these redundant outputs.
 > 
-> changed the behaviour of "bg" mounts so that RPC_PROGNOTREGISTERED,
-> which maps to EOPNOTSUPP, is not a permanent error.
-> This useful because when an NFS server starts up there is a small window between
-> the moment that rpcbind (or portmap) starts responding to lookup requests,
-> and the moment when nfsd registers with rpcbind.  During that window
-> rpcbind will reply with RPC_PROGNOTREGISTERED, but mount should not give up.
-> 
-> This same reasoning applies to foreground mounts.  They don't wait for
-> as long, but could still hit the window and fail prematurely.
-> 
-> So revert the above patch and instead add EOPNOTSUPP to the list of
-> temporary errors known to nfs_is_permanent_error.
-> 
-> Signed-off-by: NeilBrown <neilb@suse.com>
-> ---
->  utils/mount/stropts.c |    7 +++----
->  1 file changed, 3 insertions(+), 4 deletions(-)
-> 
-> diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
-> index 9de6794c6177..d5dfb5e4a669 100644
-> --- a/utils/mount/stropts.c
-> +++ b/utils/mount/stropts.c
-> @@ -948,6 +948,7 @@ static int nfs_is_permanent_error(int error)
->  	case ETIMEDOUT:
->  	case ECONNREFUSED:
->  	case EHOSTUNREACH:
-> +	case EOPNOTSUPP:	/* aka RPC_PROGNOTREGISTERED */
-Neil,
-
-I think this introduced a regression... When the server does not support
-a protocol, say UDP, this patch cause the mount to hang forever,
-which I don't think we want.
+> Signed-off-by: Jianhong Yin <yin-jianhong@163.com>
+Committed!
 
 steved.
->  	case EAGAIN:
->  		return 0;	/* temporary */
->  	default:
-> @@ -1019,8 +1020,7 @@ static int nfsmount_parent(struct nfsmount_info *mi)
->  	if (nfs_try_mount(mi))
->  		return EX_SUCCESS;
->  
-> -	/* retry background mounts when the server is not up */
-> -	if (nfs_is_permanent_error(errno) && errno != EOPNOTSUPP) {
-> +	if (nfs_is_permanent_error(errno)) {
->  		mount_error(mi->spec, mi->node, errno);
->  		return EX_FAIL;
->  	}
-> @@ -1055,8 +1055,7 @@ static int nfsmount_child(struct nfsmount_info *mi)
->  		if (nfs_try_mount(mi))
->  			return EX_SUCCESS;
->  
-> -		/* retry background mounts when the server is not up */
-> -		if (nfs_is_permanent_error(errno) && errno != EOPNOTSUPP)
-> +		if (nfs_is_permanent_error(errno))
->  			break;
->  
->  		if (time(NULL) > timeout)
+
+> ---
+>  utils/exportfs/exportfs.c | 18 ++++++------------
+>  1 file changed, 6 insertions(+), 12 deletions(-)
 > 
+> diff --git a/utils/exportfs/exportfs.c b/utils/exportfs/exportfs.c
+> index 98368a5..b11f06b 100644
+> --- a/utils/exportfs/exportfs.c
+> +++ b/utils/exportfs/exportfs.c
+> @@ -747,26 +747,20 @@ dump(int verbose, int export_format)
+>  				continue;
+>  			}
+>  			c = '(';
+> -			if (ep->e_flags & NFSEXP_READONLY)
+> -				c = dumpopt(c, "ro");
+> -			else
+> -				c = dumpopt(c, "rw");
+>  			if (ep->e_flags & NFSEXP_ASYNC)
+>  				c = dumpopt(c, "async");
+> +			else
+> +				c = dumpopt(c, "sync");
+>  			if (ep->e_flags & NFSEXP_GATHERED_WRITES)
+>  				c = dumpopt(c, "wdelay");
+> +			else
+> +				c = dumpopt(c, "no_wdelay");
+>  			if (ep->e_flags & NFSEXP_NOHIDE)
+>  				c = dumpopt(c, "nohide");
+> +			else
+> +				c = dumpopt(c, "hide");
+>  			if (ep->e_flags & NFSEXP_CROSSMOUNT)
+>  				c = dumpopt(c, "crossmnt");
+> -			if (ep->e_flags & NFSEXP_INSECURE_PORT)
+> -				c = dumpopt(c, "insecure");
+> -			if (ep->e_flags & NFSEXP_ROOTSQUASH)
+> -				c = dumpopt(c, "root_squash");
+> -			else
+> -				c = dumpopt(c, "no_root_squash");
+> -			if (ep->e_flags & NFSEXP_ALLSQUASH)
+> -				c = dumpopt(c, "all_squash");
+>  			if (ep->e_flags & NFSEXP_NOSUBTREECHECK)
+>  				c = dumpopt(c, "no_subtree_check");
+>  			if (ep->e_flags & NFSEXP_NOAUTHNLM)
 > 
