@@ -1,75 +1,96 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:49464 "EHLO mx1.redhat.com"
+Received: from mx144.netapp.com ([216.240.21.25]:54300 "EHLO mx144.netapp.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1755492AbcKVTGU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 22 Nov 2016 14:06:20 -0500
-Subject: Re: [PATCH] nfs-utils: exportfs remove redundant exports options
- output
-To: "Jianhong.Yin" <yin-jianhong@163.com>, linux-nfs@vger.kernel.org
-References: <1479459523-7649-1-git-send-email-yin-jianhong@163.com>
-From: Steve Dickson <SteveD@redhat.com>
-Message-ID: <20775fcf-adc5-57c9-4238-2e1c3ea1facd@RedHat.com>
-Date: Tue, 22 Nov 2016 14:05:29 -0500
+        id S1751454AbcKVUcb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 22 Nov 2016 15:32:31 -0500
+From: "Adamson, Andy" <William.Adamson@netapp.com>
+To: NeilBrown <neilb@suse.com>, Olga Kornievskaia <aglo@umich.edu>,
+        "Trond Myklebust" <trondmy@primarydata.com>
+CC: "Schumaker, Anna" <Anna.Schumaker@netapp.com>,
+        List Linux NFS Mailing <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] NFSv4.1: nfs4_fl_prepare_ds must be careful about
+ reporting success.
+Date: Tue, 22 Nov 2016 20:32:10 +0000
+Message-ID: <9C030467-0BD7-43AA-BE2E-ED1A5832A56C@netapp.com>
+References: <87lgxiwoxi.fsf@notabene.neil.brown.name>
+ <8760nlfkkq.fsf@notabene.neil.brown.name>
+ <C9C69F9A-F0AD-4F76-B334-11C4E83D4155@primarydata.com>
+ <CAN-5tyH+4=9y9a3v0po5-cW+5ABSp5Z1pXN=+eTZSnd0KORk2Q@mail.gmail.com>
+ <87wpg0dlnb.fsf@notabene.neil.brown.name>
+In-Reply-To: <87wpg0dlnb.fsf@notabene.neil.brown.name>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-In-Reply-To: <1479459523-7649-1-git-send-email-yin-jianhong@163.com>
-Content-Type: text/plain; charset=windows-1252
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-
-On 11/18/2016 03:58 AM, Jianhong.Yin wrote:
-> before this commit, run 'exportfs -s' will output some
->  options more than one time. for example:
->  /path *(rw,no_root_squash,rw,secure,no_root_squash,no_all_squash)
->  the options rw,no_root_squash,etc will be print twice.
-> the reason is secinfo_show() will show these security options again
-> this patch remove these redundant outputs.
-> 
-> Signed-off-by: Jianhong Yin <yin-jianhong@163.com>
-Committed!
-
-steved.
-
-> ---
->  utils/exportfs/exportfs.c | 18 ++++++------------
->  1 file changed, 6 insertions(+), 12 deletions(-)
-> 
-> diff --git a/utils/exportfs/exportfs.c b/utils/exportfs/exportfs.c
-> index 98368a5..b11f06b 100644
-> --- a/utils/exportfs/exportfs.c
-> +++ b/utils/exportfs/exportfs.c
-> @@ -747,26 +747,20 @@ dump(int verbose, int export_format)
->  				continue;
->  			}
->  			c = '(';
-> -			if (ep->e_flags & NFSEXP_READONLY)
-> -				c = dumpopt(c, "ro");
-> -			else
-> -				c = dumpopt(c, "rw");
->  			if (ep->e_flags & NFSEXP_ASYNC)
->  				c = dumpopt(c, "async");
-> +			else
-> +				c = dumpopt(c, "sync");
->  			if (ep->e_flags & NFSEXP_GATHERED_WRITES)
->  				c = dumpopt(c, "wdelay");
-> +			else
-> +				c = dumpopt(c, "no_wdelay");
->  			if (ep->e_flags & NFSEXP_NOHIDE)
->  				c = dumpopt(c, "nohide");
-> +			else
-> +				c = dumpopt(c, "hide");
->  			if (ep->e_flags & NFSEXP_CROSSMOUNT)
->  				c = dumpopt(c, "crossmnt");
-> -			if (ep->e_flags & NFSEXP_INSECURE_PORT)
-> -				c = dumpopt(c, "insecure");
-> -			if (ep->e_flags & NFSEXP_ROOTSQUASH)
-> -				c = dumpopt(c, "root_squash");
-> -			else
-> -				c = dumpopt(c, "no_root_squash");
-> -			if (ep->e_flags & NFSEXP_ALLSQUASH)
-> -				c = dumpopt(c, "all_squash");
->  			if (ep->e_flags & NFSEXP_NOSUBTREECHECK)
->  				c = dumpopt(c, "no_subtree_check");
->  			if (ep->e_flags & NFSEXP_NOAUTHNLM)
-> 
+VGhlIHBhdGNoIGxvb2tzIGdvb2QgdG8gbWUuIFdlIGRvIG5lZWQgdG8gZW5zdXJlIHRoYXQgZHNf
+Y2xwIGlzIHNldCBiZWZvcmUgcmV0dXJuaW5nIGEgbm9uLW51bGwgbmZzNF9wbmZzX2RzIGZyb20g
+bmZzNF9mbF9wcmVwYXJlX2RzLg0KQXMgVHJvbmQgcG9pbnRlZCBvdXQsIG5mczRfZmZfbGF5b3V0
+X3ByZXBhcmVfZHMgYWxyZWFkeSBkb2VzIHRoaXMuDQoNCuKGkkFuZHkNCg0KT24gMTEvMTkvMTYs
+IDE6MzMgQU0sICJOZWlsQnJvd24iIDxuZWlsYkBzdXNlLmNvbT4gd3JvdGU6DQoNCk9uIFNhdCwg
+Tm92IDE5IDIwMTYsIE9sZ2EgS29ybmlldnNrYWlhIHdyb3RlOg0KDQo+IE9uIEZyaSwgTm92IDE4
+LCAyMDE2IGF0IDk6MzIgQU0sIFRyb25kIE15a2xlYnVzdA0KPiA8dHJvbmRteUBwcmltYXJ5ZGF0
+YS5jb20+IHdyb3RlOg0KPj4NCj4+PiBPbiBOb3YgMTgsIDIwMTYsIGF0IDAwOjAxLCBOZWlsQnJv
+d24gPG5laWxiQHN1c2UuY29tPiB3cm90ZToNCj4+Pg0KPj4+DQo+Pj4gUGluZz8NCj4+PiBObyBz
+aWduIG9mIHRoaXMgaW4gbGludXgtbmV4dCwgYW5kIG5vIHJlcGxpZXPigKYuDQo+Pg0KPj4gSeKA
+mWQgbGlrZSBzb21lIGNvbmZpcm1hdGlvbiBmcm9tIHRoZSBOZXRBcHAgZm9sa3Mgb24gdGhpcy4g
+VGhleSBhcmUgdGhlIG1haW4gc3Rha2Vob2xkZXJzIGZvciB0aGUgcE5GUyBmaWxlcyBpbXBsZW1l
+bnRhdGlvbi4gSSBkb27igJl0IHRoaW5rIHdlIG5lZWQgYW4gZXF1aXZhbGVudCBmb3IgZmxleCBm
+aWxlcy4NCj4NCj4gSnVzdCB0byBzZWUgaWYgSSB1bmRlcnN0YW5kIHRoaXMgcGF0Y2guIElmICJk
+cyIgaXNuJ3QgTlVMTCwgdGhlbiB0aGUNCj4gY2xpZW50IGhhcyBhbiBSUEMgY2xpZW50IHdpdGgg
+dGhlIGRzLiBCdXQgaXQgZG9lc24ndCBoYXZlIGEgdmFsaWQgTkZTDQo+IGNsaWVudD8gTG9va2lu
+ZyBhdCB0aGUgY29kZSBJIHJlYWxseSBkb24ndCBzZWUgaG93IHRoYXQgY2FuIGhhcHBlbi4NCg0K
+SSB0aG91Z2h0IEkgZXhwbGFpbmVkIHRoYXQsIGJ1dCBJIHdhcyByYXRoZXIgYnJpZWYuDQoNCm5m
+czRfZmxfcHJlcGFyZV9kcygpIGNhbGxzIG5mczRfcG5mc19kc19jb25uZWN0KCkgaW4gb3JkZXIg
+dG8gY3JlYXRlIHRoZQ0KTkZTIGNsaWVudC4gIFRoZSBmaXJzdCB0aW1lIGl0IGlzIGNhbGxlZCBp
+dCB3aWxsIHNldCBORlM0RFNfQ09OTkVDVElORw0KYW5kIHRoZW4gY2FsbCBfbmZzNF9wbmZzX3Y/
+X2RzX2Nvbm5lY3QoKSB3aGljaCB3aWxsIGVzdGFibGlzaCB0aGUNCmNvbm5lY3Rpb24gYW5kIHNl
+dCBkcy0+ZHNfY2xwLiAgSWYgdGhlIHNlcnZlciBpcyB1bnJlc3BvbnNpdmUsIHRoaXMgYW4NCmJs
+b2NrIGluZGVmaW5pdGVseS4NCg0KSWYgYSBzZWNvbmQgdGhyZWFkIHRoZW4gdHJpZXMgdGhlIHNh
+bWUgdGltZSwgaXQgd2lsbCBlbnRlcg0KbmZzNF9wbmZzX2RzX2Nvbm5lY3QoKSBhbmQgd2lsbCBk
+aXNjb3ZlcnkgdGhhdCBORlM0RFNfQ09OTkVDVElORyBpcw0KYWxyZWFkeSBzZXQsIHNvIGl0IHdp
+bGwgY2FsbCBuZnM0X3dhaXRfZHNfY29ubmVjdCgpLg0KDQpBcyBuZnM0X3dhaXRfZHNfY29ubmVj
+dCgpIHdhaXRzIHdpdGggVEFTS19LSUxMQUJMRSwgaXQgd2lsbCBhYm9ydCBpZiB0aGUNCnByb2Nl
+c3MgaXMga2lsbCBieSBhbiB1bmNhdWdodCBzaWduYWwgKHN1Y2ggYXMgU0lHS0lMTCkuDQpJbiB0
+aGlzIGNhc2UgaXQgd2lsbCByZXR1cm4gZXZlbiB0aG91Z2ggTkZTNERTX0NPTk5FQ1RJTkcgaXMg
+c3RpbGwgc2V0LA0KYW5kIGRzLT5kc19jbHAgaXMgc3RpbGwgTlVMTC4gIGkuZS4gdGhlIGZpcnN0
+IHRocmVhZCBoYXNuJ3QgZXN0YWJsaXNoZWQNCnRoZSBjb25uZWN0aW9uIHlldC4NCg0KQXMgdGhl
+IHByb2Nlc3MgaGFzIGJlZW4ga2lsbGVkLCB0aGUgJ2RzJyB0aGF0IGl0IGhvbGRzIHRoYXQgZG9l
+c24ndCBoYXZlDQphbiBORlMgY2xpZW50IGhhbmRsZSB3aWxsIG5ldmVyIGJlIHVzZWQuICBCdXQg
+d2UgbmVlZCB0byBiZSBzdXJlIHRoYXQNCnRoZSBwcm9jZXNzIHdpbGwgZXhpdCBjbGVhbmx5IHdp
+dGhvdXQgdHJ5aW5nIHRvIGRlLXJlZmVyZW5jZSB0aGF0IE5VTEwNCmRzX2NscC4NCg0KVGhhdCBp
+cyB3aGF0IHRoZSBwYXRjaCBlbnN1cmVzLg0KDQoNCj4gTWF5YmUgdGhlcmUgaXMgYSBidWcgZWxz
+ZXdoZXJlPyBJZiB3ZSByZXR1cm4gaGVyZSwgaXMgdGhlcmUgYSBjaGFuY2UNCj4gd2UgYXJlIGdv
+aW5nIHRvIGhhdmUgYSB6b21iaWUgUlBDIGNsaWVudCB3aXRoIHRoZSBkcz8gSWYgdGhhdCdzIG5v
+dCBhDQo+IHByb2JsZW0gdGhlbiBJIGRvbid0IHRoaW5rIHRoZXJlIGFuIGlzc3VlIHRvIGFzc3Vt
+ZSB0aGF0IGlmIHRoZXJlIGlzDQo+IG5vIHZhbGlkIE5GUyBjbGllbnQgdGhlbiB3ZSB3b3VsZCB3
+YW50IHRvIHJldHVybiBhIE5VTEwgZnJvbQ0KPiBuZnM0X2ZsX3ByZXBhcmVfZHMoKS4NCg0KSXQg
+aXNuJ3QgYSAiem9tYmllIFJQQyBjbGllbnQiLCBidXQgcmF0aGVyIGFuIHVuYm9ybiBSUEMgY2xp
+ZW50LCB3aGljaA0Kc3RpbGwgaGFzIE5GUzREU19DT05ORUNUSU5HIHNldC4NCg0KVGhhbmtzLA0K
+TmVpbEJyb3duDQoNCg0KPg0KPg0KPj4NCj4+Pg0KPj4+IFRoYW5rcywNCj4+PiBOZWlsQnJvd24N
+Cj4+Pg0KPj4+DQo+Pj4gT24gRnJpLCBPY3QgMjEgMjAxNiwgTmVpbEJyb3duIHdyb3RlOg0KPj4+
+DQo+Pj4+DQo+Pj4+IFZhcmlvdXMgcGxhY2VzIGFzc3VtZSB0aGF0IGlmIG5mczRfZmxfcHJlcGFy
+ZV9kcygpIHR1cm5zIGEgbm9uLU5VTEwNCj4+Pj4gJ2RzJywgdGhlbiBkcy0+ZHNfY2xwIHdpbGwg
+YWxzbyBiZSBub24tTlVMTC4NCj4+Pj4NCj4+Pj4gVGhpcyBpcyBub3QgbmVjZXNzYXNyaWx5IHRy
+dWUgaW4gdGhlIGNhc2Ugd2hlbiB0aGUgcHJvY2VzcyByZWNlaXZlZCBhDQo+Pj4+IGZhdGFsIHNp
+Z25hbCB3aGlsZSBuZnM0X3BuZnNfZHNfY29ubmVjdCBpcyB3YWl0aW5nIGluDQo+Pj4+IG5mczRf
+d2FpdF9kc19jb25uZWN0KCkuICBJbiB0aGF0IGNhc2UgLT5kc19jbHAgbWF5IG5vdCBiZSBzZXQs
+IGFuZCB0aGUNCj4+Pj4gZGV2aWQgbWF5IG5vdCByZWNlbnRseSBoYXZlIGJlZW4gbWFya2VkIHVu
+YXZhaWxhYmxlLg0KPj4+Pg0KPj4+PiBTbyBhZGQgYSB0ZXN0IGZvciAtPmRzX2NscCA9PSBOVUxM
+IGFuZCByZXR1cm4gTlVMTCBpbiB0aGF0IGNhc2UuDQo+Pj4+DQo+Pj4+IEZpeGVzOiBjMjMyNjZk
+NTMyYjQgKCJORlM0LjEgRml4IGRhdGEgc2VydmVyIGNvbm5lY3Rpb24gcmFjZSIpDQo+Pj4+IFNp
+Z25lZC1vZmYtYnk6IE5laWxCcm93biA8bmVpbGJAc3VzZS5jb20+DQo+Pj4+IC0tLQ0KPj4+PiBm
+cy9uZnMvZmlsZWxheW91dC9maWxlbGF5b3V0ZGV2LmMgfCAzICsrLQ0KPj4+PiAxIGZpbGUgY2hh
+bmdlZCwgMiBpbnNlcnRpb25zKCspLCAxIGRlbGV0aW9uKC0pDQo+Pj4+DQo+Pj4+IGRpZmYgLS1n
+aXQgYS9mcy9uZnMvZmlsZWxheW91dC9maWxlbGF5b3V0ZGV2LmMgYi9mcy9uZnMvZmlsZWxheW91
+dC9maWxlbGF5b3V0ZGV2LmMNCj4+Pj4gaW5kZXggNDk0NmVmNDBiYTg3Li44NWVmMzhmOTc2NWYg
+MTAwNjQ0DQo+Pj4+IC0tLSBhL2ZzL25mcy9maWxlbGF5b3V0L2ZpbGVsYXlvdXRkZXYuYw0KPj4+
+PiArKysgYi9mcy9uZnMvZmlsZWxheW91dC9maWxlbGF5b3V0ZGV2LmMNCj4+Pj4gQEAgLTI4Myw3
+ICsyODMsOCBAQCBuZnM0X2ZsX3ByZXBhcmVfZHMoc3RydWN0IHBuZnNfbGF5b3V0X3NlZ21lbnQg
+KmxzZWcsIHUzMiBkc19pZHgpDQo+Pj4+ICAgICAgICAgICAgICAgICAgICAgICAgICAgcy0+bmZz
+X2NsaWVudC0+Y2xfcnBjY2xpZW50LT5jbF9hdXRoLT5hdV9mbGF2b3IpOw0KPj4+Pg0KPj4+PiBv
+dXRfdGVzdF9kZXZpZDoNCj4+Pj4gLSAgICBpZiAoZmlsZWxheW91dF90ZXN0X2RldmlkX3VuYXZh
+aWxhYmxlKGRldmlkKSkNCj4+Pj4gKyAgICBpZiAocmV0LT5kc19jbHAgPT0gTlVMTCB8fA0KPj4+
+PiArICAgICAgICBmaWxlbGF5b3V0X3Rlc3RfZGV2aWRfdW5hdmFpbGFibGUoZGV2aWQpKQ0KPj4+
+PiAgICAgICAgICAgICAgcmV0ID0gTlVMTDsNCj4+Pj4gb3V0Og0KPj4+PiAgICAgIHJldHVybiBy
+ZXQ7DQo+Pj4+IC0tDQo+Pj4+IDIuMTAuMQ0KPj4NCg0KDQo=
