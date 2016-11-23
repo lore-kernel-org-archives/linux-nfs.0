@@ -1,114 +1,134 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:58728 "EHLO mx2.suse.de"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1755463AbcKWDpH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 22 Nov 2016 22:45:07 -0500
-From: NeilBrown <neilb@suse.com>
-To: Trond Myklebust <trondmy@primarydata.com>
-Date: Wed, 23 Nov 2016 14:44:58 +1100
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: [PATCH] sunrpc: Don't engage exponential backoff when connection
- attempt is rejected.
-Message-ID: <87r362c11h.fsf@notabene.neil.brown.name>
+Received: from mail-io0-f195.google.com ([209.85.223.195]:36696 "EHLO
+        mail-io0-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S932792AbcKWRiC (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 23 Nov 2016 12:38:02 -0500
+Received: by mail-io0-f195.google.com with SMTP id k19so2390087iod.3
+        for <linux-nfs@vger.kernel.org>; Wed, 23 Nov 2016 09:37:57 -0800 (PST)
 MIME-Version: 1.0
-Content-Type: multipart/signed; boundary="=-=-=";
-        micalg=pgp-sha256; protocol="application/pgp-signature"
+In-Reply-To: <87wpg0dlnb.fsf@notabene.neil.brown.name>
+References: <87lgxiwoxi.fsf@notabene.neil.brown.name> <8760nlfkkq.fsf@notabene.neil.brown.name>
+ <C9C69F9A-F0AD-4F76-B334-11C4E83D4155@primarydata.com> <CAN-5tyH+4=9y9a3v0po5-cW+5ABSp5Z1pXN=+eTZSnd0KORk2Q@mail.gmail.com>
+ <87wpg0dlnb.fsf@notabene.neil.brown.name>
+From: Olga Kornievskaia <aglo@umich.edu>
+Date: Wed, 23 Nov 2016 12:37:50 -0500
+Message-ID: <CAN-5tyFfnSxcnFjpcCqT--qQhpHa-37NnVXuX70imE1WiyFFNg@mail.gmail.com>
+Subject: Re: [PATCH] NFSv4.1: nfs4_fl_prepare_ds must be careful about
+ reporting success.
+To: NeilBrown <neilb@suse.com>
+Cc: Trond Myklebust <trondmy@primarydata.com>,
+        Adamson William <andros@netapp.com>,
+        Schumaker Anna <anna.schumaker@netapp.com>,
+        List Linux NFS Mailing <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---=-=-=
-Content-Type: text/plain
-Content-Transfer-Encoding: quoted-printable
+On Sat, Nov 19, 2016 at 1:33 AM, NeilBrown <neilb@suse.com> wrote:
+> On Sat, Nov 19 2016, Olga Kornievskaia wrote:
+>
+>> On Fri, Nov 18, 2016 at 9:32 AM, Trond Myklebust
+>> <trondmy@primarydata.com> wrote:
+>>>
+>>>> On Nov 18, 2016, at 00:01, NeilBrown <neilb@suse.com> wrote:
+>>>>
+>>>>
+>>>> Ping?
+>>>> No sign of this in linux-next, and no replies=E2=80=A6.
+>>>
+>>> I=E2=80=99d like some confirmation from the NetApp folks on this. They =
+are the main stakeholders for the pNFS files implementation. I don=E2=80=99=
+t think we need an equivalent for flex files.
+>>
+>> Just to see if I understand this patch. If "ds" isn't NULL, then the
+>> client has an RPC client with the ds. But it doesn't have a valid NFS
+>> client? Looking at the code I really don't see how that can happen.
+>
+> I thought I explained that, but I was rather brief.
+>
+> nfs4_fl_prepare_ds() calls nfs4_pnfs_ds_connect() in order to create the
+> NFS client.  The first time it is called it will set NFS4DS_CONNECTING
+> and then call _nfs4_pnfs_v?_ds_connect() which will establish the
+> connection and set ds->ds_clp.  If the server is unresponsive, this an
+> block indefinitely.
+>
+> If a second thread then tries the same time, it will enter
+> nfs4_pnfs_ds_connect() and will discovery that NFS4DS_CONNECTING is
+> already set, so it will call nfs4_wait_ds_connect().
+>
+> As nfs4_wait_ds_connect() waits with TASK_KILLABLE, it will abort if the
+> process is kill by an uncaught signal (such as SIGKILL).
+> In this case it will return even though NFS4DS_CONNECTING is still set,
+> and ds->ds_clp is still NULL.  i.e. the first thread hasn't established
+> the connection yet.
+>
+> As the process has been killed, the 'ds' that it holds that doesn't have
+> an NFS client handle will never be used.  But we need to be sure that
+> the process will exit cleanly without trying to de-reference that NULL
+> ds_clp.
+>
+> That is what the patch ensures.
 
+Thanks for the explanation. Makes sense.
 
-xs_connect() contains an exponential backoff mechanism so the repeated
-connection attempts are delayed by longer and longer amounts.
-
-This is appropriate when the connection failed due to a timeout, but
-it not appropriate when a definitive "no" answer is received.  In such
-cases, call_connect_status() imposes a minimum 3-second back-off, so
-not having the exponetial back-off will never result in immediate
-retries.
-
-The current situation is a problem when the NFS server tries to
-register with rpcbind but rpcbind isn't running.  All connection
-attempts are made on the same "xprt" and as the connection is never
-"closed", the exponential back delays successive attempts to register,
-or de-register, different protocols.  This results in a multi-minute
-delay with no benefit.
-
-So, when call_connect_status() receives a definitive "no", use
-xprt_conditional_disconnect() to cancel the previous connection attempt.
-This will set XPRT_CLOSE_WAIT so that xprt->ops->close() calls xs_close()
-which resets the reestablish_timeout.
-
-To ensure xprt_conditional_disconnect() does the right thing, we
-ensure that rq_connect_cookie is set before a connection attempt, and
-allow xprt_conditional_disconnect() to complete even when the
-transport is not fully connected.
-
-Signed-off-by: NeilBrown <neilb@suse.com>
-=2D--
- net/sunrpc/clnt.c | 2 ++
- net/sunrpc/xprt.c | 3 ++-
- 2 files changed, 4 insertions(+), 1 deletion(-)
-
-diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
-index b31ca97e754e..53acd4e3a317 100644
-=2D-- a/net/sunrpc/clnt.c
-+++ b/net/sunrpc/clnt.c
-@@ -1926,6 +1926,8 @@ call_connect_status(struct rpc_task *task)
- 	case -EADDRINUSE:
- 	case -ENOBUFS:
- 	case -EPIPE:
-+		xprt_conditional_disconnect(task->tk_rqstp->rq_xprt,
-+					    task->tk_rqstp->rq_connect_cookie);
- 		if (RPC_IS_SOFTCONN(task))
- 			break;
- 		/* retry with existing socket, after a delay */
-diff --git a/net/sunrpc/xprt.c b/net/sunrpc/xprt.c
-index 685e6d225414..9a6be030ca7d 100644
-=2D-- a/net/sunrpc/xprt.c
-+++ b/net/sunrpc/xprt.c
-@@ -669,7 +669,7 @@ void xprt_conditional_disconnect(struct rpc_xprt *xprt,=
- unsigned int cookie)
- 	spin_lock_bh(&xprt->transport_lock);
- 	if (cookie !=3D xprt->connect_cookie)
- 		goto out;
-=2D	if (test_bit(XPRT_CLOSING, &xprt->state) || !xprt_connected(xprt))
-+	if (test_bit(XPRT_CLOSING, &xprt->state))
- 		goto out;
- 	set_bit(XPRT_CLOSE_WAIT, &xprt->state);
- 	/* Try to schedule an autoclose RPC call */
-@@ -772,6 +772,7 @@ void xprt_connect(struct rpc_task *task)
- 	if (!xprt_connected(xprt)) {
- 		task->tk_rqstp->rq_bytes_sent =3D 0;
- 		task->tk_timeout =3D task->tk_rqstp->rq_timeout;
-+		task->tk_rqstp->rq_connect_cookie =3D xprt->connect_cookie;
- 		rpc_sleep_on(&xprt->pending, task, xprt_connect_status);
-=20
- 		if (test_bit(XPRT_CLOSING, &xprt->state))
-=2D-=20
-2.10.2
-
-
---=-=-=
-Content-Type: application/pgp-signature; name="signature.asc"
-
------BEGIN PGP SIGNATURE-----
-
-iQIcBAEBCAAGBQJYNRC7AAoJEDnsnt1WYoG5ww4P/ivUcQxyrzA+oHNis759tbom
-dmD4Z1E4wzJikLw3Wd3hQPpH+UWMk+4g1C54FLPr5kYnXX+aLyGuY389mz0uJhD6
-6HHd3ZUVJ5eENuSJrMo0DZYvZfaZDKAynJ/pqO2U1o+ZM8O+wmWPnjJ6xw0LV8q/
-r73BDVYCVtQecY+58OtqPO8zYuQI4R1o4oV/4jQU4uI4VBE2M5tVPIoR2zGqdXGf
-uOsJx96KGP7q8ASF7rvtzknnNIDAl6gZGYXhXICK29s+UhemFvrCxqDXd0RLYJHw
-fYnwZIP2F4XTO2vtqfICtikO1/WU0slWCTx0BKwrpkhxLQYC0+1RLq2hIkZ46jwW
-ieckbOp+V7NQvyZAKy7+OAhMGL+CF2+qdcS2FO1cxwv8VNC0Hg8FYNIPkPyKsE2a
-PqkntTFqOrEYVZyr11ntalaKgh5W4pK4XjbywlcgV3+hlTFdgsX0vNswFDfezBIp
-g5Vw0CKdGqlvV3gNMzXgmpzS2OtZjP4HZb3L5WxIoO3ym99Qhdu2JY1Q+hBr+H3j
-0uqTCp0KqHB6prOL9Dxur82Fef4zUag1aZ8ZdwtoO2v3M+n14wFyf2dRt2JQevLM
-C6ghLRXCKBHzNILguDxuZBUroJlOaSFnMo05eBEmMDI5R4w4lEhe4jpSFzswhacE
-yDymwgvi5WvnhH11Gyrv
-=e5qM
------END PGP SIGNATURE-----
---=-=-=--
+>> Maybe there is a bug elsewhere? If we return here, is there a chance
+>> we are going to have a zombie RPC client with the ds? If that's not a
+>> problem then I don't think there an issue to assume that if there is
+>> no valid NFS client then we would want to return a NULL from
+>> nfs4_fl_prepare_ds().
+>
+> It isn't a "zombie RPC client", but rather an unborn RPC client, which
+> still has NFS4DS_CONNECTING set.
+>
+> Thanks,
+> NeilBrown
+>
+>
+>>
+>>
+>>>
+>>>>
+>>>> Thanks,
+>>>> NeilBrown
+>>>>
+>>>>
+>>>> On Fri, Oct 21 2016, NeilBrown wrote:
+>>>>
+>>>>>
+>>>>> Various places assume that if nfs4_fl_prepare_ds() turns a non-NULL
+>>>>> 'ds', then ds->ds_clp will also be non-NULL.
+>>>>>
+>>>>> This is not necessasrily true in the case when the process received a
+>>>>> fatal signal while nfs4_pnfs_ds_connect is waiting in
+>>>>> nfs4_wait_ds_connect().  In that case ->ds_clp may not be set, and th=
+e
+>>>>> devid may not recently have been marked unavailable.
+>>>>>
+>>>>> So add a test for ->ds_clp =3D=3D NULL and return NULL in that case.
+>>>>>
+>>>>> Fixes: c23266d532b4 ("NFS4.1 Fix data server connection race")
+>>>>> Signed-off-by: NeilBrown <neilb@suse.com>
+>>>>> ---
+>>>>> fs/nfs/filelayout/filelayoutdev.c | 3 ++-
+>>>>> 1 file changed, 2 insertions(+), 1 deletion(-)
+>>>>>
+>>>>> diff --git a/fs/nfs/filelayout/filelayoutdev.c b/fs/nfs/filelayout/fi=
+lelayoutdev.c
+>>>>> index 4946ef40ba87..85ef38f9765f 100644
+>>>>> --- a/fs/nfs/filelayout/filelayoutdev.c
+>>>>> +++ b/fs/nfs/filelayout/filelayoutdev.c
+>>>>> @@ -283,7 +283,8 @@ nfs4_fl_prepare_ds(struct pnfs_layout_segment *ls=
+eg, u32 ds_idx)
+>>>>>                           s->nfs_client->cl_rpcclient->cl_auth->au_fl=
+avor);
+>>>>>
+>>>>> out_test_devid:
+>>>>> -    if (filelayout_test_devid_unavailable(devid))
+>>>>> +    if (ret->ds_clp =3D=3D NULL ||
+>>>>> +        filelayout_test_devid_unavailable(devid))
+>>>>>              ret =3D NULL;
+>>>>> out:
+>>>>>      return ret;
+>>>>> --
+>>>>> 2.10.1
+>>>
