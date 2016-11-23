@@ -1,18 +1,15 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:53981 "EHLO mx2.suse.de"
+Received: from mx2.suse.de ([195.135.220.15]:58728 "EHLO mx2.suse.de"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S934921AbcKVWpa (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 22 Nov 2016 17:45:30 -0500
+        id S1755463AbcKWDpH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 22 Nov 2016 22:45:07 -0500
 From: NeilBrown <neilb@suse.com>
-To: Steve Dickson <SteveD@redhat.com>
-Date: Wed, 23 Nov 2016 09:43:34 +1100
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Martin Pitt <martin.pitt@ubuntu.com>
-Subject: Re: [PATCH 2/2] mount: RPC_PROGNOTREGISTERED should not be a permanent error
-In-Reply-To: <2a0955df-2fcd-05f1-9e6f-d8a549321177@RedHat.com>
-References: <147157095612.26568.14161646901346011334.stgit@noble> <147157115640.26568.2934329194247787636.stgit@noble> <2a0955df-2fcd-05f1-9e6f-d8a549321177@RedHat.com>
-Message-ID: <87bmx7cezt.fsf@notabene.neil.brown.name>
+To: Trond Myklebust <trondmy@primarydata.com>
+Date: Wed, 23 Nov 2016 14:44:58 +1100
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: [PATCH] sunrpc: Don't engage exponential backoff when connection
+ attempt is rejected.
+Message-ID: <87r362c11h.fsf@notabene.neil.brown.name>
 MIME-Version: 1.0
 Content-Type: multipart/signed; boundary="=-=-=";
         micalg=pgp-sha256; protocol="application/pgp-signature"
@@ -21,87 +18,97 @@ List-ID: <linux-nfs.vger.kernel.org>
 
 --=-=-=
 Content-Type: text/plain
-
-On Wed, Nov 23 2016, Steve Dickson wrote:
-
-> [Resent due to mailman rejecting the HTML subpart]
-(and the resend included HTML too ... how embarrassing :-)
-
->
-> Hey Neil,
->
->
-> On 08/18/2016 09:45 PM, NeilBrown wrote:
->> Commit: bf66c9facb8e ("mounts.nfs: v2 and v3 background mounts should retry when server is down.")
->>
->> changed the behaviour of "bg" mounts so that RPC_PROGNOTREGISTERED,
->> which maps to EOPNOTSUPP, is not a permanent error.
->> This useful because when an NFS server starts up there is a small window between
->> the moment that rpcbind (or portmap) starts responding to lookup requests,
->> and the moment when nfsd registers with rpcbind.  During that window
->> rpcbind will reply with RPC_PROGNOTREGISTERED, but mount should not give up.
->>
->> This same reasoning applies to foreground mounts.  They don't wait for
->> as long, but could still hit the window and fail prematurely.
->>
->> So revert the above patch and instead add EOPNOTSUPP to the list of
->> temporary errors known to nfs_is_permanent_error.
->>
->> Signed-off-by: NeilBrown <neilb@suse.com>
->> ---
->>  utils/mount/stropts.c |    7 +++----
->>  1 file changed, 3 insertions(+), 4 deletions(-)
->>
->> diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
->> index 9de6794c6177..d5dfb5e4a669 100644
->> --- a/utils/mount/stropts.c
->> +++ b/utils/mount/stropts.c
->> @@ -948,6 +948,7 @@ static int nfs_is_permanent_error(int error)
->>  	case ETIMEDOUT:
->>  	case ECONNREFUSED:
->>  	case EHOSTUNREACH:
->> +	case EOPNOTSUPP:	/* aka RPC_PROGNOTREGISTERED */
-> I think this introduced a regression... When the server does not support
-> a protocol, say UDP, this patch cause the mount to hang forever,
-> which I don't think we want.
+Content-Transfer-Encoding: quoted-printable
 
 
-I think we do want it to wait a while so that the nfs server has a
-chance to start up.  We have no guarantee that the NFS server will be
-registered with rpcbind before rpcbind responds to requests.
+xs_connect() contains an exponential backoff mechanism so the repeated
+connection attempts are delayed by longer and longer amounts.
 
-I disagree with the "hang forever" description.  I just tested after
-disabling UDP on an nfs server, and the delay was 2 minutes, 5 seconds
-before a failure was reported.  It might be longer when trying TCP on a
-server that only supports UDP.
+This is appropriate when the connection failed due to a timeout, but
+it not appropriate when a definitive "no" answer is received.  In such
+cases, call_connect_status() imposes a minimum 3-second back-off, so
+not having the exponetial back-off will never result in immediate
+retries.
 
-So I think the current behavior is correct.  You might be able to argue
-that certain error codes should trigger a shorter timeout, but it would
-need a strong argument.
+The current situation is a problem when the NFS server tries to
+register with rpcbind but rpcbind isn't running.  All connection
+attempts are made on the same "xprt" and as the connection is never
+"closed", the exponential back delays successive attempts to register,
+or de-register, different protocols.  This results in a multi-minute
+delay with no benefit.
 
-Or maybe you mean that a "bg" mount would "hang forever" in the
-background?  I think that behavior is correct too.
+So, when call_connect_status() receives a definitive "no", use
+xprt_conditional_disconnect() to cancel the previous connection attempt.
+This will set XPRT_CLOSE_WAIT so that xprt->ops->close() calls xs_close()
+which resets the reestablish_timeout.
 
-Thanks,
-NeilBrown
+To ensure xprt_conditional_disconnect() does the right thing, we
+ensure that rq_connect_cookie is set before a connection attempt, and
+allow xprt_conditional_disconnect() to complete even when the
+transport is not fully connected.
+
+Signed-off-by: NeilBrown <neilb@suse.com>
+=2D--
+ net/sunrpc/clnt.c | 2 ++
+ net/sunrpc/xprt.c | 3 ++-
+ 2 files changed, 4 insertions(+), 1 deletion(-)
+
+diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+index b31ca97e754e..53acd4e3a317 100644
+=2D-- a/net/sunrpc/clnt.c
++++ b/net/sunrpc/clnt.c
+@@ -1926,6 +1926,8 @@ call_connect_status(struct rpc_task *task)
+ 	case -EADDRINUSE:
+ 	case -ENOBUFS:
+ 	case -EPIPE:
++		xprt_conditional_disconnect(task->tk_rqstp->rq_xprt,
++					    task->tk_rqstp->rq_connect_cookie);
+ 		if (RPC_IS_SOFTCONN(task))
+ 			break;
+ 		/* retry with existing socket, after a delay */
+diff --git a/net/sunrpc/xprt.c b/net/sunrpc/xprt.c
+index 685e6d225414..9a6be030ca7d 100644
+=2D-- a/net/sunrpc/xprt.c
++++ b/net/sunrpc/xprt.c
+@@ -669,7 +669,7 @@ void xprt_conditional_disconnect(struct rpc_xprt *xprt,=
+ unsigned int cookie)
+ 	spin_lock_bh(&xprt->transport_lock);
+ 	if (cookie !=3D xprt->connect_cookie)
+ 		goto out;
+=2D	if (test_bit(XPRT_CLOSING, &xprt->state) || !xprt_connected(xprt))
++	if (test_bit(XPRT_CLOSING, &xprt->state))
+ 		goto out;
+ 	set_bit(XPRT_CLOSE_WAIT, &xprt->state);
+ 	/* Try to schedule an autoclose RPC call */
+@@ -772,6 +772,7 @@ void xprt_connect(struct rpc_task *task)
+ 	if (!xprt_connected(xprt)) {
+ 		task->tk_rqstp->rq_bytes_sent =3D 0;
+ 		task->tk_timeout =3D task->tk_rqstp->rq_timeout;
++		task->tk_rqstp->rq_connect_cookie =3D xprt->connect_cookie;
+ 		rpc_sleep_on(&xprt->pending, task, xprt_connect_status);
+=20
+ 		if (test_bit(XPRT_CLOSING, &xprt->state))
+=2D-=20
+2.10.2
+
 
 --=-=-=
 Content-Type: application/pgp-signature; name="signature.asc"
 
 -----BEGIN PGP SIGNATURE-----
 
-iQIcBAEBCAAGBQJYNMoXAAoJEDnsnt1WYoG5NaAQAIc4i8rd79s/GSzDVZtxuMlN
-/7gXfGGs9LJf2SAKOMTARF4cvzPINMmtF8XnNzWDc3qa+P7/C06rW+SFXC1iSgSN
-qrVrWAImdyuCHuLpi8pH6JUAVyV8cCYFjLsUmaWIhvT890g02Ja4rkKcXo39I9FX
-iIZ8nowsSJTfSfblh0q9LmxH63z5ocDLTISEUHfTordoPd7g8Y342DVXKyDu3F/H
-g+1YVQQOp8yyNK0+2fev8mxOZ1ekqhxccEgKHi9Uqeg1qHYjsSGD6IYlrcc2WxR+
-q13MHCnYaPLNWfO5Rb21EqT0i/Yp6ThqtlRqwp1WEp4kRvw1QEMqTsZXtdguaRMF
-+S6piP6+7ydehdHQuvc2UpF7+dLRwVZIMln1quhmQWJ2n2iHj6fUmBw2dkuBGGsP
-qURrkK2a6RUh857BReNNzIgAtE/X2NW/1DWbvkEF0OwD5xT0MuXBx/4KSZNpCcCA
-Nj691+N/LWHAfwYT0EkRNJZ3V16utxKkLs1s4R8PQqMI03O7s/hR5Qen1wewZUeo
-VDzUMSZSOaKwqRsfBlFRg2qHwLsibld4mLgucGsgES6Vd5eLc93uW8j2H3oe9Zji
-9R8dUVU8JzIz7oyfpXfWGNRCWyzSS1PtkR51zSTA75/UzNhEDt6v6Z7pls0yq2Mu
-+0IT+Q4treYXyWLLJoKn
-=I8df
+iQIcBAEBCAAGBQJYNRC7AAoJEDnsnt1WYoG5ww4P/ivUcQxyrzA+oHNis759tbom
+dmD4Z1E4wzJikLw3Wd3hQPpH+UWMk+4g1C54FLPr5kYnXX+aLyGuY389mz0uJhD6
+6HHd3ZUVJ5eENuSJrMo0DZYvZfaZDKAynJ/pqO2U1o+ZM8O+wmWPnjJ6xw0LV8q/
+r73BDVYCVtQecY+58OtqPO8zYuQI4R1o4oV/4jQU4uI4VBE2M5tVPIoR2zGqdXGf
+uOsJx96KGP7q8ASF7rvtzknnNIDAl6gZGYXhXICK29s+UhemFvrCxqDXd0RLYJHw
+fYnwZIP2F4XTO2vtqfICtikO1/WU0slWCTx0BKwrpkhxLQYC0+1RLq2hIkZ46jwW
+ieckbOp+V7NQvyZAKy7+OAhMGL+CF2+qdcS2FO1cxwv8VNC0Hg8FYNIPkPyKsE2a
+PqkntTFqOrEYVZyr11ntalaKgh5W4pK4XjbywlcgV3+hlTFdgsX0vNswFDfezBIp
+g5Vw0CKdGqlvV3gNMzXgmpzS2OtZjP4HZb3L5WxIoO3ym99Qhdu2JY1Q+hBr+H3j
+0uqTCp0KqHB6prOL9Dxur82Fef4zUag1aZ8ZdwtoO2v3M+n14wFyf2dRt2JQevLM
+C6ghLRXCKBHzNILguDxuZBUroJlOaSFnMo05eBEmMDI5R4w4lEhe4jpSFzswhacE
+yDymwgvi5WvnhH11Gyrv
+=e5qM
 -----END PGP SIGNATURE-----
 --=-=-=--
