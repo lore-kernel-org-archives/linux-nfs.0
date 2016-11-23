@@ -1,65 +1,63 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx144.netapp.com ([216.240.21.25]:30286 "EHLO mx144.netapp.com"
+Received: from fieldses.org ([173.255.197.46]:57738 "EHLO fieldses.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1752437AbcKWWGt (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 23 Nov 2016 17:06:49 -0500
-To: <torvalds@linux-foundation.org>
-CC: Trond Myklebust <trond.myklebust@primarydata.com>,
-        <linux-nfs@vger.kernel.org>, <linux-kernel@vger.kernel.org>
-From: Anna Schumaker <Anna.Schumaker@Netapp.com>
-Subject: [GIT PULL] Please pull more NFS client bugfixes for 4.9
-Message-ID: <c1e5595a-2e28-aedf-3a32-48200252fbf3@Netapp.com>
-Date: Wed, 23 Nov 2016 17:06:41 -0500
+        id S933657AbcKWWUz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 23 Nov 2016 17:20:55 -0500
+Date: Wed, 23 Nov 2016 17:20:54 -0500
+To: linux-fsdevel@vger.kernel.org
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH xfstests] dirstress: Allow ESTALE as well as ENOENT
+Message-ID: <20161123222054.GA7900@fieldses.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain; charset=us-ascii
+From: bfields@fieldses.org (J. Bruce Fields)
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Linus,
+From: "J. Bruce Fields" <bfields@redhat.com>
 
-The following changes since commit 62bdf94a2049822ef8c6d4b0e83cd9c3a1663ab4:
+In the NFS case an attempt to chdir out of a removed directory could result
+in ESTALE, and that should not cause the test to fail.
 
-  xprtrdma: Fix DMAR failure in frwr_op_map() after reconnect (2016-11-10 11:04:54 -0500)
+This was causing intermittent failures on generic/011 on NFS.
 
-are available in the git repository at:
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ src/dirstress.c | 12 ++++++++----
+ 1 file changed, 8 insertions(+), 4 deletions(-)
 
-  git://git.linux-nfs.org/projects/anna/linux-nfs.git tags/nfs-for-4.9-4
+Sorry, who do xfstests patches go to?--b.
 
-for you to fetch changes up to d55b352b01bc78fbc3d1bb650140668b87e58bf9:
+diff --git a/src/dirstress.c b/src/dirstress.c
+index f8f7355..33a166c 100644
+--- a/src/dirstress.c
++++ b/src/dirstress.c
+@@ -203,8 +203,10 @@ dirstress(
+         if (verbose) fprintf(stderr,"** [%d] chdir ..\n", pid);
+ 	error = chdir("..");
+ 	if (error) {
+-		/* If this is multithreaded, then expecting a ENOENT here is fine */
+-		if (nprocs_per_dir > 1 && errno == ENOENT) {
++		/* If this is multithreaded, then expecting a ENOENT here is fine,
++		 * and ESTALE is normal in the NFS case. */
++		if (nprocs_per_dir > 1 &&
++				(errno == ENOENT || errno = ESTALE)) {
+ 			return 0;
+ 		}
+ 
+@@ -224,8 +226,10 @@ dirstress(
+         if (verbose) fprintf(stderr,"** [%d] chdir ..\n", pid);
+ 	error = chdir("..");
+ 	if (error) {
+-		/* If this is multithreaded, then expecting a ENOENT here is fine */
+-		if (nprocs_per_dir > 1 && errno == ENOENT) {
++		/* If this is multithreaded, then expecting a ENOENT here is fine,
++		 * and ESTALE is normal in the NFS case. */
++		if (nprocs_per_dir > 1 &&
++				(errno == ENOENT || errno = ESTALE)) {
+ 			return 0;
+ 		}
+ 
+-- 
+2.9.3
 
-  NFSv4.x: hide array-bounds warning (2016-11-22 16:11:44 -0500)
-----------------------------------------------------------------
-
-Most of these fix regressions or races, but there is one patch for Stable that Arnd sent me
-
-Stable Bugfixes:
-- Hide array-bounds warning
-
-Bugfixes:
-- Keep a reference on lock states while checking
-- Handle NFS4ERR_OLD_STATEID in nfs4_reclaim_open_state
-- Don't call close if the open stateid has already been cleared
-- Fix CLOSE rases with OPEN
-- Fix a regression in DELEGRETURN
-
-Thank you!  Have a good Thanksgiving!
-Anna
-----------------------------------------------------------------
-
-Arnd Bergmann (1):
-      NFSv4.x: hide array-bounds warning
-
-Benjamin Coddington (2):
-      NFSv4.1: Handle NFS4ERR_OLD_STATEID in nfs4_reclaim_open_state
-      NFSv4.1: Keep a reference on lock states while checking
-
-Trond Myklebust (3):
-      NFSv4.1: Fix a regression in DELEGRETURN
-      NFSv4: Fix CLOSE races with OPEN
-      NFSv4: Don't call close if the open stateid has already been cleared
-
- fs/nfs/callback.c  |  2 +-
- fs/nfs/nfs4_fs.h   |  7 +++++++
- fs/nfs/nfs4proc.c  | 38 ++++++++++++++++++++++++++------------
- fs/nfs/nfs4state.c |  1 +
- 4 files changed, 35 insertions(+), 13 deletions(-)
