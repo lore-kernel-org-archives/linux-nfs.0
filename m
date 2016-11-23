@@ -1,87 +1,34 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx143.netapp.com ([216.240.21.24]:11635 "EHLO mx143.netapp.com"
+Received: from fieldses.org ([173.255.197.46]:57612 "EHLO fieldses.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S932814AbcKWSty (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 23 Nov 2016 13:49:54 -0500
-From: <Anna.Schumaker@Netapp.com>
-To: <Trond.Myklebust@primarydata.com>, <linux-nfs@vger.kernel.org>
-CC: <Anna.Schumaker@Netapp.com>
-Subject: [PATCH] NFS: Remove unused argument from nfs_direct_write_complete()
-Date: Wed, 23 Nov 2016 13:49:38 -0500
-Message-ID: <20161123184938.13409-1-Anna.Schumaker@Netapp.com>
-MIME-Version: 1.0
-Content-Type: text/plain
+        id S933483AbcKWUlw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 23 Nov 2016 15:41:52 -0500
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: Trond Myklebust <trond.myklebust@primarydata.com>,
+        Anna Schumaker <schumakeranna@gmail.com>
+Cc: linux-nfs@vger.kernel.org, Andreas Gruenbacher <agruenba@redhat.com>
+Subject: NFSv4.2 mode_umask support
+Date: Wed, 23 Nov 2016 15:41:38 -0500
+Message-Id: <1479933700-5743-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Anna Schumaker <Anna.Schumaker@Netapp.com>
+Resending--can we get any opinions on these?
 
-This parameter hasn't been used since 2a009ec9 (Linux 3.13-rc3), so
-let's remove it from this function.
+The following patches allow the umask to be ignored in the presence of
+inheritable NFSv4 ACLs.  Otherwise inheritable ACLs can be rendered
+mostly useless whenever the umask masks out group bits.
 
-Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
----
- fs/nfs/direct.c | 12 ++++++------
- 1 file changed, 6 insertions(+), 6 deletions(-)
+This solves a problem we've seen complaints about for some time, both
+upstream and from RHEL users.
 
-diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
-index 5935975..d7c1f7a 100644
---- a/fs/nfs/direct.c
-+++ b/fs/nfs/direct.c
-@@ -105,7 +105,7 @@ struct nfs_direct_req {
- 
- static const struct nfs_pgio_completion_ops nfs_direct_write_completion_ops;
- static const struct nfs_commit_completion_ops nfs_direct_commit_completion_ops;
--static void nfs_direct_write_complete(struct nfs_direct_req *dreq, struct inode *inode);
-+static void nfs_direct_write_complete(struct nfs_direct_req *dreq);
- static void nfs_direct_write_schedule_work(struct work_struct *work);
- 
- static inline void get_dreq(struct nfs_direct_req *dreq)
-@@ -674,7 +674,7 @@ static void nfs_direct_write_reschedule(struct nfs_direct_req *dreq)
- 	}
- 
- 	if (put_dreq(dreq))
--		nfs_direct_write_complete(dreq, dreq->inode);
-+		nfs_direct_write_complete(dreq);
- }
- 
- static void nfs_direct_commit_complete(struct nfs_commit_data *data)
-@@ -700,7 +700,7 @@ static void nfs_direct_commit_complete(struct nfs_commit_data *data)
- 	}
- 
- 	if (atomic_dec_and_test(&cinfo.mds->rpcs_out))
--		nfs_direct_write_complete(dreq, data->inode);
-+		nfs_direct_write_complete(dreq);
- }
- 
- static void nfs_direct_resched_write(struct nfs_commit_info *cinfo,
-@@ -751,7 +751,7 @@ static void nfs_direct_write_schedule_work(struct work_struct *work)
- 	}
- }
- 
--static void nfs_direct_write_complete(struct nfs_direct_req *dreq, struct inode *inode)
-+static void nfs_direct_write_complete(struct nfs_direct_req *dreq)
- {
- 	schedule_work(&dreq->work); /* Calls nfs_direct_write_schedule_work */
- }
-@@ -807,7 +807,7 @@ static void nfs_direct_write_completion(struct nfs_pgio_header *hdr)
- 
- out_put:
- 	if (put_dreq(dreq))
--		nfs_direct_write_complete(dreq, hdr->inode);
-+		nfs_direct_write_complete(dreq);
- 	hdr->release(hdr);
- }
- 
-@@ -936,7 +936,7 @@ static ssize_t nfs_direct_write_schedule_iovec(struct nfs_direct_req *dreq,
- 	}
- 
- 	if (put_dreq(dreq))
--		nfs_direct_write_complete(dreq, dreq->inode);
-+		nfs_direct_write_complete(dreq);
- 	return 0;
- }
- 
--- 
-2.10.2
+The new protocol has been discussed in the IETF working group and is
+documented at:
+
+        https://tools.ietf.org/html/draft-ietf-nfsv4-umask-02
+
+It's unlikely that we'll discover problems requiring an incompatible
+change, so I think we should consider this for 4.10.
+
+--b.
 
