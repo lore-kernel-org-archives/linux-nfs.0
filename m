@@ -1,121 +1,91 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f195.google.com ([209.85.223.195]:35692 "EHLO
-        mail-io0-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S933573AbcKWXeS (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 23 Nov 2016 18:34:18 -0500
-Received: by mail-io0-f195.google.com with SMTP id h133so3316702ioe.2
-        for <linux-nfs@vger.kernel.org>; Wed, 23 Nov 2016 15:34:18 -0800 (PST)
-Subject: Re: [PATCH xfstests] dirstress: Allow ESTALE as well as ENOENT
-Mime-Version: 1.0 (Mac OS X Mail 9.3 \(3124\))
-Content-Type: multipart/signed; boundary="Apple-Mail=_AC9128B0-4C8A-47DA-94EB-22E2128D442D"; protocol="application/pgp-signature"; micalg=pgp-sha256
-From: Andreas Dilger <adilger@dilger.ca>
-In-Reply-To: <20161123222054.GA7900@fieldses.org>
-Date: Wed, 23 Nov 2016 16:19:11 -0700
-Cc: linux-fsdevel <linux-fsdevel@vger.kernel.org>, fstests@vger.kernel.org,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <35420A4E-1698-4743-9523-CBF43F2A2DC6@dilger.ca>
-References: <20161123222054.GA7900@fieldses.org>
-To: "J. Bruce Fields" <bfields@fieldses.org>
+Received: from mx2.suse.de ([195.135.220.15]:40434 "EHLO mx2.suse.de"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S966049AbcKXWsW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 24 Nov 2016 17:48:22 -0500
+From: NeilBrown <neilb@suse.com>
+To: Steve Dickson <SteveD@redhat.com>
+Date: Fri, 25 Nov 2016 09:48:14 +1100
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        libtirpc-devel@lists.sourceforge.net
+Subject: [PATCH rpcbind] Fix path for rpcbind in rpcbind.service.
+Message-ID: <87shqga40h.fsf@notabene.neil.brown.name>
+MIME-Version: 1.0
+Content-Type: multipart/signed; boundary="=-=-=";
+        micalg=pgp-sha256; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
---Apple-Mail=_AC9128B0-4C8A-47DA-94EB-22E2128D442D
-Content-Transfer-Encoding: 7bit
-Content-Type: text/plain;
-	charset=us-ascii
-
-On Nov 23, 2016, at 3:20 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
-> 
-> From: "J. Bruce Fields" <bfields@redhat.com>
-> 
-> In the NFS case an attempt to chdir out of a removed directory could result
-> in ESTALE, and that should not cause the test to fail.
-> 
-> This was causing intermittent failures on generic/011 on NFS.
-> 
-> Signed-off-by: J. Bruce Fields <bfields@redhat.com>
-> ---
-> src/dirstress.c | 12 ++++++++----
-> 1 file changed, 8 insertions(+), 4 deletions(-)
-> 
-> Sorry, who do xfstests patches go to?--b.
-
-They are sent to fstests@vger.kernel.org
-
-Cheers, Andreas
-
-> 
-> diff --git a/src/dirstress.c b/src/dirstress.c
-> index f8f7355..33a166c 100644
-> --- a/src/dirstress.c
-> +++ b/src/dirstress.c
-> @@ -203,8 +203,10 @@ dirstress(
->         if (verbose) fprintf(stderr,"** [%d] chdir ..\n", pid);
-> 	error = chdir("..");
-> 	if (error) {
-> -		/* If this is multithreaded, then expecting a ENOENT here is fine */
-> -		if (nprocs_per_dir > 1 && errno == ENOENT) {
-> +		/* If this is multithreaded, then expecting a ENOENT here is fine,
-> +		 * and ESTALE is normal in the NFS case. */
-> +		if (nprocs_per_dir > 1 &&
-> +				(errno == ENOENT || errno = ESTALE)) {
-> 			return 0;
-> 		}
-> 
-> @@ -224,8 +226,10 @@ dirstress(
->         if (verbose) fprintf(stderr,"** [%d] chdir ..\n", pid);
-> 	error = chdir("..");
-> 	if (error) {
-> -		/* If this is multithreaded, then expecting a ENOENT here is fine */
-> -		if (nprocs_per_dir > 1 && errno == ENOENT) {
-> +		/* If this is multithreaded, then expecting a ENOENT here is fine,
-> +		 * and ESTALE is normal in the NFS case. */
-> +		if (nprocs_per_dir > 1 &&
-> +				(errno == ENOENT || errno = ESTALE)) {
-> 			return 0;
-> 		}
-> 
-> --
-> 2.9.3
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-fsdevel" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+--=-=-=
+Content-Type: text/plain
+Content-Transfer-Encoding: quoted-printable
 
 
-Cheers, Andreas
+Due to a miscommunication,
+ Commit: 0cc39c519278 ("Provide systemd unit files for rpcbind")
+used sbindir as the location of rpcbind to put in the systemd unit
+file instead of bindir, which is where rpcbind gets installed.
+
+So change those few instances of sbindir to bindir so that the unit
+file will have the correct path.
+
+Signed-off-by: NeilBrown <neilb@suse.com>
+=2D--
+ configure.ac               | 6 +++---
+ systemd/rpcbind.service.in | 2 +-
+ 2 files changed, 4 insertions(+), 4 deletions(-)
+
+diff --git a/configure.ac b/configure.ac
+index acc69149c862..f34f669dc7da 100644
+=2D-- a/configure.ac
++++ b/configure.ac
+@@ -61,9 +61,9 @@ AC_SEARCH_LIBS([pthread_create], [pthread])
+=20
+ AC_CHECK_HEADERS([nss.h rpcsvc/mount.h])
+=20
+=2D# make sbindir available for substitution in config file
++# make bindir available for substitution in config file
+ # 2 "evals" needed to expand variable names
+=2DAC_SUBST([_sbindir])
+=2DAC_CONFIG_COMMANDS_PRE([eval eval _sbindir=3D$sbindir])
++AC_SUBST([_bindir])
++AC_CONFIG_COMMANDS_PRE([eval eval _bindir=3D$bindir])
+=20
+ AC_OUTPUT([Makefile systemd/rpcbind.service])
+diff --git a/systemd/rpcbind.service.in b/systemd/rpcbind.service.in
+index c173b838bd42..e7e86da0c268 100644
+=2D-- a/systemd/rpcbind.service.in
++++ b/systemd/rpcbind.service.in
+@@ -11,7 +11,7 @@ After=3Drpcbind.socket
+ [Service]
+ Type=3Dnotify
+ # distro can provide a drop-in adding EnvironmentFile=3D-/??? if needed.
+=2DExecStart=3D@_sbindir@/rpcbind $RPCBIND_OPTIONS -w -f
++ExecStart=3D@_bindir@/rpcbind $RPCBIND_OPTIONS -w -f
+=20
+ [Install]
+ WantedBy=3Dmulti-user.target
+=2D-=20
+2.10.2
 
 
-
-
-
-
---Apple-Mail=_AC9128B0-4C8A-47DA-94EB-22E2128D442D
-Content-Transfer-Encoding: 7bit
-Content-Disposition: attachment;
-	filename=signature.asc
-Content-Type: application/pgp-signature;
-	name=signature.asc
-Content-Description: Message signed with OpenPGP using GPGMail
+--=-=-=
+Content-Type: application/pgp-signature; name="signature.asc"
 
 -----BEGIN PGP SIGNATURE-----
-Comment: GPGTools - http://gpgtools.org
 
-iQIVAwUBWDYj73Kl2rkXzB/gAQiYiBAAi7fRiG5K4CIgp6fOyseMuyJrmanA4pCZ
-SJSHjq1f+q+sN33YqfZhf7zzpF67+HU49asgzy66Xrkfoc3r+pkvnKOtUAKbf7Vx
-ASIyqYwLMtaYwjQ8B74wrvYnAMf78rQTLegO65UYYpP8PDjM4F06qPL4oFJip+cl
-yKXRGSIw+TVkA23cVln7RpdbKH11CJOOY+Hf2WPpAsKDsg2MAa2TYNq61WL3h/QD
-JnqJbsCJ1sRZp9yXEho/FDzNp1t/7J1rWIggcf4pRpd/fO40rkPfb1tbo2sGONne
-24YzRQxcJzcVQDAXD419KjbIw2OyLrpz0oA8hXuW4qmmuJhFk4Xsr1xdi0++18HG
-HYTwVKp88G7zaxOZWwQ0CARQy0B7VUpA4fEdIWwkaKcjjGN0SLx1F5dPkad7Qy34
-S/OvyfQznArYF1lPdQSHhPOHM1TOFctEa2Ak7mfL9C2nCT82e98CiNuEAUrGMfRQ
-qUQGPYFZzVwODhMVq7hLvzUrVaDgrUqJEmXgdKZCTGdtS9N897+P8SqFYjuvSvwV
-xCq6gl40Np0h9+VyxrfXpvf6U3EpNK7Mxcr92YzPAcjEsaPfiwpfeBROe0CO+huI
-I4U1W3ZiVaTcQ7IGwzb+WZuuOHWB421tL71J+wfRKeuiRNnTaSSct/DuJ1q+8XnR
-7z7KyFeSLII=
-=pgd+
+iQIcBAEBCAAGBQJYN24uAAoJEDnsnt1WYoG5bnsP/3aOjEr9QEH1+js7nBxq8sK/
+ntQRGc9lyGmDYkh4wCpNCrS3Sbe+76zg59vrtsHr7kBDBPkIKSRZbl+NoMZXFH0j
+2wyEaiN5ogofPO+LqSU7Ys1EybG/jk+3lCsF6yMuy0pQZRqunvwHe/aFFy11UKTK
+wZfXwJaSUIuFl1iibB9YLOFrTUUs1/W6Qfo9LulDoJQ6RUzj8v+Pd1GL4ZMtgKqR
+9M5qLU2YGRhXe/Q0zQn+XTyzmJer4NFsQw7g0xOu8NCJgaj+yKauBAwMPErD0kFg
+jRsy3X35BHwGDV5f39ENc8eqVxsubW5TvZiFcL1q+JoWKc5KMy3h0fU8DV1ApK3z
+nNmWQrFgos0T9BVIPz3CPR1qh0f8q06I5KuIwuj6ocZUdM4B5zajNld5VDvp9q3t
+g77lmPNN/d7tHdrUtuTfWH5NL+g64IlMYUGQb+l/PNgeGaaIhG4hJLFcQl5EdpIF
+WOM4O2ORTOXYfnBj39Kw7/uAKehxT8bM7BYcT1RnSK9fF+/1nKnRr0pTqqelfB+h
+yshbSlBuXmvMJqjZcajdvu3w9jSVe6JRn1wpgvZhp+6ea5qyzK9ZH4fsXGGGSUKn
+cNiPeWjC4FKl9CQ4HMklesMIGcL4t0e+QumwekbjvnD0nmU1lJoD5a/E95puQols
+PEOWMee1BR+ivzT9cJh6
+=1oUy
 -----END PGP SIGNATURE-----
-
---Apple-Mail=_AC9128B0-4C8A-47DA-94EB-22E2128D442D--
+--=-=-=--
