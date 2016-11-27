@@ -1,14 +1,14 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from us-smtp-delivery-194.mimecast.com ([63.128.21.194]:22611 "EHLO
+Received: from us-smtp-delivery-194.mimecast.com ([63.128.21.194]:31574 "EHLO
         us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1752046AbcK0G1d (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sun, 27 Nov 2016 01:27:33 -0500
+        by vger.kernel.org with ESMTP id S1753079AbcK0G1n (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sun, 27 Nov 2016 01:27:43 -0500
 From: Tom Haynes <loghyr@primarydata.com>
 To: "J. Bruce Fields" <bfields@redhat.com>
 CC: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: [PATCH pynfs 05/12] Really, really close those open temp files to remove state on the server
-Date: Sat, 26 Nov 2016 22:26:34 -0800
-Message-ID: <1480228001-64821-6-git-send-email-loghyr@primarydata.com>
+Subject: [PATCH pynfs 12/12] Add layoutstats tests for flex files
+Date: Sat, 26 Nov 2016 22:26:41 -0800
+Message-ID: <1480228001-64821-13-git-send-email-loghyr@primarydata.com>
 In-Reply-To: <1480228001-64821-1-git-send-email-loghyr@primarydata.com>
 References: <1480228001-64821-1-git-send-email-loghyr@primarydata.com>
 MIME-Version: 1.0
@@ -16,185 +16,334 @@ Content-Type: text/plain; charset=WINDOWS-1252
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+1) Time series where the client resets the data
+2) Time series where the reset is straightened out
+3) Time series where an I/O stall occurs
+
 Signed-off-by: Tom Haynes <loghyr@primarydata.com>
 ---
- nfs4.1/server41tests/st_current_stateid.py  | 24 ++++++++++++++++++++++++
- nfs4.1/server41tests/st_reclaim_complete.py |  4 ++++
- nfs4.1/server41tests/st_rename.py           |  4 ++++
- nfs4.1/server41tests/st_secinfo.py          | 20 ++++++++++++++++----
- nfs4.1/server41tests/st_sequence.py         |  8 ++++++++
- 5 files changed, 56 insertions(+), 4 deletions(-)
+ nfs4.1/server41tests/st_flex.py | 195 ++++++++++++++++++++++++++++++++++++=
++++-
+ 1 file changed, 194 insertions(+), 1 deletion(-)
 
-diff --git a/nfs4.1/server41tests/st_current_stateid.py b/nfs4.1/server41te=
-sts/st_current_stateid.py
-index 01d78c0..792eee8 100644
---- a/nfs4.1/server41tests/st_current_stateid.py
-+++ b/nfs4.1/server41tests/st_current_stateid.py
-@@ -99,10 +99,23 @@ def testOpenLookupClose(t, env):
+diff --git a/nfs4.1/server41tests/st_flex.py b/nfs4.1/server41tests/st_flex=
+.py
+index 06dbba8..a14c926 100644
+--- a/nfs4.1/server41tests/st_flex.py
++++ b/nfs4.1/server41tests/st_flex.py
+@@ -327,7 +327,7 @@ def testFlexLayoutStatsSmall(t, env):
+     2) GETDEVINFO
+     3) LAYOUTRETURN, CLOSE
 =20
-     fname =3D env.testname(t)
-     open_op =3D open_create_file_op(sess1, fname, open_create=3DOPEN4_CREA=
-TE)
-+
-     lookup_op =3D env.home + [op.lookup(fname)]
-     res =3D sess1.compound(open_op + lookup_op + [op.close(0, current_stat=
-eid)])
-     check(res, [NFS4ERR_STALE_STATEID, NFS4ERR_BAD_STATEID])
-=20
-+    # An unknown number of lookups will be present
-+    for r in res.resarray:
-+        if r.resop =3D=3D OP_OPEN:
-+            stateid =3D r.stateid
-+        elif r.resop =3D=3D OP_GETFH:
-+            fh =3D r.object
-+            break
-+
-+    # Test passed, now cleanup!
-+    res =3D sess1.compound([op.putfh(fh), op.close(0, stateid)])
-+    check(res)
-+
- def testCloseNoStateid(t, env):
-     """test current state id processing by having CLOSE
-        without operation which provides stateid
-@@ -120,6 +133,10 @@ def testCloseNoStateid(t, env):
-     res =3D sess1.compound([op.putfh(fh), op.close(0, current_stateid)])
-     check(res, [NFS4ERR_STALE_STATEID, NFS4ERR_BAD_STATEID])
-=20
-+    # Test passed, now cleanup!
-+    res =3D sess1.compound([op.putfh(fh), op.close(0, stateid)])
-+    check(res)
-+
- def testOpenLayoutGet(t, env):
-     """test current state id processing by having OPEN and LAYOUTGET
-        in a single compound
-@@ -170,6 +187,13 @@ def testOpenFreestateidClose(t, env):
-     open_op =3D open_create_file_op(sess1, env.testname(t), open_create=3D=
-OPEN4_CREATE)
-     res =3D sess1.compound(open_op + [op.free_stateid(current_stateid), op=
-.close(0, current_stateid)])
-     check(res, NFS4ERR_LOCKS_HELD)
-+    fh =3D res.resarray[-2].object
-+    stateid =3D res.resarray[-3].stateid
-+
-+    # Test passed, now cleanup!
-+    res =3D sess1.compound([op.putfh(fh), op.close(0, stateid)])
-+    check(res)
-+
-=20
- def testOpenSaveFHLookupRestoreFHClose(t, env):
-     """test current state id processing by having OPEN, SAVEFH, LOOKUP, RE=
-STOREFH and CLOSE
-diff --git a/nfs4.1/server41tests/st_reclaim_complete.py b/nfs4.1/server41t=
-ests/st_reclaim_complete.py
-index e945a9f..642ada2 100644
---- a/nfs4.1/server41tests/st_reclaim_complete.py
-+++ b/nfs4.1/server41tests/st_reclaim_complete.py
-@@ -47,6 +47,10 @@ def testReclaimAfterRECC(t, env):
-=20
-     check(res, NFS4ERR_NO_GRACE, warnlist =3D [NFS4ERR_EXIST | NFS4ERR_REC=
-LAIM_BAD])
-=20
-+    # Cleanup
-+    res =3D sess.compound([op.putfh(fh), op.close(0, stateid)])
-+    check(res)
-+
- def testOpenBeforeRECC(t, env):
-     """After a client establishes a new client ID, if non-reclaim
-        locking operations are done before the RECLAIM_COMPLETE,
-diff --git a/nfs4.1/server41tests/st_rename.py b/nfs4.1/server41tests/st_re=
-name.py
-index d87cca0..c7c2c20 100644
---- a/nfs4.1/server41tests/st_rename.py
-+++ b/nfs4.1/server41tests/st_rename.py
-@@ -496,6 +496,10 @@ def testSelfRenameFile(t, env):
-         t.fail("RENAME of file %s into itself should do nothing, "
-                "but cinfo was changed" % name)
-=20
-+    # Cleanup
-+    res =3D sess.compound([op.putfh(fh), op.close(0, stateid)])
-+    check(res)
-+
- def testLinkRename(t, env):
-     """RENAME of file into its hard link should do nothing
-=20
-diff --git a/nfs4.1/server41tests/st_secinfo.py b/nfs4.1/server41tests/st_s=
-ecinfo.py
-index 234ec80..008dc1e 100644
---- a/nfs4.1/server41tests/st_secinfo.py
-+++ b/nfs4.1/server41tests/st_secinfo.py
-@@ -20,14 +20,20 @@ def testSupported(t, env):
-     path =3D sess.c.homedir + [name]
-     res =3D create_file(sess, owner, path, access=3DOPEN4_SHARE_ACCESS_WRI=
-TE)
-     check(res)
-+    fh =3D res.resarray[-1].object
-+    stateid =3D res.resarray[-2].stateid
-=20
-     # Get the filehandle of the tmpfile's parent dir
-     res =3D sess.compound(use_obj(sess.c.homedir) + [op.getfh()])
-     check(res)
--    fh =3D res.resarray[-1].object
-+    fh_p =3D res.resarray[-1].object
-=20
-     # Just do a simple SECINFO
--    res =3D sess.compound([op.putfh(fh), op.secinfo(name)])
-+    res =3D sess.compound([op.putfh(fh_p), op.secinfo(name)])
-+    check(res)
-+
-+    # Cleanup
-+    res =3D sess.compound([op.putfh(fh), op.close(0, stateid)])
-     check(res)
-=20
- def testSupported2(t, env):
-@@ -45,12 +51,18 @@ def testSupported2(t, env):
-     path =3D sess.c.homedir + [name]
-     res =3D create_file(sess, owner, path, access=3DOPEN4_SHARE_ACCESS_WRI=
-TE)
-     check(res)
-+    fh =3D res.resarray[-1].object
-+    stateid =3D res.resarray[-2].stateid
-=20
-     # Get the filehandle of the tmpfile's parent dir
-     res =3D sess.compound(use_obj(sess.c.homedir) + [op.getfh()])
-     check(res)
--    fh =3D res.resarray[-1].object
-+    fh_p =3D res.resarray[-1].object
-=20
-     # GETFH after do a SECINFO should get error NFS4ERR_NOFILEHANDLE
--    res =3D sess.compound([op.putfh(fh), op.secinfo(name), op.getfh()])
-+    res =3D sess.compound([op.putfh(fh_p), op.secinfo(name), op.getfh()])
-     check(res, NFS4ERR_NOFILEHANDLE)
-+
-+    # Cleanup
-+    res =3D sess.compound([op.putfh(fh), op.close(0, stateid)])
-+    check(res)
-diff --git a/nfs4.1/server41tests/st_sequence.py b/nfs4.1/server41tests/st_=
-sequence.py
-index d12f355..d8d460c 100644
---- a/nfs4.1/server41tests/st_sequence.py
-+++ b/nfs4.1/server41tests/st_sequence.py
-@@ -129,6 +129,9 @@ def testReplayCache002(t, env):
+-    FLAGS: flex
++    FLAGS: flex layoutstats
+     CODE: FFLS1
      """
-     sess1 =3D env.c1.new_client_session(env.testname(t))
-     res =3D create_file(sess1, "%s_1" % env.testname(t))
-+    fh =3D res.resarray[-1].object
-+    stateid =3D res.resarray[-2].stateid
+     lats =3D [93089, 107683, 112340, 113195, 130412, 138390, 140427, 15882=
+4, 193078, 201879, 391634, 404757, 2201181, 2232614, 2280089, 2296343, 2341=
+763, 2392984, 3064546, 3070314]
+@@ -399,3 +399,196 @@ def testFlexLayoutStatsSmall(t, env):
+                op.close(0, open_stateid)]
+         res =3D sess.compound(ops)
+         check(res)
 +
-     check(res)
-     ops =3D env.home + [op.savefh(),\
-           op.rename("%s_1" % env.testname(t), "%s_2" % env.testname(t))]
-@@ -140,6 +143,11 @@ def testReplayCache002(t, env):
-     if not nfs4lib.test_equal(res1, res2):
-         fail("Replay results not equal")
-=20
-+    # Cleanup
-+    res =3D sess1.compound([op.putfh(fh), op.close(0, stateid)])
++def _LayoutStats(t, env, stats):
++    '''Loop over the provided layoutstats, sending them on in time
++    '''
++    sess =3D env.c1.new_pnfs_client_session(env.testname(t))
++
++    # Create the file
++    res =3D create_file(sess, env.testname(t))
++    check(res)
++    fh =3D res.resarray[-1].object
++    open_stateid =3D res.resarray[-2].stateid
++    lo_stateid =3D open_stateid
++
++    ops =3D [op.putfh(fh),
++           op.layoutget(False, LAYOUT4_FLEX_FILES,
++                        LAYOUTIOMODE4_RW,
++                        0, 0xffffffffffffffff, 8192, lo_stateid, 0xffff)]
++    res =3D sess.compound(ops)
++    check(res)
++    lo_stateid =3D res.resarray[-1].logr_stateid
++    check_seqid(lo_stateid, 1)
++
++    layout =3D res.resarray[-1].logr_layout[-1]
++    p =3D FlexUnpacker(layout.loc_body)
++    opaque =3D p.unpack_ff_layout4()
++    p.done()
++
++    stats_hint =3D opaque.ffl_stats_collect_hint
++
++    # Assume one mirror/storage device
++    ds =3D opaque.ffl_mirrors[-1].ffm_data_servers[-1]
++
++    deviceid =3D ds.ffds_deviceid
++
++    ops =3D [op.putfh(fh),
++           op.getdeviceinfo(deviceid, LAYOUT4_FLEX_FILES, 0xffffffff, 0)]
++    res =3D sess.compound(ops)
 +    check(res)
 +
++    gda =3D res.resarray[-1].gdir_device_addr
 +
- def testReplayCache003(t, env):
-     """Send two unsuccessful idempotent compounds with same seqid
-=20
++    p =3D FlexUnpacker(gda.da_addr_body)
++    da =3D p.unpack_ff_device_addr4()
++    p.done()
++
++    rd_io =3D io_info4()
++    wr_io =3D io_info4()
++
++    rd_lat =3D ff_io_latency4()
++    wr_lat =3D ff_io_latency4()
++
++    for s in stats:
++        dur =3D get_nfstime(s[1])
++
++        # Did not capture these in the gathered traces
++        offset =3D 0
++        file_length =3D 0xffffffffffffffff
++        rd_io.ii_count =3D 0
++        rd_io.ii_bytes =3D 0
++        wr_io.ii_count =3D 0
++        wr_io.ii_bytes =3D 0
++
++        rd_lat.ffil_ops_requested =3D s[5]
++        rd_lat.ffil_bytes_requested =3D s[4]
++        rd_lat.ffil_ops_completed =3D s[6]
++        rd_lat.ffil_bytes_completed =3D s[2]
++        rd_lat.ffil_bytes_not_delivered =3D s[3]
++        rd_lat.ffil_total_busy_time =3D get_nfstime(s[7])
++        rd_lat.ffil_aggregate_completion_time =3D get_nfstime(s[8])
++        wr_lat.ffil_ops_requested =3D s[12]
++        wr_lat.ffil_bytes_requested =3D s[11]
++        wr_lat.ffil_ops_completed =3D s[13]
++        wr_lat.ffil_bytes_completed =3D s[9]
++        wr_lat.ffil_bytes_not_delivered =3D s[10]
++        wr_lat.ffil_total_busy_time =3D get_nfstime(s[14])
++        wr_lat.ffil_aggregate_completion_time =3D get_nfstime(s[15])
++
++        sleeper =3D s[0]
++        env.sleep(sleeper)
++        fflu =3D ff_layoutupdate4(da.ffda_netaddrs[-1], ds.ffds_fh_vers[-1=
+],
++                                rd_lat, wr_lat, dur, True)
++        p =3D FlexPacker()
++        p.pack_ff_layoutupdate4(fflu)
++        lu4 =3D layoutupdate4(LAYOUT4_FLEX_FILES, p.get_buffer())
++
++        ops =3D [op.putfh(fh),
++               op.layoutstats(offset, file_length, lo_stateid, rd_io, wr_i=
+o, deviceid, lu4)]
++        res =3D sess.compound(ops)
++        check(res)
++
++    ops =3D [op.putfh(fh),
++           op.layoutreturn(False, LAYOUT4_FLEX_FILES, LAYOUTIOMODE4_ANY,
++                           layoutreturn4(LAYOUTRETURN4_FILE,
++                                         layoutreturn_file4(0, 0xfffffffff=
+fffffff, lo_stateid, "")))]
++    res =3D sess.compound(ops)
++    check(res)
++    res =3D close_file(sess, fh, stateid=3Dopen_stateid)
++    check(res)
++
++def testFlexLayoutStatsReset(t, env):
++    """These layoutstats are from when the client effectively resets them
++    by having one field be less than the cumulative ancestor
++
++    FLAGS: flex layoustats
++    CODE: FFLS2
++    """
++
++    ls =3D [[15, 14997377109, 756789248, 0, 756834304, 184774, 184763, 149=
+96867426, 135877046309, 252579840, 0, 252665856, 61686, 61665, 14997307909,=
+ 336986104593],
++          [15, 29997404625, 1527537664, 0, 1527566336, 372941, 372934, 299=
+96142132, 275416132139, 508502016, 0, 508604416, 124171, 124146, 2999729356=
+7, 670368077434],
++          [15, 44999356031, 2331115520, 0, 2331136000, 569125, 569120, 449=
+97516473, 414235887583, 775569408, 0, 775680000, 189375, 189348, 4499909689=
+6, 1004056428600],
++          [15, 60001513873, 3142483968, 0, 3142529024, 767219, 767208, 599=
+99263507, 550956049466, 1044996096, 0, 1045082112, 255147, 255126, 60001232=
+968, 1340163285214],
++          [15, 75001564615, 3969384448, 0, 3969413120, 969095, 969088, 749=
+99204445, 687761120289, 1320456192, 0, 1320542208, 322398, 322377, 75001158=
+793, 1676193906267],
++          [15, 90001651970, 4873195520, 0, 4873248768, 1189758, 1189745, 8=
+9999194540, 828644696229, 1620467712, 0, 1620545536, 395641, 395622, 900009=
+94588, 2006906488984],
++          [15, 105001710572, 5816430592, 0, 5816467456, 1420036, 1420027, =
+104995782871, 979226777566, 1935175680, 0, 1935269888, 472478, 472455, 1049=
+99171073, 2326727992588],
++          [15, 14997245247, 1466019840, 0, 1466097664, 357934, 357915, 150=
+01797989, 277140995467, 487624704, 0, 487677952, 119062, 119049, 1499793974=
+5, 179221181962],
++          [15, 29999503656, 2929393664, 0, 2929500160, 715210, 715184, 300=
+01965158, 554484427501, 974204928, 0, 974229504, 237849, 237843, 2999879732=
+8, 359060066193],
++          [15, 45000138417, 4245204992, 0, 4245245952, 1036437, 1036427, 4=
+5005641995, 825579118923, 1411981312, 0, 1412071424, 344744, 344722, 449966=
+37179, 547563519532],
++          [15, 60000125536, 5545734144, 0, 5545807872, 1353957, 1353939, 6=
+0009284822, 1097378466922, 1844367360, 0, 1844400128, 450293, 450285, 59996=
+684404, 735124264647],
++          [15, 14999894874, 1278164992, 0, 1278226432, 312067, 312052, 150=
+06094174, 270749903934, 425877504, 0, 425947136, 103991, 103974, 1500034190=
+6, 189401125380],
++          [15, 30000017314, 2586595328, 0, 2586648576, 631506, 631493, 300=
+09142707, 540229533389, 860536832, 0, 860614656, 210111, 210092, 2999922009=
+8, 379353634204],
++          [15, 44999991304, 3859476480, 0, 3859574784, 942279, 942255, 450=
+11969088, 808964878766, 1283543040, 0, 1283575808, 313373, 313365, 44999310=
+875, 571777183394],
++          [15, 60000803942, 5141098496, 0, 5141168128, 1255168, 1255151, 6=
+0015665154, 1075012244233, 1709035520, 0, 1709096960, 417260, 417245, 60000=
+142398, 766775808737],
++          [15, 75000722908, 6431453184, 0, 6431526912, 1570197, 1570179, 7=
+5018741381, 1344327593333, 2140831744, 0, 2140889088, 522678, 522664, 75000=
+341374, 957762218131],
++          [15, 14990345451, 1310584832, 0, 1310654464, 319984, 319967, 149=
+90338511, 276432361830, 436121600, 0, 436183040, 106490, 106475, 1499135320=
+2, 182231098560],
++          [15, 29990415908, 2630619136, 0, 2630701056, 642261, 642241, 299=
+83066936, 554752250256, 875077632, 0, 875126784, 213654, 213642, 2998284579=
+3, 362758943732],
++          [15, 44992404751, 3910578176, 0, 3910664192, 954752, 954731, 449=
+82785073, 827471490050, 1300946944, 0, 1300992000, 317625, 317614, 44985003=
+324, 549721947944]]
++
++    _LayoutStats(t, env, ls)
++
++def testFlexLayoutStatsStraight(t, env):
++    """These stats are the same as the reset ones, but have been massaged
++    to keep the server from detecting the reset. I.e., the client
++    has not lost it all!
++
++    FLAGS: flex layoustats
++    CODE: FFLS3
++    """
++
++    ls =3D [[15, 14997377109, 756789248, 0, 756834304, 184774, 184763, 149=
+96867426, 135877046309, 252579840, 0, 252665856, 61686, 61665, 14997307909,=
+ 336986104593],
++          [15, 29997404625, 1527537664, 0, 1527566336, 372941, 372934, 299=
+96142132, 275416132139, 508502016, 0, 508604416, 124171, 124146, 2999729356=
+7, 670368077434],
++          [15, 44999356031, 2331115520, 0, 2331136000, 569125, 569120, 449=
+97516473, 414235887583, 775569408, 0, 775680000, 189375, 189348, 4499909689=
+6, 1004056428600],
++          [15, 60001513873, 3142483968, 0, 3142529024, 767219, 767208, 599=
+99263507, 550956049466, 1044996096, 0, 1045082112, 255147, 255126, 60001232=
+968, 1340163285214],
++          [15, 75001564615, 3969384448, 0, 3969413120, 969095, 969088, 749=
+99204445, 687761120289, 1320456192, 0, 1320542208, 322398, 322377, 75001158=
+793, 1676193906267],
++          [15, 90001651970, 4873195520, 0, 4873248768, 1189758, 1189745, 8=
+9999194540, 828644696229, 1620467712, 0, 1620545536, 395641, 395622, 900009=
+94588, 2006906488984],
++          [15, 105001710572, 5816430592, 0, 5816467456, 1420036, 1420027, =
+104995782871, 979226777566, 1935175680, 0, 1935269888, 472478, 472455, 1049=
+99171073, 2326727992588],
++          [15, 119998955819, 7282450432, 0, 7282565120, 1777970, 1777942, =
+119997580860, 1256367773033, 2422800384, 0, 2422947840, 591540, 591504, 119=
+997110818, 2505949174550],
++          [15, 135001214228, 8745824256, 0, 8745967616, 2135246, 2135211, =
+134997748029, 1533711205067, 2909380608, 0, 2909499392, 710327, 710298, 134=
+997968401, 2685788058781],
++          [15, 150001848989, 10061635584, 0, 10061713408, 2456473, 2456454=
+, 150001424866, 1804805896489, 3347156992, 0, 3347341312, 817222, 817177, 1=
+49995808252, 2874291512120],
++          [15, 165001836108, 11362164736, 0, 11362275328, 2773993, 2773966=
+, 165005067693, 2076605244488, 3779543040, 0, 3779670016, 922771, 922740, 1=
+64995855477, 3061852257235],
++          [15, 180001730982, 12640329728, 0, 12640501760, 3086060, 3086018=
+, 180011161867, 2347355148422, 4205420544, 0, 4205617152, 1026762, 1026714,=
+ 179996197383, 3251253382615],
++          [15, 195001853422, 13948760064, 0, 13948923904, 3405499, 3405459=
+, 195014210400, 2616834777877, 4640079872, 0, 4640284672, 1132882, 1132832,=
+ 194995075575, 3441205891439],
++          [15, 210001827412, 15221641216, 0, 15221850112, 3716272, 3716221=
+, 210017036781, 2885570123254, 5063086080, 0, 5063245824, 1236144, 1236105,=
+ 209995166352, 3633629440629],
++          [15, 225002640050, 16503263232, 0, 16503443456, 4029161, 4029117=
+, 225020732847, 3151617488721, 5488578560, 0, 5488766976, 1340031, 1339985,=
+ 224995997875, 3828628065972],
++          [15, 240002559016, 17793617920, 0, 17793802240, 4344190, 4344145=
+, 240023809074, 3420932837821, 5920374784, 0, 5920559104, 1445449, 1445404,=
+ 239996196851, 4019614475366],
++          [15, 254992904467, 19104202752, 0, 19104456704, 4664174, 4664112=
+, 255014147585, 3697365199651, 6356496384, 0, 6356742144, 1551939, 1551879,=
+ 254987550053, 4201845573926],
++          [15, 269992974924, 20424237056, 0, 20424503296, 4986451, 4986386=
+, 270006876010, 3975685088077, 6795452416, 0, 6795685888, 1659103, 1659046,=
+ 269979042644, 4382373419098],
++          [15, 284994963767, 21704196096, 0, 21704466432, 5298942, 5298876=
+, 285006594147, 4248404327871, 7221321728, 0, 7221551104, 1763074, 1763018,=
+ 284981200175, 4569336423310]]
++    _LayoutStats(t, env, ls)
++
++def testFlexLayoutStatsOverflow(t, env):
++    """These layoutstats are a write intensive work load in which eventual=
+ly one stat takes
++    twice longer than the collection period.
++
++    FLAGS: flex layoustats
++    CODE: FFLS4
++    """
++
++    ls =3D [[27, 27614183359, 0, 0, 0, 0, 0, 0, 0, 41943040, 0, 96468992, =
+10292, 10240, 26609085208, 134047775590766],
++          [15, 42725368747, 0, 0, 0, 0, 0, 0, 0, 41943040, 0, 2402213888, =
+15847, 11881, 31458638093, 136367242297571],
++          [15, 57912190475, 0, 0, 0, 0, 0, 0, 0, 41943040, 0, 2406907904, =
+15924, 11881, 31458638093, 136367242297571],
++          [15, 72921814168, 0, 0, 0, 0, 0, 0, 0, 896532480, 0, 2946293760,=
+ 16847, 15969, 70391696445, 275087250172195],
++          [15, 87922239746, 0, 0, 0, 0, 0, 0, 0, 896532480, 0, 3196473344,=
+ 18335, 15969, 70391696445, 275087250172195],
++          [15, 102949476399, 0, 0, 0, 0, 0, 0, 0, 1808183296, 0, 403854540=
+8, 20452, 19074, 92455324261, 310159328537298],
++          [15, 117951351182, 0, 0, 0, 0, 0, 0, 0, 2587693056, 0, 448678297=
+6, 22613, 19935, 116950745229, 331739899803911],
++          [16, 133017224561, 0, 0, 0, 0, 0, 0, 0, 2587693056, 0, 483096166=
+4, 23306, 22169, 118004988775, 353778424445917],
++          [15, 148031127154, 0, 0, 0, 0, 0, 0, 0, 4132970496, 0, 596067123=
+2, 29861, 26094, 146128115965, 387064682636158],
++          [15, 163058556237, 0, 0, 0, 0, 0, 0, 0, 5614419968, 0, 755055820=
+8, 40590, 39198, 159139080717, 453635077855389],
++          [15, 178067770476, 0, 0, 0, 0, 0, 0, 0, 5614419968, 0, 783875686=
+4, 41554, 39198, 159139080717, 453635077855389],
++          [15, 193081456711, 0, 0, 0, 0, 0, 0, 0, 6428528640, 0, 815149465=
+6, 43497, 42179, 189486399712, 517147615890054],
++          [15, 208082626131, 0, 0, 0, 0, 0, 0, 0, 7284596736, 0, 865636761=
+6, 47929, 43079, 207082978313, 532741795045495],
++          [15, 223082643294, 0, 0, 0, 0, 0, 0, 0, 7944978432, 0, 953905561=
+6, 58212, 53705, 222083467525, 636168303637199],
++          [15, 238083127306, 0, 0, 0, 0, 0, 0, 0, 7944978432, 0, 976342630=
+4, 62673, 57863, 223491351125, 650450833313121],
++          [15, 253175262253, 0, 0, 0, 0, 0, 0, 0, 7944978432, 0, 986057113=
+6, 65509, 57863, 223491351125, 650450833313121],
++          [15, 268185316876, 0, 0, 0, 0, 0, 0, 0, 8729772032, 0, 105237381=
+12, 71014, 65222, 267165070170, 853839631006322],
++          [17, 285787666679, 0, 0, 0, 0, 0, 0, 0, 9522692096, 0, 107793612=
+80, 72612, 66965, 284787142241, 896650223319399],
++          [33, 318568880195, 0, 0, 0, 0, 0, 0, 0, 9522692096, 0, 107793612=
+80, 72613, 72611, 317562885639, 1120229814239633],
++          [15, 333747489171, 0, 0, 0, 0, 0, 0, 0, 10788278272, 0, 10788802=
+560, 74918, 74790, 332233465692, 1121703181284495],
++          [15, 348749618256, 0, 0, 0, 0, 0, 0, 0, 10801360896, 0, 10801885=
+184, 78112, 77984, 347235605251, 1123668237106158],
++          [14, 362014682745, 0, 0, 0, 0, 0, 0, 0, 10812923904, 0, 10814496=
+768, 81191, 80935, 361134569864, 1125289046746198],
++          [15, 377016435231, 0, 0, 0, 0, 0, 0, 0, 10836291584, 0, 10837864=
+448, 86896, 86640, 376136316640, 1127198465086932],
++          [15, 392027464946, 0, 0, 0, 0, 0, 0, 0, 10852364288, 0, 10853937=
+152, 90820, 90564, 391147321463, 1129113173731145],
++          [15, 407034683097, 0, 0, 0, 0, 0, 0, 0, 10864914432, 0, 10866487=
+296, 93884, 93628, 406154554429, 1131023767183211]]
++    _LayoutStats(t, env, ls)
 --=20
 2.3.6
 
