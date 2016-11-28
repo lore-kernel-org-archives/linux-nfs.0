@@ -1,84 +1,63 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:34058 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([173.255.197.46]:35224 "EHLO fieldses.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1752755AbcK1Umq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 28 Nov 2016 15:42:46 -0500
-Subject: Re: [Libtirpc-devel] [PATCH rpcbind] Fix path for rpcbind in
- rpcbind.service.
-To: NeilBrown <neilb@suse.com>
-References: <87shqga40h.fsf@notabene.neil.brown.name>
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        libtirpc-devel@lists.sourceforge.net
-From: Steve Dickson <SteveD@redhat.com>
-Message-ID: <21b59ce6-7657-14fa-949a-1cf9f82b6814@RedHat.com>
-Date: Mon, 28 Nov 2016 15:42:45 -0500
+        id S1755606AbcK1Vrx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 28 Nov 2016 16:47:53 -0500
+Date: Mon, 28 Nov 2016 16:47:25 -0500
+To: "J. Bruce Fields" <bfields@redhat.com>
+Cc: Tom Haynes <loghyr@primarydata.com>,
+        Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH pynfs 00/12] Flex File support
+Message-ID: <20161128214725.GD30954@fieldses.org>
+References: <1480228001-64821-1-git-send-email-loghyr@primarydata.com>
+ <20161128163321.GB30805@parsley.fieldses.org>
 MIME-Version: 1.0
-In-Reply-To: <87shqga40h.fsf@notabene.neil.brown.name>
-Content-Type: text/plain; charset=windows-1252
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20161128163321.GB30805@parsley.fieldses.org>
+From: bfields@fieldses.org (J. Bruce Fields)
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Mon, Nov 28, 2016 at 11:33:21AM -0500, J. Bruce Fields wrote:
+> On Sat, Nov 26, 2016 at 10:26:29PM -0800, Tom Haynes wrote:
+> > I wanted to add client support for the flex file layout.
+> > 
+> > Note, I did not add pynfs as a flag because I didn't want to
+> > mess up with any existing uses of it.
+> > 
+> > The other major change here is in closing all opened
+> > files and destroying all clientids. With all the tests
+> > which run against my server, there are no longer any
+> > open files. There are however 11 clientids remaining.
+> > 
+> > I will track those down.
+> > 
+> > fwiw - these are in my staging branch at git://linux-nfs.org/~loghyr/pynfs.git
+> 
+> Thanks!  I'll try these and take a look.
 
+It breaks all the 4.0 tests:
 
-On 11/24/2016 05:48 PM, NeilBrown wrote:
-> 
-> Due to a miscommunication,
->  Commit: 0cc39c519278 ("Provide systemd unit files for rpcbind")
-> used sbindir as the location of rpcbind to put in the systemd unit
-> file instead of bindir, which is where rpcbind gets installed.
-> 
-> So change those few instances of sbindir to bindir so that the unit
-> file will have the correct path.
-> 
-> Signed-off-by: NeilBrown <neilb@suse.com>
-Committed... 
+	ACC3     st_access.testNoFh : FAILURE
+	           AttributeError: 'Environment' object has no attribute
+		              'clean_clients'
 
-steved.
+The problem is that nfs4.1/testmod.py is used by 4.0 as well, but
+there's not a 4.0 version of clean_clients.... Simplest I guess is to do
+as with clean_sessions and define a dummy method.
 
-> ---
->  configure.ac               | 6 +++---
->  systemd/rpcbind.service.in | 2 +-
->  2 files changed, 4 insertions(+), 4 deletions(-)
-> 
-> diff --git a/configure.ac b/configure.ac
-> index acc69149c862..f34f669dc7da 100644
-> --- a/configure.ac
-> +++ b/configure.ac
-> @@ -61,9 +61,9 @@ AC_SEARCH_LIBS([pthread_create], [pthread])
->  
->  AC_CHECK_HEADERS([nss.h rpcsvc/mount.h])
->  
-> -# make sbindir available for substitution in config file
-> +# make bindir available for substitution in config file
->  # 2 "evals" needed to expand variable names
-> -AC_SUBST([_sbindir])
-> -AC_CONFIG_COMMANDS_PRE([eval eval _sbindir=$sbindir])
-> +AC_SUBST([_bindir])
-> +AC_CONFIG_COMMANDS_PRE([eval eval _bindir=$bindir])
->  
->  AC_OUTPUT([Makefile systemd/rpcbind.service])
-> diff --git a/systemd/rpcbind.service.in b/systemd/rpcbind.service.in
-> index c173b838bd42..e7e86da0c268 100644
-> --- a/systemd/rpcbind.service.in
-> +++ b/systemd/rpcbind.service.in
-> @@ -11,7 +11,7 @@ After=rpcbind.socket
->  [Service]
->  Type=notify
->  # distro can provide a drop-in adding EnvironmentFile=-/??? if needed.
-> -ExecStart=@_sbindir@/rpcbind $RPCBIND_OPTIONS -w -f
-> +ExecStart=@_bindir@/rpcbind $RPCBIND_OPTIONS -w -f
->  
->  [Install]
->  WantedBy=multi-user.target
-> 
-> 
-> 
-> ------------------------------------------------------------------------------
-> 
-> 
-> 
-> _______________________________________________
-> Libtirpc-devel mailing list
-> Libtirpc-devel@lists.sourceforge.net
-> https://lists.sourceforge.net/lists/listinfo/libtirpc-devel
-> 
+--b.
+
+diff --git a/nfs4.0/servertests/environment.py b/nfs4.0/servertests/environment.py
+index 6fe083a..221c3ed 100644
+--- a/nfs4.0/servertests/environment.py
++++ b/nfs4.0/servertests/environment.py
+@@ -229,6 +229,9 @@ class Environment(testmod.Environment):
+     def clean_sessions(self):
+         return
+ 
++    def clean_clients(self):
++       return
++
+ #########################################
+ debug_fail = False
