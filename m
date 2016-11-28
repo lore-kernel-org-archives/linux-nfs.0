@@ -1,188 +1,273 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:53582 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1754372AbcK1RYD (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 28 Nov 2016 12:24:03 -0500
-Subject: Re: [PATCH 2/2] mount: RPC_PROGNOTREGISTERED should not be a
- permanent error
-To: NeilBrown <neilb@suse.com>
-References: <147157095612.26568.14161646901346011334.stgit@noble>
- <147157115640.26568.2934329194247787636.stgit@noble>
- <2a0955df-2fcd-05f1-9e6f-d8a549321177@RedHat.com>
- <87bmx7cezt.fsf@notabene.neil.brown.name>
- <34768ca3-0aa1-eb00-01c9-922e3bbcb51f@RedHat.com>
- <87poll93s7.fsf@notabene.neil.brown.name>
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Martin Pitt <martin.pitt@ubuntu.com>
-From: Steve Dickson <SteveD@redhat.com>
-Message-ID: <214253e5-5ef2-ae9a-bc57-20ed1c2f7e3a@RedHat.com>
-Date: Mon, 28 Nov 2016 12:24:01 -0500
+Received: from resqmta-ch2-10v.sys.comcast.net ([69.252.207.42]:50029 "EHLO
+        resqmta-ch2-10v.sys.comcast.net" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1751070AbcK1SBm (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 28 Nov 2016 13:01:42 -0500
+Date: Mon, 28 Nov 2016 09:52:29 -0800
+From: Tom Haynes <loghyr@excfb.com>
+To: "J. Bruce Fields" <bfields@redhat.com>
+Cc: Tom Haynes <loghyr@primarydata.com>,
+        Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH pynfs 12/12] Add layoutstats tests for flex files
+Message-ID: <20161128175229.GC30012@psyklo.internal.excfb.com>
+References: <1480228001-64821-1-git-send-email-loghyr@primarydata.com>
+ <1480228001-64821-13-git-send-email-loghyr@primarydata.com>
+ <20161128172253.GC30805@parsley.fieldses.org>
 MIME-Version: 1.0
-In-Reply-To: <87poll93s7.fsf@notabene.neil.brown.name>
-Content-Type: text/plain; charset=windows-1252
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20161128172253.GC30805@parsley.fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-My apologies for the delayed response... I just saw this... 
-
-On 11/23/2016 06:26 PM, NeilBrown wrote:
-> On Thu, Nov 24 2016, Steve Dickson wrote:
->>>
->>> So I think the current behavior is correct.  You might be able to argue
->>> that certain error codes should trigger a shorter timeout, but it would
->>> need a strong argument.
->> Going with the theory the window is very small, how about 
->> a retry with a timeout then a failure? 
+On Mon, Nov 28, 2016 at 12:22:54PM -0500, J. Bruce Fields wrote:
+> On Sat, Nov 26, 2016 at 10:26:41PM -0800, Tom Haynes wrote:
+> > 1) Time series where the client resets the data
+> > 2) Time series where the reset is straightened out
+> > 3) Time series where an I/O stall occurs
 > 
-> I started looking at changing the timeout and it wouldn't be too hard
-> (if we can agree on a suitable delay), but I feel I must ask why this is
-> important.
-Over the last few Connectathon and bakeathons I've been
-floating the idea of dismantling the UDP support and
-nobody to objected... The main reason is to cut the testing 
-matrix in half.
+> I can't really follow what this is doing, so I can't tell: will these
+> tests be useful to anyone with a flexfiles server, or are they specific
+> to your particular implementation and test configuration?
 
-I keep getting these goofy UDP bugs from our QE guys that
-nobody is going to fix... and I have not seen a UDP bug
-from a customer in years.. I really don't think 
-it being used so why continue to support it?
+They will be useful to anyone with a flexfiles server which supports
+LAYOUTSTATS. I.e., they are generated from the Linux client, which means
+that they are following the standard.
 
-> In what situation are you likely to mount with the wrong protocol, that
-> you aren't able to just Ctrl-C when you realized what a dumb thing you
-> just did?
-I turned off the UDP support in rpc.nfsd and mounts started to hang.
+I didn't pick any specific workload other than making sure that real data
+over a period of time. As a matter of fact, I couldn't tell you what was
+going on here, I just pulled them from the first set of traces I could
+find sustained I/O.
+
+So, yes, I think they will be useful.
+
+fwiw - the tests could either read data from a file and/or have the
+data files specified on the cli. I'd like that ability for my own testing,
+but for here I just wanted to supply basic coverage.
+
 
 > 
-> If rpcbind isn't running, which is arguably a very similar situation
-> (no protocols are register) we have always had a long timeout. Why is
-> "just one protocol not registered" any different?
-ECONNREFUSED can also me the server is not up so we 
-need to wait. 
-
+> --b.
 > 
-> 
-> Anyway, below is the patch I was working on.  I stopped when I wasn't
-> sure how to handle ECONNREFUSED.
-I've quick took and it does look a little messy or we
-revert the EOPNOTSUPP commit... 
-
-But at least you know my motivation.
-
-steved. 
-> 
-> NeilBrown
-> 
-> 
-> 
-> diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
-> index d5dfb5e4a669..084776115b9>>> I disagree with the "hang forever" description.  I just tested after
->>> disabling UDP on an nfs server, and the delay was 2 minutes, 5 seconds
->>> before a failure was reported.  It might be longer when trying TCP on a
->>> server that only supports UDP.
->> Yeah I did not wait that long... You are much more of a patient man than I ;-) 
->> I do think this is a regression. Going an from an instant failure to one
->> that takes over 2min is not a good thing... IMHO.
->>f 100644
-> --- a/utils/mount/stropts.c
-> +++ b/utils/mount/stropts.c
-> @@ -935,24 +935,30 @@ static int nfs_try_mount(struct nfsmount_info *mi)
->   * failed so far, but fail immediately if there is a local
->   * error (like a bad mount option).
->   *
-> - * ESTALE is also a temporary error because some servers
-> - * return ESTALE when a share is temporarily offline.
-> + * If there is a remote error, like ESTALE or RPC_PROGNOTREGISTERED
-> + * then it is probably permanent, but there is a small chance
-> + * the it is temporary can we caught the server at an awkward
-> + * time during start-up.  A shorter timeout is best for such
-> + * circumstances, so return a distinct status.
->   *
-> - * Returns 1 if we should fail immediately, or 0 if we
-> - * should retry.
-> + * Returns PERMANENT if we should fail immediately,
-> + * TEMPORARY if we should retry normally, or
-> + * REMOTE if we should retry with shorter timeout.
->   */
-> -static int nfs_is_permanent_error(int error)
-> +enum error_type { PERMANENT, TEMPORARY, REMOTE };
-> +static enum error_type nfs_error_type(int error)
->  {
->  	switch (error) {
->  	case ESTALE:
-> +	case EOPNOTSUPP:	/* aka RPC_PROGNOTREGISTERED */
-> +		return REMOTE;
->  	case ETIMEDOUT:
->  	case ECONNREFUSED:
->  	case EHOSTUNREACH:
-> -	case EOPNOTSUPP:	/* aka RPC_PROGNOTREGISTERED */
->  	case EAGAIN:
-> -		return 0;	/* temporary */
-> +		return TEMPORARY;
->  	default:
-> -		return 1;	/* permanent */
-> +		return PERMANENT;
->  	}
->  }
->  
-> @@ -967,6 +973,7 @@ static int nfsmount_fg(struct nfsmount_info *mi)
->  {
->  	unsigned int secs = 1;
->  	time_t timeout;
-> +	int last_errno = 0;
->  
->  	timeout = nfs_parse_retry_option(mi->options,
->  					 NFS_DEF_FG_TIMEOUT_MINUTES);
-> @@ -987,13 +994,22 @@ static int nfsmount_fg(struct nfsmount_info *mi)
->  			 */
->  			return EX_SUCCESS;
->  
-> -		if (nfs_is_permanent_error(errno))
-> +		switch(nfs_error_type(errno)) {
-> +		case PERMANENT:
-> +			timeout = 0;
->  			break;
-> -
-> -		if (time(NULL) > timeout) {
-> +		case REMOTE:
-> +			if (errno == last_errno)
-> +				timeout = 0;
-> +			break;
-> +		case TEMPORARY:
->  			errno = ETIMEDOUT;
->  			break;
->  		}
-> +		last_errno = errno;
-> +
-> +		if (time(NULL) > timeout)
-> +			break;
->  
->  		if (errno != ETIMEDOUT) {
->  			if (sleep(secs))
-> @@ -1020,7 +1036,7 @@ static int nfsmount_parent(struct nfsmount_info *mi)
->  	if (nfs_try_mount(mi))
->  		return EX_SUCCESS;
->  
-> -	if (nfs_is_permanent_error(errno)) {
-> +	if (nfs_error_type(errno) == PERMANENT) {
->  		mount_error(mi->spec, mi->node, errno);
->  		return EX_FAIL;
->  	}
-> @@ -1055,8 +1071,14 @@ static int nfsmount_child(struct nfsmount_info *mi)
->  		if (nfs_try_mount(mi))
->  			return EX_SUCCESS;
->  
-> -		if (nfs_is_permanent_error(errno))
-> +		switch (nfs_error_type(errno)) {
-> +		case REMOTE: /* Doesn't hurt to keep trying remote errors
-> +			      * when in the background
-> +			      */
-> +		case PERMANENT:
-> +			timeout = 0;
->  			break;
-> +		}
->  
->  		if (time(NULL) > timeout)
->  			break;
-> 
+> > 
+> > Signed-off-by: Tom Haynes <loghyr@primarydata.com>
+> > ---
+> >  nfs4.1/server41tests/st_flex.py | 195 +++++++++++++++++++++++++++++++++++++++-
+> >  1 file changed, 194 insertions(+), 1 deletion(-)
+> > 
+> > diff --git a/nfs4.1/server41tests/st_flex.py b/nfs4.1/server41tests/st_flex.py
+> > index 06dbba8..a14c926 100644
+> > --- a/nfs4.1/server41tests/st_flex.py
+> > +++ b/nfs4.1/server41tests/st_flex.py
+> > @@ -327,7 +327,7 @@ def testFlexLayoutStatsSmall(t, env):
+> >      2) GETDEVINFO
+> >      3) LAYOUTRETURN, CLOSE
+> >  
+> > -    FLAGS: flex
+> > +    FLAGS: flex layoutstats
+> >      CODE: FFLS1
+> >      """
+> >      lats = [93089, 107683, 112340, 113195, 130412, 138390, 140427, 158824, 193078, 201879, 391634, 404757, 2201181, 2232614, 2280089, 2296343, 2341763, 2392984, 3064546, 3070314]
+> > @@ -399,3 +399,196 @@ def testFlexLayoutStatsSmall(t, env):
+> >                 op.close(0, open_stateid)]
+> >          res = sess.compound(ops)
+> >          check(res)
+> > +
+> > +def _LayoutStats(t, env, stats):
+> > +    '''Loop over the provided layoutstats, sending them on in time
+> > +    '''
+> > +    sess = env.c1.new_pnfs_client_session(env.testname(t))
+> > +
+> > +    # Create the file
+> > +    res = create_file(sess, env.testname(t))
+> > +    check(res)
+> > +    fh = res.resarray[-1].object
+> > +    open_stateid = res.resarray[-2].stateid
+> > +    lo_stateid = open_stateid
+> > +
+> > +    ops = [op.putfh(fh),
+> > +           op.layoutget(False, LAYOUT4_FLEX_FILES,
+> > +                        LAYOUTIOMODE4_RW,
+> > +                        0, 0xffffffffffffffff, 8192, lo_stateid, 0xffff)]
+> > +    res = sess.compound(ops)
+> > +    check(res)
+> > +    lo_stateid = res.resarray[-1].logr_stateid
+> > +    check_seqid(lo_stateid, 1)
+> > +
+> > +    layout = res.resarray[-1].logr_layout[-1]
+> > +    p = FlexUnpacker(layout.loc_body)
+> > +    opaque = p.unpack_ff_layout4()
+> > +    p.done()
+> > +
+> > +    stats_hint = opaque.ffl_stats_collect_hint
+> > +
+> > +    # Assume one mirror/storage device
+> > +    ds = opaque.ffl_mirrors[-1].ffm_data_servers[-1]
+> > +
+> > +    deviceid = ds.ffds_deviceid
+> > +
+> > +    ops = [op.putfh(fh),
+> > +           op.getdeviceinfo(deviceid, LAYOUT4_FLEX_FILES, 0xffffffff, 0)]
+> > +    res = sess.compound(ops)
+> > +    check(res)
+> > +
+> > +    gda = res.resarray[-1].gdir_device_addr
+> > +
+> > +    p = FlexUnpacker(gda.da_addr_body)
+> > +    da = p.unpack_ff_device_addr4()
+> > +    p.done()
+> > +
+> > +    rd_io = io_info4()
+> > +    wr_io = io_info4()
+> > +
+> > +    rd_lat = ff_io_latency4()
+> > +    wr_lat = ff_io_latency4()
+> > +
+> > +    for s in stats:
+> > +        dur = get_nfstime(s[1])
+> > +
+> > +        # Did not capture these in the gathered traces
+> > +        offset = 0
+> > +        file_length = 0xffffffffffffffff
+> > +        rd_io.ii_count = 0
+> > +        rd_io.ii_bytes = 0
+> > +        wr_io.ii_count = 0
+> > +        wr_io.ii_bytes = 0
+> > +
+> > +        rd_lat.ffil_ops_requested = s[5]
+> > +        rd_lat.ffil_bytes_requested = s[4]
+> > +        rd_lat.ffil_ops_completed = s[6]
+> > +        rd_lat.ffil_bytes_completed = s[2]
+> > +        rd_lat.ffil_bytes_not_delivered = s[3]
+> > +        rd_lat.ffil_total_busy_time = get_nfstime(s[7])
+> > +        rd_lat.ffil_aggregate_completion_time = get_nfstime(s[8])
+> > +        wr_lat.ffil_ops_requested = s[12]
+> > +        wr_lat.ffil_bytes_requested = s[11]
+> > +        wr_lat.ffil_ops_completed = s[13]
+> > +        wr_lat.ffil_bytes_completed = s[9]
+> > +        wr_lat.ffil_bytes_not_delivered = s[10]
+> > +        wr_lat.ffil_total_busy_time = get_nfstime(s[14])
+> > +        wr_lat.ffil_aggregate_completion_time = get_nfstime(s[15])
+> > +
+> > +        sleeper = s[0]
+> > +        env.sleep(sleeper)
+> > +        fflu = ff_layoutupdate4(da.ffda_netaddrs[-1], ds.ffds_fh_vers[-1],
+> > +                                rd_lat, wr_lat, dur, True)
+> > +        p = FlexPacker()
+> > +        p.pack_ff_layoutupdate4(fflu)
+> > +        lu4 = layoutupdate4(LAYOUT4_FLEX_FILES, p.get_buffer())
+> > +
+> > +        ops = [op.putfh(fh),
+> > +               op.layoutstats(offset, file_length, lo_stateid, rd_io, wr_io, deviceid, lu4)]
+> > +        res = sess.compound(ops)
+> > +        check(res)
+> > +
+> > +    ops = [op.putfh(fh),
+> > +           op.layoutreturn(False, LAYOUT4_FLEX_FILES, LAYOUTIOMODE4_ANY,
+> > +                           layoutreturn4(LAYOUTRETURN4_FILE,
+> > +                                         layoutreturn_file4(0, 0xffffffffffffffff, lo_stateid, "")))]
+> > +    res = sess.compound(ops)
+> > +    check(res)
+> > +    res = close_file(sess, fh, stateid=open_stateid)
+> > +    check(res)
+> > +
+> > +def testFlexLayoutStatsReset(t, env):
+> > +    """These layoutstats are from when the client effectively resets them
+> > +    by having one field be less than the cumulative ancestor
+> > +
+> > +    FLAGS: flex layoustats
+> > +    CODE: FFLS2
+> > +    """
+> > +
+> > +    ls = [[15, 14997377109, 756789248, 0, 756834304, 184774, 184763, 14996867426, 135877046309, 252579840, 0, 252665856, 61686, 61665, 14997307909, 336986104593],
+> > +          [15, 29997404625, 1527537664, 0, 1527566336, 372941, 372934, 29996142132, 275416132139, 508502016, 0, 508604416, 124171, 124146, 29997293567, 670368077434],
+> > +          [15, 44999356031, 2331115520, 0, 2331136000, 569125, 569120, 44997516473, 414235887583, 775569408, 0, 775680000, 189375, 189348, 44999096896, 1004056428600],
+> > +          [15, 60001513873, 3142483968, 0, 3142529024, 767219, 767208, 59999263507, 550956049466, 1044996096, 0, 1045082112, 255147, 255126, 60001232968, 1340163285214],
+> > +          [15, 75001564615, 3969384448, 0, 3969413120, 969095, 969088, 74999204445, 687761120289, 1320456192, 0, 1320542208, 322398, 322377, 75001158793, 1676193906267],
+> > +          [15, 90001651970, 4873195520, 0, 4873248768, 1189758, 1189745, 89999194540, 828644696229, 1620467712, 0, 1620545536, 395641, 395622, 90000994588, 2006906488984],
+> > +          [15, 105001710572, 5816430592, 0, 5816467456, 1420036, 1420027, 104995782871, 979226777566, 1935175680, 0, 1935269888, 472478, 472455, 104999171073, 2326727992588],
+> > +          [15, 14997245247, 1466019840, 0, 1466097664, 357934, 357915, 15001797989, 277140995467, 487624704, 0, 487677952, 119062, 119049, 14997939745, 179221181962],
+> > +          [15, 29999503656, 2929393664, 0, 2929500160, 715210, 715184, 30001965158, 554484427501, 974204928, 0, 974229504, 237849, 237843, 29998797328, 359060066193],
+> > +          [15, 45000138417, 4245204992, 0, 4245245952, 1036437, 1036427, 45005641995, 825579118923, 1411981312, 0, 1412071424, 344744, 344722, 44996637179, 547563519532],
+> > +          [15, 60000125536, 5545734144, 0, 5545807872, 1353957, 1353939, 60009284822, 1097378466922, 1844367360, 0, 1844400128, 450293, 450285, 59996684404, 735124264647],
+> > +          [15, 14999894874, 1278164992, 0, 1278226432, 312067, 312052, 15006094174, 270749903934, 425877504, 0, 425947136, 103991, 103974, 15000341906, 189401125380],
+> > +          [15, 30000017314, 2586595328, 0, 2586648576, 631506, 631493, 30009142707, 540229533389, 860536832, 0, 860614656, 210111, 210092, 29999220098, 379353634204],
+> > +          [15, 44999991304, 3859476480, 0, 3859574784, 942279, 942255, 45011969088, 808964878766, 1283543040, 0, 1283575808, 313373, 313365, 44999310875, 571777183394],
+> > +          [15, 60000803942, 5141098496, 0, 5141168128, 1255168, 1255151, 60015665154, 1075012244233, 1709035520, 0, 1709096960, 417260, 417245, 60000142398, 766775808737],
+> > +          [15, 75000722908, 6431453184, 0, 6431526912, 1570197, 1570179, 75018741381, 1344327593333, 2140831744, 0, 2140889088, 522678, 522664, 75000341374, 957762218131],
+> > +          [15, 14990345451, 1310584832, 0, 1310654464, 319984, 319967, 14990338511, 276432361830, 436121600, 0, 436183040, 106490, 106475, 14991353202, 182231098560],
+> > +          [15, 29990415908, 2630619136, 0, 2630701056, 642261, 642241, 29983066936, 554752250256, 875077632, 0, 875126784, 213654, 213642, 29982845793, 362758943732],
+> > +          [15, 44992404751, 3910578176, 0, 3910664192, 954752, 954731, 44982785073, 827471490050, 1300946944, 0, 1300992000, 317625, 317614, 44985003324, 549721947944]]
+> > +
+> > +    _LayoutStats(t, env, ls)
+> > +
+> > +def testFlexLayoutStatsStraight(t, env):
+> > +    """These stats are the same as the reset ones, but have been massaged
+> > +    to keep the server from detecting the reset. I.e., the client
+> > +    has not lost it all!
+> > +
+> > +    FLAGS: flex layoustats
+> > +    CODE: FFLS3
+> > +    """
+> > +
+> > +    ls = [[15, 14997377109, 756789248, 0, 756834304, 184774, 184763, 14996867426, 135877046309, 252579840, 0, 252665856, 61686, 61665, 14997307909, 336986104593],
+> > +          [15, 29997404625, 1527537664, 0, 1527566336, 372941, 372934, 29996142132, 275416132139, 508502016, 0, 508604416, 124171, 124146, 29997293567, 670368077434],
+> > +          [15, 44999356031, 2331115520, 0, 2331136000, 569125, 569120, 44997516473, 414235887583, 775569408, 0, 775680000, 189375, 189348, 44999096896, 1004056428600],
+> > +          [15, 60001513873, 3142483968, 0, 3142529024, 767219, 767208, 59999263507, 550956049466, 1044996096, 0, 1045082112, 255147, 255126, 60001232968, 1340163285214],
+> > +          [15, 75001564615, 3969384448, 0, 3969413120, 969095, 969088, 74999204445, 687761120289, 1320456192, 0, 1320542208, 322398, 322377, 75001158793, 1676193906267],
+> > +          [15, 90001651970, 4873195520, 0, 4873248768, 1189758, 1189745, 89999194540, 828644696229, 1620467712, 0, 1620545536, 395641, 395622, 90000994588, 2006906488984],
+> > +          [15, 105001710572, 5816430592, 0, 5816467456, 1420036, 1420027, 104995782871, 979226777566, 1935175680, 0, 1935269888, 472478, 472455, 104999171073, 2326727992588],
+> > +          [15, 119998955819, 7282450432, 0, 7282565120, 1777970, 1777942, 119997580860, 1256367773033, 2422800384, 0, 2422947840, 591540, 591504, 119997110818, 2505949174550],
+> > +          [15, 135001214228, 8745824256, 0, 8745967616, 2135246, 2135211, 134997748029, 1533711205067, 2909380608, 0, 2909499392, 710327, 710298, 134997968401, 2685788058781],
+> > +          [15, 150001848989, 10061635584, 0, 10061713408, 2456473, 2456454, 150001424866, 1804805896489, 3347156992, 0, 3347341312, 817222, 817177, 149995808252, 2874291512120],
+> > +          [15, 165001836108, 11362164736, 0, 11362275328, 2773993, 2773966, 165005067693, 2076605244488, 3779543040, 0, 3779670016, 922771, 922740, 164995855477, 3061852257235],
+> > +          [15, 180001730982, 12640329728, 0, 12640501760, 3086060, 3086018, 180011161867, 2347355148422, 4205420544, 0, 4205617152, 1026762, 1026714, 179996197383, 3251253382615],
+> > +          [15, 195001853422, 13948760064, 0, 13948923904, 3405499, 3405459, 195014210400, 2616834777877, 4640079872, 0, 4640284672, 1132882, 1132832, 194995075575, 3441205891439],
+> > +          [15, 210001827412, 15221641216, 0, 15221850112, 3716272, 3716221, 210017036781, 2885570123254, 5063086080, 0, 5063245824, 1236144, 1236105, 209995166352, 3633629440629],
+> > +          [15, 225002640050, 16503263232, 0, 16503443456, 4029161, 4029117, 225020732847, 3151617488721, 5488578560, 0, 5488766976, 1340031, 1339985, 224995997875, 3828628065972],
+> > +          [15, 240002559016, 17793617920, 0, 17793802240, 4344190, 4344145, 240023809074, 3420932837821, 5920374784, 0, 5920559104, 1445449, 1445404, 239996196851, 4019614475366],
+> > +          [15, 254992904467, 19104202752, 0, 19104456704, 4664174, 4664112, 255014147585, 3697365199651, 6356496384, 0, 6356742144, 1551939, 1551879, 254987550053, 4201845573926],
+> > +          [15, 269992974924, 20424237056, 0, 20424503296, 4986451, 4986386, 270006876010, 3975685088077, 6795452416, 0, 6795685888, 1659103, 1659046, 269979042644, 4382373419098],
+> > +          [15, 284994963767, 21704196096, 0, 21704466432, 5298942, 5298876, 285006594147, 4248404327871, 7221321728, 0, 7221551104, 1763074, 1763018, 284981200175, 4569336423310]]
+> > +    _LayoutStats(t, env, ls)
+> > +
+> > +def testFlexLayoutStatsOverflow(t, env):
+> > +    """These layoutstats are a write intensive work load in which eventually one stat takes
+> > +    twice longer than the collection period.
+> > +
+> > +    FLAGS: flex layoustats
+> > +    CODE: FFLS4
+> > +    """
+> > +
+> > +    ls = [[27, 27614183359, 0, 0, 0, 0, 0, 0, 0, 41943040, 0, 96468992, 10292, 10240, 26609085208, 134047775590766],
+> > +          [15, 42725368747, 0, 0, 0, 0, 0, 0, 0, 41943040, 0, 2402213888, 15847, 11881, 31458638093, 136367242297571],
+> > +          [15, 57912190475, 0, 0, 0, 0, 0, 0, 0, 41943040, 0, 2406907904, 15924, 11881, 31458638093, 136367242297571],
+> > +          [15, 72921814168, 0, 0, 0, 0, 0, 0, 0, 896532480, 0, 2946293760, 16847, 15969, 70391696445, 275087250172195],
+> > +          [15, 87922239746, 0, 0, 0, 0, 0, 0, 0, 896532480, 0, 3196473344, 18335, 15969, 70391696445, 275087250172195],
+> > +          [15, 102949476399, 0, 0, 0, 0, 0, 0, 0, 1808183296, 0, 4038545408, 20452, 19074, 92455324261, 310159328537298],
+> > +          [15, 117951351182, 0, 0, 0, 0, 0, 0, 0, 2587693056, 0, 4486782976, 22613, 19935, 116950745229, 331739899803911],
+> > +          [16, 133017224561, 0, 0, 0, 0, 0, 0, 0, 2587693056, 0, 4830961664, 23306, 22169, 118004988775, 353778424445917],
+> > +          [15, 148031127154, 0, 0, 0, 0, 0, 0, 0, 4132970496, 0, 5960671232, 29861, 26094, 146128115965, 387064682636158],
+> > +          [15, 163058556237, 0, 0, 0, 0, 0, 0, 0, 5614419968, 0, 7550558208, 40590, 39198, 159139080717, 453635077855389],
+> > +          [15, 178067770476, 0, 0, 0, 0, 0, 0, 0, 5614419968, 0, 7838756864, 41554, 39198, 159139080717, 453635077855389],
+> > +          [15, 193081456711, 0, 0, 0, 0, 0, 0, 0, 6428528640, 0, 8151494656, 43497, 42179, 189486399712, 517147615890054],
+> > +          [15, 208082626131, 0, 0, 0, 0, 0, 0, 0, 7284596736, 0, 8656367616, 47929, 43079, 207082978313, 532741795045495],
+> > +          [15, 223082643294, 0, 0, 0, 0, 0, 0, 0, 7944978432, 0, 9539055616, 58212, 53705, 222083467525, 636168303637199],
+> > +          [15, 238083127306, 0, 0, 0, 0, 0, 0, 0, 7944978432, 0, 9763426304, 62673, 57863, 223491351125, 650450833313121],
+> > +          [15, 253175262253, 0, 0, 0, 0, 0, 0, 0, 7944978432, 0, 9860571136, 65509, 57863, 223491351125, 650450833313121],
+> > +          [15, 268185316876, 0, 0, 0, 0, 0, 0, 0, 8729772032, 0, 10523738112, 71014, 65222, 267165070170, 853839631006322],
+> > +          [17, 285787666679, 0, 0, 0, 0, 0, 0, 0, 9522692096, 0, 10779361280, 72612, 66965, 284787142241, 896650223319399],
+> > +          [33, 318568880195, 0, 0, 0, 0, 0, 0, 0, 9522692096, 0, 10779361280, 72613, 72611, 317562885639, 1120229814239633],
+> > +          [15, 333747489171, 0, 0, 0, 0, 0, 0, 0, 10788278272, 0, 10788802560, 74918, 74790, 332233465692, 1121703181284495],
+> > +          [15, 348749618256, 0, 0, 0, 0, 0, 0, 0, 10801360896, 0, 10801885184, 78112, 77984, 347235605251, 1123668237106158],
+> > +          [14, 362014682745, 0, 0, 0, 0, 0, 0, 0, 10812923904, 0, 10814496768, 81191, 80935, 361134569864, 1125289046746198],
+> > +          [15, 377016435231, 0, 0, 0, 0, 0, 0, 0, 10836291584, 0, 10837864448, 86896, 86640, 376136316640, 1127198465086932],
+> > +          [15, 392027464946, 0, 0, 0, 0, 0, 0, 0, 10852364288, 0, 10853937152, 90820, 90564, 391147321463, 1129113173731145],
+> > +          [15, 407034683097, 0, 0, 0, 0, 0, 0, 0, 10864914432, 0, 10866487296, 93884, 93628, 406154554429, 1131023767183211]]
+> > +    _LayoutStats(t, env, ls)
+> > -- 
+> > 2.3.6
+> > 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
