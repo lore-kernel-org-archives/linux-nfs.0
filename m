@@ -1,102 +1,45 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx141.netapp.com ([216.240.21.12]:62084 "EHLO mx141.netapp.com"
+Received: from minas.ics.muni.cz ([147.251.4.46]:54905 "EHLO minas.ics.muni.cz"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1753809AbcK1SqI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 28 Nov 2016 13:46:08 -0500
-Subject: Re: [PATCH] nfs: fix false positives in nfs40_walk_client_list()
-To: "J. Bruce Fields" <bfields@fieldses.org>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        Anna Schumaker <schumakeranna@gmail.com>
-References: <20161128140252.GA28629@fieldses.org>
-CC: <linux-nfs@vger.kernel.org>
-From: Anna Schumaker <Anna.Schumaker@Netapp.com>
-Message-ID: <de54b0ae-1345-beae-1e9f-efce39a75528@Netapp.com>
-Date: Mon, 28 Nov 2016 13:46:00 -0500
+        id S1751168AbcK1Sxd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 28 Nov 2016 13:53:33 -0500
+Received: from anubis.ics.muni.cz (dell1.aetna.cz [77.240.179.195] (may be forged))
+        (authenticated user=xhejtman@META bits=0)
+        by minas.ics.muni.cz (8.14.4/8.14.4/Debian-4+deb7u1) with ESMTP id uASIbvVv004722
+        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT)
+        for <linux-nfs@vger.kernel.org>; Mon, 28 Nov 2016 19:38:00 +0100
+Received: from xhejtman by anubis.ics.muni.cz with local (Exim 4.87)
+        (envelope-from <xhejtman@ics.muni.cz>)
+        id 1cBQoP-0003Bp-Ji
+        for linux-nfs@vger.kernel.org; Mon, 28 Nov 2016 19:37:57 +0100
+Date: Mon, 28 Nov 2016 19:37:57 +0100
+From: Lukas Hejtmanek <xhejtman@ics.muni.cz>
+To: linux-nfs@vger.kernel.org
+Subject: RFC rpc.gssd enhancement
+Message-ID: <20161128183757.d5pz64tsigmaxdc7@ics.muni.cz>
 MIME-Version: 1.0
-In-Reply-To: <20161128140252.GA28629@fieldses.org>
-Content-Type: text/plain; charset="windows-1252"
+Content-Type: text/plain; charset=iso-8859-2
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Bruce,
+Hello,
 
-On 11/28/2016 09:02 AM, J. Bruce Fields wrote:
-> From: "J. Bruce Fields" <bfields@redhat.com>
-> 
-> It's possible that two different servers can return the same (clientid,
-> verifier) pair purely by coincidence.  Both are 64-bit values, but
-> depending on the server implementation, they can be highly predictable
-> and collisions may be quite likely, especially when there are lots of
-> servers.
+would it be acceptable to add an option for rpc.gssd to use host keytab if
+user's kerberos ticket is not available?
 
-How often have you been seeing this?
+Consider the following scenario:
+1) machine has NFS mounted /home using kerberos authentication
+2) user logs in, sshd creates krb ticket ($HOME/.k5login needs to be world
+readable to allow kerberized access, e.g., using kerberos ticket)
+3) user stays logged in and krb ticket expires
+4) kinit to renew ticket produces strange error because $HOME is not
+accessible and a new ticket is not created.
 
-> 
-> So, check for this case.  If the clientid and verifier both match, then
-> we actually know they *can't* be the same server, since a new
-> SETCLIENTID to an already-known server should have changed the verifier.
-> 
-> This helps fix a bug that could cause the client to mount a filesystem
-> from the wrong server.
-> 
-> Reviewed-by: Jeff Layton <jlayton@redhat.com>
-> Tested-by: Yongcheng Yang <yoyang@redhat.com>
-> Signed-off-by: J. Bruce Fields <bfields@redhat.com>
-> ---
->  fs/nfs/nfs4client.c | 22 +++++++++++++++++++++-
->  1 file changed, 21 insertions(+), 1 deletion(-)
-> 
-> diff --git a/fs/nfs/nfs4client.c b/fs/nfs/nfs4client.c
-> index 074ac7131459..5e2747644432 100644
-> --- a/fs/nfs/nfs4client.c
-> +++ b/fs/nfs/nfs4client.c
-> @@ -464,6 +464,11 @@ static bool nfs4_match_client_owner_id(const struct nfs_client *clp1,
->  	return strcmp(clp1->cl_owner_id, clp2->cl_owner_id) == 0;
->  }
->  
-> +static bool nfs4_same_verifier(nfs4_verifier *v1, nfs4_verifier *v2)
-> +{
-> +	return 0 == memcmp(v1->data, v2->data, sizeof(v1->data));
+So, I think in this case, I would like to see rpc.gssd uses host keytab while
+user's ticket is not available, which maps to nobody/nogroup, but kinit should
+succeed. 
 
-Nit:  can you change the order to "memcmp() == 0"?
+Or are there any other options if one is using kerberized homes only?
 
-Thanks,
-Anna
-
-> +}
-> +
->  /**
->   * nfs40_walk_client_list - Find server that recognizes a client ID
->   *
-> @@ -521,7 +526,21 @@ int nfs40_walk_client_list(struct nfs_client *new,
->  
->  		if (!nfs4_match_client_owner_id(pos, new))
->  			continue;
-> -
-> +		/*
-> +		 * We just sent a new SETCLIENTID, which should have
-> +		 * caused the server to return a new cl_confirm.  So if
-> +		 * cl_confirm is the same, then this is a different
-> +		 * server that just returned the same cl_confirm by
-> +		 * coincidence:
-> +		 */
-> +		if ((new != pos) && nfs4_same_verifier(&pos->cl_confirm,
-> +						       &new->cl_confirm))
-> +			continue;
-> +		/*
-> +		 * But if the cl_confirm's are different, then the only
-> +		 * way that a SETCLIENTID_CONFIRM to pos can succeed is
-> +		 * if new and pos point to the same server:
-> +		 */
->  		atomic_inc(&pos->cl_count);
->  		spin_unlock(&nn->nfs_client_lock);
->  
-> @@ -534,6 +553,7 @@ int nfs40_walk_client_list(struct nfs_client *new,
->  			break;
->  		case 0:
->  			nfs4_swap_callback_idents(pos, new);
-> +			pos->cl_confirm = new->cl_confirm;
->  
->  			prev = NULL;
->  			*result = pos;
-> 
+-- 
+Luká¹ Hejtmánek
