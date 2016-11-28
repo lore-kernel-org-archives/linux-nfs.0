@@ -1,45 +1,72 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from minas.ics.muni.cz ([147.251.4.46]:54905 "EHLO minas.ics.muni.cz"
+Received: from fieldses.org ([173.255.197.46]:34992 "EHLO fieldses.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751168AbcK1Sxd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 28 Nov 2016 13:53:33 -0500
-Received: from anubis.ics.muni.cz (dell1.aetna.cz [77.240.179.195] (may be forged))
-        (authenticated user=xhejtman@META bits=0)
-        by minas.ics.muni.cz (8.14.4/8.14.4/Debian-4+deb7u1) with ESMTP id uASIbvVv004722
-        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT)
-        for <linux-nfs@vger.kernel.org>; Mon, 28 Nov 2016 19:38:00 +0100
-Received: from xhejtman by anubis.ics.muni.cz with local (Exim 4.87)
-        (envelope-from <xhejtman@ics.muni.cz>)
-        id 1cBQoP-0003Bp-Ji
-        for linux-nfs@vger.kernel.org; Mon, 28 Nov 2016 19:37:57 +0100
-Date: Mon, 28 Nov 2016 19:37:57 +0100
-From: Lukas Hejtmanek <xhejtman@ics.muni.cz>
-To: linux-nfs@vger.kernel.org
-Subject: RFC rpc.gssd enhancement
-Message-ID: <20161128183757.d5pz64tsigmaxdc7@ics.muni.cz>
+        id S1754380AbcK1TXo (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 28 Nov 2016 14:23:44 -0500
+Date: Mon, 28 Nov 2016 14:23:41 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Anna Schumaker <Anna.Schumaker@Netapp.com>
+Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
+        Anna Schumaker <schumakeranna@gmail.com>, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] nfs: fix false positives in nfs40_walk_client_list()
+Message-ID: <20161128192341.GB30954@fieldses.org>
+References: <20161128140252.GA28629@fieldses.org>
+ <de54b0ae-1345-beae-1e9f-efce39a75528@Netapp.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-2
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <de54b0ae-1345-beae-1e9f-efce39a75528@Netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hello,
+On Mon, Nov 28, 2016 at 01:46:00PM -0500, Anna Schumaker wrote:
+> Hi Bruce,
+> 
+> On 11/28/2016 09:02 AM, J. Bruce Fields wrote:
+> > From: "J. Bruce Fields" <bfields@redhat.com>
+> > 
+> > It's possible that two different servers can return the same (clientid,
+> > verifier) pair purely by coincidence.  Both are 64-bit values, but
+> > depending on the server implementation, they can be highly predictable
+> > and collisions may be quite likely, especially when there are lots of
+> > servers.
+> 
+> How often have you been seeing this?
 
-would it be acceptable to add an option for rpc.gssd to use host keytab if
-user's kerberos ticket is not available?
+This was a RHEL customer bug originally, so somebody actually did run
+across this in production, but I don't know how common that is.
 
-Consider the following scenario:
-1) machine has NFS mounted /home using kerberos authentication
-2) user logs in, sshd creates krb ticket ($HOME/.k5login needs to be world
-readable to allow kerberized access, e.g., using kerberos ticket)
-3) user stays logged in and krb ticket expires
-4) kinit to renew ticket produces strange error because $HOME is not
-accessible and a new ticket is not created.
+On a recent client you'll only hit this if you mount with "migration",
+so that's probably the main thing that prevents a lot of people from
+running into it.
 
-So, I think in this case, I would like to see rpc.gssd uses host keytab while
-user's ticket is not available, which maps to nobody/nogroup, but kinit should
-succeed. 
+Given the "migration" mount option: if you have a client that mounts
+multiple linux knfsd servers, you'll hit the bug whenever the mounts
+occur within the same second, and the servers started within the same
+second.  Both occurrences are fairly likely for example if you reboot
+all your servers at once for maintenance.
 
-Or are there any other options if one is using kerberized homes only?
+But the bug should be much harder to hit against servers that have
+already applied ebd7c72c63 "nfsd: randomize SETCLIENTID reply to help
+distinguish servers".
 
--- 
-Luká¹ Hejtmánek
+Looking at SETCLIENTID replies at the recent bakeathon, I'm fairly
+certain this could happen with other servers too.
+
+The original bug is really in RFC 7931, which recommended the client
+use a trunking-detection algorithm that made incorrect assumptions about
+server behavior; see
+
+	https://www.rfc-editor.org/errata_search.php?rfc=7931
+
+The Linux client uses a much simpler algorithm than what's described
+there, but it has the same fix.
+
+> > +static bool nfs4_same_verifier(nfs4_verifier *v1, nfs4_verifier *v2)
+> > +{
+> > +	return 0 == memcmp(v1->data, v2->data, sizeof(v1->data));
+> 
+> Nit:  can you change the order to "memcmp() == 0"?
+
+Sure, will you fix it up or should I resend?
+
+--b.
