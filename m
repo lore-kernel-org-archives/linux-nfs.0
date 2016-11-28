@@ -1,89 +1,80 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:34698 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:52610 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S932468AbcK1OCy (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 28 Nov 2016 09:02:54 -0500
-Date: Mon, 28 Nov 2016 09:02:52 -0500
-To: Trond Myklebust <trond.myklebust@primarydata.com>,
-        Anna Schumaker <schumakeranna@gmail.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH] nfs: fix false positives in nfs40_walk_client_list()
-Message-ID: <20161128140252.GA28629@fieldses.org>
+        id S1754592AbcK1QdY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 28 Nov 2016 11:33:24 -0500
+Date: Mon, 28 Nov 2016 11:33:22 -0500
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: Tom Haynes <loghyr@primarydata.com>
+Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH pynfs 00/12] Flex File support
+Message-ID: <20161128163321.GB30805@parsley.fieldses.org>
+References: <1480228001-64821-1-git-send-email-loghyr@primarydata.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-From: bfields@fieldses.org (J. Bruce Fields)
+In-Reply-To: <1480228001-64821-1-git-send-email-loghyr@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
+On Sat, Nov 26, 2016 at 10:26:29PM -0800, Tom Haynes wrote:
+> I wanted to add client support for the flex file layout.
+> 
+> Note, I did not add pynfs as a flag because I didn't want to
+> mess up with any existing uses of it.
+> 
+> The other major change here is in closing all opened
+> files and destroying all clientids. With all the tests
+> which run against my server, there are no longer any
+> open files. There are however 11 clientids remaining.
+> 
+> I will track those down.
+> 
+> fwiw - these are in my staging branch at git://linux-nfs.org/~loghyr/pynfs.git
 
-It's possible that two different servers can return the same (clientid,
-verifier) pair purely by coincidence.  Both are 64-bit values, but
-depending on the server implementation, they can be highly predictable
-and collisions may be quite likely, especially when there are lots of
-servers.
+Thanks!  I'll try these and take a look.
 
-So, check for this case.  If the clientid and verifier both match, then
-we actually know they *can't* be the same server, since a new
-SETCLIENTID to an already-known server should have changed the verifier.
+How did you notice all the leftover state?  I run with a pretty short
+lease time (to speed testing), so I guess the leftover state must expire
+too quickly to cause me problems.
 
-This helps fix a bug that could cause the client to mount a filesystem
-from the wrong server.
+Anyway it's good to have that cleaned up.
 
-Reviewed-by: Jeff Layton <jlayton@redhat.com>
-Tested-by: Yongcheng Yang <yoyang@redhat.com>
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- fs/nfs/nfs4client.c | 22 +++++++++++++++++++++-
- 1 file changed, 21 insertions(+), 1 deletion(-)
+--b.
 
-diff --git a/fs/nfs/nfs4client.c b/fs/nfs/nfs4client.c
-index 074ac7131459..5e2747644432 100644
---- a/fs/nfs/nfs4client.c
-+++ b/fs/nfs/nfs4client.c
-@@ -464,6 +464,11 @@ static bool nfs4_match_client_owner_id(const struct nfs_client *clp1,
- 	return strcmp(clp1->cl_owner_id, clp2->cl_owner_id) == 0;
- }
- 
-+static bool nfs4_same_verifier(nfs4_verifier *v1, nfs4_verifier *v2)
-+{
-+	return 0 == memcmp(v1->data, v2->data, sizeof(v1->data));
-+}
-+
- /**
-  * nfs40_walk_client_list - Find server that recognizes a client ID
-  *
-@@ -521,7 +526,21 @@ int nfs40_walk_client_list(struct nfs_client *new,
- 
- 		if (!nfs4_match_client_owner_id(pos, new))
- 			continue;
--
-+		/*
-+		 * We just sent a new SETCLIENTID, which should have
-+		 * caused the server to return a new cl_confirm.  So if
-+		 * cl_confirm is the same, then this is a different
-+		 * server that just returned the same cl_confirm by
-+		 * coincidence:
-+		 */
-+		if ((new != pos) && nfs4_same_verifier(&pos->cl_confirm,
-+						       &new->cl_confirm))
-+			continue;
-+		/*
-+		 * But if the cl_confirm's are different, then the only
-+		 * way that a SETCLIENTID_CONFIRM to pos can succeed is
-+		 * if new and pos point to the same server:
-+		 */
- 		atomic_inc(&pos->cl_count);
- 		spin_unlock(&nn->nfs_client_lock);
- 
-@@ -534,6 +553,7 @@ int nfs40_walk_client_list(struct nfs_client *new,
- 			break;
- 		case 0:
- 			nfs4_swap_callback_idents(pos, new);
-+			pos->cl_confirm = new->cl_confirm;
- 
- 			prev = NULL;
- 			*result = pos;
--- 
-2.9.3
-
+> 
+> Tom Haynes (12):
+>   According to RFC7863, this is not an array
+>   Close the files opened in the OPEN tests
+>   Some more file closes to cleanup state on the server
+>   Get rid of the client records as well as the session records
+>   Really, really close those open temp files to remove state on the
+>     server
+>   Add xdr for Flex Files Layout Type
+>   Simple tests of the flex file layout type
+>   Add a check to see if NFS4ERR_OLD_STATEID is issued on concurrent
+>     layoutgets
+>   Check that the flex file access uid/gid are correct for the different
+>     iomodes
+>   FFLS1: Simulate LAYOUTSTATS for 20 small file creations
+>   Factor out checking seqid for flex file layouts
+>   Add layoutstats tests for flex files
+> 
+>  nfs4.1/nfs4client.py                        |   5 +-
+>  nfs4.1/server41tests/__init__.py            |   1 +
+>  nfs4.1/server41tests/environment.py         |   5 +
+>  nfs4.1/server41tests/st_current_stateid.py  |  36 +-
+>  nfs4.1/server41tests/st_debug.py            |  18 +-
+>  nfs4.1/server41tests/st_flex.py             | 594 ++++++++++++++++++++++++++++
+>  nfs4.1/server41tests/st_open.py             |  29 +-
+>  nfs4.1/server41tests/st_reclaim_complete.py |   4 +
+>  nfs4.1/server41tests/st_rename.py           |   4 +
+>  nfs4.1/server41tests/st_secinfo.py          |  20 +-
+>  nfs4.1/server41tests/st_sequence.py         |   8 +
+>  nfs4.1/testmod.py                           |   1 +
+>  nfs4.1/xdrdef/nfs4.x                        |  99 ++++-
+>  13 files changed, 812 insertions(+), 12 deletions(-)
+>  create mode 100644 nfs4.1/server41tests/st_flex.py
+> 
+> -- 
+> 2.3.6
+> 
