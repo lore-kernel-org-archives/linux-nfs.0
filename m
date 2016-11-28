@@ -1,49 +1,89 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from 114-47-85-11.dynamic.hinet.net ([114.47.85.11]:55227 "HELO
-        hinet.net" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with SMTP
-        id S1751546AbcK0GtE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Sun, 27 Nov 2016 01:49:04 -0500
-Message-ID: <148022933674.593.3872033212384394944@hinet.net>
-Date: Sun, 27 Nov 2016 06:48:56 -0000
-To: <linux-nfs@vger.kernel.org>
-From: <xxxxxx@bellsouth.net>
-Content-Type: application/zip; name="INFO_6407545731885_linux-nfs.zip"
-Subject: 
+Received: from fieldses.org ([173.255.197.46]:34698 "EHLO fieldses.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S932468AbcK1OCy (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 28 Nov 2016 09:02:54 -0500
+Date: Mon, 28 Nov 2016 09:02:52 -0500
+To: Trond Myklebust <trond.myklebust@primarydata.com>,
+        Anna Schumaker <schumakeranna@gmail.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH] nfs: fix false positives in nfs40_walk_client_list()
+Message-ID: <20161128140252.GA28629@fieldses.org>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+From: bfields@fieldses.org (J. Bruce Fields)
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-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
-AAA=
+From: "J. Bruce Fields" <bfields@redhat.com>
+
+It's possible that two different servers can return the same (clientid,
+verifier) pair purely by coincidence.  Both are 64-bit values, but
+depending on the server implementation, they can be highly predictable
+and collisions may be quite likely, especially when there are lots of
+servers.
+
+So, check for this case.  If the clientid and verifier both match, then
+we actually know they *can't* be the same server, since a new
+SETCLIENTID to an already-known server should have changed the verifier.
+
+This helps fix a bug that could cause the client to mount a filesystem
+from the wrong server.
+
+Reviewed-by: Jeff Layton <jlayton@redhat.com>
+Tested-by: Yongcheng Yang <yoyang@redhat.com>
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ fs/nfs/nfs4client.c | 22 +++++++++++++++++++++-
+ 1 file changed, 21 insertions(+), 1 deletion(-)
+
+diff --git a/fs/nfs/nfs4client.c b/fs/nfs/nfs4client.c
+index 074ac7131459..5e2747644432 100644
+--- a/fs/nfs/nfs4client.c
++++ b/fs/nfs/nfs4client.c
+@@ -464,6 +464,11 @@ static bool nfs4_match_client_owner_id(const struct nfs_client *clp1,
+ 	return strcmp(clp1->cl_owner_id, clp2->cl_owner_id) == 0;
+ }
+ 
++static bool nfs4_same_verifier(nfs4_verifier *v1, nfs4_verifier *v2)
++{
++	return 0 == memcmp(v1->data, v2->data, sizeof(v1->data));
++}
++
+ /**
+  * nfs40_walk_client_list - Find server that recognizes a client ID
+  *
+@@ -521,7 +526,21 @@ int nfs40_walk_client_list(struct nfs_client *new,
+ 
+ 		if (!nfs4_match_client_owner_id(pos, new))
+ 			continue;
+-
++		/*
++		 * We just sent a new SETCLIENTID, which should have
++		 * caused the server to return a new cl_confirm.  So if
++		 * cl_confirm is the same, then this is a different
++		 * server that just returned the same cl_confirm by
++		 * coincidence:
++		 */
++		if ((new != pos) && nfs4_same_verifier(&pos->cl_confirm,
++						       &new->cl_confirm))
++			continue;
++		/*
++		 * But if the cl_confirm's are different, then the only
++		 * way that a SETCLIENTID_CONFIRM to pos can succeed is
++		 * if new and pos point to the same server:
++		 */
+ 		atomic_inc(&pos->cl_count);
+ 		spin_unlock(&nn->nfs_client_lock);
+ 
+@@ -534,6 +553,7 @@ int nfs40_walk_client_list(struct nfs_client *new,
+ 			break;
+ 		case 0:
+ 			nfs4_swap_callback_idents(pos, new);
++			pos->cl_confirm = new->cl_confirm;
+ 
+ 			prev = NULL;
+ 			*result = pos;
+-- 
+2.9.3
+
