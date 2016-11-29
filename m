@@ -1,75 +1,83 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:35430 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:49100 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1752046AbcK2Bzz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 28 Nov 2016 20:55:55 -0500
-Date: Mon, 28 Nov 2016 20:55:54 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Tom Haynes <loghyr@excfb.com>
-Cc: "J. Bruce Fields" <bfields@redhat.com>,
-        Tom Haynes <loghyr@primarydata.com>,
-        Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH pynfs 00/12] Flex File support
-Message-ID: <20161129015554.GA2199@fieldses.org>
-References: <1480228001-64821-1-git-send-email-loghyr@primarydata.com>
- <20161128163321.GB30805@parsley.fieldses.org>
- <20161128214725.GD30954@fieldses.org>
- <20161128233831.GD30012@psyklo.internal.excfb.com>
+        id S1752431AbcK2GnJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 29 Nov 2016 01:43:09 -0500
+Date: Tue, 29 Nov 2016 14:43:06 +0800
+From: Eryu Guan <eguan@redhat.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: Andreas Dilger <adilger@dilger.ca>,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>, fstests@vger.kernel.org,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 2/2] dirstress: Allow ESTALE as well as ENOENT
+Message-ID: <20161129064306.GL22989@eguan.usersys.redhat.com>
+References: <20161123222054.GA7900@fieldses.org>
+ <35420A4E-1698-4743-9523-CBF43F2A2DC6@dilger.ca>
+ <20161125034706.GA20729@fieldses.org>
+ <20161125113511.GI4609@eguan.usersys.redhat.com>
+ <20161126013901.GA32632@fieldses.org>
+ <20161126013939.GB32632@fieldses.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20161128233831.GD30012@psyklo.internal.excfb.com>
+In-Reply-To: <20161126013939.GB32632@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Nov 28, 2016 at 03:38:31PM -0800, Tom Haynes wrote:
-> On Mon, Nov 28, 2016 at 04:47:25PM -0500, J. Bruce Fields wrote:
-> > On Mon, Nov 28, 2016 at 11:33:21AM -0500, J. Bruce Fields wrote:
-> > > On Sat, Nov 26, 2016 at 10:26:29PM -0800, Tom Haynes wrote:
-> > > > I wanted to add client support for the flex file layout.
-> > > > 
-> > > > Note, I did not add pynfs as a flag because I didn't want to
-> > > > mess up with any existing uses of it.
-> > > > 
-> > > > The other major change here is in closing all opened
-> > > > files and destroying all clientids. With all the tests
-> > > > which run against my server, there are no longer any
-> > > > open files. There are however 11 clientids remaining.
-> > > > 
-> > > > I will track those down.
-> > > > 
-> > > > fwiw - these are in my staging branch at git://linux-nfs.org/~loghyr/pynfs.git
-> > > 
-> > > Thanks!  I'll try these and take a look.
-> > 
-> > It breaks all the 4.0 tests:
-> > 
-> > 	ACC3     st_access.testNoFh : FAILURE
-> > 	           AttributeError: 'Environment' object has no attribute
-> > 		              'clean_clients'
-> > 
-> > The problem is that nfs4.1/testmod.py is used by 4.0 as well, but
-> > there's not a 4.0 version of clean_clients.... Simplest I guess is to do
-> > as with clean_sessions and define a dummy method.
-> > 
-> > --b.
-> > 
-> > diff --git a/nfs4.0/servertests/environment.py b/nfs4.0/servertests/environment.py
-> > index 6fe083a..221c3ed 100644
-> > --- a/nfs4.0/servertests/environment.py
-> > +++ b/nfs4.0/servertests/environment.py
-> > @@ -229,6 +229,9 @@ class Environment(testmod.Environment):
-> >      def clean_sessions(self):
-> >          return
-> >  
-> > +    def clean_clients(self):
-> > +       return
-> > +
-> >  #########################################
-> >  debug_fail = False
+On Fri, Nov 25, 2016 at 08:39:39PM -0500, J. Bruce Fields wrote:
+> From: "J. Bruce Fields" <bfields@redhat.com>
 > 
-> Yeah, I never run 4.0 tests. Do you want me to add it to the patchset and
-> resubmit?
+> In the NFS case an attempt to chdir out of a removed directory could result
+> in ESTALE, and that should not cause the test to fail.
+> 
+> This was causing intermittent failures on generic/011 on NFS.
+> 
+> Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+> ---
+>  src/dirstress.c | 12 ++++++++----
+>  1 file changed, 8 insertions(+), 4 deletions(-)
+> 
+> diff --git a/src/dirstress.c b/src/dirstress.c
+> index f8f73553a1bc..33a166c51819 100644
+> --- a/src/dirstress.c
+> +++ b/src/dirstress.c
+> @@ -203,8 +203,10 @@ dirstress(
+>          if (verbose) fprintf(stderr,"** [%d] chdir ..\n", pid);
+>  	error = chdir("..");
+>  	if (error) {
+> -		/* If this is multithreaded, then expecting a ENOENT here is fine */
+> -		if (nprocs_per_dir > 1 && errno == ENOENT) {
+> +		/* If this is multithreaded, then expecting a ENOENT here is fine,
+> +		 * and ESTALE is normal in the NFS case. */
+> +		if (nprocs_per_dir > 1 &&
+> +				(errno == ENOENT || errno = ESTALE)) {
+                                                         ^^^ this should be ==
+>  			return 0;
+>  		}
+>  
+> @@ -224,8 +226,10 @@ dirstress(
+>          if (verbose) fprintf(stderr,"** [%d] chdir ..\n", pid);
+>  	error = chdir("..");
+>  	if (error) {
+> -		/* If this is multithreaded, then expecting a ENOENT here is fine */
+> -		if (nprocs_per_dir > 1 && errno == ENOENT) {
+> +		/* If this is multithreaded, then expecting a ENOENT here is fine,
+> +		 * and ESTALE is normal in the NFS case. */
+> +		if (nprocs_per_dir > 1 &&
+> +				(errno == ENOENT || errno = ESTALE)) {
+                                                         ^^^ same here
 
-I've just added that patch and pushed it out.  Thanks!
+I can fix them at commit time, no resend is needed.
 
---b.
+Thanks,
+Eryu
+
+>  			return 0;
+>  		}
+>  
+> -- 
+> 2.9.3
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe fstests" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
