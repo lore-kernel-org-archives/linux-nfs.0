@@ -1,15 +1,14 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f193.google.com ([209.85.223.193]:35226 "EHLO
-        mail-io0-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S933710AbcK2QEg (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Nov 2016 11:04:36 -0500
-Subject: [PATCH v3 02/10] svcauth_gss: Close connection when dropping an
- incoming message
+Received: from mail-io0-f196.google.com ([209.85.223.196]:33069 "EHLO
+        mail-io0-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S933710AbcK2QEo (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Nov 2016 11:04:44 -0500
+Subject: [PATCH v3 03/10] svcrdma: Renovate sendto chunk list parsing
 From: Chuck Lever <chuck.lever@oracle.com>
 To: bfields@fieldses.org
 Cc: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Tue, 29 Nov 2016 11:04:34 -0500
-Message-ID: <20161129160434.4477.76542.stgit@klimt.1015granger.net>
+Date: Tue, 29 Nov 2016 11:04:42 -0500
+Message-ID: <20161129160442.4477.7758.stgit@klimt.1015granger.net>
 In-Reply-To: <20161129155521.4477.53561.stgit@klimt.1015granger.net>
 References: <20161129155521.4477.53561.stgit@klimt.1015granger.net>
 MIME-Version: 1.0
@@ -17,90 +16,193 @@ Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-S5.3.3.1 of RFC 2203 requires that an incoming GSS-wrapped message
-whose sequence number lies outside the current window is dropped.
-The rationale is:
+The current sendto code appears to support clients that provide only
+one of a Read list, a Write list, or a Reply chunk. My reading of
+that code is that it doesn't support the following cases:
 
-  The reason for discarding requests silently is that the server
-  is unable to determine if the duplicate or out of range request
-  was due to a sequencing problem in the client, network, or the
-  operating system, or due to some quirk in routing, or a replay
-  attack by an intruder.  Discarding the request allows the client
-  to recover after timing out, if indeed the duplication was
-  unintentional or well intended.
+ - Read list + Write list
+ - Read list + Reply chunk
+ - Write list + Reply chunk
+ - Read list + Write list + Reply chunk
 
-However, clients may rely on the server dropping the connection to
-indicate that a retransmit is needed. Without a connection reset, a
-client can wait forever without retransmitting, and the workload
-just stops dead. I've reproduced this behavior by running xfstests
-generic/323 on an NFSv4.0 mount with proto=rdma and sec=krb5i.
+The protocol allows more than one Read or Write chunk in those
+lists. Some clients do send a Read list and Reply chunk
+simultaneously. NFSv4 WRITE uses a Read list for the data payload,
+and a Reply chunk because the GETATTR result in the reply can
+contain a large object like an ACL.
 
-To address this issue, have the server close the connection when it
-silently discards an incoming message due to a GSS sequence number
-problem.
-
-There are a few other places where the server will never reply.
-Change those spots in a similar fashion.
+Generalize one of the sendto code paths needed to support all of
+the above cases, and attempt to ensure that only one pass is done
+through the RPC Call's transport header to gather chunk list
+information for building the reply.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- net/sunrpc/auth_gss/svcauth_gss.c |    2 +-
- net/sunrpc/svc.c                  |   14 +++++++++-----
- 2 files changed, 10 insertions(+), 6 deletions(-)
+ include/linux/sunrpc/svc_rdma.h         |    2 -
+ net/sunrpc/xprtrdma/svc_rdma_recvfrom.c |   14 +++++
+ net/sunrpc/xprtrdma/svc_rdma_sendto.c   |   92 ++++++++-----------------------
+ 3 files changed, 39 insertions(+), 69 deletions(-)
 
-diff --git a/net/sunrpc/auth_gss/svcauth_gss.c b/net/sunrpc/auth_gss/svcauth_gss.c
-index 45662d7..886e9d38 100644
---- a/net/sunrpc/auth_gss/svcauth_gss.c
-+++ b/net/sunrpc/auth_gss/svcauth_gss.c
-@@ -1548,7 +1548,7 @@ static void destroy_use_gss_proxy_proc_entry(struct net *net) {}
- 	ret = SVC_COMPLETE;
- 	goto out;
- drop:
--	ret = SVC_DROP;
-+	ret = SVC_CLOSE;
- out:
- 	if (rsci)
- 		cache_put(&rsci->h, sn->rsc_cache);
-diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
-index 7c8070e..75f290b 100644
---- a/net/sunrpc/svc.c
-+++ b/net/sunrpc/svc.c
-@@ -1155,8 +1155,7 @@ static __printf(2,3) void svc_printk(struct svc_rqst *rqstp, const char *fmt, ..
- 	case SVC_DENIED:
- 		goto err_bad_auth;
- 	case SVC_CLOSE:
--		if (test_bit(XPT_TEMP, &rqstp->rq_xprt->xpt_flags))
--			svc_close_xprt(rqstp->rq_xprt);
-+		goto close;
- 	case SVC_DROP:
- 		goto dropit;
- 	case SVC_COMPLETE:
-@@ -1246,7 +1245,7 @@ static __printf(2,3) void svc_printk(struct svc_rqst *rqstp, const char *fmt, ..
+diff --git a/include/linux/sunrpc/svc_rdma.h b/include/linux/sunrpc/svc_rdma.h
+index cc3ae16..6aef63b 100644
+--- a/include/linux/sunrpc/svc_rdma.h
++++ b/include/linux/sunrpc/svc_rdma.h
+@@ -236,8 +236,6 @@ extern int rdma_read_chunk_frmr(struct svcxprt_rdma *, struct svc_rqst *,
+ extern int svc_rdma_map_xdr(struct svcxprt_rdma *, struct xdr_buf *,
+ 			    struct svc_rdma_req_map *, bool);
+ extern int svc_rdma_sendto(struct svc_rqst *);
+-extern struct rpcrdma_read_chunk *
+-	svc_rdma_get_read_chunk(struct rpcrdma_msg *);
+ extern void svc_rdma_send_error(struct svcxprt_rdma *, struct rpcrdma_msg *,
+ 				int);
  
-  sendit:
- 	if (svc_authorise(rqstp))
--		goto dropit;
-+		goto close;
- 	return 1;		/* Caller can now send it */
+diff --git a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
+index ad1df97..873c2a9 100644
+--- a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
++++ b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
+@@ -415,6 +415,20 @@ int rdma_read_chunk_frmr(struct svcxprt_rdma *xprt,
+ 	return 1;
+ }
  
-  dropit:
-@@ -1254,11 +1253,16 @@ static __printf(2,3) void svc_printk(struct svc_rqst *rqstp, const char *fmt, ..
- 	dprintk("svc: svc_process dropit\n");
- 	return 0;
- 
-+ close:
-+	if (test_bit(XPT_TEMP, &rqstp->rq_xprt->xpt_flags))
-+		svc_close_xprt(rqstp->rq_xprt);
-+	dprintk("svc: svc_process close\n");
-+	return 0;
++/* Returns the address of the first read chunk or <nul> if no read chunk
++ * is present
++ */
++static struct rpcrdma_read_chunk *
++svc_rdma_get_read_chunk(struct rpcrdma_msg *rmsgp)
++{
++	struct rpcrdma_read_chunk *ch =
++		(struct rpcrdma_read_chunk *)&rmsgp->rm_body.rm_chunks[0];
 +
- err_short_len:
- 	svc_printk(rqstp, "short len %Zd, dropping request\n",
- 			argv->iov_len);
--
--	goto dropit;			/* drop request */
-+	goto close;
++	if (ch->rc_discrim == xdr_zero)
++		return NULL;
++	return ch;
++}
++
+ static int rdma_read_chunks(struct svcxprt_rdma *xprt,
+ 			    struct rpcrdma_msg *rmsgp,
+ 			    struct svc_rqst *rqstp,
+diff --git a/net/sunrpc/xprtrdma/svc_rdma_sendto.c b/net/sunrpc/xprtrdma/svc_rdma_sendto.c
+index f5a91ed..0a58d40 100644
+--- a/net/sunrpc/xprtrdma/svc_rdma_sendto.c
++++ b/net/sunrpc/xprtrdma/svc_rdma_sendto.c
+@@ -153,76 +153,35 @@ static dma_addr_t dma_map_xdr(struct svcxprt_rdma *xprt,
+ 	return dma_addr;
+ }
  
- err_bad_rpc:
- 	serv->sv_stats->rpcbadfmt++;
+-/* Returns the address of the first read chunk or <nul> if no read chunk
+- * is present
++/* Parse the RPC Call's transport header.
+  */
+-struct rpcrdma_read_chunk *
+-svc_rdma_get_read_chunk(struct rpcrdma_msg *rmsgp)
++static void svc_rdma_get_write_arrays(struct rpcrdma_msg *rmsgp,
++				      struct rpcrdma_write_array **write,
++				      struct rpcrdma_write_array **reply)
+ {
+-	struct rpcrdma_read_chunk *ch =
+-		(struct rpcrdma_read_chunk *)&rmsgp->rm_body.rm_chunks[0];
++	__be32 *p;
+ 
+-	if (ch->rc_discrim == xdr_zero)
+-		return NULL;
+-	return ch;
+-}
+-
+-/* Returns the address of the first read write array element or <nul>
+- * if no write array list is present
+- */
+-static struct rpcrdma_write_array *
+-svc_rdma_get_write_array(struct rpcrdma_msg *rmsgp)
+-{
+-	if (rmsgp->rm_body.rm_chunks[0] != xdr_zero ||
+-	    rmsgp->rm_body.rm_chunks[1] == xdr_zero)
+-		return NULL;
+-	return (struct rpcrdma_write_array *)&rmsgp->rm_body.rm_chunks[1];
+-}
++	p = (__be32 *)&rmsgp->rm_body.rm_chunks[0];
+ 
+-/* Returns the address of the first reply array element or <nul> if no
+- * reply array is present
+- */
+-static struct rpcrdma_write_array *
+-svc_rdma_get_reply_array(struct rpcrdma_msg *rmsgp,
+-			 struct rpcrdma_write_array *wr_ary)
+-{
+-	struct rpcrdma_read_chunk *rch;
+-	struct rpcrdma_write_array *rp_ary;
++	/* Read list */
++	while (*p++ != xdr_zero)
++		p += 5;
+ 
+-	/* XXX: Need to fix when reply chunk may occur with read list
+-	 *	and/or write list.
+-	 */
+-	if (rmsgp->rm_body.rm_chunks[0] != xdr_zero ||
+-	    rmsgp->rm_body.rm_chunks[1] != xdr_zero)
+-		return NULL;
+-
+-	rch = svc_rdma_get_read_chunk(rmsgp);
+-	if (rch) {
+-		while (rch->rc_discrim != xdr_zero)
+-			rch++;
+-
+-		/* The reply chunk follows an empty write array located
+-		 * at 'rc_position' here. The reply array is at rc_target.
+-		 */
+-		rp_ary = (struct rpcrdma_write_array *)&rch->rc_target;
+-		goto found_it;
+-	}
+-
+-	if (wr_ary) {
+-		int chunk = be32_to_cpu(wr_ary->wc_nchunks);
+-
+-		rp_ary = (struct rpcrdma_write_array *)
+-			 &wr_ary->wc_array[chunk].wc_target.rs_length;
+-		goto found_it;
++	/* Write list */
++	if (*p != xdr_zero) {
++		*write = (struct rpcrdma_write_array *)p;
++		while (*p++ != xdr_zero)
++			p += 1 + be32_to_cpu(*p) * 4;
++	} else {
++		*write = NULL;
++		p++;
+ 	}
+ 
+-	/* No read list, no write list */
+-	rp_ary = (struct rpcrdma_write_array *)&rmsgp->rm_body.rm_chunks[2];
+-
+- found_it:
+-	if (rp_ary->wc_discrim == xdr_zero)
+-		return NULL;
+-	return rp_ary;
++	/* Reply chunk */
++	if (*p != xdr_zero)
++		*reply = (struct rpcrdma_write_array *)p;
++	else
++		*reply = NULL;
+ }
+ 
+ /* RPC-over-RDMA Version One private extension: Remote Invalidation.
+@@ -244,8 +203,8 @@ static u32 svc_rdma_get_inv_rkey(struct rpcrdma_msg *rdma_argp,
+ 
+ 	inv_rkey = 0;
+ 
+-	rd_ary = svc_rdma_get_read_chunk(rdma_argp);
+-	if (rd_ary) {
++	rd_ary = (struct rpcrdma_read_chunk *)&rdma_argp->rm_body.rm_chunks[0];
++	if (rd_ary->rc_discrim != xdr_zero) {
+ 		inv_rkey = be32_to_cpu(rd_ary->rc_target.rs_handle);
+ 		goto out;
+ 	}
+@@ -622,8 +581,7 @@ int svc_rdma_sendto(struct svc_rqst *rqstp)
+ 	 * places this at the start of page 0.
+ 	 */
+ 	rdma_argp = page_address(rqstp->rq_pages[0]);
+-	wr_ary = svc_rdma_get_write_array(rdma_argp);
+-	rp_ary = svc_rdma_get_reply_array(rdma_argp, wr_ary);
++	svc_rdma_get_write_arrays(rdma_argp, &wr_ary, &rp_ary);
+ 
+ 	inv_rkey = 0;
+ 	if (rdma->sc_snd_w_inv)
 
