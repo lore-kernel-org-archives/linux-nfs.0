@@ -1,14 +1,14 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f195.google.com ([209.85.223.195]:35929 "EHLO
-        mail-io0-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S933710AbcK2QFB (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Nov 2016 11:05:01 -0500
-Subject: [PATCH v3 05/10] svcrdma: Remove DMA map accounting
+Received: from mail-io0-f196.google.com ([209.85.223.196]:35995 "EHLO
+        mail-io0-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S933980AbcK2QFI (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Nov 2016 11:05:08 -0500
+Subject: [PATCH v3 06/10] svcrdma: Remove svc_rdma_op_ctxt::wc_status
 From: Chuck Lever <chuck.lever@oracle.com>
 To: bfields@fieldses.org
 Cc: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Tue, 29 Nov 2016 11:04:58 -0500
-Message-ID: <20161129160458.4477.96653.stgit@klimt.1015granger.net>
+Date: Tue, 29 Nov 2016 11:05:07 -0500
+Message-ID: <20161129160507.4477.60847.stgit@klimt.1015granger.net>
 In-Reply-To: <20161129155521.4477.53561.stgit@klimt.1015granger.net>
 References: <20161129155521.4477.53561.stgit@klimt.1015granger.net>
 MIME-Version: 1.0
@@ -16,105 +16,53 @@ Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Clean up: sc_dma_used is not required for correct operation. It is
-simply a debugging tool to report when svcrdma has leaked DMA maps.
-
-However, manipulating an atomic has a measurable CPU cost, and DMA
-map accounting specific to svcrdma will be meaningless once svcrdma
-is converted to use the new generic r/w API.
-
-A similar kind of debug accounting can be done simply by enabling
-the IOMMU or by using CONFIG_DMA_API_DEBUG, CONFIG_IOMMU_DEBUG, and
-CONFIG_IOMMU_LEAK.
+Clean up: Completion status is already reported in the individual
+completion handlers. Save a few bytes in struct svc_rdma_op_ctxt.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- include/linux/sunrpc/svc_rdma.h          |    2 --
- net/sunrpc/xprtrdma/svc_rdma_recvfrom.c  |    1 -
- net/sunrpc/xprtrdma/svc_rdma_transport.c |   13 +++----------
- 3 files changed, 3 insertions(+), 13 deletions(-)
+ include/linux/sunrpc/svc_rdma.h          |    1 -
+ net/sunrpc/xprtrdma/svc_rdma_recvfrom.c  |    4 ++--
+ net/sunrpc/xprtrdma/svc_rdma_transport.c |    1 -
+ 3 files changed, 2 insertions(+), 4 deletions(-)
 
 diff --git a/include/linux/sunrpc/svc_rdma.h b/include/linux/sunrpc/svc_rdma.h
-index 601cb07..43d7c70 100644
+index 43d7c70..757fb96 100644
 --- a/include/linux/sunrpc/svc_rdma.h
 +++ b/include/linux/sunrpc/svc_rdma.h
-@@ -148,7 +148,6 @@ struct svcxprt_rdma {
- 
- 	struct ib_pd         *sc_pd;
- 
--	atomic_t	     sc_dma_used;
- 	spinlock_t	     sc_ctxt_lock;
- 	struct list_head     sc_ctxts;
- 	int		     sc_ctxt_used;
-@@ -200,7 +199,6 @@ static inline void svc_rdma_count_mappings(struct svcxprt_rdma *rdma,
- 					   struct svc_rdma_op_ctxt *ctxt)
- {
- 	ctxt->mapped_sges++;
--	atomic_inc(&rdma->sc_dma_used);
- }
- 
- /* svc_rdma_backchannel.c */
+@@ -79,7 +79,6 @@ struct svc_rdma_op_ctxt {
+ 	struct ib_cqe reg_cqe;
+ 	struct ib_cqe inv_cqe;
+ 	struct list_head dto_q;
+-	enum ib_wc_status wc_status;
+ 	u32 byte_len;
+ 	u32 position;
+ 	struct svcxprt_rdma *xprt;
 diff --git a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
-index 873c2a9..283246e 100644
+index 283246e..428ab4ef 100644
 --- a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
 +++ b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
-@@ -279,7 +279,6 @@ int rdma_read_chunk_frmr(struct svcxprt_rdma *xprt,
- 		       frmr->sg);
- 		return -ENOMEM;
+@@ -640,8 +640,8 @@ int svc_rdma_recvfrom(struct svc_rqst *rqstp)
+ 			goto defer;
+ 		goto out;
  	}
--	atomic_inc(&xprt->sc_dma_used);
+-	dprintk("svcrdma: processing ctxt=%p on xprt=%p, rqstp=%p, status=%d\n",
+-		ctxt, rdma_xprt, rqstp, ctxt->wc_status);
++	dprintk("svcrdma: processing ctxt=%p on xprt=%p, rqstp=%p\n",
++		ctxt, rdma_xprt, rqstp);
+ 	atomic_inc(&rdma_stat_recv);
  
- 	n = ib_map_mr_sg(frmr->mr, frmr->sg, frmr->sg_nents, NULL, PAGE_SIZE);
- 	if (unlikely(n != frmr->sg_nents)) {
+ 	/* Build up the XDR from the receive buffers. */
 diff --git a/net/sunrpc/xprtrdma/svc_rdma_transport.c b/net/sunrpc/xprtrdma/svc_rdma_transport.c
-index 3e68e3d..61ae392 100644
+index 61ae392..733d6e03 100644
 --- a/net/sunrpc/xprtrdma/svc_rdma_transport.c
 +++ b/net/sunrpc/xprtrdma/svc_rdma_transport.c
-@@ -226,25 +226,22 @@ void svc_rdma_unmap_dma(struct svc_rdma_op_ctxt *ctxt)
- 	struct svcxprt_rdma *xprt = ctxt->xprt;
- 	struct ib_device *device = xprt->sc_cm_id->device;
- 	u32 lkey = xprt->sc_pd->local_dma_lkey;
--	unsigned int i, count;
-+	unsigned int i;
+@@ -395,7 +395,6 @@ static void svc_rdma_wc_receive(struct ib_cq *cq, struct ib_wc *wc)
  
--	for (count = 0, i = 0; i < ctxt->mapped_sges; i++) {
-+	for (i = 0; i < ctxt->mapped_sges; i++) {
- 		/*
- 		 * Unmap the DMA addr in the SGE if the lkey matches
- 		 * the local_dma_lkey, otherwise, ignore it since it is
- 		 * an FRMR lkey and will be unmapped later when the
- 		 * last WR that uses it completes.
- 		 */
--		if (ctxt->sge[i].lkey == lkey) {
--			count++;
-+		if (ctxt->sge[i].lkey == lkey)
- 			ib_dma_unmap_page(device,
- 					    ctxt->sge[i].addr,
- 					    ctxt->sge[i].length,
- 					    ctxt->direction);
--		}
- 	}
- 	ctxt->mapped_sges = 0;
--	atomic_sub(count, &xprt->sc_dma_used);
- }
+ 	/* WARNING: Only wc->wr_cqe and wc->status are reliable */
+ 	ctxt = container_of(cqe, struct svc_rdma_op_ctxt, cqe);
+-	ctxt->wc_status = wc->status;
+ 	svc_rdma_unmap_dma(ctxt);
  
- void svc_rdma_put_context(struct svc_rdma_op_ctxt *ctxt, int free_pages)
-@@ -946,7 +943,6 @@ void svc_rdma_put_frmr(struct svcxprt_rdma *rdma,
- 	if (frmr) {
- 		ib_dma_unmap_sg(rdma->sc_cm_id->device,
- 				frmr->sg, frmr->sg_nents, frmr->direction);
--		atomic_dec(&rdma->sc_dma_used);
- 		spin_lock_bh(&rdma->sc_frmr_q_lock);
- 		WARN_ON_ONCE(!list_empty(&frmr->frmr_list));
- 		list_add(&frmr->frmr_list, &rdma->sc_frmr_q);
-@@ -1258,9 +1254,6 @@ static void __svc_rdma_free(struct work_struct *work)
- 	if (rdma->sc_ctxt_used != 0)
- 		pr_err("svcrdma: ctxt still in use? (%d)\n",
- 		       rdma->sc_ctxt_used);
--	if (atomic_read(&rdma->sc_dma_used) != 0)
--		pr_err("svcrdma: dma still in use? (%d)\n",
--		       atomic_read(&rdma->sc_dma_used));
- 
- 	/* Final put of backchannel client transport */
- 	if (xprt->xpt_bc_xprt) {
+ 	if (wc->status != IB_WC_SUCCESS)
 
