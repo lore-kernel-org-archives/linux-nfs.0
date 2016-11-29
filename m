@@ -1,92 +1,54 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f194.google.com ([209.85.223.194]:33875 "EHLO
-        mail-io0-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S934003AbcK2PwC (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Nov 2016 10:52:02 -0500
-Subject: [PATCH v3 00/12] client-side NFS/RDMA patches proposed for v4.10
+Received: from mail-io0-f196.google.com ([209.85.223.196]:36254 "EHLO
+        mail-io0-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S934086AbcK2PwU (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Nov 2016 10:52:20 -0500
+Subject: [PATCH v3 01/12] xprtrdma: Cap size of callback buffer resources
 From: Chuck Lever <chuck.lever@oracle.com>
 To: anna.schumaker@netapp.com
 Cc: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Tue, 29 Nov 2016 10:51:59 -0500
-Message-ID: <20161129154845.23061.29385.stgit@manet.1015granger.net>
+Date: Tue, 29 Nov 2016 10:52:08 -0500
+Message-ID: <20161129155208.23061.9596.stgit@manet.1015granger.net>
+In-Reply-To: <20161129154845.23061.29385.stgit@manet.1015granger.net>
+References: <20161129154845.23061.29385.stgit@manet.1015granger.net>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Anna-
+When the inline threshold size is set to large values (say, 32KB)
+any NFSv4.1 CB request from the server gets a reply with status
+NFS4ERR_RESOURCE.
 
-These are ready for you to consider for v4.10. This patch series makes
-the following changes:
+Looks like there are some upper layer assumptions about the maximum
+size of a reply (for example, in process_op). Cap the size of the
+NFSv4 client's reply resources at a page.
 
-- Support for devices that support SG_GAP
-- Several bug fixes
-- A number of clean-ups and optimizations
-
-SG_GAP devices allow the client transport implementation to register
-non-contiguous memory regions using one offset and handle. Scatter
-and gather from these regions are then managed entirely in hardware.
-
-Normally a Reply chunk for a READDIR or GETACL is built of multiple
-RDMA segments. Now, when our client wants to build a Reply chunk out
-of the xdr_buf's head, page list, and tail, it appears to the server
-as a single contiguous RDMA segment if the device supports SG_GAP.
-
-Instead of a separate Write WR for each of several RDMA segments,
-the server can then post a single Write WR to transmit the whole RPC
-Reply (assuming the Reply is smaller than the server RNIC's max_sge)
-and can invalidate the whole Reply chunk remotely.
-
-SG_GAP is currently supported by mlx5 devices when using the FRWR
-registration mechanism.
-
-
-Available in the "nfs-rdma-for-4.10" topic branch of this git repo:
-
-git://git.linux-nfs.org/projects/cel/cel-2.6.git
-
-
-Or for browsing:
-
-http://git.linux-nfs.org/?p=cel/cel-2.6.git;a=log;h=refs/heads/nfs-rdma-for-4.10
-
-
-Changes since v2:
-- Rebased on v4.9-rc7
-
-
-Changes since v1:
-- Rebased on v4.9-rc5
-- "xprtrdma: Fix DMAR failure in frwr_op_map() after reconnect" was merged
-- "xprtrdma: Simplify synopsis of rpcrdma_ep_connect()" was postponed
-- Clean-ups re-ordered to the end of the series
-- Editorial changes to patch descriptions
-
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
+ net/sunrpc/xprtrdma/backchannel.c |    4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
 
-Chuck Lever (12):
-      xprtrdma: Cap size of callback buffer resources
-      xprtrdma: Make FRWR send queue entry accounting more accurate
-      xprtrdma: Support for SG_GAP devices
-      SUNRPC: Proper metric accounting when RPC is not transmitted
-      xprtrdma: Address coverity complaint about wait_for_completion()
-      xprtrdma: Avoid calls to ro_unmap_safe()
-      xprtrdma: Refactor FRMR invalidation
-      xprtrdma: Update documenting comment
-      xprtrdma: Squelch "max send, max recv" messages at connect time
-      xprtrdma: Shorten QP access error message
-      xprtrdma: Update dprintk in rpcrdma_count_chunks
-      xprtrdma: Relocate connection helper functions
+diff --git a/net/sunrpc/xprtrdma/backchannel.c b/net/sunrpc/xprtrdma/backchannel.c
+index 2c472e1..24fedd4 100644
+--- a/net/sunrpc/xprtrdma/backchannel.c
++++ b/net/sunrpc/xprtrdma/backchannel.c
+@@ -55,7 +55,8 @@ static int rpcrdma_bc_setup_rqst(struct rpcrdma_xprt *r_xprt,
+ 	if (IS_ERR(rb))
+ 		goto out_fail;
+ 	req->rl_sendbuf = rb;
+-	xdr_buf_init(&rqst->rq_snd_buf, rb->rg_base, size);
++	xdr_buf_init(&rqst->rq_snd_buf, rb->rg_base,
++		     min_t(size_t, size, PAGE_SIZE));
+ 	rpcrdma_set_xprtdata(rqst, req);
+ 	return 0;
+ 
+@@ -191,6 +192,7 @@ size_t xprt_rdma_bc_maxpayload(struct rpc_xprt *xprt)
+ 	size_t maxmsg;
+ 
+ 	maxmsg = min_t(unsigned int, cdata->inline_rsize, cdata->inline_wsize);
++	maxmsg = min_t(unsigned int, maxmsg, PAGE_SIZE);
+ 	return maxmsg - RPCRDMA_HDRLEN_MIN;
+ }
+ 
 
-
- net/sunrpc/stats.c                |   10 ++--
- net/sunrpc/xprtrdma/backchannel.c |    4 +-
- net/sunrpc/xprtrdma/frwr_ops.c    |   94 +++++++++++++++++--------------------
- net/sunrpc/xprtrdma/rpc_rdma.c    |   36 --------------
- net/sunrpc/xprtrdma/transport.c   |   34 +++++++++++++
- net/sunrpc/xprtrdma/verbs.c       |   37 ++++++++-------
- net/sunrpc/xprtrdma/xprt_rdma.h   |   31 +++++++++---
- 7 files changed, 128 insertions(+), 118 deletions(-)
-
---
-Chuck Lever
