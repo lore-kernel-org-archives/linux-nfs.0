@@ -1,15 +1,14 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f195.google.com ([209.85.223.195]:35843 "EHLO
+Received: from mail-io0-f195.google.com ([209.85.223.195]:35929 "EHLO
         mail-io0-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S933710AbcK2QEw (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Nov 2016 11:04:52 -0500
-Subject: [PATCH v3 04/10] svcrdma: Remove BH-disabled spin locking in
- svc_rdma_send()
+        with ESMTP id S933710AbcK2QFB (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Nov 2016 11:05:01 -0500
+Subject: [PATCH v3 05/10] svcrdma: Remove DMA map accounting
 From: Chuck Lever <chuck.lever@oracle.com>
 To: bfields@fieldses.org
 Cc: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Tue, 29 Nov 2016 11:04:50 -0500
-Message-ID: <20161129160450.4477.55.stgit@klimt.1015granger.net>
+Date: Tue, 29 Nov 2016 11:04:58 -0500
+Message-ID: <20161129160458.4477.96653.stgit@klimt.1015granger.net>
 In-Reply-To: <20161129155521.4477.53561.stgit@klimt.1015granger.net>
 References: <20161129155521.4477.53561.stgit@klimt.1015granger.net>
 MIME-Version: 1.0
@@ -17,119 +16,105 @@ Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-svcrdma's current SQ accounting algorithm takes sc_lock and disables
-bottom-halves while posting all RDMA Read, Write, and Send WRs.
+Clean up: sc_dma_used is not required for correct operation. It is
+simply a debugging tool to report when svcrdma has leaked DMA maps.
 
-This is relatively heavyweight serialization. And note that Write and
-Send are already fully serialized by the xpt_mutex.
+However, manipulating an atomic has a measurable CPU cost, and DMA
+map accounting specific to svcrdma will be meaningless once svcrdma
+is converted to use the new generic r/w API.
 
-Using a single atomic_t should be all that is necessary to guarantee
-that ib_post_send() is called only when there is enough space on the
-send queue. This is what the other RDMA-enabled storage targets do.
+A similar kind of debug accounting can be done simply by enabling
+the IOMMU or by using CONFIG_DMA_API_DEBUG, CONFIG_IOMMU_DEBUG, and
+CONFIG_IOMMU_LEAK.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- include/linux/sunrpc/svc_rdma.h          |    2 +-
- net/sunrpc/xprtrdma/svc_rdma_sendto.c    |    7 ++++++-
- net/sunrpc/xprtrdma/svc_rdma_transport.c |   25 ++++++++++---------------
- 3 files changed, 17 insertions(+), 17 deletions(-)
+ include/linux/sunrpc/svc_rdma.h          |    2 --
+ net/sunrpc/xprtrdma/svc_rdma_recvfrom.c  |    1 -
+ net/sunrpc/xprtrdma/svc_rdma_transport.c |   13 +++----------
+ 3 files changed, 3 insertions(+), 13 deletions(-)
 
 diff --git a/include/linux/sunrpc/svc_rdma.h b/include/linux/sunrpc/svc_rdma.h
-index 6aef63b..601cb07 100644
+index 601cb07..43d7c70 100644
 --- a/include/linux/sunrpc/svc_rdma.h
 +++ b/include/linux/sunrpc/svc_rdma.h
-@@ -139,7 +139,7 @@ struct svcxprt_rdma {
- 	int                  sc_max_sge_rd;	/* max sge for read target */
- 	bool		     sc_snd_w_inv;	/* OK to use Send With Invalidate */
+@@ -148,7 +148,6 @@ struct svcxprt_rdma {
  
--	atomic_t             sc_sq_count;	/* Number of SQ WR on queue */
-+	atomic_t             sc_sq_avail;	/* SQEs ready to be consumed */
- 	unsigned int	     sc_sq_depth;	/* Depth of SQ */
- 	unsigned int	     sc_rq_depth;	/* Depth of RQ */
- 	u32		     sc_max_requests;	/* Forward credits */
-diff --git a/net/sunrpc/xprtrdma/svc_rdma_sendto.c b/net/sunrpc/xprtrdma/svc_rdma_sendto.c
-index 0a58d40..30eeab5 100644
---- a/net/sunrpc/xprtrdma/svc_rdma_sendto.c
-+++ b/net/sunrpc/xprtrdma/svc_rdma_sendto.c
-@@ -594,7 +594,12 @@ int svc_rdma_sendto(struct svc_rqst *rqstp)
- 		goto err0;
- 	inline_bytes = rqstp->rq_res.len;
+ 	struct ib_pd         *sc_pd;
  
--	/* Create the RDMA response header */
-+	/* Create the RDMA response header. xprt->xpt_mutex,
-+	 * acquired in svc_send(), serializes RPC replies. The
-+	 * code path below that inserts the credit grant value
-+	 * into each transport header runs only inside this
-+	 * critical section.
-+	 */
- 	ret = -ENOMEM;
- 	res_page = alloc_page(GFP_KERNEL);
- 	if (!res_page)
+-	atomic_t	     sc_dma_used;
+ 	spinlock_t	     sc_ctxt_lock;
+ 	struct list_head     sc_ctxts;
+ 	int		     sc_ctxt_used;
+@@ -200,7 +199,6 @@ static inline void svc_rdma_count_mappings(struct svcxprt_rdma *rdma,
+ 					   struct svc_rdma_op_ctxt *ctxt)
+ {
+ 	ctxt->mapped_sges++;
+-	atomic_inc(&rdma->sc_dma_used);
+ }
+ 
+ /* svc_rdma_backchannel.c */
+diff --git a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
+index 873c2a9..283246e 100644
+--- a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
++++ b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
+@@ -279,7 +279,6 @@ int rdma_read_chunk_frmr(struct svcxprt_rdma *xprt,
+ 		       frmr->sg);
+ 		return -ENOMEM;
+ 	}
+-	atomic_inc(&xprt->sc_dma_used);
+ 
+ 	n = ib_map_mr_sg(frmr->mr, frmr->sg, frmr->sg_nents, NULL, PAGE_SIZE);
+ 	if (unlikely(n != frmr->sg_nents)) {
 diff --git a/net/sunrpc/xprtrdma/svc_rdma_transport.c b/net/sunrpc/xprtrdma/svc_rdma_transport.c
-index 1334de2..3e68e3d 100644
+index 3e68e3d..61ae392 100644
 --- a/net/sunrpc/xprtrdma/svc_rdma_transport.c
 +++ b/net/sunrpc/xprtrdma/svc_rdma_transport.c
-@@ -436,7 +436,7 @@ static void svc_rdma_send_wc_common(struct svcxprt_rdma *xprt,
- 		goto err;
+@@ -226,25 +226,22 @@ void svc_rdma_unmap_dma(struct svc_rdma_op_ctxt *ctxt)
+ 	struct svcxprt_rdma *xprt = ctxt->xprt;
+ 	struct ib_device *device = xprt->sc_cm_id->device;
+ 	u32 lkey = xprt->sc_pd->local_dma_lkey;
+-	unsigned int i, count;
++	unsigned int i;
  
- out:
--	atomic_dec(&xprt->sc_sq_count);
-+	atomic_inc(&xprt->sc_sq_avail);
- 	wake_up(&xprt->sc_send_wait);
- 	return;
- 
-@@ -1010,6 +1010,7 @@ static struct svc_xprt *svc_rdma_accept(struct svc_xprt *xprt)
- 	newxprt->sc_rq_depth = newxprt->sc_max_requests +
- 			       newxprt->sc_max_bc_requests;
- 	newxprt->sc_sq_depth = RPCRDMA_SQ_DEPTH_MULT * newxprt->sc_rq_depth;
-+	atomic_set(&newxprt->sc_sq_avail, newxprt->sc_sq_depth);
- 
- 	if (!svc_rdma_prealloc_ctxts(newxprt))
- 		goto errout;
-@@ -1339,15 +1340,13 @@ int svc_rdma_send(struct svcxprt_rdma *xprt, struct ib_send_wr *wr)
- 
- 	/* If the SQ is full, wait until an SQ entry is available */
- 	while (1) {
--		spin_lock_bh(&xprt->sc_lock);
--		if (xprt->sc_sq_depth < atomic_read(&xprt->sc_sq_count) + wr_count) {
--			spin_unlock_bh(&xprt->sc_lock);
-+		if ((atomic_sub_return(wr_count, &xprt->sc_sq_avail) < 0)) {
- 			atomic_inc(&rdma_stat_sq_starve);
- 
- 			/* Wait until SQ WR available if SQ still full */
-+			atomic_add(wr_count, &xprt->sc_sq_avail);
- 			wait_event(xprt->sc_send_wait,
--				   atomic_read(&xprt->sc_sq_count) <
--				   xprt->sc_sq_depth);
-+				   atomic_read(&xprt->sc_sq_avail) > wr_count);
- 			if (test_bit(XPT_CLOSE, &xprt->sc_xprt.xpt_flags))
- 				return -ENOTCONN;
- 			continue;
-@@ -1357,21 +1356,17 @@ int svc_rdma_send(struct svcxprt_rdma *xprt, struct ib_send_wr *wr)
- 			svc_xprt_get(&xprt->sc_xprt);
- 
- 		/* Bump used SQ WR count and post */
--		atomic_add(wr_count, &xprt->sc_sq_count);
- 		ret = ib_post_send(xprt->sc_qp, wr, &bad_wr);
- 		if (ret) {
- 			set_bit(XPT_CLOSE, &xprt->sc_xprt.xpt_flags);
--			atomic_sub(wr_count, &xprt->sc_sq_count);
- 			for (i = 0; i < wr_count; i ++)
- 				svc_xprt_put(&xprt->sc_xprt);
--			dprintk("svcrdma: failed to post SQ WR rc=%d, "
--			       "sc_sq_count=%d, sc_sq_depth=%d\n",
--			       ret, atomic_read(&xprt->sc_sq_count),
--			       xprt->sc_sq_depth);
+-	for (count = 0, i = 0; i < ctxt->mapped_sges; i++) {
++	for (i = 0; i < ctxt->mapped_sges; i++) {
+ 		/*
+ 		 * Unmap the DMA addr in the SGE if the lkey matches
+ 		 * the local_dma_lkey, otherwise, ignore it since it is
+ 		 * an FRMR lkey and will be unmapped later when the
+ 		 * last WR that uses it completes.
+ 		 */
+-		if (ctxt->sge[i].lkey == lkey) {
+-			count++;
++		if (ctxt->sge[i].lkey == lkey)
+ 			ib_dma_unmap_page(device,
+ 					    ctxt->sge[i].addr,
+ 					    ctxt->sge[i].length,
+ 					    ctxt->direction);
 -		}
--		spin_unlock_bh(&xprt->sc_lock);
--		if (ret)
-+			dprintk("svcrdma: failed to post SQ WR rc=%d\n", ret);
-+			dprintk("    sc_sq_avail=%d, sc_sq_depth=%d\n",
-+				atomic_read(&xprt->sc_sq_avail),
-+				xprt->sc_sq_depth);
- 			wake_up(&xprt->sc_send_wait);
-+		}
- 		break;
  	}
- 	return ret;
+ 	ctxt->mapped_sges = 0;
+-	atomic_sub(count, &xprt->sc_dma_used);
+ }
+ 
+ void svc_rdma_put_context(struct svc_rdma_op_ctxt *ctxt, int free_pages)
+@@ -946,7 +943,6 @@ void svc_rdma_put_frmr(struct svcxprt_rdma *rdma,
+ 	if (frmr) {
+ 		ib_dma_unmap_sg(rdma->sc_cm_id->device,
+ 				frmr->sg, frmr->sg_nents, frmr->direction);
+-		atomic_dec(&rdma->sc_dma_used);
+ 		spin_lock_bh(&rdma->sc_frmr_q_lock);
+ 		WARN_ON_ONCE(!list_empty(&frmr->frmr_list));
+ 		list_add(&frmr->frmr_list, &rdma->sc_frmr_q);
+@@ -1258,9 +1254,6 @@ static void __svc_rdma_free(struct work_struct *work)
+ 	if (rdma->sc_ctxt_used != 0)
+ 		pr_err("svcrdma: ctxt still in use? (%d)\n",
+ 		       rdma->sc_ctxt_used);
+-	if (atomic_read(&rdma->sc_dma_used) != 0)
+-		pr_err("svcrdma: dma still in use? (%d)\n",
+-		       atomic_read(&rdma->sc_dma_used));
+ 
+ 	/* Final put of backchannel client transport */
+ 	if (xprt->xpt_bc_xprt) {
 
