@@ -1,85 +1,139 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from elasmtp-junco.atl.sa.earthlink.net ([209.86.89.63]:41298 "EHLO
-        elasmtp-junco.atl.sa.earthlink.net" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1753148AbcK3Q44 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 30 Nov 2016 11:56:56 -0500
-From: "Frank Filz" <ffilzlnx@mindspring.com>
-To: "'J. Bruce Fields'" <bfields@redhat.com>
-Cc: "'Tom Haynes'" <loghyr@primarydata.com>,
-        "'Linux NFS Mailing list'" <linux-nfs@vger.kernel.org>
-References: <1480228001-64821-1-git-send-email-loghyr@primarydata.com> <20161128163321.GB30805@parsley.fieldses.org> <012c01d24a9a$92ff7580$b8fe6080$@mindspring.com> <20161130142412.GA18463@parsley.fieldses.org>
-In-Reply-To: <20161130142412.GA18463@parsley.fieldses.org>
-Subject: RE: [PATCH pynfs 00/12] Flex File support
-Date: Wed, 30 Nov 2016 08:56:38 -0800
-Message-ID: <018401d24b2a$b8037670$280a6350$@mindspring.com>
+Received: from mx1.redhat.com ([209.132.183.28]:37544 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1754672AbcK3TJR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 30 Nov 2016 14:09:17 -0500
+From: "Benjamin Coddington" <bcodding@redhat.com>
+To: "Trond Myklebust" <trond.myklebust@primarydata.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 2/3] NFS: Be more targeted about readdirplus use when
+ doing lookup/revalidation
+Date: Wed, 30 Nov 2016 14:09:06 -0500
+Message-ID: <28E39796-E929-4D65-A6F6-D0AF803AB390@redhat.com>
+In-Reply-To: <1479574497-38268-3-git-send-email-trond.myklebust@primarydata.com>
+References: <1479574497-38268-1-git-send-email-trond.myklebust@primarydata.com>
+ <1479574497-38268-2-git-send-email-trond.myklebust@primarydata.com>
+ <1479574497-38268-3-git-send-email-trond.myklebust@primarydata.com>
 MIME-Version: 1.0
-Content-Type: text/plain;
-        charset="us-ascii"
+Content-Type: text/plain; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-> > > -----Original Message-----
-> > > From: linux-nfs-owner@vger.kernel.org [mailto:linux-nfs-
-> > > owner@vger.kernel.org] On Behalf Of J. Bruce Fields
-> > > Sent: Monday, November 28, 2016 8:33 AM
-> > > To: Tom Haynes <loghyr@primarydata.com>
-> > > Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-> > > Subject: Re: [PATCH pynfs 00/12] Flex File support
-> > >
-> > > On Sat, Nov 26, 2016 at 10:26:29PM -0800, Tom Haynes wrote:
-> > > > I wanted to add client support for the flex file layout.
-> > > >
-> > > > Note, I did not add pynfs as a flag because I didn't want to mess
-> > > > up with any existing uses of it.
-> > > >
-> > > > The other major change here is in closing all opened files and
-> > > > destroying all clientids. With all the tests which run against my
-> > > > server, there are no longer any open files. There are however 11
-> > > > clientids remaining.
-> > > >
-> > > > I will track those down.
-> > > >
-> > > > fwiw - these are in my staging branch at
-> > > > git://linux-nfs.org/~loghyr/pynfs.git
-> > >
-> > > Thanks!  I'll try these and take a look.
-> > >
-> > > How did you notice all the leftover state?  I run with a pretty
-> > > short
-> > lease time
-> > > (to speed testing), so I guess the leftover state must expire too
-> > > quickly
-> > to
-> > > cause me problems.
-> > >
-> > > Anyway it's good to have that cleaned up.
-> >
-> > Not closing files and releasing clientids at least in the 4.0 tests
-> > has actually shaken out bugs in Ganesha...
-> >
-> > But maybe that kind of thing should be an explicit test, create lots
-> > of clientids/sessions, and then wait for them all to expire and see if
-> > the server can handle all the activity.
-> 
-> Yes, probably so.
-> 
-> I seem to recall this not being the first time this has caused problems
-for
-> people with test scripts that try to unmount immediately after running
-pynfs.
+.. this one breaks things again:
 
-Yea... One option would be for pynfs to delay for the lease period (or maybe
-twice the lease period) after the last test.
+On 19 Nov 2016, at 11:54, Trond Myklebust wrote:
 
-One nice thing (and now that you mention it, I'm pretty sure we've had this
-conversation before) about the status quo is that the lease expiry for
-earlier tests happens in the middle of other tests. Maybe not so nice an
-deterministic for the test suite, but great at exposing issues...
+> There is little point in setting NFS_INO_ADVISE_RDPLUS in nfs_lookup 
+> and
+> nfs_lookup_revalidate() unless a process is actually doing readdir on 
+> the
+> parent directory.
+> Furthermore, there is little point in using readdirplus if we're 
+> trying
+> to revalidate a negative dentry.
+>
+> Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+> ---
+>  fs/nfs/dir.c | 28 +++++++++++++++++-----------
+>  1 file changed, 17 insertions(+), 11 deletions(-)
+>
+> diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
+> index 53e02b8bd9bd..5befd382be7d 100644
+> --- a/fs/nfs/dir.c
+> +++ b/fs/nfs/dir.c
+> @@ -455,14 +455,23 @@ bool nfs_use_readdirplus(struct inode *dir, 
+> struct dir_context *ctx)
+>  }
+>
+>  /*
+> - * This function is called by the lookup code to request the use of
+> - * readdirplus to accelerate any future lookups in the same
+> + * This function is called by the lookup and getattr code to request 
+> the
+> + * use of readdirplus to accelerate any future lookups in the same
+>   * directory.
+> + * Do this by checking if there is an active file descriptor
+> + * and calling nfs_advise_use_readdirplus, then forcing a
+> + * cache flush.
+>   */
+>  static
+>  void nfs_advise_use_readdirplus(struct inode *dir)
+>  {
+> -	set_bit(NFS_INO_ADVISE_RDPLUS, &NFS_I(dir)->flags);
+> +	struct nfs_inode *nfsi = NFS_I(dir);
+> +
+> +	if (nfs_server_capable(dir, NFS_CAP_READDIRPLUS) &&
+> +	    !list_empty(&nfsi->open_files)) {
+> +		set_bit(NFS_INO_ADVISE_RDPLUS, &nfsi->flags);
+> +		invalidate_mapping_pages(dir->i_mapping, 0, -1);
+> +	}
+>  }
 
-Frank
+So every time advise_use_readdirplus it drops the mapping.. but what 
+about
+subsequent calls into nfs_readdir() to get the next batch of entries?  
+For
+the ls -l case, we want to keep setting NFS_INO_ADVISE_RDPLUS, but we
+shouldn't start over filling the mapping from the beginning again.
+
+>
+>  /*
+> @@ -475,10 +484,7 @@ void nfs_advise_use_readdirplus(struct inode 
+> *dir)
+>   */
+>  void nfs_force_use_readdirplus(struct inode *dir)
+>  {
+> -	if (!list_empty(&NFS_I(dir)->open_files)) {
+> -		nfs_advise_use_readdirplus(dir);
+> -		invalidate_mapping_pages(dir->i_mapping, 0, -1);
+> -	}
+> +	nfs_advise_use_readdirplus(dir);
+>  }
+>
+>  static
+> @@ -1150,7 +1156,7 @@ static int nfs_lookup_revalidate(struct dentry 
+> *dentry, unsigned int flags)
+>  				return -ECHILD;
+>  			goto out_bad;
+>  		}
+> -		goto out_valid_noent;
+> +		goto out_valid;
+>  	}
+>
+>  	if (is_bad_inode(inode)) {
+> @@ -1192,6 +1198,9 @@ static int nfs_lookup_revalidate(struct dentry 
+> *dentry, unsigned int flags)
+>  	if (IS_ERR(label))
+>  		goto out_error;
+>
+> +	/* We need to force a revalidation: set a readdirplus hint */
+> +	nfs_advise_use_readdirplus(dir);
+> +
+>  	trace_nfs_lookup_revalidate_enter(dir, dentry, flags);
+>  	error = NFS_PROTO(dir)->lookup(dir, &dentry->d_name, fhandle, fattr, 
+> label);
+>  	trace_nfs_lookup_revalidate_exit(dir, dentry, flags, error);
+> @@ -1211,9 +1220,6 @@ static int nfs_lookup_revalidate(struct dentry 
+> *dentry, unsigned int flags)
+>  out_set_verifier:
+>  	nfs_set_verifier(dentry, nfs_save_change_attribute(dir));
+>   out_valid:
+> -	/* Success: notify readdir to use READDIRPLUS */
+> -	nfs_advise_use_readdirplus(dir);
+> - out_valid_noent:
+>  	if (flags & LOOKUP_RCU) {
+>  		if (parent != ACCESS_ONCE(dentry->d_parent))
+>  			return -ECHILD;
 
 
----
-This email has been checked for viruses by Avast antivirus software.
-https://www.avast.com/antivirus
+Now when listing with `ls -l`:  the second call into nfs_readdir() to 
+get
+the next batch of entries will not have NFS_INO_ADVISE_RDPLUS.
 
+I think this removes nfs_advise_use_readdirplus(dir) from the common 
+"goto
+out_valid" path through nfs_lookup_revalidate() (the block with the 
+'iff'
+typo).
+
+Ben
