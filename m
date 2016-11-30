@@ -1,79 +1,68 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:59041 "EHLO mx2.suse.de"
+Received: from mx1.redhat.com ([209.132.183.28]:39148 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1750754AbcK3Bds (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 29 Nov 2016 20:33:48 -0500
-From: NeilBrown <neilb@suse.com>
-To: Steve Dickson <SteveD@redhat.com>
-Date: Wed, 30 Nov 2016 12:33:39 +1100
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Martin Pitt <martin.pitt@ubuntu.com>
-Subject: Re: [PATCH 2/2] mount: RPC_PROGNOTREGISTERED should not be a permanent error
-In-Reply-To: <db46b103-b5ac-998e-7bb6-8138f6a12711@RedHat.com>
-References: <147157095612.26568.14161646901346011334.stgit@noble> <147157115640.26568.2934329194247787636.stgit@noble> <2a0955df-2fcd-05f1-9e6f-d8a549321177@RedHat.com> <87bmx7cezt.fsf@notabene.neil.brown.name> <34768ca3-0aa1-eb00-01c9-922e3bbcb51f@RedHat.com> <87poll93s7.fsf@notabene.neil.brown.name> <214253e5-5ef2-ae9a-bc57-20ed1c2f7e3a@RedHat.com> <87a8ci7yuo.fsf@notabene.neil.brown.name> <db46b103-b5ac-998e-7bb6-8138f6a12711@RedHat.com>
-Message-ID: <87y4017nv0.fsf@notabene.neil.brown.name>
+        id S1756091AbcK3KVO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 30 Nov 2016 05:21:14 -0500
+Date: Wed, 30 Nov 2016 10:21:05 +0000
+From: Stefan Hajnoczi <stefanha@redhat.com>
+To: Cedric Blancher <cedric.blancher@gmail.com>
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        Anna Schumaker <anna.schumaker@netapp.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>,
+        Trond Myklebust <trond.myklebust@primarydata.com>
+Subject: Re: [PATCH v2 00/10] NFS: add AF_VSOCK support to NFS client
+Message-ID: <20161130102105.GB17934@stefanha-x1.localdomain>
+References: <1475834514-4058-1-git-send-email-stefanha@redhat.com>
+ <CALXu0UdS_m6ag7VDdbc-aJWH+fK=42GM0FEWH1Ht9M-9xy9Xjw@mail.gmail.com>
+ <20161020143603.GC2733@stefanha-x1.localdomain>
+ <CALXu0UeW6Cssiij_+VW8afnHre3zwvBcg5OR=J7A2WKUv9fRWA@mail.gmail.com>
 MIME-Version: 1.0
-Content-Type: multipart/signed; boundary="=-=-=";
-        micalg=pgp-sha256; protocol="application/pgp-signature"
+Content-Type: multipart/signed; micalg=pgp-sha1;
+        protocol="application/pgp-signature"; boundary="7iMSBzlTiPOCCT2k"
+In-Reply-To: <CALXu0UeW6Cssiij_+VW8afnHre3zwvBcg5OR=J7A2WKUv9fRWA@mail.gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---=-=-=
-Content-Type: text/plain
+
+--7iMSBzlTiPOCCT2k
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
 Content-Transfer-Encoding: quoted-printable
 
-On Wed, Nov 30 2016, Steve Dickson wrote:
+On Thu, Oct 27, 2016 at 03:05:35AM +0200, Cedric Blancher wrote:
+> On 20 October 2016 at 16:36, Stefan Hajnoczi <stefanha@redhat.com> wrote:
+> > On Sat, Oct 08, 2016 at 02:42:17AM +0200, Cedric Blancher wrote:
+> >> So basically you're creating a new (Red Hat) Linux-only wormhole which
+> >> bypasses all network security between VM host and guest and needs
+> >> extra work&thought&tool support (wireshark, valgrind, ...) to handle,
+> >> trace, debug, monitor and secure?
+> >
+> > vsock is not Linux-only and not Red Hat-only.
+>=20
+> This is clearly Red Hat only. Debian and Ubuntu folks already have
+> rejected this out of security concerns, so why are you pressing this?
 
-> On 11/29/2016 04:36 PM, NeilBrown wrote:
->>=20
->> Completely happy for distros to choose not to support it.  But there are
->> more users of Linux than we distro people hear from.
-> Fair enough... So leave the code in, but off by default
-> so it's not something that has to be tested.
+Are you aware that Debian ships the vsock.ko and
+vmw_vsock_vmci_transport.ko kernel modules?
+https://packages.debian.org/jessie/amd64/linux-image-3.16.0-4-amd64/filelist
 
-Thanks for clarifying.  Sounds good to me.
+Do you have a URL regarding virtio-vsock in Debian and Ubuntu?  There
+was no discussion upstream in QEMU or Linux that I can recall.
 
->>=20
->> The EOPNOTSUPP commit fixed a real bug.  The bug would result in a mount
->> attempt failing when it should succeed.  Reverting that is not an
->> option.
-> So the bug was that fact rpcbind was not up but the NFS server was?
-> Or both were on there way up?
+Stefan
 
-You could say that the bug was that rpcbind starts before the NFS server
-has registered... but as the NFS server *cannot* register before rpcbind
-starts, that would be a little harsh.
-
-RPC_PROGNOTREGISTERED is a very close analogy to ECONNREFUSED.
-They both say "The server process isn't listening (yet)".  One at the
-TCP/IP level, one at the SUNRPC level.
-
-If we started all daemons before enabling the network interface, and if
-we could register all RPC services before rpcbind responds to external
-requests, then these windows could be closed.  Unfortunately our
-forefathers didn't have that foresight.
-
-Thanks,
-NeilBrown
-
---=-=-=
+--7iMSBzlTiPOCCT2k
 Content-Type: application/pgp-signature; name="signature.asc"
 
 -----BEGIN PGP SIGNATURE-----
 
-iQIzBAEBCAAdFiEEG8Yp69OQ2HB7X0l6Oeye3VZigbkFAlg+LHMACgkQOeye3VZi
-gblNoA//WyeUlBsCAoF/ir2VN2j+JRzsytsq3ed5z/klSW5H5JmaWm+K7jZxc5j8
-XMKdxi6eTg5K+NGa+61c8SVXxtj6x2SovFHpgLjTZP/J9U3I2j5YGLnnVR0H/Tyr
-hzFyPfW/5DSFeQZxQH+PV7wXrOICmzxp90BgbU5ECOjH9ZQ6zLG8s19JlnaWGnPJ
-i/dlDJ1IbH7kw5B7rS2So4BeiXkpgY4ydyTd3pbvxmXaYg/8DsUqZD1gPsst56HZ
-wAEQPQ9hwmr/PY9pMXKY25/mJ+u5pulZJkFGvfnQ0Vk7O3CMp05DzqyntyQnrnn2
-3JVHLytDB9MnWIGN0IqK+22/J+bnnf/7GNXXZY+z5eRAUK8kXX8W3oT8gLBK8xBI
-T8A8vlkXAUHjgPGd+dIqKSbBKlTRii8dlK5QPA+m6mIdBqDLZj7O9zYFtSmPXDHY
-aMW/B2Z+4F2PomDrpkzQrmHpNkswoUWu06HB1U+fXoNEV2VY8yhi8MDi8n70ut8L
-kj0iOKnMqfXp7PIsHgAiKoqpWXcC5tOChQrAGLF3xGInzFVS2fnDPisPdd1w238b
-4O7As2BZuu0HnENlucMYwkpfU6sT29keWMO6wxOErpf8mCN9P5dsYeeWFidbuYTR
-MRTxZn6EU8iohpmWXS39sOqv7zK4YBFvbucBpZsIU19QiikCOBQ=
-=wXOG
+iQEcBAEBAgAGBQJYPqgRAAoJEJykq7OBq3PI05YIAIawUHylE9bH6KZ0iZG3kp2N
+MhWQaG0FQlPIdAHcOFoAMbPn+/bHd4r2AtcMbiTCJZ7Zq3+9o3XiFBYr/WcB65A5
+fbk+tFPU32O6a8zt6nh361/IL8CGLaLmg7KhzgMpHKJIthyHaxWAJC5639lHeEtj
+6NfEDKlI56E8J5eU/hA5efgFcpPfeWkYAXELZZNLQMun4GLvISoSHeaAMJOt1Iqz
+fFYqudRlKTU3n5xSYqNx62SYlZUPq7TLT4CijrmdOQN2l0RaFhgfFccIgEBpgvao
+P5JNpmOkqAqopZZ2A5iygbZl9OKbqEjgypR9wX2YjcFKl2YfHSk0n9yiEmqbC/U=
+=H8aZ
 -----END PGP SIGNATURE-----
---=-=-=--
+
+--7iMSBzlTiPOCCT2k--
