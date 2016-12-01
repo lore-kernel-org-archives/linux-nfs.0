@@ -1,78 +1,47 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f177.google.com ([209.85.223.177]:33765 "EHLO
-        mail-io0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1752021AbcLAWTZ (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 1 Dec 2016 17:19:25 -0500
-Received: by mail-io0-f177.google.com with SMTP id j65so450614692iof.0
-        for <linux-nfs@vger.kernel.org>; Thu, 01 Dec 2016 14:19:25 -0800 (PST)
+Received: from mail-io0-f194.google.com ([209.85.223.194]:34580 "EHLO
+        mail-io0-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1758182AbcLAWT1 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 1 Dec 2016 17:19:27 -0500
+Received: by mail-io0-f194.google.com with SMTP id r94so3916650ioe.1
+        for <linux-nfs@vger.kernel.org>; Thu, 01 Dec 2016 14:19:27 -0800 (PST)
 From: Trond Myklebust <trond.myklebust@primarydata.com>
 To: linux-nfs@vger.kernel.org
-Subject: [PATCH 00/26] pNFS updates for v4.10
-Date: Thu,  1 Dec 2016 17:18:56 -0500
-Message-Id: <20161201221922.15657-1-trond.myklebust@primarydata.com>
+Subject: [PATCH 02/26] pNFS: Don't clear the layout stateid if a layout return is outstanding
+Date: Thu,  1 Dec 2016 17:18:58 -0500
+Message-Id: <20161201221922.15657-3-trond.myklebust@primarydata.com>
+In-Reply-To: <20161201221922.15657-2-trond.myklebust@primarydata.com>
+References: <20161201221922.15657-1-trond.myklebust@primarydata.com>
+ <20161201221922.15657-2-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Highlights include:
+If we no longer hold any layout segments, we're normally expected to
+consider the layout stateid to be invalid. However we cannot assume this
+if we're about to, or in the process of sending a layoutreturn.
 
-- Stable patch to fix a deadlock between resends and LAYOUTRETURN
-- Stable patch to not clear the layout stateid if LAYOUTRETURN is outstanding
-- Stable patch to clear NFS_LAYOUT_RETURN_REQUESTED when invalidating the layout
-- Stable patch to not send LAYOUTGET until the layout error has been reported
+Fixes: 334a8f37115b ("pNFS: Don't forget the layout stateid if...")
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+Cc: stable@vger.kernel.org # v4.8+
+---
+ fs/nfs/pnfs.c | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
 
-- Patches to embed LAYOUTRETURN operations in the COMPOUNDs for CLOSE and
-  DELEGRETURN. This fixes a set of races for the case where the server
-  implements return-on-close, and where the client and server disagree
-  on whether or not the layout was returned due to parallel OPEN and CLOSE
-  calls.
-
-Trond Myklebust (26):
-  pNFS: Fix a deadlock between read resends and layoutreturn
-  pNFS: Don't clear the layout stateid if a layout return is outstanding
-  pNFS: Clear NFS_LAYOUT_RETURN_REQUESTED when invalidating the layout
-    stateid
-  pNFS: Force a retry of LAYOUTGET if the stateid doesn't match our
-    cache
-  pNFS: On error, do not send LAYOUTGET until the LAYOUTRETURN has
-    completed
-  pNFS: Fix race in pnfs_wait_on_layoutreturn
-  pNFS: consolidate the different range intersection tests
-  pNFS: Delay getting the layout header in CB_LAYOUTRECALL handlers
-  pNFS: Do not free layout segments that are marked for return
-  NFSv4: Ignore LAYOUTRETURN result if the layout doesn't match or is
-    invalid
-  pNFS: Remove spurious wake up in pnfs_layout_remove_lseg()
-  pNFS: Skip checking for return-on-close if the layout is invalid
-  pNFS: Get rid of unnecessary layout parameter in encode_layoutreturn
-    callback
-  pNFS: Don't mark layout segments invalid on layoutreturn in pnfs_roc
-  NFSv4: Fix missing operation accounting in NFS4_dec_delegreturn_sz
-  NFSv4: Add encode/decode of the layoutreturn op in CLOSE
-  NFSv4: Add encode/decode of the layoutreturn op in DELEGRETURN
-  pNFS: Clean up - add a helper to initialise struct layoutreturn_args
-  pNFS: Enable layoutreturn operation for return-on-close
-  pNFS: Prevent unnecessary layoutreturns after delegreturn
-  pNFS: Clear all layout segment state in
-    pnfs_mark_layout_stateid_invalid
-  pNFS: Fix bugs in _pnfs_return_layout
-  pNFS: Sync the layout state bits in pnfs_cache_lseg_for_layoutreturn
-  pNFS: Don't mark the layout as freed if the last lseg is marked for
-    return
-  pNFS: Wait on outstanding layoutreturns to complete in pnfs_roc()
-  pNFS: Skip invalid stateids when doing a bulk destroy
-
- fs/nfs/callback_proc.c                    |  99 +++++---
- fs/nfs/flexfilelayout/flexfilelayout.c    |   8 +-
- fs/nfs/flexfilelayout/flexfilelayoutdev.c |  33 +--
- fs/nfs/nfs4proc.c                         | 134 +++++++----
- fs/nfs/nfs4xdr.c                          |  45 +++-
- fs/nfs/objlayout/objlayout.c              |   4 +-
- fs/nfs/objlayout/objlayout.h              |   1 -
- fs/nfs/pnfs.c                             | 381 ++++++++++++++++++------------
- fs/nfs/pnfs.h                             |  72 ++++--
- include/linux/nfs_xdr.h                   |   6 +
- 10 files changed, 506 insertions(+), 277 deletions(-)
-
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index 206d560c74f4..09bbb07d0494 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -411,7 +411,9 @@ pnfs_layout_remove_lseg(struct pnfs_layout_hdr *lo,
+ 	list_del_init(&lseg->pls_list);
+ 	/* Matched by pnfs_get_layout_hdr in pnfs_layout_insert_lseg */
+ 	atomic_dec(&lo->plh_refcount);
+-	if (list_empty(&lo->plh_segs)) {
++	if (list_empty(&lo->plh_segs) &&
++	    !test_bit(NFS_LAYOUT_RETURN_REQUESTED, &lo->plh_flags) &&
++	    !test_bit(NFS_LAYOUT_RETURN, &lo->plh_flags)) {
+ 		if (atomic_read(&lo->plh_outstanding) == 0)
+ 			set_bit(NFS_LAYOUT_INVALID_STID, &lo->plh_flags);
+ 		clear_bit(NFS_LAYOUT_BULK_RECALL, &lo->plh_flags);
 -- 
 2.9.3
 
