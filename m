@@ -1,43 +1,73 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f169.google.com ([209.85.223.169]:34311 "EHLO
-        mail-io0-f169.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1753128AbcLAQvw (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 1 Dec 2016 11:51:52 -0500
-Received: by mail-io0-f169.google.com with SMTP id c21so396663522ioj.1
-        for <linux-nfs@vger.kernel.org>; Thu, 01 Dec 2016 08:51:52 -0800 (PST)
+Received: from mx1.redhat.com ([209.132.183.28]:35490 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1758705AbcLARsv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 1 Dec 2016 12:48:51 -0500
+Received: from int-mx09.intmail.prod.int.phx2.redhat.com (int-mx09.intmail.prod.int.phx2.redhat.com [10.5.11.22])
+        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+        (No client certificate requested)
+        by mx1.redhat.com (Postfix) with ESMTPS id 5EC23C04B326
+        for <linux-nfs@vger.kernel.org>; Thu,  1 Dec 2016 17:47:28 +0000 (UTC)
+Received: from steved.boston.devel.redhat.com (steved.boston.devel.redhat.com [10.19.60.47])
+        by int-mx09.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id uB1HlRRF023907
+        for <linux-nfs@vger.kernel.org>; Thu, 1 Dec 2016 12:47:28 -0500
+Subject: Re: Monthly Linux NFS Town Hall meeting: Tomorrow - Thur Dec 1
+To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+References: <3e0dfbf3-3c32-48c5-af48-59fddb83f2fa@RedHat.com>
+From: Steve Dickson <SteveD@redhat.com>
+Message-ID: <95e10626-6995-3809-13d8-07e254794d83@RedHat.com>
+Date: Thu, 1 Dec 2016 12:47:27 -0500
 MIME-Version: 1.0
-From: Joachim Banzhaf <joachim.banzhaf@googlemail.com>
-Date: Thu, 1 Dec 2016 17:51:49 +0100
-Message-ID: <CABW3MLd5Bo-xBtLqtB4e-pD2hCYAuRaBBsqBFTiws5-HohjPTw@mail.gmail.com>
-Subject: rpcbind allowed port range on linux
-To: linux-nfs@vger.kernel.org
-Cc: "joachim.banzhaf" <joachim.banzhaf@googlemail.com>
-Content-Type: text/plain; charset=UTF-8
+In-Reply-To: <3e0dfbf3-3c32-48c5-af48-59fddb83f2fa@RedHat.com>
+Content-Type: text/plain; charset=windows-1252
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi list,
+This is starting in 15mins or so... If interested.
 
-my problem is, rpcbind gave a tcp port to nlockmgr where I assumed
-this port is reserved.
+steved.
 
-Now, I didn't find the spec that says which ports rpcbind is allowed
-to use, but I thought it is the ephemeral ports, on linux defined with
-the range in kernel configuration net.ipv4.ip_local_reserved_ports
-minus exclusions from net.ipv4.ip_local_reserved_ports.
-
-So, my questions are
-1) Is my assumption about allowed ports correct?
-2) If not: how can I define that range?
-3) If yes: was there a fix for that since my rather old SLES 12
-version rpcbind-0.2.1_rc4 (kernel 3.12.55)? I didn't find something
-obvious to me in the changelog.
-
-Bonus question: would it have been safe/possible to free up the port,
-e.g. with rpcbind -d? I only found out about that option after a
-reboot...
-
-BR,
-Joachim
-
-(please keep me in cc)
+On 11/30/2016 09:08 PM, Steve Dickson wrote:
+> Hello,
+> 
+> We have not had one of these for a while so lets see
+> what everyone is up to... 
+> 
+> The meeting will be Tomorrow at 
+> 
+>    *01:00 pm EST (10:00am PST)*
+> 
+> The usual agenda will apply. The maintainers will give
+> a quick status of what is happening in their worlds.
+> 
+> Next we'll get updates from major contributors on what
+> they have been doing and are planing on doing.
+>   
+> Finally, we'll open the floor to questions, comments, 
+> concerns from the community.  
+> 
+> Generally the meeting lasts between 30 to 45 mins, with 
+> a very hard stop at 60mins. 
+> 
+> Please feel to attend and participate!
+> 
+> Again the Time: 10:00 am PST (01:00 pm EST)
+> 
+> BlueJeans Video Link:
+>     https://bluejeans.com/5642721552/
+> 
+> The call in numbers are:
+> 
+> U.S. and Canada: (800) 451-8679
+> World wide toll free numbers
+>    https://www.intercallonline.com/listNumbersByCode.action?confCode=5642721552
+> 
+> Conference code: 564.272.1552
+> 
+> steved.
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
