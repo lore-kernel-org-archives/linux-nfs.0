@@ -1,76 +1,61 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:37694 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:58116 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1754924AbcK3WaH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 30 Nov 2016 17:30:07 -0500
-Date: Wed, 30 Nov 2016 17:30:06 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v3 00/10] Server-side NFS/RDMA patches proposed for v4.10
-Message-ID: <20161130223006.GA21591@fieldses.org>
-References: <20161129155521.4477.53561.stgit@klimt.1015granger.net>
+        id S1754510AbcLACIm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 30 Nov 2016 21:08:42 -0500
+Received: from int-mx10.intmail.prod.int.phx2.redhat.com (int-mx10.intmail.prod.int.phx2.redhat.com [10.5.11.23])
+        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+        (No client certificate requested)
+        by mx1.redhat.com (Postfix) with ESMTPS id 264F6C04B325
+        for <linux-nfs@vger.kernel.org>; Thu,  1 Dec 2016 02:08:42 +0000 (UTC)
+Received: from steved.boston.devel.redhat.com (vpn-55-49.rdu2.redhat.com [10.10.55.49])
+        by int-mx10.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id uB128feT013903
+        for <linux-nfs@vger.kernel.org>; Wed, 30 Nov 2016 21:08:41 -0500
+From: Steve Dickson <SteveD@redhat.com>
+Subject: Monthly Linux NFS Town Hall meeting: Tomorrow - Thur Dec 1
+To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Message-ID: <3e0dfbf3-3c32-48c5-af48-59fddb83f2fa@RedHat.com>
+Date: Wed, 30 Nov 2016 21:08:41 -0500
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20161129155521.4477.53561.stgit@klimt.1015granger.net>
+Content-Type: text/plain; charset=windows-1252
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Nov 29, 2016 at 11:04:16AM -0500, Chuck Lever wrote:
-> These patches are ready for you to consider for v4.10. Changes proposed
-> for v4.10 include:
+Hello,
 
-They look fine to me, thanks; applying for 4.10.--b.
+We have not had one of these for a while so lets see
+what everyone is up to... 
 
-> 
-> - Drop connection on GSS sequence window overflow
-> - Remove unnecessary spin lock in the svc_rdma_send path
-> - A number of minor clean-ups
-> 
-> Available in the "nfsd-rdma-for-4.10" topic branch of this git repo:
-> 
-> git://git.linux-nfs.org/projects/cel/cel-2.6.git
-> 
-> 
-> Or for browsing:
-> 
-> http://git.linux-nfs.org/?p=cel/cel-2.6.git;a=log;h=refs/heads/nfsd-rdma-for-4.10
-> 
-> 
-> Changes since v2:
-> - Rebased on v4.9-rc7
-> 
-> 
-> Changes since v1:
-> - Rebased on v4.9-rc5
-> - Address checkpatch.pl warnings
-> - Address compiler warnings
-> - Remove a dprintk in svc_rdma_get_inv_rkey()
-> - Patches reordered so fixes come before clean-ups
-> 
-> ---
-> 
-> Chuck Lever (10):
->       svcrdma: Clear xpt_bc_xps in xprt_setup_rdma_bc() error exit arm
->       svcauth_gss: Close connection when dropping an incoming message
->       svcrdma: Renovate sendto chunk list parsing
->       svcrdma: Remove BH-disabled spin locking in svc_rdma_send()
->       svcrdma: Remove DMA map accounting
->       svcrdma: Remove svc_rdma_op_ctxt::wc_status
->       svcrdma: Remove unused variables in xprt_rdma_bc_allocate()
->       svcrdma: Remove unused variable in rdma_copy_tail()
->       svcrdma: Break up dprintk format in svc_rdma_accept()
->       svcrdma: Further clean-up of svc_rdma_get_inv_rkey()
-> 
-> 
->  include/linux/sunrpc/svc_rdma.h            |    7 --
->  net/sunrpc/auth_gss/svcauth_gss.c          |    2 
->  net/sunrpc/svc.c                           |   14 ++-
->  net/sunrpc/xprtrdma/svc_rdma_backchannel.c |    5 -
->  net/sunrpc/xprtrdma/svc_rdma_recvfrom.c    |   21 ++++-
->  net/sunrpc/xprtrdma/svc_rdma_sendto.c      |  116 ++++++++--------------------
->  net/sunrpc/xprtrdma/svc_rdma_transport.c   |   94 +++++++----------------
->  7 files changed, 94 insertions(+), 165 deletions(-)
-> 
-> --
-> Chuck Lever
+The meeting will be Tomorrow at 
+
+   *01:00 pm EST (10:00am PST)*
+
+The usual agenda will apply. The maintainers will give
+a quick status of what is happening in their worlds.
+
+Next we'll get updates from major contributors on what
+they have been doing and are planing on doing.
+  
+Finally, we'll open the floor to questions, comments, 
+concerns from the community.  
+
+Generally the meeting lasts between 30 to 45 mins, with 
+a very hard stop at 60mins. 
+
+Please feel to attend and participate!
+
+Again the Time: 10:00 am PST (01:00 pm EST)
+
+BlueJeans Video Link:
+    https://bluejeans.com/5642721552/
+
+The call in numbers are:
+
+U.S. and Canada: (800) 451-8679
+World wide toll free numbers
+   https://www.intercallonline.com/listNumbersByCode.action?confCode=5642721552
+
+Conference code: 564.272.1552
+
+steved.
+
