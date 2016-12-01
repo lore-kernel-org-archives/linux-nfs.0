@@ -1,102 +1,44 @@
-Return-Path: <trondmy@primarydata.com>
-From: Trond Myklebust <trondmy@primarydata.com>
-To: "bcodding@redhat.com" <bcodding@redhat.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 2/3] NFS: Be more targeted about readdirplus use when
- doing lookup/revalidation
-Date: Thu, 1 Dec 2016 20:47:40 +0000
-Message-ID: <1480625258.10526.1.camel@primarydata.com>
-References: <1479574497-38268-1-git-send-email-trond.myklebust@primarydata.com>
-	 <1479574497-38268-2-git-send-email-trond.myklebust@primarydata.com>
-	 <1479574497-38268-3-git-send-email-trond.myklebust@primarydata.com>
-	 <28E39796-E929-4D65-A6F6-D0AF803AB390@redhat.com>
-In-Reply-To: <28E39796-E929-4D65-A6F6-D0AF803AB390@redhat.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+Return-Path: <linux-nfs-owner@vger.kernel.org>
+Received: from mail-io0-f172.google.com ([209.85.223.172]:33904 "EHLO
+        mail-io0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1750946AbcLAWGe (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 1 Dec 2016 17:06:34 -0500
+Received: by mail-io0-f172.google.com with SMTP id c21so409916625ioj.1
+        for <linux-nfs@vger.kernel.org>; Thu, 01 Dec 2016 14:06:34 -0800 (PST)
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 0/5] Performance optimsations for 4.10
+Date: Thu,  1 Dec 2016 17:06:27 -0500
+Message-Id: <20161201220632.12754-1-trond.myklebust@primarydata.com>
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gV2VkLCAyMDE2LTExLTMwIGF0IDE0OjA5IC0wNTAwLCBCZW5qYW1pbiBDb2RkaW5ndG9uIHdy
-b3RlOg0KPiAuLiB0aGlzIG9uZSBicmVha3MgdGhpbmdzIGFnYWluOg0KPiANCj4gT24gMTkgTm92
-IDIwMTYsIGF0IDExOjU0LCBUcm9uZCBNeWtsZWJ1c3Qgd3JvdGU6DQo+IA0KPiA+IFRoZXJlIGlz
-IGxpdHRsZSBwb2ludCBpbiBzZXR0aW5nIE5GU19JTk9fQURWSVNFX1JEUExVUyBpbg0KPiA+IG5m
-c19sb29rdXDCoA0KPiA+IGFuZA0KPiA+IG5mc19sb29rdXBfcmV2YWxpZGF0ZSgpIHVubGVzcyBh
-IHByb2Nlc3MgaXMgYWN0dWFsbHkgZG9pbmcgcmVhZGRpcg0KPiA+IG9uwqANCj4gPiB0aGUNCj4g
-PiBwYXJlbnQgZGlyZWN0b3J5Lg0KPiA+IEZ1cnRoZXJtb3JlLCB0aGVyZSBpcyBsaXR0bGUgcG9p
-bnQgaW4gdXNpbmcgcmVhZGRpcnBsdXMgaWYgd2UncmXCoA0KPiA+IHRyeWluZw0KPiA+IHRvIHJl
-dmFsaWRhdGUgYSBuZWdhdGl2ZSBkZW50cnkuDQo+ID4gDQo+ID4gU2lnbmVkLW9mZi1ieTogVHJv
-bmQgTXlrbGVidXN0IDx0cm9uZC5teWtsZWJ1c3RAcHJpbWFyeWRhdGEuY29tPg0KPiA+IC0tLQ0K
-PiA+IMKgZnMvbmZzL2Rpci5jIHwgMjggKysrKysrKysrKysrKysrKystLS0tLS0tLS0tLQ0KPiA+
-IMKgMSBmaWxlIGNoYW5nZWQsIDE3IGluc2VydGlvbnMoKyksIDExIGRlbGV0aW9ucygtKQ0KPiA+
-IA0KPiA+IGRpZmYgLS1naXQgYS9mcy9uZnMvZGlyLmMgYi9mcy9uZnMvZGlyLmMNCj4gPiBpbmRl
-eCA1M2UwMmI4YmQ5YmQuLjViZWZkMzgyYmU3ZCAxMDA2NDQNCj4gPiAtLS0gYS9mcy9uZnMvZGly
-LmMNCj4gPiArKysgYi9mcy9uZnMvZGlyLmMNCj4gPiBAQCAtNDU1LDE0ICs0NTUsMjMgQEAgYm9v
-bCBuZnNfdXNlX3JlYWRkaXJwbHVzKHN0cnVjdCBpbm9kZSAqZGlyLMKgDQo+ID4gc3RydWN0IGRp
-cl9jb250ZXh0ICpjdHgpDQo+ID4gwqB9DQo+ID4gDQo+ID4gwqAvKg0KPiA+IC0gKiBUaGlzIGZ1
-bmN0aW9uIGlzIGNhbGxlZCBieSB0aGUgbG9va3VwIGNvZGUgdG8gcmVxdWVzdCB0aGUgdXNlDQo+
-ID4gb2YNCj4gPiAtICogcmVhZGRpcnBsdXMgdG8gYWNjZWxlcmF0ZSBhbnkgZnV0dXJlIGxvb2t1
-cHMgaW4gdGhlIHNhbWUNCj4gPiArICogVGhpcyBmdW5jdGlvbiBpcyBjYWxsZWQgYnkgdGhlIGxv
-b2t1cCBhbmQgZ2V0YXR0ciBjb2RlIHRvDQo+ID4gcmVxdWVzdMKgDQo+ID4gdGhlDQo+ID4gKyAq
-IHVzZSBvZiByZWFkZGlycGx1cyB0byBhY2NlbGVyYXRlIGFueSBmdXR1cmUgbG9va3VwcyBpbiB0
-aGUgc2FtZQ0KPiA+IMKgICogZGlyZWN0b3J5Lg0KPiA+ICsgKiBEbyB0aGlzIGJ5IGNoZWNraW5n
-IGlmIHRoZXJlIGlzIGFuIGFjdGl2ZSBmaWxlIGRlc2NyaXB0b3INCj4gPiArICogYW5kIGNhbGxp
-bmcgbmZzX2FkdmlzZV91c2VfcmVhZGRpcnBsdXMsIHRoZW4gZm9yY2luZyBhDQo+ID4gKyAqIGNh
-Y2hlIGZsdXNoLg0KPiA+IMKgICovDQo+ID4gwqBzdGF0aWMNCj4gPiDCoHZvaWQgbmZzX2Fkdmlz
-ZV91c2VfcmVhZGRpcnBsdXMoc3RydWN0IGlub2RlICpkaXIpDQo+ID4gwqB7DQo+ID4gLQlzZXRf
-Yml0KE5GU19JTk9fQURWSVNFX1JEUExVUywgJk5GU19JKGRpciktPmZsYWdzKTsNCj4gPiArCXN0
-cnVjdCBuZnNfaW5vZGUgKm5mc2kgPSBORlNfSShkaXIpOw0KPiA+ICsNCj4gPiArCWlmIChuZnNf
-c2VydmVyX2NhcGFibGUoZGlyLCBORlNfQ0FQX1JFQURESVJQTFVTKSAmJg0KPiA+ICsJwqDCoMKg
-wqAhbGlzdF9lbXB0eSgmbmZzaS0+b3Blbl9maWxlcykpIHsNCj4gPiArCQlzZXRfYml0KE5GU19J
-Tk9fQURWSVNFX1JEUExVUywgJm5mc2ktPmZsYWdzKTsNCj4gPiArCQlpbnZhbGlkYXRlX21hcHBp
-bmdfcGFnZXMoZGlyLT5pX21hcHBpbmcsIDAsIC0xKTsNCj4gPiArCX0NCj4gPiDCoH0NCj4gDQo+
-IFNvIGV2ZXJ5IHRpbWUgYWR2aXNlX3VzZV9yZWFkZGlycGx1cyBpdCBkcm9wcyB0aGUgbWFwcGlu
-Zy4uIGJ1dCB3aGF0wqANCj4gYWJvdXQNCj4gc3Vic2VxdWVudCBjYWxscyBpbnRvIG5mc19yZWFk
-ZGlyKCkgdG8gZ2V0IHRoZSBuZXh0IGJhdGNoIG9mDQo+IGVudHJpZXM/wqDCoA0KPiBGb3INCj4g
-dGhlIGxzIC1sIGNhc2UsIHdlIHdhbnQgdG8ga2VlcCBzZXR0aW5nIE5GU19JTk9fQURWSVNFX1JE
-UExVUywgYnV0IHdlDQo+IHNob3VsZG4ndCBzdGFydCBvdmVyIGZpbGxpbmcgdGhlIG1hcHBpbmcg
-ZnJvbSB0aGUgYmVnaW5uaW5nIGFnYWluLg0KDQpIb3cgZG8gSSBlbnN1cmUgdGhhdCB0aGUgcmVh
-ZGRpciBpc24ndCBiZWluZyBzZXJ2ZWQgZnJvbSBjYWNoZSwgaWYgSQ0KZG9uJ3QgaW52YWxpZGF0
-ZSB0aGUgbWFwcGluZz8gVGhlIGludGVudGlvbiBvZiB0aGUgcGF0Y2ggaXMgdG8gZW5zdXJlDQp0
-aGF0IHdlIG9ubHkgY2FsbCB0aGlzIG9uIGEgZGNhY2hlIG9yIGlub2RlIGF0dHJpYnV0ZSBjYWNo
-ZSBtaXNzLg0KDQo+IA0KPiA+IA0KPiA+IMKgLyoNCj4gPiBAQCAtNDc1LDEwICs0ODQsNyBAQCB2
-b2lkIG5mc19hZHZpc2VfdXNlX3JlYWRkaXJwbHVzKHN0cnVjdCBpbm9kZcKgDQo+ID4gKmRpcikN
-Cj4gPiDCoCAqLw0KPiA+IMKgdm9pZCBuZnNfZm9yY2VfdXNlX3JlYWRkaXJwbHVzKHN0cnVjdCBp
-bm9kZSAqZGlyKQ0KPiA+IMKgew0KPiA+IC0JaWYgKCFsaXN0X2VtcHR5KCZORlNfSShkaXIpLT5v
-cGVuX2ZpbGVzKSkgew0KPiA+IC0JCW5mc19hZHZpc2VfdXNlX3JlYWRkaXJwbHVzKGRpcik7DQo+
-ID4gLQkJaW52YWxpZGF0ZV9tYXBwaW5nX3BhZ2VzKGRpci0+aV9tYXBwaW5nLCAwLCAtMSk7DQo+
-ID4gLQl9DQo+ID4gKwluZnNfYWR2aXNlX3VzZV9yZWFkZGlycGx1cyhkaXIpOw0KPiA+IMKgfQ0K
-PiA+IA0KPiA+IMKgc3RhdGljDQo+ID4gQEAgLTExNTAsNyArMTE1Niw3IEBAIHN0YXRpYyBpbnQg
-bmZzX2xvb2t1cF9yZXZhbGlkYXRlKHN0cnVjdA0KPiA+IGRlbnRyecKgDQo+ID4gKmRlbnRyeSwg
-dW5zaWduZWQgaW50IGZsYWdzKQ0KPiA+IMKgCQkJCXJldHVybiAtRUNISUxEOw0KPiA+IMKgCQkJ
-Z290byBvdXRfYmFkOw0KPiA+IMKgCQl9DQo+ID4gLQkJZ290byBvdXRfdmFsaWRfbm9lbnQ7DQo+
-ID4gKwkJZ290byBvdXRfdmFsaWQ7DQo+ID4gwqAJfQ0KPiA+IA0KPiA+IMKgCWlmIChpc19iYWRf
-aW5vZGUoaW5vZGUpKSB7DQo+ID4gQEAgLTExOTIsNiArMTE5OCw5IEBAIHN0YXRpYyBpbnQgbmZz
-X2xvb2t1cF9yZXZhbGlkYXRlKHN0cnVjdA0KPiA+IGRlbnRyecKgDQo+ID4gKmRlbnRyeSwgdW5z
-aWduZWQgaW50IGZsYWdzKQ0KPiA+IMKgCWlmIChJU19FUlIobGFiZWwpKQ0KPiA+IMKgCQlnb3Rv
-IG91dF9lcnJvcjsNCj4gPiANCj4gPiArCS8qIFdlIG5lZWQgdG8gZm9yY2UgYSByZXZhbGlkYXRp
-b246IHNldCBhIHJlYWRkaXJwbHVzIGhpbnQNCj4gPiAqLw0KPiA+ICsJbmZzX2FkdmlzZV91c2Vf
-cmVhZGRpcnBsdXMoZGlyKTsNCj4gPiArDQo+ID4gwqAJdHJhY2VfbmZzX2xvb2t1cF9yZXZhbGlk
-YXRlX2VudGVyKGRpciwgZGVudHJ5LCBmbGFncyk7DQo+ID4gwqAJZXJyb3IgPSBORlNfUFJPVE8o
-ZGlyKS0+bG9va3VwKGRpciwgJmRlbnRyeS0+ZF9uYW1lLA0KPiA+IGZoYW5kbGUsIGZhdHRyLMKg
-DQo+ID4gbGFiZWwpOw0KPiA+IMKgCXRyYWNlX25mc19sb29rdXBfcmV2YWxpZGF0ZV9leGl0KGRp
-ciwgZGVudHJ5LCBmbGFncywNCj4gPiBlcnJvcik7DQo+ID4gQEAgLTEyMTEsOSArMTIyMCw2IEBA
-IHN0YXRpYyBpbnQgbmZzX2xvb2t1cF9yZXZhbGlkYXRlKHN0cnVjdA0KPiA+IGRlbnRyecKgDQo+
-ID4gKmRlbnRyeSwgdW5zaWduZWQgaW50IGZsYWdzKQ0KPiA+IMKgb3V0X3NldF92ZXJpZmllcjoN
-Cj4gPiDCoAluZnNfc2V0X3ZlcmlmaWVyKGRlbnRyeSwgbmZzX3NhdmVfY2hhbmdlX2F0dHJpYnV0
-ZShkaXIpKTsNCj4gPiDCoCBvdXRfdmFsaWQ6DQo+ID4gLQkvKiBTdWNjZXNzOiBub3RpZnkgcmVh
-ZGRpciB0byB1c2UgUkVBRERJUlBMVVMgKi8NCj4gPiAtCW5mc19hZHZpc2VfdXNlX3JlYWRkaXJw
-bHVzKGRpcik7DQo+ID4gLSBvdXRfdmFsaWRfbm9lbnQ6DQo+ID4gwqAJaWYgKGZsYWdzICYgTE9P
-S1VQX1JDVSkgew0KPiA+IMKgCQlpZiAocGFyZW50ICE9IEFDQ0VTU19PTkNFKGRlbnRyeS0+ZF9w
-YXJlbnQpKQ0KPiA+IMKgCQkJcmV0dXJuIC1FQ0hJTEQ7DQo+IA0KPiANCj4gTm93IHdoZW4gbGlz
-dGluZyB3aXRoIGBscyAtbGA6wqDCoHRoZSBzZWNvbmQgY2FsbCBpbnRvIG5mc19yZWFkZGlyKCkN
-Cj4gdG/CoA0KPiBnZXQNCj4gdGhlIG5leHQgYmF0Y2ggb2YgZW50cmllcyB3aWxsIG5vdCBoYXZl
-IE5GU19JTk9fQURWSVNFX1JEUExVUy4NCj4gDQo+IEkgdGhpbmsgdGhpcyByZW1vdmVzIG5mc19h
-ZHZpc2VfdXNlX3JlYWRkaXJwbHVzKGRpcikgZnJvbSB0aGUgY29tbW9uwqANCj4gImdvdG8NCj4g
-b3V0X3ZhbGlkIiBwYXRoIHRocm91Z2ggbmZzX2xvb2t1cF9yZXZhbGlkYXRlKCkgKHRoZSBibG9j
-ayB3aXRoIHRoZcKgDQo+ICdpZmYnDQo+IHR5cG8pLg0KPiANCg0KQWN0dWFsbHksICdpZmYnIGlz
-IGludGVudGlvbmFsbHkgdXNlZCB0aGVyZSBhcyB0aGUgY29tbW9uIHNob3J0aGFuZCBmb3INCidp
-ZiBhbmQgb25seSBpZicgKGh0dHBzOi8vd3d3Lm1lcnJpYW0td2Vic3Rlci5jb20vZGljdGlvbmFy
-eS9pZmYpLg0KDQpBcyBJIHNhaWQgYWJvdmUsIHRoZSBwb2ludCBpcyB0byBvbmx5IHRyaWdnZXIg
-UkVBRERJUlBMVVMgd2hlbiB3ZSBrbm93DQp0aGUgZGNhY2hlIG9yIHRoZSBpbm9kZSBjYWNoZSBu
-ZWVkcyByZXZhbGlkYXRpb24uIE90aGVyd2lzZSB3ZSB3YW50IHRvDQp1c2UgdGhlIGxlc3MgZXhw
-ZW5zaXZlIFJFQURESVIuIEknbSBvcGVuIGZvciBzdWdnZXN0aW9ucyBhcyB0byBob3cgd2UNCmNh
-biBpbXByb3ZlIHRoYXQgaGV1cmlzdGljLg0KDQpDaGVlcnMNCiAgVHJvbmQ=
+This patch series contains a set of minor optimisations that are mainly
+useful against pNFS systems that may incur a higher performance penalty
+on unnecessary attribute requests by triggering an internal RPC call from
+the MDS to the DS.
+
+- Speed up state recovery after a server reboot by avoiding unnecessary
+  GETATTR and ACCESS checks.
+- Avoid unnecessary attribute revalidations on operations such as
+  OPEN_DOWNGRADE, where we don't yet need to update close-to-open
+  cache consistency attributes.
+- Avoid unnecessary attribute revalidations when we hold a delegation.
+
+Trond Myklebust (5):
+  NFSv4: Don't check file access when reclaiming state
+  NFSv4: Don't ask for the change attribute when reclaiming state
+  NFSv4: Don't request a GETATTR on open_downgrade.
+  NFSv4: Don't request close-to-open attribute when holding a delegation
+  NFSv4: Optimise away forced revalidation when we know the attributes
+    are OK
+
+ fs/nfs/delegation.c |  4 ----
+ fs/nfs/inode.c      |  2 +-
+ fs/nfs/nfs4proc.c   | 25 +++++++++++++++++++------
+ fs/nfs/nfs4xdr.c    | 13 ++++---------
+ 4 files changed, 24 insertions(+), 20 deletions(-)
+
+-- 
+2.9.3
+
