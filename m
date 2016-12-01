@@ -1,74 +1,64 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f194.google.com ([209.85.223.194]:36655 "EHLO
-        mail-io0-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1753817AbcLAWT2 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 1 Dec 2016 17:19:28 -0500
-Received: by mail-io0-f194.google.com with SMTP id s82so3820903ioi.3
-        for <linux-nfs@vger.kernel.org>; Thu, 01 Dec 2016 14:19:28 -0800 (PST)
+Received: from mail-io0-f195.google.com ([209.85.223.195]:32971 "EHLO
+        mail-io0-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1753817AbcLAWT3 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 1 Dec 2016 17:19:29 -0500
+Received: by mail-io0-f195.google.com with SMTP id j92so3934846ioi.0
+        for <linux-nfs@vger.kernel.org>; Thu, 01 Dec 2016 14:19:29 -0800 (PST)
 From: Trond Myklebust <trond.myklebust@primarydata.com>
 To: linux-nfs@vger.kernel.org
-Subject: [PATCH 03/26] pNFS: Clear NFS_LAYOUT_RETURN_REQUESTED when invalidating the layout stateid
-Date: Thu,  1 Dec 2016 17:18:59 -0500
-Message-Id: <20161201221922.15657-4-trond.myklebust@primarydata.com>
-In-Reply-To: <20161201221922.15657-3-trond.myklebust@primarydata.com>
+Subject: [PATCH 04/26] pNFS: Force a retry of LAYOUTGET if the stateid doesn't match our cache
+Date: Thu,  1 Dec 2016 17:19:00 -0500
+Message-Id: <20161201221922.15657-5-trond.myklebust@primarydata.com>
+In-Reply-To: <20161201221922.15657-4-trond.myklebust@primarydata.com>
 References: <20161201221922.15657-1-trond.myklebust@primarydata.com>
  <20161201221922.15657-2-trond.myklebust@primarydata.com>
  <20161201221922.15657-3-trond.myklebust@primarydata.com>
+ <20161201221922.15657-4-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-We must ensure that we don't schedule a layoutreturn if the layout stateid
-has been marked as invalid.
+If the server sends us a completely new stateid, and the client thinks
+it already holds a layout, then force a retry of the LAYOUTGET after
+invalidating the existing layout in order to avoid corruption due to
+races.
 
-Fixes: 2a59a0411671e ("pNFS: Fix pnfs_set_layout_stateid() to clear...")
 Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
-Cc: stable@vger.kernel.org # v4.8+
 ---
- fs/nfs/pnfs.c | 17 +++++++++--------
- 1 file changed, 9 insertions(+), 8 deletions(-)
+ fs/nfs/pnfs.c | 11 ++++++-----
+ 1 file changed, 6 insertions(+), 5 deletions(-)
 
 diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index 09bbb07d0494..d4e06b7459f4 100644
+index d4e06b7459f4..9b7e88b7edfc 100644
 --- a/fs/nfs/pnfs.c
 +++ b/fs/nfs/pnfs.c
-@@ -299,6 +299,14 @@ pnfs_put_layout_hdr(struct pnfs_layout_hdr *lo)
+@@ -1844,7 +1844,10 @@ pnfs_layout_process(struct nfs4_layoutget *lgp)
+ 		goto out_forget;
  	}
- }
  
-+static void
-+pnfs_clear_layoutreturn_info(struct pnfs_layout_hdr *lo)
-+{
-+	lo->plh_return_iomode = 0;
-+	lo->plh_return_seq = 0;
-+	clear_bit(NFS_LAYOUT_RETURN_REQUESTED, &lo->plh_flags);
-+}
-+
- /*
-  * Mark a pnfs_layout_hdr and all associated layout segments as invalid
-  *
-@@ -317,6 +325,7 @@ pnfs_mark_layout_stateid_invalid(struct pnfs_layout_hdr *lo,
- 	};
- 
- 	set_bit(NFS_LAYOUT_INVALID_STID, &lo->plh_flags);
-+	pnfs_clear_layoutreturn_info(lo);
- 	return pnfs_mark_matching_lsegs_invalid(lo, lseg_list, &range, 0);
- }
- 
-@@ -818,14 +827,6 @@ pnfs_destroy_all_layouts(struct nfs_client *clp)
- 	pnfs_destroy_layouts_byclid(clp, false);
- }
- 
--static void
--pnfs_clear_layoutreturn_info(struct pnfs_layout_hdr *lo)
--{
--	lo->plh_return_iomode = 0;
--	lo->plh_return_seq = 0;
--	clear_bit(NFS_LAYOUT_RETURN_REQUESTED, &lo->plh_flags);
--}
+-	if (nfs4_stateid_match_other(&lo->plh_stateid, &res->stateid)) {
++	if (!pnfs_layout_is_valid(lo)) {
++		/* We have a completely new layout */
++		pnfs_set_layout_stateid(lo, &res->stateid, true);
++	} else if (nfs4_stateid_match_other(&lo->plh_stateid, &res->stateid)) {
+ 		/* existing state ID, make sure the sequence number matches. */
+ 		if (pnfs_layout_stateid_blocked(lo, &res->stateid)) {
+ 			dprintk("%s forget reply due to sequence\n", __func__);
+@@ -1854,12 +1857,10 @@ pnfs_layout_process(struct nfs4_layoutget *lgp)
+ 	} else {
+ 		/*
+ 		 * We got an entirely new state ID.  Mark all segments for the
+-		 * inode invalid, and don't bother validating the stateid
+-		 * sequence number.
++		 * inode invalid, and retry the layoutget
+ 		 */
+ 		pnfs_mark_layout_stateid_invalid(lo, &free_me);
 -
- /* update lo->plh_stateid with new if is more recent */
- void
- pnfs_set_layout_stateid(struct pnfs_layout_hdr *lo, const nfs4_stateid *new,
+-		pnfs_set_layout_stateid(lo, &res->stateid, true);
++		goto out_forget;
+ 	}
+ 
+ 	pnfs_get_lseg(lseg);
 -- 
 2.9.3
 
