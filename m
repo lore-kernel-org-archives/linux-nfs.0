@@ -1,85 +1,78 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:55293 "EHLO mx2.suse.de"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1750919AbcLAWKE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 1 Dec 2016 17:10:04 -0500
-From: NeilBrown <neilb@suse.com>
-To: Steve Dickson <SteveD@redhat.com>
-Date: Fri, 02 Dec 2016 09:09:49 +1100
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 2/2] mount: take history into account when assessing if an error is permanent.
-In-Reply-To: <0ecc5408-5d21-5c0c-86fb-07cc804f3d4c@RedHat.com>
-References: <148046718451.21092.10685567606499960786.stgit@noble> <148046723208.21092.12537997642943826780.stgit@noble> <0ecc5408-5d21-5c0c-86fb-07cc804f3d4c@RedHat.com>
-Message-ID: <87mvgf713m.fsf@notabene.neil.brown.name>
-MIME-Version: 1.0
-Content-Type: multipart/signed; boundary="=-=-=";
-        micalg=pgp-sha256; protocol="application/pgp-signature"
+Received: from mail-io0-f177.google.com ([209.85.223.177]:33765 "EHLO
+        mail-io0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1752021AbcLAWTZ (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 1 Dec 2016 17:19:25 -0500
+Received: by mail-io0-f177.google.com with SMTP id j65so450614692iof.0
+        for <linux-nfs@vger.kernel.org>; Thu, 01 Dec 2016 14:19:25 -0800 (PST)
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 00/26] pNFS updates for v4.10
+Date: Thu,  1 Dec 2016 17:18:56 -0500
+Message-Id: <20161201221922.15657-1-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---=-=-=
-Content-Type: text/plain
-Content-Transfer-Encoding: quoted-printable
+Highlights include:
 
-On Fri, Dec 02 2016, Steve Dickson wrote:
->>  static int nfs_is_permanent_error(int error)
->>  {
->> +	static int prev_error;
->> +	static int rpt_cnt;
->> +
->> +	if (error =3D=3D prev_error)
->> +		rpt_cnt +=3D 1;
->> +	else
->> +		rpt_cnt =3D 1;
->> +	prev_error =3D error;
->> +
->>  	switch (error) {
->>  	case ESTALE:
->> -	case ETIMEDOUT:
->> +	case EOPNOTSUPP:	/* aka RPC_PROGNOTREGISTERED */
->> +		/* If two in a row, assume permanent */
->> +		return rpt_cnt >=3D 3;
-> This looks good... very clean... and now the time
-> out is control by the -o retry setting... Perfect!
->
->>  	case ECONNREFUSED:
->> +		return rpt_cnt >=3D 5;
-> My only question is why mess with this? Over the years=20
-> we've always time out after 2 mins (the default) and now=20
-> we are bring that down to 15 secs? I'm think that might
-> be a bit short... I seems like we might be fixing something
-> that is not broken...=20
+- Stable patch to fix a deadlock between resends and LAYOUTRETURN
+- Stable patch to not clear the layout stateid if LAYOUTRETURN is outstanding
+- Stable patch to clear NFS_LAYOUT_RETURN_REQUESTED when invalidating the layout
+- Stable patch to not send LAYOUTGET until the layout error has been reported
 
-Because it seemed like the "right" thing to do.  ECONNREFUSED should be
-a "permanent" error, except during a small window when the server is
-booting.
-But following the principle "if it ain't broke, don't fix it", I guess
-it should stay as a "temporary" error.  I'll resend.
+- Patches to embed LAYOUTRETURN operations in the COMPOUNDs for CLOSE and
+  DELEGRETURN. This fixes a set of races for the case where the server
+  implements return-on-close, and where the client and server disagree
+  on whether or not the layout was returned due to parallel OPEN and CLOSE
+  calls.
 
->
-> But again the design is very clever... nice work!=20
+Trond Myklebust (26):
+  pNFS: Fix a deadlock between read resends and layoutreturn
+  pNFS: Don't clear the layout stateid if a layout return is outstanding
+  pNFS: Clear NFS_LAYOUT_RETURN_REQUESTED when invalidating the layout
+    stateid
+  pNFS: Force a retry of LAYOUTGET if the stateid doesn't match our
+    cache
+  pNFS: On error, do not send LAYOUTGET until the LAYOUTRETURN has
+    completed
+  pNFS: Fix race in pnfs_wait_on_layoutreturn
+  pNFS: consolidate the different range intersection tests
+  pNFS: Delay getting the layout header in CB_LAYOUTRECALL handlers
+  pNFS: Do not free layout segments that are marked for return
+  NFSv4: Ignore LAYOUTRETURN result if the layout doesn't match or is
+    invalid
+  pNFS: Remove spurious wake up in pnfs_layout_remove_lseg()
+  pNFS: Skip checking for return-on-close if the layout is invalid
+  pNFS: Get rid of unnecessary layout parameter in encode_layoutreturn
+    callback
+  pNFS: Don't mark layout segments invalid on layoutreturn in pnfs_roc
+  NFSv4: Fix missing operation accounting in NFS4_dec_delegreturn_sz
+  NFSv4: Add encode/decode of the layoutreturn op in CLOSE
+  NFSv4: Add encode/decode of the layoutreturn op in DELEGRETURN
+  pNFS: Clean up - add a helper to initialise struct layoutreturn_args
+  pNFS: Enable layoutreturn operation for return-on-close
+  pNFS: Prevent unnecessary layoutreturns after delegreturn
+  pNFS: Clear all layout segment state in
+    pnfs_mark_layout_stateid_invalid
+  pNFS: Fix bugs in _pnfs_return_layout
+  pNFS: Sync the layout state bits in pnfs_cache_lseg_for_layoutreturn
+  pNFS: Don't mark the layout as freed if the last lseg is marked for
+    return
+  pNFS: Wait on outstanding layoutreturns to complete in pnfs_roc()
+  pNFS: Skip invalid stateids when doing a bulk destroy
 
-Thanks!
+ fs/nfs/callback_proc.c                    |  99 +++++---
+ fs/nfs/flexfilelayout/flexfilelayout.c    |   8 +-
+ fs/nfs/flexfilelayout/flexfilelayoutdev.c |  33 +--
+ fs/nfs/nfs4proc.c                         | 134 +++++++----
+ fs/nfs/nfs4xdr.c                          |  45 +++-
+ fs/nfs/objlayout/objlayout.c              |   4 +-
+ fs/nfs/objlayout/objlayout.h              |   1 -
+ fs/nfs/pnfs.c                             | 381 ++++++++++++++++++------------
+ fs/nfs/pnfs.h                             |  72 ++++--
+ include/linux/nfs_xdr.h                   |   6 +
+ 10 files changed, 506 insertions(+), 277 deletions(-)
 
-NeilBrown
+-- 
+2.9.3
 
---=-=-=
-Content-Type: application/pgp-signature; name="signature.asc"
-
------BEGIN PGP SIGNATURE-----
-
-iQIzBAEBCAAdFiEEG8Yp69OQ2HB7X0l6Oeye3VZigbkFAlhAn60ACgkQOeye3VZi
-gbnIyhAAuYtSK3DWUYyMdOtl46drGAuzV395qHq3FUAEBl36f99oT2KLSamQobQV
-cfFzrWfUl0JFhZ2V1bZ8KDf4WBE+KInvrRK+2QUcf88QIRCXH/NX1RWCAswSlyKE
-ow+CRWZX4xU+r8EH6Rg+0rBqUrCe2wcQS4KFqLoLV3MRaum/fKgJb8W8Eiqcw/QT
-FXUQPvRefCUttdCPgIk7RgCt/MFK42KtKf0k5l/xUSUhnYTO+foJyYeolX64t9uy
-nMlzhXYOeE5v/kUXyOppHJxId9/nKA4CSAd57dU6oEQZj1qYcpuhX6QMwxCvIigE
-sA4ukhlpI3hy4irvhQqLu8GNDtlc3wYElirLJ9PqvY58ln6herF421cicSa51ts9
-PPP4vCNLDlMDTMefmh3lBP/fqjfwgXc/SYbeF5sQzmlXXeGH/Ymu5nP7Th7RPS2d
-bfddjjPrdX8Ed76t6Q259eUpRKyZZaNEmQBd8wtvEwbi6IJb12TflMjLXXNox6G5
-NpVfEtjPVqzOOYL04joyWfp2NkgOOM9e+cdGsdXLJqYzVUizHILYR/Pk4FjRU0Zt
-uXRT+WVXqcCIASInQsfK9VKFIHM1O4AjmPwBj/UVJGXuwvt2RhHRgy2j9DGikFwr
-wp+OF7AO9JrCpBLKMc6fIa7FAqQ0u84U+HAclF5f5dEKslrDRHQ=
-=nWfM
------END PGP SIGNATURE-----
---=-=-=--
