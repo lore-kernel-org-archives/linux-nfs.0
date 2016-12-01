@@ -1,16 +1,16 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f194.google.com ([209.85.223.194]:35099 "EHLO
+Received: from mail-io0-f194.google.com ([209.85.223.194]:33061 "EHLO
         mail-io0-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1759814AbcLAWTj (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 1 Dec 2016 17:19:39 -0500
-Received: by mail-io0-f194.google.com with SMTP id h133so4681125ioe.2
-        for <linux-nfs@vger.kernel.org>; Thu, 01 Dec 2016 14:19:39 -0800 (PST)
+        with ESMTP id S1752472AbcLAWTm (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 1 Dec 2016 17:19:42 -0500
+Received: by mail-io0-f194.google.com with SMTP id j92so3935843ioi.0
+        for <linux-nfs@vger.kernel.org>; Thu, 01 Dec 2016 14:19:42 -0800 (PST)
 From: Trond Myklebust <trond.myklebust@primarydata.com>
 To: linux-nfs@vger.kernel.org
-Subject: [PATCH 15/26] NFSv4: Fix missing operation accounting in NFS4_dec_delegreturn_sz
-Date: Thu,  1 Dec 2016 17:19:11 -0500
-Message-Id: <20161201221922.15657-16-trond.myklebust@primarydata.com>
-In-Reply-To: <20161201221922.15657-15-trond.myklebust@primarydata.com>
+Subject: [PATCH 18/26] pNFS: Clean up - add a helper to initialise struct layoutreturn_args
+Date: Thu,  1 Dec 2016 17:19:14 -0500
+Message-Id: <20161201221922.15657-19-trond.myklebust@primarydata.com>
+In-Reply-To: <20161201221922.15657-18-trond.myklebust@primarydata.com>
 References: <20161201221922.15657-1-trond.myklebust@primarydata.com>
  <20161201221922.15657-2-trond.myklebust@primarydata.com>
  <20161201221922.15657-3-trond.myklebust@primarydata.com>
@@ -26,29 +26,60 @@ References: <20161201221922.15657-1-trond.myklebust@primarydata.com>
  <20161201221922.15657-13-trond.myklebust@primarydata.com>
  <20161201221922.15657-14-trond.myklebust@primarydata.com>
  <20161201221922.15657-15-trond.myklebust@primarydata.com>
+ <20161201221922.15657-16-trond.myklebust@primarydata.com>
+ <20161201221922.15657-17-trond.myklebust@primarydata.com>
+ <20161201221922.15657-18-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-We need to account for the reply to the PUTFH operation in the
-DELEGRETURN compound.
-
 Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
 ---
- fs/nfs/nfs4xdr.c | 1 +
- 1 file changed, 1 insertion(+)
+ fs/nfs/pnfs.c | 25 ++++++++++++++++++-------
+ 1 file changed, 18 insertions(+), 7 deletions(-)
 
-diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index 86f72ae605c8..0a82b3fb2d27 100644
---- a/fs/nfs/nfs4xdr.c
-+++ b/fs/nfs/nfs4xdr.c
-@@ -710,6 +710,7 @@ static int nfs4_stat_to_errno(int);
- 				encode_getattr_maxsz)
- #define NFS4_dec_delegreturn_sz (compound_decode_hdr_maxsz + \
- 				decode_sequence_maxsz + \
-+				decode_putfh_maxsz + \
- 				decode_delegreturn_maxsz + \
- 				decode_getattr_maxsz)
- #define NFS4_enc_getacl_sz	(compound_encode_hdr_maxsz + \
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index d7b5ad437b14..a93afdd37203 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -1014,6 +1014,23 @@ pnfs_prepare_layoutreturn(struct pnfs_layout_hdr *lo,
+ 	return true;
+ }
+ 
++static void
++pnfs_init_layoutreturn_args(struct nfs4_layoutreturn_args *args,
++		struct pnfs_layout_hdr *lo,
++		const nfs4_stateid *stateid,
++		enum pnfs_iomode iomode)
++{
++	struct inode *inode = lo->plh_inode;
++
++	args->layout_type = NFS_SERVER(inode)->pnfs_curr_ld->id;
++	args->inode = inode;
++	args->range.iomode = iomode;
++	args->range.offset = 0;
++	args->range.length = NFS4_MAX_UINT64;
++	args->layout = lo;
++	nfs4_stateid_copy(&args->stateid, stateid);
++}
++
+ static int
+ pnfs_send_layoutreturn(struct pnfs_layout_hdr *lo, const nfs4_stateid *stateid,
+ 		       enum pnfs_iomode iomode, bool sync)
+@@ -1032,13 +1049,7 @@ pnfs_send_layoutreturn(struct pnfs_layout_hdr *lo, const nfs4_stateid *stateid,
+ 		goto out;
+ 	}
+ 
+-	nfs4_stateid_copy(&lrp->args.stateid, stateid);
+-	lrp->args.layout_type = NFS_SERVER(ino)->pnfs_curr_ld->id;
+-	lrp->args.inode = ino;
+-	lrp->args.range.iomode = iomode;
+-	lrp->args.range.offset = 0;
+-	lrp->args.range.length = NFS4_MAX_UINT64;
+-	lrp->args.layout = lo;
++	pnfs_init_layoutreturn_args(&lrp->args, lo, stateid, iomode);
+ 	lrp->clp = NFS_SERVER(ino)->nfs_client;
+ 	lrp->cred = lo->plh_lc_cred;
+ 
 -- 
 2.9.3
 
