@@ -1,65 +1,127 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f196.google.com ([209.85.223.196]:34135 "EHLO
-        mail-io0-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751676AbcLAWGj (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 1 Dec 2016 17:06:39 -0500
-Received: by mail-io0-f196.google.com with SMTP id r94so3851590ioe.1
-        for <linux-nfs@vger.kernel.org>; Thu, 01 Dec 2016 14:06:39 -0800 (PST)
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH 5/5] NFSv4: Optimise away forced revalidation when we know the attributes are OK
-Date: Thu,  1 Dec 2016 17:06:32 -0500
-Message-Id: <20161201220632.12754-6-trond.myklebust@primarydata.com>
-In-Reply-To: <20161201220632.12754-5-trond.myklebust@primarydata.com>
-References: <20161201220632.12754-1-trond.myklebust@primarydata.com>
- <20161201220632.12754-2-trond.myklebust@primarydata.com>
- <20161201220632.12754-3-trond.myklebust@primarydata.com>
- <20161201220632.12754-4-trond.myklebust@primarydata.com>
- <20161201220632.12754-5-trond.myklebust@primarydata.com>
+Received: from fieldses.org ([173.255.197.46]:38868 "EHLO fieldses.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1751676AbcLAWHR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 1 Dec 2016 17:07:17 -0500
+Date: Thu, 1 Dec 2016 17:07:16 -0500
+To: "J. Bruce Fields" <bfields@redhat.com>
+Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
+        Anna Schumaker <schumakeranna@gmail.com>, linux-nfs@vger.kernel.org,
+        Andreas Gruenbacher <agruenba@redhat.com>
+Subject: Re: [PATCH 1/2] nfs: add support for the umask attribute
+Message-ID: <20161201220716.GB1589@fieldses.org>
+References: <1479933700-5743-1-git-send-email-bfields@redhat.com>
+ <1479933700-5743-2-git-send-email-bfields@redhat.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1479933700-5743-2-git-send-email-bfields@redhat.com>
+From: bfields@fieldses.org (J. Bruce Fields)
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The NFS_INO_REVAL_FORCED flag needs to be set if we just got a delegation,
-and we see that there might still be some ambiguity as to whether or not
-our attribute or data cache are valid.
-In practice, this means that a call to nfs_check_inode_attributes() will
-have noticed a discrepancy between cached attributes and measured ones,
-so let's move the setting of NFS_INO_REVAL_FORCED to there.
+On Wed, Nov 23, 2016 at 03:41:39PM -0500, J. Bruce Fields wrote:
+> From: Andreas Gruenbacher <agruenba@redhat.com>
+> 
+> Clients can set the umask attribute when creating files to cause the
+> server to apply it always except when inheriting permissions from the
+> parent directory.  That way, the new files will end up with the same
+> permissions as files created locally.
 
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
----
- fs/nfs/delegation.c | 4 ----
- fs/nfs/inode.c      | 2 +-
- 2 files changed, 1 insertion(+), 5 deletions(-)
+Trond asked out of band whether we could do away with the new
+server->caps bit and instead directly use the supported attribute
+bitmask (which is now also stored with the server).
 
-diff --git a/fs/nfs/delegation.c b/fs/nfs/delegation.c
-index dff600ae0d74..d7df5e67b0c1 100644
---- a/fs/nfs/delegation.c
-+++ b/fs/nfs/delegation.c
-@@ -391,10 +391,6 @@ int nfs_inode_set_delegation(struct inode *inode, struct rpc_cred *cred, struct
- 	rcu_assign_pointer(nfsi->delegation, delegation);
- 	delegation = NULL;
- 
--	/* Ensure we revalidate the attributes and page cache! */
--	spin_lock(&inode->i_lock);
--	nfsi->cache_validity |= NFS_INO_REVAL_FORCED;
--	spin_unlock(&inode->i_lock);
- 	trace_nfs4_set_delegation(inode, res->delegation_type);
- 
- out:
-diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
-index 372bfe98f685..02453d76bfea 100644
---- a/fs/nfs/inode.c
-+++ b/fs/nfs/inode.c
-@@ -1317,7 +1317,7 @@ static int nfs_check_inode_attributes(struct inode *inode, struct nfs_fattr *fat
- 		invalid |= NFS_INO_INVALID_ATIME;
- 
- 	if (invalid != 0)
--		nfs_set_cache_invalid(inode, invalid);
-+		nfs_set_cache_invalid(inode, invalid | NFS_INO_REVAL_FORCED);
- 
- 	nfsi->read_cache_jiffies = fattr->time_start;
- 	return 0;
--- 
-2.9.3
+I haven't given this a real test yet, but it looks fine to me.
 
+If nobody sees an objection then I'll fold this into the client patch
+and resend.
+
+--b.
+
+diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
+index 0a8326bcb481..32969907e218 100644
+--- a/fs/nfs/dir.c
++++ b/fs/nfs/dir.c
+@@ -1537,7 +1537,7 @@ int nfs_atomic_open(struct inode *dir, struct dentry *dentry,
+ 	if (open_flags & O_CREAT) {
+ 		struct nfs_server *server = NFS_SERVER(dir);
+ 
+-		if (!(server->caps & NFS_CAP_MODE_UMASK))
++		if (!(server->attr_bitmask_nl[2] & FATTR4_WORD2_MODE_UMASK))
+ 			mode &= ~current_umask();
+ 
+ 		attr.ia_valid |= ATTR_MODE;
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 1fa15fbf7b48..960ba55ddde7 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -3323,8 +3323,7 @@ static int _nfs4_server_capabilities(struct nfs_server *server, struct nfs_fh *f
+ 				NFS_CAP_MODE|NFS_CAP_NLINK|NFS_CAP_OWNER|
+ 				NFS_CAP_OWNER_GROUP|NFS_CAP_ATIME|
+ 				NFS_CAP_CTIME|NFS_CAP_MTIME|
+-				NFS_CAP_SECURITY_LABEL|
+-				NFS_CAP_MODE_UMASK);
++				NFS_CAP_SECURITY_LABEL);
+ 		if (res.attr_bitmask[0] & FATTR4_WORD0_ACL &&
+ 				res.acl_bitmask & ACL4_SUPPORT_ALLOW_ACL)
+ 			server->caps |= NFS_CAP_ACLS;
+@@ -3352,8 +3351,6 @@ static int _nfs4_server_capabilities(struct nfs_server *server, struct nfs_fh *f
+ 		if (res.attr_bitmask[2] & FATTR4_WORD2_SECURITY_LABEL)
+ 			server->caps |= NFS_CAP_SECURITY_LABEL;
+ #endif
+-		if (res.attr_bitmask[2] & FATTR4_WORD2_MODE_UMASK)
+-			server->caps |= NFS_CAP_MODE_UMASK;
+ 		memcpy(server->attr_bitmask_nl, res.attr_bitmask,
+ 				sizeof(server->attr_bitmask));
+ 		server->attr_bitmask_nl[2] &= ~FATTR4_WORD2_SECURITY_LABEL;
+@@ -3969,7 +3966,7 @@ nfs4_proc_create(struct inode *dir, struct dentry *dentry, struct iattr *sattr,
+ 
+ 	ilabel = nfs4_label_init_security(dir, dentry, sattr, &l);
+ 
+-	if (!(server->caps & NFS_CAP_MODE_UMASK))
++	if (!(server->attr_bitmask_nl[2] & FATTR4_WORD2_MODE_UMASK))
+ 		sattr->ia_mode &= ~current_umask();
+ 	state = nfs4_do_open(dir, ctx, flags, sattr, ilabel, NULL);
+ 	if (IS_ERR(state)) {
+@@ -4283,7 +4280,7 @@ static int nfs4_proc_mkdir(struct inode *dir, struct dentry *dentry,
+ 
+ 	label = nfs4_label_init_security(dir, dentry, sattr, &l);
+ 
+-	if (!(server->caps & NFS_CAP_MODE_UMASK))
++	if (!(server->attr_bitmask_nl[2] & FATTR4_WORD2_MODE_UMASK))
+ 		sattr->ia_mode &= ~current_umask();
+ 	do {
+ 		err = _nfs4_proc_mkdir(dir, dentry, sattr, label);
+@@ -4394,7 +4391,7 @@ static int nfs4_proc_mknod(struct inode *dir, struct dentry *dentry,
+ 
+ 	label = nfs4_label_init_security(dir, dentry, sattr, &l);
+ 
+-	if (!(server->caps & NFS_CAP_MODE_UMASK))
++	if (!(server->attr_bitmask_nl[2] & FATTR4_WORD2_MODE_UMASK))
+ 		sattr->ia_mode &= ~current_umask();
+ 	do {
+ 		err = _nfs4_proc_mknod(dir, dentry, sattr, label, rdev);
+diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+index 420d27865504..54714ce5dbd1 100644
+--- a/fs/nfs/nfs4xdr.c
++++ b/fs/nfs/nfs4xdr.c
+@@ -1023,7 +1023,7 @@ static void encode_attrs(struct xdr_stream *xdr, const struct iattr *iap,
+ 		bmval[0] |= FATTR4_WORD0_SIZE;
+ 		len += 8;
+ 	}
+-	if (!(server->caps & NFS_CAP_MODE_UMASK))
++	if (!(server->attr_bitmask_nl[2] & FATTR4_WORD2_MODE_UMASK))
+ 		umask = NULL;
+ 	if (iap->ia_valid & ATTR_MODE) {
+ 		if (umask) {
+diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
+index 87ab710772b3..b34097c67848 100644
+--- a/include/linux/nfs_fs_sb.h
++++ b/include/linux/nfs_fs_sb.h
+@@ -250,6 +250,5 @@ struct nfs_server {
+ #define NFS_CAP_LAYOUTSTATS	(1U << 22)
+ #define NFS_CAP_CLONE		(1U << 23)
+ #define NFS_CAP_COPY		(1U << 24)
+-#define NFS_CAP_MODE_UMASK	(1U << 25)
+ 
+ #endif
