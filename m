@@ -1,16 +1,16 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f193.google.com ([209.85.223.193]:33111 "EHLO
+Received: from mail-io0-f193.google.com ([209.85.223.193]:36763 "EHLO
         mail-io0-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1759812AbcLAWTs (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 1 Dec 2016 17:19:48 -0500
-Received: by mail-io0-f193.google.com with SMTP id j92so3936338ioi.0
-        for <linux-nfs@vger.kernel.org>; Thu, 01 Dec 2016 14:19:47 -0800 (PST)
+        with ESMTP id S1759884AbcLAWTp (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 1 Dec 2016 17:19:45 -0500
+Received: by mail-io0-f193.google.com with SMTP id s82so3822195ioi.3
+        for <linux-nfs@vger.kernel.org>; Thu, 01 Dec 2016 14:19:45 -0800 (PST)
 From: Trond Myklebust <trond.myklebust@primarydata.com>
 To: linux-nfs@vger.kernel.org
-Subject: [PATCH 25/26] pNFS: Wait on outstanding layoutreturns to complete in pnfs_roc()
-Date: Thu,  1 Dec 2016 17:19:21 -0500
-Message-Id: <20161201221922.15657-26-trond.myklebust@primarydata.com>
-In-Reply-To: <20161201221922.15657-25-trond.myklebust@primarydata.com>
+Subject: [PATCH 22/26] pNFS: Fix bugs in _pnfs_return_layout
+Date: Thu,  1 Dec 2016 17:19:18 -0500
+Message-Id: <20161201221922.15657-23-trond.myklebust@primarydata.com>
+In-Reply-To: <20161201221922.15657-22-trond.myklebust@primarydata.com>
 References: <20161201221922.15657-1-trond.myklebust@primarydata.com>
  <20161201221922.15657-2-trond.myklebust@primarydata.com>
  <20161201221922.15657-3-trond.myklebust@primarydata.com>
@@ -33,42 +33,59 @@ References: <20161201221922.15657-1-trond.myklebust@primarydata.com>
  <20161201221922.15657-20-trond.myklebust@primarydata.com>
  <20161201221922.15657-21-trond.myklebust@primarydata.com>
  <20161201221922.15657-22-trond.myklebust@primarydata.com>
- <20161201221922.15657-23-trond.myklebust@primarydata.com>
- <20161201221922.15657-24-trond.myklebust@primarydata.com>
- <20161201221922.15657-25-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+We need to honour the NFS_LAYOUT_RETURN_REQUESTED bit regardless of
+whether or not there are layout segments pending.
+Furthermore, we should ensure that we leave the plh_return_segs list
+empty.
+
+This patch fixes a memory leak of the layout segments on plh_return_segs.
+
 Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
 ---
- fs/nfs/pnfs.c | 9 +++++++++
- 1 file changed, 9 insertions(+)
+ fs/nfs/pnfs.c | 13 ++++++++++---
+ 1 file changed, 10 insertions(+), 3 deletions(-)
 
 diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index 57ec46b57364..550010826bdd 100644
+index 76b18518881e..a3a51860563c 100644
 --- a/fs/nfs/pnfs.c
 +++ b/fs/nfs/pnfs.c
-@@ -1245,11 +1245,20 @@ bool pnfs_roc(struct inode *ino,
+@@ -1145,7 +1145,7 @@ _pnfs_return_layout(struct inode *ino)
+ 	struct nfs_inode *nfsi = NFS_I(ino);
+ 	LIST_HEAD(tmp_list);
+ 	nfs4_stateid stateid;
+-	int status = 0, empty;
++	int status = 0;
+ 	bool send;
  
- 	if (!nfs_have_layout(ino))
- 		return false;
-+retry:
- 	spin_lock(&ino->i_lock);
- 	lo = nfsi->layout;
- 	if (!lo || !pnfs_layout_is_valid(lo) ||
- 	    test_bit(NFS_LAYOUT_BULK_RECALL, &lo->plh_flags))
- 		goto out_noroc;
+ 	dprintk("NFS: %s for inode %lu\n", __func__, ino->i_ino);
+@@ -1159,7 +1159,14 @@ _pnfs_return_layout(struct inode *ino)
+ 	}
+ 	/* Reference matched in nfs4_layoutreturn_release */
+ 	pnfs_get_layout_hdr(lo);
+-	empty = list_empty(&lo->plh_segs);
++	/* Is there an outstanding layoutreturn ? */
 +	if (test_bit(NFS_LAYOUT_RETURN_LOCK, &lo->plh_flags)) {
-+		pnfs_get_layout_hdr(lo);
 +		spin_unlock(&ino->i_lock);
-+		wait_on_bit(&lo->plh_flags, NFS_LAYOUT_RETURN,
-+				TASK_UNINTERRUPTIBLE);
-+		pnfs_put_layout_hdr(lo);
-+		goto retry;
++		if (wait_on_bit(&lo->plh_flags, NFS_LAYOUT_RETURN,
++					TASK_UNINTERRUPTIBLE))
++			goto out_put_layout_hdr;
++		spin_lock(&ino->i_lock);
 +	}
+ 	pnfs_clear_layoutcommit(ino, &tmp_list);
+ 	pnfs_mark_matching_lsegs_invalid(lo, &tmp_list, NULL, 0);
  
- 	/* no roc if we hold a delegation */
- 	if (nfs4_check_delegation(ino, FMODE_READ))
+@@ -1173,7 +1180,7 @@ _pnfs_return_layout(struct inode *ino)
+ 	}
+ 
+ 	/* Don't send a LAYOUTRETURN if list was initially empty */
+-	if (empty) {
++	if (!test_bit(NFS_LAYOUT_RETURN_REQUESTED, &lo->plh_flags)) {
+ 		spin_unlock(&ino->i_lock);
+ 		dprintk("NFS: %s no layout segments to return\n", __func__);
+ 		goto out_put_layout_hdr;
 -- 
 2.9.3
 
