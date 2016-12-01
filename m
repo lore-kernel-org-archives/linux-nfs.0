@@ -1,16 +1,16 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f194.google.com ([209.85.223.194]:33061 "EHLO
-        mail-io0-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1752472AbcLAWTm (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 1 Dec 2016 17:19:42 -0500
-Received: by mail-io0-f194.google.com with SMTP id j92so3935843ioi.0
-        for <linux-nfs@vger.kernel.org>; Thu, 01 Dec 2016 14:19:42 -0800 (PST)
+Received: from mail-io0-f196.google.com ([209.85.223.196]:35124 "EHLO
+        mail-io0-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1759814AbcLAWTn (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 1 Dec 2016 17:19:43 -0500
+Received: by mail-io0-f196.google.com with SMTP id h133so4681378ioe.2
+        for <linux-nfs@vger.kernel.org>; Thu, 01 Dec 2016 14:19:43 -0800 (PST)
 From: Trond Myklebust <trond.myklebust@primarydata.com>
 To: linux-nfs@vger.kernel.org
-Subject: [PATCH 18/26] pNFS: Clean up - add a helper to initialise struct layoutreturn_args
-Date: Thu,  1 Dec 2016 17:19:14 -0500
-Message-Id: <20161201221922.15657-19-trond.myklebust@primarydata.com>
-In-Reply-To: <20161201221922.15657-18-trond.myklebust@primarydata.com>
+Subject: [PATCH 20/26] pNFS: Prevent unnecessary layoutreturns after delegreturn
+Date: Thu,  1 Dec 2016 17:19:16 -0500
+Message-Id: <20161201221922.15657-21-trond.myklebust@primarydata.com>
+In-Reply-To: <20161201221922.15657-20-trond.myklebust@primarydata.com>
 References: <20161201221922.15657-1-trond.myklebust@primarydata.com>
  <20161201221922.15657-2-trond.myklebust@primarydata.com>
  <20161201221922.15657-3-trond.myklebust@primarydata.com>
@@ -29,57 +29,47 @@ References: <20161201221922.15657-1-trond.myklebust@primarydata.com>
  <20161201221922.15657-16-trond.myklebust@primarydata.com>
  <20161201221922.15657-17-trond.myklebust@primarydata.com>
  <20161201221922.15657-18-trond.myklebust@primarydata.com>
+ <20161201221922.15657-19-trond.myklebust@primarydata.com>
+ <20161201221922.15657-20-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+If we cannot grab the inode or superblock, then we cannot pin the
+layout header, and so we cannot send a layoutreturn as part of an
+async delegreturn call. In this case, we currently end up sending
+an extra layoutreturn after the delegreturn. Since the layout was
+implicitly returned by the delegreturn, that just gets a BAD_STATEID.
+
+The fix is to simply complete the return-on-close immediately.
+
 Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
 ---
- fs/nfs/pnfs.c | 25 ++++++++++++++++++-------
- 1 file changed, 18 insertions(+), 7 deletions(-)
+ fs/nfs/nfs4proc.c | 6 ++++--
+ 1 file changed, 4 insertions(+), 2 deletions(-)
 
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index d7b5ad437b14..a93afdd37203 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -1014,6 +1014,23 @@ pnfs_prepare_layoutreturn(struct pnfs_layout_hdr *lo,
- 	return true;
- }
- 
-+static void
-+pnfs_init_layoutreturn_args(struct nfs4_layoutreturn_args *args,
-+		struct pnfs_layout_hdr *lo,
-+		const nfs4_stateid *stateid,
-+		enum pnfs_iomode iomode)
-+{
-+	struct inode *inode = lo->plh_inode;
-+
-+	args->layout_type = NFS_SERVER(inode)->pnfs_curr_ld->id;
-+	args->inode = inode;
-+	args->range.iomode = iomode;
-+	args->range.offset = 0;
-+	args->range.length = NFS4_MAX_UINT64;
-+	args->layout = lo;
-+	nfs4_stateid_copy(&args->stateid, stateid);
-+}
-+
- static int
- pnfs_send_layoutreturn(struct pnfs_layout_hdr *lo, const nfs4_stateid *stateid,
- 		       enum pnfs_iomode iomode, bool sync)
-@@ -1032,13 +1049,7 @@ pnfs_send_layoutreturn(struct pnfs_layout_hdr *lo, const nfs4_stateid *stateid,
- 		goto out;
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 221d97de0e2c..5593b088c561 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -5744,14 +5744,16 @@ static int _nfs4_proc_delegreturn(struct inode *inode, struct rpc_cred *cred, co
+ 	nfs_fattr_init(data->res.fattr);
+ 	data->timestamp = jiffies;
+ 	data->rpc_status = 0;
++	data->lr.roc = pnfs_roc(inode, &data->lr.arg, &data->lr.res, cred);
+ 	data->inode = nfs_igrab_and_active(inode);
+ 	if (data->inode) {
+-		data->lr.roc = pnfs_roc(inode, &data->lr.arg, &data->lr.res,
+-				cred);
+ 		if (data->lr.roc) {
+ 			data->args.lr_args = &data->lr.arg;
+ 			data->res.lr_res = &data->lr.res;
+ 		}
++	} else if (data->lr.roc) {
++		pnfs_roc_release(&data->lr.arg, &data->lr.res, 0);
++		data->lr.roc = false;
  	}
  
--	nfs4_stateid_copy(&lrp->args.stateid, stateid);
--	lrp->args.layout_type = NFS_SERVER(ino)->pnfs_curr_ld->id;
--	lrp->args.inode = ino;
--	lrp->args.range.iomode = iomode;
--	lrp->args.range.offset = 0;
--	lrp->args.range.length = NFS4_MAX_UINT64;
--	lrp->args.layout = lo;
-+	pnfs_init_layoutreturn_args(&lrp->args, lo, stateid, iomode);
- 	lrp->clp = NFS_SERVER(ino)->nfs_client;
- 	lrp->cred = lo->plh_lc_cred;
- 
+ 	task_setup_data.callback_data = data;
 -- 
 2.9.3
 
