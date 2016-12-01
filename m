@@ -1,69 +1,74 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f194.google.com ([209.85.223.194]:35003 "EHLO
+Received: from mail-io0-f194.google.com ([209.85.223.194]:36655 "EHLO
         mail-io0-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1753817AbcLAWT0 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 1 Dec 2016 17:19:26 -0500
-Received: by mail-io0-f194.google.com with SMTP id h133so4680138ioe.2
-        for <linux-nfs@vger.kernel.org>; Thu, 01 Dec 2016 14:19:25 -0800 (PST)
+        with ESMTP id S1753817AbcLAWT2 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 1 Dec 2016 17:19:28 -0500
+Received: by mail-io0-f194.google.com with SMTP id s82so3820903ioi.3
+        for <linux-nfs@vger.kernel.org>; Thu, 01 Dec 2016 14:19:28 -0800 (PST)
 From: Trond Myklebust <trond.myklebust@primarydata.com>
 To: linux-nfs@vger.kernel.org
-Subject: [PATCH 01/26] pNFS: Fix a deadlock between read resends and layoutreturn
-Date: Thu,  1 Dec 2016 17:18:57 -0500
-Message-Id: <20161201221922.15657-2-trond.myklebust@primarydata.com>
-In-Reply-To: <20161201221922.15657-1-trond.myklebust@primarydata.com>
+Subject: [PATCH 03/26] pNFS: Clear NFS_LAYOUT_RETURN_REQUESTED when invalidating the layout stateid
+Date: Thu,  1 Dec 2016 17:18:59 -0500
+Message-Id: <20161201221922.15657-4-trond.myklebust@primarydata.com>
+In-Reply-To: <20161201221922.15657-3-trond.myklebust@primarydata.com>
 References: <20161201221922.15657-1-trond.myklebust@primarydata.com>
+ <20161201221922.15657-2-trond.myklebust@primarydata.com>
+ <20161201221922.15657-3-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-We must not call nfs_pageio_init_read() on a new nfs_pageio_descriptor
-while holding a reference to a layout segment, as that can deadlock
-pnfs_update_layout().
+We must ensure that we don't schedule a layoutreturn if the layout stateid
+has been marked as invalid.
 
-Fixes: d67ae825a59d6 ("pnfs/flexfiles: Add the FlexFile Layout Driver")
+Fixes: 2a59a0411671e ("pNFS: Fix pnfs_set_layout_stateid() to clear...")
 Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
-Cc: stable@vger.kernel.org # v4.0+
+Cc: stable@vger.kernel.org # v4.8+
 ---
- fs/nfs/flexfilelayout/flexfilelayout.c | 4 ++++
- fs/nfs/pnfs.c                          | 4 ++++
- 2 files changed, 8 insertions(+)
+ fs/nfs/pnfs.c | 17 +++++++++--------
+ 1 file changed, 9 insertions(+), 8 deletions(-)
 
-diff --git a/fs/nfs/flexfilelayout/flexfilelayout.c b/fs/nfs/flexfilelayout/flexfilelayout.c
-index 98ace127bf86..a5c38889e7ae 100644
---- a/fs/nfs/flexfilelayout/flexfilelayout.c
-+++ b/fs/nfs/flexfilelayout/flexfilelayout.c
-@@ -28,6 +28,9 @@
- 
- static struct group_info	*ff_zero_group;
- 
-+static void ff_layout_read_record_layoutstats_done(struct rpc_task *task,
-+		struct nfs_pgio_header *hdr);
-+
- static struct pnfs_layout_hdr *
- ff_layout_alloc_layout_hdr(struct inode *inode, gfp_t gfp_flags)
- {
-@@ -1293,6 +1296,7 @@ static int ff_layout_read_done_cb(struct rpc_task *task,
- 					hdr->pgio_mirror_idx + 1,
- 					&hdr->pgio_mirror_idx))
- 			goto out_eagain;
-+		ff_layout_read_record_layoutstats_done(task, hdr);
- 		pnfs_read_resend_pnfs(hdr);
- 		return task->tk_status;
- 	case -NFS4ERR_RESET_TO_MDS:
 diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index 259ef85f435a..206d560c74f4 100644
+index 09bbb07d0494..d4e06b7459f4 100644
 --- a/fs/nfs/pnfs.c
 +++ b/fs/nfs/pnfs.c
-@@ -2286,6 +2286,10 @@ void pnfs_read_resend_pnfs(struct nfs_pgio_header *hdr)
- 	struct nfs_pageio_descriptor pgio;
+@@ -299,6 +299,14 @@ pnfs_put_layout_hdr(struct pnfs_layout_hdr *lo)
+ 	}
+ }
  
- 	if (!test_and_set_bit(NFS_IOHDR_REDO, &hdr->flags)) {
-+		/* Prevent deadlocks with layoutreturn! */
-+		pnfs_put_lseg(hdr->lseg);
-+		hdr->lseg = NULL;
++static void
++pnfs_clear_layoutreturn_info(struct pnfs_layout_hdr *lo)
++{
++	lo->plh_return_iomode = 0;
++	lo->plh_return_seq = 0;
++	clear_bit(NFS_LAYOUT_RETURN_REQUESTED, &lo->plh_flags);
++}
 +
- 		nfs_pageio_init_read(&pgio, hdr->inode, false,
- 					hdr->completion_ops);
- 		hdr->task.tk_status = nfs_pageio_resend(&pgio, hdr);
+ /*
+  * Mark a pnfs_layout_hdr and all associated layout segments as invalid
+  *
+@@ -317,6 +325,7 @@ pnfs_mark_layout_stateid_invalid(struct pnfs_layout_hdr *lo,
+ 	};
+ 
+ 	set_bit(NFS_LAYOUT_INVALID_STID, &lo->plh_flags);
++	pnfs_clear_layoutreturn_info(lo);
+ 	return pnfs_mark_matching_lsegs_invalid(lo, lseg_list, &range, 0);
+ }
+ 
+@@ -818,14 +827,6 @@ pnfs_destroy_all_layouts(struct nfs_client *clp)
+ 	pnfs_destroy_layouts_byclid(clp, false);
+ }
+ 
+-static void
+-pnfs_clear_layoutreturn_info(struct pnfs_layout_hdr *lo)
+-{
+-	lo->plh_return_iomode = 0;
+-	lo->plh_return_seq = 0;
+-	clear_bit(NFS_LAYOUT_RETURN_REQUESTED, &lo->plh_flags);
+-}
+-
+ /* update lo->plh_stateid with new if is more recent */
+ void
+ pnfs_set_layout_stateid(struct pnfs_layout_hdr *lo, const nfs4_stateid *new,
 -- 
 2.9.3
 
