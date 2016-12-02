@@ -3,73 +3,98 @@ Sender: Trond Myklebust <trondmy@gmail.com>
 From: Trond Myklebust <trond.myklebust@primarydata.com>
 To: Benjamin Coddington <bcodding@redhat.com>
 Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v2 1/3] NFS: Fix a performance regression in readdir
-Date: Fri,  2 Dec 2016 09:21:33 -0500
-Message-Id: <20161202142135.11515-2-trond.myklebust@primarydata.com>
-In-Reply-To: <20161202142135.11515-1-trond.myklebust@primarydata.com>
+Subject: [PATCH v2 3/3] NFS: Allow getattr to also report readdirplus cache hits
+Date: Fri,  2 Dec 2016 09:21:35 -0500
+Message-Id: <20161202142135.11515-4-trond.myklebust@primarydata.com>
+In-Reply-To: <20161202142135.11515-3-trond.myklebust@primarydata.com>
 References: <20161202142135.11515-1-trond.myklebust@primarydata.com>
+ <20161202142135.11515-2-trond.myklebust@primarydata.com>
+ <20161202142135.11515-3-trond.myklebust@primarydata.com>
 List-ID: <linux-nfs.vger.kernel.org>
 
-Ben Coddington reports that commit 311324ad1713, by adding the function
-nfs_dir_mapping_need_revalidate() that checks page cache validity on
-each call to nfs_readdir() causes a performance regression when
-the directory is being modified.
+If the use called stat() on an 'ls -l' workload, and the attribute
+cache was successfully revalidate by READDIRPLUS, then we want to
+report that back so that the readdir code continues to use
+readdirplus.
 
-If the directory is changing while we're iterating through the directory,
-POSIX does not require us to invalidate the page cache unless the user
-calls rewinddir(). However, we still do want to ensure that we use
-readdirplus in order to avoid a load of stat() calls when the user
-is doing an 'ls -l' workload.
-
-The fix should be to invalidate the page cache immediately when we're
-setting the NFS_INO_ADVISE_RDPLUS bit.
-
-Reported-by: Benjamin Coddington <bcodding@redhat.com>
-Fixes: 311324ad1713 ("NFS: Be more aggressive in using readdirplus...")
 Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
 ---
- fs/nfs/dir.c | 15 ++-------------
- 1 file changed, 2 insertions(+), 13 deletions(-)
+ fs/nfs/dir.c      |  1 -
+ fs/nfs/inode.c    | 21 +++++++++++++++++----
+ fs/nfs/internal.h |  1 +
+ 3 files changed, 18 insertions(+), 5 deletions(-)
 
 diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
-index f1ecfcc632eb..9220bc7b9cd7 100644
+index 22835150579a..f5702457c052 100644
 --- a/fs/nfs/dir.c
 +++ b/fs/nfs/dir.c
-@@ -477,7 +477,7 @@ void nfs_force_use_readdirplus(struct inode *dir)
+@@ -459,7 +459,6 @@ bool nfs_use_readdirplus(struct inode *dir, struct dir_context *ctx)
+  * use of readdirplus to accelerate any future lookups in the same
+  * directory.
+  */
+-static
+ void nfs_advise_use_readdirplus(struct inode *dir)
  {
- 	if (!list_empty(&NFS_I(dir)->open_files)) {
- 		nfs_advise_use_readdirplus(dir);
--		nfs_zap_mapping(dir, dir->i_mapping);
-+		invalidate_mapping_pages(dir->i_mapping, 0, -1);
- 	}
+ 	struct nfs_inode *nfsi = NFS_I(dir);
+diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
+index d79e0bac836e..75f5a9cb2e66 100644
+--- a/fs/nfs/inode.c
++++ b/fs/nfs/inode.c
+@@ -634,15 +634,28 @@ void nfs_setattr_update_inode(struct inode *inode, struct iattr *attr,
+ }
+ EXPORT_SYMBOL_GPL(nfs_setattr_update_inode);
+ 
+-static void nfs_request_parent_use_readdirplus(struct dentry *dentry)
++static void nfs_readdirplus_parent_cache_miss(struct dentry *dentry)
+ {
+ 	struct dentry *parent;
+ 
++	if (!nfs_server_capable(d_inode(dentry), NFS_CAP_READDIRPLUS))
++		return;
+ 	parent = dget_parent(dentry);
+ 	nfs_force_use_readdirplus(d_inode(parent));
+ 	dput(parent);
  }
  
-@@ -886,17 +886,6 @@ int uncached_readdir(nfs_readdir_descriptor_t *desc)
- 	goto out;
- }
++static void nfs_readdirplus_parent_cache_hit(struct dentry *dentry)
++{
++	struct dentry *parent;
++
++	if (!nfs_server_capable(d_inode(dentry), NFS_CAP_READDIRPLUS))
++		return;
++	parent = dget_parent(dentry);
++	nfs_advise_use_readdirplus(d_inode(parent));
++	dput(parent);
++}
++
+ static bool nfs_need_revalidate_inode(struct inode *inode)
+ {
+ 	if (NFS_I(inode)->cache_validity &
+@@ -683,10 +696,10 @@ int nfs_getattr(struct vfsmount *mnt, struct dentry *dentry, struct kstat *stat)
+ 	if (need_atime || nfs_need_revalidate_inode(inode)) {
+ 		struct nfs_server *server = NFS_SERVER(inode);
  
--static bool nfs_dir_mapping_need_revalidate(struct inode *dir)
--{
--	struct nfs_inode *nfsi = NFS_I(dir);
--
--	if (nfs_attribute_cache_expired(dir))
--		return true;
--	if (nfsi->cache_validity & NFS_INO_INVALID_DATA)
--		return true;
--	return false;
--}
--
- /* The file offset position represents the dirent entry number.  A
-    last cookie cache takes care of the common case of reading the
-    whole directory.
-@@ -928,7 +917,7 @@ static int nfs_readdir(struct file *file, struct dir_context *ctx)
- 	desc->decode = NFS_PROTO(inode)->decode_dirent;
- 	desc->plus = nfs_use_readdirplus(inode, ctx) ? 1 : 0;
+-		if (server->caps & NFS_CAP_READDIRPLUS)
+-			nfs_request_parent_use_readdirplus(dentry);
++		nfs_readdirplus_parent_cache_miss(dentry);
+ 		err = __nfs_revalidate_inode(server, inode);
+-	}
++	} else
++		nfs_readdirplus_parent_cache_hit(dentry);
+ 	if (!err) {
+ 		generic_fillattr(inode, stat);
+ 		stat->ino = nfs_compat_user_ino64(NFS_FILEID(inode));
+diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
+index 4622d5f18e35..6b79c2ca9b9a 100644
+--- a/fs/nfs/internal.h
++++ b/fs/nfs/internal.h
+@@ -344,6 +344,7 @@ extern struct nfs_client *nfs_init_client(struct nfs_client *clp,
+ 			   const struct nfs_client_initdata *);
  
--	if (ctx->pos == 0 || nfs_dir_mapping_need_revalidate(inode))
-+	if (ctx->pos == 0 || nfs_attribute_cache_expired(inode))
- 		res = nfs_revalidate_mapping(inode, file->f_mapping);
- 	if (res < 0)
- 		goto out;
+ /* dir.c */
++extern void nfs_advise_use_readdirplus(struct inode *dir);
+ extern void nfs_force_use_readdirplus(struct inode *dir);
+ extern unsigned long nfs_access_cache_count(struct shrinker *shrink,
+ 					    struct shrink_control *sc);
 -- 
 2.9.3
