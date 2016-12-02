@@ -1,68 +1,90 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f194.google.com ([209.85.223.194]:34858 "EHLO
-        mail-io0-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1754091AbcLBRsB (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 2 Dec 2016 12:48:01 -0500
-Received: by mail-io0-f194.google.com with SMTP id h133so1136689ioe.2
-        for <linux-nfs@vger.kernel.org>; Fri, 02 Dec 2016 09:48:01 -0800 (PST)
-Subject: Re: [PATCH 2/5] NFSv4: Don't ask for the change attribute when
- reclaiming state
-To: Trond Myklebust <trondmy@primarydata.com>
-References: <20161201220632.12754-1-trond.myklebust@primarydata.com>
- <20161201220632.12754-2-trond.myklebust@primarydata.com>
- <20161201220632.12754-3-trond.myklebust@primarydata.com>
- <f8904106-2bb4-2fdb-1fdd-fb60ff352531@gmail.com>
- <B06178AC-10FF-42D4-8309-93D9882721DC@primarydata.com>
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Received: from mail-io0-f193.google.com ([209.85.223.193]:35011 "EHLO
+        mail-io0-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1753787AbcLBUAO (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 2 Dec 2016 15:00:14 -0500
+Subject: Re: [PATCH v2 0/4] Add copy_file_range() tests
+To: "Darrick J. Wong" <darrick.wong@oracle.com>,
+        Anna Schumaker <Anna.Schumaker@Netapp.com>
+References: <20160907195619.25914-1-Anna.Schumaker@Netapp.com>
+ <20161026082638.GA19419@infradead.org> <20161125080509.GA6082@infradead.org>
+ <20161129204722.GA9331@fieldses.org>
+ <ce1c4ee0-eaa9-1011-857a-c4930bb12115@Netapp.com>
+ <20161129232146.GA25841@birch.djwong.org>
+Cc: "J. Bruce Fields" <bfields@fieldses.org>,
+        Christoph Hellwig <hch@infradead.org>, fstests@vger.kernel.org,
+        linux-nfs@vger.kernel.org
 From: Anna Schumaker <schumaker.anna@gmail.com>
-Message-ID: <eef836eb-3c5a-0e4c-ed59-4285609f2823@gmail.com>
-Date: Fri, 2 Dec 2016 12:47:58 -0500
+Message-ID: <23bb56f2-11f9-cbd3-4722-7e29d97b8245@gmail.com>
+Date: Fri, 2 Dec 2016 15:00:11 -0500
 MIME-Version: 1.0
-In-Reply-To: <B06178AC-10FF-42D4-8309-93D9882721DC@primarydata.com>
-Content-Type: text/plain; charset=utf-8
+In-Reply-To: <20161129232146.GA25841@birch.djwong.org>
+Content-Type: text/plain; charset=windows-1252
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
 
-On 12/02/2016 12:28 PM, Trond Myklebust wrote:
+On 11/29/2016 06:21 PM, Darrick J. Wong wrote:
+> On Tue, Nov 29, 2016 at 03:59:29PM -0500, Anna Schumaker wrote:
 > 
->> On Dec 2, 2016, at 12:05, Anna Schumaker <schumaker.anna@gmail.com> wrote:
->>
->> Hi Trond,
->>
->> On 12/01/2016 05:06 PM, Trond Myklebust wrote:
->>> We don't need to ask for the change attribute when returning a delegation
->>> or recovering from a server reboot, and it could actually cause us to
->>> obtain an incorrect value if we're using a pNFS flavour that requires
->>> LAYOUTCOMMIT.
->>>
->>> Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
->>> ---
->>> fs/nfs/nfs4proc.c | 1 -
->>> 1 file changed, 1 deletion(-)
->>>
->>> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
->>> index b582df89c083..c0628f78ed98 100644
->>> --- a/fs/nfs/nfs4proc.c
->>> +++ b/fs/nfs/nfs4proc.c
->>> @@ -226,7 +226,6 @@ static const u32 nfs4_pnfs_open_bitmap[3] = {
->>>
->>> static const u32 nfs4_open_noattr_bitmap[3] = {
->>> 	FATTR4_WORD0_TYPE
->>> -	| FATTR4_WORD0_CHANGE
->>
->> Do these patches depend on another patch series?  I'm having trouble applying this patch since my tree doesn't have FATTR4_WORD0_CHANGE yet.  I'm having trouble with patch 4, too.
->>
+>> Sorry for the delay!  I've been busy looking at other things and
+>> forgot to update the copy_file_range() stuff :(
 > 
-> I’ve pushed out the linux-next branch http://git.linux-nfs.org/?p=trondmy/linux-nfs.git;a=shortlog;h=refs/heads/linux-next
+> While you're at it, please make a test to check the return value for
+> invalid inputs.  I'd prefer we avoid repeating what happened with the
+> vfs dedupe ioctl.
 
-I'll look there, then!  Thanks!
+I'll see what I can do.  So far I've updated the tests with the other comments and added in the "copy_range" check directly to _require_xfs_io_command().  I'll play with error codes next week and then resubmit.
+
+Anna
 
 > 
->> Thanks,
+> --D
+> 
+>>
+>> On 11/29/2016 03:47 PM, J. Bruce Fields wrote:
+>>> On Fri, Nov 25, 2016 at 12:05:10AM -0800, Christoph Hellwig wrote:
+>>>> On Wed, Oct 26, 2016 at 01:26:38AM -0700, Christoph Hellwig wrote:
+>>>>> On Wed, Sep 07, 2016 at 03:56:15PM -0400, Anna Schumaker wrote:
+>>>>>> These tests exercise the copy_file_range() system call, and check copying
+>>>>>> data to both a new file and overwriting data inside an existing file.  I use
+>>>>>> the xfs_io "copy_range" command for the actual copies, so running these
+>>>>>> tests requires an up-to-date version of xfsprogs.
+>>>>>
+>>>>> Hi Anna,
+>>>>>
+>>>>> what's the status of these tests?  Did you get a chance to look
+>>>>> into xfs_io copyfile support?
+>>
+>> xfs_io has support for copying now, so I'll make sure that the tests
+>> use that correctly.  I promise to send out an update this week, once I
+>> check that everything still works!
+>>
+>> Thanks for the reminders,
 >> Anna
 >>
->>> 	| FATTR4_WORD0_FILEID,
->>> };
+>>>>
+>>>> Another month, another ping - it would be really sad to not have any
+>>>> real testing for copy_file_range.
+>>>
+>>> Agreed, Anna, are you still planning on doing this?
+>>>
+>>> --b.
+>>>
+>>>> I've been holding a pending change
+>>>> for it back for month now because I want to verify it more than cursory,
+>>>> but I guess I'll just have to send it anyway.
+>>>> --
+>>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>>>> the body of a message to majordomo@vger.kernel.org
+>>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe fstests" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 > 
