@@ -1,15 +1,15 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:36433 "EHLO mx2.suse.de"
+Received: from mx2.suse.de ([195.135.220.15]:36452 "EHLO mx2.suse.de"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751164AbcLBD7T (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 1 Dec 2016 22:59:19 -0500
+        id S1751164AbcLBD7Z (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 1 Dec 2016 22:59:25 -0500
 From: NeilBrown <neilb@suse.com>
 To: "J. Bruce Fields" <bfields@redhat.com>,
         Steve Dickson <SteveD@redhat.com>
-Date: Fri, 02 Dec 2016 14:58:28 +1100
-Subject: [PATCH 05/15] Add /etc/nfs.conf support for statd
+Date: Fri, 02 Dec 2016 14:58:29 +1100
+Subject: [PATCH 06/15] Add /etc/nfs.conf support for sm-notify
 Cc: linux-nfs@vger.kernel.org
-Message-ID: <148065110872.28046.13166174517415675834.stgit@noble>
+Message-ID: <148065110892.28046.18251782958732101170.stgit@noble>
 In-Reply-To: <148065078775.28046.5506130555300891075.stgit@noble>
 References: <148065078775.28046.5506130555300891075.stgit@noble>
 MIME-Version: 1.0
@@ -17,162 +17,114 @@ Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Some options appear in the [lockd] section.
-
 Signed-off-by: NeilBrown <neilb@suse.com>
 ---
- systemd/nfs.conf.man  |   25 +++++++++++++++++++++++++
- utils/statd/statd.c   |   20 ++++++++++++++++++++
- utils/statd/statd.man |   35 +++++++++++++++++++++++++++++++++--
- 3 files changed, 78 insertions(+), 2 deletions(-)
+ systemd/nfs.conf.man      |   10 ++++++++++
+ utils/statd/sm-notify.c   |   11 +++++++++++
+ utils/statd/sm-notify.man |   27 +++++++++++++++++++++++++++
+ 3 files changed, 48 insertions(+)
 
 diff --git a/systemd/nfs.conf.man b/systemd/nfs.conf.man
-index 9fe9d0eff1fc..a1121e46ef5e 100644
+index a1121e46ef5e..726f603544b7 100644
 --- a/systemd/nfs.conf.man
 +++ b/systemd/nfs.conf.man
-@@ -118,6 +118,31 @@ section, are used to configure mountd.  See
- .BR rpc.mountd (8)
+@@ -142,6 +142,16 @@ See
+ .BR rpc.statd (8)
  for details.
  
 +.TP
-+.B statd
++.B sm-notify
 +Recognized values:
-+.BR port ,
-+.BR outgoing-port ,
-+.BR name ,
-+.BR state-directory-path ,
-+.BR ha-callout .
++.BR retry-time ,
++.BR outgoing-port ", and"
++.BR outgoing-addr .
 +
 +See
-+.BR rpc.statd (8)
++.BR sm-notify (8)
 +for details.
-+
-+.TP
-+.B lockd
-+Recognized values:
-+.B port
-+and
-+.BR udp-port .
-+
-+See
-+.BR rpc.statd (8)
-+for details.
-+
-+
+ 
  .SH FILES
  .I /etc/nfs.conf
- .SH SEE ALSO
-diff --git a/utils/statd/statd.c b/utils/statd/statd.c
-index 15f2b18d104d..5f4ad79e6bf3 100644
---- a/utils/statd/statd.c
-+++ b/utils/statd/statd.c
-@@ -26,6 +26,7 @@
- #include <sys/wait.h>
+diff --git a/utils/statd/sm-notify.c b/utils/statd/sm-notify.c
+index 8afddd97da73..19f40afcb376 100644
+--- a/utils/statd/sm-notify.c
++++ b/utils/statd/sm-notify.c
+@@ -29,6 +29,7 @@
+ #include <errno.h>
  #include <grp.h>
  
 +#include "conffile.h"
- #include "statd.h"
- #include "nfslib.h"
- #include "nfsrpc.h"
-@@ -36,6 +37,7 @@
- #include <sys/socket.h>
+ #include "sockaddr.h"
+ #include "xlog.h"
+ #include "nsm.h"
+@@ -66,6 +67,7 @@ static _Bool		opt_update_state = true;
+ static unsigned int	opt_max_retry = 15 * 60;
+ static char *		opt_srcaddr = NULL;
+ static char *		opt_srcport = NULL;
++char *			conf_path = NFS_CONFFILE;
  
- int	run_mode = 0;		/* foreground logging mode */
-+char	*conf_path = NFS_CONFFILE;
- 
- /* LH - I had these local to main, but it seemed silly to have 
-  * two copies of each - one in main(), one static in log.c... 
-@@ -242,6 +244,7 @@ static void set_nlm_port(char *type, int port)
- int main (int argc, char **argv)
+ static void		notify(const int sock);
+ static int		notify_host(int, struct nsm_host *);
+@@ -479,6 +481,7 @@ main(int argc, char **argv)
  {
- 	extern char *optarg;
-+	char *s;
- 	int pid;
- 	int arg;
- 	int port = 0, out_port = 0;
-@@ -266,6 +269,23 @@ int main (int argc, char **argv)
- 	/* Set hostname */
- 	MY_NAME = NULL;
+ 	int	c, sock, force = 0;
+ 	char *	progname;
++	char *	s;
+ 
+ 	progname = strrchr(argv[0], '/');
+ 	if (progname != NULL)
+@@ -486,6 +489,14 @@ main(int argc, char **argv)
+ 	else
+ 		progname = argv[0];
  
 +	conf_init();
-+	out_port = conf_get_num("statd", "outgoing-port", out_port);
-+	port = conf_get_num("statd", "port", port);
-+	MY_NAME = conf_get_str("statd", "name");
-+	if (MY_NAME)
-+		run_mode |= STATIC_HOSTNAME;
++	opt_max_retry = conf_get_num("sm-notify", "retry-time", opt_max_retry / 60) * 60;
++	opt_srcport = conf_get_str("sm-notify", "outgoing-port");
++	opt_srcaddr = conf_get_str("sm-notify", "outgoing-addr");
 +	s = conf_get_str("statd", "state-directory-path");
 +	if (s && !nsm_setup_pathnames(argv[0], s))
 +		exit(1);
-+	s = conf_get_str("statd", "ha-callout");
-+	if (s)
-+		ha_callout_prog = s;
 +
-+	nlm_tcp = conf_get_num("lockd", "port", nlm_tcp);
-+	/* udp defaults to the same as tcp ! */
-+	nlm_udp = conf_get_num("lockd", "udp-port", nlm_tcp);
-+
- 	/* Process command line switches */
- 	while ((arg = getopt_long(argc, argv, "h?vVFNH:dn:p:o:P:LT:U:", longopts, NULL)) != EOF) {
- 		switch (arg) {
-diff --git a/utils/statd/statd.man b/utils/statd/statd.man
-index 1e5520c6dfea..91c260f1bf5e 100644
---- a/utils/statd/statd.man
-+++ b/utils/statd/statd.man
-@@ -8,7 +8,7 @@
- .\" Rewritten by Chuck Lever <chuck.lever@oracle.com>, 2009.
- .\" Copyright 2009 Oracle.  All rights reserved.
- .\"
--.TH RPC.STATD 8 "1 November 2009
-+.TH RPC.STATD 8 "1 November 2009"
- .SH NAME
- rpc.statd \- NSM service daemon
- .SH SYNOPSIS
-@@ -247,7 +247,7 @@ should listen on for
- .B NLM
- requests.
- .TP
--.BI "\-P, " "" \-\-state\-directory\-path " pathname
-+.BI "\-P, " "" \-\-state\-directory\-path " pathname"
- Specifies the pathname of the parent directory
- where NSM state information resides.
- If this option is not specified,
-@@ -267,6 +267,37 @@ Causes
- to display version information on
- .I stderr
- and then exit.
+ 	while ((c = getopt(argc, argv, "dm:np:v:P:f")) != -1) {
+ 		switch (c) {
+ 		case 'f':
+diff --git a/utils/statd/sm-notify.man b/utils/statd/sm-notify.man
+index 7a1cbfae998f..bb7f6e0a1420 100644
+--- a/utils/statd/sm-notify.man
++++ b/utils/statd/sm-notify.man
+@@ -219,6 +219,33 @@ argument when sending SM_NOTIFY requests.
+ .IP
+ This option can be useful in multi-homed configurations where
+ the remote requires notification from a specific network address.
 +.SH CONFIGURATION FILE
 +Many of the options that can be set on the command line can also be
 +controlled through values set in the
++.B [sm-notify]
++or, in one case, the
 +.B [statd]
-+or, in some cases, the
-+.B [lockd]
-+sections of the
++section of the
 +.I /etc/nfs.conf
 +configuration file.
-+Values recognized in the
-+.B [statd]
-+section include
-+.BR port ,
-+.BR outgoing-port ,
-+.BR name ,
-+.BR state-directory-path ", and"
-+.B ha-callout
-+which each have the same effect as the option with the same name.
 +
-+The values recognized in the
-+.B [lockd]
-+section include
-+.B port
-+and
-+.B udp-port
-+which have the same effect as the
-+.B --nlm-port
-+and
-+.B --nlm-udp-port
-+options, respectively.
++Values recognized in the
++.B [sm-notify]
++section include:
++.BR retry-time ,
++.BR outgoing-port ", and"
++.BR outgoing-addr .
++These have the same effect as the command line options
++.BR m ,
++.BR p ", and"
++.B v
++respectively.
++
++The value recognized in the
++.B [statd]
++section is
++.BR state-directory-path .
 +
  .SH SECURITY
  The
- .B rpc.statd
+ .B sm-notify
 
 
