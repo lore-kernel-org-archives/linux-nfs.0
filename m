@@ -1,82 +1,74 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from us-smtp-delivery-194.mimecast.com ([63.128.21.194]:35216 "EHLO
-        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1754963AbcLBAu2 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 1 Dec 2016 19:50:28 -0500
-From: Trond Myklebust <trondmy@primarydata.com>
-To: NeilBrown <neilb@suse.com>
-CC: Joachim Banzhaf <joachim.banzhaf@googlemail.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: rpcbind allowed port range on linux
-Date: Fri, 2 Dec 2016 00:50:15 +0000
-Message-ID: <BD0BB270-C6F4-4129-8D21-A3E9A6970459@primarydata.com>
-References: <CABW3MLd5Bo-xBtLqtB4e-pD2hCYAuRaBBsqBFTiws5-HohjPTw@mail.gmail.com>
- <87h96n6vbl.fsf@notabene.neil.brown.name>
-In-Reply-To: <87h96n6vbl.fsf@notabene.neil.brown.name>
+Received: from mx2.suse.de ([195.135.220.15]:45349 "EHLO mx2.suse.de"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1751388AbcLBBKG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 1 Dec 2016 20:10:06 -0500
+From: NeilBrown <neilb@suse.com>
+To: Steve Dickson <SteveD@redhat.com>
+Date: Fri, 02 Dec 2016 12:09:43 +1100
+Subject: [PATCH 0/4] 4 assorted nfs-utils patches
+Cc: linux-nfs@vger.kernel.org
+Message-ID: <148064084082.9179.6570593128436337540.stgit@noble>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=WINDOWS-1252
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+First 2 are a repost of two I posted yesterday, with a small change
+following the response from Steve.
 
-> On Dec 1, 2016, at 19:14, NeilBrown <neilb@suse.com> wrote:
->=20
-> On Fri, Dec 02 2016, Joachim Banzhaf wrote:
->=20
->> Hi list,
->>=20
->> my problem is, rpcbind gave a tcp port to nlockmgr where I assumed
->> this port is reserved.
->=20
-> That isn't how it works. rpcbind doesn't give ports to anyone.
->=20
-> lockd chooses a port, and asks rpcbind to register it against the
-> nlockmgr service.
-> If lockd is choosing a port that you don't want it to, you need to
-> get lockd to change its behavior.
->=20
-> One way is to explicitly tell lockd what port to use.  The "--nlm-port"
-> option to rpc.statd can do this.
->=20
-> By default, a number will be chosen from the range given in
->  /proc/sys/net/ipv4/ip_local_port_range=20
->=20
-> You can change that range, and that will affect all sockets which don't
-> ask for an explicit port.
+Third removes usage of the old nfsctl systemcall (which isn't
+available in current kernels, and probably hasn't been used by anyone
+in years).
 
-Alternatively, you can just pin the port using the kernel parameters interf=
-aces:
+The last cleans up some code that annoyed my while I was working on
+something else.
 
-http://lxr.free-electrons.com/source/Documentation/kernel-parameters.txt#L2=
-036
+Thanks,
+NeilBrown
 
->=20
-> NeilBrown
->=20
->=20
->>=20
->> Now, I didn't find the spec that says which ports rpcbind is allowed
->> to use, but I thought it is the ephemeral ports, on linux defined with
->> the range in kernel configuration net.ipv4.ip_local_reserved_ports
->> minus exclusions from net.ipv4.ip_local_reserved_ports.
->>=20
->> So, my questions are
->> 1) Is my assumption about allowed ports correct?
->> 2) If not: how can I define that range?
->> 3) If yes: was there a fix for that since my rather old SLES 12
->> version rpcbind-0.2.1_rc4 (kernel 3.12.55)? I didn't find something
->> obvious to me in the changelog.
->>=20
->> Bonus question: would it have been safe/possible to free up the port,
->> e.g. with rpcbind -d? I only found out about that option after a
->> reboot...
->>=20
->> BR,
->> Joachim
->>=20
->> (please keep me in cc)
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+---
+
+NeilBrown (4):
+      mount: don't hide temporary error code on timeout.
+      mount: take history into account when assessing if an error is permanent.
+      Remove all use of the nfsctl system call.
+      Remove error messages on xstrdup failure.
+
+
+ support/export/Makefile.am |    2 -
+ support/export/export.c    |   56 ------------------
+ support/export/nfsctl.c    |  118 ---------------------------------------
+ support/export/rmtab.c     |   98 --------------------------------
+ support/export/xtab.c      |   16 -----
+ support/include/exportfs.h |    7 --
+ support/include/nfs/nfs.h  |  120 ---------------------------------------
+ support/include/nfslib.h   |   16 -----
+ support/nfs/Makefile.am    |    4 +
+ support/nfs/cacheio.c      |   12 ----
+ support/nfs/getfh.c        |  134 --------------------------------------------
+ support/nfs/nfsclient.c    |   34 -----------
+ support/nfs/nfsctl.c       |   32 -----------
+ support/nfs/nfsexport.c    |  134 --------------------------------------------
+ support/nfs/rmtab.c        |   21 -------
+ utils/exportfs/exportfs.c  |   84 +---------------------------
+ utils/mount/stropts.c      |   38 ++++++++++--
+ utils/mountd/auth.c        |   15 +----
+ utils/mountd/mountd.c      |   63 +++++----------------
+ utils/nfsd/nfsd.c          |   36 ++----------
+ utils/nfsd/nfssvc.c        |   26 ++-------
+ utils/nfsd/nfssvc.h        |    2 -
+ utils/nfsidmap/nfsidmap.c  |    6 --
+ utils/statd/statd.c        |    5 --
+ 24 files changed, 67 insertions(+), 1012 deletions(-)
+ delete mode 100644 support/export/nfsctl.c
+ delete mode 100644 support/export/rmtab.c
+ delete mode 100644 support/nfs/getfh.c
+ delete mode 100644 support/nfs/nfsclient.c
+ delete mode 100644 support/nfs/nfsctl.c
+ delete mode 100644 support/nfs/nfsexport.c
+
+--
+Signature
 
