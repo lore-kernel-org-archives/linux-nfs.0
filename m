@@ -1,15 +1,15 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:36597 "EHLO mx2.suse.de"
+Received: from mx2.suse.de ([195.135.220.15]:36611 "EHLO mx2.suse.de"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1753253AbcLBEAM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 1 Dec 2016 23:00:12 -0500
+        id S1753253AbcLBEAS (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 1 Dec 2016 23:00:18 -0500
 From: NeilBrown <neilb@suse.com>
 To: "J. Bruce Fields" <bfields@redhat.com>,
         Steve Dickson <SteveD@redhat.com>
 Date: Fri, 02 Dec 2016 14:58:30 +1100
-Subject: [PATCH 14/15] systemd: Remove the nfs-config.service
+Subject: [PATCH 15/15] Add nfs.systemd man page
 Cc: linux-nfs@vger.kernel.org
-Message-ID: <148065111026.28046.13765788515171931087.stgit@noble>
+Message-ID: <148065111043.28046.3858869219236614683.stgit@noble>
 In-Reply-To: <148065078775.28046.5506130555300891075.stgit@noble>
 References: <148065078775.28046.5506130555300891075.stgit@noble>
 MIME-Version: 1.0
@@ -17,273 +17,204 @@ Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Now that we have /etc/nfs.conf, a lot of configuration can be
-read directly.  So nfs-config isn't really needed any more.
-
-Some distributions allow command-line arguments for various
-daemons to be set in an environment file (/etc/sysconfig, /etc/defaults).
-Passing these through /etc/nfs.conf is not possible.
-
-Instead, a distro that needs this functionality can create drop-in
-files which select the required value.  As no commands are given
-default arguments by systemd unit files, the drop-in can just add
-distro-specific args.
-For example
-  /lib/systemd/system/nfs-mountd.service.d/local.conf
-   [Service]
-   EnvironmentFile=/etc/sysconfig/nfs
-   ExecStart=
-   ExecStart=/usr/sbin/rpc.mountd $RPCMOUNTDOPTS
-
-Note the need for the empty assignment to remove existing definitions
-first.
+This discusses some of the behaviors of the various
+unit files, and how best to work with them to achieve
+various results.
 
 Signed-off-by: NeilBrown <neilb@suse.com>
 ---
- configure.ac                     |    6 ------
- systemd/Makefile.am              |    1 -
- systemd/README                   |   22 +++++++++++++++-------
- systemd/nfs-blkmap.service       |    3 +--
- systemd/nfs-config.service.in    |   13 -------------
- systemd/nfs-idmapd.service       |    6 +-----
- systemd/nfs-mountd.service       |    6 +-----
- systemd/nfs-server.service       |    7 +------
- systemd/rpc-gssd.service.in      |    7 +------
- systemd/rpc-statd-notify.service |    6 +-----
- systemd/rpc-statd.service        |    6 +-----
- systemd/rpc-svcgssd.service      |    6 +-----
- 12 files changed, 23 insertions(+), 66 deletions(-)
- delete mode 100644 systemd/nfs-config.service.in
+ systemd/Makefile.am     |    4 +
+ systemd/nfs.systemd.man |  167 +++++++++++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 169 insertions(+), 2 deletions(-)
+ create mode 100644 systemd/nfs.systemd.man
 
-diff --git a/configure.ac b/configure.ac
-index 8a5aa2e5203b..b3388a62fe30 100644
---- a/configure.ac
-+++ b/configure.ac
-@@ -518,11 +518,6 @@ AC_SUBST([AM_CFLAGS], ["$my_am_cflags"])
- # Make sure that $ACLOCAL_FLAGS are used during a rebuild
- AC_SUBST([ACLOCAL_AMFLAGS], ["-I $ac_macro_dir \$(ACLOCAL_FLAGS)"])
- 
--# make libexecdir available for substituion in config files
--# 2 "evals" needed late to expand variable names.
--AC_SUBST([_libexecdir])
--AC_CONFIG_COMMANDS_PRE([eval eval _libexecdir=$libexecdir])
--
- # make _sysconfdir available for substituion in config files
- # 2 "evals" needed late to expand variable names.
- AC_SUBST([_sysconfdir])
-@@ -530,7 +525,6 @@ AC_CONFIG_COMMANDS_PRE([eval eval _sysconfdir=$sysconfdir])
- 
- AC_CONFIG_FILES([
- 	Makefile
--	systemd/nfs-config.service
- 	systemd/rpc-gssd.service
- 	linux-nfs/Makefile
- 	support/Makefile
 diff --git a/systemd/Makefile.am b/systemd/Makefile.am
-index b647ef00a0d1..b5ab157d728b 100644
+index b5ab157d728b..0d15b9f25ff8 100644
 --- a/systemd/Makefile.am
 +++ b/systemd/Makefile.am
-@@ -5,7 +5,6 @@ MAINTAINERCLEANFILES = Makefile.in
- unit_files =  \
-     nfs-client.target \
-     \
--    nfs-config.service \
-     nfs-mountd.service \
-     nfs-server.service \
-     nfs-utils.service \
-diff --git a/systemd/README b/systemd/README
-index 7c43df88438a..da23d6f63a91 100644
---- a/systemd/README
-+++ b/systemd/README
-@@ -19,8 +19,8 @@ by a suitable 'preset' setting:
-     can work (if no type is given, ".service" is assumed).
+@@ -36,8 +36,8 @@ endif
+ endif
  
-  nfs-client.target
--    If enabled, daemons needs for an nfs client are enabled.
--    This does *not* include rpc.statd.  the rpc-statd.service unit
-+    If enabled, daemons needed for an nfs client are enabled.
-+    This does *not* include rpc.statd.  The rpc-statd.service unit
-     is started by /usr/sbin/start-statd which mount.nfs will run
-     if statd is needed.
- 
-@@ -52,11 +52,19 @@ It cannot stop rpc.statd or rpc.gssd as they may be in use by the
- client and systemd cannot specify is two-pronged reverse dependency.
- (i.e. stop this unit if none of these units are running)
- 
--Distro specific commandline configuration can be provided by
--installing a script /usr/libexec/nfs-utils/nfs-utils_env.sh
--This should write /run/sysconfig/nfs-utils based on configuration
--information such as in /etc/sysconfig/nfs or /etc/defaults/nfs.
--It is run once by nfs-config.service.
-+Distro specific configuration can be included in /etc/nfs.conf, or
-+by providing drop-in files which replace the ExecStart line for a given
-+service, and possibly add an EnvironmentFile line.
-+
-+For example, if systemd/system/nfs-mountd.service.d/local.conf
-+contained
-+  [Service]
-+  EnvironmentFile=/etc/sysconfig/nfs
-+  ExecStart=
-+  ExecStart=/usr/sbin/rpc.mountd $RPCMOUNTDOPTS
-+
-+then the setting of RPCMOUNTDOPTS in /etc/sysconfig/nfs would be
-+passed to rpc.mountd.
- 
- rpc.gssd and rpc.svcgssd are assumed to be needed if /etc/krb5.keytab
- is present.
-diff --git a/systemd/nfs-blkmap.service b/systemd/nfs-blkmap.service
-index ddbf4e91da46..ddc324e70679 100644
---- a/systemd/nfs-blkmap.service
-+++ b/systemd/nfs-blkmap.service
-@@ -10,8 +10,7 @@ PartOf=nfs-utils.service
- [Service]
- Type=forking
- PIDFile=/var/run/blkmapd.pid
--EnvironmentFile=-/run/sysconfig/nfs-utils
--ExecStart=/usr/sbin/blkmapd $BLKMAPDARGS
-+ExecStart=/usr/sbin/blkmapd
- 
- [Install]
- WantedBy=nfs-client.target
-diff --git a/systemd/nfs-config.service.in b/systemd/nfs-config.service.in
-deleted file mode 100644
-index e89dc54209aa..000000000000
---- a/systemd/nfs-config.service.in
-+++ /dev/null
-@@ -1,13 +0,0 @@
--[Unit]
--Description=Preprocess NFS configuration
--After=local-fs.target
--DefaultDependencies=no
+ man5_MANS	= nfs.conf.man
 -
--[Service]
--Type=oneshot
--# This service needs to run any time any nfs service
--# is started, so changes to local config files get
--# incorporated.  Having "RemainAfterExit=no" (the default)
--# ensures this happens.
--RemainAfterExit=no
--ExecStart=@_libexecdir@/nfs-utils/nfs-utils_env.sh
-diff --git a/systemd/nfs-idmapd.service b/systemd/nfs-idmapd.service
-index df3dd9d8a856..acca86b683fb 100644
---- a/systemd/nfs-idmapd.service
-+++ b/systemd/nfs-idmapd.service
-@@ -6,10 +6,6 @@ After=var-lib-nfs-rpc_pipefs.mount local-fs.target
+-EXTRA_DIST = $(unit_files) $(man5_MANS)
++man7_MANS	= nfs.systemd.man
++EXTRA_DIST = $(unit_files) $(man5_MANS) $(man7_MANS)
  
- BindsTo=nfs-server.service
- 
--Wants=nfs-config.service
--After=nfs-config.service
--
- [Service]
--EnvironmentFile=-/run/sysconfig/nfs-utils
- Type=forking
--ExecStart=/usr/sbin/rpc.idmapd $RPCIDMAPDARGS
-+ExecStart=/usr/sbin/rpc.idmapd
-diff --git a/systemd/nfs-mountd.service b/systemd/nfs-mountd.service
-index 8a39f3e21184..15e828bc0d3c 100644
---- a/systemd/nfs-mountd.service
-+++ b/systemd/nfs-mountd.service
-@@ -6,10 +6,6 @@ After=proc-fs-nfsd.mount
- After=network.target local-fs.target
- BindsTo=nfs-server.service
- 
--Wants=nfs-config.service
--After=nfs-config.service
--
- [Service]
--EnvironmentFile=-/run/sysconfig/nfs-utils
- Type=forking
--ExecStart=/usr/sbin/rpc.mountd $RPCMOUNTDARGS
-+ExecStart=/usr/sbin/rpc.mountd
-diff --git a/systemd/nfs-server.service b/systemd/nfs-server.service
-index 196c81849ff4..5be5de65cf8a 100644
---- a/systemd/nfs-server.service
-+++ b/systemd/nfs-server.service
-@@ -16,16 +16,11 @@ Before= rpc-statd-notify.service
- Wants=auth-rpcgss-module.service
- After=rpc-gssd.service gssproxy.service rpc-svcgssd.service
- 
--Wants=nfs-config.service
--After=nfs-config.service
--
- [Service]
--EnvironmentFile=-/run/sysconfig/nfs-utils
--
- Type=oneshot
- RemainAfterExit=yes
- ExecStartPre=/usr/sbin/exportfs -r
--ExecStart=/usr/sbin/rpc.nfsd $RPCNFSDARGS
-+ExecStart=/usr/sbin/rpc.nfsd
- ExecStop=/usr/sbin/rpc.nfsd 0
- ExecStopPost=/usr/sbin/exportfs -au
- ExecStopPost=/usr/sbin/exportfs -f
-diff --git a/systemd/rpc-gssd.service.in b/systemd/rpc-gssd.service.in
-index 1a7911cb8f50..b35302740e37 100644
---- a/systemd/rpc-gssd.service.in
-+++ b/systemd/rpc-gssd.service.in
-@@ -9,11 +9,6 @@ ConditionPathExists=@_sysconfdir@/krb5.keytab
- 
- PartOf=nfs-utils.service
- 
--Wants=nfs-config.service
--After=nfs-config.service
--
- [Service]
--EnvironmentFile=-/run/sysconfig/nfs-utils
--
- Type=forking
--ExecStart=/usr/sbin/rpc.gssd $GSSDARGS
-+ExecStart=/usr/sbin/rpc.gssd
-diff --git a/systemd/rpc-statd-notify.service b/systemd/rpc-statd-notify.service
-index 89ba36cf6d61..7bfc9b16d782 100644
---- a/systemd/rpc-statd-notify.service
-+++ b/systemd/rpc-statd-notify.service
-@@ -10,10 +10,6 @@ After=nfs-server.service
- 
- PartOf=nfs-utils.service
- 
--Wants=nfs-config.service
--After=nfs-config.service
--
- [Service]
--EnvironmentFile=-/run/sysconfig/nfs-utils
- Type=forking
--ExecStart=-/usr/sbin/sm-notify $SMNOTIFYARGS
-+ExecStart=-/usr/sbin/sm-notify
-diff --git a/systemd/rpc-statd.service b/systemd/rpc-statd.service
-index d5392b7cff4d..60d600f2fae6 100644
---- a/systemd/rpc-statd.service
-+++ b/systemd/rpc-statd.service
-@@ -7,12 +7,8 @@ After=network.target nss-lookup.target rpcbind.socket
- 
- PartOf=nfs-utils.service
- 
--Wants=nfs-config.service
--After=nfs-config.service
--
- [Service]
- Environment=RPC_STATD_NO_NOTIFY=1
--EnvironmentFile=-/run/sysconfig/nfs-utils
- Type=forking
- PIDFile=/var/run/rpc.statd.pid
--ExecStart=/usr/sbin/rpc.statd $STATDARGS
-+ExecStart=/usr/sbin/rpc.statd
-diff --git a/systemd/rpc-svcgssd.service b/systemd/rpc-svcgssd.service
-index 41177b60d141..7187e3c35a41 100644
---- a/systemd/rpc-svcgssd.service
-+++ b/systemd/rpc-svcgssd.service
-@@ -11,10 +11,6 @@ ConditionPathExists=|!/run/gssproxy.pid
- ConditionPathExists=|!/proc/net/rpc/use-gss-proxy
- ConditionPathExists=/etc/krb5.keytab
- 
--Wants=nfs-config.service
--After=nfs-config.service
--
- [Service]
--EnvironmentFile=-/run/sysconfig/nfs-utils
- Type=forking
--ExecStart=/usr/sbin/rpc.svcgssd $SVCGSSDARGS
-+ExecStart=/usr/sbin/rpc.svcgssd
+ unit_dir = /usr/lib/systemd/system
+ generator_dir = /usr/lib/systemd/system-generators
+diff --git a/systemd/nfs.systemd.man b/systemd/nfs.systemd.man
+new file mode 100644
+index 000000000000..01801ebb5f2c
+--- /dev/null
++++ b/systemd/nfs.systemd.man
+@@ -0,0 +1,167 @@
++.TH NFS.SYSTEMD 7
++.SH NAME
++nfs.systemd \- managing NFS services through systemd.
++.SH SYNOPSIS
++nfs-utils.service
++.br
++nfs-server.service
++.br
++nfs-client.target
++.br
++.I etc
++.SH DESCRIPTION
++The
++.I nfs-utils
++package provides a suite of
++.I systemd
++unit files which allow the various services to be started and
++managed.  These unit files ensure that the services are started in the
++correct order, and the prerequisites are active before dependant
++services start.  As there are quite  few unit files, it is not
++immediately obvious how best to achieve certain results.  The
++following subsections attempt to cover the issues that are most likely
++to come up.
++.SS Configuration
++The standard systemd unit files do not provide any easy way to pass
++any command line arguments to daemons so as to configure their
++behavior.  In many case such configuration can be performed by making
++changes to
++.I /etc/nfs.conf
++or other configuration files.  When that is not convenient, a
++distribution might provide systemd "drop-in" files which replace the
++.B ExecStart=
++setting to start the program with different arguments.  For example a
++drop-in file
++.B systemd/system/nfs-mountd.service.d/local.conf
++containing
++.RS
++.nf
++[Service]
++EnvironmentFile=/etc/sysconfig/nfs
++ExecStart=
++ExecStart= /usr/sbin/rpc.mountd $RPCMOUNTDOPTS
++.fi
++.RE
++would cause the
++.B nfs-mountd.service
++unit to run the
++.I rpc.mountd
++program using, for arguments, the value given for
++.B RPCMOUNTDOPTS
++in
++.IR /etc/sysconfig/nfs .
++This allows for seamless integration with existing configuration
++tools.
++.SS Enabling unit files
++There are three unit files which are designed to be manually enabled.
++All others are automatically run as required.  The three are:
++.TP
++.B nfs-client.target
++This should be enabled on any host which ever serves as an NFS client.
++There is little cost in transparently enabling it whenever NFS client
++software is installed.
++.TP
++.B nfs-server.service
++This must be enabled to provide NFS service to clients.  It starts and
++configures the required daemons in the required order.
++.TP
++.B nfs-blkmap.service
++The
++.B blkmapd
++daemon is only required on NFS clients which are using pNFS (parallel
++NFS), and particularly using the
++.B blocklayout
++layout protocol.  If you might use this particular extension to NFS,
++the
++.B nfs-blkmap.service
++unit should be enabled.
++.PP
++Several other units which might be considered to be optional, such as
++.I rpc-gssd.service
++are careful to only start if the required configuration file exists.
++.I rpc-gsdd.service
++will not start if the
++.I krb5.keytab
++file does not exist (typically in
++.IR /etc ).
++.SS Restarting NFS services
++Most NFS daemons can be restarted at any time.  They will reload any
++state that they need, and continue servicing requests.  This is rarely
++necessary though.
++.PP
++When configuration changesare make, it can be hard to know exactly
++which services need to be restarted to ensure that the configuration
++takes effect.  The simplest approach, which is often the best, is to
++restart everything.  To help with this, the
++.B nfs-utils.service
++unit is provided.  It declares appropriate dependencies with other
++unit files so that
++.RS
++.B systemctl restart nfs-utils
++.RE
++will restart all NFS daemons that are running.  This will cause all
++configuration changes to take effect
++.I except
++for changes to mount options lists in
++.I /etc/fstab
++or
++.IR /etc/nfsmount.conf .
++Mount options can only be changed by unmounting and remounting
++filesystem.  This can be a disruptive operation so it should only be
++done when the value justifies the cost.  The command
++.RS
++.B umount -a -t nfs; mount -a -t nfs
++.RE
++should unmount and remount all NFS filesystems.
++.SS Masking unwanted services
++Rarely there may be a desire to prohibit some services from running
++even though there are normally part of a working NFS system.  This may
++be needed to reduce system load to an absolute minimum, or to reduce
++attack surface by not running daemons that are not absolutely
++required.
++.PP
++Two particular services which this can apply to are
++.I rpcbind
++and
++.IR idmapd .
++.I rpcbind
++is not part of the
++.I nfs-utils
++package, but it used by several NFS services.  However it is
++.B not
++needed when only NFSv4 is in use.  If a site will never use NFSv3 (or
++NFSv2) and does not want
++.I rpcbind
++to be running, the correct approach is to run
++.RS
++.B systemctl mask rpcbind
++.RE
++This will disable
++.IR rpcbind ,
++and the various NFS services which depend on it (and are only needed
++for NFSv3) will refuse to start, without interfering with the
++operation of NFSv4 services.  In particular,
++.I rpc.statd
++will not run when
++.I rpcbind
++is masked.
++.PP
++.I idmapd
++is only needed for NFSv4, and even then is not needed when the client
++and server agree to use user-ids rather than user-names to identify the
++owners of files.  If
++.I idmapd
++is not needed and not wanted, it can be masked with
++.RS
++.B systemctl mask idmapd
++.RE
++.SH FILES
++/etc/nfs.conf
++.br
++/etc/nfsmount.conf
++.br
++/etc/idmapd.conf
++.SH SEE ALSO
++.BR systemd.unit (5),
++.BR nfs.conf (5),
++.BR nfsmount.conf (5).
 
 
