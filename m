@@ -1,111 +1,60 @@
-Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qt0-f181.google.com ([209.85.216.181]:35000 "EHLO
-        mail-qt0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S933132AbcLBOXb (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 2 Dec 2016 09:23:31 -0500
-Received: by mail-qt0-f181.google.com with SMTP id c47so252976618qtc.2
-        for <linux-nfs@vger.kernel.org>; Fri, 02 Dec 2016 06:23:31 -0800 (PST)
+Return-Path: <trondmy@primarydata.com>
+From: Trond Myklebust <trondmy@primarydata.com>
+To: Benjamin Coddington <bcodding@redhat.com>
+CC: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 2/3] NFS: Be more targeted about readdirplus use when
+ doing lookup/revalidation
+Date: Fri, 2 Dec 2016 14:32:21 +0000
+Message-ID: <86F36DD3-BFF3-463E-85B9-1B1B43AE976F@primarydata.com>
+References: <1479574497-38268-1-git-send-email-trond.myklebust@primarydata.com>
+ <1479574497-38268-2-git-send-email-trond.myklebust@primarydata.com>
+ <1479574497-38268-3-git-send-email-trond.myklebust@primarydata.com>
+ <28E39796-E929-4D65-A6F6-D0AF803AB390@redhat.com>
+ <1480625258.10526.1.camel@primarydata.com>
+ <60326804-0548-43C5-94B4-97FE1AE4B16B@redhat.com>
+In-Reply-To: <60326804-0548-43C5-94B4-97FE1AE4B16B@redhat.com>
 MIME-Version: 1.0
-In-Reply-To: <20161202134638.4ghyb5wnnwata4ec@ics.muni.cz>
-References: <20161128183757.d5pz64tsigmaxdc7@ics.muni.cz> <645d0f56-f357-6c58-5e2f-e85bbae93db1@RedHat.com>
- <20161129184843.jrwbnytggrz6kdir@ics.muni.cz> <2ff5b760-a3ca-9ab8-d1a8-efe5f36aaaf3@RedHat.com>
- <20161202114134.rvzqptnsqo3odxay@ics.muni.cz> <CAHVgHyU6LQak3O4ybR0H3whWCKUdfz2bxLvEGi9uFM1EX+e=Eg@mail.gmail.com>
- <20161202134638.4ghyb5wnnwata4ec@ics.muni.cz>
-From: Andy Adamson <androsadamson@gmail.com>
-Date: Fri, 2 Dec 2016 09:23:30 -0500
-Message-ID: <CAHVgHyVWqNZv55dH3hhZ-0XDsd4c79OW_R6Ze02uhv-nqePpPQ@mail.gmail.com>
-Subject: Fwd: RFC rpc.gssd enhancement
-To: NFS list <linux-nfs@vger.kernel.org>
 Content-Type: text/plain; charset=UTF-8
-Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-'cc the kerne list
-
-
--->Andy
-
-On Fri, Dec 2, 2016 at 8:46 AM, Lukas Hejtmanek <xhejtman@gmail.com> wrote:
-> On Fri, Dec 02, 2016 at 08:26:33AM -0500, Andy Adamson wrote:
->> That is not saying much. AUTH_SYS is _completely_ insecure. RPCSEC_GSS
->> with Kerberos is as secure as we get. Watering down Kerberos security
->> is silly. AFAICS, the only reason kinit of the user to re-establish
->> the Kerberos GSS context for NFS is the fact that the result of the
->> kinit is stored in NFS under Kerberos. That is a silly design!
->
-> no, it is not, that is misunderstanding. kinit does not store anything in
-> $HOME. Tickets are in /tmp (or maybe in $TMPDIR). However, knit searches =
-for
-> ~/.krb5/config at start and ~ is Kerberzied. Maybe silly design, but not =
-mine
-> but kerberos guys (MIT ones).
-
-So, how does sshd allow the user to kinit on login?
-Here are the steps to allow the user to access the NFS kerberized share:
-
-1) machine has NFS mounted /home using kerberos authentication
-2) user logs in, sshd creates krb ticket ($HOME/.k5login needs to be world
-readable to allow kerberized access, e.g., using kerberos ticket)
-
-Why does the user kinit (e.g. the user logs in) allow sshd to create
-the initial krb ticket in $HOME/<whatever> yet the user kinit to renew
-said krb ticket fail?
-
->
->>
->> >> True.
->> >
->> > So, I was asking, if I provide such patch, will it be accepted into ma=
-inline
->> > nfs-utils?
->>
->> It shouldn't be. I strongly object. Just to be clear, here is what you
->> are asking:
->>
->> >>So, I think in this case, I would like to see rpc.gssd uses host keyta=
-b while
->> >>user's ticket is not available, which maps to nobody/nogroup,
-
-Maybe the NFS client machine key maps to nobody/nogroup in your
-environment, but it does not in others. Other environments can (and
-do) map the machine cred to any UID they want - including root.
-
-user ssh's into the NFS client machine.
-
-
->>  but kinit should succeed.
->>
->> If the above were implemented - an attacker that has rooted the  NFS
->> client machine, or got control of gssd in some way - which means the
->> attacker has the NFS client machine key, can kinit as _any_ user at
->> _any_ time and access _any_ users kerberos NFS share accessible from
->> the client machine.
->>
->> That is a huge security hole and a very large security degradation!!
->
-> again, huge misunderstanding. The thing I want is that user without his/h=
-er
-> ticket is mapped to nobody/nogroup identity.
-
-In your environment, UID 0 on the client machine (the machine
-credential in the host keytab) is mapped to nobody/nobody when
-accessing the NFS server.
-
-
-
-> I do not want any shortcut to
-> fake user ticket or something. I just want the user without ticket to be
-> allowed access kerberized home with nfs/$HOSTNAME identity, i.e., the sam=
-e
-> identity as root user uses. So potential attacker gets nothing more than
-> already has if he escalates root access. And yes, the attacker has limite=
-d
-> access to kerberized share if only user account is compromised. But this =
-is
-> the decision of NFS client machine administrator. If root access is
-> compromised (still, it is gssd specific and nothing prevents the attacker=
- to
-> build such patch on his own), there is nothing that attackers get.
->
-> --
-> Luk=C3=A1=C5=A1 Hejtm=C3=A1nek
+DQo+IE9uIERlYyAyLCAyMDE2LCBhdCAwODo1NiwgQmVuamFtaW4gQ29kZGluZ3RvbiA8YmNvZGRp
+bmdAcmVkaGF0LmNvbT4gd3JvdGU6DQo+IA0KPiBPbiAxIERlYyAyMDE2LCBhdCAxNTo0NywgVHJv
+bmQgTXlrbGVidXN0IHdyb3RlOg0KPiANCj4+IE9uIFdlZCwgMjAxNi0xMS0zMCBhdCAxNDowOSAt
+MDUwMCwgQmVuamFtaW4gQ29kZGluZ3RvbiB3cm90ZToNCj4+PiAuLiB0aGlzIG9uZSBicmVha3Mg
+dGhpbmdzIGFnYWluOg0KPj4+IA0KPj4+IE9uIDE5IE5vdiAyMDE2LCBhdCAxMTo1NCwgVHJvbmQg
+TXlrbGVidXN0IHdyb3RlOg0KPj4+IA0KPj4+PiAgc3RhdGljDQo+Pj4+ICB2b2lkIG5mc19hZHZp
+c2VfdXNlX3JlYWRkaXJwbHVzKHN0cnVjdCBpbm9kZSAqZGlyKQ0KPj4+PiAgew0KPj4+PiAtCXNl
+dF9iaXQoTkZTX0lOT19BRFZJU0VfUkRQTFVTLCAmTkZTX0koZGlyKS0+ZmxhZ3MpOw0KPj4+PiAr
+CXN0cnVjdCBuZnNfaW5vZGUgKm5mc2kgPSBORlNfSShkaXIpOw0KPj4+PiArDQo+Pj4+ICsJaWYg
+KG5mc19zZXJ2ZXJfY2FwYWJsZShkaXIsIE5GU19DQVBfUkVBRERJUlBMVVMpICYmDQo+Pj4+ICsJ
+ICAgICFsaXN0X2VtcHR5KCZuZnNpLT5vcGVuX2ZpbGVzKSkgew0KPj4+PiArCQlzZXRfYml0KE5G
+U19JTk9fQURWSVNFX1JEUExVUywgJm5mc2ktPmZsYWdzKTsNCj4+Pj4gKwkJaW52YWxpZGF0ZV9t
+YXBwaW5nX3BhZ2VzKGRpci0+aV9tYXBwaW5nLCAwLCAtMSk7DQo+Pj4+ICsJfQ0KPj4+PiAgfQ0K
+Pj4+IA0KPj4+IFNvIGV2ZXJ5IHRpbWUgYWR2aXNlX3VzZV9yZWFkZGlycGx1cyBpdCBkcm9wcyB0
+aGUgbWFwcGluZy4uIGJ1dCB3aGF0IA0KPj4+IGFib3V0DQo+Pj4gc3Vic2VxdWVudCBjYWxscyBp
+bnRvIG5mc19yZWFkZGlyKCkgdG8gZ2V0IHRoZSBuZXh0IGJhdGNoIG9mDQo+Pj4gZW50cmllcz8g
+IA0KPj4+IEZvcg0KPj4+IHRoZSBscyAtbCBjYXNlLCB3ZSB3YW50IHRvIGtlZXAgc2V0dGluZyBO
+RlNfSU5PX0FEVklTRV9SRFBMVVMsIGJ1dCB3ZQ0KPj4+IHNob3VsZG4ndCBzdGFydCBvdmVyIGZp
+bGxpbmcgdGhlIG1hcHBpbmcgZnJvbSB0aGUgYmVnaW5uaW5nIGFnYWluLg0KPj4gDQo+PiBIb3cg
+ZG8gSSBlbnN1cmUgdGhhdCB0aGUgcmVhZGRpciBpc24ndCBiZWluZyBzZXJ2ZWQgZnJvbSBjYWNo
+ZSwgaWYgSQ0KPj4gZG9uJ3QgaW52YWxpZGF0ZSB0aGUgbWFwcGluZz8NCj4gDQo+IFRoZSB3YXkg
+aXQgaXMgbm93LiAgSXNuJ3QgYWR2aXNlX3VzZV9yZWFkZGlycGx1cygpIGp1c3QgYSBtYXJrZXIg
+dG8gc2F5DQo+ICJjb250aW51ZSB0byB1c2UgcmVhZGRpcnBsdXMiIGFmdGVyIG5mc19mb3JjZV91
+c2VfcmVhZGRpcnBsdXMoKSBoYXMNCj4gaW52YWxpZGF0ZWQgdGhlIG1hcHBpbmc/DQoNClNvLCB5
+ZXMuIEkgd2FzIGNvbnNpZGVyaW5nIHJlbmFtaW5nIHRoZSBmdW5jdGlvbnMgaW4gdGhlIHYyIHBh
+dGNoIHNlcmllcywgYnV0IEkgY291bGRu4oCZdCByZWFsbHkgZmluZCBhIGdvb2QgbmFtZS4NCklu
+IGVzc2VuY2U6DQotIG5mc19mb3JjZV91c2VfcmVhZGRpcnBsdXMoKSBpcyBoaW50aW5nIHRvIHJl
+YWRkaXIgdGhhdCB3ZSBoYWQgYSBjYWNoZSBtaXNzLCBhbmQgc28gd2Ugc2hvdWxkIGNsZWFyIHRo
+ZSByZWFkaXIgY2FjaGUgYW5kIHVzZSByZWFkZGlycGx1cyBpbiBvcmRlciB0byBwb3B1bGF0ZSB0
+aGUgY2FjaGUuDQotIG5mc19hZHZpc2VfdXNlX3JlYWRkaXJwbHVzKCkgaXMgaGludGluZyB0aGF0
+IHdlIGhhZCBhIGNhY2hlIGhpdCwgYW5kIHNvIHdlIHNob3VsZCBjb250aW51ZSB0byB1c2UgcmVh
+ZGRpcnBsdXMNCg0KPiANCj4+IFRoZSBpbnRlbnRpb24gb2YgdGhlIHBhdGNoIGlzIHRvIGVuc3Vy
+ZSB0aGF0IHdlIG9ubHkgY2FsbCB0aGlzIG9uIGEgZGNhY2hlDQo+PiBvciBpbm9kZSBhdHRyaWJ1
+dGUgY2FjaGUgbWlzcy4NCj4gDQo+IEkgdGhpbmsgaXQgYWxzbyBuZWVkcyB0byBiZSBjYWxsZWQg
+d2hlbiB3ZSBkZXRlY3QgaWYgYSBjaGlsZCBvZiB0aGUNCj4gZGlyZWN0b3J5IGlzIGxvb2tlZCB1
+cC9yZXZhbGlkYXRlZCBpbiBvcmRlciB0byBzZXQgTkZTX0lOT19BRFZJU0VfUkRQTFVTDQo+IGFn
+YWluLiAgT3RoZXJ3aXNlIHdlIGxvc2UgdGhlIG9wdGltaXphdGlvbiBpbiBjb21taXQgMzExMzI0
+YWQxNzEzLg0KPiANCj4gTWF5YmUgSSBhbSBqdXN0IHJlYWxseSBjb25mdXNlZC4uDQoNCk5vLCBJ
+IHRoaW5rIHRoYXQgaXMgY29ycmVjdC4gSXQganVzdCBuZWVkcyB0byBiZSBkb25lIG1vcmUgY29u
+c2lzdGVudGx5LiBBZ2Fpbiwgc2VlIHRoZSB2MiBwYXRjaCBzZXJpZXMNCg0KQ2hlZXJzDQogIFRy
+b25k
