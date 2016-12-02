@@ -1,100 +1,111 @@
-Return-Path: <trondmy@gmail.com>
-Sender: Trond Myklebust <trondmy@gmail.com>
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Benjamin Coddington <bcodding@redhat.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v2 3/3] NFS: Allow getattr to also report readdirplus cache hits
-Date: Fri,  2 Dec 2016 09:21:35 -0500
-Message-Id: <20161202142135.11515-4-trond.myklebust@primarydata.com>
-In-Reply-To: <20161202142135.11515-3-trond.myklebust@primarydata.com>
-References: <20161202142135.11515-1-trond.myklebust@primarydata.com>
- <20161202142135.11515-2-trond.myklebust@primarydata.com>
- <20161202142135.11515-3-trond.myklebust@primarydata.com>
+Return-Path: <linux-nfs-owner@vger.kernel.org>
+Received: from mail-qt0-f181.google.com ([209.85.216.181]:35000 "EHLO
+        mail-qt0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S933132AbcLBOXb (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 2 Dec 2016 09:23:31 -0500
+Received: by mail-qt0-f181.google.com with SMTP id c47so252976618qtc.2
+        for <linux-nfs@vger.kernel.org>; Fri, 02 Dec 2016 06:23:31 -0800 (PST)
+MIME-Version: 1.0
+In-Reply-To: <20161202134638.4ghyb5wnnwata4ec@ics.muni.cz>
+References: <20161128183757.d5pz64tsigmaxdc7@ics.muni.cz> <645d0f56-f357-6c58-5e2f-e85bbae93db1@RedHat.com>
+ <20161129184843.jrwbnytggrz6kdir@ics.muni.cz> <2ff5b760-a3ca-9ab8-d1a8-efe5f36aaaf3@RedHat.com>
+ <20161202114134.rvzqptnsqo3odxay@ics.muni.cz> <CAHVgHyU6LQak3O4ybR0H3whWCKUdfz2bxLvEGi9uFM1EX+e=Eg@mail.gmail.com>
+ <20161202134638.4ghyb5wnnwata4ec@ics.muni.cz>
+From: Andy Adamson <androsadamson@gmail.com>
+Date: Fri, 2 Dec 2016 09:23:30 -0500
+Message-ID: <CAHVgHyVWqNZv55dH3hhZ-0XDsd4c79OW_R6Ze02uhv-nqePpPQ@mail.gmail.com>
+Subject: Fwd: RFC rpc.gssd enhancement
+To: NFS list <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-If the use called stat() on an 'ls -l' workload, and the attribute
-cache was successfully revalidate by READDIRPLUS, then we want to
-report that back so that the readdir code continues to use
-readdirplus.
+'cc the kerne list
 
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
----
- fs/nfs/dir.c      |  1 -
- fs/nfs/inode.c    | 21 +++++++++++++++++----
- fs/nfs/internal.h |  1 +
- 3 files changed, 18 insertions(+), 5 deletions(-)
 
-diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
-index 22835150579a..f5702457c052 100644
---- a/fs/nfs/dir.c
-+++ b/fs/nfs/dir.c
-@@ -459,7 +459,6 @@ bool nfs_use_readdirplus(struct inode *dir, struct dir_context *ctx)
-  * use of readdirplus to accelerate any future lookups in the same
-  * directory.
-  */
--static
- void nfs_advise_use_readdirplus(struct inode *dir)
- {
- 	struct nfs_inode *nfsi = NFS_I(dir);
-diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
-index d79e0bac836e..75f5a9cb2e66 100644
---- a/fs/nfs/inode.c
-+++ b/fs/nfs/inode.c
-@@ -634,15 +634,28 @@ void nfs_setattr_update_inode(struct inode *inode, struct iattr *attr,
- }
- EXPORT_SYMBOL_GPL(nfs_setattr_update_inode);
- 
--static void nfs_request_parent_use_readdirplus(struct dentry *dentry)
-+static void nfs_readdirplus_parent_cache_miss(struct dentry *dentry)
- {
- 	struct dentry *parent;
- 
-+	if (!nfs_server_capable(d_inode(dentry), NFS_CAP_READDIRPLUS))
-+		return;
- 	parent = dget_parent(dentry);
- 	nfs_force_use_readdirplus(d_inode(parent));
- 	dput(parent);
- }
- 
-+static void nfs_readdirplus_parent_cache_hit(struct dentry *dentry)
-+{
-+	struct dentry *parent;
-+
-+	if (!nfs_server_capable(d_inode(dentry), NFS_CAP_READDIRPLUS))
-+		return;
-+	parent = dget_parent(dentry);
-+	nfs_advise_use_readdirplus(d_inode(parent));
-+	dput(parent);
-+}
-+
- static bool nfs_need_revalidate_inode(struct inode *inode)
- {
- 	if (NFS_I(inode)->cache_validity &
-@@ -683,10 +696,10 @@ int nfs_getattr(struct vfsmount *mnt, struct dentry *dentry, struct kstat *stat)
- 	if (need_atime || nfs_need_revalidate_inode(inode)) {
- 		struct nfs_server *server = NFS_SERVER(inode);
- 
--		if (server->caps & NFS_CAP_READDIRPLUS)
--			nfs_request_parent_use_readdirplus(dentry);
-+		nfs_readdirplus_parent_cache_miss(dentry);
- 		err = __nfs_revalidate_inode(server, inode);
--	}
-+	} else
-+		nfs_readdirplus_parent_cache_hit(dentry);
- 	if (!err) {
- 		generic_fillattr(inode, stat);
- 		stat->ino = nfs_compat_user_ino64(NFS_FILEID(inode));
-diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
-index 4622d5f18e35..6b79c2ca9b9a 100644
---- a/fs/nfs/internal.h
-+++ b/fs/nfs/internal.h
-@@ -344,6 +344,7 @@ extern struct nfs_client *nfs_init_client(struct nfs_client *clp,
- 			   const struct nfs_client_initdata *);
- 
- /* dir.c */
-+extern void nfs_advise_use_readdirplus(struct inode *dir);
- extern void nfs_force_use_readdirplus(struct inode *dir);
- extern unsigned long nfs_access_cache_count(struct shrinker *shrink,
- 					    struct shrink_control *sc);
--- 
-2.9.3
+-->Andy
+
+On Fri, Dec 2, 2016 at 8:46 AM, Lukas Hejtmanek <xhejtman@gmail.com> wrote:
+> On Fri, Dec 02, 2016 at 08:26:33AM -0500, Andy Adamson wrote:
+>> That is not saying much. AUTH_SYS is _completely_ insecure. RPCSEC_GSS
+>> with Kerberos is as secure as we get. Watering down Kerberos security
+>> is silly. AFAICS, the only reason kinit of the user to re-establish
+>> the Kerberos GSS context for NFS is the fact that the result of the
+>> kinit is stored in NFS under Kerberos. That is a silly design!
+>
+> no, it is not, that is misunderstanding. kinit does not store anything in
+> $HOME. Tickets are in /tmp (or maybe in $TMPDIR). However, knit searches =
+for
+> ~/.krb5/config at start and ~ is Kerberzied. Maybe silly design, but not =
+mine
+> but kerberos guys (MIT ones).
+
+So, how does sshd allow the user to kinit on login?
+Here are the steps to allow the user to access the NFS kerberized share:
+
+1) machine has NFS mounted /home using kerberos authentication
+2) user logs in, sshd creates krb ticket ($HOME/.k5login needs to be world
+readable to allow kerberized access, e.g., using kerberos ticket)
+
+Why does the user kinit (e.g. the user logs in) allow sshd to create
+the initial krb ticket in $HOME/<whatever> yet the user kinit to renew
+said krb ticket fail?
+
+>
+>>
+>> >> True.
+>> >
+>> > So, I was asking, if I provide such patch, will it be accepted into ma=
+inline
+>> > nfs-utils?
+>>
+>> It shouldn't be. I strongly object. Just to be clear, here is what you
+>> are asking:
+>>
+>> >>So, I think in this case, I would like to see rpc.gssd uses host keyta=
+b while
+>> >>user's ticket is not available, which maps to nobody/nogroup,
+
+Maybe the NFS client machine key maps to nobody/nogroup in your
+environment, but it does not in others. Other environments can (and
+do) map the machine cred to any UID they want - including root.
+
+user ssh's into the NFS client machine.
+
+
+>>  but kinit should succeed.
+>>
+>> If the above were implemented - an attacker that has rooted the  NFS
+>> client machine, or got control of gssd in some way - which means the
+>> attacker has the NFS client machine key, can kinit as _any_ user at
+>> _any_ time and access _any_ users kerberos NFS share accessible from
+>> the client machine.
+>>
+>> That is a huge security hole and a very large security degradation!!
+>
+> again, huge misunderstanding. The thing I want is that user without his/h=
+er
+> ticket is mapped to nobody/nogroup identity.
+
+In your environment, UID 0 on the client machine (the machine
+credential in the host keytab) is mapped to nobody/nobody when
+accessing the NFS server.
+
+
+
+> I do not want any shortcut to
+> fake user ticket or something. I just want the user without ticket to be
+> allowed access kerberized home with nfs/$HOSTNAME identity, i.e., the sam=
+e
+> identity as root user uses. So potential attacker gets nothing more than
+> already has if he escalates root access. And yes, the attacker has limite=
+d
+> access to kerberized share if only user account is compromised. But this =
+is
+> the decision of NFS client machine administrator. If root access is
+> compromised (still, it is gssd specific and nothing prevents the attacker=
+ to
+> build such patch on his own), there is nothing that attackers get.
+>
+> --
+> Luk=C3=A1=C5=A1 Hejtm=C3=A1nek
