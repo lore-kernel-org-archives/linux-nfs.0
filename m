@@ -1,74 +1,48 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:45349 "EHLO mx2.suse.de"
+Received: from mx2.suse.de ([195.135.220.15]:45362 "EHLO mx2.suse.de"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751388AbcLBBKG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 1 Dec 2016 20:10:06 -0500
+        id S1751388AbcLBBKM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 1 Dec 2016 20:10:12 -0500
 From: NeilBrown <neilb@suse.com>
 To: Steve Dickson <SteveD@redhat.com>
 Date: Fri, 02 Dec 2016 12:09:43 +1100
-Subject: [PATCH 0/4] 4 assorted nfs-utils patches
+Subject: [PATCH 1/4] mount: don't hide temporary error code on timeout.
 Cc: linux-nfs@vger.kernel.org
-Message-ID: <148064084082.9179.6570593128436337540.stgit@noble>
+Message-ID: <148064098372.9179.7884661059252581625.stgit@noble>
+In-Reply-To: <148064084082.9179.6570593128436337540.stgit@noble>
+References: <148064084082.9179.6570593128436337540.stgit@noble>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-First 2 are a repost of two I posted yesterday, with a small change
-following the response from Steve.
+If a mount attempt times out due to repeated non-permanent errors, we
+always report ETIMEDOUT rather than the actual error.
+Errors like "ECONNREFUSED" or "EHOSTUNREACH" or "ESTALE" might be more
+useful than the generic "ETIMEDOUT".
 
-Third removes usage of the old nfsctl systemcall (which isn't
-available in current kernels, and probably hasn't been used by anyone
-in years).
+So preserve the error code.
 
-The last cleans up some code that annoyed my while I was working on
-something else.
-
-Thanks,
-NeilBrown
-
-
+Signed-off-by: NeilBrown <neilb@suse.com>
 ---
+ utils/mount/stropts.c |    4 +---
+ 1 file changed, 1 insertion(+), 3 deletions(-)
 
-NeilBrown (4):
-      mount: don't hide temporary error code on timeout.
-      mount: take history into account when assessing if an error is permanent.
-      Remove all use of the nfsctl system call.
-      Remove error messages on xstrdup failure.
+diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
+index d5dfb5e4a669..7b1ad93effc0 100644
+--- a/utils/mount/stropts.c
++++ b/utils/mount/stropts.c
+@@ -990,10 +990,8 @@ static int nfsmount_fg(struct nfsmount_info *mi)
+ 		if (nfs_is_permanent_error(errno))
+ 			break;
+ 
+-		if (time(NULL) > timeout) {
+-			errno = ETIMEDOUT;
++		if (time(NULL) > timeout)
+ 			break;
+-		}
+ 
+ 		if (errno != ETIMEDOUT) {
+ 			if (sleep(secs))
 
-
- support/export/Makefile.am |    2 -
- support/export/export.c    |   56 ------------------
- support/export/nfsctl.c    |  118 ---------------------------------------
- support/export/rmtab.c     |   98 --------------------------------
- support/export/xtab.c      |   16 -----
- support/include/exportfs.h |    7 --
- support/include/nfs/nfs.h  |  120 ---------------------------------------
- support/include/nfslib.h   |   16 -----
- support/nfs/Makefile.am    |    4 +
- support/nfs/cacheio.c      |   12 ----
- support/nfs/getfh.c        |  134 --------------------------------------------
- support/nfs/nfsclient.c    |   34 -----------
- support/nfs/nfsctl.c       |   32 -----------
- support/nfs/nfsexport.c    |  134 --------------------------------------------
- support/nfs/rmtab.c        |   21 -------
- utils/exportfs/exportfs.c  |   84 +---------------------------
- utils/mount/stropts.c      |   38 ++++++++++--
- utils/mountd/auth.c        |   15 +----
- utils/mountd/mountd.c      |   63 +++++----------------
- utils/nfsd/nfsd.c          |   36 ++----------
- utils/nfsd/nfssvc.c        |   26 ++-------
- utils/nfsd/nfssvc.h        |    2 -
- utils/nfsidmap/nfsidmap.c  |    6 --
- utils/statd/statd.c        |    5 --
- 24 files changed, 67 insertions(+), 1012 deletions(-)
- delete mode 100644 support/export/nfsctl.c
- delete mode 100644 support/export/rmtab.c
- delete mode 100644 support/nfs/getfh.c
- delete mode 100644 support/nfs/nfsclient.c
- delete mode 100644 support/nfs/nfsctl.c
- delete mode 100644 support/nfs/nfsexport.c
-
---
-Signature
 
