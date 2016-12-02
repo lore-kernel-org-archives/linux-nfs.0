@@ -1,15 +1,15 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:36395 "EHLO mx2.suse.de"
+Received: from mx2.suse.de ([195.135.220.15]:36433 "EHLO mx2.suse.de"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751164AbcLBD7N (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 1 Dec 2016 22:59:13 -0500
+        id S1751164AbcLBD7T (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 1 Dec 2016 22:59:19 -0500
 From: NeilBrown <neilb@suse.com>
 To: "J. Bruce Fields" <bfields@redhat.com>,
         Steve Dickson <SteveD@redhat.com>
 Date: Fri, 02 Dec 2016 14:58:28 +1100
-Subject: [PATCH 04/15] Add /etc/nfs.conf support for mountd.
+Subject: [PATCH 05/15] Add /etc/nfs.conf support for statd
 Cc: linux-nfs@vger.kernel.org
-Message-ID: <148065110853.28046.8252065251436176296.stgit@noble>
+Message-ID: <148065110872.28046.13166174517415675834.stgit@noble>
 In-Reply-To: <148065078775.28046.5506130555300891075.stgit@noble>
 References: <148065078775.28046.5506130555300891075.stgit@noble>
 MIME-Version: 1.0
@@ -17,177 +17,162 @@ Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Some values are taken from the [nfsd] section
-to ensure consistency.
+Some options appear in the [lockd] section.
 
 Signed-off-by: NeilBrown <neilb@suse.com>
 ---
- systemd/nfs.conf.man    |   22 +++++++++++++++++++++-
- utils/mountd/mountd.c   |   36 ++++++++++++++++++++++++++++++++++++
- utils/mountd/mountd.man |   34 ++++++++++++++++++++++++++++++++++
- 3 files changed, 91 insertions(+), 1 deletion(-)
+ systemd/nfs.conf.man  |   25 +++++++++++++++++++++++++
+ utils/statd/statd.c   |   20 ++++++++++++++++++++
+ utils/statd/statd.man |   35 +++++++++++++++++++++++++++++++++--
+ 3 files changed, 78 insertions(+), 2 deletions(-)
 
 diff --git a/systemd/nfs.conf.man b/systemd/nfs.conf.man
-index 6ac6c65a81d9..9fe9d0eff1fc 100644
+index 9fe9d0eff1fc..a1121e46ef5e 100644
 --- a/systemd/nfs.conf.man
 +++ b/systemd/nfs.conf.man
-@@ -92,16 +92,36 @@ Recognized values:
- .BR vers4.2 ,
- .BR rdma .
- 
--Version and protocol values are Boolean values as described above.
-+Version and protocol values are Boolean values as described above,
-+and are also used by
-+.BR rpc.mountd .
- Threads and the two times are integers.
- .B rdma
- is a service name or number.  See
- .BR rpc.nfsd (8)
+@@ -118,6 +118,31 @@ section, are used to configure mountd.  See
+ .BR rpc.mountd (8)
  for details.
  
 +.TP
-+.B mountd
++.B statd
 +Recognized values:
-+.BR manage-gids ,
-+.BR descriptors ,
 +.BR port ,
-+.BR threads ,
-+.BR reverse-lookup ,
++.BR outgoing-port ,
++.BR name ,
 +.BR state-directory-path ,
 +.BR ha-callout .
 +
-+These, together with the protocol and version values in the
-+.B [nfsd]
-+section, are used to configure mountd.  See
-+.BR rpc.mountd (8)
++See
++.BR rpc.statd (8)
 +for details.
++
++.TP
++.B lockd
++Recognized values:
++.B port
++and
++.BR udp-port .
++
++See
++.BR rpc.statd (8)
++for details.
++
 +
  .SH FILES
  .I /etc/nfs.conf
  .SH SEE ALSO
- .BR nfsdcltrack (8),
- .BR rpc.nfsd (8),
-+.BR rpc.mountd (8),
- .BR nfsmount.conf (5).
-diff --git a/utils/mountd/mountd.c b/utils/mountd/mountd.c
-index d6cebbbd3920..2048fce92b8e 100644
---- a/utils/mountd/mountd.c
-+++ b/utils/mountd/mountd.c
-@@ -22,6 +22,8 @@
- #include <fcntl.h>
- #include <sys/resource.h>
+diff --git a/utils/statd/statd.c b/utils/statd/statd.c
+index 15f2b18d104d..5f4ad79e6bf3 100644
+--- a/utils/statd/statd.c
++++ b/utils/statd/statd.c
+@@ -26,6 +26,7 @@
  #include <sys/wait.h>
-+
-+#include "conffile.h"
- #include "xmalloc.h"
- #include "misc.h"
- #include "mountd.h"
-@@ -38,6 +40,8 @@ int reverse_resolve = 0;
- int manage_gids;
- int use_ipaddr = -1;
+ #include <grp.h>
  
-+char *conf_path = NFS_CONFFILE;
-+
- /* PRC: a high-availability callout program can be specified with -H
-  * When this is done, the program will receive callouts whenever clients
-  * send mount or unmount requests -- the callout is not needed for 2.6 kernel */
-@@ -654,6 +658,7 @@ main(int argc, char **argv)
++#include "conffile.h"
+ #include "statd.h"
+ #include "nfslib.h"
+ #include "nfsrpc.h"
+@@ -36,6 +37,7 @@
+ #include <sys/socket.h>
+ 
+ int	run_mode = 0;		/* foreground logging mode */
++char	*conf_path = NFS_CONFFILE;
+ 
+ /* LH - I had these local to main, but it seemed silly to have 
+  * two copies of each - one in main(), one static in log.c... 
+@@ -242,6 +244,7 @@ static void set_nlm_port(char *type, int port)
+ int main (int argc, char **argv)
  {
- 	char    *state_dir = NFS_STATEDIR;
- 	char	*progname;
-+	char	*s;
- 	unsigned int listeners = 0;
- 	int	foreground = 0;
- 	int	port = 0;
-@@ -669,6 +674,37 @@ main(int argc, char **argv)
- 	else
- 		progname = argv[0];
+ 	extern char *optarg;
++	char *s;
+ 	int pid;
+ 	int arg;
+ 	int port = 0, out_port = 0;
+@@ -266,6 +269,23 @@ int main (int argc, char **argv)
+ 	/* Set hostname */
+ 	MY_NAME = NULL;
  
 +	conf_init();
-+	manage_gids = conf_get_bool("mountd", "manage-gids", manage_gids);
-+	descriptors = conf_get_num("mountd", "descriptors", descriptors);
-+	port = conf_get_num("mountd", "port", port);
-+	num_threads = conf_get_num("mountd", "threads", num_threads);
-+	reverse_resolve = conf_get_bool("mountd", "reverse-lookup", reverse_resolve);
-+	ha_callout_prog = conf_get_str("mountd", "ha-callout");
-+
-+	s = conf_get_str("mountd", "state-directory-path");
++	out_port = conf_get_num("statd", "outgoing-port", out_port);
++	port = conf_get_num("statd", "port", port);
++	MY_NAME = conf_get_str("statd", "name");
++	if (MY_NAME)
++		run_mode |= STATIC_HOSTNAME;
++	s = conf_get_str("statd", "state-directory-path");
++	if (s && !nsm_setup_pathnames(argv[0], s))
++		exit(1);
++	s = conf_get_str("statd", "ha-callout");
 +	if (s)
-+		state_dir = s;
++		ha_callout_prog = s;
 +
-+	/* NOTE: following uses "nfsd" section of nfs.conf !!!! */
-+	if (conf_get_bool("nfsd", "udp", NFSCTL_UDPISSET(_rpcprotobits)))
-+		NFSCTL_UDPSET(_rpcprotobits);
-+	else
-+		NFSCTL_UDPUNSET(_rpcprotobits);
-+	if (conf_get_bool("nfsd", "tcp", NFSCTL_TCPISSET(_rpcprotobits)))
-+		NFSCTL_TCPSET(_rpcprotobits);
-+	else
-+		NFSCTL_TCPUNSET(_rpcprotobits);
-+	for (vers = 2; vers <= 4; vers++) {
-+		char tag[10];
-+		sprintf(tag, "vers%d", vers);
-+		if (conf_get_bool("nfsd", tag, NFSCTL_VERISSET(nfs_version, vers)))
-+			NFSCTL_VERSET(nfs_version, vers);
-+		else
-+			NFSCTL_VERUNSET(nfs_version, vers);
-+	}
++	nlm_tcp = conf_get_num("lockd", "port", nlm_tcp);
++	/* udp defaults to the same as tcp ! */
++	nlm_udp = conf_get_num("lockd", "udp-port", nlm_tcp);
 +
-+
- 	/* Parse the command line options and arguments. */
- 	opterr = 0;
- 	while ((c = getopt_long(argc, argv, "o:nFd:p:P:hH:N:V:vurs:t:g", longopts, NULL)) != EOF)
-diff --git a/utils/mountd/mountd.man b/utils/mountd/mountd.man
-index e0d1a0acba3a..9f0a51f2016e 100644
---- a/utils/mountd/mountd.man
-+++ b/utils/mountd/mountd.man
-@@ -199,6 +199,39 @@ the server. Note that the 'primary' group id is not affected so a
- .B newgroup
- command on the client will still be effective.  This function requires
- a Linux Kernel with version at least 2.6.21.
-+
+ 	/* Process command line switches */
+ 	while ((arg = getopt_long(argc, argv, "h?vVFNH:dn:p:o:P:LT:U:", longopts, NULL)) != EOF) {
+ 		switch (arg) {
+diff --git a/utils/statd/statd.man b/utils/statd/statd.man
+index 1e5520c6dfea..91c260f1bf5e 100644
+--- a/utils/statd/statd.man
++++ b/utils/statd/statd.man
+@@ -8,7 +8,7 @@
+ .\" Rewritten by Chuck Lever <chuck.lever@oracle.com>, 2009.
+ .\" Copyright 2009 Oracle.  All rights reserved.
+ .\"
+-.TH RPC.STATD 8 "1 November 2009
++.TH RPC.STATD 8 "1 November 2009"
+ .SH NAME
+ rpc.statd \- NSM service daemon
+ .SH SYNOPSIS
+@@ -247,7 +247,7 @@ should listen on for
+ .B NLM
+ requests.
+ .TP
+-.BI "\-P, " "" \-\-state\-directory\-path " pathname
++.BI "\-P, " "" \-\-state\-directory\-path " pathname"
+ Specifies the pathname of the parent directory
+ where NSM state information resides.
+ If this option is not specified,
+@@ -267,6 +267,37 @@ Causes
+ to display version information on
+ .I stderr
+ and then exit.
 +.SH CONFIGURATION FILE
 +Many of the options that can be set on the command line can also be
 +controlled through values set in the
-+.B [mountd]
++.B [statd]
 +or, in some cases, the
-+.B [nfsd]
++.B [lockd]
 +sections of the
 +.I /etc/nfs.conf
 +configuration file.
 +Values recognized in the
-+.B [mountd]
++.B [statd]
 +section include
-+.BR manage-gids ,
-+.BR descriptors ,
 +.BR port ,
-+.BR threads ,
-+.BR reverse-lookup ", and"
-+.BR state-directory-path ,
++.BR outgoing-port ,
++.BR name ,
++.BR state-directory-path ", and"
 +.B ha-callout
 +which each have the same effect as the option with the same name.
 +
 +The values recognized in the
-+.B [nfsd]
++.B [lockd]
 +section include
-+.BR TCP ,
-+.BR UDP ,
-+.BR vers2 ,
-+.BR vers3 ", and"
-+.B vers4
-+which each have same same meaning as given by
-+.BR rpc.nfsd (8).
++.B port
++and
++.B udp-port
++which have the same effect as the
++.B --nlm-port
++and
++.B --nlm-udp-port
++options, respectively.
 +
- .SH TCP_WRAPPERS SUPPORT
- You can protect your
- .B rpc.mountd
-@@ -253,6 +286,7 @@ table of clients accessing server's exports
- .BR rpc.nfsd (8),
- .BR rpc.rquotad (8),
- .BR nfs (5),
-+.BR nfs.conf (5),
- .BR tcpd (8),
- .BR hosts_access (5),
- .BR iptables (8),
+ .SH SECURITY
+ The
+ .B rpc.statd
 
 
