@@ -1,15 +1,15 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:36530 "EHLO mx2.suse.de"
+Received: from mx2.suse.de ([195.135.220.15]:36544 "EHLO mx2.suse.de"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1752480AbcLBD7s (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 1 Dec 2016 22:59:48 -0500
+        id S1752480AbcLBD7y (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 1 Dec 2016 22:59:54 -0500
 From: NeilBrown <neilb@suse.com>
 To: "J. Bruce Fields" <bfields@redhat.com>,
         Steve Dickson <SteveD@redhat.com>
 Date: Fri, 02 Dec 2016 14:58:29 +1100
-Subject: [PATCH 10/15] conffile: strip "quotes" from values in conf file.
+Subject: [PATCH 11/15] conffile: ignore setting of empty string
 Cc: linux-nfs@vger.kernel.org
-Message-ID: <148065110966.28046.11665582674746389410.stgit@noble>
+Message-ID: <148065110977.28046.4258233430833825030.stgit@noble>
 In-Reply-To: <148065078775.28046.5506130555300891075.stgit@noble>
 References: <148065078775.28046.5506130555300891075.stgit@noble>
 MIME-Version: 1.0
@@ -17,71 +17,43 @@ Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-When "include = " is used to read and "environment" file such as
-/etc/sysconfig/nfs, there might be quotes around values.
-Stripe those off, just like a 'shell' reading the file would.
+A value setting like
+
+   foo =
+
+is now equivalent to not setting "foo" at all.
+This is likely to be least confusing.
 
 Signed-off-by: NeilBrown <neilb@suse.com>
 ---
- support/nfs/conffile.c |   25 ++++++++++++++++---------
- systemd/nfs.conf.man   |    2 ++
- 2 files changed, 18 insertions(+), 9 deletions(-)
+ support/nfs/conffile.c |    2 ++
+ systemd/nfs.conf.man   |    3 ++-
+ 2 files changed, 4 insertions(+), 1 deletion(-)
 
 diff --git a/support/nfs/conffile.c b/support/nfs/conffile.c
-index 8de580bd6970..947bf9bad1e7 100644
+index 947bf9bad1e7..eaff5f5c35ea 100644
 --- a/support/nfs/conffile.c
 +++ b/support/nfs/conffile.c
-@@ -212,7 +212,7 @@ static void
- conf_parse_line(int trans, char *line, size_t sz)
+@@ -748,6 +748,8 @@ conf_set(int transaction, char *section, char *arg,
  {
- 	char *val, *ptr;
--	size_t i, valsize;
-+	size_t i;
- 	size_t j;
- 	static char *section = 0;
- 	static char *arg = 0;
-@@ -299,16 +299,23 @@ conf_parse_line(int trans, char *line, size_t sz)
- 			}
- 			line[strcspn (line, " \t=")] = '\0';
- 			val = line + i + 1 + strspn (line + i + 1, " \t");
--			valsize = 0;
--			while (val[valsize++]);
+ 	struct conf_trans *node;
  
--			/* Skip trailing spaces and comments */
--			for (j = 0; j < valsize; j++) {
--				if (val[j] == '#' || val[j] == ';' || isspace(val[j])) {
--					val[j] = '\0';
--					break;
-+			if (line[0] == '"') {
-+				line ++;
-+				j = strcspn(line, "\"");
-+				line[j] = 0;
-+			} else if (line[0] == '\'') {
-+				line ++;
-+				j = strcspn(line, "'");
-+				line[j] = 0;
-+			} else
-+				/* Skip trailing spaces and comments */
-+				for (j = 0; val[j]; j++) {
-+					if (val[j] == '#' || val[j] == ';' || isspace(val[j])) {
-+						val[j] = '\0';
-+						break;
-+					}
- 				}
--			}
- 			if (strcasecmp(line, "include") == 0)
- 				conf_load(trans, val);
- 			else
++	if (!value || !*value)
++		return 0;
+ 	node = conf_trans_node(transaction, CONF_SET);
+ 	if (!node)
+ 		return 1;
 diff --git a/systemd/nfs.conf.man b/systemd/nfs.conf.man
-index 13459ea85744..8e2f034d0b9b 100644
+index 8e2f034d0b9b..8cf55668b664 100644
 --- a/systemd/nfs.conf.man
 +++ b/systemd/nfs.conf.man
-@@ -35,6 +35,8 @@ in the current section to
- .BR 4 .
+@@ -36,7 +36,8 @@ in the current section to
  Leading and trailing spaces and tab
  are ignored, as are spaces and tabs surrounding the equals sign.
-+Single and double quotes surrounding the assigned value are also
-+removed.
+ Single and double quotes surrounding the assigned value are also
+-removed.
++removed.  If the resulting string is empty, the whole assignment
++is ignored.
  .PP
  Any line starting with
  .RB \*(lq # \*(rq
