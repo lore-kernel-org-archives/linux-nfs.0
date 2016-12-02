@@ -1,46 +1,66 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from us-smtp-delivery-194.mimecast.com ([216.205.24.194]:29901 "EHLO
-        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1751175AbcLBR3S (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 2 Dec 2016 12:29:18 -0500
-From: Trond Myklebust <trondmy@primarydata.com>
-To: Anna Schumaker <schumaker.anna@gmail.com>
-CC: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 2/5] NFSv4: Don't ask for the change attribute when
- reclaiming state
-Date: Fri, 2 Dec 2016 17:28:27 +0000
-Message-ID: <B06178AC-10FF-42D4-8309-93D9882721DC@primarydata.com>
-References: <20161201220632.12754-1-trond.myklebust@primarydata.com>
- <20161201220632.12754-2-trond.myklebust@primarydata.com>
- <20161201220632.12754-3-trond.myklebust@primarydata.com>
- <f8904106-2bb4-2fdb-1fdd-fb60ff352531@gmail.com>
-In-Reply-To: <f8904106-2bb4-2fdb-1fdd-fb60ff352531@gmail.com>
+Received: from mail-io0-f180.google.com ([209.85.223.180]:36784 "EHLO
+        mail-io0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751040AbcLBRdy (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 2 Dec 2016 12:33:54 -0500
+Received: by mail-io0-f180.google.com with SMTP id m5so355772442ioe.3
+        for <linux-nfs@vger.kernel.org>; Fri, 02 Dec 2016 09:33:38 -0800 (PST)
 MIME-Version: 1.0
+In-Reply-To: <CABW3MLc_7K_u_vHxD+BZ2ZQF1r96CjbokhVVzLmKAdK1MRoZ_g@mail.gmail.com>
+References: <CABW3MLd5Bo-xBtLqtB4e-pD2hCYAuRaBBsqBFTiws5-HohjPTw@mail.gmail.com>
+ <87h96n6vbl.fsf@notabene.neil.brown.name> <BD0BB270-C6F4-4129-8D21-A3E9A6970459@primarydata.com>
+ <CABW3MLc_7K_u_vHxD+BZ2ZQF1r96CjbokhVVzLmKAdK1MRoZ_g@mail.gmail.com>
+From: Joachim Banzhaf <joachim.banzhaf@googlemail.com>
+Date: Fri, 2 Dec 2016 18:33:37 +0100
+Message-ID: <CABW3MLeYOrFnP9Gwi8EbN7bNyzx31k=ObH4TuFuki_14YNyqmw@mail.gmail.com>
+Subject: Re: rpcbind allowed port range on linux
+To: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Cc: "joachim.banzhaf" <joachim.banzhaf@googlemail.com>
 Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-DQo+IE9uIERlYyAyLCAyMDE2LCBhdCAxMjowNSwgQW5uYSBTY2h1bWFrZXIgPHNjaHVtYWtlci5h
-bm5hQGdtYWlsLmNvbT4gd3JvdGU6DQo+IA0KPiBIaSBUcm9uZCwNCj4gDQo+IE9uIDEyLzAxLzIw
-MTYgMDU6MDYgUE0sIFRyb25kIE15a2xlYnVzdCB3cm90ZToNCj4+IFdlIGRvbid0IG5lZWQgdG8g
-YXNrIGZvciB0aGUgY2hhbmdlIGF0dHJpYnV0ZSB3aGVuIHJldHVybmluZyBhIGRlbGVnYXRpb24N
-Cj4+IG9yIHJlY292ZXJpbmcgZnJvbSBhIHNlcnZlciByZWJvb3QsIGFuZCBpdCBjb3VsZCBhY3R1
-YWxseSBjYXVzZSB1cyB0bw0KPj4gb2J0YWluIGFuIGluY29ycmVjdCB2YWx1ZSBpZiB3ZSdyZSB1
-c2luZyBhIHBORlMgZmxhdm91ciB0aGF0IHJlcXVpcmVzDQo+PiBMQVlPVVRDT01NSVQuDQo+PiAN
-Cj4+IFNpZ25lZC1vZmYtYnk6IFRyb25kIE15a2xlYnVzdCA8dHJvbmQubXlrbGVidXN0QHByaW1h
-cnlkYXRhLmNvbT4NCj4+IC0tLQ0KPj4gZnMvbmZzL25mczRwcm9jLmMgfCAxIC0NCj4+IDEgZmls
-ZSBjaGFuZ2VkLCAxIGRlbGV0aW9uKC0pDQo+PiANCj4+IGRpZmYgLS1naXQgYS9mcy9uZnMvbmZz
-NHByb2MuYyBiL2ZzL25mcy9uZnM0cHJvYy5jDQo+PiBpbmRleCBiNTgyZGY4OWMwODMuLmMwNjI4
-Zjc4ZWQ5OCAxMDA2NDQNCj4+IC0tLSBhL2ZzL25mcy9uZnM0cHJvYy5jDQo+PiArKysgYi9mcy9u
-ZnMvbmZzNHByb2MuYw0KPj4gQEAgLTIyNiw3ICsyMjYsNiBAQCBzdGF0aWMgY29uc3QgdTMyIG5m
-czRfcG5mc19vcGVuX2JpdG1hcFszXSA9IHsNCj4+IA0KPj4gc3RhdGljIGNvbnN0IHUzMiBuZnM0
-X29wZW5fbm9hdHRyX2JpdG1hcFszXSA9IHsNCj4+IAlGQVRUUjRfV09SRDBfVFlQRQ0KPj4gLQl8
-IEZBVFRSNF9XT1JEMF9DSEFOR0UNCj4gDQo+IERvIHRoZXNlIHBhdGNoZXMgZGVwZW5kIG9uIGFu
-b3RoZXIgcGF0Y2ggc2VyaWVzPyAgSSdtIGhhdmluZyB0cm91YmxlIGFwcGx5aW5nIHRoaXMgcGF0
-Y2ggc2luY2UgbXkgdHJlZSBkb2Vzbid0IGhhdmUgRkFUVFI0X1dPUkQwX0NIQU5HRSB5ZXQuICBJ
-J20gaGF2aW5nIHRyb3VibGUgd2l0aCBwYXRjaCA0LCB0b28uDQo+IA0KDQpJ4oCZdmUgcHVzaGVk
-IG91dCB0aGUgbGludXgtbmV4dCBicmFuY2ggaHR0cDovL2dpdC5saW51eC1uZnMub3JnLz9wPXRy
-b25kbXkvbGludXgtbmZzLmdpdDthPXNob3J0bG9nO2g9cmVmcy9oZWFkcy9saW51eC1uZXh0DQoN
-Cj4gVGhhbmtzLA0KPiBBbm5hDQo+IA0KPj4gCXwgRkFUVFI0X1dPUkQwX0ZJTEVJRCwNCj4+IH07
-DQoNCg==
+mystery solved:
 
+The ip_local_port_range used by rpc services (and others) is set via
+/etc/sysctl.conf during boot, and the application that needs ports
+from that range sets ip_local_reserved_ports, but later in the boot
+process. Too late. I need to solve this there.
+
+Thanks for the support, you put me on the right track.
+
+BR,
+Joachim
+
+2016-12-02 9:32 GMT+01:00 Joachim Banzhaf <joachim.banzhaf@googlemail.com>:
+> Hi Neil and Trond, thanks for the infos. Already helped a lot.
+>
+> My primary goal is not to pin lockd to a specific port.
+> I want to prevent any ip service that does not ask for a specific port
+> to use ports I know are needed later for something else.
+>
+> I thought, the mechanism is (sorry, had a cut&paste error here) by
+> defining range /proc/sys/net/ipv4/ip_local_port_range minus ports or
+> ranges in /proc/sys/net/ipv4/ip_local_reserved_ports (as described
+> here: http://lxr.free-electrons.com/source/Documentation/networking/ip-sysctl.txt#L809).
+>
+> I wasn't sure, this mechanism is used here, but Neil, you already
+> confirmed at least part 1, and that is what happened. Just the
+> exclusion via /proc/sys/net/ipv4/ip_local_reserved_ports has not
+> worked.
+> To be specific, the ip_local_port_range is "40000   65299", and
+> ip_local_reserved_ports includes, among many others, 50000-50628 and
+> the port to protect but still picked for lockd was 50213.
+>
+> Unfortunately, choosing another ip_local_port_range outside 50213 is
+> not possible, because there is no single range left that is big enough
+> (and there are other ports to protect like this one).
+>
+> So, either ip_local_reserved_ports is not used (although I think it
+> should) or it is used but too long (at least sysctl used in SLES 12
+> has a bug: it cannot display the whole list) or the list is not
+> defined at the time lockd gets its port (I did not find where this is
+> defined, it is not in /etc/sysctl.conf, like ip_local_port_range).
+>
+> BR,
+> Joachim
