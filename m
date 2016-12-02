@@ -1,68 +1,59 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-yw0-f193.google.com ([209.85.161.193]:33967 "EHLO
-        mail-yw0-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1755829AbcLBJ5q (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 2 Dec 2016 04:57:46 -0500
-Received: by mail-yw0-f193.google.com with SMTP id a10so21319308ywa.1
-        for <linux-nfs@vger.kernel.org>; Fri, 02 Dec 2016 01:57:46 -0800 (PST)
+Received: from minas.ics.muni.cz ([147.251.4.46]:59081 "EHLO minas.ics.muni.cz"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1751866AbcLBLln (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 2 Dec 2016 06:41:43 -0500
+Date: Fri, 2 Dec 2016 12:41:34 +0100
+From: Lukas Hejtmanek <xhejtman@ics.muni.cz>
+To: Steve Dickson <SteveD@redhat.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: RFC rpc.gssd enhancement
+Message-ID: <20161202114134.rvzqptnsqo3odxay@ics.muni.cz>
+References: <20161128183757.d5pz64tsigmaxdc7@ics.muni.cz>
+ <645d0f56-f357-6c58-5e2f-e85bbae93db1@RedHat.com>
+ <20161129184843.jrwbnytggrz6kdir@ics.muni.cz>
+ <2ff5b760-a3ca-9ab8-d1a8-efe5f36aaaf3@RedHat.com>
 MIME-Version: 1.0
-In-Reply-To: <1476190256-1677-4-git-send-email-agruenba@redhat.com>
-References: <1476190256-1677-1-git-send-email-agruenba@redhat.com> <1476190256-1677-4-git-send-email-agruenba@redhat.com>
-From: Miklos Szeredi <miklos@szeredi.hu>
-Date: Fri, 2 Dec 2016 10:57:42 +0100
-Message-ID: <CAELBmZCgttywPy3EtkFao7SPESaw8VB5K6x7PTRk7gwSk7sXqg@mail.gmail.com>
-Subject: Re: [PATCH v27 03/21] vfs: Add MAY_DELETE_SELF and MAY_DELETE_CHILD
- permission flags
-To: Andreas Gruenbacher <agruenba@redhat.com>
-Cc: Alexander Viro <viro@zeniv.linux.org.uk>,
-        Christoph Hellwig <hch@infradead.org>, "Theodore Ts'o" <tytso@mit.edu>,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        Jeff Layton <jlayton@poochiereds.net>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        Anna Schumaker <anna.schumaker@netapp.com>,
-        Dave Chinner <david@fromorbit.com>, linux-ext4@vger.kernel.org,
-        LKML <linux-kernel@vger.kernel.org>,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        linux-nfs@vger.kernel.org, linux-cifs@vger.kernel.org,
-        linux-api@vger.kernel.org
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=iso-8859-2
+In-Reply-To: <2ff5b760-a3ca-9ab8-d1a8-efe5f36aaaf3@RedHat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Oct 11, 2016 at 2:50 PM, Andreas Gruenbacher
-<agruenba@redhat.com> wrote:
-> Normally, deleting a file requires MAY_WRITE access to the parent
-> directory.  With richacls, a file may be deleted with MAY_DELETE_CHILD access
-> to the parent directory or with MAY_DELETE_SELF access to the file.
->
-> To support that, pass the MAY_DELETE_CHILD mask flag to inode_permission()
-> when checking for delete access inside a directory, and MAY_DELETE_SELF
-> when checking for delete access to a file itself.
->
-> The MAY_DELETE_SELF permission overrides the sticky directory check.
+On Tue, Nov 29, 2016 at 02:28:10PM -0500, Steve Dickson wrote:
+> > maybe it is not considered secure, but it is still more secure to me than
+> > using sec=sys. 
+> True.
 
-And MAY_DELETE_SELF seems totally inappropriate to any kind of rename,
-since from the point of view of the inode we are not doing anything at
-all.  The modifications are all in the parent(s), and that's where the
-permission checks need to be.
+So, I was asking, if I provide such patch, will it be accepted into mainline
+nfs-utils?
 
-> @@ -2780,14 +2780,20 @@ static int may_delete_or_replace(struct inode *dir, struct dentry *victim,
->         BUG_ON(victim->d_parent->d_inode != dir);
->         audit_inode_child(dir, victim, AUDIT_TYPE_CHILD_DELETE);
->
-> -       error = inode_permission(dir, mask);
-> +       error = inode_permission(dir, mask | MAY_WRITE | MAY_DELETE_CHILD);
-> +       if (!error && check_sticky(dir, inode))
-> +               error = -EPERM;
-> +       if (error && IS_RICHACL(inode) &&
-> +           inode_permission(inode, MAY_DELETE_SELF) == 0 &&
-> +           inode_permission(dir, mask) == 0)
-> +               error = 0;
+> > the problem is, that kerberized home is problem for .k5login file and also for
+> > .ssh/authorized_keys. While the .k5login file is accessed with root context
+> > (sshd), the authorized_keys is accessed with user context, so login via ssh
+> > pubkey is not possible at all. 
+> What would the .k5login look like and what would the principal look like?
+> My apologies but I'm not very familar with how sshd interacts with 
+> the .k5login. 
 
-Why is MAY_WRITE missing here?  Everything not aware of
-MAY_DELETE_SELF (e.g. LSMs) will still need MAY_WRITE otherwise this
-is going to be a loophole.
+ok, I did more testing. It seems that kinit does not search ~/.k5login but
+~/.krb5/config.
 
-Thanks,
-Miklos
+If NFS client gets permission denied, it is ok and kinit just creates a new
+ticket.
+
+However, if user has ticket that expired, NFS client returns EKEYEXPIRED
+instead of EPERM. In such a case, kinit/kdestoy does not deal with this errno
+and returns:
+kinit: krb5_init_context failed: 127
+or
+kdestroy: krb5_init_context failed: 127
+
+if you do rm /tmp/krb5cc_`id -u`_*, EKEYEXPIRED is changed to EPERM and
+kinit/kdestroy works again.
+
+
+Colleague of me says that EKEYEPIRED should not be returned by NFS client at
+all, EPERM should be always returned and he sees this as a bug in kernel code.
+
+-- 
+Luká¹ Hejtmánek
