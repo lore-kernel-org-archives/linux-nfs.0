@@ -1,90 +1,120 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:36332 "EHLO mx2.suse.de"
+Received: from mx2.suse.de ([195.135.220.15]:36359 "EHLO mx2.suse.de"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751316AbcLBD6u (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 1 Dec 2016 22:58:50 -0500
+        id S1751316AbcLBD64 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 1 Dec 2016 22:58:56 -0500
 From: NeilBrown <neilb@suse.com>
 To: "J. Bruce Fields" <bfields@redhat.com>,
         Steve Dickson <SteveD@redhat.com>
-Date: Fri, 02 Dec 2016 14:58:27 +1100
-Subject: [RFC PATCH 00/15] Enhance /etc/nfs.conf usage and remove
- nfs-config.service
+Date: Fri, 02 Dec 2016 14:58:28 +1100
+Subject: [PATCH 01/15] Add man-page describing /etc/nfs.conf
 Cc: linux-nfs@vger.kernel.org
-Message-ID: <148065078775.28046.5506130555300891075.stgit@noble>
+Message-ID: <148065110794.28046.7740199040148300941.stgit@noble>
+In-Reply-To: <148065078775.28046.5506130555300891075.stgit@noble>
+References: <148065078775.28046.5506130555300891075.stgit@noble>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This is an RFC series.  A little voice at the back of my head keeps
-telling me that I'm over-engineering, but there isn't really that much
-new code, and I think the result has a lot to recommend it.
+It may seem a little odd placing this in the "systemd" directory,
+but it is a conveninent place, and /etc/nfs.conf was added in
+part to help with systemd integration.
 
-But please tell me if I'm wrong.
-
-- Various daemons (not all) are enhance to accept configuration
-  information from /etc/nfs.conf
-- the conffile reader is enhanced to support include files, and
-  particularly to be able to include /etc/sysconf/X or /etc/defaults/X
-  files usefully
-- nfs-config.service is removed, because it isn't really needed with
-  the above.
-- documentation for all the above is provided, including a new
-  nfs.systemd man page which gives the bigger picture.
-
-Thanks,
-NeilBrown
-
-
+Signed-off-by: NeilBrown <neilb@suse.com>
 ---
-
-NeilBrown (15):
-      Add man-page describing /etc/nfs.conf
-      conffile: add bool support
-      Add /etc/nfs.conf support to rpc.nfsd
-      Add /etc/nfs.conf support for mountd.
-      Add /etc/nfs.conf support for statd
-      Add /etc/nfs.conf support for sm-notify
-      conffile: free image of config file after parsing
-      conffile: split loading of file into a separate function.
-      conffile: add support for include files.
-      conffile: strip "quotes" from values in conf file.
-      conffile: ignore setting of empty string
-      conffile: allow $name expansion of tag values.
-      statd: allow --no-notify to be passed via environment variable.
-      systemd: Remove the nfs-config.service
-      Add nfs.systemd man page
-
-
- configure.ac                     |    6 -
- support/include/conffile.h       |    2 
- support/nfs/conffile.c           |  147 +++++++++++++++++++++---------
- systemd/Makefile.am              |    5 +
- systemd/README                   |   22 +++-
- systemd/nfs-blkmap.service       |    3 -
- systemd/nfs-config.service.in    |   13 ---
- systemd/nfs-idmapd.service       |    6 -
- systemd/nfs-mountd.service       |    6 -
- systemd/nfs-server.service       |    7 -
- systemd/nfs.conf.man             |  186 ++++++++++++++++++++++++++++++++++++++
- systemd/nfs.systemd.man          |  167 ++++++++++++++++++++++++++++++++++
- systemd/rpc-gssd.service.in      |    7 -
- systemd/rpc-statd-notify.service |    6 -
- systemd/rpc-statd.service        |    7 -
- systemd/rpc-svcgssd.service      |    6 -
- utils/mountd/mountd.c            |   36 +++++++
- utils/mountd/mountd.man          |   34 +++++++
- utils/nfsd/nfsd.c                |   36 +++++++
- utils/nfsd/nfsd.man              |   49 +++++++++-
- utils/statd/sm-notify.c          |   11 ++
- utils/statd/sm-notify.man        |   27 ++++++
- utils/statd/statd.c              |   25 +++++
- utils/statd/statd.man            |   40 ++++++++
- 24 files changed, 737 insertions(+), 117 deletions(-)
- delete mode 100644 systemd/nfs-config.service.in
+ systemd/Makefile.am  |    4 ++-
+ systemd/nfs.conf.man |   67 ++++++++++++++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 70 insertions(+), 1 deletion(-)
  create mode 100644 systemd/nfs.conf.man
- create mode 100644 systemd/nfs.systemd.man
 
---
-Signature
+diff --git a/systemd/Makefile.am b/systemd/Makefile.am
+index 49c9b8d3b459..b647ef00a0d1 100644
+--- a/systemd/Makefile.am
++++ b/systemd/Makefile.am
+@@ -36,7 +36,9 @@ unit_files += \
+ endif
+ endif
+ 
+-EXTRA_DIST = $(unit_files)
++man5_MANS	= nfs.conf.man
++
++EXTRA_DIST = $(unit_files) $(man5_MANS)
+ 
+ unit_dir = /usr/lib/systemd/system
+ generator_dir = /usr/lib/systemd/system-generators
+diff --git a/systemd/nfs.conf.man b/systemd/nfs.conf.man
+new file mode 100644
+index 000000000000..3dd56f735de2
+--- /dev/null
++++ b/systemd/nfs.conf.man
+@@ -0,0 +1,67 @@
++.TH NFS.CONF 5
++.SH NAME
++nfs.conf \- general configuration for NFS daemons and tools
++.SH SYNOPSIS
++.I /etc/nfs.conf
++.SH DESCRIPTION
++.PP
++This file contains site-specific configuration for various NFS daemons
++and other processes.  Most configuration can also be passed to
++processes via command line arguments, but it can be more convenient to
++have a central file.  In particular, this encourages consistent
++configuration across different processes.
++.PP
++When command line options are provided, they override values set in
++this file.  When this file does not specify a particular parameter,
++and no command line option is provided, each tool provides its own
++default values.
++.PP
++The file format supports multiple sections, each of which can contain
++multiple value assignments.  A section is introduced by a line
++containing the section name enclosed in square brackets, so
++.RS
++.B [global]
++.RE
++would introduce a section called
++.BR global .
++A value assignment is a single line that has the name of the value, an
++equals sign, and a setting for the value, so
++.RS
++.B threads = 4
++.RE
++would set the value named
++.B threads
++in the current section to
++.BR 4 .
++Leading and trailing spaces and tab
++are ignored, as are spaces and tabs surrounding the equals sign.
++.PP
++Any line starting with
++.RB \*(lq # \*(rq
++or
++.RB \*(lq ; \*(rq
++is ignored, as is any blank line.
++.PP
++Lookup of section and value names is case-insensitive.
++
++.SH SECTIONS
++The following sections are known to various programs, and can contain
++the given named values.
++.TP
++.B nfsdcltrack
++Recognized values:
++.BR storagedir .
++
++The
++.B nfsdcltrack
++program is run directly by the Linux kernel and there is no
++opportunity to provide command line arguments, so the configuration
++file is the only way to configure this program.  See
++.BR nfsdcltrack (8)
++for details.
++
++.SH FILES
++.I /etc/nfs.conf
++.SH SEE ALSO
++.BR nfsdcltrack (8),
++.BR nfsmount.conf (5).
+
 
