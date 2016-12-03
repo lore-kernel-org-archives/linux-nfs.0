@@ -1,95 +1,100 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f194.google.com ([209.85.223.194]:35186 "EHLO
-        mail-io0-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751207AbcLCU6I (ORCPT
+Received: from mail-io0-f196.google.com ([209.85.223.196]:35213 "EHLO
+        mail-io0-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751292AbcLCU6I (ORCPT
         <rfc822;linux-nfs@vger.kernel.org>); Sat, 3 Dec 2016 15:58:08 -0500
-Received: by mail-io0-f194.google.com with SMTP id h133so6821785ioe.2
-        for <linux-nfs@vger.kernel.org>; Sat, 03 Dec 2016 12:57:30 -0800 (PST)
+Received: by mail-io0-f196.google.com with SMTP id h133so6822007ioe.2
+        for <linux-nfs@vger.kernel.org>; Sat, 03 Dec 2016 12:57:34 -0800 (PST)
 From: Trond Myklebust <trond.myklebust@primarydata.com>
 To: linux-nfs@vger.kernel.org
-Subject: [PATCH 02/10] pNFS/flexfiles: Only send layoutstats updates for mirrors that were updated
-Date: Sat,  3 Dec 2016 15:57:17 -0500
-Message-Id: <20161203205725.12961-3-trond.myklebust@primarydata.com>
-In-Reply-To: <20161203205725.12961-2-trond.myklebust@primarydata.com>
+Subject: [PATCH 05/10] pNFS: Add a layoutreturn callback to performa layout-private setup
+Date: Sat,  3 Dec 2016 15:57:20 -0500
+Message-Id: <20161203205725.12961-6-trond.myklebust@primarydata.com>
+In-Reply-To: <20161203205725.12961-5-trond.myklebust@primarydata.com>
 References: <20161203205725.12961-1-trond.myklebust@primarydata.com>
  <20161203205725.12961-2-trond.myklebust@primarydata.com>
+ <20161203205725.12961-3-trond.myklebust@primarydata.com>
+ <20161203205725.12961-4-trond.myklebust@primarydata.com>
+ <20161203205725.12961-5-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-If there have been no reads or writes to a given mirror since the last
-layoutstats update, then don't resend the same data.
+Add a callback to allow the flexfiles layout driver to initialise the
+layout private payload.
 
 Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
 ---
- fs/nfs/flexfilelayout/flexfilelayout.c | 6 ++++++
- fs/nfs/flexfilelayout/flexfilelayout.h | 3 +++
- 2 files changed, 9 insertions(+)
+ fs/nfs/pnfs.c | 14 +++++++++++++-
+ fs/nfs/pnfs.h |  1 +
+ 2 files changed, 14 insertions(+), 1 deletion(-)
 
-diff --git a/fs/nfs/flexfilelayout/flexfilelayout.c b/fs/nfs/flexfilelayout/flexfilelayout.c
-index a6264d6836dc..540813c30b00 100644
---- a/fs/nfs/flexfilelayout/flexfilelayout.c
-+++ b/fs/nfs/flexfilelayout/flexfilelayout.c
-@@ -705,6 +705,7 @@ nfs4_ff_layout_stat_io_start_read(struct inode *inode,
- 	spin_lock(&mirror->lock);
- 	report = nfs4_ff_layoutstat_start_io(mirror, &mirror->read_stat, now);
- 	nfs4_ff_layout_stat_io_update_requested(&mirror->read_stat, requested);
-+	set_bit(NFS4_FF_MIRROR_STAT_AVAIL, &mirror->flags);
- 	spin_unlock(&mirror->lock);
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index 4631d15227ae..2a3431314c23 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -1072,6 +1072,7 @@ pnfs_send_layoutreturn(struct pnfs_layout_hdr *lo, const nfs4_stateid *stateid,
+ 		       enum pnfs_iomode iomode, bool sync)
+ {
+ 	struct inode *ino = lo->plh_inode;
++	struct pnfs_layoutdriver_type *ld = NFS_SERVER(ino)->pnfs_curr_ld;
+ 	struct nfs4_layoutreturn *lrp;
+ 	int status = 0;
  
- 	if (report)
-@@ -721,6 +722,7 @@ nfs4_ff_layout_stat_io_end_read(struct rpc_task *task,
- 	nfs4_ff_layout_stat_io_update_completed(&mirror->read_stat,
- 			requested, completed,
- 			ktime_get(), task->tk_start);
-+	set_bit(NFS4_FF_MIRROR_STAT_AVAIL, &mirror->flags);
- 	spin_unlock(&mirror->lock);
+@@ -1089,6 +1090,8 @@ pnfs_send_layoutreturn(struct pnfs_layout_hdr *lo, const nfs4_stateid *stateid,
+ 	lrp->args.ld_private = &lrp->ld_private;
+ 	lrp->clp = NFS_SERVER(ino)->nfs_client;
+ 	lrp->cred = lo->plh_lc_cred;
++	if (ld->prepare_layoutreturn)
++		ld->prepare_layoutreturn(&lrp->args);
+ 
+ 	status = nfs4_proc_layoutreturn(lrp, sync);
+ out:
+@@ -1310,9 +1313,15 @@ bool pnfs_roc(struct inode *ino,
+ out_noroc:
+ 	spin_unlock(&ino->i_lock);
+ 	pnfs_layoutcommit_inode(ino, true);
++	if (roc) {
++		struct pnfs_layoutdriver_type *ld = NFS_SERVER(ino)->pnfs_curr_ld;
++		if (ld->prepare_layoutreturn)
++			ld->prepare_layoutreturn(args);
++		return true;
++	}
+ 	if (layoutreturn)
+ 		pnfs_send_layoutreturn(lo, &stateid, iomode, true);
+-	return roc;
++	return false;
  }
  
-@@ -734,6 +736,7 @@ nfs4_ff_layout_stat_io_start_write(struct inode *inode,
- 	spin_lock(&mirror->lock);
- 	report = nfs4_ff_layoutstat_start_io(mirror , &mirror->write_stat, now);
- 	nfs4_ff_layout_stat_io_update_requested(&mirror->write_stat, requested);
-+	set_bit(NFS4_FF_MIRROR_STAT_AVAIL, &mirror->flags);
- 	spin_unlock(&mirror->lock);
+ void pnfs_roc_release(struct nfs4_layoutreturn_args *args,
+@@ -1322,6 +1331,7 @@ void pnfs_roc_release(struct nfs4_layoutreturn_args *args,
+ 	struct pnfs_layout_hdr *lo = args->layout;
+ 	const nfs4_stateid *arg_stateid = NULL;
+ 	const nfs4_stateid *res_stateid = NULL;
++	struct nfs4_xdr_opaque_data *ld_private = args->ld_private;
  
- 	if (report)
-@@ -753,6 +756,7 @@ nfs4_ff_layout_stat_io_end_write(struct rpc_task *task,
- 	spin_lock(&mirror->lock);
- 	nfs4_ff_layout_stat_io_update_completed(&mirror->write_stat,
- 			requested, completed, ktime_get(), task->tk_start);
-+	set_bit(NFS4_FF_MIRROR_STAT_AVAIL, &mirror->flags);
- 	spin_unlock(&mirror->lock);
+ 	if (ret == 0) {
+ 		arg_stateid = &args->stateid;
+@@ -1330,6 +1340,8 @@ void pnfs_roc_release(struct nfs4_layoutreturn_args *args,
+ 	}
+ 	pnfs_layoutreturn_free_lsegs(lo, arg_stateid, &args->range,
+ 			res_stateid);
++	if (ld_private && ld_private->ops && ld_private->ops->free)
++		ld_private->ops->free(ld_private);
+ 	pnfs_put_layout_hdr(lo);
+ 	trace_nfs4_layoutreturn_on_close(args->inode, 0);
  }
+diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+index 459ac2c74af8..d1e028175cd1 100644
+--- a/fs/nfs/pnfs.h
++++ b/fs/nfs/pnfs.h
+@@ -172,6 +172,7 @@ struct pnfs_layoutdriver_type {
+ 			(struct nfs_server *server, struct pnfs_device *pdev,
+ 			gfp_t gfp_flags);
  
-@@ -2201,6 +2205,8 @@ ff_layout_mirror_prepare_stats(struct nfs42_layoutstat_args *args,
- 			break;
- 		if (!mirror->mirror_ds)
- 			continue;
-+		if (!test_and_clear_bit(NFS4_FF_MIRROR_STAT_AVAIL, &mirror->flags))
-+			continue;
- 		/* mirror refcount put in cleanup_layoutstats */
- 		if (!atomic_inc_not_zero(&mirror->ref))
- 			continue;
-diff --git a/fs/nfs/flexfilelayout/flexfilelayout.h b/fs/nfs/flexfilelayout/flexfilelayout.h
-index 3ee0c9fcea76..09f292e3a4ad 100644
---- a/fs/nfs/flexfilelayout/flexfilelayout.h
-+++ b/fs/nfs/flexfilelayout/flexfilelayout.h
-@@ -81,12 +81,15 @@ struct nfs4_ff_layout_mirror {
- 	struct rpc_cred	__rcu		*rw_cred;
- 	atomic_t			ref;
- 	spinlock_t			lock;
-+	unsigned long			flags;
- 	struct nfs4_ff_layoutstat	read_stat;
- 	struct nfs4_ff_layoutstat	write_stat;
- 	ktime_t				start_time;
- 	u32				report_interval;
- };
++	int (*prepare_layoutreturn) (struct nfs4_layoutreturn_args *);
+ 	void (*encode_layoutreturn) (struct xdr_stream *xdr,
+ 				     const struct nfs4_layoutreturn_args *args);
  
-+#define NFS4_FF_MIRROR_STAT_AVAIL	(0)
-+
- struct nfs4_ff_layout_segment {
- 	struct pnfs_layout_segment	generic_hdr;
- 	u64				stripe_unit;
 -- 
 2.9.3
 
