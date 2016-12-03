@@ -1,43 +1,52 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f193.google.com ([209.85.223.193]:34566 "EHLO
-        mail-io0-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751190AbcLCU6I (ORCPT
+Received: from mail-io0-f194.google.com ([209.85.223.194]:33734 "EHLO
+        mail-io0-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751234AbcLCU6I (ORCPT
         <rfc822;linux-nfs@vger.kernel.org>); Sat, 3 Dec 2016 15:58:08 -0500
-Received: by mail-io0-f193.google.com with SMTP id r94so14855151ioe.1
-        for <linux-nfs@vger.kernel.org>; Sat, 03 Dec 2016 12:57:29 -0800 (PST)
+Received: by mail-io0-f194.google.com with SMTP id j92so14912456ioi.0
+        for <linux-nfs@vger.kernel.org>; Sat, 03 Dec 2016 12:57:32 -0800 (PST)
 From: Trond Myklebust <trond.myklebust@primarydata.com>
 To: linux-nfs@vger.kernel.org
-Subject: [PATCH 01/10] pNFS/flexfiles: Don't attempt to send layoutstats if there are no entries
-Date: Sat,  3 Dec 2016 15:57:16 -0500
-Message-Id: <20161203205725.12961-2-trond.myklebust@primarydata.com>
-In-Reply-To: <20161203205725.12961-1-trond.myklebust@primarydata.com>
+Subject: [PATCH 03/10] NFSv4: Add a generic structure for managing layout-private information
+Date: Sat,  3 Dec 2016 15:57:18 -0500
+Message-Id: <20161203205725.12961-4-trond.myklebust@primarydata.com>
+In-Reply-To: <20161203205725.12961-3-trond.myklebust@primarydata.com>
 References: <20161203205725.12961-1-trond.myklebust@primarydata.com>
+ <20161203205725.12961-2-trond.myklebust@primarydata.com>
+ <20161203205725.12961-3-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-If the list of mirrors is empty, then don't send an RPC call.
-
 Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
 ---
- fs/nfs/flexfilelayout/flexfilelayout.c | 5 +++++
- 1 file changed, 5 insertions(+)
+ include/linux/nfs_xdr.h | 14 ++++++++++++++
+ 1 file changed, 14 insertions(+)
 
-diff --git a/fs/nfs/flexfilelayout/flexfilelayout.c b/fs/nfs/flexfilelayout/flexfilelayout.c
-index 90462a2a9237..a6264d6836dc 100644
---- a/fs/nfs/flexfilelayout/flexfilelayout.c
-+++ b/fs/nfs/flexfilelayout/flexfilelayout.c
-@@ -2250,6 +2250,11 @@ ff_layout_prepare_layoutstats(struct nfs42_layoutstat_args *args)
- 	args->num_dev = ff_layout_mirror_prepare_stats(args,
- 			&ff_layout->generic_hdr, dev_count);
- 	spin_unlock(&args->inode->i_lock);
-+	if (!args->num_dev) {
-+		kfree(args->devinfo);
-+		args->devinfo = NULL;
-+		return -ENOENT;
-+	}
+diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+index bfbd0cace91b..331a3200eb01 100644
+--- a/include/linux/nfs_xdr.h
++++ b/include/linux/nfs_xdr.h
+@@ -216,6 +216,20 @@ struct nfs4_get_lease_time_res {
+ 	struct nfs_fsinfo	       *lr_fsinfo;
+ };
  
- 	return 0;
- }
++struct xdr_stream;
++struct nfs4_xdr_opaque_data;
++
++struct nfs4_xdr_opaque_ops {
++	void (*encode)(struct xdr_stream *, const void *args,
++			const struct nfs4_xdr_opaque_data *);
++	void (*free)(struct nfs4_xdr_opaque_data *);
++};
++
++struct nfs4_xdr_opaque_data {
++	const struct nfs4_xdr_opaque_ops *ops;
++	void *data;
++};
++
+ #define PNFS_LAYOUT_MAXSIZE 4096
+ 
+ struct nfs4_layoutdriver_data {
 -- 
 2.9.3
 
