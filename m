@@ -1,37 +1,50 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mailrelay110.isp.belgacom.be ([195.238.20.137]:12563 "EHLO
-        mailrelay110.isp.belgacom.be" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1750867AbcLDMpb (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sun, 4 Dec 2016 07:45:31 -0500
-From: Fabian Frederick <fabf@skynet.be>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
-        fabf@skynet.be
-Subject: [PATCH 1/1 linux-next] sunrpc: use DEFINE_SPINLOCK()
-Date: Sun,  4 Dec 2016 13:45:28 +0100
-Message-Id: <1480855528-19620-1-git-send-email-fabf@skynet.be>
+Received: from mail-io0-f193.google.com ([209.85.223.193]:34280 "EHLO
+        mail-io0-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1750979AbcLDVwS (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sun, 4 Dec 2016 16:52:18 -0500
+Received: by mail-io0-f193.google.com with SMTP id r94so18765631ioe.1
+        for <linux-nfs@vger.kernel.org>; Sun, 04 Dec 2016 13:52:18 -0800 (PST)
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH] NFS: Fix incorrect mapping revalidation when holding a delegation
+Date: Sun,  4 Dec 2016 16:52:14 -0500
+Message-Id: <20161204215214.24024-1-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Signed-off-by: Fabian Frederick <fabf@skynet.be>
----
- net/sunrpc/svcauth.c | 3 +--
- 1 file changed, 1 insertion(+), 2 deletions(-)
+We should only care about checking the attributes if the page cache
+is marked as dubious (using NFS_INO_REVAL_PAGECACHE) and the
+NFS_INO_REVAL_FORCED flag is set.
 
-diff --git a/net/sunrpc/svcauth.c b/net/sunrpc/svcauth.c
-index 69841db..e112da8 100644
---- a/net/sunrpc/svcauth.c
-+++ b/net/sunrpc/svcauth.c
-@@ -124,8 +124,7 @@ EXPORT_SYMBOL_GPL(svc_auth_unregister);
- #define	DN_HASHMAX	(1<<DN_HASHBITS)
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+---
+ fs/nfs/inode.c | 12 +++++++++---
+ 1 file changed, 9 insertions(+), 3 deletions(-)
+
+diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
+index 75f5a9cb2e66..df4d7ec348ed 100644
+--- a/fs/nfs/inode.c
++++ b/fs/nfs/inode.c
+@@ -1114,9 +1114,15 @@ static int nfs_invalidate_mapping(struct inode *inode, struct address_space *map
  
- static struct hlist_head	auth_domain_table[DN_HASHMAX];
--static spinlock_t	auth_domain_lock =
--	__SPIN_LOCK_UNLOCKED(auth_domain_lock);
-+static DEFINE_SPINLOCK(auth_domain_lock);
- 
- void auth_domain_put(struct auth_domain *dom)
+ static bool nfs_mapping_need_revalidate_inode(struct inode *inode)
  {
+-	if (nfs_have_delegated_attributes(inode))
+-		return false;
+-	return (NFS_I(inode)->cache_validity & NFS_INO_REVAL_PAGECACHE)
++	unsigned long cache_validity = NFS_I(inode)->cache_validity;
++
++	if (NFS_PROTO(inode)->have_delegation(inode, FMODE_READ)) {
++		const unsigned long force_reval =
++			NFS_INO_REVAL_PAGECACHE|NFS_INO_REVAL_FORCED;
++		return (cache_validity & force_reval) == force_reval;
++	}
++
++	return (cache_validity & NFS_INO_REVAL_PAGECACHE)
+ 		|| nfs_attribute_timeout(inode)
+ 		|| NFS_STALE(inode);
+ }
 -- 
-2.7.4
+2.9.3
 
