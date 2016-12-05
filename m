@@ -1,122 +1,209 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f196.google.com ([209.85.223.196]:35936 "EHLO
-        mail-io0-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751798AbcLER3I (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 5 Dec 2016 12:29:08 -0500
-Received: by mail-io0-f196.google.com with SMTP id s82so1228698ioi.3
-        for <linux-nfs@vger.kernel.org>; Mon, 05 Dec 2016 09:29:08 -0800 (PST)
+Received: from mout.web.de ([212.227.15.14]:52613 "EHLO mout.web.de"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1751686AbcLESZs (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 5 Dec 2016 13:25:48 -0500
+Subject: Re: [PATCH] overlayfs: ignore empty NFSv4 ACLs in ext4 upperdir
+To: "J. Bruce Fields" <bfields@fieldses.org>,
+        Miklos Szeredi <miklos@szeredi.hu>
+References: <5a6862bd-924d-25e4-2a8e-ba4f51e66604@web.de>
+ <CAJfpeguwUtRWRGmNmimNp-FXzWqMCCQMb24iWPu0w_J0_rOnnw@mail.gmail.com>
+ <20161205151933.GA17517@fieldses.org>
+ <CAJfpegtpkavseTFLspaC7svbvHRq-0-7jvyh63+DK5iWHTGnaQ@mail.gmail.com>
+ <20161205162559.GB17517@fieldses.org>
+Cc: "linux-unionfs@vger.kernel.org" <linux-unionfs@vger.kernel.org>,
+        Linux NFS list <linux-nfs@vger.kernel.org>,
+        linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
+        Andreas Gruenbacher <agruenba@redhat.com>
+From: Patrick Plagwitz <Patrick_Plagwitz@web.de>
+Message-ID: <acfea369-ad43-8e8e-baf9-4c7d4e74efd4@web.de>
+Date: Mon, 5 Dec 2016 19:25:34 +0100
 MIME-Version: 1.0
-In-Reply-To: <87oa0r584c.fsf@notabene.neil.brown.name>
-References: <87oa0r584c.fsf@notabene.neil.brown.name>
-From: Olga Kornievskaia <aglo@umich.edu>
-Date: Mon, 5 Dec 2016 12:29:07 -0500
-Message-ID: <CAN-5tyHrWMj54cvj3PVO+8Yxk+0NK9ey=X7VU6WXKv-mswh-xw@mail.gmail.com>
-Subject: Re: [PATCH] SUNRPC: fix refcounting problems with auth_gss messages.
-To: NeilBrown <neilb@suse.com>
-Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
-        Anna Schumaker <anna.schumaker@netapp.com>,
-        linux-nfs <linux-nfs@vger.kernel.org>,
-        Olga Kornievskaia <kolga@netapp.com>
-Content-Type: text/plain; charset=UTF-8
+In-Reply-To: <20161205162559.GB17517@fieldses.org>
+Content-Type: text/plain; charset=windows-1252
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sun, Dec 4, 2016 at 11:10 PM, NeilBrown <neilb@suse.com> wrote:
->
-> There are two problems with refcounting of auth_gss messages.
->
-> First, the reference on the pipe->pipe list (taken by a call
-> to rpc_queue_upcall()) is not counted.  It seems to be
-> assumed that a message in pipe->pipe will always also be in
-> pipe->in_downcall, where it is correctly reference counted.
->
-> However there is no guaranty of this.  I have a report of a
-> NULL dereferences in rpc_pipe_read() which suggests a msg
-> that has been freed is still on the pipe->pipe list.
->
-> One way I imagine this might happen is:
-> - message is queued for uid=U and auth->service=S1
-> - rpc.gssd reads this message and starts processing.
->   This removes the message from pipe->pipe
-> - message is queued for uid=U and auth->service=S2
-> - rpc.gssd replies to the first message. gss_pipe_downcall()
->   calls __gss_find_upcall(pipe, U, NULL) and it finds the
->   *second* message, as new messages are placed at the head
->   of ->in_downcall, and the service type is not checked.
+On 12/05/2016 05:25 PM, J. Bruce Fields wrote:
+> On Mon, Dec 05, 2016 at 04:36:03PM +0100, Miklos Szeredi wrote:
+>> On Mon, Dec 5, 2016 at 4:19 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
+>>>> Can NFS people comment on this?  Where does the nfs4_acl come from?
+>>>
+>>> This is the interface the NFS client provides for applications to modify
+>>> NFSv4 ACLs on servers that support them.
+>>
+>> Fine, but why are we seeing this xattr on exports where no xattrs are
+>> set on the exported fs?
+> 
+> I don't know.  I took another look at the original patch and don't see
+> any details on the server setup: which server is it (knfsd, ganesha,
+> netapp, ...)?  How is it configured?
+> 
+The server is the one in the kernel (knfsd, I assume), with completely default
+configuration. /etc/exports is
 
-Correct "service" was/is not a part of the protocol between the kernel
-and gssd. So that's why the kernel can't match what's coming from gssd
-to a particular waiting upcall.
+/srv/nfsv4 localhost(fsid=root)
 
-> - This second message is removed from ->in_downcall and freed
->   by gss_release_msg() (even though it is still on pipe->pipe)
-> - rpc.gssd tries to read another message, and dereferences a pointer
->   to this message that has just been freed.
+Adding rw, or various other options, does not change the observations in the
+original mail. As far as I know, there are no options for controlling ACLs.
 
-Agreed. This is a problem.
+>>>> What can overlayfs do if it's a non-empty ACL?
+>>>
+>>> As little as possible.  You can't copy it up, can you?  So any attempt
+>>> to support it is going to be incomplete.
+>>
+>> Right.
+>>
+>>>
+>>>> Does knfsd translate posix ACL into NFS acl?  If so, we can translate
+>>>> back.  Should we do a generic POSIX<->NFS acl translator?
+>>>
+>>> knsd does translate between POSIX and NFSv4 ACLs.  It's a complicated
+>>
+>> This does explain the nfs4_acl xattr on the client.  Question: if it's
+>> empty, why have it at all?
+> 
+> I'm honestly not sure what's going on there.  I'd be curious to see a
+> network trace if possible.
+> 
+Just make folders like in the original mail, start the NFS server with the
+exports from above and touch merged/folder/file to reproduce the problem.
+I don't know anything about the NFS protocol but here you have a tshark
+packet summary as well as the details from the folder/ lookup reply (51).
+As far as I can tell, no ACL information is in there.
 
-Doesn't the problem still exist even with this patch because
-gss_add_msg() adds the msg onto the in_downcall() list? So gssd in
-__gss_fin_upcall() can find the 2nd upcall even before the 2nd msg is
-added to the pipe->pipe()?
+ 22 NFS 286 V4 Call CREATE_SESSION
+ 23 NFS 214 V4 Reply (Call In 22) CREATE_SESSION
+ 24 NFS 214 V4 Call RECLAIM_COMPLETE
+ 26 NFS 178 V4 Reply (Call In 24) RECLAIM_COMPLETE
+ 27 NFS 218 V4 Call SECINFO_NO_NAME
+ 29 NFS 194 V4 Reply (Call In 27) SECINFO_NO_NAME
+ 30 NFS 230 V4 Call PUTROOTFH | GETATTR
+ 31 NFS 350 V4 Reply (Call In 30) PUTROOTFH | GETATTR
+ 32 NFS 242 V4 Call GETATTR FH: 0x62d40c52
+ 33 NFS 254 V4 Reply (Call In 32) GETATTR
+ 34 NFS 242 V4 Call GETATTR FH: 0x62d40c52
+ 35 NFS 254 V4 Reply (Call In 34) GETATTR
+ 36 NFS 242 V4 Call GETATTR FH: 0x62d40c52
+ 37 NFS 254 V4 Reply (Call In 36) GETATTR
+ 38 NFS 242 V4 Call GETATTR FH: 0x62d40c52
+ 39 NFS 254 V4 Reply (Call In 38) GETATTR
+ 40 NFS 234 V4 Call GETATTR FH: 0x62d40c52
+ 41 NFS 206 V4 Reply (Call In 40) GETATTR
+ 42 NFS 242 V4 Call GETATTR FH: 0x62d40c52
+ 43 NFS 254 V4 Reply (Call In 42) GETATTR
+ 44 NFS 238 V4 Call GETATTR FH: 0x62d40c52
+ 45 NFS 330 V4 Reply (Call In 44) GETATTR
+ 46 NFS 246 V4 Call ACCESS FH: 0x62d40c52, [Check: RD LU MD XT DL]
+ 47 NFS 258 V4 Reply (Call In 46) ACCESS, [Access Denied: MD XT DL], [Allowed: RD LU]
+ 48 NFS 238 V4 Call GETATTR FH: 0x62d40c52
+ 49 NFS 250 V4 Reply (Call In 48) GETATTR
+ 50 NFS 258 V4 Call LOOKUP DH: 0x62d40c52/folder
+ 51 NFS 366 V4 Reply (Call In 50) LOOKUP
+ 52 NFS 254 V4 Call ACCESS FH: 0x96d0c04a, [Check: RD LU MD XT DL]
+ 53 NFS 258 V4 Reply (Call In 52) ACCESS, [Access Denied: MD XT DL], [Allowed: RD LU]
+ 54 NFS 262 V4 Call LOOKUP DH: 0x96d0c04a/file
+ 55 NFS 186 V4 Reply (Call In 54) LOOKUP Status: NFS4ERR_NOENT
+ 56 NFS 246 V4 Call GETATTR FH: 0x96d0c04a
+ 57 NFS 278 V4 Reply (Call In 56) GETATTR
 
-In the perfect world, the real solution (even for the initial problem)
-would have been changing the gssd-kernel protocol to include "service"
-as a part of the upcall. But that's not going to happen...
-
-The solution I can thinking of is something where the message is not
-on "in_downcall" list until it's consumed by the rpc_pipe. I'd need to
-some time to figure out how to do that...
-
-> I fix this by incrementing the reference count before calling
-> rpc_queue_upcall(), and decrementing it if that fails, or normally in
-> gss_pipe_destroy_msg().
-> It seems strange that the reply doesn't target the message more
-> precisely, but I don't know all the details.  In any case, I think the
-> reference counting irregularity became a measureable bug when the
-> extra arg was added to __gss_find_upcall(), hence the Fixes: line
-> below.
->
-> The second problem is that if rpc_queue_upcall() fails, the new
-> message is not freed. gss_alloc_msg() set the ->count to 1,
-> gss_add_msg() increments this to 2, gss_unhash_msg() decrements to 1,
-> then the pointer is discarded so the memory never gets freed.
->
-> Fixes: 9130b8dbc6ac ("SUNRPC: allow for upcalls for same uid but different gss service")
-> Cc: stable@vger.kernel.org
-> Link: https://bugzilla.opensuse.org/show_bug.cgi?id=1011250
-> Signed-off-by: NeilBrown <neilb@suse.com>
-> ---
->  net/sunrpc/auth_gss/auth_gss.c | 7 ++++++-
->  1 file changed, 6 insertions(+), 1 deletion(-)
->
-> diff --git a/net/sunrpc/auth_gss/auth_gss.c b/net/sunrpc/auth_gss/auth_gss.c
-> index 3dfd769dc5b5..16cea00c959b 100644
-> --- a/net/sunrpc/auth_gss/auth_gss.c
-> +++ b/net/sunrpc/auth_gss/auth_gss.c
-> @@ -541,9 +541,13 @@ gss_setup_upcall(struct gss_auth *gss_auth, struct rpc_cred *cred)
->                 return gss_new;
->         gss_msg = gss_add_msg(gss_new);
->         if (gss_msg == gss_new) {
-> -               int res = rpc_queue_upcall(gss_new->pipe, &gss_new->msg);
-> +               int res;
-> +               atomic_inc(&gss_msg->count);
-> +               res = rpc_queue_upcall(gss_new->pipe, &gss_new->msg);
->                 if (res) {
->                         gss_unhash_msg(gss_new);
-> +                       atomic_dec(&gss_msg->count);
-> +                       gss_release_msg(gss_new);
->                         gss_msg = ERR_PTR(res);
->                 }
->         } else
-> @@ -836,6 +840,7 @@ gss_pipe_destroy_msg(struct rpc_pipe_msg *msg)
->                         warn_gssd();
->                 gss_release_msg(gss_msg);
->         }
-> +       gss_release_msg(gss_msg);
->  }
->
->  static void gss_pipe_dentry_destroy(struct dentry *dir,
-> --
-> 2.10.2
->
+Network File System, Ops(5): SEQUENCE PUTFH LOOKUP GETFH GETATTR
+    [Program Version: 4]
+    [V4 Procedure: COMPOUND (1)]
+    Status: NFS4_OK (0)
+    Tag: <EMPTY>
+        length: 0
+        contents: <EMPTY>
+    Operations (count: 5)
+        Opcode: SEQUENCE (53)
+            Status: NFS4_OK (0)
+            sessionid: 50a245584a819c9a0a00000000000000
+            seqid: 0x0000000d
+            slot id: 0
+            high slot id: 30
+            target high slot id: 30
+            status flags: 0x00000000
+                .... .... .... .... .... .... .... ...0 = SEQ4_STATUS_CB_PATH_DOWN: Not set
+                .... .... .... .... .... .... .... ..0. = SEQ4_STATUS_CB_GSS_CONTEXTS_EXPIRING: Not set
+                .... .... .... .... .... .... .... .0.. = SEQ4_STATUS_CB_GSS_CONTEXTS_EXPIRED: Not set
+                .... .... .... .... .... .... .... 0... = SEQ4_STATUS_EXPIRED_ALL_STATE_REVOKED: Not set
+                .... .... .... .... .... .... ...0 .... = SEQ4_STATUS_EXPIRED_SOME_STATE_REVOKED: Not set
+                .... .... .... .... .... .... ..0. .... = SEQ4_STATUS_ADMIN_STATE_REVOKED: Not set
+                .... .... .... .... .... .... .0.. .... = SEQ4_STATUS_RECALLABLE_STATE_REVOKED: Not set
+                .... .... .... .... .... .... 0... .... = SEQ4_STATUS_LEASE_MOVED: Not set
+                .... .... .... .... .... ...0 .... .... = SEQ4_STATUS_RESTART_RECLAIM_NEEDED: Not set
+                .... .... .... .... .... ..0. .... .... = SEQ4_STATUS_CB_PATH_DOWN_SESSION: Not set
+                .... .... .... .... .... .0.. .... .... = SEQ4_STATUS_BACKCHANNEL_FAULT: Not set
+                .... .... .... .... .... 0... .... .... = SEQ4_STATUS_DEVID_CHANGED: Not set
+                .... .... .... .... ...0 .... .... .... = SEQ4_STATUS_DEVID_DELETED: Not set
+        Opcode: PUTFH (22)
+            Status: NFS4_OK (0)
+        Opcode: LOOKUP (15)
+            Status: NFS4_OK (0)
+        Opcode: GETFH (10)
+            Status: NFS4_OK (0)
+            Filehandle
+                length: 16
+                [hash (CRC-32): 0x96d0c04a]
+                filehandle: 0100010100000000790f04000762a435
+        Opcode: GETATTR (9)
+            Status: NFS4_OK (0)
+            Attr mask[0]: 0x0010011a (Type, Change, Size, FSID, FileId)
+                reqd_attr: Type (1)
+                    ftype4: NF4DIR (2)
+                reqd_attr: Change (3)
+                    changeid: 6360241138682687914
+                reqd_attr: Size (4)
+                    size: 4096
+                reqd_attr: FSID (8)
+                    fattr4_fsid
+                        fsid4.major: 0
+                        fsid4.minor: 0
+                reco_attr: FileId (20)
+                    fileid: 266105
+            Attr mask[1]: 0x00b0a23a (Mode, NumLinks, Owner, Owner_Group, RawDev, Space_Used, Time_Access, Time_Metadata, Time_Modify, Mounted_on_FileId)
+                reco_attr: Mode (33)
+                    mode: 0755, Name: Unknown, Read permission for owner, Write permission for owner, Execute permission for owner, Read permission for group, Execute
+permission for group, Read permission for others, Execute permission for others
+                        .... .... .... .... 000. .... .... .... = Name: Unknown (0)
+                        .... .... .... .... .... 0... .... .... = Set user id on exec: No
+                        .... .... .... .... .... .0.. .... .... = Set group id on exec: No
+                        .... .... .... .... .... ..0. .... .... = Save swapped text even after use: No
+                        .... .... .... .... .... ...1 .... .... = Read permission for owner: Yes
+                        .... .... .... .... .... .... 1... .... = Write permission for owner: Yes
+                        .... .... .... .... .... .... .1.. .... = Execute permission for owner: Yes
+                        .... .... .... .... .... .... ..1. .... = Read permission for group: Yes
+                        .... .... .... .... .... .... ...0 .... = Write permission for group: No
+                        .... .... .... .... .... .... .... 1... = Execute permission for group: Yes
+                        .... .... .... .... .... .... .... .1.. = Read permission for others: Yes
+                        .... .... .... .... .... .... .... ..0. = Write permission for others: No
+                        .... .... .... .... .... .... .... ...1 = Execute permission for others: Yes
+                reco_attr: NumLinks (35)
+                    numlinks: 2
+                reco_attr: Owner (36)
+                    fattr4_owner: 0
+                        length: 1
+                        contents: 0
+                        fill bytes: opaque data
+                reco_attr: Owner_Group (37)
+                    fattr4_owner_group: 0
+                        length: 1
+                        contents: 0
+                        fill bytes: opaque data
+                reco_attr: RawDev (41)
+                    specdata1: 0
+                    specdata2: 0
+                reco_attr: Space_Used (45)
+                    space_used: 4096
+                reco_attr: Time_Access (47)
+                    seconds: 1480888617
+                    nseconds: 513333330
+                reco_attr: Time_Metadata (52)
+                    seconds: 1480859038
+                    nseconds: 486666666
+                reco_attr: Time_Modify (53)
+                    seconds: 1480859038
+                    nseconds: 486666666
+                reco_attr: Mounted_on_FileId (55)
+                    fileid: 0x0000000000040f79
+    [Main Opcode: LOOKUP (15)]
