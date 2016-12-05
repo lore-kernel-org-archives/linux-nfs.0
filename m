@@ -1,75 +1,93 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:58658 "EHLO mx2.suse.de"
+Received: from mout.web.de ([217.72.192.78]:64597 "EHLO mout.web.de"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751605AbcLEWnO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 5 Dec 2016 17:43:14 -0500
-From: NeilBrown <neilb@suse.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Date: Tue, 06 Dec 2016 09:42:41 +1100
-Cc: "J. Bruce Fields" <bfields@redhat.com>,
-        Steve Dickson <SteveD@redhat.com>, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 03/15] Add /etc/nfs.conf support to rpc.nfsd
-In-Reply-To: <20161205222750.GC20652@fieldses.org>
-References: <148065078775.28046.5506130555300891075.stgit@noble> <148065110833.28046.2561331715736018574.stgit@noble> <20161205222750.GC20652@fieldses.org>
-Message-ID: <874m2i576m.fsf@notabene.neil.brown.name>
+        id S1751998AbcLEW6y (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 5 Dec 2016 17:58:54 -0500
+Subject: Re: [PATCH] overlayfs: ignore empty NFSv4 ACLs in ext4 upperdir
+To: =?UTF-8?Q?Andreas_Gr=c3=bcnbacher?= <andreas.gruenbacher@gmail.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>
+References: <5a6862bd-924d-25e4-2a8e-ba4f51e66604@web.de>
+ <CAJfpeguwUtRWRGmNmimNp-FXzWqMCCQMb24iWPu0w_J0_rOnnw@mail.gmail.com>
+ <20161205151933.GA17517@fieldses.org>
+ <CAJfpegtpkavseTFLspaC7svbvHRq-0-7jvyh63+DK5iWHTGnaQ@mail.gmail.com>
+ <20161205162559.GB17517@fieldses.org>
+ <CAHpGcMKHjic6L+J0qvMYNG9hVCcDO1hEpx4BiEk0ZCKDV39BmA@mail.gmail.com>
+Cc: Miklos Szeredi <miklos@szeredi.hu>,
+        "linux-unionfs@vger.kernel.org" <linux-unionfs@vger.kernel.org>,
+        Linux NFS list <linux-nfs@vger.kernel.org>,
+        Linux FS-devel Mailing List <linux-fsdevel@vger.kernel.org>,
+        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
+        Andreas Gruenbacher <agruenba@redhat.com>
+From: Patrick Plagwitz <Patrick_Plagwitz@web.de>
+Message-ID: <266c571f-e4e2-7c61-5ee2-8ece0c2d06e9@web.de>
+Date: Mon, 5 Dec 2016 23:58:43 +0100
 MIME-Version: 1.0
-Content-Type: multipart/signed; boundary="=-=-=";
-        micalg=pgp-sha256; protocol="application/pgp-signature"
+In-Reply-To: <CAHpGcMKHjic6L+J0qvMYNG9hVCcDO1hEpx4BiEk0ZCKDV39BmA@mail.gmail.com>
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---=-=-=
-Content-Type: text/plain
+On 12/05/2016 08:37 PM, Andreas Grünbacher wrote:
+> 2016-12-05 17:25 GMT+01:00 J. Bruce Fields <bfields@fieldses.org>:
+>> On Mon, Dec 05, 2016 at 04:36:03PM +0100, Miklos Szeredi wrote:
+>>> On Mon, Dec 5, 2016 at 4:19 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
+>>>>> Can NFS people comment on this?  Where does the nfs4_acl come from?
+>>>>
+>>>> This is the interface the NFS client provides for applications to modify
+>>>> NFSv4 ACLs on servers that support them.
+>>>
+>>> Fine, but why are we seeing this xattr on exports where no xattrs are
+>>> set on the exported fs?
+>>
+>> I don't know.  I took another look at the original patch and don't see
+>> any details on the server setup: which server is it (knfsd, ganesha,
+>> netapp, ...)?  How is it configured?
+>>
+>>>>> What can overlayfs do if it's a non-empty ACL?
+>>>>
+>>>> As little as possible.  You can't copy it up, can you?  So any attempt
+>>>> to support it is going to be incomplete.
+>>>
+>>> Right.
+>>>
+>>>>
+>>>>> Does knfsd translate posix ACL into NFS acl?  If so, we can translate
+>>>>> back.  Should we do a generic POSIX<->NFS acl translator?
+>>>>
+>>>> knsd does translate between POSIX and NFSv4 ACLs.  It's a complicated
+>>>
+>>> This does explain the nfs4_acl xattr on the client.  Question: if it's
+>>> empty, why have it at all?
+>>
+>> I'm honestly not sure what's going on there.  I'd be curious to see a
+>> network trace if possible.
+> 
+> I do see "system.nfs4_acl" attributes on knfsd exported filesystems
+> that support POSIX ACLs (for ext4: "mount -o acl"). For exported
+> filesystem that don't support POSIX ACLs (ext4: mount -o noacl), that
+> attribute is missing. The attribute shouldn't be empty though; when
+> the file has no real ACL, "system.nfs4_acl" represents the file mode
+> permissions. The "system.nfs4_acl" attribute exposes the information
+> on the wire; there is no resonable way to translate that into an ACL
+> on another filesystem, really.
+> 
+> Patrick, what does 'getfattr -m- -d /nfs/file' give you?
+> 
+getfattr -m - -d nfs/folder -e text gives
 
-On Tue, Dec 06 2016, J. Bruce Fields wrote:
+# file: nfs/folder/
+system.nfs4_acl="\000\000\000^C\000\000\000\000\000\000\000\000\000^V^A<E7>\000\000\000^FOWNER@\000\000\000\000\000\000\000\000\000\000\000^R\000<A1>\000\000\000^FGROUP@\000\000\000\000\000\000\000\000\000\000\000^R\000<A1>\000\000\000
+    EVERYONE@\000\000"
 
-> On Fri, Dec 02, 2016 at 02:58:28PM +1100, NeilBrown wrote:
->> I haven't added -H support, but everything else should be able to be
->> set through /etc/nfs.conf.
->
-> I'm unclear--is this just a temporary omission for the purposes of this
-> RFC, or is there some reason you think -H shouldn't be set in nfs.conf?
->
+Those are 80 bytes. I checked again and vfs_getxattr indeed returns size=80.
+It just looked empty because the first byte is 0... Ok, so nfs4_acl is not
+empty after all and checking *value == 0 does not tell if there are actually
+ACLs present or not, sorry for the confusion.
 
-Temporary omission.
-I would need to decide how to store a list in nfs.conf.
-1/
-  [nfsd]
-  host = foo
-  host = bar
+You are right, when I mount the exported fs with noacl the problem goes away.
+You already helped me there, thanks.
 
-2/
-  [nfsd]
-    host = foo, bar
-
-3/ ??
-
-and I suspect that any -H on the command line would over-ride all host=
-in nfs.conf, but I'm not certain.
-I'm sure there is a good, defensible solution here, but I didn't want to
-spend time on it for the RFC.
-
-Thanks,
-NeilBrown
-
-
---=-=-=
-Content-Type: application/pgp-signature; name="signature.asc"
-
------BEGIN PGP SIGNATURE-----
-
-iQIzBAEBCAAdFiEEG8Yp69OQ2HB7X0l6Oeye3VZigbkFAlhF7WEACgkQOeye3VZi
-gbkrfw//Q+aJDi5UmQH0ZigSaSSBZ9pWnLjLqW20MTEUmxuV89fvcI2Qra4ud9bK
-/lXQ9+UbNRjTxYTAjqeoYb7pINjItq81y4F34GyvUn6N66D6WduU7Nll1pvys6ji
-vq6SlKKdQ0gjQo6X4rZFUqZAlg/Zv0G/BIq0LDvIR1OlDvPdYEkG56xEa5ZEzDOL
-c++3/5Qk69D9e78lztUvQPzoAe1R8yzCKoJttUk0e16xmshARkcIglgsbF9yHj65
-UuJOcrnBWJvEYIQZRmy5XsiC22QSLIy8wBLN0pqLiy4OzxmgikIRC673yRYVUDBG
-aWiO9l/txXfN0ncAa7kq9Xk22mgScHUx3mvGxlb+wUCauXNe/zbYuWIZWqZauoAf
-2xZK0oUTTsuqFJCXFQToWfEaRKrHrbUYK9zLQ9LHz+Fi21opqgvnHn0vclcwTTpQ
-qyuDr9foI+C3mtzWpeJ3RmD3q+hv+8y0CQr3y2RHTjb2kzC8DpVlUfKMy1xPax3f
-Jeyomuq6Rxqk4TZiaXARtuSZb0cshx81t5FcvU3OU3fDUvfh+NbqD5eX9d/m/uG7
-VsRjmp6k5DbuYeG5IJncYXrqXK+SFY0JvHmlLlX9vTkfHnf5gxhYDSvM411MlxYr
-IifGzkkBShnRxSSTYI1zDRoLHA17tuBySxRT8p/gWeoo+zLUH4E=
-=lJcW
------END PGP SIGNATURE-----
---=-=-=--
+Still, I think there should be a way to copy up files that actually have no
+ACLs since acl is often the default for ext4 mounts and giving an "Operation
+not supported" for random open(2)s is not a very good way to convey what's
+going on.
