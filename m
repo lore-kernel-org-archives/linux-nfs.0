@@ -1,33 +1,49 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:44048 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:47460 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1753122AbcLFQa3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 6 Dec 2016 11:30:29 -0500
-Subject: Re: [PATCH 0/4] 4 assorted nfs-utils patches
-To: NeilBrown <neilb@suse.com>
-References: <148064084082.9179.6570593128436337540.stgit@noble>
+        id S1753069AbcLFQzt (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 6 Dec 2016 11:55:49 -0500
+Subject: Re: [RFC PATCH 00/15] Enhance /etc/nfs.conf usage and remove
+ nfs-config.service
+To: NeilBrown <neilb@suse.com>, "J. Bruce Fields" <bfields@redhat.com>
+References: <148065078775.28046.5506130555300891075.stgit@noble>
 Cc: linux-nfs@vger.kernel.org
 From: Steve Dickson <SteveD@redhat.com>
-Message-ID: <818a017b-d480-a47c-2c61-d2a16aad293c@RedHat.com>
-Date: Tue, 6 Dec 2016 11:30:15 -0500
+Message-ID: <748c0cb1-cc3b-362a-3c97-46917dd7dabc@RedHat.com>
+Date: Tue, 6 Dec 2016 11:55:48 -0500
 MIME-Version: 1.0
-In-Reply-To: <148064084082.9179.6570593128436337540.stgit@noble>
+In-Reply-To: <148065078775.28046.5506130555300891075.stgit@noble>
 Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
 
-On 12/01/2016 08:09 PM, NeilBrown wrote:
-> First 2 are a repost of two I posted yesterday, with a small change
-> following the response from Steve.
+On 12/01/2016 10:58 PM, NeilBrown wrote:
+> This is an RFC series.  A little voice at the back of my head keeps
+> telling me that I'm over-engineering, but there isn't really that much
+> new code, and I think the result has a lot to recommend it.
 > 
-> Third removes usage of the old nfsctl systemcall (which isn't
-> available in current kernels, and probably hasn't been used by anyone
-> in years).
+> But please tell me if I'm wrong.
 > 
-> The last cleans up some code that annoyed my while I was working on
-> something else.
+> - Various daemons (not all) are enhance to accept configuration
+>   information from /etc/nfs.conf
+> - the conffile reader is enhanced to support include files, and
+>   particularly to be able to include /etc/sysconf/X or /etc/defaults/X
+>   files usefully
+> - nfs-config.service is removed, because it isn't really needed with
+>   the above.
+> - documentation for all the above is provided, including a new
+>   nfs.systemd man page which gives the bigger picture.
+This is some nice work! Its definitely a step in the right 
+direction... IMHO... I especially like the idea of the include
+statement, I'm very curious to see how that work! 
+
+If this is finished, I'll start testing and hopefully 
+get it in... soon.
+
+steved.
+  
 > 
 > Thanks,
 > NeilBrown
@@ -35,47 +51,52 @@ On 12/01/2016 08:09 PM, NeilBrown wrote:
 > 
 > ---
 > 
-> NeilBrown (4):
->       mount: don't hide temporary error code on timeout.
->       mount: take history into account when assessing if an error is permanent.
->       Remove all use of the nfsctl system call.
->       Remove error messages on xstrdup failure.
-All 4 committed! thanks! 
-
-steved.
+> NeilBrown (15):
+>       Add man-page describing /etc/nfs.conf
+>       conffile: add bool support
+>       Add /etc/nfs.conf support to rpc.nfsd
+>       Add /etc/nfs.conf support for mountd.
+>       Add /etc/nfs.conf support for statd
+>       Add /etc/nfs.conf support for sm-notify
+>       conffile: free image of config file after parsing
+>       conffile: split loading of file into a separate function.
+>       conffile: add support for include files.
+>       conffile: strip "quotes" from values in conf file.
+>       conffile: ignore setting of empty string
+>       conffile: allow $name expansion of tag values.
+>       statd: allow --no-notify to be passed via environment variable.
+>       systemd: Remove the nfs-config.service
+>       Add nfs.systemd man page
 > 
 > 
->  support/export/Makefile.am |    2 -
->  support/export/export.c    |   56 ------------------
->  support/export/nfsctl.c    |  118 ---------------------------------------
->  support/export/rmtab.c     |   98 --------------------------------
->  support/export/xtab.c      |   16 -----
->  support/include/exportfs.h |    7 --
->  support/include/nfs/nfs.h  |  120 ---------------------------------------
->  support/include/nfslib.h   |   16 -----
->  support/nfs/Makefile.am    |    4 +
->  support/nfs/cacheio.c      |   12 ----
->  support/nfs/getfh.c        |  134 --------------------------------------------
->  support/nfs/nfsclient.c    |   34 -----------
->  support/nfs/nfsctl.c       |   32 -----------
->  support/nfs/nfsexport.c    |  134 --------------------------------------------
->  support/nfs/rmtab.c        |   21 -------
->  utils/exportfs/exportfs.c  |   84 +---------------------------
->  utils/mount/stropts.c      |   38 ++++++++++--
->  utils/mountd/auth.c        |   15 +----
->  utils/mountd/mountd.c      |   63 +++++----------------
->  utils/nfsd/nfsd.c          |   36 ++----------
->  utils/nfsd/nfssvc.c        |   26 ++-------
->  utils/nfsd/nfssvc.h        |    2 -
->  utils/nfsidmap/nfsidmap.c  |    6 --
->  utils/statd/statd.c        |    5 --
->  24 files changed, 67 insertions(+), 1012 deletions(-)
->  delete mode 100644 support/export/nfsctl.c
->  delete mode 100644 support/export/rmtab.c
->  delete mode 100644 support/nfs/getfh.c
->  delete mode 100644 support/nfs/nfsclient.c
->  delete mode 100644 support/nfs/nfsctl.c
->  delete mode 100644 support/nfs/nfsexport.c
+>  configure.ac                     |    6 -
+>  support/include/conffile.h       |    2 
+>  support/nfs/conffile.c           |  147 +++++++++++++++++++++---------
+>  systemd/Makefile.am              |    5 +
+>  systemd/README                   |   22 +++-
+>  systemd/nfs-blkmap.service       |    3 -
+>  systemd/nfs-config.service.in    |   13 ---
+>  systemd/nfs-idmapd.service       |    6 -
+>  systemd/nfs-mountd.service       |    6 -
+>  systemd/nfs-server.service       |    7 -
+>  systemd/nfs.conf.man             |  186 ++++++++++++++++++++++++++++++++++++++
+>  systemd/nfs.systemd.man          |  167 ++++++++++++++++++++++++++++++++++
+>  systemd/rpc-gssd.service.in      |    7 -
+>  systemd/rpc-statd-notify.service |    6 -
+>  systemd/rpc-statd.service        |    7 -
+>  systemd/rpc-svcgssd.service      |    6 -
+>  utils/mountd/mountd.c            |   36 +++++++
+>  utils/mountd/mountd.man          |   34 +++++++
+>  utils/nfsd/nfsd.c                |   36 +++++++
+>  utils/nfsd/nfsd.man              |   49 +++++++++-
+>  utils/statd/sm-notify.c          |   11 ++
+>  utils/statd/sm-notify.man        |   27 ++++++
+>  utils/statd/statd.c              |   25 +++++
+>  utils/statd/statd.man            |   40 ++++++++
+>  24 files changed, 737 insertions(+), 117 deletions(-)
+>  delete mode 100644 systemd/nfs-config.service.in
+>  create mode 100644 systemd/nfs.conf.man
+>  create mode 100644 systemd/nfs.systemd.man
 > 
 > --
 > Signature
