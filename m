@@ -1,19 +1,17 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:38390 "EHLO mx2.suse.de"
+Received: from mx2.suse.de ([195.135.220.15]:40375 "EHLO mx2.suse.de"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751327AbcLFWNL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 6 Dec 2016 17:13:11 -0500
+        id S1751308AbcLFWaN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 6 Dec 2016 17:30:13 -0500
 From: NeilBrown <neilb@suse.com>
-To: Olga Kornievskaia <aglo@umich.edu>
-Date: Wed, 07 Dec 2016 09:12:59 +1100
-Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
-        Anna Schumaker <anna.schumaker@netapp.com>,
-        linux-nfs <linux-nfs@vger.kernel.org>,
-        Olga Kornievskaia <kolga@netapp.com>
-Subject: Re: [PATCH] SUNRPC: fix refcounting problems with auth_gss messages.
-In-Reply-To: <CAN-5tyHT9X9ULCDT0iPkMtgo4eMiRLVGVuzabmZXMePv8FwXFw@mail.gmail.com>
-References: <87oa0r584c.fsf@notabene.neil.brown.name> <CAN-5tyHrWMj54cvj3PVO+8Yxk+0NK9ey=X7VU6WXKv-mswh-xw@mail.gmail.com> <877f7e58yo.fsf@notabene.neil.brown.name> <CAN-5tyHT9X9ULCDT0iPkMtgo4eMiRLVGVuzabmZXMePv8FwXFw@mail.gmail.com>
-Message-ID: <87wpfc4sgk.fsf@notabene.neil.brown.name>
+To: Steve Dickson <SteveD@redhat.com>,
+        "J. Bruce Fields" <bfields@redhat.com>
+Date: Wed, 07 Dec 2016 09:30:05 +1100
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 03/15] Add /etc/nfs.conf support to rpc.nfsd
+In-Reply-To: <79c2889c-3a77-7fcb-37d0-8fd970b54be7@RedHat.com>
+References: <148065078775.28046.5506130555300891075.stgit@noble> <148065110833.28046.2561331715736018574.stgit@noble> <79c2889c-3a77-7fcb-37d0-8fd970b54be7@RedHat.com>
+Message-ID: <87twag4ro2.fsf@notabene.neil.brown.name>
 MIME-Version: 1.0
 Content-Type: multipart/signed; boundary="=-=-=";
         micalg=pgp-sha256; protocol="application/pgp-signature"
@@ -22,70 +20,84 @@ List-ID: <linux-nfs.vger.kernel.org>
 
 --=-=-=
 Content-Type: text/plain
+Content-Transfer-Encoding: quoted-printable
 
-On Wed, Dec 07 2016, Olga Kornievskaia wrote:
->>>
->>> Agreed. This is a problem.
->>>
->>> Doesn't the problem still exist even with this patch because
->>> gss_add_msg() adds the msg onto the in_downcall() list? So gssd in
->>> __gss_fin_upcall() can find the 2nd upcall even before the 2nd msg is
->>> added to the pipe->pipe()?
->>
->> The use-after-free problem is solved I think.  It doesn't really make
->> any difference if the down-call arrives before or after
->> rpc_queue_upcall() is called.  The msg will still not be freed before it
->> is removed from both lists.
->>
->
-> Sorry I don't see it.
+On Wed, Dec 07 2016, Steve Dickson wrote:
 
-Maybe we are looking at different code?
+> On 12/01/2016 10:58 PM, NeilBrown wrote:
+>> I haven't added -H support, but everything else should be able to be
+>> set through /etc/nfs.conf.
+>>=20
+>> Signed-off-by: NeilBrown <neilb@suse.com>
+>> ---
+>>  systemd/nfs.conf.man |   24 ++++++++++++++++++++++++
+>>  utils/nfsd/nfsd.c    |   36 ++++++++++++++++++++++++++++++++++++
+>>  utils/nfsd/nfsd.man  |   49 +++++++++++++++++++++++++++++++++++++++++++=
++++---
+>>  3 files changed, 106 insertions(+), 3 deletions(-)
+>>=20
+>> diff --git a/systemd/nfs.conf.man b/systemd/nfs.conf.man
+>> index 1f524d8fe74e..6ac6c65a81d9 100644
+>> --- a/systemd/nfs.conf.man
+>> +++ b/systemd/nfs.conf.man
+>> @@ -76,8 +76,32 @@ file is the only way to configure this program.  See
+>>  .BR nfsdcltrack (8)
+>>  for details.
+>>=20=20
+>> +.TP
+>> +.B nfsd
+>> +Recognized values:
+>> +.BR threads ,
+>> +.BR grace-time ,
+>> +.BR lease-time ,
+>> +.BR udp ,
+>> +.BR tcp ,
+>> +.BR vers2 ,
+>> +.BR vers3 ,
+>> +.BR vers4 ,
+>> +.BR vers4.0 ,
+>> +.BR vers4.1 ,
+>> +.BR vers4.2 ,
+>> +.BR rdma .
+> I'm curious as to what the criteria was as to
+> which options were defined. I would think 'debug'
+> and 'port' would have made the list.
 
->
-> Thread 1 adds an upcall and it's getting processed by gssd.
-> Thread 2 executes gss_add_msg() which puts the message on the
-> in_downcall list. Context switch (before the atomic_inc()!).
+port should have made the list, it just .... didn't.
 
-gss_add_msg(), as of 4.9-rc8, is
-	spin_lock(&pipe->lock);
-	old = __gss_find_upcall(pipe, gss_msg->uid, gss_msg->auth);
-	if (old == NULL) {
-		atomic_inc(&gss_msg->count);
-		list_add(&gss_msg->list, &pipe->in_downcall);
-	} else
-		gss_msg = old;
-	spin_unlock(&pipe->lock);
+debug was more of a deliberate omission, or at least a deferral.
+I didn't include debug for any daemons. mountd, nfsd, nfsdcltrack all
+allow the option.  statd blends it with no-syslog. sm-notify has "-d".
+mountd's --debug is different to the other, and takes word, as does
+"exportfs -d".  The word is passed to xlog_sconfig can can select from
+general, call, auth, parse, all.
 
-so the gss_msg is added to in_downcall *after* the atomic_inc(), and the
-whole is protected by pipe->lock anyway so even if the atomic_inc() were
-delayed by the CPU reordering things, there would be no risk of
-gss_pipe_downcall() finding a gss_msg which didn't have the ->count
-elevated.
+Assuming that we want to be able to enable debug in the config file
+(wouldn't you just run that command manually when you want to enable
+debugging?) it would be good to standardize somehow.
+
+So I guess I was treating "debug" like "host" - do it later.
+I have no excuse for "port" :-(
 
 NeilBrown
-
-> Upcall comes back from the gssd, finds msg from Thread2 in_downcall
-> list. gss_release_msg() will dec the counter to 0 and will remove the
-> msg.
 
 --=-=-=
 Content-Type: application/pgp-signature; name="signature.asc"
 
 -----BEGIN PGP SIGNATURE-----
 
-iQIzBAEBCAAdFiEEG8Yp69OQ2HB7X0l6Oeye3VZigbkFAlhHN+wACgkQOeye3VZi
-gbnb7Q//eXKoyu7LTJM+3WsGVna3lP8C37R/9wO3mWM4yRjucGDLRLf6cHrAn+c2
-OHAdHg/+6cSvaaYwcQANKAOcytqVxAlOcJ13BnWkjH30Uhwm4E5108gtefzxG80F
-lyxWP/DXuDepoVD4EvGHIesUUZZAm7nViKkV6931nIMFCvq3oK9Pcb1h+TflN7S7
-PbwXi7gvy/GxALYwwXo7mm/81SwrD85MD/Q41ZmN3DeC+RwebzGVbl9FrDVbewWz
-unqVMniPAAzrXiDX77FKl4QxN27HGs4xHkFkJx7KPGyhHLAzF/WI49tpMkwIJja2
-ShM0JV42zmUIww1iBDJ0fx9jFylRurBNYx7VPGZURutCIyWdL09dIcZYIzv0hats
-yl0vX3GEf6XbrUPmqiIdkdJclOu2PCjYovy92cIxhwX4dzF1La4PwEph4npvv0kK
-qUWbsQHVrn8BoPcPGn2jI68fYYfjVrW46sYZLG066l0ERJ8KLwDBYd+cpgagwkFG
-nhYg8JX/E0MoXgkGZghWQOLC5dEVNuWNGg8JUHFEwzzMhMCgI0gf98ty9pi3Q9pi
-HrzO//LjZ9c0GR6hClVdUQtlfFtl7ixVQ9AyeGCYfaNgL8RYIeBDFKMBsvm+cCbp
-3dE9Ypi7PhUzCGtOk/vOG7UG73o0MGIcMvDb8Q3KPmW6gqJ6ELg=
-=FC62
+iQIzBAEBCAAdFiEEG8Yp69OQ2HB7X0l6Oeye3VZigbkFAlhHO+0ACgkQOeye3VZi
+gbn55g/9F62nrxjG47WtfPA4HLLS/tEJcmUNz0W2X8MVJisw+JQfk1zJzhAG/Cus
+DX0WySztk0uZJ94dr8G7ei4fusZwW/0t/xWS/oM3dsEDwH+dfa6cwZehlEirhJ+t
+yZ+S5m+eF2AYMShYfxN6avfBWPTv4swG/nRwu3iynJOYgShyEMpTAum/zIiq0vGp
+WGXWZpvk1B0uTK4l68As3YXpwreODJzKW4WqrTMTJxXAMlZdEg1/rP1VOF6hIyPc
+tR0EkMIUg/h1ocyM3jYImLyS5i2sd/1/N/tb+4yaz24mFTOAd8T77TJHF5HlIi2Q
+3iLxguXnq+CARLimqrM8Ylr7kat2ks1EtI4Gxs0rDeiVT5NTkqYqkOEclg/2D69S
+gcyKPpUKRauA0sNBNss07KzfYJwfJEZkDhpkdDca+u/4MYRBLVcjlNUYtS9WDj9s
+DCA8zhmwj4QgL4qfhAsa+q0Azv1MejSHNixHXFAr4gbq+eA5HuHZgW4CSGdNM+kH
+NeY7rvU+COOMtPQEF5ReS/zPioUvHy9Apo3TF5HGpekf2+snv+eeX8KxzgHGUy5P
+sf4LtB1LxOSpS54XlJI4lCYUey1NCGj9mrQZxnVCdcGudwNQw+uWeVkuDAKO2AX6
+1+KS09vmwZV4ZkHeNr8JsvDVJGNmzqDYimd5NjxcLWCGbTMt1j8=
+=5OMb
 -----END PGP SIGNATURE-----
 --=-=-=--
