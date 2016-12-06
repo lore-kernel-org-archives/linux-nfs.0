@@ -1,90 +1,83 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:44834 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([173.255.197.46]:44836 "EHLO fieldses.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1753593AbcLFTZt (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 6 Dec 2016 14:25:49 -0500
-Subject: Re: [RFC PATCH 00/15] Enhance /etc/nfs.conf usage and remove
- nfs-config.service
-To: NeilBrown <neilb@suse.com>, "J. Bruce Fields" <bfields@redhat.com>
-References: <148065078775.28046.5506130555300891075.stgit@noble>
-Cc: linux-nfs@vger.kernel.org
-From: Steve Dickson <SteveD@redhat.com>
-Message-ID: <ab0ce4e9-fd03-7cee-5ce2-5317c522db8f@RedHat.com>
-Date: Tue, 6 Dec 2016 14:25:46 -0500
+        id S1751741AbcLFUPa (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 6 Dec 2016 15:15:30 -0500
+Date: Tue, 6 Dec 2016 15:15:29 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Miklos Szeredi <miklos@szeredi.hu>
+Cc: Andreas Gruenbacher <agruenba@redhat.com>,
+        Alexander Viro <viro@zeniv.linux.org.uk>,
+        Christoph Hellwig <hch@infradead.org>, "Theodore Ts'o" <tytso@mit.edu>,
+        Andreas Dilger <adilger.kernel@dilger.ca>,
+        Jeff Layton <jlayton@poochiereds.net>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>,
+        Dave Chinner <david@fromorbit.com>, linux-ext4@vger.kernel.org,
+        LKML <linux-kernel@vger.kernel.org>,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        linux-nfs@vger.kernel.org, linux-cifs@vger.kernel.org,
+        linux-api@vger.kernel.org
+Subject: Re: [PATCH v27 03/21] vfs: Add MAY_DELETE_SELF and MAY_DELETE_CHILD
+ permission flags
+Message-ID: <20161206201529.GA1203@fieldses.org>
+References: <1476190256-1677-1-git-send-email-agruenba@redhat.com>
+ <1476190256-1677-4-git-send-email-agruenba@redhat.com>
+ <CAELBmZCgttywPy3EtkFao7SPESaw8VB5K6x7PTRk7gwSk7sXqg@mail.gmail.com>
 MIME-Version: 1.0
-In-Reply-To: <148065078775.28046.5506130555300891075.stgit@noble>
-Content-Type: text/plain; charset=utf-8
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <CAELBmZCgttywPy3EtkFao7SPESaw8VB5K6x7PTRk7gwSk7sXqg@mail.gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-
-On 12/01/2016 10:58 PM, NeilBrown wrote:
-> This is an RFC series.  A little voice at the back of my head keeps
-> telling me that I'm over-engineering, but there isn't really that much
-> new code, and I think the result has a lot to recommend it.
+On Fri, Dec 02, 2016 at 10:57:42AM +0100, Miklos Szeredi wrote:
+> On Tue, Oct 11, 2016 at 2:50 PM, Andreas Gruenbacher
+> <agruenba@redhat.com> wrote:
+> > Normally, deleting a file requires MAY_WRITE access to the parent
+> > directory.  With richacls, a file may be deleted with MAY_DELETE_CHILD access
+> > to the parent directory or with MAY_DELETE_SELF access to the file.
+> >
+> > To support that, pass the MAY_DELETE_CHILD mask flag to inode_permission()
+> > when checking for delete access inside a directory, and MAY_DELETE_SELF
+> > when checking for delete access to a file itself.
+> >
+> > The MAY_DELETE_SELF permission overrides the sticky directory check.
 > 
-> But please tell me if I'm wrong.
+> And MAY_DELETE_SELF seems totally inappropriate to any kind of rename,
+> since from the point of view of the inode we are not doing anything at
+> all.  The modifications are all in the parent(s), and that's where the
+> permission checks need to be.
+
+I'm having a hard time finding an authoritative reference here (Samba
+people might be able to help), but my understanding is that Windows
+gives this a meaning something like "may I delete a link to this file".
+
+(And not even "may I delete the *last* link to this file", which might
+also sound more logical.)
+
+--b.
+
 > 
-> - Various daemons (not all) are enhance to accept configuration
->   information from /etc/nfs.conf
-> - the conffile reader is enhanced to support include files, and
->   particularly to be able to include /etc/sysconf/X or /etc/defaults/X
->   files usefully
-> - nfs-config.service is removed, because it isn't really needed with
->   the above.
-> - documentation for all the above is provided, including a new
->   nfs.systemd man page which gives the bigger picture.
+> > @@ -2780,14 +2780,20 @@ static int may_delete_or_replace(struct inode *dir, struct dentry *victim,
+> >         BUG_ON(victim->d_parent->d_inode != dir);
+> >         audit_inode_child(dir, victim, AUDIT_TYPE_CHILD_DELETE);
+> >
+> > -       error = inode_permission(dir, mask);
+> > +       error = inode_permission(dir, mask | MAY_WRITE | MAY_DELETE_CHILD);
+> > +       if (!error && check_sticky(dir, inode))
+> > +               error = -EPERM;
+> > +       if (error && IS_RICHACL(inode) &&
+> > +           inode_permission(inode, MAY_DELETE_SELF) == 0 &&
+> > +           inode_permission(dir, mask) == 0)
+> > +               error = 0;
 > 
-Here is the nfs.conf I will be using to do my testing... 
-I'm just wondering if this is something we should put in the git tree? 
-
-#
-# This is a general conifguration for the 
-# NFS daemons and tools
-#
-#[nfsdcltrack]
-# storagedir=/var/lib/nfs/nfsdcltrack
-#
-#[nfsd]
-# threads=8
-# grace-time=90
-# lease-time=90
-# udp=y
-# tcp=y
-# vers2=n
-# vers3=y
-# vers4=y
-# vers4.0=y
-# vers4.1=y
-# vers4.2=y
-# rdma=n
-# 
-#[mountd]
-# manage_gids=n
-# descriptors=0
-# port=42258
-# threads=1
-# reverse-lookup=n
-# state-directory-path=/var/lib/nfs
-# ha-callout=NULL
-#
-#[statd]
-# port=0
-# outgoing-port=0
-# name=NULL
-# state-directory-path=/var/lib/nfs/statd
-# ha-callout=NULL
-#
-#[lockd]
-# port=0
-# udp-port=0
-#
-#[sm-notify]
-# retry-time=900
-# outgoing-port=NULL
-# outgoing-addr=NULL
-#
-
-
-
+> Why is MAY_WRITE missing here?  Everything not aware of
+> MAY_DELETE_SELF (e.g. LSMs) will still need MAY_WRITE otherwise this
+> is going to be a loophole.
+> 
+> Thanks,
+> Miklos
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
