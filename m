@@ -1,52 +1,57 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from linuxhacker.ru ([217.76.32.60]:56354 "EHLO fiona.linuxhacker.ru"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751058AbcLFGq4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 6 Dec 2016 01:46:56 -0500
-Subject: Re: Revalidate failure leads to unmount
-Mime-Version: 1.0 (Apple Message framework v1283)
-Content-Type: text/plain; charset=us-ascii
-From: Oleg Drokin <green@linuxhacker.ru>
-In-Reply-To: <20161206061747.GN1555@ZenIV.linux.org.uk>
-Date: Tue, 6 Dec 2016 01:46:47 -0500
-Cc: "<linux-fsdevel@vger.kernel.org>" <linux-fsdevel@vger.kernel.org>,
-        Trond Myklebust <trondmy@primarydata.com>,
-        List Linux NFS Mailing <linux-nfs@vger.kernel.org>,
-        "Eric W. Biederman" <ebiederm@xmission.com>
-Message-Id: <A7250E83-29DF-4976-91A3-101D2A3438C5@linuxhacker.ru>
-References: <37A073FB-726E-4AF8-BC61-0DFBA6C51BD7@linuxhacker.ru> <CA893F6B-6EC3-477C-B20B-0E74CAFEA53C@linuxhacker.ru> <5B453EA9-676D-4240-BF2F-4827188962E4@linuxhacker.ru> <20161206020059.GL1555@ZenIV.linux.org.uk> <02B48074-7E2E-4DB5-9A88-4FD4E37088FA@linuxhacker.ru> <20161206050254.GM1555@ZenIV.linux.org.uk> <D061B89E-EFC7-49F8-86C0-C60FDF269D3C@linuxhacker.ru> <20161206061747.GN1555@ZenIV.linux.org.uk>
-To: Al Viro <viro@ZenIV.linux.org.uk>
+Received: from mail-oi0-f68.google.com ([209.85.218.68]:33125 "EHLO
+        mail-oi0-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1753040AbcLFKIe (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 6 Dec 2016 05:08:34 -0500
+Received: by mail-oi0-f68.google.com with SMTP id f201so40484448oib.0
+        for <linux-nfs@vger.kernel.org>; Tue, 06 Dec 2016 02:08:34 -0800 (PST)
+MIME-Version: 1.0
+In-Reply-To: <CAHpGcMKjscfhmrAhwGes0ag2xTkbpFvCO6eiLL_rHz87XE-ZmA@mail.gmail.com>
+References: <5a6862bd-924d-25e4-2a8e-ba4f51e66604@web.de> <CAJfpeguwUtRWRGmNmimNp-FXzWqMCCQMb24iWPu0w_J0_rOnnw@mail.gmail.com>
+ <20161205151933.GA17517@fieldses.org> <CAJfpegtpkavseTFLspaC7svbvHRq-0-7jvyh63+DK5iWHTGnaQ@mail.gmail.com>
+ <20161205162559.GB17517@fieldses.org> <CAHpGcMKHjic6L+J0qvMYNG9hVCcDO1hEpx4BiEk0ZCKDV39BmA@mail.gmail.com>
+ <266c571f-e4e2-7c61-5ee2-8ece0c2d06e9@web.de> <CAHpGcMKmtppfn7PVrGKEEtVphuLV=YQ2GDYKOqje4ZANhzSgDw@mail.gmail.com>
+ <CAHpGcMKjscfhmrAhwGes0ag2xTkbpFvCO6eiLL_rHz87XE-ZmA@mail.gmail.com>
+From: Miklos Szeredi <miklos@szeredi.hu>
+Date: Tue, 6 Dec 2016 11:08:32 +0100
+Message-ID: <CAJfpegvRFGOc31gVuYzanzWJ=mYSgRgtAaPhYNxZwHin3Wc0Gw@mail.gmail.com>
+Subject: Re: [PATCH] overlayfs: ignore empty NFSv4 ACLs in ext4 upperdir
+To: =?UTF-8?Q?Andreas_Gr=C3=BCnbacher?= <andreas.gruenbacher@gmail.com>
+Cc: Patrick Plagwitz <Patrick_Plagwitz@web.de>,
+        "J. Bruce Fields" <bfields@fieldses.org>,
+        "linux-unionfs@vger.kernel.org" <linux-unionfs@vger.kernel.org>,
+        Linux NFS list <linux-nfs@vger.kernel.org>,
+        Linux FS-devel Mailing List <linux-fsdevel@vger.kernel.org>,
+        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
+        Andreas Gruenbacher <agruenba@redhat.com>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Tue, Dec 6, 2016 at 12:24 AM, Andreas Gr=C3=BCnbacher
+<andreas.gruenbacher@gmail.com> wrote:
+> 2016-12-06 0:19 GMT+01:00 Andreas Gr=C3=BCnbacher <andreas.gruenbacher@gm=
+ail.com>:
 
-On Dec 6, 2016, at 1:17 AM, Al Viro wrote:
+>> It's not hard to come up with a heuristic that determines if a
+>> system.nfs4_acl value is equivalent to a file mode, and to ignore the
+>> attribute in that case. (The file mode is transmitted in its own
+>> attribute already, so actually converting .) That way, overlayfs could
+>> still fail copying up files that have an actual ACL. It's still an
+>> ugly hack ...
+>
+> Actually, that kind of heuristic would make sense in the NFS client
+> which could then hide the "system.nfs4_acl" attribute.
 
-> On Tue, Dec 06, 2016 at 12:45:11AM -0500, Oleg Drokin wrote:
-> 
->> Well, certainly if d_splice_alias was working like that so that even non-directory
->> dentry would find an alias (not necessarily unhashed even) for that same inode and use that instead, that would make ll_splice_alias/ll_find_alias unnecessary.
->> 
->> We still retain the weird d_compare() that rejects otherwise perfectly valid aliases
->> if the lock guarding them is gone, triggering relookup (and necessiating the
->> above logic to pick up just rejected alias again now that we have the lock again).
-> 
-> Why not have ->d_revalidate() kick them, instead?  _IF_ we have a way to
-> do unhash-and-trigger-lookup that way, do you really need those games with
-> ->d_compare()?
+Even simpler would be if knfsd didn't send the attribute if not
+necessary.  Looks like there's code actively creating the nfs4_acl on
+the wire even if the filesystem had none:
 
-The comment there says:
- * This avoids a race where ll_lookup_it() instantiates a dentry, but we get
- * an AST before calling d_revalidate_it().  The dentry still exists (marked
- * INVALID) so d_lookup() matches it, but we have no lock on it (so
- * lock_match() fails) and we spin around real_lookup().
+    pacl =3D get_acl(inode, ACL_TYPE_ACCESS);
+    if (!pacl)
+        pacl =3D posix_acl_from_mode(inode->i_mode, GFP_KERNEL);
 
-and indeed I seem to have a memory of some code that did lookup followed
-by revalidate (though checking commit history, that was a long time ago).
-I checked and apparently now lookup_real() does not do any revalidation and
-neither does its caller.
+What's the point?
 
-So assuming lookup no longer is followed by mandatory revalidate, we probably
-can just move the lock check to the start of revalidate, I'll try that tomorrow.
-
-
+Thanks,
+Miklos
