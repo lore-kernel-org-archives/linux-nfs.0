@@ -1,25 +1,24 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:47460 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([173.255.197.46]:44648 "EHLO fieldses.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1753069AbcLFQzt (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 6 Dec 2016 11:55:49 -0500
+        id S1752977AbcLFR0m (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 6 Dec 2016 12:26:42 -0500
+Date: Tue, 6 Dec 2016 12:26:41 -0500
+To: NeilBrown <neilb@suse.com>
+Cc: "J. Bruce Fields" <bfields@redhat.com>,
+        Steve Dickson <SteveD@redhat.com>, linux-nfs@vger.kernel.org
 Subject: Re: [RFC PATCH 00/15] Enhance /etc/nfs.conf usage and remove
  nfs-config.service
-To: NeilBrown <neilb@suse.com>, "J. Bruce Fields" <bfields@redhat.com>
+Message-ID: <20161206172641.GA31197@fieldses.org>
 References: <148065078775.28046.5506130555300891075.stgit@noble>
-Cc: linux-nfs@vger.kernel.org
-From: Steve Dickson <SteveD@redhat.com>
-Message-ID: <748c0cb1-cc3b-362a-3c97-46917dd7dabc@RedHat.com>
-Date: Tue, 6 Dec 2016 11:55:48 -0500
 MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
 In-Reply-To: <148065078775.28046.5506130555300891075.stgit@noble>
-Content-Type: text/plain; charset=utf-8
+From: bfields@fieldses.org (J. Bruce Fields)
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-
-On 12/01/2016 10:58 PM, NeilBrown wrote:
+On Fri, Dec 02, 2016 at 02:58:27PM +1100, NeilBrown wrote:
 > This is an RFC series.  A little voice at the back of my head keeps
 > telling me that I'm over-engineering, but there isn't really that much
 > new code, and I think the result has a lot to recommend it.
@@ -31,19 +30,30 @@ On 12/01/2016 10:58 PM, NeilBrown wrote:
 > - the conffile reader is enhanced to support include files, and
 >   particularly to be able to include /etc/sysconf/X or /etc/defaults/X
 >   files usefully
+
+Currently those files are actually sourced by a shell, right?  So in
+theory people could be doing tricky things in there that would no longer
+be supported.  Probably unlikely, though, OK....
+
 > - nfs-config.service is removed, because it isn't really needed with
 >   the above.
 > - documentation for all the above is provided, including a new
 >   nfs.systemd man page which gives the bigger picture.
-This is some nice work! Its definitely a step in the right 
-direction... IMHO... I especially like the idea of the include
-statement, I'm very curious to see how that work! 
 
-If this is finished, I'll start testing and hopefully 
-get it in... soon.
+Still looks pretty good to me.
 
-steved.
-  
+I'm a little worried about user interface churn.  We're not done yet
+explaining that people have to run nfs-config.service after changing
+things, soon we'll start telling them oh, never mind about that and oh,
+by the way, you may want to start migrating your configuration to
+/etc/nfs.conf....
+
+But nfs.conf they can ignore and at worst they're going to get an error
+trying to run nfs-config.service that they can ignore, so, OK, it
+doesn't sound so bad.
+
+--b.
+
 > 
 > Thanks,
 > NeilBrown
@@ -100,4 +110,3 @@ steved.
 > 
 > --
 > Signature
-> 
