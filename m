@@ -1,211 +1,71 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:48030 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([173.255.197.46]:44708 "EHLO fieldses.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1752245AbcLFSvg (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 6 Dec 2016 13:51:36 -0500
-Subject: Re: [PATCH 03/15] Add /etc/nfs.conf support to rpc.nfsd
-To: NeilBrown <neilb@suse.com>, "J. Bruce Fields" <bfields@redhat.com>
-References: <148065078775.28046.5506130555300891075.stgit@noble>
- <148065110833.28046.2561331715736018574.stgit@noble>
-Cc: linux-nfs@vger.kernel.org
-From: Steve Dickson <SteveD@redhat.com>
-Message-ID: <8e72acac-42de-bf02-9069-60e7b6a12c04@RedHat.com>
-Date: Tue, 6 Dec 2016 13:51:35 -0500
+        id S1751593AbcLFS6I (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 6 Dec 2016 13:58:08 -0500
+Date: Tue, 6 Dec 2016 13:58:06 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Andreas Gruenbacher <agruenba@redhat.com>
+Cc: Miklos Szeredi <miklos@szeredi.hu>,
+        Andreas =?utf-8?Q?Gr=C3=BCnbacher?=
+        <andreas.gruenbacher@gmail.com>,
+        Patrick Plagwitz <Patrick_Plagwitz@web.de>,
+        "linux-unionfs@vger.kernel.org" <linux-unionfs@vger.kernel.org>,
+        Linux NFS list <linux-nfs@vger.kernel.org>,
+        Linux FS-devel Mailing List <linux-fsdevel@vger.kernel.org>,
+        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>
+Subject: Re: [PATCH] overlayfs: ignore empty NFSv4 ACLs in ext4 upperdir
+Message-ID: <20161206185806.GC31197@fieldses.org>
+References: <CAJfpeguwUtRWRGmNmimNp-FXzWqMCCQMb24iWPu0w_J0_rOnnw@mail.gmail.com>
+ <20161205151933.GA17517@fieldses.org>
+ <CAJfpegtpkavseTFLspaC7svbvHRq-0-7jvyh63+DK5iWHTGnaQ@mail.gmail.com>
+ <20161205162559.GB17517@fieldses.org>
+ <CAHpGcMKHjic6L+J0qvMYNG9hVCcDO1hEpx4BiEk0ZCKDV39BmA@mail.gmail.com>
+ <266c571f-e4e2-7c61-5ee2-8ece0c2d06e9@web.de>
+ <CAHpGcMKmtppfn7PVrGKEEtVphuLV=YQ2GDYKOqje4ZANhzSgDw@mail.gmail.com>
+ <CAHpGcMKjscfhmrAhwGes0ag2xTkbpFvCO6eiLL_rHz87XE-ZmA@mail.gmail.com>
+ <CAJfpegvRFGOc31gVuYzanzWJ=mYSgRgtAaPhYNxZwHin3Wc0Gw@mail.gmail.com>
+ <CAHc6FU4JQ28BFZE9_8A06gtkMvvKDzFmw9=ceNPYvnMXEimDMw@mail.gmail.com>
 MIME-Version: 1.0
-In-Reply-To: <148065110833.28046.2561331715736018574.stgit@noble>
 Content-Type: text/plain; charset=utf-8
+In-Reply-To: <CAHc6FU4JQ28BFZE9_8A06gtkMvvKDzFmw9=ceNPYvnMXEimDMw@mail.gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Tue, Dec 06, 2016 at 02:18:31PM +0100, Andreas Gruenbacher wrote:
+> On Tue, Dec 6, 2016 at 11:08 AM, Miklos Szeredi <miklos@szeredi.hu> wrote:
+> > On Tue, Dec 6, 2016 at 12:24 AM, Andreas Grünbacher
+> > <andreas.gruenbacher@gmail.com> wrote:
+> >> 2016-12-06 0:19 GMT+01:00 Andreas Grünbacher <andreas.gruenbacher@gmail.com>:
+> >
+> >>> It's not hard to come up with a heuristic that determines if a
+> >>> system.nfs4_acl value is equivalent to a file mode, and to ignore the
+> >>> attribute in that case. (The file mode is transmitted in its own
+> >>> attribute already, so actually converting .) That way, overlayfs could
+> >>> still fail copying up files that have an actual ACL. It's still an
+> >>> ugly hack ...
+> >>
+> >> Actually, that kind of heuristic would make sense in the NFS client
+> >> which could then hide the "system.nfs4_acl" attribute.
+> >
+> > Even simpler would be if knfsd didn't send the attribute if not
+> > necessary.  Looks like there's code actively creating the nfs4_acl on
+> > the wire even if the filesystem had none:
+> >
+> >     pacl = get_acl(inode, ACL_TYPE_ACCESS);
+> >     if (!pacl)
+> >         pacl = posix_acl_from_mode(inode->i_mode, GFP_KERNEL);
+> >
+> > What's the point?
+> 
+> That's how the protocol is specified.
 
+Yep, even if we could make that change to nfsd it wouldn't help the
+client with the large number of other servers that are out there
+(including older knfsd's).
 
-On 12/01/2016 10:58 PM, NeilBrown wrote:
-> I haven't added -H support, but everything else should be able to be
-> set through /etc/nfs.conf.
-> 
-> Signed-off-by: NeilBrown <neilb@suse.com>
-> ---
->  systemd/nfs.conf.man |   24 ++++++++++++++++++++++++
->  utils/nfsd/nfsd.c    |   36 ++++++++++++++++++++++++++++++++++++
->  utils/nfsd/nfsd.man  |   49 ++++++++++++++++++++++++++++++++++++++++++++++---
->  3 files changed, 106 insertions(+), 3 deletions(-)
-> 
-> diff --git a/systemd/nfs.conf.man b/systemd/nfs.conf.man
-> index 1f524d8fe74e..6ac6c65a81d9 100644
-> --- a/systemd/nfs.conf.man
-> +++ b/systemd/nfs.conf.man
-> @@ -76,8 +76,32 @@ file is the only way to configure this program.  See
->  .BR nfsdcltrack (8)
->  for details.
->  
-> +.TP
-> +.B nfsd
-> +Recognized values:
-> +.BR threads ,
-> +.BR grace-time ,
-> +.BR lease-time ,
-> +.BR udp ,
-> +.BR tcp ,
-> +.BR vers2 ,
-> +.BR vers3 ,
-> +.BR vers4 ,
-> +.BR vers4.0 ,
-Do we need both ver4 and ver4.0?
+--b.
 
-steved.
-> +.BR vers4.1 ,
-> +.BR vers4.2 ,
-> +.BR rdma .
-> +
-> +Version and protocol values are Boolean values as described above.
-> +Threads and the two times are integers.
-> +.B rdma
-> +is a service name or number.  See
-> +.BR rpc.nfsd (8)
-> +for details.
-> +
->  .SH FILES
->  .I /etc/nfs.conf
->  .SH SEE ALSO
->  .BR nfsdcltrack (8),
-> +.BR rpc.nfsd (8),
->  .BR nfsmount.conf (5).
-> diff --git a/utils/nfsd/nfsd.c b/utils/nfsd/nfsd.c
-> index 9a65877f30c3..62b2876948c3 100644
-> --- a/utils/nfsd/nfsd.c
-> +++ b/utils/nfsd/nfsd.c
-> @@ -24,6 +24,7 @@
->  #include <netinet/in.h>
->  #include <arpa/inet.h>
->  
-> +#include "conffile.h"
->  #include "nfslib.h"
->  #include "nfssvc.h"
->  #include "xlog.h"
-> @@ -33,6 +34,8 @@
->  #define NFSD_NPROC 8
->  #endif
->  
-> +char *conf_path = NFS_CONFFILE;
-> +
->  static void	usage(const char *);
->  
->  static struct option longopts[] =
-> @@ -76,6 +79,39 @@ main(int argc, char **argv)
->  	xlog_syslog(0);
->  	xlog_stderr(1);
->  
-> +	conf_init();
-> +	count = conf_get_num("nfsd", "threads", count);
-> +	grace = conf_get_num("nfsd", "grace-time", grace);
-> +	lease = conf_get_num("nfsd", "lease-time", lease);
-> +	rdma_port = conf_get_str("nfsd", "rdma");
-> +	if (conf_get_bool("nfsd", "udp", NFSCTL_UDPISSET(protobits)))
-> +		NFSCTL_UDPSET(protobits);
-> +	else
-> +		NFSCTL_UDPUNSET(protobits);
-> +	if (conf_get_bool("nfsd", "tcp", NFSCTL_TCPISSET(protobits)))
-> +		NFSCTL_TCPSET(protobits);
-> +	else
-> +		NFSCTL_TCPUNSET(protobits);
-> +	for (i = 2; i <= 4; i++) {
-> +		char tag[10];
-> +		sprintf(tag, "vers%d", i);
-> +		if (conf_get_bool("nfsd", tag, NFSCTL_VERISSET(versbits, i)))
-> +			NFSCTL_VERSET(versbits, i);
-> +		else
-> +			NFSCTL_VERUNSET(versbits, i);
-> +	}
-> +	/* We assume the kernel will default all minor versions to 'on',
-> +	 * and allow the config file to disable some.
-> +	 */
-> +	for (i = 0; i <= NFS4_MAXMINOR; i++) {
-> +		char tag[20];
-> +		sprintf(tag, "vers4.%d", i);
-> +		if (!conf_get_bool("nfsd", tag, 1)) {
-> +			NFSCTL_VERSET(minorversset, i);
-> +			NFSCTL_VERUNSET(minorversset, i);
-> +		}
-> +	}
-> +
->  	while ((c = getopt_long(argc, argv, "dH:hN:V:p:P:sTUrG:L:", longopts, NULL)) != EOF) {
->  		switch(c) {
->  		case 'd':
-> diff --git a/utils/nfsd/nfsd.man b/utils/nfsd/nfsd.man
-> index 3ba847e2938f..7b9fbf21a947 100644
-> --- a/utils/nfsd/nfsd.man
-> +++ b/utils/nfsd/nfsd.man
-> @@ -95,11 +95,11 @@ New file open requests (NFSv4) and new file locks (NLM) will not be
->  allowed until after this time has passed to allow clients to recover state.
->  .TP
->  .I nproc
-> -specify the number of NFS server threads. By default, just one
-> -thread is started. However, for optimum performance several threads
-> +specify the number of NFS server threads. By default, eight
-> +threads are started. However, for optimum performance several threads
->  should be used. The actual figure depends on the number of and the work
->  load created by the NFS clients, but a useful starting point is
-> -8 threads. Effects of modifying that number can be checked using
-> +eight threads. Effects of modifying that number can be checked using
->  the
->  .BR nfsstat (8)
->  program.
-> @@ -114,6 +114,48 @@ In particular
->  .B rpc.nfsd 0
->  will stop all threads and thus close any open connections.
->  
-> +.SH CONFIGURATION FILE
-> +Many of the options that can be set on the command line can also be
-> +controlled through values set in the
-> +.B [nfsd]
-> +section of the
-> +.I /etc/nfs.conf
-> +configuration file.  Values recognized include:
-> +.TP
-> +.B threads
-> +The number of threads to start.
-> +.TP
-> +.B grace-time
-> +The grace time, for both NFSv4 and NLM, in seconds.
-> +.TP
-> +.B lease-time
-> +The lease time for NFSv4, in seconds.
-> +.TP
-> +.B rdma
-> +Set RDMA port.  Use "rdma=nfsrdma" to enable standard port.
-> +.TP
-> +.B UDP
-> +Enable (with "on" or "yes" etc) or disable ("off", "no") UDP support.
-> +.TP
-> +.B TCP
-> +Enable or disable TCP support.
-> +.TP
-> +.B vers2
-> +.TP
-> +.B vers3
-> +.TP
-> +.B vers4
-> +Enable or disable a major NFS version.  3 and 4 are normally enabled
-> +by default.
-> +.TP
-> +.B vers4.1
-> +.TP
-> +.B vers4.2
-> +.TP
-> +.B vers4.3
-> +Setting these to "off" or similar will disable the selected minor
-> +versions.  All are enabled by default.
-> +
->  .SH NOTES
->  If the program is built with TI-RPC support, it will enable any protocol and
->  address family combinations that are marked visible in the
-> @@ -125,6 +167,7 @@ database.
->  .BR rpc.mountd (8),
->  .BR exports (5),
->  .BR exportfs (8),
-> +.BR nfs.conf (5),
->  .BR rpc.rquotad (8),
->  .BR nfsstat (8),
->  .BR netconfig(5).
+> (I'm not saying that that's very helpful.)
 > 
-> 
+> Andreas
