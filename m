@@ -1,73 +1,77 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f193.google.com ([209.85.223.193]:36417 "EHLO
-        mail-io0-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751563AbcLFDxH (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 5 Dec 2016 22:53:07 -0500
-Received: by mail-io0-f193.google.com with SMTP id s82so4265908ioi.3
-        for <linux-nfs@vger.kernel.org>; Mon, 05 Dec 2016 19:53:07 -0800 (PST)
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH] pNFS: Release NFS_LAYOUT_RETURN when invalidating the layout stateid
-Date: Mon,  5 Dec 2016 22:53:03 -0500
-Message-Id: <20161206035303.14160-1-trond.myklebust@primarydata.com>
+Received: from zeniv.linux.org.uk ([195.92.253.2]:34928 "EHLO
+        ZenIV.linux.org.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751639AbcLFFC5 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 6 Dec 2016 00:02:57 -0500
+Date: Tue, 6 Dec 2016 05:02:54 +0000
+From: Al Viro <viro@ZenIV.linux.org.uk>
+To: Oleg Drokin <green@linuxhacker.ru>
+Cc: "<linux-fsdevel@vger.kernel.org>" <linux-fsdevel@vger.kernel.org>,
+        Trond Myklebust <trondmy@primarydata.com>,
+        List Linux NFS Mailing <linux-nfs@vger.kernel.org>,
+        "Eric W. Biederman" <ebiederm@xmission.com>
+Subject: Re: Revalidate failure leads to unmount
+Message-ID: <20161206050254.GM1555@ZenIV.linux.org.uk>
+References: <37A073FB-726E-4AF8-BC61-0DFBA6C51BD7@linuxhacker.ru>
+ <CA893F6B-6EC3-477C-B20B-0E74CAFEA53C@linuxhacker.ru>
+ <5B453EA9-676D-4240-BF2F-4827188962E4@linuxhacker.ru>
+ <20161206020059.GL1555@ZenIV.linux.org.uk>
+ <02B48074-7E2E-4DB5-9A88-4FD4E37088FA@linuxhacker.ru>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <02B48074-7E2E-4DB5-9A88-4FD4E37088FA@linuxhacker.ru>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Ensure we release the NFS_LAYOUT_RETURN lock when we invalidate the
-layout stateid, so that processes and RPC tasks that are waiting on
-the layout return can continue.
+On Mon, Dec 05, 2016 at 09:22:47PM -0500, Oleg Drokin wrote:
 
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
----
- fs/nfs/pnfs.c | 21 ++++++++++++---------
- 1 file changed, 12 insertions(+), 9 deletions(-)
+> Retry? Not always, of course, but if it was EINTR, why not?
+> Sure, it needs some more logic to actually propagate those codes, or perhaps
+> revalidate itself needs to be smarter not to fail for such cases?
+> Or is this something that you think should be wholly within filesystem
+> and as such in this case it's just an nfs bug?
 
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index 00aba090c847..fc79d2e778aa 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -281,6 +281,15 @@ pnfs_clear_layoutreturn_info(struct pnfs_layout_hdr *lo)
- 	clear_bit(NFS_LAYOUT_RETURN_REQUESTED, &lo->plh_flags);
- }
+Umm...  Might be doable, but then there's a nasty question - what if that
+happens from umount(2) itself?
  
-+static void pnfs_clear_layoutreturn_waitbit(struct pnfs_layout_hdr *lo)
-+{
-+	clear_bit_unlock(NFS_LAYOUT_RETURN, &lo->plh_flags);
-+	clear_bit(NFS_LAYOUT_RETURN_LOCK, &lo->plh_flags);
-+	smp_mb__after_atomic();
-+	wake_up_bit(&lo->plh_flags, NFS_LAYOUT_RETURN);
-+	rpc_wake_up(&NFS_SERVER(lo->plh_inode)->roc_rpcwaitq);
-+}
-+
- static void
- pnfs_clear_lseg_state(struct pnfs_layout_segment *lseg,
- 		struct list_head *free_me)
-@@ -316,6 +325,9 @@ pnfs_mark_layout_stateid_invalid(struct pnfs_layout_hdr *lo,
- 	list_for_each_entry_safe(lseg, next, &lo->plh_segs, pls_list)
- 		pnfs_clear_lseg_state(lseg, lseg_list);
- 	pnfs_free_returned_lsegs(lo, lseg_list, &range, 0);
-+	if (test_bit(NFS_LAYOUT_RETURN, &lo->plh_flags) &&
-+	    !test_and_set_bit(NFS_LAYOUT_RETURN_LOCK, &lo->plh_flags))
-+		pnfs_clear_layoutreturn_waitbit(lo);
- 	return !list_empty(&lo->plh_segs);
- }
- 
-@@ -953,15 +965,6 @@ static void pnfs_clear_layoutcommit(struct inode *inode,
- 	}
- }
- 
--static void pnfs_clear_layoutreturn_waitbit(struct pnfs_layout_hdr *lo)
--{
--	clear_bit_unlock(NFS_LAYOUT_RETURN, &lo->plh_flags);
--	clear_bit(NFS_LAYOUT_RETURN_LOCK, &lo->plh_flags);
--	smp_mb__after_atomic();
--	wake_up_bit(&lo->plh_flags, NFS_LAYOUT_RETURN);
--	rpc_wake_up(&NFS_SERVER(lo->plh_inode)->roc_rpcwaitq);
--}
--
- void pnfs_layoutreturn_free_lsegs(struct pnfs_layout_hdr *lo,
- 		const nfs4_stateid *arg_stateid,
- 		const struct pnfs_layout_range *range,
--- 
-2.9.3
+> > Like what?  Seriously, what would you do in such situation?  Leave the
+> > damn thing unreachable (and thus impossible to unmount)?  Suppose the
+> > /mnt/foo really had been removed (along with everything under it) on
+> > the server.  You had something mounted on /mnt/foo/bar/baz; what should
+> > the kernel do?
+> 
+> Well, if *I* ended up in this situation, I'd probably just recreate the missing
+> path and then then did umount (ESTALE galore?) ;)
+> (or course there are other less sane approaches like pinning the whole path until
+> unmount happens, but that's likely rife with a lot of other gotchas, but
+> there's a limited version of this already - if I have /mnt/foo mountpoint
+> and I delete /mnt/foo on the server, nobody would notice because we pin
+> the foo part already and all accesses go to the filesystem mounted on top).
 
+Try it...
+
+> But sure, when stuff is really missing, unmounting the subtrees looks like a very
+> sensible thing to do.
+> It's just I suspect revalidate for a network filesystem is more than just
+> "valid" and "invalid", there's a third option of "I don't know, ask me later"
+> (because the server is busy, down for a moment or whatever) and there's
+> at least some value in being able to interrupt a process that's stuck on a network
+> mountpoint without killing the whole thing under it, no?
+
+It's actually even more interesting - some form of delaying invalidation
+might very well be a good thing, *if* we had a way to unhash the sucker
+and have it fall through into lookup.  With invalidation happening only
+if lookup has returned something other than the object we'd just unhashed.
+Then e.g. NFS could bail out in all cases when it would have to talk to
+server and let the regular lookups do the work.  However, right now that
+only works for directories - for regular files we just get a new alias and
+that's it.  If something had been bound on top of the old one, we would lose
+it.  And turning that check into "new dentry is an alias of what we'd
+unhashed" is a bad idea - it's already been hashed by us, so we'd have
+a window when dcache lookup would've picked that new alias.
+
+In that respect irregularities in Lustre become very interesting.  What if
+we taught d_splice_alias() to look for _exact_ unhashed alias (same parent,
+same name) in case of non-directories and did "rehash and return that
+alias, dropping inode reference" if one has been found?  Could we get rid
+of the weird dcache games in Lustre that way?
