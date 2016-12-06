@@ -1,25 +1,28 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from zeniv.linux.org.uk ([195.92.253.2]:60310 "EHLO
+Received: from zeniv.linux.org.uk ([195.92.253.2]:60354 "EHLO
         ZenIV.linux.org.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751570AbcLFCBB (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 5 Dec 2016 21:01:01 -0500
-Date: Tue, 6 Dec 2016 02:00:59 +0000
+        with ESMTP id S1752395AbcLFCDV (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 5 Dec 2016 21:03:21 -0500
+Date: Tue, 6 Dec 2016 02:03:01 +0000
 From: Al Viro <viro@ZenIV.linux.org.uk>
 To: Oleg Drokin <green@linuxhacker.ru>
 Cc: "<linux-fsdevel@vger.kernel.org>" <linux-fsdevel@vger.kernel.org>,
         Trond Myklebust <trondmy@primarydata.com>,
         List Linux NFS Mailing <linux-nfs@vger.kernel.org>,
-        "Eric W. Biederman" <ebiederman@twitter.com>
+        "Eric W. Biederman" <ebiederm@xmission.com>
 Subject: Re: Revalidate failure leads to unmount
-Message-ID: <20161206020059.GL1555@ZenIV.linux.org.uk>
+Message-ID: <20161206020301.GA22740@ZenIV.linux.org.uk>
 References: <37A073FB-726E-4AF8-BC61-0DFBA6C51BD7@linuxhacker.ru>
  <CA893F6B-6EC3-477C-B20B-0E74CAFEA53C@linuxhacker.ru>
  <5B453EA9-676D-4240-BF2F-4827188962E4@linuxhacker.ru>
+ <20161206020059.GL1555@ZenIV.linux.org.uk>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <5B453EA9-676D-4240-BF2F-4827188962E4@linuxhacker.ru>
+In-Reply-To: <20161206020059.GL1555@ZenIV.linux.org.uk>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+
+[gyah - Eric's old address used by mistake; resent with the right address]
 
 On Mon, Dec 05, 2016 at 08:39:15PM -0500, Oleg Drokin wrote:
 > >   Basically it all started with mountpoints randomly getting unmounted during
