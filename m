@@ -1,67 +1,55 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:58448 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751064AbcLGOo0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 7 Dec 2016 09:44:26 -0500
-Subject: Re: [PATCH 03/15] Add /etc/nfs.conf support to rpc.nfsd
-To: NeilBrown <neilb@suse.com>, "J. Bruce Fields" <bfields@redhat.com>
-References: <148065078775.28046.5506130555300891075.stgit@noble>
- <148065110833.28046.2561331715736018574.stgit@noble>
- <8e72acac-42de-bf02-9069-60e7b6a12c04@RedHat.com>
- <87r35k4rcr.fsf@notabene.neil.brown.name>
-Cc: linux-nfs@vger.kernel.org
-From: Steve Dickson <SteveD@redhat.com>
-Message-ID: <35ca5ad2-39db-a46b-13b2-a2e5128793a0@RedHat.com>
-Date: Wed, 7 Dec 2016 09:44:25 -0500
-MIME-Version: 1.0
-In-Reply-To: <87r35k4rcr.fsf@notabene.neil.brown.name>
-Content-Type: text/plain; charset=windows-1252
+Received: from bedivere.hansenpartnership.com ([66.63.167.143]:42148 "EHLO
+        bedivere.hansenpartnership.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1751919AbcLGO5O (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 7 Dec 2016 09:57:14 -0500
+Message-ID: <1481122626.2354.14.camel@HansenPartnership.com>
+Subject: Re: LSF/MM 2017: Call for Proposals
+From: James Bottomley <James.Bottomley@HansenPartnership.com>
+To: Jeff Layton <jlayton@poochiereds.net>, linux-block@vger.kernel.org,
+        linux-btrfs@vger.kernel.org, linux-cifs@vger.kernel.org,
+        linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-ide@vger.kernel.org, linux-kernel@vger.kernel.org,
+        linux-mm@kvack.org, linux-nfs@vger.kernel.org,
+        linux-scsi@vger.kernel.org, "xfs@oss.sgi.com" <xfs@oss.sgi.com>,
+        ceph-devel@vger.kernel.org, linux-nvme@lists.infradead.org
+Cc: "lsf-pc@lists.linux-foundation.org"
+        <lsf-pc@lists.linux-foundation.org>
+Date: Wed, 07 Dec 2016 06:57:06 -0800
+In-Reply-To: <1480601506.2511.7.camel@poochiereds.net>
+References: <1480601506.2511.7.camel@poochiereds.net>
+Content-Type: text/plain; charset="UTF-8"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-
-On 12/06/2016 05:36 PM, NeilBrown wrote:
-> On Wed, Dec 07 2016, Steve Dickson wrote:
+On Thu, 2016-12-01 at 09:11 -0500, Jeff Layton wrote:
+> 1) Proposals for agenda topics should be sent before January 15th, 
+> 2016 to:
 > 
->>> +.B nfsd
->>> +Recognized values:
->>> +.BR threads ,
->>> +.BR grace-time ,
->>> +.BR lease-time ,
->>> +.BR udp ,
->>> +.BR tcp ,
->>> +.BR vers2 ,
->>> +.BR vers3 ,
->>> +.BR vers4 ,
->>> +.BR vers4.0 ,
->> Do we need both ver4 and ver4.0?
+>     lsf-pc@lists.linux-foundation.org
 > 
-> "vers4" allows you to enable or disable v4 has a whole.
-> The assumption is that if enabled, all minor versions that the kernel
-> supports will be enabled by default.
-> vers4.x allows individual minor versions to be disabled, so
->  vers4=yes
->  vers4.0=no
-> would disable v4.0, just like "-V4 -N4.0"
-I see...
-
+> and cc the Linux list or lists that are relevant for the topic in
+> question:
 > 
-> I do wonder if this is ever valid though.  Why do we allow minor
-> versions to be enabled/disabled?
-IDK... I think Trond did this... you know...
-when in doubt... blame Trond! 8-) 
- 
-> Does it make any sense to enable a non-contiguous set of minor versions?
-I don't think so... Talk about handing people rope! ;-)
-
-> Should we just have a maximum NFSv4 minor version?
-Maybe.. 
-
+>     ATA:   linux-ide@vger.kernel.org
+>     Block: linux-block@vger.kernel.org
+>     FS:    linux-fsdevel@vger.kernel.org
+>     MM:    linux-mm@kvack.org
+>     SCSI:  linux-scsi@vger.kernel.org
+>     NVMe:  linux-nvme@lists.infradead.org
 > 
-> I was trying to duplicate the current functionality as closely as
-> convenient.  That might not be best in this case.
-You did a good job... this is definitely a nit.
+> Please tag your proposal with [LSF/MM TOPIC] to make it easier to 
+> track.
 
-steved.
+Just on this point, since there seems to be a lot of confusion: lsf-pc
+is the list for contacting the programme committee, so you cannot
+subscribe to it.
+
+There is no -discuss equivalent, like kernel summit has, because we
+expect you to cc the relevant existing mailing list and have the
+discussion there instead rather than expecting people to subscribe to a
+new list.
+
+James
 
