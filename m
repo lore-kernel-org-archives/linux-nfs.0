@@ -1,75 +1,52 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f196.google.com ([209.85.223.196]:34392 "EHLO
-        mail-io0-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751919AbcLGO6q (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 7 Dec 2016 09:58:46 -0500
-Received: by mail-io0-f196.google.com with SMTP id r94so13895942ioe.1
-        for <linux-nfs@vger.kernel.org>; Wed, 07 Dec 2016 06:58:46 -0800 (PST)
+Received: from us-smtp-delivery-194.mimecast.com ([216.205.24.194]:53755 "EHLO
+        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S932177AbcLGPqh (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 7 Dec 2016 10:46:37 -0500
+From: Trond Myklebust <trondmy@primarydata.com>
+To: Benjamin Coddington <bcodding@redhat.com>
+CC: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: Concurrent `ls` takes out the thrash
+Date: Wed, 7 Dec 2016 15:46:32 +0000
+Message-ID: <CEE29C1D-BB8F-4504-940D-43DE1FE63385@primarydata.com>
+References: <C2A81CDB-ED8F-4D41-919F-3F92CBFF751B@redhat.com>
+In-Reply-To: <C2A81CDB-ED8F-4D41-919F-3F92CBFF751B@redhat.com>
 MIME-Version: 1.0
-In-Reply-To: <87wpfc4sgk.fsf@notabene.neil.brown.name>
-References: <87oa0r584c.fsf@notabene.neil.brown.name> <CAN-5tyHrWMj54cvj3PVO+8Yxk+0NK9ey=X7VU6WXKv-mswh-xw@mail.gmail.com>
- <877f7e58yo.fsf@notabene.neil.brown.name> <CAN-5tyHT9X9ULCDT0iPkMtgo4eMiRLVGVuzabmZXMePv8FwXFw@mail.gmail.com>
- <87wpfc4sgk.fsf@notabene.neil.brown.name>
-From: Olga Kornievskaia <aglo@umich.edu>
-Date: Wed, 7 Dec 2016 09:58:44 -0500
-Message-ID: <CAN-5tyFNJsx3RcO_eETCP0O9W7Wb-BQUd9Huyz9-gK3h9ap3PA@mail.gmail.com>
-Subject: Re: [PATCH] SUNRPC: fix refcounting problems with auth_gss messages.
-To: NeilBrown <neilb@suse.com>
-Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
-        Anna Schumaker <anna.schumaker@netapp.com>,
-        linux-nfs <linux-nfs@vger.kernel.org>,
-        Olga Kornievskaia <kolga@netapp.com>
 Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Dec 6, 2016 at 5:12 PM, NeilBrown <neilb@suse.com> wrote:
-> On Wed, Dec 07 2016, Olga Kornievskaia wrote:
->>>>
->>>> Agreed. This is a problem.
->>>>
->>>> Doesn't the problem still exist even with this patch because
->>>> gss_add_msg() adds the msg onto the in_downcall() list? So gssd in
->>>> __gss_fin_upcall() can find the 2nd upcall even before the 2nd msg is
->>>> added to the pipe->pipe()?
->>>
->>> The use-after-free problem is solved I think.  It doesn't really make
->>> any difference if the down-call arrives before or after
->>> rpc_queue_upcall() is called.  The msg will still not be freed before it
->>> is removed from both lists.
->>>
->>
->> Sorry I don't see it.
->
-> Maybe we are looking at different code?
->
->>
->> Thread 1 adds an upcall and it's getting processed by gssd.
->> Thread 2 executes gss_add_msg() which puts the message on the
->> in_downcall list. Context switch (before the atomic_inc()!).
->
-> gss_add_msg(), as of 4.9-rc8, is
->         spin_lock(&pipe->lock);
->         old = __gss_find_upcall(pipe, gss_msg->uid, gss_msg->auth);
->         if (old == NULL) {
->                 atomic_inc(&gss_msg->count);
->                 list_add(&gss_msg->list, &pipe->in_downcall);
->         } else
->                 gss_msg = old;
->         spin_unlock(&pipe->lock);
->
-> so the gss_msg is added to in_downcall *after* the atomic_inc(), and the
-> whole is protected by pipe->lock anyway so even if the atomic_inc() were
-> delayed by the CPU reordering things, there would be no risk of
-> gss_pipe_downcall() finding a gss_msg which didn't have the ->count
-> elevated.
->
+DQo+IE9uIERlYyA3LCAyMDE2LCBhdCAwODoyOCwgQmVuamFtaW4gQ29kZGluZ3RvbiA8YmNvZGRp
+bmdAcmVkaGF0LmNvbT4gd3JvdGU6DQo+IA0KPiBJIHdhcyBhc2tlZCB0byBmaWd1cmUgb3V0IHdo
+eSB0aGUgbGlzdGluZyBvZiB2ZXJ5IGxhcmdlIGRpcmVjdG9yaWVzIHdhcw0KPiBzbG93LiAgTW9y
+ZSBzcGVjaWZpY2FsbHksIHdoeSBjb25jdXJyZW50bHkgbGlzdGluZyB0aGUgc2FtZSBsYXJnZSBk
+aXJlY3RvcnkNCj4gaXMgL3ZlcnkvIHNsb3cuICBJdCBzZWVtcyB0aGF0IHNvbWV0aW1lcyBhIHVz
+ZXIncyByZWFjdGlvbiB0byB3YWl0aW5nIGZvcg0KPiAnbHMnIHRvIGNvbXBsZXRlIGlzIHRvIHN0
+YXJ0IGEgZmV3IG1vcmUuLiBhbmQgdGhlbiB0aGVpciBtYWNoaW5lIHRha2VzIGENCj4gdmVyeSBs
+b25nIHRpbWUgdG8gY29tcGxldGUgdGhhdCB3b3JrLg0KPiANCj4gSSBjYW4gcmVwcm9kdWNlIHRo
+YXQgZmluZGluZy4gIEFzIGFuIGV4YW1wbGU6DQo+IA0KPiB0aW1lIGxzIC1mbCAvZGlyL3dpdGgv
+MjAwMDAwL2VudHJpZXMvID4vZGV2L251bGwNCj4gDQo+IHJlYWwgICAgMG0xMC43NjZzDQo+IHVz
+ZXIgICAgMG0wLjcxNnMNCj4gc3lzICAgICAwbTAuODI3cw0KPiANCj4gQnV0Li4NCj4gDQo+IGZv
+ciBpIGluIHsxLi4xMH07IGRvIHRpbWUgbHMgLWZsIC9kaXIvd2l0aC8yMDAwMDAvZW50cmllcy8g
+Pi9kZXYvbnVsbCAmIGRvbmUNCj4gDQo+IEVhY2ggb2YgdGhlc2UgXl4gJ2xzJyBjb21tYW5kcyB3
+aWxsIHRha2UgNCB0byA1IG1pbnV0ZXMgdG8gY29tcGxldGUuDQo+IA0KPiBUaGUgcHJvYmxlbSBp
+cyB0aGF0IGNvbmN1cnJlbnQgJ2xzJyBjb21tYW5kcyBzdGFjayB1cCBpbiBuZnNfcmVhZGRpcigp
+IGJvdGgNCj4gd2FpdGluZyBvbiB0aGUgbmV4dCBwYWdlIGFuZCB0YWtpbmcgdHVybnMgZmlsbGlu
+ZyB0aGUgbmV4dCBwYWdlIHdpdGggeGRyLA0KPiBidXQgb25seSBvbmUgb2YgdGhlbSB3aWxsIGhh
+dmUgZGVzYy0+cGx1cyBzZXQgYmVjYXVzZSBzZXR0aW5nIGl0IGNsZWFycyB0aGUNCj4gZmxhZyBv
+biB0aGUgZGlyZWN0b3J5LiAgU28gaWYgYSBwYWdlIGlzIGZpbGxlZCBieSBhIHByb2Nlc3MgdGhh
+dCBkb2Vzbid0IGhhdmUNCj4gZGVzYy0+cGx1cyB0aGVuIHRoZSBuZXh0IHBhc3MgdGhyb3VnaCBs
+b29rdXAoKSwgaXQgZHVtcHMgdGhlIGVudGlyZSBwYWdlDQo+IGNhY2hlIHdpdGggbmZzX2ZvcmNl
+X3VzZV9yZWFkZGlycGx1cygpLiAgVGhlbiB0aGUgbmV4dCByZWFkZGlyIHN0YXJ0cyBhbGwNCj4g
+b3ZlciBmaWxsaW5nIHRoZSBwYWdlY2FjaGUuICBGb3J3YXJkIHByb2dyZXNzIGhhcHBlbnMsIGJ1
+dCBvbmx5IGFmdGVyIG1hbnkNCj4gc3RlcHMgYmFjayByZS1maWxsaW5nIHRoZSBwYWdlY2FjaGUu
+DQoNClllcywgdGhlIHJlYWRkaXIgY29kZSB3YXMgd3JpdHRlbiB3ZWxsIGJlZm9yZSBBbOKAmXMg
+cGF0Y2hlcyB0byBwYXJhbGxlbGlzZSB0aGUgVkZTIG9wZXJhdGlvbnMsIGFuZCBhIGxvdCBvZiBp
+dCBkaWQgcmVseSBvbiB0aGUgaW5vZGUtPmlfbXV0ZXggYmVpbmcgc2V0IG9uIHRoZSBkaXJlY3Rv
+cnkgYnkgdGhlIFZGUyBsYXllci4NCg0KSG93IGFib3V0IHRoZSBmb2xsb3dpbmcgc3VnZ2VzdGlv
+bjogaW5zdGVhZCBvZiBzZXR0aW5nIGEgZmxhZyBvbiB0aGUgaW5vZGUsIHdlIGl0ZXJhdGUgdGhy
+b3VnaCB0aGUgZW50cmllcyBpbiAmbmZzaS0+b3Blbl9maWxlcywgYW5kIHNldCBhIGZsYWcgb24g
+dGhlIHN0cnVjdCBuZnNfb3Blbl9kaXJfY29udGV4dCB0aGF0IHRoZSByZWFkZGlyIHByb2Nlc3Nl
+cyBjYW4gY29weSBpbnRvIGRlc2MtPnBsdXMuIERvZXMgdGhhdCBoZWxwIHdpdGggeW91ciB3b3Jr
+bG9hZD8NCg0K
 
-Ah, I missed the atomic_inc() in the gss_add_msg(). I was only looking
-at your patch that did another atomic_inc(). Makes sense now.
-
-> NeilBrown
->
->> Upcall comes back from the gssd, finds msg from Thread2 in_downcall
->> list. gss_release_msg() will dec the counter to 0 and will remove the
->> msg.
