@@ -1,58 +1,59 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:55510 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([173.255.197.46]:45976 "EHLO fieldses.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S932206AbcLGNhE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 7 Dec 2016 08:37:04 -0500
-From: Benjamin Coddington <bcodding@redhat.com>
-To: Trond Myklebust <trond.myklebust@primarydata.com>,
-        Anna Schumaker <anna.schumaker@netapp.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH] NFS: Serialize nfs_readdir()
-Date: Wed,  7 Dec 2016 08:37:02 -0500
-Message-Id: <a87df5d5ada87834a1cb9f1ab12ed5113d80eda7.1481117708.git.bcodding@redhat.com>
-References: <C2A81CDB-ED8F-4D41-919F-3F92CBFF751B@redhat.com>
-In-Reply-To: <C2A81CDB-ED8F-4D41-919F-3F92CBFF751B@redhat.com>
+        id S1752088AbcLGOTt (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 7 Dec 2016 09:19:49 -0500
+Date: Wed, 7 Dec 2016 09:19:47 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: NeilBrown <neilb@suse.com>
+Cc: "J. Bruce Fields" <bfields@redhat.com>,
+        Steve Dickson <SteveD@redhat.com>, linux-nfs@vger.kernel.org
+Subject: Re: [RFC PATCH 00/15] Enhance /etc/nfs.conf usage and remove
+ nfs-config.service
+Message-ID: <20161207141947.GD20652@fieldses.org>
+References: <148065078775.28046.5506130555300891075.stgit@noble>
+ <20161206172641.GA31197@fieldses.org>
+ <87lgvs4qv2.fsf@notabene.neil.brown.name>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <87lgvs4qv2.fsf@notabene.neil.brown.name>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Optimizations to NFS to choose between READDIR and READDIRPLUS don't expect
-concurrent users of nfs_readdir(), and can cause the pagecache to
-repeatedly be invalidated unnecessarily for this case.  Fix this by
-serializing nfs_readdir() on the directory's rwsem.
+On Wed, Dec 07, 2016 at 09:47:29AM +1100, NeilBrown wrote:
+> On Wed, Dec 07 2016, J. Bruce Fields wrote:
+> > On Fri, Dec 02, 2016 at 02:58:27PM +1100, NeilBrown wrote:
+> >> - nfs-config.service is removed, because it isn't really needed with
+> >>   the above.
+> >> - documentation for all the above is provided, including a new
+> >>   nfs.systemd man page which gives the bigger picture.
+> >
+> > Still looks pretty good to me.
+> >
+> > I'm a little worried about user interface churn.  We're not done yet
+> > explaining that people have to run nfs-config.service after changing
+> > things, soon we'll start telling them oh, never mind about that and oh,
+> > by the way, you may want to start migrating your configuration to
+> > /etc/nfs.conf....
+> 
+> Did we tell people to run nfs-config.server?  The intention was that it
+> wouldn't be needed.  Any systemd transaction that needed nfs
+> configuration should run the command once.
+> 
+> Commit: c4940fad2a73 ("systemd: ensure nfs-config service is re-run as needed.")
+> 
+> should have made that happen.
 
-Signed-off-by: Benjamin Coddington <bcodding@redhat.com>
----
- fs/nfs/dir.c | 3 +++
- 1 file changed, 3 insertions(+)
+D'oh, I totally forgot that you fixed that, thanks.
 
-diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
-index 53e6d6a4bc9c..8321252a4c8d 100644
---- a/fs/nfs/dir.c
-+++ b/fs/nfs/dir.c
-@@ -900,6 +900,7 @@ static int nfs_readdir(struct file *file, struct dir_context *ctx)
- {
- 	struct dentry	*dentry = file_dentry(file);
- 	struct inode	*inode = d_inode(dentry);
-+	struct nfs_inode *nfsi = NFS_I(inode);
- 	nfs_readdir_descriptor_t my_desc,
- 			*desc = &my_desc;
- 	struct nfs_open_dir_context *dir_ctx = file->private_data;
-@@ -917,6 +918,7 @@ static int nfs_readdir(struct file *file, struct dir_context *ctx)
- 	 */
- 	memset(desc, 0, sizeof(*desc));
- 
-+	down_write(&nfsi->rwsem);
- 	desc->file = file;
- 	desc->ctx = ctx;
- 	desc->dir_cookie = &dir_ctx->dir_cookie;
-@@ -958,6 +960,7 @@ static int nfs_readdir(struct file *file, struct dir_context *ctx)
- 			break;
- 	} while (!desc->eof);
- out:
-+	up_write(&nfsi->rwsem);
- 	if (res > 0)
- 		res = 0;
- 	dfprintk(FILE, "NFS: readdir(%pD2) returns %d\n", file, res);
--- 
-2.5.5
+> Yes, some migration is needed.  I see distros as the primary target for
+> that, and the 'include' and '$name' functionality is supposed to allow
+> that to be transparent.  i.e. the configuration stays as it is, it just
+> gets into nfs daemons by a different path.
+> If people want to edit /etc/nfs.conf directly, then they are on their
+> own, just like people who edited their systemd unit files directly,
+> or created replacements in /etc.
 
+Yep, sounds like a plan.
+
+--b.
