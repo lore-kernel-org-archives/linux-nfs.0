@@ -1,176 +1,26 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:52848 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:57382 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1752017AbcLGQg4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        id S1752323AbcLGQg4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
         Wed, 7 Dec 2016 11:36:56 -0500
 Received: from int-mx09.intmail.prod.int.phx2.redhat.com (int-mx09.intmail.prod.int.phx2.redhat.com [10.5.11.22])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by mx1.redhat.com (Postfix) with ESMTPS id 137CC61E5F
+        by mx1.redhat.com (Postfix) with ESMTPS id 729DF7AEAB
         for <linux-nfs@vger.kernel.org>; Wed,  7 Dec 2016 16:36:56 +0000 (UTC)
 From: Scott Mayhew <smayhew@redhat.com>
 To: steved@redhat.com
 Cc: linux-nfs@vger.kernel.org
 Subject: [libnfsidmap RFC PATCH] libnfsidmap: add support for multiple domains
-Date: Wed,  7 Dec 2016 11:36:25 -0500
-Message-Id: <1481128586-53009-1-git-send-email-smayhew@redhat.com>
+Date: Wed,  7 Dec 2016 11:36:26 -0500
+Message-Id: <1481128586-53009-2-git-send-email-smayhew@redhat.com>
+In-Reply-To: <1481128586-53009-1-git-send-email-smayhew@redhat.com>
+References: <1481128586-53009-1-git-send-email-smayhew@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Quick disclaimer -- this is different than the multi-domain support
-described in RFC 8000.  In the description below I'm really using
-'multi-domain' to mean 'multiple AD/IdM domains', rather than multiple
-NFSv4 domains.  
-
-NFSv4 id mapping on Linux does not work well in multi-domain
-environments.  RFCs 3530, 5661, and 7530 all describe the fattr4_owner
-and fattr4_owner_group strings in the form "user@dns_domain".
-
-The Linux libnfsidmap nssswitch plugin currently treats that domain as
-an arbitrary string.  As long as the domain part of the incoming string
-matches the Domain parameter of the idmapd.conf, the plugin strips off
-the domain and does a getpwnam() with what's left over.
-
-When a Linux machine is joined to an environment involving multiple AD
-or IdM domains, it is usually necessary for usernames to be qualified
-with the domain, either in a user principal format (e.g.
-"smayhew@ad.example.com") or a down-level logon name format (e.g.
-"AD\smayhew").  
-
-When an environment with just Linux NFS clients and servers, the
-machines will all use this format the libnfsimap plugin will
-automatically format the username in one of these two forms, because
-libnfsidmap is just using the name that is returned from getpwuid()...
-so in the above example, if the NFSv4 domain in idmapd.conf is
-configured as "example.com", the full fattr4_owner might appear as
-"smayhew@ad.example.com@example.com" if the machines are using SSSD, and
-"AD\smayhew@example.com" if they're using Winbind.
-
-Non-Linux NFS servers do not do that.
-
-DATA ONTAP maps a uid to a short username and then appends the NFSv4 id
-mapping domain to that.  The nsswitch plugin is unable to map those,
-because once it strips off the domain it will be unable to resolve the
-short username.  It's possible to configure the Linux clients that are
-using SSSD to be able to use the short usernames by turning off the
-subdomains_provider and explicitly adding stanzas for each trusted
-domain in the sssd.conf.  This works as long as each username & uid is
-unique across all the trusted domains.  For example if you have
-subdomains "na", "emea", and "apac", then it will not work (or rather it
-will be unpredictable) if each of those domains has an "smayhew" user...
-but otherwise it will work.  But there's no corresponding solution for
-Linux clients that are using Winbind... and and solution does not work
-for other NFS servers.
-
-The NFS v4.1 server in Microsoft Windows does not appear to allow the
-NFSv4 domain to be configured at all.  It just sends the names in UPN
-format, so it's essentially treating the AD domain as the NFSv4 domain.
-The Windows NFS v4.1 server is therefore capable of working with
-multiple domains.  Since the current libnfsidmap nsswitch plugin only
-allows a single domain to be configured, it's only able to map users
-from that single domain.
-
-EMC Isilon servers are also capable of using multiple domains by
-unchecking the "Enable NFSv4 Replace Domain" box on the NFS Zone
-Settings in the web UI or via 'isi nfs settings zone modify
---nfsv4-replace-domain no' on the command line.  This causes the Isilon
-to send AD/IdM domain instead of the NFSv4 domain value in the
-fattr4_owner and fattr4_owner_group strings.  Again, since the current
-libnfsidmap plugin only allows a single domain to be configured, it's
-only able to users from a single domain.
-
-This patch adds a new plugin called 'multidom' (I'm not attached to the
-name and open to suggestions.  Maybe something like 'nostripdomain'
-would be better).
-
-What it does is adds another parameter 'Domain-List' to the idmap.conf.
-That parameter takes (unsurprisingly) a list of domains, in much the
-same way the Local-Realms parameter works.  The value specified in the
-Domain parameter does not have to be in the Domain-List.  When the
-Domains list is populated, the plugin does a few things:
-1. For name-to-id mapping, it compares the domain in the attribute to
-the list of domains.  If it's not in the list, it gets mapped to the uid
-for nobody.
-2. If the domain in the attribute is in the list of domains, then that
-attibute is passed as-is to getpwnam() (or getgrnam() if its a group).
-IOW the domain is NOT stripped off.
-3. For id-to-name mapping, after the getpwuid() (or getgrgid()) call,
-the domain in the result is compared to the Domains list... if it's not
-in the list, the the id is mapped to the nobody string... even if the
-name was otherwise resolved successfully.
-
-With the plugin enabled I'm able to map users from multiple AD/IdM
-domains.
-
-
-ot@rhel6client ~]# cat /etc/idmapd.conf
-[General]
-Domain = smayhew.local
-
-[Multi-Domain] 
-Domain-List = smayhew.local,ad.smayhew.local,lab.smayhew.local
-
-[Mapping]
-Nobody-User = nobody
-Nobody-Group = nobody
-
-[Translation]
-Method = multidom,nsswitch
-
-[root@rhel6client ~]# ls -l /mnt/t
-total 10
--rw-rw-r--. 1 amy@lab.smayhew.local       domain users@lab.smayhew.local 29 Sep 26 15:22 written-by-amy
--rw-r--r--. 1 barney@smayhew.local        domain users@smayhew.local     29 Sep 26 15:22 written-by-barney
--rw-rw-r--. 1 bart@ad.smayhew.local       domain users@ad.smayhew.local  29 Sep 26 15:22 written-by-bart
--rw-rw-r--. 1 bender@lab.smayhew.local    domain users@lab.smayhew.local 29 Sep 26 15:22 written-by-bender
--rw-r--r--. 1 betty@smayhew.local         domain users@smayhew.local     29 Sep 26 15:22 written-by-betty
--rw-r--r--. 1 fred@smayhew.local          domain users@smayhew.local     29 Sep 26 15:22 written-by-fred
--rw-rw-r--. 1 fry@lab.smayhew.local       domain users@lab.smayhew.local 29 Sep 26 15:23 written-by-fry
--rw-rw-r--. 1 hermes@lab.smayhew.local    domain users@lab.smayhew.local 29 Sep 26 15:22 written-by-hermes
--rw-rw-r--. 1 homer@ad.smayhew.local      domain users@ad.smayhew.local  29 Sep 26 15:22 written-by-homer
--rw-rw-r--. 1 kif@lab.smayhew.local       domain users@lab.smayhew.local 29 Sep 26 15:23 written-by-kif
--rw-rw-r--. 1 leela@lab.smayhew.local     domain users@lab.smayhew.local 29 Sep 26 15:23 written-by-leela
--rw-rw-r--. 1 lisa@ad.smayhew.local       domain users@ad.smayhew.local  29 Sep 26 15:22 written-by-lisa
--rw-rw-r--. 1 maggie@ad.smayhew.local     domain users@ad.smayhew.local  29 Sep 26 15:22 written-by-maggie
--rw-rw-r--. 1 marge@ad.smayhew.local      domain users@ad.smayhew.local  29 Sep 26 15:22 written-by-marge
--rw-rw-r--. 1 professor@lab.smayhew.local domain users@lab.smayhew.local 29 Sep 26 15:23 written-by-professor
--rw-rw-r--. 1 smayhew@ad.smayhew.local    domain users@ad.smayhew.local  29 Sep 26 15:22 written-by-smayhew
--rw-r--r--. 1 wilma@smayhew.local         domain users@smayhew.local     29 Sep 26 15:22 written-by-wilma
--rw-rw-r--. 1 zapp@lab.smayhew.local      domain users@lab.smayhew.local 29 Sep 26 15:23 written-by-zapp
--rw-rw-r--. 1 zoidberg@lab.smayhew.local  domain users@lab.smayhew.local 29 Sep 26 15:23 written-by-zoidberg
-
-This also works on systems using Winbind instead of SSSD.  The
-idmap.conf is the same, with the exception of an additional parameter
-'Reformat-Group-For-Winbind-Query = true' in the '[Multi-Domain]'
-stanza.
-
-[root@rhel6wbnfs ~]# ls -l /mnt/t
-total 10
--rw-rw-r--. 1 LAB\amy        LAB\domain users     29 Sep 26 15:22 written-by-amy
--rw-r--r--. 1 SMAYHEW\barney SMAYHEW\domain users 29 Sep 26 15:22 written-by-barney
--rw-rw-r--. 1 AD\bart        AD\domain users      29 Sep 26 15:22 written-by-bart
--rw-rw-r--. 1 LAB\bender     LAB\domain users     29 Sep 26 15:22 written-by-bender
--rw-r--r--. 1 SMAYHEW\betty  SMAYHEW\domain users 29 Sep 26 15:22 written-by-betty
--rw-r--r--. 1 SMAYHEW\fred   SMAYHEW\domain users 29 Sep 26 15:22 written-by-fred
--rw-rw-r--. 1 LAB\fry        LAB\domain users     29 Sep 26 15:23 written-by-fry
--rw-rw-r--. 1 LAB\hermes     LAB\domain users     29 Sep 26 15:22 written-by-hermes
--rw-rw-r--. 1 AD\homer       AD\domain users      29 Sep 26 15:22 written-by-homer
--rw-rw-r--. 1 LAB\kif        LAB\domain users     29 Sep 26 15:23 written-by-kif
--rw-rw-r--. 1 LAB\leela      LAB\domain users     29 Sep 26 15:23 written-by-leela
--rw-rw-r--. 1 AD\lisa        AD\domain users      29 Sep 26 15:22 written-by-lisa
--rw-rw-r--. 1 AD\maggie      AD\domain users      29 Sep 26 15:22 written-by-maggie
--rw-rw-r--. 1 AD\marge       AD\domain users      29 Sep 26 15:22 written-by-marge
--rw-rw-r--. 1 LAB\professor  LAB\domain users     29 Sep 26 15:23 written-by-professor
--rw-rw-r--. 1 AD\smayhew     AD\domain users      29 Sep 26 15:22 written-by-smayhew
--rw-r--r--. 1 SMAYHEW\wilma  SMAYHEW\domain users 29 Sep 26 15:22 written-by-wilma
--rw-rw-r--. 1 LAB\zapp       LAB\domain users     29 Sep 26 15:23 written-by-zapp
--rw-rw-r--. 1 LAB\zoidberg   LAB\domain users     29 Sep 26 15:23 written-by-zoidberg
-
--Scott
-
-Scott Mayhew (1):
-  libnfsidmap: add support for multiple domains
-
+Signed-off-by: Scott Mayhew <smayhew@redhat.com>
+---
  Makefile.am   |   5 +-
  idmapd.conf   |  26 +++-
  idmapd.conf.5 |  40 ++++++-
@@ -178,6 +28,516 @@ Scott Mayhew (1):
  4 files changed, 445 insertions(+), 5 deletions(-)
  create mode 100644 multidom.c
 
+diff --git a/Makefile.am b/Makefile.am
+index 85f19c8..62a1d1e 100644
+--- a/Makefile.am
++++ b/Makefile.am
+@@ -11,7 +11,7 @@ else
+ GUMS_MAPPING_LIB =
+ endif
+ lib_LTLIBRARIES = libnfsidmap.la
+-pkglib_LTLIBRARIES = nsswitch.la static.la $(UMICH_LDAP_LIB) $(GUMS_MAPPING_LIB)
++pkglib_LTLIBRARIES = nsswitch.la static.la multidom.la $(UMICH_LDAP_LIB) $(GUMS_MAPPING_LIB)
+ 
+ # Library versioning notes from:
+ #  http://sources.redhat.com/autobook/autobook/autobook_91.html
+@@ -35,6 +35,9 @@ nsswitch_la_LDFLAGS = -module -avoid-version
+ static_la_SOURCES = static.c
+ static_la_LDFLAGS = -module -avoid-version
+ 
++multidom_la_SOURCES = multidom.c
++multidom_la_LDFLAGS = -module -avoid-version
++
+ umich_ldap_la_SOURCES = umich_ldap.c
+ umich_ldap_la_LDFLAGS = -module -avoid-version
+ umich_ldap_la_LIBADD = -lldap
+diff --git a/idmapd.conf b/idmapd.conf
+index ebf9754..0517d40 100644
+--- a/idmapd.conf
++++ b/idmapd.conf
+@@ -24,8 +24,8 @@
+ 
+ # Translation Method is an comma-separated, ordered list of
+ # translation methods that can be used.  Distributed methods
+-# include "nsswitch", "umich_ldap", and "static".  Each method
+-# is a dynamically loadable plugin library.
++# include "nsswitch", "multidom", "umich_ldap", and "static".  Each
++# method is a dynamically loadable plugin library.
+ # New methods may be defined and inserted in the list.
+ # The default is "nsswitch".
+ #Method = nsswitch
+@@ -36,6 +36,28 @@
+ # If this option is omitted, the same methods as those
+ # specified in "Method" are used.
+ #GSS-Methods = <alternate method list for translating GSS names>
++
++#-------------------------------------------------------------------#
++# The following are used only for the "multidom" Translation Method.
++#-------------------------------------------------------------------#
++[Multi-Domain]
++# The "multidom" plugin does not strip the domain off the name before
++# passing it to the password/group lookup function.  Instead it
++# compares the domain to this list.  If the domain does not match a
++# domain in the list, then the name is mapped to the Nobody-User or
++# Nobody-Group.  If the domain does match a domain in the list, then
++# the name is passed to the password/group lookup function as-is.
++#Domain-List = americas.example.com,emea.example.com,apac,example.com
++
++# Winbind has a "quirk" whereby doing a group lookup in UPN format
++# (e.g. staff@americas.example.com) will cause the group to be
++# displayed prefixed with the full domain in uppercase
++# (e.g. AMERICAS.EXAMPLE.COM\staff) instead of in the familiar netbios
++# name format (e.g. AMERICAS\staff).  Setting this option to true
++# causes the name to be reformatted before passing it to the group
++# lookup function in order to work around this "quirk".
++# The default is "false".
++#Reformat-Group-For-Winbind-Query = false
+  
+ #-------------------------------------------------------------------#
+ # The following are used only for the "static" Translation Method.
+diff --git a/idmapd.conf.5 b/idmapd.conf.5
+index de1bfa9..74cc683 100644
+--- a/idmapd.conf.5
++++ b/idmapd.conf.5
+@@ -102,8 +102,8 @@ A comma-separated, ordered list of mapping methods (plug-ins)
+ to use when mapping between NFSv4 names and local IDs.  Each
+ specified method is tried in order until a mapping is found,
+ or there are no more methods to try.  The methods included in
+-the default distribution include "nsswitch", "umich_ldap", and
+-"static".
++the default distribution include "nsswitch", "multidom",
++"umich_ldap", and "static".
+ (Default: nsswitch)
+ .TP
+ .B GSS-Methods
+@@ -113,6 +113,42 @@ to use when mapping between GSS Authenticated names and local IDs.
+ .B Method)
+ .\"
+ .\" -------------------------------------------------------------------
++.\" The [Multi-Domain] section
++.\" -------------------------------------------------------------------
++.\"
++.SS "[Multi-Domain] section variables"
++.nf
++
++.fi
++If the "multidom" translation method is specified, the following
++variables within the [Multi-Domain] section are used.
++.TP
++.B Domain-List
++A comma-separated list of domains in which to attempt to map users
++and groups.  In multi-domain environments, some NFS servers will send
++append the owner and group_owner attributes with the identity
++management domain in lieu of a true NFSv4 domain.  To accomodate
++lookups in those environments, the "multidom" plugin does not strip
++the domain off the name before passing it to the password/group lookup
++function.  Instead it compares the domain to this list.  If the domain
++does not match a domain in the list, then the name is mapped to the
++Nobody-User or Nobody-Group.  If the domain does match a domain in the
++list, then the name is passed to the password/group lookup function as-is.
++
++.fi
++.TP
++.B Reformat-Group-For-Winbind-Query
++Winbind has a "quirk" whereby doing a group lookup in UPN format
++(e.g. staff@americas.example.com) will cause the group to be
++displayed prefixed with the full domain in uppercase
++(e.g. AMERICAS.EXAMPLE.COM\\staff) instead of in the familiar netbios
++name format (e.g. AMERICAS\\staff).  Setting this option to true
++causes the name to be reformatted before passing it to the group
++lookup function in order to work around this "quirk".
++(Default: false)
++
++.\"
++.\" -------------------------------------------------------------------
+ .\" The [Static] section
+ .\" -------------------------------------------------------------------
+ .\"
+diff --git a/multidom.c b/multidom.c
+new file mode 100644
+index 0000000..c67b992
+--- /dev/null
++++ b/multidom.c
+@@ -0,0 +1,379 @@
++/*
++ *  multidom.c
++ *
++ *  multi-domain idmapping functions.
++ *
++ *  Copyright (c) 2004 The Regents of the University of Michigan.
++ *  Copyright (c) 2016 Red Hat, Inc.
++ *  All rights reserved.
++ *
++ *  Scott Mayhew <smayhew@redhat.com>
++ *
++ *  Redistribution and use in source and binary forms, with or without
++ *  modification, are permitted provided that the following conditions
++ *  are met:
++ *
++ *  1. Redistributions of source code must retain the above copyright
++ *     notice, this list of conditions and the following disclaimer.
++ *  2. Redistributions in binary form must reproduce the above copyright
++ *     notice, this list of conditions and the following disclaimer in the
++ *     documentation and/or other materials provided with the distribution.
++ *  3. Neither the name of the University nor the names of its
++ *     contributors may be used to endorse or promote products derived
++ *     from this software without specific prior written permission.
++ *
++ *  THIS SOFTWARE IS PROVIDED ``AS IS'' AND ANY EXPRESS OR IMPLIED
++ *  WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
++ *  MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
++ *  DISCLAIMED. IN NO EVENT SHALL THE REGENTS OR CONTRIBUTORS BE LIABLE
++ *  FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
++ *  CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
++ *  SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR
++ *  BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
++ *  LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
++ *  NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
++ *  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
++ */
++
++#include <sys/types.h>
++#include <errno.h>
++#include <unistd.h>
++#include <stdio.h>
++#include <stdlib.h>
++#include <string.h>
++#include <pwd.h>
++#include <grp.h>
++#include <netdb.h>
++#include <err.h>
++#include <grp.h>
++#include <limits.h>
++#include "nfsidmap.h"
++#include "nfsidmap_internal.h"
++#include "cfg.h"
++#include <syslog.h>
++
++static struct conf_list *domain_list;
++static int winbind_quirk = 0;
++
++static int write_name(char *dest, char *localname, size_t len)
++{
++	if (strlen(localname) + 1 > len) {
++		return -ENOMEM;
++	}
++	strcpy(dest, localname);
++	return 0;
++}
++
++static struct conf_list *get_domain_list(void)
++{
++	return domain_list;
++}
++
++static int check_domain_list(const char *name)
++{
++	struct conf_list *dom_list;
++	struct conf_list_node *d;
++	int found = 0;
++	char *dom;
++
++	dom = strstr(name, "@");
++	if (dom != NULL) {
++		dom++;
++	} else {
++		IDMAP_LOG(1, ("check_domain_list: name '%s' does not contain a domain",
++				name));
++		goto out;
++	}
++	dom_list = get_domain_list();
++	TAILQ_FOREACH(d, &dom_list->fields, link) {
++		if (strcmp(d->field, dom) == 0) {
++			found = 1;
++			break;
++		}
++	}
++	if (!found)
++		IDMAP_LOG(1, ("check_domain_list: Domain '%s': not found in domain list",
++				dom));
++out:
++	return found;
++}
++
++static int multidom_uid_to_name(uid_t uid, char *domain, char *name, size_t len)
++{
++	struct passwd *pw = NULL;
++	struct passwd pwbuf;
++	char *buf;
++	size_t buflen = sysconf(_SC_GETPW_R_SIZE_MAX);
++	int err = -ENOMEM;
++
++	buf = malloc(buflen);
++	if (!buf)
++		goto out;
++	err = -getpwuid_r(uid, &pwbuf, buf, buflen, &pw);
++	if (pw == NULL)
++		err = -ENOENT;
++	if (err)
++		goto out_buf;
++	if (!check_domain_list(pw->pw_name)) {
++		err = -ENOENT;
++		goto out_buf;
++	}
++	err = write_name(name, pw->pw_name, len);
++out_buf:
++	free(buf);
++out:
++	return err;
++}
++
++static int multidom_gid_to_name(gid_t gid, char *domain, char *name, size_t len)
++{
++	struct group *gr = NULL;
++	struct group grbuf;
++	char *buf;
++	size_t buflen = sysconf(_SC_GETGR_R_SIZE_MAX);
++	int err;
++
++	do {
++		err = -ENOMEM;
++		buf = malloc(buflen);
++		if (!buf)
++			goto out;
++		err = -getgrgid_r(gid, &grbuf, buf, buflen, &gr);
++		if (gr == NULL && !err)
++			err = -ENOENT;
++		if (err == -ERANGE) {
++			buflen *= 2;
++			free(buf);
++		}
++	} while (err == -ERANGE);
++
++	if (err)
++		goto out_buf;
++	if (!check_domain_list(gr->gr_name)) {
++		err = -ENOENT;
++		goto out_buf;
++	}
++	err = write_name(name, gr->gr_name, len);
++out_buf:
++	free(buf);
++out:
++	return err;
++}
++
++struct pwbuf {
++	struct passwd pwbuf;
++	char buf[1];
++};
++
++static struct passwd *multidom_getpwnam(const char *name, int *err_p)
++{
++	struct passwd *pw;
++	struct pwbuf *buf;
++	size_t buflen = sysconf(_SC_GETPW_R_SIZE_MAX);
++	int err = ENOMEM;
++	int found = 0;
++
++	if (buflen > UINT_MAX)
++		goto err;
++
++	buf = malloc(sizeof(*buf) + buflen);
++	if (buf == NULL)
++		goto err;
++
++	found = check_domain_list(name);
++	if (!found) {
++		err = -ENOENT;
++		goto err_free_buf;
++	}
++
++	err = getpwnam_r(name, &buf->pwbuf, buf->buf, buflen, &pw);
++	if (pw == NULL)
++		IDMAP_LOG(2,
++			("multidom_getpwnam: name '%s' not found", name));
++	if (err == 0 && pw != NULL) {
++		*err_p = 0;
++		return pw;
++	} else if (err == 0 && pw == NULL) {
++		err = ENOENT;
++	}
++
++err_free_buf:
++	free(buf);
++err:
++	*err_p = -err;
++	return NULL;
++}
++
++static int multidom_name_to_uid(char *name, uid_t *uid)
++{
++	struct passwd *pw = NULL;
++	int err = -ENOENT;
++
++	pw = multidom_getpwnam(name, &err);
++	if (pw == NULL)
++		goto out;
++	*uid = pw->pw_uid;
++	IDMAP_LOG(4, ("multidom_name_to_uid: name '%s' uid %u", name, *uid));
++	free(pw);
++	err = 0;
++out:
++	return err;
++}
++
++static char *multidom_reformat_name(const char *name)
++{
++	const char *domain;
++	const char *c;
++	const char *d;
++	char *l = NULL;
++	int len;
++	int dlen = 0;
++
++	c = strchr(name, '@');
++	if (c == NULL)
++		goto out;
++	len = c - name;
++	domain = ++c;
++	d = strchr(domain, '.');
++	if (d == NULL)
++		goto out;
++	dlen = d - domain;
++	l = malloc(dlen + 1 + len + 1);
++	if (l == NULL)
++		goto out;
++	memcpy(l, domain, dlen);
++	l[dlen] = '\\';
++	memcpy(l + dlen + 1, name, len);
++	l[dlen + 1 + len] = '\0';
++out:
++	return l;
++}
++
++static int multidom_name_to_gid(char *name, gid_t *gid)
++{
++	struct group *gr = NULL;
++	struct group grbuf;
++	char *buf;
++	size_t buflen = sysconf(_SC_GETGR_R_SIZE_MAX);
++	int err = -EINVAL;
++	int found = 0;
++	char *ref_name = NULL;
++
++	found = check_domain_list(name);
++	if (!found) {
++		err = -ENOENT;
++		goto out;
++	}
++
++	if (winbind_quirk) {
++		ref_name = multidom_reformat_name(name);
++		if (ref_name == NULL) {
++			IDMAP_LOG(2, ("multidom_name_to_gid: failed to reformat name '%s'",
++					name));
++			err = -ENOENT;
++			goto out;
++		}
++	}
++	err = -ENOMEM;
++	if (buflen > UINT_MAX)
++		goto out_ref_name;
++
++	do {
++		buf = malloc(buflen);
++		if (!buf)
++			goto out_ref_name;
++		if (winbind_quirk)
++			err = -getgrnam_r(ref_name, &grbuf, buf, buflen, &gr);
++		else
++			err = -getgrnam_r(name, &grbuf, buf, buflen, &gr);
++		if (gr == NULL && !err)
++			err = -ENOENT;
++		if (err == -ERANGE) {
++			buflen *= 2;
++			free(buf);
++		}
++	} while (err == -ERANGE);
++
++	if (err)
++		goto out_buf;
++	*gid = gr->gr_gid;
++	IDMAP_LOG(4, ("multidom_name_to_gid: name '%s' gid %u", name, *gid));
++out_buf:
++	free(buf);
++out_ref_name:
++	if (winbind_quirk)
++		free(ref_name);
++out:
++	return err;
++}
++
++static int multidom_gss_princ_to_ids(char *secname, char *princ,
++				uid_t *uid, uid_t *gid,
++				extra_mapping_params **ex)
++{
++	IDMAP_LOG(4, ("%s: not implemented", __func__));
++	return -ENOENT;
++}
++
++int multidom_gss_princ_to_grouplist(char *secname, char *princ,
++			       gid_t *groups, int *ngroups,
++			       extra_mapping_params **ex)
++{
++	IDMAP_LOG(4, ("%s: not implemented", __func__));
++	return -ENOENT;
++}
++
++static int multidom_init(void)
++{
++	char *reformat_group;
++
++	domain_list = conf_get_list("Multi-Domain", "Domain-List");
++	if (domain_list == NULL) {
++		IDMAP_LOG(1, ("multidom_init: domain list: <NULL> "));
++		return -1;
++	}
++
++	if (idmap_verbosity >= 1) {
++		struct conf_list_node *r;
++		char *buf = NULL;
++		int siz=0;
++
++		TAILQ_FOREACH(r, &domain_list->fields, link) {
++			siz += (strlen(r->field)+4);
++		}
++		buf = malloc(siz);
++		if (buf) {
++			*buf = 0;
++			TAILQ_FOREACH(r, &domain_list->fields, link) {
++				sprintf(buf+strlen(buf), "'%s' ", r->field);
++			}
++			IDMAP_LOG(1, ("multidom_init: domain list: %s", buf));
++			free(buf);
++		}
++	}
++	reformat_group = conf_get_str_with_def("Multi-Domain", "Reformat-Group-For-Winbind-Query", "false");
++	if ((strcasecmp(reformat_group, "true") == 0) ||
++	    (strcasecmp(reformat_group, "on") == 0) ||
++	    (strcasecmp(reformat_group, "yes") == 0))
++		winbind_quirk = 1;
++	else
++		winbind_quirk = 0;
++
++	return 0;
++}
++
++struct trans_func multidom_trans = {
++	.name		= "multidom",
++	.init		= multidom_init,
++	.princ_to_ids	= multidom_gss_princ_to_ids,
++	.name_to_uid	= multidom_name_to_uid,
++	.name_to_gid	= multidom_name_to_gid,
++	.uid_to_name	= multidom_uid_to_name,
++	.gid_to_name	= multidom_gid_to_name,
++	.gss_princ_to_grouplist = multidom_gss_princ_to_grouplist,
++};
++
++struct trans_func *libnfsidmap_plugin_init()
++{
++	return (&multidom_trans);
++}
 -- 
 2.7.4
 
