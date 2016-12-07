@@ -1,49 +1,34 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f194.google.com ([209.85.223.194]:32864 "EHLO
-        mail-io0-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S932561AbcLGUmb (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 7 Dec 2016 15:42:31 -0500
-Received: by mail-io0-f194.google.com with SMTP id j92so16260780ioi.0
-        for <linux-nfs@vger.kernel.org>; Wed, 07 Dec 2016 12:42:31 -0800 (PST)
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH 2/2] pNFS: Layoutreturn must free the layout after the layout-private data
-Date: Wed,  7 Dec 2016 15:42:26 -0500
-Message-Id: <20161207204226.15927-3-trond.myklebust@primarydata.com>
-In-Reply-To: <20161207204226.15927-2-trond.myklebust@primarydata.com>
-References: <20161207204226.15927-1-trond.myklebust@primarydata.com>
- <20161207204226.15927-2-trond.myklebust@primarydata.com>
+Received: from mx1.redhat.com ([209.132.183.28]:38996 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S932658AbcLGWek (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 7 Dec 2016 17:34:40 -0500
+From: Benjamin Coddington <bcodding@redhat.com>
+To: Trond Myklebust <trond.myklebust@primarydata.com>,
+        "Trond Myklebust" <trondmy@primarydata.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: Concurrent `ls` takes out the thrash
+Date: Wed,  7 Dec 2016 17:34:39 -0500
+Message-Id: <934FC075-4393-42AD-92A3-3BC3BE580699@redhat.com>
+In-Reply-To: <7DA8E9BE-7353-44D5-B982-B477CF7B0A57@redhat.com>
+References: <C2A81CDB-ED8F-4D41-919F-3F92CBFF751B@redhat.com> <CEE29C1D-BB8F-4504-940D-43DE1FE63385@primarydata.com> <7DA8E9BE-7353-44D5-B982-B477CF7B0A57@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The layout-private data may depend on the layout and/or the inode
-still existing when it does post-processing and frees its data, so we
-need to free them after calling lrp->ld_private.ops->free().
+From: "Benjamin Coddington" <bcodding@redhat.com>
 
-This fixes a mirror list corruption issue in the flexfiles driver.
+So, I've got the following patch, and it seems to work fine for the original
+workload.  However, if I use ~20 procs started 2 seconds apart, I can still
+sometimes get into the state where the machine takes a very long time (5 - 8
+minutes).  I wonder if I am getting into a state were vmscan is reclaiming
+pages while I'm trying to fill them up.  So.. I'll do a bit more debugging
+and re-post this if I feel like it is still the right approach.
 
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
----
- fs/nfs/nfs4proc.c | 4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
+Adding an int to nfs_open_dir_context puts it at 60 bytes here.  Probably
+could have added a unsigned long flags and used bits for the duped stuff as
+well, but it was uglier that way, so I left it.  I like how duped carries
+-1, 0, and >1 information without having flag defines cluttering everywhere.
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index d3431ff32662..c5a508669655 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -8641,10 +8641,10 @@ static void nfs4_layoutreturn_release(void *calldata)
- 	pnfs_layoutreturn_free_lsegs(lo, &lrp->args.stateid, &lrp->args.range,
- 			lrp->res.lrs_present ? &lrp->res.stateid : NULL);
- 	nfs4_sequence_free_slot(&lrp->res.seq_res);
--	pnfs_put_layout_hdr(lrp->args.layout);
--	nfs_iput_and_deactive(lrp->inode);
- 	if (lrp->ld_private.ops && lrp->ld_private.ops->free)
- 		lrp->ld_private.ops->free(&lrp->ld_private);
-+	pnfs_put_layout_hdr(lrp->args.layout);
-+	nfs_iput_and_deactive(lrp->inode);
- 	kfree(calldata);
- 	dprintk("<-- %s\n", __func__);
- }
--- 
-2.9.3
+Ben
 
+8<------------------------------------------------------------------------
