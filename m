@@ -1,543 +1,256 @@
-Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:57382 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1752323AbcLGQg4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 7 Dec 2016 11:36:56 -0500
-Received: from int-mx09.intmail.prod.int.phx2.redhat.com (int-mx09.intmail.prod.int.phx2.redhat.com [10.5.11.22])
-        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
-        (No client certificate requested)
-        by mx1.redhat.com (Postfix) with ESMTPS id 729DF7AEAB
-        for <linux-nfs@vger.kernel.org>; Wed,  7 Dec 2016 16:36:56 +0000 (UTC)
-From: Scott Mayhew <smayhew@redhat.com>
-To: steved@redhat.com
-Cc: linux-nfs@vger.kernel.org
-Subject: [libnfsidmap RFC PATCH] libnfsidmap: add support for multiple domains
-Date: Wed,  7 Dec 2016 11:36:26 -0500
-Message-Id: <1481128586-53009-2-git-send-email-smayhew@redhat.com>
-In-Reply-To: <1481128586-53009-1-git-send-email-smayhew@redhat.com>
-References: <1481128586-53009-1-git-send-email-smayhew@redhat.com>
-Sender: linux-nfs-owner@vger.kernel.org
+Return-Path: <fengguang.wu@intel.com>
+Date: Thu, 8 Dec 2016 01:01:44 +0800
+From: kbuild test robot <lkp@intel.com>
+To: Benjamin Coddington <bcodding@redhat.com>
+Cc: kbuild-all@01.org, Trond Myklebust <trond.myklebust@primarydata.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] NFS: Serialize nfs_readdir()
+Message-ID: <201612080057.sXTWBbXk%fengguang.wu@intel.com>
+MIME-Version: 1.0
+Content-Type: multipart/mixed; boundary="zhXaljGHf11kAtnf"
+In-Reply-To: <a87df5d5ada87834a1cb9f1ab12ed5113d80eda7.1481117708.git.bcodding@redhat.com>
 List-ID: <linux-nfs.vger.kernel.org>
 
-Signed-off-by: Scott Mayhew <smayhew@redhat.com>
+
+--zhXaljGHf11kAtnf
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+
+Hi Benjamin,
+
+[auto build test ERROR on nfs/linux-next]
+[also build test ERROR on v4.9-rc8 next-20161207]
+[if your patch is applied to the wrong git tree, please drop us a note to help improve the system]
+
+url:    https://github.com/0day-ci/linux/commits/Benjamin-Coddington/NFS-Serialize-nfs_readdir/20161208-001039
+base:   git://git.linux-nfs.org/projects/trondmy/linux-nfs.git linux-next
+config: xtensa-common_defconfig (attached as .config)
+compiler: xtensa-linux-gcc (GCC) 4.9.0
+reproduce:
+        wget https://git.kernel.org/cgit/linux/kernel/git/wfg/lkp-tests.git/plain/sbin/make.cross -O ~/bin/make.cross
+        chmod +x ~/bin/make.cross
+        # save the attached .config to linux build tree
+        make.cross ARCH=xtensa 
+
+All errors (new ones prefixed by >>):
+
+   fs/nfs/dir.c: In function 'nfs_readdir':
+>> fs/nfs/dir.c:921:18: error: 'struct nfs_inode' has no member named 'rwsem'
+     down_write(&nfsi->rwsem);
+                     ^
+   fs/nfs/dir.c:963:16: error: 'struct nfs_inode' has no member named 'rwsem'
+     up_write(&nfsi->rwsem);
+                   ^
+
+vim +921 fs/nfs/dir.c
+
+   915		 * *desc->dir_cookie has the cookie for the next entry. We have
+   916		 * to either find the entry with the appropriate number or
+   917		 * revalidate the cookie.
+   918		 */
+   919		memset(desc, 0, sizeof(*desc));
+   920	
+ > 921		down_write(&nfsi->rwsem);
+   922		desc->file = file;
+   923		desc->ctx = ctx;
+   924		desc->dir_cookie = &dir_ctx->dir_cookie;
+
 ---
- Makefile.am   |   5 +-
- idmapd.conf   |  26 +++-
- idmapd.conf.5 |  40 ++++++-
- multidom.c    | 379 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- 4 files changed, 445 insertions(+), 5 deletions(-)
- create mode 100644 multidom.c
+0-DAY kernel test infrastructure                Open Source Technology Center
+https://lists.01.org/pipermail/kbuild-all                   Intel Corporation
 
-diff --git a/Makefile.am b/Makefile.am
-index 85f19c8..62a1d1e 100644
---- a/Makefile.am
-+++ b/Makefile.am
-@@ -11,7 +11,7 @@ else
- GUMS_MAPPING_LIB =
- endif
- lib_LTLIBRARIES = libnfsidmap.la
--pkglib_LTLIBRARIES = nsswitch.la static.la $(UMICH_LDAP_LIB) $(GUMS_MAPPING_LIB)
-+pkglib_LTLIBRARIES = nsswitch.la static.la multidom.la $(UMICH_LDAP_LIB) $(GUMS_MAPPING_LIB)
- 
- # Library versioning notes from:
- #  http://sources.redhat.com/autobook/autobook/autobook_91.html
-@@ -35,6 +35,9 @@ nsswitch_la_LDFLAGS = -module -avoid-version
- static_la_SOURCES = static.c
- static_la_LDFLAGS = -module -avoid-version
- 
-+multidom_la_SOURCES = multidom.c
-+multidom_la_LDFLAGS = -module -avoid-version
-+
- umich_ldap_la_SOURCES = umich_ldap.c
- umich_ldap_la_LDFLAGS = -module -avoid-version
- umich_ldap_la_LIBADD = -lldap
-diff --git a/idmapd.conf b/idmapd.conf
-index ebf9754..0517d40 100644
---- a/idmapd.conf
-+++ b/idmapd.conf
-@@ -24,8 +24,8 @@
- 
- # Translation Method is an comma-separated, ordered list of
- # translation methods that can be used.  Distributed methods
--# include "nsswitch", "umich_ldap", and "static".  Each method
--# is a dynamically loadable plugin library.
-+# include "nsswitch", "multidom", "umich_ldap", and "static".  Each
-+# method is a dynamically loadable plugin library.
- # New methods may be defined and inserted in the list.
- # The default is "nsswitch".
- #Method = nsswitch
-@@ -36,6 +36,28 @@
- # If this option is omitted, the same methods as those
- # specified in "Method" are used.
- #GSS-Methods = <alternate method list for translating GSS names>
-+
-+#-------------------------------------------------------------------#
-+# The following are used only for the "multidom" Translation Method.
-+#-------------------------------------------------------------------#
-+[Multi-Domain]
-+# The "multidom" plugin does not strip the domain off the name before
-+# passing it to the password/group lookup function.  Instead it
-+# compares the domain to this list.  If the domain does not match a
-+# domain in the list, then the name is mapped to the Nobody-User or
-+# Nobody-Group.  If the domain does match a domain in the list, then
-+# the name is passed to the password/group lookup function as-is.
-+#Domain-List = americas.example.com,emea.example.com,apac,example.com
-+
-+# Winbind has a "quirk" whereby doing a group lookup in UPN format
-+# (e.g. staff@americas.example.com) will cause the group to be
-+# displayed prefixed with the full domain in uppercase
-+# (e.g. AMERICAS.EXAMPLE.COM\staff) instead of in the familiar netbios
-+# name format (e.g. AMERICAS\staff).  Setting this option to true
-+# causes the name to be reformatted before passing it to the group
-+# lookup function in order to work around this "quirk".
-+# The default is "false".
-+#Reformat-Group-For-Winbind-Query = false
-  
- #-------------------------------------------------------------------#
- # The following are used only for the "static" Translation Method.
-diff --git a/idmapd.conf.5 b/idmapd.conf.5
-index de1bfa9..74cc683 100644
---- a/idmapd.conf.5
-+++ b/idmapd.conf.5
-@@ -102,8 +102,8 @@ A comma-separated, ordered list of mapping methods (plug-ins)
- to use when mapping between NFSv4 names and local IDs.  Each
- specified method is tried in order until a mapping is found,
- or there are no more methods to try.  The methods included in
--the default distribution include "nsswitch", "umich_ldap", and
--"static".
-+the default distribution include "nsswitch", "multidom",
-+"umich_ldap", and "static".
- (Default: nsswitch)
- .TP
- .B GSS-Methods
-@@ -113,6 +113,42 @@ to use when mapping between GSS Authenticated names and local IDs.
- .B Method)
- .\"
- .\" -------------------------------------------------------------------
-+.\" The [Multi-Domain] section
-+.\" -------------------------------------------------------------------
-+.\"
-+.SS "[Multi-Domain] section variables"
-+.nf
-+
-+.fi
-+If the "multidom" translation method is specified, the following
-+variables within the [Multi-Domain] section are used.
-+.TP
-+.B Domain-List
-+A comma-separated list of domains in which to attempt to map users
-+and groups.  In multi-domain environments, some NFS servers will send
-+append the owner and group_owner attributes with the identity
-+management domain in lieu of a true NFSv4 domain.  To accomodate
-+lookups in those environments, the "multidom" plugin does not strip
-+the domain off the name before passing it to the password/group lookup
-+function.  Instead it compares the domain to this list.  If the domain
-+does not match a domain in the list, then the name is mapped to the
-+Nobody-User or Nobody-Group.  If the domain does match a domain in the
-+list, then the name is passed to the password/group lookup function as-is.
-+
-+.fi
-+.TP
-+.B Reformat-Group-For-Winbind-Query
-+Winbind has a "quirk" whereby doing a group lookup in UPN format
-+(e.g. staff@americas.example.com) will cause the group to be
-+displayed prefixed with the full domain in uppercase
-+(e.g. AMERICAS.EXAMPLE.COM\\staff) instead of in the familiar netbios
-+name format (e.g. AMERICAS\\staff).  Setting this option to true
-+causes the name to be reformatted before passing it to the group
-+lookup function in order to work around this "quirk".
-+(Default: false)
-+
-+.\"
-+.\" -------------------------------------------------------------------
- .\" The [Static] section
- .\" -------------------------------------------------------------------
- .\"
-diff --git a/multidom.c b/multidom.c
-new file mode 100644
-index 0000000..c67b992
---- /dev/null
-+++ b/multidom.c
-@@ -0,0 +1,379 @@
-+/*
-+ *  multidom.c
-+ *
-+ *  multi-domain idmapping functions.
-+ *
-+ *  Copyright (c) 2004 The Regents of the University of Michigan.
-+ *  Copyright (c) 2016 Red Hat, Inc.
-+ *  All rights reserved.
-+ *
-+ *  Scott Mayhew <smayhew@redhat.com>
-+ *
-+ *  Redistribution and use in source and binary forms, with or without
-+ *  modification, are permitted provided that the following conditions
-+ *  are met:
-+ *
-+ *  1. Redistributions of source code must retain the above copyright
-+ *     notice, this list of conditions and the following disclaimer.
-+ *  2. Redistributions in binary form must reproduce the above copyright
-+ *     notice, this list of conditions and the following disclaimer in the
-+ *     documentation and/or other materials provided with the distribution.
-+ *  3. Neither the name of the University nor the names of its
-+ *     contributors may be used to endorse or promote products derived
-+ *     from this software without specific prior written permission.
-+ *
-+ *  THIS SOFTWARE IS PROVIDED ``AS IS'' AND ANY EXPRESS OR IMPLIED
-+ *  WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
-+ *  MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-+ *  DISCLAIMED. IN NO EVENT SHALL THE REGENTS OR CONTRIBUTORS BE LIABLE
-+ *  FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
-+ *  CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
-+ *  SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR
-+ *  BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
-+ *  LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
-+ *  NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
-+ *  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-+ */
-+
-+#include <sys/types.h>
-+#include <errno.h>
-+#include <unistd.h>
-+#include <stdio.h>
-+#include <stdlib.h>
-+#include <string.h>
-+#include <pwd.h>
-+#include <grp.h>
-+#include <netdb.h>
-+#include <err.h>
-+#include <grp.h>
-+#include <limits.h>
-+#include "nfsidmap.h"
-+#include "nfsidmap_internal.h"
-+#include "cfg.h"
-+#include <syslog.h>
-+
-+static struct conf_list *domain_list;
-+static int winbind_quirk = 0;
-+
-+static int write_name(char *dest, char *localname, size_t len)
-+{
-+	if (strlen(localname) + 1 > len) {
-+		return -ENOMEM;
-+	}
-+	strcpy(dest, localname);
-+	return 0;
-+}
-+
-+static struct conf_list *get_domain_list(void)
-+{
-+	return domain_list;
-+}
-+
-+static int check_domain_list(const char *name)
-+{
-+	struct conf_list *dom_list;
-+	struct conf_list_node *d;
-+	int found = 0;
-+	char *dom;
-+
-+	dom = strstr(name, "@");
-+	if (dom != NULL) {
-+		dom++;
-+	} else {
-+		IDMAP_LOG(1, ("check_domain_list: name '%s' does not contain a domain",
-+				name));
-+		goto out;
-+	}
-+	dom_list = get_domain_list();
-+	TAILQ_FOREACH(d, &dom_list->fields, link) {
-+		if (strcmp(d->field, dom) == 0) {
-+			found = 1;
-+			break;
-+		}
-+	}
-+	if (!found)
-+		IDMAP_LOG(1, ("check_domain_list: Domain '%s': not found in domain list",
-+				dom));
-+out:
-+	return found;
-+}
-+
-+static int multidom_uid_to_name(uid_t uid, char *domain, char *name, size_t len)
-+{
-+	struct passwd *pw = NULL;
-+	struct passwd pwbuf;
-+	char *buf;
-+	size_t buflen = sysconf(_SC_GETPW_R_SIZE_MAX);
-+	int err = -ENOMEM;
-+
-+	buf = malloc(buflen);
-+	if (!buf)
-+		goto out;
-+	err = -getpwuid_r(uid, &pwbuf, buf, buflen, &pw);
-+	if (pw == NULL)
-+		err = -ENOENT;
-+	if (err)
-+		goto out_buf;
-+	if (!check_domain_list(pw->pw_name)) {
-+		err = -ENOENT;
-+		goto out_buf;
-+	}
-+	err = write_name(name, pw->pw_name, len);
-+out_buf:
-+	free(buf);
-+out:
-+	return err;
-+}
-+
-+static int multidom_gid_to_name(gid_t gid, char *domain, char *name, size_t len)
-+{
-+	struct group *gr = NULL;
-+	struct group grbuf;
-+	char *buf;
-+	size_t buflen = sysconf(_SC_GETGR_R_SIZE_MAX);
-+	int err;
-+
-+	do {
-+		err = -ENOMEM;
-+		buf = malloc(buflen);
-+		if (!buf)
-+			goto out;
-+		err = -getgrgid_r(gid, &grbuf, buf, buflen, &gr);
-+		if (gr == NULL && !err)
-+			err = -ENOENT;
-+		if (err == -ERANGE) {
-+			buflen *= 2;
-+			free(buf);
-+		}
-+	} while (err == -ERANGE);
-+
-+	if (err)
-+		goto out_buf;
-+	if (!check_domain_list(gr->gr_name)) {
-+		err = -ENOENT;
-+		goto out_buf;
-+	}
-+	err = write_name(name, gr->gr_name, len);
-+out_buf:
-+	free(buf);
-+out:
-+	return err;
-+}
-+
-+struct pwbuf {
-+	struct passwd pwbuf;
-+	char buf[1];
-+};
-+
-+static struct passwd *multidom_getpwnam(const char *name, int *err_p)
-+{
-+	struct passwd *pw;
-+	struct pwbuf *buf;
-+	size_t buflen = sysconf(_SC_GETPW_R_SIZE_MAX);
-+	int err = ENOMEM;
-+	int found = 0;
-+
-+	if (buflen > UINT_MAX)
-+		goto err;
-+
-+	buf = malloc(sizeof(*buf) + buflen);
-+	if (buf == NULL)
-+		goto err;
-+
-+	found = check_domain_list(name);
-+	if (!found) {
-+		err = -ENOENT;
-+		goto err_free_buf;
-+	}
-+
-+	err = getpwnam_r(name, &buf->pwbuf, buf->buf, buflen, &pw);
-+	if (pw == NULL)
-+		IDMAP_LOG(2,
-+			("multidom_getpwnam: name '%s' not found", name));
-+	if (err == 0 && pw != NULL) {
-+		*err_p = 0;
-+		return pw;
-+	} else if (err == 0 && pw == NULL) {
-+		err = ENOENT;
-+	}
-+
-+err_free_buf:
-+	free(buf);
-+err:
-+	*err_p = -err;
-+	return NULL;
-+}
-+
-+static int multidom_name_to_uid(char *name, uid_t *uid)
-+{
-+	struct passwd *pw = NULL;
-+	int err = -ENOENT;
-+
-+	pw = multidom_getpwnam(name, &err);
-+	if (pw == NULL)
-+		goto out;
-+	*uid = pw->pw_uid;
-+	IDMAP_LOG(4, ("multidom_name_to_uid: name '%s' uid %u", name, *uid));
-+	free(pw);
-+	err = 0;
-+out:
-+	return err;
-+}
-+
-+static char *multidom_reformat_name(const char *name)
-+{
-+	const char *domain;
-+	const char *c;
-+	const char *d;
-+	char *l = NULL;
-+	int len;
-+	int dlen = 0;
-+
-+	c = strchr(name, '@');
-+	if (c == NULL)
-+		goto out;
-+	len = c - name;
-+	domain = ++c;
-+	d = strchr(domain, '.');
-+	if (d == NULL)
-+		goto out;
-+	dlen = d - domain;
-+	l = malloc(dlen + 1 + len + 1);
-+	if (l == NULL)
-+		goto out;
-+	memcpy(l, domain, dlen);
-+	l[dlen] = '\\';
-+	memcpy(l + dlen + 1, name, len);
-+	l[dlen + 1 + len] = '\0';
-+out:
-+	return l;
-+}
-+
-+static int multidom_name_to_gid(char *name, gid_t *gid)
-+{
-+	struct group *gr = NULL;
-+	struct group grbuf;
-+	char *buf;
-+	size_t buflen = sysconf(_SC_GETGR_R_SIZE_MAX);
-+	int err = -EINVAL;
-+	int found = 0;
-+	char *ref_name = NULL;
-+
-+	found = check_domain_list(name);
-+	if (!found) {
-+		err = -ENOENT;
-+		goto out;
-+	}
-+
-+	if (winbind_quirk) {
-+		ref_name = multidom_reformat_name(name);
-+		if (ref_name == NULL) {
-+			IDMAP_LOG(2, ("multidom_name_to_gid: failed to reformat name '%s'",
-+					name));
-+			err = -ENOENT;
-+			goto out;
-+		}
-+	}
-+	err = -ENOMEM;
-+	if (buflen > UINT_MAX)
-+		goto out_ref_name;
-+
-+	do {
-+		buf = malloc(buflen);
-+		if (!buf)
-+			goto out_ref_name;
-+		if (winbind_quirk)
-+			err = -getgrnam_r(ref_name, &grbuf, buf, buflen, &gr);
-+		else
-+			err = -getgrnam_r(name, &grbuf, buf, buflen, &gr);
-+		if (gr == NULL && !err)
-+			err = -ENOENT;
-+		if (err == -ERANGE) {
-+			buflen *= 2;
-+			free(buf);
-+		}
-+	} while (err == -ERANGE);
-+
-+	if (err)
-+		goto out_buf;
-+	*gid = gr->gr_gid;
-+	IDMAP_LOG(4, ("multidom_name_to_gid: name '%s' gid %u", name, *gid));
-+out_buf:
-+	free(buf);
-+out_ref_name:
-+	if (winbind_quirk)
-+		free(ref_name);
-+out:
-+	return err;
-+}
-+
-+static int multidom_gss_princ_to_ids(char *secname, char *princ,
-+				uid_t *uid, uid_t *gid,
-+				extra_mapping_params **ex)
-+{
-+	IDMAP_LOG(4, ("%s: not implemented", __func__));
-+	return -ENOENT;
-+}
-+
-+int multidom_gss_princ_to_grouplist(char *secname, char *princ,
-+			       gid_t *groups, int *ngroups,
-+			       extra_mapping_params **ex)
-+{
-+	IDMAP_LOG(4, ("%s: not implemented", __func__));
-+	return -ENOENT;
-+}
-+
-+static int multidom_init(void)
-+{
-+	char *reformat_group;
-+
-+	domain_list = conf_get_list("Multi-Domain", "Domain-List");
-+	if (domain_list == NULL) {
-+		IDMAP_LOG(1, ("multidom_init: domain list: <NULL> "));
-+		return -1;
-+	}
-+
-+	if (idmap_verbosity >= 1) {
-+		struct conf_list_node *r;
-+		char *buf = NULL;
-+		int siz=0;
-+
-+		TAILQ_FOREACH(r, &domain_list->fields, link) {
-+			siz += (strlen(r->field)+4);
-+		}
-+		buf = malloc(siz);
-+		if (buf) {
-+			*buf = 0;
-+			TAILQ_FOREACH(r, &domain_list->fields, link) {
-+				sprintf(buf+strlen(buf), "'%s' ", r->field);
-+			}
-+			IDMAP_LOG(1, ("multidom_init: domain list: %s", buf));
-+			free(buf);
-+		}
-+	}
-+	reformat_group = conf_get_str_with_def("Multi-Domain", "Reformat-Group-For-Winbind-Query", "false");
-+	if ((strcasecmp(reformat_group, "true") == 0) ||
-+	    (strcasecmp(reformat_group, "on") == 0) ||
-+	    (strcasecmp(reformat_group, "yes") == 0))
-+		winbind_quirk = 1;
-+	else
-+		winbind_quirk = 0;
-+
-+	return 0;
-+}
-+
-+struct trans_func multidom_trans = {
-+	.name		= "multidom",
-+	.init		= multidom_init,
-+	.princ_to_ids	= multidom_gss_princ_to_ids,
-+	.name_to_uid	= multidom_name_to_uid,
-+	.name_to_gid	= multidom_name_to_gid,
-+	.uid_to_name	= multidom_uid_to_name,
-+	.gid_to_name	= multidom_gid_to_name,
-+	.gss_princ_to_grouplist = multidom_gss_princ_to_grouplist,
-+};
-+
-+struct trans_func *libnfsidmap_plugin_init()
-+{
-+	return (&multidom_trans);
-+}
--- 
-2.7.4
+--zhXaljGHf11kAtnf
+Content-Type: application/gzip
+Content-Disposition: attachment; filename=".config.gz"
+Content-Transfer-Encoding: base64
 
+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
+zHbbmgAA
+
+--zhXaljGHf11kAtnf--
