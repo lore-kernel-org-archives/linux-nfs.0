@@ -1,52 +1,24 @@
-Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from us-smtp-delivery-194.mimecast.com ([216.205.24.194]:53755 "EHLO
-        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S932177AbcLGPqh (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 7 Dec 2016 10:46:37 -0500
-From: Trond Myklebust <trondmy@primarydata.com>
+Return-Path: <BATV+f057edef27fde81efa4e+4854+infradead.org+hch@bombadil.srs.infradead.org>
+Date: Wed, 7 Dec 2016 08:30:26 -0800
+From: Christoph Hellwig <hch@infradead.org>
 To: Benjamin Coddington <bcodding@redhat.com>
-CC: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: Concurrent `ls` takes out the thrash
-Date: Wed, 7 Dec 2016 15:46:32 +0000
-Message-ID: <CEE29C1D-BB8F-4504-940D-43DE1FE63385@primarydata.com>
+Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] NFS: Serialize nfs_readdir()
+Message-ID: <20161207163026.GA9166@infradead.org>
 References: <C2A81CDB-ED8F-4D41-919F-3F92CBFF751B@redhat.com>
-In-Reply-To: <C2A81CDB-ED8F-4D41-919F-3F92CBFF751B@redhat.com>
+ <a87df5d5ada87834a1cb9f1ab12ed5113d80eda7.1481117708.git.bcodding@redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Sender: linux-nfs-owner@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <a87df5d5ada87834a1cb9f1ab12ed5113d80eda7.1481117708.git.bcodding@redhat.com>
 List-ID: <linux-nfs.vger.kernel.org>
 
-DQo+IE9uIERlYyA3LCAyMDE2LCBhdCAwODoyOCwgQmVuamFtaW4gQ29kZGluZ3RvbiA8YmNvZGRp
-bmdAcmVkaGF0LmNvbT4gd3JvdGU6DQo+IA0KPiBJIHdhcyBhc2tlZCB0byBmaWd1cmUgb3V0IHdo
-eSB0aGUgbGlzdGluZyBvZiB2ZXJ5IGxhcmdlIGRpcmVjdG9yaWVzIHdhcw0KPiBzbG93LiAgTW9y
-ZSBzcGVjaWZpY2FsbHksIHdoeSBjb25jdXJyZW50bHkgbGlzdGluZyB0aGUgc2FtZSBsYXJnZSBk
-aXJlY3RvcnkNCj4gaXMgL3ZlcnkvIHNsb3cuICBJdCBzZWVtcyB0aGF0IHNvbWV0aW1lcyBhIHVz
-ZXIncyByZWFjdGlvbiB0byB3YWl0aW5nIGZvcg0KPiAnbHMnIHRvIGNvbXBsZXRlIGlzIHRvIHN0
-YXJ0IGEgZmV3IG1vcmUuLiBhbmQgdGhlbiB0aGVpciBtYWNoaW5lIHRha2VzIGENCj4gdmVyeSBs
-b25nIHRpbWUgdG8gY29tcGxldGUgdGhhdCB3b3JrLg0KPiANCj4gSSBjYW4gcmVwcm9kdWNlIHRo
-YXQgZmluZGluZy4gIEFzIGFuIGV4YW1wbGU6DQo+IA0KPiB0aW1lIGxzIC1mbCAvZGlyL3dpdGgv
-MjAwMDAwL2VudHJpZXMvID4vZGV2L251bGwNCj4gDQo+IHJlYWwgICAgMG0xMC43NjZzDQo+IHVz
-ZXIgICAgMG0wLjcxNnMNCj4gc3lzICAgICAwbTAuODI3cw0KPiANCj4gQnV0Li4NCj4gDQo+IGZv
-ciBpIGluIHsxLi4xMH07IGRvIHRpbWUgbHMgLWZsIC9kaXIvd2l0aC8yMDAwMDAvZW50cmllcy8g
-Pi9kZXYvbnVsbCAmIGRvbmUNCj4gDQo+IEVhY2ggb2YgdGhlc2UgXl4gJ2xzJyBjb21tYW5kcyB3
-aWxsIHRha2UgNCB0byA1IG1pbnV0ZXMgdG8gY29tcGxldGUuDQo+IA0KPiBUaGUgcHJvYmxlbSBp
-cyB0aGF0IGNvbmN1cnJlbnQgJ2xzJyBjb21tYW5kcyBzdGFjayB1cCBpbiBuZnNfcmVhZGRpcigp
-IGJvdGgNCj4gd2FpdGluZyBvbiB0aGUgbmV4dCBwYWdlIGFuZCB0YWtpbmcgdHVybnMgZmlsbGlu
-ZyB0aGUgbmV4dCBwYWdlIHdpdGggeGRyLA0KPiBidXQgb25seSBvbmUgb2YgdGhlbSB3aWxsIGhh
-dmUgZGVzYy0+cGx1cyBzZXQgYmVjYXVzZSBzZXR0aW5nIGl0IGNsZWFycyB0aGUNCj4gZmxhZyBv
-biB0aGUgZGlyZWN0b3J5LiAgU28gaWYgYSBwYWdlIGlzIGZpbGxlZCBieSBhIHByb2Nlc3MgdGhh
-dCBkb2Vzbid0IGhhdmUNCj4gZGVzYy0+cGx1cyB0aGVuIHRoZSBuZXh0IHBhc3MgdGhyb3VnaCBs
-b29rdXAoKSwgaXQgZHVtcHMgdGhlIGVudGlyZSBwYWdlDQo+IGNhY2hlIHdpdGggbmZzX2ZvcmNl
-X3VzZV9yZWFkZGlycGx1cygpLiAgVGhlbiB0aGUgbmV4dCByZWFkZGlyIHN0YXJ0cyBhbGwNCj4g
-b3ZlciBmaWxsaW5nIHRoZSBwYWdlY2FjaGUuICBGb3J3YXJkIHByb2dyZXNzIGhhcHBlbnMsIGJ1
-dCBvbmx5IGFmdGVyIG1hbnkNCj4gc3RlcHMgYmFjayByZS1maWxsaW5nIHRoZSBwYWdlY2FjaGUu
-DQoNClllcywgdGhlIHJlYWRkaXIgY29kZSB3YXMgd3JpdHRlbiB3ZWxsIGJlZm9yZSBBbOKAmXMg
-cGF0Y2hlcyB0byBwYXJhbGxlbGlzZSB0aGUgVkZTIG9wZXJhdGlvbnMsIGFuZCBhIGxvdCBvZiBp
-dCBkaWQgcmVseSBvbiB0aGUgaW5vZGUtPmlfbXV0ZXggYmVpbmcgc2V0IG9uIHRoZSBkaXJlY3Rv
-cnkgYnkgdGhlIFZGUyBsYXllci4NCg0KSG93IGFib3V0IHRoZSBmb2xsb3dpbmcgc3VnZ2VzdGlv
-bjogaW5zdGVhZCBvZiBzZXR0aW5nIGEgZmxhZyBvbiB0aGUgaW5vZGUsIHdlIGl0ZXJhdGUgdGhy
-b3VnaCB0aGUgZW50cmllcyBpbiAmbmZzaS0+b3Blbl9maWxlcywgYW5kIHNldCBhIGZsYWcgb24g
-dGhlIHN0cnVjdCBuZnNfb3Blbl9kaXJfY29udGV4dCB0aGF0IHRoZSByZWFkZGlyIHByb2Nlc3Nl
-cyBjYW4gY29weSBpbnRvIGRlc2MtPnBsdXMuIERvZXMgdGhhdCBoZWxwIHdpdGggeW91ciB3b3Jr
-bG9hZD8NCg0K
+On Wed, Dec 07, 2016 at 08:37:02AM -0500, Benjamin Coddington wrote:
+> Optimizations to NFS to choose between READDIR and READDIRPLUS don't expect
+> concurrent users of nfs_readdir(), and can cause the pagecache to
+> repeatedly be invalidated unnecessarily for this case.  Fix this by
+> serializing nfs_readdir() on the directory's rwsem.
 
+Just implement .iterate instead of .iterate_shared and you'll get the
+serialization for free.  While doing that please add a comment on why
+it's serialized.
