@@ -1,41 +1,71 @@
-Return-Path: <trondmy@primarydata.com>
-From: Trond Myklebust <trondmy@primarydata.com>
-To: Benjamin Coddington <bcodding@redhat.com>
-CC: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Return-Path: <linux-nfs-owner@vger.kernel.org>
+Received: from mx1.redhat.com ([209.132.183.28]:55676 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S932976AbcLGXKv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 7 Dec 2016 18:10:51 -0500
+From: "Benjamin Coddington" <bcodding@redhat.com>
+To: "Trond Myklebust" <trondmy@primarydata.com>
+Cc: "Linux NFS Mailing List" <linux-nfs@vger.kernel.org>
 Subject: Re: Concurrent `ls` takes out the thrash
-Date: Wed, 7 Dec 2016 22:59:31 +0000
-Message-ID: <3C863AB4-D07A-494A-AD7B-87BF31496777@primarydata.com>
+Date: Wed, 07 Dec 2016 18:10:49 -0500
+Message-ID: <C3824A8A-17EF-465F-8267-55F0AD2C4239@redhat.com>
+In-Reply-To: <3C863AB4-D07A-494A-AD7B-87BF31496777@primarydata.com>
 References: <C2A81CDB-ED8F-4D41-919F-3F92CBFF751B@redhat.com>
  <CEE29C1D-BB8F-4504-940D-43DE1FE63385@primarydata.com>
  <7DA8E9BE-7353-44D5-B982-B477CF7B0A57@redhat.com>
  <934FC075-4393-42AD-92A3-3BC3BE580699@redhat.com>
  <6C5DA8AC-9A42-45FA-892C-E9597A7F7AC9@primarydata.com>
  <EC88DF6D-5A78-499C-A6A8-A5D74083876F@redhat.com>
-In-Reply-To: <EC88DF6D-5A78-499C-A6A8-A5D74083876F@redhat.com>
+ <3C863AB4-D07A-494A-AD7B-87BF31496777@primarydata.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=utf-8; format=flowed
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-DQo+IE9uIERlYyA3LCAyMDE2LCBhdCAxNzo1NSwgQmVuamFtaW4gQ29kZGluZ3RvbiA8YmNvZGRp
-bmdAcmVkaGF0LmNvbT4gd3JvdGU6DQo+IA0KPiBPbiA3IERlYyAyMDE2LCBhdCAxNzo0MSwgVHJv
-bmQgTXlrbGVidXN0IHdyb3RlOg0KPiANCj4+PiBPbiBEZWMgNywgMjAxNiwgYXQgMTc6MzQsIEJl
-bmphbWluIENvZGRpbmd0b24gPGJjb2RkaW5nQHJlZGhhdC5jb20+IHdyb3RlOg0KPj4+IHN0YXRp
-Yw0KPj4+IEBAIC05MjEsNyArOTMwLDcgQEAgc3RhdGljIGludCBuZnNfcmVhZGRpcihzdHJ1Y3Qg
-ZmlsZSAqZmlsZSwgc3RydWN0IGRpcl9jb250ZXh0ICpjdHgpDQo+Pj4gCWRlc2MtPmN0eCA9IGN0
-eDsNCj4+PiAJZGVzYy0+ZGlyX2Nvb2tpZSA9ICZkaXJfY3R4LT5kaXJfY29va2llOw0KPj4+IAlk
-ZXNjLT5kZWNvZGUgPSBORlNfUFJPVE8oaW5vZGUpLT5kZWNvZGVfZGlyZW50Ow0KPj4+IC0JZGVz
-Yy0+cGx1cyA9IG5mc191c2VfcmVhZGRpcnBsdXMoaW5vZGUsIGN0eCkgPyAxIDogMDsNCj4+PiAr
-CWRlc2MtPnBsdXMgPSBuZnNfdXNlX3JlYWRkaXJwbHVzKGlub2RlLCBjdHgsIGRpcl9jdHgpID8g
-MSA6IDA7DQo+PiANCj4+IFRoaXMgZml4ZXMgZGVzYy0+cGx1cyBhdCB0aGUgYmVnaW5uaW5nIG9m
-IHRoZSByZWFkZGlyKCkgY2FsbC4gUGVyaGFwcyB3ZQ0KPj4gc2hvdWxkIGluc3RlYWQgY2hlY2sg
-dGhlIHZhbHVlIG9mIGN0eC0+dXNlX3JlYWRkaXJfcGx1cyBpbiB0aGUgY2FsbCB0bw0KPj4gbmZz
-X3JlYWRkaXJfeGRyX2ZpbGxlcigpLCBhbmQganVzdCByZXNldHRpbmcgY3RzLT51c2VfcmVhZGRp
-cl9wbHVzIGF0IHRoZQ0KPj4gdmVyeSBlbmQgb2YgbmZzX3JlYWRkaXIoKT8NCj4gDQo+IEkgZG9u
-J3QgdW5kZXJzdGFuZCB0aGUgZnVuY3Rpb25hbCBkaWZmZXJlbmNlLiAgSXMgdGhpcyBqdXN0IGEg
-cHJlZmVyZW5jZT8NCg0KTm8uIFRoZSBmdW5jdGlvbmFsIGRpZmZlcmVuY2UgaXMgdGhhdCB3ZSB0
-YWtlIGludG8gYWNjb3VudCB0aGUgZmFjdCB0aGF0IGEgcHJvY2VzcyBtYXkgYmUgaW4gdGhlIHJl
-YWRkaXIoKSBjb2RlIHdoaWxlIGEgR0VUQVRUUiBvciBMT09LVVAgZnJvbSBhIHNlY29uZCBwcm9j
-ZXNzIGlzIHRyaWdnZXJpbmcg4oCcdXNlIHJlYWRkaXJwbHVz4oCdIGZlZWRiYWNrLg0KDQo+IA0K
-PiBUaGVyZSBtdXN0IGJlIHNvbWV0aGluZyBlbHNlIGhhcHBlbmluZy4uIGRjYWNoZSBpcyBnZXR0
-aW5nIHVuZGVyIHByZXNzdXJlDQo+IHBydW5lZCBtYXliZSwgdGhhdCBjYXVzZXMgYSBtaXNzIGFu
-ZCB0aGVuIHRoZSBwcm9jZXNzIHN0YXJ0cyBvdmVyPw0KPiANCj4gQmVuDQo+IA0KDQo=
+On 7 Dec 2016, at 17:59, Trond Myklebust wrote:
+
+>> On Dec 7, 2016, at 17:55, Benjamin Coddington <bcodding@redhat.com> 
+>> wrote:
+>>
+>> On 7 Dec 2016, at 17:41, Trond Myklebust wrote:
+>>
+>>>> On Dec 7, 2016, at 17:34, Benjamin Coddington <bcodding@redhat.com> 
+>>>> wrote:
+>>>> static
+>>>> @@ -921,7 +930,7 @@ static int nfs_readdir(struct file *file, 
+>>>> struct dir_context *ctx)
+>>>> 	desc->ctx = ctx;
+>>>> 	desc->dir_cookie = &dir_ctx->dir_cookie;
+>>>> 	desc->decode = NFS_PROTO(inode)->decode_dirent;
+>>>> -	desc->plus = nfs_use_readdirplus(inode, ctx) ? 1 : 0;
+>>>> +	desc->plus = nfs_use_readdirplus(inode, ctx, dir_ctx) ? 1 : 0;
+>>>
+>>> This fixes desc->plus at the beginning of the readdir() call. 
+>>> Perhaps we
+>>> should instead check the value of ctx->use_readdir_plus in the call 
+>>> to
+>>> nfs_readdir_xdr_filler(), and just resetting cts->use_readdir_plus 
+>>> at the
+>>> very end of nfs_readdir()?
+>>
+>> I don't understand the functional difference.  Is this just a 
+>> preference?
+>
+> No. The functional difference is that we take into account the fact 
+> that a
+> process may be in the readdir() code while a GETATTR or LOOKUP from a
+> second process is triggering “use readdirplus” feedback.
+
+This should only matter if the concurrent processes have different 
+buffer
+sizes or start at a different offsets -- which shouldn't happen with 
+plain
+old 'ls -l'.
+
+.. or maybe I'm wrong if, hmm..  if acdirmin ran out (maybe?).. or if we 
+mix
+'ls -l' and 'ls'.. or if we have pages getting reclaimed.. OK.  I'll try 
+it.
+
+Thanks for your suggestions.
+Ben
