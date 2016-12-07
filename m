@@ -1,87 +1,77 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:35830 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:60346 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751091AbcLGRDv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 7 Dec 2016 12:03:51 -0500
-Date: Wed, 7 Dec 2016 12:03:50 -0500
-From: Scott Mayhew <smayhew@redhat.com>
-To: Trond Myklebust <trondmy@primarydata.com>
-Cc: Schumaker Anna <anna.schumaker@netapp.com>,
-        List Linux NFS Mailing <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH v2] nfs: only show mountproto in /proc/mounts if set
-Message-ID: <20161207170350.nycnsb3sduho5nu4@tonberry.usersys.redhat.com>
-References: <1479243592-38858-1-git-send-email-smayhew@redhat.com>
- <56E2C0D6-40A3-45E9-815C-A50A94A3A95C@primarydata.com>
- <20161116135533.fytzlidwltjpz67e@tonberry.usersys.redhat.com>
+        id S1752441AbcLGSIs (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 7 Dec 2016 13:08:48 -0500
+Date: Wed, 7 Dec 2016 13:08:43 -0500
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: Steve Dickson <SteveD@redhat.com>
+Cc: NeilBrown <neilb@suse.com>, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 03/15] Add /etc/nfs.conf support to rpc.nfsd
+Message-ID: <20161207180843.GA20626@parsley.fieldses.org>
+References: <148065078775.28046.5506130555300891075.stgit@noble>
+ <148065110833.28046.2561331715736018574.stgit@noble>
+ <8e72acac-42de-bf02-9069-60e7b6a12c04@RedHat.com>
+ <87r35k4rcr.fsf@notabene.neil.brown.name>
+ <35ca5ad2-39db-a46b-13b2-a2e5128793a0@RedHat.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20161116135533.fytzlidwltjpz67e@tonberry.usersys.redhat.com>
+In-Reply-To: <35ca5ad2-39db-a46b-13b2-a2e5128793a0@RedHat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, 16 Nov 2016, Scott Mayhew wrote:
-
-> On Tue, 15 Nov 2016, Trond Myklebust wrote:
+On Wed, Dec 07, 2016 at 09:44:25AM -0500, Steve Dickson wrote:
+> 
+> 
+> On 12/06/2016 05:36 PM, NeilBrown wrote:
+> > On Wed, Dec 07 2016, Steve Dickson wrote:
+> > 
+> >>> +.B nfsd
+> >>> +Recognized values:
+> >>> +.BR threads ,
+> >>> +.BR grace-time ,
+> >>> +.BR lease-time ,
+> >>> +.BR udp ,
+> >>> +.BR tcp ,
+> >>> +.BR vers2 ,
+> >>> +.BR vers3 ,
+> >>> +.BR vers4 ,
+> >>> +.BR vers4.0 ,
+> >> Do we need both ver4 and ver4.0?
+> > 
+> > "vers4" allows you to enable or disable v4 has a whole.
+> > The assumption is that if enabled, all minor versions that the kernel
+> > supports will be enabled by default.
+> > vers4.x allows individual minor versions to be disabled, so
+> >  vers4=yes
+> >  vers4.0=no
+> > would disable v4.0, just like "-V4 -N4.0"
+> I see...
 > 
 > > 
-> > > On Nov 15, 2016, at 15:59, Scott Mayhew <smayhew@redhat.com> wrote:
-> > > 
-> > > The nfs_server->mountd_protocol field doesn't get set when a v3 submount
-> > > is created, causing /proc/mounts to show 'mountproto=' without a netid.
-> > > This in turn causes umount.nfs to emit the error message "Failed to find
-> > > '' protocol" if you manually unmount the submount.
-> > > 
-> > > Signed-off-by: Scott Mayhew <smayhew@redhat.com>
-> > > ---
-> > > fs/nfs/super.c | 3 ++-
-> > > 1 file changed, 2 insertions(+), 1 deletion(-)
-> > > 
-> > > diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-> > > index 001796b..b60946d 100644
-> > > --- a/fs/nfs/super.c
-> > > +++ b/fs/nfs/super.c
-> > > @@ -532,7 +532,8 @@ static void nfs_show_mountd_netid(struct seq_file *m, struct nfs_server *nfss,
-> > > {
-> > > 	struct sockaddr *sap = (struct sockaddr *) &nfss->mountd_address;
-> > > 
-> > > -	seq_printf(m, ",mountproto=");
-> > > +	if (nfss->mountd_protocol || showdefaults)
-> > > +		seq_printf(m, ",mountproto=");
-> > > 	switch (sap->sa_family) {
-> > > 	case AF_INET:
-> > > 		switch (nfss->mountd_protocol) {
-> > 
-> > Does it make sense to call nfs_show_mountd_options() at all for the case of a v3 submount?
-> > 
-> Probably not, but I don't see a way to positively identify that it's a
-> submount if all you have is the nfs_server struct (I don't see a way to
-> backtrack to the mount struct).  Or are you suggesting to just check one
-> of the mountd-related fields (say mountd_addrlen) before calling
-> nfs_show_mount_options() and skip it altogether if appropriate?
+> > I do wonder if this is ever valid though.  Why do we allow minor
+> > versions to be enabled/disabled?
+> IDK... I think Trond did this... you know...
+> when in doubt... blame Trond! 8-) 
+
+Or Benny, 8daf220a6a83 "nfsd41: control nfsv4.1 svc via
+/proc/fs/nfsd/versions".
+
+> > Does it make any sense to enable a non-contiguous set of minor versions?
+> I don't think so... Talk about handing people rope! ;-)
+
+I can't think of a reason either.
+
+> > Should we just have a maximum NFSv4 minor version?
+> Maybe.. 
+
+If you do that then I'd allow a minimum too.
+
+--b.
+
+> > I was trying to duplicate the current functionality as closely as
+> > convenient.  That might not be best in this case.
+> You did a good job... this is definitely a nit.
 > 
-
-Having looked at it a little more, I do see a few ways but none of them
-are particularly good.
-
-One way would be to dereference nfss->super and walk the s_mounts list
-looking for any mount whose mnt_expire list is nonempty... but comment
-beside the s_mounts declaration says '_not_ for fs use', plus it doesn't
-look like the mount_lock is meant to be used outside of the vfs layer
-either, so scratch that.
-
-Another way would be to walk the nfs_automount_list, comparing nfss to
-mnt->mnt.mnt_sb->s_fs_info... I made a patch to do that but it works but
-it adds the overhead of calling a function just so we can (maybe) avoid
-calling nfs_show_mount_options() which is inlined anyways.
-
-A third way would be to add a flag to the  nfs_server->flags field to
-indicate that it's a submount... I don't see any use for said flag aside
-from checking it in nfs_show_mount_options(), so that seems like wasting
-a flag.
-
-I still prefer the original patch since it pretty much restores the
-behavior that was there before commit ee671b016, and all I'm trying to
-do is squelch a harmless error message (since the umount still
-succeeds).
-
--Scott
+> steved.
+> 
