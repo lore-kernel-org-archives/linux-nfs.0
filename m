@@ -1,15 +1,15 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx144.netapp.com ([216.240.21.25]:29725 "EHLO mx144.netapp.com"
+Received: from mx141.netapp.com ([216.240.21.12]:34231 "EHLO mx141.netapp.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S932177AbcLHSt1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 8 Dec 2016 13:49:27 -0500
+        id S932227AbcLHSt2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 8 Dec 2016 13:49:28 -0500
 From: Anna Schumaker <Anna.Schumaker@Netapp.com>
 To: <fstests@vger.kernel.org>
 CC: <Anna.Schumaker@Netapp.com>, <linux-nfs@vger.kernel.org>,
         <hch@infradead.org>
-Subject: [PATCH v4 4/5] generic/395: Add a copy test for overwriting small amounts of data
-Date: Thu, 8 Dec 2016 13:49:07 -0500
-Message-ID: <20161208184909.23321-5-Anna.Schumaker@Netapp.com>
+Subject: [PATCH v4 5/5] generic/396: Add a copy test for invalid input
+Date: Thu, 8 Dec 2016 13:49:08 -0500
+Message-ID: <20161208184909.23321-6-Anna.Schumaker@Netapp.com>
 In-Reply-To: <20161208184909.23321-1-Anna.Schumaker@Netapp.com>
 References: <20161208184909.23321-1-Anna.Schumaker@Netapp.com>
 MIME-Version: 1.0
@@ -17,32 +17,28 @@ Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This test is similar to 345, except that it copies one byte at a time to
-make sure that this case works as expected.
+This test passes invalid argumnt combinations to the copy_file_range()
+system call to test that input is verified before attempting to copy.
 
 Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
 ---
- tests/generic/395     | 87 +++++++++++++++++++++++++++++++++++++++++++++++++++
- tests/generic/395.out | 17 ++++++++++
+ tests/generic/396     | 68 +++++++++++++++++++++++++++++++++++++++++++++++++++
+ tests/generic/396.out |  8 ++++++
  tests/generic/group   |  1 +
- 3 files changed, 105 insertions(+)
- create mode 100755 tests/generic/395
- create mode 100644 tests/generic/395.out
+ 3 files changed, 77 insertions(+)
+ create mode 100644 tests/generic/396
+ create mode 100644 tests/generic/396.out
 
-diff --git a/tests/generic/395 b/tests/generic/395
-new file mode 100755
-index 0000000..993a356
+diff --git a/tests/generic/396 b/tests/generic/396
+new file mode 100644
+index 0000000..c262070
 --- /dev/null
-+++ b/tests/generic/395
-@@ -0,0 +1,87 @@
++++ b/tests/generic/396
+@@ -0,0 +1,68 @@
 +#!/bin/bash
-+# FS QA Test No. 395
++# FS QA Test No. 396
 +#
-+# Tests vfs_copy_file_range():
-+#   - Copy a small file
-+#   - Use copy to swap data at beginning and end
-+#   - Use copy to swap data in the middle
-+#   - Use copy to swap data in a small file
++# Tests vfs_copy_file_range() error checking
 +#-----------------------------------------------------------------------
 +# Copyright (c) 2016 Netapp, Inc. All rights reserved.
 +#
@@ -92,68 +88,44 @@ index 0000000..993a356
 +mkdir $testdir
 +rm -f $seqres.full
 +
-+echo "Create the original file and then copy"
-+echo -n "abcde" > $testdir/file
-+$XFS_IO_PROG -f -c "copy_range $testdir/file" "$testdir/copy"
-+cmp $testdir/file $testdir/copy
-+echo "Original md5sums:"
-+md5sum $testdir/{file,copy} | _filter_test_dir
++echo "Create the original file"
++$XFS_IO_PROG -f -c 'pwrite -S 0x61 0 1000' $testdir/file >> $seqres.full 2>&1
 +
-+echo "Swap beginning and end of original file"
-+$XFS_IO_PROG -f -c "copy_range -s 0 -d 4 -l 1 $testdir/file" "$testdir/copy"
-+$XFS_IO_PROG -f -c "copy_range -s 4 -d 0 -l 1 $testdir/file" "$testdir/copy"
-+echo -n "ebcda" | cmp $testdir/copy
-+echo "md5sums after swapping beginning and end:"
-+md5sum $testdir/{file,copy} | _filter_test_dir
++echo "source pos > source size:"
++$XFS_IO_PROG -f -c "copy_range -s 1000 -l 100 $testdir/file" "$testdir/copy"
 +
-+echo "Swap middle parts of original file"
-+$XFS_IO_PROG -f -c "copy_range -s 1 -d 3 -l 1 $testdir/file" "$testdir/copy"
-+$XFS_IO_PROG -f -c "copy_range -s 3 -d 1 -l 1 $testdir/file" "$testdir/copy"
-+echo -n "edcba" | cmp $testdir/copy
-+echo "md5sums after swapping middle:"
-+md5sum $testdir/{file,copy} | _filter_test_dir
++echo "target read-only"
++$XFS_IO_PROG -r -f -c "copy_range -s 0 -l 100 $testdir/file" "$testdir/copy"
 +
-+echo "Copy tail of original file onto copy"
-+$XFS_IO_PROG -f -c "copy_range -s 1 -d 3 -l 4 $testdir/file" "$testdir/copy"
-+echo -n "edcbcde" | cmp $testdir/copy
-+echo "md5sums after copying tail:"
-+md5sum $testdir/{file,copy} | _filter_test_dir
++echo "target append-only"
++$XFS_IO_PROG -a -f -c "copy_range -s 0 -l 100 $testdir/file" "$testdir/copy"
 +
 +#success, all done
 +status=0
 +exit
-diff --git a/tests/generic/395.out b/tests/generic/395.out
+diff --git a/tests/generic/396.out b/tests/generic/396.out
 new file mode 100644
-index 0000000..f120056
+index 0000000..4031883
 --- /dev/null
-+++ b/tests/generic/395.out
-@@ -0,0 +1,17 @@
-+QA output created by 395
-+Create the original file and then copy
-+Original md5sums:
-+ab56b4d92b40713acc5af89985d4b786  TEST_DIR/test-395/file
-+ab56b4d92b40713acc5af89985d4b786  TEST_DIR/test-395/copy
-+Swap beginning and end of original file
-+md5sums after swapping beginning and end:
-+ab56b4d92b40713acc5af89985d4b786  TEST_DIR/test-395/file
-+32db1f6d06d15f7e38e1ab1c69da498a  TEST_DIR/test-395/copy
-+Swap middle parts of original file
-+md5sums after swapping middle:
-+ab56b4d92b40713acc5af89985d4b786  TEST_DIR/test-395/file
-+295228f3d82d344bbcf2f0030519c2ea  TEST_DIR/test-395/copy
-+Copy tail of original file onto copy
-+md5sums after copying tail:
-+ab56b4d92b40713acc5af89985d4b786  TEST_DIR/test-395/file
-+0c4aac952f72fa078e2f8419aca70b28  TEST_DIR/test-395/copy
++++ b/tests/generic/396.out
+@@ -0,0 +1,8 @@
++QA output created by 396
++Create the original file
++source pos > source size:
++copy_range: Invalid argument
++target read-only
++copy_range: Bad file descriptor
++target append-only
++copy_range: Bad file descriptor
 diff --git a/tests/generic/group b/tests/generic/group
-index 00f4f46..2b50ddb 100644
+index 2b50ddb..eee0f39 100644
 --- a/tests/generic/group
 +++ b/tests/generic/group
-@@ -397,3 +397,4 @@
- 392 auto quick copy
+@@ -398,3 +398,4 @@
  393 auto quick copy
  394 auto quick copy
-+395 auto quick copy
+ 395 auto quick copy
++396 auto quick copy
 -- 
 2.10.2
 
