@@ -1,88 +1,52 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:37590 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751139AbcLHOTZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 8 Dec 2016 09:19:25 -0500
-From: "Benjamin Coddington" <bcodding@redhat.com>
-To: "Trond Myklebust" <trondmy@primarydata.com>
-Cc: "Linux NFS Mailing List" <linux-nfs@vger.kernel.org>
-Subject: Re: Concurrent `ls` takes out the thrash
-Date: Thu, 08 Dec 2016 09:18:36 -0500
-Message-ID: <790E1295-EBBE-4059-9EEC-D2C9CD36EA20@redhat.com>
-In-Reply-To: <C3824A8A-17EF-465F-8267-55F0AD2C4239@redhat.com>
-References: <C2A81CDB-ED8F-4D41-919F-3F92CBFF751B@redhat.com>
- <CEE29C1D-BB8F-4504-940D-43DE1FE63385@primarydata.com>
- <7DA8E9BE-7353-44D5-B982-B477CF7B0A57@redhat.com>
- <934FC075-4393-42AD-92A3-3BC3BE580699@redhat.com>
- <6C5DA8AC-9A42-45FA-892C-E9597A7F7AC9@primarydata.com>
- <EC88DF6D-5A78-499C-A6A8-A5D74083876F@redhat.com>
- <3C863AB4-D07A-494A-AD7B-87BF31496777@primarydata.com>
- <C3824A8A-17EF-465F-8267-55F0AD2C4239@redhat.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8; format=flowed
+Received: from bedivere.hansenpartnership.com ([66.63.167.143]:48488 "EHLO
+        bedivere.hansenpartnership.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1752937AbcLHPcU (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 8 Dec 2016 10:32:20 -0500
+Message-ID: <1481211043.2361.1.camel@HansenPartnership.com>
+Subject: Re: LSF/MM 2017: Call for Proposals
+From: James Bottomley <James.Bottomley@HansenPartnership.com>
+To: Michal Hocko <mhocko@kernel.org>
+Cc: Jeff Layton <jlayton@poochiereds.net>, linux-block@vger.kernel.org,
+        linux-btrfs@vger.kernel.org, linux-cifs@vger.kernel.org,
+        linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-ide@vger.kernel.org, linux-kernel@vger.kernel.org,
+        linux-mm@kvack.org, linux-nfs@vger.kernel.org,
+        linux-scsi@vger.kernel.org, "xfs@oss.sgi.com" <xfs@oss.sgi.com>,
+        ceph-devel@vger.kernel.org, linux-nvme@lists.infradead.org,
+        "lsf-pc@lists.linux-foundation.org"
+        <lsf-pc@lists.linux-foundation.org>
+Date: Thu, 08 Dec 2016 07:30:43 -0800
+In-Reply-To: <20161208122619.GA26535@dhcp22.suse.cz>
+References: <1480601506.2511.7.camel@poochiereds.net>
+         <1481122626.2354.14.camel@HansenPartnership.com>
+         <20161208122619.GA26535@dhcp22.suse.cz>
+Content-Type: text/plain; charset="UTF-8"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Thu, 2016-12-08 at 13:26 +0100, Michal Hocko wrote:
+> On Wed 07-12-16 06:57:06, James Bottomley wrote:
+> [...]
+> > Just on this point, since there seems to be a lot of confusion: lsf
+> > -pc
+> > is the list for contacting the programme committee, so you cannot
+> > subscribe to it.
+> > 
+> > There is no -discuss equivalent, like kernel summit has, because we
+> > expect you to cc the relevant existing mailing list and have the
+> > discussion there instead rather than expecting people to subscribe
+> > to a
+> > new list.
+> 
+> There used to be lsf@lists.linux-foundation.org. Is it not active
+> anymore?
 
-On 7 Dec 2016, at 18:10, Benjamin Coddington wrote:
+Not until we get the list of invitees sorted out.  And then it's only
+for stuff actually to do with lsf (like logistics, bof or session
+requests or other meetups).  Any technical stuff should still be cc'd
+to the relevant mailing list.
 
-> On 7 Dec 2016, at 17:59, Trond Myklebust wrote:
->
->>> On Dec 7, 2016, at 17:55, Benjamin Coddington <bcodding@redhat.com> 
->>> wrote:
->>>
->>> On 7 Dec 2016, at 17:41, Trond Myklebust wrote:
->>>
->>>>> On Dec 7, 2016, at 17:34, Benjamin Coddington 
->>>>> <bcodding@redhat.com> wrote:
->>>>> static
->>>>> @@ -921,7 +930,7 @@ static int nfs_readdir(struct file *file, 
->>>>> struct dir_context *ctx)
->>>>> 	desc->ctx = ctx;
->>>>> 	desc->dir_cookie = &dir_ctx->dir_cookie;
->>>>> 	desc->decode = NFS_PROTO(inode)->decode_dirent;
->>>>> -	desc->plus = nfs_use_readdirplus(inode, ctx) ? 1 : 0;
->>>>> +	desc->plus = nfs_use_readdirplus(inode, ctx, dir_ctx) ? 1 : 0;
->>>>
->>>> This fixes desc->plus at the beginning of the readdir() call. 
->>>> Perhaps we
->>>> should instead check the value of ctx->use_readdir_plus in the call 
->>>> to
->>>> nfs_readdir_xdr_filler(), and just resetting cts->use_readdir_plus 
->>>> at the
->>>> very end of nfs_readdir()?
->>>
->>> I don't understand the functional difference.  Is this just a 
->>> preference?
->>
->> No. The functional difference is that we take into account the fact 
->> that a
->> process may be in the readdir() code while a GETATTR or LOOKUP from a
->> second process is triggering “use readdirplus” feedback.
->
-> This should only matter if the concurrent processes have different 
-> buffer
-> sizes or start at a different offsets -- which shouldn't happen with 
-> plain
-> old 'ls -l'.
->
-> .. or maybe I'm wrong if, hmm..  if acdirmin ran out (maybe?).. or if 
-> we mix
-> 'ls -l' and 'ls'.. or if we have pages getting reclaimed.. OK.  I'll 
-> try it.
+James
 
-This doesn't help.
-
-The issue is that anything more than a couple of processes cause 
-contention
-on the directory's i_lock.  The i_lock is taken x entries x processes. 
-The
-inode flags and serialization worked far better.
-
-If we add another inode flag, then we can add a DOING_RDPLUS.  A process
-entering nfs_readdir() that sees ADVISE and not DOING clears it and sets
-DOING and remembers to clear DOING on exit of nfs_readdir().  Any 
-process
-that sees DOING uses plus.
-
-Ben
