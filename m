@@ -1,43 +1,69 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:39806 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S932479AbcLHVsr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 8 Dec 2016 16:48:47 -0500
-From: "Benjamin Coddington" <bcodding@redhat.com>
-To: "Trond Myklebust" <trond.myklebust@primarydata.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: Concurrent `ls` takes out the thrash
-Date: Thu, 08 Dec 2016 16:48:44 -0500
-Message-ID: <41B5791B-E515-4EA3-85AF-CFB65A2A2D32@redhat.com>
-In-Reply-To: <3A6424D7-8207-4392-88C5-6CD3E1F65800@redhat.com>
-References: <C2A81CDB-ED8F-4D41-919F-3F92CBFF751B@redhat.com>
- <CEE29C1D-BB8F-4504-940D-43DE1FE63385@primarydata.com>
- <7DA8E9BE-7353-44D5-B982-B477CF7B0A57@redhat.com>
- <934FC075-4393-42AD-92A3-3BC3BE580699@redhat.com>
- <6C5DA8AC-9A42-45FA-892C-E9597A7F7AC9@primarydata.com>
- <EC88DF6D-5A78-499C-A6A8-A5D74083876F@redhat.com>
- <3C863AB4-D07A-494A-AD7B-87BF31496777@primarydata.com>
- <C3824A8A-17EF-465F-8267-55F0AD2C4239@redhat.com>
- <790E1295-EBBE-4059-9EEC-D2C9CD36EA20@redhat.com>
- <3A6424D7-8207-4392-88C5-6CD3E1F65800@redhat.com>
+Received: from mail-io0-f179.google.com ([209.85.223.179]:36398 "EHLO
+        mail-io0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S932643AbcLHVuy (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 8 Dec 2016 16:50:54 -0500
+Received: by mail-io0-f179.google.com with SMTP id a81so21298368ioe.3
+        for <linux-nfs@vger.kernel.org>; Thu, 08 Dec 2016 13:50:54 -0800 (PST)
 MIME-Version: 1.0
+In-Reply-To: <20161208212238.ctyshbcpz7afzrxv@ics.muni.cz>
+References: <20161129184843.jrwbnytggrz6kdir@ics.muni.cz> <2ff5b760-a3ca-9ab8-d1a8-efe5f36aaaf3@RedHat.com>
+ <20161202114134.rvzqptnsqo3odxay@ics.muni.cz> <CAHVgHyU6LQak3O4ybR0H3whWCKUdfz2bxLvEGi9uFM1EX+e=Eg@mail.gmail.com>
+ <20161202134638.4ghyb5wnnwata4ec@ics.muni.cz> <CAHVgHyVWqNZv55dH3hhZ-0XDsd4c79OW_R6Ze02uhv-nqePpPQ@mail.gmail.com>
+ <20161202142847.vyhp6ogtu6gvuabf@ics.muni.cz> <CAHVgHyW6fo1b2LSjxq73n7wQkR9r0JEvwzxHdb3X9p+gSpLQ1Q@mail.gmail.com>
+ <20161208123616.nndod3snzoeyr565@ics.muni.cz> <CAN-5tyGCTkqX7qmR+kjsGTtjqjMH6-PJ4VXWnP0+ruXzz5B+Cg@mail.gmail.com>
+ <20161208212238.ctyshbcpz7afzrxv@ics.muni.cz>
+From: Olga Kornievskaia <aglo@umich.edu>
+Date: Thu, 8 Dec 2016 16:50:52 -0500
+Message-ID: <CAN-5tyEt3kCD-CJAFAL8E=eHNG0tk1gt84L35HU7nQMHg2_zFw@mail.gmail.com>
+Subject: Re: Fwd: RFC rpc.gssd enhancement
+To: Lukas Hejtmanek <xhejtman@gmail.com>
+Cc: Andy Adamson <androsadamson@gmail.com>,
+        NFS list <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-> Ehh.. I think it's kinda ugly, but this is what I came up with.
+On Thu, Dec 8, 2016 at 4:22 PM, Lukas Hejtmanek <xhejtman@gmail.com> wrote:
+> On Thu, Dec 08, 2016 at 04:11:38PM -0500, Olga Kornievskaia wrote:
+>> Why is "kinit" accessing ~/.krb5/config? Typically kinit will only
+>> access /etc/krb5.conf.
+>>
+>> You are describing a catch-22 system. You want to create credentials
+>> but to create credentials you need to access a file that is protected
+>> by the credentials. This is a badly designed setup.
+>>
+>> kinit normally does not require access into something that is
+>> protected by credentials gotten by kinit.
+>>
+>> Your solution is to provide your user with "kinit" that does not
+>> access ~/.krb5/config. Please describe the need for that file and why
+>> it can't be satisfied using machine global /etc/krb5.conf.
 >
-> It works well, though, and handles everything I throw at it.  Its not as
-> simple as Christoph's suggestion to just go back to .iterate, which would
-> solve this in a simpler way.
+> debian heimdal 1.6~rc2+dfsg-9  opens ~/.krb5/config and ~/.rnd files.
+> dunno why.
+>
+> MIT implementation does not seem to access $HOME.
 
-After many testings, I can't find any way this is faster than using the old
-.iterate serialized readdir.  Additionally, at around 1M entries, this way
-frequently needs to oom-kill things.  Using .iterate, that doesn't happen,
-and is much faster at that scale.
+When you say "MIT implementation does not seem to access $HOME", do
+you mean you've build kinit from MIT source and it works? If so, then
+solution seems to be to bug debian folks to investigate what happened
+to their kinit?
 
-Maybe my feeble brain is unable to think of the right workload to make
-.iterate_shared preferable for NFS.  Suggestions welcome.
+For instance RHEL/CentOS 7 had an issue where there patched OpenSSH
+looked at .k5login file where normal ssh didn't and caused problems:
+https://bugzilla.redhat.com/show_bug.cgi?id=1328243
 
-Otherwise, I think serialized is the way to go.
+I think that might be related to your other complaint with using ssh
+keys to ssh. But at the same time I can see that what's going on here
+is again somewhat un-kosher. If you placed .authorized_key under
+something that only user with credentials can access, then you can't
+get to it without having though credentials. You have mentioned that
+"authorized_key" are readable but typically ~/.ssh had 700 permission
+so sshd can't get to reading "authorized_keys" file.
 
-Ben
+To summarize: i suggest that you check that if an upstream kinit (from
+MIT) and upstream openssh have the problems you are describing.
+
+And to state again: what you are asking about for gssd is not an
+acceptable request in terms of security.
