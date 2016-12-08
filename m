@@ -1,15 +1,15 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx141.netapp.com ([216.240.21.12]:34231 "EHLO mx141.netapp.com"
+Received: from mx144.netapp.com ([216.240.21.25]:29725 "EHLO mx144.netapp.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1752057AbcLHSt0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 8 Dec 2016 13:49:26 -0500
+        id S932177AbcLHSt1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 8 Dec 2016 13:49:27 -0500
 From: Anna Schumaker <Anna.Schumaker@Netapp.com>
 To: <fstests@vger.kernel.org>
 CC: <Anna.Schumaker@Netapp.com>, <linux-nfs@vger.kernel.org>,
         <hch@infradead.org>
-Subject: [PATCH v4 3/5] generic/394: Add copy test that overwrites data
-Date: Thu, 8 Dec 2016 13:49:06 -0500
-Message-ID: <20161208184909.23321-4-Anna.Schumaker@Netapp.com>
+Subject: [PATCH v4 4/5] generic/395: Add a copy test for overwriting small amounts of data
+Date: Thu, 8 Dec 2016 13:49:07 -0500
+Message-ID: <20161208184909.23321-5-Anna.Schumaker@Netapp.com>
 In-Reply-To: <20161208184909.23321-1-Anna.Schumaker@Netapp.com>
 References: <20161208184909.23321-1-Anna.Schumaker@Netapp.com>
 MIME-Version: 1.0
@@ -17,32 +17,32 @@ Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Using copy to overwrite data in the destination file is perfectly valid,
-so let's make sure this case works as expected.
+This test is similar to 345, except that it copies one byte at a time to
+make sure that this case works as expected.
 
 Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
 ---
- tests/generic/394     | 100 ++++++++++++++++++++++++++++++++++++++++++++++++++
- tests/generic/394.out |  17 +++++++++
- tests/generic/group   |   1 +
- 3 files changed, 118 insertions(+)
- create mode 100755 tests/generic/394
- create mode 100644 tests/generic/394.out
+ tests/generic/395     | 87 +++++++++++++++++++++++++++++++++++++++++++++++++++
+ tests/generic/395.out | 17 ++++++++++
+ tests/generic/group   |  1 +
+ 3 files changed, 105 insertions(+)
+ create mode 100755 tests/generic/395
+ create mode 100644 tests/generic/395.out
 
-diff --git a/tests/generic/394 b/tests/generic/394
+diff --git a/tests/generic/395 b/tests/generic/395
 new file mode 100755
-index 0000000..8095644
+index 0000000..993a356
 --- /dev/null
-+++ b/tests/generic/394
-@@ -0,0 +1,100 @@
++++ b/tests/generic/395
+@@ -0,0 +1,87 @@
 +#!/bin/bash
-+# FS QA Test No. 394
++# FS QA Test No. 395
 +#
 +# Tests vfs_copy_file_range():
-+#   - Copy a file
++#   - Copy a small file
 +#   - Use copy to swap data at beginning and end
 +#   - Use copy to swap data in the middle
-+#   - Use copy to simultaneously overwrite and append to destination file
++#   - Use copy to swap data in a small file
 +#-----------------------------------------------------------------------
 +# Copyright (c) 2016 Netapp, Inc. All rights reserved.
 +#
@@ -93,80 +93,67 @@ index 0000000..8095644
 +rm -f $seqres.full
 +
 +echo "Create the original file and then copy"
-+$XFS_IO_PROG -f -c 'pwrite -S 0x61 0    1000' $testdir/file >> $seqres.full 2>&1
-+$XFS_IO_PROG -f -c 'pwrite -S 0x62 1000 1000' $testdir/file >> $seqres.full 2>&1
-+$XFS_IO_PROG -f -c 'pwrite -S 0x63 2000 1000' $testdir/file >> $seqres.full 2>&1
-+$XFS_IO_PROG -f -c 'pwrite -S 0x64 3000 1000' $testdir/file >> $seqres.full 2>&1
-+$XFS_IO_PROG -f -c 'pwrite -S 0x65 4000 1000' $testdir/file >> $seqres.full 2>&1
++echo -n "abcde" > $testdir/file
 +$XFS_IO_PROG -f -c "copy_range $testdir/file" "$testdir/copy"
-+cmp $testdir/file  $testdir/copy
++cmp $testdir/file $testdir/copy
 +echo "Original md5sums:"
 +md5sum $testdir/{file,copy} | _filter_test_dir
 +
 +echo "Swap beginning and end of original file"
-+$XFS_IO_PROG -f -c "copy_range -s 4000 -l 1000 $testdir/file" "$testdir/copy"
-+$XFS_IO_PROG -f -c "copy_range -d 4000 -l 1000 $testdir/file" "$testdir/copy"
-+cmp -n 1000 $testdir/file $testdir/copy 4000
-+cmp -n 3000 $testdir/file $testdir/copy 1000 1000
-+cmp -n 1000 $testdir/file $testdir/copy 0 4000
++$XFS_IO_PROG -f -c "copy_range -s 0 -d 4 -l 1 $testdir/file" "$testdir/copy"
++$XFS_IO_PROG -f -c "copy_range -s 4 -d 0 -l 1 $testdir/file" "$testdir/copy"
++echo -n "ebcda" | cmp $testdir/copy
 +echo "md5sums after swapping beginning and end:"
 +md5sum $testdir/{file,copy} | _filter_test_dir
 +
 +echo "Swap middle parts of original file"
-+$XFS_IO_PROG -f -c "copy_range -s 1000 -d 3000 -l 1000 $testdir/file" "$testdir/copy"
-+$XFS_IO_PROG -f -c "copy_range -s 3000 -d 1000 -l 1000 $testdir/file" "$testdir/copy"
-+cmp -n 1000 $testdir/file $testdir/copy 4000
-+cmp -n 1000 $testdir/file $testdir/copy 3000 1000
-+cmp -n 1000 $testdir/file $testdir/copy 2000 2000
-+cmp -n 1000 $testdir/file $testdir/copy 1000 3000
-+cmp -n 1000 $testdir/file $testdir/copy 0 4000
++$XFS_IO_PROG -f -c "copy_range -s 1 -d 3 -l 1 $testdir/file" "$testdir/copy"
++$XFS_IO_PROG -f -c "copy_range -s 3 -d 1 -l 1 $testdir/file" "$testdir/copy"
++echo -n "edcba" | cmp $testdir/copy
 +echo "md5sums after swapping middle:"
 +md5sum $testdir/{file,copy} | _filter_test_dir
 +
 +echo "Copy tail of original file onto copy"
-+$XFS_IO_PROG -f -c "copy_range -s 1000 -d 3000 -l 4000 $testdir/file" "$testdir/copy"
-+cmp -n 1000 $testdir/file $testdir/copy 4000
-+cmp -n 1000 $testdir/file $testdir/copy 3000 1000
-+cmp -n 1000 $testdir/file $testdir/copy 2000 2000
-+cmp -n 4000 $testdir/file $testdir/copy 1000 3000
++$XFS_IO_PROG -f -c "copy_range -s 1 -d 3 -l 4 $testdir/file" "$testdir/copy"
++echo -n "edcbcde" | cmp $testdir/copy
 +echo "md5sums after copying tail:"
 +md5sum $testdir/{file,copy} | _filter_test_dir
 +
 +#success, all done
 +status=0
 +exit
-diff --git a/tests/generic/394.out b/tests/generic/394.out
+diff --git a/tests/generic/395.out b/tests/generic/395.out
 new file mode 100644
-index 0000000..4121d24
+index 0000000..f120056
 --- /dev/null
-+++ b/tests/generic/394.out
++++ b/tests/generic/395.out
 @@ -0,0 +1,17 @@
-+QA output created by 394
++QA output created by 395
 +Create the original file and then copy
 +Original md5sums:
-+e11fbace556cba26bf0076e74cab90a3  TEST_DIR/test-394/file
-+e11fbace556cba26bf0076e74cab90a3  TEST_DIR/test-394/copy
++ab56b4d92b40713acc5af89985d4b786  TEST_DIR/test-395/file
++ab56b4d92b40713acc5af89985d4b786  TEST_DIR/test-395/copy
 +Swap beginning and end of original file
 +md5sums after swapping beginning and end:
-+e11fbace556cba26bf0076e74cab90a3  TEST_DIR/test-394/file
-+5f4e111811dd9a810143c9db9bec6d80  TEST_DIR/test-394/copy
++ab56b4d92b40713acc5af89985d4b786  TEST_DIR/test-395/file
++32db1f6d06d15f7e38e1ab1c69da498a  TEST_DIR/test-395/copy
 +Swap middle parts of original file
 +md5sums after swapping middle:
-+e11fbace556cba26bf0076e74cab90a3  TEST_DIR/test-394/file
-+8c81889a5a50b311197110bcf769a695  TEST_DIR/test-394/copy
++ab56b4d92b40713acc5af89985d4b786  TEST_DIR/test-395/file
++295228f3d82d344bbcf2f0030519c2ea  TEST_DIR/test-395/copy
 +Copy tail of original file onto copy
 +md5sums after copying tail:
-+e11fbace556cba26bf0076e74cab90a3  TEST_DIR/test-394/file
-+e5fbacd993eaa5e80ebc2b14b969887d  TEST_DIR/test-394/copy
++ab56b4d92b40713acc5af89985d4b786  TEST_DIR/test-395/file
++0c4aac952f72fa078e2f8419aca70b28  TEST_DIR/test-395/copy
 diff --git a/tests/generic/group b/tests/generic/group
-index 7b40a3d..00f4f46 100644
+index 00f4f46..2b50ddb 100644
 --- a/tests/generic/group
 +++ b/tests/generic/group
-@@ -396,3 +396,4 @@
- 391 auto quick rw
+@@ -397,3 +397,4 @@
  392 auto quick copy
  393 auto quick copy
-+394 auto quick copy
+ 394 auto quick copy
++395 auto quick copy
 -- 
 2.10.2
 
