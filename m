@@ -1,64 +1,78 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:43916 "EHLO mx2.suse.de"
+Received: from mx2.suse.de ([195.135.220.15]:43930 "EHLO mx2.suse.de"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751091AbcLHE1r (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 7 Dec 2016 23:27:47 -0500
+        id S1751091AbcLHE1w (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 7 Dec 2016 23:27:52 -0500
 From: NeilBrown <neilb@suse.com>
 To: "J. Bruce Fields" <bfields@redhat.com>,
         Steve Dickson <SteveD@redhat.com>
 Date: Thu, 08 Dec 2016 15:27:24 +1100
-Subject: [nfs-utils PATCH 0/10] More support for /etc/nfs.conf
+Subject: [PATCH 01/10] nfsd: move and improve test on valid port
 Cc: linux-nfs@vger.kernel.org
-Message-ID: <148117122602.31271.13586847542442809540.stgit@noble>
+Message-ID: <148117124448.31271.15941445957552185502.stgit@noble>
+In-Reply-To: <148117122602.31271.13586847542442809540.stgit@noble>
+References: <148117122602.31271.13586847542442809540.stgit@noble>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Added some missing support for rpc.nfsd, rpc.gss, rpc.svcgssd.
-Fixed a bug.
+nfssvc_set_sockets() access textual port numbers (by lookup in
+/etc/services).  This uses getaddrinfo which reports errors, except
+for out-of-range numbers.
 
-Added generic support for "debug="
-This only applies to tools which use the xlog() infrastructure.
-blkmapd used syslog directly and gssd has it's own shim.  I think
-they should be converted to xlog rather than having separate debug=
-support.
+So change the test on a valid port to only complain if the port given
+is purely numeric, but is out-of-range.
 
-NeilBrown
+Also move it so that any default value gets tested the same as any
+argument value.
 
+Signed-off-by: NeilBrown <neilb@suse.com>
 ---
+ utils/nfsd/nfsd.c |   17 ++++++++++-------
+ 1 file changed, 10 insertions(+), 7 deletions(-)
 
-NeilBrown (10):
-      nfsd: move and improve test on valid port
-      nfsd: remove pointless memory allocations.
-      nfsd: add /etc/nfs.conf support for nfsd.port option.
-      nfsd: add /etc/nfs.conf support for host=
-      conffile: allow embedded spaces in values.
-      conffile: fix striping of quotes from values.
-      xlog: Add common support for "debug=??" in /etc/nfs.conf
-      exportfs: allow debugging to be enabled in nfs.conf
-      gssd: add /etc/nfs.conf support
-      svcgssd: add /etc/nfs.conf support
+diff --git a/utils/nfsd/nfsd.c b/utils/nfsd/nfsd.c
+index 62b2876948c3..89179be76113 100644
+--- a/utils/nfsd/nfsd.c
++++ b/utils/nfsd/nfsd.c
+@@ -59,7 +59,7 @@ static struct option longopts[] =
+ int
+ main(int argc, char **argv)
+ {
+-	int	count = NFSD_NPROC, c, i, error = 0, portnum = 0, fd, found_one;
++	int	count = NFSD_NPROC, c, i, error = 0, portnum, fd, found_one;
+ 	char *p, *progname, *port, *rdma_port = NULL;
+ 	char **haddr = NULL;
+ 	int hcounter = 0;
+@@ -132,12 +132,6 @@ main(int argc, char **argv)
+ 		case 'P':	/* XXX for nfs-server compatibility */
+ 		case 'p':
+ 			/* only the last -p option has any effect */
+-			portnum = atoi(optarg);
+-			if (portnum <= 0 || portnum > 65535) {
+-				fprintf(stderr, "%s: bad port number: %s\n",
+-					progname, optarg);
+-				usage(progname);
+-			}
+ 			free(port);
+ 			port = xstrdup(optarg);
+ 			break;
+@@ -245,6 +239,15 @@ main(int argc, char **argv)
+ 
+ 	xlog_open(progname);
+ 
++	portnum = strtol(port, &p, 0);
++	if (!*p && (portnum <= 0 || portnum > 65535)) {
++		/* getaddrinfo will catch other errors, but not
++		 * out-of-range numbers.
++		 */
++		xlog(L_ERROR, "invalid port number: %s", port);
++		exit(1);
++	}
++
+ 	/* make sure that at least one version is enabled */
+ 	found_one = 0;
+ 	for (c = NFSD_MINVERS; c <= NFSD_MAXVERS; c++) {
 
-
- support/include/xlog.h          |    1 +
- support/nfs/conffile.c          |   24 ++++++++++-------
- support/nfs/xlog.c              |   14 ++++++++++
- systemd/nfs.conf.man            |   49 ++++++++++++++++++++++++++++++++++-
- utils/exportfs/exportfs.c       |    5 ++++
- utils/exportfs/exportfs.man     |    8 ++++++
- utils/gssd/gssd.c               |   29 +++++++++++++++++++++
- utils/gssd/gssd.man             |   54 +++++++++++++++++++++++++++++++++++++++
- utils/gssd/svcgssd.c            |   14 ++++++++++
- utils/gssd/svcgssd.man          |   17 ++++++++++++
- utils/mountd/mountd.c           |    1 +
- utils/nfsd/nfsd.c               |   48 +++++++++++++++++++++++------------
- utils/nfsd/nfsd.man             |   10 +++++++
- utils/nfsdcltrack/nfsdcltrack.c |    1 +
- utils/statd/sm-notify.c         |    1 +
- utils/statd/statd.c             |    1 +
- 16 files changed, 249 insertions(+), 28 deletions(-)
-
---
-Signature
 
