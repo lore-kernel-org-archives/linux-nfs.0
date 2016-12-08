@@ -1,166 +1,72 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx143.netapp.com ([216.240.21.24]:32144 "EHLO mx143.netapp.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1752257AbcLHU2Q (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 8 Dec 2016 15:28:16 -0500
-Subject: Re: [PATCH v4 5/5] generic/396: Add a copy test for invalid input
-To: "Darrick J. Wong" <darrick.wong@oracle.com>
-References: <20161208184909.23321-1-Anna.Schumaker@Netapp.com>
- <20161208184909.23321-6-Anna.Schumaker@Netapp.com>
- <20161208202023.GD25841@birch.djwong.org>
-CC: <fstests@vger.kernel.org>, <linux-nfs@vger.kernel.org>,
-        <hch@infradead.org>
-From: Anna Schumaker <Anna.Schumaker@Netapp.com>
-Message-ID: <16caccc2-2a81-8f3b-25e1-0929e74b53d9@Netapp.com>
-Date: Thu, 8 Dec 2016 15:28:06 -0500
+Received: from mail-io0-f178.google.com ([209.85.223.178]:36192 "EHLO
+        mail-io0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1752466AbcLHVLk (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 8 Dec 2016 16:11:40 -0500
+Received: by mail-io0-f178.google.com with SMTP id a81so19618880ioe.3
+        for <linux-nfs@vger.kernel.org>; Thu, 08 Dec 2016 13:11:40 -0800 (PST)
 MIME-Version: 1.0
-In-Reply-To: <20161208202023.GD25841@birch.djwong.org>
-Content-Type: text/plain; charset="windows-1252"
+In-Reply-To: <20161208123616.nndod3snzoeyr565@ics.muni.cz>
+References: <20161128183757.d5pz64tsigmaxdc7@ics.muni.cz> <645d0f56-f357-6c58-5e2f-e85bbae93db1@RedHat.com>
+ <20161129184843.jrwbnytggrz6kdir@ics.muni.cz> <2ff5b760-a3ca-9ab8-d1a8-efe5f36aaaf3@RedHat.com>
+ <20161202114134.rvzqptnsqo3odxay@ics.muni.cz> <CAHVgHyU6LQak3O4ybR0H3whWCKUdfz2bxLvEGi9uFM1EX+e=Eg@mail.gmail.com>
+ <20161202134638.4ghyb5wnnwata4ec@ics.muni.cz> <CAHVgHyVWqNZv55dH3hhZ-0XDsd4c79OW_R6Ze02uhv-nqePpPQ@mail.gmail.com>
+ <20161202142847.vyhp6ogtu6gvuabf@ics.muni.cz> <CAHVgHyW6fo1b2LSjxq73n7wQkR9r0JEvwzxHdb3X9p+gSpLQ1Q@mail.gmail.com>
+ <20161208123616.nndod3snzoeyr565@ics.muni.cz>
+From: Olga Kornievskaia <aglo@umich.edu>
+Date: Thu, 8 Dec 2016 16:11:38 -0500
+Message-ID: <CAN-5tyGCTkqX7qmR+kjsGTtjqjMH6-PJ4VXWnP0+ruXzz5B+Cg@mail.gmail.com>
+Subject: Re: Fwd: RFC rpc.gssd enhancement
+To: Lukas Hejtmanek <xhejtman@gmail.com>
+Cc: Andy Adamson <androsadamson@gmail.com>,
+        NFS list <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Thu, Dec 8, 2016 at 7:36 AM, Lukas Hejtmanek <xhejtman@gmail.com> wrote:
+> This discussion seems to be a bit fubar. So I start over again.
+>
+> I see three problems if $HOME is Kerberized NFS volume, I will call this NFS
+> client machine.
+>
+> 1) user logs via SSH to the NFS client machine using GSS API, i.e., the user
+>    has a Kerberos ticket. SSHD on the NFS client machine has to access
+>    ~/.k5login under root identity (usually host identity). User has to grant
+>    access to such identity to his/her $HOME and .k5login in there.
+>    Older version of Kerberos denied access if ~/.k5login had different
+>    permision than 0600.
+>
+> 2) user logs via SSH to the NFS client machine using password. He/she stays
+>    logged in, Kerberos ticket expires. Issuing kinit returns an error I've
+>    already sent, because kinit wants to read ~/.krb5/config file and gets
+>    EKEYEXPIRED. Kinit does not deal with such an error, it understand olny
+>    EPERM error. New ticket cannot be created until user deletes ticket from
+>    TMPDIR (rm, not kdestroy as it does not work either).
+>
+> 3) user wants to log via SSH to the NFS client machine using ssh public key.
+>    This cannot be done as ~/.ssh/authorized_keys is accessed by SSHD under
+>    user context (not root context), so EPERM is returned even if user grants
+>    access to read ~/.ssh/authorized_keys to anyone.
+>
+> While nothing can be done ad 1). My proposed extension of rpc.gssd would solve
+> ad 2) and ad 3). As this should be purely rpc.gssd patch, possible attacker
+> with escalated root access is out of question because the attacker can replace
+> rpc.gssd on his own. And also in this case, decision whether user gets
+> EKEYEXPIRED/EPERM or granted access as some particular identity is desicion of
+> the administator of the NFS client machine.
+>
 
+Why is "kinit" accessing ~/.krb5/config? Typically kinit will only
+access /etc/krb5.conf.
 
-On 12/08/2016 03:20 PM, Darrick J. Wong wrote:
-> On Thu, Dec 08, 2016 at 01:49:08PM -0500, Anna Schumaker wrote:
->> This test passes invalid argumnt combinations to the copy_file_range()
->> system call to test that input is verified before attempting to copy.
->>
->> Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
->> ---
->>  tests/generic/396     | 68 +++++++++++++++++++++++++++++++++++++++++++++++++++
->>  tests/generic/396.out |  8 ++++++
->>  tests/generic/group   |  1 +
->>  3 files changed, 77 insertions(+)
->>  create mode 100644 tests/generic/396
->>  create mode 100644 tests/generic/396.out
->>
->> diff --git a/tests/generic/396 b/tests/generic/396
->> new file mode 100644
->> index 0000000..c262070
->> --- /dev/null
->> +++ b/tests/generic/396
->> @@ -0,0 +1,68 @@
->> +#!/bin/bash
->> +# FS QA Test No. 396
->> +#
->> +# Tests vfs_copy_file_range() error checking
->> +#-----------------------------------------------------------------------
->> +# Copyright (c) 2016 Netapp, Inc. All rights reserved.
->> +#
->> +# This program is free software; you can redistribute it and/or
->> +# modify it under the terms of the GNU General Public License as
->> +# published by the Free Software Foundation.
->> +#
->> +# This program is distributed in the hope that it would be useful,
->> +# but WITHOUT ANY WARRANTY; without even the implied warranty of
->> +# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
->> +# GNU General Public License for more details.
->> +#
->> +# You should have received a copy of the GNU General Public License
->> +# along with this program; if not, write the Free Software Foundation,
->> +# Inc.,  51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
->> +#-----------------------------------------------------------------------
->> +#
->> +
->> +seq=`basename $0`
->> +seqres=$RESULT_DIR/$seq
->> +echo "QA output created by $seq"
->> +
->> +here=`pwd`
->> +tmp=/tmp/$$
->> +status=1    # failure is the default!
->> +trap "_cleanup; exit \$status" 0 1 2 3 15
->> +
->> +_cleanup()
->> +{
->> +	cd /
->> +	rm -rf $tmp.*
->> +}
->> +
->> +# get standard environment
->> +. common/rc
->> +. common/filter
->> +
->> +# real QA test starts here
->> +_supported_fs generic
->> +_supported_os Linux
->> +
->> +_require_xfs_io_command "copy_range"
->> +_require_test
->> +
->> +testdir=$TEST_DIR/test-$seq
->> +rm -rf $testdir
->> +mkdir $testdir
->> +rm -f $seqres.full
->> +
->> +echo "Create the original file"
->> +$XFS_IO_PROG -f -c 'pwrite -S 0x61 0 1000' $testdir/file >> $seqres.full 2>&1
->> +
->> +echo "source pos > source size:"
->> +$XFS_IO_PROG -f -c "copy_range -s 1000 -l 100 $testdir/file" "$testdir/copy"
->> +
->> +echo "target read-only"
->> +$XFS_IO_PROG -r -f -c "copy_range -s 0 -l 100 $testdir/file" "$testdir/copy"
->> +
->> +echo "target append-only"
->> +$XFS_IO_PROG -a -f -c "copy_range -s 0 -l 100 $testdir/file" "$testdir/copy"
-> 
-> Good start, though I can think of a few more things...
+You are describing a catch-22 system. You want to create credentials
+but to create credentials you need to access a file that is protected
+by the credentials. This is a badly designed setup.
 
-Thanks!
+kinit normally does not require access into something that is
+protected by credentials gotten by kinit.
 
-> 
-> Copying when one or the other file arguments are directories/device files/etc.,
-
-Good suggestion, I didn't even think of that one.
-
-> copies where pos < size but (pos + len) > size,
-
-This is in the first patch as the "Copy beyond end of original file" test
-
-> copies where pos + len
-> overflow, overlapped src/dest ranges, and perhaps even copies across holes and
-> unwritten extents?
-
-These are also good suggestions.  I'll add them in!
-
-Anna
-
-> 
-> --D
-> 
->> +
->> +#success, all done
->> +status=0
->> +exit
->> diff --git a/tests/generic/396.out b/tests/generic/396.out
->> new file mode 100644
->> index 0000000..4031883
->> --- /dev/null
->> +++ b/tests/generic/396.out
->> @@ -0,0 +1,8 @@
->> +QA output created by 396
->> +Create the original file
->> +source pos > source size:
->> +copy_range: Invalid argument
->> +target read-only
->> +copy_range: Bad file descriptor
->> +target append-only
->> +copy_range: Bad file descriptor
->> diff --git a/tests/generic/group b/tests/generic/group
->> index 2b50ddb..eee0f39 100644
->> --- a/tests/generic/group
->> +++ b/tests/generic/group
->> @@ -398,3 +398,4 @@
->>  393 auto quick copy
->>  394 auto quick copy
->>  395 auto quick copy
->> +396 auto quick copy
->> -- 
->> 2.10.2
->>
->> --
->> To unsubscribe from this list: send the line "unsubscribe fstests" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Your solution is to provide your user with "kinit" that does not
+access ~/.krb5/config. Please describe the need for that file and why
+it can't be satisfied using machine global /etc/krb5.conf.
