@@ -1,81 +1,97 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-wj0-f195.google.com ([209.85.210.195]:36376 "EHLO
-        mail-wj0-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751244AbcLKJDx (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sun, 11 Dec 2016 04:03:53 -0500
-MIME-Version: 1.0
-In-Reply-To: <20161208184909.23321-1-Anna.Schumaker@Netapp.com>
-References: <20161208184909.23321-1-Anna.Schumaker@Netapp.com>
-From: Amir Goldstein <amir73il@gmail.com>
-Date: Sun, 11 Dec 2016 11:03:50 +0200
-Message-ID: <CAOQ4uxj5ct3-jYzj7RKip5oKqfX-U+jTXqhXDPSR2qOeSPbXMg@mail.gmail.com>
-Subject: Re: [PATCH v4 0/5] Add copy_file_range() tests
-To: Anna Schumaker <Anna.Schumaker@netapp.com>
-Cc: fstests <fstests@vger.kernel.org>, linux-nfs@vger.kernel.org,
-        Christoph Hellwig <hch@infradead.org>,
-        "Darrick J. Wong" <darrick.wong@oracle.com>
-Content-Type: text/plain; charset=UTF-8
+Received: from mail-qt0-f196.google.com ([209.85.216.196]:35127 "EHLO
+        mail-qt0-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1753548AbcLKOtW (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sun, 11 Dec 2016 09:49:22 -0500
+From: Jia He <hejianet@gmail.com>
+To: linux-nfs@vger.kernel.org
+Cc: "J. Bruce Fields" <bfields@fieldses.org>,
+        Jeff Layton <jlayton@poochiereds.net>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>,
+        linux-kernel@vger.kernel.org, Jia He <hejianet@gmail.com>
+Subject: [PATCH 0/1] lockd: Change nsm_use_hostnames from bool to u32
+Date: Sun, 11 Dec 2016 22:49:11 +0800
+Message-Id: <1481467752-30728-1-git-send-email-hejianet@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Dec 8, 2016 at 8:49 PM, Anna Schumaker
-<Anna.Schumaker@netapp.com> wrote:
-> These tests exercise the copy_file_range() system call, and check copying
-> data to both a new file and overwriting data inside an existing file.
->
+nsm_use_hostnames is a module parameter and it will be exported to sysctl
+procfs. This is to let user sometimes change it from userspace. But the
+minimal unit for sysctl procfs read/write it sizeof(int).
+In big endian system, the converting from/to  bool to/from int will cause
+error for proc items.
 
-Hi Anna,
+This patch changes the type definition of nsm_use_hostnames.
 
-Both dedup and reflink have some generic tests to check for invalid cases
-generic/{157,158}.
-I wonder if there are any other dedup/reflink tests that should be
-duplicated for copy_range. Darrick?
-I also wonder if it would make sense to "deduplicate" some of these test
-to repeat the same relevant checks for all 3 methods.
+The test case I used:
+/***************************************************************/
+#include <linux/kernel.h>
+#include <linux/module.h>
+#include <linux/sysctl.h>
 
+bool __read_mostly nsm_use_hostnames;
+module_param(nsm_use_hostnames, bool, 0644);
 
-> The last patch is a duplicate of a patch I already submitted for the
-> xfs_io utility.  It adds in fixes for the 'copy_range' command so error
-> checking can work and so some copies won't loop forever.
->
-> Thanks,
-> Anna
->
-> Anna Schumaker (5):
->   generic/392: Add copy to new file test
->   generic/393: Add small copies to new file test
->   generic/394: Add copy test that overwrites data
->   generic/395: Add a copy test for overwriting small amounts of data
->   generic/396: Add a copy test for invalid input
->
->  common/rc             |   6 +++
->  tests/generic/392     | 102 ++++++++++++++++++++++++++++++++++++++++++++++++++
->  tests/generic/392.out |  26 +++++++++++++
->  tests/generic/393     |  83 ++++++++++++++++++++++++++++++++++++++++
->  tests/generic/393.out |  16 ++++++++
->  tests/generic/394     | 100 +++++++++++++++++++++++++++++++++++++++++++++++++
->  tests/generic/394.out |  17 +++++++++
->  tests/generic/395     |  87 ++++++++++++++++++++++++++++++++++++++++++
->  tests/generic/395.out |  17 +++++++++
->  tests/generic/396     |  68 +++++++++++++++++++++++++++++++++
->  tests/generic/396.out |   8 ++++
->  tests/generic/group   |   5 +++
->  12 files changed, 535 insertions(+)
->  create mode 100755 tests/generic/392
->  create mode 100644 tests/generic/392.out
->  create mode 100755 tests/generic/393
->  create mode 100644 tests/generic/393.out
->  create mode 100755 tests/generic/394
->  create mode 100644 tests/generic/394.out
->  create mode 100755 tests/generic/395
->  create mode 100644 tests/generic/395.out
->  create mode 100644 tests/generic/396
->  create mode 100644 tests/generic/396.out
->
-> --
-> 2.10.2
->
-> --
-> To unsubscribe from this list: send the line "unsubscribe fstests" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+static struct ctl_table my_sysctl[] = {
+        {
+                .procname       = "nsm_use_hostnames",
+                .data           = &nsm_use_hostnames,
+                .maxlen         = sizeof(int),
+                .mode           = 0644,
+                .proc_handler   = &proc_dointvec,
+        },
+        {}
+};
+
+static struct ctl_table my_root[] = {
+        {
+        .procname       = "mysysctl",
+        .mode           = 0555,
+        .child          = my_sysctl,
+        },
+        {}
+};
+
+static struct ctl_table_header * my_ctl_header;
+
+static int __init sysctl_exam_init(void)
+{
+        my_ctl_header = register_sysctl_table(&my_root);
+        if (my_ctl_header == NULL)
+                printk("error regiester sysctl");
+
+        return 0;
+}
+
+static void __exit sysctl_exam_exit(void)
+{
+        unregister_sysctl_table(my_ctl_header);
+}
+
+module_init(sysctl_exam_init);
+module_exit(sysctl_exam_exit);
+MODULE_LICENSE("GPL");
+/****************************************************************/
+
+[root@bigendian my]# insmod -f /root/my/hello.ko nsm_use_hostnames=1   
+[root@bigendian my]# cat /proc/sys/mysysctl/nsm_use_hostnames 
+16777216
+
+After I change the bool to int:
+[root@bigendian my]# insmod -f /root/my/hello.ko nsm_use_hostnames=1
+[root@bigendian my]# cat /proc/sys/mysysctl/nsm_use_hostnames
+1
+
+In little endian system, there is no such issue.
+
+Jia He (1):
+  lockd: Change nsm_use_hostnames from bool to u32
+
+ fs/lockd/mon.c | 2 +-
+ fs/lockd/svc.c | 2 +-
+ 2 files changed, 2 insertions(+), 2 deletions(-)
+
+-- 
+2.5.5
+
