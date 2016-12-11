@@ -1,113 +1,81 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f196.google.com ([209.85.223.196]:36014 "EHLO
-        mail-io0-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751981AbcLJE05 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 9 Dec 2016 23:26:57 -0500
-Received: by mail-io0-f196.google.com with SMTP id b194so10759744ioa.3
-        for <linux-nfs@vger.kernel.org>; Fri, 09 Dec 2016 20:26:57 -0800 (PST)
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH 2/2] pNFS/flexfiles: Ensure we have enough buffer for layoutreturn
-Date: Fri,  9 Dec 2016 23:26:52 -0500
-Message-Id: <20161210042652.21731-2-trond.myklebust@primarydata.com>
-In-Reply-To: <20161210042652.21731-1-trond.myklebust@primarydata.com>
-References: <20161210042652.21731-1-trond.myklebust@primarydata.com>
+Received: from mail-wj0-f195.google.com ([209.85.210.195]:36376 "EHLO
+        mail-wj0-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751244AbcLKJDx (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sun, 11 Dec 2016 04:03:53 -0500
+MIME-Version: 1.0
+In-Reply-To: <20161208184909.23321-1-Anna.Schumaker@Netapp.com>
+References: <20161208184909.23321-1-Anna.Schumaker@Netapp.com>
+From: Amir Goldstein <amir73il@gmail.com>
+Date: Sun, 11 Dec 2016 11:03:50 +0200
+Message-ID: <CAOQ4uxj5ct3-jYzj7RKip5oKqfX-U+jTXqhXDPSR2qOeSPbXMg@mail.gmail.com>
+Subject: Re: [PATCH v4 0/5] Add copy_file_range() tests
+To: Anna Schumaker <Anna.Schumaker@netapp.com>
+Cc: fstests <fstests@vger.kernel.org>, linux-nfs@vger.kernel.org,
+        Christoph Hellwig <hch@infradead.org>,
+        "Darrick J. Wong" <darrick.wong@oracle.com>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The flexfiles client can piggyback both layout errors and layoutstats
-as part of the layoutreturn. Both these payloads can get large, with
-20 layout error entries taking up about 1.2K, and 4 layoutstats entries
-taking up another 1K.
-This patch allows a maximum payload of 4k by allocating a full page.
+On Thu, Dec 8, 2016 at 8:49 PM, Anna Schumaker
+<Anna.Schumaker@netapp.com> wrote:
+> These tests exercise the copy_file_range() system call, and check copying
+> data to both a new file and overwriting data inside an existing file.
+>
 
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
----
- fs/nfs/flexfilelayout/flexfilelayout.c | 32 ++++++++++++++++++++++++++------
- fs/nfs/flexfilelayout/flexfilelayout.h |  1 +
- 2 files changed, 27 insertions(+), 6 deletions(-)
+Hi Anna,
 
-diff --git a/fs/nfs/flexfilelayout/flexfilelayout.c b/fs/nfs/flexfilelayout/flexfilelayout.c
-index 49954442173d..9e111d07f667 100644
---- a/fs/nfs/flexfilelayout/flexfilelayout.c
-+++ b/fs/nfs/flexfilelayout/flexfilelayout.c
-@@ -2049,16 +2049,28 @@ ff_layout_encode_layoutreturn(struct xdr_stream *xdr,
- {
- 	const struct nfs4_layoutreturn_args *args = voidargs;
- 	struct nfs4_flexfile_layoutreturn_args *ff_args = ff_opaque->data;
-+	struct xdr_buf tmp_buf = {
-+		.head = {
-+			[0] = {
-+				.iov_base = page_address(ff_args->pages[0]),
-+			},
-+		},
-+		.buflen = PAGE_SIZE,
-+	};
-+	struct xdr_stream tmp_xdr;
- 	__be32 *start;
- 
- 	dprintk("%s: Begin\n", __func__);
--	start = xdr_reserve_space(xdr, 4);
--	BUG_ON(!start);
- 
--	ff_layout_encode_ioerr(xdr, args, ff_args);
--	ff_layout_encode_iostats_array(xdr, args, ff_args);
-+	xdr_init_encode(&tmp_xdr, &tmp_buf, NULL);
-+
-+	ff_layout_encode_ioerr(&tmp_xdr, args, ff_args);
-+	ff_layout_encode_iostats_array(&tmp_xdr, args, ff_args);
-+
-+	start = xdr_reserve_space(xdr, 4);
-+	*start = cpu_to_be32(tmp_buf.len);
-+	xdr_write_pages(xdr, ff_args->pages, 0, tmp_buf.len);
- 
--	*start = cpu_to_be32((xdr->p - start - 1) * 4);
- 	dprintk("%s: Return\n", __func__);
- }
- 
-@@ -2075,6 +2087,7 @@ ff_layout_free_layoutreturn(struct nfs4_xdr_opaque_data *args)
- 	ff_layout_free_ds_ioerr(&ff_args->errors);
- 	ff_layout_free_iostats_array(ff_args->devinfo, ff_args->num_dev);
- 
-+	put_page(ff_args->pages[0]);
- 	kfree(ff_args);
- }
- 
-@@ -2091,7 +2104,10 @@ ff_layout_prepare_layoutreturn(struct nfs4_layoutreturn_args *args)
- 
- 	ff_args = kmalloc(sizeof(*ff_args), GFP_KERNEL);
- 	if (!ff_args)
--		return -ENOMEM;
-+		goto out_nomem;
-+	ff_args->pages[0] = alloc_page(GFP_KERNEL);
-+	if (!ff_args->pages[0])
-+		goto out_nomem_free;
- 
- 	INIT_LIST_HEAD(&ff_args->errors);
- 	ff_args->num_errors = ff_layout_fetch_ds_ioerr(args->layout,
-@@ -2106,6 +2122,10 @@ ff_layout_prepare_layoutreturn(struct nfs4_layoutreturn_args *args)
- 	args->ld_private->ops = &layoutreturn_ops;
- 	args->ld_private->data = ff_args;
- 	return 0;
-+out_nomem_free:
-+	kfree(ff_args);
-+out_nomem:
-+	return -ENOMEM;
- }
- 
- static int
-diff --git a/fs/nfs/flexfilelayout/flexfilelayout.h b/fs/nfs/flexfilelayout/flexfilelayout.h
-index 7223c4ea8cde..f4f39b0ab09b 100644
---- a/fs/nfs/flexfilelayout/flexfilelayout.h
-+++ b/fs/nfs/flexfilelayout/flexfilelayout.h
-@@ -113,6 +113,7 @@ struct nfs4_flexfile_layoutreturn_args {
- 	struct nfs42_layoutstat_devinfo devinfo[FF_LAYOUTSTATS_MAXDEV];
- 	unsigned int num_errors;
- 	unsigned int num_dev;
-+	struct page *pages[1];
- };
- 
- static inline struct nfs4_flexfile_layout *
--- 
-2.9.3
+Both dedup and reflink have some generic tests to check for invalid cases
+generic/{157,158}.
+I wonder if there are any other dedup/reflink tests that should be
+duplicated for copy_range. Darrick?
+I also wonder if it would make sense to "deduplicate" some of these test
+to repeat the same relevant checks for all 3 methods.
 
+
+> The last patch is a duplicate of a patch I already submitted for the
+> xfs_io utility.  It adds in fixes for the 'copy_range' command so error
+> checking can work and so some copies won't loop forever.
+>
+> Thanks,
+> Anna
+>
+> Anna Schumaker (5):
+>   generic/392: Add copy to new file test
+>   generic/393: Add small copies to new file test
+>   generic/394: Add copy test that overwrites data
+>   generic/395: Add a copy test for overwriting small amounts of data
+>   generic/396: Add a copy test for invalid input
+>
+>  common/rc             |   6 +++
+>  tests/generic/392     | 102 ++++++++++++++++++++++++++++++++++++++++++++++++++
+>  tests/generic/392.out |  26 +++++++++++++
+>  tests/generic/393     |  83 ++++++++++++++++++++++++++++++++++++++++
+>  tests/generic/393.out |  16 ++++++++
+>  tests/generic/394     | 100 +++++++++++++++++++++++++++++++++++++++++++++++++
+>  tests/generic/394.out |  17 +++++++++
+>  tests/generic/395     |  87 ++++++++++++++++++++++++++++++++++++++++++
+>  tests/generic/395.out |  17 +++++++++
+>  tests/generic/396     |  68 +++++++++++++++++++++++++++++++++
+>  tests/generic/396.out |   8 ++++
+>  tests/generic/group   |   5 +++
+>  12 files changed, 535 insertions(+)
+>  create mode 100755 tests/generic/392
+>  create mode 100644 tests/generic/392.out
+>  create mode 100755 tests/generic/393
+>  create mode 100644 tests/generic/393.out
+>  create mode 100755 tests/generic/394
+>  create mode 100644 tests/generic/394.out
+>  create mode 100755 tests/generic/395
+>  create mode 100644 tests/generic/395.out
+>  create mode 100644 tests/generic/396
+>  create mode 100644 tests/generic/396.out
+>
+> --
+> 2.10.2
+>
+> --
+> To unsubscribe from this list: send the line "unsubscribe fstests" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
