@@ -1,93 +1,167 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx141.netapp.com ([216.240.21.12]:12841 "EHLO mx141.netapp.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751146AbcLLW70 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 12 Dec 2016 17:59:26 -0500
-From: "Adamson, Andy" <William.Adamson@netapp.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH Version 2] SVCAUTH update the rsc cache on
- RPC_GSS_PROC_DESTROY
-Date: Mon, 12 Dec 2016 22:54:33 +0000
-Message-ID: <4608493E-D422-437C-B7B8-D2E74E4F75CE@netapp.com>
-References: <1481562529-4488-1-git-send-email-andros@netapp.com>
- <20161212215804.GB6002@fieldses.org>
-In-Reply-To: <20161212215804.GB6002@fieldses.org>
-Content-Type: text/plain; charset="utf-8"
+Received: from mail-qt0-f193.google.com ([209.85.216.193]:33025 "EHLO
+        mail-qt0-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1753471AbcLLXQI (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 12 Dec 2016 18:16:08 -0500
+Received: by mail-qt0-f193.google.com with SMTP id n6so11802788qtd.0
+        for <linux-nfs@vger.kernel.org>; Mon, 12 Dec 2016 15:16:08 -0800 (PST)
 MIME-Version: 1.0
+In-Reply-To: <20161212215804.GB6002@fieldses.org>
+References: <1481562529-4488-1-git-send-email-andros@netapp.com> <20161212215804.GB6002@fieldses.org>
+From: Andy Adamson <androsadamson@gmail.com>
+Date: Mon, 12 Dec 2016 18:16:06 -0500
+Message-ID: <CAHVgHyU1kDKMwzAnzerjy7G3kL7wekt_n3qJ2Ub2EwF6kgy9jQ@mail.gmail.com>
+Subject: Re: [PATCH Version 2] SVCAUTH update the rsc cache on RPC_GSS_PROC_DESTROY
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: NFS list <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-VGhlIGJ1ZyBpcyBzZXR0aW5nIG5ldyB2YWx1ZXMgb24gYW4gcnNjIGNhY2hlIGVudHJ5IHdpdGhv
-dXQgY2FsbGluZyByc2NfdXBkYXRlLiBXaGVuIHlvdSBkbyB0aGlzLCB0aGUg4oCcbG9jYWwgY29w
-eeKAnSBvZiB0aGUgcnNjIGNhY2hlIGVudHJ5IChlLmcuIHRoZSBvbmUgcmV0dXJuZWQgYnkgZ3Nz
-X3N2Y19zZWFyY2hieWN0eCApIGdldHMgdGhlIG5ldyB2YWx1ZXMgKGV4cGlyeV90aW1lIGFuZCBD
-QUNIRV9ORUdBVElWRSBiaXQgc2V0KSBidXQgdGhlIG5ldyB2YWx1ZXMgYXJlIG5vdCBwcm9wYWdh
-dGVkIGJhY2sgdG8gdGhlIGNhY2hlLiBTbyB0aGUgbmV4dCB0aW1lIHRoZSBjYWNoZSBlbnRyeSBp
-cyBsb29rZWQgdXAsIGUuZy4gd2hlbiBjYWNoZV9jbGVhbigpIGlzIGNhbGxlZCB0byBjbGVhbiB1
-cCwgdGhlIGV4cGlyeV90aW1lIGFuZCBDQUNIRV9ORUdBVElWRSBhcmUgbm90IHNldCB0byB0aGUg
-bmV3IHZhbHVlcyBvbiB0aGUgY2FjaGUgZW50cnkgdG8gYmUgZGVzdHJveWVkLCBhbmQgY2FjaGVf
-Y2xlYW4gZG9lcyBub3QgcmVhcCB0aGUgY2FjaGUgZW50cnkuDQoNClRoZSBmaXggaXMgdG8gZG8g
-d2hhdCB0aGlzIHBhdGNoIGRvZXMsIGFuZCBjYWxsIHJzY191cGRhdGUgb24gdGhlIHJzYyBlbnRy
-eS4gV2l0aCB0aGlzIHBhdGNoLCBjYWNoZV9jbGVhbiBpcyBjYWxsZWQgYW5kIHJlYXBzIHRoZSBj
-YWNoZSBlbnRyaWVzLg0KDQpCVFc6IGp1c3QgbG9vayBhdCBhbGwgdGhlIG90aGVyIHVzZXMgb2Yg
-dGhlIGNhY2hlIGFuZCB5b3Ugd2lsbCBub3RlIHRoYXQgdGhleSBhbGwgY2FsbCB1cGRhdGUgYWZ0
-ZXIgc2V0dGluZyBuZXcgdmFsdWVzLiANCg0KSXTigJlzIGp1c3QgaG93IE5laWzigJlzIGNhY2hl
-IGNvZGUgd29ya3MuDQoNCmUuZy4gZG5zX3Jlc29sdmUuYw0KICAgICAgIGtleS5oLmV4cGlyeV90
-aW1lID0gdHRsICsgc2Vjb25kc19zaW5jZV9ib290KCk7DQrigKYNCiAgICAgICBpZiAoa2V5LmFk
-ZHJsZW4gPT0gMCkNCiAgICAgICAgICAgICAgICBzZXRfYml0KENBQ0hFX05FR0FUSVZFLCAma2V5
-LmguZmxhZ3MpOw0KDQogICAgICAgIGl0ZW0gPSBuZnNfZG5zX3VwZGF0ZShjZCwgJmtleSwgaXRl
-bSk7DQoNCg0KDQpJIGFsc28ganVzdCBmb3VuZCBhIGJ1ZywgSSBuZWVkIGEgbG9jYWwgcnNjIGNh
-Y2hlIHBvaW50ZXIgZm9yIHRoZSByc2NfdXBkYXRlIHJldHVybi4gVGhhdCBwbHVzIEFubmHigJlz
-IGNvbW1lbnRzIHdpbGwgYmUgYWRkcmVzc2VkIGluIHZlcnNpb24gMy4gSeKAmWxsIGV4cGxhaW4g
-bW9yZSBpbiB0aGUgcGF0Y2ggY29tbWVudHMuDQoNCuKGkkFuZHkNCg0KT24gMTIvMTIvMTYsIDQ6
-NTggUE0sICJKLiBCcnVjZSBGaWVsZHMiIDxiZmllbGRzQGZpZWxkc2VzLm9yZz4gd3JvdGU6DQoN
-Ck9uIE1vbiwgRGVjIDEyLCAyMDE2IGF0IDEyOjA4OjQ5UE0gLTA1MDAsIGFuZHJvc0BuZXRhcHAu
-Y29tIHdyb3RlOg0KPiBGcm9tOiBBbmR5IEFkYW1zb24gPGFuZHJvc0BuZXRhcHAuY29tPg0KPiAN
-Cj4gVGhlIGN1cnJlbnQgY29kZSBzZXRzIHRoZSBleHBpcnlfdGltZSBvbiB0aGUgbG9jYWwgY29w
-eSBvZiB0aGUgcnNjDQo+IGNhY2hlIGVudHJ5IC0gYnV0IG5vdCBvbiB0aGUgYWN0dWFsIGNhY2hl
-IGVudHJ5Lg0KDQpJJ20gbm90IGZvbGxvd2luZy4gIEl0IGxvb2tzIHRvIG1lIGxpa2UgInJzY2ki
-IGluIHRoZSBiZWxvdyB3YXMgcmV0dXJuZWQNCmZyb20gZ3NzX3N2Y19zZWFyY2hieWN0eCgpLCB3
-aGljaCB3YXMgcmV0dXJuZWQgaW4gdHVybiBmcm9tDQpzdW5ycGNfY2FjaGVfbG9va3VwKCksIHdo
-aWNoIGlzIHJldHVybmluZyBhbiBpdGVtIGZyb20gdGhlIHJzYyBjYWNoZS0tSQ0KZG9uJ3Qgc2Vl
-IGFueSBjb3B5aW5nLg0KDQo+IE5vdGUgdGhhdCBjdXJyZW50bHksIHRoZSByc2MgY2FjaGUgZW50
-cmllcyBhcmUgbm90IGNsZWFuZWQgdXAgZXZlbg0KPiB3aGVuIG5mc2QgaXMgc3RvcHBlZC4NCg0K
-U28sIHRoYXQgc291bmRzIGxpa2UgYSBidWcsIGJ1dCBJIGRvbid0IHVuZGVyc3RhbmQgdGhpcyBl
-eHBsYW5hdGlvbiB5ZXQuDQoNCj4gVXBkYXRlIHRoZSBjYWNoZSB3aXRoIHRoZSBuZXcgZXhwaXJ5
-X3RpbWUgb2Ygbm93IHNvIHRoYXQgY2FjaGVfY2xlYW4gd2lsbA0KPiBjbGVhbiB1cCAoZnJlZSkg
-dGhlIGNvbnRleHQgdG8gYmUgZGVzdHJveWVkLg0KPiANCj4gU2lnbmVkLW9mZi1ieTogQW5keSBB
-ZGFtc29uIDxhbmRyb3NAbmV0YXBwLmNvbT4NCj4gLS0tDQo+ICBuZXQvc3VucnBjL2F1dGhfZ3Nz
-L3N2Y2F1dGhfZ3NzLmMgfCAzMiArKysrKysrKysrKysrKysrKysrKysrKysrKysrKystLQ0KPiAg
-MSBmaWxlIGNoYW5nZWQsIDMwIGluc2VydGlvbnMoKyksIDIgZGVsZXRpb25zKC0pDQo+IA0KPiBk
-aWZmIC0tZ2l0IGEvbmV0L3N1bnJwYy9hdXRoX2dzcy9zdmNhdXRoX2dzcy5jIGIvbmV0L3N1bnJw
-Yy9hdXRoX2dzcy9zdmNhdXRoX2dzcy5jDQo+IGluZGV4IDQ1NjYyZDcuLjYwMzMzODkgMTAwNjQ0
-DQo+IC0tLSBhL25ldC9zdW5ycGMvYXV0aF9nc3Mvc3ZjYXV0aF9nc3MuYw0KPiArKysgYi9uZXQv
-c3VucnBjL2F1dGhfZ3NzL3N2Y2F1dGhfZ3NzLmMNCj4gQEAgLTEzOTMsNiArMTM5MywyNiBAQCBz
-dGF0aWMgdm9pZCBkZXN0cm95X3VzZV9nc3NfcHJveHlfcHJvY19lbnRyeShzdHJ1Y3QgbmV0ICpu
-ZXQpIHt9DQo+ICANCj4gICNlbmRpZiAvKiBDT05GSUdfUFJPQ19GUyAqLw0KPiAgDQo+ICtzdGF0
-aWMgaW50IHJzY19kZXN0cm95KHN0cnVjdCBzdW5ycGNfbmV0ICpzbiwgc3RydWN0IHJzYyAqcnNj
-cCkNCj4gK3sNCj4gKwlzdHJ1Y3QgcnNjIG5ldzsNCj4gKwlpbnQgcmV0ID0gLUVOT01FTTsNCj4g
-Kw0KPiArCW1lbXNldCgmbmV3LCAwLCBzaXplb2Yoc3RydWN0IHJzYykpOw0KPiArCWlmIChkdXBf
-bmV0b2JqKCZuZXcuaGFuZGxlLCAmcnNjcC0+aGFuZGxlKSkNCj4gKwkJZ290byBvdXQ7DQo+ICsJ
-bmV3LmguZXhwaXJ5X3RpbWUgPSBnZXRfc2Vjb25kcygpOw0KPiArCXNldF9iaXQoQ0FDSEVfTkVH
-QVRJVkUsICZuZXcuaC5mbGFncyk7DQo+ICsNCj4gKwlyc2NwID0gcnNjX3VwZGF0ZShzbi0+cnNj
-X2NhY2hlLCAmbmV3LCByc2NwKTsNCj4gKwlpZiAoIXJzY3ApDQo+ICsJCWdvdG8gb3V0Ow0KPiAr
-CXJldCA9IDA7DQo+ICtvdXQ6DQo+ICsJcnNjX2ZyZWUoJm5ldyk7DQo+ICsJcmV0dXJuIHJldDsN
-Cj4gK30NCj4gKw0KPiAgLyoNCj4gICAqIEFjY2VwdCBhbiBycGNzZWMgcGFja2V0Lg0KPiAgICog
-SWYgY29udGV4dCBlc3RhYmxpc2htZW50LCBwdW50IHRvIHVzZXIgc3BhY2UNCj4gQEAgLTE0ODks
-MTAgKzE1MDksMTggQEAgc3RhdGljIHZvaWQgZGVzdHJveV91c2VfZ3NzX3Byb3h5X3Byb2NfZW50
-cnkoc3RydWN0IG5ldCAqbmV0KSB7fQ0KPiAgCWNhc2UgUlBDX0dTU19QUk9DX0RFU1RST1k6DQo+
-ICAJCWlmIChnc3Nfd3JpdGVfdmVyZihycXN0cCwgcnNjaS0+bWVjaGN0eCwgZ2MtPmdjX3NlcSkp
-DQo+ICAJCQlnb3RvIGF1dGhfZXJyOw0KPiAtCQlyc2NpLT5oLmV4cGlyeV90aW1lID0gZ2V0X3Nl
-Y29uZHMoKTsNCj4gLQkJc2V0X2JpdChDQUNIRV9ORUdBVElWRSwgJnJzY2ktPmguZmxhZ3MpOw0K
-PiArCQlpZiAocnNjX2Rlc3Ryb3koc24sIHJzY2kpKQ0KPiArCQkJZ290byBkcm9wOw0KPiArCQkv
-KioNCj4gKwkJICogQmFsYW5jZSB0aGUgY2FjaGVfcHV0IGF0IHRoZSBlbmQgb2Ygc3ZjYXV0aF9n
-c3NfYWNjZXB0LlRoaXMNCj4gKwkJICogd2lsbCBsZWF2ZSB0aGUgcmVmY291bnQgPSAxIHNvIHRo
-YXQgdGhlIGNhY2hlX2NsZWFuIGNhY2hlX3B1dA0KPiArCQkgKiB3aWxsIGNhbGwgcnNjX3B1dC4N
-Cj4gKwkJICovDQoNCkknbSBjb25mdXNlZCBieSB0aGF0IGNvbW1lbnQuICBJZiBpdCdzIHJpZ2h0
-LCB0aGVuIGl0IG1lYW5zIHRoZSByZWZjb3VudA0KaXMgY3VycmVudGx5IHplcm8sIGluIHdoaWNo
-IGNhc2UgdGhlIGZvbGxvd2luZyBsaW5lIGlzIHVuc2FmZS4NCg0KLS1iLg0KDQo+ICsJCWNhY2hl
-X2dldCgmcnNjaS0+aCk7DQo+ICsNCj4gIAkJaWYgKHJlc3YtPmlvdl9sZW4gKyA0ID4gUEFHRV9T
-SVpFKQ0KPiAgCQkJZ290byBkcm9wOw0KPiArDQo+ICAJCXN2Y19wdXRubChyZXN2LCBSUENfU1VD
-Q0VTUyk7DQo+ICAJCWdvdG8gY29tcGxldGU7DQo+ICAJY2FzZSBSUENfR1NTX1BST0NfREFUQToN
-Cj4gLS0gDQo+IDEuOC4zLjENCg0KDQo=
+On Mon, Dec 12, 2016 at 4:58 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
+> On Mon, Dec 12, 2016 at 12:08:49PM -0500, andros@netapp.com wrote:
+>> From: Andy Adamson <andros@netapp.com>
+>>
+>> The current code sets the expiry_time on the local copy of the rsc
+>> cache entry - but not on the actual cache entry.
+>
+> I'm not following.  It looks to me like "rsci" in the below was returned
+> from gss_svc_searchbyctx(), which was returned in turn from
+> sunrpc_cache_lookup(), which is returning an item from the rsc cache--I
+> don't see any copying.
+>
+>> Note that currently, the rsc cache entries are not cleaned up even
+>> when nfsd is stopped.
+>
+> So, that sounds like a bug, but I don't understand this explanation yet.
+>
+>> Update the cache with the new expiry_time of now so that cache_clean will
+>> clean up (free) the context to be destroyed.
+>>
+>> Signed-off-by: Andy Adamson <andros@netapp.com>
+>> ---
+>>  net/sunrpc/auth_gss/svcauth_gss.c | 32 ++++++++++++++++++++++++++++++--
+>>  1 file changed, 30 insertions(+), 2 deletions(-)
+>>
+>> diff --git a/net/sunrpc/auth_gss/svcauth_gss.c b/net/sunrpc/auth_gss/svcauth_gss.c
+>> index 45662d7..6033389 100644
+>> --- a/net/sunrpc/auth_gss/svcauth_gss.c
+>> +++ b/net/sunrpc/auth_gss/svcauth_gss.c
+>> @@ -1393,6 +1393,26 @@ static void destroy_use_gss_proxy_proc_entry(struct net *net) {}
+>>
+>>  #endif /* CONFIG_PROC_FS */
+>>
+>> +static int rsc_destroy(struct sunrpc_net *sn, struct rsc *rscp)
+>> +{
+>> +     struct rsc new;
+>> +     int ret = -ENOMEM;
+>> +
+>> +     memset(&new, 0, sizeof(struct rsc));
+>> +     if (dup_netobj(&new.handle, &rscp->handle))
+>> +             goto out;
+>> +     new.h.expiry_time = get_seconds();
+>> +     set_bit(CACHE_NEGATIVE, &new.h.flags);
+>> +
+>> +     rscp = rsc_update(sn->rsc_cache, &new, rscp);
+>> +     if (!rscp)
+>> +             goto out;
+>> +     ret = 0;
+>> +out:
+>> +     rsc_free(&new);
+>> +     return ret;
+>> +}
+>> +
+>>  /*
+>>   * Accept an rpcsec packet.
+>>   * If context establishment, punt to user space
+>> @@ -1489,10 +1509,18 @@ static void destroy_use_gss_proxy_proc_entry(struct net *net) {}
+>>       case RPC_GSS_PROC_DESTROY:
+>>               if (gss_write_verf(rqstp, rsci->mechctx, gc->gc_seq))
+>>                       goto auth_err;
+>> -             rsci->h.expiry_time = get_seconds();
+>> -             set_bit(CACHE_NEGATIVE, &rsci->h.flags);
+>> +             if (rsc_destroy(sn, rsci))
+>> +                     goto drop;
+>> +             /**
+>> +              * Balance the cache_put at the end of svcauth_gss_accept.This
+>> +              * will leave the refcount = 1 so that the cache_clean cache_put
+>> +              * will call rsc_put.
+>> +              */
+>
+> I'm confused by that comment.  If it's right, then it means the refcount
+> is currently zero,
+
+Didn't see this comment...
+
+Nope.  "Balance the cache_put at the __end__ of svcauth_gss_accept".
+
+Without the cache_get, the cache_put that gets called for all cases
+handled by svcauth_gss_accept that return a non-null cache entry. So,
+without this cache_get, the count would be 1, and the cache_put at the
+end of svcauth_gss_accept would drop the count to zero, prompting
+rsc_put and rsc_free to be called. This in turn makes the cache_put
+called by cache_clean() go nuts as the refcount wraps around and
+cache_put is then called 2^32 times!!
+
+The RPCSEC_GSS_DESTROY case does not call the cache_get in svcauth_gss_accept:
+
+svcauth_gss_accept()
+
+.......
+
+                svcdata->rsci = rsci;
+                cache_get(&rsci->h);   <<<<<<<<<<<<<<<<<<<<<<<<<<<
+here is the cache get not called in the DESTROY case.
+                rqstp->rq_cred.cr_flavor = gss_svc_to_pseudoflavor(
+                                        rsci->mechctx->mech_type,
+                                        GSS_C_QOP_DEFAULT,
+                                        gc->gc_svc);
+                ret = SVC_OK;
+                goto out;
+
+        }
+garbage_args:
+        ret = SVC_GARBAGE;
+        goto out;
+auth_err:
+        /* Restore write pointer to its original value: */
+        xdr_ressize_check(rqstp, reject_stat);
+        ret = SVC_DENIED;
+        goto out;
+
+complete:
+        ret = SVC_COMPLETE;
+        goto out;
+
+drop:
+        ret = SVC_DROP;
+out:
+        if (rsci)
+                cache_put(&rsci->h, sn->rsc_cache);     <<<<<<<<<<<<
+Here is the cache_put at the end
+        return ret;
+
+}
+
+
+> in which case the following line is unsafe.
+
+sorry for the unclear comments. I'll do a better job on the next version.
+
+>
+> --b.
+>
+>> +             cache_get(&rsci->h);
+>> +
+>>               if (resv->iov_len + 4 > PAGE_SIZE)
+>>                       goto drop;
+>> +
+>>               svc_putnl(resv, RPC_SUCCESS);
+>>               goto complete;
+>>       case RPC_GSS_PROC_DATA:
+>> --
+>> 1.8.3.1
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
