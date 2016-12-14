@@ -1,61 +1,68 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from cn.fujitsu.com ([59.151.112.132]:48198 "EHLO
-        heian.cn.fujitsu.com" rhost-flags-OK-FAIL-OK-FAIL) by vger.kernel.org
-        with ESMTP id S1751055AbcLNHhW (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 14 Dec 2016 02:37:22 -0500
-Received: from G08CNEXCHPEKD03.g08.fujitsu.local (unknown [10.167.33.85])
-        by cn.fujitsu.com (Postfix) with ESMTP id 5E5CC4670485
-        for <linux-nfs@vger.kernel.org>; Wed, 14 Dec 2016 15:37:05 +0800 (CST)
-From: Ditang Chen <chendt.fnst@cn.fujitsu.com>
-Subject: Opening non-existent file returns different value when
- O_CREAT|O_DIRECTORY is used
-To: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Message-ID: <46d6805b-7ead-1c9d-af2d-59caf4a87016@cn.fujitsu.com>
-Date: Wed, 14 Dec 2016 15:33:43 +0800
+Received: from mail-pg0-f67.google.com ([74.125.83.67]:35060 "EHLO
+        mail-pg0-f67.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1754930AbcLNJPM (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 14 Dec 2016 04:15:12 -0500
+Subject: Re: [RESEND PATCH v4 1/2] sysctl: introduce new proc handler
+ proc_dobool
+To: kbuild test robot <lkp@intel.com>
+References: <201612141454.bVs7TA70%fengguang.wu@intel.com>
+Cc: kbuild-all@01.org, linux-kernel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, "Eric W. Biederman" <ebiederm@xmission.com>,
+        Andrew Morton <akpm@linux-foundation.org>,
+        Dmitry Torokhov <dmitry.torokhov@gmail.com>,
+        Serge Hallyn <serge@hallyn.com>,
+        "David S. Miller" <davem@davemloft.net>,
+        Alexey Dobriyan <adobriyan@gmail.com>,
+        Subash Abhinov Kasiviswanathan <subashab@codeaurora.org>,
+        Arnaldo Carvalho de Melo <acme@redhat.com>,
+        Al Viro <viro@zeniv.linux.org.uk>,
+        Mel Gorman <mgorman@techsingularity.net>,
+        Kees Cook <keescook@chromium.org>, Hugh Dickins <hughd@google.com>,
+        Daniel Bristot de Oliveira <bristot@redhat.com>,
+        Daniel Cashman <dcashman@google.com>, Arnd Bergmann <arnd@arndb.de>,
+        "J. Bruce Fields" <bfields@fieldses.org>,
+        Jeff Layton <jlayton@poochiereds.net>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>
+From: hejianet <hejianet@gmail.com>
+Message-ID: <f269cce5-52cf-b0d8-a419-64c0f002df2e@gmail.com>
+Date: Wed, 14 Dec 2016 17:14:48 +0800
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+In-Reply-To: <201612141454.bVs7TA70%fengguang.wu@intel.com>
+Content-Type: text/plain; charset=windows-1252; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi all
+Thanks, this error is caused by
 
-On NFSv3, NFSv4 and xfs, opening non-existent file returns different value when 
-O_CREAT|O_DIRECTORY is used, Is this the right behavior?
+# CONFIG_PROC_SYSCTL is not set
+
+Will fixed in next version
+
+Jia
+
+B.R.
 
 
-TEST LOG:
-# cat open_tets.py 
-#!/bin/python
-import posix
-fd = posix.open("/mnt/XXXX/file",posix.O_CREAT|posix.O_DIRECTORY, 0777)
-print fd
-posix.close(fd)
-
-*xfs*
-# ./open_test.py 
-3                                 -- Create a file and return fd.
-# ./open_test.py 
-Traceback (most recent call last):
-  File "./open_test.py", line 3, in <module>
-    fd = posix.open("/mnt/xfs/file",posix.O_CREAT|posix.O_DIRECTORY, 0777)
-OSError: [Errno 20] Not a directory: '/mnt/xfs/file'
-
-*NFSv3*
-# ./open_test.py 
-3                                -- Create a file and return fd.
-# ./open_test.py 
-Traceback (most recent call last):
-  File "./open_test.py", line 3, in <module>
-    fd = posix.open("/mnt/nfsv3/file",posix.O_CREAT|posix.O_DIRECTORY, 0777)
-OSError: [Errno 20] Not a directory: '/mnt/nfsv3/file'
-
-*NFSv4.x*
-# ./open_test.py 
-Traceback (most recent call last):      -- return ENOENT err directly.
-  File "./open_test.py", line 3, in <module>
-    fd = posix.open("/mnt/nfsv4/file",posix.O_CREAT|posix.O_DIRECTORY, 0777)
-OSError: [Errno 2] No such file or directory: '/mnt/nfsv4/file'
-
---
-
+On 12/14/16 2:13 PM, kbuild test robot wrote:
+> Hi Jia,
+>
+> [auto build test ERROR on linus/master]
+> [also build test ERROR on v4.9 next-20161214]
+> [if your patch is applied to the wrong git tree, please drop us a note to help improve the system]
+>
+> url:    https://github.com/0day-ci/linux/commits/Jia-He/sysctl-introduce-new-proc-handler-proc_dobool/20161214-112656
+> config: x86_64-randconfig-n0-12141159 (attached as .config)
+> compiler: gcc-4.8 (Debian 4.8.4-1) 4.8.4
+> reproduce:
+>          # save the attached .config to linux build tree
+>          make ARCH=x86_64
+>
+> All errors (new ones prefixed by >>):
+>
+>>> kernel/built-in.o:(___ksymtab+proc_dobool+0x0): undefined reference to `proc_dobool'
+> ---
+> 0-DAY kernel test infrastructure                Open Source Technology Center
+> https://lists.01.org/pipermail/kbuild-all                   Intel Corporation
 
