@@ -1,35 +1,22 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail1.trendhosting.net ([195.8.117.5]:36095 "EHLO
-        mail1.trendhosting.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1756528AbcLNT17 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 14 Dec 2016 14:27:59 -0500
+Received: from fieldses.org ([173.255.197.46]:37544 "EHLO fieldses.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1755002AbcLNTfW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 14 Dec 2016 14:35:22 -0500
+Date: Wed, 14 Dec 2016 14:28:16 -0500
+To: Daniel Pocock <daniel@pocock.pro>
+Cc: linux-nfs@vger.kernel.org
 Subject: Re: improving NFS stability in next Debian release
-To: linux-nfs@vger.kernel.org, 847681@bugs.debian.org
+Message-ID: <20161214192816.GB2212@fieldses.org>
 References: <4415ff5c-98c3-629d-aefd-a5e677688bbb@pocock.pro>
-From: Daniel Pocock <daniel@pocock.pro>
-Message-ID: <1786db90-cdec-7959-6897-f78245831f05@pocock.pro>
-Date: Wed, 14 Dec 2016 20:27:41 +0100
 MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
 In-Reply-To: <4415ff5c-98c3-629d-aefd-a5e677688bbb@pocock.pro>
-Content-Type: text/plain; charset=utf-8
+From: bfields@fieldses.org (J. Bruce Fields)
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-Brief update on this issue: nfs-utils 1.3.4 is now in Debian sid
-
-There is discussion about changes (e.g. going from svcgssd to gss-proxy)
-in this bug, if anybody could add any comments it would be very welcome
-
-http://bugs.debian.org/cgi-bin/bugreport.cgi?bug=847681
-
-
-
-On 11/12/16 20:01, Daniel Pocock wrote:
-> 
-> 
-> Hi all,
-> 
+On Sun, Dec 11, 2016 at 08:01:12PM +0100, Daniel Pocock wrote:
 > NFS was quite stable with previous Debian versions but in Jessie, the
 > current stable release, it has been prone to crashes under load (kernel
 > 3.16, bug report[1]).  A user also asked[2] about this on the
@@ -46,6 +33,18 @@ On 11/12/16 20:01, Daniel Pocock wrote:
 > Debian jessie-backports contains a 4.7.9 kernel, should that be
 > compatible with the nfs-utils package v1.2.8 and other related things in
 > jessie?
+
+We're pretty conservative about changes to the nfs-utils<->kernel
+interfaces.  I wouldn't expect incompatibilites between versions only a
+few years out of sync.
+
+As for questions about known problems and stability of particular kernel
+versions, sorry, I really don't have a simple answer.  I think it's
+mainly a matter of investigating individual bug reports and keeping an
+eye on upstream patches, especially anything marked for stable.
+
+--b.
+
 > 
 > Regards,
 > 
@@ -60,4 +59,3 @@ On 11/12/16 20:01, Daniel Pocock wrote:
 > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
 > the body of a message to majordomo@vger.kernel.org
 > More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
