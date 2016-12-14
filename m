@@ -1,74 +1,63 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:37088 "EHLO fieldses.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1755859AbcLNOdy (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 14 Dec 2016 09:33:54 -0500
-Date: Wed, 14 Dec 2016 09:33:53 -0500
-To: NeilBrown <neilb@suse.com>
-Cc: "J. Bruce Fields" <bfields@redhat.com>,
-        Steve Dickson <SteveD@redhat.com>, linux-nfs@vger.kernel.org
-Subject: Re: [nfs-utils PATCH 0/10] More support for /etc/nfs.conf
-Message-ID: <20161214143353.GC30113@fieldses.org>
-References: <148117122602.31271.13586847542442809540.stgit@noble>
+Received: from mail1.trendhosting.net ([195.8.117.5]:36095 "EHLO
+        mail1.trendhosting.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1756528AbcLNT17 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 14 Dec 2016 14:27:59 -0500
+Subject: Re: improving NFS stability in next Debian release
+To: linux-nfs@vger.kernel.org, 847681@bugs.debian.org
+References: <4415ff5c-98c3-629d-aefd-a5e677688bbb@pocock.pro>
+From: Daniel Pocock <daniel@pocock.pro>
+Message-ID: <1786db90-cdec-7959-6897-f78245831f05@pocock.pro>
+Date: Wed, 14 Dec 2016 20:27:41 +0100
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <148117122602.31271.13586847542442809540.stgit@noble>
-From: bfields@fieldses.org (J. Bruce Fields)
+In-Reply-To: <4415ff5c-98c3-629d-aefd-a5e677688bbb@pocock.pro>
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Dec 08, 2016 at 03:27:24PM +1100, NeilBrown wrote:
-> Added some missing support for rpc.nfsd, rpc.gss, rpc.svcgssd.
-> Fixed a bug.
-> 
-> Added generic support for "debug="
-> This only applies to tools which use the xlog() infrastructure.
-> blkmapd used syslog directly and gssd has it's own shim.  I think
-> they should be converted to xlog rather than having separate debug=
-> support.
 
-Makes sense to me.--b.
+Brief update on this issue: nfs-utils 1.3.4 is now in Debian sid
 
-> 
-> NeilBrown
-> 
-> ---
-> 
-> NeilBrown (10):
->       nfsd: move and improve test on valid port
->       nfsd: remove pointless memory allocations.
->       nfsd: add /etc/nfs.conf support for nfsd.port option.
->       nfsd: add /etc/nfs.conf support for host=
->       conffile: allow embedded spaces in values.
->       conffile: fix striping of quotes from values.
->       xlog: Add common support for "debug=??" in /etc/nfs.conf
->       exportfs: allow debugging to be enabled in nfs.conf
->       gssd: add /etc/nfs.conf support
->       svcgssd: add /etc/nfs.conf support
+There is discussion about changes (e.g. going from svcgssd to gss-proxy)
+in this bug, if anybody could add any comments it would be very welcome
+
+http://bugs.debian.org/cgi-bin/bugreport.cgi?bug=847681
+
+
+
+On 11/12/16 20:01, Daniel Pocock wrote:
 > 
 > 
->  support/include/xlog.h          |    1 +
->  support/nfs/conffile.c          |   24 ++++++++++-------
->  support/nfs/xlog.c              |   14 ++++++++++
->  systemd/nfs.conf.man            |   49 ++++++++++++++++++++++++++++++++++-
->  utils/exportfs/exportfs.c       |    5 ++++
->  utils/exportfs/exportfs.man     |    8 ++++++
->  utils/gssd/gssd.c               |   29 +++++++++++++++++++++
->  utils/gssd/gssd.man             |   54 +++++++++++++++++++++++++++++++++++++++
->  utils/gssd/svcgssd.c            |   14 ++++++++++
->  utils/gssd/svcgssd.man          |   17 ++++++++++++
->  utils/mountd/mountd.c           |    1 +
->  utils/nfsd/nfsd.c               |   48 +++++++++++++++++++++++------------
->  utils/nfsd/nfsd.man             |   10 +++++++
->  utils/nfsdcltrack/nfsdcltrack.c |    1 +
->  utils/statd/sm-notify.c         |    1 +
->  utils/statd/statd.c             |    1 +
->  16 files changed, 249 insertions(+), 28 deletions(-)
+> Hi all,
 > 
-> --
-> Signature
+> NFS was quite stable with previous Debian versions but in Jessie, the
+> current stable release, it has been prone to crashes under load (kernel
+> 3.16, bug report[1]).  A user also asked[2] about this on the
+> linux-fsdevel list a few months ago.
 > 
+> With the next Debian release freeze approaching, what will it take to
+> ensure a stable experience for NFS users?
+> 
+> Are there any known problems for NFS in the current Debian kernel[3]?
+> 
+> Which version of nfs-utils should be distributed?  The current package
+> is quite old[4].
+> 
+> Debian jessie-backports contains a 4.7.9 kernel, should that be
+> compatible with the nfs-utils package v1.2.8 and other related things in
+> jessie?
+> 
+> Regards,
+> 
+> Daniel
+> 
+> 
+> 1. http://bugs.debian.org/cgi-bin/bugreport.cgi?bug=847549
+> 2. http://www.spinics.net/lists/linux-fsdevel/msg98540.html
+> 3. https://packages.qa.debian.org/l/linux.html
+> 4. https://packages.qa.debian.org/n/nfs-utils.html
 > --
 > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
 > the body of a message to majordomo@vger.kernel.org
 > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
