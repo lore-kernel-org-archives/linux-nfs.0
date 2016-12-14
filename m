@@ -1,201 +1,122 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qt0-f196.google.com ([209.85.216.196]:36245 "EHLO
-        mail-qt0-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S932594AbcLMQg7 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 13 Dec 2016 11:36:59 -0500
-Received: by mail-qt0-f196.google.com with SMTP id n34so14383148qtb.3
-        for <linux-nfs@vger.kernel.org>; Tue, 13 Dec 2016 08:36:12 -0800 (PST)
-MIME-Version: 1.0
-In-Reply-To: <20161213160029.GB19985@fieldses.org>
-References: <1481562529-4488-1-git-send-email-andros@netapp.com>
- <20161212215804.GB6002@fieldses.org> <4608493E-D422-437C-B7B8-D2E74E4F75CE@netapp.com>
- <20161213160029.GB19985@fieldses.org>
-From: Andy Adamson <androsadamson@gmail.com>
-Date: Tue, 13 Dec 2016 11:36:11 -0500
-Message-ID: <CAHVgHyX+0SpOf5JXz57P=5W9OC9ESnCghj3EHngUB4X84ASoNA@mail.gmail.com>
-Subject: Re: [PATCH Version 2] SVCAUTH update the rsc cache on RPC_GSS_PROC_DESTROY
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: "Adamson, Andy" <William.Adamson@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=UTF-8
+Received: from mail-qk0-f195.google.com ([209.85.220.195]:33056 "EHLO
+        mail-qk0-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1754583AbcLNCtZ (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 13 Dec 2016 21:49:25 -0500
+From: Jia He <hejianet@gmail.com>
+To: linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org
+Cc: "Eric W. Biederman" <ebiederm@xmission.com>,
+        Andrew Morton <akpm@linux-foundation.org>,
+        Dmitry Torokhov <dmitry.torokhov@gmail.com>,
+        Serge Hallyn <serge@hallyn.com>,
+        "David S. Miller" <davem@davemloft.net>,
+        Alexey Dobriyan <adobriyan@gmail.com>,
+        Subash Abhinov Kasiviswanathan <subashab@codeaurora.org>,
+        Arnaldo Carvalho de Melo <acme@redhat.com>,
+        Al Viro <viro@zeniv.linux.org.uk>,
+        Mel Gorman <mgorman@techsingularity.net>,
+        Kees Cook <keescook@chromium.org>, Hugh Dickins <hughd@google.com>,
+        Daniel Bristot de Oliveira <bristot@redhat.com>,
+        Daniel Cashman <dcashman@google.com>, Arnd Bergmann <arnd@arndb.de>,
+        "J. Bruce Fields" <bfields@fieldses.org>,
+        Jeff Layton <jlayton@poochiereds.net>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>,
+        Jia He <hejianet@gmail.com>
+Subject: [RESEND PATCH v4 0/2] change the proc handler for nsm_use_hostnames
+Date: Wed, 14 Dec 2016 10:49:14 +0800
+Message-Id: <1481683756-29276-1-git-send-email-hejianet@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Dec 13, 2016 at 11:00 AM, J. Bruce Fields <bfields@fieldses.org> wr=
-ote:
-> On Mon, Dec 12, 2016 at 10:54:33PM +0000, Adamson, Andy wrote:
->> The bug is setting new values on an rsc cache entry without calling
->> rsc_update. When you do this, the =E2=80=9Clocal copy=E2=80=9D of the rs=
-c cache entry
->> (e.g. the one returned by gss_svc_searchbyctx ) gets the new values
->> (expiry_time and CACHE_NEGATIVE bit set) but the new values are not
->> propagated back to the cache.
->
-> gss_svc_searchbyctx:
->
->         found =3D rsc_lookup(cd, &rsci);
->         ...
->         return found;
->
-> rsc_lookup:
->
->         ch =3D sunrpc_cache_lookup(cd, &item->h, hash);
->         if (ch)
->                 return container_of(ch, struct rsc, h);
->
-> sunrpc_cache_lookup:
->
->         head =3D &detail->hash_table[hash];
->         ...
->         hlist_for_each_entry(tmp, head, cache_list) {
->                 ...
->                 return tmp;
->
-> Definitely looks to me like it's returning a cache entry, not a copy.
+Resend the v4 since I didn't add --to=linux-kernel@vger.kernel.org,sorry about
+it
 
-Thats right. What I call a "local copy". Guess that is wrong. I should
-say that sunrpc_cache_lookup returns a cache entry under the
-read_lock() and so writing that cache entry does not save the changes.
+nsm_use_hostnames is a module parameter and it will be exported to sysctl
+procfs. This is to let user sometimes change it from userspace. But the
+minimal unit for sysctl procfs read/write it sizeof(int).
+In big endian system, the converting from/to  bool to/from int will cause
+error for proc items.
 
->
-> Maybe there's some other reason we need to use rsc_update, but that's
-> not it.
+This patch introduces a new proc handler proc_dobool for nsm_use_hostnames.
 
-OK - rsc_update calls sunrpc_cache_update which takes the write_lock
-on the cache entry, and so allows changes to be saved.
+Changes:
+v4: Change (u8 *) to (bool *)
+v3: Introduce a new proc handler proc_dou8vec(suggested by Xinhui Pan)
+v2: Change extern type in lockd.h
 
---Andy
+The test case I used:
+/***************************************************************/
+#include <linux/kernel.h>
+#include <linux/module.h>
+#include <linux/sysctl.h>
 
->
-> --b.
->
->> So the next time the cache entry is
->> looked up, e.g. when cache_clean() is called to clean up, the
->> expiry_time and CACHE_NEGATIVE are not set to the new values on the
->> cache entry to be destroyed, and cache_clean does not reap the cache
->> entry.
->
->>
->> The fix is to do what this patch does, and call rsc_update on the rsc en=
-try. With this patch, cache_clean is called and reaps the cache entries.
->>
->> BTW: just look at all the other uses of the cache and you will note that=
- they all call update after setting new values.
->>
->> It=E2=80=99s just how Neil=E2=80=99s cache code works.
->>
->> e.g. dns_resolve.c
->>        key.h.expiry_time =3D ttl + seconds_since_boot();
->> =E2=80=A6
->>        if (key.addrlen =3D=3D 0)
->>                 set_bit(CACHE_NEGATIVE, &key.h.flags);
->>
->>         item =3D nfs_dns_update(cd, &key, item);
->>
->>
->>
->> I also just found a bug, I need a local rsc cache pointer for the rsc_up=
-date return. That plus Anna=E2=80=99s comments will be addressed in version=
- 3. I=E2=80=99ll explain more in the patch comments.
->>
->> =E2=86=92Andy
->>
->> On 12/12/16, 4:58 PM, "J. Bruce Fields" <bfields@fieldses.org> wrote:
->>
->> On Mon, Dec 12, 2016 at 12:08:49PM -0500, andros@netapp.com wrote:
->> > From: Andy Adamson <andros@netapp.com>
->> >
->> > The current code sets the expiry_time on the local copy of the rsc
->> > cache entry - but not on the actual cache entry.
->>
->> I'm not following.  It looks to me like "rsci" in the below was returned
->> from gss_svc_searchbyctx(), which was returned in turn from
->> sunrpc_cache_lookup(), which is returning an item from the rsc cache--I
->> don't see any copying.
->>
->> > Note that currently, the rsc cache entries are not cleaned up even
->> > when nfsd is stopped.
->>
->> So, that sounds like a bug, but I don't understand this explanation yet.
->>
->> > Update the cache with the new expiry_time of now so that cache_clean w=
-ill
->> > clean up (free) the context to be destroyed.
->> >
->> > Signed-off-by: Andy Adamson <andros@netapp.com>
->> > ---
->> >  net/sunrpc/auth_gss/svcauth_gss.c | 32 ++++++++++++++++++++++++++++++=
---
->> >  1 file changed, 30 insertions(+), 2 deletions(-)
->> >
->> > diff --git a/net/sunrpc/auth_gss/svcauth_gss.c b/net/sunrpc/auth_gss/s=
-vcauth_gss.c
->> > index 45662d7..6033389 100644
->> > --- a/net/sunrpc/auth_gss/svcauth_gss.c
->> > +++ b/net/sunrpc/auth_gss/svcauth_gss.c
->> > @@ -1393,6 +1393,26 @@ static void destroy_use_gss_proxy_proc_entry(st=
-ruct net *net) {}
->> >
->> >  #endif /* CONFIG_PROC_FS */
->> >
->> > +static int rsc_destroy(struct sunrpc_net *sn, struct rsc *rscp)
->> > +{
->> > +   struct rsc new;
->> > +   int ret =3D -ENOMEM;
->> > +
->> > +   memset(&new, 0, sizeof(struct rsc));
->> > +   if (dup_netobj(&new.handle, &rscp->handle))
->> > +           goto out;
->> > +   new.h.expiry_time =3D get_seconds();
->> > +   set_bit(CACHE_NEGATIVE, &new.h.flags);
->> > +
->> > +   rscp =3D rsc_update(sn->rsc_cache, &new, rscp);
->> > +   if (!rscp)
->> > +           goto out;
->> > +   ret =3D 0;
->> > +out:
->> > +   rsc_free(&new);
->> > +   return ret;
->> > +}
->> > +
->> >  /*
->> >   * Accept an rpcsec packet.
->> >   * If context establishment, punt to user space
->> > @@ -1489,10 +1509,18 @@ static void destroy_use_gss_proxy_proc_entry(s=
-truct net *net) {}
->> >     case RPC_GSS_PROC_DESTROY:
->> >             if (gss_write_verf(rqstp, rsci->mechctx, gc->gc_seq))
->> >                     goto auth_err;
->> > -           rsci->h.expiry_time =3D get_seconds();
->> > -           set_bit(CACHE_NEGATIVE, &rsci->h.flags);
->> > +           if (rsc_destroy(sn, rsci))
->> > +                   goto drop;
->> > +           /**
->> > +            * Balance the cache_put at the end of svcauth_gss_accept.=
-This
->> > +            * will leave the refcount =3D 1 so that the cache_clean c=
-ache_put
->> > +            * will call rsc_put.
->> > +            */
->>
->> I'm confused by that comment.  If it's right, then it means the refcount
->> is currently zero, in which case the following line is unsafe.
->>
->> --b.
->>
->> > +           cache_get(&rsci->h);
->> > +
->> >             if (resv->iov_len + 4 > PAGE_SIZE)
->> >                     goto drop;
->> > +
->> >             svc_putnl(resv, RPC_SUCCESS);
->> >             goto complete;
->> >     case RPC_GSS_PROC_DATA:
->> > --
->> > 1.8.3.1
->>
->>
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+bool __read_mostly nsm_use_hostnames;
+module_param(nsm_use_hostnames, bool, 0644);
+
+static struct ctl_table my_sysctl[] = {
+        {
+                .procname       = "nsm_use_hostnames",
+                .data           = &nsm_use_hostnames,
+                .maxlen         = sizeof(int),
+                .mode           = 0644,
+                .proc_handler   = &proc_dointvec,
+        },
+        {}
+};
+
+static struct ctl_table my_root[] = {
+        {
+        .procname       = "mysysctl",
+        .mode           = 0555,
+        .child          = my_sysctl,
+        },
+        {}
+};
+
+static struct ctl_table_header * my_ctl_header;
+
+static int __init sysctl_exam_init(void)
+{
+        my_ctl_header = register_sysctl_table(&my_root);
+        if (my_ctl_header == NULL)
+                printk("error regiester sysctl");
+
+        return 0;
+}
+
+static void __exit sysctl_exam_exit(void)
+{
+        unregister_sysctl_table(my_ctl_header);
+}
+
+module_init(sysctl_exam_init);
+module_exit(sysctl_exam_exit);
+MODULE_LICENSE("GPL");
+/****************************************************************/
+
+[root@bigendian my]# insmod -f /root/my/hello.ko nsm_use_hostnames=1   
+[root@bigendian my]# cat /proc/sys/mysysctl/nsm_use_hostnames 
+16777216
+
+After I change the proc_dointvec to new handler proc_dou8vec with the
+patch:
+[root@bigendian my]# insmod -f /root/my/hello.ko nsm_use_hostnames=1
+[root@bigendian my]# cat /proc/sys/mysysctl/nsm_use_hostnames
+1
+
+In little endian system, there is no such issue.
+Already tested v4 in both of big and little endian(ppc64 and ppc64le)
+
+Jia He (2):
+  sysctl: introduce new proc handler proc_dobool
+  lockd: change the proc_handler for nsm_use_hostnames
+
+ fs/lockd/svc.c         |  2 +-
+ include/linux/sysctl.h |  2 ++
+ kernel/sysctl.c        | 35 +++++++++++++++++++++++++++++++++++
+ 3 files changed, 38 insertions(+), 1 deletion(-)
+
+-- 
+2.5.5
+
