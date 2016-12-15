@@ -1,60 +1,43 @@
-Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:57378 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1753508AbcLOVL3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 15 Dec 2016 16:11:29 -0500
-From: "Benjamin Coddington" <bcodding@redhat.com>
-To: "Ketan Dixit" <ketan.dixit@apcera.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: NFSv4 idmapping issue with AUTH_UNIX
-Date: Thu, 15 Dec 2016 16:11:27 -0500
-Message-ID: <C4941FBA-843B-4252-A976-18EA7BC04EA8@redhat.com>
-In-Reply-To: <CAOph5DA0Wmx346Q-525iW3JUaVYA=puMv1+sznX1TLtokmqkzQ@mail.gmail.com>
-References: <CAOph5DA0Wmx346Q-525iW3JUaVYA=puMv1+sznX1TLtokmqkzQ@mail.gmail.com>
+Return-Path: <trondmy@primarydata.com>
+From: Trond Myklebust <trondmy@primarydata.com>
+To: Benjamin Coddington <bcodding@redhat.com>
+CC: Anna Schumaker <anna.schumaker@netapp.com>,
+        Jeffrey Layton
+	<jlayton@poochiereds.net>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] NFS: nfs_rename() handle -ERESTARTSYS dentry left behind
+Date: Thu, 15 Dec 2016 22:38:23 +0000
+Message-ID: <CC105B3B-3E0E-4266-9BF2-E61A648BD3AD@primarydata.com>
+References: <11625082826baa811b3ad5b87e1e6e712c6e582d.1481813137.git.bcodding@redhat.com>
+In-Reply-To: <11625082826baa811b3ad5b87e1e6e712c6e582d.1481813137.git.bcodding@redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain; format=flowed
-Sender: linux-nfs-owner@vger.kernel.org
+Content-Type: text/plain; charset=UTF-8
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 15 Dec 2016, at 14:24, Ketan Dixit wrote:
-
-> Hi all,
->
-> I was trying the NFS idmapping functionality by creating users with
-> same name but different IDs and was getting strange results the ls
-> commands would show me the proper output but the chown command would
-> fail.
->
-> On searching the internet, I found this link
->
-> http://dfusion.com.au/wiki/tiki-index.php?page=Why+NFSv4+UID+mapping+breaks+with+AUTH_UNIX
->
->
-> The link basically mentions that for the authentication (identifying
-> the executor of the command) it uses SunRPC and that sends uid, gid in
-> integers (Not as names)  Thus chown does not work as the IDs on server
-> and client differ.
-
-There's little point in doing a chown in the first place since you can
-impersonate any user you want with AUTH_SYS.  The RPCv2 spec recommends
-against auth_sys for any modifications:
-https://tools.ietf.org/html/rfc5531#section-14
-
-> Is there a plan to have the RPC layer send names too, so that NFSv4
-> idmapping will work in the case of AUTH_UNIX?
-
-No, not that I know about.
-
-> Also is it reasonable  overriding the logic in
-> https://github.com/torvalds/linux/blob/29fbff8698fc0ac1a1d74584b258e0bf18b469f9/net/sunrpc/auth_unix.c#L130
-> to consider a fixed offset  (in case of unprivileged containers the
-> UIDs are offseted by some fixed offset like 10000) will address the
-> issue?
-
-This sounds similar to shiftfs which was discussed on linux-fsdevel a 
-short
-time ago..  that might be close to what you want without doing 
-RPC-specific
-work.  I think there were some problems, but I don't recall any details.
-
-Ben
+DQo+IE9uIERlYyAxNSwgMjAxNiwgYXQgMDk6NDgsIEJlbmphbWluIENvZGRpbmd0b24gPGJjb2Rk
+aW5nQHJlZGhhdC5jb20+IHdyb3RlOg0KPiANCj4gQW4gaW50ZXJydXB0ZWQgcmVuYW1lIHdpbGwg
+bGVhdmUgdGhlIG9sZCBkZW50cnkgYmVoaW5kIGlmIHRoZSByZW5hbWUNCj4gc3VjY2VlZHMuICBG
+aXggdGhpcyBieSBmb3JjaW5nIGEgbG9va3VwIHRoZSBuZXh0IHRpbWUgdGhyb3VnaA0KPiAtPmRf
+cmV2YWxpZGF0ZS4NCj4gDQo+IFNpZ25lZC1vZmYtYnk6IEJlbmphbWluIENvZGRpbmd0b24gPGJj
+b2RkaW5nQHJlZGhhdC5jb20+DQo+IC0tLQ0KPiBmcy9uZnMvZGlyLmMgfCAxNCArKysrKysrKysr
+KystLQ0KPiAxIGZpbGUgY2hhbmdlZCwgMTIgaW5zZXJ0aW9ucygrKSwgMiBkZWxldGlvbnMoLSkN
+Cj4gDQo+IGRpZmYgLS1naXQgYS9mcy9uZnMvZGlyLmMgYi9mcy9uZnMvZGlyLmMNCj4gaW5kZXgg
+NWYxYWY0Y2QxYTMzLi41ZDQwOTYxNmY3N2UgMTAwNjQ0DQo+IC0tLSBhL2ZzL25mcy9kaXIuYw0K
+PiArKysgYi9mcy9uZnMvZGlyLmMNCj4gQEAgLTIxMDAsMTQgKzIxMDAsMjQgQEAgaW50IG5mc19y
+ZW5hbWUoc3RydWN0IGlub2RlICpvbGRfZGlyLCBzdHJ1Y3QgZGVudHJ5ICpvbGRfZGVudHJ5LA0K
+PiAJCWRfcmVoYXNoKHJlaGFzaCk7DQo+IAl0cmFjZV9uZnNfcmVuYW1lX2V4aXQob2xkX2Rpciwg
+b2xkX2RlbnRyeSwNCj4gCQkJbmV3X2RpciwgbmV3X2RlbnRyeSwgZXJyb3IpOw0KPiAtCWlmICgh
+ZXJyb3IpIHsNCj4gKw0KPiArCXN3aXRjaCAoZXJyb3IpIHsNCj4gKwljYXNlIDA6DQo+IAkJaWYg
+KG5ld19pbm9kZSAhPSBOVUxMKQ0KPiAJCQluZnNfZHJvcF9ubGluayhuZXdfaW5vZGUpOw0KPiAJ
+CWRfbW92ZShvbGRfZGVudHJ5LCBuZXdfZGVudHJ5KTsNCj4gCQluZnNfc2V0X3ZlcmlmaWVyKG5l
+d19kZW50cnksDQo+IAkJCQkJbmZzX3NhdmVfY2hhbmdlX2F0dHJpYnV0ZShuZXdfZGlyKSk7DQo+
+IC0JfSBlbHNlIGlmIChlcnJvciA9PSAtRU5PRU5UKQ0KPiArCQlicmVhazsNCj4gKwljYXNlIC1F
+Tk9FTlQ6DQo+IAkJbmZzX2RlbnRyeV9oYW5kbGVfZW5vZW50KG9sZF9kZW50cnkpOw0KPiArCQli
+cmVhazsNCj4gKwljYXNlIC1FUkVTVEFSVFNZUzoNCj4gKwkJLyogVGhlIHJlc3VsdCBvZiB0aGUg
+cmVuYW1lIGlzIHVua25vd24uIFBsYXkgaXQgc2FmZSBieQ0KPiArCQkgKiBmb3JjaW5nIGEgbmV3
+IGxvb2t1cCAqLw0KPiArCQluZnNfZm9yY2VfbG9va3VwX3JldmFsaWRhdGUob2xkX2Rpcik7DQo+
+ICsJCW5mc19mb3JjZV9sb29rdXBfcmV2YWxpZGF0ZShuZXdfZGlyKTsNCj4gKwl9DQoNCkRvZXNu
+4oCZdCB0aGlzIGVycm9yIGhhbmRsaW5nIGJlbG9uZyBpbiBuZnNfYXN5bmNfcmVuYW1lX2RvbmUo
+KSwgb3IgcG9zc2libHkgaW4gaXRzIOKAnGRhdGEtPmNvbXBsZXRlKCnigJ0gY2FsbGJhY2s/IFRo
+ZXJlIGlzbuKAmXQgbXVjaCBwb2ludCBpbiBmb3JjaW5nIGEgbmV3IGxvb2t1cCB1bnRpbCB3ZSBr
+bm93IHRoZSBSUEMgY2FsbCBoYXMgcnVuIGl0cyBjb3Vyc2UuDQoNCkNoZWVycw0KICBUcm9uZA==
