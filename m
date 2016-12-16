@@ -1,82 +1,58 @@
-Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-it0-f50.google.com ([209.85.214.50]:38475 "EHLO
-        mail-it0-f50.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1755549AbcLPNGi (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 16 Dec 2016 08:06:38 -0500
-Received: by mail-it0-f50.google.com with SMTP id j191so18958200ita.1
-        for <linux-nfs@vger.kernel.org>; Fri, 16 Dec 2016 05:06:11 -0800 (PST)
-Date: Fri, 16 Dec 2016 07:06:09 -0600
-From: Seth Forshee <seth.forshee@canonical.com>
-To: Trond Myklebust <trondmy@primarydata.com>
-Cc: "bfields@fieldses.org" <bfields@fieldses.org>,
-        "anna.schumaker@netapp.com" <anna.schumaker@netapp.com>,
-        "ebiederm@xmission.com" <ebiederm@xmission.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] sunrpc: Use current_real_cred() when looking up rpc
- credentials
-Message-ID: <20161216130609.GA124240@ubuntu-hedt>
-References: <1481821992-77583-1-git-send-email-seth.forshee@canonical.com>
- <1481842899.11785.1.camel@primarydata.com>
+Return-Path: <trondmy@primarydata.com>
+From: Trond Myklebust <trondmy@primarydata.com>
+To: Benjamin Coddington <bcodding@redhat.com>
+CC: Anna Schumaker <anna.schumaker@netapp.com>,
+        Jeffrey Layton
+	<jlayton@poochiereds.net>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] NFS: nfs_rename() handle -ERESTARTSYS dentry left behind
+Date: Fri, 16 Dec 2016 14:23:24 +0000
+Message-ID: <EEF3255C-18B5-411E-B9AB-8D065C65CC08@primarydata.com>
+References: <11625082826baa811b3ad5b87e1e6e712c6e582d.1481813137.git.bcodding@redhat.com>
+ <CC105B3B-3E0E-4266-9BF2-E61A648BD3AD@primarydata.com>
+ <7D53DC24-3DA9-40BB-BF6E-6DF03A7A0852@redhat.com>
+In-Reply-To: <7D53DC24-3DA9-40BB-BF6E-6DF03A7A0852@redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-In-Reply-To: <1481842899.11785.1.camel@primarydata.com>
-Sender: linux-nfs-owner@vger.kernel.org
+Content-Type: text/plain; charset=UTF-8
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Dec 15, 2016 at 11:01:41PM +0000, Trond Myklebust wrote:
-> On Thu, 2016-12-15 at 11:13 -0600, Seth Forshee wrote:
-> > Since 4.8 follow_automount() overrides the credentials with
-> > &init_cred before calling d_automount(). When
-> > rpcauth_lookupcred() is called in this context it is now using
-> > fs[ug]id from the override creds instead of from the user's
-> > creds, which can cause authentication to fail. To fix this, take
-> > the ids from current_real_cred() instead.
-> > 
-> > Cc: stable@vger.kernel.org # v4.8+
-> > CC: Eric W. Biederman <ebiederm@xmission.com>
-> > Fixes: aeaa4a79ff6a ("fs: Call d_automount with the filesystems
-> > creds")
-> > Signed-off-by: Seth Forshee <seth.forshee@canonical.com>
-> > ---
-> >  net/sunrpc/auth.c | 2 +-
-> >  1 file changed, 1 insertion(+), 1 deletion(-)
-> > 
-> > diff --git a/net/sunrpc/auth.c b/net/sunrpc/auth.c
-> > index 2bff63a73cf8..e6197b2bda86 100644
-> > --- a/net/sunrpc/auth.c
-> > +++ b/net/sunrpc/auth.c
-> > @@ -622,7 +622,7 @@ rpcauth_lookupcred(struct rpc_auth *auth, int
-> > flags)
-> >  {
-> >  	struct auth_cred acred;
-> >  	struct rpc_cred *ret;
-> > -	const struct cred *cred = current_cred();
-> > +	const struct cred *cred = current_real_cred();
-> >  
-> >  	dprintk("RPC:       looking up %s cred\n",
-> >  		auth->au_ops->au_name);
-> 
-> Among other things, this will break the access() syscall.
-
-Okay, I see that now.
-
-> It's completely the wrong level in which to override credentials.
-
-The reason for it is that sget() now has a capability check which will
-fail on automount if current doesn't have CAP_SYS_ADMIN. So what are the
-alternatives? A few ideas:
-
- - Instead of using a completely differnet set of creds, we could copy
-   the current creds and raise CAP_SYS_ADMIN. This won't work if
-   curreent is in a different user ns however.
-
- - Filesystems could get around the capability check by using
-   sget_userns() during automount.
-
- - We could add a mount flag, say MS_AUTOMOUNT, and skip the capability
-   check if that is set.
-
-Any opinions or other ideas?
-
-Thanks,
-Seth
+DQo+IE9uIERlYyAxNiwgMjAxNiwgYXQgMDY6MDksIEJlbmphbWluIENvZGRpbmd0b24gPGJjb2Rk
+aW5nQHJlZGhhdC5jb20+IHdyb3RlOg0KPiANCj4gT24gMTUgRGVjIDIwMTYsIGF0IDE3OjM4LCBU
+cm9uZCBNeWtsZWJ1c3Qgd3JvdGU6DQo+IA0KPj4+IE9uIERlYyAxNSwgMjAxNiwgYXQgMDk6NDgs
+IEJlbmphbWluIENvZGRpbmd0b24gPGJjb2RkaW5nQHJlZGhhdC5jb20+IHdyb3RlOg0KPj4+IA0K
+Pj4+IEFuIGludGVycnVwdGVkIHJlbmFtZSB3aWxsIGxlYXZlIHRoZSBvbGQgZGVudHJ5IGJlaGlu
+ZCBpZiB0aGUgcmVuYW1lDQo+Pj4gc3VjY2VlZHMuICBGaXggdGhpcyBieSBmb3JjaW5nIGEgbG9v
+a3VwIHRoZSBuZXh0IHRpbWUgdGhyb3VnaA0KPj4+IC0+ZF9yZXZhbGlkYXRlLg0KPj4+IA0KPj4+
+IFNpZ25lZC1vZmYtYnk6IEJlbmphbWluIENvZGRpbmd0b24gPGJjb2RkaW5nQHJlZGhhdC5jb20+
+DQo+Pj4gLS0tDQo+Pj4gZnMvbmZzL2Rpci5jIHwgMTQgKysrKysrKysrKysrLS0NCj4+PiAxIGZp
+bGUgY2hhbmdlZCwgMTIgaW5zZXJ0aW9ucygrKSwgMiBkZWxldGlvbnMoLSkNCj4+PiANCj4+PiBk
+aWZmIC0tZ2l0IGEvZnMvbmZzL2Rpci5jIGIvZnMvbmZzL2Rpci5jDQo+Pj4gaW5kZXggNWYxYWY0
+Y2QxYTMzLi41ZDQwOTYxNmY3N2UgMTAwNjQ0DQo+Pj4gLS0tIGEvZnMvbmZzL2Rpci5jDQo+Pj4g
+KysrIGIvZnMvbmZzL2Rpci5jDQo+Pj4gQEAgLTIxMDAsMTQgKzIxMDAsMjQgQEAgaW50IG5mc19y
+ZW5hbWUoc3RydWN0IGlub2RlICpvbGRfZGlyLCBzdHJ1Y3QgZGVudHJ5ICpvbGRfZGVudHJ5LA0K
+Pj4+IAkJZF9yZWhhc2gocmVoYXNoKTsNCj4+PiAJdHJhY2VfbmZzX3JlbmFtZV9leGl0KG9sZF9k
+aXIsIG9sZF9kZW50cnksDQo+Pj4gCQkJbmV3X2RpciwgbmV3X2RlbnRyeSwgZXJyb3IpOw0KPj4+
+IC0JaWYgKCFlcnJvcikgew0KPj4+ICsNCj4+PiArCXN3aXRjaCAoZXJyb3IpIHsNCj4+PiArCWNh
+c2UgMDoNCj4+PiAJCWlmIChuZXdfaW5vZGUgIT0gTlVMTCkNCj4+PiAJCQluZnNfZHJvcF9ubGlu
+ayhuZXdfaW5vZGUpOw0KPj4+IAkJZF9tb3ZlKG9sZF9kZW50cnksIG5ld19kZW50cnkpOw0KPj4+
+IAkJbmZzX3NldF92ZXJpZmllcihuZXdfZGVudHJ5LA0KPj4+IAkJCQkJbmZzX3NhdmVfY2hhbmdl
+X2F0dHJpYnV0ZShuZXdfZGlyKSk7DQo+Pj4gLQl9IGVsc2UgaWYgKGVycm9yID09IC1FTk9FTlQp
+DQo+Pj4gKwkJYnJlYWs7DQo+Pj4gKwljYXNlIC1FTk9FTlQ6DQo+Pj4gCQluZnNfZGVudHJ5X2hh
+bmRsZV9lbm9lbnQob2xkX2RlbnRyeSk7DQo+Pj4gKwkJYnJlYWs7DQo+Pj4gKwljYXNlIC1FUkVT
+VEFSVFNZUzoNCj4+PiArCQkvKiBUaGUgcmVzdWx0IG9mIHRoZSByZW5hbWUgaXMgdW5rbm93bi4g
+UGxheSBpdCBzYWZlIGJ5DQo+Pj4gKwkJICogZm9yY2luZyBhIG5ldyBsb29rdXAgKi8NCj4+PiAr
+CQluZnNfZm9yY2VfbG9va3VwX3JldmFsaWRhdGUob2xkX2Rpcik7DQo+Pj4gKwkJbmZzX2ZvcmNl
+X2xvb2t1cF9yZXZhbGlkYXRlKG5ld19kaXIpOw0KPj4+ICsJfQ0KPj4gDQo+PiBEb2VzbuKAmXQg
+dGhpcyBlcnJvciBoYW5kbGluZyBiZWxvbmcgaW4gbmZzX2FzeW5jX3JlbmFtZV9kb25lKCksIG9y
+IHBvc3NpYmx5IGluIGl0cyDigJxkYXRhLT5jb21wbGV0ZSgp4oCdIGNhbGxiYWNrPyBUaGVyZSBp
+c27igJl0IG11Y2ggcG9pbnQgaW4gZm9yY2luZyBhIG5ldyBsb29rdXAgdW50aWwgd2Uga25vdyB0
+aGUgUlBDIGNhbGwgaGFzIHJ1biBpdHMgY291cnNlLg0KPiANCj4gVGhhdCB3b3VsZCBiZSBtb3Jl
+IGNvcnJlY3QsIGhvd2V2ZXIgaWYgbW92ZWQgdGhlcmUsIHdlJ2QgYmUgZm9yY2luZyBhIGxvb2t1
+cCBhZnRlciBldmVyeSByZW5hbWUsIG5vdCBqdXN0IGEgcmVuYW1lIHRoYXQgd2FzIHNpZ25hbGVk
+LiAgSXMgaXQgd29ydGggdHJ5aW5nIHRvIGZpbmQgYSB3YXkgdG8gaW5mb3JtIHRob3NlIGZ1bmN0
+aW9ucyB0aGF0IHRoZSB3YWl0IHdhcyBpbnRlcnJ1cHRlZD8NCj4gDQoNClRoZXJlIGFyZSBhbHJl
+YWR5IHByZWNlZGVudHMgZm9yIHRoaXMuIExvb2ssIGZvciBpbnN0YW5jZSwgYXQgaG93IHRoZSBk
+YXRhLT5jYW5jZWxsZWQgZmxhZyBpbnRlcm9wZXJhdGVzIGJldHdlZW4gbmZzNF9ydW5fb3Blbl90
+YXNrKCkgYW5kIA0KbmZzNF9vcGVuX3JlbGVhc2UoKSB0byB0cmlnZ2VyIHN0YXRlIHJlY292ZXJ5
+IChieSBpc3N1aW5nIGEgY2xvc2UpIGlmIHRoZSBSUEMgY2FsbCB3YXMgY29tcGxldGVkLCBidXQg
+dGhlIHVzZXIgaW50ZXJydXB0ZWQgdGhlIG9wZXJhdGlvbi4NCg0KQ2hlZXJzDQogIFRyb25k
