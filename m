@@ -1,89 +1,74 @@
-Return-Path: <jlayton@poochiereds.net>
-Message-ID: <1481898915.2639.5.camel@poochiereds.net>
-Subject: Re: [PATCH] NFS: nfs_rename() handle -ERESTARTSYS dentry left behind
-From: Jeff Layton <jlayton@poochiereds.net>
-To: Trond Myklebust <trondmy@primarydata.com>,
-        Benjamin Coddington
-	 <bcodding@redhat.com>
-Cc: Anna Schumaker <anna.schumaker@netapp.com>,
+Return-Path: <trondmy@primarydata.com>
+From: Trond Myklebust <trondmy@primarydata.com>
+To: Jeffrey Layton <jlayton@poochiereds.net>
+CC: Benjamin Coddington <bcodding@redhat.com>,
+        Anna Schumaker
+	<anna.schumaker@netapp.com>,
         Linux NFS Mailing List
-	 <linux-nfs@vger.kernel.org>
-Date: Fri, 16 Dec 2016 09:35:15 -0500
-In-Reply-To: <EEF3255C-18B5-411E-B9AB-8D065C65CC08@primarydata.com>
-References: 
-	<11625082826baa811b3ad5b87e1e6e712c6e582d.1481813137.git.bcodding@redhat.com>
-	 <CC105B3B-3E0E-4266-9BF2-E61A648BD3AD@primarydata.com>
-	 <7D53DC24-3DA9-40BB-BF6E-6DF03A7A0852@redhat.com>
-	 <EEF3255C-18B5-411E-B9AB-8D065C65CC08@primarydata.com>
-Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
+	<linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] NFS: nfs_rename() handle -ERESTARTSYS dentry left behind
+Date: Fri, 16 Dec 2016 14:44:26 +0000
+Message-ID: <B32ED512-18C2-4FC8-BD52-A514CFAB08A4@primarydata.com>
+References: <11625082826baa811b3ad5b87e1e6e712c6e582d.1481813137.git.bcodding@redhat.com>
+ <CC105B3B-3E0E-4266-9BF2-E61A648BD3AD@primarydata.com>
+ <7D53DC24-3DA9-40BB-BF6E-6DF03A7A0852@redhat.com>
+ <EEF3255C-18B5-411E-B9AB-8D065C65CC08@primarydata.com>
+ <1481898915.2639.5.camel@poochiereds.net>
+In-Reply-To: <1481898915.2639.5.camel@poochiereds.net>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, 2016-12-16 at 14:23 +0000, Trond Myklebust wrote:
-> > 
-> > On Dec 16, 2016, at 06:09, Benjamin Coddington <bcodding@redhat.com> wrote:
-> > 
-> > On 15 Dec 2016, at 17:38, Trond Myklebust wrote:
-> > 
-> > > 
-> > > > 
-> > > > On Dec 15, 2016, at 09:48, Benjamin Coddington <bcodding@redhat.com> wrote:
-> > > > 
-> > > > An interrupted rename will leave the old dentry behind if the rename
-> > > > succeeds.  Fix this by forcing a lookup the next time through
-> > > > ->d_revalidate.
-> > > > 
-> > > > Signed-off-by: Benjamin Coddington <bcodding@redhat.com>
-> > > > ---
-> > > > fs/nfs/dir.c | 14 ++++++++++++--
-> > > > 1 file changed, 12 insertions(+), 2 deletions(-)
-> > > > 
-> > > > diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
-> > > > index 5f1af4cd1a33..5d409616f77e 100644
-> > > > --- a/fs/nfs/dir.c
-> > > > +++ b/fs/nfs/dir.c
-> > > > @@ -2100,14 +2100,24 @@ int nfs_rename(struct inode *old_dir, struct dentry *old_dentry,
-> > > > 		d_rehash(rehash);
-> > > > 	trace_nfs_rename_exit(old_dir, old_dentry,
-> > > > 			new_dir, new_dentry, error);
-> > > > -	if (!error) {
-> > > > +
-> > > > +	switch (error) {
-> > > > +	case 0:
-> > > > 		if (new_inode != NULL)
-> > > > 			nfs_drop_nlink(new_inode);
-> > > > 		d_move(old_dentry, new_dentry);
-> > > > 		nfs_set_verifier(new_dentry,
-> > > > 					nfs_save_change_attribute(new_dir));
-> > > > -	} else if (error == -ENOENT)
-> > > > +		break;
-> > > > +	case -ENOENT:
-> > > > 		nfs_dentry_handle_enoent(old_dentry);
-> > > > +		break;
-> > > > +	case -ERESTARTSYS:
-> > > > +		/* The result of the rename is unknown. Play it safe by
-> > > > +		 * forcing a new lookup */
-> > > > +		nfs_force_lookup_revalidate(old_dir);
-> > > > +		nfs_force_lookup_revalidate(new_dir);
-> > > > +	}
-> > > 
-> > > Doesn’t this error handling belong in nfs_async_rename_done(), or possibly in its “data->complete()” callback? There isn’t much point in forcing a new lookup until we know the RPC call has run its course.
-> > 
-> > That would be more correct, however if moved there, we'd be forcing a lookup after every rename, not just a rename that was signaled.  Is it worth trying to find a way to inform those functions that the wait was interrupted?
-> > 
-> 
-> There are already precedents for this. Look, for instance, at how the data->cancelled flag interoperates between nfs4_run_open_task() and 
-> nfs4_open_release() to trigger state recovery (by issuing a close) if the RPC call was completed, but the user interrupted the operation.
-> 
-> Cheers
->   Trond
-
-There is the timing to consider here as well. Once you return from this
-function the vfs is going to unlock everything without doing the d_move.
-
-Is it better to mark the directories for revalidation at that point, or
-when the RENAME reply comes in? I would think that marking it for reval
-immediately would be best. Is there an argument for waiting?
-
--- 
-Jeff Layton <jlayton@poochiereds.net>
+DQo+IE9uIERlYyAxNiwgMjAxNiwgYXQgMDk6MzUsIEplZmYgTGF5dG9uIDxqbGF5dG9uQHBvb2No
+aWVyZWRzLm5ldD4gd3JvdGU6DQo+IA0KPiBPbiBGcmksIDIwMTYtMTItMTYgYXQgMTQ6MjMgKzAw
+MDAsIFRyb25kIE15a2xlYnVzdCB3cm90ZToNCj4+PiANCj4+PiBPbiBEZWMgMTYsIDIwMTYsIGF0
+IDA2OjA5LCBCZW5qYW1pbiBDb2RkaW5ndG9uIDxiY29kZGluZ0ByZWRoYXQuY29tPiB3cm90ZToN
+Cj4+PiANCj4+PiBPbiAxNSBEZWMgMjAxNiwgYXQgMTc6MzgsIFRyb25kIE15a2xlYnVzdCB3cm90
+ZToNCj4+PiANCj4+Pj4gDQo+Pj4+PiANCj4+Pj4+IE9uIERlYyAxNSwgMjAxNiwgYXQgMDk6NDgs
+IEJlbmphbWluIENvZGRpbmd0b24gPGJjb2RkaW5nQHJlZGhhdC5jb20+IHdyb3RlOg0KPj4+Pj4g
+DQo+Pj4+PiBBbiBpbnRlcnJ1cHRlZCByZW5hbWUgd2lsbCBsZWF2ZSB0aGUgb2xkIGRlbnRyeSBi
+ZWhpbmQgaWYgdGhlIHJlbmFtZQ0KPj4+Pj4gc3VjY2VlZHMuICBGaXggdGhpcyBieSBmb3JjaW5n
+IGEgbG9va3VwIHRoZSBuZXh0IHRpbWUgdGhyb3VnaA0KPj4+Pj4gLT5kX3JldmFsaWRhdGUuDQo+
+Pj4+PiANCj4+Pj4+IFNpZ25lZC1vZmYtYnk6IEJlbmphbWluIENvZGRpbmd0b24gPGJjb2RkaW5n
+QHJlZGhhdC5jb20+DQo+Pj4+PiAtLS0NCj4+Pj4+IGZzL25mcy9kaXIuYyB8IDE0ICsrKysrKysr
+KysrKy0tDQo+Pj4+PiAxIGZpbGUgY2hhbmdlZCwgMTIgaW5zZXJ0aW9ucygrKSwgMiBkZWxldGlv
+bnMoLSkNCj4+Pj4+IA0KPj4+Pj4gZGlmZiAtLWdpdCBhL2ZzL25mcy9kaXIuYyBiL2ZzL25mcy9k
+aXIuYw0KPj4+Pj4gaW5kZXggNWYxYWY0Y2QxYTMzLi41ZDQwOTYxNmY3N2UgMTAwNjQ0DQo+Pj4+
+PiAtLS0gYS9mcy9uZnMvZGlyLmMNCj4+Pj4+ICsrKyBiL2ZzL25mcy9kaXIuYw0KPj4+Pj4gQEAg
+LTIxMDAsMTQgKzIxMDAsMjQgQEAgaW50IG5mc19yZW5hbWUoc3RydWN0IGlub2RlICpvbGRfZGly
+LCBzdHJ1Y3QgZGVudHJ5ICpvbGRfZGVudHJ5LA0KPj4+Pj4gCQlkX3JlaGFzaChyZWhhc2gpOw0K
+Pj4+Pj4gCXRyYWNlX25mc19yZW5hbWVfZXhpdChvbGRfZGlyLCBvbGRfZGVudHJ5LA0KPj4+Pj4g
+CQkJbmV3X2RpciwgbmV3X2RlbnRyeSwgZXJyb3IpOw0KPj4+Pj4gLQlpZiAoIWVycm9yKSB7DQo+
+Pj4+PiArDQo+Pj4+PiArCXN3aXRjaCAoZXJyb3IpIHsNCj4+Pj4+ICsJY2FzZSAwOg0KPj4+Pj4g
+CQlpZiAobmV3X2lub2RlICE9IE5VTEwpDQo+Pj4+PiAJCQluZnNfZHJvcF9ubGluayhuZXdfaW5v
+ZGUpOw0KPj4+Pj4gCQlkX21vdmUob2xkX2RlbnRyeSwgbmV3X2RlbnRyeSk7DQo+Pj4+PiAJCW5m
+c19zZXRfdmVyaWZpZXIobmV3X2RlbnRyeSwNCj4+Pj4+IAkJCQkJbmZzX3NhdmVfY2hhbmdlX2F0
+dHJpYnV0ZShuZXdfZGlyKSk7DQo+Pj4+PiAtCX0gZWxzZSBpZiAoZXJyb3IgPT0gLUVOT0VOVCkN
+Cj4+Pj4+ICsJCWJyZWFrOw0KPj4+Pj4gKwljYXNlIC1FTk9FTlQ6DQo+Pj4+PiAJCW5mc19kZW50
+cnlfaGFuZGxlX2Vub2VudChvbGRfZGVudHJ5KTsNCj4+Pj4+ICsJCWJyZWFrOw0KPj4+Pj4gKwlj
+YXNlIC1FUkVTVEFSVFNZUzoNCj4+Pj4+ICsJCS8qIFRoZSByZXN1bHQgb2YgdGhlIHJlbmFtZSBp
+cyB1bmtub3duLiBQbGF5IGl0IHNhZmUgYnkNCj4+Pj4+ICsJCSAqIGZvcmNpbmcgYSBuZXcgbG9v
+a3VwICovDQo+Pj4+PiArCQluZnNfZm9yY2VfbG9va3VwX3JldmFsaWRhdGUob2xkX2Rpcik7DQo+
+Pj4+PiArCQluZnNfZm9yY2VfbG9va3VwX3JldmFsaWRhdGUobmV3X2Rpcik7DQo+Pj4+PiArCX0N
+Cj4+Pj4gDQo+Pj4+IERvZXNu4oCZdCB0aGlzIGVycm9yIGhhbmRsaW5nIGJlbG9uZyBpbiBuZnNf
+YXN5bmNfcmVuYW1lX2RvbmUoKSwgb3IgcG9zc2libHkgaW4gaXRzIOKAnGRhdGEtPmNvbXBsZXRl
+KCnigJ0gY2FsbGJhY2s/IFRoZXJlIGlzbuKAmXQgbXVjaCBwb2ludCBpbiBmb3JjaW5nIGEgbmV3
+IGxvb2t1cCB1bnRpbCB3ZSBrbm93IHRoZSBSUEMgY2FsbCBoYXMgcnVuIGl0cyBjb3Vyc2UuDQo+
+Pj4gDQo+Pj4gVGhhdCB3b3VsZCBiZSBtb3JlIGNvcnJlY3QsIGhvd2V2ZXIgaWYgbW92ZWQgdGhl
+cmUsIHdlJ2QgYmUgZm9yY2luZyBhIGxvb2t1cCBhZnRlciBldmVyeSByZW5hbWUsIG5vdCBqdXN0
+IGEgcmVuYW1lIHRoYXQgd2FzIHNpZ25hbGVkLiAgSXMgaXQgd29ydGggdHJ5aW5nIHRvIGZpbmQg
+YSB3YXkgdG8gaW5mb3JtIHRob3NlIGZ1bmN0aW9ucyB0aGF0IHRoZSB3YWl0IHdhcyBpbnRlcnJ1
+cHRlZD8NCj4+PiANCj4+IA0KPj4gVGhlcmUgYXJlIGFscmVhZHkgcHJlY2VkZW50cyBmb3IgdGhp
+cy4gTG9vaywgZm9yIGluc3RhbmNlLCBhdCBob3cgdGhlIGRhdGEtPmNhbmNlbGxlZCBmbGFnIGlu
+dGVyb3BlcmF0ZXMgYmV0d2VlbiBuZnM0X3J1bl9vcGVuX3Rhc2soKSBhbmQgDQo+PiBuZnM0X29w
+ZW5fcmVsZWFzZSgpIHRvIHRyaWdnZXIgc3RhdGUgcmVjb3ZlcnkgKGJ5IGlzc3VpbmcgYSBjbG9z
+ZSkgaWYgdGhlIFJQQyBjYWxsIHdhcyBjb21wbGV0ZWQsIGJ1dCB0aGUgdXNlciBpbnRlcnJ1cHRl
+ZCB0aGUgb3BlcmF0aW9uLg0KPj4gDQo+PiBDaGVlcnMNCj4+ICBUcm9uZA0KPiANCj4gVGhlcmUg
+aXMgdGhlIHRpbWluZyB0byBjb25zaWRlciBoZXJlIGFzIHdlbGwuIE9uY2UgeW91IHJldHVybiBm
+cm9tIHRoaXMNCj4gZnVuY3Rpb24gdGhlIHZmcyBpcyBnb2luZyB0byB1bmxvY2sgZXZlcnl0aGlu
+ZyB3aXRob3V0IGRvaW5nIHRoZSBkX21vdmUuDQo+IA0KPiBJcyBpdCBiZXR0ZXIgdG8gbWFyayB0
+aGUgZGlyZWN0b3JpZXMgZm9yIHJldmFsaWRhdGlvbiBhdCB0aGF0IHBvaW50LCBvcg0KPiB3aGVu
+IHRoZSBSRU5BTUUgcmVwbHkgY29tZXMgaW4/IEkgd291bGQgdGhpbmsgdGhhdCBtYXJraW5nIGl0
+IGZvciByZXZhbA0KPiBpbW1lZGlhdGVseSB3b3VsZCBiZSBiZXN0LiBJcyB0aGVyZSBhbiBhcmd1
+bWVudCBmb3Igd2FpdGluZz8NCj4gDQoNClNlZSBhYm92ZS4gSXQgaXMgcG9pbnRsZXNzIHRvIHJl
+dmFsaWRhdGUgYmVmb3JlIHRoZSByZW5hbWUoKSBoYXMgY29tcGxldGVkLg0KDQo=
