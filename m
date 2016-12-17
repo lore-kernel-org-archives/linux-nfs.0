@@ -1,67 +1,48 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f175.google.com ([209.85.223.175]:33032 "EHLO
-        mail-io0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751932AbcLQS1P (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sat, 17 Dec 2016 13:27:15 -0500
-Received: by mail-io0-f175.google.com with SMTP id d9so123315893ioe.0
-        for <linux-nfs@vger.kernel.org>; Sat, 17 Dec 2016 10:27:15 -0800 (PST)
+Received: from mail-io0-f195.google.com ([209.85.223.195]:34045 "EHLO
+        mail-io0-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1752296AbcLQS1Q (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sat, 17 Dec 2016 13:27:16 -0500
+Received: by mail-io0-f195.google.com with SMTP id y124so15270724iof.1
+        for <linux-nfs@vger.kernel.org>; Sat, 17 Dec 2016 10:27:16 -0800 (PST)
 From: Trond Myklebust <trond.myklebust@primarydata.com>
 To: linux-nfs@vger.kernel.org
-Subject: [PATCH 0/9] NFS client attribute cache performance improvements
-Date: Sat, 17 Dec 2016 13:27:02 -0500
-Message-Id: <20161217182711.10643-1-trond.myklebust@primarydata.com>
+Subject: [PATCH 1/9] NFSv4: Don't invalidate the directory twice
+Date: Sat, 17 Dec 2016 13:27:03 -0500
+Message-Id: <20161217182711.10643-2-trond.myklebust@primarydata.com>
+In-Reply-To: <20161217182711.10643-1-trond.myklebust@primarydata.com>
+References: <20161217182711.10643-1-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The following patchset makes the largest difference w.r.t. NFSv4, where
-we don't always ask for the full set of attributes from the server, however
-there are also some tidbits for NFSv3.
+If an operation that modified the directory raced with a GETATTR, then we
+don't need to invalidate the directory cache more than once.
 
-With this patchset, running xfstests over NFSv4.1 shows the following
-improvement in execution times:
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+---
+ fs/nfs/nfs4proc.c | 3 +++
+ 1 file changed, 3 insertions(+)
 
-Generic/074 now 264s, was 344s
-Generic/075 now 15s was 26s
-Generic/089 now 178s was 236s
-Generic/112 now 14s was 25s
-Generic/113 now 14s was 20s
-Generic/127 now 206s was 223s
-Generic/133 now 85s was 118s
-Generic/247 now 27s was 43s
-
-I saw no statistically significant performance regressions (and no functional
-regressions).
-
-For nfsstats, the client shows a significant decrease in % GETATTR and
-% LOOKUP calls on the same workloads.
-
-For 2 runs of xfstests, the numbers are:
-GETATTR: now 1456511, was 2168740
-LOOKUP: now 301073, was 545571
-ACCESS: now 137211 was 139447
-
-
-Trond Myklebust (9):
-  NFSv4: Don't invalidate the directory twice
-  NFSv4: Update the attribute cache info in update_changeattr
-  NFSv4: Don't discard the attributes returned by asynchronous
-    DELEGRETURN
-  NFS: Don't revalidate the file on close if we hold a delegation
-  NFS: Clean up cache validity checking
-  NFS: Only look at the change attribute cache state in
-    nfs_weak_revalidate()
-  NFS: Fix and clean up the access cache validity checking
-  NFS: Remove unused function nfs_revalidate_inode_rcu()
-  NFS: Clean up nfs_attribute_timeout()
-
- fs/nfs/dir.c           | 23 +++++++++--------
- fs/nfs/file.c          | 12 +--------
- fs/nfs/inode.c         | 68 ++++++++++++++++++++++++++++++--------------------
- fs/nfs/internal.h      |  1 +
- fs/nfs/nfs4proc.c      | 17 +++++++++----
- include/linux/nfs_fs.h |  2 --
- 6 files changed, 67 insertions(+), 56 deletions(-)
-
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index d33242c8d95d..713932440e07 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -1088,12 +1088,15 @@ static void update_changeattr(struct inode *dir, struct nfs4_change_info *cinfo)
+ 	struct nfs_inode *nfsi = NFS_I(dir);
+ 
+ 	spin_lock(&dir->i_lock);
++	if (dir->i_version == cinfo->after)
++		goto out;
+ 	nfsi->cache_validity |= NFS_INO_INVALID_ATTR|NFS_INO_INVALID_DATA;
+ 	if (!cinfo->atomic || cinfo->before != dir->i_version)
+ 		nfs_force_lookup_revalidate(dir);
+ 	dir->i_version = cinfo->after;
+ 	nfsi->attr_gencount = nfs_inc_attr_generation_counter();
+ 	nfs_fscache_invalidate(dir);
++out:
+ 	spin_unlock(&dir->i_lock);
+ }
+ 
 -- 
 2.9.3
 
