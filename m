@@ -1,68 +1,67 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail1.trendhosting.net ([195.8.117.5]:50920 "EHLO
-        mail1.trendhosting.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1752729AbcLQLAx (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sat, 17 Dec 2016 06:00:53 -0500
-Received: from localhost (localhost [127.0.0.1])
-        by mail1.trendhosting.net (Postfix) with ESMTP id 897A7150C7
-        for <linux-nfs@vger.kernel.org>; Sat, 17 Dec 2016 11:00:49 +0000 (GMT)
-Received: from mail1.trendhosting.net ([127.0.0.1])
-        by localhost (thp003.trendhosting.net [127.0.0.1]) (amavisd-new, port 10024)
-        with LMTP id guU1GhL5bHa0 for <linux-nfs@vger.kernel.org>;
-        Sat, 17 Dec 2016 11:00:47 +0000 (GMT)
+Received: from mail-io0-f175.google.com ([209.85.223.175]:33032 "EHLO
+        mail-io0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751932AbcLQS1P (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sat, 17 Dec 2016 13:27:15 -0500
+Received: by mail-io0-f175.google.com with SMTP id d9so123315893ioe.0
+        for <linux-nfs@vger.kernel.org>; Sat, 17 Dec 2016 10:27:15 -0800 (PST)
+From: Trond Myklebust <trond.myklebust@primarydata.com>
 To: linux-nfs@vger.kernel.org
-From: Daniel Pocock <daniel@pocock.pro>
-Subject: [PATCH] nfs-utils: start-statd script using incompatible file
- descriptor
-Message-ID: <70eeb75e-e48f-fb0a-a690-1c6c8cb0ede4@pocock.pro>
-Date: Sat, 17 Dec 2016 12:00:47 +0100
-MIME-Version: 1.0
-Content-Type: multipart/mixed;
- boundary="------------E1D7F492ABF1DC936D592659"
+Subject: [PATCH 0/9] NFS client attribute cache performance improvements
+Date: Sat, 17 Dec 2016 13:27:02 -0500
+Message-Id: <20161217182711.10643-1-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This is a multi-part message in MIME format.
---------------E1D7F492ABF1DC936D592659
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: 8bit
+The following patchset makes the largest difference w.r.t. NFSv4, where
+we don't always ask for the full set of attributes from the server, however
+there are also some tidbits for NFSv3.
+
+With this patchset, running xfstests over NFSv4.1 shows the following
+improvement in execution times:
+
+Generic/074 now 264s, was 344s
+Generic/075 now 15s was 26s
+Generic/089 now 178s was 236s
+Generic/112 now 14s was 25s
+Generic/113 now 14s was 20s
+Generic/127 now 206s was 223s
+Generic/133 now 85s was 118s
+Generic/247 now 27s was 43s
+
+I saw no statistically significant performance regressions (and no functional
+regressions).
+
+For nfsstats, the client shows a significant decrease in % GETATTR and
+% LOOKUP calls on the same workloads.
+
+For 2 runs of xfstests, the numbers are:
+GETATTR: now 1456511, was 2168740
+LOOKUP: now 301073, was 545571
+ACCESS: now 137211 was 139447
 
 
+Trond Myklebust (9):
+  NFSv4: Don't invalidate the directory twice
+  NFSv4: Update the attribute cache info in update_changeattr
+  NFSv4: Don't discard the attributes returned by asynchronous
+    DELEGRETURN
+  NFS: Don't revalidate the file on close if we hold a delegation
+  NFS: Clean up cache validity checking
+  NFS: Only look at the change attribute cache state in
+    nfs_weak_revalidate()
+  NFS: Fix and clean up the access cache validity checking
+  NFS: Remove unused function nfs_revalidate_inode_rcu()
+  NFS: Clean up nfs_attribute_timeout()
 
-The current script uses fd 200, doesn't work for every possible shell as
-reported[1] in Debian bug #848277
+ fs/nfs/dir.c           | 23 +++++++++--------
+ fs/nfs/file.c          | 12 +--------
+ fs/nfs/inode.c         | 68 ++++++++++++++++++++++++++++++--------------------
+ fs/nfs/internal.h      |  1 +
+ fs/nfs/nfs4proc.c      | 17 +++++++++----
+ include/linux/nfs_fs.h |  2 --
+ 6 files changed, 67 insertions(+), 56 deletions(-)
 
-We are including a patch for it in the 1.3.4-2 package, it would be good
-to incorporate this patch upstream too.
+-- 
+2.9.3
 
-Regards,
-
-Daniel
-
-
-1. https://bugs.debian.org/848277
-
---------------E1D7F492ABF1DC936D592659
-Content-Type: text/x-patch;
- name="29-start-statd-fd-9.patch"
-Content-Transfer-Encoding: quoted-printable
-Content-Disposition: attachment;
- filename="29-start-statd-fd-9.patch"
-
-diff --git a/utils/statd/start-statd b/utils/statd/start-statd
-index 2fd6039..82715b4 100755
---- a/utils/statd/start-statd
-+++ b/utils/statd/start-statd
-@@ -7,8 +7,8 @@
- PATH=3D"/sbin:/usr/sbin:/bin:/usr/bin"
-=20
- # Use flock to serialize the running of this script
--exec 200> /var/run/rpc.statd.lock
--flock -e 200
-+exec 9> /var/run/rpc.statd.lock
-+flock -e 9
-=20
- if [ -s /var/run/rpc.statd.pid ] &&
-        [ 1`cat /var/run/rpc.statd.pid` -gt 1 ] &&
-
---------------E1D7F492ABF1DC936D592659--
