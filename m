@@ -1,43 +1,55 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:56466 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:57392 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1758139AbcLQS1r (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Sat, 17 Dec 2016 13:27:47 -0500
-Subject: Re: [PATCH] nfs-utils: start-statd script using incompatible file
- descriptor
-To: Daniel Pocock <daniel@pocock.pro>, linux-nfs@vger.kernel.org
-References: <70eeb75e-e48f-fb0a-a690-1c6c8cb0ede4@pocock.pro>
+        id S1751932AbcLQSnZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Sat, 17 Dec 2016 13:43:25 -0500
+Received: from int-mx11.intmail.prod.int.phx2.redhat.com (int-mx11.intmail.prod.int.phx2.redhat.com [10.5.11.24])
+        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+        (No client certificate requested)
+        by mx1.redhat.com (Postfix) with ESMTPS id EC42D804FE
+        for <linux-nfs@vger.kernel.org>; Sat, 17 Dec 2016 18:43:24 +0000 (UTC)
+Subject: Re: [nfs-utils PATCH] exportfs: fix path comparison in
+ unexportfs_parsed()
+To: Scott Mayhew <smayhew@redhat.com>
+References: <1481830641-15595-1-git-send-email-smayhew@redhat.com>
+Cc: linux-nfs@vger.kernel.org
 From: Steve Dickson <SteveD@redhat.com>
-Message-ID: <fac98360-0651-a51b-e253-23fffa5cb36d@RedHat.com>
-Date: Sat, 17 Dec 2016 13:27:45 -0500
+Message-ID: <abe33732-e955-ffe1-4853-f2eb8a6f0c36@RedHat.com>
+Date: Sat, 17 Dec 2016 13:43:24 -0500
 MIME-Version: 1.0
-In-Reply-To: <70eeb75e-e48f-fb0a-a690-1c6c8cb0ede4@pocock.pro>
-Content-Type: text/plain; charset=utf-8
+In-Reply-To: <1481830641-15595-1-git-send-email-smayhew@redhat.com>
+Content-Type: text/plain; charset=windows-1252
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hello, 
 
-Could up please resubmit this patch with the
-proper patch description (basically what 
-problem you are fixing) and a proper 
- Signed-off-by: line.
+
+On 12/15/2016 02:37 PM, Scott Mayhew wrote:
+> Passing a path like /export1 to unexportfs_parsed() matches not only
+> /export1, but /export11, /export100, /export1forthemoney, etc. which can
+> result in some nasty surprises when unexporting individual exports.
+> 
+> Signed-off-by: Scott Mayhew <smayhew@redhat.com>
+Committed... 
 
 steved.
 
-On 12/17/2016 06:00 AM, Daniel Pocock wrote:
+> ---
+>  utils/exportfs/exportfs.c | 2 ++
+>  1 file changed, 2 insertions(+)
 > 
-> 
-> The current script uses fd 200, doesn't work for every possible shell as
-> reported[1] in Debian bug #848277
-> 
-> We are including a patch for it in the 1.3.4-2 package, it would be good
-> to incorporate this patch upstream too.
-> 
-> Regards,
-> 
-> Daniel
-> 
-> 
-> 1. https://bugs.debian.org/848277
+> diff --git a/utils/exportfs/exportfs.c b/utils/exportfs/exportfs.c
+> index b7a910e..a763272 100644
+> --- a/utils/exportfs/exportfs.c
+> +++ b/utils/exportfs/exportfs.c
+> @@ -345,6 +345,8 @@ unexportfs_parsed(char *hname, char *path, int verbose)
+>  		nlen--;
+>  
+>  	for (exp = exportlist[htype].p_head; exp; exp = exp->m_next) {
+> +		if (strlen(exp->m_export.e_path) != nlen)
+> +			continue;
+>  		if (path && strncmp(path, exp->m_export.e_path, nlen))
+>  			continue;
+>  		if (htype != exp->m_client->m_type)
+> -- 2.7.4
 > 
