@@ -1,65 +1,68 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-wj0-f193.google.com ([209.85.210.193]:34054 "EHLO
-        mail-wj0-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1754273AbcLPWBa (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 16 Dec 2016 17:01:30 -0500
-Date: Fri, 16 Dec 2016 23:01:21 +0100
-From: Michal Hocko <mhocko@kernel.org>
-To: Brian Foster <bfoster@redhat.com>
-Cc: linux-mm@kvack.org, linux-fsdevel@vger.kernel.org,
-        Andrew Morton <akpm@linux-foundation.org>,
-        Dave Chinner <david@fromorbit.com>, "Theodore Ts'o" <tytso@mit.edu>,
-        Chris Mason <clm@fb.com>, David Sterba <dsterba@suse.cz>,
-        Jan Kara <jack@suse.cz>, ceph-devel@vger.kernel.org,
-        cluster-devel@redhat.com, linux-nfs@vger.kernel.org, logfs@logfs.org,
-        linux-xfs@vger.kernel.org, linux-ext4@vger.kernel.org,
-        linux-btrfs@vger.kernel.org, linux-mtd@lists.infradead.org,
-        reiserfs-devel@vger.kernel.org, linux-ntfs-dev@lists.sourceforge.net,
-        linux-f2fs-devel@lists.sourceforge.net, linux-afs@lists.infradead.org,
-        LKML <linux-kernel@vger.kernel.org>
-Subject: Re: [PATCH 2/9 v2] xfs: introduce and use KM_NOLOCKDEP to silence
- reclaim lockdep false positives
-Message-ID: <20161216220121.GC7645@dhcp22.suse.cz>
-References: <20161215140715.12732-1-mhocko@kernel.org>
- <20161215140715.12732-3-mhocko@kernel.org>
- <20161216154041.GA7645@dhcp22.suse.cz>
- <20161216163749.GE8447@bfoster.bfoster>
+Received: from mail1.trendhosting.net ([195.8.117.5]:50920 "EHLO
+        mail1.trendhosting.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1752729AbcLQLAx (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sat, 17 Dec 2016 06:00:53 -0500
+Received: from localhost (localhost [127.0.0.1])
+        by mail1.trendhosting.net (Postfix) with ESMTP id 897A7150C7
+        for <linux-nfs@vger.kernel.org>; Sat, 17 Dec 2016 11:00:49 +0000 (GMT)
+Received: from mail1.trendhosting.net ([127.0.0.1])
+        by localhost (thp003.trendhosting.net [127.0.0.1]) (amavisd-new, port 10024)
+        with LMTP id guU1GhL5bHa0 for <linux-nfs@vger.kernel.org>;
+        Sat, 17 Dec 2016 11:00:47 +0000 (GMT)
+To: linux-nfs@vger.kernel.org
+From: Daniel Pocock <daniel@pocock.pro>
+Subject: [PATCH] nfs-utils: start-statd script using incompatible file
+ descriptor
+Message-ID: <70eeb75e-e48f-fb0a-a690-1c6c8cb0ede4@pocock.pro>
+Date: Sat, 17 Dec 2016 12:00:47 +0100
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20161216163749.GE8447@bfoster.bfoster>
+Content-Type: multipart/mixed;
+ boundary="------------E1D7F492ABF1DC936D592659"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri 16-12-16 11:37:50, Brian Foster wrote:
-> On Fri, Dec 16, 2016 at 04:40:41PM +0100, Michal Hocko wrote:
-> > Updated patch after Mike noticed a BUG_ON when KM_NOLOCKDEP is used.
-> > ---
-> > From 1497e713e11639157aef21cae29052cb3dc7ab44 Mon Sep 17 00:00:00 2001
-> > From: Michal Hocko <mhocko@suse.com>
-> > Date: Thu, 15 Dec 2016 13:06:43 +0100
-> > Subject: [PATCH] xfs: introduce and use KM_NOLOCKDEP to silence reclaim
-> >  lockdep false positives
-> > 
-> > Now that the page allocator offers __GFP_NOLOCKDEP let's introduce
-> > KM_NOLOCKDEP alias for the xfs allocation APIs. While we are at it
-> > also change KM_NOFS users introduced by b17cb364dbbb ("xfs: fix missing
-> > KM_NOFS tags to keep lockdep happy") and use the new flag for them
-> > instead. There is really no reason to make these allocations contexts
-> > weaker just because of the lockdep which even might not be enabled
-> > in most cases.
-> > 
-> 
-> Hi Michal,
-> 
-> I haven't gone back to fully grok b17cb364dbbb ("xfs: fix missing
-> KM_NOFS tags to keep lockdep happy"), so I'm not really familiar with
-> the original problem. FWIW, there was another KM_NOFS instance added by
-> that commit in xlog_cil_prepare_log_vecs() that is now in
-> xlog_cil_alloc_shadow_bufs(). Perhaps Dave can confirm whether the
-> original issue still applies..?
+This is a multi-part message in MIME format.
+--------------E1D7F492ABF1DC936D592659
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: 8bit
 
-Yes, I've noticed that but the reworked code looked sufficiently
-different that I didn't dare to simply convert it.
--- 
-Michal Hocko
-SUSE Labs
+
+
+The current script uses fd 200, doesn't work for every possible shell as
+reported[1] in Debian bug #848277
+
+We are including a patch for it in the 1.3.4-2 package, it would be good
+to incorporate this patch upstream too.
+
+Regards,
+
+Daniel
+
+
+1. https://bugs.debian.org/848277
+
+--------------E1D7F492ABF1DC936D592659
+Content-Type: text/x-patch;
+ name="29-start-statd-fd-9.patch"
+Content-Transfer-Encoding: quoted-printable
+Content-Disposition: attachment;
+ filename="29-start-statd-fd-9.patch"
+
+diff --git a/utils/statd/start-statd b/utils/statd/start-statd
+index 2fd6039..82715b4 100755
+--- a/utils/statd/start-statd
++++ b/utils/statd/start-statd
+@@ -7,8 +7,8 @@
+ PATH=3D"/sbin:/usr/sbin:/bin:/usr/bin"
+=20
+ # Use flock to serialize the running of this script
+-exec 200> /var/run/rpc.statd.lock
+-flock -e 200
++exec 9> /var/run/rpc.statd.lock
++flock -e 9
+=20
+ if [ -s /var/run/rpc.statd.pid ] &&
+        [ 1`cat /var/run/rpc.statd.pid` -gt 1 ] &&
+
+--------------E1D7F492ABF1DC936D592659--
