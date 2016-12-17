@@ -1,55 +1,43 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f196.google.com ([209.85.223.196]:34050 "EHLO
-        mail-io0-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1752554AbcLQS1S (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sat, 17 Dec 2016 13:27:18 -0500
-Received: by mail-io0-f196.google.com with SMTP id y124so15270761iof.1
-        for <linux-nfs@vger.kernel.org>; Sat, 17 Dec 2016 10:27:18 -0800 (PST)
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH 3/9] NFSv4: Don't discard the attributes returned by asynchronous DELEGRETURN
-Date: Sat, 17 Dec 2016 13:27:05 -0500
-Message-Id: <20161217182711.10643-4-trond.myklebust@primarydata.com>
-In-Reply-To: <20161217182711.10643-3-trond.myklebust@primarydata.com>
-References: <20161217182711.10643-1-trond.myklebust@primarydata.com>
- <20161217182711.10643-2-trond.myklebust@primarydata.com>
- <20161217182711.10643-3-trond.myklebust@primarydata.com>
+Received: from mx1.redhat.com ([209.132.183.28]:56466 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1758139AbcLQS1r (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Sat, 17 Dec 2016 13:27:47 -0500
+Subject: Re: [PATCH] nfs-utils: start-statd script using incompatible file
+ descriptor
+To: Daniel Pocock <daniel@pocock.pro>, linux-nfs@vger.kernel.org
+References: <70eeb75e-e48f-fb0a-a690-1c6c8cb0ede4@pocock.pro>
+From: Steve Dickson <SteveD@redhat.com>
+Message-ID: <fac98360-0651-a51b-e253-23fffa5cb36d@RedHat.com>
+Date: Sat, 17 Dec 2016 13:27:45 -0500
+MIME-Version: 1.0
+In-Reply-To: <70eeb75e-e48f-fb0a-a690-1c6c8cb0ede4@pocock.pro>
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-DELEGRETURN will always carry a reference to the inode except when
-the latter is being freed, so let's ensure that we always use that
-inode information to ensure close-to-open cache consistency, even
-when the DELEGRETURN call is asynchronous.
+Hello, 
 
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
----
- fs/nfs/nfs4proc.c | 5 +----
- 1 file changed, 1 insertion(+), 4 deletions(-)
+Could up please resubmit this patch with the
+proper patch description (basically what 
+problem you are fixing) and a proper 
+ Signed-off-by: line.
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 2e0816cb7136..58e3d5f627f2 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -5702,6 +5702,7 @@ static void nfs4_delegreturn_release(void *calldata)
- 		if (data->lr.roc)
- 			pnfs_roc_release(&data->lr.arg, &data->lr.res,
- 					data->res.lr_ret);
-+		nfs_post_op_update_inode_force_wcc(inode, &data->fattr);
- 		nfs_iput_and_deactive(inode);
- 	}
- 	kfree(calldata);
-@@ -5790,10 +5791,6 @@ static int _nfs4_proc_delegreturn(struct inode *inode, struct rpc_cred *cred, co
- 	if (status != 0)
- 		goto out;
- 	status = data->rpc_status;
--	if (status == 0)
--		nfs_post_op_update_inode_force_wcc(inode, &data->fattr);
--	else
--		nfs_refresh_inode(inode, &data->fattr);
- out:
- 	rpc_put_task(task);
- 	return status;
--- 
-2.9.3
+steved.
 
+On 12/17/2016 06:00 AM, Daniel Pocock wrote:
+> 
+> 
+> The current script uses fd 200, doesn't work for every possible shell as
+> reported[1] in Debian bug #848277
+> 
+> We are including a patch for it in the 1.3.4-2 package, it would be good
+> to incorporate this patch upstream too.
+> 
+> Regards,
+> 
+> Daniel
+> 
+> 
+> 1. https://bugs.debian.org/848277
+> 
