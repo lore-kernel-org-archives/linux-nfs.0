@@ -1,70 +1,105 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from us-smtp-delivery-194.mimecast.com ([63.128.21.194]:57114 "EHLO
-        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S932392AbcLSRbC (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 19 Dec 2016 12:31:02 -0500
-From: Trond Myklebust <trondmy@primarydata.com>
-To: Anna Schumaker <schumaker.anna@gmail.com>
-CC: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Received: from mail-it0-f68.google.com ([209.85.214.68]:36644 "EHLO
+        mail-it0-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1752902AbcLSTGf (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 19 Dec 2016 14:06:35 -0500
+Received: by mail-it0-f68.google.com with SMTP id n68so11372651itn.3
+        for <linux-nfs@vger.kernel.org>; Mon, 19 Dec 2016 11:06:34 -0800 (PST)
 Subject: Re: [PATCH 1/9] NFSv4: Don't invalidate the directory twice
-Date: Mon, 19 Dec 2016 17:30:54 +0000
-Message-ID: <3F416215-12B3-4C05-B595-752A80C32477@primarydata.com>
+To: Trond Myklebust <trondmy@primarydata.com>
 References: <20161217182711.10643-1-trond.myklebust@primarydata.com>
  <20161217182711.10643-2-trond.myklebust@primarydata.com>
  <2099263b-3d8e-f237-3dd8-50dc0f63fb3e@gmail.com>
  <DBC3F2C7-BF49-4209-B403-AAEB68D0A96A@primarydata.com>
  <bc1eca55-4193-0774-054a-9047a2fdb64e@gmail.com>
-In-Reply-To: <bc1eca55-4193-0774-054a-9047a2fdb64e@gmail.com>
+ <3F416215-12B3-4C05-B595-752A80C32477@primarydata.com>
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+From: Anna Schumaker <schumaker.anna@gmail.com>
+Message-ID: <4b60d447-e476-dea3-a96e-401e6dfdc63e@gmail.com>
+Date: Mon, 19 Dec 2016 14:05:52 -0500
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+In-Reply-To: <3F416215-12B3-4C05-B595-752A80C32477@primarydata.com>
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-DQo+IE9uIERlYyAxOSwgMjAxNiwgYXQgMTI6MDcsIEFubmEgU2NodW1ha2VyIDxzY2h1bWFrZXIu
-YW5uYUBnbWFpbC5jb20+IHdyb3RlOg0KPiANCj4gDQo+IA0KPiBPbiAxMi8xOS8yMDE2IDExOjU2
-IEFNLCBUcm9uZCBNeWtsZWJ1c3Qgd3JvdGU6DQo+PiBXaGF04oCZcyB0aGUgZmlsZXN5c3RlbSB5
-b3XigJlyZSB0ZXN0aW5nIG9uPw0KPiANCj4gSSBzZWUgdGhpcyBvbiB4ZnMgYW5kIGV4dDQgYnV0
-IGJ0cmZzIHNlZW1zIHRvIHdvcmsuICBXaGF0IGRvIHlvdSBtZWFuIGJ5IHRpbWVzdGFtcCByZXNv
-bHV0aW9uPyAgSSBjYW4ndCBmaW5kIHRoZSBmaWxlIGluIHF1ZXN0aW9uIGluIGBsc2AsIGJ1dCBm
-b3IgYW5vdGhlciBmaWxlIGBzdGF0YCB0ZWxscyBtZToNCj4gDQo+ICBGaWxlOiBmaWxlLjEwDQo+
-ICBTaXplOiAwICAgICAgICAgICAgICAgQmxvY2tzOiAwICAgICAgICAgIElPIEJsb2NrOiA0MDk2
-ICAgcmVndWxhciBlbXB0eSBmaWxlDQo+IERldmljZTogZmUzMWgvNjUwNzNkICAgIElub2RlOiAx
-MzE5Nzk1ICAgICBMaW5rczogMQ0KPiBBY2Nlc3M6ICgwNjY2Ly1ydy1ydy1ydy0pICBVaWQ6ICgg
-MTAwMC8gICAgYW5uYSkgICBHaWQ6ICggIDEwMC8gICB1c2VycykNCj4gQWNjZXNzOiAyMDE2LTEy
-LTE5IDEyOjA0OjQ3LjY4MDAzMzg3NyAtMDUwMA0KPiBNb2RpZnk6IDIwMTYtMTItMTkgMTI6MDQ6
-NDcuNjgwMDMzODc3IC0wNTAwDQo+IENoYW5nZTogMjAxNi0xMi0xOSAxMjowNDo0Ny42ODAwMzM4
-NzcgLTA1MDANCg0KSSBtZWFuIHRoYXQgdGhlIHRpbWVzdGFtcHMgYXBwZWFyIHRvIGJlIHVuYWJs
-ZSB0byBrZWVwIHVwIHdpdGggdGhlIHZvbHVtZSBvZiBjaGFuZ2VzIG9uIHRoZSBmaWxlc3lzdGVt
-LiBJZiB0aGUgY3Rob24gdGVzdCBpcyBmYWlsaW5nIGhlcmUsIHRoZW4gaXTigJlzIHByb2JhYmx5
-IGJlY2F1c2UgdGhlIGJlZm9yZS9hZnRlciBjaGFuZ2UgYXR0cmlidXRlcyBhcmUgdGhlIHNhbWXi
-gKYgRG9lcyB3aXJlc2hhcmsgc2hvdyB0aGF0IHRoZSBiZWZvcmUvYWZ0ZXIgY2hhbmdlIGF0dHJp
-YnV0ZXMgb24gdGhpcyBkaXJlY3RvcnkgYXJlIGRpZmZlcmVudD8NCg0KPiANCj4gSSBob3BlIHRo
-aXMgaGVscHMhDQo+IEFubmENCj4+IA0KPj4+IE9uIERlYyAxOSwgMjAxNiwgYXQgMTE6NTQsIEFu
-bmEgU2NodW1ha2VyIDxzY2h1bWFrZXIuYW5uYUBnbWFpbC5jb20+IHdyb3RlOg0KPj4+IA0KPj4+
-IEhpIFRyb25kLA0KPj4+IA0KPj4+IE9uIDEyLzE3LzIwMTYgMDE6MjcgUE0sIFRyb25kIE15a2xl
-YnVzdCB3cm90ZToNCj4+Pj4gSWYgYW4gb3BlcmF0aW9uIHRoYXQgbW9kaWZpZWQgdGhlIGRpcmVj
-dG9yeSByYWNlZCB3aXRoIGEgR0VUQVRUUiwgdGhlbiB3ZQ0KPj4+PiBkb24ndCBuZWVkIHRvIGlu
-dmFsaWRhdGUgdGhlIGRpcmVjdG9yeSBjYWNoZSBtb3JlIHRoYW4gb25jZS4NCj4+PiANCj4+PiBU
-aGlzIHBhdGNoIGNhdXNlcyBjdGhvbiBiYXNpYyB0ZXN0cyB0byBmYWlsIHdpdGg6DQo+Pj4gDQo+
-Pj4gLi90ZXN0NjogcmVhZGRpcg0KPj4+ICAgICAgIC4vdGVzdDY6ICgvbmZzL2FsbCkgdW5saW5r
-ZWQgJ2ZpbGUuMCcgZGlyIGVudHJ5IHJlYWQgcGFzcyAxDQo+Pj4gICAgICAgLi90ZXN0NjogKC9u
-ZnMvYWxsKSBUZXN0IGZhaWxlZCB3aXRoIDEgZXJyb3JzDQo+Pj4gYmFzaWMgdGVzdHMgZmFpbGVk
-DQo+Pj4gDQo+Pj4gVGhhbmtzLA0KPj4+IEFubmENCj4+Pj4gDQo+Pj4+IFNpZ25lZC1vZmYtYnk6
-IFRyb25kIE15a2xlYnVzdCA8dHJvbmQubXlrbGVidXN0QHByaW1hcnlkYXRhLmNvbT4NCj4+Pj4g
-LS0tDQo+Pj4+IGZzL25mcy9uZnM0cHJvYy5jIHwgMyArKysNCj4+Pj4gMSBmaWxlIGNoYW5nZWQs
-IDMgaW5zZXJ0aW9ucygrKQ0KPj4+PiANCj4+Pj4gZGlmZiAtLWdpdCBhL2ZzL25mcy9uZnM0cHJv
-Yy5jIGIvZnMvbmZzL25mczRwcm9jLmMNCj4+Pj4gaW5kZXggZDMzMjQyYzhkOTVkLi43MTM5MzI0
-NDBlMDcgMTAwNjQ0DQo+Pj4+IC0tLSBhL2ZzL25mcy9uZnM0cHJvYy5jDQo+Pj4+ICsrKyBiL2Zz
-L25mcy9uZnM0cHJvYy5jDQo+Pj4+IEBAIC0xMDg4LDEyICsxMDg4LDE1IEBAIHN0YXRpYyB2b2lk
-IHVwZGF0ZV9jaGFuZ2VhdHRyKHN0cnVjdCBpbm9kZSAqZGlyLCBzdHJ1Y3QgbmZzNF9jaGFuZ2Vf
-aW5mbyAqY2luZm8pDQo+Pj4+IAlzdHJ1Y3QgbmZzX2lub2RlICpuZnNpID0gTkZTX0koZGlyKTsN
-Cj4+Pj4gDQo+Pj4+IAlzcGluX2xvY2soJmRpci0+aV9sb2NrKTsNCj4+Pj4gKwlpZiAoZGlyLT5p
-X3ZlcnNpb24gPT0gY2luZm8tPmFmdGVyKQ0KPj4+PiArCQlnb3RvIG91dDsNCj4+Pj4gCW5mc2kt
-PmNhY2hlX3ZhbGlkaXR5IHw9IE5GU19JTk9fSU5WQUxJRF9BVFRSfE5GU19JTk9fSU5WQUxJRF9E
-QVRBOw0KPj4+PiAJaWYgKCFjaW5mby0+YXRvbWljIHx8IGNpbmZvLT5iZWZvcmUgIT0gZGlyLT5p
-X3ZlcnNpb24pDQo+Pj4+IAkJbmZzX2ZvcmNlX2xvb2t1cF9yZXZhbGlkYXRlKGRpcik7DQo+Pj4+
-IAlkaXItPmlfdmVyc2lvbiA9IGNpbmZvLT5hZnRlcjsNCj4+Pj4gCW5mc2ktPmF0dHJfZ2VuY291
-bnQgPSBuZnNfaW5jX2F0dHJfZ2VuZXJhdGlvbl9jb3VudGVyKCk7DQo+Pj4+IAluZnNfZnNjYWNo
-ZV9pbnZhbGlkYXRlKGRpcik7DQo+Pj4+ICtvdXQ6DQo+Pj4+IAlzcGluX3VubG9jaygmZGlyLT5p
-X2xvY2spOw0KPj4+PiB9DQo+Pj4+IA0KPj4+PiANCj4+PiANCj4+IA0KPiANCg0K
 
+
+On 12/19/2016 12:30 PM, Trond Myklebust wrote:
+> 
+>> On Dec 19, 2016, at 12:07, Anna Schumaker <schumaker.anna@gmail.com> wrote:
+>>
+>>
+>>
+>> On 12/19/2016 11:56 AM, Trond Myklebust wrote:
+>>> What’s the filesystem you’re testing on?
+>>
+>> I see this on xfs and ext4 but btrfs seems to work.  What do you mean by timestamp resolution?  I can't find the file in question in `ls`, but for another file `stat` tells me:
+>>
+>>  File: file.10
+>>  Size: 0               Blocks: 0          IO Block: 4096   regular empty file
+>> Device: fe31h/65073d    Inode: 1319795     Links: 1
+>> Access: (0666/-rw-rw-rw-)  Uid: ( 1000/    anna)   Gid: (  100/   users)
+>> Access: 2016-12-19 12:04:47.680033877 -0500
+>> Modify: 2016-12-19 12:04:47.680033877 -0500
+>> Change: 2016-12-19 12:04:47.680033877 -0500
+> 
+> I mean that the timestamps appear to be unable to keep up with the volume of changes on the filesystem. If the cthon test is failing here, then it’s probably because the before/after change attributes are the same… Does wireshark show that the before/after change attributes on this directory are different?
+
+Ah, that's what you mean.  Yes, Wireshark does show the same values for before and after changeids.
+
+Anna
+
+> 
+>>
+>> I hope this helps!
+>> Anna
+>>>
+>>>> On Dec 19, 2016, at 11:54, Anna Schumaker <schumaker.anna@gmail.com> wrote:
+>>>>
+>>>> Hi Trond,
+>>>>
+>>>> On 12/17/2016 01:27 PM, Trond Myklebust wrote:
+>>>>> If an operation that modified the directory raced with a GETATTR, then we
+>>>>> don't need to invalidate the directory cache more than once.
+>>>>
+>>>> This patch causes cthon basic tests to fail with:
+>>>>
+>>>> ./test6: readdir
+>>>>       ./test6: (/nfs/all) unlinked 'file.0' dir entry read pass 1
+>>>>       ./test6: (/nfs/all) Test failed with 1 errors
+>>>> basic tests failed
+>>>>
+>>>> Thanks,
+>>>> Anna
+>>>>>
+>>>>> Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+>>>>> ---
+>>>>> fs/nfs/nfs4proc.c | 3 +++
+>>>>> 1 file changed, 3 insertions(+)
+>>>>>
+>>>>> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+>>>>> index d33242c8d95d..713932440e07 100644
+>>>>> --- a/fs/nfs/nfs4proc.c
+>>>>> +++ b/fs/nfs/nfs4proc.c
+>>>>> @@ -1088,12 +1088,15 @@ static void update_changeattr(struct inode *dir, struct nfs4_change_info *cinfo)
+>>>>> 	struct nfs_inode *nfsi = NFS_I(dir);
+>>>>>
+>>>>> 	spin_lock(&dir->i_lock);
+>>>>> +	if (dir->i_version == cinfo->after)
+>>>>> +		goto out;
+>>>>> 	nfsi->cache_validity |= NFS_INO_INVALID_ATTR|NFS_INO_INVALID_DATA;
+>>>>> 	if (!cinfo->atomic || cinfo->before != dir->i_version)
+>>>>> 		nfs_force_lookup_revalidate(dir);
+>>>>> 	dir->i_version = cinfo->after;
+>>>>> 	nfsi->attr_gencount = nfs_inc_attr_generation_counter();
+>>>>> 	nfs_fscache_invalidate(dir);
+>>>>> +out:
+>>>>> 	spin_unlock(&dir->i_lock);
+>>>>> }
+>>>>>
+>>>>>
+>>>>
+>>>
+>>
+> 
