@@ -1,150 +1,180 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:45093 "EHLO mx2.suse.de"
+Received: from mx1.redhat.com ([209.132.183.28]:52424 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1755149AbcLSJhC (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 19 Dec 2016 04:37:02 -0500
-Date: Fri, 16 Dec 2016 09:43:41 +0100
-From: Jan Kara <jack@suse.cz>
-To: Michal Hocko <mhocko@kernel.org>
-Cc: linux-mm@kvack.org, linux-fsdevel@vger.kernel.org,
-        Andrew Morton <akpm@linux-foundation.org>,
-        Dave Chinner <david@fromorbit.com>, "Theodore Ts'o" <tytso@mit.edu>,
-        Chris Mason <clm@fb.com>, David Sterba <dsterba@suse.cz>,
-        Jan Kara <jack@suse.cz>, ceph-devel@vger.kernel.org,
-        cluster-devel@redhat.com, linux-nfs@vger.kernel.org, logfs@logfs.org,
-        linux-xfs@vger.kernel.org, linux-ext4@vger.kernel.org,
-        linux-btrfs@vger.kernel.org, linux-mtd@lists.infradead.org,
-        reiserfs-devel@vger.kernel.org, linux-ntfs-dev@lists.sourceforge.net,
-        linux-f2fs-devel@lists.sourceforge.net, linux-afs@lists.infradead.org,
-        LKML <linux-kernel@vger.kernel.org>, Michal Hocko <mhocko@suse.com>
-Subject: Re: [PATCH 9/9] Revert "ext4: fix wrong gfp type under transaction"
-Message-ID: <20161216084341.GG26608@quack2.suse.cz>
-References: <20161215140715.12732-1-mhocko@kernel.org>
- <20161215140715.12732-10-mhocko@kernel.org>
+        id S1752724AbcLSKEH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 19 Dec 2016 05:04:07 -0500
+Date: Mon, 19 Dec 2016 18:04:04 +0800
+From: Eryu Guan <eguan@redhat.com>
+To: Anna Schumaker <Anna.Schumaker@Netapp.com>
+Cc: fstests@vger.kernel.org, linux-nfs@vger.kernel.org, hch@infradead.org,
+        darrick.wong@oracle.com
+Subject: Re: [PATCH v4 1/5] generic/392: Add copy to new file test
+Message-ID: <20161219100404.GD1859@eguan.usersys.redhat.com>
+References: <20161208184909.23321-1-Anna.Schumaker@Netapp.com>
+ <20161208184909.23321-2-Anna.Schumaker@Netapp.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20161215140715.12732-10-mhocko@kernel.org>
+In-Reply-To: <20161208184909.23321-2-Anna.Schumaker@Netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu 15-12-16 15:07:15, Michal Hocko wrote:
-> From: Michal Hocko <mhocko@suse.com>
-> 
-> This reverts commit 216553c4b7f3e3e2beb4981cddca9b2027523928. Now that
-> the transaction context uses memalloc_nofs_save and all allocations
-> within the this context inherit GFP_NOFS automatically, there is no
-> reason to mark specific allocations explicitly.
-> 
-> This patch should not introduce any functional change. The main point
-> of this change is to reduce explicit GFP_NOFS usage inside ext4 code
-> to make the review of the remaining usage easier.
-> 
-> Signed-off-by: Michal Hocko <mhocko@suse.com>
+Hi Anna,
 
-Looks good to me. You can add:
+On Thu, Dec 08, 2016 at 01:49:04PM -0500, Anna Schumaker wrote:
+> This test copies data from various points in a source file to a new
+> file.  This is useful for testing the basics of copy_file_range().
+> 
+> Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
 
-Reviewed-by: Jan Kara <jack@suse.cz>
+Sorry for the late review. I tested this patchset on 4.9 kernel and
+xfs_io with your return code fix applied.
 
-								Honza
+I met some common failures/behaviors in these tests, so I only comment
+on this patch.
 
 > ---
->  fs/ext4/acl.c     | 6 +++---
->  fs/ext4/extents.c | 2 +-
->  fs/ext4/resize.c  | 4 ++--
->  fs/ext4/xattr.c   | 4 ++--
->  4 files changed, 8 insertions(+), 8 deletions(-)
+>  common/rc             |   6 +++
+>  tests/generic/392     | 102 ++++++++++++++++++++++++++++++++++++++++++++++++++
+>  tests/generic/392.out |  26 +++++++++++++
+>  tests/generic/group   |   1 +
+>  4 files changed, 135 insertions(+)
+>  create mode 100755 tests/generic/392
+>  create mode 100644 tests/generic/392.out
 > 
-> diff --git a/fs/ext4/acl.c b/fs/ext4/acl.c
-> index fd389935ecd1..9e98092c2a4b 100644
-> --- a/fs/ext4/acl.c
-> +++ b/fs/ext4/acl.c
-> @@ -32,7 +32,7 @@ ext4_acl_from_disk(const void *value, size_t size)
->  		return ERR_PTR(-EINVAL);
->  	if (count == 0)
->  		return NULL;
-> -	acl = posix_acl_alloc(count, GFP_NOFS);
-> +	acl = posix_acl_alloc(count, GFP_KERNEL);
->  	if (!acl)
->  		return ERR_PTR(-ENOMEM);
->  	for (n = 0; n < count; n++) {
-> @@ -94,7 +94,7 @@ ext4_acl_to_disk(const struct posix_acl *acl, size_t *size)
->  
->  	*size = ext4_acl_size(acl->a_count);
->  	ext_acl = kmalloc(sizeof(ext4_acl_header) + acl->a_count *
-> -			sizeof(ext4_acl_entry), GFP_NOFS);
-> +			sizeof(ext4_acl_entry), GFP_KERNEL);
->  	if (!ext_acl)
->  		return ERR_PTR(-ENOMEM);
->  	ext_acl->a_version = cpu_to_le32(EXT4_ACL_VERSION);
-> @@ -159,7 +159,7 @@ ext4_get_acl(struct inode *inode, int type)
->  	}
->  	retval = ext4_xattr_get(inode, name_index, "", NULL, 0);
->  	if (retval > 0) {
-> -		value = kmalloc(retval, GFP_NOFS);
-> +		value = kmalloc(retval, GFP_KERNEL);
->  		if (!value)
->  			return ERR_PTR(-ENOMEM);
->  		retval = ext4_xattr_get(inode, name_index, "", value, retval);
-> diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-> index ef815eb72389..c901d89f0038 100644
-> --- a/fs/ext4/extents.c
-> +++ b/fs/ext4/extents.c
-> @@ -2933,7 +2933,7 @@ int ext4_ext_remove_space(struct inode *inode, ext4_lblk_t start,
->  				le16_to_cpu(path[k].p_hdr->eh_entries)+1;
->  	} else {
->  		path = kzalloc(sizeof(struct ext4_ext_path) * (depth + 1),
-> -			       GFP_NOFS);
-> +			       GFP_KERNEL);
->  		if (path == NULL) {
->  			ext4_journal_stop(handle);
->  			return -ENOMEM;
-> diff --git a/fs/ext4/resize.c b/fs/ext4/resize.c
-> index cf681004b196..e121f4e048b8 100644
-> --- a/fs/ext4/resize.c
-> +++ b/fs/ext4/resize.c
-> @@ -816,7 +816,7 @@ static int add_new_gdb(handle_t *handle, struct inode *inode,
->  
->  	n_group_desc = ext4_kvmalloc((gdb_num + 1) *
->  				     sizeof(struct buffer_head *),
-> -				     GFP_NOFS);
-> +				     GFP_KERNEL);
->  	if (!n_group_desc) {
->  		err = -ENOMEM;
->  		ext4_warning(sb, "not enough memory for %lu groups",
-> @@ -943,7 +943,7 @@ static int reserve_backup_gdb(handle_t *handle, struct inode *inode,
->  	int res, i;
->  	int err;
->  
-> -	primary = kmalloc(reserved_gdb * sizeof(*primary), GFP_NOFS);
-> +	primary = kmalloc(reserved_gdb * sizeof(*primary), GFP_KERNEL);
->  	if (!primary)
->  		return -ENOMEM;
->  
-> diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
-> index 5a94fa52b74f..172317462238 100644
-> --- a/fs/ext4/xattr.c
-> +++ b/fs/ext4/xattr.c
-> @@ -875,7 +875,7 @@ ext4_xattr_block_set(handle_t *handle, struct inode *inode,
->  
->  			unlock_buffer(bs->bh);
->  			ea_bdebug(bs->bh, "cloning");
-> -			s->base = kmalloc(bs->bh->b_size, GFP_NOFS);
-> +			s->base = kmalloc(bs->bh->b_size, GFP_KERNEL);
->  			error = -ENOMEM;
->  			if (s->base == NULL)
->  				goto cleanup;
-> @@ -887,7 +887,7 @@ ext4_xattr_block_set(handle_t *handle, struct inode *inode,
->  		}
->  	} else {
->  		/* Allocate a buffer where we construct the new block. */
-> -		s->base = kzalloc(sb->s_blocksize, GFP_NOFS);
-> +		s->base = kzalloc(sb->s_blocksize, GFP_KERNEL);
->  		/* assert(header == s->base) */
->  		error = -ENOMEM;
->  		if (s->base == NULL)
-> -- 
-> 2.10.2
-> 
--- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+> diff --git a/common/rc b/common/rc
+> index 8c99306..7c5d2a8 100644
+> --- a/common/rc
+> +++ b/common/rc
+> @@ -2054,6 +2054,12 @@ _require_xfs_io_command()
+>  	"chproj")
+>  		testio=`$XFS_IO_PROG -F -f -c "chproj 0" $testfile 2>&1`
+>  		;;
+> +	"copy_range")
+> +		testcopy=$TEST_DIR/$$.copy.xfs_io
+> +		$XFS_IO_PROG -F -f -c "pwrite 0 4k" $testfile 2>&1 > /dev/null
+> +		testio=`$XFS_IO_PROG -F -f -c "copy_range $testfile" $testcopy 2>&1`
+> +		rm -f $testcopy 2>&1 > /dev/null
+> +		;;
+>  	"falloc" )
+>  		testio=`$XFS_IO_PROG -F -f -c "falloc 0 1m" $testfile 2>&1`
+>  		;;
+
+This is not able to _notrun as expect on a kernel without
+copy_file_range syscall support, e.g. 4.4 kernel, xfs_io reports
+"+copy_range: Function not implemented"
+
+I think we need a new check on $testio after the case switch, e.g.
+
+echo $testio | grep -q "not implemented" \
+	&& _notrun "xfs_io $command is not implemented in kernel"
+
+> diff --git a/tests/generic/392 b/tests/generic/392
+> new file mode 100755
+> index 0000000..466643a
+> --- /dev/null
+> +++ b/tests/generic/392
+> @@ -0,0 +1,102 @@
+> +#!/bin/bash
+> +# FS QA Test No. 392
+> +#
+> +# Tests vfs_copy_file_range():
+> +#   - Copy a file
+> +#   - Copy beginning of original to new file
+> +#   - Copy middle of original to a new file
+> +#   - Copy end of original to new file
+> +#   - Copy middle of original to a new file, creating a hole
+> +#-----------------------------------------------------------------------
+> +# Copyright (c) 2016 Netapp, Inc. All rights reserved.
+> +#
+> +# This program is free software; you can redistribute it and/or
+> +# modify it under the terms of the GNU General Public License as
+> +# published by the Free Software Foundation.
+> +#
+> +# This program is distributed in the hope that it would be useful,
+> +# but WITHOUT ANY WARRANTY; without even the implied warranty of
+> +# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+> +# GNU General Public License for more details.
+> +#
+> +# You should have received a copy of the GNU General Public License
+> +# along with this program; if not, write the Free Software Foundation,
+> +# Inc.,  51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+> +#-----------------------------------------------------------------------
+> +#
+> +
+> +seq=`basename $0`
+> +seqres=$RESULT_DIR/$seq
+> +echo "QA output created by $seq"
+> +
+> +here=`pwd`
+> +tmp=/tmp/$$
+> +status=1    # failure is the default!
+> +trap "_cleanup; exit \$status" 0 1 2 3 15
+> +
+> +_cleanup()
+> +{
+> +	cd /
+> +	rm -rf $tmp.*
+> +}
+> +
+> +# get standard environment
+> +. common/rc
+> +. common/filter
+> +
+> +# real QA test starts here
+> +_supported_fs generic
+> +_supported_os Linux
+> +
+> +_require_xfs_io_command "copy_range"
+> +_require_test
+> +
+> +testdir=$TEST_DIR/test-$seq
+> +rm -rf $testdir
+> +mkdir $testdir
+> +rm -f $seqres.full
+> +
+> +echo "Create the original file and then copy"
+> +$XFS_IO_PROG -f -c 'pwrite -S 0x61 0    1000' $testdir/file >> $seqres.full 2>&1
+> +$XFS_IO_PROG -f -c 'pwrite -S 0x62 1000 1000' $testdir/file >> $seqres.full 2>&1
+> +$XFS_IO_PROG -f -c 'pwrite -S 0x63 2000 1000' $testdir/file >> $seqres.full 2>&1
+> +$XFS_IO_PROG -f -c 'pwrite -S 0x64 3000 1000' $testdir/file >> $seqres.full 2>&1
+> +$XFS_IO_PROG -f -c 'pwrite -S 0x65 4000 1000' $testdir/file >> $seqres.full 2>&1
+> +$XFS_IO_PROG -f -c "copy_range $testdir/file" "$testdir/copy"
+> +cmp $testdir/file $testdir/copy
+> +echo "Original md5sums:"
+> +md5sum $testdir/{file,copy} | _filter_test_dir
+> +
+> +echo "Copy beginning of original file"
+> +$XFS_IO_PROG -f -c "copy_range -l 1000 $testdir/file" "$testdir/beginning"
+> +cmp -n 1000 $testdir/file $testdir/beginning
+> +echo "md5sums after copying beginning:"
+> +md5sum $testdir/{file,beginning} | _filter_test_dir
+> +
+> +echo "Copy middle of original file"
+> +$XFS_IO_PROG -f -c "copy_range -s 1000 -l 3000 $testdir/file" "$testdir/middle"
+> +cmp -n 3000 $testdir/file $testdir/middle 1000
+> +echo "md5sums after copying middle:"
+> +md5sum $testdir/{file,middle} | _filter_test_dir
+> +
+> +echo "Copy end of original file"
+> +$XFS_IO_PROG -f -c "copy_range -s 4000 -l 1000 $testdir/file" "$testdir/end"
+> +cmp -n 1000 $testdir/file $testdir/end 4000
+> +echo "md5sums after copying end:"
+> +md5sum $testdir/{file,end} | _filter_test_dir
+> +
+> +echo "Copy beyond end of original file"
+> +$XFS_IO_PROG -f -c "copy_range -s 4000 -l 2000 $testdir/file" "$testdir/beyond"
+
+This didn't return EINVAL for me on xfs, ext4 and NFS, btrfs reported
+EINVAL but it failed cmp and md5sum test at many other places. What is
+the expected behavior?
+
+generic/393 and generic/396 failed in a similar way, missing
+"copy_range: Invalid argument" in the test output.
+
+And seems copy_range -l option doesn't work well with xfs reflink
+enabled? I saw many EINVALs when testing reflink enabled xfs, all these
+5 tests failed. Kernel bug or xfs_io bug or we just want to _notrun on
+reflink xfs?
+
+Thanks,
+Eryu
