@@ -1,109 +1,93 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx144.netapp.com ([216.240.21.25]:18956 "EHLO mx144.netapp.com"
+Received: from mx143.netapp.com ([216.240.21.24]:14647 "EHLO mx143.netapp.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1753093AbcLSX5f (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 19 Dec 2016 18:57:35 -0500
+        id S1753280AbcLSX5g (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 19 Dec 2016 18:57:36 -0500
 From: <andros@netapp.com>
 To: <bfields@fieldes.org>
 CC: <neilb@suse.de>, <linux-nfs@vger.kernel.org>,
-        Andy Adamson <andros@rhel7-2-ga-2.androsad.fake>
-Subject: [PATCH Version 3] SVCAUTH update the rsc cacue on RPC_GSS_PROC_DESTROY
-Date: Mon, 19 Dec 2016 18:55:49 -0500
-Message-ID: <1482191750-18303-1-git-send-email-andros@netapp.com>
+        Andy Adamson <andros@netapp.com>
+Subject: [PATCH Version 3] SVCAUTH update the rsc cache on RPC_GSS_PROC_DESTROY
+Date: Mon, 19 Dec 2016 18:55:50 -0500
+Message-ID: <1482191750-18303-2-git-send-email-andros@netapp.com>
+In-Reply-To: <1482191750-18303-1-git-send-email-andros@netapp.com>
+References: <1482191750-18303-1-git-send-email-andros@netapp.com>
 MIME-Version: 1.0
 Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Andy Adamson <andros@rhel7-2-ga-2.androsad.fake>
+From: Andy Adamson <andros@netapp.com>
 
-I instrumented cache_get, cache_put, cache_clean, svcauth_cache_lookup
-and svcauth_gss_accept.
+The rsc cache code operates in a read_lock/write_lock environment.
+Changes to a cache entry should use the provided rsc_update
+routine which takes the write_lock.
 
-Then I mounted -o sec=krb5, listed the mount directory, and umounted.
+The current code sets the expiry_time and the CACHE_NEGATIVE flag
+without taking the write_lock as it does not call rsc_update.
+Without this patch, while cache_clean sees the entries to be
+removed, it does not remove the rsc_entries. This is because
+rsc_update sets other fields in the entry to properly trigger
+cache_clean.
 
-CASE 1: Here is the instrumented output without the patch:
+Cache_clean takes the write_lock to remove expired or invalid
+entries from the cache_list and calls cache_put on the entry.
 
-svcauth_gss_accept gc_proc 3 rq_proc 0  (process RPC_GSS_PROC_DESTROY)
---> sunrpc_cache_lookup from rsc_lookup key ffffc90002b9bc58 hash 940
-sunrpc_cache_lookup 1 calling cache_get key ffffc90002b9bc58 tmp
-ffff880079b3f500
---> cache_get h ffff880079b3f500 refcount 1
-sunrpc_cache_lookup RETURN 1  key ffffc90002b9bc58 tmp ffff880079b3f500
---> rsc_free h ffffc90002b9bc58
+Looking at sunrpc_cache_update, what we want is to invalidate the
+cache entry, so that it is direclty replaced which means that
+update_rsc is called. We pass in a new zero'ed rsc cache entry
+to rsc_update with an expiry_time set to 0 along with the
+invalidatedcache entry to be destroyed.
 
-&rsci->h is ffff880079b3f500, which identifies the cache entry we want
-destroyed.
+The cache_put at the end of svcauth_gss_accept processing drops
+the reference count to 1 which allows the cache_put called by
+cache_clean to result in a call to rsc_put and rsc_free
+to reap the entry after it has been removed from the cache_list
+under the write_lock.
 
-Case: RPC_GSS_PROC_DESTROY:
-svcauth_gss_accept RPC_GSS_PROC_DESTROY h ffff880079b3f500 ref 2
-expiry 1481823331 <<<<<
-svcauth_gss_accept AFTER SETTING h ffff880079b3f500 expiry 1481819736   <<<<<<<
+Signed-off-by: Andy Adamson <andros@netapp.com>
+---
+ net/sunrpc/auth_gss/svcauth_gss.c | 18 +++++++++++++++---
+ 1 file changed, 15 insertions(+), 3 deletions(-)
 
-Note: expiry_time (and CACHE_NEGATIVE) are set.
-
-END of svcauth_gss_accept:
-svcauth_gss_accept END calling cache_put h ffff880079b3f500
---> cache_put h ffff880079b3f500 refcount 2 cd->cache_put ffffffffa045c180
-Dec 15 11:35:36 rhel7-2-ga-2 kernel: <-- cache_put h ffff880079b3f500 refcount 1
-
-refcount is 1, but cache_clean is not setup to reap the entry as
-rsc_update was not called. Besides using the write_lock (which should
-be used for entry changes) rsc_update also sets other fields to
-trigger cache_clean to remove the entry from the cache_list under
-the write_lock and do a final cache_put.
-
-
-cache_clean CLEAN h ffff880079b3e540 h->expiry_time 1481819736 hash 982
-
-The above cache_clean occurs about 45 minutes after the END
-svcauth_gss_accept cache_put.
-
-I waited about 2 hours, and the cache entry was still not reaped
-even though the expiry time was set.
-
-
-CASE 2: Here is the instrumented output with the patch:
-
-svcauth_gss_accept gc_proc 3 rq_proc 0  (process RPC_GSS_PROC_DESTROY)
---> sunrpc_cache_lookup from rsc_lookup key ffffc90002befc30 hash 982
-sunrpc_cache_lookup calling cache_get key ffffc90002befc30 tmp ffff88006fcc6cc0
---> cache_get h ffff88006fcc6cc0 refcount 1
-sunrpc_cache_lookup RETURN 1  key ffffc90002befc30 tmp ffff88006fcc6cc0
---> rsc_free h ffffc90002befc30
-
-&rsci->h is ffff88006fcc6cc0, which identifies the cache entry we want
-destroyed.
-
-Case: RPC_GSS_PROC_DESTROY:
-svcauth_gss_accept RPC_GSS_PROC_DESTROY h ffff88006fcc6cc0 ref 2 
---> rsc_update new h ffffc90002befd18 new ref 0 old h ffff88006fcc6cc0 old ref 2
---> update_rsc new->h ffff88006fcc6cc0 tmp->h ffffc90002befd18
-
-END of svcauth_gss_accept:
-svcauth_gss_accept END calling cache_put h ffff88006fcc6cc0
---> cache_put h ffff88006fcc6cc0 refcount 2 cd->cache_put ffffffffa03cd170
-<-- cache_put h ffff88006fcc6cc0 refcount 1
-
-refcount is 1, setup for cache_clean.
-
-cache_clean CLEAN h ffff88006fcc6cc0 h->expiry_time 0 hash 982
-cache_clean DELETE h ffff88006fcc6cc0 from cache_list
-cache_clean CLEANED calling cache_put h ffff88006fcc6cc0
---> cache_put h ffff88006fcc6cc0 refcount 1 
---> rsc_put PUT h ffff88006fcc6cc0
---> rsc_free h ffff88006fcc6cc0
- <-- cache_put h ffff88006fcc6cc0 refcount 0
-
-The cache entry is destroyed.
-
-
-Andy Adamson (1):
-  SVCAUTH update the rsc cache on RPC_GSS_PROC_DESTROY
-
- net/sunrpc/auth_gss/svcauth_gss.c | 22 +++++++++++++++++++---
- 1 file changed, 19 insertions(+), 3 deletions(-)
-
+diff --git a/net/sunrpc/auth_gss/svcauth_gss.c b/net/sunrpc/auth_gss/svcauth_gss.c
+index 45662d7..b8093da 100644
+--- a/net/sunrpc/auth_gss/svcauth_gss.c
++++ b/net/sunrpc/auth_gss/svcauth_gss.c
+@@ -1409,7 +1409,9 @@ static void destroy_use_gss_proxy_proc_entry(struct net *net) {}
+ 	u32		crlen;
+ 	struct gss_svc_data *svcdata = rqstp->rq_auth_data;
+ 	struct rpc_gss_wire_cred *gc;
+-	struct rsc	*rsci = NULL;
++	struct rsc	*rsci = NULL, new = {
++		.mechctx = 0,
++	};
+ 	__be32		*rpcstart;
+ 	__be32		*reject_stat = resv->iov_base + resv->iov_len;
+ 	int		ret;
+@@ -1489,10 +1491,20 @@ static void destroy_use_gss_proxy_proc_entry(struct net *net) {}
+ 	case RPC_GSS_PROC_DESTROY:
+ 		if (gss_write_verf(rqstp, rsci->mechctx, gc->gc_seq))
+ 			goto auth_err;
+-		rsci->h.expiry_time = get_seconds();
+-		set_bit(CACHE_NEGATIVE, &rsci->h.flags);
++
++		/** Invalidate the cache entry so sunrpc_update_cache
++		 * direclty updates rsci. new->h.expiry_time is zero,
++		 * so rsci->h.expiry_time will be set to zero and 
++		 * cache_clean will properly remove rsci.
++		 */
++		clear_bit(CACHE_VALID, &rsci->h.flags);
++		rsci = rsc_update(sn->rsc_cache, &new, rsci);
++		if (!rsci)
++			goto drop;
++
+ 		if (resv->iov_len + 4 > PAGE_SIZE)
+ 			goto drop;
++
+ 		svc_putnl(resv, RPC_SUCCESS);
+ 		goto complete;
+ 	case RPC_GSS_PROC_DATA:
 -- 
 1.8.3.1
 
