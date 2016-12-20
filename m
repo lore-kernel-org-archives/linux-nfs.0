@@ -1,210 +1,87 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qk0-f195.google.com ([209.85.220.195]:33556 "EHLO
-        mail-qk0-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1758627AbcLTV0Z (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 20 Dec 2016 16:26:25 -0500
-Received: by mail-qk0-f195.google.com with SMTP id n21so6109816qka.0
-        for <linux-nfs@vger.kernel.org>; Tue, 20 Dec 2016 13:26:25 -0800 (PST)
+Received: from ipmail04.adl6.internode.on.net ([150.101.137.141]:28500 "EHLO
+        ipmail04.adl6.internode.on.net" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S934667AbcLTVjJ (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 20 Dec 2016 16:39:09 -0500
+Date: Wed, 21 Dec 2016 08:39:01 +1100
+From: Dave Chinner <david@fromorbit.com>
+To: "Darrick J. Wong" <darrick.wong@oracle.com>
+Cc: Michal Hocko <mhocko@kernel.org>, linux-mm@kvack.org,
+        linux-fsdevel@vger.kernel.org,
+        Andrew Morton <akpm@linux-foundation.org>,
+        "Theodore Ts'o" <tytso@mit.edu>, Chris Mason <clm@fb.com>,
+        David Sterba <dsterba@suse.cz>, Jan Kara <jack@suse.cz>,
+        ceph-devel@vger.kernel.org, cluster-devel@redhat.com,
+        linux-nfs@vger.kernel.org, logfs@logfs.org, linux-xfs@vger.kernel.org,
+        linux-ext4@vger.kernel.org, linux-btrfs@vger.kernel.org,
+        linux-mtd@lists.infradead.org, reiserfs-devel@vger.kernel.org,
+        linux-ntfs-dev@lists.sourceforge.net,
+        linux-f2fs-devel@lists.sourceforge.net, linux-afs@lists.infradead.org,
+        LKML <linux-kernel@vger.kernel.org>, Michal Hocko <mhocko@suse.com>
+Subject: Re: [PATCH 2/9] xfs: introduce and use KM_NOLOCKDEP to silence
+ reclaim lockdep false positives
+Message-ID: <20161220213901.GQ4326@dastard>
+References: <20161215140715.12732-1-mhocko@kernel.org>
+ <20161215140715.12732-3-mhocko@kernel.org>
+ <20161219212413.GN4326@dastard>
+ <20161219220619.GA7296@birch.djwong.org>
 MIME-Version: 1.0
-In-Reply-To: <877f6utimn.fsf@notabene.neil.brown.name>
-References: <1482192030-19219-1-git-send-email-andros@netapp.com>
- <1482192030-19219-2-git-send-email-andros@netapp.com> <87a8brtff9.fsf@notabene.neil.brown.name>
- <CAHVgHyWmi_jJgVS2aord3-+E9QYhcTc8XgLqOYh3UmwikUexrg@mail.gmail.com> <877f6utimn.fsf@notabene.neil.brown.name>
-From: Andy Adamson <androsadamson@gmail.com>
-Date: Tue, 20 Dec 2016 16:26:24 -0500
-Message-ID: <CAHVgHyXSwCiJjK_U3zmXJ4-wGcQHYR0Mp26xHXJ3KjxMD84-cQ@mail.gmail.com>
-Subject: Re: [PATCH Version 3] SVCAUTH update the rsc cache on RPC_GSS_PROC_DESTROY
-To: NeilBrown <neilb@suse.com>
-Cc: "J. Bruce Fields" <bfields@fieldses.org>, Neil Brown <neilb@suse.de>,
-        NFS list <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20161219220619.GA7296@birch.djwong.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Dec 20, 2016 at 4:06 PM, NeilBrown <neilb@suse.com> wrote:
-> On Wed, Dec 21 2016, Andy Adamson wrote:
->
->> On Mon, Dec 19, 2016 at 11:03 PM, NeilBrown <neilb@suse.com> wrote:
->>> On Tue, Dec 20 2016, andros@netapp.com wrote:
->>>
->>>> From: Andy Adamson <andros@netapp.com>
->>>>
->>>> The rsc cache code operates in a read_lock/write_lock environment.
->>>> Changes to a cache entry should use the provided rsc_update
->>>> routine which takes the write_lock.
->>>>
->>>> The current code sets the expiry_time and the CACHE_NEGATIVE flag
->>>> without taking the write_lock as it does not call rsc_update.
->>>> Without this patch, while cache_clean sees the entries to be
->>>> removed, it does not remove the rsc_entries. This is because
->>>> rsc_update sets other fields in the entry to properly trigger
->>>> cache_clean.
->>>>
->>>> Cache_clean takes the write_lock to remove expired or invalid
->>>> entries from the cache_list and calls cache_put on the entry.
->>>>
->>>> Looking at sunrpc_cache_update, what we want is to invalidate the
->>>> cache entry, so that it is direclty replaced which means that
->>>> update_rsc is called. We pass in a new zero'ed rsc cache entry
->>>> to rsc_update with an expiry_time set to 0 along with the
->>>> invalidatedcache entry to be destroyed.
->>>>
->>>> The cache_put at the end of svcauth_gss_accept processing drops
->>>> the reference count to 1 which allows the cache_put called by
->>>> cache_clean to result in a call to rsc_put and rsc_free
->>>> to reap the entry after it has been removed from the cache_list
->>>> under the write_lock.
->>>>
->>>> Signed-off-by: Andy Adamson <andros@netapp.com>
->>>> ---
->>>>  net/sunrpc/auth_gss/svcauth_gss.c | 18 +++++++++++++++---
->>>>  1 file changed, 15 insertions(+), 3 deletions(-)
->>>>
->>>> diff --git a/net/sunrpc/auth_gss/svcauth_gss.c b/net/sunrpc/auth_gss/svcauth_gss.c
->>>> index 45662d7..b8093da 100644
->>>> --- a/net/sunrpc/auth_gss/svcauth_gss.c
->>>> +++ b/net/sunrpc/auth_gss/svcauth_gss.c
->>>> @@ -1409,7 +1409,9 @@ static void destroy_use_gss_proxy_proc_entry(struct net *net) {}
->>>>       u32             crlen;
->>>>       struct gss_svc_data *svcdata = rqstp->rq_auth_data;
->>>>       struct rpc_gss_wire_cred *gc;
->>>> -     struct rsc      *rsci = NULL;
->>>> +     struct rsc      *rsci = NULL, new = {
->>>> +             .mechctx = 0,
->>>> +     };
->>>>       __be32          *rpcstart;
->>>>       __be32          *reject_stat = resv->iov_base + resv->iov_len;
->>>>       int             ret;
->>>> @@ -1489,10 +1491,20 @@ static void destroy_use_gss_proxy_proc_entry(struct net *net) {}
->>>>       case RPC_GSS_PROC_DESTROY:
->>>>               if (gss_write_verf(rqstp, rsci->mechctx, gc->gc_seq))
->>>>                       goto auth_err;
->>>> -             rsci->h.expiry_time = get_seconds();
->>>> -             set_bit(CACHE_NEGATIVE, &rsci->h.flags);
->>>> +
->>>> +             /** Invalidate the cache entry so sunrpc_update_cache
->>>> +              * direclty updates rsci. new->h.expiry_time is zero,
->>>> +              * so rsci->h.expiry_time will be set to zero and
->>>> +              * cache_clean will properly remove rsci.
->>>> +              */
->>>> +             clear_bit(CACHE_VALID, &rsci->h.flags);
->>>
->>> I think this is poor form.  It might work in this particular case, but
->>> in general, clearing CACHE_VALID is the wrong thing to do.
->>
->> Why? That is exactly what an RPC_GSS_PROC_DESTROY message means - the
->> GSS context is invalid and needs be immediately destroyed.
->
-> But that isn't what CACHE_VALID means.
-> If a cache item doesn't have CACHE_VALID set, then it represents
-> a question that hasn't been answered.
-> When it is answered, CACHE_VALID is set, and either CACHE_NEGATIVE is
-> set, or the 'content' fields are filled in.
-> In general, the .cache_put doesn't free the 'content' fields unless
-> CACHE_VALID is set, and CACHE_NEGATIVE is clear.  Consequently setting
-> or clearing these fields needs to be paired with setting or freeing the
-> content.
-> auth_gss doesn't make that distinction and sets or frees everything
-> together so just clearing the flag would probably work.  On other
-> caches it wouldn't, so I'd rather not see it done at all.
->
->>
->> What other mechanism does your cache design provide for this very
->> common AUTH_GSS case?
->
-> There is none.  No other cache requires entries to be individually
-> deleted.
-> That is why I suggested that we could add sunrpc_cache_unhash().
->
->>
->>>
->>> What is the goal here?  Do we want to make sure future lookups for this
->>> entry find a negative entry, or would we be happy for them to fail?
->>
->> No future lookups. No future use. Destroyed. Immediately, and all
->> resources freed.
->
-> In that case, sunrpc_cache_unhash() sounds like something we should do.
->
-> void sunrpc_cache_unhash(struct cache_detail *cd, struct cache_head *h)
-> {
->         write_lock(&detail->hash_lock);
->         if (!hlist_unhashed(&h->cache_list)) {
->                 hlist_del_init(&h->cache_list);
->                 cd->entries--;
->                 write_unlock(&detail->hash_lock);
->                 cache_put(h, cd);
->         } else
->                 write_unlock(&detail->hash_lock);
-> }
->
-> Can you confirm that this does what you need?
+On Mon, Dec 19, 2016 at 02:06:19PM -0800, Darrick J. Wong wrote:
+> On Tue, Dec 20, 2016 at 08:24:13AM +1100, Dave Chinner wrote:
+> > On Thu, Dec 15, 2016 at 03:07:08PM +0100, Michal Hocko wrote:
+> > > From: Michal Hocko <mhocko@suse.com>
+> > > 
+> > > Now that the page allocator offers __GFP_NOLOCKDEP let's introduce
+> > > KM_NOLOCKDEP alias for the xfs allocation APIs. While we are at it
+> > > also change KM_NOFS users introduced by b17cb364dbbb ("xfs: fix missing
+> > > KM_NOFS tags to keep lockdep happy") and use the new flag for them
+> > > instead. There is really no reason to make these allocations contexts
+> > > weaker just because of the lockdep which even might not be enabled
+> > > in most cases.
+> > > 
+> > > Signed-off-by: Michal Hocko <mhocko@suse.com>
+> > 
+> > I'd suggest that it might be better to drop this patch for now -
+> > it's not necessary for the context flag changeover but does
+> > introduce a risk of regressions if the conversion is wrong.
+> 
+> I was just about to write in that while I didn't see anything obviously
+> wrong with the NOFS removals, I also don't know for sure that we can't
+> end up recursively in those code paths (specifically the directory
+> traversal thing).
 
-Sure. I'll use it and let you know.
+The issue is with code paths that can be called from both inside and
+outside transaction context - lockdep complains when it sees an
+allocation path that is used with both GFP_NOFS and GFP_KERNEL
+context, as it doesn't know that the GFP_KERNEL usage is safe or
+not.
 
--->Andy
+So things like the directory buffer path, which can be called from
+readdir without a transaction context, have various KM_NOFS flags
+scattered through it so that lockdep doesn't get all upset every
+time readdir is called...
 
->
-> Thanks,
-> NeilBrown
->
->>
->> Clearing the CACHE_VALID flag and not setting the CACHE_NEGATIVE flag
->> on the does this by updating the entry with a new entry that has a
->> zero expiry_time.
->>
->> sunrpc_cache_update (called by rsc_update)
->>        /* The 'old' entry is to be replaced by 'new'.
->>          * If 'old' is not VALID, we update it directly,
->>          * otherwise we need to replace it
->>          */
->>
->>         struct cache_head *tmp;
->>
->>         if (!test_bit(CACHE_VALID, &old->flags)) {
->>                 write_lock(&detail->hash_lock);
->>                 if (!test_bit(CACHE_VALID, &old->flags)) {
->>                         if (test_bit(CACHE_NEGATIVE, &new->flags))
->>                                 set_bit(CACHE_NEGATIVE, &old->flags);
->>                         else
->>                                 detail->update(old, new);
->> <<<<<<<<<<<<<<<<<<<< goal is to hit this.
->>                         cache_fresh_locked(old, new->expiry_time, detail);
->>                         write_unlock(&detail->hash_lock);
->>                         cache_fresh_unlocked(old, detail);
->>                         return old;
->>
->>                 }
->>                 write_unlock(&detail->hash_lock);
->>         }
->>
->> This also leaves the refcount alone so that at the end of
->> svcauth_gss_processing, the refcount is 1 and cache_clean can properly
->> reap the entry.
->>
->> --Andy
->>
->>>
->>> If they should find a negative entry, then just do the update without
->>> messing with the CACHE_VALID flag.  It will require an allocation, but
->>> that shouldn't be a big cost.
->>>
->>> If you are happy for them to find nothing, the we should write a
->>> sunrpc_cache_unhash() or similar which unlinks an entry from the cache
->>> and decrements its refcount.
->>>
->>> NeilBrown
->>>
->>>
->>>> +             rsci = rsc_update(sn->rsc_cache, &new, rsci);
->>>> +             if (!rsci)
->>>> +                     goto drop;
->>>> +
->>>>               if (resv->iov_len + 4 > PAGE_SIZE)
->>>>                       goto drop;
->>>> +
->>>>               svc_putnl(resv, RPC_SUCCESS);
->>>>               goto complete;
->>>>       case RPC_GSS_PROC_DATA:
->>>> --
->>>> 1.8.3.1
+There are other cases like this - btree manipulation via bunmapi()
+can be called without transaction context to remove delayed alloc
+extents, and that puts all of the btree cursor and  incore extent
+list handling in the same boat (all those allocations are KM_NOFS),
+etc.
+
+So it's not really recursion that is the problem here - it's
+different allocation contexts that lockdep can't know about unless
+it's told about them. We've done that with KM_NOFS in the past; in
+future we should use this KM_NOLOCKDEP flag, though I'd prefer a
+better name for it. e.g. KM_NOTRANS to indicate that the allocation
+can occur both inside and outside of transaction context....
+
+Cheers,
+
+Dave.
+-- 
+Dave Chinner
+david@fromorbit.com
