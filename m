@@ -1,66 +1,62 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-wm0-f66.google.com ([74.125.82.66]:33063 "EHLO
-        mail-wm0-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751245AbcLTIiW (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 20 Dec 2016 03:38:22 -0500
-Date: Tue, 20 Dec 2016 09:38:18 +0100
-From: Michal Hocko <mhocko@kernel.org>
-To: Dave Chinner <david@fromorbit.com>
-Cc: linux-mm@kvack.org, linux-fsdevel@vger.kernel.org,
-        Andrew Morton <akpm@linux-foundation.org>,
-        "Theodore Ts'o" <tytso@mit.edu>, Chris Mason <clm@fb.com>,
-        David Sterba <dsterba@suse.cz>, Jan Kara <jack@suse.cz>,
-        ceph-devel@vger.kernel.org, cluster-devel@redhat.com,
-        linux-nfs@vger.kernel.org, logfs@logfs.org, linux-xfs@vger.kernel.org,
-        linux-ext4@vger.kernel.org, linux-btrfs@vger.kernel.org,
-        linux-mtd@lists.infradead.org, reiserfs-devel@vger.kernel.org,
-        linux-ntfs-dev@lists.sourceforge.net,
-        linux-f2fs-devel@lists.sourceforge.net, linux-afs@lists.infradead.org,
-        LKML <linux-kernel@vger.kernel.org>
-Subject: Re: [PATCH 2/9] xfs: introduce and use KM_NOLOCKDEP to silence
- reclaim lockdep false positives
-Message-ID: <20161220083818.GB3769@dhcp22.suse.cz>
-References: <20161215140715.12732-1-mhocko@kernel.org>
- <20161215140715.12732-3-mhocko@kernel.org>
- <20161219212413.GN4326@dastard>
+Received: from mailgw-k01.its.kfa-juelich.de ([134.94.4.24]:39748 "EHLO
+        mailgw-k01.its.kfa-juelich.de" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1752523AbcLTMFZ (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 20 Dec 2016 07:05:25 -0500
+From: Yann Leprince <y.leprince@fz-juelich.de>
+To: Steve Dickson <SteveD@redhat.com>
+CC: Libtirpc-devel Mailing List
+        <libtirpc-devel@lists.sourceforge.net>,
+        Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: [PATCH] Fix boot dependency in systemd service file
+Date: Tue, 20 Dec 2016 12:58:56 +0100
+Message-ID: <20161220115856.22467-1-y.leprince@fz-juelich.de>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20161219212413.GN4326@dastard>
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue 20-12-16 08:24:13, Dave Chinner wrote:
-> On Thu, Dec 15, 2016 at 03:07:08PM +0100, Michal Hocko wrote:
-> > From: Michal Hocko <mhocko@suse.com>
-> > 
-> > Now that the page allocator offers __GFP_NOLOCKDEP let's introduce
-> > KM_NOLOCKDEP alias for the xfs allocation APIs. While we are at it
-> > also change KM_NOFS users introduced by b17cb364dbbb ("xfs: fix missing
-> > KM_NOFS tags to keep lockdep happy") and use the new flag for them
-> > instead. There is really no reason to make these allocations contexts
-> > weaker just because of the lockdep which even might not be enabled
-> > in most cases.
-> > 
-> > Signed-off-by: Michal Hocko <mhocko@suse.com>
-> 
-> I'd suggest that it might be better to drop this patch for now -
-> it's not necessary for the context flag changeover but does
-> introduce a risk of regressions if the conversion is wrong.
-> 
-> Hence I think this is better as a completely separate series
-> which audits and changes all the unnecessary KM_NOFS allocations
-> in one go. I've never liked whack-a-mole style changes like this -
-> do it once, do it properly....
+From: Yann Leprince <yann.leprince@ylep.fr>
 
-OK, fair enough. I thought it might be better to have an example user so
-that others can follow but as you say, the risk of regression is really
-there and these kind of changes definitely need a throughout review.
+This fix ensures that a separate /var partition will be mounted before
+rpcbind tries to write its status to /var/run.
 
-I am not sure I will be able to post more of those changes because that
-requires an intimate knowledge of the fs so I hope somebody can take
-over there and follow up.
+Signed-off-by: Yann Leprince <yann.leprince@ylep.fr>
+---
+ systemd/rpcbind.service.in | 1 +
+ 1 file changed, 1 insertion(+)
 
-Thanks!
--- 
-Michal Hocko
-SUSE Labs
+diff --git a/systemd/rpcbind.service.in b/systemd/rpcbind.service.in
+index c173b83..f8cfa9f 100644
+--- a/systemd/rpcbind.service.in
++++ b/systemd/rpcbind.service.in
+@@ -2,6 +2,7 @@
+ Description=3DRPC Bind
+ Documentation=3Dman:rpcbind(8)
+ DefaultDependencies=3Dno
++RequiresMountsFor=3D@statedir@
+
+ # Make sure we use the IP addresses listed for
+ # rpcbind.socket, no matter how this unit is started.
+--
+2.11.0
+
+
+
+---------------------------------------------------------------------------=
+---------------------
+---------------------------------------------------------------------------=
+---------------------
+Forschungszentrum Juelich GmbH
+52425 Juelich
+Sitz der Gesellschaft: Juelich
+Eingetragen im Handelsregister des Amtsgerichts Dueren Nr. HR B 3498
+Vorsitzender des Aufsichtsrats: MinDir Dr. Karl Eugen Huthmacher
+Geschaeftsfuehrung: Prof. Dr.-Ing. Wolfgang Marquardt (Vorsitzender),
+Karsten Beneke (stellv. Vorsitzender), Prof. Dr.-Ing. Harald Bolt,
+Prof. Dr. Sebastian M. Schmidt
+---------------------------------------------------------------------------=
+---------------------
+---------------------------------------------------------------------------=
+---------------------
+
