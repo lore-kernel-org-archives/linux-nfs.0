@@ -1,109 +1,90 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx143.netapp.com ([216.240.21.24]:46874 "EHLO mx143.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:43166 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1752117AbcLTACa (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 19 Dec 2016 19:02:30 -0500
-From: <andros@netapp.com>
-To: <bfields@fieldses.org>
-CC: <neilb@suse.de>, <linux-nfs@vger.kernel.org>,
-        Andy Adamson <andros@netapp.com>
-Subject: [PATCH Version 3] SVCAUTH update the rsc cacue on RPC_GSS_PROC_DESTROY
-Date: Mon, 19 Dec 2016 19:00:29 -0500
-Message-ID: <1482192030-19219-1-git-send-email-andros@netapp.com>
+        id S1754755AbcLTD0b (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 19 Dec 2016 22:26:31 -0500
+Date: Tue, 20 Dec 2016 11:26:28 +0800
+From: Eryu Guan <eguan@redhat.com>
+To: "Darrick J. Wong" <darrick.wong@oracle.com>
+Cc: Anna Schumaker <Anna.Schumaker@Netapp.com>, fstests@vger.kernel.org,
+        linux-nfs@vger.kernel.org, hch@infradead.org
+Subject: Re: [PATCH v4 1/5] generic/392: Add copy to new file test
+Message-ID: <20161220032628.GE1859@eguan.usersys.redhat.com>
+References: <20161208184909.23321-1-Anna.Schumaker@Netapp.com>
+ <20161208184909.23321-2-Anna.Schumaker@Netapp.com>
+ <20161219100404.GD1859@eguan.usersys.redhat.com>
+ <20161219223447.GA7300@birch.djwong.org>
 MIME-Version: 1.0
-Content-Type: text/plain
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20161219223447.GA7300@birch.djwong.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Andy Adamson <andros@netapp.com>
+On Mon, Dec 19, 2016 at 02:34:47PM -0800, Darrick J. Wong wrote:
+> > 
+> > And seems copy_range -l option doesn't work well with xfs reflink
+> > enabled? I saw many EINVALs when testing reflink enabled xfs, all these
+> > 5 tests failed. Kernel bug or xfs_io bug or we just want to _notrun on
+> > reflink xfs?
+> 
+> Ugggggggghhhhhhhhh...
+> 
+> Prior to hch's vfs patch reorganizing vfs_copy_file_range to try clone first,
+> this happened[1]:
+> 
+> ret = -EOPNOTSUPP;
+> if (file_out->f_op->copy_file_range)
+> 	ret = file_out->f_op->copy_file_range(file_in, pos_in, file_out,
+> 					      pos_out, len, flags);
+> if (ret == -EOPNOTSUPP)
+> 	ret = do_splice_direct(file_in, &pos_in, file_out, &pos_out,
+> 			len > MAX_RW_COUNT ? MAX_RW_COUNT : len, 0);
+> 
+> Note that copy_file_range pointed to XFS's clone_range implementation,
+> so if you pass in an offset/length that aren't block aligned, the clone
+> code returns EINVAL and ... we pass that out to userspace instead of
+> falling back.
+> 
+> Now it does this[2]:
+> 
+> if (file_in->f_op->clone_file_range) {
+> 	ret = file_in->f_op->clone_file_range(file_in, pos_in,
+> 			file_out, pos_out, len);
+> 	if (ret == 0) {
+> 		ret = len;
+> 		goto done;
+> 	}
+> }
+> 
+> if (file_out->f_op->copy_file_range) {
+> 	ret = file_out->f_op->copy_file_range(file_in, pos_in, file_out,
+> 					      pos_out, len, flags);
+> 	if (ret != -EOPNOTSUPP)
+> 		goto done;
+> }
+> 
+> ret = do_splice_direct(file_in, &pos_in, file_out, &pos_out,
+> 		len > MAX_RW_COUNT ? MAX_RW_COUNT : len, 0);
+> 
+> XFS removed the copy_file_range pointer, so therefore we'll try to
+> reflink the range and if that doesn't succeed we'll fall back to
+> whatever do_splice_direct does.  All those EINVALs should go away
+> shortly, at least on reflink-XFS.
 
-I instrumented cache_get, cache_put, cache_clean, svcauth_cache_lookup
-and svcauth_gss_accept.
+Good to know, thanks for the explanation!
 
-Then I mounted -o sec=krb5, listed the mount directory, and umounted.
+Eryu
 
-CASE 1: Here is the instrumented output without the patch:
-
-svcauth_gss_accept gc_proc 3 rq_proc 0  (process RPC_GSS_PROC_DESTROY)
---> sunrpc_cache_lookup from rsc_lookup key ffffc90002b9bc58 hash 940
-sunrpc_cache_lookup 1 calling cache_get key ffffc90002b9bc58 tmp
-ffff880079b3f500
---> cache_get h ffff880079b3f500 refcount 1
-sunrpc_cache_lookup RETURN 1  key ffffc90002b9bc58 tmp ffff880079b3f500
---> rsc_free h ffffc90002b9bc58
-
-&rsci->h is ffff880079b3f500, which identifies the cache entry we want
-destroyed.
-
-Case: RPC_GSS_PROC_DESTROY:
-svcauth_gss_accept RPC_GSS_PROC_DESTROY h ffff880079b3f500 ref 2
-expiry 1481823331 <<<<<
-svcauth_gss_accept AFTER SETTING h ffff880079b3f500 expiry 1481819736   <<<<<<<
-
-Note: expiry_time (and CACHE_NEGATIVE) are set.
-
-END of svcauth_gss_accept:
-svcauth_gss_accept END calling cache_put h ffff880079b3f500
---> cache_put h ffff880079b3f500 refcount 2 cd->cache_put ffffffffa045c180
-Dec 15 11:35:36 rhel7-2-ga-2 kernel: <-- cache_put h ffff880079b3f500 refcount 1
-
-refcount is 1, but cache_clean is not setup to reap the entry as
-rsc_update was not called. Besides using the write_lock (which should
-be used for entry changes) rsc_update also sets other fields to
-trigger cache_clean to remove the entry from the cache_list under
-the write_lock and do a final cache_put.
-
-
-cache_clean CLEAN h ffff880079b3e540 h->expiry_time 1481819736 hash 982
-
-The above cache_clean occurs about 45 minutes after the END
-svcauth_gss_accept cache_put.
-
-I waited about 2 hours, and the cache entry was still not reaped
-even though the expiry time was set.
-
-
-CASE 2: Here is the instrumented output with the patch:
-
-svcauth_gss_accept gc_proc 3 rq_proc 0  (process RPC_GSS_PROC_DESTROY)
---> sunrpc_cache_lookup from rsc_lookup key ffffc90002befc30 hash 982
-sunrpc_cache_lookup calling cache_get key ffffc90002befc30 tmp ffff88006fcc6cc0
---> cache_get h ffff88006fcc6cc0 refcount 1
-sunrpc_cache_lookup RETURN 1  key ffffc90002befc30 tmp ffff88006fcc6cc0
---> rsc_free h ffffc90002befc30
-
-&rsci->h is ffff88006fcc6cc0, which identifies the cache entry we want
-destroyed.
-
-Case: RPC_GSS_PROC_DESTROY:
-svcauth_gss_accept RPC_GSS_PROC_DESTROY h ffff88006fcc6cc0 ref 2 
---> rsc_update new h ffffc90002befd18 new ref 0 old h ffff88006fcc6cc0 old ref 2
---> update_rsc new->h ffff88006fcc6cc0 tmp->h ffffc90002befd18
-
-END of svcauth_gss_accept:
-svcauth_gss_accept END calling cache_put h ffff88006fcc6cc0
---> cache_put h ffff88006fcc6cc0 refcount 2 cd->cache_put ffffffffa03cd170
-<-- cache_put h ffff88006fcc6cc0 refcount 1
-
-refcount is 1, setup for cache_clean.
-
-cache_clean CLEAN h ffff88006fcc6cc0 h->expiry_time 0 hash 982
-cache_clean DELETE h ffff88006fcc6cc0 from cache_list
-cache_clean CLEANED calling cache_put h ffff88006fcc6cc0
---> cache_put h ffff88006fcc6cc0 refcount 1 
---> rsc_put PUT h ffff88006fcc6cc0
---> rsc_free h ffff88006fcc6cc0
- <-- cache_put h ffff88006fcc6cc0 refcount 0
-
-The cache entry is destroyed.
-
-
-Andy Adamson (1):
-  SVCAUTH update the rsc cache on RPC_GSS_PROC_DESTROY
-
- net/sunrpc/auth_gss/svcauth_gss.c | 22 +++++++++++++++++++---
- 1 file changed, 19 insertions(+), 3 deletions(-)
-
--- 
-1.8.3.1
-
+> 
+> --D
+> 
+> [1] https://git.kernel.org/cgit/linux/kernel/git/torvalds/linux.git/tree/fs/read_write.c?id=ffecee4f2442bb8cb6b34c3335fef4eb50c22fdd#n1545
+> [2] https://git.kernel.org/cgit/linux/kernel/git/torvalds/linux.git/tree/fs/read_write.c#n1543
+> 
+> > 
+> > Thanks,
+> > Eryu
+> > --
+> > To unsubscribe from this list: send the line "unsubscribe fstests" in
+> > the body of a message to majordomo@vger.kernel.org
+> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
