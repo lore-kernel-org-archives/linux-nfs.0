@@ -1,62 +1,41 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mailgw-k01.its.kfa-juelich.de ([134.94.4.24]:39748 "EHLO
-        mailgw-k01.its.kfa-juelich.de" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1752523AbcLTMFZ (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 20 Dec 2016 07:05:25 -0500
-From: Yann Leprince <y.leprince@fz-juelich.de>
-To: Steve Dickson <SteveD@redhat.com>
-CC: Libtirpc-devel Mailing List
-        <libtirpc-devel@lists.sourceforge.net>,
-        Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: [PATCH] Fix boot dependency in systemd service file
-Date: Tue, 20 Dec 2016 12:58:56 +0100
-Message-ID: <20161220115856.22467-1-y.leprince@fz-juelich.de>
+Received: from mx1.redhat.com ([209.132.183.28]:41840 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1753353AbcLTNc2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 20 Dec 2016 08:32:28 -0500
+From: "Benjamin Coddington" <bcodding@redhat.com>
+To: postmaster@vger.kernel.org
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: base64 mail with plain text appendage
+Date: Tue, 20 Dec 2016 08:32:27 -0500
+Message-ID: <0E7D3614-A8BC-4DD1-8AD4-F4CFA29E1631@redhat.com>
+In-Reply-To: <62524452-EAF9-4547-BF39-B05DE3F4515C@redhat.com>
+References: <62524452-EAF9-4547-BF39-B05DE3F4515C@redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain
+Content-Type: text/plain; charset=utf-8; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Yann Leprince <yann.leprince@ylep.fr>
-
-This fix ensures that a separate /var partition will be mounted before
-rpcbind tries to write its status to /var/run.
-
-Signed-off-by: Yann Leprince <yann.leprince@ylep.fr>
----
- systemd/rpcbind.service.in | 1 +
- 1 file changed, 1 insertion(+)
-
-diff --git a/systemd/rpcbind.service.in b/systemd/rpcbind.service.in
-index c173b83..f8cfa9f 100644
---- a/systemd/rpcbind.service.in
-+++ b/systemd/rpcbind.service.in
-@@ -2,6 +2,7 @@
- Description=3DRPC Bind
- Documentation=3Dman:rpcbind(8)
- DefaultDependencies=3Dno
-+RequiresMountsFor=3D@statedir@
-
- # Make sure we use the IP addresses listed for
- # rpcbind.socket, no matter how this unit is started.
---
-2.11.0
-
-
-
----------------------------------------------------------------------------=
----------------------
----------------------------------------------------------------------------=
----------------------
-Forschungszentrum Juelich GmbH
-52425 Juelich
-Sitz der Gesellschaft: Juelich
-Eingetragen im Handelsregister des Amtsgerichts Dueren Nr. HR B 3498
-Vorsitzender des Aufsichtsrats: MinDir Dr. Karl Eugen Huthmacher
-Geschaeftsfuehrung: Prof. Dr.-Ing. Wolfgang Marquardt (Vorsitzender),
-Karsten Beneke (stellv. Vorsitzender), Prof. Dr.-Ing. Harald Bolt,
-Prof. Dr. Sebastian M. Schmidt
----------------------------------------------------------------------------=
----------------------
----------------------------------------------------------------------------=
----------------------
-
+SGkgcG9zdG1hc3RlciwgKGRhdmVtID8pLAoKSSdtIGEgcmVndWxhciBvbiBsaW51eC1uZnMsIGFu
+ZCBJIG5vdGljZWQgdGhhdCB0aGUgbGlzdCBhcHBlbmRzIGl0cyAKZm9vdGVyCnVuZW5jb2RlZCB3
+aGVuIGEgbWVzc2FnZSBoYXMgJ0NvbnRlbnQtVHJhbnNmZXItRW5jb2Rpbmc6IGJhc2U2NCcuICBU
+aGVuLAp3aGVuIHRoZSBtZXNzYWdlcyBhcmUgZGVjb2RlZCBpbiBhIG1haWxlciwgdGhlIGZvb3Rl
+ciBsZWF2ZXMgYSBsaXR0bGUgCm1lc3MKYmVoaW5kLgoKQW55IGNoYW5jZSB0aGlzIGNhbiBiZSBm
+aXhlZD8gIElmIHlvdSBwb2ludCBtZSBhdCBhbnkgc291cmNlIGNvZGUsIEknZCAKYmUKaGFwcHkg
+dG8gc2VuZCBhIHBhdGNoLgoKQmV0dGVyIHlldCBJTU8gd291bGQgYmUgdG8gbm90IGFkZCBhbnkg
+Zm9vdGVyIGF0IGFsbCwgYnV0IG1heWJlIHRoYXQgCmRlY2lzaW9uCmNhbiBvbmx5IGJlIG1hZGUg
+Ynkgc29tZW9uZSBlbHNlLi4KCkJlbgoKT24gMTQgTm92IDIwMTYsIGF0IDEzOjQ2LCBCZW5qYW1p
+biBDb2RkaW5ndG9uIHdyb3RlOgoKPiBIaSBsaW51eC1uZnMsCj4KPiBJZiBtYWlsIHNlbnQgdG8g
+dGhpcyBsaXN0IGlzIENvbnRlbnQtVHJhbnNmZXItRW5jb2Rpbmc6IGJhc2U2NCwgYW5kIAo+IHRo
+ZQo+IGxpbnV4LW5mcyBmb290ZXIgaXMgYXBwZW5kZWQgdG8gaXQgd2l0aG91dCBkZWNvZGluZywg
+dGhhdCBmb290ZXIgaXMgCj4gYWx3YXlzCj4gZGVjb2RlZCBpbiBteSBtYWlsZXIgZm9yIG1lc3Nh
+Z2VzIHRvIHRoZSBsaXN0IHdoaWNoIGxlYXZlcyBhIGxpdHRsZSAKPiBtZXNzCj4gYmVoaW5kLiAg
+SSBleHBlY3QgdGhpcyBtZXNzYWdlIGl0c2VsZiB0byBjb250YWluIGFuIGV4YW1wbGUgb2YgdGhp
+cy4KPgo+IFRoaXMgYW5ub3lzIG1lLiAgIERvIHdlIHJlYWxseSBuZWVkIHRvIGhhdmUgdGhhdCB1
+bnN1YnNjcmliZSB0ZXh0IAo+IGFwcGVuZGVkCj4gdG8gZXZlcnkgbWVzc2FnZT8gIEknbSBoYXBw
+eSB0byB0YWtlIG15IG5pdC1waWNreSBxdWVzdGlvbiBvZiBwcm9wZXIgCj4gbGlzdAo+IGJlaGF2
+aW9yIHRvIHRoZSBhcHByb3ByaWF0ZSBwZXJzb24gaWYgcmVkaXJlY3RlZC4KPgo+IEJlbgo+IE7C
+i8KnwrLDpsOscsK4wpt5w7rDqMKaw5hiwrJYwqzCtsOHwqd2w5hewpYpw57CunsubsOHK8KJwrfC
+pcKKe8Kxwp3DuyLCnsOYXm7Ch3LCocO2wqZ6w4sawoHDq2jCmcKow6jCrcOaJsKiw7gewq5HwqvC
+ncOpaMKuAyjCrcOpwprCjsKKw53Comoiwp3DuhrCthttwqfDv8OvwoHDqsOkesK5w57ClsKKw6DD
+vmbCo8KiwrdowprCiMKnfsKIbcKaCg==
