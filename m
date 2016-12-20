@@ -1,17 +1,18 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qk0-f194.google.com ([209.85.220.194]:36183 "EHLO
-        mail-qk0-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S934094AbcLTPGY (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 20 Dec 2016 10:06:24 -0500
-Received: by mail-qk0-f194.google.com with SMTP id h201so3951462qke.3
-        for <linux-nfs@vger.kernel.org>; Tue, 20 Dec 2016 07:06:23 -0800 (PST)
+Received: from mail-qk0-f196.google.com ([209.85.220.196]:36709 "EHLO
+        mail-qk0-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1762151AbcLTP0H (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 20 Dec 2016 10:26:07 -0500
+Received: by mail-qk0-f196.google.com with SMTP id h201so4033203qke.3
+        for <linux-nfs@vger.kernel.org>; Tue, 20 Dec 2016 07:26:06 -0800 (PST)
 MIME-Version: 1.0
-In-Reply-To: <87d1gntfq1.fsf@notabene.neil.brown.name>
-References: <1482192030-19219-1-git-send-email-andros@netapp.com> <87d1gntfq1.fsf@notabene.neil.brown.name>
+In-Reply-To: <87a8brtff9.fsf@notabene.neil.brown.name>
+References: <1482192030-19219-1-git-send-email-andros@netapp.com>
+ <1482192030-19219-2-git-send-email-andros@netapp.com> <87a8brtff9.fsf@notabene.neil.brown.name>
 From: Andy Adamson <androsadamson@gmail.com>
-Date: Tue, 20 Dec 2016 10:06:22 -0500
-Message-ID: <CAHVgHyXDDS41EvWxM9imVtQ=Xkqa8GzC9uNaccf492Dj70MOLg@mail.gmail.com>
-Subject: Re: [PATCH Version 3] SVCAUTH update the rsc cacue on RPC_GSS_PROC_DESTROY
+Date: Tue, 20 Dec 2016 10:26:05 -0500
+Message-ID: <CAHVgHyWmi_jJgVS2aord3-+E9QYhcTc8XgLqOYh3UmwikUexrg@mail.gmail.com>
+Subject: Re: [PATCH Version 3] SVCAUTH update the rsc cache on RPC_GSS_PROC_DESTROY
 To: NeilBrown <neilb@suse.com>
 Cc: "J. Bruce Fields" <bfields@fieldses.org>, Neil Brown <neilb@suse.de>,
         NFS list <linux-nfs@vger.kernel.org>
@@ -19,117 +20,143 @@ Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Dec 19, 2016 at 10:57 PM, NeilBrown <neilb@suse.com> wrote:
+On Mon, Dec 19, 2016 at 11:03 PM, NeilBrown <neilb@suse.com> wrote:
 > On Tue, Dec 20 2016, andros@netapp.com wrote:
 >
 >> From: Andy Adamson <andros@netapp.com>
 >>
->> I instrumented cache_get, cache_put, cache_clean, svcauth_cache_lookup
->> and svcauth_gss_accept.
+>> The rsc cache code operates in a read_lock/write_lock environment.
+>> Changes to a cache entry should use the provided rsc_update
+>> routine which takes the write_lock.
 >>
->> Then I mounted -o sec=krb5, listed the mount directory, and umounted.
+>> The current code sets the expiry_time and the CACHE_NEGATIVE flag
+>> without taking the write_lock as it does not call rsc_update.
+>> Without this patch, while cache_clean sees the entries to be
+>> removed, it does not remove the rsc_entries. This is because
+>> rsc_update sets other fields in the entry to properly trigger
+>> cache_clean.
 >>
->> CASE 1: Here is the instrumented output without the patch:
+>> Cache_clean takes the write_lock to remove expired or invalid
+>> entries from the cache_list and calls cache_put on the entry.
 >>
->> svcauth_gss_accept gc_proc 3 rq_proc 0  (process RPC_GSS_PROC_DESTROY)
->> --> sunrpc_cache_lookup from rsc_lookup key ffffc90002b9bc58 hash 940
->> sunrpc_cache_lookup 1 calling cache_get key ffffc90002b9bc58 tmp
->> ffff880079b3f500
->> --> cache_get h ffff880079b3f500 refcount 1
->> sunrpc_cache_lookup RETURN 1  key ffffc90002b9bc58 tmp ffff880079b3f500
->> --> rsc_free h ffffc90002b9bc58
+>> Looking at sunrpc_cache_update, what we want is to invalidate the
+>> cache entry, so that it is direclty replaced which means that
+>> update_rsc is called. We pass in a new zero'ed rsc cache entry
+>> to rsc_update with an expiry_time set to 0 along with the
+>> invalidatedcache entry to be destroyed.
 >>
->> &rsci->h is ffff880079b3f500, which identifies the cache entry we want
->> destroyed.
+>> The cache_put at the end of svcauth_gss_accept processing drops
+>> the reference count to 1 which allows the cache_put called by
+>> cache_clean to result in a call to rsc_put and rsc_free
+>> to reap the entry after it has been removed from the cache_list
+>> under the write_lock.
 >>
->> Case: RPC_GSS_PROC_DESTROY:
->> svcauth_gss_accept RPC_GSS_PROC_DESTROY h ffff880079b3f500 ref 2
->> expiry 1481823331 <<<<<
->> svcauth_gss_accept AFTER SETTING h ffff880079b3f500 expiry 1481819736   <<<<<<<
+>> Signed-off-by: Andy Adamson <andros@netapp.com>
+>> ---
+>>  net/sunrpc/auth_gss/svcauth_gss.c | 18 +++++++++++++++---
+>>  1 file changed, 15 insertions(+), 3 deletions(-)
 >>
->> Note: expiry_time (and CACHE_NEGATIVE) are set.
->>
->> END of svcauth_gss_accept:
->> svcauth_gss_accept END calling cache_put h ffff880079b3f500
->> --> cache_put h ffff880079b3f500 refcount 2 cd->cache_put ffffffffa045c180
->> Dec 15 11:35:36 rhel7-2-ga-2 kernel: <-- cache_put h ffff880079b3f500 refcount 1
->>
->> refcount is 1, but cache_clean is not setup to reap the entry as
->> rsc_update was not called.
+>> diff --git a/net/sunrpc/auth_gss/svcauth_gss.c b/net/sunrpc/auth_gss/svcauth_gss.c
+>> index 45662d7..b8093da 100644
+>> --- a/net/sunrpc/auth_gss/svcauth_gss.c
+>> +++ b/net/sunrpc/auth_gss/svcauth_gss.c
+>> @@ -1409,7 +1409,9 @@ static void destroy_use_gss_proxy_proc_entry(struct net *net) {}
+>>       u32             crlen;
+>>       struct gss_svc_data *svcdata = rqstp->rq_auth_data;
+>>       struct rpc_gss_wire_cred *gc;
+>> -     struct rsc      *rsci = NULL;
+>> +     struct rsc      *rsci = NULL, new = {
+>> +             .mechctx = 0,
+>> +     };
+>>       __be32          *rpcstart;
+>>       __be32          *reject_stat = resv->iov_base + resv->iov_len;
+>>       int             ret;
+>> @@ -1489,10 +1491,20 @@ static void destroy_use_gss_proxy_proc_entry(struct net *net) {}
+>>       case RPC_GSS_PROC_DESTROY:
+>>               if (gss_write_verf(rqstp, rsci->mechctx, gc->gc_seq))
+>>                       goto auth_err;
+>> -             rsci->h.expiry_time = get_seconds();
+>> -             set_bit(CACHE_NEGATIVE, &rsci->h.flags);
+>> +
+>> +             /** Invalidate the cache entry so sunrpc_update_cache
+>> +              * direclty updates rsci. new->h.expiry_time is zero,
+>> +              * so rsci->h.expiry_time will be set to zero and
+>> +              * cache_clean will properly remove rsci.
+>> +              */
+>> +             clear_bit(CACHE_VALID, &rsci->h.flags);
 >
-> What exactly do you mean by "cache_clean is not setup to reap the entry"?
+> I think this is poor form.  It might work in this particular case, but
+> in general, clearing CACHE_VALID is the wrong thing to do.
+
+Why? That is exactly what an RPC_GSS_PROC_DESTROY message means - the
+GSS context is invalid and needs be immediately destroyed.
+
+What other mechanism does your cache design provide for this very
+common AUTH_GSS case?
+
 >
-> I think the problem is that detail->flush_time hasn't been updated to
-> match the new (reduced) ->expiry_time.  If that is what you meant by the
-> above, I completely agree.
+> What is the goal here?  Do we want to make sure future lookups for this
+> entry find a negative entry, or would we be happy for them to fail?
 
-Here is the code that prevents cache_clean from reaping the entry:
+No future lookups. No future use. Destroyed. Immediately, and all
+resources freed.
 
-cache_clean:
+Clearing the CACHE_VALID flag and not setting the CACHE_NEGATIVE flag
+on the does this by updating the entry with a new entry that has a
+zero expiry_time.
 
-               hlist_for_each_entry_safe(ch, tmp, head, cache_list) {
-                        if (current_detail->nextcheck > ch->expiry_time)
-                                current_detail->nextcheck = ch->expiry_time+1;
-                        if (!cache_is_expired(current_detail, ch))
-                                continue;
-<<<<<<<<<<<<<<<<<<<<<<<<<<<<< does not make it past this continue.
+sunrpc_cache_update (called by rsc_update)
+       /* The 'old' entry is to be replaced by 'new'.
+         * If 'old' is not VALID, we update it directly,
+         * otherwise we need to replace it
+         */
 
-                        hlist_del_init(&ch->cache_list);
-                        current_detail->entries--;
-                        rv = 1;
-                        break;
+        struct cache_head *tmp;
+
+        if (!test_bit(CACHE_VALID, &old->flags)) {
+                write_lock(&detail->hash_lock);
+                if (!test_bit(CACHE_VALID, &old->flags)) {
+                        if (test_bit(CACHE_NEGATIVE, &new->flags))
+                                set_bit(CACHE_NEGATIVE, &old->flags);
+                        else
+                                detail->update(old, new);
+<<<<<<<<<<<<<<<<<<<< goal is to hit this.
+                        cache_fresh_locked(old, new->expiry_time, detail);
+                        write_unlock(&detail->hash_lock);
+                        cache_fresh_unlocked(old, detail);
+                        return old;
 
                 }
+                write_unlock(&detail->hash_lock);
+        }
 
+This also leaves the refcount alone so that at the end of
+svcauth_gss_processing, the refcount is 1 and cache_clean can properly
+reap the entry.
 
-static inline int cache_is_expired(struct cache_detail *detail, struct
-cache_head *h)
-{
-        return  (h->expiry_time < seconds_since_boot()) ||
-                (detail->flush_time >= h->last_refresh);
-}
-
-so either setting the expiry_time < seconds_since_boot or ensuring
-that the flush_time is greater than the last_refresh is what I mean.
-The current code does neither, and so the rsc entry is _never_ reaped.
+--Andy
 
 >
+> If they should find a negative entry, then just do the update without
+> messing with the CACHE_VALID flag.  It will require an allocation, but
+> that shouldn't be a big cost.
 >
->>                             Besides using the write_lock (which should
->> be used for entry changes) rsc_update also sets other fields to
->> trigger cache_clean to remove the entry from the cache_list under
->> the write_lock and do a final cache_put.
+> If you are happy for them to find nothing, the we should write a
+> sunrpc_cache_unhash() or similar which unlinks an entry from the cache
+> and decrements its refcount.
 >
-> The write_lock is needed for some changes, but not necessarily all.
-> e.g. just clearing a bit is already atomic, so doesn't need a lock.
-> Decreasing ->flush_time to match a new ->expiry_time does need the lock
-> as it needs to be atomic.
-
-
-And as I pointed out above, the write_lock is needed to remove the
-cache entry from the cache_list.
-
-Note that if a cache_put is called with an input refcount of 1 and so
-calls rsc_put/rsc_free without first removing the entry from the
-cache_list, the next time cache_clean walks the list, it encounters
-the hole left by the freed entry and produces a kernel oops. So either
-we
-
-1) set it up so that the cache_is_expired() test passes and the refcount is 1
-or
-2) take the write_lock in rsc_put, and delete the entry from the
-cache_list prior to freeing the entry.
-
-This patch chooses #1.
-
-I'm confused as to why the architecture is not clear.  Why is it not
-obvious, or well documented, as to what needs to be called to expire
-an entry?
-
--->Andy
-
->
-> I'll comment on the patch separately.
->
-> Thanks,
 > NeilBrown
+>
+>
+>> +             rsci = rsc_update(sn->rsc_cache, &new, rsci);
+>> +             if (!rsci)
+>> +                     goto drop;
+>> +
+>>               if (resv->iov_len + 4 > PAGE_SIZE)
+>>                       goto drop;
+>> +
+>>               svc_putnl(resv, RPC_SUCCESS);
+>>               goto complete;
+>>       case RPC_GSS_PROC_DATA:
+>> --
+>> 1.8.3.1
