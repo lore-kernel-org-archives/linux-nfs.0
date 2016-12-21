@@ -1,98 +1,80 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:53664 "EHLO mx2.suse.de"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1753185AbcLUDc3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 20 Dec 2016 22:32:29 -0500
-From: NeilBrown <neilb@suse.com>
-To: "J. Bruce Fields" <bfields@redhat.com>
-Date: Wed, 21 Dec 2016 14:32:19 +1100
-Cc: Steve Dickson <SteveD@redhat.com>, linux-nfs@vger.kernel.org
-Subject: [PATCH] NFSD: correctly range-check v4.x minor version when setting versions.
-Message-ID: <87bmw6rm7w.fsf@notabene.neil.brown.name>
+Received: from us-smtp-delivery-194.mimecast.com ([216.205.24.194]:34048 "EHLO
+        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1751463AbcLUOCn (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 21 Dec 2016 09:02:43 -0500
+From: Trond Myklebust <trondmy@primarydata.com>
+To: "torvalds@linux-foundation.org" <torvalds@linux-foundation.org>
+CC: "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: [GIT PULL] Please pull Linux client updates
+Date: Wed, 21 Dec 2016 14:02:35 +0000
+Message-ID: <1482328953.3847.1.camel@primarydata.com>
 MIME-Version: 1.0
-Content-Type: multipart/signed; boundary="=-=-=";
-        micalg=pgp-sha256; protocol="application/pgp-signature"
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---=-=-=
-Content-Type: text/plain
-Content-Transfer-Encoding: quoted-printable
+SGkgTGludXMsDQoNCg0KVGhpcyBwdWxsIHJlcXVlc3QgaXMgb24gb3ZlcnRpbWUsIEkga25vdywg
+YnV0IHRoZSBjb250ZW50cyBzaG91bGQgYmUNCmZhaXJseSB1bmNvbnRyb3ZlcnNpYWwuIFRoZSBt
+YWluIHJlYXNvbiBmb3IgcHVzaGluZyB0aGVtIG5vdyByYXRoZXINCnRoYW4gbmV4dCB3ZWVrIGlz
+IHRoYXQgdGVjaG5pY2FsbHksIHRoZSBhdHRyaWJ1dGUgY2FjaGUgaW1wcm92ZW1lbnRzDQphcmUg
+YSBwZXJmb3JtYW5jZSBpbXByb3ZlbWVudCBhbmQgc28gb3VnaHQgdG8gYmUgcHVzaGVkIGR1cmlu
+ZyB0aGUNCm1lcmdlIHdpbmRvdy4NCg0KVGhlIGZvbGxvd2luZyBjaGFuZ2VzIHNpbmNlIGNvbW1p
+dCAyNTQ5ZjMwN2I1OTk3YmY1ZGQ5MTA3MTQyOGU4MDkwZDlmYWE4YjFiOg0KDQogIE1lcmdlIHRh
+ZyAnbmZzLXJkbWEtNC4xMC0xJyBvZiBnaXQ6Ly9naXQubGludXgtbmZzLm9yZy9wcm9qZWN0cy9h
+bm5hL25mcy1yZG1hICgyMDE2LTEyLTEwIDEwOjMxOjQ0IC0wNTAwKQ0KDQphcmUgYXZhaWxhYmxl
+IGluIHRoZSBnaXQgcmVwb3NpdG9yeSBhdDoNCg0KICBnaXQ6Ly9naXQubGludXgtbmZzLm9yZy9w
+cm9qZWN0cy90cm9uZG15L2xpbnV4LW5mcy5naXQgdGFncy9uZnMtZm9yLTQuMTAtMg0KDQpmb3Ig
+eW91IHRvIGZldGNoIGNoYW5nZXMgdXAgdG8gOGFjMmI0MjIzOGY1NDkyNDFhNDc1NWRlNDBmZDE2
+MWZiYTNkZTQzODoNCg0KICBORlN2NDogUmV0cnkgdGhlIERFTEVHUkVUVVJOIGlmIHRoZSBlbWJl
+ZGRlZCBHRVRBVFRSIGlzIHJlamVjdGVkIHdpdGggRUFDQ0VTICgyMDE2LTEyLTE5IDE3OjMwOjAz
+IC0wNTAwKQ0KDQpDaGVlcnMNCiAgVHJvbmQNCg0KLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
+LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLQ0KTkZTIGNsaWVudCB1cGRhdGVz
+IGZvciBMaW51eCA0LjEwDQoNCkhpZ2hsaWdodHMgaW5jbHVkZToNCg0KLSBGdXJ0aGVyIGF0dHJp
+YnV0ZSBjYWNoZSBpbXByb3ZlbWVudHMgdG8gbWFrZSByZXZhbGlkYXRpb24gbW9yZSBmaW5lIGdy
+YWluZWQNCi0gTkZTdjQgbG9ja2luZyBpbXByb3ZlbWVudHMNCg0KQnVnZml4ZXM6DQotIG5mczRf
+ZmxfcHJlcGFyZV9kcyBtdXN0IGJlIGNhcmVmdWwgYWJvdXQgcmVwb3J0aW5nIHN1Y2Nlc3MgaW4g
+ZmlsZXMgbGF5b3V0DQotIHBORlMvZmxleGZpbGVzOiBJbnN0ZWFkIG9mIG1hcmtpbmcgYSBkZXZp
+Y2UgaW5hY3RpdmUsIHJlbW92ZSBpdCBmcm9tIHRoZSBjYWNoZQ0KDQotLS0tLS0tLS0tLS0tLS0t
+LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tDQpOZWlsQnJv
+d24gKDMpOg0KICAgICAgTkZTdjQuMTogbmZzNF9mbF9wcmVwYXJlX2RzIG11c3QgYmUgY2FyZWZ1
+bCBhYm91dCByZXBvcnRpbmcgc3VjY2Vzcy4NCiAgICAgIE5GU3Y0OiBlbnN1cmUgX19uZnM0X2Zp
+bmRfbG9ja19zdGF0ZSByZXR1cm5zIGNvbnNpc3RlbnQgcmVzdWx0Lg0KICAgICAgTkZTOiBEb24n
+dCBkaXNjb25uZWN0IG9wZW4tb3duZXIgb24gTkZTNEVSUl9CQURfU0VRSUQNCg0KVHJvbmQgTXlr
+bGVidXN0ICgxNSk6DQogICAgICBORlN2NDogVXBkYXRlIHRoZSBhdHRyaWJ1dGUgY2FjaGUgaW5m
+byBpbiB1cGRhdGVfY2hhbmdlYXR0cg0KICAgICAgTkZTdjQ6IERvbid0IGRpc2NhcmQgdGhlIGF0
+dHJpYnV0ZXMgcmV0dXJuZWQgYnkgYXN5bmNocm9ub3VzIERFTEVHUkVUVVJODQogICAgICBORlM6
+IERvbid0IHJldmFsaWRhdGUgdGhlIGZpbGUgb24gY2xvc2UgaWYgd2UgaG9sZCBhIGRlbGVnYXRp
+b24NCiAgICAgIE5GUzogQ2xlYW4gdXAgY2FjaGUgdmFsaWRpdHkgY2hlY2tpbmcNCiAgICAgIE5G
+UzogT25seSBsb29rIGF0IHRoZSBjaGFuZ2UgYXR0cmlidXRlIGNhY2hlIHN0YXRlIGluIG5mc193
+ZWFrX3JldmFsaWRhdGUoKQ0KICAgICAgTkZTOiBGaXggYW5kIGNsZWFuIHVwIHRoZSBhY2Nlc3Mg
+Y2FjaGUgdmFsaWRpdHkgY2hlY2tpbmcNCiAgICAgIE5GUzogUmVtb3ZlIHVudXNlZCBmdW5jdGlv
+biBuZnNfcmV2YWxpZGF0ZV9pbm9kZV9yY3UoKQ0KICAgICAgTkZTOiBDbGVhbiB1cCBuZnNfYXR0
+cmlidXRlX3RpbWVvdXQoKQ0KICAgICAgTkZTdjQ6IEFkZCBlbmNvZGUvZGVjb2RlIG9mIHRoZSBs
+YXlvdXRyZXR1cm4gb3AgaW4gT1BFTl9ET1dOR1JBREUNCiAgICAgIHBORlM6IFJldHVybiBSVyBs
+YXlvdXRzIG9uIE9QRU5fRE9XTkdSQURFDQogICAgICBORlM6IERvbid0IGFidXNlIE5GU19JTk9f
+UkVWQUxfRk9SQ0VEIGluIG5mc19wb3N0X29wX3VwZGF0ZV9pbm9kZV9sb2NrZWQoKQ0KICAgICAg
+TkZTdjQ6IEFsc28gYXNrIGZvciBhdHRyaWJ1dGVzIHdoZW4gZG93bmdyYWRpbmcgdG8gYSBSRUFE
+LW9ubHkgc3RhdGUNCiAgICAgIE5GU3Y0OiBQbGFjZSB0aGUgR0VUQVRUUiBvcGVyYXRpb24gYmVm
+b3JlIHRoZSBDTE9TRQ0KICAgICAgTkZTOiBSZXRyeSB0aGUgQ0xPU0UgaWYgdGhlIGVtYmVkZGVk
+IEdFVEFUVFIgaXMgcmVqZWN0ZWQgd2l0aCBFQUNDRVMNCiAgICAgIE5GU3Y0OiBSZXRyeSB0aGUg
+REVMRUdSRVRVUk4gaWYgdGhlIGVtYmVkZGVkIEdFVEFUVFIgaXMgcmVqZWN0ZWQgd2l0aCBFQUND
+RVMNCg0KV2VzdG9uIEFuZHJvcyBBZGFtc29uICgxKToNCiAgICAgIHBORlMvZmxleGZpbGVzOiBk
+ZWxldGUgZGV2aWNlaWQsIGRvbid0IG1hcmsgaW5hY3RpdmUNCg0KIGZzL25mcy9kaXIuYyAgICAg
+ICAgICAgICAgICAgICAgICAgICAgICAgIHwgMjMgKysrKystLS0tLQ0KIGZzL25mcy9maWxlLmMg
+ICAgICAgICAgICAgICAgICAgICAgICAgICAgIHwgMTIgKy0tLS0NCiBmcy9uZnMvZmlsZWxheW91
+dC9maWxlbGF5b3V0ZGV2LmMgICAgICAgICB8ICAzICstDQogZnMvbmZzL2ZsZXhmaWxlbGF5b3V0
+L2ZsZXhmaWxlbGF5b3V0LmMgICAgfCAgNiArKy0NCiBmcy9uZnMvZmxleGZpbGVsYXlvdXQvZmxl
+eGZpbGVsYXlvdXRkZXYuYyB8ICAyICstDQogZnMvbmZzL2lub2RlLmMgICAgICAgICAgICAgICAg
+ICAgICAgICAgICAgfCA3NSArKysrKysrKysrKysrKysrKy0tLS0tLS0tLS0tLS0tDQogZnMvbmZz
+L2ludGVybmFsLmggICAgICAgICAgICAgICAgICAgICAgICAgfCAgMSArDQogZnMvbmZzL25mczRw
+cm9jLmMgICAgICAgICAgICAgICAgICAgICAgICAgfCA0MyArKysrKysrKysrKysrKy0tLS0NCiBm
+cy9uZnMvbmZzNHN0YXRlLmMgICAgICAgICAgICAgICAgICAgICAgICB8IDU3ICsrKysrKysrKysr
+KystLS0tLS0tLS0tDQogZnMvbmZzL25mczR4ZHIuYyAgICAgICAgICAgICAgICAgICAgICAgICAg
+fCAzNyArKysrKysrKystLS0tLS0NCiBmcy9uZnMvcG5mcy5jICAgICAgICAgICAgICAgICAgICAg
+ICAgICAgICB8IDE2ICsrKysrLS0NCiBpbmNsdWRlL2xpbnV4L25mc19mcy5oICAgICAgICAgICAg
+ICAgICAgICB8ICAyIC0NCiAxMiBmaWxlcyBjaGFuZ2VkLCAxNjYgaW5zZXJ0aW9ucygrKSwgMTEx
+IGRlbGV0aW9ucygtKQ0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFp
+bnRhaW5lciwgUHJpbWFyeURhdGENCnRyb25kLm15a2xlYnVzdEBwcmltYXJ5ZGF0YS5jb20NCg==
 
-
-Writing to /proc/fs/nfsd/versions allows individual major versions
-and NFSv4 minor versions to be enabled or disabled.
-
-However NFSv4.0 cannot currently be disabled, thought there is no good reas=
-on.
-Also the minor number is parsed as a 'long' but used as an 'int'
-so '4294967297' will be incorrectly treated as '1'.
-
-This patch removes the test on 'minor =3D=3D 0' and switches to kstrtouint()
-to get correct range checking.
-
-When reading from /proc/fs/nfsd/versions, 4.0 is current not reported.
-To allow the disabling for v4.0 to be visible, while maintaining
-backward compatibility, change code to report "-4.0" if appropriate, but
-not "+4.0".
-
-Signed-off-by: NeilBrown <neilb@suse.com>
-=2D--
- fs/nfsd/nfsctl.c | 10 +++++++---
- 1 file changed, 7 insertions(+), 3 deletions(-)
-
-diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
-index f3b2f34b10a3..d54fb0e3f30e 100644
-=2D-- a/fs/nfsd/nfsctl.c
-+++ b/fs/nfsd/nfsctl.c
-@@ -569,8 +569,7 @@ static ssize_t __write_versions(struct file *file, char=
- *buf, size_t size)
- 			if (*minorp =3D=3D '.') {
- 				if (num !=3D 4)
- 					return -EINVAL;
-=2D				minor =3D simple_strtoul(minorp+1, NULL, 0);
-=2D				if (minor =3D=3D 0)
-+				if (kstrtouint(minorp+1, 0, &minor) < 0)
- 					return -EINVAL;
- 				if (nfsd_minorversion(minor, sign =3D=3D '-' ?
- 						     NFSD_CLEAR : NFSD_SET) < 0)
-@@ -613,8 +612,13 @@ static ssize_t __write_versions(struct file *file, cha=
-r *buf, size_t size)
- 			tlen +=3D len;
- 		}
- 	if (nfsd_vers(4, NFSD_AVAIL))
-=2D		for (minor =3D 1; minor <=3D NFSD_SUPPORTED_MINOR_VERSION;
-+		for (minor =3D 0; minor <=3D NFSD_SUPPORTED_MINOR_VERSION;
- 		     minor++) {
-+			if (minor =3D=3D 0 && nfsd_minorversion(minor, NFSD_TEST))
-+				/* for backward compatibility, don't report
-+				 * +4.0
-+				 */
-+				continue;
- 			len =3D snprintf(buf, remaining, " %c4.%u",
- 					(nfsd_vers(4, NFSD_TEST) &&
- 					 nfsd_minorversion(minor, NFSD_TEST)) ?
-=2D-=20
-2.11.0
-
-
---=-=-=
-Content-Type: application/pgp-signature; name="signature.asc"
-
------BEGIN PGP SIGNATURE-----
-
-iQIzBAEBCAAdFiEEG8Yp69OQ2HB7X0l6Oeye3VZigbkFAlhZ98MACgkQOeye3VZi
-gbngCRAAwEhKMdVLSYEnqvV9UTobHdU1htciaBAlulgvbVc7W5DRLiIl756chxb7
-eFpPCrQ1tWCvJCBCi2da3+l7Cyh9PUg+uhzWg4TJUta/GPNe3RmrNzEpn+sS7adv
-5TAD5L9xk525Ms4s8orNpcXcQQY9ubQ2gTy+BPzohbLcEpwMVMq8ckglRiip0SMe
-1y+DaD5dzqwpHvLVKhvWWBGWWWIgxRVbAOnM2tOBIouMjxJ0x8LlaMkCg0QtzEo5
-ZXOProt/hrFMlbajP4ZcD+h2HMIxG/sWq3zJImNUitNjO1cFnKtxi8vVvmidkrR4
-FO8X9GzzIkpTKhdoI3sQiwxQQHZ6oU5eR+V4QjnPCXKTmygp80p48+PhvrrWooz+
-UwL91CqdCa/SxDRSl/UvzN3ctbHVIEtErPnASD+H0yhT3Ml4BJFjvVgS5mOZCIIW
-hB40CPeD6Hq7N9Rsn9juBi3ocjzWmEOZBJVCyqKxP2LCPg76M7MJwNcRzJOVQsdj
-uI3SWiPtN5A2rj72vE8oJ+AFrry0nvGz2M12DhXqBWXvcloMPFfeJ1Qr9tMEIRYR
-F5UiinKLgDI9dbtSTYtMgvENdr3w2+Emizrcdvt6yFscMDYkCBLnNWXhCjLOp8VT
-diG/EharxQoTQ66pOeobPXPFXw0IRAC0bXRXBKf7P67CbhCBZuU=
-=H4Co
------END PGP SIGNATURE-----
---=-=-=--
