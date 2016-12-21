@@ -1,41 +1,41 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:34698 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:46198 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S933996AbcLURD4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 21 Dec 2016 12:03:56 -0500
+        id S935649AbcLURD5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 21 Dec 2016 12:03:57 -0500
 From: Jeff Layton <jlayton@redhat.com>
 To: linux-fsdevel@vger.kernel.org
 Cc: linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org,
         linux-ext4@vger.kernel.org, linux-btrfs@vger.kernel.org,
         linux-xfs@vger.kernel.org
-Subject: [RFC PATCH v1 08/30] orangefs: remove initialization of i_version
-Date: Wed, 21 Dec 2016 12:03:25 -0500
-Message-Id: <1482339827-7882-9-git-send-email-jlayton@redhat.com>
+Subject: [RFC PATCH v1 09/30] reiserfs: remove unneeded i_version bump
+Date: Wed, 21 Dec 2016 12:03:26 -0500
+Message-Id: <1482339827-7882-10-git-send-email-jlayton@redhat.com>
 In-Reply-To: <1482339827-7882-1-git-send-email-jlayton@redhat.com>
 References: <1482339827-7882-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-...as it's completely unused.
+The i_version field in reiserfs is not initialized and is only ever
+updated here. Nothing ever views it, so just remove it.
 
 Signed-off-by: Jeff Layton <jlayton@redhat.com>
 ---
- fs/orangefs/super.c | 2 --
- 1 file changed, 2 deletions(-)
+ fs/reiserfs/super.c | 1 -
+ 1 file changed, 1 deletion(-)
 
-diff --git a/fs/orangefs/super.c b/fs/orangefs/super.c
-index c48859f16e7b..58ad9875eafc 100644
---- a/fs/orangefs/super.c
-+++ b/fs/orangefs/super.c
-@@ -85,8 +85,6 @@ static void orangefs_inode_cache_ctor(void *req)
- 
- 	inode_init_once(&orangefs_inode->vfs_inode);
- 	init_rwsem(&orangefs_inode->xattr_sem);
--
--	orangefs_inode->vfs_inode.i_version = 1;
- }
- 
- static struct inode *orangefs_alloc_inode(struct super_block *sb)
+diff --git a/fs/reiserfs/super.c b/fs/reiserfs/super.c
+index e314cb30a181..b7cf777fc2ac 100644
+--- a/fs/reiserfs/super.c
++++ b/fs/reiserfs/super.c
+@@ -2521,7 +2521,6 @@ static ssize_t reiserfs_quota_write(struct super_block *sb, int type,
+ 		return err;
+ 	if (inode->i_size < off + len - towrite)
+ 		i_size_write(inode, off + len - towrite);
+-	inode->i_version++;
+ 	inode->i_mtime = inode->i_ctime = current_time(inode);
+ 	mark_inode_dirty(inode);
+ 	return len - towrite;
 -- 
 2.7.4
 
