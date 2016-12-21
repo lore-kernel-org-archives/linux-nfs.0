@@ -1,16 +1,16 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:46218 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:47204 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S936090AbcLUREB (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 21 Dec 2016 12:04:01 -0500
+        id S936440AbcLUREE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 21 Dec 2016 12:04:04 -0500
 From: Jeff Layton <jlayton@redhat.com>
 To: linux-fsdevel@vger.kernel.org
 Cc: linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org,
         linux-ext4@vger.kernel.org, linux-btrfs@vger.kernel.org,
         linux-xfs@vger.kernel.org
-Subject: [RFC PATCH v1 13/30] affs: convert to new i_version API
-Date: Wed, 21 Dec 2016 12:03:30 -0500
-Message-Id: <1482339827-7882-14-git-send-email-jlayton@redhat.com>
+Subject: [RFC PATCH v1 16/30] exofs: switch to new i_version API
+Date: Wed, 21 Dec 2016 12:03:33 -0500
+Message-Id: <1482339827-7882-17-git-send-email-jlayton@redhat.com>
 In-Reply-To: <1482339827-7882-1-git-send-email-jlayton@redhat.com>
 References: <1482339827-7882-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
@@ -18,68 +18,56 @@ List-ID: <linux-nfs.vger.kernel.org>
 
 Signed-off-by: Jeff Layton <jlayton@redhat.com>
 ---
- fs/affs/amigaffs.c | 4 ++--
- fs/affs/dir.c      | 4 ++--
- fs/affs/super.c    | 2 +-
- 3 files changed, 5 insertions(+), 5 deletions(-)
+ fs/exofs/dir.c   | 8 ++++----
+ fs/exofs/super.c | 2 +-
+ 2 files changed, 5 insertions(+), 5 deletions(-)
 
-diff --git a/fs/affs/amigaffs.c b/fs/affs/amigaffs.c
-index 0ec65c133b93..00aff7cfc883 100644
---- a/fs/affs/amigaffs.c
-+++ b/fs/affs/amigaffs.c
-@@ -59,7 +59,7 @@ affs_insert_hash(struct inode *dir, struct buffer_head *bh)
- 	affs_brelse(dir_bh);
+diff --git a/fs/exofs/dir.c b/fs/exofs/dir.c
+index 42f9a0a0c4ca..753828ef2db1 100644
+--- a/fs/exofs/dir.c
++++ b/fs/exofs/dir.c
+@@ -60,7 +60,7 @@ static int exofs_commit_chunk(struct page *page, loff_t pos, unsigned len)
+ 	struct inode *dir = mapping->host;
+ 	int err = 0;
  
- 	dir->i_mtime = dir->i_ctime = current_time(dir);
 -	dir->i_version++;
 +	inode_inc_iversion_locked(dir);
- 	mark_inode_dirty(dir);
  
- 	return 0;
-@@ -113,7 +113,7 @@ affs_remove_hash(struct inode *dir, struct buffer_head *rem_bh)
- 	affs_brelse(bh);
+ 	if (!PageUptodate(page))
+ 		SetPageUptodate(page);
+@@ -241,7 +241,7 @@ exofs_readdir(struct file *file, struct dir_context *ctx)
+ 	unsigned long n = pos >> PAGE_SHIFT;
+ 	unsigned long npages = dir_pages(inode);
+ 	unsigned chunk_mask = ~(exofs_chunk_size(inode)-1);
+-	int need_revalidate = (file->f_version != inode->i_version);
++	bool need_revalidate = inode_cmp_iversion(inode, file->f_version);
  
- 	dir->i_mtime = dir->i_ctime = current_time(dir);
--	dir->i_version++;
-+	inode_inc_iversion_locked(dir);
- 	mark_inode_dirty(dir);
- 
- 	return retval;
-diff --git a/fs/affs/dir.c b/fs/affs/dir.c
-index f1e7294381c5..a587d57668e3 100644
---- a/fs/affs/dir.c
-+++ b/fs/affs/dir.c
-@@ -79,7 +79,7 @@ affs_readdir(struct file *file, struct dir_context *ctx)
- 	 * we can jump directly to where we left off.
- 	 */
- 	ino = (u32)(long)file->private_data;
--	if (ino && file->f_version == inode->i_version) {
-+	if (ino && inode_cmp_iversion(inode, file->f_version) == 0) {
- 		pr_debug("readdir() left off=%d\n", ino);
- 		goto inside;
- 	}
-@@ -129,7 +129,7 @@ affs_readdir(struct file *file, struct dir_context *ctx)
- 		} while (ino);
- 	}
- done:
--	file->f_version = inode->i_version;
-+	file->f_version = inode_get_iversion(inode);
- 	file->private_data = (void *)(long)ino;
- 	affs_brelse(fh_bh);
- 
-diff --git a/fs/affs/super.c b/fs/affs/super.c
-index d6384863192c..b3ebf90f9798 100644
---- a/fs/affs/super.c
-+++ b/fs/affs/super.c
-@@ -99,7 +99,7 @@ static struct inode *affs_alloc_inode(struct super_block *sb)
- 	if (!i)
+ 	if (pos > inode->i_size - EXOFS_DIR_REC_LEN(1))
+ 		return 0;
+@@ -264,8 +264,8 @@ exofs_readdir(struct file *file, struct dir_context *ctx)
+ 								chunk_mask);
+ 				ctx->pos = (n<<PAGE_SHIFT) + offset;
+ 			}
+-			file->f_version = inode->i_version;
+-			need_revalidate = 0;
++			file->f_version = inode_get_iversion(inode);
++			need_revalidate = false;
+ 		}
+ 		de = (struct exofs_dir_entry *)(kaddr + offset);
+ 		limit = kaddr + exofs_last_byte(inode, n) -
+diff --git a/fs/exofs/super.c b/fs/exofs/super.c
+index 1076a4233b39..74400d1dcea5 100644
+--- a/fs/exofs/super.c
++++ b/fs/exofs/super.c
+@@ -159,7 +159,7 @@ static struct inode *exofs_alloc_inode(struct super_block *sb)
+ 	if (!oi)
  		return NULL;
  
--	i->vfs_inode.i_version = 1;
-+	inode_set_iversion(&i->vfs_inode, 1);
- 	i->i_lc = NULL;
- 	i->i_ext_bh = NULL;
- 	i->i_pa_cnt = 0;
+-	oi->vfs_inode.i_version = 1;
++	inode_set_iversion(&oi->vfs_inode, 1);
+ 	return &oi->vfs_inode;
+ }
+ 
 -- 
 2.7.4
 
