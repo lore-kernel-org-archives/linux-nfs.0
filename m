@@ -1,14 +1,14 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:44882 "EHLO mx2.suse.de"
+Received: from mx2.suse.de ([195.135.220.15]:44887 "EHLO mx2.suse.de"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1752273AbcLUAUQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 20 Dec 2016 19:20:16 -0500
+        id S1752508AbcLUAUW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 20 Dec 2016 19:20:22 -0500
 From: NeilBrown <neilb@suse.com>
 To: Steve Dickson <SteveD@redhat.com>
 Date: Wed, 21 Dec 2016 11:19:14 +1100
-Subject: [PATCH 3/4] nfs-server-generator: avoid using syslog
+Subject: [PATCH 4/4] mountd: delay reading etab until first request arrives.
 Cc: linux-nfs@vger.kernel.org, "J. Bruce Fields" <bfields@redhat.com>
-Message-ID: <148227955410.31345.7715529128389692817.stgit@noble>
+Message-ID: <148227955423.31345.17642862410755193193.stgit@noble>
 In-Reply-To: <148227940052.31345.1974080582264239934.stgit@noble>
 References: <148227940052.31345.1974080582264239934.stgit@noble>
 MIME-Version: 1.0
@@ -16,31 +16,33 @@ Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-nfs-server-generator is run very early when a lot of services
-are not yet started, so it mustn't depend on them.
-It already avoids using DNS, but it should avoid syslog too.
+Reading etab may require hostname lookup, so it is not reliable
+until the network is active.
+But we want mountd to start before that so that it is ready
+when the very first NFS request arrives.
+So delay reading etab until that request arrives, by which time
+the network must be online so hopefully hostname look will be reliable.
 
-If it tries to log error to syslog, it can deadlock.  So just let
-messages go to stderr.
+An alternate would be to delay starting mountd and nfsd until the
+network is on-line, but that will often be an unnecessary delay.
 
 Signed-off-by: NeilBrown <neilb@suse.com>
 ---
- systemd/nfs-server-generator.c |    3 +++
- 1 file changed, 3 insertions(+)
+ utils/mountd/mountd.c |    2 --
+ 1 file changed, 2 deletions(-)
 
-diff --git a/systemd/nfs-server-generator.c b/systemd/nfs-server-generator.c
-index 7c40b3f29b99..cc99969e9922 100644
---- a/systemd/nfs-server-generator.c
-+++ b/systemd/nfs-server-generator.c
-@@ -95,6 +95,9 @@ int main(int argc, char *argv[])
- 	FILE		*f, *fstab;
- 	struct mntent	*mnt;
+diff --git a/utils/mountd/mountd.c b/utils/mountd/mountd.c
+index 5d9466f5c651..61699e62a6f0 100644
+--- a/utils/mountd/mountd.c
++++ b/utils/mountd/mountd.c
+@@ -852,8 +852,6 @@ main(int argc, char **argv)
+ 	sa.sa_handler = sig_hup;
+ 	sigaction(SIGHUP, &sa, NULL);
  
-+	/* Avoid using any external services */
-+	xlog_syslog(0);
-+
- 	if (argc != 4 || argv[1][0] != '/') {
- 		fprintf(stderr, "nfs-server-generator: create systemd dependencies for nfs-server\n");
- 		fprintf(stderr, "Usage: normal-dir early-dir late-dir\n");
+-	auth_init();
+-
+ 	if (!foreground) {
+ 		/* We first fork off a child. */
+ 		if ((c = fork()) > 0)
 
 
