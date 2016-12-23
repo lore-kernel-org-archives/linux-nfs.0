@@ -1,15 +1,17 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
 Received: from mx143.netapp.com ([216.240.21.24]:7177 "EHLO mx143.netapp.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1753059AbcLWQGb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 23 Dec 2016 11:06:31 -0500
+        id S1755837AbcLWQGe (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 23 Dec 2016 11:06:34 -0500
 From: <andros@netapp.com>
 To: <anna.schumaker@netapp.com>
 CC: <bfieldses.org@netapp.com>, <linux-nfs@vger.kernel.org>,
         Andy Adamson <andros@netapp.com>
-Subject: [PATCH Version 3 00/16] RFC: RPCSEC_GSS Version 3 prototype: Full Mode MAC
-Date: Fri, 23 Dec 2016 11:04:12 -0500
-Message-ID: <1482509068-24516-1-git-send-email-andros@netapp.com>
+Subject: [PATCH Version 3 07/16] SUNRPC AUTH_GSS RPCSEC_GSS_CREATE with label payload
+Date: Fri, 23 Dec 2016 11:04:19 -0500
+Message-ID: <1482509068-24516-8-git-send-email-andros@netapp.com>
+In-Reply-To: <1482509068-24516-1-git-send-email-andros@netapp.com>
+References: <1482509068-24516-1-git-send-email-andros@netapp.com>
 MIME-Version: 1.0
 Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
@@ -17,150 +19,387 @@ List-ID: <linux-nfs.vger.kernel.org>
 
 From: Andy Adamson <andros@netapp.com>
 
-This is a Request for Comment on this GSSv3 prototype that implements full
-mode Mandatory Access Control (MAC) when run with NFSv4.2 Labeled NFS using
-SeLinux MAC.
+Signed-off-by: Andy Adamson <andros@netapp.com>
+---
+ include/linux/sunrpc/auth_gss.h |  54 ++++++++
+ net/sunrpc/auth_gss/auth_gss.c  | 282 ++++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 336 insertions(+)
 
-Note: I have 3 debug patches to verify functionality with _way_ to many printk
-calls that display verifiers and context handle refcounts and labels
-available upon request...
-
-Requires:
---------
-gssd patches:  "RFC: GSSD changes for RPCSEC_GSS version 3"
-libtirpc patches "RFC: Libtirpc changes for RPCSEC_GSS version 3"
-
-Prototye Features:
------------------
-
-GSSv3
-- RPC_GSS_SVC_CHANNEL_PROT marked as unsupported
-- Negotiate GSS version - start with GSSv3, fall back to GSSv1
-- New GSSv3 reply verifier 
-- RPCSEC_GSS_CREATE call
-- label assertion payload carries each client SeLinux thread label
-- Supports one label assertion payload per RPCSEC_GSS_CREATE
-- Kerberos pseudoflavor support (krb5, krb5i, krb5p)
-
-TODO:
-----
-- Ensure SeLinux function exported in patch
-  SELINUX export security_current_sid_to_context" is OK.
-- Add user configuration to indicate Full Mode MAC is desired and that
-  NFSv4.2 Labeled NFS (LNFS) is used.
-
-Prototype description:
----------------------
-Parent GSS context: normal GSSv3 context
-  - Same as a GSSv1 context except new GSS Version and new reply verifier
-  - Called the parent contex
-If SeLinux is enabled and GSSv3 is in use, assume LNFS and GSSv3 full mode MAC.
-
-Each new GSS context (parent) kicks off an RPCSEC_GSS_CREATE with the
-client thread's SeLinux label as a payload.
-  - Upon success, creates a GSSv3 child context handle that asserts the
-    thread label, and uses the parent context for encrytion services.
-  - CLIENT: Child context and assertion is stored in an assertion list
-    off the struct gss_cl_ctx.
-  - SERVER: Child context has it's own rsc cache entry, and the child
-    handle is stored in a list of children handles off the parent rsc entry.
-  - CLIENT and SERVER: child contexts are destroyed when parent context is
-    destroyed.
-  - CLIENT: child context associated with the client NFS request thread
-    is used for the NFS request.
-  - SERVER: Using the child context handle looks up the child rsc entry.
-    Using the parent context handle stored in the child rsc entry looks up
-    the parent rsc entry to use for MIC creation/verification, integrity
-    (krb5i)  and/or privacy (krb5p).
-  - SERVER: the label asserted by the NFS request child handle is imposed
-    upon the NFSD thread servicing the request just like the UID/GIDs in
-    the rpc credential.
-
-Each time a call is made, the clinet makes a check in gss_match to see if
-the curren thread's SeLinux label has an associated GSS3 child context handle
-to use. If not, an RPCSEC_GSS_CREATE call is kicked off to establish the
-child context prior to the NFS request being sent. The NFS request then
-uses the child context that asserts the client NFS request thread label
-when sending the NFS request to the server.
-
-Smoke Test;
-----------
-Setup:
-- Ensure SeLinux is enabled on both client and server
-- Turn on NFSv4.2 in client and server
-  - SERVER: in /etc/sysconfig/nfs: RPCNFSDARGS="-V 4.2"
-  - CLIENT: mount -o v4.2 <server>:<export> <mntpoint>
-- Useful SeLinux commands
-  - ls -Z  (shows label and fetches it via GETATTR usin LNFS)
-  - ls -scontext  (shows just the label)
-
-Test: (run with wireshark capture)
-Note: labels and conext values are from my setup. I restart gssd each test run.
-Note: my server /etc/export is "/export *(sec=krb5:sys,rw,no_root_squash)"
-
-- # mount -o v4.2,sec=krb5 <server>:<export>  <mntpoint>
-  # ls <mntpoint>
-  - This will create a parent GSS context for kb5i (010000000000000 say 01),
-    and a GSS3 child context for krb5i parent with the client thread
-    label "system_u:system_r:kernel_t:s0" with handle 02.
-   - The child handle 02 is used for the EXCHANGE_ID, CREATE_SESSION, and
-     RECLAIM_COMPLETE calls.
-  - Then a parent GSS handle is created for krb5 (03) and a GSS3 child
-    context for the krb5 parent with hanel (04) for the client thread label
-    "unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023"
-   - The child handle 04 is used for the PUTROOT_FH, all the mount GETATTRs
-     and the LOOKUP of "/export"
-   - A new GSS3 child context (05) is created for krb5 parent with label
-     "system_u:system_r:kernel_t:s0"
-     The child handle 05 is used for LOOKUP, ACCESS, READDIR, etc.
-
-- # umount <mntpoint>
-   - This will create a new GSS3 child context (06) for krb5i parent with the
-     client thread label
-     "unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023"
-    - The child handle 06 is used for DESTROY_SESSION and DESTROY_CLIENTID.
-  - RPCSEC_GSS_DESTROY messages are sent for the two parent contexts 01 and 03.
-  - CHILD: the parent contexts and associated child contexts are destroyed.
-  - SERVER: the parent context and associated child contexts are destroyed.
-
--->Andy
-
-
-Andy Adamson (15):
-  SUNRPC handle unsupported RPC_GSS_SVC_CHANNEL_PROT
-  SUNRPC: add a null call with payload GSSv3
-  SELINUX export security_current_sid_to_context
-  SUNRPC GSSv3: base definitions
-  SUNRPC AUTH_GSS get RPCSEC_GSS version from gssd downcall
-  SUNRPC AUTH_GSS gss3 reply verifier
-  SUNRPC AUTH_GSS RPCSEC_GSS_CREATE with label payload
-  SUNRPC AUTH_GSS store and use gss3 label assertion
-  SUNRPC AUTH_GSS free assertions
-  SUNRPC: AUTH_GSS add RPC_GSS_PROC_CREATE case for wrap and unwrap
-  SUNRPC SVCAUTH_GSS allow RPCSEC_GSS version 1 or 3
-  SUNRPC SVCAUTH_GSS gss3 reply verifier
-  SUNRPC SVCAUTH_GSS gss3 create label
-  SUNRPC SVCAUTH_GSS set gss3 label on nfsd thread
-  SUNRPC SVCAUTH_gss store gss3 child handles in parent rsc
-
-Neil Brown (1):
-  SUNRPC SVCAUTH_GSS reap the rsc cache entry on RPC_GSS_PROC_DESTROY
-
- fs/nfsd/auth.c                     |  11 +-
- include/linux/selinux.h            |   1 +
- include/linux/sunrpc/auth_gss.h    |  76 +++++-
- include/linux/sunrpc/cache.h       |   1 +
- include/linux/sunrpc/clnt.h        |   3 +
- include/linux/sunrpc/gss_api.h     |  11 +
- include/linux/sunrpc/svcauth.h     |   1 +
- include/linux/sunrpc/svcauth_gss.h |   1 +
- net/sunrpc/auth_gss/auth_gss.c     | 509 +++++++++++++++++++++++++++++++++++-
- net/sunrpc/auth_gss/svcauth_gss.c  | 522 +++++++++++++++++++++++++++++++++++--
- net/sunrpc/cache.c                 |  13 +
- net/sunrpc/clnt.c                  |  20 ++
- security/selinux/hooks.c           |  12 +
- 13 files changed, 1141 insertions(+), 40 deletions(-)
-
+diff --git a/include/linux/sunrpc/auth_gss.h b/include/linux/sunrpc/auth_gss.h
+index 4ab63a9..b2a5a61 100644
+--- a/include/linux/sunrpc/auth_gss.h
++++ b/include/linux/sunrpc/auth_gss.h
+@@ -93,6 +93,60 @@ struct gss_cred {
+ 	unsigned long		gc_upcall_timestamp;
+ };
+ 
++/** GSS3 */
++enum gss3_type {
++	GSS3_LABEL = 0,
++	GSS3_PRIVS = 1,
++};
++
++struct gss3_chan_binding {
++	u32	cb_len;
++	void	*cb_binding;
++};
++
++struct gss3_mp_auth {
++	u32	mp_handle_len;
++	void	*mp_handle;
++	u32	*mp_mic_len;
++	void	*mp_mic;	/* header mic */
++};
++
++struct gss3_label {
++	u32			la_lfs;
++	u32			la_pi;
++	struct xdr_netobj	la_label;
++};
++
++struct gss3_privs {
++	char	*pr_name;
++	u32	pr_num;
++	void	*pr_data;
++};
++
++struct gss3_assertion_u {
++	u32	au_type;
++	union {
++		struct gss3_label	au_label;
++		struct gss3_privs	au_privs;
++	} u;
++};
++
++struct gss3_create_args {
++	struct gss3_mp_auth		*ca_mp_auth;
++	struct gss3_chan_binding	*ca_chan_bind;
++	u32			ca_num;
++	struct gss3_assertion_u	*ca_assertions;
++};
++
++struct gss3_create_res {
++	u32		cr_hlen;
++	void		*cr_handle;
++	struct gss3_mp_auth		*cr_mp_auth;
++	struct gss3_chan_binding	*cr_chan_bind;
++	u32			cr_num;
++	struct gss3_assertion_u	*cr_assertions;
++};
++
+ #endif /* __KERNEL__ */
+ #endif /* _LINUX_SUNRPC_AUTH_GSS_H */
+ 
+diff --git a/net/sunrpc/auth_gss/auth_gss.c b/net/sunrpc/auth_gss/auth_gss.c
+index d11f421..e39c1af 100644
+--- a/net/sunrpc/auth_gss/auth_gss.c
++++ b/net/sunrpc/auth_gss/auth_gss.c
+@@ -52,9 +52,12 @@
+ #include <linux/sunrpc/gss_api.h>
+ #include <asm/uaccess.h>
+ #include <linux/hashtable.h>
++#include <linux/security.h>
+ 
+ #include "../netns.h"
+ 
++static int gss3_create_label(struct rpc_cred *cred);
++
+ static const struct rpc_authops authgss_ops;
+ 
+ static const struct rpc_credops gss_credops;
+@@ -145,6 +148,8 @@ struct gss_auth {
+ 	set_bit(RPCAUTH_CRED_UPTODATE, &cred->cr_flags);
+ 	smp_mb__before_atomic();
+ 	clear_bit(RPCAUTH_CRED_NEW, &cred->cr_flags);
++	/* XXXX make void? check retunr ?? */
++	gss3_create_label(cred);
+ }
+ 
+ static const void *
+@@ -1591,6 +1596,283 @@ static int gss_cred_is_negative_entry(struct rpc_cred *cred)
+ 	return 0;
+ }
+ 
++/**
++ * GSS3_createargs_maxsz and GSS3_createres_maxsz
++ * include no rgss3_assertion_u payload.
++ *
++ * GSS3_createargs_maxsz is currently for one label.
++ */
++#define GSS3_createargs_maxsz	(1 /* empty ca_mp_auth */ + \
++				 1 /* empty ca_chan_bind */ + \
++				 1 /* ca_num */ + \
++				 1 /* au_type */)
++#define GSS3_labelargs_maxsz	(1 /* la_lfs */ + \
++				 1 /* la_pi */ + \
++				 1 /* la_label.len */ + \
++				 XDR_QUADLEN(1024) /* la_label.data */)
++#define GSS3_createres_maxsz	(1 /* cr_hlen */ + \
++				 XDR_QUADLEN(1024) /* cr_handle*/ + \
++				 GSS3_createargs_maxsz)
++#define GSS3_labelres_maxsz	GSS3_labelargs_maxsz
++
++#define GSS3_listargs_maxsz	(1) /* dummy */
++#define GSS3_listres_maxsz	(1) /* dummy */
++
++static void
++gss3_enc_label(struct rpc_rqst *req, struct xdr_stream *xdr,
++	       const struct gss3_create_args *g3ca)
++{
++	struct gss3_label *gl;
++	__be32 *p;
++
++	gl = &g3ca->ca_assertions[0].u.au_label;
++
++	dprintk("RPC: %5u encoding GSSv3 label %s:%d\n", req->rq_task->tk_pid,
++		(char *)gl->la_label.data, gl->la_label.len);
++
++	p = xdr_reserve_space(xdr, GSS3_labelargs_maxsz << 2);
++	*p++ = cpu_to_be32(0); /* la_lfs */
++	*p++ = cpu_to_be32(0); /* la_pi */
++	p = xdr_encode_netobj(p, &gl->la_label);
++}
++
++static void
++gss3_enc_create(struct rpc_rqst *req, struct xdr_stream *xdr,
++		const struct gss3_create_args *g3ca)
++{
++	u32 type;
++	__be32 *p;
++
++	p = xdr_reserve_space(xdr, GSS3_createargs_maxsz << 2);
++	*p++ = cpu_to_be32(0); /* NULL ca_mp_auth */
++	*p++ = cpu_to_be32(0); /* NULL ca_chan_bind */
++	*p++ = cpu_to_be32(g3ca->ca_num);
++	/* the payload is a gss3_label */
++	type = cpu_to_be32(g3ca->ca_assertions->au_type);
++	*p++ = type;
++	switch (type) {
++	case GSS3_LABEL:
++		gss3_enc_label(req, xdr, g3ca);
++		break;
++	case GSS3_PRIVS:
++	default:
++		/* drop through to return */
++		pr_warn("RPC    Unsupported gss3 create assertion %d\n", type);
++	}
++}
++
++static int
++gss3_dec_label(struct rpc_rqst *req, struct xdr_stream *xdr,
++	       struct gss3_create_res *g3cr)
++{
++	struct gss3_label *gl;
++	struct gss3_assertion_u *g3a;
++	__be32 *p;
++
++	g3a = kzalloc(sizeof(*g3a), GFP_KERNEL);
++	if (!g3a)
++		goto out_err;
++
++	g3a->au_type = GSS3_LABEL;
++	gl = &g3a->u.au_label;
++
++	p = xdr_inline_decode(xdr, 12);
++	if (unlikely(!p))
++		goto out_overflow;
++
++	gl->la_lfs = be32_to_cpup(p++);
++	gl->la_pi = be32_to_cpup(p++);
++	gl->la_label.len = be32_to_cpup(p++);
++
++	p = xdr_inline_decode(xdr, gl->la_label.len);
++	if (unlikely(!p))
++		goto out_overflow;
++
++	gl->la_label.data = kmemdup(p, gl->la_label.len, GFP_KERNEL);
++	if (!gl->la_label.data)
++		goto out_free_assert;
++	/**
++	 * Note: need to store the assertion with the child handle
++	 * in the gss context cache.
++	 */
++
++	g3cr->cr_assertions = g3a;
++
++	return 0;
++
++out_free_assert:
++	kfree(g3a);
++out_err:
++	return -EIO;
++out_overflow:
++	pr_warn("RPC    %s End of receive buffer. Remaining len: %tu words.\n",
++		__func__, xdr->end - xdr->p);
++	goto out_free_assert;
++}
++
++static int
++gss3_dec_create(struct rpc_rqst *req, struct xdr_stream *xdr,
++		struct gss3_create_res *g3cr)
++{
++	u32 dummy, type;
++	__be32 *p;
++
++	p = xdr_inline_decode(xdr, 4);
++	if (unlikely(!p))
++		goto out_overflow;
++	g3cr->cr_hlen = be32_to_cpup(p++);
++
++	p = xdr_inline_decode(xdr, g3cr->cr_hlen + 16);
++	if (unlikely(!p))
++		goto out_overflow;
++
++	g3cr->cr_handle = kmemdup(p, g3cr->cr_hlen, GFP_KERNEL);
++	if (!g3cr->cr_handle)
++		goto out_err;
++
++	p += XDR_QUADLEN(g3cr->cr_hlen);
++
++	/* cr_mp_auth: not supported */
++	dummy = be32_to_cpup(p++);
++	if (dummy != 0) {
++		pr_warn("RPC    gss3 create cr_mp_auth not supported\n");
++		goto out_free_handle;
++	}
++
++	/* cr_chan_bind: not supported */
++	dummy = be32_to_cpup(p++);
++	if (dummy != 0) {
++		pr_warn("RPC    gss3 create cr_chan_bind not supported\n");
++		goto out_free_handle;
++	}
++
++	/* Support one label assertion */
++	g3cr->cr_num = be32_to_cpup(p++);
++	if (g3cr->cr_num != 1) {
++		pr_warn("RPC    gss3 multiple assertions %d unspported\n",
++			g3cr->cr_num);
++		goto out_free_handle;
++	}
++
++	/* au_type */
++	type = be32_to_cpup(p++);
++	switch (type) {
++	case GSS3_LABEL:
++		if (gss3_dec_label(req, xdr, g3cr) != 0)
++			goto out_free_handle;
++		break;
++	case GSS3_PRIVS:
++	default:
++		pr_warn("RPC    Unsupported gss3 create assertion %d\n", type);
++		goto out_free_handle;
++	}
++	return 0;
++
++out_free_handle:
++	kfree(g3cr->cr_handle);
++out_err:
++	return -EIO;
++out_overflow:
++	pr_warn("RPC    %s End of receive buffer. Remaining len: %tu words.\n",
++		__func__, xdr->end - xdr->p);
++	goto out_err;
++}
++
++#define RPC_PROC_NULL 0
++
++struct rpc_procinfo gss3_label_assertion[] = {
++	[RPC_GSS_PROC_CREATE] = {
++		.p_proc		= RPC_PROC_NULL,
++		.p_encode	= (kxdreproc_t)gss3_enc_create,
++		.p_decode	= (kxdrdproc_t)gss3_dec_create,
++		.p_arglen	= GSS3_createargs_maxsz + GSS3_labelargs_maxsz,
++		.p_replen	= GSS3_createres_maxsz + GSS3_labelres_maxsz,
++		.p_statidx	= RPC_GSS_PROC_CREATE,
++		.p_timer	= 0,
++		.p_name		= "GSS_CREATE_LABEL",
++	},
++};
++
++/** GSSv3 RPC_GSS_PROC_CREATE operation
++ * Note: MUST use integrity or privacy security service.
++ *	First pass; use rpc_gss_svc_none.
++ *
++ * scontext: returned from security_sid_to_scontext(u32 sid, char **scontext)
++ */
++static int
++gss3_create_label(struct rpc_cred *cred)
++{
++	struct gss_auth *gss_auth = container_of(cred->cr_auth, struct gss_auth,
++						 rpc_auth);
++	struct gss_cl_ctx *ctx = gss_cred_get_ctx(cred);
++	struct rpc_task *task;
++	struct gss3_create_res cres = {
++		.cr_mp_auth = 0,
++	};
++	struct gss3_create_args *cargs = NULL;
++	struct gss3_label *gl;
++	int ret = -EINVAL;
++
++	if (!ctx)
++		goto out;
++	/**
++	 * Take a reference to ensure the cred sticks around as we create
++	 * a child context
++	 * XXX does grabbing a reference to the context (gss_cred_get_ctx)
++	 * also keep the cred from being removed?
++	 * XXX do we need to keep this cred reference until the child context
++	 * handle and associated assertion is removed?
++	 */
++	get_rpccred(cred);
++
++	if (ctx->gc_v != RPC_GSS3_VERSION || !selinux_is_enabled())
++		goto out_err;
++
++	ret = -ENOMEM;
++	cargs = kzalloc(sizeof(*cargs), GFP_NOFS);
++	if (!cargs)
++		goto out_err;
++	cargs->ca_assertions = kzalloc(sizeof(*cargs->ca_assertions), GFP_NOFS);
++	if (!cargs->ca_assertions)
++		goto out_free_args;
++
++	/* NOTE: not setting la_lfs, la_pi. Do we even need them? */
++	cargs->ca_num = 1;
++	cargs->ca_assertions->au_type = GSS3_LABEL;
++	gl = &cargs->ca_assertions->u.au_label;
++
++	ret = security_current_sid_to_context((char **)&gl->la_label.data,
++					      &gl->la_label.len);
++
++	ctx->gc_proc = RPC_GSS_PROC_CREATE;
++	cred->cr_ops = &gss_credops;
++
++	/* Want a sync rpc call */
++	task = rpc_call_null_payload(gss_auth->client, cred,
++				     0, cargs, &cres,
++				    &gss3_label_assertion[RPC_GSS_PROC_CREATE]);
++	if (IS_ERR(task)) {
++		ret = PTR_ERR(task);
++		goto out_free_assert;
++	}
++	if (task->tk_status != 0) {
++		ret = task->tk_status;
++		goto out_free_assert;
++	}
++	rpc_put_task(task);
++
++out_free_assert:
++	kfree(cargs->ca_assertions);
++out_free_args:
++	kfree(cargs);
++out_err:
++	ctx->gc_proc = RPC_GSS_PROC_DATA;
++	gss_put_ctx(ctx);
++	put_rpccred(cred);
++out:
++	return ret;
++}
++
+ /*
+ * Refresh credentials. XXX - finish
+ */
 -- 
 1.8.3.1
 
