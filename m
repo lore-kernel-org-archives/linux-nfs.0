@@ -1,15 +1,15 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx141.netapp.com ([216.240.21.12]:7681 "EHLO mx141.netapp.com"
+Received: from mx142.netapp.com ([216.240.21.19]:8606 "EHLO mx142.netapp.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1755948AbcLWQGb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        id S1755837AbcLWQGb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
         Fri, 23 Dec 2016 11:06:31 -0500
 From: <andros@netapp.com>
 To: <anna.schumaker@netapp.com>
 CC: <bfieldses.org@netapp.com>, <linux-nfs@vger.kernel.org>,
         Andy Adamson <andros@netapp.com>
-Subject: [PATCH Version 3 05/16] SUNRPC AUTH_GSS get RPCSEC_GSS version from gssd downcall
-Date: Fri, 23 Dec 2016 11:04:17 -0500
-Message-ID: <1482509068-24516-6-git-send-email-andros@netapp.com>
+Subject: [PATCH Version 3 03/16] SELINUX export security_current_sid_to_context
+Date: Fri, 23 Dec 2016 11:04:15 -0500
+Message-ID: <1482509068-24516-4-git-send-email-andros@netapp.com>
 In-Reply-To: <1482509068-24516-1-git-send-email-andros@netapp.com>
 References: <1482509068-24516-1-git-send-email-andros@netapp.com>
 MIME-Version: 1.0
@@ -19,52 +19,47 @@ List-ID: <linux-nfs.vger.kernel.org>
 
 From: Andy Adamson <andros@netapp.com>
 
+RPCSEC_GSS Version 3 label assertions require the client thread
+sid in string context form
+
 Signed-off-by: Andy Adamson <andros@netapp.com>
 ---
- net/sunrpc/auth_gss/auth_gss.c | 16 ++++++++++++----
- 1 file changed, 12 insertions(+), 4 deletions(-)
+ include/linux/selinux.h  |  1 +
+ security/selinux/hooks.c | 12 ++++++++++++
+ 2 files changed, 13 insertions(+)
 
-diff --git a/net/sunrpc/auth_gss/auth_gss.c b/net/sunrpc/auth_gss/auth_gss.c
-index 96135da..9288cc2 100644
---- a/net/sunrpc/auth_gss/auth_gss.c
-+++ b/net/sunrpc/auth_gss/auth_gss.c
-@@ -213,6 +213,7 @@ struct gss_auth {
- 	unsigned int seclen;
- 	unsigned int timeout;
- 	unsigned long now = jiffies;
-+	unsigned int gss_v;
- 	u32 window_size;
- 	int ret;
+diff --git a/include/linux/selinux.h b/include/linux/selinux.h
+index 44f4596..3dfaf41 100644
+--- a/include/linux/selinux.h
++++ b/include/linux/selinux.h
+@@ -24,6 +24,7 @@
+  * selinux_is_enabled - is SELinux enabled?
+  */
+ bool selinux_is_enabled(void);
++int security_current_sid_to_context(char **scontext, u32 *scontext_len);
+ #else
  
-@@ -226,6 +227,13 @@ struct gss_auth {
- 	if (timeout == 0)
- 		timeout = GSSD_MIN_TIMEOUT;
- 	ctx->gc_expiry = now + ((unsigned long)timeout * HZ);
+ static inline bool selinux_is_enabled(void)
+diff --git a/security/selinux/hooks.c b/security/selinux/hooks.c
+index 09fd610..f355c49 100644
+--- a/security/selinux/hooks.c
++++ b/security/selinux/hooks.c
+@@ -6463,3 +6463,15 @@ int selinux_disable(void)
+ 	return 0;
+ }
+ #endif
 +
-+	/* RPCSEC_GSS version used to obtain context */
-+	p = simple_get_bytes(p, end, &gss_v, sizeof(gss_v));
-+	if (IS_ERR(p))
-+		goto err;
-+	ctx->gc_v = gss_v;
++/**
++ * RPCSEC_GSS Version 3 Full Mode labeling needs this interface
++ * or one like it.
++ */
++int security_current_sid_to_context(char **scontext, u32 *scontext_len)
++{
++	const struct task_security_struct *ts = current_security();
 +
- 	/* Sequence number window. Determines the maximum number of
- 	 * simultaneous requests
- 	 */
-@@ -1511,10 +1519,10 @@ static void gss_pipe_free(struct gss_pipe *p)
- 	req->rq_seqno = ctx->gc_seq++;
- 	spin_unlock(&ctx->gc_seq_lock);
- 
--	*p++ = htonl((u32) RPC_GSS_VERSION);
--	*p++ = htonl((u32) ctx->gc_proc);
--	*p++ = htonl((u32) req->rq_seqno);
--	*p++ = htonl((u32) gss_cred->gc_service);
-+	*p++ = htonl((u32)ctx->gc_v);
-+	*p++ = htonl((u32)ctx->gc_proc);
-+	*p++ = htonl((u32)req->rq_seqno);
-+	*p++ = htonl((u32)gss_cred->gc_service);
- 	p = xdr_encode_netobj(p, &ctx->gc_wire_ctx);
- 	*cred_len = htonl((p - (cred_len + 1)) << 2);
- 
++	return security_sid_to_context(ts->sid, scontext, scontext_len);
++}
++EXPORT_SYMBOL_GPL(security_current_sid_to_context);
 -- 
 1.8.3.1
 
