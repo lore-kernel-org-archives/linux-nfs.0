@@ -1,15 +1,15 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx143.netapp.com ([216.240.21.24]:63704 "EHLO mx143.netapp.com"
+Received: from mx141.netapp.com ([216.240.21.12]:7681 "EHLO mx141.netapp.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1755606AbcLWQGb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        id S1755948AbcLWQGb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
         Fri, 23 Dec 2016 11:06:31 -0500
 From: <andros@netapp.com>
 To: <anna.schumaker@netapp.com>
 CC: <bfieldses.org@netapp.com>, <linux-nfs@vger.kernel.org>,
         Andy Adamson <andros@netapp.com>
-Subject: [PATCH Version 3 02/16] SUNRPC: add a null call with payload GSSv3
-Date: Fri, 23 Dec 2016 11:04:14 -0500
-Message-ID: <1482509068-24516-3-git-send-email-andros@netapp.com>
+Subject: [PATCH Version 3 05/16] SUNRPC AUTH_GSS get RPCSEC_GSS version from gssd downcall
+Date: Fri, 23 Dec 2016 11:04:17 -0500
+Message-ID: <1482509068-24516-6-git-send-email-andros@netapp.com>
 In-Reply-To: <1482509068-24516-1-git-send-email-andros@netapp.com>
 References: <1482509068-24516-1-git-send-email-andros@netapp.com>
 MIME-Version: 1.0
@@ -19,59 +19,52 @@ List-ID: <linux-nfs.vger.kernel.org>
 
 From: Andy Adamson <andros@netapp.com>
 
-RPCSEC_GSS_CREATE and RPCSEC_GSS_LIST are NULL calls with a payload
-
 Signed-off-by: Andy Adamson <andros@netapp.com>
 ---
- include/linux/sunrpc/clnt.h |  3 +++
- net/sunrpc/clnt.c           | 20 ++++++++++++++++++++
- 2 files changed, 23 insertions(+)
+ net/sunrpc/auth_gss/auth_gss.c | 16 ++++++++++++----
+ 1 file changed, 12 insertions(+), 4 deletions(-)
 
-diff --git a/include/linux/sunrpc/clnt.h b/include/linux/sunrpc/clnt.h
-index 85cc819..880537d 100644
---- a/include/linux/sunrpc/clnt.h
-+++ b/include/linux/sunrpc/clnt.h
-@@ -175,6 +175,9 @@ int		rpc_call_sync(struct rpc_clnt *clnt,
- 			      const struct rpc_message *msg, int flags);
- struct rpc_task *rpc_call_null(struct rpc_clnt *clnt, struct rpc_cred *cred,
- 			       int flags);
-+struct rpc_task *rpc_call_null_payload(struct rpc_clnt *clnt,
-+				struct rpc_cred *cred, int flags, void *argp,
-+				void *resp, struct rpc_procinfo *pinfo);
- int		rpc_restart_call_prepare(struct rpc_task *);
- int		rpc_restart_call(struct rpc_task *);
- void		rpc_setbufsize(struct rpc_clnt *, unsigned int, unsigned int);
-diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
-index 1efbe48..9156c62 100644
---- a/net/sunrpc/clnt.c
-+++ b/net/sunrpc/clnt.c
-@@ -2503,6 +2503,26 @@ static int rpcproc_decode_null(void *rqstp, struct xdr_stream *xdr, void *obj)
- 	return 0;
- }
+diff --git a/net/sunrpc/auth_gss/auth_gss.c b/net/sunrpc/auth_gss/auth_gss.c
+index 96135da..9288cc2 100644
+--- a/net/sunrpc/auth_gss/auth_gss.c
++++ b/net/sunrpc/auth_gss/auth_gss.c
+@@ -213,6 +213,7 @@ struct gss_auth {
+ 	unsigned int seclen;
+ 	unsigned int timeout;
+ 	unsigned long now = jiffies;
++	unsigned int gss_v;
+ 	u32 window_size;
+ 	int ret;
  
-+struct rpc_task *
-+rpc_call_null_payload(struct rpc_clnt *clnt, struct rpc_cred *cred, int flags,
-+		      void *argp, void *resp, struct rpc_procinfo *pinfo)
-+{
-+	struct rpc_message msg = {
-+		.rpc_proc = pinfo,
-+		.rpc_argp = argp,
-+		.rpc_resp = resp,
-+		.rpc_cred = cred,
-+	};
-+	struct rpc_task_setup task_setup_data = {
-+		.rpc_client = clnt,
-+		.rpc_message = &msg,
-+		.callback_ops = &rpc_default_ops,
-+		.flags = flags,
-+	};
-+	return rpc_run_task(&task_setup_data);
-+}
-+EXPORT_SYMBOL_GPL(rpc_call_null_payload);
+@@ -226,6 +227,13 @@ struct gss_auth {
+ 	if (timeout == 0)
+ 		timeout = GSSD_MIN_TIMEOUT;
+ 	ctx->gc_expiry = now + ((unsigned long)timeout * HZ);
 +
- static struct rpc_procinfo rpcproc_null = {
- 	.p_encode = rpcproc_encode_null,
- 	.p_decode = rpcproc_decode_null,
++	/* RPCSEC_GSS version used to obtain context */
++	p = simple_get_bytes(p, end, &gss_v, sizeof(gss_v));
++	if (IS_ERR(p))
++		goto err;
++	ctx->gc_v = gss_v;
++
+ 	/* Sequence number window. Determines the maximum number of
+ 	 * simultaneous requests
+ 	 */
+@@ -1511,10 +1519,10 @@ static void gss_pipe_free(struct gss_pipe *p)
+ 	req->rq_seqno = ctx->gc_seq++;
+ 	spin_unlock(&ctx->gc_seq_lock);
+ 
+-	*p++ = htonl((u32) RPC_GSS_VERSION);
+-	*p++ = htonl((u32) ctx->gc_proc);
+-	*p++ = htonl((u32) req->rq_seqno);
+-	*p++ = htonl((u32) gss_cred->gc_service);
++	*p++ = htonl((u32)ctx->gc_v);
++	*p++ = htonl((u32)ctx->gc_proc);
++	*p++ = htonl((u32)req->rq_seqno);
++	*p++ = htonl((u32)gss_cred->gc_service);
+ 	p = xdr_encode_netobj(p, &ctx->gc_wire_ctx);
+ 	*cred_len = htonl((p - (cred_len + 1)) << 2);
+ 
 -- 
 1.8.3.1
 
