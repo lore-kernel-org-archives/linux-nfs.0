@@ -1,115 +1,137 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mout.gmx.net ([212.227.15.15]:62869 "EHLO mout.gmx.net"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1750738AbcLZSzY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 26 Dec 2016 13:55:24 -0500
-MIME-Version: 1.0
-Message-ID: <trinity-02157c25-8763-4394-ad29-2b05c954f503-1482778484415@3capp-mailcom-bs02>
-From: daggs <daggs@gmx.com>
-To: NeilBrown <neilb@suse.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: unable to mount nfs4 mount
-Content-Type: text/plain; charset=UTF-8
-Date: Mon, 26 Dec 2016 19:54:44 +0100
-In-Reply-To: <87d1gfndin.fsf@notabene.neil.brown.name>
-References: <trinity-4254572c-7361-4bba-8056-b645fac97726-1482498754742@3capp-mailcom-bs14>
- <87r34yngxn.fsf@notabene.neil.brown.name>
- <trinity-f47ff353-231a-48ff-b6d4-a8f34c45ea26-1482563498427@3capp-mailcom-bs14>
- <87lgv5nmi6.fsf@notabene.neil.brown.name>
- <trinity-8111cff0-0509-405f-8faa-190a3c9291c6-1482609137078@3capp-mailcom-bs11>
- <87inq8olcj.fsf@notabene.neil.brown.name>
- <trinity-c0b9c914-6d36-40d8-a13a-38cde8b7d23f-1482696592233@3capp-mailcom-bs03>
- <87fulboij2.fsf@notabene.neil.brown.name>
- <trinity-161ef8fa-88f7-4128-85e2-cc4f1abb31a7-1482738488938@3capp-mailcom-bs14>,
- <87d1gfndin.fsf@notabene.neil.brown.name>
+Received: from mail-qk0-f196.google.com ([209.85.220.196]:36662 "EHLO
+        mail-qk0-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751638AbcL0RTM (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 27 Dec 2016 12:19:12 -0500
+Received: by mail-qk0-f196.google.com with SMTP id h201so28657351qke.3
+        for <linux-nfs@vger.kernel.org>; Tue, 27 Dec 2016 09:19:11 -0800 (PST)
+Message-ID: <1482859147.2771.5.camel@poochiereds.net>
+Subject: LSF/MM 2017: Call for Proposals
+From: Jeff Layton <jlayton@poochiereds.net>
+To: linux-block@vger.kernel.org, linux-btrfs@vger.kernel.org,
+        linux-cifs@vger.kernel.org, linux-ext4@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org, linux-ide@vger.kernel.org,
+        linux-kernel@vger.kernel.org, linux-mm@kvack.org,
+        linux-nfs@vger.kernel.org, linux-scsi@vger.kernel.org,
+        "xfs@oss.sgi.com" <xfs@oss.sgi.com>, ceph-devel@vger.kernel.org,
+        linux-nvme@lists.infradead.org
+Cc: "lsf-pc@lists.linux-foundation.org"
+        <lsf-pc@lists.linux-foundation.org>
+Date: Tue, 27 Dec 2016 12:19:07 -0500
+Content-Type: text/plain; charset="UTF-8"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Greetings Neil,
+We initially sent this pretty early this year, so this is a resend in           
+case anyone missed the first posting. The call for topics and attendance        
+requests is open until January 15th, 2017.
 
-> On Mon, Dec 26 2016, daggs wrote:
-> 
-> > Greetings,
-> >
-> >> On Mon, Dec 26 2016, daggs wrote:
-> >> 
-> >> >> Can you strace mountd while you attempt a mount?
-> >> >> e.g.
-> >> >>   strace -o /tmp/trace -s 1000 -p 241
-> >> >> 
-> >> >> and send the /tmp/trace.
-> >> >> Also, after the attempt fails, run
-> >> >>  rpcdebug -m rpc -s cache
-> >> >>  grep . /proc/net/rpc/*/c*
-> >> >>  cat /proc/fs/nfsd/exports
-> >> >> 
-> >> >> and report the output.
-> >> >> 
-> >> > here:
-> >> >
-> >> > # cat /tmp/trace
-> >> > pselect6(1024, [3 4 5 7 8 9 10 11 12], NULL, NULL, NULL, NULL) = 1 (in [3])
-> >> > read(3, "nfsd 10.0.0.1\n", 32768)       = 14
-> >> > openat(AT_FDCWD, "/run/nfs/etab", O_RDONLY) = 14
-> >> > fstat(14, {st_mode=S_IFREG|0644, st_size=435, ...}) = 0
-> >> > close(14)                               = 0
-> >> > write(3, "nfsd 10.0.0.1 2079 10.0.0.0/24 \n", 32) = 32
-> >> 
-> >> This is weird.
-> >> Here mountd is telling nfsd that when a request comes from IP address
-> >> 10.0.0.1, it should look for export entries associated with the client
-> >> name "10.0.0.0/24", which is good.
-> >> However the expiry time for that information is "2079", which is back in
-> >> January 1970.
-> >> When mountd writes that number, it computes it as
-> >>    time(0) + DEFAULT_TTL
-> >> where DEFAULT_TTL is (30 * 60)
-> >> Which suggests time(0) is "279".
-> >> 
-> >> What is the current time on this system?
-> >> 
-> >> If it really was very early on Jan 1st 1970, it should work, however...
-> >> 
-> >> 
-> >> > pselect6(1024, [3 4 5 7 8 9 10 11 12], NULL, NULL, NULL, NULL <detached ...>
-> >> > # rpcdebug -m rpc -s cache
-> >> > rpc        cache
-> >> > # grep . /proc/net/rpc/*/c*
-> >> > /proc/net/rpc/auth.unix.gid/content:#uid cnt: gids...
-> >> > /proc/net/rpc/auth.unix.ip/channel:nfsd 10.0.0.1
-> >> > /proc/net/rpc/auth.unix.ip/channel:nfsd 10.0.0.1
-> >> > /proc/net/rpc/auth.unix.ip/content:#class IP domain
-> >> > /proc/net/rpc/auth.unix.ip/content:# expiry=2079 refcnt=1 flags=1
-> >> > /proc/net/rpc/auth.unix.ip/content:# nfsd 10.0.0.1 10.0.0.0/24
-> >> 
-> >> ...the fact that this line is commented out indicates that the entry in
-> >> the cache is already expired.  So the time must be after 2079.
-> >> 
-> >> Maybe the time is getting set from the network at an awkward time that
-> >> races with NFS service some how.
-> >> Can you find a way to run "exportfs -f" after the time has been set
-> >> correctly?
-> >> 
-> >> NeilBrown
-> >> 
-> >> 
-> >
-> > wait, I think I've seen this somewhere, does this feature needs rtc? this board doesn't have rtc component.
-> > for example, I cannot use openssh as ssh server because it needs rtc. I have to use dropbear.
-> > if so, this looks like it will affect nfsv3 mounts, am I right?
-> 
-> No, you shouldn't need an RTC.
-> You need the synchronize the clock with ntp or similar, else time stamps
-> on files will look wrong.
-> Though I think we fixed issues with wall-clock-time jumping in 2.6.37...
-> 
-> If you could try using "exportfs -f", and explain what does happen with
-> time - do you use ntp ?? - we might be able to make progress.
+The original message follows:
 
-I'll build ntp into the image and try. does this affects nfsv3 too?
+----------------------8<------------------------
 
-what should I do with the "exportfs -f"? jsut run it and retry?
+The annual Linux Storage, Filesystem and Memory Management (LSF/MM)
+Summit for 2017 will be held on March 20th and 21st at the Hyatt
+Cambridge, Cambridge, MA. LSF/MM is an invitation-only technical
+workshop to map out improvements to the Linux storage, filesystem and
+memory management subsystems that will make their way into the mainline
+kernel within the coming years.
 
-Thanks,
+    http://events.linuxfoundation.org/events/linux-storage-filesystem-and-mm-summit
 
-Dagg.
+Like last year, LSF/MM will be colocated with the Linux Foundation Vault
+conference which takes place on March 22nd and 23rd in the same Venue.
+For those that do not know, Vault is designed to be an event where open
+source storage and filesystem practitioners meet storage implementors
+and, as such, it would be of benefit for LSF/MM attendees to attend.
+
+Unlike past years, Vault admission is not free for LSF/MM attendees this
+year unless they're giving a talk. There is a discount for LSF/MM
+attendees, however we would also like to encourage folks to submit talk
+proposals to speak at the Vault conference.
+
+    http://events.linuxfoundation.org/events/vault
+
+On behalf of the committee I am issuing a call for agenda proposals that
+are suitable for cross-track discussion as well as technical subjects
+for the breakout sessions.
+
+If advance notice is required for visa applications then please point
+that out in your proposal or request to attend, and submit the topic
+as soon as possible.
+
+1) Proposals for agenda topics should be sent before January 15th, 2016
+to:
+
+    lsf-pc@lists.linux-foundation.org
+
+and cc the Linux list or lists that are relevant for the topic in
+question:
+
+    ATA:   linux-ide@vger.kernel.org
+    Block: linux-block@vger.kernel.org
+    FS:    linux-fsdevel@vger.kernel.org
+    MM:    linux-mm@kvack.org
+    SCSI:  linux-scsi@vger.kernel.org
+    NVMe:  linux-nvme@lists.infradead.org
+
+Please tag your proposal with [LSF/MM TOPIC] to make it easier to track.
+In addition, please make sure to start a new thread for each topic
+rather than following up to an existing one.  Agenda topics and
+attendees will be selected by the program committee, but the final
+agenda will be formed by consensus of the attendees on the day.
+
+2) Requests to attend the summit for those that are not proposing a
+topic should be sent to:
+
+    lsf-pc@lists.linux-foundation.org
+
+Please summarise what expertise you will bring to the meeting, and what
+you would like to discuss. Please also tag your email with [LSF/MM
+ATTEND] and send it as a new thread so there is less chance of it
+getting lost.
+
+We will try to cap attendance at around 25-30 per track to facilitate
+discussions although the final numbers will depend on the room sizes at
+the venue.
+
+Brief presentations are allowed to guide discussion, but are strongly
+discouraged. There will be no recording or audio bridge. However, we
+expect that written minutes will be published as we did in previous
+years:
+
+2016: https://lwn.net/Articles/lsfmm2016/
+
+2015: https://lwn.net/Articles/lsfmm2015/
+
+2014: http://lwn.net/Articles/LSFMM2014/
+
+2013: http://lwn.net/Articles/548089/
+
+3) If you have feedback on last year's meeting that we can use to
+improve this year's, please also send that to:
+
+    lsf-pc@lists.linux-foundation.org
+
+Thank you on behalf of the program committee:
+
+Storage:
+    James Bottomley
+    Martin K. Petersen (track chair)
+    Sagi Grimberg
+
+Filesystems:
+    Anna Schumaker
+    Chris Mason
+    Eric Sandeen
+    Jan Kara
+    Jeff Layton (summit chair)
+    Josef Bacik (track chair)
+    Trond Myklebust
+
+MM:
+    Johannes Weiner
+    Rik van Riel (track chair)
+-- 
+Jeff Layton <jlayton@poochiereds.net>
