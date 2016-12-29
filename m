@@ -1,71 +1,86 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from arcturus.aphlor.org ([188.246.204.175]:37304 "EHLO
-        arcturus.aphlor.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1752807AbcL1Bjd (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 27 Dec 2016 20:39:33 -0500
-Date: Tue, 27 Dec 2016 19:55:35 -0500
-From: Dave Jones <davej@codemonkey.org.uk>
-To: netdev@vger.kernel.org
-Cc: linux-nfs@vger.kernel.org
-Subject: sunrpc: Illegal context switch in RCU read-side critical section!
-Message-ID: <20161228005535.oh7ip4wkc2bfed74@codemonkey.org.uk>
+Received: from fieldses.org ([173.255.197.46]:41630 "EHLO fieldses.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1750794AbcL2Uy2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 29 Dec 2016 15:54:28 -0500
+Date: Thu, 29 Dec 2016 15:54:26 -0500
+From: Bruce James Fields <bfields@fieldses.org>
+To: Christoph Hellwig <hch@lst.de>
+Cc: Trond Myklebust <trondmy@gmail.com>, linux-nfs@vger.kernel.org
+Subject: Re: [nfsv4] RFC 7530: Filehandle of opened file after the REMOVE
+Message-ID: <20161229205426.GA389@fieldses.org>
+References: <CAABAsM5L0xdKodxk1dRSugLyROzn2JzgDkq6kdHE0LuGcfh++A@mail.gmail.com>
+ <20161213181734.Horde.EqgB09El8rupnkesIQaBwJ3@mail.telka.sk>
+ <CADaq8jcq2C0o8EWXoGjxDn58sV_J+-SP-=rj934Se-DV69b-pw@mail.gmail.com>
+ <20161214112112.Horde.aPh8AjT6iWRl37CULwihyV7@mail.telka.sk>
+ <CAABAsM7v6y0bsb0jKzfvobkUjniTLhM3uv8FYjo07HcLD2004w@mail.gmail.com>
+ <20161227144414.GA32002@fieldses.org>
+ <CADaq8jck14SKL6Ua9QxbqPyX1=1aaA7+76wv-__EWFvh7ZcEJA@mail.gmail.com>
+ <C496AE44-0F27-4B66-A1F6-A76AEAFD7A90@gmail.com>
+ <20161229024703.GA21325@fieldses.org>
+ <20161229074830.GA3002@lst.de>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20161229074830.GA3002@lst.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Just noticed this on 4.9. Will try and repro on 4.10rc1 later, but hitting
-unrelated boot problems on that machine right now.
+On Thu, Dec 29, 2016 at 08:48:30AM +0100, Christoph Hellwig wrote:
+> On Wed, Dec 28, 2016 at 09:47:03PM -0500, Bruce James Fields wrote:
+> > I never seriously worked on it, but for a while I was in the habit of
+> > running it by people.  Christoph Hellwig thought it was doable (I think
+> > he suggested some sort of callback from the filesystem during the
+> > garbage collection, possibly because he had in mind some other
+> > application for that--but my memory may be wrong).  Chris Mason didn't
+> > like the idea at all.  He asked what we expect to happen on fsck, or if
+> > the filesystem gets mounted without nfs getting started, or... some
+> > other scenarios I forget.
+> 
+> The way open but unlinked files are handled by modern transaction
+> file systems is that the file system has a list of those inodes
+> (in XFS this is the unlinked inode list in the allocation group header,
+> other file systems use different terminologies and slightly different
+> technics, e.g. in ext4 the list is global for the whole file system).
+> 
+> After an unclean shutdown when file system recovery is run we'll perform
+> the deferred delete for all the inodes on the unlinked inode list.
+> At that point the file system could in theory inform NFSD about that
+> fact.  But at least as far as the current Linux kernel is concerned (
+> sorry for delving into implementation details, but I guess this is still
+> easier to understand than an abstract discussion) at the point where
+> file system performs recovery NFSD has not been started, or at least doesn't
+> know about the file system yet.   We could still persist that information
+> somewhere, or use a flag to delay the deletion of unlinked inodes until
+> NFSD runs.
 
-===============================
-[ INFO: suspicious RCU usage. ]
-4.9.0-backup-debug+ #1 Not tainted
--------------------------------
-./include/linux/rcupdate.h:557 Illegal context switch in RCU read-side critical section!
+Veering even further into implementation details (and changing cc: to
+linux-nfs instead of nfsv4@ietf, hope that's OK):
 
-other info that might help us debug this:
+I assume this would need userspace updates too, so fsck would know not
+to free the unlinked files, and so administrators could see what was
+going on and maybe free them manually if need be.
 
-rcu_scheduler_active = 1, debug_locks = 1
-5 locks held by kworker/4:1/66:
- #0:  ("%s"("ipv6_addrconf")){.+.+..}, at: [<ffffffff8e09dd14>] process_one_work+0x184/0x790
- #1:  ((addr_chk_work).work){+.+...}, at: [<ffffffff8e09dd14>] process_one_work+0x184/0x790
- #2:  (rtnl_mutex){+.+.+.}, at: [<ffffffff8e9eadc7>] rtnl_lock+0x17/0x20
- #3:  (rcu_read_lock_bh){......}, at: [<ffffffff8ea8b0a3>] addrconf_verify_rtnl+0x23/0x500
- #4:  (rcu_read_lock){......}, at: [<ffffffff8e0a6c65>] atomic_notifier_call_chain+0x5/0x110
+It may seem like overkill, but we have (mostly complete) support for
+running multiple nfsd's in containers, which can be started and stopped
+independently.  And we may want to allow a single filesystem to be
+exported by more than one such nfsd. I think we can still manage that
+with a single unlinked inode list, though--we'd just need logic in nfsd
+to delay freeing as long as any nfsd is restarting.
 
-stack backtrace:
-CPU: 4 PID: 66 Comm: kworker/4:1 Not tainted 4.9.0-backup-debug+ #1
-Workqueue: ipv6_addrconf addrconf_verify_work
- ffffc90000273a28 ffffffff8e5b4ca5 ffff88042ae19780 0000000000000001
- ffffc90000273a58 ffffffff8e0d530e 0000000000000000 ffffffff8efcc659
- 00000000000009a7 ffff8804180b8580 ffffc90000273a80 ffffffff8e0ad2b7
-Call Trace:
- [<ffffffff8e5b4ca5>] dump_stack+0x68/0x93
- [<ffffffff8e0d530e>] lockdep_rcu_suspicious+0xce/0xf0
- [<ffffffff8e0ad2b7>] ___might_sleep.part.103+0xa7/0x230
- [<ffffffff8e0b74db>] __might_sleep+0x4b/0x90
- [<ffffffff8e9b9ed2>] lock_sock_nested+0x32/0xb0
- [<ffffffff8e9ba2cb>] sock_setsockopt+0x8b/0xa50
- [<ffffffff8e088025>] ? __local_bh_enable_ip+0x65/0xb0
- [<ffffffff8e9b5f39>] kernel_setsockopt+0x49/0x50
- [<ffffffff8eae7d6a>] svc_tcp_kill_temp_xprt+0x4a/0x60
- [<ffffffff8eafa9ef>] svc_age_temp_xprts_now+0x12f/0x1b0
- [<ffffffff8e350e32>] nfsd_inet6addr_event+0x192/0x1f0
- [<ffffffff8e350ca5>] ? nfsd_inet6addr_event+0x5/0x1f0
- [<ffffffff8e0a69f9>] notifier_call_chain+0x39/0xa0
- [<ffffffff8e0a6cce>] atomic_notifier_call_chain+0x6e/0x110
- [<ffffffff8e0a6c65>] ? atomic_notifier_call_chain+0x5/0x110
- [<ffffffff8eac58cb>] inet6addr_notifier_call_chain+0x1b/0x20
- [<ffffffff8ea8a89c>] ipv6_del_addr+0x12c/0x200
- [<ffffffff8ea8b497>] addrconf_verify_rtnl+0x417/0x500
- [<ffffffff8ea8b0a3>] ? addrconf_verify_rtnl+0x23/0x500
- [<ffffffff8ea8b593>] addrconf_verify_work+0x13/0x20
- [<ffffffff8e09dd9b>] process_one_work+0x20b/0x790
- [<ffffffff8e09dd14>] ? process_one_work+0x184/0x790
- [<ffffffff8e09e36e>] worker_thread+0x4e/0x490
- [<ffffffff8e09e320>] ? process_one_work+0x790/0x790
- [<ffffffff8e09e320>] ? process_one_work+0x790/0x790
- [<ffffffff8e0a4ecf>] kthread+0xff/0x120
- [<ffffffff8e0a4dd0>] ? kthread_worker_fn+0x140/0x140
- [<ffffffff8eb14517>] ret_from_fork+0x27/0x40
+--b.
 
+> > We could do the same silly rename tricks on the server side.  Something
+> > like: create a directory with an unlikely name in the root of the
+> > export, rename files there on REMOVE.  Possible problems:
+> 
+> Personally I'd love to see sillyrename die.  It's a major pain for
+> getting sensible semantics out of NFS.
+> 
+> > 	- you'll never be able to completely hide that directory.  But
+> > 	  maybe we could get some sort of filesystem support for a
+> > 	  hidden directory.
+> 
+> 
+> The unlinked inode list is almost a directory, except that it doesn't
+> have names for the entries, you can only find inodes on it by the inode
+> number and generation (aka NFS file handle).
