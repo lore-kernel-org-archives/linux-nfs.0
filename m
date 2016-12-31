@@ -1,59 +1,45 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from verein.lst.de ([213.95.11.211]:34355 "EHLO newverein.lst.de"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751683AbcL3Ifd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 30 Dec 2016 03:35:33 -0500
-Date: Fri, 30 Dec 2016 09:35:30 +0100
-From: Christoph Hellwig <hch@lst.de>
-To: Bruce James Fields <bfields@fieldses.org>
-Cc: Trond Myklebust <trondmy@gmail.com>, linux-nfs@vger.kernel.org
-Subject: Re: [nfsv4] RFC 7530: Filehandle of opened file after the REMOVE
-Message-ID: <20161230083530.GA26413@lst.de>
-References: <20161213181734.Horde.EqgB09El8rupnkesIQaBwJ3@mail.telka.sk> <CADaq8jcq2C0o8EWXoGjxDn58sV_J+-SP-=rj934Se-DV69b-pw@mail.gmail.com> <20161214112112.Horde.aPh8AjT6iWRl37CULwihyV7@mail.telka.sk> <CAABAsM7v6y0bsb0jKzfvobkUjniTLhM3uv8FYjo07HcLD2004w@mail.gmail.com> <20161227144414.GA32002@fieldses.org> <CADaq8jck14SKL6Ua9QxbqPyX1=1aaA7+76wv-__EWFvh7ZcEJA@mail.gmail.com> <C496AE44-0F27-4B66-A1F6-A76AEAFD7A90@gmail.com> <20161229024703.GA21325@fieldses.org> <20161229074830.GA3002@lst.de> <20161229205426.GA389@fieldses.org>
+Received: from mail-pf0-f195.google.com ([209.85.192.195]:35423 "EHLO
+        mail-pf0-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1752580AbcLaJRN (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sat, 31 Dec 2016 04:17:13 -0500
+Received: by mail-pf0-f195.google.com with SMTP id i88so22808553pfk.2
+        for <linux-nfs@vger.kernel.org>; Sat, 31 Dec 2016 01:17:13 -0800 (PST)
+Subject: Re: [PATCH 1/3] NFSD: pass an integer for stable type to
+ nfsd_vfs_write
+To: Christoph Hellwig <hch@infradead.org>
+References: <0df957d0-3405-b12f-0d39-210a0edd6f60@gmail.com>
+ <20161223071928.GA19287@infradead.org>
+ <ff5a91f2-000b-eaf8-d224-fb113d54f1e1@gmail.com>
+ <20161223092554.GA17715@infradead.org>
+Cc: "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org,
+        kinglongmee@gmail.com
+From: Kinglong Mee <kinglongmee@gmail.com>
+Message-ID: <b7d23232-393c-325f-2fe0-a9dd5bda9cfc@gmail.com>
+Date: Sat, 31 Dec 2016 17:16:43 +0800
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20161229205426.GA389@fieldses.org>
+In-Reply-To: <20161223092554.GA17715@infradead.org>
+Content-Type: text/plain; charset=windows-1252
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Dec 29, 2016 at 03:54:26PM -0500, Bruce James Fields wrote:
-> I assume this would need userspace updates too, so fsck would know not
-> to free the unlinked files, and so administrators could see what was
-> going on and maybe free them manually if need be.
+On 12/23/2016 17:25, Christoph Hellwig wrote:
+> On Fri, Dec 23, 2016 at 05:18:03PM +0800, Kinglong Mee wrote:
+>> We can check it in check_export() when exporting filesystem,
+>> but, what can we do for the unsupported fsync filesystem?
+>> Just a warning message? or deny the exporting? 
+>> I'd prefer the first one.
+> 
+> Warn and refuse the writable export.
+> 
 
-At least for XFS that's not a worry - if the file system is so toast
-that you run xfs_repair NFS exports getting back are the least of your
-worries.
+I'd like warn and covert the export to read-only straightly.
 
-Note that these open but unlinked files already happen all the time during
-normal operation, they only interesting aspect that NFS would add is that
-we might have to reclaim them later when NFS is involved.
+For example, 
+A test directory may be mounted many underlay filesystem (contain
+ ISO9660, f2fs, etc) frequently. If refuse the writeable export, 
+for ISO9660 the exports entry must be *(ro,...), but for f2fs
+may be *(rw,...). I don't think someone wants change it every time.
 
-> It may seem like overkill, but we have (mostly complete) support for
-> running multiple nfsd's in containers, which can be started and stopped
-> independently.  And we may want to allow a single filesystem to be
-> exported by more than one such nfsd. I think we can still manage that
-> with a single unlinked inode list, though--we'd just need logic in nfsd
-> to delay freeing as long as any nfsd is restarting.
-
-I'd really want to avoid that logic in the fs.  What I can trivially
-offer you from the fs is to:
-
- 1) offer a mount option not to reclaim the unlinked inode list
- 2) offer an interface (e.g. in super_operations or export_ops)
-    to reclaim the unlinked inodes for a fs mounted with that option
-
-and NFSD would have call the second options.  But I'd like to keep
-it out of the fs when that is called exactly.
-
-Note that the filesystem still is in a perfectly fine (although a little
-odd) state before we reclaim the unlinked inodes - from the on disk
-POV it is not different from a currently active but unlinked file,
-the only difference is that we won't ever get a final unlink for it
-and only a manual reclaim free them.
-
-The only somewhat hard thing about implementing this on the fs side
-is to come up with a scheme to distinguish between old unlinked inodes
-left over from before a crash, and new ones created after it that are
-active.  But that's something a simple inode flag should be able to
-solve.
+thanks,
+Kinglong Mee
