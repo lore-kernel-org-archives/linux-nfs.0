@@ -1,169 +1,135 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-pg0-f65.google.com ([74.125.83.65]:33177 "EHLO
-        mail-pg0-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751264AbcLaNAH (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sat, 31 Dec 2016 08:00:07 -0500
-Received: by mail-pg0-f65.google.com with SMTP id g1so25052117pgn.0
-        for <linux-nfs@vger.kernel.org>; Sat, 31 Dec 2016 05:00:07 -0800 (PST)
+Received: from mail-pf0-f194.google.com ([209.85.192.194]:36507 "EHLO
+        mail-pf0-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751264AbcLaNAU (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sat, 31 Dec 2016 08:00:20 -0500
+Received: by mail-pf0-f194.google.com with SMTP id c4so23051576pfb.3
+        for <linux-nfs@vger.kernel.org>; Sat, 31 Dec 2016 05:00:20 -0800 (PST)
 From: Kinglong Mee <kinglongmee@gmail.com>
-Subject: [PATCH 1/3 v2] NFSD: pass an integer for stable type to
- nfsd_vfs_write
+Subject: [PATCH 2/3 v2] NFSD: cleanup dead codes and values in nfsd_write
 To: "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org
 Cc: Christoph Hellwig <hch@infradead.org>, kinglongmee@gmail.com
-Message-ID: <49bb153b-091a-4c83-b782-2244d8eaab2a@gmail.com>
-Date: Sat, 31 Dec 2016 20:59:53 +0800
+Message-ID: <187726e9-d42e-bf0a-30a3-6f10ce0eed3a@gmail.com>
+Date: Sat, 31 Dec 2016 21:00:13 +0800
 MIME-Version: 1.0
 Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Commit fae5096ad217 "nfsd: assume writeable exportabled filesystems have f_sync"
-have remove the setting of stable.
+v2, move arguments to make codes readable
 
 Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
+Reviewed-by: Christoph Hellwig <hch@lst.de>
 ---
- fs/nfsd/nfs3proc.c |  2 +-
- fs/nfsd/nfs4proc.c |  2 +-
- fs/nfsd/nfs4xdr.c  |  2 +-
- fs/nfsd/nfsproc.c  |  3 +--
- fs/nfsd/vfs.c      | 11 +++++------
+ fs/nfsd/nfs3proc.c |  8 +++-----
+ fs/nfsd/nfsproc.c  |  7 ++-----
+ fs/nfsd/vfs.c      | 35 +++++++++++------------------------
  fs/nfsd/vfs.h      |  4 ++--
- 6 files changed, 11 insertions(+), 13 deletions(-)
+ 4 files changed, 18 insertions(+), 36 deletions(-)
 
 diff --git a/fs/nfsd/nfs3proc.c b/fs/nfsd/nfs3proc.c
-index d818e4f..69cd0f1 100644
+index 69cd0f1..045c908 100644
 --- a/fs/nfsd/nfs3proc.c
 +++ b/fs/nfsd/nfs3proc.c
-@@ -197,7 +197,7 @@ nfsd3_proc_write(struct svc_rqst *rqstp, struct nfsd3_writeargs *argp,
- 				   argp->offset,
- 				   rqstp->rq_vec, argp->vlen,
- 				   &cnt,
--				   &resp->committed);
-+				   resp->committed);
+@@ -193,11 +193,9 @@ nfsd3_proc_write(struct svc_rqst *rqstp, struct nfsd3_writeargs *argp,
+ 
+ 	fh_copy(&resp->fh, &argp->fh);
+ 	resp->committed = argp->stable;
+-	nfserr = nfsd_write(rqstp, &resp->fh, NULL,
+-				   argp->offset,
+-				   rqstp->rq_vec, argp->vlen,
+-				   &cnt,
+-				   resp->committed);
++	nfserr = nfsd_write(rqstp, &resp->fh, argp->offset,
++				rqstp->rq_vec, argp->vlen,
++				&cnt, resp->committed);
  	resp->count = cnt;
  	RETURN_STATUS(nfserr);
  }
-diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-index 74a6e57..2d4eb47 100644
---- a/fs/nfsd/nfs4proc.c
-+++ b/fs/nfsd/nfs4proc.c
-@@ -983,7 +983,7 @@ nfsd4_write(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 
- 	status = nfsd_vfs_write(rqstp, &cstate->current_fh, filp,
- 				write->wr_offset, rqstp->rq_vec, nvecs, &cnt,
--				&write->wr_how_written);
-+				write->wr_how_written);
- 	fput(filp);
- 
- 	write->wr_bytes_written = cnt;
-diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index 7ecf16b..3a02c9b 100644
---- a/fs/nfsd/nfs4xdr.c
-+++ b/fs/nfsd/nfs4xdr.c
-@@ -1250,7 +1250,7 @@ nfsd4_decode_write(struct nfsd4_compoundargs *argp, struct nfsd4_write *write)
- 	READ_BUF(16);
- 	p = xdr_decode_hyper(p, &write->wr_offset);
- 	write->wr_stable_how = be32_to_cpup(p++);
--	if (write->wr_stable_how > 2)
-+	if (write->wr_stable_how > NFS_FILE_SYNC)
- 		goto xdr_error;
- 	write->wr_buflen = be32_to_cpup(p++);
- 
 diff --git a/fs/nfsd/nfsproc.c b/fs/nfsd/nfsproc.c
-index 010aff5..f157c7e 100644
+index f157c7e..fa82b77 100644
 --- a/fs/nfsd/nfsproc.c
 +++ b/fs/nfsd/nfsproc.c
-@@ -204,7 +204,6 @@ nfsd_proc_write(struct svc_rqst *rqstp, struct nfsd_writeargs *argp,
- 					struct nfsd_attrstat  *resp)
- {
- 	__be32	nfserr;
--	int	stable = 1;
- 	unsigned long cnt = argp->len;
+@@ -210,11 +210,8 @@ nfsd_proc_write(struct svc_rqst *rqstp, struct nfsd_writeargs *argp,
+ 		SVCFH_fmt(&argp->fh),
+ 		argp->len, argp->offset);
  
- 	dprintk("nfsd: WRITE    %s %d bytes at %d\n",
-@@ -215,7 +214,7 @@ nfsd_proc_write(struct svc_rqst *rqstp, struct nfsd_writeargs *argp,
- 				   argp->offset,
- 				   rqstp->rq_vec, argp->vlen,
- 			           &cnt,
--				   &stable);
-+				   NFS_DATA_SYNC);
+-	nfserr = nfsd_write(rqstp, fh_copy(&resp->fh, &argp->fh), NULL,
+-				   argp->offset,
+-				   rqstp->rq_vec, argp->vlen,
+-			           &cnt,
+-				   NFS_DATA_SYNC);
++	nfserr = nfsd_write(rqstp, fh_copy(&resp->fh, &argp->fh), argp->offset,
++				rqstp->rq_vec, argp->vlen, &cnt, NFS_DATA_SYNC);
  	return nfsd_return_attrs(nfserr, resp);
  }
  
 diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
-index 26c6fdb..726b2d2 100644
+index 726b2d2..d1d4a11 100644
 --- a/fs/nfsd/vfs.c
 +++ b/fs/nfsd/vfs.c
-@@ -940,14 +940,13 @@ static int wait_for_concurrent_writes(struct file *file)
+@@ -1034,35 +1034,22 @@ __be32 nfsd_read(struct svc_rqst *rqstp, struct svc_fh *fhp,
+  * N.B. After this call fhp needs an fh_put
+  */
  __be32
- nfsd_vfs_write(struct svc_rqst *rqstp, struct svc_fh *fhp, struct file *file,
- 				loff_t offset, struct kvec *vec, int vlen,
--				unsigned long *cnt, int *stablep)
-+				unsigned long *cnt, int stable)
+-nfsd_write(struct svc_rqst *rqstp, struct svc_fh *fhp, struct file *file,
+-		loff_t offset, struct kvec *vec, int vlen, unsigned long *cnt,
+-		int stable)
++nfsd_write(struct svc_rqst *rqstp, struct svc_fh *fhp, loff_t offset,
++	   struct kvec *vec, int vlen, unsigned long *cnt, int stable)
  {
- 	struct svc_export	*exp;
- 	struct inode		*inode;
- 	mm_segment_t		oldfs;
- 	__be32			err = 0;
- 	int			host_err;
--	int			stable = *stablep;
- 	int			use_wgather;
- 	loff_t			pos = offset;
- 	unsigned int		pflags = current->flags;
-@@ -968,7 +967,7 @@ nfsd_vfs_write(struct svc_rqst *rqstp, struct svc_fh *fhp, struct file *file,
- 	use_wgather = (rqstp->rq_vers == 2) && EX_WGATHER(exp);
+-	__be32			err = 0;
++	struct file *file = NULL;
++	__be32 err = 0;
  
- 	if (!EX_ISSYNC(exp))
--		stable = 0;
-+		stable = NFS_UNSTABLE;
+ 	trace_write_start(rqstp, fhp, offset, vlen);
  
- 	if (stable && !use_wgather)
- 		flags |= RWF_SYNC;
-@@ -1037,7 +1036,7 @@ __be32 nfsd_read(struct svc_rqst *rqstp, struct svc_fh *fhp,
- __be32
- nfsd_write(struct svc_rqst *rqstp, struct svc_fh *fhp, struct file *file,
- 		loff_t offset, struct kvec *vec, int vlen, unsigned long *cnt,
--		int *stablep)
-+		int stable)
- {
- 	__be32			err = 0;
+-	if (file) {
+-		err = nfsd_permission(rqstp, fhp->fh_export, fhp->fh_dentry,
+-				NFSD_MAY_WRITE|NFSD_MAY_OWNER_OVERRIDE);
+-		if (err)
+-			goto out;
+-		trace_write_opened(rqstp, fhp, offset, vlen);
+-		err = nfsd_vfs_write(rqstp, fhp, file, offset, vec, vlen, cnt,
+-				stable);
+-		trace_write_io_done(rqstp, fhp, offset, vlen);
+-	} else {
+-		err = nfsd_open(rqstp, fhp, S_IFREG, NFSD_MAY_WRITE, &file);
+-		if (err)
+-			goto out;
++	err = nfsd_open(rqstp, fhp, S_IFREG, NFSD_MAY_WRITE, &file);
++	if (err)
++		goto out;
  
-@@ -1050,7 +1049,7 @@ nfsd_write(struct svc_rqst *rqstp, struct svc_fh *fhp, struct file *file,
- 			goto out;
- 		trace_write_opened(rqstp, fhp, offset, vlen);
- 		err = nfsd_vfs_write(rqstp, fhp, file, offset, vec, vlen, cnt,
--				stablep);
-+				stable);
- 		trace_write_io_done(rqstp, fhp, offset, vlen);
- 	} else {
- 		err = nfsd_open(rqstp, fhp, S_IFREG, NFSD_MAY_WRITE, &file);
-@@ -1060,7 +1059,7 @@ nfsd_write(struct svc_rqst *rqstp, struct svc_fh *fhp, struct file *file,
- 		trace_write_opened(rqstp, fhp, offset, vlen);
- 		if (cnt)
- 			err = nfsd_vfs_write(rqstp, fhp, file, offset, vec, vlen,
--					     cnt, stablep);
-+					     cnt, stable);
- 		trace_write_io_done(rqstp, fhp, offset, vlen);
- 		fput(file);
- 	}
+-		trace_write_opened(rqstp, fhp, offset, vlen);
+-		if (cnt)
+-			err = nfsd_vfs_write(rqstp, fhp, file, offset, vec, vlen,
+-					     cnt, stable);
+-		trace_write_io_done(rqstp, fhp, offset, vlen);
+-		fput(file);
+-	}
++	trace_write_opened(rqstp, fhp, offset, vlen);
++	err = nfsd_vfs_write(rqstp, fhp, file, offset, vec, vlen, cnt, stable);
++	trace_write_io_done(rqstp, fhp, offset, vlen);
++	fput(file);
+ out:
+ 	trace_write_done(rqstp, fhp, offset, vlen);
+ 	return err;
 diff --git a/fs/nfsd/vfs.h b/fs/nfsd/vfs.h
-index 0bf9e7b..8458d8c 100644
+index 8458d8c..db98c48 100644
 --- a/fs/nfsd/vfs.h
 +++ b/fs/nfsd/vfs.h
-@@ -84,11 +84,11 @@ __be32		nfsd_readv(struct file *, loff_t, struct kvec *, int,
+@@ -83,8 +83,8 @@ __be32		nfsd_readv(struct file *, loff_t, struct kvec *, int,
+ 				unsigned long *);
  __be32 		nfsd_read(struct svc_rqst *, struct svc_fh *,
  				loff_t, struct kvec *, int, unsigned long *);
- __be32 		nfsd_write(struct svc_rqst *, struct svc_fh *,struct file *,
--				loff_t, struct kvec *,int, unsigned long *, int *);
-+				loff_t, struct kvec *,int, unsigned long *, int);
+-__be32 		nfsd_write(struct svc_rqst *, struct svc_fh *,struct file *,
+-				loff_t, struct kvec *,int, unsigned long *, int);
++__be32 		nfsd_write(struct svc_rqst *, struct svc_fh *, loff_t,
++				struct kvec *, int, unsigned long *, int);
  __be32		nfsd_vfs_write(struct svc_rqst *rqstp, struct svc_fh *fhp,
  				struct file *file, loff_t offset,
  				struct kvec *vec, int vlen, unsigned long *cnt,
--				int *stablep);
-+				int stable);
- __be32		nfsd_readlink(struct svc_rqst *, struct svc_fh *,
- 				char *, int *);
- __be32		nfsd_symlink(struct svc_rqst *, struct svc_fh *,
 -- 
 2.9.3
 
