@@ -1,61 +1,46 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-pg0-f66.google.com ([74.125.83.66]:34111 "EHLO
-        mail-pg0-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1752703AbcLaNSR (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sat, 31 Dec 2016 08:18:17 -0500
-Received: by mail-pg0-f66.google.com with SMTP id b1so25086859pgc.1
-        for <linux-nfs@vger.kernel.org>; Sat, 31 Dec 2016 05:18:17 -0800 (PST)
-To: "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org
-From: Kinglong Mee <kinglongmee@gmail.com>
-Subject: [PATCH] NFSD: only support readonly export for !fsync and readonly
- filesystem
-Cc: Christoph Hellwig <hch@infradead.org>,
-        Steve Dickson <SteveD@redhat.com>, kinglongmee@gmail.com
-Message-ID: <960d206f-3cb5-b60e-5245-d7282dabf664@gmail.com>
-Date: Sat, 31 Dec 2016 21:18:08 +0800
-MIME-Version: 1.0
+Received: from mail-wj0-f196.google.com ([209.85.210.196]:35236 "EHLO
+        mail-wj0-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1754666AbcLaQdF (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sat, 31 Dec 2016 11:33:05 -0500
+Received: by mail-wj0-f196.google.com with SMTP id hb5so30862319wjc.2
+        for <linux-nfs@vger.kernel.org>; Sat, 31 Dec 2016 08:33:04 -0800 (PST)
+Received: from [192.168.0.29] (cor91-5-78-224-113-112.fbx.proxad.net. [78.224.113.112])
+        by smtp.gmail.com with ESMTPSA id f76sm75651395wmd.15.2016.12.31.08.33.02
+        for <linux-nfs@vger.kernel.org>
+        (version=TLS1_2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128/128);
+        Sat, 31 Dec 2016 08:33:02 -0800 (PST)
+From: omega bk <omegabk@gmail.com>
 Content-Type: text/plain; charset=utf-8
+Mime-Version: 1.0 (Mac OS X Mail 10.2 \(3259\))
+Subject: Client nfs hangs during failover.
+Message-Id: <23F04B47-088F-4251-991F-EA8A02649049@gmail.com>
+Date: Sat, 31 Dec 2016 17:33:01 +0100
+To: linux-nfs@vger.kernel.org
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Commit fae5096ad217
-"nfsd: assume writeable exportabled filesystems have f_sync"
-have remove the checking of f_sync.
+Hello,
 
-Christoph Hellwig suggests,
-"Warn and refuse the writable export."
+This is my architecture
 
-I think just covert to a readonly export for !fsync filesystem,
-also, for a readonly filesystem is reasonable.
+Nfs1 =E2=80=94=E2=80=94/drbd-pacemaker-corosync/nfs2
 
-Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
----
- fs/nfsd/export.c | 12 ++++++++++++
- 1 file changed, 12 insertions(+)
 
-diff --git a/fs/nfsd/export.c b/fs/nfsd/export.c
-index 43e109c..3ec3b6b 100644
---- a/fs/nfsd/export.c
-+++ b/fs/nfsd/export.c
-@@ -358,6 +358,18 @@ static int check_export(struct inode *inode, int *flags, unsigned char *uuid)
- 	if (*flags & NFSEXP_V4ROOT)
- 		*flags |= NFSEXP_READONLY;
- 
-+	/*
-+	 * Convert to a readonly export for that,
-+	 * 1. not supported fsync filesystem,
-+	 * 2. readonly filesystem.
-+	 */
-+	if ((!inode->i_fop->fsync || IS_RDONLY(inode))
-+	    && !(*flags & NFSEXP_READONLY)) {
-+		dprintk("exp_export: Only support readonly export "
-+			"for fsync unsupported or readonly filesystem.\n");
-+		*flags |= NFSEXP_READONLY;
-+	}
-+
- 	/* There are two requirements on a filesystem to be exportable.
- 	 * 1:  We must be able to identify the filesystem from a number.
- 	 *       either a device number (so FS_REQUIRES_DEV needed)
--- 
-2.9.3
+Web1 =E2=80=94=E2=80=94=E2=80=94=E2=80=94=E2=80=94 mount nfs share=20
+Web2 =E2=80=94=E2=80=94=E2=80=94 =E2=80=94=E2=80=94mount nfs share=20
 
+1) During failover VIP on pacemaker, I noticed my web1 and web2 hang on =
+df -h or ls on nfsshare. For about 2 to 3 min.
+2) if I set nfsver=3D4, I cannot perform a mount -a.  It only works on =
+nfsver=3D3
+
+All my servers are running on centos 7.3.
+
+Could you guys, please help me?
+
+PS: sorry for my bad English, I=E2=80=99m French.
+
+Best regards,
+
+Omega BK=
