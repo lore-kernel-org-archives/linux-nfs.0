@@ -1,127 +1,144 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:54296 "EHLO fieldses.org"
+Received: from fieldses.org ([173.255.197.46]:54408 "EHLO fieldses.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1750822AbdADUhD (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 4 Jan 2017 15:37:03 -0500
-Date: Wed, 4 Jan 2017 15:26:34 -0500
+        id S937320AbdADVJp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 4 Jan 2017 16:09:45 -0500
+Date: Wed, 4 Jan 2017 16:09:33 -0500
 From: "J. Bruce Fields" <bfields@fieldses.org>
-To: andros@netapp.com
-Cc: neilb@suse.com, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH Version 4] SVCAUTH reap the rsc cache entry on
- RPC_SS_PROC_DESTROY
-Message-ID: <20170104202634.GA21562@fieldses.org>
-References: <1482428286-33744-1-git-send-email-andros@netapp.com>
- <1482428286-33744-2-git-send-email-andros@netapp.com>
+To: Jia He <hejianet@gmail.com>
+Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
+        "Eric W. Biederman" <ebiederm@xmission.com>,
+        Andrew Morton <akpm@linux-foundation.org>,
+        Dmitry Torokhov <dmitry.torokhov@gmail.com>,
+        Serge Hallyn <serge@hallyn.com>,
+        "David S. Miller" <davem@davemloft.net>,
+        Alexey Dobriyan <adobriyan@gmail.com>,
+        Subash Abhinov Kasiviswanathan <subashab@codeaurora.org>,
+        Arnaldo Carvalho de Melo <acme@redhat.com>,
+        Al Viro <viro@zeniv.linux.org.uk>,
+        Mel Gorman <mgorman@techsingularity.net>,
+        Kees Cook <keescook@chromium.org>, Hugh Dickins <hughd@google.com>,
+        Daniel Bristot de Oliveira <bristot@redhat.com>,
+        Daniel Cashman <dcashman@google.com>, Arnd Bergmann <arnd@arndb.de>,
+        Jeff Layton <jlayton@poochiereds.net>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>
+Subject: Re: [PATCH v5 1/2] sysctl: introduce new proc handler proc_dobool
+Message-ID: <20170104210933.GB21562@fieldses.org>
+References: <1481786661-973-1-git-send-email-hejianet@gmail.com>
+ <1481786661-973-2-git-send-email-hejianet@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1482428286-33744-2-git-send-email-andros@netapp.com>
+In-Reply-To: <1481786661-973-2-git-send-email-hejianet@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-I'm not against the patch, but I'm still not convinced by the
-explanation:
+On Thu, Dec 15, 2016 at 03:24:20PM +0800, Jia He wrote:
+> This is to let bool variable could be correctly displayed in
+> big/little endian sysctl procfs. sizeof(bool) is arch dependent, 
+> proc_dobool should work in all arches.
 
-On Thu, Dec 22, 2016 at 12:38:06PM -0500, andros@netapp.com wrote:
-> From: Neil Brown <neilb@suse.com>
-> 
-> The rsc cache code operates in a read_lock/write_lock environment.
-> Changes to a cache entry should use the provided rsc_update
-> routine which takes the write_lock.
+Did Alexey Debriyan agree that this dealt with his objections?
 
-It looks pretty suspicious to be setting CACHE_NEGATIVE without the
-cache_lock for write, but I'm not actually convinced there's a bug there
-either.  In any case not one that you'd be hitting reliably.
-
-> The current code sets the expiry_time and the CACHE_NEGATIVE flag
-> without taking the write_lock as it does not call rsc_update.
-> Without this patch, while cache_clean sees the entries to be
-> removed, it does not remove the rsc_entries. This is because
-> rsc_update updates other fields such as flush_time and last_refresh
-> in the entry to trigger cache_clean to reap the entry.
-
-I think the root cause of the particular behavior you were seeing was
-actually an oversight from Neil's c5b29f885afe "sunrpc: use seconds
-since boot in expiry cache", which missed this one occurrence of
-get_seconds().  So it's setting the item's entry to something decades in
-the future.
-
-And that's probably not been a huge deal since these entries aren't so
-big, and they will eventually get cleaned up by cache_purge when the
-cache is destroyed.  Still, I can imagine it slowing down cache lookups
-on a long-lived server.
-
-The one-liner:
-
- -		rsci->h.expiry_time = get_seconds();
- +		rsci->h.expiry_time = seconds_since_boot();
-
-would probably also do the job.  Am I missing something?
-
-But, OK, I think Neil's patch will ensure entries get cleaned up more
-quickly than that would, and might also fix a rare race.
+Also it'd be nice to have a sign-off from somebody that's actually
+touched sysctl.c.  Then I could take it through the nfsd tree if that
+doesn't cause anyone trouble.
 
 --b.
 
 > 
-> Add a new sunrpc_cache_unhash() function (by Neil Brown) designed
-> to directly unhash and reap the to be destroyed cache entry.
-> 
-> Signed-off-by: Neil Brown <neilb@suse.com>
-> Reported-by: Andy Adamson <andros@netapp.com>
-> Signed-off-by: Andy Adamson <andros@netapp.com>
+> Suggested-by: Pan Xinhui <xinhui@linux.vnet.ibm.com>
+> Signed-off-by: Jia He <hejianet@gmail.com>
 > ---
->  include/linux/sunrpc/cache.h      |  1 +
->  net/sunrpc/auth_gss/svcauth_gss.c |  4 ++--
->  net/sunrpc/cache.c                | 13 +++++++++++++
->  3 files changed, 16 insertions(+), 2 deletions(-)
+>  include/linux/sysctl.h |  2 ++
+>  kernel/sysctl.c        | 41 +++++++++++++++++++++++++++++++++++++++++
+>  2 files changed, 43 insertions(+)
 > 
-> diff --git a/include/linux/sunrpc/cache.h b/include/linux/sunrpc/cache.h
-> index 62a60ee..9dcf2c8 100644
-> --- a/include/linux/sunrpc/cache.h
-> +++ b/include/linux/sunrpc/cache.h
-> @@ -227,6 +227,7 @@ extern int cache_check(struct cache_detail *detail,
->  extern int sunrpc_cache_register_pipefs(struct dentry *parent, const char *,
->  					umode_t, struct cache_detail *);
->  extern void sunrpc_cache_unregister_pipefs(struct cache_detail *);
-> +extern void sunrpc_cache_unhash(struct cache_detail *, struct cache_head *);
+> diff --git a/include/linux/sysctl.h b/include/linux/sysctl.h
+> index adf4e51..255a9c7 100644
+> --- a/include/linux/sysctl.h
+> +++ b/include/linux/sysctl.h
+> @@ -41,6 +41,8 @@ typedef int proc_handler (struct ctl_table *ctl, int write,
 >  
->  /* Must store cache_detail in seq_file->private if using next three functions */
->  extern void *cache_seq_start(struct seq_file *file, loff_t *pos);
-> diff --git a/net/sunrpc/auth_gss/svcauth_gss.c b/net/sunrpc/auth_gss/svcauth_gss.c
-> index 45662d7..78f8a9c 100644
-> --- a/net/sunrpc/auth_gss/svcauth_gss.c
-> +++ b/net/sunrpc/auth_gss/svcauth_gss.c
-> @@ -1489,8 +1489,8 @@ static void destroy_use_gss_proxy_proc_entry(struct net *net) {}
->  	case RPC_GSS_PROC_DESTROY:
->  		if (gss_write_verf(rqstp, rsci->mechctx, gc->gc_seq))
->  			goto auth_err;
-> -		rsci->h.expiry_time = get_seconds();
-> -		set_bit(CACHE_NEGATIVE, &rsci->h.flags);
-> +		/* Delete the entry from the cache_list and call cache_put */
-> +		sunrpc_cache_unhash(sn->rsc_cache, &rsci->h);
->  		if (resv->iov_len + 4 > PAGE_SIZE)
->  			goto drop;
->  		svc_putnl(resv, RPC_SUCCESS);
-> diff --git a/net/sunrpc/cache.c b/net/sunrpc/cache.c
-> index 8aabe12..153e254 100644
-> --- a/net/sunrpc/cache.c
-> +++ b/net/sunrpc/cache.c
-> @@ -1855,3 +1855,16 @@ void sunrpc_cache_unregister_pipefs(struct cache_detail *cd)
+>  extern int proc_dostring(struct ctl_table *, int,
+>  			 void __user *, size_t *, loff_t *);
+> +extern int proc_dobool(struct ctl_table *, int,
+> +			void __user *, size_t *, loff_t *);
+>  extern int proc_dointvec(struct ctl_table *, int,
+>  			 void __user *, size_t *, loff_t *);
+>  extern int proc_douintvec(struct ctl_table *, int,
+> diff --git a/kernel/sysctl.c b/kernel/sysctl.c
+> index 706309f..c4bec65 100644
+> --- a/kernel/sysctl.c
+> +++ b/kernel/sysctl.c
+> @@ -2112,6 +2112,20 @@ static int proc_put_char(void __user **buf, size_t *size, char c)
+>  	return 0;
 >  }
->  EXPORT_SYMBOL_GPL(sunrpc_cache_unregister_pipefs);
 >  
-> +void sunrpc_cache_unhash(struct cache_detail *cd, struct cache_head *h)
+> +static int do_proc_dobool_conv(bool *negp, unsigned long *lvalp,
+> +				int *valp,
+> +				int write, void *data)
 > +{
-> +	write_lock(&cd->hash_lock);
-> +	if (!hlist_unhashed(&h->cache_list)){
-> +		hlist_del_init(&h->cache_list);
-> +		cd->entries--;
-> +		write_unlock(&cd->hash_lock);
-> +		cache_put(h, cd);
-> +	} else
-> +		write_unlock(&cd->hash_lock);
-> +}
-> +EXPORT_SYMBOL_GPL(sunrpc_cache_unhash);
+> +	if (write)
+> +		*(bool *)valp = *lvalp;
+> +	else {
+> +		int val = *(bool *)valp;
 > +
+> +		*lvalp = (unsigned long)val;
+> +	}
+> +	return 0;
+> +}
+> +
+>  static int do_proc_dointvec_conv(bool *negp, unsigned long *lvalp,
+>  				 int *valp,
+>  				 int write, void *data)
+> @@ -2258,6 +2272,26 @@ static int do_proc_dointvec(struct ctl_table *table, int write,
+>  }
+>  
+>  /**
+> + * proc_dobool - read/write a bool
+> + * @table: the sysctl table
+> + * @write: %TRUE if this is a write to the sysctl file
+> + * @buffer: the user buffer
+> + * @lenp: the size of the user buffer
+> + * @ppos: file position
+> + *
+> + * Reads/writes up to table->maxlen/sizeof(unsigned int) integer
+> + * values from/to the user buffer, treated as an ASCII string.
+> + *
+> + * Returns 0 on success.
+> + */
+> +int proc_dobool(struct ctl_table *table, int write,
+> +		void __user *buffer, size_t *lenp, loff_t *ppos)
+> +{
+> +	return do_proc_dointvec(table, write, buffer, lenp, ppos,
+> +				do_proc_dobool_conv, NULL);
+> +}
+> +
+> +/**
+>   * proc_dointvec - read a vector of integers
+>   * @table: the sysctl table
+>   * @write: %TRUE if this is a write to the sysctl file
+> @@ -2885,6 +2919,12 @@ int proc_dostring(struct ctl_table *table, int write,
+>  	return -ENOSYS;
+>  }
+>  
+> +int proc_dobool(struct ctl_table *table, int write,
+> +                  void __user *buffer, size_t *lenp, loff_t *ppos)
+> +{
+> +        return -ENOSYS;
+> +}
+> +
+>  int proc_dointvec(struct ctl_table *table, int write,
+>  		  void __user *buffer, size_t *lenp, loff_t *ppos)
+>  {
+> @@ -2941,6 +2981,7 @@ int proc_doulongvec_ms_jiffies_minmax(struct ctl_table *table, int write,
+>   * No sense putting this after each symbol definition, twice,
+>   * exception granted :-)
+>   */
+> +EXPORT_SYMBOL(proc_dobool);
+>  EXPORT_SYMBOL(proc_dointvec);
+>  EXPORT_SYMBOL(proc_douintvec);
+>  EXPORT_SYMBOL(proc_dointvec_jiffies);
 > -- 
-> 1.8.3.1
+> 2.5.5
