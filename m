@@ -1,46 +1,63 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qk0-f181.google.com ([209.85.220.181]:33264 "EHLO
-        mail-qk0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S966954AbdADJ1H (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 4 Jan 2017 04:27:07 -0500
-Received: by mail-qk0-f181.google.com with SMTP id t184so401083959qkd.0
-        for <linux-nfs@vger.kernel.org>; Wed, 04 Jan 2017 01:26:55 -0800 (PST)
-From: Sriharsha Basavapatna <sriharsha.basavapatna@broadcom.com>
-To: linux-nfs@vger.kernel.org, linux-rdma@vger.kernel.org
-Subject: [PATCH] svcrdma: avoid duplicate dma unmapping during error recovery
-Date: Wed,  4 Jan 2017 21:33:29 +0530
-Message-Id: <20170104160329.24436-1-sriharsha.basavapatna@broadcom.com>
+Received: from us-smtp-delivery-194.mimecast.com ([216.205.24.194]:55808 "EHLO
+        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S965231AbdADNnQ (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 4 Jan 2017 08:43:16 -0500
+From: Trond Myklebust <trondmy@primarydata.com>
+To: Nicholas Piggin <npiggin@gmail.com>
+CC: Andrew Morton <akpm@linux-foundation.org>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        "linux-mm@kvack.org" <linux-mm@kvack.org>,
+        "Neil Brown" <neilb@suse.de>,
+        Trond Myklebust <trondmy@primarydata.com>
+Subject: Re: [PATCH 1/2] nfs: no PG_private waiters remain, remove waker
+Date: Wed, 4 Jan 2017 13:43:10 +0000
+Message-ID: <0562F017-2963-41E0-BE5B-62A07EC444CD@primarydata.com>
+References: <20170103182234.30141-1-npiggin@gmail.com>
+ <20170103182234.30141-2-npiggin@gmail.com>
+In-Reply-To: <20170103182234.30141-2-npiggin@gmail.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=WINDOWS-1252
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-In rdma_read_chunk_frmr() when ib_post_send() fails, the error code path
-invokes ib_dma_unmap_sg() to unmap the sg list. It then invokes
-svc_rdma_put_frmr() which in turn tries to unmap the same sg list through
-ib_dma_unmap_sg() again. This second unmap is invalid and could lead to
-problems when the iova being unmapped is subsequently reused. Remove
-the call to unmap in rdma_read_chunk_frmr() and let svc_rdma_put_frmr()
-handle it.
+Hi Nick,
 
-Fixes: 412a15c0fe53 ("svcrdma: Port to new memory registration API")
-Cc: stable@vger.kernel.org
-Signed-off-by: Sriharsha Basavapatna <sriharsha.basavapatna@broadcom.com>
----
- net/sunrpc/xprtrdma/svc_rdma_recvfrom.c | 2 --
- 1 file changed, 2 deletions(-)
+> On Jan 3, 2017, at 13:22, Nicholas Piggin <npiggin@gmail.com> wrote:
+>=20
+> Since commit 4f52b6bb ("NFS: Don't call COMMIT in ->releasepage()"),
+> no tasks wait on PagePrivate, so the wake introduced in commit 95905446
+> ("NFS: avoid deadlocks with loop-back mounted NFS filesystems.") can
+> be removed.
+>=20
+> Signed-off-by: Nicholas Piggin <npiggin@gmail.com>
+> ---
+> fs/nfs/write.c | 2 --
+> 1 file changed, 2 deletions(-)
+>=20
+> diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+> index b00d53d13d47..006068526542 100644
+> --- a/fs/nfs/write.c
+> +++ b/fs/nfs/write.c
+> @@ -728,8 +728,6 @@ static void nfs_inode_remove_request(struct nfs_page =
+*req)
+> =09=09if (likely(head->wb_page && !PageSwapCache(head->wb_page))) {
+> =09=09=09set_page_private(head->wb_page, 0);
+> =09=09=09ClearPagePrivate(head->wb_page);
+> -=09=09=09smp_mb__after_atomic();
+> -=09=09=09wake_up_page(head->wb_page, PG_private);
+> =09=09=09clear_bit(PG_MAPPED, &head->wb_flags);
+> =09=09}
+> =09=09nfsi->nrequests--;
+> --=20
+> 2.11.0
+>=20
 
-diff --git a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
-index 57d35fbb1c28..172b537f8cfc 100644
---- a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
-+++ b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
-@@ -347,8 +347,6 @@ int rdma_read_chunk_frmr(struct svcxprt_rdma *xprt,
- 	atomic_inc(&rdma_stat_read);
- 	return ret;
-  err:
--	ib_dma_unmap_sg(xprt->sc_cm_id->device,
--			frmr->sg, frmr->sg_nents, frmr->direction);
- 	svc_rdma_put_context(ctxt, 0);
- 	svc_rdma_put_frmr(xprt, frmr);
- 	return ret;
--- 
-2.11.0.258.ge05806da9
+That looks fine to me. Do you want to push it through the linux-mm path or =
+do you want me to take it?
+
+Cheers
+  Trond
+
+Acked-by: Trond Myklebust <trond.myklebust@primarydata.com>
 
