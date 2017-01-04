@@ -1,115 +1,154 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:47022 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([173.255.197.46]:53836 "EHLO fieldses.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S932903AbdADNcO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 4 Jan 2017 08:32:14 -0500
-Received: from int-mx09.intmail.prod.int.phx2.redhat.com (int-mx09.intmail.prod.int.phx2.redhat.com [10.5.11.22])
-        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
-        (No client certificate requested)
-        by mx1.redhat.com (Postfix) with ESMTPS id 95C2161B8E
-        for <linux-nfs@vger.kernel.org>; Wed,  4 Jan 2017 13:31:24 +0000 (UTC)
-Date: Wed, 4 Jan 2017 13:31:21 +0000
-From: Stefan Hajnoczi <stefanha@redhat.com>
-To: Steve Dickson <SteveD@redhat.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 0/4] nfs-utils mount: add AF_VSOCK support
-Message-ID: <20170104133121.GA5081@stefanha-x1.localdomain>
-References: <1475834503-3984-1-git-send-email-stefanha@redhat.com>
- <5e994b44-8b88-62f8-3c09-6d8cb459e303@RedHat.com>
+        id S1761125AbdADQ4i (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 4 Jan 2017 11:56:38 -0500
+Date: Wed, 4 Jan 2017 11:56:36 -0500
+To: linux-nfs@vger.kernel.org
+Cc: tibbs@math.uh.edu
+Subject: RFC: make labeled NFS opt-in
+Message-ID: <20170104165636.GA17649@fieldses.org>
 MIME-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-sha1;
-        protocol="application/pgp-signature"; boundary="gBBFr7Ir9EOA20Yy"
-In-Reply-To: <5e994b44-8b88-62f8-3c09-6d8cb459e303@RedHat.com>
+Content-Type: text/plain; charset=us-ascii
+From: bfields@fieldses.org (J. Bruce Fields)
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+This is something I should have noticed before merging labeled NFS:
+labeled NFS shouldn't be on by default, among other reasons because it
+assumes everybody's using consistent security policies.  As 4.2 is
+getting turned on by default, this is starting to generate bug reports.
 
---gBBFr7Ir9EOA20Yy
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-Content-Transfer-Encoding: quoted-printable
+The patch below turns it off by default, and provides a new option to
+turn it on per export.  The drawback is a regression on kernel upgrade
+for anyone depending on labeled NFS, until they find the new option.  My
+impression is that's a specialized use case that still has a small
+number of users at this point, so I think we can get away with that.
 
-On Tue, Jan 03, 2017 at 11:37:58AM -0500, Steve Dickson wrote:
->=20
->=20
-> On 10/07/2016 06:01 AM, Stefan Hajnoczi wrote:
-> > The AF_VSOCK address family allows virtual machines to communicate with=
- the
-> > hypervisor using a zero-configuration transport.  Both KVM and VMware
-> > hypervisors support AF_VSOCK and it was introduced in Linux 3.9.
-> >=20
-> > This patch series adds AF_VSOCK support to mount.nfs(8) and works toget=
-her with
-> > the kernel NFS client patches that I am also posting to
-> > linux-nfs@vger.kernel.org.
-> >=20
-> > NFS over AF_VSOCK is useful for file system sharing between a virtual m=
-achine
-> > and the host.  Due to the zero-configuration nature of AF_VSOCK this is=
- more
-> > transparent to the user and more robust than asking the user to set up =
-NFS over
-> > TCP/IP.
-> >=20
-> > A file system from the host (hypervisor) can be mounted inside a virtual
-> > machine over AF_VSOCK like this:
-> >=20
-> >   (guest)# mount.nfs 2:/export /mnt -v -o clientaddr=3D3,proto=3Dvsock
-> >=20
-> > The VM's cid (address) is 3 and the hypervisor is 2.
-> >=20
-> > For testing it's easiest to tunnel AF_VSOCK to the AF_INET nfsd on the =
-host.
-> > The following utility can do this:
-> > https://github.com/stefanha/linux/blob/vsock-extras/nc-vsock.c
-> >=20
-> >   (host)# nc-vsock -l 2049 -t 127.0.0.1 2049
-> >=20
-> > I will post nfsd patches for both the kernel and nfs-utils once they are
-> > complete.
-> >=20
-> > Alternatively you can use nfs-ganesha's AF_VSOCK support to run a native
-> > AF_VSOCK server.
-> >=20
-> > Note that this patch series relies on the AF_VSOCK getaddrinfo(3) suppo=
-rt I
-> > recently posted to glibc:
-> > https://patchwork.ozlabs.org/patch/676589/
-> >=20
-> > Stefan Hajnoczi (4):
-> >   mount: don't use IPPROTO_UDP for address resolution
-> >   mount: present AF_VSOCK addresses
-> >   mount: accept AF_VSOCK in nfs_verify_family()
-> >   getport: recognize "vsock" netid
-> >=20
-> >  support/nfs/getport.c | 16 ++++++++++++----
-> >  utils/mount/network.c | 10 +++++++++-
-> >  utils/mount/stropts.c |  4 +---
-> >  3 files changed, 22 insertions(+), 8 deletions(-)
-> >=20
-> My apologies... I did lose track of these...=20
->=20
-> Where the kernel patches for the AF_VSOCK support=20
-> accepted??
+The below is untested.  I have a (small) nfs-utils patch as well.
 
-No, they haven't been merged because the discussion was slow (largely my
-fault).  I'll send out a new round of kernel and nfs-utils patches with
-the latest code soon.
+--b.
 
-Stefan
+commit ea84969006fa
+Author: J. Bruce Fields <bfields@redhat.com>
+Date:   Tue Jan 3 12:30:11 2017 -0500
 
---gBBFr7Ir9EOA20Yy
-Content-Type: application/pgp-signature; name="signature.asc"
+    nfsd: opt in to labeled nfs per export
+    
+    Currently turning on NFSv4.2 results in 4.2 clients suddenly seeing the
+    individual file labels as they're set on the server.  This is not what
+    they've previously seen, and not appropriate in may cases.  (In
+    particular, if clients have heterogenous security policies then one
+    client's labels may not even make sense to another.)  Labeled NFS should
+    be opted in only in those cases when the administrator knows it makes
+    sense.
+    
+    It's helpful to be able to turn 4.2 on by default, and otherwise the
+    protocol upgrade seems free of regressions.  So, default labeled NFS to
+    off and provide an export flag to reenable it.
+    
+    Users wanting labeled NFS support on an export will henceforth need to:
+    
+            - make sure 4.2 support is enabled on client and server (as
+              before), and
+            - upgrade the server nfs-utils to a version supporting the new
+              "security_label" export flag.
+            - set that "security_label" flag on the export.
+    
+    This is commit may be seen as a regression to anyone currently depending
+    on security labels.  We believe those cases are currently rare.
+    
+    Reported-by: tibbs@math.uh.edu
+    Signed-off-by: J. Bruce Fields <bfields@redhat.com>
 
------BEGIN PGP SIGNATURE-----
-
-iQEcBAEBAgAGBQJYbPkpAAoJEJykq7OBq3PIbBoH/ijO8fsZGSLBCZhJxqFwVEem
-IZTiQFM7Gw0kJ08q8481r1mdChu/ewbw69wMhWsw3jqBXymKQQPk2lYT9GvR+JlI
-sZ0UUkqSsvF/ygAtJIozPbs/HmyiEq7UhZqbpE233DT4qgiA4kaKz7WGHubV9f6G
-XOgSGMMQWogoZUUQ0zT9d/H6KdCbld1aFwO3haGCb6zTTxyq/1UpAic1GI7+nK4b
-aasT7k5zDB1eN2WT0eWvh+SbzmIkeO4TzquPP9v5FylXmCZCnOJDfSyAQOEP1Zxr
-Wvh6DOIBDZpO6BZSDV2ak+FwJAIxF7R9Es+ck2tnHIOTke2fwteUy7REiwnGTSg=
-=kS32
------END PGP SIGNATURE-----
-
---gBBFr7Ir9EOA20Yy--
+diff --git a/fs/nfsd/export.c b/fs/nfsd/export.c
+index 43e109cc0ccc..03600b2ea345 100644
+--- a/fs/nfsd/export.c
++++ b/fs/nfsd/export.c
+@@ -1102,6 +1102,7 @@ static struct flags {
+ 	{ NFSEXP_NOAUTHNLM, {"insecure_locks", ""}},
+ 	{ NFSEXP_V4ROOT, {"v4root", ""}},
+ 	{ NFSEXP_PNFS, {"pnfs", ""}},
++	{ NFSEXP_SECURITY_LABEL, {"security_label"}},
+ 	{ 0, {"", ""}}
+ };
+ 
+diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+index 74a6e573e061..6f0b89d1c09b 100644
+--- a/fs/nfsd/nfs4proc.c
++++ b/fs/nfsd/nfs4proc.c
+@@ -95,11 +95,15 @@ check_attr_support(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 		   u32 *bmval, u32 *writable)
+ {
+ 	struct dentry *dentry = cstate->current_fh.fh_dentry;
++	struct svc_export *exp = cstate->current_fh.fh_export;
+ 
+ 	if (!nfsd_attrs_supported(cstate->minorversion, bmval))
+ 		return nfserr_attrnotsupp;
+ 	if ((bmval[0] & FATTR4_WORD0_ACL) && !IS_POSIXACL(d_inode(dentry)))
+ 		return nfserr_attrnotsupp;
++	if ((bmval[2] & FATTR4_WORD2_SECURITY_LABEL) &&
++			!(exp->ex_flags & NFSEXP_SECURITY_LABEL))
++		return nfserr_attrnotsupp;
+ 	if (writable && !bmval_is_subset(bmval, writable))
+ 		return nfserr_inval;
+ 	if (writable && (bmval[2] & FATTR4_WORD2_MODE_UMASK) &&
+diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+index 64c262aef633..8475c4df9aa2 100644
+--- a/fs/nfsd/nfs4xdr.c
++++ b/fs/nfsd/nfs4xdr.c
+@@ -2416,8 +2416,11 @@ nfsd4_encode_fattr(struct xdr_stream *xdr, struct svc_fh *fhp,
+ #ifdef CONFIG_NFSD_V4_SECURITY_LABEL
+ 	if ((bmval2 & FATTR4_WORD2_SECURITY_LABEL) ||
+ 	     bmval0 & FATTR4_WORD0_SUPPORTED_ATTRS) {
+-		err = security_inode_getsecctx(d_inode(dentry),
++		if (exp->ex_flags & NFSEXP_SECURITY_LABEL)
++			err = security_inode_getsecctx(d_inode(dentry),
+ 						&context, &contextlen);
++		else
++			err = -EOPNOTSUPP;
+ 		contextsupport = (err == 0);
+ 		if (bmval2 & FATTR4_WORD2_SECURITY_LABEL) {
+ 			if (err == -EOPNOTSUPP)
+diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
+index 26c6fdb4bf67..9e11ee1ec3a9 100644
+--- a/fs/nfsd/vfs.c
++++ b/fs/nfsd/vfs.c
+@@ -486,12 +486,14 @@ __be32 nfsd4_set_nfs4_label(struct svc_rqst *rqstp, struct svc_fh *fhp,
+ 	__be32 error;
+ 	int host_error;
+ 	struct dentry *dentry;
++	struct svc_export *exp;
+ 
+ 	error = fh_verify(rqstp, fhp, 0 /* S_IFREG */, NFSD_MAY_SATTR);
+ 	if (error)
+ 		return error;
+ 
+ 	dentry = fhp->fh_dentry;
++	exp = fhp->fh_export;
+ 
+ 	inode_lock(d_inode(dentry));
+ 	host_error = security_inode_setsecctx(dentry, label->data, label->len);
+diff --git a/include/uapi/linux/nfsd/export.h b/include/uapi/linux/nfsd/export.h
+index 0df7bd5d2fb1..c3be256107c6 100644
+--- a/include/uapi/linux/nfsd/export.h
++++ b/include/uapi/linux/nfsd/export.h
+@@ -32,7 +32,8 @@
+ #define NFSEXP_ASYNC		0x0010
+ #define NFSEXP_GATHERED_WRITES	0x0020
+ #define NFSEXP_NOREADDIRPLUS    0x0040
+-/* 80 100 currently unused */
++#define NFSEXP_SECURITY_LABEL	0x0080
++/* 0x100 currently unused */
+ #define NFSEXP_NOHIDE		0x0200
+ #define NFSEXP_NOSUBTREECHECK	0x0400
+ #define	NFSEXP_NOAUTHNLM	0x0800		/* Don't authenticate NLM requests - just trust */
+@@ -53,7 +54,7 @@
+ #define NFSEXP_PNFS		0x20000
+ 
+ /* All flags that we claim to support.  (Note we don't support NOACL.) */
+-#define NFSEXP_ALLFLAGS		0x3FE7F
++#define NFSEXP_ALLFLAGS		0x3FEFF
+ 
+ /* The flags that may vary depending on security flavor: */
+ #define NFSEXP_SECINFO_FLAGS	(NFSEXP_READONLY | NFSEXP_ROOTSQUASH \
