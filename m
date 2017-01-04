@@ -1,128 +1,61 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-pg0-f65.google.com ([74.125.83.65]:36475 "EHLO
-        mail-pg0-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1756353AbdADGfd (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 4 Jan 2017 01:35:33 -0500
-Subject: Re: [PATCH v5 0/2] change the proc handler for nsm_use_hostnames
-To: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-References: <1481786661-973-1-git-send-email-hejianet@gmail.com>
-Cc: "Eric W. Biederman" <ebiederm@xmission.com>,
-        Andrew Morton <akpm@linux-foundation.org>,
-        Dmitry Torokhov <dmitry.torokhov@gmail.com>,
-        Serge Hallyn <serge@hallyn.com>,
-        "David S. Miller" <davem@davemloft.net>,
-        Alexey Dobriyan <adobriyan@gmail.com>,
-        Subash Abhinov Kasiviswanathan <subashab@codeaurora.org>,
-        Arnaldo Carvalho de Melo <acme@redhat.com>,
-        Al Viro <viro@zeniv.linux.org.uk>,
-        Mel Gorman <mgorman@techsingularity.net>,
-        Kees Cook <keescook@chromium.org>, Hugh Dickins <hughd@google.com>,
-        Daniel Bristot de Oliveira <bristot@redhat.com>,
-        Daniel Cashman <dcashman@google.com>, Arnd Bergmann <arnd@arndb.de>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        Jeff Layton <jlayton@poochiereds.net>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        Anna Schumaker <anna.schumaker@netapp.com>
-From: hejianet <hejianet@gmail.com>
-Message-ID: <a13bbd2b-545e-284f-bb63-269309082c3e@gmail.com>
-Date: Wed, 4 Jan 2017 14:35:02 +0800
+Received: from mail-wm0-f41.google.com ([74.125.82.41]:35663 "EHLO
+        mail-wm0-f41.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S966222AbdADJDa (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 4 Jan 2017 04:03:30 -0500
+Received: by mail-wm0-f41.google.com with SMTP id a197so403009952wmd.0
+        for <linux-nfs@vger.kernel.org>; Wed, 04 Jan 2017 01:03:30 -0800 (PST)
+Reply-To: nicolas.dichtel@6wind.com
+Subject: Re: [PATCH] uapi: use wildcards to list files
+References: <20161203.192346.1198940437155108508.davem@davemloft.net>
+ <1483454144-10519-1-git-send-email-nicolas.dichtel@6wind.com>
+ <2108827.WpE3IvfEdH@wuerfel>
+To: Arnd Bergmann <arnd@arndb.de>
+Cc: linux-arch@vger.kernel.org, linux-kernel@vger.kernel.org,
+        dri-devel@lists.freedesktop.org, netdev@vger.kernel.org,
+        linux-media@vger.kernel.org, linux-mmc@vger.kernel.org,
+        netfilter-devel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-raid@vger.kernel.org, linux-spi@vger.kernel.org,
+        linux-mtd@lists.infradead.org, linux-rdma@vger.kernel.org,
+        fcoe-devel@open-fcoe.org, alsa-devel@alsa-project.org,
+        linux-fbdev@vger.kernel.org, xen-devel@lists.xenproject.org,
+        davem@davemloft.net, airlied@linux.ie,
+        David Howells <dhowells@redhat.com>
+From: Nicolas Dichtel <nicolas.dichtel@6wind.com>
+Message-ID: <bf83da6b-01ef-bf44-b3e1-ca6fc5636818@6wind.com>
+Date: Wed, 4 Jan 2017 10:03:50 +0100
 MIME-Version: 1.0
-In-Reply-To: <1481786661-973-1-git-send-email-hejianet@gmail.com>
-Content-Type: text/plain; charset=windows-1252; format=flowed
+In-Reply-To: <2108827.WpE3IvfEdH@wuerfel>
+Content-Type: text/plain; charset=windows-1252
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Ping, any comments are welcome. Thanks
+Le 03/01/2017 à 22:37, Arnd Bergmann a écrit :
+> On Tuesday, January 3, 2017 3:35:44 PM CET Nicolas Dichtel wrote:
+>> Regularly, when a new header is created in include/uapi/, the developer
+>> forgets to add it in the corresponding Kbuild file. This error is usually
+>> detected after the release is out.
+>>
+>> In fact, all headers under include/uapi/ should be exported, so let's
+>> use wildcards.
+> 
+> I think the idea makes a lot of sense: if a header is in uapi, we should
+> really export it. However, using a wildcard expression seems a bit
+> backwards here, I think we should make this implicit and not have the
+> Kbuild file at all.
+> 
+> The "header-y" syntax was originally added back when the uapi headers
+> were mixed with the internal headers in the same directory. After
+> David Howells introduced the separate directory for uapi, it has
+> become a bit redundant.
+Ok, thank you for the explanation, I was wondering why those Kbuild files were
+needed.
 
-B.R.
+> 
+> Can you try to modify scripts/Makefile.headersinst instead so we
+> can simply remove the Kbuild files entirely?
+I will try something.
 
-Jia
 
-
-On 15/12/2016 3:24 PM, Jia He wrote:
-> nsm_use_hostnames is a module parameter and it will be exported to sysctl
-> procfs. This is to let user sometimes change it from userspace. But the
-> minimal unit for sysctl procfs read/write it sizeof(int).
-> In big endian system, the converting from/to  bool to/from int will cause
-> error for proc items.
->
-> This patch introduces a new proc handler proc_dobool for nsm_use_hostnames.
->
-> Changes:
-> v5: Fix compilation error when CONFIG_PROC_SYSCTL is not set
-> v4: Change (u8 *) to (bool *)
-> v3: Introduce a new proc handler proc_dou8vec(suggested by Xinhui Pan)
-> v2: Change extern type in lockd.h
->
-> The test case I used:
-> /***************************************************************/
-> #include <linux/kernel.h>
-> #include <linux/module.h>
-> #include <linux/sysctl.h>
->
-> bool __read_mostly nsm_use_hostnames;
-> module_param(nsm_use_hostnames, bool, 0644);
->
-> static struct ctl_table my_sysctl[] = {
->          {
->                  .procname       = "nsm_use_hostnames",
->                  .data           = &nsm_use_hostnames,
->                  .maxlen         = sizeof(int),
->                  .mode           = 0644,
->                  .proc_handler   = &proc_dointvec,
->          },
->          {}
-> };
->
-> static struct ctl_table my_root[] = {
->          {
->          .procname       = "mysysctl",
->          .mode           = 0555,
->          .child          = my_sysctl,
->          },
->          {}
-> };
->
-> static struct ctl_table_header * my_ctl_header;
->
-> static int __init sysctl_exam_init(void)
-> {
->          my_ctl_header = register_sysctl_table(&my_root);
->          if (my_ctl_header == NULL)
->                  printk("error regiester sysctl");
->
->          return 0;
-> }
->
-> static void __exit sysctl_exam_exit(void)
-> {
->          unregister_sysctl_table(my_ctl_header);
-> }
->
-> module_init(sysctl_exam_init);
-> module_exit(sysctl_exam_exit);
-> MODULE_LICENSE("GPL");
-> /****************************************************************/
->
-> [root@bigendian my]# insmod -f /root/my/hello.ko nsm_use_hostnames=1
-> [root@bigendian my]# cat /proc/sys/mysysctl/nsm_use_hostnames
-> 16777216
->
-> After I change the proc_dointvec to new handler proc_dou8vec with the
-> patch:
-> [root@bigendian my]# insmod -f /root/my/hello.ko nsm_use_hostnames=1
-> [root@bigendian my]# cat /proc/sys/mysysctl/nsm_use_hostnames
-> 1
->
-> In little endian system, there is no such issue.
-> Already tested in both of big and little endian(ppc64 and ppc64le)
->
-> Jia He (2):
->    sysctl: introduce new proc handler proc_dobool
->    lockd: change the proc_handler for nsm_use_hostnames
->
->   fs/lockd/svc.c         |  2 +-
->   include/linux/sysctl.h |  2 ++
->   kernel/sysctl.c        | 41 +++++++++++++++++++++++++++++++++++++++++
->   3 files changed, 44 insertions(+), 1 deletion(-)
-
+Regards,
+Nicolas
