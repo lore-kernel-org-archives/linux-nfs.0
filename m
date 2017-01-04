@@ -1,88 +1,148 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:39238 "EHLO mx2.suse.de"
+Received: from mx144.netapp.com ([216.240.21.25]:6886 "EHLO mx144.netapp.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1752401AbdADVdE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 4 Jan 2017 16:33:04 -0500
-From: NeilBrown <neilb@suse.com>
-To: Steve Dickson <SteveD@redhat.com>
-Date: Thu, 05 Jan 2017 08:32:46 +1100
-Subject: [nfs-utils PATCH] nfsstats: fix some exit codes.
-cc: linux-nfs@vger.kernel.org
-Message-ID: <87zij6lddt.fsf@notabene.neil.brown.name>
+        id S935278AbdADVrC (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 4 Jan 2017 16:47:02 -0500
+Subject: Re: [PATCH Version 3 06/16] SUNRPC AUTH_GSS gss3 reply verifier
+To: <andros@netapp.com>
+References: <1482509068-24516-1-git-send-email-andros@netapp.com>
+ <1482509068-24516-7-git-send-email-andros@netapp.com>
+CC: <bfieldses.org@netapp.com>, <linux-nfs@vger.kernel.org>
+From: Anna Schumaker <Anna.Schumaker@netapp.com>
+Message-ID: <12835369-fb6b-d55a-124f-c70e58e529c1@Netapp.com>
+Date: Wed, 4 Jan 2017 16:46:54 -0500
 MIME-Version: 1.0
-Content-Type: multipart/signed; boundary="=-=-=";
-        micalg=pgp-sha256; protocol="application/pgp-signature"
+In-Reply-To: <1482509068-24516-7-git-send-email-andros@netapp.com>
+Content-Type: text/plain; charset="windows-1252"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---=-=-=
-Content-Type: text/plain
-Content-Transfer-Encoding: quoted-printable
+Hi Andy,
 
+On 12/23/2016 11:04 AM, andros@netapp.com wrote:
+> From: Andy Adamson <andros@netapp.com>
+> 
+> The new GSS Version 3 reply  verifier is taken over the same data as
+> the call verifier, caveat REPLY direction
+> 
+> Verifier Data
+> 
+>    xid          tk_rqstp->rq_xid
+>    direction    REPLY (always a 1) RPC_REPLY
+>    rpcvers      RPC_VERSION
+>    prog         clnt->cl_prog
+>    vers         clnt->cl_vers
+>    proc         tk_msg.rpc_proc->p_proc
+>    credential
+>          flavor       RPC_AUTH_GSS
+>          length       cred_len is in gss_marshal (new gv_crlen)
+>          gss version  ctx->gc_v
+>          gss proc     ctx->gv_proc
+>          gss seq      tk_rqstp->rq_seqno
+>          gss svc      gss_cred->gc_service
+>          gss ctx len  ctx->gc_wire_ctx
+>          gss ctx data ctx->gc_wire_ctx
+> 
+> Signed-off-by: Andy Adamson <andros@netapp.com>
+> ---
+>  net/sunrpc/auth_gss/auth_gss.c | 60 ++++++++++++++++++++++++++++++++++++++++--
+>  1 file changed, 58 insertions(+), 2 deletions(-)
+> 
+> diff --git a/net/sunrpc/auth_gss/auth_gss.c b/net/sunrpc/auth_gss/auth_gss.c
+> index 9288cc2..d11f421 100644
+> --- a/net/sunrpc/auth_gss/auth_gss.c
+> +++ b/net/sunrpc/auth_gss/auth_gss.c
+> @@ -1624,6 +1624,53 @@ static int gss_cred_is_negative_entry(struct rpc_cred *cred)
+>  	return 0;
+>  }
+>  
+> +/**
+> + * gss3_reply_verifier: The new gssv3 verifier uses same data as call
+> + * caveat REPLY direction - see rpc_encode_header
+> + */
+> +static  void *
+> +gss3_reply_verifier(struct rpc_cred *cred, struct gss_cl_ctx *ctx,
+> +		    struct rpc_task *task, __be32 *seq, struct kvec *iov)
+> +{
+> +	struct gss_cred *g_cred = container_of(cred, struct gss_cred, gc_base);
+> +	void	*gss3_buf = NULL;
+> +	__be32 *crlen, *ptr = NULL;
+> +	int len;
+> +
+> +	/* freed in gss_validate */
+> +	len = (13 * 4) + ctx->gc_wire_ctx.len;
+> +	gss3_buf = kmalloc(len, GFP_NOFS);
+> +	if (!gss3_buf) {
+> +		gss3_buf = ERR_PTR(-EIO);
+> +		goto out;
+> +	}
+> +	ptr = (__be32 *)gss3_buf;
+> +
+> +	*ptr++ = htonl(task->tk_rqstp->rq_xid);
+> +	*ptr++ = htonl(RPC_REPLY);
+> +	*ptr++ = htonl(RPC_VERSION);
+> +	*ptr++ = htonl(task->tk_client->cl_prog);
+> +	*ptr++ = htonl(task->tk_client->cl_vers);
+> +	*ptr++ = htonl(task->tk_msg.rpc_proc->p_proc);
+> +	*ptr++ = htonl(RPC_AUTH_GSS);
+> +
+> +	/* credential */
+> +	crlen = ptr++;
+> +	*ptr++ = htonl(ctx->gc_v);
+> +	*ptr++ = htonl(ctx->gc_proc);
+> +	*ptr++ = *seq;
+> +	*ptr++ = htonl(g_cred->gc_service);
+> +	ptr = xdr_encode_netobj(ptr, &ctx->gc_wire_ctx);
+> +
+> +	/* backfill cred length */
+> +	*crlen = htonl((ptr - (crlen + 1)) << 2);
+> +
+> +	iov->iov_base = gss3_buf;
+> +	iov->iov_len = (ptr - (__be32 *)gss3_buf) << 2;
+> +out:
+> +	return gss3_buf;
+> +}
+> +
+>  static __be32 *
+>  gss_validate(struct rpc_task *task, __be32 *p)
+>  {
+> @@ -1633,6 +1680,7 @@ static int gss_cred_is_negative_entry(struct rpc_cred *cred)
+>  	struct kvec	iov;
+>  	struct xdr_buf	verf_buf;
+>  	struct xdr_netobj mic;
+> +	void	*g3_buf = NULL;
+>  	u32		flav,len;
+>  	u32		maj_stat;
+>  	__be32		*ret = ERR_PTR(-EIO);
+> @@ -1648,14 +1696,22 @@ static int gss_cred_is_negative_entry(struct rpc_cred *cred)
+>  	if (!seq)
+>  		goto out_bad;
+>  	*seq = htonl(task->tk_rqstp->rq_seqno);
+> -	iov.iov_base = seq;
+> -	iov.iov_len = 4;
+> +	if (ctx->gc_v == RPC_GSS_VERSION) {
+> +		iov.iov_base = seq;
+> +		iov.iov_len = 4;
+> +	}
+> +	if (ctx->gc_v == RPC_GSS3_VERSION) {
 
-"nfsstat -m" always exits with "1" (unless there is an error opening
-/proc/mounts).  It should exist "0".
+Can this be written as an else-if instead?  I don't think it's likely for gc_v to have two values at once :)
 
-Also, a few usage errors cause an exit of "255" when it should probably
-be "1".
+Thanks,
+Anna
 
-Signed-off-by: NeilBrown <neilb@suse.com>
-=2D--
- utils/nfsstat/nfsstat.c | 6 +++---
- 1 file changed, 3 insertions(+), 3 deletions(-)
-
-diff --git a/utils/nfsstat/nfsstat.c b/utils/nfsstat/nfsstat.c
-index 8376347d5af4..eddbe9a14f25 100644
-=2D-- a/utils/nfsstat/nfsstat.c
-+++ b/utils/nfsstat/nfsstat.c
-@@ -389,7 +389,7 @@ main(int argc, char **argv)
- 		switch (c) {
- 		case 'a':
- 			fprintf(stderr, "nfsstat: nfs acls are not yet supported.\n");
-=2D			return -1;
-+			return 1;
- 		case 'c':
- 			opt_clt =3D 1;
- 			break;
-@@ -455,7 +455,7 @@ main(int argc, char **argv)
- 					"not yet supported\n");
- 			return 2;
- 		case 'm':
-=2D			return mounts(MOUNTSFILE);
-+			return ! mounts(MOUNTSFILE);
- 		case '\1':
- 			usage(progname);
- 			return 0;
-@@ -464,7 +464,7 @@ main(int argc, char **argv)
- 			return 0;
- 		default:
- 			printf("Try `%s --help' for more information.\n", progname);
-=2D			return -1;
-+			return 1;
- 		}
- 	}
-=20
-=2D-=20
-2.11.0
-
-
---=-=-=
-Content-Type: application/pgp-signature; name="signature.asc"
-
------BEGIN PGP SIGNATURE-----
-
-iQIzBAEBCAAdFiEEG8Yp69OQ2HB7X0l6Oeye3VZigbkFAlhtaf4ACgkQOeye3VZi
-gbn8bQ//U0NuK0t/F8Fq6zIPkadOUttgzEsRB84Z4qKZ/6X6zbHzFRfg4V3nhtnV
-dQ1Or+QyJJfzqVgIpnJ9e5a56LAsVgJ5uYMLIbuvisqxdldQIYZuIogzxXonQvAF
-/H38fW3dq2Fo9sD3V9TOMTuXWOFpWItJUAyfFYDsWWgaaH+JhfScySsbfmbMKXeo
-b1A0Q9sNyQ478FW6vHplXd4tVcDaF5XDppVflO771zYyjlgQk/mpCzL1g51/0yXb
-8RQ15c2DQMoRyXJpEeUdq12y9QmRmw4PEQybA6SFYAffuQGg6Rg2OHyDB402ZNeD
-+nCp8hlp6Mi5cQEHk0R21JF/E7455GlhqCZRlx1BWr086NwVf6sy4T5IwoWcqTE1
-r0Gg1t1ma67PkTT6EE3ZwRL/Irc5avFNIxsrshrLqMFa5diw1De1sJD7FA86eDYN
-1q16aTEbhqmXDuORgxxX/UU6UcM5IVS1UYf/n/NcN9Z7BWBXQ8sbkWr+BcCj6u5C
-UyX9lxEO9zaPntYdai1l598k5qr4zCJPN/q/vOxR5GNq5wTP/qQJTPcHJRGYQsoa
-d+3Bsup2zyXPTWq0WP0c6o9r+V6q9UGE5Z65hmVYrEKV9PpdYZEAxpq8Rch7vRs9
-T/XYRbaiaskS0sqcFr2XJH7fw/8bNyoiuuT3exFtMBpS2D4J+H8=
-=w6jn
------END PGP SIGNATURE-----
---=-=-=--
+> +		g3_buf = gss3_reply_verifier(cred, ctx, task, seq, &iov);
+> +		if (IS_ERR(g3_buf))
+> +			goto out_bad;
+> +	}
+>  	xdr_buf_from_iov(&iov, &verf_buf);
+>  	mic.data = (u8 *)p;
+>  	mic.len = len;
+>  
+>  	ret = ERR_PTR(-EACCES);
+>  	maj_stat = gss_verify_mic(ctx->gc_gss_ctx, &verf_buf, &mic);
+> +	kfree(g3_buf);
+>  	if (maj_stat == GSS_S_CONTEXT_EXPIRED)
+>  		clear_bit(RPCAUTH_CRED_UPTODATE, &cred->cr_flags);
+>  	if (maj_stat) {
+> 
