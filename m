@@ -1,61 +1,46 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-wm0-f41.google.com ([74.125.82.41]:35663 "EHLO
-        mail-wm0-f41.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S966222AbdADJDa (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 4 Jan 2017 04:03:30 -0500
-Received: by mail-wm0-f41.google.com with SMTP id a197so403009952wmd.0
-        for <linux-nfs@vger.kernel.org>; Wed, 04 Jan 2017 01:03:30 -0800 (PST)
-Reply-To: nicolas.dichtel@6wind.com
-Subject: Re: [PATCH] uapi: use wildcards to list files
-References: <20161203.192346.1198940437155108508.davem@davemloft.net>
- <1483454144-10519-1-git-send-email-nicolas.dichtel@6wind.com>
- <2108827.WpE3IvfEdH@wuerfel>
-To: Arnd Bergmann <arnd@arndb.de>
-Cc: linux-arch@vger.kernel.org, linux-kernel@vger.kernel.org,
-        dri-devel@lists.freedesktop.org, netdev@vger.kernel.org,
-        linux-media@vger.kernel.org, linux-mmc@vger.kernel.org,
-        netfilter-devel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-raid@vger.kernel.org, linux-spi@vger.kernel.org,
-        linux-mtd@lists.infradead.org, linux-rdma@vger.kernel.org,
-        fcoe-devel@open-fcoe.org, alsa-devel@alsa-project.org,
-        linux-fbdev@vger.kernel.org, xen-devel@lists.xenproject.org,
-        davem@davemloft.net, airlied@linux.ie,
-        David Howells <dhowells@redhat.com>
-From: Nicolas Dichtel <nicolas.dichtel@6wind.com>
-Message-ID: <bf83da6b-01ef-bf44-b3e1-ca6fc5636818@6wind.com>
-Date: Wed, 4 Jan 2017 10:03:50 +0100
-MIME-Version: 1.0
-In-Reply-To: <2108827.WpE3IvfEdH@wuerfel>
-Content-Type: text/plain; charset=windows-1252
+Received: from mail-qk0-f181.google.com ([209.85.220.181]:33264 "EHLO
+        mail-qk0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S966954AbdADJ1H (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 4 Jan 2017 04:27:07 -0500
+Received: by mail-qk0-f181.google.com with SMTP id t184so401083959qkd.0
+        for <linux-nfs@vger.kernel.org>; Wed, 04 Jan 2017 01:26:55 -0800 (PST)
+From: Sriharsha Basavapatna <sriharsha.basavapatna@broadcom.com>
+To: linux-nfs@vger.kernel.org, linux-rdma@vger.kernel.org
+Subject: [PATCH] svcrdma: avoid duplicate dma unmapping during error recovery
+Date: Wed,  4 Jan 2017 21:33:29 +0530
+Message-Id: <20170104160329.24436-1-sriharsha.basavapatna@broadcom.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Le 03/01/2017 à 22:37, Arnd Bergmann a écrit :
-> On Tuesday, January 3, 2017 3:35:44 PM CET Nicolas Dichtel wrote:
->> Regularly, when a new header is created in include/uapi/, the developer
->> forgets to add it in the corresponding Kbuild file. This error is usually
->> detected after the release is out.
->>
->> In fact, all headers under include/uapi/ should be exported, so let's
->> use wildcards.
-> 
-> I think the idea makes a lot of sense: if a header is in uapi, we should
-> really export it. However, using a wildcard expression seems a bit
-> backwards here, I think we should make this implicit and not have the
-> Kbuild file at all.
-> 
-> The "header-y" syntax was originally added back when the uapi headers
-> were mixed with the internal headers in the same directory. After
-> David Howells introduced the separate directory for uapi, it has
-> become a bit redundant.
-Ok, thank you for the explanation, I was wondering why those Kbuild files were
-needed.
+In rdma_read_chunk_frmr() when ib_post_send() fails, the error code path
+invokes ib_dma_unmap_sg() to unmap the sg list. It then invokes
+svc_rdma_put_frmr() which in turn tries to unmap the same sg list through
+ib_dma_unmap_sg() again. This second unmap is invalid and could lead to
+problems when the iova being unmapped is subsequently reused. Remove
+the call to unmap in rdma_read_chunk_frmr() and let svc_rdma_put_frmr()
+handle it.
 
-> 
-> Can you try to modify scripts/Makefile.headersinst instead so we
-> can simply remove the Kbuild files entirely?
-I will try something.
+Fixes: 412a15c0fe53 ("svcrdma: Port to new memory registration API")
+Cc: stable@vger.kernel.org
+Signed-off-by: Sriharsha Basavapatna <sriharsha.basavapatna@broadcom.com>
+---
+ net/sunrpc/xprtrdma/svc_rdma_recvfrom.c | 2 --
+ 1 file changed, 2 deletions(-)
 
+diff --git a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
+index 57d35fbb1c28..172b537f8cfc 100644
+--- a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
++++ b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
+@@ -347,8 +347,6 @@ int rdma_read_chunk_frmr(struct svcxprt_rdma *xprt,
+ 	atomic_inc(&rdma_stat_read);
+ 	return ret;
+  err:
+-	ib_dma_unmap_sg(xprt->sc_cm_id->device,
+-			frmr->sg, frmr->sg_nents, frmr->direction);
+ 	svc_rdma_put_context(ctxt, 0);
+ 	svc_rdma_put_frmr(xprt, frmr);
+ 	return ret;
+-- 
+2.11.0.258.ge05806da9
 
-Regards,
-Nicolas
