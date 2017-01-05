@@ -1,71 +1,49 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-pg0-f67.google.com ([74.125.83.67]:34270 "EHLO
-        mail-pg0-f67.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S935219AbdAEFIW (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 5 Jan 2017 00:08:22 -0500
-Received: by mail-pg0-f67.google.com with SMTP id b1so39434661pgc.1
-        for <linux-nfs@vger.kernel.org>; Wed, 04 Jan 2017 21:08:22 -0800 (PST)
-Date: Thu, 5 Jan 2017 15:08:10 +1000
-From: Nicholas Piggin <npiggin@gmail.com>
-To: Trond Myklebust <trondmy@primarydata.com>
-Cc: Andrew Morton <akpm@linux-foundation.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        "linux-mm@kvack.org" <linux-mm@kvack.org>,
-        "Neil Brown" <neilb@suse.de>
-Subject: Re: [PATCH 1/2] nfs: no PG_private waiters remain, remove waker
-Message-ID: <20170105150810.0b82a9ec@roar.ozlabs.ibm.com>
-In-Reply-To: <0562F017-2963-41E0-BE5B-62A07EC444CD@primarydata.com>
-References: <20170103182234.30141-1-npiggin@gmail.com>
-        <20170103182234.30141-2-npiggin@gmail.com>
-        <0562F017-2963-41E0-BE5B-62A07EC444CD@primarydata.com>
+Received: from verein.lst.de ([213.95.11.211]:58569 "EHLO newverein.lst.de"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1752911AbdAEFw0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 5 Jan 2017 00:52:26 -0500
+Date: Thu, 5 Jan 2017 06:51:30 +0100
+From: Christoph Hellwig <hch@lst.de>
+To: Bruce James Fields <bfields@fieldses.org>
+Cc: Christoph Hellwig <hch@lst.de>, Trond Myklebust <trondmy@gmail.com>,
+        linux-nfs@vger.kernel.org
+Subject: Re: [nfsv4] RFC 7530: Filehandle of opened file after the REMOVE
+Message-ID: <20170105055130.GA10939@lst.de>
+References: <C496AE44-0F27-4B66-A1F6-A76AEAFD7A90@gmail.com> <20161229024703.GA21325@fieldses.org> <20161229074830.GA3002@lst.de> <20161229205426.GA389@fieldses.org> <20161230083530.GA26413@lst.de> <20170101135817.GA18418@lst.de> <20170101221025.GA7216@fieldses.org> <20170102084005.GA3471@lst.de> <20170102152741.GA16526@fieldses.org> <20170104174245.GD17649@fieldses.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20170104174245.GD17649@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, 4 Jan 2017 13:43:10 +0000
-Trond Myklebust <trondmy@primarydata.com> wrote:
+On Wed, Jan 04, 2017 at 12:42:45PM -0500, Bruce James Fields wrote:
+> Dumb question: don't local filesystems have the ability to do some sort
+> of emergency conversion to read-only on detecting corruption?
 
-> Hi Nick,
+Yes.
+
+> Does that
+> prevent any open-file cleanup?
+
+Yes, at least before the reboot.
+
+> If not that, is there some other
+> mechanism nfsd could use to crash the filesystem on shutdown if
+> appropriate (so if it's holding opens on a filesystem and if the
+> filesystem was mounted with the new option)?
 > 
-> > On Jan 3, 2017, at 13:22, Nicholas Piggin <npiggin@gmail.com> wrote:
-> > 
-> > Since commit 4f52b6bb ("NFS: Don't call COMMIT in ->releasepage()"),
-> > no tasks wait on PagePrivate, so the wake introduced in commit 95905446
-> > ("NFS: avoid deadlocks with loop-back mounted NFS filesystems.") can
-> > be removed.
-> > 
-> > Signed-off-by: Nicholas Piggin <npiggin@gmail.com>
-> > ---
-> > fs/nfs/write.c | 2 --
-> > 1 file changed, 2 deletions(-)
-> > 
-> > diff --git a/fs/nfs/write.c b/fs/nfs/write.c
-> > index b00d53d13d47..006068526542 100644
-> > --- a/fs/nfs/write.c
-> > +++ b/fs/nfs/write.c
-> > @@ -728,8 +728,6 @@ static void nfs_inode_remove_request(struct nfs_page *req)
-> > 		if (likely(head->wb_page && !PageSwapCache(head->wb_page))) {
-> > 			set_page_private(head->wb_page, 0);
-> > 			ClearPagePrivate(head->wb_page);
-> > -			smp_mb__after_atomic();
-> > -			wake_up_page(head->wb_page, PG_private);
-> > 			clear_bit(PG_MAPPED, &head->wb_flags);
-> > 		}
-> > 		nfsi->nrequests--;
-> > -- 
-> > 2.11.0
-> >   
+> Possibly better would be if we could keep a separate list of
+> unlinked-but-still-held-by-nfsd files that was managed diferently than
+> the existing list.
 > 
-> That looks fine to me. Do you want to push it through the linux-mm path or do you want me to take it?
+> But, I don't have the local filesystem knowledge to know where the
+> nightmares are here.
 
-Hi Trond,
+Maybe I shouldn't have called it a nighmare, but it's significantly
+more effort.  We'll need a way for NFSD to mark a file as not being
+allowed to cleaned up before the final iput for the reboot case
+mostly.
 
-Thanks. I don't see a problem with both patches going through your tree.
-I think the patches to add this stuff went through your tree as well.
-The removal of the export is really the only thing that makes patch 2
-non-trivial, but considering it was added for NFS, I think it's safe to
-remove.
-
-Thanks,
-Nick
+I'll try to come up with a prototype later this month, but it might not
+be pretty.
