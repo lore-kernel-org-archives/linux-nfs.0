@@ -1,78 +1,70 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:50370 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:57184 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751224AbdAERvA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 5 Jan 2017 12:51:00 -0500
-Received: from int-mx09.intmail.prod.int.phx2.redhat.com (int-mx09.intmail.prod.int.phx2.redhat.com [10.5.11.22])
-        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
-        (No client certificate requested)
-        by mx1.redhat.com (Postfix) with ESMTPS id E07B46408A
-        for <linux-nfs@vger.kernel.org>; Thu,  5 Jan 2017 17:51:00 +0000 (UTC)
-Received: from steved.boston.devel.redhat.com (steved.boston.devel.redhat.com [10.19.60.47])
-        by int-mx09.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id v05Hp0Rj029635
-        for <linux-nfs@vger.kernel.org>; Thu, 5 Jan 2017 12:51:00 -0500
-Subject: Re: Monthly Linux NFS Town Hall meeting: Tomorrow - Thur Jan 5
-To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-References: <24a95d26-1f61-c55d-51f5-31fcc36de420@RedHat.com>
-From: Steve Dickson <SteveD@redhat.com>
-Message-ID: <a231079c-2e0b-4973-9ce4-985f7944a5a3@RedHat.com>
-Date: Thu, 5 Jan 2017 12:51:00 -0500
-MIME-Version: 1.0
-In-Reply-To: <24a95d26-1f61-c55d-51f5-31fcc36de420@RedHat.com>
-Content-Type: text/plain; charset=windows-1252
+        id S1753313AbdAEVfL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 5 Jan 2017 16:35:11 -0500
+From: Scott Mayhew <smayhew@redhat.com>
+To: bfields@fieldses.org, jlayton@poochiereds.net
+Cc: davej@codemonkey.org.uk, linux-nfs@vger.kernel.org
+Subject: [PATCH 3/3] sunrpc: don't call sleeping functions from the notifier block callbacks
+Date: Thu,  5 Jan 2017 16:34:51 -0500
+Message-Id: <1483652091-25508-4-git-send-email-smayhew@redhat.com>
+In-Reply-To: <1483652091-25508-1-git-send-email-smayhew@redhat.com>
+References: <1483652091-25508-1-git-send-email-smayhew@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This will be starting in a few... If interested.
+The inet6addr_chain is an atomic notifier chain, so we can't call
+anything that might sleep (like lock_sock)... instead of closing the
+socket from svc_age_temp_xprts_now (which is called by the notifier
+function), just have the rpc service threads do it instead.
 
-steved.
+Signed-off-by: Scott Mayhew <smayhew@redhat.com>
+---
+ include/linux/sunrpc/svc_xprt.h |  1 +
+ net/sunrpc/svc_xprt.c           | 10 +++++++---
+ 2 files changed, 8 insertions(+), 3 deletions(-)
 
-On 01/04/2017 02:29 PM, Steve Dickson wrote:
-> Hello,
-> 
-> Happy New Year everyone!!!
-> 
-> We have had one of these meeting since last year!!! :-) 
-> 
-> What do you say we get together to see where
-> we are going this year as well as talk about
-> upcoming events. 
-> 
-> The meeting will be Tomorrow Thur Jan 5 at 
-> 
->    *01:00 pm EST (10:00am PST)*
-> 
-> The usual agenda will apply. The maintainers will give
-> a quick status of what is happening in their worlds.
-> 
-> Next we'll get updates from major contributors on what
-> they have been doing and are planing on doing.
->   
-> Finally, we'll open the floor to questions, comments, 
-> concerns from the community.  
-> 
-> Generally the meeting lasts between 30 to 45 mins, with 
-> a very hard stop at 60mins. 
-> 
-> Please feel to attend and participate!
-> 
-> Again the Time: 10:00 am PST (01:00 pm EST)
-> 
-> BlueJeans Video Link:
->     https://bluejeans.com/5642721552/
-> 
-> The call in numbers are:
-> 
-> U.S. and Canada: (800) 451-8679
-> World wide toll free numbers
->    https://www.intercallonline.com/listNumbersByCode.action?confCode=5642721552
-> 
-> Conference code: 564.272.1552
-> 
-> steved.
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
+diff --git a/include/linux/sunrpc/svc_xprt.h b/include/linux/sunrpc/svc_xprt.h
+index e5d1934..7440290 100644
+--- a/include/linux/sunrpc/svc_xprt.h
++++ b/include/linux/sunrpc/svc_xprt.h
+@@ -66,6 +66,7 @@ struct svc_xprt {
+ #define XPT_LISTENER	10		/* listening endpoint */
+ #define XPT_CACHE_AUTH	11		/* cache auth info */
+ #define XPT_LOCAL	12		/* connection from loopback interface */
++#define XPT_KILL_TEMP   13		/* call xpo_kill_temp_xprt before closing */
+ 
+ 	struct svc_serv		*xpt_server;	/* service for transport */
+ 	atomic_t    	    	xpt_reserved;	/* space on outq that is rsvd */
+diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
+index 3bc1d61..9c9db55 100644
+--- a/net/sunrpc/svc_xprt.c
++++ b/net/sunrpc/svc_xprt.c
+@@ -799,6 +799,8 @@ static int svc_handle_xprt(struct svc_rqst *rqstp, struct svc_xprt *xprt)
+ 
+ 	if (test_bit(XPT_CLOSE, &xprt->xpt_flags)) {
+ 		dprintk("svc_recv: found XPT_CLOSE\n");
++		if (test_and_clear_bit(XPT_KILL_TEMP, &xprt->xpt_flags))
++			xprt->xpt_ops->xpo_kill_temp_xprt(xprt);
+ 		svc_delete_xprt(xprt);
+ 		/* Leave XPT_BUSY set on the dead xprt: */
+ 		goto out;
+@@ -1020,9 +1022,11 @@ void svc_age_temp_xprts_now(struct svc_serv *serv, struct sockaddr *server_addr)
+ 		le = to_be_closed.next;
+ 		list_del_init(le);
+ 		xprt = list_entry(le, struct svc_xprt, xpt_list);
+-		dprintk("svc_age_temp_xprts_now: closing %p\n", xprt);
+-		xprt->xpt_ops->xpo_kill_temp_xprt(xprt);
+-		svc_close_xprt(xprt);
++		set_bit(XPT_CLOSE, &xprt->xpt_flags);
++		set_bit(XPT_KILL_TEMP, &xprt->xpt_flags);
++		dprintk("svc_age_temp_xprts_now: queuing xprt %p for closing\n",
++				xprt);
++		svc_xprt_enqueue(xprt);
+ 	}
+ }
+ EXPORT_SYMBOL_GPL(svc_age_temp_xprts_now);
+-- 
+2.7.4
+
