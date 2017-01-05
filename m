@@ -1,415 +1,151 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx144.netapp.com ([216.240.21.25]:18644 "EHLO mx144.netapp.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1761373AbdADVvx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 4 Jan 2017 16:51:53 -0500
-Subject: Re: [PATCH Version 3 07/16] SUNRPC AUTH_GSS RPCSEC_GSS_CREATE with
- label payload
-To: <andros@netapp.com>
-References: <1482509068-24516-1-git-send-email-andros@netapp.com>
- <1482509068-24516-8-git-send-email-andros@netapp.com>
-CC: <bfieldses.org@netapp.com>, <linux-nfs@vger.kernel.org>
-From: Anna Schumaker <Anna.Schumaker@netapp.com>
-Message-ID: <251f8c0f-d2b3-5757-dfc5-675024621d94@Netapp.com>
-Date: Wed, 4 Jan 2017 16:51:44 -0500
+Received: from mail-pf0-f195.google.com ([209.85.192.195]:33162 "EHLO
+        mail-pf0-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1753793AbdAECqJ (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 4 Jan 2017 21:46:09 -0500
+Subject: Re: [PATCH v5 1/2] sysctl: introduce new proc handler proc_dobool
+To: Alexey Dobriyan <adobriyan@gmail.com>
+References: <1481786661-973-1-git-send-email-hejianet@gmail.com>
+ <1481786661-973-2-git-send-email-hejianet@gmail.com>
+ <20170104210933.GB21562@fieldses.org>
+Cc: "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org,
+        "Eric W. Biederman" <ebiederm@xmission.com>,
+        Andrew Morton <akpm@linux-foundation.org>,
+        Dmitry Torokhov <dmitry.torokhov@gmail.com>,
+        Serge Hallyn <serge@hallyn.com>,
+        "David S. Miller" <davem@davemloft.net>,
+        Subash Abhinov Kasiviswanathan <subashab@codeaurora.org>,
+        Arnaldo Carvalho de Melo <acme@redhat.com>,
+        Al Viro <viro@zeniv.linux.org.uk>,
+        Mel Gorman <mgorman@techsingularity.net>,
+        Kees Cook <keescook@chromium.org>, Hugh Dickins <hughd@google.com>,
+        Daniel Bristot de Oliveira <bristot@redhat.com>,
+        Daniel Cashman <dcashman@google.com>, Arnd Bergmann <arnd@arndb.de>,
+        Jeff Layton <jlayton@poochiereds.net>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>
+From: hejianet <hejianet@gmail.com>
+Message-ID: <1986753d-d7f7-120d-f6ec-011896b54849@gmail.com>
+Date: Thu, 5 Jan 2017 10:45:46 +0800
 MIME-Version: 1.0
-In-Reply-To: <1482509068-24516-8-git-send-email-andros@netapp.com>
-Content-Type: text/plain; charset="windows-1252"
+In-Reply-To: <20170104210933.GB21562@fieldses.org>
+Content-Type: text/plain; charset=windows-1252; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hey Andy,
 
-On 12/23/2016 11:04 AM, andros@netapp.com wrote:
-> From: Andy Adamson <andros@netapp.com>
-> 
-> Signed-off-by: Andy Adamson <andros@netapp.com>
-> ---
->  include/linux/sunrpc/auth_gss.h |  54 ++++++++
->  net/sunrpc/auth_gss/auth_gss.c  | 282 ++++++++++++++++++++++++++++++++++++++++
->  2 files changed, 336 insertions(+)
-> 
-> diff --git a/include/linux/sunrpc/auth_gss.h b/include/linux/sunrpc/auth_gss.h
-> index 4ab63a9..b2a5a61 100644
-> --- a/include/linux/sunrpc/auth_gss.h
-> +++ b/include/linux/sunrpc/auth_gss.h
-> @@ -93,6 +93,60 @@ struct gss_cred {
->  	unsigned long		gc_upcall_timestamp;
->  };
->  
-> +/** GSS3 */
-> +enum gss3_type {
-> +	GSS3_LABEL = 0,
-> +	GSS3_PRIVS = 1,
-> +};
-> +
-> +struct gss3_chan_binding {
-> +	u32	cb_len;
-> +	void	*cb_binding;
-> +};
-> +
-> +struct gss3_mp_auth {
-> +	u32	mp_handle_len;
-> +	void	*mp_handle;
-> +	u32	*mp_mic_len;
-> +	void	*mp_mic;	/* header mic */
-> +};
-> +
-> +struct gss3_label {
-> +	u32			la_lfs;
-> +	u32			la_pi;
-> +	struct xdr_netobj	la_label;
-> +};
-> +
-> +struct gss3_privs {
-> +	char	*pr_name;
-> +	u32	pr_num;
-> +	void	*pr_data;
-> +};
-> +
-> +struct gss3_assertion_u {
-> +	u32	au_type;
-> +	union {
-> +		struct gss3_label	au_label;
-> +		struct gss3_privs	au_privs;
-> +	} u;
-> +};
-> +
-> +struct gss3_create_args {
-> +	struct gss3_mp_auth		*ca_mp_auth;
-> +	struct gss3_chan_binding	*ca_chan_bind;
-> +	u32			ca_num;
-> +	struct gss3_assertion_u	*ca_assertions;
-> +};
-> +
-> +struct gss3_create_res {
-> +	u32		cr_hlen;
-> +	void		*cr_handle;
-> +	struct gss3_mp_auth		*cr_mp_auth;
-> +	struct gss3_chan_binding	*cr_chan_bind;
-> +	u32			cr_num;
-> +	struct gss3_assertion_u	*cr_assertions;
-> +};
-> +
->  #endif /* __KERNEL__ */
->  #endif /* _LINUX_SUNRPC_AUTH_GSS_H */
->  
-> diff --git a/net/sunrpc/auth_gss/auth_gss.c b/net/sunrpc/auth_gss/auth_gss.c
-> index d11f421..e39c1af 100644
-> --- a/net/sunrpc/auth_gss/auth_gss.c
-> +++ b/net/sunrpc/auth_gss/auth_gss.c
-> @@ -52,9 +52,12 @@
->  #include <linux/sunrpc/gss_api.h>
->  #include <asm/uaccess.h>
->  #include <linux/hashtable.h>
-> +#include <linux/security.h>
->  
->  #include "../netns.h"
->  
-> +static int gss3_create_label(struct rpc_cred *cred);
-> +
->  static const struct rpc_authops authgss_ops;
->  
->  static const struct rpc_credops gss_credops;
-> @@ -145,6 +148,8 @@ struct gss_auth {
->  	set_bit(RPCAUTH_CRED_UPTODATE, &cred->cr_flags);
->  	smp_mb__before_atomic();
->  	clear_bit(RPCAUTH_CRED_NEW, &cred->cr_flags);
-> +	/* XXXX make void? check retunr ?? */
-> +	gss3_create_label(cred);
->  }
->  
->  static const void *
-> @@ -1591,6 +1596,283 @@ static int gss_cred_is_negative_entry(struct rpc_cred *cred)
->  	return 0;
->  }
->  
-> +/**
-> + * GSS3_createargs_maxsz and GSS3_createres_maxsz
-> + * include no rgss3_assertion_u payload.
-> + *
-> + * GSS3_createargs_maxsz is currently for one label.
-> + */
-> +#define GSS3_createargs_maxsz	(1 /* empty ca_mp_auth */ + \
-> +				 1 /* empty ca_chan_bind */ + \
-> +				 1 /* ca_num */ + \
-> +				 1 /* au_type */)
-> +#define GSS3_labelargs_maxsz	(1 /* la_lfs */ + \
-> +				 1 /* la_pi */ + \
-> +				 1 /* la_label.len */ + \
-> +				 XDR_QUADLEN(1024) /* la_label.data */)
-> +#define GSS3_createres_maxsz	(1 /* cr_hlen */ + \
-> +				 XDR_QUADLEN(1024) /* cr_handle*/ + \
-> +				 GSS3_createargs_maxsz)
-> +#define GSS3_labelres_maxsz	GSS3_labelargs_maxsz
-> +
-> +#define GSS3_listargs_maxsz	(1) /* dummy */
-> +#define GSS3_listres_maxsz	(1) /* dummy */
-> +
-> +static void
-> +gss3_enc_label(struct rpc_rqst *req, struct xdr_stream *xdr,
-> +	       const struct gss3_create_args *g3ca)
-> +{
-> +	struct gss3_label *gl;
-> +	__be32 *p;
-> +
-> +	gl = &g3ca->ca_assertions[0].u.au_label;
-> +
-> +	dprintk("RPC: %5u encoding GSSv3 label %s:%d\n", req->rq_task->tk_pid,
-> +		(char *)gl->la_label.data, gl->la_label.len);
-> +
-> +	p = xdr_reserve_space(xdr, GSS3_labelargs_maxsz << 2);
-> +	*p++ = cpu_to_be32(0); /* la_lfs */
-> +	*p++ = cpu_to_be32(0); /* la_pi */
-> +	p = xdr_encode_netobj(p, &gl->la_label);
-> +}
-> +
-> +static void
-> +gss3_enc_create(struct rpc_rqst *req, struct xdr_stream *xdr,
-> +		const struct gss3_create_args *g3ca)
-> +{
-> +	u32 type;
-> +	__be32 *p;
-> +
-> +	p = xdr_reserve_space(xdr, GSS3_createargs_maxsz << 2);
-> +	*p++ = cpu_to_be32(0); /* NULL ca_mp_auth */
-> +	*p++ = cpu_to_be32(0); /* NULL ca_chan_bind */
-> +	*p++ = cpu_to_be32(g3ca->ca_num);
-> +	/* the payload is a gss3_label */
-> +	type = cpu_to_be32(g3ca->ca_assertions->au_type);
-> +	*p++ = type;
-> +	switch (type) {
-> +	case GSS3_LABEL:
-> +		gss3_enc_label(req, xdr, g3ca);
-> +		break;
-> +	case GSS3_PRIVS:
-> +	default:
-> +		/* drop through to return */
-> +		pr_warn("RPC    Unsupported gss3 create assertion %d\n", type);
-> +	}
-> +}
-> +
-> +static int
-> +gss3_dec_label(struct rpc_rqst *req, struct xdr_stream *xdr,
-> +	       struct gss3_create_res *g3cr)
-> +{
-> +	struct gss3_label *gl;
-> +	struct gss3_assertion_u *g3a;
-> +	__be32 *p;
-> +
-> +	g3a = kzalloc(sizeof(*g3a), GFP_KERNEL);
-> +	if (!g3a)
-> +		goto out_err;
-> +
-> +	g3a->au_type = GSS3_LABEL;
-> +	gl = &g3a->u.au_label;
-> +
-> +	p = xdr_inline_decode(xdr, 12);
-> +	if (unlikely(!p))
-> +		goto out_overflow;
-> +
-> +	gl->la_lfs = be32_to_cpup(p++);
-> +	gl->la_pi = be32_to_cpup(p++);
-> +	gl->la_label.len = be32_to_cpup(p++);
-> +
-> +	p = xdr_inline_decode(xdr, gl->la_label.len);
-> +	if (unlikely(!p))
-> +		goto out_overflow;
-> +
-> +	gl->la_label.data = kmemdup(p, gl->la_label.len, GFP_KERNEL);
-> +	if (!gl->la_label.data)
-> +		goto out_free_assert;
-> +	/**
-> +	 * Note: need to store the assertion with the child handle
-> +	 * in the gss context cache.
-> +	 */
-> +
-> +	g3cr->cr_assertions = g3a;
-> +
-> +	return 0;
-> +
-> +out_free_assert:
-> +	kfree(g3a);
-> +out_err:
-> +	return -EIO;
-> +out_overflow:
-> +	pr_warn("RPC    %s End of receive buffer. Remaining len: %tu words.\n",
-> +		__func__, xdr->end - xdr->p);
-> +	goto out_free_assert;
-> +}
-> +
-> +static int
-> +gss3_dec_create(struct rpc_rqst *req, struct xdr_stream *xdr,
-> +		struct gss3_create_res *g3cr)
-> +{
-> +	u32 dummy, type;
-> +	__be32 *p;
-> +
-> +	p = xdr_inline_decode(xdr, 4);
-> +	if (unlikely(!p))
-> +		goto out_overflow;
-> +	g3cr->cr_hlen = be32_to_cpup(p++);
-> +
-> +	p = xdr_inline_decode(xdr, g3cr->cr_hlen + 16);
-> +	if (unlikely(!p))
-> +		goto out_overflow;
-> +
-> +	g3cr->cr_handle = kmemdup(p, g3cr->cr_hlen, GFP_KERNEL);
-> +	if (!g3cr->cr_handle)
-> +		goto out_err;
-> +
-> +	p += XDR_QUADLEN(g3cr->cr_hlen);
-> +
-> +	/* cr_mp_auth: not supported */
-> +	dummy = be32_to_cpup(p++);
-> +	if (dummy != 0) {
-> +		pr_warn("RPC    gss3 create cr_mp_auth not supported\n");
-> +		goto out_free_handle;
-> +	}
-> +
-> +	/* cr_chan_bind: not supported */
-> +	dummy = be32_to_cpup(p++);
-> +	if (dummy != 0) {
-> +		pr_warn("RPC    gss3 create cr_chan_bind not supported\n");
-> +		goto out_free_handle;
-> +	}
-> +
-> +	/* Support one label assertion */
-> +	g3cr->cr_num = be32_to_cpup(p++);
-> +	if (g3cr->cr_num != 1) {
-> +		pr_warn("RPC    gss3 multiple assertions %d unspported\n",
-> +			g3cr->cr_num);
-> +		goto out_free_handle;
-> +	}
-> +
-> +	/* au_type */
-> +	type = be32_to_cpup(p++);
-> +	switch (type) {
-> +	case GSS3_LABEL:
-> +		if (gss3_dec_label(req, xdr, g3cr) != 0)
-> +			goto out_free_handle;
-> +		break;
-> +	case GSS3_PRIVS:
-> +	default:
-> +		pr_warn("RPC    Unsupported gss3 create assertion %d\n", type);
-> +		goto out_free_handle;
-> +	}
-> +	return 0;
-> +
-> +out_free_handle:
-> +	kfree(g3cr->cr_handle);
-> +out_err:
-> +	return -EIO;
-> +out_overflow:
-> +	pr_warn("RPC    %s End of receive buffer. Remaining len: %tu words.\n",
-> +		__func__, xdr->end - xdr->p);
-> +	goto out_err;
-> +}
-> +
-> +#define RPC_PROC_NULL 0
-> +
-> +struct rpc_procinfo gss3_label_assertion[] = {
-> +	[RPC_GSS_PROC_CREATE] = {
-> +		.p_proc		= RPC_PROC_NULL,
-> +		.p_encode	= (kxdreproc_t)gss3_enc_create,
-> +		.p_decode	= (kxdrdproc_t)gss3_dec_create,
-> +		.p_arglen	= GSS3_createargs_maxsz + GSS3_labelargs_maxsz,
-> +		.p_replen	= GSS3_createres_maxsz + GSS3_labelres_maxsz,
-> +		.p_statidx	= RPC_GSS_PROC_CREATE,
-> +		.p_timer	= 0,
-> +		.p_name		= "GSS_CREATE_LABEL",
-> +	},
-> +};
-> +
-> +/** GSSv3 RPC_GSS_PROC_CREATE operation
-> + * Note: MUST use integrity or privacy security service.
-> + *	First pass; use rpc_gss_svc_none.
-> + *
-> + * scontext: returned from security_sid_to_scontext(u32 sid, char **scontext)
-> + */
-> +static int
-> +gss3_create_label(struct rpc_cred *cred)
-> +{
-> +	struct gss_auth *gss_auth = container_of(cred->cr_auth, struct gss_auth,
-> +						 rpc_auth);
-> +	struct gss_cl_ctx *ctx = gss_cred_get_ctx(cred);
-> +	struct rpc_task *task;
-> +	struct gss3_create_res cres = {
-> +		.cr_mp_auth = 0,
-> +	};
-> +	struct gss3_create_args *cargs = NULL;
-> +	struct gss3_label *gl;
-> +	int ret = -EINVAL;
-> +
-> +	if (!ctx)
-> +		goto out;
-> +	/**
-> +	 * Take a reference to ensure the cred sticks around as we create
-> +	 * a child context
-> +	 * XXX does grabbing a reference to the context (gss_cred_get_ctx)
-> +	 * also keep the cred from being removed?
-> +	 * XXX do we need to keep this cred reference until the child context
-> +	 * handle and associated assertion is removed?
-> +	 */
-> +	get_rpccred(cred);
-> +
-> +	if (ctx->gc_v != RPC_GSS3_VERSION || !selinux_is_enabled())
-> +		goto out_err;
-> +
-> +	ret = -ENOMEM;
-> +	cargs = kzalloc(sizeof(*cargs), GFP_NOFS);
-> +	if (!cargs)
-> +		goto out_err;
-> +	cargs->ca_assertions = kzalloc(sizeof(*cargs->ca_assertions), GFP_NOFS);
-> +	if (!cargs->ca_assertions)
-> +		goto out_free_args;
-> +
-> +	/* NOTE: not setting la_lfs, la_pi. Do we even need them? */
-> +	cargs->ca_num = 1;
-> +	cargs->ca_assertions->au_type = GSS3_LABEL;
-> +	gl = &cargs->ca_assertions->u.au_label;
-> +
-> +	ret = security_current_sid_to_context((char **)&gl->la_label.data,
-> +					      &gl->la_label.len);
 
-This function only exists if CONFIG_SECURITY_SELINUX=y, as the kbuild bot pointed out.  What is the right thing to do here if selinux isn't compiled in?
+On 05/01/2017 5:09 AM, J. Bruce Fields wrote:
+> On Thu, Dec 15, 2016 at 03:24:20PM +0800, Jia He wrote:
+>> This is to let bool variable could be correctly displayed in
+>> big/little endian sysctl procfs. sizeof(bool) is arch dependent,
+>> proc_dobool should work in all arches.
+> Did Alexey Debriyan agree that this dealt with his objections?
+Hi Alexey, any thoughts? ;-)
+Thanks
 
-Also, do you need to check the value of "ret" here before going on?
+B.R.
+Jia
+> Also it'd be nice to have a sign-off from somebody that's actually
+> touched sysctl.c.  Then I could take it through the nfsd tree if that
+> doesn't cause anyone trouble.
+>
+> --b.
+>
+>> Suggested-by: Pan Xinhui <xinhui@linux.vnet.ibm.com>
+>> Signed-off-by: Jia He <hejianet@gmail.com>
+>> ---
+>>   include/linux/sysctl.h |  2 ++
+>>   kernel/sysctl.c        | 41 +++++++++++++++++++++++++++++++++++++++++
+>>   2 files changed, 43 insertions(+)
+>>
+>> diff --git a/include/linux/sysctl.h b/include/linux/sysctl.h
+>> index adf4e51..255a9c7 100644
+>> --- a/include/linux/sysctl.h
+>> +++ b/include/linux/sysctl.h
+>> @@ -41,6 +41,8 @@ typedef int proc_handler (struct ctl_table *ctl, int write,
+>>   
+>>   extern int proc_dostring(struct ctl_table *, int,
+>>   			 void __user *, size_t *, loff_t *);
+>> +extern int proc_dobool(struct ctl_table *, int,
+>> +			void __user *, size_t *, loff_t *);
+>>   extern int proc_dointvec(struct ctl_table *, int,
+>>   			 void __user *, size_t *, loff_t *);
+>>   extern int proc_douintvec(struct ctl_table *, int,
+>> diff --git a/kernel/sysctl.c b/kernel/sysctl.c
+>> index 706309f..c4bec65 100644
+>> --- a/kernel/sysctl.c
+>> +++ b/kernel/sysctl.c
+>> @@ -2112,6 +2112,20 @@ static int proc_put_char(void __user **buf, size_t *size, char c)
+>>   	return 0;
+>>   }
+>>   
+>> +static int do_proc_dobool_conv(bool *negp, unsigned long *lvalp,
+>> +				int *valp,
+>> +				int write, void *data)
+>> +{
+>> +	if (write)
+>> +		*(bool *)valp = *lvalp;
+>> +	else {
+>> +		int val = *(bool *)valp;
+>> +
+>> +		*lvalp = (unsigned long)val;
+>> +	}
+>> +	return 0;
+>> +}
+>> +
+>>   static int do_proc_dointvec_conv(bool *negp, unsigned long *lvalp,
+>>   				 int *valp,
+>>   				 int write, void *data)
+>> @@ -2258,6 +2272,26 @@ static int do_proc_dointvec(struct ctl_table *table, int write,
+>>   }
+>>   
+>>   /**
+>> + * proc_dobool - read/write a bool
+>> + * @table: the sysctl table
+>> + * @write: %TRUE if this is a write to the sysctl file
+>> + * @buffer: the user buffer
+>> + * @lenp: the size of the user buffer
+>> + * @ppos: file position
+>> + *
+>> + * Reads/writes up to table->maxlen/sizeof(unsigned int) integer
+>> + * values from/to the user buffer, treated as an ASCII string.
+>> + *
+>> + * Returns 0 on success.
+>> + */
+>> +int proc_dobool(struct ctl_table *table, int write,
+>> +		void __user *buffer, size_t *lenp, loff_t *ppos)
+>> +{
+>> +	return do_proc_dointvec(table, write, buffer, lenp, ppos,
+>> +				do_proc_dobool_conv, NULL);
+>> +}
+>> +
+>> +/**
+>>    * proc_dointvec - read a vector of integers
+>>    * @table: the sysctl table
+>>    * @write: %TRUE if this is a write to the sysctl file
+>> @@ -2885,6 +2919,12 @@ int proc_dostring(struct ctl_table *table, int write,
+>>   	return -ENOSYS;
+>>   }
+>>   
+>> +int proc_dobool(struct ctl_table *table, int write,
+>> +                  void __user *buffer, size_t *lenp, loff_t *ppos)
+>> +{
+>> +        return -ENOSYS;
+>> +}
+>> +
+>>   int proc_dointvec(struct ctl_table *table, int write,
+>>   		  void __user *buffer, size_t *lenp, loff_t *ppos)
+>>   {
+>> @@ -2941,6 +2981,7 @@ int proc_doulongvec_ms_jiffies_minmax(struct ctl_table *table, int write,
+>>    * No sense putting this after each symbol definition, twice,
+>>    * exception granted :-)
+>>    */
+>> +EXPORT_SYMBOL(proc_dobool);
+>>   EXPORT_SYMBOL(proc_dointvec);
+>>   EXPORT_SYMBOL(proc_douintvec);
+>>   EXPORT_SYMBOL(proc_dointvec_jiffies);
+>> -- 
+>> 2.5.5
 
-Thanks,
-Anna
-
-> +
-> +	ctx->gc_proc = RPC_GSS_PROC_CREATE;
-> +	cred->cr_ops = &gss_credops;
-> +
-> +	/* Want a sync rpc call */
-> +	task = rpc_call_null_payload(gss_auth->client, cred,
-> +				     0, cargs, &cres,
-> +				    &gss3_label_assertion[RPC_GSS_PROC_CREATE]);
-> +	if (IS_ERR(task)) {
-> +		ret = PTR_ERR(task);
-> +		goto out_free_assert;
-> +	}
-> +	if (task->tk_status != 0) {
-> +		ret = task->tk_status;
-> +		goto out_free_assert;
-> +	}
-> +	rpc_put_task(task);
-> +
-> +out_free_assert:
-> +	kfree(cargs->ca_assertions);
-> +out_free_args:
-> +	kfree(cargs);
-> +out_err:
-> +	ctx->gc_proc = RPC_GSS_PROC_DATA;
-> +	gss_put_ctx(ctx);
-> +	put_rpccred(cred);
-> +out:
-> +	return ret;
-> +}
-> +
->  /*
->  * Refresh credentials. XXX - finish
->  */
-> 
