@@ -1,49 +1,98 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from verein.lst.de ([213.95.11.211]:58569 "EHLO newverein.lst.de"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1752911AbdAEFw0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 5 Jan 2017 00:52:26 -0500
-Date: Thu, 5 Jan 2017 06:51:30 +0100
-From: Christoph Hellwig <hch@lst.de>
-To: Bruce James Fields <bfields@fieldses.org>
-Cc: Christoph Hellwig <hch@lst.de>, Trond Myklebust <trondmy@gmail.com>,
-        linux-nfs@vger.kernel.org
-Subject: Re: [nfsv4] RFC 7530: Filehandle of opened file after the REMOVE
-Message-ID: <20170105055130.GA10939@lst.de>
-References: <C496AE44-0F27-4B66-A1F6-A76AEAFD7A90@gmail.com> <20161229024703.GA21325@fieldses.org> <20161229074830.GA3002@lst.de> <20161229205426.GA389@fieldses.org> <20161230083530.GA26413@lst.de> <20170101135817.GA18418@lst.de> <20170101221025.GA7216@fieldses.org> <20170102084005.GA3471@lst.de> <20170102152741.GA16526@fieldses.org> <20170104174245.GD17649@fieldses.org>
+Received: from mail-oi0-f68.google.com ([209.85.218.68]:35264 "EHLO
+        mail-oi0-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1161551AbdAEOUo (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 5 Jan 2017 09:20:44 -0500
+Received: by mail-oi0-f68.google.com with SMTP id v84so78882384oie.2
+        for <linux-nfs@vger.kernel.org>; Thu, 05 Jan 2017 06:20:44 -0800 (PST)
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20170104174245.GD17649@fieldses.org>
+In-Reply-To: <20170104172906.GC17649@fieldses.org>
+References: <960d206f-3cb5-b60e-5245-d7282dabf664@gmail.com> <20170104172906.GC17649@fieldses.org>
+From: Kinglong Mee <kinglongmee@gmail.com>
+Date: Thu, 5 Jan 2017 22:20:43 +0800
+Message-ID: <CAB6yy34YC_OL0ws9GdvAJBOLiQa_3sgKpo=N5025rJa-1xmQaA@mail.gmail.com>
+Subject: Re: [PATCH] NFSD: only support readonly export for !fsync and
+ readonly filesystem
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        Christoph Hellwig <hch@infradead.org>,
+        Steve Dickson <SteveD@redhat.com>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Jan 04, 2017 at 12:42:45PM -0500, Bruce James Fields wrote:
-> Dumb question: don't local filesystems have the ability to do some sort
-> of emergency conversion to read-only on detecting corruption?
+On Thu, Jan 5, 2017 at 1:29 AM, J. Bruce Fields <bfields@fieldses.org> wrote:
+> On Sat, Dec 31, 2016 at 09:18:08PM +0800, Kinglong Mee wrote:
+>> Commit fae5096ad217
+>> "nfsd: assume writeable exportabled filesystems have f_sync"
+>> have remove the checking of f_sync.
+>>
+>> Christoph Hellwig suggests,
+>> "Warn and refuse the writable export."
+>>
+>> I think just covert to a readonly export for !fsync filesystem,
+>> also, for a readonly filesystem is reasonable.
+>
+> Hmmm.  It's not something we've done before.  Off hand, I can't see why
+> it would cause a problem, but I'm not convinced yet.
+>
+> Could you add to the changelog a description of the use case you gave
+> Christoph in your defense of this idea?
 
-Yes.
+Okay, I will give more description about the patch include that.
 
-> Does that
-> prevent any open-file cleanup?
+>
+> Also:
+>
+>> Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
+>> ---
+>>  fs/nfsd/export.c | 12 ++++++++++++
+>>  1 file changed, 12 insertions(+)
+>>
+>> diff --git a/fs/nfsd/export.c b/fs/nfsd/export.c
+>> index 43e109c..3ec3b6b 100644
+>> --- a/fs/nfsd/export.c
+>> +++ b/fs/nfsd/export.c
+>> @@ -358,6 +358,18 @@ static int check_export(struct inode *inode, int *flags, unsigned char *uuid)
+>>       if (*flags & NFSEXP_V4ROOT)
+>>               *flags |= NFSEXP_READONLY;
+>>
+>> +     /*
+>> +      * Convert to a readonly export for that,
+>> +      * 1. not supported fsync filesystem,
+>> +      * 2. readonly filesystem.
+>> +      */
+>> +     if ((!inode->i_fop->fsync || IS_RDONLY(inode))
+>> +         && !(*flags & NFSEXP_READONLY)) {
+>> +             dprintk("exp_export: Only support readonly export "
+>> +                     "for fsync unsupported or readonly filesystem.\n");
+>
+> Something like this might be more helpful:
+>
+>         "Filesystem %s: exporting read-only\n", IS_RDONLY(inode) ?
+>                         "is read-only" : "has no fsync method"
+>
+> Also if we passed the dentry to check_export, could we do something
+> like:
+>
+>         "%s %s: exporting read-only\n", d_path(dentry,...), IS_RDONLY...
+>
+> here and in the other warnings?
 
-Yes, at least before the reboot.
+A kstrdup from svc_export_parse() 's string path parsing is simplify,
+also, I will show in the next patch.
 
-> If not that, is there some other
-> mechanism nfsd could use to crash the filesystem on shutdown if
-> appropriate (so if it's holding opens on a filesystem and if the
-> filesystem was mounted with the new option)?
-> 
-> Possibly better would be if we could keep a separate list of
-> unlinked-but-still-held-by-nfsd files that was managed diferently than
-> the existing list.
-> 
-> But, I don't have the local filesystem knowledge to know where the
-> nightmares are here.
+thanks,
+Kinglong Mee
 
-Maybe I shouldn't have called it a nighmare, but it's significantly
-more effort.  We'll need a way for NFSD to mark a file as not being
-allowed to cleaned up before the final iput for the reboot case
-mostly.
-
-I'll try to come up with a prototype later this month, but it might not
-be pretty.
+>
+> --b.
+>
+>> +             *flags |= NFSEXP_READONLY;
+>> +     }
+>> +
+>>       /* There are two requirements on a filesystem to be exportable.
+>>        * 1:  We must be able to identify the filesystem from a number.
+>>        *       either a device number (so FS_REQUIRES_DEV needed)
+>> --
+>> 2.9.3
