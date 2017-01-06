@@ -1,54 +1,136 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.skyhub.de ([78.46.96.112]:46199 "EHLO mail.skyhub.de"
+Received: from mout.gmx.net ([212.227.15.15]:58606 "EHLO mout.gmx.net"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1761890AbdAFMOy (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 6 Jan 2017 07:14:54 -0500
-Date: Fri, 6 Jan 2017 13:14:46 +0100
-From: Borislav Petkov <bp@alien8.de>
-To: Nicolas Dichtel <nicolas.dichtel@6wind.com>
-Cc: arnd@arndb.de, mmarek@suse.com, linux-kbuild@vger.kernel.org,
-        linux-doc@vger.kernel.org, linux-kernel@vger.kernel.org,
-        linux-alpha@vger.kernel.org, linux-snps-arc@lists.infradead.org,
-        linux-arm-kernel@lists.infradead.org,
-        adi-buildroot-devel@lists.sourceforge.net, linux-c6x-dev@linux-c6x.org,
-        linux-cris-kernel@axis.com, uclinux-h8-devel@lists.sourceforge.jp,
-        linux-hexagon@vger.kernel.org, linux-ia64@vger.kernel.org,
-        linux-m68k@vger.kernel.org, linux-metag@vger.kernel.org,
-        linux-mips@linux-mips.org, linux-am33-list@redhat.com,
-        nios2-dev@lists.rocketboards.org, openrisc@lists.librecores.org,
-        linux-parisc@vger.kernel.org, linuxppc-dev@lists.ozlabs.org,
-        linux-s390@vger.kernel.org, linux-sh@vger.kernel.org,
-        sparclinux@vger.kernel.org, linux-xtensa@linux-xtensa.org,
-        linux-arch@vger.kernel.org, dri-devel@lists.freedesktop.org,
-        netdev@vger.kernel.org, linux-media@vger.kernel.org,
-        linux-mmc@vger.kernel.org, netfilter-devel@vger.kernel.org,
-        coreteam@netfilter.org, linux-nfs@vger.kernel.org,
-        linux-raid@vger.kernel.org, linux-spi@vger.kernel.org,
-        linux-mtd@lists.infradead.org, linux-rdma@vger.kernel.org,
-        fcoe-devel@open-fcoe.org, alsa-devel@alsa-project.org,
-        linux-fbdev@vger.kernel.org, xen-devel@lists.xenproject.org,
-        airlied@linux.ie, davem@davemloft.net
-Subject: Re: [PATCH v2 4/7] x86: put msr-index.h in uapi
-Message-ID: <20170106121446.aizmoxons5gpecnc@pd.tnic>
-References: <bf83da6b-01ef-bf44-b3e1-ca6fc5636818@6wind.com>
- <1483695839-18660-1-git-send-email-nicolas.dichtel@6wind.com>
- <1483695839-18660-5-git-send-email-nicolas.dichtel@6wind.com>
+        id S1758366AbdAFMde (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 6 Jan 2017 07:33:34 -0500
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-In-Reply-To: <1483695839-18660-5-git-send-email-nicolas.dichtel@6wind.com>
+Message-ID: <trinity-72ebcb17-21db-44da-abb3-5ee70ac0ec32-1483706005238@3capp-mailcom-bs05>
+From: daggs <daggs@gmx.com>
+To: NeilBrown <neilb@suse.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: unable to mount nfs4 mount
+Content-Type: text/plain; charset=UTF-8
+Date: Fri, 6 Jan 2017 13:33:25 +0100
+In-Reply-To: <87h95fms28.fsf@notabene.neil.brown.name>
+References: <trinity-4254572c-7361-4bba-8056-b645fac97726-1482498754742@3capp-mailcom-bs14>
+ <87r34yngxn.fsf@notabene.neil.brown.name>
+ <trinity-f47ff353-231a-48ff-b6d4-a8f34c45ea26-1482563498427@3capp-mailcom-bs14>
+ <87lgv5nmi6.fsf@notabene.neil.brown.name>
+ <trinity-8111cff0-0509-405f-8faa-190a3c9291c6-1482609137078@3capp-mailcom-bs11>
+ <87inq8olcj.fsf@notabene.neil.brown.name>
+ <trinity-c0b9c914-6d36-40d8-a13a-38cde8b7d23f-1482696592233@3capp-mailcom-bs03>
+ <87fulboij2.fsf@notabene.neil.brown.name>
+ <trinity-161ef8fa-88f7-4128-85e2-cc4f1abb31a7-1482738488938@3capp-mailcom-bs14>
+ <87d1gfndin.fsf@notabene.neil.brown.name>
+ <trinity-02157c25-8763-4394-ad29-2b05c954f503-1482778484415@3capp-mailcom-bs02>,
+ <87h95fms28.fsf@notabene.neil.brown.name>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Jan 06, 2017 at 10:43:56AM +0100, Nicolas Dichtel wrote:
-> This header file is exported, thus move it to uapi.
+Greetings,
 
-It should rather not be exported - please remove it from
-arch/x86/include/uapi/asm/Kbuild instead.
+> Subject: Re: unable to mount nfs4 mount
+>
+> On Tue, Dec 27 2016, daggs wrote:
+> 
+> > Greetings Neil,
+> >
+> >> On Mon, Dec 26 2016, daggs wrote:
+> >> 
+> >> > Greetings,
+> >> >
+> >> >> On Mon, Dec 26 2016, daggs wrote:
+> >> >> 
+> >> >> >> Can you strace mountd while you attempt a mount?
+> >> >> >> e.g.
+> >> >> >>   strace -o /tmp/trace -s 1000 -p 241
+> >> >> >> 
+> >> >> >> and send the /tmp/trace.
+> >> >> >> Also, after the attempt fails, run
+> >> >> >>  rpcdebug -m rpc -s cache
+> >> >> >>  grep . /proc/net/rpc/*/c*
+> >> >> >>  cat /proc/fs/nfsd/exports
+> >> >> >> 
+> >> >> >> and report the output.
+> >> >> >> 
+> >> >> > here:
+> >> >> >
+> >> >> > # cat /tmp/trace
+> >> >> > pselect6(1024, [3 4 5 7 8 9 10 11 12], NULL, NULL, NULL, NULL) = 1 (in [3])
+> >> >> > read(3, "nfsd 10.0.0.1\n", 32768)       = 14
+> >> >> > openat(AT_FDCWD, "/run/nfs/etab", O_RDONLY) = 14
+> >> >> > fstat(14, {st_mode=S_IFREG|0644, st_size=435, ...}) = 0
+> >> >> > close(14)                               = 0
+> >> >> > write(3, "nfsd 10.0.0.1 2079 10.0.0.0/24 \n", 32) = 32
+> >> >> 
+> >> >> This is weird.
+> >> >> Here mountd is telling nfsd that when a request comes from IP address
+> >> >> 10.0.0.1, it should look for export entries associated with the client
+> >> >> name "10.0.0.0/24", which is good.
+> >> >> However the expiry time for that information is "2079", which is back in
+> >> >> January 1970.
+> >> >> When mountd writes that number, it computes it as
+> >> >>    time(0) + DEFAULT_TTL
+> >> >> where DEFAULT_TTL is (30 * 60)
+> >> >> Which suggests time(0) is "279".
+> >> >> 
+> >> >> What is the current time on this system?
+> >> >> 
+> >> >> If it really was very early on Jan 1st 1970, it should work, however...
+> >> >> 
+> >> >> 
+> >> >> > pselect6(1024, [3 4 5 7 8 9 10 11 12], NULL, NULL, NULL, NULL <detached ...>
+> >> >> > # rpcdebug -m rpc -s cache
+> >> >> > rpc        cache
+> >> >> > # grep . /proc/net/rpc/*/c*
+> >> >> > /proc/net/rpc/auth.unix.gid/content:#uid cnt: gids...
+> >> >> > /proc/net/rpc/auth.unix.ip/channel:nfsd 10.0.0.1
+> >> >> > /proc/net/rpc/auth.unix.ip/channel:nfsd 10.0.0.1
+> >> >> > /proc/net/rpc/auth.unix.ip/content:#class IP domain
+> >> >> > /proc/net/rpc/auth.unix.ip/content:# expiry=2079 refcnt=1 flags=1
+> >> >> > /proc/net/rpc/auth.unix.ip/content:# nfsd 10.0.0.1 10.0.0.0/24
+> >> >> 
+> >> >> ...the fact that this line is commented out indicates that the entry in
+> >> >> the cache is already expired.  So the time must be after 2079.
+> >> >> 
+> >> >> Maybe the time is getting set from the network at an awkward time that
+> >> >> races with NFS service some how.
+> >> >> Can you find a way to run "exportfs -f" after the time has been set
+> >> >> correctly?
+> >> >> 
+> >> >> NeilBrown
+> >> >> 
+> >> >> 
+> >> >
+> >> > wait, I think I've seen this somewhere, does this feature needs rtc? this board doesn't have rtc component.
+> >> > for example, I cannot use openssh as ssh server because it needs rtc. I have to use dropbear.
+> >> > if so, this looks like it will affect nfsv3 mounts, am I right?
+> >> 
+> >> No, you shouldn't need an RTC.
+> >> You need the synchronize the clock with ntp or similar, else time stamps
+> >> on files will look wrong.
+> >> Though I think we fixed issues with wall-clock-time jumping in 2.6.37...
+> >> 
+> >> If you could try using "exportfs -f", and explain what does happen with
+> >> time - do you use ntp ?? - we might be able to make progress.
+> >
+> > I'll build ntp into the image and try. does this affects nfsv3 too?
+> 
+> Having correct time is quite important for any version of NFS.  With out
+> it, time stamps on files get confused.  "make" doesn't cope at all,
+> "tar" often complains, other tools might experience other problems.
+> 
+> I still cannot quite see why having an incorrect clock would cause the
+> particular symptoms you are experiencing, but it is worth fixing anyway.
+I worked around the issue by setting the date manually. the issue still presists.
 
-Thanks.
+> 
+> >
+> > what should I do with the "exportfs -f"? jsut run it and retry?
+> 
+> Yes.
+exportfs -f didn't made any difference.
 
--- 
-Regards/Gruss,
-    Boris.
+Thanks,
 
-Good mailing practices for 400: avoid top-posting and trim the reply.
+Dagg.
