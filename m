@@ -1,106 +1,60 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-it0-f47.google.com ([209.85.214.47]:35243 "EHLO
-        mail-it0-f47.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1750715AbdAFRts (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 6 Jan 2017 12:49:48 -0500
-Received: by mail-it0-f47.google.com with SMTP id c20so17568836itb.0
-        for <linux-nfs@vger.kernel.org>; Fri, 06 Jan 2017 09:49:48 -0800 (PST)
+Received: from mail-qk0-f196.google.com ([209.85.220.196]:35139 "EHLO
+        mail-qk0-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1031010AbdAFUuh (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 6 Jan 2017 15:50:37 -0500
 MIME-Version: 1.0
-In-Reply-To: <20170105142439.GB9922@paperthin-usb.laas.fr>
-References: <20170105142439.GB9922@paperthin-usb.laas.fr>
-From: Olga Kornievskaia <aglo@umich.edu>
-Date: Fri, 6 Jan 2017 12:49:47 -0500
-Message-ID: <CAN-5tyFLO+gWCG5aSg3tCFVt4VFzSbdFhw=z9jb2P3SDMsVL+Q@mail.gmail.com>
-Subject: Re: problem with open(name, O_RDWR|O_CREAT|O_EXCL, 0666) on NetApp servers
-To: Matthieu Herrb <matthieu.herrb@laas.fr>
-Cc: linux-nfs <linux-nfs@vger.kernel.org>
+In-Reply-To: <1483695839-18660-5-git-send-email-nicolas.dichtel@6wind.com>
+References: <bf83da6b-01ef-bf44-b3e1-ca6fc5636818@6wind.com>
+ <1483695839-18660-1-git-send-email-nicolas.dichtel@6wind.com> <1483695839-18660-5-git-send-email-nicolas.dichtel@6wind.com>
+From: Andy Shevchenko <andy.shevchenko@gmail.com>
+Date: Fri, 6 Jan 2017 22:50:34 +0200
+Message-ID: <CAHp75VdDfopdSy-7oy87ZeosDB9+FN4zFBhErPWLQB7tH81zTw@mail.gmail.com>
+Subject: Re: [PATCH v2 4/7] x86: put msr-index.h in uapi
+To: Nicolas Dichtel <nicolas.dichtel@6wind.com>
+Cc: Arnd Bergmann <arnd@arndb.de>, mmarek@suse.com,
+        linux-kbuild@vger.kernel.org,
+        Linux Documentation List <linux-doc@vger.kernel.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        linux-alpha@vger.kernel.org, linux-snps-arc@lists.infradead.org,
+        linux-arm Mailing List <linux-arm-kernel@lists.infradead.org>,
+        adi-buildroot-devel@lists.sourceforge.net, linux-c6x-dev@linux-c6x.org,
+        Cris <linux-cris-kernel@axis.com>,
+        uclinux-h8-devel@lists.sourceforge.jp, linux-hexagon@vger.kernel.org,
+        linux-ia64@vger.kernel.org, linux-m68k@vger.kernel.org,
+        linux-metag@vger.kernel.org, linux-mips@linux-mips.org,
+        linux-am33-list@redhat.com, nios2-dev@lists.rocketboards.org,
+        openrisc@lists.librecores.org, linux-parisc@vger.kernel.org,
+        "open list:LINUX FOR POWERPC PA SEMI PWRFICIENT"
+        <linuxppc-dev@lists.ozlabs.org>,
+        linux-s390@vger.kernel.org, Linux-SH <linux-sh@vger.kernel.org>,
+        sparclinux@vger.kernel.org, linux-xtensa@linux-xtensa.org,
+        Linux-Arch <linux-arch@vger.kernel.org>,
+        dri-devel@lists.freedesktop.org, netdev <netdev@vger.kernel.org>,
+        Linux Media Mailing List <linux-media@vger.kernel.org>,
+        "linux-mmc@vger.kernel.org" <linux-mmc@vger.kernel.org>,
+        netfilter-devel@vger.kernel.org, coreteam@netfilter.org,
+        linux-nfs@vger.kernel.org, linux-raid@vger.kernel.org,
+        linux-spi <linux-spi@vger.kernel.org>,
+        "open list:MEMORY TECHNOLOGY..." <linux-mtd@lists.infradead.org>,
+        linux-rdma@vger.kernel.org, fcoe-devel@open-fcoe.org,
+        ALSA Development Mailing List <alsa-devel@alsa-project.org>,
+        linux-fbdev@vger.kernel.org, xen-devel@lists.xenproject.org,
+        David Airlie <airlied@linux.ie>,
+        "David S. Miller" <davem@davemloft.net>
 Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-That is a rather old NetApp release. Perhaps they've fix something.
-I've just tried their latest 9.0 release and 4.9 upstream kernel and
-file is created with 0644.
+On Fri, Jan 6, 2017 at 11:43 AM, Nicolas Dichtel
+<nicolas.dichtel@6wind.com> wrote:
+> This header file is exported, thus move it to uapi.
 
-On Thu, Jan 5, 2017 at 9:24 AM, Matthieu Herrb <matthieu.herrb@laas.fr> wrote:
-> Hi,
->
-> After upgrading my machine to Ubuntu 16.04, I noticed that 'git clone'
-> started creating files with wrong mode (0700 instead of 0644
-> typically) on NFSv4 partitions mounted from our NetApp servers.
->
-> I've first tracked this down to the fact that git uses
->
->  open(name, O_RDWR|O_CREAT|O_EXCL, 0666);
->
-> to create files. If O_EXCL is not present, the files are created
-> normally.
->
-> I've tried various kernels from Ubuntu and the problems appeared
-> between their 4.2.0-42-generic kernel-image (as found on willy) and
-> the 4.4.0 kernels found on xenial. I tried building 4.9 from
-> kernel.org and the problem is also there.
->
-> I've then bisected the kernel to figure out that this is caused by the
-> following commit:
->
-> https://git.kernel.org/cgit/linux/kernel/git/torvalds/linux.git/commit/?id=5334c5bdac926c5f8d89729beccb46fe88eda9e7
->
-> ie NFS: Send attributes in OPEN request for NFS4_CREATE_EXCLUSIVE4_1
->
-> Our NetApp filers are running:
->
-> NetApp Release 8.2.3P3 7-Mode: Tue Apr 28 14:48:22 PDT 2015
->
-> Any idea on how to fix the problem (either on the NetApp side, or on
-> Linux kernel side)?
->
-> Appended is a small program to reproduce the issue:
->
-> Thanks in advance,
->
-> #include <sys/types.h>
-> #include <sys/stat.h>
-> #include <err.h>
-> #include <fcntl.h>
-> #include <stdio.h>
-> #include <stdlib.h>
-> #include <string.h>
-> #include <unistd.h>
->
-> /*
->  * Demonstrate file creation bug on NFS v4 and linux kernel 4.4+
->  *
->  * mktemp() is used on purpose.
->  */
-> int
-> main(int argc, char *argv[])
-> {
->         const char *name = argv[1];
->         char tmp[] = "./tmpXXXXXXXXXX";
->         struct stat buf;
->         mode_t expected;
->         int fd, i, n = 40;
->
->         umask(S_IWGRP | S_IWOTH);
->         expected = 0666 & ~(S_IWGRP | S_IWOTH);
->         if (argv[1] == NULL)
->                 name = mktemp(tmp);
->         for (i = 0; i < n; i++) {
->                 fd = open(name, O_RDWR|O_CREAT|O_EXCL, 0666);
->                 if (fd < 0)
->                         err(1, "open %s", name);
->                 memset(&buf, 0, sizeof(buf));
->                 if (stat(name, &buf) < 0)
->                         err(1, "stat %s", name);
->                 if ((buf.st_mode & (S_IRWXU|S_IRWXG|S_IRWXO)) != expected)
->                         printf("%s: %o\n", name,
->                             (int)buf.st_mode & (S_IRWXU|S_IRWXG|S_IRWXO));
->                 else
->                         printf("%s: ok\n", name);
->                 unlink(name);
->         }
->         exit(0);
-> }
-> --
-> Matthieu Herrb
+Just hint for the future:
+-M (move)
+-C (copy)
+-D (delete) [though this is NOT for applying]
+
+-- 
+With Best Regards,
+Andy Shevchenko
