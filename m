@@ -1,8 +1,8 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-wm0-f66.google.com ([74.125.82.66]:33117 "EHLO
-        mail-wm0-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1752814AbdAFOLR (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 6 Jan 2017 09:11:17 -0500
+Received: from mail-pg0-f65.google.com ([74.125.83.65]:32941 "EHLO
+        mail-pg0-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1752041AbdAFOTG (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 6 Jan 2017 09:19:06 -0500
 From: Michal Hocko <mhocko@kernel.org>
 To: <linux-mm@kvack.org>, <linux-fsdevel@vger.kernel.org>
 Cc: Andrew Morton <akpm@linux-foundation.org>,
@@ -15,69 +15,99 @@ Cc: Andrew Morton <akpm@linux-foundation.org>,
         linux-mtd@lists.infradead.org, reiserfs-devel@vger.kernel.org,
         linux-ntfs-dev@lists.sourceforge.net,
         linux-f2fs-devel@lists.sourceforge.net, linux-afs@lists.infradead.org,
-        LKML <linux-kernel@vger.kernel.org>, Brian Foster <bfoster@redhat.com>,
-        Michal Hocko <mhocko@suse.com>,
-        "Peter Zijlstra (Intel)" <peterz@infradead.org>
-Subject: [PATCH 0/8 v3] scope GFP_NOFS api
-Date: Fri,  6 Jan 2017 15:10:59 +0100
-Message-Id: <20170106141107.23953-1-mhocko@kernel.org>
+        LKML <linux-kernel@vger.kernel.org>, Michal Hocko <mhocko@suse.com>
+Subject: [DEBUG PATCH 2/2] silent warnings which we cannot do anything about
+Date: Fri,  6 Jan 2017 15:18:45 +0100
+Message-Id: <20170106141845.24362-3-mhocko@kernel.org>
+In-Reply-To: <20170106141845.24362-1-mhocko@kernel.org>
+References: <20170106141107.23953-1-mhocko@kernel.org>
+ <20170106141845.24362-1-mhocko@kernel.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi,
-I have posted the previous version here [1]. Since then I've added some
-reviewed bys and fixed some minor issues. I've dropped patch 2 [2] based
-on Dave's request [3]. I agree that this can be done later and doing
-all at once. I still think that __GFP_NOLOCKDEP should be added by this
-series to make the further development easier.
+From: Michal Hocko <mhocko@suse.com>
 
-There didn't seem to be any real objections and so I think we should go
-and merge this and build further on top. I would like to get rid of all
-explicit GFP_NOFS usage in ext4 code. I have something half baked already
-and will send it later on. I also hope we can get further with the xfs
-as well.
+THIS PATCH IS FOR TESTING ONLY AND NOT MEANT TO HIT LINUS TREE
 
-I haven't heard anything from btrfs or other filesystems guys which is a
-bit unfortunate but I do not want to wait for them to much longer, they
-can join the effort later on.
+There are some code paths used by all the filesystems which we cannot
+change to drop the GFP_NOFS, yet they generate a lot of warnings.
+Provide {disable,enable}_scope_gfp_check to silence those.
+alloc_page_buffers and grow_dev_page are silenced right away.
 
-The patchset is based on next-20170106
+Signed-off-by: Michal Hocko <mhocko@suse.com>
+---
+ fs/buffer.c           |  4 ++++
+ include/linux/sched.h | 11 +++++++++++
+ mm/page_alloc.c       |  3 +++
+ 3 files changed, 18 insertions(+)
 
-Diffstat says
- fs/ext4/acl.c             |  6 +++---
- fs/ext4/extents.c         |  8 ++++----
- fs/ext4/resize.c          |  4 ++--
- fs/ext4/xattr.c           |  4 ++--
- fs/jbd2/journal.c         |  7 +++++++
- fs/jbd2/transaction.c     | 11 +++++++++++
- fs/xfs/kmem.c             | 10 +++++-----
- fs/xfs/kmem.h             |  2 +-
- fs/xfs/libxfs/xfs_btree.c |  2 +-
- fs/xfs/xfs_aops.c         |  6 +++---
- fs/xfs/xfs_buf.c          |  8 ++++----
- fs/xfs/xfs_trans.c        | 12 ++++++------
- include/linux/gfp.h       | 18 +++++++++++++++++-
- include/linux/jbd2.h      |  2 ++
- include/linux/sched.h     | 32 ++++++++++++++++++++++++++------
- kernel/locking/lockdep.c  |  6 +++++-
- lib/radix-tree.c          |  2 ++
- mm/page_alloc.c           |  8 +++++---
- mm/vmscan.c               |  6 +++---
- 19 files changed, 109 insertions(+), 45 deletions(-)
-
-Shortlog:
-Michal Hocko (8):
-      lockdep: allow to disable reclaim lockup detection
-      xfs: abstract PF_FSTRANS to PF_MEMALLOC_NOFS
-      mm: introduce memalloc_nofs_{save,restore} API
-      xfs: use memalloc_nofs_{save,restore} instead of memalloc_noio*
-      jbd2: mark the transaction context with the scope GFP_NOFS context
-      jbd2: make the whole kjournald2 kthread NOFS safe
-      Revert "ext4: avoid deadlocks in the writeback path by using sb_getblk_gfp"
-      Revert "ext4: fix wrong gfp type under transaction"
-
-[1] http://lkml.kernel.org/r/20161215140715.12732-1-mhocko@kernel.org
-[2] http://lkml.kernel.org/r/20161215140715.12732-3-mhocko@kernel.org
-[3] http://lkml.kernel.org/r/20161219212413.GN4326@dastard
-
+diff --git a/fs/buffer.c b/fs/buffer.c
+index 28484b3ebc98..dbe529e7881b 100644
+--- a/fs/buffer.c
++++ b/fs/buffer.c
+@@ -873,7 +873,9 @@ struct buffer_head *alloc_page_buffers(struct page *page, unsigned long size,
+ 	head = NULL;
+ 	offset = PAGE_SIZE;
+ 	while ((offset -= size) >= 0) {
++		disable_scope_gfp_check();
+ 		bh = alloc_buffer_head(GFP_NOFS);
++		enable_scope_gfp_check();
+ 		if (!bh)
+ 			goto no_grow;
+ 
+@@ -1003,7 +1005,9 @@ grow_dev_page(struct block_device *bdev, sector_t block,
+ 	 */
+ 	gfp_mask |= __GFP_NOFAIL;
+ 
++	disable_scope_gfp_check();
+ 	page = find_or_create_page(inode->i_mapping, index, gfp_mask);
++	enable_scope_gfp_check();
+ 	if (!page)
+ 		return ret;
+ 
+diff --git a/include/linux/sched.h b/include/linux/sched.h
+index 59428926e989..f60294732ed5 100644
+--- a/include/linux/sched.h
++++ b/include/linux/sched.h
+@@ -1988,6 +1988,7 @@ struct task_struct {
+ 	/* A live task holds one reference. */
+ 	atomic_t stack_refcount;
+ #endif
++	bool disable_scope_gfp_warn;
+ 	unsigned long nofs_caller;
+ 	unsigned long noio_caller;
+ /* CPU-specific state of this task */
+@@ -2390,6 +2391,16 @@ static inline unsigned int __memalloc_nofs_save(unsigned long caller)
+ 	return flags;
+ }
+ 
++static inline void disable_scope_gfp_check(void)
++{
++	current->disable_scope_gfp_warn = true;
++}
++
++static inline void enable_scope_gfp_check(void)
++{
++	current->disable_scope_gfp_warn = false;
++}
++
+ #define memalloc_nofs_save()	__memalloc_nofs_save(_RET_IP_)
+ 
+ static inline void memalloc_nofs_restore(unsigned int flags)
+diff --git a/mm/page_alloc.c b/mm/page_alloc.c
+index 87a2bb5262b2..5405278bd733 100644
+--- a/mm/page_alloc.c
++++ b/mm/page_alloc.c
+@@ -3762,6 +3762,9 @@ void debug_scope_gfp_context(gfp_t gfp_mask)
+ 	if (!(gfp_mask & __GFP_DIRECT_RECLAIM))
+ 		return;
+ 
++	if (current->disable_scope_gfp_warn)
++		return;
++
+ 	if (current->flags & PF_MEMALLOC_NOIO)
+ 		restrict_mask = __GFP_IO;
+ 	else if ((current->flags & PF_MEMALLOC_NOFS) && (gfp_mask & __GFP_IO))
+-- 
+2.11.0
 
