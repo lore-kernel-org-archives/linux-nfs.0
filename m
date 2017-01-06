@@ -1,8 +1,8 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from host.76.145.23.62.rev.coltfrance.com ([62.23.145.76]:42182 "EHLO
+Received: from host.76.145.23.62.rev.coltfrance.com ([62.23.145.76]:42076 "EHLO
         proxy.6wind.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1754932AbdAFJom (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 6 Jan 2017 04:44:42 -0500
+        with ESMTP id S1762111AbdAFJoh (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 6 Jan 2017 04:44:37 -0500
 From: Nicolas Dichtel <nicolas.dichtel@6wind.com>
 To: arnd@arndb.de
 Cc: mmarek@suse.com, linux-kbuild@vger.kernel.org,
@@ -28,83 +28,116 @@ Cc: mmarek@suse.com, linux-kbuild@vger.kernel.org,
         linux-fbdev@vger.kernel.org, xen-devel@lists.xenproject.org,
         airlied@linux.ie, davem@davemloft.net,
         Nicolas Dichtel <nicolas.dichtel@6wind.com>
-Subject: [PATCH v2 5/7] Makefile.headersinst: cleanup input files
-Date: Fri,  6 Jan 2017 10:43:57 +0100
-Message-Id: <1483695839-18660-6-git-send-email-nicolas.dichtel@6wind.com>
+Subject: [PATCH v2 1/7] arm: put types.h in uapi
+Date: Fri,  6 Jan 2017 10:43:53 +0100
+Message-Id: <1483695839-18660-2-git-send-email-nicolas.dichtel@6wind.com>
 In-Reply-To: <1483695839-18660-1-git-send-email-nicolas.dichtel@6wind.com>
 References: <bf83da6b-01ef-bf44-b3e1-ca6fc5636818@6wind.com>
  <1483695839-18660-1-git-send-email-nicolas.dichtel@6wind.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-After the last four patches, all exported headers are under uapi/, thus
-input-files2 are not needed anymore.
-The side effect is that input-files1-name is exactly header-y.
-
-Note also that unput-files3-name is genhdr-y.
+This header file is exported, thus move it to uapi.
 
 Signed-off-by: Nicolas Dichtel <nicolas.dichtel@6wind.com>
 ---
- scripts/Makefile.headersinst | 34 +++++++++++-----------------------
- 1 file changed, 11 insertions(+), 23 deletions(-)
+ arch/arm/include/asm/types.h      | 36 +----------------------------------
+ arch/arm/include/uapi/asm/types.h | 40 +++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 41 insertions(+), 35 deletions(-)
+ create mode 100644 arch/arm/include/uapi/asm/types.h
 
-diff --git a/scripts/Makefile.headersinst b/scripts/Makefile.headersinst
-index 1106d6ca3a38..3e20d03432d2 100644
---- a/scripts/Makefile.headersinst
-+++ b/scripts/Makefile.headersinst
-@@ -40,31 +40,20 @@ wrapper-files := $(filter $(header-y), $(generic-y))
- srcdir        := $(srctree)/$(obj)
- gendir        := $(objtree)/$(gen)
+diff --git a/arch/arm/include/asm/types.h b/arch/arm/include/asm/types.h
+index a53cdb8f068c..c48fee3d7b3b 100644
+--- a/arch/arm/include/asm/types.h
++++ b/arch/arm/include/asm/types.h
+@@ -1,40 +1,6 @@
+ #ifndef _ASM_TYPES_H
+ #define _ASM_TYPES_H
  
--oldsrcdir     := $(srctree)/$(subst /uapi,,$(obj))
+-#include <asm-generic/int-ll64.h>
 -
- # all headers files for this dir
- header-y      := $(filter-out $(generic-y), $(header-y))
- all-files     := $(header-y) $(genhdr-y) $(wrapper-files)
- output-files  := $(addprefix $(installdir)/, $(all-files))
+-/*
+- * The C99 types uintXX_t that are usually defined in 'stdint.h' are not as
+- * unambiguous on ARM as you would expect. For the types below, there is a
+- * difference on ARM between GCC built for bare metal ARM, GCC built for glibc
+- * and the kernel itself, which results in build errors if you try to build with
+- * -ffreestanding and include 'stdint.h' (such as when you include 'arm_neon.h'
+- * in order to use NEON intrinsics)
+- *
+- * As the typedefs for these types in 'stdint.h' are based on builtin defines
+- * supplied by GCC, we can tweak these to align with the kernel's idea of those
+- * types, so 'linux/types.h' and 'stdint.h' can be safely included from the same
+- * source file (provided that -ffreestanding is used).
+- *
+- *                    int32_t         uint32_t               uintptr_t
+- * bare metal GCC     long            unsigned long          unsigned int
+- * glibc GCC          int             unsigned int           unsigned int
+- * kernel             int             unsigned int           unsigned long
+- */
+-
+-#ifdef __INT32_TYPE__
+-#undef __INT32_TYPE__
+-#define __INT32_TYPE__		int
+-#endif
+-
+-#ifdef __UINT32_TYPE__
+-#undef __UINT32_TYPE__
+-#define __UINT32_TYPE__	unsigned int
+-#endif
+-
+-#ifdef __UINTPTR_TYPE__
+-#undef __UINTPTR_TYPE__
+-#define __UINTPTR_TYPE__	unsigned long
+-#endif
++#include <uapi/asm/types.h>
  
--input-files1  := $(foreach hdr, $(header-y), \
--		   $(if $(wildcard $(srcdir)/$(hdr)), \
--			$(wildcard $(srcdir)/$(hdr))) \
--		   )
--input-files1-name := $(notdir $(input-files1))
--input-files2  := $(foreach hdr, $(header-y), \
--		   $(if  $(wildcard $(srcdir)/$(hdr)),, \
--			$(if $(wildcard $(oldsrcdir)/$(hdr)), \
--				$(wildcard $(oldsrcdir)/$(hdr)), \
--				$(error Missing UAPI file $(srcdir)/$(hdr))) \
--		   ))
--input-files2-name := $(notdir $(input-files2))
--input-files3  := $(foreach hdr, $(genhdr-y), \
--		   $(if	$(wildcard $(gendir)/$(hdr)), \
--			$(wildcard $(gendir)/$(hdr)), \
--			$(error Missing generated UAPI file $(gendir)/$(hdr)) \
--		   ))
--input-files3-name := $(notdir $(input-files3))
-+# Check that all expected files exist
-+$(foreach hdr, $(header-y), \
-+  $(if $(wildcard $(srcdir)/$(hdr)),, \
-+       $(error Missing UAPI file $(srcdir)/$(hdr)) \
-+   ))
-+$(foreach hdr, $(genhdr-y), \
-+  $(if	$(wildcard $(gendir)/$(hdr)),, \
-+       $(error Missing generated UAPI file $(gendir)/$(hdr)) \
-+  ))
- 
- # Work out what needs to be removed
- oldheaders    := $(patsubst $(installdir)/%,%,$(wildcard $(installdir)/*.h))
-@@ -78,9 +67,8 @@ printdir = $(patsubst $(INSTALL_HDR_PATH)/%/,%,$(dir $@))
- quiet_cmd_install = INSTALL $(printdir) ($(words $(all-files))\
-                             file$(if $(word 2, $(all-files)),s))
-       cmd_install = \
--        $(CONFIG_SHELL) $< $(installdir) $(srcdir) $(input-files1-name); \
--        $(CONFIG_SHELL) $< $(installdir) $(oldsrcdir) $(input-files2-name); \
--        $(CONFIG_SHELL) $< $(installdir) $(gendir) $(input-files3-name); \
-+        $(CONFIG_SHELL) $< $(installdir) $(srcdir) $(header-y); \
-+        $(CONFIG_SHELL) $< $(installdir) $(gendir) $(genhdr-y); \
-         for F in $(wrapper-files); do                                   \
-                 echo "\#include <asm-generic/$$F>" > $(installdir)/$$F;    \
-         done;                                                           \
+ #endif /* _ASM_TYPES_H */
+diff --git a/arch/arm/include/uapi/asm/types.h b/arch/arm/include/uapi/asm/types.h
+new file mode 100644
+index 000000000000..9435a42f575e
+--- /dev/null
++++ b/arch/arm/include/uapi/asm/types.h
+@@ -0,0 +1,40 @@
++#ifndef _UAPI_ASM_TYPES_H
++#define _UAPI_ASM_TYPES_H
++
++#include <asm-generic/int-ll64.h>
++
++/*
++ * The C99 types uintXX_t that are usually defined in 'stdint.h' are not as
++ * unambiguous on ARM as you would expect. For the types below, there is a
++ * difference on ARM between GCC built for bare metal ARM, GCC built for glibc
++ * and the kernel itself, which results in build errors if you try to build with
++ * -ffreestanding and include 'stdint.h' (such as when you include 'arm_neon.h'
++ * in order to use NEON intrinsics)
++ *
++ * As the typedefs for these types in 'stdint.h' are based on builtin defines
++ * supplied by GCC, we can tweak these to align with the kernel's idea of those
++ * types, so 'linux/types.h' and 'stdint.h' can be safely included from the same
++ * source file (provided that -ffreestanding is used).
++ *
++ *                    int32_t         uint32_t               uintptr_t
++ * bare metal GCC     long            unsigned long          unsigned int
++ * glibc GCC          int             unsigned int           unsigned int
++ * kernel             int             unsigned int           unsigned long
++ */
++
++#ifdef __INT32_TYPE__
++#undef __INT32_TYPE__
++#define __INT32_TYPE__		int
++#endif
++
++#ifdef __UINT32_TYPE__
++#undef __UINT32_TYPE__
++#define __UINT32_TYPE__	unsigned int
++#endif
++
++#ifdef __UINTPTR_TYPE__
++#undef __UINTPTR_TYPE__
++#define __UINTPTR_TYPE__	unsigned long
++#endif
++
++#endif /* _UAPI_ASM_TYPES_H */
 -- 
 2.8.1
 
