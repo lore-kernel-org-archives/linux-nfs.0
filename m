@@ -1,136 +1,137 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mout.gmx.net ([212.227.15.15]:58606 "EHLO mout.gmx.net"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1758366AbdAFMde (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 6 Jan 2017 07:33:34 -0500
-MIME-Version: 1.0
-Message-ID: <trinity-72ebcb17-21db-44da-abb3-5ee70ac0ec32-1483706005238@3capp-mailcom-bs05>
-From: daggs <daggs@gmx.com>
-To: NeilBrown <neilb@suse.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: unable to mount nfs4 mount
-Content-Type: text/plain; charset=UTF-8
-Date: Fri, 6 Jan 2017 13:33:25 +0100
-In-Reply-To: <87h95fms28.fsf@notabene.neil.brown.name>
-References: <trinity-4254572c-7361-4bba-8056-b645fac97726-1482498754742@3capp-mailcom-bs14>
- <87r34yngxn.fsf@notabene.neil.brown.name>
- <trinity-f47ff353-231a-48ff-b6d4-a8f34c45ea26-1482563498427@3capp-mailcom-bs14>
- <87lgv5nmi6.fsf@notabene.neil.brown.name>
- <trinity-8111cff0-0509-405f-8faa-190a3c9291c6-1482609137078@3capp-mailcom-bs11>
- <87inq8olcj.fsf@notabene.neil.brown.name>
- <trinity-c0b9c914-6d36-40d8-a13a-38cde8b7d23f-1482696592233@3capp-mailcom-bs03>
- <87fulboij2.fsf@notabene.neil.brown.name>
- <trinity-161ef8fa-88f7-4128-85e2-cc4f1abb31a7-1482738488938@3capp-mailcom-bs14>
- <87d1gfndin.fsf@notabene.neil.brown.name>
- <trinity-02157c25-8763-4394-ad29-2b05c954f503-1482778484415@3capp-mailcom-bs02>,
- <87h95fms28.fsf@notabene.neil.brown.name>
+Received: from mail-wm0-f67.google.com ([74.125.82.67]:36045 "EHLO
+        mail-wm0-f67.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S932627AbdAFOND (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 6 Jan 2017 09:13:03 -0500
+From: Michal Hocko <mhocko@kernel.org>
+To: <linux-mm@kvack.org>, <linux-fsdevel@vger.kernel.org>
+Cc: Andrew Morton <akpm@linux-foundation.org>,
+        Dave Chinner <david@fromorbit.com>, djwong@kernel.org,
+        "Theodore Ts'o" <tytso@mit.edu>, Chris Mason <clm@fb.com>,
+        David Sterba <dsterba@suse.cz>, Jan Kara <jack@suse.cz>,
+        ceph-devel@vger.kernel.org, cluster-devel@redhat.com,
+        linux-nfs@vger.kernel.org, logfs@logfs.org, linux-xfs@vger.kernel.org,
+        linux-ext4@vger.kernel.org, linux-btrfs@vger.kernel.org,
+        linux-mtd@lists.infradead.org, reiserfs-devel@vger.kernel.org,
+        linux-ntfs-dev@lists.sourceforge.net,
+        linux-f2fs-devel@lists.sourceforge.net, linux-afs@lists.infradead.org,
+        LKML <linux-kernel@vger.kernel.org>, Michal Hocko <mhocko@suse.com>
+Subject: [PATCH 8/8] Revert "ext4: fix wrong gfp type under transaction"
+Date: Fri,  6 Jan 2017 15:11:07 +0100
+Message-Id: <20170106141107.23953-9-mhocko@kernel.org>
+In-Reply-To: <20170106141107.23953-1-mhocko@kernel.org>
+References: <20170106141107.23953-1-mhocko@kernel.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Greetings,
+From: Michal Hocko <mhocko@suse.com>
 
-> Subject: Re: unable to mount nfs4 mount
->
-> On Tue, Dec 27 2016, daggs wrote:
-> 
-> > Greetings Neil,
-> >
-> >> On Mon, Dec 26 2016, daggs wrote:
-> >> 
-> >> > Greetings,
-> >> >
-> >> >> On Mon, Dec 26 2016, daggs wrote:
-> >> >> 
-> >> >> >> Can you strace mountd while you attempt a mount?
-> >> >> >> e.g.
-> >> >> >>   strace -o /tmp/trace -s 1000 -p 241
-> >> >> >> 
-> >> >> >> and send the /tmp/trace.
-> >> >> >> Also, after the attempt fails, run
-> >> >> >>  rpcdebug -m rpc -s cache
-> >> >> >>  grep . /proc/net/rpc/*/c*
-> >> >> >>  cat /proc/fs/nfsd/exports
-> >> >> >> 
-> >> >> >> and report the output.
-> >> >> >> 
-> >> >> > here:
-> >> >> >
-> >> >> > # cat /tmp/trace
-> >> >> > pselect6(1024, [3 4 5 7 8 9 10 11 12], NULL, NULL, NULL, NULL) = 1 (in [3])
-> >> >> > read(3, "nfsd 10.0.0.1\n", 32768)       = 14
-> >> >> > openat(AT_FDCWD, "/run/nfs/etab", O_RDONLY) = 14
-> >> >> > fstat(14, {st_mode=S_IFREG|0644, st_size=435, ...}) = 0
-> >> >> > close(14)                               = 0
-> >> >> > write(3, "nfsd 10.0.0.1 2079 10.0.0.0/24 \n", 32) = 32
-> >> >> 
-> >> >> This is weird.
-> >> >> Here mountd is telling nfsd that when a request comes from IP address
-> >> >> 10.0.0.1, it should look for export entries associated with the client
-> >> >> name "10.0.0.0/24", which is good.
-> >> >> However the expiry time for that information is "2079", which is back in
-> >> >> January 1970.
-> >> >> When mountd writes that number, it computes it as
-> >> >>    time(0) + DEFAULT_TTL
-> >> >> where DEFAULT_TTL is (30 * 60)
-> >> >> Which suggests time(0) is "279".
-> >> >> 
-> >> >> What is the current time on this system?
-> >> >> 
-> >> >> If it really was very early on Jan 1st 1970, it should work, however...
-> >> >> 
-> >> >> 
-> >> >> > pselect6(1024, [3 4 5 7 8 9 10 11 12], NULL, NULL, NULL, NULL <detached ...>
-> >> >> > # rpcdebug -m rpc -s cache
-> >> >> > rpc        cache
-> >> >> > # grep . /proc/net/rpc/*/c*
-> >> >> > /proc/net/rpc/auth.unix.gid/content:#uid cnt: gids...
-> >> >> > /proc/net/rpc/auth.unix.ip/channel:nfsd 10.0.0.1
-> >> >> > /proc/net/rpc/auth.unix.ip/channel:nfsd 10.0.0.1
-> >> >> > /proc/net/rpc/auth.unix.ip/content:#class IP domain
-> >> >> > /proc/net/rpc/auth.unix.ip/content:# expiry=2079 refcnt=1 flags=1
-> >> >> > /proc/net/rpc/auth.unix.ip/content:# nfsd 10.0.0.1 10.0.0.0/24
-> >> >> 
-> >> >> ...the fact that this line is commented out indicates that the entry in
-> >> >> the cache is already expired.  So the time must be after 2079.
-> >> >> 
-> >> >> Maybe the time is getting set from the network at an awkward time that
-> >> >> races with NFS service some how.
-> >> >> Can you find a way to run "exportfs -f" after the time has been set
-> >> >> correctly?
-> >> >> 
-> >> >> NeilBrown
-> >> >> 
-> >> >> 
-> >> >
-> >> > wait, I think I've seen this somewhere, does this feature needs rtc? this board doesn't have rtc component.
-> >> > for example, I cannot use openssh as ssh server because it needs rtc. I have to use dropbear.
-> >> > if so, this looks like it will affect nfsv3 mounts, am I right?
-> >> 
-> >> No, you shouldn't need an RTC.
-> >> You need the synchronize the clock with ntp or similar, else time stamps
-> >> on files will look wrong.
-> >> Though I think we fixed issues with wall-clock-time jumping in 2.6.37...
-> >> 
-> >> If you could try using "exportfs -f", and explain what does happen with
-> >> time - do you use ntp ?? - we might be able to make progress.
-> >
-> > I'll build ntp into the image and try. does this affects nfsv3 too?
-> 
-> Having correct time is quite important for any version of NFS.  With out
-> it, time stamps on files get confused.  "make" doesn't cope at all,
-> "tar" often complains, other tools might experience other problems.
-> 
-> I still cannot quite see why having an incorrect clock would cause the
-> particular symptoms you are experiencing, but it is worth fixing anyway.
-I worked around the issue by setting the date manually. the issue still presists.
+This reverts commit 216553c4b7f3e3e2beb4981cddca9b2027523928. Now that
+the transaction context uses memalloc_nofs_save and all allocations
+within the this context inherit GFP_NOFS automatically, there is no
+reason to mark specific allocations explicitly.
 
-> 
-> >
-> > what should I do with the "exportfs -f"? jsut run it and retry?
-> 
-> Yes.
-exportfs -f didn't made any difference.
+This patch should not introduce any functional change. The main point
+of this change is to reduce explicit GFP_NOFS usage inside ext4 code
+to make the review of the remaining usage easier.
 
-Thanks,
+Signed-off-by: Michal Hocko <mhocko@suse.com>
+Reviewed-by: Jan Kara <jack@suse.cz>
+---
+ fs/ext4/acl.c     | 6 +++---
+ fs/ext4/extents.c | 2 +-
+ fs/ext4/resize.c  | 4 ++--
+ fs/ext4/xattr.c   | 4 ++--
+ 4 files changed, 8 insertions(+), 8 deletions(-)
 
-Dagg.
+diff --git a/fs/ext4/acl.c b/fs/ext4/acl.c
+index fd389935ecd1..9e98092c2a4b 100644
+--- a/fs/ext4/acl.c
++++ b/fs/ext4/acl.c
+@@ -32,7 +32,7 @@ ext4_acl_from_disk(const void *value, size_t size)
+ 		return ERR_PTR(-EINVAL);
+ 	if (count == 0)
+ 		return NULL;
+-	acl = posix_acl_alloc(count, GFP_NOFS);
++	acl = posix_acl_alloc(count, GFP_KERNEL);
+ 	if (!acl)
+ 		return ERR_PTR(-ENOMEM);
+ 	for (n = 0; n < count; n++) {
+@@ -94,7 +94,7 @@ ext4_acl_to_disk(const struct posix_acl *acl, size_t *size)
+ 
+ 	*size = ext4_acl_size(acl->a_count);
+ 	ext_acl = kmalloc(sizeof(ext4_acl_header) + acl->a_count *
+-			sizeof(ext4_acl_entry), GFP_NOFS);
++			sizeof(ext4_acl_entry), GFP_KERNEL);
+ 	if (!ext_acl)
+ 		return ERR_PTR(-ENOMEM);
+ 	ext_acl->a_version = cpu_to_le32(EXT4_ACL_VERSION);
+@@ -159,7 +159,7 @@ ext4_get_acl(struct inode *inode, int type)
+ 	}
+ 	retval = ext4_xattr_get(inode, name_index, "", NULL, 0);
+ 	if (retval > 0) {
+-		value = kmalloc(retval, GFP_NOFS);
++		value = kmalloc(retval, GFP_KERNEL);
+ 		if (!value)
+ 			return ERR_PTR(-ENOMEM);
+ 		retval = ext4_xattr_get(inode, name_index, "", value, retval);
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index 9867b9e5ad8f..0371e7aa7bea 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -2933,7 +2933,7 @@ int ext4_ext_remove_space(struct inode *inode, ext4_lblk_t start,
+ 				le16_to_cpu(path[k].p_hdr->eh_entries)+1;
+ 	} else {
+ 		path = kzalloc(sizeof(struct ext4_ext_path) * (depth + 1),
+-			       GFP_NOFS);
++			       GFP_KERNEL);
+ 		if (path == NULL) {
+ 			ext4_journal_stop(handle);
+ 			return -ENOMEM;
+diff --git a/fs/ext4/resize.c b/fs/ext4/resize.c
+index cf681004b196..e121f4e048b8 100644
+--- a/fs/ext4/resize.c
++++ b/fs/ext4/resize.c
+@@ -816,7 +816,7 @@ static int add_new_gdb(handle_t *handle, struct inode *inode,
+ 
+ 	n_group_desc = ext4_kvmalloc((gdb_num + 1) *
+ 				     sizeof(struct buffer_head *),
+-				     GFP_NOFS);
++				     GFP_KERNEL);
+ 	if (!n_group_desc) {
+ 		err = -ENOMEM;
+ 		ext4_warning(sb, "not enough memory for %lu groups",
+@@ -943,7 +943,7 @@ static int reserve_backup_gdb(handle_t *handle, struct inode *inode,
+ 	int res, i;
+ 	int err;
+ 
+-	primary = kmalloc(reserved_gdb * sizeof(*primary), GFP_NOFS);
++	primary = kmalloc(reserved_gdb * sizeof(*primary), GFP_KERNEL);
+ 	if (!primary)
+ 		return -ENOMEM;
+ 
+diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
+index 5a94fa52b74f..172317462238 100644
+--- a/fs/ext4/xattr.c
++++ b/fs/ext4/xattr.c
+@@ -875,7 +875,7 @@ ext4_xattr_block_set(handle_t *handle, struct inode *inode,
+ 
+ 			unlock_buffer(bs->bh);
+ 			ea_bdebug(bs->bh, "cloning");
+-			s->base = kmalloc(bs->bh->b_size, GFP_NOFS);
++			s->base = kmalloc(bs->bh->b_size, GFP_KERNEL);
+ 			error = -ENOMEM;
+ 			if (s->base == NULL)
+ 				goto cleanup;
+@@ -887,7 +887,7 @@ ext4_xattr_block_set(handle_t *handle, struct inode *inode,
+ 		}
+ 	} else {
+ 		/* Allocate a buffer where we construct the new block. */
+-		s->base = kzalloc(sb->s_blocksize, GFP_NOFS);
++		s->base = kzalloc(sb->s_blocksize, GFP_KERNEL);
+ 		/* assert(header == s->base) */
+ 		error = -ENOMEM;
+ 		if (s->base == NULL)
+-- 
+2.11.0
+
