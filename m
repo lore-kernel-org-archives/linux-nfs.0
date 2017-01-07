@@ -1,16 +1,16 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:49140 "EHLO mx2.suse.de"
+Received: from mx2.suse.de ([195.135.220.15]:53673 "EHLO mx2.suse.de"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S969985AbdAFX7f (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 6 Jan 2017 18:59:35 -0500
+        id S938185AbdAGDOg (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 6 Jan 2017 22:14:36 -0500
 From: NeilBrown <neilb@suse.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Date: Sat, 07 Jan 2017 10:59:26 +1100
-Cc: andros@netapp.com, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH Version 4] SVCAUTH reap the rsc cache entry on RPC_SS_PROC_DESTROY
-In-Reply-To: <20170106210111.GA31401@fieldses.org>
-References: <1482428286-33744-1-git-send-email-andros@netapp.com> <1482428286-33744-2-git-send-email-andros@netapp.com> <20170104202634.GA21562@fieldses.org> <8737gymss7.fsf@notabene.neil.brown.name> <20170106210111.GA31401@fieldses.org>
-Message-ID: <874m1bloyp.fsf@notabene.neil.brown.name>
+To: daggs <daggs@gmx.com>
+Date: Sat, 07 Jan 2017 14:14:27 +1100
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: unable to mount nfs4 mount
+In-Reply-To: <trinity-72ebcb17-21db-44da-abb3-5ee70ac0ec32-1483706005238@3capp-mailcom-bs05>
+References: <trinity-4254572c-7361-4bba-8056-b645fac97726-1482498754742@3capp-mailcom-bs14> <87r34yngxn.fsf@notabene.neil.brown.name> <trinity-f47ff353-231a-48ff-b6d4-a8f34c45ea26-1482563498427@3capp-mailcom-bs14> <87lgv5nmi6.fsf@notabene.neil.brown.name> <trinity-8111cff0-0509-405f-8faa-190a3c9291c6-1482609137078@3capp-mailcom-bs11> <87inq8olcj.fsf@notabene.neil.brown.name> <trinity-c0b9c914-6d36-40d8-a13a-38cde8b7d23f-1482696592233@3capp-mailcom-bs03> <87fulboij2.fsf@notabene.neil.brown.name> <trinity-161ef8fa-88f7-4128-85e2-cc4f1abb31a7-1482738488938@3capp-mailcom-bs14> <87d1gfndin.fsf@notabene.neil.brown.name> <trinity-02157c25-8763-4394-ad29-2b05c954f503-1482778484415@3capp-mailcom-bs02> <87h95fms28.fsf@notabene.neil.brown.name> <trinity-72ebcb17-21db-44da-abb3-5ee70ac0ec32-1483706005238@3capp-mailcom-bs05>
+Message-ID: <871swflfxo.fsf@notabene.neil.brown.name>
 MIME-Version: 1.0
 Content-Type: multipart/signed; boundary="=-=-=";
         micalg=pgp-sha256; protocol="application/pgp-signature"
@@ -21,222 +21,162 @@ List-ID: <linux-nfs.vger.kernel.org>
 Content-Type: text/plain
 Content-Transfer-Encoding: quoted-printable
 
-On Sat, Jan 07 2017, J. Bruce Fields wrote:
+On Fri, Jan 06 2017, daggs wrote:
 
-> On Thu, Jan 05, 2017 at 08:14:48AM +1100, NeilBrown wrote:
->> On Thu, Jan 05 2017, J. Bruce Fields wrote:
+> Greetings,
+>
+>> Subject: Re: unable to mount nfs4 mount
+>>
+>> On Tue, Dec 27 2016, daggs wrote:
 >>=20
->> > I'm not against the patch, but I'm still not convinced by the
->> > explanation:
+>> > Greetings Neil,
 >> >
->> > On Thu, Dec 22, 2016 at 12:38:06PM -0500, andros@netapp.com wrote:
->> >> From: Neil Brown <neilb@suse.com>
+>> >> On Mon, Dec 26 2016, daggs wrote:
 >> >>=20
->> >> The rsc cache code operates in a read_lock/write_lock environment.
->> >> Changes to a cache entry should use the provided rsc_update
->> >> routine which takes the write_lock.
+>> >> > Greetings,
+>> >> >
+>> >> >> On Mon, Dec 26 2016, daggs wrote:
+>> >> >>=20
+>> >> >> >> Can you strace mountd while you attempt a mount?
+>> >> >> >> e.g.
+>> >> >> >>   strace -o /tmp/trace -s 1000 -p 241
+>> >> >> >>=20
+>> >> >> >> and send the /tmp/trace.
+>> >> >> >> Also, after the attempt fails, run
+>> >> >> >>  rpcdebug -m rpc -s cache
+>> >> >> >>  grep . /proc/net/rpc/*/c*
+>> >> >> >>  cat /proc/fs/nfsd/exports
+>> >> >> >>=20
+>> >> >> >> and report the output.
+>> >> >> >>=20
+>> >> >> > here:
+>> >> >> >
+>> >> >> > # cat /tmp/trace
+>> >> >> > pselect6(1024, [3 4 5 7 8 9 10 11 12], NULL, NULL, NULL, NULL) =
+=3D 1 (in [3])
+>> >> >> > read(3, "nfsd 10.0.0.1\n", 32768)       =3D 14
+>> >> >> > openat(AT_FDCWD, "/run/nfs/etab", O_RDONLY) =3D 14
+>> >> >> > fstat(14, {st_mode=3DS_IFREG|0644, st_size=3D435, ...}) =3D 0
+>> >> >> > close(14)                               =3D 0
+>> >> >> > write(3, "nfsd 10.0.0.1 2079 10.0.0.0/24 \n", 32) =3D 32
+>> >> >>=20
+>> >> >> This is weird.
+>> >> >> Here mountd is telling nfsd that when a request comes from IP addr=
+ess
+>> >> >> 10.0.0.1, it should look for export entries associated with the cl=
+ient
+>> >> >> name "10.0.0.0/24", which is good.
+>> >> >> However the expiry time for that information is "2079", which is b=
+ack in
+>> >> >> January 1970.
+>> >> >> When mountd writes that number, it computes it as
+>> >> >>    time(0) + DEFAULT_TTL
+>> >> >> where DEFAULT_TTL is (30 * 60)
+>> >> >> Which suggests time(0) is "279".
+>> >> >>=20
+>> >> >> What is the current time on this system?
+>> >> >>=20
+>> >> >> If it really was very early on Jan 1st 1970, it should work, howev=
+er...
+>> >> >>=20
+>> >> >>=20
+>> >> >> > pselect6(1024, [3 4 5 7 8 9 10 11 12], NULL, NULL, NULL, NULL <d=
+etached ...>
+>> >> >> > # rpcdebug -m rpc -s cache
+>> >> >> > rpc        cache
+>> >> >> > # grep . /proc/net/rpc/*/c*
+>> >> >> > /proc/net/rpc/auth.unix.gid/content:#uid cnt: gids...
+>> >> >> > /proc/net/rpc/auth.unix.ip/channel:nfsd 10.0.0.1
+>> >> >> > /proc/net/rpc/auth.unix.ip/channel:nfsd 10.0.0.1
+>> >> >> > /proc/net/rpc/auth.unix.ip/content:#class IP domain
+>> >> >> > /proc/net/rpc/auth.unix.ip/content:# expiry=3D2079 refcnt=3D1 fl=
+ags=3D1
+>> >> >> > /proc/net/rpc/auth.unix.ip/content:# nfsd 10.0.0.1 10.0.0.0/24
+>> >> >>=20
+>> >> >> ...the fact that this line is commented out indicates that the ent=
+ry in
+>> >> >> the cache is already expired.  So the time must be after 2079.
+>> >> >>=20
+>> >> >> Maybe the time is getting set from the network at an awkward time =
+that
+>> >> >> races with NFS service some how.
+>> >> >> Can you find a way to run "exportfs -f" after the time has been set
+>> >> >> correctly?
+>> >> >>=20
+>> >> >> NeilBrown
+>> >> >>=20
+>> >> >>=20
+>> >> >
+>> >> > wait, I think I've seen this somewhere, does this feature needs rtc=
+? this board doesn't have rtc component.
+>> >> > for example, I cannot use openssh as ssh server because it needs rt=
+c. I have to use dropbear.
+>> >> > if so, this looks like it will affect nfsv3 mounts, am I right?
+>> >>=20
+>> >> No, you shouldn't need an RTC.
+>> >> You need the synchronize the clock with ntp or similar, else time sta=
+mps
+>> >> on files will look wrong.
+>> >> Though I think we fixed issues with wall-clock-time jumping in 2.6.37=
+...
+>> >>=20
+>> >> If you could try using "exportfs -f", and explain what does happen wi=
+th
+>> >> time - do you use ntp ?? - we might be able to make progress.
 >> >
->> > It looks pretty suspicious to be setting CACHE_NEGATIVE without the
->> > cache_lock for write, but I'm not actually convinced there's a bug the=
-re
->> > either.  In any case not one that you'd be hitting reliably.
->> >
->> >> The current code sets the expiry_time and the CACHE_NEGATIVE flag
->> >> without taking the write_lock as it does not call rsc_update.
->> >> Without this patch, while cache_clean sees the entries to be
->> >> removed, it does not remove the rsc_entries. This is because
->> >> rsc_update updates other fields such as flush_time and last_refresh
->> >> in the entry to trigger cache_clean to reap the entry.
->> >
->> > I think the root cause of the particular behavior you were seeing was
->> > actually an oversight from Neil's c5b29f885afe "sunrpc: use seconds
->> > since boot in expiry cache", which missed this one occurrence of
->> > get_seconds().  So it's setting the item's entry to something decades =
-in
->> > the future.
->> >
->> > And that's probably not been a huge deal since these entries aren't so
->> > big, and they will eventually get cleaned up by cache_purge when the
->> > cache is destroyed.  Still, I can imagine it slowing down cache lookups
->> > on a long-lived server.
->> >
->> > The one-liner:
->> >
->> >  -		rsci->h.expiry_time =3D get_seconds();
->> >  +		rsci->h.expiry_time =3D seconds_since_boot();
->> >
->> > would probably also do the job.  Am I missing something?
+>> > I'll build ntp into the image and try. does this affects nfsv3 too?
 >>=20
->> I was missing that get_seconds() bug - thanks.
->> The other real bug is that setting h.expiry_time backwards should
->> really set cd->nextcheck backwards too.  I thought I had found code
->> which did that, but I think I was confusing ->nextcheck with ->flush_tim=
-e.
+>> Having correct time is quite important for any version of NFS.  With out
+>> it, time stamps on files get confused.  "make" doesn't cope at all,
+>> "tar" often complains, other tools might experience other problems.
+>>=20
+>> I still cannot quite see why having an incorrect clock would cause the
+>> particular symptoms you are experiencing, but it is worth fixing anyway.
+> I worked around the issue by setting the date manually. the issue still p=
+resists.
+>
 >>=20
 >> >
->> > But, OK, I think Neil's patch will ensure entries get cleaned up more
->> > quickly than that would, and might also fix a rare race.
+>> > what should I do with the "exportfs -f"? jsut run it and retry?
 >>=20
->> Yes.  The patch doesn't just fix the bug, whatever it is.  It provides a
->> proper interface for functionality that wasn't previously supported, and
->> so had been hacked into place.
->
-> Got it.  So, with another changelog rewrite, I'm applying it like the
-> below.
->
-> Another question is whether it's worth a stable cc....  I think so, as
-> all it would take is a case where a server gets a lot of PROC_DESTROYs
-> over its lifetime.  That's not hard to imagine.  And the symptoms are
-> probably non-obvious and cured by a reboot, which might explain it not
-> having seen bug reports.
+>> Yes.
+> exportfs -f didn't made any difference.
 
-How about applying
->> >  -		rsci->h.expiry_time =3D get_seconds();
->> >  +		rsci->h.expiry_time =3D seconds_since_boot();
+OK. Please:
+ - make sure the time is (nearly) correct - e.g. running date manually.
+ - run "exportfs -f"
+ - run "strace" on mountd
+ - try to mount the filesystem
+ - stop the strace
+ - run
+      rpcdebug -m rpc -s cache
+      grep . /proc/net/rpc/*/*
+      cat /proc/fs/nfsd/exports
 
-first with a Cc: to stable (and a Fixes:), then this patch on top of
-that without the Cc.
+  (note that it isn't quite the same 'grep' as before).
 
-With the code as it is, destroyed entries won't expire for years.
-With the above change, they will expire within half an hour, as
-cache_clean() looks at every cache at least every 30 minutes.
-
-If we also added code to reduce ->nextcheck (which would require a write
-lock), then they would expired within 30 seconds, as do_cache_clean()
-runs cache_clean() at least ever 30 seconds (I wonder if we should make
-it more demand-driven?).
-
-With the full patch, it is removed instantly.
-
-I think a 30 minutes guarantee is enough for -stable, especially as it
-is achieved with such a tiny, obviously correct, patch.
-
->
-> --b.
->
-> commit 27297f41527d
-> Author: Neil Brown <neilb@suse.com>
-> Date:   Thu Dec 22 12:38:06 2016 -0500
->
->     svcauth_gss: free context promptly on PROC_DESTROY
->=20=20=20=20=20
->     Since c5b29f885afe "sunrpc: use seconds since boot in expiry cache", =
-the
->     expiry_time field has been in units of seconds since boot, but that
->     patch overlooked the server code that handles RPC_GSS_PROC_DESTROY
->     requests.  The result is that when we get a request from a client to
->     destroy a context, we set that context's expiry time to a time decades
->     in the future.
->=20=20=20=20=20
->     The context will still be cleaned up by cache_purge when the module is
->     unloaded or the container shut down, but a lot of contexts could pile=
- up
->     before then.
->=20=20=20=20=20
->     The simple fix would be just to set expiry_time to seconds_since_boot=
-(),
->     but modifying the entry outside the cache_lock is also looks dubious
->     (though I'm not completely sure what the race would be).  So let's
->     provide a helper that does this properly, taking the lock and removing
->     the entry immediately.
-
-I don't think the locking is an issue at all.
-Setting h.expiry_time backwards without also setting cd->next_check
-backwards results in internal inconsistencies, so is wrong for that
-reason.
-
-Setting CACHE_NEGATIVE is not "obviously correct" as, in general, value
-fields are only allocateed when CACHE_NEGATIVE is not set, so they might
-not be freed when it is.  The doesn't actually apply to this cache, so
-it would work but is not consistent with the intended (undocumented)
-interface usage.
-
-Up to you how much of this you spell out.  I don't object to your
-changelog above if you want to stay with it.
+then post the output of the 'strace', the 'grep', and the 'cat'.
 
 Thanks,
 NeilBrown
-
-
-
->=20=20=20=20=20
->     Signed-off-by: Neil Brown <neilb@suse.com>
->     Reported-by: Andy Adamson <andros@netapp.com>
->     Signed-off-by: Andy Adamson <andros@netapp.com>
->     Signed-off-by: J. Bruce Fields <bfields@redhat.com>
->
-> diff --git a/include/linux/sunrpc/cache.h b/include/linux/sunrpc/cache.h
-> index 62a60eeacb0a..9dcf2c8fe1c5 100644
-> --- a/include/linux/sunrpc/cache.h
-> +++ b/include/linux/sunrpc/cache.h
-> @@ -227,6 +227,7 @@ extern void sunrpc_destroy_cache_detail(struct cache_=
-detail *cd);
->  extern int sunrpc_cache_register_pipefs(struct dentry *parent, const cha=
-r *,
->  					umode_t, struct cache_detail *);
->  extern void sunrpc_cache_unregister_pipefs(struct cache_detail *);
-> +extern void sunrpc_cache_unhash(struct cache_detail *, struct cache_head=
- *);
->=20=20
->  /* Must store cache_detail in seq_file->private if using next three func=
-tions */
->  extern void *cache_seq_start(struct seq_file *file, loff_t *pos);
-> diff --git a/net/sunrpc/auth_gss/svcauth_gss.c b/net/sunrpc/auth_gss/svca=
-uth_gss.c
-> index 886e9d381771..a54a7a3d28f5 100644
-> --- a/net/sunrpc/auth_gss/svcauth_gss.c
-> +++ b/net/sunrpc/auth_gss/svcauth_gss.c
-> @@ -1489,8 +1489,8 @@ svcauth_gss_accept(struct svc_rqst *rqstp, __be32 *=
-authp)
->  	case RPC_GSS_PROC_DESTROY:
->  		if (gss_write_verf(rqstp, rsci->mechctx, gc->gc_seq))
->  			goto auth_err;
-> -		rsci->h.expiry_time =3D get_seconds();
-> -		set_bit(CACHE_NEGATIVE, &rsci->h.flags);
-> +		/* Delete the entry from the cache_list and call cache_put */
-> +		sunrpc_cache_unhash(sn->rsc_cache, &rsci->h);
->  		if (resv->iov_len + 4 > PAGE_SIZE)
->  			goto drop;
->  		svc_putnl(resv, RPC_SUCCESS);
-> diff --git a/net/sunrpc/cache.c b/net/sunrpc/cache.c
-> index 8147e8d56eb2..502b9fe9817b 100644
-> --- a/net/sunrpc/cache.c
-> +++ b/net/sunrpc/cache.c
-> @@ -1855,3 +1855,15 @@ void sunrpc_cache_unregister_pipefs(struct cache_d=
-etail *cd)
->  }
->  EXPORT_SYMBOL_GPL(sunrpc_cache_unregister_pipefs);
->=20=20
-> +void sunrpc_cache_unhash(struct cache_detail *cd, struct cache_head *h)
-> +{
-> +	write_lock(&cd->hash_lock);
-> +	if (!hlist_unhashed(&h->cache_list)){
-> +		hlist_del_init(&h->cache_list);
-> +		cd->entries--;
-> +		write_unlock(&cd->hash_lock);
-> +		cache_put(h, cd);
-> +	} else
-> +		write_unlock(&cd->hash_lock);
-> +}
-> +EXPORT_SYMBOL_GPL(sunrpc_cache_unhash);
 
 --=-=-=
 Content-Type: application/pgp-signature; name="signature.asc"
 
 -----BEGIN PGP SIGNATURE-----
 
-iQIzBAEBCAAdFiEEG8Yp69OQ2HB7X0l6Oeye3VZigbkFAlhwL18ACgkQOeye3VZi
-gbkYLA/9EGT9gfZCFHaFpUF8QB/BGBu9AmD/OrIW0tOzsDBhg1eWwNfzKVTUqFn6
-HsuAoK7qGM4WQAbb5+9bYiBA1gOQTl5ZiNNhXoiuuyMtJODzoNTKuMZafEtCHHeJ
-DLHCw4g0IPOp/Aikt8kNKL2QtXB69rIBqIMyD9aMsPzooNGZM31AN+6QkPrYJsdX
-vZjxOWiwVk4tfKGcdjlgqF4amd6wlDndrzhWPlTV1CW50ptz66sWuui1sjNLIUgl
-hoJg5mi7+M4WyZ41UmCxZEaI+G7pSGH1gmlULxsHGXIrHCjeufJ+KJWeNRJy8TxT
-okGg9KjUgrnsgRDi6rj4cYPgKA+pwss/mu/TlodpCuPYUxK4y0uT20rs7Z79K0sw
-YeIZHgxDKRip+HeecUlVJRVoIHh0E4FIchJBdHIHPdg4PK/i/lWku/Yk0xQz2ldB
-j/M+B9298W0R/W6Ykf8uCKNBN+xjtVZN6gwrNgzgxHUxMIfvVozo5QYPpsdj2c+x
-cW/2iK2dgm6XBUYQb0UEJpo81IzUIaN+BWyWE4pIltX6K0B0oEPFnB/tevi60o09
-S9RpOkHLg/HhszQsYViumTKv9UtmPs1d0HqaydwVa4398iGWyA9KvjxmWOEc5oFa
-iMmKuPofu0cLsdFhPUMMScyyPQMGHENSaU6hhQDRQFm89AXQq6Q=
-=+pVS
+iQIzBAEBCAAdFiEEG8Yp69OQ2HB7X0l6Oeye3VZigbkFAlhwXRMACgkQOeye3VZi
+gblwORAAs9ntdN2Q3J4OyLC6T+kc+5mgvnzKYodVBNq8PfWVsN7WRBV1ln86fFWU
+QprZvgdqlUVbykY12u+N3CQ5z4B3BK1yef9RFVXY4wQ+PhHN3C/aZ2Bls8uC5uh9
+2O3zyuBhAl3lTdBIcTaUau72V/dixZg47W3dcfSw2zFYej1A5Km6AcYez7oq3DYU
+z0KyHw8M5+cTs2BK1Mfkk77pU9z7TEiZSaFc+fXqHKnEdANw/DoaxeBRf20jWYUs
+BhIGHpKAXhzFFl6rOeohUdZ/UJ2LLlO2Xd7gz0mUIfxlV3YIumDGat92eB4Oo19t
+L4D7oi77XozLwD03GueuIOzlv7D07kXbecCloZqU9ObZUMyFvnk7i3pIQEXF104c
+NUsGtz+rFa42A04o6WNNt98jfoQzLCWcFmoqU5XgbfxVl6HdvAPTOMyF8CRDDb3o
+AmJ9+jKLB0J6ayT3HQaWDo1r4yI68pXvOGmCLrZ0PnyIecX4y9dJMQ7cAvV12ZX8
+4x0XNPMNDXSB3yjVWtJi03V1L7Ys+ZFX+bjSeVkbbfMmF/gSPy1gah9035RcExOL
+YywcZ01OxawhwBmbjbrKzGbtVEpBGtx8hCJG2KJYkhcqKBimAGex5EyY4g9/3h0m
+lIU11OQtf+WCaB6V3sxvMh9rnLbN3bv+5Pgtl+cBXenzwrZcteA=
+=/MyW
 -----END PGP SIGNATURE-----
 --=-=-=--
