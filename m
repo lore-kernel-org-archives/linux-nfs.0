@@ -1,95 +1,93 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-pg0-f65.google.com ([74.125.83.65]:33216 "EHLO
-        mail-pg0-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S932474AbdAGL5l (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sat, 7 Jan 2017 06:57:41 -0500
-Received: by mail-pg0-f65.google.com with SMTP id 194so2195964pgd.0
-        for <linux-nfs@vger.kernel.org>; Sat, 07 Jan 2017 03:57:41 -0800 (PST)
-Subject: Re: [PATCH] exportfs: Make sure pass all valid export flags to nfsd
-To: "J. Bruce Fields" <bfields@fieldses.org>
-References: <c0826298-545e-64a3-b6bb-86413bf9eb39@gmail.com>
- <20170106210531.GB31401@fieldses.org>
-Cc: Steve Dickson <SteveD@redhat.com>, linux-nfs@vger.kernel.org,
-        Christoph Hellwig <hch@infradead.org>, kinglongmee@gmail.com
+Received: from mail-pg0-f66.google.com ([74.125.83.66]:33513 "EHLO
+        mail-pg0-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751306AbdAGOqk (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sat, 7 Jan 2017 09:46:40 -0500
+Received: by mail-pg0-f66.google.com with SMTP id 194so2466055pgd.0
+        for <linux-nfs@vger.kernel.org>; Sat, 07 Jan 2017 06:46:40 -0800 (PST)
+To: Trond Myklebust <trond.myklebust@primarydata.com>,
+        linux-nfs@vger.kernel.org
+Cc: Andreas Gruenbacher <agruenba@redhat.com>, kinglongmee@gmail.com,
+        Matthieu Herrb <matthieu.herrb@laas.fr>
 From: Kinglong Mee <kinglongmee@gmail.com>
-Message-ID: <49b7be0a-548a-cff1-8f09-613cd5c63141@gmail.com>
-Date: Sat, 7 Jan 2017 19:57:28 +0800
+Subject: [PATCH] NFSv4.2: Fix file creating with O_EXCL get a bad mode
+Message-ID: <a76cec59-f007-5c26-dc26-4cc8a6e4daef@gmail.com>
+Date: Sat, 7 Jan 2017 22:45:47 +0800
 MIME-Version: 1.0
-In-Reply-To: <20170106210531.GB31401@fieldses.org>
-Content-Type: text/plain; charset=windows-1252
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 1/7/2017 05:05, J. Bruce Fields wrote:
-> On Sat, Dec 31, 2016 at 09:05:11PM +0800, Kinglong Mee wrote:
->> test_export pass a export flags only marks NFSEXP_FSID,
->> nfsd may want other flags for export checking.
-> 
-> Why?  What problem does this fix?
+Acorrding to Matthieu Herrb's test cases, a new created file will
+get a bad mode as 0666 (expected 0644) after commit dff25ddb4808
+"nfs: add support for the umask attribute".
 
-When testing the patch "NFSD: Only support readonly export for
-!fsync and readonly filesystem", I found exportfs don't pass 
-all valid export flags to nfsd. So, make this patch.
+It is caused by missing check of FATTR4_WORD2_MODE_UMASK
+in nfs4_exclusive_attrset.
 
-thanks,
-Kinglong Mee
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <err.h>
+#include <fcntl.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
 
-> 
-> --b.
-> 
->> This patch make sure exportfs pass all other flags to nfsd.
->>
->> Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
->> ---
->>  utils/exportfs/exportfs.c | 12 +++++++-----
->>  1 file changed, 7 insertions(+), 5 deletions(-)
->>
->> diff --git a/utils/exportfs/exportfs.c b/utils/exportfs/exportfs.c
->> index 15a1583..bacf106 100644
->> --- a/utils/exportfs/exportfs.c
->> +++ b/utils/exportfs/exportfs.c
->> @@ -473,8 +473,10 @@ static int can_test(void)
->>  	return 1;
->>  }
->>  
->> -static int test_export(char *path, int with_fsid)
->> +static int test_export(nfs_export *exp, int with_fsid)
->>  {
->> +	char *path = exp->m_export.e_path;
->> +	int flags = exp->m_export.e_flags | (with_fsid ? NFSEXP_FSID : 0);
->>  	/* beside max path, buf size should take protocol str into account */
->>  	char buf[NFS_MAXPATHLEN+1+64] = { 0 };
->>  	char *bp = buf;
->> @@ -487,7 +489,7 @@ static int test_export(char *path, int with_fsid)
->>  	qword_add(&bp, &len, path);
->>  	if (len < 1)
->>  		return 0;
->> -	snprintf(bp, len, " 3 %d 65534 65534 0\n", with_fsid ? NFSEXP_FSID : 0);
->> +	snprintf(bp, len, " 3 %d 65534 65534 0\n", flags);
->>  	fd = open("/proc/net/rpc/nfsd.export/channel", O_WRONLY);
->>  	if (fd < 0)
->>  		return 0;
->> @@ -529,12 +531,12 @@ validate_export(nfs_export *exp)
->>  
->>  	if ((exp->m_export.e_flags & NFSEXP_FSID) || exp->m_export.e_uuid ||
->>  	    fs_has_fsid) {
->> -		if ( !test_export(path, 1)) {
->> +		if ( !test_export(exp, 1)) {
->>  			xlog(L_ERROR, "%s does not support NFS export", path);
->>  			return;
->>  		}
->> -	} else if ( ! test_export(path, 0)) {
->> -		if (test_export(path, 1))
->> +	} else if ( !test_export(exp, 0)) {
->> +		if (test_export(exp, 1))
->>  			xlog(L_ERROR, "%s requires fsid= for NFS export", path);
->>  		else
->>  			xlog(L_ERROR, "%s does not support NFS export", path);
->> -- 
->> 2.9.3
->>
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
+/*
+ * Demonstrate file creation bug on NFS v4 and linux kernel 4.4+
+ *
+ * mktemp() is used on purpose.
+ */
+int
+main(int argc, char *argv[])
+{
+	const char *name = argv[1];
+	char tmp[] = "./tmpXXXXXXXXXX";
+	struct stat buf;
+	mode_t expected;
+	int fd, i, n = 40;
+
+	umask(S_IWGRP | S_IWOTH);
+	expected = 0666 & ~(S_IWGRP | S_IWOTH);
+	if (argv[1] == NULL)
+		name = mktemp(tmp);
+	for (i = 0; i < n; i++) {
+		fd = open(name, O_RDWR|O_CREAT|O_EXCL, 0666);
+		if (fd < 0)
+			err(1, "open %s", name);
+		memset(&buf, 0, sizeof(buf));
+		if (stat(name, &buf) < 0)
+			err(1, "stat %s", name);
+		if ((buf.st_mode & (S_IRWXU|S_IRWXG|S_IRWXO)) != expected)
+			printf("%s: %o\n", name,
+			    (int)buf.st_mode & (S_IRWXU|S_IRWXG|S_IRWXO));
+		else
+			printf("%s: ok\n", name);
+		unlink(name);
+	}
+	exit(0);
+}
+
+Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
+---
+ fs/nfs/nfs4proc.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 6dcbc5d..a3e9ef1 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -2697,7 +2697,8 @@ static inline void nfs4_exclusive_attrset(struct nfs4_opendata *opendata,
+ 		sattr->ia_valid |= ATTR_MTIME;
+ 
+ 	/* Except MODE, it seems harmless of setting twice. */
+-	if ((attrset[1] & FATTR4_WORD1_MODE))
++	if ((attrset[1] & FATTR4_WORD1_MODE) ||
++	    (attrset[2] & FATTR4_WORD2_MODE_UMASK))
+ 		sattr->ia_valid &= ~ATTR_MODE;
+ 
+ 	if (attrset[2] & FATTR4_WORD2_SECURITY_LABEL)
+-- 
+2.9.3
+
