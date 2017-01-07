@@ -1,13 +1,14 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f194.google.com ([209.85.223.194]:36472 "EHLO
-        mail-io0-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S936679AbdAGRQA (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sat, 7 Jan 2017 12:16:00 -0500
-Subject: [PATCH v1 05/22] svcrdma: Poll CQs in "workqueue" mode
+Received: from mail-io0-f196.google.com ([209.85.223.196]:33345 "EHLO
+        mail-io0-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S941501AbdAGRQI (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sat, 7 Jan 2017 12:16:08 -0500
+Subject: [PATCH v1 06/22] svcrdma: Clean up RPC-over-RDMA Reply header
+ encoder
 From: Chuck Lever <chuck.lever@oracle.com>
 To: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Sat, 07 Jan 2017 12:15:58 -0500
-Message-ID: <20170107171557.14126.88400.stgit@klimt.1015granger.net>
+Date: Sat, 07 Jan 2017 12:16:06 -0500
+Message-ID: <20170107171606.14126.90832.stgit@klimt.1015granger.net>
 In-Reply-To: <20170107170258.14126.8503.stgit@klimt.1015granger.net>
 References: <20170107170258.14126.8503.stgit@klimt.1015granger.net>
 MIME-Version: 1.0
@@ -15,150 +16,150 @@ Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-svcrdma calls svc_xprt_put() in its completion handlers, which
-currently run in IRQ context.
+Replace C structure-based XDR decoding with pointer arithmetic.
+Pointer arithmetic is considered more portable, and is used
+throughout the kernel's existing XDR encoders. The gcc optimizer
+generates similar assembler code either way.
 
-However, svc_xprt_put() is meant to be invoked in process context,
-not in IRQ context. After the last transport reference is gone, it
-directly calls a transport release function that expects to run in
-process context.
+Byte-swapping before a memory store on x86 typically results in an
+instruction pipeline stall. Avoid byte-swapping when encoding a new
+header.
 
-Change the CQ polling modes to IB_POLL_WORKQUEUE so that svcrdma
-invokes svc_xprt_put() only in process context. As an added benefit,
-bottom half-disabled spin locking can be eliminated from I/O paths.
+svcrdma currently doesn't alter a connection's credit grant value
+after the connection has been accepted, so it is effectively a
+constant. Cache the byte-swapped value in a separate field.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- net/sunrpc/xprtrdma/svc_rdma_recvfrom.c  |    6 +++---
- net/sunrpc/xprtrdma/svc_rdma_transport.c |   26 +++++++++++++-------------
- 2 files changed, 16 insertions(+), 16 deletions(-)
+ include/linux/sunrpc/svc_rdma.h          |   11 +++++---
+ net/sunrpc/xprtrdma/svc_rdma_marshal.c   |   39 +++++++++++++++++++-----------
+ net/sunrpc/xprtrdma/svc_rdma_sendto.c    |   10 ++------
+ net/sunrpc/xprtrdma/svc_rdma_transport.c |    1 +
+ 4 files changed, 35 insertions(+), 26 deletions(-)
 
-diff --git a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
-index 3a72360..776e1ed 100644
---- a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
-+++ b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
-@@ -608,12 +608,12 @@ int svc_rdma_recvfrom(struct svc_rqst *rqstp)
+diff --git a/include/linux/sunrpc/svc_rdma.h b/include/linux/sunrpc/svc_rdma.h
+index 997bc78..61cfee8 100644
+--- a/include/linux/sunrpc/svc_rdma.h
++++ b/include/linux/sunrpc/svc_rdma.h
+@@ -140,7 +140,8 @@ struct svcxprt_rdma {
+ 	atomic_t             sc_sq_avail;	/* SQEs ready to be consumed */
+ 	unsigned int	     sc_sq_depth;	/* Depth of SQ */
+ 	unsigned int	     sc_rq_depth;	/* Depth of RQ */
+-	u32		     sc_max_requests;	/* Forward credits */
++	__be32		     sc_fc_credits;	/* Forward credits */
++	u32		     sc_max_requests;	/* Max requests */
+ 	u32		     sc_max_bc_requests;/* Backward credits */
+ 	int                  sc_max_req_size;	/* Size of each RQ WR buf */
  
- 	dprintk("svcrdma: rqstp=%p\n", rqstp);
+@@ -211,10 +212,10 @@ extern int svc_rdma_xdr_encode_error(struct svcxprt_rdma *,
+ extern void svc_rdma_xdr_encode_reply_array(struct rpcrdma_write_array *, int);
+ extern void svc_rdma_xdr_encode_array_chunk(struct rpcrdma_write_array *, int,
+ 					    __be32, __be64, u32);
+-extern void svc_rdma_xdr_encode_reply_header(struct svcxprt_rdma *,
+-					     struct rpcrdma_msg *,
+-					     struct rpcrdma_msg *,
+-					     enum rpcrdma_proc);
++extern void svc_rdma_xdr_encode_reply_header(struct svcxprt_rdma *rdma,
++					     __be32 *rdma_argp,
++					     __be32 *rdma_resp,
++					     __be32 rdma_type);
+ extern unsigned int svc_rdma_xdr_get_reply_hdr_len(__be32 *rdma_resp);
  
--	spin_lock_bh(&rdma_xprt->sc_rq_dto_lock);
-+	spin_lock(&rdma_xprt->sc_rq_dto_lock);
- 	if (!list_empty(&rdma_xprt->sc_read_complete_q)) {
- 		ctxt = list_first_entry(&rdma_xprt->sc_read_complete_q,
- 					struct svc_rdma_op_ctxt, list);
- 		list_del(&ctxt->list);
--		spin_unlock_bh(&rdma_xprt->sc_rq_dto_lock);
-+		spin_unlock(&rdma_xprt->sc_rq_dto_lock);
- 		rdma_read_complete(rqstp, ctxt);
- 		goto complete;
- 	} else if (!list_empty(&rdma_xprt->sc_rq_dto_q)) {
-@@ -625,7 +625,7 @@ int svc_rdma_recvfrom(struct svc_rqst *rqstp)
- 		clear_bit(XPT_DATA, &xprt->xpt_flags);
- 		ctxt = NULL;
- 	}
--	spin_unlock_bh(&rdma_xprt->sc_rq_dto_lock);
-+	spin_unlock(&rdma_xprt->sc_rq_dto_lock);
- 	if (!ctxt) {
- 		/* This is the EAGAIN path. The svc_recv routine will
- 		 * return -EAGAIN, the nfsd thread will go to call into
+ /* svc_rdma_recvfrom.c */
+diff --git a/net/sunrpc/xprtrdma/svc_rdma_marshal.c b/net/sunrpc/xprtrdma/svc_rdma_marshal.c
+index 4e72034..5efa019 100644
+--- a/net/sunrpc/xprtrdma/svc_rdma_marshal.c
++++ b/net/sunrpc/xprtrdma/svc_rdma_marshal.c
+@@ -249,7 +249,7 @@ int svc_rdma_xdr_encode_error(struct svcxprt_rdma *xprt,
+ 
+ 	*va++ = rmsgp->rm_xid;
+ 	*va++ = rmsgp->rm_vers;
+-	*va++ = cpu_to_be32(xprt->sc_max_requests);
++	*va++ = xprt->sc_fc_credits;
+ 	*va++ = rdma_error;
+ 	*va++ = cpu_to_be32(err);
+ 	if (err == ERR_VERS) {
+@@ -330,18 +330,29 @@ void svc_rdma_xdr_encode_array_chunk(struct rpcrdma_write_array *ary,
+ 	seg->rs_length = cpu_to_be32(write_len);
+ }
+ 
+-void svc_rdma_xdr_encode_reply_header(struct svcxprt_rdma *xprt,
+-				  struct rpcrdma_msg *rdma_argp,
+-				  struct rpcrdma_msg *rdma_resp,
+-				  enum rpcrdma_proc rdma_type)
++/**
++ * svc_rdma_xdr_encode_reply_header - Encode Reply's fixed header fields
++ * @rdma: controlling transport
++ * @rdma_argp: Call's transport header
++ * @rdma_resp: Reply's transport header
++ * @rdma_type: procedure number
++ *
++ */
++void svc_rdma_xdr_encode_reply_header(struct svcxprt_rdma *rdma,
++				      __be32 *rdma_argp, __be32 *rdma_resp,
++				      __be32 rdma_type)
+ {
+-	rdma_resp->rm_xid = rdma_argp->rm_xid;
+-	rdma_resp->rm_vers = rdma_argp->rm_vers;
+-	rdma_resp->rm_credit = cpu_to_be32(xprt->sc_max_requests);
+-	rdma_resp->rm_type = cpu_to_be32(rdma_type);
+-
+-	/* Encode <nul> chunks lists */
+-	rdma_resp->rm_body.rm_chunks[0] = xdr_zero;
+-	rdma_resp->rm_body.rm_chunks[1] = xdr_zero;
+-	rdma_resp->rm_body.rm_chunks[2] = xdr_zero;
++	__be32 *p;
++
++	p = rdma_resp;
++
++	*p++ = *rdma_argp;		/* XID */
++	*p++ = *(rdma_argp + 1);	/* vers */
++	*p++ = rdma->sc_fc_credits;
++	*p++ = rdma_type;
++
++	/* Start with empty chunks */
++	*p++ = xdr_zero;
++	*p++ = xdr_zero;
++	*p = xdr_zero;
+ }
+diff --git a/net/sunrpc/xprtrdma/svc_rdma_sendto.c b/net/sunrpc/xprtrdma/svc_rdma_sendto.c
+index ba76f1617..7150201 100644
+--- a/net/sunrpc/xprtrdma/svc_rdma_sendto.c
++++ b/net/sunrpc/xprtrdma/svc_rdma_sendto.c
+@@ -560,7 +560,6 @@ int svc_rdma_sendto(struct svc_rqst *rqstp)
+ 	struct rpcrdma_msg *rdma_argp;
+ 	struct rpcrdma_msg *rdma_resp;
+ 	struct rpcrdma_write_array *wr_ary, *rp_ary;
+-	enum rpcrdma_proc reply_type;
+ 	int ret;
+ 	int inline_bytes;
+ 	struct page *res_page;
+@@ -597,12 +596,9 @@ int svc_rdma_sendto(struct svc_rqst *rqstp)
+ 	if (!res_page)
+ 		goto err0;
+ 	rdma_resp = page_address(res_page);
+-	if (rp_ary)
+-		reply_type = RDMA_NOMSG;
+-	else
+-		reply_type = RDMA_MSG;
+-	svc_rdma_xdr_encode_reply_header(rdma, rdma_argp,
+-					 rdma_resp, reply_type);
++	svc_rdma_xdr_encode_reply_header(rdma, (__be32 *)rdma_argp,
++					 (__be32 *)rdma_resp,
++					 rp_ary ? rdma_nomsg : rdma_msg);
+ 
+ 	/* Send any write-chunk data and build resp write-list */
+ 	if (wr_ary) {
 diff --git a/net/sunrpc/xprtrdma/svc_rdma_transport.c b/net/sunrpc/xprtrdma/svc_rdma_transport.c
-index eca5cec..4d34afb 100644
+index 4d34afb..3258af7 100644
 --- a/net/sunrpc/xprtrdma/svc_rdma_transport.c
 +++ b/net/sunrpc/xprtrdma/svc_rdma_transport.c
-@@ -188,7 +188,7 @@ struct svc_rdma_op_ctxt *svc_rdma_get_context(struct svcxprt_rdma *xprt)
- {
- 	struct svc_rdma_op_ctxt *ctxt = NULL;
- 
--	spin_lock_bh(&xprt->sc_ctxt_lock);
-+	spin_lock(&xprt->sc_ctxt_lock);
- 	xprt->sc_ctxt_used++;
- 	if (list_empty(&xprt->sc_ctxts))
- 		goto out_empty;
-@@ -196,7 +196,7 @@ struct svc_rdma_op_ctxt *svc_rdma_get_context(struct svcxprt_rdma *xprt)
- 	ctxt = list_first_entry(&xprt->sc_ctxts,
- 				struct svc_rdma_op_ctxt, list);
- 	list_del(&ctxt->list);
--	spin_unlock_bh(&xprt->sc_ctxt_lock);
-+	spin_unlock(&xprt->sc_ctxt_lock);
- 
- out:
- 	ctxt->count = 0;
-@@ -208,15 +208,15 @@ struct svc_rdma_op_ctxt *svc_rdma_get_context(struct svcxprt_rdma *xprt)
- 	/* Either pre-allocation missed the mark, or send
- 	 * queue accounting is broken.
- 	 */
--	spin_unlock_bh(&xprt->sc_ctxt_lock);
-+	spin_unlock(&xprt->sc_ctxt_lock);
- 
- 	ctxt = alloc_ctxt(xprt, GFP_NOIO);
- 	if (ctxt)
- 		goto out;
- 
--	spin_lock_bh(&xprt->sc_ctxt_lock);
-+	spin_lock(&xprt->sc_ctxt_lock);
- 	xprt->sc_ctxt_used--;
--	spin_unlock_bh(&xprt->sc_ctxt_lock);
-+	spin_unlock(&xprt->sc_ctxt_lock);
- 	WARN_ONCE(1, "svcrdma: empty RDMA ctxt list?\n");
- 	return NULL;
- }
-@@ -253,10 +253,10 @@ void svc_rdma_put_context(struct svc_rdma_op_ctxt *ctxt, int free_pages)
- 		for (i = 0; i < ctxt->count; i++)
- 			put_page(ctxt->pages[i]);
- 
--	spin_lock_bh(&xprt->sc_ctxt_lock);
-+	spin_lock(&xprt->sc_ctxt_lock);
- 	xprt->sc_ctxt_used--;
- 	list_add(&ctxt->list, &xprt->sc_ctxts);
--	spin_unlock_bh(&xprt->sc_ctxt_lock);
-+	spin_unlock(&xprt->sc_ctxt_lock);
- }
- 
- static void svc_rdma_destroy_ctxts(struct svcxprt_rdma *xprt)
-@@ -921,14 +921,14 @@ struct svc_rdma_fastreg_mr *svc_rdma_get_frmr(struct svcxprt_rdma *rdma)
- {
- 	struct svc_rdma_fastreg_mr *frmr = NULL;
- 
--	spin_lock_bh(&rdma->sc_frmr_q_lock);
-+	spin_lock(&rdma->sc_frmr_q_lock);
- 	if (!list_empty(&rdma->sc_frmr_q)) {
- 		frmr = list_entry(rdma->sc_frmr_q.next,
- 				  struct svc_rdma_fastreg_mr, frmr_list);
- 		list_del_init(&frmr->frmr_list);
- 		frmr->sg_nents = 0;
- 	}
--	spin_unlock_bh(&rdma->sc_frmr_q_lock);
-+	spin_unlock(&rdma->sc_frmr_q_lock);
- 	if (frmr)
- 		return frmr;
- 
-@@ -941,10 +941,10 @@ void svc_rdma_put_frmr(struct svcxprt_rdma *rdma,
- 	if (frmr) {
- 		ib_dma_unmap_sg(rdma->sc_cm_id->device,
- 				frmr->sg, frmr->sg_nents, frmr->direction);
--		spin_lock_bh(&rdma->sc_frmr_q_lock);
-+		spin_lock(&rdma->sc_frmr_q_lock);
- 		WARN_ON_ONCE(!list_empty(&frmr->frmr_list));
- 		list_add(&frmr->frmr_list, &rdma->sc_frmr_q);
--		spin_unlock_bh(&rdma->sc_frmr_q_lock);
-+		spin_unlock(&rdma->sc_frmr_q_lock);
- 	}
- }
- 
-@@ -1067,13 +1067,13 @@ static struct svc_xprt *svc_rdma_accept(struct svc_xprt *xprt)
- 		goto errout;
- 	}
- 	newxprt->sc_sq_cq = ib_alloc_cq(dev, newxprt, newxprt->sc_sq_depth,
--					0, IB_POLL_SOFTIRQ);
-+					0, IB_POLL_WORKQUEUE);
- 	if (IS_ERR(newxprt->sc_sq_cq)) {
- 		dprintk("svcrdma: error creating SQ CQ for connect request\n");
- 		goto errout;
- 	}
- 	newxprt->sc_rq_cq = ib_alloc_cq(dev, newxprt, newxprt->sc_rq_depth,
--					0, IB_POLL_SOFTIRQ);
-+					0, IB_POLL_WORKQUEUE);
- 	if (IS_ERR(newxprt->sc_rq_cq)) {
- 		dprintk("svcrdma: error creating RQ CQ for connect request\n");
- 		goto errout;
+@@ -1042,6 +1042,7 @@ static struct svc_xprt *svc_rdma_accept(struct svc_xprt *xprt)
+ 	newxprt->sc_max_req_size = svcrdma_max_req_size;
+ 	newxprt->sc_max_requests = min_t(u32, dev->attrs.max_qp_wr,
+ 					 svcrdma_max_requests);
++	newxprt->sc_fc_credits = cpu_to_be32(newxprt->sc_max_requests);
+ 	newxprt->sc_max_bc_requests = min_t(u32, dev->attrs.max_qp_wr,
+ 					    svcrdma_max_bc_requests);
+ 	newxprt->sc_rq_depth = newxprt->sc_max_requests +
 
