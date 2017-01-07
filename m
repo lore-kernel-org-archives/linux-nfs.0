@@ -1,93 +1,77 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-pg0-f66.google.com ([74.125.83.66]:33513 "EHLO
-        mail-pg0-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751306AbdAGOqk (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sat, 7 Jan 2017 09:46:40 -0500
-Received: by mail-pg0-f66.google.com with SMTP id 194so2466055pgd.0
-        for <linux-nfs@vger.kernel.org>; Sat, 07 Jan 2017 06:46:40 -0800 (PST)
-To: Trond Myklebust <trond.myklebust@primarydata.com>,
-        linux-nfs@vger.kernel.org
-Cc: Andreas Gruenbacher <agruenba@redhat.com>, kinglongmee@gmail.com,
-        Matthieu Herrb <matthieu.herrb@laas.fr>
-From: Kinglong Mee <kinglongmee@gmail.com>
-Subject: [PATCH] NFSv4.2: Fix file creating with O_EXCL get a bad mode
-Message-ID: <a76cec59-f007-5c26-dc26-4cc8a6e4daef@gmail.com>
-Date: Sat, 7 Jan 2017 22:45:47 +0800
+Received: from mail-it0-f50.google.com ([209.85.214.50]:35296 "EHLO
+        mail-it0-f50.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1755798AbdAGRPS (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sat, 7 Jan 2017 12:15:18 -0500
+Subject: [PATCH v1 00/22] convert NFS server to new rdma_rw API
+From: Chuck Lever <chuck.lever@oracle.com>
+To: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
+Date: Sat, 07 Jan 2017 12:15:15 -0500
+Message-ID: <20170107170258.14126.8503.stgit@klimt.1015granger.net>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Acorrding to Matthieu Herrb's test cases, a new created file will
-get a bad mode as 0666 (expected 0644) after commit dff25ddb4808
-"nfs: add support for the umask attribute".
+This series converts the Linux NFS server RPC-over-RDMA
+implementation to use the new core rdma_rw API and to poll its CQs
+in workqueue mode.
 
-It is caused by missing check of FATTR4_WORD2_MODE_UMASK
-in nfs4_exclusive_attrset.
+Previously published work prototyped only the path that sends RPC
+replies. This series converts both send and receive sides, and
+includes significant clean ups that result from using the new API.
 
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <err.h>
-#include <fcntl.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <unistd.h>
+This series has been successfully tested with NFSv3, 4.0, and 4.1;
+with clients that use FRWR and FMR; and with sec=sys, krb5, krb5i,
+and krb5p.
 
-/*
- * Demonstrate file creation bug on NFS v4 and linux kernel 4.4+
- *
- * mktemp() is used on purpose.
- */
-int
-main(int argc, char *argv[])
-{
-	const char *name = argv[1];
-	char tmp[] = "./tmpXXXXXXXXXX";
-	struct stat buf;
-	mode_t expected;
-	int fd, i, n = 40;
+Available in the "nfsd-rdma-rw-api" topic branch of this git repo:
 
-	umask(S_IWGRP | S_IWOTH);
-	expected = 0666 & ~(S_IWGRP | S_IWOTH);
-	if (argv[1] == NULL)
-		name = mktemp(tmp);
-	for (i = 0; i < n; i++) {
-		fd = open(name, O_RDWR|O_CREAT|O_EXCL, 0666);
-		if (fd < 0)
-			err(1, "open %s", name);
-		memset(&buf, 0, sizeof(buf));
-		if (stat(name, &buf) < 0)
-			err(1, "stat %s", name);
-		if ((buf.st_mode & (S_IRWXU|S_IRWXG|S_IRWXO)) != expected)
-			printf("%s: %o\n", name,
-			    (int)buf.st_mode & (S_IRWXU|S_IRWXG|S_IRWXO));
-		else
-			printf("%s: ok\n", name);
-		unlink(name);
-	}
-	exit(0);
-}
+git://git.linux-nfs.org/projects/cel/cel-2.6.git
 
-Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
+And for online review:
+
+http://git.linux-nfs.org/?p=cel/cel-2.6.git;a=shortlog;h=refs/heads/nfsd-rdma-rw-api
+
 ---
- fs/nfs/nfs4proc.c | 3 ++-
- 1 file changed, 2 insertions(+), 1 deletion(-)
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 6dcbc5d..a3e9ef1 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -2697,7 +2697,8 @@ static inline void nfs4_exclusive_attrset(struct nfs4_opendata *opendata,
- 		sattr->ia_valid |= ATTR_MTIME;
- 
- 	/* Except MODE, it seems harmless of setting twice. */
--	if ((attrset[1] & FATTR4_WORD1_MODE))
-+	if ((attrset[1] & FATTR4_WORD1_MODE) ||
-+	    (attrset[2] & FATTR4_WORD2_MODE_UMASK))
- 		sattr->ia_valid &= ~ATTR_MODE;
- 
- 	if (attrset[2] & FATTR4_WORD2_SECURITY_LABEL)
--- 
-2.9.3
+Chuck Lever (22):
+      svcrdma: Another sendto chunk list parsing update
+      svcrdma: Replace RPCRDMA_SQ_DEPTH_MULT
+      svcrdma: Remove unused sc_dto_q field
+      svcrdma: Combine list fields in struct svc_rdma_op_ctxt
+      svcrdma: Poll CQs in "workqueue" mode
+      svcrdma: Clean up RPC-over-RDMA Reply header encoder
+      svcrdma: Clean up RPC-over-RDMA Call header decoder
+      svcrdma: Introduce local rdma_rw API helpers
+      svcrdma: Use rdma_rw API in RPC reply path
+      svcrdma: Backchannel sendto clean up
+      svcrdma: Clean up RDMA_ERROR path
+      svcrdma: Reduce size of sge array in struct svc_rdma_op_ctxt
+      svcrdma: Remove old RDMA Write completion handlers
+      svcrdma: Remove the req_map cache
+      svcrdma: Clean up RPC-over-RDMA backchannel reply processing
+      svcrdma: Use generic RDMA R/W API in RPC Call path
+      svcrdma: Remove unused Read completion handlers
+      svcrdma: Remove frmr cache
+      svcrdma: Clean up after converting svc_rdma_recvfrom to rdma_rw API
+      svcrdma: Clean-up in svc_rdma_post_recv
+      svcrdma: Clean-up svc_rdma_unmap_dma
+      svcrdma: Re-order fields in svc_rdma_op_ctxt
 
+
+ include/linux/sunrpc/rpc_rdma.h            |   12 
+ include/linux/sunrpc/svc_rdma.h            |  147 ++---
+ net/sunrpc/xprtrdma/Makefile               |    2 
+ net/sunrpc/xprtrdma/svc_rdma.c             |    8 
+ net/sunrpc/xprtrdma/svc_rdma_backchannel.c |   73 +--
+ net/sunrpc/xprtrdma/svc_rdma_marshal.c     |  478 +++++++++--------
+ net/sunrpc/xprtrdma/svc_rdma_recvfrom.c    |  518 +++---------------
+ net/sunrpc/xprtrdma/svc_rdma_rw.c          |  731 ++++++++++++++++++++++++++
+ net/sunrpc/xprtrdma/svc_rdma_sendto.c      |  802 +++++++++++-----------------
+ net/sunrpc/xprtrdma/svc_rdma_transport.c   |  506 +++++-------------
+ 10 files changed, 1621 insertions(+), 1656 deletions(-)
+ create mode 100644 net/sunrpc/xprtrdma/svc_rdma_rw.c
+
+--
+Chuck Lever
