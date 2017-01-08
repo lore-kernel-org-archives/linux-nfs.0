@@ -1,54 +1,39 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-pf0-f193.google.com ([209.85.192.193]:33100 "EHLO
-        mail-pf0-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751310AbdAHMnp (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sun, 8 Jan 2017 07:43:45 -0500
-Received: by mail-pf0-f193.google.com with SMTP id 127so22734022pfg.0
-        for <linux-nfs@vger.kernel.org>; Sun, 08 Jan 2017 04:43:45 -0800 (PST)
-From: Kinglong Mee <kinglongmee@gmail.com>
-Subject: Re: [PATCH] NFSD: only support readonly export for !fsync and
- readonly filesystem
-To: Christoph Hellwig <hch@infradead.org>
-References: <960d206f-3cb5-b60e-5245-d7282dabf664@gmail.com>
- <20170108100715.GC25268@infradead.org>
-Cc: "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org,
-        Steve Dickson <SteveD@redhat.com>,
-        Kinglong Mee <kinglongmee@gmail.com>
-Message-ID: <2e84e208-11b5-6de0-e222-2eb992b61b8f@gmail.com>
-Date: Sun, 8 Jan 2017 20:43:34 +0800
+Received: from bombadil.infradead.org ([198.137.202.9]:35408 "EHLO
+        bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751303AbdAHOeD (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sun, 8 Jan 2017 09:34:03 -0500
+Date: Sun, 8 Jan 2017 06:34:02 -0800
+From: Christoph Hellwig <hch@infradead.org>
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH v1 00/22] convert NFS server to new rdma_rw API
+Message-ID: <20170108143402.GA2243@infradead.org>
+References: <20170107170258.14126.8503.stgit@klimt.1015granger.net>
 MIME-Version: 1.0
-In-Reply-To: <20170108100715.GC25268@infradead.org>
-Content-Type: text/plain; charset=windows-1252
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20170107170258.14126.8503.stgit@klimt.1015granger.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 1/8/2017 18:07, Christoph Hellwig wrote:
-> On Sat, Dec 31, 2016 at 09:18:08PM +0800, Kinglong Mee wrote:
->> Commit fae5096ad217
->> "nfsd: assume writeable exportabled filesystems have f_sync"
->> have remove the checking of f_sync.
->>
->> Christoph Hellwig suggests,
->> "Warn and refuse the writable export."
->>
->> I think just covert to a readonly export for !fsync filesystem,
->> also, for a readonly filesystem is reasonable.
+On Sat, Jan 07, 2017 at 12:15:15PM -0500, Chuck Lever wrote:
+> This series converts the Linux NFS server RPC-over-RDMA
+> implementation to use the new core rdma_rw API and to poll its CQs
+> in workqueue mode.
 > 
-> I don't like degrading the export.  We should require an explicit
-> ro option in this case.
+> Previously published work prototyped only the path that sends RPC
+> replies. This series converts both send and receive sides, and
+> includes significant clean ups that result from using the new API.
+> 
+> This series has been successfully tested with NFSv3, 4.0, and 4.1;
+> with clients that use FRWR and FMR; and with sec=sys, krb5, krb5i,
+> and krb5p.
 
-With this patch, we can see the ro option in the proc file.
+Any performane improvements (or regressions) with it?
 
-# mount |grep xfs
-/dev/sdc on /nfs type xfs (ro,relatime,seclabel,attr2,inode64,noquota)
+>  10 files changed, 1621 insertions(+), 1656 deletions(-)
 
-# cat /etc/exports
-/nfs/	*(rw,no_subtree_check,no_root_squash,insecure,fsid=0)
-
-# cat /proc/fs/nfsd/exports 
-# Version 1.1
-# Path Client(Flags) # IPs
-/nfs	*(ro,insecure,no_root_squash,sync,wdelay,no_subtree_check,fsid=0,uuid=a4a352bc:252a47cb:b3953193:040e050d,sec=1,rw,insecure,no_root_squash)
-
-thanks,
-Kinglong Mee
+Hmm, that's not much less code, especially compared to the
+other target side drivers where we remove a very substantial amount of
+code.  I guess I need to spend some time with the individual patches
+to understand why.
