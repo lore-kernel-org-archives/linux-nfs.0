@@ -1,70 +1,130 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp-o-3.desy.de ([131.169.56.156]:32820 "EHLO smtp-o-3.desy.de"
+Received: from mx1.redhat.com ([209.132.183.28]:37710 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S970035AbdAIPZy (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 9 Jan 2017 10:25:54 -0500
-Received: from smtp-map-3.desy.de (smtp-map-3.desy.de [131.169.56.68])
-        by smtp-o-3.desy.de (DESY-O-3) with ESMTP id 98D3D280352
-        for <linux-nfs@vger.kernel.org>; Mon,  9 Jan 2017 16:16:17 +0100 (CET)
-Received: from ZITSWEEP2.win.desy.de (zitsweep2.win.desy.de [131.169.97.96])
-        by smtp-map-3.desy.de (DESY_MAP_3) with ESMTP id 8A8A911C9
-        for <linux-nfs@vger.kernel.org>; Mon,  9 Jan 2017 16:16:17 +0100 (MET)
-From: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org, Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
-Subject: [PATCH] setattr: test how v4.0 server handles setting of zero length principals
-Date: Mon,  9 Jan 2017 16:15:56 +0100
-Message-Id: <20170109151556.7522-1-tigran.mkrtchyan@desy.de>
+        id S970132AbdAIP45 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 9 Jan 2017 10:56:57 -0500
+Date: Mon, 9 Jan 2017 10:56:53 -0500
+From: Brian Foster <bfoster@redhat.com>
+To: Michal Hocko <mhocko@kernel.org>
+Cc: linux-mm@kvack.org, linux-fsdevel@vger.kernel.org,
+        Andrew Morton <akpm@linux-foundation.org>,
+        Dave Chinner <david@fromorbit.com>, djwong@kernel.org,
+        "Theodore Ts'o" <tytso@mit.edu>, Chris Mason <clm@fb.com>,
+        David Sterba <dsterba@suse.cz>, Jan Kara <jack@suse.cz>,
+        ceph-devel@vger.kernel.org, cluster-devel@redhat.com,
+        linux-nfs@vger.kernel.org, logfs@logfs.org, linux-xfs@vger.kernel.org,
+        linux-ext4@vger.kernel.org, linux-btrfs@vger.kernel.org,
+        linux-mtd@lists.infradead.org, reiserfs-devel@vger.kernel.org,
+        linux-ntfs-dev@lists.sourceforge.net,
+        linux-f2fs-devel@lists.sourceforge.net, linux-afs@lists.infradead.org,
+        LKML <linux-kernel@vger.kernel.org>, Michal Hocko <mhocko@suse.com>
+Subject: Re: [PATCH 4/8] xfs: use memalloc_nofs_{save,restore} instead of
+ memalloc_noio*
+Message-ID: <20170109155653.GD22368@bfoster.bfoster>
+References: <20170106141107.23953-1-mhocko@kernel.org>
+ <20170106141107.23953-5-mhocko@kernel.org>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20170106141107.23953-5-mhocko@kernel.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-my interpretation of rfc3530 expects NFS4ERR_INVAL is owner and
-owner_group are empty strings.
+On Fri, Jan 06, 2017 at 03:11:03PM +0100, Michal Hocko wrote:
+> From: Michal Hocko <mhocko@suse.com>
+> 
+> kmem_zalloc_large and _xfs_buf_map_pages use memalloc_noio_{save,restore}
+> API to prevent from reclaim recursion into the fs because vmalloc can
+> invoke unconditional GFP_KERNEL allocations and these functions might be
+> called from the NOFS contexts. The memalloc_noio_save will enforce
+> GFP_NOIO context which is even weaker than GFP_NOFS and that seems to be
+> unnecessary. Let's use memalloc_nofs_{save,restore} instead as it should
+> provide exactly what we need here - implicit GFP_NOFS context.
+> 
+> Changes since v1
+> - s@memalloc_noio_restore@memalloc_nofs_restore@ in _xfs_buf_map_pages
+>   as per Brian Foster
+> 
+> Signed-off-by: Michal Hocko <mhocko@suse.com>
+> ---
 
-Signed-off-by: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
----
- nfs4.0/servertests/st_setattr.py | 31 +++++++++++++++++++++++++++++++
- 1 file changed, 31 insertions(+)
+Looks fine to me:
 
-diff --git a/nfs4.0/servertests/st_setattr.py b/nfs4.0/servertests/st_setattr.py
-index b6a398b..b192ece 100644
---- a/nfs4.0/servertests/st_setattr.py
-+++ b/nfs4.0/servertests/st_setattr.py
-@@ -701,3 +701,34 @@ def testChangeGranularity(t, env):
-     chattr4 = res.resarray[7].obj_attributes
-     if chattr1 == chattr2 or chattr2 == chattr3 or chattr3 == chattr4:
-         t.fail("consecutive SETATTR(mode)'s don't all change change attribute")
-+
-+def testEmptyPrincipal(t, env):
-+    """Setting owner with zero length principal must fail
-+
-+    FLAGS: setattr all
-+    DEPEND: MKFILE
-+    CODE: SATT16
-+    """
-+    c = env.c1
-+    path = c.homedir + [t.code]
-+    res = c.create_obj(path, NF4SOCK)
-+    check(res)
-+    ops = c.use_obj(path) + [c.setattr({FATTR4_OWNER: ''})]
-+    res = c.compound(ops)
-+    check(res, NFS4ERR_INVAL, "Setting empty owner")
-+
-+
-+def testEmptyGroupPrincipal(t, env):
-+    """Setting owner group with zero length principal must fail
-+
-+    FLAGS: setattr all
-+    DEPEND: MKFILE
-+    CODE: SATT17
-+    """
-+    c = env.c1
-+    path = c.homedir + [t.code]
-+    res = c.create_obj(path, NF4SOCK)
-+    check(res)
-+    ops = c.use_obj(path) + [c.setattr({FATTR4_OWNER_GROUP: ''})]
-+    res = c.compound(ops)
-+    check(res, NFS4ERR_INVAL, "Setting empty owner_group")
--- 
-2.9.3
+Reviewed-by: Brian Foster <bfoster@redhat.com>
 
+>  fs/xfs/kmem.c    | 10 +++++-----
+>  fs/xfs/xfs_buf.c |  8 ++++----
+>  2 files changed, 9 insertions(+), 9 deletions(-)
+> 
+> diff --git a/fs/xfs/kmem.c b/fs/xfs/kmem.c
+> index a76a05dae96b..d69ed5e76621 100644
+> --- a/fs/xfs/kmem.c
+> +++ b/fs/xfs/kmem.c
+> @@ -65,7 +65,7 @@ kmem_alloc(size_t size, xfs_km_flags_t flags)
+>  void *
+>  kmem_zalloc_large(size_t size, xfs_km_flags_t flags)
+>  {
+> -	unsigned noio_flag = 0;
+> +	unsigned nofs_flag = 0;
+>  	void	*ptr;
+>  	gfp_t	lflags;
+>  
+> @@ -80,14 +80,14 @@ kmem_zalloc_large(size_t size, xfs_km_flags_t flags)
+>  	 * context via PF_MEMALLOC_NOIO to prevent memory reclaim re-entering
+>  	 * the filesystem here and potentially deadlocking.
+>  	 */
+> -	if ((current->flags & PF_MEMALLOC_NOFS) || (flags & KM_NOFS))
+> -		noio_flag = memalloc_noio_save();
+> +	if (flags & KM_NOFS)
+> +		nofs_flag = memalloc_nofs_save();
+>  
+>  	lflags = kmem_flags_convert(flags);
+>  	ptr = __vmalloc(size, lflags | __GFP_HIGHMEM | __GFP_ZERO, PAGE_KERNEL);
+>  
+> -	if ((current->flags & PF_MEMALLOC_NOFS) || (flags & KM_NOFS))
+> -		memalloc_noio_restore(noio_flag);
+> +	if (flags & KM_NOFS)
+> +		memalloc_nofs_restore(nofs_flag);
+>  
+>  	return ptr;
+>  }
+> diff --git a/fs/xfs/xfs_buf.c b/fs/xfs/xfs_buf.c
+> index 7f0a01f7b592..8cb8dd4cdfd8 100644
+> --- a/fs/xfs/xfs_buf.c
+> +++ b/fs/xfs/xfs_buf.c
+> @@ -441,17 +441,17 @@ _xfs_buf_map_pages(
+>  		bp->b_addr = NULL;
+>  	} else {
+>  		int retried = 0;
+> -		unsigned noio_flag;
+> +		unsigned nofs_flag;
+>  
+>  		/*
+>  		 * vm_map_ram() will allocate auxillary structures (e.g.
+>  		 * pagetables) with GFP_KERNEL, yet we are likely to be under
+>  		 * GFP_NOFS context here. Hence we need to tell memory reclaim
+> -		 * that we are in such a context via PF_MEMALLOC_NOIO to prevent
+> +		 * that we are in such a context via PF_MEMALLOC_NOFS to prevent
+>  		 * memory reclaim re-entering the filesystem here and
+>  		 * potentially deadlocking.
+>  		 */
+> -		noio_flag = memalloc_noio_save();
+> +		nofs_flag = memalloc_nofs_save();
+>  		do {
+>  			bp->b_addr = vm_map_ram(bp->b_pages, bp->b_page_count,
+>  						-1, PAGE_KERNEL);
+> @@ -459,7 +459,7 @@ _xfs_buf_map_pages(
+>  				break;
+>  			vm_unmap_aliases();
+>  		} while (retried++ <= 1);
+> -		memalloc_noio_restore(noio_flag);
+> +		memalloc_nofs_restore(nofs_flag);
+>  
+>  		if (!bp->b_addr)
+>  			return -ENOMEM;
+> -- 
+> 2.11.0
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-xfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
