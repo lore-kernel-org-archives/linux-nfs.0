@@ -1,75 +1,67 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:53673 "EHLO mx2.suse.de"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S937838AbdAIO3e (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 9 Jan 2017 09:29:34 -0500
-Date: Mon, 9 Jan 2017 15:29:30 +0100
-From: Michal Hocko <mhocko@kernel.org>
-To: Vlastimil Babka <vbabka@suse.cz>
-Cc: linux-mm@kvack.org, linux-fsdevel@vger.kernel.org,
-        Andrew Morton <akpm@linux-foundation.org>,
-        Dave Chinner <david@fromorbit.com>, djwong@kernel.org,
-        "Theodore Ts'o" <tytso@mit.edu>, Chris Mason <clm@fb.com>,
-        David Sterba <dsterba@suse.cz>, Jan Kara <jack@suse.cz>,
-        ceph-devel@vger.kernel.org, cluster-devel@redhat.com,
-        linux-nfs@vger.kernel.org, logfs@logfs.org, linux-xfs@vger.kernel.org,
-        linux-ext4@vger.kernel.org, linux-btrfs@vger.kernel.org,
-        linux-mtd@lists.infradead.org, reiserfs-devel@vger.kernel.org,
-        linux-ntfs-dev@lists.sourceforge.net,
-        linux-f2fs-devel@lists.sourceforge.net, linux-afs@lists.infradead.org,
-        LKML <linux-kernel@vger.kernel.org>
-Subject: Re: [PATCH 2/8] xfs: abstract PF_FSTRANS to PF_MEMALLOC_NOFS
-Message-ID: <20170109142930.GL7495@dhcp22.suse.cz>
-References: <20170106141107.23953-1-mhocko@kernel.org>
- <20170106141107.23953-3-mhocko@kernel.org>
- <bf7594a9-7e1a-0895-2d0e-df1f27502db1@suse.cz>
-MIME-Version: 1.0
+Received: from aserp1040.oracle.com ([141.146.126.69]:32262 "EHLO
+        aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1762113AbdAIPGC (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 9 Jan 2017 10:06:02 -0500
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <bf7594a9-7e1a-0895-2d0e-df1f27502db1@suse.cz>
+Mime-Version: 1.0 (Mac OS X Mail 9.3 \(3124\))
+Subject: Re: [PATCH] svcrdma: avoid duplicate dma unmapping during error recovery
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <20170109064224.GA3820@yuval-lap>
+Date: Mon, 9 Jan 2017 10:05:48 -0500
+Cc: Sriharsha Basavapatna <sriharsha.basavapatna@broadcom.com>,
+        Yuval Shaia <yuval.shaia@oracle.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        List Linux RDMA Mailing <linux-rdma@vger.kernel.org>
+Message-Id: <5761AF19-DF8B-44CE-B744-C21464958041@oracle.com>
+References: <20170109103044.5590-1-sriharsha.basavapatna@broadcom.com> <20170109064224.GA3820@yuval-lap>
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon 09-01-17 13:59:05, Vlastimil Babka wrote:
-> On 01/06/2017 03:11 PM, Michal Hocko wrote:
-> > From: Michal Hocko <mhocko@suse.com>
-> > 
-> > xfs has defined PF_FSTRANS to declare a scope GFP_NOFS semantic quite
-> > some time ago. We would like to make this concept more generic and use
-> > it for other filesystems as well. Let's start by giving the flag a
-> > more generic name PF_MEMALLOC_NOFS which is in line with an exiting
-> > PF_MEMALLOC_NOIO already used for the same purpose for GFP_NOIO
-> > contexts. Replace all PF_FSTRANS usage from the xfs code in the first
-> > step before we introduce a full API for it as xfs uses the flag directly
-> > anyway.
-> > 
-> > This patch doesn't introduce any functional change.
-> > 
-> > Signed-off-by: Michal Hocko <mhocko@suse.com>
-> > Reviewed-by: Brian Foster <bfoster@redhat.com>
-> 
-> Acked-by: Vlastimil Babka <vbabka@suse.cz>
 
-Thanks!
-
+> On Jan 9, 2017, at 1:42 AM, Yuval Shaia <yuval.shaia@oracle.com> wrote:
 > 
-> A nit:
+> On Mon, Jan 09, 2017 at 04:00:44PM +0530, Sriharsha Basavapatna wrote:
+>> In rdma_read_chunk_frmr() when ib_post_send() fails, the error code path
+>> invokes ib_dma_unmap_sg() to unmap the sg list. It then invokes
+>> svc_rdma_put_frmr() which in turn tries to unmap the same sg list through
+>> ib_dma_unmap_sg() again. This second unmap is invalid and could lead to
+>> problems when the iova being unmapped is subsequently reused. Remove
+>> the call to unmap in rdma_read_chunk_frmr() and let svc_rdma_put_frmr()
+>> handle it.
+>> 
+>> Fixes: 412a15c0fe53 ("svcrdma: Port to new memory registration API")
+>> Cc: stable@vger.kernel.org
+>> Signed-off-by: Sriharsha Basavapatna <sriharsha.basavapatna@broadcom.com>
+>> Reviewed-by: Chuck Lever <chuck.lever@oracle.com>
+>> ---
+>> net/sunrpc/xprtrdma/svc_rdma_recvfrom.c | 2 --
+>> 1 file changed, 2 deletions(-)
+>> 
+>> diff --git a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
+>> index 57d35fbb1c28..172b537f8cfc 100644
+>> --- a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
+>> +++ b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
+>> @@ -347,8 +347,6 @@ int rdma_read_chunk_frmr(struct svcxprt_rdma *xprt,
+>> 	atomic_inc(&rdma_stat_read);
+>> 	return ret;
+>>  err:
+>> -	ib_dma_unmap_sg(xprt->sc_cm_id->device,
+>> -			frmr->sg, frmr->sg_nents, frmr->direction);
+>> 	svc_rdma_put_context(ctxt, 0);
+>> 	svc_rdma_put_frmr(xprt, frmr);
+>> 	return ret;
 > 
-> > --- a/include/linux/sched.h
-> > +++ b/include/linux/sched.h
-> > @@ -2320,6 +2320,8 @@ extern void thread_group_cputime_adjusted(struct task_struct *p, cputime_t *ut,
-> >  #define PF_FREEZER_SKIP	0x40000000	/* Freezer should not count it as freezable */
-> >  #define PF_SUSPEND_TASK 0x80000000      /* this thread called freeze_processes and should not be frozen */
-> >  
-> > +#define PF_MEMALLOC_NOFS PF_FSTRANS	/* Transition to a more generic GFP_NOFS scope semantic */
-> 
-> I don't see why this transition is needed, as there are already no users
-> of PF_FSTRANS after this patch. The next patch doesn't remove any more,
-> so this is just extra churn IMHO. But not a strong objection.
+> Reviewed-by: Yuval Shaia <yuval.shaia@oracle.com>
 
-I just wanted to have this transparent for the xfs in this patch.
-AFAIR Dave wanted to have xfs and generic parts separated. So it was the
-easiest to simply keep the flag and then remove it in a separate patach.
+Hi Bruce-
 
--- 
-Michal Hocko
-SUSE Labs
+Is it possible to take this in v4.10-rc ?
+
+
+--
+Chuck Lever
+
+
+
