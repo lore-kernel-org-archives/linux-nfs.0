@@ -1,137 +1,137 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:44362 "EHLO mx2.suse.de"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1753930AbdAINE0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 9 Jan 2017 08:04:26 -0500
-Subject: Re: [PATCH 3/8] mm: introduce memalloc_nofs_{save,restore} API
-To: Michal Hocko <mhocko@kernel.org>, linux-mm@kvack.org,
-        linux-fsdevel@vger.kernel.org
-References: <20170106141107.23953-1-mhocko@kernel.org>
- <20170106141107.23953-4-mhocko@kernel.org>
-Cc: Andrew Morton <akpm@linux-foundation.org>,
-        Dave Chinner <david@fromorbit.com>, djwong@kernel.org,
-        "Theodore Ts'o" <tytso@mit.edu>, Chris Mason <clm@fb.com>,
-        David Sterba <dsterba@suse.cz>, Jan Kara <jack@suse.cz>,
-        ceph-devel@vger.kernel.org, cluster-devel@redhat.com,
-        linux-nfs@vger.kernel.org, logfs@logfs.org, linux-xfs@vger.kernel.org,
-        linux-ext4@vger.kernel.org, linux-btrfs@vger.kernel.org,
-        linux-mtd@lists.infradead.org, reiserfs-devel@vger.kernel.org,
-        linux-ntfs-dev@lists.sourceforge.net,
-        linux-f2fs-devel@lists.sourceforge.net, linux-afs@lists.infradead.org,
-        LKML <linux-kernel@vger.kernel.org>, Michal Hocko <mhocko@suse.com>
-From: Vlastimil Babka <vbabka@suse.cz>
-Message-ID: <86dbce74-a532-2f98-6a63-4dbad77b2aa1@suse.cz>
-Date: Mon, 9 Jan 2017 14:04:21 +0100
-MIME-Version: 1.0
-In-Reply-To: <20170106141107.23953-4-mhocko@kernel.org>
-Content-Type: text/plain; charset=utf-8
+Received: from mail-qk0-f195.google.com ([209.85.220.195]:35444 "EHLO
+        mail-qk0-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S933722AbdAINkW (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 9 Jan 2017 08:40:22 -0500
+Received: by mail-qk0-f195.google.com with SMTP id u25so71486604qki.2
+        for <linux-nfs@vger.kernel.org>; Mon, 09 Jan 2017 05:40:21 -0800 (PST)
+Message-ID: <1483969218.2609.2.camel@poochiereds.net>
+Subject: LSF/MM 2017: Call for Proposals closes January 15th
+From: Jeff Layton <jlayton@poochiereds.net>
+To: linux-block@vger.kernel.org, linux-btrfs@vger.kernel.org,
+        linux-cifs@vger.kernel.org, linux-ext4@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org, linux-ide@vger.kernel.org,
+        linux-kernel@vger.kernel.org, linux-mm@kvack.org,
+        linux-nfs@vger.kernel.org, linux-scsi@vger.kernel.org,
+        "xfs@oss.sgi.com" <xfs@oss.sgi.com>, ceph-devel@vger.kernel.org,
+        linux-nvme@lists.infradead.org
+Cc: "lsf-pc@lists.linux-foundation.org"
+        <lsf-pc@lists.linux-foundation.org>
+Date: Mon, 09 Jan 2017 08:40:18 -0500
+Content-Type: text/plain; charset="UTF-8"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 01/06/2017 03:11 PM, Michal Hocko wrote:
-> From: Michal Hocko <mhocko@suse.com>
-> 
-> GFP_NOFS context is used for the following 5 reasons currently
-> 	- to prevent from deadlocks when the lock held by the allocation
-> 	  context would be needed during the memory reclaim
-> 	- to prevent from stack overflows during the reclaim because
-> 	  the allocation is performed from a deep context already
-> 	- to prevent lockups when the allocation context depends on
-> 	  other reclaimers to make a forward progress indirectly
-> 	- just in case because this would be safe from the fs POV
-> 	- silence lockdep false positives
-> 
-> Unfortunately overuse of this allocation context brings some problems
-> to the MM. Memory reclaim is much weaker (especially during heavy FS
-> metadata workloads), OOM killer cannot be invoked because the MM layer
-> doesn't have enough information about how much memory is freeable by the
-> FS layer.
-> 
-> In many cases it is far from clear why the weaker context is even used
-> and so it might be used unnecessarily. We would like to get rid of
-> those as much as possible. One way to do that is to use the flag in
-> scopes rather than isolated cases. Such a scope is declared when really
-> necessary, tracked per task and all the allocation requests from within
-> the context will simply inherit the GFP_NOFS semantic.
-> 
-> Not only this is easier to understand and maintain because there are
-> much less problematic contexts than specific allocation requests, this
-> also helps code paths where FS layer interacts with other layers (e.g.
-> crypto, security modules, MM etc...) and there is no easy way to convey
-> the allocation context between the layers.
-> 
-> Introduce memalloc_nofs_{save,restore} API to control the scope
-> of GFP_NOFS allocation context. This is basically copying
-> memalloc_noio_{save,restore} API we have for other restricted allocation
-> context GFP_NOIO. The PF_MEMALLOC_NOFS flag already exists and it is
-> just an alias for PF_FSTRANS which has been xfs specific until recently.
-> There are no more PF_FSTRANS users anymore so let's just drop it.
-> 
-> PF_MEMALLOC_NOFS is now checked in the MM layer and drops __GFP_FS
-> implicitly same as PF_MEMALLOC_NOIO drops __GFP_IO. memalloc_noio_flags
-> is renamed to current_gfp_context because it now cares about both
-> PF_MEMALLOC_NOFS and PF_MEMALLOC_NOIO contexts. Xfs code paths preserve
-> their semantic. kmem_flags_convert() doesn't need to evaluate the flag
-> anymore.
-> 
-> This patch shouldn't introduce any functional changes.
-> 
-> Let's hope that filesystems will drop direct GFP_NOFS (resp. ~__GFP_FS)
-> usage as much as possible and only use a properly documented
-> memalloc_nofs_{save,restore} checkpoints where they are appropriate.
-> 
-> Signed-off-by: Michal Hocko <mhocko@suse.com>
+We initially sent this pretty early this year, so this is a resend in           
+case anyone missed the first posting. The call for topics and attendance        
+requests is open until January 15th, 2017.
 
+The original message follows:
 
-[...]
+----------------------8<------------------------
 
-> +static inline unsigned int memalloc_nofs_save(void)
-> +{
-> +	unsigned int flags = current->flags & PF_MEMALLOC_NOFS;
-> +	current->flags |= PF_MEMALLOC_NOFS;
+The annual Linux Storage, Filesystem and Memory Management (LSF/MM)
+Summit for 2017 will be held on March 20th and 21st at the Hyatt
+Cambridge, Cambridge, MA. LSF/MM is an invitation-only technical
+workshop to map out improvements to the Linux storage, filesystem and
+memory management subsystems that will make their way into the mainline
+kernel within the coming years.
 
-So this is not new, as same goes for memalloc_noio_save, but I've
-noticed that e.g. exit_signal() does tsk->flags |= PF_EXITING;
-So is it possible that there's a r-m-w hazard here?
+    http://events.linuxfoundation.org/events/linux-storage-filesystem-and-mm-summit
 
-> +	return flags;
-> +}
-> +
-> +static inline void memalloc_nofs_restore(unsigned int flags)
-> +{
-> +	current->flags = (current->flags & ~PF_MEMALLOC_NOFS) | flags;
-> +}
-> +
->  /* Per-process atomic flags. */
->  #define PFA_NO_NEW_PRIVS 0	/* May not gain new privileges. */
->  #define PFA_SPREAD_PAGE  1      /* Spread page cache over cpuset */
+Like last year, LSF/MM will be colocated with the Linux Foundation Vault
+conference which takes place on March 22nd and 23rd in the same Venue.
+For those that do not know, Vault is designed to be an event where open
+source storage and filesystem practitioners meet storage implementors
+and, as such, it would be of benefit for LSF/MM attendees to attend.
 
-[...]
+Unlike past years, Vault admission is not free for LSF/MM attendees this
+year unless they're giving a talk. There is a discount for LSF/MM
+attendees, however we would also like to encourage folks to submit talk
+proposals to speak at the Vault conference.
 
-> @@ -3029,7 +3029,7 @@ unsigned long try_to_free_mem_cgroup_pages(struct mem_cgroup *memcg,
->  	int nid;
->  	struct scan_control sc = {
->  		.nr_to_reclaim = max(nr_pages, SWAP_CLUSTER_MAX),
-> -		.gfp_mask = (gfp_mask & GFP_RECLAIM_MASK) |
-> +		.gfp_mask = (current_gfp_context(gfp_mask) & GFP_RECLAIM_MASK) |
+    http://events.linuxfoundation.org/events/vault
 
-So this function didn't do memalloc_noio_flags() before? Is it a bug
-that should be fixed separately or at least mentioned? Because that
-looks like a functional change...
+On behalf of the committee I am issuing a call for agenda proposals that
+are suitable for cross-track discussion as well as technical subjects
+for the breakout sessions.
 
-Thanks!
+If advance notice is required for visa applications then please point
+that out in your proposal or request to attend, and submit the topic
+as soon as possible.
 
->  				(GFP_HIGHUSER_MOVABLE & ~GFP_RECLAIM_MASK),
->  		.reclaim_idx = MAX_NR_ZONES - 1,
->  		.target_mem_cgroup = memcg,
-> @@ -3723,7 +3723,7 @@ static int __node_reclaim(struct pglist_data *pgdat, gfp_t gfp_mask, unsigned in
->  	int classzone_idx = gfp_zone(gfp_mask);
->  	struct scan_control sc = {
->  		.nr_to_reclaim = max(nr_pages, SWAP_CLUSTER_MAX),
-> -		.gfp_mask = (gfp_mask = memalloc_noio_flags(gfp_mask)),
-> +		.gfp_mask = (gfp_mask = current_gfp_context(gfp_mask)),
->  		.order = order,
->  		.priority = NODE_RECLAIM_PRIORITY,
->  		.may_writepage = !!(node_reclaim_mode & RECLAIM_WRITE),
-> 
+1) Proposals for agenda topics should be sent before January 15th, 2016
+to:
 
+    lsf-pc@lists.linux-foundation.org
+
+and cc the Linux list or lists that are relevant for the topic in
+question:
+
+    ATA:   linux-ide@vger.kernel.org
+    Block: linux-block@vger.kernel.org
+    FS:    linux-fsdevel@vger.kernel.org
+    MM:    linux-mm@kvack.org
+    SCSI:  linux-scsi@vger.kernel.org
+    NVMe:  linux-nvme@lists.infradead.org
+
+Please tag your proposal with [LSF/MM TOPIC] to make it easier to track.
+In addition, please make sure to start a new thread for each topic
+rather than following up to an existing one.  Agenda topics and
+attendees will be selected by the program committee, but the final
+agenda will be formed by consensus of the attendees on the day.
+
+2) Requests to attend the summit for those that are not proposing a
+topic should be sent to:
+
+    lsf-pc@lists.linux-foundation.org
+
+Please summarise what expertise you will bring to the meeting, and what
+you would like to discuss. Please also tag your email with [LSF/MM
+ATTEND] and send it as a new thread so there is less chance of it
+getting lost.
+
+We will try to cap attendance at around 25-30 per track to facilitate
+discussions although the final numbers will depend on the room sizes at
+the venue.
+
+Brief presentations are allowed to guide discussion, but are strongly
+discouraged. There will be no recording or audio bridge. However, we
+expect that written minutes will be published as we did in previous
+years:
+
+2016: https://lwn.net/Articles/lsfmm2016/
+
+2015: https://lwn.net/Articles/lsfmm2015/
+
+2014: http://lwn.net/Articles/LSFMM2014/
+
+2013: http://lwn.net/Articles/548089/
+
+3) If you have feedback on last year's meeting that we can use to
+improve this year's, please also send that to:
+
+    lsf-pc@lists.linux-foundation.org
+
+Thank you on behalf of the program committee:
+
+Storage:
+    James Bottomley
+    Martin K. Petersen (track chair)
+    Sagi Grimberg
+
+Filesystems:
+    Anna Schumaker
+    Chris Mason
+    Eric Sandeen
+    Jan Kara
+    Jeff Layton (summit chair)
+    Josef Bacik (track chair)
+    Trond Myklebust
+
+MM:
+    Johannes Weiner
+    Rik van Riel (track chair)
+-- 
+Jeff Layton <jlayton@poochiereds.net>
