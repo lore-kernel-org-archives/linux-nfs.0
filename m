@@ -1,10 +1,10 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:37710 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S970132AbdAIP45 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 9 Jan 2017 10:56:57 -0500
-Date: Mon, 9 Jan 2017 10:56:53 -0500
-From: Brian Foster <bfoster@redhat.com>
+Received: from userp1040.oracle.com ([156.151.31.81]:21480 "EHLO
+        userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S939425AbdAIVAF (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 9 Jan 2017 16:00:05 -0500
+Date: Mon, 9 Jan 2017 12:59:07 -0800
+From: "Darrick J. Wong" <darrick.wong@oracle.com>
 To: Michal Hocko <mhocko@kernel.org>
 Cc: linux-mm@kvack.org, linux-fsdevel@vger.kernel.org,
         Andrew Morton <akpm@linux-foundation.org>,
@@ -20,7 +20,7 @@ Cc: linux-mm@kvack.org, linux-fsdevel@vger.kernel.org,
         LKML <linux-kernel@vger.kernel.org>, Michal Hocko <mhocko@suse.com>
 Subject: Re: [PATCH 4/8] xfs: use memalloc_nofs_{save,restore} instead of
  memalloc_noio*
-Message-ID: <20170109155653.GD22368@bfoster.bfoster>
+Message-ID: <20170109205907.GB14029@birch.djwong.org>
 References: <20170106141107.23953-1-mhocko@kernel.org>
  <20170106141107.23953-5-mhocko@kernel.org>
 MIME-Version: 1.0
@@ -45,12 +45,10 @@ On Fri, Jan 06, 2017 at 03:11:03PM +0100, Michal Hocko wrote:
 >   as per Brian Foster
 > 
 > Signed-off-by: Michal Hocko <mhocko@suse.com>
+
+Reviewed-by: Darrick J. Wong <darrick.wong@oracle.com>
+
 > ---
-
-Looks fine to me:
-
-Reviewed-by: Brian Foster <bfoster@redhat.com>
-
 >  fs/xfs/kmem.c    | 10 +++++-----
 >  fs/xfs/xfs_buf.c |  8 ++++----
 >  2 files changed, 9 insertions(+), 9 deletions(-)
@@ -125,6 +123,6 @@ Reviewed-by: Brian Foster <bfoster@redhat.com>
 > 2.11.0
 > 
 > --
-> To unsubscribe from this list: send the line "unsubscribe linux-xfs" in
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
 > the body of a message to majordomo@vger.kernel.org
 > More majordomo info at  http://vger.kernel.org/majordomo-info.html
