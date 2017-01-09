@@ -1,60 +1,69 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from bombadil.infradead.org ([198.137.202.9]:43656 "EHLO
-        bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S932366AbdAIM4t (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 9 Jan 2017 07:56:49 -0500
-Date: Mon, 9 Jan 2017 04:56:38 -0800
-From: Christoph Hellwig <hch@infradead.org>
-To: Nicolas Dichtel <nicolas.dichtel@6wind.com>
-Cc: arnd@arndb.de, mmarek@suse.com, linux-kbuild@vger.kernel.org,
-        linux-doc@vger.kernel.org, linux-kernel@vger.kernel.org,
-        linux-alpha@vger.kernel.org, linux-snps-arc@lists.infradead.org,
-        linux-arm-kernel@lists.infradead.org,
-        adi-buildroot-devel@lists.sourceforge.net, linux-c6x-dev@linux-c6x.org,
-        linux-cris-kernel@axis.com, uclinux-h8-devel@lists.sourceforge.jp,
-        linux-hexagon@vger.kernel.org, linux-ia64@vger.kernel.org,
-        linux-m68k@vger.kernel.org, linux-metag@vger.kernel.org,
-        linux-mips@linux-mips.org, linux-am33-list@redhat.com,
-        nios2-dev@lists.rocketboards.org, openrisc@lists.librecores.org,
-        linux-parisc@vger.kernel.org, linuxppc-dev@lists.ozlabs.org,
-        linux-s390@vger.kernel.org, linux-sh@vger.kernel.org,
-        sparclinux@vger.kernel.org, linux-xtensa@linux-xtensa.org,
-        linux-arch@vger.kernel.org, dri-devel@lists.freedesktop.org,
-        netdev@vger.kernel.org, linux-media@vger.kernel.org,
-        linux-mmc@vger.kernel.org, netfilter-devel@vger.kernel.org,
-        coreteam@netfilter.org, linux-nfs@vger.kernel.org,
-        linux-raid@vger.kernel.org, linux-spi@vger.kernel.org,
-        linux-mtd@lists.infradead.org, linux-rdma@vger.kernel.org,
-        fcoe-devel@open-fcoe.org, alsa-devel@alsa-project.org,
-        linux-fbdev@vger.kernel.org, xen-devel@lists.xenproject.org,
-        airlied@linux.ie, davem@davemloft.net
-Subject: Re: [PATCH v2 7/7] uapi: export all headers under uapi directories
-Message-ID: <20170109125638.GA15506@infradead.org>
-References: <bf83da6b-01ef-bf44-b3e1-ca6fc5636818@6wind.com>
- <1483695839-18660-1-git-send-email-nicolas.dichtel@6wind.com>
- <1483695839-18660-8-git-send-email-nicolas.dichtel@6wind.com>
+Received: from mx2.suse.de ([195.135.220.15]:43883 "EHLO mx2.suse.de"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1754718AbdAIM7O (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 9 Jan 2017 07:59:14 -0500
+Subject: Re: [PATCH 2/8] xfs: abstract PF_FSTRANS to PF_MEMALLOC_NOFS
+To: Michal Hocko <mhocko@kernel.org>, linux-mm@kvack.org,
+        linux-fsdevel@vger.kernel.org
+References: <20170106141107.23953-1-mhocko@kernel.org>
+ <20170106141107.23953-3-mhocko@kernel.org>
+Cc: Andrew Morton <akpm@linux-foundation.org>,
+        Dave Chinner <david@fromorbit.com>, djwong@kernel.org,
+        "Theodore Ts'o" <tytso@mit.edu>, Chris Mason <clm@fb.com>,
+        David Sterba <dsterba@suse.cz>, Jan Kara <jack@suse.cz>,
+        ceph-devel@vger.kernel.org, cluster-devel@redhat.com,
+        linux-nfs@vger.kernel.org, logfs@logfs.org, linux-xfs@vger.kernel.org,
+        linux-ext4@vger.kernel.org, linux-btrfs@vger.kernel.org,
+        linux-mtd@lists.infradead.org, reiserfs-devel@vger.kernel.org,
+        linux-ntfs-dev@lists.sourceforge.net,
+        linux-f2fs-devel@lists.sourceforge.net, linux-afs@lists.infradead.org,
+        LKML <linux-kernel@vger.kernel.org>, Michal Hocko <mhocko@suse.com>
+From: Vlastimil Babka <vbabka@suse.cz>
+Message-ID: <bf7594a9-7e1a-0895-2d0e-df1f27502db1@suse.cz>
+Date: Mon, 9 Jan 2017 13:59:05 +0100
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1483695839-18660-8-git-send-email-nicolas.dichtel@6wind.com>
+In-Reply-To: <20170106141107.23953-3-mhocko@kernel.org>
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Jan 06, 2017 at 10:43:59AM +0100, Nicolas Dichtel wrote:
-> Regularly, when a new header is created in include/uapi/, the developer
-> forgets to add it in the corresponding Kbuild file. This error is usually
-> detected after the release is out.
+On 01/06/2017 03:11 PM, Michal Hocko wrote:
+> From: Michal Hocko <mhocko@suse.com>
 > 
-> In fact, all headers under uapi directories should be exported, thus it's
-> useless to have an exhaustive list.
+> xfs has defined PF_FSTRANS to declare a scope GFP_NOFS semantic quite
+> some time ago. We would like to make this concept more generic and use
+> it for other filesystems as well. Let's start by giving the flag a
+> more generic name PF_MEMALLOC_NOFS which is in line with an exiting
+> PF_MEMALLOC_NOIO already used for the same purpose for GFP_NOIO
+> contexts. Replace all PF_FSTRANS usage from the xfs code in the first
+> step before we introduce a full API for it as xfs uses the flag directly
+> anyway.
 > 
-> After this patch, the following files, which were not exported, are now
-> exported (with make headers_install_all):
+> This patch doesn't introduce any functional change.
+> 
+> Signed-off-by: Michal Hocko <mhocko@suse.com>
+> Reviewed-by: Brian Foster <bfoster@redhat.com>
 
-... snip ...
+Acked-by: Vlastimil Babka <vbabka@suse.cz>
 
-> linux/genwqe/.install
-> linux/genwqe/..install.cmd
-> linux/cifs/.install
-> linux/cifs/..install.cmd
+A nit:
 
-I'm pretty sure these should not be exported!
+> --- a/include/linux/sched.h
+> +++ b/include/linux/sched.h
+> @@ -2320,6 +2320,8 @@ extern void thread_group_cputime_adjusted(struct task_struct *p, cputime_t *ut,
+>  #define PF_FREEZER_SKIP	0x40000000	/* Freezer should not count it as freezable */
+>  #define PF_SUSPEND_TASK 0x80000000      /* this thread called freeze_processes and should not be frozen */
+>  
+> +#define PF_MEMALLOC_NOFS PF_FSTRANS	/* Transition to a more generic GFP_NOFS scope semantic */
+
+I don't see why this transition is needed, as there are already no users
+of PF_FSTRANS after this patch. The next patch doesn't remove any more,
+so this is just extra churn IMHO. But not a strong objection.
+
+> +
+>  /*
+>   * Only the _current_ task can read/write to tsk->flags, but other
+>   * tasks can access tsk->flags in readonly mode for example
+> 
+
