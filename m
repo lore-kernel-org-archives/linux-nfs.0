@@ -1,56 +1,55 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp-o-3.desy.de ([131.169.56.156]:52870 "EHLO smtp-o-3.desy.de"
+Received: from smtp-o-1.desy.de ([131.169.56.154]:55032 "EHLO smtp-o-1.desy.de"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S966222AbdAJMCf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 10 Jan 2017 07:02:35 -0500
-Received: from smtp-map-3.desy.de (smtp-map-3.desy.de [131.169.56.68])
-        by smtp-o-3.desy.de (DESY-O-3) with ESMTP id E5CE92807DD
-        for <linux-nfs@vger.kernel.org>; Tue, 10 Jan 2017 13:02:32 +0100 (CET)
-Received: from ZITSWEEP4.win.desy.de (zitsweep4.win.desy.de [131.169.97.98])
-        by smtp-map-3.desy.de (DESY_MAP_3) with ESMTP id D89A41183
-        for <linux-nfs@vger.kernel.org>; Tue, 10 Jan 2017 13:02:32 +0100 (MET)
+        id S966222AbdAJMCg (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 10 Jan 2017 07:02:36 -0500
+Received: from smtp-map-1.desy.de (smtp-map-1.desy.de [131.169.56.66])
+        by smtp-o-1.desy.de (DESY-O-1) with ESMTP id 7A7B92806CF
+        for <linux-nfs@vger.kernel.org>; Tue, 10 Jan 2017 13:02:34 +0100 (CET)
+Received: from ZITSWEEP1.win.desy.de (zitsweep1.win.desy.de [131.169.97.95])
+        by smtp-map-1.desy.de (DESY_MAP_1) with ESMTP id 6DE0813E83
+        for <linux-nfs@vger.kernel.org>; Tue, 10 Jan 2017 13:02:34 +0100 (MET)
 From: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
 To: bfields@fieldses.org
 Cc: linux-nfs@vger.kernel.org, Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
-Subject: [PATCH 1/2] nfs4lib: update do_getattr to use root_fh if no fh provided
-Date: Tue, 10 Jan 2017 13:02:28 +0100
-Message-Id: <20170110120229.23413-1-tigran.mkrtchyan@desy.de>
+Subject: [PATCH 2/2] st_write: test server behavior on WRITE with offset+len > maxfilesize
+Date: Tue, 10 Jan 2017 13:02:29 +0100
+Message-Id: <20170110120229.23413-2-tigran.mkrtchyan@desy.de>
+In-Reply-To: <20170110120229.23413-1-tigran.mkrtchyan@desy.de>
+References: <20170110120229.23413-1-tigran.mkrtchyan@desy.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-do_getattr(FATTR4_XX) is now equal to do_getattr(FATTR4_XX, root_fh)
-The use_obj is updated to return putrootfh operation if file object
-is not provided.
-
-This looks like safe change as do_getattr(attr, None) was broken
-(c.homedir variable never exist), thus was never used.
-
 Signed-off-by: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
 ---
- nfs4.0/nfs4lib.py | 3 +--
- 1 file changed, 1 insertion(+), 2 deletions(-)
+ nfs4.0/servertests/st_write.py | 17 +++++++++++++++++
+ 1 file changed, 17 insertions(+)
 
-diff --git a/nfs4.0/nfs4lib.py b/nfs4.0/nfs4lib.py
-index 5031feb..8bda72a 100644
---- a/nfs4.0/nfs4lib.py
-+++ b/nfs4.0/nfs4lib.py
-@@ -489,7 +489,7 @@ class NFS4Client(rpc.RPCClient, nfs4_ops.NFS4Operations):
-     def use_obj(self, file):
-         """File is either None, a fh, or a list of path components"""
-         if file is None or file == [None]:
--            return []
-+            return [self.putrootfh_op()]
-         elif type(file) is str:
-             return [self.putfh_op(file)]
-         else:
-@@ -505,7 +505,6 @@ class NFS4Client(rpc.RPCClient, nfs4_ops.NFS4Operations):
- 
- 
-     def do_getattr(self, attr, file=None):
--        if file is None: file = c.homedir
-         d = self.do_getattrdict(file, [attr])
-         if attr in d:
-             return d[attr]
+diff --git a/nfs4.0/servertests/st_write.py b/nfs4.0/servertests/st_write.py
+index 710452e..3781210 100644
+--- a/nfs4.0/servertests/st_write.py
++++ b/nfs4.0/servertests/st_write.py
+@@ -499,3 +499,20 @@ def testStolenStateid(t, env):
+     res = c.write_file(fh, _text, stateid=stateid)
+     c.security=security
+     check(res, [NFS4ERR_ACCESS, NFS4ERR_PERM], "WRITE with stolen stateid")
++
++def testWriteOffsetOverflow(t, env):
++    """WRITE with offset + length bigger than UINT64_MAX
++
++    FLAGS: write all
++    DEPEND: MKFILE
++    CODE: WRT20
++    """
++    c = env.c1
++    c.init_connection()
++
++    max_filesize = c.do_getattr(FATTR4_MAXFILESIZE)
++    fh, stateid = c.create_confirm(t.code)
++    data = "abcde"
++
++    res = c.write_file(fh, data, max_filesize - 1, stateid)
++    check(res, NFS4ERR_INVAL, msg="WRITE with offset + length bigger than UINT64_MAX")
 -- 
 2.9.3
 
