@@ -1,85 +1,107 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx143.netapp.com ([216.240.21.24]:15449 "EHLO mx143.netapp.com"
+Received: from mx144.netapp.com ([216.240.21.25]:48676 "EHLO mx144.netapp.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1755969AbdAKTN1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 11 Jan 2017 14:13:27 -0500
-Subject: Re: [PATCH 00/11] Create a single nfs4_setup_sequence() function
-To: Chuck Lever <chuck.lever@oracle.com>
-References: <20170111185454.9315-1-Anna.Schumaker@Netapp.com>
- <958E59EA-0BB8-4645-A387-7CE52EC65AD7@oracle.com>
-CC: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-From: Anna Schumaker <Anna.Schumaker@Netapp.com>
-Message-ID: <60076f9e-a8ff-6848-d35e-f649e32a21ce@Netapp.com>
-Date: Wed, 11 Jan 2017 14:13:05 -0500
+        id S1752415AbdAKUQ3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 11 Jan 2017 15:16:29 -0500
+From: <Anna.Schumaker@Netapp.com>
+To: <linux-nfs@vger.kernel.org>
+Subject: [PATCH 1/2] NFS: Remove nfs4_wait_for_completion_rpc_task()
+Date: Wed, 11 Jan 2017 15:15:05 -0500
+Message-ID: <20170111201506.3736-1-Anna.Schumaker@Netapp.com>
 MIME-Version: 1.0
-In-Reply-To: <958E59EA-0BB8-4645-A387-7CE52EC65AD7@oracle.com>
-Content-Type: text/plain; charset="windows-1252"
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+From: Anna Schumaker <Anna.Schumaker@Netapp.com>
 
+Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
+---
+ fs/nfs/nfs4proc.c | 22 +++++++---------------
+ 1 file changed, 7 insertions(+), 15 deletions(-)
 
-On 01/11/2017 01:57 PM, Chuck Lever wrote:
-> 
->> On Jan 11, 2017, at 1:54 PM, Anna.Schumaker@Netapp.com wrote:
->>
->> From: Anna Schumaker <Anna.Schumaker@Netapp.com>
->>
->> I noticed that NFS v4.0 and v4.1 have different setup_sequence() functions
->> that are very, very similar.  I think we should try to share as much code
->> as possible whenever possible, so these patches merge together both versions
->> of this function using the presence of a session to decide if we need to do
->> a little extra work in some cases.
-> 
-> NFSv4.0 has a slot table these days to handle plugging the mount
-> point during a migration. Hopefully that logic isn't fooled by
-> your "has a session" test.
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index fba6d108179b..e2f5407a66d1 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -1313,14 +1313,6 @@ static void nfs4_opendata_put(struct nfs4_opendata *p)
+ 		kref_put(&p->kref, nfs4_opendata_free);
+ }
+ 
+-static int nfs4_wait_for_completion_rpc_task(struct rpc_task *task)
+-{
+-	int ret;
+-
+-	ret = rpc_wait_for_completion_task(task);
+-	return ret;
+-}
+-
+ static bool nfs4_mode_match_open_stateid(struct nfs4_state *state,
+ 		fmode_t fmode)
+ {
+@@ -2107,7 +2099,7 @@ static int _nfs4_proc_open_confirm(struct nfs4_opendata *data)
+ 	task = rpc_run_task(&task_setup_data);
+ 	if (IS_ERR(task))
+ 		return PTR_ERR(task);
+-	status = nfs4_wait_for_completion_rpc_task(task);
++	status = rpc_wait_for_completion_task(task);
+ 	if (status != 0) {
+ 		data->cancelled = 1;
+ 		smp_wmb();
+@@ -2274,7 +2266,7 @@ static int nfs4_run_open_task(struct nfs4_opendata *data, int isrecover)
+ 	task = rpc_run_task(&task_setup_data);
+         if (IS_ERR(task))
+                 return PTR_ERR(task);
+-        status = nfs4_wait_for_completion_rpc_task(task);
++        status = rpc_wait_for_completion_task(task);
+         if (status != 0) {
+                 data->cancelled = 1;
+                 smp_wmb();
+@@ -5791,7 +5783,7 @@ static int _nfs4_proc_delegreturn(struct inode *inode, struct rpc_cred *cred, co
+ 		return PTR_ERR(task);
+ 	if (!issync)
+ 		goto out;
+-	status = nfs4_wait_for_completion_rpc_task(task);
++	status = rpc_wait_for_completion_task(task);
+ 	if (status != 0)
+ 		goto out;
+ 	status = data->rpc_status;
+@@ -6061,7 +6053,7 @@ static int nfs4_proc_unlck(struct nfs4_state *state, int cmd, struct file_lock *
+ 	status = PTR_ERR(task);
+ 	if (IS_ERR(task))
+ 		goto out;
+-	status = nfs4_wait_for_completion_rpc_task(task);
++	status = rpc_wait_for_completion_task(task);
+ 	rpc_put_task(task);
+ out:
+ 	request->fl_flags = fl_flags;
+@@ -6290,7 +6282,7 @@ static int _nfs4_do_setlk(struct nfs4_state *state, int cmd, struct file_lock *f
+ 	task = rpc_run_task(&task_setup_data);
+ 	if (IS_ERR(task))
+ 		return PTR_ERR(task);
+-	ret = nfs4_wait_for_completion_rpc_task(task);
++	ret = rpc_wait_for_completion_task(task);
+ 	if (ret == 0) {
+ 		ret = data->rpc_status;
+ 		if (ret)
+@@ -8358,7 +8350,7 @@ static int nfs41_proc_reclaim_complete(struct nfs_client *clp,
+ 		status = PTR_ERR(task);
+ 		goto out;
+ 	}
+-	status = nfs4_wait_for_completion_rpc_task(task);
++	status = rpc_wait_for_completion_task(task);
+ 	if (status == 0)
+ 		status = task->tk_status;
+ 	rpc_put_task(task);
+@@ -8590,7 +8582,7 @@ nfs4_proc_layoutget(struct nfs4_layoutget *lgp, long *timeout, gfp_t gfp_flags)
+ 	task = rpc_run_task(&task_setup_data);
+ 	if (IS_ERR(task))
+ 		return ERR_CAST(task);
+-	status = nfs4_wait_for_completion_rpc_task(task);
++	status = rpc_wait_for_completion_task(task);
+ 	if (status == 0) {
+ 		status = nfs4_layoutget_handle_exception(task, lgp, &exception);
+ 		*timeout = exception.timeout;
+-- 
+2.11.0
 
-It shouldn't be.  The "has session" test was already there to select between the two functions I merged, so I'd expect everything to keep working.
-
-Anna
-
-> 
-> 
->> I broke this change into several logical steps that (hopefully) make it easier
->> to follow what I did.
->>
->> Questions? Comments? Thoughts?
->> Anna
->>
->>
->> Anna Schumaker (11):
->>  NFS: Move nfs4_get_session() into nfs4_session.h
->>  NFS: Change nfs4_get_session() to take an nfs_client structure
->>  NFS: Change nfs4_setup_sequence() to take an nfs_client structure
->>  NFS: Use nfs4_setup_sequence() everywhere
->>  NFS: Create a single nfs4_setup_sequence() function
->>  NFS: Move slot-already-allocated check into nfs_setup_sequence()
->>  NFS: Lock the slot table from a single place during setup sequence
->>  NFS: Handle setup sequence task rescheduling in a single place
->>  NFS: Check if the slot table is draining from nfs4_setup_sequence()
->>  NFS: Merge the remaining setup_sequence functions
->>  NFS: Make trace_nfs4_setup_sequence() available to NFS v4.0
->>
->> fs/nfs/filelayout/filelayout.c         |   6 +-
->> fs/nfs/flexfilelayout/flexfilelayout.c |  40 ++----
->> fs/nfs/nfs42proc.c                     |   6 +-
->> fs/nfs/nfs4_fs.h                       |  15 +-
->> fs/nfs/nfs4proc.c                      | 244 +++++++++++----------------------
->> fs/nfs/nfs4session.h                   |   7 +
->> fs/nfs/nfs4trace.h                     |  64 ++++-----
->> 7 files changed, 139 insertions(+), 243 deletions(-)
->>
->> -- 
->> 2.11.0
->>
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
-> --
-> Chuck Lever
-> 
-> 
-> 
