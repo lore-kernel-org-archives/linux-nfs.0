@@ -1,101 +1,60 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from out01.mta.xmission.com ([166.70.13.231]:51959 "EHLO
-        out01.mta.xmission.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1756754AbdAKA0A (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 10 Jan 2017 19:26:00 -0500
-From: ebiederm@xmission.com (Eric W. Biederman)
-To: Seth Forshee <seth.forshee@canonical.com>
-Cc: Trond Myklebust <trondmy@primarydata.com>,
-        "bfields\@fieldses.org" <bfields@fieldses.org>,
-        "anna.schumaker\@netapp.com" <anna.schumaker@netapp.com>,
-        "linux-nfs\@vger.kernel.org" <linux-nfs@vger.kernel.org>
-References: <1481821992-77583-1-git-send-email-seth.forshee@canonical.com>
-        <1481842899.11785.1.camel@primarydata.com>
-        <20161216130609.GA124240@ubuntu-hedt>
-        <20170110145504.GH52661@ubuntu-hedt>
-Date: Wed, 11 Jan 2017 13:21:57 +1300
-In-Reply-To: <20170110145504.GH52661@ubuntu-hedt> (Seth Forshee's message of
-        "Tue, 10 Jan 2017 08:55:04 -0600")
-Message-ID: <87ziiyfntm.fsf@xmission.com>
+Received: from smtp-o-3.desy.de ([131.169.56.156]:33766 "EHLO smtp-o-3.desy.de"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S932601AbdAKH2Q (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 11 Jan 2017 02:28:16 -0500
+Received: from smtp-map-3.desy.de (smtp-map-3.desy.de [131.169.56.68])
+        by smtp-o-3.desy.de (DESY-O-3) with ESMTP id 061BC280A3B
+        for <linux-nfs@vger.kernel.org>; Wed, 11 Jan 2017 08:28:14 +0100 (CET)
+Received: from ZITSWEEP1.win.desy.de (zitsweep1.win.desy.de [131.169.97.95])
+        by smtp-map-3.desy.de (DESY_MAP_3) with ESMTP id EE56213F7
+        for <linux-nfs@vger.kernel.org>; Wed, 11 Jan 2017 08:28:13 +0100 (MET)
+Date: Wed, 11 Jan 2017 08:28:13 +0100 (CET)
+From: "Mkrtchyan, Tigran" <tigran.mkrtchyan@desy.de>
+To: Steve Dickson <SteveD@redhat.com>
+Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Message-ID: <1679996804.32913253.1484119693468.JavaMail.zimbra@desy.de>
+In-Reply-To: <eb6e41f7-39d4-92eb-efe9-b0cd807c6451@RedHat.com>
+References: <eb6e41f7-39d4-92eb-efe9-b0cd807c6451@RedHat.com>
+Subject: Re: ANNOUNCE: libnfsidmap-0.27 release.
 MIME-Version: 1.0
 Content-Type: text/plain; charset=utf-8
-Subject: Re: [PATCH] sunrpc: Use current_real_cred() when looking up rpc credentials
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Seth Forshee <seth.forshee@canonical.com> writes:
 
-> On Fri, Dec 16, 2016 at 07:06:09AM -0600, Seth Forshee wrote:
->> On Thu, Dec 15, 2016 at 11:01:41PM +0000, Trond Myklebust wrote:
->> > On Thu, 2016-12-15 at 11:13 -0600, Seth Forshee wrote:
->> > > Since 4.8 follow_automount() overrides the credentials with
->> > > &init_cred before calling d_automount(). When
->> > > rpcauth_lookupcred() is called in this context it is now using
->> > > fs[ug]id from the override creds instead of from the user's
->> > > creds, which can cause authentication to fail. To fix this, take
->> > > the ids from current_real_cred() instead.
->> > > 
->> > > Cc: stable@vger.kernel.org # v4.8+
->> > > CC: Eric W. Biederman <ebiederm@xmission.com>
->> > > Fixes: aeaa4a79ff6a ("fs: Call d_automount with the filesystems
->> > > creds")
->> > > Signed-off-by: Seth Forshee <seth.forshee@canonical.com>
->> > > ---
->> > >  net/sunrpc/auth.c | 2 +-
->> > >  1 file changed, 1 insertion(+), 1 deletion(-)
->> > > 
->> > > diff --git a/net/sunrpc/auth.c b/net/sunrpc/auth.c
->> > > index 2bff63a73cf8..e6197b2bda86 100644
->> > > --- a/net/sunrpc/auth.c
->> > > +++ b/net/sunrpc/auth.c
->> > > @@ -622,7 +622,7 @@ rpcauth_lookupcred(struct rpc_auth *auth, int
->> > > flags)
->> > >  {
->> > >  	struct auth_cred acred;
->> > >  	struct rpc_cred *ret;
->> > > -	const struct cred *cred = current_cred();
->> > > +	const struct cred *cred = current_real_cred();
->> > >  
->> > >  	dprintk("RPC:       looking up %s cred\n",
->> > >  		auth->au_ops->au_name);
->> > 
->> > Among other things, this will break the access() syscall.
->> 
->> Okay, I see that now.
->> 
->> > It's completely the wrong level in which to override credentials.
->> 
->> The reason for it is that sget() now has a capability check which will
->> fail on automount if current doesn't have CAP_SYS_ADMIN. So what are the
->> alternatives? A few ideas:
->> 
->>  - Instead of using a completely differnet set of creds, we could copy
->>    the current creds and raise CAP_SYS_ADMIN. This won't work if
->>    curreent is in a different user ns however.
->> 
->>  - Filesystems could get around the capability check by using
->>    sget_userns() during automount.
->> 
->>  - We could add a mount flag, say MS_AUTOMOUNT, and skip the capability
->>    check if that is set.
->> 
->> Any opinions or other ideas?
->
-> I haven't seen any responses, possibly just got lost in the shuffle
-> during the holidays (I know it slipped my mind for a while).
->
-> Eric, what do you think about the last option above? From what I can see
-> looking up rpc credentials just isn't going to work with current_cred
-> overridden as we're doing for automount.
 
-I got as far as there wasn't a correct thing to apply, and I have been
-bogged down in enough other things that I haven't gotten back to this
-one.
+----- Original Message -----
+> From: "Steve Dickson" <SteveD@redhat.com>
+> To: "Linux NFS Mailing list" <linux-nfs@vger.kernel.org>
+> Sent: Tuesday, January 10, 2017 5:59:50 PM
+> Subject: ANNOUNCE: libnfsidmap-0.27 release.
 
-My gut feel is that we propbably want to do a little more reworking on
-the autmount path.  But I don't exactly have a concrete proposal for
-you at the moment.  I just found another 10 year old bug in the mount
-code...
+> The majority in this release is bug fixes and clean up
+> as well as a couple features like:
+>  * Add options to aid id mapping in multi domain environments
+>  * Query DNS for the the NFSv4 domain
+> 
+> The tarballs can be found at
+>  https://fedorapeople.org/~steved/libnfsidmap/0.27/
+> 
+> The change log is at
+>   https://fedorapeople.org/~steved/libnfsidmap/libnfsidmap/0.27/0.27-Changelog
 
-Eric
+The correct link is:
 
+https://fedorapeople.org/~steved/libnfsidmap/0.27/0.27-Changelog
+
+Tigran.
+
+> 
+> The git tree is at:
+>  git://linux-nfs.org/~steved/libnfsidmap
+>  
+> Please send comments/bugs to linux-nfs@vger.kernel.org
+> 
+> steved.
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
