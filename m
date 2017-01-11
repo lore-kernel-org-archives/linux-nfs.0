@@ -1,13 +1,13 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx143.netapp.com ([216.240.21.24]:63323 "EHLO mx143.netapp.com"
+Received: from mx141.netapp.com ([216.240.21.12]:19473 "EHLO mx141.netapp.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1753434AbdAKSzN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 11 Jan 2017 13:55:13 -0500
+        id S1753382AbdAKSzL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 11 Jan 2017 13:55:11 -0500
 From: <Anna.Schumaker@Netapp.com>
 To: <linux-nfs@vger.kernel.org>
-Subject: [PATCH 10/11] NFS: Merge the remaining setup_sequence functions
-Date: Wed, 11 Jan 2017 13:54:53 -0500
-Message-ID: <20170111185454.9315-11-Anna.Schumaker@Netapp.com>
+Subject: [PATCH 05/11] NFS: Create a single nfs4_setup_sequence() function
+Date: Wed, 11 Jan 2017 13:54:48 -0500
+Message-ID: <20170111185454.9315-6-Anna.Schumaker@Netapp.com>
 In-Reply-To: <20170111185454.9315-1-Anna.Schumaker@Netapp.com>
 References: <20170111185454.9315-1-Anna.Schumaker@Netapp.com>
 MIME-Version: 1.0
@@ -17,136 +17,187 @@ List-ID: <linux-nfs.vger.kernel.org>
 
 From: Anna Schumaker <Anna.Schumaker@Netapp.com>
 
-This creates a single place for all the work to happen, using the
-presence of a session to determine if extra values need to be set.
+The inline ifdef lets us put everything in a single place, rather than
+having two (very similar) versions of this function.
 
 Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
 ---
- fs/nfs/nfs4proc.c | 87 +++++++++++++------------------------------------------
- 1 file changed, 20 insertions(+), 67 deletions(-)
+ fs/nfs/nfs4proc.c | 76 +++++++++++++++++++++----------------------------------
+ 1 file changed, 29 insertions(+), 47 deletions(-)
 
 diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index aaa87f4eacf2..31edcf07ac93 100644
+index 3f7199a0b784..132d73435b8f 100644
 --- a/fs/nfs/nfs4proc.c
 +++ b/fs/nfs/nfs4proc.c
-@@ -623,26 +623,6 @@ static void nfs4_set_sequence_privileged(struct nfs4_sequence_args *args)
- 	args->sa_privileged = 1;
+@@ -946,37 +946,14 @@ static int nfs41_setup_sequence(struct nfs4_session *session,
+ 	return -EAGAIN;
  }
  
--static int nfs40_setup_sequence(struct nfs4_slot_table *tbl,
--				struct nfs4_sequence_args *args,
--				struct nfs4_sequence_res *res,
--				struct rpc_task *task)
+-int nfs4_setup_sequence(const struct nfs_client *client,
+-			struct nfs4_sequence_args *args,
+-			struct nfs4_sequence_res *res,
+-			struct rpc_task *task)
 -{
--	struct nfs4_slot *slot;
+-	struct nfs4_session *session = nfs4_get_session(client);
+-	int ret = 0;
 -
--	slot = nfs4_alloc_slot(tbl);
--	if (IS_ERR(slot)) {
--		if (slot == ERR_PTR(-ENOMEM))
--			task->tk_timeout = HZ >> 2;
--		return -EAGAIN;
--	}
+-	if (!session)
+-		return nfs40_setup_sequence(client->cl_slot_tbl,
+-					    args, res, task);
 -
--	slot->privileged = args->sa_privileged ? 1 : 0;
--	args->sa_slot = slot;
--	res->sr_slot = slot;
--	return 0;
+-	dprintk("--> %s clp %p session %p sr_slot %u\n",
+-		__func__, session->clp, session, res->sr_slot ?
+-			res->sr_slot->slot_nr : NFS4_NO_SLOT);
+-
+-	ret = nfs41_setup_sequence(session, args, res, task);
+-
+-	dprintk("<-- %s status=%d\n", __func__, ret);
+-	return ret;
 -}
--
- static void nfs40_sequence_free_slot(struct nfs4_sequence_res *res)
- {
- 	struct nfs4_slot *slot = res->sr_slot;
-@@ -861,44 +841,6 @@ int nfs4_sequence_done(struct rpc_task *task, struct nfs4_sequence_res *res)
- }
- EXPORT_SYMBOL_GPL(nfs4_sequence_done);
- 
--static int nfs41_setup_sequence(struct nfs4_session *session,
--				struct nfs4_sequence_args *args,
--				struct nfs4_sequence_res *res,
--				struct rpc_task *task)
--{
--	struct nfs4_slot *slot;
--	struct nfs4_slot_table *tbl;
--
--	dprintk("--> %s\n", __func__);
--	tbl = &session->fc_slot_table;
--
--	slot = nfs4_alloc_slot(tbl);
--	if (IS_ERR(slot)) {
--		/* If out of memory, try again in 1/4 second */
--		if (slot == ERR_PTR(-ENOMEM))
--			task->tk_timeout = HZ >> 2;
--		dprintk("<-- %s: no free slots\n", __func__);
--		return -EAGAIN;
--	}
--
--	slot->privileged = args->sa_privileged ? 1 : 0;
--	args->sa_slot = slot;
--
--	dprintk("<-- %s slotid=%u seqid=%u\n", __func__,
--			slot->slot_nr, slot->seq_nr);
--
--	res->sr_slot = slot;
--	res->sr_timestamp = jiffies;
--	res->sr_status_flags = 0;
--	/*
--	 * sr_status is only set in decode_sequence, and so will remain
--	 * set to 1 if an rpc level failure occurs.
--	 */
--	res->sr_status = 1;
--	trace_nfs4_setup_sequence(session, args);
--	return 0;
--}
+-EXPORT_SYMBOL_GPL(nfs4_setup_sequence);
 -
  static void nfs41_call_sync_prepare(struct rpc_task *task, void *calldata)
  {
  	struct nfs4_call_sync_data *data = calldata;
-@@ -950,7 +892,7 @@ int nfs4_setup_sequence(const struct nfs_client *client,
- {
- 	struct nfs4_session *session = nfs4_get_session(client);
- 	struct nfs4_slot_table *tbl  = client->cl_slot_tbl;
--	int ret;
-+	struct nfs4_slot *slot;
+-	struct nfs4_session *session = nfs4_get_session(data->seq_server->nfs_client);
  
- 	/* slot already allocated? */
- 	if (res->sr_slot != NULL)
-@@ -966,17 +908,28 @@ int nfs4_setup_sequence(const struct nfs_client *client,
- 	if (nfs4_slot_tbl_draining(tbl) && !args->sa_privileged)
- 		goto out_sleep;
+ 	dprintk("--> %s data->seq_server %p\n", __func__, data->seq_server);
  
--#if defined(CONFIG_NFS_V4_1)
--	if (session)
--		ret = nfs41_setup_sequence(session, args, res, task);
--	else
--#endif /* CONFIG_NFS_V4_1 */
--		ret = nfs40_setup_sequence(client->cl_slot_tbl, args, res, task);
+-	nfs41_setup_sequence(session, data->seq_args, data->seq_res, task);
++	nfs4_setup_sequence(data->seq_server->nfs_client,
++			    data->seq_args, data->seq_res, task);
+ }
+ 
+ static void nfs41_call_sync_done(struct rpc_task *task, void *calldata)
+@@ -993,15 +970,6 @@ static const struct rpc_call_ops nfs41_call_sync_ops = {
+ 
+ #else	/* !CONFIG_NFS_V4_1 */
+ 
+-int nfs4_setup_sequence(const struct nfs_client *client,
+-			struct nfs4_sequence_args *args,
+-			struct nfs4_sequence_res *res,
+-			struct rpc_task *task)
+-{
+-	return nfs40_setup_sequence(client->cl_slot_tbl, args, res, task);
+-}
+-EXPORT_SYMBOL_GPL(nfs4_setup_sequence);
 -
--	if (ret == -EAGAIN)
-+	slot = nfs4_alloc_slot(tbl);
-+	if (IS_ERR(slot)) {
-+		/* Try again in 1/4 second */
-+		if (slot == ERR_PTR(-ENOMEM))
-+			task->tk_timeout = HZ >> 2;
- 		goto out_sleep;
-+	}
- 	spin_unlock(&tbl->slot_tbl_lock);
+ static int nfs4_sequence_process(struct rpc_task *task, struct nfs4_sequence_res *res)
+ {
+ 	return nfs40_sequence_done(task, res);
+@@ -1022,6 +990,22 @@ EXPORT_SYMBOL_GPL(nfs4_sequence_done);
  
-+	slot->privileged = args->sa_privileged ? 1 : 0;
-+	args->sa_slot = slot;
+ #endif	/* !CONFIG_NFS_V4_1 */
+ 
++int nfs4_setup_sequence(const struct nfs_client *client,
++			struct nfs4_sequence_args *args,
++			struct nfs4_sequence_res *res,
++			struct rpc_task *task)
++{
++#if defined(CONFIG_NFS_V4_1)
++	struct nfs4_session *session = nfs4_get_session(client);
 +
-+	res->sr_slot = slot;
-+	if (session) {
-+		res->sr_timestamp = jiffies;
-+		res->sr_status_flags = 0;
-+		res->sr_status = 1;
-+#ifdef CONFIG_NFS_V4_1
-+		trace_nfs4_setup_sequence(session, args);
++	if (session)
++		return nfs41_setup_sequence(session, args, res, task);
 +#endif /* CONFIG_NFS_V4_1 */
-+	}
++	return nfs40_setup_sequence(client->cl_slot_tbl, args, res, task);
 +
- out_start:
- 	rpc_call_start(task);
- 	return 0;
++}
++EXPORT_SYMBOL_GPL(nfs4_setup_sequence);
++
+ static void nfs40_call_sync_prepare(struct rpc_task *task, void *calldata)
+ {
+ 	struct nfs4_call_sync_data *data = calldata;
+@@ -2046,8 +2030,8 @@ static void nfs4_open_confirm_prepare(struct rpc_task *task, void *calldata)
+ {
+ 	struct nfs4_opendata *data = calldata;
+ 
+-	nfs40_setup_sequence(data->o_arg.server->nfs_client->cl_slot_tbl,
+-			     &data->c_arg.seq_args, &data->c_res.seq_res, task);
++	nfs4_setup_sequence(data->o_arg.server->nfs_client,
++			   &data->c_arg.seq_args, &data->c_res.seq_res, task);
+ }
+ 
+ static void nfs4_open_confirm_done(struct rpc_task *task, void *calldata)
+@@ -6631,8 +6615,8 @@ static void nfs4_release_lockowner_prepare(struct rpc_task *task, void *calldata
+ {
+ 	struct nfs_release_lockowner_data *data = calldata;
+ 	struct nfs_server *server = data->server;
+-	nfs40_setup_sequence(server->nfs_client->cl_slot_tbl,
+-			     &data->args.seq_args, &data->res.seq_res, task);
++	nfs4_setup_sequence(server->nfs_client, &data->args.seq_args,
++			   &data->res.seq_res, task);
+ 	data->args.lock_owner.clientid = server->nfs_client->cl_clientid;
+ 	data->timestamp = jiffies;
+ }
+@@ -7822,7 +7806,7 @@ static void nfs4_get_lease_time_prepare(struct rpc_task *task,
+ 	dprintk("--> %s\n", __func__);
+ 	/* just setup sequence, do not trigger session recovery
+ 	   since we're invoked within one */
+-	nfs41_setup_sequence(data->clp->cl_session,
++	nfs4_setup_sequence(data->clp,
+ 			&data->args->la_seq_args,
+ 			&data->res->lr_seq_res,
+ 			task);
+@@ -8193,7 +8177,7 @@ static void nfs41_sequence_prepare(struct rpc_task *task, void *data)
+ 	args = task->tk_msg.rpc_argp;
+ 	res = task->tk_msg.rpc_resp;
+ 
+-	nfs41_setup_sequence(clp->cl_session, args, res, task);
++	nfs4_setup_sequence(clp, args, res, task);
+ }
+ 
+ static const struct rpc_call_ops nfs41_sequence_ops = {
+@@ -8281,7 +8265,7 @@ static void nfs4_reclaim_complete_prepare(struct rpc_task *task, void *data)
+ {
+ 	struct nfs4_reclaim_complete_data *calldata = data;
+ 
+-	nfs41_setup_sequence(calldata->clp->cl_session,
++	nfs4_setup_sequence(calldata->clp,
+ 			&calldata->arg.seq_args,
+ 			&calldata->res.seq_res,
+ 			task);
+@@ -8388,10 +8372,9 @@ nfs4_layoutget_prepare(struct rpc_task *task, void *calldata)
+ {
+ 	struct nfs4_layoutget *lgp = calldata;
+ 	struct nfs_server *server = NFS_SERVER(lgp->args.inode);
+-	struct nfs4_session *session = nfs4_get_session(server->nfs_client);
+ 
+ 	dprintk("--> %s\n", __func__);
+-	nfs41_setup_sequence(session, &lgp->args.seq_args,
++	nfs4_setup_sequence(server->nfs_client, &lgp->args.seq_args,
+ 				&lgp->res.seq_res, task);
+ 	dprintk("<-- %s\n", __func__);
+ }
+@@ -8634,7 +8617,7 @@ nfs4_layoutreturn_prepare(struct rpc_task *task, void *calldata)
+ 	struct nfs4_layoutreturn *lrp = calldata;
+ 
+ 	dprintk("--> %s\n", __func__);
+-	nfs41_setup_sequence(lrp->clp->cl_session,
++	nfs4_setup_sequence(lrp->clp,
+ 			&lrp->args.seq_args,
+ 			&lrp->res.seq_res,
+ 			task);
+@@ -8784,9 +8767,8 @@ static void nfs4_layoutcommit_prepare(struct rpc_task *task, void *calldata)
+ {
+ 	struct nfs4_layoutcommit_data *data = calldata;
+ 	struct nfs_server *server = NFS_SERVER(data->args.inode);
+-	struct nfs4_session *session = nfs4_get_session(server->nfs_client);
+ 
+-	nfs41_setup_sequence(session,
++	nfs4_setup_sequence(server->nfs_client,
+ 			&data->args.seq_args,
+ 			&data->res.seq_res,
+ 			task);
+@@ -9110,7 +9092,7 @@ struct nfs_free_stateid_data {
+ static void nfs41_free_stateid_prepare(struct rpc_task *task, void *calldata)
+ {
+ 	struct nfs_free_stateid_data *data = calldata;
+-	nfs41_setup_sequence(nfs4_get_session(data->server->nfs_client),
++	nfs4_setup_sequence(data->server->nfs_client,
+ 			&data->args.seq_args,
+ 			&data->res.seq_res,
+ 			task);
 -- 
 2.11.0
 
