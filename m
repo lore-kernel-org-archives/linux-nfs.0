@@ -1,13 +1,13 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx144.netapp.com ([216.240.21.25]:63691 "EHLO mx144.netapp.com"
+Received: from mx141.netapp.com ([216.240.21.12]:55666 "EHLO mx141.netapp.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1752882AbdAKSzH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 11 Jan 2017 13:55:07 -0500
+        id S1752914AbdAKSzI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 11 Jan 2017 13:55:08 -0500
 From: <Anna.Schumaker@Netapp.com>
 To: <linux-nfs@vger.kernel.org>
-Subject: [PATCH 01/11] NFS: Move nfs4_get_session() into nfs4_session.h
-Date: Wed, 11 Jan 2017 13:54:44 -0500
-Message-ID: <20170111185454.9315-2-Anna.Schumaker@Netapp.com>
+Subject: [PATCH 02/11] NFS: Change nfs4_get_session() to take an nfs_client structure
+Date: Wed, 11 Jan 2017 13:54:45 -0500
+Message-ID: <20170111185454.9315-3-Anna.Schumaker@Netapp.com>
 In-Reply-To: <20170111185454.9315-1-Anna.Schumaker@Netapp.com>
 References: <20170111185454.9315-1-Anna.Schumaker@Netapp.com>
 MIME-Version: 1.0
@@ -17,73 +17,98 @@ List-ID: <linux-nfs.vger.kernel.org>
 
 From: Anna Schumaker <Anna.Schumaker@Netapp.com>
 
-This puts session related functions together in the same space.  I only
-keep one version of this function, since this variable will always be
-NULL when using NFS v4.0.
+pNFS only has access to the nfs_client structure, and not the
+nfs_server, so we need to make this change so the function can be used
+by pNFS as well.
 
 Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
 ---
- fs/nfs/nfs42proc.c   |  1 +
- fs/nfs/nfs4_fs.h     | 10 ----------
- fs/nfs/nfs4session.h |  5 +++++
- 3 files changed, 6 insertions(+), 10 deletions(-)
+ fs/nfs/nfs42proc.c   |  5 ++---
+ fs/nfs/nfs4proc.c    | 10 +++++-----
+ fs/nfs/nfs4session.h |  4 ++--
+ 3 files changed, 9 insertions(+), 10 deletions(-)
 
 diff --git a/fs/nfs/nfs42proc.c b/fs/nfs/nfs42proc.c
-index d12ff9385f49..b752d85ad8c6 100644
+index b752d85ad8c6..b03010eebafd 100644
 --- a/fs/nfs/nfs42proc.c
 +++ b/fs/nfs/nfs42proc.c
-@@ -12,6 +12,7 @@
- #include "nfs42.h"
- #include "iostat.h"
- #include "pnfs.h"
-+#include "nfs4session.h"
- #include "internal.h"
- 
- #define NFSDBG_FACILITY NFSDBG_PROC
-diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
-index 665165833660..04ffea093d56 100644
---- a/fs/nfs/nfs4_fs.h
-+++ b/fs/nfs/nfs4_fs.h
-@@ -273,11 +273,6 @@ extern int nfs4_set_rw_stateid(nfs4_stateid *stateid,
- 		fmode_t fmode);
- 
- #if defined(CONFIG_NFS_V4_1)
--static inline struct nfs4_session *nfs4_get_session(const struct nfs_server *server)
--{
--	return server->nfs_client->cl_session;
--}
+@@ -332,9 +332,8 @@ nfs42_layoutstat_prepare(struct rpc_task *task, void *calldata)
+ 	}
+ 	nfs4_stateid_copy(&data->args.stateid, &lo->plh_stateid);
+ 	spin_unlock(&inode->i_lock);
+-	nfs41_setup_sequence(nfs4_get_session(server), &data->args.seq_args,
+-			     &data->res.seq_res, task);
 -
- extern int nfs41_setup_sequence(struct nfs4_session *session,
- 		struct nfs4_sequence_args *args, struct nfs4_sequence_res *res,
- 		struct rpc_task *task);
-@@ -357,11 +352,6 @@ nfs4_state_protect_write(struct nfs_client *clp, struct rpc_clnt **clntp,
- 		hdr->args.stable = NFS_FILE_SYNC;
++	nfs41_setup_sequence(nfs4_get_session(server->nfs_client),
++			     &data->args.seq_args, &data->res.seq_res, task);
  }
- #else /* CONFIG_NFS_v4_1 */
--static inline struct nfs4_session *nfs4_get_session(const struct nfs_server *server)
--{
--	return NULL;
--}
--
- static inline bool
- is_ds_only_client(struct nfs_client *clp)
+ 
+ static void
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 6dcbc5defb7a..d1fde35bfd7e 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -953,7 +953,7 @@ static int nfs4_setup_sequence(const struct nfs_server *server,
+ 			       struct nfs4_sequence_res *res,
+ 			       struct rpc_task *task)
  {
+-	struct nfs4_session *session = nfs4_get_session(server);
++	struct nfs4_session *session = nfs4_get_session(server->nfs_client);
+ 	int ret = 0;
+ 
+ 	if (!session)
+@@ -973,7 +973,7 @@ static int nfs4_setup_sequence(const struct nfs_server *server,
+ static void nfs41_call_sync_prepare(struct rpc_task *task, void *calldata)
+ {
+ 	struct nfs4_call_sync_data *data = calldata;
+-	struct nfs4_session *session = nfs4_get_session(data->seq_server);
++	struct nfs4_session *session = nfs4_get_session(data->seq_server->nfs_client);
+ 
+ 	dprintk("--> %s data->seq_server %p\n", __func__, data->seq_server);
+ 
+@@ -8389,7 +8389,7 @@ nfs4_layoutget_prepare(struct rpc_task *task, void *calldata)
+ {
+ 	struct nfs4_layoutget *lgp = calldata;
+ 	struct nfs_server *server = NFS_SERVER(lgp->args.inode);
+-	struct nfs4_session *session = nfs4_get_session(server);
++	struct nfs4_session *session = nfs4_get_session(server->nfs_client);
+ 
+ 	dprintk("--> %s\n", __func__);
+ 	nfs41_setup_sequence(session, &lgp->args.seq_args,
+@@ -8785,7 +8785,7 @@ static void nfs4_layoutcommit_prepare(struct rpc_task *task, void *calldata)
+ {
+ 	struct nfs4_layoutcommit_data *data = calldata;
+ 	struct nfs_server *server = NFS_SERVER(data->args.inode);
+-	struct nfs4_session *session = nfs4_get_session(server);
++	struct nfs4_session *session = nfs4_get_session(server->nfs_client);
+ 
+ 	nfs41_setup_sequence(session,
+ 			&data->args.seq_args,
+@@ -9111,7 +9111,7 @@ struct nfs_free_stateid_data {
+ static void nfs41_free_stateid_prepare(struct rpc_task *task, void *calldata)
+ {
+ 	struct nfs_free_stateid_data *data = calldata;
+-	nfs41_setup_sequence(nfs4_get_session(data->server),
++	nfs41_setup_sequence(nfs4_get_session(data->server->nfs_client),
+ 			&data->args.seq_args,
+ 			&data->res.seq_res,
+ 			task);
 diff --git a/fs/nfs/nfs4session.h b/fs/nfs/nfs4session.h
-index dae385500005..22cb55015b2b 100644
+index 22cb55015b2b..f6378d95b1b5 100644
 --- a/fs/nfs/nfs4session.h
 +++ b/fs/nfs/nfs4session.h
-@@ -103,6 +103,11 @@ static inline bool nfs4_test_locked_slot(const struct nfs4_slot_table *tbl,
+@@ -103,9 +103,9 @@ static inline bool nfs4_test_locked_slot(const struct nfs4_slot_table *tbl,
  	return !!test_bit(slotid, tbl->used_slots);
  }
  
-+static inline struct nfs4_session *nfs4_get_session(const struct nfs_server *server)
-+{
-+	return server->nfs_client->cl_session;
-+}
-+
+-static inline struct nfs4_session *nfs4_get_session(const struct nfs_server *server)
++static inline struct nfs4_session *nfs4_get_session(const struct nfs_client *clp)
+ {
+-	return server->nfs_client->cl_session;
++	return clp->cl_session;
+ }
+ 
  #if defined(CONFIG_NFS_V4_1)
- extern void nfs41_set_target_slotid(struct nfs4_slot_table *tbl,
- 		u32 target_highest_slotid);
 -- 
 2.11.0
 
