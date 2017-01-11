@@ -1,44 +1,101 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from forward8j.cmail.yandex.net ([5.255.227.109]:34588 "EHLO
-        forward8j.cmail.yandex.net" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1750959AbdAJWpV (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 10 Jan 2017 17:45:21 -0500
-Received: from mxback7m.mail.yandex.net (mxback7m.mail.yandex.net [37.140.138.67])
-        by forward8j.cmail.yandex.net (Yandex) with ESMTP id 30F9522113
-        for <linux-nfs@vger.kernel.org>; Wed, 11 Jan 2017 01:37:51 +0300 (MSK)
-From: =?utf-8?B?0JfQsNCx0L7Qu9C+0YLQvdGL0Lkg0JDQvdC00YDQtdC5?=
-        <zapparello@yandex.ru>
-To: linux-nfs@vger.kernel.org
-Subject: NFSD high CPU usage
+Received: from out01.mta.xmission.com ([166.70.13.231]:51959 "EHLO
+        out01.mta.xmission.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1756754AbdAKA0A (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 10 Jan 2017 19:26:00 -0500
+From: ebiederm@xmission.com (Eric W. Biederman)
+To: Seth Forshee <seth.forshee@canonical.com>
+Cc: Trond Myklebust <trondmy@primarydata.com>,
+        "bfields\@fieldses.org" <bfields@fieldses.org>,
+        "anna.schumaker\@netapp.com" <anna.schumaker@netapp.com>,
+        "linux-nfs\@vger.kernel.org" <linux-nfs@vger.kernel.org>
+References: <1481821992-77583-1-git-send-email-seth.forshee@canonical.com>
+        <1481842899.11785.1.camel@primarydata.com>
+        <20161216130609.GA124240@ubuntu-hedt>
+        <20170110145504.GH52661@ubuntu-hedt>
+Date: Wed, 11 Jan 2017 13:21:57 +1300
+In-Reply-To: <20170110145504.GH52661@ubuntu-hedt> (Seth Forshee's message of
+        "Tue, 10 Jan 2017 08:55:04 -0600")
+Message-ID: <87ziiyfntm.fsf@xmission.com>
 MIME-Version: 1.0
-Message-Id: <3185301484087870@web25m.yandex.ru>
-Date: Wed, 11 Jan 2017 01:37:50 +0300
-Content-Type: text/plain
+Content-Type: text/plain; charset=utf-8
+Subject: Re: [PATCH] sunrpc: Use current_real_cred() when looking up rpc credentials
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hello!
+Seth Forshee <seth.forshee@canonical.com> writes:
 
-I'm trying to narrow down a problem I've got, and I'm asking for help from knowledgeable people.
-I'm sorry if this is the wrong place to ask, please direct me to the right place if I'm wrong.
+> On Fri, Dec 16, 2016 at 07:06:09AM -0600, Seth Forshee wrote:
+>> On Thu, Dec 15, 2016 at 11:01:41PM +0000, Trond Myklebust wrote:
+>> > On Thu, 2016-12-15 at 11:13 -0600, Seth Forshee wrote:
+>> > > Since 4.8 follow_automount() overrides the credentials with
+>> > > &init_cred before calling d_automount(). When
+>> > > rpcauth_lookupcred() is called in this context it is now using
+>> > > fs[ug]id from the override creds instead of from the user's
+>> > > creds, which can cause authentication to fail. To fix this, take
+>> > > the ids from current_real_cred() instead.
+>> > > 
+>> > > Cc: stable@vger.kernel.org # v4.8+
+>> > > CC: Eric W. Biederman <ebiederm@xmission.com>
+>> > > Fixes: aeaa4a79ff6a ("fs: Call d_automount with the filesystems
+>> > > creds")
+>> > > Signed-off-by: Seth Forshee <seth.forshee@canonical.com>
+>> > > ---
+>> > >  net/sunrpc/auth.c | 2 +-
+>> > >  1 file changed, 1 insertion(+), 1 deletion(-)
+>> > > 
+>> > > diff --git a/net/sunrpc/auth.c b/net/sunrpc/auth.c
+>> > > index 2bff63a73cf8..e6197b2bda86 100644
+>> > > --- a/net/sunrpc/auth.c
+>> > > +++ b/net/sunrpc/auth.c
+>> > > @@ -622,7 +622,7 @@ rpcauth_lookupcred(struct rpc_auth *auth, int
+>> > > flags)
+>> > >  {
+>> > >  	struct auth_cred acred;
+>> > >  	struct rpc_cred *ret;
+>> > > -	const struct cred *cred = current_cred();
+>> > > +	const struct cred *cred = current_real_cred();
+>> > >  
+>> > >  	dprintk("RPC:       looking up %s cred\n",
+>> > >  		auth->au_ops->au_name);
+>> > 
+>> > Among other things, this will break the access() syscall.
+>> 
+>> Okay, I see that now.
+>> 
+>> > It's completely the wrong level in which to override credentials.
+>> 
+>> The reason for it is that sget() now has a capability check which will
+>> fail on automount if current doesn't have CAP_SYS_ADMIN. So what are the
+>> alternatives? A few ideas:
+>> 
+>>  - Instead of using a completely differnet set of creds, we could copy
+>>    the current creds and raise CAP_SYS_ADMIN. This won't work if
+>>    curreent is in a different user ns however.
+>> 
+>>  - Filesystems could get around the capability check by using
+>>    sget_userns() during automount.
+>> 
+>>  - We could add a mount flag, say MS_AUTOMOUNT, and skip the capability
+>>    check if that is set.
+>> 
+>> Any opinions or other ideas?
+>
+> I haven't seen any responses, possibly just got lost in the shuffle
+> during the holidays (I know it slipped my mind for a while).
+>
+> Eric, what do you think about the last option above? From what I can see
+> looking up rpc credentials just isn't going to work with current_cred
+> overridden as we're doing for automount.
 
-I have a simple NAS which is built around a dual-core 300MHz ARM with linux 2.6.31, and has a gigabit Ethernet controller.
-It can share a SATA hard drive (I have a 2Tb drive installed) over the network using NFSv3 and SMB.
-I did a comparison of the raw download speed from NAS hard disk over the GbE to my PC using NFSv3 and SAMBA.
-Basically, I just copy a large enough file (several gigabytes) from the mounted NAS share to /dev/null.
+I got as far as there wasn't a correct thing to apply, and I have been
+bogged down in enough other things that I haven't gotten back to this
+one.
 
-With SAMBA I get about 53Mbyte/second (over 400 Megabits) and NAS CPU usage of a single CPU ARM core is about 26%, the other core is idle.
+My gut feel is that we propbably want to do a little more reworking on
+the autmount path.  But I don't exactly have a concrete proposal for
+you at the moment.  I just found another 10 year old bug in the mount
+code...
 
-With NFS I get about 17MByte/second when using one NFSD thread and about 28MByte/second when using two and more NFSD threads. In this case the limiting factor is CPU as I can see a 100% CPU load on one or both cores. I tried using TCP or UDP, played with rsize/wsize but this does not change the results much.
+Eric
 
-I have the kernel sources from the manufacturer, so my idea is to fix the problem and update the kernel on NAS.
-
-So, my questions are:
-
-1. Are there any changes in kernel NFSD since kernel 2.6.31 that could influence CPU usage? I could try to backport the patches.
-
-2. What could cause this high CPU usage on just sequential reads from a file on a NFS drive? In fs/nfsd/vfs.c I see that the nfsd_read() function will open the file, read some bytes, and close it - on every read operation? Is this the cause of high CPU load? 
-Also, I can see that NFSv4 does not do the open/close on every read - is NFSv4 CPU usage lower when issuing many sequential reads?
-
--- 
-Andrew
