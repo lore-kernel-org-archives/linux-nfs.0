@@ -1,134 +1,66 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:60064 "EHLO fieldses.org"
+Received: from fieldses.org ([173.255.197.46]:60072 "EHLO fieldses.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1750733AbdALVIa (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 12 Jan 2017 16:08:30 -0500
-Date: Thu, 12 Jan 2017 16:08:26 -0500
+        id S1750730AbdALVPg (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 12 Jan 2017 16:15:36 -0500
+Date: Thu, 12 Jan 2017 16:15:35 -0500
 From: "J. Bruce Fields" <bfields@fieldses.org>
-To: NeilBrown <neilb@suse.com>
-Cc: andros@netapp.com, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH Version 4] SVCAUTH reap the rsc cache entry on
- RPC_SS_PROC_DESTROY
-Message-ID: <20170112210826.GD10501@fieldses.org>
-References: <1482428286-33744-1-git-send-email-andros@netapp.com>
- <1482428286-33744-2-git-send-email-andros@netapp.com>
- <20170104202634.GA21562@fieldses.org>
- <8737gymss7.fsf@notabene.neil.brown.name>
- <20170106210111.GA31401@fieldses.org>
- <874m1bloyp.fsf@notabene.neil.brown.name>
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: Sriharsha Basavapatna <sriharsha.basavapatna@broadcom.com>,
+        Yuval Shaia <yuval.shaia@oracle.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        List Linux RDMA Mailing <linux-rdma@vger.kernel.org>
+Subject: Re: [PATCH] svcrdma: avoid duplicate dma unmapping during error
+ recovery
+Message-ID: <20170112211535.GE10501@fieldses.org>
+References: <20170109103044.5590-1-sriharsha.basavapatna@broadcom.com>
+ <20170109064224.GA3820@yuval-lap>
+ <5761AF19-DF8B-44CE-B744-C21464958041@oracle.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <874m1bloyp.fsf@notabene.neil.brown.name>
+In-Reply-To: <5761AF19-DF8B-44CE-B744-C21464958041@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sat, Jan 07, 2017 at 10:59:26AM +1100, NeilBrown wrote:
-> How about applying
-> >> >  -		rsci->h.expiry_time = get_seconds();
-> >> >  +		rsci->h.expiry_time = seconds_since_boot();
+On Mon, Jan 09, 2017 at 10:05:48AM -0500, Chuck Lever wrote:
 > 
-> first with a Cc: to stable (and a Fixes:), then this patch on top of
-> that without the Cc.
+> > On Jan 9, 2017, at 1:42 AM, Yuval Shaia <yuval.shaia@oracle.com> wrote:
+> > 
+> > On Mon, Jan 09, 2017 at 04:00:44PM +0530, Sriharsha Basavapatna wrote:
+> >> In rdma_read_chunk_frmr() when ib_post_send() fails, the error code path
+> >> invokes ib_dma_unmap_sg() to unmap the sg list. It then invokes
+> >> svc_rdma_put_frmr() which in turn tries to unmap the same sg list through
+> >> ib_dma_unmap_sg() again. This second unmap is invalid and could lead to
+> >> problems when the iova being unmapped is subsequently reused. Remove
+> >> the call to unmap in rdma_read_chunk_frmr() and let svc_rdma_put_frmr()
+> >> handle it.
+> >> 
+> >> Fixes: 412a15c0fe53 ("svcrdma: Port to new memory registration API")
+> >> Cc: stable@vger.kernel.org
+> >> Signed-off-by: Sriharsha Basavapatna <sriharsha.basavapatna@broadcom.com>
+> >> Reviewed-by: Chuck Lever <chuck.lever@oracle.com>
+> >> ---
+> >> net/sunrpc/xprtrdma/svc_rdma_recvfrom.c | 2 --
+> >> 1 file changed, 2 deletions(-)
+> >> 
+> >> diff --git a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
+> >> index 57d35fbb1c28..172b537f8cfc 100644
+> >> --- a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
+> >> +++ b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
+> >> @@ -347,8 +347,6 @@ int rdma_read_chunk_frmr(struct svcxprt_rdma *xprt,
+> >> 	atomic_inc(&rdma_stat_read);
+> >> 	return ret;
+> >>  err:
+> >> -	ib_dma_unmap_sg(xprt->sc_cm_id->device,
+> >> -			frmr->sg, frmr->sg_nents, frmr->direction);
+> >> 	svc_rdma_put_context(ctxt, 0);
+> >> 	svc_rdma_put_frmr(xprt, frmr);
+> >> 	return ret;
+> > 
+> > Reviewed-by: Yuval Shaia <yuval.shaia@oracle.com>
+> 
+> Hi Bruce-
+> 
+> Is it possible to take this in v4.10-rc ?
 
-Oh, good idea, thanks.  Results below.
-
-commit 78794d189070
-Author: J. Bruce Fields <bfields@redhat.com>
-Date:   Mon Jan 9 17:15:18 2017 -0500
-
-    svcrpc: don't leak contexts on PROC_DESTROY
-    
-    Context expiry times are in units of seconds since boot, not unix time.
-    
-    The use of get_seconds() here therefore sets the expiry time decades in
-    the future.  This prevents timely freeing of contexts destroyed by
-    client RPC_GSS_PROC_DESTROY requests.  We'd still free them eventually
-    (when the module is unloaded or the container shut down), but a lot of
-    contexts could pile up before then.
-    
-    Cc: stable@vger.kernel.org
-    Fixes: c5b29f885afe "sunrpc: use seconds since boot in expiry cache"
-    Reported-by: Andy Adamson <andros@netapp.com>
-    Signed-off-by: J. Bruce Fields <bfields@redhat.com>
-
-diff --git a/net/sunrpc/auth_gss/svcauth_gss.c b/net/sunrpc/auth_gss/svcauth_gss.c
-index 886e9d381771..153082598522 100644
---- a/net/sunrpc/auth_gss/svcauth_gss.c
-+++ b/net/sunrpc/auth_gss/svcauth_gss.c
-@@ -1489,7 +1489,7 @@ svcauth_gss_accept(struct svc_rqst *rqstp, __be32 *authp)
- 	case RPC_GSS_PROC_DESTROY:
- 		if (gss_write_verf(rqstp, rsci->mechctx, gc->gc_seq))
- 			goto auth_err;
--		rsci->h.expiry_time = get_seconds();
-+		rsci->h.expiry_time = seconds_since_boot();
- 		set_bit(CACHE_NEGATIVE, &rsci->h.flags);
- 		if (resv->iov_len + 4 > PAGE_SIZE)
- 			goto drop;
-commit 987a7601aa80
-Author: Neil Brown <neilb@suse.com>
-Date:   Thu Dec 22 12:38:06 2016 -0500
-
-    svcrpc: free contexts immediately on PROC_DESTROY
-    
-    We currently handle a client PROC_DESTROY request by turning it
-    CACHE_NEGATIVE, setting the expired time to now, and then waiting for
-    cache_clean to clean it up later.  Since we forgot to set the cache's
-    nextcheck value, that could take up to 30 minutes.  Also, though there's
-    probably no real bug in this case, setting CACHE_NEGATIVE directly like
-    this probably isn't a great idea in general.
-    
-    So let's just remove the entry from the cache directly, and move this
-    bit of cache manipulation to a helper function.
-    
-    Signed-off-by: Neil Brown <neilb@suse.com>
-    Reported-by: Andy Adamson <andros@netapp.com>
-    Signed-off-by: Andy Adamson <andros@netapp.com>
-    Signed-off-by: J. Bruce Fields <bfields@redhat.com>
-
-diff --git a/include/linux/sunrpc/cache.h b/include/linux/sunrpc/cache.h
-index 62a60eeacb0a..9dcf2c8fe1c5 100644
---- a/include/linux/sunrpc/cache.h
-+++ b/include/linux/sunrpc/cache.h
-@@ -227,6 +227,7 @@ extern void sunrpc_destroy_cache_detail(struct cache_detail *cd);
- extern int sunrpc_cache_register_pipefs(struct dentry *parent, const char *,
- 					umode_t, struct cache_detail *);
- extern void sunrpc_cache_unregister_pipefs(struct cache_detail *);
-+extern void sunrpc_cache_unhash(struct cache_detail *, struct cache_head *);
- 
- /* Must store cache_detail in seq_file->private if using next three functions */
- extern void *cache_seq_start(struct seq_file *file, loff_t *pos);
-diff --git a/net/sunrpc/auth_gss/svcauth_gss.c b/net/sunrpc/auth_gss/svcauth_gss.c
-index 153082598522..a54a7a3d28f5 100644
---- a/net/sunrpc/auth_gss/svcauth_gss.c
-+++ b/net/sunrpc/auth_gss/svcauth_gss.c
-@@ -1489,8 +1489,8 @@ svcauth_gss_accept(struct svc_rqst *rqstp, __be32 *authp)
- 	case RPC_GSS_PROC_DESTROY:
- 		if (gss_write_verf(rqstp, rsci->mechctx, gc->gc_seq))
- 			goto auth_err;
--		rsci->h.expiry_time = seconds_since_boot();
--		set_bit(CACHE_NEGATIVE, &rsci->h.flags);
-+		/* Delete the entry from the cache_list and call cache_put */
-+		sunrpc_cache_unhash(sn->rsc_cache, &rsci->h);
- 		if (resv->iov_len + 4 > PAGE_SIZE)
- 			goto drop;
- 		svc_putnl(resv, RPC_SUCCESS);
-diff --git a/net/sunrpc/cache.c b/net/sunrpc/cache.c
-index 8147e8d56eb2..502b9fe9817b 100644
---- a/net/sunrpc/cache.c
-+++ b/net/sunrpc/cache.c
-@@ -1855,3 +1855,15 @@ void sunrpc_cache_unregister_pipefs(struct cache_detail *cd)
- }
- EXPORT_SYMBOL_GPL(sunrpc_cache_unregister_pipefs);
- 
-+void sunrpc_cache_unhash(struct cache_detail *cd, struct cache_head *h)
-+{
-+	write_lock(&cd->hash_lock);
-+	if (!hlist_unhashed(&h->cache_list)){
-+		hlist_del_init(&h->cache_list);
-+		cd->entries--;
-+		write_unlock(&cd->hash_lock);
-+		cache_put(h, cd);
-+	} else
-+		write_unlock(&cd->hash_lock);
-+}
-+EXPORT_SYMBOL_GPL(sunrpc_cache_unhash);
+Yep, thanks to all of you.--b.
