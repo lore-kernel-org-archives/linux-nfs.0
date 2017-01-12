@@ -1,63 +1,134 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:59978 "EHLO fieldses.org"
+Received: from fieldses.org ([173.255.197.46]:60064 "EHLO fieldses.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1750957AbdALUr3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 12 Jan 2017 15:47:29 -0500
-Date: Thu, 12 Jan 2017 15:47:22 -0500
-To: Kinglong Mee <kinglongmee@gmail.com>
-Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
-        linux-nfs@vger.kernel.org, Andreas Gruenbacher <agruenba@redhat.com>,
-        Matthieu Herrb <matthieu.herrb@laas.fr>
-Subject: Re: [PATCH] NFSv4.2: Fix file creating with O_EXCL get a bad mode
-Message-ID: <20170112204722.GC10501@fieldses.org>
-References: <a76cec59-f007-5c26-dc26-4cc8a6e4daef@gmail.com>
+        id S1750733AbdALVIa (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 12 Jan 2017 16:08:30 -0500
+Date: Thu, 12 Jan 2017 16:08:26 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: NeilBrown <neilb@suse.com>
+Cc: andros@netapp.com, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH Version 4] SVCAUTH reap the rsc cache entry on
+ RPC_SS_PROC_DESTROY
+Message-ID: <20170112210826.GD10501@fieldses.org>
+References: <1482428286-33744-1-git-send-email-andros@netapp.com>
+ <1482428286-33744-2-git-send-email-andros@netapp.com>
+ <20170104202634.GA21562@fieldses.org>
+ <8737gymss7.fsf@notabene.neil.brown.name>
+ <20170106210111.GA31401@fieldses.org>
+ <874m1bloyp.fsf@notabene.neil.brown.name>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <a76cec59-f007-5c26-dc26-4cc8a6e4daef@gmail.com>
-From: bfields@fieldses.org (J. Bruce Fields)
+In-Reply-To: <874m1bloyp.fsf@notabene.neil.brown.name>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sat, Jan 07, 2017 at 10:45:47PM +0800, Kinglong Mee wrote:
-> Acorrding to Matthieu Herrb's test cases, a new created file will
-> get a bad mode as 0666 (expected 0644) after commit dff25ddb4808
-> "nfs: add support for the umask attribute".
+On Sat, Jan 07, 2017 at 10:59:26AM +1100, NeilBrown wrote:
+> How about applying
+> >> >  -		rsci->h.expiry_time = get_seconds();
+> >> >  +		rsci->h.expiry_time = seconds_since_boot();
 > 
-> It is caused by missing check of FATTR4_WORD2_MODE_UMASK
-> in nfs4_exclusive_attrset.
+> first with a Cc: to stable (and a Fixes:), then this patch on top of
+> that without the Cc.
 
-I don't understand:
+Oh, good idea, thanks.  Results below.
 
-> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-> index 6dcbc5d..a3e9ef1 100644
-> --- a/fs/nfs/nfs4proc.c
-> +++ b/fs/nfs/nfs4proc.c
-> @@ -2697,7 +2697,8 @@ static inline void nfs4_exclusive_attrset(struct nfs4_opendata *opendata,
->  		sattr->ia_valid |= ATTR_MTIME;
->  
->  	/* Except MODE, it seems harmless of setting twice. */
-> -	if ((attrset[1] & FATTR4_WORD1_MODE))
-> +	if ((attrset[1] & FATTR4_WORD1_MODE) ||
-> +	    (attrset[2] & FATTR4_WORD2_MODE_UMASK))
->  		sattr->ia_valid &= ~ATTR_MODE;
+commit 78794d189070
+Author: J. Bruce Fields <bfields@redhat.com>
+Date:   Mon Jan 9 17:15:18 2017 -0500
 
-If I'm understanding this function correctly, attrset is the set of
-attributes which the server tells us were used to store the verifier.
+    svcrpc: don't leak contexts on PROC_DESTROY
+    
+    Context expiry times are in units of seconds since boot, not unix time.
+    
+    The use of get_seconds() here therefore sets the expiry time decades in
+    the future.  This prevents timely freeing of contexts destroyed by
+    client RPC_GSS_PROC_DESTROY requests.  We'd still free them eventually
+    (when the module is unloaded or the container shut down), but a lot of
+    contexts could pile up before then.
+    
+    Cc: stable@vger.kernel.org
+    Fixes: c5b29f885afe "sunrpc: use seconds since boot in expiry cache"
+    Reported-by: Andy Adamson <andros@netapp.com>
+    Signed-off-by: J. Bruce Fields <bfields@redhat.com>
 
-But mode_umask would never be a sensible place to store the
-verifier, so if the server's response really says that then something's
-wrong.
+diff --git a/net/sunrpc/auth_gss/svcauth_gss.c b/net/sunrpc/auth_gss/svcauth_gss.c
+index 886e9d381771..153082598522 100644
+--- a/net/sunrpc/auth_gss/svcauth_gss.c
++++ b/net/sunrpc/auth_gss/svcauth_gss.c
+@@ -1489,7 +1489,7 @@ svcauth_gss_accept(struct svc_rqst *rqstp, __be32 *authp)
+ 	case RPC_GSS_PROC_DESTROY:
+ 		if (gss_write_verf(rqstp, rsci->mechctx, gc->gc_seq))
+ 			goto auth_err;
+-		rsci->h.expiry_time = get_seconds();
++		rsci->h.expiry_time = seconds_since_boot();
+ 		set_bit(CACHE_NEGATIVE, &rsci->h.flags);
+ 		if (resv->iov_len + 4 > PAGE_SIZE)
+ 			goto drop;
+commit 987a7601aa80
+Author: Neil Brown <neilb@suse.com>
+Date:   Thu Dec 22 12:38:06 2016 -0500
 
-We should probably look at a network trace.
+    svcrpc: free contexts immediately on PROC_DESTROY
+    
+    We currently handle a client PROC_DESTROY request by turning it
+    CACHE_NEGATIVE, setting the expired time to now, and then waiting for
+    cache_clean to clean it up later.  Since we forgot to set the cache's
+    nextcheck value, that could take up to 30 minutes.  Also, though there's
+    probably no real bug in this case, setting CACHE_NEGATIVE directly like
+    this probably isn't a great idea in general.
+    
+    So let's just remove the entry from the cache directly, and move this
+    bit of cache manipulation to a helper function.
+    
+    Signed-off-by: Neil Brown <neilb@suse.com>
+    Reported-by: Andy Adamson <andros@netapp.com>
+    Signed-off-by: Andy Adamson <andros@netapp.com>
+    Signed-off-by: J. Bruce Fields <bfields@redhat.com>
 
---b.
-
->  
->  	if (attrset[2] & FATTR4_WORD2_SECURITY_LABEL)
-> -- 
-> 2.9.3
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+diff --git a/include/linux/sunrpc/cache.h b/include/linux/sunrpc/cache.h
+index 62a60eeacb0a..9dcf2c8fe1c5 100644
+--- a/include/linux/sunrpc/cache.h
++++ b/include/linux/sunrpc/cache.h
+@@ -227,6 +227,7 @@ extern void sunrpc_destroy_cache_detail(struct cache_detail *cd);
+ extern int sunrpc_cache_register_pipefs(struct dentry *parent, const char *,
+ 					umode_t, struct cache_detail *);
+ extern void sunrpc_cache_unregister_pipefs(struct cache_detail *);
++extern void sunrpc_cache_unhash(struct cache_detail *, struct cache_head *);
+ 
+ /* Must store cache_detail in seq_file->private if using next three functions */
+ extern void *cache_seq_start(struct seq_file *file, loff_t *pos);
+diff --git a/net/sunrpc/auth_gss/svcauth_gss.c b/net/sunrpc/auth_gss/svcauth_gss.c
+index 153082598522..a54a7a3d28f5 100644
+--- a/net/sunrpc/auth_gss/svcauth_gss.c
++++ b/net/sunrpc/auth_gss/svcauth_gss.c
+@@ -1489,8 +1489,8 @@ svcauth_gss_accept(struct svc_rqst *rqstp, __be32 *authp)
+ 	case RPC_GSS_PROC_DESTROY:
+ 		if (gss_write_verf(rqstp, rsci->mechctx, gc->gc_seq))
+ 			goto auth_err;
+-		rsci->h.expiry_time = seconds_since_boot();
+-		set_bit(CACHE_NEGATIVE, &rsci->h.flags);
++		/* Delete the entry from the cache_list and call cache_put */
++		sunrpc_cache_unhash(sn->rsc_cache, &rsci->h);
+ 		if (resv->iov_len + 4 > PAGE_SIZE)
+ 			goto drop;
+ 		svc_putnl(resv, RPC_SUCCESS);
+diff --git a/net/sunrpc/cache.c b/net/sunrpc/cache.c
+index 8147e8d56eb2..502b9fe9817b 100644
+--- a/net/sunrpc/cache.c
++++ b/net/sunrpc/cache.c
+@@ -1855,3 +1855,15 @@ void sunrpc_cache_unregister_pipefs(struct cache_detail *cd)
+ }
+ EXPORT_SYMBOL_GPL(sunrpc_cache_unregister_pipefs);
+ 
++void sunrpc_cache_unhash(struct cache_detail *cd, struct cache_head *h)
++{
++	write_lock(&cd->hash_lock);
++	if (!hlist_unhashed(&h->cache_list)){
++		hlist_del_init(&h->cache_list);
++		cd->entries--;
++		write_unlock(&cd->hash_lock);
++		cache_put(h, cd);
++	} else
++		write_unlock(&cd->hash_lock);
++}
++EXPORT_SYMBOL_GPL(sunrpc_cache_unhash);
