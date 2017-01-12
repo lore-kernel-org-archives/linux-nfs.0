@@ -1,47 +1,36 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f193.google.com ([209.85.223.193]:33475 "EHLO
-        mail-io0-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1752234AbdAKWHd (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 11 Jan 2017 17:07:33 -0500
-Received: by mail-io0-f193.google.com with SMTP id 101so577273iom.0
-        for <linux-nfs@vger.kernel.org>; Wed, 11 Jan 2017 14:07:14 -0800 (PST)
-From: Trond Myklebust <trond.myklebust@primarydata.com>
+Received: from fieldses.org ([173.255.197.46]:58248 "EHLO fieldses.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1751168AbdALCRE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 11 Jan 2017 21:17:04 -0500
+Date: Wed, 11 Jan 2017 21:17:03 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
 To: linux-nfs@vger.kernel.org
-Subject: [PATCH 2/3] NFSv4: Don't apply change_info4 twice on rename within a directory
-Date: Wed, 11 Jan 2017 17:07:08 -0500
-Message-Id: <20170111220709.19405-2-trond.myklebust@primarydata.com>
-In-Reply-To: <20170111220709.19405-1-trond.myklebust@primarydata.com>
-References: <20170111220709.19405-1-trond.myklebust@primarydata.com>
+Cc: tibbs@math.uh.edu
+Subject: Re: RFC: make labeled NFS opt-in
+Message-ID: <20170112021703.GC18977@fieldses.org>
+References: <20170104165636.GA17649@fieldses.org>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20170104165636.GA17649@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-If a file is renamed, but stays in the same directory, we will still receive
-2 change_info4 structures describing the change to that directory, but we
-only want to apply it once.
+On Wed, Jan 04, 2017 at 11:56:36AM -0500, bfields wrote:
+> This is something I should have noticed before merging labeled NFS:
+> labeled NFS shouldn't be on by default, among other reasons because it
+> assumes everybody's using consistent security policies.  As 4.2 is
+> getting turned on by default, this is starting to generate bug reports.
+> 
+> The patch below turns it off by default, and provides a new option to
+> turn it on per export.  The drawback is a regression on kernel upgrade
+> for anyone depending on labeled NFS, until they find the new option.  My
+> impression is that's a specialized use case that still has a small
+> number of users at this point, so I think we can get away with that.
+> 
+> The below is untested.  I have a (small) nfs-utils patch as well.
 
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
----
- fs/nfs/nfs4proc.c | 7 +++++--
- 1 file changed, 5 insertions(+), 2 deletions(-)
+OK, I've tested now, the only problem was actually a preexisting
+bug--I'll post the patches, plus the companion nfs-utils patch.
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 176561a0fe0d..77e5263838d9 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -4160,8 +4160,11 @@ static int nfs4_proc_rename_done(struct rpc_task *task, struct inode *old_dir,
- 	if (nfs4_async_handle_error(task, res->server, NULL, &data->timeout) == -EAGAIN)
- 		return 0;
- 
--	update_changeattr(old_dir, &res->old_cinfo);
--	update_changeattr(new_dir, &res->new_cinfo);
-+	if (task->tk_status == 0) {
-+		update_changeattr(old_dir, &res->old_cinfo);
-+		if (new_dir != old_dir)
-+			update_changeattr(new_dir, &res->new_cinfo);
-+	}
- 	return 1;
- }
- 
--- 
-2.9.3
-
+--b.
