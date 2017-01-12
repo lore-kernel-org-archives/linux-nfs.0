@@ -1,60 +1,48 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qt0-f177.google.com ([209.85.216.177]:33403 "EHLO
-        mail-qt0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1750889AbdALP3P (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 12 Jan 2017 10:29:15 -0500
-Received: by mail-qt0-f177.google.com with SMTP id v23so21020309qtb.0
-        for <linux-nfs@vger.kernel.org>; Thu, 12 Jan 2017 07:29:15 -0800 (PST)
+Received: from mail-pf0-f196.google.com ([209.85.192.196]:35516 "EHLO
+        mail-pf0-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1750731AbdALPik (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 12 Jan 2017 10:38:40 -0500
+Received: by mail-pf0-f196.google.com with SMTP id f144so4025696pfa.2
+        for <linux-nfs@vger.kernel.org>; Thu, 12 Jan 2017 07:38:12 -0800 (PST)
+From: Wei Yongjun <weiyj.lk@gmail.com>
+To: Trond Myklebust <trond.myklebust@primarydata.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>,
+        Jeff Layton <jlayton@poochiereds.net>,
+        Tom Haynes <thomas.haynes@primarydata.com>,
+        Peng Tao <tao.peng@primarydata.com>
+Cc: Wei Yongjun <weiyongjun1@huawei.com>, linux-nfs@vger.kernel.org
+Subject: [PATCH -next] pNFS/flexfiles: Make local symbol layoutreturn_ops static
+Date: Thu, 12 Jan 2017 15:38:06 +0000
+Message-Id: <20170112153806.27741-1-weiyj.lk@gmail.com>
 MIME-Version: 1.0
-In-Reply-To: <20170112021703.GC18977@fieldses.org>
-References: <20170104165636.GA17649@fieldses.org> <20170112021703.GC18977@fieldses.org>
-From: Andy Adamson <androsadamson@gmail.com>
-Date: Thu, 12 Jan 2017 10:29:14 -0500
-Message-ID: <CAHVgHyWeGj4GGap8axPnaJYAOBup=LXdeVdQ3fz1o6q7JWkT_w@mail.gmail.com>
-Subject: Re: RFC: make labeled NFS opt-in
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: NFS list <linux-nfs@vger.kernel.org>, tibbs@math.uh.edu
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-HI Bruce
+From: Wei Yongjun <weiyongjun1@huawei.com>
 
-NFSv4.2 labeled NFS provides 'guest mode' Mandatory Access Control
-(MAC) where the client can enforce labeling and store a label on the
-server, but the server itself does not enforce the same MAC as the
-client because the client request thread label is unknown to the
-server. RPCSEC_GSS version 3 label assertions asserts the client
-thread label on the NFSD thread handling the request, and so along
-with LNFS provides Full Mode MAC.
+Fixes the following sparse warning:
 
-AFAICS the only time we want GSS3 label assertions is if LNFS is
-enabled.  Does this sound right to you? If so, I will use this new per
-export LNFS option to determine when GSS3 label assertions are
-enabled.
+fs/nfs/flexfilelayout/flexfilelayout.c:2114:34: warning:
+ symbol 'layoutreturn_ops' was not declared. Should it be static?
 
--->Andy
+Signed-off-by: Wei Yongjun <weiyongjun1@huawei.com>
+---
+ fs/nfs/flexfilelayout/flexfilelayout.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-On Wed, Jan 11, 2017 at 9:17 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
-> On Wed, Jan 04, 2017 at 11:56:36AM -0500, bfields wrote:
->> This is something I should have noticed before merging labeled NFS:
->> labeled NFS shouldn't be on by default, among other reasons because it
->> assumes everybody's using consistent security policies.  As 4.2 is
->> getting turned on by default, this is starting to generate bug reports.
->>
->> The patch below turns it off by default, and provides a new option to
->> turn it on per export.  The drawback is a regression on kernel upgrade
->> for anyone depending on labeled NFS, until they find the new option.  My
->> impression is that's a specialized use case that still has a small
->> number of users at this point, so I think we can get away with that.
->>
->> The below is untested.  I have a (small) nfs-utils patch as well.
->
-> OK, I've tested now, the only problem was actually a preexisting
-> bug--I'll post the patches, plus the companion nfs-utils patch.
->
-> --b.
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+diff --git a/fs/nfs/flexfilelayout/flexfilelayout.c b/fs/nfs/flexfilelayout/flexfilelayout.c
+index ca1012a..5f0747c 100644
+--- a/fs/nfs/flexfilelayout/flexfilelayout.c
++++ b/fs/nfs/flexfilelayout/flexfilelayout.c
+@@ -2111,7 +2111,7 @@ ff_layout_free_layoutreturn(struct nfs4_xdr_opaque_data *args)
+ 	kfree(ff_args);
+ }
+ 
+-const struct nfs4_xdr_opaque_ops layoutreturn_ops = {
++static const struct nfs4_xdr_opaque_ops layoutreturn_ops = {
+ 	.encode = ff_layout_encode_layoutreturn,
+ 	.free = ff_layout_free_layoutreturn,
+ };
+
