@@ -1,79 +1,85 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qt0-f174.google.com ([209.85.216.174]:35462 "EHLO
-        mail-qt0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751098AbdALQvb (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 12 Jan 2017 11:51:31 -0500
-Received: by mail-qt0-f174.google.com with SMTP id x49so23313591qtc.2
-        for <linux-nfs@vger.kernel.org>; Thu, 12 Jan 2017 08:51:31 -0800 (PST)
+Received: from us-smtp-delivery-194.mimecast.com ([63.128.21.194]:51230 "EHLO
+        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1750862AbdALRit (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 12 Jan 2017 12:38:49 -0500
+From: Trond Myklebust <trondmy@primarydata.com>
+To: "anna.schumaker@netapp.com" <anna.schumaker@netapp.com>,
+        "chuck.lever@oracle.com" <chuck.lever@oracle.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH v1] NFS: Detect unreachable NFS/RDMA servers more reliably
+Date: Thu, 12 Jan 2017 17:38:32 +0000
+Message-ID: <1484242710.4686.1.camel@primarydata.com>
+References: <20161216164108.7060.93683.stgit@manet.1015granger.net>
+In-Reply-To: <20161216164108.7060.93683.stgit@manet.1015granger.net>
 MIME-Version: 1.0
-In-Reply-To: <20170112161005.GA8589@fieldses.org>
-References: <20170104165636.GA17649@fieldses.org> <20170112021703.GC18977@fieldses.org>
- <CAHVgHyWeGj4GGap8axPnaJYAOBup=LXdeVdQ3fz1o6q7JWkT_w@mail.gmail.com> <20170112161005.GA8589@fieldses.org>
-From: Andy Adamson <androsadamson@gmail.com>
-Date: Thu, 12 Jan 2017 11:51:30 -0500
-Message-ID: <CAHVgHyVWUbjLRTdYL+akkVLOGURKO1tFm_02d4P8TO-gQKRWEg@mail.gmail.com>
-Subject: Re: RFC: make labeled NFS opt-in
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: NFS list <linux-nfs@vger.kernel.org>, tibbs@math.uh.edu
 Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Jan 12, 2017 at 11:10 AM, J. Bruce Fields <bfields@fieldses.org> wrote:
-> On Thu, Jan 12, 2017 at 10:29:14AM -0500, Andy Adamson wrote:
->> NFSv4.2 labeled NFS provides 'guest mode' Mandatory Access Control
->> (MAC) where the client can enforce labeling and store a label on the
->> server, but the server itself does not enforce the same MAC as the
->> client because the client request thread label is unknown to the
->> server. RPCSEC_GSS version 3 label assertions asserts the client
->> thread label on the NFSD thread handling the request, and so along
->> with LNFS provides Full Mode MAC.
->>
->> AFAICS the only time we want GSS3 label assertions is if LNFS is
->> enabled.  Does this sound right to you? If so, I will use this new per
->> export LNFS option to determine when GSS3 label assertions are
->> enabled.
->
-> How do you disable or enable this on the server side?
+T24gRnJpLCAyMDE2LTEyLTE2IGF0IDExOjQ4IC0wNTAwLCBDaHVjayBMZXZlciB3cm90ZToNCj4g
+Q3VycmVudCBORlMgY2xpZW50cyByZWx5IG9uIGNvbm5lY3Rpb24gbG9zcyB0byBkZXRlcm1pbmUg
+d2hlbiB0bw0KPiByZXRyYW5zbWl0LiBJbiBwYXJ0aWN1bGFyLCBmb3IgcHJvdG9jb2xzIGxpa2Ug
+TkZTdjQsIGNsaWVudHMgbm8NCj4gbG9uZ2VyIHJlbHkgb24gUlBDIHRpbWVvdXRzIHRvIGRyaXZl
+IHJldHJhbnNtaXNzaW9uOiBORlN2NCBzZXJ2ZXJzDQo+IGFyZSByZXF1aXJlZCB0byB0ZXJtaW5h
+dGUgYSBjb25uZWN0aW9uIHdoZW4gdGhleSBuZWVkwqDCoGEgY2xpZW50IHRvDQo+IHJldHJhbnNt
+aXQgcGVuZGluZyBSUENzLg0KPiANCj4gV2hlbiBhIHNlcnZlciBpcyBubyBsb25nZXIgcmVhY2hh
+YmxlLCBlaXRoZXIgYmVjYXVzZSBpdCBoYXMgY3Jhc2hlZA0KPiBvciBiZWNhdXNlIHRoZSBuZXR3
+b3JrIHBhdGggaGFzIGJyb2tlbiwgdGhlIHNlcnZlciBjYW5ub3QgYWN0aXZlbHkNCj4gdGVybWlu
+YXRlIGEgY29ubmVjdGlvbi4gVGh1cyBORlMgY2xpZW50cyBkZXBlbmQgb24gdHJhbnNwb3J0LWxl
+dmVsDQo+IGtlZXBhbGl2ZSB0byBkZXRlcm1pbmUgd2hlbiBhIGNvbm5lY3Rpb24gbXVzdCBiZSBy
+ZXBsYWNlZCBhbmQNCj4gcGVuZGluZyBSUENzIHJldHJhbnNtaXR0ZWQuDQo+IA0KPiBIb3dldmVy
+LCBSRE1BIFJDIGNvbm5lY3Rpb25zIGRvIG5vdCBoYXZlIGEgbmF0aXZlIGtlZXBhbGl2ZQ0KPiBt
+ZWNoYW5pc20uIElmIGFuIE5GUy9SRE1BIHNlcnZlciBjcmFzaGVzIGFmdGVyIGEgY2xpZW50IGhh
+cyBzZW50DQo+IFJQQ3Mgc3VjY2Vzc2Z1bGx5IChhbiBSQyBBQ0sgaGFzIGJlZW4gcmVjZWl2ZWQg
+Zm9yIGFsbCBPVFcgUkRNQQ0KPiByZXF1ZXN0cyksIHRoZXJlIGlzIG5vIHdheSBmb3IgdGhlIGNs
+aWVudCB0byBrbm93IHRoZSBjb25uZWN0aW9uIGlzDQo+IG1vcmlidW5kLg0KPiANCj4gSW4gYWRk
+aXRpb24sIG5ldyBSRE1BIHJlcXVlc3RzIGFyZSBzdWJqZWN0IHRvIHRoZSBSUEMtb3Zlci1SRE1B
+DQo+IGNyZWRpdCBsaW1pdC4gSWYgdGhlIGNsaWVudCBoYXMgY29uc3VtZWQgYWxsIGdyYW50ZWQg
+Y3JlZGl0cyB3aXRoDQo+IE5GUyB0cmFmZmljLCBpdCBpcyBub3QgYWxsb3dlZCB0byBzZW5kIGFu
+b3RoZXIgUkRNQSByZXF1ZXN0IHVudGlsDQo+IHRoZSBzZXJ2ZXIgcmVwbGllcy4gVGh1cyBpdCBo
+YXMgbm8gd2F5IHRvIHNlbmQgYSB0cnVlIGtlZXBhbGl2ZSB3aGVuDQo+IHRoZSB3b3JrbG9hZCBo
+YXMgYWxyZWFkeSBjb25zdW1lZCBhbGwgY3JlZGl0cyB3aXRoIHBlbmRpbmcgUlBDcy4NCj4gDQo+
+IFRvIGFkZHJlc3MgdGhpcywgd2UgcmVzZXJ2ZSBvbmUgUlBDLW92ZXItUkRNQSBjcmVkaXQgdGhh
+dCBtYXkgYmUNCj4gdXNlZCBvbmx5IGZvciBhbiBORlMgTlVMTC4gQSBwZXJpb2RpYyBSUEMgcGlu
+ZyBpcyBkb25lIG9uIHRyYW5zcG9ydHMNCj4gd2hlbmV2ZXIgdGhlcmUgYXJlIG91dHN0YW5kaW5n
+IFJQQ3MuDQo+IA0KPiBUaGUgcHVycG9zZSBvZiB0aGlzIHBpbmcgaXMgdG8gZHJpdmUgdHJhZmZp
+YyByZWd1bGFybHkgb24gZWFjaA0KPiBjb25uZWN0aW9uIHRvIGZvcmNlIHRoZSB0cmFuc3BvcnQg
+bGF5ZXIgdG8gZGlzY29ubmVjdCBpdCBpZiBpdCBpcyBubw0KPiBsb25nZXIgdmlhYmxlLiBTb21l
+IFJETUEgb3BlcmF0aW9ucyBhcmUgZnVsbHkgb2ZmbG9hZGVkIHRvIHRoZSBIQ0EsDQo+IGFuZCBj
+YW4gYmUgc3VjY2Vzc2Z1bCBldmVuIGlmIHRoZSByZW1vdGUgaG9zdCBoYXMgY3Jhc2hlZC4gVGh1
+cyBhbg0KPiBvcGVyYXRpb24gdGhhdCByZXF1aXJlcyB0aGF0IHRoZSBzZXJ2ZXIgaXMgcmVzcG9u
+c2l2ZSBpcyB1c2VkIGZvcg0KPiB0aGUgcGluZy4NCj4gDQo+IFRoaXMgaW1wbGVtZW50YXRpb24g
+cmUtdXNlcyBleGlzdGluZyBnZW5lcmljIFJQQyBpbmZyYXN0cnVjdHVyZSB0bw0KPiBmb3JtIGVh
+Y2ggTlVMTCBDYWxsLiBBbiBycGNfY2xudCBjb250ZXh0IG11c3QgYmUgYXZhaWxhYmxlIHRvIHN0
+YXJ0DQo+IGFuIFJQQy4gVGh1cyBhIGdlbmVyaWMga2VlcGFsaXZlIG1lY2hhbmlzbSBpcyBpbnRy
+b2R1Y2VkIHNvIHRoYXQNCj4gYm90aCBhbiBycGNfY2xudCBhbmQgYW4gcnBjX3hwcnQgaXMgYXZh
+aWxhYmxlIHRvIHBlcmZvcm0gdGhlIHBpbmcuDQo+IA0KPiBTaWduZWQtb2ZmLWJ5OiBDaHVjayBM
+ZXZlciA8Y2h1Y2subGV2ZXJAb3JhY2xlLmNvbT4NCj4gLS0tDQo+IA0KPiBCZWZvcmUgc2VuZGlu
+ZyB0aGlzIGZvciBpbnRlcm5hbCB0ZXN0aW5nLCBJJ2QgbGlrZSB0byBoZWFyIGNvbW1lbnRzDQo+
+IG9uIHRoaXMgYXBwcm9hY2guIEl0J3MgYSBsaXR0bGUgbW9yZSBjaHVybiB0aGFuIEkgaGFkIGhv
+cGVkIGZvci4NCj4gDQo+IA0KPiDCoGZzL25mcy9uZnM0Y2xpZW50LmPCoMKgwqDCoMKgwqDCoMKg
+wqDCoMKgwqDCoHzCoMKgwqDCoDHCoA0KPiDCoGluY2x1ZGUvbGludXgvc3VucnBjL2NsbnQuaMKg
+wqDCoMKgwqB8wqDCoMKgwqAyICsNCj4gwqBpbmNsdWRlL2xpbnV4L3N1bnJwYy9zY2hlZC5owqDC
+oMKgwqB8wqDCoMKgwqAzICsNCj4gwqBpbmNsdWRlL2xpbnV4L3N1bnJwYy94cHJ0LmjCoMKgwqDC
+oMKgfMKgwqDCoMKgMcKgDQo+IMKgbmV0L3N1bnJwYy9jbG50LmPCoMKgwqDCoMKgwqDCoMKgwqDC
+oMKgwqDCoMKgwqB8wqDCoDEwMQ0KPiArKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysr
+KysrKysNCj4gwqBuZXQvc3VucnBjL3NjaGVkLmPCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKg
+fMKgwqDCoDE5ICsrKysrKysNCj4gwqBuZXQvc3VucnBjL3hwcnQuY8KgwqDCoMKgwqDCoMKgwqDC
+oMKgwqDCoMKgwqDCoHzCoMKgwqDCoDUgKysNCj4gwqBuZXQvc3VucnBjL3hwcnRyZG1hL3JwY19y
+ZG1hLmPCoMKgfMKgwqDCoMKgNCArLQ0KPiDCoG5ldC9zdW5ycGMveHBydHJkbWEvdHJhbnNwb3J0
+LmMgfMKgwqDCoDEzICsrKysrDQo+IMKgOSBmaWxlcyBjaGFuZ2VkLCAxNDggaW5zZXJ0aW9ucygr
+KSwgMSBkZWxldGlvbigtKQ0KPiANCj4gZGlmZiAtLWdpdCBhL2ZzL25mcy9uZnM0Y2xpZW50LmMg
+Yi9mcy9uZnMvbmZzNGNsaWVudC5jDQo+IGluZGV4IDA3NGFjNzEuLmM1ZjVjZTggMTAwNjQ0DQo+
+IC0tLSBhL2ZzL25mcy9uZnM0Y2xpZW50LmMNCj4gKysrIGIvZnMvbmZzL25mczRjbGllbnQuYw0K
+PiBAQCAtMzc4LDYgKzM3OCw3IEBAIHN0cnVjdCBuZnNfY2xpZW50ICpuZnM0X2luaXRfY2xpZW50
+KHN0cnVjdA0KPiBuZnNfY2xpZW50ICpjbHAsDQo+IMKgCQllcnJvciA9IG5mc19jcmVhdGVfcnBj
+X2NsaWVudChjbHAsIGNsX2luaXQsDQo+IFJQQ19BVVRIX1VOSVgpOw0KPiDCoAlpZiAoZXJyb3Ig
+PCAwKQ0KPiDCoAkJZ290byBlcnJvcjsNCj4gKwlycGNfc2NoZWR1bGVfa2VlcGFsaXZlKGNscC0+
+Y2xfcnBjY2xpZW50KTsNCg0KV2h5IGRvIHdlIHdhbnQgdG8gZW5hYmxlIHRoaXMgZm9yIG5vbi1S
+RE1BIHRyYW5zcG9ydHM/IFNob3VsZG4ndCB0aGlzDQpmdW5jdGlvbmFsaXR5IGJlIGhpZGRlbiBp
+biB0aGUgUkRNQSBjbGllbnQgY29kZSwgaW4gdGhlIHNhbWUgd2F5IHRoYXQNCnRoZSBUQ1Aga2Vl
+cGFsaXZlIGlzIGhpZGRlbiBpbiB0aGUgc29ja2V0IGNvZGUuDQoNCi0tIA0KVHJvbmQgTXlrbGVi
+dXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50YWluZXIsIFByaW1hcnlEYXRhDQp0cm9uZC5teWts
+ZWJ1c3RAcHJpbWFyeWRhdGEuY29tDQo=
 
-In nfsd_setuser, if the rq_authop has the new set_label operation, and
-selinux_is_enabled() then the label is asserted.
-
->
-> I haven't been following the GSS3 development well, apologies.  So I
-> guess you must do something like:
->
->         1. decode the GSS3 stuff in the RPC layer and store the
->         resulting subject label somewhere like rqstp->rq_cred.
->         2. in nfsd_setuser, set the nfsd thread's label to the label
->         stored in rq_cred.
-
-
-Yes, I do both of those tasks.
-
->
-> You probably need to have the processing in step 1 enabled all the time,
-> because you don't know which export you're going to be dealing with yet
-> at that point.
-
-Yes.
-
->
-> By step 2 you have the export.  So I guess you'd use the export option
-> to decide whether to silently ignore the label, or apply it to the nfsd
-> thread?
-
-yes.
-
->
-> That might make sense.
-
-Good! That is easy to add and is what I am thinking.
-
-I'm building the gss prototype against your latest nfsd-next. Once I
-test it, i'll send in version 4.
-
--->Andy
-
->
-> --b.
