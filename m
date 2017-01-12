@@ -1,85 +1,110 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from us-smtp-delivery-194.mimecast.com ([63.128.21.194]:51230 "EHLO
-        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1750862AbdALRit (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 12 Jan 2017 12:38:49 -0500
-From: Trond Myklebust <trondmy@primarydata.com>
-To: "anna.schumaker@netapp.com" <anna.schumaker@netapp.com>,
-        "chuck.lever@oracle.com" <chuck.lever@oracle.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Received: from userp1040.oracle.com ([156.151.31.81]:50909 "EHLO
+        userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1750812AbdALRmN (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 12 Jan 2017 12:42:13 -0500
+Content-Type: text/plain; charset=us-ascii
+Mime-Version: 1.0 (Mac OS X Mail 9.3 \(3124\))
 Subject: Re: [PATCH v1] NFS: Detect unreachable NFS/RDMA servers more reliably
-Date: Thu, 12 Jan 2017 17:38:32 +0000
-Message-ID: <1484242710.4686.1.camel@primarydata.com>
-References: <20161216164108.7060.93683.stgit@manet.1015granger.net>
-In-Reply-To: <20161216164108.7060.93683.stgit@manet.1015granger.net>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <1484242710.4686.1.camel@primarydata.com>
+Date: Thu, 12 Jan 2017 12:42:06 -0500
+Cc: Anna Schumaker <anna.schumaker@netapp.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Message-Id: <A08E9DCC-B3A3-4ABF-9704-167AB18081DE@oracle.com>
+References: <20161216164108.7060.93683.stgit@manet.1015granger.net> <1484242710.4686.1.camel@primarydata.com>
+To: Trond Myklebust <trondmy@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gRnJpLCAyMDE2LTEyLTE2IGF0IDExOjQ4IC0wNTAwLCBDaHVjayBMZXZlciB3cm90ZToNCj4g
-Q3VycmVudCBORlMgY2xpZW50cyByZWx5IG9uIGNvbm5lY3Rpb24gbG9zcyB0byBkZXRlcm1pbmUg
-d2hlbiB0bw0KPiByZXRyYW5zbWl0LiBJbiBwYXJ0aWN1bGFyLCBmb3IgcHJvdG9jb2xzIGxpa2Ug
-TkZTdjQsIGNsaWVudHMgbm8NCj4gbG9uZ2VyIHJlbHkgb24gUlBDIHRpbWVvdXRzIHRvIGRyaXZl
-IHJldHJhbnNtaXNzaW9uOiBORlN2NCBzZXJ2ZXJzDQo+IGFyZSByZXF1aXJlZCB0byB0ZXJtaW5h
-dGUgYSBjb25uZWN0aW9uIHdoZW4gdGhleSBuZWVkwqDCoGEgY2xpZW50IHRvDQo+IHJldHJhbnNt
-aXQgcGVuZGluZyBSUENzLg0KPiANCj4gV2hlbiBhIHNlcnZlciBpcyBubyBsb25nZXIgcmVhY2hh
-YmxlLCBlaXRoZXIgYmVjYXVzZSBpdCBoYXMgY3Jhc2hlZA0KPiBvciBiZWNhdXNlIHRoZSBuZXR3
-b3JrIHBhdGggaGFzIGJyb2tlbiwgdGhlIHNlcnZlciBjYW5ub3QgYWN0aXZlbHkNCj4gdGVybWlu
-YXRlIGEgY29ubmVjdGlvbi4gVGh1cyBORlMgY2xpZW50cyBkZXBlbmQgb24gdHJhbnNwb3J0LWxl
-dmVsDQo+IGtlZXBhbGl2ZSB0byBkZXRlcm1pbmUgd2hlbiBhIGNvbm5lY3Rpb24gbXVzdCBiZSBy
-ZXBsYWNlZCBhbmQNCj4gcGVuZGluZyBSUENzIHJldHJhbnNtaXR0ZWQuDQo+IA0KPiBIb3dldmVy
-LCBSRE1BIFJDIGNvbm5lY3Rpb25zIGRvIG5vdCBoYXZlIGEgbmF0aXZlIGtlZXBhbGl2ZQ0KPiBt
-ZWNoYW5pc20uIElmIGFuIE5GUy9SRE1BIHNlcnZlciBjcmFzaGVzIGFmdGVyIGEgY2xpZW50IGhh
-cyBzZW50DQo+IFJQQ3Mgc3VjY2Vzc2Z1bGx5IChhbiBSQyBBQ0sgaGFzIGJlZW4gcmVjZWl2ZWQg
-Zm9yIGFsbCBPVFcgUkRNQQ0KPiByZXF1ZXN0cyksIHRoZXJlIGlzIG5vIHdheSBmb3IgdGhlIGNs
-aWVudCB0byBrbm93IHRoZSBjb25uZWN0aW9uIGlzDQo+IG1vcmlidW5kLg0KPiANCj4gSW4gYWRk
-aXRpb24sIG5ldyBSRE1BIHJlcXVlc3RzIGFyZSBzdWJqZWN0IHRvIHRoZSBSUEMtb3Zlci1SRE1B
-DQo+IGNyZWRpdCBsaW1pdC4gSWYgdGhlIGNsaWVudCBoYXMgY29uc3VtZWQgYWxsIGdyYW50ZWQg
-Y3JlZGl0cyB3aXRoDQo+IE5GUyB0cmFmZmljLCBpdCBpcyBub3QgYWxsb3dlZCB0byBzZW5kIGFu
-b3RoZXIgUkRNQSByZXF1ZXN0IHVudGlsDQo+IHRoZSBzZXJ2ZXIgcmVwbGllcy4gVGh1cyBpdCBo
-YXMgbm8gd2F5IHRvIHNlbmQgYSB0cnVlIGtlZXBhbGl2ZSB3aGVuDQo+IHRoZSB3b3JrbG9hZCBo
-YXMgYWxyZWFkeSBjb25zdW1lZCBhbGwgY3JlZGl0cyB3aXRoIHBlbmRpbmcgUlBDcy4NCj4gDQo+
-IFRvIGFkZHJlc3MgdGhpcywgd2UgcmVzZXJ2ZSBvbmUgUlBDLW92ZXItUkRNQSBjcmVkaXQgdGhh
-dCBtYXkgYmUNCj4gdXNlZCBvbmx5IGZvciBhbiBORlMgTlVMTC4gQSBwZXJpb2RpYyBSUEMgcGlu
-ZyBpcyBkb25lIG9uIHRyYW5zcG9ydHMNCj4gd2hlbmV2ZXIgdGhlcmUgYXJlIG91dHN0YW5kaW5n
-IFJQQ3MuDQo+IA0KPiBUaGUgcHVycG9zZSBvZiB0aGlzIHBpbmcgaXMgdG8gZHJpdmUgdHJhZmZp
-YyByZWd1bGFybHkgb24gZWFjaA0KPiBjb25uZWN0aW9uIHRvIGZvcmNlIHRoZSB0cmFuc3BvcnQg
-bGF5ZXIgdG8gZGlzY29ubmVjdCBpdCBpZiBpdCBpcyBubw0KPiBsb25nZXIgdmlhYmxlLiBTb21l
-IFJETUEgb3BlcmF0aW9ucyBhcmUgZnVsbHkgb2ZmbG9hZGVkIHRvIHRoZSBIQ0EsDQo+IGFuZCBj
-YW4gYmUgc3VjY2Vzc2Z1bCBldmVuIGlmIHRoZSByZW1vdGUgaG9zdCBoYXMgY3Jhc2hlZC4gVGh1
-cyBhbg0KPiBvcGVyYXRpb24gdGhhdCByZXF1aXJlcyB0aGF0IHRoZSBzZXJ2ZXIgaXMgcmVzcG9u
-c2l2ZSBpcyB1c2VkIGZvcg0KPiB0aGUgcGluZy4NCj4gDQo+IFRoaXMgaW1wbGVtZW50YXRpb24g
-cmUtdXNlcyBleGlzdGluZyBnZW5lcmljIFJQQyBpbmZyYXN0cnVjdHVyZSB0bw0KPiBmb3JtIGVh
-Y2ggTlVMTCBDYWxsLiBBbiBycGNfY2xudCBjb250ZXh0IG11c3QgYmUgYXZhaWxhYmxlIHRvIHN0
-YXJ0DQo+IGFuIFJQQy4gVGh1cyBhIGdlbmVyaWMga2VlcGFsaXZlIG1lY2hhbmlzbSBpcyBpbnRy
-b2R1Y2VkIHNvIHRoYXQNCj4gYm90aCBhbiBycGNfY2xudCBhbmQgYW4gcnBjX3hwcnQgaXMgYXZh
-aWxhYmxlIHRvIHBlcmZvcm0gdGhlIHBpbmcuDQo+IA0KPiBTaWduZWQtb2ZmLWJ5OiBDaHVjayBM
-ZXZlciA8Y2h1Y2subGV2ZXJAb3JhY2xlLmNvbT4NCj4gLS0tDQo+IA0KPiBCZWZvcmUgc2VuZGlu
-ZyB0aGlzIGZvciBpbnRlcm5hbCB0ZXN0aW5nLCBJJ2QgbGlrZSB0byBoZWFyIGNvbW1lbnRzDQo+
-IG9uIHRoaXMgYXBwcm9hY2guIEl0J3MgYSBsaXR0bGUgbW9yZSBjaHVybiB0aGFuIEkgaGFkIGhv
-cGVkIGZvci4NCj4gDQo+IA0KPiDCoGZzL25mcy9uZnM0Y2xpZW50LmPCoMKgwqDCoMKgwqDCoMKg
-wqDCoMKgwqDCoHzCoMKgwqDCoDHCoA0KPiDCoGluY2x1ZGUvbGludXgvc3VucnBjL2NsbnQuaMKg
-wqDCoMKgwqB8wqDCoMKgwqAyICsNCj4gwqBpbmNsdWRlL2xpbnV4L3N1bnJwYy9zY2hlZC5owqDC
-oMKgwqB8wqDCoMKgwqAzICsNCj4gwqBpbmNsdWRlL2xpbnV4L3N1bnJwYy94cHJ0LmjCoMKgwqDC
-oMKgfMKgwqDCoMKgMcKgDQo+IMKgbmV0L3N1bnJwYy9jbG50LmPCoMKgwqDCoMKgwqDCoMKgwqDC
-oMKgwqDCoMKgwqB8wqDCoDEwMQ0KPiArKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysr
-KysrKysNCj4gwqBuZXQvc3VucnBjL3NjaGVkLmPCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKg
-fMKgwqDCoDE5ICsrKysrKysNCj4gwqBuZXQvc3VucnBjL3hwcnQuY8KgwqDCoMKgwqDCoMKgwqDC
-oMKgwqDCoMKgwqDCoHzCoMKgwqDCoDUgKysNCj4gwqBuZXQvc3VucnBjL3hwcnRyZG1hL3JwY19y
-ZG1hLmPCoMKgfMKgwqDCoMKgNCArLQ0KPiDCoG5ldC9zdW5ycGMveHBydHJkbWEvdHJhbnNwb3J0
-LmMgfMKgwqDCoDEzICsrKysrDQo+IMKgOSBmaWxlcyBjaGFuZ2VkLCAxNDggaW5zZXJ0aW9ucygr
-KSwgMSBkZWxldGlvbigtKQ0KPiANCj4gZGlmZiAtLWdpdCBhL2ZzL25mcy9uZnM0Y2xpZW50LmMg
-Yi9mcy9uZnMvbmZzNGNsaWVudC5jDQo+IGluZGV4IDA3NGFjNzEuLmM1ZjVjZTggMTAwNjQ0DQo+
-IC0tLSBhL2ZzL25mcy9uZnM0Y2xpZW50LmMNCj4gKysrIGIvZnMvbmZzL25mczRjbGllbnQuYw0K
-PiBAQCAtMzc4LDYgKzM3OCw3IEBAIHN0cnVjdCBuZnNfY2xpZW50ICpuZnM0X2luaXRfY2xpZW50
-KHN0cnVjdA0KPiBuZnNfY2xpZW50ICpjbHAsDQo+IMKgCQllcnJvciA9IG5mc19jcmVhdGVfcnBj
-X2NsaWVudChjbHAsIGNsX2luaXQsDQo+IFJQQ19BVVRIX1VOSVgpOw0KPiDCoAlpZiAoZXJyb3Ig
-PCAwKQ0KPiDCoAkJZ290byBlcnJvcjsNCj4gKwlycGNfc2NoZWR1bGVfa2VlcGFsaXZlKGNscC0+
-Y2xfcnBjY2xpZW50KTsNCg0KV2h5IGRvIHdlIHdhbnQgdG8gZW5hYmxlIHRoaXMgZm9yIG5vbi1S
-RE1BIHRyYW5zcG9ydHM/IFNob3VsZG4ndCB0aGlzDQpmdW5jdGlvbmFsaXR5IGJlIGhpZGRlbiBp
-biB0aGUgUkRNQSBjbGllbnQgY29kZSwgaW4gdGhlIHNhbWUgd2F5IHRoYXQNCnRoZSBUQ1Aga2Vl
-cGFsaXZlIGlzIGhpZGRlbiBpbiB0aGUgc29ja2V0IGNvZGUuDQoNCi0tIA0KVHJvbmQgTXlrbGVi
-dXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50YWluZXIsIFByaW1hcnlEYXRhDQp0cm9uZC5teWts
-ZWJ1c3RAcHJpbWFyeWRhdGEuY29tDQo=
+
+> On Jan 12, 2017, at 12:38 PM, Trond Myklebust <trondmy@primarydata.com> wrote:
+> 
+> On Fri, 2016-12-16 at 11:48 -0500, Chuck Lever wrote:
+>> Current NFS clients rely on connection loss to determine when to
+>> retransmit. In particular, for protocols like NFSv4, clients no
+>> longer rely on RPC timeouts to drive retransmission: NFSv4 servers
+>> are required to terminate a connection when they need  a client to
+>> retransmit pending RPCs.
+>> 
+>> When a server is no longer reachable, either because it has crashed
+>> or because the network path has broken, the server cannot actively
+>> terminate a connection. Thus NFS clients depend on transport-level
+>> keepalive to determine when a connection must be replaced and
+>> pending RPCs retransmitted.
+>> 
+>> However, RDMA RC connections do not have a native keepalive
+>> mechanism. If an NFS/RDMA server crashes after a client has sent
+>> RPCs successfully (an RC ACK has been received for all OTW RDMA
+>> requests), there is no way for the client to know the connection is
+>> moribund.
+>> 
+>> In addition, new RDMA requests are subject to the RPC-over-RDMA
+>> credit limit. If the client has consumed all granted credits with
+>> NFS traffic, it is not allowed to send another RDMA request until
+>> the server replies. Thus it has no way to send a true keepalive when
+>> the workload has already consumed all credits with pending RPCs.
+>> 
+>> To address this, we reserve one RPC-over-RDMA credit that may be
+>> used only for an NFS NULL. A periodic RPC ping is done on transports
+>> whenever there are outstanding RPCs.
+>> 
+>> The purpose of this ping is to drive traffic regularly on each
+>> connection to force the transport layer to disconnect it if it is no
+>> longer viable. Some RDMA operations are fully offloaded to the HCA,
+>> and can be successful even if the remote host has crashed. Thus an
+>> operation that requires that the server is responsive is used for
+>> the ping.
+>> 
+>> This implementation re-uses existing generic RPC infrastructure to
+>> form each NULL Call. An rpc_clnt context must be available to start
+>> an RPC. Thus a generic keepalive mechanism is introduced so that
+>> both an rpc_clnt and an rpc_xprt is available to perform the ping.
+>> 
+>> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+>> ---
+>> 
+>> Before sending this for internal testing, I'd like to hear comments
+>> on this approach. It's a little more churn than I had hoped for.
+>> 
+>> 
+>>  fs/nfs/nfs4client.c             |    1 
+>>  include/linux/sunrpc/clnt.h     |    2 +
+>>  include/linux/sunrpc/sched.h    |    3 +
+>>  include/linux/sunrpc/xprt.h     |    1 
+>>  net/sunrpc/clnt.c               |  101
+>> +++++++++++++++++++++++++++++++++++++++
+>>  net/sunrpc/sched.c              |   19 +++++++
+>>  net/sunrpc/xprt.c               |    5 ++
+>>  net/sunrpc/xprtrdma/rpc_rdma.c  |    4 +-
+>>  net/sunrpc/xprtrdma/transport.c |   13 +++++
+>>  9 files changed, 148 insertions(+), 1 deletion(-)
+>> 
+>> diff --git a/fs/nfs/nfs4client.c b/fs/nfs/nfs4client.c
+>> index 074ac71..c5f5ce8 100644
+>> --- a/fs/nfs/nfs4client.c
+>> +++ b/fs/nfs/nfs4client.c
+>> @@ -378,6 +378,7 @@ struct nfs_client *nfs4_init_client(struct
+>> nfs_client *clp,
+>>  		error = nfs_create_rpc_client(clp, cl_init,
+>> RPC_AUTH_UNIX);
+>>  	if (error < 0)
+>>  		goto error;
+>> +	rpc_schedule_keepalive(clp->cl_rpcclient);
+> 
+> Why do we want to enable this for non-RDMA transports? Shouldn't this
+> functionality be hidden in the RDMA client code, in the same way that
+> the TCP keepalive is hidden in the socket code.
+
+Sending a NULL request by re-using the normal RPC infrastructure
+requires a struct rpc_clnt. Thus it has to be driven by an upper
+layer context.
+
+I'm open to suggestions.
+
+
+--
+Chuck Lever
+
+
 
