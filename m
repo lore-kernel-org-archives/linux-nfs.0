@@ -1,110 +1,63 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from userp1040.oracle.com ([156.151.31.81]:50909 "EHLO
-        userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1750812AbdALRmN (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 12 Jan 2017 12:42:13 -0500
+Received: from fieldses.org ([173.255.197.46]:59978 "EHLO fieldses.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1750957AbdALUr3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 12 Jan 2017 15:47:29 -0500
+Date: Thu, 12 Jan 2017 15:47:22 -0500
+To: Kinglong Mee <kinglongmee@gmail.com>
+Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
+        linux-nfs@vger.kernel.org, Andreas Gruenbacher <agruenba@redhat.com>,
+        Matthieu Herrb <matthieu.herrb@laas.fr>
+Subject: Re: [PATCH] NFSv4.2: Fix file creating with O_EXCL get a bad mode
+Message-ID: <20170112204722.GC10501@fieldses.org>
+References: <a76cec59-f007-5c26-dc26-4cc8a6e4daef@gmail.com>
+MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 9.3 \(3124\))
-Subject: Re: [PATCH v1] NFS: Detect unreachable NFS/RDMA servers more reliably
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <1484242710.4686.1.camel@primarydata.com>
-Date: Thu, 12 Jan 2017 12:42:06 -0500
-Cc: Anna Schumaker <anna.schumaker@netapp.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <A08E9DCC-B3A3-4ABF-9704-167AB18081DE@oracle.com>
-References: <20161216164108.7060.93683.stgit@manet.1015granger.net> <1484242710.4686.1.camel@primarydata.com>
-To: Trond Myklebust <trondmy@primarydata.com>
+In-Reply-To: <a76cec59-f007-5c26-dc26-4cc8a6e4daef@gmail.com>
+From: bfields@fieldses.org (J. Bruce Fields)
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-> On Jan 12, 2017, at 12:38 PM, Trond Myklebust <trondmy@primarydata.com> wrote:
+On Sat, Jan 07, 2017 at 10:45:47PM +0800, Kinglong Mee wrote:
+> Acorrding to Matthieu Herrb's test cases, a new created file will
+> get a bad mode as 0666 (expected 0644) after commit dff25ddb4808
+> "nfs: add support for the umask attribute".
 > 
-> On Fri, 2016-12-16 at 11:48 -0500, Chuck Lever wrote:
->> Current NFS clients rely on connection loss to determine when to
->> retransmit. In particular, for protocols like NFSv4, clients no
->> longer rely on RPC timeouts to drive retransmission: NFSv4 servers
->> are required to terminate a connection when they need  a client to
->> retransmit pending RPCs.
->> 
->> When a server is no longer reachable, either because it has crashed
->> or because the network path has broken, the server cannot actively
->> terminate a connection. Thus NFS clients depend on transport-level
->> keepalive to determine when a connection must be replaced and
->> pending RPCs retransmitted.
->> 
->> However, RDMA RC connections do not have a native keepalive
->> mechanism. If an NFS/RDMA server crashes after a client has sent
->> RPCs successfully (an RC ACK has been received for all OTW RDMA
->> requests), there is no way for the client to know the connection is
->> moribund.
->> 
->> In addition, new RDMA requests are subject to the RPC-over-RDMA
->> credit limit. If the client has consumed all granted credits with
->> NFS traffic, it is not allowed to send another RDMA request until
->> the server replies. Thus it has no way to send a true keepalive when
->> the workload has already consumed all credits with pending RPCs.
->> 
->> To address this, we reserve one RPC-over-RDMA credit that may be
->> used only for an NFS NULL. A periodic RPC ping is done on transports
->> whenever there are outstanding RPCs.
->> 
->> The purpose of this ping is to drive traffic regularly on each
->> connection to force the transport layer to disconnect it if it is no
->> longer viable. Some RDMA operations are fully offloaded to the HCA,
->> and can be successful even if the remote host has crashed. Thus an
->> operation that requires that the server is responsive is used for
->> the ping.
->> 
->> This implementation re-uses existing generic RPC infrastructure to
->> form each NULL Call. An rpc_clnt context must be available to start
->> an RPC. Thus a generic keepalive mechanism is introduced so that
->> both an rpc_clnt and an rpc_xprt is available to perform the ping.
->> 
->> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
->> ---
->> 
->> Before sending this for internal testing, I'd like to hear comments
->> on this approach. It's a little more churn than I had hoped for.
->> 
->> 
->>  fs/nfs/nfs4client.c             |    1 
->>  include/linux/sunrpc/clnt.h     |    2 +
->>  include/linux/sunrpc/sched.h    |    3 +
->>  include/linux/sunrpc/xprt.h     |    1 
->>  net/sunrpc/clnt.c               |  101
->> +++++++++++++++++++++++++++++++++++++++
->>  net/sunrpc/sched.c              |   19 +++++++
->>  net/sunrpc/xprt.c               |    5 ++
->>  net/sunrpc/xprtrdma/rpc_rdma.c  |    4 +-
->>  net/sunrpc/xprtrdma/transport.c |   13 +++++
->>  9 files changed, 148 insertions(+), 1 deletion(-)
->> 
->> diff --git a/fs/nfs/nfs4client.c b/fs/nfs/nfs4client.c
->> index 074ac71..c5f5ce8 100644
->> --- a/fs/nfs/nfs4client.c
->> +++ b/fs/nfs/nfs4client.c
->> @@ -378,6 +378,7 @@ struct nfs_client *nfs4_init_client(struct
->> nfs_client *clp,
->>  		error = nfs_create_rpc_client(clp, cl_init,
->> RPC_AUTH_UNIX);
->>  	if (error < 0)
->>  		goto error;
->> +	rpc_schedule_keepalive(clp->cl_rpcclient);
+> It is caused by missing check of FATTR4_WORD2_MODE_UMASK
+> in nfs4_exclusive_attrset.
+
+I don't understand:
+
+> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+> index 6dcbc5d..a3e9ef1 100644
+> --- a/fs/nfs/nfs4proc.c
+> +++ b/fs/nfs/nfs4proc.c
+> @@ -2697,7 +2697,8 @@ static inline void nfs4_exclusive_attrset(struct nfs4_opendata *opendata,
+>  		sattr->ia_valid |= ATTR_MTIME;
+>  
+>  	/* Except MODE, it seems harmless of setting twice. */
+> -	if ((attrset[1] & FATTR4_WORD1_MODE))
+> +	if ((attrset[1] & FATTR4_WORD1_MODE) ||
+> +	    (attrset[2] & FATTR4_WORD2_MODE_UMASK))
+>  		sattr->ia_valid &= ~ATTR_MODE;
+
+If I'm understanding this function correctly, attrset is the set of
+attributes which the server tells us were used to store the verifier.
+
+But mode_umask would never be a sensible place to store the
+verifier, so if the server's response really says that then something's
+wrong.
+
+We should probably look at a network trace.
+
+--b.
+
+>  
+>  	if (attrset[2] & FATTR4_WORD2_SECURITY_LABEL)
+> -- 
+> 2.9.3
 > 
-> Why do we want to enable this for non-RDMA transports? Shouldn't this
-> functionality be hidden in the RDMA client code, in the same way that
-> the TCP keepalive is hidden in the socket code.
-
-Sending a NULL request by re-using the normal RPC infrastructure
-requires a struct rpc_clnt. Thus it has to be driven by an upper
-layer context.
-
-I'm open to suggestions.
-
-
---
-Chuck Lever
-
-
-
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
