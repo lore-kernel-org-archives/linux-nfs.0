@@ -1,103 +1,33 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:58270 "EHLO fieldses.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751508AbdALCWH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 11 Jan 2017 21:22:07 -0500
-Date: Wed, 11 Jan 2017 21:22:06 -0500
-To: steved@redhat.com
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH] exportfs: support "security_label" export option
-Message-ID: <20170112022206.GA303@fieldses.org>
-References: <1484187481-32723-1-git-send-email-bfields@redhat.com>
- <1484187481-32723-3-git-send-email-bfields@redhat.com>
+Received: from merlin.infradead.org ([205.233.59.134]:43610 "EHLO
+        merlin.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1750755AbdALLpy (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 12 Jan 2017 06:45:54 -0500
+Subject: Re: [PATCH 9/9] treewide: Inline ib_dma_map_*() functions
+To: Bart Van Assche <bart.vanassche@sandisk.com>,
+        Doug Ledford <dledford@redhat.com>
+References: <20170111005648.14988-1-bart.vanassche@sandisk.com>
+ <20170111005648.14988-10-bart.vanassche@sandisk.com>
+Cc: Latchesar Ionkov <lucho@ionkov.net>, devel@driverdev.osuosl.org,
+        linux-nfs@vger.kernel.org, Andreas Dilger <andreas.dilger@intel.com>,
+        linux-rdma@vger.kernel.org, netdev@vger.kernel.org,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        linux-kernel@vger.kernel.org, linux-nvme@lists.infradead.org,
+        Anna Schumaker <anna.schumaker@netapp.com>,
+        Oleg Drokin <oleg.drokin@intel.com>,
+        Eric Van Hensbergen <ericvh@gmail.com>, target-devel@vger.kernel.org,
+        Ron Minnich <rminnich@sandia.gov>,
+        James Simmons <jsimmons@infradead.org>,
+        v9fs-developer@lists.sourceforge.net, rds-devel@oss.oracle.com,
+        "David S . Miller" <davem@davemloft.net>,
+        lustre-devel@lists.lustre.org
+From: Sagi Grimberg <sagi@grimberg.me>
+Message-ID: <811bac91-39f4-edac-db8a-d44989440b21@grimberg.me>
+Date: Thu, 12 Jan 2017 13:45:31 +0200
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1484187481-32723-3-git-send-email-bfields@redhat.com>
-From: bfields@fieldses.org (J. Bruce Fields)
+In-Reply-To: <20170111005648.14988-10-bart.vanassche@sandisk.com>
+Content-Type: text/plain; charset=windows-1252; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
-
-On recent kernels only exports with NFSEXP_SECURITY_LABEL set will
-export security labels.
-
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- support/include/nfs/export.h | 3 ++-
- support/nfs/exports.c        | 4 ++++
- utils/exportfs/exportfs.c    | 2 ++
- utils/exportfs/exports.man   | 8 ++++++++
- 4 files changed, 16 insertions(+), 1 deletion(-)
-
-diff --git a/support/include/nfs/export.h b/support/include/nfs/export.h
-index 1194255899bd..0eca828ee3ad 100644
---- a/support/include/nfs/export.h
-+++ b/support/include/nfs/export.h
-@@ -18,7 +18,8 @@
- #define NFSEXP_ASYNC		0x0010
- #define NFSEXP_GATHERED_WRITES	0x0020
- #define NFSEXP_NOREADDIRPLUS	0x0040
--/* 80, 100 unused */
-+#define NFSEXP_SECURITY_LABEL	0x0080
-+/* 0x100 unused */
- #define NFSEXP_NOHIDE		0x0200
- #define NFSEXP_NOSUBTREECHECK	0x0400
- #define NFSEXP_NOAUTHNLM	0x0800
-diff --git a/support/nfs/exports.c b/support/nfs/exports.c
-index d992747c13a1..92bd6e60ddf7 100644
---- a/support/nfs/exports.c
-+++ b/support/nfs/exports.c
-@@ -274,6 +274,8 @@ putexportent(struct exportent *ep)
- 		"no_" : "");
- 	if (ep->e_flags & NFSEXP_NOREADDIRPLUS)
- 		fprintf(fp, "nordirplus,");
-+	if (ep->e_flags & NFSEXP_SECURITY_LABEL)
-+		fprintf(fp, "security_label,");
- 	fprintf(fp, "%spnfs,", (ep->e_flags & NFSEXP_PNFS)? "" : "no_");
- 	if (ep->e_flags & NFSEXP_FSID) {
- 		fprintf(fp, "fsid=%d,", ep->e_fsid);
-@@ -543,6 +545,8 @@ parseopts(char *cp, struct exportent *ep, int warn, int *had_subtree_opt_ptr)
- 			setflags(NFSEXP_ASYNC, active, ep);
- 		else if (!strcmp(opt, "nordirplus"))
- 			setflags(NFSEXP_NOREADDIRPLUS, active, ep);
-+		else if (!strcmp(opt, "security_label"))
-+			setflags(NFSEXP_SECURITY_LABEL, active, ep);
- 		else if (!strcmp(opt, "nohide"))
- 			setflags(NFSEXP_NOHIDE, active, ep);
- 		else if (!strcmp(opt, "hide"))
-diff --git a/utils/exportfs/exportfs.c b/utils/exportfs/exportfs.c
-index 15a15835a01f..38039978ef5f 100644
---- a/utils/exportfs/exportfs.c
-+++ b/utils/exportfs/exportfs.c
-@@ -705,6 +705,8 @@ dump(int verbose, int export_format)
- 				c = dumpopt(c, "insecure_locks");
- 			if (ep->e_flags & NFSEXP_NOREADDIRPLUS)
- 				c = dumpopt(c, "nordirplus");
-+			if (ep->e_flags & NFSEXP_SECURITY_LABEL)
-+				c = dumpopt(c, "security_label");
- 			if (ep->e_flags & NFSEXP_NOACL)
- 				c = dumpopt(c, "no_acl");
- 			if (ep->e_flags & NFSEXP_PNFS)
-diff --git a/utils/exportfs/exports.man b/utils/exportfs/exports.man
-index 93092463153b..d8de6bec2583 100644
---- a/utils/exportfs/exports.man
-+++ b/utils/exportfs/exports.man
-@@ -417,6 +417,14 @@ devices. The default can be explicitly requested with the
- .I no_pnfs
- option.
- 
-+.TP
-+.IR security_label
-+With this option set, clients using NFSv4.2 or higher will be able to
-+set and retrieve security labels (such as those used by SELinux).  This
-+will only work if all clients use a consistent security policy.  Note
-+that early kernels did not support this export option, and instead
-+enabled security labels by default.
-+
- .SS User ID Mapping
- .PP
- .B nfsd
--- 
-2.9.3
-
+Reviewed-by: Sagi Grimberg <sagi@grimberg.me>
