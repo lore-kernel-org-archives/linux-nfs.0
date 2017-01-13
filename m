@@ -1,116 +1,130 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f194.google.com ([209.85.223.194]:32875 "EHLO
-        mail-io0-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1750876AbdALXCu (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 12 Jan 2017 18:02:50 -0500
-Received: by mail-io0-f194.google.com with SMTP id 101so3971084iom.0
-        for <linux-nfs@vger.kernel.org>; Thu, 12 Jan 2017 15:02:50 -0800 (PST)
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH v2 4/4] NFSv4: update_changeattr should update the attribute timestamp
-Date: Thu, 12 Jan 2017 18:02:40 -0500
-Message-Id: <20170112230240.7730-5-trond.myklebust@primarydata.com>
-In-Reply-To: <20170112230240.7730-4-trond.myklebust@primarydata.com>
-References: <20170112230240.7730-1-trond.myklebust@primarydata.com>
- <20170112230240.7730-2-trond.myklebust@primarydata.com>
- <20170112230240.7730-3-trond.myklebust@primarydata.com>
- <20170112230240.7730-4-trond.myklebust@primarydata.com>
+Received: from mx2.suse.de ([195.135.220.15]:51073 "EHLO mx2.suse.de"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1750760AbdAMAEj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 12 Jan 2017 19:04:39 -0500
+From: NeilBrown <neilb@suse.com>
+To: Scott Mayhew <smayhew@redhat.com>,
+        Trond Myklebust <trondmy@primarydata.com>
+Date: Fri, 13 Jan 2017 11:04:27 +1100
+Cc: Schumaker Anna <anna.schumaker@netapp.com>,
+        List Linux NFS Mailing <linux-nfs@vger.kernel.org>
+Cc: Jeff Layton <jlayton@redhat.com>
+Subject: [PATCH] NFS: tidy up nfs_show_mountd_netid
+In-Reply-To: <20161207170350.nycnsb3sduho5nu4@tonberry.usersys.redhat.com>
+References: <1479243592-38858-1-git-send-email-smayhew@redhat.com> <56E2C0D6-40A3-45E9-815C-A50A94A3A95C@primarydata.com> <20161116135533.fytzlidwltjpz67e@tonberry.usersys.redhat.com> <20161207170350.nycnsb3sduho5nu4@tonberry.usersys.redhat.com>
+Message-ID: <87inpjhlkk.fsf@notabene.neil.brown.name>
+MIME-Version: 1.0
+Content-Type: multipart/signed; boundary="=-=-=";
+        micalg=pgp-sha256; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Otherwise, the attribute cache remains marked as being expired.
+--=-=-=
+Content-Type: text/plain
+Content-Transfer-Encoding: quoted-printable
 
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
----
- fs/nfs/nfs4proc.c | 21 +++++++++++++--------
- 1 file changed, 13 insertions(+), 8 deletions(-)
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 6a35204affa4..ecc151697fd4 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -1082,7 +1082,8 @@ int nfs4_call_sync(struct rpc_clnt *clnt,
- 	return nfs4_call_sync_sequence(clnt, server, msg, args, res);
- }
- 
--static void update_changeattr(struct inode *dir, struct nfs4_change_info *cinfo)
-+static void update_changeattr(struct inode *dir, struct nfs4_change_info *cinfo,
-+		unsigned long timestamp)
+This function is a bit clumsy, incorrectly producing
+",mountproto=3D" if mountd_protocol is 0 and !showdefaults,
+and duplicating the code for reporting "auto".
+
+Tidy it up so that it only makes a single seq_printf() call,
+and more obviously does the right thing.
+
+Fixes: ee671b016fbf ("NFS: convert proto=3D option to use netids rather tha=
+n a protoname")
+Signed-off-by: NeilBrown <neilb@suse.com>
+=2D--
+
+While I don't object to Scott's patch to fix this issue, this is a
+function that could usefully be simplified as well as fixed, so I offer
+my own alternative.... partly just to keep the email-thread alive.
+
+Quite apart from whether this function *should* be called for v3
+submounts, I think it would be good for the function to be robust.
+
+Thanks,
+NeilBrown
+
+
+ fs/nfs/super.c | 21 +++++++--------------
+ 1 file changed, 7 insertions(+), 14 deletions(-)
+
+diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+index 6bca17883b93..54e0f9f2dd94 100644
+=2D-- a/fs/nfs/super.c
++++ b/fs/nfs/super.c
+@@ -531,39 +531,32 @@ static void nfs_show_mountd_netid(struct seq_file *m,=
+ struct nfs_server *nfss,
+ 				  int showdefaults)
  {
- 	struct nfs_inode *nfsi = NFS_I(dir);
- 
-@@ -1098,6 +1099,7 @@ static void update_changeattr(struct inode *dir, struct nfs4_change_info *cinfo)
- 				NFS_INO_INVALID_ACL;
+ 	struct sockaddr *sap =3D (struct sockaddr *) &nfss->mountd_address;
++	char *proto =3D NULL;
+=20
+=2D	seq_printf(m, ",mountproto=3D");
+ 	switch (sap->sa_family) {
+ 	case AF_INET:
+ 		switch (nfss->mountd_protocol) {
+ 		case IPPROTO_UDP:
+=2D			seq_printf(m, RPCBIND_NETID_UDP);
++			proto =3D RPCBIND_NETID_UDP;
+ 			break;
+ 		case IPPROTO_TCP:
+=2D			seq_printf(m, RPCBIND_NETID_TCP);
++			proto =3D RPCBIND_NETID_TCP;
+ 			break;
+=2D		default:
+=2D			if (showdefaults)
+=2D				seq_printf(m, "auto");
+ 		}
+ 		break;
+ 	case AF_INET6:
+ 		switch (nfss->mountd_protocol) {
+ 		case IPPROTO_UDP:
+=2D			seq_printf(m, RPCBIND_NETID_UDP6);
++			proto =3D RPCBIND_NETID_UDP6;
+ 			break;
+ 		case IPPROTO_TCP:
+=2D			seq_printf(m, RPCBIND_NETID_TCP6);
++			proto =3D RPCBIND_NETID_TCP6;
+ 			break;
+=2D		default:
+=2D			if (showdefaults)
+=2D				seq_printf(m, "auto");
+ 		}
+ 		break;
+=2D	default:
+=2D		if (showdefaults)
+=2D			seq_printf(m, "auto");
  	}
- 	dir->i_version = cinfo->after;
-+	nfsi->read_cache_jiffies = timestamp;
- 	nfsi->attr_gencount = nfs_inc_attr_generation_counter();
- 	nfs_fscache_invalidate(dir);
- 	spin_unlock(&dir->i_lock);
-@@ -2395,7 +2397,8 @@ static int _nfs4_proc_open(struct nfs4_opendata *data)
- 		else if (o_res->cinfo.before != o_res->cinfo.after)
- 			data->file_created = 1;
- 		if (data->file_created || dir->i_version != o_res->cinfo.after)
--			update_changeattr(dir, &o_res->cinfo);
-+			update_changeattr(dir, &o_res->cinfo,
-+					o_res->f_attr->time_start);
- 	}
- 	if ((o_res->rflags & NFS4_OPEN_RESULT_LOCKTYPE_POSIX) == 0)
- 		server->caps &= ~NFS_CAP_POSIX_LOCK;
-@@ -4073,11 +4076,12 @@ static int _nfs4_proc_remove(struct inode *dir, const struct qstr *name)
- 		.rpc_argp = &args,
- 		.rpc_resp = &res,
- 	};
-+	unsigned long timestamp = jiffies;
- 	int status;
- 
- 	status = nfs4_call_sync(server->client, server, &msg, &args.seq_args, &res.seq_res, 1);
- 	if (status == 0)
--		update_changeattr(dir, &res.cinfo);
-+		update_changeattr(dir, &res.cinfo, timestamp);
- 	return status;
++	if (proto || showdefaults)
++		seq_printf(m, ",mountproto=3D%s", proto ?: "auto");
  }
- 
-@@ -4126,7 +4130,7 @@ static int nfs4_proc_unlink_done(struct rpc_task *task, struct inode *dir)
- 				    &data->timeout) == -EAGAIN)
- 		return 0;
- 	if (task->tk_status == 0)
--		update_changeattr(dir, &res->cinfo);
-+		update_changeattr(dir, &res->cinfo, res->dir_attr->time_start);
- 	return 1;
- }
- 
-@@ -4161,9 +4165,9 @@ static int nfs4_proc_rename_done(struct rpc_task *task, struct inode *old_dir,
- 		return 0;
- 
- 	if (task->tk_status == 0) {
--		update_changeattr(old_dir, &res->old_cinfo);
-+		update_changeattr(old_dir, &res->old_cinfo, res->old_fattr->time_start);
- 		if (new_dir != old_dir)
--			update_changeattr(new_dir, &res->new_cinfo);
-+			update_changeattr(new_dir, &res->new_cinfo, res->new_fattr->time_start);
- 	}
- 	return 1;
- }
-@@ -4201,7 +4205,7 @@ static int _nfs4_proc_link(struct inode *inode, struct inode *dir, const struct
- 
- 	status = nfs4_call_sync(server->client, server, &msg, &arg.seq_args, &res.seq_res, 1);
- 	if (!status) {
--		update_changeattr(dir, &res.cinfo);
-+		update_changeattr(dir, &res.cinfo, res.fattr->time_start);
- 		status = nfs_post_op_update_inode(inode, res.fattr);
- 		if (!status)
- 			nfs_setsecurity(inode, res.fattr, res.label);
-@@ -4276,7 +4280,8 @@ static int nfs4_do_create(struct inode *dir, struct dentry *dentry, struct nfs4_
- 	int status = nfs4_call_sync(NFS_SERVER(dir)->client, NFS_SERVER(dir), &data->msg,
- 				    &data->arg.seq_args, &data->res.seq_res, 1);
- 	if (status == 0) {
--		update_changeattr(dir, &data->res.dir_cinfo);
-+		update_changeattr(dir, &data->res.dir_cinfo,
-+				data->res.fattr->time_start);
- 		status = nfs_instantiate(dentry, data->res.fh, data->res.fattr, data->res.label);
- 	}
- 	return status;
--- 
-2.9.3
+=20
+ static void nfs_show_mountd_options(struct seq_file *m, struct nfs_server =
+*nfss,
+=2D-=20
+2.11.0
 
+
+--=-=-=
+Content-Type: application/pgp-signature; name="signature.asc"
+
+-----BEGIN PGP SIGNATURE-----
+
+iQIzBAEBCAAdFiEEG8Yp69OQ2HB7X0l6Oeye3VZigbkFAlh4GYwACgkQOeye3VZi
+gblgSQ/+I+gaYgs7WIsfwPEtirxORiRUZpJHbOi3+ZDGZW27xqNsP3tGp/PM4e6F
+eqvRhieF/MBD1Q/Y2uxj90k8zvyaPLLqJE0YVzm4ulAOrWkVI2kXvvc1uQmXhvxB
+K5ERzMoirMxJsIsIMLNpltIzBE1CZpQ2PjAFVS7Zfo5pt1qD6mqzwIjp3B+mgHVf
+At6jsJhiE25twQRSd9HMHoru2/csqrBrmBAIpDzLMiJrWKv61afEArbUz1pcjgYK
+7hEhdPJRE0gYclSuuxN0tmdHSS4I23xwW8oPYopn5TeTjI9UkIXtE5Aj5nlJ/OrG
+QuNTxxZdl25xjTpV7o38gOqCyKmEpcEwxc5R4pt7Z3SxY4HUKhRtu4LCsQXgkAQ+
+l+envJ7aDn4DfTkaSlvJXLKisPguBR2n9qLF6iSICODp0OpXyq26UyWDXISwlSEn
+zJAN5oAnvLwgjsR52YV6DINHnV8Ms4I9S67SRF4sfmqQvCzOV2gwthC7qEIolrfS
++FPsXQXefxy+M8ywns6qEFUCKfz63aHwe8SHntibHvYQZmHrg/zulLaD+Zu98NZO
+7cmgtcF2BdnqHuo9MH9A0J3nll86V1D8o2wNVWkXBJVmzYi3ojoxob4uMo4zwZ6c
+8U2mvjmNQ6Qazwzy3hncXEq/gPT0I7K6ZD+pwTLHvPr0Z2UZHXk=
+=Wtx6
+-----END PGP SIGNATURE-----
+--=-=-=--
