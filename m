@@ -1,66 +1,95 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.skyhub.de ([78.46.96.112]:54667 "EHLO mail.skyhub.de"
+Received: from fieldses.org ([173.255.197.46]:33780 "EHLO fieldses.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1750789AbdAMQit (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 13 Jan 2017 11:38:49 -0500
-Date: Fri, 13 Jan 2017 17:38:36 +0100
-From: Borislav Petkov <bp@alien8.de>
-To: Nicolas Dichtel <nicolas.dichtel@6wind.com>
-Cc: David Howells <dhowells@redhat.com>, arnd@arndb.de,
-        linux-kbuild@vger.kernel.org, linux-doc@vger.kernel.org,
-        linux-kernel@vger.kernel.org, linux-alpha@vger.kernel.org,
-        linux-snps-arc@lists.infradead.org,
-        linux-arm-kernel@lists.infradead.org,
-        adi-buildroot-devel@lists.sourceforge.net, linux-c6x-dev@linux-c6x.org,
-        linux-cris-kernel@axis.com, uclinux-h8-devel@lists.sourceforge.jp,
-        linux-hexagon@vger.kernel.org, linux-ia64@vger.kernel.org,
-        linux-m68k@vger.kernel.org, linux-metag@vger.kernel.org,
-        linux-mips@linux-mips.org, linux-am33-list@redhat.com,
-        nios2-dev@lists.rocketboards.org, openrisc@lists.librecores.org,
-        linux-parisc@vger.kernel.org, linuxppc-dev@lists.ozlabs.org,
-        linux-s390@vger.kernel.org, linux-sh@vger.kernel.org,
-        sparclinux@vger.kernel.org, linux-xtensa@linux-xtensa.org,
-        linux-arch@vger.kernel.org, dri-devel@lists.freedesktop.org,
-        netdev@vger.kernel.org, linux-media@vger.kernel.org,
-        linux-mmc@vger.kernel.org, netfilter-devel@vger.kernel.org,
-        coreteam@netfilter.org, linux-nfs@vger.kernel.org,
-        linux-raid@vger.kernel.org, linux-spi@vger.kernel.org,
-        linux-mtd@lists.infradead.org, linux-rdma@vger.kernel.org,
-        fcoe-devel@open-fcoe.org, alsa-devel@alsa-project.org,
-        linux-fbdev@vger.kernel.org, xen-devel@lists.xenproject.org,
-        linux@armlinux.org.uk
-Subject: Re: [PATCH v3 4/8] x86: stop exporting msr-index.h to userland
-Message-ID: <20170113163836.jn3u6xyfcrbtynut@pd.tnic>
-References: <1484304406-10820-5-git-send-email-nicolas.dichtel@6wind.com>
- <3131144.4Ej3KFWRbz@wuerfel>
- <1484304406-10820-1-git-send-email-nicolas.dichtel@6wind.com>
- <25483.1484322229@warthog.procyon.org.uk>
- <dd826bc7-e1ef-be29-e0c3-692afb346036@6wind.com>
+        id S1750964AbdAMQmJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 13 Jan 2017 11:42:09 -0500
+Date: Fri, 13 Jan 2017 11:42:08 -0500
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH v1 00/22] convert NFS server to new rdma_rw API
+Message-ID: <20170113164208.GD24709@fieldses.org>
+References: <20170107170258.14126.8503.stgit@klimt.1015granger.net>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-In-Reply-To: <dd826bc7-e1ef-be29-e0c3-692afb346036@6wind.com>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20170107170258.14126.8503.stgit@klimt.1015granger.net>
+From: bfields@fieldses.org (J. Bruce Fields)
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Jan 13, 2017 at 05:08:34PM +0100, Nicolas Dichtel wrote:
-> Le 13/01/2017 à 16:43, David Howells a écrit :
-> >> -header-y += msr-index.h
-> > 
-> > I see it on my desktop as /usr/include/asm/msr-index.h and it's been there at
-> > least four years - and as such it's part of the UAPI.  I don't think you can
-> > remove it unless you can guarantee there are no userspace users.
-> I keep it in the v2 of the series, but the maintainer, Borislav Petkov, asks me
-> to un-export it.
+Can you summarize the motivation for the change, for someone (like me)
+that doesn't know much about RDMA?  Or does "significant cleanups" cover
+it?
+
+Are there any regressions?  For example, will it still support all the
+same hardware?  Is there any change that will be noticeable to NFS/RDMA
+users?
+
+--b.
+
+On Sat, Jan 07, 2017 at 12:15:15PM -0500, Chuck Lever wrote:
+> This series converts the Linux NFS server RPC-over-RDMA
+> implementation to use the new core rdma_rw API and to poll its CQs
+> in workqueue mode.
 > 
-> I will follow the maintainer decision.
-
-I'm not the maintainer. I simply think that exporting that file was
-wrong because it if we change something in it, we will break userspace.
-And that should not happen - if userspace needs MSRs, it should do its
-own defines.
-
--- 
-Regards/Gruss,
-    Boris.
-
-Good mailing practices for 400: avoid top-posting and trim the reply.
+> Previously published work prototyped only the path that sends RPC
+> replies. This series converts both send and receive sides, and
+> includes significant clean ups that result from using the new API.
+> 
+> This series has been successfully tested with NFSv3, 4.0, and 4.1;
+> with clients that use FRWR and FMR; and with sec=sys, krb5, krb5i,
+> and krb5p.
+> 
+> Available in the "nfsd-rdma-rw-api" topic branch of this git repo:
+> 
+> git://git.linux-nfs.org/projects/cel/cel-2.6.git
+> 
+> And for online review:
+> 
+> http://git.linux-nfs.org/?p=cel/cel-2.6.git;a=shortlog;h=refs/heads/nfsd-rdma-rw-api
+> 
+> ---
+> 
+> Chuck Lever (22):
+>       svcrdma: Another sendto chunk list parsing update
+>       svcrdma: Replace RPCRDMA_SQ_DEPTH_MULT
+>       svcrdma: Remove unused sc_dto_q field
+>       svcrdma: Combine list fields in struct svc_rdma_op_ctxt
+>       svcrdma: Poll CQs in "workqueue" mode
+>       svcrdma: Clean up RPC-over-RDMA Reply header encoder
+>       svcrdma: Clean up RPC-over-RDMA Call header decoder
+>       svcrdma: Introduce local rdma_rw API helpers
+>       svcrdma: Use rdma_rw API in RPC reply path
+>       svcrdma: Backchannel sendto clean up
+>       svcrdma: Clean up RDMA_ERROR path
+>       svcrdma: Reduce size of sge array in struct svc_rdma_op_ctxt
+>       svcrdma: Remove old RDMA Write completion handlers
+>       svcrdma: Remove the req_map cache
+>       svcrdma: Clean up RPC-over-RDMA backchannel reply processing
+>       svcrdma: Use generic RDMA R/W API in RPC Call path
+>       svcrdma: Remove unused Read completion handlers
+>       svcrdma: Remove frmr cache
+>       svcrdma: Clean up after converting svc_rdma_recvfrom to rdma_rw API
+>       svcrdma: Clean-up in svc_rdma_post_recv
+>       svcrdma: Clean-up svc_rdma_unmap_dma
+>       svcrdma: Re-order fields in svc_rdma_op_ctxt
+> 
+> 
+>  include/linux/sunrpc/rpc_rdma.h            |   12 
+>  include/linux/sunrpc/svc_rdma.h            |  147 ++---
+>  net/sunrpc/xprtrdma/Makefile               |    2 
+>  net/sunrpc/xprtrdma/svc_rdma.c             |    8 
+>  net/sunrpc/xprtrdma/svc_rdma_backchannel.c |   73 +--
+>  net/sunrpc/xprtrdma/svc_rdma_marshal.c     |  478 +++++++++--------
+>  net/sunrpc/xprtrdma/svc_rdma_recvfrom.c    |  518 +++---------------
+>  net/sunrpc/xprtrdma/svc_rdma_rw.c          |  731 ++++++++++++++++++++++++++
+>  net/sunrpc/xprtrdma/svc_rdma_sendto.c      |  802 +++++++++++-----------------
+>  net/sunrpc/xprtrdma/svc_rdma_transport.c   |  506 +++++-------------
+>  10 files changed, 1621 insertions(+), 1656 deletions(-)
+>  create mode 100644 net/sunrpc/xprtrdma/svc_rdma_rw.c
+> 
+> --
+> Chuck Lever
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
