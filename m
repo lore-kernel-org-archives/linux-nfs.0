@@ -1,79 +1,170 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:33784 "EHLO fieldses.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751114AbdAMRDg (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 13 Jan 2017 12:03:36 -0500
-Date: Fri, 13 Jan 2017 12:03:34 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] setattr: test how v4.0 server handles setting of zero
- length principals
-Message-ID: <20170113170334.GE24709@fieldses.org>
-References: <20170109151556.7522-1-tigran.mkrtchyan@desy.de>
+Received: from pandora.armlinux.org.uk ([78.32.30.218]:48752 "EHLO
+        pandora.armlinux.org.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1750760AbdAMRHv (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 13 Jan 2017 12:07:51 -0500
+Date: Fri, 13 Jan 2017 17:06:10 +0000
+From: Russell King - ARM Linux <linux@armlinux.org.uk>
+To: Nicolas Dichtel <nicolas.dichtel@6wind.com>
+Cc: arnd@arndb.de, mmarek@suse.com, linux-kbuild@vger.kernel.org,
+        linux-doc@vger.kernel.org, linux-kernel@vger.kernel.org,
+        linux-alpha@vger.kernel.org, linux-snps-arc@lists.infradead.org,
+        linux-arm-kernel@lists.infradead.org,
+        adi-buildroot-devel@lists.sourceforge.net,
+        linux-c6x-dev@linux-c6x.org, linux-cris-kernel@axis.com,
+        uclinux-h8-devel@lists.sourceforge.jp,
+        linux-hexagon@vger.kernel.org, linux-ia64@vger.kernel.org,
+        linux-m68k@lists.linux-m68k.org, linux-metag@vger.kernel.org,
+        linux-mips@linux-mips.org, linux-am33-list@redhat.com,
+        nios2-dev@lists.rocketboards.org, openrisc@lists.librecores.org,
+        linux-parisc@vger.kernel.org, linuxppc-dev@lists.ozlabs.org,
+        linux-s390@vger.kernel.org, linux-sh@vger.kernel.org,
+        sparclinux@vger.kernel.org, linux-xtensa@linux-xtensa.org,
+        linux-arch@vger.kernel.org, dri-devel@lists.freedesktop.org,
+        netdev@vger.kernel.org, linux-media@vger.kernel.org,
+        linux-mmc@vger.kernel.org, netfilter-devel@vger.kernel.org,
+        coreteam@netfilter.org, linux-nfs@vger.kernel.org,
+        linux-raid@vger.kernel.org, linux-spi@vger.kernel.org,
+        linux-mtd@lists.infradead.org, linux-rdma@vger.kernel.org,
+        fcoe-devel@open-fcoe.org, alsa-devel@alsa-project.org,
+        linux-fbdev@vger.kernel.org, xen-devel@lists.xenproject.org,
+        airlied@linux.ie, davem@davemloft.net, bp@alien8.de,
+        slash.tmp@free.fr, daniel.vetter@ffwll.ch, msalter@redhat.com,
+        jengelh@inai.de, hch@infradead.org
+Subject: Re: [PATCH v3 1/8] arm: put types.h in uapi
+Message-ID: <20170113170610.GV14217@n2100.armlinux.org.uk>
+References: <3131144.4Ej3KFWRbz@wuerfel>
+ <1484304406-10820-1-git-send-email-nicolas.dichtel@6wind.com>
+ <1484304406-10820-2-git-send-email-nicolas.dichtel@6wind.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20170109151556.7522-1-tigran.mkrtchyan@desy.de>
+In-Reply-To: <1484304406-10820-2-git-send-email-nicolas.dichtel@6wind.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Jan 09, 2017 at 04:15:56PM +0100, Tigran Mkrtchyan wrote:
-> my interpretation of rfc3530 expects NFS4ERR_INVAL is owner and
-> owner_group are empty strings.
+On Fri, Jan 13, 2017 at 11:46:39AM +0100, Nicolas Dichtel wrote:
+> This header file is exported, thus move it to uapi.
 
-Thanks.  This hangs the Linux server.  Possibly an idmapd bug, but I
-think nfsd should be checking for this case before it calls idmapd.
+I'm taking this patch, but with the following commit log:
 
-Anyway, that's not your problem.
+  Due to the way kbuild works, this header was unintentionally exported
+  back in 2013 when it was created, despite it not being in a uapi/
+  directory.  This is very non-intuitive behaviour by Kbuild.
 
-Any reason you're using NF4SOCK instead of NF4REG?
+  However, we've had this include exported to userland for almost four
+  years, and searching google for "ARM types.h __UINTPTR_TYPE__" gives
+  no hint that anyone has complained about it.  So, let's make it
+  officially exported in this state.
 
---b.
+If anyone has any objections, they better shout sooner rather than
+later.
 
 > 
-> Signed-off-by: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
+> Signed-off-by: Nicolas Dichtel <nicolas.dichtel@6wind.com>
 > ---
->  nfs4.0/servertests/st_setattr.py | 31 +++++++++++++++++++++++++++++++
->  1 file changed, 31 insertions(+)
+>  arch/arm/include/asm/types.h      | 40 ---------------------------------------
+>  arch/arm/include/uapi/asm/types.h | 40 +++++++++++++++++++++++++++++++++++++++
+>  2 files changed, 40 insertions(+), 40 deletions(-)
+>  delete mode 100644 arch/arm/include/asm/types.h
+>  create mode 100644 arch/arm/include/uapi/asm/types.h
 > 
-> diff --git a/nfs4.0/servertests/st_setattr.py b/nfs4.0/servertests/st_setattr.py
-> index b6a398b..b192ece 100644
-> --- a/nfs4.0/servertests/st_setattr.py
-> +++ b/nfs4.0/servertests/st_setattr.py
-> @@ -701,3 +701,34 @@ def testChangeGranularity(t, env):
->      chattr4 = res.resarray[7].obj_attributes
->      if chattr1 == chattr2 or chattr2 == chattr3 or chattr3 == chattr4:
->          t.fail("consecutive SETATTR(mode)'s don't all change change attribute")
+> diff --git a/arch/arm/include/asm/types.h b/arch/arm/include/asm/types.h
+> deleted file mode 100644
+> index a53cdb8f068c..000000000000
+> --- a/arch/arm/include/asm/types.h
+> +++ /dev/null
+> @@ -1,40 +0,0 @@
+> -#ifndef _ASM_TYPES_H
+> -#define _ASM_TYPES_H
+> -
+> -#include <asm-generic/int-ll64.h>
+> -
+> -/*
+> - * The C99 types uintXX_t that are usually defined in 'stdint.h' are not as
+> - * unambiguous on ARM as you would expect. For the types below, there is a
+> - * difference on ARM between GCC built for bare metal ARM, GCC built for glibc
+> - * and the kernel itself, which results in build errors if you try to build with
+> - * -ffreestanding and include 'stdint.h' (such as when you include 'arm_neon.h'
+> - * in order to use NEON intrinsics)
+> - *
+> - * As the typedefs for these types in 'stdint.h' are based on builtin defines
+> - * supplied by GCC, we can tweak these to align with the kernel's idea of those
+> - * types, so 'linux/types.h' and 'stdint.h' can be safely included from the same
+> - * source file (provided that -ffreestanding is used).
+> - *
+> - *                    int32_t         uint32_t               uintptr_t
+> - * bare metal GCC     long            unsigned long          unsigned int
+> - * glibc GCC          int             unsigned int           unsigned int
+> - * kernel             int             unsigned int           unsigned long
+> - */
+> -
+> -#ifdef __INT32_TYPE__
+> -#undef __INT32_TYPE__
+> -#define __INT32_TYPE__		int
+> -#endif
+> -
+> -#ifdef __UINT32_TYPE__
+> -#undef __UINT32_TYPE__
+> -#define __UINT32_TYPE__	unsigned int
+> -#endif
+> -
+> -#ifdef __UINTPTR_TYPE__
+> -#undef __UINTPTR_TYPE__
+> -#define __UINTPTR_TYPE__	unsigned long
+> -#endif
+> -
+> -#endif /* _ASM_TYPES_H */
+> diff --git a/arch/arm/include/uapi/asm/types.h b/arch/arm/include/uapi/asm/types.h
+> new file mode 100644
+> index 000000000000..9435a42f575e
+> --- /dev/null
+> +++ b/arch/arm/include/uapi/asm/types.h
+> @@ -0,0 +1,40 @@
+> +#ifndef _UAPI_ASM_TYPES_H
+> +#define _UAPI_ASM_TYPES_H
 > +
-> +def testEmptyPrincipal(t, env):
-> +    """Setting owner with zero length principal must fail
+> +#include <asm-generic/int-ll64.h>
 > +
-> +    FLAGS: setattr all
-> +    DEPEND: MKFILE
-> +    CODE: SATT16
-> +    """
-> +    c = env.c1
-> +    path = c.homedir + [t.code]
-> +    res = c.create_obj(path, NF4SOCK)
-> +    check(res)
-> +    ops = c.use_obj(path) + [c.setattr({FATTR4_OWNER: ''})]
-> +    res = c.compound(ops)
-> +    check(res, NFS4ERR_INVAL, "Setting empty owner")
+> +/*
+> + * The C99 types uintXX_t that are usually defined in 'stdint.h' are not as
+> + * unambiguous on ARM as you would expect. For the types below, there is a
+> + * difference on ARM between GCC built for bare metal ARM, GCC built for glibc
+> + * and the kernel itself, which results in build errors if you try to build with
+> + * -ffreestanding and include 'stdint.h' (such as when you include 'arm_neon.h'
+> + * in order to use NEON intrinsics)
+> + *
+> + * As the typedefs for these types in 'stdint.h' are based on builtin defines
+> + * supplied by GCC, we can tweak these to align with the kernel's idea of those
+> + * types, so 'linux/types.h' and 'stdint.h' can be safely included from the same
+> + * source file (provided that -ffreestanding is used).
+> + *
+> + *                    int32_t         uint32_t               uintptr_t
+> + * bare metal GCC     long            unsigned long          unsigned int
+> + * glibc GCC          int             unsigned int           unsigned int
+> + * kernel             int             unsigned int           unsigned long
+> + */
 > +
+> +#ifdef __INT32_TYPE__
+> +#undef __INT32_TYPE__
+> +#define __INT32_TYPE__		int
+> +#endif
 > +
-> +def testEmptyGroupPrincipal(t, env):
-> +    """Setting owner group with zero length principal must fail
+> +#ifdef __UINT32_TYPE__
+> +#undef __UINT32_TYPE__
+> +#define __UINT32_TYPE__	unsigned int
+> +#endif
 > +
-> +    FLAGS: setattr all
-> +    DEPEND: MKFILE
-> +    CODE: SATT17
-> +    """
-> +    c = env.c1
-> +    path = c.homedir + [t.code]
-> +    res = c.create_obj(path, NF4SOCK)
-> +    check(res)
-> +    ops = c.use_obj(path) + [c.setattr({FATTR4_OWNER_GROUP: ''})]
-> +    res = c.compound(ops)
-> +    check(res, NFS4ERR_INVAL, "Setting empty owner_group")
+> +#ifdef __UINTPTR_TYPE__
+> +#undef __UINTPTR_TYPE__
+> +#define __UINTPTR_TYPE__	unsigned long
+> +#endif
+> +
+> +#endif /* _UAPI_ASM_TYPES_H */
 > -- 
-> 2.9.3
+> 2.8.1
+> 
+
+-- 
+RMK's Patch system: http://www.armlinux.org.uk/developer/patches/
+FTTC broadband for 0.8mile line: currently at 9.6Mbps down 400kbps up
+according to speedtest.net.
