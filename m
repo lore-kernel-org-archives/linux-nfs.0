@@ -1,79 +1,121 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-eopbgr50059.outbound.protection.outlook.com ([40.107.5.59]:25888
-        "EHLO EUR03-VE1-obe.outbound.protection.outlook.com"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1750835AbdAMSBk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 13 Jan 2017 13:01:40 -0500
-From: Parav Pandit <parav@mellanox.com>
-To: Chuck Lever <chuck.lever@oracle.com>,
-        "linux-rdma@vger.kernel.org" <linux-rdma@vger.kernel.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: RE: [PATCH v1 4/5] xprtrdma: Reduce required number of send SGEs
-Date: Fri, 13 Jan 2017 18:01:36 +0000
-Message-ID: <VI1PR0502MB30080923A8B244BBAD059358D1780@VI1PR0502MB3008.eurprd05.prod.outlook.com>
-References: <20170113173023.32692.30661.stgit@manet.1015granger.net>
- <20170113174322.32692.66126.stgit@manet.1015granger.net>
-In-Reply-To: <20170113174322.32692.66126.stgit@manet.1015granger.net>
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
+Received: from aserp1040.oracle.com ([141.146.126.69]:41980 "EHLO
+        aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1750953AbdAMSbD (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 13 Jan 2017 13:31:03 -0500
+Content-Type: text/plain; charset=utf-8
+Mime-Version: 1.0 (Mac OS X Mail 9.3 \(3124\))
+Subject: Re: [PATCH v1 4/5] xprtrdma: Reduce required number of send SGEs
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <VI1PR0502MB30080923A8B244BBAD059358D1780@VI1PR0502MB3008.eurprd05.prod.outlook.com>
+Date: Fri, 13 Jan 2017 13:30:56 -0500
+Cc: "linux-rdma@vger.kernel.org" <linux-rdma@vger.kernel.org>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Message-Id: <706404D7-A179-4E54-A2C7-534FCC1B5745@oracle.com>
+References: <20170113173023.32692.30661.stgit@manet.1015granger.net> <20170113174322.32692.66126.stgit@manet.1015granger.net> <VI1PR0502MB30080923A8B244BBAD059358D1780@VI1PR0502MB3008.eurprd05.prod.outlook.com>
+To: Parav Pandit <parav@mellanox.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-SGkgQ2h1Y2ssDQoNCj4gLS0tLS1PcmlnaW5hbCBNZXNzYWdlLS0tLS0NCj4gRnJvbTogbGludXgt
-cmRtYS1vd25lckB2Z2VyLmtlcm5lbC5vcmcgW21haWx0bzpsaW51eC1yZG1hLQ0KPiBvd25lckB2
-Z2VyLmtlcm5lbC5vcmddIE9uIEJlaGFsZiBPZiBDaHVjayBMZXZlcg0KPiBTZW50OiBGcmlkYXks
-IEphbnVhcnkgMTMsIDIwMTcgMTE6NDMgQU0NCj4gVG86IGxpbnV4LXJkbWFAdmdlci5rZXJuZWwu
-b3JnOyBsaW51eC1uZnNAdmdlci5rZXJuZWwub3JnDQo+IFN1YmplY3Q6IFtQQVRDSCB2MSA0LzVd
-IHhwcnRyZG1hOiBSZWR1Y2UgcmVxdWlyZWQgbnVtYmVyIG9mIHNlbmQgU0dFcw0KPiBkaWZmIC0t
-Z2l0IGEvbmV0L3N1bnJwYy94cHJ0cmRtYS9ycGNfcmRtYS5jDQo+IGIvbmV0L3N1bnJwYy94cHJ0
-cmRtYS9ycGNfcmRtYS5jIGluZGV4IDQ5MDk3NTguLmFiNjk5ZjkgMTAwNjQ0DQoNCj4gIC8qIFRo
-ZSBjbGllbnQgY2FuJ3Qga25vdyBob3cgbGFyZ2UgdGhlIGFjdHVhbCByZXBseSB3aWxsIGJlLiBU
-aHVzIGl0IGRpZmYgLS1naXQNCj4gYS9uZXQvc3VucnBjL3hwcnRyZG1hL3ZlcmJzLmMgYi9uZXQv
-c3VucnBjL3hwcnRyZG1hL3ZlcmJzLmMgaW5kZXgNCj4gMTJlODI0Mi4uNWRjZGQwYiAxMDA2NDQN
-Cj4gLS0tIGEvbmV0L3N1bnJwYy94cHJ0cmRtYS92ZXJicy5jDQo+ICsrKyBiL25ldC9zdW5ycGMv
-eHBydHJkbWEvdmVyYnMuYw0KPiBAQCAtNDg4LDE4ICs0ODgsMTkgQEAgc3RhdGljIHZvaWQgcnBj
-cmRtYV9kZXN0cm95X2lkKHN0cnVjdCByZG1hX2NtX2lkDQo+ICppZCkNCj4gICAqLw0KPiAgaW50
-DQo+ICBycGNyZG1hX2VwX2NyZWF0ZShzdHJ1Y3QgcnBjcmRtYV9lcCAqZXAsIHN0cnVjdCBycGNy
-ZG1hX2lhICppYSwNCj4gLQkJCQlzdHJ1Y3QgcnBjcmRtYV9jcmVhdGVfZGF0YV9pbnRlcm5hbCAq
-Y2RhdGEpDQo+ICsJCSAgc3RydWN0IHJwY3JkbWFfY3JlYXRlX2RhdGFfaW50ZXJuYWwgKmNkYXRh
-KQ0KPiAgew0KPiAgCXN0cnVjdCBycGNyZG1hX2Nvbm5lY3RfcHJpdmF0ZSAqcG1zZyA9ICZlcC0+
-cmVwX2NtX3ByaXZhdGU7DQo+ICsJdW5zaWduZWQgaW50IG1heF9xcF93ciwgbWF4X3NnZTsNCj4g
-IAlzdHJ1Y3QgaWJfY3EgKnNlbmRjcSwgKnJlY3ZjcTsNCj4gLQl1bnNpZ25lZCBpbnQgbWF4X3Fw
-X3dyOw0KPiAgCWludCByYzsNCj4gDQo+IC0JaWYgKGlhLT5yaV9kZXZpY2UtPmF0dHJzLm1heF9z
-Z2UgPCBSUENSRE1BX01BWF9TRU5EX1NHRVMpIHsNCj4gLQkJZHByaW50aygiUlBDOiAgICAgICAl
-czogaW5zdWZmaWNpZW50IHNnZSdzIGF2YWlsYWJsZVxuIiwNCj4gLQkJCV9fZnVuY19fKTsNCj4g
-KwltYXhfc2dlID0gbWluKGlhLT5yaV9kZXZpY2UtPmF0dHJzLm1heF9zZ2UsDQo+IFJQQ1JETUFf
-TUFYX1NFTkRfU0dFUyk7DQo+ICsJaWYgKG1heF9zZ2UgPCAzKSB7DQo+ICsJCXByX3dhcm4oInJw
-Y3JkbWE6IEhDQSBwcm92aWRlcyBvbmx5ICVkIHNlbmQgU0dFc1xuIiwNCj4gbWF4X3NnZSk7DQo+
-ICAJCXJldHVybiAtRU5PTUVNOw0KPiAgCX0NCj4gKwlpYS0+cmlfbWF4X3NnZW5vID0gbWF4X3Nn
-ZSAtIDM7DQo+IA0KDQpJIGRpZG4ndCBub3RpY2VkIHRoaXMgbmV3IHJpX21heF9zZ2VubyB2YXJp
-YWJsZSBiZWluZyB1c2VkIGluIHRoaXMgcGF0Y2ggc2V0LiBEaWQgSSBtaXNzPw0KWW91IGFsc28g
-bWlnaHQgd2FudCB0byByZW5hbWUgaXQgdG8gcmlfbWF4X3NnZV9udW0uDQpSZWdhcmRsZXNzIGZv
-ciBzb21lIGRldmljZSB3aXRoIDMgU0dFcywgcmlfbWF4X3NnZW5vIHdpbGwgYmVjb21lIHplcm8u
-IElzIHRoYXQgZmluZT8NCllvdSB3YW50ZWQgdG8gY2hlY2sgZm9yIHZhbHVlIG9mIDU/DQpJdCB3
-b3VsZCBiZSBnb29kIHRvIGhhdmUgZGVmaW5lIGZvciB0aGlzIG1pbmltdW0gcmVxdWlyZWQgMyBT
-R0VzIGhlYWRlciBmaWxlIHN1Y2ggYXMgUlBDUkRNQV9NSU5fUkVRX1JFQ1ZfU0dFLg0KDQoNCj4g
-IAlpZiAoaWEtPnJpX2RldmljZS0+YXR0cnMubWF4X3FwX3dyIDw9IFJQQ1JETUFfQkFDS1dBUkRf
-V1JTKSB7DQo+ICAJCWRwcmludGsoIlJQQzogICAgICAgJXM6IGluc3VmZmljaWVudCB3cWUncyBh
-dmFpbGFibGVcbiIsDQo+IEBAIC01MjQsNyArNTI1LDcgQEAgc3RhdGljIHZvaWQgcnBjcmRtYV9k
-ZXN0cm95X2lkKHN0cnVjdCByZG1hX2NtX2lkDQo+ICppZCkNCj4gIAllcC0+cmVwX2F0dHIuY2Fw
-Lm1heF9yZWN2X3dyID0gY2RhdGEtPm1heF9yZXF1ZXN0czsNCj4gIAllcC0+cmVwX2F0dHIuY2Fw
-Lm1heF9yZWN2X3dyICs9IFJQQ1JETUFfQkFDS1dBUkRfV1JTOw0KPiAgCWVwLT5yZXBfYXR0ci5j
-YXAubWF4X3JlY3Zfd3IgKz0gMTsJLyogZHJhaW4gY3FlICovDQo+IC0JZXAtPnJlcF9hdHRyLmNh
-cC5tYXhfc2VuZF9zZ2UgPSBSUENSRE1BX01BWF9TRU5EX1NHRVM7DQo+ICsJZXAtPnJlcF9hdHRy
-LmNhcC5tYXhfc2VuZF9zZ2UgPSBtYXhfc2dlOw0KPiAgCWVwLT5yZXBfYXR0ci5jYXAubWF4X3Jl
-Y3Zfc2dlID0gMTsNCj4gIAllcC0+cmVwX2F0dHIuY2FwLm1heF9pbmxpbmVfZGF0YSA9IDA7DQo+
-ICAJZXAtPnJlcF9hdHRyLnNxX3NpZ190eXBlID0gSUJfU0lHTkFMX1JFUV9XUjsgZGlmZiAtLWdp
-dA0KPiBhL25ldC9zdW5ycGMveHBydHJkbWEveHBydF9yZG1hLmggYi9uZXQvc3VucnBjL3hwcnRy
-ZG1hL3hwcnRfcmRtYS5oDQo+IGluZGV4IGY0OTVkZjBjLi5jMTM0ZDBiIDEwMDY0NA0KPiAtLS0g
-YS9uZXQvc3VucnBjL3hwcnRyZG1hL3hwcnRfcmRtYS5oDQo+ICsrKyBiL25ldC9zdW5ycGMveHBy
-dHJkbWEveHBydF9yZG1hLmgNCj4gQEAgLTc0LDYgKzc0LDcgQEAgc3RydWN0IHJwY3JkbWFfaWEg
-ew0KPiAgCXVuc2lnbmVkIGludAkJcmlfbWF4X2ZybXJfZGVwdGg7DQo+ICAJdW5zaWduZWQgaW50
-CQlyaV9tYXhfaW5saW5lX3dyaXRlOw0KPiAgCXVuc2lnbmVkIGludAkJcmlfbWF4X2lubGluZV9y
-ZWFkOw0KPiArCXVuc2lnbmVkIGludAkJcmlfbWF4X3NnZW5vOw0KPiAgCWJvb2wJCQlyaV9yZW1p
-bnZfZXhwZWN0ZWQ7DQo+ICAJYm9vbAkJCXJpX2ltcGxpY2l0X3BhZGRpbmc7DQo+ICAJZW51bSBp
-Yl9tcl90eXBlCQlyaV9tcnR5cGU7DQo+IA0KPiAtLQ0KPiBUbyB1bnN1YnNjcmliZSBmcm9tIHRo
-aXMgbGlzdDogc2VuZCB0aGUgbGluZSAidW5zdWJzY3JpYmUgbGludXgtcmRtYSIgaW4gdGhlDQo+
-IGJvZHkgb2YgYSBtZXNzYWdlIHRvIG1ham9yZG9tb0B2Z2VyLmtlcm5lbC5vcmcgTW9yZSBtYWpv
-cmRvbW8gaW5mbyBhdA0KPiBodHRwOi8vdmdlci5rZXJuZWwub3JnL21ham9yZG9tby1pbmZvLmh0
-bWwNCg==
+
+> On Jan 13, 2017, at 1:01 PM, Parav Pandit <parav@mellanox.com> wrote:
+> 
+> Hi Chuck,
+> 
+>> -----Original Message-----
+>> From: linux-rdma-owner@vger.kernel.org [mailto:linux-rdma-
+>> owner@vger.kernel.org] On Behalf Of Chuck Lever
+>> Sent: Friday, January 13, 2017 11:43 AM
+>> To: linux-rdma@vger.kernel.org; linux-nfs@vger.kernel.org
+>> Subject: [PATCH v1 4/5] xprtrdma: Reduce required number of send SGEs
+>> diff --git a/net/sunrpc/xprtrdma/rpc_rdma.c
+>> b/net/sunrpc/xprtrdma/rpc_rdma.c index 4909758..ab699f9 100644
+> 
+>> /* The client can't know how large the actual reply will be. Thus it diff --git
+>> a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c index
+>> 12e8242..5dcdd0b 100644
+>> --- a/net/sunrpc/xprtrdma/verbs.c
+>> +++ b/net/sunrpc/xprtrdma/verbs.c
+>> @@ -488,18 +488,19 @@ static void rpcrdma_destroy_id(struct rdma_cm_id
+>> *id)
+>>  */
+>> int
+>> rpcrdma_ep_create(struct rpcrdma_ep *ep, struct rpcrdma_ia *ia,
+>> -				struct rpcrdma_create_data_internal *cdata)
+>> +		  struct rpcrdma_create_data_internal *cdata)
+>> {
+>> 	struct rpcrdma_connect_private *pmsg = &ep->rep_cm_private;
+>> +	unsigned int max_qp_wr, max_sge;
+>> 	struct ib_cq *sendcq, *recvcq;
+>> -	unsigned int max_qp_wr;
+>> 	int rc;
+>> 
+>> -	if (ia->ri_device->attrs.max_sge < RPCRDMA_MAX_SEND_SGES) {
+>> -		dprintk("RPC:       %s: insufficient sge's available\n",
+>> -			__func__);
+>> +	max_sge = min(ia->ri_device->attrs.max_sge,
+>> RPCRDMA_MAX_SEND_SGES);
+>> +	if (max_sge < 3) {
+>> +		pr_warn("rpcrdma: HCA provides only %d send SGEs\n",
+>> max_sge);
+>> 		return -ENOMEM;
+>> 	}
+>> +	ia->ri_max_sgeno = max_sge - 3;
+>> 
+> 
+> I didn't noticed this new ri_max_sgeno variable being used in this patch set. Did I miss?
+
+Yes, you snipped out the other hunk where it is used.
+
+
+> You also might want to rename it to ri_max_sge_num.
+> Regardless for some device with 3 SGEs, ri_max_sgeno will become zero. Is that fine?
+
+Yes, that's OK, and tested. Zero means that NFS WRITE and SYMLINK
+payloads will always be sent in a Read chunk.
+
+
+> You wanted to check for value of 5?
+> It would be good to have define for this minimum required 3 SGEs header file such as RPCRDMA_MIN_REQ_RECV_SGE.
+
+OK.
+
+
+> 
+> 
+>> 	if (ia->ri_device->attrs.max_qp_wr <= RPCRDMA_BACKWARD_WRS) {
+>> 		dprintk("RPC:       %s: insufficient wqe's available\n",
+>> @@ -524,7 +525,7 @@ static void rpcrdma_destroy_id(struct rdma_cm_id
+>> *id)
+>> 	ep->rep_attr.cap.max_recv_wr = cdata->max_requests;
+>> 	ep->rep_attr.cap.max_recv_wr += RPCRDMA_BACKWARD_WRS;
+>> 	ep->rep_attr.cap.max_recv_wr += 1;	/* drain cqe */
+>> -	ep->rep_attr.cap.max_send_sge = RPCRDMA_MAX_SEND_SGES;
+>> +	ep->rep_attr.cap.max_send_sge = max_sge;
+>> 	ep->rep_attr.cap.max_recv_sge = 1;
+>> 	ep->rep_attr.cap.max_inline_data = 0;
+>> 	ep->rep_attr.sq_sig_type = IB_SIGNAL_REQ_WR; diff --git
+>> a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
+>> index f495df0c..c134d0b 100644
+>> --- a/net/sunrpc/xprtrdma/xprt_rdma.h
+>> +++ b/net/sunrpc/xprtrdma/xprt_rdma.h
+>> @@ -74,6 +74,7 @@ struct rpcrdma_ia {
+>> 	unsigned int		ri_max_frmr_depth;
+>> 	unsigned int		ri_max_inline_write;
+>> 	unsigned int		ri_max_inline_read;
+>> +	unsigned int		ri_max_sgeno;
+>> 	bool			ri_reminv_expected;
+>> 	bool			ri_implicit_padding;
+>> 	enum ib_mr_type		ri_mrtype;
+>> 
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-rdma" in the
+>> body of a message to majordomo@vger.kernel.org More majordomo info at
+>> http://vger.kernel.org/majordomo-info.html
+> N§ēæėrļyúčØbēXŽķĮ§vØ^)Þš{.nĮ+·Ĩ{ą­Ų{ayšĘÚë,j­ĒfĢĒ·hāzđŪwĨĒļĒ·Ķj:+vĻwčjØmķĸūŦęįzZ+ųÝĒj"ú!
+
+--
+Chuck Lever
+
+
+
