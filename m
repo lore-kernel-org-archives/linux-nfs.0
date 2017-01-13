@@ -1,59 +1,85 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-wm0-f42.google.com ([74.125.82.42]:35323 "EHLO
-        mail-wm0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1752100AbdAMQIt (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 13 Jan 2017 11:08:49 -0500
-Received: by mail-wm0-f42.google.com with SMTP id r126so71510508wmr.0
-        for <linux-nfs@vger.kernel.org>; Fri, 13 Jan 2017 08:08:49 -0800 (PST)
-Reply-To: nicolas.dichtel@6wind.com
-Subject: Re: [PATCH v3 4/8] x86: stop exporting msr-index.h to userland
-References: <1484304406-10820-5-git-send-email-nicolas.dichtel@6wind.com>
+Received: from pandora.armlinux.org.uk ([78.32.30.218]:48112 "EHLO
+        pandora.armlinux.org.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751036AbdAMQUX (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 13 Jan 2017 11:20:23 -0500
+Date: Fri, 13 Jan 2017 16:19:52 +0000
+From: Russell King - ARM Linux <linux@armlinux.org.uk>
+To: Nicolas Dichtel <nicolas.dichtel@6wind.com>
+Cc: David Howells <dhowells@redhat.com>, arnd@arndb.de,
+        linux-mips@linux-mips.org, linux-m68k@vger.kernel.org,
+        linux-ia64@vger.kernel.org, linux-doc@vger.kernel.org,
+        alsa-devel@alsa-project.org, dri-devel@lists.freedesktop.org,
+        linux-mtd@lists.infradead.org, sparclinux@vger.kernel.org,
+        linux-arch@vger.kernel.org, linux-s390@vger.kernel.org,
+        linux-am33-list@redhat.com, linux-c6x-dev@linux-c6x.org,
+        linux-rdma@vger.kernel.org, linux-hexagon@vger.kernel.org,
+        linux-sh@vger.kernel.org, coreteam@netfilter.org,
+        fcoe-devel@open-fcoe.org, xen-devel@lists.xenproject.org,
+        linux-snps-arc@lists.infradead.org, linux-media@vger.kernel.org,
+        uclinux-h8-devel@lists.sourceforge.jp, linux-xtensa@linux-xtensa.org,
+        linux-kbuild@vger.kernel.org,
+        adi-buildroot-devel@lists.sourceforge.net, linux-raid@vger.kernel.org,
+        openrisc@lists.librecores.org, linux-fbdev@vger.kernel.org,
+        linux-metag@vger.kernel.org, linux-arm-kernel@lists.infradead.org,
+        linux-nfs@vger.kernel.org, linux-parisc@vger.kernel.org,
+        linux-cris-kernel@axis.com, linux-mmc@vger.kernel.org,
+        linux-kernel@vger.kernel.org, linux-spi@vger.kernel.org,
+        netfilter-devel@vger.kernel.org, linux-alpha@vger.kernel.org,
+        nio2-dev@lists.rocketboards.org, linuxppc-dev@lists.ozlabs.org
+Subject: Re: [PATCH v3 1/8] arm: put types.h in uapi
+Message-ID: <20170113161951.GT14217@n2100.armlinux.org.uk>
+References: <1484304406-10820-2-git-send-email-nicolas.dichtel@6wind.com>
  <3131144.4Ej3KFWRbz@wuerfel>
  <1484304406-10820-1-git-send-email-nicolas.dichtel@6wind.com>
- <25483.1484322229@warthog.procyon.org.uk>
-To: David Howells <dhowells@redhat.com>
-Cc: arnd@arndb.de, linux-kbuild@vger.kernel.org, linux-doc@vger.kernel.org,
-        linux-kernel@vger.kernel.org, linux-alpha@vger.kernel.org,
-        linux-snps-arc@lists.infradead.org,
-        linux-arm-kernel@lists.infradead.org,
-        adi-buildroot-devel@lists.sourceforge.net, linux-c6x-dev@linux-c6x.org,
-        linux-cris-kernel@axis.com, uclinux-h8-devel@lists.sourceforge.jp,
-        linux-hexagon@vger.kernel.org, linux-ia64@vger.kernel.org,
-        linux-m68k@vger.kernel.org, linux-metag@vger.kernel.org,
-        linux-mips@linux-mips.org, linux-am33-list@redhat.com,
-        nios2-dev@lists.rocketboards.org, openrisc@lists.librecores.org,
-        linux-parisc@vger.kernel.org, linuxppc-dev@lists.ozlabs.org,
-        linux-s390@vger.kernel.org, linux-sh@vger.kernel.org,
-        sparclinux@vger.kernel.org, linux-xtensa@linux-xtensa.org,
-        linux-arch@vger.kernel.org, dri-devel@lists.freedesktop.org,
-        netdev@vger.kernel.org, linux-media@vger.kernel.org,
-        linux-mmc@vger.kernel.org, netfilter-devel@vger.kernel.org,
-        coreteam@netfilter.org, linux-nfs@vger.kernel.org,
-        linux-raid@vger.kernel.org, linux-spi@vger.kernel.org,
-        linux-mtd@lists.infradead.org, linux-rdma@vger.kernel.org,
-        fcoe-devel@open-fcoe.org, alsa-devel@alsa-project.org,
-        linux-fbdev@vger.kernel.org, xen-devel@lists.xenproject.org,
-        linux@armlinux.org.uk, Borislav Petkov <bp@alien8.de>
-From: Nicolas Dichtel <nicolas.dichtel@6wind.com>
-Message-ID: <dd826bc7-e1ef-be29-e0c3-692afb346036@6wind.com>
-Date: Fri, 13 Jan 2017 17:08:34 +0100
+ <25063.1484321803@warthog.procyon.org.uk>
+ <4633e475-47f2-5627-81a9-a1747dfddbc0@6wind.com>
 MIME-Version: 1.0
-In-Reply-To: <25483.1484322229@warthog.procyon.org.uk>
-Content-Type: text/plain; charset=windows-1252
+Content-Type: text/plain; charset=iso-8859-1
+In-Reply-To: <4633e475-47f2-5627-81a9-a1747dfddbc0@6wind.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Le 13/01/2017 à 16:43, David Howells a écrit :
->> -header-y += msr-index.h
+On Fri, Jan 13, 2017 at 05:01:01PM +0100, Nicolas Dichtel wrote:
+> Please, do not remove the email subject when you reply. I restore it to
+> ease the thread follow-up.
+
+I mentioned it to David, and he says it's because the long list of
+recipients is breaking his mailer.  I've already posed the question
+about whether that's exploitable!
+
+> Le 13/01/2017 à 16:36, David Howells a écrit :
+> > Nicolas Dichtel <nicolas.dichtel@6wind.com> wrote:
+> > 
+> >> This header file is exported, thus move it to uapi.
+> > 
+> > Exported how?
 > 
-> I see it on my desktop as /usr/include/asm/msr-index.h and it's been there at
-> least four years - and as such it's part of the UAPI.  I don't think you can
-> remove it unless you can guarantee there are no userspace users.
-I keep it in the v2 of the series, but the maintainer, Borislav Petkov, asks me
-to un-export it.
+> It is listed in include/uapi/asm-generic/Kbuild.asm, which is included by
+> arch/arm/include/uapi/asm/Kbuild.
 
-I will follow the maintainer decision.
+We really should not be installing non-uapi header files to userland
+under _any_ circumstance - this to me sounds like a bug in kbuild.
 
+The assumption is that headers outside of uapi directories are not
+part of the user visible API, and so can be freely modified - which
+in the presence of this bug is untrue.
 
-Regards,
-Nicolas
+However, as it's happening, and this header has been there since 2013
+(commit 09096f6a0ee2 - "ARM: 7822/1: add workaround for ambiguous C99
+stdint.h types") it's now well and truely part of the user API whether
+we intended it to be or not, so your patch looks to me like the correct
+thing to do.
+
+I think it needs further evaluation to make sure kbuild isn't going to
+do something else silly, like subsitute include/asm-generic/types.h for
+the now missing arch/arm/include/asm/types.h
+
+I wonder how many more headers are unintentionally exported.
+
+... what a mess. :(
+
+-- 
+RMK's Patch system: http://www.armlinux.org.uk/developer/patches/
+FTTC broadband for 0.8mile line: currently at 9.6Mbps down 400kbps up
+according to speedtest.net.
