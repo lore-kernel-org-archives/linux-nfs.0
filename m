@@ -1,35 +1,39 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-eopbgr20059.outbound.protection.outlook.com ([40.107.2.59]:11488
-        "EHLO EUR02-VE1-obe.outbound.protection.outlook.com"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1750760AbdAMTOt (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 13 Jan 2017 14:14:49 -0500
-From: Parav Pandit <parav@mellanox.com>
-To: Chuck Lever <chuck.lever@oracle.com>
-CC: "linux-rdma@vger.kernel.org" <linux-rdma@vger.kernel.org>,
-        "Linux NFS Mailing List" <linux-nfs@vger.kernel.org>
-Subject: RE: [PATCH v1 4/5] xprtrdma: Reduce required number of send SGEs
-Date: Fri, 13 Jan 2017 19:14:00 +0000
-Message-ID: <VI1PR0502MB3008A3DFC7CDD1573721596FD1780@VI1PR0502MB3008.eurprd05.prod.outlook.com>
-References: <20170113173023.32692.30661.stgit@manet.1015granger.net>
- <20170113174322.32692.66126.stgit@manet.1015granger.net>
- <VI1PR0502MB30080923A8B244BBAD059358D1780@VI1PR0502MB3008.eurprd05.prod.outlook.com>
- <706404D7-A179-4E54-A2C7-534FCC1B5745@oracle.com>
-In-Reply-To: <706404D7-A179-4E54-A2C7-534FCC1B5745@oracle.com>
-Content-Type: text/plain; charset="utf-8"
+Received: from us-smtp-delivery-194.mimecast.com ([216.205.24.194]:21608 "EHLO
+        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1751116AbdAMTUd (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 13 Jan 2017 14:20:33 -0500
+From: Trond Myklebust <trondmy@primarydata.com>
+To: "chuck.lever@oracle.com" <chuck.lever@oracle.com>
+CC: "anna.schumaker@netapp.com" <anna.schumaker@netapp.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH v1] NFS: Detect unreachable NFS/RDMA servers more reliably
+Date: Fri, 13 Jan 2017 19:20:22 +0000
+Message-ID: <1484335221.9950.1.camel@primarydata.com>
+References: <20161216164108.7060.93683.stgit@manet.1015granger.net>
+         <1484242710.4686.1.camel@primarydata.com>
+         <A08E9DCC-B3A3-4ABF-9704-167AB18081DE@oracle.com>
+         <62E20A87-D0C8-4AEA-89B1-902B48E9EE02@primarydata.com>
+         <83F23535-5ACD-41DA-B8D0-05A34AB4821F@oracle.com>
+         <1484328444.5628.1.camel@primarydata.com>
+         <B88C991D-855B-4F08-B0B9-D63DF8168DA1@oracle.com>
+In-Reply-To: <B88C991D-855B-4F08-B0B9-D63DF8168DA1@oracle.com>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-PiA+PiArCWlhLT5yaV9tYXhfc2dlbm8gPSBtYXhfc2dlIC0gMzsNCj4gPj4NCj4gPg0KPiA+IEkg
-ZGlkbid0IG5vdGljZWQgdGhpcyBuZXcgcmlfbWF4X3NnZW5vIHZhcmlhYmxlIGJlaW5nIHVzZWQg
-aW4gdGhpcyBwYXRjaCBzZXQuDQo+IERpZCBJIG1pc3M/DQo+IA0KPiBZZXMsIHlvdSBzbmlwcGVk
-IG91dCB0aGUgb3RoZXIgaHVuayB3aGVyZSBpdCBpcyB1c2VkLg0KDQpSaWdodC4gSSBzZWUgaXQg
-bm93Lg0KPiANCj4gPiBZb3UgYWxzbyBtaWdodCB3YW50IHRvIHJlbmFtZSBpdCB0byByaV9tYXhf
-c2dlX251bS4NCj4gPiBSZWdhcmRsZXNzIGZvciBzb21lIGRldmljZSB3aXRoIDMgU0dFcywgcmlf
-bWF4X3NnZW5vIHdpbGwgYmVjb21lIHplcm8uIElzDQo+IHRoYXQgZmluZT8NCj4gDQo+IFllcywg
-dGhhdCdzIE9LLCBhbmQgdGVzdGVkLiBaZXJvIG1lYW5zIHRoYXQgTkZTIFdSSVRFIGFuZCBTWU1M
-SU5LDQo+IHBheWxvYWRzIHdpbGwgYWx3YXlzIGJlIHNlbnQgaW4gYSBSZWFkIGNodW5rLg0KPiAN
-Ck9rLiBUaGFua3MuDQoNCj4gDQo+ID4gSXQgd291bGQgYmUgZ29vZCB0byBoYXZlIGRlZmluZSBm
-b3IgdGhpcyBtaW5pbXVtIHJlcXVpcmVkIDMgU0dFcyBoZWFkZXINCj4gZmlsZSBzdWNoIGFzIFJQ
-Q1JETUFfTUlOX1JFUV9SRUNWX1NHRS4NCj4gDQo+IE9LLg0K
+T24gRnJpLCAyMDE3LTAxLTEzIGF0IDE0OjA4IC0wNTAwLCBDaHVjayBMZXZlciB3cm90ZToNCg0K
+PiBJIHdhcyB0aGlua2luZyBvZiB3aXJpbmcgc29tZXRoaW5nIGludG8gY2FsbF90aW1lb3V0LCBi
+dXQgeHBydF90aW1lcg0KPiBsb29rcyBsaWtlIGl0IHdvdWxkIHBlcmZvcm0gdGhlIHNhbWUgam9i
+LCBhbmQgdGhlcmUgaXMgYWxyZWFkeSBhDQo+IHBlci14cHJ0IGhvb2suIEknbGwgaGF2ZSBhIGxv
+b2suDQo+IA0KPiBJcyBpdCBzYWZlIHRvIGNhbGwgcnBjX3J1bl90YXNrIHdoaWxlIHRyYW5zcG9y
+dF9sb2NrIGlzIGhlbGQ/IElmIG5vdA0KPiBJIGNhbiBzaW1wbHkgc2NoZWR1bGUgYSBnZW5lcmlj
+IHdvcmtlciB0aHJlYWQgdG8gY29uc3RydWN0IGFuZCBzZW5kDQo+IHRoZSBOVUxMLg0KDQpZb3Ug
+c2hvdWxkbid0IGNhbGwgcnBjX3J1bl90YXNrKCkgZnJvbSBhIHNwaW5sb2NrIGNvbnRleHQsIGJ1
+dCBsZXQncw0KY29uc2lkZXIgbW92aW5nIHRoYXQgc3BpbmxvY2sgaW50byB0aGUgeHBydC0+b3Bz
+LT50aW1lcigpIGNhbGxiYWNrLiBJDQpkb24ndCByZWFsbHkgc2VlIGhvdyBpdCBpcyAgbmVlZGVk
+IGZvciB0aGUgY2FzZXMgd2hlcmUgeW91IGRvbid0IGhhdmUgYQ0KY2FsbGJhY2suDQoNCi0tIA0K
+VHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50YWluZXIsIFByaW1hcnlEYXRh
+DQp0cm9uZC5teWtsZWJ1c3RAcHJpbWFyeWRhdGEuY29tDQo=
+
