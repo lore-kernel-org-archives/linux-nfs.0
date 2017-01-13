@@ -1,42 +1,61 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f196.google.com ([209.85.223.196]:33443 "EHLO
-        mail-io0-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1750789AbdAMTbJ (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 13 Jan 2017 14:31:09 -0500
-Received: by mail-io0-f196.google.com with SMTP id 101so6570789iom.0
-        for <linux-nfs@vger.kernel.org>; Fri, 13 Jan 2017 11:30:37 -0800 (PST)
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH] NFSv4: Fix client recovery when server reboots multiple times
-Date: Fri, 13 Jan 2017 14:30:33 -0500
-Message-Id: <20170113193033.11006-1-trond.myklebust@primarydata.com>
+Received: from mx1.redhat.com ([209.132.183.28]:41804 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1750789AbdAMT7b (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 13 Jan 2017 14:59:31 -0500
+From: Steve Dickson <SteveD@redhat.com>
+Subject: ANNOUNCE: nfs-utils-2.1.1 released.
+To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Cc: "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>
+Message-ID: <c009d974-6731-f186-53fd-11acc87b3cf7@RedHat.com>
+Date: Fri, 13 Jan 2017 14:59:31 -0500
+MIME-Version: 1.0
+Content-Type: text/plain; charset=windows-1252
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-If the server reboots multiple times, the client should rely on the
-server to tell it that it cannot reclaim state as per section 9.6.3.4
-in RFC7530 and section 8.4.2.1 in RFC5661.
-Currently, the client is being to conservative, and is assuming that
-if the server reboots while state recovery is in progress, then it must
-ignore state that was not recovered before the reboot.
+Hello,
 
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
----
- fs/nfs/nfs4state.c | 1 -
- 1 file changed, 1 deletion(-)
+nfs-utils-2.1.1 has just been released. This is a 
+major release because the configuration of the 
+NFS server has fundamentally changed. 
 
-diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
-index 1d152f4470cd..90e6193ce6be 100644
---- a/fs/nfs/nfs4state.c
-+++ b/fs/nfs/nfs4state.c
-@@ -1729,7 +1729,6 @@ static int nfs4_recovery_handle_error(struct nfs_client *clp, int error)
- 			break;
- 		case -NFS4ERR_STALE_CLIENTID:
- 			set_bit(NFS4CLNT_LEASE_EXPIRED, &clp->cl_state);
--			nfs4_state_clear_reclaim_reboot(clp);
- 			nfs4_state_start_reclaim_reboot(clp);
- 			break;
- 		case -NFS4ERR_EXPIRED:
--- 
-2.9.3
+All the daemon configurations now go through one 
+file, /etc/nfs.conf. See nfs.conf(5). 
 
+The command line interface in the systemd service 
+files have been removed. This means the configuration 
+file under /etc/sysconfig or /etc/defaults will 
+no longer work. 
+
+I'm leaving it up to the distros to figure out how
+to deal with the backwards compatibility issue if/when 
+they adopt this version.   
+
+I believe this is right way to go. There are a number 
+of external projects looking to configure the NFS server 
+and having one file to deal with is a good thing... 
+
+I want thank Neil Brown for all the work he did to 
+make this happen.
+
+The release also contains a number of bug fixes
+and improvements. 
+
+
+The tarballs can be found in
+  https://www.kernel.org/pub/linux/utils/nfs-utils/2.1.1/
+or
+  http://sourceforge.net/projects/nfs/files/nfs-utils/2.1.1
+
+The change log is in
+   https://www.kernel.org/pub/linux/utils/nfs-utils/2.1.1/2.1.1-Changelog
+or
+   http://sourceforge.net/projects/nfs/files/nfs-utils/2.1.1/
+
+The git tree is at:
+   git://linux-nfs.org/~steved/nfs-utils
+
+Please send comments/bugs to linux-nfs@vger.kernel.org
+
+steved.
