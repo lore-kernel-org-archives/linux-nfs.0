@@ -1,8 +1,8 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from host.76.145.23.62.rev.coltfrance.com ([62.23.145.76]:48700 "EHLO
+Received: from host.76.145.23.62.rev.coltfrance.com ([62.23.145.76]:48624 "EHLO
         proxy.6wind.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751512AbdAMKrS (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 13 Jan 2017 05:47:18 -0500
+        with ESMTP id S1751442AbdAMKrL (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 13 Jan 2017 05:47:11 -0500
 From: Nicolas Dichtel <nicolas.dichtel@6wind.com>
 To: arnd@arndb.de
 Cc: mmarek@suse.com, linux-kbuild@vger.kernel.org,
@@ -30,85 +30,33 @@ Cc: mmarek@suse.com, linux-kbuild@vger.kernel.org,
         bp@alien8.de, slash.tmp@free.fr, daniel.vetter@ffwll.ch,
         rmk+kernel@armlinux.org.uk, msalter@redhat.com, jengelh@inai.de,
         hch@infradead.org, Nicolas Dichtel <nicolas.dichtel@6wind.com>
-Subject: [PATCH v3 6/8] Makefile.headersinst: remove destination-y option
-Date: Fri, 13 Jan 2017 11:46:44 +0100
-Message-Id: <1484304406-10820-7-git-send-email-nicolas.dichtel@6wind.com>
+Subject: [PATCH v3 4/8] x86: stop exporting msr-index.h to userland
+Date: Fri, 13 Jan 2017 11:46:42 +0100
+Message-Id: <1484304406-10820-5-git-send-email-nicolas.dichtel@6wind.com>
 In-Reply-To: <1484304406-10820-1-git-send-email-nicolas.dichtel@6wind.com>
 References: <3131144.4Ej3KFWRbz@wuerfel>
  <1484304406-10820-1-git-send-email-nicolas.dichtel@6wind.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This option was added in commit c7bb349e7c25 ("kbuild: introduce destination-y
-for exported headers") but never used in-tree.
-
+Suggested-by: Borislav Petkov <bp@alien8.de>
 Signed-off-by: Nicolas Dichtel <nicolas.dichtel@6wind.com>
 ---
- Documentation/kbuild/makefiles.txt | 23 ++++-------------------
- scripts/Makefile.headersinst       |  2 +-
- 2 files changed, 5 insertions(+), 20 deletions(-)
+ arch/x86/include/uapi/asm/Kbuild | 1 -
+ 1 file changed, 1 deletion(-)
 
-diff --git a/Documentation/kbuild/makefiles.txt b/Documentation/kbuild/makefiles.txt
-index 9b9c4797fc55..37b525d329ae 100644
---- a/Documentation/kbuild/makefiles.txt
-+++ b/Documentation/kbuild/makefiles.txt
-@@ -46,9 +46,8 @@ This document describes the Linux kernel Makefiles.
- 	=== 7 Kbuild syntax for exported headers
- 		--- 7.1 header-y
- 		--- 7.2 genhdr-y
--		--- 7.3 destination-y
--		--- 7.4 generic-y
--		--- 7.5 generated-y
-+		--- 7.3 generic-y
-+		--- 7.4 generated-y
- 
- 	=== 8 Kbuild Variables
- 	=== 9 Makefile language
-@@ -1295,21 +1294,7 @@ See subsequent chapter for the syntax of the Kbuild file.
- 			#include/linux/Kbuild
- 			genhdr-y += version.h
- 
--	--- 7.3 destination-y
--
--	When an architecture has a set of exported headers that needs to be
--	exported to a different directory destination-y is used.
--	destination-y specifies the destination directory for all exported
--	headers in the file where it is present.
--
--		Example:
--			#arch/xtensa/platforms/s6105/include/platform/Kbuild
--			destination-y := include/linux
--
--	In the example above all exported headers in the Kbuild file
--	will be located in the directory "include/linux" when exported.
--
--	--- 7.4 generic-y
-+	--- 7.3 generic-y
- 
- 	If an architecture uses a verbatim copy of a header from
- 	include/asm-generic then this is listed in the file
-@@ -1336,7 +1321,7 @@ See subsequent chapter for the syntax of the Kbuild file.
- 		Example: termios.h
- 			#include <asm-generic/termios.h>
- 
--	--- 7.5 generated-y
-+	--- 7.4 generated-y
- 
- 	If an architecture generates other header files alongside generic-y
- 	wrappers, and not included in genhdr-y, then generated-y specifies
-diff --git a/scripts/Makefile.headersinst b/scripts/Makefile.headersinst
-index 3e20d03432d2..876b42cfede4 100644
---- a/scripts/Makefile.headersinst
-+++ b/scripts/Makefile.headersinst
-@@ -14,7 +14,7 @@ kbuild-file := $(srctree)/$(obj)/Kbuild
- include $(kbuild-file)
- 
- # called may set destination dir (when installing to asm/)
--_dst := $(if $(destination-y),$(destination-y),$(if $(dst),$(dst),$(obj)))
-+_dst := $(if $(dst),$(dst),$(obj))
- 
- old-kbuild-file := $(srctree)/$(subst uapi/,,$(obj))/Kbuild
- ifneq ($(wildcard $(old-kbuild-file)),)
+diff --git a/arch/x86/include/uapi/asm/Kbuild b/arch/x86/include/uapi/asm/Kbuild
+index 3dec769cadf7..1c532b3f18ea 100644
+--- a/arch/x86/include/uapi/asm/Kbuild
++++ b/arch/x86/include/uapi/asm/Kbuild
+@@ -27,7 +27,6 @@ header-y += ldt.h
+ header-y += mce.h
+ header-y += mman.h
+ header-y += msgbuf.h
+-header-y += msr-index.h
+ header-y += msr.h
+ header-y += mtrr.h
+ header-y += param.h
 -- 
 2.8.1
 
