@@ -1,13 +1,13 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f193.google.com ([209.85.223.193]:35377 "EHLO
-        mail-io0-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1750947AbdAMRnQ (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 13 Jan 2017 12:43:16 -0500
-Subject: [PATCH v1 3/5] xprtrdma: Disable pad optimization by default
+Received: from mail-it0-f65.google.com ([209.85.214.65]:32907 "EHLO
+        mail-it0-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1750947AbdAMRn1 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 13 Jan 2017 12:43:27 -0500
+Subject: [PATCH v1 4/5] xprtrdma: Reduce required number of send SGEs
 From: Chuck Lever <chuck.lever@oracle.com>
 To: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Fri, 13 Jan 2017 12:43:14 -0500
-Message-ID: <20170113174314.32692.96554.stgit@manet.1015granger.net>
+Date: Fri, 13 Jan 2017 12:43:22 -0500
+Message-ID: <20170113174322.32692.66126.stgit@manet.1015granger.net>
 In-Reply-To: <20170113173023.32692.30661.stgit@manet.1015granger.net>
 References: <20170113173023.32692.30661.stgit@manet.1015granger.net>
 MIME-Version: 1.0
@@ -15,55 +15,119 @@ Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Commit d5440e27d3e5 ('xprtrdma: Enable pad optimization') made the
-Linux client omit XDR padding in normal Read and Write chunks so
-that the client doesn't have to register and invalidate 3-byte
-memory regions that contain no real data.
+The MAX_SEND_SGES check introduced in commit 655fec6987be
+("xprtrdma: Use gathered Send for large inline messages") fails
+for devices that have a small max_sge.
 
-Unfortunately, my cheery 2014 assessment that this optimization "is
-supported now by both Linux and Solaris servers" was premature.
-We've found bugs in Solaris in this area since commit d5440e27d3e5
-was merged (SYMLINK is the main culprit).
+Instead of checking for a large fixed maximum number of SGEs,
+check for a minimum small number. RPC-over-RDMA will switch to
+using a Read chunk if an xdr_buf has more pages than can fit in
+the device's max_sge limit. This is better than failing all
+together to mount the server.
 
-So for maximum interoperability, I'm disabling this optimization
-again. If a CM private message is exchanged when connecting, the
-client recognizes that the server is Linux, and enables the
-optimization for that connection.
+This fix supports devices that have as few as three send SGEs
+available.
 
-Until now the Solaris server bugs did not impact common operations,
-and were thus largely unnoticed. Soon, less capable devices on Linux
-NFS/RDMA clients will make use of Read chunks more often, and these
-Solaris bugs will prevent interoperation in more cases.
-
+Reported-By: Selvin Xavier <selvin.xavier@broadcom.com>
+Reported-By: Devesh Sharma <devesh.sharma@broadcom.com>
+Reported-by: Honggang Li <honli@redhat.com>
+Reported-by: Ram Amrani <Ram.Amrani@cavium.com>
+Fixes: 655fec6987be ("xprtrdma: Use gathered Send for large ...")
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- net/sunrpc/xprtrdma/transport.c |    2 +-
- net/sunrpc/xprtrdma/verbs.c     |    1 +
- 2 files changed, 2 insertions(+), 1 deletion(-)
+ net/sunrpc/xprtrdma/rpc_rdma.c  |   23 ++++++++++++++++++++++-
+ net/sunrpc/xprtrdma/verbs.c     |   13 +++++++------
+ net/sunrpc/xprtrdma/xprt_rdma.h |    1 +
+ 3 files changed, 30 insertions(+), 7 deletions(-)
 
-diff --git a/net/sunrpc/xprtrdma/transport.c b/net/sunrpc/xprtrdma/transport.c
-index 534c178..6990581 100644
---- a/net/sunrpc/xprtrdma/transport.c
-+++ b/net/sunrpc/xprtrdma/transport.c
-@@ -67,7 +67,7 @@
- static unsigned int xprt_rdma_max_inline_write = RPCRDMA_DEF_INLINE;
- static unsigned int xprt_rdma_inline_write_padding;
- static unsigned int xprt_rdma_memreg_strategy = RPCRDMA_FRMR;
--		int xprt_rdma_pad_optimize = 1;
-+		int xprt_rdma_pad_optimize = 0;
+diff --git a/net/sunrpc/xprtrdma/rpc_rdma.c b/net/sunrpc/xprtrdma/rpc_rdma.c
+index 4909758..ab699f9 100644
+--- a/net/sunrpc/xprtrdma/rpc_rdma.c
++++ b/net/sunrpc/xprtrdma/rpc_rdma.c
+@@ -126,13 +126,34 @@ void rpcrdma_set_max_header_sizes(struct rpcrdma_xprt *r_xprt)
+  * plus the RPC call fit under the transport's inline limit. If the
+  * combined call message size exceeds that limit, the client must use
+  * the read chunk list for this operation.
++ *
++ * A read chunk is also required if sending the RPC call inline would
++ * exceed this device's max_sge limit.
+  */
+ static bool rpcrdma_args_inline(struct rpcrdma_xprt *r_xprt,
+ 				struct rpc_rqst *rqst)
+ {
++	struct xdr_buf *xdr = &rqst->rq_snd_buf;
+ 	struct rpcrdma_ia *ia = &r_xprt->rx_ia;
++	unsigned int count, remaining, offset;
++
++	if (xdr->len > ia->ri_max_inline_write)
++		return false;
++
++	if (xdr->page_len) {
++		remaining = xdr->page_len;
++		offset = xdr->page_base & ~PAGE_MASK;
++		count = 0;
++		while (remaining) {
++			remaining -= min_t(unsigned int,
++					   PAGE_SIZE - offset, remaining);
++			offset = 0;
++			if (++count > ia->ri_max_sgeno)
++				return false;
++		}
++	}
  
- #if IS_ENABLED(CONFIG_SUNRPC_DEBUG)
+-	return rqst->rq_snd_buf.len <= ia->ri_max_inline_write;
++	return true;
+ }
  
+ /* The client can't know how large the actual reply will be. Thus it
 diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
-index 890cb3a..12e8242 100644
+index 12e8242..5dcdd0b 100644
 --- a/net/sunrpc/xprtrdma/verbs.c
 +++ b/net/sunrpc/xprtrdma/verbs.c
-@@ -216,6 +216,7 @@
- 	    pmsg->cp_magic == rpcrdma_cmp_magic &&
- 	    pmsg->cp_version == RPCRDMA_CMP_VERSION) {
- 		r_xprt->rx_ia.ri_reminv_expected = true;
-+		r_xprt->rx_ia.ri_implicit_padding = true;
- 		rsize = rpcrdma_decode_buffer_size(pmsg->cp_send_size);
- 		wsize = rpcrdma_decode_buffer_size(pmsg->cp_recv_size);
+@@ -488,18 +488,19 @@ static void rpcrdma_destroy_id(struct rdma_cm_id *id)
+  */
+ int
+ rpcrdma_ep_create(struct rpcrdma_ep *ep, struct rpcrdma_ia *ia,
+-				struct rpcrdma_create_data_internal *cdata)
++		  struct rpcrdma_create_data_internal *cdata)
+ {
+ 	struct rpcrdma_connect_private *pmsg = &ep->rep_cm_private;
++	unsigned int max_qp_wr, max_sge;
+ 	struct ib_cq *sendcq, *recvcq;
+-	unsigned int max_qp_wr;
+ 	int rc;
+ 
+-	if (ia->ri_device->attrs.max_sge < RPCRDMA_MAX_SEND_SGES) {
+-		dprintk("RPC:       %s: insufficient sge's available\n",
+-			__func__);
++	max_sge = min(ia->ri_device->attrs.max_sge, RPCRDMA_MAX_SEND_SGES);
++	if (max_sge < 3) {
++		pr_warn("rpcrdma: HCA provides only %d send SGEs\n", max_sge);
+ 		return -ENOMEM;
  	}
++	ia->ri_max_sgeno = max_sge - 3;
+ 
+ 	if (ia->ri_device->attrs.max_qp_wr <= RPCRDMA_BACKWARD_WRS) {
+ 		dprintk("RPC:       %s: insufficient wqe's available\n",
+@@ -524,7 +525,7 @@ static void rpcrdma_destroy_id(struct rdma_cm_id *id)
+ 	ep->rep_attr.cap.max_recv_wr = cdata->max_requests;
+ 	ep->rep_attr.cap.max_recv_wr += RPCRDMA_BACKWARD_WRS;
+ 	ep->rep_attr.cap.max_recv_wr += 1;	/* drain cqe */
+-	ep->rep_attr.cap.max_send_sge = RPCRDMA_MAX_SEND_SGES;
++	ep->rep_attr.cap.max_send_sge = max_sge;
+ 	ep->rep_attr.cap.max_recv_sge = 1;
+ 	ep->rep_attr.cap.max_inline_data = 0;
+ 	ep->rep_attr.sq_sig_type = IB_SIGNAL_REQ_WR;
+diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
+index f495df0c..c134d0b 100644
+--- a/net/sunrpc/xprtrdma/xprt_rdma.h
++++ b/net/sunrpc/xprtrdma/xprt_rdma.h
+@@ -74,6 +74,7 @@ struct rpcrdma_ia {
+ 	unsigned int		ri_max_frmr_depth;
+ 	unsigned int		ri_max_inline_write;
+ 	unsigned int		ri_max_inline_read;
++	unsigned int		ri_max_sgeno;
+ 	bool			ri_reminv_expected;
+ 	bool			ri_implicit_padding;
+ 	enum ib_mr_type		ri_mrtype;
 
