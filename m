@@ -1,52 +1,39 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-pf0-f194.google.com ([209.85.192.194]:34213 "EHLO
-        mail-pf0-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751122AbdAPAXt (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sun, 15 Jan 2017 19:23:49 -0500
-Received: by mail-pf0-f194.google.com with SMTP id y143so12937512pfb.1
-        for <linux-nfs@vger.kernel.org>; Sun, 15 Jan 2017 16:23:49 -0800 (PST)
-From: Kinglong Mee <kinglongmee@gmail.com>
-Subject: [PATCH] SUNRPC: Make sure authorize svc when meeting SVC_CLOSE
-To: "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org
-Cc: Chuck Lever <chuck.lever@oracle.com>,
-        Kinglong Mee <kinglongmee@gmail.com>
-Message-ID: <090f6673-1bb3-d626-e27e-6be5afcda782@gmail.com>
-Date: Mon, 16 Jan 2017 08:23:37 +0800
+Received: from fieldses.org ([173.255.197.46]:40198 "EHLO fieldses.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1750922AbdAPPm7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 16 Jan 2017 10:42:59 -0500
+Date: Mon, 16 Jan 2017 10:42:58 -0500
+To: Linus Torvalds <torvalds@linux-foundation.org>
+Cc: linux-nfs@vger.kernel.org
+Subject: [GIT PULL] nfsd bugfixes for 4.10
+Message-ID: <20170116154258.GA2953@fieldses.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
+Content-Type: text/plain; charset=us-ascii
+From: bfields@fieldses.org (J. Bruce Fields)
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Commit 4d712ef1db05 "svcauth_gss: Close connection when
- dropping an incoming message" will close connection,
-but forget authorizing the svc when meeting SVC_CLOSE.
+Please pull:
 
-That, there will be an module reference to sunrpc,
-and some memory leak.
+  git://linux-nfs.org/~bfields/linux.git tags/nfsd-4.10-1
 
-When mounting an nfs filesystem, the reference leak increase one.
+Miscellaneous nfsd bugfixes, one for a 4.10 regression, three for older
+bugs.--b.
 
-Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
----
- net/sunrpc/svc.c | 5 +++++
- 1 file changed, 5 insertions(+)
+J. Bruce Fields (2):
+      nfsd: fix supported attributes for acl & labels
+      svcrpc: don't leak contexts on PROC_DESTROY
 
-diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
-index 75f290b..63ca2ea 100644
---- a/net/sunrpc/svc.c
-+++ b/net/sunrpc/svc.c
-@@ -1155,6 +1155,11 @@ svc_process_common(struct svc_rqst *rqstp, struct kvec *argv, struct kvec *resv)
- 	case SVC_DENIED:
- 		goto err_bad_auth;
- 	case SVC_CLOSE:
-+		/*
-+		 * Makesure authorise svc if progp->pg_authenticate fail,
-+		 * it's harmless if svc_authenticate fail.
-+		 */
-+		svc_authorise(rqstp);
- 		goto close;
- 	case SVC_DROP:
- 		goto dropit;
--- 
-2.9.3
+Scott Mayhew (1):
+      sunrpc: don't call sleeping functions from the notifier block callbacks
 
+Sriharsha Basavapatna (1):
+      svcrdma: avoid duplicate dma unmapping during error recovery
+
+ fs/nfsd/nfs4xdr.c                       |  4 +++-
+ include/linux/sunrpc/svc_xprt.h         |  1 +
+ net/sunrpc/auth_gss/svcauth_gss.c       |  2 +-
+ net/sunrpc/svc_xprt.c                   | 10 +++++++---
+ net/sunrpc/xprtrdma/svc_rdma_recvfrom.c |  2 --
+ 5 files changed, 12 insertions(+), 7 deletions(-)
