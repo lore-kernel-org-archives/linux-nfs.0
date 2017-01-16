@@ -1,82 +1,180 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:40300 "EHLO fieldses.org"
+Received: from laas.laas.fr ([140.93.0.15]:32993 "EHLO laas.laas.fr"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1750863AbdAPQyM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 16 Jan 2017 11:54:12 -0500
-Date: Mon, 16 Jan 2017 11:54:10 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
+        id S1751151AbdAPRFS (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 16 Jan 2017 12:05:18 -0500
+Date: Mon, 16 Jan 2017 18:03:45 +0100
+From: Matthieu Herrb <matthieu.herrb@laas.fr>
 To: Kinglong Mee <kinglongmee@gmail.com>
-Cc: Steve Dickson <SteveD@redhat.com>, linux-nfs@vger.kernel.org,
-        Christoph Hellwig <hch@infradead.org>
-Subject: Re: [PATCH] exportfs: Make sure pass all valid export flags to nfsd
-Message-ID: <20170116165410.GB2953@fieldses.org>
-References: <c0826298-545e-64a3-b6bb-86413bf9eb39@gmail.com>
- <20170106210531.GB31401@fieldses.org>
- <49b7be0a-548a-cff1-8f09-613cd5c63141@gmail.com>
- <20170111141650.GA18977@fieldses.org>
- <fdea0dfa-14f6-a29b-4001-549f0a40601d@gmail.com>
+Cc: "J. Bruce Fields" <bfields@fieldses.org>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        linux-nfs@vger.kernel.org, Andreas Gruenbacher <agruenba@redhat.com>
+Subject: Re: [PATCH] NFSv4.2: Fix file creating with O_EXCL get a bad mode
+Message-ID: <20170116170345.GF30896@paperthin-usb.laas.fr>
+References: <a76cec59-f007-5c26-dc26-4cc8a6e4daef@gmail.com>
+ <20170112204722.GC10501@fieldses.org>
+ <d1e320f8-152e-b700-a33d-37d4426503ad@gmail.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <fdea0dfa-14f6-a29b-4001-549f0a40601d@gmail.com>
+Content-Type: multipart/signed; micalg=pgp-sha1;
+        protocol="application/pgp-signature"; boundary="Pql/uPZNXIm1JCle"
+In-Reply-To: <d1e320f8-152e-b700-a33d-37d4426503ad@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sun, Jan 15, 2017 at 03:43:21PM +0800, Kinglong Mee wrote:
-> On 1/11/2017 22:16, J. Bruce Fields wrote:
-> > On Sat, Jan 07, 2017 at 07:57:28PM +0800, Kinglong Mee wrote:
-> >> On 1/7/2017 05:05, J. Bruce Fields wrote:
-> >>> On Sat, Dec 31, 2016 at 09:05:11PM +0800, Kinglong Mee wrote:
-> >>>> test_export pass a export flags only marks NFSEXP_FSID,
-> >>>> nfsd may want other flags for export checking.
-> >>>
-> >>> Why?  What problem does this fix?
+
+--Pql/uPZNXIm1JCle
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+Content-Transfer-Encoding: quoted-printable
+
+On Sun, Jan 15, 2017 at 03:55:16PM +0800, Kinglong Mee wrote:
+> On 1/13/2017 04:47, J. Bruce Fields wrote:
+> > On Sat, Jan 07, 2017 at 10:45:47PM +0800, Kinglong Mee wrote:
+> >> Acorrding to Matthieu Herrb's test cases, a new created file will
+> >> get a bad mode as 0666 (expected 0644) after commit dff25ddb4808
+> >> "nfs: add support for the umask attribute".
 > >>
-> >> When testing the patch "NFSD: Only support readonly export for
-> >> !fsync and readonly filesystem", I found exportfs don't pass 
-> >> all valid export flags to nfsd. So, make this patch.
-> > 
-> > This function is meant to test whether a filesystem supports nfs export
-> > or not.  It doesn't need the full set of export flags.  Off the top of
-> > my head I can't see reason this would cause problems, but I'm not
-> > convinced it's safe, either.  (New nfs-utils against old kernels might
-> > be a case to check, e.g. to see how unsupported flags are handled.)
-> 
-> There are two cases that passing the flags to nfsd, 
-> 1, exportfs checks the export entry, only NFSEXP_FSID without this patch,
-> 2, mountd pass the validate export entry, all validate export flags.
-> 
-> When the new nfs-utils against old kernels,
-> user specifies an unsupported flags(Not NFSEXP_FSID),
-> exportfs doesn't warning that unsupported flags (without test),
-> mountd doesn't get the export entry for the flags.
-> 
-> If exportfs warning the unsupported flags, user can modify it and
-> do the right export.
-> Do I have an exact understanding?
+> >> It is caused by missing check of FATTR4_WORD2_MODE_UMASK
+> >> in nfs4_exclusive_attrset.
+> >=20
+> > I don't understand:
+> >=20
+> >> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+> >> index 6dcbc5d..a3e9ef1 100644
+> >> --- a/fs/nfs/nfs4proc.c
+> >> +++ b/fs/nfs/nfs4proc.c
+> >> @@ -2697,7 +2697,8 @@ static inline void nfs4_exclusive_attrset(struct=
+ nfs4_opendata *opendata,
+> >>  		sattr->ia_valid |=3D ATTR_MTIME;
+> >> =20
+> >>  	/* Except MODE, it seems harmless of setting twice. */
+> >> -	if ((attrset[1] & FATTR4_WORD1_MODE))
+> >> +	if ((attrset[1] & FATTR4_WORD1_MODE) ||
+> >> +	    (attrset[2] & FATTR4_WORD2_MODE_UMASK))
+> >>  		sattr->ia_valid &=3D ~ATTR_MODE;
+> >=20
+> > If I'm understanding this function correctly, attrset is the set of
+> > attributes which the server tells us were used to store the verifier.
+> >=20
+> > But mode_umask would never be a sensible place to store the
+> > verifier, so if the server's response really says that then something's
+> > wrong.
+>=20
+> There are some differences between EXCLUSIVE4 and EXCLUSIVE4_1,
+> according to rfc5661 18.16.4,=20
+>=20
+>    After the client has performed a successful exclusive create, the
+>    attrset response indicates which attributes were used to store the
+>    verifier.  If EXCLUSIVE4 was used, the attributes set in attrset were
+>    used for the verifier.  If EXCLUSIVE4_1 was used, the client
+>    determines the attributes used for the verifier by comparing attrset
+>    with cva_attrs.attrmask; any bits set in the former but not the
+>    latter identify the attributes used to store the verifier.  The
+>    client MUST immediately send a SETATTR to set attributes used to
+>    store the verifier.  Until it does so, the attributes used to store
+>    the verifier cannot be relied upon.  The subsequent SETATTR MUST NOT
+>    occur in the same COMPOUND request as the OPEN.
+>=20
+> I think, this patch is a hacker implement for EXCLUSIVE4_1 that just
+> treat the FATTR4_WORD1_TIME_ACCESS and FATTR4_WORD1_TIME_MODIFY for
+> exclusive verifier as EXCLUSIVE4.=20
+>=20
+> Maybe we need update the implement of EXCLUSIVE4_1's verifier
+> checking.
 
-OK, so when somebody specifies unsupported flags, the failures is silent
-and client mounts just fail.  It would be better to warn when exportfs
-runs.
+Hi,
 
-I agree that that would be helpful.  Have you tested those cases?  (new
-nfs-utils, old kernel).
+this patch doesn't fix the issue against our NetApp server (which is
+running an old version of the system as it has been noticed, but we
+cannot upgrade until a few months) . My test program is still getting
+a number of wrong issuess :
 
-It would be worth looking at validate_export() to see how it could
-improve error messages in this case.  Currently it will say only:
+host$ ./a.out foo
+foo: ok
+foo: ok
+foo: ok
+foo: ok
+foo: 700
+foo: ok
+foo: ok
+foo: ok
+foo: ok
+foo: ok
+foo: ok
+foo: ok
+foo: ok
+foo: ok
+foo: 700
+foo: ok
+foo: 700
+foo: ok
+foo: ok
+foo: ok
+foo: 700
+foo: 700
+foo: 700
+foo: ok
+foo: 700
+foo: 700
+foo: 700
+foo: ok
+foo: 700
+foo: ok
+foo: ok
+foo: ok
+foo: 700
+foo: ok
+foo: ok
+foo: ok
+foo: ok
+foo: ok
+foo: ok
+foo: ok
 
-	/example/export does not support NFS export
+>=20
+> thanks,
+> Kinglong Mee
+>=20
+> >=20
+> > We should probably look at a network trace.
+> >=20
+> > --b.
+> >=20
+> >> =20
+> >>  	if (attrset[2] & FATTR4_WORD2_SECURITY_LABEL)
+> >> --=20
+> >> 2.9.3
+> >>
+> >> --
+> >> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> >> the body of a message to majordomo@vger.kernel.org
+> >> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> >=20
+>=20
 
-or
+--=20
+Matthieu Herrb
 
-	/example/export requires fsid= for export
+--Pql/uPZNXIm1JCle
+Content-Type: application/pgp-signature; name="signature.asc"
+Content-Description: Digital signature
 
-With your patch (forgive me if I misremember), I believe those are still
-the only error messages, so it will be confusing if, for example, you
-get
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1
 
-	/example/export does not support NFS export
+iQIVAwUBWHz88Ghzk+430Sj4AQJ4MQ/+K5+NKDujHMBc8xeev2ZyU0P2yG3kkvSF
+xs/1pllsqTPOq/3QWgQfadJH1zHN72TbU378c9+j1TQIw7DWB0wNe92JCv35e2RL
+lSXEkOCpWWgp70J4ukct7HXajT5f+xucZHMRrti+NRc49uw8vQ8rRNjIm43B0wO0
+7RCL+dIxvXJdxpuBF/boK2Nixh9LXtN9uL4P9VZKdOflBeStGqDweT2HG1Hm+yUa
+WR1wXupoYxsFJGxmRxUeoob13JYaXx1KO/FeOtHMshvvrZrrX6NItDrVwus6ekfA
+7qyT/9WdFgzoEiEUxVF07SWGm9mre2Wiq6Fw87Wd5gzXNJ5HanW4OakrUAJJrrV/
+M857NLhlNpNjwKEX0v6BBbl01ca4o6y2/zK45gXBZjfsPREdGn0MEhHoKLIPxK6n
+Mig8Fe4PBKp0GyYXqsmh73WWvRzzZefQLIN9U+NrSTp+zHdqDLb+0u8NaQ8PGhwi
+PtczcTAEy+SG6isHUGZ0VXzhtgndslmoSk7i6dWPFCWc7mYnD8V1huxO0Q/ubPbK
+yEJvRc49ud46NQ08E6mXOjm7p8x/LdbUi0Laum2g1tLPiM/xe3WvzS3m/x/xT7YC
+9m9qsE5b+yfoPbpiPy8w6vp+2tmwfCpOF+C0kKiyUOFVTlI8XsiOYYIwqwHRDdVi
+63Lho4LQzlI=
+=fYNo
+-----END PGP SIGNATURE-----
 
-when the real problem is that an export flag is unsupported.  (But maybe
-you had kernel messages to help there, I don't remember.)
-
---b.
+--Pql/uPZNXIm1JCle--
