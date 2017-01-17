@@ -1,60 +1,109 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:49742 "EHLO mx2.suse.de"
+Received: from mx144.netapp.com ([216.240.21.25]:63541 "EHLO mx144.netapp.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751186AbdAQR3g (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 17 Jan 2017 12:29:36 -0500
-Date: Tue, 17 Jan 2017 18:29:25 +0100
-From: Jan Kara <jack@suse.cz>
-To: Michal Hocko <mhocko@kernel.org>
-Cc: "Theodore Ts'o" <tytso@mit.edu>, Jan Kara <jack@suse.cz>,
-        linux-mm@kvack.org, linux-fsdevel@vger.kernel.org,
-        Andrew Morton <akpm@linux-foundation.org>,
-        Dave Chinner <david@fromorbit.com>, djwong@kernel.org,
-        Chris Mason <clm@fb.com>, David Sterba <dsterba@suse.cz>,
-        ceph-devel@vger.kernel.org, cluster-devel@redhat.com,
-        linux-nfs@vger.kernel.org, logfs@logfs.org, linux-xfs@vger.kernel.org,
-        linux-ext4@vger.kernel.org, linux-btrfs@vger.kernel.org,
-        linux-mtd@lists.infradead.org, reiserfs-devel@vger.kernel.org,
-        linux-ntfs-dev@lists.sourceforge.net,
-        linux-f2fs-devel@lists.sourceforge.net, linux-afs@lists.infradead.org,
-        LKML <linux-kernel@vger.kernel.org>
-Subject: Re: [PATCH 8/8] Revert "ext4: fix wrong gfp type under transaction"
-Message-ID: <20170117172925.GA2486@quack2.suse.cz>
-References: <20170106141107.23953-1-mhocko@kernel.org>
- <20170106141107.23953-9-mhocko@kernel.org>
- <20170117025607.frrcdbduthhutrzj@thunk.org>
- <20170117082425.GD19699@dhcp22.suse.cz>
- <20170117151817.GR19699@dhcp22.suse.cz>
- <20170117155916.dcizr65bwa6behe7@thunk.org>
- <20170117161618.GT19699@dhcp22.suse.cz>
+        id S1751166AbdAQUcw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 17 Jan 2017 15:32:52 -0500
+From: <Anna.Schumaker@Netapp.com>
+To: <linux-nfs@vger.kernel.org>
+Subject: [PATCH v2 03/10] NFS: Remove nfs4_wait_for_completion_rpc_task()
+Date: Tue, 17 Jan 2017 15:31:58 -0500
+Message-ID: <20170117203205.29033-4-Anna.Schumaker@Netapp.com>
+In-Reply-To: <20170117203205.29033-1-Anna.Schumaker@Netapp.com>
+References: <20170117203205.29033-1-Anna.Schumaker@Netapp.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20170117161618.GT19699@dhcp22.suse.cz>
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue 17-01-17 17:16:19, Michal Hocko wrote:
-> > > But before going to play with that I am really wondering whether we need
-> > > all this with no journal at all. AFAIU what Jack told me it is the
-> > > journal lock(s) which is the biggest problem from the reclaim recursion
-> > > point of view. What would cause a deadlock in no journal mode?
-> > 
-> > We still have the original problem for why we need GFP_NOFS even in
-> > ext2.  If we are in a writeback path, and we need to allocate memory,
-> > we don't want to recurse back into the file system's writeback path.
-> 
-> But we do not enter the writeback path from the direct reclaim. Or do
-> you mean something other than pageout()'s mapping->a_ops->writepage?
-> There is only try_to_release_page where we get back to the filesystems
-> but I do not see any NOFS protection in ext4_releasepage.
+From: Anna Schumaker <Anna.Schumaker@Netapp.com>
 
-Maybe to expand a bit: These days, direct reclaim can call ->releasepage()
-callback, ->evict_inode() callback (and only for inodes with i_nlink > 0),
-shrinkers. That's it. So the recursion possibilities are rather more limited
-than they used to be several years ago and we likely do not need as much
-GFP_NOFS protection as we used to.
+Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
+---
+ fs/nfs/nfs4proc.c | 22 +++++++---------------
+ 1 file changed, 7 insertions(+), 15 deletions(-)
 
-								Honza
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 00cb8b6c2c70..950e9cd15e5d 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -1244,14 +1244,6 @@ static void nfs4_opendata_put(struct nfs4_opendata *p)
+ 		kref_put(&p->kref, nfs4_opendata_free);
+ }
+ 
+-static int nfs4_wait_for_completion_rpc_task(struct rpc_task *task)
+-{
+-	int ret;
+-
+-	ret = rpc_wait_for_completion_task(task);
+-	return ret;
+-}
+-
+ static bool nfs4_mode_match_open_stateid(struct nfs4_state *state,
+ 		fmode_t fmode)
+ {
+@@ -2038,7 +2030,7 @@ static int _nfs4_proc_open_confirm(struct nfs4_opendata *data)
+ 	task = rpc_run_task(&task_setup_data);
+ 	if (IS_ERR(task))
+ 		return PTR_ERR(task);
+-	status = nfs4_wait_for_completion_rpc_task(task);
++	status = rpc_wait_for_completion_task(task);
+ 	if (status != 0) {
+ 		data->cancelled = 1;
+ 		smp_wmb();
+@@ -2205,7 +2197,7 @@ static int nfs4_run_open_task(struct nfs4_opendata *data, int isrecover)
+ 	task = rpc_run_task(&task_setup_data);
+ 	if (IS_ERR(task))
+ 		return PTR_ERR(task);
+-	status = nfs4_wait_for_completion_rpc_task(task);
++	status = rpc_wait_for_completion_task(task);
+ 	if (status != 0) {
+ 		data->cancelled = 1;
+ 		smp_wmb();
+@@ -5722,7 +5714,7 @@ static int _nfs4_proc_delegreturn(struct inode *inode, struct rpc_cred *cred, co
+ 		return PTR_ERR(task);
+ 	if (!issync)
+ 		goto out;
+-	status = nfs4_wait_for_completion_rpc_task(task);
++	status = rpc_wait_for_completion_task(task);
+ 	if (status != 0)
+ 		goto out;
+ 	status = data->rpc_status;
+@@ -5992,7 +5984,7 @@ static int nfs4_proc_unlck(struct nfs4_state *state, int cmd, struct file_lock *
+ 	status = PTR_ERR(task);
+ 	if (IS_ERR(task))
+ 		goto out;
+-	status = nfs4_wait_for_completion_rpc_task(task);
++	status = rpc_wait_for_completion_task(task);
+ 	rpc_put_task(task);
+ out:
+ 	request->fl_flags = fl_flags;
+@@ -6221,7 +6213,7 @@ static int _nfs4_do_setlk(struct nfs4_state *state, int cmd, struct file_lock *f
+ 	task = rpc_run_task(&task_setup_data);
+ 	if (IS_ERR(task))
+ 		return PTR_ERR(task);
+-	ret = nfs4_wait_for_completion_rpc_task(task);
++	ret = rpc_wait_for_completion_task(task);
+ 	if (ret == 0) {
+ 		ret = data->rpc_status;
+ 		if (ret)
+@@ -8289,7 +8281,7 @@ static int nfs41_proc_reclaim_complete(struct nfs_client *clp,
+ 		status = PTR_ERR(task);
+ 		goto out;
+ 	}
+-	status = nfs4_wait_for_completion_rpc_task(task);
++	status = rpc_wait_for_completion_task(task);
+ 	if (status == 0)
+ 		status = task->tk_status;
+ 	rpc_put_task(task);
+@@ -8520,7 +8512,7 @@ nfs4_proc_layoutget(struct nfs4_layoutget *lgp, long *timeout, gfp_t gfp_flags)
+ 	task = rpc_run_task(&task_setup_data);
+ 	if (IS_ERR(task))
+ 		return ERR_CAST(task);
+-	status = nfs4_wait_for_completion_rpc_task(task);
++	status = rpc_wait_for_completion_task(task);
+ 	if (status == 0) {
+ 		status = nfs4_layoutget_handle_exception(task, lgp, &exception);
+ 		*timeout = exception.timeout;
 -- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+2.11.0
+
