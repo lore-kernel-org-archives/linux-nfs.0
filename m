@@ -1,72 +1,79 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:53328 "EHLO imap.thunk.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1750830AbdAQQA3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 17 Jan 2017 11:00:29 -0500
-Date: Tue, 17 Jan 2017 10:59:16 -0500
-From: "Theodore Ts'o" <tytso@mit.edu>
-To: Michal Hocko <mhocko@kernel.org>
-Cc: Jan Kara <jack@suse.cz>, linux-mm@kvack.org,
-        linux-fsdevel@vger.kernel.org,
-        Andrew Morton <akpm@linux-foundation.org>,
-        Dave Chinner <david@fromorbit.com>, djwong@kernel.org,
-        Chris Mason <clm@fb.com>, David Sterba <dsterba@suse.cz>,
-        ceph-devel@vger.kernel.org, cluster-devel@redhat.com,
-        linux-nfs@vger.kernel.org, logfs@logfs.org, linux-xfs@vger.kernel.org,
-        linux-ext4@vger.kernel.org, linux-btrfs@vger.kernel.org,
-        linux-mtd@lists.infradead.org, reiserfs-devel@vger.kernel.org,
-        linux-ntfs-dev@lists.sourceforge.net,
-        linux-f2fs-devel@lists.sourceforge.net, linux-afs@lists.infradead.org,
-        LKML <linux-kernel@vger.kernel.org>
-Subject: Re: [PATCH 8/8] Revert "ext4: fix wrong gfp type under transaction"
-Message-ID: <20170117155916.dcizr65bwa6behe7@thunk.org>
-References: <20170106141107.23953-1-mhocko@kernel.org>
- <20170106141107.23953-9-mhocko@kernel.org>
- <20170117025607.frrcdbduthhutrzj@thunk.org>
- <20170117082425.GD19699@dhcp22.suse.cz>
- <20170117151817.GR19699@dhcp22.suse.cz>
+Received: from us-smtp-delivery-194.mimecast.com ([216.205.24.194]:24976 "EHLO
+        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1751162AbdAQQOj (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 17 Jan 2017 11:14:39 -0500
+From: Trond Myklebust <trondmy@primarydata.com>
+To: Olga Kornievskaia <aglo@umich.edu>
+CC: Olga Kornievskaia <kolga@netapp.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 1/1] NFSv3: Ignore wcc before ctime attribute
+Date: Tue, 17 Jan 2017 16:14:25 +0000
+Message-ID: <D828C666-FE77-4E43-925B-A6A4FC647E50@primarydata.com>
+References: <1459541983-21301-1-git-send-email-kolga@netapp.com>
+ <CAN-5tyG6-TPbBxmMYpLPv6_duwAYRm1V_QtRSWepT6un5EtNAg@mail.gmail.com>
+In-Reply-To: <CAN-5tyG6-TPbBxmMYpLPv6_duwAYRm1V_QtRSWepT6un5EtNAg@mail.gmail.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20170117151817.GR19699@dhcp22.suse.cz>
+Content-Type: text/plain; charset=WINDOWS-1252
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Jan 17, 2017 at 04:18:17PM +0100, Michal Hocko wrote:
-> 
-> OK, so I've been staring into the code and AFAIU current->journal_info
-> can contain my stored information. I could either hijack part of the
-> word as the ref counting is only consuming low 12b. But that looks too
-> ugly to live. Or I can allocate some placeholder.
+Is there a problem with 4.10-rc?
 
-Yeah, I was looking at something similar.  Can you guarantee that the
-context will only take one or two bits?  (Looks like it only needs one
-bit ATM, even though at the moment you're storing the whole GFP mask,
-correct?)
+> On Jan 17, 2017, at 09:33, Olga Kornievskaia <aglo@umich.edu> wrote:
+>=20
+> Hi Trond,
+>=20
+> I'd like bring up this issue again as I was asked again that linux
+> nfsv3 client experiences poor performance when it receives
+> out-of-order write rpcs. If a general change to ignore "before" ctime
+> is not acceptable, what about something that is configurable via a
+> sysctl perhaps?
+>=20
+> On Fri, Apr 1, 2016 at 4:19 PM, Olga Kornievskaia <kolga@netapp.com> wrot=
+e:
+>> Commit 7c2dad99d60c86ec686b3bfdcb787c450a7ea89f
+>> "Don't let the ctime override attribute barriers" introduced a problem
+>> of invalidating the cache when receiving in-order WRITE replies. Because
+>> ctime is no longer checked then attributes are not updated appropriately
+>> and then leads to mismatch of received "before" with what's stored.
+>>=20
+>> Given that sending the wcc attributes is not mandatory (and linux
+>> server doesn't), we can ignore the received "before" ctime. It fixes
+>> the current problem and also help when we receive out-of-order WRITEs.
+>>=20
+>> Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
+>> ---
+>> fs/nfs/nfs3xdr.c | 2 --
+>> 1 file changed, 2 deletions(-)
+>>=20
+>> diff --git a/fs/nfs/nfs3xdr.c b/fs/nfs/nfs3xdr.c
+>> index 267126d..feca07f 100644
+>> --- a/fs/nfs/nfs3xdr.c
+>> +++ b/fs/nfs/nfs3xdr.c
+>> @@ -732,14 +732,12 @@ static int decode_wcc_attr(struct xdr_stream *xdr,=
+ struct nfs_fattr *fattr)
+>>                goto out_overflow;
+>>=20
+>>        fattr->valid |=3D NFS_ATTR_FATTR_PRESIZE
+>> -               | NFS_ATTR_FATTR_PRECHANGE
+>>                | NFS_ATTR_FATTR_PREMTIME
+>>                | NFS_ATTR_FATTR_PRECTIME;
+>>=20
+>>        p =3D xdr_decode_size3(p, &fattr->pre_size);
+>>        p =3D xdr_decode_nfstime3(p, &fattr->pre_mtime);
+>>        xdr_decode_nfstime3(p, &fattr->pre_ctime);
+>> -       fattr->pre_change_attr =3D nfs_timespec_to_change_attr(&fattr->p=
+re_ctime);
+>>=20
+>>        return 0;
+>> out_overflow:
+>> --
+>> 1.8.3.1
+>>=20
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>=20
 
-> But before going to play with that I am really wondering whether we need
-> all this with no journal at all. AFAIU what Jack told me it is the
-> journal lock(s) which is the biggest problem from the reclaim recursion
-> point of view. What would cause a deadlock in no journal mode?
-
-We still have the original problem for why we need GFP_NOFS even in
-ext2.  If we are in a writeback path, and we need to allocate memory,
-we don't want to recurse back into the file system's writeback path.
-Certainly not for the same inode, and while we could make it work if
-the mm was writing back another inode, or another superblock, there
-are also stack depth considerations that would make this be a bad
-idea.  So we do need to be able to assert GFP_NOFS even in no journal
-mode, and for any file system including ext2, for that matter.
-
-Because of the fact that we're going to have to play games with
-current->journal_info, maybe this is something that I should take
-responsibility for, and to go through the the ext4 tree after the main
-patch series go through?  Maybe you could use xfs and ext2 as sample
-(simple) implementations?
-
-My only ask is that the memalloc nofs context be a well defined N
-bits, where N < 16, and I'll find some place to put them (probably
-journal_info).
-
-Thanks,
-
-					- Ted
