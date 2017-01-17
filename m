@@ -1,47 +1,57 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from us-smtp-delivery-194.mimecast.com ([63.128.21.194]:23585 "EHLO
-        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1750996AbdAPUO2 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 16 Jan 2017 15:14:28 -0500
-From: Trond Myklebust <trondmy@primarydata.com>
-To: "torvalds@linux-foundation.org" <torvalds@linux-foundation.org>
-CC: "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: [GIT PULL] Please pull NFS client bugfixes
-Date: Mon, 16 Jan 2017 20:14:22 +0000
-Message-ID: <1484597660.7119.1.camel@primarydata.com>
+Received: from imap.thunk.org ([74.207.234.97]:51260 "EHLO imap.thunk.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1750826AbdAQC5d (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 16 Jan 2017 21:57:33 -0500
+Date: Mon, 16 Jan 2017 21:56:07 -0500
+From: Theodore Ts'o <tytso@mit.edu>
+To: Michal Hocko <mhocko@kernel.org>
+Cc: linux-mm@kvack.org, linux-fsdevel@vger.kernel.org,
+        Andrew Morton <akpm@linux-foundation.org>,
+        Dave Chinner <david@fromorbit.com>, djwong@kernel.org,
+        Chris Mason <clm@fb.com>, David Sterba <dsterba@suse.cz>,
+        Jan Kara <jack@suse.cz>, ceph-devel@vger.kernel.org,
+        cluster-devel@redhat.com, linux-nfs@vger.kernel.org,
+        logfs@logfs.org, linux-xfs@vger.kernel.org,
+        linux-ext4@vger.kernel.org, linux-btrfs@vger.kernel.org,
+        linux-mtd@lists.infradead.org, reiserfs-devel@vger.kernel.org,
+        linux-ntfs-dev@lists.sourceforge.net,
+        linux-f2fs-devel@lists.sourceforge.net,
+        linux-afs@lists.infradead.org, LKML <linux-kernel@vger.kernel.org>,
+        Michal Hocko <mhocko@suse.com>
+Subject: Re: [PATCH 8/8] Revert "ext4: fix wrong gfp type under transaction"
+Message-ID: <20170117025607.frrcdbduthhutrzj@thunk.org>
+References: <20170106141107.23953-1-mhocko@kernel.org>
+ <20170106141107.23953-9-mhocko@kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20170106141107.23953-9-mhocko@kernel.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-SGkgTGludXMsDQoNClRoZSBmb2xsb3dpbmcgY2hhbmdlcyBzaW5jZSBjb21taXQgYTEyMTEwM2M5
-MjI4NDdiYTUwMTA4MTlhM2YyNTBmMWY3ZmM4NGFiODoNCg0KICBMaW51eCA0LjEwLXJjMyAoMjAx
-Ny0wMS0wOCAxNDoxODoxNyAtMDgwMCkNCg0KYXJlIGF2YWlsYWJsZSBpbiB0aGUgZ2l0IHJlcG9z
-aXRvcnkgYXQ6DQoNCiAgZ2l0Oi8vZ2l0LmxpbnV4LW5mcy5vcmcvcHJvamVjdHMvdHJvbmRteS9s
-aW51eC1uZnMuZ2l0IHRhZ3MvbmZzLWZvci00LjEwLTMNCg0KZm9yIHlvdSB0byBmZXRjaCBjaGFu
-Z2VzIHVwIHRvIGM2MTgwYTYyMzcxNzRmNDgxZGM4NTZlZDZlODkwZDgxOTZiNmYwZmI6DQoNCiAg
-TkZTdjQ6IEZpeCBjbGllbnQgcmVjb3Zlcnkgd2hlbiBzZXJ2ZXIgcmVib290cyBtdWx0aXBsZSB0
-aW1lcyAoMjAxNy0wMS0xMyAxMzozMTozMiAtMDUwMCkNCg0KLS0tLS0tLS0tLS0tLS0tLS0tLS0t
-LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLQ0KTkZTIGNsaWVudCBi
-dWdmaXhlcyBmb3IgTGludXggNC4xMA0KDQpCdWdmaXhlczoNCi0gRml4IGludmFsaWQgZmdldCgp
-L2ZwdXQoKSBjYWxscyB3aGVuIGRvaW5nIGZpbGUgbG9ja2luZw0KLSBGaXggbXVsdGlwbGUgZGly
-ZWN0b3J5IGNhY2hlIGludmFsaWRhdGlvbiBpc3N1ZXMgZHVlIHRvIHRoZSBjbGllbnQgZmFpbGlu
-Zw0KICB0byByZWNvZ25pc2UgdGhhdCB0aGUgZGlyZWN0b3J5IHdhc24ndCBjaGFuZ2VkLg0KLSBG
-aXggY2xpZW50IHJlY292ZXJ5IHdoZW4gc2VydmVyIHJlYm9vdHMgbXVsdGlwbGUgdGltZXMNCg0K
-LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
-LS0tLS0tLQ0KQmVuamFtaW4gQ29kZGluZ3RvbiAoMSk6DQogICAgICBuZnM6IERvbid0IHRha2Ug
-YSByZWZlcmVuY2Ugb24gZmwtPmZsX2ZpbGUgZm9yIExPQ0sgb3BlcmF0aW9uDQoNClRyb25kIE15
-a2xlYnVzdCAoNSk6DQogICAgICBORlN2NDogQ2FsbCB1cGRhdGVfY2hhbmdlYXR0cigpIGZyb20g
-X25mczRfcHJvY19vcGVuIG9ubHkgaWYgYSBmaWxlIHdhcyBjcmVhdGVkDQogICAgICBORlN2NDog
-RG9uJ3QgYXBwbHkgY2hhbmdlX2luZm80IHR3aWNlIG9uIHJlbmFtZSB3aXRoaW4gYSBkaXJlY3Rv
-cnkNCiAgICAgIE5GU3Y0OiBEb24ndCBjYWxsIHVwZGF0ZV9jaGFuZ2VhdHRyKCkgdW5sZXNzIHRo
-ZSB1bmxpbmsgaXMgc3VjY2Vzc2Z1bA0KICAgICAgTkZTdjQ6IHVwZGF0ZV9jaGFuZ2VhdHRyIHNo
-b3VsZCB1cGRhdGUgdGhlIGF0dHJpYnV0ZSB0aW1lc3RhbXANCiAgICAgIE5GU3Y0OiBGaXggY2xp
-ZW50IHJlY292ZXJ5IHdoZW4gc2VydmVyIHJlYm9vdHMgbXVsdGlwbGUgdGltZXMNCg0KIGZzL25m
-cy9uZnM0cHJvYy5jICB8IDI5ICsrKysrKysrKysrKysrKysrKy0tLS0tLS0tLS0tDQogZnMvbmZz
-L25mczRzdGF0ZS5jIHwgIDEgLQ0KIDIgZmlsZXMgY2hhbmdlZCwgMTggaW5zZXJ0aW9ucygrKSwg
-MTIgZGVsZXRpb25zKC0pDQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMgY2xpZW50
-IG1haW50YWluZXIsIFByaW1hcnlEYXRhDQp0cm9uZC5teWtsZWJ1c3RAcHJpbWFyeWRhdGEuY29t
-DQo=
+On Fri, Jan 06, 2017 at 03:11:07PM +0100, Michal Hocko wrote:
+> From: Michal Hocko <mhocko@suse.com>
+> 
+> This reverts commit 216553c4b7f3e3e2beb4981cddca9b2027523928. Now that
+> the transaction context uses memalloc_nofs_save and all allocations
+> within the this context inherit GFP_NOFS automatically, there is no
+> reason to mark specific allocations explicitly.
+> 
+> This patch should not introduce any functional change. The main point
+> of this change is to reduce explicit GFP_NOFS usage inside ext4 code
+> to make the review of the remaining usage easier.
+> 
+> Signed-off-by: Michal Hocko <mhocko@suse.com>
+> Reviewed-by: Jan Kara <jack@suse.cz>
 
+Changes in the jbd2 layer aren't going to guarantee that
+memalloc_nofs_save() will be executed if we are running ext4 without a
+journal (aka in no journal mode).  And this is a *very* common
+configuration; it's how ext4 is used inside Google in our production
+servers.
+
+So that means the earlier patches will probably need to be changed so
+the nOFS scope is done in the ext4_journal_{start,stop} functions in
+fs/ext4/ext4_jbd2.c.
+
+					- Ted
