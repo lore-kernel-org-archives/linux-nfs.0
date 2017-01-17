@@ -1,13 +1,13 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx141.netapp.com ([216.240.21.12]:13901 "EHLO mx141.netapp.com"
+Received: from mx142.netapp.com ([216.240.21.19]:46740 "EHLO mx142.netapp.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751184AbdAQUcw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        id S1751186AbdAQUcw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
         Tue, 17 Jan 2017 15:32:52 -0500
 From: <Anna.Schumaker@Netapp.com>
 To: <linux-nfs@vger.kernel.org>
-Subject: [PATCH v2 06/10] NFS: Remove nfs4_recover_expired_lease()
-Date: Tue, 17 Jan 2017 15:32:01 -0500
-Message-ID: <20170117203205.29033-7-Anna.Schumaker@Netapp.com>
+Subject: [PATCH v2 08/10] NFS: No need to set and return status in nfs41_lock_expired()
+Date: Tue, 17 Jan 2017 15:32:03 -0500
+Message-ID: <20170117203205.29033-9-Anna.Schumaker@Netapp.com>
 In-Reply-To: <20170117203205.29033-1-Anna.Schumaker@Netapp.com>
 References: <20170117203205.29033-1-Anna.Schumaker@Netapp.com>
 MIME-Version: 1.0
@@ -17,39 +17,25 @@ List-ID: <linux-nfs.vger.kernel.org>
 
 From: Anna Schumaker <Anna.Schumaker@Netapp.com>
 
-This function doesn't add much, since all it does is access the server's
-nfs_client variable.
-
 Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
 ---
- fs/nfs/nfs4proc.c | 7 +------
- 1 file changed, 1 insertion(+), 6 deletions(-)
+ fs/nfs/nfs4proc.c | 3 +--
+ 1 file changed, 1 insertion(+), 2 deletions(-)
 
 diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 02767aced45c..bde48f02bd28 100644
+index 67aa9cf5f569..c6d0a93ca652 100644
 --- a/fs/nfs/nfs4proc.c
 +++ b/fs/nfs/nfs4proc.c
-@@ -2308,11 +2308,6 @@ static int _nfs4_proc_open(struct nfs4_opendata *data)
- 	return 0;
+@@ -6274,8 +6274,7 @@ static int nfs41_lock_expired(struct nfs4_state *state, struct file_lock *reques
+ 	if (test_bit(NFS_LOCK_INITIALIZED, &lsp->ls_flags) ||
+ 	    test_bit(NFS_LOCK_LOST, &lsp->ls_flags))
+ 		return 0;
+-	status = nfs4_lock_expired(state, request);
+-	return status;
++	return nfs4_lock_expired(state, request);
  }
+ #endif
  
--static int nfs4_recover_expired_lease(struct nfs_server *server)
--{
--	return nfs4_client_recover_expired_lease(server->nfs_client);
--}
--
- /*
-  * OPEN_EXPIRED:
-  * 	reclaim state on the server after a network partition.
-@@ -2689,7 +2684,7 @@ static int _nfs4_do_open(struct inode *dir,
- 		dprintk("nfs4_do_open: nfs4_get_state_owner failed!\n");
- 		goto out_err;
- 	}
--	status = nfs4_recover_expired_lease(server);
-+	status = nfs4_client_recover_expired_lease(server->nfs_client);
- 	if (status != 0)
- 		goto err_put_state_owner;
- 	if (d_really_is_positive(dentry))
 -- 
 2.11.0
 
