@@ -1,97 +1,75 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx143.netapp.com ([216.240.21.24]:52488 "EHLO mx143.netapp.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751025AbdAQQVG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 17 Jan 2017 11:21:06 -0500
-Content-Type: text/plain; charset="windows-1252"
-MIME-Version: 1.0 (Mac OS X Mail 9.3 \(3124\))
-Subject: Re: [PATCH 1/1] NFSv3: Ignore wcc before ctime attribute
-From: Olga Kornievskaia <kolga@netapp.com>
-In-Reply-To: <D828C666-FE77-4E43-925B-A6A4FC647E50@primarydata.com>
-Date: Tue, 17 Jan 2017 11:20:57 -0500
+Received: from us-smtp-delivery-194.mimecast.com ([63.128.21.194]:40752 "EHLO
+        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1751245AbdAQQYM (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 17 Jan 2017 11:24:12 -0500
+From: Trond Myklebust <trondmy@primarydata.com>
+To: Olga Kornievskaia <kolga@netapp.com>
 CC: Olga Kornievskaia <aglo@umich.edu>,
         Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-ID: <06CF6532-70AD-428F-93C7-C30305E09B35@netapp.com>
+Subject: Re: [PATCH 1/1] NFSv3: Ignore wcc before ctime attribute
+Date: Tue, 17 Jan 2017 16:23:55 +0000
+Message-ID: <89D056A4-F0C2-4DDF-9637-731A88355A9F@primarydata.com>
 References: <1459541983-21301-1-git-send-email-kolga@netapp.com>
  <CAN-5tyG6-TPbBxmMYpLPv6_duwAYRm1V_QtRSWepT6un5EtNAg@mail.gmail.com>
  <D828C666-FE77-4E43-925B-A6A4FC647E50@primarydata.com>
-To: Trond Myklebust <trondmy@primarydata.com>
+ <06CF6532-70AD-428F-93C7-C30305E09B35@netapp.com>
+In-Reply-To: <06CF6532-70AD-428F-93C7-C30305E09B35@netapp.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Trond,
-
-Honestly, I haven=92t retried the 4.10-rc. I haven=92t recalled any =
-patches that dealt with out of order RPCs and attributes and therefore =
-assumed it was still an issue. I will recheck the 4.10-rc if you think =
-the issue should have been addressed.
-
-
-> On Jan 17, 2017, at 11:14 AM, Trond Myklebust =
-<trondmy@primarydata.com> wrote:
->=20
-> Is there a problem with 4.10-rc?
->=20
->> On Jan 17, 2017, at 09:33, Olga Kornievskaia <aglo@umich.edu> wrote:
->>=20
->> Hi Trond,
->>=20
->> I'd like bring up this issue again as I was asked again that linux
->> nfsv3 client experiences poor performance when it receives
->> out-of-order write rpcs. If a general change to ignore "before" ctime
->> is not acceptable, what about something that is configurable via a
->> sysctl perhaps?
->>=20
->> On Fri, Apr 1, 2016 at 4:19 PM, Olga Kornievskaia <kolga@netapp.com> =
-wrote:
->>> Commit 7c2dad99d60c86ec686b3bfdcb787c450a7ea89f
->>> "Don't let the ctime override attribute barriers" introduced a =
-problem
->>> of invalidating the cache when receiving in-order WRITE replies. =
-Because
->>> ctime is no longer checked then attributes are not updated =
-appropriately
->>> and then leads to mismatch of received "before" with what's stored.
->>>=20
->>> Given that sending the wcc attributes is not mandatory (and linux
->>> server doesn't), we can ignore the received "before" ctime. It fixes
->>> the current problem and also help when we receive out-of-order =
-WRITEs.
->>>=20
->>> Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
->>> ---
->>> fs/nfs/nfs3xdr.c | 2 --
->>> 1 file changed, 2 deletions(-)
->>>=20
->>> diff --git a/fs/nfs/nfs3xdr.c b/fs/nfs/nfs3xdr.c
->>> index 267126d..feca07f 100644
->>> --- a/fs/nfs/nfs3xdr.c
->>> +++ b/fs/nfs/nfs3xdr.c
->>> @@ -732,14 +732,12 @@ static int decode_wcc_attr(struct xdr_stream =
-*xdr, struct nfs_fattr *fattr)
->>>               goto out_overflow;
->>>=20
->>>       fattr->valid |=3D NFS_ATTR_FATTR_PRESIZE
->>> -               | NFS_ATTR_FATTR_PRECHANGE
->>>               | NFS_ATTR_FATTR_PREMTIME
->>>               | NFS_ATTR_FATTR_PRECTIME;
->>>=20
->>>       p =3D xdr_decode_size3(p, &fattr->pre_size);
->>>       p =3D xdr_decode_nfstime3(p, &fattr->pre_mtime);
->>>       xdr_decode_nfstime3(p, &fattr->pre_ctime);
->>> -       fattr->pre_change_attr =3D =
-nfs_timespec_to_change_attr(&fattr->pre_ctime);
->>>=20
->>>       return 0;
->>> out_overflow:
->>> --
->>> 1.8.3.1
->>>=20
->>> --
->>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" =
-in
->>> the body of a message to majordomo@vger.kernel.org
->>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->>=20
->=20
+DQo+IE9uIEphbiAxNywgMjAxNywgYXQgMTE6MjAsIE9sZ2EgS29ybmlldnNrYWlhIDxrb2xnYUBu
+ZXRhcHAuY29tPiB3cm90ZToNCj4gDQo+IEhpIFRyb25kLA0KPiANCj4gSG9uZXN0bHksIEkgaGF2
+ZW7igJl0IHJldHJpZWQgdGhlIDQuMTAtcmMuIEkgaGF2ZW7igJl0IHJlY2FsbGVkIGFueSBwYXRj
+aGVzIHRoYXQgZGVhbHQgd2l0aCBvdXQgb2Ygb3JkZXIgUlBDcyBhbmQgYXR0cmlidXRlcyBhbmQg
+dGhlcmVmb3JlIGFzc3VtZWQgaXQgd2FzIHN0aWxsIGFuIGlzc3VlLiBJIHdpbGwgcmVjaGVjayB0
+aGUgNC4xMC1yYyBpZiB5b3UgdGhpbmsgdGhlIGlzc3VlIHNob3VsZCBoYXZlIGJlZW4gYWRkcmVz
+c2VkLg0KPiANCj4gDQoNCkkgd291bGQgYXNzdW1lIHRoYXQgY29tbWl0IGNhMGRhYTI3N2FjYSAo
+Ik5GUzogQ2FjaGUgYWdncmVzc2l2ZWx5IHdoZW4gZmlsZSBpcyBvcGVuIGZvciB3cml0aW5n4oCd
+KSBzaG91bGQgaGF2ZSBoZWxwZWQuIFBsZWFzZSBsZXQgbWUga25vdyBpZiB0aGF0IGlzIG5vdCB0
+aGUgY2FzZS4NCg0KPj4gT24gSmFuIDE3LCAyMDE3LCBhdCAxMToxNCBBTSwgVHJvbmQgTXlrbGVi
+dXN0IDx0cm9uZG15QHByaW1hcnlkYXRhLmNvbT4gd3JvdGU6DQo+PiANCj4+IElzIHRoZXJlIGEg
+cHJvYmxlbSB3aXRoIDQuMTAtcmM/DQo+PiANCj4+PiBPbiBKYW4gMTcsIDIwMTcsIGF0IDA5OjMz
+LCBPbGdhIEtvcm5pZXZza2FpYSA8YWdsb0B1bWljaC5lZHU+IHdyb3RlOg0KPj4+IA0KPj4+IEhp
+IFRyb25kLA0KPj4+IA0KPj4+IEknZCBsaWtlIGJyaW5nIHVwIHRoaXMgaXNzdWUgYWdhaW4gYXMg
+SSB3YXMgYXNrZWQgYWdhaW4gdGhhdCBsaW51eA0KPj4+IG5mc3YzIGNsaWVudCBleHBlcmllbmNl
+cyBwb29yIHBlcmZvcm1hbmNlIHdoZW4gaXQgcmVjZWl2ZXMNCj4+PiBvdXQtb2Ytb3JkZXIgd3Jp
+dGUgcnBjcy4gSWYgYSBnZW5lcmFsIGNoYW5nZSB0byBpZ25vcmUgImJlZm9yZSIgY3RpbWUNCj4+
+PiBpcyBub3QgYWNjZXB0YWJsZSwgd2hhdCBhYm91dCBzb21ldGhpbmcgdGhhdCBpcyBjb25maWd1
+cmFibGUgdmlhIGENCj4+PiBzeXNjdGwgcGVyaGFwcz8NCj4+PiANCj4+PiBPbiBGcmksIEFwciAx
+LCAyMDE2IGF0IDQ6MTkgUE0sIE9sZ2EgS29ybmlldnNrYWlhIDxrb2xnYUBuZXRhcHAuY29tPiB3
+cm90ZToNCj4+Pj4gQ29tbWl0IDdjMmRhZDk5ZDYwYzg2ZWM2ODZiM2JmZGNiNzg3YzQ1MGE3ZWE4
+OWYNCj4+Pj4gIkRvbid0IGxldCB0aGUgY3RpbWUgb3ZlcnJpZGUgYXR0cmlidXRlIGJhcnJpZXJz
+IiBpbnRyb2R1Y2VkIGEgcHJvYmxlbQ0KPj4+PiBvZiBpbnZhbGlkYXRpbmcgdGhlIGNhY2hlIHdo
+ZW4gcmVjZWl2aW5nIGluLW9yZGVyIFdSSVRFIHJlcGxpZXMuIEJlY2F1c2UNCj4+Pj4gY3RpbWUg
+aXMgbm8gbG9uZ2VyIGNoZWNrZWQgdGhlbiBhdHRyaWJ1dGVzIGFyZSBub3QgdXBkYXRlZCBhcHBy
+b3ByaWF0ZWx5DQo+Pj4+IGFuZCB0aGVuIGxlYWRzIHRvIG1pc21hdGNoIG9mIHJlY2VpdmVkICJi
+ZWZvcmUiIHdpdGggd2hhdCdzIHN0b3JlZC4NCj4+Pj4gDQo+Pj4+IEdpdmVuIHRoYXQgc2VuZGlu
+ZyB0aGUgd2NjIGF0dHJpYnV0ZXMgaXMgbm90IG1hbmRhdG9yeSAoYW5kIGxpbnV4DQo+Pj4+IHNl
+cnZlciBkb2Vzbid0KSwgd2UgY2FuIGlnbm9yZSB0aGUgcmVjZWl2ZWQgImJlZm9yZSIgY3RpbWUu
+IEl0IGZpeGVzDQo+Pj4+IHRoZSBjdXJyZW50IHByb2JsZW0gYW5kIGFsc28gaGVscCB3aGVuIHdl
+IHJlY2VpdmUgb3V0LW9mLW9yZGVyIFdSSVRFcy4NCj4+Pj4gDQo+Pj4+IFNpZ25lZC1vZmYtYnk6
+IE9sZ2EgS29ybmlldnNrYWlhIDxrb2xnYUBuZXRhcHAuY29tPg0KPj4+PiAtLS0NCj4+Pj4gZnMv
+bmZzL25mczN4ZHIuYyB8IDIgLS0NCj4+Pj4gMSBmaWxlIGNoYW5nZWQsIDIgZGVsZXRpb25zKC0p
+DQo+Pj4+IA0KPj4+PiBkaWZmIC0tZ2l0IGEvZnMvbmZzL25mczN4ZHIuYyBiL2ZzL25mcy9uZnMz
+eGRyLmMNCj4+Pj4gaW5kZXggMjY3MTI2ZC4uZmVjYTA3ZiAxMDA2NDQNCj4+Pj4gLS0tIGEvZnMv
+bmZzL25mczN4ZHIuYw0KPj4+PiArKysgYi9mcy9uZnMvbmZzM3hkci5jDQo+Pj4+IEBAIC03MzIs
+MTQgKzczMiwxMiBAQCBzdGF0aWMgaW50IGRlY29kZV93Y2NfYXR0cihzdHJ1Y3QgeGRyX3N0cmVh
+bSAqeGRyLCBzdHJ1Y3QgbmZzX2ZhdHRyICpmYXR0cikNCj4+Pj4gICAgICAgICAgICAgIGdvdG8g
+b3V0X292ZXJmbG93Ow0KPj4+PiANCj4+Pj4gICAgICBmYXR0ci0+dmFsaWQgfD0gTkZTX0FUVFJf
+RkFUVFJfUFJFU0laRQ0KPj4+PiAtICAgICAgICAgICAgICAgfCBORlNfQVRUUl9GQVRUUl9QUkVD
+SEFOR0UNCj4+Pj4gICAgICAgICAgICAgIHwgTkZTX0FUVFJfRkFUVFJfUFJFTVRJTUUNCj4+Pj4g
+ICAgICAgICAgICAgIHwgTkZTX0FUVFJfRkFUVFJfUFJFQ1RJTUU7DQo+Pj4+IA0KPj4+PiAgICAg
+IHAgPSB4ZHJfZGVjb2RlX3NpemUzKHAsICZmYXR0ci0+cHJlX3NpemUpOw0KPj4+PiAgICAgIHAg
+PSB4ZHJfZGVjb2RlX25mc3RpbWUzKHAsICZmYXR0ci0+cHJlX210aW1lKTsNCj4+Pj4gICAgICB4
+ZHJfZGVjb2RlX25mc3RpbWUzKHAsICZmYXR0ci0+cHJlX2N0aW1lKTsNCj4+Pj4gLSAgICAgICBm
+YXR0ci0+cHJlX2NoYW5nZV9hdHRyID0gbmZzX3RpbWVzcGVjX3RvX2NoYW5nZV9hdHRyKCZmYXR0
+ci0+cHJlX2N0aW1lKTsNCj4+Pj4gDQo+Pj4+ICAgICAgcmV0dXJuIDA7DQo+Pj4+IG91dF9vdmVy
+ZmxvdzoNCj4+Pj4gLS0NCj4+Pj4gMS44LjMuMQ0KPj4+PiANCj4+Pj4gLS0NCj4+Pj4gVG8gdW5z
+dWJzY3JpYmUgZnJvbSB0aGlzIGxpc3Q6IHNlbmQgdGhlIGxpbmUgInVuc3Vic2NyaWJlIGxpbnV4
+LW5mcyIgaW4NCj4+Pj4gdGhlIGJvZHkgb2YgYSBtZXNzYWdlIHRvIG1ham9yZG9tb0B2Z2VyLmtl
+cm5lbC5vcmcNCj4+Pj4gTW9yZSBtYWpvcmRvbW8gaW5mbyBhdCAgaHR0cDovL3ZnZXIua2VybmVs
+Lm9yZy9tYWpvcmRvbW8taW5mby5odG1sDQo+Pj4gDQo+PiANCj4gDQoNCg==
 
