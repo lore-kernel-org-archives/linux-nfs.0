@@ -1,83 +1,120 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:52013 "EHLO mx2.suse.de"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751272AbdARIcd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 18 Jan 2017 03:32:33 -0500
-Date: Wed, 18 Jan 2017 09:29:10 +0100
-From: Michal Hocko <mhocko@kernel.org>
-To: Andreas Dilger <adilger@dilger.ca>
-Cc: "Theodore Ts'o" <tytso@mit.edu>, Jan Kara <jack@suse.cz>,
-        linux-mm@kvack.org, linux-fsdevel@vger.kernel.org,
-        Andrew Morton <akpm@linux-foundation.org>,
-        Dave Chinner <david@fromorbit.com>, djwong@kernel.org,
-        Chris Mason <clm@fb.com>, David Sterba <dsterba@suse.cz>,
-        ceph-devel@vger.kernel.org, cluster-devel@redhat.com,
-        linux-nfs@vger.kernel.org, logfs@logfs.org, linux-xfs@vger.kernel.org,
-        linux-ext4@vger.kernel.org, linux-btrfs@vger.kernel.org,
-        linux-mtd@lists.infradead.org, reiserfs-devel@vger.kernel.org,
-        linux-ntfs-dev@lists.sourceforge.net,
-        linux-f2fs-devel@lists.sourceforge.net, linux-afs@lists.infradead.org,
-        LKML <linux-kernel@vger.kernel.org>
-Subject: Re: [PATCH 8/8] Revert "ext4: fix wrong gfp type under transaction"
-Message-ID: <20170118082910.GD7015@dhcp22.suse.cz>
-References: <20170106141107.23953-1-mhocko@kernel.org>
- <20170106141107.23953-9-mhocko@kernel.org>
- <20170117025607.frrcdbduthhutrzj@thunk.org>
- <20170117082425.GD19699@dhcp22.suse.cz>
- <20170117151817.GR19699@dhcp22.suse.cz>
- <20170117155916.dcizr65bwa6behe7@thunk.org>
- <7EC66AC2-1900-4328-A408-65079616A518@dilger.ca>
+Received: from mail-pf0-f195.google.com ([209.85.192.195]:35388 "EHLO
+        mail-pf0-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1752771AbdARKQk (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 18 Jan 2017 05:16:40 -0500
+Received: by mail-pf0-f195.google.com with SMTP id f144so857565pfa.2
+        for <linux-nfs@vger.kernel.org>; Wed, 18 Jan 2017 02:16:40 -0800 (PST)
+From: Kinglong Mee <kinglongmee@gmail.com>
+Subject: Re: [PATCH] exportfs: Make sure pass all valid export flags to nfsd
+To: "J. Bruce Fields" <bfields@fieldses.org>
+References: <c0826298-545e-64a3-b6bb-86413bf9eb39@gmail.com>
+ <20170106210531.GB31401@fieldses.org>
+ <49b7be0a-548a-cff1-8f09-613cd5c63141@gmail.com>
+ <20170111141650.GA18977@fieldses.org>
+ <fdea0dfa-14f6-a29b-4001-549f0a40601d@gmail.com>
+ <20170116165410.GB2953@fieldses.org>
+Cc: Steve Dickson <SteveD@redhat.com>, linux-nfs@vger.kernel.org,
+        Christoph Hellwig <hch@infradead.org>,
+        Kinglong Mee <kinglongmee@gmail.com>
+Message-ID: <c3855556-6e9d-8bd2-0635-e5c9af32b6f5@gmail.com>
+Date: Wed, 18 Jan 2017 18:16:32 +0800
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <7EC66AC2-1900-4328-A408-65079616A518@dilger.ca>
+In-Reply-To: <20170116165410.GB2953@fieldses.org>
+Content-Type: text/plain; charset=windows-1252
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue 17-01-17 14:04:03, Andreas Dilger wrote:
-> On Jan 17, 2017, at 8:59 AM, Theodore Ts'o <tytso@mit.edu> wrote:
-> > 
-> > On Tue, Jan 17, 2017 at 04:18:17PM +0100, Michal Hocko wrote:
-> >> 
-> >> OK, so I've been staring into the code and AFAIU current->journal_info
-> >> can contain my stored information. I could either hijack part of the
-> >> word as the ref counting is only consuming low 12b. But that looks too
-> >> ugly to live. Or I can allocate some placeholder.
-> > 
-> > Yeah, I was looking at something similar.  Can you guarantee that the
-> > context will only take one or two bits?  (Looks like it only needs one
-> > bit ATM, even though at the moment you're storing the whole GFP mask,
-> > correct?)
-> > 
-> >> But before going to play with that I am really wondering whether we need
-> >> all this with no journal at all. AFAIU what Jack told me it is the
-> >> journal lock(s) which is the biggest problem from the reclaim recursion
-> >> point of view. What would cause a deadlock in no journal mode?
-> > 
-> > We still have the original problem for why we need GFP_NOFS even in
-> > ext2.  If we are in a writeback path, and we need to allocate memory,
-> > we don't want to recurse back into the file system's writeback path.
-> > Certainly not for the same inode, and while we could make it work if
-> > the mm was writing back another inode, or another superblock, there
-> > are also stack depth considerations that would make this be a bad
-> > idea.  So we do need to be able to assert GFP_NOFS even in no journal
-> > mode, and for any file system including ext2, for that matter.
-> > 
-> > Because of the fact that we're going to have to play games with
-> > current->journal_info, maybe this is something that I should take
-> > responsibility for, and to go through the the ext4 tree after the main
-> > patch series go through?  Maybe you could use xfs and ext2 as sample
-> > (simple) implementations?
-> > 
-> > My only ask is that the memalloc nofs context be a well defined N
-> > bits, where N < 16, and I'll find some place to put them (probably
-> > journal_info).
+On 1/17/2017 00:54, J. Bruce Fields wrote:
+> On Sun, Jan 15, 2017 at 03:43:21PM +0800, Kinglong Mee wrote:
+>> On 1/11/2017 22:16, J. Bruce Fields wrote:
+>>> On Sat, Jan 07, 2017 at 07:57:28PM +0800, Kinglong Mee wrote:
+>>>> On 1/7/2017 05:05, J. Bruce Fields wrote:
+>>>>> On Sat, Dec 31, 2016 at 09:05:11PM +0800, Kinglong Mee wrote:
+>>>>>> test_export pass a export flags only marks NFSEXP_FSID,
+>>>>>> nfsd may want other flags for export checking.
+>>>>>
+>>>>> Why?  What problem does this fix?
+>>>>
+>>>> When testing the patch "NFSD: Only support readonly export for
+>>>> !fsync and readonly filesystem", I found exportfs don't pass 
+>>>> all valid export flags to nfsd. So, make this patch.
+>>>
+>>> This function is meant to test whether a filesystem supports nfs export
+>>> or not.  It doesn't need the full set of export flags.  Off the top of
+>>> my head I can't see reason this would cause problems, but I'm not
+>>> convinced it's safe, either.  (New nfs-utils against old kernels might
+>>> be a case to check, e.g. to see how unsupported flags are handled.)
+>>
+>> There are two cases that passing the flags to nfsd, 
+>> 1, exportfs checks the export entry, only NFSEXP_FSID without this patch,
+>> 2, mountd pass the validate export entry, all validate export flags.
+>>
+>> When the new nfs-utils against old kernels,
+>> user specifies an unsupported flags(Not NFSEXP_FSID),
+>> exportfs doesn't warning that unsupported flags (without test),
+>> mountd doesn't get the export entry for the flags.
+>>
+>> If exportfs warning the unsupported flags, user can modify it and
+>> do the right export.
+>> Do I have an exact understanding?
 > 
-> I think Dave was suggesting that the NOFS context allow a pointer to
-> an arbitrary struct, so that it is possible to dereference this in
-> the filesystem itself to determine if the recursion is safe or not.
+> OK, so when somebody specifies unsupported flags, the failures is silent
+> and client mounts just fail.  It would be better to warn when exportfs
+> runs.
+> 
+> I agree that that would be helpful.  Have you tested those cases?  (new
+> nfs-utils, old kernel).
 
-Yes, but can we start with a simpler approach first? Even this approach
-takes quite some time to be used.
--- 
-Michal Hocko
-SUSE Labs
+I test the latest nfs-utils with centos7 (3.10.0-514.2.2.el7.x86_64) which
+not support "security_label" flag. nfsd runs without any errors.
+
+# cat /etc/exports
+/nfs	*(rw,insecure,no_root_squash,no_subtree_check,fsid=0,pnfs,security_label)
+
+# cat /var/lib/nfs/etab 
+/nfs	*(rw,sync,wdelay,hide,nocrossmnt,insecure,no_root_squash,
+no_all_squash,no_subtree_check,secure_locks,acl,security_label,pnfs,fsid=0,
+anonuid=65534,anongid=65534,sec=sys,insecure,no_root_squash,no_all_squash)
+
+# cat /proc/fs/nfsd/exports 
+# Version 1.1
+# Path Client(Flags) # IPs
+/nfs	*(rw,insecure,no_root_squash,sync,wdelay,no_subtree_check,pnfs,fsid=0,
+uuid=767ef2f3:a8b34db9:b372b254:8cae731a,sec=1)
+
+I add trace log for export flags in svc_export as,
+svc_export_parse: exflags 0x224a2         "a" contains NFSEXP_SECURITY_LABEL
+fh_verify: exflags 0x224a2       "a" contains NFSEXP_SECURITY_LABEL         
+
+if I remove "security_label" from /etc/exports, 
+svc_export_parse: exflags 0x22422
+fh_verify: exflags 0x22422
+
+nfsd has the right export flags (include unsupported flags), but
+doesn't parse the unsupported flags, so that, runs without any errors.
+
+> 
+> It would be worth looking at validate_export() to see how it could
+> improve error messages in this case.  Currently it will say only:
+> 
+> 	/example/export does not support NFS export
+> 
+> or
+> 
+> 	/example/export requires fsid= for export
+> 
+> With your patch (forgive me if I misremember), I believe those are still
+> the only error messages, so it will be confusing if, for example, you
+> get
+> 
+> 	/example/export does not support NFS export
+> 
+> when the real problem is that an export flag is unsupported.  (But maybe
+> you had kernel messages to help there, I don't remember.)
+
+Yes, those error messages are shortage.
+I will check them and try to make them better.
+
+thanks,
+Kinglong Mee
