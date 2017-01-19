@@ -1,150 +1,52 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:46424 "EHLO fieldses.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751245AbdARWVQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 18 Jan 2017 17:21:16 -0500
-Date: Wed, 18 Jan 2017 17:11:40 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Jeff Layton <jlayton@redhat.com>
-Cc: Kinglong Mee <kinglongmee@gmail.com>, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] NFSD: Fix a null reference case in
- find_or_create_lock_stateid()
-Message-ID: <20170118221140.GA4272@fieldses.org>
-References: <7b2e18b5-8ffe-d1c7-6aa4-9c8ff41d630f@gmail.com>
- <1484740994.2669.1.camel@redhat.com>
+Received: from mail-pg0-f68.google.com ([74.125.83.68]:36730 "EHLO
+        mail-pg0-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1750717AbdASIh5 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 19 Jan 2017 03:37:57 -0500
+Received: by mail-pg0-f68.google.com with SMTP id 75so3622685pgf.3
+        for <linux-nfs@vger.kernel.org>; Thu, 19 Jan 2017 00:36:59 -0800 (PST)
+To: Trond Myklebust <trond.myklebust@primarydata.com>,
+        linux-nfs@vger.kernel.org
+Cc: Anna Schumaker <Anna.Schumaker@netapp.com>,
+        Kinglong Mee <kinglongmee@gmail.com>
+From: Kinglong Mee <kinglongmee@gmail.com>
+Subject: [PATCH v2 1/2] NFSv4.x/callback: Create the callback service through
+ svc_create_pooled
+Message-ID: <322d5c7d-d3b4-1e02-de3f-8e1a900cb150@gmail.com>
+Date: Thu, 19 Jan 2017 16:36:51 +0800
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1484740994.2669.1.camel@redhat.com>
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Jan 18, 2017 at 07:03:14AM -0500, Jeff Layton wrote:
-> On Wed, 2017-01-18 at 19:04 +0800, Kinglong Mee wrote:
-> > nfsd assigns the nfs4_free_lock_stateid to .sc_free in init_lock_stateid().
-> > 
-> > If nfsd doesn't go through init_lock_stateid() and put stateid at end,
-> > there is a NULL reference to .sc_free when calling nfs4_put_stid(ns).
-> > 
-> > This patch let the nfs4_stid.sc_free assignment to nfs4_alloc_stid().
-> > 
-> > Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
-> > ---
-> >  fs/nfsd/nfs4layouts.c |  5 +++--
-> >  fs/nfsd/nfs4state.c   | 19 ++++++++-----------
-> >  fs/nfsd/state.h       |  4 ++--
-> >  3 files changed, 13 insertions(+), 15 deletions(-)
-> > 
-> > diff --git a/fs/nfsd/nfs4layouts.c b/fs/nfsd/nfs4layouts.c
-> > index 596205d..1fc07a9 100644
-> > --- a/fs/nfsd/nfs4layouts.c
-> > +++ b/fs/nfsd/nfs4layouts.c
-> > @@ -223,10 +223,11 @@ nfsd4_alloc_layout_stateid(struct nfsd4_compound_state *cstate,
-> >  	struct nfs4_layout_stateid *ls;
-> >  	struct nfs4_stid *stp;
-> >  
-> > -	stp = nfs4_alloc_stid(cstate->clp, nfs4_layout_stateid_cache);
-> > +	stp = nfs4_alloc_stid(cstate->clp, nfs4_layout_stateid_cache,
-> > +					nfsd4_free_layout_stateid);
-> >  	if (!stp)
-> >  		return NULL;
-> > -	stp->sc_free = nfsd4_free_layout_stateid;
-> > +
-> >  	get_nfs4_file(fp);
-> >  	stp->sc_file = fp;
-> >  
-> > diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-> > index 4b4beaa..a0dee8a 100644
-> > --- a/fs/nfsd/nfs4state.c
-> > +++ b/fs/nfsd/nfs4state.c
-> > @@ -633,8 +633,8 @@ find_or_hash_clnt_odstate(struct nfs4_file *fp, struct nfs4_clnt_odstate *new)
-> >  	return co;
-> >  }
-> >  
-> > -struct nfs4_stid *nfs4_alloc_stid(struct nfs4_client *cl,
-> > -					 struct kmem_cache *slab)
-> > +struct nfs4_stid *nfs4_alloc_stid(struct nfs4_client *cl, struct kmem_cache *slab,
-> > +				  void (*sc_free)(struct nfs4_stid *))
-> >  {
-> >  	struct nfs4_stid *stid;
-> >  	int new_id;
-> > @@ -650,6 +650,8 @@ struct nfs4_stid *nfs4_alloc_stid(struct nfs4_client *cl,
-> >  	idr_preload_end();
-> >  	if (new_id < 0)
-> >  		goto out_free;
-> > +
-> > +	stid->sc_free = sc_free;
-> >  	stid->sc_client = cl;
-> >  	stid->sc_stateid.si_opaque.so_id = new_id;
-> >  	stid->sc_stateid.si_opaque.so_clid = cl->cl_clientid;
-> > @@ -675,15 +677,12 @@ struct nfs4_stid *nfs4_alloc_stid(struct nfs4_client *cl,
-> >  static struct nfs4_ol_stateid * nfs4_alloc_open_stateid(struct nfs4_client *clp)
-> >  {
-> >  	struct nfs4_stid *stid;
-> > -	struct nfs4_ol_stateid *stp;
-> >  
-> > -	stid = nfs4_alloc_stid(clp, stateid_slab);
-> > +	stid = nfs4_alloc_stid(clp, stateid_slab, nfs4_free_ol_stateid);
-> >  	if (!stid)
-> >  		return NULL;
-> >  
-> > -	stp = openlockstateid(stid);
-> > -	stp->st_stid.sc_free = nfs4_free_ol_stateid;
-> > -	return stp;
-> > +	return openlockstateid(stid);
-> >  }
-> >  
-> >  static void nfs4_free_deleg(struct nfs4_stid *stid)
-> > @@ -781,11 +780,10 @@ alloc_init_deleg(struct nfs4_client *clp, struct svc_fh *current_fh,
-> >  		goto out_dec;
-> >  	if (delegation_blocked(&current_fh->fh_handle))
-> >  		goto out_dec;
-> > -	dp = delegstateid(nfs4_alloc_stid(clp, deleg_slab));
-> > +	dp = delegstateid(nfs4_alloc_stid(clp, deleg_slab, nfs4_free_deleg));
-> >  	if (dp == NULL)
-> >  		goto out_dec;
-> >  
-> > -	dp->dl_stid.sc_free = nfs4_free_deleg;
-> >  	/*
-> >  	 * delegation seqid's are never incremented.  The 4.1 special
-> >  	 * meaning of seqid 0 isn't meaningful, really, but let's avoid
-> > @@ -5580,7 +5578,6 @@ init_lock_stateid(struct nfs4_ol_stateid *stp, struct nfs4_lockowner *lo,
-> >  	stp->st_stateowner = nfs4_get_stateowner(&lo->lo_owner);
-> >  	get_nfs4_file(fp);
-> >  	stp->st_stid.sc_file = fp;
-> > -	stp->st_stid.sc_free = nfs4_free_lock_stateid;
-> >  	stp->st_access_bmap = 0;
-> >  	stp->st_deny_bmap = open_stp->st_deny_bmap;
-> >  	stp->st_openstp = open_stp;
-> > @@ -5623,7 +5620,7 @@ find_or_create_lock_stateid(struct nfs4_lockowner *lo, struct nfs4_file *fi,
-> >  	lst = find_lock_stateid(lo, fi);
-> >  	if (lst == NULL) {
-> >  		spin_unlock(&clp->cl_lock);
-> > -		ns = nfs4_alloc_stid(clp, stateid_slab);
-> > +		ns = nfs4_alloc_stid(clp, stateid_slab, nfs4_free_lock_stateid);
-> >  		if (ns == NULL)
-> >  			return NULL;
-> >  
-> > diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
-> > index c939936..4516e8b 100644
-> > --- a/fs/nfsd/state.h
-> > +++ b/fs/nfsd/state.h
-> > @@ -603,8 +603,8 @@ extern __be32 nfs4_preprocess_stateid_op(struct svc_rqst *rqstp,
-> >  __be32 nfsd4_lookup_stateid(struct nfsd4_compound_state *cstate,
-> >  		     stateid_t *stateid, unsigned char typemask,
-> >  		     struct nfs4_stid **s, struct nfsd_net *nn);
-> > -struct nfs4_stid *nfs4_alloc_stid(struct nfs4_client *cl,
-> > -		struct kmem_cache *slab);
-> > +struct nfs4_stid *nfs4_alloc_stid(struct nfs4_client *cl, struct kmem_cache *slab,
-> > +				  void (*sc_free)(struct nfs4_stid *));
-> >  void nfs4_unhash_stid(struct nfs4_stid *s);
-> >  void nfs4_put_stid(struct nfs4_stid *s);
-> >  void nfs4_inc_and_copy_stateid(stateid_t *dst, struct nfs4_stid *stid);
-> 
-> Nice cleanup too:
-> 
-> Reviewed-by: Jeff Layton <jlayton@redhat.com>
+As the comments for svc_set_num_threads() said, 
+" Destroying threads relies on the service threads filling in
+rqstp->rq_task, which only the nfs ones do.  Assumes the serv
+has been created using svc_create_pooled()."
 
-Thanks!  Also adding Cc: stable and Fixes: 356a95ece7aa (though applying
-it back that far would require some minor fixes).
+If creating service through svc_create(), the svc_pool_map_put()
+will be called in svc_destroy(), but the pool map isn't used.
+So that, the reference of pool map will be drop, the next using
+of pool map will get a zero npools. 
 
---b.
+Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
+---
+ fs/nfs/callback.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/fs/nfs/callback.c b/fs/nfs/callback.c
+index 484bebc..0a21150 100644
+--- a/fs/nfs/callback.c
++++ b/fs/nfs/callback.c
+@@ -279,7 +279,7 @@ static struct svc_serv *nfs_callback_create_svc(int minorversion)
+ 		printk(KERN_WARNING "nfs_callback_create_svc: no kthread, %d users??\n",
+ 			cb_info->users);
+ 
+-	serv = svc_create(&nfs4_callback_program, NFS4_CALLBACK_BUFSIZE, sv_ops);
++	serv = svc_create_pooled(&nfs4_callback_program, NFS4_CALLBACK_BUFSIZE, sv_ops);
+ 	if (!serv) {
+ 		printk(KERN_ERR "nfs_callback_create_svc: create service failed\n");
+ 		return ERR_PTR(-ENOMEM);
+-- 
+2.9.3
+
