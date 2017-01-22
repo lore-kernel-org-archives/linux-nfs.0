@@ -1,58 +1,56 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from userp1040.oracle.com ([156.151.31.81]:34924 "EHLO
-        userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751676AbdATSRU (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 20 Jan 2017 13:17:20 -0500
-Content-Type: text/plain; charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 9.3 \(3124\))
-Subject: Re: [PATCH v1 0/5] Fix "support large inline thresholds"
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <021301d27342$e9f59fb0$bde0df10$@opengridcomputing.com>
-Date: Fri, 20 Jan 2017 10:17:17 -0800
-Cc: linux-rdma@vger.kernel.org,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <367EA1AA-83EF-4772-B369-F14A3AF198F1@oracle.com>
-References: <20170113173023.32692.30661.stgit@manet.1015granger.net> <021301d27342$e9f59fb0$bde0df10$@opengridcomputing.com>
-To: Steve Wise <swise@opengridcomputing.com>
+Received: from mx1.redhat.com ([209.132.183.28]:44904 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1750886AbdAVGhy (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Sun, 22 Jan 2017 01:37:54 -0500
+From: "Jianhong.Yin" <yin-jianhong@163.com>
+To: linux-nfs@vger.kernel.org
+Cc: steved@redhat.com, "Jianhong.Yin" <yin-jianhong@163.com>
+Subject: [PATCH] [nfs-utils] fix mount fail that caused by uninitialized struct
+Date: Sun, 22 Jan 2017 14:37:50 +0800
+Message-Id: <1485067070-2664-1-git-send-email-yin-jianhong@163.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+recent changes of utils/mount cause a regression mount fail:
+  https://bugzilla.redhat.com/show_bug.cgi?id=1415024
+can not reproduce it on x86_64(gcc on x86_64 might do struct
+initialize by default, I'm not sure). but it can be reproduced
+always on platform ppc64le aarch64.
 
-> On Jan 20, 2017, at 9:30 AM, Steve Wise <swise@opengridcomputing.com> wrote:
-> 
->> 
->> I've received a number of reports that v4.9 commit 655fec6987be
->> ("xprtrdma: Use gathered Send for large inline messages") causes
->> NFS/RDMA mounts to fail for devices that have a small max_sge.
->> 
->> This series addresses that problem.
->> 
->> A much smaller fix was provided initially. It worked for devices
->> with as small as five send SGEs. However, additional research has
->> shown that there is at least one in-tree device that supports only
->> three send SGEs.
->> 
->> The current series should enable NFS/RDMA again on those devices.
->> 
->> 
->> Available in the "nfs-rdma-for-4.10-rc" topic branch of this git repo:
->> 
->> git://git.linux-nfs.org/projects/cel/cel-2.6.git
-> 
-> Hey Chuck,
-> 
-> Tests ok on cxgb4.
-> 
-> Tested-by: Steve Wise <swise@opengridcomputing.com>
+Signed-off-by: Jianhong Yin <yin-jianhong@163.com>
+---
+ utils/mount/network.c | 1 +
+ utils/mount/stropts.c | 4 ++++
+ 2 files changed, 5 insertions(+)
 
-Thanks. I've also received confirmation that Ram's
-device works now, and ocrdma's issue is cleared too.
-
-I'll post a final version of this series on Monday.
-
-
---
-Chuck Lever
-
-
+diff --git a/utils/mount/network.c b/utils/mount/network.c
+index 7dceb2d..d1c8fec 100644
+--- a/utils/mount/network.c
++++ b/utils/mount/network.c
+@@ -1638,6 +1638,7 @@ int nfs_options2pmap(struct mount_options *options,
+ 		     struct pmap *nfs_pmap, struct pmap *mnt_pmap)
+ {
+ 	struct nfs_version version;
++	memset(&version, 0, sizeof(version));
+ 
+ 	if (!nfs_nfs_program(options, &nfs_pmap->pm_prog))
+ 		return 0;
+diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
+index 387d734..a9ff95d 100644
+--- a/utils/mount/stropts.c
++++ b/utils/mount/stropts.c
+@@ -517,6 +517,10 @@ nfs_rewrite_pmap_mount_options(struct mount_options *options, int checkv4)
+ 	unsigned long protocol;
+ 	struct pmap mnt_pmap;
+ 
++	/* initialize structs */
++	memset(&nfs_pmap, 0, sizeof(struct pmap));
++	memset(&mnt_pmap, 0, sizeof(struct pmap));
++
+ 	/*
+ 	 * Version and transport negotiation is not required
+ 	 * and does not work for RDMA mounts.
+-- 
+2.5.5
 
