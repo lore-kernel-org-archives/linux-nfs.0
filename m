@@ -1,16 +1,18 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:44904 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:53800 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1750886AbdAVGhy (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Sun, 22 Jan 2017 01:37:54 -0500
-From: "Jianhong.Yin" <yin-jianhong@163.com>
+        id S1750886AbdAVGrQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Sun, 22 Jan 2017 01:47:16 -0500
+From: yin-jianhong@163.com
 To: linux-nfs@vger.kernel.org
 Cc: steved@redhat.com, "Jianhong.Yin" <yin-jianhong@163.com>
 Subject: [PATCH] [nfs-utils] fix mount fail that caused by uninitialized struct
-Date: Sun, 22 Jan 2017 14:37:50 +0800
-Message-Id: <1485067070-2664-1-git-send-email-yin-jianhong@163.com>
+Date: Sun, 22 Jan 2017 14:47:04 +0800
+Message-Id: <1485067624-3659-1-git-send-email-yin-jianhong@163.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+
+From: "Jianhong.Yin" <yin-jianhong@163.com>
 
 recent changes of utils/mount cause a regression mount fail:
   https://bugzilla.redhat.com/show_bug.cgi?id=1415024
