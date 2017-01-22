@@ -1,58 +1,68 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:53800 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1750886AbdAVGrQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Sun, 22 Jan 2017 01:47:16 -0500
-From: yin-jianhong@163.com
-To: linux-nfs@vger.kernel.org
-Cc: steved@redhat.com, "Jianhong.Yin" <yin-jianhong@163.com>
-Subject: [PATCH] [nfs-utils] fix mount fail that caused by uninitialized struct
-Date: Sun, 22 Jan 2017 14:47:04 +0800
-Message-Id: <1485067624-3659-1-git-send-email-yin-jianhong@163.com>
+Received: from bombadil.infradead.org ([65.50.211.133]:49342 "EHLO
+        bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1750884AbdAVQvX (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sun, 22 Jan 2017 11:51:23 -0500
+From: Christoph Hellwig <hch@lst.de>
+To: bfields@redhat.com
+Cc: linux-nfs@vger.kernel.org
+Subject: [pynfs PATCH] check that a mixed size / uid setattr works
+Date: Sun, 22 Jan 2017 17:51:18 +0100
+Message-Id: <1485103878-15160-1-git-send-email-hch@lst.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "Jianhong.Yin" <yin-jianhong@163.com>
+On some Linux file systems this currently fails and/or trips an ASSERT.
 
-recent changes of utils/mount cause a regression mount fail:
-  https://bugzilla.redhat.com/show_bug.cgi?id=1415024
-can not reproduce it on x86_64(gcc on x86_64 might do struct
-initialize by default, I'm not sure). but it can be reproduced
-always on platform ppc64le aarch64.
-
-Signed-off-by: Jianhong Yin <yin-jianhong@163.com>
+Signed-off-by: Christoph Hellwig <hch@lst.de>
 ---
- utils/mount/network.c | 1 +
- utils/mount/stropts.c | 4 ++++
- 2 files changed, 5 insertions(+)
+ nfs4.0/servertests/st_setattr.py | 29 +++++++++++++++++++++++++++++
+ 1 file changed, 29 insertions(+)
 
-diff --git a/utils/mount/network.c b/utils/mount/network.c
-index 7dceb2d..d1c8fec 100644
---- a/utils/mount/network.c
-+++ b/utils/mount/network.c
-@@ -1638,6 +1638,7 @@ int nfs_options2pmap(struct mount_options *options,
- 		     struct pmap *nfs_pmap, struct pmap *mnt_pmap)
- {
- 	struct nfs_version version;
-+	memset(&version, 0, sizeof(version));
+diff --git a/nfs4.0/servertests/st_setattr.py b/nfs4.0/servertests/st_setattr.py
+index b6a398b..accd807 100644
+--- a/nfs4.0/servertests/st_setattr.py
++++ b/nfs4.0/servertests/st_setattr.py
+@@ -27,6 +27,23 @@ def _set_size(t, c, file, stateid=None, msg=" using stateid=0"):
+     check(res, msg="Changing size from %i to 0" % newsize)
+     check_res(t, c, res, file, dict)
  
- 	if (!nfs_nfs_program(options, &nfs_pmap->pm_prog))
- 		return 0;
-diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
-index 387d734..a9ff95d 100644
---- a/utils/mount/stropts.c
-+++ b/utils/mount/stropts.c
-@@ -517,6 +517,10 @@ nfs_rewrite_pmap_mount_options(struct mount_options *options, int checkv4)
- 	unsigned long protocol;
- 	struct pmap mnt_pmap;
- 
-+	/* initialize structs */
-+	memset(&nfs_pmap, 0, sizeof(struct pmap));
-+	memset(&mnt_pmap, 0, sizeof(struct pmap));
++#
++# Mix size and non-size attributes in a single SETATTR.  Some Linux file
++# systems aren't happy with this mix, and a server passing this on 1:1
++# will trigger warnings or incorrect results.
++#
++def _set_mixed(t, c, file, stateid=None, msg=" using stateid=0"):
++    startsize = c.do_getattr(FATTR4_SIZE, file)
++    newsize = startsize + 10
++    owner = "65534" # nobody
 +
- 	/*
- 	 * Version and transport negotiation is not required
- 	 * and does not work for RDMA mounts.
++    dict = {FATTR4_SIZE: newsize, FATTR4_OWNER: owner}
++    ops = c.use_obj(file) + [c.setattr(dict, stateid)]
++    res = c.compound(ops)
++    check(res, msg="Changing size from %i to %i and owner to %s%s" %
++          (startsize, newsize, owner, msg), warnlist=[NFS4ERR_BAD_STATEID])
++    check_res(t, c, res, file, dict)
++
+ def _try_readonly(t, env, path):
+     c = env.c1
+     baseops = c.use_obj(path)
+@@ -701,3 +718,15 @@ def testChangeGranularity(t, env):
+     chattr4 = res.resarray[7].obj_attributes
+     if chattr1 == chattr2 or chattr2 == chattr3 or chattr3 == chattr4:
+         t.fail("consecutive SETATTR(mode)'s don't all change change attribute")
++
++def testMixed(t, env):
++    """SETATTR(FATTR4_SIZE + FATTR4_OWNER) on file with stateid = 0
++
++    FLAGS: setattr file all
++    DEPEND: MKFILE
++    CODE: SATT16
++    """
++    c = env.c1
++    c.init_connection()
++    fh, stateid = c.create_confirm(t.code, deny=OPEN4_SHARE_DENY_NONE)
++    _set_mixed(t, c, fh)
 -- 
-2.5.5
+2.1.4
 
