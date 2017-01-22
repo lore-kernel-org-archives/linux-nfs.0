@@ -1,179 +1,67 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from bombadil.infradead.org ([65.50.211.133]:50260 "EHLO
-        bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1750884AbdAVQyc (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sun, 22 Jan 2017 11:54:32 -0500
-From: Christoph Hellwig <hch@lst.de>
-To: bfields@redhat.com
-Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org
-Subject: [PATCH] nfsd: special case truncates some more
-Date: Sun, 22 Jan 2017 17:54:20 +0100
-Message-Id: <1485104060-15209-2-git-send-email-hch@lst.de>
-In-Reply-To: <1485104060-15209-1-git-send-email-hch@lst.de>
-References: <1485104060-15209-1-git-send-email-hch@lst.de>
+Received: from mail-it0-f45.google.com ([209.85.214.45]:33940 "EHLO
+        mail-it0-f45.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1750884AbdAVTEc (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sun, 22 Jan 2017 14:04:32 -0500
+Received: by mail-it0-f45.google.com with SMTP id k200so19807745itb.1
+        for <linux-nfs@vger.kernel.org>; Sun, 22 Jan 2017 11:04:31 -0800 (PST)
+Received: from manet.1015granger.net ([2604:8800:100:81fc:ec4:7aff:fe6c:1dce])
+        by smtp.gmail.com with ESMTPSA id k6sm8280272ioe.1.2017.01.22.11.04.30
+        for <linux-nfs@vger.kernel.org>
+        (version=TLS1_2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128/128);
+        Sun, 22 Jan 2017 11:04:30 -0800 (PST)
+Subject: [PATCH v1] nfs: Don't increment lock sequence ID after NFS4ERR_MOVED
+From: Chuck Lever <chuck.lever@oracle.com>
+To: linux-nfs@vger.kernel.org
+Date: Sun, 22 Jan 2017 14:04:29 -0500
+Message-ID: <20170122190429.7337.77928.stgit@manet.1015granger.net>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Both the NFS protocols and the Linux VFS use a setattr operation with a
-bitmap of attributs to set to set various file attributes including the
-file size and the uid/gid.
+Xuan Qi reports that the Linux NFSv4 client failed to lock a file
+that was migrated. The steps he observed on the wire:
 
-The Linux syscalls never mixe size updates with unrelated updates like
-the uid/gid, and some file systems like XFS and GFS2 rely on the fact
-that truncates might not update random other attributes, and many
-other file systems handle the case but do not update the different
-attributes in the same transaction.  NFSD on the other hand passes
-the attributes it gets on the wire more or less directly through to
-the VFS, leading to updates the file systems don't expect.  XFS at
-least has an assert on the allowed attributes, which cought an NFS
-client sets the size and group ІD at the same time.
+1. The client sent a LOCK request
+2. The server replied NFS4ERR_MOVED
+3. The client switched to the destination server
+4. The client sent the LOCK request again with a bumped
+   lock sequence ID
+5. The server rejected the LOCK request with NFS4ERR_BAD_SEQID
 
-To handles this issue properly this switches nfsd to call vfs_truncate
-for size changes, and then handling all other attributes through
-notify_change.  As a side effect this also means less boilerplace
-code around the size change as we can now reuse the VFS code.
+RFC 3530 section 8.1.5 provides a list of NFS errors which do not
+bump a lock sequence ID.
 
-Signed-off-by: Christoph Hellwig <hch@lst.de>
+However, RFC 3530 is now obsoleted by RFC 7530. In RFC 7530 section
+9.1.7, this list has been updated by the addition of NFS4ERR_MOVED.
+
+Reported-by: Xuan Qi <xuan.qi@oracle.com>
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Cc: stable@vger.kernel.org # v3.7+
 ---
- fs/nfsd/vfs.c | 77 +++++++++++++++++++----------------------------------------
- 1 file changed, 24 insertions(+), 53 deletions(-)
+ include/linux/nfs4.h |    3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
 
-diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
-index 26c6fdb..fafff37 100644
---- a/fs/nfsd/vfs.c
-+++ b/fs/nfsd/vfs.c
-@@ -332,37 +332,6 @@ nfsd_sanitize_attrs(struct inode *inode, struct iattr *iap)
- 	}
- }
+diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
+index bca5363..1b1ca04 100644
+--- a/include/linux/nfs4.h
++++ b/include/linux/nfs4.h
+@@ -282,7 +282,7 @@ enum nfsstat4 {
  
--static __be32
--nfsd_get_write_access(struct svc_rqst *rqstp, struct svc_fh *fhp,
--		struct iattr *iap)
--{
--	struct inode *inode = d_inode(fhp->fh_dentry);
--	int host_err;
--
--	if (iap->ia_size < inode->i_size) {
--		__be32 err;
--
--		err = nfsd_permission(rqstp, fhp->fh_export, fhp->fh_dentry,
--				NFSD_MAY_TRUNC | NFSD_MAY_OWNER_OVERRIDE);
--		if (err)
--			return err;
--	}
--
--	host_err = get_write_access(inode);
--	if (host_err)
--		goto out_nfserrno;
--
--	host_err = locks_verify_truncate(inode, NULL, iap->ia_size);
--	if (host_err)
--		goto out_put_write_access;
--	return 0;
--
--out_put_write_access:
--	put_write_access(inode);
--out_nfserrno:
--	return nfserrno(host_err);
--}
--
- /*
-  * Set various file attributes.  After this call fhp needs an fh_put.
-  */
-@@ -377,7 +346,6 @@ nfsd_setattr(struct svc_rqst *rqstp, struct svc_fh *fhp, struct iattr *iap,
- 	__be32		err;
- 	int		host_err;
- 	bool		get_write_count;
--	int		size_change = 0;
- 
- 	if (iap->ia_valid & (ATTR_ATIME | ATTR_MTIME | ATTR_SIZE))
- 		accmode |= NFSD_MAY_WRITE|NFSD_MAY_OWNER_OVERRIDE;
-@@ -390,11 +358,11 @@ nfsd_setattr(struct svc_rqst *rqstp, struct svc_fh *fhp, struct iattr *iap,
- 	/* Get inode */
- 	err = fh_verify(rqstp, fhp, ftype, accmode);
- 	if (err)
--		goto out;
-+		return err;
- 	if (get_write_count) {
- 		host_err = fh_want_write(fhp);
- 		if (host_err)
--			return nfserrno(host_err);
-+			goto out_host_err;
- 	}
- 
- 	dentry = fhp->fh_dentry;
-@@ -405,19 +373,25 @@ nfsd_setattr(struct svc_rqst *rqstp, struct svc_fh *fhp, struct iattr *iap,
- 		iap->ia_valid &= ~ATTR_MODE;
- 
- 	if (!iap->ia_valid)
--		goto out;
-+		return 0;
- 
- 	nfsd_sanitize_attrs(inode, iap);
- 
-+	if (check_guard && guardtime != inode->i_ctime.tv_sec)
-+		return nfserr_notsync;
-+
- 	/*
- 	 * The size case is special, it changes the file in addition to the
--	 * attributes.
-+	 * attributes, and file systems don't expect it to be mixed with
-+	 * "random" attribute changes.  We thus split out the size change
-+	 * into a separate calo for vfs_truncate, and do the rest as a
-+	 * a separate setattr call.
- 	 */
- 	if (iap->ia_valid & ATTR_SIZE) {
--		err = nfsd_get_write_access(rqstp, fhp, iap);
--		if (err)
--			goto out;
--		size_change = 1;
-+		struct path path = {
-+			.mnt	= fhp->fh_export->ex_path.mnt,
-+			.dentry	= dentry,
-+		};
- 
- 		/*
- 		 * RFC5661, Section 18.30.4:
-@@ -428,27 +402,24 @@ nfsd_setattr(struct svc_rqst *rqstp, struct svc_fh *fhp, struct iattr *iap,
- 		 */
- 		if (iap->ia_size != i_size_read(inode))
- 			iap->ia_valid |= ATTR_MTIME;
--	}
- 
--	iap->ia_valid |= ATTR_CTIME;
-+		host_err = vfs_truncate(&path, iap->ia_size);
-+		if (host_err)
-+			goto out_host_err;
- 
--	if (check_guard && guardtime != inode->i_ctime.tv_sec) {
--		err = nfserr_notsync;
--		goto out_put_write_access;
-+		iap->ia_valid &= ~ATTR_SIZE;
- 	}
- 
-+	iap->ia_valid |= ATTR_CTIME;
-+
- 	fh_lock(fhp);
- 	host_err = notify_change(dentry, iap, NULL);
- 	fh_unlock(fhp);
--	err = nfserrno(host_err);
- 
--out_put_write_access:
--	if (size_change)
--		put_write_access(inode);
--	if (!err)
--		err = nfserrno(commit_metadata(fhp));
--out:
--	return err;
-+	if (!host_err)
-+		host_err = commit_metadata(fhp);
-+out_host_err:
-+	return nfserrno(host_err);
- }
- 
- #if defined(CONFIG_NFSD_V4)
--- 
-2.1.4
+ static inline bool seqid_mutating_err(u32 err)
+ {
+-	/* rfc 3530 section 8.1.5: */
++	/* See RFC 7530, section 9.1.7 */
+ 	switch (err) {
+ 	case NFS4ERR_STALE_CLIENTID:
+ 	case NFS4ERR_STALE_STATEID:
+@@ -291,6 +291,7 @@ static inline bool seqid_mutating_err(u32 err)
+ 	case NFS4ERR_BADXDR:
+ 	case NFS4ERR_RESOURCE:
+ 	case NFS4ERR_NOFILEHANDLE:
++	case NFS4ERR_MOVED:
+ 		return false;
+ 	};
+ 	return true;
 
