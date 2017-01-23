@@ -1,73 +1,46 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qt0-f194.google.com ([209.85.216.194]:34245 "EHLO
-        mail-qt0-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1750821AbdAWQOI (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 23 Jan 2017 11:14:08 -0500
-Received: by mail-qt0-f194.google.com with SMTP id a29so18296516qtb.1
-        for <linux-nfs@vger.kernel.org>; Mon, 23 Jan 2017 08:14:08 -0800 (PST)
-Message-ID: <1485188045.2786.13.camel@poochiereds.net>
+Received: from us-smtp-delivery-194.mimecast.com ([216.205.24.194]:54663 "EHLO
+        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1750765AbdAWQUy (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 23 Jan 2017 11:20:54 -0500
+From: Trond Myklebust <trondmy@primarydata.com>
+To: hch <hch@lst.de>, "jlayton@poochiereds.net" <jlayton@poochiereds.net>
+CC: "bfields@redhat.com" <bfields@redhat.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>
 Subject: Re: [PATCH] nfsd: special case truncates some more
-From: Jeff Layton <jlayton@poochiereds.net>
-To: Christoph Hellwig <hch@lst.de>
-Cc: bfields@redhat.com, linux-nfs@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org
-Date: Mon, 23 Jan 2017 11:14:05 -0500
-In-Reply-To: <20170123160559.GA786@lst.de>
+Date: Mon, 23 Jan 2017 16:20:45 +0000
+Message-ID: <1485188442.41392.1.camel@primarydata.com>
 References: <1485104060-15209-1-git-send-email-hch@lst.de>
          <1485104060-15209-2-git-send-email-hch@lst.de>
          <1485174116.2786.7.camel@poochiereds.net> <20170123123348.GA28102@lst.de>
          <20170123153615.GA32201@lst.de> <1485186729.2786.11.camel@poochiereds.net>
          <20170123160559.GA786@lst.de>
-Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
+In-Reply-To: <20170123160559.GA786@lst.de>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, 2017-01-23 at 17:05 +0100, Christoph Hellwig wrote:
-> On Mon, Jan 23, 2017 at 10:52:09AM -0500, Jeff Layton wrote:
-> > To be clear, the client is requesting to set the mtime to current server
-> > time and not to a specific mtime, right?
-> 
-> Yes.  And I think it's mostly the Linux client being lazy - ATTR_MTIME
-> is what it gets from the VFS for a truncate operation (but not ftrunate,
-> so we probably won't see it on the wire in that case, but I need to verify
-> that first).  Yet another reason for ->truncate :)
-> 
+T24gTW9uLCAyMDE3LTAxLTIzIGF0IDE3OjA1ICswMTAwLCBDaHJpc3RvcGggSGVsbHdpZyB3cm90
+ZToNCj4gT24gTW9uLCBKYW4gMjMsIDIwMTcgYXQgMTA6NTI6MDlBTSAtMDUwMCwgSmVmZiBMYXl0
+b24gd3JvdGU6DQo+ID4gVG8gYmUgY2xlYXIsIHRoZSBjbGllbnQgaXMgcmVxdWVzdGluZyB0byBz
+ZXQgdGhlIG10aW1lIHRvIGN1cnJlbnQNCj4gPiBzZXJ2ZXINCj4gPiB0aW1lIGFuZCBub3QgdG8g
+YSBzcGVjaWZpYyBtdGltZSwgcmlnaHQ/DQo+IA0KPiBZZXMuwqDCoEFuZCBJIHRoaW5rIGl0J3Mg
+bW9zdGx5IHRoZSBMaW51eCBjbGllbnQgYmVpbmcgbGF6eSAtDQo+IEFUVFJfTVRJTUUNCj4gaXMg
+d2hhdCBpdCBnZXRzIGZyb20gdGhlIFZGUyBmb3IgYSB0cnVuY2F0ZSBvcGVyYXRpb24gKGJ1dCBu
+b3QNCj4gZnRydW5hdGUsDQo+IHNvIHdlIHByb2JhYmx5IHdvbid0IHNlZSBpdCBvbiB0aGUgd2ly
+ZSBpbiB0aGF0IGNhc2UsIGJ1dCBJIG5lZWQgdG8NCj4gdmVyaWZ5DQo+IHRoYXQgZmlyc3QpLsKg
+wqBZZXQgYW5vdGhlciByZWFzb24gZm9yIC0+dHJ1bmNhdGUgOikNCj4gDQoNCk5vdGUgdGhhdCB0
+aGUgUE9TSVggc3BlYyBzZWVtcyB0byBoYXZlIGNoYW5nZWQgcmVjZW50bHkuIFRoZSBjdXJyZW50
+DQpzcGVjIGFwcGVhcnMgdG8gc3RhdGUgdGhhdCB3ZSBzaG91bGQgc2V0IHRoZSBtdGltZSBhbmQg
+Y3RpbWUgKGFuZA0KY2hhbmdlIGF0dHJpYnV0ZSkgb24gc3VjY2VzcyBpbiBvcGVuKE9fVFJVTkMp
+LCB0cnVuY2F0ZSgpIGFuZA0KZnRydW5jYXRlKCkuIEluIHByZXZpb3VzIGluY2FybmF0aW9ucyBv
+ZiB0aGUgc3BlYywgdHJ1bmNhdGUoKSB3b3VsZA0Kb25seSBzZXQgdGhlIHRpbWUgaWYgdGhlIHNp
+emUgd2FzIGNoYW5nZWQ6DQoNClNlZToNCmh0dHA6Ly9wdWJzLm9wZW5ncm91cC5vcmcvb25saW5l
+cHVicy85Njk5OTE5Nzk5L2Z1bmN0aW9ucy9mdHJ1bmNhdGUuaHRtDQpsDQpodHRwOi8vcHVicy5v
+cGVuZ3JvdXAub3JnL29ubGluZXB1YnMvOTY5OTkxOTc5OS9mdW5jdGlvbnMvdHJ1bmNhdGUuaHRt
+bA0KaHR0cDovL3B1YnMub3Blbmdyb3VwLm9yZy9vbmxpbmVwdWJzLzk2OTk5MTk3OTkvZnVuY3Rp
+b25zL29wZW4uaHRtbA0KDQotLSANClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBt
+YWludGFpbmVyLCBQcmltYXJ5RGF0YQ0KdHJvbmQubXlrbGVidXN0QHByaW1hcnlkYXRhLmNvbQ0K
 
-Heh, ok. Makes sense.
-
-> > I don't see where vfs_truncate will handle the times though. do_truncate
-> > will, but you have to pass in a non-zero time_attrs and vfs_truncate
-> > always sets that to 0.
-> 
-> This is the magic of the Linux VFS interface.  For a ATTR_SIZE operation
-> the file system is expected to update mtime and ctime if the size changes
-> even if ATTR_MTIME and ATTR_CTIME are not set.  See the comments
-> in xfs_vn_setattr_size, which I wrote many years ago when I tripped
-> over this interesting calling convention.
-> 
-
-Ick.
-
-> > If we did want to do this, it seems like it might be better to just add
-> > a new time_attrs arg to vfs_truncate that gets passed to do_truncate.
-> > Most callers would set it to zero, but nfsd could set it to:
-> > 
-> >     iap->ia_valid & (ATTR_MTIME|ATTR_CTIME)
-> > 
-> > Would that work?
-> 
-> I'd hate it.  I'd rather spent my time on a real truncate operation
-> which makes all the above magic explicit, and as a side effect would
-> fix the Linux client sending spurious mtime update requests that
-> the procotol already requires to be done implicitly.
-
-Fair enough. In that case, I wouldn't try to optimize away the second
-notify_change if the client sets ATTR_MTIME/ATTR_CTIME for now
-
- We might have to dip down into the fs twice for a truncate, but so be
-it. If it becomes a problem then we can consider that more reason to add
-a real ->truncate operation.
-
--- 
-Jeff Layton <jlayton@poochiereds.net>
