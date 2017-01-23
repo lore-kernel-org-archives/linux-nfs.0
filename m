@@ -1,88 +1,139 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:33591 "EHLO mx2.suse.de"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1750707AbdAWAOB (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Sun, 22 Jan 2017 19:14:01 -0500
-From: NeilBrown <neilb@suse.com>
-To: systemd-devel@freedesktop.org,
+Received: from mail-lf0-f66.google.com ([209.85.215.66]:34494 "EHLO
+        mail-lf0-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1750712AbdAWEKP (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sun, 22 Jan 2017 23:10:15 -0500
+Received: by mail-lf0-f66.google.com with SMTP id q89so13077925lfi.1
+        for <linux-nfs@vger.kernel.org>; Sun, 22 Jan 2017 20:10:14 -0800 (PST)
+Subject: Re: [systemd-devel] RequiresMountsFor and the noauto option.
+To: NeilBrown <neilb@suse.com>, systemd-devel@freedesktop.org,
         List Linux NFS Mailing <linux-nfs@vger.kernel.org>
-Date: Mon, 23 Jan 2017 11:13:52 +1100
-Subject: RequiresMountsFor and the noauto option.
-Message-ID: <87inp6eipr.fsf@notabene.neil.brown.name>
+References: <87inp6eipr.fsf@notabene.neil.brown.name>
+From: Andrei Borzenkov <arvidjaar@gmail.com>
+Message-ID: <9c81778a-a2a6-613f-b481-41a42e74f386@gmail.com>
+Date: Mon, 23 Jan 2017 07:10:06 +0300
 MIME-Version: 1.0
-Content-Type: multipart/signed; boundary="=-=-=";
-        micalg=pgp-sha256; protocol="application/pgp-signature"
+In-Reply-To: <87inp6eipr.fsf@notabene.neil.brown.name>
+Content-Type: multipart/signed; micalg=pgp-sha1;
+ protocol="application/pgp-signature";
+ boundary="qv4udrPQqSXOWJrkB4rau1rA8nKIodC9E"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---=-=-=
-Content-Type: text/plain
+This is an OpenPGP/MIME signed message (RFC 4880 and 3156)
+--qv4udrPQqSXOWJrkB4rau1rA8nKIodC9E
+Content-Type: multipart/mixed; boundary="7XIfEAw4fKDUrrBIv3idXrtHLWm9SEH2P"
+From: Andrei Borzenkov <arvidjaar@gmail.com>
+To: NeilBrown <neilb@suse.com>, systemd-devel@freedesktop.org,
+ List Linux NFS Mailing <linux-nfs@vger.kernel.org>
+Message-ID: <9c81778a-a2a6-613f-b481-41a42e74f386@gmail.com>
+Subject: Re: [systemd-devel] RequiresMountsFor and the noauto option.
+References: <87inp6eipr.fsf@notabene.neil.brown.name>
+In-Reply-To: <87inp6eipr.fsf@notabene.neil.brown.name>
+
+--7XIfEAw4fKDUrrBIv3idXrtHLWm9SEH2P
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: quoted-printable
+
+This was discussed just recently as regression in Leap 42.2 on opensuse
+mailing list ...
+
+23.01.2017 03:13, NeilBrown =D0=BF=D0=B8=D1=88=D0=B5=D1=82:
+>=20
+> hi,
+>  according to "man systemd.unit" :
+>=20
+>        RequiresMountsFor=3D
+>            Takes a space-separated list of absolute paths.
+>            Automatically adds dependencies of type Requires=3D and
+>            After=3D for all mount units required to access the
+>            specified path.
+>=20
+>            Mount points marked with noauto are not mounted
+>            automatically and will be ignored for the purposes of
+>            this option. If such a mount should be a requirement for
+>            this unit, direct dependencies on the mount units may be
+>            added (Requires=3D and After=3D or some other combination).
+>=20
+>=20
+>  I understand this to mean that if a mount point has the "noauto" optio=
+n in
+>  /etc/fstab, and if a systemd service has RequiresMountsFor the path to=
+
+>  that mount point, then the service will *not* require the mount point,=
+
+>  and it will start even if that mountpoint cannot be mounted.
+>=20
+>  I recently made a change to nfs-utils to make use of this
+>  functionality.  A generator creates RequiresMountsFor dependences for
+>  nfs-server so that it won't start until all exported filesystems
+>  (listed in /etc/exports) are mounted.  I assumed this would not trigge=
+r
+>  the mounting of filesystems marked as "noauto".  I really want After
+>  functionality, but not Requires.
+>=20
+>  However, this is not how it works.
+>=20
+>  The "noauto" option stops a "Requires" dependency being created for
+>  local-fs.target, but does not stop a "Requires" dependency being
+>  created for a service which "RequiresMountsFor".  There is no checking=
+
+>  for "noauto" in unit_add_mount_dependencies().
+>=20
+>  If this a bug in the documentation, or a bug in the code?  I'm hoping
+
+Well ... I do not see any special handling for noauto in original commit
+that added this option (7c8fa05c4d5d01748ff2a04edb882afb3119b7d7). Nor
+do I see even theoretical possibility to handle it, because "noauto"
+just means "mount unit is not dependency of local-fs.target".
+
+What I suspect happened was
+
+- original patch depends on mount unit being present in systemd cache
+- due to aggressive garbage collection mount units without "auto" were
+displaced from cache early. So those units were not visible at the time
+dependency was checked
+- later c7c89abb9edf9320246482bf4a8e0656199281ae made systemd to always
+(try to) load all possible mount units for prefix
+
+Long story short - this is documentation bug (added
+5d2abc04fc95f5c5f6d0eaf2f9b06c70d504019f by mistake). This option always
+was designed to *Require* other mount unit.
+
+>  the later, otherwise I'll need to find a different solution for
+>  nfs-utils, and that will probably require having my generator read
+>  /etc/fstab and duplicate the work of fstab-generator.c
+>=20
+>  If the documentation is wrong, and the code is correct, would it be
+>  possible to get "AfterMountsFor=3D" as that is the functionality that =
+I
+>  really want.
+>=20
+
+That's rather interesting question. As discussed in the thread I
+mentioned, user has /foo/bar in /etc/exports. So the question now is -
+what is semantic if /foo/bar is not mounted? nfsd server starts and
+export /foo/bar *mount point*, right? But that feels just as wrong, does
+not it?
+
+I.e. if some unit refers to path /foo/bar and we *know* that /foo/bar is
+on filesystem /foo - should we skip mounting filesystem? Then we risk
+unit misbehavior, because it will miss some data in /foo/bar, right?
 
 
-hi,
- according to "man systemd.unit" :
+--7XIfEAw4fKDUrrBIv3idXrtHLWm9SEH2P--
 
-       RequiresMountsFor=
-           Takes a space-separated list of absolute paths.
-           Automatically adds dependencies of type Requires= and
-           After= for all mount units required to access the
-           specified path.
-
-           Mount points marked with noauto are not mounted
-           automatically and will be ignored for the purposes of
-           this option. If such a mount should be a requirement for
-           this unit, direct dependencies on the mount units may be
-           added (Requires= and After= or some other combination).
-
-
- I understand this to mean that if a mount point has the "noauto" option in
- /etc/fstab, and if a systemd service has RequiresMountsFor the path to
- that mount point, then the service will *not* require the mount point,
- and it will start even if that mountpoint cannot be mounted.
-
- I recently made a change to nfs-utils to make use of this
- functionality.  A generator creates RequiresMountsFor dependences for
- nfs-server so that it won't start until all exported filesystems
- (listed in /etc/exports) are mounted.  I assumed this would not trigger
- the mounting of filesystems marked as "noauto".  I really want After
- functionality, but not Requires.
-
- However, this is not how it works.
-
- The "noauto" option stops a "Requires" dependency being created for
- local-fs.target, but does not stop a "Requires" dependency being
- created for a service which "RequiresMountsFor".  There is no checking
- for "noauto" in unit_add_mount_dependencies().
-
- If this a bug in the documentation, or a bug in the code?  I'm hoping
- the later, otherwise I'll need to find a different solution for
- nfs-utils, and that will probably require having my generator read
- /etc/fstab and duplicate the work of fstab-generator.c
-
- If the documentation is wrong, and the code is correct, would it be
- possible to get "AfterMountsFor=" as that is the functionality that I
- really want.
-
-Thanks,
-NeilBrown
-
---=-=-=
+--qv4udrPQqSXOWJrkB4rau1rA8nKIodC9E
 Content-Type: application/pgp-signature; name="signature.asc"
+Content-Description: OpenPGP digital signature
+Content-Disposition: attachment; filename="signature.asc"
 
 -----BEGIN PGP SIGNATURE-----
+Version: GnuPG v2
 
-iQIzBAEBCAAdFiEEG8Yp69OQ2HB7X0l6Oeye3VZigbkFAliFSsAACgkQOeye3VZi
-gbkpBQ//Qiu0i0DINjH0XorUCcrwrnnKGyFpfwDbkAFSCHDseIZo9hLg/UhvRiLk
-HOjAYYThNDiICcmtQLLQAF7MvuU420BcjAoOQ5vU5l2YmxLH9vyDtgq4YdtKcF9z
-zjuqvOplAMtIeE0GlOXnsHYd0U71jcUlMmpudlwwsFmJTXGbpKYBtRy2KVnViMPu
-Dn47mWjxO1j9zGi+lLAuJj2izHCbLei82xMgw+EHXaqRgtIKBqaKDpGXMhkHsKK8
-0bx/FDaQrgOOPFC+37DBRQEQksL9PoK/g9uhroKuX+IzbsznXsts2DAm4pR2EMF4
-VH17ropcGLm944eLcihC+FLyu80gj7pX4CV6AmPBtVNsuer1deOoSu+yAizkAsWO
-IGjRp5IYft0kr8z8webMxcW7/9c6nAXAa+M3oaj1FkKHRiW7ZCpHj7iBNlnNKrbW
-4BbeOensY0ndR83mFQoiKQAB42VgLRqCqdPl1Blbyvw7DkUw9T1CmZzfVEEg+k78
-Hx+B+vaL6K3aJRfiCiyD4QgLKwV8Oj9a4N/vrEMIE5z4GGUrf3WgoHROZtynUAUf
-X74AhW5AMwxEn6m6ViIl40OOhKQGxgOjcafGG6wfJ5uXjiH/hvw1m2u6rupepG93
-EaHg7vzdWlP2R6JD8ETltfkJ4aoIVBLsGV8lIUKuknxK8Xp0daU=
-=4wiS
+iEYEARECAAYFAliFgiMACgkQR6LMutpd94xk6ACfQeIaqLC4G6BQFwLPJu7IH1X/
+vA4An0BcH4QJiZu66lxKA/Oq0OT4pibr
+=t99x
 -----END PGP SIGNATURE-----
---=-=-=--
+
+--qv4udrPQqSXOWJrkB4rau1rA8nKIodC9E--
