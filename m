@@ -1,97 +1,44 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:48317 "EHLO
-        aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751083AbdAWPBa (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 23 Jan 2017 10:01:30 -0500
-Received: from aserv0022.oracle.com (aserv0022.oracle.com [141.146.126.234])
-        by aserp1040.oracle.com (Sentrion-MTA-4.3.2/Sentrion-MTA-4.3.2) with ESMTP id v0NF1TcB014190
-        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK)
-        for <linux-nfs@vger.kernel.org>; Mon, 23 Jan 2017 15:01:29 GMT
-Received: from aserv0122.oracle.com (aserv0122.oracle.com [141.146.126.236])
-        by aserv0022.oracle.com (8.14.4/8.14.4) with ESMTP id v0NF1TdB001497
-        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK)
-        for <linux-nfs@vger.kernel.org>; Mon, 23 Jan 2017 15:01:29 GMT
-Received: from abhmp0003.oracle.com (abhmp0003.oracle.com [141.146.116.9])
-        by aserv0122.oracle.com (8.14.4/8.14.4) with ESMTP id v0NF1Tjx031894
-        for <linux-nfs@vger.kernel.org>; Mon, 23 Jan 2017 15:01:29 GMT
-Content-Type: text/plain; charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 9.3 \(3124\))
-Subject: Re: [PATCH v1] nfs: Don't increment lock sequence ID after NFS4ERR_MOVED
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <20170122190429.7337.77928.stgit@manet.1015granger.net>
-Date: Mon, 23 Jan 2017 10:01:27 -0500
-Message-Id: <69D3212A-874D-42A2-BE65-F3A01B061A87@oracle.com>
-References: <20170122190429.7337.77928.stgit@manet.1015granger.net>
-To: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Received: from verein.lst.de ([213.95.11.211]:42949 "EHLO newverein.lst.de"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1750705AbdAWPgS (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 23 Jan 2017 10:36:18 -0500
+Date: Mon, 23 Jan 2017 16:36:15 +0100
+From: Christoph Hellwig <hch@lst.de>
+To: Jeff Layton <jlayton@poochiereds.net>
+Cc: Christoph Hellwig <hch@lst.de>, bfields@redhat.com,
+        linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org
+Subject: Re: [PATCH] nfsd: special case truncates some more
+Message-ID: <20170123153615.GA32201@lst.de>
+References: <1485104060-15209-1-git-send-email-hch@lst.de> <1485104060-15209-2-git-send-email-hch@lst.de> <1485174116.2786.7.camel@poochiereds.net> <20170123123348.GA28102@lst.de>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=utf-8
+In-Reply-To: <20170123123348.GA28102@lst.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Mon, Jan 23, 2017 at 01:33:48PM +0100, Christoph Hellwig wrote:
+> I'll need to look at the exact NFS semantics in that area, but after
+> a bit of research I can probably come up with something that will work.
 
-> On Jan 22, 2017, at 2:04 PM, Chuck Lever <chuck.lever@oracle.com> wrote:
-> 
-> Xuan Qi reports that the Linux NFSv4 client failed to lock a file
-> that was migrated. The steps he observed on the wire:
-> 
-> 1. The client sent a LOCK request
-> 2. The server replied NFS4ERR_MOVED
-> 3. The client switched to the destination server
-> 4. The client sent the LOCK request again with a bumped
->   lock sequence ID
-> 5. The server rejected the LOCK request with NFS4ERR_BAD_SEQID
+Here is my first attempt.  As vfs_truncate will add the ctime and mtime
+updates when needed it just leaves handling that quirk to vfs_truncate
+and then exits early if no other attributes are set.
 
-The list of steps could be more clear:
+Unfortunately at least the Linux client always seems to also request
+a mtime update with a size update.  We could keep the
 
-1. The client sent a LOCK request to the source server
-2. The source server replied NFS4ERR_MOVED
-3. The client switched to the destination server
-4. The client sent the same LOCK request to the destination
-   server with a bumped lock sequence ID
-5. The destination server rejected the LOCK request with
-   NFS4ERR_BAD_SEQID
+	if (iap->ia_size != i_size_read(inode))
 
+check from the old code and remove ATTR_MTIME, but these racy checks
+outside i_rwsem make me feel a bit uneasy.  Jeff, Bruce - any opinion
+if we should add something like this:
 
-> RFC 3530 section 8.1.5 provides a list of NFS errors which do not
-> bump a lock sequence ID.
-> 
-> However, RFC 3530 is now obsoleted by RFC 7530. In RFC 7530 section
-> 9.1.7, this list has been updated by the addition of NFS4ERR_MOVED.
-> 
-> Reported-by: Xuan Qi <xuan.qi@oracle.com>
-> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-> Cc: stable@vger.kernel.org # v3.7+
-> ---
-> include/linux/nfs4.h |    3 ++-
-> 1 file changed, 2 insertions(+), 1 deletion(-)
-> 
-> diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
-> index bca5363..1b1ca04 100644
-> --- a/include/linux/nfs4.h
-> +++ b/include/linux/nfs4.h
-> @@ -282,7 +282,7 @@ enum nfsstat4 {
-> 
-> static inline bool seqid_mutating_err(u32 err)
-> {
-> -	/* rfc 3530 section 8.1.5: */
-> +	/* See RFC 7530, section 9.1.7 */
-> 	switch (err) {
-> 	case NFS4ERR_STALE_CLIENTID:
-> 	case NFS4ERR_STALE_STATEID:
-> @@ -291,6 +291,7 @@ static inline bool seqid_mutating_err(u32 err)
-> 	case NFS4ERR_BADXDR:
-> 	case NFS4ERR_RESOURCE:
-> 	case NFS4ERR_NOFILEHANDLE:
-> +	case NFS4ERR_MOVED:
-> 		return false;
-> 	};
-> 	return true;
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+	/* vfs_truncate will update ctime and mtime if the size changes */
+	if (iap->ia_size != i_size_read(inode))
+		iap->ia_valid &= ATTR_MTIME;
 
---
-Chuck Lever
+back to nfsd_setattr?  This would avoid the additional setattr call,
+but make me feel dirty :)
 
-
-
+---
