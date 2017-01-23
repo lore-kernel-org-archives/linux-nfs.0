@@ -1,36 +1,40 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from verein.lst.de ([213.95.11.211]:41305 "EHLO newverein.lst.de"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751114AbdAWMdu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 23 Jan 2017 07:33:50 -0500
-Date: Mon, 23 Jan 2017 13:33:48 +0100
-From: Christoph Hellwig <hch@lst.de>
-To: Jeff Layton <jlayton@poochiereds.net>
-Cc: Christoph Hellwig <hch@lst.de>, bfields@redhat.com,
-        linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org
-Subject: Re: [PATCH] nfsd: special case truncates some more
-Message-ID: <20170123123348.GA28102@lst.de>
-References: <1485104060-15209-1-git-send-email-hch@lst.de> <1485104060-15209-2-git-send-email-hch@lst.de> <1485174116.2786.7.camel@poochiereds.net>
+Received: from mbkd0331.ocn.ad.jp ([153.149.236.32]:32863 "EHLO
+        mbkd0331.ocn.ad.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751220AbdAWOUz (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 23 Jan 2017 09:20:55 -0500
+Date: Mon, 23 Jan 2017 23:07:49 +0900 (JST)
+From: Joyes Dadi <"YD."@biscuit.ocn.ne.jp>
+Reply-To: Joyes Dadi <joyesdadi767@citromail.hu>
+Message-ID: <1028184183.25784289.1485180469689.JavaMail.root@biscuit.ocn.ne.jp>
+Subject: Urgent Please,,
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1485174116.2786.7.camel@poochiereds.net>
+Content-Type: text/plain; charset=ISO-2022-JP
+To: unlisted-recipients:; (no To-header on input)@mail.corp.redhat.com
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Jan 23, 2017 at 07:21:56AM -0500, Jeff Layton wrote:
-> So if you only have ATTR_SIZE then you're going to end up having to do
-> another notify_change to update the ctime? Can we get away with just
-> calling vfs_truncate when only ATTR_SIZE is set and skipping the
-> notify_change to update the ctime?
+Good Day Dear,
 
-We probably could, but there are some fine details there:
+My name is Ms. Joyes Dadi, I am glad you are reading this letter and I hope
+we will start our communication and I know that this message will look strange,
+surprising and probably unbelievable to you, but it is the reality. I want to
+make a donation of money to you.
 
-For truncate(2) Posix require us to not updated the time stamps when
-truncating and already zero length file to 0, but for ftruncate(2) and
-O_TRUNC we do have to update the mtime and ctime.  The Linux VFS
-communicates that difference by not setting ATTR_CTIME and ATTR_MTIME in
-ia_valid for truncate(2), but expecting the fs to update them anyway.
-(another reason for a proper truncate method to make this explicit).
+I contact you by the will of God. I am a firm German woman specialized in
+mining gold and diamonds in Africa. But now, I'm very sick of a cancer. My
+husband died in an accident two years ago with our two children and now I have
+cancer of the esophagus that damaged almost all the cells in my system/agencies
+and I'll die soon according to my doctor.
 
-I'll need to look at the exact NFS semantics in that area, but after
-a bit of research I can probably come up with something that will work.
+My most concern now is, we grew up in the orphanage and were married in
+orphanage. If I die this deposited fund will soon be left alone in the hand of
+the bank, and I do want to it that  way. Please, if you can be reliable and
+sincere to accept my humble proposal; I have (10.5Millions Euro) in a fixed
+deposit account; I will order the Bank to transfer the money into your account
+in your country immediately, and then you will take the fund to  your country
+and invest it to the orphanage homes Please, answer as quickly as possible.
+
+God bless you.
+Ms. Joyes Dadi
+Email: joyesdadi767@citromail.hu
