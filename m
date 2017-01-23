@@ -1,14 +1,14 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f194.google.com ([209.85.223.194]:36756 "EHLO
-        mail-io0-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751242AbdAWVA1 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 23 Jan 2017 16:00:27 -0500
-Subject: [PATCH v2 2/5] xprtrdma: Per-connection pad optimization
+Received: from mail-it0-f65.google.com ([209.85.214.65]:35139 "EHLO
+        mail-it0-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751355AbdAWVCG (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 23 Jan 2017 16:02:06 -0500
+Subject: [PATCH v2 3/5] xprtrdma: Disable pad optimization by default
 From: Chuck Lever <chuck.lever@oracle.com>
 To: anna.schumaker@netapp.com
 Cc: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Mon, 23 Jan 2017 15:52:54 -0500
-Message-ID: <20170123205254.21699.44329.stgit@manet.1015granger.net>
+Date: Mon, 23 Jan 2017 15:53:02 -0500
+Message-ID: <20170123205302.21699.89801.stgit@manet.1015granger.net>
 In-Reply-To: <20170123205159.21699.47373.stgit@manet.1015granger.net>
 References: <20170123205159.21699.47373.stgit@manet.1015granger.net>
 MIME-Version: 1.0
@@ -16,128 +16,55 @@ Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Pad optimization is changed by echoing into
-/proc/sys/sunrpc/rdma_pad_optimize. This is a global setting,
-affecting all RPC-over-RDMA connections to all servers.
+Commit d5440e27d3e5 ('xprtrdma: Enable pad optimization') made the
+Linux client omit XDR round-up padding in normal Read and Write
+chunks so that the client doesn't have to register and invalidate
+3-byte memory regions that contain no real data.
 
-The marshaling code picks up that value and uses it for decisions
-about how to construct each RPC-over-RDMA frame. Having it change
-suddenly in mid-operation can result in unexpected failures. And
-some servers a client mounts might need chunk round-up, while
-others don't.
+Unfortunately, my cheery 2014 assessment that this optimization "is
+supported now by both Linux and Solaris servers" was premature.
+We've found bugs in Solaris in this area since commit d5440e27d3e5
+was merged (SYMLINK is the main culprit).
 
-So instead, copy the pad_optimize setting into each connection's
-rpcrdma_ia when the transport is created, and use the copy, which
-can't change during the life of the connection, instead.
+So for maximum interoperability, I'm disabling this optimization
+again. If a CM private message is exchanged when connecting, the
+client recognizes that the server is Linux, and enables the
+optimization for that connection.
 
-This also removes a hack: rpcrdma_convert_iovs was using
-the remote-invalidation-expected flag to predict when it could leave
-out Write chunk padding. This is because the Linux server handles
-implicit XDR padding on Write chunks correctly, and only Linux
-servers can set the connection's remote-invalidation-expected flag.
-
-It's more sensible to use the pad optimization setting instead.
+Until now the Solaris server bugs did not impact common operations,
+and were thus largely unnoticed. Soon, less capable devices on Linux
+NFS/RDMA clients will make use of Read chunks more often, and these
+Solaris bugs will prevent interoperation in more cases.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- net/sunrpc/xprtrdma/rpc_rdma.c  |   28 ++++++++++++++--------------
+ net/sunrpc/xprtrdma/transport.c |    2 +-
  net/sunrpc/xprtrdma/verbs.c     |    1 +
- net/sunrpc/xprtrdma/xprt_rdma.h |    1 +
- 3 files changed, 16 insertions(+), 14 deletions(-)
+ 2 files changed, 2 insertions(+), 1 deletion(-)
 
-diff --git a/net/sunrpc/xprtrdma/rpc_rdma.c b/net/sunrpc/xprtrdma/rpc_rdma.c
-index a524d3c..c634f0f 100644
---- a/net/sunrpc/xprtrdma/rpc_rdma.c
-+++ b/net/sunrpc/xprtrdma/rpc_rdma.c
-@@ -186,9 +186,9 @@ static bool rpcrdma_results_inline(struct rpcrdma_xprt *r_xprt,
-  */
+diff --git a/net/sunrpc/xprtrdma/transport.c b/net/sunrpc/xprtrdma/transport.c
+index 534c178..6990581 100644
+--- a/net/sunrpc/xprtrdma/transport.c
++++ b/net/sunrpc/xprtrdma/transport.c
+@@ -67,7 +67,7 @@
+ static unsigned int xprt_rdma_max_inline_write = RPCRDMA_DEF_INLINE;
+ static unsigned int xprt_rdma_inline_write_padding;
+ static unsigned int xprt_rdma_memreg_strategy = RPCRDMA_FRMR;
+-		int xprt_rdma_pad_optimize = 1;
++		int xprt_rdma_pad_optimize = 0;
  
- static int
--rpcrdma_convert_iovs(struct xdr_buf *xdrbuf, unsigned int pos,
--	enum rpcrdma_chunktype type, struct rpcrdma_mr_seg *seg,
--	bool reminv_expected)
-+rpcrdma_convert_iovs(struct rpcrdma_xprt *r_xprt, struct xdr_buf *xdrbuf,
-+		     unsigned int pos, enum rpcrdma_chunktype type,
-+		     struct rpcrdma_mr_seg *seg)
- {
- 	int len, n, p, page_base;
- 	struct page **ppages;
-@@ -229,14 +229,15 @@ static bool rpcrdma_results_inline(struct rpcrdma_xprt *r_xprt,
- 	/* When encoding a Read chunk, the tail iovec contains an
- 	 * XDR pad and may be omitted.
- 	 */
--	if (type == rpcrdma_readch && xprt_rdma_pad_optimize)
-+	if (type == rpcrdma_readch && r_xprt->rx_ia.ri_implicit_roundup)
- 		return n;
- 
--	/* When encoding the Write list, some servers need to see an extra
--	 * segment for odd-length Write chunks. The upper layer provides
--	 * space in the tail iovec for this purpose.
-+	/* When encoding a Write chunk, some servers need to see an
-+	 * extra segment for non-XDR-aligned Write chunks. The upper
-+	 * layer provides space in the tail iovec that may be used
-+	 * for this purpose.
- 	 */
--	if (type == rpcrdma_writech && reminv_expected)
-+	if (type == rpcrdma_writech && r_xprt->rx_ia.ri_implicit_roundup)
- 		return n;
- 
- 	if (xdrbuf->tail[0].iov_len) {
-@@ -291,7 +292,8 @@ static bool rpcrdma_results_inline(struct rpcrdma_xprt *r_xprt,
- 	if (rtype == rpcrdma_areadch)
- 		pos = 0;
- 	seg = req->rl_segments;
--	nsegs = rpcrdma_convert_iovs(&rqst->rq_snd_buf, pos, rtype, seg, false);
-+	nsegs = rpcrdma_convert_iovs(r_xprt, &rqst->rq_snd_buf, pos,
-+				     rtype, seg);
- 	if (nsegs < 0)
- 		return ERR_PTR(nsegs);
- 
-@@ -353,10 +355,9 @@ static bool rpcrdma_results_inline(struct rpcrdma_xprt *r_xprt,
- 	}
- 
- 	seg = req->rl_segments;
--	nsegs = rpcrdma_convert_iovs(&rqst->rq_rcv_buf,
-+	nsegs = rpcrdma_convert_iovs(r_xprt, &rqst->rq_rcv_buf,
- 				     rqst->rq_rcv_buf.head[0].iov_len,
--				     wtype, seg,
--				     r_xprt->rx_ia.ri_reminv_expected);
-+				     wtype, seg);
- 	if (nsegs < 0)
- 		return ERR_PTR(nsegs);
- 
-@@ -421,8 +422,7 @@ static bool rpcrdma_results_inline(struct rpcrdma_xprt *r_xprt,
- 	}
- 
- 	seg = req->rl_segments;
--	nsegs = rpcrdma_convert_iovs(&rqst->rq_rcv_buf, 0, wtype, seg,
--				     r_xprt->rx_ia.ri_reminv_expected);
-+	nsegs = rpcrdma_convert_iovs(r_xprt, &rqst->rq_rcv_buf, 0, wtype, seg);
- 	if (nsegs < 0)
- 		return ERR_PTR(nsegs);
+ #if IS_ENABLED(CONFIG_SUNRPC_DEBUG)
  
 diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
-index 11d0774..2a6a367 100644
+index 2a6a367..23f4da4 100644
 --- a/net/sunrpc/xprtrdma/verbs.c
 +++ b/net/sunrpc/xprtrdma/verbs.c
-@@ -208,6 +208,7 @@
- 
- 	/* Default settings for RPC-over-RDMA Version One */
- 	r_xprt->rx_ia.ri_reminv_expected = false;
-+	r_xprt->rx_ia.ri_implicit_roundup = xprt_rdma_pad_optimize;
- 	rsize = RPCRDMA_V1_DEF_INLINE_SIZE;
- 	wsize = RPCRDMA_V1_DEF_INLINE_SIZE;
- 
-diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
-index e35efd4..c137154 100644
---- a/net/sunrpc/xprtrdma/xprt_rdma.h
-+++ b/net/sunrpc/xprtrdma/xprt_rdma.h
-@@ -75,6 +75,7 @@ struct rpcrdma_ia {
- 	unsigned int		ri_max_inline_write;
- 	unsigned int		ri_max_inline_read;
- 	bool			ri_reminv_expected;
-+	bool			ri_implicit_roundup;
- 	enum ib_mr_type		ri_mrtype;
- 	struct ib_qp_attr	ri_qp_attr;
- 	struct ib_qp_init_attr	ri_qp_init_attr;
+@@ -216,6 +216,7 @@
+ 	    pmsg->cp_magic == rpcrdma_cmp_magic &&
+ 	    pmsg->cp_version == RPCRDMA_CMP_VERSION) {
+ 		r_xprt->rx_ia.ri_reminv_expected = true;
++		r_xprt->rx_ia.ri_implicit_roundup = true;
+ 		rsize = rpcrdma_decode_buffer_size(pmsg->cp_send_size);
+ 		wsize = rpcrdma_decode_buffer_size(pmsg->cp_recv_size);
+ 	}
 
