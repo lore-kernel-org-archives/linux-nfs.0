@@ -1,14 +1,14 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-it0-f66.google.com ([209.85.214.66]:35787 "EHLO
-        mail-it0-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1750723AbdAWUyH (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 23 Jan 2017 15:54:07 -0500
-Subject: [PATCH v2 4/5] xprtrdma: Reduce required number of send SGEs
+Received: from mail-io0-f194.google.com ([209.85.223.194]:36756 "EHLO
+        mail-io0-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751242AbdAWVA1 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 23 Jan 2017 16:00:27 -0500
+Subject: [PATCH v2 2/5] xprtrdma: Per-connection pad optimization
 From: Chuck Lever <chuck.lever@oracle.com>
 To: anna.schumaker@netapp.com
 Cc: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Mon, 23 Jan 2017 15:53:10 -0500
-Message-ID: <20170123205310.21699.47397.stgit@manet.1015granger.net>
+Date: Mon, 23 Jan 2017 15:52:54 -0500
+Message-ID: <20170123205254.21699.44329.stgit@manet.1015granger.net>
 In-Reply-To: <20170123205159.21699.47373.stgit@manet.1015granger.net>
 References: <20170123205159.21699.47373.stgit@manet.1015granger.net>
 MIME-Version: 1.0
@@ -16,133 +16,128 @@ Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The MAX_SEND_SGES check introduced in commit 655fec6987be
-("xprtrdma: Use gathered Send for large inline messages") fails
-for devices that have a small max_sge.
+Pad optimization is changed by echoing into
+/proc/sys/sunrpc/rdma_pad_optimize. This is a global setting,
+affecting all RPC-over-RDMA connections to all servers.
 
-Instead of checking for a large fixed maximum number of SGEs,
-check for a minimum small number. RPC-over-RDMA will switch to
-using a Read chunk if an xdr_buf has more pages than can fit in
-the device's max_sge limit. This is considerably better than
-failing all together to mount the server.
+The marshaling code picks up that value and uses it for decisions
+about how to construct each RPC-over-RDMA frame. Having it change
+suddenly in mid-operation can result in unexpected failures. And
+some servers a client mounts might need chunk round-up, while
+others don't.
 
-This fix supports devices that have as few as three send SGEs
-available.
+So instead, copy the pad_optimize setting into each connection's
+rpcrdma_ia when the transport is created, and use the copy, which
+can't change during the life of the connection, instead.
 
-Reported-By: Selvin Xavier <selvin.xavier@broadcom.com>
-Reported-By: Devesh Sharma <devesh.sharma@broadcom.com>
-Reported-by: Honggang Li <honli@redhat.com>
-Reported-by: Ram Amrani <Ram.Amrani@cavium.com>
-Fixes: 655fec6987be ("xprtrdma: Use gathered Send for large ...")
-Tested-by: Honggang Li <honli@redhat.com>
-Tested-by: Ram Amrani <Ram.Amrani@cavium.com>
-Tested-by: Steve Wise <swise@opengridcomputing.com>
-Reviewed-by: Parav Pandit <parav@mellanox.com>
+This also removes a hack: rpcrdma_convert_iovs was using
+the remote-invalidation-expected flag to predict when it could leave
+out Write chunk padding. This is because the Linux server handles
+implicit XDR padding on Write chunks correctly, and only Linux
+servers can set the connection's remote-invalidation-expected flag.
+
+It's more sensible to use the pad optimization setting instead.
+
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- net/sunrpc/xprtrdma/rpc_rdma.c  |   26 +++++++++++++++++++++++---
- net/sunrpc/xprtrdma/verbs.c     |   13 +++++++------
- net/sunrpc/xprtrdma/xprt_rdma.h |    2 ++
- 3 files changed, 32 insertions(+), 9 deletions(-)
+ net/sunrpc/xprtrdma/rpc_rdma.c  |   28 ++++++++++++++--------------
+ net/sunrpc/xprtrdma/verbs.c     |    1 +
+ net/sunrpc/xprtrdma/xprt_rdma.h |    1 +
+ 3 files changed, 16 insertions(+), 14 deletions(-)
 
 diff --git a/net/sunrpc/xprtrdma/rpc_rdma.c b/net/sunrpc/xprtrdma/rpc_rdma.c
-index c634f0f..d889883 100644
+index a524d3c..c634f0f 100644
 --- a/net/sunrpc/xprtrdma/rpc_rdma.c
 +++ b/net/sunrpc/xprtrdma/rpc_rdma.c
-@@ -125,14 +125,34 @@ void rpcrdma_set_max_header_sizes(struct rpcrdma_xprt *r_xprt)
- /* The client can send a request inline as long as the RPCRDMA header
-  * plus the RPC call fit under the transport's inline limit. If the
-  * combined call message size exceeds that limit, the client must use
-- * the read chunk list for this operation.
-+ * a Read chunk for this operation.
-+ *
-+ * A Read chunk is also required if sending the RPC call inline would
-+ * exceed this device's max_sge limit.
+@@ -186,9 +186,9 @@ static bool rpcrdma_results_inline(struct rpcrdma_xprt *r_xprt,
   */
- static bool rpcrdma_args_inline(struct rpcrdma_xprt *r_xprt,
- 				struct rpc_rqst *rqst)
+ 
+ static int
+-rpcrdma_convert_iovs(struct xdr_buf *xdrbuf, unsigned int pos,
+-	enum rpcrdma_chunktype type, struct rpcrdma_mr_seg *seg,
+-	bool reminv_expected)
++rpcrdma_convert_iovs(struct rpcrdma_xprt *r_xprt, struct xdr_buf *xdrbuf,
++		     unsigned int pos, enum rpcrdma_chunktype type,
++		     struct rpcrdma_mr_seg *seg)
  {
--	struct rpcrdma_ia *ia = &r_xprt->rx_ia;
-+	struct xdr_buf *xdr = &rqst->rq_snd_buf;
-+	unsigned int count, remaining, offset;
-+
-+	if (xdr->len > r_xprt->rx_ia.ri_max_inline_write)
-+		return false;
+ 	int len, n, p, page_base;
+ 	struct page **ppages;
+@@ -229,14 +229,15 @@ static bool rpcrdma_results_inline(struct rpcrdma_xprt *r_xprt,
+ 	/* When encoding a Read chunk, the tail iovec contains an
+ 	 * XDR pad and may be omitted.
+ 	 */
+-	if (type == rpcrdma_readch && xprt_rdma_pad_optimize)
++	if (type == rpcrdma_readch && r_xprt->rx_ia.ri_implicit_roundup)
+ 		return n;
  
--	return rqst->rq_snd_buf.len <= ia->ri_max_inline_write;
-+	if (xdr->page_len) {
-+		remaining = xdr->page_len;
-+		offset = xdr->page_base & ~PAGE_MASK;
-+		count = 0;
-+		while (remaining) {
-+			remaining -= min_t(unsigned int,
-+					   PAGE_SIZE - offset, remaining);
-+			offset = 0;
-+			if (++count > r_xprt->rx_ia.ri_max_send_sges)
-+				return false;
-+		}
-+	}
-+
-+	return true;
- }
+-	/* When encoding the Write list, some servers need to see an extra
+-	 * segment for odd-length Write chunks. The upper layer provides
+-	 * space in the tail iovec for this purpose.
++	/* When encoding a Write chunk, some servers need to see an
++	 * extra segment for non-XDR-aligned Write chunks. The upper
++	 * layer provides space in the tail iovec that may be used
++	 * for this purpose.
+ 	 */
+-	if (type == rpcrdma_writech && reminv_expected)
++	if (type == rpcrdma_writech && r_xprt->rx_ia.ri_implicit_roundup)
+ 		return n;
  
- /* The client can't know how large the actual reply will be. Thus it
+ 	if (xdrbuf->tail[0].iov_len) {
+@@ -291,7 +292,8 @@ static bool rpcrdma_results_inline(struct rpcrdma_xprt *r_xprt,
+ 	if (rtype == rpcrdma_areadch)
+ 		pos = 0;
+ 	seg = req->rl_segments;
+-	nsegs = rpcrdma_convert_iovs(&rqst->rq_snd_buf, pos, rtype, seg, false);
++	nsegs = rpcrdma_convert_iovs(r_xprt, &rqst->rq_snd_buf, pos,
++				     rtype, seg);
+ 	if (nsegs < 0)
+ 		return ERR_PTR(nsegs);
+ 
+@@ -353,10 +355,9 @@ static bool rpcrdma_results_inline(struct rpcrdma_xprt *r_xprt,
+ 	}
+ 
+ 	seg = req->rl_segments;
+-	nsegs = rpcrdma_convert_iovs(&rqst->rq_rcv_buf,
++	nsegs = rpcrdma_convert_iovs(r_xprt, &rqst->rq_rcv_buf,
+ 				     rqst->rq_rcv_buf.head[0].iov_len,
+-				     wtype, seg,
+-				     r_xprt->rx_ia.ri_reminv_expected);
++				     wtype, seg);
+ 	if (nsegs < 0)
+ 		return ERR_PTR(nsegs);
+ 
+@@ -421,8 +422,7 @@ static bool rpcrdma_results_inline(struct rpcrdma_xprt *r_xprt,
+ 	}
+ 
+ 	seg = req->rl_segments;
+-	nsegs = rpcrdma_convert_iovs(&rqst->rq_rcv_buf, 0, wtype, seg,
+-				     r_xprt->rx_ia.ri_reminv_expected);
++	nsegs = rpcrdma_convert_iovs(r_xprt, &rqst->rq_rcv_buf, 0, wtype, seg);
+ 	if (nsegs < 0)
+ 		return ERR_PTR(nsegs);
+ 
 diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
-index 23f4da4..61d16c3 100644
+index 11d0774..2a6a367 100644
 --- a/net/sunrpc/xprtrdma/verbs.c
 +++ b/net/sunrpc/xprtrdma/verbs.c
-@@ -488,18 +488,19 @@ static void rpcrdma_destroy_id(struct rdma_cm_id *id)
-  */
- int
- rpcrdma_ep_create(struct rpcrdma_ep *ep, struct rpcrdma_ia *ia,
--				struct rpcrdma_create_data_internal *cdata)
-+		  struct rpcrdma_create_data_internal *cdata)
- {
- 	struct rpcrdma_connect_private *pmsg = &ep->rep_cm_private;
-+	unsigned int max_qp_wr, max_sge;
- 	struct ib_cq *sendcq, *recvcq;
--	unsigned int max_qp_wr;
- 	int rc;
+@@ -208,6 +208,7 @@
  
--	if (ia->ri_device->attrs.max_sge < RPCRDMA_MAX_SEND_SGES) {
--		dprintk("RPC:       %s: insufficient sge's available\n",
--			__func__);
-+	max_sge = min(ia->ri_device->attrs.max_sge, RPCRDMA_MAX_SEND_SGES);
-+	if (max_sge < RPCRDMA_MIN_SEND_SGES) {
-+		pr_warn("rpcrdma: HCA provides only %d send SGEs\n", max_sge);
- 		return -ENOMEM;
- 	}
-+	ia->ri_max_send_sges = max_sge - RPCRDMA_MIN_SEND_SGES;
+ 	/* Default settings for RPC-over-RDMA Version One */
+ 	r_xprt->rx_ia.ri_reminv_expected = false;
++	r_xprt->rx_ia.ri_implicit_roundup = xprt_rdma_pad_optimize;
+ 	rsize = RPCRDMA_V1_DEF_INLINE_SIZE;
+ 	wsize = RPCRDMA_V1_DEF_INLINE_SIZE;
  
- 	if (ia->ri_device->attrs.max_qp_wr <= RPCRDMA_BACKWARD_WRS) {
- 		dprintk("RPC:       %s: insufficient wqe's available\n",
-@@ -524,7 +525,7 @@ static void rpcrdma_destroy_id(struct rdma_cm_id *id)
- 	ep->rep_attr.cap.max_recv_wr = cdata->max_requests;
- 	ep->rep_attr.cap.max_recv_wr += RPCRDMA_BACKWARD_WRS;
- 	ep->rep_attr.cap.max_recv_wr += 1;	/* drain cqe */
--	ep->rep_attr.cap.max_send_sge = RPCRDMA_MAX_SEND_SGES;
-+	ep->rep_attr.cap.max_send_sge = max_sge;
- 	ep->rep_attr.cap.max_recv_sge = 1;
- 	ep->rep_attr.cap.max_inline_data = 0;
- 	ep->rep_attr.sq_sig_type = IB_SIGNAL_REQ_WR;
 diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
-index c137154..3d7e9c9 100644
+index e35efd4..c137154 100644
 --- a/net/sunrpc/xprtrdma/xprt_rdma.h
 +++ b/net/sunrpc/xprtrdma/xprt_rdma.h
-@@ -74,6 +74,7 @@ struct rpcrdma_ia {
- 	unsigned int		ri_max_frmr_depth;
+@@ -75,6 +75,7 @@ struct rpcrdma_ia {
  	unsigned int		ri_max_inline_write;
  	unsigned int		ri_max_inline_read;
-+	unsigned int		ri_max_send_sges;
  	bool			ri_reminv_expected;
- 	bool			ri_implicit_roundup;
++	bool			ri_implicit_roundup;
  	enum ib_mr_type		ri_mrtype;
-@@ -311,6 +312,7 @@ struct rpcrdma_mr_seg {		/* chunk descriptors */
-  * - xdr_buf tail iovec
-  */
- enum {
-+	RPCRDMA_MIN_SEND_SGES = 3,
- 	RPCRDMA_MAX_SEND_PAGES = PAGE_SIZE + RPCRDMA_MAX_INLINE - 1,
- 	RPCRDMA_MAX_PAGE_SGES = (RPCRDMA_MAX_SEND_PAGES >> PAGE_SHIFT) + 1,
- 	RPCRDMA_MAX_SEND_SGES = 1 + 1 + RPCRDMA_MAX_PAGE_SGES + 1,
+ 	struct ib_qp_attr	ri_qp_attr;
+ 	struct ib_qp_init_attr	ri_qp_init_attr;
 
