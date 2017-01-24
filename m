@@ -1,90 +1,82 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f177.google.com ([209.85.223.177]:36177 "EHLO
-        mail-io0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1750715AbdAXUsT (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 24 Jan 2017 15:48:19 -0500
-Received: by mail-io0-f177.google.com with SMTP id j13so145226340iod.3
-        for <linux-nfs@vger.kernel.org>; Tue, 24 Jan 2017 12:48:18 -0800 (PST)
-MIME-Version: 1.0
-In-Reply-To: <52D13840-C715-4989-A8D8-DAD2F2EFE99A@primarydata.com>
-References: <CAN-5tyF+Uth87mnmWC2UaRU134whqNG8gEyNHBR_hOu9OYSZuw@mail.gmail.com>
- <35619FC0-AD46-4BBA-9F5B-9C89364BAF82@primarydata.com> <CAN-5tyHCUu_gpdiEcVZm-12RdgHtPtDgjbg-ScU9vZ7Tod5qAw@mail.gmail.com>
- <3EA4DDB3-6C9F-42E2-96BD-FF1AFD99ED09@primarydata.com> <CAN-5tyEBtCUL0QgmHU8=u9UJLJdOxDaq=Ta8eTM-hjde1hu9ZA@mail.gmail.com>
- <52D13840-C715-4989-A8D8-DAD2F2EFE99A@primarydata.com>
-From: Olga Kornievskaia <aglo@umich.edu>
-Date: Tue, 24 Jan 2017 15:48:17 -0500
-Message-ID: <CAN-5tyFO8wR-Z1nZmBCVSTfvGLGH8xa2yojvsBRyvY4jrwM4Dg@mail.gmail.com>
+Received: from us-smtp-delivery-194.mimecast.com ([216.205.24.194]:37002 "EHLO
+        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1750989AbdAXVLt (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 24 Jan 2017 16:11:49 -0500
+From: Trond Myklebust <trondmy@primarydata.com>
+To: "aglo@umich.edu" <aglo@umich.edu>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
 Subject: Re: handling error on RECLAIM_COMPLETE
-To: Trond Myklebust <trondmy@primarydata.com>
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Date: Tue, 24 Jan 2017 21:11:34 +0000
+Message-ID: <1485292292.12087.2.camel@primarydata.com>
+References: <CAN-5tyF+Uth87mnmWC2UaRU134whqNG8gEyNHBR_hOu9OYSZuw@mail.gmail.com>
+         <35619FC0-AD46-4BBA-9F5B-9C89364BAF82@primarydata.com>
+         <CAN-5tyHCUu_gpdiEcVZm-12RdgHtPtDgjbg-ScU9vZ7Tod5qAw@mail.gmail.com>
+         <3EA4DDB3-6C9F-42E2-96BD-FF1AFD99ED09@primarydata.com>
+         <CAN-5tyEBtCUL0QgmHU8=u9UJLJdOxDaq=Ta8eTM-hjde1hu9ZA@mail.gmail.com>
+         <52D13840-C715-4989-A8D8-DAD2F2EFE99A@primarydata.com>
+         <CAN-5tyFO8wR-Z1nZmBCVSTfvGLGH8xa2yojvsBRyvY4jrwM4Dg@mail.gmail.com>
+In-Reply-To: <CAN-5tyFO8wR-Z1nZmBCVSTfvGLGH8xa2yojvsBRyvY4jrwM4Dg@mail.gmail.com>
+MIME-Version: 1.0
 Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Jan 24, 2017 at 3:35 PM, Trond Myklebust
-<trondmy@primarydata.com> wrote:
->
->> On Jan 24, 2017, at 14:50, Olga Kornievskaia <aglo@umich.edu> wrote:
->>
->> On Tue, Jan 24, 2017 at 2:44 PM, Trond Myklebust
->> <trondmy@primarydata.com> wrote:
->>>
->>>> On Jan 24, 2017, at 14:40, Olga Kornievskaia <aglo@umich.edu> wrote:
->>>>
->>>> On Tue, Jan 24, 2017 at 2:12 PM, Trond Myklebust
->>>> <trondmy@primarydata.com> wrote:
->>>>>
->>>>>> On Jan 24, 2017, at 14:06, Olga Kornievskaia <aglo@umich.edu> wrote:
->>>>>>
->>>>>> Hi Trond,
->>>>>>
->>>>>> Is there a reason that nfs4_proc_reclaim_complete() isn't  wrapped
->>>>>> with a do while() to handle errors?
->>>>>
->>>>> What do we not already handle correctly in nfs4_reclaim_complete_done=
-()?
->>>>
->>>> Could this be because when an error occurs rpc_done isn't called
->>>> (rpc_release is called)? What I see is that if RECLAIM_COMPLETE gets
->>>> an error (BAD_SESSION) the client just ignores it.
->>>>
->>>
->>> That=E2=80=99s correct. Why do we need to handle BAD_SESSION there? We=
-=E2=80=99re done with state recovery, so if the server rebooted, we can cat=
-ch that later.
->>
->> (1) don't we want to handle session errors as soon as possible?
->> (2) I ran into a problem (not sure yet if reproducible) where I had a
->> client stuck in an infinite loop of RECLAIM_COMPLETE being sent with
->> reply of BAD_SESSION.
->>
->> yes I don't know why the client is looping but it made me look into
->> the fact that we are not handling session errors on reclaim complete
->> which I simulated by having the server return BAD_SESSION to
->> RECLAIM_COMPLETE and I see that client simply ignores it.
->
-> It doesn=E2=80=99t ignore it:
->
-> static int nfs41_reclaim_complete_handle_errors(struct rpc_task *task, st=
-ruct nfs_client *clp)
-> {
->         switch(task->tk_status) {
->         case 0:
->         case -NFS4ERR_COMPLETE_ALREADY:
->         case -NFS4ERR_WRONG_CRED: /* What to do here? */
->                 break;
->         case -NFS4ERR_DELAY:
->                 rpc_delay(task, NFS4_POLL_RETRY_MAX);
->                 /* fall through */
->         case -NFS4ERR_RETRY_UNCACHED_REP:
->                 return -EAGAIN;
->         default:
->                 nfs4_schedule_lease_recovery(clp);
->         }
->         return 0;
-> }
->
-> IOW: what the code does is schedule another round of lease recovery.
+T24gVHVlLCAyMDE3LTAxLTI0IGF0IDE1OjQ4IC0wNTAwLCBPbGdhIEtvcm5pZXZza2FpYSB3cm90
+ZToNCj4gT24gVHVlLCBKYW4gMjQsIDIwMTcgYXQgMzozNSBQTSwgVHJvbmQgTXlrbGVidXN0DQo+
+IDx0cm9uZG15QHByaW1hcnlkYXRhLmNvbT4gd3JvdGU6DQo+ID4gDQo+ID4gPiBPbiBKYW4gMjQs
+IDIwMTcsIGF0IDE0OjUwLCBPbGdhIEtvcm5pZXZza2FpYSA8YWdsb0B1bWljaC5lZHU+DQo+ID4g
+PiB3cm90ZToNCj4gPiA+IA0KPiA+ID4gT24gVHVlLCBKYW4gMjQsIDIwMTcgYXQgMjo0NCBQTSwg
+VHJvbmQgTXlrbGVidXN0DQo+ID4gPiA8dHJvbmRteUBwcmltYXJ5ZGF0YS5jb20+IHdyb3RlOg0K
+PiA+ID4gPiANCj4gPiA+ID4gPiBPbiBKYW4gMjQsIDIwMTcsIGF0IDE0OjQwLCBPbGdhIEtvcm5p
+ZXZza2FpYSA8YWdsb0B1bWljaC5lZHU+DQo+ID4gPiA+ID4gd3JvdGU6DQo+ID4gPiA+ID4gDQo+
+ID4gPiA+ID4gT24gVHVlLCBKYW4gMjQsIDIwMTcgYXQgMjoxMiBQTSwgVHJvbmQgTXlrbGVidXN0
+DQo+ID4gPiA+ID4gPHRyb25kbXlAcHJpbWFyeWRhdGEuY29tPiB3cm90ZToNCj4gPiA+ID4gPiA+
+IA0KPiA+ID4gPiA+ID4gPiBPbiBKYW4gMjQsIDIwMTcsIGF0IDE0OjA2LCBPbGdhIEtvcm5pZXZz
+a2FpYSA8YWdsb0B1bWljaC4NCj4gPiA+ID4gPiA+ID4gZWR1PiB3cm90ZToNCj4gPiA+ID4gPiA+
+ID4gDQo+ID4gPiA+ID4gPiA+IEhpIFRyb25kLA0KPiA+ID4gPiA+ID4gPiANCj4gPiA+ID4gPiA+
+ID4gSXMgdGhlcmUgYSByZWFzb24gdGhhdCBuZnM0X3Byb2NfcmVjbGFpbV9jb21wbGV0ZSgpDQo+
+ID4gPiA+ID4gPiA+IGlzbid0wqDCoHdyYXBwZWQNCj4gPiA+ID4gPiA+ID4gd2l0aCBhIGRvIHdo
+aWxlKCkgdG8gaGFuZGxlIGVycm9ycz8NCj4gPiA+ID4gPiA+IA0KPiA+ID4gPiA+ID4gV2hhdCBk
+byB3ZSBub3QgYWxyZWFkeSBoYW5kbGUgY29ycmVjdGx5IGluDQo+ID4gPiA+ID4gPiBuZnM0X3Jl
+Y2xhaW1fY29tcGxldGVfZG9uZSgpPw0KPiA+ID4gPiA+IA0KPiA+ID4gPiA+IENvdWxkIHRoaXMg
+YmUgYmVjYXVzZSB3aGVuIGFuIGVycm9yIG9jY3VycyBycGNfZG9uZSBpc24ndA0KPiA+ID4gPiA+
+IGNhbGxlZA0KPiA+ID4gPiA+IChycGNfcmVsZWFzZSBpcyBjYWxsZWQpPyBXaGF0IEkgc2VlIGlz
+IHRoYXQgaWYNCj4gPiA+ID4gPiBSRUNMQUlNX0NPTVBMRVRFIGdldHMNCj4gPiA+ID4gPiBhbiBl
+cnJvciAoQkFEX1NFU1NJT04pIHRoZSBjbGllbnQganVzdCBpZ25vcmVzIGl0Lg0KPiA+ID4gPiA+
+IA0KPiA+ID4gPiANCj4gPiA+ID4gVGhhdOKAmXMgY29ycmVjdC4gV2h5IGRvIHdlIG5lZWQgdG8g
+aGFuZGxlIEJBRF9TRVNTSU9OIHRoZXJlPw0KPiA+ID4gPiBXZeKAmXJlIGRvbmUgd2l0aCBzdGF0
+ZSByZWNvdmVyeSwgc28gaWYgdGhlIHNlcnZlciByZWJvb3RlZCwgd2UNCj4gPiA+ID4gY2FuIGNh
+dGNoIHRoYXQgbGF0ZXIuDQo+ID4gPiANCj4gPiA+ICgxKSBkb24ndCB3ZSB3YW50IHRvIGhhbmRs
+ZSBzZXNzaW9uIGVycm9ycyBhcyBzb29uIGFzIHBvc3NpYmxlPw0KPiA+ID4gKDIpIEkgcmFuIGlu
+dG8gYSBwcm9ibGVtIChub3Qgc3VyZSB5ZXQgaWYgcmVwcm9kdWNpYmxlKSB3aGVyZSBJDQo+ID4g
+PiBoYWQgYQ0KPiA+ID4gY2xpZW50IHN0dWNrIGluIGFuIGluZmluaXRlIGxvb3Agb2YgUkVDTEFJ
+TV9DT01QTEVURSBiZWluZyBzZW50DQo+ID4gPiB3aXRoDQo+ID4gPiByZXBseSBvZiBCQURfU0VT
+U0lPTi4NCj4gPiA+IA0KPiA+ID4geWVzIEkgZG9uJ3Qga25vdyB3aHkgdGhlIGNsaWVudCBpcyBs
+b29waW5nIGJ1dCBpdCBtYWRlIG1lIGxvb2sNCj4gPiA+IGludG8NCj4gPiA+IHRoZSBmYWN0IHRo
+YXQgd2UgYXJlIG5vdCBoYW5kbGluZyBzZXNzaW9uIGVycm9ycyBvbiByZWNsYWltDQo+ID4gPiBj
+b21wbGV0ZQ0KPiA+ID4gd2hpY2ggSSBzaW11bGF0ZWQgYnkgaGF2aW5nIHRoZSBzZXJ2ZXIgcmV0
+dXJuIEJBRF9TRVNTSU9OIHRvDQo+ID4gPiBSRUNMQUlNX0NPTVBMRVRFIGFuZCBJIHNlZSB0aGF0
+IGNsaWVudCBzaW1wbHkgaWdub3JlcyBpdC4NCj4gPiANCj4gPiBJdCBkb2VzbuKAmXQgaWdub3Jl
+IGl0Og0KPiA+IA0KPiA+IHN0YXRpYyBpbnQgbmZzNDFfcmVjbGFpbV9jb21wbGV0ZV9oYW5kbGVf
+ZXJyb3JzKHN0cnVjdCBycGNfdGFzaw0KPiA+ICp0YXNrLCBzdHJ1Y3QgbmZzX2NsaWVudCAqY2xw
+KQ0KPiA+IHsNCj4gPiDCoMKgwqDCoMKgwqDCoMKgc3dpdGNoKHRhc2stPnRrX3N0YXR1cykgew0K
+PiA+IMKgwqDCoMKgwqDCoMKgwqBjYXNlIDA6DQo+ID4gwqDCoMKgwqDCoMKgwqDCoGNhc2UgLU5G
+UzRFUlJfQ09NUExFVEVfQUxSRUFEWToNCj4gPiDCoMKgwqDCoMKgwqDCoMKgY2FzZSAtTkZTNEVS
+Ul9XUk9OR19DUkVEOiAvKiBXaGF0IHRvIGRvIGhlcmU/ICovDQo+ID4gwqDCoMKgwqDCoMKgwqDC
+oMKgwqDCoMKgwqDCoMKgwqBicmVhazsNCj4gPiDCoMKgwqDCoMKgwqDCoMKgY2FzZSAtTkZTNEVS
+Ul9ERUxBWToNCj4gPiDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoHJwY19kZWxheSh0
+YXNrLCBORlM0X1BPTExfUkVUUllfTUFYKTsNCj4gPiDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDC
+oMKgwqDCoC8qIGZhbGwgdGhyb3VnaCAqLw0KPiA+IMKgwqDCoMKgwqDCoMKgwqBjYXNlIC1ORlM0
+RVJSX1JFVFJZX1VOQ0FDSEVEX1JFUDoNCj4gPiDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKg
+wqDCoHJldHVybiAtRUFHQUlOOw0KPiA+IMKgwqDCoMKgwqDCoMKgwqBkZWZhdWx0Og0KPiA+IMKg
+wqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgbmZzNF9zY2hlZHVsZV9sZWFzZV9yZWNvdmVy
+eShjbHApOw0KPiA+IMKgwqDCoMKgwqDCoMKgwqB9DQo+ID4gwqDCoMKgwqDCoMKgwqDCoHJldHVy
+biAwOw0KPiA+IH0NCj4gPiANCj4gPiBJT1c6IHdoYXQgdGhlIGNvZGUgZG9lcyBpcyBzY2hlZHVs
+ZSBhbm90aGVyIHJvdW5kIG9mIGxlYXNlDQo+ID4gcmVjb3ZlcnkuDQo+IA0KPiBXZSBhbHJlYWR5
+IGFncmVlZCB0aGF0IHRoaXMgZG9lc24ndCBnZXQgY2FsbGVkIGJlY2F1c2UgcnBjX2NhbGxfZG9u
+ZQ0KPiBpc24ndCBjYWxsZWQgb24gdGhlIGVycm9yLg0KDQpXaGF0IGFtIEkgbWlzc2luZz8gV2h5
+IHdvdWxkbid0IGl0IGdldCBjYWxsZWQ/DQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBO
+RlMgY2xpZW50IG1haW50YWluZXIsIFByaW1hcnlEYXRhDQp0cm9uZC5teWtsZWJ1c3RAcHJpbWFy
+eWRhdGEuY29tDQo=
 
-We already agreed that this doesn't get called because rpc_call_done
-isn't called on the error.
