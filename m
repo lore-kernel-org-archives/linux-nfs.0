@@ -1,71 +1,116 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from us-smtp-delivery-194.mimecast.com ([63.128.21.194]:40695 "EHLO
-        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1750905AbdAXXqn (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 24 Jan 2017 18:46:43 -0500
-From: Trond Myklebust <trondmy@primarydata.com>
-To: "ebiederm@xmission.com" <ebiederm@xmission.com>,
-        "seth.forshee@canonical.com" <seth.forshee@canonical.com>
-CC: "bfields@fieldses.org" <bfields@fieldses.org>,
-        "anna.schumaker@netapp.com" <anna.schumaker@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] sunrpc: Use current_real_cred() when looking up rpc
- credentials
-Date: Tue, 24 Jan 2017 23:46:35 +0000
-Message-ID: <1485301593.36478.2.camel@primarydata.com>
+Received: from out01.mta.xmission.com ([166.70.13.231]:41912 "EHLO
+        out01.mta.xmission.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1750935AbdAYAAy (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 24 Jan 2017 19:00:54 -0500
+From: ebiederm@xmission.com (Eric W. Biederman)
+To: Trond Myklebust <trondmy@primarydata.com>
+Cc: "seth.forshee\@canonical.com" <seth.forshee@canonical.com>,
+        "bfields\@fieldses.org" <bfields@fieldses.org>,
+        "anna.schumaker\@netapp.com" <anna.schumaker@netapp.com>,
+        "linux-nfs\@vger.kernel.org" <linux-nfs@vger.kernel.org>
 References: <1481821992-77583-1-git-send-email-seth.forshee@canonical.com>
-         <1481842899.11785.1.camel@primarydata.com>
-         <20161216130609.GA124240@ubuntu-hedt> <20170110145504.GH52661@ubuntu-hedt>
-         <87ziiyfntm.fsf@xmission.com> <20170124151745.GA114560@ubuntu-hedt>
-         <87efzsdq5b.fsf@xmission.com> <87inp4rqaj.fsf@xmission.com>
-In-Reply-To: <87inp4rqaj.fsf@xmission.com>
+        <1481842899.11785.1.camel@primarydata.com>
+        <20161216130609.GA124240@ubuntu-hedt>
+        <20170110145504.GH52661@ubuntu-hedt> <87ziiyfntm.fsf@xmission.com>
+        <20170124151745.GA114560@ubuntu-hedt> <87efzsdq5b.fsf@xmission.com>
+        <87inp4rqaj.fsf@xmission.com>
+        <1485301593.36478.2.camel@primarydata.com>
+Date: Wed, 25 Jan 2017 12:56:31 +1300
+In-Reply-To: <1485301593.36478.2.camel@primarydata.com> (Trond Myklebust's
+        message of "Tue, 24 Jan 2017 23:46:35 +0000")
+Message-ID: <87y3y0ko5s.fsf@xmission.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=utf-8
+Subject: Re: [PATCH] sunrpc: Use current_real_cred() when looking up rpc credentials
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gV2VkLCAyMDE3LTAxLTI1IGF0IDEyOjI4ICsxMzAwLCBFcmljIFcuIEJpZWRlcm1hbiB3cm90
-ZToNCj4gV2l0aCByZXNwZWN0IHRvIG5mcyBhbmQgYXV0b21vdW50cy4NCj4gDQo+IERvZXMgTkZT
-IGhhdmUgZGlmZmVyZW50IGF1dG9tb3VudCBiZWhhdmlvciBiYXNlZCBvbiB0aGUgdXNlcg0KPiBw
-ZXJmb3JtaW5nIHRoZSBhdXRvbW91bnQ/DQo+IA0KPiBJZiBORlMgZG9lcyBub3QgaGF2ZSBkaWZm
-ZXJlbnQgYXV0b21vdW50IGJlaGF2aW9yIGRlcGVuZGluZyBvbiB0aGUNCj4gdXNlcg0KPiB3ZSBq
-dXN0IHVzZSB0aGUgY3JlZHMgb2YgdGhlIG9yaWdpbmFsIG1vdW50ZXIgb2YgTkZTPw0KPiANCj4g
-SWYgTkZTIGRvZXMgaGF2ZSBkaWZmZXJlbnQgYXV0b21vdW50IGJlaGF2aW9yIGRlcGVuZGluZyBv
-biB0aGUgdXNlcg0KPiAob3VjaCEpIHdlIG5lZWQgdG8gZ28gdGhyb3VnaCB0aGUgY2FsbCBwYXRo
-IGFuZCBzZWUgd2hlcmUgaXQgbWFrZXMNCj4gc2Vuc2UgdG8gb3ZlciByaWRlIHRoaW5ncyBhbmQg
-d2hlcmUgaXQgZG9lcyBub3QuDQoNClRoZSByZWFzb24gd2h5IHRoZSBORlMgY2xpZW50IGNyZWF0
-ZXMgYSBtb3VudHBvaW50IGlzIGJlY2F1c2Ugb24NCmVudGVyaW5nIGEgZGlyZWN0b3J5LCBpdCBk
-ZXRlY3RzIHRoYXQgdGhlcmUgaXMgZWl0aGVyIGEgc2ltaWxhcg0KbW91bnRwb2ludCBvbiB0aGUg
-c2VydmVyLCBvciB0aGVyZSBpcyBhIHJlZmVycmFsICh3aGljaCBhY3RzIHNvcnQgb2YNCmxpa2Ug
-YSBzeW1saW5rLCBleGNlcHQgaXQgcG9pbnRzIHRvIGEgcGF0aCBvbiBvbmUgb3IgbW9yZSBkaWZm
-ZXJlbnQgTkZTDQpzZXJ2ZXJzKS4NCldpdGhvdXQgdGhhdCBtb3VudHBvaW50LCBtb3N0IHRoaW5n
-cyB3b3VsZCB3b3JrLCBidXQgdGhlIHVzZXIgd291bGQgZW5kDQp1cCBzZWVpbmcgbmFzdHkgbm9u
-LXBvc2l4IGZlYXR1cmVzIGxpa2UgZHVwbGljYXRlIGlub2RlIG51bWJlcnMuDQoNCldlIGRvIG5v
-dCB3YW50IHRvIHVzZSBhbnkgY3JlZHMgb3RoZXIgdGhhbiB1c2VyIGNyZWRzIGhlcmUsIGJlY2F1
-c2UgYXMNCmZhciBhcyB0aGUgc2VjdXJpdHkgbW9kZWwgaXMgY29uY2VybmVkLCB0aGUgcHJvY2Vz
-cyBpcyBqdXN0IGNyb3NzaW5nDQppbnRvIGFuIGV4aXN0aW5nIGRpcmVjdG9yeS4NCj4gDQo+IA0K
-PiANCj4gU2V0aCB0aGUgZnVuZGFtZW50YWwgcHJvYmxlbSB3aXRoIHlvdXIgcGF0Y2ggd2FzIHRo
-YXQgeW91IHdlcmUNCj4gcGF0Y2hpbmcNCj4gYSBsb2NhdGlvbiB0aGF0IGlzIHVzZWQgZm9yIG1v
-cmUganVzdCBtb3VudHMuDQo+IA0KPiBJIGFtIHN0cm9uZ2x5IHdpc2hpbmcgdGhhdCB3ZSBjb3Vs
-ZCBqdXN0IGNoYW5nZSBmb2xsb3dfYXV0b21vdW50DQo+IGZyb206DQo+IA0KPiANCj4gCW9sZF9j
-cmVkID0gb3ZlcnJpZGVfY3JlZHMoJmluaXRfY3JlZCk7DQo+IAltbnQgPSBwYXRoLT5kZW50cnkt
-PmRfb3AtPmRfYXV0b21vdW50KHBhdGgpOw0KPiAJcmV2ZXJ0X2NyZWRzKG9sZF9jcmVkKTsNCj4g
-DQo+IHRvOg0KPiANCj4gCW9sZF9jcmVkID0gb3ZlcnJpZGVfY3JlZHMocGF0aC0+bW50LT5tbnRf
-c2ItPnNfY3JlZCk7DQo+IAltbnQgPSBwYXRoLT5kZW50cnktPmRfb3AtPmRfYXV0b21vdW50KHBh
-dGgpOw0KPiAJcmV2ZXJ0X2NyZWRzKG9sZF9jcmVkKTsNCj4gDQo+IEFuZCBhbGwgd2lsbCBiZSB3
-ZWxsIHdpdGggbmZzLsKgwqBUaGF0IGRvZXMgcmVtYWluIHBvc3NpYmxlLg0KDQpOby4gVGhhdCB3
-b3VsZCBicmVhayBwZXJtaXNzaW9ucyBjaGVja2luZy4gU2VlIGFib3ZlLg0KDQo+IA0KPiBCdXQg
-bG9va2luZyBhdCB0aGUgY29kZSBwYXRoIHlvdSB0b3VjaGVkIGl0IHNlZW1zIHRvIGxvb2t1cCB0
-aGUgY3JlZA0KPiBiYXNlZCBwdXJlbHkgb24gdGhlIGxvY2FsIHVpZCwgZ2lkLCBhbmQgZ3JvdXBz
-LsKgwqBXaGljaCBzdWdnZXN0cyB0bw0KPiBtZSB0aGF0IGV2ZW4gdGhlIG9yaWdpbmFsIG1vdW50
-ZXJzIGNyZWRzIG1heSBub3QgYmUgZW5vdWdoIDooDQo+IA0KPiBBdCB3aGljaCBwb2ludCBJIGFt
-IG5vdCBjZXJ0YWluIG9mIHRoZSBzb2x1dGlvbi7CoMKgQnV0IEkgZmVhciB0aGF0DQo+IGxpa2UN
-Cj4gYXV0b2ZzIE5GUyBhY3R1YWxseSBjYXJlcyB3aGljaCB1c2VyIGlzIHRyYW5zaXRpb24gdGhl
-IG1hZ2ljDQo+IG1vdW50cG9pbnQsDQo+IGFuZCBtYXkgcmV0dXJuIGRpZmZlcmVudCBkYXRhIGRl
-cGVuZGluZyBvbiB3aG8gdHJhbnNpdGlvbnMgdGhlDQo+IG1vdW50cG9pbnQgZmlyc3QuwqDCoElj
-ayHCoMKgTmFzdHkgTmFzdHkgSWNrIQ0KPiANCg0KVGhlIHNlY3VyaXR5IG1vZGVsIGlzIHRoZSBz
-YW1lIGFzIHRoYXQgb2YgYW4gb3JkaW5hcnkgZGlyZWN0b3J5LiBUaGUNCm9ubHkgZGlmZmVyZW5j
-ZSBpcyB0aGF0IHdlIGNyZWF0ZSBhIG5ldyBzdXBlcmJsb2NrLiBXaHkgaXMgdGhhdCAiSWNrIj8N
-Cg0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFpbnRhaW5lciwgUHJp
-bWFyeURhdGENCnRyb25kLm15a2xlYnVzdEBwcmltYXJ5ZGF0YS5jb20NCg==
+Trond Myklebust <trondmy@primarydata.com> writes:
+
+> On Wed, 2017-01-25 at 12:28 +1300, Eric W. Biederman wrote:
+>> With respect to nfs and automounts.
+>> 
+>> Does NFS have different automount behavior based on the user
+>> performing the automount?
+>> 
+>> If NFS does not have different automount behavior depending on the
+>> user
+>> we just use the creds of the original mounter of NFS?
+>> 
+>> If NFS does have different automount behavior depending on the user
+>> (ouch!) we need to go through the call path and see where it makes
+>> sense to over ride things and where it does not.
+>
+> The reason why the NFS client creates a mountpoint is because on
+> entering a directory, it detects that there is either a similar
+> mountpoint on the server, or there is a referral (which acts sort of
+> like a symlink, except it points to a path on one or more different NFS
+> servers).
+> Without that mountpoint, most things would work, but the user would end
+> up seeing nasty non-posix features like duplicate inode numbers.
+>
+> We do not want to use any creds other than user creds here, because as
+> far as the security model is concerned, the process is just crossing
+> into an existing directory.
+
+But sget needs different creds.
+
+Because the user who authorizes the mounting of the filesystem is
+different than the user who is crossing into the new filesystem.
+
+The local system now cares about that distinction even if the nfs server
+does not.
+
+>> Seth the fundamental problem with your patch was that you were
+>> patching
+>> a location that is used for more just mounts.
+>> 
+>> I am strongly wishing that we could just change follow_automount
+>> from:
+>> 
+>> 
+>> 	old_cred = override_creds(&init_cred);
+>> 	mnt = path->dentry->d_op->d_automount(path);
+>> 	revert_creds(old_cred);
+>> 
+>> to:
+>> 
+>> 	old_cred = override_creds(path->mnt->mnt_sb->s_cred);
+>> 	mnt = path->dentry->d_op->d_automount(path);
+>> 	revert_creds(old_cred);
+>> 
+>> And all will be well with nfs.  That does remain possible.
+>
+> No. That would break permissions checking. See above.
+
+Then we need to look much harder at the permission checking
+model of d_automount because we need to permission check against
+both sets of creds.
+
+>> But looking at the code path you touched it seems to lookup the cred
+>> based purely on the local uid, gid, and groups.  Which suggests to
+>> me that even the original mounters creds may not be enough :(
+>> 
+>> At which point I am not certain of the solution.  But I fear that
+>> like
+>> autofs NFS actually cares which user is transition the magic
+>> mountpoint,
+>> and may return different data depending on who transitions the
+>> mountpoint first.  Ick!  Nasty Nasty Ick!
+>> 
+>
+> The security model is the same as that of an ordinary directory. The
+> only difference is that we create a new superblock. Why is that "Ick"?
+
+The Ick is if the superblock that is created depends on the user
+crossing the mountpoint.
+
+AKA Do we get a different mountpoint if user A triggers the automount
+vs user B triggering the automount?
+
+If the problem is just root squash and not letting root trigger the
+automount it is much less ick.  Weird but not ick.
+
+Eric
 
