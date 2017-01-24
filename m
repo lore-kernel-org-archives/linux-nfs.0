@@ -1,62 +1,164 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from us-smtp-delivery-194.mimecast.com ([63.128.21.194]:47456 "EHLO
-        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1750926AbdAXUf2 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 24 Jan 2017 15:35:28 -0500
-From: Trond Myklebust <trondmy@primarydata.com>
-To: Olga Kornievskaia <aglo@umich.edu>
-CC: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: handling error on RECLAIM_COMPLETE
-Date: Tue, 24 Jan 2017 20:35:17 +0000
-Message-ID: <52D13840-C715-4989-A8D8-DAD2F2EFE99A@primarydata.com>
-References: <CAN-5tyF+Uth87mnmWC2UaRU134whqNG8gEyNHBR_hOu9OYSZuw@mail.gmail.com>
- <35619FC0-AD46-4BBA-9F5B-9C89364BAF82@primarydata.com>
- <CAN-5tyHCUu_gpdiEcVZm-12RdgHtPtDgjbg-ScU9vZ7Tod5qAw@mail.gmail.com>
- <3EA4DDB3-6C9F-42E2-96BD-FF1AFD99ED09@primarydata.com>
- <CAN-5tyEBtCUL0QgmHU8=u9UJLJdOxDaq=Ta8eTM-hjde1hu9ZA@mail.gmail.com>
-In-Reply-To: <CAN-5tyEBtCUL0QgmHU8=u9UJLJdOxDaq=Ta8eTM-hjde1hu9ZA@mail.gmail.com>
+Received: from mail-io0-f193.google.com ([209.85.223.193]:36803 "EHLO
+        mail-io0-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1750926AbdAXUfg (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 24 Jan 2017 15:35:36 -0500
+Subject: [PATCH v1 7/7] svcrdma: Poll CQs in "workqueue" mode
+From: Chuck Lever <chuck.lever@oracle.com>
+To: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
+Date: Tue, 24 Jan 2017 15:35:27 -0500
+Message-ID: <20170124203527.11807.38184.stgit@klimt.1015granger.net>
+In-Reply-To: <20170124193242.11807.91861.stgit@klimt.1015granger.net>
+References: <20170124193242.11807.91861.stgit@klimt.1015granger.net>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-DQo+IE9uIEphbiAyNCwgMjAxNywgYXQgMTQ6NTAsIE9sZ2EgS29ybmlldnNrYWlhIDxhZ2xvQHVt
-aWNoLmVkdT4gd3JvdGU6DQo+IA0KPiBPbiBUdWUsIEphbiAyNCwgMjAxNyBhdCAyOjQ0IFBNLCBU
-cm9uZCBNeWtsZWJ1c3QNCj4gPHRyb25kbXlAcHJpbWFyeWRhdGEuY29tPiB3cm90ZToNCj4+IA0K
-Pj4+IE9uIEphbiAyNCwgMjAxNywgYXQgMTQ6NDAsIE9sZ2EgS29ybmlldnNrYWlhIDxhZ2xvQHVt
-aWNoLmVkdT4gd3JvdGU6DQo+Pj4gDQo+Pj4gT24gVHVlLCBKYW4gMjQsIDIwMTcgYXQgMjoxMiBQ
-TSwgVHJvbmQgTXlrbGVidXN0DQo+Pj4gPHRyb25kbXlAcHJpbWFyeWRhdGEuY29tPiB3cm90ZToN
-Cj4+Pj4gDQo+Pj4+PiBPbiBKYW4gMjQsIDIwMTcsIGF0IDE0OjA2LCBPbGdhIEtvcm5pZXZza2Fp
-YSA8YWdsb0B1bWljaC5lZHU+IHdyb3RlOg0KPj4+Pj4gDQo+Pj4+PiBIaSBUcm9uZCwNCj4+Pj4+
-IA0KPj4+Pj4gSXMgdGhlcmUgYSByZWFzb24gdGhhdCBuZnM0X3Byb2NfcmVjbGFpbV9jb21wbGV0
-ZSgpIGlzbid0ICB3cmFwcGVkDQo+Pj4+PiB3aXRoIGEgZG8gd2hpbGUoKSB0byBoYW5kbGUgZXJy
-b3JzPw0KPj4+PiANCj4+Pj4gV2hhdCBkbyB3ZSBub3QgYWxyZWFkeSBoYW5kbGUgY29ycmVjdGx5
-IGluIG5mczRfcmVjbGFpbV9jb21wbGV0ZV9kb25lKCk/DQo+Pj4gDQo+Pj4gQ291bGQgdGhpcyBi
-ZSBiZWNhdXNlIHdoZW4gYW4gZXJyb3Igb2NjdXJzIHJwY19kb25lIGlzbid0IGNhbGxlZA0KPj4+
-IChycGNfcmVsZWFzZSBpcyBjYWxsZWQpPyBXaGF0IEkgc2VlIGlzIHRoYXQgaWYgUkVDTEFJTV9D
-T01QTEVURSBnZXRzDQo+Pj4gYW4gZXJyb3IgKEJBRF9TRVNTSU9OKSB0aGUgY2xpZW50IGp1c3Qg
-aWdub3JlcyBpdC4NCj4+PiANCj4+IA0KPj4gVGhhdOKAmXMgY29ycmVjdC4gV2h5IGRvIHdlIG5l
-ZWQgdG8gaGFuZGxlIEJBRF9TRVNTSU9OIHRoZXJlPyBXZeKAmXJlIGRvbmUgd2l0aCBzdGF0ZSBy
-ZWNvdmVyeSwgc28gaWYgdGhlIHNlcnZlciByZWJvb3RlZCwgd2UgY2FuIGNhdGNoIHRoYXQgbGF0
-ZXIuDQo+IA0KPiAoMSkgZG9uJ3Qgd2Ugd2FudCB0byBoYW5kbGUgc2Vzc2lvbiBlcnJvcnMgYXMg
-c29vbiBhcyBwb3NzaWJsZT8NCj4gKDIpIEkgcmFuIGludG8gYSBwcm9ibGVtIChub3Qgc3VyZSB5
-ZXQgaWYgcmVwcm9kdWNpYmxlKSB3aGVyZSBJIGhhZCBhDQo+IGNsaWVudCBzdHVjayBpbiBhbiBp
-bmZpbml0ZSBsb29wIG9mIFJFQ0xBSU1fQ09NUExFVEUgYmVpbmcgc2VudCB3aXRoDQo+IHJlcGx5
-IG9mIEJBRF9TRVNTSU9OLg0KPiANCj4geWVzIEkgZG9uJ3Qga25vdyB3aHkgdGhlIGNsaWVudCBp
-cyBsb29waW5nIGJ1dCBpdCBtYWRlIG1lIGxvb2sgaW50bw0KPiB0aGUgZmFjdCB0aGF0IHdlIGFy
-ZSBub3QgaGFuZGxpbmcgc2Vzc2lvbiBlcnJvcnMgb24gcmVjbGFpbSBjb21wbGV0ZQ0KPiB3aGlj
-aCBJIHNpbXVsYXRlZCBieSBoYXZpbmcgdGhlIHNlcnZlciByZXR1cm4gQkFEX1NFU1NJT04gdG8N
-Cj4gUkVDTEFJTV9DT01QTEVURSBhbmQgSSBzZWUgdGhhdCBjbGllbnQgc2ltcGx5IGlnbm9yZXMg
-aXQuDQoNCkl0IGRvZXNu4oCZdCBpZ25vcmUgaXQ6DQoNCnN0YXRpYyBpbnQgbmZzNDFfcmVjbGFp
-bV9jb21wbGV0ZV9oYW5kbGVfZXJyb3JzKHN0cnVjdCBycGNfdGFzayAqdGFzaywgc3RydWN0IG5m
-c19jbGllbnQgKmNscCkNCnsNCiAgICAgICAgc3dpdGNoKHRhc2stPnRrX3N0YXR1cykgew0KICAg
-ICAgICBjYXNlIDA6DQogICAgICAgIGNhc2UgLU5GUzRFUlJfQ09NUExFVEVfQUxSRUFEWToNCiAg
-ICAgICAgY2FzZSAtTkZTNEVSUl9XUk9OR19DUkVEOiAvKiBXaGF0IHRvIGRvIGhlcmU/ICovDQog
-ICAgICAgICAgICAgICAgYnJlYWs7DQogICAgICAgIGNhc2UgLU5GUzRFUlJfREVMQVk6DQogICAg
-ICAgICAgICAgICAgcnBjX2RlbGF5KHRhc2ssIE5GUzRfUE9MTF9SRVRSWV9NQVgpOw0KICAgICAg
-ICAgICAgICAgIC8qIGZhbGwgdGhyb3VnaCAqLw0KICAgICAgICBjYXNlIC1ORlM0RVJSX1JFVFJZ
-X1VOQ0FDSEVEX1JFUDoNCiAgICAgICAgICAgICAgICByZXR1cm4gLUVBR0FJTjsNCiAgICAgICAg
-ZGVmYXVsdDoNCiAgICAgICAgICAgICAgICBuZnM0X3NjaGVkdWxlX2xlYXNlX3JlY292ZXJ5KGNs
-cCk7DQogICAgICAgIH0NCiAgICAgICAgcmV0dXJuIDA7DQp9DQoNCklPVzogd2hhdCB0aGUgY29k
-ZSBkb2VzIGlzIHNjaGVkdWxlIGFub3RoZXIgcm91bmQgb2YgbGVhc2UgcmVjb3ZlcnkuDQoNCg==
+svcrdma calls svc_xprt_put() in its completion handlers, which
+currently run in IRQ context.
+
+However, svc_xprt_put() is meant to be invoked in process context,
+not in IRQ context. After the last transport reference is gone, it
+directly calls a transport release function that expects to run in
+process context.
+
+Change the CQ polling modes to IB_POLL_WORKQUEUE so that svcrdma
+invokes svc_xprt_put() only in process context. As an added benefit,
+bottom half-disabled spin locking can be eliminated from I/O paths.
+
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
+ net/sunrpc/xprtrdma/svc_rdma_recvfrom.c  |    6 +++---
+ net/sunrpc/xprtrdma/svc_rdma_transport.c |   26 +++++++++++++-------------
+ 2 files changed, 16 insertions(+), 16 deletions(-)
+
+diff --git a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
+index b9ccd73..f7b2daf 100644
+--- a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
++++ b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
+@@ -606,12 +606,12 @@ int svc_rdma_recvfrom(struct svc_rqst *rqstp)
+ 
+ 	dprintk("svcrdma: rqstp=%p\n", rqstp);
+ 
+-	spin_lock_bh(&rdma_xprt->sc_rq_dto_lock);
++	spin_lock(&rdma_xprt->sc_rq_dto_lock);
+ 	if (!list_empty(&rdma_xprt->sc_read_complete_q)) {
+ 		ctxt = list_first_entry(&rdma_xprt->sc_read_complete_q,
+ 					struct svc_rdma_op_ctxt, list);
+ 		list_del(&ctxt->list);
+-		spin_unlock_bh(&rdma_xprt->sc_rq_dto_lock);
++		spin_unlock(&rdma_xprt->sc_rq_dto_lock);
+ 		rdma_read_complete(rqstp, ctxt);
+ 		goto complete;
+ 	} else if (!list_empty(&rdma_xprt->sc_rq_dto_q)) {
+@@ -623,7 +623,7 @@ int svc_rdma_recvfrom(struct svc_rqst *rqstp)
+ 		clear_bit(XPT_DATA, &xprt->xpt_flags);
+ 		ctxt = NULL;
+ 	}
+-	spin_unlock_bh(&rdma_xprt->sc_rq_dto_lock);
++	spin_unlock(&rdma_xprt->sc_rq_dto_lock);
+ 	if (!ctxt) {
+ 		/* This is the EAGAIN path. The svc_recv routine will
+ 		 * return -EAGAIN, the nfsd thread will go to call into
+diff --git a/net/sunrpc/xprtrdma/svc_rdma_transport.c b/net/sunrpc/xprtrdma/svc_rdma_transport.c
+index 87b8b5a..ab2fd53 100644
+--- a/net/sunrpc/xprtrdma/svc_rdma_transport.c
++++ b/net/sunrpc/xprtrdma/svc_rdma_transport.c
+@@ -188,7 +188,7 @@ struct svc_rdma_op_ctxt *svc_rdma_get_context(struct svcxprt_rdma *xprt)
+ {
+ 	struct svc_rdma_op_ctxt *ctxt = NULL;
+ 
+-	spin_lock_bh(&xprt->sc_ctxt_lock);
++	spin_lock(&xprt->sc_ctxt_lock);
+ 	xprt->sc_ctxt_used++;
+ 	if (list_empty(&xprt->sc_ctxts))
+ 		goto out_empty;
+@@ -196,7 +196,7 @@ struct svc_rdma_op_ctxt *svc_rdma_get_context(struct svcxprt_rdma *xprt)
+ 	ctxt = list_first_entry(&xprt->sc_ctxts,
+ 				struct svc_rdma_op_ctxt, list);
+ 	list_del(&ctxt->list);
+-	spin_unlock_bh(&xprt->sc_ctxt_lock);
++	spin_unlock(&xprt->sc_ctxt_lock);
+ 
+ out:
+ 	ctxt->count = 0;
+@@ -208,15 +208,15 @@ struct svc_rdma_op_ctxt *svc_rdma_get_context(struct svcxprt_rdma *xprt)
+ 	/* Either pre-allocation missed the mark, or send
+ 	 * queue accounting is broken.
+ 	 */
+-	spin_unlock_bh(&xprt->sc_ctxt_lock);
++	spin_unlock(&xprt->sc_ctxt_lock);
+ 
+ 	ctxt = alloc_ctxt(xprt, GFP_NOIO);
+ 	if (ctxt)
+ 		goto out;
+ 
+-	spin_lock_bh(&xprt->sc_ctxt_lock);
++	spin_lock(&xprt->sc_ctxt_lock);
+ 	xprt->sc_ctxt_used--;
+-	spin_unlock_bh(&xprt->sc_ctxt_lock);
++	spin_unlock(&xprt->sc_ctxt_lock);
+ 	WARN_ONCE(1, "svcrdma: empty RDMA ctxt list?\n");
+ 	return NULL;
+ }
+@@ -253,10 +253,10 @@ void svc_rdma_put_context(struct svc_rdma_op_ctxt *ctxt, int free_pages)
+ 		for (i = 0; i < ctxt->count; i++)
+ 			put_page(ctxt->pages[i]);
+ 
+-	spin_lock_bh(&xprt->sc_ctxt_lock);
++	spin_lock(&xprt->sc_ctxt_lock);
+ 	xprt->sc_ctxt_used--;
+ 	list_add(&ctxt->list, &xprt->sc_ctxts);
+-	spin_unlock_bh(&xprt->sc_ctxt_lock);
++	spin_unlock(&xprt->sc_ctxt_lock);
+ }
+ 
+ static void svc_rdma_destroy_ctxts(struct svcxprt_rdma *xprt)
+@@ -921,14 +921,14 @@ struct svc_rdma_fastreg_mr *svc_rdma_get_frmr(struct svcxprt_rdma *rdma)
+ {
+ 	struct svc_rdma_fastreg_mr *frmr = NULL;
+ 
+-	spin_lock_bh(&rdma->sc_frmr_q_lock);
++	spin_lock(&rdma->sc_frmr_q_lock);
+ 	if (!list_empty(&rdma->sc_frmr_q)) {
+ 		frmr = list_entry(rdma->sc_frmr_q.next,
+ 				  struct svc_rdma_fastreg_mr, frmr_list);
+ 		list_del_init(&frmr->frmr_list);
+ 		frmr->sg_nents = 0;
+ 	}
+-	spin_unlock_bh(&rdma->sc_frmr_q_lock);
++	spin_unlock(&rdma->sc_frmr_q_lock);
+ 	if (frmr)
+ 		return frmr;
+ 
+@@ -941,10 +941,10 @@ void svc_rdma_put_frmr(struct svcxprt_rdma *rdma,
+ 	if (frmr) {
+ 		ib_dma_unmap_sg(rdma->sc_cm_id->device,
+ 				frmr->sg, frmr->sg_nents, frmr->direction);
+-		spin_lock_bh(&rdma->sc_frmr_q_lock);
++		spin_lock(&rdma->sc_frmr_q_lock);
+ 		WARN_ON_ONCE(!list_empty(&frmr->frmr_list));
+ 		list_add(&frmr->frmr_list, &rdma->sc_frmr_q);
+-		spin_unlock_bh(&rdma->sc_frmr_q_lock);
++		spin_unlock(&rdma->sc_frmr_q_lock);
+ 	}
+ }
+ 
+@@ -1026,13 +1026,13 @@ static struct svc_xprt *svc_rdma_accept(struct svc_xprt *xprt)
+ 		goto errout;
+ 	}
+ 	newxprt->sc_sq_cq = ib_alloc_cq(dev, newxprt, newxprt->sc_sq_depth,
+-					0, IB_POLL_SOFTIRQ);
++					0, IB_POLL_WORKQUEUE);
+ 	if (IS_ERR(newxprt->sc_sq_cq)) {
+ 		dprintk("svcrdma: error creating SQ CQ for connect request\n");
+ 		goto errout;
+ 	}
+ 	newxprt->sc_rq_cq = ib_alloc_cq(dev, newxprt, newxprt->sc_rq_depth,
+-					0, IB_POLL_SOFTIRQ);
++					0, IB_POLL_WORKQUEUE);
+ 	if (IS_ERR(newxprt->sc_rq_cq)) {
+ 		dprintk("svcrdma: error creating RQ CQ for connect request\n");
+ 		goto errout;
 
