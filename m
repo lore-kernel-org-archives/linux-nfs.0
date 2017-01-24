@@ -1,36 +1,71 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from us-smtp-delivery-194.mimecast.com ([63.128.21.194]:41563 "EHLO
-        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1750708AbdAXToN (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 24 Jan 2017 14:44:13 -0500
-From: Trond Myklebust <trondmy@primarydata.com>
-To: Olga Kornievskaia <aglo@umich.edu>
-CC: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: handling error on RECLAIM_COMPLETE
-Date: Tue, 24 Jan 2017 19:44:07 +0000
-Message-ID: <3EA4DDB3-6C9F-42E2-96BD-FF1AFD99ED09@primarydata.com>
-References: <CAN-5tyF+Uth87mnmWC2UaRU134whqNG8gEyNHBR_hOu9OYSZuw@mail.gmail.com>
- <35619FC0-AD46-4BBA-9F5B-9C89364BAF82@primarydata.com>
- <CAN-5tyHCUu_gpdiEcVZm-12RdgHtPtDgjbg-ScU9vZ7Tod5qAw@mail.gmail.com>
-In-Reply-To: <CAN-5tyHCUu_gpdiEcVZm-12RdgHtPtDgjbg-ScU9vZ7Tod5qAw@mail.gmail.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+Received: from mail-yw0-f171.google.com ([209.85.161.171]:36650 "EHLO
+        mail-yw0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1750708AbdAXTqb (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 24 Jan 2017 14:46:31 -0500
+Received: by mail-yw0-f171.google.com with SMTP id v200so171312190ywc.3
+        for <linux-nfs@vger.kernel.org>; Tue, 24 Jan 2017 11:46:31 -0800 (PST)
+Message-ID: <1485287189.3143.29.camel@redhat.com>
+Subject: Re: regression in DIO write behavior
+From: Jeff Layton <jlayton@redhat.com>
+To: Weston Andros Adamson <dros@monkey.org>
+Cc: linux-nfs list <linux-nfs@vger.kernel.org>
+Date: Tue, 24 Jan 2017 14:46:29 -0500
+In-Reply-To: <963DBD29-C835-4716-9EAE-74C2EACA427F@monkey.org>
+References: <1485272659.3143.18.camel@redhat.com>
+         <963DBD29-C835-4716-9EAE-74C2EACA427F@monkey.org>
+Content-Type: text/plain; charset="UTF-8"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-DQo+IE9uIEphbiAyNCwgMjAxNywgYXQgMTQ6NDAsIE9sZ2EgS29ybmlldnNrYWlhIDxhZ2xvQHVt
-aWNoLmVkdT4gd3JvdGU6DQo+IA0KPiBPbiBUdWUsIEphbiAyNCwgMjAxNyBhdCAyOjEyIFBNLCBU
-cm9uZCBNeWtsZWJ1c3QNCj4gPHRyb25kbXlAcHJpbWFyeWRhdGEuY29tPiB3cm90ZToNCj4+IA0K
-Pj4+IE9uIEphbiAyNCwgMjAxNywgYXQgMTQ6MDYsIE9sZ2EgS29ybmlldnNrYWlhIDxhZ2xvQHVt
-aWNoLmVkdT4gd3JvdGU6DQo+Pj4gDQo+Pj4gSGkgVHJvbmQsDQo+Pj4gDQo+Pj4gSXMgdGhlcmUg
-YSByZWFzb24gdGhhdCBuZnM0X3Byb2NfcmVjbGFpbV9jb21wbGV0ZSgpIGlzbid0ICB3cmFwcGVk
-DQo+Pj4gd2l0aCBhIGRvIHdoaWxlKCkgdG8gaGFuZGxlIGVycm9ycz8NCj4+IA0KPj4gV2hhdCBk
-byB3ZSBub3QgYWxyZWFkeSBoYW5kbGUgY29ycmVjdGx5IGluIG5mczRfcmVjbGFpbV9jb21wbGV0
-ZV9kb25lKCk/DQo+IA0KPiBDb3VsZCB0aGlzIGJlIGJlY2F1c2Ugd2hlbiBhbiBlcnJvciBvY2N1
-cnMgcnBjX2RvbmUgaXNuJ3QgY2FsbGVkDQo+IChycGNfcmVsZWFzZSBpcyBjYWxsZWQpPyBXaGF0
-IEkgc2VlIGlzIHRoYXQgaWYgUkVDTEFJTV9DT01QTEVURSBnZXRzDQo+IGFuIGVycm9yIChCQURf
-U0VTU0lPTikgdGhlIGNsaWVudCBqdXN0IGlnbm9yZXMgaXQuDQo+IA0KDQpUaGF04oCZcyBjb3Jy
-ZWN0LiBXaHkgZG8gd2UgbmVlZCB0byBoYW5kbGUgQkFEX1NFU1NJT04gdGhlcmU/IFdl4oCZcmUg
-ZG9uZSB3aXRoIHN0YXRlIHJlY292ZXJ5LCBzbyBpZiB0aGUgc2VydmVyIHJlYm9vdGVkLCB3ZSBj
-YW4gY2F0Y2ggdGhhdCBsYXRlci4=
+On Tue, 2017-01-24 at 12:23 -0500, Weston Andros Adamson wrote:
+> Hey Jeff,
+> 
+> That sounds like a regression to me. I don't think it's been around since the
+> pgio rework, but maybe?
+> 
+> -dros
+> 
+> > On Jan 24, 2017, at 10:44 AM, Jeff Layton <jlayton@redhat.com> wrote:
+> > 
+> > I've noticed a probable regression in recent kernels. When you run the
+> > attached program on an older kernel (I used 2.6.32-642.6.2.el6.x86_64),
+> > I see the kernel generate wsize WRITE calls on the wire.
+> > 
+> > When I run the same program on a more modern kernel (mainline as of
+> > today), it generates a ton of page-sized I/Os instead. I've verified
+> > that iov_iter_get_pages_alloc is returning a wsize array of pages, it
+> > just seems like the request handling code isn't stitching them together
+> > like it should.
+> > 
+> > Is this an expected change or a regression? I'm guessing the latter, and
+> > that it might have crept in during the pageio rework from a couple of
+> > years ago.
+> > 
+> > Any idea where the bug might be?
+> > -- 
+> > Jeff Layton <jlayton@redhat.com><diotest2.c>
+> 
+> 
 
+Ahh, I think I might get it now and it's not as bad as I had originally
+feared...
+
+If you dirty all of the pages before writing, it seems to coalesce them
+correctly. The reproducer allocates pages, but doesn't actually dirty
+them before writing them. Apparently the allocator is setting up the
+mapping such that each page offset address in the allocation points to
+the same page. I imagine it's then setting up that page for CoW.
+
+So we end up in this test in nfs_can_coalesce_requests and hit the
+return false:
+
+                if (req->wb_page == prev->wb_page) {
+                        if (req->wb_pgbase != prev->wb_pgbase + prev->wb_bytes)
+                                return false;
+
+I think that's in place to handle sub-page write requests, but maybe we
+should consider doing that a different way for DIO?
+-- 
+Jeff Layton <jlayton@redhat.com>
