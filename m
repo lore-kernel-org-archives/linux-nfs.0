@@ -1,152 +1,135 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx143.netapp.com ([216.240.21.24]:13009 "EHLO mx143.netapp.com"
+Received: from fieldses.org ([173.255.197.46]:50048 "EHLO fieldses.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1750707AbdAXTND (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 24 Jan 2017 14:13:03 -0500
-Subject: Re: [PATCH v2 2/5] xprtrdma: Per-connection pad optimization
+        id S1750704AbdAXTPQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 24 Jan 2017 14:15:16 -0500
+Date: Tue, 24 Jan 2017 14:15:15 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
 To: Chuck Lever <chuck.lever@oracle.com>
-References: <20170123205159.21699.47373.stgit@manet.1015granger.net>
- <20170123205254.21699.44329.stgit@manet.1015granger.net>
-CC: <linux-rdma@vger.kernel.org>, <linux-nfs@vger.kernel.org>
-From: Anna Schumaker <Anna.Schumaker@Netapp.com>
-Message-ID: <19a00a6f-9502-161a-d37b-7371b07662ed@Netapp.com>
-Date: Tue, 24 Jan 2017 14:12:57 -0500
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH v1] nfs: Don't increment lock sequence ID after
+ NFS4ERR_MOVED
+Message-ID: <20170124191515.GA20844@fieldses.org>
+References: <20170122190429.7337.77928.stgit@manet.1015granger.net>
+ <69D3212A-874D-42A2-BE65-F3A01B061A87@oracle.com>
+ <20170123164913.GB9493@fieldses.org>
+ <1F944D3D-A28B-48C5-88CC-39EBD6CB8430@oracle.com>
 MIME-Version: 1.0
-In-Reply-To: <20170123205254.21699.44329.stgit@manet.1015granger.net>
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1F944D3D-A28B-48C5-88CC-39EBD6CB8430@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Chuck,
+On Tue, Jan 24, 2017 at 02:06:16PM -0500, Chuck Lever wrote:
+> 
+> > On Jan 23, 2017, at 11:49 AM, bfields@fieldses.org wrote:
+> > 
+> > On Mon, Jan 23, 2017 at 10:01:27AM -0500, Chuck Lever wrote:
+> >> 
+> >>> On Jan 22, 2017, at 2:04 PM, Chuck Lever <chuck.lever@oracle.com> wrote:
+> >>> 
+> >>> Xuan Qi reports that the Linux NFSv4 client failed to lock a file
+> >>> that was migrated. The steps he observed on the wire:
+> >>> 
+> >>> 1. The client sent a LOCK request
+> >>> 2. The server replied NFS4ERR_MOVED
+> >>> 3. The client switched to the destination server
+> >>> 4. The client sent the LOCK request again with a bumped
+> >>>  lock sequence ID
+> >>> 5. The server rejected the LOCK request with NFS4ERR_BAD_SEQID
+> >> 
+> >> The list of steps could be more clear:
+> >> 
+> >> 1. The client sent a LOCK request to the source server
+> >> 2. The source server replied NFS4ERR_MOVED
+> >> 3. The client switched to the destination server
+> >> 4. The client sent the same LOCK request to the destination
+> >>   server with a bumped lock sequence ID
+> >> 5. The destination server rejected the LOCK request with
+> >>   NFS4ERR_BAD_SEQID
+> >> 
+> >> 
+> >>> RFC 3530 section 8.1.5 provides a list of NFS errors which do not
+> >>> bump a lock sequence ID.
+> >>> 
+> >>> However, RFC 3530 is now obsoleted by RFC 7530. In RFC 7530 section
+> >>> 9.1.7, this list has been updated by the addition of NFS4ERR_MOVED.
+> > 
+> > I guess we figured the backwards-incompatible change was OK since
+> > essentially the Solaris server is the first we know of to be making real
+> > use of NFS4ERR_MOVED?
+> > 
+> > And probably it's required for the their implementation because the old
+> > server no longer has the ability to update the state once it's reached
+> > the point of returning ERR_MOVED.
+> > 
+> > OK, makes sense to me, I think.
+> 
+> Hi Bruce-
+> 
+> Does this mean you will take this patch, or should
+> I just add your Reviewed-by: ?
 
-On 01/23/2017 03:52 PM, Chuck Lever wrote:
-> Pad optimization is changed by echoing into
-> /proc/sys/sunrpc/rdma_pad_optimize. This is a global setting,
-> affecting all RPC-over-RDMA connections to all servers.
-> 
-> The marshaling code picks up that value and uses it for decisions
-> about how to construct each RPC-over-RDMA frame. Having it change
-> suddenly in mid-operation can result in unexpected failures. And
-> some servers a client mounts might need chunk round-up, while
-> others don't.
-> 
-> So instead, copy the pad_optimize setting into each connection's
-> rpcrdma_ia when the transport is created, and use the copy, which
-> can't change during the life of the connection, instead.
+I can take it if nobody objects.  Mind if I append the above to the
+changelog?  (Just want to document why we think the apparently
+backwards-incompatible change is OK.)
 
-Does the rdma_pad_optimize option have documentation somewhere that needs to be updated to describe the new behavior?
-
-Anna
+--b.
 
 > 
-> This also removes a hack: rpcrdma_convert_iovs was using
-> the remote-invalidation-expected flag to predict when it could leave
-> out Write chunk padding. This is because the Linux server handles
-> implicit XDR padding on Write chunks correctly, and only Linux
-> servers can set the connection's remote-invalidation-expected flag.
 > 
-> It's more sensible to use the pad optimization setting instead.
+> > --b.
+> > 
+> >>> 
+> >>> Reported-by: Xuan Qi <xuan.qi@oracle.com>
+> >>> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+> >>> Cc: stable@vger.kernel.org # v3.7+
+> >>> ---
+> >>> include/linux/nfs4.h |    3 ++-
+> >>> 1 file changed, 2 insertions(+), 1 deletion(-)
+> >>> 
+> >>> diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
+> >>> index bca5363..1b1ca04 100644
+> >>> --- a/include/linux/nfs4.h
+> >>> +++ b/include/linux/nfs4.h
+> >>> @@ -282,7 +282,7 @@ enum nfsstat4 {
+> >>> 
+> >>> static inline bool seqid_mutating_err(u32 err)
+> >>> {
+> >>> -	/* rfc 3530 section 8.1.5: */
+> >>> +	/* See RFC 7530, section 9.1.7 */
+> >>> 	switch (err) {
+> >>> 	case NFS4ERR_STALE_CLIENTID:
+> >>> 	case NFS4ERR_STALE_STATEID:
+> >>> @@ -291,6 +291,7 @@ static inline bool seqid_mutating_err(u32 err)
+> >>> 	case NFS4ERR_BADXDR:
+> >>> 	case NFS4ERR_RESOURCE:
+> >>> 	case NFS4ERR_NOFILEHANDLE:
+> >>> +	case NFS4ERR_MOVED:
+> >>> 		return false;
+> >>> 	};
+> >>> 	return true;
+> >>> 
+> >>> --
+> >>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> >>> the body of a message to majordomo@vger.kernel.org
+> >>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> >> 
+> >> --
+> >> Chuck Lever
+> >> 
+> >> 
+> >> 
+> >> --
+> >> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> >> the body of a message to majordomo@vger.kernel.org
+> >> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> > --
+> > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> > the body of a message to majordomo@vger.kernel.org
+> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
 > 
-> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-> ---
->  net/sunrpc/xprtrdma/rpc_rdma.c  |   28 ++++++++++++++--------------
->  net/sunrpc/xprtrdma/verbs.c     |    1 +
->  net/sunrpc/xprtrdma/xprt_rdma.h |    1 +
->  3 files changed, 16 insertions(+), 14 deletions(-)
+> --
+> Chuck Lever
 > 
-> diff --git a/net/sunrpc/xprtrdma/rpc_rdma.c b/net/sunrpc/xprtrdma/rpc_rdma.c
-> index a524d3c..c634f0f 100644
-> --- a/net/sunrpc/xprtrdma/rpc_rdma.c
-> +++ b/net/sunrpc/xprtrdma/rpc_rdma.c
-> @@ -186,9 +186,9 @@ static bool rpcrdma_results_inline(struct rpcrdma_xprt *r_xprt,
->   */
->  
->  static int
-> -rpcrdma_convert_iovs(struct xdr_buf *xdrbuf, unsigned int pos,
-> -	enum rpcrdma_chunktype type, struct rpcrdma_mr_seg *seg,
-> -	bool reminv_expected)
-> +rpcrdma_convert_iovs(struct rpcrdma_xprt *r_xprt, struct xdr_buf *xdrbuf,
-> +		     unsigned int pos, enum rpcrdma_chunktype type,
-> +		     struct rpcrdma_mr_seg *seg)
->  {
->  	int len, n, p, page_base;
->  	struct page **ppages;
-> @@ -229,14 +229,15 @@ static bool rpcrdma_results_inline(struct rpcrdma_xprt *r_xprt,
->  	/* When encoding a Read chunk, the tail iovec contains an
->  	 * XDR pad and may be omitted.
->  	 */
-> -	if (type == rpcrdma_readch && xprt_rdma_pad_optimize)
-> +	if (type == rpcrdma_readch && r_xprt->rx_ia.ri_implicit_roundup)
->  		return n;
->  
-> -	/* When encoding the Write list, some servers need to see an extra
-> -	 * segment for odd-length Write chunks. The upper layer provides
-> -	 * space in the tail iovec for this purpose.
-> +	/* When encoding a Write chunk, some servers need to see an
-> +	 * extra segment for non-XDR-aligned Write chunks. The upper
-> +	 * layer provides space in the tail iovec that may be used
-> +	 * for this purpose.
->  	 */
-> -	if (type == rpcrdma_writech && reminv_expected)
-> +	if (type == rpcrdma_writech && r_xprt->rx_ia.ri_implicit_roundup)
->  		return n;
->  
->  	if (xdrbuf->tail[0].iov_len) {
-> @@ -291,7 +292,8 @@ static bool rpcrdma_results_inline(struct rpcrdma_xprt *r_xprt,
->  	if (rtype == rpcrdma_areadch)
->  		pos = 0;
->  	seg = req->rl_segments;
-> -	nsegs = rpcrdma_convert_iovs(&rqst->rq_snd_buf, pos, rtype, seg, false);
-> +	nsegs = rpcrdma_convert_iovs(r_xprt, &rqst->rq_snd_buf, pos,
-> +				     rtype, seg);
->  	if (nsegs < 0)
->  		return ERR_PTR(nsegs);
->  
-> @@ -353,10 +355,9 @@ static bool rpcrdma_results_inline(struct rpcrdma_xprt *r_xprt,
->  	}
->  
->  	seg = req->rl_segments;
-> -	nsegs = rpcrdma_convert_iovs(&rqst->rq_rcv_buf,
-> +	nsegs = rpcrdma_convert_iovs(r_xprt, &rqst->rq_rcv_buf,
->  				     rqst->rq_rcv_buf.head[0].iov_len,
-> -				     wtype, seg,
-> -				     r_xprt->rx_ia.ri_reminv_expected);
-> +				     wtype, seg);
->  	if (nsegs < 0)
->  		return ERR_PTR(nsegs);
->  
-> @@ -421,8 +422,7 @@ static bool rpcrdma_results_inline(struct rpcrdma_xprt *r_xprt,
->  	}
->  
->  	seg = req->rl_segments;
-> -	nsegs = rpcrdma_convert_iovs(&rqst->rq_rcv_buf, 0, wtype, seg,
-> -				     r_xprt->rx_ia.ri_reminv_expected);
-> +	nsegs = rpcrdma_convert_iovs(r_xprt, &rqst->rq_rcv_buf, 0, wtype, seg);
->  	if (nsegs < 0)
->  		return ERR_PTR(nsegs);
->  
-> diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
-> index 11d0774..2a6a367 100644
-> --- a/net/sunrpc/xprtrdma/verbs.c
-> +++ b/net/sunrpc/xprtrdma/verbs.c
-> @@ -208,6 +208,7 @@
->  
->  	/* Default settings for RPC-over-RDMA Version One */
->  	r_xprt->rx_ia.ri_reminv_expected = false;
-> +	r_xprt->rx_ia.ri_implicit_roundup = xprt_rdma_pad_optimize;
->  	rsize = RPCRDMA_V1_DEF_INLINE_SIZE;
->  	wsize = RPCRDMA_V1_DEF_INLINE_SIZE;
->  
-> diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
-> index e35efd4..c137154 100644
-> --- a/net/sunrpc/xprtrdma/xprt_rdma.h
-> +++ b/net/sunrpc/xprtrdma/xprt_rdma.h
-> @@ -75,6 +75,7 @@ struct rpcrdma_ia {
->  	unsigned int		ri_max_inline_write;
->  	unsigned int		ri_max_inline_read;
->  	bool			ri_reminv_expected;
-> +	bool			ri_implicit_roundup;
->  	enum ib_mr_type		ri_mrtype;
->  	struct ib_qp_attr	ri_qp_attr;
->  	struct ib_qp_init_attr	ri_qp_init_attr;
 > 
