@@ -1,58 +1,143 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-it0-f44.google.com ([209.85.214.44]:38444 "EHLO
-        mail-it0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1750708AbdAXTuD (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 24 Jan 2017 14:50:03 -0500
-Received: by mail-it0-f44.google.com with SMTP id c7so97583647itd.1
-        for <linux-nfs@vger.kernel.org>; Tue, 24 Jan 2017 11:50:03 -0800 (PST)
-MIME-Version: 1.0
-In-Reply-To: <3EA4DDB3-6C9F-42E2-96BD-FF1AFD99ED09@primarydata.com>
-References: <CAN-5tyF+Uth87mnmWC2UaRU134whqNG8gEyNHBR_hOu9OYSZuw@mail.gmail.com>
- <35619FC0-AD46-4BBA-9F5B-9C89364BAF82@primarydata.com> <CAN-5tyHCUu_gpdiEcVZm-12RdgHtPtDgjbg-ScU9vZ7Tod5qAw@mail.gmail.com>
- <3EA4DDB3-6C9F-42E2-96BD-FF1AFD99ED09@primarydata.com>
-From: Olga Kornievskaia <aglo@umich.edu>
-Date: Tue, 24 Jan 2017 14:50:02 -0500
-Message-ID: <CAN-5tyEBtCUL0QgmHU8=u9UJLJdOxDaq=Ta8eTM-hjde1hu9ZA@mail.gmail.com>
-Subject: Re: handling error on RECLAIM_COMPLETE
-To: Trond Myklebust <trondmy@primarydata.com>
+Received: from fieldses.org ([173.255.197.46]:50072 "EHLO fieldses.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1750975AbdAXTx5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 24 Jan 2017 14:53:57 -0500
+Date: Tue, 24 Jan 2017 14:53:50 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Chuck Lever <chuck.lever@oracle.com>
 Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=UTF-8
+Subject: Re: [PATCH v1] nfs: Don't increment lock sequence ID after
+ NFS4ERR_MOVED
+Message-ID: <20170124195350.GC20844@fieldses.org>
+References: <20170122190429.7337.77928.stgit@manet.1015granger.net>
+ <69D3212A-874D-42A2-BE65-F3A01B061A87@oracle.com>
+ <20170123164913.GB9493@fieldses.org>
+ <1F944D3D-A28B-48C5-88CC-39EBD6CB8430@oracle.com>
+ <20170124191515.GA20844@fieldses.org>
+ <677C0AEE-D64A-489E-B7CE-4BFEEABAA6EA@oracle.com>
+ <20170124194140.GB20844@fieldses.org>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20170124194140.GB20844@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Jan 24, 2017 at 2:44 PM, Trond Myklebust
-<trondmy@primarydata.com> wrote:
->
->> On Jan 24, 2017, at 14:40, Olga Kornievskaia <aglo@umich.edu> wrote:
->>
->> On Tue, Jan 24, 2017 at 2:12 PM, Trond Myklebust
->> <trondmy@primarydata.com> wrote:
->>>
->>>> On Jan 24, 2017, at 14:06, Olga Kornievskaia <aglo@umich.edu> wrote:
->>>>
->>>> Hi Trond,
->>>>
->>>> Is there a reason that nfs4_proc_reclaim_complete() isn't  wrapped
->>>> with a do while() to handle errors?
->>>
->>> What do we not already handle correctly in nfs4_reclaim_complete_done()=
-?
->>
->> Could this be because when an error occurs rpc_done isn't called
->> (rpc_release is called)? What I see is that if RECLAIM_COMPLETE gets
->> an error (BAD_SESSION) the client just ignores it.
->>
->
-> That=E2=80=99s correct. Why do we need to handle BAD_SESSION there? We=E2=
-=80=99re done with state recovery, so if the server rebooted, we can catch =
-that later.
+On Tue, Jan 24, 2017 at 02:41:40PM -0500, J. Bruce Fields wrote:
+> On Tue, Jan 24, 2017 at 02:31:37PM -0500, Chuck Lever wrote:
+> > Adding a justification is OK with me, and please replace the
+> > list of steps with my updated list above.
+> > 
+> > However, your explanation implies that Solaris is the only server
+> > that might need this fix. Actually _any_ server that supports
+> > transparent state migration needs clients to get this fix. Lock
+> > operations on a file that has moved are not able to update the
+> > sequence ID on the destination server.
+> 
+> Are you sure?  Couldn't an implementation include a server-to-server
+> protocol that allowed the source and destination server to share stateid
+> information?
+> 
+> But even if that's possible, it may be unnecessarily complicated, so I
+> agree I shouldn't be claiming it's a Solaris-specific issue (though it
+> may be worth documenting that's who first hit this).
+> 
+> --b.
+> 
+> > This backwards-compatible change is OK because:
+> > 
+> > - No servers in the wild support migration yet, thus
+> > NFS4ERR_MOVED is never returned by existing servers
 
-(1) don't we want to handle session errors as soon as possible?
-(2) I ran into a problem (not sure yet if reproducible) where I had a
-client stuck in an infinite loop of RECLAIM_COMPLETE being sent with
-reply of BAD_SESSION.
+I think you mean "transparent state migration" there?
 
-yes I don't know why the client is looping but it made me look into
-the fact that we are not handling session errors on reclaim complete
-which I simulated by having the server return BAD_SESSION to
-RECLAIM_COMPLETE and I see that client simply ignores it.
+A server supporting non-transparent state migration could return
+NFS4ERR_MOVED on a LOCK operation, but the client won't be able to use
+that stateid afterwards in that case anyway.
+
+> > - Clients that do not support migration should never receive
+> > NFS4ERR_MOVED on a state-mutating operation
+
+I didn't think there was a way for clients to advertise non-support for
+migration?
+
+But such clients could never recover from MOVED anyway, so we're not
+making things worse for them.
+
+--b.
+
+> > 
+> > In other words, this change is necessary only for clients that
+> > support TSM.
+> > 
+> > Salt to taste.
+> > 
+> > 
+> > > --b.
+> > > 
+> > >> 
+> > >> 
+> > >>> --b.
+> > >>> 
+> > >>>>> 
+> > >>>>> Reported-by: Xuan Qi <xuan.qi@oracle.com>
+> > >>>>> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+> > >>>>> Cc: stable@vger.kernel.org # v3.7+
+> > >>>>> ---
+> > >>>>> include/linux/nfs4.h |    3 ++-
+> > >>>>> 1 file changed, 2 insertions(+), 1 deletion(-)
+> > >>>>> 
+> > >>>>> diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
+> > >>>>> index bca5363..1b1ca04 100644
+> > >>>>> --- a/include/linux/nfs4.h
+> > >>>>> +++ b/include/linux/nfs4.h
+> > >>>>> @@ -282,7 +282,7 @@ enum nfsstat4 {
+> > >>>>> 
+> > >>>>> static inline bool seqid_mutating_err(u32 err)
+> > >>>>> {
+> > >>>>> -	/* rfc 3530 section 8.1.5: */
+> > >>>>> +	/* See RFC 7530, section 9.1.7 */
+> > >>>>> 	switch (err) {
+> > >>>>> 	case NFS4ERR_STALE_CLIENTID:
+> > >>>>> 	case NFS4ERR_STALE_STATEID:
+> > >>>>> @@ -291,6 +291,7 @@ static inline bool seqid_mutating_err(u32 err)
+> > >>>>> 	case NFS4ERR_BADXDR:
+> > >>>>> 	case NFS4ERR_RESOURCE:
+> > >>>>> 	case NFS4ERR_NOFILEHANDLE:
+> > >>>>> +	case NFS4ERR_MOVED:
+> > >>>>> 		return false;
+> > >>>>> 	};
+> > >>>>> 	return true;
+> > >>>>> 
+> > >>>>> --
+> > >>>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> > >>>>> the body of a message to majordomo@vger.kernel.org
+> > >>>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> > >>>> 
+> > >>>> --
+> > >>>> Chuck Lever
+> > >>>> 
+> > >>>> 
+> > >>>> 
+> > >>>> --
+> > >>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> > >>>> the body of a message to majordomo@vger.kernel.org
+> > >>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> > >>> --
+> > >>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> > >>> the body of a message to majordomo@vger.kernel.org
+> > >>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> > >> 
+> > >> --
+> > >> Chuck Lever
+> > >> 
+> > >> 
+> > > --
+> > > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> > > the body of a message to majordomo@vger.kernel.org
+> > > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> > 
+> > --
+> > Chuck Lever
+> > 
+> > 
