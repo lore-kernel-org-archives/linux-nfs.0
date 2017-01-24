@@ -1,179 +1,62 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f196.google.com ([209.85.223.196]:36737 "EHLO
-        mail-io0-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1750827AbdAXUf0 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 24 Jan 2017 15:35:26 -0500
-Subject: [PATCH v1 6/7] svcrdma: Combine list fields in struct
- svc_rdma_op_ctxt
-From: Chuck Lever <chuck.lever@oracle.com>
-To: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Tue, 24 Jan 2017 15:35:19 -0500
-Message-ID: <20170124203519.11807.1103.stgit@klimt.1015granger.net>
-In-Reply-To: <20170124193242.11807.91861.stgit@klimt.1015granger.net>
-References: <20170124193242.11807.91861.stgit@klimt.1015granger.net>
+Received: from us-smtp-delivery-194.mimecast.com ([63.128.21.194]:47456 "EHLO
+        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1750926AbdAXUf2 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 24 Jan 2017 15:35:28 -0500
+From: Trond Myklebust <trondmy@primarydata.com>
+To: Olga Kornievskaia <aglo@umich.edu>
+CC: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: handling error on RECLAIM_COMPLETE
+Date: Tue, 24 Jan 2017 20:35:17 +0000
+Message-ID: <52D13840-C715-4989-A8D8-DAD2F2EFE99A@primarydata.com>
+References: <CAN-5tyF+Uth87mnmWC2UaRU134whqNG8gEyNHBR_hOu9OYSZuw@mail.gmail.com>
+ <35619FC0-AD46-4BBA-9F5B-9C89364BAF82@primarydata.com>
+ <CAN-5tyHCUu_gpdiEcVZm-12RdgHtPtDgjbg-ScU9vZ7Tod5qAw@mail.gmail.com>
+ <3EA4DDB3-6C9F-42E2-96BD-FF1AFD99ED09@primarydata.com>
+ <CAN-5tyEBtCUL0QgmHU8=u9UJLJdOxDaq=Ta8eTM-hjde1hu9ZA@mail.gmail.com>
+In-Reply-To: <CAN-5tyEBtCUL0QgmHU8=u9UJLJdOxDaq=Ta8eTM-hjde1hu9ZA@mail.gmail.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Clean up: The free list and the dto_q list fields are never used at
-the same time. Reduce the size of struct svc_rdma_op_ctxt by
-combining these fields.
-
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
- include/linux/sunrpc/svc_rdma.h          |    3 +--
- net/sunrpc/xprtrdma/svc_rdma_recvfrom.c  |   14 +++++--------
- net/sunrpc/xprtrdma/svc_rdma_transport.c |   33 ++++++++++++++----------------
- 3 files changed, 22 insertions(+), 28 deletions(-)
-
-diff --git a/include/linux/sunrpc/svc_rdma.h b/include/linux/sunrpc/svc_rdma.h
-index aaa2477..f38865c7 100644
---- a/include/linux/sunrpc/svc_rdma.h
-+++ b/include/linux/sunrpc/svc_rdma.h
-@@ -70,7 +70,7 @@
-  * completes.
-  */
- struct svc_rdma_op_ctxt {
--	struct list_head free;
-+	struct list_head list;
- 	struct svc_rdma_op_ctxt *read_hdr;
- 	struct svc_rdma_fastreg_mr *frmr;
- 	int hdr_count;
-@@ -78,7 +78,6 @@ struct svc_rdma_op_ctxt {
- 	struct ib_cqe cqe;
- 	struct ib_cqe reg_cqe;
- 	struct ib_cqe inv_cqe;
--	struct list_head dto_q;
- 	u32 byte_len;
- 	u32 position;
- 	struct svcxprt_rdma *xprt;
-diff --git a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
-index 172b537..b9ccd73 100644
---- a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
-+++ b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
-@@ -608,18 +608,16 @@ int svc_rdma_recvfrom(struct svc_rqst *rqstp)
- 
- 	spin_lock_bh(&rdma_xprt->sc_rq_dto_lock);
- 	if (!list_empty(&rdma_xprt->sc_read_complete_q)) {
--		ctxt = list_entry(rdma_xprt->sc_read_complete_q.next,
--				  struct svc_rdma_op_ctxt,
--				  dto_q);
--		list_del_init(&ctxt->dto_q);
-+		ctxt = list_first_entry(&rdma_xprt->sc_read_complete_q,
-+					struct svc_rdma_op_ctxt, list);
-+		list_del(&ctxt->list);
- 		spin_unlock_bh(&rdma_xprt->sc_rq_dto_lock);
- 		rdma_read_complete(rqstp, ctxt);
- 		goto complete;
- 	} else if (!list_empty(&rdma_xprt->sc_rq_dto_q)) {
--		ctxt = list_entry(rdma_xprt->sc_rq_dto_q.next,
--				  struct svc_rdma_op_ctxt,
--				  dto_q);
--		list_del_init(&ctxt->dto_q);
-+		ctxt = list_first_entry(&rdma_xprt->sc_rq_dto_q,
-+					struct svc_rdma_op_ctxt, list);
-+		list_del(&ctxt->list);
- 	} else {
- 		atomic_inc(&rdma_stat_rq_starve);
- 		clear_bit(XPT_DATA, &xprt->xpt_flags);
-diff --git a/net/sunrpc/xprtrdma/svc_rdma_transport.c b/net/sunrpc/xprtrdma/svc_rdma_transport.c
-index 023eaa0..87b8b5a 100644
---- a/net/sunrpc/xprtrdma/svc_rdma_transport.c
-+++ b/net/sunrpc/xprtrdma/svc_rdma_transport.c
-@@ -157,8 +157,7 @@ static struct svc_rdma_op_ctxt *alloc_ctxt(struct svcxprt_rdma *xprt,
- 	ctxt = kmalloc(sizeof(*ctxt), flags);
- 	if (ctxt) {
- 		ctxt->xprt = xprt;
--		INIT_LIST_HEAD(&ctxt->free);
--		INIT_LIST_HEAD(&ctxt->dto_q);
-+		INIT_LIST_HEAD(&ctxt->list);
- 	}
- 	return ctxt;
- }
-@@ -180,7 +179,7 @@ static bool svc_rdma_prealloc_ctxts(struct svcxprt_rdma *xprt)
- 			dprintk("svcrdma: No memory for RDMA ctxt\n");
- 			return false;
- 		}
--		list_add(&ctxt->free, &xprt->sc_ctxts);
-+		list_add(&ctxt->list, &xprt->sc_ctxts);
- 	}
- 	return true;
- }
-@@ -195,8 +194,8 @@ struct svc_rdma_op_ctxt *svc_rdma_get_context(struct svcxprt_rdma *xprt)
- 		goto out_empty;
- 
- 	ctxt = list_first_entry(&xprt->sc_ctxts,
--				struct svc_rdma_op_ctxt, free);
--	list_del_init(&ctxt->free);
-+				struct svc_rdma_op_ctxt, list);
-+	list_del(&ctxt->list);
- 	spin_unlock_bh(&xprt->sc_ctxt_lock);
- 
- out:
-@@ -256,7 +255,7 @@ void svc_rdma_put_context(struct svc_rdma_op_ctxt *ctxt, int free_pages)
- 
- 	spin_lock_bh(&xprt->sc_ctxt_lock);
- 	xprt->sc_ctxt_used--;
--	list_add(&ctxt->free, &xprt->sc_ctxts);
-+	list_add(&ctxt->list, &xprt->sc_ctxts);
- 	spin_unlock_bh(&xprt->sc_ctxt_lock);
- }
- 
-@@ -266,8 +265,8 @@ static void svc_rdma_destroy_ctxts(struct svcxprt_rdma *xprt)
- 		struct svc_rdma_op_ctxt *ctxt;
- 
- 		ctxt = list_first_entry(&xprt->sc_ctxts,
--					struct svc_rdma_op_ctxt, free);
--		list_del(&ctxt->free);
-+					struct svc_rdma_op_ctxt, list);
-+		list_del(&ctxt->list);
- 		kfree(ctxt);
- 	}
- }
-@@ -404,7 +403,7 @@ static void svc_rdma_wc_receive(struct ib_cq *cq, struct ib_wc *wc)
- 	/* All wc fields are now known to be valid */
- 	ctxt->byte_len = wc->byte_len;
- 	spin_lock(&xprt->sc_rq_dto_lock);
--	list_add_tail(&ctxt->dto_q, &xprt->sc_rq_dto_q);
-+	list_add_tail(&ctxt->list, &xprt->sc_rq_dto_q);
- 	spin_unlock(&xprt->sc_rq_dto_lock);
- 
- 	set_bit(XPT_DATA, &xprt->sc_xprt.xpt_flags);
-@@ -525,7 +524,7 @@ void svc_rdma_wc_read(struct ib_cq *cq, struct ib_wc *wc)
- 
- 		read_hdr = ctxt->read_hdr;
- 		spin_lock(&xprt->sc_rq_dto_lock);
--		list_add_tail(&read_hdr->dto_q,
-+		list_add_tail(&read_hdr->list,
- 			      &xprt->sc_read_complete_q);
- 		spin_unlock(&xprt->sc_rq_dto_lock);
- 
-@@ -1213,20 +1212,18 @@ static void __svc_rdma_free(struct work_struct *work)
- 	 */
- 	while (!list_empty(&rdma->sc_read_complete_q)) {
- 		struct svc_rdma_op_ctxt *ctxt;
--		ctxt = list_entry(rdma->sc_read_complete_q.next,
--				  struct svc_rdma_op_ctxt,
--				  dto_q);
--		list_del_init(&ctxt->dto_q);
-+		ctxt = list_first_entry(&rdma->sc_read_complete_q,
-+					struct svc_rdma_op_ctxt, list);
-+		list_del(&ctxt->list);
- 		svc_rdma_put_context(ctxt, 1);
- 	}
- 
- 	/* Destroy queued, but not processed recv completions */
- 	while (!list_empty(&rdma->sc_rq_dto_q)) {
- 		struct svc_rdma_op_ctxt *ctxt;
--		ctxt = list_entry(rdma->sc_rq_dto_q.next,
--				  struct svc_rdma_op_ctxt,
--				  dto_q);
--		list_del_init(&ctxt->dto_q);
-+		ctxt = list_first_entry(&rdma->sc_rq_dto_q,
-+					struct svc_rdma_op_ctxt, list);
-+		list_del(&ctxt->list);
- 		svc_rdma_put_context(ctxt, 1);
- 	}
- 
+DQo+IE9uIEphbiAyNCwgMjAxNywgYXQgMTQ6NTAsIE9sZ2EgS29ybmlldnNrYWlhIDxhZ2xvQHVt
+aWNoLmVkdT4gd3JvdGU6DQo+IA0KPiBPbiBUdWUsIEphbiAyNCwgMjAxNyBhdCAyOjQ0IFBNLCBU
+cm9uZCBNeWtsZWJ1c3QNCj4gPHRyb25kbXlAcHJpbWFyeWRhdGEuY29tPiB3cm90ZToNCj4+IA0K
+Pj4+IE9uIEphbiAyNCwgMjAxNywgYXQgMTQ6NDAsIE9sZ2EgS29ybmlldnNrYWlhIDxhZ2xvQHVt
+aWNoLmVkdT4gd3JvdGU6DQo+Pj4gDQo+Pj4gT24gVHVlLCBKYW4gMjQsIDIwMTcgYXQgMjoxMiBQ
+TSwgVHJvbmQgTXlrbGVidXN0DQo+Pj4gPHRyb25kbXlAcHJpbWFyeWRhdGEuY29tPiB3cm90ZToN
+Cj4+Pj4gDQo+Pj4+PiBPbiBKYW4gMjQsIDIwMTcsIGF0IDE0OjA2LCBPbGdhIEtvcm5pZXZza2Fp
+YSA8YWdsb0B1bWljaC5lZHU+IHdyb3RlOg0KPj4+Pj4gDQo+Pj4+PiBIaSBUcm9uZCwNCj4+Pj4+
+IA0KPj4+Pj4gSXMgdGhlcmUgYSByZWFzb24gdGhhdCBuZnM0X3Byb2NfcmVjbGFpbV9jb21wbGV0
+ZSgpIGlzbid0ICB3cmFwcGVkDQo+Pj4+PiB3aXRoIGEgZG8gd2hpbGUoKSB0byBoYW5kbGUgZXJy
+b3JzPw0KPj4+PiANCj4+Pj4gV2hhdCBkbyB3ZSBub3QgYWxyZWFkeSBoYW5kbGUgY29ycmVjdGx5
+IGluIG5mczRfcmVjbGFpbV9jb21wbGV0ZV9kb25lKCk/DQo+Pj4gDQo+Pj4gQ291bGQgdGhpcyBi
+ZSBiZWNhdXNlIHdoZW4gYW4gZXJyb3Igb2NjdXJzIHJwY19kb25lIGlzbid0IGNhbGxlZA0KPj4+
+IChycGNfcmVsZWFzZSBpcyBjYWxsZWQpPyBXaGF0IEkgc2VlIGlzIHRoYXQgaWYgUkVDTEFJTV9D
+T01QTEVURSBnZXRzDQo+Pj4gYW4gZXJyb3IgKEJBRF9TRVNTSU9OKSB0aGUgY2xpZW50IGp1c3Qg
+aWdub3JlcyBpdC4NCj4+PiANCj4+IA0KPj4gVGhhdOKAmXMgY29ycmVjdC4gV2h5IGRvIHdlIG5l
+ZWQgdG8gaGFuZGxlIEJBRF9TRVNTSU9OIHRoZXJlPyBXZeKAmXJlIGRvbmUgd2l0aCBzdGF0ZSBy
+ZWNvdmVyeSwgc28gaWYgdGhlIHNlcnZlciByZWJvb3RlZCwgd2UgY2FuIGNhdGNoIHRoYXQgbGF0
+ZXIuDQo+IA0KPiAoMSkgZG9uJ3Qgd2Ugd2FudCB0byBoYW5kbGUgc2Vzc2lvbiBlcnJvcnMgYXMg
+c29vbiBhcyBwb3NzaWJsZT8NCj4gKDIpIEkgcmFuIGludG8gYSBwcm9ibGVtIChub3Qgc3VyZSB5
+ZXQgaWYgcmVwcm9kdWNpYmxlKSB3aGVyZSBJIGhhZCBhDQo+IGNsaWVudCBzdHVjayBpbiBhbiBp
+bmZpbml0ZSBsb29wIG9mIFJFQ0xBSU1fQ09NUExFVEUgYmVpbmcgc2VudCB3aXRoDQo+IHJlcGx5
+IG9mIEJBRF9TRVNTSU9OLg0KPiANCj4geWVzIEkgZG9uJ3Qga25vdyB3aHkgdGhlIGNsaWVudCBp
+cyBsb29waW5nIGJ1dCBpdCBtYWRlIG1lIGxvb2sgaW50bw0KPiB0aGUgZmFjdCB0aGF0IHdlIGFy
+ZSBub3QgaGFuZGxpbmcgc2Vzc2lvbiBlcnJvcnMgb24gcmVjbGFpbSBjb21wbGV0ZQ0KPiB3aGlj
+aCBJIHNpbXVsYXRlZCBieSBoYXZpbmcgdGhlIHNlcnZlciByZXR1cm4gQkFEX1NFU1NJT04gdG8N
+Cj4gUkVDTEFJTV9DT01QTEVURSBhbmQgSSBzZWUgdGhhdCBjbGllbnQgc2ltcGx5IGlnbm9yZXMg
+aXQuDQoNCkl0IGRvZXNu4oCZdCBpZ25vcmUgaXQ6DQoNCnN0YXRpYyBpbnQgbmZzNDFfcmVjbGFp
+bV9jb21wbGV0ZV9oYW5kbGVfZXJyb3JzKHN0cnVjdCBycGNfdGFzayAqdGFzaywgc3RydWN0IG5m
+c19jbGllbnQgKmNscCkNCnsNCiAgICAgICAgc3dpdGNoKHRhc2stPnRrX3N0YXR1cykgew0KICAg
+ICAgICBjYXNlIDA6DQogICAgICAgIGNhc2UgLU5GUzRFUlJfQ09NUExFVEVfQUxSRUFEWToNCiAg
+ICAgICAgY2FzZSAtTkZTNEVSUl9XUk9OR19DUkVEOiAvKiBXaGF0IHRvIGRvIGhlcmU/ICovDQog
+ICAgICAgICAgICAgICAgYnJlYWs7DQogICAgICAgIGNhc2UgLU5GUzRFUlJfREVMQVk6DQogICAg
+ICAgICAgICAgICAgcnBjX2RlbGF5KHRhc2ssIE5GUzRfUE9MTF9SRVRSWV9NQVgpOw0KICAgICAg
+ICAgICAgICAgIC8qIGZhbGwgdGhyb3VnaCAqLw0KICAgICAgICBjYXNlIC1ORlM0RVJSX1JFVFJZ
+X1VOQ0FDSEVEX1JFUDoNCiAgICAgICAgICAgICAgICByZXR1cm4gLUVBR0FJTjsNCiAgICAgICAg
+ZGVmYXVsdDoNCiAgICAgICAgICAgICAgICBuZnM0X3NjaGVkdWxlX2xlYXNlX3JlY292ZXJ5KGNs
+cCk7DQogICAgICAgIH0NCiAgICAgICAgcmV0dXJuIDA7DQp9DQoNCklPVzogd2hhdCB0aGUgY29k
+ZSBkb2VzIGlzIHNjaGVkdWxlIGFub3RoZXIgcm91bmQgb2YgbGVhc2UgcmVjb3ZlcnkuDQoNCg==
 
