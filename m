@@ -1,108 +1,47 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:41766 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1750716AbdAXQsf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 24 Jan 2017 11:48:35 -0500
-From: "Benjamin Coddington" <bcodding@redhat.com>
-To: "Matthieu Herrb" <matthieu.herrb@laas.fr>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: problem with open(name, O_RDWR|O_CREAT|O_EXCL, 0666) on NetApp
- servers
-Date: Tue, 24 Jan 2017 11:48:33 -0500
-Message-ID: <45F25643-F51D-4CA0-AC7D-55B6D6D6FE22@redhat.com>
-In-Reply-To: <20170105142439.GB9922@paperthin-usb.laas.fr>
-References: <20170105142439.GB9922@paperthin-usb.laas.fr>
-MIME-Version: 1.0
-Content-Type: text/plain; format=flowed
+Received: from mail-qt0-f174.google.com ([209.85.216.174]:35363 "EHLO
+        mail-qt0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1750707AbdAXRXO (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 24 Jan 2017 12:23:14 -0500
+Received: by mail-qt0-f174.google.com with SMTP id x49so192993490qtc.2
+        for <linux-nfs@vger.kernel.org>; Tue, 24 Jan 2017 09:23:14 -0800 (PST)
+Content-Type: text/plain; charset=us-ascii
+Mime-Version: 1.0 (Mac OS X Mail 10.2 \(3259\))
+Subject: Re: regression in DIO write behavior
+From: Weston Andros Adamson <dros@monkey.org>
+In-Reply-To: <1485272659.3143.18.camel@redhat.com>
+Date: Tue, 24 Jan 2017 12:23:12 -0500
+Cc: linux-nfs list <linux-nfs@vger.kernel.org>
+Message-Id: <963DBD29-C835-4716-9EAE-74C2EACA427F@monkey.org>
+References: <1485272659.3143.18.camel@redhat.com>
+To: Jeffrey Layton <jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Matthieu, are you willing to test this one:
+Hey Jeff,
 
-http://marc.info/?l=linux-nfs&m=148527567624411&w=2
+That sounds like a regression to me. I don't think it's been around since the
+pgio rework, but maybe?
 
-Ben
+-dros
 
-On 5 Jan 2017, at 9:24, Matthieu Herrb wrote:
-
-> Hi,
->
-> After upgrading my machine to Ubuntu 16.04, I noticed that 'git clone'
-> started creating files with wrong mode (0700 instead of 0644
-> typically) on NFSv4 partitions mounted from our NetApp servers.
->
-> I've first tracked this down to the fact that git uses
->
->  open(name, O_RDWR|O_CREAT|O_EXCL, 0666);
->
-> to create files. If O_EXCL is not present, the files are created
-> normally.
->
-> I've tried various kernels from Ubuntu and the problems appeared
-> between their 4.2.0-42-generic kernel-image (as found on willy) and
-> the 4.4.0 kernels found on xenial. I tried building 4.9 from
-> kernel.org and the problem is also there.
->
-> I've then bisected the kernel to figure out that this is caused by the
-> following commit:
->
-> https://git.kernel.org/cgit/linux/kernel/git/torvalds/linux.git/commit/?id=5334c5bdac926c5f8d89729beccb46fe88eda9e7
->
-> ie NFS: Send attributes in OPEN request for NFS4_CREATE_EXCLUSIVE4_1
->
-> Our NetApp filers are running:
->
-> NetApp Release 8.2.3P3 7-Mode: Tue Apr 28 14:48:22 PDT 2015
->
-> Any idea on how to fix the problem (either on the NetApp side, or on
-> Linux kernel side)?
->
-> Appended is a small program to reproduce the issue:
->
-> Thanks in advance,
->
-> #include <sys/types.h>
-> #include <sys/stat.h>
-> #include <err.h>
-> #include <fcntl.h>
-> #include <stdio.h>
-> #include <stdlib.h>
-> #include <string.h>
-> #include <unistd.h>
->
-> /*
->  * Demonstrate file creation bug on NFS v4 and linux kernel 4.4+
->  *
->  * mktemp() is used on purpose.
->  */
-> int
-> main(int argc, char *argv[])
-> {
-> 	const char *name = argv[1];
-> 	char tmp[] = "./tmpXXXXXXXXXX";
-> 	struct stat buf;
-> 	mode_t expected;
-> 	int fd, i, n = 40;
->
-> 	umask(S_IWGRP | S_IWOTH);
-> 	expected = 0666 & ~(S_IWGRP | S_IWOTH);
-> 	if (argv[1] == NULL)
-> 		name = mktemp(tmp);
-> 	for (i = 0; i < n; i++) {
-> 		fd = open(name, O_RDWR|O_CREAT|O_EXCL, 0666);
-> 		if (fd < 0)
-> 			err(1, "open %s", name);
-> 		memset(&buf, 0, sizeof(buf));
-> 		if (stat(name, &buf) < 0)
-> 			err(1, "stat %s", name);
-> 		if ((buf.st_mode & (S_IRWXU|S_IRWXG|S_IRWXO)) != expected)
-> 			printf("%s: %o\n", name,
-> 			    (int)buf.st_mode & (S_IRWXU|S_IRWXG|S_IRWXO));
-> 		else
-> 			printf("%s: ok\n", name);
-> 		unlink(name);
-> 	}
-> 	exit(0);
-> }
+> On Jan 24, 2017, at 10:44 AM, Jeff Layton <jlayton@redhat.com> wrote:
+> 
+> I've noticed a probable regression in recent kernels. When you run the
+> attached program on an older kernel (I used 2.6.32-642.6.2.el6.x86_64),
+> I see the kernel generate wsize WRITE calls on the wire.
+> 
+> When I run the same program on a more modern kernel (mainline as of
+> today), it generates a ton of page-sized I/Os instead. I've verified
+> that iov_iter_get_pages_alloc is returning a wsize array of pages, it
+> just seems like the request handling code isn't stitching them together
+> like it should.
+> 
+> Is this an expected change or a regression? I'm guessing the latter, and
+> that it might have crept in during the pageio rework from a couple of
+> years ago.
+> 
+> Any idea where the bug might be?
 > -- 
-> Matthieu Herrb
+> Jeff Layton <jlayton@redhat.com><diotest2.c>
+
