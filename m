@@ -1,164 +1,93 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f193.google.com ([209.85.223.193]:36803 "EHLO
-        mail-io0-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1750926AbdAXUfg (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 24 Jan 2017 15:35:36 -0500
-Subject: [PATCH v1 7/7] svcrdma: Poll CQs in "workqueue" mode
-From: Chuck Lever <chuck.lever@oracle.com>
-To: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Tue, 24 Jan 2017 15:35:27 -0500
-Message-ID: <20170124203527.11807.38184.stgit@klimt.1015granger.net>
-In-Reply-To: <20170124193242.11807.91861.stgit@klimt.1015granger.net>
-References: <20170124193242.11807.91861.stgit@klimt.1015granger.net>
+Received: from fieldses.org ([173.255.197.46]:50164 "EHLO fieldses.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1750713AbdAXUjI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 24 Jan 2017 15:39:08 -0500
+Date: Tue, 24 Jan 2017 15:31:53 -0500
+From: "bfields@fieldses.org" <bfields@fieldses.org>
+To: Trond Myklebust <trondmy@primarydata.com>
+Cc: "chuck.lever@oracle.com" <chuck.lever@oracle.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH v1] nfs: Don't increment lock sequence ID after
+ NFS4ERR_MOVED
+Message-ID: <20170124203153.GD20844@fieldses.org>
+References: <20170122190429.7337.77928.stgit@manet.1015granger.net>
+ <69D3212A-874D-42A2-BE65-F3A01B061A87@oracle.com>
+ <20170123164913.GB9493@fieldses.org>
+ <1F944D3D-A28B-48C5-88CC-39EBD6CB8430@oracle.com>
+ <20170124191515.GA20844@fieldses.org>
+ <1485289414.12087.0.camel@primarydata.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain; charset=utf-8
+In-Reply-To: <1485289414.12087.0.camel@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-svcrdma calls svc_xprt_put() in its completion handlers, which
-currently run in IRQ context.
+On Tue, Jan 24, 2017 at 08:23:36PM +0000, Trond Myklebust wrote:
+> On Tue, 2017-01-24 at 14:15 -0500, J. Bruce Fields wrote:
+> > On Tue, Jan 24, 2017 at 02:06:16PM -0500, Chuck Lever wrote:
+> > > 
+> > > > On Jan 23, 2017, at 11:49 AM, bfields@fieldses.org wrote:
+> > > > 
+> > > > On Mon, Jan 23, 2017 at 10:01:27AM -0500, Chuck Lever wrote:
+> > > > > 
+> > > > > > On Jan 22, 2017, at 2:04 PM, Chuck Lever <chuck.lever@oracle.
+> > > > > > com> wrote:
+> > > > > > 
+> > > > > > Xuan Qi reports that the Linux NFSv4 client failed to lock a
+> > > > > > file
+> > > > > > that was migrated. The steps he observed on the wire:
+> > > > > > 
+> > > > > > 1. The client sent a LOCK request
+> > > > > > 2. The server replied NFS4ERR_MOVED
+> > > > > > 3. The client switched to the destination server
+> > > > > > 4. The client sent the LOCK request again with a bumped
+> > > > > >  lock sequence ID
+> > > > > > 5. The server rejected the LOCK request with
+> > > > > > NFS4ERR_BAD_SEQID
+> > > > > 
+> > > > > The list of steps could be more clear:
+> > > > > 
+> > > > > 1. The client sent a LOCK request to the source server
+> > > > > 2. The source server replied NFS4ERR_MOVED
+> > > > > 3. The client switched to the destination server
+> > > > > 4. The client sent the same LOCK request to the destination
+> > > > >   server with a bumped lock sequence ID
+> > > > > 5. The destination server rejected the LOCK request with
+> > > > >   NFS4ERR_BAD_SEQID
+> > > > > 
+> > > > > 
+> > > > > > RFC 3530 section 8.1.5 provides a list of NFS errors which do
+> > > > > > not
+> > > > > > bump a lock sequence ID.
+> > > > > > 
+> > > > > > However, RFC 3530 is now obsoleted by RFC 7530. In RFC 7530
+> > > > > > section
+> > > > > > 9.1.7, this list has been updated by the addition of
+> > > > > > NFS4ERR_MOVED.
+> > > > 
+> > > > I guess we figured the backwards-incompatible change was OK since
+> > > > essentially the Solaris server is the first we know of to be
+> > > > making real
+> > > > use of NFS4ERR_MOVED?
+> > > > 
+> > > > And probably it's required for the their implementation because
+> > > > the old
+> > > > server no longer has the ability to update the state once it's
+> > > > reached
+> > > > the point of returning ERR_MOVED.
+> > > > 
+> > > > OK, makes sense to me, I think.
+> > > 
+> > > Hi Bruce-
+> > > 
+> > > Does this mean you will take this patch, or should
+> > > I just add your Reviewed-by: ?
+> > 
+> > I can take it if nobody objects.  Mind if I append the above to the
+> > changelog?  (Just want to document why we think the apparently
+> > backwards-incompatible change is OK.)
+> > 
+> I've already added it to my linux-next branch as a stable patch.
 
-However, svc_xprt_put() is meant to be invoked in process context,
-not in IRQ context. After the last transport reference is gone, it
-directly calls a transport release function that expects to run in
-process context.
-
-Change the CQ polling modes to IB_POLL_WORKQUEUE so that svcrdma
-invokes svc_xprt_put() only in process context. As an added benefit,
-bottom half-disabled spin locking can be eliminated from I/O paths.
-
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
- net/sunrpc/xprtrdma/svc_rdma_recvfrom.c  |    6 +++---
- net/sunrpc/xprtrdma/svc_rdma_transport.c |   26 +++++++++++++-------------
- 2 files changed, 16 insertions(+), 16 deletions(-)
-
-diff --git a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
-index b9ccd73..f7b2daf 100644
---- a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
-+++ b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
-@@ -606,12 +606,12 @@ int svc_rdma_recvfrom(struct svc_rqst *rqstp)
- 
- 	dprintk("svcrdma: rqstp=%p\n", rqstp);
- 
--	spin_lock_bh(&rdma_xprt->sc_rq_dto_lock);
-+	spin_lock(&rdma_xprt->sc_rq_dto_lock);
- 	if (!list_empty(&rdma_xprt->sc_read_complete_q)) {
- 		ctxt = list_first_entry(&rdma_xprt->sc_read_complete_q,
- 					struct svc_rdma_op_ctxt, list);
- 		list_del(&ctxt->list);
--		spin_unlock_bh(&rdma_xprt->sc_rq_dto_lock);
-+		spin_unlock(&rdma_xprt->sc_rq_dto_lock);
- 		rdma_read_complete(rqstp, ctxt);
- 		goto complete;
- 	} else if (!list_empty(&rdma_xprt->sc_rq_dto_q)) {
-@@ -623,7 +623,7 @@ int svc_rdma_recvfrom(struct svc_rqst *rqstp)
- 		clear_bit(XPT_DATA, &xprt->xpt_flags);
- 		ctxt = NULL;
- 	}
--	spin_unlock_bh(&rdma_xprt->sc_rq_dto_lock);
-+	spin_unlock(&rdma_xprt->sc_rq_dto_lock);
- 	if (!ctxt) {
- 		/* This is the EAGAIN path. The svc_recv routine will
- 		 * return -EAGAIN, the nfsd thread will go to call into
-diff --git a/net/sunrpc/xprtrdma/svc_rdma_transport.c b/net/sunrpc/xprtrdma/svc_rdma_transport.c
-index 87b8b5a..ab2fd53 100644
---- a/net/sunrpc/xprtrdma/svc_rdma_transport.c
-+++ b/net/sunrpc/xprtrdma/svc_rdma_transport.c
-@@ -188,7 +188,7 @@ struct svc_rdma_op_ctxt *svc_rdma_get_context(struct svcxprt_rdma *xprt)
- {
- 	struct svc_rdma_op_ctxt *ctxt = NULL;
- 
--	spin_lock_bh(&xprt->sc_ctxt_lock);
-+	spin_lock(&xprt->sc_ctxt_lock);
- 	xprt->sc_ctxt_used++;
- 	if (list_empty(&xprt->sc_ctxts))
- 		goto out_empty;
-@@ -196,7 +196,7 @@ struct svc_rdma_op_ctxt *svc_rdma_get_context(struct svcxprt_rdma *xprt)
- 	ctxt = list_first_entry(&xprt->sc_ctxts,
- 				struct svc_rdma_op_ctxt, list);
- 	list_del(&ctxt->list);
--	spin_unlock_bh(&xprt->sc_ctxt_lock);
-+	spin_unlock(&xprt->sc_ctxt_lock);
- 
- out:
- 	ctxt->count = 0;
-@@ -208,15 +208,15 @@ struct svc_rdma_op_ctxt *svc_rdma_get_context(struct svcxprt_rdma *xprt)
- 	/* Either pre-allocation missed the mark, or send
- 	 * queue accounting is broken.
- 	 */
--	spin_unlock_bh(&xprt->sc_ctxt_lock);
-+	spin_unlock(&xprt->sc_ctxt_lock);
- 
- 	ctxt = alloc_ctxt(xprt, GFP_NOIO);
- 	if (ctxt)
- 		goto out;
- 
--	spin_lock_bh(&xprt->sc_ctxt_lock);
-+	spin_lock(&xprt->sc_ctxt_lock);
- 	xprt->sc_ctxt_used--;
--	spin_unlock_bh(&xprt->sc_ctxt_lock);
-+	spin_unlock(&xprt->sc_ctxt_lock);
- 	WARN_ONCE(1, "svcrdma: empty RDMA ctxt list?\n");
- 	return NULL;
- }
-@@ -253,10 +253,10 @@ void svc_rdma_put_context(struct svc_rdma_op_ctxt *ctxt, int free_pages)
- 		for (i = 0; i < ctxt->count; i++)
- 			put_page(ctxt->pages[i]);
- 
--	spin_lock_bh(&xprt->sc_ctxt_lock);
-+	spin_lock(&xprt->sc_ctxt_lock);
- 	xprt->sc_ctxt_used--;
- 	list_add(&ctxt->list, &xprt->sc_ctxts);
--	spin_unlock_bh(&xprt->sc_ctxt_lock);
-+	spin_unlock(&xprt->sc_ctxt_lock);
- }
- 
- static void svc_rdma_destroy_ctxts(struct svcxprt_rdma *xprt)
-@@ -921,14 +921,14 @@ struct svc_rdma_fastreg_mr *svc_rdma_get_frmr(struct svcxprt_rdma *rdma)
- {
- 	struct svc_rdma_fastreg_mr *frmr = NULL;
- 
--	spin_lock_bh(&rdma->sc_frmr_q_lock);
-+	spin_lock(&rdma->sc_frmr_q_lock);
- 	if (!list_empty(&rdma->sc_frmr_q)) {
- 		frmr = list_entry(rdma->sc_frmr_q.next,
- 				  struct svc_rdma_fastreg_mr, frmr_list);
- 		list_del_init(&frmr->frmr_list);
- 		frmr->sg_nents = 0;
- 	}
--	spin_unlock_bh(&rdma->sc_frmr_q_lock);
-+	spin_unlock(&rdma->sc_frmr_q_lock);
- 	if (frmr)
- 		return frmr;
- 
-@@ -941,10 +941,10 @@ void svc_rdma_put_frmr(struct svcxprt_rdma *rdma,
- 	if (frmr) {
- 		ib_dma_unmap_sg(rdma->sc_cm_id->device,
- 				frmr->sg, frmr->sg_nents, frmr->direction);
--		spin_lock_bh(&rdma->sc_frmr_q_lock);
-+		spin_lock(&rdma->sc_frmr_q_lock);
- 		WARN_ON_ONCE(!list_empty(&frmr->frmr_list));
- 		list_add(&frmr->frmr_list, &rdma->sc_frmr_q);
--		spin_unlock_bh(&rdma->sc_frmr_q_lock);
-+		spin_unlock(&rdma->sc_frmr_q_lock);
- 	}
- }
- 
-@@ -1026,13 +1026,13 @@ static struct svc_xprt *svc_rdma_accept(struct svc_xprt *xprt)
- 		goto errout;
- 	}
- 	newxprt->sc_sq_cq = ib_alloc_cq(dev, newxprt, newxprt->sc_sq_depth,
--					0, IB_POLL_SOFTIRQ);
-+					0, IB_POLL_WORKQUEUE);
- 	if (IS_ERR(newxprt->sc_sq_cq)) {
- 		dprintk("svcrdma: error creating SQ CQ for connect request\n");
- 		goto errout;
- 	}
- 	newxprt->sc_rq_cq = ib_alloc_cq(dev, newxprt, newxprt->sc_rq_depth,
--					0, IB_POLL_SOFTIRQ);
-+					0, IB_POLL_WORKQUEUE);
- 	if (IS_ERR(newxprt->sc_rq_cq)) {
- 		dprintk("svcrdma: error creating RQ CQ for connect request\n");
- 		goto errout;
-
+OK, fine by me, dropping.--b.
