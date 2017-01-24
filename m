@@ -1,70 +1,42 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-it0-f65.google.com ([209.85.214.65]:35139 "EHLO
-        mail-it0-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751355AbdAWVCG (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 23 Jan 2017 16:02:06 -0500
-Subject: [PATCH v2 3/5] xprtrdma: Disable pad optimization by default
-From: Chuck Lever <chuck.lever@oracle.com>
-To: anna.schumaker@netapp.com
-Cc: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Mon, 23 Jan 2017 15:53:02 -0500
-Message-ID: <20170123205302.21699.89801.stgit@manet.1015granger.net>
-In-Reply-To: <20170123205159.21699.47373.stgit@manet.1015granger.net>
-References: <20170123205159.21699.47373.stgit@manet.1015granger.net>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Received: from mail-it0-f67.google.com ([209.85.214.67]:34485 "EHLO
+        mail-it0-f67.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1750703AbdAXDzh (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 23 Jan 2017 22:55:37 -0500
+Received: by mail-it0-f67.google.com with SMTP id o185so12571361itb.1
+        for <linux-nfs@vger.kernel.org>; Mon, 23 Jan 2017 19:55:37 -0800 (PST)
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH] NFSv4.1: Fix a deadlock in layoutget
+Date: Mon, 23 Jan 2017 22:55:33 -0500
+Message-Id: <20170124035533.11212-1-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Commit d5440e27d3e5 ('xprtrdma: Enable pad optimization') made the
-Linux client omit XDR round-up padding in normal Read and Write
-chunks so that the client doesn't have to register and invalidate
-3-byte memory regions that contain no real data.
+We cannot call nfs4_handle_exception() without first ensuring that the
+slot has been freed. If not, we end up deadlocking with the process
+waiting for recovery to complete, and recovery waiting for the slot
+table to drain.
 
-Unfortunately, my cheery 2014 assessment that this optimization "is
-supported now by both Linux and Solaris servers" was premature.
-We've found bugs in Solaris in this area since commit d5440e27d3e5
-was merged (SYMLINK is the main culprit).
-
-So for maximum interoperability, I'm disabling this optimization
-again. If a CM private message is exchanged when connecting, the
-client recognizes that the server is Linux, and enables the
-optimization for that connection.
-
-Until now the Solaris server bugs did not impact common operations,
-and were thus largely unnoticed. Soon, less capable devices on Linux
-NFS/RDMA clients will make use of Read chunks more often, and these
-Solaris bugs will prevent interoperation in more cases.
-
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Fixes: 2e80dbe7ac51 ("NFSv4.1: Close callback races for OPEN, LAYOUTGET...")
+Cc: stable@vger.kernel.org # v4.8+
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
 ---
- net/sunrpc/xprtrdma/transport.c |    2 +-
- net/sunrpc/xprtrdma/verbs.c     |    1 +
- 2 files changed, 2 insertions(+), 1 deletion(-)
+ fs/nfs/nfs4proc.c | 1 +
+ 1 file changed, 1 insertion(+)
 
-diff --git a/net/sunrpc/xprtrdma/transport.c b/net/sunrpc/xprtrdma/transport.c
-index 534c178..6990581 100644
---- a/net/sunrpc/xprtrdma/transport.c
-+++ b/net/sunrpc/xprtrdma/transport.c
-@@ -67,7 +67,7 @@
- static unsigned int xprt_rdma_max_inline_write = RPCRDMA_DEF_INLINE;
- static unsigned int xprt_rdma_inline_write_padding;
- static unsigned int xprt_rdma_memreg_strategy = RPCRDMA_FRMR;
--		int xprt_rdma_pad_optimize = 1;
-+		int xprt_rdma_pad_optimize = 0;
- 
- #if IS_ENABLED(CONFIG_SUNRPC_DEBUG)
- 
-diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
-index 2a6a367..23f4da4 100644
---- a/net/sunrpc/xprtrdma/verbs.c
-+++ b/net/sunrpc/xprtrdma/verbs.c
-@@ -216,6 +216,7 @@
- 	    pmsg->cp_magic == rpcrdma_cmp_magic &&
- 	    pmsg->cp_version == RPCRDMA_CMP_VERSION) {
- 		r_xprt->rx_ia.ri_reminv_expected = true;
-+		r_xprt->rx_ia.ri_implicit_roundup = true;
- 		rsize = rpcrdma_decode_buffer_size(pmsg->cp_send_size);
- 		wsize = rpcrdma_decode_buffer_size(pmsg->cp_recv_size);
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index ecc151697fd4..59bb574d7d7c 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -8490,6 +8490,7 @@ nfs4_layoutget_handle_exception(struct rpc_task *task,
+ 		goto out;
  	}
+ 
++	nfs4_sequence_free_slot(&lgp->res.seq_res);
+ 	err = nfs4_handle_exception(server, nfs4err, exception);
+ 	if (!status) {
+ 		if (exception->retry)
+-- 
+2.9.3
 
