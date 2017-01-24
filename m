@@ -1,89 +1,260 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:20117 "EHLO
-        aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1750837AbdAXVqI (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 24 Jan 2017 16:46:08 -0500
-Content-Type: text/plain; charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 9.3 \(3124\))
-Subject: Re: [PATCH v2 0/5] Fix "support large inline thresholds"
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <353a72a5-549d-535b-28b7-411ba81483a1@Netapp.com>
-Date: Tue, 24 Jan 2017 16:46:02 -0500
-Cc: List Linux RDMA Mailing <linux-rdma@vger.kernel.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <82302622-9524-4020-869E-81F57629EC86@oracle.com>
-References: <20170123205159.21699.47373.stgit@manet.1015granger.net> <353a72a5-549d-535b-28b7-411ba81483a1@Netapp.com>
-To: Anna Schumaker <Anna.Schumaker@netapp.com>
+Received: from fieldses.org ([173.255.197.46]:50282 "EHLO fieldses.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1750880AbdAXWCI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 24 Jan 2017 17:02:08 -0500
+Date: Tue, 24 Jan 2017 17:02:01 -0500
+To: Jeff Layton <jlayton@poochiereds.net>
+Cc: Christoph Hellwig <hch@lst.de>, bfields@redhat.com,
+        linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org
+Subject: Re: [PATCH] nfsd: special case truncates some more
+Message-ID: <20170124220201.GE20844@fieldses.org>
+References: <1485104060-15209-1-git-send-email-hch@lst.de>
+ <1485104060-15209-2-git-send-email-hch@lst.de>
+ <1485174116.2786.7.camel@poochiereds.net>
+ <20170123123348.GA28102@lst.de>
+ <20170123153615.GA32201@lst.de>
+ <1485186729.2786.11.camel@poochiereds.net>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=utf-8
+In-Reply-To: <1485186729.2786.11.camel@poochiereds.net>
+From: bfields@fieldses.org (J. Bruce Fields)
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-> On Jan 24, 2017, at 4:35 PM, Anna Schumaker <Anna.Schumaker@netapp.com> wrote:
+On Mon, Jan 23, 2017 at 10:52:09AM -0500, Jeff Layton wrote:
+> On Mon, 2017-01-23 at 16:36 +0100, Christoph Hellwig wrote:
+> > On Mon, Jan 23, 2017 at 01:33:48PM +0100, Christoph Hellwig wrote:
+> > > I'll need to look at the exact NFS semantics in that area, but after
+> > > a bit of research I can probably come up with something that will work.
+> > 
+> > Here is my first attempt.  As vfs_truncate will add the ctime and mtime
+> > updates when needed it just leaves handling that quirk to vfs_truncate
+> > and then exits early if no other attributes are set.
+> > 
+> > Unfortunately at least the Linux client always seems to also request
+> > a mtime update with a size update.  We could keep the
+> > 
+> > 	if (iap->ia_size != i_size_read(inode))
+> > 
+> > check from the old code and remove ATTR_MTIME, but these racy checks
+> > outside i_rwsem make me feel a bit uneasy.  Jeff, Bruce - any opinion
+> > if we should add something like this:
+> > 
 > 
-> Hi Chuck,
+> Ok, that's more complicated than it looked at first blush. :)
 > 
-> On 01/23/2017 03:52 PM, Chuck Lever wrote:
->> Hi Anna-
->> 
->> I've received a number of reports that v4.9 commit 655fec6987be
->> ("xprtrdma: Use gathered Send for large inline messages") causes
->> NFS/RDMA mounts to fail for devices that have a small max_sge.
->> 
->> This series addresses that problem. Would you consider this series
->> of bug fixes for v4.10-rc?
+> To be clear, the client is requesting to set the mtime to current server
+> time and not to a specific mtime, right?
 > 
-> I noticed that patches one and four are the only ones with a "Fixes:" tag.  Do you need all five patches to fix the problem, or can the rest be deferred to 4.11?
-
-5/5 can be deferred if you want. The others are all required to
-fix the problem. However, these were tested as a series. I'm
-reticent to split them at this point.
-
-Should 1 - 4 have a "Fixes: 655fec6987be ("xprtrdma: Use
-gathered Send for large ...")" ?
-
-
-> Thanks,
-> Anna
+> > 	/* vfs_truncate will update ctime and mtime if the size changes */
+> > 	if (iap->ia_size != i_size_read(inode))
+> > 		iap->ia_valid &= ATTR_MTIME;
+> > 
+> > back to nfsd_setattr?  This would avoid the additional setattr call,
+> > but make me feel dirty :)
+> > 
 > 
->> 
->> 
->> Available in the "nfs-rdma-for-4.10-rc" topic branch of this git repo:
->> 
->> git://git.linux-nfs.org/projects/cel/cel-2.6.git
->> 
->> And for online review:
->> 
->> http://git.linux-nfs.org/?p=cel/cel-2.6.git;a=shortlog;h=refs/heads/nfs-rdma-for-4.10-rc
->> 
->> 
->> Changes since v1:
->> - Rebased on v4.10-rc5
->> - Renamed some variables for clarity
->> - Clarified patch descriptions
->> - Added Tested-by and Reviewed-by tags
->> 
->> ---
->> 
->> Chuck Lever (5):
->>      xprtrdma: Fix Read chunk padding
->>      xprtrdma: Per-connection pad optimization
->>      xprtrdma: Disable pad optimization by default
->>      xprtrdma: Reduce required number of send SGEs
->>      xprtrdma: Shrink send SGEs array
->> 
->> 
->> net/sunrpc/xprtrdma/rpc_rdma.c  |   62 +++++++++++++++++++++++++--------------
->> net/sunrpc/xprtrdma/transport.c |    2 +
->> net/sunrpc/xprtrdma/verbs.c     |   15 ++++++---
->> net/sunrpc/xprtrdma/xprt_rdma.h |   14 ++++++---
->> 4 files changed, 60 insertions(+), 33 deletions(-)
->> 
->> --
->> Chuck Lever
->> 
+> I agree that I wouldn't want to go with a potentially racy check.
 
---
-Chuck Lever
+Unless I'm misunderstanding: we've always had the race, and the
+consequence is just an unnecessary update in the case the truncate
+didn't actually change the size (although it looked like it would at the
+time of the check).
 
+I don't like that, but it's not going to keep me up at night.
 
+--b.
 
+> 
+> I don't see where vfs_truncate will handle the times though. do_truncate
+> will, but you have to pass in a non-zero time_attrs and vfs_truncate
+> always sets that to 0.
+> 
+> If we did want to do this, it seems like it might be better to just add
+> a new time_attrs arg to vfs_truncate that gets passed to do_truncate.
+> Most callers would set it to zero, but nfsd could set it to:
+> 
+>     iap->ia_valid & (ATTR_MTIME|ATTR_CTIME)
+> 
+> Would that work?
+> 
+> > ---
+> > From 0e06e2fc6157bb97692ed47c21e36120efb9f15c Mon Sep 17 00:00:00 2001
+> > From: Christoph Hellwig <hch@lst.de>
+> > Date: Sun, 22 Jan 2017 17:17:48 +0100
+> > Subject: nfsd: special case truncates some more
+> > MIME-Version: 1.0
+> > Content-Type: text/plain; charset=UTF-8
+> > Content-Transfer-Encoding: 8bit
+> > 
+> > Both the NFS protocols and the Linux VFS use a setattr operation with a
+> > bitmap of attributs to set to set various file attributes including the
+> > file size and the uid/gid.
+> > 
+> > The Linux syscalls never mixe size updates with unrelated updates like
+> > the uid/gid, and some file systems like XFS and GFS2 rely on the fact
+> > that truncates might not update random other attributes, and many
+> > other file systems handle the case but do not update the different
+> > attributes in the same transaction.  NFSD on the other hand passes
+> > the attributes it gets on the wire more or less directly through to
+> > the VFS, leading to updates the file systems don't expect.  XFS at
+> > least has an assert on the allowed attributes, which cought an NFS
+> > client sets the size and group ІD at the same time.
+> > 
+> > To handles this issue properly this switches nfsd to call vfs_truncate
+> > for size changes, and then handling all other attributes through
+> > notify_change.  As a side effect this also means less boilerplace
+> > code around the size change as we can now reuse the VFS code.
+> > 
+> > Signed-off-by: Christoph Hellwig <hch@lst.de>
+> > ---
+> >  fs/nfsd/vfs.c | 92 +++++++++++++++++++----------------------------------------
+> >  1 file changed, 30 insertions(+), 62 deletions(-)
+> > 
+> > diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
+> > index 26c6fdb..4ca5b92 100644
+> > --- a/fs/nfsd/vfs.c
+> > +++ b/fs/nfsd/vfs.c
+> > @@ -332,37 +332,6 @@ nfsd_sanitize_attrs(struct inode *inode, struct iattr *iap)
+> >  	}
+> >  }
+> >  
+> > -static __be32
+> > -nfsd_get_write_access(struct svc_rqst *rqstp, struct svc_fh *fhp,
+> > -		struct iattr *iap)
+> > -{
+> > -	struct inode *inode = d_inode(fhp->fh_dentry);
+> > -	int host_err;
+> > -
+> > -	if (iap->ia_size < inode->i_size) {
+> > -		__be32 err;
+> > -
+> > -		err = nfsd_permission(rqstp, fhp->fh_export, fhp->fh_dentry,
+> > -				NFSD_MAY_TRUNC | NFSD_MAY_OWNER_OVERRIDE);
+> > -		if (err)
+> > -			return err;
+> > -	}
+> > -
+> > -	host_err = get_write_access(inode);
+> > -	if (host_err)
+> > -		goto out_nfserrno;
+> > -
+> > -	host_err = locks_verify_truncate(inode, NULL, iap->ia_size);
+> > -	if (host_err)
+> > -		goto out_put_write_access;
+> > -	return 0;
+> > -
+> > -out_put_write_access:
+> > -	put_write_access(inode);
+> > -out_nfserrno:
+> > -	return nfserrno(host_err);
+> > -}
+> > -
+> >  /*
+> >   * Set various file attributes.  After this call fhp needs an fh_put.
+> >   */
+> > @@ -377,7 +346,6 @@ nfsd_setattr(struct svc_rqst *rqstp, struct svc_fh *fhp, struct iattr *iap,
+> >  	__be32		err;
+> >  	int		host_err;
+> >  	bool		get_write_count;
+> > -	int		size_change = 0;
+> >  
+> >  	if (iap->ia_valid & (ATTR_ATIME | ATTR_MTIME | ATTR_SIZE))
+> >  		accmode |= NFSD_MAY_WRITE|NFSD_MAY_OWNER_OVERRIDE;
+> > @@ -390,11 +358,11 @@ nfsd_setattr(struct svc_rqst *rqstp, struct svc_fh *fhp, struct iattr *iap,
+> >  	/* Get inode */
+> >  	err = fh_verify(rqstp, fhp, ftype, accmode);
+> >  	if (err)
+> > -		goto out;
+> > +		return err;
+> >  	if (get_write_count) {
+> >  		host_err = fh_want_write(fhp);
+> >  		if (host_err)
+> > -			return nfserrno(host_err);
+> > +			goto out_host_err;
+> >  	}
+> >  
+> >  	dentry = fhp->fh_dentry;
+> > @@ -405,50 +373,50 @@ nfsd_setattr(struct svc_rqst *rqstp, struct svc_fh *fhp, struct iattr *iap,
+> >  		iap->ia_valid &= ~ATTR_MODE;
+> >  
+> >  	if (!iap->ia_valid)
+> > -		goto out;
+> > +		return 0;
+> >  
+> >  	nfsd_sanitize_attrs(inode, iap);
+> >  
+> > +	if (check_guard && guardtime != inode->i_ctime.tv_sec)
+> > +		return nfserr_notsync;
+> > +
+> >  	/*
+> >  	 * The size case is special, it changes the file in addition to the
+> > -	 * attributes.
+> > +	 * attributes, and file systems don't expect it to be mixed with
+> > +	 * "random" attribute changes.  We thus split out the size change
+> > +	 * into a separate calo for vfs_truncate, and do the rest as a
+> > +	 * a separate setattr call.
+> > +	 *
+> > +	 * Note that vfs_truncate will also update ctime and mtime if
+> > +	 * the file size changes.
+> >  	 */
+> >  	if (iap->ia_valid & ATTR_SIZE) {
+> > -		err = nfsd_get_write_access(rqstp, fhp, iap);
+> > -		if (err)
+> > -			goto out;
+> > -		size_change = 1;
+> > +		struct path path = {
+> > +			.mnt	= fhp->fh_export->ex_path.mnt,
+> > +			.dentry	= dentry,
+> > +		};
+> >  
+> > -		/*
+> > -		 * RFC5661, Section 18.30.4:
+> > -		 *   Changing the size of a file with SETATTR indirectly
+> > -		 *   changes the time_modify and change attributes.
+> > -		 *
+> > -		 * (and similar for the older RFCs)
+> > -		 */
+> > -		if (iap->ia_size != i_size_read(inode))
+> > -			iap->ia_valid |= ATTR_MTIME;
+> > +		host_err = vfs_truncate(&path, iap->ia_size);
+> > +		if (host_err)
+> > +			goto out_host_err;
+> > +
+> > +		iap->ia_valid &= ~ATTR_SIZE;
+> > +		if (!iap->ia_valid)
+> > +			goto done;
+> >  	}
+> >  
+> >  	iap->ia_valid |= ATTR_CTIME;
+> >  
+> > -	if (check_guard && guardtime != inode->i_ctime.tv_sec) {
+> > -		err = nfserr_notsync;
+> > -		goto out_put_write_access;
+> > -	}
+> > -
+> >  	fh_lock(fhp);
+> >  	host_err = notify_change(dentry, iap, NULL);
+> >  	fh_unlock(fhp);
+> > -	err = nfserrno(host_err);
+> > +	if (host_err)
+> > +		goto out_host_err;
+> >  
+> > -out_put_write_access:
+> > -	if (size_change)
+> > -		put_write_access(inode);
+> > -	if (!err)
+> > -		err = nfserrno(commit_metadata(fhp));
+> > -out:
+> > -	return err;
+> > +done:
+> > +	host_err = commit_metadata(fhp);
+> > +out_host_err:
+> > +	return nfserrno(host_err);
+> >  }
+> >  
+> >  #if defined(CONFIG_NFSD_V4)
+> 
+> -- 
+> Jeff Layton <jlayton@poochiereds.net>
