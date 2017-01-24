@@ -1,127 +1,156 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f177.google.com ([209.85.223.177]:33970 "EHLO
-        mail-io0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1750883AbdAXWd2 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 24 Jan 2017 17:33:28 -0500
-Received: by mail-io0-f177.google.com with SMTP id l66so358436ioi.1
-        for <linux-nfs@vger.kernel.org>; Tue, 24 Jan 2017 14:33:28 -0800 (PST)
+Received: from out01.mta.xmission.com ([166.70.13.231]:33209 "EHLO
+        out01.mta.xmission.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1750888AbdAXW7w (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 24 Jan 2017 17:59:52 -0500
+From: ebiederm@xmission.com (Eric W. Biederman)
+To: Seth Forshee <seth.forshee@canonical.com>
+Cc: Trond Myklebust <trondmy@primarydata.com>,
+        "bfields\@fieldses.org" <bfields@fieldses.org>,
+        "anna.schumaker\@netapp.com" <anna.schumaker@netapp.com>,
+        "linux-nfs\@vger.kernel.org" <linux-nfs@vger.kernel.org>
+References: <1481821992-77583-1-git-send-email-seth.forshee@canonical.com>
+        <1481842899.11785.1.camel@primarydata.com>
+        <20161216130609.GA124240@ubuntu-hedt>
+        <20170110145504.GH52661@ubuntu-hedt> <87ziiyfntm.fsf@xmission.com>
+        <20170124151745.GA114560@ubuntu-hedt>
+Date: Wed, 25 Jan 2017 11:55:28 +1300
+In-Reply-To: <20170124151745.GA114560@ubuntu-hedt> (Seth Forshee's message of
+        "Tue, 24 Jan 2017 09:17:45 -0600")
+Message-ID: <87efzsdq5b.fsf@xmission.com>
 MIME-Version: 1.0
-In-Reply-To: <1485292865.12087.4.camel@primarydata.com>
-References: <CAN-5tyF+Uth87mnmWC2UaRU134whqNG8gEyNHBR_hOu9OYSZuw@mail.gmail.com>
- <35619FC0-AD46-4BBA-9F5B-9C89364BAF82@primarydata.com> <CAN-5tyHCUu_gpdiEcVZm-12RdgHtPtDgjbg-ScU9vZ7Tod5qAw@mail.gmail.com>
- <3EA4DDB3-6C9F-42E2-96BD-FF1AFD99ED09@primarydata.com> <CAN-5tyEBtCUL0QgmHU8=u9UJLJdOxDaq=Ta8eTM-hjde1hu9ZA@mail.gmail.com>
- <52D13840-C715-4989-A8D8-DAD2F2EFE99A@primarydata.com> <CAN-5tyFO8wR-Z1nZmBCVSTfvGLGH8xa2yojvsBRyvY4jrwM4Dg@mail.gmail.com>
- <1485292292.12087.2.camel@primarydata.com> <1485292865.12087.4.camel@primarydata.com>
-From: Olga Kornievskaia <aglo@umich.edu>
-Date: Tue, 24 Jan 2017 17:33:27 -0500
-Message-ID: <CAN-5tyH=65eKtwb7bjqv_-MBK-dmPF99uvp=X3QoTwnQJfrv=A@mail.gmail.com>
-Subject: Re: handling error on RECLAIM_COMPLETE
-To: Trond Myklebust <trondmy@primarydata.com>
-Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=utf-8
+Subject: Re: [PATCH] sunrpc: Use current_real_cred() when looking up rpc credentials
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Jan 24, 2017 at 4:21 PM, Trond Myklebust
-<trondmy@primarydata.com> wrote:
-> On Tue, 2017-01-24 at 16:11 -0500, Trond Myklebust wrote:
->> On Tue, 2017-01-24 at 15:48 -0500, Olga Kornievskaia wrote:
->> > On Tue, Jan 24, 2017 at 3:35 PM, Trond Myklebust
->> > <trondmy@primarydata.com> wrote:
->> > >
->> > > > On Jan 24, 2017, at 14:50, Olga Kornievskaia <aglo@umich.edu>
->> > > > wrote:
->> > > >
->> > > > On Tue, Jan 24, 2017 at 2:44 PM, Trond Myklebust
->> > > > <trondmy@primarydata.com> wrote:
->> > > > >
->> > > > > > On Jan 24, 2017, at 14:40, Olga Kornievskaia <aglo@umich.ed
->> > > > > > u>
->> > > > > > wrote:
->> > > > > >
->> > > > > > On Tue, Jan 24, 2017 at 2:12 PM, Trond Myklebust
->> > > > > > <trondmy@primarydata.com> wrote:
->> > > > > > >
->> > > > > > > > On Jan 24, 2017, at 14:06, Olga Kornievskaia <aglo@umic
->> > > > > > > > h.
->> > > > > > > > edu> wrote:
->> > > > > > > >
->> > > > > > > > Hi Trond,
->> > > > > > > >
->> > > > > > > > Is there a reason that nfs4_proc_reclaim_complete()
->> > > > > > > > isn't  wrapped
->> > > > > > > > with a do while() to handle errors?
->> > > > > > >
->> > > > > > > What do we not already handle correctly in
->> > > > > > > nfs4_reclaim_complete_done()?
->> > > > > >
->> > > > > > Could this be because when an error occurs rpc_done isn't
->> > > > > > called
->> > > > > > (rpc_release is called)? What I see is that if
->> > > > > > RECLAIM_COMPLETE gets
->> > > > > > an error (BAD_SESSION) the client just ignores it.
->> > > > > >
->> > > > >
->> > > > > That=E2=80=99s correct. Why do we need to handle BAD_SESSION the=
-re?
->> > > > > We=E2=80=99re done with state recovery, so if the server reboote=
-d, we
->> > > > > can catch that later.
->> > > >
->> > > > (1) don't we want to handle session errors as soon as possible?
->> > > > (2) I ran into a problem (not sure yet if reproducible) where I
->> > > > had a
->> > > > client stuck in an infinite loop of RECLAIM_COMPLETE being sent
->> > > > with
->> > > > reply of BAD_SESSION.
->> > > >
->> > > > yes I don't know why the client is looping but it made me look
->> > > > into
->> > > > the fact that we are not handling session errors on reclaim
->> > > > complete
->> > > > which I simulated by having the server return BAD_SESSION to
->> > > > RECLAIM_COMPLETE and I see that client simply ignores it.
->> > >
->> > > It doesn=E2=80=99t ignore it:
->> > >
->> > > static int nfs41_reclaim_complete_handle_errors(struct rpc_task
->> > > *task, struct nfs_client *clp)
->> > > {
->> > >         switch(task->tk_status) {
->> > >         case 0:
->> > >         case -NFS4ERR_COMPLETE_ALREADY:
->> > >         case -NFS4ERR_WRONG_CRED: /* What to do here? */
->> > >                 break;
->> > >         case -NFS4ERR_DELAY:
->> > >                 rpc_delay(task, NFS4_POLL_RETRY_MAX);
->> > >                 /* fall through */
->> > >         case -NFS4ERR_RETRY_UNCACHED_REP:
->> > >                 return -EAGAIN;
->> > >         default:
->> > >                 nfs4_schedule_lease_recovery(clp);
->> > >         }
->> > >         return 0;
->> > > }
->> > >
->> > > IOW: what the code does is schedule another round of lease
->> > > recovery.
+Seth Forshee <seth.forshee@canonical.com> writes:
+
+> On Wed, Jan 11, 2017 at 01:21:57PM +1300, Eric W. Biederman wrote:
+>> Seth Forshee <seth.forshee@canonical.com> writes:
+>> 
+>> > On Fri, Dec 16, 2016 at 07:06:09AM -0600, Seth Forshee wrote:
+>> >> On Thu, Dec 15, 2016 at 11:01:41PM +0000, Trond Myklebust wrote:
+>> >> > On Thu, 2016-12-15 at 11:13 -0600, Seth Forshee wrote:
+>> >> > > Since 4.8 follow_automount() overrides the credentials with
+>> >> > > &init_cred before calling d_automount(). When
+>> >> > > rpcauth_lookupcred() is called in this context it is now using
+>> >> > > fs[ug]id from the override creds instead of from the user's
+>> >> > > creds, which can cause authentication to fail. To fix this, take
+>> >> > > the ids from current_real_cred() instead.
+>> >> > > 
+>> >> > > Cc: stable@vger.kernel.org # v4.8+
+>> >> > > CC: Eric W. Biederman <ebiederm@xmission.com>
+>> >> > > Fixes: aeaa4a79ff6a ("fs: Call d_automount with the filesystems
+>> >> > > creds")
+>> >> > > Signed-off-by: Seth Forshee <seth.forshee@canonical.com>
+>> >> > > ---
+>> >> > >  net/sunrpc/auth.c | 2 +-
+>> >> > >  1 file changed, 1 insertion(+), 1 deletion(-)
+>> >> > > 
+>> >> > > diff --git a/net/sunrpc/auth.c b/net/sunrpc/auth.c
+>> >> > > index 2bff63a73cf8..e6197b2bda86 100644
+>> >> > > --- a/net/sunrpc/auth.c
+>> >> > > +++ b/net/sunrpc/auth.c
+>> >> > > @@ -622,7 +622,7 @@ rpcauth_lookupcred(struct rpc_auth *auth, int
+>> >> > > flags)
+>> >> > >  {
+>> >> > >  	struct auth_cred acred;
+>> >> > >  	struct rpc_cred *ret;
+>> >> > > -	const struct cred *cred = current_cred();
+>> >> > > +	const struct cred *cred = current_real_cred();
+>> >> > >  
+>> >> > >  	dprintk("RPC:       looking up %s cred\n",
+>> >> > >  		auth->au_ops->au_name);
+>> >> > 
+>> >> > Among other things, this will break the access() syscall.
+>> >> 
+>> >> Okay, I see that now.
+>> >> 
+>> >> > It's completely the wrong level in which to override credentials.
+>> >> 
+>> >> The reason for it is that sget() now has a capability check which will
+>> >> fail on automount if current doesn't have CAP_SYS_ADMIN. So what are the
+>> >> alternatives? A few ideas:
+>> >> 
+>> >>  - Instead of using a completely differnet set of creds, we could copy
+>> >>    the current creds and raise CAP_SYS_ADMIN. This won't work if
+>> >>    curreent is in a different user ns however.
+>> >> 
+>> >>  - Filesystems could get around the capability check by using
+>> >>    sget_userns() during automount.
+>> >> 
+>> >>  - We could add a mount flag, say MS_AUTOMOUNT, and skip the capability
+>> >>    check if that is set.
+>> >> 
+>> >> Any opinions or other ideas?
 >> >
->> > We already agreed that this doesn't get called because
->> > rpc_call_done
->> > isn't called on the error.
->>
->> What am I missing? Why wouldn't it get called?
+>> > I haven't seen any responses, possibly just got lost in the shuffle
+>> > during the holidays (I know it slipped my mind for a while).
+>> >
+>> > Eric, what do you think about the last option above? From what I can see
+>> > looking up rpc credentials just isn't going to work with current_cred
+>> > overridden as we're doing for automount.
+>> 
+>> I got as far as there wasn't a correct thing to apply, and I have been
+>> bogged down in enough other things that I haven't gotten back to this
+>> one.
+>> 
+>> My gut feel is that we propbably want to do a little more reworking on
+>> the autmount path.  But I don't exactly have a concrete proposal for
+>> you at the moment.  I just found another 10 year old bug in the mount
+>> code...
 >
-> Sorry. I see I caused that confusion. When I said "that is correct", I
-> was referring to the fact that the client ignores the error. All it
-> does in the case of those errors is to schedule recovery and then exit.
+> With automounts we're mounting based on the credentials used when
+> mounting the parent. That's what your patch "fs: Call d_automount with
+> the filesystems creds" did, but it's overriding the credentials too
+> early in the call stack and causing these rpcauth problems.
 >
-> The client will always call rpc_call_done() provided that the RPC call
-> was initialised successfully.
+> But I think we should also be setting the submount's s_user_ns to be the
+> same as the parent's, not to current_user_ns. At that point we'd be
+> using the same credentials and user ns as when mounting the parent super
+> block, so we know the capability check would pass (since it passed for
+> the original mount) and don't really need to do it.
 
-Ok. Thanks for clarifying. So something is going on with the
-BAD_SESSION error loop but I just don't know what.
+If we special case the submount code that would be fine.  Normal sget
+needs to continue to use current_user_ns.
 
-I have encountered either SEQUENCE getting into an infinite loop of
-getting BAD_SESSION and then once I've seen this RECLAIM_COMPLETE
-getting into a loop. I'll keep looking...
+> So if we could pass down through the call stack that a given mount
+> request is an automount from super block s (or at dentry d) then the fix
+> would be trivial. I don't see any way of passing that information
+> through currently though, without doing something undesirable like
+> adding arguments to the mount filesystem op.
+
+So here are the pieces I have in my thinking about this.
+1) We need to capture the cred of the mounter of the filesystem
+   like overlayfs does but in general.  Call it s_cred or possibly
+   s_mounter_cred.
+
+   That would allow us to remove the hard coded cred in the automount
+   path, and would allow unprivileged mounts to eventually use this
+   functionality.
+
+2) Al Viro mentioned to me that it would be very nice if the automount
+   could coud run in a separate stack because this is one place where
+   the stack can get very deep in the vfs.
+
+My gut feel is that solving for those two constraints: the code running
+in a separate thread, and the capturing not just s_user_ns but the cred
+of the mounter should give us enough constraints to figure out how to
+structure the code for long term maintenance.
+
+I especially think the part about using the mounters creds will likely
+solve the sunrpc problem.  I could of course be wrong but using the
+creds of the process that happened to walk across the mount point seems
+completely the wrong thing.  In general it feels wrong to expose which
+user triggered the automount to me.  As that means the semantics can
+very per user.
+
+Now when we looked at autofs the semantics were in fact varying per
+user (ugh).  So NFS may have the same legacy requirements.
+
+But as a general maintainability principle I don't like vfs state that
+varies depending upon the user.
+
+Eric
+
