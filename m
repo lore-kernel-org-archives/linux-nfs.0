@@ -1,164 +1,71 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:19338 "EHLO
-        aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1750715AbdAXT7S (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 24 Jan 2017 14:59:18 -0500
-Content-Type: text/plain; charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 9.3 \(3124\))
-Subject: Re: [PATCH v1] nfs: Don't increment lock sequence ID after NFS4ERR_MOVED
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <20170124195350.GC20844@fieldses.org>
-Date: Tue, 24 Jan 2017 14:58:37 -0500
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <CEE8A2B2-B551-453D-A6B6-E9F402C139BA@oracle.com>
-References: <20170122190429.7337.77928.stgit@manet.1015granger.net> <69D3212A-874D-42A2-BE65-F3A01B061A87@oracle.com> <20170123164913.GB9493@fieldses.org> <1F944D3D-A28B-48C5-88CC-39EBD6CB8430@oracle.com> <20170124191515.GA20844@fieldses.org> <677C0AEE-D64A-489E-B7CE-4BFEEABAA6EA@oracle.com> <20170124194140.GB20844@fieldses.org> <20170124195350.GC20844@fieldses.org>
-To: "J. Bruce Fields" <bfields@fieldses.org>
+Received: from us-smtp-delivery-194.mimecast.com ([63.128.21.194]:27325 "EHLO
+        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1750739AbdAXUXn (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 24 Jan 2017 15:23:43 -0500
+From: Trond Myklebust <trondmy@primarydata.com>
+To: "bfields@fieldses.org" <bfields@fieldses.org>,
+        "chuck.lever@oracle.com" <chuck.lever@oracle.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH v1] nfs: Don't increment lock sequence ID after
+ NFS4ERR_MOVED
+Date: Tue, 24 Jan 2017 20:23:36 +0000
+Message-ID: <1485289414.12087.0.camel@primarydata.com>
+References: <20170122190429.7337.77928.stgit@manet.1015granger.net>
+         <69D3212A-874D-42A2-BE65-F3A01B061A87@oracle.com>
+         <20170123164913.GB9493@fieldses.org>
+         <1F944D3D-A28B-48C5-88CC-39EBD6CB8430@oracle.com>
+         <20170124191515.GA20844@fieldses.org>
+In-Reply-To: <20170124191515.GA20844@fieldses.org>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-> On Jan 24, 2017, at 2:53 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
-> 
-> On Tue, Jan 24, 2017 at 02:41:40PM -0500, J. Bruce Fields wrote:
->> On Tue, Jan 24, 2017 at 02:31:37PM -0500, Chuck Lever wrote:
->>> Adding a justification is OK with me, and please replace the
->>> list of steps with my updated list above.
->>> 
->>> However, your explanation implies that Solaris is the only server
->>> that might need this fix. Actually _any_ server that supports
->>> transparent state migration needs clients to get this fix. Lock
->>> operations on a file that has moved are not able to update the
->>> sequence ID on the destination server.
->> 
->> Are you sure?  Couldn't an implementation include a server-to-server
->> protocol that allowed the source and destination server to share stateid
->> information?
->> 
->> But even if that's possible, it may be unnecessarily complicated, so I
->> agree I shouldn't be claiming it's a Solaris-specific issue (though it
->> may be worth documenting that's who first hit this).
->> 
->> --b.
->> 
->>> This backwards-compatible change is OK because:
->>> 
->>> - No servers in the wild support migration yet, thus
->>> NFS4ERR_MOVED is never returned by existing servers
-> 
-> I think you mean "transparent state migration" there?
-
-Yes, though I'm not aware of any public implementations
-that support plain migration either.
-
-NFS4ERR_MOVED can also be returned in cases where servers want
-to advertise replicas, but we don't expect that status on
-seqid-mutating operations like LOCK.
-
-
-> A server supporting non-transparent state migration could return
-> NFS4ERR_MOVED on a LOCK operation, but the client won't be able to use
-> that stateid afterwards in that case anyway.
-> 
->>> - Clients that do not support migration should never receive
->>> NFS4ERR_MOVED on a state-mutating operation
-> 
-> I didn't think there was a way for clients to advertise non-support for
-> migration?
-
-Not in NFSv4.0, but NFSv4.1 has an EXCHANGE_ID flag that signifies
-client support for migration.
-
-
-> But such clients could never recover from MOVED anyway, so we're not
-> making things worse for them.
-
-Exactly.
-
-
-> --b.
-> 
->>> 
->>> In other words, this change is necessary only for clients that
->>> support TSM.
->>> 
->>> Salt to taste.
->>> 
->>> 
->>>> --b.
->>>> 
->>>>> 
->>>>> 
->>>>>> --b.
->>>>>> 
->>>>>>>> 
->>>>>>>> Reported-by: Xuan Qi <xuan.qi@oracle.com>
->>>>>>>> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
->>>>>>>> Cc: stable@vger.kernel.org # v3.7+
->>>>>>>> ---
->>>>>>>> include/linux/nfs4.h |    3 ++-
->>>>>>>> 1 file changed, 2 insertions(+), 1 deletion(-)
->>>>>>>> 
->>>>>>>> diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
->>>>>>>> index bca5363..1b1ca04 100644
->>>>>>>> --- a/include/linux/nfs4.h
->>>>>>>> +++ b/include/linux/nfs4.h
->>>>>>>> @@ -282,7 +282,7 @@ enum nfsstat4 {
->>>>>>>> 
->>>>>>>> static inline bool seqid_mutating_err(u32 err)
->>>>>>>> {
->>>>>>>> -	/* rfc 3530 section 8.1.5: */
->>>>>>>> +	/* See RFC 7530, section 9.1.7 */
->>>>>>>> 	switch (err) {
->>>>>>>> 	case NFS4ERR_STALE_CLIENTID:
->>>>>>>> 	case NFS4ERR_STALE_STATEID:
->>>>>>>> @@ -291,6 +291,7 @@ static inline bool seqid_mutating_err(u32 err)
->>>>>>>> 	case NFS4ERR_BADXDR:
->>>>>>>> 	case NFS4ERR_RESOURCE:
->>>>>>>> 	case NFS4ERR_NOFILEHANDLE:
->>>>>>>> +	case NFS4ERR_MOVED:
->>>>>>>> 		return false;
->>>>>>>> 	};
->>>>>>>> 	return true;
->>>>>>>> 
->>>>>>>> --
->>>>>>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->>>>>>>> the body of a message to majordomo@vger.kernel.org
->>>>>>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->>>>>>> 
->>>>>>> --
->>>>>>> Chuck Lever
->>>>>>> 
->>>>>>> 
->>>>>>> 
->>>>>>> --
->>>>>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->>>>>>> the body of a message to majordomo@vger.kernel.org
->>>>>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->>>>>> --
->>>>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->>>>>> the body of a message to majordomo@vger.kernel.org
->>>>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->>>>> 
->>>>> --
->>>>> Chuck Lever
->>>>> 
->>>>> 
->>>> --
->>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->>>> the body of a message to majordomo@vger.kernel.org
->>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->>> 
->>> --
->>> Chuck Lever
->>> 
->>> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
---
-Chuck Lever
-
-
+T24gVHVlLCAyMDE3LTAxLTI0IGF0IDE0OjE1IC0wNTAwLCBKLiBCcnVjZSBGaWVsZHMgd3JvdGU6
+DQo+IE9uIFR1ZSwgSmFuIDI0LCAyMDE3IGF0IDAyOjA2OjE2UE0gLTA1MDAsIENodWNrIExldmVy
+IHdyb3RlOg0KPiA+IA0KPiA+ID4gT24gSmFuIDIzLCAyMDE3LCBhdCAxMTo0OSBBTSwgYmZpZWxk
+c0BmaWVsZHNlcy5vcmcgd3JvdGU6DQo+ID4gPiANCj4gPiA+IE9uIE1vbiwgSmFuIDIzLCAyMDE3
+IGF0IDEwOjAxOjI3QU0gLTA1MDAsIENodWNrIExldmVyIHdyb3RlOg0KPiA+ID4gPiANCj4gPiA+
+ID4gPiBPbiBKYW4gMjIsIDIwMTcsIGF0IDI6MDQgUE0sIENodWNrIExldmVyIDxjaHVjay5sZXZl
+ckBvcmFjbGUuDQo+ID4gPiA+ID4gY29tPiB3cm90ZToNCj4gPiA+ID4gPiANCj4gPiA+ID4gPiBY
+dWFuIFFpIHJlcG9ydHMgdGhhdCB0aGUgTGludXggTkZTdjQgY2xpZW50IGZhaWxlZCB0byBsb2Nr
+IGENCj4gPiA+ID4gPiBmaWxlDQo+ID4gPiA+ID4gdGhhdCB3YXMgbWlncmF0ZWQuIFRoZSBzdGVw
+cyBoZSBvYnNlcnZlZCBvbiB0aGUgd2lyZToNCj4gPiA+ID4gPiANCj4gPiA+ID4gPiAxLiBUaGUg
+Y2xpZW50IHNlbnQgYSBMT0NLIHJlcXVlc3QNCj4gPiA+ID4gPiAyLiBUaGUgc2VydmVyIHJlcGxp
+ZWQgTkZTNEVSUl9NT1ZFRA0KPiA+ID4gPiA+IDMuIFRoZSBjbGllbnQgc3dpdGNoZWQgdG8gdGhl
+IGRlc3RpbmF0aW9uIHNlcnZlcg0KPiA+ID4gPiA+IDQuIFRoZSBjbGllbnQgc2VudCB0aGUgTE9D
+SyByZXF1ZXN0IGFnYWluIHdpdGggYSBidW1wZWQNCj4gPiA+ID4gPiDCoGxvY2sgc2VxdWVuY2Ug
+SUQNCj4gPiA+ID4gPiA1LiBUaGUgc2VydmVyIHJlamVjdGVkIHRoZSBMT0NLIHJlcXVlc3Qgd2l0
+aA0KPiA+ID4gPiA+IE5GUzRFUlJfQkFEX1NFUUlEDQo+ID4gPiA+IA0KPiA+ID4gPiBUaGUgbGlz
+dCBvZiBzdGVwcyBjb3VsZCBiZSBtb3JlIGNsZWFyOg0KPiA+ID4gPiANCj4gPiA+ID4gMS4gVGhl
+IGNsaWVudCBzZW50IGEgTE9DSyByZXF1ZXN0IHRvIHRoZSBzb3VyY2Ugc2VydmVyDQo+ID4gPiA+
+IDIuIFRoZSBzb3VyY2Ugc2VydmVyIHJlcGxpZWQgTkZTNEVSUl9NT1ZFRA0KPiA+ID4gPiAzLiBU
+aGUgY2xpZW50IHN3aXRjaGVkIHRvIHRoZSBkZXN0aW5hdGlvbiBzZXJ2ZXINCj4gPiA+ID4gNC4g
+VGhlIGNsaWVudCBzZW50IHRoZSBzYW1lIExPQ0sgcmVxdWVzdCB0byB0aGUgZGVzdGluYXRpb24N
+Cj4gPiA+ID4gwqAgc2VydmVyIHdpdGggYSBidW1wZWQgbG9jayBzZXF1ZW5jZSBJRA0KPiA+ID4g
+PiA1LiBUaGUgZGVzdGluYXRpb24gc2VydmVyIHJlamVjdGVkIHRoZSBMT0NLIHJlcXVlc3Qgd2l0
+aA0KPiA+ID4gPiDCoCBORlM0RVJSX0JBRF9TRVFJRA0KPiA+ID4gPiANCj4gPiA+ID4gDQo+ID4g
+PiA+ID4gUkZDIDM1MzAgc2VjdGlvbiA4LjEuNSBwcm92aWRlcyBhIGxpc3Qgb2YgTkZTIGVycm9y
+cyB3aGljaCBkbw0KPiA+ID4gPiA+IG5vdA0KPiA+ID4gPiA+IGJ1bXAgYSBsb2NrIHNlcXVlbmNl
+IElELg0KPiA+ID4gPiA+IA0KPiA+ID4gPiA+IEhvd2V2ZXIsIFJGQyAzNTMwIGlzIG5vdyBvYnNv
+bGV0ZWQgYnkgUkZDIDc1MzAuIEluIFJGQyA3NTMwDQo+ID4gPiA+ID4gc2VjdGlvbg0KPiA+ID4g
+PiA+IDkuMS43LCB0aGlzIGxpc3QgaGFzIGJlZW4gdXBkYXRlZCBieSB0aGUgYWRkaXRpb24gb2YN
+Cj4gPiA+ID4gPiBORlM0RVJSX01PVkVELg0KPiA+ID4gDQo+ID4gPiBJIGd1ZXNzIHdlIGZpZ3Vy
+ZWQgdGhlIGJhY2t3YXJkcy1pbmNvbXBhdGlibGUgY2hhbmdlIHdhcyBPSyBzaW5jZQ0KPiA+ID4g
+ZXNzZW50aWFsbHkgdGhlIFNvbGFyaXMgc2VydmVyIGlzIHRoZSBmaXJzdCB3ZSBrbm93IG9mIHRv
+IGJlDQo+ID4gPiBtYWtpbmcgcmVhbA0KPiA+ID4gdXNlIG9mIE5GUzRFUlJfTU9WRUQ/DQo+ID4g
+PiANCj4gPiA+IEFuZCBwcm9iYWJseSBpdCdzIHJlcXVpcmVkIGZvciB0aGUgdGhlaXIgaW1wbGVt
+ZW50YXRpb24gYmVjYXVzZQ0KPiA+ID4gdGhlIG9sZA0KPiA+ID4gc2VydmVyIG5vIGxvbmdlciBo
+YXMgdGhlIGFiaWxpdHkgdG8gdXBkYXRlIHRoZSBzdGF0ZSBvbmNlIGl0J3MNCj4gPiA+IHJlYWNo
+ZWQNCj4gPiA+IHRoZSBwb2ludCBvZiByZXR1cm5pbmcgRVJSX01PVkVELg0KPiA+ID4gDQo+ID4g
+PiBPSywgbWFrZXMgc2Vuc2UgdG8gbWUsIEkgdGhpbmsuDQo+ID4gDQo+ID4gSGkgQnJ1Y2UtDQo+
+ID4gDQo+ID4gRG9lcyB0aGlzIG1lYW4geW91IHdpbGwgdGFrZSB0aGlzIHBhdGNoLCBvciBzaG91
+bGQNCj4gPiBJIGp1c3QgYWRkIHlvdXIgUmV2aWV3ZWQtYnk6ID8NCj4gDQo+IEkgY2FuIHRha2Ug
+aXQgaWYgbm9ib2R5IG9iamVjdHMuwqDCoE1pbmQgaWYgSSBhcHBlbmQgdGhlIGFib3ZlIHRvIHRo
+ZQ0KPiBjaGFuZ2Vsb2c/wqDCoChKdXN0IHdhbnQgdG8gZG9jdW1lbnQgd2h5IHdlIHRoaW5rIHRo
+ZSBhcHBhcmVudGx5DQo+IGJhY2t3YXJkcy1pbmNvbXBhdGlibGUgY2hhbmdlIGlzIE9LLikNCj4g
+DQpJJ3ZlIGFscmVhZHkgYWRkZWQgaXQgdG8gbXkgbGludXgtbmV4dCBicmFuY2ggYXMgYSBzdGFi
+bGUgcGF0Y2guDQoNCg0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFp
+bnRhaW5lciwgUHJpbWFyeURhdGENCnRyb25kLm15a2xlYnVzdEBwcmltYXJ5ZGF0YS5jb20NCg==
 
