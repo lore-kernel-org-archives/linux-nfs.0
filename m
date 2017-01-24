@@ -1,71 +1,126 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-yw0-f171.google.com ([209.85.161.171]:36650 "EHLO
-        mail-yw0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1750708AbdAXTqb (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 24 Jan 2017 14:46:31 -0500
-Received: by mail-yw0-f171.google.com with SMTP id v200so171312190ywc.3
-        for <linux-nfs@vger.kernel.org>; Tue, 24 Jan 2017 11:46:31 -0800 (PST)
-Message-ID: <1485287189.3143.29.camel@redhat.com>
-Subject: Re: regression in DIO write behavior
-From: Jeff Layton <jlayton@redhat.com>
-To: Weston Andros Adamson <dros@monkey.org>
-Cc: linux-nfs list <linux-nfs@vger.kernel.org>
-Date: Tue, 24 Jan 2017 14:46:29 -0500
-In-Reply-To: <963DBD29-C835-4716-9EAE-74C2EACA427F@monkey.org>
-References: <1485272659.3143.18.camel@redhat.com>
-         <963DBD29-C835-4716-9EAE-74C2EACA427F@monkey.org>
-Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
+Received: from fieldses.org ([173.255.197.46]:50066 "EHLO fieldses.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1750708AbdAXTtI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 24 Jan 2017 14:49:08 -0500
+Date: Tue, 24 Jan 2017 14:41:40 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH v1] nfs: Don't increment lock sequence ID after
+ NFS4ERR_MOVED
+Message-ID: <20170124194140.GB20844@fieldses.org>
+References: <20170122190429.7337.77928.stgit@manet.1015granger.net>
+ <69D3212A-874D-42A2-BE65-F3A01B061A87@oracle.com>
+ <20170123164913.GB9493@fieldses.org>
+ <1F944D3D-A28B-48C5-88CC-39EBD6CB8430@oracle.com>
+ <20170124191515.GA20844@fieldses.org>
+ <677C0AEE-D64A-489E-B7CE-4BFEEABAA6EA@oracle.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <677C0AEE-D64A-489E-B7CE-4BFEEABAA6EA@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 2017-01-24 at 12:23 -0500, Weston Andros Adamson wrote:
-> Hey Jeff,
+On Tue, Jan 24, 2017 at 02:31:37PM -0500, Chuck Lever wrote:
+> Adding a justification is OK with me, and please replace the
+> list of steps with my updated list above.
 > 
-> That sounds like a regression to me. I don't think it's been around since the
-> pgio rework, but maybe?
+> However, your explanation implies that Solaris is the only server
+> that might need this fix. Actually _any_ server that supports
+> transparent state migration needs clients to get this fix. Lock
+> operations on a file that has moved are not able to update the
+> sequence ID on the destination server.
+
+Are you sure?  Couldn't an implementation include a server-to-server
+protocol that allowed the source and destination server to share stateid
+information?
+
+But even if that's possible, it may be unnecessarily complicated, so I
+agree I shouldn't be claiming it's a Solaris-specific issue (though it
+may be worth documenting that's who first hit this).
+
+--b.
+
+> This backwards-compatible change is OK because:
 > 
-> -dros
+> - No servers in the wild support migration yet, thus
+> NFS4ERR_MOVED is never returned by existing servers
 > 
-> > On Jan 24, 2017, at 10:44 AM, Jeff Layton <jlayton@redhat.com> wrote:
+> - Clients that do not support migration should never receive
+> NFS4ERR_MOVED on a state-mutating operation
+> 
+> In other words, this change is necessary only for clients that
+> support TSM.
+> 
+> Salt to taste.
+> 
+> 
+> > --b.
 > > 
-> > I've noticed a probable regression in recent kernels. When you run the
-> > attached program on an older kernel (I used 2.6.32-642.6.2.el6.x86_64),
-> > I see the kernel generate wsize WRITE calls on the wire.
-> > 
-> > When I run the same program on a more modern kernel (mainline as of
-> > today), it generates a ton of page-sized I/Os instead. I've verified
-> > that iov_iter_get_pages_alloc is returning a wsize array of pages, it
-> > just seems like the request handling code isn't stitching them together
-> > like it should.
-> > 
-> > Is this an expected change or a regression? I'm guessing the latter, and
-> > that it might have crept in during the pageio rework from a couple of
-> > years ago.
-> > 
-> > Any idea where the bug might be?
-> > -- 
-> > Jeff Layton <jlayton@redhat.com><diotest2.c>
+> >> 
+> >> 
+> >>> --b.
+> >>> 
+> >>>>> 
+> >>>>> Reported-by: Xuan Qi <xuan.qi@oracle.com>
+> >>>>> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+> >>>>> Cc: stable@vger.kernel.org # v3.7+
+> >>>>> ---
+> >>>>> include/linux/nfs4.h |    3 ++-
+> >>>>> 1 file changed, 2 insertions(+), 1 deletion(-)
+> >>>>> 
+> >>>>> diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
+> >>>>> index bca5363..1b1ca04 100644
+> >>>>> --- a/include/linux/nfs4.h
+> >>>>> +++ b/include/linux/nfs4.h
+> >>>>> @@ -282,7 +282,7 @@ enum nfsstat4 {
+> >>>>> 
+> >>>>> static inline bool seqid_mutating_err(u32 err)
+> >>>>> {
+> >>>>> -	/* rfc 3530 section 8.1.5: */
+> >>>>> +	/* See RFC 7530, section 9.1.7 */
+> >>>>> 	switch (err) {
+> >>>>> 	case NFS4ERR_STALE_CLIENTID:
+> >>>>> 	case NFS4ERR_STALE_STATEID:
+> >>>>> @@ -291,6 +291,7 @@ static inline bool seqid_mutating_err(u32 err)
+> >>>>> 	case NFS4ERR_BADXDR:
+> >>>>> 	case NFS4ERR_RESOURCE:
+> >>>>> 	case NFS4ERR_NOFILEHANDLE:
+> >>>>> +	case NFS4ERR_MOVED:
+> >>>>> 		return false;
+> >>>>> 	};
+> >>>>> 	return true;
+> >>>>> 
+> >>>>> --
+> >>>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> >>>>> the body of a message to majordomo@vger.kernel.org
+> >>>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> >>>> 
+> >>>> --
+> >>>> Chuck Lever
+> >>>> 
+> >>>> 
+> >>>> 
+> >>>> --
+> >>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> >>>> the body of a message to majordomo@vger.kernel.org
+> >>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> >>> --
+> >>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> >>> the body of a message to majordomo@vger.kernel.org
+> >>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> >> 
+> >> --
+> >> Chuck Lever
+> >> 
+> >> 
+> > --
+> > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> > the body of a message to majordomo@vger.kernel.org
+> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
+> --
+> Chuck Lever
 > 
 > 
-
-Ahh, I think I might get it now and it's not as bad as I had originally
-feared...
-
-If you dirty all of the pages before writing, it seems to coalesce them
-correctly. The reproducer allocates pages, but doesn't actually dirty
-them before writing them. Apparently the allocator is setting up the
-mapping such that each page offset address in the allocation points to
-the same page. I imagine it's then setting up that page for CoW.
-
-So we end up in this test in nfs_can_coalesce_requests and hit the
-return false:
-
-                if (req->wb_page == prev->wb_page) {
-                        if (req->wb_pgbase != prev->wb_pgbase + prev->wb_bytes)
-                                return false;
-
-I think that's in place to handle sub-page write requests, but maybe we
-should consider doing that a different way for DIO?
--- 
-Jeff Layton <jlayton@redhat.com>
