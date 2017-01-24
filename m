@@ -1,42 +1,43 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-it0-f67.google.com ([209.85.214.67]:34485 "EHLO
-        mail-it0-f67.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1750703AbdAXDzh (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 23 Jan 2017 22:55:37 -0500
-Received: by mail-it0-f67.google.com with SMTP id o185so12571361itb.1
-        for <linux-nfs@vger.kernel.org>; Mon, 23 Jan 2017 19:55:37 -0800 (PST)
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH] NFSv4.1: Fix a deadlock in layoutget
-Date: Mon, 23 Jan 2017 22:55:33 -0500
-Message-Id: <20170124035533.11212-1-trond.myklebust@primarydata.com>
+Received: from verein.lst.de ([213.95.11.211]:51144 "EHLO newverein.lst.de"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1750732AbdAXHwh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 24 Jan 2017 02:52:37 -0500
+Date: Tue, 24 Jan 2017 08:52:35 +0100
+From: Christoph Hellwig <hch@lst.de>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: Christoph Hellwig <hch@lst.de>, bfields@redhat.com,
+        linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org
+Subject: Re: setattr ATTR_SIZE vs the rest
+Message-ID: <20170124075235.GA16515@lst.de>
+References: <1485104060-15209-1-git-send-email-hch@lst.de> <20170123165833.GD9493@fieldses.org>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20170123165833.GD9493@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-We cannot call nfs4_handle_exception() without first ensuring that the
-slot has been freed. If not, we end up deadlocking with the process
-waiting for recovery to complete, and recovery waiting for the slot
-table to drain.
+On Mon, Jan 23, 2017 at 11:58:33AM -0500, J. Bruce Fields wrote:
+> On Sun, Jan 22, 2017 at 05:54:19PM +0100, Christoph Hellwig wrote:
+> > I've got a report that there NFS clients that send SETATTR requests that
+> > mix size changes with uid/gid changes
+> 
+> That sounds a little weird.  Do you know anything about which clients,
+> or how common the behavior is?
 
-Fixes: 2e80dbe7ac51 ("NFSv4.1: Close callback races for OPEN, LAYOUTGET...")
-Cc: stable@vger.kernel.org # v4.8+
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
----
- fs/nfs/nfs4proc.c | 1 +
- 1 file changed, 1 insertion(+)
+I've only gotten the bug report and don't know the details.  But from
+my cursory knowledge of NFS spec I suspects it's a loosely coupled
+flexfiles server that uses uid/gids for access control on the data
+file.
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index ecc151697fd4..59bb574d7d7c 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -8490,6 +8490,7 @@ nfs4_layoutget_handle_exception(struct rpc_task *task,
- 		goto out;
- 	}
- 
-+	nfs4_sequence_free_slot(&lgp->res.seq_res);
- 	err = nfs4_handle_exception(server, nfs4err, exception);
- 	if (!status) {
- 		if (exception->retry)
--- 
-2.9.3
+> > (see the recent pynfs patch for an
+> > artifical reproducer).  At least XFS and GFS2 are very unhappy with this,
+> > and other file systems also don't seem to handle the case correctly.
+> 
+> Does this cause a crash or corruption, or "just" fail to set the
+> attributes correctly?  (Just wondering how urgent the fix is....).
 
+With a XFS debug build it crashes, otherwise it "only" fails to set the
+attributes.  But given that the attributes that fail to be set are
+owner/group (uid,gid) it would totally break the security model, so
+I think it's pretty serious.
