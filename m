@@ -1,71 +1,69 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from us-smtp-delivery-194.mimecast.com ([63.128.21.194]:27325 "EHLO
-        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1750739AbdAXUXn (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 24 Jan 2017 15:23:43 -0500
-From: Trond Myklebust <trondmy@primarydata.com>
-To: "bfields@fieldses.org" <bfields@fieldses.org>,
-        "chuck.lever@oracle.com" <chuck.lever@oracle.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH v1] nfs: Don't increment lock sequence ID after
- NFS4ERR_MOVED
-Date: Tue, 24 Jan 2017 20:23:36 +0000
-Message-ID: <1485289414.12087.0.camel@primarydata.com>
-References: <20170122190429.7337.77928.stgit@manet.1015granger.net>
-         <69D3212A-874D-42A2-BE65-F3A01B061A87@oracle.com>
-         <20170123164913.GB9493@fieldses.org>
-         <1F944D3D-A28B-48C5-88CC-39EBD6CB8430@oracle.com>
-         <20170124191515.GA20844@fieldses.org>
-In-Reply-To: <20170124191515.GA20844@fieldses.org>
+Received: from mail-io0-f194.google.com ([209.85.223.194]:36518 "EHLO
+        mail-io0-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1750751AbdAXUec (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 24 Jan 2017 15:34:32 -0500
+Subject: [PATCH v1 0/7] Server-side NFS/RDMA changes for v4.11
+From: Chuck Lever <chuck.lever@oracle.com>
+To: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
+Date: Tue, 24 Jan 2017 15:34:29 -0500
+Message-ID: <20170124193242.11807.91861.stgit@klimt.1015granger.net>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVHVlLCAyMDE3LTAxLTI0IGF0IDE0OjE1IC0wNTAwLCBKLiBCcnVjZSBGaWVsZHMgd3JvdGU6
-DQo+IE9uIFR1ZSwgSmFuIDI0LCAyMDE3IGF0IDAyOjA2OjE2UE0gLTA1MDAsIENodWNrIExldmVy
-IHdyb3RlOg0KPiA+IA0KPiA+ID4gT24gSmFuIDIzLCAyMDE3LCBhdCAxMTo0OSBBTSwgYmZpZWxk
-c0BmaWVsZHNlcy5vcmcgd3JvdGU6DQo+ID4gPiANCj4gPiA+IE9uIE1vbiwgSmFuIDIzLCAyMDE3
-IGF0IDEwOjAxOjI3QU0gLTA1MDAsIENodWNrIExldmVyIHdyb3RlOg0KPiA+ID4gPiANCj4gPiA+
-ID4gPiBPbiBKYW4gMjIsIDIwMTcsIGF0IDI6MDQgUE0sIENodWNrIExldmVyIDxjaHVjay5sZXZl
-ckBvcmFjbGUuDQo+ID4gPiA+ID4gY29tPiB3cm90ZToNCj4gPiA+ID4gPiANCj4gPiA+ID4gPiBY
-dWFuIFFpIHJlcG9ydHMgdGhhdCB0aGUgTGludXggTkZTdjQgY2xpZW50IGZhaWxlZCB0byBsb2Nr
-IGENCj4gPiA+ID4gPiBmaWxlDQo+ID4gPiA+ID4gdGhhdCB3YXMgbWlncmF0ZWQuIFRoZSBzdGVw
-cyBoZSBvYnNlcnZlZCBvbiB0aGUgd2lyZToNCj4gPiA+ID4gPiANCj4gPiA+ID4gPiAxLiBUaGUg
-Y2xpZW50IHNlbnQgYSBMT0NLIHJlcXVlc3QNCj4gPiA+ID4gPiAyLiBUaGUgc2VydmVyIHJlcGxp
-ZWQgTkZTNEVSUl9NT1ZFRA0KPiA+ID4gPiA+IDMuIFRoZSBjbGllbnQgc3dpdGNoZWQgdG8gdGhl
-IGRlc3RpbmF0aW9uIHNlcnZlcg0KPiA+ID4gPiA+IDQuIFRoZSBjbGllbnQgc2VudCB0aGUgTE9D
-SyByZXF1ZXN0IGFnYWluIHdpdGggYSBidW1wZWQNCj4gPiA+ID4gPiDCoGxvY2sgc2VxdWVuY2Ug
-SUQNCj4gPiA+ID4gPiA1LiBUaGUgc2VydmVyIHJlamVjdGVkIHRoZSBMT0NLIHJlcXVlc3Qgd2l0
-aA0KPiA+ID4gPiA+IE5GUzRFUlJfQkFEX1NFUUlEDQo+ID4gPiA+IA0KPiA+ID4gPiBUaGUgbGlz
-dCBvZiBzdGVwcyBjb3VsZCBiZSBtb3JlIGNsZWFyOg0KPiA+ID4gPiANCj4gPiA+ID4gMS4gVGhl
-IGNsaWVudCBzZW50IGEgTE9DSyByZXF1ZXN0IHRvIHRoZSBzb3VyY2Ugc2VydmVyDQo+ID4gPiA+
-IDIuIFRoZSBzb3VyY2Ugc2VydmVyIHJlcGxpZWQgTkZTNEVSUl9NT1ZFRA0KPiA+ID4gPiAzLiBU
-aGUgY2xpZW50IHN3aXRjaGVkIHRvIHRoZSBkZXN0aW5hdGlvbiBzZXJ2ZXINCj4gPiA+ID4gNC4g
-VGhlIGNsaWVudCBzZW50IHRoZSBzYW1lIExPQ0sgcmVxdWVzdCB0byB0aGUgZGVzdGluYXRpb24N
-Cj4gPiA+ID4gwqAgc2VydmVyIHdpdGggYSBidW1wZWQgbG9jayBzZXF1ZW5jZSBJRA0KPiA+ID4g
-PiA1LiBUaGUgZGVzdGluYXRpb24gc2VydmVyIHJlamVjdGVkIHRoZSBMT0NLIHJlcXVlc3Qgd2l0
-aA0KPiA+ID4gPiDCoCBORlM0RVJSX0JBRF9TRVFJRA0KPiA+ID4gPiANCj4gPiA+ID4gDQo+ID4g
-PiA+ID4gUkZDIDM1MzAgc2VjdGlvbiA4LjEuNSBwcm92aWRlcyBhIGxpc3Qgb2YgTkZTIGVycm9y
-cyB3aGljaCBkbw0KPiA+ID4gPiA+IG5vdA0KPiA+ID4gPiA+IGJ1bXAgYSBsb2NrIHNlcXVlbmNl
-IElELg0KPiA+ID4gPiA+IA0KPiA+ID4gPiA+IEhvd2V2ZXIsIFJGQyAzNTMwIGlzIG5vdyBvYnNv
-bGV0ZWQgYnkgUkZDIDc1MzAuIEluIFJGQyA3NTMwDQo+ID4gPiA+ID4gc2VjdGlvbg0KPiA+ID4g
-PiA+IDkuMS43LCB0aGlzIGxpc3QgaGFzIGJlZW4gdXBkYXRlZCBieSB0aGUgYWRkaXRpb24gb2YN
-Cj4gPiA+ID4gPiBORlM0RVJSX01PVkVELg0KPiA+ID4gDQo+ID4gPiBJIGd1ZXNzIHdlIGZpZ3Vy
-ZWQgdGhlIGJhY2t3YXJkcy1pbmNvbXBhdGlibGUgY2hhbmdlIHdhcyBPSyBzaW5jZQ0KPiA+ID4g
-ZXNzZW50aWFsbHkgdGhlIFNvbGFyaXMgc2VydmVyIGlzIHRoZSBmaXJzdCB3ZSBrbm93IG9mIHRv
-IGJlDQo+ID4gPiBtYWtpbmcgcmVhbA0KPiA+ID4gdXNlIG9mIE5GUzRFUlJfTU9WRUQ/DQo+ID4g
-PiANCj4gPiA+IEFuZCBwcm9iYWJseSBpdCdzIHJlcXVpcmVkIGZvciB0aGUgdGhlaXIgaW1wbGVt
-ZW50YXRpb24gYmVjYXVzZQ0KPiA+ID4gdGhlIG9sZA0KPiA+ID4gc2VydmVyIG5vIGxvbmdlciBo
-YXMgdGhlIGFiaWxpdHkgdG8gdXBkYXRlIHRoZSBzdGF0ZSBvbmNlIGl0J3MNCj4gPiA+IHJlYWNo
-ZWQNCj4gPiA+IHRoZSBwb2ludCBvZiByZXR1cm5pbmcgRVJSX01PVkVELg0KPiA+ID4gDQo+ID4g
-PiBPSywgbWFrZXMgc2Vuc2UgdG8gbWUsIEkgdGhpbmsuDQo+ID4gDQo+ID4gSGkgQnJ1Y2UtDQo+
-ID4gDQo+ID4gRG9lcyB0aGlzIG1lYW4geW91IHdpbGwgdGFrZSB0aGlzIHBhdGNoLCBvciBzaG91
-bGQNCj4gPiBJIGp1c3QgYWRkIHlvdXIgUmV2aWV3ZWQtYnk6ID8NCj4gDQo+IEkgY2FuIHRha2Ug
-aXQgaWYgbm9ib2R5IG9iamVjdHMuwqDCoE1pbmQgaWYgSSBhcHBlbmQgdGhlIGFib3ZlIHRvIHRo
-ZQ0KPiBjaGFuZ2Vsb2c/wqDCoChKdXN0IHdhbnQgdG8gZG9jdW1lbnQgd2h5IHdlIHRoaW5rIHRo
-ZSBhcHBhcmVudGx5DQo+IGJhY2t3YXJkcy1pbmNvbXBhdGlibGUgY2hhbmdlIGlzIE9LLikNCj4g
-DQpJJ3ZlIGFscmVhZHkgYWRkZWQgaXQgdG8gbXkgbGludXgtbmV4dCBicmFuY2ggYXMgYSBzdGFi
-bGUgcGF0Y2guDQoNCg0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFp
-bnRhaW5lciwgUHJpbWFyeURhdGENCnRyb25kLm15a2xlYnVzdEBwcmltYXJ5ZGF0YS5jb20NCg==
+I'm dividing up the nfsd-rdma-rw-api series. For v4.11, here are the
+first patches in that series. They should be non-controversial. The
+remaining patches are still under review.
 
+These are largely clean-ups, except for the last patch. Switching
+completion polling from soft IRQ to a worker thread has a few
+benefits:
+
+- svcrdma's completion handlers invoke svc_xprt_put(). We discovered
+recently svc_xprt_put() is supposed to be called only in a process
+context. This will become more important when NFS/RDMA supports
+multi-path.
+
+- eventually we'd like to allocate pages for RDMA Read in the
+completion handler, and not defer RDMA Read to svc_rdma_recvfrom.
+Using GFP_KERNEL can sleep, which is not allowed in soft IRQ context
+
+- several places where BH's are disabled can be converted to simple
+spin_locks.
+
+
+Available in the "nfsd-rdma-for-4.11" topic branch of this git repo:
+
+git://git.linux-nfs.org/projects/cel/cel-2.6.git
+
+
+Or for browsing:
+
+http://git.linux-nfs.org/?p=cel/cel-2.6.git;a=log;h=refs/heads/nfsd-rdma-for-4.11
+
+
+---
+
+Chuck Lever (7):
+      svcrdma: Another sendto chunk list parsing update
+      svcrdma: Clean up RPC-over-RDMA Reply header encoder
+      svcrdma: Clean up RPC-over-RDMA Call header decoder
+      svcrdma: Clean up backchannel send header encoding
+      svcrdma: Remove unused sc_dto_q field
+      svcrdma: Combine list fields in struct svc_rdma_op_ctxt
+      svcrdma: Poll CQs in "workqueue" mode
+
+
+ include/linux/sunrpc/rpc_rdma.h            |    9 +
+ include/linux/sunrpc/svc_rdma.h            |   17 +
+ net/sunrpc/xprtrdma/svc_rdma_backchannel.c |   17 +
+ net/sunrpc/xprtrdma/svc_rdma_marshal.c     |  320 +++++++++++-----------------
+ net/sunrpc/xprtrdma/svc_rdma_recvfrom.c    |   20 +-
+ net/sunrpc/xprtrdma/svc_rdma_sendto.c      |   13 -
+ net/sunrpc/xprtrdma/svc_rdma_transport.c   |   61 +++--
+ 7 files changed, 199 insertions(+), 258 deletions(-)
+
+--
+Chuck Lever
