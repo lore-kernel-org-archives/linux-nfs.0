@@ -1,116 +1,106 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from out01.mta.xmission.com ([166.70.13.231]:41912 "EHLO
-        out01.mta.xmission.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1750935AbdAYAAy (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 24 Jan 2017 19:00:54 -0500
-From: ebiederm@xmission.com (Eric W. Biederman)
-To: Trond Myklebust <trondmy@primarydata.com>
-Cc: "seth.forshee\@canonical.com" <seth.forshee@canonical.com>,
-        "bfields\@fieldses.org" <bfields@fieldses.org>,
-        "anna.schumaker\@netapp.com" <anna.schumaker@netapp.com>,
-        "linux-nfs\@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Received: from us-smtp-delivery-194.mimecast.com ([63.128.21.194]:50457 "EHLO
+        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1750984AbdAYAOg (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 24 Jan 2017 19:14:36 -0500
+From: Trond Myklebust <trondmy@primarydata.com>
+To: Steve French <sfrench@primarydata.com>,
+        "ebiederm@xmission.com" <ebiederm@xmission.com>,
+        "dhowells@redhat.com" <dhowells@redhat.com>
+CC: "bfields@fieldses.org" <bfields@fieldses.org>,
+        "anna.schumaker@netapp.com" <anna.schumaker@netapp.com>,
+        "seth.forshee@canonical.com" <seth.forshee@canonical.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] sunrpc: Use current_real_cred() when looking up rpc
+ credentials
+Date: Wed, 25 Jan 2017 00:14:26 +0000
+Message-ID: <1485303265.36478.7.camel@primarydata.com>
 References: <1481821992-77583-1-git-send-email-seth.forshee@canonical.com>
-        <1481842899.11785.1.camel@primarydata.com>
-        <20161216130609.GA124240@ubuntu-hedt>
-        <20170110145504.GH52661@ubuntu-hedt> <87ziiyfntm.fsf@xmission.com>
-        <20170124151745.GA114560@ubuntu-hedt> <87efzsdq5b.fsf@xmission.com>
-        <87inp4rqaj.fsf@xmission.com>
-        <1485301593.36478.2.camel@primarydata.com>
-Date: Wed, 25 Jan 2017 12:56:31 +1300
-In-Reply-To: <1485301593.36478.2.camel@primarydata.com> (Trond Myklebust's
-        message of "Tue, 24 Jan 2017 23:46:35 +0000")
-Message-ID: <87y3y0ko5s.fsf@xmission.com>
+         <1481842899.11785.1.camel@primarydata.com>
+         <20161216130609.GA124240@ubuntu-hedt> <20170110145504.GH52661@ubuntu-hedt>
+         <87ziiyfntm.fsf@xmission.com> <20170124151745.GA114560@ubuntu-hedt>
+         <87efzsdq5b.fsf@xmission.com> <87inp4rqaj.fsf@xmission.com>
+         <1485301593.36478.2.camel@primarydata.com> <87y3y0ko5s.fsf@xmission.com>
+In-Reply-To: <87y3y0ko5s.fsf@xmission.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Subject: Re: [PATCH] sunrpc: Use current_real_cred() when looking up rpc credentials
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Trond Myklebust <trondmy@primarydata.com> writes:
-
-> On Wed, 2017-01-25 at 12:28 +1300, Eric W. Biederman wrote:
->> With respect to nfs and automounts.
->> 
->> Does NFS have different automount behavior based on the user
->> performing the automount?
->> 
->> If NFS does not have different automount behavior depending on the
->> user
->> we just use the creds of the original mounter of NFS?
->> 
->> If NFS does have different automount behavior depending on the user
->> (ouch!) we need to go through the call path and see where it makes
->> sense to over ride things and where it does not.
->
-> The reason why the NFS client creates a mountpoint is because on
-> entering a directory, it detects that there is either a similar
-> mountpoint on the server, or there is a referral (which acts sort of
-> like a symlink, except it points to a path on one or more different NFS
-> servers).
-> Without that mountpoint, most things would work, but the user would end
-> up seeing nasty non-posix features like duplicate inode numbers.
->
-> We do not want to use any creds other than user creds here, because as
-> far as the security model is concerned, the process is just crossing
-> into an existing directory.
-
-But sget needs different creds.
-
-Because the user who authorizes the mounting of the filesystem is
-different than the user who is crossing into the new filesystem.
-
-The local system now cares about that distinction even if the nfs server
-does not.
-
->> Seth the fundamental problem with your patch was that you were
->> patching
->> a location that is used for more just mounts.
->> 
->> I am strongly wishing that we could just change follow_automount
->> from:
->> 
->> 
->> 	old_cred = override_creds(&init_cred);
->> 	mnt = path->dentry->d_op->d_automount(path);
->> 	revert_creds(old_cred);
->> 
->> to:
->> 
->> 	old_cred = override_creds(path->mnt->mnt_sb->s_cred);
->> 	mnt = path->dentry->d_op->d_automount(path);
->> 	revert_creds(old_cred);
->> 
->> And all will be well with nfs.  That does remain possible.
->
-> No. That would break permissions checking. See above.
-
-Then we need to look much harder at the permission checking
-model of d_automount because we need to permission check against
-both sets of creds.
-
->> But looking at the code path you touched it seems to lookup the cred
->> based purely on the local uid, gid, and groups.  Which suggests to
->> me that even the original mounters creds may not be enough :(
->> 
->> At which point I am not certain of the solution.  But I fear that
->> like
->> autofs NFS actually cares which user is transition the magic
->> mountpoint,
->> and may return different data depending on who transitions the
->> mountpoint first.  Ick!  Nasty Nasty Ick!
->> 
->
-> The security model is the same as that of an ordinary directory. The
-> only difference is that we create a new superblock. Why is that "Ick"?
-
-The Ick is if the superblock that is created depends on the user
-crossing the mountpoint.
-
-AKA Do we get a different mountpoint if user A triggers the automount
-vs user B triggering the automount?
-
-If the problem is just root squash and not letting root trigger the
-automount it is much less ick.  Weird but not ick.
-
-Eric
+QWRkaW5nIERhdmlkIEhvd2VsbHMgYW5kIFN0ZXZlIEZyZW5jaCBhcyBJIGJlbGlldmUgYm90aCBB
+RlMgYW5kIENJRlMNCmhhdmUgdGhlIGV4YWN0IHNhbWUgcmVxdWlyZW1lbnRzIGFuZCBORlMgaGVy
+ZS4NCg0KT24gV2VkLCAyMDE3LTAxLTI1IGF0IDEyOjU2ICsxMzAwLCBFcmljIFcuIEJpZWRlcm1h
+biB3cm90ZToNCj4gVHJvbmQgTXlrbGVidXN0IDx0cm9uZG15QHByaW1hcnlkYXRhLmNvbT4gd3Jp
+dGVzOg0KPiANCj4gPiBPbiBXZWQsIDIwMTctMDEtMjUgYXQgMTI6MjggKzEzMDAsIEVyaWMgVy4g
+QmllZGVybWFuIHdyb3RlOg0KPiA+ID4gV2l0aCByZXNwZWN0IHRvIG5mcyBhbmQgYXV0b21vdW50
+cy4NCj4gPiA+IA0KPiA+ID4gRG9lcyBORlMgaGF2ZSBkaWZmZXJlbnQgYXV0b21vdW50IGJlaGF2
+aW9yIGJhc2VkIG9uIHRoZSB1c2VyDQo+ID4gPiBwZXJmb3JtaW5nIHRoZSBhdXRvbW91bnQ/DQo+
+ID4gPiANCj4gPiA+IElmIE5GUyBkb2VzIG5vdCBoYXZlIGRpZmZlcmVudCBhdXRvbW91bnQgYmVo
+YXZpb3IgZGVwZW5kaW5nIG9uDQo+ID4gPiB0aGUNCj4gPiA+IHVzZXINCj4gPiA+IHdlIGp1c3Qg
+dXNlIHRoZSBjcmVkcyBvZiB0aGUgb3JpZ2luYWwgbW91bnRlciBvZiBORlM/DQo+ID4gPiANCj4g
+PiA+IElmIE5GUyBkb2VzIGhhdmUgZGlmZmVyZW50IGF1dG9tb3VudCBiZWhhdmlvciBkZXBlbmRp
+bmcgb24gdGhlDQo+ID4gPiB1c2VyDQo+ID4gPiAob3VjaCEpIHdlIG5lZWQgdG8gZ28gdGhyb3Vn
+aCB0aGUgY2FsbCBwYXRoIGFuZCBzZWUgd2hlcmUgaXQNCj4gPiA+IG1ha2VzDQo+ID4gPiBzZW5z
+ZSB0byBvdmVyIHJpZGUgdGhpbmdzIGFuZCB3aGVyZSBpdCBkb2VzIG5vdC4NCj4gPiANCj4gPiBU
+aGUgcmVhc29uIHdoeSB0aGUgTkZTIGNsaWVudCBjcmVhdGVzIGEgbW91bnRwb2ludCBpcyBiZWNh
+dXNlIG9uDQo+ID4gZW50ZXJpbmcgYSBkaXJlY3RvcnksIGl0IGRldGVjdHMgdGhhdCB0aGVyZSBp
+cyBlaXRoZXIgYSBzaW1pbGFyDQo+ID4gbW91bnRwb2ludCBvbiB0aGUgc2VydmVyLCBvciB0aGVy
+ZSBpcyBhIHJlZmVycmFsICh3aGljaCBhY3RzIHNvcnQNCj4gPiBvZg0KPiA+IGxpa2UgYSBzeW1s
+aW5rLCBleGNlcHQgaXQgcG9pbnRzIHRvIGEgcGF0aCBvbiBvbmUgb3IgbW9yZSBkaWZmZXJlbnQN
+Cj4gPiBORlMNCj4gPiBzZXJ2ZXJzKS4NCj4gPiBXaXRob3V0IHRoYXQgbW91bnRwb2ludCwgbW9z
+dCB0aGluZ3Mgd291bGQgd29yaywgYnV0IHRoZSB1c2VyIHdvdWxkDQo+ID4gZW5kDQo+ID4gdXAg
+c2VlaW5nIG5hc3R5IG5vbi1wb3NpeCBmZWF0dXJlcyBsaWtlIGR1cGxpY2F0ZSBpbm9kZSBudW1i
+ZXJzLg0KPiA+IA0KPiA+IFdlIGRvIG5vdCB3YW50IHRvIHVzZSBhbnkgY3JlZHMgb3RoZXIgdGhh
+biB1c2VyIGNyZWRzIGhlcmUsIGJlY2F1c2UNCj4gPiBhcw0KPiA+IGZhciBhcyB0aGUgc2VjdXJp
+dHkgbW9kZWwgaXMgY29uY2VybmVkLCB0aGUgcHJvY2VzcyBpcyBqdXN0DQo+ID4gY3Jvc3NpbmcN
+Cj4gPiBpbnRvIGFuIGV4aXN0aW5nIGRpcmVjdG9yeS4NCj4gDQo+IEJ1dCBzZ2V0IG5lZWRzIGRp
+ZmZlcmVudCBjcmVkcy4NCj4gDQo+IEJlY2F1c2UgdGhlIHVzZXIgd2hvIGF1dGhvcml6ZXMgdGhl
+IG1vdW50aW5nIG9mIHRoZSBmaWxlc3lzdGVtIGlzDQo+IGRpZmZlcmVudCB0aGFuIHRoZSB1c2Vy
+IHdobyBpcyBjcm9zc2luZyBpbnRvIHRoZSBuZXcgZmlsZXN5c3RlbS4NCj4gDQo+IFRoZSBsb2Nh
+bCBzeXN0ZW0gbm93IGNhcmVzIGFib3V0IHRoYXQgZGlzdGluY3Rpb24gZXZlbiBpZiB0aGUgbmZz
+DQo+IHNlcnZlcg0KPiBkb2VzIG5vdC4NCg0KV2h5PyBUaGUgZmlsZXN5c3RlbSBpcyBhbHJlYWR5
+IG1vdW50ZWQuIFdlJ3JlIGNyZWF0aW5nIGEgbmV3DQptb3VudHBvaW50LCBidXQgd2UgY291bGQg
+ZXF1YWxseSB3ZWxsIGp1c3Qgc2F5ICdzb2QgdGhhdCcgYW5kIGNyZWF0ZSBhbg0Kb3JkaW5hcnkg
+ZGlyZWN0b3J5LiBUaGUgcGVuYWx0eSB3b3VsZCBiZSBhZm9yZW1lbnRpb25lZCBub24tcG9zaXgN
+CndlaXJkbmVzcy4NCg0KPiANCj4gPiA+IFNldGggdGhlIGZ1bmRhbWVudGFsIHByb2JsZW0gd2l0
+aCB5b3VyIHBhdGNoIHdhcyB0aGF0IHlvdSB3ZXJlDQo+ID4gPiBwYXRjaGluZw0KPiA+ID4gYSBs
+b2NhdGlvbiB0aGF0IGlzIHVzZWQgZm9yIG1vcmUganVzdCBtb3VudHMuDQo+ID4gPiANCj4gPiA+
+IEkgYW0gc3Ryb25nbHkgd2lzaGluZyB0aGF0IHdlIGNvdWxkIGp1c3QgY2hhbmdlIGZvbGxvd19h
+dXRvbW91bnQNCj4gPiA+IGZyb206DQo+ID4gPiANCj4gPiA+IA0KPiA+ID4gCW9sZF9jcmVkID0g
+b3ZlcnJpZGVfY3JlZHMoJmluaXRfY3JlZCk7DQo+ID4gPiAJbW50ID0gcGF0aC0+ZGVudHJ5LT5k
+X29wLT5kX2F1dG9tb3VudChwYXRoKTsNCj4gPiA+IAlyZXZlcnRfY3JlZHMob2xkX2NyZWQpOw0K
+PiA+ID4gDQo+ID4gPiB0bzoNCj4gPiA+IA0KPiA+ID4gCW9sZF9jcmVkID0gb3ZlcnJpZGVfY3Jl
+ZHMocGF0aC0+bW50LT5tbnRfc2ItPnNfY3JlZCk7DQo+ID4gPiAJbW50ID0gcGF0aC0+ZGVudHJ5
+LT5kX29wLT5kX2F1dG9tb3VudChwYXRoKTsNCj4gPiA+IAlyZXZlcnRfY3JlZHMob2xkX2NyZWQp
+Ow0KPiA+ID4gDQo+ID4gPiBBbmQgYWxsIHdpbGwgYmUgd2VsbCB3aXRoIG5mcy7CoMKgVGhhdCBk
+b2VzIHJlbWFpbiBwb3NzaWJsZS4NCj4gPiANCj4gPiBOby4gVGhhdCB3b3VsZCBicmVhayBwZXJt
+aXNzaW9ucyBjaGVja2luZy4gU2VlIGFib3ZlLg0KPiANCj4gVGhlbiB3ZSBuZWVkIHRvIGxvb2sg
+bXVjaCBoYXJkZXIgYXQgdGhlIHBlcm1pc3Npb24gY2hlY2tpbmcNCj4gbW9kZWwgb2YgZF9hdXRv
+bW91bnQgYmVjYXVzZSB3ZSBuZWVkIHRvIHBlcm1pc3Npb24gY2hlY2sgYWdhaW5zdA0KPiBib3Ro
+IHNldHMgb2YgY3JlZHMuDQo+IA0KPiA+ID4gQnV0IGxvb2tpbmcgYXQgdGhlIGNvZGUgcGF0aCB5
+b3UgdG91Y2hlZCBpdCBzZWVtcyB0byBsb29rdXAgdGhlDQo+ID4gPiBjcmVkDQo+ID4gPiBiYXNl
+ZCBwdXJlbHkgb24gdGhlIGxvY2FsIHVpZCwgZ2lkLCBhbmQgZ3JvdXBzLsKgwqBXaGljaCBzdWdn
+ZXN0cw0KPiA+ID4gdG8NCj4gPiA+IG1lIHRoYXQgZXZlbiB0aGUgb3JpZ2luYWwgbW91bnRlcnMg
+Y3JlZHMgbWF5IG5vdCBiZSBlbm91Z2ggOigNCj4gPiA+IA0KPiA+ID4gQXQgd2hpY2ggcG9pbnQg
+SSBhbSBub3QgY2VydGFpbiBvZiB0aGUgc29sdXRpb24uwqDCoEJ1dCBJIGZlYXIgdGhhdA0KPiA+
+ID4gbGlrZQ0KPiA+ID4gYXV0b2ZzIE5GUyBhY3R1YWxseSBjYXJlcyB3aGljaCB1c2VyIGlzIHRy
+YW5zaXRpb24gdGhlIG1hZ2ljDQo+ID4gPiBtb3VudHBvaW50LA0KPiA+ID4gYW5kIG1heSByZXR1
+cm4gZGlmZmVyZW50IGRhdGEgZGVwZW5kaW5nIG9uIHdobyB0cmFuc2l0aW9ucyB0aGUNCj4gPiA+
+IG1vdW50cG9pbnQgZmlyc3QuwqDCoEljayHCoMKgTmFzdHkgTmFzdHkgSWNrIQ0KPiA+ID4gDQo+
+ID4gDQo+ID4gVGhlIHNlY3VyaXR5IG1vZGVsIGlzIHRoZSBzYW1lIGFzIHRoYXQgb2YgYW4gb3Jk
+aW5hcnkgZGlyZWN0b3J5Lg0KPiA+IFRoZQ0KPiA+IG9ubHkgZGlmZmVyZW5jZSBpcyB0aGF0IHdl
+IGNyZWF0ZSBhIG5ldyBzdXBlcmJsb2NrLiBXaHkgaXMgdGhhdA0KPiA+ICJJY2siPw0KPiANCj4g
+VGhlIEljayBpcyBpZiB0aGUgc3VwZXJibG9jayB0aGF0IGlzIGNyZWF0ZWQgZGVwZW5kcyBvbiB0
+aGUgdXNlcg0KPiBjcm9zc2luZyB0aGUgbW91bnRwb2ludC4NCj4gDQo+IEFLQSBEbyB3ZSBnZXQg
+YSBkaWZmZXJlbnQgbW91bnRwb2ludCBpZiB1c2VyIEEgdHJpZ2dlcnMgdGhlIGF1dG9tb3VudA0K
+PiB2cyB1c2VyIEIgdHJpZ2dlcmluZyB0aGUgYXV0b21vdW50Pw0KDQpZb3UgbWF5IGdldCBhbiBF
+QUNDRVMuIE90aGVyd2lzZSB0aGUgbW91bnRwb2ludHMgc2hvdWxkIGJlIHRoZSBzYW1lLg0KDQo+
+IElmIHRoZSBwcm9ibGVtIGlzIGp1c3Qgcm9vdCBzcXVhc2ggYW5kIG5vdCBsZXR0aW5nIHJvb3Qg
+dHJpZ2dlciB0aGUNCj4gYXV0b21vdW50IGl0IGlzIG11Y2ggbGVzcyBpY2suwqDCoFdlaXJkIGJ1
+dCBub3QgaWNrLg0KDQpOb3QganVzdCByb290IHNxdWFzaCwgYnV0IGdlbmVyYWwgcGVybWlzc2lv
+bnMgY2hlY2tpbmcuIFdlIGRvbid0IHdhbnQNCnRvIGdpdmUgdXNlciBCIHJvb3QgcHJpdmlsZWdl
+cyBhbGxvd2luZyBjcm9zc2luZyBpbnRvIGEgZGlyZWN0b3J5IHRvDQp3aGljaCBzL2hlIHdvdWxk
+IG9yZGluYXJpbHkgaGF2ZSBubyByaWdodHMgZWl0aGVyLg0KDQotLSANClRyb25kIE15a2xlYnVz
+dA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyLCBQcmltYXJ5RGF0YQ0KdHJvbmQubXlrbGVi
+dXN0QHByaW1hcnlkYXRhLmNvbQ0K
 
