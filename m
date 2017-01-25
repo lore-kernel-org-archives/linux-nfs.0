@@ -1,111 +1,173 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from us-smtp-delivery-194.mimecast.com ([216.205.24.194]:50695 "EHLO
-        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1751480AbdAYPvi (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 25 Jan 2017 10:51:38 -0500
-From: Trond Myklebust <trondmy@primarydata.com>
-To: "seth.forshee@canonical.com" <seth.forshee@canonical.com>,
-        "ebiederm@xmission.com" <ebiederm@xmission.com>
-CC: "bfields@fieldses.org" <bfields@fieldses.org>,
+Received: from mail-io0-f177.google.com ([209.85.223.177]:34714 "EHLO
+        mail-io0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751016AbdAYQ2O (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 25 Jan 2017 11:28:14 -0500
+Received: by mail-io0-f177.google.com with SMTP id l66so17625893ioi.1
+        for <linux-nfs@vger.kernel.org>; Wed, 25 Jan 2017 08:28:13 -0800 (PST)
+Date: Wed, 25 Jan 2017 10:28:11 -0600
+From: Seth Forshee <seth.forshee@canonical.com>
+To: Trond Myklebust <trondmy@primarydata.com>
+Cc: "ebiederm@xmission.com" <ebiederm@xmission.com>,
+        "bfields@fieldses.org" <bfields@fieldses.org>,
         "anna.schumaker@netapp.com" <anna.schumaker@netapp.com>,
         Steve French <sfrench@primarydata.com>,
         "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
         "dhowells@redhat.com" <dhowells@redhat.com>
 Subject: Re: [PATCH] sunrpc: Use current_real_cred() when looking up rpc
  credentials
-Date: Wed, 25 Jan 2017 15:51:30 +0000
-Message-ID: <1485359474.113155.1.camel@primarydata.com>
-References: <1481842899.11785.1.camel@primarydata.com>
-         <20161216130609.GA124240@ubuntu-hedt> <20170110145504.GH52661@ubuntu-hedt>
-         <87ziiyfntm.fsf@xmission.com> <20170124151745.GA114560@ubuntu-hedt>
-         <87efzsdq5b.fsf@xmission.com> <87inp4rqaj.fsf@xmission.com>
-         <1485301593.36478.2.camel@primarydata.com> <87y3y0ko5s.fsf@xmission.com>
-         <1485303265.36478.7.camel@primarydata.com>
-         <20170125145251.GB51023@ubuntu-hedt>
-In-Reply-To: <20170125145251.GB51023@ubuntu-hedt>
+Message-ID: <20170125162811.GC51023@ubuntu-hedt>
+References: <20170110145504.GH52661@ubuntu-hedt>
+ <87ziiyfntm.fsf@xmission.com>
+ <20170124151745.GA114560@ubuntu-hedt>
+ <87efzsdq5b.fsf@xmission.com>
+ <87inp4rqaj.fsf@xmission.com>
+ <1485301593.36478.2.camel@primarydata.com>
+ <87y3y0ko5s.fsf@xmission.com>
+ <1485303265.36478.7.camel@primarydata.com>
+ <20170125145251.GB51023@ubuntu-hedt>
+ <1485359474.113155.1.camel@primarydata.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=utf-8
+In-Reply-To: <1485359474.113155.1.camel@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gV2VkLCAyMDE3LTAxLTI1IGF0IDA4OjUyIC0wNjAwLCBTZXRoIEZvcnNoZWUgd3JvdGU6DQo+
-IE9uIFdlZCwgSmFuIDI1LCAyMDE3IGF0IDEyOjE0OjI2QU0gKzAwMDAsIFRyb25kIE15a2xlYnVz
-dCB3cm90ZToNCj4gPiBBZGRpbmcgRGF2aWQgSG93ZWxscyBhbmQgU3RldmUgRnJlbmNoIGFzIEkg
-YmVsaWV2ZSBib3RoIEFGUyBhbmQNCj4gPiBDSUZTDQo+ID4gaGF2ZSB0aGUgZXhhY3Qgc2FtZSBy
-ZXF1aXJlbWVudHMgYW5kIE5GUyBoZXJlLg0KPiA+IA0KPiA+IE9uIFdlZCwgMjAxNy0wMS0yNSBh
-dCAxMjo1NiArMTMwMCwgRXJpYyBXLiBCaWVkZXJtYW4gd3JvdGU6DQo+ID4gPiBUcm9uZCBNeWts
-ZWJ1c3QgPHRyb25kbXlAcHJpbWFyeWRhdGEuY29tPiB3cml0ZXM6DQo+ID4gPiANCj4gPiA+ID4g
-T24gV2VkLCAyMDE3LTAxLTI1IGF0IDEyOjI4ICsxMzAwLCBFcmljIFcuIEJpZWRlcm1hbiB3cm90
-ZToNCj4gPiA+ID4gPiBXaXRoIHJlc3BlY3QgdG8gbmZzIGFuZCBhdXRvbW91bnRzLg0KPiA+ID4g
-PiA+IA0KPiA+ID4gPiA+IERvZXMgTkZTIGhhdmUgZGlmZmVyZW50IGF1dG9tb3VudCBiZWhhdmlv
-ciBiYXNlZCBvbiB0aGUgdXNlcg0KPiA+ID4gPiA+IHBlcmZvcm1pbmcgdGhlIGF1dG9tb3VudD8N
-Cj4gPiA+ID4gPiANCj4gPiA+ID4gPiBJZiBORlMgZG9lcyBub3QgaGF2ZSBkaWZmZXJlbnQgYXV0
-b21vdW50IGJlaGF2aW9yIGRlcGVuZGluZw0KPiA+ID4gPiA+IG9uDQo+ID4gPiA+ID4gdGhlDQo+
-ID4gPiA+ID4gdXNlcg0KPiA+ID4gPiA+IHdlIGp1c3QgdXNlIHRoZSBjcmVkcyBvZiB0aGUgb3Jp
-Z2luYWwgbW91bnRlciBvZiBORlM/DQo+ID4gPiA+ID4gDQo+ID4gPiA+ID4gSWYgTkZTIGRvZXMg
-aGF2ZSBkaWZmZXJlbnQgYXV0b21vdW50IGJlaGF2aW9yIGRlcGVuZGluZyBvbg0KPiA+ID4gPiA+
-IHRoZQ0KPiA+ID4gPiA+IHVzZXINCj4gPiA+ID4gPiAob3VjaCEpIHdlIG5lZWQgdG8gZ28gdGhy
-b3VnaCB0aGUgY2FsbCBwYXRoIGFuZCBzZWUgd2hlcmUgaXQNCj4gPiA+ID4gPiBtYWtlcw0KPiA+
-ID4gPiA+IHNlbnNlIHRvIG92ZXIgcmlkZSB0aGluZ3MgYW5kIHdoZXJlIGl0IGRvZXMgbm90Lg0K
-PiA+ID4gPiANCj4gPiA+ID4gVGhlIHJlYXNvbiB3aHkgdGhlIE5GUyBjbGllbnQgY3JlYXRlcyBh
-IG1vdW50cG9pbnQgaXMgYmVjYXVzZQ0KPiA+ID4gPiBvbg0KPiA+ID4gPiBlbnRlcmluZyBhIGRp
-cmVjdG9yeSwgaXQgZGV0ZWN0cyB0aGF0IHRoZXJlIGlzIGVpdGhlciBhIHNpbWlsYXINCj4gPiA+
-ID4gbW91bnRwb2ludCBvbiB0aGUgc2VydmVyLCBvciB0aGVyZSBpcyBhIHJlZmVycmFsICh3aGlj
-aCBhY3RzDQo+ID4gPiA+IHNvcnQNCj4gPiA+ID4gb2YNCj4gPiA+ID4gbGlrZSBhIHN5bWxpbmss
-IGV4Y2VwdCBpdCBwb2ludHMgdG8gYSBwYXRoIG9uIG9uZSBvciBtb3JlDQo+ID4gPiA+IGRpZmZl
-cmVudA0KPiA+ID4gPiBORlMNCj4gPiA+ID4gc2VydmVycykuDQo+ID4gPiA+IFdpdGhvdXQgdGhh
-dCBtb3VudHBvaW50LCBtb3N0IHRoaW5ncyB3b3VsZCB3b3JrLCBidXQgdGhlIHVzZXINCj4gPiA+
-ID4gd291bGQNCj4gPiA+ID4gZW5kDQo+ID4gPiA+IHVwIHNlZWluZyBuYXN0eSBub24tcG9zaXgg
-ZmVhdHVyZXMgbGlrZSBkdXBsaWNhdGUgaW5vZGUNCj4gPiA+ID4gbnVtYmVycy4NCj4gPiA+ID4g
-DQo+ID4gPiA+IFdlIGRvIG5vdCB3YW50IHRvIHVzZSBhbnkgY3JlZHMgb3RoZXIgdGhhbiB1c2Vy
-IGNyZWRzIGhlcmUsDQo+ID4gPiA+IGJlY2F1c2UNCj4gPiA+ID4gYXMNCj4gPiA+ID4gZmFyIGFz
-IHRoZSBzZWN1cml0eSBtb2RlbCBpcyBjb25jZXJuZWQsIHRoZSBwcm9jZXNzIGlzIGp1c3QNCj4g
-PiA+ID4gY3Jvc3NpbmcNCj4gPiA+ID4gaW50byBhbiBleGlzdGluZyBkaXJlY3RvcnkuDQo+ID4g
-PiANCj4gPiA+IEJ1dCBzZ2V0IG5lZWRzIGRpZmZlcmVudCBjcmVkcy4NCj4gPiA+IA0KPiA+ID4g
-QmVjYXVzZSB0aGUgdXNlciB3aG8gYXV0aG9yaXplcyB0aGUgbW91bnRpbmcgb2YgdGhlIGZpbGVz
-eXN0ZW0gaXMNCj4gPiA+IGRpZmZlcmVudCB0aGFuIHRoZSB1c2VyIHdobyBpcyBjcm9zc2luZyBp
-bnRvIHRoZSBuZXcgZmlsZXN5c3RlbS4NCj4gPiA+IA0KPiA+ID4gVGhlIGxvY2FsIHN5c3RlbSBu
-b3cgY2FyZXMgYWJvdXQgdGhhdCBkaXN0aW5jdGlvbiBldmVuIGlmIHRoZSBuZnMNCj4gPiA+IHNl
-cnZlcg0KPiA+ID4gZG9lcyBub3QuDQo+ID4gDQo+ID4gV2h5PyBUaGUgZmlsZXN5c3RlbSBpcyBh
-bHJlYWR5IG1vdW50ZWQuIFdlJ3JlIGNyZWF0aW5nIGEgbmV3DQo+ID4gbW91bnRwb2ludCwgYnV0
-IHdlIGNvdWxkIGVxdWFsbHkgd2VsbCBqdXN0IHNheSAnc29kIHRoYXQnIGFuZA0KPiA+IGNyZWF0
-ZSBhbg0KPiA+IG9yZGluYXJ5IGRpcmVjdG9yeS4gVGhlIHBlbmFsdHkgd291bGQgYmUgYWZvcmVt
-ZW50aW9uZWQgbm9uLXBvc2l4DQo+ID4gd2VpcmRuZXNzLg0KPiA+IA0KPiA+ID4gDQo+ID4gPiA+
-ID4gU2V0aCB0aGUgZnVuZGFtZW50YWwgcHJvYmxlbSB3aXRoIHlvdXIgcGF0Y2ggd2FzIHRoYXQg
-eW91DQo+ID4gPiA+ID4gd2VyZQ0KPiA+ID4gPiA+IHBhdGNoaW5nDQo+ID4gPiA+ID4gYSBsb2Nh
-dGlvbiB0aGF0IGlzIHVzZWQgZm9yIG1vcmUganVzdCBtb3VudHMuDQo+ID4gPiA+ID4gDQo+ID4g
-PiA+ID4gSSBhbSBzdHJvbmdseSB3aXNoaW5nIHRoYXQgd2UgY291bGQganVzdCBjaGFuZ2UNCj4g
-PiA+ID4gPiBmb2xsb3dfYXV0b21vdW50DQo+ID4gPiA+ID4gZnJvbToNCj4gPiA+ID4gPiANCj4g
-PiA+ID4gPiANCj4gPiA+ID4gPiAJb2xkX2NyZWQgPSBvdmVycmlkZV9jcmVkcygmaW5pdF9jcmVk
-KTsNCj4gPiA+ID4gPiAJbW50ID0gcGF0aC0+ZGVudHJ5LT5kX29wLT5kX2F1dG9tb3VudChwYXRo
-KTsNCj4gPiA+ID4gPiAJcmV2ZXJ0X2NyZWRzKG9sZF9jcmVkKTsNCj4gPiA+ID4gPiANCj4gPiA+
-ID4gPiB0bzoNCj4gPiA+ID4gPiANCj4gPiA+ID4gPiAJb2xkX2NyZWQgPSBvdmVycmlkZV9jcmVk
-cyhwYXRoLT5tbnQtPm1udF9zYi0+c19jcmVkKTsNCj4gPiA+ID4gPiAJbW50ID0gcGF0aC0+ZGVu
-dHJ5LT5kX29wLT5kX2F1dG9tb3VudChwYXRoKTsNCj4gPiA+ID4gPiAJcmV2ZXJ0X2NyZWRzKG9s
-ZF9jcmVkKTsNCj4gPiA+ID4gPiANCj4gPiA+ID4gPiBBbmQgYWxsIHdpbGwgYmUgd2VsbCB3aXRo
-IG5mcy7CoMKgVGhhdCBkb2VzIHJlbWFpbiBwb3NzaWJsZS4NCj4gPiA+ID4gDQo+ID4gPiA+IE5v
-LiBUaGF0IHdvdWxkIGJyZWFrIHBlcm1pc3Npb25zIGNoZWNraW5nLiBTZWUgYWJvdmUuDQo+ID4g
-PiANCj4gPiA+IFRoZW4gd2UgbmVlZCB0byBsb29rIG11Y2ggaGFyZGVyIGF0IHRoZSBwZXJtaXNz
-aW9uIGNoZWNraW5nDQo+ID4gPiBtb2RlbCBvZiBkX2F1dG9tb3VudCBiZWNhdXNlIHdlIG5lZWQg
-dG8gcGVybWlzc2lvbiBjaGVjayBhZ2FpbnN0DQo+ID4gPiBib3RoIHNldHMgb2YgY3JlZHMuDQo+
-IA0KPiBIb3cgYWJvdXQgc29tZXRoaW5nIGxpa2UgdGhpcz8gRXNzZW50aWFsbHksIHN0YXNoIHRo
-ZSBjcmVkcyB1c2VkIGF0DQo+IG1vdW50IHRpbWUgaW4gdGhlIHN1cGVyIGJsb2NrLCB0aGVuIGNy
-ZWF0ZSBhIHZmc19rZXJuX2F1dG9tb3VudCgpDQo+IGZ1bmN0aW9uIHdoaWNoIG92ZXJyaWRlcyB0
-aGUgY3VycmVuZCBjcmVkcyB0aGVuIGNhbGxzDQo+IHZmc19rZXJuX21vdW50KCkuDQo+IA0KPiBP
-bmx5IGNvbXBpbGUgdGVzdGVkIHNvIGZhciwgYW5kIHByb2JhYmx5IGl0IHNob3VsZCBiZSBzcGxp
-dCB1cCBpbnRvDQo+IHNldmVyYWwgcGF0Y2hlcy4NCg0KPiBkaWZmIC0tZ2l0IGEvZnMvbmFtZXNw
-YWNlLmMgYi9mcy9uYW1lc3BhY2UuYw0KPiBpbmRleCA0ODdiYTMwYmI1YzYuLmRhN2U2ZGZhNTZj
-YiAxMDA2NDQNCj4gLS0tIGEvZnMvbmFtZXNwYWNlLmMNCj4gKysrIGIvZnMvbmFtZXNwYWNlLmMN
-Cj4gQEAgLTk4OSw2ICs5ODksMjEgQEAgdmZzX2tlcm5fbW91bnQoc3RydWN0IGZpbGVfc3lzdGVt
-X3R5cGUgKnR5cGUsDQo+IGludCBmbGFncywgY29uc3QgY2hhciAqbmFtZSwgdm9pZA0KPiDCoH0N
-Cj4gwqBFWFBPUlRfU1lNQk9MX0dQTCh2ZnNfa2Vybl9tb3VudCk7DQo+IMKgDQo+ICtzdHJ1Y3Qg
-dmZzbW91bnQgKg0KPiArdmZzX2tlcm5fYXV0b21vdW50KHN0cnVjdCBkZW50cnkgKmRlbnRyeSwg
-c3RydWN0IGZpbGVfc3lzdGVtX3R5cGUNCj4gKnR5cGUsDQo+ICsJCcKgwqDCoGludCBmbGFncywg
-Y29uc3QgY2hhciAqbmFtZSwgdm9pZCAqZGF0YSkNCj4gK3sNCj4gKwljb25zdCBzdHJ1Y3QgY3Jl
-ZCAqb2xkX2NyZWQ7DQo+ICsJc3RydWN0IHZmc21vdW50ICptbnQ7DQo+ICsNCj4gKwlvbGRfY3Jl
-ZCA9IG92ZXJyaWRlX2NyZWRzKGRlbnRyeS0+ZF9zYi0+c19jcmVkKTsNCj4gKwltbnQgPSB2ZnNf
-a2Vybl9tb3VudCh0eXBlLCBmbGFncywgbmFtZSwgZGF0YSk7DQo+ICsJcmV2ZXJ0X2NyZWRzKG9s
-ZF9jcmVkKTsNCj4gKw0KPiArCXJldHVybiBtbnQ7DQo+ICt9DQo+ICtFWFBPUlRfU1lNQk9MX0dQ
-TCh2ZnNfa2Vybl9hdXRvbW91bnQpOw0KPiArDQoNCk5vcGUuIEFzIEkgc2FpZCwgdGhlIGNhbGwg
-aW50byB0aGUgZmlsZXN5c3RlbSBuZWVkcyB0aGUgX3VzZXJfIGNyZWRzLg0KDQotLSA=
+On Wed, Jan 25, 2017 at 03:51:30PM +0000, Trond Myklebust wrote:
+> On Wed, 2017-01-25 at 08:52 -0600, Seth Forshee wrote:
+> > On Wed, Jan 25, 2017 at 12:14:26AM +0000, Trond Myklebust wrote:
+> > > Adding David Howells and Steve French as I believe both AFS and
+> > > CIFS
+> > > have the exact same requirements and NFS here.
+> > > 
+> > > On Wed, 2017-01-25 at 12:56 +1300, Eric W. Biederman wrote:
+> > > > Trond Myklebust <trondmy@primarydata.com> writes:
+> > > > 
+> > > > > On Wed, 2017-01-25 at 12:28 +1300, Eric W. Biederman wrote:
+> > > > > > With respect to nfs and automounts.
+> > > > > > 
+> > > > > > Does NFS have different automount behavior based on the user
+> > > > > > performing the automount?
+> > > > > > 
+> > > > > > If NFS does not have different automount behavior depending
+> > > > > > on
+> > > > > > the
+> > > > > > user
+> > > > > > we just use the creds of the original mounter of NFS?
+> > > > > > 
+> > > > > > If NFS does have different automount behavior depending on
+> > > > > > the
+> > > > > > user
+> > > > > > (ouch!) we need to go through the call path and see where it
+> > > > > > makes
+> > > > > > sense to over ride things and where it does not.
+> > > > > 
+> > > > > The reason why the NFS client creates a mountpoint is because
+> > > > > on
+> > > > > entering a directory, it detects that there is either a similar
+> > > > > mountpoint on the server, or there is a referral (which acts
+> > > > > sort
+> > > > > of
+> > > > > like a symlink, except it points to a path on one or more
+> > > > > different
+> > > > > NFS
+> > > > > servers).
+> > > > > Without that mountpoint, most things would work, but the user
+> > > > > would
+> > > > > end
+> > > > > up seeing nasty non-posix features like duplicate inode
+> > > > > numbers.
+> > > > > 
+> > > > > We do not want to use any creds other than user creds here,
+> > > > > because
+> > > > > as
+> > > > > far as the security model is concerned, the process is just
+> > > > > crossing
+> > > > > into an existing directory.
+> > > > 
+> > > > But sget needs different creds.
+> > > > 
+> > > > Because the user who authorizes the mounting of the filesystem is
+> > > > different than the user who is crossing into the new filesystem.
+> > > > 
+> > > > The local system now cares about that distinction even if the nfs
+> > > > server
+> > > > does not.
+> > > 
+> > > Why? The filesystem is already mounted. We're creating a new
+> > > mountpoint, but we could equally well just say 'sod that' and
+> > > create an
+> > > ordinary directory. The penalty would be aforementioned non-posix
+> > > weirdness.
+> > > 
+> > > > 
+> > > > > > Seth the fundamental problem with your patch was that you
+> > > > > > were
+> > > > > > patching
+> > > > > > a location that is used for more just mounts.
+> > > > > > 
+> > > > > > I am strongly wishing that we could just change
+> > > > > > follow_automount
+> > > > > > from:
+> > > > > > 
+> > > > > > 
+> > > > > > 	old_cred = override_creds(&init_cred);
+> > > > > > 	mnt = path->dentry->d_op->d_automount(path);
+> > > > > > 	revert_creds(old_cred);
+> > > > > > 
+> > > > > > to:
+> > > > > > 
+> > > > > > 	old_cred = override_creds(path->mnt->mnt_sb->s_cred);
+> > > > > > 	mnt = path->dentry->d_op->d_automount(path);
+> > > > > > 	revert_creds(old_cred);
+> > > > > > 
+> > > > > > And all will be well with nfs.  That does remain possible.
+> > > > > 
+> > > > > No. That would break permissions checking. See above.
+> > > > 
+> > > > Then we need to look much harder at the permission checking
+> > > > model of d_automount because we need to permission check against
+> > > > both sets of creds.
+> > 
+> > How about something like this? Essentially, stash the creds used at
+> > mount time in the super block, then create a vfs_kern_automount()
+> > function which overrides the currend creds then calls
+> > vfs_kern_mount().
+> > 
+> > Only compile tested so far, and probably it should be split up into
+> > several patches.
+> 
+> > diff --git a/fs/namespace.c b/fs/namespace.c
+> > index 487ba30bb5c6..da7e6dfa56cb 100644
+> > --- a/fs/namespace.c
+> > +++ b/fs/namespace.c
+> > @@ -989,6 +989,21 @@ vfs_kern_mount(struct file_system_type *type,
+> > int flags, const char *name, void
+> >  }
+> >  EXPORT_SYMBOL_GPL(vfs_kern_mount);
+> >  
+> > +struct vfsmount *
+> > +vfs_kern_automount(struct dentry *dentry, struct file_system_type
+> > *type,
+> > +		   int flags, const char *name, void *data)
+> > +{
+> > +	const struct cred *old_cred;
+> > +	struct vfsmount *mnt;
+> > +
+> > +	old_cred = override_creds(dentry->d_sb->s_cred);
+> > +	mnt = vfs_kern_mount(type, flags, name, data);
+> > +	revert_creds(old_cred);
+> > +
+> > +	return mnt;
+> > +}
+> > +EXPORT_SYMBOL_GPL(vfs_kern_automount);
+> > +
+> 
+> Nope. As I said, the call into the filesystem needs the _user_ creds.
 
+Okay. I thought that perhaps the user's creds were only needed when
+looking up the mountpoint, and that after that it might be okay to
+switch the creds. I guess not.
+
+Thanks,
+Seth
