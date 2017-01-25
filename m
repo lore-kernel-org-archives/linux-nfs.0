@@ -1,342 +1,111 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f173.google.com ([209.85.223.173]:34753 "EHLO
-        mail-io0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1750771AbdAYOwy (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 25 Jan 2017 09:52:54 -0500
-Received: by mail-io0-f173.google.com with SMTP id l66so15219732ioi.1
-        for <linux-nfs@vger.kernel.org>; Wed, 25 Jan 2017 06:52:54 -0800 (PST)
-Date: Wed, 25 Jan 2017 08:52:51 -0600
-From: Seth Forshee <seth.forshee@canonical.com>
-To: Trond Myklebust <trondmy@primarydata.com>,
+Received: from us-smtp-delivery-194.mimecast.com ([216.205.24.194]:50695 "EHLO
+        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1751480AbdAYPvi (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 25 Jan 2017 10:51:38 -0500
+From: Trond Myklebust <trondmy@primarydata.com>
+To: "seth.forshee@canonical.com" <seth.forshee@canonical.com>,
         "ebiederm@xmission.com" <ebiederm@xmission.com>
-Cc: Steve French <sfrench@primarydata.com>,
-        "dhowells@redhat.com" <dhowells@redhat.com>,
-        "bfields@fieldses.org" <bfields@fieldses.org>,
+CC: "bfields@fieldses.org" <bfields@fieldses.org>,
         "anna.schumaker@netapp.com" <anna.schumaker@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+        Steve French <sfrench@primarydata.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "dhowells@redhat.com" <dhowells@redhat.com>
 Subject: Re: [PATCH] sunrpc: Use current_real_cred() when looking up rpc
  credentials
-Message-ID: <20170125145251.GB51023@ubuntu-hedt>
+Date: Wed, 25 Jan 2017 15:51:30 +0000
+Message-ID: <1485359474.113155.1.camel@primarydata.com>
 References: <1481842899.11785.1.camel@primarydata.com>
- <20161216130609.GA124240@ubuntu-hedt>
- <20170110145504.GH52661@ubuntu-hedt>
- <87ziiyfntm.fsf@xmission.com>
- <20170124151745.GA114560@ubuntu-hedt>
- <87efzsdq5b.fsf@xmission.com>
- <87inp4rqaj.fsf@xmission.com>
- <1485301593.36478.2.camel@primarydata.com>
- <87y3y0ko5s.fsf@xmission.com>
- <1485303265.36478.7.camel@primarydata.com>
+         <20161216130609.GA124240@ubuntu-hedt> <20170110145504.GH52661@ubuntu-hedt>
+         <87ziiyfntm.fsf@xmission.com> <20170124151745.GA114560@ubuntu-hedt>
+         <87efzsdq5b.fsf@xmission.com> <87inp4rqaj.fsf@xmission.com>
+         <1485301593.36478.2.camel@primarydata.com> <87y3y0ko5s.fsf@xmission.com>
+         <1485303265.36478.7.camel@primarydata.com>
+         <20170125145251.GB51023@ubuntu-hedt>
+In-Reply-To: <20170125145251.GB51023@ubuntu-hedt>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-In-Reply-To: <1485303265.36478.7.camel@primarydata.com>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Jan 25, 2017 at 12:14:26AM +0000, Trond Myklebust wrote:
-> Adding David Howells and Steve French as I believe both AFS and CIFS
-> have the exact same requirements and NFS here.
-> 
-> On Wed, 2017-01-25 at 12:56 +1300, Eric W. Biederman wrote:
-> > Trond Myklebust <trondmy@primarydata.com> writes:
-> > 
-> > > On Wed, 2017-01-25 at 12:28 +1300, Eric W. Biederman wrote:
-> > > > With respect to nfs and automounts.
-> > > > 
-> > > > Does NFS have different automount behavior based on the user
-> > > > performing the automount?
-> > > > 
-> > > > If NFS does not have different automount behavior depending on
-> > > > the
-> > > > user
-> > > > we just use the creds of the original mounter of NFS?
-> > > > 
-> > > > If NFS does have different automount behavior depending on the
-> > > > user
-> > > > (ouch!) we need to go through the call path and see where it
-> > > > makes
-> > > > sense to over ride things and where it does not.
-> > > 
-> > > The reason why the NFS client creates a mountpoint is because on
-> > > entering a directory, it detects that there is either a similar
-> > > mountpoint on the server, or there is a referral (which acts sort
-> > > of
-> > > like a symlink, except it points to a path on one or more different
-> > > NFS
-> > > servers).
-> > > Without that mountpoint, most things would work, but the user would
-> > > end
-> > > up seeing nasty non-posix features like duplicate inode numbers.
-> > > 
-> > > We do not want to use any creds other than user creds here, because
-> > > as
-> > > far as the security model is concerned, the process is just
-> > > crossing
-> > > into an existing directory.
-> > 
-> > But sget needs different creds.
-> > 
-> > Because the user who authorizes the mounting of the filesystem is
-> > different than the user who is crossing into the new filesystem.
-> > 
-> > The local system now cares about that distinction even if the nfs
-> > server
-> > does not.
-> 
-> Why? The filesystem is already mounted. We're creating a new
-> mountpoint, but we could equally well just say 'sod that' and create an
-> ordinary directory. The penalty would be aforementioned non-posix
-> weirdness.
-> 
-> > 
-> > > > Seth the fundamental problem with your patch was that you were
-> > > > patching
-> > > > a location that is used for more just mounts.
-> > > > 
-> > > > I am strongly wishing that we could just change follow_automount
-> > > > from:
-> > > > 
-> > > > 
-> > > > 	old_cred = override_creds(&init_cred);
-> > > > 	mnt = path->dentry->d_op->d_automount(path);
-> > > > 	revert_creds(old_cred);
-> > > > 
-> > > > to:
-> > > > 
-> > > > 	old_cred = override_creds(path->mnt->mnt_sb->s_cred);
-> > > > 	mnt = path->dentry->d_op->d_automount(path);
-> > > > 	revert_creds(old_cred);
-> > > > 
-> > > > And all will be well with nfs.  That does remain possible.
-> > > 
-> > > No. That would break permissions checking. See above.
-> > 
-> > Then we need to look much harder at the permission checking
-> > model of d_automount because we need to permission check against
-> > both sets of creds.
+T24gV2VkLCAyMDE3LTAxLTI1IGF0IDA4OjUyIC0wNjAwLCBTZXRoIEZvcnNoZWUgd3JvdGU6DQo+
+IE9uIFdlZCwgSmFuIDI1LCAyMDE3IGF0IDEyOjE0OjI2QU0gKzAwMDAsIFRyb25kIE15a2xlYnVz
+dCB3cm90ZToNCj4gPiBBZGRpbmcgRGF2aWQgSG93ZWxscyBhbmQgU3RldmUgRnJlbmNoIGFzIEkg
+YmVsaWV2ZSBib3RoIEFGUyBhbmQNCj4gPiBDSUZTDQo+ID4gaGF2ZSB0aGUgZXhhY3Qgc2FtZSBy
+ZXF1aXJlbWVudHMgYW5kIE5GUyBoZXJlLg0KPiA+IA0KPiA+IE9uIFdlZCwgMjAxNy0wMS0yNSBh
+dCAxMjo1NiArMTMwMCwgRXJpYyBXLiBCaWVkZXJtYW4gd3JvdGU6DQo+ID4gPiBUcm9uZCBNeWts
+ZWJ1c3QgPHRyb25kbXlAcHJpbWFyeWRhdGEuY29tPiB3cml0ZXM6DQo+ID4gPiANCj4gPiA+ID4g
+T24gV2VkLCAyMDE3LTAxLTI1IGF0IDEyOjI4ICsxMzAwLCBFcmljIFcuIEJpZWRlcm1hbiB3cm90
+ZToNCj4gPiA+ID4gPiBXaXRoIHJlc3BlY3QgdG8gbmZzIGFuZCBhdXRvbW91bnRzLg0KPiA+ID4g
+PiA+IA0KPiA+ID4gPiA+IERvZXMgTkZTIGhhdmUgZGlmZmVyZW50IGF1dG9tb3VudCBiZWhhdmlv
+ciBiYXNlZCBvbiB0aGUgdXNlcg0KPiA+ID4gPiA+IHBlcmZvcm1pbmcgdGhlIGF1dG9tb3VudD8N
+Cj4gPiA+ID4gPiANCj4gPiA+ID4gPiBJZiBORlMgZG9lcyBub3QgaGF2ZSBkaWZmZXJlbnQgYXV0
+b21vdW50IGJlaGF2aW9yIGRlcGVuZGluZw0KPiA+ID4gPiA+IG9uDQo+ID4gPiA+ID4gdGhlDQo+
+ID4gPiA+ID4gdXNlcg0KPiA+ID4gPiA+IHdlIGp1c3QgdXNlIHRoZSBjcmVkcyBvZiB0aGUgb3Jp
+Z2luYWwgbW91bnRlciBvZiBORlM/DQo+ID4gPiA+ID4gDQo+ID4gPiA+ID4gSWYgTkZTIGRvZXMg
+aGF2ZSBkaWZmZXJlbnQgYXV0b21vdW50IGJlaGF2aW9yIGRlcGVuZGluZyBvbg0KPiA+ID4gPiA+
+IHRoZQ0KPiA+ID4gPiA+IHVzZXINCj4gPiA+ID4gPiAob3VjaCEpIHdlIG5lZWQgdG8gZ28gdGhy
+b3VnaCB0aGUgY2FsbCBwYXRoIGFuZCBzZWUgd2hlcmUgaXQNCj4gPiA+ID4gPiBtYWtlcw0KPiA+
+ID4gPiA+IHNlbnNlIHRvIG92ZXIgcmlkZSB0aGluZ3MgYW5kIHdoZXJlIGl0IGRvZXMgbm90Lg0K
+PiA+ID4gPiANCj4gPiA+ID4gVGhlIHJlYXNvbiB3aHkgdGhlIE5GUyBjbGllbnQgY3JlYXRlcyBh
+IG1vdW50cG9pbnQgaXMgYmVjYXVzZQ0KPiA+ID4gPiBvbg0KPiA+ID4gPiBlbnRlcmluZyBhIGRp
+cmVjdG9yeSwgaXQgZGV0ZWN0cyB0aGF0IHRoZXJlIGlzIGVpdGhlciBhIHNpbWlsYXINCj4gPiA+
+ID4gbW91bnRwb2ludCBvbiB0aGUgc2VydmVyLCBvciB0aGVyZSBpcyBhIHJlZmVycmFsICh3aGlj
+aCBhY3RzDQo+ID4gPiA+IHNvcnQNCj4gPiA+ID4gb2YNCj4gPiA+ID4gbGlrZSBhIHN5bWxpbmss
+IGV4Y2VwdCBpdCBwb2ludHMgdG8gYSBwYXRoIG9uIG9uZSBvciBtb3JlDQo+ID4gPiA+IGRpZmZl
+cmVudA0KPiA+ID4gPiBORlMNCj4gPiA+ID4gc2VydmVycykuDQo+ID4gPiA+IFdpdGhvdXQgdGhh
+dCBtb3VudHBvaW50LCBtb3N0IHRoaW5ncyB3b3VsZCB3b3JrLCBidXQgdGhlIHVzZXINCj4gPiA+
+ID4gd291bGQNCj4gPiA+ID4gZW5kDQo+ID4gPiA+IHVwIHNlZWluZyBuYXN0eSBub24tcG9zaXgg
+ZmVhdHVyZXMgbGlrZSBkdXBsaWNhdGUgaW5vZGUNCj4gPiA+ID4gbnVtYmVycy4NCj4gPiA+ID4g
+DQo+ID4gPiA+IFdlIGRvIG5vdCB3YW50IHRvIHVzZSBhbnkgY3JlZHMgb3RoZXIgdGhhbiB1c2Vy
+IGNyZWRzIGhlcmUsDQo+ID4gPiA+IGJlY2F1c2UNCj4gPiA+ID4gYXMNCj4gPiA+ID4gZmFyIGFz
+IHRoZSBzZWN1cml0eSBtb2RlbCBpcyBjb25jZXJuZWQsIHRoZSBwcm9jZXNzIGlzIGp1c3QNCj4g
+PiA+ID4gY3Jvc3NpbmcNCj4gPiA+ID4gaW50byBhbiBleGlzdGluZyBkaXJlY3RvcnkuDQo+ID4g
+PiANCj4gPiA+IEJ1dCBzZ2V0IG5lZWRzIGRpZmZlcmVudCBjcmVkcy4NCj4gPiA+IA0KPiA+ID4g
+QmVjYXVzZSB0aGUgdXNlciB3aG8gYXV0aG9yaXplcyB0aGUgbW91bnRpbmcgb2YgdGhlIGZpbGVz
+eXN0ZW0gaXMNCj4gPiA+IGRpZmZlcmVudCB0aGFuIHRoZSB1c2VyIHdobyBpcyBjcm9zc2luZyBp
+bnRvIHRoZSBuZXcgZmlsZXN5c3RlbS4NCj4gPiA+IA0KPiA+ID4gVGhlIGxvY2FsIHN5c3RlbSBu
+b3cgY2FyZXMgYWJvdXQgdGhhdCBkaXN0aW5jdGlvbiBldmVuIGlmIHRoZSBuZnMNCj4gPiA+IHNl
+cnZlcg0KPiA+ID4gZG9lcyBub3QuDQo+ID4gDQo+ID4gV2h5PyBUaGUgZmlsZXN5c3RlbSBpcyBh
+bHJlYWR5IG1vdW50ZWQuIFdlJ3JlIGNyZWF0aW5nIGEgbmV3DQo+ID4gbW91bnRwb2ludCwgYnV0
+IHdlIGNvdWxkIGVxdWFsbHkgd2VsbCBqdXN0IHNheSAnc29kIHRoYXQnIGFuZA0KPiA+IGNyZWF0
+ZSBhbg0KPiA+IG9yZGluYXJ5IGRpcmVjdG9yeS4gVGhlIHBlbmFsdHkgd291bGQgYmUgYWZvcmVt
+ZW50aW9uZWQgbm9uLXBvc2l4DQo+ID4gd2VpcmRuZXNzLg0KPiA+IA0KPiA+ID4gDQo+ID4gPiA+
+ID4gU2V0aCB0aGUgZnVuZGFtZW50YWwgcHJvYmxlbSB3aXRoIHlvdXIgcGF0Y2ggd2FzIHRoYXQg
+eW91DQo+ID4gPiA+ID4gd2VyZQ0KPiA+ID4gPiA+IHBhdGNoaW5nDQo+ID4gPiA+ID4gYSBsb2Nh
+dGlvbiB0aGF0IGlzIHVzZWQgZm9yIG1vcmUganVzdCBtb3VudHMuDQo+ID4gPiA+ID4gDQo+ID4g
+PiA+ID4gSSBhbSBzdHJvbmdseSB3aXNoaW5nIHRoYXQgd2UgY291bGQganVzdCBjaGFuZ2UNCj4g
+PiA+ID4gPiBmb2xsb3dfYXV0b21vdW50DQo+ID4gPiA+ID4gZnJvbToNCj4gPiA+ID4gPiANCj4g
+PiA+ID4gPiANCj4gPiA+ID4gPiAJb2xkX2NyZWQgPSBvdmVycmlkZV9jcmVkcygmaW5pdF9jcmVk
+KTsNCj4gPiA+ID4gPiAJbW50ID0gcGF0aC0+ZGVudHJ5LT5kX29wLT5kX2F1dG9tb3VudChwYXRo
+KTsNCj4gPiA+ID4gPiAJcmV2ZXJ0X2NyZWRzKG9sZF9jcmVkKTsNCj4gPiA+ID4gPiANCj4gPiA+
+ID4gPiB0bzoNCj4gPiA+ID4gPiANCj4gPiA+ID4gPiAJb2xkX2NyZWQgPSBvdmVycmlkZV9jcmVk
+cyhwYXRoLT5tbnQtPm1udF9zYi0+c19jcmVkKTsNCj4gPiA+ID4gPiAJbW50ID0gcGF0aC0+ZGVu
+dHJ5LT5kX29wLT5kX2F1dG9tb3VudChwYXRoKTsNCj4gPiA+ID4gPiAJcmV2ZXJ0X2NyZWRzKG9s
+ZF9jcmVkKTsNCj4gPiA+ID4gPiANCj4gPiA+ID4gPiBBbmQgYWxsIHdpbGwgYmUgd2VsbCB3aXRo
+IG5mcy7CoMKgVGhhdCBkb2VzIHJlbWFpbiBwb3NzaWJsZS4NCj4gPiA+ID4gDQo+ID4gPiA+IE5v
+LiBUaGF0IHdvdWxkIGJyZWFrIHBlcm1pc3Npb25zIGNoZWNraW5nLiBTZWUgYWJvdmUuDQo+ID4g
+PiANCj4gPiA+IFRoZW4gd2UgbmVlZCB0byBsb29rIG11Y2ggaGFyZGVyIGF0IHRoZSBwZXJtaXNz
+aW9uIGNoZWNraW5nDQo+ID4gPiBtb2RlbCBvZiBkX2F1dG9tb3VudCBiZWNhdXNlIHdlIG5lZWQg
+dG8gcGVybWlzc2lvbiBjaGVjayBhZ2FpbnN0DQo+ID4gPiBib3RoIHNldHMgb2YgY3JlZHMuDQo+
+IA0KPiBIb3cgYWJvdXQgc29tZXRoaW5nIGxpa2UgdGhpcz8gRXNzZW50aWFsbHksIHN0YXNoIHRo
+ZSBjcmVkcyB1c2VkIGF0DQo+IG1vdW50IHRpbWUgaW4gdGhlIHN1cGVyIGJsb2NrLCB0aGVuIGNy
+ZWF0ZSBhIHZmc19rZXJuX2F1dG9tb3VudCgpDQo+IGZ1bmN0aW9uIHdoaWNoIG92ZXJyaWRlcyB0
+aGUgY3VycmVuZCBjcmVkcyB0aGVuIGNhbGxzDQo+IHZmc19rZXJuX21vdW50KCkuDQo+IA0KPiBP
+bmx5IGNvbXBpbGUgdGVzdGVkIHNvIGZhciwgYW5kIHByb2JhYmx5IGl0IHNob3VsZCBiZSBzcGxp
+dCB1cCBpbnRvDQo+IHNldmVyYWwgcGF0Y2hlcy4NCg0KPiBkaWZmIC0tZ2l0IGEvZnMvbmFtZXNw
+YWNlLmMgYi9mcy9uYW1lc3BhY2UuYw0KPiBpbmRleCA0ODdiYTMwYmI1YzYuLmRhN2U2ZGZhNTZj
+YiAxMDA2NDQNCj4gLS0tIGEvZnMvbmFtZXNwYWNlLmMNCj4gKysrIGIvZnMvbmFtZXNwYWNlLmMN
+Cj4gQEAgLTk4OSw2ICs5ODksMjEgQEAgdmZzX2tlcm5fbW91bnQoc3RydWN0IGZpbGVfc3lzdGVt
+X3R5cGUgKnR5cGUsDQo+IGludCBmbGFncywgY29uc3QgY2hhciAqbmFtZSwgdm9pZA0KPiDCoH0N
+Cj4gwqBFWFBPUlRfU1lNQk9MX0dQTCh2ZnNfa2Vybl9tb3VudCk7DQo+IMKgDQo+ICtzdHJ1Y3Qg
+dmZzbW91bnQgKg0KPiArdmZzX2tlcm5fYXV0b21vdW50KHN0cnVjdCBkZW50cnkgKmRlbnRyeSwg
+c3RydWN0IGZpbGVfc3lzdGVtX3R5cGUNCj4gKnR5cGUsDQo+ICsJCcKgwqDCoGludCBmbGFncywg
+Y29uc3QgY2hhciAqbmFtZSwgdm9pZCAqZGF0YSkNCj4gK3sNCj4gKwljb25zdCBzdHJ1Y3QgY3Jl
+ZCAqb2xkX2NyZWQ7DQo+ICsJc3RydWN0IHZmc21vdW50ICptbnQ7DQo+ICsNCj4gKwlvbGRfY3Jl
+ZCA9IG92ZXJyaWRlX2NyZWRzKGRlbnRyeS0+ZF9zYi0+c19jcmVkKTsNCj4gKwltbnQgPSB2ZnNf
+a2Vybl9tb3VudCh0eXBlLCBmbGFncywgbmFtZSwgZGF0YSk7DQo+ICsJcmV2ZXJ0X2NyZWRzKG9s
+ZF9jcmVkKTsNCj4gKw0KPiArCXJldHVybiBtbnQ7DQo+ICt9DQo+ICtFWFBPUlRfU1lNQk9MX0dQ
+TCh2ZnNfa2Vybl9hdXRvbW91bnQpOw0KPiArDQoNCk5vcGUuIEFzIEkgc2FpZCwgdGhlIGNhbGwg
+aW50byB0aGUgZmlsZXN5c3RlbSBuZWVkcyB0aGUgX3VzZXJfIGNyZWRzLg0KDQotLSA=
 
-How about something like this? Essentially, stash the creds used at
-mount time in the super block, then create a vfs_kern_automount()
-function which overrides the currend creds then calls vfs_kern_mount().
-
-Only compile tested so far, and probably it should be split up into
-several patches.
-
-diff --git a/fs/afs/mntpt.c b/fs/afs/mntpt.c
-index 81dd075356b9..4455e64610d3 100644
---- a/fs/afs/mntpt.c
-+++ b/fs/afs/mntpt.c
-@@ -202,7 +202,7 @@ static struct vfsmount *afs_mntpt_do_automount(struct dentry *mntpt)
- 
- 	/* try and do the mount */
- 	_debug("--- attempting mount %s -o %s ---", devname, options);
--	mnt = vfs_kern_mount(&afs_fs_type, 0, devname, options);
-+	mnt = vfs_kern_automount(mntpt, &afs_fs_type, 0, devname, options);
- 	_debug("--- mount result %p ---", mnt);
- 
- 	free_page((unsigned long) devname);
-diff --git a/fs/cifs/cifs_dfs_ref.c b/fs/cifs/cifs_dfs_ref.c
-index ec9dbbcca3b9..d378f88e8630 100644
---- a/fs/cifs/cifs_dfs_ref.c
-+++ b/fs/cifs/cifs_dfs_ref.c
-@@ -245,9 +245,10 @@ char *cifs_compose_mount_options(const char *sb_mountdata,
-  * @fullpath:		full path in UNC format
-  * @ref:		server's referral
-  */
--static struct vfsmount *cifs_dfs_do_refmount(struct cifs_sb_info *cifs_sb,
-+static struct vfsmount *cifs_dfs_do_refmount(struct dentry *mntpt,
- 		const char *fullpath, const struct dfs_info3_param *ref)
- {
-+	struct cifs_sb_info *cifs_sb = CIFS_SB(mntpt->d_sb);
- 	struct vfsmount *mnt;
- 	char *mountdata;
- 	char *devname = NULL;
-@@ -259,7 +260,7 @@ static struct vfsmount *cifs_dfs_do_refmount(struct cifs_sb_info *cifs_sb,
- 	if (IS_ERR(mountdata))
- 		return (struct vfsmount *)mountdata;
- 
--	mnt = vfs_kern_mount(&cifs_fs_type, 0, devname, mountdata);
-+	mnt = vfs_kern_automount(mntpt, &cifs_fs_type, 0, devname, mountdata);
- 	kfree(mountdata);
- 	kfree(devname);
- 	return mnt;
-@@ -334,7 +335,7 @@ static struct vfsmount *cifs_dfs_do_automount(struct dentry *mntpt)
- 			mnt = ERR_PTR(-EINVAL);
- 			break;
- 		}
--		mnt = cifs_dfs_do_refmount(cifs_sb,
-+		mnt = cifs_dfs_do_refmount(mntpt,
- 				full_path, referrals + i);
- 		cifs_dbg(FYI, "%s: cifs_dfs_do_refmount:%s , mnt:%p\n",
- 			 __func__, referrals[i].node_name, mnt);
-diff --git a/fs/debugfs/inode.c b/fs/debugfs/inode.c
-index f17fcf89e18e..d45f131af869 100644
---- a/fs/debugfs/inode.c
-+++ b/fs/debugfs/inode.c
-@@ -187,9 +187,9 @@ static const struct super_operations debugfs_super_operations = {
- 
- static struct vfsmount *debugfs_automount(struct path *path)
- {
--	struct vfsmount *(*f)(void *);
--	f = (struct vfsmount *(*)(void *))path->dentry->d_fsdata;
--	return f(d_inode(path->dentry)->i_private);
-+	struct vfsmount *(*f)(struct dentry *, void *);
-+	f = (struct vfsmount *(*)(struct dentry *, void *))path->dentry->d_fsdata;
-+	return f(path->dentry, d_inode(path->dentry)->i_private);
- }
- 
- static const struct dentry_operations debugfs_dops = {
-@@ -504,7 +504,7 @@ EXPORT_SYMBOL_GPL(debugfs_create_dir);
-  */
- struct dentry *debugfs_create_automount(const char *name,
- 					struct dentry *parent,
--					struct vfsmount *(*f)(void *),
-+					struct vfsmount *(*f)(struct dentry *, void *),
- 					void *data)
- {
- 	struct dentry *dentry = start_creating(name, parent);
-diff --git a/fs/namespace.c b/fs/namespace.c
-index 487ba30bb5c6..da7e6dfa56cb 100644
---- a/fs/namespace.c
-+++ b/fs/namespace.c
-@@ -989,6 +989,21 @@ vfs_kern_mount(struct file_system_type *type, int flags, const char *name, void
- }
- EXPORT_SYMBOL_GPL(vfs_kern_mount);
- 
-+struct vfsmount *
-+vfs_kern_automount(struct dentry *dentry, struct file_system_type *type,
-+		   int flags, const char *name, void *data)
-+{
-+	const struct cred *old_cred;
-+	struct vfsmount *mnt;
-+
-+	old_cred = override_creds(dentry->d_sb->s_cred);
-+	mnt = vfs_kern_mount(type, flags, name, data);
-+	revert_creds(old_cred);
-+
-+	return mnt;
-+}
-+EXPORT_SYMBOL_GPL(vfs_kern_automount);
-+
- static struct mount *clone_mnt(struct mount *old, struct dentry *root,
- 					int flag)
- {
-diff --git a/fs/nfs/namespace.c b/fs/nfs/namespace.c
-index 5551e8ef67fd..dce529c50cbd 100644
---- a/fs/nfs/namespace.c
-+++ b/fs/nfs/namespace.c
-@@ -222,11 +222,11 @@ void nfs_release_automount_timer(void)
- /*
-  * Clone a mountpoint of the appropriate type
-  */
--static struct vfsmount *nfs_do_clone_mount(struct nfs_server *server,
-+static struct vfsmount *nfs_do_clone_mount(struct dentry *dentry,
- 					   const char *devname,
- 					   struct nfs_clone_mount *mountdata)
- {
--	return vfs_kern_mount(&nfs_xdev_fs_type, 0, devname, mountdata);
-+	return vfs_kern_automount(dentry, &nfs_xdev_fs_type, 0, devname, mountdata);
- }
- 
- /**
-@@ -261,7 +261,7 @@ struct vfsmount *nfs_do_submount(struct dentry *dentry, struct nfs_fh *fh,
- 	mnt = (struct vfsmount *)devname;
- 	if (IS_ERR(devname))
- 		goto free_page;
--	mnt = nfs_do_clone_mount(NFS_SB(dentry->d_sb), devname, &mountdata);
-+	mnt = nfs_do_clone_mount(dentry, devname, &mountdata);
- free_page:
- 	free_page((unsigned long)page);
- out:
-diff --git a/fs/super.c b/fs/super.c
-index 1709ed029a2c..b33b7d606aec 100644
---- a/fs/super.c
-+++ b/fs/super.c
-@@ -166,6 +166,7 @@ static void destroy_super(struct super_block *s)
- 	list_lru_destroy(&s->s_inode_lru);
- 	security_sb_free(s);
- 	WARN_ON(!list_empty(&s->s_mounts));
-+	put_cred(s->s_cred);
- 	put_user_ns(s->s_user_ns);
- 	kfree(s->s_subtype);
- 	kfree(s->s_options);
-@@ -193,6 +194,7 @@ static struct super_block *alloc_super(struct file_system_type *type, int flags,
- 
- 	INIT_LIST_HEAD(&s->s_mounts);
- 	s->s_user_ns = get_user_ns(user_ns);
-+	s->s_cred = get_current_cred();
- 
- 	if (security_sb_alloc(s))
- 		goto fail;
-diff --git a/include/linux/debugfs.h b/include/linux/debugfs.h
-index 014cc564d1c4..67ac9f10e7b7 100644
---- a/include/linux/debugfs.h
-+++ b/include/linux/debugfs.h
-@@ -99,7 +99,7 @@ struct dentry *debugfs_create_symlink(const char *name, struct dentry *parent,
- 
- struct dentry *debugfs_create_automount(const char *name,
- 					struct dentry *parent,
--					struct vfsmount *(*f)(void *),
-+					struct vfsmount *(*f)(struct dentry *, void *),
- 					void *data);
- 
- void debugfs_remove(struct dentry *dentry);
-@@ -211,7 +211,7 @@ static inline struct dentry *debugfs_create_symlink(const char *name,
- 
- static inline struct dentry *debugfs_create_automount(const char *name,
- 					struct dentry *parent,
--					struct vfsmount *(*f)(void *),
-+					struct vfsmount *(*f)(struct dentry *, void *),
- 					void *data)
- {
- 	return ERR_PTR(-ENODEV);
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index 2ba074328894..cae845944d1d 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -1374,6 +1374,9 @@ struct super_block {
- 	 */
- 	struct user_namespace *s_user_ns;
- 
-+	/* Credentials of the user who mounted the filesystem */
-+	const struct cred *s_cred;
-+
- 	/*
- 	 * Keep the lru lists last in the structure so they always sit on their
- 	 * own individual cachelines.
-diff --git a/include/linux/mount.h b/include/linux/mount.h
-index c6f55158d5e5..b9cdca0c6b1a 100644
---- a/include/linux/mount.h
-+++ b/include/linux/mount.h
-@@ -90,6 +90,9 @@ struct file_system_type;
- extern struct vfsmount *vfs_kern_mount(struct file_system_type *type,
- 				      int flags, const char *name,
- 				      void *data);
-+struct vfsmount *vfs_kern_automount(struct dentry *dentry,
-+				    struct file_system_type *type,
-+				    int flags, const char *name, void *data);
- 
- extern void mnt_set_expiry(struct vfsmount *mnt, struct list_head *expiry_list);
- extern void mark_mounts_for_expiry(struct list_head *mounts);
-diff --git a/kernel/trace/trace.c b/kernel/trace/trace.c
-index d7449783987a..7bb959abd5f1 100644
---- a/kernel/trace/trace.c
-+++ b/kernel/trace/trace.c
-@@ -7503,7 +7503,7 @@ init_tracer_tracefs(struct trace_array *tr, struct dentry *d_tracer)
- 	ftrace_init_tracefs(tr, d_tracer);
- }
- 
--static struct vfsmount *trace_automount(void *ingore)
-+static struct vfsmount *trace_automount(struct dentry *dentry, void *ingore)
- {
- 	struct vfsmount *mnt;
- 	struct file_system_type *type;
-@@ -7516,7 +7516,7 @@ static struct vfsmount *trace_automount(void *ingore)
- 	type = get_fs_type("tracefs");
- 	if (!type)
- 		return NULL;
--	mnt = vfs_kern_mount(type, 0, "tracefs", NULL);
-+	mnt = vfs_kern_automount(dentry, type, 0, "tracefs", NULL);
- 	put_filesystem(type);
- 	if (IS_ERR(mnt))
- 		return NULL;
