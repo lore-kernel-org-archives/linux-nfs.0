@@ -1,36 +1,99 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:52060 "EHLO fieldses.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1750768AbdAYTZy (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 25 Jan 2017 14:25:54 -0500
-Date: Wed, 25 Jan 2017 14:25:51 -0500
-From: Bruce Fields <bfields@fieldses.org>
-To: Christoph Hellwig <hch@lst.de>
-Cc: "Mkrtchyan, Tigran" <tigran.mkrtchyan@desy.de>,
-        trondmy@primarydata.com, linux-nfs@vger.kernel.org,
-        jlayton@poochiereds.net
-Subject: Re: [PATCH v2] nfsd: special case truncates some more
-Message-ID: <20170125192551.GD3134@fieldses.org>
-References: <d6fd33d2-6323-435c-b085-27a7180c4368@email.android.com>
- <20170124221533.GG20844@fieldses.org>
- <20170125081804.GB14954@lst.de>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20170125081804.GB14954@lst.de>
+Received: from aserp1040.oracle.com ([141.146.126.69]:17691 "EHLO
+        aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1752066AbdAYT6c (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 25 Jan 2017 14:58:32 -0500
+Content-Type: text/plain; charset=utf-8
+Mime-Version: 1.0 (Mac OS X Mail 9.3 \(3124\))
+Subject: Re: [PATCH v1] nfs: Don't increment lock sequence ID after NFS4ERR_MOVED
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <1485289414.12087.0.camel@primarydata.com>
+Date: Wed, 25 Jan 2017 14:58:24 -0500
+Cc: "J. Bruce Fields" <bfields@fieldses.org>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Message-Id: <58C762A9-E1D0-4649-8AC3-5A7FA0D1A362@oracle.com>
+References: <20170122190429.7337.77928.stgit@manet.1015granger.net> <69D3212A-874D-42A2-BE65-F3A01B061A87@oracle.com> <20170123164913.GB9493@fieldses.org> <1F944D3D-A28B-48C5-88CC-39EBD6CB8430@oracle.com> <20170124191515.GA20844@fieldses.org> <1485289414.12087.0.camel@primarydata.com>
+To: Trond Myklebust <trondmy@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Jan 25, 2017 at 09:18:04AM +0100, Christoph Hellwig wrote:
-> Btw, any rason this didn't go into your for-4.10 tree?  Due to the
-> owner/group changes being the most affected attrs I would classify it
-> as a security issue.
 
-It only seems to affect a very new setup, and the patch wasn't totally
-trivial, so I was inclined to wait and see, but... to be honest I don't
-have strong feelings about it, and I respect your opinion--I can queue
-it up for-4.10 wth a cc to stable.
+> On Jan 24, 2017, at 3:23 PM, Trond Myklebust <trondmy@primarydata.com> wrote:
+> 
+> On Tue, 2017-01-24 at 14:15 -0500, J. Bruce Fields wrote:
+>> On Tue, Jan 24, 2017 at 02:06:16PM -0500, Chuck Lever wrote:
+>>> 
+>>>> On Jan 23, 2017, at 11:49 AM, bfields@fieldses.org wrote:
+>>>> 
+>>>> On Mon, Jan 23, 2017 at 10:01:27AM -0500, Chuck Lever wrote:
+>>>>> 
+>>>>>> On Jan 22, 2017, at 2:04 PM, Chuck Lever <chuck.lever@oracle.
+>>>>>> com> wrote:
+>>>>>> 
+>>>>>> Xuan Qi reports that the Linux NFSv4 client failed to lock a
+>>>>>> file
+>>>>>> that was migrated. The steps he observed on the wire:
+>>>>>> 
+>>>>>> 1. The client sent a LOCK request
+>>>>>> 2. The server replied NFS4ERR_MOVED
+>>>>>> 3. The client switched to the destination server
+>>>>>> 4. The client sent the LOCK request again with a bumped
+>>>>>> ย lock sequence ID
+>>>>>> 5. The server rejected the LOCK request with
+>>>>>> NFS4ERR_BAD_SEQID
+>>>>> 
+>>>>> The list of steps could be more clear:
+>>>>> 
+>>>>> 1. The client sent a LOCK request to the source server
+>>>>> 2. The source server replied NFS4ERR_MOVED
+>>>>> 3. The client switched to the destination server
+>>>>> 4. The client sent the same LOCK request to the destination
+>>>>> ย  server with a bumped lock sequence ID
+>>>>> 5. The destination server rejected the LOCK request with
+>>>>> ย  NFS4ERR_BAD_SEQID
+>>>>> 
+>>>>> 
+>>>>>> RFC 3530 section 8.1.5 provides a list of NFS errors which do
+>>>>>> not
+>>>>>> bump a lock sequence ID.
+>>>>>> 
+>>>>>> However, RFC 3530 is now obsoleted by RFC 7530. In RFC 7530
+>>>>>> section
+>>>>>> 9.1.7, this list has been updated by the addition of
+>>>>>> NFS4ERR_MOVED.
+>>>> 
+>>>> I guess we figured the backwards-incompatible change was OK since
+>>>> essentially the Solaris server is the first we know of to be
+>>>> making real
+>>>> use of NFS4ERR_MOVED?
+>>>> 
+>>>> And probably it's required for the their implementation because
+>>>> the old
+>>>> server no longer has the ability to update the state once it's
+>>>> reached
+>>>> the point of returning ERR_MOVED.
+>>>> 
+>>>> OK, makes sense to me, I think.
+>>> 
+>>> Hi Bruce-
+>>> 
+>>> Does this mean you will take this patch, or should
+>>> I just add your Reviewed-by: ?
+>> 
+>> I can take it if nobody objects.ย ย Mind if I append the above to the
+>> changelog?ย ย (Just want to document why we think the apparently
+>> backwards-incompatible change is OK.)
+>> 
+> I've already added it to my linux-next branch as a stable patch.
 
-(Not attempting to add a Fixes: line as this probably goes very far
-back.)
+This patch alone might not be enough.
 
---b.
+Our test results show that even with this patch applied, the Linux
+client still increments the lock sequence ID after NFS4ERR_MOVED.
+
+
+--
+Chuck Lever
+
+
+
