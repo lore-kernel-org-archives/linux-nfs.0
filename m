@@ -1,82 +1,44 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f194.google.com ([209.85.223.194]:34965 "EHLO
-        mail-io0-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1754082AbdAZSBe (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Jan 2017 13:01:34 -0500
-Received: by mail-io0-f194.google.com with SMTP id m98so5698366iod.2
-        for <linux-nfs@vger.kernel.org>; Thu, 26 Jan 2017 10:00:19 -0800 (PST)
-Subject: [PATCH v2] nfs: Don't increment lock sequence ID after NFS4ERR_MOVED
-From: Chuck Lever <chuck.lever@oracle.com>
-To: trond.myklebust@primarydata.com, anna.schumaker@netapp.com
-Cc: linux-nfs@vger.kernel.org
-Date: Thu, 26 Jan 2017 13:00:17 -0500
-Message-ID: <20170126175938.6021.69650.stgit@manet.1015granger.net>
+Received: from us-smtp-delivery-194.mimecast.com ([216.205.24.194]:37088 "EHLO
+        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1754018AbdAZSOL (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Jan 2017 13:14:11 -0500
+From: Trond Myklebust <trondmy@primarydata.com>
+To: "anna.schumaker@netapp.com" <anna.schumaker@netapp.com>,
+        "chuck.lever@oracle.com" <chuck.lever@oracle.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH v2] nfs: Don't increment lock sequence ID after
+ NFS4ERR_MOVED
+Date: Thu, 26 Jan 2017 18:14:04 +0000
+Message-ID: <1485454442.9473.1.camel@primarydata.com>
+References: <20170126175938.6021.69650.stgit@manet.1015granger.net>
+In-Reply-To: <20170126175938.6021.69650.stgit@manet.1015granger.net>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Xuan Qi reports that the Linux NFSv4 client failed to lock a file
-that was migrated. The steps he observed on the wire:
-
-1. The client sent a LOCK request to the source server
-2. The source server replied NFS4ERR_MOVED
-3. The client switched to the destination server
-4. The client sent the LOCK request to the destination
-   server with a bumped lock sequence ID
-5. The destination server rejected the LOCK request with
-   NFS4ERR_BAD_SEQID
-
-RFC 3530 section 8.1.5 provides a list of NFS errors which do not
-bump a lock sequence ID.
-
-However, RFC 3530 is now obsoleted by RFC 7530. In RFC 7530 section
-9.1.7, this list has been updated by the addition of NFS4ERR_MOVED.
-
-Reported-by: Xuan Qi <xuan.qi@oracle.com>
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-Tested-by: Xuan Qi <xuan.qi@oracle.com>
-Cc: stable@vger.kernel.org # v3.7+
----
-Testing confirms this patch addresses the problem that Xuan first
-observed.
-
-
- fs/nfs/nfs4state.c   |    1 +
- include/linux/nfs4.h |    3 ++-
- 2 files changed, 3 insertions(+), 1 deletion(-)
-
-diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
-index 90e6193..daeb94e 100644
---- a/fs/nfs/nfs4state.c
-+++ b/fs/nfs/nfs4state.c
-@@ -1091,6 +1091,7 @@ static void nfs_increment_seqid(int status, struct nfs_seqid *seqid)
- 		case -NFS4ERR_BADXDR:
- 		case -NFS4ERR_RESOURCE:
- 		case -NFS4ERR_NOFILEHANDLE:
-+		case -NFS4ERR_MOVED:
- 			/* Non-seqid mutating errors */
- 			return;
- 	};
-diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
-index bca5363..1b1ca04 100644
---- a/include/linux/nfs4.h
-+++ b/include/linux/nfs4.h
-@@ -282,7 +282,7 @@ enum nfsstat4 {
- 
- static inline bool seqid_mutating_err(u32 err)
- {
--	/* rfc 3530 section 8.1.5: */
-+	/* See RFC 7530, section 9.1.7 */
- 	switch (err) {
- 	case NFS4ERR_STALE_CLIENTID:
- 	case NFS4ERR_STALE_STATEID:
-@@ -291,6 +291,7 @@ static inline bool seqid_mutating_err(u32 err)
- 	case NFS4ERR_BADXDR:
- 	case NFS4ERR_RESOURCE:
- 	case NFS4ERR_NOFILEHANDLE:
-+	case NFS4ERR_MOVED:
- 		return false;
- 	};
- 	return true;
+T24gVGh1LCAyMDE3LTAxLTI2IGF0IDEzOjAwIC0wNTAwLCBDaHVjayBMZXZlciB3cm90ZToNCj4g
+WHVhbiBRaSByZXBvcnRzIHRoYXQgdGhlIExpbnV4IE5GU3Y0IGNsaWVudCBmYWlsZWQgdG8gbG9j
+ayBhIGZpbGUNCj4gdGhhdCB3YXMgbWlncmF0ZWQuIFRoZSBzdGVwcyBoZSBvYnNlcnZlZCBvbiB0
+aGUgd2lyZToNCj4gDQo+IDEuIFRoZSBjbGllbnQgc2VudCBhIExPQ0sgcmVxdWVzdCB0byB0aGUg
+c291cmNlIHNlcnZlcg0KPiAyLiBUaGUgc291cmNlIHNlcnZlciByZXBsaWVkIE5GUzRFUlJfTU9W
+RUQNCj4gMy4gVGhlIGNsaWVudCBzd2l0Y2hlZCB0byB0aGUgZGVzdGluYXRpb24gc2VydmVyDQo+
+IDQuIFRoZSBjbGllbnQgc2VudCB0aGUgTE9DSyByZXF1ZXN0IHRvIHRoZSBkZXN0aW5hdGlvbg0K
+PiDCoMKgwqBzZXJ2ZXIgd2l0aCBhIGJ1bXBlZCBsb2NrIHNlcXVlbmNlIElEDQo+IDUuIFRoZSBk
+ZXN0aW5hdGlvbiBzZXJ2ZXIgcmVqZWN0ZWQgdGhlIExPQ0sgcmVxdWVzdCB3aXRoDQo+IMKgwqDC
+oE5GUzRFUlJfQkFEX1NFUUlEDQo+IA0KPiBSRkMgMzUzMCBzZWN0aW9uIDguMS41IHByb3ZpZGVz
+IGEgbGlzdCBvZiBORlMgZXJyb3JzIHdoaWNoIGRvIG5vdA0KPiBidW1wIGEgbG9jayBzZXF1ZW5j
+ZSBJRC4NCj4gDQo+IEhvd2V2ZXIsIFJGQyAzNTMwIGlzIG5vdyBvYnNvbGV0ZWQgYnkgUkZDIDc1
+MzAuIEluIFJGQyA3NTMwIHNlY3Rpb24NCj4gOS4xLjcsIHRoaXMgbGlzdCBoYXMgYmVlbiB1cGRh
+dGVkIGJ5IHRoZSBhZGRpdGlvbiBvZiBORlM0RVJSX01PVkVELg0KPiANCj4gUmVwb3J0ZWQtYnk6
+IFh1YW4gUWkgPHh1YW4ucWlAb3JhY2xlLmNvbT4NCj4gU2lnbmVkLW9mZi1ieTogQ2h1Y2sgTGV2
+ZXIgPGNodWNrLmxldmVyQG9yYWNsZS5jb20+DQo+IFRlc3RlZC1ieTogWHVhbiBRaSA8eHVhbi5x
+aUBvcmFjbGUuY29tPg0KPiBDYzogc3RhYmxlQHZnZXIua2VybmVsLm9yZyAjIHYzLjcrDQo+IC0t
+LQ0KPiBUZXN0aW5nIGNvbmZpcm1zIHRoaXMgcGF0Y2ggYWRkcmVzc2VzIHRoZSBwcm9ibGVtIHRo
+YXQgWHVhbiBmaXJzdA0KPiBvYnNlcnZlZC4NCj4gDQoNClNpbmNlIHRoZSBmaXJzdCBwYXRjaCB3
+YXMgYWxyZWFkeSBhcHBsaWVkIHRvIGxpbnV4LW5leHQsIGNvdWxkIHlvdQ0KcGxlYXNlIG1ha2Ug
+dGhpcyBvbmUgaW5jcmVtZW50YWw/DQoNClRoYW5rcw0KDQotLSANClRyb25kIE15a2xlYnVzdA0K
+TGludXggTkZTIGNsaWVudCBtYWludGFpbmVyLCBQcmltYXJ5RGF0YQ0KdHJvbmQubXlrbGVidXN0
+QHByaW1hcnlkYXRhLmNvbQ0K
 
