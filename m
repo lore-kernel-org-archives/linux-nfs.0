@@ -1,13 +1,14 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f195.google.com ([209.85.223.195]:35727 "EHLO
-        mail-io0-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1754038AbdAZR4g (ORCPT
+Received: from mail-it0-f66.google.com ([209.85.214.66]:33454 "EHLO
+        mail-it0-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1754117AbdAZR4g (ORCPT
         <rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Jan 2017 12:56:36 -0500
-Subject: [PATCH v1 2/7] xprtrdma: Handle stale connection rejection
+Subject: [PATCH v1 7/7] sunrpc: Allow keepalive ping on a credit-full
+ transport
 From: Chuck Lever <chuck.lever@oracle.com>
 To: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Thu, 26 Jan 2017 12:55:47 -0500
-Message-ID: <20170126175547.5794.86451.stgit@manet.1015granger.net>
+Date: Thu, 26 Jan 2017 12:56:28 -0500
+Message-ID: <20170126175628.5794.56813.stgit@manet.1015granger.net>
 In-Reply-To: <20170126174806.5794.14678.stgit@manet.1015granger.net>
 References: <20170126174806.5794.14678.stgit@manet.1015granger.net>
 MIME-Version: 1.0
@@ -15,134 +16,107 @@ Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-A server rejects a connection attempt with STALE_CONNECTION when a
-client attempts to connect to a working remote service, but uses a
-QPN and GUID that corresponds to an old connection that was
-abandoned. This might occur after a client crashes and restarts.
+Allow RPC-over-RDMA to send NULL pings even when the transport has
+hit its credit limit.
 
-Fix rpcrdma_conn_upcall() to distinguish between a normal rejection
-and rejection of stale connection parameters.
-
-As an additional clean-up, remove the code that retries the
-connection attempt with different ORD/IRD values. Code audit of
-other ULP initiators shows no similar special case handling of
-initiator_depth or responder_resources.
+One credit is reserved. It may be used only to send a keepalive
+ping.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- net/sunrpc/xprtrdma/verbs.c |   65 +++++++++++++------------------------------
- 1 file changed, 20 insertions(+), 45 deletions(-)
+ include/linux/sunrpc/sched.h    |    2 ++
+ net/sunrpc/xprt.c               |    4 ++++
+ net/sunrpc/xprtrdma/transport.c |    4 +++-
+ net/sunrpc/xprtrdma/verbs.c     |   13 ++++++++-----
+ 4 files changed, 17 insertions(+), 6 deletions(-)
 
+diff --git a/include/linux/sunrpc/sched.h b/include/linux/sunrpc/sched.h
+index 7ba040c..a65278e 100644
+--- a/include/linux/sunrpc/sched.h
++++ b/include/linux/sunrpc/sched.h
+@@ -127,6 +127,7 @@ struct rpc_task_setup {
+ #define RPC_TASK_TIMEOUT	0x1000		/* fail with ETIMEDOUT on timeout */
+ #define RPC_TASK_NOCONNECT	0x2000		/* return ENOTCONN if not connected */
+ #define RPC_TASK_NO_RETRANS_TIMEOUT	0x4000		/* wait forever for a reply */
++#define RPC_TASK_PRIORITY	0x8000		/* skip congestion control */
+ 
+ #define RPC_IS_ASYNC(t)		((t)->tk_flags & RPC_TASK_ASYNC)
+ #define RPC_IS_SWAPPER(t)	((t)->tk_flags & RPC_TASK_SWAPPER)
+@@ -135,6 +136,7 @@ struct rpc_task_setup {
+ #define RPC_IS_SOFT(t)		((t)->tk_flags & (RPC_TASK_SOFT|RPC_TASK_TIMEOUT))
+ #define RPC_IS_SOFTCONN(t)	((t)->tk_flags & RPC_TASK_SOFTCONN)
+ #define RPC_WAS_SENT(t)		((t)->tk_flags & RPC_TASK_SENT)
++#define RPC_HAS_PRIORITY(t)	((t)->tk_flags & RPC_TASK_PRIORITY)
+ 
+ #define RPC_TASK_RUNNING	0
+ #define RPC_TASK_QUEUED		1
+diff --git a/net/sunrpc/xprt.c b/net/sunrpc/xprt.c
+index b530a28..e8b7b9f 100644
+--- a/net/sunrpc/xprt.c
++++ b/net/sunrpc/xprt.c
+@@ -392,6 +392,10 @@ static inline void xprt_release_write(struct rpc_xprt *xprt, struct rpc_task *ta
+ {
+ 	struct rpc_rqst *req = task->tk_rqstp;
+ 
++	if (RPC_HAS_PRIORITY(task)) {
++		req->rq_cong = 0;
++		return 1;
++	}
+ 	if (req->rq_cong)
+ 		return 1;
+ 	dprintk("RPC: %5u xprt_cwnd_limited cong = %lu cwnd = %lu\n",
+diff --git a/net/sunrpc/xprtrdma/transport.c b/net/sunrpc/xprtrdma/transport.c
+index f97c851..e43cc85 100644
+--- a/net/sunrpc/xprtrdma/transport.c
++++ b/net/sunrpc/xprtrdma/transport.c
+@@ -538,7 +538,9 @@ static void rpcrdma_keepalive_release(void *calldata)
+ 
+ 	data = xprt_get(xprt);
+ 	null_task = rpc_call_null_helper(task->tk_client, xprt, NULL,
+-					 RPC_TASK_SOFT | RPC_TASK_ASYNC,
++					 RPC_TASK_SOFT |
++					 RPC_TASK_ASYNC |
++					 RPC_TASK_PRIORITY,
+ 					 &rpcrdma_keepalive_call_ops, data);
+ 	if (!IS_ERR(null_task))
+ 		rpc_put_task(null_task);
 diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
-index 61d16c3..45db2b4 100644
+index 7e14b73..3e218dd 100644
 --- a/net/sunrpc/xprtrdma/verbs.c
 +++ b/net/sunrpc/xprtrdma/verbs.c
-@@ -54,6 +54,7 @@
- #include <linux/sunrpc/svc_rdma.h>
- #include <asm/bitops.h>
- #include <linux/module.h> /* try_module_get()/module_put() */
-+#include <rdma/ib_cm.h>
- 
- #include "xprt_rdma.h"
- 
-@@ -279,7 +280,14 @@
- 		connstate = -ENETDOWN;
- 		goto connected;
- 	case RDMA_CM_EVENT_REJECTED:
-+#if IS_ENABLED(CONFIG_SUNRPC_DEBUG)
-+		pr_info("rpcrdma: connection to %pIS:%u on %s rejected: %s\n",
-+			sap, rpc_get_port(sap), ia->ri_device->name,
-+			rdma_reject_msg(id, event->status));
-+#endif
- 		connstate = -ECONNREFUSED;
-+		if (event->status == IB_CM_REJ_STALE_CONN)
-+			connstate = -EAGAIN;
- 		goto connected;
- 	case RDMA_CM_EVENT_DISCONNECTED:
- 		connstate = -ECONNABORTED;
-@@ -643,20 +651,20 @@ static void rpcrdma_destroy_id(struct rdma_cm_id *id)
- int
- rpcrdma_ep_connect(struct rpcrdma_ep *ep, struct rpcrdma_ia *ia)
+@@ -136,19 +136,20 @@
+ static void
+ rpcrdma_update_granted_credits(struct rpcrdma_rep *rep)
  {
-+	struct rpcrdma_xprt *r_xprt = container_of(ia, struct rpcrdma_xprt,
-+						   rx_ia);
- 	struct rdma_cm_id *id, *old;
-+	unsigned int extras;
- 	int rc = 0;
--	int retry_count = 0;
+-	struct rpcrdma_msg *rmsgp = rdmab_to_msg(rep->rr_rdmabuf);
+ 	struct rpcrdma_buffer *buffer = &rep->rr_rxprt->rx_buf;
++	__be32 *p = rep->rr_rdmabuf->rg_base;
+ 	u32 credits;
  
- 	if (ep->rep_connected != 0) {
--		struct rpcrdma_xprt *xprt;
- retry:
- 		dprintk("RPC:       %s: reconnecting...\n", __func__);
+ 	if (rep->rr_len < RPCRDMA_HDRLEN_ERR)
+ 		return;
  
- 		rpcrdma_ep_disconnect(ep, ia);
- 
--		xprt = container_of(ia, struct rpcrdma_xprt, rx_ia);
--		id = rpcrdma_create_id(xprt, ia,
--				(struct sockaddr *)&xprt->rx_data.addr);
-+		id = rpcrdma_create_id(r_xprt, ia,
-+				(struct sockaddr *)&r_xprt->rx_data.addr);
- 		if (IS_ERR(id)) {
- 			rc = -EHOSTUNREACH;
- 			goto out;
-@@ -711,51 +719,18 @@ static void rpcrdma_destroy_id(struct rdma_cm_id *id)
- 	}
- 
- 	wait_event_interruptible(ep->rep_connect_wait, ep->rep_connected != 0);
+-	credits = be32_to_cpu(rmsgp->rm_credit);
++	credits = be32_to_cpup(p + 2);
++	if (credits > buffer->rb_max_requests)
++		credits = buffer->rb_max_requests;
++	/* Reserve one credit for keepalive ping */
++	credits--;
+ 	if (credits == 0)
+ 		credits = 1;	/* don't deadlock */
+-	else if (credits > buffer->rb_max_requests)
+-		credits = buffer->rb_max_requests;
 -
--	/*
--	 * Check state. A non-peer reject indicates no listener
--	 * (ECONNREFUSED), which may be a transient state. All
--	 * others indicate a transport condition which has already
--	 * undergone a best-effort.
--	 */
--	if (ep->rep_connected == -ECONNREFUSED &&
--	    ++retry_count <= RDMA_CONNECT_RETRY_MAX) {
--		dprintk("RPC:       %s: non-peer_reject, retry\n", __func__);
--		goto retry;
--	}
- 	if (ep->rep_connected <= 0) {
--		/* Sometimes, the only way to reliably connect to remote
--		 * CMs is to use same nonzero values for ORD and IRD. */
--		if (retry_count++ <= RDMA_CONNECT_RETRY_MAX + 1 &&
--		    (ep->rep_remote_cma.responder_resources == 0 ||
--		     ep->rep_remote_cma.initiator_depth !=
--				ep->rep_remote_cma.responder_resources)) {
--			if (ep->rep_remote_cma.responder_resources == 0)
--				ep->rep_remote_cma.responder_resources = 1;
--			ep->rep_remote_cma.initiator_depth =
--				ep->rep_remote_cma.responder_resources;
-+		if (ep->rep_connected == -EAGAIN)
- 			goto retry;
--		}
- 		rc = ep->rep_connected;
--	} else {
--		struct rpcrdma_xprt *r_xprt;
--		unsigned int extras;
--
--		dprintk("RPC:       %s: connected\n", __func__);
--
--		r_xprt = container_of(ia, struct rpcrdma_xprt, rx_ia);
--		extras = r_xprt->rx_buf.rb_bc_srv_max_requests;
--
--		if (extras) {
--			rc = rpcrdma_ep_post_extra_recv(r_xprt, extras);
--			if (rc) {
--				pr_warn("%s: rpcrdma_ep_post_extra_recv: %i\n",
--					__func__, rc);
--				rc = 0;
--			}
--		}
-+		goto out;
- 	}
+ 	atomic_set(&buffer->rb_credits, credits);
+ }
  
-+	dprintk("RPC:       %s: connected\n", __func__);
-+	extras = r_xprt->rx_buf.rb_bc_srv_max_requests;
-+	if (extras)
-+		rpcrdma_ep_post_extra_recv(r_xprt, extras);
-+
- out:
- 	if (rc)
- 		ep->rep_connected = rc;
+@@ -914,6 +915,8 @@ struct rpcrdma_rep *
+ 	struct rpcrdma_buffer *buf = &r_xprt->rx_buf;
+ 	int i, rc;
+ 
++	if (r_xprt->rx_data.max_requests < 2)
++		return -EINVAL;
+ 	buf->rb_max_requests = r_xprt->rx_data.max_requests;
+ 	buf->rb_bc_srv_max_requests = 0;
+ 	atomic_set(&buf->rb_credits, 1);
 
