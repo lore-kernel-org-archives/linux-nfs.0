@@ -1,14 +1,13 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f193.google.com ([209.85.223.193]:34536 "EHLO
-        mail-io0-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1753991AbdAZR4g (ORCPT
+Received: from mail-io0-f195.google.com ([209.85.223.195]:35727 "EHLO
+        mail-io0-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1754038AbdAZR4g (ORCPT
         <rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Jan 2017 12:56:36 -0500
-Subject: [PATCH v1 1/7] xprtrdma: Properly recover FRWRs with in-flight
- FASTREG WRs
+Subject: [PATCH v1 2/7] xprtrdma: Handle stale connection rejection
 From: Chuck Lever <chuck.lever@oracle.com>
 To: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Thu, 26 Jan 2017 12:55:39 -0500
-Message-ID: <20170126175539.5794.5426.stgit@manet.1015granger.net>
+Date: Thu, 26 Jan 2017 12:55:47 -0500
+Message-ID: <20170126175547.5794.86451.stgit@manet.1015granger.net>
 In-Reply-To: <20170126174806.5794.14678.stgit@manet.1015granger.net>
 References: <20170126174806.5794.14678.stgit@manet.1015granger.net>
 MIME-Version: 1.0
@@ -16,61 +15,134 @@ Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Sriharsha (sriharsha.basavapatna@broadcom.com) reports an occasional
-double DMA unmap of an FRWR MR when a connection is lost. I see one
-way this can happen.
+A server rejects a connection attempt with STALE_CONNECTION when a
+client attempts to connect to a working remote service, but uses a
+QPN and GUID that corresponds to an old connection that was
+abandoned. This might occur after a client crashes and restarts.
 
-When a request requires more than one segment or chunk,
-rpcrdma_marshal_req loops, invoking ->frwr_op_map for each segment
-(MR) in each chunk. Each call posts a FASTREG Work Request to
-register one MR.
+Fix rpcrdma_conn_upcall() to distinguish between a normal rejection
+and rejection of stale connection parameters.
 
-Now suppose that the transport connection is lost part-way through
-marshaling this request. As part of recovering and resetting that
-req, rpcrdma_marshal_req invokes ->frwr_op_unmap_safe, which hands
-all the req's registered FRWRs to the MR recovery thread.
+As an additional clean-up, remove the code that retries the
+connection attempt with different ORD/IRD values. Code audit of
+other ULP initiators shows no similar special case handling of
+initiator_depth or responder_resources.
 
-But note: FRWR registration is asynchronous. So it's possible that
-some of these "already registered" FRWRs are fully registered, and
-some are still waiting for their FASTREG WR to complete.
-
-When the connection is lost, the "already registered" frmrs are
-marked FRMR_IS_VALID, and the "still waiting" WRs flush. Then
-frwr_wc_fastreg marks these frmrs FRMR_FLUSHED_FR.
-
-But thanks to ->frwr_op_unmap_safe, the MR recovery thread is doing
-an unreg / alloc_mr, a DMA unmap, and marking each of these frwrs
-FRMR_IS_INVALID, at the same time frwr_wc_fastreg might be running.
-
-- If the recovery thread runs last, then the frmr is marked
-FRMR_IS_INVALID, and life continues.
-
-- If frwr_wc_fastreg runs last, the frmr is marked FRMR_FLUSHED_FR,
-but the recovery thread has already DMA unmapped that MR. When
-->frwr_op_map later re-uses this frmr, it sees it is not marked
-FRMR_IS_INVALID, and tries to recover it before using it, resulting
-in a second DMA unmap of the same MR.
-
-The fix is to guarantee in-flight FASTREG WRs have flushed before MR
-recovery runs on those FRWRs. It's safe to wait until the RPC is
-retransmitted.
-
-Reported-by: Sriharsha Basavapatna <sriharsha.basavapatna@broadcom.com>
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- net/sunrpc/xprtrdma/rpc_rdma.c |    1 -
- 1 file changed, 1 deletion(-)
+ net/sunrpc/xprtrdma/verbs.c |   65 +++++++++++++------------------------------
+ 1 file changed, 20 insertions(+), 45 deletions(-)
 
-diff --git a/net/sunrpc/xprtrdma/rpc_rdma.c b/net/sunrpc/xprtrdma/rpc_rdma.c
-index d889883..0ce7a7b 100644
---- a/net/sunrpc/xprtrdma/rpc_rdma.c
-+++ b/net/sunrpc/xprtrdma/rpc_rdma.c
-@@ -781,7 +781,6 @@ static bool rpcrdma_results_inline(struct rpcrdma_xprt *r_xprt,
- 	return 0;
+diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
+index 61d16c3..45db2b4 100644
+--- a/net/sunrpc/xprtrdma/verbs.c
++++ b/net/sunrpc/xprtrdma/verbs.c
+@@ -54,6 +54,7 @@
+ #include <linux/sunrpc/svc_rdma.h>
+ #include <asm/bitops.h>
+ #include <linux/module.h> /* try_module_get()/module_put() */
++#include <rdma/ib_cm.h>
  
- out_unmap:
--	r_xprt->rx_ia.ri_ops->ro_unmap_safe(r_xprt, req, false);
- 	return PTR_ERR(iptr);
- }
+ #include "xprt_rdma.h"
  
+@@ -279,7 +280,14 @@
+ 		connstate = -ENETDOWN;
+ 		goto connected;
+ 	case RDMA_CM_EVENT_REJECTED:
++#if IS_ENABLED(CONFIG_SUNRPC_DEBUG)
++		pr_info("rpcrdma: connection to %pIS:%u on %s rejected: %s\n",
++			sap, rpc_get_port(sap), ia->ri_device->name,
++			rdma_reject_msg(id, event->status));
++#endif
+ 		connstate = -ECONNREFUSED;
++		if (event->status == IB_CM_REJ_STALE_CONN)
++			connstate = -EAGAIN;
+ 		goto connected;
+ 	case RDMA_CM_EVENT_DISCONNECTED:
+ 		connstate = -ECONNABORTED;
+@@ -643,20 +651,20 @@ static void rpcrdma_destroy_id(struct rdma_cm_id *id)
+ int
+ rpcrdma_ep_connect(struct rpcrdma_ep *ep, struct rpcrdma_ia *ia)
+ {
++	struct rpcrdma_xprt *r_xprt = container_of(ia, struct rpcrdma_xprt,
++						   rx_ia);
+ 	struct rdma_cm_id *id, *old;
++	unsigned int extras;
+ 	int rc = 0;
+-	int retry_count = 0;
+ 
+ 	if (ep->rep_connected != 0) {
+-		struct rpcrdma_xprt *xprt;
+ retry:
+ 		dprintk("RPC:       %s: reconnecting...\n", __func__);
+ 
+ 		rpcrdma_ep_disconnect(ep, ia);
+ 
+-		xprt = container_of(ia, struct rpcrdma_xprt, rx_ia);
+-		id = rpcrdma_create_id(xprt, ia,
+-				(struct sockaddr *)&xprt->rx_data.addr);
++		id = rpcrdma_create_id(r_xprt, ia,
++				(struct sockaddr *)&r_xprt->rx_data.addr);
+ 		if (IS_ERR(id)) {
+ 			rc = -EHOSTUNREACH;
+ 			goto out;
+@@ -711,51 +719,18 @@ static void rpcrdma_destroy_id(struct rdma_cm_id *id)
+ 	}
+ 
+ 	wait_event_interruptible(ep->rep_connect_wait, ep->rep_connected != 0);
+-
+-	/*
+-	 * Check state. A non-peer reject indicates no listener
+-	 * (ECONNREFUSED), which may be a transient state. All
+-	 * others indicate a transport condition which has already
+-	 * undergone a best-effort.
+-	 */
+-	if (ep->rep_connected == -ECONNREFUSED &&
+-	    ++retry_count <= RDMA_CONNECT_RETRY_MAX) {
+-		dprintk("RPC:       %s: non-peer_reject, retry\n", __func__);
+-		goto retry;
+-	}
+ 	if (ep->rep_connected <= 0) {
+-		/* Sometimes, the only way to reliably connect to remote
+-		 * CMs is to use same nonzero values for ORD and IRD. */
+-		if (retry_count++ <= RDMA_CONNECT_RETRY_MAX + 1 &&
+-		    (ep->rep_remote_cma.responder_resources == 0 ||
+-		     ep->rep_remote_cma.initiator_depth !=
+-				ep->rep_remote_cma.responder_resources)) {
+-			if (ep->rep_remote_cma.responder_resources == 0)
+-				ep->rep_remote_cma.responder_resources = 1;
+-			ep->rep_remote_cma.initiator_depth =
+-				ep->rep_remote_cma.responder_resources;
++		if (ep->rep_connected == -EAGAIN)
+ 			goto retry;
+-		}
+ 		rc = ep->rep_connected;
+-	} else {
+-		struct rpcrdma_xprt *r_xprt;
+-		unsigned int extras;
+-
+-		dprintk("RPC:       %s: connected\n", __func__);
+-
+-		r_xprt = container_of(ia, struct rpcrdma_xprt, rx_ia);
+-		extras = r_xprt->rx_buf.rb_bc_srv_max_requests;
+-
+-		if (extras) {
+-			rc = rpcrdma_ep_post_extra_recv(r_xprt, extras);
+-			if (rc) {
+-				pr_warn("%s: rpcrdma_ep_post_extra_recv: %i\n",
+-					__func__, rc);
+-				rc = 0;
+-			}
+-		}
++		goto out;
+ 	}
+ 
++	dprintk("RPC:       %s: connected\n", __func__);
++	extras = r_xprt->rx_buf.rb_bc_srv_max_requests;
++	if (extras)
++		rpcrdma_ep_post_extra_recv(r_xprt, extras);
++
+ out:
+ 	if (rc)
+ 		ep->rep_connected = rc;
 
