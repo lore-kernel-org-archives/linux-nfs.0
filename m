@@ -1,91 +1,233 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:59576 "EHLO mx2.suse.de"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1752937AbdAZHpC (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 26 Jan 2017 02:45:02 -0500
-Date: Thu, 26 Jan 2017 08:44:55 +0100
-From: Michal Hocko <mhocko@kernel.org>
-To: "Theodore Ts'o" <tytso@mit.edu>
-Cc: Jan Kara <jack@suse.cz>, linux-mm@kvack.org,
-        linux-fsdevel@vger.kernel.org,
-        Andrew Morton <akpm@linux-foundation.org>,
-        Dave Chinner <david@fromorbit.com>, djwong@kernel.org,
-        Chris Mason <clm@fb.com>, David Sterba <dsterba@suse.cz>,
-        ceph-devel@vger.kernel.org, cluster-devel@redhat.com,
-        linux-nfs@vger.kernel.org, logfs@logfs.org, linux-xfs@vger.kernel.org,
-        linux-ext4@vger.kernel.org, linux-btrfs@vger.kernel.org,
-        linux-mtd@lists.infradead.org, reiserfs-devel@vger.kernel.org,
-        linux-ntfs-dev@lists.sourceforge.net,
-        linux-f2fs-devel@lists.sourceforge.net, linux-afs@lists.infradead.org,
-        LKML <linux-kernel@vger.kernel.org>
-Subject: Re: [PATCH 8/8] Revert "ext4: fix wrong gfp type under transaction"
-Message-ID: <20170126074455.GC8456@dhcp22.suse.cz>
-References: <20170106141107.23953-9-mhocko@kernel.org>
- <20170117025607.frrcdbduthhutrzj@thunk.org>
- <20170117082425.GD19699@dhcp22.suse.cz>
- <20170117151817.GR19699@dhcp22.suse.cz>
- <20170117155916.dcizr65bwa6behe7@thunk.org>
- <20170117161618.GT19699@dhcp22.suse.cz>
- <20170117172925.GA2486@quack2.suse.cz>
- <20170119083956.GE30786@dhcp22.suse.cz>
- <20170119092236.GC2565@quack2.suse.cz>
- <20170119094405.GK30786@dhcp22.suse.cz>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20170119094405.GK30786@dhcp22.suse.cz>
+Received: from mail-qt0-f196.google.com ([209.85.216.196]:35414 "EHLO
+        mail-qt0-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751254AbdAZMfL (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Jan 2017 07:35:11 -0500
+Received: by mail-qt0-f196.google.com with SMTP id f4so38164493qte.2
+        for <linux-nfs@vger.kernel.org>; Thu, 26 Jan 2017 04:35:11 -0800 (PST)
+Message-ID: <1485434106.6547.1.camel@poochiereds.net>
+Subject: Re: [PATCH v3 1/2] iov_iter: allow iov_iter_get_pages_alloc to
+ allocate more pages per call
+From: Jeff Layton <jlayton@poochiereds.net>
+To: viro@zeniv.linux.org.uk
+Cc: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, ceph-devel@vger.kernel.org,
+        lustre-devel@lists.lustre.org, v9fs-developer@lists.sourceforge.net
+Date: Thu, 26 Jan 2017 07:35:06 -0500
+In-Reply-To: <20170125133205.21704-2-jlayton@redhat.com>
+References: <20170124212327.14517-1-jlayton@redhat.com>
+         <20170125133205.21704-1-jlayton@redhat.com>
+         <20170125133205.21704-2-jlayton@redhat.com>
+Content-Type: text/plain; charset="UTF-8"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu 19-01-17 10:44:05, Michal Hocko wrote:
-> On Thu 19-01-17 10:22:36, Jan Kara wrote:
-> > On Thu 19-01-17 09:39:56, Michal Hocko wrote:
-> > > On Tue 17-01-17 18:29:25, Jan Kara wrote:
-> > > > On Tue 17-01-17 17:16:19, Michal Hocko wrote:
-> > > > > > > But before going to play with that I am really wondering whether we need
-> > > > > > > all this with no journal at all. AFAIU what Jack told me it is the
-> > > > > > > journal lock(s) which is the biggest problem from the reclaim recursion
-> > > > > > > point of view. What would cause a deadlock in no journal mode?
-> > > > > > 
-> > > > > > We still have the original problem for why we need GFP_NOFS even in
-> > > > > > ext2.  If we are in a writeback path, and we need to allocate memory,
-> > > > > > we don't want to recurse back into the file system's writeback path.
-> > > > > 
-> > > > > But we do not enter the writeback path from the direct reclaim. Or do
-> > > > > you mean something other than pageout()'s mapping->a_ops->writepage?
-> > > > > There is only try_to_release_page where we get back to the filesystems
-> > > > > but I do not see any NOFS protection in ext4_releasepage.
-> > > > 
-> > > > Maybe to expand a bit: These days, direct reclaim can call ->releasepage()
-> > > > callback, ->evict_inode() callback (and only for inodes with i_nlink > 0),
-> > > > shrinkers. That's it. So the recursion possibilities are rather more limited
-> > > > than they used to be several years ago and we likely do not need as much
-> > > > GFP_NOFS protection as we used to.
-> > > 
-> > > Thanks for making my remark more clear Jack! I would just want to add
-> > > that I was playing with the patch below (it is basically
-> > > GFP_NOFS->GFP_KERNEL for all allocations which trigger warning from the
-> > > debugging patch which means they are called from within transaction) and
-> > > it didn't hit the lockdep when running xfstests both with or without the
-> > > enabled journal.
-> > > 
-> > > So am I still missing something or the nojournal mode is safe and the
-> > > current series is OK wrt. ext*?
-> > 
-> > I'm convinced the current series is OK, only real life will tell us whether
-> > we missed something or not ;)
+On Wed, 2017-01-25 at 08:32 -0500, Jeff Layton wrote:
+> Currently, iov_iter_get_pages_alloc will only ever operate on the first
+> vector that iterate_all_kinds hands back. Most of the callers however
+> would like to have as long a set of pages as possible, to allow for
+> fewer, but larger I/Os.
 > 
-> I would like to extend the changelog of "jbd2: mark the transaction
-> context with the scope GFP_NOFS context".
+> When the previous vector ends on a page boundary and the current one
+> begins on one, we can continue to add more pages.
 > 
-> "
-> Please note that setups without journal do not suffer from potential
-> recursion problems and so they do not need the scope protection because
-> neither ->releasepage nor ->evict_inode (which are the only fs entry
-> points from the direct reclaim) can reenter a locked context which is
-> doing the allocation currently.
-> "
+> Change the function to first scan the iov_iter to see how long an
+> array of pages we could create from the current position up to the
+> maxsize passed in. Then, allocate an array that large and start
+> filling in that many pages.
+> 
+> The main impetus for this patch is to rip out a swath of code in ceph
+> that tries to do this but that doesn't handle ITER_BVEC correctly.
+> 
+> NFS also uses this function and this also allows the client to do larger
+> I/Os when userland passes down an array of page-aligned iovecs in an
+> O_DIRECT request. This should also make splice writes into an O_DIRECT
+> file on NFS use larger I/Os, since that's now done by passing down an
+> ITER_BVEC representing the data to be written.
+> 
+> I believe the other callers (lustre and 9p) may also benefit from this
+> change, but I don't have a great way to verify that.
+> 
+> Signed-off-by: Jeff Layton <jlayton@redhat.com>
+> ---
+>  lib/iov_iter.c | 142 +++++++++++++++++++++++++++++++++++++++++++++------------
+>  1 file changed, 113 insertions(+), 29 deletions(-)
+> 
+> diff --git a/lib/iov_iter.c b/lib/iov_iter.c
+> index e68604ae3ced..c87ba154371a 100644
+> --- a/lib/iov_iter.c
+> +++ b/lib/iov_iter.c
+> @@ -883,6 +883,59 @@ unsigned long iov_iter_gap_alignment(const struct iov_iter *i)
+>  }
+>  EXPORT_SYMBOL(iov_iter_gap_alignment);
+>  
+> +/**
+> + * iov_iter_pvec_size - find length of page aligned iovecs in iov_iter
+> + * @i: iov_iter to in which to find the size
+> + * @maxsize: maximum size to return
+> + *
+> + * Some filesystems can stitch together multiple iovecs into a single page
+> + * vector when both the previous tail and current base are page aligned. This
+> + * function determines how much of the remaining iov_iter can be stuffed into
+> + * a single pagevec, up to the provided maxsize value.
+> + */
+> +static size_t iov_iter_pvec_size(const struct iov_iter *i, size_t maxsize)
+> +{
+> +	size_t size = min(iov_iter_count(i), maxsize);
+> +	size_t pv_size = 0;
+> +	bool contig = false, first = true;
+> +
+> +	if (!size)
+> +		return 0;
+> +
+> +	/* Pipes are naturally aligned for this */
+> +	if (unlikely(i->type & ITER_PIPE))
+> +		return size;
+> +
+> +	/*
+> +	 * An iov can be page vectored when the current base and previous
+> +	 * tail are both page aligned. Note that we don't require that the
+> +	 * initial base in the first iovec also be page aligned.
+> +	 */
+> +	iterate_all_kinds(i, size, v,
+> +		({
+> +		 if (first || (contig && PAGE_ALIGNED(v.iov_base))) {
+> +			pv_size += v.iov_len;
+> +			first = false;
+> +			contig = PAGE_ALIGNED(v.iov_base + v.iov_len);
+> +		 }; 0;
+> +		 }),
+> +		({
+> +		 if (first || (contig && v.bv_offset == 0)) {
+> +			pv_size += v.bv_len;
+> +			first = false;
+> +			contig = PAGE_ALIGNED(v.bv_offset + v.bv_len);
+> +		 }
+> +		 }),
+> +		({
+> +		 if (first || (contig && PAGE_ALIGNED(v.iov_base))) {
+> +			pv_size += v.iov_len;
+> +			first = false;
+> +			contig = PAGE_ALIGNED(v.iov_base + v.iov_len);
+> +		 }
+> +		 }))
+> +	return pv_size;
+> +}
+> +
+>  static inline size_t __pipe_get_pages(struct iov_iter *i,
+>  				size_t maxsize,
+>  				struct page **pages,
+> @@ -1006,47 +1059,78 @@ static ssize_t pipe_get_pages_alloc(struct iov_iter *i,
+>  }
+>  
+>  ssize_t iov_iter_get_pages_alloc(struct iov_iter *i,
+> -		   struct page ***pages, size_t maxsize,
+> -		   size_t *start)
+> +		   struct page ***ppages, size_t maxsize,
+> +		   size_t *pstart)
+>  {
+> -	struct page **p;
+> -
+> -	if (maxsize > i->count)
+> -		maxsize = i->count;
+> +	struct page **p, **pc;
+> +	size_t start = 0;
+> +	ssize_t len = 0;
+> +	int npages, res = 0;
+> +	bool first = true;
+>  
+>  	if (unlikely(i->type & ITER_PIPE))
+> -		return pipe_get_pages_alloc(i, pages, maxsize, start);
+> +		return pipe_get_pages_alloc(i, ppages, maxsize, pstart);
+> +
+> +	maxsize = iov_iter_pvec_size(i, maxsize);
+> +	npages = DIV_ROUND_UP(maxsize, PAGE_SIZE);
 
-Could you comment on this Ted, please?
--- 
-Michal Hocko
-SUSE Labs
+Bah, the above is wrong when the offset into the first page is non-
+zero. I'll fix -- this probably also points out the need for some tests
+for this. I'll see if I can cook something up for xfstests.
+
+> +	p = get_pages_array(npages);
+> +	if (!p)
+> +		return -ENOMEM;
+> +
+> +	pc = p;
+>  	iterate_all_kinds(i, maxsize, v, ({
+>  		unsigned long addr = (unsigned long)v.iov_base;
+> -		size_t len = v.iov_len + (*start = addr & (PAGE_SIZE - 1));
+> +		size_t slen = v.iov_len;
+>  		int n;
+> -		int res;
+>  
+> -		addr &= ~(PAGE_SIZE - 1);
+> -		n = DIV_ROUND_UP(len, PAGE_SIZE);
+> -		p = get_pages_array(n);
+> -		if (!p)
+> -			return -ENOMEM;
+> -		res = get_user_pages_fast(addr, n, (i->type & WRITE) != WRITE, p);
+> -		if (unlikely(res < 0)) {
+> -			kvfree(p);
+> -			return res;
+> +		if (first) {
+> +			start = addr & (PAGE_SIZE - 1);
+> +			slen += start;
+> +			first = false;
+>  		}
+> -		*pages = p;
+> -		return (res == n ? len : res * PAGE_SIZE) - *start;
+> +
+> +		n = DIV_ROUND_UP(slen, PAGE_SIZE);
+> +		if (pc + n > p + npages) {
+> +			/* Did something change the iov array?!? */
+> +			res = -EFAULT;
+> +			goto out;
+> +		}
+> +		addr &= ~(PAGE_SIZE - 1);
+> +		res = get_user_pages_fast(addr, n,
+> +					  (i->type & WRITE) != WRITE, pc);
+> +		if (unlikely(res < 0))
+> +			goto out;
+> +		len += (res == n ? slen : res * PAGE_SIZE) - start;
+> +		pc += res;
+>  	0;}),({
+> -		/* can't be more than PAGE_SIZE */
+> -		*start = v.bv_offset;
+> -		*pages = p = get_pages_array(1);
+> -		if (!p)
+> -			return -ENOMEM;
+> -		get_page(*p = v.bv_page);
+> -		return v.bv_len;
+> +		/* bio_vecs are limited to a single page each */
+> +		if (first) {
+> +			start = v.bv_offset;
+> +			first = false;
+> +		}
+> +		get_page(*pc = v.bv_page);
+> +		len += v.bv_len;
+> +		++pc;
+> +		BUG_ON(pc > p + npages);
+>  	}),({
+> -		return -EFAULT;
+> +		/* FIXME: should we handle this case? */
+> +		res = -EFAULT;
+> +		goto out;
+>  	})
+>  	)
+> -	return 0;
+> +out:
+> +	if (unlikely(res < 0)) {
+> +		struct page **i;
+> +
+> +		for (i = p; i < pc; i++)
+> +			put_page(*i);
+> +		kvfree(p);
+> +		return res;
+> +	}
+> +
+> +	*ppages = p;
+> +	*pstart = start;
+> +	return len;
+>  }
+>  EXPORT_SYMBOL(iov_iter_get_pages_alloc);
+>  
