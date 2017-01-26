@@ -1,103 +1,91 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:24289 "EHLO
-        aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751472AbdAYUIZ (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 25 Jan 2017 15:08:25 -0500
-Content-Type: text/plain; charset=utf-8
-Mime-Version: 1.0 (Mac OS X Mail 9.3 \(3124\))
-Subject: Re: [PATCH v1] nfs: Don't increment lock sequence ID after NFS4ERR_MOVED
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <58C762A9-E1D0-4649-8AC3-5A7FA0D1A362@oracle.com>
-Date: Wed, 25 Jan 2017 15:08:16 -0500
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <C2D5A6CF-76B3-4D66-A9E3-8FAEF2BFE1A4@oracle.com>
-References: <20170122190429.7337.77928.stgit@manet.1015granger.net> <69D3212A-874D-42A2-BE65-F3A01B061A87@oracle.com> <20170123164913.GB9493@fieldses.org> <1F944D3D-A28B-48C5-88CC-39EBD6CB8430@oracle.com> <20170124191515.GA20844@fieldses.org> <1485289414.12087.0.camel@primarydata.com> <58C762A9-E1D0-4649-8AC3-5A7FA0D1A362@oracle.com>
-To: Trond Myklebust <trondmy@primarydata.com>
+Received: from mx2.suse.de ([195.135.220.15]:59576 "EHLO mx2.suse.de"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1752937AbdAZHpC (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 26 Jan 2017 02:45:02 -0500
+Date: Thu, 26 Jan 2017 08:44:55 +0100
+From: Michal Hocko <mhocko@kernel.org>
+To: "Theodore Ts'o" <tytso@mit.edu>
+Cc: Jan Kara <jack@suse.cz>, linux-mm@kvack.org,
+        linux-fsdevel@vger.kernel.org,
+        Andrew Morton <akpm@linux-foundation.org>,
+        Dave Chinner <david@fromorbit.com>, djwong@kernel.org,
+        Chris Mason <clm@fb.com>, David Sterba <dsterba@suse.cz>,
+        ceph-devel@vger.kernel.org, cluster-devel@redhat.com,
+        linux-nfs@vger.kernel.org, logfs@logfs.org, linux-xfs@vger.kernel.org,
+        linux-ext4@vger.kernel.org, linux-btrfs@vger.kernel.org,
+        linux-mtd@lists.infradead.org, reiserfs-devel@vger.kernel.org,
+        linux-ntfs-dev@lists.sourceforge.net,
+        linux-f2fs-devel@lists.sourceforge.net, linux-afs@lists.infradead.org,
+        LKML <linux-kernel@vger.kernel.org>
+Subject: Re: [PATCH 8/8] Revert "ext4: fix wrong gfp type under transaction"
+Message-ID: <20170126074455.GC8456@dhcp22.suse.cz>
+References: <20170106141107.23953-9-mhocko@kernel.org>
+ <20170117025607.frrcdbduthhutrzj@thunk.org>
+ <20170117082425.GD19699@dhcp22.suse.cz>
+ <20170117151817.GR19699@dhcp22.suse.cz>
+ <20170117155916.dcizr65bwa6behe7@thunk.org>
+ <20170117161618.GT19699@dhcp22.suse.cz>
+ <20170117172925.GA2486@quack2.suse.cz>
+ <20170119083956.GE30786@dhcp22.suse.cz>
+ <20170119092236.GC2565@quack2.suse.cz>
+ <20170119094405.GK30786@dhcp22.suse.cz>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20170119094405.GK30786@dhcp22.suse.cz>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-> On Jan 25, 2017, at 2:58 PM, Chuck Lever <chuck.lever@oracle.com> wrote:
+On Thu 19-01-17 10:44:05, Michal Hocko wrote:
+> On Thu 19-01-17 10:22:36, Jan Kara wrote:
+> > On Thu 19-01-17 09:39:56, Michal Hocko wrote:
+> > > On Tue 17-01-17 18:29:25, Jan Kara wrote:
+> > > > On Tue 17-01-17 17:16:19, Michal Hocko wrote:
+> > > > > > > But before going to play with that I am really wondering whether we need
+> > > > > > > all this with no journal at all. AFAIU what Jack told me it is the
+> > > > > > > journal lock(s) which is the biggest problem from the reclaim recursion
+> > > > > > > point of view. What would cause a deadlock in no journal mode?
+> > > > > > 
+> > > > > > We still have the original problem for why we need GFP_NOFS even in
+> > > > > > ext2.  If we are in a writeback path, and we need to allocate memory,
+> > > > > > we don't want to recurse back into the file system's writeback path.
+> > > > > 
+> > > > > But we do not enter the writeback path from the direct reclaim. Or do
+> > > > > you mean something other than pageout()'s mapping->a_ops->writepage?
+> > > > > There is only try_to_release_page where we get back to the filesystems
+> > > > > but I do not see any NOFS protection in ext4_releasepage.
+> > > > 
+> > > > Maybe to expand a bit: These days, direct reclaim can call ->releasepage()
+> > > > callback, ->evict_inode() callback (and only for inodes with i_nlink > 0),
+> > > > shrinkers. That's it. So the recursion possibilities are rather more limited
+> > > > than they used to be several years ago and we likely do not need as much
+> > > > GFP_NOFS protection as we used to.
+> > > 
+> > > Thanks for making my remark more clear Jack! I would just want to add
+> > > that I was playing with the patch below (it is basically
+> > > GFP_NOFS->GFP_KERNEL for all allocations which trigger warning from the
+> > > debugging patch which means they are called from within transaction) and
+> > > it didn't hit the lockdep when running xfstests both with or without the
+> > > enabled journal.
+> > > 
+> > > So am I still missing something or the nojournal mode is safe and the
+> > > current series is OK wrt. ext*?
+> > 
+> > I'm convinced the current series is OK, only real life will tell us whether
+> > we missed something or not ;)
 > 
->> 
->> On Jan 24, 2017, at 3:23 PM, Trond Myklebust <trondmy@primarydata.com> wrote:
->> 
->> On Tue, 2017-01-24 at 14:15 -0500, J. Bruce Fields wrote:
->>> On Tue, Jan 24, 2017 at 02:06:16PM -0500, Chuck Lever wrote:
->>>> 
->>>>> On Jan 23, 2017, at 11:49 AM, bfields@fieldses.org wrote:
->>>>> 
->>>>> On Mon, Jan 23, 2017 at 10:01:27AM -0500, Chuck Lever wrote:
->>>>>> 
->>>>>>> On Jan 22, 2017, at 2:04 PM, Chuck Lever <chuck.lever@oracle.
->>>>>>> com> wrote:
->>>>>>> 
->>>>>>> Xuan Qi reports that the Linux NFSv4 client failed to lock a
->>>>>>> file
->>>>>>> that was migrated. The steps he observed on the wire:
->>>>>>> 
->>>>>>> 1. The client sent a LOCK request
->>>>>>> 2. The server replied NFS4ERR_MOVED
->>>>>>> 3. The client switched to the destination server
->>>>>>> 4. The client sent the LOCK request again with a bumped
->>>>>>> ย lock sequence ID
->>>>>>> 5. The server rejected the LOCK request with
->>>>>>> NFS4ERR_BAD_SEQID
->>>>>> 
->>>>>> The list of steps could be more clear:
->>>>>> 
->>>>>> 1. The client sent a LOCK request to the source server
->>>>>> 2. The source server replied NFS4ERR_MOVED
->>>>>> 3. The client switched to the destination server
->>>>>> 4. The client sent the same LOCK request to the destination
->>>>>> ย  server with a bumped lock sequence ID
->>>>>> 5. The destination server rejected the LOCK request with
->>>>>> ย  NFS4ERR_BAD_SEQID
->>>>>> 
->>>>>> 
->>>>>>> RFC 3530 section 8.1.5 provides a list of NFS errors which do
->>>>>>> not
->>>>>>> bump a lock sequence ID.
->>>>>>> 
->>>>>>> However, RFC 3530 is now obsoleted by RFC 7530. In RFC 7530
->>>>>>> section
->>>>>>> 9.1.7, this list has been updated by the addition of
->>>>>>> NFS4ERR_MOVED.
->>>>> 
->>>>> I guess we figured the backwards-incompatible change was OK since
->>>>> essentially the Solaris server is the first we know of to be
->>>>> making real
->>>>> use of NFS4ERR_MOVED?
->>>>> 
->>>>> And probably it's required for the their implementation because
->>>>> the old
->>>>> server no longer has the ability to update the state once it's
->>>>> reached
->>>>> the point of returning ERR_MOVED.
->>>>> 
->>>>> OK, makes sense to me, I think.
->>>> 
->>>> Hi Bruce-
->>>> 
->>>> Does this mean you will take this patch, or should
->>>> I just add your Reviewed-by: ?
->>> 
->>> I can take it if nobody objects.ย ย Mind if I append the above to the
->>> changelog?ย ย (Just want to document why we think the apparently
->>> backwards-incompatible change is OK.)
->>> 
->> I've already added it to my linux-next branch as a stable patch.
+> I would like to extend the changelog of "jbd2: mark the transaction
+> context with the scope GFP_NOFS context".
 > 
-> This patch alone might not be enough.
-> 
-> Our test results show that even with this patch applied, the Linux
-> client still increments the lock sequence ID after NFS4ERR_MOVED.
+> "
+> Please note that setups without journal do not suffer from potential
+> recursion problems and so they do not need the scope protection because
+> neither ->releasepage nor ->evict_inode (which are the only fs entry
+> points from the direct reclaim) can reenter a locked context which is
+> doing the allocation currently.
+> "
 
-Looks like nfs_increment_seqid() also needs to be updated?
-
---
-Chuck Lever
-
-
-
+Could you comment on this Ted, please?
+-- 
+Michal Hocko
+SUSE Labs
