@@ -1,65 +1,63 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f171.google.com ([209.85.223.171]:33304 "EHLO
-        mail-io0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1753880AbdAZSVT (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Jan 2017 13:21:19 -0500
-Subject: [PATCH v1 0/7] NFS/RDMA client-side patches for 4.11
+Received: from aserp1040.oracle.com ([141.146.126.69]:21613 "EHLO
+        aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1752973AbdAZT6A (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Jan 2017 14:58:00 -0500
+Content-Type: text/plain; charset=utf-8
+Mime-Version: 1.0 (Mac OS X Mail 9.3 \(3124\))
+Subject: Re: [PATCH v2] nfs: Don't increment lock sequence ID after NFS4ERR_MOVED
 From: Chuck Lever <chuck.lever@oracle.com>
-To: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Thu, 26 Jan 2017 12:55:30 -0500
-Message-ID: <20170126174806.5794.14678.stgit@manet.1015granger.net>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+In-Reply-To: <1485454442.9473.1.camel@primarydata.com>
+Date: Thu, 26 Jan 2017 14:57:18 -0500
+Cc: Anna Schumaker <anna.schumaker@netapp.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Message-Id: <114AE9BE-01D7-478A-AC57-5A0C878FF701@oracle.com>
+References: <20170126175938.6021.69650.stgit@manet.1015granger.net> <1485454442.9473.1.camel@primarydata.com>
+To: Trond Myklebust <trondmy@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Sorry this is later than usual. Fortunately the patches are small
-and few in number.
 
-These are bug fixes based on v4.10-rc5 + my for-4.10-rc fixes. They
-are still being tested; I'm posting for review only.
+> On Jan 26, 2017, at 1:14 PM, Trond Myklebust <trondmy@primarydata.com> wrote:
+> 
+> On Thu, 2017-01-26 at 13:00 -0500, Chuck Lever wrote:
+>> Xuan Qi reports that the Linux NFSv4 client failed to lock a file
+>> that was migrated. The steps he observed on the wire:
+>> 
+>> 1. The client sent a LOCK request to the source server
+>> 2. The source server replied NFS4ERR_MOVED
+>> 3. The client switched to the destination server
+>> 4. The client sent the LOCK request to the destination
+>> ย ย ย server with a bumped lock sequence ID
+>> 5. The destination server rejected the LOCK request with
+>> ย ย ย NFS4ERR_BAD_SEQID
+>> 
+>> RFC 3530 section 8.1.5 provides a list of NFS errors which do not
+>> bump a lock sequence ID.
+>> 
+>> However, RFC 3530 is now obsoleted by RFC 7530. In RFC 7530 section
+>> 9.1.7, this list has been updated by the addition of NFS4ERR_MOVED.
+>> 
+>> Reported-by: Xuan Qi <xuan.qi@oracle.com>
+>> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+>> Tested-by: Xuan Qi <xuan.qi@oracle.com>
+>> Cc: stable@vger.kernel.org # v3.7+
+>> ---
+>> Testing confirms this patch addresses the problem that Xuan first
+>> observed.
+>> 
+> 
+> Since the first patch was already applied to linux-next, could you
+> please make this one incremental?
 
-I've included an updated set of patches that implement keepalive
-for RPC-over-RDMA with the changes discussed recently in this
-thread:
+Is there a stable commit ID for v1 of this patch?
 
-  http://marc.info/?l=linux-nfs&m=148433523625936&w=2
+Just wondering if I should include a Fixes: tag in the incremental
+patch.
 
-
-Available in the "nfs-rdma-for-4.11" topic branch of this git repo:
-
-git://git.linux-nfs.org/projects/cel/cel-2.6.git
-
-
-Or for browsing:
-
-http://git.linux-nfs.org/?p=cel/cel-2.6.git;a=log;h=refs/heads/nfs-rdma-for-4.11
-
-
----
-
-Chuck Lever (7):
-      xprtrdma: Properly recover FRWRs with in-flight FASTREG WRs
-      xprtrdma: Handle stale connection rejection
-      xprtrdma: Refactor management of mw_list field
-      sunrpc: Allow xprt->ops->timer method to sleep
-      sunrpc: Enable calls to rpc_call_null_helper() from other modules
-      xprtrdma: Detect unreachable NFS/RDMA servers more reliably
-      sunrpc: Allow keepalive ping on a credit-full transport
-
-
- include/linux/sunrpc/clnt.h     |    5 ++
- include/linux/sunrpc/sched.h    |    2 +
- net/sunrpc/clnt.c               |   21 +++++----
- net/sunrpc/xprt.c               |    6 ++-
- net/sunrpc/xprtrdma/fmr_ops.c   |    5 --
- net/sunrpc/xprtrdma/frwr_ops.c  |   11 ++---
- net/sunrpc/xprtrdma/rpc_rdma.c  |    7 +--
- net/sunrpc/xprtrdma/transport.c |   63 ++++++++++++++++++++++++++
- net/sunrpc/xprtrdma/verbs.c     |   93 ++++++++++++++-------------------------
- net/sunrpc/xprtrdma/xprt_rdma.h |   21 +++++++++
- net/sunrpc/xprtsock.c           |    2 +
- 11 files changed, 149 insertions(+), 87 deletions(-)
 
 --
 Chuck Lever
+
+
+
