@@ -1,56 +1,134 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:60036 "EHLO imap.thunk.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1755110AbdA0Qo0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 27 Jan 2017 11:44:26 -0500
-Date: Fri, 27 Jan 2017 11:40:42 -0500
-From: "Theodore Ts'o" <tytso@mit.edu>
-To: Michal Hocko <mhocko@kernel.org>
-Cc: Jan Kara <jack@suse.cz>, linux-mm@kvack.org,
-        linux-fsdevel@vger.kernel.org,
-        Andrew Morton <akpm@linux-foundation.org>,
-        Dave Chinner <david@fromorbit.com>, djwong@kernel.org,
-        Chris Mason <clm@fb.com>, David Sterba <dsterba@suse.cz>,
-        ceph-devel@vger.kernel.org, cluster-devel@redhat.com,
-        linux-nfs@vger.kernel.org, logfs@logfs.org, linux-xfs@vger.kernel.org,
-        linux-ext4@vger.kernel.org, linux-btrfs@vger.kernel.org,
-        linux-mtd@lists.infradead.org, reiserfs-devel@vger.kernel.org,
-        linux-ntfs-dev@lists.sourceforge.net,
-        linux-f2fs-devel@lists.sourceforge.net, linux-afs@lists.infradead.org,
-        LKML <linux-kernel@vger.kernel.org>
-Subject: Re: [PATCH 8/8] Revert "ext4: fix wrong gfp type under transaction"
-Message-ID: <20170127164042.2o3bnyopihcb224g@thunk.org>
-References: <20170117151817.GR19699@dhcp22.suse.cz>
- <20170117155916.dcizr65bwa6behe7@thunk.org>
- <20170117161618.GT19699@dhcp22.suse.cz>
- <20170117172925.GA2486@quack2.suse.cz>
- <20170119083956.GE30786@dhcp22.suse.cz>
- <20170119092236.GC2565@quack2.suse.cz>
- <20170119094405.GK30786@dhcp22.suse.cz>
- <20170126074455.GC8456@dhcp22.suse.cz>
- <20170127061318.xd2qxashbl4dajez@thunk.org>
- <20170127093735.GB4143@dhcp22.suse.cz>
+Received: from mail-it0-f65.google.com ([209.85.214.65]:34270 "EHLO
+        mail-it0-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751688AbdA0WH3 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 27 Jan 2017 17:07:29 -0500
+Subject: Re: [PATCH v1 5/7] sunrpc: Enable calls to rpc_call_null_helper()
+ from other modules
+To: Chuck Lever <chuck.lever@oracle.com>, linux-rdma@vger.kernel.org,
+        linux-nfs@vger.kernel.org
+References: <20170126174806.5794.14678.stgit@manet.1015granger.net>
+ <20170126175611.5794.20844.stgit@manet.1015granger.net>
+From: Anna Schumaker <schumaker.anna@gmail.com>
+Message-ID: <edab4aee-158d-0d5d-6ef2-9a44e63a929c@gmail.com>
+Date: Fri, 27 Jan 2017 17:07:27 -0500
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20170127093735.GB4143@dhcp22.suse.cz>
+In-Reply-To: <20170126175611.5794.20844.stgit@manet.1015granger.net>
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Jan 27, 2017 at 10:37:35AM +0100, Michal Hocko wrote:
-> If this ever turn out to be a problem and with the vmapped stacks we
-> have good chances to get a proper stack traces on a potential overflow
-> we can add the scope API around the problematic code path with the
-> explanation why it is needed.
+Hi Chuck,
 
-Yeah, or maybe we can automate it?  Can the reclaim code check how
-much stack space is left and do the right thing automatically?
+On 01/26/2017 12:56 PM, Chuck Lever wrote:
+> I'd like to emit an RPC ping from rpcrdma.ko.
 
-The reason why I'm nervous is that nojournal mode is not a common
-configuration, and "wait until production systems start failing" is
-not a strategy that I or many SRE-types find.... comforting.
+The patch itself looks fine, but I was wondering if you could add a few extra words to this sentence to say that it'll be for keepalive pings?
 
-So if we can assure ourselves that the right thing will happen
-automatically, or that lockdep will detect a required GFP_NOFS when
-running tests, the happier I'll be.
-
-					- Ted
+Thanks,
+Anna
+> 
+> authnull_ops is not visible outside the sunrpc.ko module, so fold
+> the common case into rpc_call_null_helper, and export it.
+> 
+> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+> ---
+>  include/linux/sunrpc/clnt.h |    5 +++++
+>  net/sunrpc/clnt.c           |   21 +++++++++++----------
+>  2 files changed, 16 insertions(+), 10 deletions(-)
+> 
+> diff --git a/include/linux/sunrpc/clnt.h b/include/linux/sunrpc/clnt.h
+> index 85cc819..a79237d 100644
+> --- a/include/linux/sunrpc/clnt.h
+> +++ b/include/linux/sunrpc/clnt.h
+> @@ -173,6 +173,11 @@ int		rpc_call_async(struct rpc_clnt *clnt,
+>  			       void *calldata);
+>  int		rpc_call_sync(struct rpc_clnt *clnt,
+>  			      const struct rpc_message *msg, int flags);
+> +struct rpc_task *rpc_call_null_helper(struct rpc_clnt *clnt,
+> +				      struct rpc_xprt *xprt,
+> +				      struct rpc_cred *cred, int flags,
+> +				      const struct rpc_call_ops *ops,
+> +				      void *data);
+>  struct rpc_task *rpc_call_null(struct rpc_clnt *clnt, struct rpc_cred *cred,
+>  			       int flags);
+>  int		rpc_restart_call_prepare(struct rpc_task *);
+> diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+> index 1efbe48..decaf97 100644
+> --- a/net/sunrpc/clnt.c
+> +++ b/net/sunrpc/clnt.c
+> @@ -2520,7 +2520,6 @@ static int rpc_ping(struct rpc_clnt *clnt)
+>  	return err;
+>  }
+>  
+> -static
+>  struct rpc_task *rpc_call_null_helper(struct rpc_clnt *clnt,
+>  		struct rpc_xprt *xprt, struct rpc_cred *cred, int flags,
+>  		const struct rpc_call_ops *ops, void *data)
+> @@ -2537,9 +2536,17 @@ struct rpc_task *rpc_call_null_helper(struct rpc_clnt *clnt,
+>  		.callback_data = data,
+>  		.flags = flags,
+>  	};
+> +	struct rpc_task *task;
+>  
+> -	return rpc_run_task(&task_setup_data);
+> +	if (!cred)
+> +		msg.rpc_cred = authnull_ops.lookup_cred(NULL, NULL, 0);
+> +	task = rpc_run_task(&task_setup_data);
+> +	if (!cred)
+> +		put_rpccred(msg.rpc_cred);
+> +
+> +	return task;
+>  }
+> +EXPORT_SYMBOL_GPL(rpc_call_null_helper);
+>  
+>  struct rpc_task *rpc_call_null(struct rpc_clnt *clnt, struct rpc_cred *cred, int flags)
+>  {
+> @@ -2586,7 +2593,6 @@ int rpc_clnt_test_and_add_xprt(struct rpc_clnt *clnt,
+>  		void *dummy)
+>  {
+>  	struct rpc_cb_add_xprt_calldata *data;
+> -	struct rpc_cred *cred;
+>  	struct rpc_task *task;
+>  
+>  	data = kmalloc(sizeof(*data), GFP_NOFS);
+> @@ -2595,11 +2601,9 @@ int rpc_clnt_test_and_add_xprt(struct rpc_clnt *clnt,
+>  	data->xps = xprt_switch_get(xps);
+>  	data->xprt = xprt_get(xprt);
+>  
+> -	cred = authnull_ops.lookup_cred(NULL, NULL, 0);
+> -	task = rpc_call_null_helper(clnt, xprt, cred,
+> +	task = rpc_call_null_helper(clnt, xprt, NULL,
+>  			RPC_TASK_SOFT|RPC_TASK_SOFTCONN|RPC_TASK_ASYNC,
+>  			&rpc_cb_add_xprt_call_ops, data);
+> -	put_rpccred(cred);
+>  	if (IS_ERR(task))
+>  		return PTR_ERR(task);
+>  	rpc_put_task(task);
+> @@ -2630,7 +2634,6 @@ int rpc_clnt_setup_test_and_add_xprt(struct rpc_clnt *clnt,
+>  				     struct rpc_xprt *xprt,
+>  				     void *data)
+>  {
+> -	struct rpc_cred *cred;
+>  	struct rpc_task *task;
+>  	struct rpc_add_xprt_test *xtest = (struct rpc_add_xprt_test *)data;
+>  	int status = -EADDRINUSE;
+> @@ -2642,11 +2645,9 @@ int rpc_clnt_setup_test_and_add_xprt(struct rpc_clnt *clnt,
+>  		goto out_err;
+>  
+>  	/* Test the connection */
+> -	cred = authnull_ops.lookup_cred(NULL, NULL, 0);
+> -	task = rpc_call_null_helper(clnt, xprt, cred,
+> +	task = rpc_call_null_helper(clnt, xprt, NULL,
+>  				    RPC_TASK_SOFT | RPC_TASK_SOFTCONN,
+>  				    NULL, NULL);
+> -	put_rpccred(cred);
+>  	if (IS_ERR(task)) {
+>  		status = PTR_ERR(task);
+>  		goto out_err;
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
