@@ -1,142 +1,56 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:41770 "EHLO mx1.redhat.com"
+Received: from imap.thunk.org ([74.207.234.97]:60036 "EHLO imap.thunk.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1754781AbdA0NcZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 27 Jan 2017 08:32:25 -0500
-From: Jeff Layton <jlayton@redhat.com>
-To: viro@zeniv.linux.org.uk
-Cc: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, ceph-devel@vger.kernel.org,
-        lustre-devel@lists.lustre.org, v9fs-developer@lists.sourceforge.net
-Subject: [PATCH v4 2/2] ceph: switch DIO code to use iov_iter_get_pages_alloc
-Date: Fri, 27 Jan 2017 08:24:51 -0500
-Message-Id: <20170127132451.6601-3-jlayton@redhat.com>
-In-Reply-To: <20170127132451.6601-1-jlayton@redhat.com>
-References: <1485434106.6547.1.camel@poochiereds.net>
- <20170127132451.6601-1-jlayton@redhat.com>
+        id S1755110AbdA0Qo0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 27 Jan 2017 11:44:26 -0500
+Date: Fri, 27 Jan 2017 11:40:42 -0500
+From: "Theodore Ts'o" <tytso@mit.edu>
+To: Michal Hocko <mhocko@kernel.org>
+Cc: Jan Kara <jack@suse.cz>, linux-mm@kvack.org,
+        linux-fsdevel@vger.kernel.org,
+        Andrew Morton <akpm@linux-foundation.org>,
+        Dave Chinner <david@fromorbit.com>, djwong@kernel.org,
+        Chris Mason <clm@fb.com>, David Sterba <dsterba@suse.cz>,
+        ceph-devel@vger.kernel.org, cluster-devel@redhat.com,
+        linux-nfs@vger.kernel.org, logfs@logfs.org, linux-xfs@vger.kernel.org,
+        linux-ext4@vger.kernel.org, linux-btrfs@vger.kernel.org,
+        linux-mtd@lists.infradead.org, reiserfs-devel@vger.kernel.org,
+        linux-ntfs-dev@lists.sourceforge.net,
+        linux-f2fs-devel@lists.sourceforge.net, linux-afs@lists.infradead.org,
+        LKML <linux-kernel@vger.kernel.org>
+Subject: Re: [PATCH 8/8] Revert "ext4: fix wrong gfp type under transaction"
+Message-ID: <20170127164042.2o3bnyopihcb224g@thunk.org>
+References: <20170117151817.GR19699@dhcp22.suse.cz>
+ <20170117155916.dcizr65bwa6behe7@thunk.org>
+ <20170117161618.GT19699@dhcp22.suse.cz>
+ <20170117172925.GA2486@quack2.suse.cz>
+ <20170119083956.GE30786@dhcp22.suse.cz>
+ <20170119092236.GC2565@quack2.suse.cz>
+ <20170119094405.GK30786@dhcp22.suse.cz>
+ <20170126074455.GC8456@dhcp22.suse.cz>
+ <20170127061318.xd2qxashbl4dajez@thunk.org>
+ <20170127093735.GB4143@dhcp22.suse.cz>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20170127093735.GB4143@dhcp22.suse.cz>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-xfstest generic/095 triggers soft lockups in kcephfs. It uses fio to
-drive some I/O via vmsplice ane splice. Ceph then ends up trying to
-access an ITER_BVEC type iov_iter as a ITER_IOVEC one. That causes it to
-pick up a wrong offset and get stuck in an infinite loop while trying to
-populate the page array. dio_get_pagev_size has a similar problem.
+On Fri, Jan 27, 2017 at 10:37:35AM +0100, Michal Hocko wrote:
+> If this ever turn out to be a problem and with the vmapped stacks we
+> have good chances to get a proper stack traces on a potential overflow
+> we can add the scope API around the problematic code path with the
+> explanation why it is needed.
 
-Now that iov_iter_get_pages_alloc doesn't stop after the first vector in
-the array, we can just call it instead and dump the old code that tried
-to do the same thing.
+Yeah, or maybe we can automate it?  Can the reclaim code check how
+much stack space is left and do the right thing automatically?
 
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
----
- fs/ceph/file.c | 75 +++-------------------------------------------------------
- 1 file changed, 3 insertions(+), 72 deletions(-)
+The reason why I'm nervous is that nojournal mode is not a common
+configuration, and "wait until production systems start failing" is
+not a strategy that I or many SRE-types find.... comforting.
 
-diff --git a/fs/ceph/file.c b/fs/ceph/file.c
-index 045d30d26624..0ce79f1eabbc 100644
---- a/fs/ceph/file.c
-+++ b/fs/ceph/file.c
-@@ -35,75 +35,6 @@
-  */
- 
- /*
-- * Calculate the length sum of direct io vectors that can
-- * be combined into one page vector.
-- */
--static size_t dio_get_pagev_size(const struct iov_iter *it)
--{
--    const struct iovec *iov = it->iov;
--    const struct iovec *iovend = iov + it->nr_segs;
--    size_t size;
--
--    size = iov->iov_len - it->iov_offset;
--    /*
--     * An iov can be page vectored when both the current tail
--     * and the next base are page aligned.
--     */
--    while (PAGE_ALIGNED((iov->iov_base + iov->iov_len)) &&
--           (++iov < iovend && PAGE_ALIGNED((iov->iov_base)))) {
--        size += iov->iov_len;
--    }
--    dout("dio_get_pagevlen len = %zu\n", size);
--    return size;
--}
--
--/*
-- * Allocate a page vector based on (@it, @nbytes).
-- * The return value is the tuple describing a page vector,
-- * that is (@pages, @page_align, @num_pages).
-- */
--static struct page **
--dio_get_pages_alloc(const struct iov_iter *it, size_t nbytes,
--		    size_t *page_align, int *num_pages)
--{
--	struct iov_iter tmp_it = *it;
--	size_t align;
--	struct page **pages;
--	int ret = 0, idx, npages;
--
--	align = (unsigned long)(it->iov->iov_base + it->iov_offset) &
--		(PAGE_SIZE - 1);
--	npages = calc_pages_for(align, nbytes);
--	pages = kmalloc(sizeof(*pages) * npages, GFP_KERNEL);
--	if (!pages) {
--		pages = vmalloc(sizeof(*pages) * npages);
--		if (!pages)
--			return ERR_PTR(-ENOMEM);
--	}
--
--	for (idx = 0; idx < npages; ) {
--		size_t start;
--		ret = iov_iter_get_pages(&tmp_it, pages + idx, nbytes,
--					 npages - idx, &start);
--		if (ret < 0)
--			goto fail;
--
--		iov_iter_advance(&tmp_it, ret);
--		nbytes -= ret;
--		idx += (ret + start + PAGE_SIZE - 1) / PAGE_SIZE;
--	}
--
--	BUG_ON(nbytes != 0);
--	*num_pages = npages;
--	*page_align = align;
--	dout("dio_get_pages_alloc: got %d pages align %zu\n", npages, align);
--	return pages;
--fail:
--	ceph_put_page_vector(pages, idx, false);
--	return ERR_PTR(ret);
--}
--
--/*
-  * Prepare an open request.  Preallocate ceph_cap to avoid an
-  * inopportune ENOMEM later.
-  */
-@@ -923,7 +854,7 @@ ceph_direct_read_write(struct kiocb *iocb, struct iov_iter *iter,
- 	}
- 
- 	while (iov_iter_count(iter) > 0) {
--		u64 size = dio_get_pagev_size(iter);
-+		u64 size = iov_iter_count(iter);
- 		size_t start = 0;
- 		ssize_t len;
- 
-@@ -943,13 +874,13 @@ ceph_direct_read_write(struct kiocb *iocb, struct iov_iter *iter,
- 			break;
- 		}
- 
--		len = size;
--		pages = dio_get_pages_alloc(iter, len, &start, &num_pages);
-+		len = iov_iter_get_pages_alloc(iter, &pages, size, &start);
- 		if (IS_ERR(pages)) {
- 			ceph_osdc_put_request(req);
- 			ret = PTR_ERR(pages);
- 			break;
- 		}
-+		num_pages = DIV_ROUND_UP(len, PAGE_SIZE);
- 
- 		/*
- 		 * To simplify error handling, allow AIO when IO within i_size
--- 
-2.9.3
+So if we can assure ourselves that the right thing will happen
+automatically, or that lockdep will detect a required GFP_NOFS when
+running tests, the happier I'll be.
 
+					- Ted
