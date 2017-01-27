@@ -1,63 +1,67 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f170.google.com ([209.85.223.170]:36080 "EHLO
-        mail-io0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1753516AbdAZVU3 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Jan 2017 16:20:29 -0500
-Received: by mail-io0-f170.google.com with SMTP id j13so47000805iod.3
-        for <linux-nfs@vger.kernel.org>; Thu, 26 Jan 2017 13:20:29 -0800 (PST)
+Received: from imap.thunk.org ([74.207.234.97]:57984 "EHLO imap.thunk.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1753841AbdA0GNm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 27 Jan 2017 01:13:42 -0500
+Date: Fri, 27 Jan 2017 01:13:18 -0500
+From: "Theodore Ts'o" <tytso@mit.edu>
+To: Michal Hocko <mhocko@kernel.org>
+Cc: Jan Kara <jack@suse.cz>, linux-mm@kvack.org,
+        linux-fsdevel@vger.kernel.org,
+        Andrew Morton <akpm@linux-foundation.org>,
+        Dave Chinner <david@fromorbit.com>, djwong@kernel.org,
+        Chris Mason <clm@fb.com>, David Sterba <dsterba@suse.cz>,
+        ceph-devel@vger.kernel.org, cluster-devel@redhat.com,
+        linux-nfs@vger.kernel.org, logfs@logfs.org, linux-xfs@vger.kernel.org,
+        linux-ext4@vger.kernel.org, linux-btrfs@vger.kernel.org,
+        linux-mtd@lists.infradead.org, reiserfs-devel@vger.kernel.org,
+        linux-ntfs-dev@lists.sourceforge.net,
+        linux-f2fs-devel@lists.sourceforge.net, linux-afs@lists.infradead.org,
+        LKML <linux-kernel@vger.kernel.org>
+Subject: Re: [PATCH 8/8] Revert "ext4: fix wrong gfp type under transaction"
+Message-ID: <20170127061318.xd2qxashbl4dajez@thunk.org>
+References: <20170117025607.frrcdbduthhutrzj@thunk.org>
+ <20170117082425.GD19699@dhcp22.suse.cz>
+ <20170117151817.GR19699@dhcp22.suse.cz>
+ <20170117155916.dcizr65bwa6behe7@thunk.org>
+ <20170117161618.GT19699@dhcp22.suse.cz>
+ <20170117172925.GA2486@quack2.suse.cz>
+ <20170119083956.GE30786@dhcp22.suse.cz>
+ <20170119092236.GC2565@quack2.suse.cz>
+ <20170119094405.GK30786@dhcp22.suse.cz>
+ <20170126074455.GC8456@dhcp22.suse.cz>
 MIME-Version: 1.0
-In-Reply-To: <1485464316.3367.3.camel@primarydata.com>
-References: <CAN-5tyEo-VS6y1-WVJMDXSzN2vxDtJOSckiYK=HmqLyPvBpWFQ@mail.gmail.com>
- <1485464316.3367.3.camel@primarydata.com>
-From: Olga Kornievskaia <aglo@umich.edu>
-Date: Thu, 26 Jan 2017 16:20:18 -0500
-Message-ID: <CAN-5tyEbG6mA0HNdEQF+OkR7j3__VFce9=KLGy9sGDxG-fTO9w@mail.gmail.com>
-Subject: Re: regression from commit 24408f5282
-To: Trond Myklebust <trondmy@primarydata.com>
-Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20170126074455.GC8456@dhcp22.suse.cz>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Jan 26, 2017 at 3:58 PM, Trond Myklebust
-<trondmy@primarydata.com> wrote:
-> On Thu, 2017-01-26 at 15:01 -0500, Olga Kornievskaia wrote:
->> Hi Trond,
->>
->> There is regression in the upstream code, it leaves dangling DS
->> mounts. Problem didn't exist in 4.9 and appeared in 4.10.
->>
->> Simple test is : mount, echo 1 > /mnt/foobar, unmount /mnt. Watch the
->> DS mount keep going.
->>
->> The last commit at which the code works is: fe1cf9469d7 "pNFS: Clear
->> all layout segment state in pnfs_mark_layout_stateaid_invalid".
->>
->> Applying commit 24408f5282 "pNFS: Fix bugs in _pnfs_return_layout"
->> introduces the problem.
->>
->> From what I can tell the code is either missing setting
->> NFS_LAYOUT_RETURN_REQUESTED somewhere but I'm not sure.
->>
->> Or if the intent was to just never return the layout even on the
->> unmount, then we need to drop the ref count on the layout here so
->> that
->> unmount can proceed.
->>
->> Can you clarify what should be happening here (or maybe something
->> else
->> entirely)?
->>
->
-> Does the patch I just sent you fix the regression?
+On Thu, Jan 26, 2017 at 08:44:55AM +0100, Michal Hocko wrote:
+> > > I'm convinced the current series is OK, only real life will tell us whether
+> > > we missed something or not ;)
+> > 
+> > I would like to extend the changelog of "jbd2: mark the transaction
+> > context with the scope GFP_NOFS context".
+> > 
+> > "
+> > Please note that setups without journal do not suffer from potential
+> > recursion problems and so they do not need the scope protection because
+> > neither ->releasepage nor ->evict_inode (which are the only fs entry
+> > points from the direct reclaim) can reenter a locked context which is
+> > doing the allocation currently.
+> > "
+> 
+> Could you comment on this Ted, please?
 
-Yes! that fixes the problem. Thank you.
+I guess....   so there still is one way this could screw us, and it's this reason for GFP_NOFS:
 
->
-> Cheers,
->   Trond
->
-> --
-> Trond Myklebust
-> Linux NFS client maintainer, PrimaryData
-> trond.myklebust@primarydata.com
+        - to prevent from stack overflows during the reclaim because
+	          the allocation is performed from a deep context already
+
+The writepages call stack can be pretty deep.  (Especially if we're
+using ext4 in no journal mode over, say, iSCSI.)
+
+How much stack space can get consumed by a reclaim?
+
+						- Ted
+    		 
