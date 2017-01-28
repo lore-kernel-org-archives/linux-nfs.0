@@ -1,44 +1,49 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from lang.hm ([66.167.227.134]:59557 "EHLO bifrost.lang.hm"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1750814AbdA1Iht (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Sat, 28 Jan 2017 03:37:49 -0500
-Date: Sat, 28 Jan 2017 00:17:04 -0800 (PST)
-From: David Lang <david@lang.hm>
-To: Christoph Hellwig <hch@infradead.org>
-cc: "Theodore Ts'o" <tytso@mit.edu>, Michal Hocko <mhocko@kernel.org>,
-        Jan Kara <jack@suse.cz>, linux-mm@kvack.org,
-        linux-fsdevel@vger.kernel.org,
-        Andrew Morton <akpm@linux-foundation.org>,
-        Dave Chinner <david@fromorbit.com>, djwong@kernel.org,
-        Chris Mason <clm@fb.com>, David Sterba <dsterba@suse.cz>,
-        ceph-devel@vger.kernel.org, cluster-devel@redhat.com,
-        linux-nfs@vger.kernel.org, logfs@logfs.org, linux-xfs@vger.kernel.org,
-        linux-ext4@vger.kernel.org, linux-btrfs@vger.kernel.org,
-        linux-mtd@lists.infradead.org, reiserfs-devel@vger.kernel.org,
-        linux-ntfs-dev@lists.sourceforge.net,
-        linux-f2fs-devel@lists.sourceforge.net, linux-afs@lists.infradead.org,
-        LKML <linux-kernel@vger.kernel.org>
-Subject: Re: [Cluster-devel] [PATCH 8/8] Revert "ext4: fix wrong gfp type
- under transaction"
-In-Reply-To: <20170128073215.GA19424@infradead.org>
-Message-ID: <nycvar.QRO.7.75.62.1701280016010.6590@qynat-yncgbc>
-References: <20170117155916.dcizr65bwa6behe7@thunk.org> <20170117161618.GT19699@dhcp22.suse.cz> <20170117172925.GA2486@quack2.suse.cz> <20170119083956.GE30786@dhcp22.suse.cz> <20170119092236.GC2565@quack2.suse.cz> <20170119094405.GK30786@dhcp22.suse.cz>
- <20170126074455.GC8456@dhcp22.suse.cz> <20170127061318.xd2qxashbl4dajez@thunk.org> <20170127093735.GB4143@dhcp22.suse.cz> <20170127164042.2o3bnyopihcb224g@thunk.org> <20170128073215.GA19424@infradead.org>
+Received: from us-smtp-delivery-194.mimecast.com ([216.205.24.194]:48741 "EHLO
+        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1751049AbdA1RGT (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sat, 28 Jan 2017 12:06:19 -0500
+From: Trond Myklebust <trondmy@primarydata.com>
+To: "torvalds@linux-foundation.org" <torvalds@linux-foundation.org>
+CC: "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: [GIT PULL] Please pull NFS client bugfixes
+Date: Sat, 28 Jan 2017 17:04:55 +0000
+Message-ID: <1485623093.6025.1.camel@primarydata.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII; format=flowed
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, 27 Jan 2017, Christoph Hellwig wrote:
+SGkgTGludXMsDQoNClRoZSBmb2xsb3dpbmcgY2hhbmdlcyBzaW5jZSBjb21taXQgN2EzMDhiYjMw
+MTZmNTdlNWJlMTFhNjc3ZDE1YjgyMTUzNjQxOWQzNjoNCg0KICBMaW51eCA0LjEwLXJjNSAoMjAx
+Ny0wMS0yMiAxMjo1NDoxNSAtMDgwMCkNCg0KYXJlIGF2YWlsYWJsZSBpbiB0aGUgZ2l0IHJlcG9z
+aXRvcnkgYXQ6DQoNCiAgZ2l0Oi8vZ2l0LmxpbnV4LW5mcy5vcmcvcHJvamVjdHMvdHJvbmRteS9s
+aW51eC1uZnMuZ2l0IHRhZ3MvbmZzLWZvci00LjEwLTQNCg0KZm9yIHlvdSB0byBmZXRjaCBjaGFu
+Z2VzIHVwIHRvIGVlNjYyNWE5NDhkMmU0NzI2N2VjOGZkOTczMDdmZGQ2N2QwZjhhNWI6DQoNCiAg
+cE5GUzogRml4IGEgcmVmZXJlbmNlIGxlYWsgaW4gX3BuZnNfcmV0dXJuX2xheW91dCAoMjAxNy0w
+MS0yNiAxNTo1MDo0MSAtMDUwMCkNCg0KLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
+LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLQ0KTkZTIGNsaWVudCBidWdmaXhlcyBmb3Ig
+TGludXggNC4xMA0KDQpTdGFibGUgcGF0Y2hlczoNCi0gTkZTdjQuMTogRml4IGEgZGVhZGxvY2sg
+aW4gbGF5b3V0Z2V0DQotIE5GU3Y0IG11c3Qgbm90IGJ1bXAgc2VxdWVuY2UgaWRzIG9uIE5GUzRF
+UlJfTU9WRUQgZXJyb3JzDQotIE5GU3Y0IEZpeCBhIHJlZ3Jlc3Npb24gd2l0aCBPUEVOIEVYQ0xV
+U0lWRTQgbW9kZQ0KLSBGaXggYSBtZW1vcnkgbGVhayB3aGVuIHJlbW92aW5nIHRoZSBTVU5SUEMg
+bW9kdWxlDQoNCkJ1Z2ZpeGVzOg0KLSBGaXggYSByZWZlcmVuY2UgbGVhayBpbiBfcG5mc19yZXR1
+cm5fbGF5b3V0DQoNCi0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
+LS0tLS0tLS0tLS0tLS0tLS0tLS0NCkJlbmphbWluIENvZGRpbmd0b24gKDEpOg0KICAgICAgTkZT
+djQuMDogYWx3YXlzIHNlbmQgbW9kZSBpbiBTRVRBVFRSIGFmdGVyIEVYQ0xVU0lWRTQNCg0KQ2h1
+Y2sgTGV2ZXIgKDIpOg0KICAgICAgbmZzOiBEb24ndCBpbmNyZW1lbnQgbG9jayBzZXF1ZW5jZSBJ
+RCBhZnRlciBORlM0RVJSX01PVkVEDQogICAgICBuZnM6IEZpeCAiRG9uJ3QgaW5jcmVtZW50IGxv
+Y2sgc2VxdWVuY2UgSUQgYWZ0ZXIgTkZTNEVSUl9NT1ZFRCINCg0KS2luZ2xvbmcgTWVlICgxKToN
+CiAgICAgIFNVTlJQQzogY2xlYW51cCBpZGEgaW5mb3JtYXRpb24gd2hlbiByZW1vdmluZyBzdW5y
+cGMgbW9kdWxlDQoNClRyb25kIE15a2xlYnVzdCAoMik6DQogICAgICBORlN2NC4xOiBGaXggYSBk
+ZWFkbG9jayBpbiBsYXlvdXRnZXQNCiAgICAgIHBORlM6IEZpeCBhIHJlZmVyZW5jZSBsZWFrIGlu
+IF9wbmZzX3JldHVybl9sYXlvdXQNCg0KIGZzL25mcy9uZnM0cHJvYy5jICAgICAgICAgICB8IDQg
+KysrLQ0KIGZzL25mcy9uZnM0c3RhdGUuYyAgICAgICAgICB8IDEgKw0KIGZzL25mcy9wbmZzLmMg
+ICAgICAgICAgICAgICB8IDIgKy0NCiBpbmNsdWRlL2xpbnV4L25mczQuaCAgICAgICAgfCAzICsr
+LQ0KIGluY2x1ZGUvbGludXgvc3VucnBjL2NsbnQuaCB8IDEgKw0KIG5ldC9zdW5ycGMvY2xudC5j
+ICAgICAgICAgICB8IDUgKysrKysNCiBuZXQvc3VucnBjL3N1bnJwY19zeW1zLmMgICAgfCAxICsN
+CiA3IGZpbGVzIGNoYW5nZWQsIDE0IGluc2VydGlvbnMoKyksIDMgZGVsZXRpb25zKC0pDQotLSAN
+ClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyLCBQcmltYXJ5RGF0
+YQ0KdHJvbmQubXlrbGVidXN0QHByaW1hcnlkYXRhLmNvbQ0K
 
-> On Fri, Jan 27, 2017 at 11:40:42AM -0500, Theodore Ts'o wrote:
->> The reason why I'm nervous is that nojournal mode is not a common
->> configuration, and "wait until production systems start failing" is
->> not a strategy that I or many SRE-types find.... comforting.
->
-> What does SRE stand for?
-
-Site Reliability Engineer, a mix of operations and engineering (DevOps++)
-
-David Lang
