@@ -1,84 +1,161 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:33054 "EHLO fieldses.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S932456AbdA3PfY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 30 Jan 2017 10:35:24 -0500
-Date: Mon, 30 Jan 2017 10:35:17 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: NeilBrown <neilb@suse.com>
-Cc: Linux NFS Mailing <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] NFSDv4: use export cache flushtime for changeid on
- V4ROOT objects.
-Message-ID: <20170130153517.GC24786@fieldses.org>
-References: <87mve9rs0z.fsf@notabene.neil.brown.name>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <87mve9rs0z.fsf@notabene.neil.brown.name>
+Received: from mail-qt0-f195.google.com ([209.85.216.195]:35095 "EHLO
+        mail-qt0-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S932379AbdA3PmC (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 30 Jan 2017 10:42:02 -0500
+Received: by mail-qt0-f195.google.com with SMTP id s58so15266754qtc.2
+        for <linux-nfs@vger.kernel.org>; Mon, 30 Jan 2017 07:40:46 -0800 (PST)
+Message-ID: <1485790844.2671.8.camel@poochiereds.net>
+Subject: Re: [PATCH v4 2/2] ceph: switch DIO code to use
+ iov_iter_get_pages_alloc
+From: Jeff Layton <jlayton@poochiereds.net>
+To: viro@zeniv.linux.org.uk
+Cc: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, ceph-devel@vger.kernel.org,
+        lustre-devel@lists.lustre.org, v9fs-developer@lists.sourceforge.net
+Date: Mon, 30 Jan 2017 10:40:44 -0500
+In-Reply-To: <20170127132451.6601-3-jlayton@redhat.com>
+References: <1485434106.6547.1.camel@poochiereds.net>
+         <20170127132451.6601-1-jlayton@redhat.com>
+         <20170127132451.6601-3-jlayton@redhat.com>
+Content-Type: text/plain; charset="UTF-8"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Jan 30, 2017 at 05:17:00PM +1100, NeilBrown wrote:
+On Fri, 2017-01-27 at 08:24 -0500, Jeff Layton wrote:
+> xfstest generic/095 triggers soft lockups in kcephfs. It uses fio to
+> drive some I/O via vmsplice ane splice. Ceph then ends up trying to
+> access an ITER_BVEC type iov_iter as a ITER_IOVEC one. That causes it to
+> pick up a wrong offset and get stuck in an infinite loop while trying to
+> populate the page array. dio_get_pagev_size has a similar problem.
 > 
-> If you change the set of filesystems that are exported, then
-> the contents of various directories in the NFSv4 pseudo-root
-> is likely to change.  However the change-id of those
-> directories is currently tied to the underlying directory,
-> so the clinet may not see the changes in a timely fashion.
-
-Oh, good catch.
-
-> This patch changes the change-id number to be derived from the
-> "flush_time" of the export cache.  Whenever any changes are
-> made to the set of exported filesystems, this flush_time is
-> updated.  The result is that clients see changes to the set
-> of exported filesystems much more quickly, often immediately.
-
-And, a clever solution, as usual....
-
-I wonder if it's completely right yet, though.  Off the top of my head:
-can't the client see the new flush time before it sees the new contents?
-If so, a client that caches both during that window could cache the old
-contents indefinitely.
-
---b.
-
+> Now that iov_iter_get_pages_alloc doesn't stop after the first vector in
+> the array, we can just call it instead and dump the old code that tried
+> to do the same thing.
 > 
-> Signed-off-by: NeilBrown <neilb@suse.com>
+> Signed-off-by: Jeff Layton <jlayton@redhat.com>
 > ---
->  fs/nfsd/nfs4xdr.c | 10 +++++++---
->  1 file changed, 7 insertions(+), 3 deletions(-)
+>  fs/ceph/file.c | 75 +++-------------------------------------------------------
+>  1 file changed, 3 insertions(+), 72 deletions(-)
 > 
-> diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-> index 8fae53ce21d1..dbff0122b784 100644
-> --- a/fs/nfsd/nfs4xdr.c
-> +++ b/fs/nfsd/nfs4xdr.c
-> @@ -1966,9 +1966,13 @@ nfsd4_decode_compound(struct nfsd4_compoundargs *argp)
->  	DECODE_TAIL;
->  }
+> diff --git a/fs/ceph/file.c b/fs/ceph/file.c
+> index 045d30d26624..0ce79f1eabbc 100644
+> --- a/fs/ceph/file.c
+> +++ b/fs/ceph/file.c
+> @@ -35,75 +35,6 @@
+>   */
 >  
-> -static __be32 *encode_change(__be32 *p, struct kstat *stat, struct inode *inode)
-> +static __be32 *encode_change(__be32 *p, struct kstat *stat, struct inode *inode,
-> +			     struct svc_export *exp)
->  {
-> -	if (IS_I_VERSION(inode)) {
-> +	if (exp->ex_flags & NFSEXP_V4ROOT) {
-> +		*p++ = cpu_to_be32(convert_to_wallclock(exp->cd->flush_time));
-> +		*p++ = 0;
-> +	} else if (IS_I_VERSION(inode)) {
->  		p = xdr_encode_hyper(p, inode->i_version);
->  	} else {
->  		*p++ = cpu_to_be32(stat->ctime.tv_sec);
-> @@ -2490,7 +2494,7 @@ nfsd4_encode_fattr(struct xdr_stream *xdr, struct svc_fh *fhp,
->  		p = xdr_reserve_space(xdr, 8);
->  		if (!p)
->  			goto out_resource;
-> -		p = encode_change(p, &stat, d_inode(dentry));
-> +		p = encode_change(p, &stat, d_inode(dentry), exp);
+>  /*
+> - * Calculate the length sum of direct io vectors that can
+> - * be combined into one page vector.
+> - */
+> -static size_t dio_get_pagev_size(const struct iov_iter *it)
+> -{
+> -    const struct iovec *iov = it->iov;
+> -    const struct iovec *iovend = iov + it->nr_segs;
+> -    size_t size;
+> -
+> -    size = iov->iov_len - it->iov_offset;
+> -    /*
+> -     * An iov can be page vectored when both the current tail
+> -     * and the next base are page aligned.
+> -     */
+> -    while (PAGE_ALIGNED((iov->iov_base + iov->iov_len)) &&
+> -           (++iov < iovend && PAGE_ALIGNED((iov->iov_base)))) {
+> -        size += iov->iov_len;
+> -    }
+> -    dout("dio_get_pagevlen len = %zu\n", size);
+> -    return size;
+> -}
+> -
+> -/*
+> - * Allocate a page vector based on (@it, @nbytes).
+> - * The return value is the tuple describing a page vector,
+> - * that is (@pages, @page_align, @num_pages).
+> - */
+> -static struct page **
+> -dio_get_pages_alloc(const struct iov_iter *it, size_t nbytes,
+> -		    size_t *page_align, int *num_pages)
+> -{
+> -	struct iov_iter tmp_it = *it;
+> -	size_t align;
+> -	struct page **pages;
+> -	int ret = 0, idx, npages;
+> -
+> -	align = (unsigned long)(it->iov->iov_base + it->iov_offset) &
+> -		(PAGE_SIZE - 1);
+> -	npages = calc_pages_for(align, nbytes);
+> -	pages = kmalloc(sizeof(*pages) * npages, GFP_KERNEL);
+> -	if (!pages) {
+> -		pages = vmalloc(sizeof(*pages) * npages);
+> -		if (!pages)
+> -			return ERR_PTR(-ENOMEM);
+> -	}
+> -
+> -	for (idx = 0; idx < npages; ) {
+> -		size_t start;
+> -		ret = iov_iter_get_pages(&tmp_it, pages + idx, nbytes,
+> -					 npages - idx, &start);
+> -		if (ret < 0)
+> -			goto fail;
+> -
+> -		iov_iter_advance(&tmp_it, ret);
+> -		nbytes -= ret;
+> -		idx += (ret + start + PAGE_SIZE - 1) / PAGE_SIZE;
+> -	}
+> -
+> -	BUG_ON(nbytes != 0);
+> -	*num_pages = npages;
+> -	*page_align = align;
+> -	dout("dio_get_pages_alloc: got %d pages align %zu\n", npages, align);
+> -	return pages;
+> -fail:
+> -	ceph_put_page_vector(pages, idx, false);
+> -	return ERR_PTR(ret);
+> -}
+> -
+> -/*
+>   * Prepare an open request.  Preallocate ceph_cap to avoid an
+>   * inopportune ENOMEM later.
+>   */
+> @@ -923,7 +854,7 @@ ceph_direct_read_write(struct kiocb *iocb, struct iov_iter *iter,
 >  	}
->  	if (bmval0 & FATTR4_WORD0_SIZE) {
->  		p = xdr_reserve_space(xdr, 8);
-> -- 
-> 2.11.0
-> 
+>  
+>  	while (iov_iter_count(iter) > 0) {
+> -		u64 size = dio_get_pagev_size(iter);
+> +		u64 size = iov_iter_count(iter);
+>  		size_t start = 0;
+>  		ssize_t len;
+>  
+> @@ -943,13 +874,13 @@ ceph_direct_read_write(struct kiocb *iocb, struct iov_iter *iter,
+>  			break;
+>  		}
+>  
+> -		len = size;
+> -		pages = dio_get_pages_alloc(iter, len, &start, &num_pages);
+> +		len = iov_iter_get_pages_alloc(iter, &pages, size, &start);
+>  		if (IS_ERR(pages)) {
+>  			ceph_osdc_put_request(req);
+>  			ret = PTR_ERR(pages);
+>  			break;
+>  		}
+> +		num_pages = DIV_ROUND_UP(len, PAGE_SIZE);
 
+Sigh, this should be:
 
+    num_pages = DIV_ROUND_UP(len + start, PAGE_SIZE);
+
+Also, while it is a simple thing to determine, it is rather easy to get
+that wrong.
+
+Maybe we should have iov_iter_get_pages_alloc also return the number of
+pages? Not having to do a DIV_ROUND_UP on every call into it would be
+nice, and all of the callers need that value anyway.
+
+>  
+>  		/*
+>  		 * To simplify error handling, allow AIO when IO within i_size
+
+-- 
+Jeff Layton <jlayton@poochiereds.net>
