@@ -1,149 +1,84 @@
-Return-Path: <matthieu.herrb@laas.fr>
-Date: Mon, 30 Jan 2017 15:25:11 +0100
-From: Matthieu Herrb <matthieu.herrb@laas.fr>
-To: Benjamin Coddington <bcodding@redhat.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: problem with open(name, O_RDWR|O_CREAT|O_EXCL, 0666) on NetApp
- servers
-Message-ID: <20170130142511.GC25669@paperthin-usb.laas.fr>
-References: <20170105142439.GB9922@paperthin-usb.laas.fr>
- <45F25643-F51D-4CA0-AC7D-55B6D6D6FE22@redhat.com>
+Return-Path: <linux-nfs-owner@vger.kernel.org>
+Received: from fieldses.org ([173.255.197.46]:33054 "EHLO fieldses.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S932456AbdA3PfY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 30 Jan 2017 10:35:24 -0500
+Date: Mon, 30 Jan 2017 10:35:17 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: NeilBrown <neilb@suse.com>
+Cc: Linux NFS Mailing <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] NFSDv4: use export cache flushtime for changeid on
+ V4ROOT objects.
+Message-ID: <20170130153517.GC24786@fieldses.org>
+References: <87mve9rs0z.fsf@notabene.neil.brown.name>
 MIME-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-sha1;
-	protocol="application/pgp-signature"; boundary="E13BgyNx05feLLmH"
-In-Reply-To: <45F25643-F51D-4CA0-AC7D-55B6D6D6FE22@redhat.com>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <87mve9rs0z.fsf@notabene.neil.brown.name>
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Mon, Jan 30, 2017 at 05:17:00PM +1100, NeilBrown wrote:
+> 
+> If you change the set of filesystems that are exported, then
+> the contents of various directories in the NFSv4 pseudo-root
+> is likely to change.  However the change-id of those
+> directories is currently tied to the underlying directory,
+> so the clinet may not see the changes in a timely fashion.
 
---E13BgyNx05feLLmH
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-Content-Transfer-Encoding: quoted-printable
+Oh, good catch.
 
-On Tue, Jan 24, 2017 at 11:48:33AM -0500, Benjamin Coddington wrote:
-> Hi Matthieu, are you willing to test this one:
->=20
-> http://marc.info/?l=3Dlinux-nfs&m=3D148527567624411&w=3D2
->=20
+> This patch changes the change-id number to be derived from the
+> "flush_time" of the export cache.  Whenever any changes are
+> made to the set of exported filesystems, this flush_time is
+> updated.  The result is that clients see changes to the set
+> of exported filesystems much more quickly, often immediately.
 
-Hi,
+And, a clever solution, as usual....
 
-sorry for the delay in answering. This patch does fix the problem for
-my  configuration.=20
+I wonder if it's completely right yet, though.  Off the top of my head:
+can't the client see the new flush time before it sees the new contents?
+If so, a client that caches both during that window could cache the old
+contents indefinitely.
 
-Thanks.
+--b.
 
-> Ben
->=20
-> On 5 Jan 2017, at 9:24, Matthieu Herrb wrote:
->=20
-> >Hi,
-> >
-> >After upgrading my machine to Ubuntu 16.04, I noticed that 'git clone'
-> >started creating files with wrong mode (0700 instead of 0644
-> >typically) on NFSv4 partitions mounted from our NetApp servers.
-> >
-> >I've first tracked this down to the fact that git uses
-> >
-> > open(name, O_RDWR|O_CREAT|O_EXCL, 0666);
-> >
-> >to create files. If O_EXCL is not present, the files are created
-> >normally.
-> >
-> >I've tried various kernels from Ubuntu and the problems appeared
-> >between their 4.2.0-42-generic kernel-image (as found on willy) and
-> >the 4.4.0 kernels found on xenial. I tried building 4.9 from
-> >kernel.org and the problem is also there.
-> >
-> >I've then bisected the kernel to figure out that this is caused by the
-> >following commit:
-> >
-> >https://git.kernel.org/cgit/linux/kernel/git/torvalds/linux.git/commit/?=
-id=3D5334c5bdac926c5f8d89729beccb46fe88eda9e7
-> >
-> >ie NFS: Send attributes in OPEN request for NFS4_CREATE_EXCLUSIVE4_1
-> >
-> >Our NetApp filers are running:
-> >
-> >NetApp Release 8.2.3P3 7-Mode: Tue Apr 28 14:48:22 PDT 2015
-> >
-> >Any idea on how to fix the problem (either on the NetApp side, or on
-> >Linux kernel side)?
-> >
-> >Appended is a small program to reproduce the issue:
-> >
-> >Thanks in advance,
-> >
-> >#include <sys/types.h>
-> >#include <sys/stat.h>
-> >#include <err.h>
-> >#include <fcntl.h>
-> >#include <stdio.h>
-> >#include <stdlib.h>
-> >#include <string.h>
-> >#include <unistd.h>
-> >
-> >/*
-> > * Demonstrate file creation bug on NFS v4 and linux kernel 4.4+
-> > *
-> > * mktemp() is used on purpose.
-> > */
-> >int
-> >main(int argc, char *argv[])
-> >{
-> >	const char *name =3D argv[1];
-> >	char tmp[] =3D "./tmpXXXXXXXXXX";
-> >	struct stat buf;
-> >	mode_t expected;
-> >	int fd, i, n =3D 40;
-> >
-> >	umask(S_IWGRP | S_IWOTH);
-> >	expected =3D 0666 & ~(S_IWGRP | S_IWOTH);
-> >	if (argv[1] =3D=3D NULL)
-> >		name =3D mktemp(tmp);
-> >	for (i =3D 0; i < n; i++) {
-> >		fd =3D open(name, O_RDWR|O_CREAT|O_EXCL, 0666);
-> >		if (fd < 0)
-> >			err(1, "open %s", name);
-> >		memset(&buf, 0, sizeof(buf));
-> >		if (stat(name, &buf) < 0)
-> >			err(1, "stat %s", name);
-> >		if ((buf.st_mode & (S_IRWXU|S_IRWXG|S_IRWXO)) !=3D expected)
-> >			printf("%s: %o\n", name,
-> >			    (int)buf.st_mode & (S_IRWXU|S_IRWXG|S_IRWXO));
-> >		else
-> >			printf("%s: ok\n", name);
-> >		unlink(name);
-> >	}
-> >	exit(0);
-> >}
-> >--=20
-> >Matthieu Herrb
->=20
+> 
+> Signed-off-by: NeilBrown <neilb@suse.com>
+> ---
+>  fs/nfsd/nfs4xdr.c | 10 +++++++---
+>  1 file changed, 7 insertions(+), 3 deletions(-)
+> 
+> diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+> index 8fae53ce21d1..dbff0122b784 100644
+> --- a/fs/nfsd/nfs4xdr.c
+> +++ b/fs/nfsd/nfs4xdr.c
+> @@ -1966,9 +1966,13 @@ nfsd4_decode_compound(struct nfsd4_compoundargs *argp)
+>  	DECODE_TAIL;
+>  }
+>  
+> -static __be32 *encode_change(__be32 *p, struct kstat *stat, struct inode *inode)
+> +static __be32 *encode_change(__be32 *p, struct kstat *stat, struct inode *inode,
+> +			     struct svc_export *exp)
+>  {
+> -	if (IS_I_VERSION(inode)) {
+> +	if (exp->ex_flags & NFSEXP_V4ROOT) {
+> +		*p++ = cpu_to_be32(convert_to_wallclock(exp->cd->flush_time));
+> +		*p++ = 0;
+> +	} else if (IS_I_VERSION(inode)) {
+>  		p = xdr_encode_hyper(p, inode->i_version);
+>  	} else {
+>  		*p++ = cpu_to_be32(stat->ctime.tv_sec);
+> @@ -2490,7 +2494,7 @@ nfsd4_encode_fattr(struct xdr_stream *xdr, struct svc_fh *fhp,
+>  		p = xdr_reserve_space(xdr, 8);
+>  		if (!p)
+>  			goto out_resource;
+> -		p = encode_change(p, &stat, d_inode(dentry));
+> +		p = encode_change(p, &stat, d_inode(dentry), exp);
+>  	}
+>  	if (bmval0 & FATTR4_WORD0_SIZE) {
+>  		p = xdr_reserve_space(xdr, 8);
+> -- 
+> 2.11.0
+> 
 
---=20
-Matthieu Herrb
 
---E13BgyNx05feLLmH
-Content-Type: application/pgp-signature; name="signature.asc"
-Content-Description: Digital signature
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1
-
-iQIVAwUBWI9Mx2hzk+430Sj4AQJaMg//UZhry7s4ORBJmhMlQUZk6WdxZyBJ9o4X
-FqLHWSILrbFdvlj0UTof5CCygeWJOf2LltQ6q11OPq+l/Nrer5IN3e6E1Ov1Ezs5
-Cq1utENIFByPdH+/GkEF4zvq9Ap1VMgNIemGQ+9ikE9sXbl4xARAMmwt5eIx6TTl
-tV+Kr01r5btyuZRJY03xxpOGuON8AMmdDW028HKEmU0EiwIkbpL7/mjq4kWyTTFh
-uGXRSsjiA3vUdmL+NEzVQEy5A0xG7aYzGhqZLy+p3Cje+9b8nHClr/XGIZUIUdPt
-0BQ46ySJ6qjS8SIqFtopXLXSl6ytH892Zet+lZlkU93F/cDO1C9M6ln/eAANoQoA
-mQPv7rWae21PcNVO+QmUSJG/5zqRreqiXZ3Kiy2qeY397LZn67mHFuWFqMekUOsT
-zUp8W+n14sCbiHqpA0TNF3Z6JGJg8Q2mfjZpXrMN17Sv8jIyaZFaGxXMqlcSKhdx
-ROrezvQzpH416AYTf86g3cTv3qu6lvGAMTKPSqSt0LRARJONUSBTJQcaYyqaRwOw
-0bEhuJOiC6Cyq9mJSNnWV1lCRo23Buo4SMAtOJKi1ru5+TrW9W5znA7/pOIGcWTt
-ZB6TY/tsPYY7KFMLk8vnm9OlUdOVzHHJDnefyaTnPqmpZ6NPim6MpNSfbz06QS12
-VAKQVZtfySI=
-=EDkl
------END PGP SIGNATURE-----
-
---E13BgyNx05feLLmH--
