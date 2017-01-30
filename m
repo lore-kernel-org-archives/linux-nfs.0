@@ -1,96 +1,67 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:58162 "EHLO mx2.suse.de"
+Received: from mx2.suse.de ([195.135.220.15]:41605 "EHLO mx2.suse.de"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1752105AbdA3GRs (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 30 Jan 2017 01:17:48 -0500
-From: NeilBrown <neilb@suse.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Date: Mon, 30 Jan 2017 17:17:00 +1100
-Cc: Linux NFS Mailing <linux-nfs@vger.kernel.org>
-Subject: [PATCH] NFSDv4: use export cache flushtime for changeid on V4ROOT objects.
-Message-ID: <87mve9rs0z.fsf@notabene.neil.brown.name>
+        id S1752099AbdA3I0X (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 30 Jan 2017 03:26:23 -0500
+Date: Mon, 30 Jan 2017 09:12:10 +0100
+From: Michal Hocko <mhocko@kernel.org>
+To: "Theodore Ts'o" <tytso@mit.edu>
+Cc: Jan Kara <jack@suse.cz>, linux-mm@kvack.org,
+        linux-fsdevel@vger.kernel.org,
+        Andrew Morton <akpm@linux-foundation.org>,
+        Dave Chinner <david@fromorbit.com>, djwong@kernel.org,
+        Chris Mason <clm@fb.com>, David Sterba <dsterba@suse.cz>,
+        ceph-devel@vger.kernel.org, cluster-devel@redhat.com,
+        linux-nfs@vger.kernel.org, logfs@logfs.org, linux-xfs@vger.kernel.org,
+        linux-ext4@vger.kernel.org, linux-btrfs@vger.kernel.org,
+        linux-mtd@lists.infradead.org, reiserfs-devel@vger.kernel.org,
+        linux-ntfs-dev@lists.sourceforge.net,
+        linux-f2fs-devel@lists.sourceforge.net, linux-afs@lists.infradead.org,
+        LKML <linux-kernel@vger.kernel.org>
+Subject: Re: [PATCH 8/8] Revert "ext4: fix wrong gfp type under transaction"
+Message-ID: <20170130081210.GD8443@dhcp22.suse.cz>
+References: <20170117155916.dcizr65bwa6behe7@thunk.org>
+ <20170117161618.GT19699@dhcp22.suse.cz>
+ <20170117172925.GA2486@quack2.suse.cz>
+ <20170119083956.GE30786@dhcp22.suse.cz>
+ <20170119092236.GC2565@quack2.suse.cz>
+ <20170119094405.GK30786@dhcp22.suse.cz>
+ <20170126074455.GC8456@dhcp22.suse.cz>
+ <20170127061318.xd2qxashbl4dajez@thunk.org>
+ <20170127093735.GB4143@dhcp22.suse.cz>
+ <20170127164042.2o3bnyopihcb224g@thunk.org>
 MIME-Version: 1.0
-Content-Type: multipart/signed; boundary="=-=-=";
-        micalg=pgp-sha256; protocol="application/pgp-signature"
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20170127164042.2o3bnyopihcb224g@thunk.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---=-=-=
-Content-Type: text/plain
-Content-Transfer-Encoding: quoted-printable
+On Fri 27-01-17 11:40:42, Theodore Ts'o wrote:
+> On Fri, Jan 27, 2017 at 10:37:35AM +0100, Michal Hocko wrote:
+> > If this ever turn out to be a problem and with the vmapped stacks we
+> > have good chances to get a proper stack traces on a potential overflow
+> > we can add the scope API around the problematic code path with the
+> > explanation why it is needed.
+> 
+> Yeah, or maybe we can automate it?  Can the reclaim code check how
+> much stack space is left and do the right thing automatically?
 
+I am not sure how to do that. Checking for some magic value sounds quite
+fragile to me. It also sounds a bit strange to focus only on the reclaim
+while other code paths might suffer from the same problem.
 
-If you change the set of filesystems that are exported, then
-the contents of various directories in the NFSv4 pseudo-root
-is likely to change.  However the change-id of those
-directories is currently tied to the underlying directory,
-so the clinet may not see the changes in a timely fashion.
+What is actually the deepest possible call chain from the slab reclaim
+where I stopped? I have tried to follow that path but hit the callback
+wall quite early.
+ 
+> The reason why I'm nervous is that nojournal mode is not a common
+> configuration, and "wait until production systems start failing" is
+> not a strategy that I or many SRE-types find.... comforting.
 
-This patch changes the change-id number to be derived from the
-"flush_time" of the export cache.  Whenever any changes are
-made to the set of exported filesystems, this flush_time is
-updated.  The result is that clients see changes to the set
-of exported filesystems much more quickly, often immediately.
+I understand that but I would be much more happier if we did the
+decision based on the actual data rather than a fear something would
+break down.
 
-Signed-off-by: NeilBrown <neilb@suse.com>
-=2D--
- fs/nfsd/nfs4xdr.c | 10 +++++++---
- 1 file changed, 7 insertions(+), 3 deletions(-)
-
-diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index 8fae53ce21d1..dbff0122b784 100644
-=2D-- a/fs/nfsd/nfs4xdr.c
-+++ b/fs/nfsd/nfs4xdr.c
-@@ -1966,9 +1966,13 @@ nfsd4_decode_compound(struct nfsd4_compoundargs *arg=
-p)
- 	DECODE_TAIL;
- }
-=20
-=2Dstatic __be32 *encode_change(__be32 *p, struct kstat *stat, struct inode=
- *inode)
-+static __be32 *encode_change(__be32 *p, struct kstat *stat, struct inode *=
-inode,
-+			     struct svc_export *exp)
- {
-=2D	if (IS_I_VERSION(inode)) {
-+	if (exp->ex_flags & NFSEXP_V4ROOT) {
-+		*p++ =3D cpu_to_be32(convert_to_wallclock(exp->cd->flush_time));
-+		*p++ =3D 0;
-+	} else if (IS_I_VERSION(inode)) {
- 		p =3D xdr_encode_hyper(p, inode->i_version);
- 	} else {
- 		*p++ =3D cpu_to_be32(stat->ctime.tv_sec);
-@@ -2490,7 +2494,7 @@ nfsd4_encode_fattr(struct xdr_stream *xdr, struct svc=
-_fh *fhp,
- 		p =3D xdr_reserve_space(xdr, 8);
- 		if (!p)
- 			goto out_resource;
-=2D		p =3D encode_change(p, &stat, d_inode(dentry));
-+		p =3D encode_change(p, &stat, d_inode(dentry), exp);
- 	}
- 	if (bmval0 & FATTR4_WORD0_SIZE) {
- 		p =3D xdr_reserve_space(xdr, 8);
-=2D-=20
-2.11.0
-
-
---=-=-=
-Content-Type: application/pgp-signature; name="signature.asc"
-
------BEGIN PGP SIGNATURE-----
-
-iQIzBAEBCAAdFiEEG8Yp69OQ2HB7X0l6Oeye3VZigbkFAliO2lwACgkQOeye3VZi
-gbljUBAAhXLewqzgA+AWGyr04qefa6Wax8l+fFxmB+3jUbuaL6x/ZDNggM2tVis1
-lW9l9iGY+B88C2HxMYo+JQUxQckp7OR9XQuiZSnxy4y9Tr2/A9igP9/GkHLpic6e
-o6+GJ7BwQZe6gXZtr1Q4MmHIkSV3qNAd1mQcfjOzEImkQ6cPEAtn3Y/W9sGkHgJ/
-xJep7aGcdRGnDYAmDVOgcJCqcPgS1KWIEFx4YTM82NkmfFYrRCJqYw/y26dSNpSJ
-dmdEuTEZm600HgbDJcyB7h0IoU5KTFm7iSk5mnGZtARyYfM0L7QqetV7M0+LFPLA
-8W9V6yhLAlEu/KRzz+ohlCHlRf6kofkSXAitj1XQmF9BB+ftUxKxwn0a1Yp7T8Bq
-nvL0khhQ2t9ESsklqAZDqLbEicaC17nGv1UvlyM+lZI1FLo/tedBzfrsdlhQ3fyE
-wEBcNr93pGgYHD40Pn4kXchUr1UwhENMwmBFYOA7AAzfPhadJB40lh6XOc4TUSQn
-fVct5Whu/Z+ZVRm0n+VtrOPmByBp/zzj+E/4wUjUg+kT5MQ6p7BpJbgmGqtQnzJX
-9j3+cskC39qHOHc2CuzfklRi/HJ2YAFpXro3c+CXRUW0eSl4JyUnIIAmrHwDueLB
-U96VF76bJPnm7/7PQ6y/jUA32I+L5Utg6lJDFGbKqkkip/BiEz8=
-=1JxE
------END PGP SIGNATURE-----
---=-=-=--
+-- 
+Michal Hocko
+SUSE Labs
