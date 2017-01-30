@@ -1,156 +1,114 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from userp1040.oracle.com ([156.151.31.81]:36602 "EHLO
-        userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751371AbdA3UcW (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 30 Jan 2017 15:32:22 -0500
-Content-Type: text/plain; charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 9.3 \(3124\))
-Subject: Re: [PATCH v1 7/7] sunrpc: Allow keepalive ping on a credit-full transport
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <5268b237-2c33-2058-d4b2-798afe021243@gmail.com>
-Date: Mon, 30 Jan 2017 15:32:18 -0500
-Cc: linux-rdma@vger.kernel.org,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <7694B03F-328F-472A-8A41-F3D6DCF0125E@oracle.com>
-References: <20170126174806.5794.14678.stgit@manet.1015granger.net> <20170126175628.5794.56813.stgit@manet.1015granger.net> <5268b237-2c33-2058-d4b2-798afe021243@gmail.com>
-To: Anna Schumaker <schumaker.anna@gmail.com>
+Received: from mx1.redhat.com ([209.132.183.28]:54538 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1754235AbdA3VCl (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 30 Jan 2017 16:02:41 -0500
+Date: Mon, 30 Jan 2017 16:02:38 -0500
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: Olga Kornievskaia <kolga@netapp.com>
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: upstream nfsd kernel oops in auth_rpcgss
+Message-ID: <20170130210237.GE12608@parsley.fieldses.org>
+References: <79F89BE0-79A7-46A2-9CB8-E5D25C9E90DB@netapp.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=utf-8
+In-Reply-To: <79F89BE0-79A7-46A2-9CB8-E5D25C9E90DB@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-> On Jan 30, 2017, at 3:29 PM, Anna Schumaker <schumaker.anna@gmail.com> wrote:
+On Mon, Jan 30, 2017 at 03:15:36PM -0500, Olga Kornievskaia wrote:
+> Hi Bruce,
 > 
-> Hi Chuck,
+> I ran into this oops in the nfsd (below) (4.10-rc3 kernel). To trigger this I had a client (unsuccessfully) try to mount the server with krb5 where the server doesn’t have the rpcsec_gss_krb5 module built. 
+
+Whoops, thanks for catching that.
+
+> Below code seems to fix things:
 > 
-> On 01/26/2017 12:56 PM, Chuck Lever wrote:
->> Allow RPC-over-RDMA to send NULL pings even when the transport has
->> hit its credit limit.
->> 
->> One credit is reserved. It may be used only to send a keepalive
->> ping.
->> 
->> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
->> ---
->> include/linux/sunrpc/sched.h    |    2 ++
->> net/sunrpc/xprt.c               |    4 ++++
->> net/sunrpc/xprtrdma/transport.c |    4 +++-
->> net/sunrpc/xprtrdma/verbs.c     |   13 ++++++++-----
->> 4 files changed, 17 insertions(+), 6 deletions(-)
->> 
->> diff --git a/include/linux/sunrpc/sched.h b/include/linux/sunrpc/sched.h
->> index 7ba040c..a65278e 100644
->> --- a/include/linux/sunrpc/sched.h
->> +++ b/include/linux/sunrpc/sched.h
->> @@ -127,6 +127,7 @@ struct rpc_task_setup {
->> #define RPC_TASK_TIMEOUT	0x1000		/* fail with ETIMEDOUT on timeout */
->> #define RPC_TASK_NOCONNECT	0x2000		/* return ENOTCONN if not connected */
->> #define RPC_TASK_NO_RETRANS_TIMEOUT	0x4000		/* wait forever for a reply */
->> +#define RPC_TASK_PRIORITY	0x8000		/* skip congestion control */
+> diff --git a/net/sunrpc/auth_gss/svcauth_gss.c b/net/sunrpc/auth_gss/svcauth_gss.c
+> index 886e9d38..7faffd8 100644
+> --- a/net/sunrpc/auth_gss/svcauth_gss.c
+> +++ b/net/sunrpc/auth_gss/svcauth_gss.c
+> @@ -1187,9 +1187,9 @@ static int gss_proxy_save_rsc(struct cache_detail *cd,
+>  		status = -EOPNOTSUPP;
+>  		/* get mech handle from OID */
+>  		gm = gss_mech_get_by_OID(&ud->mech_oid);
+> +		rsci.cred.cr_gss_mech = gm;
+>  		if (!gm)
+>  			goto out;
+> -		rsci.cred.cr_gss_mech = gm;
+>  
+>  		status = -EINVAL;
+>  		/* mech-specific data: */
 > 
-> This file also defines various RPC_PRIORITY_<whatever> values that get used for the task->tk_priority field.  I wonder if there is a better name for this flag that would help keep people from confusing the two later down the line, but I'm also struggling to come up with anything better.
+> I guess the problem is because rsci.cred gets initialed from something that’s passed in that doesn’t have it’s cr_gss_mech initialized to NULL. So when gss_mech_get_by_OID() fails and it calls rsc_free() and tries to free a bad pointer. 
 
-PRIORITY was a (lead) trial balloon, and also a sign of weak imagination.
+Hm, yes, just above there's:
 
-The point of the flag is to bypass congestion control. RPC_TASK_SKIPCONG ?
-Meh.
+	rsci.cred = ud->creds;
+
+and it does make me a little nervous if ud->creds isn't completely
+initialized.
+
+The only caller of gss_proxy_save_rsc is svcauth_gss_proxy_init:
+
+	status = gss_proxy_save_rsc(sn->rsc_cache, &ud, &handle);
+
+ud there is on the stack, and initialized by:
+
+	memset(&ud, 0, sizeof(ud));
+
+Hm, in gssp_accept_sec_context_upcall, there's:
+
+	data->creds = *(struct svc_cred *)value->data;
+
+That looks really weird.  I'm not sure what it should be.
+
+--b.
 
 
-> Thoughts?
-> Anna
 > 
->> 
->> #define RPC_IS_ASYNC(t)		((t)->tk_flags & RPC_TASK_ASYNC)
->> #define RPC_IS_SWAPPER(t)	((t)->tk_flags & RPC_TASK_SWAPPER)
->> @@ -135,6 +136,7 @@ struct rpc_task_setup {
->> #define RPC_IS_SOFT(t)		((t)->tk_flags & (RPC_TASK_SOFT|RPC_TASK_TIMEOUT))
->> #define RPC_IS_SOFTCONN(t)	((t)->tk_flags & RPC_TASK_SOFTCONN)
->> #define RPC_WAS_SENT(t)		((t)->tk_flags & RPC_TASK_SENT)
->> +#define RPC_HAS_PRIORITY(t)	((t)->tk_flags & RPC_TASK_PRIORITY)
->> 
->> #define RPC_TASK_RUNNING	0
->> #define RPC_TASK_QUEUED		1
->> diff --git a/net/sunrpc/xprt.c b/net/sunrpc/xprt.c
->> index b530a28..e8b7b9f 100644
->> --- a/net/sunrpc/xprt.c
->> +++ b/net/sunrpc/xprt.c
->> @@ -392,6 +392,10 @@ static inline void xprt_release_write(struct rpc_xprt *xprt, struct rpc_task *ta
->> {
->> 	struct rpc_rqst *req = task->tk_rqstp;
->> 
->> +	if (RPC_HAS_PRIORITY(task)) {
->> +		req->rq_cong = 0;
->> +		return 1;
->> +	}
->> 	if (req->rq_cong)
->> 		return 1;
->> 	dprintk("RPC: %5u xprt_cwnd_limited cong = %lu cwnd = %lu\n",
->> diff --git a/net/sunrpc/xprtrdma/transport.c b/net/sunrpc/xprtrdma/transport.c
->> index f97c851..e43cc85 100644
->> --- a/net/sunrpc/xprtrdma/transport.c
->> +++ b/net/sunrpc/xprtrdma/transport.c
->> @@ -538,7 +538,9 @@ static void rpcrdma_keepalive_release(void *calldata)
->> 
->> 	data = xprt_get(xprt);
->> 	null_task = rpc_call_null_helper(task->tk_client, xprt, NULL,
->> -					 RPC_TASK_SOFT | RPC_TASK_ASYNC,
->> +					 RPC_TASK_SOFT |
->> +					 RPC_TASK_ASYNC |
->> +					 RPC_TASK_PRIORITY,
->> 					 &rpcrdma_keepalive_call_ops, data);
->> 	if (!IS_ERR(null_task))
->> 		rpc_put_task(null_task);
->> diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
->> index 7e14b73..3e218dd 100644
->> --- a/net/sunrpc/xprtrdma/verbs.c
->> +++ b/net/sunrpc/xprtrdma/verbs.c
->> @@ -136,19 +136,20 @@
->> static void
->> rpcrdma_update_granted_credits(struct rpcrdma_rep *rep)
->> {
->> -	struct rpcrdma_msg *rmsgp = rdmab_to_msg(rep->rr_rdmabuf);
->> 	struct rpcrdma_buffer *buffer = &rep->rr_rxprt->rx_buf;
->> +	__be32 *p = rep->rr_rdmabuf->rg_base;
->> 	u32 credits;
->> 
->> 	if (rep->rr_len < RPCRDMA_HDRLEN_ERR)
->> 		return;
->> 
->> -	credits = be32_to_cpu(rmsgp->rm_credit);
->> +	credits = be32_to_cpup(p + 2);
->> +	if (credits > buffer->rb_max_requests)
->> +		credits = buffer->rb_max_requests;
->> +	/* Reserve one credit for keepalive ping */
->> +	credits--;
->> 	if (credits == 0)
->> 		credits = 1;	/* don't deadlock */
->> -	else if (credits > buffer->rb_max_requests)
->> -		credits = buffer->rb_max_requests;
->> -
->> 	atomic_set(&buffer->rb_credits, credits);
->> }
->> 
->> @@ -914,6 +915,8 @@ struct rpcrdma_rep *
->> 	struct rpcrdma_buffer *buf = &r_xprt->rx_buf;
->> 	int i, rc;
->> 
->> +	if (r_xprt->rx_data.max_requests < 2)
->> +		return -EINVAL;
->> 	buf->rb_max_requests = r_xprt->rx_data.max_requests;
->> 	buf->rb_bc_srv_max_requests = 0;
->> 	atomic_set(&buf->rb_credits, 1);
->> 
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-rdma" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
---
-Chuck Lever
-
-
-
+> Don’t know if this is acceptable or it should be traced to where the uninitialized pointer is coming from. 
+> 
+> If this approach is ok, I can re-send this as a patch.
+> 
+> [120408.542387] general protection fault: 0000 [#1] SMP
+> [120408.544273] Modules linked in: nfsd nfs_acl nfsv4 dns_resolver nfs lockd auth_rpcgss grace fscache sunrpc fuse ip6t_rpfilter ip6t_REJECT nf_reject_ipv6 nf_conntrack_ipv6 nf_defrag_ipv6 ipt_REJECT nf_reject_ipv4 nf_conntrack_ipv4 nf_defrag_ipv4 xt_conntrack nf_conntrack snd_seq_midi snd_seq_midi_event ebtable_nat ebtable_broute bridge stp llc ebtable_filter ebtables ip6table_mangle ip6table_security ip6table_raw ip6table_filter ip6_tables iptable_mangle iptable_security iptable_raw rfcomm iptable_filter bnep ip_tables coretemp crc32_pclmul crc32c_intel ghash_clmulni_intel btusb btrtl btbcm btintel bluetooth rfkill snd_ens1371 snd_ac97_codec ppdev ac97_bus snd_seq aesni_intel crypto_simd cryptd glue_helper uvcvideo videobuf2_vmalloc videobuf2_memops videobuf2_v4l2 videobuf2_core snd_pcm pcspkr serio_raw
+> [120408.558655]  videodev snd_rawmidi snd_timer snd_seq_device snd soundcore vmw_vmci shpchp i2c_piix4 parport_pc parport acpi_cpufreq uinput xfs libcrc32c sr_mod sd_mod cdrom ata_generic pata_acpi vmwgfx drm_kms_helper syscopyarea sysfillrect sysimgblt fb_sys_fops ttm drm ata_piix e1000 ahci libahci libata mptspi scsi_transport_spi mptscsih mptbase i2c_core dm_mirror dm_region_hash dm_log dm_mod
+> [120408.565724] CPU: 0 PID: 3601 Comm: nfsd Not tainted 4.10.0-rc3+ #16
+> [120408.567037] Hardware name: VMware, Inc. VMware Virtual Platform/440BX Desktop Reference Platform, BIOS 6.00 07/02/2015
+> [120408.569225] task: ffff8800776f95c0 task.stack: ffffc90003d58000
+> [120408.570483] RIP: 0010:gss_mech_put+0xb/0x20 [auth_rpcgss]
+> [120408.571614] RSP: 0018:ffffc90003d5bb78 EFLAGS: 00010206
+> [120408.572731] RAX: ffff880072ecc301 RBX: ffffc90003d5bba8 RCX: 00000000003d0040
+> [120408.574240] RDX: 00000000003d003f RSI: 0000000000000246 RDI: 4f432e4553554f48
+> [120408.575685] RBP: ffffc90003d5bb90 R08: 000000000001b2c0 R09: ffffffffa0703e0c
+> [120408.577149] R10: ffff88007b61b2c0 R11: ffffea0001cbb300 R12: ffff8800730c1500
+> [120408.578592] R13: 00000000ffffffa1 R14: ffff880073a94b40 R15: ffff880074e0d600
+> [120408.580058] FS:  0000000000000000(0000) GS:ffff88007b600000(0000) knlGS:0000000000000000
+> [120408.581708] CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
+> [120408.582889] CR2: 00007fe3980140b8 CR3: 000000006f063000 CR4: 00000000001406f0
+> [120408.584395] Call Trace:
+> [120408.584946]  ? rsc_free+0x55/0x90 [auth_rpcgss]
+> [120408.585901]  gss_proxy_save_rsc+0xb2/0x2a0 [auth_rpcgss]
+> [120408.587017]  svcauth_gss_proxy_init+0x3cc/0x520 [auth_rpcgss]
+> [120408.588257]  ? __enqueue_entity+0x6c/0x70
+> [120408.589101]  svcauth_gss_accept+0x391/0xb90 [auth_rpcgss]
+> [120408.590212]  ? try_to_wake_up+0x4a/0x360
+> [120408.591036]  ? wake_up_process+0x15/0x20
+> [120408.592093]  ? svc_xprt_do_enqueue+0x12e/0x2d0 [sunrpc]
+> [120408.593177]  svc_authenticate+0xe1/0x100 [sunrpc]
+> [120408.594168]  svc_process_common+0x203/0x710 [sunrpc]
+> [120408.595220]  svc_process+0x105/0x1c0 [sunrpc]
+> [120408.596278]  nfsd+0xe9/0x160 [nfsd]
+> [120408.597060]  kthread+0x101/0x140
+> [120408.597734]  ? nfsd_destroy+0x60/0x60 [nfsd]
+> [120408.598626]  ? kthread_park+0x90/0x90
+> [120408.599448]  ret_from_fork+0x22/0x30
+> [120408.600232] Code: 0f 1f 44 00 00 55 48 89 e5 53 48 89 fb 48 8b 7f 10 e8 9a 0a 9f e0 48 89 d8 5b 5d c3 0f 1f 40 00 0f 1f 44 00 00 48 85 ff 74 0e 55 <48> 8b 7f 10 48 89 e5 e8 d9 f6 9e e0 5d f3 c3 66 0f 1f 44 00 00
+> [120408.604123] RIP: gss_mech_put+0xb/0x20 [auth_rpcgss] RSP: ffffc90003d5bb78
+> [120408.607012] ---[ end trace 473ba7f734debac4 ]---
+> [120408.608027] Kernel panic - not syncing: Fatal exception
+> [120408.609268] Kernel Offset: disabled
+> [120408.610027] ---[ end Kernel panic - not syncing: Fatal exception
+> 
