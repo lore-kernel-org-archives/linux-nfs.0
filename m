@@ -1,85 +1,168 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:42566 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1754380AbdA3Vck (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 30 Jan 2017 16:32:40 -0500
-Date: Mon, 30 Jan 2017 16:23:22 -0500
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: Olga Kornievskaia <kolga@netapp.com>
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: upstream nfsd kernel oops in auth_rpcgss
-Message-ID: <20170130212321.GF12608@parsley.fieldses.org>
-References: <79F89BE0-79A7-46A2-9CB8-E5D25C9E90DB@netapp.com>
- <20170130210237.GE12608@parsley.fieldses.org>
+Received: from mail-io0-f194.google.com ([209.85.223.194]:35026 "EHLO
+        mail-io0-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1754363AbdA3VgN (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 30 Jan 2017 16:36:13 -0500
+Subject: Re: [PATCH v1 7/7] sunrpc: Allow keepalive ping on a credit-full
+ transport
+To: Chuck Lever <chuck.lever@oracle.com>
+References: <20170126174806.5794.14678.stgit@manet.1015granger.net>
+ <20170126175628.5794.56813.stgit@manet.1015granger.net>
+ <5268b237-2c33-2058-d4b2-798afe021243@gmail.com>
+ <7694B03F-328F-472A-8A41-F3D6DCF0125E@oracle.com>
+Cc: linux-rdma@vger.kernel.org,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+From: Anna Schumaker <schumaker.anna@gmail.com>
+Message-ID: <8e8f4165-5e84-4c64-67df-b07f4a7a2763@gmail.com>
+Date: Mon, 30 Jan 2017 16:36:06 -0500
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-In-Reply-To: <20170130210237.GE12608@parsley.fieldses.org>
+In-Reply-To: <7694B03F-328F-472A-8A41-F3D6DCF0125E@oracle.com>
+Content-Type: text/plain; charset=windows-1252
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Jan 30, 2017 at 04:02:37PM -0500, J. Bruce Fields wrote:
-> On Mon, Jan 30, 2017 at 03:15:36PM -0500, Olga Kornievskaia wrote:
-> > Hi Bruce,
-> > 
-> > I ran into this oops in the nfsd (below) (4.10-rc3 kernel). To trigger this I had a client (unsuccessfully) try to mount the server with krb5 where the server doesn’t have the rpcsec_gss_krb5 module built. 
-> 
-> Whoops, thanks for catching that.
-> 
-> > Below code seems to fix things:
-> > 
-> > diff --git a/net/sunrpc/auth_gss/svcauth_gss.c b/net/sunrpc/auth_gss/svcauth_gss.c
-> > index 886e9d38..7faffd8 100644
-> > --- a/net/sunrpc/auth_gss/svcauth_gss.c
-> > +++ b/net/sunrpc/auth_gss/svcauth_gss.c
-> > @@ -1187,9 +1187,9 @@ static int gss_proxy_save_rsc(struct cache_detail *cd,
-> >  		status = -EOPNOTSUPP;
-> >  		/* get mech handle from OID */
-> >  		gm = gss_mech_get_by_OID(&ud->mech_oid);
-> > +		rsci.cred.cr_gss_mech = gm;
-> >  		if (!gm)
-> >  			goto out;
-> > -		rsci.cred.cr_gss_mech = gm;
-> >  
-> >  		status = -EINVAL;
-> >  		/* mech-specific data: */
-> > 
-> > I guess the problem is because rsci.cred gets initialed from something that’s passed in that doesn’t have it’s cr_gss_mech initialized to NULL. So when gss_mech_get_by_OID() fails and it calls rsc_free() and tries to free a bad pointer. 
-> 
-> Hm, yes, just above there's:
-> 
-> 	rsci.cred = ud->creds;
-> 
-> and it does make me a little nervous if ud->creds isn't completely
-> initialized.
-> 
-> The only caller of gss_proxy_save_rsc is svcauth_gss_proxy_init:
-> 
-> 	status = gss_proxy_save_rsc(sn->rsc_cache, &ud, &handle);
-> 
-> ud there is on the stack, and initialized by:
-> 
-> 	memset(&ud, 0, sizeof(ud));
-> 
-> Hm, in gssp_accept_sec_context_upcall, there's:
-> 
-> 	data->creds = *(struct svc_cred *)value->data;
-> 
-> That looks really weird.  I'm not sure what it should be.
 
-Does this do it?
 
---b.
+On 01/30/2017 03:32 PM, Chuck Lever wrote:
+> 
+>> On Jan 30, 2017, at 3:29 PM, Anna Schumaker <schumaker.anna@gmail.com> wrote:
+>>
+>> Hi Chuck,
+>>
+>> On 01/26/2017 12:56 PM, Chuck Lever wrote:
+>>> Allow RPC-over-RDMA to send NULL pings even when the transport has
+>>> hit its credit limit.
+>>>
+>>> One credit is reserved. It may be used only to send a keepalive
+>>> ping.
+>>>
+>>> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+>>> ---
+>>> include/linux/sunrpc/sched.h    |    2 ++
+>>> net/sunrpc/xprt.c               |    4 ++++
+>>> net/sunrpc/xprtrdma/transport.c |    4 +++-
+>>> net/sunrpc/xprtrdma/verbs.c     |   13 ++++++++-----
+>>> 4 files changed, 17 insertions(+), 6 deletions(-)
+>>>
+>>> diff --git a/include/linux/sunrpc/sched.h b/include/linux/sunrpc/sched.h
+>>> index 7ba040c..a65278e 100644
+>>> --- a/include/linux/sunrpc/sched.h
+>>> +++ b/include/linux/sunrpc/sched.h
+>>> @@ -127,6 +127,7 @@ struct rpc_task_setup {
+>>> #define RPC_TASK_TIMEOUT	0x1000		/* fail with ETIMEDOUT on timeout */
+>>> #define RPC_TASK_NOCONNECT	0x2000		/* return ENOTCONN if not connected */
+>>> #define RPC_TASK_NO_RETRANS_TIMEOUT	0x4000		/* wait forever for a reply */
+>>> +#define RPC_TASK_PRIORITY	0x8000		/* skip congestion control */
+>>
+>> This file also defines various RPC_PRIORITY_<whatever> values that get used for the task->tk_priority field.  I wonder if there is a better name for this flag that would help keep people from confusing the two later down the line, but I'm also struggling to come up with anything better.
+> 
+> PRIORITY was a (lead) trial balloon, and also a sign of weak imagination.
+> 
+> The point of the flag is to bypass congestion control. RPC_TASK_SKIPCONG ?
 
-diff --git a/net/sunrpc/auth_gss/gss_rpc_xdr.c b/net/sunrpc/auth_gss/gss_rpc_xdr.c
-index dc6fb79a361f..25d9a9cf7b66 100644
---- a/net/sunrpc/auth_gss/gss_rpc_xdr.c
-+++ b/net/sunrpc/auth_gss/gss_rpc_xdr.c
-@@ -260,7 +260,7 @@ static int gssx_dec_option_array(struct xdr_stream *xdr,
- 	if (!oa->data)
- 		return -ENOMEM;
- 
--	creds = kmalloc(sizeof(struct svc_cred), GFP_KERNEL);
-+	creds = kzalloc(sizeof(struct svc_cred), GFP_KERNEL);
- 	if (!creds) {
- 		kfree(oa->data);
- 		return -ENOMEM;
+Something like that could work, yeah.
+
+Anna
+
+> Meh.
+> 
+> 
+>> Thoughts?
+>> Anna
+>>
+>>>
+>>> #define RPC_IS_ASYNC(t)		((t)->tk_flags & RPC_TASK_ASYNC)
+>>> #define RPC_IS_SWAPPER(t)	((t)->tk_flags & RPC_TASK_SWAPPER)
+>>> @@ -135,6 +136,7 @@ struct rpc_task_setup {
+>>> #define RPC_IS_SOFT(t)		((t)->tk_flags & (RPC_TASK_SOFT|RPC_TASK_TIMEOUT))
+>>> #define RPC_IS_SOFTCONN(t)	((t)->tk_flags & RPC_TASK_SOFTCONN)
+>>> #define RPC_WAS_SENT(t)		((t)->tk_flags & RPC_TASK_SENT)
+>>> +#define RPC_HAS_PRIORITY(t)	((t)->tk_flags & RPC_TASK_PRIORITY)
+>>>
+>>> #define RPC_TASK_RUNNING	0
+>>> #define RPC_TASK_QUEUED		1
+>>> diff --git a/net/sunrpc/xprt.c b/net/sunrpc/xprt.c
+>>> index b530a28..e8b7b9f 100644
+>>> --- a/net/sunrpc/xprt.c
+>>> +++ b/net/sunrpc/xprt.c
+>>> @@ -392,6 +392,10 @@ static inline void xprt_release_write(struct rpc_xprt *xprt, struct rpc_task *ta
+>>> {
+>>> 	struct rpc_rqst *req = task->tk_rqstp;
+>>>
+>>> +	if (RPC_HAS_PRIORITY(task)) {
+>>> +		req->rq_cong = 0;
+>>> +		return 1;
+>>> +	}
+>>> 	if (req->rq_cong)
+>>> 		return 1;
+>>> 	dprintk("RPC: %5u xprt_cwnd_limited cong = %lu cwnd = %lu\n",
+>>> diff --git a/net/sunrpc/xprtrdma/transport.c b/net/sunrpc/xprtrdma/transport.c
+>>> index f97c851..e43cc85 100644
+>>> --- a/net/sunrpc/xprtrdma/transport.c
+>>> +++ b/net/sunrpc/xprtrdma/transport.c
+>>> @@ -538,7 +538,9 @@ static void rpcrdma_keepalive_release(void *calldata)
+>>>
+>>> 	data = xprt_get(xprt);
+>>> 	null_task = rpc_call_null_helper(task->tk_client, xprt, NULL,
+>>> -					 RPC_TASK_SOFT | RPC_TASK_ASYNC,
+>>> +					 RPC_TASK_SOFT |
+>>> +					 RPC_TASK_ASYNC |
+>>> +					 RPC_TASK_PRIORITY,
+>>> 					 &rpcrdma_keepalive_call_ops, data);
+>>> 	if (!IS_ERR(null_task))
+>>> 		rpc_put_task(null_task);
+>>> diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
+>>> index 7e14b73..3e218dd 100644
+>>> --- a/net/sunrpc/xprtrdma/verbs.c
+>>> +++ b/net/sunrpc/xprtrdma/verbs.c
+>>> @@ -136,19 +136,20 @@
+>>> static void
+>>> rpcrdma_update_granted_credits(struct rpcrdma_rep *rep)
+>>> {
+>>> -	struct rpcrdma_msg *rmsgp = rdmab_to_msg(rep->rr_rdmabuf);
+>>> 	struct rpcrdma_buffer *buffer = &rep->rr_rxprt->rx_buf;
+>>> +	__be32 *p = rep->rr_rdmabuf->rg_base;
+>>> 	u32 credits;
+>>>
+>>> 	if (rep->rr_len < RPCRDMA_HDRLEN_ERR)
+>>> 		return;
+>>>
+>>> -	credits = be32_to_cpu(rmsgp->rm_credit);
+>>> +	credits = be32_to_cpup(p + 2);
+>>> +	if (credits > buffer->rb_max_requests)
+>>> +		credits = buffer->rb_max_requests;
+>>> +	/* Reserve one credit for keepalive ping */
+>>> +	credits--;
+>>> 	if (credits == 0)
+>>> 		credits = 1;	/* don't deadlock */
+>>> -	else if (credits > buffer->rb_max_requests)
+>>> -		credits = buffer->rb_max_requests;
+>>> -
+>>> 	atomic_set(&buffer->rb_credits, credits);
+>>> }
+>>>
+>>> @@ -914,6 +915,8 @@ struct rpcrdma_rep *
+>>> 	struct rpcrdma_buffer *buf = &r_xprt->rx_buf;
+>>> 	int i, rc;
+>>>
+>>> +	if (r_xprt->rx_data.max_requests < 2)
+>>> +		return -EINVAL;
+>>> 	buf->rb_max_requests = r_xprt->rx_data.max_requests;
+>>> 	buf->rb_bc_srv_max_requests = 0;
+>>> 	atomic_set(&buf->rb_credits, 1);
+>>>
+>>> --
+>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>>> the body of a message to majordomo@vger.kernel.org
+>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>>>
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-rdma" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
+> --
+> Chuck Lever
+> 
+> 
+> 
