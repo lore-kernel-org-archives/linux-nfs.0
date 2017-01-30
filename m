@@ -1,49 +1,96 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from us-smtp-delivery-194.mimecast.com ([216.205.24.194]:48741 "EHLO
-        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1751049AbdA1RGT (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sat, 28 Jan 2017 12:06:19 -0500
-From: Trond Myklebust <trondmy@primarydata.com>
-To: "torvalds@linux-foundation.org" <torvalds@linux-foundation.org>
-CC: "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: [GIT PULL] Please pull NFS client bugfixes
-Date: Sat, 28 Jan 2017 17:04:55 +0000
-Message-ID: <1485623093.6025.1.camel@primarydata.com>
+Received: from mx2.suse.de ([195.135.220.15]:58162 "EHLO mx2.suse.de"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1752105AbdA3GRs (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 30 Jan 2017 01:17:48 -0500
+From: NeilBrown <neilb@suse.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Date: Mon, 30 Jan 2017 17:17:00 +1100
+Cc: Linux NFS Mailing <linux-nfs@vger.kernel.org>
+Subject: [PATCH] NFSDv4: use export cache flushtime for changeid on V4ROOT objects.
+Message-ID: <87mve9rs0z.fsf@notabene.neil.brown.name>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+Content-Type: multipart/signed; boundary="=-=-=";
+        micalg=pgp-sha256; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-SGkgTGludXMsDQoNClRoZSBmb2xsb3dpbmcgY2hhbmdlcyBzaW5jZSBjb21taXQgN2EzMDhiYjMw
-MTZmNTdlNWJlMTFhNjc3ZDE1YjgyMTUzNjQxOWQzNjoNCg0KICBMaW51eCA0LjEwLXJjNSAoMjAx
-Ny0wMS0yMiAxMjo1NDoxNSAtMDgwMCkNCg0KYXJlIGF2YWlsYWJsZSBpbiB0aGUgZ2l0IHJlcG9z
-aXRvcnkgYXQ6DQoNCiAgZ2l0Oi8vZ2l0LmxpbnV4LW5mcy5vcmcvcHJvamVjdHMvdHJvbmRteS9s
-aW51eC1uZnMuZ2l0IHRhZ3MvbmZzLWZvci00LjEwLTQNCg0KZm9yIHlvdSB0byBmZXRjaCBjaGFu
-Z2VzIHVwIHRvIGVlNjYyNWE5NDhkMmU0NzI2N2VjOGZkOTczMDdmZGQ2N2QwZjhhNWI6DQoNCiAg
-cE5GUzogRml4IGEgcmVmZXJlbmNlIGxlYWsgaW4gX3BuZnNfcmV0dXJuX2xheW91dCAoMjAxNy0w
-MS0yNiAxNTo1MDo0MSAtMDUwMCkNCg0KLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
-LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLQ0KTkZTIGNsaWVudCBidWdmaXhlcyBmb3Ig
-TGludXggNC4xMA0KDQpTdGFibGUgcGF0Y2hlczoNCi0gTkZTdjQuMTogRml4IGEgZGVhZGxvY2sg
-aW4gbGF5b3V0Z2V0DQotIE5GU3Y0IG11c3Qgbm90IGJ1bXAgc2VxdWVuY2UgaWRzIG9uIE5GUzRF
-UlJfTU9WRUQgZXJyb3JzDQotIE5GU3Y0IEZpeCBhIHJlZ3Jlc3Npb24gd2l0aCBPUEVOIEVYQ0xV
-U0lWRTQgbW9kZQ0KLSBGaXggYSBtZW1vcnkgbGVhayB3aGVuIHJlbW92aW5nIHRoZSBTVU5SUEMg
-bW9kdWxlDQoNCkJ1Z2ZpeGVzOg0KLSBGaXggYSByZWZlcmVuY2UgbGVhayBpbiBfcG5mc19yZXR1
-cm5fbGF5b3V0DQoNCi0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
-LS0tLS0tLS0tLS0tLS0tLS0tLS0NCkJlbmphbWluIENvZGRpbmd0b24gKDEpOg0KICAgICAgTkZT
-djQuMDogYWx3YXlzIHNlbmQgbW9kZSBpbiBTRVRBVFRSIGFmdGVyIEVYQ0xVU0lWRTQNCg0KQ2h1
-Y2sgTGV2ZXIgKDIpOg0KICAgICAgbmZzOiBEb24ndCBpbmNyZW1lbnQgbG9jayBzZXF1ZW5jZSBJ
-RCBhZnRlciBORlM0RVJSX01PVkVEDQogICAgICBuZnM6IEZpeCAiRG9uJ3QgaW5jcmVtZW50IGxv
-Y2sgc2VxdWVuY2UgSUQgYWZ0ZXIgTkZTNEVSUl9NT1ZFRCINCg0KS2luZ2xvbmcgTWVlICgxKToN
-CiAgICAgIFNVTlJQQzogY2xlYW51cCBpZGEgaW5mb3JtYXRpb24gd2hlbiByZW1vdmluZyBzdW5y
-cGMgbW9kdWxlDQoNClRyb25kIE15a2xlYnVzdCAoMik6DQogICAgICBORlN2NC4xOiBGaXggYSBk
-ZWFkbG9jayBpbiBsYXlvdXRnZXQNCiAgICAgIHBORlM6IEZpeCBhIHJlZmVyZW5jZSBsZWFrIGlu
-IF9wbmZzX3JldHVybl9sYXlvdXQNCg0KIGZzL25mcy9uZnM0cHJvYy5jICAgICAgICAgICB8IDQg
-KysrLQ0KIGZzL25mcy9uZnM0c3RhdGUuYyAgICAgICAgICB8IDEgKw0KIGZzL25mcy9wbmZzLmMg
-ICAgICAgICAgICAgICB8IDIgKy0NCiBpbmNsdWRlL2xpbnV4L25mczQuaCAgICAgICAgfCAzICsr
-LQ0KIGluY2x1ZGUvbGludXgvc3VucnBjL2NsbnQuaCB8IDEgKw0KIG5ldC9zdW5ycGMvY2xudC5j
-ICAgICAgICAgICB8IDUgKysrKysNCiBuZXQvc3VucnBjL3N1bnJwY19zeW1zLmMgICAgfCAxICsN
-CiA3IGZpbGVzIGNoYW5nZWQsIDE0IGluc2VydGlvbnMoKyksIDMgZGVsZXRpb25zKC0pDQotLSAN
-ClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyLCBQcmltYXJ5RGF0
-YQ0KdHJvbmQubXlrbGVidXN0QHByaW1hcnlkYXRhLmNvbQ0K
+--=-=-=
+Content-Type: text/plain
+Content-Transfer-Encoding: quoted-printable
 
+
+If you change the set of filesystems that are exported, then
+the contents of various directories in the NFSv4 pseudo-root
+is likely to change.  However the change-id of those
+directories is currently tied to the underlying directory,
+so the clinet may not see the changes in a timely fashion.
+
+This patch changes the change-id number to be derived from the
+"flush_time" of the export cache.  Whenever any changes are
+made to the set of exported filesystems, this flush_time is
+updated.  The result is that clients see changes to the set
+of exported filesystems much more quickly, often immediately.
+
+Signed-off-by: NeilBrown <neilb@suse.com>
+=2D--
+ fs/nfsd/nfs4xdr.c | 10 +++++++---
+ 1 file changed, 7 insertions(+), 3 deletions(-)
+
+diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+index 8fae53ce21d1..dbff0122b784 100644
+=2D-- a/fs/nfsd/nfs4xdr.c
++++ b/fs/nfsd/nfs4xdr.c
+@@ -1966,9 +1966,13 @@ nfsd4_decode_compound(struct nfsd4_compoundargs *arg=
+p)
+ 	DECODE_TAIL;
+ }
+=20
+=2Dstatic __be32 *encode_change(__be32 *p, struct kstat *stat, struct inode=
+ *inode)
++static __be32 *encode_change(__be32 *p, struct kstat *stat, struct inode *=
+inode,
++			     struct svc_export *exp)
+ {
+=2D	if (IS_I_VERSION(inode)) {
++	if (exp->ex_flags & NFSEXP_V4ROOT) {
++		*p++ =3D cpu_to_be32(convert_to_wallclock(exp->cd->flush_time));
++		*p++ =3D 0;
++	} else if (IS_I_VERSION(inode)) {
+ 		p =3D xdr_encode_hyper(p, inode->i_version);
+ 	} else {
+ 		*p++ =3D cpu_to_be32(stat->ctime.tv_sec);
+@@ -2490,7 +2494,7 @@ nfsd4_encode_fattr(struct xdr_stream *xdr, struct svc=
+_fh *fhp,
+ 		p =3D xdr_reserve_space(xdr, 8);
+ 		if (!p)
+ 			goto out_resource;
+=2D		p =3D encode_change(p, &stat, d_inode(dentry));
++		p =3D encode_change(p, &stat, d_inode(dentry), exp);
+ 	}
+ 	if (bmval0 & FATTR4_WORD0_SIZE) {
+ 		p =3D xdr_reserve_space(xdr, 8);
+=2D-=20
+2.11.0
+
+
+--=-=-=
+Content-Type: application/pgp-signature; name="signature.asc"
+
+-----BEGIN PGP SIGNATURE-----
+
+iQIzBAEBCAAdFiEEG8Yp69OQ2HB7X0l6Oeye3VZigbkFAliO2lwACgkQOeye3VZi
+gbljUBAAhXLewqzgA+AWGyr04qefa6Wax8l+fFxmB+3jUbuaL6x/ZDNggM2tVis1
+lW9l9iGY+B88C2HxMYo+JQUxQckp7OR9XQuiZSnxy4y9Tr2/A9igP9/GkHLpic6e
+o6+GJ7BwQZe6gXZtr1Q4MmHIkSV3qNAd1mQcfjOzEImkQ6cPEAtn3Y/W9sGkHgJ/
+xJep7aGcdRGnDYAmDVOgcJCqcPgS1KWIEFx4YTM82NkmfFYrRCJqYw/y26dSNpSJ
+dmdEuTEZm600HgbDJcyB7h0IoU5KTFm7iSk5mnGZtARyYfM0L7QqetV7M0+LFPLA
+8W9V6yhLAlEu/KRzz+ohlCHlRf6kofkSXAitj1XQmF9BB+ftUxKxwn0a1Yp7T8Bq
+nvL0khhQ2t9ESsklqAZDqLbEicaC17nGv1UvlyM+lZI1FLo/tedBzfrsdlhQ3fyE
+wEBcNr93pGgYHD40Pn4kXchUr1UwhENMwmBFYOA7AAzfPhadJB40lh6XOc4TUSQn
+fVct5Whu/Z+ZVRm0n+VtrOPmByBp/zzj+E/4wUjUg+kT5MQ6p7BpJbgmGqtQnzJX
+9j3+cskC39qHOHc2CuzfklRi/HJ2YAFpXro3c+CXRUW0eSl4JyUnIIAmrHwDueLB
+U96VF76bJPnm7/7PQ6y/jUA32I+L5Utg6lJDFGbKqkkip/BiEz8=
+=1JxE
+-----END PGP SIGNATURE-----
+--=-=-=--
