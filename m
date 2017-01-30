@@ -1,67 +1,149 @@
-Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:41605 "EHLO mx2.suse.de"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1752099AbdA3I0X (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 30 Jan 2017 03:26:23 -0500
-Date: Mon, 30 Jan 2017 09:12:10 +0100
-From: Michal Hocko <mhocko@kernel.org>
-To: "Theodore Ts'o" <tytso@mit.edu>
-Cc: Jan Kara <jack@suse.cz>, linux-mm@kvack.org,
-        linux-fsdevel@vger.kernel.org,
-        Andrew Morton <akpm@linux-foundation.org>,
-        Dave Chinner <david@fromorbit.com>, djwong@kernel.org,
-        Chris Mason <clm@fb.com>, David Sterba <dsterba@suse.cz>,
-        ceph-devel@vger.kernel.org, cluster-devel@redhat.com,
-        linux-nfs@vger.kernel.org, logfs@logfs.org, linux-xfs@vger.kernel.org,
-        linux-ext4@vger.kernel.org, linux-btrfs@vger.kernel.org,
-        linux-mtd@lists.infradead.org, reiserfs-devel@vger.kernel.org,
-        linux-ntfs-dev@lists.sourceforge.net,
-        linux-f2fs-devel@lists.sourceforge.net, linux-afs@lists.infradead.org,
-        LKML <linux-kernel@vger.kernel.org>
-Subject: Re: [PATCH 8/8] Revert "ext4: fix wrong gfp type under transaction"
-Message-ID: <20170130081210.GD8443@dhcp22.suse.cz>
-References: <20170117155916.dcizr65bwa6behe7@thunk.org>
- <20170117161618.GT19699@dhcp22.suse.cz>
- <20170117172925.GA2486@quack2.suse.cz>
- <20170119083956.GE30786@dhcp22.suse.cz>
- <20170119092236.GC2565@quack2.suse.cz>
- <20170119094405.GK30786@dhcp22.suse.cz>
- <20170126074455.GC8456@dhcp22.suse.cz>
- <20170127061318.xd2qxashbl4dajez@thunk.org>
- <20170127093735.GB4143@dhcp22.suse.cz>
- <20170127164042.2o3bnyopihcb224g@thunk.org>
+Return-Path: <matthieu.herrb@laas.fr>
+Date: Mon, 30 Jan 2017 15:25:11 +0100
+From: Matthieu Herrb <matthieu.herrb@laas.fr>
+To: Benjamin Coddington <bcodding@redhat.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: problem with open(name, O_RDWR|O_CREAT|O_EXCL, 0666) on NetApp
+ servers
+Message-ID: <20170130142511.GC25669@paperthin-usb.laas.fr>
+References: <20170105142439.GB9922@paperthin-usb.laas.fr>
+ <45F25643-F51D-4CA0-AC7D-55B6D6D6FE22@redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20170127164042.2o3bnyopihcb224g@thunk.org>
-Sender: linux-nfs-owner@vger.kernel.org
+Content-Type: multipart/signed; micalg=pgp-sha1;
+	protocol="application/pgp-signature"; boundary="E13BgyNx05feLLmH"
+In-Reply-To: <45F25643-F51D-4CA0-AC7D-55B6D6D6FE22@redhat.com>
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri 27-01-17 11:40:42, Theodore Ts'o wrote:
-> On Fri, Jan 27, 2017 at 10:37:35AM +0100, Michal Hocko wrote:
-> > If this ever turn out to be a problem and with the vmapped stacks we
-> > have good chances to get a proper stack traces on a potential overflow
-> > we can add the scope API around the problematic code path with the
-> > explanation why it is needed.
-> 
-> Yeah, or maybe we can automate it?  Can the reclaim code check how
-> much stack space is left and do the right thing automatically?
 
-I am not sure how to do that. Checking for some magic value sounds quite
-fragile to me. It also sounds a bit strange to focus only on the reclaim
-while other code paths might suffer from the same problem.
+--E13BgyNx05feLLmH
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+Content-Transfer-Encoding: quoted-printable
 
-What is actually the deepest possible call chain from the slab reclaim
-where I stopped? I have tried to follow that path but hit the callback
-wall quite early.
- 
-> The reason why I'm nervous is that nojournal mode is not a common
-> configuration, and "wait until production systems start failing" is
-> not a strategy that I or many SRE-types find.... comforting.
+On Tue, Jan 24, 2017 at 11:48:33AM -0500, Benjamin Coddington wrote:
+> Hi Matthieu, are you willing to test this one:
+>=20
+> http://marc.info/?l=3Dlinux-nfs&m=3D148527567624411&w=3D2
+>=20
 
-I understand that but I would be much more happier if we did the
-decision based on the actual data rather than a fear something would
-break down.
+Hi,
 
--- 
-Michal Hocko
-SUSE Labs
+sorry for the delay in answering. This patch does fix the problem for
+my  configuration.=20
+
+Thanks.
+
+> Ben
+>=20
+> On 5 Jan 2017, at 9:24, Matthieu Herrb wrote:
+>=20
+> >Hi,
+> >
+> >After upgrading my machine to Ubuntu 16.04, I noticed that 'git clone'
+> >started creating files with wrong mode (0700 instead of 0644
+> >typically) on NFSv4 partitions mounted from our NetApp servers.
+> >
+> >I've first tracked this down to the fact that git uses
+> >
+> > open(name, O_RDWR|O_CREAT|O_EXCL, 0666);
+> >
+> >to create files. If O_EXCL is not present, the files are created
+> >normally.
+> >
+> >I've tried various kernels from Ubuntu and the problems appeared
+> >between their 4.2.0-42-generic kernel-image (as found on willy) and
+> >the 4.4.0 kernels found on xenial. I tried building 4.9 from
+> >kernel.org and the problem is also there.
+> >
+> >I've then bisected the kernel to figure out that this is caused by the
+> >following commit:
+> >
+> >https://git.kernel.org/cgit/linux/kernel/git/torvalds/linux.git/commit/?=
+id=3D5334c5bdac926c5f8d89729beccb46fe88eda9e7
+> >
+> >ie NFS: Send attributes in OPEN request for NFS4_CREATE_EXCLUSIVE4_1
+> >
+> >Our NetApp filers are running:
+> >
+> >NetApp Release 8.2.3P3 7-Mode: Tue Apr 28 14:48:22 PDT 2015
+> >
+> >Any idea on how to fix the problem (either on the NetApp side, or on
+> >Linux kernel side)?
+> >
+> >Appended is a small program to reproduce the issue:
+> >
+> >Thanks in advance,
+> >
+> >#include <sys/types.h>
+> >#include <sys/stat.h>
+> >#include <err.h>
+> >#include <fcntl.h>
+> >#include <stdio.h>
+> >#include <stdlib.h>
+> >#include <string.h>
+> >#include <unistd.h>
+> >
+> >/*
+> > * Demonstrate file creation bug on NFS v4 and linux kernel 4.4+
+> > *
+> > * mktemp() is used on purpose.
+> > */
+> >int
+> >main(int argc, char *argv[])
+> >{
+> >	const char *name =3D argv[1];
+> >	char tmp[] =3D "./tmpXXXXXXXXXX";
+> >	struct stat buf;
+> >	mode_t expected;
+> >	int fd, i, n =3D 40;
+> >
+> >	umask(S_IWGRP | S_IWOTH);
+> >	expected =3D 0666 & ~(S_IWGRP | S_IWOTH);
+> >	if (argv[1] =3D=3D NULL)
+> >		name =3D mktemp(tmp);
+> >	for (i =3D 0; i < n; i++) {
+> >		fd =3D open(name, O_RDWR|O_CREAT|O_EXCL, 0666);
+> >		if (fd < 0)
+> >			err(1, "open %s", name);
+> >		memset(&buf, 0, sizeof(buf));
+> >		if (stat(name, &buf) < 0)
+> >			err(1, "stat %s", name);
+> >		if ((buf.st_mode & (S_IRWXU|S_IRWXG|S_IRWXO)) !=3D expected)
+> >			printf("%s: %o\n", name,
+> >			    (int)buf.st_mode & (S_IRWXU|S_IRWXG|S_IRWXO));
+> >		else
+> >			printf("%s: ok\n", name);
+> >		unlink(name);
+> >	}
+> >	exit(0);
+> >}
+> >--=20
+> >Matthieu Herrb
+>=20
+
+--=20
+Matthieu Herrb
+
+--E13BgyNx05feLLmH
+Content-Type: application/pgp-signature; name="signature.asc"
+Content-Description: Digital signature
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1
+
+iQIVAwUBWI9Mx2hzk+430Sj4AQJaMg//UZhry7s4ORBJmhMlQUZk6WdxZyBJ9o4X
+FqLHWSILrbFdvlj0UTof5CCygeWJOf2LltQ6q11OPq+l/Nrer5IN3e6E1Ov1Ezs5
+Cq1utENIFByPdH+/GkEF4zvq9Ap1VMgNIemGQ+9ikE9sXbl4xARAMmwt5eIx6TTl
+tV+Kr01r5btyuZRJY03xxpOGuON8AMmdDW028HKEmU0EiwIkbpL7/mjq4kWyTTFh
+uGXRSsjiA3vUdmL+NEzVQEy5A0xG7aYzGhqZLy+p3Cje+9b8nHClr/XGIZUIUdPt
+0BQ46ySJ6qjS8SIqFtopXLXSl6ytH892Zet+lZlkU93F/cDO1C9M6ln/eAANoQoA
+mQPv7rWae21PcNVO+QmUSJG/5zqRreqiXZ3Kiy2qeY397LZn67mHFuWFqMekUOsT
+zUp8W+n14sCbiHqpA0TNF3Z6JGJg8Q2mfjZpXrMN17Sv8jIyaZFaGxXMqlcSKhdx
+ROrezvQzpH416AYTf86g3cTv3qu6lvGAMTKPSqSt0LRARJONUSBTJQcaYyqaRwOw
+0bEhuJOiC6Cyq9mJSNnWV1lCRo23Buo4SMAtOJKi1ru5+TrW9W5znA7/pOIGcWTt
+ZB6TY/tsPYY7KFMLk8vnm9OlUdOVzHHJDnefyaTnPqmpZ6NPim6MpNSfbz06QS12
+VAKQVZtfySI=
+=EDkl
+-----END PGP SIGNATURE-----
+
+--E13BgyNx05feLLmH--
