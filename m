@@ -1,107 +1,122 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:34746 "EHLO fieldses.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751524AbdAaRXo (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 31 Jan 2017 12:23:44 -0500
-Date: Tue, 31 Jan 2017 12:23:07 -0500
-To: Olga Kornievskaia <aglo@umich.edu>
-Cc: "J. Bruce Fields" <bfields@redhat.com>,
-        Olga Kornievskaia <kolga@netapp.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Simo Sorce <simo@redhat.com>
-Subject: Re: upstream nfsd kernel oops in auth_rpcgss
-Message-ID: <20170131172307.GC5727@fieldses.org>
-References: <79F89BE0-79A7-46A2-9CB8-E5D25C9E90DB@netapp.com>
- <20170130210237.GE12608@parsley.fieldses.org>
- <20170130212321.GF12608@parsley.fieldses.org>
- <CAN-5tyHHEoP8oU=FRLZs24gWapEYY=Y7oW4UQAHgfnL4xyfPow@mail.gmail.com>
+Received: from mail-it0-f68.google.com ([209.85.214.68]:35682 "EHLO
+        mail-it0-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751891AbdAaSiT (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 31 Jan 2017 13:38:19 -0500
+Subject: [PATCH v2 1/7] xprtrdma: Properly recover FRWRs with in-flight
+ FASTREG WRs
+From: Chuck Lever <chuck.lever@oracle.com>
+To: anna.schumaker@netapp.com
+Cc: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
+Date: Tue, 31 Jan 2017 13:38:16 -0500
+Message-ID: <20170131183816.5325.10968.stgit@manet.1015granger.net>
+In-Reply-To: <20170131183345.5325.47072.stgit@manet.1015granger.net>
+References: <20170131183345.5325.47072.stgit@manet.1015granger.net>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <CAN-5tyHHEoP8oU=FRLZs24gWapEYY=Y7oW4UQAHgfnL4xyfPow@mail.gmail.com>
-From: bfields@fieldses.org (J. Bruce Fields)
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Jan 30, 2017 at 04:36:50PM -0500, Olga Kornievskaia wrote:
-> On Mon, Jan 30, 2017 at 4:23 PM, J. Bruce Fields <bfields@redhat.com> wrote:
-> > Does this do it?
-> >
-> > diff --git a/net/sunrpc/auth_gss/gss_rpc_xdr.c b/net/sunrpc/auth_gss/gss_rpc_xdr.c
-> > index dc6fb79a361f..25d9a9cf7b66 100644
-> > --- a/net/sunrpc/auth_gss/gss_rpc_xdr.c
-> > +++ b/net/sunrpc/auth_gss/gss_rpc_xdr.c
-> > @@ -260,7 +260,7 @@ static int gssx_dec_option_array(struct xdr_stream *xdr,
-> >         if (!oa->data)
-> >                 return -ENOMEM;
-> >
-> > -       creds = kmalloc(sizeof(struct svc_cred), GFP_KERNEL);
-> > +       creds = kzalloc(sizeof(struct svc_cred), GFP_KERNEL);
-> >         if (!creds) {
-> >                 kfree(oa->data);
-> >                 return -ENOMEM;
-> 
-> Yes, it does!
+Sriharsha (sriharsha.basavapatna@broadcom.com) reports an occasional
+double DMA unmap of an FRWR MR when a connection is lost. I see one
+way this can happen.
 
-Applying for 4.10 as follows.  Thanks!
+When a request requires more than one segment or chunk,
+rpcrdma_marshal_req loops, invoking ->frwr_op_map for each segment
+(MR) in each chunk. Each call posts a FASTREG Work Request to
+register one MR.
 
---b.
+Now suppose that the transport connection is lost part-way through
+marshaling this request. As part of recovering and resetting that
+req, rpcrdma_marshal_req invokes ->frwr_op_unmap_safe, which hands
+all the req's registered FRWRs to the MR recovery thread.
 
-commit 154f2f7cade0
-Author: J. Bruce Fields <bfields@redhat.com>
-Date:   Tue Jan 31 11:37:50 2017 -0500
+But note: FRWR registration is asynchronous. So it's possible that
+some of these "already registered" FRWRs are fully registered, and
+some are still waiting for their FASTREG WR to complete.
 
-    svcrpc: fix oops in absence of krb5 module
-    
-    Olga Kornievskaia says: "I ran into this oops in the nfsd (below)
-    (4.10-rc3 kernel). To trigger this I had a client (unsuccessfully) try
-    to mount the server with krb5 where the server doesn't have the
-    rpcsec_gss_krb5 module built."
-    
-    The problem is that rsci.cred is copied from a svc_cred structure that
-    gss_proxy didn't properly initialize.  Fix that.
-    
-    [120408.542387] general protection fault: 0000 [#1] SMP
-    ...
-    [120408.565724] CPU: 0 PID: 3601 Comm: nfsd Not tainted 4.10.0-rc3+ #16
-    [120408.567037] Hardware name: VMware, Inc. VMware Virtual =
-    Platform/440BX Desktop Reference Platform, BIOS 6.00 07/02/2015
-    [120408.569225] task: ffff8800776f95c0 task.stack: ffffc90003d58000
-    [120408.570483] RIP: 0010:gss_mech_put+0xb/0x20 [auth_rpcgss]
-    ...
-    [120408.584946]  ? rsc_free+0x55/0x90 [auth_rpcgss]
-    [120408.585901]  gss_proxy_save_rsc+0xb2/0x2a0 [auth_rpcgss]
-    [120408.587017]  svcauth_gss_proxy_init+0x3cc/0x520 [auth_rpcgss]
-    [120408.588257]  ? __enqueue_entity+0x6c/0x70
-    [120408.589101]  svcauth_gss_accept+0x391/0xb90 [auth_rpcgss]
-    [120408.590212]  ? try_to_wake_up+0x4a/0x360
-    [120408.591036]  ? wake_up_process+0x15/0x20
-    [120408.592093]  ? svc_xprt_do_enqueue+0x12e/0x2d0 [sunrpc]
-    [120408.593177]  svc_authenticate+0xe1/0x100 [sunrpc]
-    [120408.594168]  svc_process_common+0x203/0x710 [sunrpc]
-    [120408.595220]  svc_process+0x105/0x1c0 [sunrpc]
-    [120408.596278]  nfsd+0xe9/0x160 [nfsd]
-    [120408.597060]  kthread+0x101/0x140
-    [120408.597734]  ? nfsd_destroy+0x60/0x60 [nfsd]
-    [120408.598626]  ? kthread_park+0x90/0x90
-    [120408.599448]  ret_from_fork+0x22/0x30
-    
-    Fixes: 1d658336b05f "SUNRPC: Add RPC based upcall mechanism for RPCGSS auth"
-    Cc: stable@vger.kernel.org
-    Cc: Simo Sorce <simo@redhat.com>
-    Reported-by: Olga Kornievskaia <kolga@netapp.com>
-    Tested-by: Olga Kornievskaia <kolga@netapp.com>
-    Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+When the connection is lost, the "already registered" frmrs are
+marked FRMR_IS_VALID, and the "still waiting" WRs flush. Then
+frwr_wc_fastreg marks these frmrs FRMR_FLUSHED_FR.
 
-diff --git a/net/sunrpc/auth_gss/gss_rpc_xdr.c b/net/sunrpc/auth_gss/gss_rpc_xdr.c
-index dc6fb79a361f..25d9a9cf7b66 100644
---- a/net/sunrpc/auth_gss/gss_rpc_xdr.c
-+++ b/net/sunrpc/auth_gss/gss_rpc_xdr.c
-@@ -260,7 +260,7 @@ static int gssx_dec_option_array(struct xdr_stream *xdr,
- 	if (!oa->data)
- 		return -ENOMEM;
+But thanks to ->frwr_op_unmap_safe, the MR recovery thread is doing
+an unreg / alloc_mr, a DMA unmap, and marking each of these frwrs
+FRMR_IS_INVALID, at the same time frwr_wc_fastreg might be running.
+
+- If the recovery thread runs last, then the frmr is marked
+FRMR_IS_INVALID, and life continues.
+
+- If frwr_wc_fastreg runs last, the frmr is marked FRMR_FLUSHED_FR,
+but the recovery thread has already DMA unmapped that MR. When
+->frwr_op_map later re-uses this frmr, it sees it is not marked
+FRMR_IS_INVALID, and tries to recover it before using it, resulting
+in a second DMA unmap of the same MR.
+
+The fix is to guarantee in-flight FASTREG WRs have flushed before MR
+recovery runs on those FRWRs. Thus we depend on ro_unmap_safe
+(called from xprt_rdma_send_request on retransmit, or from
+xprt_rdma_free) to clean up old registrations as needed.
+
+Reported-by: Sriharsha Basavapatna <sriharsha.basavapatna@broadcom.com>
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Tested-by: Sriharsha Basavapatna <sriharsha.basavapatna@broadcom.com>
+---
+ net/sunrpc/xprtrdma/rpc_rdma.c  |   14 ++++++++------
+ net/sunrpc/xprtrdma/transport.c |    4 ----
+ 2 files changed, 8 insertions(+), 10 deletions(-)
+
+diff --git a/net/sunrpc/xprtrdma/rpc_rdma.c b/net/sunrpc/xprtrdma/rpc_rdma.c
+index d889883..72b3ca0 100644
+--- a/net/sunrpc/xprtrdma/rpc_rdma.c
++++ b/net/sunrpc/xprtrdma/rpc_rdma.c
+@@ -759,13 +759,13 @@ static bool rpcrdma_results_inline(struct rpcrdma_xprt *r_xprt,
+ 	iptr = headerp->rm_body.rm_chunks;
+ 	iptr = rpcrdma_encode_read_list(r_xprt, req, rqst, iptr, rtype);
+ 	if (IS_ERR(iptr))
+-		goto out_unmap;
++		goto out_err;
+ 	iptr = rpcrdma_encode_write_list(r_xprt, req, rqst, iptr, wtype);
+ 	if (IS_ERR(iptr))
+-		goto out_unmap;
++		goto out_err;
+ 	iptr = rpcrdma_encode_reply_chunk(r_xprt, req, rqst, iptr, wtype);
+ 	if (IS_ERR(iptr))
+-		goto out_unmap;
++		goto out_err;
+ 	hdrlen = (unsigned char *)iptr - (unsigned char *)headerp;
  
--	creds = kmalloc(sizeof(struct svc_cred), GFP_KERNEL);
-+	creds = kzalloc(sizeof(struct svc_cred), GFP_KERNEL);
- 	if (!creds) {
- 		kfree(oa->data);
- 		return -ENOMEM;
+ 	dprintk("RPC: %5u %s: %s/%s: hdrlen %zd rpclen %zd\n",
+@@ -776,12 +776,14 @@ static bool rpcrdma_results_inline(struct rpcrdma_xprt *r_xprt,
+ 	if (!rpcrdma_prepare_send_sges(&r_xprt->rx_ia, req, hdrlen,
+ 				       &rqst->rq_snd_buf, rtype)) {
+ 		iptr = ERR_PTR(-EIO);
+-		goto out_unmap;
++		goto out_err;
+ 	}
+ 	return 0;
+ 
+-out_unmap:
+-	r_xprt->rx_ia.ri_ops->ro_unmap_safe(r_xprt, req, false);
++out_err:
++	pr_err("rpcrdma: rpcrdma_marshal_req failed, status %ld\n",
++	       PTR_ERR(iptr));
++	r_xprt->rx_stats.failed_marshal_count++;
+ 	return PTR_ERR(iptr);
+ }
+ 
+diff --git a/net/sunrpc/xprtrdma/transport.c b/net/sunrpc/xprtrdma/transport.c
+index 6990581..c717f54 100644
+--- a/net/sunrpc/xprtrdma/transport.c
++++ b/net/sunrpc/xprtrdma/transport.c
+@@ -709,10 +709,6 @@
+ 	return 0;
+ 
+ failed_marshal:
+-	dprintk("RPC:       %s: rpcrdma_marshal_req failed, status %i\n",
+-		__func__, rc);
+-	if (rc == -EIO)
+-		r_xprt->rx_stats.failed_marshal_count++;
+ 	if (rc != -ENOTCONN)
+ 		return rc;
+ drop_connection:
+
