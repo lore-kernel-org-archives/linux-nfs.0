@@ -1,73 +1,107 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:34542 "EHLO fieldses.org"
+Received: from fieldses.org ([173.255.197.46]:34746 "EHLO fieldses.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1750907AbdAaOjY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 31 Jan 2017 09:39:24 -0500
-Date: Tue, 31 Jan 2017 09:38:55 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: NeilBrown <neilb@suse.com>
-Cc: Linux NFS Mailing <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] NFSDv4: use export cache flushtime for changeid on
- V4ROOT objects.
-Message-ID: <20170131143855.GA5727@fieldses.org>
-References: <87mve9rs0z.fsf@notabene.neil.brown.name>
- <20170130153517.GC24786@fieldses.org>
- <8737g0rxm2.fsf@notabene.neil.brown.name>
+        id S1751524AbdAaRXo (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 31 Jan 2017 12:23:44 -0500
+Date: Tue, 31 Jan 2017 12:23:07 -0500
+To: Olga Kornievskaia <aglo@umich.edu>
+Cc: "J. Bruce Fields" <bfields@redhat.com>,
+        Olga Kornievskaia <kolga@netapp.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        Simo Sorce <simo@redhat.com>
+Subject: Re: upstream nfsd kernel oops in auth_rpcgss
+Message-ID: <20170131172307.GC5727@fieldses.org>
+References: <79F89BE0-79A7-46A2-9CB8-E5D25C9E90DB@netapp.com>
+ <20170130210237.GE12608@parsley.fieldses.org>
+ <20170130212321.GF12608@parsley.fieldses.org>
+ <CAN-5tyHHEoP8oU=FRLZs24gWapEYY=Y7oW4UQAHgfnL4xyfPow@mail.gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <8737g0rxm2.fsf@notabene.neil.brown.name>
+In-Reply-To: <CAN-5tyHHEoP8oU=FRLZs24gWapEYY=Y7oW4UQAHgfnL4xyfPow@mail.gmail.com>
+From: bfields@fieldses.org (J. Bruce Fields)
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Jan 31, 2017 at 09:28:37AM +1100, NeilBrown wrote:
-> On Mon, Jan 30 2017, J. Bruce Fields wrote:
+On Mon, Jan 30, 2017 at 04:36:50PM -0500, Olga Kornievskaia wrote:
+> On Mon, Jan 30, 2017 at 4:23 PM, J. Bruce Fields <bfields@redhat.com> wrote:
+> > Does this do it?
+> >
+> > diff --git a/net/sunrpc/auth_gss/gss_rpc_xdr.c b/net/sunrpc/auth_gss/gss_rpc_xdr.c
+> > index dc6fb79a361f..25d9a9cf7b66 100644
+> > --- a/net/sunrpc/auth_gss/gss_rpc_xdr.c
+> > +++ b/net/sunrpc/auth_gss/gss_rpc_xdr.c
+> > @@ -260,7 +260,7 @@ static int gssx_dec_option_array(struct xdr_stream *xdr,
+> >         if (!oa->data)
+> >                 return -ENOMEM;
+> >
+> > -       creds = kmalloc(sizeof(struct svc_cred), GFP_KERNEL);
+> > +       creds = kzalloc(sizeof(struct svc_cred), GFP_KERNEL);
+> >         if (!creds) {
+> >                 kfree(oa->data);
+> >                 return -ENOMEM;
 > 
-> > On Mon, Jan 30, 2017 at 05:17:00PM +1100, NeilBrown wrote:
-> >> 
-> >> If you change the set of filesystems that are exported, then
-> >> the contents of various directories in the NFSv4 pseudo-root
-> >> is likely to change.  However the change-id of those
-> >> directories is currently tied to the underlying directory,
-> >> so the clinet may not see the changes in a timely fashion.
-> >
-> > Oh, good catch.
-> >
-> >> This patch changes the change-id number to be derived from the
-> >> "flush_time" of the export cache.  Whenever any changes are
-> >> made to the set of exported filesystems, this flush_time is
-> >> updated.  The result is that clients see changes to the set
-> >> of exported filesystems much more quickly, often immediately.
-> >
-> > And, a clever solution, as usual....
-> >
-> > I wonder if it's completely right yet, though.  Off the top of my head:
-> > can't the client see the new flush time before it sees the new contents?
-> > If so, a client that caches both during that window could cache the old
-> > contents indefinitely.
-> 
-> uhm....
-> Yes, it could see the new flush time before it sees the new contents.
-> When it sees that new flush time (i.e. new change attribute), it will
-> invalidate its cached contents and ask for the contents again.
+> Yes, it does!
 
-The problem comes if it's still possible for the client to read (and
-cache) the old contents at this point, in which case the client's cache
-will incorrectly associate old contents with new change attribute.
-
-> It will then definitely get new contents.
-
-So the problem with changing change attribute before contents is:
-
-	- client retrieves old contents and new attribute, caches.
-	- client revalidates cache at an arbitrarily later time, sees
-	  it's still the new attribute, continues caching old contents.
-
-So usually I believe you want the two changes--contents and change
-attribute--to be atomic or, if that's not possible, for them to be
-changed in that order.
-
-I haven't thought through how that applies to this case, but I think it
-should be possible if in-progress rpc's hold references to objects in
-the flushed cache?
+Applying for 4.10 as follows.  Thanks!
 
 --b.
+
+commit 154f2f7cade0
+Author: J. Bruce Fields <bfields@redhat.com>
+Date:   Tue Jan 31 11:37:50 2017 -0500
+
+    svcrpc: fix oops in absence of krb5 module
+    
+    Olga Kornievskaia says: "I ran into this oops in the nfsd (below)
+    (4.10-rc3 kernel). To trigger this I had a client (unsuccessfully) try
+    to mount the server with krb5 where the server doesn't have the
+    rpcsec_gss_krb5 module built."
+    
+    The problem is that rsci.cred is copied from a svc_cred structure that
+    gss_proxy didn't properly initialize.  Fix that.
+    
+    [120408.542387] general protection fault: 0000 [#1] SMP
+    ...
+    [120408.565724] CPU: 0 PID: 3601 Comm: nfsd Not tainted 4.10.0-rc3+ #16
+    [120408.567037] Hardware name: VMware, Inc. VMware Virtual =
+    Platform/440BX Desktop Reference Platform, BIOS 6.00 07/02/2015
+    [120408.569225] task: ffff8800776f95c0 task.stack: ffffc90003d58000
+    [120408.570483] RIP: 0010:gss_mech_put+0xb/0x20 [auth_rpcgss]
+    ...
+    [120408.584946]  ? rsc_free+0x55/0x90 [auth_rpcgss]
+    [120408.585901]  gss_proxy_save_rsc+0xb2/0x2a0 [auth_rpcgss]
+    [120408.587017]  svcauth_gss_proxy_init+0x3cc/0x520 [auth_rpcgss]
+    [120408.588257]  ? __enqueue_entity+0x6c/0x70
+    [120408.589101]  svcauth_gss_accept+0x391/0xb90 [auth_rpcgss]
+    [120408.590212]  ? try_to_wake_up+0x4a/0x360
+    [120408.591036]  ? wake_up_process+0x15/0x20
+    [120408.592093]  ? svc_xprt_do_enqueue+0x12e/0x2d0 [sunrpc]
+    [120408.593177]  svc_authenticate+0xe1/0x100 [sunrpc]
+    [120408.594168]  svc_process_common+0x203/0x710 [sunrpc]
+    [120408.595220]  svc_process+0x105/0x1c0 [sunrpc]
+    [120408.596278]  nfsd+0xe9/0x160 [nfsd]
+    [120408.597060]  kthread+0x101/0x140
+    [120408.597734]  ? nfsd_destroy+0x60/0x60 [nfsd]
+    [120408.598626]  ? kthread_park+0x90/0x90
+    [120408.599448]  ret_from_fork+0x22/0x30
+    
+    Fixes: 1d658336b05f "SUNRPC: Add RPC based upcall mechanism for RPCGSS auth"
+    Cc: stable@vger.kernel.org
+    Cc: Simo Sorce <simo@redhat.com>
+    Reported-by: Olga Kornievskaia <kolga@netapp.com>
+    Tested-by: Olga Kornievskaia <kolga@netapp.com>
+    Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+
+diff --git a/net/sunrpc/auth_gss/gss_rpc_xdr.c b/net/sunrpc/auth_gss/gss_rpc_xdr.c
+index dc6fb79a361f..25d9a9cf7b66 100644
+--- a/net/sunrpc/auth_gss/gss_rpc_xdr.c
++++ b/net/sunrpc/auth_gss/gss_rpc_xdr.c
+@@ -260,7 +260,7 @@ static int gssx_dec_option_array(struct xdr_stream *xdr,
+ 	if (!oa->data)
+ 		return -ENOMEM;
+ 
+-	creds = kmalloc(sizeof(struct svc_cred), GFP_KERNEL);
++	creds = kzalloc(sizeof(struct svc_cred), GFP_KERNEL);
+ 	if (!creds) {
+ 		kfree(oa->data);
+ 		return -ENOMEM;
