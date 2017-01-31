@@ -1,89 +1,117 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from pandora.armlinux.org.uk ([78.32.30.218]:32808 "EHLO
+Received: from pandora.armlinux.org.uk ([78.32.30.218]:33056 "EHLO
         pandora.armlinux.org.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751873AbdAaTRc (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 31 Jan 2017 14:17:32 -0500
-Date: Tue, 31 Jan 2017 19:17:04 +0000
-From: Russell King - ARM Linux <linux@armlinux.org.uk>
+        with ESMTP id S1751671AbdAaTW2 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 31 Jan 2017 14:22:28 -0500
+In-Reply-To: <20170131191704.GA8281@n2100.armlinux.org.uk>
+References: <20170131191704.GA8281@n2100.armlinux.org.uk>
+From: Russell King <rmk+kernel@armlinux.org.uk>
 To: linux-mips@linux-mips.org, linux-nfs@vger.kernel.org,
         linux-scsi@vger.kernel.org, linux-usb@vger.kernel.org,
         linux-wireless@vger.kernel.org, netdev@vger.kernel.org,
         target-devel@vger.kernel.org
-Cc: Andrew Lunn <andrew@lunn.ch>,
-        Anna Schumaker <anna.schumaker@netapp.com>,
-        "David S. Miller" <davem@davemloft.net>,
-        Derek Chickles <derek.chickles@caviumnetworks.com>,
-        Felix Manlunas <felix.manlunas@caviumnetworks.com>,
+Cc: "David S. Miller" <davem@davemloft.net>,
         Florian Fainelli <f.fainelli@gmail.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        Jeff Layton <jlayton@poochiereds.net>,
         Jiri Slaby <jirislaby@gmail.com>,
-        Kalle Valo <kvalo@codeaurora.org>,
-        "Luis R. Rodriguez" <mcgrof@do-not-panic.com>,
-        Madalin Bucur <madalin.bucur@nxp.com>,
-        Microchip Linux Driver Support <UNGLinuxDriver@microchip.com>,
-        "Nicholas A. Bellinger" <nab@linux-iscsi.org>,
         Nick Kossifidis <mickflemm@gmail.com>,
-        Nicolas Ferre <nicolas.ferre@atmel.com>,
-        Raghu Vatsavayi <raghu.vatsavayi@caviumnetworks.com>,
-        Ralf Baechle <ralf@linux-mips.org>,
-        Satanand Burla <satananda.burla@caviumnetworks.com>,
-        Thomas Petazzoni <thomas.petazzoni@free-electrons.com>,
-        Timur Tabi <timur@codeaurora.org>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        Vivien Didelot <vivien.didelot@savoirfairelinux.com>,
-        Woojung Huh <woojung.huh@microchip.com>
-Subject: [PATCH 4.10-rc3 00/13] net: dsa: remove unnecessary phy.h include
-Message-ID: <20170131191704.GA8281@n2100.armlinux.org.uk>
-References: <20170118001403.GJ27312@n2100.armlinux.org.uk>
+        "Luis R. Rodriguez" <mcgrof@do-not-panic.com>,
+        Kalle Valo <kvalo@codeaurora.org>
+Subject: [PATCH 4.10-rc3 12/13] net: ath5k: fix build errors when linux/phy*.h
+ is removed from net/dsa.h
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20170118001403.GJ27312@n2100.armlinux.org.uk>
+Content-Type: text/plain; charset="utf-8"
+Message-Id: <E1cYdxc-0000XC-N6@rmk-PC.armlinux.org.uk>
+Date: Tue, 31 Jan 2017 19:19:24 +0000
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Including phy.h and phy_fixed.h into net/dsa.h causes phy*.h to be an
-unnecessary dependency for quite a large amount of the kernel.  There's
-very little which actually requires definitions from phy.h in net/dsa.h
-- the include itself only wants the declaration of a couple of
-structures and IFNAMSIZ.
+Fix these errors reported by the 0-day builder by replacing the
+linux/export.h include with linux/module.h.
 
-Add linux/if.h for IFNAMSIZ, declarations for the structures, phy.h to
-mv88e6xxx.h as it needs it for phy_interface_t, and remove both phy.h
-and phy_fixed.h from net/dsa.h.
+In file included from include/linux/platform_device.h:14:0,
+                 from drivers/net/wireless/ath/ath5k/ahb.c:20:
+include/linux/device.h:1463:1: warning: data definition has no type or storage class
+ module_init(__driver##_init); \
+ ^
+include/linux/platform_device.h:228:2: note: in expansion of macro 'module_driver'
+  module_driver(__platform_driver, platform_driver_register, \
+  ^~~~~~~~~~~~~
+drivers/net/wireless/ath/ath5k/ahb.c:233:1: note: in expansion of macro 'module_platform_driver'
+ module_platform_driver(ath_ahb_driver);
+ ^~~~~~~~~~~~~~~~~~~~~~
+include/linux/device.h:1463:1: error: type defaults to 'int' in declaration of 'module_init' [-Werror=implicit-int]
+ module_init(__driver##_init); \
+ ^
+include/linux/platform_device.h:228:2: note: in expansion of macro 'module_driver'
+  module_driver(__platform_driver, platform_driver_register, \
+  ^~~~~~~~~~~~~
+drivers/net/wireless/ath/ath5k/ahb.c:233:1: note: in expansion of macro 'module_platform_driver'
+ module_platform_driver(ath_ahb_driver);
+ ^~~~~~~~~~~~~~~~~~~~~~
+drivers/net/wireless/ath/ath5k/ahb.c:233:1: warning: parameter names (without types) in function declaration
+In file included from include/linux/platform_device.h:14:0,
+                 from drivers/net/wireless/ath/ath5k/ahb.c:20:
+include/linux/device.h:1468:1: warning: data definition has no type or storage class
+ module_exit(__driver##_exit);
+ ^
+include/linux/platform_device.h:228:2: note: in expansion of macro 'module_driver'
+  module_driver(__platform_driver, platform_driver_register, \
+  ^~~~~~~~~~~~~
+drivers/net/wireless/ath/ath5k/ahb.c:233:1: note: in expansion of macro 'module_platform_driver'
+ module_platform_driver(ath_ahb_driver);
+ ^~~~~~~~~~~~~~~~~~~~~~
+include/linux/device.h:1468:1: error: type defaults to 'int' in declaration of 'module_exit' [-Werror=implicit-int]
+ module_exit(__driver##_exit);
+ ^
+include/linux/platform_device.h:228:2: note: in expansion of macro 'module_driver'
+  module_driver(__platform_driver, platform_driver_register, \
+  ^~~~~~~~~~~~~
+drivers/net/wireless/ath/ath5k/ahb.c:233:1: note: in expansion of macro 'module_platform_driver'
+ module_platform_driver(ath_ahb_driver);
+ ^~~~~~~~~~~~~~~~~~~~~~
+drivers/net/wireless/ath/ath5k/ahb.c:233:1: warning: parameter names (without types) in function declaration
+In file included from include/linux/platform_device.h:14:0,
+                 from drivers/net/wireless/ath/ath5k/ahb.c:20:
+drivers/net/wireless/ath/ath5k/ahb.c:233:24: warning: 'ath_ahb_driver_exit' defined but not used [-Wunused-function]
+ module_platform_driver(ath_ahb_driver);
+                        ^
+include/linux/device.h:1464:20: note: in definition of macro 'module_driver'
+ static void __exit __driver##_exit(void) \
+                    ^~~~~~~~
+drivers/net/wireless/ath/ath5k/ahb.c:233:1: note: in expansion of macro 'module_platform_driver'
+ module_platform_driver(ath_ahb_driver);
+ ^~~~~~~~~~~~~~~~~~~~~~
+drivers/net/wireless/ath/ath5k/ahb.c:233:24: warning: 'ath_ahb_driver_init' defined but not used [-Wunused-function]
+ module_platform_driver(ath_ahb_driver);
+                        ^
+include/linux/device.h:1459:19: note: in definition of macro 'module_driver'
+ static int __init __driver##_init(void) \
+                   ^~~~~~~~
+drivers/net/wireless/ath/ath5k/ahb.c:233:1: note: in expansion of macro 'module_platform_driver'
+ module_platform_driver(ath_ahb_driver);
+ ^~~~~~~~~~~~~~~~~~~~~~
 
-This patch reduces from around 800 files rebuilt to around 40 - even
-with ccache, the time difference is noticable.
+Signed-off-by: Russell King <rmk+kernel@armlinux.org.uk>
+---
+ drivers/net/wireless/ath/ath5k/ahb.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-In order to make this change, several drivers need to be updated to
-include necessary headers that they were picking up through this
-include.  This has resulted in a much larger patch series.
-
-I'm assuming the 0-day builder has had 24 hours with this series, and
-hasn't reported any further issues with it - the last issue was two
-weeks ago (before I became ill) which I fixed over the last weekend.
-
-I'm hoping this doesn't conflict with what's already in net-next...
-
- arch/mips/cavium-octeon/octeon-platform.c             | 4 ----
- drivers/net/dsa/mv88e6xxx/mv88e6xxx.h                 | 1 +
- drivers/net/ethernet/broadcom/bgmac.c                 | 2 ++
- drivers/net/ethernet/cadence/macb.h                   | 2 ++
- drivers/net/ethernet/cavium/liquidio/lio_main.c       | 1 +
- drivers/net/ethernet/cavium/liquidio/lio_vf_main.c    | 1 +
- drivers/net/ethernet/cavium/liquidio/octeon_console.c | 1 +
- drivers/net/ethernet/freescale/fman/fman_memac.c      | 1 +
- drivers/net/ethernet/marvell/mvneta.c                 | 1 +
- drivers/net/ethernet/qualcomm/emac/emac-sgmii.c       | 1 +
- drivers/net/usb/lan78xx.c                             | 1 +
- drivers/net/wireless/ath/ath5k/ahb.c                  | 2 +-
- drivers/target/iscsi/iscsi_target_login.c             | 1 +
- include/net/dsa.h                                     | 6 ++++--
- net/core/netprio_cgroup.c                             | 1 +
- net/sunrpc/xprtrdma/svc_rdma_backchannel.c            | 1 +
- 16 files changed, 20 insertions(+), 7 deletions(-)
-
+diff --git a/drivers/net/wireless/ath/ath5k/ahb.c b/drivers/net/wireless/ath/ath5k/ahb.c
+index 2ca88b593e4c..c0794f5988b3 100644
+--- a/drivers/net/wireless/ath/ath5k/ahb.c
++++ b/drivers/net/wireless/ath/ath5k/ahb.c
+@@ -16,10 +16,10 @@
+  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+  */
+ 
++#include <linux/module.h>
+ #include <linux/nl80211.h>
+ #include <linux/platform_device.h>
+ #include <linux/etherdevice.h>
+-#include <linux/export.h>
+ #include <ath25_platform.h>
+ #include "ath5k.h"
+ #include "debug.h"
 -- 
-RMK's Patch system: http://www.armlinux.org.uk/developer/patches/
-FTTC broadband for 0.8mile line: currently at 9.6Mbps down 400kbps up
-according to speedtest.net.
+2.7.4
+
