@@ -1,72 +1,142 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-it0-f68.google.com ([209.85.214.68]:35689 "EHLO
+Received: from mail-it0-f68.google.com ([209.85.214.68]:35750 "EHLO
         mail-it0-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751517AbdAaSww (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 31 Jan 2017 13:52:52 -0500
-Subject: [PATCH v2 0/7] Server-side NFS/RDMA changes for v4.11
+        with ESMTP id S1751536AbdAaSw4 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 31 Jan 2017 13:52:56 -0500
+Subject: [PATCH v2 1/7] svcrdma: Another sendto chunk list parsing update
 From: Chuck Lever <chuck.lever@oracle.com>
 To: bfields@fieldses.org
 Cc: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Tue, 31 Jan 2017 13:52:42 -0500
-Message-ID: <20170131184623.14185.35480.stgit@klimt.1015granger.net>
+Date: Tue, 31 Jan 2017 13:52:53 -0500
+Message-ID: <20170131185253.14185.44822.stgit@klimt.1015granger.net>
+In-Reply-To: <20170131184623.14185.35480.stgit@klimt.1015granger.net>
+References: <20170131184623.14185.35480.stgit@klimt.1015granger.net>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-These are largely clean-ups, except for the last patch. Switching
-completion polling from soft IRQ to a worker thread has a few
-benefits:
+Commit 5fdca6531434 ("svcrdma: Renovate sendto chunk list parsing")
+missed a spot. svc_rdma_xdr_get_reply_hdr_len() also assumes the
+Write list has only Write chunk. There's no harm in making this code
+more general.
 
-- svcrdma's completion handlers invoke svc_xprt_put(). We discovered
-recently svc_xprt_put() is supposed to be called only in a process
-context. This will become more important when NFS/RDMA supports
-multi-path.
-
-- eventually we'd like to allocate pages for RDMA Read in the
-completion handler, and not defer RDMA Read to svc_rdma_recvfrom.
-Using GFP_KERNEL can sleep, which is not allowed in soft IRQ
-context.
-
-- several places where BH's are disabled can be converted to simple
-spin_locks.
-
-Bruce, would you consider these for v4.11?
-
-
-Available in the "nfsd-rdma-for-4.11" topic branch of this git repo:
-
-git://git.linux-nfs.org/projects/cel/cel-2.6.git
-
-
-Or for browsing:
-
-http://git.linux-nfs.org/?p=cel/cel-2.6.git;a=log;h=refs/heads/nfsd-rdma-for-4.11
-
-
-Changes since v1:
-- Rebased on v4.10-rc6
-
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
+ include/linux/sunrpc/rpc_rdma.h        |    9 ++++++
+ include/linux/sunrpc/svc_rdma.h        |    2 +
+ net/sunrpc/xprtrdma/svc_rdma_marshal.c |   49 +++++++++++++++++---------------
+ net/sunrpc/xprtrdma/svc_rdma_sendto.c  |    3 +-
+ 4 files changed, 38 insertions(+), 25 deletions(-)
 
-Chuck Lever (7):
-      svcrdma: Another sendto chunk list parsing update
-      svcrdma: Clean up RPC-over-RDMA Reply header encoder
-      svcrdma: Clean up RPC-over-RDMA Call header decoder
-      svcrdma: Clean up backchannel send header encoding
-      svcrdma: Remove unused sc_dto_q field
-      svcrdma: Combine list fields in struct svc_rdma_op_ctxt
-      svcrdma: Poll CQs in "workqueue" mode
+diff --git a/include/linux/sunrpc/rpc_rdma.h b/include/linux/sunrpc/rpc_rdma.h
+index cfda6ad..245fc59 100644
+--- a/include/linux/sunrpc/rpc_rdma.h
++++ b/include/linux/sunrpc/rpc_rdma.h
+@@ -110,6 +110,15 @@ struct rpcrdma_msg {
+ };
+ 
+ /*
++ * XDR sizes, in quads
++ */
++enum {
++	rpcrdma_fixed_maxsz	= 4,
++	rpcrdma_segment_maxsz	= 4,
++	rpcrdma_readchunk_maxsz	= 2 + rpcrdma_segment_maxsz,
++};
++
++/*
+  * Smallest RPC/RDMA header: rm_xid through rm_type, then rm_nochunks
+  */
+ #define RPCRDMA_HDRLEN_MIN	(sizeof(__be32) * 7)
+diff --git a/include/linux/sunrpc/svc_rdma.h b/include/linux/sunrpc/svc_rdma.h
+index 757fb96..551c518 100644
+--- a/include/linux/sunrpc/svc_rdma.h
++++ b/include/linux/sunrpc/svc_rdma.h
+@@ -218,7 +218,7 @@ extern void svc_rdma_xdr_encode_reply_header(struct svcxprt_rdma *,
+ 					     struct rpcrdma_msg *,
+ 					     struct rpcrdma_msg *,
+ 					     enum rpcrdma_proc);
+-extern int svc_rdma_xdr_get_reply_hdr_len(struct rpcrdma_msg *);
++extern unsigned int svc_rdma_xdr_get_reply_hdr_len(__be32 *rdma_resp);
+ 
+ /* svc_rdma_recvfrom.c */
+ extern int svc_rdma_recvfrom(struct svc_rqst *);
+diff --git a/net/sunrpc/xprtrdma/svc_rdma_marshal.c b/net/sunrpc/xprtrdma/svc_rdma_marshal.c
+index 0ba9887..4e72034 100644
+--- a/net/sunrpc/xprtrdma/svc_rdma_marshal.c
++++ b/net/sunrpc/xprtrdma/svc_rdma_marshal.c
+@@ -260,32 +260,35 @@ int svc_rdma_xdr_encode_error(struct svcxprt_rdma *xprt,
+ 	return (int)((unsigned long)va - (unsigned long)startp);
+ }
+ 
+-int svc_rdma_xdr_get_reply_hdr_len(struct rpcrdma_msg *rmsgp)
++/**
++ * svc_rdma_xdr_get_reply_hdr_length - Get length of Reply transport header
++ * @rdma_resp: buffer containing Reply transport header
++ *
++ * Returns length of transport header, in bytes.
++ */
++unsigned int svc_rdma_xdr_get_reply_hdr_len(__be32 *rdma_resp)
+ {
+-	struct rpcrdma_write_array *wr_ary;
++	unsigned int nsegs;
++	__be32 *p;
+ 
+-	/* There is no read-list in a reply */
++	p = rdma_resp;
+ 
+-	/* skip write list */
+-	wr_ary = (struct rpcrdma_write_array *)
+-		&rmsgp->rm_body.rm_chunks[1];
+-	if (wr_ary->wc_discrim)
+-		wr_ary = (struct rpcrdma_write_array *)
+-			&wr_ary->wc_array[be32_to_cpu(wr_ary->wc_nchunks)].
+-			wc_target.rs_length;
+-	else
+-		wr_ary = (struct rpcrdma_write_array *)
+-			&wr_ary->wc_nchunks;
+-
+-	/* skip reply array */
+-	if (wr_ary->wc_discrim)
+-		wr_ary = (struct rpcrdma_write_array *)
+-			&wr_ary->wc_array[be32_to_cpu(wr_ary->wc_nchunks)];
+-	else
+-		wr_ary = (struct rpcrdma_write_array *)
+-			&wr_ary->wc_nchunks;
+-
+-	return (unsigned long) wr_ary - (unsigned long) rmsgp;
++	/* RPC-over-RDMA V1 replies never have a Read list. */
++	p += rpcrdma_fixed_maxsz + 1;
++
++	/* Skip Write list. */
++	while (*p++ != xdr_zero) {
++		nsegs = be32_to_cpup(p++);
++		p += nsegs * rpcrdma_segment_maxsz;
++	}
++
++	/* Skip Reply chunk. */
++	if (*p++ != xdr_zero) {
++		nsegs = be32_to_cpup(p++);
++		p += nsegs * rpcrdma_segment_maxsz;
++	}
++
++	return (unsigned long)p - (unsigned long)rdma_resp;
+ }
+ 
+ void svc_rdma_xdr_encode_write_list(struct rpcrdma_msg *rmsgp, int chunks)
+diff --git a/net/sunrpc/xprtrdma/svc_rdma_sendto.c b/net/sunrpc/xprtrdma/svc_rdma_sendto.c
+index ad4d286..ba76f1617 100644
+--- a/net/sunrpc/xprtrdma/svc_rdma_sendto.c
++++ b/net/sunrpc/xprtrdma/svc_rdma_sendto.c
+@@ -476,7 +476,8 @@ static int send_reply(struct svcxprt_rdma *rdma,
+ 
+ 	/* Prepare the SGE for the RPCRDMA Header */
+ 	ctxt->sge[0].lkey = rdma->sc_pd->local_dma_lkey;
+-	ctxt->sge[0].length = svc_rdma_xdr_get_reply_hdr_len(rdma_resp);
++	ctxt->sge[0].length =
++	    svc_rdma_xdr_get_reply_hdr_len((__be32 *)rdma_resp);
+ 	ctxt->sge[0].addr =
+ 	    ib_dma_map_page(rdma->sc_cm_id->device, page, 0,
+ 			    ctxt->sge[0].length, DMA_TO_DEVICE);
 
-
- include/linux/sunrpc/rpc_rdma.h            |    9 +
- include/linux/sunrpc/svc_rdma.h            |   17 +
- net/sunrpc/xprtrdma/svc_rdma_backchannel.c |   17 +
- net/sunrpc/xprtrdma/svc_rdma_marshal.c     |  320 +++++++++++-----------------
- net/sunrpc/xprtrdma/svc_rdma_recvfrom.c    |   20 +-
- net/sunrpc/xprtrdma/svc_rdma_sendto.c      |   13 -
- net/sunrpc/xprtrdma/svc_rdma_transport.c   |   61 +++--
- 7 files changed, 199 insertions(+), 258 deletions(-)
-
---
-Chuck Lever
