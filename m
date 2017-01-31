@@ -1,8 +1,8 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from pandora.armlinux.org.uk ([78.32.30.218]:33192 "EHLO
+Received: from pandora.armlinux.org.uk ([78.32.30.218]:33194 "EHLO
         pandora.armlinux.org.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1752186AbdAaT3f (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 31 Jan 2017 14:29:35 -0500
+        with ESMTP id S1752362AbdAaT3m (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 31 Jan 2017 14:29:42 -0500
 In-Reply-To: <20170131191704.GA8281@n2100.armlinux.org.uk>
 References: <20170131191704.GA8281@n2100.armlinux.org.uk>
 From: Russell King <rmk+kernel@armlinux.org.uk>
@@ -12,42 +12,37 @@ To: linux-mips@linux-mips.org, linux-nfs@vger.kernel.org,
         target-devel@vger.kernel.org
 Cc: "David S. Miller" <davem@davemloft.net>,
         Florian Fainelli <f.fainelli@gmail.com>,
-        Woojung Huh <woojung.huh@microchip.com>,
-        Microchip Linux Driver Support <UNGLinuxDriver@microchip.com>
-Subject: [PATCH 4.10-rc3 04/13] net: lan78xx: fix build errors when
- linux/phy*.h is removed from net/dsa.h
+        "Nicholas A. Bellinger" <nab@linux-iscsi.org>
+Subject: [PATCH 4.10-rc3 09/13] iscsi: fix build errors when linux/phy*.h is
+ removed from net/dsa.h
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Message-Id: <E1cYdwx-0000WG-L9@rmk-PC.armlinux.org.uk>
-Date: Tue, 31 Jan 2017 19:18:43 +0000
+Message-Id: <E1cYdxN-0000Wr-AS@rmk-PC.armlinux.org.uk>
+Date: Tue, 31 Jan 2017 19:19:09 +0000
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-drivers/net/usb/lan78xx.c:394:33: sparse: expected ; at end of declaration
-drivers/net/usb/lan78xx.c:394:33: sparse: Expected } at end of struct-union-enum-specifier
-drivers/net/usb/lan78xx.c:394:33: sparse: got interface
-drivers/net/usb/lan78xx.c:403:1: sparse: Expected ; at the end of type declaration
-drivers/net/usb/lan78xx.c:403:1: sparse: got }
+drivers/target/iscsi/iscsi_target_login.c:1135:7: error: implicit declaration of function 'try_module_get' [-Werror=implicit-function-declaration]
 
-Add linux/phy.h to lan78xx.c
+Add linux/module.h to iscsi_target_login.c.
 
 Signed-off-by: Russell King <rmk+kernel@armlinux.org.uk>
 ---
- drivers/net/usb/lan78xx.c | 1 +
+ drivers/target/iscsi/iscsi_target_login.c | 1 +
  1 file changed, 1 insertion(+)
 
-diff --git a/drivers/net/usb/lan78xx.c b/drivers/net/usb/lan78xx.c
-index 08f8703e4d54..9889a70ff4f6 100644
---- a/drivers/net/usb/lan78xx.c
-+++ b/drivers/net/usb/lan78xx.c
-@@ -35,6 +35,7 @@
- #include <linux/irq.h>
- #include <linux/irqchip/chained_irq.h>
- #include <linux/microchipphy.h>
-+#include <linux/phy.h>
- #include "lan78xx.h"
+diff --git a/drivers/target/iscsi/iscsi_target_login.c b/drivers/target/iscsi/iscsi_target_login.c
+index 450f51deb2a2..eab274d17b5c 100644
+--- a/drivers/target/iscsi/iscsi_target_login.c
++++ b/drivers/target/iscsi/iscsi_target_login.c
+@@ -17,6 +17,7 @@
+  ******************************************************************************/
  
- #define DRIVER_AUTHOR	"WOOJUNG HUH <woojung.huh@microchip.com>"
+ #include <crypto/hash.h>
++#include <linux/module.h>
+ #include <linux/string.h>
+ #include <linux/kthread.h>
+ #include <linux/idr.h>
 -- 
 2.7.4
 
