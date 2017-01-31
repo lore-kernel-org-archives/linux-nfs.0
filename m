@@ -1,15 +1,14 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-it0-f67.google.com ([209.85.214.67]:33893 "EHLO
-        mail-it0-f67.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751571AbdAaSxy (ORCPT
+Received: from mail-it0-f68.google.com ([209.85.214.68]:34808 "EHLO
+        mail-it0-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751515AbdAaSxy (ORCPT
         <rfc822;linux-nfs@vger.kernel.org>); Tue, 31 Jan 2017 13:53:54 -0500
-Subject: [PATCH v2 6/7] svcrdma: Combine list fields in struct
- svc_rdma_op_ctxt
+Subject: [PATCH v2 3/7] svcrdma: Clean up RPC-over-RDMA Call header decoder
 From: Chuck Lever <chuck.lever@oracle.com>
 To: bfields@fieldses.org
 Cc: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Tue, 31 Jan 2017 13:53:35 -0500
-Message-ID: <20170131185335.14185.80060.stgit@klimt.1015granger.net>
+Date: Tue, 31 Jan 2017 13:53:10 -0500
+Message-ID: <20170131185310.14185.76931.stgit@klimt.1015granger.net>
 In-Reply-To: <20170131184623.14185.35480.stgit@klimt.1015granger.net>
 References: <20170131184623.14185.35480.stgit@klimt.1015granger.net>
 MIME-Version: 1.0
@@ -17,164 +16,303 @@ Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Clean up: The free list and the dto_q list fields are never used at
-the same time. Reduce the size of struct svc_rdma_op_ctxt by
-combining these fields.
+Replace C structure-based XDR decoding with pointer arithmetic.
+Pointer arithmetic is considered more portable.
+
+Rename the "decode" functions. Nothing is decoded here, they
+perform only transport header sanity checking. Use existing XDR
+naming conventions to help readability.
+
+Straight-line the hot path:
+ - relocate the dprintk call sites out of line
+ - remove unnecessary byte-swapping
+ - reduce count of conditional branches
+
+Deprecate RDMA_MSGP. It's not properly spec'd by RFC5666, and
+therefore never used by any V1 client.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- include/linux/sunrpc/svc_rdma.h          |    3 +--
- net/sunrpc/xprtrdma/svc_rdma_recvfrom.c  |   14 +++++--------
- net/sunrpc/xprtrdma/svc_rdma_transport.c |   33 ++++++++++++++----------------
- 3 files changed, 22 insertions(+), 28 deletions(-)
+ net/sunrpc/xprtrdma/svc_rdma_marshal.c |  232 +++++++++++---------------------
+ 1 file changed, 79 insertions(+), 153 deletions(-)
 
-diff --git a/include/linux/sunrpc/svc_rdma.h b/include/linux/sunrpc/svc_rdma.h
-index aaa2477..f38865c7 100644
---- a/include/linux/sunrpc/svc_rdma.h
-+++ b/include/linux/sunrpc/svc_rdma.h
-@@ -70,7 +70,7 @@
-  * completes.
+diff --git a/net/sunrpc/xprtrdma/svc_rdma_marshal.c b/net/sunrpc/xprtrdma/svc_rdma_marshal.c
+index 5efa019..7c8d60f 100644
+--- a/net/sunrpc/xprtrdma/svc_rdma_marshal.c
++++ b/net/sunrpc/xprtrdma/svc_rdma_marshal.c
+@@ -1,4 +1,5 @@
+ /*
++ * Copyright (c) 2016 Oracle. All rights reserved.
+  * Copyright (c) 2005-2006 Network Appliance, Inc. All rights reserved.
+  *
+  * This software is available to you under a choice of one of two
+@@ -47,102 +48,43 @@
+ 
+ #define RPCDBG_FACILITY	RPCDBG_SVCXPRT
+ 
+-/*
+- * Decodes a read chunk list. The expected format is as follows:
+- *    descrim  : xdr_one
+- *    position : __be32 offset into XDR stream
+- *    handle   : __be32 RKEY
+- *    . . .
+- *  end-of-list: xdr_zero
+- */
+-static __be32 *decode_read_list(__be32 *va, __be32 *vaend)
++static __be32 *xdr_check_read_list(__be32 *p, __be32 *end)
+ {
+-	struct rpcrdma_read_chunk *ch = (struct rpcrdma_read_chunk *)va;
++	__be32 *next;
+ 
+-	while (ch->rc_discrim != xdr_zero) {
+-		if (((unsigned long)ch + sizeof(struct rpcrdma_read_chunk)) >
+-		    (unsigned long)vaend) {
+-			dprintk("svcrdma: vaend=%p, ch=%p\n", vaend, ch);
++	while (*p++ != xdr_zero) {
++		next = p + rpcrdma_readchunk_maxsz - 1;
++		if (next > end)
+ 			return NULL;
+-		}
+-		ch++;
++		p = next;
+ 	}
+-	return &ch->rc_position;
++	return p;
+ }
+ 
+-/*
+- * Decodes a write chunk list. The expected format is as follows:
+- *    descrim  : xdr_one
+- *    nchunks  : <count>
+- *       handle   : __be32 RKEY           ---+
+- *       length   : __be32 <len of segment>  |
+- *       offset   : remove va                + <count>
+- *       . . .                               |
+- *                                        ---+
+- */
+-static __be32 *decode_write_list(__be32 *va, __be32 *vaend)
++static __be32 *xdr_check_write_list(__be32 *p, __be32 *end)
+ {
+-	unsigned long start, end;
+-	int nchunks;
+-
+-	struct rpcrdma_write_array *ary =
+-		(struct rpcrdma_write_array *)va;
+-
+-	/* Check for not write-array */
+-	if (ary->wc_discrim == xdr_zero)
+-		return &ary->wc_nchunks;
++	__be32 *next;
+ 
+-	if ((unsigned long)ary + sizeof(struct rpcrdma_write_array) >
+-	    (unsigned long)vaend) {
+-		dprintk("svcrdma: ary=%p, vaend=%p\n", ary, vaend);
+-		return NULL;
+-	}
+-	nchunks = be32_to_cpu(ary->wc_nchunks);
+-
+-	start = (unsigned long)&ary->wc_array[0];
+-	end = (unsigned long)vaend;
+-	if (nchunks < 0 ||
+-	    nchunks > (SIZE_MAX - start) / sizeof(struct rpcrdma_write_chunk) ||
+-	    (start + (sizeof(struct rpcrdma_write_chunk) * nchunks)) > end) {
+-		dprintk("svcrdma: ary=%p, wc_nchunks=%d, vaend=%p\n",
+-			ary, nchunks, vaend);
+-		return NULL;
++	while (*p++ != xdr_zero) {
++		next = p + 1 + be32_to_cpup(p) * rpcrdma_segment_maxsz;
++		if (next > end)
++			return NULL;
++		p = next;
+ 	}
+-	/*
+-	 * rs_length is the 2nd 4B field in wc_target and taking its
+-	 * address skips the list terminator
+-	 */
+-	return &ary->wc_array[nchunks].wc_target.rs_length;
++	return p;
+ }
+ 
+-static __be32 *decode_reply_array(__be32 *va, __be32 *vaend)
++static __be32 *xdr_check_reply_chunk(__be32 *p, __be32 *end)
+ {
+-	unsigned long start, end;
+-	int nchunks;
+-	struct rpcrdma_write_array *ary =
+-		(struct rpcrdma_write_array *)va;
+-
+-	/* Check for no reply-array */
+-	if (ary->wc_discrim == xdr_zero)
+-		return &ary->wc_nchunks;
+-
+-	if ((unsigned long)ary + sizeof(struct rpcrdma_write_array) >
+-	    (unsigned long)vaend) {
+-		dprintk("svcrdma: ary=%p, vaend=%p\n", ary, vaend);
+-		return NULL;
+-	}
+-	nchunks = be32_to_cpu(ary->wc_nchunks);
+-
+-	start = (unsigned long)&ary->wc_array[0];
+-	end = (unsigned long)vaend;
+-	if (nchunks < 0 ||
+-	    nchunks > (SIZE_MAX - start) / sizeof(struct rpcrdma_write_chunk) ||
+-	    (start + (sizeof(struct rpcrdma_write_chunk) * nchunks)) > end) {
+-		dprintk("svcrdma: ary=%p, wc_nchunks=%d, vaend=%p\n",
+-			ary, nchunks, vaend);
+-		return NULL;
++	__be32 *next;
++
++	if (*p++ != xdr_zero) {
++		next = p + 1 + be32_to_cpup(p) * rpcrdma_segment_maxsz;
++		if (next > end)
++			return NULL;
++		p = next;
+ 	}
+-	return (__be32 *)&ary->wc_array[nchunks];
++	return p;
+ }
+ 
+ /**
+@@ -158,87 +100,71 @@ static __be32 *decode_reply_array(__be32 *va, __be32 *vaend)
   */
- struct svc_rdma_op_ctxt {
--	struct list_head free;
-+	struct list_head list;
- 	struct svc_rdma_op_ctxt *read_hdr;
- 	struct svc_rdma_fastreg_mr *frmr;
- 	int hdr_count;
-@@ -78,7 +78,6 @@ struct svc_rdma_op_ctxt {
- 	struct ib_cqe cqe;
- 	struct ib_cqe reg_cqe;
- 	struct ib_cqe inv_cqe;
--	struct list_head dto_q;
- 	u32 byte_len;
- 	u32 position;
- 	struct svcxprt_rdma *xprt;
-diff --git a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
-index 172b537..b9ccd73 100644
---- a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
-+++ b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
-@@ -608,18 +608,16 @@ int svc_rdma_recvfrom(struct svc_rqst *rqstp)
+ int svc_rdma_xdr_decode_req(struct xdr_buf *rq_arg)
+ {
+-	struct rpcrdma_msg *rmsgp;
+-	__be32 *va, *vaend;
+-	unsigned int len;
+-	u32 hdr_len;
++	__be32 *p, *end, *rdma_argp;
++	unsigned int hdr_len;
  
- 	spin_lock_bh(&rdma_xprt->sc_rq_dto_lock);
- 	if (!list_empty(&rdma_xprt->sc_read_complete_q)) {
--		ctxt = list_entry(rdma_xprt->sc_read_complete_q.next,
--				  struct svc_rdma_op_ctxt,
--				  dto_q);
--		list_del_init(&ctxt->dto_q);
-+		ctxt = list_first_entry(&rdma_xprt->sc_read_complete_q,
-+					struct svc_rdma_op_ctxt, list);
-+		list_del(&ctxt->list);
- 		spin_unlock_bh(&rdma_xprt->sc_rq_dto_lock);
- 		rdma_read_complete(rqstp, ctxt);
- 		goto complete;
- 	} else if (!list_empty(&rdma_xprt->sc_rq_dto_q)) {
--		ctxt = list_entry(rdma_xprt->sc_rq_dto_q.next,
--				  struct svc_rdma_op_ctxt,
--				  dto_q);
--		list_del_init(&ctxt->dto_q);
-+		ctxt = list_first_entry(&rdma_xprt->sc_rq_dto_q,
-+					struct svc_rdma_op_ctxt, list);
-+		list_del(&ctxt->list);
- 	} else {
- 		atomic_inc(&rdma_stat_rq_starve);
- 		clear_bit(XPT_DATA, &xprt->xpt_flags);
-diff --git a/net/sunrpc/xprtrdma/svc_rdma_transport.c b/net/sunrpc/xprtrdma/svc_rdma_transport.c
-index 023eaa0..87b8b5a 100644
---- a/net/sunrpc/xprtrdma/svc_rdma_transport.c
-+++ b/net/sunrpc/xprtrdma/svc_rdma_transport.c
-@@ -157,8 +157,7 @@ static struct svc_rdma_op_ctxt *alloc_ctxt(struct svcxprt_rdma *xprt,
- 	ctxt = kmalloc(sizeof(*ctxt), flags);
- 	if (ctxt) {
- 		ctxt->xprt = xprt;
--		INIT_LIST_HEAD(&ctxt->free);
--		INIT_LIST_HEAD(&ctxt->dto_q);
-+		INIT_LIST_HEAD(&ctxt->list);
+ 	/* Verify that there's enough bytes for header + something */
+-	if (rq_arg->len <= RPCRDMA_HDRLEN_ERR) {
+-		dprintk("svcrdma: header too short = %d\n",
+-			rq_arg->len);
+-		return -EINVAL;
+-	}
++	if (rq_arg->len <= RPCRDMA_HDRLEN_ERR)
++		goto out_short;
+ 
+-	rmsgp = (struct rpcrdma_msg *)rq_arg->head[0].iov_base;
+-	if (rmsgp->rm_vers != rpcrdma_version) {
+-		dprintk("%s: bad version %u\n", __func__,
+-			be32_to_cpu(rmsgp->rm_vers));
+-		return -EPROTONOSUPPORT;
+-	}
++	rdma_argp = rq_arg->head[0].iov_base;
++	if (*(rdma_argp + 1) != rpcrdma_version)
++		goto out_version;
+ 
+-	switch (be32_to_cpu(rmsgp->rm_type)) {
+-	case RDMA_MSG:
+-	case RDMA_NOMSG:
++	switch (*(rdma_argp + 3)) {
++	case rdma_msg:
++	case rdma_nomsg:
+ 		break;
+ 
+-	case RDMA_DONE:
+-		/* Just drop it */
+-		dprintk("svcrdma: dropping RDMA_DONE message\n");
+-		return 0;
+-
+-	case RDMA_ERROR:
+-		/* Possible if this is a backchannel reply.
+-		 * XXX: We should cancel this XID, though.
+-		 */
+-		dprintk("svcrdma: dropping RDMA_ERROR message\n");
+-		return 0;
+-
+-	case RDMA_MSGP:
+-		/* Pull in the extra for the padded case, bump our pointer */
+-		rmsgp->rm_body.rm_padded.rm_align =
+-			be32_to_cpu(rmsgp->rm_body.rm_padded.rm_align);
+-		rmsgp->rm_body.rm_padded.rm_thresh =
+-			be32_to_cpu(rmsgp->rm_body.rm_padded.rm_thresh);
+-
+-		va = &rmsgp->rm_body.rm_padded.rm_pempty[4];
+-		rq_arg->head[0].iov_base = va;
+-		len = (u32)((unsigned long)va - (unsigned long)rmsgp);
+-		rq_arg->head[0].iov_len -= len;
+-		if (len > rq_arg->len)
+-			return -EINVAL;
+-		return len;
+-	default:
+-		dprintk("svcrdma: bad rdma procedure (%u)\n",
+-			be32_to_cpu(rmsgp->rm_type));
+-		return -EINVAL;
+-	}
++	case rdma_done:
++		goto out_drop;
+ 
+-	/* The chunk list may contain either a read chunk list or a write
+-	 * chunk list and a reply chunk list.
+-	 */
+-	va = &rmsgp->rm_body.rm_chunks[0];
+-	vaend = (__be32 *)((unsigned long)rmsgp + rq_arg->len);
+-	va = decode_read_list(va, vaend);
+-	if (!va) {
+-		dprintk("svcrdma: failed to decode read list\n");
+-		return -EINVAL;
+-	}
+-	va = decode_write_list(va, vaend);
+-	if (!va) {
+-		dprintk("svcrdma: failed to decode write list\n");
+-		return -EINVAL;
+-	}
+-	va = decode_reply_array(va, vaend);
+-	if (!va) {
+-		dprintk("svcrdma: failed to decode reply chunk\n");
+-		return -EINVAL;
++	case rdma_error:
++		goto out_drop;
++
++	default:
++		goto out_proc;
  	}
- 	return ctxt;
+ 
+-	rq_arg->head[0].iov_base = va;
+-	hdr_len = (unsigned long)va - (unsigned long)rmsgp;
++	end = (__be32 *)((unsigned long)rdma_argp + rq_arg->len);
++	p = xdr_check_read_list(rdma_argp + 4, end);
++	if (!p)
++		goto out_inval;
++	p = xdr_check_write_list(p, end);
++	if (!p)
++		goto out_inval;
++	p = xdr_check_reply_chunk(p, end);
++	if (!p)
++		goto out_inval;
++	if (p > end)
++		goto out_inval;
++
++	rq_arg->head[0].iov_base = p;
++	hdr_len = (unsigned long)p - (unsigned long)rdma_argp;
+ 	rq_arg->head[0].iov_len -= hdr_len;
+ 	return hdr_len;
++
++out_short:
++	dprintk("svcrdma: header too short = %d\n", rq_arg->len);
++	return -EINVAL;
++
++out_version:
++	dprintk("svcrdma: bad xprt version: %u\n",
++		be32_to_cpup(rdma_argp + 1));
++	return -EPROTONOSUPPORT;
++
++out_drop:
++	dprintk("svcrdma: dropping RDMA_DONE/ERROR message\n");
++	return 0;
++
++out_proc:
++	dprintk("svcrdma: bad rdma procedure (%u)\n",
++		be32_to_cpup(rdma_argp + 3));
++	return -EINVAL;
++
++out_inval:
++	dprintk("svcrdma: failed to parse transport header\n");
++	return -EINVAL;
  }
-@@ -180,7 +179,7 @@ static bool svc_rdma_prealloc_ctxts(struct svcxprt_rdma *xprt)
- 			dprintk("svcrdma: No memory for RDMA ctxt\n");
- 			return false;
- 		}
--		list_add(&ctxt->free, &xprt->sc_ctxts);
-+		list_add(&ctxt->list, &xprt->sc_ctxts);
- 	}
- 	return true;
- }
-@@ -195,8 +194,8 @@ struct svc_rdma_op_ctxt *svc_rdma_get_context(struct svcxprt_rdma *xprt)
- 		goto out_empty;
  
- 	ctxt = list_first_entry(&xprt->sc_ctxts,
--				struct svc_rdma_op_ctxt, free);
--	list_del_init(&ctxt->free);
-+				struct svc_rdma_op_ctxt, list);
-+	list_del(&ctxt->list);
- 	spin_unlock_bh(&xprt->sc_ctxt_lock);
- 
- out:
-@@ -256,7 +255,7 @@ void svc_rdma_put_context(struct svc_rdma_op_ctxt *ctxt, int free_pages)
- 
- 	spin_lock_bh(&xprt->sc_ctxt_lock);
- 	xprt->sc_ctxt_used--;
--	list_add(&ctxt->free, &xprt->sc_ctxts);
-+	list_add(&ctxt->list, &xprt->sc_ctxts);
- 	spin_unlock_bh(&xprt->sc_ctxt_lock);
- }
- 
-@@ -266,8 +265,8 @@ static void svc_rdma_destroy_ctxts(struct svcxprt_rdma *xprt)
- 		struct svc_rdma_op_ctxt *ctxt;
- 
- 		ctxt = list_first_entry(&xprt->sc_ctxts,
--					struct svc_rdma_op_ctxt, free);
--		list_del(&ctxt->free);
-+					struct svc_rdma_op_ctxt, list);
-+		list_del(&ctxt->list);
- 		kfree(ctxt);
- 	}
- }
-@@ -404,7 +403,7 @@ static void svc_rdma_wc_receive(struct ib_cq *cq, struct ib_wc *wc)
- 	/* All wc fields are now known to be valid */
- 	ctxt->byte_len = wc->byte_len;
- 	spin_lock(&xprt->sc_rq_dto_lock);
--	list_add_tail(&ctxt->dto_q, &xprt->sc_rq_dto_q);
-+	list_add_tail(&ctxt->list, &xprt->sc_rq_dto_q);
- 	spin_unlock(&xprt->sc_rq_dto_lock);
- 
- 	set_bit(XPT_DATA, &xprt->sc_xprt.xpt_flags);
-@@ -525,7 +524,7 @@ void svc_rdma_wc_read(struct ib_cq *cq, struct ib_wc *wc)
- 
- 		read_hdr = ctxt->read_hdr;
- 		spin_lock(&xprt->sc_rq_dto_lock);
--		list_add_tail(&read_hdr->dto_q,
-+		list_add_tail(&read_hdr->list,
- 			      &xprt->sc_read_complete_q);
- 		spin_unlock(&xprt->sc_rq_dto_lock);
- 
-@@ -1213,20 +1212,18 @@ static void __svc_rdma_free(struct work_struct *work)
- 	 */
- 	while (!list_empty(&rdma->sc_read_complete_q)) {
- 		struct svc_rdma_op_ctxt *ctxt;
--		ctxt = list_entry(rdma->sc_read_complete_q.next,
--				  struct svc_rdma_op_ctxt,
--				  dto_q);
--		list_del_init(&ctxt->dto_q);
-+		ctxt = list_first_entry(&rdma->sc_read_complete_q,
-+					struct svc_rdma_op_ctxt, list);
-+		list_del(&ctxt->list);
- 		svc_rdma_put_context(ctxt, 1);
- 	}
- 
- 	/* Destroy queued, but not processed recv completions */
- 	while (!list_empty(&rdma->sc_rq_dto_q)) {
- 		struct svc_rdma_op_ctxt *ctxt;
--		ctxt = list_entry(rdma->sc_rq_dto_q.next,
--				  struct svc_rdma_op_ctxt,
--				  dto_q);
--		list_del_init(&ctxt->dto_q);
-+		ctxt = list_first_entry(&rdma->sc_rq_dto_q,
-+					struct svc_rdma_op_ctxt, list);
-+		list_del(&ctxt->list);
- 		svc_rdma_put_context(ctxt, 1);
- 	}
- 
+ int svc_rdma_xdr_encode_error(struct svcxprt_rdma *xprt,
 
