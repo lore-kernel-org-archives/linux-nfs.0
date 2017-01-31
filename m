@@ -1,15 +1,15 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f194.google.com ([209.85.223.194]:33302 "EHLO
-        mail-io0-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751713AbdAaSi5 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 31 Jan 2017 13:38:57 -0500
-Subject: [PATCH v2 5/7] sunrpc: Enable calls to rpc_call_null_helper() from
- other modules
+Received: from mail-it0-f67.google.com ([209.85.214.67]:33935 "EHLO
+        mail-it0-f67.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751767AbdAaSjA (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 31 Jan 2017 13:39:00 -0500
+Subject: [PATCH v2 6/7] xprtrdma: Detect unreachable NFS/RDMA servers more
+ reliably
 From: Chuck Lever <chuck.lever@oracle.com>
 To: anna.schumaker@netapp.com
 Cc: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Tue, 31 Jan 2017 13:38:50 -0500
-Message-ID: <20170131183849.5325.78860.stgit@manet.1015granger.net>
+Date: Tue, 31 Jan 2017 13:38:58 -0500
+Message-ID: <20170131183858.5325.18053.stgit@manet.1015granger.net>
 In-Reply-To: <20170131183345.5325.47072.stgit@manet.1015granger.net>
 References: <20170131183345.5325.47072.stgit@manet.1015granger.net>
 MIME-Version: 1.0
@@ -17,157 +17,153 @@ Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-To help detect unreachable servers, I'd like to emit an RPC ping
-from rpcrdma.ko.
+Current NFS clients rely on connection loss to determine when to
+retransmit. In particular, for protocols like NFSv4, clients no
+longer rely on RPC timeouts to drive retransmission: NFSv4 servers
+are required to terminate a connection when they need a client to
+retransmit pending RPCs.
 
-authnull_ops is not visible outside the sunrpc.ko module, so fold
-the common case into rpc_call_null_helper, and export it, so that
-it can be invoked from other kernel modules.
+When a server is no longer reachable, either because it has crashed
+or because the network path has broken, the server cannot actively
+terminate a connection. Thus NFS clients depend on transport-level
+keepalive to determine when a connection must be replaced and
+pending RPCs retransmitted.
+
+However, RDMA RC connections do not have a native keepalive
+mechanism. If an NFS/RDMA server crashes after a client has sent
+RPCs successfully (an RC ACK has been received for all OTW RDMA
+requests), there is no way for the client to know the connection is
+moribund.
+
+In addition, new RDMA requests are subject to the RPC-over-RDMA
+credit limit. If the client has consumed all granted credits with
+NFS traffic, it is not allowed to send another RDMA request until
+the server replies. Thus it has no way to send a true keepalive when
+the workload has already consumed all credits with pending RPCs.
+
+To address this, emit an RPC NULL ping when an RPC retransmit
+timeout occurs.
+
+The purpose of this ping is to drive traffic on the connection to
+force the transport layer to disconnect it if it is no longer
+viable. Some RDMA operations are fully offloaded to the HCA, and can
+be successful even if the server O/S has crashed. Thus an operation
+that requires that the server is responsive is used for the ping.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- fs/nfs/nfs4proc.c            |    3 +--
- fs/nfsd/nfs4callback.c       |    2 +-
- include/linux/sunrpc/clnt.h  |    5 +++++
- include/linux/sunrpc/sched.h |    2 ++
- net/sunrpc/clnt.c            |   28 ++++++++++++++--------------
- 5 files changed, 23 insertions(+), 17 deletions(-)
+ net/sunrpc/xprtrdma/transport.c |   69 +++++++++++++++++++++++++++++++++++++++
+ net/sunrpc/xprtrdma/xprt_rdma.h |    7 ++++
+ 2 files changed, 76 insertions(+)
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 0a0eaec..0091e5a 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -7640,8 +7640,7 @@ static int _nfs4_proc_exchange_id(struct nfs_client *clp, struct rpc_cred *cred,
- 	if (xprt) {
- 		calldata->xprt = xprt;
- 		task_setup_data.rpc_xprt = xprt;
--		task_setup_data.flags =
--				RPC_TASK_SOFT|RPC_TASK_SOFTCONN|RPC_TASK_ASYNC;
-+		task_setup_data.flags = RPC_TASK_SOFTPING | RPC_TASK_ASYNC;
- 		calldata->args.verifier = &clp->cl_confirm;
- 	} else {
- 		calldata->args.verifier = &verifier;
-diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
-index eb78109..e1e2224 100644
---- a/fs/nfsd/nfs4callback.c
-+++ b/fs/nfsd/nfs4callback.c
-@@ -1182,7 +1182,7 @@ static void nfsd4_process_cb_update(struct nfsd4_callback *cb)
- 	}
- 
- 	cb->cb_msg.rpc_cred = clp->cl_cb_cred;
--	rpc_call_async(clnt, &cb->cb_msg, RPC_TASK_SOFT | RPC_TASK_SOFTCONN,
-+	rpc_call_async(clnt, &cb->cb_msg, RPC_TASK_SOFTPING,
- 			cb->cb_ops ? &nfsd4_cb_ops : &nfsd4_cb_probe_ops, cb);
+diff --git a/net/sunrpc/xprtrdma/transport.c b/net/sunrpc/xprtrdma/transport.c
+index c717f54..3a5a805 100644
+--- a/net/sunrpc/xprtrdma/transport.c
++++ b/net/sunrpc/xprtrdma/transport.c
+@@ -484,6 +484,74 @@
+ 	dprintk("RPC:       %s: %u\n", __func__, port);
  }
  
-diff --git a/include/linux/sunrpc/clnt.h b/include/linux/sunrpc/clnt.h
-index 333ad11..f576127 100644
---- a/include/linux/sunrpc/clnt.h
-+++ b/include/linux/sunrpc/clnt.h
-@@ -173,6 +173,11 @@ int		rpc_call_async(struct rpc_clnt *clnt,
- 			       void *calldata);
- int		rpc_call_sync(struct rpc_clnt *clnt,
- 			      const struct rpc_message *msg, int flags);
-+struct rpc_task *rpc_call_null_helper(struct rpc_clnt *clnt,
-+				      struct rpc_xprt *xprt,
-+				      struct rpc_cred *cred, int flags,
-+				      const struct rpc_call_ops *ops,
-+				      void *data);
- struct rpc_task *rpc_call_null(struct rpc_clnt *clnt, struct rpc_cred *cred,
- 			       int flags);
- int		rpc_restart_call_prepare(struct rpc_task *);
-diff --git a/include/linux/sunrpc/sched.h b/include/linux/sunrpc/sched.h
-index 7ba040c..13822e6 100644
---- a/include/linux/sunrpc/sched.h
-+++ b/include/linux/sunrpc/sched.h
-@@ -128,6 +128,8 @@ struct rpc_task_setup {
- #define RPC_TASK_NOCONNECT	0x2000		/* return ENOTCONN if not connected */
- #define RPC_TASK_NO_RETRANS_TIMEOUT	0x4000		/* wait forever for a reply */
- 
-+#define RPC_TASK_SOFTPING	(RPC_TASK_SOFT | RPC_TASK_SOFTCONN)
++static void rpcrdma_keepalive_done(struct rpc_task *task, void *calldata)
++{
++	struct rpc_xprt *xprt = (struct rpc_xprt *)calldata;
++	struct rpcrdma_xprt *r_xprt = rpcx_to_rdmax(xprt);
 +
- #define RPC_IS_ASYNC(t)		((t)->tk_flags & RPC_TASK_ASYNC)
- #define RPC_IS_SWAPPER(t)	((t)->tk_flags & RPC_TASK_SWAPPER)
- #define RPC_DO_ROOTOVERRIDE(t)	((t)->tk_flags & RPC_TASK_ROOTCREDS)
-diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
-index 1dc9f3b..642c93d 100644
---- a/net/sunrpc/clnt.c
-+++ b/net/sunrpc/clnt.c
-@@ -2520,12 +2520,11 @@ static int rpc_ping(struct rpc_clnt *clnt)
- 	};
- 	int err;
- 	msg.rpc_cred = authnull_ops.lookup_cred(NULL, NULL, 0);
--	err = rpc_call_sync(clnt, &msg, RPC_TASK_SOFT | RPC_TASK_SOFTCONN);
-+	err = rpc_call_sync(clnt, &msg, RPC_TASK_SOFTPING);
- 	put_rpccred(msg.rpc_cred);
- 	return err;
- }
- 
--static
- struct rpc_task *rpc_call_null_helper(struct rpc_clnt *clnt,
- 		struct rpc_xprt *xprt, struct rpc_cred *cred, int flags,
- 		const struct rpc_call_ops *ops, void *data)
-@@ -2542,9 +2541,17 @@ struct rpc_task *rpc_call_null_helper(struct rpc_clnt *clnt,
- 		.callback_data = data,
- 		.flags = flags,
- 	};
-+	struct rpc_task *task;
- 
--	return rpc_run_task(&task_setup_data);
-+	if (!cred)
-+		msg.rpc_cred = authnull_ops.lookup_cred(NULL, NULL, 0);
-+	task = rpc_run_task(&task_setup_data);
-+	if (!cred)
-+		put_rpccred(msg.rpc_cred);
++	if (task->tk_status) {
++		struct sockaddr *sap =
++			(struct sockaddr *)&r_xprt->rx_ep.rep_remote_addr;
 +
-+	return task;
- }
-+EXPORT_SYMBOL_GPL(rpc_call_null_helper);
- 
- struct rpc_task *rpc_call_null(struct rpc_clnt *clnt, struct rpc_cred *cred, int flags)
++		pr_err("rpcrdma: keepalive to %pIS:%u failed (%d)\n",
++		       sap, rpc_get_port(sap), task->tk_status);
++		xprt_disconnect_done(xprt);
++	}
++	clear_bit(RPCRDMA_IA_RSVD_CREDIT, &r_xprt->rx_ia.ri_flags);
++}
++
++static void rpcrdma_keepalive_release(void *calldata)
++{
++	struct rpc_xprt *xprt = (struct rpc_xprt *)calldata;
++
++	xprt_put(xprt);
++}
++
++static const struct rpc_call_ops rpcrdma_keepalive_call_ops = {
++	.rpc_call_done	= rpcrdma_keepalive_done,
++	.rpc_release	= rpcrdma_keepalive_release,
++};
++
++/**
++ * xprt_rdma_timer - invoked when an RPC times out
++ * @xprt: controlling RPC transport
++ * @task: RPC task that timed out
++ *
++ * Some RDMA transports do not have any form of connection
++ * keepalive. In some circumstances, unviable connections
++ * can continue to live for a long time.
++ *
++ * Send a NULL RPC to see if the server still responds. On
++ * a moribund connection, this should trigger either an RPC
++ * or transport layer timeout and kill the connection.
++ */
++static void
++xprt_rdma_timer(struct rpc_xprt *xprt, struct rpc_task *task)
++{
++	struct rpcrdma_xprt *r_xprt =
++		container_of(xprt, struct rpcrdma_xprt, rx_xprt);
++#if IS_ENABLED(CONFIG_SUNRPC_DEBUG)
++	struct rpcrdma_ep *ep = &r_xprt->rx_ep;
++	struct sockaddr *sap = (struct sockaddr *)&ep->rep_remote_addr;
++#endif
++	struct rpc_task *null_task;
++	void *data;
++
++	/* Ensure only one is sent at a time */
++	if (!test_and_set_bit(RPCRDMA_IA_RSVD_CREDIT, &r_xprt->rx_ia.ri_flags))
++		return;
++
++	dprintk("RPC:       %s: sending keepalive ping to %pIS:%u\n",
++		__func__, sap, rpc_get_port(sap));
++
++	data = xprt_get(xprt);
++	null_task = rpc_call_null_helper(task->tk_client, xprt, NULL,
++					 RPC_TASK_SOFTPING | RPC_TASK_ASYNC,
++					 &rpcrdma_keepalive_call_ops, data);
++	if (!IS_ERR(null_task))
++		rpc_put_task(null_task);
++}
++
+ static void
+ xprt_rdma_connect(struct rpc_xprt *xprt, struct rpc_task *task)
  {
-@@ -2591,7 +2598,6 @@ int rpc_clnt_test_and_add_xprt(struct rpc_clnt *clnt,
- 		void *dummy)
- {
- 	struct rpc_cb_add_xprt_calldata *data;
--	struct rpc_cred *cred;
- 	struct rpc_task *task;
+@@ -776,6 +844,7 @@ void xprt_rdma_print_stats(struct rpc_xprt *xprt, struct seq_file *seq)
+ 	.alloc_slot		= xprt_alloc_slot,
+ 	.release_request	= xprt_release_rqst_cong,       /* ditto */
+ 	.set_retrans_timeout	= xprt_set_retrans_timeout_def, /* ditto */
++	.timer			= xprt_rdma_timer,
+ 	.rpcbind		= rpcb_getport_async,	/* sunrpc/rpcb_clnt.c */
+ 	.set_port		= xprt_rdma_set_port,
+ 	.connect		= xprt_rdma_connect,
+diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
+index 171a351..95c1e3d 100644
+--- a/net/sunrpc/xprtrdma/xprt_rdma.h
++++ b/net/sunrpc/xprtrdma/xprt_rdma.h
+@@ -77,11 +77,18 @@ struct rpcrdma_ia {
+ 	unsigned int		ri_max_send_sges;
+ 	bool			ri_reminv_expected;
+ 	bool			ri_implicit_roundup;
++	unsigned long		ri_flags;
+ 	enum ib_mr_type		ri_mrtype;
+ 	struct ib_qp_attr	ri_qp_attr;
+ 	struct ib_qp_init_attr	ri_qp_init_attr;
+ };
  
- 	data = kmalloc(sizeof(*data), GFP_NOFS);
-@@ -2600,11 +2606,9 @@ int rpc_clnt_test_and_add_xprt(struct rpc_clnt *clnt,
- 	data->xps = xprt_switch_get(xps);
- 	data->xprt = xprt_get(xprt);
- 
--	cred = authnull_ops.lookup_cred(NULL, NULL, 0);
--	task = rpc_call_null_helper(clnt, xprt, cred,
--			RPC_TASK_SOFT|RPC_TASK_SOFTCONN|RPC_TASK_ASYNC,
--			&rpc_cb_add_xprt_call_ops, data);
--	put_rpccred(cred);
-+	task = rpc_call_null_helper(clnt, xprt, NULL,
-+				    RPC_TASK_SOFTPING | RPC_TASK_ASYNC,
-+				    &rpc_cb_add_xprt_call_ops, data);
- 	if (IS_ERR(task))
- 		return PTR_ERR(task);
- 	rpc_put_task(task);
-@@ -2635,7 +2639,6 @@ int rpc_clnt_setup_test_and_add_xprt(struct rpc_clnt *clnt,
- 				     struct rpc_xprt *xprt,
- 				     void *data)
- {
--	struct rpc_cred *cred;
- 	struct rpc_task *task;
- 	struct rpc_add_xprt_test *xtest = (struct rpc_add_xprt_test *)data;
- 	int status = -EADDRINUSE;
-@@ -2647,11 +2650,8 @@ int rpc_clnt_setup_test_and_add_xprt(struct rpc_clnt *clnt,
- 		goto out_err;
- 
- 	/* Test the connection */
--	cred = authnull_ops.lookup_cred(NULL, NULL, 0);
--	task = rpc_call_null_helper(clnt, xprt, cred,
--				    RPC_TASK_SOFT | RPC_TASK_SOFTCONN,
-+	task = rpc_call_null_helper(clnt, xprt, NULL, RPC_TASK_SOFTPING,
- 				    NULL, NULL);
--	put_rpccred(cred);
- 	if (IS_ERR(task)) {
- 		status = PTR_ERR(task);
- 		goto out_err;
++/* ri_flags bits
++ */
++enum {
++	RPCRDMA_IA_RSVD_CREDIT	= 0,
++};
++
+ /*
+  * RDMA Endpoint -- one per transport instance
+  */
 
