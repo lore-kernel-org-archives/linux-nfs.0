@@ -1,165 +1,89 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-it0-f65.google.com ([209.85.214.65]:34923 "EHLO
-        mail-it0-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751657AbdAaSxy (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 31 Jan 2017 13:53:54 -0500
-Subject: [PATCH v2 7/7] svcrdma: Poll CQs in "workqueue" mode
-From: Chuck Lever <chuck.lever@oracle.com>
-To: bfields@fieldses.org
-Cc: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Tue, 31 Jan 2017 13:53:43 -0500
-Message-ID: <20170131185343.14185.76984.stgit@klimt.1015granger.net>
-In-Reply-To: <20170131184623.14185.35480.stgit@klimt.1015granger.net>
-References: <20170131184623.14185.35480.stgit@klimt.1015granger.net>
+Received: from pandora.armlinux.org.uk ([78.32.30.218]:32808 "EHLO
+        pandora.armlinux.org.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751873AbdAaTRc (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 31 Jan 2017 14:17:32 -0500
+Date: Tue, 31 Jan 2017 19:17:04 +0000
+From: Russell King - ARM Linux <linux@armlinux.org.uk>
+To: linux-mips@linux-mips.org, linux-nfs@vger.kernel.org,
+        linux-scsi@vger.kernel.org, linux-usb@vger.kernel.org,
+        linux-wireless@vger.kernel.org, netdev@vger.kernel.org,
+        target-devel@vger.kernel.org
+Cc: Andrew Lunn <andrew@lunn.ch>,
+        Anna Schumaker <anna.schumaker@netapp.com>,
+        "David S. Miller" <davem@davemloft.net>,
+        Derek Chickles <derek.chickles@caviumnetworks.com>,
+        Felix Manlunas <felix.manlunas@caviumnetworks.com>,
+        Florian Fainelli <f.fainelli@gmail.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>,
+        Jeff Layton <jlayton@poochiereds.net>,
+        Jiri Slaby <jirislaby@gmail.com>,
+        Kalle Valo <kvalo@codeaurora.org>,
+        "Luis R. Rodriguez" <mcgrof@do-not-panic.com>,
+        Madalin Bucur <madalin.bucur@nxp.com>,
+        Microchip Linux Driver Support <UNGLinuxDriver@microchip.com>,
+        "Nicholas A. Bellinger" <nab@linux-iscsi.org>,
+        Nick Kossifidis <mickflemm@gmail.com>,
+        Nicolas Ferre <nicolas.ferre@atmel.com>,
+        Raghu Vatsavayi <raghu.vatsavayi@caviumnetworks.com>,
+        Ralf Baechle <ralf@linux-mips.org>,
+        Satanand Burla <satananda.burla@caviumnetworks.com>,
+        Thomas Petazzoni <thomas.petazzoni@free-electrons.com>,
+        Timur Tabi <timur@codeaurora.org>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        Vivien Didelot <vivien.didelot@savoirfairelinux.com>,
+        Woojung Huh <woojung.huh@microchip.com>
+Subject: [PATCH 4.10-rc3 00/13] net: dsa: remove unnecessary phy.h include
+Message-ID: <20170131191704.GA8281@n2100.armlinux.org.uk>
+References: <20170118001403.GJ27312@n2100.armlinux.org.uk>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20170118001403.GJ27312@n2100.armlinux.org.uk>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-svcrdma calls svc_xprt_put() in its completion handlers, which
-currently run in IRQ context.
+Including phy.h and phy_fixed.h into net/dsa.h causes phy*.h to be an
+unnecessary dependency for quite a large amount of the kernel.  There's
+very little which actually requires definitions from phy.h in net/dsa.h
+- the include itself only wants the declaration of a couple of
+structures and IFNAMSIZ.
 
-However, svc_xprt_put() is meant to be invoked in process context,
-not in IRQ context. After the last transport reference is gone, it
-directly calls a transport release function that expects to run in
-process context.
+Add linux/if.h for IFNAMSIZ, declarations for the structures, phy.h to
+mv88e6xxx.h as it needs it for phy_interface_t, and remove both phy.h
+and phy_fixed.h from net/dsa.h.
 
-Change the CQ polling modes to IB_POLL_WORKQUEUE so that svcrdma
-invokes svc_xprt_put() only in process context. As an added benefit,
-bottom half-disabled spin locking can be eliminated from I/O paths.
+This patch reduces from around 800 files rebuilt to around 40 - even
+with ccache, the time difference is noticable.
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
- net/sunrpc/xprtrdma/svc_rdma_recvfrom.c  |    6 +++---
- net/sunrpc/xprtrdma/svc_rdma_transport.c |   26 +++++++++++++-------------
- 2 files changed, 16 insertions(+), 16 deletions(-)
+In order to make this change, several drivers need to be updated to
+include necessary headers that they were picking up through this
+include.  This has resulted in a much larger patch series.
 
-diff --git a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
-index b9ccd73..f7b2daf 100644
---- a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
-+++ b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
-@@ -606,12 +606,12 @@ int svc_rdma_recvfrom(struct svc_rqst *rqstp)
- 
- 	dprintk("svcrdma: rqstp=%p\n", rqstp);
- 
--	spin_lock_bh(&rdma_xprt->sc_rq_dto_lock);
-+	spin_lock(&rdma_xprt->sc_rq_dto_lock);
- 	if (!list_empty(&rdma_xprt->sc_read_complete_q)) {
- 		ctxt = list_first_entry(&rdma_xprt->sc_read_complete_q,
- 					struct svc_rdma_op_ctxt, list);
- 		list_del(&ctxt->list);
--		spin_unlock_bh(&rdma_xprt->sc_rq_dto_lock);
-+		spin_unlock(&rdma_xprt->sc_rq_dto_lock);
- 		rdma_read_complete(rqstp, ctxt);
- 		goto complete;
- 	} else if (!list_empty(&rdma_xprt->sc_rq_dto_q)) {
-@@ -623,7 +623,7 @@ int svc_rdma_recvfrom(struct svc_rqst *rqstp)
- 		clear_bit(XPT_DATA, &xprt->xpt_flags);
- 		ctxt = NULL;
- 	}
--	spin_unlock_bh(&rdma_xprt->sc_rq_dto_lock);
-+	spin_unlock(&rdma_xprt->sc_rq_dto_lock);
- 	if (!ctxt) {
- 		/* This is the EAGAIN path. The svc_recv routine will
- 		 * return -EAGAIN, the nfsd thread will go to call into
-diff --git a/net/sunrpc/xprtrdma/svc_rdma_transport.c b/net/sunrpc/xprtrdma/svc_rdma_transport.c
-index 87b8b5a..ab2fd53 100644
---- a/net/sunrpc/xprtrdma/svc_rdma_transport.c
-+++ b/net/sunrpc/xprtrdma/svc_rdma_transport.c
-@@ -188,7 +188,7 @@ struct svc_rdma_op_ctxt *svc_rdma_get_context(struct svcxprt_rdma *xprt)
- {
- 	struct svc_rdma_op_ctxt *ctxt = NULL;
- 
--	spin_lock_bh(&xprt->sc_ctxt_lock);
-+	spin_lock(&xprt->sc_ctxt_lock);
- 	xprt->sc_ctxt_used++;
- 	if (list_empty(&xprt->sc_ctxts))
- 		goto out_empty;
-@@ -196,7 +196,7 @@ struct svc_rdma_op_ctxt *svc_rdma_get_context(struct svcxprt_rdma *xprt)
- 	ctxt = list_first_entry(&xprt->sc_ctxts,
- 				struct svc_rdma_op_ctxt, list);
- 	list_del(&ctxt->list);
--	spin_unlock_bh(&xprt->sc_ctxt_lock);
-+	spin_unlock(&xprt->sc_ctxt_lock);
- 
- out:
- 	ctxt->count = 0;
-@@ -208,15 +208,15 @@ struct svc_rdma_op_ctxt *svc_rdma_get_context(struct svcxprt_rdma *xprt)
- 	/* Either pre-allocation missed the mark, or send
- 	 * queue accounting is broken.
- 	 */
--	spin_unlock_bh(&xprt->sc_ctxt_lock);
-+	spin_unlock(&xprt->sc_ctxt_lock);
- 
- 	ctxt = alloc_ctxt(xprt, GFP_NOIO);
- 	if (ctxt)
- 		goto out;
- 
--	spin_lock_bh(&xprt->sc_ctxt_lock);
-+	spin_lock(&xprt->sc_ctxt_lock);
- 	xprt->sc_ctxt_used--;
--	spin_unlock_bh(&xprt->sc_ctxt_lock);
-+	spin_unlock(&xprt->sc_ctxt_lock);
- 	WARN_ONCE(1, "svcrdma: empty RDMA ctxt list?\n");
- 	return NULL;
- }
-@@ -253,10 +253,10 @@ void svc_rdma_put_context(struct svc_rdma_op_ctxt *ctxt, int free_pages)
- 		for (i = 0; i < ctxt->count; i++)
- 			put_page(ctxt->pages[i]);
- 
--	spin_lock_bh(&xprt->sc_ctxt_lock);
-+	spin_lock(&xprt->sc_ctxt_lock);
- 	xprt->sc_ctxt_used--;
- 	list_add(&ctxt->list, &xprt->sc_ctxts);
--	spin_unlock_bh(&xprt->sc_ctxt_lock);
-+	spin_unlock(&xprt->sc_ctxt_lock);
- }
- 
- static void svc_rdma_destroy_ctxts(struct svcxprt_rdma *xprt)
-@@ -921,14 +921,14 @@ struct svc_rdma_fastreg_mr *svc_rdma_get_frmr(struct svcxprt_rdma *rdma)
- {
- 	struct svc_rdma_fastreg_mr *frmr = NULL;
- 
--	spin_lock_bh(&rdma->sc_frmr_q_lock);
-+	spin_lock(&rdma->sc_frmr_q_lock);
- 	if (!list_empty(&rdma->sc_frmr_q)) {
- 		frmr = list_entry(rdma->sc_frmr_q.next,
- 				  struct svc_rdma_fastreg_mr, frmr_list);
- 		list_del_init(&frmr->frmr_list);
- 		frmr->sg_nents = 0;
- 	}
--	spin_unlock_bh(&rdma->sc_frmr_q_lock);
-+	spin_unlock(&rdma->sc_frmr_q_lock);
- 	if (frmr)
- 		return frmr;
- 
-@@ -941,10 +941,10 @@ void svc_rdma_put_frmr(struct svcxprt_rdma *rdma,
- 	if (frmr) {
- 		ib_dma_unmap_sg(rdma->sc_cm_id->device,
- 				frmr->sg, frmr->sg_nents, frmr->direction);
--		spin_lock_bh(&rdma->sc_frmr_q_lock);
-+		spin_lock(&rdma->sc_frmr_q_lock);
- 		WARN_ON_ONCE(!list_empty(&frmr->frmr_list));
- 		list_add(&frmr->frmr_list, &rdma->sc_frmr_q);
--		spin_unlock_bh(&rdma->sc_frmr_q_lock);
-+		spin_unlock(&rdma->sc_frmr_q_lock);
- 	}
- }
- 
-@@ -1026,13 +1026,13 @@ static struct svc_xprt *svc_rdma_accept(struct svc_xprt *xprt)
- 		goto errout;
- 	}
- 	newxprt->sc_sq_cq = ib_alloc_cq(dev, newxprt, newxprt->sc_sq_depth,
--					0, IB_POLL_SOFTIRQ);
-+					0, IB_POLL_WORKQUEUE);
- 	if (IS_ERR(newxprt->sc_sq_cq)) {
- 		dprintk("svcrdma: error creating SQ CQ for connect request\n");
- 		goto errout;
- 	}
- 	newxprt->sc_rq_cq = ib_alloc_cq(dev, newxprt, newxprt->sc_rq_depth,
--					0, IB_POLL_SOFTIRQ);
-+					0, IB_POLL_WORKQUEUE);
- 	if (IS_ERR(newxprt->sc_rq_cq)) {
- 		dprintk("svcrdma: error creating RQ CQ for connect request\n");
- 		goto errout;
+I'm assuming the 0-day builder has had 24 hours with this series, and
+hasn't reported any further issues with it - the last issue was two
+weeks ago (before I became ill) which I fixed over the last weekend.
 
+I'm hoping this doesn't conflict with what's already in net-next...
+
+ arch/mips/cavium-octeon/octeon-platform.c             | 4 ----
+ drivers/net/dsa/mv88e6xxx/mv88e6xxx.h                 | 1 +
+ drivers/net/ethernet/broadcom/bgmac.c                 | 2 ++
+ drivers/net/ethernet/cadence/macb.h                   | 2 ++
+ drivers/net/ethernet/cavium/liquidio/lio_main.c       | 1 +
+ drivers/net/ethernet/cavium/liquidio/lio_vf_main.c    | 1 +
+ drivers/net/ethernet/cavium/liquidio/octeon_console.c | 1 +
+ drivers/net/ethernet/freescale/fman/fman_memac.c      | 1 +
+ drivers/net/ethernet/marvell/mvneta.c                 | 1 +
+ drivers/net/ethernet/qualcomm/emac/emac-sgmii.c       | 1 +
+ drivers/net/usb/lan78xx.c                             | 1 +
+ drivers/net/wireless/ath/ath5k/ahb.c                  | 2 +-
+ drivers/target/iscsi/iscsi_target_login.c             | 1 +
+ include/net/dsa.h                                     | 6 ++++--
+ net/core/netprio_cgroup.c                             | 1 +
+ net/sunrpc/xprtrdma/svc_rdma_backchannel.c            | 1 +
+ 16 files changed, 20 insertions(+), 7 deletions(-)
+
+-- 
+RMK's Patch system: http://www.armlinux.org.uk/developer/patches/
+FTTC broadband for 0.8mile line: currently at 9.6Mbps down 400kbps up
+according to speedtest.net.
