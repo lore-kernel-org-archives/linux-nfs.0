@@ -1,130 +1,73 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:57116 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([173.255.197.46]:34542 "EHLO fieldses.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1752068AbdAaOM0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 31 Jan 2017 09:12:26 -0500
-Date: Tue, 31 Jan 2017 09:05:16 -0500
-From: Scott Mayhew <smayhew@redhat.com>
+        id S1750907AbdAaOjY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 31 Jan 2017 09:39:24 -0500
+Date: Tue, 31 Jan 2017 09:38:55 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
 To: NeilBrown <neilb@suse.com>
-Cc: steved@redhat.com, linux-nfs@vger.kernel.org
-Subject: Re: [nfs-utils PATCH RFC 0/2] Add support for
- -s/--state-directory-path for rpc.mountd and exportfs
-Message-ID: <20170131140516.ygu5wbypv3byzmfk@tonberry.usersys.redhat.com>
-References: <1485804769-14393-1-git-send-email-smayhew@redhat.com>
- <87bmuorzfe.fsf@notabene.neil.brown.name>
+Cc: Linux NFS Mailing <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] NFSDv4: use export cache flushtime for changeid on
+ V4ROOT objects.
+Message-ID: <20170131143855.GA5727@fieldses.org>
+References: <87mve9rs0z.fsf@notabene.neil.brown.name>
+ <20170130153517.GC24786@fieldses.org>
+ <8737g0rxm2.fsf@notabene.neil.brown.name>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <87bmuorzfe.fsf@notabene.neil.brown.name>
+In-Reply-To: <8737g0rxm2.fsf@notabene.neil.brown.name>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 31 Jan 2017, NeilBrown wrote:
-
-> On Mon, Jan 30 2017, Scott Mayhew wrote:
+On Tue, Jan 31, 2017 at 09:28:37AM +1100, NeilBrown wrote:
+> On Mon, Jan 30 2017, J. Bruce Fields wrote:
 > 
-> > Currently, rpc.mountd's -s/--state-directory-path option doesn't really
-> > do anything (rpc.mountd tests it via chdir() but that's all).  These
-> > patches implement the -s/--state-directory-path option so that
-> > rpc.mountd's state files (the etab and rmtab) can be placed in a
-> > location other than /var/lib/nfs... for example, /run/nfs.
+> > On Mon, Jan 30, 2017 at 05:17:00PM +1100, NeilBrown wrote:
+> >> 
+> >> If you change the set of filesystems that are exported, then
+> >> the contents of various directories in the NFSv4 pseudo-root
+> >> is likely to change.  However the change-id of those
+> >> directories is currently tied to the underlying directory,
+> >> so the clinet may not see the changes in a timely fashion.
 > >
-> > To use /run/nfs, it's necessary to create a systemd-tmpfiles config
-> > file, e.g.
+> > Oh, good catch.
 > >
-> > # cat /usr/lib/tmpfiles.d/nfs.conf 
-> > #Type Path           Mode  UID  GID  Age Argument
-> > d    /run/nfs        0755  root root  -  -
-> > f    /run/nfs/etab   0644  root root  -  -
-> > f    /run/nfs/rmtab  0644  root root  -  -
+> >> This patch changes the change-id number to be derived from the
+> >> "flush_time" of the export cache.  Whenever any changes are
+> >> made to the set of exported filesystems, this flush_time is
+> >> updated.  The result is that clients see changes to the set
+> >> of exported filesystems much more quickly, often immediately.
 > >
-> > and if selinux is in enforcing mode, the correct context would need to
-> > be set on the directory (On Fedora, semanage barks at me if I use
-> > /run/nfs... that's why I'm using /var/run/nfs here instead):
-> > # semanage fcontext -a -t var_lib_nfs_t /var/run/nfs
-> 
-> Hi Scott,
->  thanks for these - I think this is a good improvement.
-> 
-> I'm not very fond of the term "xtab" used through.
-> Presumably the intention is that the code is used for "rmtab" and
-> "etab", so "xtab" matches both, where "x" is the unknown.
-
-Yep, that was the idea.
-
-> Unfortunately we used to have an "xtab" file, and I keep thinking
-> of that when I see "xtab".
-> Maybe "state" ??? or leave it as it is, and I'll get over it.
-
-I'll go ahead and change it.
-
-> 
+> > And, a clever solution, as usual....
 > >
-> > Notes:
-> >
-> > - I didn't actually implement the option (in either the command line or
-> > the nfs.conf) for exportfs.  Instead it reads rpc.mountd's setting from
-> > the nfs.conf so that they're using the same value.  Maybe it would be
-> > better to add the option to exportfs too and emit a warning if exportfs
-> > is using a different value than rpc.mountd (which would only be
-> > detectable if mountd is using the nfs.conf).
+> > I wonder if it's completely right yet, though.  Off the top of my head:
+> > can't the client see the new flush time before it sees the new contents?
+> > If so, a client that caches both during that window could cache the old
+> > contents indefinitely.
 > 
-> I like your current solution best.
-> 
-> > - Since the contents of /run are volatile, moving the rmtab file there
-> > would mean 'showmount -a' would only show NFSv3 mounts that have occurred
-> > since the last boot.  I'm not sure if that's a big deal or not.  Looking
-> > at the rmtab file on my main test server I see a lot of outdated
-> > entries, so this might actually be preferable.
-> 
-> I'd be fairly happy to discard rmtab completely. 
+> uhm....
+> Yes, it could see the new flush time before it sees the new contents.
+> When it sees that new flush time (i.e. new change attribute), it will
+> invalidate its cached contents and ask for the contents again.
 
-I'll do that in a future patch if nobody objects.
+The problem comes if it's still possible for the client to read (and
+cache) the old contents at this point, in which case the client's cache
+will incorrectly associate old contents with new change attribute.
 
-> It is, at best, a vague
-> hint and is, as you observed, often inaccurate.
-> 
-> > - Looking at rpc.mountd(8) it actually says 'Specify a directory in which
-> > to place statd state information'... I'm not sure why mountd would care
-> > where statd puts its state files.  The point of these two patches was to
-> > separate that out, so that all that's left on /var/lib/nfs is the stuff
-> > used by rpc.statd/sm-notify/nfsdcltrack.  I can either use a different
-> > option or reword that sentence on the man page.
-> 
-> I think it would be best to reword the man page.  As you say, mountd
-> doesn't care about statd state.
+> It will then definitely get new contents.
 
-Will do.
+So the problem with changing change attribute before contents is:
 
-Thanks for looking!
+	- client retrieves old contents and new attribute, caches.
+	- client revalidates cache at an arbitrarily later time, sees
+	  it's still the new attribute, continues caching old contents.
 
--Scott
-> 
-> Thanks,
-> NeilBrown
-> 
-> >
-> >
-> > Scott Mayhew (2):
-> >   libnsm.a: refactor nsm_setup_pathnames() and nsm_make_pathname()
-> >   mountd/exportfs: implement the -s/--state-directory-path option
-> >
-> >  support/export/xtab.c     |  82 +++++++++++++++++++++++++++++++++-
-> >  support/include/misc.h    |   3 ++
-> >  support/include/nfslib.h  |  17 +++++++
-> >  support/misc/Makefile.am  |   2 +-
-> >  support/misc/file.c       | 110 ++++++++++++++++++++++++++++++++++++++++++++++
-> >  support/nfs/cacheio.c     |   4 +-
-> >  support/nfs/rmtab.c       |   4 +-
-> >  support/nsm/file.c        |  45 ++-----------------
-> >  utils/exportfs/exportfs.c |  13 ++++++
-> >  utils/mountd/auth.c       |   8 ++--
-> >  utils/mountd/mountd.c     |  31 ++++++++-----
-> >  utils/mountd/rmtab.c      |  26 ++++++-----
-> >  utils/statd/Makefile.am   |   1 +
-> >  13 files changed, 273 insertions(+), 73 deletions(-)
-> >  create mode 100644 support/misc/file.c
-> >
-> > -- 
-> > 2.7.4
+So usually I believe you want the two changes--contents and change
+attribute--to be atomic or, if that's not possible, for them to be
+changed in that order.
 
+I haven't thought through how that applies to this case, but I think it
+should be possible if in-progress rpc's hold references to objects in
+the flushed cache?
 
+--b.
