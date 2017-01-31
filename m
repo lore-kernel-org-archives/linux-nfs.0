@@ -1,67 +1,190 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-it0-f44.google.com ([209.85.214.44]:38506 "EHLO
-        mail-it0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751865AbdAaSiO (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 31 Jan 2017 13:38:14 -0500
-Subject: [PATCH v2 0/7] NFS/RDMA client-side patches for 4.11
+Received: from mail-io0-f194.google.com ([209.85.223.194]:34518 "EHLO
+        mail-io0-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751932AbdAaSig (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 31 Jan 2017 13:38:36 -0500
+Subject: [PATCH v2 3/7] xprtrdma: Refactor management of mw_list field
 From: Chuck Lever <chuck.lever@oracle.com>
 To: anna.schumaker@netapp.com
 Cc: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Tue, 31 Jan 2017 13:38:08 -0500
-Message-ID: <20170131183345.5325.47072.stgit@manet.1015granger.net>
+Date: Tue, 31 Jan 2017 13:38:33 -0500
+Message-ID: <20170131183833.5325.49041.stgit@manet.1015granger.net>
+In-Reply-To: <20170131183345.5325.47072.stgit@manet.1015granger.net>
+References: <20170131183345.5325.47072.stgit@manet.1015granger.net>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-These are bug fixes based on v4.10-rc6 + my for-4.10-rc fixes.
+Clean up some duplicate code.
 
-The keepalive patches are still waiting for internal testing
-resources.
-
-Available in the "nfs-rdma-for-4.11" topic branch of this git repo:
-
-git://git.linux-nfs.org/projects/cel/cel-2.6.git
-
-
-Or for browsing:
-
-http://git.linux-nfs.org/?p=cel/cel-2.6.git;a=log;h=refs/heads/nfs-rdma-for-4.11
-
-
-Changes since v1:
-- Rebased on v4.10-rc6
-- Tested-by and additional clean-up in 1/7
-- Patch description clarifications
-- Renamed some constants and variables
-
-
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
+ net/sunrpc/xprtrdma/fmr_ops.c   |    5 +----
+ net/sunrpc/xprtrdma/frwr_ops.c  |   11 ++++-------
+ net/sunrpc/xprtrdma/rpc_rdma.c  |    6 +++---
+ net/sunrpc/xprtrdma/verbs.c     |   15 +++++----------
+ net/sunrpc/xprtrdma/xprt_rdma.h |   16 ++++++++++++++++
+ 5 files changed, 29 insertions(+), 24 deletions(-)
 
-Chuck Lever (7):
-      xprtrdma: Properly recover FRWRs with in-flight FASTREG WRs
-      xprtrdma: Handle stale connection rejection
-      xprtrdma: Refactor management of mw_list field
-      sunrpc: Allow xprt->ops->timer method to sleep
-      sunrpc: Enable calls to rpc_call_null_helper() from other modules
-      xprtrdma: Detect unreachable NFS/RDMA servers more reliably
-      sunrpc: Allow keepalive ping on a credit-full transport
+diff --git a/net/sunrpc/xprtrdma/fmr_ops.c b/net/sunrpc/xprtrdma/fmr_ops.c
+index 1ebb09e..59e6402 100644
+--- a/net/sunrpc/xprtrdma/fmr_ops.c
++++ b/net/sunrpc/xprtrdma/fmr_ops.c
+@@ -310,10 +310,7 @@ enum {
+ 	struct rpcrdma_mw *mw;
+ 
+ 	while (!list_empty(&req->rl_registered)) {
+-		mw = list_first_entry(&req->rl_registered,
+-				      struct rpcrdma_mw, mw_list);
+-		list_del_init(&mw->mw_list);
+-
++		mw = rpcrdma_pop_mw(&req->rl_registered);
+ 		if (sync)
+ 			fmr_op_recover_mr(mw);
+ 		else
+diff --git a/net/sunrpc/xprtrdma/frwr_ops.c b/net/sunrpc/xprtrdma/frwr_ops.c
+index 47bed53..f81dd93 100644
+--- a/net/sunrpc/xprtrdma/frwr_ops.c
++++ b/net/sunrpc/xprtrdma/frwr_ops.c
+@@ -466,8 +466,8 @@
+ 	struct ib_send_wr *first, **prev, *last, *bad_wr;
+ 	struct rpcrdma_rep *rep = req->rl_reply;
+ 	struct rpcrdma_ia *ia = &r_xprt->rx_ia;
+-	struct rpcrdma_mw *mw, *tmp;
+ 	struct rpcrdma_frmr *f;
++	struct rpcrdma_mw *mw;
+ 	int count, rc;
+ 
+ 	dprintk("RPC:       %s: req %p\n", __func__, req);
+@@ -534,10 +534,10 @@
+ 	 * them to the free MW list.
+ 	 */
+ unmap:
+-	list_for_each_entry_safe(mw, tmp, &req->rl_registered, mw_list) {
++	while (!list_empty(&req->rl_registered)) {
++		mw = rpcrdma_pop_mw(&req->rl_registered);
+ 		dprintk("RPC:       %s: DMA unmapping frmr %p\n",
+ 			__func__, &mw->frmr);
+-		list_del_init(&mw->mw_list);
+ 		ib_dma_unmap_sg(ia->ri_device,
+ 				mw->mw_sg, mw->mw_nents, mw->mw_dir);
+ 		rpcrdma_put_mw(r_xprt, mw);
+@@ -571,10 +571,7 @@
+ 	struct rpcrdma_mw *mw;
+ 
+ 	while (!list_empty(&req->rl_registered)) {
+-		mw = list_first_entry(&req->rl_registered,
+-				      struct rpcrdma_mw, mw_list);
+-		list_del_init(&mw->mw_list);
+-
++		mw = rpcrdma_pop_mw(&req->rl_registered);
+ 		if (sync)
+ 			frwr_op_recover_mr(mw);
+ 		else
+diff --git a/net/sunrpc/xprtrdma/rpc_rdma.c b/net/sunrpc/xprtrdma/rpc_rdma.c
+index 72b3ca0..a044be2 100644
+--- a/net/sunrpc/xprtrdma/rpc_rdma.c
++++ b/net/sunrpc/xprtrdma/rpc_rdma.c
+@@ -322,7 +322,7 @@ static bool rpcrdma_results_inline(struct rpcrdma_xprt *r_xprt,
+ 						 false, &mw);
+ 		if (n < 0)
+ 			return ERR_PTR(n);
+-		list_add(&mw->mw_list, &req->rl_registered);
++		rpcrdma_push_mw(mw, &req->rl_registered);
+ 
+ 		*iptr++ = xdr_one;	/* item present */
+ 
+@@ -390,7 +390,7 @@ static bool rpcrdma_results_inline(struct rpcrdma_xprt *r_xprt,
+ 						 true, &mw);
+ 		if (n < 0)
+ 			return ERR_PTR(n);
+-		list_add(&mw->mw_list, &req->rl_registered);
++		rpcrdma_push_mw(mw, &req->rl_registered);
+ 
+ 		iptr = xdr_encode_rdma_segment(iptr, mw);
+ 
+@@ -455,7 +455,7 @@ static bool rpcrdma_results_inline(struct rpcrdma_xprt *r_xprt,
+ 						 true, &mw);
+ 		if (n < 0)
+ 			return ERR_PTR(n);
+-		list_add(&mw->mw_list, &req->rl_registered);
++		rpcrdma_push_mw(mw, &req->rl_registered);
+ 
+ 		iptr = xdr_encode_rdma_segment(iptr, mw);
+ 
+diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
+index d1ee33f..81cd31a 100644
+--- a/net/sunrpc/xprtrdma/verbs.c
++++ b/net/sunrpc/xprtrdma/verbs.c
+@@ -776,9 +776,7 @@ static void rpcrdma_destroy_id(struct rdma_cm_id *id)
+ 
+ 	spin_lock(&buf->rb_recovery_lock);
+ 	while (!list_empty(&buf->rb_stale_mrs)) {
+-		mw = list_first_entry(&buf->rb_stale_mrs,
+-				      struct rpcrdma_mw, mw_list);
+-		list_del_init(&mw->mw_list);
++		mw = rpcrdma_pop_mw(&buf->rb_stale_mrs);
+ 		spin_unlock(&buf->rb_recovery_lock);
+ 
+ 		dprintk("RPC:       %s: recovering MR %p\n", __func__, mw);
+@@ -796,7 +794,7 @@ static void rpcrdma_destroy_id(struct rdma_cm_id *id)
+ 	struct rpcrdma_buffer *buf = &r_xprt->rx_buf;
+ 
+ 	spin_lock(&buf->rb_recovery_lock);
+-	list_add(&mw->mw_list, &buf->rb_stale_mrs);
++	rpcrdma_push_mw(mw, &buf->rb_stale_mrs);
+ 	spin_unlock(&buf->rb_recovery_lock);
+ 
+ 	schedule_delayed_work(&buf->rb_recovery_worker, 0);
+@@ -1072,11 +1070,8 @@ struct rpcrdma_mw *
+ 	struct rpcrdma_mw *mw = NULL;
+ 
+ 	spin_lock(&buf->rb_mwlock);
+-	if (!list_empty(&buf->rb_mws)) {
+-		mw = list_first_entry(&buf->rb_mws,
+-				      struct rpcrdma_mw, mw_list);
+-		list_del_init(&mw->mw_list);
+-	}
++	if (!list_empty(&buf->rb_mws))
++		mw = rpcrdma_pop_mw(&buf->rb_mws);
+ 	spin_unlock(&buf->rb_mwlock);
+ 
+ 	if (!mw)
+@@ -1099,7 +1094,7 @@ struct rpcrdma_mw *
+ 	struct rpcrdma_buffer *buf = &r_xprt->rx_buf;
+ 
+ 	spin_lock(&buf->rb_mwlock);
+-	list_add_tail(&mw->mw_list, &buf->rb_mws);
++	rpcrdma_push_mw(mw, &buf->rb_mws);
+ 	spin_unlock(&buf->rb_mwlock);
+ }
+ 
+diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
+index 852dd0a..171a351 100644
+--- a/net/sunrpc/xprtrdma/xprt_rdma.h
++++ b/net/sunrpc/xprtrdma/xprt_rdma.h
+@@ -354,6 +354,22 @@ struct rpcrdma_req {
+ 	return rqst->rq_xprtdata;
+ }
+ 
++static inline void
++rpcrdma_push_mw(struct rpcrdma_mw *mw, struct list_head *list)
++{
++	list_add_tail(&mw->mw_list, list);
++}
++
++static inline struct rpcrdma_mw *
++rpcrdma_pop_mw(struct list_head *list)
++{
++	struct rpcrdma_mw *mw;
++
++	mw = list_first_entry(list, struct rpcrdma_mw, mw_list);
++	list_del(&mw->mw_list);
++	return mw;
++}
++
+ /*
+  * struct rpcrdma_buffer -- holds list/queue of pre-registered memory for
+  * inline requests/replies, and client/server credits.
 
-
- fs/nfs/nfs4proc.c               |    3 -
- fs/nfsd/nfs4callback.c          |    2 -
- include/linux/sunrpc/clnt.h     |    5 ++
- include/linux/sunrpc/sched.h    |    4 ++
- net/sunrpc/clnt.c               |   28 ++++++------
- net/sunrpc/xprt.c               |    6 ++
- net/sunrpc/xprtrdma/fmr_ops.c   |    5 --
- net/sunrpc/xprtrdma/frwr_ops.c  |   11 ++---
- net/sunrpc/xprtrdma/rpc_rdma.c  |   20 +++++---
- net/sunrpc/xprtrdma/transport.c |   74 +++++++++++++++++++++++++++++--
- net/sunrpc/xprtrdma/verbs.c     |   94 ++++++++++++++-------------------------
- net/sunrpc/xprtrdma/xprt_rdma.h |   23 ++++++++++
- net/sunrpc/xprtsock.c           |    2 +
- 13 files changed, 174 insertions(+), 103 deletions(-)
-
---
-Chuck Lever
