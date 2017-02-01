@@ -1,372 +1,64 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from out03.mta.xmission.com ([166.70.13.233]:60070 "EHLO
-        out03.mta.xmission.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751004AbdBAGmq (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 1 Feb 2017 01:42:46 -0500
-From: ebiederm@xmission.com (Eric W. Biederman)
-To: Seth Forshee <seth.forshee@canonical.com>
-Cc: Trond Myklebust <trondmy@primarydata.com>,
-        "bfields\@fieldses.org" <bfields@fieldses.org>,
-        "anna.schumaker\@netapp.com" <anna.schumaker@netapp.com>,
-        Steve French <sfrench@primarydata.com>,
-        "linux-nfs\@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "dhowells\@redhat.com" <dhowells@redhat.com>,
-        <linux-fsdevel@vger.kernel.org>
-References: <20170110145504.GH52661@ubuntu-hedt> <87ziiyfntm.fsf@xmission.com>
-        <20170124151745.GA114560@ubuntu-hedt> <87efzsdq5b.fsf@xmission.com>
-        <87inp4rqaj.fsf@xmission.com>
-        <1485301593.36478.2.camel@primarydata.com>
-        <87y3y0ko5s.fsf@xmission.com>
-        <1485303265.36478.7.camel@primarydata.com>
-        <20170125145251.GB51023@ubuntu-hedt>
-        <1485359474.113155.1.camel@primarydata.com>
-        <20170125162811.GC51023@ubuntu-hedt> <87mve6pgci.fsf@xmission.com>
-Date: Wed, 01 Feb 2017 19:38:17 +1300
-In-Reply-To: <87mve6pgci.fsf@xmission.com> (Eric W. Biederman's message of
-        "Wed, 01 Feb 2017 19:36:45 +1300")
-Message-ID: <87h94epg9y.fsf_-_@xmission.com>
+Received: from smtpout.microchip.com ([198.175.253.82]:36568 "EHLO
+        email.microchip.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+        with ESMTP id S1751404AbdBAJkc (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 1 Feb 2017 04:40:32 -0500
+Subject: Re: [PATCH 4.10-rc3 03/13] net: macb: fix build errors when
+ linux/phy*.h is removed from net/dsa.h
+To: Russell King <rmk+kernel@armlinux.org.uk>,
+        <linux-mips@linux-mips.org>, <linux-nfs@vger.kernel.org>,
+        <linux-scsi@vger.kernel.org>, <linux-usb@vger.kernel.org>,
+        <linux-wireless@vger.kernel.org>, <netdev@vger.kernel.org>,
+        <target-devel@vger.kernel.org>
+References: <20170131191704.GA8281@n2100.armlinux.org.uk>
+ <E1cYdws-0000W9-GV@rmk-PC.armlinux.org.uk>
+CC: "David S. Miller" <davem@davemloft.net>,
+        Florian Fainelli <f.fainelli@gmail.com>
+From: Nicolas Ferre <nicolas.ferre@atmel.com>
+Message-ID: <0a75edf8-df17-fb7f-294f-8c1e04479a3b@atmel.com>
+Date: Wed, 1 Feb 2017 10:40:53 +0100
 MIME-Version: 1.0
-Content-Type: text/plain
-Subject: [REVIEW][PATCH] fs: Better permission checking for submounts
+In-Reply-To: <E1cYdws-0000W9-GV@rmk-PC.armlinux.org.uk>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Le 31/01/2017 à 20:18, Russell King a écrit :
+> drivers/net/ethernet/cadence/macb.h:862:33: sparse: expected ; at end of declaration
+> drivers/net/ethernet/cadence/macb.h:862:33: sparse: Expected } at end of struct-union-enum-specifier
+> drivers/net/ethernet/cadence/macb.h:862:33: sparse: got phy_interface
+> drivers/net/ethernet/cadence/macb.h:877:1: sparse: Expected ; at the end of type declaration
+> drivers/net/ethernet/cadence/macb.h:877:1: sparse: got }
+> In file included from drivers/net/ethernet/cadence/macb_pci.c:29:0:
+> drivers/net/ethernet/cadence/macb.h:862:2: error: unknown type name 'phy_interface_t'
+>      phy_interface_t  phy_interface;
+>      ^~~~~~~~~~~~~~~
+> 
+> Add linux/phy.h to macb.h
+> 
+> Signed-off-by: Russell King <rmk+kernel@armlinux.org.uk>
 
-To support unprivileged users mounting filesystems two permission
-checks have to be performed: a test to see if the user allowed to
-create a mount in the mount namespace, and a test to see if
-the user is allowed to access the specified filesystem.
+Acked-by: Nicolas Ferre <nicolas.ferre@atmel.com>
 
-The automount case is special in that mounting the original filesystem
-grants permission to mount the sub-filesystems, to any user who
-happens to stumble across the their mountpoint and satisfies the
-ordinary filesystem permission checks.
+> ---
+>  drivers/net/ethernet/cadence/macb.h | 2 ++
+>  1 file changed, 2 insertions(+)
+> 
+> diff --git a/drivers/net/ethernet/cadence/macb.h b/drivers/net/ethernet/cadence/macb.h
+> index d67adad67be1..383da8cf5f6d 100644
+> --- a/drivers/net/ethernet/cadence/macb.h
+> +++ b/drivers/net/ethernet/cadence/macb.h
+> @@ -10,6 +10,8 @@
+>  #ifndef _MACB_H
+>  #define _MACB_H
+>  
+> +#include <linux/phy.h>
+> +
+>  #define MACB_GREGS_NBR 16
+>  #define MACB_GREGS_VERSION 2
+>  #define MACB_MAX_QUEUES 8
+> 
 
-Attempting to handle the automount case by using override_creds
-almost works.  It preserves the idea that permission to mount
-the original filesystem is permission to mount the sub-filesystem.
-Unfortunately using override_creds messes up the filesystems
-ordinary permission checks.
 
-Solve this by being explicit that a mount is a submount by introducing
-vfs_submount, and using it where appropriate.
-
-vfs_submount uses a new mount internal mount flags MS_SUBMOUNT, to let
-sget and friends know that a mount is a submount so they can take appropriate
-action.
-
-sget and sget_userns are modified to not perform any permission checks
-on submounts.
-
-follow_automount is modified to stop using override_creds as that
-has proven problemantic.
-
-do_mount is modified to always remove the new MS_SUBMOUNT flag so
-that we know userspace will never by able to specify it.
-
-autofs4 is modified to stop using current_real_cred that was put in
-there to handle the previous version of submount permission checking.
-
-cifs is modified to pass the mountpoint all of the way down to vfs_submount.
-
-debugfs is modified to pass the mountpoint all of the way down to
-trace_automount by adding a new parameter.  To make this change easier
-a new typedef debugfs_automount_t is introduced to capture the type of
-the debugfs automount function.
-
-Cc: stable@vger.kernel.org
-Fixes: 069d5ac9ae0d ("autofs:  Fix automounts by using current_real_cred()->uid")
-Fixes: aeaa4a79ff6a ("fs: Call d_automount with the filesystems creds")
-Signed-off-by: "Eric W. Biederman" <ebiederm@xmission.com>
----
- fs/afs/mntpt.c          |  2 +-
- fs/autofs4/waitq.c      |  4 ++--
- fs/cifs/cifs_dfs_ref.c  |  7 ++++---
- fs/debugfs/inode.c      |  8 ++++----
- fs/namei.c              |  3 ---
- fs/namespace.c          | 17 ++++++++++++++++-
- fs/nfs/namespace.c      |  2 +-
- fs/nfs/nfs4namespace.c  |  2 +-
- fs/super.c              | 13 ++++++++++---
- include/linux/debugfs.h |  3 ++-
- include/linux/mount.h   |  3 +++
- include/uapi/linux/fs.h |  1 +
- kernel/trace/trace.c    |  4 ++--
- 13 files changed, 47 insertions(+), 22 deletions(-)
-
-diff --git a/fs/afs/mntpt.c b/fs/afs/mntpt.c
-index 81dd075356b9..d4fb0afc0097 100644
---- a/fs/afs/mntpt.c
-+++ b/fs/afs/mntpt.c
-@@ -202,7 +202,7 @@ static struct vfsmount *afs_mntpt_do_automount(struct dentry *mntpt)
- 
- 	/* try and do the mount */
- 	_debug("--- attempting mount %s -o %s ---", devname, options);
--	mnt = vfs_kern_mount(&afs_fs_type, 0, devname, options);
-+	mnt = vfs_submount(mntpt, &afs_fs_type, devname, options);
- 	_debug("--- mount result %p ---", mnt);
- 
- 	free_page((unsigned long) devname);
-diff --git a/fs/autofs4/waitq.c b/fs/autofs4/waitq.c
-index 1278335ce366..79fbd85db4ba 100644
---- a/fs/autofs4/waitq.c
-+++ b/fs/autofs4/waitq.c
-@@ -436,8 +436,8 @@ int autofs4_wait(struct autofs_sb_info *sbi,
- 		memcpy(&wq->name, &qstr, sizeof(struct qstr));
- 		wq->dev = autofs4_get_dev(sbi);
- 		wq->ino = autofs4_get_ino(sbi);
--		wq->uid = current_real_cred()->uid;
--		wq->gid = current_real_cred()->gid;
-+		wq->uid = current_cred()->uid;
-+		wq->gid = current_cred()->gid;
- 		wq->pid = pid;
- 		wq->tgid = tgid;
- 		wq->status = -EINTR; /* Status return if interrupted */
-diff --git a/fs/cifs/cifs_dfs_ref.c b/fs/cifs/cifs_dfs_ref.c
-index ec9dbbcca3b9..9156be545b0f 100644
---- a/fs/cifs/cifs_dfs_ref.c
-+++ b/fs/cifs/cifs_dfs_ref.c
-@@ -245,7 +245,8 @@ char *cifs_compose_mount_options(const char *sb_mountdata,
-  * @fullpath:		full path in UNC format
-  * @ref:		server's referral
-  */
--static struct vfsmount *cifs_dfs_do_refmount(struct cifs_sb_info *cifs_sb,
-+static struct vfsmount *cifs_dfs_do_refmount(struct dentry *mntpt,
-+		struct cifs_sb_info *cifs_sb,
- 		const char *fullpath, const struct dfs_info3_param *ref)
- {
- 	struct vfsmount *mnt;
-@@ -259,7 +260,7 @@ static struct vfsmount *cifs_dfs_do_refmount(struct cifs_sb_info *cifs_sb,
- 	if (IS_ERR(mountdata))
- 		return (struct vfsmount *)mountdata;
- 
--	mnt = vfs_kern_mount(&cifs_fs_type, 0, devname, mountdata);
-+	mnt = vfs_submount(mntpt, &cifs_fs_type, devname, mountdata);
- 	kfree(mountdata);
- 	kfree(devname);
- 	return mnt;
-@@ -334,7 +335,7 @@ static struct vfsmount *cifs_dfs_do_automount(struct dentry *mntpt)
- 			mnt = ERR_PTR(-EINVAL);
- 			break;
- 		}
--		mnt = cifs_dfs_do_refmount(cifs_sb,
-+		mnt = cifs_dfs_do_refmount(mntpt, cifs_sb,
- 				full_path, referrals + i);
- 		cifs_dbg(FYI, "%s: cifs_dfs_do_refmount:%s , mnt:%p\n",
- 			 __func__, referrals[i].node_name, mnt);
-diff --git a/fs/debugfs/inode.c b/fs/debugfs/inode.c
-index f17fcf89e18e..1e30f74a9527 100644
---- a/fs/debugfs/inode.c
-+++ b/fs/debugfs/inode.c
-@@ -187,9 +187,9 @@ static const struct super_operations debugfs_super_operations = {
- 
- static struct vfsmount *debugfs_automount(struct path *path)
- {
--	struct vfsmount *(*f)(void *);
--	f = (struct vfsmount *(*)(void *))path->dentry->d_fsdata;
--	return f(d_inode(path->dentry)->i_private);
-+	debugfs_automount_t f;
-+	f = (debugfs_automount_t)path->dentry->d_fsdata;
-+	return f(path->dentry, d_inode(path->dentry)->i_private);
- }
- 
- static const struct dentry_operations debugfs_dops = {
-@@ -504,7 +504,7 @@ EXPORT_SYMBOL_GPL(debugfs_create_dir);
-  */
- struct dentry *debugfs_create_automount(const char *name,
- 					struct dentry *parent,
--					struct vfsmount *(*f)(void *),
-+					debugfs_automount_t f,
- 					void *data)
- {
- 	struct dentry *dentry = start_creating(name, parent);
-diff --git a/fs/namei.c b/fs/namei.c
-index 6fa3e9138fe4..da689c9c005e 100644
---- a/fs/namei.c
-+++ b/fs/namei.c
-@@ -1100,7 +1100,6 @@ static int follow_automount(struct path *path, struct nameidata *nd,
- 			    bool *need_mntput)
- {
- 	struct vfsmount *mnt;
--	const struct cred *old_cred;
- 	int err;
- 
- 	if (!path->dentry->d_op || !path->dentry->d_op->d_automount)
-@@ -1129,9 +1128,7 @@ static int follow_automount(struct path *path, struct nameidata *nd,
- 	if (nd->total_link_count >= 40)
- 		return -ELOOP;
- 
--	old_cred = override_creds(&init_cred);
- 	mnt = path->dentry->d_op->d_automount(path);
--	revert_creds(old_cred);
- 	if (IS_ERR(mnt)) {
- 		/*
- 		 * The filesystem is allowed to return -EISDIR here to indicate
-diff --git a/fs/namespace.c b/fs/namespace.c
-index 487ba30bb5c6..089a6b23135a 100644
---- a/fs/namespace.c
-+++ b/fs/namespace.c
-@@ -989,6 +989,21 @@ vfs_kern_mount(struct file_system_type *type, int flags, const char *name, void
- }
- EXPORT_SYMBOL_GPL(vfs_kern_mount);
- 
-+struct vfsmount *
-+vfs_submount(const struct dentry *mountpoint, struct file_system_type *type,
-+	     const char *name, void *data)
-+{
-+	/* Until it is worked out how to pass the user namespace
-+	 * through from the parent mount to the submount don't support
-+	 * unprivileged mounts with submounts.
-+	 */
-+	if (mountpoint->d_sb->s_user_ns != &init_user_ns)
-+		return ERR_PTR(-EPERM);
-+
-+	return vfs_kern_mount(type, MS_SUBMOUNT, name, data);
-+}
-+EXPORT_SYMBOL_GPL(vfs_submount);
-+
- static struct mount *clone_mnt(struct mount *old, struct dentry *root,
- 					int flag)
- {
-@@ -2794,7 +2809,7 @@ long do_mount(const char *dev_name, const char __user *dir_name,
- 
- 	flags &= ~(MS_NOSUID | MS_NOEXEC | MS_NODEV | MS_ACTIVE | MS_BORN |
- 		   MS_NOATIME | MS_NODIRATIME | MS_RELATIME| MS_KERNMOUNT |
--		   MS_STRICTATIME | MS_NOREMOTELOCK);
-+		   MS_STRICTATIME | MS_NOREMOTELOCK | MS_SUBMOUNT);
- 
- 	if (flags & MS_REMOUNT)
- 		retval = do_remount(&path, flags & ~MS_REMOUNT, mnt_flags,
-diff --git a/fs/nfs/namespace.c b/fs/nfs/namespace.c
-index 5551e8ef67fd..e49d831c4e85 100644
---- a/fs/nfs/namespace.c
-+++ b/fs/nfs/namespace.c
-@@ -226,7 +226,7 @@ static struct vfsmount *nfs_do_clone_mount(struct nfs_server *server,
- 					   const char *devname,
- 					   struct nfs_clone_mount *mountdata)
- {
--	return vfs_kern_mount(&nfs_xdev_fs_type, 0, devname, mountdata);
-+	return vfs_submount(mountdata->dentry, &nfs_xdev_fs_type, devname, mountdata);
- }
- 
- /**
-diff --git a/fs/nfs/nfs4namespace.c b/fs/nfs/nfs4namespace.c
-index d21104912676..d8b040bd9814 100644
---- a/fs/nfs/nfs4namespace.c
-+++ b/fs/nfs/nfs4namespace.c
-@@ -279,7 +279,7 @@ static struct vfsmount *try_location(struct nfs_clone_mount *mountdata,
- 				mountdata->hostname,
- 				mountdata->mnt_path);
- 
--		mnt = vfs_kern_mount(&nfs4_referral_fs_type, 0, page, mountdata);
-+		mnt = vfs_submount(mountdata->dentry, &nfs4_referral_fs_type, page, mountdata);
- 		if (!IS_ERR(mnt))
- 			break;
- 	}
-diff --git a/fs/super.c b/fs/super.c
-index 1709ed029a2c..4185844f7a12 100644
---- a/fs/super.c
-+++ b/fs/super.c
-@@ -469,7 +469,7 @@ struct super_block *sget_userns(struct file_system_type *type,
- 	struct super_block *old;
- 	int err;
- 
--	if (!(flags & MS_KERNMOUNT) &&
-+	if (!(flags & (MS_KERNMOUNT|MS_SUBMOUNT)) &&
- 	    !(type->fs_flags & FS_USERNS_MOUNT) &&
- 	    !capable(CAP_SYS_ADMIN))
- 		return ERR_PTR(-EPERM);
-@@ -499,7 +499,7 @@ struct super_block *sget_userns(struct file_system_type *type,
- 	}
- 	if (!s) {
- 		spin_unlock(&sb_lock);
--		s = alloc_super(type, flags, user_ns);
-+		s = alloc_super(type, (flags & ~MS_SUBMOUNT), user_ns);
- 		if (!s)
- 			return ERR_PTR(-ENOMEM);
- 		goto retry;
-@@ -540,8 +540,15 @@ struct super_block *sget(struct file_system_type *type,
- {
- 	struct user_namespace *user_ns = current_user_ns();
- 
-+	/* We don't yet pass the user namespace of the parent
-+	 * mount through to here so always use &init_user_ns
-+	 * until that changes.
-+	 */
-+	if (flags & MS_SUBMOUNT)
-+		user_ns = &init_user_ns;
-+
- 	/* Ensure the requestor has permissions over the target filesystem */
--	if (!(flags & MS_KERNMOUNT) && !ns_capable(user_ns, CAP_SYS_ADMIN))
-+	if (!(flags & (MS_KERNMOUNT|MS_SUBMOUNT)) && !ns_capable(user_ns, CAP_SYS_ADMIN))
- 		return ERR_PTR(-EPERM);
- 
- 	return sget_userns(type, test, set, flags, user_ns, data);
-diff --git a/include/linux/debugfs.h b/include/linux/debugfs.h
-index 014cc564d1c4..233006be30aa 100644
---- a/include/linux/debugfs.h
-+++ b/include/linux/debugfs.h
-@@ -97,9 +97,10 @@ struct dentry *debugfs_create_dir(const char *name, struct dentry *parent);
- struct dentry *debugfs_create_symlink(const char *name, struct dentry *parent,
- 				      const char *dest);
- 
-+typedef struct vfsmount *(*debugfs_automount_t)(struct dentry *, void *);
- struct dentry *debugfs_create_automount(const char *name,
- 					struct dentry *parent,
--					struct vfsmount *(*f)(void *),
-+					debugfs_automount_t f,
- 					void *data);
- 
- void debugfs_remove(struct dentry *dentry);
-diff --git a/include/linux/mount.h b/include/linux/mount.h
-index c6f55158d5e5..8e0352af06b7 100644
---- a/include/linux/mount.h
-+++ b/include/linux/mount.h
-@@ -90,6 +90,9 @@ struct file_system_type;
- extern struct vfsmount *vfs_kern_mount(struct file_system_type *type,
- 				      int flags, const char *name,
- 				      void *data);
-+extern struct vfsmount *vfs_submount(const struct dentry *mountpoint,
-+				     struct file_system_type *type,
-+				     const char *name, void *data);
- 
- extern void mnt_set_expiry(struct vfsmount *mnt, struct list_head *expiry_list);
- extern void mark_mounts_for_expiry(struct list_head *mounts);
-diff --git a/include/uapi/linux/fs.h b/include/uapi/linux/fs.h
-index 36da93fbf188..048a85e9f017 100644
---- a/include/uapi/linux/fs.h
-+++ b/include/uapi/linux/fs.h
-@@ -132,6 +132,7 @@ struct inodes_stat_t {
- #define MS_LAZYTIME	(1<<25) /* Update the on-disk [acm]times lazily */
- 
- /* These sb flags are internal to the kernel */
-+#define MS_SUBMOUNT     (1<<26)
- #define MS_NOREMOTELOCK	(1<<27)
- #define MS_NOSEC	(1<<28)
- #define MS_BORN		(1<<29)
-diff --git a/kernel/trace/trace.c b/kernel/trace/trace.c
-index d7449783987a..310f0ea0d1a2 100644
---- a/kernel/trace/trace.c
-+++ b/kernel/trace/trace.c
-@@ -7503,7 +7503,7 @@ init_tracer_tracefs(struct trace_array *tr, struct dentry *d_tracer)
- 	ftrace_init_tracefs(tr, d_tracer);
- }
- 
--static struct vfsmount *trace_automount(void *ingore)
-+static struct vfsmount *trace_automount(struct dentry *mntpt, void *ingore)
- {
- 	struct vfsmount *mnt;
- 	struct file_system_type *type;
-@@ -7516,7 +7516,7 @@ static struct vfsmount *trace_automount(void *ingore)
- 	type = get_fs_type("tracefs");
- 	if (!type)
- 		return NULL;
--	mnt = vfs_kern_mount(type, 0, "tracefs", NULL);
-+	mnt = vfs_submount(mntpt, type, "tracefs", NULL);
- 	put_filesystem(type);
- 	if (IS_ERR(mnt))
- 		return NULL;
 -- 
-2.10.1
-
-
+Nicolas Ferre
