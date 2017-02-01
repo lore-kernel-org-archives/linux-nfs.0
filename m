@@ -1,159 +1,109 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-it0-f68.google.com ([209.85.214.68]:36608 "EHLO
-        mail-it0-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1752056AbdBAVb1 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 1 Feb 2017 16:31:27 -0500
-Received: by mail-it0-f68.google.com with SMTP id f200so3876346itf.3
-        for <linux-nfs@vger.kernel.org>; Wed, 01 Feb 2017 13:31:26 -0800 (PST)
-MIME-Version: 1.0
-In-Reply-To: <20161202164705.GB20384@parsley.fieldses.org>
-References: <1479933700-5743-1-git-send-email-bfields@redhat.com>
- <1479933700-5743-2-git-send-email-bfields@redhat.com> <20161201220716.GB1589@fieldses.org>
- <CAHc6FU721nR8QmcpJsDWtvg9EqzK-krYH7GTGw0Y=s7nSEy-vg@mail.gmail.com> <20161202164705.GB20384@parsley.fieldses.org>
-From: Olga Kornievskaia <aglo@umich.edu>
-Date: Wed, 1 Feb 2017 16:31:25 -0500
-Message-ID: <CAN-5tyER30ZQk9f0j1DDOYAsmk6XDnbay2my68R6gVDp+0paNQ@mail.gmail.com>
-Subject: Re: [PATCH 1/2] nfs: add support for the umask attribute
-To: "J. Bruce Fields" <bfields@redhat.com>
-Cc: Andreas Gruenbacher <agruenba@redhat.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
+Received: from fieldses.org ([173.255.197.46]:37062 "EHLO fieldses.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1753769AbdBAWha (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 1 Feb 2017 17:37:30 -0500
+Date: Wed, 1 Feb 2017 17:37:26 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Olga Kornievskaia <aglo@umich.edu>
+Cc: "J. Bruce Fields" <bfields@redhat.com>,
+        Andreas Gruenbacher <agruenba@redhat.com>,
         Trond Myklebust <trond.myklebust@primarydata.com>,
         Anna Schumaker <schumakeranna@gmail.com>,
         Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=UTF-8
+Subject: Re: [PATCH 1/2] nfs: add support for the umask attribute
+Message-ID: <20170201223726.GB2014@fieldses.org>
+References: <1479933700-5743-1-git-send-email-bfields@redhat.com>
+ <1479933700-5743-2-git-send-email-bfields@redhat.com>
+ <20161201220716.GB1589@fieldses.org>
+ <CAHc6FU721nR8QmcpJsDWtvg9EqzK-krYH7GTGw0Y=s7nSEy-vg@mail.gmail.com>
+ <20161202164705.GB20384@parsley.fieldses.org>
+ <CAN-5tyER30ZQk9f0j1DDOYAsmk6XDnbay2my68R6gVDp+0paNQ@mail.gmail.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <CAN-5tyER30ZQk9f0j1DDOYAsmk6XDnbay2my68R6gVDp+0paNQ@mail.gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Any plans to add wireshark support for this?
+On Wed, Feb 01, 2017 at 04:31:25PM -0500, Olga Kornievskaia wrote:
+> Any plans to add wireshark support for this?
 
-On Fri, Dec 2, 2016 at 11:47 AM, J. Bruce Fields <bfields@redhat.com> wrote:
-> On Fri, Dec 02, 2016 at 02:12:26PM +0100, Andreas Gruenbacher wrote:
->> On Thu, Dec 1, 2016 at 11:07 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
->> > On Wed, Nov 23, 2016 at 03:41:39PM -0500, J. Bruce Fields wrote:
->> >> From: Andreas Gruenbacher <agruenba@redhat.com>
->> >>
->> >> Clients can set the umask attribute when creating files to cause the
->> >> server to apply it always except when inheriting permissions from the
->> >> parent directory.  That way, the new files will end up with the same
->> >> permissions as files created locally.
->> >
->> > Trond asked out of band whether we could do away with the new
->> > server->caps bit and instead directly use the supported attribute
->> > bitmask (which is now also stored with the server).
->> >
->> > I haven't given this a real test yet, but it looks fine to me.
->> >
->> > If nobody sees an objection then I'll fold this into the client patch
->> > and resend.
->>
->> Sure. I'm wondering why the code isn't checking for any other
->> attributes like that.
->
-> No idea.
->
->> > diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
->> > index 0a8326bcb481..32969907e218 100644
->> > --- a/fs/nfs/dir.c
->> > +++ b/fs/nfs/dir.c
->> > @@ -1537,7 +1537,7 @@ int nfs_atomic_open(struct inode *dir, struct dentry *dentry,
->> >         if (open_flags & O_CREAT) {
->> >                 struct nfs_server *server = NFS_SERVER(dir);
->> >
->> > -               if (!(server->caps & NFS_CAP_MODE_UMASK))
->> > +               if (!(server->attr_bitmask_nl[2] & FATTR4_WORD2_MODE_UMASK))
->>
->> It seems that this patch should be checking in server->attr_bitmask,
->> not server->attr_bitmask_nl.
->
-> Huh, I missed that distinction.
->
-> Looks like the results are the same, but, sure, attr_bitmask is probably
-> better; fixed.  Thanks for taking a look.
->
-> --b.
->
->>
->> >                         mode &= ~current_umask();
->> >
->> >                 attr.ia_valid |= ATTR_MODE;
->> > diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
->> > index 1fa15fbf7b48..960ba55ddde7 100644
->> > --- a/fs/nfs/nfs4proc.c
->> > +++ b/fs/nfs/nfs4proc.c
->> > @@ -3323,8 +3323,7 @@ static int _nfs4_server_capabilities(struct nfs_server *server, struct nfs_fh *f
->> >                                 NFS_CAP_MODE|NFS_CAP_NLINK|NFS_CAP_OWNER|
->> >                                 NFS_CAP_OWNER_GROUP|NFS_CAP_ATIME|
->> >                                 NFS_CAP_CTIME|NFS_CAP_MTIME|
->> > -                               NFS_CAP_SECURITY_LABEL|
->> > -                               NFS_CAP_MODE_UMASK);
->> > +                               NFS_CAP_SECURITY_LABEL);
->> >                 if (res.attr_bitmask[0] & FATTR4_WORD0_ACL &&
->> >                                 res.acl_bitmask & ACL4_SUPPORT_ALLOW_ACL)
->> >                         server->caps |= NFS_CAP_ACLS;
->> > @@ -3352,8 +3351,6 @@ static int _nfs4_server_capabilities(struct nfs_server *server, struct nfs_fh *f
->> >                 if (res.attr_bitmask[2] & FATTR4_WORD2_SECURITY_LABEL)
->> >                         server->caps |= NFS_CAP_SECURITY_LABEL;
->> >  #endif
->> > -               if (res.attr_bitmask[2] & FATTR4_WORD2_MODE_UMASK)
->> > -                       server->caps |= NFS_CAP_MODE_UMASK;
->> >                 memcpy(server->attr_bitmask_nl, res.attr_bitmask,
->> >                                 sizeof(server->attr_bitmask));
->> >                 server->attr_bitmask_nl[2] &= ~FATTR4_WORD2_SECURITY_LABEL;
->> > @@ -3969,7 +3966,7 @@ nfs4_proc_create(struct inode *dir, struct dentry *dentry, struct iattr *sattr,
->> >
->> >         ilabel = nfs4_label_init_security(dir, dentry, sattr, &l);
->> >
->> > -       if (!(server->caps & NFS_CAP_MODE_UMASK))
->> > +       if (!(server->attr_bitmask_nl[2] & FATTR4_WORD2_MODE_UMASK))
->> >                 sattr->ia_mode &= ~current_umask();
->> >         state = nfs4_do_open(dir, ctx, flags, sattr, ilabel, NULL);
->> >         if (IS_ERR(state)) {
->> > @@ -4283,7 +4280,7 @@ static int nfs4_proc_mkdir(struct inode *dir, struct dentry *dentry,
->> >
->> >         label = nfs4_label_init_security(dir, dentry, sattr, &l);
->> >
->> > -       if (!(server->caps & NFS_CAP_MODE_UMASK))
->> > +       if (!(server->attr_bitmask_nl[2] & FATTR4_WORD2_MODE_UMASK))
->> >                 sattr->ia_mode &= ~current_umask();
->> >         do {
->> >                 err = _nfs4_proc_mkdir(dir, dentry, sattr, label);
->> > @@ -4394,7 +4391,7 @@ static int nfs4_proc_mknod(struct inode *dir, struct dentry *dentry,
->> >
->> >         label = nfs4_label_init_security(dir, dentry, sattr, &l);
->> >
->> > -       if (!(server->caps & NFS_CAP_MODE_UMASK))
->> > +       if (!(server->attr_bitmask_nl[2] & FATTR4_WORD2_MODE_UMASK))
->> >                 sattr->ia_mode &= ~current_umask();
->> >         do {
->> >                 err = _nfs4_proc_mknod(dir, dentry, sattr, label, rdev);
->> > diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
->> > index 420d27865504..54714ce5dbd1 100644
->> > --- a/fs/nfs/nfs4xdr.c
->> > +++ b/fs/nfs/nfs4xdr.c
->> > @@ -1023,7 +1023,7 @@ static void encode_attrs(struct xdr_stream *xdr, const struct iattr *iap,
->> >                 bmval[0] |= FATTR4_WORD0_SIZE;
->> >                 len += 8;
->> >         }
->> > -       if (!(server->caps & NFS_CAP_MODE_UMASK))
->> > +       if (!(server->attr_bitmask_nl[2] & FATTR4_WORD2_MODE_UMASK))
->> >                 umask = NULL;
->> >         if (iap->ia_valid & ATTR_MODE) {
->> >                 if (umask) {
->> > diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
->> > index 87ab710772b3..b34097c67848 100644
->> > --- a/include/linux/nfs_fs_sb.h
->> > +++ b/include/linux/nfs_fs_sb.h
->> > @@ -250,6 +250,5 @@ struct nfs_server {
->> >  #define NFS_CAP_LAYOUTSTATS    (1U << 22)
->> >  #define NFS_CAP_CLONE          (1U << 23)
->> >  #define NFS_CAP_COPY           (1U << 24)
->> > -#define NFS_CAP_MODE_UMASK     (1U << 25)
->> >
->> >  #endif
->>
->> Thanks,
->> Andreas
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Digging around, all I can find is this, which is outdated (it's for the
+umask not the umask+mode attribute), and never went upstream.
+
+I'll try to get back to this soon.  (But if somebody else can fist,
+great.)
+
+--b.
+
+commit ed7c3053a99e
+Author: Andreas Gruenbacher <agruenba@redhat.com>
+Date:   Thu Jan 14 21:20:38 2016 +0100
+
+    NFS: Add support for the proposed umask attribute
+    
+    Clients can set the umask attribute when creating files to cause the
+    server to apply it always except when inheriting permissions from the
+    parent directory.
+    
+    Change-Id: Id2a23c6839021107fdb32252be4a689b6125222c
+    Signed-off-by: J. Bruce Fields <bfields@fieldses.org>
+
+diff --git a/epan/dissectors/packet-nfs.c b/epan/dissectors/packet-nfs.c
+index 010db6e96761..bf458d4bccf4 100644
+--- a/epan/dissectors/packet-nfs.c
++++ b/epan/dissectors/packet-nfs.c
+@@ -420,6 +420,7 @@ static int hf_nfs4_fattr_layout_blksize = -1;
+ static int hf_nfs4_fattr_security_label_lfs = -1;
+ static int hf_nfs4_fattr_security_label_pi = -1;
+ static int hf_nfs4_fattr_security_label_context = -1;
++static int hf_nfs4_fattr_umask_mask = -1;
+ static int hf_nfs4_who = -1;
+ static int hf_nfs4_server = -1;
+ static int hf_nfs4_fslocation = -1;
+@@ -6134,6 +6135,8 @@ static const value_string fattr4_names[] = {
+ 	{	FATTR4_CHANGE_ATTR_TYPE,   "Change_Attr_Type"		},
+ #define FATTR4_SECURITY_LABEL      80
+ 	{	FATTR4_SECURITY_LABEL,     "Security_Label"		},
++#define FATTR4_UMASK               81
++	{	FATTR4_UMASK,              "Umask"			},
+ 	{	0,	NULL	}
+ };
+ static value_string_ext fattr4_names_ext = VALUE_STRING_EXT_INIT(fattr4_names);
+@@ -6718,6 +6721,14 @@ dissect_nfs4_security_label(tvbuff_t *tvb, proto_tree *tree, int offset)
+ 	return offset;
+ }
+ 
++static int
++dissect_nfs4_umask(tvbuff_t *tvb, proto_tree *tree, int offset)
++{
++	offset = dissect_nfs4_mode(tvb, offset, tree);
++	offset = dissect_rpc_uint32(tvb, tree, hf_nfs4_fattr_umask_mask, offset);
++	return offset;
++}
++
+ #define FATTR4_BITMAP_ONLY 0
+ #define FATTR4_DISSECT_VALUES 1
+ 
+@@ -7120,6 +7131,10 @@ dissect_nfs4_fattrs(tvbuff_t *tvb, int offset, packet_info *pinfo, proto_tree *t
+ 						offset = dissect_nfs4_security_label(tvb, attr_tree, offset);
+ 						break;
+ 
++					case FATTR4_UMASK:
++						offset = dissect_nfs4_umask(tvb, attr_tree, offset);
++						break;
++
+ 					default:
+ 						break;
+ 					}
+@@ -12510,6 +12525,10 @@ proto_register_nfs(void)
+ 			"label_format", "nfs.fattr4.security_label.lfs", FT_UINT32, BASE_DEC,
+ 			NULL, 0, NULL, HFILL }},
+ 
++		{ &hf_nfs4_fattr_umask, {
++			"umask", "nfs.fattr4.umask", FT_UINT32, BASE_OCT,
++			NULL, 0, NULL, HFILL }},
++
+ 		{ &hf_nfs4_fattr_security_label_pi, {
+ 			"policy_id", "nfs.fattr4.security_label.pi", FT_UINT32, BASE_DEC,
+ 			NULL, 0, NULL, HFILL }},
