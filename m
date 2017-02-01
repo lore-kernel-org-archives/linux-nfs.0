@@ -1,155 +1,257 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f195.google.com ([209.85.223.195]:35656 "EHLO
-        mail-io0-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751014AbdBAOuT (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 1 Feb 2017 09:50:19 -0500
-Subject: Re: [PATCH v2 7/7] sunrpc: Allow keepalive ping on a credit-full
- transport
-To: Chuck Lever <chuck.lever@oracle.com>, anna.schumaker@netapp.com
-References: <20170131183345.5325.47072.stgit@manet.1015granger.net>
- <20170131183906.5325.79683.stgit@manet.1015granger.net>
-Cc: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-From: Anna Schumaker <schumaker.anna@gmail.com>
-Message-ID: <6b94f05b-8601-9d31-bbe5-915e0bb015e1@gmail.com>
-Date: Wed, 1 Feb 2017 09:50:17 -0500
-MIME-Version: 1.0
-In-Reply-To: <20170131183906.5325.79683.stgit@manet.1015granger.net>
-Content-Type: text/plain; charset=utf-8
+Received: from mx1.redhat.com ([209.132.183.28]:37298 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1750873AbdBAPTa (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 1 Feb 2017 10:19:30 -0500
+From: Scott Mayhew <smayhew@redhat.com>
+To: steved@redhat.com
+Cc: neilb@suse.com, linux-nfs@vger.kernel.org
+Subject: [nfs-utils PATCH v2 1/2] libnsm.a: refactor nsm_setup_pathnames() and nsm_make_pathname()
+Date: Wed,  1 Feb 2017 10:19:28 -0500
+Message-Id: <1485962369-25852-2-git-send-email-smayhew@redhat.com>
+In-Reply-To: <1485962369-25852-1-git-send-email-smayhew@redhat.com>
+References: <1485962369-25852-1-git-send-email-smayhew@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Chuck,
+Move the logic in nsm_setup_pathnames() and nsm_make_pathname() to
+similar generic functions in libmisc.a so that the exportfs and
+rpc.mountd programs can make use of them later.
 
-On 01/31/2017 01:39 PM, Chuck Lever wrote:
-> Allow RPC-over-RDMA to send NULL pings even when the transport has
-> hit its credit limit. One RPC-over-RDMA credit is reserved for
-> operations like keepalive.
-> 
-> For transports that convey NFSv4, it seems like lease renewal would
-> also be a candidate for using a priority transport slot. I'd like to
-> see a mechanism better than RPCRDMA_PRIORITY that can ensure only
-> one priority operation is in use at a time.
-> 
-> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-> ---
->  include/linux/sunrpc/sched.h    |    2 ++
->  net/sunrpc/xprt.c               |    4 ++++
->  net/sunrpc/xprtrdma/transport.c |    3 ++-
->  net/sunrpc/xprtrdma/verbs.c     |   13 ++++++++-----
->  net/sunrpc/xprtrdma/xprt_rdma.h |    2 +-
->  5 files changed, 17 insertions(+), 7 deletions(-)
-> 
-> diff --git a/include/linux/sunrpc/sched.h b/include/linux/sunrpc/sched.h
-> index 13822e6..fcea158 100644
-> --- a/include/linux/sunrpc/sched.h
-> +++ b/include/linux/sunrpc/sched.h
-> @@ -127,6 +127,7 @@ struct rpc_task_setup {
->  #define RPC_TASK_TIMEOUT	0x1000		/* fail with ETIMEDOUT on timeout */
->  #define RPC_TASK_NOCONNECT	0x2000		/* return ENOTCONN if not connected */
->  #define RPC_TASK_NO_RETRANS_TIMEOUT	0x4000		/* wait forever for a reply */
-> +#define RPC_TASK_NO_CONG	0x8000		/* skip congestion control */
->  
->  #define RPC_TASK_SOFTPING	(RPC_TASK_SOFT | RPC_TASK_SOFTCONN)
->  
-> @@ -137,6 +138,7 @@ struct rpc_task_setup {
->  #define RPC_IS_SOFT(t)		((t)->tk_flags & (RPC_TASK_SOFT|RPC_TASK_TIMEOUT))
->  #define RPC_IS_SOFTCONN(t)	((t)->tk_flags & RPC_TASK_SOFTCONN)
->  #define RPC_WAS_SENT(t)		((t)->tk_flags & RPC_TASK_SENT)
-> +#define RPC_SKIP_CONG(t)	((t)->tk_flags & RPC_TASK_NO_CONG)
->  
->  #define RPC_TASK_RUNNING	0
->  #define RPC_TASK_QUEUED		1
-> diff --git a/net/sunrpc/xprt.c b/net/sunrpc/xprt.c
-> index b530a28..a477ee6 100644
-> --- a/net/sunrpc/xprt.c
-> +++ b/net/sunrpc/xprt.c
-> @@ -392,6 +392,10 @@ static inline void xprt_release_write(struct rpc_xprt *xprt, struct rpc_task *ta
->  {
->  	struct rpc_rqst *req = task->tk_rqstp;
->  
-> +	if (RPC_SKIP_CONG(task)) {
-> +		req->rq_cong = 0;
-> +		return 1;
-> +	}
->  	if (req->rq_cong)
->  		return 1;
->  	dprintk("RPC: %5u xprt_cwnd_limited cong = %lu cwnd = %lu\n",
-> diff --git a/net/sunrpc/xprtrdma/transport.c b/net/sunrpc/xprtrdma/transport.c
-> index 3a5a805..073fecd 100644
-> --- a/net/sunrpc/xprtrdma/transport.c
-> +++ b/net/sunrpc/xprtrdma/transport.c
-> @@ -546,7 +546,8 @@ static void rpcrdma_keepalive_release(void *calldata)
->  
->  	data = xprt_get(xprt);
->  	null_task = rpc_call_null_helper(task->tk_client, xprt, NULL,
-> -					 RPC_TASK_SOFTPING | RPC_TASK_ASYNC,
-> +					 RPC_TASK_SOFTPING | RPC_TASK_ASYNC |
-> +					 RPC_TASK_NO_CONG,
->  					 &rpcrdma_keepalive_call_ops, data);
->  	if (!IS_ERR(null_task))
->  		rpc_put_task(null_task);
-> diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
-> index 81cd31a..d9b5fa7 100644
-> --- a/net/sunrpc/xprtrdma/verbs.c
-> +++ b/net/sunrpc/xprtrdma/verbs.c
-> @@ -136,19 +136,20 @@
->  static void
->  rpcrdma_update_granted_credits(struct rpcrdma_rep *rep)
->  {
-> -	struct rpcrdma_msg *rmsgp = rdmab_to_msg(rep->rr_rdmabuf);
->  	struct rpcrdma_buffer *buffer = &rep->rr_rxprt->rx_buf;
-> +	__be32 *p = rep->rr_rdmabuf->rg_base;
->  	u32 credits;
->  
->  	if (rep->rr_len < RPCRDMA_HDRLEN_ERR)
->  		return;
->  
-> -	credits = be32_to_cpu(rmsgp->rm_credit);
-> +	credits = be32_to_cpup(p + 2);
-> +	if (credits > buffer->rb_max_requests)
-> +		credits = buffer->rb_max_requests;
-> +	/* Reserve one credit for keepalive ping */
-> +	credits--;
->  	if (credits == 0)
->  		credits = 1;	/* don't deadlock */
-> -	else if (credits > buffer->rb_max_requests)
-> -		credits = buffer->rb_max_requests;
-> -
->  	atomic_set(&buffer->rb_credits, credits);
->  }
->  
-> @@ -915,6 +916,8 @@ struct rpcrdma_rep *
->  	struct rpcrdma_buffer *buf = &r_xprt->rx_buf;
->  	int i, rc;
->  
-> +	if (r_xprt->rx_data.max_requests < 2)
-> +		return -EINVAL;
->  	buf->rb_max_requests = r_xprt->rx_data.max_requests;
->  	buf->rb_bc_srv_max_requests = 0;
->  	atomic_set(&buf->rb_credits, 1);
-> diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
-> index 95c1e3d..dd1340f 100644
-> --- a/net/sunrpc/xprtrdma/xprt_rdma.h
-> +++ b/net/sunrpc/xprtrdma/xprt_rdma.h
-> @@ -77,8 +77,8 @@ struct rpcrdma_ia {
->  	unsigned int		ri_max_send_sges;
->  	bool			ri_reminv_expected;
->  	bool			ri_implicit_roundup;
-> -	unsigned long		ri_flags;
->  	enum ib_mr_type		ri_mrtype;
-> +	unsigned long		ri_flags;
+Signed-off-by: Scott Mayhew <smayhew@redhat.com>
+---
+ support/include/misc.h   |   3 ++
+ support/misc/Makefile.am |   2 +-
+ support/misc/file.c      | 110 +++++++++++++++++++++++++++++++++++++++++++++++
+ support/nsm/file.c       |  45 ++-----------------
+ utils/statd/Makefile.am  |   1 +
+ 5 files changed, 118 insertions(+), 43 deletions(-)
+ create mode 100644 support/misc/file.c
 
-Any reason for the reordering here?
+diff --git a/support/include/misc.h b/support/include/misc.h
+index eedc1fe..6f9b47c 100644
+--- a/support/include/misc.h
++++ b/support/include/misc.h
+@@ -15,6 +15,9 @@
+ int	randomkey(unsigned char *keyout, int len);
+ int	weakrandomkey(unsigned char *keyout, int len);
+ 
++char *generic_make_pathname(const char *, const char *);
++_Bool generic_setup_basedir(const char *, const char *, char *);
++
+ extern int is_mountpoint(char *path);
+ 
+ /* size of the file pointer buffers for rpc procfs files */
+diff --git a/support/misc/Makefile.am b/support/misc/Makefile.am
+index 1048580..8936b0d 100644
+--- a/support/misc/Makefile.am
++++ b/support/misc/Makefile.am
+@@ -1,6 +1,6 @@
+ ## Process this file with automake to produce Makefile.in
+ 
+ noinst_LIBRARIES = libmisc.a
+-libmisc_a_SOURCES = tcpwrapper.c from_local.c mountpoint.c
++libmisc_a_SOURCES = tcpwrapper.c from_local.c mountpoint.c file.c
+ 
+ MAINTAINERCLEANFILES = Makefile.in
+diff --git a/support/misc/file.c b/support/misc/file.c
+new file mode 100644
+index 0000000..ee6d264
+--- /dev/null
++++ b/support/misc/file.c
+@@ -0,0 +1,110 @@
++/*
++ * Copyright 2009 Oracle.  All rights reserved.
++ * Copyright 2017 Red Hat, Inc.  All rights reserved.
++ *
++ * This file is part of nfs-utils.
++ *
++ * nfs-utils is free software; you can redistribute it and/or modify
++ * it under the terms of the GNU General Public License as published by
++ * the Free Software Foundation; either version 2 of the License, or
++ * (at your option) any later version.
++ *
++ * nfs-utils is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++ * GNU General Public License for more details.
++ *
++ * You should have received a copy of the GNU General Public License
++ * along with nfs-utils.  If not, see <http://www.gnu.org/licenses/>.
++ */
++
++#include <sys/stat.h>
++
++#include <string.h>
++#include <libgen.h>
++#include <stdio.h>
++#include <errno.h>
++#include <dirent.h>
++#include <stdlib.h>
++#include <stdbool.h>
++
++#include "xlog.h"
++#include "misc.h"
++
++static _Bool
++error_check(const int len, const size_t buflen)
++{
++	return (len < 0) || ((size_t)len >= buflen);
++}
++
++/*
++ * Returns a dynamically allocated, '\0'-terminated buffer
++ * containing an appropriate pathname, or NULL if an error
++ * occurs.  Caller must free the returned result with free(3).
++ */
++__attribute__((__malloc__))
++char *
++generic_make_pathname(const char *base, const char *leaf)
++{
++	size_t size;
++	char *path;
++	int len;
++
++	size = strlen(base) + strlen(leaf) + 2;
++	if (size > PATH_MAX)
++		return NULL;
++
++	path = malloc(size);
++	if (path == NULL)
++		return NULL;
++
++	len = snprintf(path, size, "%s/%s", base, leaf);
++	if (error_check(len, size)) {
++		free(path);
++		return NULL;
++	}
++
++	return path;
++}
++
++
++/**
++ * generic_setup_basedir - set up basedir
++ * @progname: C string containing name of program, for error messages
++ * @parentdir: C string containing pathname to on-disk state, or NULL
++ * @base: C string used to contain the basedir that is set up
++ *
++ * This runs before logging is set up, so error messages are directed
++ * to stderr.
++ *
++ * Returns true and sets up our basedir, if @parentdir was valid
++ * and usable; otherwise false is returned.
++ */
++_Bool
++generic_setup_basedir(const char *progname, const char *parentdir, char *base)
++{
++	static char buf[PATH_MAX];
++	struct stat st;
++	char *path;
++
++	/* First: test length of name and whether it exists */
++	if (lstat(parentdir, &st) == -1) {
++		(void)fprintf(stderr, "%s: Failed to stat %s: %s",
++				progname, parentdir, strerror(errno));
++		return false;
++	}
++
++	/* Ensure we have a clean directory pathname */
++	strncpy(buf, parentdir, sizeof(buf));
++	path = dirname(buf);
++	if (*path == '.') {
++		(void)fprintf(stderr, "%s: Unusable directory %s",
++				progname, parentdir);
++		return false;
++	}
++
++	xlog(D_CALL, "Using %s as the state directory", parentdir);
++	strncpy(base, parentdir, strlen(base));
++	base[strlen(parentdir)] = '\0';
++	return true;
++}
+diff --git a/support/nsm/file.c b/support/nsm/file.c
+index aafa755..865be54 100644
+--- a/support/nsm/file.c
++++ b/support/nsm/file.c
+@@ -88,6 +88,7 @@
+ 
+ #include "xlog.h"
+ #include "nsm.h"
++#include "misc.h"
+ 
+ #define RPCARGSLEN	(4 * (8 + 1))
+ #define LINELEN		(RPCARGSLEN + SM_PRIV_SIZE * 2 + 1)
+@@ -170,25 +171,7 @@ __attribute__((__malloc__))
+ static char *
+ nsm_make_pathname(const char *directory)
+ {
+-	size_t size;
+-	char *path;
+-	int len;
+-
+-	size = strlen(nsm_base_dirname) + strlen(directory) + 2;
+-	if (size > PATH_MAX)
+-		return NULL;
+-
+-	path = malloc(size);
+-	if (path == NULL)
+-		return NULL;
+-
+-	len = snprintf(path, size, "%s/%s", nsm_base_dirname, directory);
+-	if (error_check(len, size)) {
+-		free(path);
+-		return NULL;
+-	}
+-
+-	return path;
++	return generic_make_pathname(nsm_base_dirname, directory);
+ }
+ 
+ /*
+@@ -293,29 +276,7 @@ out:
+ _Bool
+ nsm_setup_pathnames(const char *progname, const char *parentdir)
+ {
+-	static char buf[PATH_MAX];
+-	struct stat st;
+-	char *path;
+-
+-	/* First: test length of name and whether it exists */
+-	if (lstat(parentdir, &st) == -1) {
+-		(void)fprintf(stderr, "%s: Failed to stat %s: %s",
+-				progname, parentdir, strerror(errno));
+-		return false;
+-	}
+-
+-	/* Ensure we have a clean directory pathname */
+-	strncpy(buf, parentdir, sizeof(buf));
+-	path = dirname(buf);
+-	if (*path == '.') {
+-		(void)fprintf(stderr, "%s: Unusable directory %s",
+-				progname, parentdir);
+-		return false;
+-	}
+-
+-	xlog(D_CALL, "Using %s as the state directory", parentdir);
+-	strncpy(nsm_base_dirname, parentdir, sizeof(nsm_base_dirname));
+-	return true;
++	return generic_setup_basedir(progname, parentdir, nsm_base_dirname);
+ }
+ 
+ /**
+diff --git a/utils/statd/Makefile.am b/utils/statd/Makefile.am
+index 152b680..ea32075 100644
+--- a/utils/statd/Makefile.am
++++ b/utils/statd/Makefile.am
+@@ -18,6 +18,7 @@ statd_LDADD = ../../support/nsm/libnsm.a \
+ 	      $(LIBWRAP) $(LIBNSL) $(LIBCAP) $(LIBTIRPC)
+ sm_notify_LDADD = ../../support/nsm/libnsm.a \
+ 		  ../../support/nfs/libnfs.a \
++	          ../../support/misc/libmisc.a \
+ 		  $(LIBNSL) $(LIBCAP) $(LIBTIRPC)
+ 
+ EXTRA_DIST = sim_sm_inter.x $(man8_MANS) simulate.c
+-- 
+2.7.4
 
-Thanks,
-Anna
-
->  	struct ib_qp_attr	ri_qp_attr;
->  	struct ib_qp_init_attr	ri_qp_init_attr;
->  };
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
