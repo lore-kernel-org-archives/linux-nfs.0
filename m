@@ -1,310 +1,154 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:58043 "EHLO mx2.suse.de"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1750842AbdBBFke (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 2 Feb 2017 00:40:34 -0500
-From: NeilBrown <neilb@suse.com>
-To: Scott Mayhew <smayhew@redhat.com>, steved@redhat.com
-Date: Thu, 02 Feb 2017 16:39:52 +1100
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [nfs-utils PATCH v2 2/2] mountd/exportfs: implement the -s/--state-directory-path option
-In-Reply-To: <1485962369-25852-3-git-send-email-smayhew@redhat.com>
-References: <1485962369-25852-1-git-send-email-smayhew@redhat.com> <1485962369-25852-3-git-send-email-smayhew@redhat.com>
-Message-ID: <87bmulxiaf.fsf@notabene.neil.brown.name>
+Received: from zeniv.linux.org.uk ([195.92.253.2]:60526 "EHLO
+        ZenIV.linux.org.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1750941AbdBBJvg (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 2 Feb 2017 04:51:36 -0500
+Date: Thu, 2 Feb 2017 09:51:25 +0000
+From: Al Viro <viro@ZenIV.linux.org.uk>
+To: Jeff Layton <jlayton@redhat.com>
+Cc: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, ceph-devel@vger.kernel.org,
+        lustre-devel@lists.lustre.org, v9fs-developer@lists.sourceforge.net,
+        Linus Torvalds <torvalds@linux-foundation.org>,
+        Jan Kara <jack@suse.cz>, Chris Wilson <chris@chris-wilson.co.uk>,
+        "Kirill A. Shutemov" <kirill.shutemov@linux.intel.com>
+Subject: Re: [PATCH v3 0/2] iov_iter: allow iov_iter_get_pages_alloc to
+ allocate more pages per call
+Message-ID: <20170202095125.GF27291@ZenIV.linux.org.uk>
+References: <20170124212327.14517-1-jlayton@redhat.com>
+ <20170125133205.21704-1-jlayton@redhat.com>
 MIME-Version: 1.0
-Content-Type: multipart/signed; boundary="=-=-=";
-        micalg=pgp-sha256; protocol="application/pgp-signature"
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20170125133205.21704-1-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---=-=-=
-Content-Type: text/plain
-Content-Transfer-Encoding: quoted-printable
+On Wed, Jan 25, 2017 at 08:32:03AM -0500, Jeff Layton wrote:
+> Small respin of the patch that I sent yesterday for the same thing.
+> 
+> This moves the maxsize handling into iov_iter_pvec_size, so that we don't
+> end up iterating past the max size we'll use anyway when trying to
+> determine the pagevec length.
+> 
+> Also, a respun patch to make ceph use iov_iter_get_pages_alloc instead of
+> trying to do it via its own routine.
+> 
+> Al, if these look ok, do you want to pick these up or shall I ask
+> Ilya to merge them via the ceph tree?
 
-On Wed, Feb 01 2017, Scott Mayhew wrote:
+I'd rather have that kind of work go through the vfs tree; said that,
+I really wonder if this is the right approach.  Most of the users of
+iov_iter_get_pages()/iov_iter_get_pages_alloc() look like they want
+something like
+	iov_iter_for_each_page(iter, size, f, data)
+with int (*f)(struct page *page, size_t from, size_t size, void *data)
+passed as callback.  Not everything fits that model, but there's a whole
+lot of things that do.
 
-> Signed-off-by: Scott Mayhew <smayhew@redhat.com>
-> ---
->  support/export/xtab.c     | 82 +++++++++++++++++++++++++++++++++++++++++=
-++++--
->  support/include/nfslib.h  | 17 ++++++++++
->  support/nfs/cacheio.c     |  4 ++-
->  support/nfs/rmtab.c       |  4 ++-
->  utils/exportfs/exportfs.c | 13 ++++++++
->  utils/mountd/auth.c       |  8 +++--
->  utils/mountd/mountd.c     | 31 +++++++++++-------
->  utils/mountd/mountd.man   |  2 +-
->  utils/mountd/rmtab.c      | 26 ++++++++-------
->  9 files changed, 156 insertions(+), 31 deletions(-)
->
-> diff --git a/support/export/xtab.c b/support/export/xtab.c
-> index 22cf539..a5bfa6e 100644
-> --- a/support/export/xtab.c
-> +++ b/support/export/xtab.c
-> @@ -14,12 +14,20 @@
->  #include <unistd.h>
->  #include <stdlib.h>
->  #include <string.h>
-> +#include <sys/types.h>
-> +#include <sys/stat.h>
-> +#include <errno.h>
-> +#include <libgen.h>
->=20=20
->  #include "nfslib.h"
->  #include "exportfs.h"
->  #include "xio.h"
->  #include "xlog.h"
->  #include "v4root.h"
-> +#include "misc.h"
-> +
-> +static char state_base_dirname[PATH_MAX] =3D NFS_STATEDIR;
-> +extern struct state_paths etab;
->=20=20
->  int v4root_needed;
->  static void cond_rename(char *newfile, char *oldfile);
-> @@ -65,7 +73,7 @@ xtab_read(char *xtab, char *lockfn, int is_export)
->  int
->  xtab_export_read(void)
->  {
-> -	return xtab_read(_PATH_ETAB, _PATH_ETABLCK, 1);
-> +	return xtab_read(etab.statefn, etab.lockfn, 1);
->  }
->=20=20
->  /*
-> @@ -112,7 +120,7 @@ xtab_write(char *xtab, char *xtabtmp, char *lockfn, i=
-nt is_export)
->  int
->  xtab_export_write()
->  {
-> -	return xtab_write(_PATH_ETAB, _PATH_ETABTMP, _PATH_ETABLCK, 1);
-> +	return xtab_write(etab.statefn, etab.tmpfn, etab.lockfn, 1);
->  }
->=20=20
->  /*
-> @@ -158,3 +166,73 @@ static void cond_rename(char *newfile, char *oldfile)
->  	rename(newfile, oldfile);
->  	return;
->  }
-> +
-> +/*
-> + * Returns a dynamically allocated, '\0'-terminated buffer
-> + * containing an appropriate pathname, or NULL if an error
-> + * occurs.  Caller must free the returned result with free(3).
-> + */
-> +static char *
-> +state_make_pathname(const char *tabname)
-> +{
-> +	return generic_make_pathname(state_base_dirname, tabname);
-> +}
-> +
-> +/**
-> + * state_setup_basedir - set up basedir
-> + * @progname: C string containing name of program, for error messages
-> + * @parentdir: C string containing pathname to on-disk state, or NULL
-> + *
-> + * This runs before logging is set up, so error messages are directed
-> + * to stderr.
-> + *
-> + * Returns true and sets up our basedir, if @parentdir was valid
-> + * and usable; otherwise false is returned.
-> + */
-> +_Bool
-> +state_setup_basedir(const char *progname, const char *parentdir)
-> +{
-> +	return generic_setup_basedir(progname, parentdir, state_base_dirname);
-> +}
-> +
-> +int
-> +setup_state_path_names(const char *progname, const char *statefn,
-> +		      const char *tmpfn, const char *lockfn,
-> +		      struct state_paths *paths)
-> +{
-> +	paths->statefn =3D state_make_pathname(statefn);
-> +	if (!paths->statefn) {
-> +		fprintf(stderr, "%s: state_make_pathname(%s) failed\n",
-> +			progname, statefn);
-> +		goto out_err;
-> +	}
-> +	paths->tmpfn =3D state_make_pathname(tmpfn);
-> +	if (!paths->tmpfn) {
-> +		fprintf(stderr, "%s: state_make_pathname(%s) failed\n",
-> +			progname, tmpfn);
-> +		goto out_free_statefn;
-> +	}
-> +	paths->lockfn =3D state_make_pathname(lockfn);
-> +	if (!paths->lockfn) {
-> +		fprintf(stderr, "%s: state_make_pathname(%s) failed\n",
-> +			progname, lockfn);
-> +		goto out_free_tmpfn;
-> +	}
-> +	return 1;
-> +
-> +out_free_tmpfn:
-> +	free(paths->tmpfn);
-> +out_free_statefn:
-> +	free(paths->statefn);
-> +out_err:
-> +	return 0;
-> +
-> +}
-> +
-> +void
-> +free_state_path_names(struct state_paths *paths)
-> +{
-> +	free(paths->statefn);
-> +	free(paths->tmpfn);
-> +	free(paths->lockfn);
-> +}
-> diff --git a/support/include/nfslib.h b/support/include/nfslib.h
-> index 1498977..adcbe43 100644
-> --- a/support/include/nfslib.h
-> +++ b/support/include/nfslib.h
-> @@ -58,6 +58,19 @@
->  #define	_PATH_PROC_EXPORTS_ALT	"/proc/fs/nfsd/exports"
->  #endif
->=20=20
-> +#define ETAB		"etab"
-> +#define ETABTMP		"etab.tmp"
-> +#define ETABLCK 	".etab.lock"
-> +#define RMTAB		"rmtab"
-> +#define RMTABTMP	"rmtab.tmp"
-> +#define RMTABLCK	".rmtab.lock"
+Examples:
+	* fs/direct_io.c:do_direct_IO().  We loop through the pages
+returned by dio_get_page().  For each of those we find the subrange
+of page (from/to) and handle IO on that range.  Then we drop the reference
+to page and move on to the next one.  dio_get_page() uses dio->pages and
+sdio->{head,tail,from,to} to avoid calling iov_iter_get_pages() on each
+page - iov_iter_get_pages() is called for bigger chunks (up to 64 pages,
+AFAICS) and results are kept in dio->pages for subsequent calls of
+dio_get_page().  Unconsumed references are dropped by dio_cleanup();
+AFAICS, it could've been called unconditionally right after the call
+of do_direct_IO() (or from it, for that matter) - all remaining references
+to pages are never looked at after do_direct_IO().  As it is, we call
+it immediately on failure return from do_direct_IO() and then unconditionally
+after blk_finish_plug().
+	That oddity aside (and AFAICS it's really pointless - all pages
+we'd done something with in do_direct_IO() won't be affected by
+dio_cleanup()), there's potentially more interesting issue.  If
+iov_iter_get_pages() fails on write at the moment when we have pending
+mapped blocks, we treat that as write from zero page.  Once that has
+happened, we remember to stop mapping new blocks and arrange for having
+the error eventually treated as if it had come from IO failure.  I'm not
+sure if this sucker handles all cases correctly, BTW - can we end up with
+a few pages worth of pending mapped blocks?
+	But aside of that, it's really a "loop through all page subranges"
+kind of code.  The inner loop in do_direct_IO() could be converted into
+a callback quite easily
 
-I would be happier if you completed removed _PATH_ETAB* and _PATH_RMTAB*
-as well.  I don't think they are used any more, but they are still
-defined (and mentioned in at least one comment).
+	* nfs_direct_read_schedule_iovec(): same kind of batching, only there
+we have an outer loop calling iov_iter_get_pages_alloc() and then the
+inner loop goes through the page subranges, with the same work done for
+each.  In this case we grab a reference inside the would-be callback and
+drop all references from iov_iter_get_pages_alloc() after the inner loop
+is done.  Could've gotten rid of grabbing extra refs - that would mean dropping
+only the unused ones if the 'callback' (== inner loop body) has told us
+to bugger off early.  IMO that would be a better model.  Incidentally, we
+keep allocating/freeing the array used to store page references for each batch.
 
+	* nfs_direct_write_schedule_iovec(): very similar to the read side.
 
-> +
-> +struct state_paths {
-> +	char *statefn;
-> +	char *tmpfn;
-> +	char *lockfn;
-> +};
-> +
->  /* Maximum number of security flavors on an export: */
->  #define SECFLAVOR_COUNT 8
->=20=20
-> @@ -120,6 +133,10 @@ void			fputrmtabent(FILE *fp, struct rmtabent *xep, =
-long *pos);
->  void			fendrmtabent(FILE *fp);
->  void			frewindrmtabent(FILE *fp);
->=20=20
-> +_Bool state_setup_basedir(const char *, const char *);
-> +int setup_state_path_names(const char *, const char *, const char *, con=
-st char *, struct state_paths *);
-> +void free_state_path_names(struct state_paths *);
-> +
->  /* mydaemon */
->  void daemon_init(bool fg);
->  void daemon_ready(void);
-> diff --git a/support/nfs/cacheio.c b/support/nfs/cacheio.c
-> index e5e2579..885a4bb 100644
-> --- a/support/nfs/cacheio.c
-> +++ b/support/nfs/cacheio.c
-> @@ -27,6 +27,8 @@
->  #include <time.h>
->  #include <errno.h>
->=20=20
-> +extern struct state_paths etab;
-> +
->  void qword_add(char **bpp, int *lp, char *str)
->  {
->  	char *bp =3D *bpp;
-> @@ -228,7 +230,7 @@ cache_flush(int force)
->  	};
->  	now =3D time(0);
->  	if (force ||
-> -	    stat(_PATH_ETAB, &stb) !=3D 0 ||
-> +	    stat(etab.statefn, &stb) !=3D 0 ||
->  	    stb.st_mtime > now)
->  		stb.st_mtime =3D time(0);
->=20=20=09
-> diff --git a/support/nfs/rmtab.c b/support/nfs/rmtab.c
-> index 59dfbdf..2ecb2cc 100644
-> --- a/support/nfs/rmtab.c
-> +++ b/support/nfs/rmtab.c
-> @@ -33,12 +33,14 @@
->=20=20
->  static FILE	*rmfp =3D NULL;
->=20=20
-> +extern struct state_paths rmtab;
-> +
->  int
->  setrmtabent(char *type)
->  {
->  	if (rmfp)
->  		fclose(rmfp);
-> -	rmfp =3D fsetrmtabent(_PATH_RMTAB, type);
-> +	rmfp =3D fsetrmtabent(rmtab.statefn, type);
->  	return (rmfp !=3D NULL);
->  }
->=20=20
-> diff --git a/utils/exportfs/exportfs.c b/utils/exportfs/exportfs.c
-> index 61dddfb..02d5b6d 100644
-> --- a/utils/exportfs/exportfs.c
-> +++ b/utils/exportfs/exportfs.c
-> @@ -52,6 +52,8 @@ static const char *lockfile =3D EXP_LOCKFILE;
->  static int _lockfd =3D -1;
->  char *conf_path =3D NFS_CONFFILE;
->=20=20
-> +struct state_paths etab;
-> +
->  /*
->   * If we aren't careful, changes made by exportfs can be lost
->   * when multiple exports process run at once:
-> @@ -95,6 +97,7 @@ main(int argc, char **argv)
->  	int	f_ignore =3D 0;
->  	int	i, c;
->  	int	force_flush =3D 0;
-> +	char	*s;
->=20=20
->  	if ((progname =3D strrchr(argv[0], '/')) !=3D NULL)
->  		progname++;
-> @@ -108,6 +111,11 @@ main(int argc, char **argv)
->  	conf_init();
->  	xlog_from_conffile("exportfs");
->=20=20
-> +	/* NOTE: following uses "mountd" section of nfs.conf !!!! */
-> +	s =3D conf_get_str("mountd", "state-directory-path");
-> +	if (s && !state_setup_basedir(argv[0], s))
-> +		exit(1);
-> +
+	* zerocopy_sg_from_iter(): similar loop, batch size is MAX_SKB_FRAGS
+(i.e. 16 or 17, depending upon the PAGE_SIZE; unless somebody has done
+a port with 2Kb pages it shouldn't be greater than 17).  Array of references
+is on stack, skb_fill_page_desc(skb, frag++, page, from, size) should
+become the callback.  References are consumed by it and it can't fail, so
+there's nothing left to drop.
 
-Could you add to the systemd/nfs.conf.man man page, in the
- .TP
- .B mountd
- Recognized values:
+	* af_alg_make_sg().  Looks like it might be massaged to the same
+model; the tricky part is af_alg_free_sg() users.  We keep references to
+pages in sgl->pages[] *and* store them in sgl->sg[...] (via sg_set_page()).
+af_alg_free_sg() drops them using ->pages[] instead of sg_page(...->sg + ...).
+Might or might not be a problem - I'm not familiar with that code.
 
-section, that "state-directory-path" is also used by exportfs
-(much like the 'nfsd' section mentions that some values are also used by
-rpc.mountd).
-Also the exportfs.man page should get a small ".SH CONFIGURATION FILE"
-section.
+	* fuse_get_user_pages().  It pretty much fills an equivalent of
+bio_vec array; the difference is, array of struct page * and arrays of
+(start, len) pairs are kept separately.  The only benefit is using the
+first array as destination of iov_iter_get_pages(); might as well work
+into a separate batching array instead - copying struct page * is noise
+compared to storing (and calculating) start/len pairs we have to do there.
+Again, what we do there is a pure loop over page subranges.
 
-With those issues resolved,
-  Reviewed-by: NeilBrown <neilb@suse.com>
+	* fuse_copy_fill().  I'm not at all sure that iov_iter_get_pages()
+is a good idea there - fuse_copy_do() could bloody well just use
+copy_{to,from}_iter().
 
-Thanks,
-NeilBrown
+	* fs/splice.c:iter_to_pipe().  Loop over page subranges, consuming
+page references.  Unused ones are dropped.
 
---=-=-=
-Content-Type: application/pgp-signature; name="signature.asc"
+	* bio_iov_iter_get_pages().  Wants to populate bio_vec array; should've
+been a loop calling iov_iter_get_pages(); gets tripped on each iovec boundary
+instead.  IMO would've been better off with a loop and separate 'batching'
+array; would've killed the "Deep magic" mess in there, while we are at it.
 
------BEGIN PGP SIGNATURE-----
+That's the majority of iov_iter_get_pages{,_alloc} callers.  There's one
+I'm not sure about in lustre (looks like their O_DIRECT is complicated by
+rudiments of lloop stuff), there's a mess in p9_get_mapped_pages() (with
+special-casing the kvec-backed iterators using kmap_to_page() and
+vmalloc_to_page(), no less), there's default_file_splice_read() and there's
+ceph stuff.  Everything else is covered by the 'loop over page subranges'
+stuff.
 
-iQIzBAEBCAAdFiEEG8Yp69OQ2HB7X0l6Oeye3VZigbkFAliSxigACgkQOeye3VZi
-gble0A//QwkKrOF+l7CZaX2RPlAdkM8/9Jv1YUj5hWWumWAoPOXWMZsXfrfqvZJa
-IEE8onTzTRUp4t0i0IAgTdElHyEmEkn/QsZzwUS0RR7PkW3U+210f8nwA37qQHBW
-S44NJ2aoqSivAPO3q6P55s5wS4OUQrDieo/k+vtDSJbVMKJPt6Z1wOfbYPX0/5MG
-axRXtFPuwTSjmcUIB4FTLxrnJDnbos0gpm1TXnaWd3r6+bmnr7KiYR68b+V5hKlB
-RKzXvs9UkjvKDJ8DVBOZ6rkVZk1wAGHXgsw/TkgpEUf3qY2xJyc76zHu8Z4P0xgw
-iCk1gNw2BoMgW97Jeb2qDTBY3e5MSDt3oaJ3N+dl5EMgz0G1vvBDTx/LTYGlk28V
-8JUQRYXf4TVHIW6GU4814jabqcCIVB1DPva2dpkeWW7f4O1GGTZxKnIMeiu0MQoT
-U4jA/tNN/L4rZL2bgmdHizPMHaWJnZtpfm6rzdaPSguqLFE6TqpxedS9IxTFeCFz
-wgSouwgPWuDoAND2uZ6Tjm5XUSTQ/QHgkmgixMFLnCVAIN8mKsVwLG4ahn620s5S
-eehkIwMt3GEaHjN0t3a+zIFNlLTYyr4Nb7y/TJeoHKxsrVsbQBE2JyefGHyCepea
-77i79rA8dB/veLuINhE76vH9Cyun73kOP9GmFMoV+KsbrrloB8U=
-=4rrB
------END PGP SIGNATURE-----
---=-=-=--
+I'm massaging that code (along with a lot of RTFS); the interesting questions
+related to VM side of things are
+	* what are the relative costs of doing small vs. large batches?  Some
+of get_user_pages_fast() instances have comments along the lines of "we ought
+to limit the batch size, but then nobody's doing more than 64 pages at a time
+anyway".
+	* Not a question: any ->fault() that returns VM_FAULT_RETRY when
+*not* passed FAULT_FLAG_ALLOW_RETRY in flags ought to be shot.  cxlflash one
+sure as hell is.
+	* drivers/gpu/drm/vgem/vgem_drv.c:vgem_gem_fault() is bloody odd -
+shmem_read_mapping_page() can't return -EBUSY, AFAICS.  vm_insert_page()
+used to (and back then vgem_gem_fault() used to be broken), but these days
+it looks like dead code...
+	* ->page_mkwrite() instances sometimes return VM_FAULT_RETRY; AFAICS,
+it's only (ab)used there as 'not zero, but doesn't contain any error bits';
+VM_FAULT_RETRY from that source does *not* reach handle_mm_fault() callers,
+right?
+	* get_user_pages_fast() only returns 0 on zero size.  AFAICS, that's
+true and some callers seems to rely upon that.  Correct?
+	* aligning the start address passed to get_user_pages_fast() et.al.
+Happens in many callers, but not all of them.  Most of the instances
+forcibly align it in get_user_pages_fast() itself, but... not the fallback
+one.  I'm not sure if it can be used to screw the things up, but it feels
+like aligning the sucker in get_user_pages...() would be safer - callers
+outnumber them and they are scattered in bad places (including drivers/staging)
+
+	Comments?
