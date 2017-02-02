@@ -1,77 +1,66 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:55258 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1752086AbdBBRs6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 2 Feb 2017 12:48:58 -0500
-Received: from smtp.corp.redhat.com (int-mx16.intmail.prod.int.phx2.redhat.com [10.5.11.28])
-        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
-        (No client certificate requested)
-        by mx1.redhat.com (Postfix) with ESMTPS id 6021CC057FAD
-        for <linux-nfs@vger.kernel.org>; Thu,  2 Feb 2017 17:48:59 +0000 (UTC)
-Received: from steved.boston.devel.redhat.com (steved.boston.devel.redhat.com [10.19.60.47])
-        by smtp.corp.redhat.com (Postfix) with ESMTP id 300561DAD37
-        for <linux-nfs@vger.kernel.org>; Thu,  2 Feb 2017 17:48:59 +0000 (UTC)
-Subject: Re: Monthly Linux NFS Town Hall meeting: Tomorrow - Thur Feb 2
-To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-References: <90728db6-f9cb-d610-99f2-2a76634f147a@RedHat.com>
-From: Steve Dickson <SteveD@redhat.com>
-Message-ID: <308e9254-2520-2a11-9ef6-30a25f911252@RedHat.com>
-Date: Thu, 2 Feb 2017 12:48:58 -0500
+Received: from zeniv.linux.org.uk ([195.92.253.2]:45186 "EHLO
+        ZenIV.linux.org.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1750885AbdBBS2I (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 2 Feb 2017 13:28:08 -0500
+Date: Thu, 2 Feb 2017 18:28:02 +0000
+From: Al Viro <viro@ZenIV.linux.org.uk>
+To: Jan Kara <jack@suse.cz>
+Cc: Jeff Layton <jlayton@redhat.com>, linux-fsdevel@vger.kernel.org,
+        linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        ceph-devel@vger.kernel.org, lustre-devel@lists.lustre.org,
+        v9fs-developer@lists.sourceforge.net,
+        Linus Torvalds <torvalds@linux-foundation.org>,
+        Chris Wilson <chris@chris-wilson.co.uk>,
+        "Kirill A. Shutemov" <kirill.shutemov@linux.intel.com>
+Subject: Re: [PATCH v3 0/2] iov_iter: allow iov_iter_get_pages_alloc to
+ allocate more pages per call
+Message-ID: <20170202182802.GH27291@ZenIV.linux.org.uk>
+References: <20170124212327.14517-1-jlayton@redhat.com>
+ <20170125133205.21704-1-jlayton@redhat.com>
+ <20170202095125.GF27291@ZenIV.linux.org.uk>
+ <20170202144817.GB15545@quack2.suse.cz>
 MIME-Version: 1.0
-In-Reply-To: <90728db6-f9cb-d610-99f2-2a76634f147a@RedHat.com>
-Content-Type: text/plain; charset=windows-1252
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20170202144817.GB15545@quack2.suse.cz>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This will be starting in 10mins or so... if interested...
+On Thu, Feb 02, 2017 at 03:48:17PM +0100, Jan Kara wrote:
 
-steved
+> > 	* ->page_mkwrite() instances sometimes return VM_FAULT_RETRY; AFAICS,
+> > it's only (ab)used there as 'not zero, but doesn't contain any error bits';
+> > VM_FAULT_RETRY from that source does *not* reach handle_mm_fault() callers,
+> > right?
+> 
+> I can see only Lustre doing it and IMHO it is abuse. VM_FAULT_RETRY is used
+> for mmap_sem latency reduction when paging in pages and so not everybody
+> handles it. If a handler wants to simply retry the fault, returning
+> VM_FAULT_NOPAGE is a more common way to do that...
 
-On 02/01/2017 05:52 PM, Steve Dickson wrote:
-> Hello,
->
-> With a connectathon coming up this month
-> let's have a quick meeting to make sure
-> we are all on the same page... Being 
-> connectathon is at the end of this month 
-> we probably will not have this meeting 
-> next month... 
->
-> The meeting will be Tomorrow Thur Jan 5 at 
->
->    *01:00 pm EST (10:00am PST)*
->
-> The usual agenda will apply. The maintainers will give
-> a quick status of what is happening in their worlds.
->
-> Next we'll get updates from major contributors on what
-> they have been doing and are planing on doing.
->   
-> Finally, we'll open the floor to questions, comments, 
-> concerns from the community.  
->
-> Generally the meeting lasts between 30 to 45 mins, with 
-> a very hard stop at 60mins. 
->
-> Please feel to attend and participate!
->
-> Again the Time: 10:00 am PST (01:00 pm EST)
->
-> BlueJeans Video Link:
->     https://bluejeans.com/5642721552/
->
-> The call in numbers are:
->
-> U.S. and Canada: (800) 451-8679
-> World wide toll free numbers
->    https://www.intercallonline.com/listNumbersByCode.action?confCode=5642721552
->
-> Conference code: 564.272.1552
->
-> steved.
->
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+/* Convert errno to return value from ->page_mkwrite() call */
+static inline int block_page_mkwrite_return(int err)
+{
+        if (err == 0)
+                return VM_FAULT_LOCKED;
+        if (err == -EFAULT)
+                return VM_FAULT_NOPAGE;
+        if (err == -ENOMEM)
+                return VM_FAULT_OOM;
+        if (err == -EAGAIN)
+                return VM_FAULT_RETRY;
+        /* -ENOSPC, -EDQUOT, -EIO ... */
+        return VM_FAULT_SIGBUS;
+}
 
+and a bunch of ->page_mkwrite() instances using that.  However, the only
+callers of ->page_mkwrite() are wp_page_shared()->do_page_mkwrite() and
+do_shared_fault()->do_page_mkwrite().  do_page_mkwrite() treates
+VM_FAULT_RETRY as "lock page and return VM_FAULT_RETRY|VM_FAULT_LOCKED".
+Both callers do the same check -
+                if (unlikely(!tmp || (tmp &
+                                      (VM_FAULT_ERROR | VM_FAULT_NOPAGE)))) {
+and the return value if that predicate is false.  FWIW, use of VM_FAULT_RETRY
+comes from your patch back in 2011 and AFAICS the same analysis used to
+apply back then, except for the open-coded method calls where we use
+do_page_mkwrite() these days...
