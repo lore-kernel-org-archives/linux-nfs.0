@@ -1,113 +1,252 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f193.google.com ([209.85.223.193]:33276 "EHLO
-        mail-io0-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1750879AbdBBQt4 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 2 Feb 2017 11:49:56 -0500
-Received: by mail-io0-f193.google.com with SMTP id 101so24720597iom.0
-        for <linux-nfs@vger.kernel.org>; Thu, 02 Feb 2017 08:49:56 -0800 (PST)
-MIME-Version: 1.0
-In-Reply-To: <1485989059-28706-1-git-send-email-agruenba@redhat.com>
-References: <1479933700-5743-1-git-send-email-bfields@redhat.com>
- <1479933700-5743-2-git-send-email-bfields@redhat.com> <20161201220716.GB1589@fieldses.org>
- <CAHc6FU721nR8QmcpJsDWtvg9EqzK-krYH7GTGw0Y=s7nSEy-vg@mail.gmail.com>
- <20161202164705.GB20384@parsley.fieldses.org> <CAN-5tyER30ZQk9f0j1DDOYAsmk6XDnbay2my68R6gVDp+0paNQ@mail.gmail.com>
- <1485989059-28706-1-git-send-email-agruenba@redhat.com>
-From: Olga Kornievskaia <aglo@umich.edu>
-Date: Thu, 2 Feb 2017 11:49:54 -0500
-Message-ID: <CAN-5tyE66-Wb5ZNj1McD57oHG9enXgSRvdT6TMzsUGgr7-aF9g@mail.gmail.com>
-Subject: Re: [PATCH 1/2] nfs: add support for the umask attribute
-To: Andreas Gruenbacher <agruenba@redhat.com>
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-        "J. Bruce Fields" <bfields@redhat.com>,
+Received: from mx2.suse.de ([195.135.220.15]:45543 "EHLO mx2.suse.de"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1752342AbdBBRgG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 2 Feb 2017 12:36:06 -0500
+From: Jan Kara <jack@suse.cz>
+To: <linux-fsdevel@vger.kernel.org>
+Cc: Christoph Hellwig <hch@infradead.org>, linux-block@vger.kernel.org,
+        Jan Kara <jack@suse.cz>,
         Trond Myklebust <trond.myklebust@primarydata.com>,
-        Anna Schumaker <schumakeranna@gmail.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=UTF-8
+        Anna Schumaker <anna.schumaker@netapp.com>,
+        linux-nfs@vger.kernel.org
+Subject: [PATCH 21/24] nfs: Convert to separately allocated bdi
+Date: Thu,  2 Feb 2017 18:34:19 +0100
+Message-Id: <20170202173422.3240-22-jack@suse.cz>
+In-Reply-To: <20170202173422.3240-1-jack@suse.cz>
+References: <20170202173422.3240-1-jack@suse.cz>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Feb 1, 2017 at 5:44 PM, Andreas Gruenbacher <agruenba@redhat.com> wrote:
-> From: "J. Bruce Fields" <bfields@fieldses.org>
->
-> On Wed, Feb 1, 2017 at 10:31 PM, Olga Kornievskaia <aglo@umich.edu> wrote:
->> Any plans to add wireshark support for this?
->
-> We did, yes.  Bruce had posted that together with the very first version.  I
-> couldn't find the wireshark patch for the current version of the proposal in
-> the mailing list archive, so here's that.
->
-> Andreas
->
-> --
->
-> NFSv4.2 umask support
->
-> ---
->  epan/dissectors/packet-nfs.c | 19 +++++++++++++++++++
->  1 file changed, 19 insertions(+)
->
-> diff --git a/epan/dissectors/packet-nfs.c b/epan/dissectors/packet-nfs.c
-> index 6d1dd3b..5f2ce42 100644
-> --- a/epan/dissectors/packet-nfs.c
-> +++ b/epan/dissectors/packet-nfs.c
-> @@ -420,6 +420,7 @@ static int hf_nfs4_fattr_layout_blksize = -1;
->  static int hf_nfs4_fattr_security_label_lfs = -1;
->  static int hf_nfs4_fattr_security_label_pi = -1;
->  static int hf_nfs4_fattr_security_label_context = -1;
-> +static int hf_nfs4_fattr_umask_mask = -1;
->  static int hf_nfs4_who = -1;
->  static int hf_nfs4_server = -1;
->  static int hf_nfs4_fslocation = -1;
-> @@ -6133,6 +6134,8 @@ static const value_string fattr4_names[] = {
->         {       FATTR4_CHANGE_ATTR_TYPE,   "Change_Attr_Type"           },
->  #define FATTR4_SECURITY_LABEL      80
->         {       FATTR4_SECURITY_LABEL,     "Security_Label"             },
-> +#define FATTR4_MODE_UMASK          81
-> +       {       FATTR4_MODE_UMASK,         "Mode_Umask"                 },
->         {       0,      NULL    }
->  };
->  static value_string_ext fattr4_names_ext = VALUE_STRING_EXT_INIT(fattr4_names);
-> @@ -6717,6 +6720,14 @@ dissect_nfs4_security_label(tvbuff_t *tvb, proto_tree *tree, int offset)
->         return offset;
->  }
->
-> +static int
-> +dissect_nfs4_mode_umask(tvbuff_t *tvb, proto_tree *tree, int offset)
-> +{
-> +       offset = dissect_nfs4_mode(tvb, offset, tree);
-> +       offset = dissect_rpc_uint32(tvb, tree, hf_nfs4_fattr_umask_mask, offset);
-> +       return offset;
-> +}
-> +
->  #define FATTR4_BITMAP_ONLY 0
->  #define FATTR4_DISSECT_VALUES 1
->
-> @@ -7119,6 +7130,10 @@ dissect_nfs4_fattrs(tvbuff_t *tvb, int offset, packet_info *pinfo, proto_tree *t
->                                                 offset = dissect_nfs4_security_label(tvb, attr_tree, offset);
->                                                 break;
->
-> +                                       case FATTR4_MODE_UMASK:
-> +                                               offset = dissect_nfs4_mode_umask(tvb, attr_tree, offset);
-> +                                               break;
-> +
->                                         default:
->                                                 break;
->                                         }
-> @@ -12509,6 +12524,10 @@ proto_register_nfs(void)
->                         "label_format", "nfs.fattr4.security_label.lfs", FT_UINT32, BASE_DEC,
->                         NULL, 0, NULL, HFILL }},
->
-> +               { &hf_nfs4_fattr_umask_mask, {
-> +                       "umask", "nfs.fattr4.umask", FT_UINT32, BASE_OCT,
-> +                       NULL, 0, NULL, HFILL }},
-> +
->                 { &hf_nfs4_fattr_security_label_pi, {
->                         "policy_id", "nfs.fattr4.security_label.pi", FT_UINT32, BASE_DEC,
->                         NULL, 0, NULL, HFILL }},
-> --
-> 2.7.4
+Allocate struct backing_dev_info separately instead of embedding it
+inside the superblock. This unifies handling of bdi among users.
 
+CC: Trond Myklebust <trond.myklebust@primarydata.com>
+CC: Anna Schumaker <anna.schumaker@netapp.com>
+CC: linux-nfs@vger.kernel.org
+Signed-off-by: Jan Kara <jack@suse.cz>
+---
+ fs/nfs/client.c           | 10 ----------
+ fs/nfs/internal.h         |  6 +++---
+ fs/nfs/super.c            | 34 +++++++++++++++++++---------------
+ fs/nfs/write.c            | 13 ++++++-------
+ include/linux/nfs_fs_sb.h |  1 -
+ 5 files changed, 28 insertions(+), 36 deletions(-)
 
-Thank you Andreas. I have tried this patch and it decodes the OPEN
-compounds ok. Previously it's been garbage past the unknown attribute
-with value 81.
+diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+index 91a8d610ba0f..479afae529d8 100644
+--- a/fs/nfs/client.c
++++ b/fs/nfs/client.c
+@@ -738,9 +738,6 @@ static void nfs_server_set_fsinfo(struct nfs_server *server,
+ 		server->rsize = NFS_MAX_FILE_IO_SIZE;
+ 	server->rpages = (server->rsize + PAGE_SIZE - 1) >> PAGE_SHIFT;
+ 
+-	server->backing_dev_info.name = "nfs";
+-	server->backing_dev_info.ra_pages = server->rpages * NFS_MAX_READAHEAD;
+-
+ 	if (server->wsize > max_rpc_payload)
+ 		server->wsize = max_rpc_payload;
+ 	if (server->wsize > NFS_MAX_FILE_IO_SIZE)
+@@ -894,12 +891,6 @@ struct nfs_server *nfs_alloc_server(void)
+ 		return NULL;
+ 	}
+ 
+-	if (bdi_init(&server->backing_dev_info)) {
+-		nfs_free_iostats(server->io_stats);
+-		kfree(server);
+-		return NULL;
+-	}
+-
+ 	ida_init(&server->openowner_id);
+ 	ida_init(&server->lockowner_id);
+ 	pnfs_init_server(server);
+@@ -930,7 +921,6 @@ void nfs_free_server(struct nfs_server *server)
+ 	ida_destroy(&server->lockowner_id);
+ 	ida_destroy(&server->openowner_id);
+ 	nfs_free_iostats(server->io_stats);
+-	bdi_destroy(&server->backing_dev_info);
+ 	kfree(server);
+ 	nfs_release_automount_timer();
+ 	dprintk("<-- nfs_free_server()\n");
+diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
+index 09ca5095c04e..55591c06b5d0 100644
+--- a/fs/nfs/internal.h
++++ b/fs/nfs/internal.h
+@@ -139,7 +139,7 @@ struct nfs_mount_request {
+ };
+ 
+ struct nfs_mount_info {
+-	void (*fill_super)(struct super_block *, struct nfs_mount_info *);
++	int (*fill_super)(struct super_block *, struct nfs_mount_info *);
+ 	int (*set_security)(struct super_block *, struct dentry *, struct nfs_mount_info *);
+ 	struct nfs_parsed_mount_data *parsed;
+ 	struct nfs_clone_mount *cloned;
+@@ -405,7 +405,7 @@ struct dentry *nfs_fs_mount(struct file_system_type *, int, const char *, void *
+ struct dentry * nfs_xdev_mount_common(struct file_system_type *, int,
+ 		const char *, struct nfs_mount_info *);
+ void nfs_kill_super(struct super_block *);
+-void nfs_fill_super(struct super_block *, struct nfs_mount_info *);
++int nfs_fill_super(struct super_block *, struct nfs_mount_info *);
+ 
+ extern struct rpc_stat nfs_rpcstat;
+ 
+@@ -456,7 +456,7 @@ extern void nfs_read_prepare(struct rpc_task *task, void *calldata);
+ extern void nfs_pageio_reset_read_mds(struct nfs_pageio_descriptor *pgio);
+ 
+ /* super.c */
+-void nfs_clone_super(struct super_block *, struct nfs_mount_info *);
++int nfs_clone_super(struct super_block *, struct nfs_mount_info *);
+ void nfs_umount_begin(struct super_block *);
+ int  nfs_statfs(struct dentry *, struct kstatfs *);
+ int  nfs_show_options(struct seq_file *, struct dentry *);
+diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+index 6bca17883b93..16f4d92a96ec 100644
+--- a/fs/nfs/super.c
++++ b/fs/nfs/super.c
+@@ -2322,18 +2322,17 @@ inline void nfs_initialise_sb(struct super_block *sb)
+ 		sb->s_blocksize = nfs_block_bits(server->wsize,
+ 						 &sb->s_blocksize_bits);
+ 
+-	sb->s_bdi = &server->backing_dev_info;
+-
+ 	nfs_super_set_maxbytes(sb, server->maxfilesize);
+ }
+ 
+ /*
+  * Finish setting up an NFS2/3 superblock
+  */
+-void nfs_fill_super(struct super_block *sb, struct nfs_mount_info *mount_info)
++int nfs_fill_super(struct super_block *sb, struct nfs_mount_info *mount_info)
+ {
+ 	struct nfs_parsed_mount_data *data = mount_info->parsed;
+ 	struct nfs_server *server = NFS_SB(sb);
++	int ret;
+ 
+ 	sb->s_blocksize_bits = 0;
+ 	sb->s_blocksize = 0;
+@@ -2351,13 +2350,21 @@ void nfs_fill_super(struct super_block *sb, struct nfs_mount_info *mount_info)
+ 	}
+ 
+  	nfs_initialise_sb(sb);
++
++	ret = super_setup_bdi_name(sb, "%u:%u", MAJOR(server->s_dev),
++				   MINOR(server->s_dev));
++	if (ret)
++		return ret;
++	sb->s_bdi->ra_pages = server->rpages * NFS_MAX_READAHEAD;
++	return 0;
++
+ }
+ EXPORT_SYMBOL_GPL(nfs_fill_super);
+ 
+ /*
+  * Finish setting up a cloned NFS2/3/4 superblock
+  */
+-void nfs_clone_super(struct super_block *sb, struct nfs_mount_info *mount_info)
++int nfs_clone_super(struct super_block *sb, struct nfs_mount_info *mount_info)
+ {
+ 	const struct super_block *old_sb = mount_info->cloned->sb;
+ 	struct nfs_server *server = NFS_SB(sb);
+@@ -2377,6 +2384,11 @@ void nfs_clone_super(struct super_block *sb, struct nfs_mount_info *mount_info)
+ 	}
+ 
+  	nfs_initialise_sb(sb);
++
++	sb->s_bdi = bdi_get(old_sb->s_bdi);
++	sb->s_iflags |= SB_I_DYNBDI;
++
++	return 0;
+ }
+ 
+ static int nfs_compare_mount_options(const struct super_block *s, const struct nfs_server *b, int flags)
+@@ -2529,11 +2541,6 @@ static void nfs_get_cache_cookie(struct super_block *sb,
+ }
+ #endif
+ 
+-static int nfs_bdi_register(struct nfs_server *server)
+-{
+-	return bdi_register_dev(&server->backing_dev_info, server->s_dev);
+-}
+-
+ int nfs_set_sb_security(struct super_block *s, struct dentry *mntroot,
+ 			struct nfs_mount_info *mount_info)
+ {
+@@ -2601,17 +2608,14 @@ struct dentry *nfs_fs_mount_common(struct nfs_server *server,
+ 		nfs_free_server(server);
+ 		server = NULL;
+ 	} else {
+-		error = nfs_bdi_register(server);
+-		if (error) {
+-			mntroot = ERR_PTR(error);
+-			goto error_splat_super;
+-		}
+ 		server->super = s;
+ 	}
+ 
+ 	if (!s->s_root) {
+ 		/* initial superblock/root creation */
+-		mount_info->fill_super(s, mount_info);
++		error = mount_info->fill_super(s, mount_info);
++		if (error)
++			goto error_splat_super;
+ 		nfs_get_cache_cookie(s, mount_info->parsed, mount_info->cloned);
+ 	}
+ 
+diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+index b00d53d13d47..5296c5849a9b 100644
+--- a/fs/nfs/write.c
++++ b/fs/nfs/write.c
+@@ -263,16 +263,15 @@ int nfs_congestion_kb;
+ 
+ static void nfs_set_page_writeback(struct page *page)
+ {
+-	struct nfs_server *nfss = NFS_SERVER(page_file_mapping(page)->host);
++	struct inode *inode = page_file_mapping(page)->host;
++	struct nfs_server *nfss = NFS_SERVER(inode);
+ 	int ret = test_set_page_writeback(page);
+ 
+ 	WARN_ON_ONCE(ret != 0);
+ 
+ 	if (atomic_long_inc_return(&nfss->writeback) >
+-			NFS_CONGESTION_ON_THRESH) {
+-		set_bdi_congested(&nfss->backing_dev_info,
+-					BLK_RW_ASYNC);
+-	}
++			NFS_CONGESTION_ON_THRESH)
++		set_bdi_congested(inode_to_bdi(inode), BLK_RW_ASYNC);
+ }
+ 
+ static void nfs_end_page_writeback(struct nfs_page *req)
+@@ -285,7 +284,7 @@ static void nfs_end_page_writeback(struct nfs_page *req)
+ 
+ 	end_page_writeback(req->wb_page);
+ 	if (atomic_long_dec_return(&nfss->writeback) < NFS_CONGESTION_OFF_THRESH)
+-		clear_bdi_congested(&nfss->backing_dev_info, BLK_RW_ASYNC);
++		clear_bdi_congested(inode_to_bdi(inode), BLK_RW_ASYNC);
+ }
+ 
+ 
+@@ -1808,7 +1807,7 @@ static void nfs_commit_release_pages(struct nfs_commit_data *data)
+ 	}
+ 	nfss = NFS_SERVER(data->inode);
+ 	if (atomic_long_read(&nfss->writeback) < NFS_CONGESTION_OFF_THRESH)
+-		clear_bdi_congested(&nfss->backing_dev_info, BLK_RW_ASYNC);
++		clear_bdi_congested(inode_to_bdi(data->inode), BLK_RW_ASYNC);
+ 
+ 	nfs_init_cinfo(&cinfo, data->inode, data->dreq);
+ 	nfs_commit_end(cinfo.mds);
+diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
+index b34097c67848..e1502c55741e 100644
+--- a/include/linux/nfs_fs_sb.h
++++ b/include/linux/nfs_fs_sb.h
+@@ -133,7 +133,6 @@ struct nfs_server {
+ 	struct rpc_clnt *	client_acl;	/* ACL RPC client handle */
+ 	struct nlm_host		*nlm_host;	/* NLM client handle */
+ 	struct nfs_iostats __percpu *io_stats;	/* I/O statistics */
+-	struct backing_dev_info	backing_dev_info;
+ 	atomic_long_t		writeback;	/* number of writeback pages */
+ 	int			flags;		/* various flags */
+ 	unsigned int		caps;		/* server capabilities */
+-- 
+2.10.2
+
