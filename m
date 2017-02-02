@@ -1,66 +1,172 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from zeniv.linux.org.uk ([195.92.253.2]:45186 "EHLO
-        ZenIV.linux.org.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1750885AbdBBS2I (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 2 Feb 2017 13:28:08 -0500
-Date: Thu, 2 Feb 2017 18:28:02 +0000
-From: Al Viro <viro@ZenIV.linux.org.uk>
+Received: from aserp1040.oracle.com ([141.146.126.69]:29880 "EHLO
+        aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751298AbdBBTaO (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 2 Feb 2017 14:30:14 -0500
+Date: Thu, 2 Feb 2017 11:28:27 -0800
+From: Liu Bo <bo.li.liu@oracle.com>
 To: Jan Kara <jack@suse.cz>
-Cc: Jeff Layton <jlayton@redhat.com>, linux-fsdevel@vger.kernel.org,
-        linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        ceph-devel@vger.kernel.org, lustre-devel@lists.lustre.org,
-        v9fs-developer@lists.sourceforge.net,
-        Linus Torvalds <torvalds@linux-foundation.org>,
-        Chris Wilson <chris@chris-wilson.co.uk>,
-        "Kirill A. Shutemov" <kirill.shutemov@linux.intel.com>
-Subject: Re: [PATCH v3 0/2] iov_iter: allow iov_iter_get_pages_alloc to
- allocate more pages per call
-Message-ID: <20170202182802.GH27291@ZenIV.linux.org.uk>
-References: <20170124212327.14517-1-jlayton@redhat.com>
- <20170125133205.21704-1-jlayton@redhat.com>
- <20170202095125.GF27291@ZenIV.linux.org.uk>
- <20170202144817.GB15545@quack2.suse.cz>
+Cc: linux-fsdevel@vger.kernel.org, Christoph Hellwig <hch@infradead.org>,
+        linux-block@vger.kernel.org, linux-mtd@lists.infradead.org,
+        linux-nfs@vger.kernel.org, Petr Vandrovec <petr@vandrovec.name>,
+        linux-nilfs@vger.kernel.org, cluster-devel@redhat.com,
+        osd-dev@open-osd.org, codalist@TELEMANN.coda.cs.cmu.edu,
+        linux-afs@lists.infradead.org, ecryptfs@vger.kernel.org,
+        linux-cifs@vger.kernel.org, ceph-devel@vger.kernel.org,
+        linux-btrfs@vger.kernel.org, v9fs-developer@lists.sourceforge.net,
+        lustre-devel@lists.lustre.org
+Subject: Re: [PATCH 04/24] fs: Provide infrastructure for dynamic BDIs in
+ filesystems
+Message-ID: <20170202192827.GF6550@localhost.localdomain>
+Reply-To: bo.li.liu@oracle.com
+References: <20170202173422.3240-1-jack@suse.cz>
+ <20170202173422.3240-5-jack@suse.cz>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20170202144817.GB15545@quack2.suse.cz>
+In-Reply-To: <20170202173422.3240-5-jack@suse.cz>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Feb 02, 2017 at 03:48:17PM +0100, Jan Kara wrote:
+Hi,
 
-> > 	* ->page_mkwrite() instances sometimes return VM_FAULT_RETRY; AFAICS,
-> > it's only (ab)used there as 'not zero, but doesn't contain any error bits';
-> > VM_FAULT_RETRY from that source does *not* reach handle_mm_fault() callers,
-> > right?
+On Thu, Feb 02, 2017 at 06:34:02PM +0100, Jan Kara wrote:
+> Provide helper functions for setting up dynamically allocated
+> backing_dev_info structures for filesystems and cleaning them up on
+> superblock destruction.
+
+Just one concern, will this cause problems for multiple superblock cases
+like nfs with nosharecache?
+
+Thanks,
+
+-liubo
+
 > 
-> I can see only Lustre doing it and IMHO it is abuse. VM_FAULT_RETRY is used
-> for mmap_sem latency reduction when paging in pages and so not everybody
-> handles it. If a handler wants to simply retry the fault, returning
-> VM_FAULT_NOPAGE is a more common way to do that...
-
-/* Convert errno to return value from ->page_mkwrite() call */
-static inline int block_page_mkwrite_return(int err)
-{
-        if (err == 0)
-                return VM_FAULT_LOCKED;
-        if (err == -EFAULT)
-                return VM_FAULT_NOPAGE;
-        if (err == -ENOMEM)
-                return VM_FAULT_OOM;
-        if (err == -EAGAIN)
-                return VM_FAULT_RETRY;
-        /* -ENOSPC, -EDQUOT, -EIO ... */
-        return VM_FAULT_SIGBUS;
-}
-
-and a bunch of ->page_mkwrite() instances using that.  However, the only
-callers of ->page_mkwrite() are wp_page_shared()->do_page_mkwrite() and
-do_shared_fault()->do_page_mkwrite().  do_page_mkwrite() treates
-VM_FAULT_RETRY as "lock page and return VM_FAULT_RETRY|VM_FAULT_LOCKED".
-Both callers do the same check -
-                if (unlikely(!tmp || (tmp &
-                                      (VM_FAULT_ERROR | VM_FAULT_NOPAGE)))) {
-and the return value if that predicate is false.  FWIW, use of VM_FAULT_RETRY
-comes from your patch back in 2011 and AFAICS the same analysis used to
-apply back then, except for the open-coded method calls where we use
-do_page_mkwrite() these days...
+> CC: linux-mtd@lists.infradead.org
+> CC: linux-nfs@vger.kernel.org
+> CC: Petr Vandrovec <petr@vandrovec.name>
+> CC: linux-nilfs@vger.kernel.org
+> CC: cluster-devel@redhat.com
+> CC: osd-dev@open-osd.org
+> CC: codalist@coda.cs.cmu.edu
+> CC: linux-afs@lists.infradead.org
+> CC: ecryptfs@vger.kernel.org
+> CC: linux-cifs@vger.kernel.org
+> CC: ceph-devel@vger.kernel.org
+> CC: linux-btrfs@vger.kernel.org
+> CC: v9fs-developer@lists.sourceforge.net
+> CC: lustre-devel@lists.lustre.org
+> Signed-off-by: Jan Kara <jack@suse.cz>
+> ---
+>  fs/super.c                       | 49 ++++++++++++++++++++++++++++++++++++++++
+>  include/linux/backing-dev-defs.h |  2 +-
+>  include/linux/fs.h               |  6 +++++
+>  3 files changed, 56 insertions(+), 1 deletion(-)
+> 
+> diff --git a/fs/super.c b/fs/super.c
+> index ea662b0e5e78..31dc4c6450ef 100644
+> --- a/fs/super.c
+> +++ b/fs/super.c
+> @@ -446,6 +446,11 @@ void generic_shutdown_super(struct super_block *sb)
+>  	hlist_del_init(&sb->s_instances);
+>  	spin_unlock(&sb_lock);
+>  	up_write(&sb->s_umount);
+> +	if (sb->s_iflags & SB_I_DYNBDI) {
+> +		bdi_put(sb->s_bdi);
+> +		sb->s_bdi = &noop_backing_dev_info;
+> +		sb->s_iflags &= ~SB_I_DYNBDI;
+> +	}
+>  }
+>  
+>  EXPORT_SYMBOL(generic_shutdown_super);
+> @@ -1249,6 +1254,50 @@ mount_fs(struct file_system_type *type, int flags, const char *name, void *data)
+>  }
+>  
+>  /*
+> + * Setup private BDI for given superblock. I gets automatically cleaned up
+> + * in generic_shutdown_super().
+> + */
+> +int super_setup_bdi_name(struct super_block *sb, char *fmt, ...)
+> +{
+> +	struct backing_dev_info *bdi;
+> +	int err;
+> +	va_list args;
+> +
+> +	bdi = bdi_alloc(GFP_KERNEL);
+> +	if (!bdi)
+> +		return -ENOMEM;
+> +
+> +	bdi->name = sb->s_type->name;
+> +
+> +	va_start(args, fmt);
+> +	err = bdi_register_va(bdi, NULL, fmt, args);
+> +	va_end(args);
+> +	if (err) {
+> +		bdi_put(bdi);
+> +		return err;
+> +	}
+> +	WARN_ON(sb->s_bdi != &noop_backing_dev_info);
+> +	sb->s_bdi = bdi;
+> +	sb->s_iflags |= SB_I_DYNBDI;
+> +
+> +	return 0;
+> +}
+> +EXPORT_SYMBOL(super_setup_bdi_name);
+> +
+> +/*
+> + * Setup private BDI for given superblock. I gets automatically cleaned up
+> + * in generic_shutdown_super().
+> + */
+> +int super_setup_bdi(struct super_block *sb)
+> +{
+> +	static atomic_long_t bdi_seq = ATOMIC_LONG_INIT(0);
+> +
+> +	return super_setup_bdi_name(sb, "%.28s-%ld", sb->s_type->name,
+> +				    atomic_long_inc_return(&bdi_seq));
+> +}
+> +EXPORT_SYMBOL(super_setup_bdi);
+> +
+> +/*
+>   * This is an internal function, please use sb_end_{write,pagefault,intwrite}
+>   * instead.
+>   */
+> diff --git a/include/linux/backing-dev-defs.h b/include/linux/backing-dev-defs.h
+> index 2ecafc8a2d06..70080b4217f4 100644
+> --- a/include/linux/backing-dev-defs.h
+> +++ b/include/linux/backing-dev-defs.h
+> @@ -143,7 +143,7 @@ struct backing_dev_info {
+>  	congested_fn *congested_fn; /* Function pointer if device is md/dm */
+>  	void *congested_data;	/* Pointer to aux data for congested func */
+>  
+> -	char *name;
+> +	const char *name;
+>  
+>  	struct kref refcnt;	/* Reference counter for the structure */
+>  	unsigned int registered:1;	/* Is bdi registered? */
+> diff --git a/include/linux/fs.h b/include/linux/fs.h
+> index c930cbc19342..8ed8b6d1bc54 100644
+> --- a/include/linux/fs.h
+> +++ b/include/linux/fs.h
+> @@ -1267,6 +1267,9 @@ struct mm_struct;
+>  /* sb->s_iflags to limit user namespace mounts */
+>  #define SB_I_USERNS_VISIBLE		0x00000010 /* fstype already mounted */
+>  
+> +/* Temporary flag until all filesystems are converted to dynamic bdis */
+> +#define SB_I_DYNBDI	0x00000100
+> +
+>  /* Possible states of 'frozen' field */
+>  enum {
+>  	SB_UNFROZEN = 0,		/* FS is unfrozen */
+> @@ -2103,6 +2106,9 @@ extern int vfs_ustat(dev_t, struct kstatfs *);
+>  extern int freeze_super(struct super_block *super);
+>  extern int thaw_super(struct super_block *super);
+>  extern bool our_mnt(struct vfsmount *mnt);
+> +extern __printf(2, 3)
+> +int super_setup_bdi_name(struct super_block *sb, char *fmt, ...);
+> +extern int super_setup_bdi(struct super_block *sb);
+>  
+>  extern int current_umask(void);
+>  
+> -- 
+> 2.10.2
+> 
