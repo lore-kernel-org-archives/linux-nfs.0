@@ -1,70 +1,113 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:60955 "EHLO mx2.suse.de"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1750879AbdBBOsW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 2 Feb 2017 09:48:22 -0500
-Date: Thu, 2 Feb 2017 15:48:17 +0100
-From: Jan Kara <jack@suse.cz>
-To: Al Viro <viro@ZenIV.linux.org.uk>
-Cc: Jeff Layton <jlayton@redhat.com>, linux-fsdevel@vger.kernel.org,
-        linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        ceph-devel@vger.kernel.org, lustre-devel@lists.lustre.org,
-        v9fs-developer@lists.sourceforge.net,
-        Linus Torvalds <torvalds@linux-foundation.org>,
-        Jan Kara <jack@suse.cz>, Chris Wilson <chris@chris-wilson.co.uk>,
-        "Kirill A. Shutemov" <kirill.shutemov@linux.intel.com>
-Subject: Re: [PATCH v3 0/2] iov_iter: allow iov_iter_get_pages_alloc to
- allocate more pages per call
-Message-ID: <20170202144817.GB15545@quack2.suse.cz>
-References: <20170124212327.14517-1-jlayton@redhat.com>
- <20170125133205.21704-1-jlayton@redhat.com>
- <20170202095125.GF27291@ZenIV.linux.org.uk>
+Received: from mail-io0-f193.google.com ([209.85.223.193]:33276 "EHLO
+        mail-io0-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1750879AbdBBQt4 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 2 Feb 2017 11:49:56 -0500
+Received: by mail-io0-f193.google.com with SMTP id 101so24720597iom.0
+        for <linux-nfs@vger.kernel.org>; Thu, 02 Feb 2017 08:49:56 -0800 (PST)
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20170202095125.GF27291@ZenIV.linux.org.uk>
+In-Reply-To: <1485989059-28706-1-git-send-email-agruenba@redhat.com>
+References: <1479933700-5743-1-git-send-email-bfields@redhat.com>
+ <1479933700-5743-2-git-send-email-bfields@redhat.com> <20161201220716.GB1589@fieldses.org>
+ <CAHc6FU721nR8QmcpJsDWtvg9EqzK-krYH7GTGw0Y=s7nSEy-vg@mail.gmail.com>
+ <20161202164705.GB20384@parsley.fieldses.org> <CAN-5tyER30ZQk9f0j1DDOYAsmk6XDnbay2my68R6gVDp+0paNQ@mail.gmail.com>
+ <1485989059-28706-1-git-send-email-agruenba@redhat.com>
+From: Olga Kornievskaia <aglo@umich.edu>
+Date: Thu, 2 Feb 2017 11:49:54 -0500
+Message-ID: <CAN-5tyE66-Wb5ZNj1McD57oHG9enXgSRvdT6TMzsUGgr7-aF9g@mail.gmail.com>
+Subject: Re: [PATCH 1/2] nfs: add support for the umask attribute
+To: Andreas Gruenbacher <agruenba@redhat.com>
+Cc: "J. Bruce Fields" <bfields@fieldses.org>,
+        "J. Bruce Fields" <bfields@redhat.com>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        Anna Schumaker <schumakeranna@gmail.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu 02-02-17 09:51:25, Al Viro wrote:
-> I'm massaging that code (along with a lot of RTFS); the interesting questions
-> related to VM side of things are
-> 	* what are the relative costs of doing small vs. large batches?  Some
-> of get_user_pages_fast() instances have comments along the lines of "we ought
-> to limit the batch size, but then nobody's doing more than 64 pages at a time
-> anyway".
+On Wed, Feb 1, 2017 at 5:44 PM, Andreas Gruenbacher <agruenba@redhat.com> wrote:
+> From: "J. Bruce Fields" <bfields@fieldses.org>
+>
+> On Wed, Feb 1, 2017 at 10:31 PM, Olga Kornievskaia <aglo@umich.edu> wrote:
+>> Any plans to add wireshark support for this?
+>
+> We did, yes.  Bruce had posted that together with the very first version.  I
+> couldn't find the wireshark patch for the current version of the proposal in
+> the mailing list archive, so here's that.
+>
+> Andreas
+>
+> --
+>
+> NFSv4.2 umask support
+>
+> ---
+>  epan/dissectors/packet-nfs.c | 19 +++++++++++++++++++
+>  1 file changed, 19 insertions(+)
+>
+> diff --git a/epan/dissectors/packet-nfs.c b/epan/dissectors/packet-nfs.c
+> index 6d1dd3b..5f2ce42 100644
+> --- a/epan/dissectors/packet-nfs.c
+> +++ b/epan/dissectors/packet-nfs.c
+> @@ -420,6 +420,7 @@ static int hf_nfs4_fattr_layout_blksize = -1;
+>  static int hf_nfs4_fattr_security_label_lfs = -1;
+>  static int hf_nfs4_fattr_security_label_pi = -1;
+>  static int hf_nfs4_fattr_security_label_context = -1;
+> +static int hf_nfs4_fattr_umask_mask = -1;
+>  static int hf_nfs4_who = -1;
+>  static int hf_nfs4_server = -1;
+>  static int hf_nfs4_fslocation = -1;
+> @@ -6133,6 +6134,8 @@ static const value_string fattr4_names[] = {
+>         {       FATTR4_CHANGE_ATTR_TYPE,   "Change_Attr_Type"           },
+>  #define FATTR4_SECURITY_LABEL      80
+>         {       FATTR4_SECURITY_LABEL,     "Security_Label"             },
+> +#define FATTR4_MODE_UMASK          81
+> +       {       FATTR4_MODE_UMASK,         "Mode_Umask"                 },
+>         {       0,      NULL    }
+>  };
+>  static value_string_ext fattr4_names_ext = VALUE_STRING_EXT_INIT(fattr4_names);
+> @@ -6717,6 +6720,14 @@ dissect_nfs4_security_label(tvbuff_t *tvb, proto_tree *tree, int offset)
+>         return offset;
+>  }
+>
+> +static int
+> +dissect_nfs4_mode_umask(tvbuff_t *tvb, proto_tree *tree, int offset)
+> +{
+> +       offset = dissect_nfs4_mode(tvb, offset, tree);
+> +       offset = dissect_rpc_uint32(tvb, tree, hf_nfs4_fattr_umask_mask, offset);
+> +       return offset;
+> +}
+> +
+>  #define FATTR4_BITMAP_ONLY 0
+>  #define FATTR4_DISSECT_VALUES 1
+>
+> @@ -7119,6 +7130,10 @@ dissect_nfs4_fattrs(tvbuff_t *tvb, int offset, packet_info *pinfo, proto_tree *t
+>                                                 offset = dissect_nfs4_security_label(tvb, attr_tree, offset);
+>                                                 break;
+>
+> +                                       case FATTR4_MODE_UMASK:
+> +                                               offset = dissect_nfs4_mode_umask(tvb, attr_tree, offset);
+> +                                               break;
+> +
+>                                         default:
+>                                                 break;
+>                                         }
+> @@ -12509,6 +12524,10 @@ proto_register_nfs(void)
+>                         "label_format", "nfs.fattr4.security_label.lfs", FT_UINT32, BASE_DEC,
+>                         NULL, 0, NULL, HFILL }},
+>
+> +               { &hf_nfs4_fattr_umask_mask, {
+> +                       "umask", "nfs.fattr4.umask", FT_UINT32, BASE_OCT,
+> +                       NULL, 0, NULL, HFILL }},
+> +
+>                 { &hf_nfs4_fattr_security_label_pi, {
+>                         "policy_id", "nfs.fattr4.security_label.pi", FT_UINT32, BASE_DEC,
+>                         NULL, 0, NULL, HFILL }},
+> --
+> 2.7.4
 
-Well, I believe it's only about the cost of setting up page table walk and
-walking down those several levels of page tables. It is cheaper to copy
-several PTE entries from the leaf level than doing the full walk every
-time. But I didn't ever profile it to get actual numbers.
 
-Large batches are only a problem because of possible soft-lockups and irq
-latencies AFAIK. So the batch just should not be insanely large...
-
-> 	* Not a question: any ->fault() that returns VM_FAULT_RETRY when
-> *not* passed FAULT_FLAG_ALLOW_RETRY in flags ought to be shot.  cxlflash one
-> sure as hell is.
-
-Yep.
-
-> 	* drivers/gpu/drm/vgem/vgem_drv.c:vgem_gem_fault() is bloody odd -
-> shmem_read_mapping_page() can't return -EBUSY, AFAICS.  vm_insert_page()
-> used to (and back then vgem_gem_fault() used to be broken), but these days
-> it looks like dead code...
-
-Looks like that.
-
-> 	* ->page_mkwrite() instances sometimes return VM_FAULT_RETRY; AFAICS,
-> it's only (ab)used there as 'not zero, but doesn't contain any error bits';
-> VM_FAULT_RETRY from that source does *not* reach handle_mm_fault() callers,
-> right?
-
-I can see only Lustre doing it and IMHO it is abuse. VM_FAULT_RETRY is used
-for mmap_sem latency reduction when paging in pages and so not everybody
-handles it. If a handler wants to simply retry the fault, returning
-VM_FAULT_NOPAGE is a more common way to do that...
-
-								Honza
--- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+Thank you Andreas. I have tried this patch and it decodes the OPEN
+compounds ok. Previously it's been garbage past the unknown attribute
+with value 81.
