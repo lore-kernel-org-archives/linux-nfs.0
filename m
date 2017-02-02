@@ -1,38 +1,77 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:45926 "EHLO mx2.suse.de"
+Received: from mx1.redhat.com ([209.132.183.28]:55258 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1752467AbdBBRlL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 2 Feb 2017 12:41:11 -0500
-From: Jan Kara <jack@suse.cz>
-To: <linux-fsdevel@vger.kernel.org>
-Cc: Christoph Hellwig <hch@infradead.org>, linux-block@vger.kernel.org,
-        Jan Kara <jack@suse.cz>, linux-mtd@lists.infradead.org,
-        linux-nfs@vger.kernel.org, Petr Vandrovec <petr@vandrovec.name>,
-        linux-nilfs@vger.kernel.org, cluster-devel@redhat.com,
-        osd-dev@open-osd.org, codalist@TELEMANN.coda.cs.cmu.edu,
-        linux-afs@lists.infradead.org, ecryptfs@vger.kernel.org,
-        linux-cifs@vger.kernel.org, ceph-devel@vger.kernel.org,
-        linux-btrfs@vger.kernel.org, v9fs-developer@lists.sourceforge.net,
-        lustre-devel@lists.lustre.org
-Subject: [PATCH 0/24 RFC] fs: Convert all embedded bdis into separate ones
-Date: Thu,  2 Feb 2017 18:33:58 +0100
-Message-Id: <20170202173422.3240-1-jack@suse.cz>
+        id S1752086AbdBBRs6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 2 Feb 2017 12:48:58 -0500
+Received: from smtp.corp.redhat.com (int-mx16.intmail.prod.int.phx2.redhat.com [10.5.11.28])
+        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
+        (No client certificate requested)
+        by mx1.redhat.com (Postfix) with ESMTPS id 6021CC057FAD
+        for <linux-nfs@vger.kernel.org>; Thu,  2 Feb 2017 17:48:59 +0000 (UTC)
+Received: from steved.boston.devel.redhat.com (steved.boston.devel.redhat.com [10.19.60.47])
+        by smtp.corp.redhat.com (Postfix) with ESMTP id 300561DAD37
+        for <linux-nfs@vger.kernel.org>; Thu,  2 Feb 2017 17:48:59 +0000 (UTC)
+Subject: Re: Monthly Linux NFS Town Hall meeting: Tomorrow - Thur Feb 2
+To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+References: <90728db6-f9cb-d610-99f2-2a76634f147a@RedHat.com>
+From: Steve Dickson <SteveD@redhat.com>
+Message-ID: <308e9254-2520-2a11-9ef6-30a25f911252@RedHat.com>
+Date: Thu, 2 Feb 2017 12:48:58 -0500
+MIME-Version: 1.0
+In-Reply-To: <90728db6-f9cb-d610-99f2-2a76634f147a@RedHat.com>
+Content-Type: text/plain; charset=windows-1252
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hello,
+This will be starting in 10mins or so... if interested...
 
-this patch series converts all embedded occurences of struct backing_dev_info
-to use standalone dynamically allocated structures. This makes bdi handling
-unified across all bdi users and generally removes some boilerplate code from
-filesystems setting up their own bdi. It also allows us to remove some code
-from generic bdi implementation.
+steved
 
-The patches were only compile-tested for most filesystems (I've tested
-mounting only for NFS & btrfs) so fs maintainers please have a look whether
-the changes look sound to you.
+On 02/01/2017 05:52 PM, Steve Dickson wrote:
+> Hello,
+>
+> With a connectathon coming up this month
+> let's have a quick meeting to make sure
+> we are all on the same page... Being 
+> connectathon is at the end of this month 
+> we probably will not have this meeting 
+> next month... 
+>
+> The meeting will be Tomorrow Thur Jan 5 at 
+>
+>    *01:00 pm EST (10:00am PST)*
+>
+> The usual agenda will apply. The maintainers will give
+> a quick status of what is happening in their worlds.
+>
+> Next we'll get updates from major contributors on what
+> they have been doing and are planing on doing.
+>   
+> Finally, we'll open the floor to questions, comments, 
+> concerns from the community.  
+>
+> Generally the meeting lasts between 30 to 45 mins, with 
+> a very hard stop at 60mins. 
+>
+> Please feel to attend and participate!
+>
+> Again the Time: 10:00 am PST (01:00 pm EST)
+>
+> BlueJeans Video Link:
+>     https://bluejeans.com/5642721552/
+>
+> The call in numbers are:
+>
+> U.S. and Canada: (800) 451-8679
+> World wide toll free numbers
+>    https://www.intercallonline.com/listNumbersByCode.action?confCode=5642721552
+>
+> Conference code: 564.272.1552
+>
+> steved.
+>
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
-This series is based on top of bdi fixes that were merged into linux-block
-git tree.
-
-								Honza
