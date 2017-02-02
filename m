@@ -1,16 +1,16 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:57665 "EHLO mx2.suse.de"
+Received: from mx2.suse.de ([195.135.220.15]:58043 "EHLO mx2.suse.de"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1750776AbdBBF0y (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 2 Feb 2017 00:26:54 -0500
+        id S1750842AbdBBFke (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 2 Feb 2017 00:40:34 -0500
 From: NeilBrown <neilb@suse.com>
 To: Scott Mayhew <smayhew@redhat.com>, steved@redhat.com
-Date: Thu, 02 Feb 2017 16:25:46 +1100
+Date: Thu, 02 Feb 2017 16:39:52 +1100
 Cc: linux-nfs@vger.kernel.org
-Subject: Re: [nfs-utils PATCH v2 1/2] libnsm.a: refactor nsm_setup_pathnames() and nsm_make_pathname()
-In-Reply-To: <1485962369-25852-2-git-send-email-smayhew@redhat.com>
-References: <1485962369-25852-1-git-send-email-smayhew@redhat.com> <1485962369-25852-2-git-send-email-smayhew@redhat.com>
-Message-ID: <87efzhxixx.fsf@notabene.neil.brown.name>
+Subject: Re: [nfs-utils PATCH v2 2/2] mountd/exportfs: implement the -s/--state-directory-path option
+In-Reply-To: <1485962369-25852-3-git-send-email-smayhew@redhat.com>
+References: <1485962369-25852-1-git-send-email-smayhew@redhat.com> <1485962369-25852-3-git-send-email-smayhew@redhat.com>
+Message-ID: <87bmulxiaf.fsf@notabene.neil.brown.name>
 MIME-Version: 1.0
 Content-Type: multipart/signed; boundary="=-=-=";
         micalg=pgp-sha256; protocol="application/pgp-signature"
@@ -23,128 +23,84 @@ Content-Transfer-Encoding: quoted-printable
 
 On Wed, Feb 01 2017, Scott Mayhew wrote:
 
-> Move the logic in nsm_setup_pathnames() and nsm_make_pathname() to
-> similar generic functions in libmisc.a so that the exportfs and
-> rpc.mountd programs can make use of them later.
->
 > Signed-off-by: Scott Mayhew <smayhew@redhat.com>
 > ---
->  support/include/misc.h   |   3 ++
->  support/misc/Makefile.am |   2 +-
->  support/misc/file.c      | 110 +++++++++++++++++++++++++++++++++++++++++=
-++++++
->  support/nsm/file.c       |  45 ++-----------------
->  utils/statd/Makefile.am  |   1 +
->  5 files changed, 118 insertions(+), 43 deletions(-)
->  create mode 100644 support/misc/file.c
+>  support/export/xtab.c     | 82 +++++++++++++++++++++++++++++++++++++++++=
+++++--
+>  support/include/nfslib.h  | 17 ++++++++++
+>  support/nfs/cacheio.c     |  4 ++-
+>  support/nfs/rmtab.c       |  4 ++-
+>  utils/exportfs/exportfs.c | 13 ++++++++
+>  utils/mountd/auth.c       |  8 +++--
+>  utils/mountd/mountd.c     | 31 +++++++++++-------
+>  utils/mountd/mountd.man   |  2 +-
+>  utils/mountd/rmtab.c      | 26 ++++++++-------
+>  9 files changed, 156 insertions(+), 31 deletions(-)
 >
-> diff --git a/support/include/misc.h b/support/include/misc.h
-> index eedc1fe..6f9b47c 100644
-> --- a/support/include/misc.h
-> +++ b/support/include/misc.h
-> @@ -15,6 +15,9 @@
->  int	randomkey(unsigned char *keyout, int len);
->  int	weakrandomkey(unsigned char *keyout, int len);
->=20=20
-> +char *generic_make_pathname(const char *, const char *);
-> +_Bool generic_setup_basedir(const char *, const char *, char *);
-> +
->  extern int is_mountpoint(char *path);
->=20=20
->  /* size of the file pointer buffers for rpc procfs files */
-> diff --git a/support/misc/Makefile.am b/support/misc/Makefile.am
-> index 1048580..8936b0d 100644
-> --- a/support/misc/Makefile.am
-> +++ b/support/misc/Makefile.am
-> @@ -1,6 +1,6 @@
->  ## Process this file with automake to produce Makefile.in
->=20=20
->  noinst_LIBRARIES =3D libmisc.a
-> -libmisc_a_SOURCES =3D tcpwrapper.c from_local.c mountpoint.c
-> +libmisc_a_SOURCES =3D tcpwrapper.c from_local.c mountpoint.c file.c
->=20=20
->  MAINTAINERCLEANFILES =3D Makefile.in
-> diff --git a/support/misc/file.c b/support/misc/file.c
-> new file mode 100644
-> index 0000000..ee6d264
-> --- /dev/null
-> +++ b/support/misc/file.c
-> @@ -0,0 +1,110 @@
-> +/*
-> + * Copyright 2009 Oracle.  All rights reserved.
-> + * Copyright 2017 Red Hat, Inc.  All rights reserved.
-> + *
-> + * This file is part of nfs-utils.
-> + *
-> + * nfs-utils is free software; you can redistribute it and/or modify
-> + * it under the terms of the GNU General Public License as published by
-> + * the Free Software Foundation; either version 2 of the License, or
-> + * (at your option) any later version.
-> + *
-> + * nfs-utils is distributed in the hope that it will be useful,
-> + * but WITHOUT ANY WARRANTY; without even the implied warranty of
-> + * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-> + * GNU General Public License for more details.
-> + *
-> + * You should have received a copy of the GNU General Public License
-> + * along with nfs-utils.  If not, see <http://www.gnu.org/licenses/>.
-> + */
-> +
+> diff --git a/support/export/xtab.c b/support/export/xtab.c
+> index 22cf539..a5bfa6e 100644
+> --- a/support/export/xtab.c
+> +++ b/support/export/xtab.c
+> @@ -14,12 +14,20 @@
+>  #include <unistd.h>
+>  #include <stdlib.h>
+>  #include <string.h>
+> +#include <sys/types.h>
 > +#include <sys/stat.h>
-> +
-> +#include <string.h>
-> +#include <libgen.h>
-> +#include <stdio.h>
 > +#include <errno.h>
-> +#include <dirent.h>
-> +#include <stdlib.h>
-> +#include <stdbool.h>
-> +
-> +#include "xlog.h"
+> +#include <libgen.h>
+>=20=20
+>  #include "nfslib.h"
+>  #include "exportfs.h"
+>  #include "xio.h"
+>  #include "xlog.h"
+>  #include "v4root.h"
 > +#include "misc.h"
 > +
-> +static _Bool
-> +error_check(const int len, const size_t buflen)
-> +{
-> +	return (len < 0) || ((size_t)len >=3D buflen);
-> +}
+> +static char state_base_dirname[PATH_MAX] =3D NFS_STATEDIR;
+> +extern struct state_paths etab;
+>=20=20
+>  int v4root_needed;
+>  static void cond_rename(char *newfile, char *oldfile);
+> @@ -65,7 +73,7 @@ xtab_read(char *xtab, char *lockfn, int is_export)
+>  int
+>  xtab_export_read(void)
+>  {
+> -	return xtab_read(_PATH_ETAB, _PATH_ETABLCK, 1);
+> +	return xtab_read(etab.statefn, etab.lockfn, 1);
+>  }
+>=20=20
+>  /*
+> @@ -112,7 +120,7 @@ xtab_write(char *xtab, char *xtabtmp, char *lockfn, i=
+nt is_export)
+>  int
+>  xtab_export_write()
+>  {
+> -	return xtab_write(_PATH_ETAB, _PATH_ETABTMP, _PATH_ETABLCK, 1);
+> +	return xtab_write(etab.statefn, etab.tmpfn, etab.lockfn, 1);
+>  }
+>=20=20
+>  /*
+> @@ -158,3 +166,73 @@ static void cond_rename(char *newfile, char *oldfile)
+>  	rename(newfile, oldfile);
+>  	return;
+>  }
 > +
 > +/*
 > + * Returns a dynamically allocated, '\0'-terminated buffer
 > + * containing an appropriate pathname, or NULL if an error
 > + * occurs.  Caller must free the returned result with free(3).
 > + */
-> +__attribute__((__malloc__))
-> +char *
-> +generic_make_pathname(const char *base, const char *leaf)
+> +static char *
+> +state_make_pathname(const char *tabname)
 > +{
-> +	size_t size;
-> +	char *path;
-> +	int len;
-> +
-> +	size =3D strlen(base) + strlen(leaf) + 2;
-> +	if (size > PATH_MAX)
-> +		return NULL;
-> +
-> +	path =3D malloc(size);
-> +	if (path =3D=3D NULL)
-> +		return NULL;
-> +
-> +	len =3D snprintf(path, size, "%s/%s", base, leaf);
-> +	if (error_check(len, size)) {
-> +		free(path);
-> +		return NULL;
-> +	}
-> +
-> +	return path;
+> +	return generic_make_pathname(state_base_dirname, tabname);
 > +}
 > +
-> +
 > +/**
-> + * generic_setup_basedir - set up basedir
+> + * state_setup_basedir - set up basedir
 > + * @progname: C string containing name of program, for error messages
 > + * @parentdir: C string containing pathname to on-disk state, or NULL
-> + * @base: C string used to contain the basedir that is set up
 > + *
 > + * This runs before logging is set up, so error messages are directed
 > + * to stderr.
@@ -153,168 +109,202 @@ On Wed, Feb 01 2017, Scott Mayhew wrote:
 > + * and usable; otherwise false is returned.
 > + */
 > +_Bool
-> +generic_setup_basedir(const char *progname, const char *parentdir, char =
-*base)
+> +state_setup_basedir(const char *progname, const char *parentdir)
 > +{
-> +	static char buf[PATH_MAX];
-> +	struct stat st;
-> +	char *path;
+> +	return generic_setup_basedir(progname, parentdir, state_base_dirname);
+> +}
 > +
-> +	/* First: test length of name and whether it exists */
-> +	if (lstat(parentdir, &st) =3D=3D -1) {
-> +		(void)fprintf(stderr, "%s: Failed to stat %s: %s",
-> +				progname, parentdir, strerror(errno));
-> +		return false;
+> +int
+> +setup_state_path_names(const char *progname, const char *statefn,
+> +		      const char *tmpfn, const char *lockfn,
+> +		      struct state_paths *paths)
+> +{
+> +	paths->statefn =3D state_make_pathname(statefn);
+> +	if (!paths->statefn) {
+> +		fprintf(stderr, "%s: state_make_pathname(%s) failed\n",
+> +			progname, statefn);
+> +		goto out_err;
 > +	}
-> +
-> +	/* Ensure we have a clean directory pathname */
-> +	strncpy(buf, parentdir, sizeof(buf));
-> +	path =3D dirname(buf);
-> +	if (*path =3D=3D '.') {
-> +		(void)fprintf(stderr, "%s: Unusable directory %s",
-> +				progname, parentdir);
-> +		return false;
+> +	paths->tmpfn =3D state_make_pathname(tmpfn);
+> +	if (!paths->tmpfn) {
+> +		fprintf(stderr, "%s: state_make_pathname(%s) failed\n",
+> +			progname, tmpfn);
+> +		goto out_free_statefn;
 > +	}
+> +	paths->lockfn =3D state_make_pathname(lockfn);
+> +	if (!paths->lockfn) {
+> +		fprintf(stderr, "%s: state_make_pathname(%s) failed\n",
+> +			progname, lockfn);
+> +		goto out_free_tmpfn;
+> +	}
+> +	return 1;
 > +
-> +	xlog(D_CALL, "Using %s as the state directory", parentdir);
-> +	strncpy(base, parentdir, strlen(base));
+> +out_free_tmpfn:
+> +	free(paths->tmpfn);
+> +out_free_statefn:
+> +	free(paths->statefn);
+> +out_err:
+> +	return 0;
+> +
+> +}
+> +
+> +void
+> +free_state_path_names(struct state_paths *paths)
+> +{
+> +	free(paths->statefn);
+> +	free(paths->tmpfn);
+> +	free(paths->lockfn);
+> +}
+> diff --git a/support/include/nfslib.h b/support/include/nfslib.h
+> index 1498977..adcbe43 100644
+> --- a/support/include/nfslib.h
+> +++ b/support/include/nfslib.h
+> @@ -58,6 +58,19 @@
+>  #define	_PATH_PROC_EXPORTS_ALT	"/proc/fs/nfsd/exports"
+>  #endif
+>=20=20
+> +#define ETAB		"etab"
+> +#define ETABTMP		"etab.tmp"
+> +#define ETABLCK 	".etab.lock"
+> +#define RMTAB		"rmtab"
+> +#define RMTABTMP	"rmtab.tmp"
+> +#define RMTABLCK	".rmtab.lock"
 
-This isn't good.
-"base" is either nsm_base_dirname or state_base_dirname with are
-both PATH_MAX long char arrays which were initialised to
-e.g. /var/lib/nfs.
-So strlen(base) is about 12.
-So as long as parentdir is shorter than NFS_STATEDIR or NSM_DEFAULT_STATEDIR
-this will work.  If it is longer, it gets truncated.
-
-I think this should be 'strncpy(base,parentdir,PATH_MAX)' or similar.
-
-> +	base[strlen(parentdir)] =3D '\0';
-
-If parentdir is too long, this isn't safe, and if it is not too long,
-you can just use strcpy()...
+I would be happier if you completed removed _PATH_ETAB* and _PATH_RMTAB*
+as well.  I don't think they are used any more, but they are still
+defined (and mentioned in at least one comment).
 
 
-Apart from that:
+> +
+> +struct state_paths {
+> +	char *statefn;
+> +	char *tmpfn;
+> +	char *lockfn;
+> +};
+> +
+>  /* Maximum number of security flavors on an export: */
+>  #define SECFLAVOR_COUNT 8
+>=20=20
+> @@ -120,6 +133,10 @@ void			fputrmtabent(FILE *fp, struct rmtabent *xep, =
+long *pos);
+>  void			fendrmtabent(FILE *fp);
+>  void			frewindrmtabent(FILE *fp);
+>=20=20
+> +_Bool state_setup_basedir(const char *, const char *);
+> +int setup_state_path_names(const char *, const char *, const char *, con=
+st char *, struct state_paths *);
+> +void free_state_path_names(struct state_paths *);
+> +
+>  /* mydaemon */
+>  void daemon_init(bool fg);
+>  void daemon_ready(void);
+> diff --git a/support/nfs/cacheio.c b/support/nfs/cacheio.c
+> index e5e2579..885a4bb 100644
+> --- a/support/nfs/cacheio.c
+> +++ b/support/nfs/cacheio.c
+> @@ -27,6 +27,8 @@
+>  #include <time.h>
+>  #include <errno.h>
+>=20=20
+> +extern struct state_paths etab;
+> +
+>  void qword_add(char **bpp, int *lp, char *str)
+>  {
+>  	char *bp =3D *bpp;
+> @@ -228,7 +230,7 @@ cache_flush(int force)
+>  	};
+>  	now =3D time(0);
+>  	if (force ||
+> -	    stat(_PATH_ETAB, &stb) !=3D 0 ||
+> +	    stat(etab.statefn, &stb) !=3D 0 ||
+>  	    stb.st_mtime > now)
+>  		stb.st_mtime =3D time(0);
+>=20=20=09
+> diff --git a/support/nfs/rmtab.c b/support/nfs/rmtab.c
+> index 59dfbdf..2ecb2cc 100644
+> --- a/support/nfs/rmtab.c
+> +++ b/support/nfs/rmtab.c
+> @@ -33,12 +33,14 @@
+>=20=20
+>  static FILE	*rmfp =3D NULL;
+>=20=20
+> +extern struct state_paths rmtab;
+> +
+>  int
+>  setrmtabent(char *type)
+>  {
+>  	if (rmfp)
+>  		fclose(rmfp);
+> -	rmfp =3D fsetrmtabent(_PATH_RMTAB, type);
+> +	rmfp =3D fsetrmtabent(rmtab.statefn, type);
+>  	return (rmfp !=3D NULL);
+>  }
+>=20=20
+> diff --git a/utils/exportfs/exportfs.c b/utils/exportfs/exportfs.c
+> index 61dddfb..02d5b6d 100644
+> --- a/utils/exportfs/exportfs.c
+> +++ b/utils/exportfs/exportfs.c
+> @@ -52,6 +52,8 @@ static const char *lockfile =3D EXP_LOCKFILE;
+>  static int _lockfd =3D -1;
+>  char *conf_path =3D NFS_CONFFILE;
+>=20=20
+> +struct state_paths etab;
+> +
+>  /*
+>   * If we aren't careful, changes made by exportfs can be lost
+>   * when multiple exports process run at once:
+> @@ -95,6 +97,7 @@ main(int argc, char **argv)
+>  	int	f_ignore =3D 0;
+>  	int	i, c;
+>  	int	force_flush =3D 0;
+> +	char	*s;
+>=20=20
+>  	if ((progname =3D strrchr(argv[0], '/')) !=3D NULL)
+>  		progname++;
+> @@ -108,6 +111,11 @@ main(int argc, char **argv)
+>  	conf_init();
+>  	xlog_from_conffile("exportfs");
+>=20=20
+> +	/* NOTE: following uses "mountd" section of nfs.conf !!!! */
+> +	s =3D conf_get_str("mountd", "state-directory-path");
+> +	if (s && !state_setup_basedir(argv[0], s))
+> +		exit(1);
+> +
+
+Could you add to the systemd/nfs.conf.man man page, in the
+ .TP
+ .B mountd
+ Recognized values:
+
+section, that "state-directory-path" is also used by exportfs
+(much like the 'nfsd' section mentions that some values are also used by
+rpc.mountd).
+Also the exportfs.man page should get a small ".SH CONFIGURATION FILE"
+section.
+
+With those issues resolved,
   Reviewed-by: NeilBrown <neilb@suse.com>
-
-(I'd rather not have that error_check() function, it just obscures the
- code I think.  But as you obviously copied it from the original making
- minimal changes, it probably makes sense to leave it as it is)
 
 Thanks,
 NeilBrown
-
-
-> +	return true;
-> +}
-> diff --git a/support/nsm/file.c b/support/nsm/file.c
-> index aafa755..865be54 100644
-> --- a/support/nsm/file.c
-> +++ b/support/nsm/file.c
-> @@ -88,6 +88,7 @@
->=20=20
->  #include "xlog.h"
->  #include "nsm.h"
-> +#include "misc.h"
->=20=20
->  #define RPCARGSLEN	(4 * (8 + 1))
->  #define LINELEN		(RPCARGSLEN + SM_PRIV_SIZE * 2 + 1)
-> @@ -170,25 +171,7 @@ __attribute__((__malloc__))
->  static char *
->  nsm_make_pathname(const char *directory)
->  {
-> -	size_t size;
-> -	char *path;
-> -	int len;
-> -
-> -	size =3D strlen(nsm_base_dirname) + strlen(directory) + 2;
-> -	if (size > PATH_MAX)
-> -		return NULL;
-> -
-> -	path =3D malloc(size);
-> -	if (path =3D=3D NULL)
-> -		return NULL;
-> -
-> -	len =3D snprintf(path, size, "%s/%s", nsm_base_dirname, directory);
-> -	if (error_check(len, size)) {
-> -		free(path);
-> -		return NULL;
-> -	}
-> -
-> -	return path;
-> +	return generic_make_pathname(nsm_base_dirname, directory);
->  }
->=20=20
->  /*
-> @@ -293,29 +276,7 @@ out:
->  _Bool
->  nsm_setup_pathnames(const char *progname, const char *parentdir)
->  {
-> -	static char buf[PATH_MAX];
-> -	struct stat st;
-> -	char *path;
-> -
-> -	/* First: test length of name and whether it exists */
-> -	if (lstat(parentdir, &st) =3D=3D -1) {
-> -		(void)fprintf(stderr, "%s: Failed to stat %s: %s",
-> -				progname, parentdir, strerror(errno));
-> -		return false;
-> -	}
-> -
-> -	/* Ensure we have a clean directory pathname */
-> -	strncpy(buf, parentdir, sizeof(buf));
-> -	path =3D dirname(buf);
-> -	if (*path =3D=3D '.') {
-> -		(void)fprintf(stderr, "%s: Unusable directory %s",
-> -				progname, parentdir);
-> -		return false;
-> -	}
-> -
-> -	xlog(D_CALL, "Using %s as the state directory", parentdir);
-> -	strncpy(nsm_base_dirname, parentdir, sizeof(nsm_base_dirname));
-> -	return true;
-> +	return generic_setup_basedir(progname, parentdir, nsm_base_dirname);
->  }
->=20=20
->  /**
-> diff --git a/utils/statd/Makefile.am b/utils/statd/Makefile.am
-> index 152b680..ea32075 100644
-> --- a/utils/statd/Makefile.am
-> +++ b/utils/statd/Makefile.am
-> @@ -18,6 +18,7 @@ statd_LDADD =3D ../../support/nsm/libnsm.a \
->  	      $(LIBWRAP) $(LIBNSL) $(LIBCAP) $(LIBTIRPC)
->  sm_notify_LDADD =3D ../../support/nsm/libnsm.a \
->  		  ../../support/nfs/libnfs.a \
-> +	          ../../support/misc/libmisc.a \
->  		  $(LIBNSL) $(LIBCAP) $(LIBTIRPC)
->=20=20
->  EXTRA_DIST =3D sim_sm_inter.x $(man8_MANS) simulate.c
-> --=20
-> 2.7.4
->
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
 --=-=-=
 Content-Type: application/pgp-signature; name="signature.asc"
 
 -----BEGIN PGP SIGNATURE-----
 
-iQIzBAEBCAAdFiEEG8Yp69OQ2HB7X0l6Oeye3VZigbkFAliSwtoACgkQOeye3VZi
-gbk0hQ//WGy4bI31XIH4fiextOAvBgqeDw6XAgWNiaRJzkz1UyrHQLBjE5Dm3pdN
-FDRzoGbEsF7d+rY4or2lgdef8Vgh4VlthhGavrc3WLJP/1MTLVoYyzooLtBiJOth
-hWCUuZslYQXaLmPwpGp77mvuqvPSPyXFiePnAqaenUB8tOxI/1zMw8Ijrk/Po1/I
-TFP7+GT5CypUwpoBxVKaLOMWADpTb66KrwrDAJMruwu5IYZ9kuR1yfmY+najmaWb
-nUrCTKKPaIdn/PZxhHArCtDK7kwuSnzZu/EPWCYl0X34H3sYt+t3HQifIUNAIH1U
-1QhEm4sBnrFu0aAivWQ736lTyc4SNjszFyNGjKf8Uh4JrsiIRYKROfmdNrgpc9HJ
-/H3dCOq4LPr2afKpcfhL5Bt6L13tfpDK6zEV+GppuQ3vkYSqapncUMzLBWG2OFST
-mblamNhMy3eM4f5t+dPl6TSygfcxz54hPgMLlWBJxhGM4KWdjZq/8C49nR9+5SVo
-H2lTs80QCgCJKXI2EB1vR41zJYLukpmBTzguquOLCDWr/INcEnwW+vHzB4SxpKJc
-7GG6OFyC/1/38Zui8W2hL/EZK2qMjWql7AFooCQP+a9MvgbAHPH1SHZ7mCoCINkR
-YI6jFHMsEVkhD1UrkXEk/UIOOq8C9Gvz/JxfG1QwsaRrl56lEJA=
-=8ckp
+iQIzBAEBCAAdFiEEG8Yp69OQ2HB7X0l6Oeye3VZigbkFAliSxigACgkQOeye3VZi
+gble0A//QwkKrOF+l7CZaX2RPlAdkM8/9Jv1YUj5hWWumWAoPOXWMZsXfrfqvZJa
+IEE8onTzTRUp4t0i0IAgTdElHyEmEkn/QsZzwUS0RR7PkW3U+210f8nwA37qQHBW
+S44NJ2aoqSivAPO3q6P55s5wS4OUQrDieo/k+vtDSJbVMKJPt6Z1wOfbYPX0/5MG
+axRXtFPuwTSjmcUIB4FTLxrnJDnbos0gpm1TXnaWd3r6+bmnr7KiYR68b+V5hKlB
+RKzXvs9UkjvKDJ8DVBOZ6rkVZk1wAGHXgsw/TkgpEUf3qY2xJyc76zHu8Z4P0xgw
+iCk1gNw2BoMgW97Jeb2qDTBY3e5MSDt3oaJ3N+dl5EMgz0G1vvBDTx/LTYGlk28V
+8JUQRYXf4TVHIW6GU4814jabqcCIVB1DPva2dpkeWW7f4O1GGTZxKnIMeiu0MQoT
+U4jA/tNN/L4rZL2bgmdHizPMHaWJnZtpfm6rzdaPSguqLFE6TqpxedS9IxTFeCFz
+wgSouwgPWuDoAND2uZ6Tjm5XUSTQ/QHgkmgixMFLnCVAIN8mKsVwLG4ahn620s5S
+eehkIwMt3GEaHjN0t3a+zIFNlLTYyr4Nb7y/TJeoHKxsrVsbQBE2JyefGHyCepea
+77i79rA8dB/veLuINhE76vH9Cyun73kOP9GmFMoV+KsbrrloB8U=
+=4rrB
 -----END PGP SIGNATURE-----
 --=-=-=--
