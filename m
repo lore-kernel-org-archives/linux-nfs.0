@@ -1,65 +1,320 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:44410 "EHLO mx1.redhat.com"
+Received: from mx2.suse.de ([195.135.220.15]:57665 "EHLO mx2.suse.de"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1750837AbdBAWwO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 1 Feb 2017 17:52:14 -0500
-Received: from smtp.corp.redhat.com (int-mx16.intmail.prod.int.phx2.redhat.com [10.5.11.28])
-        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
-        (No client certificate requested)
-        by mx1.redhat.com (Postfix) with ESMTPS id 0D7D58124D
-        for <linux-nfs@vger.kernel.org>; Wed,  1 Feb 2017 22:52:15 +0000 (UTC)
-Received: from steved.boston.devel.redhat.com (vpn-61-233.rdu2.redhat.com [10.10.61.233])
-        by smtp.corp.redhat.com (Postfix) with ESMTP id C90501DB261
-        for <linux-nfs@vger.kernel.org>; Wed,  1 Feb 2017 22:52:14 +0000 (UTC)
-From: Steve Dickson <SteveD@redhat.com>
-Subject: Monthly Linux NFS Town Hall meeting: Tomorrow - Thur Feb 2
-To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Message-ID: <90728db6-f9cb-d610-99f2-2a76634f147a@RedHat.com>
-Date: Wed, 1 Feb 2017 17:52:14 -0500
+        id S1750776AbdBBF0y (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 2 Feb 2017 00:26:54 -0500
+From: NeilBrown <neilb@suse.com>
+To: Scott Mayhew <smayhew@redhat.com>, steved@redhat.com
+Date: Thu, 02 Feb 2017 16:25:46 +1100
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [nfs-utils PATCH v2 1/2] libnsm.a: refactor nsm_setup_pathnames() and nsm_make_pathname()
+In-Reply-To: <1485962369-25852-2-git-send-email-smayhew@redhat.com>
+References: <1485962369-25852-1-git-send-email-smayhew@redhat.com> <1485962369-25852-2-git-send-email-smayhew@redhat.com>
+Message-ID: <87efzhxixx.fsf@notabene.neil.brown.name>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=windows-1252
+Content-Type: multipart/signed; boundary="=-=-=";
+        micalg=pgp-sha256; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hello,
+--=-=-=
+Content-Type: text/plain
+Content-Transfer-Encoding: quoted-printable
 
-With a connectathon coming up this month
-let's have a quick meeting to make sure
-we are all on the same page... Being 
-connectathon is at the end of this month 
-we probably will not have this meeting 
-next month... 
+On Wed, Feb 01 2017, Scott Mayhew wrote:
 
-The meeting will be Tomorrow Thur Jan 5 at 
+> Move the logic in nsm_setup_pathnames() and nsm_make_pathname() to
+> similar generic functions in libmisc.a so that the exportfs and
+> rpc.mountd programs can make use of them later.
+>
+> Signed-off-by: Scott Mayhew <smayhew@redhat.com>
+> ---
+>  support/include/misc.h   |   3 ++
+>  support/misc/Makefile.am |   2 +-
+>  support/misc/file.c      | 110 +++++++++++++++++++++++++++++++++++++++++=
+++++++
+>  support/nsm/file.c       |  45 ++-----------------
+>  utils/statd/Makefile.am  |   1 +
+>  5 files changed, 118 insertions(+), 43 deletions(-)
+>  create mode 100644 support/misc/file.c
+>
+> diff --git a/support/include/misc.h b/support/include/misc.h
+> index eedc1fe..6f9b47c 100644
+> --- a/support/include/misc.h
+> +++ b/support/include/misc.h
+> @@ -15,6 +15,9 @@
+>  int	randomkey(unsigned char *keyout, int len);
+>  int	weakrandomkey(unsigned char *keyout, int len);
+>=20=20
+> +char *generic_make_pathname(const char *, const char *);
+> +_Bool generic_setup_basedir(const char *, const char *, char *);
+> +
+>  extern int is_mountpoint(char *path);
+>=20=20
+>  /* size of the file pointer buffers for rpc procfs files */
+> diff --git a/support/misc/Makefile.am b/support/misc/Makefile.am
+> index 1048580..8936b0d 100644
+> --- a/support/misc/Makefile.am
+> +++ b/support/misc/Makefile.am
+> @@ -1,6 +1,6 @@
+>  ## Process this file with automake to produce Makefile.in
+>=20=20
+>  noinst_LIBRARIES =3D libmisc.a
+> -libmisc_a_SOURCES =3D tcpwrapper.c from_local.c mountpoint.c
+> +libmisc_a_SOURCES =3D tcpwrapper.c from_local.c mountpoint.c file.c
+>=20=20
+>  MAINTAINERCLEANFILES =3D Makefile.in
+> diff --git a/support/misc/file.c b/support/misc/file.c
+> new file mode 100644
+> index 0000000..ee6d264
+> --- /dev/null
+> +++ b/support/misc/file.c
+> @@ -0,0 +1,110 @@
+> +/*
+> + * Copyright 2009 Oracle.  All rights reserved.
+> + * Copyright 2017 Red Hat, Inc.  All rights reserved.
+> + *
+> + * This file is part of nfs-utils.
+> + *
+> + * nfs-utils is free software; you can redistribute it and/or modify
+> + * it under the terms of the GNU General Public License as published by
+> + * the Free Software Foundation; either version 2 of the License, or
+> + * (at your option) any later version.
+> + *
+> + * nfs-utils is distributed in the hope that it will be useful,
+> + * but WITHOUT ANY WARRANTY; without even the implied warranty of
+> + * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+> + * GNU General Public License for more details.
+> + *
+> + * You should have received a copy of the GNU General Public License
+> + * along with nfs-utils.  If not, see <http://www.gnu.org/licenses/>.
+> + */
+> +
+> +#include <sys/stat.h>
+> +
+> +#include <string.h>
+> +#include <libgen.h>
+> +#include <stdio.h>
+> +#include <errno.h>
+> +#include <dirent.h>
+> +#include <stdlib.h>
+> +#include <stdbool.h>
+> +
+> +#include "xlog.h"
+> +#include "misc.h"
+> +
+> +static _Bool
+> +error_check(const int len, const size_t buflen)
+> +{
+> +	return (len < 0) || ((size_t)len >=3D buflen);
+> +}
+> +
+> +/*
+> + * Returns a dynamically allocated, '\0'-terminated buffer
+> + * containing an appropriate pathname, or NULL if an error
+> + * occurs.  Caller must free the returned result with free(3).
+> + */
+> +__attribute__((__malloc__))
+> +char *
+> +generic_make_pathname(const char *base, const char *leaf)
+> +{
+> +	size_t size;
+> +	char *path;
+> +	int len;
+> +
+> +	size =3D strlen(base) + strlen(leaf) + 2;
+> +	if (size > PATH_MAX)
+> +		return NULL;
+> +
+> +	path =3D malloc(size);
+> +	if (path =3D=3D NULL)
+> +		return NULL;
+> +
+> +	len =3D snprintf(path, size, "%s/%s", base, leaf);
+> +	if (error_check(len, size)) {
+> +		free(path);
+> +		return NULL;
+> +	}
+> +
+> +	return path;
+> +}
+> +
+> +
+> +/**
+> + * generic_setup_basedir - set up basedir
+> + * @progname: C string containing name of program, for error messages
+> + * @parentdir: C string containing pathname to on-disk state, or NULL
+> + * @base: C string used to contain the basedir that is set up
+> + *
+> + * This runs before logging is set up, so error messages are directed
+> + * to stderr.
+> + *
+> + * Returns true and sets up our basedir, if @parentdir was valid
+> + * and usable; otherwise false is returned.
+> + */
+> +_Bool
+> +generic_setup_basedir(const char *progname, const char *parentdir, char =
+*base)
+> +{
+> +	static char buf[PATH_MAX];
+> +	struct stat st;
+> +	char *path;
+> +
+> +	/* First: test length of name and whether it exists */
+> +	if (lstat(parentdir, &st) =3D=3D -1) {
+> +		(void)fprintf(stderr, "%s: Failed to stat %s: %s",
+> +				progname, parentdir, strerror(errno));
+> +		return false;
+> +	}
+> +
+> +	/* Ensure we have a clean directory pathname */
+> +	strncpy(buf, parentdir, sizeof(buf));
+> +	path =3D dirname(buf);
+> +	if (*path =3D=3D '.') {
+> +		(void)fprintf(stderr, "%s: Unusable directory %s",
+> +				progname, parentdir);
+> +		return false;
+> +	}
+> +
+> +	xlog(D_CALL, "Using %s as the state directory", parentdir);
+> +	strncpy(base, parentdir, strlen(base));
 
-   *01:00 pm EST (10:00am PST)*
+This isn't good.
+"base" is either nsm_base_dirname or state_base_dirname with are
+both PATH_MAX long char arrays which were initialised to
+e.g. /var/lib/nfs.
+So strlen(base) is about 12.
+So as long as parentdir is shorter than NFS_STATEDIR or NSM_DEFAULT_STATEDIR
+this will work.  If it is longer, it gets truncated.
 
-The usual agenda will apply. The maintainers will give
-a quick status of what is happening in their worlds.
+I think this should be 'strncpy(base,parentdir,PATH_MAX)' or similar.
 
-Next we'll get updates from major contributors on what
-they have been doing and are planing on doing.
-  
-Finally, we'll open the floor to questions, comments, 
-concerns from the community.  
+> +	base[strlen(parentdir)] =3D '\0';
 
-Generally the meeting lasts between 30 to 45 mins, with 
-a very hard stop at 60mins. 
+If parentdir is too long, this isn't safe, and if it is not too long,
+you can just use strcpy()...
 
-Please feel to attend and participate!
 
-Again the Time: 10:00 am PST (01:00 pm EST)
+Apart from that:
+  Reviewed-by: NeilBrown <neilb@suse.com>
 
-BlueJeans Video Link:
-    https://bluejeans.com/5642721552/
+(I'd rather not have that error_check() function, it just obscures the
+ code I think.  But as you obviously copied it from the original making
+ minimal changes, it probably makes sense to leave it as it is)
 
-The call in numbers are:
+Thanks,
+NeilBrown
 
-U.S. and Canada: (800) 451-8679
-World wide toll free numbers
-   https://www.intercallonline.com/listNumbersByCode.action?confCode=5642721552
 
-Conference code: 564.272.1552
+> +	return true;
+> +}
+> diff --git a/support/nsm/file.c b/support/nsm/file.c
+> index aafa755..865be54 100644
+> --- a/support/nsm/file.c
+> +++ b/support/nsm/file.c
+> @@ -88,6 +88,7 @@
+>=20=20
+>  #include "xlog.h"
+>  #include "nsm.h"
+> +#include "misc.h"
+>=20=20
+>  #define RPCARGSLEN	(4 * (8 + 1))
+>  #define LINELEN		(RPCARGSLEN + SM_PRIV_SIZE * 2 + 1)
+> @@ -170,25 +171,7 @@ __attribute__((__malloc__))
+>  static char *
+>  nsm_make_pathname(const char *directory)
+>  {
+> -	size_t size;
+> -	char *path;
+> -	int len;
+> -
+> -	size =3D strlen(nsm_base_dirname) + strlen(directory) + 2;
+> -	if (size > PATH_MAX)
+> -		return NULL;
+> -
+> -	path =3D malloc(size);
+> -	if (path =3D=3D NULL)
+> -		return NULL;
+> -
+> -	len =3D snprintf(path, size, "%s/%s", nsm_base_dirname, directory);
+> -	if (error_check(len, size)) {
+> -		free(path);
+> -		return NULL;
+> -	}
+> -
+> -	return path;
+> +	return generic_make_pathname(nsm_base_dirname, directory);
+>  }
+>=20=20
+>  /*
+> @@ -293,29 +276,7 @@ out:
+>  _Bool
+>  nsm_setup_pathnames(const char *progname, const char *parentdir)
+>  {
+> -	static char buf[PATH_MAX];
+> -	struct stat st;
+> -	char *path;
+> -
+> -	/* First: test length of name and whether it exists */
+> -	if (lstat(parentdir, &st) =3D=3D -1) {
+> -		(void)fprintf(stderr, "%s: Failed to stat %s: %s",
+> -				progname, parentdir, strerror(errno));
+> -		return false;
+> -	}
+> -
+> -	/* Ensure we have a clean directory pathname */
+> -	strncpy(buf, parentdir, sizeof(buf));
+> -	path =3D dirname(buf);
+> -	if (*path =3D=3D '.') {
+> -		(void)fprintf(stderr, "%s: Unusable directory %s",
+> -				progname, parentdir);
+> -		return false;
+> -	}
+> -
+> -	xlog(D_CALL, "Using %s as the state directory", parentdir);
+> -	strncpy(nsm_base_dirname, parentdir, sizeof(nsm_base_dirname));
+> -	return true;
+> +	return generic_setup_basedir(progname, parentdir, nsm_base_dirname);
+>  }
+>=20=20
+>  /**
+> diff --git a/utils/statd/Makefile.am b/utils/statd/Makefile.am
+> index 152b680..ea32075 100644
+> --- a/utils/statd/Makefile.am
+> +++ b/utils/statd/Makefile.am
+> @@ -18,6 +18,7 @@ statd_LDADD =3D ../../support/nsm/libnsm.a \
+>  	      $(LIBWRAP) $(LIBNSL) $(LIBCAP) $(LIBTIRPC)
+>  sm_notify_LDADD =3D ../../support/nsm/libnsm.a \
+>  		  ../../support/nfs/libnfs.a \
+> +	          ../../support/misc/libmisc.a \
+>  		  $(LIBNSL) $(LIBCAP) $(LIBTIRPC)
+>=20=20
+>  EXTRA_DIST =3D sim_sm_inter.x $(man8_MANS) simulate.c
+> --=20
+> 2.7.4
+>
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
-steved.
+--=-=-=
+Content-Type: application/pgp-signature; name="signature.asc"
 
+-----BEGIN PGP SIGNATURE-----
+
+iQIzBAEBCAAdFiEEG8Yp69OQ2HB7X0l6Oeye3VZigbkFAliSwtoACgkQOeye3VZi
+gbk0hQ//WGy4bI31XIH4fiextOAvBgqeDw6XAgWNiaRJzkz1UyrHQLBjE5Dm3pdN
+FDRzoGbEsF7d+rY4or2lgdef8Vgh4VlthhGavrc3WLJP/1MTLVoYyzooLtBiJOth
+hWCUuZslYQXaLmPwpGp77mvuqvPSPyXFiePnAqaenUB8tOxI/1zMw8Ijrk/Po1/I
+TFP7+GT5CypUwpoBxVKaLOMWADpTb66KrwrDAJMruwu5IYZ9kuR1yfmY+najmaWb
+nUrCTKKPaIdn/PZxhHArCtDK7kwuSnzZu/EPWCYl0X34H3sYt+t3HQifIUNAIH1U
+1QhEm4sBnrFu0aAivWQ736lTyc4SNjszFyNGjKf8Uh4JrsiIRYKROfmdNrgpc9HJ
+/H3dCOq4LPr2afKpcfhL5Bt6L13tfpDK6zEV+GppuQ3vkYSqapncUMzLBWG2OFST
+mblamNhMy3eM4f5t+dPl6TSygfcxz54hPgMLlWBJxhGM4KWdjZq/8C49nR9+5SVo
+H2lTs80QCgCJKXI2EB1vR41zJYLukpmBTzguquOLCDWr/INcEnwW+vHzB4SxpKJc
+7GG6OFyC/1/38Zui8W2hL/EZK2qMjWql7AFooCQP+a9MvgbAHPH1SHZ7mCoCINkR
+YI6jFHMsEVkhD1UrkXEk/UIOOq8C9Gvz/JxfG1QwsaRrl56lEJA=
+=8ckp
+-----END PGP SIGNATURE-----
+--=-=-=--
