@@ -1,258 +1,70 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:53740 "EHLO mx1.redhat.com"
+Received: from mx2.suse.de ([195.135.220.15]:38015 "EHLO mx2.suse.de"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1750837AbdBCPLp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 3 Feb 2017 10:11:45 -0500
-From: Scott Mayhew <smayhew@redhat.com>
-To: steved@redhat.com
-Cc: neilb@suse.com, linux-nfs@vger.kernel.org
-Subject: [nfs-utils PATCH v3 1/2] libnsm.a: refactor nsm_setup_pathnames() and nsm_make_pathname()
-Date: Fri,  3 Feb 2017 10:11:43 -0500
-Message-Id: <1486134704-59866-2-git-send-email-smayhew@redhat.com>
-In-Reply-To: <1486134704-59866-1-git-send-email-smayhew@redhat.com>
-References: <1486134704-59866-1-git-send-email-smayhew@redhat.com>
+        id S1750921AbdBCPno (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 3 Feb 2017 10:43:44 -0500
+Date: Fri, 3 Feb 2017 16:32:22 +0100
+From: Michal Hocko <mhocko@kernel.org>
+To: "Theodore Ts'o" <tytso@mit.edu>
+Cc: Jan Kara <jack@suse.cz>, linux-mm@kvack.org,
+        linux-fsdevel@vger.kernel.org,
+        Andrew Morton <akpm@linux-foundation.org>,
+        Dave Chinner <david@fromorbit.com>, djwong@kernel.org,
+        Chris Mason <clm@fb.com>, David Sterba <dsterba@suse.cz>,
+        ceph-devel@vger.kernel.org, cluster-devel@redhat.com,
+        linux-nfs@vger.kernel.org, logfs@logfs.org, linux-xfs@vger.kernel.org,
+        linux-ext4@vger.kernel.org, linux-btrfs@vger.kernel.org,
+        linux-mtd@lists.infradead.org, reiserfs-devel@vger.kernel.org,
+        linux-ntfs-dev@lists.sourceforge.net,
+        linux-f2fs-devel@lists.sourceforge.net, linux-afs@lists.infradead.org,
+        LKML <linux-kernel@vger.kernel.org>
+Subject: Re: [PATCH 8/8] Revert "ext4: fix wrong gfp type under transaction"
+Message-ID: <20170203153222.GH19325@dhcp22.suse.cz>
+References: <20170117161618.GT19699@dhcp22.suse.cz>
+ <20170117172925.GA2486@quack2.suse.cz>
+ <20170119083956.GE30786@dhcp22.suse.cz>
+ <20170119092236.GC2565@quack2.suse.cz>
+ <20170119094405.GK30786@dhcp22.suse.cz>
+ <20170126074455.GC8456@dhcp22.suse.cz>
+ <20170127061318.xd2qxashbl4dajez@thunk.org>
+ <20170127093735.GB4143@dhcp22.suse.cz>
+ <20170127164042.2o3bnyopihcb224g@thunk.org>
+ <20170130081210.GD8443@dhcp22.suse.cz>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20170130081210.GD8443@dhcp22.suse.cz>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Move the logic in nsm_setup_pathnames() and nsm_make_pathname() to
-similar generic functions in libmisc.a so that the exportfs and
-rpc.mountd programs can make use of them later.
+On Mon 30-01-17 09:12:10, Michal Hocko wrote:
+> On Fri 27-01-17 11:40:42, Theodore Ts'o wrote:
+> > On Fri, Jan 27, 2017 at 10:37:35AM +0100, Michal Hocko wrote:
+> > > If this ever turn out to be a problem and with the vmapped stacks we
+> > > have good chances to get a proper stack traces on a potential overflow
+> > > we can add the scope API around the problematic code path with the
+> > > explanation why it is needed.
+> > 
+> > Yeah, or maybe we can automate it?  Can the reclaim code check how
+> > much stack space is left and do the right thing automatically?
+> 
+> I am not sure how to do that. Checking for some magic value sounds quite
+> fragile to me. It also sounds a bit strange to focus only on the reclaim
+> while other code paths might suffer from the same problem.
+> 
+> What is actually the deepest possible call chain from the slab reclaim
+> where I stopped? I have tried to follow that path but hit the callback
+> wall quite early.
+>  
+> > The reason why I'm nervous is that nojournal mode is not a common
+> > configuration, and "wait until production systems start failing" is
+> > not a strategy that I or many SRE-types find.... comforting.
+> 
+> I understand that but I would be much more happier if we did the
+> decision based on the actual data rather than a fear something would
+> break down.
 
-Signed-off-by: Scott Mayhew <smayhew@redhat.com>
----
- support/include/misc.h   |   3 ++
- support/misc/Makefile.am |   2 +-
- support/misc/file.c      | 110 +++++++++++++++++++++++++++++++++++++++++++++++
- support/nsm/file.c       |  46 ++------------------
- utils/statd/Makefile.am  |   1 +
- 5 files changed, 119 insertions(+), 43 deletions(-)
- create mode 100644 support/misc/file.c
-
-diff --git a/support/include/misc.h b/support/include/misc.h
-index eedc1fe..06e2a0c 100644
---- a/support/include/misc.h
-+++ b/support/include/misc.h
-@@ -15,6 +15,9 @@
- int	randomkey(unsigned char *keyout, int len);
- int	weakrandomkey(unsigned char *keyout, int len);
- 
-+char *generic_make_pathname(const char *, const char *);
-+_Bool generic_setup_basedir(const char *, const char *, char *, const size_t);
-+
- extern int is_mountpoint(char *path);
- 
- /* size of the file pointer buffers for rpc procfs files */
-diff --git a/support/misc/Makefile.am b/support/misc/Makefile.am
-index 1048580..8936b0d 100644
---- a/support/misc/Makefile.am
-+++ b/support/misc/Makefile.am
-@@ -1,6 +1,6 @@
- ## Process this file with automake to produce Makefile.in
- 
- noinst_LIBRARIES = libmisc.a
--libmisc_a_SOURCES = tcpwrapper.c from_local.c mountpoint.c
-+libmisc_a_SOURCES = tcpwrapper.c from_local.c mountpoint.c file.c
- 
- MAINTAINERCLEANFILES = Makefile.in
-diff --git a/support/misc/file.c b/support/misc/file.c
-new file mode 100644
-index 0000000..63597df
---- /dev/null
-+++ b/support/misc/file.c
-@@ -0,0 +1,110 @@
-+/*
-+ * Copyright 2009 Oracle.  All rights reserved.
-+ * Copyright 2017 Red Hat, Inc.  All rights reserved.
-+ *
-+ * This file is part of nfs-utils.
-+ *
-+ * nfs-utils is free software; you can redistribute it and/or modify
-+ * it under the terms of the GNU General Public License as published by
-+ * the Free Software Foundation; either version 2 of the License, or
-+ * (at your option) any later version.
-+ *
-+ * nfs-utils is distributed in the hope that it will be useful,
-+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
-+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-+ * GNU General Public License for more details.
-+ *
-+ * You should have received a copy of the GNU General Public License
-+ * along with nfs-utils.  If not, see <http://www.gnu.org/licenses/>.
-+ */
-+
-+#include <sys/stat.h>
-+
-+#include <string.h>
-+#include <libgen.h>
-+#include <stdio.h>
-+#include <errno.h>
-+#include <dirent.h>
-+#include <stdlib.h>
-+#include <stdbool.h>
-+
-+#include "xlog.h"
-+#include "misc.h"
-+
-+/*
-+ * Returns a dynamically allocated, '\0'-terminated buffer
-+ * containing an appropriate pathname, or NULL if an error
-+ * occurs.  Caller must free the returned result with free(3).
-+ */
-+__attribute__((__malloc__))
-+char *
-+generic_make_pathname(const char *base, const char *leaf)
-+{
-+	size_t size;
-+	char *path;
-+	int len;
-+
-+	size = strlen(base) + strlen(leaf) + 2;
-+	if (size > PATH_MAX)
-+		return NULL;
-+
-+	path = malloc(size);
-+	if (path == NULL)
-+		return NULL;
-+
-+	len = snprintf(path, size, "%s/%s", base, leaf);
-+	if ((len < 0) || ((size_t)len >= size)) {
-+		free(path);
-+		return NULL;
-+	}
-+
-+	return path;
-+}
-+
-+
-+/**
-+ * generic_setup_basedir - set up basedir
-+ * @progname: C string containing name of program, for error messages
-+ * @parentdir: C string containing pathname to on-disk state, or NULL
-+ * @base: character buffer to contain the basedir that is set up
-+ * @baselen: size of @base in bytes
-+ *
-+ * This runs before logging is set up, so error messages are directed
-+ * to stderr.
-+ *
-+ * Returns true and sets up our basedir, if @parentdir was valid
-+ * and usable; otherwise false is returned.
-+ */
-+_Bool
-+generic_setup_basedir(const char *progname, const char *parentdir, char *base,
-+		      const size_t baselen)
-+{
-+	static char buf[PATH_MAX];
-+	struct stat st;
-+	char *path;
-+
-+	/* First: test length of name and whether it exists */
-+	if ((strlen(parentdir) >= baselen) || (strlen(parentdir) >= PATH_MAX)) {
-+		(void)fprintf(stderr, "%s: Directory name too long: %s",
-+				progname, parentdir);
-+		return false;
-+	}
-+	if (lstat(parentdir, &st) == -1) {
-+		(void)fprintf(stderr, "%s: Failed to stat %s: %s",
-+				progname, parentdir, strerror(errno));
-+		return false;
-+	}
-+
-+	/* Ensure we have a clean directory pathname */
-+	strncpy(buf, parentdir, sizeof(buf));
-+	path = dirname(buf);
-+	if (*path == '.') {
-+		(void)fprintf(stderr, "%s: Unusable directory %s",
-+				progname, parentdir);
-+		return false;
-+	}
-+
-+	xlog(D_CALL, "Using %s as the state directory", parentdir);
-+	strcpy(base, parentdir);
-+	return true;
-+}
-diff --git a/support/nsm/file.c b/support/nsm/file.c
-index aafa755..52f5401 100644
---- a/support/nsm/file.c
-+++ b/support/nsm/file.c
-@@ -88,6 +88,7 @@
- 
- #include "xlog.h"
- #include "nsm.h"
-+#include "misc.h"
- 
- #define RPCARGSLEN	(4 * (8 + 1))
- #define LINELEN		(RPCARGSLEN + SM_PRIV_SIZE * 2 + 1)
-@@ -170,25 +171,7 @@ __attribute__((__malloc__))
- static char *
- nsm_make_pathname(const char *directory)
- {
--	size_t size;
--	char *path;
--	int len;
--
--	size = strlen(nsm_base_dirname) + strlen(directory) + 2;
--	if (size > PATH_MAX)
--		return NULL;
--
--	path = malloc(size);
--	if (path == NULL)
--		return NULL;
--
--	len = snprintf(path, size, "%s/%s", nsm_base_dirname, directory);
--	if (error_check(len, size)) {
--		free(path);
--		return NULL;
--	}
--
--	return path;
-+	return generic_make_pathname(nsm_base_dirname, directory);
- }
- 
- /*
-@@ -293,29 +276,8 @@ out:
- _Bool
- nsm_setup_pathnames(const char *progname, const char *parentdir)
- {
--	static char buf[PATH_MAX];
--	struct stat st;
--	char *path;
--
--	/* First: test length of name and whether it exists */
--	if (lstat(parentdir, &st) == -1) {
--		(void)fprintf(stderr, "%s: Failed to stat %s: %s",
--				progname, parentdir, strerror(errno));
--		return false;
--	}
--
--	/* Ensure we have a clean directory pathname */
--	strncpy(buf, parentdir, sizeof(buf));
--	path = dirname(buf);
--	if (*path == '.') {
--		(void)fprintf(stderr, "%s: Unusable directory %s",
--				progname, parentdir);
--		return false;
--	}
--
--	xlog(D_CALL, "Using %s as the state directory", parentdir);
--	strncpy(nsm_base_dirname, parentdir, sizeof(nsm_base_dirname));
--	return true;
-+	return generic_setup_basedir(progname, parentdir, nsm_base_dirname,
-+				     PATH_MAX);
- }
- 
- /**
-diff --git a/utils/statd/Makefile.am b/utils/statd/Makefile.am
-index 152b680..ea32075 100644
---- a/utils/statd/Makefile.am
-+++ b/utils/statd/Makefile.am
-@@ -18,6 +18,7 @@ statd_LDADD = ../../support/nsm/libnsm.a \
- 	      $(LIBWRAP) $(LIBNSL) $(LIBCAP) $(LIBTIRPC)
- sm_notify_LDADD = ../../support/nsm/libnsm.a \
- 		  ../../support/nfs/libnfs.a \
-+	          ../../support/misc/libmisc.a \
- 		  $(LIBNSL) $(LIBCAP) $(LIBTIRPC)
- 
- EXTRA_DIST = sim_sm_inter.x $(man8_MANS) simulate.c
+ping on this. I would really like to move forward here and target 4.11
+merge window. Is your concern so serious to block this patch?
 -- 
-2.7.4
-
+Michal Hocko
+SUSE Labs
