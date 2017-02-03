@@ -1,46 +1,58 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ot0-f196.google.com ([74.125.82.196]:34091 "EHLO
-        mail-ot0-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751129AbdBCS3Y (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 3 Feb 2017 13:29:24 -0500
+Received: from aserp1050.oracle.com ([141.146.126.70]:44457 "EHLO
+        aserp1050.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751252AbdBCSeB (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 3 Feb 2017 13:34:01 -0500
+Date: Fri, 3 Feb 2017 10:31:56 -0800
+From: Liu Bo <bo.li.liu@oracle.com>
+To: Jan Kara <jack@suse.cz>
+Cc: linux-fsdevel@vger.kernel.org, Christoph Hellwig <hch@infradead.org>,
+        linux-block@vger.kernel.org, linux-mtd@lists.infradead.org,
+        linux-nfs@vger.kernel.org, Petr Vandrovec <petr@vandrovec.name>,
+        linux-nilfs@vger.kernel.org, cluster-devel@redhat.com,
+        osd-dev@open-osd.org, codalist@TELEMANN.coda.cs.cmu.edu,
+        linux-afs@lists.infradead.org, ecryptfs@vger.kernel.org,
+        linux-cifs@vger.kernel.org, ceph-devel@vger.kernel.org,
+        linux-btrfs@vger.kernel.org, v9fs-developer@lists.sourceforge.net,
+        lustre-devel@lists.lustre.org
+Subject: Re: [PATCH 04/24] fs: Provide infrastructure for dynamic BDIs in
+ filesystems
+Message-ID: <20170203183155.GA30842@localhost.localdomain>
+Reply-To: bo.li.liu@oracle.com
+References: <20170202173422.3240-1-jack@suse.cz>
+ <20170202173422.3240-5-jack@suse.cz>
+ <20170202192827.GF6550@localhost.localdomain>
+ <20170203135042.GB5844@quack2.suse.cz>
 MIME-Version: 1.0
-In-Reply-To: <20170203072952.GI27291@ZenIV.linux.org.uk>
-References: <20170124212327.14517-1-jlayton@redhat.com> <20170125133205.21704-1-jlayton@redhat.com>
- <20170202095125.GF27291@ZenIV.linux.org.uk> <20170202105651.GA32111@infradead.org>
- <20170202111625.GG27291@ZenIV.linux.org.uk> <1486040452.2812.6.camel@redhat.com>
- <20170203072952.GI27291@ZenIV.linux.org.uk>
-From: Linus Torvalds <torvalds@linux-foundation.org>
-Date: Fri, 3 Feb 2017 10:29:23 -0800
-Message-ID: <CA+55aFx=NPESJv9RjCNRKFH_rk9uVMov0UtFbpZH-xBsgK2h-w@mail.gmail.com>
-Subject: Re: [PATCH v3 0/2] iov_iter: allow iov_iter_get_pages_alloc to
- allocate more pages per call
-To: Al Viro <viro@zeniv.linux.org.uk>
-Cc: Jeff Layton <jlayton@redhat.com>,
-        Christoph Hellwig <hch@infradead.org>,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        ceph-devel <ceph-devel@vger.kernel.org>, lustre-devel@lists.lustre.org,
-        V9FS Developers <v9fs-developer@lists.sourceforge.net>,
-        Jan Kara <jack@suse.cz>, Chris Wilson <chris@chris-wilson.co.uk>,
-        "Kirill A. Shutemov" <kirill.shutemov@linux.intel.com>
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20170203135042.GB5844@quack2.suse.cz>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Feb 2, 2017 at 11:29 PM, Al Viro <viro@zeniv.linux.org.uk> wrote:
->
-> get_user_pages() relies upon find_extend_vma() to reject kernel
-> addresses; the fast side of get_user_pages_fast() doesn't have anything
-> of that sort
+On Fri, Feb 03, 2017 at 02:50:42PM +0100, Jan Kara wrote:
+> On Thu 02-02-17 11:28:27, Liu Bo wrote:
+> > Hi,
+> > 
+> > On Thu, Feb 02, 2017 at 06:34:02PM +0100, Jan Kara wrote:
+> > > Provide helper functions for setting up dynamically allocated
+> > > backing_dev_info structures for filesystems and cleaning them up on
+> > > superblock destruction.
+> > 
+> > Just one concern, will this cause problems for multiple superblock cases
+> > like nfs with nosharecache?
+> 
+> Can you ellaborate a bit? I've looked for a while what nfs with
+> nosharecache does but I didn't see how it would influence anything with
+> bdis...
 
-It is *supposed* to have it.
+Oh, I missed that bdi_seq was static, then it should be fine.
 
-See pte_allows_gup(), for example. In particular, it requires the
-_PAGE_USER bit in the PTE (and the devpte case should require
-_PAGE_BIT_DEVMAP).
+(I was worried about that nfs with nosharecache would have multiple
+superblocks and if each superblock has a bdi using the same bdi name,
+nfs-xx.)
 
-So no, get_user_pages_fast() can not look up kernel pages. If it does,
-that would be a bug.
+Thanks for the reply.
 
-              Linus
+Thanks,
+
+-liubo
