@@ -1,62 +1,168 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from bombadil.infradead.org ([65.50.211.133]:49934 "EHLO
-        bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1752232AbdBCLJd (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 3 Feb 2017 06:09:33 -0500
-Date: Fri, 3 Feb 2017 03:09:30 -0800
-From: Christoph Hellwig <hch@infradead.org>
-To: Al Viro <viro@ZenIV.linux.org.uk>
-Cc: Christoph Hellwig <hch@infradead.org>,
-        Jeff Layton <jlayton@redhat.com>,
-        linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, ceph-devel@vger.kernel.org,
-        lustre-devel@lists.lustre.org,
-        v9fs-developer@lists.sourceforge.net,
-        Linus Torvalds <torvalds@linux-foundation.org>,
-        Jan Kara <jack@suse.cz>,
-        Chris Wilson <chris@chris-wilson.co.uk>,
-        "Kirill A. Shutemov" <kirill.shutemov@linux.intel.com>
-Subject: Re: [PATCH v3 0/2] iov_iter: allow iov_iter_get_pages_alloc to
- allocate more pages per call
-Message-ID: <20170203110930.GA22173@infradead.org>
-References: <20170124212327.14517-1-jlayton@redhat.com>
- <20170125133205.21704-1-jlayton@redhat.com>
- <20170202095125.GF27291@ZenIV.linux.org.uk>
- <20170202105651.GA32111@infradead.org>
- <20170202111625.GG27291@ZenIV.linux.org.uk>
- <1486040452.2812.6.camel@redhat.com>
- <20170203074901.GA19808@infradead.org>
- <20170203085415.GJ27291@ZenIV.linux.org.uk>
+Received: from mout.gmx.net ([212.227.15.19]:55710 "EHLO mout.gmx.net"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1752521AbdBCNcF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 3 Feb 2017 08:32:05 -0500
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20170203085415.GJ27291@ZenIV.linux.org.uk>
+Message-ID: <trinity-7dd256c6-d4b4-4f47-9911-168ed4cf5075-1486128686520@3capp-mailcom-bs01>
+From: daggs <daggs@gmx.com>
+To: NeilBrown <neilb@suse.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: unable to mount nfs4 mount
+Content-Type: text/plain; charset=UTF-8
+Date: Fri, 3 Feb 2017 14:31:26 +0100
+In-Reply-To: <871swflfxo.fsf@notabene.neil.brown.name>
+References: <trinity-4254572c-7361-4bba-8056-b645fac97726-1482498754742@3capp-mailcom-bs14>
+ <87r34yngxn.fsf@notabene.neil.brown.name>
+ <trinity-f47ff353-231a-48ff-b6d4-a8f34c45ea26-1482563498427@3capp-mailcom-bs14>
+ <87lgv5nmi6.fsf@notabene.neil.brown.name>
+ <trinity-8111cff0-0509-405f-8faa-190a3c9291c6-1482609137078@3capp-mailcom-bs11>
+ <87inq8olcj.fsf@notabene.neil.brown.name>
+ <trinity-c0b9c914-6d36-40d8-a13a-38cde8b7d23f-1482696592233@3capp-mailcom-bs03>
+ <87fulboij2.fsf@notabene.neil.brown.name>
+ <trinity-161ef8fa-88f7-4128-85e2-cc4f1abb31a7-1482738488938@3capp-mailcom-bs14>
+ <87d1gfndin.fsf@notabene.neil.brown.name>
+ <trinity-02157c25-8763-4394-ad29-2b05c954f503-1482778484415@3capp-mailcom-bs02>
+ <87h95fms28.fsf@notabene.neil.brown.name>
+ <trinity-72ebcb17-21db-44da-abb3-5ee70ac0ec32-1483706005238@3capp-mailcom-bs05>,
+ <871swflfxo.fsf@notabene.neil.brown.name>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Feb 03, 2017 at 08:54:15AM +0000, Al Viro wrote:
-> Hmm...  Reuse part is really nasty ;-/  OTOH, it might make sense to have
-> a "fill bio_vec array" as separate primitive - having that sucker come
-> from bio looks like an artificial restriction.
+Greetings,
 
-Or just the only usecase :)  But yes, it could be generalized to take a
-bio_vec without too much effort.
+> On Fri, Jan 06 2017, daggs wrote:
+> 
+> > Greetings,
+> >
+> >> Subject: Re: unable to mount nfs4 mount
+> >>
+> >> On Tue, Dec 27 2016, daggs wrote:
+> >> 
+> >> > Greetings Neil,
+> >> >
+> >> >> On Mon, Dec 26 2016, daggs wrote:
+> >> >> 
+> >> >> > Greetings,
+> >> >> >
+> >> >> >> On Mon, Dec 26 2016, daggs wrote:
+> >> >> >> 
+> >> >> >> >> Can you strace mountd while you attempt a mount?
+> >> >> >> >> e.g.
+> >> >> >> >>   strace -o /tmp/trace -s 1000 -p 241
+> >> >> >> >> 
+> >> >> >> >> and send the /tmp/trace.
+> >> >> >> >> Also, after the attempt fails, run
+> >> >> >> >>  rpcdebug -m rpc -s cache
+> >> >> >> >>  grep . /proc/net/rpc/*/c*
+> >> >> >> >>  cat /proc/fs/nfsd/exports
+> >> >> >> >> 
+> >> >> >> >> and report the output.
+> >> >> >> >> 
+> >> >> >> > here:
+> >> >> >> >
+> >> >> >> > # cat /tmp/trace
+> >> >> >> > pselect6(1024, [3 4 5 7 8 9 10 11 12], NULL, NULL, NULL, NULL) = 1 (in [3])
+> >> >> >> > read(3, "nfsd 10.0.0.1\n", 32768)       = 14
+> >> >> >> > openat(AT_FDCWD, "/run/nfs/etab", O_RDONLY) = 14
+> >> >> >> > fstat(14, {st_mode=S_IFREG|0644, st_size=435, ...}) = 0
+> >> >> >> > close(14)                               = 0
+> >> >> >> > write(3, "nfsd 10.0.0.1 2079 10.0.0.0/24 \n", 32) = 32
+> >> >> >> 
+> >> >> >> This is weird.
+> >> >> >> Here mountd is telling nfsd that when a request comes from IP address
+> >> >> >> 10.0.0.1, it should look for export entries associated with the client
+> >> >> >> name "10.0.0.0/24", which is good.
+> >> >> >> However the expiry time for that information is "2079", which is back in
+> >> >> >> January 1970.
+> >> >> >> When mountd writes that number, it computes it as
+> >> >> >>    time(0) + DEFAULT_TTL
+> >> >> >> where DEFAULT_TTL is (30 * 60)
+> >> >> >> Which suggests time(0) is "279".
+> >> >> >> 
+> >> >> >> What is the current time on this system?
+> >> >> >> 
+> >> >> >> If it really was very early on Jan 1st 1970, it should work, however...
+> >> >> >> 
+> >> >> >> 
+> >> >> >> > pselect6(1024, [3 4 5 7 8 9 10 11 12], NULL, NULL, NULL, NULL <detached ...>
+> >> >> >> > # rpcdebug -m rpc -s cache
+> >> >> >> > rpc        cache
+> >> >> >> > # grep . /proc/net/rpc/*/c*
+> >> >> >> > /proc/net/rpc/auth.unix.gid/content:#uid cnt: gids...
+> >> >> >> > /proc/net/rpc/auth.unix.ip/channel:nfsd 10.0.0.1
+> >> >> >> > /proc/net/rpc/auth.unix.ip/channel:nfsd 10.0.0.1
+> >> >> >> > /proc/net/rpc/auth.unix.ip/content:#class IP domain
+> >> >> >> > /proc/net/rpc/auth.unix.ip/content:# expiry=2079 refcnt=1 flags=1
+> >> >> >> > /proc/net/rpc/auth.unix.ip/content:# nfsd 10.0.0.1 10.0.0.0/24
+> >> >> >> 
+> >> >> >> ...the fact that this line is commented out indicates that the entry in
+> >> >> >> the cache is already expired.  So the time must be after 2079.
+> >> >> >> 
+> >> >> >> Maybe the time is getting set from the network at an awkward time that
+> >> >> >> races with NFS service some how.
+> >> >> >> Can you find a way to run "exportfs -f" after the time has been set
+> >> >> >> correctly?
+> >> >> >> 
+> >> >> >> NeilBrown
+> >> >> >> 
+> >> >> >> 
+> >> >> >
+> >> >> > wait, I think I've seen this somewhere, does this feature needs rtc? this board doesn't have rtc component.
+> >> >> > for example, I cannot use openssh as ssh server because it needs rtc. I have to use dropbear.
+> >> >> > if so, this looks like it will affect nfsv3 mounts, am I right?
+> >> >> 
+> >> >> No, you shouldn't need an RTC.
+> >> >> You need the synchronize the clock with ntp or similar, else time stamps
+> >> >> on files will look wrong.
+> >> >> Though I think we fixed issues with wall-clock-time jumping in 2.6.37...
+> >> >> 
+> >> >> If you could try using "exportfs -f", and explain what does happen with
+> >> >> time - do you use ntp ?? - we might be able to make progress.
+> >> >
+> >> > I'll build ntp into the image and try. does this affects nfsv3 too?
+> >> 
+> >> Having correct time is quite important for any version of NFS.  With out
+> >> it, time stamps on files get confused.  "make" doesn't cope at all,
+> >> "tar" often complains, other tools might experience other problems.
+> >> 
+> >> I still cannot quite see why having an incorrect clock would cause the
+> >> particular symptoms you are experiencing, but it is worth fixing anyway.
+> > I worked around the issue by setting the date manually. the issue still presists.
+> >
+> >> 
+> >> >
+> >> > what should I do with the "exportfs -f"? jsut run it and retry?
+> >> 
+> >> Yes.
+> > exportfs -f didn't made any difference.
+> 
+> OK. Please:
+>  - make sure the time is (nearly) correct - e.g. running date manually.
+>  - run "exportfs -f"
+>  - run "strace" on mountd
+>  - try to mount the filesystem
+>  - stop the strace
+>  - run
+>       rpcdebug -m rpc -s cache
+>       grep . /proc/net/rpc/*/*
+>       cat /proc/fs/nfsd/exports
+> 
+>   (note that it isn't quite the same 'grep' as before).
+> 
+> then post the output of the 'strace', the 'grep', and the 'cat'.
+> 
 
-> OK, next question, seeing that you've dealt with O_DIRECT guts more than
-> I have.  When we have iov_iter_get_pages() fail on do_direct_IO() write
-> with some blocks already allocated, we pick zero page as data source.
-> So far, so good, but:
-> 	* should we bother zeroing anything unless buffer_new() is true?
+so it took so long, I was able to fix the timer issue and now indeed I can mount as nfsv4.
+but I've encountered another issue, copying a large file over nfs takes 3 minutes longer with nfsv4 than nfsv3.
+I want to be sure this isn't a config issue, so here is the config:
+# cat /etc/exports 
+/mnt/media      10.0.0.0/24(rw,no_subtree_check,nohide,insecure)
 
-I don't think so.
+the kernel in question is based on 3.14 (yeah, I know it is old but that is currently the only kernel fully supports the board in question).
 
-> 	* why, in case of more than a page worth of pending allocated
-> blocks, do we bother with calling iov_iter_get_pages() again and again?
-> We *do* take care not to allocate anything else after that point, but
-> dio_get_page() will be calling iov_iter_get_pages() every time in that
-> case - there's only one page in queue.
+can it be the config or the kernel?
 
-There shouldn't be a need for it.
+Thanks,
 
-But take it with a grain of salt - fs/direct-io.c is a hairy mess,
-that's one of the reasons why I replaced it with the new iomap
-code instead of trying to gradually move it to iomap API.
+Dagg.
