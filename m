@@ -1,40 +1,60 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from zeniv.linux.org.uk ([195.92.253.2]:57292 "EHLO
-        ZenIV.linux.org.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1753387AbdBDDJE (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 3 Feb 2017 22:09:04 -0500
-Date: Sat, 4 Feb 2017 03:08:42 +0000
-From: Al Viro <viro@ZenIV.linux.org.uk>
-To: Miklos Szeredi <miklos@szeredi.hu>
-Cc: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, ceph-devel@vger.kernel.org,
-        lustre-devel@lists.lustre.org, v9fs-developer@lists.sourceforge.net,
-        Linus Torvalds <torvalds@linux-foundation.org>,
-        Jan Kara <jack@suse.cz>, Chris Wilson <chris@chris-wilson.co.uk>,
-        "Kirill A. Shutemov" <kirill.shutemov@linux.intel.com>,
-        Jeff Layton <jlayton@redhat.com>
-Subject: Re: [PATCH v3 0/2] iov_iter: allow iov_iter_get_pages_alloc to
- allocate more pages per call
-Message-ID: <20170204030842.GL27291@ZenIV.linux.org.uk>
-References: <20170124212327.14517-1-jlayton@redhat.com>
- <20170125133205.21704-1-jlayton@redhat.com>
- <20170202095125.GF27291@ZenIV.linux.org.uk>
+Received: from mail-io0-f194.google.com ([209.85.223.194]:33343 "EHLO
+        mail-io0-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1753539AbdBDFmc (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sat, 4 Feb 2017 00:42:32 -0500
+Received: by mail-io0-f194.google.com with SMTP id 101so4274126iom.0
+        for <linux-nfs@vger.kernel.org>; Fri, 03 Feb 2017 21:42:32 -0800 (PST)
+From: Kinglong Mee <kinglongmee@gmail.com>
+Subject: [PATCH] sunrpc/cache: skip checking the pending cache expired
+To: "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org
+Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
+        NeilBrown <neilb@suse.com>, Kinglong Mee <kinglongmee@gmail.com>
+Message-ID: <cb2a552c-51ec-f230-0b39-0bd4002e351d@gmail.com>
+Date: Sat, 4 Feb 2017 13:41:30 +0800
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20170202095125.GF27291@ZenIV.linux.org.uk>
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Feb 02, 2017 at 09:51:25AM +0000, Al Viro wrote:
+When the first time pynfs runs after rpc/nfsd startup, always get the warning, 
 
-> 	* fuse_copy_fill().  I'm not at all sure that iov_iter_get_pages()
-> is a good idea there - fuse_copy_do() could bloody well just use
-> copy_{to,from}_iter().
+Got error: Connection closed
 
-Miklos, could you explain why does lock_request() prohibit page faults until
-the matching unlock_request()?  All it does is setting FR_LOCKED on
-our request and the only thing that even looks at that is fuse_abort_conn(),
-which doesn't (AFAICS) wait for anything.
+Commit 778620364ef5 "sunrpc/cache: make cache flushing more reliable." lets
+cache_is_expired() checking expired as, 
 
-Where does the deadlock come from, and if it's not a deadlock - what is
-it?  Or is that comment stale since "fuse: simplify request abort"?
+return (h->expiry_time < seconds_since_boot()) ||
+        (detail->flush_time >= h->last_refresh);
+
+The detail->flush_time is equal to h->last_refresh time, when the cache is
+new created and then do the upcall immediately. So that, the cache will be
+treated as expired and be cleaned when write_flush().
+
+This patch skips checking the pending cache expired when doing upcall.
+
+Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
+---
+ include/linux/sunrpc/cache.h | 5 ++++-
+ 1 file changed, 4 insertions(+), 1 deletion(-)
+
+diff --git a/include/linux/sunrpc/cache.h b/include/linux/sunrpc/cache.h
+index 62a60ee..9961c1f 100644
+--- a/include/linux/sunrpc/cache.h
++++ b/include/linux/sunrpc/cache.h
+@@ -204,8 +204,11 @@ static inline void cache_put(struct cache_head *h, struct cache_detail *cd)
+ 	kref_put(&h->ref, cd->cache_put);
+ }
+ 
+-static inline int cache_is_expired(struct cache_detail *detail, struct cache_head *h)
++static inline bool cache_is_expired(struct cache_detail *detail, struct cache_head *h)
+ {
++	if (test_bit(CACHE_PENDING, &h->flags))
++		return false;
++
+ 	return  (h->expiry_time < seconds_since_boot()) ||
+ 		(detail->flush_time >= h->last_refresh);
+ }
+-- 
+2.9.3
+
