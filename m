@@ -1,60 +1,175 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f194.google.com ([209.85.223.194]:33343 "EHLO
-        mail-io0-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1753539AbdBDFmc (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sat, 4 Feb 2017 00:42:32 -0500
-Received: by mail-io0-f194.google.com with SMTP id 101so4274126iom.0
-        for <linux-nfs@vger.kernel.org>; Fri, 03 Feb 2017 21:42:32 -0800 (PST)
-From: Kinglong Mee <kinglongmee@gmail.com>
-Subject: [PATCH] sunrpc/cache: skip checking the pending cache expired
-To: "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org
-Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
-        NeilBrown <neilb@suse.com>, Kinglong Mee <kinglongmee@gmail.com>
-Message-ID: <cb2a552c-51ec-f230-0b39-0bd4002e351d@gmail.com>
-Date: Sat, 4 Feb 2017 13:41:30 +0800
+Received: from zeniv.linux.org.uk ([195.92.253.2]:42564 "EHLO
+        ZenIV.linux.org.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1750876AbdBDT1D (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sat, 4 Feb 2017 14:27:03 -0500
+Date: Sat, 4 Feb 2017 19:26:55 +0000
+From: Al Viro <viro@ZenIV.linux.org.uk>
+To: Miklos Szeredi <miklos@szeredi.hu>
+Cc: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, ceph-devel@vger.kernel.org,
+        lustre-devel@lists.lustre.org, v9fs-developer@lists.sourceforge.net,
+        Linus Torvalds <torvalds@linux-foundation.org>,
+        Jan Kara <jack@suse.cz>, Chris Wilson <chris@chris-wilson.co.uk>,
+        "Kirill A. Shutemov" <kirill.shutemov@linux.intel.com>,
+        Jeff Layton <jlayton@redhat.com>
+Subject: Re: [PATCH v3 0/2] iov_iter: allow iov_iter_get_pages_alloc to
+ allocate more pages per call
+Message-ID: <20170204192655.GA13195@ZenIV.linux.org.uk>
+References: <20170124212327.14517-1-jlayton@redhat.com>
+ <20170125133205.21704-1-jlayton@redhat.com>
+ <20170202095125.GF27291@ZenIV.linux.org.uk>
+ <20170204030842.GL27291@ZenIV.linux.org.uk>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20170204030842.GL27291@ZenIV.linux.org.uk>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-When the first time pynfs runs after rpc/nfsd startup, always get the warning, 
+On Sat, Feb 04, 2017 at 03:08:42AM +0000, Al Viro wrote:
+> On Thu, Feb 02, 2017 at 09:51:25AM +0000, Al Viro wrote:
+> 
+> > 	* fuse_copy_fill().  I'm not at all sure that iov_iter_get_pages()
+> > is a good idea there - fuse_copy_do() could bloody well just use
+> > copy_{to,from}_iter().
+> 
+> Miklos, could you explain why does lock_request() prohibit page faults until
+> the matching unlock_request()?  All it does is setting FR_LOCKED on
+> our request and the only thing that even looks at that is fuse_abort_conn(),
+> which doesn't (AFAICS) wait for anything.
+> 
+> Where does the deadlock come from, and if it's not a deadlock - what is
+> it?  Or is that comment stale since "fuse: simplify request abort"?
 
-Got error: Connection closed
+While we are at it...  How can fuse_copy_page() ever get called with
+*pagep == NULL?  AFAICS, for that to happen you need either
+	i < req->num_pages && req->pages[i] == NULL  
+or in fuse_notify_store() have
+                err = fuse_copy_page(cs, &page, offset, this_num, 0);
+reached with page == NULL.  The latter is flat-out impossible - we have
+                if (!page)
+                        goto out_iput;
 
-Commit 778620364ef5 "sunrpc/cache: make cache flushing more reliable." lets
-cache_is_expired() checking expired as, 
+                this_num = min_t(unsigned, num, PAGE_SIZE - offset);
+immediately before the call in question.  As for the former...  I don't see
+any place where we would increase ->num_pages without having all additional
+->pages[] elements guaranteed to be non-NULL.  Stores to ->num_pages are
 
-return (h->expiry_time < seconds_since_boot()) ||
-        (detail->flush_time >= h->last_refresh);
+in cuse_send_init():
+	req->num_pages = 1;
+with
+        req->pages[0] = page;
+shortly before that and
+        if (!page)
+                goto err_put_req;
+earlier.
 
-The detail->flush_time is equal to h->last_refresh time, when the cache is
-new created and then do the upcall immediately. So that, the cache will be
-treated as expired and be cleaned when write_flush().
+In fuse_retrieve():
+                if (!page)
+                        break;
 
-This patch skips checking the pending cache expired when doing upcall.
+                this_num = min_t(unsigned, num, PAGE_SIZE - offset);
+                req->pages[req->num_pages] = page;
+                req->page_descs[req->num_pages].length = this_num;
+                req->num_pages++;
 
-Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
----
- include/linux/sunrpc/cache.h | 5 ++++-
- 1 file changed, 4 insertions(+), 1 deletion(-)
+In fuse_readdir():
+        req->num_pages = 1;
+        req->pages[0] = page;
+with
+        if (!page) {
+                fuse_put_request(fc, req);
+                return -ENOMEM;
+        }
+several lines above.
 
-diff --git a/include/linux/sunrpc/cache.h b/include/linux/sunrpc/cache.h
-index 62a60ee..9961c1f 100644
---- a/include/linux/sunrpc/cache.h
-+++ b/include/linux/sunrpc/cache.h
-@@ -204,8 +204,11 @@ static inline void cache_put(struct cache_head *h, struct cache_detail *cd)
- 	kref_put(&h->ref, cd->cache_put);
- }
- 
--static inline int cache_is_expired(struct cache_detail *detail, struct cache_head *h)
-+static inline bool cache_is_expired(struct cache_detail *detail, struct cache_head *h)
- {
-+	if (test_bit(CACHE_PENDING, &h->flags))
-+		return false;
-+
- 	return  (h->expiry_time < seconds_since_boot()) ||
- 		(detail->flush_time >= h->last_refresh);
- }
--- 
-2.9.3
+In fuse_do_readpage():
+        req->num_pages = 1;
+        req->pages[0] = page;
+with page dereferenced earlier.
 
+In fuse_fill_write_pages():
+                req->pages[req->num_pages] = page;
+                req->page_descs[req->num_pages].length = tmp;
+                req->num_pages++;
+with
+                if (!page)
+                        break;
+earlier.
+
+In fuse_get_user_pages():
+                ret = iov_iter_get_pages(ii, &req->pages[req->num_pages],
+                                        *nbytesp - nbytes, 
+                                        req->max_pages - req->num_pages,
+                                        &start);
+                if (ret < 0)
+                        break;
+
+                iov_iter_advance(ii, ret);
+                nbytes += ret;
+
+                ret += start;
+                npages = (ret + PAGE_SIZE - 1) / PAGE_SIZE;
+
+                req->page_descs[req->num_pages].offset = start;
+                fuse_page_descs_length_init(req, req->num_pages, npages);
+
+                req->num_pages += npages;
+which also shouldn't leave any NULLs in the area in question.
+
+In fuse_writepage_locked():
+        req->num_pages = 1;
+        req->pages[0] = tmp_page;
+with
+        if (!tmp_page)
+                goto err_free;
+done earlier.
+
+In fuse_writepage_in_flight():
+	req->num_pages = 1;
+with
+        BUG_ON(new_req->num_pages != 0);
+earlier and
+        req->pages[req->num_pages] = tmp_page;
+done in the caller (which passes req as new_req).  Earlier in the caller
+we have
+        if (!tmp_page)
+                goto out_unlock;
+
+In fuse_writepages_fill():
+		req->num_pages = 0;
+is obviously OK and
+        req->num_pages++;
+in the end of the same function is preceded by the same
+        req->pages[req->num_pages] = tmp_page;
+(fuse_writepages_fill() is the caller of fuse_writepage_in_flight();
+reassignment in fuse_writepage_in_flight() happens only in case when
+it returns 1 and in that case we don't reach the increment in
+fuse_writepages_fill() at all).
+
+In fuse_do_ioctl():
+        memcpy(req->pages, pages, sizeof(req->pages[0]) * num_pages);
+        req->num_pages = num_pages;
+and all increments of num_pages in there are
+                pages[num_pages] = alloc_page(GFP_KERNEL | __GFP_HIGHMEM);
+                if (!pages[num_pages])
+                        goto out;
+                num_pages++;
+so the array we copy into req->pages has the same property wrt num_pages.
+
+req->pages is assigned only in fuse_request_init(); that gets called
+in two places - one is at request allocation time, another (from
+put_reserved_req()) passes the current req->pages value, so that leaves it
+unchanged.  The contents of req->pages[] is changed only in the aforementioned
+places + fuse_request_init(), which zeros ->num_pages + fuse_copy_page()
+called from fuse_copy_pages() with &req->pages[i] as argument.  The last
+one can modify the damn thing, but only if it hits
+                                err = fuse_try_move_page(cs, pagep);
+and that sucker never stores a NULL in there -
+                *pagep = newpage;
+with get_page(newpage) upstream from that point.
+
+What am I missing here?  Looks like those checks in fuse_copy_page() are
+dead code...  They had been there since the initial merge, but AFAICS
+they were just as useless in 2.6.14.  Rudiments of some prehistorical stuff
+that never had been cleaned out, perhaps?
