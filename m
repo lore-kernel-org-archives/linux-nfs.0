@@ -1,102 +1,72 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from m12-12.163.com ([220.181.12.12]:40316 "EHLO m12-12.163.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751827AbdBEBz5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Sat, 4 Feb 2017 20:55:57 -0500
-From: Kinglong Mee <kinglongmee@163.com>
-Subject: [PATCH 1/3] nfsd/callback: Cleanup callback cred when state shutdown
-To: "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org
-Cc: Kinglong Mee <kinglongmee@gmail.com>
-Message-ID: <041689d2-003f-8269-a7a4-cc1ad15c8b11@163.com>
-Date: Sun, 5 Feb 2017 09:55:48 +0800
+Received: from zeniv.linux.org.uk ([195.92.253.2]:47602 "EHLO
+        ZenIV.linux.org.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751273AbdBECJg (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sat, 4 Feb 2017 21:09:36 -0500
+Date: Sun, 5 Feb 2017 01:51:49 +0000
+From: Al Viro <viro@ZenIV.linux.org.uk>
+To: Miklos Szeredi <miklos@szeredi.hu>
+Cc: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
+        Linux NFS list <linux-nfs@vger.kernel.org>, ceph-devel@vger.kernel.org,
+        lustre-devel@lists.lustre.org, v9fs-developer@lists.sourceforge.net,
+        Linus Torvalds <torvalds@linux-foundation.org>,
+        Jan Kara <jack@suse.cz>, Chris Wilson <chris@chris-wilson.co.uk>,
+        "Kirill A. Shutemov" <kirill.shutemov@linux.intel.com>,
+        Jeff Layton <jlayton@redhat.com>
+Subject: Re: [PATCH v3 0/2] iov_iter: allow iov_iter_get_pages_alloc to
+ allocate more pages per call
+Message-ID: <20170205015145.GB13195@ZenIV.linux.org.uk>
+References: <20170124212327.14517-1-jlayton@redhat.com>
+ <20170125133205.21704-1-jlayton@redhat.com>
+ <20170202095125.GF27291@ZenIV.linux.org.uk>
+ <20170204030842.GL27291@ZenIV.linux.org.uk>
+ <CAJfpegtVb8PKNnKe5wGMd0u0WzgLpjpVtVpqDScbrBJShLAfGw@mail.gmail.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <CAJfpegtVb8PKNnKe5wGMd0u0WzgLpjpVtVpqDScbrBJShLAfGw@mail.gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The rpccred get from rpc_lookup_machine_cred() should be put
-when state shutdown.
+On Sat, Feb 04, 2017 at 11:11:27PM +0100, Miklos Szeredi wrote:
 
-Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
----
- fs/nfsd/nfs4callback.c |  8 ++++++++
- fs/nfsd/nfs4state.c    | 10 ++++++----
- fs/nfsd/state.h        |  1 +
- 3 files changed, 15 insertions(+), 4 deletions(-)
+> Well, it's not historical; at least not yet.  The deadlock is there
+> alright: mmap fuse file to addr; read byte from mapped page -> page
+> locked; this triggeres read request served in same process but
+> separate thread; write addr-headerlen to fuse dev; trying to lock same
+> page -> deadlock.
 
-diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
-index eb78109..fb6ca0a 100644
---- a/fs/nfsd/nfs4callback.c
-+++ b/fs/nfsd/nfs4callback.c
-@@ -753,6 +753,14 @@ int set_callback_cred(void)
- 	return 0;
- }
- 
-+void cleanup_callback_cred(void)
-+{
-+	if (callback_cred) {
-+		put_rpccred(callback_cred);
-+		callback_cred = NULL;
-+	}
-+}
-+
- static struct rpc_cred *get_backchannel_cred(struct nfs4_client *clp, struct rpc_clnt *client, struct nfsd4_session *ses)
- {
- 	if (clp->cl_minorversion == 0) {
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index a0dee8a..d35eb07 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -7012,23 +7012,24 @@ nfs4_state_start(void)
- 
- 	ret = set_callback_cred();
- 	if (ret)
--		return -ENOMEM;
-+		return ret;
-+
- 	laundry_wq = alloc_workqueue("%s", WQ_UNBOUND, 0, "nfsd4");
- 	if (laundry_wq == NULL) {
- 		ret = -ENOMEM;
--		goto out_recovery;
-+		goto out_cleanup_cred;
- 	}
- 	ret = nfsd4_create_callback_queue();
- 	if (ret)
- 		goto out_free_laundry;
- 
- 	set_max_delegations();
--
- 	return 0;
- 
- out_free_laundry:
- 	destroy_workqueue(laundry_wq);
--out_recovery:
-+out_cleanup_cred:
-+	cleanup_callback_cred();
- 	return ret;
- }
- 
-@@ -7086,6 +7087,7 @@ nfs4_state_shutdown(void)
- {
- 	destroy_workqueue(laundry_wq);
- 	nfsd4_destroy_callback_queue();
-+	cleanup_callback_cred();
- }
- 
- static void
-diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
-index 4516e8b..005c911 100644
---- a/fs/nfsd/state.h
-+++ b/fs/nfsd/state.h
-@@ -615,6 +615,7 @@ extern struct nfs4_client_reclaim *nfsd4_find_reclaim_client(const char *recdir,
- extern __be32 nfs4_check_open_reclaim(clientid_t *clid,
- 		struct nfsd4_compound_state *cstate, struct nfsd_net *nn);
- extern int set_callback_cred(void);
-+extern void cleanup_callback_cred(void);
- extern void nfsd4_probe_callback(struct nfs4_client *clp);
- extern void nfsd4_probe_callback_sync(struct nfs4_client *clp);
- extern void nfsd4_change_callback(struct nfs4_client *clp, struct nfs4_cb_conn *);
--- 
-2.9.3
+Let me see if I got it straight - you have the same fuse file mmapped
+in two processes, one of them being fuse server (either sharing the
+entire address space, or the same area mapped in both).  Another process
+faults the sucker in; filemap_fault() locks the page and goes
+fuse_readpage() -> fuse_do_readpage() -> fuse_send_read() ->
+-> fuse_request_send() -> __fuse_request_send() which puts request into
+queue and goes to sleep in request_wait_answer().  Eventually, read()
+on /dev/fuse (or splice(), whatever) by server picks that request and reply
+is formed and fed back into /dev/fuse.  There we (in fuse_do_dev_write())
+call copy_out_args(), which tries to copy into our (still locked) page
+a piece of data coming from server-supplied iovec.  As it is, you
+are calling get_user_pages_fast(), triggering handle_mm_fault().  Since that
+malicous FPOS of a server tried to feed you the _same_ mmapped file, you
+hit a deadlock.  In server's context.  Correct?
 
+Convoluted, but possible.  But.  Why the hell do we care whether that deadlock
+hits in get_user_pages_fast() or in copy_from_user()?  Put it another way,
+what difference does it make whether we take that fault with or without
+FR_LOCKED in req->flags?
 
+> The deadlock can be broken by aborting or force unmounting: return
+> error for original read request; page unlocked; device write can get
+> page lock and return.
+> 
+> The reason we need to prohibit pagefault while copying is that when
+> request is aborted and the caller returns the memory in the request
+> may become invalid (e.g. data from stack).
+
+???
+
+IDGI.  Your request is marked aborted and should presumably fail, so
+that when request_wait_answer() wakes up and finds it screwed, fuse_readpage()
+would just return an error and filemap_fault() will return VM_FAULT_SIGBUS,
+with page left not uptodate and _not_ inserted into page tables.  What's
+leaking where?
