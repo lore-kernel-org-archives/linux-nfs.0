@@ -1,76 +1,65 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-it0-f65.google.com ([209.85.214.65]:34090 "EHLO
-        mail-it0-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751101AbdBENl7 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sun, 5 Feb 2017 08:41:59 -0500
-Received: by mail-it0-f65.google.com with SMTP id o185so5949958itb.1
-        for <linux-nfs@vger.kernel.org>; Sun, 05 Feb 2017 05:41:58 -0800 (PST)
-To: "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org
-Cc: Kinglong Mee <kinglongmee@gmail.com>
+Received: from mail-it0-f68.google.com ([209.85.214.68]:34271 "EHLO
+        mail-it0-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751453AbdBEODq (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sun, 5 Feb 2017 09:03:46 -0500
+Received: by mail-it0-f68.google.com with SMTP id o185so5982770itb.1
+        for <linux-nfs@vger.kernel.org>; Sun, 05 Feb 2017 06:03:46 -0800 (PST)
 From: Kinglong Mee <kinglongmee@gmail.com>
-Subject: [PATCH] SUNRPC: Drop all entries left in cache_detail when destroy
-Message-ID: <81c44c62-fa78-de51-faee-994f5592ff7b@gmail.com>
-Date: Sun, 5 Feb 2017 21:40:57 +0800
+Subject: [PATCH] nfsd/idmap: return nfserr_inval for zero length principals
+To: "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org
+Cc: linux-nfs@vger.kernel.org
+Message-ID: <25d503f0-c330-1401-2ed6-693c97fa8970@gmail.com>
+Date: Sun, 5 Feb 2017 22:02:01 +0800
 MIME-Version: 1.0
 Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-User always free the cache_detail after sunrpc_destroy_cache_detail(),
-so, it must cleanup up entries that left in the cache_detail,
-otherwise, NULL reference may be caused when using the left entries.
+Tigran Mkrtchyan's pynfs testcase for zero length principals fail as,
+
+SATT16   st_setattr.testEmptyPrincipal                            : FAILURE
+           Setting empty owner should return NFS4ERR_INVAL,
+           instead got NFS4ERR_BADOWNER
+SATT17   st_setattr.testEmptyGroupPrincipal                       : FAILURE
+           Setting empty owner_group should return NFS4ERR_INVAL,
+           instead got NFS4ERR_BADOWNER
+
+This patch checks the principal and return nfserr_inval directly.
+It should be check after decoding in nfs4xdr.c, but it's simple before
+process in nfsd_map_xxxx, so adds it in nfs4idmap.c.
 
 Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
 ---
- net/sunrpc/cache.c | 23 +++++++++++++++++------
- 1 file changed, 17 insertions(+), 6 deletions(-)
+ fs/nfsd/nfs4idmap.c | 8 ++++++++
+ 1 file changed, 8 insertions(+)
 
-diff --git a/net/sunrpc/cache.c b/net/sunrpc/cache.c
-index 8147e8d..a2c6fec 100644
---- a/net/sunrpc/cache.c
-+++ b/net/sunrpc/cache.c
-@@ -359,14 +359,28 @@ EXPORT_SYMBOL_GPL(sunrpc_init_cache_detail);
- 
- void sunrpc_destroy_cache_detail(struct cache_detail *cd)
+diff --git a/fs/nfsd/nfs4idmap.c b/fs/nfsd/nfs4idmap.c
+index 5b20577..6b9b6cc 100644
+--- a/fs/nfsd/nfs4idmap.c
++++ b/fs/nfsd/nfs4idmap.c
+@@ -628,6 +628,10 @@ nfsd_map_name_to_uid(struct svc_rqst *rqstp, const char *name, size_t namelen,
  {
-+	struct cache_head *ch = NULL;
-+	struct hlist_head *head = NULL;
-+	struct hlist_node *tmp = NULL;
-+	int i = 0;
+ 	__be32 status;
+ 	u32 id = -1;
 +
- 	cache_purge(cd);
- 	spin_lock(&cache_list_lock);
- 	write_lock(&cd->hash_lock);
++	if (name == NULL || namelen == 0)
++		return nfserr_inval;
 +
- 	if (cd->entries) {
--		write_unlock(&cd->hash_lock);
--		spin_unlock(&cache_list_lock);
--		goto out;
-+		printk(KERN_ERR "RPC: %d entries left in %s cache\n", cd->name);
-+		for (i = 0; i < cd->hash_size; i++) {
-+			head = &cd->hash_table[i];
-+			hlist_for_each_entry_safe(ch, tmp, head, cache_list) {
-+				hlist_del_init(&ch->cache_list);
-+				set_bit(CACHE_CLEANED, &ch->flags);
-+				cache_fresh_unlocked(ch, cd);
-+				cache_put(ch, cd);
-+			}
-+		}
- 	}
+ 	status = do_name_to_id(rqstp, IDMAP_TYPE_USER, name, namelen, &id);
+ 	*uid = make_kuid(&init_user_ns, id);
+ 	if (!uid_valid(*uid))
+@@ -641,6 +645,10 @@ nfsd_map_name_to_gid(struct svc_rqst *rqstp, const char *name, size_t namelen,
+ {
+ 	__be32 status;
+ 	u32 id = -1;
 +
- 	if (current_detail == cd)
- 		current_detail = NULL;
- 	list_del_init(&cd->others);
-@@ -376,9 +390,6 @@ void sunrpc_destroy_cache_detail(struct cache_detail *cd)
- 		/* module must be being unloaded so its safe to kill the worker */
- 		cancel_delayed_work_sync(&cache_cleaner);
- 	}
--	return;
--out:
--	printk(KERN_ERR "RPC: failed to unregister %s cache\n", cd->name);
- }
- EXPORT_SYMBOL_GPL(sunrpc_destroy_cache_detail);
- 
++	if (name == NULL || namelen == 0)
++		return nfserr_inval;
++
+ 	status = do_name_to_id(rqstp, IDMAP_TYPE_GROUP, name, namelen, &id);
+ 	*gid = make_kgid(&init_user_ns, id);
+ 	if (!gid_valid(*gid))
 -- 
 2.9.3
 
