@@ -1,58 +1,102 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f194.google.com ([209.85.223.194]:33147 "EHLO
-        mail-io0-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751366AbdBEB5x (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sat, 4 Feb 2017 20:57:53 -0500
-Received: by mail-io0-f194.google.com with SMTP id 101so5991676iom.0
-        for <linux-nfs@vger.kernel.org>; Sat, 04 Feb 2017 17:57:53 -0800 (PST)
-From: Kinglong Mee <kinglongmee@gmail.com>
-Subject: [PATCH 3/3] nfsd/callback: Drop an useless data copy when comparing
- sessionid
+Received: from mail-io0-f196.google.com ([209.85.223.196]:36012 "EHLO
+        mail-io0-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751445AbdBEB5Z (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sat, 4 Feb 2017 20:57:25 -0500
+Received: by mail-io0-f196.google.com with SMTP id q20so5961826ioi.3
+        for <linux-nfs@vger.kernel.org>; Sat, 04 Feb 2017 17:57:25 -0800 (PST)
 To: "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org
 Cc: Kinglong Mee <kinglongmee@gmail.com>
-Message-ID: <dd77a6cd-c269-e326-ced6-d91a858d389b@gmail.com>
-Date: Sun, 5 Feb 2017 09:57:48 +0800
+From: Kinglong Mee <kinglongmee@gmail.com>
+Subject: [PATCH 1/3] nfsd/callback: Cleanup callback cred when state shutdown
+Message-ID: <fcfac2b5-7925-bb40-2550-56e6860a9b34@gmail.com>
+Date: Sun, 5 Feb 2017 09:57:07 +0800
 MIME-Version: 1.0
 Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+The rpccred get from rpc_lookup_machine_cred() should be put
+when state shutdown.
+
 Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
 ---
- fs/nfsd/nfs4callback.c | 10 +++-------
- 1 file changed, 3 insertions(+), 7 deletions(-)
+ fs/nfsd/nfs4callback.c |  8 ++++++++
+ fs/nfsd/nfs4state.c    | 10 ++++++----
+ fs/nfsd/state.h        |  1 +
+ 3 files changed, 15 insertions(+), 4 deletions(-)
 
 diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
-index ea74149..0274db6 100644
+index eb78109..fb6ca0a 100644
 --- a/fs/nfsd/nfs4callback.c
 +++ b/fs/nfsd/nfs4callback.c
-@@ -397,13 +397,10 @@ static int decode_cb_sequence4resok(struct xdr_stream *xdr,
- 				    struct nfsd4_callback *cb)
- {
- 	struct nfsd4_session *session = cb->cb_clp->cl_cb_session;
--	struct nfs4_sessionid id;
--	int status;
-+	int status = -ESERVERFAULT;
- 	__be32 *p;
- 	u32 dummy;
+@@ -753,6 +753,14 @@ int set_callback_cred(void)
+ 	return 0;
+ }
  
--	status = -ESERVERFAULT;
--
- 	/*
- 	 * If the server returns different values for sessionID, slotID or
- 	 * sequence number, the server is looney tunes.
-@@ -411,9 +408,8 @@ static int decode_cb_sequence4resok(struct xdr_stream *xdr,
- 	p = xdr_inline_decode(xdr, NFS4_MAX_SESSIONID_LEN + 4 + 4 + 4 + 4);
- 	if (unlikely(p == NULL))
- 		goto out_overflow;
--	memcpy(id.data, p, NFS4_MAX_SESSIONID_LEN);
--	if (memcmp(id.data, session->se_sessionid.data,
--					NFS4_MAX_SESSIONID_LEN) != 0) {
++void cleanup_callback_cred(void)
++{
++	if (callback_cred) {
++		put_rpccred(callback_cred);
++		callback_cred = NULL;
++	}
++}
 +
-+	if (memcmp(p, session->se_sessionid.data, NFS4_MAX_SESSIONID_LEN)) {
- 		dprintk("NFS: %s Invalid session id\n", __func__);
- 		goto out;
+ static struct rpc_cred *get_backchannel_cred(struct nfs4_client *clp, struct rpc_clnt *client, struct nfsd4_session *ses)
+ {
+ 	if (clp->cl_minorversion == 0) {
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index a0dee8a..d35eb07 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -7012,23 +7012,24 @@ nfs4_state_start(void)
+ 
+ 	ret = set_callback_cred();
+ 	if (ret)
+-		return -ENOMEM;
++		return ret;
++
+ 	laundry_wq = alloc_workqueue("%s", WQ_UNBOUND, 0, "nfsd4");
+ 	if (laundry_wq == NULL) {
+ 		ret = -ENOMEM;
+-		goto out_recovery;
++		goto out_cleanup_cred;
  	}
+ 	ret = nfsd4_create_callback_queue();
+ 	if (ret)
+ 		goto out_free_laundry;
+ 
+ 	set_max_delegations();
+-
+ 	return 0;
+ 
+ out_free_laundry:
+ 	destroy_workqueue(laundry_wq);
+-out_recovery:
++out_cleanup_cred:
++	cleanup_callback_cred();
+ 	return ret;
+ }
+ 
+@@ -7086,6 +7087,7 @@ nfs4_state_shutdown(void)
+ {
+ 	destroy_workqueue(laundry_wq);
+ 	nfsd4_destroy_callback_queue();
++	cleanup_callback_cred();
+ }
+ 
+ static void
+diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
+index 4516e8b..005c911 100644
+--- a/fs/nfsd/state.h
++++ b/fs/nfsd/state.h
+@@ -615,6 +615,7 @@ extern struct nfs4_client_reclaim *nfsd4_find_reclaim_client(const char *recdir,
+ extern __be32 nfs4_check_open_reclaim(clientid_t *clid,
+ 		struct nfsd4_compound_state *cstate, struct nfsd_net *nn);
+ extern int set_callback_cred(void);
++extern void cleanup_callback_cred(void);
+ extern void nfsd4_probe_callback(struct nfs4_client *clp);
+ extern void nfsd4_probe_callback_sync(struct nfs4_client *clp);
+ extern void nfsd4_change_callback(struct nfs4_client *clp, struct nfs4_cb_conn *);
 -- 
 2.9.3
-
