@@ -1,107 +1,78 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from zeniv.linux.org.uk ([195.92.253.2]:49894 "EHLO
-        ZenIV.linux.org.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751593AbdBFJ5L (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 6 Feb 2017 04:57:11 -0500
-Date: Mon, 6 Feb 2017 09:57:07 +0000
-From: Al Viro <viro@ZenIV.linux.org.uk>
-To: Miklos Szeredi <miklos@szeredi.hu>
-Cc: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
-        Linux NFS list <linux-nfs@vger.kernel.org>, ceph-devel@vger.kernel.org,
-        lustre-devel@lists.lustre.org, v9fs-developer@lists.sourceforge.net,
-        Linus Torvalds <torvalds@linux-foundation.org>,
-        Jan Kara <jack@suse.cz>, Chris Wilson <chris@chris-wilson.co.uk>,
-        "Kirill A. Shutemov" <kirill.shutemov@linux.intel.com>,
-        Jeff Layton <jlayton@redhat.com>
-Subject: Re: [PATCH v3 0/2] iov_iter: allow iov_iter_get_pages_alloc to
- allocate more pages per call
-Message-ID: <20170206095706.GG13195@ZenIV.linux.org.uk>
-References: <20170202095125.GF27291@ZenIV.linux.org.uk>
- <20170204030842.GL27291@ZenIV.linux.org.uk>
- <CAJfpegtVb8PKNnKe5wGMd0u0WzgLpjpVtVpqDScbrBJShLAfGw@mail.gmail.com>
- <20170205015145.GB13195@ZenIV.linux.org.uk>
- <CAJfpegv=r9J8Mqax_ZAB2h5QbRgJMHwyVMENTpYZ8u3_pqNfJw@mail.gmail.com>
- <20170205210151.GD13195@ZenIV.linux.org.uk>
- <CAJfpeguzOgX9d+5XCNJcmXW5KkrGbnWB5aZSP1-0q3a6i6uk2w@mail.gmail.com>
- <20170205220445.GE13195@ZenIV.linux.org.uk>
- <20170206030532.GF13195@ZenIV.linux.org.uk>
- <CAJfpegv5ZGd2gzSbQvgk4uX5q06AijY+TNg2jdrPBSjbFoXMfg@mail.gmail.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <CAJfpegv5ZGd2gzSbQvgk4uX5q06AijY+TNg2jdrPBSjbFoXMfg@mail.gmail.com>
+Received: from mail-wm0-f67.google.com ([74.125.82.67]:33009 "EHLO
+        mail-wm0-f67.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1752148AbdBFOHa (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 6 Feb 2017 09:07:30 -0500
+From: Michal Hocko <mhocko@kernel.org>
+To: Andrew Morton <akpm@linux-foundation.org>,
+        <linux-fsdevel@vger.kernel.org>
+Cc: <linux-mm@kvack.org>, Dave Chinner <david@fromorbit.com>,
+        djwong@kernel.org, "Theodore Ts'o" <tytso@mit.edu>,
+        Chris Mason <clm@fb.com>, David Sterba <dsterba@suse.cz>,
+        Jan Kara <jack@suse.cz>, ceph-devel@vger.kernel.org,
+        cluster-devel@redhat.com, linux-nfs@vger.kernel.org, logfs@logfs.org,
+        linux-xfs@vger.kernel.org, linux-ext4@vger.kernel.org,
+        linux-btrfs@vger.kernel.org, linux-mtd@lists.infradead.org,
+        reiserfs-devel@vger.kernel.org, linux-ntfs-dev@lists.sourceforge.net,
+        linux-f2fs-devel@lists.sourceforge.net, linux-afs@lists.infradead.org,
+        LKML <linux-kernel@vger.kernel.org>, Brian Foster <bfoster@redhat.com>,
+        "Darrick J. Wong" <darrick.wong@oracle.com>,
+        Michal Hocko <mhocko@suse.com>,
+        "Peter Zijlstra (Intel)" <peterz@infradead.org>,
+        Vlastimil Babka <vbabka@suse.cz>
+Subject: [PATCH 0/6 v4] scope GFP_NOFS api
+Date: Mon,  6 Feb 2017 15:07:12 +0100
+Message-Id: <20170206140718.16222-1-mhocko@kernel.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Feb 06, 2017 at 10:08:06AM +0100, Miklos Szeredi wrote:
+Hi,
+I have posted the previous version here [1]. There are no real changes
+in the implementation since then. Few acks added and one new user of
+memalloc_noio_flags (in alloc_contig_range) converted. I have decided
+to drop the last two ext4 related patches. One of them will be picked up
+by Ted [2] and the other one will probably need more time to settle down.
+I believe it is OK as is but let's not block the whole thing just because
+of it.
 
-> Yes, I think only page lock can be used to deadlock inside
-> fuse_dev_read/write().  So requests that don't have locked pages
-> should be okay  with just waiting until copy_to/from_user() finishes
-> and only then proceeding with the abort.
+There didn't seem to be any real objections and so I think we should
+go and merge this to mmotm tree and target the next merge window. The
+risk of regressions is really small because we do not remove any real
+GFP_NOFS users yet.
 
-Actually, looking at that some more, this might be not true.  Anything
-that takes ->mmap_sem exclusive and *not* killable makes for another
-source of deadlock.
+I hope to get ext4 parts resolved in the follow up patches as well as
+pull other filesystems in. There is still a lot work to do but having
+the infrastructure in place should be very useful already.
 
-Initial page fault takes ->mmap_sem shared.  OK, request sent to
-server and server tries to read() it.  In the meanwhile, something
-has closed userfaultfd for the same mm_struct.  We have userfaultfd_release()
-block on attempt to take ->mmap_sem exclusive and from now on any attempt
-to grab ->mmap_sem shared will deadlock.  And get_user_pages(), as well
-as copy_to_user(), etc. can end up doing just that.  It doesn't have to
-be an mmap of the same file, BTW - any page fault would do.
+The patchset is based on next-20170206
 
-All you really need is to have server sharing address space with the
-process that steps into original page fault, plus an evicted page
-of any nature (anon mmap, whatever) being used as a destination of
-read() in server.
+Diffstat says
+ fs/jbd2/journal.c         |  7 +++++++
+ fs/jbd2/transaction.c     | 11 +++++++++++
+ fs/xfs/kmem.c             | 12 ++++++------
+ fs/xfs/kmem.h             |  2 +-
+ fs/xfs/libxfs/xfs_btree.c |  2 +-
+ fs/xfs/xfs_aops.c         |  6 +++---
+ fs/xfs/xfs_buf.c          |  8 ++++----
+ fs/xfs/xfs_trans.c        | 12 ++++++------
+ include/linux/gfp.h       | 18 +++++++++++++++++-
+ include/linux/jbd2.h      |  2 ++
+ include/linux/sched.h     | 32 ++++++++++++++++++++++++++------
+ kernel/locking/lockdep.c  |  6 +++++-
+ lib/radix-tree.c          |  2 ++
+ mm/page_alloc.c           | 10 ++++++----
+ mm/vmscan.c               |  6 +++---
+ 15 files changed, 100 insertions(+), 36 deletions(-)
 
-down_read() inside down_read() is fine, unless there had been down_write()
-in between.  And there are unkillable down_write() on ->mmap_sem -
-userfaultfd_release() being one example of such.  Many of those can and
-probably should become down_write_killable(), but this one can't - there
-might be nothing to deliver the signal to, if the final close() happens
-e.g. from exit(2).
+Shortlog:
+Michal Hocko (6):
+      lockdep: allow to disable reclaim lockup detection
+      xfs: abstract PF_FSTRANS to PF_MEMALLOC_NOFS
+      mm: introduce memalloc_nofs_{save,restore} API
+      xfs: use memalloc_nofs_{save,restore} instead of memalloc_noio*
+      jbd2: mark the transaction context with the scope GFP_NOFS context
+      jbd2: make the whole kjournald2 kthread NOFS safe
 
-Warning: the above might be completely bogus - I'm on way too large
-uptime at the moment and most of the last day had been spent digging
-through various convoluted code, so take the above with a cartload of
-salt.  _If_ it's true, that kind of deadlock won't be possible to
-break with killing anything or doing umount -f, though.
+[1] http://lkml.kernel.org/r/20170106141107.23953-1-mhocko@kernel.org
+[2] http://lkml.kernel.org/r/20170117030118.727jqyamjhojzajb@thunk.org
 
-> 
-> Those that have locked pages must be able to be aborted during
-> copy_to/from_user() because the copy itself may try to acquire the
-> page lock.
-> 
-> So yes, if we want to switch to copy_to/from_user(), then we can just
-> fix the page refcounting for read and write requests and handle the
-> two cases differently.
-> 
-> >         So how about this:
-> >
-> > * explicit FR_END_IMMEDIATELY on read/write-related requests
-> > * no FR_LOCKED flipping in lock_request()/unlock_request()
-> > * modifying the call of end_requests() in fuse_abort_conn() so that it
-> > would skip request_end() for everything that isn't marked FR_END_IMMEDIATELY
-> > * make fuse_copy_pages() grab page references around the actual
-> > fuse_copy_page() - grab req->waitq.lock, check FR_ABORTED, grab a page
-> > reference in case it's not, drop req->waitq.lock and bugger off if FR_ABORTED
-> > was set.  Adjust fuse_try_move_page() accordingly.
-> >
-> > Do you see any problems with that approach for minimal fix?  If all requests
-> > in need of FR_END_IMMEDIATELY turn out to have non-page part of args already
-> > embedded into req->misc, it looks like this ought to suffice.  I probably
-> > could post something along those lines tomorrow, if you see any serious
-> > problems with that - please yell...
-> 
-> See previous mail, I don't think there's an issue with the current
-> code.  Other than being convoluted as hell.
-
-OK - I'm an idiot and I've managed to misread fuse_abort_conn() despite having
-reread it many times last couple of days.  And yes, state transitions of
-requests are convoluted as hell ;-/
-
-Anyway, bedtime for me.  With any luck the scare above re ->mmap_sem *is*
-bogus and I'll find "Al, you are an idiot - deadlock on ->mmap_sem can't
-happen for <reasons>" from somebody in the mailbox when I get up...
