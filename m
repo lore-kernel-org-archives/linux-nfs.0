@@ -1,24 +1,11 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-oi0-f66.google.com ([209.85.218.66]:35785 "EHLO
-        mail-oi0-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751463AbdBFJIL (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 6 Feb 2017 04:08:11 -0500
-Received: by mail-oi0-f66.google.com with SMTP id x84so6019597oix.2
-        for <linux-nfs@vger.kernel.org>; Mon, 06 Feb 2017 01:08:11 -0800 (PST)
-MIME-Version: 1.0
-In-Reply-To: <20170206030532.GF13195@ZenIV.linux.org.uk>
-References: <20170124212327.14517-1-jlayton@redhat.com> <20170125133205.21704-1-jlayton@redhat.com>
- <20170202095125.GF27291@ZenIV.linux.org.uk> <20170204030842.GL27291@ZenIV.linux.org.uk>
- <CAJfpegtVb8PKNnKe5wGMd0u0WzgLpjpVtVpqDScbrBJShLAfGw@mail.gmail.com>
- <20170205015145.GB13195@ZenIV.linux.org.uk> <CAJfpegv=r9J8Mqax_ZAB2h5QbRgJMHwyVMENTpYZ8u3_pqNfJw@mail.gmail.com>
- <20170205210151.GD13195@ZenIV.linux.org.uk> <CAJfpeguzOgX9d+5XCNJcmXW5KkrGbnWB5aZSP1-0q3a6i6uk2w@mail.gmail.com>
- <20170205220445.GE13195@ZenIV.linux.org.uk> <20170206030532.GF13195@ZenIV.linux.org.uk>
-From: Miklos Szeredi <miklos@szeredi.hu>
-Date: Mon, 6 Feb 2017 10:08:06 +0100
-Message-ID: <CAJfpegv5ZGd2gzSbQvgk4uX5q06AijY+TNg2jdrPBSjbFoXMfg@mail.gmail.com>
-Subject: Re: [PATCH v3 0/2] iov_iter: allow iov_iter_get_pages_alloc to
- allocate more pages per call
-To: Al Viro <viro@zeniv.linux.org.uk>
+Received: from zeniv.linux.org.uk ([195.92.253.2]:49894 "EHLO
+        ZenIV.linux.org.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751593AbdBFJ5L (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 6 Feb 2017 04:57:11 -0500
+Date: Mon, 6 Feb 2017 09:57:07 +0000
+From: Al Viro <viro@ZenIV.linux.org.uk>
+To: Miklos Szeredi <miklos@szeredi.hu>
 Cc: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
         Linux NFS list <linux-nfs@vger.kernel.org>, ceph-devel@vger.kernel.org,
         lustre-devel@lists.lustre.org, v9fs-developer@lists.sourceforge.net,
@@ -26,77 +13,95 @@ Cc: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
         Jan Kara <jack@suse.cz>, Chris Wilson <chris@chris-wilson.co.uk>,
         "Kirill A. Shutemov" <kirill.shutemov@linux.intel.com>,
         Jeff Layton <jlayton@redhat.com>
-Content-Type: text/plain; charset=UTF-8
+Subject: Re: [PATCH v3 0/2] iov_iter: allow iov_iter_get_pages_alloc to
+ allocate more pages per call
+Message-ID: <20170206095706.GG13195@ZenIV.linux.org.uk>
+References: <20170202095125.GF27291@ZenIV.linux.org.uk>
+ <20170204030842.GL27291@ZenIV.linux.org.uk>
+ <CAJfpegtVb8PKNnKe5wGMd0u0WzgLpjpVtVpqDScbrBJShLAfGw@mail.gmail.com>
+ <20170205015145.GB13195@ZenIV.linux.org.uk>
+ <CAJfpegv=r9J8Mqax_ZAB2h5QbRgJMHwyVMENTpYZ8u3_pqNfJw@mail.gmail.com>
+ <20170205210151.GD13195@ZenIV.linux.org.uk>
+ <CAJfpeguzOgX9d+5XCNJcmXW5KkrGbnWB5aZSP1-0q3a6i6uk2w@mail.gmail.com>
+ <20170205220445.GE13195@ZenIV.linux.org.uk>
+ <20170206030532.GF13195@ZenIV.linux.org.uk>
+ <CAJfpegv5ZGd2gzSbQvgk4uX5q06AijY+TNg2jdrPBSjbFoXMfg@mail.gmail.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <CAJfpegv5ZGd2gzSbQvgk4uX5q06AijY+TNg2jdrPBSjbFoXMfg@mail.gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Feb 6, 2017 at 4:05 AM, Al Viro <viro@zeniv.linux.org.uk> wrote:
+On Mon, Feb 06, 2017 at 10:08:06AM +0100, Miklos Szeredi wrote:
 
-> Some observations regarding the arguments:
->         * stack footprint is atrocious.  Consider e.g. fuse_mknod() - you
-> get 16 bytes of fuse_mknod_in + 120 bytes of struct fuse_args + 128 bytes
-> of fuse_entry_out.  All on stack, and that's on top of whatever the
-> callchain already has eaten, which might include e.g. nfsd stuff or
-> ecryptfs, etc.  Or fuse_get_parent(), for that matter, with 128 bytes of
-> fuse_entry_out + 120 bytes of fuse_args, both on stack.  This one is
-> guaranteed to have a nasty call chain - fuse_get_parent() <- reconnect_one()
-> <- reconnect_path() <- exportfs_decode_fh() (itself with a 256-byte array of
-> char on stack) <- nfsd_set_fh_dentry() <- fh_verify() <- a bunch of call
-> chains in nfsd.
+> Yes, I think only page lock can be used to deadlock inside
+> fuse_dev_read/write().  So requests that don't have locked pages
+> should be okay  with just waiting until copy_to/from_user() finishes
+> and only then proceeding with the abort.
 
-Indeed.
+Actually, looking at that some more, this might be not true.  Anything
+that takes ->mmap_sem exclusive and *not* killable makes for another
+source of deadlock.
 
->         * "out" args (i.e. reply) are probably best dealt with by having
-> coallocated with request itself - some already are and the sizes tend
-> to be fixed and not too large (->get_link() is an exception, and it's
-> probably better handled as mentioned above).
->         * "in" args (request) are in some cases easily dealt with by
-> coallocating with request, but there's a large class of situations where
-> we are passing dentry->d_name.name and then there's fuse_symlink().
-> The last one is ugly - potentially up to a page worth of data, coming
-> straight from method caller; usually it's a part of getname() result,
-> but e.g. ecryptfs might have it kmalloc'ed, nfsd - picked from sunrpc
-> request payload, etc.
->
->         AFAICS, your argument applies to the requests that have
-> some page(s) locked until the request completion (unlock_page() either
-> by ->end() callback or in the originator of request).  If so, I would
-> rather mark those as "call request_end() early"; they seem to have
-> the non-page parts of args hosted in req->misc, so for them it's not
-> a problem.
+Initial page fault takes ->mmap_sem shared.  OK, request sent to
+server and server tries to read() it.  In the meanwhile, something
+has closed userfaultfd for the same mm_struct.  We have userfaultfd_release()
+block on attempt to take ->mmap_sem exclusive and from now on any attempt
+to grab ->mmap_sem shared will deadlock.  And get_user_pages(), as well
+as copy_to_user(), etc. can end up doing just that.  It doesn't have to
+be an mmap of the same file, BTW - any page fault would do.
 
-Yes, I think only page lock can be used to deadlock inside
-fuse_dev_read/write().  So requests that don't have locked pages
-should be okay  with just waiting until copy_to/from_user() finishes
-and only then proceeding with the abort.
+All you really need is to have server sharing address space with the
+process that steps into original page fault, plus an evicted page
+of any nature (anon mmap, whatever) being used as a destination of
+read() in server.
 
-Those that have locked pages must be able to be aborted during
-copy_to/from_user() because the copy itself may try to acquire the
-page lock.
+down_read() inside down_read() is fine, unless there had been down_write()
+in between.  And there are unkillable down_write() on ->mmap_sem -
+userfaultfd_release() being one example of such.  Many of those can and
+probably should become down_write_killable(), but this one can't - there
+might be nothing to deliver the signal to, if the final close() happens
+e.g. from exit(2).
 
-So yes, if we want to switch to copy_to/from_user(), then we can just
-fix the page refcounting for read and write requests and handle the
-two cases differently.
+Warning: the above might be completely bogus - I'm on way too large
+uptime at the moment and most of the last day had been spent digging
+through various convoluted code, so take the above with a cartload of
+salt.  _If_ it's true, that kind of deadlock won't be possible to
+break with killing anything or doing umount -f, though.
 
->         So how about this:
->
-> * explicit FR_END_IMMEDIATELY on read/write-related requests
-> * no FR_LOCKED flipping in lock_request()/unlock_request()
-> * modifying the call of end_requests() in fuse_abort_conn() so that it
-> would skip request_end() for everything that isn't marked FR_END_IMMEDIATELY
-> * make fuse_copy_pages() grab page references around the actual
-> fuse_copy_page() - grab req->waitq.lock, check FR_ABORTED, grab a page
-> reference in case it's not, drop req->waitq.lock and bugger off if FR_ABORTED
-> was set.  Adjust fuse_try_move_page() accordingly.
->
-> Do you see any problems with that approach for minimal fix?  If all requests
-> in need of FR_END_IMMEDIATELY turn out to have non-page part of args already
-> embedded into req->misc, it looks like this ought to suffice.  I probably
-> could post something along those lines tomorrow, if you see any serious
-> problems with that - please yell...
+> 
+> Those that have locked pages must be able to be aborted during
+> copy_to/from_user() because the copy itself may try to acquire the
+> page lock.
+> 
+> So yes, if we want to switch to copy_to/from_user(), then we can just
+> fix the page refcounting for read and write requests and handle the
+> two cases differently.
+> 
+> >         So how about this:
+> >
+> > * explicit FR_END_IMMEDIATELY on read/write-related requests
+> > * no FR_LOCKED flipping in lock_request()/unlock_request()
+> > * modifying the call of end_requests() in fuse_abort_conn() so that it
+> > would skip request_end() for everything that isn't marked FR_END_IMMEDIATELY
+> > * make fuse_copy_pages() grab page references around the actual
+> > fuse_copy_page() - grab req->waitq.lock, check FR_ABORTED, grab a page
+> > reference in case it's not, drop req->waitq.lock and bugger off if FR_ABORTED
+> > was set.  Adjust fuse_try_move_page() accordingly.
+> >
+> > Do you see any problems with that approach for minimal fix?  If all requests
+> > in need of FR_END_IMMEDIATELY turn out to have non-page part of args already
+> > embedded into req->misc, it looks like this ought to suffice.  I probably
+> > could post something along those lines tomorrow, if you see any serious
+> > problems with that - please yell...
+> 
+> See previous mail, I don't think there's an issue with the current
+> code.  Other than being convoluted as hell.
 
-See previous mail, I don't think there's an issue with the current
-code.  Other than being convoluted as hell.
+OK - I'm an idiot and I've managed to misread fuse_abort_conn() despite having
+reread it many times last couple of days.  And yes, state transitions of
+requests are convoluted as hell ;-/
 
-Thanks,
-Miklos
+Anyway, bedtime for me.  With any luck the scare above re ->mmap_sem *is*
+bogus and I'll find "Al, you are an idiot - deadlock on ->mmap_sem can't
+happen for <reasons>" from somebody in the mailbox when I get up...
