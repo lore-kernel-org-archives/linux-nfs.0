@@ -1,101 +1,109 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from userp1040.oracle.com ([156.151.31.81]:49561 "EHLO
-        userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751418AbdBFWsN (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 6 Feb 2017 17:48:13 -0500
+Received: from ipmail07.adl2.internode.on.net ([150.101.137.131]:18012 "EHLO
+        ipmail07.adl2.internode.on.net" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1752057AbdBFWwB (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 6 Feb 2017 17:52:01 -0500
+Date: Tue, 7 Feb 2017 09:51:50 +1100
+From: Dave Chinner <david@fromorbit.com>
+To: Michal Hocko <mhocko@kernel.org>
+Cc: "Darrick J. Wong" <darrick.wong@oracle.com>,
+        Matthew Wilcox <willy@infradead.org>,
+        Andrew Morton <akpm@linux-foundation.org>,
+        linux-fsdevel@vger.kernel.org, linux-mm@kvack.org, djwong@kernel.org,
+        "Theodore Ts'o" <tytso@mit.edu>, Chris Mason <clm@fb.com>,
+        David Sterba <dsterba@suse.cz>, Jan Kara <jack@suse.cz>,
+        ceph-devel@vger.kernel.org, cluster-devel@redhat.com,
+        linux-nfs@vger.kernel.org, logfs@logfs.org, linux-xfs@vger.kernel.org,
+        linux-ext4@vger.kernel.org, linux-btrfs@vger.kernel.org,
+        linux-mtd@lists.infradead.org, reiserfs-devel@vger.kernel.org,
+        linux-ntfs-dev@lists.sourceforge.net,
+        linux-f2fs-devel@lists.sourceforge.net, linux-afs@lists.infradead.org,
+        LKML <linux-kernel@vger.kernel.org>
+Subject: Re: [PATCH 4/6] xfs: use memalloc_nofs_{save,restore} instead of
+ memalloc_noio*
+Message-ID: <20170206225150.GB12125@dastard>
+References: <20170206140718.16222-1-mhocko@kernel.org>
+ <20170206140718.16222-5-mhocko@kernel.org>
+ <20170206153923.GL2267@bombadil.infradead.org>
+ <20170206174415.GA20731@dhcp22.suse.cz>
+ <20170206183237.GE3580@birch.djwong.org>
+ <20170206184743.GB20731@dhcp22.suse.cz>
+MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 9.3 \(3124\))
-Subject: Re: [PATCH v2 0/7] Server-side NFS/RDMA changes for v4.11
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <20170206223918.GE19704@fieldses.org>
-Date: Mon, 6 Feb 2017 17:48:09 -0500
-Cc: linux-rdma@vger.kernel.org,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <23A0875C-CD9D-48C1-B1FB-CE17E85EBC55@oracle.com>
-References: <20170131184623.14185.35480.stgit@klimt.1015granger.net> <20170206223918.GE19704@fieldses.org>
-To: "J. Bruce Fields" <bfields@fieldses.org>
+In-Reply-To: <20170206184743.GB20731@dhcp22.suse.cz>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-> On Feb 6, 2017, at 5:39 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
+On Mon, Feb 06, 2017 at 07:47:43PM +0100, Michal Hocko wrote:
+> On Mon 06-02-17 10:32:37, Darrick J. Wong wrote:
+> > On Mon, Feb 06, 2017 at 06:44:15PM +0100, Michal Hocko wrote:
+> > > On Mon 06-02-17 07:39:23, Matthew Wilcox wrote:
+> > > > On Mon, Feb 06, 2017 at 03:07:16PM +0100, Michal Hocko wrote:
+> > > > > +++ b/fs/xfs/xfs_buf.c
+> > > > > @@ -442,17 +442,17 @@ _xfs_buf_map_pages(
+> > > > >  		bp->b_addr = NULL;
+> > > > >  	} else {
+> > > > >  		int retried = 0;
+> > > > > -		unsigned noio_flag;
+> > > > > +		unsigned nofs_flag;
+> > > > >  
+> > > > >  		/*
+> > > > >  		 * vm_map_ram() will allocate auxillary structures (e.g.
+> > > > >  		 * pagetables) with GFP_KERNEL, yet we are likely to be under
+> > > > >  		 * GFP_NOFS context here. Hence we need to tell memory reclaim
+> > > > > -		 * that we are in such a context via PF_MEMALLOC_NOIO to prevent
+> > > > > +		 * that we are in such a context via PF_MEMALLOC_NOFS to prevent
+> > > > >  		 * memory reclaim re-entering the filesystem here and
+> > > > >  		 * potentially deadlocking.
+> > > > >  		 */
+> > > > 
+> > > > This comment feels out of date ... how about:
+> > > 
+> > > which part is out of date?
+> > > 
+> > > > 
+> > > > 		/*
+> > > > 		 * vm_map_ram will allocate auxiliary structures (eg page
+> > > > 		 * tables) with GFP_KERNEL.  If that tries to reclaim memory
+> > > > 		 * by calling back into this filesystem, we may deadlock.
+> > > > 		 * Prevent that by setting the NOFS flag.
+> > > > 		 */
+> > > 
+> > > dunno, the previous wording seems clear enough to me. Maybe little bit
+> > > more chatty than yours but I am not sure this is worth changing.
+> > 
+> > I prefer to keep the "...yet we are likely to be under GFP_NOFS..."
+> > wording of the old comment because it captures the uncertainty of
+> > whether or not we actually are already under NOFS.  If someone actually
+> > has audited this code well enough to know for sure then yes let's change
+> > the comment, but I haven't gone that far.
 > 
-> On Tue, Jan 31, 2017 at 01:52:42PM -0500, Chuck Lever wrote:
->> These are largely clean-ups, except for the last patch. Switching
->> completion polling from soft IRQ to a worker thread has a few
->> benefits:
->> 
->> - svcrdma's completion handlers invoke svc_xprt_put(). We discovered
->> recently svc_xprt_put() is supposed to be called only in a process
->> context. This will become more important when NFS/RDMA supports
->> multi-path.
->> 
->> - eventually we'd like to allocate pages for RDMA Read in the
->> completion handler, and not defer RDMA Read to svc_rdma_recvfrom.
->> Using GFP_KERNEL can sleep, which is not allowed in soft IRQ
->> context.
->> 
->> - several places where BH's are disabled can be converted to simple
->> spin_locks.
->> 
->> Bruce, would you consider these for v4.11?
-> 
-> Sure, looks fine to me.
-> 
-> Looks like you had a minor edit or two from Christoph's review, so I'm
-> assuming you'll resend.
+> I believe we can drop the memalloc_nofs_save then as well because either
+> we are called from a potentially dangerous context and thus we are in
+> the nofs scope we we do not need the protection at all.
 
-Yes, just waiting for the 0-day robot to report any issues.
-Expect to see these tomorrow.
+No, absolutely not. "Belief" is not a sufficient justification for
+removing low level deadlock avoidance infrastructure. This code
+needs to remain in _xfs_buf_map_pages() until a full audit of the
+caller paths is done and we're 100% certain that there are no
+lurking deadlocks.
 
+For example, I'm pretty sure we can call into _xfs_buf_map_pages()
+outside of a transaction context but with an inode ILOCK held
+exclusively. If we then recurse into memory reclaim and try to run a
+transaction during reclaim, we have an inverted ILOCK vs transaction
+locking order. i.e. we are not allowed to call xfs_trans_reserve()
+with an ILOCK held as that can deadlock the log:  log full, locked
+inode pins tail of log, inode cannot be flushed because ILOCK is
+held by caller waiting for log space to become available....
 
-> --b.
-> 
->> 
->> 
->> Available in the "nfsd-rdma-for-4.11" topic branch of this git repo:
->> 
->> git://git.linux-nfs.org/projects/cel/cel-2.6.git
->> 
->> 
->> Or for browsing:
->> 
->> http://git.linux-nfs.org/?p=cel/cel-2.6.git;a=log;h=refs/heads/nfsd-rdma-for-4.11
->> 
->> 
->> Changes since v1:
->> - Rebased on v4.10-rc6
->> 
->> ---
->> 
->> Chuck Lever (7):
->>      svcrdma: Another sendto chunk list parsing update
->>      svcrdma: Clean up RPC-over-RDMA Reply header encoder
->>      svcrdma: Clean up RPC-over-RDMA Call header decoder
->>      svcrdma: Clean up backchannel send header encoding
->>      svcrdma: Remove unused sc_dto_q field
->>      svcrdma: Combine list fields in struct svc_rdma_op_ctxt
->>      svcrdma: Poll CQs in "workqueue" mode
->> 
->> 
->> include/linux/sunrpc/rpc_rdma.h            |    9 +
->> include/linux/sunrpc/svc_rdma.h            |   17 +
->> net/sunrpc/xprtrdma/svc_rdma_backchannel.c |   17 +
->> net/sunrpc/xprtrdma/svc_rdma_marshal.c     |  320 +++++++++++-----------------
->> net/sunrpc/xprtrdma/svc_rdma_recvfrom.c    |   20 +-
->> net/sunrpc/xprtrdma/svc_rdma_sendto.c      |   13 -
->> net/sunrpc/xprtrdma/svc_rdma_transport.c   |   61 +++--
->> 7 files changed, 199 insertions(+), 258 deletions(-)
->> 
->> --
->> Chuck Lever
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+i.e. there are certain situations where holding a ILOCK is a
+deadlock vector. See xfs_lock_inodes() for an example of the lengths
+we go to avoid ILOCK based log deadlocks like this...
 
---
-Chuck Lever
+Cheers,
 
-
-
+Dave.
+-- 
+Dave Chinner
+david@fromorbit.com
