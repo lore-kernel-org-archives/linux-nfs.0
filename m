@@ -1,204 +1,85 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-wm0-f68.google.com ([74.125.82.68]:34679 "EHLO
-        mail-wm0-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1752156AbdBFOHb (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 6 Feb 2017 09:07:31 -0500
-From: Michal Hocko <mhocko@kernel.org>
-To: Andrew Morton <akpm@linux-foundation.org>,
-        <linux-fsdevel@vger.kernel.org>
-Cc: <linux-mm@kvack.org>, Dave Chinner <david@fromorbit.com>,
-        djwong@kernel.org, "Theodore Ts'o" <tytso@mit.edu>,
-        Chris Mason <clm@fb.com>, David Sterba <dsterba@suse.cz>,
-        Jan Kara <jack@suse.cz>, ceph-devel@vger.kernel.org,
-        cluster-devel@redhat.com, linux-nfs@vger.kernel.org, logfs@logfs.org,
-        linux-xfs@vger.kernel.org, linux-ext4@vger.kernel.org,
-        linux-btrfs@vger.kernel.org, linux-mtd@lists.infradead.org,
-        reiserfs-devel@vger.kernel.org, linux-ntfs-dev@lists.sourceforge.net,
-        linux-f2fs-devel@lists.sourceforge.net, linux-afs@lists.infradead.org,
-        LKML <linux-kernel@vger.kernel.org>, Michal Hocko <mhocko@suse.com>
-Subject: [PATCH 1/6] lockdep: allow to disable reclaim lockup detection
-Date: Mon,  6 Feb 2017 15:07:13 +0100
-Message-Id: <20170206140718.16222-2-mhocko@kernel.org>
-In-Reply-To: <20170206140718.16222-1-mhocko@kernel.org>
-References: <20170206140718.16222-1-mhocko@kernel.org>
+Received: from mail-ot0-f196.google.com ([74.125.82.196]:34275 "EHLO
+        mail-ot0-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1752321AbdBFOSn (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 6 Feb 2017 09:18:43 -0500
+Received: by mail-ot0-f196.google.com with SMTP id 73so10469541otj.1
+        for <linux-nfs@vger.kernel.org>; Mon, 06 Feb 2017 06:18:43 -0800 (PST)
+MIME-Version: 1.0
+In-Reply-To: <20170206095706.GG13195@ZenIV.linux.org.uk>
+References: <20170202095125.GF27291@ZenIV.linux.org.uk> <20170204030842.GL27291@ZenIV.linux.org.uk>
+ <CAJfpegtVb8PKNnKe5wGMd0u0WzgLpjpVtVpqDScbrBJShLAfGw@mail.gmail.com>
+ <20170205015145.GB13195@ZenIV.linux.org.uk> <CAJfpegv=r9J8Mqax_ZAB2h5QbRgJMHwyVMENTpYZ8u3_pqNfJw@mail.gmail.com>
+ <20170205210151.GD13195@ZenIV.linux.org.uk> <CAJfpeguzOgX9d+5XCNJcmXW5KkrGbnWB5aZSP1-0q3a6i6uk2w@mail.gmail.com>
+ <20170205220445.GE13195@ZenIV.linux.org.uk> <20170206030532.GF13195@ZenIV.linux.org.uk>
+ <CAJfpegv5ZGd2gzSbQvgk4uX5q06AijY+TNg2jdrPBSjbFoXMfg@mail.gmail.com> <20170206095706.GG13195@ZenIV.linux.org.uk>
+From: Miklos Szeredi <miklos@szeredi.hu>
+Date: Mon, 6 Feb 2017 15:18:42 +0100
+Message-ID: <CAJfpegv-ePQE9pNwZe6O+0LjJdq2aVk3bnhxeZ=y7P+iFq72XA@mail.gmail.com>
+Subject: Re: [PATCH v3 0/2] iov_iter: allow iov_iter_get_pages_alloc to
+ allocate more pages per call
+To: Al Viro <viro@zeniv.linux.org.uk>
+Cc: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
+        Linux NFS list <linux-nfs@vger.kernel.org>, ceph-devel@vger.kernel.org,
+        lustre-devel@lists.lustre.org, v9fs-developer@lists.sourceforge.net,
+        Linus Torvalds <torvalds@linux-foundation.org>,
+        Jan Kara <jack@suse.cz>, Chris Wilson <chris@chris-wilson.co.uk>,
+        "Kirill A. Shutemov" <kirill.shutemov@linux.intel.com>,
+        Jeff Layton <jlayton@redhat.com>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Michal Hocko <mhocko@suse.com>
+On Mon, Feb 6, 2017 at 10:57 AM, Al Viro <viro@zeniv.linux.org.uk> wrote:
+> On Mon, Feb 06, 2017 at 10:08:06AM +0100, Miklos Szeredi wrote:
+>
+>> Yes, I think only page lock can be used to deadlock inside
+>> fuse_dev_read/write().  So requests that don't have locked pages
+>> should be okay  with just waiting until copy_to/from_user() finishes
+>> and only then proceeding with the abort.
+>
+> Actually, looking at that some more, this might be not true.  Anything
+> that takes ->mmap_sem exclusive and *not* killable makes for another
+> source of deadlock.
+>
+> Initial page fault takes ->mmap_sem shared.  OK, request sent to
+> server and server tries to read() it.  In the meanwhile, something
+> has closed userfaultfd for the same mm_struct.  We have userfaultfd_release()
+> block on attempt to take ->mmap_sem exclusive and from now on any attempt
+> to grab ->mmap_sem shared will deadlock.  And get_user_pages(), as well
+> as copy_to_user(), etc. can end up doing just that.  It doesn't have to
+> be an mmap of the same file, BTW - any page fault would do.
+>
+> All you really need is to have server sharing address space with the
+> process that steps into original page fault, plus an evicted page
+> of any nature (anon mmap, whatever) being used as a destination of
+> read() in server.
+>
+> down_read() inside down_read() is fine, unless there had been down_write()
+> in between.  And there are unkillable down_write() on ->mmap_sem -
+> userfaultfd_release() being one example of such.  Many of those can and
+> probably should become down_write_killable(), but this one can't - there
+> might be nothing to deliver the signal to, if the final close() happens
+> e.g. from exit(2).
+>
+> Warning: the above might be completely bogus - I'm on way too large
+> uptime at the moment and most of the last day had been spent digging
+> through various convoluted code, so take the above with a cartload of
+> salt.  _If_ it's true, that kind of deadlock won't be possible to
+> break with killing anything or doing umount -f, though.
 
-The current implementation of the reclaim lockup detection can lead to
-false positives and those even happen and usually lead to tweak the
-code to silence the lockdep by using GFP_NOFS even though the context
-can use __GFP_FS just fine. See
-http://lkml.kernel.org/r/20160512080321.GA18496@dastard as an example.
+It's not bogus, the deadlock is there.
 
-=================================
-[ INFO: inconsistent lock state ]
-4.5.0-rc2+ #4 Tainted: G           O
----------------------------------
-inconsistent {RECLAIM_FS-ON-R} -> {IN-RECLAIM_FS-W} usage.
-kswapd0/543 [HC0[0]:SC0[0]:HE1:SE1] takes:
+But I think it's breakable in the same way: if the deadlocked request
+is aborted, the fault will release the page lock as well as mmap_sem,
+and from there things will resolve themselves.
 
-(&xfs_nondir_ilock_class){++++-+}, at: [<ffffffffa00781f7>] xfs_ilock+0x177/0x200 [xfs]
+But you are definitely right about needing to clean up that mess in
+fuse/dev.c and doing so by fixing up the arg refcounting for just the
+read and write requests is going to be a lot simpler than having to do
+that for all of them (which was my original plan).
 
-{RECLAIM_FS-ON-R} state was registered at:
-  [<ffffffff8110f369>] mark_held_locks+0x79/0xa0
-  [<ffffffff81113a43>] lockdep_trace_alloc+0xb3/0x100
-  [<ffffffff81224623>] kmem_cache_alloc+0x33/0x230
-  [<ffffffffa008acc1>] kmem_zone_alloc+0x81/0x120 [xfs]
-  [<ffffffffa005456e>] xfs_refcountbt_init_cursor+0x3e/0xa0 [xfs]
-  [<ffffffffa0053455>] __xfs_refcount_find_shared+0x75/0x580 [xfs]
-  [<ffffffffa00539e4>] xfs_refcount_find_shared+0x84/0xb0 [xfs]
-  [<ffffffffa005dcb8>] xfs_getbmap+0x608/0x8c0 [xfs]
-  [<ffffffffa007634b>] xfs_vn_fiemap+0xab/0xc0 [xfs]
-  [<ffffffff81244208>] do_vfs_ioctl+0x498/0x670
-  [<ffffffff81244459>] SyS_ioctl+0x79/0x90
-  [<ffffffff81847cd7>] entry_SYSCALL_64_fastpath+0x12/0x6f
+So, I'll have a go at that sometime.
 
-       CPU0
-       ----
-  lock(&xfs_nondir_ilock_class);
-  <Interrupt>
-    lock(&xfs_nondir_ilock_class);
-
- *** DEADLOCK ***
-
-3 locks held by kswapd0/543:
-
-stack backtrace:
-CPU: 0 PID: 543 Comm: kswapd0 Tainted: G           O    4.5.0-rc2+ #4
-
-Hardware name: innotek GmbH VirtualBox/VirtualBox, BIOS VirtualBox 12/01/2006
-
- ffffffff82a34f10 ffff88003aa078d0 ffffffff813a14f9 ffff88003d8551c0
- ffff88003aa07920 ffffffff8110ec65 0000000000000000 0000000000000001
- ffff880000000001 000000000000000b 0000000000000008 ffff88003d855aa0
-Call Trace:
- [<ffffffff813a14f9>] dump_stack+0x4b/0x72
- [<ffffffff8110ec65>] print_usage_bug+0x215/0x240
- [<ffffffff8110ee85>] mark_lock+0x1f5/0x660
- [<ffffffff8110e100>] ? print_shortest_lock_dependencies+0x1a0/0x1a0
- [<ffffffff811102e0>] __lock_acquire+0xa80/0x1e50
- [<ffffffff8122474e>] ? kmem_cache_alloc+0x15e/0x230
- [<ffffffffa008acc1>] ? kmem_zone_alloc+0x81/0x120 [xfs]
- [<ffffffff811122e8>] lock_acquire+0xd8/0x1e0
- [<ffffffffa00781f7>] ? xfs_ilock+0x177/0x200 [xfs]
- [<ffffffffa0083a70>] ? xfs_reflink_cancel_cow_range+0x150/0x300 [xfs]
- [<ffffffff8110aace>] down_write_nested+0x5e/0xc0
- [<ffffffffa00781f7>] ? xfs_ilock+0x177/0x200 [xfs]
- [<ffffffffa00781f7>] xfs_ilock+0x177/0x200 [xfs]
- [<ffffffffa0083a70>] xfs_reflink_cancel_cow_range+0x150/0x300 [xfs]
- [<ffffffffa0085bdc>] xfs_fs_evict_inode+0xdc/0x1e0 [xfs]
- [<ffffffff8124d7d5>] evict+0xc5/0x190
- [<ffffffff8124d8d9>] dispose_list+0x39/0x60
- [<ffffffff8124eb2b>] prune_icache_sb+0x4b/0x60
- [<ffffffff8123317f>] super_cache_scan+0x14f/0x1a0
- [<ffffffff811e0d19>] shrink_slab.part.63.constprop.79+0x1e9/0x4e0
- [<ffffffff811e50ee>] shrink_zone+0x15e/0x170
- [<ffffffff811e5ef1>] kswapd+0x4f1/0xa80
- [<ffffffff811e5a00>] ? zone_reclaim+0x230/0x230
- [<ffffffff810e6882>] kthread+0xf2/0x110
- [<ffffffff810e6790>] ? kthread_create_on_node+0x220/0x220
- [<ffffffff8184803f>] ret_from_fork+0x3f/0x70
- [<ffffffff810e6790>] ? kthread_create_on_node+0x220/0x220
-
-To quote Dave:
-"
-Ignoring whether reflink should be doing anything or not, that's a
-"xfs_refcountbt_init_cursor() gets called both outside and inside
-transactions" lockdep false positive case. The problem here is
-lockdep has seen this allocation from within a transaction, hence a
-GFP_NOFS allocation, and now it's seeing it in a GFP_KERNEL context.
-Also note that we have an active reference to this inode.
-
-So, because the reclaim annotations overload the interrupt level
-detections and it's seen the inode ilock been taken in reclaim
-("interrupt") context, this triggers a reclaim context warning where
-it thinks it is unsafe to do this allocation in GFP_KERNEL context
-holding the inode ilock...
-"
-
-This sounds like a fundamental problem of the reclaim lock detection.
-It is really impossible to annotate such a special usecase IMHO unless
-the reclaim lockup detection is reworked completely. Until then it
-is much better to provide a way to add "I know what I am doing flag"
-and mark problematic places. This would prevent from abusing GFP_NOFS
-flag which has a runtime effect even on configurations which have
-lockdep disabled.
-
-Introduce __GFP_NOLOCKDEP flag which tells the lockdep gfp tracking to
-skip the current allocation request.
-
-While we are at it also make sure that the radix tree doesn't
-accidentaly override tags stored in the upper part of the gfp_mask.
-
-Suggested-by: Peter Zijlstra <peterz@infradead.org>
-Acked-by: Peter Zijlstra (Intel) <peterz@infradead.org>
-Acked-by: Vlastimil Babka <vbabka@suse.cz>
-Signed-off-by: Michal Hocko <mhocko@suse.com>
----
- include/linux/gfp.h      | 10 +++++++++-
- kernel/locking/lockdep.c |  4 ++++
- lib/radix-tree.c         |  2 ++
- 3 files changed, 15 insertions(+), 1 deletion(-)
-
-diff --git a/include/linux/gfp.h b/include/linux/gfp.h
-index db373b9d3223..978232a3b4ae 100644
---- a/include/linux/gfp.h
-+++ b/include/linux/gfp.h
-@@ -40,6 +40,11 @@ struct vm_area_struct;
- #define ___GFP_DIRECT_RECLAIM	0x400000u
- #define ___GFP_WRITE		0x800000u
- #define ___GFP_KSWAPD_RECLAIM	0x1000000u
-+#ifdef CONFIG_LOCKDEP
-+#define ___GFP_NOLOCKDEP	0x4000000u
-+#else
-+#define ___GFP_NOLOCKDEP	0
-+#endif
- /* If the above are modified, __GFP_BITS_SHIFT may need updating */
- 
- /*
-@@ -179,8 +184,11 @@ struct vm_area_struct;
- #define __GFP_NOTRACK	((__force gfp_t)___GFP_NOTRACK)
- #define __GFP_NOTRACK_FALSE_POSITIVE (__GFP_NOTRACK)
- 
-+/* Disable lockdep for GFP context tracking */
-+#define __GFP_NOLOCKDEP ((__force gfp_t)___GFP_NOLOCKDEP)
-+
- /* Room for N __GFP_FOO bits */
--#define __GFP_BITS_SHIFT 25
-+#define __GFP_BITS_SHIFT (25 + IS_ENABLED(CONFIG_LOCKDEP))
- #define __GFP_BITS_MASK ((__force gfp_t)((1 << __GFP_BITS_SHIFT) - 1))
- 
- /*
-diff --git a/kernel/locking/lockdep.c b/kernel/locking/lockdep.c
-index 45acb86d3f56..7dc2375c3ec7 100644
---- a/kernel/locking/lockdep.c
-+++ b/kernel/locking/lockdep.c
-@@ -2879,6 +2879,10 @@ static void __lockdep_trace_alloc(gfp_t gfp_mask, unsigned long flags)
- 	if (DEBUG_LOCKS_WARN_ON(irqs_disabled_flags(flags)))
- 		return;
- 
-+	/* Disable lockdep if explicitly requested */
-+	if (gfp_mask & __GFP_NOLOCKDEP)
-+		return;
-+
- 	mark_held_locks(curr, RECLAIM_FS);
- }
- 
-diff --git a/lib/radix-tree.c b/lib/radix-tree.c
-index 9dc093d5ef39..7550be09f9d6 100644
---- a/lib/radix-tree.c
-+++ b/lib/radix-tree.c
-@@ -2274,6 +2274,8 @@ static int radix_tree_cpu_dead(unsigned int cpu)
- void __init radix_tree_init(void)
- {
- 	int ret;
-+
-+	BUILD_BUG_ON(RADIX_TREE_MAX_TAGS + __GFP_BITS_SHIFT > 32);
- 	radix_tree_node_cachep = kmem_cache_create("radix_tree_node",
- 			sizeof(struct radix_tree_node), 0,
- 			SLAB_PANIC | SLAB_RECLAIM_ACCOUNT,
--- 
-2.11.0
-
+Thanks,
+Miklos
