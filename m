@@ -1,102 +1,83 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:47650 "EHLO fieldses.org"
+Received: from fieldses.org ([173.255.197.46]:47652 "EHLO fieldses.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751450AbdBFW2c (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 6 Feb 2017 17:28:32 -0500
-Date: Mon, 6 Feb 2017 17:28:25 -0500
+        id S1751524AbdBFWjT (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 6 Feb 2017 17:39:19 -0500
+Date: Mon, 6 Feb 2017 17:39:18 -0500
 From: "J. Bruce Fields" <bfields@fieldses.org>
-To: NeilBrown <neilb@suse.com>
-Cc: Linux NFS Mailing <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] NFSDv4: use export cache flushtime for changeid on
- V4ROOT objects.
-Message-ID: <20170206222825.GD19704@fieldses.org>
-References: <87mve9rs0z.fsf@notabene.neil.brown.name>
- <20170130153517.GC24786@fieldses.org>
- <8737g0rxm2.fsf@notabene.neil.brown.name>
- <20170131143855.GA5727@fieldses.org>
- <87k293vxj2.fsf@notabene.neil.brown.name>
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH v2 0/7] Server-side NFS/RDMA changes for v4.11
+Message-ID: <20170206223918.GE19704@fieldses.org>
+References: <20170131184623.14185.35480.stgit@klimt.1015granger.net>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <87k293vxj2.fsf@notabene.neil.brown.name>
+In-Reply-To: <20170131184623.14185.35480.stgit@klimt.1015granger.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Feb 07, 2017 at 08:07:13AM +1100, NeilBrown wrote:
-> On Tue, Jan 31 2017, J. Bruce Fields wrote:
+On Tue, Jan 31, 2017 at 01:52:42PM -0500, Chuck Lever wrote:
+> These are largely clean-ups, except for the last patch. Switching
+> completion polling from soft IRQ to a worker thread has a few
+> benefits:
 > 
-> > On Tue, Jan 31, 2017 at 09:28:37AM +1100, NeilBrown wrote:
-> >> On Mon, Jan 30 2017, J. Bruce Fields wrote:
-> >> 
-> >> > On Mon, Jan 30, 2017 at 05:17:00PM +1100, NeilBrown wrote:
-> >> >> 
-> >> >> If you change the set of filesystems that are exported, then
-> >> >> the contents of various directories in the NFSv4 pseudo-root
-> >> >> is likely to change.  However the change-id of those
-> >> >> directories is currently tied to the underlying directory,
-> >> >> so the clinet may not see the changes in a timely fashion.
-> >> >
-> >> > Oh, good catch.
-> >> >
-> >> >> This patch changes the change-id number to be derived from the
-> >> >> "flush_time" of the export cache.  Whenever any changes are
-> >> >> made to the set of exported filesystems, this flush_time is
-> >> >> updated.  The result is that clients see changes to the set
-> >> >> of exported filesystems much more quickly, often immediately.
-> >> >
-> >> > And, a clever solution, as usual....
-> >> >
-> >> > I wonder if it's completely right yet, though.  Off the top of my head:
-> >> > can't the client see the new flush time before it sees the new contents?
-> >> > If so, a client that caches both during that window could cache the old
-> >> > contents indefinitely.
-> >> 
-> >> uhm....
-> >> Yes, it could see the new flush time before it sees the new contents.
-> >> When it sees that new flush time (i.e. new change attribute), it will
-> >> invalidate its cached contents and ask for the contents again.
-> >
-> > The problem comes if it's still possible for the client to read (and
-> > cache) the old contents at this point, in which case the client's cache
-> > will incorrectly associate old contents with new change attribute.
+> - svcrdma's completion handlers invoke svc_xprt_put(). We discovered
+> recently svc_xprt_put() is supposed to be called only in a process
+> context. This will become more important when NFS/RDMA supports
+> multi-path.
 > 
-> I agree with this.
+> - eventually we'd like to allocate pages for RDMA Read in the
+> completion handler, and not defer RDMA Read to svc_rdma_recvfrom.
+> Using GFP_KERNEL can sleep, which is not allowed in soft IRQ
+> context.
 > 
-> >
-> >> It will then definitely get new contents.
-> >
-> > So the problem with changing change attribute before contents is:
-> >
-> > 	- client retrieves old contents and new attribute, caches.
-> > 	- client revalidates cache at an arbitrarily later time, sees
-> > 	  it's still the new attribute, continues caching old contents.
-> >
-> > So usually I believe you want the two changes--contents and change
-> > attribute--to be atomic or, if that's not possible, for them to be
-> > changed in that order.
+> - several places where BH's are disabled can be converted to simple
+> spin_locks.
 > 
-> I believe that setting ->flush_time atomically effects both changes.
-> 
-> >
-> > I haven't thought through how that applies to this case, but I think it
-> > should be possible if in-progress rpc's hold references to objects in
-> > the flushed cache?
-> 
-> How would it do that?
-> In NFSv4 'READDIR' and 'GETATTR' are separate operations.
-> If the client sends READDIR and then GETATTR, it must not assume that
-> the change number in the GETATTR reply implies anything about the
-> READDIR reply.
-> But it (presumably) sends them in the order other, so if GETATTR gets a
-> new change number, then when nfsd4_encode_dirent_fattr() calls
-> nfsd_crossmnt() it will find the changed to the exports table, though it
-> may need to wait for an upcall to complete.
-> 
-> You are right to be cautious, but I think ->flush_time effectively
-> provides the needed atomicity.
+> Bruce, would you consider these for v4.11?
 
-Yeah, I just hadn't thought it through.  So long as the only "content"
-we care about is readdir/lookup results, and so long as those always
-require nfsd_crossmnt() and a new cache lookup, then I agree this works.
-Thanks!
+Sure, looks fine to me.
+
+Looks like you had a minor edit or two from Christoph's review, so I'm
+assuming you'll resend.
 
 --b.
+
+> 
+> 
+> Available in the "nfsd-rdma-for-4.11" topic branch of this git repo:
+> 
+> git://git.linux-nfs.org/projects/cel/cel-2.6.git
+> 
+> 
+> Or for browsing:
+> 
+> http://git.linux-nfs.org/?p=cel/cel-2.6.git;a=log;h=refs/heads/nfsd-rdma-for-4.11
+> 
+> 
+> Changes since v1:
+> - Rebased on v4.10-rc6
+> 
+> ---
+> 
+> Chuck Lever (7):
+>       svcrdma: Another sendto chunk list parsing update
+>       svcrdma: Clean up RPC-over-RDMA Reply header encoder
+>       svcrdma: Clean up RPC-over-RDMA Call header decoder
+>       svcrdma: Clean up backchannel send header encoding
+>       svcrdma: Remove unused sc_dto_q field
+>       svcrdma: Combine list fields in struct svc_rdma_op_ctxt
+>       svcrdma: Poll CQs in "workqueue" mode
+> 
+> 
+>  include/linux/sunrpc/rpc_rdma.h            |    9 +
+>  include/linux/sunrpc/svc_rdma.h            |   17 +
+>  net/sunrpc/xprtrdma/svc_rdma_backchannel.c |   17 +
+>  net/sunrpc/xprtrdma/svc_rdma_marshal.c     |  320 +++++++++++-----------------
+>  net/sunrpc/xprtrdma/svc_rdma_recvfrom.c    |   20 +-
+>  net/sunrpc/xprtrdma/svc_rdma_sendto.c      |   13 -
+>  net/sunrpc/xprtrdma/svc_rdma_transport.c   |   61 +++--
+>  7 files changed, 199 insertions(+), 258 deletions(-)
+> 
+> --
+> Chuck Lever
