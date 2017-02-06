@@ -1,71 +1,101 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-it0-f66.google.com ([209.85.214.66]:36029 "EHLO
-        mail-it0-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1752294AbdBFEAi (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sun, 5 Feb 2017 23:00:38 -0500
-Received: by mail-it0-f66.google.com with SMTP id f200so7446688itf.3
-        for <linux-nfs@vger.kernel.org>; Sun, 05 Feb 2017 20:00:37 -0800 (PST)
+Received: from mail-io0-f196.google.com ([209.85.223.196]:34398 "EHLO
+        mail-io0-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751968AbdBFECA (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sun, 5 Feb 2017 23:02:00 -0500
+Received: by mail-io0-f196.google.com with SMTP id c80so8105954iod.1
+        for <linux-nfs@vger.kernel.org>; Sun, 05 Feb 2017 20:02:00 -0800 (PST)
 To: "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org
 Cc: NeilBrown <neilb@suse.com>,
         Trond Myklebust <trond.myklebust@primarydata.com>,
         Kinglong Mee <kinglongmee@gmail.com>
 From: Kinglong Mee <kinglongmee@gmail.com>
-Subject: [PATCH 1/2] SUNRPC/Cache: Always treat the invalid cache as unexpired
-Message-ID: <e8f37174-0afd-7213-547a-269fc81c01dc@gmail.com>
-Date: Mon, 6 Feb 2017 12:00:05 +0800
+Subject: [PATCH 2/2] SUNRPC: Drop all entries from cache_detail when
+ cache_purge()
+Message-ID: <400d714e-3e4c-74b0-6734-96dbf491b9d9@gmail.com>
+Date: Mon, 6 Feb 2017 12:01:52 +0800
 MIME-Version: 1.0
 Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-When the first time pynfs runs after rpc/nfsd startup, always get the warning,
+User always free the cache_detail after sunrpc_destroy_cache_detail(),
+so, it must cleanup up entries that left in the cache_detail,
+otherwise, NULL reference may be caused when using the left entries.
 
-"Got error: Connection closed"
+Also, NeriBrown suggests "write a stand-alone cache_purge()."
 
-I found the problem is caused by,
-1. A new startup of nfsd, rpc.mountd, etc,
-2. A rpc request from client (pynfs test, or normal mounting),
-3. An ip_map cache is created but invalid, so upcall to rpc.mountd,
-4. rpc.mountd process the ip_map upcall, before write the valid data to nfsd,
-   do auth_reload(), and check_useipaddr(),
-5. For the first time, old_use_ipaddr = -1, it causes rpc.mountd do write_flush    that doing cache_clean,
-6. The ip_map cache will be treat as expired and clean,
-7. When rpc.mountd write the valid data to nfsd, a new ip_map is created
-   and updated, the cache_check of old ip_map(doing the upcall) will
-   return -ETIMEDOUT.
-8. RPC layer return SVC_CLOSE and close the xprt after commit 4d712ef1db05
-   "svcauth_gss: Close connection when dropping an incoming message"
-
-NeilBrown suggest in another email,
-
-"If CACHE_VALID is not set, then there is no data in the cache item,
- so there is nothing to expire. So it would be nice if cache items that
- don't have CACHE_VALID are never treated as expired."
-
-v2, change the checking of CACHE_PENDING to CACHE_VALID
+v2, a stand-alone cache_purge(), not only for sunrpc_destroy_cache_detail
 
 Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
 ---
- include/linux/sunrpc/cache.h | 5 ++++-
- 1 file changed, 4 insertions(+), 1 deletion(-)
+ net/sunrpc/cache.c | 39 ++++++++++++++++++++++++---------------
+ 1 file changed, 24 insertions(+), 15 deletions(-)
 
-diff --git a/include/linux/sunrpc/cache.h b/include/linux/sunrpc/cache.h
-index 62a60ee..782024e 100644
---- a/include/linux/sunrpc/cache.h
-+++ b/include/linux/sunrpc/cache.h
-@@ -204,8 +204,11 @@ static inline void cache_put(struct cache_head *h, struct cache_detail *cd)
- 	kref_put(&h->ref, cd->cache_put);
+diff --git a/net/sunrpc/cache.c b/net/sunrpc/cache.c
+index 8147e8d..bd6ee79 100644
+--- a/net/sunrpc/cache.c
++++ b/net/sunrpc/cache.c
+@@ -362,11 +362,6 @@ void sunrpc_destroy_cache_detail(struct cache_detail *cd)
+ 	cache_purge(cd);
+ 	spin_lock(&cache_list_lock);
+ 	write_lock(&cd->hash_lock);
+-	if (cd->entries) {
+-		write_unlock(&cd->hash_lock);
+-		spin_unlock(&cache_list_lock);
+-		goto out;
+-	}
+ 	if (current_detail == cd)
+ 		current_detail = NULL;
+ 	list_del_init(&cd->others);
+@@ -376,9 +371,6 @@ void sunrpc_destroy_cache_detail(struct cache_detail *cd)
+ 		/* module must be being unloaded so its safe to kill the worker */
+ 		cancel_delayed_work_sync(&cache_cleaner);
+ 	}
+-	return;
+-out:
+-	printk(KERN_ERR "RPC: failed to unregister %s cache\n", cd->name);
  }
+ EXPORT_SYMBOL_GPL(sunrpc_destroy_cache_detail);
  
--static inline int cache_is_expired(struct cache_detail *detail, struct cache_head *h)
-+static inline bool cache_is_expired(struct cache_detail *detail, struct cache_head *h)
+@@ -497,13 +489,30 @@ EXPORT_SYMBOL_GPL(cache_flush);
+ 
+ void cache_purge(struct cache_detail *detail)
  {
-+	if (!test_bit(CACHE_VALID, &h->flags))
-+		return false;
+-	time_t now = seconds_since_boot();
+-	if (detail->flush_time >= now)
+-		now = detail->flush_time + 1;
+-	/* 'now' is the maximum value any 'last_refresh' can have */
+-	detail->flush_time = now;
+-	detail->nextcheck = seconds_since_boot();
+-	cache_flush();
++	struct cache_head *ch = NULL;
++	struct hlist_head *head = NULL;
++	struct hlist_node *tmp = NULL;
++	int i = 0;
 +
- 	return  (h->expiry_time < seconds_since_boot()) ||
- 		(detail->flush_time >= h->last_refresh);
++	write_lock(&detail->hash_lock);
++	if (!detail->entries) {
++		write_unlock(&detail->hash_lock);
++		return;
++	}
++
++	dprintk("RPC: %d entries in %s cache\n", detail->entries, detail->name);
++	for (i = 0; i < detail->hash_size; i++) {
++		head = &detail->hash_table[i];
++		hlist_for_each_entry_safe(ch, tmp, head, cache_list) {
++			hlist_del_init(&ch->cache_list);
++			detail->entries--;
++
++			set_bit(CACHE_CLEANED, &ch->flags);
++			cache_fresh_unlocked(ch, detail);
++			cache_put(ch, detail);
++		}
++	}
++	write_unlock(&detail->hash_lock);
  }
+ EXPORT_SYMBOL_GPL(cache_purge);
+ 
 -- 
 2.9.3
 
