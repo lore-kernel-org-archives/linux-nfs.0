@@ -1,173 +1,102 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-it0-f66.google.com ([209.85.214.66]:35241 "EHLO
-        mail-it0-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1750946AbdBFBAn (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sun, 5 Feb 2017 20:00:43 -0500
-Received: by mail-it0-f66.google.com with SMTP id 203so7128636ith.2
-        for <linux-nfs@vger.kernel.org>; Sun, 05 Feb 2017 17:00:43 -0800 (PST)
-Subject: Re: [PATCH] sunrpc/cache: skip checking the pending cache expired
-To: NeilBrown <neilb@suse.com>, "J. Bruce Fields" <bfields@fieldses.org>,
-        linux-nfs@vger.kernel.org
-References: <cb2a552c-51ec-f230-0b39-0bd4002e351d@gmail.com>
- <4471ba20-2677-f9f4-dc27-c53b50c72066@gmail.com>
- <e87e2700-3eb3-19cc-a2ca-675ff1219aa8@gmail.com>
- <871svcxoew.fsf@notabene.neil.brown.name>
-Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
-        Kinglong Mee <kinglongmee@gmail.com>
-From: Kinglong Mee <kinglongmee@gmail.com>
-Message-ID: <91f7dd89-9867-ea0a-92a8-4bfcda6087c2@gmail.com>
-Date: Mon, 6 Feb 2017 08:59:25 +0800
+Received: from zeniv.linux.org.uk ([195.92.253.2]:42932 "EHLO
+        ZenIV.linux.org.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751873AbdBFDFh (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sun, 5 Feb 2017 22:05:37 -0500
+Date: Mon, 6 Feb 2017 03:05:32 +0000
+From: Al Viro <viro@ZenIV.linux.org.uk>
+To: Miklos Szeredi <miklos@szeredi.hu>
+Cc: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
+        Linux NFS list <linux-nfs@vger.kernel.org>, ceph-devel@vger.kernel.org,
+        lustre-devel@lists.lustre.org, v9fs-developer@lists.sourceforge.net,
+        Linus Torvalds <torvalds@linux-foundation.org>,
+        Jan Kara <jack@suse.cz>, Chris Wilson <chris@chris-wilson.co.uk>,
+        "Kirill A. Shutemov" <kirill.shutemov@linux.intel.com>,
+        Jeff Layton <jlayton@redhat.com>
+Subject: Re: [PATCH v3 0/2] iov_iter: allow iov_iter_get_pages_alloc to
+ allocate more pages per call
+Message-ID: <20170206030532.GF13195@ZenIV.linux.org.uk>
+References: <20170124212327.14517-1-jlayton@redhat.com>
+ <20170125133205.21704-1-jlayton@redhat.com>
+ <20170202095125.GF27291@ZenIV.linux.org.uk>
+ <20170204030842.GL27291@ZenIV.linux.org.uk>
+ <CAJfpegtVb8PKNnKe5wGMd0u0WzgLpjpVtVpqDScbrBJShLAfGw@mail.gmail.com>
+ <20170205015145.GB13195@ZenIV.linux.org.uk>
+ <CAJfpegv=r9J8Mqax_ZAB2h5QbRgJMHwyVMENTpYZ8u3_pqNfJw@mail.gmail.com>
+ <20170205210151.GD13195@ZenIV.linux.org.uk>
+ <CAJfpeguzOgX9d+5XCNJcmXW5KkrGbnWB5aZSP1-0q3a6i6uk2w@mail.gmail.com>
+ <20170205220445.GE13195@ZenIV.linux.org.uk>
 MIME-Version: 1.0
-In-Reply-To: <871svcxoew.fsf@notabene.neil.brown.name>
-Content-Type: text/plain; charset=windows-1252
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20170205220445.GE13195@ZenIV.linux.org.uk>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 2/6/2017 06:28, NeilBrown wrote:
-> On Sun, Feb 05 2017, Kinglong Mee wrote:
-> 
->> On 2/5/2017 18:37, Kinglong Mee wrote:
->>> On 2/4/2017 13:41, Kinglong Mee wrote:
->>>> When the first time pynfs runs after rpc/nfsd startup, always get the warning, 
->>>>
->>>> Got error: Connection closed
->>>>
->>>> Commit 778620364ef5 "sunrpc/cache: make cache flushing more reliable." lets
->>>> cache_is_expired() checking expired as, 
->>>>
->>>> return (h->expiry_time < seconds_since_boot()) ||
->>>>         (detail->flush_time >= h->last_refresh);
->>>>
->>>> The detail->flush_time is equal to h->last_refresh time, when the cache is
->>>> new created and then do the upcall immediately. So that, the cache will be
->>>> treated as expired and be cleaned when write_flush().
->>
->> I found the problem is caused by, 
->> 1. A new startup of nfsd, rpc.mountd, etc,
->> 2. A rpc request from client (pynfs test, or normal mounting),
->> 3. An ip_map cache is created but invalid, so upcall to rpc.mountd, 
->> 4. rpc.mountd process the ip_map upcall, before write the valid data to nfsd,
->>    do auth_reload(), and check_useipaddr(),
->> 5. For the first time, old_use_ipaddr = -1, that cause a cache_flush,
->> 6. The ip_map cache will be treat as expired and clean,
->> 7. When rpc.mountd write the valid data to nfsd, a new ip_map is created
->>    and updated, the cache_check of old ip_map(doing the upcall) will
->>    return -ETIMEDOUT.
->> 8. RPC layer return SVC_CLOSE and close the xprt after commit 4d712ef1db05
->>    "svcauth_gss: Close connection when dropping an incoming message"
->>
->> Although it is exist only one time, but I don't like the noise.
->> Is the cache_flush for old_use_ipaddr = -1 necessary in step 5?
->> I have no idea about how to fix it, any suggests?
->>
-> 
-> Hi,
->  I think that your idea that CACHE_PENDING cache entries shouldn't be
->  treated as expired make some sense.
->  I would actually focus on CACHE_VALID.  If CACHE_VALID is not set, then
->  there is no data in the cache item, so there is nothing to expire.
->  So it would be nice if cache items that don't have CACHE_VALID are
->  never treated as expired.
->  However, as you discovered, that causes a problem for cache_purge().
->  It purges a cache by setting the ->flush_time, and calling
->  cache_clean(), which only removes expired entries.  For that to work,
->  Even non-CACHE_VALID entries need to be seen as expired.
+On Sun, Feb 05, 2017 at 10:04:45PM +0000, Al Viro wrote:
 
-rpc.mountd do a write_flush() that cause the cache_flush,
-but, it's the same as cache_purge() which setting the ->flush_time.
+> Sure, you need to hit a fairly narrow window, especially if you are to
+> cause damage in A, but AFAICS it's not impossible.  Consider e.g. the
+> situation when you lose CPU on preempt on the way to memcpy(); in that
+> case server might come back when A has incremented its stack footprint
+> again.  Or A might end up taking a hardware interrupt and handling it
+> on the normal kernel stack, etc.
+> 
+> Looks like *any* scenario where fuse_conn_abort() manages to run during
+> that memcpy() has potential for that kind of trouble; any SMP box appears
+> to be vulnerable, along with preempt UP...
+> 
+> Am I missing something that prevents that kind of problem?
 
-> 
->  I think the best thing to do is to write a stand-alone cache_purge().
->  Rather than using cache_flush(), explicitly free every item on every
->  hash chain.
+For that matter, it doesn't have to be on-stack - e.g. fuse_get_link()
+has kmalloc'ed buffer for destination, kfree'd upon failure.  Have the
+damn thing lose the timeslice in fuse_copy_do() and you might very well
+end up spraying user-supplied data over whatever ends up picking your
+kfreed buffer.  That one could be reasonably dealt with if we switched
+to page_alloc() and stuffed it into the ->pages[] instead...
 
-The stand-alone cache_purge() as following make sure cleanup all
-cache entries it the cache_detail.
-It's better than my another patch for the NULL reference bugfix.
+Some observations regarding the arguments:
+	* stack footprint is atrocious.  Consider e.g. fuse_mknod() - you
+get 16 bytes of fuse_mknod_in + 120 bytes of struct fuse_args + 128 bytes
+of fuse_entry_out.  All on stack, and that's on top of whatever the
+callchain already has eaten, which might include e.g. nfsd stuff or
+ecryptfs, etc.  Or fuse_get_parent(), for that matter, with 128 bytes of
+fuse_entry_out + 120 bytes of fuse_args, both on stack.  This one is
+guaranteed to have a nasty call chain - fuse_get_parent() <- reconnect_one()
+<- reconnect_path() <- exportfs_decode_fh() (itself with a 256-byte array of
+char on stack) <- nfsd_set_fh_dentry() <- fh_verify() <- a bunch of call
+chains in nfsd.
+	* "out" args (i.e. reply) are probably best dealt with by having
+coallocated with request itself - some already are and the sizes tend
+to be fixed and not too large (->get_link() is an exception, and it's
+probably better handled as mentioned above).
+	* "in" args (request) are in some cases easily dealt with by
+coallocating with request, but there's a large class of situations where
+we are passing dentry->d_name.name and then there's fuse_symlink().
+The last one is ugly - potentially up to a page worth of data, coming
+straight from method caller; usually it's a part of getname() result,
+but e.g. ecryptfs might have it kmalloc'ed, nfsd - picked from sunrpc
+request payload, etc.
 
-Don't treat non-CACHE_VALID entries as expired make sense, 
-it's needed also.
+	AFAICS, your argument applies to the requests that have
+some page(s) locked until the request completion (unlock_page() either
+by ->end() callback or in the originator of request).  If so, I would
+rather mark those as "call request_end() early"; they seem to have
+the non-page parts of args hosted in req->misc, so for them it's not
+a problem.
 
-thanks,
-Kinglong Mee
+	So how about this:
 
-> 
->  Something like this?
-> 
-> static int cache_purge(struct cache_detail *cd)
-> {
-> 	int rv = 0;
-> 	struct list_head *next;
-> 	int i;
-> 
-> 	write_lock(&cd->hash_lock);
-> 
-> 	for (i = 0; i < cd->hash_size; i++) {
-> 		struct cache_head *ch = NULL;
-> 		struct cache_detail *d;
-> 		struct hlist_head *head;
-> 		struct hlist_node *tmp;
-> 
-> 		head = &cd->hash_table[i];
-> 		hlist_for_each_entry_safe(ch, tmp, head, cache_list) {
-> 			hlist_del_init(&ch->cache_list);
-> 			cd->entries--;
-> 
-> 			set_bit(CACHE_CLEANED, &ch->flags);
-> 			write_unlock(&cd->hash_lock);
-> 			cache_fresh_unlocked(ch, d);
-> 			cache_put(ch, d);
-> 			write_lock(&cd->hash_lock);
-> 		}
-> 	}
-> 	write_unlock(&cd->hash_lock);
-> 
-> 	return rv;
-> }
-> 
-> Thanks,
-> NeilBrown
-> 
-> 
->> thanks,
->> Kinglong Mee
->>
->>>>
->>>> This patch skips checking the pending cache expired when doing upcall.
->>>>
->>>> Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
->>>> ---
->>>>  include/linux/sunrpc/cache.h | 5 ++++-
->>>>  1 file changed, 4 insertions(+), 1 deletion(-)
->>>>
->>>> diff --git a/include/linux/sunrpc/cache.h b/include/linux/sunrpc/cache.h
->>>> index 62a60ee..9961c1f 100644
->>>> --- a/include/linux/sunrpc/cache.h
->>>> +++ b/include/linux/sunrpc/cache.h
->>>> @@ -204,8 +204,11 @@ static inline void cache_put(struct cache_head *h, struct cache_detail *cd)
->>>>  	kref_put(&h->ref, cd->cache_put);
->>>>  }
->>>>  
->>>> -static inline int cache_is_expired(struct cache_detail *detail, struct cache_head *h)
->>>> +static inline bool cache_is_expired(struct cache_detail *detail, struct cache_head *h)
->>>>  {
->>>> +	if (test_bit(CACHE_PENDING, &h->flags))
->>>> +		return false;
->>>> +
->>>
->>> Sorry, with this patch there is a bug exist,
->>> When a pending cache exist, sunrpc_destroy_cache_detail() cann't
->>> cleanup the cache_detail, but user always free it later, 
->>> that will cause a NULL reference.
->>>
->>> Please ignore this patch, maybe another patch for the above problem
->>>  will be sent.
->>>
->>> thanks,
->>> Kinglong Mee
->>>
->>>>  	return  (h->expiry_time < seconds_since_boot()) ||
->>>>  		(detail->flush_time >= h->last_refresh);
->>>>  }
->>>>
->>>
+* explicit FR_END_IMMEDIATELY on read/write-related requests
+* no FR_LOCKED flipping in lock_request()/unlock_request()
+* modifying the call of end_requests() in fuse_abort_conn() so that it
+would skip request_end() for everything that isn't marked FR_END_IMMEDIATELY
+* make fuse_copy_pages() grab page references around the actual
+fuse_copy_page() - grab req->waitq.lock, check FR_ABORTED, grab a page
+reference in case it's not, drop req->waitq.lock and bugger off if FR_ABORTED
+was set.  Adjust fuse_try_move_page() accordingly.
+
+Do you see any problems with that approach for minimal fix?  If all requests
+in need of FR_END_IMMEDIATELY turn out to have non-page part of args already
+embedded into req->misc, it looks like this ought to suffice.  I probably
+could post something along those lines tomorrow, if you see any serious
+problems with that - please yell...
