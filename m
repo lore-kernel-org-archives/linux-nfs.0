@@ -1,55 +1,72 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:49109 "EHLO mx2.suse.de"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1753904AbdBFPam (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 6 Feb 2017 10:30:42 -0500
-Date: Mon, 6 Feb 2017 16:30:37 +0100
-From: Michal Hocko <mhocko@kernel.org>
-To: Matthew Wilcox <willy@infradead.org>
+Received: from bombadil.infradead.org ([65.50.211.133]:55950 "EHLO
+        bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751756AbdBFPj0 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 6 Feb 2017 10:39:26 -0500
+Date: Mon, 6 Feb 2017 07:39:23 -0800
+From: Matthew Wilcox <willy@infradead.org>
+To: Michal Hocko <mhocko@kernel.org>
 Cc: Andrew Morton <akpm@linux-foundation.org>,
         linux-fsdevel@vger.kernel.org, linux-mm@kvack.org,
         Dave Chinner <david@fromorbit.com>, djwong@kernel.org,
-        "Theodore Ts'o" <tytso@mit.edu>, Chris Mason <clm@fb.com>,
+        Theodore Ts'o <tytso@mit.edu>, Chris Mason <clm@fb.com>,
         David Sterba <dsterba@suse.cz>, Jan Kara <jack@suse.cz>,
         ceph-devel@vger.kernel.org, cluster-devel@redhat.com,
-        linux-nfs@vger.kernel.org, logfs@logfs.org, linux-xfs@vger.kernel.org,
-        linux-ext4@vger.kernel.org, linux-btrfs@vger.kernel.org,
-        linux-mtd@lists.infradead.org, reiserfs-devel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, logfs@logfs.org,
+        linux-xfs@vger.kernel.org, linux-ext4@vger.kernel.org,
+        linux-btrfs@vger.kernel.org, linux-mtd@lists.infradead.org,
+        reiserfs-devel@vger.kernel.org,
         linux-ntfs-dev@lists.sourceforge.net,
-        linux-f2fs-devel@lists.sourceforge.net, linux-afs@lists.infradead.org,
-        LKML <linux-kernel@vger.kernel.org>
-Subject: Re: [PATCH 1/6] lockdep: allow to disable reclaim lockup detection
-Message-ID: <20170206153037.GG10298@dhcp22.suse.cz>
+        linux-f2fs-devel@lists.sourceforge.net,
+        linux-afs@lists.infradead.org, LKML <linux-kernel@vger.kernel.org>,
+        Michal Hocko <mhocko@suse.com>
+Subject: Re: [PATCH 4/6] xfs: use memalloc_nofs_{save,restore} instead of
+ memalloc_noio*
+Message-ID: <20170206153923.GL2267@bombadil.infradead.org>
 References: <20170206140718.16222-1-mhocko@kernel.org>
- <20170206140718.16222-2-mhocko@kernel.org>
- <20170206142641.GG2267@bombadil.infradead.org>
- <20170206143449.GD10298@dhcp22.suse.cz>
- <20170206152400.GK2267@bombadil.infradead.org>
+ <20170206140718.16222-5-mhocko@kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20170206152400.GK2267@bombadil.infradead.org>
+In-Reply-To: <20170206140718.16222-5-mhocko@kernel.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon 06-02-17 07:24:00, Matthew Wilcox wrote:
-> On Mon, Feb 06, 2017 at 03:34:50PM +0100, Michal Hocko wrote:
-> > This part is not needed for the patch, strictly speaking but I wanted to
-> > make the code more future proof.
-> 
-> Understood.  I took an extra bit myself for marking the radix tree as
-> being used for an IDR (so the radix tree now uses 4 bits).  I see you
-> already split out the address space GFP mask from the other flags :-)
-> I would prefer not to do that with the radix tree, but I understand
-> your desire for more GFP bits.  I'm not entirely sure that an implicit
-> gfpmask makes a lot of sense for the radix tree, but it'd be a big effort
-> to change all the callers.  Anyway, I'm going to update your line here
-> for my current tree and add the build bug so we'll know if we ever hit
-> any problems.
+On Mon, Feb 06, 2017 at 03:07:16PM +0100, Michal Hocko wrote:
+> +++ b/fs/xfs/xfs_buf.c
+> @@ -442,17 +442,17 @@ _xfs_buf_map_pages(
+>  		bp->b_addr = NULL;
+>  	} else {
+>  		int retried = 0;
+> -		unsigned noio_flag;
+> +		unsigned nofs_flag;
+>  
+>  		/*
+>  		 * vm_map_ram() will allocate auxillary structures (e.g.
+>  		 * pagetables) with GFP_KERNEL, yet we are likely to be under
+>  		 * GFP_NOFS context here. Hence we need to tell memory reclaim
+> -		 * that we are in such a context via PF_MEMALLOC_NOIO to prevent
+> +		 * that we are in such a context via PF_MEMALLOC_NOFS to prevent
+>  		 * memory reclaim re-entering the filesystem here and
+>  		 * potentially deadlocking.
+>  		 */
 
-OK, do I get it right that the patch can stay as is and go to Andrew?
-I would really like to not rebase the patch again for something that is
-not merged yet. I really hope for getting this merged finally...
+This comment feels out of date ... how about:
 
--- 
-Michal Hocko
-SUSE Labs
+		/*
+		 * vm_map_ram will allocate auxiliary structures (eg page
+		 * tables) with GFP_KERNEL.  If that tries to reclaim memory
+		 * by calling back into this filesystem, we may deadlock.
+		 * Prevent that by setting the NOFS flag.
+		 */
+
+> -		noio_flag = memalloc_noio_save();
+> +		nofs_flag = memalloc_nofs_save();
+>  		do {
+>  			bp->b_addr = vm_map_ram(bp->b_pages, bp->b_page_count,
+>  						-1, PAGE_KERNEL);
+
+Also, I think it shows that this is the wrong place in XFS to be calling
+memalloc_nofs_save().  I'm not arguing against including this patch;
+it's a step towards where we want to be.  I also don't know XFS well
+enough to know where to set that flag ;-)  Presumably when we start a
+transaction ... ?
