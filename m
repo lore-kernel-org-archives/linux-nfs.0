@@ -1,185 +1,127 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f196.google.com ([209.85.223.196]:36193 "EHLO
-        mail-io0-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1753825AbdBGNrX (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 7 Feb 2017 08:47:23 -0500
-Received: by mail-io0-f196.google.com with SMTP id q20so12821199ioi.3
-        for <linux-nfs@vger.kernel.org>; Tue, 07 Feb 2017 05:47:23 -0800 (PST)
-Subject: [PATCH 2/7] sunrpc/nfs: cleanup procfs/pipefs entry in cache_detail
+Received: from mail-it0-f67.google.com ([209.85.214.67]:33148 "EHLO
+        mail-it0-f67.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1753825AbdBGNsU (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 7 Feb 2017 08:48:20 -0500
+Received: by mail-it0-f67.google.com with SMTP id e137so12313652itc.0
+        for <linux-nfs@vger.kernel.org>; Tue, 07 Feb 2017 05:48:20 -0800 (PST)
+Subject: [PATCH 3/7] sunrpc: rename NFS_NGROUPS to UNX_NGROUPS for auth unix
 To: "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org
 References: <59432847-8e45-4423-c441-0c67ee645f38@gmail.com>
-Cc: Trond Myklebust <trond.myklebust@primarydata.com>
+Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
+        Kinglong Mee <kinglongmee@gmail.com>
 From: Kinglong Mee <kinglongmee@gmail.com>
-Message-ID: <262ccbdc-889e-3528-2c93-c42b5846efed@gmail.com>
-Date: Tue, 7 Feb 2017 21:47:16 +0800
+Message-ID: <4852ccc0-52a9-ae62-7bf2-18138615c7d0@gmail.com>
+Date: Tue, 7 Feb 2017 21:48:11 +0800
 MIME-Version: 1.0
 In-Reply-To: <59432847-8e45-4423-c441-0c67ee645f38@gmail.com>
 Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Record flush/channel/content entries is useless, remove them.
+NFS_NGROUPS has been move to sunrpc, rename to UNX_NGROUPS.
 
 Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
 ---
- fs/nfs/cache_lib.c           |  3 +--
- include/linux/sunrpc/cache.h | 15 +++-----------
- net/sunrpc/cache.c           | 49 +++++++++++++++-----------------------------
- 3 files changed, 21 insertions(+), 46 deletions(-)
+ include/linux/sunrpc/auth.h |  1 +
+ net/sunrpc/auth_unix.c      | 18 ++++++++----------
+ net/sunrpc/svcauth_unix.c   |  4 ++--
+ 3 files changed, 11 insertions(+), 12 deletions(-)
 
-diff --git a/fs/nfs/cache_lib.c b/fs/nfs/cache_lib.c
-index 6de1570..2ae676f 100644
---- a/fs/nfs/cache_lib.c
-+++ b/fs/nfs/cache_lib.c
-@@ -141,8 +141,7 @@ int nfs_cache_register_net(struct net *net, struct cache_detail *cd)
+diff --git a/include/linux/sunrpc/auth.h b/include/linux/sunrpc/auth.h
+index b1bc62b..39c85fb 100644
+--- a/include/linux/sunrpc/auth.h
++++ b/include/linux/sunrpc/auth.h
+@@ -32,6 +32,7 @@
+  */
+ #define UNX_MAXNODENAME	__NEW_UTS_LEN
+ #define UNX_CALLSLACK	(21 + XDR_QUADLEN(UNX_MAXNODENAME))
++#define UNX_NGROUPS	16
  
- void nfs_cache_unregister_sb(struct super_block *sb, struct cache_detail *cd)
- {
--	if (cd->u.pipefs.dir)
--		sunrpc_cache_unregister_pipefs(cd);
-+	sunrpc_cache_unregister_pipefs(cd);
- }
+ struct rpcsec_gss_info;
  
- void nfs_cache_unregister_net(struct net *net, struct cache_detail *cd)
-diff --git a/include/linux/sunrpc/cache.h b/include/linux/sunrpc/cache.h
-index 62a60ee..bb5c9c8 100644
---- a/include/linux/sunrpc/cache.h
-+++ b/include/linux/sunrpc/cache.h
-@@ -63,15 +63,6 @@ struct cache_head {
+diff --git a/net/sunrpc/auth_unix.c b/net/sunrpc/auth_unix.c
+index 306fc0f..82337e1 100644
+--- a/net/sunrpc/auth_unix.c
++++ b/net/sunrpc/auth_unix.c
+@@ -14,12 +14,10 @@
+ #include <linux/sunrpc/auth.h>
+ #include <linux/user_namespace.h>
  
- #define	CACHE_NEW_EXPIRY 120	/* keep new things pending confirmation for 120 seconds */
- 
--struct cache_detail_procfs {
--	struct proc_dir_entry	*proc_ent;
--	struct proc_dir_entry   *flush_ent, *channel_ent, *content_ent;
--};
+-#define NFS_NGROUPS	16
 -
--struct cache_detail_pipefs {
--	struct dentry *dir;
--};
--
- struct cache_detail {
- 	struct module *		owner;
- 	int			hash_size;
-@@ -123,9 +114,9 @@ struct cache_detail {
- 	time_t			last_warn;		/* when we last warned about no readers */
- 
- 	union {
--		struct cache_detail_procfs procfs;
--		struct cache_detail_pipefs pipefs;
--	} u;
-+		struct proc_dir_entry	*procfs;
-+		struct dentry		*pipefs;
-+	};
- 	struct net		*net;
+ struct unx_cred {
+ 	struct rpc_cred		uc_base;
+ 	kgid_t			uc_gid;
+-	kgid_t			uc_gids[NFS_NGROUPS];
++	kgid_t			uc_gids[UNX_NGROUPS];
  };
+ #define uc_uid			uc_base.cr_uid
  
-diff --git a/net/sunrpc/cache.c b/net/sunrpc/cache.c
-index 8147e8d..688ef8c 100644
---- a/net/sunrpc/cache.c
-+++ b/net/sunrpc/cache.c
-@@ -1600,21 +1600,12 @@ static const struct file_operations cache_flush_operations_procfs = {
- 	.llseek		= no_llseek,
- };
+@@ -82,13 +80,13 @@ unx_create_cred(struct rpc_auth *auth, struct auth_cred *acred, int flags, gfp_t
  
--static void remove_cache_proc_entries(struct cache_detail *cd, struct net *net)
-+static void remove_cache_proc_entries(struct cache_detail *cd)
- {
--	struct sunrpc_net *sn;
--
--	if (cd->u.procfs.proc_ent == NULL)
--		return;
--	if (cd->u.procfs.flush_ent)
--		remove_proc_entry("flush", cd->u.procfs.proc_ent);
--	if (cd->u.procfs.channel_ent)
--		remove_proc_entry("channel", cd->u.procfs.proc_ent);
--	if (cd->u.procfs.content_ent)
--		remove_proc_entry("content", cd->u.procfs.proc_ent);
--	cd->u.procfs.proc_ent = NULL;
--	sn = net_generic(net, sunrpc_net_id);
--	remove_proc_entry(cd->name, sn->proc_net_rpc);
-+	if (cd->procfs) {
-+		proc_remove(cd->procfs);
-+		cd->procfs = NULL;
-+	}
+ 	if (acred->group_info != NULL)
+ 		groups = acred->group_info->ngroups;
+-	if (groups > NFS_NGROUPS)
+-		groups = NFS_NGROUPS;
++	if (groups > UNX_NGROUPS)
++		groups = UNX_NGROUPS;
+ 
+ 	cred->uc_gid = acred->gid;
+ 	for (i = 0; i < groups; i++)
+ 		cred->uc_gids[i] = acred->group_info->gid[i];
+-	if (i < NFS_NGROUPS)
++	if (i < UNX_NGROUPS)
+ 		cred->uc_gids[i] = INVALID_GID;
+ 
+ 	return &cred->uc_base;
+@@ -132,12 +130,12 @@ unx_match(struct auth_cred *acred, struct rpc_cred *rcred, int flags)
+ 
+ 	if (acred->group_info != NULL)
+ 		groups = acred->group_info->ngroups;
+-	if (groups > NFS_NGROUPS)
+-		groups = NFS_NGROUPS;
++	if (groups > UNX_NGROUPS)
++		groups = UNX_NGROUPS;
+ 	for (i = 0; i < groups ; i++)
+ 		if (!gid_eq(cred->uc_gids[i], acred->group_info->gid[i]))
+ 			return 0;
+-	if (groups < NFS_NGROUPS && gid_valid(cred->uc_gids[groups]))
++	if (groups < UNX_NGROUPS && gid_valid(cred->uc_gids[groups]))
+ 		return 0;
+ 	return 1;
  }
- 
- #ifdef CONFIG_PROC_FS
-@@ -1624,38 +1615,30 @@ static int create_cache_proc_entries(struct cache_detail *cd, struct net *net)
- 	struct sunrpc_net *sn;
- 
- 	sn = net_generic(net, sunrpc_net_id);
--	cd->u.procfs.proc_ent = proc_mkdir(cd->name, sn->proc_net_rpc);
--	if (cd->u.procfs.proc_ent == NULL)
-+	cd->procfs = proc_mkdir(cd->name, sn->proc_net_rpc);
-+	if (cd->procfs == NULL)
- 		goto out_nomem;
--	cd->u.procfs.channel_ent = NULL;
--	cd->u.procfs.content_ent = NULL;
- 
- 	p = proc_create_data("flush", S_IFREG|S_IRUSR|S_IWUSR,
--			     cd->u.procfs.proc_ent,
--			     &cache_flush_operations_procfs, cd);
--	cd->u.procfs.flush_ent = p;
-+			     cd->procfs, &cache_flush_operations_procfs, cd);
- 	if (p == NULL)
- 		goto out_nomem;
- 
- 	if (cd->cache_request || cd->cache_parse) {
- 		p = proc_create_data("channel", S_IFREG|S_IRUSR|S_IWUSR,
--				     cd->u.procfs.proc_ent,
--				     &cache_file_operations_procfs, cd);
--		cd->u.procfs.channel_ent = p;
-+				cd->procfs, &cache_file_operations_procfs, cd);
- 		if (p == NULL)
- 			goto out_nomem;
- 	}
- 	if (cd->cache_show) {
- 		p = proc_create_data("content", S_IFREG|S_IRUSR,
--				cd->u.procfs.proc_ent,
--				&content_file_operations_procfs, cd);
--		cd->u.procfs.content_ent = p;
-+				cd->procfs, &content_file_operations_procfs, cd);
- 		if (p == NULL)
- 			goto out_nomem;
- 	}
- 	return 0;
- out_nomem:
--	remove_cache_proc_entries(cd, net);
-+	remove_cache_proc_entries(cd);
- 	return -ENOMEM;
- }
- #else /* CONFIG_PROC_FS */
-@@ -1684,7 +1667,7 @@ EXPORT_SYMBOL_GPL(cache_register_net);
- 
- void cache_unregister_net(struct cache_detail *cd, struct net *net)
- {
--	remove_cache_proc_entries(cd, net);
-+	remove_cache_proc_entries(cd);
- 	sunrpc_destroy_cache_detail(cd);
- }
- EXPORT_SYMBOL_GPL(cache_unregister_net);
-@@ -1843,15 +1826,17 @@ int sunrpc_cache_register_pipefs(struct dentry *parent,
- 	struct dentry *dir = rpc_create_cache_dir(parent, name, umode, cd);
- 	if (IS_ERR(dir))
- 		return PTR_ERR(dir);
--	cd->u.pipefs.dir = dir;
-+	cd->pipefs = dir;
- 	return 0;
- }
- EXPORT_SYMBOL_GPL(sunrpc_cache_register_pipefs);
- 
- void sunrpc_cache_unregister_pipefs(struct cache_detail *cd)
- {
--	rpc_remove_cache_dir(cd->u.pipefs.dir);
--	cd->u.pipefs.dir = NULL;
-+	if (cd->pipefs) {
-+		rpc_remove_cache_dir(cd->pipefs);
-+		cd->pipefs = NULL;
-+	}
- }
- EXPORT_SYMBOL_GPL(sunrpc_cache_unregister_pipefs);
- 
+@@ -166,7 +164,7 @@ unx_marshal(struct rpc_task *task, __be32 *p)
+ 	*p++ = htonl((u32) from_kuid(&init_user_ns, cred->uc_uid));
+ 	*p++ = htonl((u32) from_kgid(&init_user_ns, cred->uc_gid));
+ 	hold = p++;
+-	for (i = 0; i < 16 && gid_valid(cred->uc_gids[i]); i++)
++	for (i = 0; i < UNX_NGROUPS && gid_valid(cred->uc_gids[i]); i++)
+ 		*p++ = htonl((u32) from_kgid(&init_user_ns, cred->uc_gids[i]));
+ 	*hold = htonl(p - hold - 1);		/* gid array length */
+ 	*base = htonl((p - base - 1) << 2);	/* cred length */
+diff --git a/net/sunrpc/svcauth_unix.c b/net/sunrpc/svcauth_unix.c
+index 64af4f0..f81eaa8 100644
+--- a/net/sunrpc/svcauth_unix.c
++++ b/net/sunrpc/svcauth_unix.c
+@@ -403,7 +403,7 @@ svcauth_unix_info_release(struct svc_xprt *xpt)
+ /****************************************************************************
+  * auth.unix.gid cache
+  * simple cache to map a UID to a list of GIDs
+- * because AUTH_UNIX aka AUTH_SYS has a max of 16
++ * because AUTH_UNIX aka AUTH_SYS has a max of UNX_NGROUPS
+  */
+ #define	GID_HASHBITS	8
+ #define	GID_HASHMAX	(1<<GID_HASHBITS)
+@@ -810,7 +810,7 @@ svcauth_unix_accept(struct svc_rqst *rqstp, __be32 *authp)
+ 	cred->cr_uid = make_kuid(&init_user_ns, svc_getnl(argv)); /* uid */
+ 	cred->cr_gid = make_kgid(&init_user_ns, svc_getnl(argv)); /* gid */
+ 	slen = svc_getnl(argv);			/* gids length */
+-	if (slen > 16 || (len -= (slen + 2)*4) < 0)
++	if (slen > UNX_NGROUPS || (len -= (slen + 2)*4) < 0)
+ 		goto badcred;
+ 	cred->cr_group_info = groups_alloc(slen);
+ 	if (cred->cr_group_info == NULL)
 -- 
 2.9.3
 
