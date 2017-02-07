@@ -1,81 +1,69 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:59413 "EHLO mx2.suse.de"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1753798AbdBGW4Q (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 7 Feb 2017 17:56:16 -0500
-From: NeilBrown <neilb@suse.com>
-To: steved@redhat.com
-Date: Wed, 08 Feb 2017 09:56:09 +1100
-Cc: Linux NFS Mailing <linux-nfs@vger.kernel.org>
-Subject: [PATCH] mount: call setgroups() before setuid()
-Message-ID: <877f51wqye.fsf@notabene.neil.brown.name>
-MIME-Version: 1.0
-Content-Type: multipart/signed; boundary="=-=-=";
-        micalg=pgp-sha256; protocol="application/pgp-signature"
+Received: from mail-wm0-f65.google.com ([74.125.82.65]:33735 "EHLO
+        mail-wm0-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1754160AbdBGXFa (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 7 Feb 2017 18:05:30 -0500
+From: Florian Fainelli <f.fainelli@gmail.com>
+To: netdev@vger.kernel.org, linux-mips@linux-mips.org,
+        linux-nfs@vger.kernel.org, linux-scsi@vger.kernel.org,
+        linux-usb@vger.kernel.org, linux-wireless@vger.kernel.org,
+        target-devel@vger.kernel.org
+Cc: Russell King <rmk+kernel@armlinux.org.uk>,
+        Andrew Lunn <andrew@lunn.ch>,
+        Anna Schumaker <anna.schumaker@netapp.com>,
+        "David S. Miller" <davem@davemloft.net>,
+        Derek Chickles <derek.chickles@caviumnetworks.com>,
+        Felix Manlunas <felix.manlunas@caviumnetworks.com>,
+        Florian Fainelli <f.fainelli@gmail.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>,
+        Jeff Layton <jlayton@poochiereds.net>,
+        Jiri Slaby <jirislaby@gmail.com>, Kalle Valo <kvalo@codeaurora.org>,
+        "Luis R. Rodriguez" <mcgrof@do-not-panic.com>,
+        Madalin Bucur <madalin.bucur@nxp.com>,
+        Microchip Linux Driver Support <UNGLinuxDriver@microchip.com>,
+        "Nicholas A. Bellinger" <nab@linux-iscsi.org>,
+        Nick Kossifidis <mickflemm@gmail.com>,
+        Nicolas Ferre <nicolas.ferre@atmel.com>,
+        Raghu Vatsavayi <raghu.vatsavayi@caviumnetworks.com>,
+        Ralf Baechle <ralf@linux-mips.org>,
+        Satanand Burla <satananda.burla@caviumnetworks.com>,
+        Thomas Petazzoni <thomas.petazzoni@free-electrons.com>,
+        Timur Tabi <timur@codeaurora.org>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        Vivien Didelot <vivien.didelot@savoirfairelinux.com>,
+        Woojung Huh <woojung.huh@microchip.com>
+Subject: [PATCH net-next v2 08/12] iscsi: fix build errors when linux/phy*.h is removed from net/dsa.h
+Date: Tue,  7 Feb 2017 15:03:01 -0800
+Message-Id: <20170207230305.18222-9-f.fainelli@gmail.com>
+In-Reply-To: <20170207230305.18222-1-f.fainelli@gmail.com>
+References: <20170207230305.18222-1-f.fainelli@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---=-=-=
-Content-Type: text/plain
-Content-Transfer-Encoding: quoted-printable
+From: Russell King <rmk+kernel@armlinux.org.uk>
 
+drivers/target/iscsi/iscsi_target_login.c:1135:7: error: implicit declaration of function 'try_module_get' [-Werror=implicit-function-declaration]
 
-It is generally wise to call setgroups() (and setgid()) before calling
-setuid() to ensure no unexpected permission leaks happen.
-SUSE's build system checks all binaries for conformance with this
-and generates a warning for mountd.
+Add linux/module.h to iscsi_target_login.c.
 
-As we are setting the uid to 0, there is no risk that the group list
-will provide extra permissions, so there is no real risk here.
-But it is nice to silence warnings, and including a setgroups()
-call is probably a good practice to encourage.
+Signed-off-by: Russell King <rmk+kernel@armlinux.org.uk>
+Reviewed-by: Bart Van Assche <bart.vanassche@sandisk.com>
+---
+ drivers/target/iscsi/iscsi_target_login.c | 1 +
+ 1 file changed, 1 insertion(+)
 
-Signed-off-by: NeilBrown <neilb@suse.com>
-=2D--
- utils/mount/network.c | 2 ++
- 1 file changed, 2 insertions(+)
+diff --git a/drivers/target/iscsi/iscsi_target_login.c b/drivers/target/iscsi/iscsi_target_login.c
+index 450f51deb2a2..eab274d17b5c 100644
+--- a/drivers/target/iscsi/iscsi_target_login.c
++++ b/drivers/target/iscsi/iscsi_target_login.c
+@@ -17,6 +17,7 @@
+  ******************************************************************************/
+ 
+ #include <crypto/hash.h>
++#include <linux/module.h>
+ #include <linux/string.h>
+ #include <linux/kthread.h>
+ #include <linux/idr.h>
+-- 
+2.9.3
 
-diff --git a/utils/mount/network.c b/utils/mount/network.c
-index d1c8fec75174..281e9354a7fa 100644
-=2D-- a/utils/mount/network.c
-+++ b/utils/mount/network.c
-@@ -33,6 +33,7 @@
- #include <errno.h>
- #include <netdb.h>
- #include <time.h>
-+#include <grp.h>
-=20
- #include <sys/types.h>
- #include <sys/socket.h>
-@@ -804,6 +805,7 @@ int start_statd(void)
- 			pid_t pid =3D fork();
- 			switch (pid) {
- 			case 0: /* child */
-+				setgroups(0, NULL);
- 				setgid(0);
- 				setuid(0);
- 				execle(START_STATD, START_STATD, NULL, envp);
-=2D-=20
-2.11.0
-
-
---=-=-=
-Content-Type: application/pgp-signature; name="signature.asc"
-
------BEGIN PGP SIGNATURE-----
-
-iQIzBAEBCAAdFiEEG8Yp69OQ2HB7X0l6Oeye3VZigbkFAliaUIkACgkQOeye3VZi
-gbl/vg//fOSwku3ic8Uyfp4APXzXfQL+6YEJ9A+jWHcjjmlpBuMmkxuOypeSCRrV
-AHhPGNrmrhZ+i9HTGd+buvQpv37AE58Y+lv9B8wFNemBnIypq2ze3RD3U1EW+8eM
-XeAfypgyVISqRdCyjezhUlPTlcuf3JcUMwqshmUETuGWVqL+do4Al82C9oQTtpGT
-cm6lJP8DiQyUXCkk/9aMMINIgG7cG9Ixbn59kLVxQOkLCpIpBMowBS7zQQ5FxkAK
-eZ69eyemjitr5WOmgjJh0mvJ0b7p6FLmhvBtBl6BP5nNdQszl0RLZ10wX1AbtuHp
-pUTKJ6enWOU2epMcT7v4Omq59v/XpzGyv+ButqPDFcgW1qyzTCOuP5S0BoO9rc1U
-iQ87BsShvresVwmhdcJI4WSWQyh4zg9e5JANazY3KHORmGcpJbXmE1TTviEglyJ7
-ygHvSBZUJfL+MpHquUGQhUP4kbtMOonuG0w58Y9oAzVVzO2P6w91kOc0VAx/j9H5
-gAVA+1QevxxGmR87GDd0hBp9PfWJ0RaKRDIqlXAcJm2H4Glden3P18j6I+HB5X43
-e+ap2PaAHC4aZFaso3q+UIym9MJOFCm28dnSmde6k7cwCmZc1mm1wmp1i45KEcIz
-/lgGYPiufkm121rNpFa9aWgbLDXo66okjJetBsqPKgZ4hbORyow=
-=lD+C
------END PGP SIGNATURE-----
---=-=-=--
