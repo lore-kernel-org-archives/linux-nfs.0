@@ -1,8 +1,8 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-wm0-f67.google.com ([74.125.82.67]:36220 "EHLO
-        mail-wm0-f67.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1753849AbdBGXLy (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 7 Feb 2017 18:11:54 -0500
+Received: from mail-wm0-f65.google.com ([74.125.82.65]:32794 "EHLO
+        mail-wm0-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S932707AbdBGXLd (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 7 Feb 2017 18:11:33 -0500
 From: Florian Fainelli <f.fainelli@gmail.com>
 To: netdev@vger.kernel.org, linux-mips@linux-mips.org,
         linux-nfs@vger.kernel.org, linux-scsi@vger.kernel.org,
@@ -32,9 +32,9 @@ Cc: Russell King <rmk+kernel@armlinux.org.uk>,
         Trond Myklebust <trond.myklebust@primarydata.com>,
         Vivien Didelot <vivien.didelot@savoirfairelinux.com>,
         Woojung Huh <woojung.huh@microchip.com>
-Subject: [PATCH net-next v2 04/12] net: lan78xx: fix build errors when linux/phy*.h is removed from net/dsa.h
-Date: Tue,  7 Feb 2017 15:02:57 -0800
-Message-Id: <20170207230305.18222-5-f.fainelli@gmail.com>
+Subject: [PATCH net-next v2 03/12] net: macb: fix build errors when linux/phy*.h is removed from net/dsa.h
+Date: Tue,  7 Feb 2017 15:02:56 -0800
+Message-Id: <20170207230305.18222-4-f.fainelli@gmail.com>
 In-Reply-To: <20170207230305.18222-1-f.fainelli@gmail.com>
 References: <20170207230305.18222-1-f.fainelli@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
@@ -42,31 +42,37 @@ List-ID: <linux-nfs.vger.kernel.org>
 
 From: Russell King <rmk+kernel@armlinux.org.uk>
 
-drivers/net/usb/lan78xx.c:394:33: sparse: expected ; at end of declaration
-drivers/net/usb/lan78xx.c:394:33: sparse: Expected } at end of struct-union-enum-specifier
-drivers/net/usb/lan78xx.c:394:33: sparse: got interface
-drivers/net/usb/lan78xx.c:403:1: sparse: Expected ; at the end of type declaration
-drivers/net/usb/lan78xx.c:403:1: sparse: got }
+drivers/net/ethernet/cadence/macb.h:862:33: sparse: expected ; at end of declaration
+drivers/net/ethernet/cadence/macb.h:862:33: sparse: Expected } at end of struct-union-enum-specifier
+drivers/net/ethernet/cadence/macb.h:862:33: sparse: got phy_interface
+drivers/net/ethernet/cadence/macb.h:877:1: sparse: Expected ; at the end of type declaration
+drivers/net/ethernet/cadence/macb.h:877:1: sparse: got }
+In file included from drivers/net/ethernet/cadence/macb_pci.c:29:0:
+drivers/net/ethernet/cadence/macb.h:862:2: error: unknown type name 'phy_interface_t'
+     phy_interface_t  phy_interface;
+     ^~~~~~~~~~~~~~~
 
-Add linux/phy.h to lan78xx.c
+Add linux/phy.h to macb.h
 
 Signed-off-by: Russell King <rmk+kernel@armlinux.org.uk>
+Acked-by: Nicolas Ferre <nicolas.ferre@atmel.com>
 ---
- drivers/net/usb/lan78xx.c | 1 +
- 1 file changed, 1 insertion(+)
+ drivers/net/ethernet/cadence/macb.h | 2 ++
+ 1 file changed, 2 insertions(+)
 
-diff --git a/drivers/net/usb/lan78xx.c b/drivers/net/usb/lan78xx.c
-index 08f8703e4d54..9889a70ff4f6 100644
---- a/drivers/net/usb/lan78xx.c
-+++ b/drivers/net/usb/lan78xx.c
-@@ -35,6 +35,7 @@
- #include <linux/irq.h>
- #include <linux/irqchip/chained_irq.h>
- #include <linux/microchipphy.h>
-+#include <linux/phy.h>
- #include "lan78xx.h"
+diff --git a/drivers/net/ethernet/cadence/macb.h b/drivers/net/ethernet/cadence/macb.h
+index a2cf91223003..234a49eaccfd 100644
+--- a/drivers/net/ethernet/cadence/macb.h
++++ b/drivers/net/ethernet/cadence/macb.h
+@@ -10,6 +10,8 @@
+ #ifndef _MACB_H
+ #define _MACB_H
  
- #define DRIVER_AUTHOR	"WOOJUNG HUH <woojung.huh@microchip.com>"
++#include <linux/phy.h>
++
+ #define MACB_GREGS_NBR 16
+ #define MACB_GREGS_VERSION 2
+ #define MACB_MAX_QUEUES 8
 -- 
 2.9.3
 
