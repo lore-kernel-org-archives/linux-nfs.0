@@ -1,7 +1,7 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-wm0-f65.google.com ([74.125.82.65]:36193 "EHLO
-        mail-wm0-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1754348AbdBGXFa (ORCPT
+Received: from mail-wm0-f68.google.com ([74.125.82.68]:35136 "EHLO
+        mail-wm0-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751906AbdBGXFa (ORCPT
         <rfc822;linux-nfs@vger.kernel.org>); Tue, 7 Feb 2017 18:05:30 -0500
 From: Florian Fainelli <f.fainelli@gmail.com>
 To: netdev@vger.kernel.org, linux-mips@linux-mips.org,
@@ -32,74 +32,62 @@ Cc: Russell King <rmk+kernel@armlinux.org.uk>,
         Trond Myklebust <trond.myklebust@primarydata.com>,
         Vivien Didelot <vivien.didelot@savoirfairelinux.com>,
         Woojung Huh <woojung.huh@microchip.com>
-Subject: [PATCH net-next v2 12/12] net: dsa: remove unnecessary phy*.h includes
-Date: Tue,  7 Feb 2017 15:03:05 -0800
-Message-Id: <20170207230305.18222-13-f.fainelli@gmail.com>
+Subject: [PATCH net-next v2 05/12] net: bgmac: fix build errors when linux/phy*.h is removed from net/dsa.h
+Date: Tue,  7 Feb 2017 15:02:58 -0800
+Message-Id: <20170207230305.18222-6-f.fainelli@gmail.com>
 In-Reply-To: <20170207230305.18222-1-f.fainelli@gmail.com>
 References: <20170207230305.18222-1-f.fainelli@gmail.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 From: Russell King <rmk+kernel@armlinux.org.uk>
 
-Including phy.h and phy_fixed.h into net/dsa.h causes phy*.h to be an
-unnecessary dependency for quite a large amount of the kernel.  There's
-very little which actually requires definitions from phy.h in net/dsa.h
-- the include itself only wants the declaration of a couple of
-structures and IFNAMSIZ.
+drivers/net/ethernet/broadcom/bgmac.c:1015:17: error: dereferencing pointer to incomplete type 'struct mii_bus'
+drivers/net/ethernet/broadcom/bgmac.c:1185:2: error: implicit declaration of function 'phy_start' [-Werror=implicit-function-declaration]
+drivers/net/ethernet/broadcom/bgmac.c:1198:2: error: implicit declaration of function 'phy_stop' [-Werror=implicit-function-declaration]
+drivers/net/ethernet/broadcom/bgmac.c:1239:9: error: implicit declaration of function 'phy_mii_ioctl' [-Werror=implicit-function-declaration]
+drivers/net/ethernet/broadcom/bgmac.c:1389:28: error: 'phy_ethtool_get_link_ksettings' undeclared here (not in a function)
+drivers/net/ethernet/broadcom/bgmac.c:1390:28: error: 'phy_ethtool_set_link_ksettings' undeclared here (not in a function)
+drivers/net/ethernet/broadcom/bgmac.c:1403:13: error: dereferencing pointer to incomplete type 'struct phy_device'
+drivers/net/ethernet/broadcom/bgmac.c:1417:3: error: implicit declaration of function 'phy_print_status' [-Werror=implicit-function-declaration]
+drivers/net/ethernet/broadcom/bgmac.c:1424:26: error: storage size of 'fphy_status' isn't known
+drivers/net/ethernet/broadcom/bgmac.c:1424:9: error: variable 'fphy_status' has initializer but incomplete type
+drivers/net/ethernet/broadcom/bgmac.c:1425:11: warning: excess elements in struct initializer
+drivers/net/ethernet/broadcom/bgmac.c:1425:3: error: unknown field 'link' specified in initializer
+drivers/net/ethernet/broadcom/bgmac.c:1426:12: note: in expansion of macro 'SPEED_1000'
+drivers/net/ethernet/broadcom/bgmac.c:1426:3: error: unknown field 'speed' specified in initializer
+drivers/net/ethernet/broadcom/bgmac.c:1427:13: note: in expansion of macro 'DUPLEX_FULL'
+drivers/net/ethernet/broadcom/bgmac.c:1427:3: error: unknown field 'duplex' specified in initializer
+drivers/net/ethernet/broadcom/bgmac.c:1432:12: error: implicit declaration of function 'fixed_phy_register' [-Werror=implicit-function-declaration]
+drivers/net/ethernet/broadcom/bgmac.c:1432:31: error: 'PHY_POLL' undeclared (first use in this function)
+drivers/net/ethernet/broadcom/bgmac.c:1438:8: error: implicit declaration of function 'phy_connect_direct' [-Werror=implicit-function-declaration]
+drivers/net/ethernet/broadcom/bgmac.c:1439:6: error: 'PHY_INTERFACE_MODE_MII' undeclared (first use in this function)
+drivers/net/ethernet/broadcom/bgmac.c:1521:2: error: implicit declaration of function 'phy_disconnect' [-Werror=implicit-function-declaration]
+drivers/net/ethernet/broadcom/bgmac.c:1541:15: error: expected declaration specifiers or '...' before string constant
 
-Add linux/if.h for IFNAMSIZ, declarations for the structures, phy.h to
-mv88e6xxx.h as it needs it for phy_interface_t, and remove both phy.h
-and phy_fixed.h from net/dsa.h.
+Add linux/phy.h to bgmac.c
 
-This patch reduces from around 800 files rebuilt to around 40 - even
-with ccache, the time difference is noticable.
-
-Tested-by: Vivien Didelot <vivien.didelot@savoirfairelinux.com>
-Reviewed-by: Florian Fainelli <f.fainelli@gmail.com>
 Signed-off-by: Russell King <rmk+kernel@armlinux.org.uk>
+Acked-by: Rafał Miłecki <rafal@milecki.pl>
 ---
- drivers/net/dsa/mv88e6xxx/mv88e6xxx.h | 1 +
- include/net/dsa.h                     | 5 +++--
- 2 files changed, 4 insertions(+), 2 deletions(-)
+ drivers/net/ethernet/broadcom/bgmac.c | 2 ++
+ 1 file changed, 2 insertions(+)
 
-diff --git a/drivers/net/dsa/mv88e6xxx/mv88e6xxx.h b/drivers/net/dsa/mv88e6xxx/mv88e6xxx.h
-index 8a21800374f3..91c4dd25c2d3 100644
---- a/drivers/net/dsa/mv88e6xxx/mv88e6xxx.h
-+++ b/drivers/net/dsa/mv88e6xxx/mv88e6xxx.h
-@@ -15,6 +15,7 @@
- #include <linux/if_vlan.h>
- #include <linux/irq.h>
- #include <linux/gpio/consumer.h>
+diff --git a/drivers/net/ethernet/broadcom/bgmac.c b/drivers/net/ethernet/broadcom/bgmac.c
+index fe88126b1e0c..20fe2520da42 100644
+--- a/drivers/net/ethernet/broadcom/bgmac.c
++++ b/drivers/net/ethernet/broadcom/bgmac.c
+@@ -12,6 +12,8 @@
+ #include <linux/bcma/bcma.h>
+ #include <linux/etherdevice.h>
+ #include <linux/bcm47xx_nvram.h>
 +#include <linux/phy.h>
++#include <linux/phy_fixed.h>
+ #include "bgmac.h"
  
- #ifndef UINT64_MAX
- #define UINT64_MAX		(u64)(~((u64)0))
-diff --git a/include/net/dsa.h b/include/net/dsa.h
-index b49b2004891e..4e13e695f025 100644
---- a/include/net/dsa.h
-+++ b/include/net/dsa.h
-@@ -11,17 +11,18 @@
- #ifndef __LINUX_NET_DSA_H
- #define __LINUX_NET_DSA_H
- 
-+#include <linux/if.h>
- #include <linux/if_ether.h>
- #include <linux/list.h>
- #include <linux/notifier.h>
- #include <linux/timer.h>
- #include <linux/workqueue.h>
- #include <linux/of.h>
--#include <linux/phy.h>
--#include <linux/phy_fixed.h>
- #include <linux/ethtool.h>
- 
- struct tc_action;
-+struct phy_device;
-+struct fixed_phy_status;
- 
- enum dsa_tag_protocol {
- 	DSA_TAG_PROTO_NONE = 0,
+ static bool bgmac_wait_value(struct bgmac *bgmac, u16 reg, u32 mask,
 -- 
 2.9.3
 
