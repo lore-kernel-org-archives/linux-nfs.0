@@ -1,14 +1,14 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-it0-f67.google.com ([209.85.214.67]:35284 "EHLO
-        mail-it0-f67.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1753840AbdBGQ6m (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 7 Feb 2017 11:58:42 -0500
-Subject: [PATCH v3 4/7] svcrdma: Clean up backchannel send header encoding
+Received: from mail-it0-f68.google.com ([209.85.214.68]:33439 "EHLO
+        mail-it0-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S932163AbdBGQ6u (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 7 Feb 2017 11:58:50 -0500
+Subject: [PATCH v3 5/7] svcrdma: Remove unused sc_dto_q field
 From: Chuck Lever <chuck.lever@oracle.com>
 To: bfields@fieldses.org
 Cc: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Tue, 07 Feb 2017 11:58:40 -0500
-Message-ID: <20170207165840.14422.60185.stgit@klimt.1015granger.net>
+Date: Tue, 07 Feb 2017 11:58:48 -0500
+Message-ID: <20170207165848.14422.69070.stgit@klimt.1015granger.net>
 In-Reply-To: <20170207165131.14422.47088.stgit@klimt.1015granger.net>
 References: <20170207165131.14422.47088.stgit@klimt.1015granger.net>
 MIME-Version: 1.0
@@ -16,46 +16,40 @@ Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Replace C structure-based XDR decoding with pointer arithmetic.
-Pointer arithmetic is considered more portable.
+Clean up. Commit be99bb11400c ("svcrdma: Use new CQ API for
+RPC-over-RDMA server send CQs") removed code that used the sc_dto_q
+field, but neglected to remove sc_dto_q at the same time.
 
+Fixes: be99bb11400c ("svcrdma: Use new CQ API for RPC-over- ...")
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 Reviewed-by: Christoph Hellwig <hch@lst.de>
 ---
- net/sunrpc/xprtrdma/svc_rdma_backchannel.c |   17 +++++++++--------
- 1 file changed, 9 insertions(+), 8 deletions(-)
+ include/linux/sunrpc/svc_rdma.h          |    1 -
+ net/sunrpc/xprtrdma/svc_rdma_transport.c |    1 -
+ 2 files changed, 2 deletions(-)
 
-diff --git a/net/sunrpc/xprtrdma/svc_rdma_backchannel.c b/net/sunrpc/xprtrdma/svc_rdma_backchannel.c
-index 288e35c..b1bc7a7 100644
---- a/net/sunrpc/xprtrdma/svc_rdma_backchannel.c
-+++ b/net/sunrpc/xprtrdma/svc_rdma_backchannel.c
-@@ -200,19 +200,20 @@ static int svc_rdma_bc_sendto(struct svcxprt_rdma *rdma,
- {
- 	struct rpc_xprt *xprt = rqst->rq_xprt;
- 	struct rpcrdma_xprt *r_xprt = rpcx_to_rdmax(xprt);
--	struct rpcrdma_msg *headerp = (struct rpcrdma_msg *)rqst->rq_buffer;
-+	__be32 *p;
- 	int rc;
+diff --git a/include/linux/sunrpc/svc_rdma.h b/include/linux/sunrpc/svc_rdma.h
+index 25ecf92..f77a7bc 100644
+--- a/include/linux/sunrpc/svc_rdma.h
++++ b/include/linux/sunrpc/svc_rdma.h
+@@ -172,7 +172,6 @@ struct svcxprt_rdma {
  
- 	/* Space in the send buffer for an RPC/RDMA header is reserved
- 	 * via xprt->tsh_size.
- 	 */
--	headerp->rm_xid = rqst->rq_xid;
--	headerp->rm_vers = rpcrdma_version;
--	headerp->rm_credit = cpu_to_be32(r_xprt->rx_buf.rb_bc_max_requests);
--	headerp->rm_type = rdma_msg;
--	headerp->rm_body.rm_chunks[0] = xdr_zero;
--	headerp->rm_body.rm_chunks[1] = xdr_zero;
--	headerp->rm_body.rm_chunks[2] = xdr_zero;
-+	p = rqst->rq_buffer;
-+	*p++ = rqst->rq_xid;
-+	*p++ = rpcrdma_version;
-+	*p++ = cpu_to_be32(r_xprt->rx_buf.rb_bc_max_requests);
-+	*p++ = rdma_msg;
-+	*p++ = xdr_zero;
-+	*p++ = xdr_zero;
-+	*p   = xdr_zero;
- 
- #ifdef SVCRDMA_BACKCHANNEL_DEBUG
- 	pr_info("%s: %*ph\n", __func__, 64, rqst->rq_buffer);
+ 	wait_queue_head_t    sc_send_wait;	/* SQ exhaustion waitlist */
+ 	unsigned long	     sc_flags;
+-	struct list_head     sc_dto_q;		/* DTO tasklet I/O pending Q */
+ 	struct list_head     sc_read_complete_q;
+ 	struct work_struct   sc_work;
+ };
+diff --git a/net/sunrpc/xprtrdma/svc_rdma_transport.c b/net/sunrpc/xprtrdma/svc_rdma_transport.c
+index 174928f..023eaa0 100644
+--- a/net/sunrpc/xprtrdma/svc_rdma_transport.c
++++ b/net/sunrpc/xprtrdma/svc_rdma_transport.c
+@@ -557,7 +557,6 @@ static struct svcxprt_rdma *rdma_create_xprt(struct svc_serv *serv,
+ 		return NULL;
+ 	svc_xprt_init(&init_net, &svc_rdma_class, &cma_xprt->sc_xprt, serv);
+ 	INIT_LIST_HEAD(&cma_xprt->sc_accept_q);
+-	INIT_LIST_HEAD(&cma_xprt->sc_dto_q);
+ 	INIT_LIST_HEAD(&cma_xprt->sc_rq_dto_q);
+ 	INIT_LIST_HEAD(&cma_xprt->sc_read_complete_q);
+ 	INIT_LIST_HEAD(&cma_xprt->sc_frmr_q);
 
