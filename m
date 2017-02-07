@@ -1,80 +1,67 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:41446 "EHLO mx2.suse.de"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1753129AbdBGHRb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 7 Feb 2017 02:17:31 -0500
-Date: Tue, 7 Feb 2017 08:17:25 +0100
-From: Michal Hocko <mhocko@kernel.org>
-To: Dave Chinner <david@fromorbit.com>
-Cc: "Darrick J. Wong" <darrick.wong@oracle.com>,
-        Matthew Wilcox <willy@infradead.org>,
-        Andrew Morton <akpm@linux-foundation.org>,
-        linux-fsdevel@vger.kernel.org, linux-mm@kvack.org,
-        djwong@kernel.org, Theodore Ts'o <tytso@mit.edu>,
-        Chris Mason <clm@fb.com>, David Sterba <dsterba@suse.cz>,
-        Jan Kara <jack@suse.cz>, ceph-devel@vger.kernel.org,
-        cluster-devel@redhat.com, linux-nfs@vger.kernel.org,
-        logfs@logfs.org, linux-xfs@vger.kernel.org,
-        linux-ext4@vger.kernel.org, linux-btrfs@vger.kernel.org,
-        linux-mtd@lists.infradead.org, reiserfs-devel@vger.kernel.org,
-        linux-ntfs-dev@lists.sourceforge.net,
-        linux-f2fs-devel@lists.sourceforge.net,
-        linux-afs@lists.infradead.org, LKML <linux-kernel@vger.kernel.org>
-Subject: Re: [PATCH 4/6] xfs: use memalloc_nofs_{save,restore} instead of
- memalloc_noio*
-Message-ID: <20170207071724.GA3022@dhcp22.suse.cz>
-References: <20170206140718.16222-1-mhocko@kernel.org>
- <20170206140718.16222-5-mhocko@kernel.org>
- <20170206153923.GL2267@bombadil.infradead.org>
- <20170206174415.GA20731@dhcp22.suse.cz>
- <20170206183237.GE3580@birch.djwong.org>
- <20170206184743.GB20731@dhcp22.suse.cz>
- <20170206225150.GB12125@dastard>
+Received: from zeniv.linux.org.uk ([195.92.253.2]:52084 "EHLO
+        ZenIV.linux.org.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751164AbdBGHTQ (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 7 Feb 2017 02:19:16 -0500
+Date: Tue, 7 Feb 2017 07:19:09 +0000
+From: Al Viro <viro@ZenIV.linux.org.uk>
+To: Miklos Szeredi <miklos@szeredi.hu>
+Cc: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
+        Linux NFS list <linux-nfs@vger.kernel.org>, ceph-devel@vger.kernel.org,
+        lustre-devel@lists.lustre.org, v9fs-developer@lists.sourceforge.net,
+        Linus Torvalds <torvalds@linux-foundation.org>,
+        Jan Kara <jack@suse.cz>, Chris Wilson <chris@chris-wilson.co.uk>,
+        "Kirill A. Shutemov" <kirill.shutemov@linux.intel.com>,
+        Jeff Layton <jlayton@redhat.com>
+Subject: Re: [PATCH v3 0/2] iov_iter: allow iov_iter_get_pages_alloc to
+ allocate more pages per call
+Message-ID: <20170207071909.GI13195@ZenIV.linux.org.uk>
+References: <CAJfpegtVb8PKNnKe5wGMd0u0WzgLpjpVtVpqDScbrBJShLAfGw@mail.gmail.com>
+ <20170205015145.GB13195@ZenIV.linux.org.uk>
+ <CAJfpegv=r9J8Mqax_ZAB2h5QbRgJMHwyVMENTpYZ8u3_pqNfJw@mail.gmail.com>
+ <20170205210151.GD13195@ZenIV.linux.org.uk>
+ <CAJfpeguzOgX9d+5XCNJcmXW5KkrGbnWB5aZSP1-0q3a6i6uk2w@mail.gmail.com>
+ <20170205220445.GE13195@ZenIV.linux.org.uk>
+ <20170206030532.GF13195@ZenIV.linux.org.uk>
+ <CAJfpegv5ZGd2gzSbQvgk4uX5q06AijY+TNg2jdrPBSjbFoXMfg@mail.gmail.com>
+ <20170206095706.GG13195@ZenIV.linux.org.uk>
+ <CAJfpegv-ePQE9pNwZe6O+0LjJdq2aVk3bnhxeZ=y7P+iFq72XA@mail.gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20170206225150.GB12125@dastard>
+In-Reply-To: <CAJfpegv-ePQE9pNwZe6O+0LjJdq2aVk3bnhxeZ=y7P+iFq72XA@mail.gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue 07-02-17 09:51:50, Dave Chinner wrote:
-> On Mon, Feb 06, 2017 at 07:47:43PM +0100, Michal Hocko wrote:
-> > On Mon 06-02-17 10:32:37, Darrick J. Wong wrote:
-[...]
-> > > I prefer to keep the "...yet we are likely to be under GFP_NOFS..."
-> > > wording of the old comment because it captures the uncertainty of
-> > > whether or not we actually are already under NOFS.  If someone actually
-> > > has audited this code well enough to know for sure then yes let's change
-> > > the comment, but I haven't gone that far.
-> > 
-> > I believe we can drop the memalloc_nofs_save then as well because either
-> > we are called from a potentially dangerous context and thus we are in
-> > the nofs scope we we do not need the protection at all.
-> 
-> No, absolutely not. "Belief" is not a sufficient justification for
-> removing low level deadlock avoidance infrastructure. This code
-> needs to remain in _xfs_buf_map_pages() until a full audit of the
-> caller paths is done and we're 100% certain that there are no
-> lurking deadlocks.
+On Mon, Feb 06, 2017 at 03:18:42PM +0100, Miklos Szeredi wrote:
 
-Exactly. I was actually refering to "If someone actually has audited
-this code" above... So I definitely do not want to justify anything
-based on the belief
+> But I think it's breakable in the same way: if the deadlocked request
+> is aborted, the fault will release the page lock as well as mmap_sem,
+> and from there things will resolve themselves.
 
-> For example, I'm pretty sure we can call into _xfs_buf_map_pages()
-> outside of a transaction context but with an inode ILOCK held
-> exclusively. If we then recurse into memory reclaim and try to run a
-> transaction during reclaim, we have an inverted ILOCK vs transaction
-> locking order. i.e. we are not allowed to call xfs_trans_reserve()
-> with an ILOCK held as that can deadlock the log:  log full, locked
-> inode pins tail of log, inode cannot be flushed because ILOCK is
-> held by caller waiting for log space to become available....
-> 
-> i.e. there are certain situations where holding a ILOCK is a
-> deadlock vector. See xfs_lock_inodes() for an example of the lengths
-> we go to avoid ILOCK based log deadlocks like this...
+Right you are - original holder of ->mmap_sem is waiting for request and
+abort will wake it up...
 
-Thanks for the reference. This is really helpful!
+> But you are definitely right about needing to clean up that mess in
+> fuse/dev.c and doing so by fixing up the arg refcounting for just the
+> read and write requests is going to be a lot simpler than having to do
+> that for all of them (which was my original plan).
 
--- 
-Michal Hocko
-SUSE Labs
+Speaking of refcounting - what's going on with fuse_file one?  My reading
+of that code is that you have 4 states of that thing:
+	* new (just created, fallback request allocated, use fuse_file_free()
+to kill).  Refcount is 0.
+	* intermediate - in fact it's already opened, but still not
+put into ->private_data.  Refcount is still 0.  Use fuse_sync_release() to kill.
+	* live - normal refcounting (fuse_file_get()/fuse_file_put()).
+	* shutdown - refcount has reached 0.  Can't happen until ->release()
+(obviously - ->private_data holds a counting reference), some pieces of
+fuse_sync_release() correspond to some stuff in fuse_release_common(), some -
+to final fuse_file_put().
+
+To make it even more convoluted, cuse is using fuse_sync_release() and
+apparently relies upon no references being grabbed after fuse_do_open(),
+so that thing can be called with refcount 0 *or* refcount 1.
+
+Another thing: what guarantees that places in writepages-related paths
+where we store a reference into req->ff won't hit a request with already
+non-NULL ->ff?
