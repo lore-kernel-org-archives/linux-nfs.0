@@ -1,98 +1,193 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:34498 "EHLO mx2.suse.de"
+Received: from mga02.intel.com ([134.134.136.20]:41239 "EHLO mga02.intel.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S932115AbdBHAQ6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 7 Feb 2017 19:16:58 -0500
-From: NeilBrown <neilb@suse.com>
-To: Scott Mayhew <smayhew@redhat.com>, steved@redhat.com
-Date: Wed, 08 Feb 2017 11:16:15 +1100
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [nfs-utils PATCH v3 0/2] Add support for -s/--state-directory-path for rpc.mountd and exportfs
-In-Reply-To: <1486134704-59866-1-git-send-email-smayhew@redhat.com>
-References: <1486134704-59866-1-git-send-email-smayhew@redhat.com>
-Message-ID: <87shnpv8og.fsf@notabene.neil.brown.name>
+        id S1753568AbdBHBhc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 7 Feb 2017 20:37:32 -0500
+From: "Dilger, Andreas" <andreas.dilger@intel.com>
+To: Jan Kara <jack@suse.cz>
+CC: "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
+        "linux-block@vger.kernel.org" <linux-block@vger.kernel.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "linux-nilfs@vger.kernel.org" <linux-nilfs@vger.kernel.org>,
+        "linux-cifs@vger.kernel.org" <linux-cifs@vger.kernel.org>,
+        "ecryptfs@vger.kernel.org" <ecryptfs@vger.kernel.org>,
+        "codalist@coda.cs.cmu.edu" <codalist@coda.cs.cmu.edu>,
+        Christoph Hellwig <hch@infradead.org>,
+        "cluster-devel@redhat.com" <cluster-devel@redhat.com>,
+        "linux-mtd@lists.infradead.org" <linux-mtd@lists.infradead.org>,
+        "osd-dev@open-osd.org" <osd-dev@open-osd.org>,
+        "v9fs-developer@lists.sourceforge.net"
+        <v9fs-developer@lists.sourceforge.net>,
+        "ceph-devel@vger.kernel.org" <ceph-devel@vger.kernel.org>,
+        Petr Vandrovec <petr@vandrovec.name>,
+        "linux-afs@lists.infradead.org" <linux-afs@lists.infradead.org>,
+        "linux-btrfs@vger.kernel.org" <linux-btrfs@vger.kernel.org>,
+        "lustre-devel@lists.lustre.org" <lustre-devel@lists.lustre.org>
+Subject: Re: [lustre-devel] [PATCH 04/24] fs: Provide infrastructure for
+ dynamic        BDIs in filesystems
+Date: Wed, 8 Feb 2017 00:38:17 +0000
+Message-ID: <C01BF300-AD67-4A3E-810F-AAB2EEB90B97@intel.com>
+References: <20170202173422.3240-1-jack@suse.cz>
+ <20170202173422.3240-5-jack@suse.cz>
+In-Reply-To: <20170202173422.3240-5-jack@suse.cz>
+Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
-Content-Type: multipart/signed; boundary="=-=-=";
-        micalg=pgp-sha256; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---=-=-=
-Content-Type: text/plain
-Content-Transfer-Encoding: quoted-printable
+On Feb 2, 2017, at 10:34, Jan Kara <jack@suse.cz> wrote:
+> 
+> Provide helper functions for setting up dynamically allocated
+> backing_dev_info structures for filesystems and cleaning them up on
+> superblock destruction.
+> 
+> CC: linux-mtd@lists.infradead.org
+> CC: linux-nfs@vger.kernel.org
+> CC: Petr Vandrovec <petr@vandrovec.name>
+> CC: linux-nilfs@vger.kernel.org
+> CC: cluster-devel@redhat.com
+> CC: osd-dev@open-osd.org
+> CC: codalist@coda.cs.cmu.edu
+> CC: linux-afs@lists.infradead.org
+> CC: ecryptfs@vger.kernel.org
+> CC: linux-cifs@vger.kernel.org
+> CC: ceph-devel@vger.kernel.org
+> CC: linux-btrfs@vger.kernel.org
+> CC: v9fs-developer@lists.sourceforge.net
+> CC: lustre-devel@lists.lustre.org
+> Signed-off-by: Jan Kara <jack@suse.cz>
+> ---
+> fs/super.c                       | 49 ++++++++++++++++++++++++++++++++++++++++
+> include/linux/backing-dev-defs.h |  2 +-
+> include/linux/fs.h               |  6 +++++
+> 3 files changed, 56 insertions(+), 1 deletion(-)
+> 
+> diff --git a/fs/super.c b/fs/super.c
+> index ea662b0e5e78..31dc4c6450ef 100644
+> --- a/fs/super.c
+> +++ b/fs/super.c
+> @@ -446,6 +446,11 @@ void generic_shutdown_super(struct super_block *sb)
+> 	hlist_del_init(&sb->s_instances);
+> 	spin_unlock(&sb_lock);
+> 	up_write(&sb->s_umount);
+> +	if (sb->s_iflags & SB_I_DYNBDI) {
+> +		bdi_put(sb->s_bdi);
+> +		sb->s_bdi = &noop_backing_dev_info;
+> +		sb->s_iflags &= ~SB_I_DYNBDI;
+> +	}
+> }
+> 
+> EXPORT_SYMBOL(generic_shutdown_super);
+> @@ -1249,6 +1254,50 @@ mount_fs(struct file_system_type *type, int flags, const char *name, void *data)
+> }
+> 
+> /*
+> + * Setup private BDI for given superblock. I gets automatically cleaned up
 
-On Fri, Feb 03 2017, Scott Mayhew wrote:
+(typo) s/I/It/
 
-> Currently, rpc.mountd's -s/--state-directory-path option doesn't really
-> do anything (rpc.mountd tests it via chdir() but that's all).  These
-> patches implement the -s/--state-directory-path option so that
-> rpc.mountd's state files (the etab and rmtab) can be placed in a
-> location other than /var/lib/nfs... for example, /run/nfs.
->
-> To use /run/nfs, it's necessary to create a systemd-tmpfiles config
-> file, e.g.
->
-> # cat /usr/lib/tmpfiles.d/nfs.conf=20
-> #Type Path           Mode  UID  GID  Age Argument
-> d    /run/nfs        0755  root root  -  -
-> f    /run/nfs/etab   0644  root root  -  -
-> f    /run/nfs/rmtab  0644  root root  -  -
->
-> and if selinux is in enforcing mode, the correct context would need to
-> be set on the directory (On Fedora, semanage barks at me if I use
-> /run/nfs... that's why I'm using /var/run/nfs here instead):
->
-> # semanage fcontext -a -t var_lib_nfs_t "/var/run/nfs(/.*)?"
->
-> Changes since v1:
->
-> - Replaced all newly-added occurrences of the term 'xtab' so it wouldn't
->   be confused with the recently removed 'xtab' file.  I did not replace
->   any existing uses of the term 'xtab' though.
-> - Removed the reference to statd on the mountd man page.
->
-> Changes since v2:
-> - Fixed string-handling blunder I made in generic_setup_basedir(). Tested=
- with=20
->   pathnames of length 4083 (the largest you can have and still append
->   "/.rmtab.lock"), 4084 (generic_make_pathname() will fail for ".rmtab.lo=
-ck"),
->   4095, 4096, and 4097.
-> - Removed error_check() from support/misc/file.c and added the check dire=
-ctly
->   in generic_make_pathname()
-> - Removed _PATH_ETAB* and _PATH_RMTAB* as they're no longer used.
-> - Updated the nfs.conf.man and exportfs.man pages.
->
->
-> Scott Mayhew (2):
->   libnsm.a: refactor nsm_setup_pathnames() and nsm_make_pathname()
->   mountd/exportfs: implement the -s/--state-directory-path option
+Looks fine otherwise.
 
-Both patches
-  Reviewed-by: NeilBrown <neilb@suse.com>
+> + * in generic_shutdown_super().
+> + */
+> +int super_setup_bdi_name(struct super_block *sb, char *fmt, ...)
+> +{
+> +	struct backing_dev_info *bdi;
+> +	int err;
+> +	va_list args;
+> +
+> +	bdi = bdi_alloc(GFP_KERNEL);
+> +	if (!bdi)
+> +		return -ENOMEM;
+> +
+> +	bdi->name = sb->s_type->name;
+> +
+> +	va_start(args, fmt);
+> +	err = bdi_register_va(bdi, NULL, fmt, args);
+> +	va_end(args);
+> +	if (err) {
+> +		bdi_put(bdi);
+> +		return err;
+> +	}
+> +	WARN_ON(sb->s_bdi != &noop_backing_dev_info);
+> +	sb->s_bdi = bdi;
+> +	sb->s_iflags |= SB_I_DYNBDI;
+> +
+> +	return 0;
+> +}
+> +EXPORT_SYMBOL(super_setup_bdi_name);
+> +
+> +/*
+> + * Setup private BDI for given superblock. I gets automatically cleaned up
+> + * in generic_shutdown_super().
+> + */
+> +int super_setup_bdi(struct super_block *sb)
+> +{
+> +	static atomic_long_t bdi_seq = ATOMIC_LONG_INIT(0);
+> +
+> +	return super_setup_bdi_name(sb, "%.28s-%ld", sb->s_type->name,
+> +				    atomic_long_inc_return(&bdi_seq));
+> +}
+> +EXPORT_SYMBOL(super_setup_bdi);
+> +
+> +/*
+>  * This is an internal function, please use sb_end_{write,pagefault,intwrite}
+>  * instead.
+>  */
+> diff --git a/include/linux/backing-dev-defs.h b/include/linux/backing-dev-defs.h
+> index 2ecafc8a2d06..70080b4217f4 100644
+> --- a/include/linux/backing-dev-defs.h
+> +++ b/include/linux/backing-dev-defs.h
+> @@ -143,7 +143,7 @@ struct backing_dev_info {
+> 	congested_fn *congested_fn; /* Function pointer if device is md/dm */
+> 	void *congested_data;	/* Pointer to aux data for congested func */
+> 
+> -	char *name;
+> +	const char *name;
+> 
+> 	struct kref refcnt;	/* Reference counter for the structure */
+> 	unsigned int registered:1;	/* Is bdi registered? */
+> diff --git a/include/linux/fs.h b/include/linux/fs.h
+> index c930cbc19342..8ed8b6d1bc54 100644
+> --- a/include/linux/fs.h
+> +++ b/include/linux/fs.h
+> @@ -1267,6 +1267,9 @@ struct mm_struct;
+> /* sb->s_iflags to limit user namespace mounts */
+> #define SB_I_USERNS_VISIBLE		0x00000010 /* fstype already mounted */
+> 
+> +/* Temporary flag until all filesystems are converted to dynamic bdis */
+> +#define SB_I_DYNBDI	0x00000100
+> +
+> /* Possible states of 'frozen' field */
+> enum {
+> 	SB_UNFROZEN = 0,		/* FS is unfrozen */
+> @@ -2103,6 +2106,9 @@ extern int vfs_ustat(dev_t, struct kstatfs *);
+> extern int freeze_super(struct super_block *super);
+> extern int thaw_super(struct super_block *super);
+> extern bool our_mnt(struct vfsmount *mnt);
+> +extern __printf(2, 3)
+> +int super_setup_bdi_name(struct super_block *sb, char *fmt, ...);
+> +extern int super_setup_bdi(struct super_block *sb);
+> 
+> extern int current_umask(void);
+> 
+> -- 
+> 2.10.2
+> 
+> _______________________________________________
+> lustre-devel mailing list
+> lustre-devel@lists.lustre.org
+> http://lists.lustre.org/listinfo.cgi/lustre-devel-lustre.org
 
-Thanks!
+Cheers, Andreas
+--
+Andreas Dilger
+Lustre Principal Architect
+Intel Corporation
 
-NeilBrown
 
---=-=-=
-Content-Type: application/pgp-signature; name="signature.asc"
 
------BEGIN PGP SIGNATURE-----
 
-iQIzBAEBCAAdFiEEG8Yp69OQ2HB7X0l6Oeye3VZigbkFAliaY08ACgkQOeye3VZi
-gbmBNBAAhlwvnkbllobNiI+KRLJUzUg1VpHivAQ5fOoZwwdiHAkubzS4ApzzZl2a
-L83bZuHBJnEgE2B0wwZYBGdGhU2IuuCyZkBFusxx4XyTjH/eTq9aID+bkOTWs9Ug
-FEP6xEdFOem8uwc0E0IjDoy42O3J+yoC9xpoTZKwgptTfO+efzahgiB2Vzb5PeqI
-txTB/DCndDVHydcnCYMqOQwOBUgrLDkGQUKTFZqUAqiaZCyEfIJK2z/SC2nbOjNQ
-MgyqOQxP8/7ZOYATs89im2ZU40iCNb9rhhyAaAhNS4wODnwxPLlzZiER0UQxZRZf
-g6iwwuZGVEPr+m9n6EQ5wxplmsEJOhcOEdvSffa3Nfv03r2TIrWVd82wmCtYCxkA
-nkQg6msgP/V+GfU3yb/6d9CTF/fMdzxglZ+5LlszfNA9S5KRuRhXidXd8eP0pRA+
-yt62MYSsSHY86U8yCFT7a47DQcyZ2kxHTvrN9MwamZhOtPMxuhEbS7F6TaMr8pvt
-pEqkFemltMhbsGEg/VCZQqXd8rN0lTX2PqOg3732tFpPcZgtsB0CRiHLmwSIifC3
-5Pu2XR8atmjxKJTu+Kbgc3oyTW8nSZbmDVy5w+OiZItNxCpmv7DI0MsiDdybkMAs
-1/BppmCwmYLwItMYyugpMkI3BL8c892TxGKSekn05lP0Dtjp/+E=
-=h+qs
------END PGP SIGNATURE-----
---=-=-=--
+
+
+
