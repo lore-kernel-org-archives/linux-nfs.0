@@ -1,62 +1,65 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:44918 "EHLO fieldses.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751916AbdBHVzZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 8 Feb 2017 16:55:25 -0500
-Date: Wed, 8 Feb 2017 16:45:38 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Christoph Hellwig <hch@lst.de>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] nfsd: don't get =?utf-8?Q?writ?=
- =?utf-8?Q?e_access_tw=D1=96ce?= in nfsd_setattr
-Message-ID: <20170208214538.GB17622@fieldses.org>
-References: <20170207091244.GA14911@lst.de>
+Received: from us-smtp-delivery-194.mimecast.com ([63.128.21.194]:56060 "EHLO
+        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1751209AbdBHV5u (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 8 Feb 2017 16:57:50 -0500
+From: Trond Myklebust <trondmy@primarydata.com>
+To: "tigran.mkrtchyan@desy.de" <tigran.mkrtchyan@desy.de>
+CC: "Anna.Schumaker@netapp.com" <Anna.Schumaker@netapp.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 0/4] Match TCP connection timeouts to the lease period
+Date: Wed, 8 Feb 2017 21:57:44 +0000
+Message-ID: <1486591062.8353.2.camel@primarydata.com>
+References: <ad98d031-f4a0-4713-a605-7c7f1e61a4f2@email.android.com>
+In-Reply-To: <ad98d031-f4a0-4713-a605-7c7f1e61a4f2@email.android.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20170207091244.GA14911@lst.de>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Feb 07, 2017 at 10:12:44AM +0100, Christoph Hellwig wrote:
-> Turns out doing mnt_want_write twice for the same process makes
-> lockdep unhappy, so move the fh_want_write down to after calling
-> vfs_truncate in nfsd_setattr.  No changes to error handling required
-> as the want write state is automatically cleaned up by the caller
-> based on a flag in the svc_fh.
-> 
-> Fixes: 41f53350 ("nfsd: special case truncates some more")
-> Signed-off-by: Christoph Hellwig <hch@lst.de>
-> Reported-by: Dave Jones <davej@codemonkey.org.uk>
+T24gV2VkLCAyMDE3LTAyLTA4IGF0IDIyOjE4ICswMTAwLCBNa3J0Y2h5YW4sIFRpZ3JhbiB3cm90
+ZToNCj4gDQo+IA0KPiBPbiBGZWIgOCwgMjAxNyAxNzo0OCwgVHJvbmQgTXlrbGVidXN0IDx0cm9u
+ZC5teWtsZWJ1c3RAcHJpbWFyeWRhdGEuY28NCj4gbT4gd3JvdGU6DQo+IFdpdGggdGhlIGN1cnJl
+bnQgZGVmYXVsdCBUQ1AgY29ubmVjdGlvbiB0aW1lb3V0IGJlaW5nIHNldCBhdCBhcm91bmTCoA0K
+PiAzIG1pbnV0ZXMsIGFuZCBtb3N0IHNlcnZlciB2ZW5kb3JzIHNldHRpbmcgdGhlIGxlYXNlIHBl
+cmlvZCBhdMKgDQo+IHZhbHVlcyBzaWduaWZpY2FudGx5IGxvd2VyIHRoYW4gdGhhdCwgd2UgY2Fu
+IGVuZCB1cCBsb3NpbmcgdGhlIGxlYXNlwqANCj4gd2hpbGUgd2FpdGluZyBmb3IgdGhlIFRDUCBs
+YXllciB0byBkaXNjb3ZlciB0aGF0IHdlIG5lZWQgdG8gYnJlYWsNCj4gdGhlwqANCj4gY29ubmVj
+dGlvbi7CoA0KPiBUaGlzIHBhdGNoIHNlcmllcyBzZXRzIHVwIGFuIGludGVyZmFjZSB0byBhbGxv
+dyB0aGUgTkZTdjQgY2xpZW50IHRvwqANCj4gYWRqdXN0IHRoc2VlIHRpbWVvdXQgdmFsdWVzIGRv
+d24gb25jZSBpdCBoYXMgb2J0YWluZWQgYSB2YWx1ZSBmb3LCoA0KPiB0aGUgbGVhc2UgcGVyaW9k
+IGZyb20gdGhlIHNlcnZlci7CoA0KPiANCj4gDQo+IENvb2wgZmluYWxseSEgSSB3YXMgd2FpdGlu
+ZyBmb3IgdGhhdCBxdWl0ZSBhIGJpdC4NCj4gDQo+IGh0dHBzOi8vd3d3LmlldGYub3JnL21haWwt
+YXJjaGl2ZS93ZWIvbmZzdjQvY3VycmVudC9tc2cxMzc1OC5odG1sDQo+IA0KPiANCg0KTm8uIFRo
+aXMgbWVjaGFuaXNtIGRvZXMgbm90IGV4Y3VzZSB0aGUgc2VydmVyIGZyb20gaGF2aW5nIHRvIHBy
+b2Nlc3MNCnJlcXVlc3RzLCBhbmQgSSBhbSBjZXJ0YWlubHkgbm90IHNpZ25pbmcgdXMgdXAgdG8g
+YW55ICJnZW50bGVtYW4ncw0KYWdyZWVtZW50Ii4NCg0KSWYgdGhlIHNlcnZlciBoYXMgcmVjZWl2
+ZWQgYW4gUlBDIGNhbGwsIHRoZW4gaXQgTVVTVCBwcm9jZXNzIGl0LA0Kd2hldGhlciBvciBub3Qg
+dGhlcmUgaXMgYSBUQ1AgY29ubmVjdGlvbiwgb3RoZXJ3aXNlIHRoZSBsZWFzZSBtYXkgc3RpbGwN
+CmJlIGxvc3QgZHVlIHRvIHRoZSBzZXJ2ZXIgZmFpbGluZyB0byBsaXZlIHVwIHRvIHRoZSByZXF1
+aXJlbWVudHMgaW4NClJGQzU2NjEgU2VjdGlvbiA4LjPCoChTZWUgaHR0cHM6Ly90b29scy5pZXRm
+Lm9yZy9odG1sL3JmYzU2NjEjc2VjdGlvbi04Lg0KMykuIFRob3NlIHJlcXVpcmVtZW50cyBzdGF0
+ZSB0aGF0ICJJZiB0aGUgY2xpZW50IElEJ3MgbGVhc2UgaGFzIG5vdA0KZXhwaXJlZCB3aGVuIHRo
+ZSBzZXJ2ZXIgcmVjZWl2ZXMgYSBTRVFVRU5DRSBvcGVyYXRpb24sIHRoZW4gdGhlIHNlcnZlcg0K
+TVVTVCByZW5ldyB0aGUgbGVhc2UuIg0KDQpUaGUgcG9pbnQgb2YgdGhlc2UgcGF0Y2hlcyBhcmUg
+dG8gZW5zdXJlIHRoYXQgd2UgZGV0ZWN0IHJvdXRpbmcgY2hhbmdlcw0KYW5kIHRoaW5ncyBsaWtl
+IHRoYXQgaW4gYSB0aW1lbHkgZmFzaGlvbiAoYWdhaW4sIGFzIHJlcXVpcmVkIGJ5DQpSRkM1NjYx
+LCBTZWN0aW9uIDguMykgc28gdGhhdCB3ZSBjYW4gcmUtZXN0YWJsaXNoIHRoZSBjb25uZWN0aW9u
+IGFuZA0KcmVuZXcgdGhlIGxlYXNlLg0KDQo+IFRpZ3Jhbi4NCj4gDQo+IFRyb25kIE15a2xlYnVz
+dCAoNCk6wqANCj4gwqAgU1VOUlBDOiBSZW1vdmUgdW51c2VkIGZ1bmN0aW9uIHJwY19nZXRfdGlt
+ZW91dCgpwqANCj4gwqAgU1VOUlBDOiBSZWZhY3RvciBUQ1Agc29ja2V0IHRpbWVvdXQgY29kZSBp
+bnRvIGEgaGVscGVyIGZ1bmN0aW9uwqANCj4gwqAgU1VOUlBDOiBBbGxvdyBjaGFuZ2luZyBvZiB0
+aGUgVENQIHRpbWVvdXQgcGFyYW1ldGVycyBvbiB0aGUgZmx5wqANCj4gwqAgTkZTdjQ6IFNldCB0
+aGUgY29ubmVjdGlvbiB0aW1lb3V0IHRvIG1hdGNoIHRoZSBsZWFzZSBwZXJpb2TCoA0KPiANCj4g
+ZnMvbmZzL25mczRyZW5ld2QuY8KgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoCB8wqAgMiArLcKgDQo+
+IGluY2x1ZGUvbGludXgvc3VucnBjL2NsbnQuaMKgwqDCoMKgIHzCoCA2ICstLcKgDQo+IGluY2x1
+ZGUvbGludXgvc3VucnBjL3hwcnQuaMKgwqDCoMKgIHzCoCA0ICsrwqANCj4gaW5jbHVkZS9saW51
+eC9zdW5ycGMveHBydHNvY2suaCB8wqAgMyArK8KgDQo+IG5ldC9zdW5ycGMvY2xudC5jwqDCoMKg
+wqDCoMKgwqDCoMKgwqDCoMKgwqDCoCB8IDUxICsrKysrKysrKysrKystLS0tLS0tLS0tLcKgDQo+
+IG5ldC9zdW5ycGMveHBydHNvY2suY8KgwqDCoMKgwqDCoMKgwqDCoMKgIHwgODgNCj4gKysrKysr
+KysrKysrKysrKysrKysrKysrKysrKysrKystLS0tLS0tLS3CoA0KPiA2IGZpbGVzIGNoYW5nZWQs
+IDEwNyBpbnNlcnRpb25zKCspLCA0NyBkZWxldGlvbnMoLSnCoA0KPiANCi0tIA0KDQoNCgkNCgkN
+Cg0KDQpUcm9uZCBNeWtsZWJ1c3QNClByaW5jaXBhbCBTeXN0ZW0gQXJjaGl0ZWN0DQo0MzAwIEVs
+IENhbWlubyBSZWFsIHwgU3VpdGUgMTAwDQpMb3MgQWx0b3MsIENBwqDCoDk0MDIyDQpXOiA2NTAt
+NDIyLTM4MDANCkM6IDgwMS05MjEtNDU4M8KgDQp3d3cucHJpbWFyeWRhdGEuY29tDQoNCg0KDQo=
 
-Thanks, I'll see if I can squeeze this into 4.10.--b.
-
-> 
-> diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
-> index ca13236dbb1f..a974368026a1 100644
-> --- a/fs/nfsd/vfs.c
-> +++ b/fs/nfsd/vfs.c
-> @@ -359,11 +359,6 @@ nfsd_setattr(struct svc_rqst *rqstp, struct svc_fh *fhp, struct iattr *iap,
->  	err = fh_verify(rqstp, fhp, ftype, accmode);
->  	if (err)
->  		return err;
-> -	if (get_write_count) {
-> -		host_err = fh_want_write(fhp);
-> -		if (host_err)
-> -			goto out_host_err;
-> -	}
->  
->  	dentry = fhp->fh_dentry;
->  	inode = d_inode(dentry);
-> @@ -416,6 +411,12 @@ nfsd_setattr(struct svc_rqst *rqstp, struct svc_fh *fhp, struct iattr *iap,
->  
->  	iap->ia_valid |= ATTR_CTIME;
->  
-> +	if (get_write_count) {
-> +		host_err = fh_want_write(fhp);
-> +		if (host_err)
-> +			goto out_host_err;
-> +	}
-> +
->  	fh_lock(fhp);
->  	host_err = notify_change(dentry, iap, NULL);
->  	fh_unlock(fhp);
