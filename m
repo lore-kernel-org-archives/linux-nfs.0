@@ -1,127 +1,294 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f193.google.com ([209.85.223.193]:33147 "EHLO
+Received: from mail-io0-f193.google.com ([209.85.223.193]:35646 "EHLO
         mail-io0-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751394AbdBHXDy (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 8 Feb 2017 18:03:54 -0500
-Received: by mail-io0-f193.google.com with SMTP id 101so527713iom.0
-        for <linux-nfs@vger.kernel.org>; Wed, 08 Feb 2017 15:03:53 -0800 (PST)
-Subject: [PATCH v3 12/12] sunrpc: Allow keepalive ping on a credit-full
- transport
-From: Chuck Lever <chuck.lever@oracle.com>
-To: anna.schumaker@netapp.com
-Cc: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Wed, 08 Feb 2017 17:01:16 -0500
-Message-ID: <20170208220116.7152.87626.stgit@manet.1015granger.net>
-In-Reply-To: <20170208214854.7152.83331.stgit@manet.1015granger.net>
-References: <20170208214854.7152.83331.stgit@manet.1015granger.net>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+        with ESMTP id S1752109AbdBHXN0 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 8 Feb 2017 18:13:26 -0500
+Received: by mail-io0-f193.google.com with SMTP id m98so520035iod.2
+        for <linux-nfs@vger.kernel.org>; Wed, 08 Feb 2017 15:13:16 -0800 (PST)
+Content-Type: text/plain; charset=us-ascii
+Mime-Version: 1.0 (Mac OS X Mail 9.3 \(3124\))
+Subject: NFS server regression in v4.10-rc7
+From: Chuck Lever <chucklever@gmail.com>
+Date: Wed, 8 Feb 2017 16:27:30 -0500
+Cc: Christoph Hellwig <hch@infradead.org>
+Message-Id: <60D0607E-7D01-4F68-A447-071B7DEC6F23@gmail.com>
+References: <1485246161-20874-1-git-send-email-hch@lst.de>
+To: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Allow RPC-over-RDMA to send NULL pings even when the transport has
-hit its credit limit. One RPC-over-RDMA credit is reserved for
-operations like keepalive.
 
-For transports that convey NFSv4, it seems like lease renewal would
-also be a candidate for using a priority transport slot. I'd like to
-see a mechanism better than RPCRDMA_PRIORITY that can ensure only
-one priority operation is in use at a time.
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
- include/linux/sunrpc/sched.h    |    2 ++
- net/sunrpc/xprt.c               |    4 ++++
- net/sunrpc/xprtrdma/transport.c |    3 ++-
- net/sunrpc/xprtrdma/verbs.c     |   13 ++++++++-----
- 4 files changed, 16 insertions(+), 6 deletions(-)
+> Begin forwarded message:
+>=20
+> From: Christoph Hellwig <hch@lst.de>
+> Subject: [PATCH v2] nfsd: special case truncates some more
+> Date: January 24, 2017 at 3:22:41 AM EST
+> To: bfields@fieldses.org, jlayton@poochiereds.net
+> Cc: trondmy@primarydata.com, linux-nfs@vger.kernel.org
+>=20
+> Both the NFS protocols and the Linux VFS use a setattr operation with =
+a
+> bitmap of attributs to set to set various file attributes including =
+the
+> file size and the uid/gid.
+>=20
+> The Linux syscalls never mixe size updates with unrelated updates like
+> the uid/gid, and some file systems like XFS and GFS2 rely on the fact
+> that truncates might not update random other attributes, and many
+> other file systems handle the case but do not update the different
+> attributes in the same transaction.  NFSD on the other hand passes
+> the attributes it gets on the wire more or less directly through to
+> the VFS, leading to updates the file systems don't expect.  XFS at
+> least has an assert on the allowed attributes, which cought an NFS
+> client sets the size and group at the same time.
+>=20
+> To handles this issue properly this switches nfsd to call vfs_truncate
+> for size changes, and then handling all other attributes through
+> notify_change.  As a side effect this also means less boilerplace
+> code around the size change as we can now reuse the VFS code.
+>=20
+> Signed-off-by: Christoph Hellwig <hch@lst.de>
+> ---
+>=20
+> Changes since V1:
+> - avoid an extra setattr just for a MTIME attribute on the wire
+>=20
+> fs/nfsd/vfs.c | 97 =
++++++++++++++++++++++++------------------------------------
+> 1 file changed, 37 insertions(+), 60 deletions(-)
+>=20
+> diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
+> index 26c6fdb..e91107a 100644
+> --- a/fs/nfsd/vfs.c
+> +++ b/fs/nfsd/vfs.c
+> @@ -332,37 +332,6 @@ nfsd_sanitize_attrs(struct inode *inode, struct =
+iattr *iap)
+> 	}
+> }
+>=20
+> -static __be32
+> -nfsd_get_write_access(struct svc_rqst *rqstp, struct svc_fh *fhp,
+> -		struct iattr *iap)
+> -{
+> -	struct inode *inode =3D d_inode(fhp->fh_dentry);
+> -	int host_err;
+> -
+> -	if (iap->ia_size < inode->i_size) {
+> -		__be32 err;
+> -
+> -		err =3D nfsd_permission(rqstp, fhp->fh_export, =
+fhp->fh_dentry,
+> -				NFSD_MAY_TRUNC | =
+NFSD_MAY_OWNER_OVERRIDE);
+> -		if (err)
+> -			return err;
+> -	}
+> -
+> -	host_err =3D get_write_access(inode);
+> -	if (host_err)
+> -		goto out_nfserrno;
+> -
+> -	host_err =3D locks_verify_truncate(inode, NULL, iap->ia_size);
+> -	if (host_err)
+> -		goto out_put_write_access;
+> -	return 0;
+> -
+> -out_put_write_access:
+> -	put_write_access(inode);
+> -out_nfserrno:
+> -	return nfserrno(host_err);
+> -}
+> -
+> /*
+>  * Set various file attributes.  After this call fhp needs an fh_put.
+>  */
+> @@ -377,7 +346,6 @@ nfsd_setattr(struct svc_rqst *rqstp, struct svc_fh =
+*fhp, struct iattr *iap,
+> 	__be32		err;
+> 	int		host_err;
+> 	bool		get_write_count;
+> -	int		size_change =3D 0;
+>=20
+> 	if (iap->ia_valid & (ATTR_ATIME | ATTR_MTIME | ATTR_SIZE))
+> 		accmode |=3D NFSD_MAY_WRITE|NFSD_MAY_OWNER_OVERRIDE;
+> @@ -390,11 +358,11 @@ nfsd_setattr(struct svc_rqst *rqstp, struct =
+svc_fh *fhp, struct iattr *iap,
+> 	/* Get inode */
+> 	err =3D fh_verify(rqstp, fhp, ftype, accmode);
+> 	if (err)
+> -		goto out;
+> +		return err;
+> 	if (get_write_count) {
+> 		host_err =3D fh_want_write(fhp);
+> 		if (host_err)
+> -			return nfserrno(host_err);
+> +			goto out_host_err;
+> 	}
+>=20
+> 	dentry =3D fhp->fh_dentry;
+> @@ -405,50 +373,59 @@ nfsd_setattr(struct svc_rqst *rqstp, struct =
+svc_fh *fhp, struct iattr *iap,
+> 		iap->ia_valid &=3D ~ATTR_MODE;
+>=20
+> 	if (!iap->ia_valid)
+> -		goto out;
+> +		return 0;
+>=20
+> 	nfsd_sanitize_attrs(inode, iap);
+>=20
+> +	if (check_guard && guardtime !=3D inode->i_ctime.tv_sec)
+> +		return nfserr_notsync;
+> +
+> 	/*
+> 	 * The size case is special, it changes the file in addition to =
+the
+> -	 * attributes.
+> +	 * attributes, and file systems don't expect it to be mixed with
+> +	 * "random" attribute changes.  We thus split out the size =
+change
+> +	 * into a separate calo for vfs_truncate, and do the rest as a
+> +	 * a separate setattr call.
+> 	 */
+> 	if (iap->ia_valid & ATTR_SIZE) {
+> -		err =3D nfsd_get_write_access(rqstp, fhp, iap);
+> -		if (err)
+> -			goto out;
+> -		size_change =3D 1;
+> +		struct path path =3D {
+> +			.mnt	=3D fhp->fh_export->ex_path.mnt,
+> +			.dentry	=3D dentry,
+> +		};
+> +		bool implicit_mtime =3D false;
+>=20
+> 		/*
+> -		 * RFC5661, Section 18.30.4:
+> -		 *   Changing the size of a file with SETATTR indirectly
+> -		 *   changes the time_modify and change attributes.
+> -		 *
+> -		 * (and similar for the older RFCs)
+> +		 * vfs_truncate implicity updates the mtime IFF the file =
+size
+> +		 * actually changes.  Avoid the additional seattr call =
+below if
+> +		 * the only other attribute that the client sends is the =
+mtime.
+> 		 */
+> -		if (iap->ia_size !=3D i_size_read(inode))
+> -			iap->ia_valid |=3D ATTR_MTIME;
+> -	}
+> +		if (iap->ia_size !=3D i_size_read(inode) &&
+> +		    ((iap->ia_valid & ~(ATTR_SIZE | ATTR_MTIME)) =3D=3D =
+0))
+> +			implicit_mtime =3D true;
+>=20
+> -	iap->ia_valid |=3D ATTR_CTIME;
+> +		host_err =3D vfs_truncate(&path, iap->ia_size);
+> +		if (host_err)
+> +			goto out_host_err;
+>=20
+> -	if (check_guard && guardtime !=3D inode->i_ctime.tv_sec) {
+> -		err =3D nfserr_notsync;
+> -		goto out_put_write_access;
+> +		iap->ia_valid &=3D ~ATTR_SIZE;
+> +		if (implicit_mtime)
+> +			iap->ia_valid &=3D ~ATTR_MTIME;
+> +		if (!iap->ia_valid)
+> +			goto done;
+> 	}
+>=20
+> +	iap->ia_valid |=3D ATTR_CTIME;
+> +
+> 	fh_lock(fhp);
+> 	host_err =3D notify_change(dentry, iap, NULL);
+> 	fh_unlock(fhp);
+> -	err =3D nfserrno(host_err);
+> +	if (host_err)
+> +		goto out_host_err;
+>=20
+> -out_put_write_access:
+> -	if (size_change)
+> -		put_write_access(inode);
+> -	if (!err)
+> -		err =3D nfserrno(commit_metadata(fhp));
+> -out:
+> -	return err;
+> +done:
+> +	host_err =3D commit_metadata(fhp);
+> +out_host_err:
+> +	return nfserrno(host_err);
+> }
+>=20
+> #if defined(CONFIG_NFSD_V4)
+> --=20
+> 2.1.4
 
-diff --git a/include/linux/sunrpc/sched.h b/include/linux/sunrpc/sched.h
-index 13822e6..fcea158 100644
---- a/include/linux/sunrpc/sched.h
-+++ b/include/linux/sunrpc/sched.h
-@@ -127,6 +127,7 @@ struct rpc_task_setup {
- #define RPC_TASK_TIMEOUT	0x1000		/* fail with ETIMEDOUT on timeout */
- #define RPC_TASK_NOCONNECT	0x2000		/* return ENOTCONN if not connected */
- #define RPC_TASK_NO_RETRANS_TIMEOUT	0x4000		/* wait forever for a reply */
-+#define RPC_TASK_NO_CONG	0x8000		/* skip congestion control */
- 
- #define RPC_TASK_SOFTPING	(RPC_TASK_SOFT | RPC_TASK_SOFTCONN)
- 
-@@ -137,6 +138,7 @@ struct rpc_task_setup {
- #define RPC_IS_SOFT(t)		((t)->tk_flags & (RPC_TASK_SOFT|RPC_TASK_TIMEOUT))
- #define RPC_IS_SOFTCONN(t)	((t)->tk_flags & RPC_TASK_SOFTCONN)
- #define RPC_WAS_SENT(t)		((t)->tk_flags & RPC_TASK_SENT)
-+#define RPC_SKIP_CONG(t)	((t)->tk_flags & RPC_TASK_NO_CONG)
- 
- #define RPC_TASK_RUNNING	0
- #define RPC_TASK_QUEUED		1
-diff --git a/net/sunrpc/xprt.c b/net/sunrpc/xprt.c
-index b530a28..a477ee6 100644
---- a/net/sunrpc/xprt.c
-+++ b/net/sunrpc/xprt.c
-@@ -392,6 +392,10 @@ static inline void xprt_release_write(struct rpc_xprt *xprt, struct rpc_task *ta
- {
- 	struct rpc_rqst *req = task->tk_rqstp;
- 
-+	if (RPC_SKIP_CONG(task)) {
-+		req->rq_cong = 0;
-+		return 1;
-+	}
- 	if (req->rq_cong)
- 		return 1;
- 	dprintk("RPC: %5u xprt_cwnd_limited cong = %lu cwnd = %lu\n",
-diff --git a/net/sunrpc/xprtrdma/transport.c b/net/sunrpc/xprtrdma/transport.c
-index 3a5a805..073fecd 100644
---- a/net/sunrpc/xprtrdma/transport.c
-+++ b/net/sunrpc/xprtrdma/transport.c
-@@ -546,7 +546,8 @@ static void rpcrdma_keepalive_release(void *calldata)
- 
- 	data = xprt_get(xprt);
- 	null_task = rpc_call_null_helper(task->tk_client, xprt, NULL,
--					 RPC_TASK_SOFTPING | RPC_TASK_ASYNC,
-+					 RPC_TASK_SOFTPING | RPC_TASK_ASYNC |
-+					 RPC_TASK_NO_CONG,
- 					 &rpcrdma_keepalive_call_ops, data);
- 	if (!IS_ERR(null_task))
- 		rpc_put_task(null_task);
-diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
-index 81cd31a..d9b5fa7 100644
---- a/net/sunrpc/xprtrdma/verbs.c
-+++ b/net/sunrpc/xprtrdma/verbs.c
-@@ -136,19 +136,20 @@
- static void
- rpcrdma_update_granted_credits(struct rpcrdma_rep *rep)
- {
--	struct rpcrdma_msg *rmsgp = rdmab_to_msg(rep->rr_rdmabuf);
- 	struct rpcrdma_buffer *buffer = &rep->rr_rxprt->rx_buf;
-+	__be32 *p = rep->rr_rdmabuf->rg_base;
- 	u32 credits;
- 
- 	if (rep->rr_len < RPCRDMA_HDRLEN_ERR)
- 		return;
- 
--	credits = be32_to_cpu(rmsgp->rm_credit);
-+	credits = be32_to_cpup(p + 2);
-+	if (credits > buffer->rb_max_requests)
-+		credits = buffer->rb_max_requests;
-+	/* Reserve one credit for keepalive ping */
-+	credits--;
- 	if (credits == 0)
- 		credits = 1;	/* don't deadlock */
--	else if (credits > buffer->rb_max_requests)
--		credits = buffer->rb_max_requests;
--
- 	atomic_set(&buffer->rb_credits, credits);
- }
- 
-@@ -915,6 +916,8 @@ struct rpcrdma_rep *
- 	struct rpcrdma_buffer *buf = &r_xprt->rx_buf;
- 	int i, rc;
- 
-+	if (r_xprt->rx_data.max_requests < 2)
-+		return -EINVAL;
- 	buf->rb_max_requests = r_xprt->rx_data.max_requests;
- 	buf->rb_bc_srv_max_requests = 0;
- 	atomic_set(&buf->rb_credits, 1);
+After installing v4.10-rc7 on my test NFS server, I'm seeing a failure
+with the git regression test suite.
+
+*** t1050-large.sh ***
+ok 1 - setup
+ok 2 - add a large file or two
+ok 3 - checkout a large file
+not ok 4 - packsize limit
+#    =20
+#          test_create_repo mid &&
+#          (
+#               cd mid &&
+#               git config core.bigfilethreshold 64k &&
+#               git config pack.packsizelimit 256k &&
+#    =20
+#               # mid1 and mid2 will fit within 256k limit but
+#               # appending mid3 will bust the limit and will
+#               # result in a separate packfile.
+#               test-genrandom "a" $(( 66 * 1024 )) >mid1 &&
+#               test-genrandom "b" $(( 80 * 1024 )) >mid2 &&
+#               test-genrandom "c" $(( 128 * 1024 )) >mid3 &&
+#               git add mid1 mid2 mid3 &&
+#    =20
+#               count=3D0
+#               for pi in .git/objects/pack/pack-*.idx
+#               do
+#                    test -f "$pi" && count=3D$(( $count + 1 ))
+#               done &&
+#               test $count =3D 2 &&
+#    =20
+#               (
+#                    git hash-object --stdin <mid1
+#                    git hash-object --stdin <mid2
+#                    git hash-object --stdin <mid3
+#               ) |
+#               sort >expect &&
+#    =20
+#               for pi in .git/objects/pack/pack-*.idx
+#               do
+#                    git show-index <"$pi"
+#               done |
+#               sed -e "s/^[0-9]* \([0-9a-f]*\) .*/\1/" |
+#               sort >actual &&
+#    =20
+#               test_cmp expect actual
+#          )
+#    =20
+ok 5 - diff --raw
+ok 6 - diff --stat
+ok 7 - diff
+
+Confirmed with NFSv3 / TCP and NFSv4.0 / TCP. Failure is 100%
+reproducible.
+
+If I revert the above commit on the server, the git regression test
+suite passes.
+
+The test is run like this: "cd /mnt/server/git; make clean; make; make =
+test"
+
+Can anyone else reproduce this failure?
+
+
+--
+Chuck Lever
+chucklever@gmail.com
+
+
 
