@@ -1,18 +1,16 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:34104 "EHLO mx2.suse.de"
+Received: from mx2.suse.de ([195.135.220.15]:34498 "EHLO mx2.suse.de"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751336AbdBHAGL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 7 Feb 2017 19:06:11 -0500
+        id S932115AbdBHAQ6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 7 Feb 2017 19:16:58 -0500
 From: NeilBrown <neilb@suse.com>
-To: Kinglong Mee <kinglongmee@gmail.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org
-Date: Wed, 08 Feb 2017 11:04:49 +1100
-Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
-        Kinglong Mee <kinglongmee@gmail.com>
-Subject: Re: [PATCH 2/2] SUNRPC: Drop all entries from cache_detail when cache_purge()
-In-Reply-To: <400d714e-3e4c-74b0-6734-96dbf491b9d9@gmail.com>
-References: <400d714e-3e4c-74b0-6734-96dbf491b9d9@gmail.com>
-Message-ID: <87vaslv97i.fsf@notabene.neil.brown.name>
+To: Scott Mayhew <smayhew@redhat.com>, steved@redhat.com
+Date: Wed, 08 Feb 2017 11:16:15 +1100
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [nfs-utils PATCH v3 0/2] Add support for -s/--state-directory-path for rpc.mountd and exportfs
+In-Reply-To: <1486134704-59866-1-git-send-email-smayhew@redhat.com>
+References: <1486134704-59866-1-git-send-email-smayhew@redhat.com>
+Message-ID: <87shnpv8og.fsf@notabene.neil.brown.name>
 MIME-Version: 1.0
 Content-Type: multipart/signed; boundary="=-=-=";
         micalg=pgp-sha256; protocol="application/pgp-signature"
@@ -23,122 +21,78 @@ List-ID: <linux-nfs.vger.kernel.org>
 Content-Type: text/plain
 Content-Transfer-Encoding: quoted-printable
 
-On Mon, Feb 06 2017, Kinglong Mee wrote:
+On Fri, Feb 03 2017, Scott Mayhew wrote:
 
-> User always free the cache_detail after sunrpc_destroy_cache_detail(),
-> so, it must cleanup up entries that left in the cache_detail,
-> otherwise, NULL reference may be caused when using the left entries.
+> Currently, rpc.mountd's -s/--state-directory-path option doesn't really
+> do anything (rpc.mountd tests it via chdir() but that's all).  These
+> patches implement the -s/--state-directory-path option so that
+> rpc.mountd's state files (the etab and rmtab) can be placed in a
+> location other than /var/lib/nfs... for example, /run/nfs.
 >
-> Also, NeriBrown suggests "write a stand-alone cache_purge()."
+> To use /run/nfs, it's necessary to create a systemd-tmpfiles config
+> file, e.g.
 >
-> v2, a stand-alone cache_purge(), not only for sunrpc_destroy_cache_detail
+> # cat /usr/lib/tmpfiles.d/nfs.conf=20
+> #Type Path           Mode  UID  GID  Age Argument
+> d    /run/nfs        0755  root root  -  -
+> f    /run/nfs/etab   0644  root root  -  -
+> f    /run/nfs/rmtab  0644  root root  -  -
 >
-> Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
-> ---
->  net/sunrpc/cache.c | 39 ++++++++++++++++++++++++---------------
->  1 file changed, 24 insertions(+), 15 deletions(-)
+> and if selinux is in enforcing mode, the correct context would need to
+> be set on the directory (On Fedora, semanage barks at me if I use
+> /run/nfs... that's why I'm using /var/run/nfs here instead):
 >
-> diff --git a/net/sunrpc/cache.c b/net/sunrpc/cache.c
-> index 8147e8d..bd6ee79 100644
-> --- a/net/sunrpc/cache.c
-> +++ b/net/sunrpc/cache.c
-> @@ -362,11 +362,6 @@ void sunrpc_destroy_cache_detail(struct cache_detail=
- *cd)
->  	cache_purge(cd);
->  	spin_lock(&cache_list_lock);
->  	write_lock(&cd->hash_lock);
-> -	if (cd->entries) {
-> -		write_unlock(&cd->hash_lock);
-> -		spin_unlock(&cache_list_lock);
-> -		goto out;
-> -	}
->  	if (current_detail =3D=3D cd)
->  		current_detail =3D NULL;
->  	list_del_init(&cd->others);
-> @@ -376,9 +371,6 @@ void sunrpc_destroy_cache_detail(struct cache_detail =
-*cd)
->  		/* module must be being unloaded so its safe to kill the worker */
->  		cancel_delayed_work_sync(&cache_cleaner);
->  	}
-> -	return;
-> -out:
-> -	printk(KERN_ERR "RPC: failed to unregister %s cache\n", cd->name);
->  }
->  EXPORT_SYMBOL_GPL(sunrpc_destroy_cache_detail);
->=20=20
-> @@ -497,13 +489,30 @@ EXPORT_SYMBOL_GPL(cache_flush);
->=20=20
->  void cache_purge(struct cache_detail *detail)
->  {
-> -	time_t now =3D seconds_since_boot();
-> -	if (detail->flush_time >=3D now)
-> -		now =3D detail->flush_time + 1;
-> -	/* 'now' is the maximum value any 'last_refresh' can have */
-> -	detail->flush_time =3D now;
-> -	detail->nextcheck =3D seconds_since_boot();
-> -	cache_flush();
-> +	struct cache_head *ch =3D NULL;
-> +	struct hlist_head *head =3D NULL;
-> +	struct hlist_node *tmp =3D NULL;
-> +	int i =3D 0;
-> +
-> +	write_lock(&detail->hash_lock);
-> +	if (!detail->entries) {
-> +		write_unlock(&detail->hash_lock);
-> +		return;
-> +	}
-> +
-> +	dprintk("RPC: %d entries in %s cache\n", detail->entries, detail->name);
-> +	for (i =3D 0; i < detail->hash_size; i++) {
-> +		head =3D &detail->hash_table[i];
-> +		hlist_for_each_entry_safe(ch, tmp, head, cache_list) {
-> +			hlist_del_init(&ch->cache_list);
-> +			detail->entries--;
-> +
-> +			set_bit(CACHE_CLEANED, &ch->flags);
-> +			cache_fresh_unlocked(ch, detail);
-> +			cache_put(ch, detail);
+> # semanage fcontext -a -t var_lib_nfs_t "/var/run/nfs(/.*)?"
+>
+> Changes since v1:
+>
+> - Replaced all newly-added occurrences of the term 'xtab' so it wouldn't
+>   be confused with the recently removed 'xtab' file.  I did not replace
+>   any existing uses of the term 'xtab' though.
+> - Removed the reference to statd on the mountd man page.
+>
+> Changes since v2:
+> - Fixed string-handling blunder I made in generic_setup_basedir(). Tested=
+ with=20
+>   pathnames of length 4083 (the largest you can have and still append
+>   "/.rmtab.lock"), 4084 (generic_make_pathname() will fail for ".rmtab.lo=
+ck"),
+>   4095, 4096, and 4097.
+> - Removed error_check() from support/misc/file.c and added the check dire=
+ctly
+>   in generic_make_pathname()
+> - Removed _PATH_ETAB* and _PATH_RMTAB* as they're no longer used.
+> - Updated the nfs.conf.man and exportfs.man pages.
+>
+>
+> Scott Mayhew (2):
+>   libnsm.a: refactor nsm_setup_pathnames() and nsm_make_pathname()
+>   mountd/exportfs: implement the -s/--state-directory-path option
 
-I'm a little bothered by calling cache_fresh_unlocked() while holding
-=2D>hash_lock.  No other code does that.
-You could probably argue that we don't need ->hash_lock at all here
-because by the time we call cache_purge(), there cannot safely be any
-other users.  Should we just drop the write_lock() call?
+Both patches
+  Reviewed-by: NeilBrown <neilb@suse.com>
+
+Thanks!
 
 NeilBrown
-
-
-> +		}
-> +	}
-> +	write_unlock(&detail->hash_lock);
->  }
->  EXPORT_SYMBOL_GPL(cache_purge);
->=20=20
-> --=20
-> 2.9.3
->
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
 --=-=-=
 Content-Type: application/pgp-signature; name="signature.asc"
 
 -----BEGIN PGP SIGNATURE-----
 
-iQIzBAEBCAAdFiEEG8Yp69OQ2HB7X0l6Oeye3VZigbkFAliaYKEACgkQOeye3VZi
-gbnRsA/9FzdPZfwidcjbrnzgdOXuUI+XGbasNiI8TSrM29+Z81xS/yH3W0p/FSv9
-utCD2LvrB5kbsOWe1Hltc9plbA26Ktogv2hBe5QizPU/DCZgjvA9gnu5oOZsyly0
-Noe+wo/dzV2iGEVnFxW8CiB3Q/ETmpHlCw7FdwsMA4by5ub3F4BHpXUWY9xbaTc2
-SKJlEC4XYw1FPB8kfxA2M+6BwaXa+QM87eaBKsIi697Pcb9P8gdKGAsq7wdw7WLB
-Sjk/mbMnxChPyu+qVT/ZBLJ2HnivdaCgJfd2CNt/2fp8djhHHn1ZLW54ZlZ1Pf6x
-1X8N+PAUF4+DDSBKvAFrTDU4d8nJLMvzeVsfA0nLQm6A9qZrpozfzYK9f9lBk/GD
-/Si6Jm38CxVei31XT9ZTiEfXixSsvhkoEfz84MQv9sNX/8hBLYp7eMwzaPjrr/U0
-GlsHc6ngdjjQ1+UfwwiM+3WCsiS0StvvnmxoW02gyOPc2zsg/7LMP1h3P2PSw+av
-OAqQPw56cVM63DHgp6SzV822+d/s32jVoB4DFJKDGAYchv0vVyJBdEz9W9aZ1sa/
-iAsZ3eJMuvWRb3YcD0MJgxeLuyzfYe77PnYIi42MvdbZR1dTcWnCnSkr/XB+2i9V
-58OjtLJ5TFndl2k4SavfGu17ShGmEz9fxNWkqelynkqgFwRamfM=
-=UN3l
+iQIzBAEBCAAdFiEEG8Yp69OQ2HB7X0l6Oeye3VZigbkFAliaY08ACgkQOeye3VZi
+gbmBNBAAhlwvnkbllobNiI+KRLJUzUg1VpHivAQ5fOoZwwdiHAkubzS4ApzzZl2a
+L83bZuHBJnEgE2B0wwZYBGdGhU2IuuCyZkBFusxx4XyTjH/eTq9aID+bkOTWs9Ug
+FEP6xEdFOem8uwc0E0IjDoy42O3J+yoC9xpoTZKwgptTfO+efzahgiB2Vzb5PeqI
+txTB/DCndDVHydcnCYMqOQwOBUgrLDkGQUKTFZqUAqiaZCyEfIJK2z/SC2nbOjNQ
+MgyqOQxP8/7ZOYATs89im2ZU40iCNb9rhhyAaAhNS4wODnwxPLlzZiER0UQxZRZf
+g6iwwuZGVEPr+m9n6EQ5wxplmsEJOhcOEdvSffa3Nfv03r2TIrWVd82wmCtYCxkA
+nkQg6msgP/V+GfU3yb/6d9CTF/fMdzxglZ+5LlszfNA9S5KRuRhXidXd8eP0pRA+
+yt62MYSsSHY86U8yCFT7a47DQcyZ2kxHTvrN9MwamZhOtPMxuhEbS7F6TaMr8pvt
+pEqkFemltMhbsGEg/VCZQqXd8rN0lTX2PqOg3732tFpPcZgtsB0CRiHLmwSIifC3
+5Pu2XR8atmjxKJTu+Kbgc3oyTW8nSZbmDVy5w+OiZItNxCpmv7DI0MsiDdybkMAs
+1/BppmCwmYLwItMYyugpMkI3BL8c892TxGKSekn05lP0Dtjp/+E=
+=h+qs
 -----END PGP SIGNATURE-----
 --=-=-=--
