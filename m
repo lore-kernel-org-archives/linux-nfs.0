@@ -1,34 +1,41 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from verein.lst.de ([213.95.11.211]:48775 "EHLO newverein.lst.de"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751103AbdBHVvJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 8 Feb 2017 16:51:09 -0500
-Date: Wed, 8 Feb 2017 22:50:38 +0100
-From: Christoph Hellwig <hch@lst.de>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: Christoph Hellwig <hch@lst.de>, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] nfsd: don't get =?utf-8?Q?writ?=
-        =?utf-8?Q?e_access_tw=D1=96ce?= in nfsd_setattr
-Message-ID: <20170208215038.GA21910@lst.de>
-References: <20170207091244.GA14911@lst.de> <20170208214538.GB17622@fieldses.org>
-MIME-Version: 1.0
+Received: from mail-it0-f45.google.com ([209.85.214.45]:35178 "EHLO
+        mail-it0-f45.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751443AbdBHVyE (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 8 Feb 2017 16:54:04 -0500
+Received: by mail-it0-f45.google.com with SMTP id 203so111937925ith.0
+        for <linux-nfs@vger.kernel.org>; Wed, 08 Feb 2017 13:54:04 -0800 (PST)
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20170208214538.GB17622@fieldses.org>
+Mime-Version: 1.0 (Mac OS X Mail 9.3 \(3124\))
+Subject: Re: NFS server regression in v4.10-rc7
+From: Chuck Lever <chucklever@gmail.com>
+In-Reply-To: <20170208213914.GA1863@infradead.org>
+Date: Wed, 8 Feb 2017 16:54:02 -0500
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Message-Id: <BF7B504A-A68C-45CB-8CA9-990F3AB2F1D6@gmail.com>
+References: <1485246161-20874-1-git-send-email-hch@lst.de> <60D0607E-7D01-4F68-A447-071B7DEC6F23@gmail.com> <20170208213914.GA1863@infradead.org>
+To: Christoph Hellwig <hch@infradead.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Feb 08, 2017 at 04:45:38PM -0500, J. Bruce Fields wrote:
-> On Tue, Feb 07, 2017 at 10:12:44AM +0100, Christoph Hellwig wrote:
-> > Turns out doing mnt_want_write twice for the same process makes
-> > lockdep unhappy, so move the fh_want_write down to after calling
-> > vfs_truncate in nfsd_setattr.  No changes to error handling required
-> > as the want write state is automatically cleaned up by the caller
-> > based on a flag in the svc_fh.
-> > 
-> > Fixes: 41f53350 ("nfsd: special case truncates some more")
-> > Signed-off-by: Christoph Hellwig <hch@lst.de>
-> > Reported-by: Dave Jones <davej@codemonkey.org.uk>
-> 
-> Thanks, I'll see if I can squeeze this into 4.10.--b.
 
-FYI, Chuck just reported another issue, let's wait for that for now.
+> On Feb 8, 2017, at 4:39 PM, Christoph Hellwig <hch@infradead.org> =
+wrote:
+>=20
+> On Wed, Feb 08, 2017 at 04:27:30PM -0500, Chuck Lever wrote:
+>> The test is run like this: "cd /mnt/server/git; make clean; make; =
+make test"
+>>=20
+>> Can anyone else reproduce this failure?
+>=20
+> What local file system do you use on the server?
+
+I see this with my tmpfs export.
+
+
+--
+Chuck Lever
+chucklever@gmail.com
+
+
+
