@@ -1,155 +1,70 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from us-smtp-delivery-194.mimecast.com ([63.128.21.194]:36640 "EHLO
-        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1751858AbdBIAwu (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 8 Feb 2017 19:52:50 -0500
-From: Trond Myklebust <trondmy@primarydata.com>
-To: "chuck.lever@oracle.com" <chuck.lever@oracle.com>
-CC: "anna.schumaker@netapp.com" <anna.schumaker@netapp.com>,
-        "linux-rdma@vger.kernel.org" <linux-rdma@vger.kernel.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH v3 12/12] sunrpc: Allow keepalive ping on a credit-full
- transport
-Date: Thu, 9 Feb 2017 00:48:54 +0000
-Message-ID: <1486601331.11028.5.camel@primarydata.com>
+Received: from mail-it0-f65.google.com ([209.85.214.65]:33613 "EHLO
+        mail-it0-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751499AbdBIHaP (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 9 Feb 2017 02:30:15 -0500
+Received: by mail-it0-f65.google.com with SMTP id e137so1490225itc.0
+        for <linux-nfs@vger.kernel.org>; Wed, 08 Feb 2017 23:28:55 -0800 (PST)
+Subject: [PATCH v3 01/12] xprtrdma: Fix Read chunk padding
+From: Chuck Lever <chuck.lever@oracle.com>
+To: anna.schumaker@netapp.com
+Cc: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
+Date: Wed, 08 Feb 2017 16:59:46 -0500
+Message-ID: <20170208215946.7152.65727.stgit@manet.1015granger.net>
+In-Reply-To: <20170208214854.7152.83331.stgit@manet.1015granger.net>
 References: <20170208214854.7152.83331.stgit@manet.1015granger.net>
-         <20170208220116.7152.87626.stgit@manet.1015granger.net>
-         <1486598713.11028.3.camel@primarydata.com>
-         <9D6B8B44-9C23-427C-9E06-7C92302EB04D@oracle.com>
-In-Reply-To: <9D6B8B44-9C23-427C-9E06-7C92302EB04D@oracle.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gV2VkLCAyMDE3LTAyLTA4IGF0IDE5OjE5IC0wNTAwLCBDaHVjayBMZXZlciB3cm90ZToNCj4g
-PiBPbiBGZWIgOCwgMjAxNywgYXQgNzowNSBQTSwgVHJvbmQgTXlrbGVidXN0IDx0cm9uZG15QHBy
-aW1hcnlkYXRhLmNvDQo+ID4gbT4gd3JvdGU6DQo+ID4gDQo+ID4gT24gV2VkLCAyMDE3LTAyLTA4
-IGF0IDE3OjAxIC0wNTAwLCBDaHVjayBMZXZlciB3cm90ZToNCj4gPiA+IEFsbG93IFJQQy1vdmVy
-LVJETUEgdG8gc2VuZCBOVUxMIHBpbmdzIGV2ZW4gd2hlbiB0aGUgdHJhbnNwb3J0DQo+ID4gPiBo
-YXMNCj4gPiA+IGhpdCBpdHMgY3JlZGl0IGxpbWl0LiBPbmUgUlBDLW92ZXItUkRNQSBjcmVkaXQg
-aXMgcmVzZXJ2ZWQgZm9yDQo+ID4gPiBvcGVyYXRpb25zIGxpa2Uga2VlcGFsaXZlLg0KPiA+ID4g
-DQo+ID4gPiBGb3IgdHJhbnNwb3J0cyB0aGF0IGNvbnZleSBORlN2NCwgaXQgc2VlbXMgbGlrZSBs
-ZWFzZSByZW5ld2FsDQo+ID4gPiB3b3VsZA0KPiA+ID4gYWxzbyBiZSBhIGNhbmRpZGF0ZSBmb3Ig
-dXNpbmcgYSBwcmlvcml0eSB0cmFuc3BvcnQgc2xvdC4gSSdkIGxpa2UNCj4gPiA+IHRvDQo+ID4g
-PiBzZWUgYSBtZWNoYW5pc20gYmV0dGVyIHRoYW4gUlBDUkRNQV9QUklPUklUWSB0aGF0IGNhbiBl
-bnN1cmUgb25seQ0KPiA+ID4gb25lIHByaW9yaXR5IG9wZXJhdGlvbiBpcyBpbiB1c2UgYXQgYSB0
-aW1lLg0KPiA+ID4gDQo+ID4gPiBTaWduZWQtb2ZmLWJ5OiBDaHVjayBMZXZlciA8Y2h1Y2subGV2
-ZXJAb3JhY2xlLmNvbT4NCj4gPiA+IC0tLQ0KPiA+ID4gwqBpbmNsdWRlL2xpbnV4L3N1bnJwYy9z
-Y2hlZC5owqDCoMKgwqB8wqDCoMKgwqAyICsrDQo+ID4gPiDCoG5ldC9zdW5ycGMveHBydC5jwqDC
-oMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgfMKgwqDCoMKgNCArKysrDQo+ID4gPiDCoG5ldC9z
-dW5ycGMveHBydHJkbWEvdHJhbnNwb3J0LmMgfMKgwqDCoMKgMyArKy0NCj4gPiA+IMKgbmV0L3N1
-bnJwYy94cHJ0cmRtYS92ZXJicy5jwqDCoMKgwqDCoHzCoMKgwqAxMyArKysrKysrKy0tLS0tDQo+
-ID4gPiDCoDQgZmlsZXMgY2hhbmdlZCwgMTYgaW5zZXJ0aW9ucygrKSwgNiBkZWxldGlvbnMoLSkN
-Cj4gPiA+IA0KPiA+ID4gZGlmZiAtLWdpdCBhL2luY2x1ZGUvbGludXgvc3VucnBjL3NjaGVkLmgN
-Cj4gPiA+IGIvaW5jbHVkZS9saW51eC9zdW5ycGMvc2NoZWQuaA0KPiA+ID4gaW5kZXggMTM4MjJl
-Ni4uZmNlYTE1OCAxMDA2NDQNCj4gPiA+IC0tLSBhL2luY2x1ZGUvbGludXgvc3VucnBjL3NjaGVk
-LmgNCj4gPiA+ICsrKyBiL2luY2x1ZGUvbGludXgvc3VucnBjL3NjaGVkLmgNCj4gPiA+IEBAIC0x
-MjcsNiArMTI3LDcgQEAgc3RydWN0IHJwY190YXNrX3NldHVwIHsNCj4gPiA+IMKgI2RlZmluZSBS
-UENfVEFTS19USU1FT1VUCTB4MTAwMAkJLyogZmFpbA0KPiA+ID4gd2l0aA0KPiA+ID4gRVRJTUVE
-T1VUIG9uIHRpbWVvdXQgKi8NCj4gPiA+IMKgI2RlZmluZSBSUENfVEFTS19OT0NPTk5FQ1QJMHgy
-MDAwCQkvKg0KPiA+ID4gcmV0dXJuDQo+ID4gPiBFTk9UQ09OTiBpZiBub3QgY29ubmVjdGVkICov
-DQo+ID4gPiDCoCNkZWZpbmUgUlBDX1RBU0tfTk9fUkVUUkFOU19USU1FT1VUCTB4NDAwMAkJDQo+
-ID4gPiAvKg0KPiA+ID4gd2FpdCBmb3JldmVyIGZvciBhIHJlcGx5ICovDQo+ID4gPiArI2RlZmlu
-ZSBSUENfVEFTS19OT19DT05HCTB4ODAwMAkJLyogc2tpcA0KPiA+ID4gY29uZ2VzdGlvbiBjb250
-cm9sICovDQo+ID4gPiDCoA0KPiA+ID4gwqAjZGVmaW5lIFJQQ19UQVNLX1NPRlRQSU5HCShSUENf
-VEFTS19TT0ZUIHwNCj4gPiA+IFJQQ19UQVNLX1NPRlRDT05OKQ0KPiA+ID4gwqANCj4gPiA+IEBA
-IC0xMzcsNiArMTM4LDcgQEAgc3RydWN0IHJwY190YXNrX3NldHVwIHsNCj4gPiA+IMKgI2RlZmlu
-ZSBSUENfSVNfU09GVCh0KQkJKCh0KS0+dGtfZmxhZ3MgJg0KPiA+ID4gKFJQQ19UQVNLX1NPRlR8
-UlBDX1RBU0tfVElNRU9VVCkpDQo+ID4gPiDCoCNkZWZpbmUgUlBDX0lTX1NPRlRDT05OKHQpCSgo
-dCktPnRrX2ZsYWdzICYNCj4gPiA+IFJQQ19UQVNLX1NPRlRDT05OKQ0KPiA+ID4gwqAjZGVmaW5l
-IFJQQ19XQVNfU0VOVCh0KQkJKCh0KS0+dGtfZmxhZ3MgJg0KPiA+ID4gUlBDX1RBU0tfU0VOVCkN
-Cj4gPiA+ICsjZGVmaW5lIFJQQ19TS0lQX0NPTkcodCkJKCh0KS0+dGtfZmxhZ3MgJg0KPiA+ID4g
-UlBDX1RBU0tfTk9fQ09ORykNCj4gPiA+IMKgDQo+ID4gPiDCoCNkZWZpbmUgUlBDX1RBU0tfUlVO
-TklORwkwDQo+ID4gPiDCoCNkZWZpbmUgUlBDX1RBU0tfUVVFVUVECQkxDQo+ID4gPiBkaWZmIC0t
-Z2l0IGEvbmV0L3N1bnJwYy94cHJ0LmMgYi9uZXQvc3VucnBjL3hwcnQuYw0KPiA+ID4gaW5kZXgg
-YjUzMGEyOC4uYTQ3N2VlNiAxMDA2NDQNCj4gPiA+IC0tLSBhL25ldC9zdW5ycGMveHBydC5jDQo+
-ID4gPiArKysgYi9uZXQvc3VucnBjL3hwcnQuYw0KPiA+ID4gQEAgLTM5Miw2ICszOTIsMTAgQEAg
-c3RhdGljIGlubGluZSB2b2lkIHhwcnRfcmVsZWFzZV93cml0ZShzdHJ1Y3QNCj4gPiA+IHJwY194
-cHJ0ICp4cHJ0LCBzdHJ1Y3QgcnBjX3Rhc2sgKnRhDQo+ID4gPiDCoHsNCj4gPiA+IMKgCXN0cnVj
-dCBycGNfcnFzdCAqcmVxID0gdGFzay0+dGtfcnFzdHA7DQo+ID4gPiDCoA0KPiA+ID4gKwlpZiAo
-UlBDX1NLSVBfQ09ORyh0YXNrKSkgew0KPiA+ID4gKwkJcmVxLT5ycV9jb25nID0gMDsNCj4gPiA+
-ICsJCXJldHVybiAxOw0KPiA+ID4gKwl9DQo+ID4gDQo+ID4gV2h5IG5vdCBqdXN0IGhhdmUgdGhl
-IFJETUEgbGF5ZXIgY2FsbCB4cHJ0X3Jlc2VydmVfeHBydCgpIChhbmQNCj4gPiB4cHJ0X3JlbGVh
-c2VfeHBydCgpKSBpZiB0aGlzIGZsYWcgaXMgc2V0PyBJdCBzZWVtcyB0byBtZSB0aGF0IHlvdQ0K
-PiA+IHdpbGwNCj4gPiBuZWVkIHNvbWUga2luZCBvZiBleHRyYSBjb25nZXN0aW9uIGNvbnRyb2wg
-aW4gdGhlIFJETUEgbGF5ZXIgYW55d2F5DQo+ID4gc2luY2UgeW91IG9ubHkgaGF2ZSBvbmUgcmVz
-ZXJ2ZWQgY3JlZGl0IGZvciB0aGVzZSBwcml2aWxlZ2VkIHRhc2tzDQo+ID4gKG9yDQo+ID4gZGlk
-IEkgbWlzcyB3aGVyZSB0aGF0IGlzIGJlaW5nIGdhdGVkPykuDQo+IA0KPiBUaGFua3MgZm9yIHRo
-ZSByZXZpZXcuDQo+IA0KPiBTZWUgUlBDUkRNQV9JQV9SU1ZEX0NSRURJVCBpbiAxMS8xMi4gSXQn
-cyBhIGhhY2sgSSdtIG5vdA0KPiB0ZXJyaWJseSBoYXBweSB3aXRoLg0KPiANCj4gU28sIEkgdGhp
-bmsgeW91IGFyZSBzdWdnZXN0aW5nIHJlcGxhY2luZyB4cHJ0cmRtYSdzDQo+IC0+cmVzZXJ2ZV94
-cHJ0IHdpdGggc29tZXRoaW5nIGxpa2U6DQo+IA0KPiBpbnQgeHBydF9yZG1hX3Jlc2VydmVfeHBy
-dCh4cHJ0LCB0YXNrKQ0KPiB7DQo+IMKgwqDCoMKgwqDCoGlmIChSUENfU0tJUF9DT05HKHRhc2sp
-KQ0KPiDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgcmV0dXJuIHhwcnRfcmVzZXJ2ZV94cHJ0KHhwcnQs
-IHRhc2spOw0KPiDCoMKgwqDCoMKgwqByZXR1cm4geHBydF9yZXNlcnZlX3hwcnRfY29uZyh4cHJ0
-LCB0YXNrKTsNCj4gfQ0KPiANCj4gYW5kIGxpa2V3aXNlIGZvciAtPnJlbGVhc2VfeHBydCA/DQoN
-ClJpZ2h0Lg0KDQo+IFdoYXQgSSdkIHJlYWxseSBsaWtlIHRvIGRvIGlzIGhhdmUgdGhlIFJQQyBs
-YXllcg0KPiBwcmV2ZW50IG1vcmUgdGhhbiBvbmUgUlBDIGF0IGEgdGltZSBmcm9tIHVzaW5nIHRo
-ZQ0KPiBleHRyYSBjcmVkaXQsIGFuZCBzb21laG93IGVuc3VyZSB0aGF0IHRob3NlIFJQQ3MNCj4g
-YXJlIGdvaW5nIHRvIGJlIHNob3J0LWxpdmVkIChTT0ZUIHwgU09GVENPTk4sDQo+IG1heWJlKS4N
-Cg0KQ3JlZGl0cyBhcmUgYSB0cmFuc3BvcnQgbGF5ZXIgdGhpbmcsIHRob3VnaC4gVGhlcmUgaXMg
-bm8gZXF1aXZhbGVudCBpbg0KdGhlIG5vbi1SRE1BIHdvcmxkLiBUQ1AgYW5kIFVEUCBzaG91bGQg
-bm9ybWFsbHkgYm90aCBiZSBmaW5lIHdpdGgNCnRyYW5zbWl0dGluZyBhbiBleHRyYSBSUEMgY2Fs
-bC4NCg0KRXZlbiB0aW1lb3V0cyBhcmUgYSB0cmFuc3BvcnQgbGF5ZXIgaXNzdWU7IHNlZSB0aGUg
-cGF0Y2hlcyBJIHB1dCBvdXQNCnRoaXMgbW9ybmluZyBpbiBvcmRlciB0byByZWR1Y2UgdGhlIFRD
-UCBjb25uZWN0aW9uIHRpbWVvdXRzIGFuZCBwdXQNCnRoZW0gbW9yZSBpbiBsaW5lIHdpdGggdGhl
-IGxlYXNlIHBlcmlvZC4gU29tZXRoaW5nIGxpa2UgdGhhdCBtYWtlcyBubw0Kc2Vuc2UgaW4gdGhl
-IFVEUCB3b3JsZCAobm8gY29ubmVjdGlvbnMpLCBvciBldmVuIGluIEFGX0xPQ0FMIChubw0Kcm91
-dGluZyksIHdoaWNoIGlzIHdoeSBJIGFkZGVkIHRoZSBzZXRfY29ubmVjdGlvbl90aW1lb3V0KCkg
-Y2FsbGJhY2suDQoNCj4gDQo+ID4gPiDCoAlpZiAocmVxLT5ycV9jb25nKQ0KPiA+ID4gwqAJCXJl
-dHVybiAxOw0KPiA+ID4gwqAJZHByaW50aygiUlBDOiAlNXUgeHBydF9jd25kX2xpbWl0ZWQgY29u
-ZyA9ICVsdSBjd25kID0NCj4gPiA+ICVsdVxuIiwNCj4gPiA+IGRpZmYgLS1naXQgYS9uZXQvc3Vu
-cnBjL3hwcnRyZG1hL3RyYW5zcG9ydC5jDQo+ID4gPiBiL25ldC9zdW5ycGMveHBydHJkbWEvdHJh
-bnNwb3J0LmMNCj4gPiA+IGluZGV4IDNhNWE4MDUuLjA3M2ZlY2QgMTAwNjQ0DQo+ID4gPiAtLS0g
-YS9uZXQvc3VucnBjL3hwcnRyZG1hL3RyYW5zcG9ydC5jDQo+ID4gPiArKysgYi9uZXQvc3VucnBj
-L3hwcnRyZG1hL3RyYW5zcG9ydC5jDQo+ID4gPiBAQCAtNTQ2LDcgKzU0Niw4IEBAIHN0YXRpYyB2
-b2lkIHJwY3JkbWFfa2VlcGFsaXZlX3JlbGVhc2Uodm9pZA0KPiA+ID4gKmNhbGxkYXRhKQ0KPiA+
-ID4gwqANCj4gPiA+IMKgCWRhdGEgPSB4cHJ0X2dldCh4cHJ0KTsNCj4gPiA+IMKgCW51bGxfdGFz
-ayA9IHJwY19jYWxsX251bGxfaGVscGVyKHRhc2stPnRrX2NsaWVudCwgeHBydCwNCj4gPiA+IE5V
-TEwsDQo+ID4gPiAtCQkJCQnCoFJQQ19UQVNLX1NPRlRQSU5HIHwNCj4gPiA+IFJQQ19UQVNLX0FT
-WU5DLA0KPiA+ID4gKwkJCQkJwqBSUENfVEFTS19TT0ZUUElORyB8DQo+ID4gPiBSUENfVEFTS19B
-U1lOQyB8DQo+ID4gPiArCQkJCQnCoFJQQ19UQVNLX05PX0NPTkcsDQo+ID4gPiDCoAkJCQkJwqAm
-cnBjcmRtYV9rZWVwYWxpdmVfY2FsbA0KPiA+ID4gX29wcw0KPiA+ID4gLCBkYXRhKTsNCj4gPiA+
-IMKgCWlmICghSVNfRVJSKG51bGxfdGFzaykpDQo+ID4gPiDCoAkJcnBjX3B1dF90YXNrKG51bGxf
-dGFzayk7DQo+ID4gPiBkaWZmIC0tZ2l0IGEvbmV0L3N1bnJwYy94cHJ0cmRtYS92ZXJicy5jDQo+
-ID4gPiBiL25ldC9zdW5ycGMveHBydHJkbWEvdmVyYnMuYw0KPiA+ID4gaW5kZXggODFjZDMxYS4u
-ZDliNWZhNyAxMDA2NDQNCj4gPiA+IC0tLSBhL25ldC9zdW5ycGMveHBydHJkbWEvdmVyYnMuYw0K
-PiA+ID4gKysrIGIvbmV0L3N1bnJwYy94cHJ0cmRtYS92ZXJicy5jDQo+ID4gPiBAQCAtMTM2LDE5
-ICsxMzYsMjAgQEANCj4gPiA+IMKgc3RhdGljIHZvaWQNCj4gPiA+IMKgcnBjcmRtYV91cGRhdGVf
-Z3JhbnRlZF9jcmVkaXRzKHN0cnVjdCBycGNyZG1hX3JlcCAqcmVwKQ0KPiA+ID4gwqB7DQo+ID4g
-PiAtCXN0cnVjdCBycGNyZG1hX21zZyAqcm1zZ3AgPSByZG1hYl90b19tc2cocmVwLQ0KPiA+ID4g
-PnJyX3JkbWFidWYpOw0KPiA+ID4gwqAJc3RydWN0IHJwY3JkbWFfYnVmZmVyICpidWZmZXIgPSAm
-cmVwLT5ycl9yeHBydC0+cnhfYnVmOw0KPiA+ID4gKwlfX2JlMzIgKnAgPSByZXAtPnJyX3JkbWFi
-dWYtPnJnX2Jhc2U7DQo+ID4gPiDCoAl1MzIgY3JlZGl0czsNCj4gPiA+IMKgDQo+ID4gPiDCoAlp
-ZiAocmVwLT5ycl9sZW4gPCBSUENSRE1BX0hEUkxFTl9FUlIpDQo+ID4gPiDCoAkJcmV0dXJuOw0K
-PiA+ID4gwqANCj4gPiA+IC0JY3JlZGl0cyA9IGJlMzJfdG9fY3B1KHJtc2dwLT5ybV9jcmVkaXQp
-Ow0KPiA+ID4gKwljcmVkaXRzID0gYmUzMl90b19jcHVwKHAgKyAyKTsNCj4gPiA+ICsJaWYgKGNy
-ZWRpdHMgPiBidWZmZXItPnJiX21heF9yZXF1ZXN0cykNCj4gPiA+ICsJCWNyZWRpdHMgPSBidWZm
-ZXItPnJiX21heF9yZXF1ZXN0czsNCj4gPiA+ICsJLyogUmVzZXJ2ZSBvbmUgY3JlZGl0IGZvciBr
-ZWVwYWxpdmUgcGluZyAqLw0KPiA+ID4gKwljcmVkaXRzLS07DQo+ID4gPiDCoAlpZiAoY3JlZGl0
-cyA9PSAwKQ0KPiA+ID4gwqAJCWNyZWRpdHMgPSAxOwkvKiBkb24ndCBkZWFkbG9jayAqLw0KPiA+
-ID4gLQllbHNlIGlmIChjcmVkaXRzID4gYnVmZmVyLT5yYl9tYXhfcmVxdWVzdHMpDQo+ID4gPiAt
-CQljcmVkaXRzID0gYnVmZmVyLT5yYl9tYXhfcmVxdWVzdHM7DQo+ID4gPiAtDQo+ID4gPiDCoAlh
-dG9taWNfc2V0KCZidWZmZXItPnJiX2NyZWRpdHMsIGNyZWRpdHMpOw0KPiA+ID4gwqB9DQo+ID4g
-PiDCoA0KPiA+ID4gQEAgLTkxNSw2ICs5MTYsOCBAQCBzdHJ1Y3QgcnBjcmRtYV9yZXAgKg0KPiA+
-ID4gwqAJc3RydWN0IHJwY3JkbWFfYnVmZmVyICpidWYgPSAmcl94cHJ0LT5yeF9idWY7DQo+ID4g
-PiDCoAlpbnQgaSwgcmM7DQo+ID4gPiDCoA0KPiA+ID4gKwlpZiAocl94cHJ0LT5yeF9kYXRhLm1h
-eF9yZXF1ZXN0cyA8IDIpDQo+ID4gPiArCQlyZXR1cm4gLUVJTlZBTDsNCj4gPiA+IMKgCWJ1Zi0+
-cmJfbWF4X3JlcXVlc3RzID0gcl94cHJ0LT5yeF9kYXRhLm1heF9yZXF1ZXN0czsNCj4gPiA+IMKg
-CWJ1Zi0+cmJfYmNfc3J2X21heF9yZXF1ZXN0cyA9IDA7DQo+ID4gPiDCoAlhdG9taWNfc2V0KCZi
-dWYtPnJiX2NyZWRpdHMsIDEpOw0KPiA+ID4gDQo+ID4gPiAtLQ0KPiA+ID4gVG8gdW5zdWJzY3Jp
-YmUgZnJvbSB0aGlzIGxpc3Q6IHNlbmQgdGhlIGxpbmUgInVuc3Vic2NyaWJlIGxpbnV4LQ0KPiA+
-ID4gbmZzIg0KPiA+ID4gaW4NCj4gPiA+IHRoZSBib2R5IG9mIGEgbWVzc2FnZSB0byBtYWpvcmRv
-bW9Admdlci5rZXJuZWwub3JnDQo+ID4gPiBNb3JlIG1ham9yZG9tbyBpbmZvIGF0wqDCoGh0dHA6
-Ly92Z2VyLmtlcm5lbC5vcmcvbWFqb3Jkb21vLWluZm8uaHRtDQo+ID4gPiBsDQo+ID4gPiANCj4g
-PiANCj4gPiAtLcKgDQo+ID4gDQo+ID4gDQo+ID4gCQ0KPiA+IAkNCj4gPiANCj4gPiANCj4gPiBU
-cm9uZCBNeWtsZWJ1c3QNCj4gPiBQcmluY2lwYWwgU3lzdGVtIEFyY2hpdGVjdA0KPiA+IDQzMDAg
-RWwgQ2FtaW5vIFJlYWwgfCBTdWl0ZSAxMDANCj4gPiBMb3MgQWx0b3MsIENBwqDCoDk0MDIyDQo+
-ID4gVzogNjUwLTQyMi0zODAwDQo+ID4gQzogODAxLTkyMS00NTgzwqANCj4gPiB3d3cucHJpbWFy
-eWRhdGEuY29tDQo+IA0KPiAtLQ0KPiBDaHVjayBMZXZlcg0KPiANCj4gDQo+IA0KLS0gDQoNCg0K
-DQoJDQoJDQoNCg0KVHJvbmQgTXlrbGVidXN0DQpQcmluY2lwYWwgU3lzdGVtIEFyY2hpdGVjdA0K
-NDMwMCBFbCBDYW1pbm8gUmVhbCB8IFN1aXRlIDEwMA0KTG9zIEFsdG9zLCBDQcKgwqA5NDAyMg0K
-VzogNjUwLTQyMi0zODAwDQpDOiA4MDEtOTIxLTQ1ODPCoA0Kd3d3LnByaW1hcnlkYXRhLmNvbQ0K
-DQoNCg0KDQo=
+When pad optimization is disabled, rpcrdma_convert_iovs still
+does not add explicit XDR round-up padding to a Read chunk.
+
+Commit 677eb17e94ed ("xprtrdma: Fix XDR tail buffer marshalling")
+incorrectly short-circuited the test for whether round-up padding
+is needed that appears later in rpcrdma_convert_iovs.
+
+However, if this is indeed a regular Read chunk (and not a
+Position-Zero Read chunk), the tail iovec _always_ contains the
+chunk's padding, and never anything else.
+
+So, it's easy to just skip the tail when padding optimization is
+enabled, and add the tail in a subsequent Read chunk segment, if
+disabled.
+
+Fixes: 677eb17e94ed ("xprtrdma: Fix XDR tail buffer marshalling")
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
+ net/sunrpc/xprtrdma/rpc_rdma.c |   10 ++++------
+ 1 file changed, 4 insertions(+), 6 deletions(-)
+
+diff --git a/net/sunrpc/xprtrdma/rpc_rdma.c b/net/sunrpc/xprtrdma/rpc_rdma.c
+index c52e0f2..a524d3c 100644
+--- a/net/sunrpc/xprtrdma/rpc_rdma.c
++++ b/net/sunrpc/xprtrdma/rpc_rdma.c
+@@ -226,8 +226,10 @@ static bool rpcrdma_results_inline(struct rpcrdma_xprt *r_xprt,
+ 	if (len && n == RPCRDMA_MAX_SEGS)
+ 		goto out_overflow;
+ 
+-	/* When encoding the read list, the tail is always sent inline */
+-	if (type == rpcrdma_readch)
++	/* When encoding a Read chunk, the tail iovec contains an
++	 * XDR pad and may be omitted.
++	 */
++	if (type == rpcrdma_readch && xprt_rdma_pad_optimize)
+ 		return n;
+ 
+ 	/* When encoding the Write list, some servers need to see an extra
+@@ -238,10 +240,6 @@ static bool rpcrdma_results_inline(struct rpcrdma_xprt *r_xprt,
+ 		return n;
+ 
+ 	if (xdrbuf->tail[0].iov_len) {
+-		/* the rpcrdma protocol allows us to omit any trailing
+-		 * xdr pad bytes, saving the server an RDMA operation. */
+-		if (xdrbuf->tail[0].iov_len < 4 && xprt_rdma_pad_optimize)
+-			return n;
+ 		n = rpcrdma_convert_kvec(&xdrbuf->tail[0], seg, n);
+ 		if (n == RPCRDMA_MAX_SEGS)
+ 			goto out_overflow;
 
