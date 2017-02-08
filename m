@@ -1,65 +1,81 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from us-smtp-delivery-194.mimecast.com ([63.128.21.194]:56060 "EHLO
-        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1751209AbdBHV5u (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 8 Feb 2017 16:57:50 -0500
-From: Trond Myklebust <trondmy@primarydata.com>
-To: "tigran.mkrtchyan@desy.de" <tigran.mkrtchyan@desy.de>
-CC: "Anna.Schumaker@netapp.com" <Anna.Schumaker@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 0/4] Match TCP connection timeouts to the lease period
-Date: Wed, 8 Feb 2017 21:57:44 +0000
-Message-ID: <1486591062.8353.2.camel@primarydata.com>
-References: <ad98d031-f4a0-4713-a605-7c7f1e61a4f2@email.android.com>
-In-Reply-To: <ad98d031-f4a0-4713-a605-7c7f1e61a4f2@email.android.com>
+Received: from mail-io0-f177.google.com ([209.85.223.177]:35943 "EHLO
+        mail-io0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751134AbdBHWBp (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 8 Feb 2017 17:01:45 -0500
+Subject: [PATCH v3 00/12] NFS/RDMA client-side patches for 4.11
+From: Chuck Lever <chuck.lever@oracle.com>
+To: anna.schumaker@netapp.com
+Cc: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
+Date: Wed, 08 Feb 2017 16:59:37 -0500
+Message-ID: <20170208214854.7152.83331.stgit@manet.1015granger.net>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gV2VkLCAyMDE3LTAyLTA4IGF0IDIyOjE4ICswMTAwLCBNa3J0Y2h5YW4sIFRpZ3JhbiB3cm90
-ZToNCj4gDQo+IA0KPiBPbiBGZWIgOCwgMjAxNyAxNzo0OCwgVHJvbmQgTXlrbGVidXN0IDx0cm9u
-ZC5teWtsZWJ1c3RAcHJpbWFyeWRhdGEuY28NCj4gbT4gd3JvdGU6DQo+IFdpdGggdGhlIGN1cnJl
-bnQgZGVmYXVsdCBUQ1AgY29ubmVjdGlvbiB0aW1lb3V0IGJlaW5nIHNldCBhdCBhcm91bmTCoA0K
-PiAzIG1pbnV0ZXMsIGFuZCBtb3N0IHNlcnZlciB2ZW5kb3JzIHNldHRpbmcgdGhlIGxlYXNlIHBl
-cmlvZCBhdMKgDQo+IHZhbHVlcyBzaWduaWZpY2FudGx5IGxvd2VyIHRoYW4gdGhhdCwgd2UgY2Fu
-IGVuZCB1cCBsb3NpbmcgdGhlIGxlYXNlwqANCj4gd2hpbGUgd2FpdGluZyBmb3IgdGhlIFRDUCBs
-YXllciB0byBkaXNjb3ZlciB0aGF0IHdlIG5lZWQgdG8gYnJlYWsNCj4gdGhlwqANCj4gY29ubmVj
-dGlvbi7CoA0KPiBUaGlzIHBhdGNoIHNlcmllcyBzZXRzIHVwIGFuIGludGVyZmFjZSB0byBhbGxv
-dyB0aGUgTkZTdjQgY2xpZW50IHRvwqANCj4gYWRqdXN0IHRoc2VlIHRpbWVvdXQgdmFsdWVzIGRv
-d24gb25jZSBpdCBoYXMgb2J0YWluZWQgYSB2YWx1ZSBmb3LCoA0KPiB0aGUgbGVhc2UgcGVyaW9k
-IGZyb20gdGhlIHNlcnZlci7CoA0KPiANCj4gDQo+IENvb2wgZmluYWxseSEgSSB3YXMgd2FpdGlu
-ZyBmb3IgdGhhdCBxdWl0ZSBhIGJpdC4NCj4gDQo+IGh0dHBzOi8vd3d3LmlldGYub3JnL21haWwt
-YXJjaGl2ZS93ZWIvbmZzdjQvY3VycmVudC9tc2cxMzc1OC5odG1sDQo+IA0KPiANCg0KTm8uIFRo
-aXMgbWVjaGFuaXNtIGRvZXMgbm90IGV4Y3VzZSB0aGUgc2VydmVyIGZyb20gaGF2aW5nIHRvIHBy
-b2Nlc3MNCnJlcXVlc3RzLCBhbmQgSSBhbSBjZXJ0YWlubHkgbm90IHNpZ25pbmcgdXMgdXAgdG8g
-YW55ICJnZW50bGVtYW4ncw0KYWdyZWVtZW50Ii4NCg0KSWYgdGhlIHNlcnZlciBoYXMgcmVjZWl2
-ZWQgYW4gUlBDIGNhbGwsIHRoZW4gaXQgTVVTVCBwcm9jZXNzIGl0LA0Kd2hldGhlciBvciBub3Qg
-dGhlcmUgaXMgYSBUQ1AgY29ubmVjdGlvbiwgb3RoZXJ3aXNlIHRoZSBsZWFzZSBtYXkgc3RpbGwN
-CmJlIGxvc3QgZHVlIHRvIHRoZSBzZXJ2ZXIgZmFpbGluZyB0byBsaXZlIHVwIHRvIHRoZSByZXF1
-aXJlbWVudHMgaW4NClJGQzU2NjEgU2VjdGlvbiA4LjPCoChTZWUgaHR0cHM6Ly90b29scy5pZXRm
-Lm9yZy9odG1sL3JmYzU2NjEjc2VjdGlvbi04Lg0KMykuIFRob3NlIHJlcXVpcmVtZW50cyBzdGF0
-ZSB0aGF0ICJJZiB0aGUgY2xpZW50IElEJ3MgbGVhc2UgaGFzIG5vdA0KZXhwaXJlZCB3aGVuIHRo
-ZSBzZXJ2ZXIgcmVjZWl2ZXMgYSBTRVFVRU5DRSBvcGVyYXRpb24sIHRoZW4gdGhlIHNlcnZlcg0K
-TVVTVCByZW5ldyB0aGUgbGVhc2UuIg0KDQpUaGUgcG9pbnQgb2YgdGhlc2UgcGF0Y2hlcyBhcmUg
-dG8gZW5zdXJlIHRoYXQgd2UgZGV0ZWN0IHJvdXRpbmcgY2hhbmdlcw0KYW5kIHRoaW5ncyBsaWtl
-IHRoYXQgaW4gYSB0aW1lbHkgZmFzaGlvbiAoYWdhaW4sIGFzIHJlcXVpcmVkIGJ5DQpSRkM1NjYx
-LCBTZWN0aW9uIDguMykgc28gdGhhdCB3ZSBjYW4gcmUtZXN0YWJsaXNoIHRoZSBjb25uZWN0aW9u
-IGFuZA0KcmVuZXcgdGhlIGxlYXNlLg0KDQo+IFRpZ3Jhbi4NCj4gDQo+IFRyb25kIE15a2xlYnVz
-dCAoNCk6wqANCj4gwqAgU1VOUlBDOiBSZW1vdmUgdW51c2VkIGZ1bmN0aW9uIHJwY19nZXRfdGlt
-ZW91dCgpwqANCj4gwqAgU1VOUlBDOiBSZWZhY3RvciBUQ1Agc29ja2V0IHRpbWVvdXQgY29kZSBp
-bnRvIGEgaGVscGVyIGZ1bmN0aW9uwqANCj4gwqAgU1VOUlBDOiBBbGxvdyBjaGFuZ2luZyBvZiB0
-aGUgVENQIHRpbWVvdXQgcGFyYW1ldGVycyBvbiB0aGUgZmx5wqANCj4gwqAgTkZTdjQ6IFNldCB0
-aGUgY29ubmVjdGlvbiB0aW1lb3V0IHRvIG1hdGNoIHRoZSBsZWFzZSBwZXJpb2TCoA0KPiANCj4g
-ZnMvbmZzL25mczRyZW5ld2QuY8KgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoCB8wqAgMiArLcKgDQo+
-IGluY2x1ZGUvbGludXgvc3VucnBjL2NsbnQuaMKgwqDCoMKgIHzCoCA2ICstLcKgDQo+IGluY2x1
-ZGUvbGludXgvc3VucnBjL3hwcnQuaMKgwqDCoMKgIHzCoCA0ICsrwqANCj4gaW5jbHVkZS9saW51
-eC9zdW5ycGMveHBydHNvY2suaCB8wqAgMyArK8KgDQo+IG5ldC9zdW5ycGMvY2xudC5jwqDCoMKg
-wqDCoMKgwqDCoMKgwqDCoMKgwqDCoCB8IDUxICsrKysrKysrKysrKystLS0tLS0tLS0tLcKgDQo+
-IG5ldC9zdW5ycGMveHBydHNvY2suY8KgwqDCoMKgwqDCoMKgwqDCoMKgIHwgODgNCj4gKysrKysr
-KysrKysrKysrKysrKysrKysrKysrKysrKystLS0tLS0tLS3CoA0KPiA2IGZpbGVzIGNoYW5nZWQs
-IDEwNyBpbnNlcnRpb25zKCspLCA0NyBkZWxldGlvbnMoLSnCoA0KPiANCi0tIA0KDQoNCgkNCgkN
-Cg0KDQpUcm9uZCBNeWtsZWJ1c3QNClByaW5jaXBhbCBTeXN0ZW0gQXJjaGl0ZWN0DQo0MzAwIEVs
-IENhbWlubyBSZWFsIHwgU3VpdGUgMTAwDQpMb3MgQWx0b3MsIENBwqDCoDk0MDIyDQpXOiA2NTAt
-NDIyLTM4MDANCkM6IDgwMS05MjEtNDU4M8KgDQp3d3cucHJpbWFyeWRhdGEuY29tDQoNCg0KDQo=
+Hi Anna-
 
+These are bug fixes and add support for RPC-over-RDMA connection
+keepalive. The keepalive patches are still waiting for internal
+testing resources to confirm they trigger connection loss in the
+right circumstances, but my own testing shows they are behaving as
+expected and do not introduce instability.
+
+Available in the "nfs-rdma-for-4.11" topic branch of this git repo:
+
+git://git.linux-nfs.org/projects/cel/cel-2.6.git
+
+
+Or for browsing:
+
+http://git.linux-nfs.org/?p=cel/cel-2.6.git;a=log;h=refs/heads/nfs-rdma-for-4.11
+
+
+Changes since v2:
+- Rebased on v4.10-rc7
+- v4.10-rc bugfixes merged into this series
+- Minor improvements to patch descriptions
+- Field moved in 12/12 now done in the correct patch
+
+
+Changes since v1:
+- Rebased on v4.10-rc6
+- Tested-by and additional clean-up in 1/7
+- Patch description clarifications
+- Renamed some constants and variables
+
+---
+
+Chuck Lever (12):
+      xprtrdma: Fix Read chunk padding
+      xprtrdma: Per-connection pad optimization
+      xprtrdma: Disable pad optimization by default
+      xprtrdma: Reduce required number of send SGEs
+      xprtrdma: Shrink send SGEs array
+      xprtrdma: Properly recover FRWRs with in-flight FASTREG WRs
+      xprtrdma: Handle stale connection rejection
+      xprtrdma: Refactor management of mw_list field
+      sunrpc: Allow xprt->ops->timer method to sleep
+      sunrpc: Enable calls to rpc_call_null_helper() from other modules
+      xprtrdma: Detect unreachable NFS/RDMA servers more reliably
+      sunrpc: Allow keepalive ping on a credit-full transport
+
+
+ fs/nfs/nfs4proc.c               |    3 -
+ fs/nfsd/nfs4callback.c          |    2 -
+ include/linux/sunrpc/clnt.h     |    5 ++
+ include/linux/sunrpc/sched.h    |    4 +
+ net/sunrpc/clnt.c               |   28 +++++-----
+ net/sunrpc/xprt.c               |    6 +-
+ net/sunrpc/xprtrdma/fmr_ops.c   |    5 --
+ net/sunrpc/xprtrdma/frwr_ops.c  |   11 +---
+ net/sunrpc/xprtrdma/rpc_rdma.c  |   82 ++++++++++++++++++-----------
+ net/sunrpc/xprtrdma/transport.c |   76 +++++++++++++++++++++++++--
+ net/sunrpc/xprtrdma/verbs.c     |  109 +++++++++++++++------------------------
+ net/sunrpc/xprtrdma/xprt_rdma.h |   37 ++++++++++++-
+ net/sunrpc/xprtsock.c           |    2 +
+ 13 files changed, 234 insertions(+), 136 deletions(-)
+
+--
+Chuck Lever
