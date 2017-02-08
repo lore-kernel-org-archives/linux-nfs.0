@@ -1,14 +1,14 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f195.google.com ([209.85.223.195]:32910 "EHLO
+Received: from mail-io0-f195.google.com ([209.85.223.195]:35956 "EHLO
         mail-io0-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751128AbdBHWC4 (ORCPT
+        with ESMTP id S1750972AbdBHWC4 (ORCPT
         <rfc822;linux-nfs@vger.kernel.org>); Wed, 8 Feb 2017 17:02:56 -0500
-Subject: [PATCH v3 07/12] xprtrdma: Handle stale connection rejection
+Subject: [PATCH v3 08/12] xprtrdma: Refactor management of mw_list field
 From: Chuck Lever <chuck.lever@oracle.com>
 To: anna.schumaker@netapp.com
 Cc: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Wed, 08 Feb 2017 17:00:35 -0500
-Message-ID: <20170208220035.7152.1001.stgit@manet.1015granger.net>
+Date: Wed, 08 Feb 2017 17:00:43 -0500
+Message-ID: <20170208220043.7152.23924.stgit@manet.1015granger.net>
 In-Reply-To: <20170208214854.7152.83331.stgit@manet.1015granger.net>
 References: <20170208214854.7152.83331.stgit@manet.1015granger.net>
 MIME-Version: 1.0
@@ -16,135 +16,175 @@ Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-A server rejects a connection attempt with STALE_CONNECTION when a
-client attempts to connect to a working remote service, but uses a
-QPN and GUID that corresponds to an old connection that was
-abandoned. This might occur after a client crashes and restarts.
-
-Fix rpcrdma_conn_upcall() to distinguish between a normal rejection
-and rejection of stale connection parameters.
-
-As an additional clean-up, remove the code that retries the
-connection attempt with different ORD/IRD values. Code audit of
-other ULP initiators shows no similar special case handling of
-initiator_depth or responder_resources.
+Clean up some duplicate code.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- net/sunrpc/xprtrdma/verbs.c |   66 ++++++++++++++-----------------------------
- 1 file changed, 21 insertions(+), 45 deletions(-)
+ net/sunrpc/xprtrdma/fmr_ops.c   |    5 +----
+ net/sunrpc/xprtrdma/frwr_ops.c  |   11 ++++-------
+ net/sunrpc/xprtrdma/rpc_rdma.c  |    6 +++---
+ net/sunrpc/xprtrdma/verbs.c     |   15 +++++----------
+ net/sunrpc/xprtrdma/xprt_rdma.h |   16 ++++++++++++++++
+ 5 files changed, 29 insertions(+), 24 deletions(-)
 
+diff --git a/net/sunrpc/xprtrdma/fmr_ops.c b/net/sunrpc/xprtrdma/fmr_ops.c
+index 1ebb09e..59e6402 100644
+--- a/net/sunrpc/xprtrdma/fmr_ops.c
++++ b/net/sunrpc/xprtrdma/fmr_ops.c
+@@ -310,10 +310,7 @@ enum {
+ 	struct rpcrdma_mw *mw;
+ 
+ 	while (!list_empty(&req->rl_registered)) {
+-		mw = list_first_entry(&req->rl_registered,
+-				      struct rpcrdma_mw, mw_list);
+-		list_del_init(&mw->mw_list);
+-
++		mw = rpcrdma_pop_mw(&req->rl_registered);
+ 		if (sync)
+ 			fmr_op_recover_mr(mw);
+ 		else
+diff --git a/net/sunrpc/xprtrdma/frwr_ops.c b/net/sunrpc/xprtrdma/frwr_ops.c
+index 47bed53..f81dd93 100644
+--- a/net/sunrpc/xprtrdma/frwr_ops.c
++++ b/net/sunrpc/xprtrdma/frwr_ops.c
+@@ -466,8 +466,8 @@
+ 	struct ib_send_wr *first, **prev, *last, *bad_wr;
+ 	struct rpcrdma_rep *rep = req->rl_reply;
+ 	struct rpcrdma_ia *ia = &r_xprt->rx_ia;
+-	struct rpcrdma_mw *mw, *tmp;
+ 	struct rpcrdma_frmr *f;
++	struct rpcrdma_mw *mw;
+ 	int count, rc;
+ 
+ 	dprintk("RPC:       %s: req %p\n", __func__, req);
+@@ -534,10 +534,10 @@
+ 	 * them to the free MW list.
+ 	 */
+ unmap:
+-	list_for_each_entry_safe(mw, tmp, &req->rl_registered, mw_list) {
++	while (!list_empty(&req->rl_registered)) {
++		mw = rpcrdma_pop_mw(&req->rl_registered);
+ 		dprintk("RPC:       %s: DMA unmapping frmr %p\n",
+ 			__func__, &mw->frmr);
+-		list_del_init(&mw->mw_list);
+ 		ib_dma_unmap_sg(ia->ri_device,
+ 				mw->mw_sg, mw->mw_nents, mw->mw_dir);
+ 		rpcrdma_put_mw(r_xprt, mw);
+@@ -571,10 +571,7 @@
+ 	struct rpcrdma_mw *mw;
+ 
+ 	while (!list_empty(&req->rl_registered)) {
+-		mw = list_first_entry(&req->rl_registered,
+-				      struct rpcrdma_mw, mw_list);
+-		list_del_init(&mw->mw_list);
+-
++		mw = rpcrdma_pop_mw(&req->rl_registered);
+ 		if (sync)
+ 			frwr_op_recover_mr(mw);
+ 		else
+diff --git a/net/sunrpc/xprtrdma/rpc_rdma.c b/net/sunrpc/xprtrdma/rpc_rdma.c
+index 72b3ca0..a044be2 100644
+--- a/net/sunrpc/xprtrdma/rpc_rdma.c
++++ b/net/sunrpc/xprtrdma/rpc_rdma.c
+@@ -322,7 +322,7 @@ static bool rpcrdma_results_inline(struct rpcrdma_xprt *r_xprt,
+ 						 false, &mw);
+ 		if (n < 0)
+ 			return ERR_PTR(n);
+-		list_add(&mw->mw_list, &req->rl_registered);
++		rpcrdma_push_mw(mw, &req->rl_registered);
+ 
+ 		*iptr++ = xdr_one;	/* item present */
+ 
+@@ -390,7 +390,7 @@ static bool rpcrdma_results_inline(struct rpcrdma_xprt *r_xprt,
+ 						 true, &mw);
+ 		if (n < 0)
+ 			return ERR_PTR(n);
+-		list_add(&mw->mw_list, &req->rl_registered);
++		rpcrdma_push_mw(mw, &req->rl_registered);
+ 
+ 		iptr = xdr_encode_rdma_segment(iptr, mw);
+ 
+@@ -455,7 +455,7 @@ static bool rpcrdma_results_inline(struct rpcrdma_xprt *r_xprt,
+ 						 true, &mw);
+ 		if (n < 0)
+ 			return ERR_PTR(n);
+-		list_add(&mw->mw_list, &req->rl_registered);
++		rpcrdma_push_mw(mw, &req->rl_registered);
+ 
+ 		iptr = xdr_encode_rdma_segment(iptr, mw);
+ 
 diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
-index 61d16c3..d1ee33f 100644
+index d1ee33f..81cd31a 100644
 --- a/net/sunrpc/xprtrdma/verbs.c
 +++ b/net/sunrpc/xprtrdma/verbs.c
-@@ -54,6 +54,7 @@
- #include <linux/sunrpc/svc_rdma.h>
- #include <asm/bitops.h>
- #include <linux/module.h> /* try_module_get()/module_put() */
-+#include <rdma/ib_cm.h>
+@@ -776,9 +776,7 @@ static void rpcrdma_destroy_id(struct rdma_cm_id *id)
  
- #include "xprt_rdma.h"
+ 	spin_lock(&buf->rb_recovery_lock);
+ 	while (!list_empty(&buf->rb_stale_mrs)) {
+-		mw = list_first_entry(&buf->rb_stale_mrs,
+-				      struct rpcrdma_mw, mw_list);
+-		list_del_init(&mw->mw_list);
++		mw = rpcrdma_pop_mw(&buf->rb_stale_mrs);
+ 		spin_unlock(&buf->rb_recovery_lock);
  
-@@ -279,7 +280,14 @@
- 		connstate = -ENETDOWN;
- 		goto connected;
- 	case RDMA_CM_EVENT_REJECTED:
-+#if IS_ENABLED(CONFIG_SUNRPC_DEBUG)
-+		pr_info("rpcrdma: connection to %pIS:%u on %s rejected: %s\n",
-+			sap, rpc_get_port(sap), ia->ri_device->name,
-+			rdma_reject_msg(id, event->status));
-+#endif
- 		connstate = -ECONNREFUSED;
-+		if (event->status == IB_CM_REJ_STALE_CONN)
-+			connstate = -EAGAIN;
- 		goto connected;
- 	case RDMA_CM_EVENT_DISCONNECTED:
- 		connstate = -ECONNABORTED;
-@@ -643,20 +651,21 @@ static void rpcrdma_destroy_id(struct rdma_cm_id *id)
- int
- rpcrdma_ep_connect(struct rpcrdma_ep *ep, struct rpcrdma_ia *ia)
- {
-+	struct rpcrdma_xprt *r_xprt = container_of(ia, struct rpcrdma_xprt,
-+						   rx_ia);
- 	struct rdma_cm_id *id, *old;
-+	struct sockaddr *sap;
-+	unsigned int extras;
- 	int rc = 0;
--	int retry_count = 0;
+ 		dprintk("RPC:       %s: recovering MR %p\n", __func__, mw);
+@@ -796,7 +794,7 @@ static void rpcrdma_destroy_id(struct rdma_cm_id *id)
+ 	struct rpcrdma_buffer *buf = &r_xprt->rx_buf;
  
- 	if (ep->rep_connected != 0) {
--		struct rpcrdma_xprt *xprt;
- retry:
- 		dprintk("RPC:       %s: reconnecting...\n", __func__);
+ 	spin_lock(&buf->rb_recovery_lock);
+-	list_add(&mw->mw_list, &buf->rb_stale_mrs);
++	rpcrdma_push_mw(mw, &buf->rb_stale_mrs);
+ 	spin_unlock(&buf->rb_recovery_lock);
  
- 		rpcrdma_ep_disconnect(ep, ia);
+ 	schedule_delayed_work(&buf->rb_recovery_worker, 0);
+@@ -1072,11 +1070,8 @@ struct rpcrdma_mw *
+ 	struct rpcrdma_mw *mw = NULL;
  
--		xprt = container_of(ia, struct rpcrdma_xprt, rx_ia);
--		id = rpcrdma_create_id(xprt, ia,
--				(struct sockaddr *)&xprt->rx_data.addr);
-+		sap = (struct sockaddr *)&r_xprt->rx_data.addr;
-+		id = rpcrdma_create_id(r_xprt, ia, sap);
- 		if (IS_ERR(id)) {
- 			rc = -EHOSTUNREACH;
- 			goto out;
-@@ -711,51 +720,18 @@ static void rpcrdma_destroy_id(struct rdma_cm_id *id)
- 	}
- 
- 	wait_event_interruptible(ep->rep_connect_wait, ep->rep_connected != 0);
--
--	/*
--	 * Check state. A non-peer reject indicates no listener
--	 * (ECONNREFUSED), which may be a transient state. All
--	 * others indicate a transport condition which has already
--	 * undergone a best-effort.
--	 */
--	if (ep->rep_connected == -ECONNREFUSED &&
--	    ++retry_count <= RDMA_CONNECT_RETRY_MAX) {
--		dprintk("RPC:       %s: non-peer_reject, retry\n", __func__);
--		goto retry;
+ 	spin_lock(&buf->rb_mwlock);
+-	if (!list_empty(&buf->rb_mws)) {
+-		mw = list_first_entry(&buf->rb_mws,
+-				      struct rpcrdma_mw, mw_list);
+-		list_del_init(&mw->mw_list);
 -	}
- 	if (ep->rep_connected <= 0) {
--		/* Sometimes, the only way to reliably connect to remote
--		 * CMs is to use same nonzero values for ORD and IRD. */
--		if (retry_count++ <= RDMA_CONNECT_RETRY_MAX + 1 &&
--		    (ep->rep_remote_cma.responder_resources == 0 ||
--		     ep->rep_remote_cma.initiator_depth !=
--				ep->rep_remote_cma.responder_resources)) {
--			if (ep->rep_remote_cma.responder_resources == 0)
--				ep->rep_remote_cma.responder_resources = 1;
--			ep->rep_remote_cma.initiator_depth =
--				ep->rep_remote_cma.responder_resources;
-+		if (ep->rep_connected == -EAGAIN)
- 			goto retry;
--		}
- 		rc = ep->rep_connected;
--	} else {
--		struct rpcrdma_xprt *r_xprt;
--		unsigned int extras;
--
--		dprintk("RPC:       %s: connected\n", __func__);
--
--		r_xprt = container_of(ia, struct rpcrdma_xprt, rx_ia);
--		extras = r_xprt->rx_buf.rb_bc_srv_max_requests;
--
--		if (extras) {
--			rc = rpcrdma_ep_post_extra_recv(r_xprt, extras);
--			if (rc) {
--				pr_warn("%s: rpcrdma_ep_post_extra_recv: %i\n",
--					__func__, rc);
--				rc = 0;
--			}
--		}
-+		goto out;
- 	}
++	if (!list_empty(&buf->rb_mws))
++		mw = rpcrdma_pop_mw(&buf->rb_mws);
+ 	spin_unlock(&buf->rb_mwlock);
  
-+	dprintk("RPC:       %s: connected\n", __func__);
-+	extras = r_xprt->rx_buf.rb_bc_srv_max_requests;
-+	if (extras)
-+		rpcrdma_ep_post_extra_recv(r_xprt, extras);
+ 	if (!mw)
+@@ -1099,7 +1094,7 @@ struct rpcrdma_mw *
+ 	struct rpcrdma_buffer *buf = &r_xprt->rx_buf;
+ 
+ 	spin_lock(&buf->rb_mwlock);
+-	list_add_tail(&mw->mw_list, &buf->rb_mws);
++	rpcrdma_push_mw(mw, &buf->rb_mws);
+ 	spin_unlock(&buf->rb_mwlock);
+ }
+ 
+diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
+index 852dd0a..171a351 100644
+--- a/net/sunrpc/xprtrdma/xprt_rdma.h
++++ b/net/sunrpc/xprtrdma/xprt_rdma.h
+@@ -354,6 +354,22 @@ struct rpcrdma_req {
+ 	return rqst->rq_xprtdata;
+ }
+ 
++static inline void
++rpcrdma_push_mw(struct rpcrdma_mw *mw, struct list_head *list)
++{
++	list_add_tail(&mw->mw_list, list);
++}
 +
- out:
- 	if (rc)
- 		ep->rep_connected = rc;
++static inline struct rpcrdma_mw *
++rpcrdma_pop_mw(struct list_head *list)
++{
++	struct rpcrdma_mw *mw;
++
++	mw = list_first_entry(list, struct rpcrdma_mw, mw_list);
++	list_del(&mw->mw_list);
++	return mw;
++}
++
+ /*
+  * struct rpcrdma_buffer -- holds list/queue of pre-registered memory for
+  * inline requests/replies, and client/server credits.
 
