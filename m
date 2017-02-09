@@ -1,122 +1,52 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from us-smtp-delivery-194.mimecast.com ([216.205.24.194]:21149 "EHLO
-        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1753913AbdBIUOO (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 9 Feb 2017 15:14:14 -0500
-From: Trond Myklebust <trondmy@primarydata.com>
-To: "chuck.lever@oracle.com" <chuck.lever@oracle.com>
-CC: "anna.schumaker@netapp.com" <anna.schumaker@netapp.com>,
-        "linux-rdma@vger.kernel.org" <linux-rdma@vger.kernel.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH v3 12/12] sunrpc: Allow keepalive ping on a credit-full
- transport
-Date: Thu, 9 Feb 2017 20:13:58 +0000
-Message-ID: <1486671236.5570.4.camel@primarydata.com>
-References: <20170208214854.7152.83331.stgit@manet.1015granger.net>
-         <20170208220116.7152.87626.stgit@manet.1015granger.net>
-         <1486598713.11028.3.camel@primarydata.com>
-         <9D6B8B44-9C23-427C-9E06-7C92302EB04D@oracle.com>
-         <1486601331.11028.5.camel@primarydata.com>
-         <2AFD96A3-8D49-4E2E-B1F1-9F5C46D0C9C8@oracle.com>
-         <4E4245D4-8F9C-4CF3-8B2D-E4528B9E791F@oracle.com>
-In-Reply-To: <4E4245D4-8F9C-4CF3-8B2D-E4528B9E791F@oracle.com>
+Received: from mail-qt0-f171.google.com ([209.85.216.171]:36098 "EHLO
+        mail-qt0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751262AbdBIXBY (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 9 Feb 2017 18:01:24 -0500
+Received: by mail-qt0-f171.google.com with SMTP id k15so19069333qtg.3
+        for <linux-nfs@vger.kernel.org>; Thu, 09 Feb 2017 15:01:24 -0800 (PST)
+Received: from hut.sorenson.redhat.com (198-0-247-150-static.hfc.comcastbusiness.net. [198.0.247.150])
+        by smtp.gmail.com with ESMTPSA id u5sm10459220qkd.46.2017.02.09.15.01.22
+        for <linux-nfs@vger.kernel.org>
+        (version=TLS1_2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128/128);
+        Thu, 09 Feb 2017 15:01:22 -0800 (PST)
+To: linux-nfs@vger.kernel.org
+From: Frank Sorenson <sorenson@redhat.com>
+Subject: [nfs-utils PATCH V2 1/2] Replace non-thread-safe strtok function
+ calls in gssd
+Message-ID: <911ff1ff-ac59-2c10-e165-cd1186b1f940@redhat.com>
+Date: Thu, 9 Feb 2017 17:01:22 -0600
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=windows-1252
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVGh1LCAyMDE3LTAyLTA5IGF0IDE0OjQyIC0wNTAwLCBDaHVjayBMZXZlciB3cm90ZToNCj4g
-PiBPbiBGZWIgOSwgMjAxNywgYXQgMTA6MzcgQU0sIENodWNrIExldmVyIDxjaHVjay5sZXZlckBv
-cmFjbGUuY29tPg0KPiA+IHdyb3RlOg0KPiA+IA0KPiA+ID4gDQo+ID4gPiBPbiBGZWIgOCwgMjAx
-NywgYXQgNzo0OCBQTSwgVHJvbmQgTXlrbGVidXN0IDx0cm9uZG15QHByaW1hcnlkYXRhLg0KPiA+
-ID4gY29tPiB3cm90ZToNCj4gPiA+IA0KPiA+ID4gT24gV2VkLCAyMDE3LTAyLTA4IGF0IDE5OjE5
-IC0wNTAwLCBDaHVjayBMZXZlciB3cm90ZToNCj4gPiA+ID4gPiBPbiBGZWIgOCwgMjAxNywgYXQg
-NzowNSBQTSwgVHJvbmQgTXlrbGVidXN0IDx0cm9uZG15QHByaW1hcnlkDQo+ID4gPiA+ID4gYXRh
-LmNvDQo+ID4gPiA+ID4gbT4gd3JvdGU6DQo+ID4gPiA+ID4gDQo+ID4gPiA+ID4gT24gV2VkLCAy
-MDE3LTAyLTA4IGF0IDE3OjAxIC0wNTAwLCBDaHVjayBMZXZlciB3cm90ZToNCj4gPiA+ID4gPiA+
-IEFsbG93IFJQQy1vdmVyLVJETUEgdG8gc2VuZCBOVUxMIHBpbmdzIGV2ZW4gd2hlbiB0aGUNCj4g
-PiA+ID4gPiA+IHRyYW5zcG9ydA0KPiA+ID4gPiA+ID4gaGFzDQo+ID4gPiA+ID4gPiBoaXQgaXRz
-IGNyZWRpdCBsaW1pdC4gT25lIFJQQy1vdmVyLVJETUEgY3JlZGl0IGlzIHJlc2VydmVkDQo+ID4g
-PiA+ID4gPiBmb3INCj4gPiA+ID4gPiA+IG9wZXJhdGlvbnMgbGlrZSBrZWVwYWxpdmUuDQo+ID4g
-PiA+ID4gPiANCj4gPiA+ID4gPiA+IEZvciB0cmFuc3BvcnRzIHRoYXQgY29udmV5IE5GU3Y0LCBp
-dCBzZWVtcyBsaWtlIGxlYXNlDQo+ID4gPiA+ID4gPiByZW5ld2FsDQo+ID4gPiA+ID4gPiB3b3Vs
-ZA0KPiA+ID4gPiA+ID4gYWxzbyBiZSBhIGNhbmRpZGF0ZSBmb3IgdXNpbmcgYSBwcmlvcml0eSB0
-cmFuc3BvcnQgc2xvdC4NCj4gPiA+ID4gPiA+IEknZCBsaWtlDQo+ID4gPiA+ID4gPiB0bw0KPiA+
-ID4gPiA+ID4gc2VlIGEgbWVjaGFuaXNtIGJldHRlciB0aGFuIFJQQ1JETUFfUFJJT1JJVFkgdGhh
-dCBjYW4NCj4gPiA+ID4gPiA+IGVuc3VyZSBvbmx5DQo+ID4gPiA+ID4gPiBvbmUgcHJpb3JpdHkg
-b3BlcmF0aW9uIGlzIGluIHVzZSBhdCBhIHRpbWUuDQo+ID4gPiA+ID4gPiANCj4gPiA+ID4gPiA+
-IFNpZ25lZC1vZmYtYnk6IENodWNrIExldmVyIDxjaHVjay5sZXZlckBvcmFjbGUuY29tPg0KPiA+
-ID4gPiA+ID4gLS0tDQo+ID4gPiA+ID4gPiBpbmNsdWRlL2xpbnV4L3N1bnJwYy9zY2hlZC5owqDC
-oMKgwqB8wqDCoMKgwqAyICsrDQo+ID4gPiA+ID4gPiBuZXQvc3VucnBjL3hwcnQuY8KgwqDCoMKg
-wqDCoMKgwqDCoMKgwqDCoMKgwqDCoHzCoMKgwqDCoDQgKysrKw0KPiA+ID4gPiA+ID4gbmV0L3N1
-bnJwYy94cHJ0cmRtYS90cmFuc3BvcnQuYyB8wqDCoMKgwqAzICsrLQ0KPiA+ID4gPiA+ID4gbmV0
-L3N1bnJwYy94cHJ0cmRtYS92ZXJicy5jwqDCoMKgwqDCoHzCoMKgwqAxMyArKysrKysrKy0tLS0t
-DQo+ID4gPiA+ID4gPiA0IGZpbGVzIGNoYW5nZWQsIDE2IGluc2VydGlvbnMoKyksIDYgZGVsZXRp
-b25zKC0pDQo+ID4gPiA+ID4gPiANCj4gPiA+ID4gPiA+IGRpZmYgLS1naXQgYS9pbmNsdWRlL2xp
-bnV4L3N1bnJwYy9zY2hlZC5oDQo+ID4gPiA+ID4gPiBiL2luY2x1ZGUvbGludXgvc3VucnBjL3Nj
-aGVkLmgNCj4gPiA+ID4gPiA+IGluZGV4IDEzODIyZTYuLmZjZWExNTggMTAwNjQ0DQo+ID4gPiA+
-ID4gPiAtLS0gYS9pbmNsdWRlL2xpbnV4L3N1bnJwYy9zY2hlZC5oDQo+ID4gPiA+ID4gPiArKysg
-Yi9pbmNsdWRlL2xpbnV4L3N1bnJwYy9zY2hlZC5oDQo+ID4gPiA+ID4gPiBAQCAtMTI3LDYgKzEy
-Nyw3IEBAIHN0cnVjdCBycGNfdGFza19zZXR1cCB7DQo+ID4gPiA+ID4gPiAjZGVmaW5lIFJQQ19U
-QVNLX1RJTUVPVVQJMHgxMDAwCQkvKg0KPiA+ID4gPiA+ID4gZmFpbA0KPiA+ID4gPiA+ID4gd2l0
-aA0KPiA+ID4gPiA+ID4gRVRJTUVET1VUIG9uIHRpbWVvdXQgKi8NCj4gPiA+ID4gPiA+ICNkZWZp
-bmUgUlBDX1RBU0tfTk9DT05ORUNUCTB4MjAwMAkJLyoNCj4gPiA+ID4gPiA+IHJldHVybg0KPiA+
-ID4gPiA+ID4gRU5PVENPTk4gaWYgbm90IGNvbm5lY3RlZCAqLw0KPiA+ID4gPiA+ID4gI2RlZmlu
-ZSBSUENfVEFTS19OT19SRVRSQU5TX1RJTUVPVVQJMHg0MDAwCQkNCj4gPiA+ID4gPiA+IC8qDQo+
-ID4gPiA+ID4gPiB3YWl0IGZvcmV2ZXIgZm9yIGEgcmVwbHkgKi8NCj4gPiA+ID4gPiA+ICsjZGVm
-aW5lIFJQQ19UQVNLX05PX0NPTkcJMHg4MDAwCQkvKg0KPiA+ID4gPiA+ID4gc2tpcA0KPiA+ID4g
-PiA+ID4gY29uZ2VzdGlvbiBjb250cm9sICovDQo+ID4gPiA+ID4gPiANCj4gPiA+ID4gPiA+ICNk
-ZWZpbmUgUlBDX1RBU0tfU09GVFBJTkcJKFJQQ19UQVNLX1NPRlQgfA0KPiA+ID4gPiA+ID4gUlBD
-X1RBU0tfU09GVENPTk4pDQo+ID4gPiA+ID4gPiANCj4gPiA+ID4gPiA+IEBAIC0xMzcsNiArMTM4
-LDcgQEAgc3RydWN0IHJwY190YXNrX3NldHVwIHsNCj4gPiA+ID4gPiA+ICNkZWZpbmUgUlBDX0lT
-X1NPRlQodCkJCSgodCktPnRrX2ZsYWdzICYNCj4gPiA+ID4gPiA+IChSUENfVEFTS19TT0ZUfFJQ
-Q19UQVNLX1RJTUVPVVQpKQ0KPiA+ID4gPiA+ID4gI2RlZmluZSBSUENfSVNfU09GVENPTk4odCkJ
-KCh0KS0+dGtfZmxhZ3MgJg0KPiA+ID4gPiA+ID4gUlBDX1RBU0tfU09GVENPTk4pDQo+ID4gPiA+
-ID4gPiAjZGVmaW5lIFJQQ19XQVNfU0VOVCh0KQkJKCh0KS0+dGtfZmxhZ3MgJg0KPiA+ID4gPiA+
-ID4gUlBDX1RBU0tfU0VOVCkNCj4gPiA+ID4gPiA+ICsjZGVmaW5lIFJQQ19TS0lQX0NPTkcodCkJ
-KCh0KS0+dGtfZmxhZ3MgJg0KPiA+ID4gPiA+ID4gUlBDX1RBU0tfTk9fQ09ORykNCj4gPiA+ID4g
-PiA+IA0KPiA+ID4gPiA+ID4gI2RlZmluZSBSUENfVEFTS19SVU5OSU5HCTANCj4gPiA+ID4gPiA+
-ICNkZWZpbmUgUlBDX1RBU0tfUVVFVUVECQkxDQo+ID4gPiA+ID4gPiBkaWZmIC0tZ2l0IGEvbmV0
-L3N1bnJwYy94cHJ0LmMgYi9uZXQvc3VucnBjL3hwcnQuYw0KPiA+ID4gPiA+ID4gaW5kZXggYjUz
-MGEyOC4uYTQ3N2VlNiAxMDA2NDQNCj4gPiA+ID4gPiA+IC0tLSBhL25ldC9zdW5ycGMveHBydC5j
-DQo+ID4gPiA+ID4gPiArKysgYi9uZXQvc3VucnBjL3hwcnQuYw0KPiA+ID4gPiA+ID4gQEAgLTM5
-Miw2ICszOTIsMTAgQEAgc3RhdGljIGlubGluZSB2b2lkDQo+ID4gPiA+ID4gPiB4cHJ0X3JlbGVh
-c2Vfd3JpdGUoc3RydWN0DQo+ID4gPiA+ID4gPiBycGNfeHBydCAqeHBydCwgc3RydWN0IHJwY190
-YXNrICp0YQ0KPiA+ID4gPiA+ID4gew0KPiA+ID4gPiA+ID4gCXN0cnVjdCBycGNfcnFzdCAqcmVx
-ID0gdGFzay0+dGtfcnFzdHA7DQo+ID4gPiA+ID4gPiANCj4gPiA+ID4gPiA+ICsJaWYgKFJQQ19T
-S0lQX0NPTkcodGFzaykpIHsNCj4gPiA+ID4gPiA+ICsJCXJlcS0+cnFfY29uZyA9IDA7DQo+ID4g
-PiA+ID4gPiArCQlyZXR1cm4gMTsNCj4gPiA+ID4gPiA+ICsJfQ0KPiA+ID4gPiA+IA0KPiA+ID4g
-PiA+IFdoeSBub3QganVzdCBoYXZlIHRoZSBSRE1BIGxheWVyIGNhbGwgeHBydF9yZXNlcnZlX3hw
-cnQoKQ0KPiA+ID4gPiA+IChhbmQNCj4gPiA+ID4gPiB4cHJ0X3JlbGVhc2VfeHBydCgpKSBpZiB0
-aGlzIGZsYWcgaXMgc2V0PyBJdCBzZWVtcyB0byBtZSB0aGF0DQo+ID4gPiA+ID4geW91DQo+ID4g
-PiA+ID4gd2lsbA0KPiA+ID4gPiA+IG5lZWQgc29tZSBraW5kIG9mIGV4dHJhIGNvbmdlc3Rpb24g
-Y29udHJvbCBpbiB0aGUgUkRNQSBsYXllcg0KPiA+ID4gPiA+IGFueXdheQ0KPiA+ID4gPiA+IHNp
-bmNlIHlvdSBvbmx5IGhhdmUgb25lIHJlc2VydmVkIGNyZWRpdCBmb3IgdGhlc2UgcHJpdmlsZWdl
-ZA0KPiA+ID4gPiA+IHRhc2tzDQo+ID4gPiA+ID4gKG9yDQo+ID4gPiA+ID4gZGlkIEkgbWlzcyB3
-aGVyZSB0aGF0IGlzIGJlaW5nIGdhdGVkPykuDQo+ID4gPiA+IA0KPiA+ID4gPiBUaGFua3MgZm9y
-IHRoZSByZXZpZXcuDQo+ID4gPiA+IA0KPiA+ID4gPiBTZWUgUlBDUkRNQV9JQV9SU1ZEX0NSRURJ
-VCBpbiAxMS8xMi4gSXQncyBhIGhhY2sgSSdtIG5vdA0KPiA+ID4gPiB0ZXJyaWJseSBoYXBweSB3
-aXRoLg0KPiA+ID4gPiANCj4gPiA+ID4gU28sIEkgdGhpbmsgeW91IGFyZSBzdWdnZXN0aW5nIHJl
-cGxhY2luZyB4cHJ0cmRtYSdzDQo+ID4gPiA+IC0+cmVzZXJ2ZV94cHJ0IHdpdGggc29tZXRoaW5n
-IGxpa2U6DQo+ID4gPiA+IA0KPiA+ID4gPiBpbnQgeHBydF9yZG1hX3Jlc2VydmVfeHBydCh4cHJ0
-LCB0YXNrKQ0KPiA+ID4gPiB7DQo+ID4gPiA+IMKgwqDCoMKgwqBpZiAoUlBDX1NLSVBfQ09ORyh0
-YXNrKSkNCj4gPiA+ID4gwqDCoMKgwqDCoMKgwqDCoMKgwqByZXR1cm4geHBydF9yZXNlcnZlX3hw
-cnQoeHBydCwgdGFzayk7DQo+ID4gPiA+IMKgwqDCoMKgwqByZXR1cm4geHBydF9yZXNlcnZlX3hw
-cnRfY29uZyh4cHJ0LCB0YXNrKTsNCj4gPiA+ID4gfQ0KPiA+ID4gPiANCj4gPiA+ID4gYW5kIGxp
-a2V3aXNlIGZvciAtPnJlbGVhc2VfeHBydCA/DQo+ID4gPiANCj4gPiA+IFJpZ2h0Lg0KPiANCj4g
-VGhpcyBzZWVtcyB0byB3b3JrIGZpbmUgZm9yIHRoZSBub3JtYWwgY2FzZXMuDQo+IA0KPiBJJ20g
-Y29uZnVzZWQgYWJvdXQgaG93IHRvIGNvbnN0cnVjdCB4cHJ0X3JkbWFfcmVsZWFzZV94cHJ0KCkN
-Cj4gc28gaXQgbmV2ZXIgcmVsZWFzZXMgYSBub3JtYWwgUlBDIHRhc2sgd2hlbiBhIFNLSVBfQ09O
-Rw0KPiB0YXNrIGNvbXBsZXRlcyBhbmQgdGhlIGNyZWRpdCBsaW1pdCBpcyBzdGlsbCBmdWxsLg0K
-PiANCj4gSWYgaXQgc2hvdWxkIHNlbmQgYSBub3JtYWwgdGFzayB1c2luZyB0aGUgcmVzZXJ2ZWQg
-Y3JlZGl0DQo+IGFuZCB0aGF0IHRhc2sgaGFuZ3MgdG9vLCB3ZSdyZSBpbiBleGFjdGx5IHRoZSBw
-b3NpdGlvbg0KPiB3ZSB3YW50ZWQgdG8gYXZvaWQuDQo+IA0KPiBNeSBvcmlnaW5hbCBzb2x1dGlv
-biBtaWdodCBoYXZlIGhhZCBhIHNpbWlsYXIgcHJvYmxlbSwNCj4gY29tZSB0byB0aGluayBvZiBp
-dC4NCj4gDQo+IA0KDQpUaGF0J3MgdHJ1ZS4uLiBZb3UgbWF5IG5lZWQgdG8gc2V0IHVwIGEgc2Vw
-YXJhdGUgd2FpdHF1ZXVlIHRoYXQgaXMNCnJlc2VydmVkIGZvciBTS0lQX0NPTkcgdGFza3MuIEFn
-YWluLCBpdCBtYWtlcyBzZW5zZSB0byBrZWVwIHRoYXQgaW4gdGhlDQpSRE1BIGNvZGUuDQoNCi0t
-IA0KDQoNCgkNCgkNCg0KDQpUcm9uZCBNeWtsZWJ1c3QNClByaW5jaXBhbCBTeXN0ZW0gQXJjaGl0
-ZWN0DQo0MzAwIEVsIENhbWlubyBSZWFsIHwgU3VpdGUgMTAwDQpMb3MgQWx0b3MsIENBwqDCoDk0
-MDIyDQpXOiA2NTAtNDIyLTM4MDANCkM6IDgwMS05MjEtNDU4M8KgDQp3d3cucHJpbWFyeWRhdGEu
-Y29tDQoNCg0KDQo=
+Author: Frank Sorenson <sorenson@redhat.com>
+Date:   2017-02-09 16:35:51 -0600
 
+    gssd: replace non-thread-safe strtok with strsep
+    
+    gssd uses the non-thread-safe strtok() function, which
+    can lead to incorrect program behavior.
+    
+    Replace strtok() with the thread-safe strsep().
+    
+    Signed-off-by: Frank Sorenson <sorenson@redhat.com>
+
+diff --git a/utils/gssd/gssd_proc.c b/utils/gssd/gssd_proc.c
+index d74d372..30c6ace 100644
+--- a/utils/gssd/gssd_proc.c
++++ b/utils/gssd/gssd_proc.c
+@@ -729,10 +729,11 @@ handle_gssd_upcall(struct clnt_upcall_info *info)
+ 	char			*target = NULL;
+ 	char			*service = NULL;
+ 	char			*enctypes = NULL;
++	char			*pbuf = info->lbuf;
+ 
+ 	printerr(2, "\n%s: '%s' (%s)\n", __func__, info->lbuf, clp->relpath);
+ 
+-	for (p = strtok(info->lbuf, " "); p; p = strtok(NULL, " ")) {
++	while ((p = strsep(&pbuf, " "))) {
+ 		if (!strncmp(p, "mech=", strlen("mech=")))
+ 			mech = p + strlen("mech=");
+ 		else if (!strncmp(p, "uid=", strlen("uid=")))
