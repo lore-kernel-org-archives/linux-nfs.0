@@ -1,294 +1,112 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f193.google.com ([209.85.223.193]:35646 "EHLO
-        mail-io0-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1752109AbdBHXN0 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 8 Feb 2017 18:13:26 -0500
-Received: by mail-io0-f193.google.com with SMTP id m98so520035iod.2
-        for <linux-nfs@vger.kernel.org>; Wed, 08 Feb 2017 15:13:16 -0800 (PST)
-Content-Type: text/plain; charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 9.3 \(3124\))
-Subject: NFS server regression in v4.10-rc7
-From: Chuck Lever <chucklever@gmail.com>
-Date: Wed, 8 Feb 2017 16:27:30 -0500
-Cc: Christoph Hellwig <hch@infradead.org>
-Message-Id: <60D0607E-7D01-4F68-A447-071B7DEC6F23@gmail.com>
-References: <1485246161-20874-1-git-send-email-hch@lst.de>
-To: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Received: from us-smtp-delivery-194.mimecast.com ([216.205.24.194]:44693 "EHLO
+        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1752464AbdBIAIR (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 8 Feb 2017 19:08:17 -0500
+From: Trond Myklebust <trondmy@primarydata.com>
+To: "anna.schumaker@netapp.com" <anna.schumaker@netapp.com>,
+        "chuck.lever@oracle.com" <chuck.lever@oracle.com>
+CC: "linux-rdma@vger.kernel.org" <linux-rdma@vger.kernel.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH v3 12/12] sunrpc: Allow keepalive ping on a credit-full
+ transport
+Date: Thu, 9 Feb 2017 00:05:16 +0000
+Message-ID: <1486598713.11028.3.camel@primarydata.com>
+References: <20170208214854.7152.83331.stgit@manet.1015granger.net>
+         <20170208220116.7152.87626.stgit@manet.1015granger.net>
+In-Reply-To: <20170208220116.7152.87626.stgit@manet.1015granger.net>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-
-> Begin forwarded message:
->=20
-> From: Christoph Hellwig <hch@lst.de>
-> Subject: [PATCH v2] nfsd: special case truncates some more
-> Date: January 24, 2017 at 3:22:41 AM EST
-> To: bfields@fieldses.org, jlayton@poochiereds.net
-> Cc: trondmy@primarydata.com, linux-nfs@vger.kernel.org
->=20
-> Both the NFS protocols and the Linux VFS use a setattr operation with =
-a
-> bitmap of attributs to set to set various file attributes including =
-the
-> file size and the uid/gid.
->=20
-> The Linux syscalls never mixe size updates with unrelated updates like
-> the uid/gid, and some file systems like XFS and GFS2 rely on the fact
-> that truncates might not update random other attributes, and many
-> other file systems handle the case but do not update the different
-> attributes in the same transaction.  NFSD on the other hand passes
-> the attributes it gets on the wire more or less directly through to
-> the VFS, leading to updates the file systems don't expect.  XFS at
-> least has an assert on the allowed attributes, which cought an NFS
-> client sets the size and group at the same time.
->=20
-> To handles this issue properly this switches nfsd to call vfs_truncate
-> for size changes, and then handling all other attributes through
-> notify_change.  As a side effect this also means less boilerplace
-> code around the size change as we can now reuse the VFS code.
->=20
-> Signed-off-by: Christoph Hellwig <hch@lst.de>
-> ---
->=20
-> Changes since V1:
-> - avoid an extra setattr just for a MTIME attribute on the wire
->=20
-> fs/nfsd/vfs.c | 97 =
-+++++++++++++++++++++++------------------------------------
-> 1 file changed, 37 insertions(+), 60 deletions(-)
->=20
-> diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
-> index 26c6fdb..e91107a 100644
-> --- a/fs/nfsd/vfs.c
-> +++ b/fs/nfsd/vfs.c
-> @@ -332,37 +332,6 @@ nfsd_sanitize_attrs(struct inode *inode, struct =
-iattr *iap)
-> 	}
-> }
->=20
-> -static __be32
-> -nfsd_get_write_access(struct svc_rqst *rqstp, struct svc_fh *fhp,
-> -		struct iattr *iap)
-> -{
-> -	struct inode *inode =3D d_inode(fhp->fh_dentry);
-> -	int host_err;
-> -
-> -	if (iap->ia_size < inode->i_size) {
-> -		__be32 err;
-> -
-> -		err =3D nfsd_permission(rqstp, fhp->fh_export, =
-fhp->fh_dentry,
-> -				NFSD_MAY_TRUNC | =
-NFSD_MAY_OWNER_OVERRIDE);
-> -		if (err)
-> -			return err;
-> -	}
-> -
-> -	host_err =3D get_write_access(inode);
-> -	if (host_err)
-> -		goto out_nfserrno;
-> -
-> -	host_err =3D locks_verify_truncate(inode, NULL, iap->ia_size);
-> -	if (host_err)
-> -		goto out_put_write_access;
-> -	return 0;
-> -
-> -out_put_write_access:
-> -	put_write_access(inode);
-> -out_nfserrno:
-> -	return nfserrno(host_err);
-> -}
-> -
-> /*
->  * Set various file attributes.  After this call fhp needs an fh_put.
->  */
-> @@ -377,7 +346,6 @@ nfsd_setattr(struct svc_rqst *rqstp, struct svc_fh =
-*fhp, struct iattr *iap,
-> 	__be32		err;
-> 	int		host_err;
-> 	bool		get_write_count;
-> -	int		size_change =3D 0;
->=20
-> 	if (iap->ia_valid & (ATTR_ATIME | ATTR_MTIME | ATTR_SIZE))
-> 		accmode |=3D NFSD_MAY_WRITE|NFSD_MAY_OWNER_OVERRIDE;
-> @@ -390,11 +358,11 @@ nfsd_setattr(struct svc_rqst *rqstp, struct =
-svc_fh *fhp, struct iattr *iap,
-> 	/* Get inode */
-> 	err =3D fh_verify(rqstp, fhp, ftype, accmode);
-> 	if (err)
-> -		goto out;
-> +		return err;
-> 	if (get_write_count) {
-> 		host_err =3D fh_want_write(fhp);
-> 		if (host_err)
-> -			return nfserrno(host_err);
-> +			goto out_host_err;
-> 	}
->=20
-> 	dentry =3D fhp->fh_dentry;
-> @@ -405,50 +373,59 @@ nfsd_setattr(struct svc_rqst *rqstp, struct =
-svc_fh *fhp, struct iattr *iap,
-> 		iap->ia_valid &=3D ~ATTR_MODE;
->=20
-> 	if (!iap->ia_valid)
-> -		goto out;
-> +		return 0;
->=20
-> 	nfsd_sanitize_attrs(inode, iap);
->=20
-> +	if (check_guard && guardtime !=3D inode->i_ctime.tv_sec)
-> +		return nfserr_notsync;
-> +
-> 	/*
-> 	 * The size case is special, it changes the file in addition to =
-the
-> -	 * attributes.
-> +	 * attributes, and file systems don't expect it to be mixed with
-> +	 * "random" attribute changes.  We thus split out the size =
-change
-> +	 * into a separate calo for vfs_truncate, and do the rest as a
-> +	 * a separate setattr call.
-> 	 */
-> 	if (iap->ia_valid & ATTR_SIZE) {
-> -		err =3D nfsd_get_write_access(rqstp, fhp, iap);
-> -		if (err)
-> -			goto out;
-> -		size_change =3D 1;
-> +		struct path path =3D {
-> +			.mnt	=3D fhp->fh_export->ex_path.mnt,
-> +			.dentry	=3D dentry,
-> +		};
-> +		bool implicit_mtime =3D false;
->=20
-> 		/*
-> -		 * RFC5661, Section 18.30.4:
-> -		 *   Changing the size of a file with SETATTR indirectly
-> -		 *   changes the time_modify and change attributes.
-> -		 *
-> -		 * (and similar for the older RFCs)
-> +		 * vfs_truncate implicity updates the mtime IFF the file =
-size
-> +		 * actually changes.  Avoid the additional seattr call =
-below if
-> +		 * the only other attribute that the client sends is the =
-mtime.
-> 		 */
-> -		if (iap->ia_size !=3D i_size_read(inode))
-> -			iap->ia_valid |=3D ATTR_MTIME;
-> -	}
-> +		if (iap->ia_size !=3D i_size_read(inode) &&
-> +		    ((iap->ia_valid & ~(ATTR_SIZE | ATTR_MTIME)) =3D=3D =
-0))
-> +			implicit_mtime =3D true;
->=20
-> -	iap->ia_valid |=3D ATTR_CTIME;
-> +		host_err =3D vfs_truncate(&path, iap->ia_size);
-> +		if (host_err)
-> +			goto out_host_err;
->=20
-> -	if (check_guard && guardtime !=3D inode->i_ctime.tv_sec) {
-> -		err =3D nfserr_notsync;
-> -		goto out_put_write_access;
-> +		iap->ia_valid &=3D ~ATTR_SIZE;
-> +		if (implicit_mtime)
-> +			iap->ia_valid &=3D ~ATTR_MTIME;
-> +		if (!iap->ia_valid)
-> +			goto done;
-> 	}
->=20
-> +	iap->ia_valid |=3D ATTR_CTIME;
-> +
-> 	fh_lock(fhp);
-> 	host_err =3D notify_change(dentry, iap, NULL);
-> 	fh_unlock(fhp);
-> -	err =3D nfserrno(host_err);
-> +	if (host_err)
-> +		goto out_host_err;
->=20
-> -out_put_write_access:
-> -	if (size_change)
-> -		put_write_access(inode);
-> -	if (!err)
-> -		err =3D nfserrno(commit_metadata(fhp));
-> -out:
-> -	return err;
-> +done:
-> +	host_err =3D commit_metadata(fhp);
-> +out_host_err:
-> +	return nfserrno(host_err);
-> }
->=20
-> #if defined(CONFIG_NFSD_V4)
-> --=20
-> 2.1.4
-
-After installing v4.10-rc7 on my test NFS server, I'm seeing a failure
-with the git regression test suite.
-
-*** t1050-large.sh ***
-ok 1 - setup
-ok 2 - add a large file or two
-ok 3 - checkout a large file
-not ok 4 - packsize limit
-#    =20
-#          test_create_repo mid &&
-#          (
-#               cd mid &&
-#               git config core.bigfilethreshold 64k &&
-#               git config pack.packsizelimit 256k &&
-#    =20
-#               # mid1 and mid2 will fit within 256k limit but
-#               # appending mid3 will bust the limit and will
-#               # result in a separate packfile.
-#               test-genrandom "a" $(( 66 * 1024 )) >mid1 &&
-#               test-genrandom "b" $(( 80 * 1024 )) >mid2 &&
-#               test-genrandom "c" $(( 128 * 1024 )) >mid3 &&
-#               git add mid1 mid2 mid3 &&
-#    =20
-#               count=3D0
-#               for pi in .git/objects/pack/pack-*.idx
-#               do
-#                    test -f "$pi" && count=3D$(( $count + 1 ))
-#               done &&
-#               test $count =3D 2 &&
-#    =20
-#               (
-#                    git hash-object --stdin <mid1
-#                    git hash-object --stdin <mid2
-#                    git hash-object --stdin <mid3
-#               ) |
-#               sort >expect &&
-#    =20
-#               for pi in .git/objects/pack/pack-*.idx
-#               do
-#                    git show-index <"$pi"
-#               done |
-#               sed -e "s/^[0-9]* \([0-9a-f]*\) .*/\1/" |
-#               sort >actual &&
-#    =20
-#               test_cmp expect actual
-#          )
-#    =20
-ok 5 - diff --raw
-ok 6 - diff --stat
-ok 7 - diff
-
-Confirmed with NFSv3 / TCP and NFSv4.0 / TCP. Failure is 100%
-reproducible.
-
-If I revert the above commit on the server, the git regression test
-suite passes.
-
-The test is run like this: "cd /mnt/server/git; make clean; make; make =
-test"
-
-Can anyone else reproduce this failure?
-
-
---
-Chuck Lever
-chucklever@gmail.com
-
-
+T24gV2VkLCAyMDE3LTAyLTA4IGF0IDE3OjAxIC0wNTAwLCBDaHVjayBMZXZlciB3cm90ZToNCj4g
+QWxsb3cgUlBDLW92ZXItUkRNQSB0byBzZW5kIE5VTEwgcGluZ3MgZXZlbiB3aGVuIHRoZSB0cmFu
+c3BvcnQgaGFzDQo+IGhpdCBpdHMgY3JlZGl0IGxpbWl0LiBPbmUgUlBDLW92ZXItUkRNQSBjcmVk
+aXQgaXMgcmVzZXJ2ZWQgZm9yDQo+IG9wZXJhdGlvbnMgbGlrZSBrZWVwYWxpdmUuDQo+IA0KPiBG
+b3IgdHJhbnNwb3J0cyB0aGF0IGNvbnZleSBORlN2NCwgaXQgc2VlbXMgbGlrZSBsZWFzZSByZW5l
+d2FsIHdvdWxkDQo+IGFsc28gYmUgYSBjYW5kaWRhdGUgZm9yIHVzaW5nIGEgcHJpb3JpdHkgdHJh
+bnNwb3J0IHNsb3QuIEknZCBsaWtlIHRvDQo+IHNlZSBhIG1lY2hhbmlzbSBiZXR0ZXIgdGhhbiBS
+UENSRE1BX1BSSU9SSVRZIHRoYXQgY2FuIGVuc3VyZSBvbmx5DQo+IG9uZSBwcmlvcml0eSBvcGVy
+YXRpb24gaXMgaW4gdXNlIGF0IGEgdGltZS4NCj4gDQo+IFNpZ25lZC1vZmYtYnk6IENodWNrIExl
+dmVyIDxjaHVjay5sZXZlckBvcmFjbGUuY29tPg0KPiAtLS0NCj4gwqBpbmNsdWRlL2xpbnV4L3N1
+bnJwYy9zY2hlZC5owqDCoMKgwqB8wqDCoMKgwqAyICsrDQo+IMKgbmV0L3N1bnJwYy94cHJ0LmPC
+oMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqB8wqDCoMKgwqA0ICsrKysNCj4gwqBuZXQvc3Vu
+cnBjL3hwcnRyZG1hL3RyYW5zcG9ydC5jIHzCoMKgwqDCoDMgKystDQo+IMKgbmV0L3N1bnJwYy94
+cHJ0cmRtYS92ZXJicy5jwqDCoMKgwqDCoHzCoMKgwqAxMyArKysrKysrKy0tLS0tDQo+IMKgNCBm
+aWxlcyBjaGFuZ2VkLCAxNiBpbnNlcnRpb25zKCspLCA2IGRlbGV0aW9ucygtKQ0KPiANCj4gZGlm
+ZiAtLWdpdCBhL2luY2x1ZGUvbGludXgvc3VucnBjL3NjaGVkLmgNCj4gYi9pbmNsdWRlL2xpbnV4
+L3N1bnJwYy9zY2hlZC5oDQo+IGluZGV4IDEzODIyZTYuLmZjZWExNTggMTAwNjQ0DQo+IC0tLSBh
+L2luY2x1ZGUvbGludXgvc3VucnBjL3NjaGVkLmgNCj4gKysrIGIvaW5jbHVkZS9saW51eC9zdW5y
+cGMvc2NoZWQuaA0KPiBAQCAtMTI3LDYgKzEyNyw3IEBAIHN0cnVjdCBycGNfdGFza19zZXR1cCB7
+DQo+IMKgI2RlZmluZSBSUENfVEFTS19USU1FT1VUCTB4MTAwMAkJLyogZmFpbCB3aXRoDQo+IEVU
+SU1FRE9VVCBvbiB0aW1lb3V0ICovDQo+IMKgI2RlZmluZSBSUENfVEFTS19OT0NPTk5FQ1QJMHgy
+MDAwCQkvKiByZXR1cm4NCj4gRU5PVENPTk4gaWYgbm90IGNvbm5lY3RlZCAqLw0KPiDCoCNkZWZp
+bmUgUlBDX1RBU0tfTk9fUkVUUkFOU19USU1FT1VUCTB4NDAwMAkJLyoNCj4gd2FpdCBmb3JldmVy
+IGZvciBhIHJlcGx5ICovDQo+ICsjZGVmaW5lIFJQQ19UQVNLX05PX0NPTkcJMHg4MDAwCQkvKiBz
+a2lwDQo+IGNvbmdlc3Rpb24gY29udHJvbCAqLw0KPiDCoA0KPiDCoCNkZWZpbmUgUlBDX1RBU0tf
+U09GVFBJTkcJKFJQQ19UQVNLX1NPRlQgfCBSUENfVEFTS19TT0ZUQ09OTikNCj4gwqANCj4gQEAg
+LTEzNyw2ICsxMzgsNyBAQCBzdHJ1Y3QgcnBjX3Rhc2tfc2V0dXAgew0KPiDCoCNkZWZpbmUgUlBD
+X0lTX1NPRlQodCkJCSgodCktPnRrX2ZsYWdzICYNCj4gKFJQQ19UQVNLX1NPRlR8UlBDX1RBU0tf
+VElNRU9VVCkpDQo+IMKgI2RlZmluZSBSUENfSVNfU09GVENPTk4odCkJKCh0KS0+dGtfZmxhZ3Mg
+Jg0KPiBSUENfVEFTS19TT0ZUQ09OTikNCj4gwqAjZGVmaW5lIFJQQ19XQVNfU0VOVCh0KQkJKCh0
+KS0+dGtfZmxhZ3MgJg0KPiBSUENfVEFTS19TRU5UKQ0KPiArI2RlZmluZSBSUENfU0tJUF9DT05H
+KHQpCSgodCktPnRrX2ZsYWdzICYgUlBDX1RBU0tfTk9fQ09ORykNCj4gwqANCj4gwqAjZGVmaW5l
+IFJQQ19UQVNLX1JVTk5JTkcJMA0KPiDCoCNkZWZpbmUgUlBDX1RBU0tfUVVFVUVECQkxDQo+IGRp
+ZmYgLS1naXQgYS9uZXQvc3VucnBjL3hwcnQuYyBiL25ldC9zdW5ycGMveHBydC5jDQo+IGluZGV4
+IGI1MzBhMjguLmE0NzdlZTYgMTAwNjQ0DQo+IC0tLSBhL25ldC9zdW5ycGMveHBydC5jDQo+ICsr
+KyBiL25ldC9zdW5ycGMveHBydC5jDQo+IEBAIC0zOTIsNiArMzkyLDEwIEBAIHN0YXRpYyBpbmxp
+bmUgdm9pZCB4cHJ0X3JlbGVhc2Vfd3JpdGUoc3RydWN0DQo+IHJwY194cHJ0ICp4cHJ0LCBzdHJ1
+Y3QgcnBjX3Rhc2sgKnRhDQo+IMKgew0KPiDCoAlzdHJ1Y3QgcnBjX3Jxc3QgKnJlcSA9IHRhc2st
+PnRrX3Jxc3RwOw0KPiDCoA0KPiArCWlmIChSUENfU0tJUF9DT05HKHRhc2spKSB7DQo+ICsJCXJl
+cS0+cnFfY29uZyA9IDA7DQo+ICsJCXJldHVybiAxOw0KPiArCX0NCg0KV2h5IG5vdCBqdXN0IGhh
+dmUgdGhlIFJETUEgbGF5ZXIgY2FsbCB4cHJ0X3Jlc2VydmVfeHBydCgpIChhbmQNCnhwcnRfcmVs
+ZWFzZV94cHJ0KCkpIGlmIHRoaXMgZmxhZyBpcyBzZXQ/IEl0IHNlZW1zIHRvIG1lIHRoYXQgeW91
+IHdpbGwNCm5lZWQgc29tZSBraW5kIG9mIGV4dHJhIGNvbmdlc3Rpb24gY29udHJvbCBpbiB0aGUg
+UkRNQSBsYXllciBhbnl3YXkNCnNpbmNlIHlvdSBvbmx5IGhhdmUgb25lIHJlc2VydmVkIGNyZWRp
+dCBmb3IgdGhlc2UgcHJpdmlsZWdlZCB0YXNrcyAob3INCmRpZCBJIG1pc3Mgd2hlcmUgdGhhdCBp
+cyBiZWluZyBnYXRlZD8pLg0KDQo+IMKgCWlmIChyZXEtPnJxX2NvbmcpDQo+IMKgCQlyZXR1cm4g
+MTsNCj4gwqAJZHByaW50aygiUlBDOiAlNXUgeHBydF9jd25kX2xpbWl0ZWQgY29uZyA9ICVsdSBj
+d25kID0NCj4gJWx1XG4iLA0KPiBkaWZmIC0tZ2l0IGEvbmV0L3N1bnJwYy94cHJ0cmRtYS90cmFu
+c3BvcnQuYw0KPiBiL25ldC9zdW5ycGMveHBydHJkbWEvdHJhbnNwb3J0LmMNCj4gaW5kZXggM2E1
+YTgwNS4uMDczZmVjZCAxMDA2NDQNCj4gLS0tIGEvbmV0L3N1bnJwYy94cHJ0cmRtYS90cmFuc3Bv
+cnQuYw0KPiArKysgYi9uZXQvc3VucnBjL3hwcnRyZG1hL3RyYW5zcG9ydC5jDQo+IEBAIC01NDYs
+NyArNTQ2LDggQEAgc3RhdGljIHZvaWQgcnBjcmRtYV9rZWVwYWxpdmVfcmVsZWFzZSh2b2lkDQo+
+ICpjYWxsZGF0YSkNCj4gwqANCj4gwqAJZGF0YSA9IHhwcnRfZ2V0KHhwcnQpOw0KPiDCoAludWxs
+X3Rhc2sgPSBycGNfY2FsbF9udWxsX2hlbHBlcih0YXNrLT50a19jbGllbnQsIHhwcnQsDQo+IE5V
+TEwsDQo+IC0JCQkJCcKgUlBDX1RBU0tfU09GVFBJTkcgfA0KPiBSUENfVEFTS19BU1lOQywNCj4g
+KwkJCQkJwqBSUENfVEFTS19TT0ZUUElORyB8DQo+IFJQQ19UQVNLX0FTWU5DIHwNCj4gKwkJCQkJ
+wqBSUENfVEFTS19OT19DT05HLA0KPiDCoAkJCQkJwqAmcnBjcmRtYV9rZWVwYWxpdmVfY2FsbF9v
+cHMNCj4gLCBkYXRhKTsNCj4gwqAJaWYgKCFJU19FUlIobnVsbF90YXNrKSkNCj4gwqAJCXJwY19w
+dXRfdGFzayhudWxsX3Rhc2spOw0KPiBkaWZmIC0tZ2l0IGEvbmV0L3N1bnJwYy94cHJ0cmRtYS92
+ZXJicy5jDQo+IGIvbmV0L3N1bnJwYy94cHJ0cmRtYS92ZXJicy5jDQo+IGluZGV4IDgxY2QzMWEu
+LmQ5YjVmYTcgMTAwNjQ0DQo+IC0tLSBhL25ldC9zdW5ycGMveHBydHJkbWEvdmVyYnMuYw0KPiAr
+KysgYi9uZXQvc3VucnBjL3hwcnRyZG1hL3ZlcmJzLmMNCj4gQEAgLTEzNiwxOSArMTM2LDIwIEBA
+DQo+IMKgc3RhdGljIHZvaWQNCj4gwqBycGNyZG1hX3VwZGF0ZV9ncmFudGVkX2NyZWRpdHMoc3Ry
+dWN0IHJwY3JkbWFfcmVwICpyZXApDQo+IMKgew0KPiAtCXN0cnVjdCBycGNyZG1hX21zZyAqcm1z
+Z3AgPSByZG1hYl90b19tc2cocmVwLT5ycl9yZG1hYnVmKTsNCj4gwqAJc3RydWN0IHJwY3JkbWFf
+YnVmZmVyICpidWZmZXIgPSAmcmVwLT5ycl9yeHBydC0+cnhfYnVmOw0KPiArCV9fYmUzMiAqcCA9
+IHJlcC0+cnJfcmRtYWJ1Zi0+cmdfYmFzZTsNCj4gwqAJdTMyIGNyZWRpdHM7DQo+IMKgDQo+IMKg
+CWlmIChyZXAtPnJyX2xlbiA8IFJQQ1JETUFfSERSTEVOX0VSUikNCj4gwqAJCXJldHVybjsNCj4g
+wqANCj4gLQljcmVkaXRzID0gYmUzMl90b19jcHUocm1zZ3AtPnJtX2NyZWRpdCk7DQo+ICsJY3Jl
+ZGl0cyA9IGJlMzJfdG9fY3B1cChwICsgMik7DQo+ICsJaWYgKGNyZWRpdHMgPiBidWZmZXItPnJi
+X21heF9yZXF1ZXN0cykNCj4gKwkJY3JlZGl0cyA9IGJ1ZmZlci0+cmJfbWF4X3JlcXVlc3RzOw0K
+PiArCS8qIFJlc2VydmUgb25lIGNyZWRpdCBmb3Iga2VlcGFsaXZlIHBpbmcgKi8NCj4gKwljcmVk
+aXRzLS07DQo+IMKgCWlmIChjcmVkaXRzID09IDApDQo+IMKgCQljcmVkaXRzID0gMTsJLyogZG9u
+J3QgZGVhZGxvY2sgKi8NCj4gLQllbHNlIGlmIChjcmVkaXRzID4gYnVmZmVyLT5yYl9tYXhfcmVx
+dWVzdHMpDQo+IC0JCWNyZWRpdHMgPSBidWZmZXItPnJiX21heF9yZXF1ZXN0czsNCj4gLQ0KPiDC
+oAlhdG9taWNfc2V0KCZidWZmZXItPnJiX2NyZWRpdHMsIGNyZWRpdHMpOw0KPiDCoH0NCj4gwqAN
+Cj4gQEAgLTkxNSw2ICs5MTYsOCBAQCBzdHJ1Y3QgcnBjcmRtYV9yZXAgKg0KPiDCoAlzdHJ1Y3Qg
+cnBjcmRtYV9idWZmZXIgKmJ1ZiA9ICZyX3hwcnQtPnJ4X2J1ZjsNCj4gwqAJaW50IGksIHJjOw0K
+PiDCoA0KPiArCWlmIChyX3hwcnQtPnJ4X2RhdGEubWF4X3JlcXVlc3RzIDwgMikNCj4gKwkJcmV0
+dXJuIC1FSU5WQUw7DQo+IMKgCWJ1Zi0+cmJfbWF4X3JlcXVlc3RzID0gcl94cHJ0LT5yeF9kYXRh
+Lm1heF9yZXF1ZXN0czsNCj4gwqAJYnVmLT5yYl9iY19zcnZfbWF4X3JlcXVlc3RzID0gMDsNCj4g
+wqAJYXRvbWljX3NldCgmYnVmLT5yYl9jcmVkaXRzLCAxKTsNCj4gDQo+IC0tDQo+IFRvIHVuc3Vi
+c2NyaWJlIGZyb20gdGhpcyBsaXN0OiBzZW5kIHRoZSBsaW5lICJ1bnN1YnNjcmliZSBsaW51eC1u
+ZnMiDQo+IGluDQo+IHRoZSBib2R5IG9mIGEgbWVzc2FnZSB0byBtYWpvcmRvbW9Admdlci5rZXJu
+ZWwub3JnDQo+IE1vcmUgbWFqb3Jkb21vIGluZm8gYXTCoMKgaHR0cDovL3ZnZXIua2VybmVsLm9y
+Zy9tYWpvcmRvbW8taW5mby5odG1sDQo+IA0KLS0gDQoNCg0KCQ0KCQ0KDQoNClRyb25kIE15a2xl
+YnVzdA0KUHJpbmNpcGFsIFN5c3RlbSBBcmNoaXRlY3QNCjQzMDAgRWwgQ2FtaW5vIFJlYWwgfCBT
+dWl0ZSAxMDANCkxvcyBBbHRvcywgQ0HCoMKgOTQwMjINClc6IDY1MC00MjItMzgwMA0KQzogODAx
+LTkyMS00NTgzwqANCnd3dy5wcmltYXJ5ZGF0YS5jb20NCg0KDQoNCg==
 
