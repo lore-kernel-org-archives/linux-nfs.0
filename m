@@ -1,27 +1,113 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from bombadil.infradead.org ([65.50.211.133]:43874 "EHLO
-        bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751377AbdBINlN (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 9 Feb 2017 08:41:13 -0500
-Date: Thu, 9 Feb 2017 05:21:36 -0800
-From: Christoph Hellwig <hch@infradead.org>
-To: Chuck Lever <chucklever@gmail.com>
-Cc: Christoph Hellwig <hch@infradead.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: NFS server regression in v4.10-rc7
-Message-ID: <20170209132136.GA23906@infradead.org>
-References: <1485246161-20874-1-git-send-email-hch@lst.de>
- <60D0607E-7D01-4F68-A447-071B7DEC6F23@gmail.com>
- <20170208213914.GA1863@infradead.org>
- <BF7B504A-A68C-45CB-8CA9-990F3AB2F1D6@gmail.com>
+Received: from us-smtp-delivery-194.mimecast.com ([63.128.21.194]:24729 "EHLO
+        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1751635AbdBINxC (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 9 Feb 2017 08:53:02 -0500
+From: Trond Myklebust <trondmy@primarydata.com>
+To: "tigran.mkrtchyan@desy.de" <tigran.mkrtchyan@desy.de>
+CC: "Anna.Schumaker@netapp.com" <Anna.Schumaker@netapp.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 0/4] Match TCP connection timeouts to the lease period
+Date: Thu, 9 Feb 2017 13:50:01 +0000
+Message-ID: <1486648198.3644.1.camel@primarydata.com>
+References: <ad98d031-f4a0-4713-a605-7c7f1e61a4f2@email.android.com>
+         <1486591062.8353.2.camel@primarydata.com>
+         <1845955030.39771341.1486626450894.JavaMail.zimbra@desy.de>
+In-Reply-To: <1845955030.39771341.1486626450894.JavaMail.zimbra@desy.de>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <BF7B504A-A68C-45CB-8CA9-990F3AB2F1D6@gmail.com>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Feb 08, 2017 at 04:54:02PM -0500, Chuck Lever wrote:
-> I see this with my tmpfs export.
+T24gVGh1LCAyMDE3LTAyLTA5IGF0IDA4OjQ3ICswMTAwLCBNa3J0Y2h5YW4sIFRpZ3JhbiB3cm90
+ZToNCj4gDQo+IC0tLS0tIE9yaWdpbmFsIE1lc3NhZ2UgLS0tLS0NCj4gPiBGcm9tOiAiVHJvbmQg
+TXlrbGVidXN0IiA8dHJvbmRteUBwcmltYXJ5ZGF0YS5jb20+DQo+ID4gVG86ICJ0aWdyYW4gbWty
+dGNoeWFuIiA8dGlncmFuLm1rcnRjaHlhbkBkZXN5LmRlPg0KPiA+IENjOiAiQW5uYSBTY2h1bWFr
+ZXIiIDxBbm5hLlNjaHVtYWtlckBuZXRhcHAuY29tPiwgbGludXgtbmZzQHZnZXIua2UNCj4gPiBy
+bmVsLm9yZw0KPiA+IFNlbnQ6IFdlZG5lc2RheSwgRmVicnVhcnkgOCwgMjAxNyAxMDo1Nzo0NCBQ
+TQ0KPiA+IFN1YmplY3Q6IFJlOiBbUEFUQ0ggMC80XSBNYXRjaCBUQ1AgY29ubmVjdGlvbiB0aW1l
+b3V0cyB0byB0aGUgbGVhc2UNCj4gPiBwZXJpb2QNCj4gPiBPbiBXZWQsIDIwMTctMDItMDggYXQg
+MjI6MTggKzAxMDAsIE1rcnRjaHlhbiwgVGlncmFuIHdyb3RlOg0KPiA+ID4gDQo+ID4gPiANCj4g
+PiA+IE9uIEZlYiA4LCAyMDE3IDE3OjQ4LCBUcm9uZCBNeWtsZWJ1c3QgPHRyb25kLm15a2xlYnVz
+dEBwcmltYXJ5ZGF0DQo+ID4gPiBhLmNvDQo+ID4gPiBtPiB3cm90ZToNCj4gPiA+IFdpdGggdGhl
+IGN1cnJlbnQgZGVmYXVsdCBUQ1AgY29ubmVjdGlvbiB0aW1lb3V0IGJlaW5nIHNldCBhdA0KPiA+
+ID4gYXJvdW5kDQo+ID4gPiAzIG1pbnV0ZXMsIGFuZCBtb3N0IHNlcnZlciB2ZW5kb3JzIHNldHRp
+bmcgdGhlIGxlYXNlIHBlcmlvZCBhdA0KPiA+ID4gdmFsdWVzIHNpZ25pZmljYW50bHkgbG93ZXIg
+dGhhbiB0aGF0LCB3ZSBjYW4gZW5kIHVwIGxvc2luZyB0aGUNCj4gPiA+IGxlYXNlDQo+ID4gPiB3
+aGlsZSB3YWl0aW5nIGZvciB0aGUgVENQIGxheWVyIHRvIGRpc2NvdmVyIHRoYXQgd2UgbmVlZCB0
+byBicmVhaw0KPiA+ID4gdGhlDQo+ID4gPiBjb25uZWN0aW9uLg0KPiA+ID4gVGhpcyBwYXRjaCBz
+ZXJpZXMgc2V0cyB1cCBhbiBpbnRlcmZhY2UgdG8gYWxsb3cgdGhlIE5GU3Y0IGNsaWVudA0KPiA+
+ID4gdG8NCj4gPiA+IGFkanVzdCB0aHNlZSB0aW1lb3V0IHZhbHVlcyBkb3duIG9uY2UgaXQgaGFz
+IG9idGFpbmVkIGEgdmFsdWUgZm9yDQo+ID4gPiB0aGUgbGVhc2UgcGVyaW9kIGZyb20gdGhlIHNl
+cnZlci4NCj4gPiA+IA0KPiA+ID4gDQo+ID4gPiBDb29sIGZpbmFsbHkhIEkgd2FzIHdhaXRpbmcg
+Zm9yIHRoYXQgcXVpdGUgYSBiaXQuDQo+ID4gPiANCj4gPiA+IGh0dHBzOi8vd3d3LmlldGYub3Jn
+L21haWwtYXJjaGl2ZS93ZWIvbmZzdjQvY3VycmVudC9tc2cxMzc1OC5odG1sDQo+ID4gPiANCj4g
+PiA+IA0KPiA+IA0KPiA+IE5vLiBUaGlzIG1lY2hhbmlzbSBkb2VzIG5vdCBleGN1c2UgdGhlIHNl
+cnZlciBmcm9tIGhhdmluZyB0bw0KPiA+IHByb2Nlc3MNCj4gPiByZXF1ZXN0cywgYW5kIEkgYW0g
+Y2VydGFpbmx5IG5vdCBzaWduaW5nIHVzIHVwIHRvIGFueSAiZ2VudGxlbWFuJ3MNCj4gPiBhZ3Jl
+ZW1lbnQiLg0KPiA+IA0KPiA+IElmIHRoZSBzZXJ2ZXIgaGFzIHJlY2VpdmVkIGFuIFJQQyBjYWxs
+LCB0aGVuIGl0IE1VU1QgcHJvY2VzcyBpdCwNCj4gPiB3aGV0aGVyIG9yIG5vdCB0aGVyZSBpcyBh
+IFRDUCBjb25uZWN0aW9uLCBvdGhlcndpc2UgdGhlIGxlYXNlIG1heQ0KPiA+IHN0aWxsDQo+ID4g
+YmUgbG9zdCBkdWUgdG8gdGhlIHNlcnZlciBmYWlsaW5nIHRvIGxpdmUgdXAgdG8gdGhlIHJlcXVp
+cmVtZW50cyBpbg0KPiA+IFJGQzU2NjEgU2VjdGlvbiA4LjPCoChTZWUgaHR0cHM6Ly90b29scy5p
+ZXRmLm9yZy9odG1sL3JmYzU2NjEjc2VjdGlvDQo+ID4gbi04Lg0KPiA+IDMpLiBUaG9zZSByZXF1
+aXJlbWVudHMgc3RhdGUgdGhhdCAiSWYgdGhlIGNsaWVudCBJRCdzIGxlYXNlIGhhcyBub3QNCj4g
+PiBleHBpcmVkIHdoZW4gdGhlIHNlcnZlciByZWNlaXZlcyBhIFNFUVVFTkNFIG9wZXJhdGlvbiwg
+dGhlbiB0aGUNCj4gPiBzZXJ2ZXINCj4gPiBNVVNUIHJlbmV3IHRoZSBsZWFzZS4iDQo+ID4gDQo+
+ID4gVGhlIHBvaW50IG9mIHRoZXNlIHBhdGNoZXMgYXJlIHRvIGVuc3VyZSB0aGF0IHdlIGRldGVj
+dCByb3V0aW5nDQo+ID4gY2hhbmdlcw0KPiA+IGFuZCB0aGluZ3MgbGlrZSB0aGF0IGluIGEgdGlt
+ZWx5IGZhc2hpb24gKGFnYWluLCBhcyByZXF1aXJlZCBieQ0KPiA+IFJGQzU2NjEsIFNlY3Rpb24g
+OC4zKSBzbyB0aGF0IHdlIGNhbiByZS1lc3RhYmxpc2ggdGhlIGNvbm5lY3Rpb24NCj4gPiBhbmQN
+Cj4gPiByZW5ldyB0aGUgbGVhc2UuDQo+ID4gDQo+IA0KPiBTdXJlLCBJIGFtIGZ1bGx5IGFncmVl
+IHdpdGggeW91LiBNeSBwb2ludCBpcyB0aGF0IGNsaWVudCdzIFRDUA0KPiB0aW1lb3V0DQo+IGlz
+IG5vdCBhICdyYW5kb20gbnVtYmVyJyBhbnkgbW9yZSBhbmQgaGF2ZSBhIHJlbGF0aW9uIHdpdGgg
+dGhlIGxlYXNlDQo+IHRpbWUuDQo+IEhvd2V2ZXIsIHRoZSBzYW1lIGNhbiBiZSBhcHBsaWVkIHRv
+IFJQQyB0aW1lb3V0cyBhcyB3ZWxsLiBPdXIgc2VydmVyDQo+IGFsd2F5cyB0byBzZW5kcyBFUlJf
+REVMQVkgaWYgcmVxdWVzdCBpcyBub3QgcHJvY2Vzc2VkIHdpdGhpbiAzc2VjIHRvDQo+IGF2b2lk
+IHJldHJpZXMuIFRoaXMgJzNzZWMnIGlzIGEgcmFuZG9tIG51bWJlciwgYXMgd2UgaGF2ZSBubyBp
+ZGVhDQo+IHdoZW4NCj4gdGhlIGNsaWVudCB3aWxsIGxvc2UgaGlzIHBhdGllbmNlLg0KPiANCg0K
+RmFpciBlbm91Z2guIE5vdGUgdGhhdCB0aGUgY2xpZW50IGlzIHJlcXVpcmVkIHRvIHdhaXQgdW50
+aWwgdGhlIFJQQw0KY2FsbCBpcyBmaW5pc2hlZCBubyBtYXR0ZXIgd2hhdDsgaXQgY2Fubm90IHJl
+dXNlIHRoYXQgc2xvdCB1bnRpbCB0aGUNCnNlcnZlciBpcyBkb25lLg0KDQpBcyBmb3IgdGhlIFRD
+UCBjb25uZWN0aW9uIHRpbWVvdXQsIGl0IGlzIHN0aWxsIGEgbGl0dGxlIHVuY2xlYXIgdG8gbWUN
+CnRoYXQgdGhlIDEgbGVhc2UgcGVyaW9kIGlzIG9wdGltYWwuIFlvdSBjYW4gc3RpbGwgZW5kIHVw
+IGxvc2luZyB0aGUNCmxlYXNlLCBzaW5jZSB3ZSBkb24ndCBzdGFydCBzZW5kaW5nIFNFUVVFTkNF
+IG9wZXJhdGlvbnMgdW50aWwgd2VsbCBpbnRvDQp0aGUgc2Vjb25kIGhhbGYgb2YgdGhlIHBlcmlv
+ZCBmb2xsb3dpbmcgdGhlIGxhc3QgbGVhc2UgcmVuZXdhbC4gTXkgaG9wZQ0KaXMgdGhhdCB0aGUg
+S0VFUEFMSVZFIHdpbGwgc2F2ZSB1cyB0aGVyZSwgc2luY2UgaXQgbW9uaXRvcnMgdGhlIGVudGly
+ZQ0KbGVhc2UgcGVyaW9kLg0KVGhhdCBzYWlkLCBJJ20gb3BlbiB0byBhcmd1bWVudHMgdGhhdCB3
+ZSBtaWdodCB3YW50IHRvIHJlZHVjZSB0aGUNCnRpbWVvdXQgZnVydGhlciB0bywgc2F5LCAzLzQg
+bGVhc2UgcGVyaW9kIGluIG9yZGVyIHRvIGFsbG93IGZvciBzb21lDQp0aW1lIHRvIHJlLWVzdGFi
+bGlzaCB0aGUgVENQIGNvbm5lY3Rpb24uIFRoZSByZWFzb24gd2h5IEkgaGF2ZSBub3QgZG9uZQ0K
+dGhpcyBpcyBiZWNhdXNlIHRoYXQgbWVhbnMgd2Ugd2lsbCBlbmQgdXAgYnJlYWtpbmcgdGhlIGNv
+bm5lY3Rpb24gYWZ0ZXINCjMwcyBhZ2FpbnN0IHNvbWUgc2VydmVyczsgSSdtIG5vdCBzdXJlIHRo
+YXQgZXZlbiBkYXRhIGNlbnRyZSBuZXR3b3Jrcw0Kd2lsbCBndWFyYW50ZWUgc3RhYmlsaXR5IG9m
+IHNlcnZpY2UgYXQgdGhhdCBsZXZlbC4NCg0KVGhvdWdodHMgYW5kIGNvbW1lbnRzPw0KDQo+IFRp
+Z3Jhbi4NCj4gDQo+IA0KPiA+ID4gVGlncmFuLg0KPiA+ID4gDQo+ID4gPiBUcm9uZCBNeWtsZWJ1
+c3QgKDQpOg0KPiA+ID4gwqAgU1VOUlBDOiBSZW1vdmUgdW51c2VkIGZ1bmN0aW9uIHJwY19nZXRf
+dGltZW91dCgpDQo+ID4gPiDCoCBTVU5SUEM6IFJlZmFjdG9yIFRDUCBzb2NrZXQgdGltZW91dCBj
+b2RlIGludG8gYSBoZWxwZXIgZnVuY3Rpb24NCj4gPiA+IMKgIFNVTlJQQzogQWxsb3cgY2hhbmdp
+bmcgb2YgdGhlIFRDUCB0aW1lb3V0IHBhcmFtZXRlcnMgb24gdGhlIGZseQ0KPiA+ID4gwqAgTkZT
+djQ6IFNldCB0aGUgY29ubmVjdGlvbiB0aW1lb3V0IHRvIG1hdGNoIHRoZSBsZWFzZSBwZXJpb2QN
+Cj4gPiA+IA0KPiA+ID4gZnMvbmZzL25mczRyZW5ld2QuY8KgwqDCoMKgwqDCoMKgwqDCoMKgwqDC
+oCB8wqAgMiArLQ0KPiA+ID4gaW5jbHVkZS9saW51eC9zdW5ycGMvY2xudC5owqDCoMKgwqAgfMKg
+IDYgKy0tDQo+ID4gPiBpbmNsdWRlL2xpbnV4L3N1bnJwYy94cHJ0LmjCoMKgwqDCoCB8wqAgNCAr
+Kw0KPiA+ID4gaW5jbHVkZS9saW51eC9zdW5ycGMveHBydHNvY2suaCB8wqAgMyArKw0KPiA+ID4g
+bmV0L3N1bnJwYy9jbG50LmPCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgIHwgNTEgKysrKysr
+KysrKysrKy0tLS0tLS0tLS0tDQo+ID4gPiBuZXQvc3VucnBjL3hwcnRzb2NrLmPCoMKgwqDCoMKg
+wqDCoMKgwqDCoCB8IDg4DQo+ID4gPiArKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKy0t
+LS0tLS0tLQ0KPiA+ID4gNiBmaWxlcyBjaGFuZ2VkLCAxMDcgaW5zZXJ0aW9ucygrKSwgNDcgZGVs
+ZXRpb25zKC0pDQo+ID4gPiANCj4gPiANCj4gPiAtLQ0KPiA+IA0KPiA+IA0KPiA+IAkNCj4gPiAJ
+DQo+ID4gDQo+ID4gDQo+ID4gVHJvbmQgTXlrbGVidXN0DQo+ID4gUHJpbmNpcGFsIFN5c3RlbSBB
+cmNoaXRlY3QNCj4gPiA0MzAwIEVsIENhbWlubyBSZWFsIHwgU3VpdGUgMTAwDQo+ID4gTG9zIEFs
+dG9zLCBDQcKgwqA5NDAyMg0KPiA+IFc6IDY1MC00MjItMzgwMA0KPiA+IEM6IDgwMS05MjEtNDU4
+Mw0KPiA+IHd3dy5wcmltYXJ5ZGF0YS5jb20NCj4gPiANCj4gPiANCj4gPiANCj4gPiBO77+977+9
+77+977+977+9cu+/ve+/vXnvv73vv73vv71i77+9WO+/ve+/vcendu+/vV7vv70p3rp7Lm7vv70r
+77+977+977+977+9e++/ve+/ve+/vSLvv73vv71ebu+/vXLvv73vv73vv71677+977+977+9aO+/
+ve+/ve+/ve+/vSbvv73vv73vv71H77+977+977+9aO+/vQ0KPiA+ICjvv73pmo7vv73domoi77+9
+77+977+9be+/ve+/ve+/ve+/ve+/vXrvv73elu+/ve+/ve+/vWbvv73vv73vv71o77+977+977+9
+fu+/vW3vv70NCj4gDQo+IA0KLS0gDQoNCg0KDQoJDQoJDQoNCg0KVHJvbmQgTXlrbGVidXN0DQpQ
+cmluY2lwYWwgU3lzdGVtIEFyY2hpdGVjdA0KNDMwMCBFbCBDYW1pbm8gUmVhbCB8IFN1aXRlIDEw
+MA0KTG9zIEFsdG9zLCBDQcKgwqA5NDAyMg0KVzogNjUwLTQyMi0zODAwDQpDOiA4MDEtOTIxLTQ1
+ODPCoA0Kd3d3LnByaW1hcnlkYXRhLmNvbQ0KDQoNCg0KDQo=
 
-The tests passes fine for me with latests mainline on either tmpfs
-or xfs.  This is on a 64-bit x86 VM.
