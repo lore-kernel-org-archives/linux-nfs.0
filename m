@@ -1,34 +1,45 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:47700 "EHLO fieldses.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751858AbdBJOAo (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 10 Feb 2017 09:00:44 -0500
-Date: Fri, 10 Feb 2017 08:53:07 -0500
-To: Linus Torvalds <torvalds@linux-foundation.org>
-Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: [GIT PULL] nfsd bugfix for 4.10
-Message-ID: <20170210135307.GA11284@fieldses.org>
+Received: from us-smtp-delivery-194.mimecast.com ([63.128.21.194]:46511 "EHLO
+        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1751726AbdBJPcW (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 10 Feb 2017 10:32:22 -0500
+From: Trond Myklebust <trondmy@primarydata.com>
+To: "psingh.ait@gmail.com" <psingh.ait@gmail.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: How NLM support posix threads?
+Date: Fri, 10 Feb 2017 15:10:57 +0000
+Message-ID: <1486739454.19587.1.camel@primarydata.com>
+References: <CAPrqf9378wbKmv9EaiuFzYLwvCxziXtkk-ZY-jsJxSOgSNm+QA@mail.gmail.com>
+In-Reply-To: <CAPrqf9378wbKmv9EaiuFzYLwvCxziXtkk-ZY-jsJxSOgSNm+QA@mail.gmail.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-From: bfields@fieldses.org (J. Bruce Fields)
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Please pull
+T24gRnJpLCAyMDE3LTAyLTEwIGF0IDE0OjUxICswNTMwLCBQYW5rYWogU2luZ2ggd3JvdGU6DQo+
+IEhpLA0KPiANCj4gSSBhbSBnZXR0aW5nIGEgc3RyYW5nZSBwcm9ibGVtIHdoZXJlIGxvY2tzIGFy
+ZSBkZW5pZWQgYnkgTkZTdjMgc2VydmVyDQo+IGV2ZW4gdGhvdWdoIG5vIGxvY2tzIG9uIHNhbWUg
+ZmlsZSB3aGVyZSB0YWtlbi4NCj4gDQo+IFdoaWxlIGxvb2tpbmcgYXQgdGhlIGNvZGUgaXQgc2Vl
+bXMgbGlrZSBOTE0gY29tcGFyZXMgYSBsb2NrIGJ5IHVzaW5nDQo+ICJwaWQiIGFuZCBvdGhlciBv
+cHRpb25zIGxpa2UgZm9ybSAtIHRvIGZpbGUgb2Zmc2V0LCB0eXBlIG9mIGxvY2sgZXRjLg0KPiBC
+dXQgd2UgYXJlIGludGVyZXN0ZWQgaW4gInBpZCIgYmVjYXVzZSBvdGhlciBjb21wYXJpc29uIGNh
+biBiZSBzYW1lDQo+IGZvciBkaWZmZXJlbnQgZmlsZV9sb2Nrcy4NCj4gDQo+IMKgQXMgd2Uga25v
+dyBwb3NpeCB0aHJlYWRzIHVzZSB0Z2lkIGFzIHBpZCBmb3IgYWxsIGl0cyB0aHJlYWQgaGVuY2UN
+Cj4gTkZTdjMgc2VydmVyIHdpbGwgY2FuIGdldCBsb2NrIHJlcXVlc3QgZnJvbSBkaWZmZXJlbnQg
+cG9zaXggdGhyZWFkDQo+IGJ1dA0KPiB3aXRoIHNhbWUgcGlkLiBIZW5jZSBOTE3CoMKgd2lsbCB0
+cmVhdCB0aGUgbG9ja2luZyByZXF1ZXN0IGFzIHRoZXkgYXJlDQo+IGNvbWluZyBmcm9tIHNhbWUg
+cHJvY2Vzcy4gVGhpcyBtYXkgcmVzdWx0IGluIGZvbGxvd2luZyBwcm9ibGVtcw0KDQpUaHJlYWRz
+IHRoYXQgc2hhcmUgdGhlIHNhbWUgcHJvY2VzcyBpZCBiZWxvbmcsIGJ5IGRlZmluaXRpb24sIHRv
+IHRoZQ0Kc2FtZSBwcm9jZXNzLg0KDQo+IDEuIERpZmZlcmVudCB0aHJlYWRzIG9mIHNhbWUgcHJv
+Y2VzcyBjYW4gZ2V0IGxvY2sgb24gc2FtZSBmaWxlLg0KDQpUaGF0IGlzIHByZWNpc2VseSBob3cg
+UE9TSVggbG9ja3MgYXJlIGV4cGVjdGVkIHRvIHdvcmsgaW4gdGhyZWFkZWQNCmVudmlyb25tZW50
+cy4NCmh0dHA6Ly9wdWJzLm9wZW5ncm91cC5vcmcvb25saW5lcHVicy85Njk5OTE5Nzk5L2Z1bmN0
+aW9ucy9mY250bC5odG1sDQoiQW4gZXhjbHVzaXZlIGxvY2sgc2hhbGwgcHJldmVudCBhbnkgb3Ro
+ZXIgcHJvY2VzcyBmcm9tIHNldHRpbmcgYQ0Kc2hhcmVkIGxvY2sgb3IgYW4gZXhjbHVzaXZlIGxv
+Y2sgb24gYW55IHBvcnRpb24gb2YgdGhlIHByb3RlY3RlZCBhcmVhLiINCg0KDQo+IDIuIER1cmlu
+ZyAiZmxfZ3JhbnQiIGNhbGxiYWNrIHdyb25nICJibG9jayIgd2lsbCBiZSBjb21wYXJlZCBoZW5j
+ZQ0KPiB0aGlzIHdpbGwgcmVzdWx0IGluIGxvY2sgZmFpbHVyZSBldmVuIGlmIGxvY2sgaXMgYWN0
+dWFsbHkgZ3JhbnRlZC4NCg0KSG93IHNvPw0KDQo+IElzIHRoaXMgYSBsaW1pdGF0aW9uIG9mIE5M
+TT8NCj4gDQoNCg0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFpbnRh
+aW5lciwgUHJpbWFyeURhdGENCnRyb25kLm15a2xlYnVzdEBwcmltYXJ5ZGF0YS5jb20NCg==
 
-  git://linux-nfs.org/~bfields/linux.git tags/nfsd-4.10-3
-
---b.
-
-----------------------------------------------------------------
-This patch turned out to have a couple problems.  The problems are
-fixable, but at least one of the fixes is a little ugly.  The original
-bug has always been there, so we can wait another week or two to get
-this right.
-
-----------------------------------------------------------------
-J. Bruce Fields (1):
-      nfsd: Revert "nfsd: special case truncates some more"
-
- fs/nfsd/vfs.c | 97 ++++++++++++++++++++++++++++++++++++-----------------------
- 1 file changed, 60 insertions(+), 37 deletions(-)
