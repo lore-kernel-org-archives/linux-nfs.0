@@ -1,53 +1,77 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from cliff.cs.toronto.edu ([128.100.3.120]:37224 "EHLO
-        cliff.cs.toronto.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1752596AbdBJTLx (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 10 Feb 2017 14:11:53 -0500
-From: Chris Siebenmann <cks.nfs01@cs.toronto.edu>
-To: linux-nfs@vger.kernel.org
-cc: cks.nfs01@cs.toronto.edu
-Subject: Manual page bug: two inaccuracies in nfsd(7)
+Received: from mail-qt0-f196.google.com ([209.85.216.196]:34471 "EHLO
+        mail-qt0-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1752388AbdBJTo7 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 10 Feb 2017 14:44:59 -0500
+Subject: Re: [PATCH net-next v2 00/12] net: dsa: remove unnecessary phy.h
+ include
+To: David Miller <davem@davemloft.net>, kvalo@codeaurora.org
+References: <87h944ll0w.fsf@kamboji.qca.qualcomm.com>
+ <5fe312c8-e59e-669c-cd29-f6773adcd8e5@gmail.com>
+ <877f4zjw01.fsf@kamboji.qca.qualcomm.com>
+ <20170210.135138.2084086346069765205.davem@davemloft.net>
+Cc: netdev@vger.kernel.org, linux-mips@linux-mips.org,
+        linux-nfs@vger.kernel.org, linux-scsi@vger.kernel.org,
+        linux-usb@vger.kernel.org, linux-wireless@vger.kernel.org,
+        target-devel@vger.kernel.org, andrew@lunn.ch,
+        anna.schumaker@netapp.com, derek.chickles@caviumnetworks.com,
+        felix.manlunas@caviumnetworks.com, bfields@fieldses.org,
+        jlayton@poochiereds.net, jirislaby@gmail.com, mcgrof@do-not-panic.com,
+        madalin.bucur@nxp.com, UNGLinuxDriver@microchip.com,
+        nab@linux-iscsi.org, mickflemm@gmail.com, nicolas.ferre@atmel.com,
+        raghu.vatsavayi@caviumnetworks.com, ralf@linux-mips.org,
+        satananda.burla@caviumnetworks.com,
+        thomas.petazzoni@free-electrons.com, timur@codeaurora.org,
+        trond.myklebust@primarydata.com, vivien.didelot@savoirfairelinux.com,
+        woojung.huh@microchip.com
+From: Florian Fainelli <f.fainelli@gmail.com>
+Message-ID: <68d8c792-5d09-7cdc-4a94-8437bfb0299e@gmail.com>
+Date: Fri, 10 Feb 2017 11:44:49 -0800
 MIME-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Date: Fri, 10 Feb 2017 13:54:10 -0500
-Message-Id: <20170210185410.7425E5A06F8@apps1.cs.toronto.edu>
+In-Reply-To: <20170210.135138.2084086346069765205.davem@davemloft.net>
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
- I was recently reading this manual page as part of exploring running
-an NFS server on Ubuntu 16.04 (with Ubuntu's kernel '4.4.0') and found
-two inaccuracies with the current state of the kernel (or at least how
-it looks to me based on both experimentation and code).
+On 02/10/2017 10:51 AM, David Miller wrote:
+> From: Kalle Valo <kvalo@codeaurora.org>
+> Date: Thu, 09 Feb 2017 16:10:06 +0200
+> 
+>> Florian Fainelli <f.fainelli@gmail.com> writes:
+>>
+>>>>> If not, for something like this it's a must:
+>>>>>
+>>>>> drivers/net/wireless/ath/wil6210/cfg80211.c:24:30: error: expected ‘)’ before ‘bool’
+>>>>>  module_param(disable_ap_sme, bool, 0444);
+>>>>>                               ^
+>>>>> drivers/net/wireless/ath/wil6210/cfg80211.c:25:34: error: expected ‘)’ before string constant
+>>>>>  MODULE_PARM_DESC(disable_ap_sme, " let user space handle AP mode SME");
+>>>>>                                   ^
+>>>>> Like like that file needs linux/module.h included.
+>>>>
+>>>> Johannes already fixed a similar (or same) problem in my tree:
+>>>>
+>>>> wil6210: include moduleparam.h
+>>>>
+>>>> https://git.kernel.org/cgit/linux/kernel/git/kvalo/wireless-drivers-next.git/commit/?id=949c2d0096753d518ef6e0bd8418c8086747196b
+>>>>
+>>>> I'm planning to send you a pull request tomorrow which contains that
+>>>> one.
+>>>
+>>> Thanks Kalle!
+>>>
+>>> David, can you hold on this series until Kalle's pull request gets
+>>> submitted? Past this error, allmodconfig builds fine with this patch
+>>> series (just tested). Thanks!
+>>
+>> Just submitted the pull request:
+>>
+>> https://patchwork.ozlabs.org/patch/726133/
+> 
+> I've retried this patch series, and will push it out assuming the build
+> completes properly.
 
- First, there is no /proc/net/rpc/auth.domain directory and cache any
-more. This was removed from the kernel in 2006 (in commit efc36aa5608f),
-so I think it should be safe to remove from current versions of the
-manpage.
-
- Second, the manpage says about the 'flush' files to be found in eg
-/proc/net/rpc/auth.unix.ip:
-
-	When a number of seconds since epoch (1 Jan 1970) is written to
-	this file, all entries in the cache that were last updated before
-	that file become invalidated and will be flushed out. Writing
-	1 will flush everything. [...]
-
-The bit about 'writing 1 will flush everything' does not appear to be
-accurate. Experimentally, writing 1 does not work (it flushes nothing),
-and in the current kernel code there is no special handling for a write of
-'1' to the "flush" files in net/sunrpc/cache.c's write_flush() function,
-which I believe is where this is implemented. Based on the implementation,
-the only way to flush everything is to write a time in the future to
-"flush".
-
- Based on looking at the kernel logs and code diffs, this may have
-changed in commit 778620364ef5, 'sunrpc/cache: make cache flushing more
-reliable', which gitk tells me came between v4.3-rc3 and v4.4-rc1 (it
-was made in October 2015). The commit description definitely talks about
-changing how cache expiry works, and it touches write_flush() et al in
-various ways. This may call for a kernel change to make it work again,
-but even if so I would suggest that the manpage be updated to reflect
-that writing 1 doesn't work in a range of kernel versions (some of which
-will be in the field for years to come, eg Ubuntu 16.04 LTS).
-
-	- cks
+I see it merged in net-next/master, thanks a lot this is going to save a
+lot of cycles in the future, thanks David!
+-- 
+Florian
