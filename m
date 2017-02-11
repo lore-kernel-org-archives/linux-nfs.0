@@ -1,85 +1,121 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qk0-f196.google.com ([209.85.220.196]:33435 "EHLO
-        mail-qk0-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1753198AbdBKMbr (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sat, 11 Feb 2017 07:31:47 -0500
-Received: by mail-qk0-f196.google.com with SMTP id 11so8288483qkl.0
-        for <linux-nfs@vger.kernel.org>; Sat, 11 Feb 2017 04:31:47 -0800 (PST)
-Message-ID: <1486816302.4233.29.camel@poochiereds.net>
-Subject: Re: [RFC][PATCH] nfsd: add +1 to reference counting scheme for
- struct nfsd4_session
+Received: from mail-qt0-f195.google.com ([209.85.216.195]:35126 "EHLO
+        mail-qt0-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1753379AbdBKMum (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sat, 11 Feb 2017 07:50:42 -0500
+Received: by mail-qt0-f195.google.com with SMTP id s58so7478699qtc.2
+        for <linux-nfs@vger.kernel.org>; Sat, 11 Feb 2017 04:50:42 -0800 (PST)
+Message-ID: <1486817439.4233.31.camel@poochiereds.net>
+Subject: Re: How NLM support posix threads?
 From: Jeff Layton <jlayton@poochiereds.net>
-To: David Windsor <dwindsor@gmail.com>, linux-nfs@vger.kernel.org,
-        netdev@vger.kernel.org
-Cc: kernel-hardening@lists.openwall.com,
-        Bruce Fields <bfields@fieldses.org>, Kees Cook <keescook@chromium.org>,
-        "Reshetova, Elena" <elena.reshetova@intel.com>
-Date: Sat, 11 Feb 2017 07:31:42 -0500
-In-Reply-To: <CAEXv5_jUa8Av4JABoKSAueiLHSLzibMvaE-8DrVcxZHFceckMg@mail.gmail.com>
-References: <1486625901-10094-1-git-send-email-dwindsor@gmail.com>
-         <CAEXv5_jUa8Av4JABoKSAueiLHSLzibMvaE-8DrVcxZHFceckMg@mail.gmail.com>
+To: Pankaj Singh <psingh.ait@gmail.com>,
+        Trond Myklebust <trondmy@primarydata.com>
+Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Date: Sat, 11 Feb 2017 07:50:39 -0500
+In-Reply-To: <CAPrqf938zLB73tShOZyeQDacDR5J9VaHhF4_-t7eEjecWocyUQ@mail.gmail.com>
+References: <CAPrqf9378wbKmv9EaiuFzYLwvCxziXtkk-ZY-jsJxSOgSNm+QA@mail.gmail.com>
+         <1486739454.19587.1.camel@primarydata.com>
+         <CAPrqf938zLB73tShOZyeQDacDR5J9VaHhF4_-t7eEjecWocyUQ@mail.gmail.com>
 Content-Type: text/plain; charset="UTF-8"
 Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sat, 2017-02-11 at 01:42 -0500, David Windsor wrote:
-> <snip>
+On Sat, 2017-02-11 at 11:49 +0530, Pankaj Singh wrote:
+> > During "fl_grant" callback wrong "block" will be compared hence
+> > this will result in lock failure even if lock is actually granted.
 > 
-> > Signed-off-by: David Windsor <dwindsor@gmail.com>
-> > ---
-> >  fs/nfsd/nfs4state.c | 6 +++---
-> >  1 file changed, 3 insertions(+), 3 deletions(-)
-> > 
-> > diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-> > index a0dee8a..b0f3010 100644
-> > --- a/fs/nfsd/nfs4state.c
-> > +++ b/fs/nfsd/nfs4state.c
-> > @@ -196,7 +196,7 @@ static void nfsd4_put_session_locked(struct nfsd4_session *ses)
-> > 
-> >         lockdep_assert_held(&nn->client_lock);
-> > 
-> > -       if (atomic_dec_and_test(&ses->se_ref) && is_session_dead(ses))
-> > +       if (!atomic_add_unless(&ses->se_ref, -1, 1) && is_session_des(ses))
+> "nlm_compare_locks" will compare the locks on the bases of pid, owner,
+> start offset, end offset and type. In case of posix threads as pid is
+> same, also all other parameters can be same for locks of different
+> files.
 > 
-> This should read:
-> if (!atomic_add_unless(&ses->se_ref, -1, 1) && is_session_dead(ses))
+> Now the scenario is, if there are two posix thread with pid p1 and
+> they try to take the lock on different files (say l1 and l2) then
+> different blocks will be created (say b1 and b2). In this case
+> underline filesystem may send "FILE_LOCK_DEFERRED" for both the locks
+> and these blocks will be added to deferred block list.
 > 
-> >                 free_session(ses);
-> >         put_client_renew_locked(clp);
-> >  }
-> > @@ -1645,7 +1645,7 @@ static void init_session(struct svc_rqst *rqstp, struct nfsd4_session *new, stru
-> >         new->se_flags = cses->flags;
-> >         new->se_cb_prog = cses->callback_prog;
-> >         new->se_cb_sec = cses->cb_sec;
-> > -       atomic_set(&new->se_ref, 0);
-> > +       atomic_set(&new->se_ref, 1);
-> >         idx = hash_sessionid(&new->se_sessionid);
-> >         list_add(&new->se_hash, &nn->sessionid_hashtbl[idx]);
-> >         spin_lock(&clp->cl_lock);
-> > @@ -1792,7 +1792,7 @@ free_client(struct nfs4_client *clp)
-> >                 ses = list_entry(clp->cl_sessions.next, struct nfsd4_session,
-> >                                 se_perclnt);
-> >                 list_del(&ses->se_perclnt);
-> > -               WARN_ON_ONCE(atomic_read(&ses->se_ref));
-> > +               WARN_ON_ONCE((atomic_read(&ses->se_ref) > 1));
-> >                 free_session(ses);
-> >         }
-> >         rpc_destroy_wait_queue(&clp->cl_cb_waitq);
+> So during "fl_grant" callback lock are compared with the blocks of
+> block list. Now lets say callback is called for l1 and the comparison
+> will succeed with b1 (this is as expected) and B_GOT_CALLBACK flag
+> will be set. But as b1 is still in block list, now when callback for
+> l2 arrives then also comparison with b1 can succeed instead of b2
+> because b1 is prior to b2 in the list. Hence B_GOT_CALLBACK flag will
+> not be set for b2 and when NFS client will retry for lock then lock
+> will be denied.
+> 
+> Below is the snipt fl_grant code where comparison happens.
+> list_for_each_entry(block, &nlm_blocked, b_list) {
+> if (nlm_compare_locks(&block->b_call->a_args.lock.fl, fl))
+> 
+> 
+
+POSIX locks don't work the way you expect between threads, even on local
+filesystems. The original spec for POSIX locking was written before
+threads were really a "thing", so different threads within the same PID
+can't have conflicting POSIX locks.
+
+OFD locks [1] will work between threads, and the NFS client tries to
+emulate flock() with NLM locks as well. The latter two are not well-
+tested with NLM though, so there may be bugs there.
+
+What might be best is to post a testcase for this, so we can see exactly
+what you're trying to do, what you expect to happen, and what's really
+happening.
+
+Also, please post what kernel you're using as that may be relevant.
+
+[1]: https://lwn.net/Articles/586904/
+
+
+> On Fri, Feb 10, 2017 at 8:40 PM, Trond Myklebust
+> <trondmy@primarydata.com> wrote:
+> > On Fri, 2017-02-10 at 14:51 +0530, Pankaj Singh wrote:
+> > > Hi,
+> > > 
+> > > I am getting a strange problem where locks are denied by NFSv3 server
+> > > even though no locks on same file where taken.
+> > > 
+> > > While looking at the code it seems like NLM compares a lock by using
+> > > "pid" and other options like form - to file offset, type of lock etc.
+> > > But we are interested in "pid" because other comparison can be same
+> > > for different file_locks.
+> > > 
+> > >  As we know posix threads use tgid as pid for all its thread hence
+> > > NFSv3 server will can get lock request from different posix thread
+> > > but
+> > > with same pid. Hence NLM  will treat the locking request as they are
+> > > coming from same process. This may result in following problems
+> > 
+> > Threads that share the same process id belong, by definition, to the
+> > same process.
+> > 
+> > > 1. Different threads of same process can get lock on same file.
+> > 
+> > That is precisely how POSIX locks are expected to work in threaded
+> > environments.
+> > http://pubs.opengroup.org/onlinepubs/9699919799/functions/fcntl.html
+> > "An exclusive lock shall prevent any other process from setting a
+> > shared lock or an exclusive lock on any portion of the protected area."
+> > 
+> > 
+> > > 2. During "fl_grant" callback wrong "block" will be compared hence
+> > > this will result in lock failure even if lock is actually granted.
+> > 
+> > How so?
+> > 
+> > > Is this a limitation of NLM?
+> > > 
+> > 
+> > 
 > > --
-> > 2.7.4
-> > 
+> > Trond Myklebust
+> > Linux NFS client maintainer, PrimaryData
+> > trond.myklebust@primarydata.com
+> 
+> 
+> 
 
-The basic idea here is that nfsv4 sessions have a "resting state" of 0.
-We want to keep them around, but if they go "dead" then we we'll tear
-them down if they aren't actively in use at the time. So, we still free
-the thing when the refcount goes to zero, but we have an extra condition
-before we free it on the put -- that the session is also "dead" (meaning
-that the client asked us to destroy it).
-
-Your patch doesn't look like it'll break anything, but I personally find
- it harder to follow that way. The freeable reference state will be 1
-instead of the normal 0.
-
---
+-- 
 Jeff Layton <jlayton@poochiereds.net>
