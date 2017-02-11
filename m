@@ -1,126 +1,79 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qt0-f196.google.com ([209.85.216.196]:35086 "EHLO
-        mail-qt0-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1753546AbdBKOJc (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sat, 11 Feb 2017 09:09:32 -0500
-Received: by mail-qt0-f196.google.com with SMTP id s58so7619809qtc.2
-        for <linux-nfs@vger.kernel.org>; Sat, 11 Feb 2017 06:09:31 -0800 (PST)
-Message-ID: <1486822168.4233.34.camel@poochiereds.net>
-Subject: Re: [RFC][PATCH] nfsd: add +1 to reference counting scheme for
- struct nfsd4_session
-From: Jeff Layton <jlayton@poochiereds.net>
-To: David Windsor <dwindsor@gmail.com>
-Cc: linux-nfs@vger.kernel.org, netdev@vger.kernel.org,
-        kernel-hardening@lists.openwall.com,
-        Bruce Fields <bfields@fieldses.org>, Kees Cook <keescook@chromium.org>,
-        "Reshetova, Elena" <elena.reshetova@intel.com>
-Date: Sat, 11 Feb 2017 09:09:28 -0500
-In-Reply-To: <CAEXv5_gd7F-eaazzU1BWPzH4huhEcO1Y-FWov5UP9T+6R+fv-A@mail.gmail.com>
-References: <1486625901-10094-1-git-send-email-dwindsor@gmail.com>
-         <CAEXv5_jUa8Av4JABoKSAueiLHSLzibMvaE-8DrVcxZHFceckMg@mail.gmail.com>
-         <1486816302.4233.29.camel@poochiereds.net>
-         <CAEXv5_gd7F-eaazzU1BWPzH4huhEcO1Y-FWov5UP9T+6R+fv-A@mail.gmail.com>
-Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
+Received: from us-smtp-delivery-194.mimecast.com ([63.128.21.194]:39050 "EHLO
+        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1750713AbdBKPpc (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sat, 11 Feb 2017 10:45:32 -0500
+From: Trond Myklebust <trondmy@primarydata.com>
+To: "psingh.ait@gmail.com" <psingh.ait@gmail.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: How NLM support posix threads?
+Date: Sat, 11 Feb 2017 15:45:25 +0000
+Message-ID: <1486827922.3490.2.camel@primarydata.com>
+References: <CAPrqf9378wbKmv9EaiuFzYLwvCxziXtkk-ZY-jsJxSOgSNm+QA@mail.gmail.com>
+         <1486739454.19587.1.camel@primarydata.com>
+         <CAPrqf938zLB73tShOZyeQDacDR5J9VaHhF4_-t7eEjecWocyUQ@mail.gmail.com>
+In-Reply-To: <CAPrqf938zLB73tShOZyeQDacDR5J9VaHhF4_-t7eEjecWocyUQ@mail.gmail.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sat, 2017-02-11 at 09:01 -0500, David Windsor wrote:
-> On Sat, Feb 11, 2017 at 7:31 AM, Jeff Layton <jlayton@poochiereds.net> wrote:
-> > On Sat, 2017-02-11 at 01:42 -0500, David Windsor wrote:
-> > > <snip>
-> > > 
-> > > > Signed-off-by: David Windsor <dwindsor@gmail.com>
-> > > > ---
-> > > >  fs/nfsd/nfs4state.c | 6 +++---
-> > > >  1 file changed, 3 insertions(+), 3 deletions(-)
-> > > > 
-> > > > diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-> > > > index a0dee8a..b0f3010 100644
-> > > > --- a/fs/nfsd/nfs4state.c
-> > > > +++ b/fs/nfsd/nfs4state.c
-> > > > @@ -196,7 +196,7 @@ static void nfsd4_put_session_locked(struct nfsd4_session *ses)
-> > > > 
-> > > >         lockdep_assert_held(&nn->client_lock);
-> > > > 
-> > > > -       if (atomic_dec_and_test(&ses->se_ref) && is_session_dead(ses))
-> > > > +       if (!atomic_add_unless(&ses->se_ref, -1, 1) && is_session_des(ses))
-> > > 
-> > > This should read:
-> > > if (!atomic_add_unless(&ses->se_ref, -1, 1) && is_session_dead(ses))
-> > > 
-> > > >                 free_session(ses);
-> > > >         put_client_renew_locked(clp);
-> > > >  }
-> > > > @@ -1645,7 +1645,7 @@ static void init_session(struct svc_rqst *rqstp, struct nfsd4_session *new, stru
-> > > >         new->se_flags = cses->flags;
-> > > >         new->se_cb_prog = cses->callback_prog;
-> > > >         new->se_cb_sec = cses->cb_sec;
-> > > > -       atomic_set(&new->se_ref, 0);
-> > > > +       atomic_set(&new->se_ref, 1);
-> > > >         idx = hash_sessionid(&new->se_sessionid);
-> > > >         list_add(&new->se_hash, &nn->sessionid_hashtbl[idx]);
-> > > >         spin_lock(&clp->cl_lock);
-> > > > @@ -1792,7 +1792,7 @@ free_client(struct nfs4_client *clp)
-> > > >                 ses = list_entry(clp->cl_sessions.next, struct nfsd4_session,
-> > > >                                 se_perclnt);
-> > > >                 list_del(&ses->se_perclnt);
-> > > > -               WARN_ON_ONCE(atomic_read(&ses->se_ref));
-> > > > +               WARN_ON_ONCE((atomic_read(&ses->se_ref) > 1));
-> > > >                 free_session(ses);
-> > > >         }
-> > > >         rpc_destroy_wait_queue(&clp->cl_cb_waitq);
-> > > > --
-> > > > 2.7.4
-> > > > 
-> > 
-> > The basic idea here is that nfsv4 sessions have a "resting state" of 0.
-> > We want to keep them around, but if they go "dead" then we we'll tear
-> > them down if they aren't actively in use at the time. So, we still free
-> > the thing when the refcount goes to zero, but we have an extra condition
-> > before we free it on the put -- that the session is also "dead" (meaning
-> > that the client asked us to destroy it).
-> > 
-> > Your patch doesn't look like it'll break anything, but I personally find
-> >  it harder to follow that way. The freeable reference state will be 1
-> > instead of the normal 0.
-> > 
-> 
-> I'm not sure there's another way to accomplish what we need
-> (initializing struct nfsd4_session objects with refcount=1) without
-> also modifying the freeable reference state.  After migrating to the
-> refcount_t API, if we leave init_session() as is, the first call to
-> nfsd4_get_session_locked() will fail:
-> 
-> static __be32 nfsd4_get_session_locked(struct nfsd4_session *ses)
-> {
->          __be32 status;
-> 
->          if (is_session_dead(ses))
->                  return nfserr_badsession;
->          status = get_client_locked(ses->se_client);
->          if (status)
->                  return status;
->          refcount_inc(&ses->se_ref);    /* This fails and WARNS when
-> ses->se_ref is 0. */
->          return nfs_ok;
-> }
-> 
-> 
-> The refcount_t API patches aren't yet merged, so this discussion is a
-> bit limited in that respect, but refcount_inc() WARNS when called with
-> a refcount_t object whose value is 0, as this may represent a
-> use-after-free attempt.
-> 
-> Given this, I'm unsure how it's possible to achieve initialization of
-> struct nfsd4_session objects with refcount=1 while still maintaining
-> these objects' "rest state" at refcount=0.
-> 
+T24gU2F0LCAyMDE3LTAyLTExIGF0IDExOjQ5ICswNTMwLCBQYW5rYWogU2luZ2ggd3JvdGU6DQo+
+ID4gRHVyaW5nICJmbF9ncmFudCIgY2FsbGJhY2sgd3JvbmcgImJsb2NrIiB3aWxsIGJlIGNvbXBh
+cmVkIGhlbmNlDQo+ID4gdGhpcyB3aWxsIHJlc3VsdCBpbiBsb2NrIGZhaWx1cmUgZXZlbiBpZiBs
+b2NrIGlzIGFjdHVhbGx5IGdyYW50ZWQuDQo+IA0KPiAibmxtX2NvbXBhcmVfbG9ja3MiIHdpbGwg
+Y29tcGFyZSB0aGUgbG9ja3Mgb24gdGhlIGJhc2VzIG9mIHBpZCwNCj4gb3duZXIsDQo+IHN0YXJ0
+IG9mZnNldCwgZW5kIG9mZnNldCBhbmQgdHlwZS4gSW4gY2FzZSBvZiBwb3NpeCB0aHJlYWRzIGFz
+IHBpZCBpcw0KPiBzYW1lLCBhbHNvIGFsbCBvdGhlciBwYXJhbWV0ZXJzIGNhbiBiZSBzYW1lIGZv
+ciBsb2NrcyBvZiBkaWZmZXJlbnQNCj4gZmlsZXMuDQo+IA0KPiBOb3cgdGhlIHNjZW5hcmlvIGlz
+LCBpZiB0aGVyZSBhcmUgdHdvIHBvc2l4IHRocmVhZCB3aXRoIHBpZCBwMSBhbmQNCj4gdGhleSB0
+cnkgdG8gdGFrZSB0aGUgbG9jayBvbiBkaWZmZXJlbnQgZmlsZXMgKHNheSBsMSBhbmQgbDIpIHRo
+ZW4NCj4gZGlmZmVyZW50IGJsb2NrcyB3aWxsIGJlIGNyZWF0ZWQgKHNheSBiMSBhbmQgYjIpLiBJ
+biB0aGlzIGNhc2UNCj4gdW5kZXJsaW5lIGZpbGVzeXN0ZW0gbWF5IHNlbmQgIkZJTEVfTE9DS19E
+RUZFUlJFRCIgZm9yIGJvdGggdGhlIGxvY2tzDQo+IGFuZCB0aGVzZSBibG9ja3Mgd2lsbCBiZSBh
+ZGRlZCB0byBkZWZlcnJlZCBibG9jayBsaXN0Lg0KPiANCj4gU28gZHVyaW5nICJmbF9ncmFudCIg
+Y2FsbGJhY2sgbG9jayBhcmUgY29tcGFyZWQgd2l0aCB0aGUgYmxvY2tzIG9mDQo+IGJsb2NrIGxp
+c3QuIE5vdyBsZXRzIHNheSBjYWxsYmFjayBpcyBjYWxsZWQgZm9yIGwxIGFuZCB0aGUgY29tcGFy
+aXNvbg0KPiB3aWxsIHN1Y2NlZWQgd2l0aCBiMSAodGhpcyBpcyBhcyBleHBlY3RlZCkgYW5kIEJf
+R09UX0NBTExCQUNLIGZsYWcNCj4gd2lsbCBiZSBzZXQuIEJ1dCBhcyBiMSBpcyBzdGlsbCBpbiBi
+bG9jayBsaXN0LCBub3cgd2hlbiBjYWxsYmFjayBmb3INCj4gbDIgYXJyaXZlcyB0aGVuIGFsc28g
+Y29tcGFyaXNvbiB3aXRoIGIxIGNhbiBzdWNjZWVkIGluc3RlYWQgb2YgYjINCj4gYmVjYXVzZSBi
+MSBpcyBwcmlvciB0byBiMiBpbiB0aGUgbGlzdC4gSGVuY2UgQl9HT1RfQ0FMTEJBQ0sgZmxhZyB3
+aWxsDQo+IG5vdCBiZSBzZXQgZm9yIGIyIGFuZCB3aGVuIE5GUyBjbGllbnQgd2lsbCByZXRyeSBm
+b3IgbG9jayB0aGVuIGxvY2sNCj4gd2lsbCBiZSBkZW5pZWQuDQo+IA0KPiBCZWxvdyBpcyB0aGUg
+c25pcHQgZmxfZ3JhbnQgY29kZSB3aGVyZSBjb21wYXJpc29uIGhhcHBlbnMuDQo+IGxpc3RfZm9y
+X2VhY2hfZW50cnkoYmxvY2ssICZubG1fYmxvY2tlZCwgYl9saXN0KSB7DQo+IGlmIChubG1fY29t
+cGFyZV9sb2NrcygmYmxvY2stPmJfY2FsbC0+YV9hcmdzLmxvY2suZmwsIGZsKQ0KDQpPSy4gSSBz
+ZWUgd2hhdCB5b3UgbWVhbi4gWW91IGFyZSBzYXlpbmcsIGluIGVzc2VuY2UsIHRoYXQgaW4gdGhl
+IGxvY2tkDQpzZXJ2ZXIgY29kZSwgbmxtc3ZjX25vdGlmeV9ibG9ja2VkKCkgbmVlZHMgdG8gY2hl
+Y2sgdGhhdCB0aGUgZmlsZXMgYXJlDQp0aGUgc2FtZSAoanVzdCBsaWtlIG5sbXN2Y19sb29rdXBf
+YmxvY2soKSBhbHJlYWR5IGRvZXMpLg0KDQpJIGFncmVlLiBUaGF0IGlzIGEgYnVnIGFuZCBpdCBu
+ZWVkcyB0byBiZSBmaXhlZC4gSG93IGFib3V0IHRoZQ0KZm9sbG93aW5nPw0KDQpDaGVlcnMNCiAg
+VHJvbmQNCjg8LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
+LS0tLS0tLS0tLS0tLS0tDQpGcm9tIGZmZjc1ZTM1ZWQ4NTdiOWFkMjExOTA1ZmVlMmFjZmZhNTI4
+Njk2ZDkgTW9uIFNlcCAxNyAwMDowMDowMCAyMDAxDQpGcm9tOiBUcm9uZCBNeWtsZWJ1c3QgPHRy
+b25kLm15a2xlYnVzdEBwcmltYXJ5ZGF0YS5jb20+DQpEYXRlOiBTYXQsIDExIEZlYiAyMDE3IDEw
+OjM3OjM4IC0wNTAwDQpTdWJqZWN0OiBbUEFUQ0hdIG5sbTogRW5zdXJlIGNhbGxiYWNrIGNvZGUg
+YWxzbyBjaGVja3MgdGhhdCB0aGUgZmlsZXMgbWF0Y2gNCg0KSXQgaXMgbm90IHN1ZmZpY2llbnQg
+dG8ganVzdCBjaGVjayB0aGF0IHRoZSBsb2NrIHBpZHMgbWF0Y2ggd2hlbg0KZ3JhbnRpbmcgYSBj
+YWxsYmFjaywgd2UgYWxzbyBuZWVkIHRvIGVuc3VyZSB0aGF0IHdlJ3JlIGdyYW50aW5nDQp0aGUg
+Y2FsbGJhY2sgb24gdGhlIHJpZ2h0IGZpbGUuDQoNClJlcG9ydGVkLWJ5OiBQYW5rYWogU2luZ2gg
+PHBzaW5naC5haXRAZ21haWwuY29tPg0KRml4ZXM6IDFkYTE3N2U0YzNmNCAoIkxpbnV4LTIuNi4x
+Mi1yYzIiKQ0KQ2M6IHN0YWJsZUB2Z2VyLmtlcm5lbC5vcmcNClNpZ25lZC1vZmYtYnk6IFRyb25k
+IE15a2xlYnVzdCA8dHJvbmQubXlrbGVidXN0QHByaW1hcnlkYXRhLmNvbT4NCi0tLQ0KIGluY2x1
+ZGUvbGludXgvbG9ja2QvbG9ja2QuaCB8IDMgKystDQogMSBmaWxlIGNoYW5nZWQsIDIgaW5zZXJ0
+aW9ucygrKSwgMSBkZWxldGlvbigtKQ0KDQpkaWZmIC0tZ2l0IGEvaW5jbHVkZS9saW51eC9sb2Nr
+ZC9sb2NrZC5oIGIvaW5jbHVkZS9saW51eC9sb2NrZC9sb2NrZC5oDQppbmRleCBjMTUzNzM4OTRh
+NDIuLmIzN2RlZTNhY2FiYSAxMDA2NDQNCi0tLSBhL2luY2x1ZGUvbGludXgvbG9ja2QvbG9ja2Qu
+aA0KKysrIGIvaW5jbHVkZS9saW51eC9sb2NrZC9sb2NrZC5oDQpAQCAtMzU1LDcgKzM1NSw4IEBA
+IHN0YXRpYyBpbmxpbmUgaW50IG5sbV9wcml2aWxlZ2VkX3JlcXVlc3Rlcihjb25zdCBzdHJ1Y3Qg
+c3ZjX3Jxc3QgKnJxc3RwKQ0KIHN0YXRpYyBpbmxpbmUgaW50IG5sbV9jb21wYXJlX2xvY2tzKGNv
+bnN0IHN0cnVjdCBmaWxlX2xvY2sgKmZsMSwNCiAJCQkJICAgIGNvbnN0IHN0cnVjdCBmaWxlX2xv
+Y2sgKmZsMikNCiB7DQotCXJldHVybglmbDEtPmZsX3BpZCAgID09IGZsMi0+ZmxfcGlkDQorCXJl
+dHVybiBmaWxlX2lub2RlKGZsMS0+ZmxfZmlsZSkgPT0gZmlsZV9pbm9kZShmbDItPmZsX2ZpbGUp
+DQorCSAgICAgJiYgZmwxLT5mbF9waWQgICA9PSBmbDItPmZsX3BpZA0KIAkgICAgICYmIGZsMS0+
+Zmxfb3duZXIgPT0gZmwyLT5mbF9vd25lcg0KIAkgICAgICYmIGZsMS0+Zmxfc3RhcnQgPT0gZmwy
+LT5mbF9zdGFydA0KIAkgICAgICYmIGZsMS0+ZmxfZW5kICAgPT0gZmwyLT5mbF9lbmQNCi0tIA0K
+Mi45LjMNCg0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFpbnRhaW5l
+ciwgUHJpbWFyeURhdGENCnRyb25kLm15a2xlYnVzdEBwcmltYXJ5ZGF0YS5jb20NCg==
 
-One idea might be to take an extra reference on the thing when creating
-it, and then drop that reference when the thing is marked DEAD. The
-extra reference would be superfluous, but it might make it look a little
-more natural.
-
--- 
-Jeff Layton <jlayton@poochiereds.net>
