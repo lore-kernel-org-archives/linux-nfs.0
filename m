@@ -1,119 +1,100 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f180.google.com ([209.85.223.180]:34304 "EHLO
-        mail-io0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1750874AbdBJVtK (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 10 Feb 2017 16:49:10 -0500
-Received: by mail-io0-f180.google.com with SMTP id l66so61147926ioi.1
-        for <linux-nfs@vger.kernel.org>; Fri, 10 Feb 2017 13:49:10 -0800 (PST)
+Received: from mail-wm0-f54.google.com ([74.125.82.54]:37095 "EHLO
+        mail-wm0-f54.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1750779AbdBKGTk (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sat, 11 Feb 2017 01:19:40 -0500
+Received: by mail-wm0-f54.google.com with SMTP id v77so63747002wmv.0
+        for <linux-nfs@vger.kernel.org>; Fri, 10 Feb 2017 22:19:40 -0800 (PST)
 MIME-Version: 1.0
-In-Reply-To: <b3afb003-b0b2-8a15-7914-40674c6dffbb@gmail.com>
-References: <CAN-5tyEE3GnoUKGNiwiApKGpcP+5pj68nLAh9SLSTSJ=OuPcMw@mail.gmail.com>
- <b3afb003-b0b2-8a15-7914-40674c6dffbb@gmail.com>
-From: Olga Kornievskaia <aglo@umich.edu>
-Date: Fri, 10 Feb 2017 16:49:09 -0500
-Message-ID: <CAN-5tyEM9Q-6euq1XdUdcpFge5XnnuANOT_FcXy8mpxH+MP+Yw@mail.gmail.com>
-Subject: Re: question about current code in async op
-To: Anna Schumaker <schumaker.anna@gmail.com>
-Cc: linux-nfs <linux-nfs@vger.kernel.org>
+In-Reply-To: <1486739454.19587.1.camel@primarydata.com>
+References: <CAPrqf9378wbKmv9EaiuFzYLwvCxziXtkk-ZY-jsJxSOgSNm+QA@mail.gmail.com>
+ <1486739454.19587.1.camel@primarydata.com>
+From: Pankaj Singh <psingh.ait@gmail.com>
+Date: Sat, 11 Feb 2017 11:49:38 +0530
+Message-ID: <CAPrqf938zLB73tShOZyeQDacDR5J9VaHhF4_-t7eEjecWocyUQ@mail.gmail.com>
+Subject: Re: How NLM support posix threads?
+To: Trond Myklebust <trondmy@primarydata.com>
+Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
 Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Feb 10, 2017 at 4:20 PM, Anna Schumaker
-<schumaker.anna@gmail.com> wrote:
-> Hi Olga,
->
-> On 02/10/2017 04:11 PM, Olga Kornievskaia wrote:
->> Hi folks,
->>
->> As I was writing a new async operation I was looking at other async
->> functions for guidance (i.e.., nfs4_do_close()) and I noticed what
->> looks to me like a memory leak. Am I missing something?
->>
->> I don=E2=80=99t see that =E2=80=9Ccalldata=E2=80=9D is freed if rpc_run_=
-task() fails.
->
-> I think the current code is okay.  From what I can see, the only way rpc_=
-run_task() can fail is if rpc_new_task() can't allocate the new task.  If t=
-his happens, then rpc_new_task() calls rpc_release_calldata() to free the c=
-alldata.
->
-> Am I missing something?
+> During "fl_grant" callback wrong "block" will be compared hence
+> this will result in lock failure even if lock is actually granted.
 
-That's what I was missing :) Ok that makes sense. So release of the
-calldata should be in the rpc_release function. Thank you!
+"nlm_compare_locks" will compare the locks on the bases of pid, owner,
+start offset, end offset and type. In case of posix threads as pid is
+same, also all other parameters can be same for locks of different
+files.
 
+Now the scenario is, if there are two posix thread with pid p1 and
+they try to take the lock on different files (say l1 and l2) then
+different blocks will be created (say b1 and b2). In this case
+underline filesystem may send "FILE_LOCK_DEFERRED" for both the locks
+and these blocks will be added to deferred block list.
+
+So during "fl_grant" callback lock are compared with the blocks of
+block list. Now lets say callback is called for l1 and the comparison
+will succeed with b1 (this is as expected) and B_GOT_CALLBACK flag
+will be set. But as b1 is still in block list, now when callback for
+l2 arrives then also comparison with b1 can succeed instead of b2
+because b1 is prior to b2 in the list. Hence B_GOT_CALLBACK flag will
+not be set for b2 and when NFS client will retry for lock then lock
+will be denied.
+
+Below is the snipt fl_grant code where comparison happens.
+list_for_each_entry(block, &nlm_blocked, b_list) {
+if (nlm_compare_locks(&block->b_call->a_args.lock.fl, fl))
+
+
+On Fri, Feb 10, 2017 at 8:40 PM, Trond Myklebust
+<trondmy@primarydata.com> wrote:
+> On Fri, 2017-02-10 at 14:51 +0530, Pankaj Singh wrote:
+>> Hi,
+>>
+>> I am getting a strange problem where locks are denied by NFSv3 server
+>> even though no locks on same file where taken.
+>>
+>> While looking at the code it seems like NLM compares a lock by using
+>> "pid" and other options like form - to file offset, type of lock etc.
+>> But we are interested in "pid" because other comparison can be same
+>> for different file_locks.
+>>
+>>  As we know posix threads use tgid as pid for all its thread hence
+>> NFSv3 server will can get lock request from different posix thread
+>> but
+>> with same pid. Hence NLM  will treat the locking request as they are
+>> coming from same process. This may result in following problems
 >
-> Anna
+> Threads that share the same process id belong, by definition, to the
+> same process.
 >
->>
->> Thoughts?
->>
->> Here=E2=80=99s what I have to fix it:
->>
->> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
->> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
->> index d293f06..408cb5b 100644
->> --- a/fs/nfs/nfs4proc.c
->> +++ b/fs/nfs/nfs4proc.c
->> @@ -3317,8 +3317,10 @@ int nfs4_do_close(struct nfs4_state *state,
->> gfp_t gfp_mask, int wait)
->>   msg.rpc_resp =3D &calldata->res;
->>   task_setup_data.callback_data =3D calldata;
->>   task =3D rpc_run_task(&task_setup_data);
->> - if (IS_ERR(task))
->> + if (IS_ERR(task)) {
->> + kfree(calldata);
->>   return PTR_ERR(task);
+>> 1. Different threads of same process can get lock on same file.
 >
-> Isn't this handled by
+> That is precisely how POSIX locks are expected to work in threaded
+> environments.
+> http://pubs.opengroup.org/onlinepubs/9699919799/functions/fcntl.html
+> "An exclusive lock shall prevent any other process from setting a
+> shared lock or an exclusive lock on any portion of the protected area."
 >
->> + }
->>   status =3D 0;
->>   if (wait)
->>   status =3D rpc_wait_for_completion_task(task);
->> @@ -6023,6 +6025,7 @@ static struct rpc_task *nfs4_do_unlck(struct
->> file_lock *fl,
->>   .workqueue =3D nfsiod_workqueue,
->>   .flags =3D RPC_TASK_ASYNC,
->>   };
->> + struct rpc_task *task;
+>
+>> 2. During "fl_grant" callback wrong "block" will be compared hence
+>> this will result in lock failure even if lock is actually granted.
+>
+> How so?
+>
+>> Is this a limitation of NLM?
 >>
->>
->>
->>   nfs4_state_protect(NFS_SERVER(lsp->ls_state->inode)->nfs_client,
->>   NFS_SP4_MACH_CRED_CLEANUP, &task_setup_data.rpc_client, &msg);
->> @@ -6042,7 +6045,10 @@ static struct rpc_task *nfs4_do_unlck(struct
->> file_lock *fl,
->>   msg.rpc_argp =3D &data->arg;
->>   msg.rpc_resp =3D &data->res;
->>   task_setup_data.callback_data =3D data;
->> - return rpc_run_task(&task_setup_data);
->> + task =3D rpc_run_task(&task_setup_data);
->> + if (IS_ERR(task))
->> + kfree(data);
->> + return task;
->>  }
->>
->>
->>
->>  static int nfs4_proc_unlck(struct nfs4_state *state, int cmd, struct
->> file_lock *request)
->> @@ -6311,8 +6317,10 @@ static int _nfs4_do_setlk(struct nfs4_state
->> *state, int cmd, struct file_lock *f
->>   } else
->>   data->arg.new_lock =3D 1;
->>   task =3D rpc_run_task(&task_setup_data);
->> - if (IS_ERR(task))
->> + if (IS_ERR(task)) {
->> + kfree(data);
->>   return PTR_ERR(task);
->> + }
->>   ret =3D nfs4_wait_for_completion_rpc_task(task);
->>   if (ret =3D=3D 0) {
->>   ret =3D data->rpc_status;
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->>
+>
+>
+> --
+> Trond Myklebust
+> Linux NFS client maintainer, PrimaryData
+> trond.myklebust@primarydata.com
+
+
+
+-- 
+Regards,
+Pankaj SIngh
+Phone No: 8826266889
