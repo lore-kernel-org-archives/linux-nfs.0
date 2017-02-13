@@ -1,69 +1,54 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-it0-f66.google.com ([209.85.214.66]:36656 "EHLO
-        mail-it0-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1753096AbdBMQ5g (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Feb 2017 11:57:36 -0500
-Subject: [PATCH v4 9/9] sunrpc: Allow xprt->ops->timer method to sleep
-From: Chuck Lever <chuck.lever@oracle.com>
-To: anna.schumaker@netapp.com
-Cc: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Mon, 13 Feb 2017 11:57:34 -0500
-Message-ID: <20170213165734.15801.736.stgit@manet.1015granger.net>
-In-Reply-To: <20170213163936.15801.31225.stgit@manet.1015granger.net>
-References: <20170213163936.15801.31225.stgit@manet.1015granger.net>
+Received: from mail-ot0-f193.google.com ([74.125.82.193]:33795 "EHLO
+        mail-ot0-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751818AbdBMVky (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Feb 2017 16:40:54 -0500
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+In-Reply-To: <20170213095616.GA18053@linaro.org>
+References: <20170124212327.14517-1-jlayton@redhat.com> <20170125133205.21704-1-jlayton@redhat.com>
+ <20170202095125.GF27291@ZenIV.linux.org.uk> <20170202105651.GA32111@infradead.org>
+ <20170202111625.GG27291@ZenIV.linux.org.uk> <1486040452.2812.6.camel@redhat.com>
+ <20170203072952.GI27291@ZenIV.linux.org.uk> <CA+55aFx=NPESJv9RjCNRKFH_rk9uVMov0UtFbpZH-xBsgK2h-w@mail.gmail.com>
+ <20170203190816.GK27291@ZenIV.linux.org.uk> <CA+55aFwXKPUoZ3R4ey03L6ksXCmGLNS=16aQ7gRO1=VXCMZx-A@mail.gmail.com>
+ <20170213095616.GA18053@linaro.org>
+From: Linus Torvalds <torvalds@linux-foundation.org>
+Date: Mon, 13 Feb 2017 13:40:52 -0800
+Message-ID: <CA+55aFz2UjH-Lz=Zoi1he3-FfHEkh3kqP8PfeOP-u_Br9=BQAw@mail.gmail.com>
+Subject: Re: [PATCH v3 0/2] iov_iter: allow iov_iter_get_pages_alloc to
+ allocate more pages per call
+To: Steve Capper <steve.capper@linaro.org>
+Cc: Al Viro <viro@zeniv.linux.org.uk>,
+        Catalin Marinas <catalin.marinas@arm.com>,
+        Hugh Dickins <hughd@google.com>, Peter Zijlstra <peterz@infradead.org>,
+        Ingo Molnar <mingo@kernel.org>, Jeff Layton <jlayton@redhat.com>,
+        Christoph Hellwig <hch@infradead.org>,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        ceph-devel <ceph-devel@vger.kernel.org>, lustre-devel@lists.lustre.org,
+        V9FS Developers <v9fs-developer@lists.sourceforge.net>,
+        Jan Kara <jack@suse.cz>, Chris Wilson <chris@chris-wilson.co.uk>,
+        "Kirill A. Shutemov" <kirill.shutemov@linux.intel.com>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The transport lock is needed to protect the xprt_adjust_cwnd() call
-in xs_udp_timer, but it is not necessary for accessing the
-rq_reply_bytes_recvd or tk_status fields. It is correct to sublimate
-the lock into UDP's xs_udp_timer method, where it is required.
+On Mon, Feb 13, 2017 at 1:56 AM, Steve Capper <steve.capper@linaro.org> wrote:
+>
+> Okay so looking at what we have for access_ok(.) on arm64, my
+> understanding is that we perform a 65-bit add/compare (in assembler) to
+> see whether or not the range is below the current_thread_info->addr_limit.
+> So I think this is a roundabout way of checking for no-wrap around and <= TASK_SIZE.
 
-The ->timer method has to take the transport lock if needed, but it
-can now sleep safely, or even call back into the RPC scheduler.
+No, that's the problem. It's *not* testing against TASK_SIZE.
 
-This is more a clean-up than a fix, but the "issue" was introduced
-by my transport switch patches back in 2005.
+Because add_limit is not always TASK_SIZE. When you do
+set_fs(KERNEL_DS), you set addr_limit to infinity.
 
-Fixes: 46c0ee8bc4ad ("RPC: separate xprt_timer implementations")
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
- net/sunrpc/xprt.c     |    2 --
- net/sunrpc/xprtsock.c |    2 ++
- 2 files changed, 2 insertions(+), 2 deletions(-)
+And yes, the kernel does read and write calls too. Seldom, but it
+happens. And walking the page tables with kernel addresses is not
+supposed to work (sometimes it happens to work by mistake). So if
+somebody finds a path that gets from that kind of situation into the
+get_user_pages() interface, bad things happen.
 
-diff --git a/net/sunrpc/xprt.c b/net/sunrpc/xprt.c
-index 9a6be03..b530a28 100644
---- a/net/sunrpc/xprt.c
-+++ b/net/sunrpc/xprt.c
-@@ -897,13 +897,11 @@ static void xprt_timer(struct rpc_task *task)
- 		return;
- 	dprintk("RPC: %5u xprt_timer\n", task->tk_pid);
- 
--	spin_lock_bh(&xprt->transport_lock);
- 	if (!req->rq_reply_bytes_recvd) {
- 		if (xprt->ops->timer)
- 			xprt->ops->timer(xprt, task);
- 	} else
- 		task->tk_status = 0;
--	spin_unlock_bh(&xprt->transport_lock);
- }
- 
- /**
-diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
-index af392d9..d9bb644 100644
---- a/net/sunrpc/xprtsock.c
-+++ b/net/sunrpc/xprtsock.c
-@@ -1734,7 +1734,9 @@ static void xs_udp_set_buffer_size(struct rpc_xprt *xprt, size_t sndsize, size_t
-  */
- static void xs_udp_timer(struct rpc_xprt *xprt, struct rpc_task *task)
- {
-+	spin_lock_bh(&xprt->transport_lock);
- 	xprt_adjust_cwnd(xprt, task, -ETIMEDOUT);
-+	spin_unlock_bh(&xprt->transport_lock);
- }
- 
- static unsigned short xs_get_random_port(void)
-
+                 Linus
