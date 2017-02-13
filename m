@@ -1,46 +1,102 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-vk0-f67.google.com ([209.85.213.67]:36660 "EHLO
-        mail-vk0-f67.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751935AbdBMLm6 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Feb 2017 06:42:58 -0500
+Received: from mail-ua0-f194.google.com ([209.85.217.194]:34808 "EHLO
+        mail-ua0-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751652AbdBMLqV (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Feb 2017 06:46:21 -0500
 MIME-Version: 1.0
-In-Reply-To: <20170213103815.GA5131@infradead.org>
+In-Reply-To: <20170213105422.snaw65btejr3vsdi@ishxps>
 References: <1486625901-10094-1-git-send-email-dwindsor@gmail.com>
- <CAEXv5_jUa8Av4JABoKSAueiLHSLzibMvaE-8DrVcxZHFceckMg@mail.gmail.com>
- <1486816302.4233.29.camel@poochiereds.net> <CAEXv5_gd7F-eaazzU1BWPzH4huhEcO1Y-FWov5UP9T+6R+fv-A@mail.gmail.com>
- <20170213103815.GA5131@infradead.org>
+ <CAEXv5_jUa8Av4JABoKSAueiLHSLzibMvaE-8DrVcxZHFceckMg@mail.gmail.com> <20170213105422.snaw65btejr3vsdi@ishxps>
 From: David Windsor <dwindsor@gmail.com>
-Date: Mon, 13 Feb 2017 06:42:56 -0500
-Message-ID: <CAEXv5_g=DS4wk0mgZuw-doVCqountb-CxZki1LOoQH-P7W1U4A@mail.gmail.com>
-Subject: Re: [RFC][PATCH] nfsd: add +1 to reference counting scheme for struct nfsd4_session
-To: Christoph Hellwig <hch@infradead.org>
-Cc: Jeff Layton <jlayton@poochiereds.net>, linux-nfs@vger.kernel.org,
-        netdev@vger.kernel.org, kernel-hardening@lists.openwall.com,
-        Bruce Fields <bfields@fieldses.org>, Kees Cook <keescook@chromium.org>,
+Date: Mon, 13 Feb 2017 06:46:19 -0500
+Message-ID: <CAEXv5_hP39k7HSLP-G_khx7MMQHnk=8Z5caa+U5n3bYvUTE1gQ@mail.gmail.com>
+Subject: Re: [kernel-hardening] Re: [RFC][PATCH] nfsd: add +1 to reference
+ counting scheme for struct nfsd4_session
+To: Hans Liljestrand <ishkamiel@gmail.com>
+Cc: linux-nfs@vger.kernel.org, netdev@vger.kernel.org,
+        kernel-hardening@lists.openwall.com,
+        Bruce Fields <bfields@fieldses.org>,
+        Jeff Layton <jlayton@poochiereds.net>,
+        Kees Cook <keescook@chromium.org>,
         "Reshetova, Elena" <elena.reshetova@intel.com>
 Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Feb 13, 2017 at 5:38 AM, Christoph Hellwig <hch@infradead.org> wrote:
-> On Sat, Feb 11, 2017 at 09:01:15AM -0500, David Windsor wrote:
->> I'm not sure there's another way to accomplish what we need
->> (initializing struct nfsd4_session objects with refcount=1) without
->> also modifying the freeable reference state.  After migrating to the
->> refcount_t API, if we leave init_session() as is, the first call to
->> nfsd4_get_session_locked() will fail:
+On Mon, Feb 13, 2017 at 5:54 AM, Hans Liljestrand <ishkamiel@gmail.com> wrote:
+> On Sat, Feb 11, 2017 at 01:42:53AM -0500, David Windsor wrote:
+>>
+>> <snip>
+>>
+>>> Signed-off-by: David Windsor <dwindsor@gmail.com>
+>>> ---
+>>>  fs/nfsd/nfs4state.c | 6 +++---
+>>>  1 file changed, 3 insertions(+), 3 deletions(-)
+>>>
+>>> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+>>> index a0dee8a..b0f3010 100644
+>>> --- a/fs/nfsd/nfs4state.c
+>>> +++ b/fs/nfsd/nfs4state.c
+>>> @@ -196,7 +196,7 @@ static void nfsd4_put_session_locked(struct
+>>> nfsd4_session *ses)
+>>>
+>>>         lockdep_assert_held(&nn->client_lock);
+>>>
+>>> -       if (atomic_dec_and_test(&ses->se_ref) && is_session_dead(ses))
+>>> +       if (!atomic_add_unless(&ses->se_ref, -1, 1) &&
+>>> is_session_des(ses))
+>>
+>>
+>> This should read:
+>> if (!atomic_add_unless(&ses->se_ref, -1, 1) && is_session_dead(ses))
+>>
+>>>                 free_session(ses);
 >
-> Which is a pretty clear indicator that this code should simply not
-> migrate to the recount_t API.  Why was it even considered if the
-> conversion is obviously broken?
+>
+> Hi,
+> I'm not sure if I have this correctly; But both before and after the patch
+> free_session gets called when se_ref count was 1, shouldn't this have
+> changed with the +1 scheme?
+>
+> Also, since the !atomic_add_unless doesn't actually decrement when at 1,
+> doesn't this leave the se_ref as 1 when it's destroyed? The function seems
+> to always be locked, so perhaps this doesn't matter, but still seems a bit
+> risky.
+>
 
-I'm not sure this is a sound argument for not converting to
-refcount_t.  In other locations in which refcounting schemes are
-"unnatural," i.e. freeing refcounted objects when their refcount is -1
-(rather than 0), conversion to refcount_t is accomplished by
-performing a logical +1 to the overall refcounting scheme.  We're
-auditing all refcounting corner cases, such as these, to see if
-similar solutions can be found.
+Yes; I forgot the additional call to atomic_dec_and_test() before
+free_session().  Thanks!
 
-Thanks,
-David
+I'll resubmit this after seeing how the rest of this discussion goes.
+We may end up abandoning this refcounting case.
+
+> Thanks,
+> -hans
+>
+>
+>>>         put_client_renew_locked(clp);
+>>>  }
+>>> @@ -1645,7 +1645,7 @@ static void init_session(struct svc_rqst *rqstp,
+>>> struct nfsd4_session *new, stru
+>>>         new->se_flags = cses->flags;
+>>>         new->se_cb_prog = cses->callback_prog;
+>>>         new->se_cb_sec = cses->cb_sec;
+>>> -       atomic_set(&new->se_ref, 0);
+>>> +       atomic_set(&new->se_ref, 1);
+>>>         idx = hash_sessionid(&new->se_sessionid);
+>>>         list_add(&new->se_hash, &nn->sessionid_hashtbl[idx]);
+>>>         spin_lock(&clp->cl_lock);
+>>> @@ -1792,7 +1792,7 @@ free_client(struct nfs4_client *clp)
+>>>                 ses = list_entry(clp->cl_sessions.next, struct
+>>> nfsd4_session,
+>>>                                 se_perclnt);
+>>>                 list_del(&ses->se_perclnt);
+>>> -               WARN_ON_ONCE(atomic_read(&ses->se_ref));
+>>> +               WARN_ON_ONCE((atomic_read(&ses->se_ref) > 1));
+>>>                 free_session(ses);
+>>>         }
+>>>         rpc_destroy_wait_queue(&clp->cl_cb_waitq);
+>>> --
+>>> 2.7.4
+>>>
+>
