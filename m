@@ -1,12 +1,13 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:51008 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:37092 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1753152AbdBMPeC (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 13 Feb 2017 10:34:02 -0500
+        id S1753549AbdBMPdt (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 13 Feb 2017 10:33:49 -0500
 From: Andreas Gruenbacher <agruenba@redhat.com>
 To: Alexander Viro <viro@zeniv.linux.org.uk>
 Cc: Andreas Gruenbacher <agruenba@redhat.com>,
-        Christoph Hellwig <hch@infradead.org>, "Theodore Ts'o" <tytso@mit.edu>,
+        Christoph Hellwig <hch@infradead.org>,
+        "Theodore Ts'o" <tytso@mit.edu>,
         Andreas Dilger <adilger.kernel@dilger.ca>,
         "J. Bruce Fields" <bfields@fieldses.org>,
         Jeff Layton <jlayton@poochiereds.net>,
@@ -16,236 +17,158 @@ Cc: Andreas Gruenbacher <agruenba@redhat.com>,
         linux-xfs@vger.kernel.org, linux-kernel@vger.kernel.org,
         linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
         linux-cifs@vger.kernel.org, linux-api@vger.kernel.org
-Subject: [PATCH v28 19/21] vfs: Move check_posix_acl and check_richacl out of fs/namei.c
-Date: Mon, 13 Feb 2017 16:32:35 +0100
-Message-Id: <1486999957-2381-20-git-send-email-agruenba@redhat.com>
+Subject: [PATCH v28 17/21] richacl: Add richacl xattr handler
+Date: Mon, 13 Feb 2017 16:32:33 +0100
+Message-Id: <1486999957-2381-18-git-send-email-agruenba@redhat.com>
 In-Reply-To: <1486999957-2381-1-git-send-email-agruenba@redhat.com>
 References: <1486999957-2381-1-git-send-email-agruenba@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-By moving those functions into fs/posix_acl.c and fs/richacl.c, the
-ifdefs can be moved into include/linux/posix_acl.h and
-include/linux/richacl.h.  This may be seen as a small improvement.
+Add richacl xattr handler implementing the xattr operations based on the
+get_richacl and set_richacl inode operations.
 
-Suggested-by: Jeff Layton <jlayton@redhat.com>
 Signed-off-by: Andreas Gruenbacher <agruenba@redhat.com>
+Reviewed-by: Jeff Layton <jlayton@redhat.com>
 ---
- fs/namei.c                | 72 ++++-------------------------------------------
- fs/posix_acl.c            | 28 ++++++++++++++++++
- fs/richacl.c              | 28 ++++++++++++++++++
- include/linux/posix_acl.h |  5 ++++
- include/linux/richacl.h   |  8 ++++++
- 5 files changed, 74 insertions(+), 67 deletions(-)
+ fs/richacl.c                  | 22 ++++++++++++++++
+ fs/richacl_xattr.c            | 61 +++++++++++++++++++++++++++++++++++++++++++
+ include/linux/richacl.h       |  1 +
+ include/linux/richacl_xattr.h |  2 ++
+ 4 files changed, 86 insertions(+)
 
-diff --git a/fs/namei.c b/fs/namei.c
-index 7ea153b..3c54b48 100644
---- a/fs/namei.c
-+++ b/fs/namei.c
-@@ -258,73 +258,6 @@ void putname(struct filename *name)
- 		__putname(name);
- }
- 
--static int check_richacl(struct inode *inode, int mask)
--{
--#ifdef CONFIG_FS_RICHACL
--	if (mask & MAY_NOT_BLOCK) {
--		struct base_acl *base_acl;
--
--		base_acl = rcu_dereference(inode->i_acl);
--		if (!base_acl)
--			goto no_acl;
--		/* no ->get_richacl() calls in RCU mode... */
--		if (is_uncached_acl(base_acl))
--			return -ECHILD;
--		return richacl_permission(inode, richacl(base_acl),
--					  mask & ~MAY_NOT_BLOCK);
--	} else {
--		struct richacl *acl;
--
--		acl = get_richacl(inode);
--		if (IS_ERR(acl))
--			return PTR_ERR(acl);
--		if (acl) {
--			int error = richacl_permission(inode, acl, mask);
--			richacl_put(acl);
--			return error;
--		}
--	}
--no_acl:
--#endif
--	if (mask & (MAY_DELETE_SELF | MAY_TAKE_OWNERSHIP |
--		    MAY_CHMOD | MAY_SET_TIMES)) {
--		/* File permission bits cannot grant this. */
--		return -EACCES;
--	}
--	return -EAGAIN;
--}
--
--static int check_posix_acl(struct inode *inode, int mask)
--{
--#ifdef CONFIG_FS_POSIX_ACL
--	if (mask & MAY_NOT_BLOCK) {
--		struct base_acl *base_acl;
--
--		base_acl = rcu_dereference(inode->i_acl);
--	        if (!base_acl)
--	                return -EAGAIN;
--		/* no ->get_acl() calls in RCU mode... */
--		if (is_uncached_acl(base_acl))
--			return -ECHILD;
--	        return posix_acl_permission(inode, posix_acl(base_acl),
--					    mask & ~MAY_NOT_BLOCK);
--	} else {
--		struct posix_acl *acl;
--
--		acl = get_acl(inode, ACL_TYPE_ACCESS);
--		if (IS_ERR(acl))
--			return PTR_ERR(acl);
--		if (acl) {
--			int error = posix_acl_permission(inode, acl, mask);
--			posix_acl_release(acl);
--			return error;
--		}
--	}
--#endif
--
--	return -EAGAIN;
--}
--
- /*
-  * This does the basic permission checking
-  */
-@@ -360,6 +293,11 @@ static int acl_permission_check(struct inode *inode, int mask)
- 		error = check_richacl(inode, mask);
- 		if (error != -EAGAIN)
- 			return error;
-+		if (mask & (MAY_DELETE_SELF | MAY_TAKE_OWNERSHIP |
-+			    MAY_CHMOD | MAY_SET_TIMES)) {
-+			/* File permission bits cannot grant this. */
-+			return -EACCES;
-+		}
- 	}
- 	if (likely(uid_eq(current_fsuid(), inode->i_uid)))
- 		mode >>= 6;
-diff --git a/fs/posix_acl.c b/fs/posix_acl.c
-index 5d6c5fd..598b899 100644
---- a/fs/posix_acl.c
-+++ b/fs/posix_acl.c
-@@ -374,6 +374,34 @@ posix_acl_permission(struct inode *inode, const struct posix_acl *acl, int want)
- 	return -EACCES;
- }
- 
-+int check_posix_acl(struct inode *inode, int mask)
-+{
-+	if (mask & MAY_NOT_BLOCK) {
-+		struct base_acl *base_acl;
-+
-+		base_acl = rcu_dereference(inode->i_acl);
-+	        if (!base_acl)
-+	                return -EAGAIN;
-+		/* no ->get_acl() calls in RCU mode... */
-+		if (is_uncached_acl(base_acl))
-+			return -ECHILD;
-+	        return posix_acl_permission(inode, posix_acl(base_acl),
-+					    mask & ~MAY_NOT_BLOCK);
-+	} else {
-+		struct posix_acl *acl;
-+
-+		acl = get_acl(inode, ACL_TYPE_ACCESS);
-+		if (IS_ERR(acl))
-+			return PTR_ERR(acl);
-+		if (acl) {
-+			int error = posix_acl_permission(inode, acl, mask);
-+			posix_acl_release(acl);
-+			return error;
-+		}
-+	}
-+	return -EAGAIN;
-+}
-+
- /*
-  * Modify acl when creating a new inode. The caller must ensure the acl is
-  * only referenced once.
 diff --git a/fs/richacl.c b/fs/richacl.c
-index 416d57c..6aa17a6 100644
+index 4edce8b..1945691 100644
 --- a/fs/richacl.c
 +++ b/fs/richacl.c
-@@ -385,6 +385,34 @@ richacl_permission(struct inode *inode, const struct richacl *acl,
- }
- EXPORT_SYMBOL_GPL(richacl_permission);
+@@ -543,6 +543,28 @@ void richacl_compute_max_masks(struct richacl *acl)
+ EXPORT_SYMBOL_GPL(richacl_compute_max_masks);
  
-+int check_richacl(struct inode *inode, int mask)
+ /**
++ * set_richacl  -  set the richacl of an inode
++ * @inode:	inode whose richacl to set
++ * @acl:	access control list
++ */
++int
++set_richacl(struct inode *inode, struct richacl *acl)
 +{
-+	if (mask & MAY_NOT_BLOCK) {
-+		struct base_acl *base_acl;
++	if (!IS_RICHACL(inode))
++		return -EOPNOTSUPP;
++	if (!inode->i_op->set_richacl)
++		return -EOPNOTSUPP;
 +
-+		base_acl = rcu_dereference(inode->i_acl);
-+		if (!base_acl)
-+			return -EAGAIN;
-+		/* no ->get_richacl() calls in RCU mode... */
-+		if (is_uncached_acl(base_acl))
-+			return -ECHILD;
-+		return richacl_permission(inode, richacl(base_acl),
-+					  mask & ~MAY_NOT_BLOCK);
-+	} else {
-+		struct richacl *acl;
++	if (!uid_eq(current_fsuid(), inode->i_uid) &&
++	    inode_permission(inode, MAY_CHMOD) &&
++	    !capable(CAP_FOWNER))
++		return -EPERM;
 +
-+		acl = get_richacl(inode);
++	return inode->i_op->set_richacl(inode, acl);
++}
++EXPORT_SYMBOL(set_richacl);
++
++/**
+  * __richacl_chmod  -  update the file masks to reflect the new mode
+  * @acl:	access control list
+  * @mode:	new file permission bits including the file type
+diff --git a/fs/richacl_xattr.c b/fs/richacl_xattr.c
+index dc1ad36..5eb4aba 100644
+--- a/fs/richacl_xattr.c
++++ b/fs/richacl_xattr.c
+@@ -18,7 +18,9 @@
+ #include <linux/fs.h>
+ #include <linux/slab.h>
+ #include <linux/module.h>
++#include <linux/xattr.h>
+ #include <linux/richacl_xattr.h>
++#include <uapi/linux/xattr.h>
+ 
+ /**
+  * richacl_from_xattr  -  convert a richacl xattr into the in-memory representation
+@@ -159,3 +161,62 @@ richacl_to_xattr(struct user_namespace *user_ns,
+ 	return real_size;
+ }
+ EXPORT_SYMBOL_GPL(richacl_to_xattr);
++
++static bool
++richacl_xattr_list(struct dentry *dentry)
++{
++	return IS_RICHACL(d_backing_inode(dentry));
++}
++
++static int
++richacl_xattr_get(const struct xattr_handler *handler,
++		  struct dentry *unused, struct inode *inode,
++		  const char *name, void *buffer, size_t buffer_size)
++{
++	struct richacl *acl;
++	int error;
++
++	if (*name)
++		return -EINVAL;
++	if (!IS_RICHACL(inode))
++		return -EOPNOTSUPP;
++	if (S_ISLNK(inode->i_mode))
++		return -EOPNOTSUPP;
++	acl = get_richacl(inode);
++	if (IS_ERR(acl))
++		return PTR_ERR(acl);
++	if (acl == NULL)
++		return -ENODATA;
++	error = richacl_to_xattr(current_user_ns(), acl, buffer, buffer_size);
++	richacl_put(acl);
++	return error;
++}
++
++static int
++richacl_xattr_set(const struct xattr_handler *handler,
++		  struct dentry *unused, struct inode *inode,
++		  const char *name, const void *value, size_t size,
++		  int flags)
++{
++	struct richacl *acl = NULL;
++	int ret;
++
++	if (value) {
++		acl = richacl_from_xattr(current_user_ns(), value, size,
++					 -EINVAL);
 +		if (IS_ERR(acl))
 +			return PTR_ERR(acl);
-+		if (acl) {
-+			int error = richacl_permission(inode, acl, mask);
-+			richacl_put(acl);
-+			return error;
-+		}
 +	}
-+	return -EAGAIN;
++
++	ret = set_richacl(inode, acl);
++	richacl_put(acl);
++	return ret;
 +}
 +
- /*
-  * Note: functions like richacl_allowed_to_who(), richacl_group_class_allowed(),
-  * and richacl_compute_max_masks() iterate through the entire acl in reverse
-diff --git a/include/linux/posix_acl.h b/include/linux/posix_acl.h
-index abfb786..5c65dc9 100644
---- a/include/linux/posix_acl.h
-+++ b/include/linux/posix_acl.h
-@@ -74,6 +74,7 @@ extern struct posix_acl *get_posix_acl(struct inode *, int);
- extern int set_posix_acl(struct inode *, int, struct posix_acl *);
- 
- #ifdef CONFIG_FS_POSIX_ACL
-+extern int check_posix_acl(struct inode *, int);
- extern int posix_acl_chmod(struct inode *, umode_t);
- extern int posix_acl_create(struct inode *, umode_t *, struct posix_acl **,
- 		struct posix_acl **);
-@@ -93,6 +94,10 @@ static inline void cache_no_acl(struct inode *inode)
- 	inode->i_default_acl = NULL;
- }
- #else
-+static inline int check_posix_acl(struct inode *inode, int mask) {
-+	return -EAGAIN;
-+}
-+
- static inline int posix_acl_chmod(struct inode *inode, umode_t mode)
- {
- 	return 0;
++struct xattr_handler richacl_xattr_handler = {
++	.name = XATTR_NAME_RICHACL,
++	.list = richacl_xattr_list,
++	.get = richacl_xattr_get,
++	.set = richacl_xattr_set,
++};
++EXPORT_SYMBOL(richacl_xattr_handler);
 diff --git a/include/linux/richacl.h b/include/linux/richacl.h
-index 7530920..368e918 100644
+index 737513b..7530920 100644
 --- a/include/linux/richacl.h
 +++ b/include/linux/richacl.h
-@@ -207,4 +207,12 @@ extern struct richacl *richacl_inherit(const struct richacl *, int);
+@@ -205,5 +205,6 @@ extern int richacl_chmod(struct inode *, umode_t);
+ extern int richacl_equiv_mode(const struct richacl *, umode_t *);
+ extern struct richacl *richacl_inherit(const struct richacl *, int);
  extern struct richacl *richacl_create(umode_t *, struct inode *);
- extern int set_richacl(struct inode *, struct richacl *);
++extern int set_richacl(struct inode *, struct richacl *);
  
-+#ifdef CONFIG_FS_RICHACL
-+extern int check_richacl(struct inode *, int);
-+#else
-+static inline int check_richacl(struct inode *inode, int mask) {
-+	return -EAGAIN;
-+}
-+#endif  /* CONFIG_FS_RICHACL */
-+
  #endif /* __RICHACL_H */
+diff --git a/include/linux/richacl_xattr.h b/include/linux/richacl_xattr.h
+index 0efa14b..6c6adb1 100644
+--- a/include/linux/richacl_xattr.h
++++ b/include/linux/richacl_xattr.h
+@@ -26,4 +26,6 @@ extern size_t richacl_xattr_size(const struct richacl *);
+ extern int richacl_to_xattr(struct user_namespace *, const struct richacl *,
+ 			    void *, size_t);
+ 
++extern struct xattr_handler richacl_xattr_handler;
++
+ #endif /* __RICHACL_XATTR_H */
 -- 
 2.7.4
 
