@@ -1,14 +1,15 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-oi0-f67.google.com ([209.85.218.67]:34397 "EHLO
-        mail-oi0-f67.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1753070AbdBMQ4z (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Feb 2017 11:56:55 -0500
-Subject: [PATCH v4 4/9] xprtrdma: Reduce required number of send SGEs
+Received: from mail-it0-f66.google.com ([209.85.214.66]:36487 "EHLO
+        mail-it0-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1753096AbdBMQ5L (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Feb 2017 11:57:11 -0500
+Subject: [PATCH v4 6/9] xprtrdma: Properly recover FRWRs with in-flight
+ FASTREG WRs
 From: Chuck Lever <chuck.lever@oracle.com>
 To: anna.schumaker@netapp.com
 Cc: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Mon, 13 Feb 2017 11:56:53 -0500
-Message-ID: <20170213165653.15801.98139.stgit@manet.1015granger.net>
+Date: Mon, 13 Feb 2017 11:57:09 -0500
+Message-ID: <20170213165709.15801.50648.stgit@manet.1015granger.net>
 In-Reply-To: <20170213163936.15801.31225.stgit@manet.1015granger.net>
 References: <20170213163936.15801.31225.stgit@manet.1015granger.net>
 MIME-Version: 1.0
@@ -16,133 +17,106 @@ Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The MAX_SEND_SGES check introduced in commit 655fec6987be
-("xprtrdma: Use gathered Send for large inline messages") fails
-for devices that have a small max_sge.
+Sriharsha (sriharsha.basavapatna@broadcom.com) reports an occasional
+double DMA unmap of an FRWR MR when a connection is lost. I see one
+way this can happen.
 
-Instead of checking for a large fixed maximum number of SGEs,
-check for a minimum small number. RPC-over-RDMA will switch to
-using a Read chunk if an xdr_buf has more pages than can fit in
-the device's max_sge limit. This is considerably better than
-failing all together to mount the server.
+When a request requires more than one segment or chunk,
+rpcrdma_marshal_req loops, invoking ->frwr_op_map for each segment
+(MR) in each chunk. Each call posts a FASTREG Work Request to
+register one MR.
 
-This fix supports devices that have as few as three send SGEs
-available.
+Now suppose that the transport connection is lost part-way through
+marshaling this request. As part of recovering and resetting that
+req, rpcrdma_marshal_req invokes ->frwr_op_unmap_safe, which hands
+all the req's registered FRWRs to the MR recovery thread.
 
-Reported-by: Selvin Xavier <selvin.xavier@broadcom.com>
-Reported-by: Devesh Sharma <devesh.sharma@broadcom.com>
-Reported-by: Honggang Li <honli@redhat.com>
-Reported-by: Ram Amrani <Ram.Amrani@cavium.com>
-Fixes: 655fec6987be ("xprtrdma: Use gathered Send for large ...")
-Tested-by: Honggang Li <honli@redhat.com>
-Tested-by: Ram Amrani <Ram.Amrani@cavium.com>
-Tested-by: Steve Wise <swise@opengridcomputing.com>
-Reviewed-by: Parav Pandit <parav@mellanox.com>
+But note: FRWR registration is asynchronous. So it's possible that
+some of these "already registered" FRWRs are fully registered, and
+some are still waiting for their FASTREG WR to complete.
+
+When the connection is lost, the "already registered" frmrs are
+marked FRMR_IS_VALID, and the "still waiting" WRs flush. Then
+frwr_wc_fastreg marks these frmrs FRMR_FLUSHED_FR.
+
+But thanks to ->frwr_op_unmap_safe, the MR recovery thread is doing
+an unreg / alloc_mr, a DMA unmap, and marking each of these frwrs
+FRMR_IS_INVALID, at the same time frwr_wc_fastreg might be running.
+
+- If the recovery thread runs last, then the frmr is marked
+FRMR_IS_INVALID, and life continues.
+
+- If frwr_wc_fastreg runs last, the frmr is marked FRMR_FLUSHED_FR,
+but the recovery thread has already DMA unmapped that MR. When
+->frwr_op_map later re-uses this frmr, it sees it is not marked
+FRMR_IS_INVALID, and tries to recover it before using it, resulting
+in a second DMA unmap of the same MR.
+
+The fix is to guarantee in-flight FASTREG WRs have flushed before MR
+recovery runs on those FRWRs. Thus we depend on ro_unmap_safe
+(called from xprt_rdma_send_request on retransmit, or from
+xprt_rdma_free) to clean up old registrations as needed.
+
+Reported-by: Sriharsha Basavapatna <sriharsha.basavapatna@broadcom.com>
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Tested-by: Sriharsha Basavapatna <sriharsha.basavapatna@broadcom.com>
 ---
- net/sunrpc/xprtrdma/rpc_rdma.c  |   26 +++++++++++++++++++++++---
- net/sunrpc/xprtrdma/verbs.c     |   13 +++++++------
- net/sunrpc/xprtrdma/xprt_rdma.h |    2 ++
- 3 files changed, 32 insertions(+), 9 deletions(-)
+ net/sunrpc/xprtrdma/rpc_rdma.c  |   14 ++++++++------
+ net/sunrpc/xprtrdma/transport.c |    4 ----
+ 2 files changed, 8 insertions(+), 10 deletions(-)
 
 diff --git a/net/sunrpc/xprtrdma/rpc_rdma.c b/net/sunrpc/xprtrdma/rpc_rdma.c
-index c634f0f..d889883 100644
+index d889883..72b3ca0 100644
 --- a/net/sunrpc/xprtrdma/rpc_rdma.c
 +++ b/net/sunrpc/xprtrdma/rpc_rdma.c
-@@ -125,14 +125,34 @@ void rpcrdma_set_max_header_sizes(struct rpcrdma_xprt *r_xprt)
- /* The client can send a request inline as long as the RPCRDMA header
-  * plus the RPC call fit under the transport's inline limit. If the
-  * combined call message size exceeds that limit, the client must use
-- * the read chunk list for this operation.
-+ * a Read chunk for this operation.
-+ *
-+ * A Read chunk is also required if sending the RPC call inline would
-+ * exceed this device's max_sge limit.
-  */
- static bool rpcrdma_args_inline(struct rpcrdma_xprt *r_xprt,
- 				struct rpc_rqst *rqst)
- {
--	struct rpcrdma_ia *ia = &r_xprt->rx_ia;
-+	struct xdr_buf *xdr = &rqst->rq_snd_buf;
-+	unsigned int count, remaining, offset;
-+
-+	if (xdr->len > r_xprt->rx_ia.ri_max_inline_write)
-+		return false;
+@@ -759,13 +759,13 @@ static bool rpcrdma_results_inline(struct rpcrdma_xprt *r_xprt,
+ 	iptr = headerp->rm_body.rm_chunks;
+ 	iptr = rpcrdma_encode_read_list(r_xprt, req, rqst, iptr, rtype);
+ 	if (IS_ERR(iptr))
+-		goto out_unmap;
++		goto out_err;
+ 	iptr = rpcrdma_encode_write_list(r_xprt, req, rqst, iptr, wtype);
+ 	if (IS_ERR(iptr))
+-		goto out_unmap;
++		goto out_err;
+ 	iptr = rpcrdma_encode_reply_chunk(r_xprt, req, rqst, iptr, wtype);
+ 	if (IS_ERR(iptr))
+-		goto out_unmap;
++		goto out_err;
+ 	hdrlen = (unsigned char *)iptr - (unsigned char *)headerp;
  
--	return rqst->rq_snd_buf.len <= ia->ri_max_inline_write;
-+	if (xdr->page_len) {
-+		remaining = xdr->page_len;
-+		offset = xdr->page_base & ~PAGE_MASK;
-+		count = 0;
-+		while (remaining) {
-+			remaining -= min_t(unsigned int,
-+					   PAGE_SIZE - offset, remaining);
-+			offset = 0;
-+			if (++count > r_xprt->rx_ia.ri_max_send_sges)
-+				return false;
-+		}
-+	}
-+
-+	return true;
+ 	dprintk("RPC: %5u %s: %s/%s: hdrlen %zd rpclen %zd\n",
+@@ -776,12 +776,14 @@ static bool rpcrdma_results_inline(struct rpcrdma_xprt *r_xprt,
+ 	if (!rpcrdma_prepare_send_sges(&r_xprt->rx_ia, req, hdrlen,
+ 				       &rqst->rq_snd_buf, rtype)) {
+ 		iptr = ERR_PTR(-EIO);
+-		goto out_unmap;
++		goto out_err;
+ 	}
+ 	return 0;
+ 
+-out_unmap:
+-	r_xprt->rx_ia.ri_ops->ro_unmap_safe(r_xprt, req, false);
++out_err:
++	pr_err("rpcrdma: rpcrdma_marshal_req failed, status %ld\n",
++	       PTR_ERR(iptr));
++	r_xprt->rx_stats.failed_marshal_count++;
+ 	return PTR_ERR(iptr);
  }
  
- /* The client can't know how large the actual reply will be. Thus it
-diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
-index 23f4da4..61d16c3 100644
---- a/net/sunrpc/xprtrdma/verbs.c
-+++ b/net/sunrpc/xprtrdma/verbs.c
-@@ -488,18 +488,19 @@ static void rpcrdma_destroy_id(struct rdma_cm_id *id)
-  */
- int
- rpcrdma_ep_create(struct rpcrdma_ep *ep, struct rpcrdma_ia *ia,
--				struct rpcrdma_create_data_internal *cdata)
-+		  struct rpcrdma_create_data_internal *cdata)
- {
- 	struct rpcrdma_connect_private *pmsg = &ep->rep_cm_private;
-+	unsigned int max_qp_wr, max_sge;
- 	struct ib_cq *sendcq, *recvcq;
--	unsigned int max_qp_wr;
- 	int rc;
+diff --git a/net/sunrpc/xprtrdma/transport.c b/net/sunrpc/xprtrdma/transport.c
+index 6990581..c717f54 100644
+--- a/net/sunrpc/xprtrdma/transport.c
++++ b/net/sunrpc/xprtrdma/transport.c
+@@ -709,10 +709,6 @@
+ 	return 0;
  
--	if (ia->ri_device->attrs.max_sge < RPCRDMA_MAX_SEND_SGES) {
--		dprintk("RPC:       %s: insufficient sge's available\n",
--			__func__);
-+	max_sge = min(ia->ri_device->attrs.max_sge, RPCRDMA_MAX_SEND_SGES);
-+	if (max_sge < RPCRDMA_MIN_SEND_SGES) {
-+		pr_warn("rpcrdma: HCA provides only %d send SGEs\n", max_sge);
- 		return -ENOMEM;
- 	}
-+	ia->ri_max_send_sges = max_sge - RPCRDMA_MIN_SEND_SGES;
- 
- 	if (ia->ri_device->attrs.max_qp_wr <= RPCRDMA_BACKWARD_WRS) {
- 		dprintk("RPC:       %s: insufficient wqe's available\n",
-@@ -524,7 +525,7 @@ static void rpcrdma_destroy_id(struct rdma_cm_id *id)
- 	ep->rep_attr.cap.max_recv_wr = cdata->max_requests;
- 	ep->rep_attr.cap.max_recv_wr += RPCRDMA_BACKWARD_WRS;
- 	ep->rep_attr.cap.max_recv_wr += 1;	/* drain cqe */
--	ep->rep_attr.cap.max_send_sge = RPCRDMA_MAX_SEND_SGES;
-+	ep->rep_attr.cap.max_send_sge = max_sge;
- 	ep->rep_attr.cap.max_recv_sge = 1;
- 	ep->rep_attr.cap.max_inline_data = 0;
- 	ep->rep_attr.sq_sig_type = IB_SIGNAL_REQ_WR;
-diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
-index c137154..3d7e9c9 100644
---- a/net/sunrpc/xprtrdma/xprt_rdma.h
-+++ b/net/sunrpc/xprtrdma/xprt_rdma.h
-@@ -74,6 +74,7 @@ struct rpcrdma_ia {
- 	unsigned int		ri_max_frmr_depth;
- 	unsigned int		ri_max_inline_write;
- 	unsigned int		ri_max_inline_read;
-+	unsigned int		ri_max_send_sges;
- 	bool			ri_reminv_expected;
- 	bool			ri_implicit_roundup;
- 	enum ib_mr_type		ri_mrtype;
-@@ -311,6 +312,7 @@ struct rpcrdma_mr_seg {		/* chunk descriptors */
-  * - xdr_buf tail iovec
-  */
- enum {
-+	RPCRDMA_MIN_SEND_SGES = 3,
- 	RPCRDMA_MAX_SEND_PAGES = PAGE_SIZE + RPCRDMA_MAX_INLINE - 1,
- 	RPCRDMA_MAX_PAGE_SGES = (RPCRDMA_MAX_SEND_PAGES >> PAGE_SHIFT) + 1,
- 	RPCRDMA_MAX_SEND_SGES = 1 + 1 + RPCRDMA_MAX_PAGE_SGES + 1,
+ failed_marshal:
+-	dprintk("RPC:       %s: rpcrdma_marshal_req failed, status %i\n",
+-		__func__, rc);
+-	if (rc == -EIO)
+-		r_xprt->rx_stats.failed_marshal_count++;
+ 	if (rc != -ENOTCONN)
+ 		return rc;
+ drop_connection:
 
