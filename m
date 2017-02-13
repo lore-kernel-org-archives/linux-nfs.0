@@ -1,115 +1,145 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-wr0-f194.google.com ([209.85.128.194]:33080 "EHLO
-        mail-wr0-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751850AbdBMNrt (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Feb 2017 08:47:49 -0500
-Received: by mail-wr0-f194.google.com with SMTP id i10so24263043wrb.0
-        for <linux-nfs@vger.kernel.org>; Mon, 13 Feb 2017 05:47:49 -0800 (PST)
-MIME-Version: 1.0
-In-Reply-To: <1486827922.3490.2.camel@primarydata.com>
-References: <CAPrqf9378wbKmv9EaiuFzYLwvCxziXtkk-ZY-jsJxSOgSNm+QA@mail.gmail.com>
- <1486739454.19587.1.camel@primarydata.com> <CAPrqf938zLB73tShOZyeQDacDR5J9VaHhF4_-t7eEjecWocyUQ@mail.gmail.com>
- <1486827922.3490.2.camel@primarydata.com>
-From: Pankaj Singh <psingh.ait@gmail.com>
-Date: Mon, 13 Feb 2017 19:17:47 +0530
-Message-ID: <CAPrqf90bJ-e1bwNv-osLr8LtCaGTbm8y8XgDwHF7VfWtBsOz1A@mail.gmail.com>
-Subject: Re: How NLM support posix threads?
-To: Trond Myklebust <trondmy@primarydata.com>
-Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=UTF-8
+Received: from mx1.redhat.com ([209.132.183.28]:54098 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1753219AbdBMPcn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 13 Feb 2017 10:32:43 -0500
+From: Andreas Gruenbacher <agruenba@redhat.com>
+To: Alexander Viro <viro@zeniv.linux.org.uk>
+Cc: Andreas Gruenbacher <agruenba@redhat.com>,
+        Miklos Szeredi <mszeredi@redhat.com>,
+        Christoph Hellwig <hch@infradead.org>, "Theodore Ts'o" <tytso@mit.edu>,
+        Andreas Dilger <adilger.kernel@dilger.ca>,
+        "J. Bruce Fields" <bfields@fieldses.org>,
+        Jeff Layton <jlayton@poochiereds.net>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>,
+        Dave Chinner <david@fromorbit.com>, linux-ext4@vger.kernel.org,
+        linux-xfs@vger.kernel.org, linux-kernel@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-cifs@vger.kernel.org, linux-api@vger.kernel.org
+Subject: [PATCH v28 00/21] Richacls (Core and Ext4)
+Date: Mon, 13 Feb 2017 16:32:16 +0100
+Message-Id: <1486999957-2381-1-git-send-email-agruenba@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Trond,
+Here is another update of the richacl patches.  Changes since the last posting
+(https://lwn.net/Articles/703199/):
 
-> I agree. That is a bug and it needs to be fixed. How about the
-following?
+ * Fix permission checking for file exchange (i.e., renameat2 with the
+   RENAME_EXCHANGE flag): in some cases, the MAY_CREATE_FILE and MAY_CREATE_DIR
+   permissions were swapped.
 
-Thanks for acknowledging the bug. Fix seems to be good.
+   This should have been caught by the test suite but wasn't.  Meanwhile the
+   test suite is fixed as well.
 
-On Sat, Feb 11, 2017 at 9:15 PM, Trond Myklebust
-<trondmy@primarydata.com> wrote:
-> On Sat, 2017-02-11 at 11:49 +0530, Pankaj Singh wrote:
->> > During "fl_grant" callback wrong "block" will be compared hence
->> > this will result in lock failure even if lock is actually granted.
->>
->> "nlm_compare_locks" will compare the locks on the bases of pid,
->> owner,
->> start offset, end offset and type. In case of posix threads as pid is
->> same, also all other parameters can be same for locks of different
->> files.
->>
->> Now the scenario is, if there are two posix thread with pid p1 and
->> they try to take the lock on different files (say l1 and l2) then
->> different blocks will be created (say b1 and b2). In this case
->> underline filesystem may send "FILE_LOCK_DEFERRED" for both the locks
->> and these blocks will be added to deferred block list.
->>
->> So during "fl_grant" callback lock are compared with the blocks of
->> block list. Now lets say callback is called for l1 and the comparison
->> will succeed with b1 (this is as expected) and B_GOT_CALLBACK flag
->> will be set. But as b1 is still in block list, now when callback for
->> l2 arrives then also comparison with b1 can succeed instead of b2
->> because b1 is prior to b2 in the list. Hence B_GOT_CALLBACK flag will
->> not be set for b2 and when NFS client will retry for lock then lock
->> will be denied.
->>
->> Below is the snipt fl_grant code where comparison happens.
->> list_for_each_entry(block, &nlm_blocked, b_list) {
->> if (nlm_compare_locks(&block->b_call->a_args.lock.fl, fl)
->
-> OK. I see what you mean. You are saying, in essence, that in the lockd
-> server code, nlmsvc_notify_blocked() needs to check that the files are
-> the same (just like nlmsvc_lookup_block() already does).
->
-> I agree. That is a bug and it needs to be fixed. How about the
-> following?
->
-> Cheers
->   Trond
-> 8<---------------------------------------------------------------
-> From fff75e35ed857b9ad211905fee2acffa528696d9 Mon Sep 17 00:00:00 2001
-> From: Trond Myklebust <trond.myklebust@primarydata.com>
-> Date: Sat, 11 Feb 2017 10:37:38 -0500
-> Subject: [PATCH] nlm: Ensure callback code also checks that the files match
->
-> It is not sufficient to just check that the lock pids match when
-> granting a callback, we also need to ensure that we're granting
-> the callback on the right file.
->
-> Reported-by: Pankaj Singh <psingh.ait@gmail.com>
-> Fixes: 1da177e4c3f4 ("Linux-2.6.12-rc2")
-> Cc: stable@vger.kernel.org
-> Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
-> ---
->  include/linux/lockd/lockd.h | 3 ++-
->  1 file changed, 2 insertions(+), 1 deletion(-)
->
-> diff --git a/include/linux/lockd/lockd.h b/include/linux/lockd/lockd.h
-> index c15373894a42..b37dee3acaba 100644
-> --- a/include/linux/lockd/lockd.h
-> +++ b/include/linux/lockd/lockd.h
-> @@ -355,7 +355,8 @@ static inline int nlm_privileged_requester(const struct svc_rqst *rqstp)
->  static inline int nlm_compare_locks(const struct file_lock *fl1,
->                                     const struct file_lock *fl2)
->  {
-> -       return  fl1->fl_pid   == fl2->fl_pid
-> +       return file_inode(fl1->fl_file) == file_inode(fl2->fl_file)
-> +            && fl1->fl_pid   == fl2->fl_pid
->              && fl1->fl_owner == fl2->fl_owner
->              && fl1->fl_start == fl2->fl_start
->              && fl1->fl_end   == fl2->fl_end
-> --
-> 2.9.3
->
-> --
-> Trond Myklebust
-> Linux NFS client maintainer, PrimaryData
-> trond.myklebust@primarydata.com
+ * When deleting a file and we have MAY_DELETE_SELF permission on the file, we
+   don't require MAY_DELETE_CHILD permission on the containing directory.
+   However, we must still call inode_permission with MAY_WRITE in mask for
+   checks beyond file permission bits or ACLs, such as LSM.
 
 
+Many thanks to Miklos for the previous patch review.
+
+
+The complete patch queue is available here:
+
+  git://git.kernel.org/pub/scm/linux/kernel/git/agruen/linux-richacl.git \
+	richacl-2017-02-13
+
+
+The richacl user-space utilitites, man pages, and test suite are available
+here:
+
+  https://github.com/andreas-gruenbacher/richacl
+
+
+Changes to other user-space packages for richacl:
+
+  https://github.com/andreas-gruenbacher/coreutils
+  https://github.com/andreas-gruenbacher/e2fsprogs
+  https://github.com/andreas-gruenbacher/samba
+  https://github.com/andreas-gruenbacher/xfsprogs-dev
+  https://github.com/andreas-gruenbacher/nfs-utils
+
+
+Please see the richacl homepage for more information:
+
+  http://www.bestbits.at/richacl/
+
+
+Thanks,
+Andreas
+
+Andreas Gruenbacher (19):
+  vfs: Add IS_ACL() and IS_RICHACL() tests
+  vfs: Add MAY_CREATE_FILE and MAY_CREATE_DIR permission flags
+  vfs: Add MAY_DELETE_SELF and MAY_DELETE_CHILD permission flags
+  vfs: Add permission flags for setting file attributes
+  richacl: In-memory representation and helper functions
+  richacl: Permission mapping functions
+  richacl: Permission check algorithm
+  richacl: Compute maximum file masks from an acl
+  vfs: Cache base_acl objects in inodes
+  vfs: Add get_richacl and set_richacl inode operations
+  vfs: Cache richacl in struct inode
+  richacl: Update the file masks in chmod()
+  richacl: Check if an acl is equivalent to a file mode
+  richacl: Create-time inheritance
+  richacl: Automatic Inheritance
+  richacl: xattr mapping functions
+  richacl: Add richacl xattr handler
+  vfs: Add richacl permission checking
+  vfs: Move check_posix_acl and check_richacl out of fs/namei.c
+
+Aneesh Kumar K.V (2):
+  ext4: Add richacl support
+  ext4: Add richacl feature flag
+
+ fs/9p/acl.c                        |   8 +-
+ fs/Kconfig                         |   3 +
+ fs/Makefile                        |   1 +
+ fs/attr.c                          |  79 +++-
+ fs/ext4/Kconfig                    |  11 +
+ fs/ext4/Makefile                   |   1 +
+ fs/ext4/ext4.h                     |   7 +-
+ fs/ext4/file.c                     |   3 +
+ fs/ext4/ialloc.c                   |  11 +-
+ fs/ext4/inode.c                    |   4 +-
+ fs/ext4/namei.c                    |   5 +
+ fs/ext4/richacl.c                  | 134 ++++++
+ fs/ext4/richacl.h                  |  40 ++
+ fs/ext4/super.c                    |  48 +-
+ fs/ext4/xattr.c                    |   7 +
+ fs/f2fs/acl.c                      |   4 +-
+ fs/inode.c                         |  43 +-
+ fs/jffs2/acl.c                     |   6 +-
+ fs/namei.c                         | 150 +++---
+ fs/nfs/nfs3acl.c                   |  14 +-
+ fs/posix_acl.c                     |  97 ++--
+ fs/richacl.c                       | 937 +++++++++++++++++++++++++++++++++++++
+ fs/richacl_xattr.c                 | 222 +++++++++
+ include/linux/acl.h                |  15 +
+ include/linux/fs.h                 |  58 ++-
+ include/linux/posix_acl.h          |  24 +-
+ include/linux/richacl.h            | 218 +++++++++
+ include/linux/richacl_xattr.h      |  31 ++
+ include/uapi/linux/Kbuild          |   2 +
+ include/uapi/linux/fs.h            |   3 +-
+ include/uapi/linux/richacl.h       | 152 ++++++
+ include/uapi/linux/richacl_xattr.h |  44 ++
+ include/uapi/linux/xattr.h         |   2 +
+ 33 files changed, 2216 insertions(+), 168 deletions(-)
+ create mode 100644 fs/ext4/richacl.c
+ create mode 100644 fs/ext4/richacl.h
+ create mode 100644 fs/richacl.c
+ create mode 100644 fs/richacl_xattr.c
+ create mode 100644 include/linux/acl.h
+ create mode 100644 include/linux/richacl.h
+ create mode 100644 include/linux/richacl_xattr.h
+ create mode 100644 include/uapi/linux/richacl.h
+ create mode 100644 include/uapi/linux/richacl_xattr.h
 
 -- 
-Regards,
-Pankaj SIngh
-Phone No: 8826266889
+2.7.4
+
