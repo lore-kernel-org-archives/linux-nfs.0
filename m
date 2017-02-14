@@ -1,54 +1,50 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ot0-f193.google.com ([74.125.82.193]:33795 "EHLO
-        mail-ot0-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751818AbdBMVky (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Feb 2017 16:40:54 -0500
+Received: from mail-vk0-f67.google.com ([209.85.213.67]:33126 "EHLO
+        mail-vk0-f67.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1753956AbdBNNs1 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 14 Feb 2017 08:48:27 -0500
 MIME-Version: 1.0
-In-Reply-To: <20170213095616.GA18053@linaro.org>
-References: <20170124212327.14517-1-jlayton@redhat.com> <20170125133205.21704-1-jlayton@redhat.com>
- <20170202095125.GF27291@ZenIV.linux.org.uk> <20170202105651.GA32111@infradead.org>
- <20170202111625.GG27291@ZenIV.linux.org.uk> <1486040452.2812.6.camel@redhat.com>
- <20170203072952.GI27291@ZenIV.linux.org.uk> <CA+55aFx=NPESJv9RjCNRKFH_rk9uVMov0UtFbpZH-xBsgK2h-w@mail.gmail.com>
- <20170203190816.GK27291@ZenIV.linux.org.uk> <CA+55aFwXKPUoZ3R4ey03L6ksXCmGLNS=16aQ7gRO1=VXCMZx-A@mail.gmail.com>
- <20170213095616.GA18053@linaro.org>
-From: Linus Torvalds <torvalds@linux-foundation.org>
-Date: Mon, 13 Feb 2017 13:40:52 -0800
-Message-ID: <CA+55aFz2UjH-Lz=Zoi1he3-FfHEkh3kqP8PfeOP-u_Br9=BQAw@mail.gmail.com>
-Subject: Re: [PATCH v3 0/2] iov_iter: allow iov_iter_get_pages_alloc to
- allocate more pages per call
-To: Steve Capper <steve.capper@linaro.org>
-Cc: Al Viro <viro@zeniv.linux.org.uk>,
-        Catalin Marinas <catalin.marinas@arm.com>,
-        Hugh Dickins <hughd@google.com>, Peter Zijlstra <peterz@infradead.org>,
-        Ingo Molnar <mingo@kernel.org>, Jeff Layton <jlayton@redhat.com>,
-        Christoph Hellwig <hch@infradead.org>,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        ceph-devel <ceph-devel@vger.kernel.org>, lustre-devel@lists.lustre.org,
-        V9FS Developers <v9fs-developer@lists.sourceforge.net>,
-        Jan Kara <jack@suse.cz>, Chris Wilson <chris@chris-wilson.co.uk>,
-        "Kirill A. Shutemov" <kirill.shutemov@linux.intel.com>
+In-Reply-To: <20170213121238.GA4753@infradead.org>
+References: <1486625901-10094-1-git-send-email-dwindsor@gmail.com>
+ <CAEXv5_jUa8Av4JABoKSAueiLHSLzibMvaE-8DrVcxZHFceckMg@mail.gmail.com>
+ <1486816302.4233.29.camel@poochiereds.net> <CAEXv5_gd7F-eaazzU1BWPzH4huhEcO1Y-FWov5UP9T+6R+fv-A@mail.gmail.com>
+ <20170213103815.GA5131@infradead.org> <CAEXv5_g=DS4wk0mgZuw-doVCqountb-CxZki1LOoQH-P7W1U4A@mail.gmail.com>
+ <20170213121238.GA4753@infradead.org>
+From: David Windsor <dwindsor@gmail.com>
+Date: Tue, 14 Feb 2017 08:48:26 -0500
+Message-ID: <CAEXv5_ifq6gO1eBueYGCL21QBAsCQNZROxGCuEYWSNmXz7OTeQ@mail.gmail.com>
+Subject: Re: [RFC][PATCH] nfsd: add +1 to reference counting scheme for struct nfsd4_session
+To: Christoph Hellwig <hch@infradead.org>
+Cc: Jeff Layton <jlayton@poochiereds.net>, linux-nfs@vger.kernel.org,
+        netdev@vger.kernel.org, kernel-hardening@lists.openwall.com,
+        Bruce Fields <bfields@fieldses.org>, Kees Cook <keescook@chromium.org>,
+        "Reshetova, Elena" <elena.reshetova@intel.com>
 Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Feb 13, 2017 at 1:56 AM, Steve Capper <steve.capper@linaro.org> wrote:
+On Mon, Feb 13, 2017 at 7:12 AM, Christoph Hellwig <hch@infradead.org> wrote:
+> On Mon, Feb 13, 2017 at 06:42:56AM -0500, David Windsor wrote:
+>> I'm not sure this is a sound argument for not converting to
+>> refcount_t.
 >
-> Okay so looking at what we have for access_ok(.) on arm64, my
-> understanding is that we perform a 65-bit add/compare (in assembler) to
-> see whether or not the range is below the current_thread_info->addr_limit.
-> So I think this is a roundabout way of checking for no-wrap around and <= TASK_SIZE.
+> It's an argument again the way how this patch was sent.  Please take care
+> of all the trivial conversions first, and then do anything non-trivial
+> on a case by case basis.
 
-No, that's the problem. It's *not* testing against TASK_SIZE.
+This is actually what we're currently doing.
 
-Because add_limit is not always TASK_SIZE. When you do
-set_fs(KERNEL_DS), you set addr_limit to infinity.
+The vast majority of atomic_t to refcount_t conversions are trivial,
+as they most always follow the pattern:
 
-And yes, the kernel does read and write calls too. Seldom, but it
-happens. And walking the page tables with kernel addresses is not
-supposed to work (sometimes it happens to work by mistake). So if
-somebody finds a path that gets from that kind of situation into the
-get_user_pages() interface, bad things happen.
+1.  Initialize the atomic_t refcounter to 1.
+2.  Perform shared object get/put operations.
+3.  Free the shared object when its refcount becomes 0.
 
-                 Linus
+We've identified a handful of instances in which steps 1 and 3 are
+different from above (i.e. initializing refcounts to 0, freeing
+objects when refcount is non-zero, etc.).  The above patch addresses
+one of these instances in NFS.
+
+Thanks,
+David
