@@ -1,70 +1,105 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from us-smtp-delivery-194.mimecast.com ([63.128.21.194]:55061 "EHLO
-        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1751197AbdBOUs1 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 15 Feb 2017 15:48:27 -0500
-From: Trond Myklebust <trondmy@primarydata.com>
-To: "aglo@umich.edu" <aglo@umich.edu>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 1/2] NFSv4.1: Handle
- NFS4ERR_BADSESSION/NFS4ERR_DEADSESSION replies to OP_SEQUENCE
-Date: Wed, 15 Feb 2017 20:48:18 +0000
-Message-ID: <1487191695.7993.2.camel@primarydata.com>
-References: <20161205004023.40957-1-trond.myklebust@primarydata.com>
-         <CAN-5tyGN4AT70mrVKoW652hQmbDocG7_c2haDC=PKpixQsUDJg@mail.gmail.com>
-In-Reply-To: <CAN-5tyGN4AT70mrVKoW652hQmbDocG7_c2haDC=PKpixQsUDJg@mail.gmail.com>
+Received: from mail-it0-f67.google.com ([209.85.214.67]:36500 "EHLO
+        mail-it0-f67.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1750719AbdBOV4Y (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 15 Feb 2017 16:56:24 -0500
+Received: by mail-it0-f67.google.com with SMTP id f200so543104itf.3
+        for <linux-nfs@vger.kernel.org>; Wed, 15 Feb 2017 13:56:14 -0800 (PST)
 MIME-Version: 1.0
+In-Reply-To: <1487191695.7993.2.camel@primarydata.com>
+References: <20161205004023.40957-1-trond.myklebust@primarydata.com>
+ <CAN-5tyGN4AT70mrVKoW652hQmbDocG7_c2haDC=PKpixQsUDJg@mail.gmail.com> <1487191695.7993.2.camel@primarydata.com>
+From: Olga Kornievskaia <aglo@umich.edu>
+Date: Wed, 15 Feb 2017 16:56:13 -0500
+Message-ID: <CAN-5tyGep3yHXNjMX9QKCS8E2w+HkVw_LoF=pOwgbgcgUNeDyQ@mail.gmail.com>
+Subject: Re: [PATCH 1/2] NFSv4.1: Handle NFS4ERR_BADSESSION/NFS4ERR_DEADSESSION
+ replies to OP_SEQUENCE
+To: Trond Myklebust <trondmy@primarydata.com>
+Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
 Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gV2VkLCAyMDE3LTAyLTE1IGF0IDE1OjE2IC0wNTAwLCBPbGdhIEtvcm5pZXZza2FpYSB3cm90
-ZToNCj4gT24gU3VuLCBEZWMgNCwgMjAxNiBhdCA3OjQwIFBNLCBUcm9uZCBNeWtsZWJ1c3QNCj4g
-PHRyb25kLm15a2xlYnVzdEBwcmltYXJ5ZGF0YS5jb20+IHdyb3RlOg0KPiA+IEluIHRoZSBjYXNl
-IHdoZXJlIFNFUVVFTkNFIHJlY2VpdmVzIGEgTkZTNEVSUl9CQURTRVNTSU9OIG9yDQo+ID4gTkZT
-NEVSUl9ERUFEU0VTU0lPTiBlcnJvciwgd2UganVzdCB3YW50IHRvIHJlcG9ydCB0aGUgc2Vzc2lv
-biBhcw0KPiA+IG5lZWRpbmcNCj4gPiByZWNvdmVyeSwgYW5kIHRoZW4gd2Ugd2FudCB0byByZXRy
-eSB0aGUgb3BlcmF0aW9uLg0KPiA+IA0KPiA+IFNpZ25lZC1vZmYtYnk6IFRyb25kIE15a2xlYnVz
-dCA8dHJvbmQubXlrbGVidXN0QHByaW1hcnlkYXRhLmNvbT4NCj4gPiAtLS0NCj4gPiDCoGZzL25m
-cy9uZnM0cHJvYy5jIHwgNCArKysrDQo+ID4gwqAxIGZpbGUgY2hhbmdlZCwgNCBpbnNlcnRpb25z
-KCspDQo+ID4gDQo+ID4gZGlmZiAtLWdpdCBhL2ZzL25mcy9uZnM0cHJvYy5jIGIvZnMvbmZzL25m
-czRwcm9jLmMNCj4gPiBpbmRleCBmOTkyMjgxYzliMjkuLjRmZDBlMmI3YjA4ZSAxMDA2NDQNCj4g
-PiAtLS0gYS9mcy9uZnMvbmZzNHByb2MuYw0KPiA+ICsrKyBiL2ZzL25mcy9uZnM0cHJvYy5jDQo+
-ID4gQEAgLTgxNiw2ICs4MTYsMTAgQEAgc3RhdGljIGludCBuZnM0MV9zZXF1ZW5jZV9wcm9jZXNz
-KHN0cnVjdA0KPiA+IHJwY190YXNrICp0YXNrLA0KPiA+IMKgwqDCoMKgwqDCoMKgwqBjYXNlIC1O
-RlM0RVJSX1NFUV9GQUxTRV9SRVRSWToNCj4gPiDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKg
-wqDCoCsrc2xvdC0+c2VxX25yOw0KPiA+IMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKg
-Z290byByZXRyeV9ub3dhaXQ7DQo+ID4gK8KgwqDCoMKgwqDCoMKgY2FzZSAtTkZTNEVSUl9ERUFE
-U0VTU0lPTjoNCj4gPiArwqDCoMKgwqDCoMKgwqBjYXNlIC1ORlM0RVJSX0JBRFNFU1NJT046DQo+
-ID4gK8KgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoG5mczRfc2NoZWR1bGVfc2Vzc2lvbl9y
-ZWNvdmVyeShzZXNzaW9uLCByZXMtDQo+ID4gPnNyX3N0YXR1cyk7DQo+ID4gK8KgwqDCoMKgwqDC
-oMKgwqDCoMKgwqDCoMKgwqDCoGdvdG8gcmV0cnlfbm93YWl0Ow0KPiA+IMKgwqDCoMKgwqDCoMKg
-wqBkZWZhdWx0Og0KPiA+IMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgLyogSnVzdCB1
-cGRhdGUgdGhlIHNsb3Qgc2VxdWVuY2Ugbm8uICovDQo+ID4gwqDCoMKgwqDCoMKgwqDCoMKgwqDC
-oMKgwqDCoMKgwqBzbG90LT5zZXFfZG9uZSA9IDE7DQo+ID4gLS0NCj4gPiAyLjkuMw0KPiANCj4g
-SGkgVHJvbmQsDQo+IA0KPiBDYW4geW91IGV4cGxhaW4gdGhlIGltcGxpY2F0aW9ucyBvZiByZXRy
-eWluZyB0aGUgb3BlcmF0aW9uIHdpdGhvdXQNCj4gd2FpdGluZyBmb3IgcmVjb3ZlcnkgdG8gY29t
-cGxldGU/DQo+IA0KPiBUaGlzIHBhdGNoIGludHJvZHVjZXMgcmVncmVzc2lvbiBpbiBpbnRyYSBD
-T1BZIGZhaWxpbmcgaWYgdGhlIHNlcnZlcg0KPiByZWJvb3RlZCBkdXJpbmcgdGhhdCBvcGVyYXRp
-b24uIFdoYXQgaGFwcGVucyBpcyB0aGF0IENPUFkgaXMgcmUtc2VudA0KPiB3aXRoIHRoZSBzYW1l
-IHN0YXRlaWQgZnJvbSB0aGUgb2xkIG9wZW4gaW5zdGVhZCBvZiB0aGUgb3BlbiB0aGF0IHdhcw0K
-PiBkb25lIGZyb20gdGhlIHJlY292ZXJ5IChsZWFkaW5nIHRvIEJBRF9TVEFURUlEIGVycm9yIGFu
-ZCBmYWlsdXJlKS4NCj4gDQo+IEkgd29uZGVyIGlmIGl0J3MgYmVjYXVzZSBDT1BZIGlzIHdyaXR0
-ZW4gdG8ganVzdCB1c2UgbmZzNF9jYWxsX3N5bmMoKQ0KPiBpbnN0ZWFkIG9mIGRlZmluaW5nIHJw
-Y19jYWxsYmFja19vcHMgdG8gaGFuZGxlIHJwY19wcmVwYXJlKCkgd2hlcmUgYQ0KPiBuZXcgc3Rh
-dGVpZCBjb3VsZCBiZSBnb3R0ZW4/IEkgaGF2ZSByZS13cml0dGVuIHRoZSBDT1BZIHRvIGRvIHRo
-YXQNCj4gYW5kDQo+IEkgbm8gbG9uZ2VyIHNlZSB0aGF0IHByb2JsZW0uDQo+IA0KPiBJZiBteSBz
-dXNwaWNpb24gaXMgY29ycmVjdCwgaXQgd291bGQgaGVscCBmb3IgdGhlIGZ1dHVyZSB0byBrbm93
-IHRoYXQNCj4gYW55IG9wZXJhdGlvbnMgdGhhdCB1c2Ugc3RhdGVpZCBtdXN0IGhhdmUgcnBjIGNh
-bGxiYWNrIG9wcw0KPiBkZWZpbmVkL3VzZWQgc28gdGhhdCB0aGV5IGF2b2lkIHRoaXMgcHJvYmxl
-bS4gUGVyaGFwcyBhcyBhIGNvbW1lbnQgaW4NCj4gdGhlIGNvZGUgb3IgbWF5YmUgc29tZSBvdGhl
-ciB3YXk/DQo+IA0KPiBUaGFua3MuDQo+IA0KWWVzLCB0aGUgd2F5IHRoYXQgcnBjX2NhbGxfc3lu
-YygpIGhhcyBiZWVuIHdyaXR0ZW4sIGl0IGFzc3VtZXMgdGhhdCB0aGUNCmNhbGwgaXMgdW5hZmZl
-Y3RlZCBieSByZWJvb3QgcmVjb3ZlcnksIG9yIHRoYXQgdGhlIHJlc3VsdGluZyBzdGF0ZQ0KZXJy
-b3JzIHdpbGwgYmUgaGFuZGxlZCBieSB0aGUgY2FsbGVyLiBUaGUgcGF0Y2ggeW91IHJlZmVyZW5j
-ZSBkb2VzIG5vdA0KY2hhbmdlIHRoYXQgZXhwZWN0YXRpb24uDQoNClRoZSBzYW1lIHJhY2UgY2Fu
-IGhhcHBlbiwgZm9yIGluc3RhbmNlLCBpZiB5b3VyIGNhbGwgdG8gcnBjX2NhbGxfc3luYygpDQog
-Y29pbmNpZGVzIHdpdGggYSByZWJvb3QgcmVjb3ZlcnkgdGhhdCB3YXMgc3RhcnRlZCBieSBhbm90
-aGVyIHByb2Nlc3MuDQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMgY2xpZW50IG1h
-aW50YWluZXIsIFByaW1hcnlEYXRhDQp0cm9uZC5teWtsZWJ1c3RAcHJpbWFyeWRhdGEuY29tDQo=
+On Wed, Feb 15, 2017 at 3:48 PM, Trond Myklebust
+<trondmy@primarydata.com> wrote:
+> On Wed, 2017-02-15 at 15:16 -0500, Olga Kornievskaia wrote:
+>> On Sun, Dec 4, 2016 at 7:40 PM, Trond Myklebust
+>> <trond.myklebust@primarydata.com> wrote:
+>> > In the case where SEQUENCE receives a NFS4ERR_BADSESSION or
+>> > NFS4ERR_DEADSESSION error, we just want to report the session as
+>> > needing
+>> > recovery, and then we want to retry the operation.
+>> >
+>> > Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+>> > ---
+>> >  fs/nfs/nfs4proc.c | 4 ++++
+>> >  1 file changed, 4 insertions(+)
+>> >
+>> > diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+>> > index f992281c9b29..4fd0e2b7b08e 100644
+>> > --- a/fs/nfs/nfs4proc.c
+>> > +++ b/fs/nfs/nfs4proc.c
+>> > @@ -816,6 +816,10 @@ static int nfs41_sequence_process(struct
+>> > rpc_task *task,
+>> >         case -NFS4ERR_SEQ_FALSE_RETRY:
+>> >                 ++slot->seq_nr;
+>> >                 goto retry_nowait;
+>> > +       case -NFS4ERR_DEADSESSION:
+>> > +       case -NFS4ERR_BADSESSION:
+>> > +               nfs4_schedule_session_recovery(session, res-
+>> > >sr_status);
+>> > +               goto retry_nowait;
+>> >         default:
+>> >                 /* Just update the slot sequence no. */
+>> >                 slot->seq_done = 1;
+>> > --
+>> > 2.9.3
+>>
+>> Hi Trond,
+>>
+>> Can you explain the implications of retrying the operation without
+>> waiting for recovery to complete?
+>>
+>> This patch introduces regression in intra COPY failing if the server
+>> rebooted during that operation. What happens is that COPY is re-sent
+>> with the same stateid from the old open instead of the open that was
+>> done from the recovery (leading to BAD_STATEID error and failure).
+>>
+>> I wonder if it's because COPY is written to just use nfs4_call_sync()
+>> instead of defining rpc_callback_ops to handle rpc_prepare() where a
+>> new stateid could be gotten? I have re-written the COPY to do that
+>> and
+>> I no longer see that problem.
+>>
+>> If my suspicion is correct, it would help for the future to know that
+>> any operations that use stateid must have rpc callback ops
+>> defined/used so that they avoid this problem. Perhaps as a comment in
+>> the code or maybe some other way?
+>>
+>> Thanks.
+>>
+> Yes, the way that rpc_call_sync() has been written, it assumes that the
+> call is unaffected by reboot recovery, or that the resulting state
+> errors will be handled by the caller. The patch you reference does not
+> change that expectation.
 
+The "or" is confusing me. The current COPY code does call into
+nfs4_handle_exception() and "should handle errors". Yet after this
+patch, the code fails to in presence of a reboot. I don't see what
+else can the current code should do in terms of handling errors to fix
+that problem.
+
+I'm almost ready to submit the patch that turns the existing code into
+async rpc but if this is not the right approach then I'd like to know
+where I should be looking into instead.
+
+Thanks.
+
+>
+> The same race can happen, for instance, if your call to rpc_call_sync()
+>  coincides with a reboot recovery that was started by another process.
+>
+> --
+> Trond Myklebust
+> Linux NFS client maintainer, PrimaryData
+> trond.myklebust@primarydata.com
