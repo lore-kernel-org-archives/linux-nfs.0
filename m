@@ -1,52 +1,45 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:49764 "EHLO mx1.redhat.com"
+Received: from mx144.netapp.com ([216.240.21.25]:13991 "EHLO mx144.netapp.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751890AbdBOPLW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 15 Feb 2017 10:11:22 -0500
+        id S1750810AbdBOPVY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 15 Feb 2017 10:21:24 -0500
+From: "Adamson, Andy" <William.Adamson@netapp.com>
+To: Steve Dickson <SteveD@redhat.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
 Subject: Re: [PATCH 0/2] RFC: Libtirpc changes for RPCSEC_GSS version 3
-To: andros@netapp.com
+Date: Wed, 15 Feb 2017 15:21:05 +0000
+Message-ID: <8F2B2A30-49CB-42B3-81C5-6C0965A55672@netapp.com>
 References: <1482509367-22381-1-git-send-email-andros@netapp.com>
-Cc: linux-nfs@vger.kernel.org
-From: Steve Dickson <SteveD@redhat.com>
-Message-ID: <9495725a-8ca0-5173-15e4-cd6a6dc27e40@RedHat.com>
-Date: Wed, 15 Feb 2017 10:11:22 -0500
+ <9495725a-8ca0-5173-15e4-cd6a6dc27e40@RedHat.com>
+In-Reply-To: <9495725a-8ca0-5173-15e4-cd6a6dc27e40@RedHat.com>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-In-Reply-To: <1482509367-22381-1-git-send-email-andros@netapp.com>
-Content-Type: text/plain; charset=windows-1252
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hey Andy
-
-Where are we with these... Is there any kernel support needed?
-If not are they ready to go?
-
-Note: in Patch 2 there is an uncovered fprintf in clnt_vc_control
-which is probably not needed... No need to repost just for that ;-)
-
-steved.
-
-On 12/23/2016 11:09 AM, andros@netapp.com wrote:
-> From: Andy Adamson <andros@netapp.com>
->
-> This is a Request for Comment patch set for the GSSv3 prototype.
->
-> Requires:
->
-> - kernel patches: "RFC: RPCSEC_GSS Version 3 prototype: Full MOde MAC
-> - gssd patches: "RFC: GSSD changes for RPCSEC_GSS version 3"
->
->
-> Andy Adamson (2):
->   Use RPCSEC_GSS version 3
->   RPCSEC_GSSv3 new reply verifier
->
->  autogen.sh           |   0
->  src/auth_gss.c       | 195 +++++++++++++++++++++++++++++++++++++++++++++++++--
->  src/clnt_vc.c        |   1 +
->  src/debug.c          |   2 +-
->  tirpc/rpc/auth_gss.h |  10 ++-
->  5 files changed, 198 insertions(+), 10 deletions(-)
->  mode change 100644 => 100755 autogen.sh
->
-
+SGkgU3RldmUNCg0KWWVzLCB0aGVyZSBhcmUga2VybmVsIHBpZWNlcyBuZWVkZWQuIOKAnCJSRkM6
+IFJQQ1NFQ19HU1MgVmVyc2lvbiAzIHByb3RvdHlwZTogRnVsbCBNT2RlIE1BQ+KAnSwgYXMgd2Vs
+bCBhcyB0aGUgZ3NzZCBwYXRjaGVzLiAgSSBhbSB3b3JraW5nIG9uIGEgdmVyc2lvbi01IG9mIHRo
+ZSBrZXJuZWwgR1NTMyBwYXRjaGVzIGFuZCBob3BlIHRvIHN1Ym1pdCB0b2RheSBvciB0b21vcnJv
+dy4gTXkgY3VycmVudCBpc3N1ZSBpcyB0aGF0IHRoZSBzZXR0aW5nIG9mIHRoZSBjbGllbnQgdGhy
+ZWFkIGxhYmVsIHRyYW5zcG9ydGVkIGJ5IGdzc3YzIGhhcyBzdG9wcGVkIHdvcmtpbmcgKGluIG5m
+c2Rfc2V0dXNlcikgd2l0aCB0aGUgbGF0ZXIga2VybmVsc+KApi4NCg0K4oaSQW5keQ0KDQpPbiAy
+LzE1LzE3LCAxMDoxMSBBTSwgIlN0ZXZlIERpY2tzb24iIDxTdGV2ZURAUmVkSGF0LmNvbT4gd3Jv
+dGU6DQoNCkhleSBBbmR5DQoNCldoZXJlIGFyZSB3ZSB3aXRoIHRoZXNlLi4uIElzIHRoZXJlIGFu
+eSBrZXJuZWwgc3VwcG9ydCBuZWVkZWQ/DQpJZiBub3QgYXJlIHRoZXkgcmVhZHkgdG8gZ28/DQoN
+Ck5vdGU6IGluIFBhdGNoIDIgdGhlcmUgaXMgYW4gdW5jb3ZlcmVkIGZwcmludGYgaW4gY2xudF92
+Y19jb250cm9sDQp3aGljaCBpcyBwcm9iYWJseSBub3QgbmVlZGVkLi4uIE5vIG5lZWQgdG8gcmVw
+b3N0IGp1c3QgZm9yIHRoYXQgOy0pDQoNCnN0ZXZlZC4NCg0KT24gMTIvMjMvMjAxNiAxMTowOSBB
+TSwgYW5kcm9zQG5ldGFwcC5jb20gd3JvdGU6DQo+IEZyb206IEFuZHkgQWRhbXNvbiA8YW5kcm9z
+QG5ldGFwcC5jb20+DQo+DQo+IFRoaXMgaXMgYSBSZXF1ZXN0IGZvciBDb21tZW50IHBhdGNoIHNl
+dCBmb3IgdGhlIEdTU3YzIHByb3RvdHlwZS4NCj4NCj4gUmVxdWlyZXM6DQo+DQo+IC0ga2VybmVs
+IHBhdGNoZXM6ICJSRkM6IFJQQ1NFQ19HU1MgVmVyc2lvbiAzIHByb3RvdHlwZTogRnVsbCBNT2Rl
+IE1BQw0KPiAtIGdzc2QgcGF0Y2hlczogIlJGQzogR1NTRCBjaGFuZ2VzIGZvciBSUENTRUNfR1NT
+IHZlcnNpb24gMyINCj4NCj4NCj4gQW5keSBBZGFtc29uICgyKToNCj4gICBVc2UgUlBDU0VDX0dT
+UyB2ZXJzaW9uIDMNCj4gICBSUENTRUNfR1NTdjMgbmV3IHJlcGx5IHZlcmlmaWVyDQo+DQo+ICBh
+dXRvZ2VuLnNoICAgICAgICAgICB8ICAgMA0KPiAgc3JjL2F1dGhfZ3NzLmMgICAgICAgfCAxOTUg
+KysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKy0tDQo+ICBz
+cmMvY2xudF92Yy5jICAgICAgICB8ICAgMSArDQo+ICBzcmMvZGVidWcuYyAgICAgICAgICB8ICAg
+MiArLQ0KPiAgdGlycGMvcnBjL2F1dGhfZ3NzLmggfCAgMTAgKystDQo+ICA1IGZpbGVzIGNoYW5n
+ZWQsIDE5OCBpbnNlcnRpb25zKCspLCAxMCBkZWxldGlvbnMoLSkNCj4gIG1vZGUgY2hhbmdlIDEw
+MDY0NCA9PiAxMDA3NTUgYXV0b2dlbi5zaA0KPg0KDQoNCg0K
