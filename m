@@ -1,71 +1,56 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f194.google.com ([209.85.223.194]:34121 "EHLO
-        mail-io0-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751448AbdBOKgu (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 15 Feb 2017 05:36:50 -0500
-Received: by mail-io0-f194.google.com with SMTP id c80so11875200iod.1
-        for <linux-nfs@vger.kernel.org>; Wed, 15 Feb 2017 02:36:50 -0800 (PST)
-Subject: Re: Question about NFSv4.2 server-side copy implementation
-To: "Mora, Jorge" <Jorge.Mora@netapp.com>,
+Received: from us-smtp-delivery-194.mimecast.com ([63.128.21.194]:32010 "EHLO
+        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1750773AbdBOPAz (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 15 Feb 2017 10:00:55 -0500
+From: Trond Myklebust <trondmy@primarydata.com>
+To: "kinglongmee@gmail.com" <kinglongmee@gmail.com>,
+        "Jorge.Mora@netapp.com" <Jorge.Mora@netapp.com>,
         "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: Question about NFSv4.2 server-side copy implementation
+Date: Wed, 15 Feb 2017 15:00:43 +0000
+Message-ID: <1487170840.3039.1.camel@primarydata.com>
 References: <BLUPR06MB54767D9B4746E210D176C3AE1580@BLUPR06MB547.namprd06.prod.outlook.com>
-From: Kinglong Mee <kinglongmee@gmail.com>
-Cc: Kinglong Mee <kinglongmee@gmail.com>
-Message-ID: <f186e424-5050-4651-6621-7ccc3688a49e@gmail.com>
-Date: Wed, 15 Feb 2017 18:36:39 +0800
+         <f186e424-5050-4651-6621-7ccc3688a49e@gmail.com>
+In-Reply-To: <f186e424-5050-4651-6621-7ccc3688a49e@gmail.com>
 MIME-Version: 1.0
-In-Reply-To: <BLUPR06MB54767D9B4746E210D176C3AE1580@BLUPR06MB547.namprd06.prod.outlook.com>
 Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 2/15/2017 04:07, Mora, Jorge wrote:
-> Hello,
->  
-> The NFSv4.2 spec (RFC 7862) on section 15.2.3 (COPY description) says the following:
->  
-> If the source offset or the source offset plus count is greater than
-> the size of the source file, the operation MUST fail with
-> NFS4ERR_INVAL.
->  
-> I can understand failing with NFS4ERR_INVAL when the source offset is beyond the end of the file,
+T24gV2VkLCAyMDE3LTAyLTE1IGF0IDE4OjM2ICswODAwLCBLaW5nbG9uZyBNZWUgd3JvdGU6DQo+
+IE9uIDIvMTUvMjAxNyAwNDowNywgTW9yYSwgSm9yZ2Ugd3JvdGU6DQo+ID4gSGVsbG8sDQo+ID4g
+wqANCj4gPiBUaGUgTkZTdjQuMiBzcGVjIChSRkMgNzg2Mikgb24gc2VjdGlvbiAxNS4yLjMgKENP
+UFkgZGVzY3JpcHRpb24pDQo+ID4gc2F5cyB0aGUgZm9sbG93aW5nOg0KPiA+IMKgDQo+ID4gSWYg
+dGhlIHNvdXJjZSBvZmZzZXQgb3IgdGhlIHNvdXJjZSBvZmZzZXQgcGx1cyBjb3VudCBpcyBncmVh
+dGVyDQo+ID4gdGhhbg0KPiA+IHRoZSBzaXplIG9mIHRoZSBzb3VyY2UgZmlsZSwgdGhlIG9wZXJh
+dGlvbiBNVVNUIGZhaWwgd2l0aA0KPiA+IE5GUzRFUlJfSU5WQUwuDQo+ID4gwqANCj4gPiBJIGNh
+biB1bmRlcnN0YW5kIGZhaWxpbmcgd2l0aCBORlM0RVJSX0lOVkFMIHdoZW4gdGhlIHNvdXJjZSBv
+ZmZzZXQNCj4gPiBpcyBiZXlvbmQgdGhlIGVuZCBvZiB0aGUgZmlsZSwNCj4gDQo+IFllcywgdGhh
+dCdzIHJpZ2h0Lg0KPiANCj4gPiBidXQgZG8geW91IHRoaW5rIGZhaWxpbmcgd2l0aCBORlM0RVJS
+X0lOVkFMIGlzIHRvbyBzdHJpY3Qgd2hlbiB0aGUNCj4gPiBzb3VyY2Ugb2Zmc2V0IHBsdXMgdGhl
+IGNvdW50IGlzIGJleW9uZCB0aGUgZW5kIG9mIHRoZSBmaWxlPw0KPiA+IFdoYXQgaXMgdGhlIHJh
+dGlvbmFsaXphdGlvbiBmb3IgZmFpbGluZyBvbiB0aGlzIHNwZWNpZmljIGluc3RhbmNlPw0KPiA+
+IFdoeSBub3QgcmV0dXJuIGEgc2hvcnQgY29weSBpbnN0ZWFkPw0KPiANCj4gVGhlIG1hbi1wYWdl
+cyBvZiBjb3B5X2ZpbGVfcmFuZ2UgZGVzY3JpcHRpb24gYXMsDQo+IA0KPiDCoMKgwqDCoMKgwqDC
+oEVJTlZBTCBSZXF1ZXN0ZWQgcmFuZ2UgZXh0ZW5kcyBiZXlvbmQgdGhlIGVuZCBvZg0KPiB0aGXC
+oMKgc291cmNlwqDCoGZpbGU7wqDCoG9yDQo+IMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqB0
+aGUgZmxhZ3MgYXJndW1lbnQgaXMgbm90IDAuDQo+IA0KPiBTbywgdGhlIHNwZWNpZmljIGluc3Rh
+bmNlIHlvdSBzYWlkIGlzbid0IGFsbG93ZWQuDQo+IA0KPiA+IENhbiB0aGUgQ09QWSByZXR1cm4g
+YSBjb3VudCBsZXNzIHRoYW4gd2hhdCBpdCByZXF1ZXN0ZWQgKGEgc2hvcnQNCj4gPiBjb3B5KT8N
+Cj4gDQo+IFllcywgdGhlIHJldHVybiB2YWx1ZSBvZiBjb3B5X2ZpbGVfcmFuZ2UgaXMsDQo+IA0K
+PiBSRVRVUk4gVkFMVUUNCj4gwqDCoMKgwqDCoMKgwqBVcG9uIHN1Y2Nlc3NmdWwgY29tcGxldGlv
+biwgY29weV9maWxlX3JhbmdlKCkgd2lsbCByZXR1cm4gdGhlDQo+IG51bWJlciBvZg0KPiDCoMKg
+wqDCoMKgwqDCoGJ5dGVzIGNvcGllZCBiZXR3ZWVuIGZpbGVzLsKgwqBUaGlzIGNvdWxkIGJlIGxl
+c3MgdGhhbiB0aGUNCj4gbGVuZ3RowqDCoG9yaWdp4oCQDQo+IMKgwqDCoMKgwqDCoMKgbmFsbHkg
+cmVxdWVzdGVkLg0KPiANCg0KSXQncyBhIHZhbGlkIHF1ZXN0aW9uLCB0aG91Z2guIE5vdCBsZWFz
+dCBiZWNhdXNlIGNvcHlfZmlsZV9yYW5nZSgpIGlzDQpub3QgZ3VhcmFudGVlZCB0byBiZSBhdG9t
+aWMsIG1lYW5pbmcgdGhhdCB5b3UgY291bGQgaGF2ZSByYWNlcyB3aGVyZQ0KdGhlIGV4ZWN1dGlv
+biBvZiB0aGUgY29weV9maWxlX3JhbmdlKCkgaXMgc3RhcnRlZCwgYnV0IHRoZSBmaWxlIGlzDQp0
+cnVuY2F0ZWQgd2hlbiB0aGUgY29weSBpcyBvbmx5IGhhbGYtY29tcGxldGUuDQoNCkpvcmdlLCBJ
+IHN1Z2dlc3QgcmFpc2luZyB0aGUgcXVlc3Rpb24gb24gdGhlIElFVEYgbWFpbGluZyBsaXN0LiBU
+aGlzDQptaWdodCBiZSBhIGNhbmRpZGF0ZSBmb3IgYSBORlN2NC4yIHByb3RvY29sIGVycmF0YS4N
+Cg0KQ2hlZXJzDQogIFRyb25kDQotLSANClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVu
+dCBtYWludGFpbmVyLCBQcmltYXJ5RGF0YQ0KdHJvbmQubXlrbGVidXN0QHByaW1hcnlkYXRhLmNv
+bQ0K
 
-Yes, that's right.
-
-> but do you think failing with NFS4ERR_INVAL is too strict when the source offset plus the count is beyond the end of the file?
-> What is the rationalization for failing on this specific instance?
-> Why not return a short copy instead?
-
-The man-pages of copy_file_range description as,
-
-       EINVAL Requested range extends beyond the end of the  source  file;  or
-              the flags argument is not 0.
-
-So, the specific instance you said isn't allowed.
-
-> Can the COPY return a count less than what it requested (a short copy)?
-
-Yes, the return value of copy_file_range is,
-
-RETURN VALUE
-       Upon successful completion, copy_file_range() will return the number of
-       bytes copied between files.  This could be less than the length  origi‐
-       nally requested.
-
->  
-> As of right now, the implementation on the Linux server adheres to the spec but copy_file_range succeeds
-> when it is called against the local file system, NFSv4.x or NFSv3.
-
-NFSv3 doesn't support copy_file_range, and only NFSv4.2 supports copy_file_range.
-
-> For the local file system, NFSv4.x or NFSv3 copy_file_range falls back to regular copy by
-> reading from the source file and then writing to the destination file but I do believe the
-> syscall should be consistent regardless of the underlying file system.
->  
->  
-> --Jorge
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
