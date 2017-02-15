@@ -1,26 +1,71 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:50481 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751505AbdBOSGY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 15 Feb 2017 13:06:24 -0500
-Subject: Re: [PATCH 0/2] RFC: Libtirpc changes for RPCSEC_GSS version 3
-To: "Adamson, Andy" <William.Adamson@netapp.com>
-References: <1482509367-22381-1-git-send-email-andros@netapp.com>
- <9495725a-8ca0-5173-15e4-cd6a6dc27e40@RedHat.com>
- <8F2B2A30-49CB-42B3-81C5-6C0965A55672@netapp.com>
-Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-From: Steve Dickson <SteveD@redhat.com>
-Message-ID: <696b7abc-fd79-822b-3cde-33280961f5bf@RedHat.com>
-Date: Wed, 15 Feb 2017 13:06:23 -0500
+Received: from mail-it0-f66.google.com ([209.85.214.66]:36705 "EHLO
+        mail-it0-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751389AbdBOUQj (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 15 Feb 2017 15:16:39 -0500
+Received: by mail-it0-f66.google.com with SMTP id f200so93719itf.3
+        for <linux-nfs@vger.kernel.org>; Wed, 15 Feb 2017 12:16:39 -0800 (PST)
 MIME-Version: 1.0
-In-Reply-To: <8F2B2A30-49CB-42B3-81C5-6C0965A55672@netapp.com>
-Content-Type: text/plain; charset=utf-8
+In-Reply-To: <20161205004023.40957-1-trond.myklebust@primarydata.com>
+References: <20161205004023.40957-1-trond.myklebust@primarydata.com>
+From: Olga Kornievskaia <aglo@umich.edu>
+Date: Wed, 15 Feb 2017 15:16:37 -0500
+Message-ID: <CAN-5tyGN4AT70mrVKoW652hQmbDocG7_c2haDC=PKpixQsUDJg@mail.gmail.com>
+Subject: Re: [PATCH 1/2] NFSv4.1: Handle NFS4ERR_BADSESSION/NFS4ERR_DEADSESSION
+ replies to OP_SEQUENCE
+To: Trond Myklebust <trond.myklebust@primarydata.com>
+Cc: linux-nfs <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 02/15/2017 10:21 AM, Adamson, Andy wrote:
+On Sun, Dec 4, 2016 at 7:40 PM, Trond Myklebust
+<trond.myklebust@primarydata.com> wrote:
+> In the case where SEQUENCE receives a NFS4ERR_BADSESSION or
+> NFS4ERR_DEADSESSION error, we just want to report the session as needing
+> recovery, and then we want to retry the operation.
+>
+> Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+> ---
+>  fs/nfs/nfs4proc.c | 4 ++++
+>  1 file changed, 4 insertions(+)
+>
+> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+> index f992281c9b29..4fd0e2b7b08e 100644
+> --- a/fs/nfs/nfs4proc.c
+> +++ b/fs/nfs/nfs4proc.c
+> @@ -816,6 +816,10 @@ static int nfs41_sequence_process(struct rpc_task *task,
+>         case -NFS4ERR_SEQ_FALSE_RETRY:
+>                 ++slot->seq_nr;
+>                 goto retry_nowait;
+> +       case -NFS4ERR_DEADSESSION:
+> +       case -NFS4ERR_BADSESSION:
+> +               nfs4_schedule_session_recovery(session, res->sr_status);
+> +               goto retry_nowait;
+>         default:
+>                 /* Just update the slot sequence no. */
+>                 slot->seq_done = 1;
+> --
+> 2.9.3
 
-> Yes, there are kernel pieces needed. “"RFC: RPCSEC_GSS Version 3 prototype: Full MOde MAC”, as well as the gssd patches.  I am working on a version-5 of the kernel GSS3 patches and hope to submit today or tomorrow. My current issue is that the setting of the client thread label transported by gssv3 has stopped working (in nfsd_setuser) with the later kernels….
-Just go ahead a ping me when these are ready to go.... Thanks!
+Hi Trond,
 
-steved.
+Can you explain the implications of retrying the operation without
+waiting for recovery to complete?
+
+This patch introduces regression in intra COPY failing if the server
+rebooted during that operation. What happens is that COPY is re-sent
+with the same stateid from the old open instead of the open that was
+done from the recovery (leading to BAD_STATEID error and failure).
+
+I wonder if it's because COPY is written to just use nfs4_call_sync()
+instead of defining rpc_callback_ops to handle rpc_prepare() where a
+new stateid could be gotten? I have re-written the COPY to do that and
+I no longer see that problem.
+
+If my suspicion is correct, it would help for the future to know that
+any operations that use stateid must have rpc callback ops
+defined/used so that they avoid this problem. Perhaps as a comment in
+the code or maybe some other way?
+
+Thanks.
