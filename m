@@ -1,105 +1,95 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-it0-f67.google.com ([209.85.214.67]:36500 "EHLO
-        mail-it0-f67.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1750719AbdBOV4Y (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 15 Feb 2017 16:56:24 -0500
-Received: by mail-it0-f67.google.com with SMTP id f200so543104itf.3
-        for <linux-nfs@vger.kernel.org>; Wed, 15 Feb 2017 13:56:14 -0800 (PST)
-MIME-Version: 1.0
-In-Reply-To: <1487191695.7993.2.camel@primarydata.com>
+Received: from us-smtp-delivery-194.mimecast.com ([63.128.21.194]:56088 "EHLO
+        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1751298AbdBOWX1 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 15 Feb 2017 17:23:27 -0500
+From: Trond Myklebust <trondmy@primarydata.com>
+To: "aglo@umich.edu" <aglo@umich.edu>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 1/2] NFSv4.1: Handle
+ NFS4ERR_BADSESSION/NFS4ERR_DEADSESSION replies to OP_SEQUENCE
+Date: Wed, 15 Feb 2017 22:23:21 +0000
+Message-ID: <1487197395.7993.4.camel@primarydata.com>
 References: <20161205004023.40957-1-trond.myklebust@primarydata.com>
- <CAN-5tyGN4AT70mrVKoW652hQmbDocG7_c2haDC=PKpixQsUDJg@mail.gmail.com> <1487191695.7993.2.camel@primarydata.com>
-From: Olga Kornievskaia <aglo@umich.edu>
-Date: Wed, 15 Feb 2017 16:56:13 -0500
-Message-ID: <CAN-5tyGep3yHXNjMX9QKCS8E2w+HkVw_LoF=pOwgbgcgUNeDyQ@mail.gmail.com>
-Subject: Re: [PATCH 1/2] NFSv4.1: Handle NFS4ERR_BADSESSION/NFS4ERR_DEADSESSION
- replies to OP_SEQUENCE
-To: Trond Myklebust <trondmy@primarydata.com>
-Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+         <CAN-5tyGN4AT70mrVKoW652hQmbDocG7_c2haDC=PKpixQsUDJg@mail.gmail.com>
+         <1487191695.7993.2.camel@primarydata.com>
+         <CAN-5tyGep3yHXNjMX9QKCS8E2w+HkVw_LoF=pOwgbgcgUNeDyQ@mail.gmail.com>
+In-Reply-To: <CAN-5tyGep3yHXNjMX9QKCS8E2w+HkVw_LoF=pOwgbgcgUNeDyQ@mail.gmail.com>
+MIME-Version: 1.0
 Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Feb 15, 2017 at 3:48 PM, Trond Myklebust
-<trondmy@primarydata.com> wrote:
-> On Wed, 2017-02-15 at 15:16 -0500, Olga Kornievskaia wrote:
->> On Sun, Dec 4, 2016 at 7:40 PM, Trond Myklebust
->> <trond.myklebust@primarydata.com> wrote:
->> > In the case where SEQUENCE receives a NFS4ERR_BADSESSION or
->> > NFS4ERR_DEADSESSION error, we just want to report the session as
->> > needing
->> > recovery, and then we want to retry the operation.
->> >
->> > Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
->> > ---
->> >  fs/nfs/nfs4proc.c | 4 ++++
->> >  1 file changed, 4 insertions(+)
->> >
->> > diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
->> > index f992281c9b29..4fd0e2b7b08e 100644
->> > --- a/fs/nfs/nfs4proc.c
->> > +++ b/fs/nfs/nfs4proc.c
->> > @@ -816,6 +816,10 @@ static int nfs41_sequence_process(struct
->> > rpc_task *task,
->> >         case -NFS4ERR_SEQ_FALSE_RETRY:
->> >                 ++slot->seq_nr;
->> >                 goto retry_nowait;
->> > +       case -NFS4ERR_DEADSESSION:
->> > +       case -NFS4ERR_BADSESSION:
->> > +               nfs4_schedule_session_recovery(session, res-
->> > >sr_status);
->> > +               goto retry_nowait;
->> >         default:
->> >                 /* Just update the slot sequence no. */
->> >                 slot->seq_done = 1;
->> > --
->> > 2.9.3
->>
->> Hi Trond,
->>
->> Can you explain the implications of retrying the operation without
->> waiting for recovery to complete?
->>
->> This patch introduces regression in intra COPY failing if the server
->> rebooted during that operation. What happens is that COPY is re-sent
->> with the same stateid from the old open instead of the open that was
->> done from the recovery (leading to BAD_STATEID error and failure).
->>
->> I wonder if it's because COPY is written to just use nfs4_call_sync()
->> instead of defining rpc_callback_ops to handle rpc_prepare() where a
->> new stateid could be gotten? I have re-written the COPY to do that
->> and
->> I no longer see that problem.
->>
->> If my suspicion is correct, it would help for the future to know that
->> any operations that use stateid must have rpc callback ops
->> defined/used so that they avoid this problem. Perhaps as a comment in
->> the code or maybe some other way?
->>
->> Thanks.
->>
-> Yes, the way that rpc_call_sync() has been written, it assumes that the
-> call is unaffected by reboot recovery, or that the resulting state
-> errors will be handled by the caller. The patch you reference does not
-> change that expectation.
+T24gV2VkLCAyMDE3LTAyLTE1IGF0IDE2OjU2IC0wNTAwLCBPbGdhIEtvcm5pZXZza2FpYSB3cm90
+ZToNCj4gT24gV2VkLCBGZWIgMTUsIDIwMTcgYXQgMzo0OCBQTSwgVHJvbmQgTXlrbGVidXN0DQo+
+IDx0cm9uZG15QHByaW1hcnlkYXRhLmNvbT4gd3JvdGU6DQo+ID4gT24gV2VkLCAyMDE3LTAyLTE1
+IGF0IDE1OjE2IC0wNTAwLCBPbGdhIEtvcm5pZXZza2FpYSB3cm90ZToNCj4gPiA+IE9uIFN1biwg
+RGVjIDQsIDIwMTYgYXQgNzo0MCBQTSwgVHJvbmQgTXlrbGVidXN0DQo+ID4gPiA8dHJvbmQubXlr
+bGVidXN0QHByaW1hcnlkYXRhLmNvbT4gd3JvdGU6DQo+ID4gPiA+IEluIHRoZSBjYXNlIHdoZXJl
+IFNFUVVFTkNFIHJlY2VpdmVzIGEgTkZTNEVSUl9CQURTRVNTSU9OIG9yDQo+ID4gPiA+IE5GUzRF
+UlJfREVBRFNFU1NJT04gZXJyb3IsIHdlIGp1c3Qgd2FudCB0byByZXBvcnQgdGhlIHNlc3Npb24N
+Cj4gPiA+ID4gYXMNCj4gPiA+ID4gbmVlZGluZw0KPiA+ID4gPiByZWNvdmVyeSwgYW5kIHRoZW4g
+d2Ugd2FudCB0byByZXRyeSB0aGUgb3BlcmF0aW9uLg0KPiA+ID4gPiANCj4gPiA+ID4gU2lnbmVk
+LW9mZi1ieTogVHJvbmQgTXlrbGVidXN0IDx0cm9uZC5teWtsZWJ1c3RAcHJpbWFyeWRhdGEuY29t
+DQo+ID4gPiA+ID4NCj4gPiA+ID4gLS0tDQo+ID4gPiA+IMKgZnMvbmZzL25mczRwcm9jLmMgfCA0
+ICsrKysNCj4gPiA+ID4gwqAxIGZpbGUgY2hhbmdlZCwgNCBpbnNlcnRpb25zKCspDQo+ID4gPiA+
+IA0KPiA+ID4gPiBkaWZmIC0tZ2l0IGEvZnMvbmZzL25mczRwcm9jLmMgYi9mcy9uZnMvbmZzNHBy
+b2MuYw0KPiA+ID4gPiBpbmRleCBmOTkyMjgxYzliMjkuLjRmZDBlMmI3YjA4ZSAxMDA2NDQNCj4g
+PiA+ID4gLS0tIGEvZnMvbmZzL25mczRwcm9jLmMNCj4gPiA+ID4gKysrIGIvZnMvbmZzL25mczRw
+cm9jLmMNCj4gPiA+ID4gQEAgLTgxNiw2ICs4MTYsMTAgQEAgc3RhdGljIGludCBuZnM0MV9zZXF1
+ZW5jZV9wcm9jZXNzKHN0cnVjdA0KPiA+ID4gPiBycGNfdGFzayAqdGFzaywNCj4gPiA+ID4gwqDC
+oMKgwqDCoMKgwqDCoGNhc2UgLU5GUzRFUlJfU0VRX0ZBTFNFX1JFVFJZOg0KPiA+ID4gPiDCoMKg
+wqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoCsrc2xvdC0+c2VxX25yOw0KPiA+ID4gPiDCoMKg
+wqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoGdvdG8gcmV0cnlfbm93YWl0Ow0KPiA+ID4gPiAr
+wqDCoMKgwqDCoMKgwqBjYXNlIC1ORlM0RVJSX0RFQURTRVNTSU9OOg0KPiA+ID4gPiArwqDCoMKg
+wqDCoMKgwqBjYXNlIC1ORlM0RVJSX0JBRFNFU1NJT046DQo+ID4gPiA+ICvCoMKgwqDCoMKgwqDC
+oMKgwqDCoMKgwqDCoMKgwqBuZnM0X3NjaGVkdWxlX3Nlc3Npb25fcmVjb3Zlcnkoc2Vzc2lvbiwg
+cmVzLQ0KPiA+ID4gPiA+IHNyX3N0YXR1cyk7DQo+ID4gPiA+IA0KPiA+ID4gPiArwqDCoMKgwqDC
+oMKgwqDCoMKgwqDCoMKgwqDCoMKgZ290byByZXRyeV9ub3dhaXQ7DQo+ID4gPiA+IMKgwqDCoMKg
+wqDCoMKgwqBkZWZhdWx0Og0KPiA+ID4gPiDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDC
+oC8qIEp1c3QgdXBkYXRlIHRoZSBzbG90IHNlcXVlbmNlIG5vLiAqLw0KPiA+ID4gPiDCoMKgwqDC
+oMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoHNsb3QtPnNlcV9kb25lID0gMTsNCj4gPiA+ID4gLS0N
+Cj4gPiA+ID4gMi45LjMNCj4gPiA+IA0KPiA+ID4gSGkgVHJvbmQsDQo+ID4gPiANCj4gPiA+IENh
+biB5b3UgZXhwbGFpbiB0aGUgaW1wbGljYXRpb25zIG9mIHJldHJ5aW5nIHRoZSBvcGVyYXRpb24N
+Cj4gPiA+IHdpdGhvdXQNCj4gPiA+IHdhaXRpbmcgZm9yIHJlY292ZXJ5IHRvIGNvbXBsZXRlPw0K
+PiA+ID4gDQo+ID4gPiBUaGlzIHBhdGNoIGludHJvZHVjZXMgcmVncmVzc2lvbiBpbiBpbnRyYSBD
+T1BZIGZhaWxpbmcgaWYgdGhlDQo+ID4gPiBzZXJ2ZXINCj4gPiA+IHJlYm9vdGVkIGR1cmluZyB0
+aGF0IG9wZXJhdGlvbi4gV2hhdCBoYXBwZW5zIGlzIHRoYXQgQ09QWSBpcyByZS0NCj4gPiA+IHNl
+bnQNCj4gPiA+IHdpdGggdGhlIHNhbWUgc3RhdGVpZCBmcm9tIHRoZSBvbGQgb3BlbiBpbnN0ZWFk
+IG9mIHRoZSBvcGVuIHRoYXQNCj4gPiA+IHdhcw0KPiA+ID4gZG9uZSBmcm9tIHRoZSByZWNvdmVy
+eSAobGVhZGluZyB0byBCQURfU1RBVEVJRCBlcnJvciBhbmQNCj4gPiA+IGZhaWx1cmUpLg0KPiA+
+ID4gDQo+ID4gPiBJIHdvbmRlciBpZiBpdCdzIGJlY2F1c2UgQ09QWSBpcyB3cml0dGVuIHRvIGp1
+c3QgdXNlDQo+ID4gPiBuZnM0X2NhbGxfc3luYygpDQo+ID4gPiBpbnN0ZWFkIG9mIGRlZmluaW5n
+IHJwY19jYWxsYmFja19vcHMgdG8gaGFuZGxlIHJwY19wcmVwYXJlKCkNCj4gPiA+IHdoZXJlIGEN
+Cj4gPiA+IG5ldyBzdGF0ZWlkIGNvdWxkIGJlIGdvdHRlbj8gSSBoYXZlIHJlLXdyaXR0ZW4gdGhl
+IENPUFkgdG8gZG8NCj4gPiA+IHRoYXQNCj4gPiA+IGFuZA0KPiA+ID4gSSBubyBsb25nZXIgc2Vl
+IHRoYXQgcHJvYmxlbS4NCj4gPiA+IA0KPiA+ID4gSWYgbXkgc3VzcGljaW9uIGlzIGNvcnJlY3Qs
+IGl0IHdvdWxkIGhlbHAgZm9yIHRoZSBmdXR1cmUgdG8ga25vdw0KPiA+ID4gdGhhdA0KPiA+ID4g
+YW55IG9wZXJhdGlvbnMgdGhhdCB1c2Ugc3RhdGVpZCBtdXN0IGhhdmUgcnBjIGNhbGxiYWNrIG9w
+cw0KPiA+ID4gZGVmaW5lZC91c2VkIHNvIHRoYXQgdGhleSBhdm9pZCB0aGlzIHByb2JsZW0uIFBl
+cmhhcHMgYXMgYQ0KPiA+ID4gY29tbWVudCBpbg0KPiA+ID4gdGhlIGNvZGUgb3IgbWF5YmUgc29t
+ZSBvdGhlciB3YXk/DQo+ID4gPiANCj4gPiA+IFRoYW5rcy4NCj4gPiA+IA0KPiA+IA0KPiA+IFll
+cywgdGhlIHdheSB0aGF0IHJwY19jYWxsX3N5bmMoKSBoYXMgYmVlbiB3cml0dGVuLCBpdCBhc3N1
+bWVzIHRoYXQNCj4gPiB0aGUNCj4gPiBjYWxsIGlzIHVuYWZmZWN0ZWQgYnkgcmVib290IHJlY292
+ZXJ5LCBvciB0aGF0IHRoZSByZXN1bHRpbmcgc3RhdGUNCj4gPiBlcnJvcnMgd2lsbCBiZSBoYW5k
+bGVkIGJ5IHRoZSBjYWxsZXIuIFRoZSBwYXRjaCB5b3UgcmVmZXJlbmNlIGRvZXMNCj4gPiBub3QN
+Cj4gPiBjaGFuZ2UgdGhhdCBleHBlY3RhdGlvbi4NCj4gDQo+IFRoZSAib3IiIGlzIGNvbmZ1c2lu
+ZyBtZS4gVGhlIGN1cnJlbnQgQ09QWSBjb2RlIGRvZXMgY2FsbCBpbnRvDQo+IG5mczRfaGFuZGxl
+X2V4Y2VwdGlvbigpIGFuZCAic2hvdWxkIGhhbmRsZSBlcnJvcnMiLiBZZXQgYWZ0ZXIgdGhpcw0K
+PiBwYXRjaCwgdGhlIGNvZGUgZmFpbHMgdG8gaW4gcHJlc2VuY2Ugb2YgYSByZWJvb3QuIEkgZG9u
+J3Qgc2VlIHdoYXQNCj4gZWxzZSBjYW4gdGhlIGN1cnJlbnQgY29kZSBzaG91bGQgZG8gaW4gdGVy
+bXMgb2YgaGFuZGxpbmcgZXJyb3JzIHRvDQo+IGZpeA0KPiB0aGF0IHByb2JsZW0uDQo+DQo+IEkn
+bSBhbG1vc3QgcmVhZHkgdG8gc3VibWl0IHRoZSBwYXRjaCB0aGF0IHR1cm5zIHRoZSBleGlzdGlu
+ZyBjb2RlDQo+IGludG8NCj4gYXN5bmMgcnBjIGJ1dCBpZiB0aGlzIGlzIG5vdCB0aGUgcmlnaHQg
+YXBwcm9hY2ggdGhlbiBJJ2QgbGlrZSB0byBrbm93DQo+IHdoZXJlIEkgc2hvdWxkIGJlIGxvb2tp
+bmcgaW50byBpbnN0ZWFkLg0KPiANCj4gVGhhbmtzLg0KPiANCj4gPiANCj4gPiBUaGUgc2FtZSBy
+YWNlIGNhbiBoYXBwZW4sIGZvciBpbnN0YW5jZSwgaWYgeW91ciBjYWxsIHRvDQo+ID4gcnBjX2Nh
+bGxfc3luYygpDQo+ID4gwqBjb2luY2lkZXMgd2l0aCBhIHJlYm9vdCByZWNvdmVyeSB0aGF0IHdh
+cyBzdGFydGVkIGJ5IGFub3RoZXINCj4gPiBwcm9jZXNzLg0KPiA+IA0KDQoNCkkgZG9uJ3QgdW5k
+ZXJzdGFuZC4gSWYgaXQgaXMgaGFuZGxpbmcgdGhlIHJlc3VsdGluZyBORlM0RVJSX0JBRF9TVEFU
+RUlEDQplcnJvciBjb3JyZWN0bHksIHRoZW4gd2hhdCBpcyBmYWlsaW5nPyBBcyBJIHNhaWQgYWJv
+dmUsIHlvdSBjYW4gZ2V0IHRoZQ0KTkZTNEVSUl9CQURfU1RBVEVJRCBmcm9twqBvdGhlciBpbnN0
+YW5jZXMgb2YgdGhlIHNhbWUgcmFjZS4NCg0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5G
+UyBjbGllbnQgbWFpbnRhaW5lciwgUHJpbWFyeURhdGENCnRyb25kLm15a2xlYnVzdEBwcmltYXJ5
+ZGF0YS5jb20NCg==
 
-The "or" is confusing me. The current COPY code does call into
-nfs4_handle_exception() and "should handle errors". Yet after this
-patch, the code fails to in presence of a reboot. I don't see what
-else can the current code should do in terms of handling errors to fix
-that problem.
-
-I'm almost ready to submit the patch that turns the existing code into
-async rpc but if this is not the right approach then I'd like to know
-where I should be looking into instead.
-
-Thanks.
-
->
-> The same race can happen, for instance, if your call to rpc_call_sync()
->  coincides with a reboot recovery that was started by another process.
->
-> --
-> Trond Myklebust
-> Linux NFS client maintainer, PrimaryData
-> trond.myklebust@primarydata.com
