@@ -1,56 +1,52 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from us-smtp-delivery-194.mimecast.com ([63.128.21.194]:32010 "EHLO
-        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1750773AbdBOPAz (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 15 Feb 2017 10:00:55 -0500
-From: Trond Myklebust <trondmy@primarydata.com>
-To: "kinglongmee@gmail.com" <kinglongmee@gmail.com>,
-        "Jorge.Mora@netapp.com" <Jorge.Mora@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: Question about NFSv4.2 server-side copy implementation
-Date: Wed, 15 Feb 2017 15:00:43 +0000
-Message-ID: <1487170840.3039.1.camel@primarydata.com>
-References: <BLUPR06MB54767D9B4746E210D176C3AE1580@BLUPR06MB547.namprd06.prod.outlook.com>
-         <f186e424-5050-4651-6621-7ccc3688a49e@gmail.com>
-In-Reply-To: <f186e424-5050-4651-6621-7ccc3688a49e@gmail.com>
+Received: from mx1.redhat.com ([209.132.183.28]:49764 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1751890AbdBOPLW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 15 Feb 2017 10:11:22 -0500
+Subject: Re: [PATCH 0/2] RFC: Libtirpc changes for RPCSEC_GSS version 3
+To: andros@netapp.com
+References: <1482509367-22381-1-git-send-email-andros@netapp.com>
+Cc: linux-nfs@vger.kernel.org
+From: Steve Dickson <SteveD@redhat.com>
+Message-ID: <9495725a-8ca0-5173-15e4-cd6a6dc27e40@RedHat.com>
+Date: Wed, 15 Feb 2017 10:11:22 -0500
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+In-Reply-To: <1482509367-22381-1-git-send-email-andros@netapp.com>
+Content-Type: text/plain; charset=windows-1252
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gV2VkLCAyMDE3LTAyLTE1IGF0IDE4OjM2ICswODAwLCBLaW5nbG9uZyBNZWUgd3JvdGU6DQo+
-IE9uIDIvMTUvMjAxNyAwNDowNywgTW9yYSwgSm9yZ2Ugd3JvdGU6DQo+ID4gSGVsbG8sDQo+ID4g
-wqANCj4gPiBUaGUgTkZTdjQuMiBzcGVjIChSRkMgNzg2Mikgb24gc2VjdGlvbiAxNS4yLjMgKENP
-UFkgZGVzY3JpcHRpb24pDQo+ID4gc2F5cyB0aGUgZm9sbG93aW5nOg0KPiA+IMKgDQo+ID4gSWYg
-dGhlIHNvdXJjZSBvZmZzZXQgb3IgdGhlIHNvdXJjZSBvZmZzZXQgcGx1cyBjb3VudCBpcyBncmVh
-dGVyDQo+ID4gdGhhbg0KPiA+IHRoZSBzaXplIG9mIHRoZSBzb3VyY2UgZmlsZSwgdGhlIG9wZXJh
-dGlvbiBNVVNUIGZhaWwgd2l0aA0KPiA+IE5GUzRFUlJfSU5WQUwuDQo+ID4gwqANCj4gPiBJIGNh
-biB1bmRlcnN0YW5kIGZhaWxpbmcgd2l0aCBORlM0RVJSX0lOVkFMIHdoZW4gdGhlIHNvdXJjZSBv
-ZmZzZXQNCj4gPiBpcyBiZXlvbmQgdGhlIGVuZCBvZiB0aGUgZmlsZSwNCj4gDQo+IFllcywgdGhh
-dCdzIHJpZ2h0Lg0KPiANCj4gPiBidXQgZG8geW91IHRoaW5rIGZhaWxpbmcgd2l0aCBORlM0RVJS
-X0lOVkFMIGlzIHRvbyBzdHJpY3Qgd2hlbiB0aGUNCj4gPiBzb3VyY2Ugb2Zmc2V0IHBsdXMgdGhl
-IGNvdW50IGlzIGJleW9uZCB0aGUgZW5kIG9mIHRoZSBmaWxlPw0KPiA+IFdoYXQgaXMgdGhlIHJh
-dGlvbmFsaXphdGlvbiBmb3IgZmFpbGluZyBvbiB0aGlzIHNwZWNpZmljIGluc3RhbmNlPw0KPiA+
-IFdoeSBub3QgcmV0dXJuIGEgc2hvcnQgY29weSBpbnN0ZWFkPw0KPiANCj4gVGhlIG1hbi1wYWdl
-cyBvZiBjb3B5X2ZpbGVfcmFuZ2UgZGVzY3JpcHRpb24gYXMsDQo+IA0KPiDCoMKgwqDCoMKgwqDC
-oEVJTlZBTCBSZXF1ZXN0ZWQgcmFuZ2UgZXh0ZW5kcyBiZXlvbmQgdGhlIGVuZCBvZg0KPiB0aGXC
-oMKgc291cmNlwqDCoGZpbGU7wqDCoG9yDQo+IMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqB0
-aGUgZmxhZ3MgYXJndW1lbnQgaXMgbm90IDAuDQo+IA0KPiBTbywgdGhlIHNwZWNpZmljIGluc3Rh
-bmNlIHlvdSBzYWlkIGlzbid0IGFsbG93ZWQuDQo+IA0KPiA+IENhbiB0aGUgQ09QWSByZXR1cm4g
-YSBjb3VudCBsZXNzIHRoYW4gd2hhdCBpdCByZXF1ZXN0ZWQgKGEgc2hvcnQNCj4gPiBjb3B5KT8N
-Cj4gDQo+IFllcywgdGhlIHJldHVybiB2YWx1ZSBvZiBjb3B5X2ZpbGVfcmFuZ2UgaXMsDQo+IA0K
-PiBSRVRVUk4gVkFMVUUNCj4gwqDCoMKgwqDCoMKgwqBVcG9uIHN1Y2Nlc3NmdWwgY29tcGxldGlv
-biwgY29weV9maWxlX3JhbmdlKCkgd2lsbCByZXR1cm4gdGhlDQo+IG51bWJlciBvZg0KPiDCoMKg
-wqDCoMKgwqDCoGJ5dGVzIGNvcGllZCBiZXR3ZWVuIGZpbGVzLsKgwqBUaGlzIGNvdWxkIGJlIGxl
-c3MgdGhhbiB0aGUNCj4gbGVuZ3RowqDCoG9yaWdp4oCQDQo+IMKgwqDCoMKgwqDCoMKgbmFsbHkg
-cmVxdWVzdGVkLg0KPiANCg0KSXQncyBhIHZhbGlkIHF1ZXN0aW9uLCB0aG91Z2guIE5vdCBsZWFz
-dCBiZWNhdXNlIGNvcHlfZmlsZV9yYW5nZSgpIGlzDQpub3QgZ3VhcmFudGVlZCB0byBiZSBhdG9t
-aWMsIG1lYW5pbmcgdGhhdCB5b3UgY291bGQgaGF2ZSByYWNlcyB3aGVyZQ0KdGhlIGV4ZWN1dGlv
-biBvZiB0aGUgY29weV9maWxlX3JhbmdlKCkgaXMgc3RhcnRlZCwgYnV0IHRoZSBmaWxlIGlzDQp0
-cnVuY2F0ZWQgd2hlbiB0aGUgY29weSBpcyBvbmx5IGhhbGYtY29tcGxldGUuDQoNCkpvcmdlLCBJ
-IHN1Z2dlc3QgcmFpc2luZyB0aGUgcXVlc3Rpb24gb24gdGhlIElFVEYgbWFpbGluZyBsaXN0LiBU
-aGlzDQptaWdodCBiZSBhIGNhbmRpZGF0ZSBmb3IgYSBORlN2NC4yIHByb3RvY29sIGVycmF0YS4N
-Cg0KQ2hlZXJzDQogIFRyb25kDQotLSANClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVu
-dCBtYWludGFpbmVyLCBQcmltYXJ5RGF0YQ0KdHJvbmQubXlrbGVidXN0QHByaW1hcnlkYXRhLmNv
-bQ0K
+Hey Andy
+
+Where are we with these... Is there any kernel support needed?
+If not are they ready to go?
+
+Note: in Patch 2 there is an uncovered fprintf in clnt_vc_control
+which is probably not needed... No need to repost just for that ;-)
+
+steved.
+
+On 12/23/2016 11:09 AM, andros@netapp.com wrote:
+> From: Andy Adamson <andros@netapp.com>
+>
+> This is a Request for Comment patch set for the GSSv3 prototype.
+>
+> Requires:
+>
+> - kernel patches: "RFC: RPCSEC_GSS Version 3 prototype: Full MOde MAC
+> - gssd patches: "RFC: GSSD changes for RPCSEC_GSS version 3"
+>
+>
+> Andy Adamson (2):
+>   Use RPCSEC_GSS version 3
+>   RPCSEC_GSSv3 new reply verifier
+>
+>  autogen.sh           |   0
+>  src/auth_gss.c       | 195 +++++++++++++++++++++++++++++++++++++++++++++++++--
+>  src/clnt_vc.c        |   1 +
+>  src/debug.c          |   2 +-
+>  tirpc/rpc/auth_gss.h |  10 ++-
+>  5 files changed, 198 insertions(+), 10 deletions(-)
+>  mode change 100644 => 100755 autogen.sh
+>
 
