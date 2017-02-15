@@ -1,45 +1,98 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx144.netapp.com ([216.240.21.25]:13991 "EHLO mx144.netapp.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1750810AbdBOPVY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 15 Feb 2017 10:21:24 -0500
-From: "Adamson, Andy" <William.Adamson@netapp.com>
-To: Steve Dickson <SteveD@redhat.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 0/2] RFC: Libtirpc changes for RPCSEC_GSS version 3
-Date: Wed, 15 Feb 2017 15:21:05 +0000
-Message-ID: <8F2B2A30-49CB-42B3-81C5-6C0965A55672@netapp.com>
-References: <1482509367-22381-1-git-send-email-andros@netapp.com>
- <9495725a-8ca0-5173-15e4-cd6a6dc27e40@RedHat.com>
-In-Reply-To: <9495725a-8ca0-5173-15e4-cd6a6dc27e40@RedHat.com>
-Content-Type: text/plain; charset="utf-8"
+Received: from mail-io0-f179.google.com ([209.85.223.179]:36091 "EHLO
+        mail-io0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1750905AbdBOPkn (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 15 Feb 2017 10:40:43 -0500
+Received: by mail-io0-f179.google.com with SMTP id j13so91709985iod.3
+        for <linux-nfs@vger.kernel.org>; Wed, 15 Feb 2017 07:40:43 -0800 (PST)
 MIME-Version: 1.0
+In-Reply-To: <f186e424-5050-4651-6621-7ccc3688a49e@gmail.com>
+References: <BLUPR06MB54767D9B4746E210D176C3AE1580@BLUPR06MB547.namprd06.prod.outlook.com>
+ <f186e424-5050-4651-6621-7ccc3688a49e@gmail.com>
+From: Olga Kornievskaia <aglo@umich.edu>
+Date: Wed, 15 Feb 2017 10:40:42 -0500
+Message-ID: <CAN-5tyE3vXXdzFubUqjZY+domGn4rTuXb-OctFdSG3+PVrkU2Q@mail.gmail.com>
+Subject: Re: Question about NFSv4.2 server-side copy implementation
+To: Kinglong Mee <kinglongmee@gmail.com>
+Cc: "Mora, Jorge" <Jorge.Mora@netapp.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-SGkgU3RldmUNCg0KWWVzLCB0aGVyZSBhcmUga2VybmVsIHBpZWNlcyBuZWVkZWQuIOKAnCJSRkM6
-IFJQQ1NFQ19HU1MgVmVyc2lvbiAzIHByb3RvdHlwZTogRnVsbCBNT2RlIE1BQ+KAnSwgYXMgd2Vs
-bCBhcyB0aGUgZ3NzZCBwYXRjaGVzLiAgSSBhbSB3b3JraW5nIG9uIGEgdmVyc2lvbi01IG9mIHRo
-ZSBrZXJuZWwgR1NTMyBwYXRjaGVzIGFuZCBob3BlIHRvIHN1Ym1pdCB0b2RheSBvciB0b21vcnJv
-dy4gTXkgY3VycmVudCBpc3N1ZSBpcyB0aGF0IHRoZSBzZXR0aW5nIG9mIHRoZSBjbGllbnQgdGhy
-ZWFkIGxhYmVsIHRyYW5zcG9ydGVkIGJ5IGdzc3YzIGhhcyBzdG9wcGVkIHdvcmtpbmcgKGluIG5m
-c2Rfc2V0dXNlcikgd2l0aCB0aGUgbGF0ZXIga2VybmVsc+KApi4NCg0K4oaSQW5keQ0KDQpPbiAy
-LzE1LzE3LCAxMDoxMSBBTSwgIlN0ZXZlIERpY2tzb24iIDxTdGV2ZURAUmVkSGF0LmNvbT4gd3Jv
-dGU6DQoNCkhleSBBbmR5DQoNCldoZXJlIGFyZSB3ZSB3aXRoIHRoZXNlLi4uIElzIHRoZXJlIGFu
-eSBrZXJuZWwgc3VwcG9ydCBuZWVkZWQ/DQpJZiBub3QgYXJlIHRoZXkgcmVhZHkgdG8gZ28/DQoN
-Ck5vdGU6IGluIFBhdGNoIDIgdGhlcmUgaXMgYW4gdW5jb3ZlcmVkIGZwcmludGYgaW4gY2xudF92
-Y19jb250cm9sDQp3aGljaCBpcyBwcm9iYWJseSBub3QgbmVlZGVkLi4uIE5vIG5lZWQgdG8gcmVw
-b3N0IGp1c3QgZm9yIHRoYXQgOy0pDQoNCnN0ZXZlZC4NCg0KT24gMTIvMjMvMjAxNiAxMTowOSBB
-TSwgYW5kcm9zQG5ldGFwcC5jb20gd3JvdGU6DQo+IEZyb206IEFuZHkgQWRhbXNvbiA8YW5kcm9z
-QG5ldGFwcC5jb20+DQo+DQo+IFRoaXMgaXMgYSBSZXF1ZXN0IGZvciBDb21tZW50IHBhdGNoIHNl
-dCBmb3IgdGhlIEdTU3YzIHByb3RvdHlwZS4NCj4NCj4gUmVxdWlyZXM6DQo+DQo+IC0ga2VybmVs
-IHBhdGNoZXM6ICJSRkM6IFJQQ1NFQ19HU1MgVmVyc2lvbiAzIHByb3RvdHlwZTogRnVsbCBNT2Rl
-IE1BQw0KPiAtIGdzc2QgcGF0Y2hlczogIlJGQzogR1NTRCBjaGFuZ2VzIGZvciBSUENTRUNfR1NT
-IHZlcnNpb24gMyINCj4NCj4NCj4gQW5keSBBZGFtc29uICgyKToNCj4gICBVc2UgUlBDU0VDX0dT
-UyB2ZXJzaW9uIDMNCj4gICBSUENTRUNfR1NTdjMgbmV3IHJlcGx5IHZlcmlmaWVyDQo+DQo+ICBh
-dXRvZ2VuLnNoICAgICAgICAgICB8ICAgMA0KPiAgc3JjL2F1dGhfZ3NzLmMgICAgICAgfCAxOTUg
-KysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKy0tDQo+ICBz
-cmMvY2xudF92Yy5jICAgICAgICB8ICAgMSArDQo+ICBzcmMvZGVidWcuYyAgICAgICAgICB8ICAg
-MiArLQ0KPiAgdGlycGMvcnBjL2F1dGhfZ3NzLmggfCAgMTAgKystDQo+ICA1IGZpbGVzIGNoYW5n
-ZWQsIDE5OCBpbnNlcnRpb25zKCspLCAxMCBkZWxldGlvbnMoLSkNCj4gIG1vZGUgY2hhbmdlIDEw
-MDY0NCA9PiAxMDA3NTUgYXV0b2dlbi5zaA0KPg0KDQoNCg0K
+On Wed, Feb 15, 2017 at 5:36 AM, Kinglong Mee <kinglongmee@gmail.com> wrote=
+:
+> On 2/15/2017 04:07, Mora, Jorge wrote:
+>> Hello,
+>>
+>> The NFSv4.2 spec (RFC 7862) on section 15.2.3 (COPY description) says th=
+e following:
+>>
+>> If the source offset or the source offset plus count is greater than
+>> the size of the source file, the operation MUST fail with
+>> NFS4ERR_INVAL.
+>>
+>> I can understand failing with NFS4ERR_INVAL when the source offset is be=
+yond the end of the file,
+>
+> Yes, that's right.
+>
+>> but do you think failing with NFS4ERR_INVAL is too strict when the sourc=
+e offset plus the count is beyond the end of the file?
+>> What is the rationalization for failing on this specific instance?
+>> Why not return a short copy instead?
+>
+> The man-pages of copy_file_range description as,
+>
+>        EINVAL Requested range extends beyond the end of the  source  file=
+;  or
+>               the flags argument is not 0.
+>
+> So, the specific instance you said isn't allowed.
+>
+>> Can the COPY return a count less than what it requested (a short copy)?
+>
+> Yes, the return value of copy_file_range is,
+>
+> RETURN VALUE
+>        Upon successful completion, copy_file_range() will return the numb=
+er of
+>        bytes copied between files.  This could be less than the length  o=
+rigi=E2=80=90
+>        nally requested.
+>
+>>
+>> As of right now, the implementation on the Linux server adheres to the s=
+pec but copy_file_range succeeds
+>> when it is called against the local file system, NFSv4.x or NFSv3.
+>
+> NFSv3 doesn't support copy_file_range, and only NFSv4.2 supports copy_fil=
+e_range.
+
+copy_file_range() can be called with two file description that are
+from the NFSv3 mounts and currently as you point NFSv3 does not
+support copy_file_range() vfs_copy_file_range() will fall back into
+doing "normal" copy via do_splice_direct() what happens here is that
+NFSv3 will not fail with EINVAL and instead will return a partial
+copy. Thus as Jorge points out, we have inconsistent results of a copy
+being done via an NFS protocol v3 vs 4.2 protocol (if we were to
+enforce the rule that the spec says).
+
+
+>> For the local file system, NFSv4.x or NFSv3 copy_file_range falls back t=
+o regular copy by
+>> reading from the source file and then writing to the destination file bu=
+t I do believe the
+>> syscall should be consistent regardless of the underlying file system.
+>>
+>>
+>> --Jorge
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>>
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
