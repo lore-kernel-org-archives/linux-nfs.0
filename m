@@ -1,43 +1,48 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx142.netapp.com ([216.240.21.19]:41168 "EHLO mx142.netapp.com"
+Received: from mail.taaze.tw ([61.30.232.162]:63250 "EHLO mail.taaze.tw"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1753692AbdBNUIL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 14 Feb 2017 15:08:11 -0500
-From: "Mora, Jorge" <Jorge.Mora@netapp.com>
-To: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Question about NFSv4.2 server-side copy implementation
-Date: Tue, 14 Feb 2017 20:07:48 +0000
-Message-ID: <BLUPR06MB54767D9B4746E210D176C3AE1580@BLUPR06MB547.namprd06.prod.outlook.com>
-Content-Type: text/plain; charset="iso-8859-1"
+        id S1751267AbdBOEyq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 14 Feb 2017 23:54:46 -0500
+Reply-To: emailqunfa@163.com
+Message-ID: <A21DDD423E577028350A020732676BC9@zeicywlbg>
+From: =?utf-8?B?56mK56Kl55u06LuY55OM5rum5Y6u6ZKN5Lio5Yms?= <>
+Subject: =?utf-8?B?bWF0dXNpdGEg4piF44CK5Y+C5bGV6YKA6K+35Ye944CL5YWz5LqO5a6J?=
+        =?utf-8?B?5o6S5Y+C5Yqg4oCcMjAxN+esrOWNgeS6lOWxiuS4reWbve+8iOW5v+W3nu+8ieWbvemZhQ==?=
+        =?utf-8?B?5rG96L2m6Zu26YOo5Lu25Y+K55So5ZOB5bGV6KeI5Lya4oCd55qE6YCa55+l77yaLS0t5pys?=
+        =?utf-8?B?5qyh5bGV5Lya5Y2B5YiG6YeN6KaBICAgICAgPEovREQxLw==?=
+        =?utf-8?B?TC9nRT4=?=
+Date: Wed, 15 Feb 2017 12:47:10 +0800
 MIME-Version: 1.0
+Content-Type: text/plain;
+        charset="utf-8"
+To: unlisted-recipients:; (no To-header on input)@mail.corp.redhat.com
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hello,
-=20
-The NFSv4.2 spec (RFC 7862) on section 15.2.3 (COPY description) says the f=
-ollowing:
-=20
-If the source offset or the source offset plus count is greater than
-the size of the source file, the operation MUST fail with
-NFS4ERR_INVAL.
-=20
-I can understand failing with NFS4ERR_INVAL when the source offset is beyon=
-d the end of the file,
-but do you think failing with NFS4ERR_INVAL is too strict when the source o=
-ffset plus the count is beyond the end of the file?
-What is the rationalization for failing on this specific instance?
-Why not return a short copy instead?
-Can the COPY return a count less than what it requested (a short copy)?
-=20
-As of right now, the implementation on the Linux server adheres to the spec=
- but copy_file_range succeeds
-when it is called against the local file system, NFSv4.x or NFSv3.
-For the local file system, NFSv4.x or NFSv3 copy_file_range falls back to r=
-egular copy by
-reading from the source file and then writing to the destination file but I=
- do believe the
-syscall should be consistent regardless of the underlying file system.
-=20
-=20
---Jorge
+bWF0dXNpdGENCg0K5Lit5Y2O5Lq65rCR5YWx5ZKM5Zu95ZWG5Yqh6YOo5byV5a+85pSv5oyB5bGV
+5LyaDQrlm73lrrbnuqflm73pmYXmgKfmsb3ovabphY3ku7bnlKjlk4HlsZXotLjlubPlj7ANCuOA
+gA0K44CQ5Lit5paH5ZCN56ew44CRIDIwMTfnrKzljYHkupTlsYrkuK3lm73vvIjlub/lt57vvInl
+m73pmYXmsb3ovabpm7bpg6jku7blj4rnlKjlk4HlsZXop4jkvJoNCuOAkOiLseaWh+WQjeensOOA
+kSBUaGUgMTV0aCBDaGluYSAoR3Vhbmd6aG91KSBJbnRlcm5hdGlvbmFsIEF1dG8gUGFydHMgRXhw
+bywyMDE3IO+8iENBUEUgMjAxN++8iQ0K44CADQrjgJDlsZXkvJrml6XmnJ/jgJEgMjAxN+W5tDA2
+5pyIMDLigJQwNOaXpQ0K44CQ5bGV5Lya5Zy66aaG44CRIOW5v+W3nueQtua0suS/neWIqeS4lui0
+uOWNmuiniOmmhg0K44CADQrjgJDlsZXkvJrnroDku4vjgJEg5pys5bGKQ0FQRemihOiuoeWxleS8
+mumdouenrzY3MDAw5bmz5pa557Gz77yM5qCH5YeG5bGV5L2NMzAwMOWkmuS4qu+8jOWPguinguin
+guS8lzY1MzMw5aSa5Lq677yb5YW25Lit77yM5LiT5Lia5Lmw5a62MzAwMDDlpJrkurrvvIznu4jn
+q6/mtojotLnogIUyNTAwMOWkmuS6uu+8jOWbveWklumHh+i0reWVhjc1NTHlpJrkurrjgIINCuOA
+kOWPguWxleaDheWGteOAkSDnm67liY3ku4XlianlsJHph4/lsZXkvY3vvIzor7fljbPliLvnmbvp
+mYblrpjnvZHmiqXlkI3jgILmnLrkuI3lj6/lpLHvvIENCuOAgA0K44CQ5Y+C5bGV6IGU57O744CR
+IA0K5a6Y572R77yaaHR0cDovL3d3dy5DQVBFLWNoaW5hLmNvbQ0K77yx77yx77yaMTI4MDkzOTUj
+cXEuY29t77yI6YKu566x77yJDQrnlLXor53vvJo0MDAwLTY4MC04NjDovaw4MTQ077ybIDAxMOKA
+lDg2OTktNzE1NeOAgTY5MjMtNjk0NCANCuaJi+acuu+8mjEzOS0xMDMxLTgxNDTvvJsgDQrogZTn
+s7vkurrvvJrnjovlhYjnlJ8NCg0K44CA44CADQrjgIDjgIANCuOAkOWFrOS8l+W5s+WPsOOAkQ0K
+44CA44CADQrlvq7kv6HvvJog5Y+C5bGV5raI5oGvIO+8iElE77yaQ2FuWmhhblhpYW9Yae+8ieKA
+lOKAlCDlk4HniYzmianlvKDnmoTlubPlj7DjgIDluILlnLrlvIDmi5PnmoTmoaXmooENCuW+ruS/
+oe+8miDlsZXllYbkuYvlrrYg77yISUTvvJpaaGFuU2hhbmdaaGlKaWHvvInigJTigJQg5Li65bGV
+5ZWG5o+Q5L6b5pyA5L2z6JCl5Zyw44CA5Li66ZiB5LiL6JCl6YCg5Y+C5bGV5Lu35YC8DQrjgIDj
+gIANCi0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
+LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tDQrn
+mb7kuIfnvqTlj5Hns7vnu5985Li65oKo5Y+R6YCBfOWmguS4jeW4jOacm+WGjeaUtuWIsOatpOih
+jOS4mui1hOiur3zor7flm57lpI3igJzpgIDorqIrQ0FQReKAneiHs+mCrueusTEwNTU4MDA4MTJA
+cXEuY29tDQoNCjIwMTflubQy5pyIMTXml6Ug5pif5pyf5LiJICDkuIvljYggMTI6NDc6MTUNCg==
+
