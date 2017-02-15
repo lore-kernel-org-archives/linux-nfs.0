@@ -1,98 +1,84 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f179.google.com ([209.85.223.179]:36091 "EHLO
-        mail-io0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1750905AbdBOPkn (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 15 Feb 2017 10:40:43 -0500
-Received: by mail-io0-f179.google.com with SMTP id j13so91709985iod.3
-        for <linux-nfs@vger.kernel.org>; Wed, 15 Feb 2017 07:40:43 -0800 (PST)
+Received: from fieldses.org ([173.255.197.46]:57166 "EHLO fieldses.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1751501AbdBOQpJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 15 Feb 2017 11:45:09 -0500
+Date: Wed, 15 Feb 2017 11:45:05 -0500
+From: Bruce Fields <bfields@fieldses.org>
+To: David Windsor <dwindsor@gmail.com>
+Cc: Hans Liljestrand <ishkamiel@gmail.com>, linux-nfs@vger.kernel.org,
+        netdev@vger.kernel.org, kernel-hardening@lists.openwall.com,
+        Jeff Layton <jlayton@poochiereds.net>,
+        Kees Cook <keescook@chromium.org>,
+        "Reshetova, Elena" <elena.reshetova@intel.com>
+Subject: Re: [kernel-hardening] Re: [RFC][PATCH] nfsd: add +1 to reference
+ counting scheme for struct nfsd4_session
+Message-ID: <20170215164505.GA14912@fieldses.org>
+References: <1486625901-10094-1-git-send-email-dwindsor@gmail.com>
+ <CAEXv5_jUa8Av4JABoKSAueiLHSLzibMvaE-8DrVcxZHFceckMg@mail.gmail.com>
+ <20170213105422.snaw65btejr3vsdi@ishxps>
+ <CAEXv5_hP39k7HSLP-G_khx7MMQHnk=8Z5caa+U5n3bYvUTE1gQ@mail.gmail.com>
 MIME-Version: 1.0
-In-Reply-To: <f186e424-5050-4651-6621-7ccc3688a49e@gmail.com>
-References: <BLUPR06MB54767D9B4746E210D176C3AE1580@BLUPR06MB547.namprd06.prod.outlook.com>
- <f186e424-5050-4651-6621-7ccc3688a49e@gmail.com>
-From: Olga Kornievskaia <aglo@umich.edu>
-Date: Wed, 15 Feb 2017 10:40:42 -0500
-Message-ID: <CAN-5tyE3vXXdzFubUqjZY+domGn4rTuXb-OctFdSG3+PVrkU2Q@mail.gmail.com>
-Subject: Re: Question about NFSv4.2 server-side copy implementation
-To: Kinglong Mee <kinglongmee@gmail.com>
-Cc: "Mora, Jorge" <Jorge.Mora@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <CAEXv5_hP39k7HSLP-G_khx7MMQHnk=8Z5caa+U5n3bYvUTE1gQ@mail.gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Feb 15, 2017 at 5:36 AM, Kinglong Mee <kinglongmee@gmail.com> wrote=
-:
-> On 2/15/2017 04:07, Mora, Jorge wrote:
->> Hello,
->>
->> The NFSv4.2 spec (RFC 7862) on section 15.2.3 (COPY description) says th=
-e following:
->>
->> If the source offset or the source offset plus count is greater than
->> the size of the source file, the operation MUST fail with
->> NFS4ERR_INVAL.
->>
->> I can understand failing with NFS4ERR_INVAL when the source offset is be=
-yond the end of the file,
->
-> Yes, that's right.
->
->> but do you think failing with NFS4ERR_INVAL is too strict when the sourc=
-e offset plus the count is beyond the end of the file?
->> What is the rationalization for failing on this specific instance?
->> Why not return a short copy instead?
->
-> The man-pages of copy_file_range description as,
->
->        EINVAL Requested range extends beyond the end of the  source  file=
-;  or
->               the flags argument is not 0.
->
-> So, the specific instance you said isn't allowed.
->
->> Can the COPY return a count less than what it requested (a short copy)?
->
-> Yes, the return value of copy_file_range is,
->
-> RETURN VALUE
->        Upon successful completion, copy_file_range() will return the numb=
-er of
->        bytes copied between files.  This could be less than the length  o=
-rigi=E2=80=90
->        nally requested.
->
->>
->> As of right now, the implementation on the Linux server adheres to the s=
-pec but copy_file_range succeeds
->> when it is called against the local file system, NFSv4.x or NFSv3.
->
-> NFSv3 doesn't support copy_file_range, and only NFSv4.2 supports copy_fil=
-e_range.
+On Mon, Feb 13, 2017 at 06:46:19AM -0500, David Windsor wrote:
+> On Mon, Feb 13, 2017 at 5:54 AM, Hans Liljestrand <ishkamiel@gmail.com> wrote:
+> > On Sat, Feb 11, 2017 at 01:42:53AM -0500, David Windsor wrote:
+> >>
+> >> <snip>
+> >>
+> >>> Signed-off-by: David Windsor <dwindsor@gmail.com>
+> >>> ---
+> >>>  fs/nfsd/nfs4state.c | 6 +++---
+> >>>  1 file changed, 3 insertions(+), 3 deletions(-)
+> >>>
+> >>> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+> >>> index a0dee8a..b0f3010 100644
+> >>> --- a/fs/nfsd/nfs4state.c
+> >>> +++ b/fs/nfsd/nfs4state.c
+> >>> @@ -196,7 +196,7 @@ static void nfsd4_put_session_locked(struct
+> >>> nfsd4_session *ses)
+> >>>
+> >>>         lockdep_assert_held(&nn->client_lock);
+> >>>
+> >>> -       if (atomic_dec_and_test(&ses->se_ref) && is_session_dead(ses))
+> >>> +       if (!atomic_add_unless(&ses->se_ref, -1, 1) &&
+> >>> is_session_des(ses))
+> >>
+> >>
+> >> This should read:
+> >> if (!atomic_add_unless(&ses->se_ref, -1, 1) && is_session_dead(ses))
+> >>
+> >>>                 free_session(ses);
+> >
+> >
+> > Hi,
+> > I'm not sure if I have this correctly; But both before and after the patch
+> > free_session gets called when se_ref count was 1, shouldn't this have
+> > changed with the +1 scheme?
+> >
+> > Also, since the !atomic_add_unless doesn't actually decrement when at 1,
+> > doesn't this leave the se_ref as 1 when it's destroyed? The function seems
+> > to always be locked, so perhaps this doesn't matter, but still seems a bit
+> > risky.
+> >
+> 
+> Yes; I forgot the additional call to atomic_dec_and_test() before
+> free_session().  Thanks!
+> 
+> I'll resubmit this after seeing how the rest of this discussion goes.
+> We may end up abandoning this refcounting case.
 
-copy_file_range() can be called with two file description that are
-from the NFSv3 mounts and currently as you point NFSv3 does not
-support copy_file_range() vfs_copy_file_range() will fall back into
-doing "normal" copy via do_splice_direct() what happens here is that
-NFSv3 will not fail with EINVAL and instead will return a partial
-copy. Thus as Jorge points out, we have inconsistent results of a copy
-being done via an NFS protocol v3 vs 4.2 protocol (if we were to
-enforce the rule that the spec says).
+I could live with it.
 
+My knee jerk reaction is like Jeff's--it just seems more natural to me
+for reference count 0 to mean "not in use, OK to free" in cases like
+this--but maybe I just need to get used to the idea.
 
->> For the local file system, NFSv4.x or NFSv3 copy_file_range falls back t=
-o regular copy by
->> reading from the source file and then writing to the destination file bu=
-t I do believe the
->> syscall should be consistent regardless of the underlying file system.
->>
->>
->> --Jorge
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->>
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+It'd be interesting to see what the final result looks like after
+conversion to refcount_t.
+
+--b.
