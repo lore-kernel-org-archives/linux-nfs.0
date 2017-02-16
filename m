@@ -1,210 +1,140 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-it0-f67.google.com ([209.85.214.67]:35821 "EHLO
-        mail-it0-f67.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S933157AbdBPWOL (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 16 Feb 2017 17:14:11 -0500
-Received: by mail-it0-f67.google.com with SMTP id 203so6472721ith.2
-        for <linux-nfs@vger.kernel.org>; Thu, 16 Feb 2017 14:14:11 -0800 (PST)
-MIME-Version: 1.0
-In-Reply-To: <D28A97BA-F86E-40D3-A0E3-BB8479136ED9@primarydata.com>
+Received: from us-smtp-delivery-194.mimecast.com ([216.205.24.194]:47497 "EHLO
+        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S933590AbdBPX2S (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 16 Feb 2017 18:28:18 -0500
+From: Trond Myklebust <trondmy@primarydata.com>
+To: "aglo@umich.edu" <aglo@umich.edu>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 1/2] NFSv4.1: Handle
+ NFS4ERR_BADSESSION/NFS4ERR_DEADSESSION replies to OP_SEQUENCE
+Date: Thu, 16 Feb 2017 23:28:11 +0000
+Message-ID: <1487287688.122266.2.camel@primarydata.com>
 References: <20161205004023.40957-1-trond.myklebust@primarydata.com>
- <CAN-5tyGN4AT70mrVKoW652hQmbDocG7_c2haDC=PKpixQsUDJg@mail.gmail.com>
- <1487191695.7993.2.camel@primarydata.com> <CAN-5tyGep3yHXNjMX9QKCS8E2w+HkVw_LoF=pOwgbgcgUNeDyQ@mail.gmail.com>
- <1487197395.7993.4.camel@primarydata.com> <CAN-5tyHHUoy5sVUHO=PXz3iRPD6eEP0t+L8VrWVpuvSd_YzhAA@mail.gmail.com>
- <CAN-5tyFZO4dKG93A71mO37VdHJymMt0f61oLkxMHvRDPEvSa2g@mail.gmail.com>
- <CAN-5tyGb6Gh=k0r1M4UmpM+6fB9nMzi3OGmB_trbSjbCdJjqrQ@mail.gmail.com> <D28A97BA-F86E-40D3-A0E3-BB8479136ED9@primarydata.com>
-From: Olga Kornievskaia <aglo@umich.edu>
-Date: Thu, 16 Feb 2017 17:14:10 -0500
-Message-ID: <CAN-5tyHe-+PiOnx8U9u-3FPVVAYf9AbbcZUDM6BW+V6930tHtA@mail.gmail.com>
-Subject: Re: [PATCH 1/2] NFSv4.1: Handle NFS4ERR_BADSESSION/NFS4ERR_DEADSESSION
- replies to OP_SEQUENCE
-To: Trond Myklebust <trondmy@primarydata.com>
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+         <CAN-5tyGN4AT70mrVKoW652hQmbDocG7_c2haDC=PKpixQsUDJg@mail.gmail.com>
+         <1487191695.7993.2.camel@primarydata.com>
+         <CAN-5tyGep3yHXNjMX9QKCS8E2w+HkVw_LoF=pOwgbgcgUNeDyQ@mail.gmail.com>
+         <1487197395.7993.4.camel@primarydata.com>
+         <CAN-5tyHHUoy5sVUHO=PXz3iRPD6eEP0t+L8VrWVpuvSd_YzhAA@mail.gmail.com>
+         <CAN-5tyFZO4dKG93A71mO37VdHJymMt0f61oLkxMHvRDPEvSa2g@mail.gmail.com>
+         <CAN-5tyGb6Gh=k0r1M4UmpM+6fB9nMzi3OGmB_trbSjbCdJjqrQ@mail.gmail.com>
+         <D28A97BA-F86E-40D3-A0E3-BB8479136ED9@primarydata.com>
+         <CAN-5tyHe-+PiOnx8U9u-3FPVVAYf9AbbcZUDM6BW+V6930tHtA@mail.gmail.com>
+In-Reply-To: <CAN-5tyHe-+PiOnx8U9u-3FPVVAYf9AbbcZUDM6BW+V6930tHtA@mail.gmail.com>
+MIME-Version: 1.0
 Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Feb 16, 2017 at 4:45 PM, Trond Myklebust
-<trondmy@primarydata.com> wrote:
->
->> On Feb 16, 2017, at 11:12, Olga Kornievskaia <aglo@umich.edu> wrote:
->>
->> On Thu, Feb 16, 2017 at 11:04 AM, Olga Kornievskaia <aglo@umich.edu> wro=
-te:
->>> On Thu, Feb 16, 2017 at 9:16 AM, Olga Kornievskaia <aglo@umich.edu> wro=
-te:
->>>> On Wed, Feb 15, 2017 at 5:23 PM, Trond Myklebust
->>>> <trondmy@primarydata.com> wrote:
->>>>> On Wed, 2017-02-15 at 16:56 -0500, Olga Kornievskaia wrote:
->>>>>> On Wed, Feb 15, 2017 at 3:48 PM, Trond Myklebust
->>>>>> <trondmy@primarydata.com> wrote:
->>>>>>> On Wed, 2017-02-15 at 15:16 -0500, Olga Kornievskaia wrote:
->>>>>>>> On Sun, Dec 4, 2016 at 7:40 PM, Trond Myklebust
->>>>>>>> <trond.myklebust@primarydata.com> wrote:
->>>>>>>>> In the case where SEQUENCE receives a NFS4ERR_BADSESSION or
->>>>>>>>> NFS4ERR_DEADSESSION error, we just want to report the session
->>>>>>>>> as
->>>>>>>>> needing
->>>>>>>>> recovery, and then we want to retry the operation.
->>>>>>>>>
->>>>>>>>> Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com
->>>>>>>>>>
->>>>>>>>> ---
->>>>>>>>> fs/nfs/nfs4proc.c | 4 ++++
->>>>>>>>> 1 file changed, 4 insertions(+)
->>>>>>>>>
->>>>>>>>> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
->>>>>>>>> index f992281c9b29..4fd0e2b7b08e 100644
->>>>>>>>> --- a/fs/nfs/nfs4proc.c
->>>>>>>>> +++ b/fs/nfs/nfs4proc.c
->>>>>>>>> @@ -816,6 +816,10 @@ static int nfs41_sequence_process(struct
->>>>>>>>> rpc_task *task,
->>>>>>>>>        case -NFS4ERR_SEQ_FALSE_RETRY:
->>>>>>>>>                ++slot->seq_nr;
->>>>>>>>>                goto retry_nowait;
->>>>>>>>> +       case -NFS4ERR_DEADSESSION:
->>>>>>>>> +       case -NFS4ERR_BADSESSION:
->>>>>>>>> +               nfs4_schedule_session_recovery(session, res-
->>>>>>>>>> sr_status);
->>>>>>>>>
->>>>>>>>> +               goto retry_nowait;
->>>>>>>>>        default:
->>>>>>>>>                /* Just update the slot sequence no. */
->>>>>>>>>                slot->seq_done =3D 1;
->>>>>>>>> --
->>>>>>>>> 2.9.3
->>>>>>>>
->>>>>>>> Hi Trond,
->>>>>>>>
->>>>>>>> Can you explain the implications of retrying the operation
->>>>>>>> without
->>>>>>>> waiting for recovery to complete?
->>>>>>>>
->>>>>>>> This patch introduces regression in intra COPY failing if the
->>>>>>>> server
->>>>>>>> rebooted during that operation. What happens is that COPY is re-
->>>>>>>> sent
->>>>>>>> with the same stateid from the old open instead of the open that
->>>>>>>> was
->>>>>>>> done from the recovery (leading to BAD_STATEID error and
->>>>>>>> failure).
->>>>>>>>
->>>>>>>> I wonder if it's because COPY is written to just use
->>>>>>>> nfs4_call_sync()
->>>>>>>> instead of defining rpc_callback_ops to handle rpc_prepare()
->>>>>>>> where a
->>>>>>>> new stateid could be gotten? I have re-written the COPY to do
->>>>>>>> that
->>>>>>>> and
->>>>>>>> I no longer see that problem.
->>>>>>>>
->>>>>>>> If my suspicion is correct, it would help for the future to know
->>>>>>>> that
->>>>>>>> any operations that use stateid must have rpc callback ops
->>>>>>>> defined/used so that they avoid this problem. Perhaps as a
->>>>>>>> comment in
->>>>>>>> the code or maybe some other way?
->>>>>>>>
->>>>>>>> Thanks.
->>>>>>>>
->>>>>>>
->>>>>>> Yes, the way that rpc_call_sync() has been written, it assumes that
->>>>>>> the
->>>>>>> call is unaffected by reboot recovery, or that the resulting state
->>>>>>> errors will be handled by the caller. The patch you reference does
->>>>>>> not
->>>>>>> change that expectation.
->>>>>>
->>>>>> The "or" is confusing me. The current COPY code does call into
->>>>>> nfs4_handle_exception() and "should handle errors". Yet after this
->>>>>> patch, the code fails to in presence of a reboot. I don't see what
->>>>>> else can the current code should do in terms of handling errors to
->>>>>> fix
->>>>>> that problem.
->>>>>>
->>>>>> I'm almost ready to submit the patch that turns the existing code
->>>>>> into
->>>>>> async rpc but if this is not the right approach then I'd like to kno=
-w
->>>>>> where I should be looking into instead.
->>>>>>
->>>>>> Thanks.
->>>>>>
->>>>>>>
->>>>>>> The same race can happen, for instance, if your call to
->>>>>>> rpc_call_sync()
->>>>>>> coincides with a reboot recovery that was started by another
->>>>>>> process.
->>>>>>>
->>>>>
->>>>>
->>>>> I don't understand. If it is handling the resulting NFS4ERR_BAD_STATE=
-ID
->>>>> error correctly, then what is failing? As I said above, you can get t=
-he
->>>>> NFS4ERR_BAD_STATEID from other instances of the same race.
->>>>
->>>> COPY (just like READ or WRITE) can not handle BAD_STATEID error
->>>> because it holds a lock and that lock is marked lost. COPY should have
->>>> never been sent with the old stated after the new open stateid and
->>>> lock stateid was gotten. But with this patch the behavior changed and
->>>> thus I was trying to understand what has changed.
->>>>
->>>> I think that previously BAD_SESSION error was not handled by the
->>>> SEQUENCE and was handled by each of the operations calling the general
->>>> nfs4_handle_exception() routine that actually waits on recovery to
->>>> complete before retrying the operation. Then the retry actually would
->>>> allow COPY to get the new stateid. However, with the new code SEQUENCE
->>>> handles the error and calls to retry the operation without the wait
->>>> which actually again gets the BAD_SESSION then recovery happens but
->>>> 2nd SEQUENCE again retries the operation without going all the out to
->>>> the operation so no new stateid is gotten.
->>>>
->>>
->>> I also would like to point out that not only does this patch
->>> introduces a regression with the COPY. It also introduces the
->>> BAD_SESSION loop where the SEQUENCE that gets this error just keeps
->>> getting resent over and over again. This happens to the heartbeat
->>> SEQUENCE when server reboots.
->>
->> I have written a test case for the SETATTR since it also uses a
->> stateid and calls nfs4_sync_call() and it also after the reboot will
->> send the operation with the old stateid. Thankfully, SETATTR doesn't
->> really care about the 'validity' of the stateid and will retry the
->> operation. It will produce no errors but I can't say the client is
->> working properly.
->
-> That=E2=80=99s because SETATTR was designed correctly. Just like copy off=
-load, it has to deal with the fact that it can race with a server reboot.
+T24gVGh1LCAyMDE3LTAyLTE2IGF0IDE3OjE0IC0wNTAwLCBPbGdhIEtvcm5pZXZza2FpYSB3cm90
+ZToNCj4gT24gVGh1LCBGZWIgMTYsIDIwMTcgYXQgNDo0NSBQTSwgVHJvbmQgTXlrbGVidXN0DQo+
+IDx0cm9uZG15QHByaW1hcnlkYXRhLmNvbT4gd3JvdGU6DQo+ID4gDQo+ID4gT2xnYSwgYWxsIHlv
+dXIgdGVzdCBpcyBkb2luZyBpcyBzaG93aW5nIHRoYXQgd2UgaGl0IHRoZSByYWNlIG1vcmUNCj4g
+PiBvZnRlbi4gRmFpciBlbm91Z2gsIEnigJlsbCBhc2sgQW5uYSB0byByZXZlcnQgdGhlIHBhdGNo
+LiBIb3dldmVyDQo+ID4gcmV2ZXJ0aW5nIHRoZSBwYXRjaCB3b27igJl0IHByZXZlbnQgdGhlIHNl
+cnZlciBmcm9tIHJldHVybmluZw0KPiA+IE5GUzRFUlJfQkFEX1NUQVRFSUQgaW4gYW55IGNhc2Vz
+IHdoZXJlIHRoZSBjYWxscyB0bw0KPiA+IG5mczRfc2V0X3J3X3N0YXRlaWQoKSBoYXBwZW4gYmVm
+b3JlIHN0YXRlIHJlY292ZXJ5LiBUaGlzIGlzIHdoeSB3ZQ0KPiA+IGhhdmUgdGhlIGxvb3AgaW4g
+bmZzNDJfcHJvY19jb3B5KCkuDQo+IA0KPiBJIHRob3VnaHQgdGhhdCBpZiByZXRyeSBvZiB0aGUg
+b3BlcmF0aW9uIHdhaXRzIGZvciB0aGUgcmVjb3ZlcnkgdG8NCj4gY29tcGxldGUgdGhlbiBuZnM0
+X3NldF9yd19zdGF0ZWlkKCkgd2lsbCBjaG9vc2UgdGhlIGNvcnJlY3Qgc3RhdGVpZCwNCj4gaXMg
+dGhhdCBub3QgY29ycmVjdD8NCj4gDQo+IElmIHRoYXQncyBub3QgY29ycmVjdCwgdGhlbiB3ZSBz
+b21laG93IG5lZWQgdG8gc2VwYXJhdGUgdGhlIGNhc2Ugd2hlbg0KPiBCQURfU1RBVEVJRCBzaG91
+bGQgaW5kZWVkIG1hcmsgdGhlIGxvY2tzIGxvc3QgdnMgdGhpcyBjYXNlIHdoZXJlIHRoZQ0KPiBj
+b2RlIGVycm9uZW91c2x5IHVzZWQgdGhlIGJhZCBzdGF0ZWlkIChvb3BzKSBhbmQgaXQgc2hvdWxk
+IHJlYWxseQ0KPiBpZ25vcmUgdGhpcyBlcnJvci4gVGhpcyByZWFsbHkgZG9lc24ndCBzb3VuZCB2
+ZXJ5IHBsYXVzaWJsZSB0bw0KPiBhY2NvbXBsaXNoLg0KDQpEb2VzIHRoaXMgcGF0Y2ggZml4IHRo
+ZSBwcm9ibGVtPw0KDQo4PC0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
+LS0tLS0tLS0tLS0tLS0tLS0tLS0NCkZyb20gYmJhZTk1ZThmOTdjYWQ2YTkxY2E4Y2FhNTBiNjFj
+YWU3ODk2MzJmOSBNb24gU2VwIDE3IDAwOjAwOjAwIDIwMDENCkZyb206IFRyb25kIE15a2xlYnVz
+dCA8dHJvbmQubXlrbGVidXN0QHByaW1hcnlkYXRhLmNvbT4NCkRhdGU6IFRodSwgMTYgRmViIDIw
+MTcgMTg6MTQ6MzggLTA1MDANClN1YmplY3Q6IFtQQVRDSF0gTkZTdjQ6IEZpeCByZWJvb3QgcmVj
+b3ZlcnkgaW4gY29weSBvZmZsb2FkDQoNCkNvcHkgb2ZmbG9hZCBjb2RlIG5lZWRzIHRvIGJlIGhv
+b2tlZCBpbnRvIHRoZSBjb2RlIGZvciBoYW5kbGluZw0KTkZTNEVSUl9CQURfU1RBVEVJRCBieSBl
+bnN1cmluZyB0aGF0IHdlIHNldCB0aGUgInN0YXRlaWQiIGZpZWxkDQppbiBzdHJ1Y3QgbmZzNF9l
+eGNlcHRpb24uDQoNClJlcG9ydGVkLWJ5OiBPbGdhIEtvcm5pZXZza2FpYSA8YWdsb0B1bWljaC5l
+ZHU+DQpGaXhlczogMmU3MjQ0OGIwN2RjMyAoIk5GUzogQWRkIENPUFkgbmZzIG9wZXJhdGlvbiIp
+DQpTaWduZWQtb2ZmLWJ5OiBUcm9uZCBNeWtsZWJ1c3QgPHRyb25kLm15a2xlYnVzdEBwcmltYXJ5
+ZGF0YS5jb20+DQotLS0NCiBmcy9uZnMvbmZzNDJwcm9jLmMgfCA1NyArKysrKysrKysrKysrKysr
+KysrKysrKysrKysrKysrLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0NCiAxIGZpbGUgY2hhbmdlZCwg
+MzMgaW5zZXJ0aW9ucygrKSwgMjQgZGVsZXRpb25zKC0pDQoNCmRpZmYgLS1naXQgYS9mcy9uZnMv
+bmZzNDJwcm9jLmMgYi9mcy9uZnMvbmZzNDJwcm9jLmMNCmluZGV4IGQxMmZmOTM4NWY0OS4uYmFm
+MWZlMmRjMjk2IDEwMDY0NA0KLS0tIGEvZnMvbmZzL25mczQycHJvYy5jDQorKysgYi9mcy9uZnMv
+bmZzNDJwcm9jLmMNCkBAIC0xMjgsMjAgKzEyOCwxMyBAQCBpbnQgbmZzNDJfcHJvY19kZWFsbG9j
+YXRlKHN0cnVjdCBmaWxlICpmaWxlcCwgbG9mZl90IG9mZnNldCwgbG9mZl90IGxlbikNCiAJcmV0
+dXJuIGVycjsNCiB9DQogDQotc3RhdGljIHNzaXplX3QgX25mczQyX3Byb2NfY29weShzdHJ1Y3Qg
+ZmlsZSAqc3JjLCBsb2ZmX3QgcG9zX3NyYywNCitzdGF0aWMgc3NpemVfdCBfbmZzNDJfcHJvY19j
+b3B5KHN0cnVjdCBmaWxlICpzcmMsDQogCQkJCXN0cnVjdCBuZnNfbG9ja19jb250ZXh0ICpzcmNf
+bG9jaywNCi0JCQkJc3RydWN0IGZpbGUgKmRzdCwgbG9mZl90IHBvc19kc3QsDQorCQkJCXN0cnVj
+dCBmaWxlICpkc3QsDQogCQkJCXN0cnVjdCBuZnNfbG9ja19jb250ZXh0ICpkc3RfbG9jaywNCi0J
+CQkJc2l6ZV90IGNvdW50KQ0KKwkJCQlzdHJ1Y3QgbmZzNDJfY29weV9hcmdzICphcmdzLA0KKwkJ
+CQlzdHJ1Y3QgbmZzNDJfY29weV9yZXMgKnJlcykNCiB7DQotCXN0cnVjdCBuZnM0Ml9jb3B5X2Fy
+Z3MgYXJncyA9IHsNCi0JCS5zcmNfZmgJCT0gTkZTX0ZIKGZpbGVfaW5vZGUoc3JjKSksDQotCQku
+c3JjX3Bvcwk9IHBvc19zcmMsDQotCQkuZHN0X2ZoCQk9IE5GU19GSChmaWxlX2lub2RlKGRzdCkp
+LA0KLQkJLmRzdF9wb3MJPSBwb3NfZHN0LA0KLQkJLmNvdW50CQk9IGNvdW50LA0KLQl9Ow0KLQlz
+dHJ1Y3QgbmZzNDJfY29weV9yZXMgcmVzOw0KIAlzdHJ1Y3QgcnBjX21lc3NhZ2UgbXNnID0gew0K
+IAkJLnJwY19wcm9jID0gJm5mczRfcHJvY2VkdXJlc1tORlNQUk9DNF9DTE5UX0NPUFldLA0KIAkJ
+LnJwY19hcmdwID0gJmFyZ3MsDQpAQCAtMTQ5LDkgKzE0MiwxMiBAQCBzdGF0aWMgc3NpemVfdCBf
+bmZzNDJfcHJvY19jb3B5KHN0cnVjdCBmaWxlICpzcmMsIGxvZmZfdCBwb3Nfc3JjLA0KIAl9Ow0K
+IAlzdHJ1Y3QgaW5vZGUgKmRzdF9pbm9kZSA9IGZpbGVfaW5vZGUoZHN0KTsNCiAJc3RydWN0IG5m
+c19zZXJ2ZXIgKnNlcnZlciA9IE5GU19TRVJWRVIoZHN0X2lub2RlKTsNCisJbG9mZl90IHBvc19z
+cmMgPSBhcmdzLT5zcmNfcG9zOw0KKwlsb2ZmX3QgcG9zX2RzdCA9IGFyZ3MtPmRzdF9wb3M7DQor
+CXNpemVfdCBjb3VudCA9IGFyZ3MtPmNvdW50Ow0KIAlpbnQgc3RhdHVzOw0KIA0KLQlzdGF0dXMg
+PSBuZnM0X3NldF9yd19zdGF0ZWlkKCZhcmdzLnNyY19zdGF0ZWlkLCBzcmNfbG9jay0+b3Blbl9j
+b250ZXh0LA0KKwlzdGF0dXMgPSBuZnM0X3NldF9yd19zdGF0ZWlkKCZhcmdzLT5zcmNfc3RhdGVp
+ZCwgc3JjX2xvY2stPm9wZW5fY29udGV4dCwNCiAJCQkJICAgICBzcmNfbG9jaywgRk1PREVfUkVB
+RCk7DQogCWlmIChzdGF0dXMpDQogCQlyZXR1cm4gc3RhdHVzOw0KQEAgLTE2MSw3ICsxNTcsNyBA
+QCBzdGF0aWMgc3NpemVfdCBfbmZzNDJfcHJvY19jb3B5KHN0cnVjdCBmaWxlICpzcmMsIGxvZmZf
+dCBwb3Nfc3JjLA0KIAlpZiAoc3RhdHVzKQ0KIAkJcmV0dXJuIHN0YXR1czsNCiANCi0Jc3RhdHVz
+ID0gbmZzNF9zZXRfcndfc3RhdGVpZCgmYXJncy5kc3Rfc3RhdGVpZCwgZHN0X2xvY2stPm9wZW5f
+Y29udGV4dCwNCisJc3RhdHVzID0gbmZzNF9zZXRfcndfc3RhdGVpZCgmYXJncy0+ZHN0X3N0YXRl
+aWQsIGRzdF9sb2NrLT5vcGVuX2NvbnRleHQsDQogCQkJCSAgICAgZHN0X2xvY2ssIEZNT0RFX1dS
+SVRFKTsNCiAJaWYgKHN0YXR1cykNCiAJCXJldHVybiBzdGF0dXM7DQpAQCAtMTcxLDIyICsxNjcs
+MjIgQEAgc3RhdGljIHNzaXplX3QgX25mczQyX3Byb2NfY29weShzdHJ1Y3QgZmlsZSAqc3JjLCBs
+b2ZmX3QgcG9zX3NyYywNCiAJCXJldHVybiBzdGF0dXM7DQogDQogCXN0YXR1cyA9IG5mczRfY2Fs
+bF9zeW5jKHNlcnZlci0+Y2xpZW50LCBzZXJ2ZXIsICZtc2csDQotCQkJCSZhcmdzLnNlcV9hcmdz
+LCAmcmVzLnNlcV9yZXMsIDApOw0KKwkJCQkmYXJncy0+c2VxX2FyZ3MsICZyZXMtPnNlcV9yZXMs
+IDApOw0KIAlpZiAoc3RhdHVzID09IC1FTk9UU1VQUCkNCiAJCXNlcnZlci0+Y2FwcyAmPSB+TkZT
+X0NBUF9DT1BZOw0KIAlpZiAoc3RhdHVzKQ0KIAkJcmV0dXJuIHN0YXR1czsNCiANCi0JaWYgKHJl
+cy53cml0ZV9yZXMudmVyaWZpZXIuY29tbWl0dGVkICE9IE5GU19GSUxFX1NZTkMpIHsNCi0JCXN0
+YXR1cyA9IG5mc19jb21taXRfZmlsZShkc3QsICZyZXMud3JpdGVfcmVzLnZlcmlmaWVyLnZlcmlm
+aWVyKTsNCisJaWYgKHJlcy0+d3JpdGVfcmVzLnZlcmlmaWVyLmNvbW1pdHRlZCAhPSBORlNfRklM
+RV9TWU5DKSB7DQorCQlzdGF0dXMgPSBuZnNfY29tbWl0X2ZpbGUoZHN0LCAmcmVzLT53cml0ZV9y
+ZXMudmVyaWZpZXIudmVyaWZpZXIpOw0KIAkJaWYgKHN0YXR1cykNCiAJCQlyZXR1cm4gc3RhdHVz
+Ow0KIAl9DQogDQogCXRydW5jYXRlX3BhZ2VjYWNoZV9yYW5nZShkc3RfaW5vZGUsIHBvc19kc3Qs
+DQotCQkJCSBwb3NfZHN0ICsgcmVzLndyaXRlX3Jlcy5jb3VudCk7DQorCQkJCSBwb3NfZHN0ICsg
+cmVzLT53cml0ZV9yZXMuY291bnQpOw0KIA0KLQlyZXR1cm4gcmVzLndyaXRlX3Jlcy5jb3VudDsN
+CisJcmV0dXJuIHJlcy0+d3JpdGVfcmVzLmNvdW50Ow0KIH0NCiANCiBzc2l6ZV90IG5mczQyX3By
+b2NfY29weShzdHJ1Y3QgZmlsZSAqc3JjLCBsb2ZmX3QgcG9zX3NyYywNCkBAIC0xOTYsOCArMTky
+LDIyIEBAIHNzaXplX3QgbmZzNDJfcHJvY19jb3B5KHN0cnVjdCBmaWxlICpzcmMsIGxvZmZfdCBw
+b3Nfc3JjLA0KIAlzdHJ1Y3QgbmZzX3NlcnZlciAqc2VydmVyID0gTkZTX1NFUlZFUihmaWxlX2lu
+b2RlKGRzdCkpOw0KIAlzdHJ1Y3QgbmZzX2xvY2tfY29udGV4dCAqc3JjX2xvY2s7DQogCXN0cnVj
+dCBuZnNfbG9ja19jb250ZXh0ICpkc3RfbG9jazsNCi0Jc3RydWN0IG5mczRfZXhjZXB0aW9uIHNy
+Y19leGNlcHRpb24gPSB7IH07DQotCXN0cnVjdCBuZnM0X2V4Y2VwdGlvbiBkc3RfZXhjZXB0aW9u
+ID0geyB9Ow0KKwlzdHJ1Y3QgbmZzNDJfY29weV9hcmdzIGFyZ3MgPSB7DQorCQkuc3JjX2ZoCQk9
+IE5GU19GSChmaWxlX2lub2RlKHNyYykpLA0KKwkJLnNyY19wb3MJPSBwb3Nfc3JjLA0KKwkJLmRz
+dF9maAkJPSBORlNfRkgoZmlsZV9pbm9kZShkc3QpKSwNCisJCS5kc3RfcG9zCT0gcG9zX2RzdCwN
+CisJCS5jb3VudAkJPSBjb3VudCwNCisJfTsNCisJc3RydWN0IG5mczQyX2NvcHlfcmVzIHJlczsN
+CisJc3RydWN0IG5mczRfZXhjZXB0aW9uIHNyY19leGNlcHRpb24gPSB7DQorCQkuaW5vZGUJCT0g
+ZmlsZV9pbm9kZShzcmMpLA0KKwkJLnN0YXRlaWQJPSAmYXJncy5zcmNfc3RhdGVpZCwNCisJfTsN
+CisJc3RydWN0IG5mczRfZXhjZXB0aW9uIGRzdF9leGNlcHRpb24gPSB7DQorCQkuaW5vZGUJCT0g
+ZmlsZV9pbm9kZShkc3QpLA0KKwkJLnN0YXRlaWQJPSAmYXJncy5kc3Rfc3RhdGVpZCwNCisJfTsN
+CiAJc3NpemVfdCBlcnIsIGVycjI7DQogDQogCWlmICghbmZzX3NlcnZlcl9jYXBhYmxlKGZpbGVf
+aW5vZGUoZHN0KSwgTkZTX0NBUF9DT1BZKSkNCkBAIC0yMDcsNyArMjE3LDYgQEAgc3NpemVfdCBu
+ZnM0Ml9wcm9jX2NvcHkoc3RydWN0IGZpbGUgKnNyYywgbG9mZl90IHBvc19zcmMsDQogCWlmIChJ
+U19FUlIoc3JjX2xvY2spKQ0KIAkJcmV0dXJuIFBUUl9FUlIoc3JjX2xvY2spOw0KIA0KLQlzcmNf
+ZXhjZXB0aW9uLmlub2RlID0gZmlsZV9pbm9kZShzcmMpOw0KIAlzcmNfZXhjZXB0aW9uLnN0YXRl
+ID0gc3JjX2xvY2stPm9wZW5fY29udGV4dC0+c3RhdGU7DQogDQogCWRzdF9sb2NrID0gbmZzX2dl
+dF9sb2NrX2NvbnRleHQobmZzX2ZpbGVfb3Blbl9jb250ZXh0KGRzdCkpOw0KQEAgLTIxNiwxMyAr
+MjI1LDEzIEBAIHNzaXplX3QgbmZzNDJfcHJvY19jb3B5KHN0cnVjdCBmaWxlICpzcmMsIGxvZmZf
+dCBwb3Nfc3JjLA0KIAkJZ290byBvdXRfcHV0X3NyY19sb2NrOw0KIAl9DQogDQotCWRzdF9leGNl
+cHRpb24uaW5vZGUgPSBmaWxlX2lub2RlKGRzdCk7DQogCWRzdF9leGNlcHRpb24uc3RhdGUgPSBk
+c3RfbG9jay0+b3Blbl9jb250ZXh0LT5zdGF0ZTsNCiANCiAJZG8gew0KIAkJaW5vZGVfbG9jayhm
+aWxlX2lub2RlKGRzdCkpOw0KLQkJZXJyID0gX25mczQyX3Byb2NfY29weShzcmMsIHBvc19zcmMs
+IHNyY19sb2NrLA0KLQkJCQkgICAgICAgZHN0LCBwb3NfZHN0LCBkc3RfbG9jaywgY291bnQpOw0K
+KwkJZXJyID0gX25mczQyX3Byb2NfY29weShzcmMsIHNyY19sb2NrLA0KKwkJCQlkc3QsIGRzdF9s
+b2NrLA0KKwkJCQkmYXJncywgJnJlcyk7DQogCQlpbm9kZV91bmxvY2soZmlsZV9pbm9kZShkc3Qp
+KTsNCiANCiAJCWlmIChlcnIgPT0gLUVOT1RTVVBQKSB7DQotLSANCjIuOS4zDQoNCi0tIA0KVHJv
+bmQgTXlrbGVidXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50YWluZXIsIFByaW1hcnlEYXRhDQp0
+cm9uZC5teWtsZWJ1c3RAcHJpbWFyeWRhdGEuY29tDQo=
 
-Let's agree to disagree that design is correct. Copy offload does
-everything that current design asks it to do but there is still a
-failure so let's figure out how to fix it.
-
-> Olga, all your test is doing is showing that we hit the race more often. =
-Fair enough, I=E2=80=99ll ask Anna to revert the patch. However reverting t=
-he patch won=E2=80=99t prevent the server from returning NFS4ERR_BAD_STATEI=
-D in any cases where the calls to nfs4_set_rw_stateid() happen before state=
- recovery. This is why we have the loop in nfs42_proc_copy().
-
-I thought that if retry of the operation waits for the recovery to
-complete then nfs4_set_rw_stateid() will choose the correct stateid,
-is that not correct?
-
-If that's not correct, then we somehow need to separate the case when
-BAD_STATEID should indeed mark the locks lost vs this case where the
-code erroneously used the bad stateid (oops) and it should really
-ignore this error. This really doesn't sound very plausible to
-accomplish.
-
->> So I'd save that the patch has introduced some significant change to
->> the philosophy that wasn't expected.
->
-> No. The philosophy is the same. Both with or without this patch, an RPC c=
-all that carries a stated MUST be prepared to handle NFS4ERR_BAD_STATEID.
->
-> _________________________________
-> Trond Myklebust
-> Linux NFS client maintainer, PrimaryData
-> trond.myklebust@primarydata.com
->
