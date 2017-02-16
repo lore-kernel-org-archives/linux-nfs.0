@@ -1,95 +1,118 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from us-smtp-delivery-194.mimecast.com ([63.128.21.194]:56088 "EHLO
-        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1751298AbdBOWX1 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 15 Feb 2017 17:23:27 -0500
-From: Trond Myklebust <trondmy@primarydata.com>
-To: "aglo@umich.edu" <aglo@umich.edu>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 1/2] NFSv4.1: Handle
- NFS4ERR_BADSESSION/NFS4ERR_DEADSESSION replies to OP_SEQUENCE
-Date: Wed, 15 Feb 2017 22:23:21 +0000
-Message-ID: <1487197395.7993.4.camel@primarydata.com>
-References: <20161205004023.40957-1-trond.myklebust@primarydata.com>
-         <CAN-5tyGN4AT70mrVKoW652hQmbDocG7_c2haDC=PKpixQsUDJg@mail.gmail.com>
-         <1487191695.7993.2.camel@primarydata.com>
-         <CAN-5tyGep3yHXNjMX9QKCS8E2w+HkVw_LoF=pOwgbgcgUNeDyQ@mail.gmail.com>
-In-Reply-To: <CAN-5tyGep3yHXNjMX9QKCS8E2w+HkVw_LoF=pOwgbgcgUNeDyQ@mail.gmail.com>
+Received: from mail-wr0-f194.google.com ([209.85.128.194]:34170 "EHLO
+        mail-wr0-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1753821AbdBPG4V (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 16 Feb 2017 01:56:21 -0500
+Received: by mail-wr0-f194.google.com with SMTP id c4so865695wrd.1
+        for <linux-nfs@vger.kernel.org>; Wed, 15 Feb 2017 22:56:20 -0800 (PST)
 MIME-Version: 1.0
+In-Reply-To: <1486827922.3490.2.camel@primarydata.com>
+References: <CAPrqf9378wbKmv9EaiuFzYLwvCxziXtkk-ZY-jsJxSOgSNm+QA@mail.gmail.com>
+ <1486739454.19587.1.camel@primarydata.com> <CAPrqf938zLB73tShOZyeQDacDR5J9VaHhF4_-t7eEjecWocyUQ@mail.gmail.com>
+ <1486827922.3490.2.camel@primarydata.com>
+From: Pankaj Singh <psingh.ait@gmail.com>
+Date: Thu, 16 Feb 2017 12:26:18 +0530
+Message-ID: <CAPrqf90M8KCWBrNCr5g4PdMDh0dzyXxJ6mKo6VJMRKypba0w5w@mail.gmail.com>
+Subject: Re: How NLM support posix threads?
+To: Trond Myklebust <trondmy@primarydata.com>
+Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
 Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gV2VkLCAyMDE3LTAyLTE1IGF0IDE2OjU2IC0wNTAwLCBPbGdhIEtvcm5pZXZza2FpYSB3cm90
-ZToNCj4gT24gV2VkLCBGZWIgMTUsIDIwMTcgYXQgMzo0OCBQTSwgVHJvbmQgTXlrbGVidXN0DQo+
-IDx0cm9uZG15QHByaW1hcnlkYXRhLmNvbT4gd3JvdGU6DQo+ID4gT24gV2VkLCAyMDE3LTAyLTE1
-IGF0IDE1OjE2IC0wNTAwLCBPbGdhIEtvcm5pZXZza2FpYSB3cm90ZToNCj4gPiA+IE9uIFN1biwg
-RGVjIDQsIDIwMTYgYXQgNzo0MCBQTSwgVHJvbmQgTXlrbGVidXN0DQo+ID4gPiA8dHJvbmQubXlr
-bGVidXN0QHByaW1hcnlkYXRhLmNvbT4gd3JvdGU6DQo+ID4gPiA+IEluIHRoZSBjYXNlIHdoZXJl
-IFNFUVVFTkNFIHJlY2VpdmVzIGEgTkZTNEVSUl9CQURTRVNTSU9OIG9yDQo+ID4gPiA+IE5GUzRF
-UlJfREVBRFNFU1NJT04gZXJyb3IsIHdlIGp1c3Qgd2FudCB0byByZXBvcnQgdGhlIHNlc3Npb24N
-Cj4gPiA+ID4gYXMNCj4gPiA+ID4gbmVlZGluZw0KPiA+ID4gPiByZWNvdmVyeSwgYW5kIHRoZW4g
-d2Ugd2FudCB0byByZXRyeSB0aGUgb3BlcmF0aW9uLg0KPiA+ID4gPiANCj4gPiA+ID4gU2lnbmVk
-LW9mZi1ieTogVHJvbmQgTXlrbGVidXN0IDx0cm9uZC5teWtsZWJ1c3RAcHJpbWFyeWRhdGEuY29t
-DQo+ID4gPiA+ID4NCj4gPiA+ID4gLS0tDQo+ID4gPiA+IMKgZnMvbmZzL25mczRwcm9jLmMgfCA0
-ICsrKysNCj4gPiA+ID4gwqAxIGZpbGUgY2hhbmdlZCwgNCBpbnNlcnRpb25zKCspDQo+ID4gPiA+
-IA0KPiA+ID4gPiBkaWZmIC0tZ2l0IGEvZnMvbmZzL25mczRwcm9jLmMgYi9mcy9uZnMvbmZzNHBy
-b2MuYw0KPiA+ID4gPiBpbmRleCBmOTkyMjgxYzliMjkuLjRmZDBlMmI3YjA4ZSAxMDA2NDQNCj4g
-PiA+ID4gLS0tIGEvZnMvbmZzL25mczRwcm9jLmMNCj4gPiA+ID4gKysrIGIvZnMvbmZzL25mczRw
-cm9jLmMNCj4gPiA+ID4gQEAgLTgxNiw2ICs4MTYsMTAgQEAgc3RhdGljIGludCBuZnM0MV9zZXF1
-ZW5jZV9wcm9jZXNzKHN0cnVjdA0KPiA+ID4gPiBycGNfdGFzayAqdGFzaywNCj4gPiA+ID4gwqDC
-oMKgwqDCoMKgwqDCoGNhc2UgLU5GUzRFUlJfU0VRX0ZBTFNFX1JFVFJZOg0KPiA+ID4gPiDCoMKg
-wqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoCsrc2xvdC0+c2VxX25yOw0KPiA+ID4gPiDCoMKg
-wqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoGdvdG8gcmV0cnlfbm93YWl0Ow0KPiA+ID4gPiAr
-wqDCoMKgwqDCoMKgwqBjYXNlIC1ORlM0RVJSX0RFQURTRVNTSU9OOg0KPiA+ID4gPiArwqDCoMKg
-wqDCoMKgwqBjYXNlIC1ORlM0RVJSX0JBRFNFU1NJT046DQo+ID4gPiA+ICvCoMKgwqDCoMKgwqDC
-oMKgwqDCoMKgwqDCoMKgwqBuZnM0X3NjaGVkdWxlX3Nlc3Npb25fcmVjb3Zlcnkoc2Vzc2lvbiwg
-cmVzLQ0KPiA+ID4gPiA+IHNyX3N0YXR1cyk7DQo+ID4gPiA+IA0KPiA+ID4gPiArwqDCoMKgwqDC
-oMKgwqDCoMKgwqDCoMKgwqDCoMKgZ290byByZXRyeV9ub3dhaXQ7DQo+ID4gPiA+IMKgwqDCoMKg
-wqDCoMKgwqBkZWZhdWx0Og0KPiA+ID4gPiDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDC
-oC8qIEp1c3QgdXBkYXRlIHRoZSBzbG90IHNlcXVlbmNlIG5vLiAqLw0KPiA+ID4gPiDCoMKgwqDC
-oMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoHNsb3QtPnNlcV9kb25lID0gMTsNCj4gPiA+ID4gLS0N
-Cj4gPiA+ID4gMi45LjMNCj4gPiA+IA0KPiA+ID4gSGkgVHJvbmQsDQo+ID4gPiANCj4gPiA+IENh
-biB5b3UgZXhwbGFpbiB0aGUgaW1wbGljYXRpb25zIG9mIHJldHJ5aW5nIHRoZSBvcGVyYXRpb24N
-Cj4gPiA+IHdpdGhvdXQNCj4gPiA+IHdhaXRpbmcgZm9yIHJlY292ZXJ5IHRvIGNvbXBsZXRlPw0K
-PiA+ID4gDQo+ID4gPiBUaGlzIHBhdGNoIGludHJvZHVjZXMgcmVncmVzc2lvbiBpbiBpbnRyYSBD
-T1BZIGZhaWxpbmcgaWYgdGhlDQo+ID4gPiBzZXJ2ZXINCj4gPiA+IHJlYm9vdGVkIGR1cmluZyB0
-aGF0IG9wZXJhdGlvbi4gV2hhdCBoYXBwZW5zIGlzIHRoYXQgQ09QWSBpcyByZS0NCj4gPiA+IHNl
-bnQNCj4gPiA+IHdpdGggdGhlIHNhbWUgc3RhdGVpZCBmcm9tIHRoZSBvbGQgb3BlbiBpbnN0ZWFk
-IG9mIHRoZSBvcGVuIHRoYXQNCj4gPiA+IHdhcw0KPiA+ID4gZG9uZSBmcm9tIHRoZSByZWNvdmVy
-eSAobGVhZGluZyB0byBCQURfU1RBVEVJRCBlcnJvciBhbmQNCj4gPiA+IGZhaWx1cmUpLg0KPiA+
-ID4gDQo+ID4gPiBJIHdvbmRlciBpZiBpdCdzIGJlY2F1c2UgQ09QWSBpcyB3cml0dGVuIHRvIGp1
-c3QgdXNlDQo+ID4gPiBuZnM0X2NhbGxfc3luYygpDQo+ID4gPiBpbnN0ZWFkIG9mIGRlZmluaW5n
-IHJwY19jYWxsYmFja19vcHMgdG8gaGFuZGxlIHJwY19wcmVwYXJlKCkNCj4gPiA+IHdoZXJlIGEN
-Cj4gPiA+IG5ldyBzdGF0ZWlkIGNvdWxkIGJlIGdvdHRlbj8gSSBoYXZlIHJlLXdyaXR0ZW4gdGhl
-IENPUFkgdG8gZG8NCj4gPiA+IHRoYXQNCj4gPiA+IGFuZA0KPiA+ID4gSSBubyBsb25nZXIgc2Vl
-IHRoYXQgcHJvYmxlbS4NCj4gPiA+IA0KPiA+ID4gSWYgbXkgc3VzcGljaW9uIGlzIGNvcnJlY3Qs
-IGl0IHdvdWxkIGhlbHAgZm9yIHRoZSBmdXR1cmUgdG8ga25vdw0KPiA+ID4gdGhhdA0KPiA+ID4g
-YW55IG9wZXJhdGlvbnMgdGhhdCB1c2Ugc3RhdGVpZCBtdXN0IGhhdmUgcnBjIGNhbGxiYWNrIG9w
-cw0KPiA+ID4gZGVmaW5lZC91c2VkIHNvIHRoYXQgdGhleSBhdm9pZCB0aGlzIHByb2JsZW0uIFBl
-cmhhcHMgYXMgYQ0KPiA+ID4gY29tbWVudCBpbg0KPiA+ID4gdGhlIGNvZGUgb3IgbWF5YmUgc29t
-ZSBvdGhlciB3YXk/DQo+ID4gPiANCj4gPiA+IFRoYW5rcy4NCj4gPiA+IA0KPiA+IA0KPiA+IFll
-cywgdGhlIHdheSB0aGF0IHJwY19jYWxsX3N5bmMoKSBoYXMgYmVlbiB3cml0dGVuLCBpdCBhc3N1
-bWVzIHRoYXQNCj4gPiB0aGUNCj4gPiBjYWxsIGlzIHVuYWZmZWN0ZWQgYnkgcmVib290IHJlY292
-ZXJ5LCBvciB0aGF0IHRoZSByZXN1bHRpbmcgc3RhdGUNCj4gPiBlcnJvcnMgd2lsbCBiZSBoYW5k
-bGVkIGJ5IHRoZSBjYWxsZXIuIFRoZSBwYXRjaCB5b3UgcmVmZXJlbmNlIGRvZXMNCj4gPiBub3QN
-Cj4gPiBjaGFuZ2UgdGhhdCBleHBlY3RhdGlvbi4NCj4gDQo+IFRoZSAib3IiIGlzIGNvbmZ1c2lu
-ZyBtZS4gVGhlIGN1cnJlbnQgQ09QWSBjb2RlIGRvZXMgY2FsbCBpbnRvDQo+IG5mczRfaGFuZGxl
-X2V4Y2VwdGlvbigpIGFuZCAic2hvdWxkIGhhbmRsZSBlcnJvcnMiLiBZZXQgYWZ0ZXIgdGhpcw0K
-PiBwYXRjaCwgdGhlIGNvZGUgZmFpbHMgdG8gaW4gcHJlc2VuY2Ugb2YgYSByZWJvb3QuIEkgZG9u
-J3Qgc2VlIHdoYXQNCj4gZWxzZSBjYW4gdGhlIGN1cnJlbnQgY29kZSBzaG91bGQgZG8gaW4gdGVy
-bXMgb2YgaGFuZGxpbmcgZXJyb3JzIHRvDQo+IGZpeA0KPiB0aGF0IHByb2JsZW0uDQo+DQo+IEkn
-bSBhbG1vc3QgcmVhZHkgdG8gc3VibWl0IHRoZSBwYXRjaCB0aGF0IHR1cm5zIHRoZSBleGlzdGlu
-ZyBjb2RlDQo+IGludG8NCj4gYXN5bmMgcnBjIGJ1dCBpZiB0aGlzIGlzIG5vdCB0aGUgcmlnaHQg
-YXBwcm9hY2ggdGhlbiBJJ2QgbGlrZSB0byBrbm93DQo+IHdoZXJlIEkgc2hvdWxkIGJlIGxvb2tp
-bmcgaW50byBpbnN0ZWFkLg0KPiANCj4gVGhhbmtzLg0KPiANCj4gPiANCj4gPiBUaGUgc2FtZSBy
-YWNlIGNhbiBoYXBwZW4sIGZvciBpbnN0YW5jZSwgaWYgeW91ciBjYWxsIHRvDQo+ID4gcnBjX2Nh
-bGxfc3luYygpDQo+ID4gwqBjb2luY2lkZXMgd2l0aCBhIHJlYm9vdCByZWNvdmVyeSB0aGF0IHdh
-cyBzdGFydGVkIGJ5IGFub3RoZXINCj4gPiBwcm9jZXNzLg0KPiA+IA0KDQoNCkkgZG9uJ3QgdW5k
-ZXJzdGFuZC4gSWYgaXQgaXMgaGFuZGxpbmcgdGhlIHJlc3VsdGluZyBORlM0RVJSX0JBRF9TVEFU
-RUlEDQplcnJvciBjb3JyZWN0bHksIHRoZW4gd2hhdCBpcyBmYWlsaW5nPyBBcyBJIHNhaWQgYWJv
-dmUsIHlvdSBjYW4gZ2V0IHRoZQ0KTkZTNEVSUl9CQURfU1RBVEVJRCBmcm9twqBvdGhlciBpbnN0
-YW5jZXMgb2YgdGhlIHNhbWUgcmFjZS4NCg0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5G
-UyBjbGllbnQgbWFpbnRhaW5lciwgUHJpbWFyeURhdGENCnRyb25kLm15a2xlYnVzdEBwcmltYXJ5
-ZGF0YS5jb20NCg==
+Hi Trond Myklebust,
 
+I have one point to make, after this fix check for "block->b_file ==
+file" in nlmsvc_lookup_block will become redundant.
+"if (block->b_file == file && nlm_compare_locks(fl, &lock->fl)) {". So
+this check can be removed and only "nlm_compare_locks" will be enough.
+
+Thanks,
+~Pankaj Singh
+
+On Sat, Feb 11, 2017 at 9:15 PM, Trond Myklebust
+<trondmy@primarydata.com> wrote:
+> On Sat, 2017-02-11 at 11:49 +0530, Pankaj Singh wrote:
+>> > During "fl_grant" callback wrong "block" will be compared hence
+>> > this will result in lock failure even if lock is actually granted.
+>>
+>> "nlm_compare_locks" will compare the locks on the bases of pid,
+>> owner,
+>> start offset, end offset and type. In case of posix threads as pid is
+>> same, also all other parameters can be same for locks of different
+>> files.
+>>
+>> Now the scenario is, if there are two posix thread with pid p1 and
+>> they try to take the lock on different files (say l1 and l2) then
+>> different blocks will be created (say b1 and b2). In this case
+>> underline filesystem may send "FILE_LOCK_DEFERRED" for both the locks
+>> and these blocks will be added to deferred block list.
+>>
+>> So during "fl_grant" callback lock are compared with the blocks of
+>> block list. Now lets say callback is called for l1 and the comparison
+>> will succeed with b1 (this is as expected) and B_GOT_CALLBACK flag
+>> will be set. But as b1 is still in block list, now when callback for
+>> l2 arrives then also comparison with b1 can succeed instead of b2
+>> because b1 is prior to b2 in the list. Hence B_GOT_CALLBACK flag will
+>> not be set for b2 and when NFS client will retry for lock then lock
+>> will be denied.
+>>
+>> Below is the snipt fl_grant code where comparison happens.
+>> list_for_each_entry(block, &nlm_blocked, b_list) {
+>> if (nlm_compare_locks(&block->b_call->a_args.lock.fl, fl)
+>
+> OK. I see what you mean. You are saying, in essence, that in the lockd
+> server code, nlmsvc_notify_blocked() needs to check that the files are
+> the same (just like nlmsvc_lookup_block() already does).
+>
+> I agree. That is a bug and it needs to be fixed. How about the
+> following?
+>
+> Cheers
+>   Trond
+> 8<---------------------------------------------------------------
+> From fff75e35ed857b9ad211905fee2acffa528696d9 Mon Sep 17 00:00:00 2001
+> From: Trond Myklebust <trond.myklebust@primarydata.com>
+> Date: Sat, 11 Feb 2017 10:37:38 -0500
+> Subject: [PATCH] nlm: Ensure callback code also checks that the files match
+>
+> It is not sufficient to just check that the lock pids match when
+> granting a callback, we also need to ensure that we're granting
+> the callback on the right file.
+>
+> Reported-by: Pankaj Singh <psingh.ait@gmail.com>
+> Fixes: 1da177e4c3f4 ("Linux-2.6.12-rc2")
+> Cc: stable@vger.kernel.org
+> Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+> ---
+>  include/linux/lockd/lockd.h | 3 ++-
+>  1 file changed, 2 insertions(+), 1 deletion(-)
+>
+> diff --git a/include/linux/lockd/lockd.h b/include/linux/lockd/lockd.h
+> index c15373894a42..b37dee3acaba 100644
+> --- a/include/linux/lockd/lockd.h
+> +++ b/include/linux/lockd/lockd.h
+> @@ -355,7 +355,8 @@ static inline int nlm_privileged_requester(const struct svc_rqst *rqstp)
+>  static inline int nlm_compare_locks(const struct file_lock *fl1,
+>                                     const struct file_lock *fl2)
+>  {
+> -       return  fl1->fl_pid   == fl2->fl_pid
+> +       return file_inode(fl1->fl_file) == file_inode(fl2->fl_file)
+> +            && fl1->fl_pid   == fl2->fl_pid
+>              && fl1->fl_owner == fl2->fl_owner
+>              && fl1->fl_start == fl2->fl_start
+>              && fl1->fl_end   == fl2->fl_end
+> --
+> 2.9.3
+>
+> --
+> Trond Myklebust
+> Linux NFS client maintainer, PrimaryData
+> trond.myklebust@primarydata.com
+
+
+
+-- 
+Regards,
+Pankaj SIngh
+Phone No: 8826266889
