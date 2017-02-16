@@ -1,114 +1,63 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:39818 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1753747AbdBPKYC (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 16 Feb 2017 05:24:02 -0500
-Received: from int-mx13.intmail.prod.int.phx2.redhat.com (int-mx13.intmail.prod.int.phx2.redhat.com [10.5.11.26])
-        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
-        (No client certificate requested)
-        by mx1.redhat.com (Postfix) with ESMTPS id 4060D4E4D9
-        for <linux-nfs@vger.kernel.org>; Thu, 16 Feb 2017 10:24:03 +0000 (UTC)
-Subject: Re: [nfs-utils PATCH V2 2/2] Duplicate upcall string for use in error
- messages
-To: Frank Sorenson <sorenson@redhat.com>, linux-nfs@vger.kernel.org
-References: <778cd9e3-7b3a-654d-5fdd-bc0f63743041@redhat.com>
-From: Steve Dickson <SteveD@redhat.com>
-Message-ID: <a5ea5c21-178d-4cd6-baf5-086db3c39542@RedHat.com>
-Date: Thu, 16 Feb 2017 05:24:02 -0500
-MIME-Version: 1.0
-In-Reply-To: <778cd9e3-7b3a-654d-5fdd-bc0f63743041@redhat.com>
-Content-Type: text/plain; charset=windows-1252
+Received: from mail-qt0-f177.google.com ([209.85.216.177]:33974 "EHLO
+        mail-qt0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1754715AbdBPNKh (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 16 Feb 2017 08:10:37 -0500
+Received: by mail-qt0-f177.google.com with SMTP id w20so13304901qtb.1
+        for <linux-nfs@vger.kernel.org>; Thu, 16 Feb 2017 05:10:32 -0800 (PST)
+Message-ID: <1487250627.3661.1.camel@redhat.com>
+Subject: Re: [PATCH v3 0/2] iov_iter: allow iov_iter_get_pages_alloc to
+ allocate more pages per call
+From: Jeff Layton <jlayton@redhat.com>
+To: Al Viro <viro@ZenIV.linux.org.uk>
+Cc: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, ceph-devel@vger.kernel.org,
+        lustre-devel@lists.lustre.org,
+        v9fs-developer@lists.sourceforge.net,
+        Linus Torvalds <torvalds@linux-foundation.org>,
+        Jan Kara <jack@suse.cz>,
+        Chris Wilson <chris@chris-wilson.co.uk>,
+        "Kirill A. Shutemov" <kirill.shutemov@linux.intel.com>
+Date: Thu, 16 Feb 2017 08:10:27 -0500
+In-Reply-To: <20170202095125.GF27291@ZenIV.linux.org.uk>
+References: <20170124212327.14517-1-jlayton@redhat.com>
+         <20170125133205.21704-1-jlayton@redhat.com>
+         <20170202095125.GF27291@ZenIV.linux.org.uk>
+Content-Type: text/plain; charset="UTF-8"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Thu, 2017-02-02 at 09:51 +0000, Al Viro wrote:
+> On Wed, Jan 25, 2017 at 08:32:03AM -0500, Jeff Layton wrote:
+> > Small respin of the patch that I sent yesterday for the same thing.
+> > 
+> > This moves the maxsize handling into iov_iter_pvec_size, so that we don't
+> > end up iterating past the max size we'll use anyway when trying to
+> > determine the pagevec length.
+> > 
+> > Also, a respun patch to make ceph use iov_iter_get_pages_alloc instead of
+> > trying to do it via its own routine.
+> > 
+> > Al, if these look ok, do you want to pick these up or shall I ask
+> > Ilya to merge them via the ceph tree?
+> 
+> I'd rather have that kind of work go through the vfs tree; said that,
+> I really wonder if this is the right approach.  Most of the users of
+> iov_iter_get_pages()/iov_iter_get_pages_alloc() look like they want
+> something like
+> 	iov_iter_for_each_page(iter, size, f, data)
+> with int (*f)(struct page *page, size_t from, size_t size, void *data)
+> passed as callback.  Not everything fits that model, but there's a whole
+> lot of things that do.
+> 
 
+While I do like the above proposal better than what I originally had,
+I'm guessing it won't be ready in time for v4.11.
 
-On 02/09/2017 06:04 PM, Frank Sorenson wrote:
-> Author: Frank Sorenson <sorenson@redhat.com>
-> Date:   2017-02-09 16:51:44 -0600
->
->     gssd:  Duplicate the upcall string for error messages
->     
->     strsep() modifies the input string, so error messages
->     may output only part of the upcall string.
->     
->     Make a copy of the upcall string, and use that in any
->     error messages.
->     
->     Signed-off-by: Frank Sorenson <sorenson@redhat.com>
-Committed...
+Would it be reasonable to take the patch I proposed for v4.11 as an
+interim fix? It does fix a rather easy-to-trigger softlockup in the ceph
+code that xfstests can reliably hit.
 
-steved.
->
-> diff --git a/utils/gssd/gssd_proc.c b/utils/gssd/gssd_proc.c
-> index 30c6ace..4fc81c3 100644
-> --- a/utils/gssd/gssd_proc.c
-> +++ b/utils/gssd/gssd_proc.c
-> @@ -729,10 +729,17 @@ handle_gssd_upcall(struct clnt_upcall_info *info)
->  	char			*target = NULL;
->  	char			*service = NULL;
->  	char			*enctypes = NULL;
-> +	char			*upcall_str;
->  	char			*pbuf = info->lbuf;
->  
->  	printerr(2, "\n%s: '%s' (%s)\n", __func__, info->lbuf, clp->relpath);
->  
-> +	upcall_str = strdup(info->lbuf);
-> +	if (upcall_str == NULL) {
-> +		printerr(0, "ERROR: malloc failure\n");
-> +		goto out_nomem;
-> +	}
-> +
->  	while ((p = strsep(&pbuf, " "))) {
->  		if (!strncmp(p, "mech=", strlen("mech=")))
->  			mech = p + strlen("mech=");
-> @@ -749,7 +756,7 @@ handle_gssd_upcall(struct clnt_upcall_info *info)
->  	if (!mech || strlen(mech) < 1) {
->  		printerr(0, "WARNING: handle_gssd_upcall: "
->  			    "failed to find gss mechanism name "
-> -			    "in upcall string '%s'\n", info->lbuf);
-> +			    "in upcall string '%s'\n", upcall_str);
->  		goto out;
->  	}
->  
-> @@ -762,7 +769,7 @@ handle_gssd_upcall(struct clnt_upcall_info *info)
->  	if (!uidstr) {
->  		printerr(0, "WARNING: handle_gssd_upcall: "
->  			    "failed to find uid "
-> -			    "in upcall string '%s'\n", info->lbuf);
-> +			    "in upcall string '%s'\n", upcall_str);
->  		goto out;
->  	}
->  
-> @@ -775,7 +782,7 @@ handle_gssd_upcall(struct clnt_upcall_info *info)
->  	if (target && strlen(target) < 1) {
->  		printerr(0, "WARNING: handle_gssd_upcall: "
->  			 "failed to parse target name "
-> -			 "in upcall string '%s'\n", info->lbuf);
-> +			 "in upcall string '%s'\n", upcall_str);
->  		goto out;
->  	}
->  
-> @@ -790,7 +797,7 @@ handle_gssd_upcall(struct clnt_upcall_info *info)
->  	if (service && strlen(service) < 1) {
->  		printerr(0, "WARNING: handle_gssd_upcall: "
->  			 "failed to parse service type "
-> -			 "in upcall string '%s'\n", info->lbuf);
-> +			 "in upcall string '%s'\n", upcall_str);
->  		goto out;
->  	}
->  
-> @@ -803,6 +810,8 @@ handle_gssd_upcall(struct clnt_upcall_info *info)
->  		do_error_downcall(clp->gssd_fd, uid, -EACCES);
->  	}
->  out:
-> +	free(upcall_str);
-> +out_nomem:
->  	free(info);
->  	return;
->  }
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
+-- 
+Jeff Layton <jlayton@redhat.com>
