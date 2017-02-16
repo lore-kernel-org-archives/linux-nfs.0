@@ -1,118 +1,88 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-wr0-f194.google.com ([209.85.128.194]:34170 "EHLO
-        mail-wr0-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1753821AbdBPG4V (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 16 Feb 2017 01:56:21 -0500
-Received: by mail-wr0-f194.google.com with SMTP id c4so865695wrd.1
-        for <linux-nfs@vger.kernel.org>; Wed, 15 Feb 2017 22:56:20 -0800 (PST)
+Received: from mx1.redhat.com ([209.132.183.28]:34920 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1753837AbdBPKV2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 16 Feb 2017 05:21:28 -0500
+Subject: Re: [nfs-utils PATCH v3 0/2] Add support for
+ -s/--state-directory-path for rpc.mountd and exportfs
+To: Scott Mayhew <smayhew@redhat.com>
+References: <1486134704-59866-1-git-send-email-smayhew@redhat.com>
+Cc: neilb@suse.com, linux-nfs@vger.kernel.org
+From: Steve Dickson <SteveD@redhat.com>
+Message-ID: <e5c32306-5c96-7e8f-c015-5acc6f79c427@RedHat.com>
+Date: Thu, 16 Feb 2017 05:21:28 -0500
 MIME-Version: 1.0
-In-Reply-To: <1486827922.3490.2.camel@primarydata.com>
-References: <CAPrqf9378wbKmv9EaiuFzYLwvCxziXtkk-ZY-jsJxSOgSNm+QA@mail.gmail.com>
- <1486739454.19587.1.camel@primarydata.com> <CAPrqf938zLB73tShOZyeQDacDR5J9VaHhF4_-t7eEjecWocyUQ@mail.gmail.com>
- <1486827922.3490.2.camel@primarydata.com>
-From: Pankaj Singh <psingh.ait@gmail.com>
-Date: Thu, 16 Feb 2017 12:26:18 +0530
-Message-ID: <CAPrqf90M8KCWBrNCr5g4PdMDh0dzyXxJ6mKo6VJMRKypba0w5w@mail.gmail.com>
-Subject: Re: How NLM support posix threads?
-To: Trond Myklebust <trondmy@primarydata.com>
-Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=UTF-8
+In-Reply-To: <1486134704-59866-1-git-send-email-smayhew@redhat.com>
+Content-Type: text/plain; charset=windows-1252
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Trond Myklebust,
-
-I have one point to make, after this fix check for "block->b_file ==
-file" in nlmsvc_lookup_block will become redundant.
-"if (block->b_file == file && nlm_compare_locks(fl, &lock->fl)) {". So
-this check can be removed and only "nlm_compare_locks" will be enough.
-
-Thanks,
-~Pankaj Singh
-
-On Sat, Feb 11, 2017 at 9:15 PM, Trond Myklebust
-<trondmy@primarydata.com> wrote:
-> On Sat, 2017-02-11 at 11:49 +0530, Pankaj Singh wrote:
->> > During "fl_grant" callback wrong "block" will be compared hence
->> > this will result in lock failure even if lock is actually granted.
->>
->> "nlm_compare_locks" will compare the locks on the bases of pid,
->> owner,
->> start offset, end offset and type. In case of posix threads as pid is
->> same, also all other parameters can be same for locks of different
->> files.
->>
->> Now the scenario is, if there are two posix thread with pid p1 and
->> they try to take the lock on different files (say l1 and l2) then
->> different blocks will be created (say b1 and b2). In this case
->> underline filesystem may send "FILE_LOCK_DEFERRED" for both the locks
->> and these blocks will be added to deferred block list.
->>
->> So during "fl_grant" callback lock are compared with the blocks of
->> block list. Now lets say callback is called for l1 and the comparison
->> will succeed with b1 (this is as expected) and B_GOT_CALLBACK flag
->> will be set. But as b1 is still in block list, now when callback for
->> l2 arrives then also comparison with b1 can succeed instead of b2
->> because b1 is prior to b2 in the list. Hence B_GOT_CALLBACK flag will
->> not be set for b2 and when NFS client will retry for lock then lock
->> will be denied.
->>
->> Below is the snipt fl_grant code where comparison happens.
->> list_for_each_entry(block, &nlm_blocked, b_list) {
->> if (nlm_compare_locks(&block->b_call->a_args.lock.fl, fl)
->
-> OK. I see what you mean. You are saying, in essence, that in the lockd
-> server code, nlmsvc_notify_blocked() needs to check that the files are
-> the same (just like nlmsvc_lookup_block() already does).
->
-> I agree. That is a bug and it needs to be fixed. How about the
-> following?
->
-> Cheers
->   Trond
-> 8<---------------------------------------------------------------
-> From fff75e35ed857b9ad211905fee2acffa528696d9 Mon Sep 17 00:00:00 2001
-> From: Trond Myklebust <trond.myklebust@primarydata.com>
-> Date: Sat, 11 Feb 2017 10:37:38 -0500
-> Subject: [PATCH] nlm: Ensure callback code also checks that the files match
->
-> It is not sufficient to just check that the lock pids match when
-> granting a callback, we also need to ensure that we're granting
-> the callback on the right file.
->
-> Reported-by: Pankaj Singh <psingh.ait@gmail.com>
-> Fixes: 1da177e4c3f4 ("Linux-2.6.12-rc2")
-> Cc: stable@vger.kernel.org
-> Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
-> ---
->  include/linux/lockd/lockd.h | 3 ++-
->  1 file changed, 2 insertions(+), 1 deletion(-)
->
-> diff --git a/include/linux/lockd/lockd.h b/include/linux/lockd/lockd.h
-> index c15373894a42..b37dee3acaba 100644
-> --- a/include/linux/lockd/lockd.h
-> +++ b/include/linux/lockd/lockd.h
-> @@ -355,7 +355,8 @@ static inline int nlm_privileged_requester(const struct svc_rqst *rqstp)
->  static inline int nlm_compare_locks(const struct file_lock *fl1,
->                                     const struct file_lock *fl2)
->  {
-> -       return  fl1->fl_pid   == fl2->fl_pid
-> +       return file_inode(fl1->fl_file) == file_inode(fl2->fl_file)
-> +            && fl1->fl_pid   == fl2->fl_pid
->              && fl1->fl_owner == fl2->fl_owner
->              && fl1->fl_start == fl2->fl_start
->              && fl1->fl_end   == fl2->fl_end
-> --
-> 2.9.3
->
-> --
-> Trond Myklebust
-> Linux NFS client maintainer, PrimaryData
-> trond.myklebust@primarydata.com
 
 
+On 02/03/2017 10:11 AM, Scott Mayhew wrote:
+> Currently, rpc.mountd's -s/--state-directory-path option doesn't really
+> do anything (rpc.mountd tests it via chdir() but that's all).  These
+> patches implement the -s/--state-directory-path option so that
+> rpc.mountd's state files (the etab and rmtab) can be placed in a
+> location other than /var/lib/nfs... for example, /run/nfs.
+>
+> To use /run/nfs, it's necessary to create a systemd-tmpfiles config
+> file, e.g.
+>
+> # cat /usr/lib/tmpfiles.d/nfs.conf 
+> #Type Path           Mode  UID  GID  Age Argument
+> d    /run/nfs        0755  root root  -  -
+> f    /run/nfs/etab   0644  root root  -  -
+> f    /run/nfs/rmtab  0644  root root  -  -
+>
+> and if selinux is in enforcing mode, the correct context would need to
+> be set on the directory (On Fedora, semanage barks at me if I use
+> /run/nfs... that's why I'm using /var/run/nfs here instead):
+>
+> # semanage fcontext -a -t var_lib_nfs_t "/var/run/nfs(/.*)?"
+>
+> Changes since v1:
+>
+> - Replaced all newly-added occurrences of the term 'xtab' so it wouldn't
+>   be confused with the recently removed 'xtab' file.  I did not replace
+>   any existing uses of the term 'xtab' though.
+> - Removed the reference to statd on the mountd man page.
+>
+> Changes since v2:
+> - Fixed string-handling blunder I made in generic_setup_basedir(). Tested with 
+>   pathnames of length 4083 (the largest you can have and still append
+>   "/.rmtab.lock"), 4084 (generic_make_pathname() will fail for ".rmtab.lock"),
+>   4095, 4096, and 4097.
+> - Removed error_check() from support/misc/file.c and added the check directly
+>   in generic_make_pathname()
+> - Removed _PATH_ETAB* and _PATH_RMTAB* as they're no longer used.
+> - Updated the nfs.conf.man and exportfs.man pages.
+>
+>
+> Scott Mayhew (2):
+>   libnsm.a: refactor nsm_setup_pathnames() and nsm_make_pathname()
+>   mountd/exportfs: implement the -s/--state-directory-path option
+Both Committed...
 
--- 
-Regards,
-Pankaj SIngh
-Phone No: 8826266889
+steved.
+>
+>  support/export/xtab.c       |  83 ++++++++++++++++++++++++++++++++-
+>  support/include/misc.h      |   3 ++
+>  support/include/nfslib.h    |  35 +++++++-------
+>  support/misc/Makefile.am    |   2 +-
+>  support/misc/file.c         | 110 ++++++++++++++++++++++++++++++++++++++++++++
+>  support/nfs/cacheio.c       |   6 ++-
+>  support/nfs/rmtab.c         |   4 +-
+>  support/nsm/file.c          |  46 ++----------------
+>  systemd/nfs.conf.man        |   7 +++
+>  utils/exportfs/exportfs.c   |  13 ++++++
+>  utils/exportfs/exportfs.man |  23 +++++++++
+>  utils/mountd/auth.c         |   8 ++--
+>  utils/mountd/mountd.c       |  31 ++++++++-----
+>  utils/mountd/mountd.man     |   2 +-
+>  utils/mountd/rmtab.c        |  26 ++++++-----
+>  utils/statd/Makefile.am     |   1 +
+>  16 files changed, 307 insertions(+), 93 deletions(-)
+>  create mode 100644 support/misc/file.c
+>
+
