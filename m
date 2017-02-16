@@ -1,88 +1,64 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:34920 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:48904 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1753837AbdBPKV2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 16 Feb 2017 05:21:28 -0500
-Subject: Re: [nfs-utils PATCH v3 0/2] Add support for
- -s/--state-directory-path for rpc.mountd and exportfs
-To: Scott Mayhew <smayhew@redhat.com>
-References: <1486134704-59866-1-git-send-email-smayhew@redhat.com>
-Cc: neilb@suse.com, linux-nfs@vger.kernel.org
+        id S1751826AbdBPKWD (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 16 Feb 2017 05:22:03 -0500
+Subject: Re: [PATCH] Fix nfs-mountd dependency on rpcbind
+To: Rafael David Tinoco <rafael.tinoco@canonical.com>,
+        linux-nfs@vger.kernel.org
+References: <20170207191650.19219-1-rafael.tinoco@canonical.com>
+Cc: neilb@suse.com
 From: Steve Dickson <SteveD@redhat.com>
-Message-ID: <e5c32306-5c96-7e8f-c015-5acc6f79c427@RedHat.com>
-Date: Thu, 16 Feb 2017 05:21:28 -0500
+Message-ID: <be365f8a-ef61-9240-b28a-7f1659326d88@RedHat.com>
+Date: Thu, 16 Feb 2017 05:22:03 -0500
 MIME-Version: 1.0
-In-Reply-To: <1486134704-59866-1-git-send-email-smayhew@redhat.com>
+In-Reply-To: <20170207191650.19219-1-rafael.tinoco@canonical.com>
 Content-Type: text/plain; charset=windows-1252
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
 
-On 02/03/2017 10:11 AM, Scott Mayhew wrote:
-> Currently, rpc.mountd's -s/--state-directory-path option doesn't really
-> do anything (rpc.mountd tests it via chdir() but that's all).  These
-> patches implement the -s/--state-directory-path option so that
-> rpc.mountd's state files (the etab and rmtab) can be placed in a
-> location other than /var/lib/nfs... for example, /run/nfs.
+On 02/07/2017 02:16 PM, Rafael David Tinoco wrote:
+> Following commit 91da135f - it replaced "rpcbind.target" by "rpcbind.socket" in
+> some unit files - "rpcbind.socket" should also be added to "nfs-mountd.service"
+> as a dependency to avoid race conditions.
 >
-> To use /run/nfs, it's necessary to create a systemd-tmpfiles config
-> file, e.g.
+> Usually "rpcbind.socket" is either started as a "sockets.target" dependency, or
+> as a dependency for "nfs-server.service", when unit files include it in
+> "BindsTo" or "After". Unfortunately there is a possilibility to have
+> "nfs-mountd.service" started when the rpcbind socket is not yet created:
 >
-> # cat /usr/lib/tmpfiles.d/nfs.conf 
-> #Type Path           Mode  UID  GID  Age Argument
-> d    /run/nfs        0755  root root  -  -
-> f    /run/nfs/etab   0644  root root  -  -
-> f    /run/nfs/rmtab  0644  root root  -  -
+> systemd[1]: Starting NFS Mount Daemon...
+> systemd[1]: nfs-mountd.service: Control process exited, code=exited status=1
+> systemd[1]: Failed to start NFS Mount Daemon.
+> systemd[1]: nfs-mountd.service: Unit entered failed state.
+> systemd[1]: nfs-mountd.service: Failed with result 'exit-code'.
 >
-> and if selinux is in enforcing mode, the correct context would need to
-> be set on the directory (On Fedora, semanage barks at me if I use
-> /run/nfs... that's why I'm using /var/run/nfs here instead):
+> Nowadays "nfs-mountd.service" uses "BindTo" directive to "nfs-server.service".
+> That, per se, doesn't guarantee ordering for NFS server to start rpcbind and for
+> nfs-mountd to depend on it.
 >
-> # semanage fcontext -a -t var_lib_nfs_t "/var/run/nfs(/.*)?"
+> https://bugs.launchpad.net/bugs/1590799
 >
-> Changes since v1:
->
-> - Replaced all newly-added occurrences of the term 'xtab' so it wouldn't
->   be confused with the recently removed 'xtab' file.  I did not replace
->   any existing uses of the term 'xtab' though.
-> - Removed the reference to statd on the mountd man page.
->
-> Changes since v2:
-> - Fixed string-handling blunder I made in generic_setup_basedir(). Tested with 
->   pathnames of length 4083 (the largest you can have and still append
->   "/.rmtab.lock"), 4084 (generic_make_pathname() will fail for ".rmtab.lock"),
->   4095, 4096, and 4097.
-> - Removed error_check() from support/misc/file.c and added the check directly
->   in generic_make_pathname()
-> - Removed _PATH_ETAB* and _PATH_RMTAB* as they're no longer used.
-> - Updated the nfs.conf.man and exportfs.man pages.
->
->
-> Scott Mayhew (2):
->   libnsm.a: refactor nsm_setup_pathnames() and nsm_make_pathname()
->   mountd/exportfs: implement the -s/--state-directory-path option
-Both Committed...
+> Signed-off-by: Rafael David Tinoco <rafael.tinoco@canonical.com>
+Committed
 
 steved.
+> ---
+>  systemd/nfs-mountd.service | 1 +
+>  1 file changed, 1 insertion(+)
 >
->  support/export/xtab.c       |  83 ++++++++++++++++++++++++++++++++-
->  support/include/misc.h      |   3 ++
->  support/include/nfslib.h    |  35 +++++++-------
->  support/misc/Makefile.am    |   2 +-
->  support/misc/file.c         | 110 ++++++++++++++++++++++++++++++++++++++++++++
->  support/nfs/cacheio.c       |   6 ++-
->  support/nfs/rmtab.c         |   4 +-
->  support/nsm/file.c          |  46 ++----------------
->  systemd/nfs.conf.man        |   7 +++
->  utils/exportfs/exportfs.c   |  13 ++++++
->  utils/exportfs/exportfs.man |  23 +++++++++
->  utils/mountd/auth.c         |   8 ++--
->  utils/mountd/mountd.c       |  31 ++++++++-----
->  utils/mountd/mountd.man     |   2 +-
->  utils/mountd/rmtab.c        |  26 ++++++-----
->  utils/statd/Makefile.am     |   1 +
->  16 files changed, 307 insertions(+), 93 deletions(-)
->  create mode 100644 support/misc/file.c
->
+> diff --git a/systemd/nfs-mountd.service b/systemd/nfs-mountd.service
+> index 15e828b..b0a8bc0 100644
+> --- a/systemd/nfs-mountd.service
+> +++ b/systemd/nfs-mountd.service
+> @@ -4,6 +4,7 @@ DefaultDependencies=no
+>  Requires=proc-fs-nfsd.mount
+>  After=proc-fs-nfsd.mount
+>  After=network.target local-fs.target
+> +After=rpcbind.socket
+>  BindsTo=nfs-server.service
+>  
+>  [Service]
 
