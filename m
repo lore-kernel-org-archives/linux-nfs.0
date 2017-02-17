@@ -1,61 +1,87 @@
-Return-Path: <trondmy@primarydata.com>
-From: Trond Myklebust <trondmy@primarydata.com>
-To: "bcodding@redhat.com" <bcodding@redhat.com>
-CC: "anna.schumaker@netapp.com" <anna.schumaker@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 4/4] NFS: Always wait for I/O completion before unlock
-Date: Fri, 17 Feb 2017 19:30:52 +0000
-Message-ID: <1487359849.23558.1.camel@primarydata.com>
-References: <cover.1487356965.git.bcodding@redhat.com>
-	 <d81a853ea1ee4ba1294c85bbed7aa7298852b180.1487356965.git.bcodding@redhat.com>
-	 <1487358041.11929.7.camel@primarydata.com>
-	 <46DADA84-BE1F-43A6-8196-2A097435829A@redhat.com>
-In-Reply-To: <46DADA84-BE1F-43A6-8196-2A097435829A@redhat.com>
+Return-Path: <linux-nfs-owner@vger.kernel.org>
+Received: from fieldses.org ([173.255.197.46]:33414 "EHLO fieldses.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1756009AbdBQTd5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 17 Feb 2017 14:33:57 -0500
+Date: Fri, 17 Feb 2017 14:33:55 -0500
+To: kbuild test robot <lkp@intel.com>
+Cc: "J. Bruce Fields" <bfields@redhat.com>, kbuild-all@01.org,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        Anna Schumaker <schumakeranna@gmail.com>, linux-nfs@vger.kernel.org,
+        Andreas Gruenbacher <agruenba@redhat.com>,
+        Weston Andros Adamson <dros@primarydata.com>
+Subject: Re: [PATCH 3/3] nfsd4: simplify getacl decoding
+Message-ID: <20170217193355.GF10894@fieldses.org>
+References: <1487349854-9732-4-git-send-email-bfields@redhat.com>
+ <201702180315.sUnb0Muq%fengguang.wu@intel.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <201702180315.sUnb0Muq%fengguang.wu@intel.com>
+From: bfields@fieldses.org (J. Bruce Fields)
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gRnJpLCAyMDE3LTAyLTE3IGF0IDE0OjE1IC0wNTAwLCBCZW5qYW1pbiBDb2RkaW5ndG9uIHdy
-b3RlOg0KPiBPbiAxNyBGZWIgMjAxNywgYXQgMTQ6MDAsIFRyb25kIE15a2xlYnVzdCB3cm90ZToN
-Cj4gDQo+ID4gT24gRnJpLCAyMDE3LTAyLTE3IGF0IDEzOjQ2IC0wNTAwLCBCZW5qYW1pbiBDb2Rk
-aW5ndG9uIHdyb3RlOg0KPiA+ID4gTkZTIGF0dGVtcHRzIHRvIHdhaXQgZm9yIHJlYWQgYW5kIHdy
-aXRlIGNvbXBsZXRpb24gYmVmb3JlDQo+ID4gPiB1bmxvY2tpbmcNCj4gPiA+IGluDQo+ID4gPiBv
-cmRlciB0byBlbnN1cmUgdGhhdCB0aGUgZGF0YSByZXR1cm5lZCB3YXMgcHJvdGVjdGVkIGJ5IHRo
-ZQ0KPiA+ID4gbG9jay7CoMKgV2hlbg0KPiA+ID4gdGhpcyB3YWl0aW5nIGlzIGludGVycnVwdGVk
-IGJ5IGEgc2lnbmFsLCB0aGUgdW5sb2NrIG1heSBuZXZlciBiZQ0KPiA+ID4gc2VudCwgYW5kDQo+
-ID4gPiBtZXNzYWdlcyBzaW1pbGFyIHRvIHRoZSBmb2xsb3dpbmcgYXJlIHNlZW4gaW4gdGhlIGtl
-cm5lbCByaW5nDQo+ID4gPiBidWZmZXI6DQo+ID4gPiANCj4gPiA+IFsyMC4xNjc4NzZdIExlYWtl
-ZCBsb2NrcyBvbiBkZXY9MHgwOjB4MmIgaW5vPTB4OGRkNGMzOg0KPiA+ID4gWzIwLjE2ODI4Nl0g
-UE9TSVg6IGZsX293bmVyPWZmZmY4ODAwNzhiMDY5NDAgZmxfZmxhZ3M9MHgxDQo+ID4gPiBmbF90
-eXBlPTB4MA0KPiA+ID4gZmxfcGlkPTIwMTgzDQo+ID4gPiBbMjAuMTY4NzI3XSBQT1NJWDogZmxf
-b3duZXI9ZmZmZjg4MDA3OGIwNjY4MCBmbF9mbGFncz0weDENCj4gPiA+IGZsX3R5cGU9MHgwDQo+
-ID4gPiBmbF9waWQ9MjAxODUNCj4gPiA+IA0KPiA+ID4gRm9yIE5GU3YzLCB0aGUgbWlzc2luZyB1
-bmxvY2sgd2lsbCBjYXVzZSB0aGUgc2VydmVyIHRvIHJlZnVzZQ0KPiA+ID4gY29uZmxpY3RpbmcN
-Cj4gPiA+IGxvY2tzIGluZGVmaW5pdGVseS7CoMKgRm9yIE5GU3Y0LCB0aGUgbGVmdG92ZXIgbG9j
-ayB3aWxsIGJlIHJlbW92ZWQNCj4gPiA+IGJ5DQo+ID4gPiB0aGUNCj4gPiA+IHNlcnZlciBhZnRl
-ciB0aGUgbGVhc2UgdGltZW91dC4NCj4gPiA+IA0KPiA+ID4gVGhpcyBwYXRjaCBmaXhlcyB0aGlz
-IGZvciBORlN2MyBieSBza2lwcGluZyB0aGUgd2FpdCBpbiBvcmRlciB0bw0KPiA+ID4gaW1tZWRp
-YXRlbHkgc2VuZCB0aGUgdW5sb2NrIGlmIHRoZSBGTF9DTE9TRSBmbGFnIGlzIHNldCB3aGVuDQo+
-ID4gPiBzaWduYWxlZC7CoMKgRm9yDQo+ID4gPiBORlN2NCwgdGhpcyBhcHByb2FjaCBtYXkgY2F1
-c2UgdGhlIHNlcnZlciB0byBzZWUgdGhlIEkvTyBhcw0KPiA+ID4gYXJyaXZpbmcNCj4gPiA+IHdp
-dGgNCj4gPiA+IGFuIG9sZCBzdGF0ZWlkLCBzbywgZm9yIHRoZSB2NCBjYXNlIHRoZSBmaXggaXMg
-ZGlmZmVyZW50OiB0aGUNCj4gPiA+IHdhaXQgb24NCj4gPiA+IEkvTw0KPiA+ID4gY29tcGxldGlv
-biBpcyBtb3ZlZCBpbnRvIG5mczRfbG9ja3Vfb3BzJw0KPiA+ID4gcnBjX2NhbGxfcHJlcGFyZSgp
-LsKgwqBUaGlzDQo+ID4gPiB3aWxsDQo+ID4gPiBjYXVzZSB0aGUgc2xlZXAgdG8gaGFwcGVuIGlu
-IHJwY2lvZCBjb250ZXh0LCBhbmQgYSBzaWduYWwgdG8gdGhlDQo+ID4gPiBvcmlnaW5hbGx5DQo+
-ID4gPiB3YWl0aW5nIHByb2Nlc3Mgd2lsbCBub3QgY2F1c2UgdGhlIHVubG9jayB0byBiZSBza2lw
-cGVkLg0KPiA+IA0KPiA+IE5BQ0suIEkvTyB3YWl0cyBpbiBycGNpb2QgY29udGV4dHMgYXJlIE5P
-VCBhY2NlcHRhYmxlLiBycGNpb2QgaXMNCj4gPiBwYXJ0DQo+ID4gb2YgdGhlIG1lbW9yeSByZWNs
-YWltIGNoYWluLCBzbyBoYXZpbmcgaXQgc2xlZXAgb24gSS9PIGlzIGRlYWRsb2NrDQo+ID4gcHJv
-bmUuDQo+ID4gDQo+ID4gV2h5IGlzIHRoZXJlIGEgbmVlZCB0byB3YWl0IGZvciBJL08gY29tcGxl
-dGlvbiBpbiB0aGUgZmlyc3QgcGxhY2UNCj4gPiBpZg0KPiA+IHRoZSB1c2VyIGhhcyBraWxsZWQg
-dGhlIHRhc2sgdGhhdCBoZWxkIHRoZSBsb2NrPyAna2lsbCAtOScgd2lsbA0KPiA+IGNhdXNlDQo+
-ID4gY29ycnVwdGlvbjsgdGhhdCdzIGEgZmFjdCB0aGF0IG5vIGFtb3VudCBvZiBwYXBlciB3aWxs
-IGNvdmVyIG92ZXIuDQo+IA0KPiBUbyBhdm9pZCBhbiB1bm5lY2Vzc2FyeSByZWNvdmVyeSBzaXR1
-YXRpb24gd2hlcmUgdGhlIHNlcnZlciBhc2tzIHVzDQo+IHRvIHJlc2VuZA0KPiBJL08gZHVlIHRv
-IGFuIGludmFsaWQgc3RhdGVpZC4NCj4gDQoNCkkgYWdyZWUgd2Ugc2hvdWxkbid0IHJlY292ZXIg
-aW4gdGhpcyBzaXR1YXRpb24uIEl0IHdvdWxkIGJlIGJldHRlciB0bw0KamV0dGlzb24gdGhlIGZh
-aWxlZCB3cml0ZSwgYW5kIGludmFsaWRhdGUgdGhlIHBhZ2UuIENhbiB3ZSBtYWtlIHVzZSBvZg0K
-bmZzX3diX3BhZ2VfY2FuY2VsKCkgdG9nZXRoZXIgd2l0aCBnZW5lcmljX2Vycm9yX3JlbW92ZV9w
-YWdlKCk/DQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50YWlu
-ZXIsIFByaW1hcnlEYXRhDQp0cm9uZC5teWtsZWJ1c3RAcHJpbWFyeWRhdGEuY29tDQo=
+Whoops, forgot to retst after a last minute change!  Fixed locally.
+Also fixed up the subject lines that refer to "nfsd".
+
+--b.
+
+On Sat, Feb 18, 2017 at 03:15:11AM +0800, kbuild test robot wrote:
+> Hi Bruce,
+> 
+> [auto build test ERROR on nfs/linux-next]
+> [also build test ERROR on v4.10-rc8 next-20170217]
+> [if your patch is applied to the wrong git tree, please drop us a note to help improve the system]
+> 
+> url:    https://github.com/0day-ci/linux/commits/J-Bruce-Fields/getacl-fixes/20170218-022320
+> base:   git://git.linux-nfs.org/projects/trondmy/linux-nfs.git linux-next
+> config: x86_64-randconfig-x015-201707 (attached as .config)
+> compiler: gcc-6 (Debian 6.2.0-3) 6.2.0 20160901
+> reproduce:
+>         # save the attached .config to linux build tree
+>         make ARCH=x86_64 
+> 
+> All error/warnings (new ones prefixed by >>):
+> 
+>    fs/nfs/nfs4proc.c: In function 'nfs4_do_get_acl':
+> >> fs/nfs/nfs4proc.c:5095:2: error: 'ret' undeclared (first use in this function)
+>      ret = nfs4_call_sync(NFS_SERVER(inode)->client, NFS_SERVER(inode),
+>      ^~~
+>    fs/nfs/nfs4proc.c:5095:2: note: each undeclared identifier is reported only once for each function it appears in
+> >> fs/nfs/nfs4proc.c:5104:1: warning: control reaches end of non-void function [-Wreturn-type]
+>     }
+>     ^
+> 
+> vim +/ret +5095 fs/nfs/nfs4proc.c
+> 
+> cfc94798 Weston Andros Adamson 2017-02-17  5089  		return -ENOMEM;
+> 5a006899 Sachin Prabhu         2012-04-17  5090  
+> cfc94798 Weston Andros Adamson 2017-02-17  5091  	args.acl_len = ARRAY_SIZE(pages) << PAGE_SHIFT;
+> 5a006899 Sachin Prabhu         2012-04-17  5092  
+> cfc94798 Weston Andros Adamson 2017-02-17  5093  	dprintk("%s  buf %p buflen %zu args.acl_len %zu\n",
+> cfc94798 Weston Andros Adamson 2017-02-17  5094  		__func__, buf, buflen, args.acl_len);
+> bf118a34 Andy Adamson          2011-12-07 @5095  	ret = nfs4_call_sync(NFS_SERVER(inode)->client, NFS_SERVER(inode),
+> bf118a34 Andy Adamson          2011-12-07  5096  			     &msg, &args.seq_args, &res.seq_res, 0);
+> 942bf94d J. Bruce Fields       2017-02-17  5097  	if (ret == 0)
+> 1f1ea6c2 Trond Myklebust       2012-08-26  5098  		ret = res.acl_len;
+> 942bf94d J. Bruce Fields       2017-02-17  5099  
+> cfc94798 Weston Andros Adamson 2017-02-17  5100  	for (i = 0; i < ARRAY_SIZE(pages) && pages[i]; i++)
+> bf118a34 Andy Adamson          2011-12-07  5101  		__free_page(pages[i]);
+> 331818f1 Trond Myklebust       2012-02-03  5102  	__free_page(res.acl_scratch);
+> e50a1c2e J. Bruce Fields       2005-06-22  5103  	return ret;
+> e50a1c2e J. Bruce Fields       2005-06-22 @5104  }
+> e50a1c2e J. Bruce Fields       2005-06-22  5105  
+> 942bf94d J. Bruce Fields       2017-02-17  5106  /*
+> 942bf94d J. Bruce Fields       2017-02-17  5107   * The getxattr API returns the required buffer length when called with a
+> 
+> :::::: The code at line 5095 was first introduced by commit
+> :::::: bf118a342f10dafe44b14451a1392c3254629a1f NFSv4: include bitmap in nfsv4 get acl data
+> 
+> :::::: TO: Andy Adamson <andros@netapp.com>
+> :::::: CC: Trond Myklebust <Trond.Myklebust@netapp.com>
+> 
+> ---
+> 0-DAY kernel test infrastructure                Open Source Technology Center
+> https://lists.01.org/pipermail/kbuild-all                   Intel Corporation
+
+
