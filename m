@@ -1,34 +1,60 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:27850 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([173.255.197.46]:33542 "EHLO fieldses.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S932303AbdBQUK4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 17 Feb 2017 15:10:56 -0500
-From: "Benjamin Coddington" <bcodding@redhat.com>
-To: "Trond Myklebust" <trondmy@primarydata.com>
-Cc: "anna.schumaker@netapp.com" <anna.schumaker@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 4/4] NFS: Always wait for I/O completion before unlock
-Date: Fri, 17 Feb 2017 15:10:53 -0500
-Message-ID: <7C3CA5DE-D19A-498C-950F-1413C30DE338@redhat.com>
-In-Reply-To: <1487359849.23558.1.camel@primarydata.com>
-References: <cover.1487356965.git.bcodding@redhat.com>
- <d81a853ea1ee4ba1294c85bbed7aa7298852b180.1487356965.git.bcodding@redhat.com>
- <1487358041.11929.7.camel@primarydata.com>
- <46DADA84-BE1F-43A6-8196-2A097435829A@redhat.com>
- <1487359849.23558.1.camel@primarydata.com>
+        id S932655AbdBQUZs (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 17 Feb 2017 15:25:48 -0500
+Date: Fri, 17 Feb 2017 15:25:46 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Kinglong Mee <kinglongmee@gmail.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 3/3] nfsd/callback: Drop an useless data copy when
+ comparing sessionid
+Message-ID: <20170217202546.GK10894@fieldses.org>
+References: <dd77a6cd-c269-e326-ced6-d91a858d389b@gmail.com>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <dd77a6cd-c269-e326-ced6-d91a858d389b@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 17 Feb 2017, at 14:30, Trond Myklebust wrote:
-> On Fri, 2017-02-17 at 14:15 -0500, Benjamin Coddington wrote:
->> To avoid an unnecessary recovery situation where the server asks us to
->> resend I/O due to an invalid stateid.
->
-> I agree we shouldn't recover in this situation. It would be better to
-> jettison the failed write, and invalidate the page. Can we make use of
-> nfs_wb_page_cancel() together with generic_error_remove_page()?
+These three look fine, thanks; applying.--b.
 
-I'll take a look..
-
-Ben
+On Sun, Feb 05, 2017 at 09:57:48AM +0800, Kinglong Mee wrote:
+> Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
+> ---
+>  fs/nfsd/nfs4callback.c | 10 +++-------
+>  1 file changed, 3 insertions(+), 7 deletions(-)
+> 
+> diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
+> index ea74149..0274db6 100644
+> --- a/fs/nfsd/nfs4callback.c
+> +++ b/fs/nfsd/nfs4callback.c
+> @@ -397,13 +397,10 @@ static int decode_cb_sequence4resok(struct xdr_stream *xdr,
+>  				    struct nfsd4_callback *cb)
+>  {
+>  	struct nfsd4_session *session = cb->cb_clp->cl_cb_session;
+> -	struct nfs4_sessionid id;
+> -	int status;
+> +	int status = -ESERVERFAULT;
+>  	__be32 *p;
+>  	u32 dummy;
+>  
+> -	status = -ESERVERFAULT;
+> -
+>  	/*
+>  	 * If the server returns different values for sessionID, slotID or
+>  	 * sequence number, the server is looney tunes.
+> @@ -411,9 +408,8 @@ static int decode_cb_sequence4resok(struct xdr_stream *xdr,
+>  	p = xdr_inline_decode(xdr, NFS4_MAX_SESSIONID_LEN + 4 + 4 + 4 + 4);
+>  	if (unlikely(p == NULL))
+>  		goto out_overflow;
+> -	memcpy(id.data, p, NFS4_MAX_SESSIONID_LEN);
+> -	if (memcmp(id.data, session->se_sessionid.data,
+> -					NFS4_MAX_SESSIONID_LEN) != 0) {
+> +
+> +	if (memcmp(p, session->se_sessionid.data, NFS4_MAX_SESSIONID_LEN)) {
+>  		dprintk("NFS: %s Invalid session id\n", __func__);
+>  		goto out;
+>  	}
+> -- 
+> 2.9.3
