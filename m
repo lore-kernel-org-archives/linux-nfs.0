@@ -1,70 +1,54 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f180.google.com ([209.85.223.180]:36364 "EHLO
-        mail-io0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S934861AbdBQVKq (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 17 Feb 2017 16:10:46 -0500
-Received: by mail-io0-f180.google.com with SMTP id j13so1783963iod.3
-        for <linux-nfs@vger.kernel.org>; Fri, 17 Feb 2017 13:10:46 -0800 (PST)
-MIME-Version: 1.0
-In-Reply-To: <20170217200253.GI10894@fieldses.org>
-References: <BLUPR06MB54767D9B4746E210D176C3AE1580@BLUPR06MB547.namprd06.prod.outlook.com>
- <20170217200253.GI10894@fieldses.org>
-From: Olga Kornievskaia <aglo@umich.edu>
-Date: Fri, 17 Feb 2017 16:10:45 -0500
-Message-ID: <CAN-5tyGF8z=k6hk+Xbnh+_mWAiW_ywNnYR01YiOBVBRFzcyXUw@mail.gmail.com>
-Subject: Re: Question about NFSv4.2 server-side copy implementation
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: "Mora, Jorge" <Jorge.Mora@netapp.com>,
+Received: from mx141.netapp.com ([216.240.21.12]:6246 "EHLO mx141.netapp.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S934271AbdBQVQF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 17 Feb 2017 16:16:05 -0500
+Subject: Re: [PATCH 0/7] Some cleanups and updates for sunrpc
+To: "bfields@fieldses.org" <bfields@fieldses.org>,
+        Trond Myklebust <trondmy@primarydata.com>
+References: <59432847-8e45-4423-c441-0c67ee645f38@gmail.com>
+ <20170217170313.GA9791@fieldses.org>
+ <1487352262.11929.4.camel@primarydata.com>
+ <20170217190926.GC10894@fieldses.org>
+CC: "kinglongmee@gmail.com" <kinglongmee@gmail.com>,
         "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=UTF-8
+From: Anna Schumaker <Anna.Schumaker@Netapp.com>
+Message-ID: <d51176f4-3e13-7a26-1faa-7ac254e2f1f9@Netapp.com>
+Date: Fri, 17 Feb 2017 16:15:56 -0500
+MIME-Version: 1.0
+In-Reply-To: <20170217190926.GC10894@fieldses.org>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Feb 17, 2017 at 3:02 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
-> On Tue, Feb 14, 2017 at 08:07:48PM +0000, Mora, Jorge wrote:
->> I can understand failing with NFS4ERR_INVAL when the source offset is beyond the end of the file,
->> but do you think failing with NFS4ERR_INVAL is too strict when the source offset plus the count is beyond the end of the file?
->> What is the rationalization for failing on this specific instance?
->> Why not return a short copy instead?
->> Can the COPY return a count less than what it requested (a short copy)?
+Hi Bruce,
+
+On 02/17/2017 02:09 PM, bfields@fieldses.org wrote:
+> On Fri, Feb 17, 2017 at 05:25:04PM +0000, Trond Myklebust wrote:
+>> On Fri, 2017-02-17 at 12:03 -0500, J. Bruce Fields wrote:
+>>> Thanks, these look fine to me.
+>>>
+>>> It's really a mixture of client- and server- side stuff, but seems
+>>> unlikely to have serious conflicts with either.  For simplicity's
+>>> sake I
+>>> think I'll just take them, unless Trond tells me he has.
+>>>
 >>
->> As of right now, the implementation on the Linux server adheres to the spec
->
-> That's weird, do you have network traces showing that, or is it possible
-> the EINVAL is happening on the client side?
->
-> From a quick look at the server code I can't see where it would be
-> generating that EINVAL, but I haven't tested this case and I could be
-> overlooking something....
->
+>> Anna is managing the merge window for the odd-numbered kernel releases
+>> (Cced).
+> 
+> Got it, thanks.  Anna, I've currently got this queued up in my tree, but
+> let me know if that's a problem.
 
-I think the current upstream COPY does not fail with EINVAL. The new
-code that Jorge was testing does adhere to the spec and fails with
-EINVAL.
+I have everything applied to my tree, but I don't mind if you want to take all the patches :)
 
-Bruce, it looks to me that current upstream CLONE in this situation
-will return EINVAL (I see that on the network trace since the client
-will first try to do CLONE and if it can't it'll do COPY).
+> 
+> (This every-other-kernel scheme would be easier for me to remember if
+> only one of you was clearly odder than the other.  But I think you're
+> about equally odd.)
 
-But we are trying to get some consistency in errors.
+Well, I guess I could try to find even more weird hobbies ...
 
-
+> 
 > --b.
->
->> but copy_file_range succeeds
->>
->> when it is called against the local file system, NFSv4.x or NFSv3.
->> For the local file system, NFSv4.x or NFSv3 copy_file_range falls back to regular copy by
->> reading from the source file and then writing to the destination file but I do believe the
->> syscall should be consistent regardless of the underlying file system.
->>
->>
->> --Jorge
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
