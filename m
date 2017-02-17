@@ -1,12 +1,12 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-oi0-f67.google.com ([209.85.218.67]:36126 "EHLO
-        mail-oi0-f67.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S934176AbdBQPH6 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 17 Feb 2017 10:07:58 -0500
-Received: by mail-oi0-f67.google.com with SMTP id u143so175851oif.3
-        for <linux-nfs@vger.kernel.org>; Fri, 17 Feb 2017 07:07:58 -0800 (PST)
+Received: from mail-oi0-f65.google.com ([209.85.218.65]:36656 "EHLO
+        mail-oi0-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S934159AbdBQPW7 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 17 Feb 2017 10:22:59 -0500
+Received: by mail-oi0-f65.google.com with SMTP id u143so214338oif.3
+        for <linux-nfs@vger.kernel.org>; Fri, 17 Feb 2017 07:22:58 -0800 (PST)
 MIME-Version: 1.0
-In-Reply-To: <1487343483.11929.1.camel@primarydata.com>
+In-Reply-To: <CAN-5tyHDjwR2g+R-96WcU1t=CSwzzU1Zds1ds5GyTnX46BvyWA@mail.gmail.com>
 References: <20161205004023.40957-1-trond.myklebust@primarydata.com>
  <CAN-5tyGN4AT70mrVKoW652hQmbDocG7_c2haDC=PKpixQsUDJg@mail.gmail.com>
  <1487191695.7993.2.camel@primarydata.com> <CAN-5tyGep3yHXNjMX9QKCS8E2w+HkVw_LoF=pOwgbgcgUNeDyQ@mail.gmail.com>
@@ -15,10 +15,10 @@ References: <20161205004023.40957-1-trond.myklebust@primarydata.com>
  <CAN-5tyGb6Gh=k0r1M4UmpM+6fB9nMzi3OGmB_trbSjbCdJjqrQ@mail.gmail.com>
  <D28A97BA-F86E-40D3-A0E3-BB8479136ED9@primarydata.com> <CAN-5tyHe-+PiOnx8U9u-3FPVVAYf9AbbcZUDM6BW+V6930tHtA@mail.gmail.com>
  <1487287688.122266.2.camel@primarydata.com> <CAN-5tyGZb9=oWGLN_ZoNDHd5X5a1DQb2oJVw+9cH66Osmk9_dQ@mail.gmail.com>
- <1487343483.11929.1.camel@primarydata.com>
+ <1487343483.11929.1.camel@primarydata.com> <CAN-5tyHDjwR2g+R-96WcU1t=CSwzzU1Zds1ds5GyTnX46BvyWA@mail.gmail.com>
 From: Olga Kornievskaia <aglo@umich.edu>
-Date: Fri, 17 Feb 2017 10:07:57 -0500
-Message-ID: <CAN-5tyHDjwR2g+R-96WcU1t=CSwzzU1Zds1ds5GyTnX46BvyWA@mail.gmail.com>
+Date: Fri, 17 Feb 2017 10:22:57 -0500
+Message-ID: <CAN-5tyHXYUW6dN5oHiZgTrKsSyH8v4Rkexd81FY2io5hYGz_cQ@mail.gmail.com>
 Subject: Re: [PATCH 1/2] NFSv4.1: Handle NFS4ERR_BADSESSION/NFS4ERR_DEADSESSION
  replies to OP_SEQUENCE
 To: Trond Myklebust <trondmy@primarydata.com>
@@ -27,223 +27,228 @@ Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Feb 17, 2017 at 9:58 AM, Trond Myklebust
-<trondmy@primarydata.com> wrote:
-> On Fri, 2017-02-17 at 09:46 -0500, Olga Kornievskaia wrote:
->> On Thu, Feb 16, 2017 at 6:28 PM, Trond Myklebust
->> <trondmy@primarydata.com> wrote:
->> > On Thu, 2017-02-16 at 17:14 -0500, Olga Kornievskaia wrote:
->> > > On Thu, Feb 16, 2017 at 4:45 PM, Trond Myklebust
->> > > <trondmy@primarydata.com> wrote:
->> > > >
->> > > > Olga, all your test is doing is showing that we hit the race
->> > > > more
->> > > > often. Fair enough, I=E2=80=99ll ask Anna to revert the patch. How=
-ever
->> > > > reverting the patch won=E2=80=99t prevent the server from returnin=
-g
->> > > > NFS4ERR_BAD_STATEID in any cases where the calls to
->> > > > nfs4_set_rw_stateid() happen before state recovery. This is why
->> > > > we
->> > > > have the loop in nfs42_proc_copy().
->> > >
->> > > I thought that if retry of the operation waits for the recovery
->> > > to
->> > > complete then nfs4_set_rw_stateid() will choose the correct
->> > > stateid,
->> > > is that not correct?
->> > >
->> > > If that's not correct, then we somehow need to separate the case
->> > > when
->> > > BAD_STATEID should indeed mark the locks lost vs this case where
->> > > the
->> > > code erroneously used the bad stateid (oops) and it should really
->> > > ignore this error. This really doesn't sound very plausible to
->> > > accomplish.
->> >
->> > Does this patch fix the problem?
->> >
->> > 8<-------------------------------------------------------------
->> > From bbae95e8f97cad6a91ca8caa50b61cae789632f9 Mon Sep 17 00:00:00
->> > 2001
->> > From: Trond Myklebust <trond.myklebust@primarydata.com>
->> > Date: Thu, 16 Feb 2017 18:14:38 -0500
->> > Subject: [PATCH] NFSv4: Fix reboot recovery in copy offload
->> >
->> > Copy offload code needs to be hooked into the code for handling
->> > NFS4ERR_BAD_STATEID by ensuring that we set the "stateid" field
->> > in struct nfs4_exception.
->> >
->> > Reported-by: Olga Kornievskaia <aglo@umich.edu>
->> > Fixes: 2e72448b07dc3 ("NFS: Add COPY nfs operation")
->> > Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
->> > ---
->> >  fs/nfs/nfs42proc.c | 57 +++++++++++++++++++++++++++++++-----------
->> > ------------
->> >  1 file changed, 33 insertions(+), 24 deletions(-)
->> >
->> > diff --git a/fs/nfs/nfs42proc.c b/fs/nfs/nfs42proc.c
->> > index d12ff9385f49..baf1fe2dc296 100644
->> > --- a/fs/nfs/nfs42proc.c
->> > +++ b/fs/nfs/nfs42proc.c
->> > @@ -128,20 +128,13 @@ int nfs42_proc_deallocate(struct file *filep,
->> > loff_t offset, loff_t len)
->> >         return err;
->> >  }
->> >
->> > -static ssize_t _nfs42_proc_copy(struct file *src, loff_t pos_src,
->> > +static ssize_t _nfs42_proc_copy(struct file *src,
->> >                                 struct nfs_lock_context *src_lock,
->> > -                               struct file *dst, loff_t pos_dst,
->> > +                               struct file *dst,
->> >                                 struct nfs_lock_context *dst_lock,
->> > -                               size_t count)
->> > +                               struct nfs42_copy_args *args,
->> > +                               struct nfs42_copy_res *res)
->> >  {
->> > -       struct nfs42_copy_args args =3D {
->> > -               .src_fh         =3D NFS_FH(file_inode(src)),
->> > -               .src_pos        =3D pos_src,
->> > -               .dst_fh         =3D NFS_FH(file_inode(dst)),
->> > -               .dst_pos        =3D pos_dst,
->> > -               .count          =3D count,
->> > -       };
->> > -       struct nfs42_copy_res res;
->> >         struct rpc_message msg =3D {
->> >                 .rpc_proc =3D &nfs4_procedures[NFSPROC4_CLNT_COPY],
->> >                 .rpc_argp =3D &args,
->> > @@ -149,9 +142,12 @@ static ssize_t _nfs42_proc_copy(struct file
->> > *src, loff_t pos_src,
->> >         };
->> >         struct inode *dst_inode =3D file_inode(dst);
->> >         struct nfs_server *server =3D NFS_SERVER(dst_inode);
->> > +       loff_t pos_src =3D args->src_pos;
->> > +       loff_t pos_dst =3D args->dst_pos;
->> > +       size_t count =3D args->count;
->> >         int status;
->> >
->> > -       status =3D nfs4_set_rw_stateid(&args.src_stateid, src_lock-
->> > >open_context,
->> > +       status =3D nfs4_set_rw_stateid(&args->src_stateid, src_lock-
->> > >open_context,
->> >                                      src_lock, FMODE_READ);
->> >         if (status)
->> >                 return status;
->> > @@ -161,7 +157,7 @@ static ssize_t _nfs42_proc_copy(struct file
->> > *src, loff_t pos_src,
->> >         if (status)
->> >                 return status;
->> >
->> > -       status =3D nfs4_set_rw_stateid(&args.dst_stateid, dst_lock-
->> > >open_context,
->> > +       status =3D nfs4_set_rw_stateid(&args->dst_stateid, dst_lock-
->> > >open_context,
->> >                                      dst_lock, FMODE_WRITE);
->> >         if (status)
->> >                 return status;
->> > @@ -171,22 +167,22 @@ static ssize_t _nfs42_proc_copy(struct file
->> > *src, loff_t pos_src,
->> >                 return status;
->> >
->> >         status =3D nfs4_call_sync(server->client, server, &msg,
->> > -                               &args.seq_args, &res.seq_res, 0);
->> > +                               &args->seq_args, &res->seq_res, 0);
->> >         if (status =3D=3D -ENOTSUPP)
->> >                 server->caps &=3D ~NFS_CAP_COPY;
->> >         if (status)
->> >                 return status;
->> >
->> > -       if (res.write_res.verifier.committed !=3D NFS_FILE_SYNC) {
->> > -               status =3D nfs_commit_file(dst,
->> > &res.write_res.verifier.verifier);
->> > +       if (res->write_res.verifier.committed !=3D NFS_FILE_SYNC) {
->> > +               status =3D nfs_commit_file(dst, &res-
->> > >write_res.verifier.verifier);
->> >                 if (status)
->> >                         return status;
->> >         }
->> >
->> >         truncate_pagecache_range(dst_inode, pos_dst,
->> > -                                pos_dst + res.write_res.count);
->> > +                                pos_dst + res->write_res.count);
->> >
->> > -       return res.write_res.count;
->> > +       return res->write_res.count;
->> >  }
->> >
->> >  ssize_t nfs42_proc_copy(struct file *src, loff_t pos_src,
->> > @@ -196,8 +192,22 @@ ssize_t nfs42_proc_copy(struct file *src,
->> > loff_t pos_src,
->> >         struct nfs_server *server =3D NFS_SERVER(file_inode(dst));
->> >         struct nfs_lock_context *src_lock;
->> >         struct nfs_lock_context *dst_lock;
->> > -       struct nfs4_exception src_exception =3D { };
->> > -       struct nfs4_exception dst_exception =3D { };
->> > +       struct nfs42_copy_args args =3D {
->> > +               .src_fh         =3D NFS_FH(file_inode(src)),
->> > +               .src_pos        =3D pos_src,
->> > +               .dst_fh         =3D NFS_FH(file_inode(dst)),
->> > +               .dst_pos        =3D pos_dst,
->> > +               .count          =3D count,
->> > +       };
->> > +       struct nfs42_copy_res res;
->> > +       struct nfs4_exception src_exception =3D {
->> > +               .inode          =3D file_inode(src),
->> > +               .stateid        =3D &args.src_stateid,
->> > +       };
->> > +       struct nfs4_exception dst_exception =3D {
->> > +               .inode          =3D file_inode(dst),
->> > +               .stateid        =3D &args.dst_stateid,
->> > +       };
->> >         ssize_t err, err2;
->> >
->> >         if (!nfs_server_capable(file_inode(dst), NFS_CAP_COPY))
->> > @@ -207,7 +217,6 @@ ssize_t nfs42_proc_copy(struct file *src,
->> > loff_t pos_src,
->> >         if (IS_ERR(src_lock))
->> >                 return PTR_ERR(src_lock);
->> >
->> > -       src_exception.inode =3D file_inode(src);
->> >         src_exception.state =3D src_lock->open_context->state;
->> >
->> >         dst_lock =3D
->> > nfs_get_lock_context(nfs_file_open_context(dst));
->> > @@ -216,13 +225,13 @@ ssize_t nfs42_proc_copy(struct file *src,
->> > loff_t pos_src,
->> >                 goto out_put_src_lock;
->> >         }
->> >
->> > -       dst_exception.inode =3D file_inode(dst);
->> >         dst_exception.state =3D dst_lock->open_context->state;
->> >
->> >         do {
->> >                 inode_lock(file_inode(dst));
->> > -               err =3D _nfs42_proc_copy(src, pos_src, src_lock,
->> > -                                      dst, pos_dst, dst_lock,
->> > count);
->> > +               err =3D _nfs42_proc_copy(src, src_lock,
->> > +                               dst, dst_lock,
->> > +                               &args, &res);
->> >                 inode_unlock(file_inode(dst));
->> >
->> >                 if (err =3D=3D -ENOTSUPP) {
->> > --
->> > 2.9.3
+On Fri, Feb 17, 2017 at 10:07 AM, Olga Kornievskaia <aglo@umich.edu> wrote:
+> On Fri, Feb 17, 2017 at 9:58 AM, Trond Myklebust
+> <trondmy@primarydata.com> wrote:
+>> On Fri, 2017-02-17 at 09:46 -0500, Olga Kornievskaia wrote:
+>>> On Thu, Feb 16, 2017 at 6:28 PM, Trond Myklebust
+>>> <trondmy@primarydata.com> wrote:
+>>> > On Thu, 2017-02-16 at 17:14 -0500, Olga Kornievskaia wrote:
+>>> > > On Thu, Feb 16, 2017 at 4:45 PM, Trond Myklebust
+>>> > > <trondmy@primarydata.com> wrote:
+>>> > > >
+>>> > > > Olga, all your test is doing is showing that we hit the race
+>>> > > > more
+>>> > > > often. Fair enough, I=E2=80=99ll ask Anna to revert the patch. Ho=
+wever
+>>> > > > reverting the patch won=E2=80=99t prevent the server from returni=
+ng
+>>> > > > NFS4ERR_BAD_STATEID in any cases where the calls to
+>>> > > > nfs4_set_rw_stateid() happen before state recovery. This is why
+>>> > > > we
+>>> > > > have the loop in nfs42_proc_copy().
+>>> > >
+>>> > > I thought that if retry of the operation waits for the recovery
+>>> > > to
+>>> > > complete then nfs4_set_rw_stateid() will choose the correct
+>>> > > stateid,
+>>> > > is that not correct?
+>>> > >
+>>> > > If that's not correct, then we somehow need to separate the case
+>>> > > when
+>>> > > BAD_STATEID should indeed mark the locks lost vs this case where
+>>> > > the
+>>> > > code erroneously used the bad stateid (oops) and it should really
+>>> > > ignore this error. This really doesn't sound very plausible to
+>>> > > accomplish.
+>>> >
+>>> > Does this patch fix the problem?
+>>> >
+>>> > 8<-------------------------------------------------------------
+>>> > From bbae95e8f97cad6a91ca8caa50b61cae789632f9 Mon Sep 17 00:00:00
+>>> > 2001
+>>> > From: Trond Myklebust <trond.myklebust@primarydata.com>
+>>> > Date: Thu, 16 Feb 2017 18:14:38 -0500
+>>> > Subject: [PATCH] NFSv4: Fix reboot recovery in copy offload
+>>> >
+>>> > Copy offload code needs to be hooked into the code for handling
+>>> > NFS4ERR_BAD_STATEID by ensuring that we set the "stateid" field
+>>> > in struct nfs4_exception.
+>>> >
+>>> > Reported-by: Olga Kornievskaia <aglo@umich.edu>
+>>> > Fixes: 2e72448b07dc3 ("NFS: Add COPY nfs operation")
+>>> > Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+>>> > ---
+>>> >  fs/nfs/nfs42proc.c | 57 +++++++++++++++++++++++++++++++-----------
+>>> > ------------
+>>> >  1 file changed, 33 insertions(+), 24 deletions(-)
+>>> >
+>>> > diff --git a/fs/nfs/nfs42proc.c b/fs/nfs/nfs42proc.c
+>>> > index d12ff9385f49..baf1fe2dc296 100644
+>>> > --- a/fs/nfs/nfs42proc.c
+>>> > +++ b/fs/nfs/nfs42proc.c
+>>> > @@ -128,20 +128,13 @@ int nfs42_proc_deallocate(struct file *filep,
+>>> > loff_t offset, loff_t len)
+>>> >         return err;
+>>> >  }
+>>> >
+>>> > -static ssize_t _nfs42_proc_copy(struct file *src, loff_t pos_src,
+>>> > +static ssize_t _nfs42_proc_copy(struct file *src,
+>>> >                                 struct nfs_lock_context *src_lock,
+>>> > -                               struct file *dst, loff_t pos_dst,
+>>> > +                               struct file *dst,
+>>> >                                 struct nfs_lock_context *dst_lock,
+>>> > -                               size_t count)
+>>> > +                               struct nfs42_copy_args *args,
+>>> > +                               struct nfs42_copy_res *res)
+>>> >  {
+>>> > -       struct nfs42_copy_args args =3D {
+>>> > -               .src_fh         =3D NFS_FH(file_inode(src)),
+>>> > -               .src_pos        =3D pos_src,
+>>> > -               .dst_fh         =3D NFS_FH(file_inode(dst)),
+>>> > -               .dst_pos        =3D pos_dst,
+>>> > -               .count          =3D count,
+>>> > -       };
+>>> > -       struct nfs42_copy_res res;
+>>> >         struct rpc_message msg =3D {
+>>> >                 .rpc_proc =3D &nfs4_procedures[NFSPROC4_CLNT_COPY],
+>>> >                 .rpc_argp =3D &args,
+>>> > @@ -149,9 +142,12 @@ static ssize_t _nfs42_proc_copy(struct file
+>>> > *src, loff_t pos_src,
+>>> >         };
+>>> >         struct inode *dst_inode =3D file_inode(dst);
+>>> >         struct nfs_server *server =3D NFS_SERVER(dst_inode);
+>>> > +       loff_t pos_src =3D args->src_pos;
+>>> > +       loff_t pos_dst =3D args->dst_pos;
+>>> > +       size_t count =3D args->count;
+>>> >         int status;
+>>> >
+>>> > -       status =3D nfs4_set_rw_stateid(&args.src_stateid, src_lock-
+>>> > >open_context,
+>>> > +       status =3D nfs4_set_rw_stateid(&args->src_stateid, src_lock-
+>>> > >open_context,
+>>> >                                      src_lock, FMODE_READ);
+>>> >         if (status)
+>>> >                 return status;
+>>> > @@ -161,7 +157,7 @@ static ssize_t _nfs42_proc_copy(struct file
+>>> > *src, loff_t pos_src,
+>>> >         if (status)
+>>> >                 return status;
+>>> >
+>>> > -       status =3D nfs4_set_rw_stateid(&args.dst_stateid, dst_lock-
+>>> > >open_context,
+>>> > +       status =3D nfs4_set_rw_stateid(&args->dst_stateid, dst_lock-
+>>> > >open_context,
+>>> >                                      dst_lock, FMODE_WRITE);
+>>> >         if (status)
+>>> >                 return status;
+>>> > @@ -171,22 +167,22 @@ static ssize_t _nfs42_proc_copy(struct file
+>>> > *src, loff_t pos_src,
+>>> >                 return status;
+>>> >
+>>> >         status =3D nfs4_call_sync(server->client, server, &msg,
+>>> > -                               &args.seq_args, &res.seq_res, 0);
+>>> > +                               &args->seq_args, &res->seq_res, 0);
+>>> >         if (status =3D=3D -ENOTSUPP)
+>>> >                 server->caps &=3D ~NFS_CAP_COPY;
+>>> >         if (status)
+>>> >                 return status;
+>>> >
+>>> > -       if (res.write_res.verifier.committed !=3D NFS_FILE_SYNC) {
+>>> > -               status =3D nfs_commit_file(dst,
+>>> > &res.write_res.verifier.verifier);
+>>> > +       if (res->write_res.verifier.committed !=3D NFS_FILE_SYNC) {
+>>> > +               status =3D nfs_commit_file(dst, &res-
+>>> > >write_res.verifier.verifier);
+>>> >                 if (status)
+>>> >                         return status;
+>>> >         }
+>>> >
+>>> >         truncate_pagecache_range(dst_inode, pos_dst,
+>>> > -                                pos_dst + res.write_res.count);
+>>> > +                                pos_dst + res->write_res.count);
+>>> >
+>>> > -       return res.write_res.count;
+>>> > +       return res->write_res.count;
+>>> >  }
+>>> >
+>>> >  ssize_t nfs42_proc_copy(struct file *src, loff_t pos_src,
+>>> > @@ -196,8 +192,22 @@ ssize_t nfs42_proc_copy(struct file *src,
+>>> > loff_t pos_src,
+>>> >         struct nfs_server *server =3D NFS_SERVER(file_inode(dst));
+>>> >         struct nfs_lock_context *src_lock;
+>>> >         struct nfs_lock_context *dst_lock;
+>>> > -       struct nfs4_exception src_exception =3D { };
+>>> > -       struct nfs4_exception dst_exception =3D { };
+>>> > +       struct nfs42_copy_args args =3D {
+>>> > +               .src_fh         =3D NFS_FH(file_inode(src)),
+>>> > +               .src_pos        =3D pos_src,
+>>> > +               .dst_fh         =3D NFS_FH(file_inode(dst)),
+>>> > +               .dst_pos        =3D pos_dst,
+>>> > +               .count          =3D count,
+>>> > +       };
+>>> > +       struct nfs42_copy_res res;
+>>> > +       struct nfs4_exception src_exception =3D {
+>>> > +               .inode          =3D file_inode(src),
+>>> > +               .stateid        =3D &args.src_stateid,
+>>> > +       };
+>>> > +       struct nfs4_exception dst_exception =3D {
+>>> > +               .inode          =3D file_inode(dst),
+>>> > +               .stateid        =3D &args.dst_stateid,
+>>> > +       };
+>>> >         ssize_t err, err2;
+>>> >
+>>> >         if (!nfs_server_capable(file_inode(dst), NFS_CAP_COPY))
+>>> > @@ -207,7 +217,6 @@ ssize_t nfs42_proc_copy(struct file *src,
+>>> > loff_t pos_src,
+>>> >         if (IS_ERR(src_lock))
+>>> >                 return PTR_ERR(src_lock);
+>>> >
+>>> > -       src_exception.inode =3D file_inode(src);
+>>> >         src_exception.state =3D src_lock->open_context->state;
+>>> >
+>>> >         dst_lock =3D
+>>> > nfs_get_lock_context(nfs_file_open_context(dst));
+>>> > @@ -216,13 +225,13 @@ ssize_t nfs42_proc_copy(struct file *src,
+>>> > loff_t pos_src,
+>>> >                 goto out_put_src_lock;
+>>> >         }
+>>> >
+>>> > -       dst_exception.inode =3D file_inode(dst);
+>>> >         dst_exception.state =3D dst_lock->open_context->state;
+>>> >
+>>> >         do {
+>>> >                 inode_lock(file_inode(dst));
+>>> > -               err =3D _nfs42_proc_copy(src, pos_src, src_lock,
+>>> > -                                      dst, pos_dst, dst_lock,
+>>> > count);
+>>> > +               err =3D _nfs42_proc_copy(src, src_lock,
+>>> > +                               dst, dst_lock,
+>>> > +                               &args, &res);
+>>> >                 inode_unlock(file_inode(dst));
+>>> >
+>>> >                 if (err =3D=3D -ENOTSUPP) {
+>>> > --
+>>> > 2.9.3
+>>>
+>>> I wish it did but no it does not.
+>>>
 >>
->> I wish it did but no it does not.
+>> So what is still happening? With this patch, the error handler should
+>> be able to distinguish between a stateid that is up to date and one
+>> that isn't.
 >>
+>> There might, however, still be a problem because we have 2 stateids,
+>> meaning that one could be stale (and generating NFS4ERR_BAD_STATEID)
+>> and the other one not. We might have to special case that, and do the
+>> comparisons inside nfs42_proc_copy instead of using the generic code in
+>> nfs4_handle_exception().
 >
-> So what is still happening? With this patch, the error handler should
-> be able to distinguish between a stateid that is up to date and one
-> that isn't.
->
-> There might, however, still be a problem because we have 2 stateids,
-> meaning that one could be stale (and generating NFS4ERR_BAD_STATEID)
-> and the other one not. We might have to special case that, and do the
-> comparisons inside nfs42_proc_copy instead of using the generic code in
-> nfs4_handle_exception().
+> After COPY gets the BAD_STATEID (on the old stateids), I see 4
+> TEST_STATEIDs sent with 3 distinct stateids which are the new open
+> stateid for the src file, the locking stateid for the source file and
+> the new old stateid for the destination file. All of which are ok.
 
-After COPY gets the BAD_STATEID (on the old stateids), I see 4
-TEST_STATEIDs sent with 3 distinct stateids which are the new open
-stateid for the src file, the locking stateid for the source file and
-the new old stateid for the destination file. All of which are ok.
+Urgh. sorry please wait. Last time I booted into the wrong kernel. You
+patch currently oops. I need to fix that first. There is HOPE now it
+works.
