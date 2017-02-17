@@ -1,44 +1,44 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:36432 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:42680 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S934507AbdBQShz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        id S934654AbdBQShz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
         Fri, 17 Feb 2017 13:37:55 -0500
 From: Benjamin Coddington <bcodding@redhat.com>
 To: Trond Myklebust <trond.myklebust@primarydata.com>,
         Anna Schumaker <anna.schumaker@netapp.com>
 Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH 1/4] NFS4: remove a redundant lock range check
-Date: Fri, 17 Feb 2017 13:37:49 -0500
-Message-Id: <f0ca2bd4e703b90cf589a3dc8e7fde252f44b4cd.1487355802.git.bcodding@redhat.com>
-In-Reply-To: <cover.1487355802.git.bcodding@redhat.com>
-References: <cover.1487355802.git.bcodding@redhat.com>
-In-Reply-To: <cover.1487355802.git.bcodding@redhat.com>
-References: <cover.1487355802.git.bcodding@redhat.com>
+Subject: [PATCH 0/4] Skipped unlocks
+Date: Fri, 17 Feb 2017 13:37:48 -0500
+Message-Id: <cover.1487355802.git.bcodding@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-flock64_to_posix_lock() is already doing this check
+Well over a year ago I made other attempts to fix the problem of NFS failing
+to send an unlock when signalled.  Those attempts were terrible.
 
-Signed-off-by: Benjamin Coddington <bcodding@redhat.com>
-Reviewed-by: Jeff Layton <jeff.layton@primarydata.com>
----
- fs/nfs/nfs4proc.c | 3 ---
- 1 file changed, 3 deletions(-)
+Here's another, smaller version that keeps two simple fixes and splits out
+the behavior for waiting on I/O completion to be different for the v3 and v4
+case.  For v4, we can easily ensure the unlock is always sent by having the
+rpc_task perform the wait.  For v3, that approach would require significant
+changes to the way NLM works, so a simpler approach of skipping the wait is
+used as was suggested by Trond.
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 0a0eaecf9676..9388899e4050 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -6570,9 +6570,6 @@ nfs4_proc_lock(struct file *filp, int cmd, struct file_lock *request)
- 	ctx = nfs_file_open_context(filp);
- 	state = ctx->state;
- 
--	if (request->fl_start < 0 || request->fl_end < 0)
--		return -EINVAL;
--
- 	if (IS_GETLK(cmd)) {
- 		if (state != NULL)
- 			return nfs4_proc_getlk(state, F_GETLK, request);
+I think this is probably a little late for 4.11.  Comments and review are
+welcomed.
+
+Benjamin Coddington (4):
+  NFS4: remove a redundant lock range check
+  NFS: Move the flock open mode check into nfs_flock()
+  locks: Set FL_CLOSE when removing flock locks on close()
+  NFS: Always wait for I/O completion before unlock
+
+ fs/locks.c        |  2 +-
+ fs/nfs/file.c     | 33 +++++++++++++++++----------------
+ fs/nfs/nfs3proc.c | 13 +++++++++++++
+ fs/nfs/nfs4proc.c | 24 +++++++-----------------
+ fs/nfs/pagelist.c |  1 +
+ 5 files changed, 39 insertions(+), 34 deletions(-)
+
 -- 
 2.9.3
 
