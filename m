@@ -1,15 +1,15 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:34820 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:34020 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S934849AbdBQSqV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        id S934925AbdBQSqV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
         Fri, 17 Feb 2017 13:46:21 -0500
 From: Benjamin Coddington <bcodding@redhat.com>
 To: Trond Myklebust <trond.myklebust@primarydata.com>,
         Anna Schumaker <anna.schumaker@netapp.com>
 Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH 2/4] NFS: Move the flock open mode check into nfs_flock()
-Date: Fri, 17 Feb 2017 13:46:18 -0500
-Message-Id: <99687cf6fbc2c9fc050bb79922f6ce7a5e81150c.1487356965.git.bcodding@redhat.com>
+Subject: [PATCH 4/4] NFS: Always wait for I/O completion before unlock
+Date: Fri, 17 Feb 2017 13:46:20 -0500
+Message-Id: <d81a853ea1ee4ba1294c85bbed7aa7298852b180.1487356965.git.bcodding@redhat.com>
 In-Reply-To: <cover.1487356965.git.bcodding@redhat.com>
 References: <cover.1487356965.git.bcodding@redhat.com>
 In-Reply-To: <cover.1487356965.git.bcodding@redhat.com>
@@ -17,72 +17,134 @@ References: <cover.1487356965.git.bcodding@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-We only need to check lock exclusive/shared types against open mode when
-flock() is used on NFS, so move it into the flock-specific path instead of
-checking it for all locks.
+NFS attempts to wait for read and write completion before unlocking in
+order to ensure that the data returned was protected by the lock.  When
+this waiting is interrupted by a signal, the unlock may never be sent, and
+messages similar to the following are seen in the kernel ring buffer:
+
+[20.167876] Leaked locks on dev=0x0:0x2b ino=0x8dd4c3:
+[20.168286] POSIX: fl_owner=ffff880078b06940 fl_flags=0x1 fl_type=0x0 fl_pid=20183
+[20.168727] POSIX: fl_owner=ffff880078b06680 fl_flags=0x1 fl_type=0x0 fl_pid=20185
+
+For NFSv3, the missing unlock will cause the server to refuse conflicting
+locks indefinitely.  For NFSv4, the leftover lock will be removed by the
+server after the lease timeout.
+
+This patch fixes this for NFSv3 by skipping the wait in order to
+immediately send the unlock if the FL_CLOSE flag is set when signaled.  For
+NFSv4, this approach may cause the server to see the I/O as arriving with
+an old stateid, so, for the v4 case the fix is different: the wait on I/O
+completion is moved into nfs4_locku_ops' rpc_call_prepare().  This will
+cause the sleep to happen in rpciod context, and a signal to the originally
+waiting process will not cause the unlock to be skipped.
 
 Signed-off-by: Benjamin Coddington <bcodding@redhat.com>
-Reviewed-by: Christoph Hellwig <hch@lst.de>
 ---
- fs/nfs/file.c     | 18 ++++++++++++++++--
- fs/nfs/nfs4proc.c | 14 --------------
- 2 files changed, 16 insertions(+), 16 deletions(-)
+ fs/nfs/file.c     | 13 -------------
+ fs/nfs/nfs3proc.c | 13 +++++++++++++
+ fs/nfs/nfs4proc.c |  7 +++++++
+ fs/nfs/pagelist.c |  1 +
+ 4 files changed, 21 insertions(+), 13 deletions(-)
 
 diff --git a/fs/nfs/file.c b/fs/nfs/file.c
-index 26dbe8b0c10d..a490f45df4db 100644
+index a490f45df4db..adc67fe762e3 100644
 --- a/fs/nfs/file.c
 +++ b/fs/nfs/file.c
-@@ -820,9 +820,23 @@ int nfs_flock(struct file *filp, int cmd, struct file_lock *fl)
- 	if (NFS_SERVER(inode)->flags & NFS_MOUNT_LOCAL_FLOCK)
- 		is_local = 1;
+@@ -684,7 +684,6 @@ static int
+ do_unlk(struct file *filp, int cmd, struct file_lock *fl, int is_local)
+ {
+ 	struct inode *inode = filp->f_mapping->host;
+-	struct nfs_lock_context *l_ctx;
+ 	int status;
  
--	/* We're simulating flock() locks using posix locks on the server */
--	if (fl->fl_type == F_UNLCK)
-+	/*
-+	 * VFS doesn't require the open mode to match a flock() lock's type.
-+	 * NFS, however, may simulate flock() locking with posix locking which
-+	 * requires the open mode to match the lock type.
-+	 */
-+	switch (fl->fl_type) {
-+	case F_UNLCK:
- 		return do_unlk(filp, cmd, fl, is_local);
-+	case F_RDLCK:
-+		if (!(filp->f_mode & FMODE_READ))
-+			return -EBADF;
-+		break;
-+	case F_WRLCK:
-+		if (!(filp->f_mode & FMODE_WRITE))
-+			return -EBADF;
-+	}
-+
- 	return do_setlk(filp, cmd, fl, is_local);
- }
- EXPORT_SYMBOL_GPL(nfs_flock);
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 9388899e4050..91f88bfbbe79 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -6592,20 +6592,6 @@ nfs4_proc_lock(struct file *filp, int cmd, struct file_lock *request)
- 	    !test_bit(NFS_STATE_POSIX_LOCKS, &state->flags))
- 		return -ENOLCK;
+ 	/*
+@@ -693,18 +692,6 @@ do_unlk(struct file *filp, int cmd, struct file_lock *fl, int is_local)
+ 	 */
+ 	vfs_fsync(filp, 0);
  
--	/*
--	 * Don't rely on the VFS having checked the file open mode,
--	 * since it won't do this for flock() locks.
--	 */
--	switch (request->fl_type) {
--	case F_RDLCK:
--		if (!(filp->f_mode & FMODE_READ))
--			return -EBADF;
--		break;
--	case F_WRLCK:
--		if (!(filp->f_mode & FMODE_WRITE))
--			return -EBADF;
+-	l_ctx = nfs_get_lock_context(nfs_file_open_context(filp));
+-	if (!IS_ERR(l_ctx)) {
+-		status = nfs_iocounter_wait(l_ctx);
+-		nfs_put_lock_context(l_ctx);
+-		if (status < 0)
+-			return status;
 -	}
 -
- 	status = nfs4_set_lock_state(state, request);
- 	if (status != 0)
- 		return status;
+-	/* NOTE: special case
+-	 * 	If we're signalled while cleaning up locks on process exit, we
+-	 * 	still need to complete the unlock.
+-	 */
+ 	/*
+ 	 * Use local locking if mounted with "-onolock" or with appropriate
+ 	 * "-olocal_lock="
+diff --git a/fs/nfs/nfs3proc.c b/fs/nfs/nfs3proc.c
+index dc925b531f32..ec3f12571c82 100644
+--- a/fs/nfs/nfs3proc.c
++++ b/fs/nfs/nfs3proc.c
+@@ -869,6 +869,19 @@ static int
+ nfs3_proc_lock(struct file *filp, int cmd, struct file_lock *fl)
+ {
+ 	struct inode *inode = file_inode(filp);
++	int status;
++	struct nfs_lock_context *l_ctx;
++
++	/* For v3, always send the unlock on FL_CLOSE */
++	if (fl->fl_type == F_UNLCK) {
++		l_ctx = nfs_get_lock_context(nfs_file_open_context(filp));
++		if (!IS_ERR(l_ctx)) {
++			status = nfs_iocounter_wait(l_ctx);
++			nfs_put_lock_context(l_ctx);
++			if (status < 0 && !(fl->fl_flags & FL_CLOSE))
++				return status;
++		}
++	}
+ 
+ 	return nlmclnt_proc(NFS_SERVER(inode)->nlm_host, cmd, fl);
+ }
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 91f88bfbbe79..052b97fd653d 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -5906,6 +5906,7 @@ struct nfs4_unlockdata {
+ 	struct nfs_locku_res res;
+ 	struct nfs4_lock_state *lsp;
+ 	struct nfs_open_context *ctx;
++	struct nfs_lock_context *l_ctx;
+ 	struct file_lock fl;
+ 	struct nfs_server *server;
+ 	unsigned long timestamp;
+@@ -5930,6 +5931,7 @@ static struct nfs4_unlockdata *nfs4_alloc_unlockdata(struct file_lock *fl,
+ 	atomic_inc(&lsp->ls_count);
+ 	/* Ensure we don't close file until we're done freeing locks! */
+ 	p->ctx = get_nfs_open_context(ctx);
++	p->l_ctx = nfs_get_lock_context(ctx);
+ 	memcpy(&p->fl, fl, sizeof(p->fl));
+ 	p->server = NFS_SERVER(inode);
+ 	return p;
+@@ -5988,6 +5990,11 @@ static void nfs4_locku_prepare(struct rpc_task *task, void *data)
+ 		/* Note: exit _without_ running nfs4_locku_done */
+ 		goto out_no_action;
+ 	}
++
++	if (!IS_ERR(calldata->l_ctx)) {
++		nfs_iocounter_wait(calldata->l_ctx);
++		nfs_put_lock_context(calldata->l_ctx);
++	}
+ 	calldata->timestamp = jiffies;
+ 	if (nfs4_setup_sequence(calldata->server,
+ 				&calldata->arg.seq_args,
+diff --git a/fs/nfs/pagelist.c b/fs/nfs/pagelist.c
+index 6e629b856a00..8bf3cefdaa96 100644
+--- a/fs/nfs/pagelist.c
++++ b/fs/nfs/pagelist.c
+@@ -114,6 +114,7 @@ nfs_iocounter_wait(struct nfs_lock_context *l_ctx)
+ 	return wait_on_atomic_t(&l_ctx->io_count, nfs_wait_atomic_killable,
+ 			TASK_KILLABLE);
+ }
++EXPORT_SYMBOL(nfs_iocounter_wait);
+ 
+ /*
+  * nfs_page_group_lock - lock the head of the page group
 -- 
 2.9.3
 
