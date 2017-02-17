@@ -1,90 +1,214 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:33632 "EHLO fieldses.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S934271AbdBQVWA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 17 Feb 2017 16:22:00 -0500
-Date: Fri, 17 Feb 2017 16:21:53 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Olga Kornievskaia <aglo@umich.edu>
-Cc: "Mora, Jorge" <Jorge.Mora@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: Question about NFSv4.2 server-side copy implementation
-Message-ID: <20170217212153.GM10894@fieldses.org>
-References: <BLUPR06MB54767D9B4746E210D176C3AE1580@BLUPR06MB547.namprd06.prod.outlook.com>
- <20170217200253.GI10894@fieldses.org>
- <CAN-5tyGF8z=k6hk+Xbnh+_mWAiW_ywNnYR01YiOBVBRFzcyXUw@mail.gmail.com>
-MIME-Version: 1.0
+Received: from aserp1040.oracle.com ([141.146.126.69]:47827 "EHLO
+        aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S934962AbdBQVVu (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 17 Feb 2017 16:21:50 -0500
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <CAN-5tyGF8z=k6hk+Xbnh+_mWAiW_ywNnYR01YiOBVBRFzcyXUw@mail.gmail.com>
+Mime-Version: 1.0 (Mac OS X Mail 9.3 \(3124\))
+Subject: Re: [PATCH 0/3] getacl fixes
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <20170217205245.GA18901@parsley.fieldses.org>
+Date: Fri, 17 Feb 2017 16:21:36 -0500
+Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
+        Anna Schumaker <schumakeranna@gmail.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        Andreas Gruenbacher <agruenba@redhat.com>,
+        Dros Adamson <dros@primarydata.com>
+Message-Id: <42C50E3B-225A-4416-9693-388F6390EB42@oracle.com>
+References: <1487349854-9732-1-git-send-email-bfields@redhat.com> <EA115AB5-7508-45F7-9CFC-3388A55F36BD@oracle.com> <20170217205245.GA18901@parsley.fieldses.org>
+To: "J. Bruce Fields" <bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Feb 17, 2017 at 04:10:45PM -0500, Olga Kornievskaia wrote:
-> On Fri, Feb 17, 2017 at 3:02 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
-> > On Tue, Feb 14, 2017 at 08:07:48PM +0000, Mora, Jorge wrote:
-> >> I can understand failing with NFS4ERR_INVAL when the source offset is beyond the end of the file,
-> >> but do you think failing with NFS4ERR_INVAL is too strict when the source offset plus the count is beyond the end of the file?
-> >> What is the rationalization for failing on this specific instance?
-> >> Why not return a short copy instead?
-> >> Can the COPY return a count less than what it requested (a short copy)?
-> >>
-> >> As of right now, the implementation on the Linux server adheres to the spec
-> >
-> > That's weird, do you have network traces showing that, or is it possible
-> > the EINVAL is happening on the client side?
-> >
-> > From a quick look at the server code I can't see where it would be
-> > generating that EINVAL, but I haven't tested this case and I could be
-> > overlooking something....
-> >
+
+> On Feb 17, 2017, at 3:52 PM, J. Bruce Fields <bfields@redhat.com> wrote:
 > 
-> I think the current upstream COPY does not fail with EINVAL. The new
-> code that Jorge was testing does adhere to the spec and fails with
-> EINVAL.
+> On Fri, Feb 17, 2017 at 03:36:38PM -0500, Chuck Lever wrote:
+>> 
+>>> On Feb 17, 2017, at 11:44 AM, J. Bruce Fields <bfields@redhat.com> wrote:
+>>> 
+>>> From: "J. Bruce Fields" <bfields@redhat.com>
+>>> 
+>>> The getacl code is allocating enough space to handle the ACL data but
+>>> not to handle the bitmask, which can lead to spurious ERANGE errors when
+>>> the end of the ACL gets close to a page boundary.
+>>> 
+>>> Dros addressed this by letting the rpc layer allocate pages as necessary
+>>> on demand, as the NFSv3 ACL code does.
+>>> 
+>>> On its own that didn't do the job either, because we don't handle the
+>>> case where xdr_shrink_bufhead needs to move data around in the xdr buf.
+>>> And xdr_shrink_bufhead was getting called every time due to an incorrect
+>>> estimate in an xdr_inline_pages call.
+>>> 
+>>> So, I fixed that estimate.  That still leaves the chance of a bug in the
+>>> rare case xdr_shrink_bufhead is called.
+>>> 
+>>> We could fix up the handling of the xdr_shrink_bufhead case, but I don't
+>>> see the point of shifting this data around in the first place.  We're
+>>> not doing anything like zero-copy here, we're just going to copy the
+>>> data out into the buffer we were passed.  The NFSv3 ACL code doesn't
+>>> bother with this.
+>>> 
+>>> It's simpler just to pass down the buffer to the xdr layer and let it
+>>> copy the ACL out.
+>> 
+>> I haven't looked closely at these yet, but I have some general
+>> thoughts (worth approximately 2 cents).
+>> 
+>> NFS/RDMA clients have to pre-allocate and register a receive buffer
+>> for requests with large replies. The client's RPC layer can't allocate
+>> more memory if the reply overruns the existing buffer.
+>> 
+>> (Note that the server doesn't have the same problem: the client
+>> sends an RPC-over-RDMA message telling the server exactly how large
+>> the RPC Call message is, and the server prepares RDMA Read operations
+>> to pull it over.)
+>> 
+>> ACLs are particularly troublesome because there doesn't seem to be
+>> a way for a client to ask a server "how big is this ACL?" before it
+>> actually asks for the ACL. And at least for NFSACL there does
+>> not seem to be a protocol-defined size limit for these objects.
 > 
-> Bruce, it looks to me that current upstream CLONE in this situation
-> will return EINVAL (I see that on the network trace since the client
-> will first try to do CLONE and if it can't it'll do COPY).
+> I think in practice the OS/filesystem limits end up being the limiting
+> factor.  V4.0 might be the more annoying case, partly thanks to all
+> those string names.
 
-OK, I see, in fs/read_write.c:vfs_clone_file_range(),
-
-	if (pos_in + len > i_size_read(inode_in))
-		return -EINVAL;
-
-And since a copy can be implemented under the covers as a clone, we can
-hit that case in copy too.
-
-(Though vfs_copy_file_range calls ->clone_file_range directly instead of
-calling vfs_clone_file_range, so it's up to individual filesystems
-whether they EINVAL in that case--the one I checked (btrfs) did, and I
-think it makes sense for clone as it's an all-or-nothing operation.)
-
-So maybe we have to allow this EINVAL behavior on copy, but it still
-looks wrong to me to require it.
-
---b.
+Agree, though there is no sure-fire way for either
+side to know what the other peer's limits might be,
+unlike, say, SYMLINK.
 
 
+>> If the server can't fit an ACL into the client-provided reply buffer,
+>> that causes a transport level error. The blast radius of this failure
+>> includes any RPC that happens to be running on that connection, which
+>> will have to be retransmitted.
+>> 
+>> If the client has sent a COMPOUND with a non-idempotent request in
+>> the same COMPOUND with a GETATTR requesting the ACL, there could
+>> be a problem if the server can't return the RPC because the client's
+>> receive buffer is too small. The solution there is to always send
+>> such operations in separate COMPOUNDs.
+>> 
+>> So I prefer in general that the NFS client (above RPC) provide as
+>> large a buffer as practical for NFSACL GETACL and NFSv4 GETATTR
+>> requesting an ACL. IIUC that is the direction your patches are
+>> going.
 > 
-> But we are trying to get some consistency in errors.
+> No, the net effect is to make the v4 code like the v3 code and allocate
+> pages for the reply only on demand.  (I understand the confusion,
+> there's multiple buffers involved here, and my description could
+> probably be better.)
+
+There is a similar hack in xprtrdma's marshaling code
+that allocates reply pages while constructing the RPC
+Call if the upper layer hasn't provided them.
+
+It would be great if instead, retrieving an ACL worked
+like other NFS operations.
+
+
+> Ugh.
 > 
+> Does the RDMA protocol give us any other mechanism we can use for the
+> case of ACL replies?
+
+The current RPC-over-RDMA Version One transport provides
+two options:
+
+If the RPC Reply is guaranteed to be smaller than the
+inline threshold (the size of what can be sent with RDMA
+Send/Receive, which can be as small as 1KB), then RDMA
+Send with pre-allocated reusable buffers is used to send
+the reply. This works fine as long as the expected
+Reply message will be small.
+
+If the RPC Reply could be larger than the inline threshold,
+the client has to provide a Reply chunk, which is a region
+of client memory that is registered so that the server can
+use RDMA Writes to return the reply.
+
+If that region is too small, the server is supposed to
+return a transport-specific error instead of the RPC
+Reply.
+
+(There is a third mechanism but it is forbidden for
+everything but NFS READ/WRITE, and it would have the
+same problem because the client has to know the size
+of the Reply in advance).
+
+For NFSACL GETACL, for example, the client doesn't know
+how large the RPC Reply message might be. So it will always
+register a Reply chunk for GETACL requests, and it risks
+underestimating the size of this region (though I've never
+seen it actually get overrun, since real world ACLs tend to
+be small).
+
+
+> It probably wouldn't be so terrible to preallocate the maximum number of
+> pages possible if that's really the only option.  May as well get rid of
+> the allocations in xdr_partial_copy_from_skb if we do that, as I don't
+> think there are other users?
+
+I can't think of any other use cases which rely on this
+mechanism.
+
+That mechanism is unreliable, isn't it? It can fail
+because it cannot use GFP_KERNEL allocation while
+receiving a reply, or am I misinformed. That makes
+either of the current implementation choices less
+preferable than having the NFS client always allocate
+a large buffer while still in process context, AFAICS.
+
+
+> --b.
 > 
-> > --b.
-> >
-> >> but copy_file_range succeeds
-> >>
-> >> when it is called against the local file system, NFSv4.x or NFSv3.
-> >> For the local file system, NFSv4.x or NFSv3 copy_file_range falls back to regular copy by
-> >> reading from the source file and then writing to the destination file but I do believe the
-> >> syscall should be consistent regardless of the underlying file system.
-> >>
-> >>
-> >> --Jorge
-> >> --
-> >> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> >> the body of a message to majordomo@vger.kernel.org
-> >> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> > --
-> > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> > the body of a message to majordomo@vger.kernel.org
-> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>> 
+>> We likely have a similar conundrum with security labels.
+>> 
+>> 
+>>> The result looks a lot simpler and more obviously correct than this code
+>>> has been, though I'm not particularly happy with the sequence of patches
+>>> that gets us there; it would be better to squash together Dros's and my
+>>> patch and then split out the result some more sensible way.
+>>> 
+>>> Sorry for the delay getting back to this.  Older discussions:
+>>> 
+>>> 	https://marc.info/?t=138452791200001&r=1&w=2
+>>> 	http://marc.info/?t=138506891000003&r=1&w=2
+>>> 
+>>> J. Bruce Fields (2):
+>>> nfsd4: fix getacl head length estimation
+>>> nfsd4: simplify getacl decoding
+>>> 
+>>> Weston Andros Adamson (1):
+>>> NFSv4: fix getacl ERANGE for some ACL buffer sizes
+>>> 
+>>> fs/nfs/nfs4proc.c       | 116 +++++++++++++++++++++++-------------------------
+>>> fs/nfs/nfs4xdr.c        |  29 +++---------
+>>> include/linux/nfs_xdr.h |   4 +-
+>>> 3 files changed, 64 insertions(+), 85 deletions(-)
+>>> 
+>>> -- 
+>>> 2.9.3
+>>> 
+>>> --
+>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>>> the body of a message to majordomo@vger.kernel.org
+>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>> 
+>> --
+>> Chuck Lever
+>> 
+>> 
+>> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+--
+Chuck Lever
+
+
+
