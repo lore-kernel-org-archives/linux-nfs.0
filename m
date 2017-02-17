@@ -1,29 +1,34 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:33456 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:27850 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S934982AbdBQUCz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 17 Feb 2017 15:02:55 -0500
-Date: Fri, 17 Feb 2017 15:02:53 -0500
-To: "Mora, Jorge" <Jorge.Mora@netapp.com>
-Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: Question about NFSv4.2 server-side copy implementation
-Message-ID: <20170217200253.GI10894@fieldses.org>
-References: <BLUPR06MB54767D9B4746E210D176C3AE1580@BLUPR06MB547.namprd06.prod.outlook.com>
+        id S932303AbdBQUK4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 17 Feb 2017 15:10:56 -0500
+From: "Benjamin Coddington" <bcodding@redhat.com>
+To: "Trond Myklebust" <trondmy@primarydata.com>
+Cc: "anna.schumaker@netapp.com" <anna.schumaker@netapp.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 4/4] NFS: Always wait for I/O completion before unlock
+Date: Fri, 17 Feb 2017 15:10:53 -0500
+Message-ID: <7C3CA5DE-D19A-498C-950F-1413C30DE338@redhat.com>
+In-Reply-To: <1487359849.23558.1.camel@primarydata.com>
+References: <cover.1487356965.git.bcodding@redhat.com>
+ <d81a853ea1ee4ba1294c85bbed7aa7298852b180.1487356965.git.bcodding@redhat.com>
+ <1487358041.11929.7.camel@primarydata.com>
+ <46DADA84-BE1F-43A6-8196-2A097435829A@redhat.com>
+ <1487359849.23558.1.camel@primarydata.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <BLUPR06MB54767D9B4746E210D176C3AE1580@BLUPR06MB547.namprd06.prod.outlook.com>
-From: bfields@fieldses.org (J. Bruce Fields)
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Feb 14, 2017 at 08:07:48PM +0000, Mora, Jorge wrote:
-> I can understand failing with NFS4ERR_INVAL when the source offset is beyond the end of the file,
-> but do you think failing with NFS4ERR_INVAL is too strict when the source offset plus the count is beyond the end of the file?
-> What is the rationalization for failing on this specific instance?
-> Why not return a short copy instead?
-> Can the COPY return a count less than what it requested (a short copy)?
->  
-> As of right now, the implementation on the Linux server adheres to the spec
+On 17 Feb 2017, at 14:30, Trond Myklebust wrote:
+> On Fri, 2017-02-17 at 14:15 -0500, Benjamin Coddington wrote:
+>> To avoid an unnecessary recovery situation where the server asks us to
+>> resend I/O due to an invalid stateid.
+>
+> I agree we shouldn't recover in this situation. It would be better to
+> jettison the failed write, and invalidate the page. Can we make use of
+> nfs_wb_page_cancel() together with generic_error_remove_page()?
 
-That's weird, do you have network traces showing that, or is it possible
-the EINVAL is happening on the client side?
+I'll take a look..
+
+Ben
