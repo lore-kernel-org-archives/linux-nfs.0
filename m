@@ -1,217 +1,249 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from us-smtp-delivery-194.mimecast.com ([216.205.24.194]:24838 "EHLO
-        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S933885AbdBQO6N (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 17 Feb 2017 09:58:13 -0500
-From: Trond Myklebust <trondmy@primarydata.com>
-To: "aglo@umich.edu" <aglo@umich.edu>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 1/2] NFSv4.1: Handle
- NFS4ERR_BADSESSION/NFS4ERR_DEADSESSION replies to OP_SEQUENCE
-Date: Fri, 17 Feb 2017 14:58:07 +0000
-Message-ID: <1487343483.11929.1.camel@primarydata.com>
-References: <20161205004023.40957-1-trond.myklebust@primarydata.com>
-         <CAN-5tyGN4AT70mrVKoW652hQmbDocG7_c2haDC=PKpixQsUDJg@mail.gmail.com>
-         <1487191695.7993.2.camel@primarydata.com>
-         <CAN-5tyGep3yHXNjMX9QKCS8E2w+HkVw_LoF=pOwgbgcgUNeDyQ@mail.gmail.com>
-         <1487197395.7993.4.camel@primarydata.com>
-         <CAN-5tyHHUoy5sVUHO=PXz3iRPD6eEP0t+L8VrWVpuvSd_YzhAA@mail.gmail.com>
-         <CAN-5tyFZO4dKG93A71mO37VdHJymMt0f61oLkxMHvRDPEvSa2g@mail.gmail.com>
-         <CAN-5tyGb6Gh=k0r1M4UmpM+6fB9nMzi3OGmB_trbSjbCdJjqrQ@mail.gmail.com>
-         <D28A97BA-F86E-40D3-A0E3-BB8479136ED9@primarydata.com>
-         <CAN-5tyHe-+PiOnx8U9u-3FPVVAYf9AbbcZUDM6BW+V6930tHtA@mail.gmail.com>
-         <1487287688.122266.2.camel@primarydata.com>
-         <CAN-5tyGZb9=oWGLN_ZoNDHd5X5a1DQb2oJVw+9cH66Osmk9_dQ@mail.gmail.com>
-In-Reply-To: <CAN-5tyGZb9=oWGLN_ZoNDHd5X5a1DQb2oJVw+9cH66Osmk9_dQ@mail.gmail.com>
+Received: from mail-oi0-f67.google.com ([209.85.218.67]:36126 "EHLO
+        mail-oi0-f67.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S934176AbdBQPH6 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 17 Feb 2017 10:07:58 -0500
+Received: by mail-oi0-f67.google.com with SMTP id u143so175851oif.3
+        for <linux-nfs@vger.kernel.org>; Fri, 17 Feb 2017 07:07:58 -0800 (PST)
 MIME-Version: 1.0
+In-Reply-To: <1487343483.11929.1.camel@primarydata.com>
+References: <20161205004023.40957-1-trond.myklebust@primarydata.com>
+ <CAN-5tyGN4AT70mrVKoW652hQmbDocG7_c2haDC=PKpixQsUDJg@mail.gmail.com>
+ <1487191695.7993.2.camel@primarydata.com> <CAN-5tyGep3yHXNjMX9QKCS8E2w+HkVw_LoF=pOwgbgcgUNeDyQ@mail.gmail.com>
+ <1487197395.7993.4.camel@primarydata.com> <CAN-5tyHHUoy5sVUHO=PXz3iRPD6eEP0t+L8VrWVpuvSd_YzhAA@mail.gmail.com>
+ <CAN-5tyFZO4dKG93A71mO37VdHJymMt0f61oLkxMHvRDPEvSa2g@mail.gmail.com>
+ <CAN-5tyGb6Gh=k0r1M4UmpM+6fB9nMzi3OGmB_trbSjbCdJjqrQ@mail.gmail.com>
+ <D28A97BA-F86E-40D3-A0E3-BB8479136ED9@primarydata.com> <CAN-5tyHe-+PiOnx8U9u-3FPVVAYf9AbbcZUDM6BW+V6930tHtA@mail.gmail.com>
+ <1487287688.122266.2.camel@primarydata.com> <CAN-5tyGZb9=oWGLN_ZoNDHd5X5a1DQb2oJVw+9cH66Osmk9_dQ@mail.gmail.com>
+ <1487343483.11929.1.camel@primarydata.com>
+From: Olga Kornievskaia <aglo@umich.edu>
+Date: Fri, 17 Feb 2017 10:07:57 -0500
+Message-ID: <CAN-5tyHDjwR2g+R-96WcU1t=CSwzzU1Zds1ds5GyTnX46BvyWA@mail.gmail.com>
+Subject: Re: [PATCH 1/2] NFSv4.1: Handle NFS4ERR_BADSESSION/NFS4ERR_DEADSESSION
+ replies to OP_SEQUENCE
+To: Trond Myklebust <trondmy@primarydata.com>
+Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
 Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gRnJpLCAyMDE3LTAyLTE3IGF0IDA5OjQ2IC0wNTAwLCBPbGdhIEtvcm5pZXZza2FpYSB3cm90
-ZToNCj4gT24gVGh1LCBGZWIgMTYsIDIwMTcgYXQgNjoyOCBQTSwgVHJvbmQgTXlrbGVidXN0DQo+
-IDx0cm9uZG15QHByaW1hcnlkYXRhLmNvbT4gd3JvdGU6DQo+ID4gT24gVGh1LCAyMDE3LTAyLTE2
-IGF0IDE3OjE0IC0wNTAwLCBPbGdhIEtvcm5pZXZza2FpYSB3cm90ZToNCj4gPiA+IE9uIFRodSwg
-RmViIDE2LCAyMDE3IGF0IDQ6NDUgUE0sIFRyb25kIE15a2xlYnVzdA0KPiA+ID4gPHRyb25kbXlA
-cHJpbWFyeWRhdGEuY29tPiB3cm90ZToNCj4gPiA+ID4gDQo+ID4gPiA+IE9sZ2EsIGFsbCB5b3Vy
-IHRlc3QgaXMgZG9pbmcgaXMgc2hvd2luZyB0aGF0IHdlIGhpdCB0aGUgcmFjZQ0KPiA+ID4gPiBt
-b3JlDQo+ID4gPiA+IG9mdGVuLiBGYWlyIGVub3VnaCwgSeKAmWxsIGFzayBBbm5hIHRvIHJldmVy
-dCB0aGUgcGF0Y2guIEhvd2V2ZXINCj4gPiA+ID4gcmV2ZXJ0aW5nIHRoZSBwYXRjaCB3b27igJl0
-IHByZXZlbnQgdGhlIHNlcnZlciBmcm9tIHJldHVybmluZw0KPiA+ID4gPiBORlM0RVJSX0JBRF9T
-VEFURUlEIGluIGFueSBjYXNlcyB3aGVyZSB0aGUgY2FsbHMgdG8NCj4gPiA+ID4gbmZzNF9zZXRf
-cndfc3RhdGVpZCgpIGhhcHBlbiBiZWZvcmUgc3RhdGUgcmVjb3ZlcnkuIFRoaXMgaXMgd2h5DQo+
-ID4gPiA+IHdlDQo+ID4gPiA+IGhhdmUgdGhlIGxvb3AgaW4gbmZzNDJfcHJvY19jb3B5KCkuDQo+
-ID4gPiANCj4gPiA+IEkgdGhvdWdodCB0aGF0IGlmIHJldHJ5IG9mIHRoZSBvcGVyYXRpb24gd2Fp
-dHMgZm9yIHRoZSByZWNvdmVyeQ0KPiA+ID4gdG8NCj4gPiA+IGNvbXBsZXRlIHRoZW4gbmZzNF9z
-ZXRfcndfc3RhdGVpZCgpIHdpbGwgY2hvb3NlIHRoZSBjb3JyZWN0DQo+ID4gPiBzdGF0ZWlkLA0K
-PiA+ID4gaXMgdGhhdCBub3QgY29ycmVjdD8NCj4gPiA+IA0KPiA+ID4gSWYgdGhhdCdzIG5vdCBj
-b3JyZWN0LCB0aGVuIHdlIHNvbWVob3cgbmVlZCB0byBzZXBhcmF0ZSB0aGUgY2FzZQ0KPiA+ID4g
-d2hlbg0KPiA+ID4gQkFEX1NUQVRFSUQgc2hvdWxkIGluZGVlZCBtYXJrIHRoZSBsb2NrcyBsb3N0
-IHZzIHRoaXMgY2FzZSB3aGVyZQ0KPiA+ID4gdGhlDQo+ID4gPiBjb2RlIGVycm9uZW91c2x5IHVz
-ZWQgdGhlIGJhZCBzdGF0ZWlkIChvb3BzKSBhbmQgaXQgc2hvdWxkIHJlYWxseQ0KPiA+ID4gaWdu
-b3JlIHRoaXMgZXJyb3IuIFRoaXMgcmVhbGx5IGRvZXNuJ3Qgc291bmQgdmVyeSBwbGF1c2libGUg
-dG8NCj4gPiA+IGFjY29tcGxpc2guDQo+ID4gDQo+ID4gRG9lcyB0aGlzIHBhdGNoIGZpeCB0aGUg
-cHJvYmxlbT8NCj4gPiANCj4gPiA4PC0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
-LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0NCj4gPiBGcm9tIGJiYWU5NWU4Zjk3Y2FkNmE5MWNh
-OGNhYTUwYjYxY2FlNzg5NjMyZjkgTW9uIFNlcCAxNyAwMDowMDowMA0KPiA+IDIwMDENCj4gPiBG
-cm9tOiBUcm9uZCBNeWtsZWJ1c3QgPHRyb25kLm15a2xlYnVzdEBwcmltYXJ5ZGF0YS5jb20+DQo+
-ID4gRGF0ZTogVGh1LCAxNiBGZWIgMjAxNyAxODoxNDozOCAtMDUwMA0KPiA+IFN1YmplY3Q6IFtQ
-QVRDSF0gTkZTdjQ6IEZpeCByZWJvb3QgcmVjb3ZlcnkgaW4gY29weSBvZmZsb2FkDQo+ID4gDQo+
-ID4gQ29weSBvZmZsb2FkIGNvZGUgbmVlZHMgdG8gYmUgaG9va2VkIGludG8gdGhlIGNvZGUgZm9y
-IGhhbmRsaW5nDQo+ID4gTkZTNEVSUl9CQURfU1RBVEVJRCBieSBlbnN1cmluZyB0aGF0IHdlIHNl
-dCB0aGUgInN0YXRlaWQiIGZpZWxkDQo+ID4gaW4gc3RydWN0IG5mczRfZXhjZXB0aW9uLg0KPiA+
-IA0KPiA+IFJlcG9ydGVkLWJ5OiBPbGdhIEtvcm5pZXZza2FpYSA8YWdsb0B1bWljaC5lZHU+DQo+
-ID4gRml4ZXM6IDJlNzI0NDhiMDdkYzMgKCJORlM6IEFkZCBDT1BZIG5mcyBvcGVyYXRpb24iKQ0K
-PiA+IFNpZ25lZC1vZmYtYnk6IFRyb25kIE15a2xlYnVzdCA8dHJvbmQubXlrbGVidXN0QHByaW1h
-cnlkYXRhLmNvbT4NCj4gPiAtLS0NCj4gPiDCoGZzL25mcy9uZnM0MnByb2MuYyB8IDU3ICsrKysr
-KysrKysrKysrKysrKysrKysrKysrKysrKystLS0tLS0tLS0tLQ0KPiA+IC0tLS0tLS0tLS0tLQ0K
-PiA+IMKgMSBmaWxlIGNoYW5nZWQsIDMzIGluc2VydGlvbnMoKyksIDI0IGRlbGV0aW9ucygtKQ0K
-PiA+IA0KPiA+IGRpZmYgLS1naXQgYS9mcy9uZnMvbmZzNDJwcm9jLmMgYi9mcy9uZnMvbmZzNDJw
-cm9jLmMNCj4gPiBpbmRleCBkMTJmZjkzODVmNDkuLmJhZjFmZTJkYzI5NiAxMDA2NDQNCj4gPiAt
-LS0gYS9mcy9uZnMvbmZzNDJwcm9jLmMNCj4gPiArKysgYi9mcy9uZnMvbmZzNDJwcm9jLmMNCj4g
-PiBAQCAtMTI4LDIwICsxMjgsMTMgQEAgaW50IG5mczQyX3Byb2NfZGVhbGxvY2F0ZShzdHJ1Y3Qg
-ZmlsZSAqZmlsZXAsDQo+ID4gbG9mZl90IG9mZnNldCwgbG9mZl90IGxlbikNCj4gPiDCoMKgwqDC
-oMKgwqDCoMKgcmV0dXJuIGVycjsNCj4gPiDCoH0NCj4gPiANCj4gPiAtc3RhdGljIHNzaXplX3Qg
-X25mczQyX3Byb2NfY29weShzdHJ1Y3QgZmlsZSAqc3JjLCBsb2ZmX3QgcG9zX3NyYywNCj4gPiAr
-c3RhdGljIHNzaXplX3QgX25mczQyX3Byb2NfY29weShzdHJ1Y3QgZmlsZSAqc3JjLA0KPiA+IMKg
-wqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDC
-oMKgwqBzdHJ1Y3QgbmZzX2xvY2tfY29udGV4dCAqc3JjX2xvY2ssDQo+ID4gLcKgwqDCoMKgwqDC
-oMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgc3RydWN0
-IGZpbGUgKmRzdCwgbG9mZl90IHBvc19kc3QsDQo+ID4gK8KgwqDCoMKgwqDCoMKgwqDCoMKgwqDC
-oMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgc3RydWN0IGZpbGUgKmRzdCwN
-Cj4gPiDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKg
-wqDCoMKgwqDCoMKgc3RydWN0IG5mc19sb2NrX2NvbnRleHQgKmRzdF9sb2NrLA0KPiA+IC3CoMKg
-wqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDC
-oHNpemVfdCBjb3VudCkNCj4gPiArwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKg
-wqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqBzdHJ1Y3QgbmZzNDJfY29weV9hcmdzICphcmdzLA0K
-PiA+ICvCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKg
-wqDCoMKgwqDCoHN0cnVjdCBuZnM0Ml9jb3B5X3JlcyAqcmVzKQ0KPiA+IMKgew0KPiA+IC3CoMKg
-wqDCoMKgwqDCoHN0cnVjdCBuZnM0Ml9jb3B5X2FyZ3MgYXJncyA9IHsNCj4gPiAtwqDCoMKgwqDC
-oMKgwqDCoMKgwqDCoMKgwqDCoMKgLnNyY19maMKgwqDCoMKgwqDCoMKgwqDCoD0gTkZTX0ZIKGZp
-bGVfaW5vZGUoc3JjKSksDQo+ID4gLcKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoC5zcmNf
-cG9zwqDCoMKgwqDCoMKgwqDCoD0gcG9zX3NyYywNCj4gPiAtwqDCoMKgwqDCoMKgwqDCoMKgwqDC
-oMKgwqDCoMKgLmRzdF9maMKgwqDCoMKgwqDCoMKgwqDCoD0gTkZTX0ZIKGZpbGVfaW5vZGUoZHN0
-KSksDQo+ID4gLcKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoC5kc3RfcG9zwqDCoMKgwqDC
-oMKgwqDCoD0gcG9zX2RzdCwNCj4gPiAtwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgLmNv
-dW50wqDCoMKgwqDCoMKgwqDCoMKgwqA9IGNvdW50LA0KPiA+IC3CoMKgwqDCoMKgwqDCoH07DQo+
-ID4gLcKgwqDCoMKgwqDCoMKgc3RydWN0IG5mczQyX2NvcHlfcmVzIHJlczsNCj4gPiDCoMKgwqDC
-oMKgwqDCoMKgc3RydWN0IHJwY19tZXNzYWdlIG1zZyA9IHsNCj4gPiDCoMKgwqDCoMKgwqDCoMKg
-wqDCoMKgwqDCoMKgwqDCoC5ycGNfcHJvYyA9ICZuZnM0X3Byb2NlZHVyZXNbTkZTUFJPQzRfQ0xO
-VF9DT1BZXSwNCj4gPiDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoC5ycGNfYXJncCA9
-ICZhcmdzLA0KPiA+IEBAIC0xNDksOSArMTQyLDEyIEBAIHN0YXRpYyBzc2l6ZV90IF9uZnM0Ml9w
-cm9jX2NvcHkoc3RydWN0IGZpbGUNCj4gPiAqc3JjLCBsb2ZmX3QgcG9zX3NyYywNCj4gPiDCoMKg
-wqDCoMKgwqDCoMKgfTsNCj4gPiDCoMKgwqDCoMKgwqDCoMKgc3RydWN0IGlub2RlICpkc3RfaW5v
-ZGUgPSBmaWxlX2lub2RlKGRzdCk7DQo+ID4gwqDCoMKgwqDCoMKgwqDCoHN0cnVjdCBuZnNfc2Vy
-dmVyICpzZXJ2ZXIgPSBORlNfU0VSVkVSKGRzdF9pbm9kZSk7DQo+ID4gK8KgwqDCoMKgwqDCoMKg
-bG9mZl90IHBvc19zcmMgPSBhcmdzLT5zcmNfcG9zOw0KPiA+ICvCoMKgwqDCoMKgwqDCoGxvZmZf
-dCBwb3NfZHN0ID0gYXJncy0+ZHN0X3BvczsNCj4gPiArwqDCoMKgwqDCoMKgwqBzaXplX3QgY291
-bnQgPSBhcmdzLT5jb3VudDsNCj4gPiDCoMKgwqDCoMKgwqDCoMKgaW50IHN0YXR1czsNCj4gPiAN
-Cj4gPiAtwqDCoMKgwqDCoMKgwqBzdGF0dXMgPSBuZnM0X3NldF9yd19zdGF0ZWlkKCZhcmdzLnNy
-Y19zdGF0ZWlkLCBzcmNfbG9jay0NCj4gPiA+b3Blbl9jb250ZXh0LA0KPiA+ICvCoMKgwqDCoMKg
-wqDCoHN0YXR1cyA9IG5mczRfc2V0X3J3X3N0YXRlaWQoJmFyZ3MtPnNyY19zdGF0ZWlkLCBzcmNf
-bG9jay0NCj4gPiA+b3Blbl9jb250ZXh0LA0KPiA+IMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKg
-wqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgc3JjX2xvY2ss
-IEZNT0RFX1JFQUQpOw0KPiA+IMKgwqDCoMKgwqDCoMKgwqBpZiAoc3RhdHVzKQ0KPiA+IMKgwqDC
-oMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgcmV0dXJuIHN0YXR1czsNCj4gPiBAQCAtMTYxLDcg
-KzE1Nyw3IEBAIHN0YXRpYyBzc2l6ZV90IF9uZnM0Ml9wcm9jX2NvcHkoc3RydWN0IGZpbGUNCj4g
-PiAqc3JjLCBsb2ZmX3QgcG9zX3NyYywNCj4gPiDCoMKgwqDCoMKgwqDCoMKgaWYgKHN0YXR1cykN
-Cj4gPiDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoHJldHVybiBzdGF0dXM7DQo+ID4g
-DQo+ID4gLcKgwqDCoMKgwqDCoMKgc3RhdHVzID0gbmZzNF9zZXRfcndfc3RhdGVpZCgmYXJncy5k
-c3Rfc3RhdGVpZCwgZHN0X2xvY2stDQo+ID4gPm9wZW5fY29udGV4dCwNCj4gPiArwqDCoMKgwqDC
-oMKgwqBzdGF0dXMgPSBuZnM0X3NldF9yd19zdGF0ZWlkKCZhcmdzLT5kc3Rfc3RhdGVpZCwgZHN0
-X2xvY2stDQo+ID4gPm9wZW5fY29udGV4dCwNCj4gPiDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDC
-oMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoGRzdF9sb2Nr
-LCBGTU9ERV9XUklURSk7DQo+ID4gwqDCoMKgwqDCoMKgwqDCoGlmIChzdGF0dXMpDQo+ID4gwqDC
-oMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqByZXR1cm4gc3RhdHVzOw0KPiA+IEBAIC0xNzEs
-MjIgKzE2NywyMiBAQCBzdGF0aWMgc3NpemVfdCBfbmZzNDJfcHJvY19jb3B5KHN0cnVjdCBmaWxl
-DQo+ID4gKnNyYywgbG9mZl90IHBvc19zcmMsDQo+ID4gwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKg
-wqDCoMKgwqByZXR1cm4gc3RhdHVzOw0KPiA+IA0KPiA+IMKgwqDCoMKgwqDCoMKgwqBzdGF0dXMg
-PSBuZnM0X2NhbGxfc3luYyhzZXJ2ZXItPmNsaWVudCwgc2VydmVyLCAmbXNnLA0KPiA+IC3CoMKg
-wqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDC
-oCZhcmdzLnNlcV9hcmdzLCAmcmVzLnNlcV9yZXMsIDApOw0KPiA+ICvCoMKgwqDCoMKgwqDCoMKg
-wqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoCZhcmdzLT5zZXFf
-YXJncywgJnJlcy0+c2VxX3JlcywgMCk7DQo+ID4gwqDCoMKgwqDCoMKgwqDCoGlmIChzdGF0dXMg
-PT0gLUVOT1RTVVBQKQ0KPiA+IMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgc2VydmVy
-LT5jYXBzICY9IH5ORlNfQ0FQX0NPUFk7DQo+ID4gwqDCoMKgwqDCoMKgwqDCoGlmIChzdGF0dXMp
-DQo+ID4gwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqByZXR1cm4gc3RhdHVzOw0KPiA+
-IA0KPiA+IC3CoMKgwqDCoMKgwqDCoGlmIChyZXMud3JpdGVfcmVzLnZlcmlmaWVyLmNvbW1pdHRl
-ZCAhPSBORlNfRklMRV9TWU5DKSB7DQo+ID4gLcKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDC
-oHN0YXR1cyA9IG5mc19jb21taXRfZmlsZShkc3QsDQo+ID4gJnJlcy53cml0ZV9yZXMudmVyaWZp
-ZXIudmVyaWZpZXIpOw0KPiA+ICvCoMKgwqDCoMKgwqDCoGlmIChyZXMtPndyaXRlX3Jlcy52ZXJp
-Zmllci5jb21taXR0ZWQgIT0gTkZTX0ZJTEVfU1lOQykgew0KPiA+ICvCoMKgwqDCoMKgwqDCoMKg
-wqDCoMKgwqDCoMKgwqBzdGF0dXMgPSBuZnNfY29tbWl0X2ZpbGUoZHN0LCAmcmVzLQ0KPiA+ID53
-cml0ZV9yZXMudmVyaWZpZXIudmVyaWZpZXIpOw0KPiA+IMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDC
-oMKgwqDCoMKgaWYgKHN0YXR1cykNCj4gPiDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDC
-oMKgwqDCoMKgwqDCoMKgwqByZXR1cm4gc3RhdHVzOw0KPiA+IMKgwqDCoMKgwqDCoMKgwqB9DQo+
-ID4gDQo+ID4gwqDCoMKgwqDCoMKgwqDCoHRydW5jYXRlX3BhZ2VjYWNoZV9yYW5nZShkc3RfaW5v
-ZGUsIHBvc19kc3QsDQo+ID4gLcKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKg
-wqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqBwb3NfZHN0ICsgcmVzLndyaXRlX3Jlcy5jb3VudCk7
-DQo+ID4gK8KgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKg
-wqDCoMKgwqDCoMKgwqBwb3NfZHN0ICsgcmVzLT53cml0ZV9yZXMuY291bnQpOw0KPiA+IA0KPiA+
-IC3CoMKgwqDCoMKgwqDCoHJldHVybiByZXMud3JpdGVfcmVzLmNvdW50Ow0KPiA+ICvCoMKgwqDC
-oMKgwqDCoHJldHVybiByZXMtPndyaXRlX3Jlcy5jb3VudDsNCj4gPiDCoH0NCj4gPiANCj4gPiDC
-oHNzaXplX3QgbmZzNDJfcHJvY19jb3B5KHN0cnVjdCBmaWxlICpzcmMsIGxvZmZfdCBwb3Nfc3Jj
-LA0KPiA+IEBAIC0xOTYsOCArMTkyLDIyIEBAIHNzaXplX3QgbmZzNDJfcHJvY19jb3B5KHN0cnVj
-dCBmaWxlICpzcmMsDQo+ID4gbG9mZl90IHBvc19zcmMsDQo+ID4gwqDCoMKgwqDCoMKgwqDCoHN0
-cnVjdCBuZnNfc2VydmVyICpzZXJ2ZXIgPSBORlNfU0VSVkVSKGZpbGVfaW5vZGUoZHN0KSk7DQo+
-ID4gwqDCoMKgwqDCoMKgwqDCoHN0cnVjdCBuZnNfbG9ja19jb250ZXh0ICpzcmNfbG9jazsNCj4g
-PiDCoMKgwqDCoMKgwqDCoMKgc3RydWN0IG5mc19sb2NrX2NvbnRleHQgKmRzdF9sb2NrOw0KPiA+
-IC3CoMKgwqDCoMKgwqDCoHN0cnVjdCBuZnM0X2V4Y2VwdGlvbiBzcmNfZXhjZXB0aW9uID0geyB9
-Ow0KPiA+IC3CoMKgwqDCoMKgwqDCoHN0cnVjdCBuZnM0X2V4Y2VwdGlvbiBkc3RfZXhjZXB0aW9u
-ID0geyB9Ow0KPiA+ICvCoMKgwqDCoMKgwqDCoHN0cnVjdCBuZnM0Ml9jb3B5X2FyZ3MgYXJncyA9
-IHsNCj4gPiArwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgLnNyY19maMKgwqDCoMKgwqDC
-oMKgwqDCoD0gTkZTX0ZIKGZpbGVfaW5vZGUoc3JjKSksDQo+ID4gK8KgwqDCoMKgwqDCoMKgwqDC
-oMKgwqDCoMKgwqDCoC5zcmNfcG9zwqDCoMKgwqDCoMKgwqDCoD0gcG9zX3NyYywNCj4gPiArwqDC
-oMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgLmRzdF9maMKgwqDCoMKgwqDCoMKgwqDCoD0gTkZT
-X0ZIKGZpbGVfaW5vZGUoZHN0KSksDQo+ID4gK8KgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDC
-oC5kc3RfcG9zwqDCoMKgwqDCoMKgwqDCoD0gcG9zX2RzdCwNCj4gPiArwqDCoMKgwqDCoMKgwqDC
-oMKgwqDCoMKgwqDCoMKgLmNvdW50wqDCoMKgwqDCoMKgwqDCoMKgwqA9IGNvdW50LA0KPiA+ICvC
-oMKgwqDCoMKgwqDCoH07DQo+ID4gK8KgwqDCoMKgwqDCoMKgc3RydWN0IG5mczQyX2NvcHlfcmVz
-IHJlczsNCj4gPiArwqDCoMKgwqDCoMKgwqBzdHJ1Y3QgbmZzNF9leGNlcHRpb24gc3JjX2V4Y2Vw
-dGlvbiA9IHsNCj4gPiArwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgLmlub2RlwqDCoMKg
-wqDCoMKgwqDCoMKgwqA9IGZpbGVfaW5vZGUoc3JjKSwNCj4gPiArwqDCoMKgwqDCoMKgwqDCoMKg
-wqDCoMKgwqDCoMKgLnN0YXRlaWTCoMKgwqDCoMKgwqDCoMKgPSAmYXJncy5zcmNfc3RhdGVpZCwN
-Cj4gPiArwqDCoMKgwqDCoMKgwqB9Ow0KPiA+ICvCoMKgwqDCoMKgwqDCoHN0cnVjdCBuZnM0X2V4
-Y2VwdGlvbiBkc3RfZXhjZXB0aW9uID0gew0KPiA+ICvCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDC
-oMKgwqAuaW5vZGXCoMKgwqDCoMKgwqDCoMKgwqDCoD0gZmlsZV9pbm9kZShkc3QpLA0KPiA+ICvC
-oMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqAuc3RhdGVpZMKgwqDCoMKgwqDCoMKgwqA9ICZh
-cmdzLmRzdF9zdGF0ZWlkLA0KPiA+ICvCoMKgwqDCoMKgwqDCoH07DQo+ID4gwqDCoMKgwqDCoMKg
-wqDCoHNzaXplX3QgZXJyLCBlcnIyOw0KPiA+IA0KPiA+IMKgwqDCoMKgwqDCoMKgwqBpZiAoIW5m
-c19zZXJ2ZXJfY2FwYWJsZShmaWxlX2lub2RlKGRzdCksIE5GU19DQVBfQ09QWSkpDQo+ID4gQEAg
-LTIwNyw3ICsyMTcsNiBAQCBzc2l6ZV90IG5mczQyX3Byb2NfY29weShzdHJ1Y3QgZmlsZSAqc3Jj
-LA0KPiA+IGxvZmZfdCBwb3Nfc3JjLA0KPiA+IMKgwqDCoMKgwqDCoMKgwqBpZiAoSVNfRVJSKHNy
-Y19sb2NrKSkNCj4gPiDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoHJldHVybiBQVFJf
-RVJSKHNyY19sb2NrKTsNCj4gPiANCj4gPiAtwqDCoMKgwqDCoMKgwqBzcmNfZXhjZXB0aW9uLmlu
-b2RlID0gZmlsZV9pbm9kZShzcmMpOw0KPiA+IMKgwqDCoMKgwqDCoMKgwqBzcmNfZXhjZXB0aW9u
-LnN0YXRlID0gc3JjX2xvY2stPm9wZW5fY29udGV4dC0+c3RhdGU7DQo+ID4gDQo+ID4gwqDCoMKg
-wqDCoMKgwqDCoGRzdF9sb2NrID0NCj4gPiBuZnNfZ2V0X2xvY2tfY29udGV4dChuZnNfZmlsZV9v
-cGVuX2NvbnRleHQoZHN0KSk7DQo+ID4gQEAgLTIxNiwxMyArMjI1LDEzIEBAIHNzaXplX3QgbmZz
-NDJfcHJvY19jb3B5KHN0cnVjdCBmaWxlICpzcmMsDQo+ID4gbG9mZl90IHBvc19zcmMsDQo+ID4g
-wqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqBnb3RvIG91dF9wdXRfc3JjX2xvY2s7DQo+
-ID4gwqDCoMKgwqDCoMKgwqDCoH0NCj4gPiANCj4gPiAtwqDCoMKgwqDCoMKgwqBkc3RfZXhjZXB0
-aW9uLmlub2RlID0gZmlsZV9pbm9kZShkc3QpOw0KPiA+IMKgwqDCoMKgwqDCoMKgwqBkc3RfZXhj
-ZXB0aW9uLnN0YXRlID0gZHN0X2xvY2stPm9wZW5fY29udGV4dC0+c3RhdGU7DQo+ID4gDQo+ID4g
-wqDCoMKgwqDCoMKgwqDCoGRvIHsNCj4gPiDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDC
-oGlub2RlX2xvY2soZmlsZV9pbm9kZShkc3QpKTsNCj4gPiAtwqDCoMKgwqDCoMKgwqDCoMKgwqDC
-oMKgwqDCoMKgZXJyID0gX25mczQyX3Byb2NfY29weShzcmMsIHBvc19zcmMsIHNyY19sb2NrLA0K
-PiA+IC3CoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKg
-wqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgZHN0LCBwb3NfZHN0LCBkc3RfbG9jaywNCj4gPiBjb3Vu
-dCk7DQo+ID4gK8KgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoGVyciA9IF9uZnM0Ml9wcm9j
-X2NvcHkoc3JjLCBzcmNfbG9jaywNCj4gPiArwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKg
-wqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqBkc3QsIGRzdF9sb2NrLA0KPiA+ICvCoMKg
-wqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDC
-oCZhcmdzLCAmcmVzKTsNCj4gPiDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoGlub2Rl
-X3VubG9jayhmaWxlX2lub2RlKGRzdCkpOw0KPiA+IA0KPiA+IMKgwqDCoMKgwqDCoMKgwqDCoMKg
-wqDCoMKgwqDCoMKgaWYgKGVyciA9PSAtRU5PVFNVUFApIHsNCj4gPiAtLQ0KPiA+IDIuOS4zDQo+
-IA0KPiBJIHdpc2ggaXQgZGlkIGJ1dCBubyBpdCBkb2VzIG5vdC4NCj4gDQoNClNvIHdoYXQgaXMg
-c3RpbGwgaGFwcGVuaW5nPyBXaXRoIHRoaXMgcGF0Y2gsIHRoZSBlcnJvciBoYW5kbGVyIHNob3Vs
-ZA0KYmUgYWJsZSB0byBkaXN0aW5ndWlzaCBiZXR3ZWVuIGEgc3RhdGVpZCB0aGF0IGlzIHVwIHRv
-IGRhdGUgYW5kIG9uZQ0KdGhhdCBpc24ndC4NCg0KVGhlcmUgbWlnaHQsIGhvd2V2ZXIsIHN0aWxs
-IGJlIGEgcHJvYmxlbSBiZWNhdXNlIHdlIGhhdmUgMiBzdGF0ZWlkcywNCm1lYW5pbmcgdGhhdCBv
-bmUgY291bGQgYmUgc3RhbGUgKGFuZCBnZW5lcmF0aW5nIE5GUzRFUlJfQkFEX1NUQVRFSUQpDQph
-bmQgdGhlIG90aGVyIG9uZSBub3QuIFdlIG1pZ2h0IGhhdmUgdG8gc3BlY2lhbCBjYXNlIHRoYXQs
-IGFuZCBkbyB0aGUNCmNvbXBhcmlzb25zIGluc2lkZSBuZnM0Ml9wcm9jX2NvcHkgaW5zdGVhZCBv
-ZiB1c2luZyB0aGUgZ2VuZXJpYyBjb2RlIGluDQpuZnM0X2hhbmRsZV9leGNlcHRpb24oKS4NCg0K
-LS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFpbnRhaW5lciwgUHJpbWFy
-eURhdGENCnRyb25kLm15a2xlYnVzdEBwcmltYXJ5ZGF0YS5jb20NCg==
+On Fri, Feb 17, 2017 at 9:58 AM, Trond Myklebust
+<trondmy@primarydata.com> wrote:
+> On Fri, 2017-02-17 at 09:46 -0500, Olga Kornievskaia wrote:
+>> On Thu, Feb 16, 2017 at 6:28 PM, Trond Myklebust
+>> <trondmy@primarydata.com> wrote:
+>> > On Thu, 2017-02-16 at 17:14 -0500, Olga Kornievskaia wrote:
+>> > > On Thu, Feb 16, 2017 at 4:45 PM, Trond Myklebust
+>> > > <trondmy@primarydata.com> wrote:
+>> > > >
+>> > > > Olga, all your test is doing is showing that we hit the race
+>> > > > more
+>> > > > often. Fair enough, I=E2=80=99ll ask Anna to revert the patch. How=
+ever
+>> > > > reverting the patch won=E2=80=99t prevent the server from returnin=
+g
+>> > > > NFS4ERR_BAD_STATEID in any cases where the calls to
+>> > > > nfs4_set_rw_stateid() happen before state recovery. This is why
+>> > > > we
+>> > > > have the loop in nfs42_proc_copy().
+>> > >
+>> > > I thought that if retry of the operation waits for the recovery
+>> > > to
+>> > > complete then nfs4_set_rw_stateid() will choose the correct
+>> > > stateid,
+>> > > is that not correct?
+>> > >
+>> > > If that's not correct, then we somehow need to separate the case
+>> > > when
+>> > > BAD_STATEID should indeed mark the locks lost vs this case where
+>> > > the
+>> > > code erroneously used the bad stateid (oops) and it should really
+>> > > ignore this error. This really doesn't sound very plausible to
+>> > > accomplish.
+>> >
+>> > Does this patch fix the problem?
+>> >
+>> > 8<-------------------------------------------------------------
+>> > From bbae95e8f97cad6a91ca8caa50b61cae789632f9 Mon Sep 17 00:00:00
+>> > 2001
+>> > From: Trond Myklebust <trond.myklebust@primarydata.com>
+>> > Date: Thu, 16 Feb 2017 18:14:38 -0500
+>> > Subject: [PATCH] NFSv4: Fix reboot recovery in copy offload
+>> >
+>> > Copy offload code needs to be hooked into the code for handling
+>> > NFS4ERR_BAD_STATEID by ensuring that we set the "stateid" field
+>> > in struct nfs4_exception.
+>> >
+>> > Reported-by: Olga Kornievskaia <aglo@umich.edu>
+>> > Fixes: 2e72448b07dc3 ("NFS: Add COPY nfs operation")
+>> > Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+>> > ---
+>> >  fs/nfs/nfs42proc.c | 57 +++++++++++++++++++++++++++++++-----------
+>> > ------------
+>> >  1 file changed, 33 insertions(+), 24 deletions(-)
+>> >
+>> > diff --git a/fs/nfs/nfs42proc.c b/fs/nfs/nfs42proc.c
+>> > index d12ff9385f49..baf1fe2dc296 100644
+>> > --- a/fs/nfs/nfs42proc.c
+>> > +++ b/fs/nfs/nfs42proc.c
+>> > @@ -128,20 +128,13 @@ int nfs42_proc_deallocate(struct file *filep,
+>> > loff_t offset, loff_t len)
+>> >         return err;
+>> >  }
+>> >
+>> > -static ssize_t _nfs42_proc_copy(struct file *src, loff_t pos_src,
+>> > +static ssize_t _nfs42_proc_copy(struct file *src,
+>> >                                 struct nfs_lock_context *src_lock,
+>> > -                               struct file *dst, loff_t pos_dst,
+>> > +                               struct file *dst,
+>> >                                 struct nfs_lock_context *dst_lock,
+>> > -                               size_t count)
+>> > +                               struct nfs42_copy_args *args,
+>> > +                               struct nfs42_copy_res *res)
+>> >  {
+>> > -       struct nfs42_copy_args args =3D {
+>> > -               .src_fh         =3D NFS_FH(file_inode(src)),
+>> > -               .src_pos        =3D pos_src,
+>> > -               .dst_fh         =3D NFS_FH(file_inode(dst)),
+>> > -               .dst_pos        =3D pos_dst,
+>> > -               .count          =3D count,
+>> > -       };
+>> > -       struct nfs42_copy_res res;
+>> >         struct rpc_message msg =3D {
+>> >                 .rpc_proc =3D &nfs4_procedures[NFSPROC4_CLNT_COPY],
+>> >                 .rpc_argp =3D &args,
+>> > @@ -149,9 +142,12 @@ static ssize_t _nfs42_proc_copy(struct file
+>> > *src, loff_t pos_src,
+>> >         };
+>> >         struct inode *dst_inode =3D file_inode(dst);
+>> >         struct nfs_server *server =3D NFS_SERVER(dst_inode);
+>> > +       loff_t pos_src =3D args->src_pos;
+>> > +       loff_t pos_dst =3D args->dst_pos;
+>> > +       size_t count =3D args->count;
+>> >         int status;
+>> >
+>> > -       status =3D nfs4_set_rw_stateid(&args.src_stateid, src_lock-
+>> > >open_context,
+>> > +       status =3D nfs4_set_rw_stateid(&args->src_stateid, src_lock-
+>> > >open_context,
+>> >                                      src_lock, FMODE_READ);
+>> >         if (status)
+>> >                 return status;
+>> > @@ -161,7 +157,7 @@ static ssize_t _nfs42_proc_copy(struct file
+>> > *src, loff_t pos_src,
+>> >         if (status)
+>> >                 return status;
+>> >
+>> > -       status =3D nfs4_set_rw_stateid(&args.dst_stateid, dst_lock-
+>> > >open_context,
+>> > +       status =3D nfs4_set_rw_stateid(&args->dst_stateid, dst_lock-
+>> > >open_context,
+>> >                                      dst_lock, FMODE_WRITE);
+>> >         if (status)
+>> >                 return status;
+>> > @@ -171,22 +167,22 @@ static ssize_t _nfs42_proc_copy(struct file
+>> > *src, loff_t pos_src,
+>> >                 return status;
+>> >
+>> >         status =3D nfs4_call_sync(server->client, server, &msg,
+>> > -                               &args.seq_args, &res.seq_res, 0);
+>> > +                               &args->seq_args, &res->seq_res, 0);
+>> >         if (status =3D=3D -ENOTSUPP)
+>> >                 server->caps &=3D ~NFS_CAP_COPY;
+>> >         if (status)
+>> >                 return status;
+>> >
+>> > -       if (res.write_res.verifier.committed !=3D NFS_FILE_SYNC) {
+>> > -               status =3D nfs_commit_file(dst,
+>> > &res.write_res.verifier.verifier);
+>> > +       if (res->write_res.verifier.committed !=3D NFS_FILE_SYNC) {
+>> > +               status =3D nfs_commit_file(dst, &res-
+>> > >write_res.verifier.verifier);
+>> >                 if (status)
+>> >                         return status;
+>> >         }
+>> >
+>> >         truncate_pagecache_range(dst_inode, pos_dst,
+>> > -                                pos_dst + res.write_res.count);
+>> > +                                pos_dst + res->write_res.count);
+>> >
+>> > -       return res.write_res.count;
+>> > +       return res->write_res.count;
+>> >  }
+>> >
+>> >  ssize_t nfs42_proc_copy(struct file *src, loff_t pos_src,
+>> > @@ -196,8 +192,22 @@ ssize_t nfs42_proc_copy(struct file *src,
+>> > loff_t pos_src,
+>> >         struct nfs_server *server =3D NFS_SERVER(file_inode(dst));
+>> >         struct nfs_lock_context *src_lock;
+>> >         struct nfs_lock_context *dst_lock;
+>> > -       struct nfs4_exception src_exception =3D { };
+>> > -       struct nfs4_exception dst_exception =3D { };
+>> > +       struct nfs42_copy_args args =3D {
+>> > +               .src_fh         =3D NFS_FH(file_inode(src)),
+>> > +               .src_pos        =3D pos_src,
+>> > +               .dst_fh         =3D NFS_FH(file_inode(dst)),
+>> > +               .dst_pos        =3D pos_dst,
+>> > +               .count          =3D count,
+>> > +       };
+>> > +       struct nfs42_copy_res res;
+>> > +       struct nfs4_exception src_exception =3D {
+>> > +               .inode          =3D file_inode(src),
+>> > +               .stateid        =3D &args.src_stateid,
+>> > +       };
+>> > +       struct nfs4_exception dst_exception =3D {
+>> > +               .inode          =3D file_inode(dst),
+>> > +               .stateid        =3D &args.dst_stateid,
+>> > +       };
+>> >         ssize_t err, err2;
+>> >
+>> >         if (!nfs_server_capable(file_inode(dst), NFS_CAP_COPY))
+>> > @@ -207,7 +217,6 @@ ssize_t nfs42_proc_copy(struct file *src,
+>> > loff_t pos_src,
+>> >         if (IS_ERR(src_lock))
+>> >                 return PTR_ERR(src_lock);
+>> >
+>> > -       src_exception.inode =3D file_inode(src);
+>> >         src_exception.state =3D src_lock->open_context->state;
+>> >
+>> >         dst_lock =3D
+>> > nfs_get_lock_context(nfs_file_open_context(dst));
+>> > @@ -216,13 +225,13 @@ ssize_t nfs42_proc_copy(struct file *src,
+>> > loff_t pos_src,
+>> >                 goto out_put_src_lock;
+>> >         }
+>> >
+>> > -       dst_exception.inode =3D file_inode(dst);
+>> >         dst_exception.state =3D dst_lock->open_context->state;
+>> >
+>> >         do {
+>> >                 inode_lock(file_inode(dst));
+>> > -               err =3D _nfs42_proc_copy(src, pos_src, src_lock,
+>> > -                                      dst, pos_dst, dst_lock,
+>> > count);
+>> > +               err =3D _nfs42_proc_copy(src, src_lock,
+>> > +                               dst, dst_lock,
+>> > +                               &args, &res);
+>> >                 inode_unlock(file_inode(dst));
+>> >
+>> >                 if (err =3D=3D -ENOTSUPP) {
+>> > --
+>> > 2.9.3
+>>
+>> I wish it did but no it does not.
+>>
+>
+> So what is still happening? With this patch, the error handler should
+> be able to distinguish between a stateid that is up to date and one
+> that isn't.
+>
+> There might, however, still be a problem because we have 2 stateids,
+> meaning that one could be stale (and generating NFS4ERR_BAD_STATEID)
+> and the other one not. We might have to special case that, and do the
+> comparisons inside nfs42_proc_copy instead of using the generic code in
+> nfs4_handle_exception().
 
+After COPY gets the BAD_STATEID (on the old stateids), I see 4
+TEST_STATEIDs sent with 3 distinct stateids which are the new open
+stateid for the src file, the locking stateid for the source file and
+the new old stateid for the destination file. All of which are ok.
