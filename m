@@ -1,169 +1,35 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-it0-f65.google.com ([209.85.214.65]:35947 "EHLO
-        mail-it0-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S964894AbdBQXmg (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 17 Feb 2017 18:42:36 -0500
-Received: by mail-it0-f65.google.com with SMTP id g67so5066856itb.3
-        for <linux-nfs@vger.kernel.org>; Fri, 17 Feb 2017 15:42:36 -0800 (PST)
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Olga Kornievskaia <aglo@umich.edu>,
-        Anna Schumaker <anna.schumaker@netapp.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v3] NFSv4: Fix reboot recovery in copy offload
-Date: Fri, 17 Feb 2017 18:42:32 -0500
-Message-Id: <20170217234232.62140-1-trond.myklebust@primarydata.com>
-In-Reply-To: <CAN-5tyFM88h5XMvnYQ3hnq6DgE_wsctFhjQuX_bAvUJkr3xKjw@mail.gmail.com>
+Received: from us-smtp-delivery-194.mimecast.com ([63.128.21.194]:21236 "EHLO
+        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1751110AbdBRAC3 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 17 Feb 2017 19:02:29 -0500
+From: Trond Myklebust <trondmy@primarydata.com>
+To: "anna.schumaker@netapp.com" <anna.schumaker@netapp.com>,
+        "aglo@umich.edu" <aglo@umich.edu>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH v3] NFSv4: Fix reboot recovery in copy offload
+Date: Sat, 18 Feb 2017 00:02:22 +0000
+Message-ID: <1487376138.62293.1.camel@primarydata.com>
 References: <CAN-5tyFM88h5XMvnYQ3hnq6DgE_wsctFhjQuX_bAvUJkr3xKjw@mail.gmail.com>
+         <20170217234232.62140-1-trond.myklebust@primarydata.com>
+In-Reply-To: <20170217234232.62140-1-trond.myklebust@primarydata.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Copy offload code needs to be hooked into the code for handling
-NFS4ERR_BAD_STATEID by ensuring that we set the "stateid" field
-in struct nfs4_exception.
-
-Reported-by: Olga Kornievskaia <aglo@umich.edu>
-Fixes: 2e72448b07dc3 ("NFS: Add COPY nfs operation")
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
----
- fs/nfs/nfs42proc.c | 63 ++++++++++++++++++++++++++++++++----------------------
- 1 file changed, 37 insertions(+), 26 deletions(-)
-
-diff --git a/fs/nfs/nfs42proc.c b/fs/nfs/nfs42proc.c
-index d12ff9385f49..78da4087dc73 100644
---- a/fs/nfs/nfs42proc.c
-+++ b/fs/nfs/nfs42proc.c
-@@ -128,30 +128,26 @@ int nfs42_proc_deallocate(struct file *filep, loff_t offset, loff_t len)
- 	return err;
- }
- 
--static ssize_t _nfs42_proc_copy(struct file *src, loff_t pos_src,
-+static ssize_t _nfs42_proc_copy(struct file *src,
- 				struct nfs_lock_context *src_lock,
--				struct file *dst, loff_t pos_dst,
-+				struct file *dst,
- 				struct nfs_lock_context *dst_lock,
--				size_t count)
-+				struct nfs42_copy_args *args,
-+				struct nfs42_copy_res *res)
- {
--	struct nfs42_copy_args args = {
--		.src_fh		= NFS_FH(file_inode(src)),
--		.src_pos	= pos_src,
--		.dst_fh		= NFS_FH(file_inode(dst)),
--		.dst_pos	= pos_dst,
--		.count		= count,
--	};
--	struct nfs42_copy_res res;
- 	struct rpc_message msg = {
- 		.rpc_proc = &nfs4_procedures[NFSPROC4_CLNT_COPY],
--		.rpc_argp = &args,
--		.rpc_resp = &res,
-+		.rpc_argp = args,
-+		.rpc_resp = res,
- 	};
- 	struct inode *dst_inode = file_inode(dst);
- 	struct nfs_server *server = NFS_SERVER(dst_inode);
-+	loff_t pos_src = args->src_pos;
-+	loff_t pos_dst = args->dst_pos;
-+	size_t count = args->count;
- 	int status;
- 
--	status = nfs4_set_rw_stateid(&args.src_stateid, src_lock->open_context,
-+	status = nfs4_set_rw_stateid(&args->src_stateid, src_lock->open_context,
- 				     src_lock, FMODE_READ);
- 	if (status)
- 		return status;
-@@ -161,7 +157,7 @@ static ssize_t _nfs42_proc_copy(struct file *src, loff_t pos_src,
- 	if (status)
- 		return status;
- 
--	status = nfs4_set_rw_stateid(&args.dst_stateid, dst_lock->open_context,
-+	status = nfs4_set_rw_stateid(&args->dst_stateid, dst_lock->open_context,
- 				     dst_lock, FMODE_WRITE);
- 	if (status)
- 		return status;
-@@ -171,22 +167,22 @@ static ssize_t _nfs42_proc_copy(struct file *src, loff_t pos_src,
- 		return status;
- 
- 	status = nfs4_call_sync(server->client, server, &msg,
--				&args.seq_args, &res.seq_res, 0);
-+				&args->seq_args, &res->seq_res, 0);
- 	if (status == -ENOTSUPP)
- 		server->caps &= ~NFS_CAP_COPY;
- 	if (status)
- 		return status;
- 
--	if (res.write_res.verifier.committed != NFS_FILE_SYNC) {
--		status = nfs_commit_file(dst, &res.write_res.verifier.verifier);
-+	if (res->write_res.verifier.committed != NFS_FILE_SYNC) {
-+		status = nfs_commit_file(dst, &res->write_res.verifier.verifier);
- 		if (status)
- 			return status;
- 	}
- 
- 	truncate_pagecache_range(dst_inode, pos_dst,
--				 pos_dst + res.write_res.count);
-+				 pos_dst + res->write_res.count);
- 
--	return res.write_res.count;
-+	return res->write_res.count;
- }
- 
- ssize_t nfs42_proc_copy(struct file *src, loff_t pos_src,
-@@ -196,8 +192,22 @@ ssize_t nfs42_proc_copy(struct file *src, loff_t pos_src,
- 	struct nfs_server *server = NFS_SERVER(file_inode(dst));
- 	struct nfs_lock_context *src_lock;
- 	struct nfs_lock_context *dst_lock;
--	struct nfs4_exception src_exception = { };
--	struct nfs4_exception dst_exception = { };
-+	struct nfs42_copy_args args = {
-+		.src_fh		= NFS_FH(file_inode(src)),
-+		.src_pos	= pos_src,
-+		.dst_fh		= NFS_FH(file_inode(dst)),
-+		.dst_pos	= pos_dst,
-+		.count		= count,
-+	};
-+	struct nfs42_copy_res res;
-+	struct nfs4_exception src_exception = {
-+		.inode		= file_inode(src),
-+		.stateid	= &args.src_stateid,
-+	};
-+	struct nfs4_exception dst_exception = {
-+		.inode		= file_inode(dst),
-+		.stateid	= &args.dst_stateid,
-+	};
- 	ssize_t err, err2;
- 
- 	if (!nfs_server_capable(file_inode(dst), NFS_CAP_COPY))
-@@ -207,7 +217,6 @@ ssize_t nfs42_proc_copy(struct file *src, loff_t pos_src,
- 	if (IS_ERR(src_lock))
- 		return PTR_ERR(src_lock);
- 
--	src_exception.inode = file_inode(src);
- 	src_exception.state = src_lock->open_context->state;
- 
- 	dst_lock = nfs_get_lock_context(nfs_file_open_context(dst));
-@@ -216,15 +225,17 @@ ssize_t nfs42_proc_copy(struct file *src, loff_t pos_src,
- 		goto out_put_src_lock;
- 	}
- 
--	dst_exception.inode = file_inode(dst);
- 	dst_exception.state = dst_lock->open_context->state;
- 
- 	do {
- 		inode_lock(file_inode(dst));
--		err = _nfs42_proc_copy(src, pos_src, src_lock,
--				       dst, pos_dst, dst_lock, count);
-+		err = _nfs42_proc_copy(src, src_lock,
-+				dst, dst_lock,
-+				&args, &res);
- 		inode_unlock(file_inode(dst));
- 
-+		if (err >= 0)
-+			break;
- 		if (err == -ENOTSUPP) {
- 			err = -EOPNOTSUPP;
- 			break;
--- 
-2.9.3
+T24gRnJpLCAyMDE3LTAyLTE3IGF0IDE4OjQyIC0wNTAwLCBUcm9uZCBNeWtsZWJ1c3Qgd3JvdGU6
+DQo+IENvcHkgb2ZmbG9hZCBjb2RlIG5lZWRzIHRvIGJlIGhvb2tlZCBpbnRvIHRoZSBjb2RlIGZv
+ciBoYW5kbGluZw0KPiBORlM0RVJSX0JBRF9TVEFURUlEIGJ5IGVuc3VyaW5nIHRoYXQgd2Ugc2V0
+IHRoZSAic3RhdGVpZCIgZmllbGQNCj4gaW4gc3RydWN0IG5mczRfZXhjZXB0aW9uLg0KPiANCj4g
+UmVwb3J0ZWQtYnk6IE9sZ2EgS29ybmlldnNrYWlhIDxhZ2xvQHVtaWNoLmVkdT4NCj4gRml4ZXM6
+IDJlNzI0NDhiMDdkYzMgKCJORlM6IEFkZCBDT1BZIG5mcyBvcGVyYXRpb24iKQ0KPiBTaWduZWQt
+b2ZmLWJ5OiBUcm9uZCBNeWtsZWJ1c3QgPHRyb25kLm15a2xlYnVzdEBwcmltYXJ5ZGF0YS5jb20+
+DQo+IC0tLQ0KDQp2MyBjaGFuZ2U6IGFzaWRlIGZyb20gdGhlIHBvaW50ZXIgaXNzdWUgaW4gX25m
+czQyX3Byb2NfY29weSgpIHRoYXQgd2FzDQpub3RlZCBieSBPbGdhLCBJIHdlbnQgYmFjayB0byB0
+aGUgb3JpZ2luYWwgZGVzaWduIGZvciByZWNvdmVyeS4gVGhlDQpmYWN0IHRoYXQgdGhpcyBpcyBO
+RlN2NC4yIG1lYW5zIHRoYXQgd2Ugc2hvdWxkIGJlIGNhbGxpbmcgVEVTVF9TVEFURUlEDQpiZWZv
+cmUgZGV0ZXJtaW5pbmcgdGhhdCB0aGUgQkFEX1NUQVRFSUQgYXBwbGllcy4NCg0KLS0gDQpUcm9u
+ZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFpbnRhaW5lciwgUHJpbWFyeURhdGENCnRy
+b25kLm15a2xlYnVzdEBwcmltYXJ5ZGF0YS5jb20NCg==
 
