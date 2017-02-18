@@ -1,53 +1,42 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-it0-f68.google.com ([209.85.214.68]:32938 "EHLO
-        mail-it0-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1753998AbdBRTMz (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sat, 18 Feb 2017 14:12:55 -0500
-Received: by mail-it0-f68.google.com with SMTP id e137so6808352itc.0
-        for <linux-nfs@vger.kernel.org>; Sat, 18 Feb 2017 11:12:54 -0800 (PST)
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Anna Schumaker <anna.schumaker@netapp.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v3 4/4] NFSv4: Remove bogus "struct nfs_client" argument from decode_ace()
-Date: Sat, 18 Feb 2017 14:12:46 -0500
-Message-Id: <20170218191246.32687-5-trond.myklebust@primarydata.com>
-In-Reply-To: <20170218191246.32687-4-trond.myklebust@primarydata.com>
-References: <20170218191246.32687-1-trond.myklebust@primarydata.com>
- <20170218191246.32687-2-trond.myklebust@primarydata.com>
- <20170218191246.32687-3-trond.myklebust@primarydata.com>
- <20170218191246.32687-4-trond.myklebust@primarydata.com>
+Received: from aserp1040.oracle.com ([141.146.126.69]:30088 "EHLO
+        aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1750727AbdBRVfY (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sat, 18 Feb 2017 16:35:24 -0500
+Date: Sun, 19 Feb 2017 00:34:59 +0300
+From: Dan Carpenter <dan.carpenter@oracle.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: Anna Schumaker <anna.schumaker@netapp.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>,
+        Jeff Layton <jlayton@poochiereds.net>,
+        "David S. Miller" <davem@davemloft.net>, linux-nfs@vger.kernel.org,
+        netdev@vger.kernel.org, kernel-janitors@vger.kernel.org
+Subject: [patch] sunrpc: silence uninitialized variable warning
+Message-ID: <20170218213459.GA32320@mwanda>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-We shouldn't need to force callers to carry an unused argument.
+kstrtouint() can return a couple different error codes so the check for
+"ret == -EINVAL" is wrong and static analysis tools correctly complain
+that we can use "num" without initializing it.  It's not super harmful
+because we check the bounds.  But it's also easy enough to fix.
 
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
----
- fs/nfs/nfs4xdr.c | 4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
+Signed-off-by: Dan Carpenter <dan.carpenter@oracle.com>
 
-diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index 7510a0cd93fa..dbb765fb4180 100644
---- a/fs/nfs/nfs4xdr.c
-+++ b/fs/nfs/nfs4xdr.c
-@@ -3125,7 +3125,7 @@ static int decode_op_hdr(struct xdr_stream *xdr, enum nfs_opnum4 expected)
- }
- 
- /* Dummy routine */
--static int decode_ace(struct xdr_stream *xdr, void *ace, struct nfs_client *clp)
-+static int decode_ace(struct xdr_stream *xdr, void *ace)
- {
- 	__be32 *p;
- 	unsigned int strlen;
-@@ -5073,7 +5073,7 @@ static int decode_rw_delegation(struct xdr_stream *xdr,
- 		if (decode_space_limit(xdr, &res->pagemod_limit) < 0)
- 				return -EIO;
- 	}
--	return decode_ace(xdr, NULL, res->server->nfs_client);
-+	return decode_ace(xdr, NULL);
- out_overflow:
- 	print_overflow_msg(__func__, xdr);
- 	return -EIO;
--- 
-2.9.3
-
+diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
+index 956c7bce80d1..311ce92384b7 100644
+--- a/net/sunrpc/xprtsock.c
++++ b/net/sunrpc/xprtsock.c
+@@ -3209,7 +3209,9 @@ static int param_set_uint_minmax(const char *val,
+ 	if (!val)
+ 		return -EINVAL;
+ 	ret = kstrtouint(val, 0, &num);
+-	if (ret == -EINVAL || num < min || num > max)
++	if (ret)
++		return ret;
++	if (num < min || num > max)
+ 		return -EINVAL;
+ 	*((unsigned int *)kp->arg) = num;
+ 	return 0;
