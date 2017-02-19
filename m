@@ -1,8 +1,8 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:35986 "EHLO fieldses.org"
+Received: from fieldses.org ([173.255.197.46]:36014 "EHLO fieldses.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751266AbdBSCI0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Sat, 18 Feb 2017 21:08:26 -0500
+        id S1751348AbdBSCId (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Sat, 18 Feb 2017 21:08:33 -0500
 From: "J. Bruce Fields" <bfields@redhat.com>
 To: Trond Myklebust <trond.myklebust@primarydata.com>,
         Anna Schumaker <schumakeranna@gmail.com>
@@ -10,9 +10,9 @@ Cc: linux-nfs@vger.kernel.org, Andreas Gruenbacher <agruenba@redhat.com>,
         Weston Andros Adamson <dros@primarydata.com>,
         Weston Andros Adamson <dros@netapp.com>,
         "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 2/6] NFSv4: fix getacl ERANGE for some ACL buffer sizes
-Date: Sat, 18 Feb 2017 21:07:46 -0500
-Message-Id: <1487470070-32358-3-git-send-email-bfields@redhat.com>
+Subject: [PATCH 6/6] NFSv4: allow getacl rpc to allocate pages on demand
+Date: Sat, 18 Feb 2017 21:07:50 -0500
+Message-Id: <1487470070-32358-7-git-send-email-bfields@redhat.com>
 In-Reply-To: <1487470070-32358-1-git-send-email-bfields@redhat.com>
 References: <1487470070-32358-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
@@ -20,45 +20,66 @@ List-ID: <linux-nfs.vger.kernel.org>
 
 From: Weston Andros Adamson <dros@netapp.com>
 
-We're not taking into account that the space needed for the (variable
-length) attr bitmap, with the result that we'd sometimes get a spurious
-ERANGE when the ACL data got close to the end of a page.
-
-Just add in an extra page to make sure.
+Instead of preallocating pags, allow xdr_partial_copy_from_skb() to
+allocate whatever pages we need on demand.  This is what the NFSv3 ACL
+code does.
 
 Signed-off-by: J. Bruce Fields <bfields@redhat.com>
 ---
- fs/nfs/nfs4proc.c | 8 ++------
- 1 file changed, 2 insertions(+), 6 deletions(-)
+ fs/nfs/nfs4proc.c | 23 +++++++----------------
+ 1 file changed, 7 insertions(+), 16 deletions(-)
 
 diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 0a0eaecf9676..60501e10625d 100644
+index 3e3dbba4aa74..7842c73fddfc 100644
 --- a/fs/nfs/nfs4proc.c
 +++ b/fs/nfs/nfs4proc.c
-@@ -5069,7 +5069,7 @@ static void nfs4_write_cached_acl(struct inode *inode, struct page **pages, size
-  */
- static ssize_t __nfs4_get_acl_uncached(struct inode *inode, void *buf, size_t buflen)
- {
--	struct page *pages[NFS4ACL_MAXPAGES] = {NULL, };
-+	struct page *pages[NFS4ACL_MAXPAGES + 1] = {NULL, };
+@@ -5068,6 +5068,7 @@ static ssize_t nfs4_do_get_acl(struct inode *inode, void *buf, size_t buflen)
+ 	struct page *pages[NFS4ACL_MAXPAGES + 1] = {NULL, };
  	struct nfs_getaclargs args = {
  		.fh = NFS_FH(inode),
++		/* The xdr layer may allocate pages here. */
  		.acl_pages = pages,
-@@ -5083,13 +5083,9 @@ static ssize_t __nfs4_get_acl_uncached(struct inode *inode, void *buf, size_t bu
+ 	};
+ 	struct nfs_getaclres res = {
+@@ -5079,32 +5080,22 @@ static ssize_t nfs4_do_get_acl(struct inode *inode, void *buf, size_t buflen)
  		.rpc_argp = &args,
  		.rpc_resp = &res,
  	};
--	unsigned int npages = DIV_ROUND_UP(buflen, PAGE_SIZE);
-+	unsigned int npages = DIV_ROUND_UP(buflen, PAGE_SIZE) + 1;
- 	int ret = -ENOMEM, i;
+-	unsigned int npages = DIV_ROUND_UP(buflen, PAGE_SIZE) + 1;
+-	int ret = -ENOMEM, i;
+-
+-	if (npages > ARRAY_SIZE(pages))
+-		return -ERANGE;
+-
+-	for (i = 0; i < npages; i++) {
+-		pages[i] = alloc_page(GFP_KERNEL);
+-		if (!pages[i])
+-			goto out_free;
+-	}
++	int ret, i;
  
--	/* As long as we're doing a round trip to the server anyway,
--	 * let's be prepared for a page of acl data. */
--	if (npages == 0)
--		npages = 1;
- 	if (npages > ARRAY_SIZE(pages))
- 		return -ERANGE;
+ 	/* for decoding across pages */
+ 	res.acl_scratch = alloc_page(GFP_KERNEL);
+ 	if (!res.acl_scratch)
+-		goto out_free;
++		return -ENOMEM;
  
+-	args.acl_len = npages * PAGE_SIZE;
++	args.acl_len = ARRAY_SIZE(pages) << PAGE_SHIFT;
+ 
+-	dprintk("%s  buf %p buflen %zu npages %d args.acl_len %zu\n",
+-		__func__, buf, buflen, npages, args.acl_len);
++	dprintk("%s  buf %p buflen %zu args.acl_len %zu\n",
++		__func__, buf, buflen, args.acl_len);
+ 	ret = nfs4_call_sync(NFS_SERVER(inode)->client, NFS_SERVER(inode),
+ 			     &msg, &args.seq_args, &res.seq_res, 0);
+ 	if (ret == 0)
+ 		ret = res.acl_len;
+-out_free:
++
+ 	for (i = 0; i < ARRAY_SIZE(pages) && pages[i]; i++)
+ 		__free_page(pages[i]);
+ 	__free_page(res.acl_scratch);
 -- 
 2.9.3
 
