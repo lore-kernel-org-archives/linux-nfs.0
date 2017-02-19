@@ -1,50 +1,130 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-it0-f50.google.com ([209.85.214.50]:35561 "EHLO
-        mail-it0-f50.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751362AbdBSVIh (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sun, 19 Feb 2017 16:08:37 -0500
-Received: by mail-it0-f50.google.com with SMTP id 203so59493064ith.0
-        for <linux-nfs@vger.kernel.org>; Sun, 19 Feb 2017 13:08:37 -0800 (PST)
+Received: from mail-it0-f65.google.com ([209.85.214.65]:33628 "EHLO
+        mail-it0-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751717AbdBSVIk (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sun, 19 Feb 2017 16:08:40 -0500
+Received: by mail-it0-f65.google.com with SMTP id e137so8856302itc.0
+        for <linux-nfs@vger.kernel.org>; Sun, 19 Feb 2017 13:08:40 -0800 (PST)
 From: Trond Myklebust <trond.myklebust@primarydata.com>
 To: Anna Schumaker <anna.schumaker@netapp.com>,
         Chuck Lever <chuck.lever@oracle.com>
 Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v5 0/8] XDR cleanups for NFSv4
-Date: Sun, 19 Feb 2017 16:08:24 -0500
-Message-Id: <20170219210832.61213-1-trond.myklebust@primarydata.com>
+Subject: [PATCH v5 2/8] NFSv4: Replace ad-hoc xdr encode/decode helpers with xdr_stream_* generics
+Date: Sun, 19 Feb 2017 16:08:26 -0500
+Message-Id: <20170219210832.61213-3-trond.myklebust@primarydata.com>
+In-Reply-To: <20170219210832.61213-2-trond.myklebust@primarydata.com>
+References: <20170219210832.61213-1-trond.myklebust@primarydata.com>
+ <20170219210832.61213-2-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Various cleanups and bugfixes for the NFSv4 client XDR code.
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+Reviewed-by: Chuck Lever <chuck.lever@oracle.com>
+---
+ fs/nfs/callback_xdr.c                  |  8 ++------
+ fs/nfs/flexfilelayout/flexfilelayout.c |  5 +----
+ fs/nfs/nfs4xdr.c                       | 33 +++++++++------------------------
+ 3 files changed, 12 insertions(+), 34 deletions(-)
 
-v2: Add documentation to the generic helpers
-v3: Fix a bug in xdr_stream_encode_opaque (Whoops!)
-v4: Add a "maxlen" argument to xdr_stream_decode_opaque_inline() to perform
-   size sanity checking on all objects coming from the server.
-   Replace the string decoder in the callback XDR
-   Add cleanups for the owner/group attribute decoding
-v5: Use EMSGSIZE to denote encode errors, and destination buffer size issues.
-    Use EBADMSG to denote errors due to truncated RPC calls.
-
-Trond Myklebust (8):
-  SUNRPC: Add generic helpers for xdr_stream encode/decode
-  NFSv4: Replace ad-hoc xdr encode/decode helpers with xdr_stream_*
-    generics
-  NFSv4: Replace the open coded decode_opaque_inline() with the new
-    generic
-  NFSv4: Replace callback string decode function with a generic
-  NFSv4: Fix the underestimation of delegation XDR space reservation
-  NFSv4: Remove bogus "struct nfs_client" argument from decode_ace()
-  SUNRPC: Add a helper function xdr_stream_decode_string_dup()
-  NFSv4: Clean up owner/group attribute decode
-
- fs/nfs/callback_xdr.c                  |  38 ++-----
- fs/nfs/flexfilelayout/flexfilelayout.c |   5 +-
- fs/nfs/nfs4xdr.c                       | 185 ++++++++++++++-------------------
- include/linux/sunrpc/xdr.h             | 179 +++++++++++++++++++++++++++++++
- net/sunrpc/xdr.c                       |  34 ++++++
- 5 files changed, 302 insertions(+), 139 deletions(-)
-
+diff --git a/fs/nfs/callback_xdr.c b/fs/nfs/callback_xdr.c
+index eb094c6011d8..e732a65db546 100644
+--- a/fs/nfs/callback_xdr.c
++++ b/fs/nfs/callback_xdr.c
+@@ -582,12 +582,8 @@ static __be32 decode_notify_lock_args(struct svc_rqst *rqstp, struct xdr_stream
+ 
+ static __be32 encode_string(struct xdr_stream *xdr, unsigned int len, const char *str)
+ {
+-	__be32 *p;
+-
+-	p = xdr_reserve_space(xdr, 4 + len);
+-	if (unlikely(p == NULL))
+-		return htonl(NFS4ERR_RESOURCE);
+-	xdr_encode_opaque(p, str, len);
++	if (unlikely(xdr_stream_encode_opaque(xdr, str, len) < 0))
++		return cpu_to_be32(NFS4ERR_RESOURCE);
+ 	return 0;
+ }
+ 
+diff --git a/fs/nfs/flexfilelayout/flexfilelayout.c b/fs/nfs/flexfilelayout/flexfilelayout.c
+index 42e3e9daa328..471efdc2589d 100644
+--- a/fs/nfs/flexfilelayout/flexfilelayout.c
++++ b/fs/nfs/flexfilelayout/flexfilelayout.c
+@@ -1966,10 +1966,7 @@ static int ff_layout_encode_ioerr(struct xdr_stream *xdr,
+ static void
+ encode_opaque_fixed(struct xdr_stream *xdr, const void *buf, size_t len)
+ {
+-	__be32 *p;
+-
+-	p = xdr_reserve_space(xdr, len);
+-	xdr_encode_opaque_fixed(p, buf, len);
++	WARN_ON_ONCE(xdr_stream_encode_opaque_fixed(xdr, buf, len) < 0);
+ }
+ 
+ static void
+diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+index e9255cb453e6..5f0a6fcd0030 100644
+--- a/fs/nfs/nfs4xdr.c
++++ b/fs/nfs/nfs4xdr.c
+@@ -924,34 +924,22 @@ static __be32 *reserve_space(struct xdr_stream *xdr, size_t nbytes)
+ 
+ static void encode_opaque_fixed(struct xdr_stream *xdr, const void *buf, size_t len)
+ {
+-	__be32 *p;
+-
+-	p = xdr_reserve_space(xdr, len);
+-	xdr_encode_opaque_fixed(p, buf, len);
++	WARN_ON_ONCE(xdr_stream_encode_opaque_fixed(xdr, buf, len) < 0);
+ }
+ 
+ static void encode_string(struct xdr_stream *xdr, unsigned int len, const char *str)
+ {
+-	__be32 *p;
+-
+-	p = reserve_space(xdr, 4 + len);
+-	xdr_encode_opaque(p, str, len);
++	WARN_ON_ONCE(xdr_stream_encode_opaque(xdr, str, len) < 0);
+ }
+ 
+ static void encode_uint32(struct xdr_stream *xdr, u32 n)
+ {
+-	__be32 *p;
+-
+-	p = reserve_space(xdr, 4);
+-	*p = cpu_to_be32(n);
++	WARN_ON_ONCE(xdr_stream_encode_u32(xdr, n) < 0);
+ }
+ 
+ static void encode_uint64(struct xdr_stream *xdr, u64 n)
+ {
+-	__be32 *p;
+-
+-	p = reserve_space(xdr, 8);
+-	xdr_encode_hyper(p, n);
++	WARN_ON_ONCE(xdr_stream_encode_u64(xdr, n) < 0);
+ }
+ 
+ static void encode_nfs4_seqid(struct xdr_stream *xdr,
+@@ -4294,15 +4282,12 @@ static int decode_access(struct xdr_stream *xdr, u32 *supported, u32 *access)
+ 
+ static int decode_opaque_fixed(struct xdr_stream *xdr, void *buf, size_t len)
+ {
+-	__be32 *p;
+-
+-	p = xdr_inline_decode(xdr, len);
+-	if (likely(p)) {
+-		memcpy(buf, p, len);
+-		return 0;
++	ssize_t ret = xdr_stream_decode_opaque_fixed(xdr, buf, len);
++	if (unlikely(ret < 0)) {
++		print_overflow_msg(__func__, xdr);
++		return -EIO;
+ 	}
+-	print_overflow_msg(__func__, xdr);
+-	return -EIO;
++	return 0;
+ }
+ 
+ static int decode_stateid(struct xdr_stream *xdr, nfs4_stateid *stateid)
 -- 
 2.9.3
 
