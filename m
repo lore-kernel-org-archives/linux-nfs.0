@@ -1,404 +1,338 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:21139 "EHLO
-        aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1750880AbdBSTIA (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sun, 19 Feb 2017 14:08:00 -0500
-Content-Type: text/plain; charset=utf-8
-Mime-Version: 1.0 (Mac OS X Mail 9.3 \(3124\))
-Subject: Re: [PATCH v3 1/4] SUNRPC: Add generic helpers for xdr_stream encode/decode
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <1487482557.70634.2.camel@primarydata.com>
-Date: Sun, 19 Feb 2017 14:07:51 -0500
-Cc: Anna Schumaker <anna.schumaker@netapp.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <BD6F57E7-847B-422E-B87D-142DAF475855@oracle.com>
-References: <20170218191246.32687-1-trond.myklebust@primarydata.com> <20170218191246.32687-2-trond.myklebust@primarydata.com> <0016E411-0100-4CCF-9FCF-541416C4FC1E@oracle.com> <1487482557.70634.2.camel@primarydata.com>
-To: Trond Myklebust <trondmy@primarydata.com>
+Received: from us-smtp-delivery-194.mimecast.com ([63.128.21.194]:38974 "EHLO
+        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1750978AbdBST2V (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sun, 19 Feb 2017 14:28:21 -0500
+From: Trond Myklebust <trondmy@primarydata.com>
+To: "chuck.lever@oracle.com" <chuck.lever@oracle.com>
+CC: "anna.schumaker@netapp.com" <anna.schumaker@netapp.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH v3 1/4] SUNRPC: Add generic helpers for xdr_stream
+ encode/decode
+Date: Sun, 19 Feb 2017 19:28:13 +0000
+Message-ID: <1487532489.42276.1.camel@primarydata.com>
+References: <20170218191246.32687-1-trond.myklebust@primarydata.com>
+         <20170218191246.32687-2-trond.myklebust@primarydata.com>
+         <0016E411-0100-4CCF-9FCF-541416C4FC1E@oracle.com>
+         <1487482557.70634.2.camel@primarydata.com>
+         <BD6F57E7-847B-422E-B87D-142DAF475855@oracle.com>
+In-Reply-To: <BD6F57E7-847B-422E-B87D-142DAF475855@oracle.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+VGhhbmtzIGZvciB0aGUgZGlzY3Vzc2lvbiwgQlRXLiBJIGFwcHJlY2lhdGUgdGhlIGZlZWRiYWNr
+Lg0KDQpPbiBTdW4sIDIwMTctMDItMTkgYXQgMTQ6MDcgLTA1MDAsIENodWNrIExldmVyIHdyb3Rl
+Og0KPiA+IE9uIEZlYiAxOSwgMjAxNywgYXQgMTI6MzYgQU0sIFRyb25kIE15a2xlYnVzdCA8dHJv
+bmRteUBwcmltYXJ5ZGF0YS4NCj4gPiBjb20+IHdyb3RlOg0KPiA+IA0KPiA+IE9uIFNhdCwgMjAx
+Ny0wMi0xOCBhdCAxNzoyMSAtMDUwMCwgQ2h1Y2sgTGV2ZXIgd3JvdGU6DQo+ID4gPiA+IE9uIEZl
+YiAxOCwgMjAxNywgYXQgMjoxMiBQTSwgVHJvbmQgTXlrbGVidXN0IDx0cm9uZC5teWtsZWJ1c3RA
+cA0KPiA+ID4gPiByaW1hDQo+ID4gPiA+IHJ5ZGF0YS5jb20+IHdyb3RlOg0KPiA+ID4gPiANCj4g
+PiA+ID4gQWRkIHNvbWUgZ2VuZXJpYyBoZWxwZXJzIGZvciBlbmNvZGluZy9kZWNvZGluZyBvcGFx
+dWUNCj4gPiA+ID4gc3RydWN0dXJlcw0KPiA+ID4gPiBhbmQNCj4gPiA+ID4gYmFzaWMgdTMyL3U2
+NC4NCj4gPiA+IA0KPiA+ID4gSSBoYXZlIHNvbWUgcmFuZG9tLXRob3VnaHRzLXNsYXNoLXdhY2t5
+LWlkZWFzLg0KPiA+ID4gDQo+ID4gPiBJJ20gZ29pbmcgdG8gcGFpbnQgdGhlIGdhcmRlbiBzaGVk
+IGEgbGl0dGxlIHNpbmNlDQo+ID4gPiB0aGVzZSBoZWxwZXJzIGFwcGVhciB0byBiZSBicm9hZGx5
+IGFwcGxpY2FibGUuDQo+ID4gPiBHZW5lcmFsbHkgc3BlYWtpbmcgSSBsaWtlIHRoZSBpZGVhIG9m
+IGJ1aWxkaW5nDQo+ID4gPiAic3RyZWFtIiB2ZXJzaW9ucyBvZiB0aGUgdHJhZGl0aW9uYWwgYmFz
+aWMgdHlwZQ0KPiA+ID4gZW5jb2RlcnMgYW5kIGRlY29kZXJzLg0KPiA+ID4gDQo+ID4gPiANCj4g
+PiA+ID4gU2lnbmVkLW9mZi1ieTogVHJvbmQgTXlrbGVidXN0IDx0cm9uZC5teWtsZWJ1c3RAcHJp
+bWFyeWRhdGEuY29tDQo+ID4gPiA+ID4NCj4gPiA+ID4gLS0tDQo+ID4gPiA+IGluY2x1ZGUvbGlu
+dXgvc3VucnBjL3hkci5oIHwgMTczDQo+ID4gPiA+ICsrKysrKysrKysrKysrKysrKysrKysrKysr
+KysrKysrKysrKysrKysrKysrKw0KPiA+ID4gPiAxIGZpbGUgY2hhbmdlZCwgMTczIGluc2VydGlv
+bnMoKykNCj4gPiA+ID4gDQo+ID4gPiA+IGRpZmYgLS1naXQgYS9pbmNsdWRlL2xpbnV4L3N1bnJw
+Yy94ZHIuaA0KPiA+ID4gPiBiL2luY2x1ZGUvbGludXgvc3VucnBjL3hkci5oDQo+ID4gPiA+IGlu
+ZGV4IDU2YzQ4Yzg4NGEyNC4uMzdiZjFiZTIwYjYyIDEwMDY0NA0KPiA+ID4gPiAtLS0gYS9pbmNs
+dWRlL2xpbnV4L3N1bnJwYy94ZHIuaA0KPiA+ID4gPiArKysgYi9pbmNsdWRlL2xpbnV4L3N1bnJw
+Yy94ZHIuaA0KPiA+ID4gPiBAQCAtMjQyLDYgKzI0MiwxNzkgQEAgZXh0ZXJuIHVuc2lnbmVkIGlu
+dCB4ZHJfcmVhZF9wYWdlcyhzdHJ1Y3QNCj4gPiA+ID4geGRyX3N0cmVhbSAqeGRyLCB1bnNpZ25l
+ZCBpbnQgbGVuKTsNCj4gPiA+ID4gZXh0ZXJuIHZvaWQgeGRyX2VudGVyX3BhZ2Uoc3RydWN0IHhk
+cl9zdHJlYW0gKnhkciwgdW5zaWduZWQgaW50DQo+ID4gPiA+IGxlbik7DQo+ID4gPiA+IGV4dGVy
+biBpbnQgeGRyX3Byb2Nlc3NfYnVmKHN0cnVjdCB4ZHJfYnVmICpidWYsIHVuc2lnbmVkIGludA0K
+PiA+ID4gPiBvZmZzZXQsIHVuc2lnbmVkIGludCBsZW4sIGludCAoKmFjdG9yKShzdHJ1Y3Qgc2Nh
+dHRlcmxpc3QgKiwNCj4gPiA+ID4gdm9pZA0KPiA+ID4gPiAqKSwgdm9pZCAqZGF0YSk7DQo+ID4g
+PiA+IA0KPiA+ID4gPiArLyoqDQo+ID4gPiA+ICsgKiB4ZHJfYWxpZ25fc2l6ZSAtIENhbGN1bGF0
+ZSBwYWRkZWQgc2l6ZSBvZiBhbiBvYmplY3QNCj4gPiA+ID4gKyAqIEBuOiBTaXplIG9mIGFuIG9i
+amVjdCBiZWluZyBYRFIgZW5jb2RlZCAoaW4gYnl0ZXMpDQo+ID4gPiA+ICsgKg0KPiA+ID4gPiAr
+ICogUmV0dXJuIHZhbHVlOg0KPiA+ID4gPiArICrCoMKgwqBTaXplIChpbiBieXRlcykgb2YgdGhl
+IG9iamVjdCBpbmNsdWRpbmcgeGRyIHBhZGRpbmcNCj4gPiA+ID4gKyAqLw0KPiA+ID4gPiArc3Rh
+dGljIGlubGluZSBzaXplX3QNCj4gPiA+ID4gK3hkcl9hbGlnbl9zaXplKHNpemVfdCBuKQ0KPiA+
+ID4gPiArew0KPiA+ID4gPiArCWNvbnN0IHNpemVfdCBtYXNrID0gc2l6ZW9mKF9fdTMyKSAtIDE7
+DQo+ID4gPiANCj4gPiA+IEkga25vdyB0aGlzIGRvZXNuJ3QgbWFrZSBhIGZ1bmN0aW9uYWwgZGlm
+ZmVyZW5jZSwgYnV0DQo+ID4gPiBJJ20gd29uZGVyaW5nIGlmIHRoaXMgc2hvdWxkIGJlIHNpemVv
+ZihfX2JlMzIpLCBzaW5jZQ0KPiA+ID4gaXQgaXMgYWN0dWFsbHkgdGhlIHNpemUgb2YgYSB3aXJl
+IG9iamVjdD8gU2VlbXMgbGlrZQ0KPiA+ID4gdGhhdCBpcyBhIGNvbW1vbiBxdWVzdGlvbiB3aGVy
+ZXZlciBzaXplb2YgaXMgdXNlZA0KPiA+ID4gYmVsb3cuDQo+ID4gDQo+ID4gVGhlIF9fYmUzMiBp
+cyByZXF1aXJlZCB0byBiZSB0aGUgc2FtZSBzaXplIGFzIHUzMi4gVGhlIG9ubHkgYWxsb3dlZA0K
+PiA+IGRpZmZlcmVuY2UgYmV0d2VlbiB0aGUgdHdvIGlzIGJlIHRoZSBlbmRpYW5uZXNzLg0KPiAN
+Cj4gUmlnaHQsIHNpemVvZihfX3UzMikgPT0gc2l6ZW9mKF9fYmUzMikuwqDCoF9fYmUgaGFzIGFs
+d2F5cw0KPiBiZWVuIGFib3V0IGVuZGlhbiBhbm5vdGF0aW9uOyBubyByZWFsIGZ1bmN0aW9uYWwg
+ZGlmZmVyZW5jZQ0KPiB3aXRoIF9fdS4NCj4gDQo+IFRoZSBpc3N1ZSBmb3IgbWUgaXMgcHJlY2lz
+aW9uIG9mIGRvY3VtZW50YXRpb24gKG9yLCBpbiBzb21lDQo+IHNlbnNlLCBjb2RlIHJlYWRhYmls
+aXR5KS4gSW4gYWxsIG9mIHRoZXNlIGNhc2VzLCBpdCdzIG5vdA0KPiB0aGUgc2l6ZSBvZiB0aGUg
+bG9jYWwgdmFyaWFibGUgdGhhdCBpcyBpbXBvcnRhbnQsIGl0J3MgdGhlDQo+IHNpemUgb2YgdGhl
+IChYRFIgZW5jb2RlZCkgd2lyZSBvYmplY3QuIFRoYXQncyBzaXplb2YoX19iZTMyKS4NCj4gDQo+
+IFRob3NlIGp1c3QgaGFwcGVuIHRvIGJlIHRoZSBzYW1lIGhlcmUuIEl0J3MgcHJldHR5IGVhc3kg
+dG8NCj4gbWlzdGFrZSB0aGUgc2l6ZSBvZiBhIGxvY2FsIG9iamVjdCBhcyBiZWluZyBhbHdheXMg
+dGhlIHNhbWUNCj4gYXMgdGhlIHNpemUgb2YgdGhlIGVuY29kZWQgZGF0YSB0eXBlLiBJJ3ZlIGRv
+bmUgdGhhdCBteXNlbGYNCj4gb2Z0ZW4gZW5vdWdoIHRoYXQgaXQgbWFrZXMgc2Vuc2UgdG8gYmUg
+Y29uc2lzdGVudCBhbmQNCj4gY2FyZWZ1bCwgZXZlbiBpbiB0aGUgc2ltcGxlIGNhc2VzLg0KPiAN
+Cj4gSSdtIG5vdCBnb2luZyB0byBtYWtlIGEgYmlnIGRlYWwsIGJ1dCBJJ2QgbGlrZSB0byBwb2lu
+dCBvdXQNCj4gdGhhdCBzdWJ0bGUgZGlmZmVyZW5jZS4gSU1PIGl0IHdvdWxkIG1ha2UgbW9yZSBz
+ZW5zZSB0bw0KPiBodW1hbiByZWFkZXJzIGlmIHRoZXNlIHdlcmUgX19iZSBhbmQgbm90IF9fdS4N
+Cg0KRmFpciBlbm91Z2guIEkgY2FuIHVwZGF0ZSB0aGF0Lg0KDQo+IA0KPiA+ID4gSXMgdGhpcyBh
+IGNvbnN0YW50IHZhcmlhYmxlIHJhdGhlciB0aGFuIGFuIGVudW0gYmVjYXVzZQ0KPiA+ID4geW91
+IHdhbnQgaXQgdG8gcmV0YWluIHRoZSB0eXBlIG9mIHNpemVfdCAobWF0Y2hpbmcgdGhlDQo+ID4g
+PiB0eXBlIG9mIHRoZSB4ZHJfaW5saW5lX3tlbixkZX1jb2RlKCkgZnVuY3Rpb25zKSA/DQo+ID4g
+DQo+ID4gSXQncyByZWFsbHkganVzdCBmb3IgZWZmaWNpZW5jeSwgaW4gb3JkZXIgdG8gcHJvZCBn
+Y2MgaW50bw0KPiA+IG9wdGltaXNpbmcNCj4gPiBpdCBhcyBpdCB3b3VsZCBhbnkgb3RoZXIgY29u
+c3RhbnQuDQo+ID4gDQo+ID4gPiBTaW5jZSB3ZSBzZWUgc2l6ZW9mKHlhZGEpIHJlcGVhdGVkIGVs
+c2V3aGVyZSwgZGlkIHlvdQ0KPiA+ID4gY29uc2lkZXIgZGVmaW5pbmcgc2l6ZSBjb25zdGFudHMg
+aW4gYSBzY29wZSB3aGVyZSB0aGV5DQo+ID4gPiBjYW4gYmUgc2hhcmVkIGFtb25nc3QgYWxsIG9m
+IHRoZSBYRFIgZnVuY3Rpb25zPw0KPiA+ID4gDQo+ID4gPiBGb3IgZXhhbXBsZSwgeGRyX3Jlc2Vy
+dmVfc3BhY2UgaXRzZWxmIGNvdWxkIGltbWVkaWF0ZWx5DQo+ID4gPiBtYWtlIHVzZSBvZiBhICJz
+aXplb2YoX19iZTMyKSAtIDEiIGNvbnN0YW50Lg0KPiA+IA0KPiA+IFRoYXQgY291bGQgYmUgZG9u
+ZS4gSSBoYXZlbid0IHJlYWxseSBjb25zaWRlcmVkIGl0Lg0KPiA+IA0KPiA+ID4gSXMgeW91ciBp
+bnRlbnRpb24gdG8gcmVwbGFjZSBYRFJfUVVBRExFTiB3aXRoIHRoaXMNCj4gPiA+IGZ1bmN0aW9u
+IGV2ZW50dWFsbHk/DQo+ID4gDQo+ID4gRXZlbnR1YWxseSwgSSdkIGxpa2UgdXMgdG8gZ2V0IHJp
+ZCBvZiBtb3N0IG9mIHRoZSBvcGVuIGNvZGVkDQo+ID4gaW5zdGFuY2VzDQo+ID4gb2YgJ3BvaW50
+ZXIgdG8gX19iZTMyJyBpbiB0aGUgTkZTIGNvZGUsIGFuZCBoaWRlIGFsbCBrbm93bGVkZ2Ugb2YN
+Cj4gPiB0aGF0DQo+ID4gaW4gc3RydWN0IHhkcl9zdHJlYW0gYW5kIHRoZXNlIFNVTlJQQyBsYXll
+cmVkIGhlbHBlcnMuDQo+IA0KPiBTb3VuZHMgZ29vZCB0byBtZS4NCj4gDQo+IA0KPiA+ID4gPiAr
+DQo+ID4gPiA+ICsJcmV0dXJuIChuICsgbWFzaykgJiB+bWFzazsNCj4gPiA+ID4gK30NCj4gPiA+
+ID4gKw0KPiA+ID4gPiArLyoqDQo+ID4gPiA+ICsgKiB4ZHJfc3RyZWFtX2VuY29kZV91MzIgLSBF
+bmNvZGUgYSAzMi1iaXQgaW50ZWdlcg0KPiA+ID4gPiArICogQHhkcjogcG9pbnRlciB0byB4ZHJf
+c3RyZWFtDQo+ID4gPiA+ICsgKiBAbjogaW50ZWdlciB0byBlbmNvZGUNCj4gPiA+ID4gKyAqDQo+
+ID4gPiA+ICsgKiBSZXR1cm4gdmFsdWVzOg0KPiA+ID4gPiArICrCoMKgwqBPbiBzdWNjZXNzLCBy
+ZXR1cm5zIGxlbmd0aCBpbiBieXRlcyBvZiBYRFIgYnVmZmVyDQo+ID4gPiA+IGNvbnN1bWVkDQo+
+ID4gPiA+ICsgKsKgwqDCoCUtRU5PQlVGUyBvbiBYRFIgYnVmZmVyIG92ZXJmbG93DQo+ID4gPiAN
+Cj4gPiA+IEkndmUgbmV2ZXIgYmVlbiBjcmF6eSBhYm91dCB0aGVzZSBhbXBsaWZpZWQgcmV0dXJu
+DQo+ID4gPiB0eXBlcywgdGhvdWdoIEkga25vdyBpdCdzIHR5cGljYWwga2VybmVsIGNvZGluZyBz
+dHlsZS4NCj4gPiA+IEhlcmUsIHRob3VnaCwgSSB3b25kZXIgaWYgdGhleSBhcmUgcmVhbGx5IG5l
+Y2Vzc2FyeS4NCj4gPiA+IA0KPiA+ID4gVGhlIHJldHVybmVkIGxlbmd0aCBzZWVtcyB0byBiZSBp
+bnRlcmVzdGluZyBvbmx5IGZvcg0KPiA+ID4gZGVjb2RpbmcgdmFyaWFibGUtbGVuZ3RoIG9iamVj
+dHMgKGZhcnRoZXIgYmVsb3cpLiBNYXliZQ0KPiA+ID4gdGhvc2UgYXJlIHRoZSBvbmx5IGZ1bmN0
+aW9ucyB0aGF0IG5lZWQgdG8gcHJvdmlkZSBhDQo+ID4gPiBwb3NpdGl2ZSByZXR1cm4gdmFsdWU/
+DQo+ID4gDQo+ID4gTkZTdjQgaW50cm9kdWNlcyB0aGUgKElNTyBuYXN0eSkgaGFiaXQgb2YgbmVz
+dGluZyBYRFItZW5jb2RlZA0KPiA+IG9iamVjdHMNCj4gPiBpbnNpZGUgYSB2YXJpYWJsZSBsZW5n
+dGggb3BhcXVlIG9iamVjdCAoc2F5IGhlbGxvIHRvIHR5cGUNCj4gPiAiYXR0cmxpc3Q0IikuDQo+
+IA0KPiBBbmQgcE5GUyBsYXlvdXRzLiBGYWlyIGVub3VnaC4NCj4gDQo+IA0KPiA+IEluIHRoYXQg
+Y2FzZSwgd2UgbmVlZCB0byBrZWVwIGEgcnVubmluZyB0YWxseSBvZiB0aGUgbGVuZ3RoIG9mIHRo
+ZQ0KPiA+IG9iamVjdHMgd2UgaGF2ZSBYRFIgZW5jb2RlZCBzbyB0aGF0IHdlIGNhbiByZXRyb2Fj
+dGl2ZWx5IHNldCB0aGUNCj4gPiBsZW5ndGgNCj4gPiBvZiB0aGUgb3BhcXVlIG9iamVjdC4gQ3Vy
+cmVudGx5IHdlIHVzZSB0aGUgeGRyX3N0cmVhbV9wb3MoKSB0bw0KPiA+IGRldGVybWluZSB0aGF0
+IGxlbmd0aCwgYnV0IGl0IG1pZ2h0IGJlIG5pY2UgdG8gcmVwbGFjZSB0aGF0IHdpdGgNCj4gPiBz
+b21ldGhpbmcgYSBsaXR0bGUgbW9yZSBkaXJlY3QuDQo+IA0KPiBUaGUgbmV3IGhlbHBlcnMgYXBw
+ZWFyIHRvIGJlIGFic3RyYWN0aW5nIGF3YXkgZnJvbSBhDQo+IGRpcmVjdCBhcHByb2FjaC4gSU1I
+TyBzdGF5aW5nIHdpdGggc29tZXRoaW5nIHRoYXQgbG9va3MNCj4gbGlrZSBhIGZ1bmN0aW9uIGNh
+bGwgKGxpa2UgeGRyX3N0cmVhbV9wb3MpIHNlZW1zIGxpa2UNCj4gaXQgaXMgY2xlYW4gYW5kIGNv
+bnNpc3RlbnQgd2l0aCB0aGVzZSBuZXcgaGVscGVycy4NCj4gDQo+IA0KPiA+IE5vdGUgYWxzbyB0
+aGF0IHRoZSBsZW5ndGhzIHJldHVybmVkIGhlcmUgYXJlIG5vdCB0aGUgb2JqZWN0IHNpemVzDQo+
+ID4gdGhlbXNlbHZlcywgYnV0IHRoZSBhbW91bnQgb2YgYnVmZmVyIHNwYWNlIGNvbnN1bWVkIChp
+LmUuIHRoZQ0KPiA+IGFsaWduZWQNCj4gPiBzaXplKS4NCj4gDQo+IE1ha2VzIHNlbnNlLiBTdGls
+bCwgc2VlbXMgbGlrZSB0aGUgY2FsbGVycyBhbHJlYWR5IGtub3cNCj4gdGhlc2UgInNwYWNlIGNv
+bnN1bWVkIiB2YWx1ZXMgaW4gZXZlcnkgY2FzZS4gTWF5YmUgdGhhdA0KPiB3b24ndCBiZSB0cnVl
+IHdoZW4gdGhlc2UgaGVscGVycyBhcmUgZ2x1ZWQgdG9nZXRoZXIgdG8NCj4gaGFuZGxlIG1vcmUg
+YWJzdHJhY3QgZGF0YSB0eXBlcy4NCj4gDQo+ID4gPiBQZXJoYXBzIHRoZSBXQVJOX09OX09OQ0Ug
+Y2FsbHMgYWRkZWQgaW4gbGF0ZXIgcGF0Y2hlcw0KPiA+ID4gc2hvdWxkIGJlIGluIHRoZXNlIGhl
+bHBlcnMgaW5zdGVhZCBvZiBpbiB0aGVpciBjYWxsZXJzLg0KPiA+ID4gVGhlbiB0aGUgZW5jb2Rl
+ciBoZWxwZXJzIGNhbiByZXR1cm4gdm9pZC4NCj4gPiANCj4gPiBBdCBzb21lIHBvaW50LCBJJ2Qg
+bGlrZSB0byByZWluc3RhdGUgdGhlIHByYWN0aWNlIG9mIHJldHVybmluZyBhbg0KPiA+IGVycm9y
+DQo+ID4gd2hlbiBlbmNvZGluZyBmYWlscy4gSXQgbWF5IGJlIGJldHRlciB0byBhYm9ydCBzZW5k
+aW5nIGEgdHJ1bmNhdGVkDQo+ID4gUlBDDQo+ID4gY2FsbCByYXRoZXIgdGhhbiBoYXZpbmcgaXQg
+ZXhlY3V0ZSBwYXJ0aWFsbHk7IHNwZWNpYWxseSBub3cgdGhhdA0KPiA+IHdlJ3JlDQo+ID4gZmlu
+YWxseSBzdGFydGluZyB0byB1c2UgQ09NUE9VTkQgdG8gY3JlYXRlIG1vcmUgY29tcGxleCBvcGVy
+YXRpb25zLg0KPiANCj4gSSBhZ3JlZSwgSU1PIHRoYXQgd291bGQgYmUgYSBiZXR0ZXIgYXBwcm9h
+Y2guDQo+IA0KPiANCj4gPiA+ID4gKyAqLw0KPiA+ID4gPiArc3RhdGljIGlubGluZSBzc2l6ZV90
+DQo+ID4gPiA+ICt4ZHJfc3RyZWFtX2VuY29kZV91MzIoc3RydWN0IHhkcl9zdHJlYW0gKnhkciwg
+X191MzIgbikNCj4gPiA+ID4gK3sNCj4gPiA+ID4gKwljb25zdCBzaXplX3QgbGVuID0gc2l6ZW9m
+KG4pOw0KPiA+ID4gPiArCV9fYmUzMiAqcCA9IHhkcl9yZXNlcnZlX3NwYWNlKHhkciwgbGVuKTsN
+Cj4gPiA+ID4gKw0KPiA+ID4gPiArCWlmICh1bmxpa2VseSghcCkpDQo+ID4gPiA+ICsJCXJldHVy
+biAtRU5PQlVGUzsNCj4gPiA+ID4gKwkqcCA9IGNwdV90b19iZTMyKG4pOw0KPiA+ID4gPiArCXJl
+dHVybiBsZW47DQo+ID4gPiA+ICt9DQo+ID4gPiA+ICsNCj4gPiA+ID4gKy8qKg0KPiA+ID4gPiAr
+ICogeGRyX3N0cmVhbV9lbmNvZGVfdTY0IC0gRW5jb2RlIGEgNjQtYml0IGludGVnZXINCj4gPiA+
+ID4gKyAqIEB4ZHI6IHBvaW50ZXIgdG8geGRyX3N0cmVhbQ0KPiA+ID4gPiArICogQG46IDY0LWJp
+dCBpbnRlZ2VyIHRvIGVuY29kZQ0KPiA+ID4gPiArICoNCj4gPiA+ID4gKyAqIFJldHVybiB2YWx1
+ZXM6DQo+ID4gPiA+ICsgKsKgwqDCoE9uIHN1Y2Nlc3MsIHJldHVybnMgbGVuZ3RoIGluIGJ5dGVz
+IG9mIFhEUiBidWZmZXINCj4gPiA+ID4gY29uc3VtZWQNCj4gPiA+ID4gKyAqwqDCoMKgJS1FTk9C
+VUZTIG9uIFhEUiBidWZmZXIgb3ZlcmZsb3cNCj4gPiA+ID4gKyAqLw0KPiA+ID4gPiArc3RhdGlj
+IGlubGluZSBzc2l6ZV90DQo+ID4gPiA+ICt4ZHJfc3RyZWFtX2VuY29kZV91NjQoc3RydWN0IHhk
+cl9zdHJlYW0gKnhkciwgX191NjQgbikNCj4gPiA+ID4gK3sNCj4gPiA+ID4gKwljb25zdCBzaXpl
+X3QgbGVuID0gc2l6ZW9mKG4pOw0KPiA+ID4gPiArCV9fYmUzMiAqcCA9IHhkcl9yZXNlcnZlX3Nw
+YWNlKHhkciwgbGVuKTsNCj4gPiA+ID4gKw0KPiA+ID4gPiArCWlmICh1bmxpa2VseSghcCkpDQo+
+ID4gPiA+ICsJCXJldHVybiAtRU5PQlVGUzsNCj4gPiA+ID4gKwl4ZHJfZW5jb2RlX2h5cGVyKHAs
+IG4pOw0KPiA+ID4gPiArCXJldHVybiBsZW47DQo+ID4gPiA+ICt9DQo+ID4gPiA+ICsNCj4gPiA+
+ID4gKy8qKg0KPiA+ID4gPiArICogeGRyX3N0cmVhbV9lbmNvZGVfb3BhcXVlX2ZpeGVkIC0gRW5j
+b2RlIGZpeGVkIGxlbmd0aCBvcGFxdWUNCj4gPiA+ID4geGRyDQo+ID4gPiA+IGRhdGENCj4gPiA+
+ID4gKyAqIEB4ZHI6IHBvaW50ZXIgdG8geGRyX3N0cmVhbQ0KPiA+ID4gPiArICogQHB0cjogcG9p
+bnRlciB0byBvcGFxdWUgZGF0YSBvYmplY3QNCj4gPiA+ID4gKyAqIEBsZW46IHNpemUgb2Ygb2Jq
+ZWN0IHBvaW50ZWQgdG8gYnkgQHB0cg0KPiA+ID4gPiArICoNCj4gPiA+ID4gKyAqIFJldHVybiB2
+YWx1ZXM6DQo+ID4gPiA+ICsgKsKgwqDCoE9uIHN1Y2Nlc3MsIHJldHVybnMgbGVuZ3RoIGluIGJ5
+dGVzIG9mIFhEUiBidWZmZXINCj4gPiA+ID4gY29uc3VtZWQNCj4gPiA+ID4gKyAqwqDCoMKgJS1F
+Tk9CVUZTIG9uIFhEUiBidWZmZXIgb3ZlcmZsb3cNCj4gPiA+ID4gKyAqLw0KPiA+ID4gPiArc3Rh
+dGljIGlubGluZSBzc2l6ZV90DQo+ID4gPiA+ICt4ZHJfc3RyZWFtX2VuY29kZV9vcGFxdWVfZml4
+ZWQoc3RydWN0IHhkcl9zdHJlYW0gKnhkciwgY29uc3QNCj4gPiA+ID4gdm9pZA0KPiA+ID4gPiAq
+cHRyLCBzaXplX3QgbGVuKQ0KPiA+ID4gPiArew0KPiA+ID4gPiArCV9fYmUzMiAqcCA9IHhkcl9y
+ZXNlcnZlX3NwYWNlKHhkciwgbGVuKTsNCj4gPiA+ID4gKw0KPiA+ID4gPiArCWlmICh1bmxpa2Vs
+eSghcCkpDQo+ID4gPiA+ICsJCXJldHVybiAtRU5PQlVGUzsNCj4gPiA+ID4gKwl4ZHJfZW5jb2Rl
+X29wYXF1ZV9maXhlZChwLCBwdHIsIGxlbik7DQo+ID4gPiA+ICsJcmV0dXJuIHhkcl9hbGlnbl9z
+aXplKGxlbik7DQo+ID4gPiANCj4gPiA+IFNlZW1zIGxpa2UgdGhlIGNhbGxlciBjYW4gdXNlIHhk
+cl9hbGlnbl9zaXplKCkganVzdCBhcw0KPiA+ID4gZWFzaWx5IGFzIG92ZXJsb2FkaW5nIHRoZSBy
+ZXR1cm4gdmFsdWUgaGVyZSwgZm9yIGV4YW1wbGUuDQo+ID4gPiANCj4gPiA+IEJ1dCBJIGNhbid0
+IHRoaW5rIG9mIGFueSBmaXhlZC1zaXplIG9wYXF1ZSBYRFIgb2JqZWN0DQo+ID4gPiB0aGF0IGlz
+IG5vdCBhbHJlYWR5IHByb3Blcmx5IHJvdW5kZWQgdXAsIG9yIHdoZXJlIHRoZQ0KPiA+ID4gbGVu
+Z3RoIGlzIG5vdCBhbHJlYWR5IGtub3duIHRvIHRoZSBYRFIgbGF5ZXIgKGFzIGENCj4gPiA+IGRl
+ZmluZWQgbWFjcm8gY29uc3RhbnQpLg0KPiA+ID4gDQo+ID4gPiANCj4gPiA+ID4gK30NCj4gPiA+
+ID4gKw0KPiA+ID4gPiArLyoqDQo+ID4gPiA+ICsgKiB4ZHJfc3RyZWFtX2VuY29kZV9vcGFxdWUg
+LSBFbmNvZGUgdmFyaWFibGUgbGVuZ3RoIG9wYXF1ZQ0KPiA+ID4gPiB4ZHINCj4gPiA+ID4gZGF0
+YQ0KPiA+ID4gPiArICogQHhkcjogcG9pbnRlciB0byB4ZHJfc3RyZWFtDQo+ID4gPiA+ICsgKiBA
+cHRyOiBwb2ludGVyIHRvIG9wYXF1ZSBkYXRhIG9iamVjdA0KPiA+ID4gPiArICogQGxlbjogc2l6
+ZSBvZiBvYmplY3QgcG9pbnRlZCB0byBieSBAcHRyDQo+ID4gPiA+ICsgKg0KPiA+ID4gPiArICog
+UmV0dXJuIHZhbHVlczoNCj4gPiA+ID4gKyAqwqDCoMKgT24gc3VjY2VzcywgcmV0dXJucyBsZW5n
+dGggaW4gYnl0ZXMgb2YgWERSIGJ1ZmZlcg0KPiA+ID4gPiBjb25zdW1lZA0KPiA+ID4gPiArICrC
+oMKgwqAlLUVOT0JVRlMgb24gWERSIGJ1ZmZlciBvdmVyZmxvdw0KPiA+ID4gPiArICovDQo+ID4g
+PiA+ICtzdGF0aWMgaW5saW5lIHNzaXplX3QNCj4gPiA+ID4gK3hkcl9zdHJlYW1fZW5jb2RlX29w
+YXF1ZShzdHJ1Y3QgeGRyX3N0cmVhbSAqeGRyLCBjb25zdCB2b2lkDQo+ID4gPiA+ICpwdHIsDQo+
+ID4gPiA+IHNpemVfdCBsZW4pDQo+ID4gPiA+ICt7DQo+ID4gPiA+ICsJc2l6ZV90IGNvdW50ID0g
+c2l6ZW9mKF9fdTMyKSArIHhkcl9hbGlnbl9zaXplKGxlbik7DQo+ID4gPiA+ICsJX19iZTMyICpw
+ID0geGRyX3Jlc2VydmVfc3BhY2UoeGRyLCBjb3VudCk7DQo+ID4gPiA+ICsNCj4gPiA+ID4gKwlp
+ZiAodW5saWtlbHkoIXApKQ0KPiA+ID4gPiArCQlyZXR1cm4gLUVOT0JVRlM7DQo+ID4gPiA+ICsJ
+eGRyX2VuY29kZV9vcGFxdWUocCwgcHRyLCBsZW4pOw0KPiA+ID4gPiArCXJldHVybiBjb3VudDsN
+Cj4gPiA+IA0KPiA+ID4gVGhlc2UgaGVscGVycyBhbHJlYWR5IHVwZGF0ZSB0aGUgc3RhdGUgb2Yg
+dGhlIHBhc3NlZA0KPiA+ID4gaW4geGRyX3N0cmVhbSwgc28gYSBjYWxsZXIgdHlwaWNhbGx5IHdv
+dWxkIG5vdCBuZWVkDQo+ID4gPiB0byBjYXJlIG11Y2ggYWJvdXQgdGhlIGJ5dGVzIGNvbnN1bWVk
+IGJ5IHRoZSBlbmNvZGVkDQo+ID4gPiBvcGFxdWUuDQo+ID4gPiANCj4gPiA+IA0KPiA+ID4gPiAr
+fQ0KPiA+ID4gPiArDQo+ID4gPiA+ICsvKioNCj4gPiA+ID4gKyAqIHhkcl9zdHJlYW1fZGVjb2Rl
+X3UzMiAtIERlY29kZSBhIDMyLWJpdCBpbnRlZ2VyDQo+ID4gPiA+ICsgKiBAeGRyOiBwb2ludGVy
+IHRvIHhkcl9zdHJlYW0NCj4gPiA+ID4gKyAqIEBwdHI6IGxvY2F0aW9uIHRvIHN0b3JlIGludGVn
+ZXINCj4gPiA+ID4gKyAqDQo+ID4gPiA+ICsgKiBSZXR1cm4gdmFsdWVzOg0KPiA+ID4gPiArICrC
+oMKgwqAlMCBvbiBzdWNjZXNzDQo+ID4gPiA+ICsgKsKgwqDCoCUtRU5PQlVGUyBvbiBYRFIgYnVm
+ZmVyIG92ZXJmbG93DQo+ID4gPiA+ICsgKi8NCj4gPiA+ID4gK3N0YXRpYyBpbmxpbmUgc3NpemVf
+dA0KPiA+ID4gPiAreGRyX3N0cmVhbV9kZWNvZGVfdTMyKHN0cnVjdCB4ZHJfc3RyZWFtICp4ZHIs
+IF9fdTMyICpwdHIpDQo+ID4gPiA+ICt7DQo+ID4gPiA+ICsJY29uc3Qgc2l6ZV90IGNvdW50ID0g
+c2l6ZW9mKCpwdHIpOw0KPiA+ID4gPiArCV9fYmUzMiAqcCA9IHhkcl9pbmxpbmVfZGVjb2RlKHhk
+ciwgY291bnQpOw0KPiA+ID4gPiArDQo+ID4gPiA+ICsJaWYgKHVubGlrZWx5KCFwKSkNCj4gPiA+
+ID4gKwkJcmV0dXJuIC1FTk9CVUZTOw0KPiA+ID4gPiArCSpwdHIgPSBiZTMyX3RvX2NwdXAocCk7
+DQo+ID4gPiA+ICsJcmV0dXJuIDA7DQo+ID4gPiANCj4gPiA+IE5vIGxlbmd0aCByZXR1cm5lZCBo
+ZXJlLiBUaGUgY2FsbGVyIGtub3dzIHRoZSBsZW5ndGgNCj4gPiA+IG9mIHRoaXMgb2JqZWN0LCBj
+bGVhcmx5LCBhbmQgb25seSBjYXJlcyBhYm91dCB3aGV0aGVyDQo+ID4gPiBkZWNvZGluZyBoYXMg
+b3ZlcnJ1biB0aGUgWERSIHN0cmVhbS4NCj4gPiANCj4gPiBZZXMuIEVhcmxpZXIgdmVyc2lvbnMg
+cmV0dXJuZWQgPiAwLCBidXQgSSBmaWd1cmVkIHRoYXQgY291bnRpbmcgdGhlDQo+ID4gYnVmZmVy
+IHNwYWNlIGlzIG5vdCBhcyBpbXBvcnRhbnQgd2hlbiBkZWNvZGluZy4gSSBjYW4ndCB0aGluayBv
+Zg0KPiA+IHRvbw0KPiA+IG1hbnkgdXNlIGNhc2VzLg0KPiA+IA0KPiA+ID4gPiArfQ0KPiA+ID4g
+PiArDQo+ID4gPiA+ICsvKioNCj4gPiA+ID4gKyAqIHhkcl9zdHJlYW1fZGVjb2RlX29wYXF1ZV9m
+aXhlZCAtIERlY29kZSBmaXhlZCBsZW5ndGggb3BhcXVlDQo+ID4gPiA+IHhkcg0KPiA+ID4gPiBk
+YXRhDQo+ID4gPiA+ICsgKiBAeGRyOiBwb2ludGVyIHRvIHhkcl9zdHJlYW0NCj4gPiA+ID4gKyAq
+IEBwdHI6IGxvY2F0aW9uIHRvIHN0b3JlIGRhdGENCj4gPiA+ID4gKyAqIEBsZW46IHNpemUgb2Yg
+YnVmZmVyIHBvaW50ZWQgdG8gYnkgQHB0cg0KPiA+ID4gPiArICoNCj4gPiA+ID4gKyAqIFJldHVy
+biB2YWx1ZXM6DQo+ID4gPiA+ICsgKsKgwqDCoE9uIHN1Y2Nlc3MsIHJldHVybnMgc2l6ZSBvZiBv
+YmplY3Qgc3RvcmVkIGluIEBwdHINCj4gPiA+IA0KPiA+ID4gWW91J3JlIHJldHVybmluZyB0aGUg
+cGFzc2VkLWluIGxlbmd0aC4gVGh1cyB0aGUgY2FsbGVyDQo+ID4gPiBhbHJlYWR5IGtub3dzIHRo
+ZSBzaXplIG9mIHRoZSBvYmplY3Qgc3RvcmVkIGF0IEBwdHIuDQo+ID4gDQo+ID4gQ29uc2lzdGVu
+Y3ksIGFuZCBpdCBhbGxvd3MgaXQgdG8gYmUgZWFzaWx5IHVzZWQgYXMgYSBoZWxwZXIgaW5zaWRl
+DQo+ID4gb3RoZXIgZnVuY3Rpb25zIHRoYXQgZG8gbmVlZCB0byByZXR1cm4gdGhlIG9iamVjdCBs
+ZW5ndGguDQo+IA0KPiBHb2luZyBmb3IgZWFzZSBvZiBjb21wb3NpbmcgdGhlc2UgZnVuY3Rpb25z
+LiBPSy4NCj4gDQo+IA0KPiA+IE5vdGUgdGhhdCB0aGUgZnVuY3Rpb24gaXMgaW5saW5lZCwgc28g
+dGhlIGNvbXBpbGVyIHNob3VsZCBub3JtYWxseQ0KPiA+IG9wdGltaXNlIGF3YXkgcmV0dXJuIHZh
+bHVlcyB0aGF0IGFyZSB1bnVzZWQgYnkgdGhlIGNhbGxlci4NCj4gDQo+IFRydWUuIEhvd2V2ZXIg
+ZnV0dXJlIGNvZGUgcmVhZGVycyBtaWdodCB3b25kZXIgd2h5IHRoaXMNCj4gdmFsdWUgaXMgYmVp
+bmcgY29tcHV0ZWQgaWYgdGhlIHZhbHVlIG9yIHRoZSBjb21wdXRhdGlvbg0KPiBpdHNlbGYgaXMg
+dW5uZWVkZWQgaW4gbW9zdCBjYXNlcy4NCj4gDQo+IFNlZW1zIGxpa2UgYSBzZXBhcmF0ZSBoZWxw
+ZXIgdGhhdCBkZXJpdmVzIHRoaXMgdmFsdWUNCj4gd2hlcmUgYW5kIHdoZW4gaXQgaXMgbmVlZGVk
+IG1pZ2h0IGJlIGNsZWFuZXI7IGJ1dCB0aGF0DQo+IGlzIGVudGlyZWx5IHN1YmplY3RpdmUuDQo+
+IA0KPiANCj4gPiA+ID4gKyAqwqDCoMKgJS1FTk9CVUZTIG9uIFhEUiBidWZmZXIgb3ZlcmZsb3cN
+Cj4gPiA+ID4gKyAqLw0KPiA+ID4gPiArc3RhdGljIGlubGluZSBzc2l6ZV90DQo+ID4gPiA+ICt4
+ZHJfc3RyZWFtX2RlY29kZV9vcGFxdWVfZml4ZWQoc3RydWN0IHhkcl9zdHJlYW0gKnhkciwgdm9p
+ZA0KPiA+ID4gPiAqcHRyLA0KPiA+ID4gPiBzaXplX3QgbGVuKQ0KPiA+ID4gPiArew0KPiA+ID4g
+PiArCV9fYmUzMiAqcCA9IHhkcl9pbmxpbmVfZGVjb2RlKHhkciwgbGVuKTsNCj4gPiA+ID4gKw0K
+PiA+ID4gPiArCWlmICh1bmxpa2VseSghcCkpDQo+ID4gPiA+ICsJCXJldHVybiAtRU5PQlVGUzsN
+Cj4gPiA+ID4gKwl4ZHJfZGVjb2RlX29wYXF1ZV9maXhlZChwLCBwdHIsIGxlbik7DQo+ID4gPiA+
+ICsJcmV0dXJuIGxlbjsNCj4gPiA+ID4gK30NCj4gPiA+ID4gKw0KPiA+ID4gPiArLyoqDQo+ID4g
+PiA+ICsgKiB4ZHJfc3RyZWFtX2RlY29kZV9vcGFxdWVfaW5saW5lIC0gRGVjb2RlIHZhcmlhYmxl
+IGxlbmd0aA0KPiA+ID4gPiBvcGFxdWUNCj4gPiA+ID4geGRyIGRhdGENCj4gPiA+ID4gKyAqIEB4
+ZHI6IHBvaW50ZXIgdG8geGRyX3N0cmVhbQ0KPiA+ID4gPiArICogQHB0cjogbG9jYXRpb24gdG8g
+c3RvcmUgcG9pbnRlciB0byBvcGFxdWUgZGF0YQ0KPiA+ID4gPiArICoNCj4gPiA+ID4gKyAqIE5v
+dGU6IHRoZSBwb2ludGVyIHN0b3JlZCBpbiBAcHRyIGNhbm5vdCBiZSBhc3N1bWVkIHZhbGlkDQo+
+ID4gPiA+IGFmdGVyDQo+ID4gPiA+IHRoZSBYRFINCj4gPiA+ID4gKyAqIGJ1ZmZlciBoYXMgYmVl
+biBkZXN0cm95ZWQsIG9yIGV2ZW4gYWZ0ZXIgY2FsbGluZw0KPiA+ID4gPiB4ZHJfaW5saW5lX2Rl
+Y29kZSgpDQo+ID4gPiA+ICsgKiBvbiBAeGRyLiBJdCBpcyB0aGVyZWZvcmUgZXhwZWN0ZWQgdGhh
+dCB0aGUgb2JqZWN0IGl0IHBvaW50cw0KPiA+ID4gPiB0bw0KPiA+ID4gPiBzaG91bGQNCj4gPiA+
+ID4gKyAqIGJlIHByb2Nlc3NlZCBpbW1lZGlhdGVseS4NCj4gPiA+ID4gKyAqDQo+ID4gPiA+ICsg
+KiBSZXR1cm4gdmFsdWVzOg0KPiA+ID4gPiArICrCoMKgwqBPbiBzdWNjZXNzLCByZXR1cm5zIHNp
+emUgb2Ygb2JqZWN0IHN0b3JlZCBpbiAqQHB0cg0KPiA+ID4gDQo+ID4gPiBUaGlzIHNlZW1zIHRv
+IGJlIHRoZSBvbmx5IGZ1bmN0aW9uIHdoZXJlIHRoZSBjYWxsZXINCj4gPiA+IG1pZ2h0IG5vdCBh
+bHJlYWR5IGtub3cgdGhlIGxlbmd0aCBvZiB0aGUgb2JqZWN0LCBidXQNCj4gPiA+IG1pZ2h0IGFj
+dHVhbGx5IGNhcmUuIFNpbmNlIHRoZSBvYmplY3QgbGVuZ3RoIGNhbiBiZQ0KPiA+ID4gY29uc2lk
+ZXJlZCBwYXJ0IG9mIHRoZSBvYmplY3QgaXRzZWxmLCBtYXliZSB0aGF0DQo+ID4gPiBsZW5ndGgg
+c2hvdWxkIGJlIHJldHVybmVkIHZpYSBhbiBvdXRwdXQgcGFyYW1ldGVyDQo+ID4gPiByYXRoZXIg
+dGhhbiBhcyB0aGUgZnVuY3Rpb24ncyByZXR1cm4gdmFsdWUuDQo+ID4gDQo+ID4gSSBjb25zaWRl
+cmVkIGl0LCBidXQgdGhhdCBtZWFucyB5b3UgaGF2ZSB0byBjaG9vc2UgYW4gZXhhY3Qgc3RvcmFn
+ZQ0KPiA+IHR5cGUgYW5kIGdjYyB3aWxsIGNvbXBsYWluIGlmIHRoZSB0eXBlIGNoZWNrIGZhaWxz
+Lg0KPiA+IEluIG1vc3QgY2FzZXMsIHdlIGRvbid0IHJlYWxseSBjYXJlIGlmIHRoZSB1MzIgdmFs
+dWUgZ2V0cyBzdG9yZWQgaW4NCj4gPiBhbg0KPiA+IHVuc2lnbmVkIGludCwgaW50LCB1bnNpZ25l
+ZCBsb25nLCBsb25nLCBzaXplX3QsIHNzaXplX3QgYmVjYXVzZSB3ZQ0KPiA+IGhhdmUNCj4gPiBh
+IGdvb2QgaWRlYSBvZiB3aGF0IHRvIGV4cGVjdCBmb3IgdGhlIG9iamVjdCBzaXplLg0KPiA+IA0K
+PiA+ID4gPiArICrCoMKgwqAlLUVOT0JVRlMgb24gWERSIGJ1ZmZlciBvdmVyZmxvdw0KPiA+ID4g
+DQo+ID4gPiBFSU5WQUwgaXMgcHJvYmFibHkgYmV0dGVyOiB0aGUgY2FsbGVyIGRpZG4ndCBwcm92
+aWRlDQo+ID4gPiB0aGUgY29ycmVjdCBpbnB1dHMuIFRoYXQncyBhIG5pdCwgdGhvdWdoLg0KPiA+
+IA0KPiA+IEl0J3Mgbm90IGEgY2FsbGVyIHByb2JsZW0uIFRoZSBFTk9CVUZTIGVycm9yIG9uIGRl
+Y29kZSBpbmRpY2F0ZXMNCj4gPiB0aGF0DQo+ID4gdGhlIFJQQyBtZXNzYWdlIHdlJ3JlIHRyeWlu
+ZyB0byBkZWNvZGUgd2FzIHByb2JhYmx5IHRydW5jYXRlZCBvcg0KPiA+IGNvcnJ1cHRlZC4NCj4g
+DQo+IEFoLiBBZ3JlZSBub3csIG5vdCBhIGNhbGxlciBidWcuDQo+IA0KPiBJIHN0aWxsIHdvbmRl
+ciBpZiB0aGUgbWVhbmluZyBvZiBFTk9CVUZTIGlzIGEgZ29vZCBlbm91Z2ggbWF0Y2gNCj4gdG8g
+dGhpcyB1c2UgY2FzZS4gRUlOVkFMIGlzIGEgcGVybWFuZW50IGVycm9yLCBidXQgSSBkb24ndCB0
+aGluaw0KPiBFTk9CVUZTIGlzLg0KPiANCj4gRnJvbSBodHRwczovL3d3dy5nbnUub3JnL3NvZnR3
+YXJlL2xpYmMvbWFudWFsL2h0bWxfbm9kZS9FcnJvci1Db2Rlcy5oDQo+IHRtbDoNCj4gDQo+ID4g
+TWFjcm86IGludCBFTk9CVUZTDQo+ID4gVGhlIGtlcm5lbOKAmXMgYnVmZmVycyBmb3IgSS9PIG9w
+ZXJhdGlvbnMgYXJlIGFsbCBpbiB1c2UuIEluIEdOVSwNCj4gPiB0aGlzDQo+ID4gZXJyb3IgaXMg
+YWx3YXlzIHN5bm9ueW1vdXMgd2l0aCBFTk9NRU07IHlvdSBtYXkgZ2V0IG9uZSBvciB0aGUNCj4g
+PiBvdGhlcg0KPiA+IGZyb20gbmV0d29yayBvcGVyYXRpb25zLg0KPiANCj4gVGhlIG90aGVyIHBs
+YWNlcyBJJ3ZlIGxvb2tlZCBhbHNvIHN1Z2dlc3QgdGhpcyBlcnJvciBjb2RlIG1lYW5zDQo+IGEg
+dGVtcG9yYXJ5IG91dCBvZiBidWZmZXJzIGNvbmRpdGlvbiwgYW5kIHRoZSBjYWxsZXIgc2hvdWxk
+IHRyeQ0KPiBhZ2FpbiBsYXRlci4gVGhlIGVycm9yIGlzIHVzZWQgdG8gbWVhbiB0aGVyZSBhcmUg
+bm8gbW9yZSBidWZmZXJzDQo+IChwbHVyYWwpIHRvIHVzZSBmb3IgYSBzZW5kIG9wZXJhdGlvbi4g
+QXMgaXQgc2F5cywgYWtpbiB0byBFTk9NRU0uDQo+IFRoYXQncyB0aGUgd2F5IEkndmUgdXNlZCB0
+aGlzIGVycm5vIGluIHRoZSBwYXN0Lg0KPiANCj4gSGVyZSB0aGUgZXJyb3IgaXMgdXNlZCB0byBt
+ZWFuICJidWZmZXIgKHNpbmd1bGFyKSB3b3VsZCBvdmVyZmxvdyINCj4gZHVyaW5nIGEgcmVjZWl2
+ZTsgcGVybWFuZW50IGVycm9yLCBubyByZXRyeSBwb3NzaWJsZS4gUG9zc2libGUNCj4gYWx0ZXJu
+YXRpdmVzIHRoYXQgbWlnaHQgYmUgY2xvc2VyIGluIHB1cnBvc2U6IEVNU0dTSVpFLCBFQkFETVNH
+LA0KPiBFUkVNT1RFSU8sIG9yIEUyQklHLg0KDQpIb3cgYWJvdXQgRU5PREFUQSwgdGhlbj8NCg0K
+PiBJIGFzc3VtZSB5b3Ugd2FudCB0byByZXR1cm4gZXJybm9zIGZyb20gdGhlc2UgaGVscGVycyBi
+ZWNhdXNlDQo+IGV2ZW50dWFsbHkgc29tZSBvZiB0aGVtIG1pZ2h0IGVuY291bnRlciBvdGhlciB0
+eXBlcyBvZiBlcnJvcnM/DQo+IElmIG5vdCwgdGhlbiBzdGlja2luZyB3aXRoIC0xIG9uIGVycm9y
+LCAwIG9yIHBvc2l0aXZlIHZhbHVlIG9uDQo+IHN1Y2Nlc3MgbWlnaHQgYmUgZW50aXJlbHkgYWRl
+cXVhdGUuDQoNClNlZSB0aGUgInY0IiBwYXRjaHNldCB3aGljaCBnb2VzIGEgbGl0dGxlIGZ1cnRo
+ZXIgaW4gcmVwbGFjaW5nIHRoZQ0Kb2JqZWN0IHNpemUgY2hlY2tzLiBGb3Igb25lIHRoaW5nLCB0
+aGF0IGFsbG93cyB1cyB0byBiZSBtb3JlIGZvcmNlZnVsDQphYm91dCBlbnN1cmluZyB0aGF0IHdl
+IF9hbHdheXNfIGNoZWNrIHRoZSBzaXplIG9mIHRoZSBvYmplY3QgYWdhaW5zdA0KZXhwZWN0YXRp
+b25zLg0KDQo+IA0KPiA+ID4gSG93ZXZlciwgYXMgYSBtYXR0ZXIgb2YgZGVmZW5zaXZlIGNvZGlu
+ZywgdGhpcyBlcnJubw0KPiA+ID4gY291bGQgbGVhayB1cCB0aGUgc3RhY2sgaWYgZGV2ZWxvcGVy
+cyBhcmUgbm90IGNhcmVmdWwuDQo+ID4gPiANCj4gPiA+IEEgYm9vbGVhbiByZXR1cm4gdmFsdWUg
+Y291bGQgYmUgZW50aXJlbHkgYWRlcXVhdGUgZm9yDQo+ID4gPiB0aGVzZSBkZWNvZGVycz8NCj4g
+PiA+IA0KPiA+ID4gDQo+ID4gPiA+ICsgKi8NCj4gPiA+ID4gK3N0YXRpYyBpbmxpbmUgc3NpemVf
+dA0KPiA+ID4gPiAreGRyX3N0cmVhbV9kZWNvZGVfb3BhcXVlX2lubGluZShzdHJ1Y3QgeGRyX3N0
+cmVhbSAqeGRyLCB2b2lkDQo+ID4gPiA+ICoqcHRyKQ0KPiA+ID4gPiArew0KPiA+ID4gPiArCV9f
+YmUzMiAqcDsNCj4gPiA+ID4gKwlfX3UzMiBsZW47DQo+ID4gPiA+ICsNCj4gPiA+ID4gKwlpZiAo
+dW5saWtlbHkoeGRyX3N0cmVhbV9kZWNvZGVfdTMyKHhkciwgJmxlbikgPCAwKSkNCj4gPiA+ID4g
+KwkJcmV0dXJuIC1FTk9CVUZTOw0KPiA+ID4gPiArCWlmIChsZW4gIT0gMCkgew0KPiA+ID4gPiAr
+CQlwID0geGRyX2lubGluZV9kZWNvZGUoeGRyLCBsZW4pOw0KPiA+ID4gPiArCQlpZiAodW5saWtl
+bHkoIXApKQ0KPiA+ID4gPiArCQkJcmV0dXJuIC1FTk9CVUZTOw0KPiA+ID4gPiArCQkqcHRyID0g
+cDsNCj4gPiA+ID4gKwl9IGVsc2UNCj4gPiA+ID4gKwkJKnB0ciA9IE5VTEw7DQo+ID4gPiA+ICsJ
+cmV0dXJuIGxlbjsNCj4gPiA+ID4gK30NCj4gPiA+ID4gI2VuZGlmIC8qIF9fS0VSTkVMX18gKi8N
+Cj4gPiA+ID4gDQo+ID4gPiA+ICNlbmRpZiAvKiBfU1VOUlBDX1hEUl9IXyAqLw0KPiA+ID4gPiAt
+LcKgDQo+ID4gPiA+IDIuOS4zDQo+ID4gPiA+IA0KPiA+ID4gPiAtLQ0KPiA+ID4gPiBUbyB1bnN1
+YnNjcmliZSBmcm9tIHRoaXMgbGlzdDogc2VuZCB0aGUgbGluZSAidW5zdWJzY3JpYmUNCj4gPiA+
+ID4gbGludXgtDQo+ID4gPiA+IG5mcyIgaW4NCj4gPiA+ID4gdGhlIGJvZHkgb2YgYSBtZXNzYWdl
+IHRvIG1ham9yZG9tb0B2Z2VyLmtlcm5lbC5vcmcNCj4gPiA+ID4gTW9yZSBtYWpvcmRvbW8gaW5m
+byBhdMKgwqBodHRwOi8vdmdlci5rZXJuZWwub3JnL21ham9yZG9tby1pbmZvLmgNCj4gPiA+ID4g
+dG1sDQo+ID4gPiANCj4gPiA+IC0tDQo+ID4gPiBDaHVjayBMZXZlcg0KPiA+ID4gDQo+ID4gPiAN
+Cj4gPiA+IA0KPiA+IA0KPiA+IC0twqANCj4gPiBUcm9uZCBNeWtsZWJ1c3QNCj4gPiBMaW51eCBO
+RlMgY2xpZW50IG1haW50YWluZXIsIFByaW1hcnlEYXRhDQo+ID4gdHJvbmQubXlrbGVidXN0QHBy
+aW1hcnlkYXRhLmNvbQ0KPiA+IE7vv73vv73vv71y77+9ee+/ve+/ve+/vWLvv71Y77+9x6d277+9
+Xu+/vSneunsubu+/vSvvv71777+9Iu+/ve+/vV5u77+9cu+/ve+/vXrvv70a77+977+9aO+/ve+/
+ve+/vSbvv70e77+9R++/ve+/vWjvv70DKO+/vemaju+/vd2iaiLvv70a77+9DQo+ID4gG23vv73v
+v73vv73vv71677+93pbvv73vv71m77+9aO+/vX7vv71tDQo+IA0KPiAtLQ0KPiBDaHVjayBMZXZl
+cg0KPiANCj4gDQo+IA0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFp
+bnRhaW5lciwgUHJpbWFyeURhdGENCnRyb25kLm15a2xlYnVzdEBwcmltYXJ5ZGF0YS5jb20NCg==
 
-> On Feb 19, 2017, at 12:36 AM, Trond Myklebust <trondmy@primarydata.com> wrote:
-> 
-> On Sat, 2017-02-18 at 17:21 -0500, Chuck Lever wrote:
->>> On Feb 18, 2017, at 2:12 PM, Trond Myklebust <trond.myklebust@prima
->>> rydata.com> wrote:
->>> 
->>> Add some generic helpers for encoding/decoding opaque structures
->>> and
->>> basic u32/u64.
->> 
->> I have some random-thoughts-slash-wacky-ideas.
->> 
->> I'm going to paint the garden shed a little since
->> these helpers appear to be broadly applicable.
->> Generally speaking I like the idea of building
->> "stream" versions of the traditional basic type
->> encoders and decoders.
->> 
->> 
->>> Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
->>> ---
->>> include/linux/sunrpc/xdr.h | 173
->>> +++++++++++++++++++++++++++++++++++++++++++++
->>> 1 file changed, 173 insertions(+)
->>> 
->>> diff --git a/include/linux/sunrpc/xdr.h
->>> b/include/linux/sunrpc/xdr.h
->>> index 56c48c884a24..37bf1be20b62 100644
->>> --- a/include/linux/sunrpc/xdr.h
->>> +++ b/include/linux/sunrpc/xdr.h
->>> @@ -242,6 +242,179 @@ extern unsigned int xdr_read_pages(struct
->>> xdr_stream *xdr, unsigned int len);
->>> extern void xdr_enter_page(struct xdr_stream *xdr, unsigned int
->>> len);
->>> extern int xdr_process_buf(struct xdr_buf *buf, unsigned int
->>> offset, unsigned int len, int (*actor)(struct scatterlist *, void
->>> *), void *data);
->>> 
->>> +/**
->>> + * xdr_align_size - Calculate padded size of an object
->>> + * @n: Size of an object being XDR encoded (in bytes)
->>> + *
->>> + * Return value:
->>> + *   Size (in bytes) of the object including xdr padding
->>> + */
->>> +static inline size_t
->>> +xdr_align_size(size_t n)
->>> +{
->>> +	const size_t mask = sizeof(__u32) - 1;
->> 
->> I know this doesn't make a functional difference, but
->> I'm wondering if this should be sizeof(__be32), since
->> it is actually the size of a wire object? Seems like
->> that is a common question wherever sizeof is used
->> below.
-> 
-> The __be32 is required to be the same size as u32. The only allowed
-> difference between the two is be the endianness.
-
-Right, sizeof(__u32) == sizeof(__be32).  __be has always
-been about endian annotation; no real functional difference
-with __u.
-
-The issue for me is precision of documentation (or, in some
-sense, code readability). In all of these cases, it's not
-the size of the local variable that is important, it's the
-size of the (XDR encoded) wire object. That's sizeof(__be32).
-
-Those just happen to be the same here. It's pretty easy to
-mistake the size of a local object as being always the same
-as the size of the encoded data type. I've done that myself
-often enough that it makes sense to be consistent and
-careful, even in the simple cases.
-
-I'm not going to make a big deal, but I'd like to point out
-that subtle difference. IMO it would make more sense to
-human readers if these were __be and not __u.
-
-
->> Is this a constant variable rather than an enum because
->> you want it to retain the type of size_t (matching the
->> type of the xdr_inline_{en,de}code() functions) ?
-> 
-> It's really just for efficiency, in order to prod gcc into optimising
-> it as it would any other constant.
-> 
->> Since we see sizeof(yada) repeated elsewhere, did you
->> consider defining size constants in a scope where they
->> can be shared amongst all of the XDR functions?
->> 
->> For example, xdr_reserve_space itself could immediately
->> make use of a "sizeof(__be32) - 1" constant.
-> 
-> That could be done. I haven't really considered it.
-> 
->> Is your intention to replace XDR_QUADLEN with this
->> function eventually?
-> 
-> Eventually, I'd like us to get rid of most of the open coded instances
-> of 'pointer to __be32' in the NFS code, and hide all knowledge of that
-> in struct xdr_stream and these SUNRPC layered helpers.
-
-Sounds good to me.
-
-
->>> +
->>> +	return (n + mask) & ~mask;
->>> +}
->>> +
->>> +/**
->>> + * xdr_stream_encode_u32 - Encode a 32-bit integer
->>> + * @xdr: pointer to xdr_stream
->>> + * @n: integer to encode
->>> + *
->>> + * Return values:
->>> + *   On success, returns length in bytes of XDR buffer consumed
->>> + *   %-ENOBUFS on XDR buffer overflow
->> 
->> I've never been crazy about these amplified return
->> types, though I know it's typical kernel coding style.
->> Here, though, I wonder if they are really necessary.
->> 
->> The returned length seems to be interesting only for
->> decoding variable-length objects (farther below). Maybe
->> those are the only functions that need to provide a
->> positive return value?
-> 
-> NFSv4 introduces the (IMO nasty) habit of nesting XDR-encoded objects
-> inside a variable length opaque object (say hello to type "attrlist4").
-
-And pNFS layouts. Fair enough.
-
-
-> In that case, we need to keep a running tally of the length of the
-> objects we have XDR encoded so that we can retroactively set the length
-> of the opaque object. Currently we use the xdr_stream_pos() to
-> determine that length, but it might be nice to replace that with
-> something a little more direct.
-
-The new helpers appear to be abstracting away from a
-direct approach. IMHO staying with something that looks
-like a function call (like xdr_stream_pos) seems like
-it is clean and consistent with these new helpers.
-
-
-> Note also that the lengths returned here are not the object sizes
-> themselves, but the amount of buffer space consumed (i.e. the aligned
-> size).
-
-Makes sense. Still, seems like the callers already know
-these "space consumed" values in every case. Maybe that
-won't be true when these helpers are glued together to
-handle more abstract data types.
-
-
->> Perhaps the WARN_ON_ONCE calls added in later patches
->> should be in these helpers instead of in their callers.
->> Then the encoder helpers can return void.
-> 
-> At some point, I'd like to reinstate the practice of returning an error
-> when encoding fails. It may be better to abort sending a truncated RPC
-> call rather than having it execute partially; specially now that we're
-> finally starting to use COMPOUND to create more complex operations.
-
-I agree, IMO that would be a better approach.
-
-
->>> + */
->>> +static inline ssize_t
->>> +xdr_stream_encode_u32(struct xdr_stream *xdr, __u32 n)
->>> +{
->>> +	const size_t len = sizeof(n);
->>> +	__be32 *p = xdr_reserve_space(xdr, len);
->>> +
->>> +	if (unlikely(!p))
->>> +		return -ENOBUFS;
->>> +	*p = cpu_to_be32(n);
->>> +	return len;
->>> +}
->>> +
->>> +/**
->>> + * xdr_stream_encode_u64 - Encode a 64-bit integer
->>> + * @xdr: pointer to xdr_stream
->>> + * @n: 64-bit integer to encode
->>> + *
->>> + * Return values:
->>> + *   On success, returns length in bytes of XDR buffer consumed
->>> + *   %-ENOBUFS on XDR buffer overflow
->>> + */
->>> +static inline ssize_t
->>> +xdr_stream_encode_u64(struct xdr_stream *xdr, __u64 n)
->>> +{
->>> +	const size_t len = sizeof(n);
->>> +	__be32 *p = xdr_reserve_space(xdr, len);
->>> +
->>> +	if (unlikely(!p))
->>> +		return -ENOBUFS;
->>> +	xdr_encode_hyper(p, n);
->>> +	return len;
->>> +}
->>> +
->>> +/**
->>> + * xdr_stream_encode_opaque_fixed - Encode fixed length opaque xdr
->>> data
->>> + * @xdr: pointer to xdr_stream
->>> + * @ptr: pointer to opaque data object
->>> + * @len: size of object pointed to by @ptr
->>> + *
->>> + * Return values:
->>> + *   On success, returns length in bytes of XDR buffer consumed
->>> + *   %-ENOBUFS on XDR buffer overflow
->>> + */
->>> +static inline ssize_t
->>> +xdr_stream_encode_opaque_fixed(struct xdr_stream *xdr, const void
->>> *ptr, size_t len)
->>> +{
->>> +	__be32 *p = xdr_reserve_space(xdr, len);
->>> +
->>> +	if (unlikely(!p))
->>> +		return -ENOBUFS;
->>> +	xdr_encode_opaque_fixed(p, ptr, len);
->>> +	return xdr_align_size(len);
->> 
->> Seems like the caller can use xdr_align_size() just as
->> easily as overloading the return value here, for example.
->> 
->> But I can't think of any fixed-size opaque XDR object
->> that is not already properly rounded up, or where the
->> length is not already known to the XDR layer (as a
->> defined macro constant).
->> 
->> 
->>> +}
->>> +
->>> +/**
->>> + * xdr_stream_encode_opaque - Encode variable length opaque xdr
->>> data
->>> + * @xdr: pointer to xdr_stream
->>> + * @ptr: pointer to opaque data object
->>> + * @len: size of object pointed to by @ptr
->>> + *
->>> + * Return values:
->>> + *   On success, returns length in bytes of XDR buffer consumed
->>> + *   %-ENOBUFS on XDR buffer overflow
->>> + */
->>> +static inline ssize_t
->>> +xdr_stream_encode_opaque(struct xdr_stream *xdr, const void *ptr,
->>> size_t len)
->>> +{
->>> +	size_t count = sizeof(__u32) + xdr_align_size(len);
->>> +	__be32 *p = xdr_reserve_space(xdr, count);
->>> +
->>> +	if (unlikely(!p))
->>> +		return -ENOBUFS;
->>> +	xdr_encode_opaque(p, ptr, len);
->>> +	return count;
->> 
->> These helpers already update the state of the passed
->> in xdr_stream, so a caller typically would not need
->> to care much about the bytes consumed by the encoded
->> opaque.
->> 
->> 
->>> +}
->>> +
->>> +/**
->>> + * xdr_stream_decode_u32 - Decode a 32-bit integer
->>> + * @xdr: pointer to xdr_stream
->>> + * @ptr: location to store integer
->>> + *
->>> + * Return values:
->>> + *   %0 on success
->>> + *   %-ENOBUFS on XDR buffer overflow
->>> + */
->>> +static inline ssize_t
->>> +xdr_stream_decode_u32(struct xdr_stream *xdr, __u32 *ptr)
->>> +{
->>> +	const size_t count = sizeof(*ptr);
->>> +	__be32 *p = xdr_inline_decode(xdr, count);
->>> +
->>> +	if (unlikely(!p))
->>> +		return -ENOBUFS;
->>> +	*ptr = be32_to_cpup(p);
->>> +	return 0;
->> 
->> No length returned here. The caller knows the length
->> of this object, clearly, and only cares about whether
->> decoding has overrun the XDR stream.
-> 
-> Yes. Earlier versions returned > 0, but I figured that counting the
-> buffer space is not as important when decoding. I can't think of too
-> many use cases.
-> 
->>> +}
->>> +
->>> +/**
->>> + * xdr_stream_decode_opaque_fixed - Decode fixed length opaque xdr
->>> data
->>> + * @xdr: pointer to xdr_stream
->>> + * @ptr: location to store data
->>> + * @len: size of buffer pointed to by @ptr
->>> + *
->>> + * Return values:
->>> + *   On success, returns size of object stored in @ptr
->> 
->> You're returning the passed-in length. Thus the caller
->> already knows the size of the object stored at @ptr.
-> 
-> Consistency, and it allows it to be easily used as a helper inside
-> other functions that do need to return the object length.
-
-Going for ease of composing these functions. OK.
-
-
-> Note that the function is inlined, so the compiler should normally
-> optimise away return values that are unused by the caller.
-
-True. However future code readers might wonder why this
-value is being computed if the value or the computation
-itself is unneeded in most cases.
-
-Seems like a separate helper that derives this value
-where and when it is needed might be cleaner; but that
-is entirely subjective.
-
-
->>> + *   %-ENOBUFS on XDR buffer overflow
->>> + */
->>> +static inline ssize_t
->>> +xdr_stream_decode_opaque_fixed(struct xdr_stream *xdr, void *ptr,
->>> size_t len)
->>> +{
->>> +	__be32 *p = xdr_inline_decode(xdr, len);
->>> +
->>> +	if (unlikely(!p))
->>> +		return -ENOBUFS;
->>> +	xdr_decode_opaque_fixed(p, ptr, len);
->>> +	return len;
->>> +}
->>> +
->>> +/**
->>> + * xdr_stream_decode_opaque_inline - Decode variable length opaque
->>> xdr data
->>> + * @xdr: pointer to xdr_stream
->>> + * @ptr: location to store pointer to opaque data
->>> + *
->>> + * Note: the pointer stored in @ptr cannot be assumed valid after
->>> the XDR
->>> + * buffer has been destroyed, or even after calling
->>> xdr_inline_decode()
->>> + * on @xdr. It is therefore expected that the object it points to
->>> should
->>> + * be processed immediately.
->>> + *
->>> + * Return values:
->>> + *   On success, returns size of object stored in *@ptr
->> 
->> This seems to be the only function where the caller
->> might not already know the length of the object, but
->> might actually care. Since the object length can be
->> considered part of the object itself, maybe that
->> length should be returned via an output parameter
->> rather than as the function's return value.
-> 
-> I considered it, but that means you have to choose an exact storage
-> type and gcc will complain if the type check fails.
-> In most cases, we don't really care if the u32 value gets stored in an
-> unsigned int, int, unsigned long, long, size_t, ssize_t because we have
-> a good idea of what to expect for the object size.
-> 
->>> + *   %-ENOBUFS on XDR buffer overflow
->> 
->> EINVAL is probably better: the caller didn't provide
->> the correct inputs. That's a nit, though.
-> 
-> It's not a caller problem. The ENOBUFS error on decode indicates that
-> the RPC message we're trying to decode was probably truncated or
-> corrupted.
-
-Ah. Agree now, not a caller bug.
-
-I still wonder if the meaning of ENOBUFS is a good enough match
-to this use case. EINVAL is a permanent error, but I don't think
-ENOBUFS is.
