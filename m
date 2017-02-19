@@ -1,129 +1,183 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f194.google.com ([209.85.223.194]:34806 "EHLO
-        mail-io0-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751745AbdBSS7U (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sun, 19 Feb 2017 13:59:20 -0500
-Received: by mail-io0-f194.google.com with SMTP id c80so3081695iod.1
-        for <linux-nfs@vger.kernel.org>; Sun, 19 Feb 2017 10:59:19 -0800 (PST)
+Received: from mail-it0-f66.google.com ([209.85.214.66]:36809 "EHLO
+        mail-it0-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751745AbdBSS7V (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sun, 19 Feb 2017 13:59:21 -0500
+Received: by mail-it0-f66.google.com with SMTP id w185so2677084ita.3
+        for <linux-nfs@vger.kernel.org>; Sun, 19 Feb 2017 10:59:21 -0800 (PST)
 From: Trond Myklebust <trond.myklebust@primarydata.com>
 To: Anna Schumaker <anna.schumaker@netapp.com>,
         Chuck Lever <chuck.lever@oracle.com>
 Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v4 2/8] NFSv4: Replace ad-hoc xdr encode/decode helpers with xdr_stream_* generics
-Date: Sun, 19 Feb 2017 13:58:57 -0500
-Message-Id: <20170219185903.42043-3-trond.myklebust@primarydata.com>
-In-Reply-To: <20170219185903.42043-2-trond.myklebust@primarydata.com>
+Subject: [PATCH v4 8/8] NFSv4: Clean up owner/group attribute decode
+Date: Sun, 19 Feb 2017 13:59:03 -0500
+Message-Id: <20170219185903.42043-9-trond.myklebust@primarydata.com>
+In-Reply-To: <20170219185903.42043-8-trond.myklebust@primarydata.com>
 References: <20170219185903.42043-1-trond.myklebust@primarydata.com>
  <20170219185903.42043-2-trond.myklebust@primarydata.com>
+ <20170219185903.42043-3-trond.myklebust@primarydata.com>
+ <20170219185903.42043-4-trond.myklebust@primarydata.com>
+ <20170219185903.42043-5-trond.myklebust@primarydata.com>
+ <20170219185903.42043-6-trond.myklebust@primarydata.com>
+ <20170219185903.42043-7-trond.myklebust@primarydata.com>
+ <20170219185903.42043-8-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
 ---
- fs/nfs/callback_xdr.c                  |  8 ++------
- fs/nfs/flexfilelayout/flexfilelayout.c |  5 +----
- fs/nfs/nfs4xdr.c                       | 33 +++++++++------------------------
- 3 files changed, 12 insertions(+), 34 deletions(-)
+ fs/nfs/nfs4xdr.c | 117 +++++++++++++++++++++++++++----------------------------
+ 1 file changed, 57 insertions(+), 60 deletions(-)
 
-diff --git a/fs/nfs/callback_xdr.c b/fs/nfs/callback_xdr.c
-index eb094c6011d8..e732a65db546 100644
---- a/fs/nfs/callback_xdr.c
-+++ b/fs/nfs/callback_xdr.c
-@@ -582,12 +582,8 @@ static __be32 decode_notify_lock_args(struct svc_rqst *rqstp, struct xdr_stream
- 
- static __be32 encode_string(struct xdr_stream *xdr, unsigned int len, const char *str)
- {
--	__be32 *p;
--
--	p = xdr_reserve_space(xdr, 4 + len);
--	if (unlikely(p == NULL))
--		return htonl(NFS4ERR_RESOURCE);
--	xdr_encode_opaque(p, str, len);
-+	if (unlikely(xdr_stream_encode_opaque(xdr, str, len) < 0))
-+		return cpu_to_be32(NFS4ERR_RESOURCE);
- 	return 0;
- }
- 
-diff --git a/fs/nfs/flexfilelayout/flexfilelayout.c b/fs/nfs/flexfilelayout/flexfilelayout.c
-index 42e3e9daa328..471efdc2589d 100644
---- a/fs/nfs/flexfilelayout/flexfilelayout.c
-+++ b/fs/nfs/flexfilelayout/flexfilelayout.c
-@@ -1966,10 +1966,7 @@ static int ff_layout_encode_ioerr(struct xdr_stream *xdr,
- static void
- encode_opaque_fixed(struct xdr_stream *xdr, const void *buf, size_t len)
- {
--	__be32 *p;
--
--	p = xdr_reserve_space(xdr, len);
--	xdr_encode_opaque_fixed(p, buf, len);
-+	WARN_ON_ONCE(xdr_stream_encode_opaque_fixed(xdr, buf, len) < 0);
- }
- 
- static void
 diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index e9255cb453e6..5f0a6fcd0030 100644
+index f5df18f99bd4..afe7f40add05 100644
 --- a/fs/nfs/nfs4xdr.c
 +++ b/fs/nfs/nfs4xdr.c
-@@ -924,34 +924,22 @@ static __be32 *reserve_space(struct xdr_stream *xdr, size_t nbytes)
- 
- static void encode_opaque_fixed(struct xdr_stream *xdr, const void *buf, size_t len)
- {
--	__be32 *p;
--
--	p = xdr_reserve_space(xdr, len);
--	xdr_encode_opaque_fixed(p, buf, len);
-+	WARN_ON_ONCE(xdr_stream_encode_opaque_fixed(xdr, buf, len) < 0);
+@@ -3875,45 +3875,50 @@ static int decode_attr_nlink(struct xdr_stream *xdr, uint32_t *bitmap, uint32_t
+ 	return -EIO;
  }
  
- static void encode_string(struct xdr_stream *xdr, unsigned int len, const char *str)
++static ssize_t decode_nfs4_string(struct xdr_stream *xdr,
++		struct nfs4_string *name, gfp_t gfp_flags)
++{
++	ssize_t ret;
++
++	ret = xdr_stream_decode_string_dup(xdr, &name->data,
++			XDR_MAX_NETOBJ, gfp_flags);
++	name->len = 0;
++	if (ret > 0)
++		name->len = ret;
++	return ret;
++}
++
+ static int decode_attr_owner(struct xdr_stream *xdr, uint32_t *bitmap,
+ 		const struct nfs_server *server, kuid_t *uid,
+ 		struct nfs4_string *owner_name)
  {
+-	uint32_t len;
 -	__be32 *p;
--
--	p = reserve_space(xdr, 4 + len);
--	xdr_encode_opaque(p, str, len);
-+	WARN_ON_ONCE(xdr_stream_encode_opaque(xdr, str, len) < 0);
- }
+-	int ret = 0;
++	ssize_t len;
++	char *p;
  
- static void encode_uint32(struct xdr_stream *xdr, u32 n)
- {
--	__be32 *p;
--
--	p = reserve_space(xdr, 4);
--	*p = cpu_to_be32(n);
-+	WARN_ON_ONCE(xdr_stream_encode_u32(xdr, n) < 0);
- }
- 
- static void encode_uint64(struct xdr_stream *xdr, u64 n)
- {
--	__be32 *p;
--
--	p = reserve_space(xdr, 8);
--	xdr_encode_hyper(p, n);
-+	WARN_ON_ONCE(xdr_stream_encode_u64(xdr, n) < 0);
- }
- 
- static void encode_nfs4_seqid(struct xdr_stream *xdr,
-@@ -4294,15 +4282,12 @@ static int decode_access(struct xdr_stream *xdr, u32 *supported, u32 *access)
- 
- static int decode_opaque_fixed(struct xdr_stream *xdr, void *buf, size_t len)
- {
--	__be32 *p;
--
--	p = xdr_inline_decode(xdr, len);
--	if (likely(p)) {
--		memcpy(buf, p, len);
--		return 0;
-+	ssize_t ret = xdr_stream_decode_opaque_fixed(xdr, buf, len);
-+	if (unlikely(ret < 0)) {
-+		print_overflow_msg(__func__, xdr);
-+		return -EIO;
+ 	*uid = make_kuid(&init_user_ns, -2);
+ 	if (unlikely(bitmap[1] & (FATTR4_WORD1_OWNER - 1U)))
+ 		return -EIO;
+-	if (likely(bitmap[1] & FATTR4_WORD1_OWNER)) {
+-		p = xdr_inline_decode(xdr, 4);
+-		if (unlikely(!p))
+-			goto out_overflow;
+-		len = be32_to_cpup(p);
+-		p = xdr_inline_decode(xdr, len);
+-		if (unlikely(!p))
+-			goto out_overflow;
+-		if (owner_name != NULL) {
+-			owner_name->data = kmemdup(p, len, GFP_NOWAIT);
+-			if (owner_name->data != NULL) {
+-				owner_name->len = len;
+-				ret = NFS_ATTR_FATTR_OWNER_NAME;
+-			}
+-		} else if (len < XDR_MAX_NETOBJ) {
+-			if (nfs_map_name_to_uid(server, (char *)p, len, uid) == 0)
+-				ret = NFS_ATTR_FATTR_OWNER;
+-			else
+-				dprintk("%s: nfs_map_name_to_uid failed!\n",
+-						__func__);
+-		} else
+-			dprintk("%s: name too long (%u)!\n",
+-					__func__, len);
+-		bitmap[1] &= ~FATTR4_WORD1_OWNER;
++	if (!(bitmap[1] & FATTR4_WORD1_OWNER))
++		return 0;
++	bitmap[1] &= ~FATTR4_WORD1_OWNER;
++
++	if (owner_name != NULL) {
++		len = decode_nfs4_string(xdr, owner_name, GFP_NOWAIT);
++		if (len <= 0)
++			goto out;
++		dprintk("%s: name=%s\n", __func__, owner_name->data);
++		return NFS_ATTR_FATTR_OWNER_NAME;
++	} else {
++		len = xdr_stream_decode_opaque_inline(xdr, (void **)&p,
++				XDR_MAX_NETOBJ);
++		if (len <= 0 || nfs_map_name_to_uid(server, p, len, uid) != 0)
++			goto out;
++		dprintk("%s: uid=%d\n", __func__, (int)from_kuid(&init_user_ns, *uid));
++		return NFS_ATTR_FATTR_OWNER;
  	}
--	print_overflow_msg(__func__, xdr);
--	return -EIO;
-+	return 0;
+-	dprintk("%s: uid=%d\n", __func__, (int)from_kuid(&init_user_ns, *uid));
+-	return ret;
+-out_overflow:
++out:
++	if (len != -ENOBUFS)
++		return 0;
+ 	print_overflow_msg(__func__, xdr);
+ 	return -EIO;
  }
+@@ -3922,41 +3927,33 @@ static int decode_attr_group(struct xdr_stream *xdr, uint32_t *bitmap,
+ 		const struct nfs_server *server, kgid_t *gid,
+ 		struct nfs4_string *group_name)
+ {
+-	uint32_t len;
+-	__be32 *p;
+-	int ret = 0;
++	ssize_t len;
++	char *p;
  
- static int decode_stateid(struct xdr_stream *xdr, nfs4_stateid *stateid)
+ 	*gid = make_kgid(&init_user_ns, -2);
+ 	if (unlikely(bitmap[1] & (FATTR4_WORD1_OWNER_GROUP - 1U)))
+ 		return -EIO;
+-	if (likely(bitmap[1] & FATTR4_WORD1_OWNER_GROUP)) {
+-		p = xdr_inline_decode(xdr, 4);
+-		if (unlikely(!p))
+-			goto out_overflow;
+-		len = be32_to_cpup(p);
+-		p = xdr_inline_decode(xdr, len);
+-		if (unlikely(!p))
+-			goto out_overflow;
+-		if (group_name != NULL) {
+-			group_name->data = kmemdup(p, len, GFP_NOWAIT);
+-			if (group_name->data != NULL) {
+-				group_name->len = len;
+-				ret = NFS_ATTR_FATTR_GROUP_NAME;
+-			}
+-		} else if (len < XDR_MAX_NETOBJ) {
+-			if (nfs_map_group_to_gid(server, (char *)p, len, gid) == 0)
+-				ret = NFS_ATTR_FATTR_GROUP;
+-			else
+-				dprintk("%s: nfs_map_group_to_gid failed!\n",
+-						__func__);
+-		} else
+-			dprintk("%s: name too long (%u)!\n",
+-					__func__, len);
+-		bitmap[1] &= ~FATTR4_WORD1_OWNER_GROUP;
++	if (!(bitmap[1] & FATTR4_WORD1_OWNER_GROUP))
++		return 0;
++	bitmap[1] &= ~FATTR4_WORD1_OWNER_GROUP;
++
++	if (group_name != NULL) {
++		len = decode_nfs4_string(xdr, group_name, GFP_NOWAIT);
++		if (len <= 0)
++			goto out;
++		dprintk("%s: name=%s\n", __func__, group_name->data);
++		return NFS_ATTR_FATTR_OWNER_NAME;
++	} else {
++		len = xdr_stream_decode_opaque_inline(xdr, (void **)&p,
++				XDR_MAX_NETOBJ);
++		if (len <= 0 || nfs_map_group_to_gid(server, p, len, gid) != 0)
++			goto out;
++		dprintk("%s: gid=%d\n", __func__, (int)from_kgid(&init_user_ns, *gid));
++		return NFS_ATTR_FATTR_GROUP;
+ 	}
+-	dprintk("%s: gid=%d\n", __func__, (int)from_kgid(&init_user_ns, *gid));
+-	return ret;
+-out_overflow:
++out:
++	if (len != -ENOBUFS)
++		return 0;
+ 	print_overflow_msg(__func__, xdr);
+ 	return -EIO;
+ }
 -- 
 2.9.3
 
