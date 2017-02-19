@@ -1,218 +1,106 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f194.google.com ([209.85.223.194]:36559 "EHLO
-        mail-io0-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751706AbdBSS7J (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sun, 19 Feb 2017 13:59:09 -0500
-Received: by mail-io0-f194.google.com with SMTP id q20so3075993ioi.3
-        for <linux-nfs@vger.kernel.org>; Sun, 19 Feb 2017 10:59:08 -0800 (PST)
+Received: from mail-io0-f195.google.com ([209.85.223.195]:36563 "EHLO
+        mail-io0-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751690AbdBSS7L (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sun, 19 Feb 2017 13:59:11 -0500
+Received: by mail-io0-f195.google.com with SMTP id q20so3076019ioi.3
+        for <linux-nfs@vger.kernel.org>; Sun, 19 Feb 2017 10:59:11 -0800 (PST)
 From: Trond Myklebust <trond.myklebust@primarydata.com>
 To: Anna Schumaker <anna.schumaker@netapp.com>,
         Chuck Lever <chuck.lever@oracle.com>
 Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v4 1/8] SUNRPC: Add generic helpers for xdr_stream encode/decode
-Date: Sun, 19 Feb 2017 13:58:56 -0500
-Message-Id: <20170219185903.42043-2-trond.myklebust@primarydata.com>
-In-Reply-To: <20170219185903.42043-1-trond.myklebust@primarydata.com>
+Subject: [PATCH v4 3/8] NFSv4: Replace the open coded decode_opaque_inline() with the new generic
+Date: Sun, 19 Feb 2017 13:58:58 -0500
+Message-Id: <20170219185903.42043-4-trond.myklebust@primarydata.com>
+In-Reply-To: <20170219185903.42043-3-trond.myklebust@primarydata.com>
 References: <20170219185903.42043-1-trond.myklebust@primarydata.com>
+ <20170219185903.42043-2-trond.myklebust@primarydata.com>
+ <20170219185903.42043-3-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Add some generic helpers for encoding/decoding opaque structures and
-basic u32/u64.
+Also ensure that we always check that the size of the decoded object
+matches the expectation that it must be smaller than NFS4_OPAQUE_LIMIT.
+This should be true for all the current users of decode_opaque_inline(),
+including decode_ace(), decode_pathname(), decode_attr_fs_locations()
+and decode_exchange_id().
+
+Note that this allows us to get rid of a number of existing checks in
+decode_exchange_id(),
 
 Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
 ---
- include/linux/sunrpc/xdr.h | 177 +++++++++++++++++++++++++++++++++++++++++++++
- 1 file changed, 177 insertions(+)
+ fs/nfs/nfs4xdr.c | 29 ++++++++---------------------
+ 1 file changed, 8 insertions(+), 21 deletions(-)
 
-diff --git a/include/linux/sunrpc/xdr.h b/include/linux/sunrpc/xdr.h
-index 56c48c884a24..af41484212e5 100644
---- a/include/linux/sunrpc/xdr.h
-+++ b/include/linux/sunrpc/xdr.h
-@@ -242,6 +242,183 @@ extern unsigned int xdr_read_pages(struct xdr_stream *xdr, unsigned int len);
- extern void xdr_enter_page(struct xdr_stream *xdr, unsigned int len);
- extern int xdr_process_buf(struct xdr_buf *buf, unsigned int offset, unsigned int len, int (*actor)(struct scatterlist *, void *), void *data);
+diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+index 5f0a6fcd0030..4c40098c184b 100644
+--- a/fs/nfs/nfs4xdr.c
++++ b/fs/nfs/nfs4xdr.c
+@@ -3050,20 +3050,15 @@ static void print_overflow_msg(const char *func, const struct xdr_stream *xdr)
  
-+/**
-+ * xdr_align_size - Calculate padded size of an object
-+ * @n: Size of an object being XDR encoded (in bytes)
-+ *
-+ * Return value:
-+ *   Size (in bytes) of the object including xdr padding
-+ */
-+static inline size_t
-+xdr_align_size(size_t n)
-+{
-+	const size_t mask = sizeof(__u32) - 1;
-+
-+	return (n + mask) & ~mask;
-+}
-+
-+/**
-+ * xdr_stream_encode_u32 - Encode a 32-bit integer
-+ * @xdr: pointer to xdr_stream
-+ * @n: integer to encode
-+ *
-+ * Return values:
-+ *   On success, returns length in bytes of XDR buffer consumed
-+ *   %-ENOBUFS on XDR buffer overflow
-+ */
-+static inline ssize_t
-+xdr_stream_encode_u32(struct xdr_stream *xdr, __u32 n)
-+{
-+	const size_t len = sizeof(n);
-+	__be32 *p = xdr_reserve_space(xdr, len);
-+
-+	if (unlikely(!p))
-+		return -ENOBUFS;
-+	*p = cpu_to_be32(n);
-+	return len;
-+}
-+
-+/**
-+ * xdr_stream_encode_u64 - Encode a 64-bit integer
-+ * @xdr: pointer to xdr_stream
-+ * @n: 64-bit integer to encode
-+ *
-+ * Return values:
-+ *   On success, returns length in bytes of XDR buffer consumed
-+ *   %-ENOBUFS on XDR buffer overflow
-+ */
-+static inline ssize_t
-+xdr_stream_encode_u64(struct xdr_stream *xdr, __u64 n)
-+{
-+	const size_t len = sizeof(n);
-+	__be32 *p = xdr_reserve_space(xdr, len);
-+
-+	if (unlikely(!p))
-+		return -ENOBUFS;
-+	xdr_encode_hyper(p, n);
-+	return len;
-+}
-+
-+/**
-+ * xdr_stream_encode_opaque_fixed - Encode fixed length opaque xdr data
-+ * @xdr: pointer to xdr_stream
-+ * @ptr: pointer to opaque data object
-+ * @len: size of object pointed to by @ptr
-+ *
-+ * Return values:
-+ *   On success, returns length in bytes of XDR buffer consumed
-+ *   %-ENOBUFS on XDR buffer overflow
-+ */
-+static inline ssize_t
-+xdr_stream_encode_opaque_fixed(struct xdr_stream *xdr, const void *ptr, size_t len)
-+{
-+	__be32 *p = xdr_reserve_space(xdr, len);
-+
-+	if (unlikely(!p))
-+		return -ENOBUFS;
-+	xdr_encode_opaque_fixed(p, ptr, len);
-+	return xdr_align_size(len);
-+}
-+
-+/**
-+ * xdr_stream_encode_opaque - Encode variable length opaque xdr data
-+ * @xdr: pointer to xdr_stream
-+ * @ptr: pointer to opaque data object
-+ * @len: size of object pointed to by @ptr
-+ *
-+ * Return values:
-+ *   On success, returns length in bytes of XDR buffer consumed
-+ *   %-ENOBUFS on XDR buffer overflow
-+ */
-+static inline ssize_t
-+xdr_stream_encode_opaque(struct xdr_stream *xdr, const void *ptr, size_t len)
-+{
-+	size_t count = sizeof(__u32) + xdr_align_size(len);
-+	__be32 *p = xdr_reserve_space(xdr, count);
-+
-+	if (unlikely(!p))
-+		return -ENOBUFS;
-+	xdr_encode_opaque(p, ptr, len);
-+	return count;
-+}
-+
-+/**
-+ * xdr_stream_decode_u32 - Decode a 32-bit integer
-+ * @xdr: pointer to xdr_stream
-+ * @ptr: location to store integer
-+ *
-+ * Return values:
-+ *   %0 on success
-+ *   %-ENOBUFS on XDR buffer overflow
-+ */
-+static inline ssize_t
-+xdr_stream_decode_u32(struct xdr_stream *xdr, __u32 *ptr)
-+{
-+	const size_t count = sizeof(*ptr);
-+	__be32 *p = xdr_inline_decode(xdr, count);
-+
-+	if (unlikely(!p))
-+		return -ENOBUFS;
-+	*ptr = be32_to_cpup(p);
-+	return 0;
-+}
-+
-+/**
-+ * xdr_stream_decode_opaque_fixed - Decode fixed length opaque xdr data
-+ * @xdr: pointer to xdr_stream
-+ * @ptr: location to store data
-+ * @len: size of buffer pointed to by @ptr
-+ *
-+ * Return values:
-+ *   On success, returns size of object stored in @ptr
-+ *   %-ENOBUFS on XDR buffer overflow
-+ */
-+static inline ssize_t
-+xdr_stream_decode_opaque_fixed(struct xdr_stream *xdr, void *ptr, size_t len)
-+{
-+	__be32 *p = xdr_inline_decode(xdr, len);
-+
-+	if (unlikely(!p))
-+		return -ENOBUFS;
-+	xdr_decode_opaque_fixed(p, ptr, len);
-+	return len;
-+}
-+
-+/**
-+ * xdr_stream_decode_opaque_inline - Decode variable length opaque xdr data
-+ * @xdr: pointer to xdr_stream
-+ * @ptr: location to store pointer to opaque data
-+ * @maxlen: maximum acceptable object size
-+ *
-+ * Note: the pointer stored in @ptr cannot be assumed valid after the XDR
-+ * buffer has been destroyed, or even after calling xdr_inline_decode()
-+ * on @xdr. It is therefore expected that the object it points to should
-+ * be processed immediately.
-+ *
-+ * Return values:
-+ *   On success, returns size of object stored in *@ptr
-+ *   %-ENOBUFS on XDR buffer overflow
-+ *   %-E2BIG if the size of the object would exceed @maxlen
-+ */
-+static inline ssize_t
-+xdr_stream_decode_opaque_inline(struct xdr_stream *xdr, void **ptr, size_t maxlen)
-+{
-+	__be32 *p;
-+	__u32 len;
-+
-+	*ptr = NULL;
-+	if (unlikely(xdr_stream_decode_u32(xdr, &len) < 0))
-+		return -ENOBUFS;
-+	if (len != 0) {
-+		p = xdr_inline_decode(xdr, len);
-+		if (unlikely(!p))
-+			return -ENOBUFS;
-+		if (unlikely(len > maxlen))
-+			return -E2BIG;
-+		*ptr = p;
+ static int decode_opaque_inline(struct xdr_stream *xdr, unsigned int *len, char **string)
+ {
+-	__be32 *p;
+-
+-	p = xdr_inline_decode(xdr, 4);
+-	if (unlikely(!p))
+-		goto out_overflow;
+-	*len = be32_to_cpup(p);
+-	p = xdr_inline_decode(xdr, *len);
+-	if (unlikely(!p))
+-		goto out_overflow;
+-	*string = (char *)p;
++	ssize_t ret = xdr_stream_decode_opaque_inline(xdr, (void **)string,
++			NFS4_OPAQUE_LIMIT);
++	if (unlikely(ret < 0)) {
++		if (ret == -ENOBUFS)
++			print_overflow_msg(__func__, xdr);
++		return -EIO;
 +	}
-+	return len;
-+}
- #endif /* __KERNEL__ */
++	*len = ret;
+ 	return 0;
+-out_overflow:
+-	print_overflow_msg(__func__, xdr);
+-	return -EIO;
+ }
  
- #endif /* _SUNRPC_XDR_H_ */
+ static int decode_compound_hdr(struct xdr_stream *xdr, struct compound_hdr *hdr)
+@@ -5645,8 +5640,6 @@ static int decode_exchange_id(struct xdr_stream *xdr,
+ 	status = decode_opaque_inline(xdr, &dummy, &dummy_str);
+ 	if (unlikely(status))
+ 		return status;
+-	if (unlikely(dummy > NFS4_OPAQUE_LIMIT))
+-		return -EIO;
+ 	memcpy(res->server_owner->major_id, dummy_str, dummy);
+ 	res->server_owner->major_id_sz = dummy;
+ 
+@@ -5654,8 +5647,6 @@ static int decode_exchange_id(struct xdr_stream *xdr,
+ 	status = decode_opaque_inline(xdr, &dummy, &dummy_str);
+ 	if (unlikely(status))
+ 		return status;
+-	if (unlikely(dummy > NFS4_OPAQUE_LIMIT))
+-		return -EIO;
+ 	memcpy(res->server_scope->server_scope, dummy_str, dummy);
+ 	res->server_scope->server_scope_sz = dummy;
+ 
+@@ -5670,16 +5661,12 @@ static int decode_exchange_id(struct xdr_stream *xdr,
+ 		status = decode_opaque_inline(xdr, &dummy, &dummy_str);
+ 		if (unlikely(status))
+ 			return status;
+-		if (unlikely(dummy > NFS4_OPAQUE_LIMIT))
+-			return -EIO;
+ 		memcpy(res->impl_id->domain, dummy_str, dummy);
+ 
+ 		/* nii_name */
+ 		status = decode_opaque_inline(xdr, &dummy, &dummy_str);
+ 		if (unlikely(status))
+ 			return status;
+-		if (unlikely(dummy > NFS4_OPAQUE_LIMIT))
+-			return -EIO;
+ 		memcpy(res->impl_id->name, dummy_str, dummy);
+ 
+ 		/* nii_date */
 -- 
 2.9.3
 
