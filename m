@@ -1,84 +1,163 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ua0-f170.google.com ([209.85.217.170]:33670 "EHLO
-        mail-ua0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751082AbdBTVbH (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 20 Feb 2017 16:31:07 -0500
-Received: by mail-ua0-f170.google.com with SMTP id k1so14147935uab.0
-        for <linux-nfs@vger.kernel.org>; Mon, 20 Feb 2017 13:31:06 -0800 (PST)
+Received: from fieldses.org ([173.255.197.46]:38720 "EHLO fieldses.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1750881AbdBTWXu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 20 Feb 2017 17:23:50 -0500
+Date: Mon, 20 Feb 2017 17:23:40 -0500
+To: Christoph Hellwig <hch@lst.de>
+Cc: bfields@redhat.com, jlayton@poochiereds.net, linux-nfs@vger.kernel.org,
+        stable@kernel.org
+Subject: Re: [PATCH] nfsd: special case truncates some more
+Message-ID: <20170220222340.GB20882@fieldses.org>
+References: <20170220062133.26607-1-hch@lst.de>
+ <20170220062133.26607-2-hch@lst.de>
 MIME-Version: 1.0
-In-Reply-To: <20170220171519.GE12335@parsley.fieldses.org>
-References: <1487470070-32358-1-git-send-email-bfields@redhat.com>
- <1487470070-32358-7-git-send-email-bfields@redhat.com> <1D136924-2EC7-4CF3-8250-98799DFBEB3F@oracle.com>
- <20170220160940.GB12335@parsley.fieldses.org> <4824B968-4ED6-44AA-A935-3D309D76EFFF@oracle.com>
- <20170220171519.GE12335@parsley.fieldses.org>
-From: Andreas Gruenbacher <agruenba@redhat.com>
-Date: Mon, 20 Feb 2017 22:31:00 +0100
-Message-ID: <CAHc6FU6_bJE--6Da5Df+g+qRj6C1KZUL5PvkXrZ-mKbJqU936w@mail.gmail.com>
-Subject: Re: [PATCH 6/6] NFSv4: allow getacl rpc to allocate pages on demand
-To: "J. Bruce Fields" <bfields@redhat.com>
-Cc: Chuck Lever <chuck.lever@oracle.com>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        Anna Schumaker <schumakeranna@gmail.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Dros Adamson <dros@primarydata.com>,
-        Weston Andros Adamson <dros@netapp.com>
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20170220062133.26607-2-hch@lst.de>
+From: bfields@fieldses.org (J. Bruce Fields)
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Feb 20, 2017 at 6:15 PM, J. Bruce Fields <bfields@redhat.com> wrote:
-> On Mon, Feb 20, 2017 at 11:42:31AM -0500, Chuck Lever wrote:
->>
->> > On Feb 20, 2017, at 11:09 AM, J. Bruce Fields <bfields@redhat.com> wrote:
->> >
->> > On Sun, Feb 19, 2017 at 02:29:03PM -0500, Chuck Lever wrote:
->> >>
->> >>> On Feb 18, 2017, at 9:07 PM, J. Bruce Fields <bfields@redhat.com> wrote:
->> >>>
->> >>> From: Weston Andros Adamson <dros@netapp.com>
->> >>>
->> >>> Instead of preallocating pags, allow xdr_partial_copy_from_skb() to
->> >>> allocate whatever pages we need on demand.  This is what the NFSv3 ACL
->> >>> code does.
->> >>
->> >> The patch description does not explain why this change is
->> >> being done.
->> >
->> > The only justification I see is avoiding allocating pages unnecessarily.
->>
->> That makes sense. Is there a real world workload that has seen
->> a negative effect?
->>
->>
->> > Without this patch, for each getacl, we allocate 17 pages (if I'm
->> > calculating correctly) and probably rarely use most of them.
->> >
->> > In the v3 case I think it's 7 pages instead of 17.
->>
->> I would have guessed 9. Out of curiosity, is there a reason
->> documented for these size limits?
->
->
-> In the v4 case:
->
->         #define NFS4ACL_MAXPAGES DIV_ROUND_UP(XATTR_SIZE_MAX, PAGE_SIZE)
->
-> And I believe XATTR_SIZE_MAX is a global maximum on the size of any
-> extend attribute value.
+Thanks!  I split out the cleanup into a separate patch just to make sure
+I understood what the important change was....  Looks good to me.
 
-XATTR_SIZE_MAX is the maximum size of an extended attribute. NFSv4
-ACLs are passed through unchanged in "system.nfs4_acl".
+--b.
 
-> In the v3 case:
->
->         /* Maximum number of ACL entries over NFS */
->         #define NFS_ACL_MAX_ENTRIES     1024
->
->         #define NFSACL_MAXPAGES         ((2*(8+12*NFS_ACL_MAX_ENTRIES) + PAGE_SIZE-1) \
->                                          >> PAGE_SHIFT)
->
-> No idea where that 1024 comes from.
-
-The 1024-entry limit is arbitrary.
-
-Andreas
+On Mon, Feb 20, 2017 at 07:21:33AM +0100, Christoph Hellwig wrote:
+> Both the NFS protocols and the Linux VFS use a setattr operation with a
+> bitmap of attributs to set to set various file attributes including the
+> file size and the uid/gid.
+> 
+> The Linux syscalls never mixes size updates with unrelated updates like
+> the uid/gid, and some file systems like XFS and GFS2 rely on the fact
+> that truncates might not update random other attributes, and many other
+> file systems handle the case but do not update the different attributes
+> in the same transaction.  NFSD on the other hand passes the attributes
+> it gets on the wire more or less directly through to the VFS, leading to
+> updates the file systems don't expect.  XFS at least has an assert on
+> the allowed attributes, which caught an unusual NFS client setting the
+> size and group at the same time.
+> 
+> To handle this issue properly this splits the notify_change call in
+> nfsd_setattr into two separate ones.
+> 
+> Signed-off-by: Christoph Hellwig <hch@lst.de>
+> Cc: stable@kernel.org
+> ---
+>  fs/nfsd/vfs.c | 59 +++++++++++++++++++++++++++++++++++++----------------------
+>  1 file changed, 37 insertions(+), 22 deletions(-)
+> 
+> diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
+> index 26c6fdb4bf67..3c36ed5a1f07 100644
+> --- a/fs/nfsd/vfs.c
+> +++ b/fs/nfsd/vfs.c
+> @@ -377,7 +377,7 @@ nfsd_setattr(struct svc_rqst *rqstp, struct svc_fh *fhp, struct iattr *iap,
+>  	__be32		err;
+>  	int		host_err;
+>  	bool		get_write_count;
+> -	int		size_change = 0;
+> +	bool		size_change = (iap->ia_valid & ATTR_SIZE);
+>  
+>  	if (iap->ia_valid & (ATTR_ATIME | ATTR_MTIME | ATTR_SIZE))
+>  		accmode |= NFSD_MAY_WRITE|NFSD_MAY_OWNER_OVERRIDE;
+> @@ -390,11 +390,11 @@ nfsd_setattr(struct svc_rqst *rqstp, struct svc_fh *fhp, struct iattr *iap,
+>  	/* Get inode */
+>  	err = fh_verify(rqstp, fhp, ftype, accmode);
+>  	if (err)
+> -		goto out;
+> +		return err;
+>  	if (get_write_count) {
+>  		host_err = fh_want_write(fhp);
+>  		if (host_err)
+> -			return nfserrno(host_err);
+> +			goto out;
+>  	}
+>  
+>  	dentry = fhp->fh_dentry;
+> @@ -405,20 +405,28 @@ nfsd_setattr(struct svc_rqst *rqstp, struct svc_fh *fhp, struct iattr *iap,
+>  		iap->ia_valid &= ~ATTR_MODE;
+>  
+>  	if (!iap->ia_valid)
+> -		goto out;
+> +		return 0;
+>  
+>  	nfsd_sanitize_attrs(inode, iap);
+>  
+> +	if (check_guard && guardtime != inode->i_ctime.tv_sec)
+> +		return nfserr_notsync;
+> +
+>  	/*
+>  	 * The size case is special, it changes the file in addition to the
+> -	 * attributes.
+> +	 * attributes, and file systems don't expect it to be mixed with
+> +	 * "random" attribute changes.  We thus split out the size change
+> +	 * into a separate call to ->setattr, and do the rest as a separate
+> +	 * setattr call.
+>  	 */
+> -	if (iap->ia_valid & ATTR_SIZE) {
+> +	if (size_change) {
+>  		err = nfsd_get_write_access(rqstp, fhp, iap);
+>  		if (err)
+> -			goto out;
+> -		size_change = 1;
+> +			return err;
+> +	}
+>  
+> +	fh_lock(fhp);
+> +	if (size_change) {
+>  		/*
+>  		 * RFC5661, Section 18.30.4:
+>  		 *   Changing the size of a file with SETATTR indirectly
+> @@ -426,29 +434,36 @@ nfsd_setattr(struct svc_rqst *rqstp, struct svc_fh *fhp, struct iattr *iap,
+>  		 *
+>  		 * (and similar for the older RFCs)
+>  		 */
+> -		if (iap->ia_size != i_size_read(inode))
+> -			iap->ia_valid |= ATTR_MTIME;
+> -	}
+> +		struct iattr size_attr = {
+> +			.ia_valid	= ATTR_SIZE | ATTR_CTIME | ATTR_MTIME,
+> +			.ia_size	= iap->ia_size,
+> +		};
+>  
+> -	iap->ia_valid |= ATTR_CTIME;
+> +		host_err = notify_change(dentry, &size_attr, NULL);
+> +		if (host_err)
+> +			goto out_unlock;
+> +		iap->ia_valid &= ~ATTR_SIZE;
+>  
+> -	if (check_guard && guardtime != inode->i_ctime.tv_sec) {
+> -		err = nfserr_notsync;
+> -		goto out_put_write_access;
+> +		/*
+> +		 * Avoid the additional setattr call below if the only other
+> +		 * attribute that the client sends is the mtime, as we update
+> +		 * it as part of the size change above.
+> +		 */
+> +		if ((iap->ia_valid & ~ATTR_MTIME) == 0)
+> +			goto out_unlock;
+>  	}
+>  
+> -	fh_lock(fhp);
+> +	iap->ia_valid |= ATTR_CTIME;
+>  	host_err = notify_change(dentry, iap, NULL);
+> -	fh_unlock(fhp);
+> -	err = nfserrno(host_err);
+>  
+> -out_put_write_access:
+> +out_unlock:
+> +	fh_unlock(fhp);
+>  	if (size_change)
+>  		put_write_access(inode);
+> -	if (!err)
+> -		err = nfserrno(commit_metadata(fhp));
+>  out:
+> -	return err;
+> +	if (!host_err)
+> +		host_err = commit_metadata(fhp);
+> +	return nfserrno(host_err);
+>  }
+>  
+>  #if defined(CONFIG_NFSD_V4)
+> -- 
+> 2.11.0
