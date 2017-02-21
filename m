@@ -1,75 +1,103 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:56330 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1752760AbdBUSfI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 21 Feb 2017 13:35:08 -0500
-Date: Tue, 21 Feb 2017 13:35:06 -0500
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: Andreas Gruenbacher <agruenba@redhat.com>
-Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
+Received: from aserp1040.oracle.com ([141.146.126.69]:34907 "EHLO
+        aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751602AbdBUSqi (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 21 Feb 2017 13:46:38 -0500
+Content-Type: text/plain; charset=us-ascii
+Mime-Version: 1.0 (Mac OS X Mail 9.3 \(3124\))
+Subject: Re: [PATCH 6/6] NFSv4: allow getacl rpc to allocate pages on demand
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <CAHc6FU6_bJE--6Da5Df+g+qRj6C1KZUL5PvkXrZ-mKbJqU936w@mail.gmail.com>
+Date: Tue, 21 Feb 2017 13:46:21 -0500
+Cc: "J. Bruce Fields" <bfields@redhat.com>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
         Anna Schumaker <schumakeranna@gmail.com>,
         Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Weston Andros Adamson <dros@primarydata.com>,
+        Dros Adamson <dros@primarydata.com>,
         Weston Andros Adamson <dros@netapp.com>
-Subject: Re: [PATCH 6/6] NFSv4: allow getacl rpc to allocate pages on demand
-Message-ID: <20170221183506.GI2355@parsley.fieldses.org>
-References: <1487470070-32358-1-git-send-email-bfields@redhat.com>
- <1487470070-32358-7-git-send-email-bfields@redhat.com>
- <CAHc6FU6FGPBXv0tu30wbChwdw3L7C7+aCjVxLrNfDB2N=MWk6w@mail.gmail.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <CAHc6FU6FGPBXv0tu30wbChwdw3L7C7+aCjVxLrNfDB2N=MWk6w@mail.gmail.com>
+Message-Id: <E06C6589-2E66-4013-9722-0FEADE596F70@oracle.com>
+References: <1487470070-32358-1-git-send-email-bfields@redhat.com> <1487470070-32358-7-git-send-email-bfields@redhat.com> <1D136924-2EC7-4CF3-8250-98799DFBEB3F@oracle.com> <20170220160940.GB12335@parsley.fieldses.org> <4824B968-4ED6-44AA-A935-3D309D76EFFF@oracle.com> <20170220171519.GE12335@parsley.fieldses.org> <CAHc6FU6_bJE--6Da5Df+g+qRj6C1KZUL5PvkXrZ-mKbJqU936w@mail.gmail.com>
+To: Andreas Gruenbacher <agruenba@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Feb 20, 2017 at 11:38:22PM +0100, Andreas Gruenbacher wrote:
-> On Sun, Feb 19, 2017 at 3:07 AM, J. Bruce Fields <bfields@redhat.com> wrote:
-> > @@ -5079,32 +5080,22 @@ static ssize_t nfs4_do_get_acl(struct inode *inode, void *buf, size_t buflen)
-> >                 .rpc_argp = &args,
-> >                 .rpc_resp = &res,
-> >         };
-> > -       unsigned int npages = DIV_ROUND_UP(buflen, PAGE_SIZE) + 1;
-> > -       int ret = -ENOMEM, i;
-> > -
-> > -       if (npages > ARRAY_SIZE(pages))
-> > -               return -ERANGE;
-> > -
-> > -       for (i = 0; i < npages; i++) {
-> > -               pages[i] = alloc_page(GFP_KERNEL);
-> > -               if (!pages[i])
-> > -                       goto out_free;
-> > -       }
-> > +       int ret, i;
-> >
-> >         /* for decoding across pages */
-> >         res.acl_scratch = alloc_page(GFP_KERNEL);
-> >         if (!res.acl_scratch)
-> > -               goto out_free;
-> > +               return -ENOMEM;
-> >
-> > -       args.acl_len = npages * PAGE_SIZE;
-> > +       args.acl_len = ARRAY_SIZE(pages) << PAGE_SHIFT;
+Hi Andreas-
+
+
+> On Feb 20, 2017, at 4:31 PM, Andreas Gruenbacher <agruenba@redhat.com> wrote:
 > 
-> Define acl_len directly in the args initializer instead of here.
-
-Got it, thanks.  I'll send another revision of the series.
-
---b.
-
+> On Mon, Feb 20, 2017 at 6:15 PM, J. Bruce Fields <bfields@redhat.com> wrote:
+>> On Mon, Feb 20, 2017 at 11:42:31AM -0500, Chuck Lever wrote:
+>>> 
+>>>> On Feb 20, 2017, at 11:09 AM, J. Bruce Fields <bfields@redhat.com> wrote:
+>>>> 
+>>>> On Sun, Feb 19, 2017 at 02:29:03PM -0500, Chuck Lever wrote:
+>>>>> 
+>>>>>> On Feb 18, 2017, at 9:07 PM, J. Bruce Fields <bfields@redhat.com> wrote:
+>>>>>> 
+>>>>>> From: Weston Andros Adamson <dros@netapp.com>
+>>>>>> 
+>>>>>> Instead of preallocating pags, allow xdr_partial_copy_from_skb() to
+>>>>>> allocate whatever pages we need on demand.  This is what the NFSv3 ACL
+>>>>>> code does.
+>>>>> 
+>>>>> The patch description does not explain why this change is
+>>>>> being done.
+>>>> 
+>>>> The only justification I see is avoiding allocating pages unnecessarily.
+>>> 
+>>> That makes sense. Is there a real world workload that has seen
+>>> a negative effect?
+>>> 
+>>> 
+>>>> Without this patch, for each getacl, we allocate 17 pages (if I'm
+>>>> calculating correctly) and probably rarely use most of them.
+>>>> 
+>>>> In the v3 case I think it's 7 pages instead of 17.
+>>> 
+>>> I would have guessed 9. Out of curiosity, is there a reason
+>>> documented for these size limits?
+>> 
+>> 
+>> In the v4 case:
+>> 
+>>        #define NFS4ACL_MAXPAGES DIV_ROUND_UP(XATTR_SIZE_MAX, PAGE_SIZE)
+>> 
+>> And I believe XATTR_SIZE_MAX is a global maximum on the size of any
+>> extend attribute value.
 > 
-> > -       dprintk("%s  buf %p buflen %zu npages %d args.acl_len %zu\n",
-> > -               __func__, buf, buflen, npages, args.acl_len);
-> > +       dprintk("%s  buf %p buflen %zu args.acl_len %zu\n",
-> > +               __func__, buf, buflen, args.acl_len);
-> >         ret = nfs4_call_sync(NFS_SERVER(inode)->client, NFS_SERVER(inode),
-> >                              &msg, &args.seq_args, &res.seq_res, 0);
-> >         if (ret == 0)
-> >                 ret = res.acl_len;
-> > -out_free:
-> > +
-> >         for (i = 0; i < ARRAY_SIZE(pages) && pages[i]; i++)
-> >                 __free_page(pages[i]);
-> >         __free_page(res.acl_scratch);
-> > --
-> > 2.9.3
-> >
+> XATTR_SIZE_MAX is the maximum size of an extended attribute. NFSv4
+> ACLs are passed through unchanged in "system.nfs4_acl".
+
+"Extended attribute" means this is a Linux-specific limit?
+
+Is there anything that prevents a non-Linux system from constructing
+or returning an ACL that is larger than that?
+
+What happens on a Linux client when a server returns an ACL that does
+not fit in this allotment?
+
+
+>> In the v3 case:
+>> 
+>>        /* Maximum number of ACL entries over NFS */
+>>        #define NFS_ACL_MAX_ENTRIES     1024
+>> 
+>>        #define NFSACL_MAXPAGES         ((2*(8+12*NFS_ACL_MAX_ENTRIES) + PAGE_SIZE-1) \
+>>>> PAGE_SHIFT)
+>> 
+>> No idea where that 1024 comes from.
+> 
+> The 1024-entry limit is arbitrary.
+> 
+> Andreas
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+--
+Chuck Lever
+
+
+
