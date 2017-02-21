@@ -1,67 +1,75 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:43566 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:56330 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1752033AbdBUPjZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 21 Feb 2017 10:39:25 -0500
-From: Benjamin Coddington <bcodding@redhat.com>
-To: Trond Myklebust <trond.myklebust@primarydata.com>,
-        Anna Schumaker <anna.schumaker@netapp.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH 4/4] NFS: Always send an unlock for FL_CLOSE
-Date: Tue, 21 Feb 2017 10:39:17 -0500
-Message-Id: <72fa3f2a37146d153722d842e9b0d166fe11f1ad.1487691345.git.bcodding@redhat.com>
-In-Reply-To: <cover.1487691345.git.bcodding@redhat.com>
-References: <cover.1487691345.git.bcodding@redhat.com>
-In-Reply-To: <cover.1487691345.git.bcodding@redhat.com>
-References: <cover.1487691345.git.bcodding@redhat.com>
+        id S1752760AbdBUSfI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 21 Feb 2017 13:35:08 -0500
+Date: Tue, 21 Feb 2017 13:35:06 -0500
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: Andreas Gruenbacher <agruenba@redhat.com>
+Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
+        Anna Schumaker <schumakeranna@gmail.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        Weston Andros Adamson <dros@primarydata.com>,
+        Weston Andros Adamson <dros@netapp.com>
+Subject: Re: [PATCH 6/6] NFSv4: allow getacl rpc to allocate pages on demand
+Message-ID: <20170221183506.GI2355@parsley.fieldses.org>
+References: <1487470070-32358-1-git-send-email-bfields@redhat.com>
+ <1487470070-32358-7-git-send-email-bfields@redhat.com>
+ <CAHc6FU6FGPBXv0tu30wbChwdw3L7C7+aCjVxLrNfDB2N=MWk6w@mail.gmail.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <CAHc6FU6FGPBXv0tu30wbChwdw3L7C7+aCjVxLrNfDB2N=MWk6w@mail.gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-NFS attempts to wait for read and write completion before unlocking in
-order to ensure that the data returned was protected by the lock.  When
-this waiting is interrupted by a signal, the unlock may be skipped, and
-messages similar to the following are seen in the kernel ring buffer:
+On Mon, Feb 20, 2017 at 11:38:22PM +0100, Andreas Gruenbacher wrote:
+> On Sun, Feb 19, 2017 at 3:07 AM, J. Bruce Fields <bfields@redhat.com> wrote:
+> > @@ -5079,32 +5080,22 @@ static ssize_t nfs4_do_get_acl(struct inode *inode, void *buf, size_t buflen)
+> >                 .rpc_argp = &args,
+> >                 .rpc_resp = &res,
+> >         };
+> > -       unsigned int npages = DIV_ROUND_UP(buflen, PAGE_SIZE) + 1;
+> > -       int ret = -ENOMEM, i;
+> > -
+> > -       if (npages > ARRAY_SIZE(pages))
+> > -               return -ERANGE;
+> > -
+> > -       for (i = 0; i < npages; i++) {
+> > -               pages[i] = alloc_page(GFP_KERNEL);
+> > -               if (!pages[i])
+> > -                       goto out_free;
+> > -       }
+> > +       int ret, i;
+> >
+> >         /* for decoding across pages */
+> >         res.acl_scratch = alloc_page(GFP_KERNEL);
+> >         if (!res.acl_scratch)
+> > -               goto out_free;
+> > +               return -ENOMEM;
+> >
+> > -       args.acl_len = npages * PAGE_SIZE;
+> > +       args.acl_len = ARRAY_SIZE(pages) << PAGE_SHIFT;
+> 
+> Define acl_len directly in the args initializer instead of here.
 
-[20.167876] Leaked locks on dev=0x0:0x2b ino=0x8dd4c3:
-[20.168286] POSIX: fl_owner=ffff880078b06940 fl_flags=0x1 fl_type=0x0 fl_pid=20183
-[20.168727] POSIX: fl_owner=ffff880078b06680 fl_flags=0x1 fl_type=0x0 fl_pid=20185
+Got it, thanks.  I'll send another revision of the series.
 
-For NFSv3, the missing unlock will cause the server to refuse conflicting
-locks indefinitely.  For NFSv4, the leftover lock will be removed by the
-server after the lease timeout.
+--b.
 
-This patch fixes this issue by skipping the wait in order to immediately send
-the unlock if the FL_CLOSE flag is set when signaled.
-
-Signed-off-by: Benjamin Coddington <bcodding@redhat.com>
----
- fs/nfs/file.c | 10 +++++-----
- 1 file changed, 5 insertions(+), 5 deletions(-)
-
-diff --git a/fs/nfs/file.c b/fs/nfs/file.c
-index a490f45df4db..df695f52bb9d 100644
---- a/fs/nfs/file.c
-+++ b/fs/nfs/file.c
-@@ -697,14 +697,14 @@ do_unlk(struct file *filp, int cmd, struct file_lock *fl, int is_local)
- 	if (!IS_ERR(l_ctx)) {
- 		status = nfs_iocounter_wait(l_ctx);
- 		nfs_put_lock_context(l_ctx);
--		if (status < 0)
-+		/*  NOTE: special case
-+		 * 	If we're signalled while cleaning up locks on process exit, we
-+		 * 	still need to complete the unlock.
-+		 */
-+		if (status < 0 && !(fl->fl_flags & FL_CLOSE))
- 			return status;
- 	}
- 
--	/* NOTE: special case
--	 * 	If we're signalled while cleaning up locks on process exit, we
--	 * 	still need to complete the unlock.
--	 */
- 	/*
- 	 * Use local locking if mounted with "-onolock" or with appropriate
- 	 * "-olocal_lock="
--- 
-2.9.3
-
+> 
+> > -       dprintk("%s  buf %p buflen %zu npages %d args.acl_len %zu\n",
+> > -               __func__, buf, buflen, npages, args.acl_len);
+> > +       dprintk("%s  buf %p buflen %zu args.acl_len %zu\n",
+> > +               __func__, buf, buflen, args.acl_len);
+> >         ret = nfs4_call_sync(NFS_SERVER(inode)->client, NFS_SERVER(inode),
+> >                              &msg, &args.seq_args, &res.seq_res, 0);
+> >         if (ret == 0)
+> >                 ret = res.acl_len;
+> > -out_free:
+> > +
+> >         for (i = 0; i < ARRAY_SIZE(pages) && pages[i]; i++)
+> >                 __free_page(pages[i]);
+> >         __free_page(res.acl_scratch);
+> > --
+> > 2.9.3
+> >
