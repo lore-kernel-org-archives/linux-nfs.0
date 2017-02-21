@@ -1,15 +1,15 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:35250 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:54520 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751925AbdBUPjU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        id S1751926AbdBUPjU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
         Tue, 21 Feb 2017 10:39:20 -0500
 From: Benjamin Coddington <bcodding@redhat.com>
 To: Trond Myklebust <trond.myklebust@primarydata.com>,
         Anna Schumaker <anna.schumaker@netapp.com>
 Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH 3/4] locks: Set FL_CLOSE when removing flock locks on close()
-Date: Tue, 21 Feb 2017 10:39:16 -0500
-Message-Id: <c43ab767372bd73a60a4e1c97b39bb6fc0722590.1487691345.git.bcodding@redhat.com>
+Subject: [PATCH 2/4] NFS: Move the flock open mode check into nfs_flock()
+Date: Tue, 21 Feb 2017 10:39:15 -0500
+Message-Id: <963d9833fd2a4a4a9e936fb951b45bdf007ef9c8.1487691345.git.bcodding@redhat.com>
 In-Reply-To: <cover.1487691345.git.bcodding@redhat.com>
 References: <cover.1487691345.git.bcodding@redhat.com>
 In-Reply-To: <cover.1487691345.git.bcodding@redhat.com>
@@ -17,28 +17,72 @@ References: <cover.1487691345.git.bcodding@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Set FL_CLOSE in fl_flags as in locks_remove_posix() when clearing locks.
-NFS will check for this flag to ensure an unlock is sent in a following
-patch.
+We only need to check lock exclusive/shared types against open mode when
+flock() is used on NFS, so move it into the flock-specific path instead of
+checking it for all locks.
 
 Signed-off-by: Benjamin Coddington <bcodding@redhat.com>
+Reviewed-by: Christoph Hellwig <hch@lst.de>
 ---
- fs/locks.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ fs/nfs/file.c     | 18 ++++++++++++++++--
+ fs/nfs/nfs4proc.c | 14 --------------
+ 2 files changed, 16 insertions(+), 16 deletions(-)
 
-diff --git a/fs/locks.c b/fs/locks.c
-index 26811321d39b..af2031a1fcff 100644
---- a/fs/locks.c
-+++ b/fs/locks.c
-@@ -2504,7 +2504,7 @@ locks_remove_flock(struct file *filp, struct file_lock_context *flctx)
- 		.fl_owner = filp,
- 		.fl_pid = current->tgid,
- 		.fl_file = filp,
--		.fl_flags = FL_FLOCK,
-+		.fl_flags = FL_FLOCK | FL_CLOSE,
- 		.fl_type = F_UNLCK,
- 		.fl_end = OFFSET_MAX,
- 	};
+diff --git a/fs/nfs/file.c b/fs/nfs/file.c
+index 26dbe8b0c10d..a490f45df4db 100644
+--- a/fs/nfs/file.c
++++ b/fs/nfs/file.c
+@@ -820,9 +820,23 @@ int nfs_flock(struct file *filp, int cmd, struct file_lock *fl)
+ 	if (NFS_SERVER(inode)->flags & NFS_MOUNT_LOCAL_FLOCK)
+ 		is_local = 1;
+ 
+-	/* We're simulating flock() locks using posix locks on the server */
+-	if (fl->fl_type == F_UNLCK)
++	/*
++	 * VFS doesn't require the open mode to match a flock() lock's type.
++	 * NFS, however, may simulate flock() locking with posix locking which
++	 * requires the open mode to match the lock type.
++	 */
++	switch (fl->fl_type) {
++	case F_UNLCK:
+ 		return do_unlk(filp, cmd, fl, is_local);
++	case F_RDLCK:
++		if (!(filp->f_mode & FMODE_READ))
++			return -EBADF;
++		break;
++	case F_WRLCK:
++		if (!(filp->f_mode & FMODE_WRITE))
++			return -EBADF;
++	}
++
+ 	return do_setlk(filp, cmd, fl, is_local);
+ }
+ EXPORT_SYMBOL_GPL(nfs_flock);
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 9388899e4050..91f88bfbbe79 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -6592,20 +6592,6 @@ nfs4_proc_lock(struct file *filp, int cmd, struct file_lock *request)
+ 	    !test_bit(NFS_STATE_POSIX_LOCKS, &state->flags))
+ 		return -ENOLCK;
+ 
+-	/*
+-	 * Don't rely on the VFS having checked the file open mode,
+-	 * since it won't do this for flock() locks.
+-	 */
+-	switch (request->fl_type) {
+-	case F_RDLCK:
+-		if (!(filp->f_mode & FMODE_READ))
+-			return -EBADF;
+-		break;
+-	case F_WRLCK:
+-		if (!(filp->f_mode & FMODE_WRITE))
+-			return -EBADF;
+-	}
+-
+ 	status = nfs4_set_lock_state(state, request);
+ 	if (status != 0)
+ 		return status;
 -- 
 2.9.3
 
