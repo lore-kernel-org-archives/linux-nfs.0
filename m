@@ -1,45 +1,45 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:33656 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:57342 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751904AbdBUPjU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        id S1752013AbdBUPjU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
         Tue, 21 Feb 2017 10:39:20 -0500
 From: Benjamin Coddington <bcodding@redhat.com>
 To: Trond Myklebust <trond.myklebust@primarydata.com>,
         Anna Schumaker <anna.schumaker@netapp.com>
 Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH 1/4] NFS4: remove a redundant lock range check
-Date: Tue, 21 Feb 2017 10:39:14 -0500
-Message-Id: <65bfbbf71119f151f320d47f2e5fe423eb640e78.1487691345.git.bcodding@redhat.com>
-In-Reply-To: <cover.1487691345.git.bcodding@redhat.com>
-References: <cover.1487691345.git.bcodding@redhat.com>
-In-Reply-To: <cover.1487691345.git.bcodding@redhat.com>
-References: <cover.1487691345.git.bcodding@redhat.com>
+Subject: [PATCH v3 0/4] Skipped unlocks
+Date: Tue, 21 Feb 2017 10:39:13 -0500
+Message-Id: <cover.1487691345.git.bcodding@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-flock64_to_posix_lock() is already doing this check
+Well over a year ago I made other attempts to fix the problem of NFS failing
+to send an unlock when signalled.  Those attempts were terrible.
 
-Signed-off-by: Benjamin Coddington <bcodding@redhat.com>
-Reviewed-by: Jeff Layton <jeff.layton@primarydata.com>
-Reviewed-by: Christoph Hellwig <hch@lst.de>
----
- fs/nfs/nfs4proc.c | 3 ---
- 1 file changed, 3 deletions(-)
+Here's another, smaller version that keeps two simple fixes and takes the
+approach of skipping the wait if FL_CLOSE is set as was suggested by Trond.
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 0a0eaecf9676..9388899e4050 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -6570,9 +6570,6 @@ nfs4_proc_lock(struct file *filp, int cmd, struct file_lock *request)
- 	ctx = nfs_file_open_context(filp);
- 	state = ctx->state;
- 
--	if (request->fl_start < 0 || request->fl_end < 0)
--		return -EINVAL;
--
- 	if (IS_GETLK(cmd)) {
- 		if (state != NULL)
- 			return nfs4_proc_getlk(state, F_GETLK, request);
+I think this is probably a little late for 4.11.  Comments and review are
+welcomed.
+
+since v1:
+	- add Christoph's reviewed-by on 1/4 and 2/4 and fixup switch
+	  indentation on 2/4
+since v2:
+	- don't sleep in rpciod to wait for I/O completion, just send the unlock
+	  immediately for both v3 and v4.
+
+Benjamin Coddington (4):
+  NFS4: remove a redundant lock range check
+  NFS: Move the flock open mode check into nfs_flock()
+  locks: Set FL_CLOSE when removing flock locks on close()
+  NFS: Always send an unlock for FL_CLOSE
+
+ fs/locks.c        |  2 +-
+ fs/nfs/file.c     | 28 +++++++++++++++++++++-------
+ fs/nfs/nfs4proc.c | 17 -----------------
+ 3 files changed, 22 insertions(+), 25 deletions(-)
+
 -- 
 2.9.3
 
