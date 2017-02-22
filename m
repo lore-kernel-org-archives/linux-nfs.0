@@ -1,121 +1,100 @@
-Return-Path: <jlayton@redhat.com>
-Message-ID: <1487778136.5497.1.camel@redhat.com>
+Return-Path: <trondmy@primarydata.com>
+From: Trond Myklebust <trondmy@primarydata.com>
+To: "bcodding@redhat.com" <bcodding@redhat.com>,
+        "jlayton@redhat.com"
+	<jlayton@redhat.com>
+CC: "anna.schumaker@netapp.com" <anna.schumaker@netapp.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
 Subject: Re: [PATCH 4/4] NFS: Always send an unlock for FL_CLOSE
-From: Jeff Layton <jlayton@redhat.com>
-To: Benjamin Coddington <bcodding@redhat.com>
-Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
-        Anna Schumaker
-	 <anna.schumaker@netapp.com>,
-        linux-nfs@vger.kernel.org
-Date: Wed, 22 Feb 2017 10:42:16 -0500
-In-Reply-To: <09B7C044-3622-4898-BEED-0B516BB54FE2@redhat.com>
+Date: Wed, 22 Feb 2017 16:27:23 +0000
+Message-ID: <1487780839.4863.4.camel@primarydata.com>
 References: <cover.1487691345.git.bcodding@redhat.com>
 	 <72fa3f2a37146d153722d842e9b0d166fe11f1ad.1487691345.git.bcodding@redhat.com>
 	 <1487769602.2886.15.camel@redhat.com>
 	 <09B7C044-3622-4898-BEED-0B516BB54FE2@redhat.com>
-Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
+	 <1487778136.5497.1.camel@redhat.com>
+In-Reply-To: <1487778136.5497.1.camel@redhat.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, 2017-02-22 at 09:10 -0500, Benjamin Coddington wrote:
-> On 22 Feb 2017, at 8:20, Jeff Layton wrote:
-> 
-> > On Tue, 2017-02-21 at 10:39 -0500, Benjamin Coddington wrote:
-> > > NFS attempts to wait for read and write completion before unlocking 
-> > > in
-> > > order to ensure that the data returned was protected by the lock.  
-> > > When
-> > > this waiting is interrupted by a signal, the unlock may be skipped, 
-> > > and
-> > > messages similar to the following are seen in the kernel ring buffer:
-> > > 
-> > > [20.167876] Leaked locks on dev=0x0:0x2b ino=0x8dd4c3:
-> > > [20.168286] POSIX: fl_owner=ffff880078b06940 fl_flags=0x1 fl_type=0x0 
-> > > fl_pid=20183
-> > > [20.168727] POSIX: fl_owner=ffff880078b06680 fl_flags=0x1 fl_type=0x0 
-> > > fl_pid=20185
-> > > 
-> > > For NFSv3, the missing unlock will cause the server to refuse 
-> > > conflicting
-> > > locks indefinitely.  For NFSv4, the leftover lock will be removed by 
-> > > the
-> > > server after the lease timeout.
-> > > 
-> > > This patch fixes this issue by skipping the wait in order to 
-> > > immediately send
-> > > the unlock if the FL_CLOSE flag is set when signaled.
-> > > 
-> > > Signed-off-by: Benjamin Coddington <bcodding@redhat.com>
-> > > ---
-> > >  fs/nfs/file.c | 10 +++++-----
-> > >  1 file changed, 5 insertions(+), 5 deletions(-)
-> > > 
-> > > diff --git a/fs/nfs/file.c b/fs/nfs/file.c
-> > > index a490f45df4db..df695f52bb9d 100644
-> > > --- a/fs/nfs/file.c
-> > > +++ b/fs/nfs/file.c
-> > > @@ -697,14 +697,14 @@ do_unlk(struct file *filp, int cmd, struct 
-> > > file_lock *fl, int is_local)
-> > >  	if (!IS_ERR(l_ctx)) {
-> > >  		status = nfs_iocounter_wait(l_ctx);
-> > >  		nfs_put_lock_context(l_ctx);
-> > > -		if (status < 0)
-> > > +		/*  NOTE: special case
-> > > +		 * 	If we're signalled while cleaning up locks on process exit, we
-> > > +		 * 	still need to complete the unlock.
-> > > +		 */
-> > > +		if (status < 0 && !(fl->fl_flags & FL_CLOSE))
-> > >  			return status;
-> > 
-> > 
-> > Hmm, I don't know if this is safe...
-> > 
-> > Suppose we have a bunch of buffered writeback going on, and we're
-> > sitting here waiting for it so we can do the unlock. The task catches 
-> > a
-> > signal, and then issues the unlock while writeback is still going on.
-> > Another client then grabs the lock, and starts doing reads and writes
-> > while this one is still writing back.
-> > 
-> > I think the unlock really needs to wait until writeback is done,
-> > regardless of whether you catch a signal or not.
-> 
-> The only other way to do this is as you've sugggested many times -- by
-> putting the LOCKU on a rpc_wait_queue.  But that won't work for NFSv3.
-> 
-
-IDGI -- why doesn't that (or something similar) not work for v3?
-
-> For NFSv4, the other thing to do might be to look up the lock state and 
-> set
-> NFS_LOCK_LOST, then unlock.  That will cause subsequent writes to not
-> attempt recovery.
-> 
-No! LOCK_LOST is really for the case where we've lost contact with the
-server. We don't want to get kicked into recovery just because of a
-SIGKILL.
-
-Ideally, I think what we want is for the effect of every write that
-occurred up until the SIGKILL to be visible to other clients after the
-SIGKILL. Doing anything else could be problematic for applications.
-
-> How can this be fixed for NFSv3 without voilating the NLM layers?
-
-That, I'm not sure of. Conceptually, I think what we want though is to
-wait until writeback is done, and then issue an unlock.
-
-One way might be to embed some new infrastructure in nlm_rqst and
-nfs_lock_context that would allow you to idle NLM requests until the
-io_count goes to 0.
-
-Maybe have nlmclnt_unlock() put the nlm_rqst on a list in the lock
-context if there are still outstanding NFS requests. When the io_count
-goes to zero, queue some work that will scrape out the list and kick
-off those requests. It'll take some creativity to do that without
-turning it into one huge layering violation though.
-
-Alternately, you could idle them in the NFS layer, but that probably
-means having to do another allocation, which may be problematic in
-situations where you may be dealing with a SIGKILL (e.g. OOM killer).
--- 
-Jeff Layton <jlayton@redhat.com>
+T24gV2VkLCAyMDE3LTAyLTIyIGF0IDEwOjQyIC0wNTAwLCBKZWZmIExheXRvbiB3cm90ZToNCj4g
+T24gV2VkLCAyMDE3LTAyLTIyIGF0IDA5OjEwIC0wNTAwLCBCZW5qYW1pbiBDb2RkaW5ndG9uIHdy
+b3RlOg0KPiA+IE9uIDIyIEZlYiAyMDE3LCBhdCA4OjIwLCBKZWZmIExheXRvbiB3cm90ZToNCj4g
+PiANCj4gPiA+IE9uIFR1ZSwgMjAxNy0wMi0yMSBhdCAxMDozOSAtMDUwMCwgQmVuamFtaW4gQ29k
+ZGluZ3RvbiB3cm90ZToNCj4gPiA+ID4gTkZTIGF0dGVtcHRzIHRvIHdhaXQgZm9yIHJlYWQgYW5k
+IHdyaXRlIGNvbXBsZXRpb24gYmVmb3JlDQo+ID4gPiA+IHVubG9ja2luZ8KgDQo+ID4gPiA+IGlu
+DQo+ID4gPiA+IG9yZGVyIHRvIGVuc3VyZSB0aGF0IHRoZSBkYXRhIHJldHVybmVkIHdhcyBwcm90
+ZWN0ZWQgYnkgdGhlDQo+ID4gPiA+IGxvY2suwqDCoA0KPiA+ID4gPiBXaGVuDQo+ID4gPiA+IHRo
+aXMgd2FpdGluZyBpcyBpbnRlcnJ1cHRlZCBieSBhIHNpZ25hbCwgdGhlIHVubG9jayBtYXkgYmUN
+Cj4gPiA+ID4gc2tpcHBlZCzCoA0KPiA+ID4gPiBhbmQNCj4gPiA+ID4gbWVzc2FnZXMgc2ltaWxh
+ciB0byB0aGUgZm9sbG93aW5nIGFyZSBzZWVuIGluIHRoZSBrZXJuZWwgcmluZw0KPiA+ID4gPiBi
+dWZmZXI6DQo+ID4gPiA+IA0KPiA+ID4gPiBbMjAuMTY3ODc2XSBMZWFrZWQgbG9ja3Mgb24gZGV2
+PTB4MDoweDJiIGlubz0weDhkZDRjMzoNCj4gPiA+ID4gWzIwLjE2ODI4Nl0gUE9TSVg6IGZsX293
+bmVyPWZmZmY4ODAwNzhiMDY5NDAgZmxfZmxhZ3M9MHgxDQo+ID4gPiA+IGZsX3R5cGU9MHgwwqAN
+Cj4gPiA+ID4gZmxfcGlkPTIwMTgzDQo+ID4gPiA+IFsyMC4xNjg3MjddIFBPU0lYOiBmbF9vd25l
+cj1mZmZmODgwMDc4YjA2NjgwIGZsX2ZsYWdzPTB4MQ0KPiA+ID4gPiBmbF90eXBlPTB4MMKgDQo+
+ID4gPiA+IGZsX3BpZD0yMDE4NQ0KPiA+ID4gPiANCj4gPiA+ID4gRm9yIE5GU3YzLCB0aGUgbWlz
+c2luZyB1bmxvY2sgd2lsbCBjYXVzZSB0aGUgc2VydmVyIHRvIHJlZnVzZcKgDQo+ID4gPiA+IGNv
+bmZsaWN0aW5nDQo+ID4gPiA+IGxvY2tzIGluZGVmaW5pdGVseS7CoMKgRm9yIE5GU3Y0LCB0aGUg
+bGVmdG92ZXIgbG9jayB3aWxsIGJlDQo+ID4gPiA+IHJlbW92ZWQgYnnCoA0KPiA+ID4gPiB0aGUN
+Cj4gPiA+ID4gc2VydmVyIGFmdGVyIHRoZSBsZWFzZSB0aW1lb3V0Lg0KPiA+ID4gPiANCj4gPiA+
+ID4gVGhpcyBwYXRjaCBmaXhlcyB0aGlzIGlzc3VlIGJ5IHNraXBwaW5nIHRoZSB3YWl0IGluIG9y
+ZGVyIHRvwqANCj4gPiA+ID4gaW1tZWRpYXRlbHkgc2VuZA0KPiA+ID4gPiB0aGUgdW5sb2NrIGlm
+IHRoZSBGTF9DTE9TRSBmbGFnIGlzIHNldCB3aGVuIHNpZ25hbGVkLg0KPiA+ID4gPiANCj4gPiA+
+ID4gU2lnbmVkLW9mZi1ieTogQmVuamFtaW4gQ29kZGluZ3RvbiA8YmNvZGRpbmdAcmVkaGF0LmNv
+bT4NCj4gPiA+ID4gLS0tDQo+ID4gPiA+IMKgZnMvbmZzL2ZpbGUuYyB8IDEwICsrKysrLS0tLS0N
+Cj4gPiA+ID4gwqAxIGZpbGUgY2hhbmdlZCwgNSBpbnNlcnRpb25zKCspLCA1IGRlbGV0aW9ucygt
+KQ0KPiA+ID4gPiANCj4gPiA+ID4gZGlmZiAtLWdpdCBhL2ZzL25mcy9maWxlLmMgYi9mcy9uZnMv
+ZmlsZS5jDQo+ID4gPiA+IGluZGV4IGE0OTBmNDVkZjRkYi4uZGY2OTVmNTJiYjlkIDEwMDY0NA0K
+PiA+ID4gPiAtLS0gYS9mcy9uZnMvZmlsZS5jDQo+ID4gPiA+ICsrKyBiL2ZzL25mcy9maWxlLmMN
+Cj4gPiA+ID4gQEAgLTY5NywxNCArNjk3LDE0IEBAIGRvX3VubGsoc3RydWN0IGZpbGUgKmZpbHAs
+IGludCBjbWQsDQo+ID4gPiA+IHN0cnVjdMKgDQo+ID4gPiA+IGZpbGVfbG9jayAqZmwsIGludCBp
+c19sb2NhbCkNCj4gPiA+ID4gwqAJaWYgKCFJU19FUlIobF9jdHgpKSB7DQo+ID4gPiA+IMKgCQlz
+dGF0dXMgPSBuZnNfaW9jb3VudGVyX3dhaXQobF9jdHgpOw0KPiA+ID4gPiDCoAkJbmZzX3B1dF9s
+b2NrX2NvbnRleHQobF9jdHgpOw0KPiA+ID4gPiAtCQlpZiAoc3RhdHVzIDwgMCkNCj4gPiA+ID4g
+KwkJLyrCoMKgTk9URTogc3BlY2lhbCBjYXNlDQo+ID4gPiA+ICsJCcKgKsKgCUlmIHdlJ3JlIHNp
+Z25hbGxlZCB3aGlsZSBjbGVhbmluZw0KPiA+ID4gPiB1cCBsb2NrcyBvbiBwcm9jZXNzIGV4aXQs
+IHdlDQo+ID4gPiA+ICsJCcKgKsKgCXN0aWxsIG5lZWQgdG8gY29tcGxldGUgdGhlIHVubG9jay4N
+Cj4gPiA+ID4gKwkJwqAqLw0KPiA+ID4gPiArCQlpZiAoc3RhdHVzIDwgMCAmJiAhKGZsLT5mbF9m
+bGFncyAmIEZMX0NMT1NFKSkNCj4gPiA+ID4gwqAJCQlyZXR1cm4gc3RhdHVzOw0KPiA+ID4gDQo+
+ID4gPiANCj4gPiA+IEhtbSwgSSBkb24ndCBrbm93IGlmIHRoaXMgaXMgc2FmZS4uLg0KPiA+ID4g
+DQo+ID4gPiBTdXBwb3NlIHdlIGhhdmUgYSBidW5jaCBvZiBidWZmZXJlZCB3cml0ZWJhY2sgZ29p
+bmcgb24sIGFuZCB3ZSdyZQ0KPiA+ID4gc2l0dGluZyBoZXJlIHdhaXRpbmcgZm9yIGl0IHNvIHdl
+IGNhbiBkbyB0aGUgdW5sb2NrLiBUaGUgdGFzaw0KPiA+ID4gY2F0Y2hlc8KgDQo+ID4gPiBhDQo+
+ID4gPiBzaWduYWwsIGFuZCB0aGVuIGlzc3VlcyB0aGUgdW5sb2NrIHdoaWxlIHdyaXRlYmFjayBp
+cyBzdGlsbCBnb2luZw0KPiA+ID4gb24uDQo+ID4gPiBBbm90aGVyIGNsaWVudCB0aGVuIGdyYWJz
+IHRoZSBsb2NrLCBhbmQgc3RhcnRzIGRvaW5nIHJlYWRzIGFuZA0KPiA+ID4gd3JpdGVzDQo+ID4g
+PiB3aGlsZSB0aGlzIG9uZSBpcyBzdGlsbCB3cml0aW5nIGJhY2suDQo+ID4gPiANCj4gPiA+IEkg
+dGhpbmsgdGhlIHVubG9jayByZWFsbHkgbmVlZHMgdG8gd2FpdCB1bnRpbCB3cml0ZWJhY2sgaXMg
+ZG9uZSwNCj4gPiA+IHJlZ2FyZGxlc3Mgb2Ygd2hldGhlciB5b3UgY2F0Y2ggYSBzaWduYWwgb3Ig
+bm90Lg0KPiA+IA0KPiA+IFRoZSBvbmx5IG90aGVyIHdheSB0byBkbyB0aGlzIGlzIGFzIHlvdSd2
+ZSBzdWdnZ2VzdGVkIG1hbnkgdGltZXMgLS0NCj4gPiBieQ0KPiA+IHB1dHRpbmcgdGhlIExPQ0tV
+IG9uIGEgcnBjX3dhaXRfcXVldWUuwqDCoEJ1dCB0aGF0IHdvbid0IHdvcmsgZm9yDQo+ID4gTkZT
+djMuDQo+ID4gDQo+IA0KPiBJREdJIC0tIHdoeSBkb2Vzbid0IHRoYXQgKG9yIHNvbWV0aGluZyBz
+aW1pbGFyKSBub3Qgd29yayBmb3IgdjM/DQo+IA0KPiA+IEZvciBORlN2NCwgdGhlIG90aGVyIHRo
+aW5nIHRvIGRvIG1pZ2h0IGJlIHRvIGxvb2sgdXAgdGhlIGxvY2sgc3RhdGUNCj4gPiBhbmTCoA0K
+PiA+IHNldA0KPiA+IE5GU19MT0NLX0xPU1QsIHRoZW4gdW5sb2NrLsKgwqBUaGF0IHdpbGwgY2F1
+c2Ugc3Vic2VxdWVudCB3cml0ZXMgdG8NCj4gPiBub3QNCj4gPiBhdHRlbXB0IHJlY292ZXJ5Lg0K
+PiA+IA0KPiANCj4gTm8hIExPQ0tfTE9TVCBpcyByZWFsbHkgZm9yIHRoZSBjYXNlIHdoZXJlIHdl
+J3ZlIGxvc3QgY29udGFjdCB3aXRoDQo+IHRoZQ0KPiBzZXJ2ZXIuIFdlIGRvbid0IHdhbnQgdG8g
+Z2V0IGtpY2tlZCBpbnRvIHJlY292ZXJ5IGp1c3QgYmVjYXVzZSBvZiBhDQo+IFNJR0tJTEwuDQoN
+Ckkgc3VnZ2VzdCB3ZSBhZGQgYSBuZXcgbG9jayBzdGF0ZTogTkZTX0xPQ0tfVU5MT0NLRUQgdG8g
+YWxsb3cgdGhlDQpjbGllbnQgdG8gcmVjb2duaXNlIHRoYXQgdGhlIGZhaWxlZCBvcGVyYXRpb24g
+c2hvdWxkIG5vdCBiZSByZXRyaWVkLg0KDQpJbiBmYWN0LCB3ZSBtaWdodCB3YW50IHRvIGhhdmUg
+bmZzNF9zZXRfcndfc3RhdGVpZCgpIHNjYW4gZm9yIHRoYXQsIGFuZA0KcmV0dXJuIGFuIGVycm9y
+IHRoYXQgY291bGQgYmUgbWFkZSB0byBmYWlsIHRoZSBvcGVyYXRpb24uDQpGdXJ0aGVybW9yZSwg
+bWF5YmUgX19uZnM0X2ZpbmRfbG9ja19zdGF0ZSgpIHNob3VsZCBhbHNvIGlnbm9yZSBsb2NrDQpz
+dHJ1Y3R1cmVzIGluIHRoaXMgc3RhdGUgc28gdGhhdCBvbmNlIHRoZSBsb2NrIGlzIGluIHRoaXMg
+c3RhdGUsIHdlDQphbHdheXMgaWdub3JlIG5ldyBhdHRlbXB0cy4NClRoaXMgY291bGQgYWxzbyBi
+ZSBtYWRlIHRvIHdvcmsgd2l0aCBwTkZTOyBhbHRob3VnaCBmb3IgbW9zdCBsYXlvdXQNCnR5cGVz
+LCB0aGUgbG9ja2luZyB3aWxsIG5vdCBiZSBlbmZvcmNlZCBieSB0aGUgc2VydmVyLCB3ZSBjYW4g
+YXQgbGVhc3QNCnByZXZlbnQgbmV3IEkvTyByZXF1ZXN0cyBmcm9tIGJlaW5nIGdlbmVyYXRlZCBh
+ZnRlciB0aGUNCk5GU19MT0NLX1VOTE9DS0VEIHN0YXRlIGhhcyBiZWVuIGRlY2xhcmVkLg0KDQpZ
+b3UgY2FuJ3QgZG8gYW55IG9mIHRoZSBhYm92ZSB3aXRoIE5GU3YzLCBzaW5jZSB0aGUgbG9ja2lu
+ZyBpcw0KZGVjb3VwbGVkIGZyb20gdGhlIGFjdHVhbCBJL08uIElzIGFueW9uZSBhY3R1YWxseSB1
+c2luZyBOTE0gZm9yIG1pc3Npb24NCmNyaXRpY2FsIGFwcGxpY2F0aW9ucyB0aGF0IG5lZWQgdGhp
+cyBraW5kIG9mIHByb3RlY3Rpb24/IChmb2xsb3d1cA0KcXVlc3Rpb246IGlzIHRoZXJlIGEgZ29v
+ZCByZWFzb24gd2h5IHRoZXkgYXJlIGRvaW5nIHNvIGluc3RlYWQgb2YgdXNpbmcNCk5GU3Y0PykN
+Cg0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFpbnRhaW5lciwgUHJp
+bWFyeURhdGENCnRyb25kLm15a2xlYnVzdEBwcmltYXJ5ZGF0YS5jb20NCg==
