@@ -1,82 +1,43 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:45014 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S933999AbdBVWym (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 22 Feb 2017 17:54:42 -0500
-From: Jan Stancek <jstancek@redhat.com>
-To: dhowells@redhat.com
-Cc: linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        jstancek@redhat.com, bcodding@redhat.com, asavkov@redhat.com
-Subject: [PATCH 1/2] KEYS: add user_key_payload_rcu()
-Date: Wed, 22 Feb 2017 23:54:26 +0100
-Message-Id: <9b3fac1a82d8aa6b756a73ecded9655cc80f72b0.1487802542.git.jstancek@redhat.com>
-In-Reply-To: <cover.1487802542.git.jstancek@redhat.com>
-References: <cover.1487802542.git.jstancek@redhat.com>
+Received: from mail-it0-f65.google.com ([209.85.214.65]:36198 "EHLO
+        mail-it0-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S933949AbdBVXg1 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 22 Feb 2017 18:36:27 -0500
+Received: by mail-it0-f65.google.com with SMTP id w185so2811599ita.3
+        for <linux-nfs@vger.kernel.org>; Wed, 22 Feb 2017 15:35:38 -0800 (PST)
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: bfields@fieldses.org, neilb@suse.com
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH v2 0/2] Fix up nfsd to enable NFSv4.x without NFSv4.0
+Date: Wed, 22 Feb 2017 18:35:31 -0500
+Message-Id: <20170222233533.23845-1-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-user_key_payload() is wrapper for rcu_dereference_protected(),
-and can't be used with just rcu_read_lock() held.
+This patch series was intended as a standalone series. However it now
+aims to fix up a few issues with Neil's initial patch:
 
-This patch adds user_key_payload_rcu() for accessing key
-payload in RCU read-side section, without the need
-to hold key semaphore.
+1) When the user turns off all minor versions of NFSv4, then that should
+   be equivalent to turning off NFSv4 support, and so when someone tries
+   to mount, we should return RPC_PROG_MISMATCH.
+2) Allow the user to use either '4.0' or '4' in order to enable or disable
+   minor version 0. Other minor versions remain enabled/disabled using the
+   '4.x' format.
+3) Fix up the display of the minor versions so that we don't add '4.0'.
+   Previous kernels have always assumed the '4' means 'minor version 0',
+   so there should be no need to have both.
 
-Signed-off-by: Jan Stancek <jstancek@redhat.com>
----
- Documentation/security/keys.txt | 5 +++++
- include/keys/user-type.h        | 5 +++++
- include/linux/key.h             | 3 +++
- 3 files changed, 13 insertions(+)
+v2: Make incremental to Neil's patch
+    Fix up display of the version string
 
-diff --git a/Documentation/security/keys.txt b/Documentation/security/keys.txt
-index 3849814bfe6d..da89a854edd2 100644
---- a/Documentation/security/keys.txt
-+++ b/Documentation/security/keys.txt
-@@ -1152,8 +1152,13 @@ access the data:
-      wrap the RCU calls to this element:
- 
- 	rcu_assign_keypointer(struct key *key, void *data);
-+
-+	/* access payload with semaphore held */
- 	void *rcu_dereference_key(struct key *key);
- 
-+	/* access payload in RCU read-side section*/
-+	void *rcu_read_dereference_key(struct key *key);
-+
- 
- ===================
- DEFINING A KEY TYPE
-diff --git a/include/keys/user-type.h b/include/keys/user-type.h
-index c56fef40f53e..521bf3369904 100644
---- a/include/keys/user-type.h
-+++ b/include/keys/user-type.h
-@@ -53,6 +53,11 @@ static inline const struct user_key_payload *user_key_payload(const struct key *
- 	return (struct user_key_payload *)rcu_dereference_key(key);
- }
- 
-+static inline const struct user_key_payload *user_key_payload_rcu(const struct key *key)
-+{
-+	return (struct user_key_payload *)rcu_read_dereference_key(key);
-+}
-+
- #endif /* CONFIG_KEYS */
- 
- #endif /* _KEYS_USER_TYPE_H */
-diff --git a/include/linux/key.h b/include/linux/key.h
-index 722914798f37..b6a8c5896761 100644
---- a/include/linux/key.h
-+++ b/include/linux/key.h
-@@ -358,6 +358,9 @@ static inline bool key_is_instantiated(const struct key *key)
- 	(rcu_dereference_protected((KEY)->payload.rcu_data0,		\
- 				   rwsem_is_locked(&((struct key *)(KEY))->sem)))
- 
-+#define rcu_read_dereference_key(KEY)                                   \
-+	(rcu_dereference((KEY)->payload.rcu_data0))
-+
- #define rcu_assign_keypointer(KEY, PAYLOAD)				\
- do {									\
- 	rcu_assign_pointer((KEY)->payload.rcu_data0, (PAYLOAD));	\
+Trond Myklebust (2):
+  nfsd: Allow enabling NFSv4.x without also requiring NFSv4.0
+  nfsd: Fix display of the version string
+
+ fs/nfsd/nfsctl.c | 72 ++++++++++++++++++++++++++------------------------------
+ fs/nfsd/nfssvc.c | 14 +++++++++++
+ 2 files changed, 48 insertions(+), 38 deletions(-)
+
 -- 
-1.8.3.1
+2.9.3
 
