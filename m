@@ -1,108 +1,109 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-it0-f66.google.com ([209.85.214.66]:36203 "EHLO
+Received: from mail-it0-f66.google.com ([209.85.214.66]:36209 "EHLO
         mail-it0-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S932906AbdBVXg1 (ORCPT
+        with ESMTP id S933767AbdBVXg1 (ORCPT
         <rfc822;linux-nfs@vger.kernel.org>); Wed, 22 Feb 2017 18:36:27 -0500
-Received: by mail-it0-f66.google.com with SMTP id w185so2811641ita.3
-        for <linux-nfs@vger.kernel.org>; Wed, 22 Feb 2017 15:35:39 -0800 (PST)
+Received: by mail-it0-f66.google.com with SMTP id w185so2811689ita.3
+        for <linux-nfs@vger.kernel.org>; Wed, 22 Feb 2017 15:35:40 -0800 (PST)
 From: Trond Myklebust <trond.myklebust@primarydata.com>
 To: bfields@fieldses.org, neilb@suse.com
 Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v2 1/2] nfsd: Allow enabling NFSv4.x without also requiring NFSv4.0
-Date: Wed, 22 Feb 2017 18:35:32 -0500
-Message-Id: <20170222233533.23845-2-trond.myklebust@primarydata.com>
-In-Reply-To: <20170222233533.23845-1-trond.myklebust@primarydata.com>
+Subject: [PATCH v2 2/2] nfsd: Fix display of the version string
+Date: Wed, 22 Feb 2017 18:35:33 -0500
+Message-Id: <20170222233533.23845-3-trond.myklebust@primarydata.com>
+In-Reply-To: <20170222233533.23845-2-trond.myklebust@primarydata.com>
 References: <20170222233533.23845-1-trond.myklebust@primarydata.com>
+ <20170222233533.23845-2-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-For some setups, we may want to allow clients to fall back to NFSv3, or
-even to fail, if a specific minor version of NFSv4 is not enabled.
-For instance, an application that relies on NFSv4.2 CLONE functionality
-is simply not going to work when it falls back to NFSv4.1 or NFSv4.
+The current display code assumes that v4 minor version 0 is tracked by
+the call to nfsd_vers(). Now it is tracked by nfsd_minorversion(), and
+so we need to adjust the display code.
 
 Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
 ---
- fs/nfsd/nfsctl.c | 16 ++++++++--------
- fs/nfsd/nfssvc.c | 14 ++++++++++++++
- 2 files changed, 22 insertions(+), 8 deletions(-)
+ fs/nfsd/nfsctl.c | 56 ++++++++++++++++++++++++++------------------------------
+ 1 file changed, 26 insertions(+), 30 deletions(-)
 
 diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
-index d54fb0e3f30e..4bbba88416dc 100644
+index 4bbba88416dc..73e75ac90525 100644
 --- a/fs/nfsd/nfsctl.c
 +++ b/fs/nfsd/nfsctl.c
-@@ -561,6 +561,7 @@ static ssize_t __write_versions(struct file *file, char *buf, size_t size)
- 		len = qword_get(&mesg, vers, size);
- 		if (len <= 0) return -EINVAL;
- 		do {
-+			enum vers_op cmd;
- 			sign = *vers;
- 			if (sign == '+' || sign == '-')
- 				num = simple_strtol((vers+1), &minorp, 0);
-@@ -571,21 +572,20 @@ static ssize_t __write_versions(struct file *file, char *buf, size_t size)
- 					return -EINVAL;
- 				if (kstrtouint(minorp+1, 0, &minor) < 0)
- 					return -EINVAL;
--				if (nfsd_minorversion(minor, sign == '-' ?
--						     NFSD_CLEAR : NFSD_SET) < 0)
--					return -EINVAL;
--				goto next;
--			}
-+			} else
-+				minor = 0;
-+			cmd = sign == '-' ? NFSD_CLEAR : NFSD_SET;
- 			switch(num) {
- 			case 2:
- 			case 3:
--			case 4:
--				nfsd_vers(num, sign == '-' ? NFSD_CLEAR : NFSD_SET);
-+				nfsd_vers(num, cmd);
- 				break;
-+			case 4:
-+				if (nfsd_minorversion(minor, cmd) >= 0)
-+					break;
- 			default:
- 				return -EINVAL;
- 			}
--		next:
- 			vers += len + 1;
- 		} while ((len = qword_get(&mesg, vers, size)) > 0);
- 		/* If all get turned off, turn them back on, as
-diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
-index e6bfd96734c0..07bf3bd9687b 100644
---- a/fs/nfsd/nfssvc.c
-+++ b/fs/nfsd/nfssvc.c
-@@ -153,6 +153,18 @@ int nfsd_vers(int vers, enum vers_op change)
- 	return 0;
+@@ -536,6 +536,19 @@ static ssize_t write_pool_threads(struct file *file, char *buf, size_t size)
+ 	return rv;
  }
  
-+static void
-+nfsd_adjust_nfsd_versions4(void)
++static ssize_t
++nfsd_print_version_support(char *buf, int remaining, const char *sep,
++		unsigned vers, unsigned minor)
 +{
-+	unsigned i;
++	const char *format = (minor == 0) ? "%s%c%u" : "%s%c%u.%u";
++	bool supported = !!nfsd_vers(vers, NFSD_TEST);
 +
-+	for (i = 0; i <= NFSD_SUPPORTED_MINOR_VERSION; i++) {
-+		if (nfsd_supported_minorversions[i])
-+			return;
-+	}
-+	nfsd_vers(4, NFSD_CLEAR);
++	if (vers == 4 && !nfsd_minorversion(minor, NFSD_TEST))
++		supported = false;
++	return snprintf(buf, remaining, format, sep,
++			supported ? '+' : '-', vers, minor);
 +}
 +
- int nfsd_minorversion(u32 minorversion, enum vers_op change)
+ static ssize_t __write_versions(struct file *file, char *buf, size_t size)
  {
- 	if (minorversion > NFSD_SUPPORTED_MINOR_VERSION)
-@@ -160,9 +172,11 @@ int nfsd_minorversion(u32 minorversion, enum vers_op change)
- 	switch(change) {
- 	case NFSD_SET:
- 		nfsd_supported_minorversions[minorversion] = true;
-+		nfsd_vers(4, NFSD_SET);
- 		break;
- 	case NFSD_CLEAR:
- 		nfsd_supported_minorversions[minorversion] = false;
-+		nfsd_adjust_nfsd_versions4();
- 		break;
- 	case NFSD_TEST:
- 		return nfsd_supported_minorversions[minorversion];
+ 	char *mesg = buf;
+@@ -598,40 +611,23 @@ static ssize_t __write_versions(struct file *file, char *buf, size_t size)
+ 	len = 0;
+ 	sep = "";
+ 	remaining = SIMPLE_TRANSACTION_LIMIT;
+-	for (num=2 ; num <= 4 ; num++)
+-		if (nfsd_vers(num, NFSD_AVAIL)) {
+-			len = snprintf(buf, remaining, "%s%c%d", sep,
+-				       nfsd_vers(num, NFSD_TEST)?'+':'-',
+-				       num);
+-			sep = " ";
+-
+-			if (len >= remaining)
+-				break;
+-			remaining -= len;
+-			buf += len;
+-			tlen += len;
+-		}
+-	if (nfsd_vers(4, NFSD_AVAIL))
+-		for (minor = 0; minor <= NFSD_SUPPORTED_MINOR_VERSION;
+-		     minor++) {
+-			if (minor == 0 && nfsd_minorversion(minor, NFSD_TEST))
+-				/* for backward compatibility, don't report
+-				 * +4.0
+-				 */
+-				continue;
+-			len = snprintf(buf, remaining, " %c4.%u",
+-					(nfsd_vers(4, NFSD_TEST) &&
+-					 nfsd_minorversion(minor, NFSD_TEST)) ?
+-						'+' : '-',
+-					minor);
+-
++	for (num=2 ; num <= 4 ; num++) {
++		if (!nfsd_vers(num, NFSD_AVAIL))
++			continue;
++		minor = 0;
++		do {
++			len = nfsd_print_version_support(buf, remaining,
++					sep, num, minor);
+ 			if (len >= remaining)
+-				break;
++				goto out;
+ 			remaining -= len;
+ 			buf += len;
+ 			tlen += len;
+-		}
+-
++			minor++;
++			sep = " ";
++		} while (num == 4 && minor <= NFSD_SUPPORTED_MINOR_VERSION);
++	}
++out:
+ 	len = snprintf(buf, remaining, "\n");
+ 	if (len >= remaining)
+ 		return -EINVAL;
 -- 
 2.9.3
 
