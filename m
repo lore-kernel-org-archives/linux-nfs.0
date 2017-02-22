@@ -1,54 +1,40 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:43416 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:42732 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S933234AbdBVWhA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 22 Feb 2017 17:37:00 -0500
-Date: Wed, 22 Feb 2017 17:36:57 -0500
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: Weston Andros Adamson <dros@primarydata.com>
-Cc: Trond Myklebust <trondmy@primarydata.com>,
-        Anna Schumaker <schumakeranna@gmail.com>,
-        linux-nfs list <linux-nfs@vger.kernel.org>,
-        Andreas Gruenbacher <agruenba@redhat.com>,
-        Weston Andros Adamson <dros@netapp.com>
-Subject: Re: [PATCH 2/6] NFSv4: fix getacl ERANGE for some ACL buffer sizes
-Message-ID: <20170222223656.GG24122@parsley.fieldses.org>
-References: <1487470070-32358-1-git-send-email-bfields@redhat.com>
- <1487470070-32358-3-git-send-email-bfields@redhat.com>
- <261D4020-D9E4-4F1E-81CF-11EAAEABA684@primarydata.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <261D4020-D9E4-4F1E-81CF-11EAAEABA684@primarydata.com>
+        id S932924AbdBVWyl (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 22 Feb 2017 17:54:41 -0500
+From: Jan Stancek <jstancek@redhat.com>
+To: dhowells@redhat.com
+Cc: linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        jstancek@redhat.com, bcodding@redhat.com, asavkov@redhat.com
+Subject: [PATCH 0/2] key payload access with just rcu_read_lock()
+Date: Wed, 22 Feb 2017 23:54:25 +0100
+Message-Id: <cover.1487802542.git.jstancek@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Feb 21, 2017 at 07:46:58PM +0000, Weston Andros Adamson wrote:
-> 
-> > On Feb 18, 2017, at 9:07 PM, J. Bruce Fields <bfields@redhat.com> wrote:
-> > 
-> > From: Weston Andros Adamson <dros@netapp.com>
-> > 
-> > We're not taking into account that the space needed for the (variable
-> > length) attr bitmap, with the result that we'd sometimes get a spurious
-> > ERANGE when the ACL data got close to the end of a page.
-> > 
-> > Just add in an extra page to make sure.
-> > 
-> > Signed-off-by: J. Bruce Fields <bfields@redhat.com>
-> 
-> Thanks, you can add:
-> 
-> Signed-off-by: Weston Andros Adamson <dros@primarydata.com>
+Hi David,
 
-Thanks.
+this is a follow-up for "suspicious RCU usage" warning described
+in these 2 linux-nfs threads:
+  http://marc.info/?t=147558830300003&r=1&w=2
+  http://marc.info/?t=148776770500001&r=1&w=2
 
-Anna, could we get this one in now?
+Did you have something like in mind?
 
-The rest of it still needs some work to account for the problem Andreas
-notes (where we can return a length successfully even though we'll never
-accept an ACL of that length).  But this one is an easy fix for a real
-bug.
+Thanks,
+Jan
 
-Let me know if you need it resent.
+Jan Stancek (2):
+  KEYS: add user_key_payload_rcu()
+  NFS: use user_key_payload_rcu() in RCU read-side section
 
---b.
+ Documentation/security/keys.txt | 5 +++++
+ fs/nfs/nfs4idmap.c              | 2 +-
+ include/keys/user-type.h        | 5 +++++
+ include/linux/key.h             | 3 +++
+ 4 files changed, 14 insertions(+), 1 deletion(-)
+
+-- 
+1.8.3.1
+
