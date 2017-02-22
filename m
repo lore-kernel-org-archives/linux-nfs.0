@@ -1,100 +1,33 @@
-Return-Path: <trondmy@primarydata.com>
-From: Trond Myklebust <trondmy@primarydata.com>
-To: "bcodding@redhat.com" <bcodding@redhat.com>,
-        "jlayton@redhat.com"
-	<jlayton@redhat.com>
-CC: "anna.schumaker@netapp.com" <anna.schumaker@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 4/4] NFS: Always send an unlock for FL_CLOSE
-Date: Wed, 22 Feb 2017 16:27:23 +0000
-Message-ID: <1487780839.4863.4.camel@primarydata.com>
-References: <cover.1487691345.git.bcodding@redhat.com>
-	 <72fa3f2a37146d153722d842e9b0d166fe11f1ad.1487691345.git.bcodding@redhat.com>
-	 <1487769602.2886.15.camel@redhat.com>
-	 <09B7C044-3622-4898-BEED-0B516BB54FE2@redhat.com>
-	 <1487778136.5497.1.camel@redhat.com>
-In-Reply-To: <1487778136.5497.1.camel@redhat.com>
+Return-Path: <linux-nfs-owner@vger.kernel.org>
+Received: from mx1.redhat.com ([209.132.183.28]:57324 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1753699AbdBVQg6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 22 Feb 2017 11:36:58 -0500
+From: David Howells <dhowells@redhat.com>
+In-Reply-To: <20170222124653.GA11726@dustball.brq.redhat.com>
+References: <20170222124653.GA11726@dustball.brq.redhat.com>
+To: Jan Stancek <jstancek@redhat.com>
+Cc: dhowells@redhat.com, linux-nfs@vger.kernel.org,
+        trond.myklebust@primarydata.com, anna.schumaker@netapp.com
+Subject: Re: [bug] suspicious RCU usage nfs_idmap_get_key
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset="us-ascii"
+Date: Wed, 22 Feb 2017 16:36:55 +0000
+Message-ID: <567.1487781415@warthog.procyon.org.uk>
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gV2VkLCAyMDE3LTAyLTIyIGF0IDEwOjQyIC0wNTAwLCBKZWZmIExheXRvbiB3cm90ZToNCj4g
-T24gV2VkLCAyMDE3LTAyLTIyIGF0IDA5OjEwIC0wNTAwLCBCZW5qYW1pbiBDb2RkaW5ndG9uIHdy
-b3RlOg0KPiA+IE9uIDIyIEZlYiAyMDE3LCBhdCA4OjIwLCBKZWZmIExheXRvbiB3cm90ZToNCj4g
-PiANCj4gPiA+IE9uIFR1ZSwgMjAxNy0wMi0yMSBhdCAxMDozOSAtMDUwMCwgQmVuamFtaW4gQ29k
-ZGluZ3RvbiB3cm90ZToNCj4gPiA+ID4gTkZTIGF0dGVtcHRzIHRvIHdhaXQgZm9yIHJlYWQgYW5k
-IHdyaXRlIGNvbXBsZXRpb24gYmVmb3JlDQo+ID4gPiA+IHVubG9ja2luZ8KgDQo+ID4gPiA+IGlu
-DQo+ID4gPiA+IG9yZGVyIHRvIGVuc3VyZSB0aGF0IHRoZSBkYXRhIHJldHVybmVkIHdhcyBwcm90
-ZWN0ZWQgYnkgdGhlDQo+ID4gPiA+IGxvY2suwqDCoA0KPiA+ID4gPiBXaGVuDQo+ID4gPiA+IHRo
-aXMgd2FpdGluZyBpcyBpbnRlcnJ1cHRlZCBieSBhIHNpZ25hbCwgdGhlIHVubG9jayBtYXkgYmUN
-Cj4gPiA+ID4gc2tpcHBlZCzCoA0KPiA+ID4gPiBhbmQNCj4gPiA+ID4gbWVzc2FnZXMgc2ltaWxh
-ciB0byB0aGUgZm9sbG93aW5nIGFyZSBzZWVuIGluIHRoZSBrZXJuZWwgcmluZw0KPiA+ID4gPiBi
-dWZmZXI6DQo+ID4gPiA+IA0KPiA+ID4gPiBbMjAuMTY3ODc2XSBMZWFrZWQgbG9ja3Mgb24gZGV2
-PTB4MDoweDJiIGlubz0weDhkZDRjMzoNCj4gPiA+ID4gWzIwLjE2ODI4Nl0gUE9TSVg6IGZsX293
-bmVyPWZmZmY4ODAwNzhiMDY5NDAgZmxfZmxhZ3M9MHgxDQo+ID4gPiA+IGZsX3R5cGU9MHgwwqAN
-Cj4gPiA+ID4gZmxfcGlkPTIwMTgzDQo+ID4gPiA+IFsyMC4xNjg3MjddIFBPU0lYOiBmbF9vd25l
-cj1mZmZmODgwMDc4YjA2NjgwIGZsX2ZsYWdzPTB4MQ0KPiA+ID4gPiBmbF90eXBlPTB4MMKgDQo+
-ID4gPiA+IGZsX3BpZD0yMDE4NQ0KPiA+ID4gPiANCj4gPiA+ID4gRm9yIE5GU3YzLCB0aGUgbWlz
-c2luZyB1bmxvY2sgd2lsbCBjYXVzZSB0aGUgc2VydmVyIHRvIHJlZnVzZcKgDQo+ID4gPiA+IGNv
-bmZsaWN0aW5nDQo+ID4gPiA+IGxvY2tzIGluZGVmaW5pdGVseS7CoMKgRm9yIE5GU3Y0LCB0aGUg
-bGVmdG92ZXIgbG9jayB3aWxsIGJlDQo+ID4gPiA+IHJlbW92ZWQgYnnCoA0KPiA+ID4gPiB0aGUN
-Cj4gPiA+ID4gc2VydmVyIGFmdGVyIHRoZSBsZWFzZSB0aW1lb3V0Lg0KPiA+ID4gPiANCj4gPiA+
-ID4gVGhpcyBwYXRjaCBmaXhlcyB0aGlzIGlzc3VlIGJ5IHNraXBwaW5nIHRoZSB3YWl0IGluIG9y
-ZGVyIHRvwqANCj4gPiA+ID4gaW1tZWRpYXRlbHkgc2VuZA0KPiA+ID4gPiB0aGUgdW5sb2NrIGlm
-IHRoZSBGTF9DTE9TRSBmbGFnIGlzIHNldCB3aGVuIHNpZ25hbGVkLg0KPiA+ID4gPiANCj4gPiA+
-ID4gU2lnbmVkLW9mZi1ieTogQmVuamFtaW4gQ29kZGluZ3RvbiA8YmNvZGRpbmdAcmVkaGF0LmNv
-bT4NCj4gPiA+ID4gLS0tDQo+ID4gPiA+IMKgZnMvbmZzL2ZpbGUuYyB8IDEwICsrKysrLS0tLS0N
-Cj4gPiA+ID4gwqAxIGZpbGUgY2hhbmdlZCwgNSBpbnNlcnRpb25zKCspLCA1IGRlbGV0aW9ucygt
-KQ0KPiA+ID4gPiANCj4gPiA+ID4gZGlmZiAtLWdpdCBhL2ZzL25mcy9maWxlLmMgYi9mcy9uZnMv
-ZmlsZS5jDQo+ID4gPiA+IGluZGV4IGE0OTBmNDVkZjRkYi4uZGY2OTVmNTJiYjlkIDEwMDY0NA0K
-PiA+ID4gPiAtLS0gYS9mcy9uZnMvZmlsZS5jDQo+ID4gPiA+ICsrKyBiL2ZzL25mcy9maWxlLmMN
-Cj4gPiA+ID4gQEAgLTY5NywxNCArNjk3LDE0IEBAIGRvX3VubGsoc3RydWN0IGZpbGUgKmZpbHAs
-IGludCBjbWQsDQo+ID4gPiA+IHN0cnVjdMKgDQo+ID4gPiA+IGZpbGVfbG9jayAqZmwsIGludCBp
-c19sb2NhbCkNCj4gPiA+ID4gwqAJaWYgKCFJU19FUlIobF9jdHgpKSB7DQo+ID4gPiA+IMKgCQlz
-dGF0dXMgPSBuZnNfaW9jb3VudGVyX3dhaXQobF9jdHgpOw0KPiA+ID4gPiDCoAkJbmZzX3B1dF9s
-b2NrX2NvbnRleHQobF9jdHgpOw0KPiA+ID4gPiAtCQlpZiAoc3RhdHVzIDwgMCkNCj4gPiA+ID4g
-KwkJLyrCoMKgTk9URTogc3BlY2lhbCBjYXNlDQo+ID4gPiA+ICsJCcKgKsKgCUlmIHdlJ3JlIHNp
-Z25hbGxlZCB3aGlsZSBjbGVhbmluZw0KPiA+ID4gPiB1cCBsb2NrcyBvbiBwcm9jZXNzIGV4aXQs
-IHdlDQo+ID4gPiA+ICsJCcKgKsKgCXN0aWxsIG5lZWQgdG8gY29tcGxldGUgdGhlIHVubG9jay4N
-Cj4gPiA+ID4gKwkJwqAqLw0KPiA+ID4gPiArCQlpZiAoc3RhdHVzIDwgMCAmJiAhKGZsLT5mbF9m
-bGFncyAmIEZMX0NMT1NFKSkNCj4gPiA+ID4gwqAJCQlyZXR1cm4gc3RhdHVzOw0KPiA+ID4gDQo+
-ID4gPiANCj4gPiA+IEhtbSwgSSBkb24ndCBrbm93IGlmIHRoaXMgaXMgc2FmZS4uLg0KPiA+ID4g
-DQo+ID4gPiBTdXBwb3NlIHdlIGhhdmUgYSBidW5jaCBvZiBidWZmZXJlZCB3cml0ZWJhY2sgZ29p
-bmcgb24sIGFuZCB3ZSdyZQ0KPiA+ID4gc2l0dGluZyBoZXJlIHdhaXRpbmcgZm9yIGl0IHNvIHdl
-IGNhbiBkbyB0aGUgdW5sb2NrLiBUaGUgdGFzaw0KPiA+ID4gY2F0Y2hlc8KgDQo+ID4gPiBhDQo+
-ID4gPiBzaWduYWwsIGFuZCB0aGVuIGlzc3VlcyB0aGUgdW5sb2NrIHdoaWxlIHdyaXRlYmFjayBp
-cyBzdGlsbCBnb2luZw0KPiA+ID4gb24uDQo+ID4gPiBBbm90aGVyIGNsaWVudCB0aGVuIGdyYWJz
-IHRoZSBsb2NrLCBhbmQgc3RhcnRzIGRvaW5nIHJlYWRzIGFuZA0KPiA+ID4gd3JpdGVzDQo+ID4g
-PiB3aGlsZSB0aGlzIG9uZSBpcyBzdGlsbCB3cml0aW5nIGJhY2suDQo+ID4gPiANCj4gPiA+IEkg
-dGhpbmsgdGhlIHVubG9jayByZWFsbHkgbmVlZHMgdG8gd2FpdCB1bnRpbCB3cml0ZWJhY2sgaXMg
-ZG9uZSwNCj4gPiA+IHJlZ2FyZGxlc3Mgb2Ygd2hldGhlciB5b3UgY2F0Y2ggYSBzaWduYWwgb3Ig
-bm90Lg0KPiA+IA0KPiA+IFRoZSBvbmx5IG90aGVyIHdheSB0byBkbyB0aGlzIGlzIGFzIHlvdSd2
-ZSBzdWdnZ2VzdGVkIG1hbnkgdGltZXMgLS0NCj4gPiBieQ0KPiA+IHB1dHRpbmcgdGhlIExPQ0tV
-IG9uIGEgcnBjX3dhaXRfcXVldWUuwqDCoEJ1dCB0aGF0IHdvbid0IHdvcmsgZm9yDQo+ID4gTkZT
-djMuDQo+ID4gDQo+IA0KPiBJREdJIC0tIHdoeSBkb2Vzbid0IHRoYXQgKG9yIHNvbWV0aGluZyBz
-aW1pbGFyKSBub3Qgd29yayBmb3IgdjM/DQo+IA0KPiA+IEZvciBORlN2NCwgdGhlIG90aGVyIHRo
-aW5nIHRvIGRvIG1pZ2h0IGJlIHRvIGxvb2sgdXAgdGhlIGxvY2sgc3RhdGUNCj4gPiBhbmTCoA0K
-PiA+IHNldA0KPiA+IE5GU19MT0NLX0xPU1QsIHRoZW4gdW5sb2NrLsKgwqBUaGF0IHdpbGwgY2F1
-c2Ugc3Vic2VxdWVudCB3cml0ZXMgdG8NCj4gPiBub3QNCj4gPiBhdHRlbXB0IHJlY292ZXJ5Lg0K
-PiA+IA0KPiANCj4gTm8hIExPQ0tfTE9TVCBpcyByZWFsbHkgZm9yIHRoZSBjYXNlIHdoZXJlIHdl
-J3ZlIGxvc3QgY29udGFjdCB3aXRoDQo+IHRoZQ0KPiBzZXJ2ZXIuIFdlIGRvbid0IHdhbnQgdG8g
-Z2V0IGtpY2tlZCBpbnRvIHJlY292ZXJ5IGp1c3QgYmVjYXVzZSBvZiBhDQo+IFNJR0tJTEwuDQoN
-Ckkgc3VnZ2VzdCB3ZSBhZGQgYSBuZXcgbG9jayBzdGF0ZTogTkZTX0xPQ0tfVU5MT0NLRUQgdG8g
-YWxsb3cgdGhlDQpjbGllbnQgdG8gcmVjb2duaXNlIHRoYXQgdGhlIGZhaWxlZCBvcGVyYXRpb24g
-c2hvdWxkIG5vdCBiZSByZXRyaWVkLg0KDQpJbiBmYWN0LCB3ZSBtaWdodCB3YW50IHRvIGhhdmUg
-bmZzNF9zZXRfcndfc3RhdGVpZCgpIHNjYW4gZm9yIHRoYXQsIGFuZA0KcmV0dXJuIGFuIGVycm9y
-IHRoYXQgY291bGQgYmUgbWFkZSB0byBmYWlsIHRoZSBvcGVyYXRpb24uDQpGdXJ0aGVybW9yZSwg
-bWF5YmUgX19uZnM0X2ZpbmRfbG9ja19zdGF0ZSgpIHNob3VsZCBhbHNvIGlnbm9yZSBsb2NrDQpz
-dHJ1Y3R1cmVzIGluIHRoaXMgc3RhdGUgc28gdGhhdCBvbmNlIHRoZSBsb2NrIGlzIGluIHRoaXMg
-c3RhdGUsIHdlDQphbHdheXMgaWdub3JlIG5ldyBhdHRlbXB0cy4NClRoaXMgY291bGQgYWxzbyBi
-ZSBtYWRlIHRvIHdvcmsgd2l0aCBwTkZTOyBhbHRob3VnaCBmb3IgbW9zdCBsYXlvdXQNCnR5cGVz
-LCB0aGUgbG9ja2luZyB3aWxsIG5vdCBiZSBlbmZvcmNlZCBieSB0aGUgc2VydmVyLCB3ZSBjYW4g
-YXQgbGVhc3QNCnByZXZlbnQgbmV3IEkvTyByZXF1ZXN0cyBmcm9tIGJlaW5nIGdlbmVyYXRlZCBh
-ZnRlciB0aGUNCk5GU19MT0NLX1VOTE9DS0VEIHN0YXRlIGhhcyBiZWVuIGRlY2xhcmVkLg0KDQpZ
-b3UgY2FuJ3QgZG8gYW55IG9mIHRoZSBhYm92ZSB3aXRoIE5GU3YzLCBzaW5jZSB0aGUgbG9ja2lu
-ZyBpcw0KZGVjb3VwbGVkIGZyb20gdGhlIGFjdHVhbCBJL08uIElzIGFueW9uZSBhY3R1YWxseSB1
-c2luZyBOTE0gZm9yIG1pc3Npb24NCmNyaXRpY2FsIGFwcGxpY2F0aW9ucyB0aGF0IG5lZWQgdGhp
-cyBraW5kIG9mIHByb3RlY3Rpb24/IChmb2xsb3d1cA0KcXVlc3Rpb246IGlzIHRoZXJlIGEgZ29v
-ZCByZWFzb24gd2h5IHRoZXkgYXJlIGRvaW5nIHNvIGluc3RlYWQgb2YgdXNpbmcNCk5GU3Y0PykN
-Cg0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFpbnRhaW5lciwgUHJp
-bWFyeURhdGENCnRyb25kLm15a2xlYnVzdEBwcmltYXJ5ZGF0YS5jb20NCg==
+Jan Stancek <jstancek@redhat.com> wrote:
+
+> I'm running into following warning with 4.10 reliably (on ppc64le)
+> when I mount NFS volume (exported by RHEL6 system):
+
+Yeah.  I've seen this before.
+
+> Patch below makes it go away for me, but I'm not sure it's the correct way.
+
+The right solution is to split user_key_payload().  It's actually getting used
+for two different things.  We really need a user_key_payload_rcu() that just
+uses rcu_dereference().
+
+David
