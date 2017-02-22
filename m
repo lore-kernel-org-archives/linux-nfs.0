@@ -1,86 +1,82 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:42752 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:45014 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S934042AbdBVWyn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 22 Feb 2017 17:54:43 -0500
+        id S933999AbdBVWym (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 22 Feb 2017 17:54:42 -0500
 From: Jan Stancek <jstancek@redhat.com>
 To: dhowells@redhat.com
 Cc: linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org,
         jstancek@redhat.com, bcodding@redhat.com, asavkov@redhat.com
-Subject: [PATCH 2/2] NFS: use user_key_payload_rcu() in RCU read-side section
-Date: Wed, 22 Feb 2017 23:54:27 +0100
-Message-Id: <fbf3e64103887605323fca60a9049b26b691a391.1487802542.git.jstancek@redhat.com>
+Subject: [PATCH 1/2] KEYS: add user_key_payload_rcu()
+Date: Wed, 22 Feb 2017 23:54:26 +0100
+Message-Id: <9b3fac1a82d8aa6b756a73ecded9655cc80f72b0.1487802542.git.jstancek@redhat.com>
 In-Reply-To: <cover.1487802542.git.jstancek@redhat.com>
 References: <cover.1487802542.git.jstancek@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Use RCU read-side accessor for key payload, as calling
-user_key_payload() without semaphore held leads to
-following warning:
+user_key_payload() is wrapper for rcu_dereference_protected(),
+and can't be used with just rcu_read_lock() held.
 
-  ===============================
-  [ INFO: suspicious RCU usage. ]
-  4.10.0 #1 Tainted: G        W
-  -------------------------------
-  ./include/keys/user-type.h:53 suspicious rcu_dereference_protected() usage!
-  other info that might help us debug this:
-  rcu_scheduler_active = 2, debug_locks = 0
-  1 lock held by mount.nfs/5987:
-    #0:  (rcu_read_lock){......}, at: [<d000000002527abc>] nfs_idmap_get_key+0x15c/0x420 [nfsv4]
-  stack backtrace:
-  CPU: 1 PID: 5987 Comm: mount.nfs Tainted: G        W       4.10.0 #1
-  Call Trace:
-    dump_stack+0xe8/0x154 (unreliable)
-    lockdep_rcu_suspicious+0x140/0x190
-    nfs_idmap_get_key+0x380/0x420 [nfsv4]
-    nfs_map_name_to_uid+0x2a0/0x3b0 [nfsv4]
-    decode_getfattr_attrs+0xfac/0x16b0 [nfsv4]
-    decode_getfattr_generic.constprop.106+0xbc/0x150 [nfsv4]
-    nfs4_xdr_dec_lookup_root+0xac/0xb0 [nfsv4]
-    rpcauth_unwrap_resp+0xe8/0x140 [sunrpc]
-    call_decode+0x29c/0x910 [sunrpc]
-    __rpc_execute+0x140/0x8f0 [sunrpc]
-    rpc_run_task+0x170/0x200 [sunrpc]
-    nfs4_call_sync_sequence+0x68/0xa0 [nfsv4]
-    _nfs4_lookup_root.isra.44+0xd0/0xf0 [nfsv4]
-    nfs4_lookup_root+0xe0/0x350 [nfsv4]
-    nfs4_lookup_root_sec+0x70/0xa0 [nfsv4]
-    nfs4_find_root_sec+0xc4/0x100 [nfsv4]
-    nfs4_proc_get_rootfh+0x5c/0xf0 [nfsv4]
-    nfs4_get_rootfh+0x6c/0x190 [nfsv4]
-    nfs4_server_common_setup+0xc4/0x260 [nfsv4]
-    nfs4_create_server+0x278/0x3c0 [nfsv4]
-    nfs4_remote_mount+0x50/0xb0 [nfsv4]
-    mount_fs+0x74/0x210
-    vfs_kern_mount+0x78/0x220
-    nfs_do_root_mount+0xb0/0x140 [nfsv4]
-    nfs4_try_mount+0x60/0x100 [nfsv4]
-    nfs_fs_mount+0x5ec/0xda0 [nfs]
-    mount_fs+0x74/0x210
-    vfs_kern_mount+0x78/0x220
-    do_mount+0x254/0xf70
-    SyS_mount+0x94/0x100
-    system_call+0x38/0xe0
+This patch adds user_key_payload_rcu() for accessing key
+payload in RCU read-side section, without the need
+to hold key semaphore.
 
 Signed-off-by: Jan Stancek <jstancek@redhat.com>
 ---
- fs/nfs/nfs4idmap.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ Documentation/security/keys.txt | 5 +++++
+ include/keys/user-type.h        | 5 +++++
+ include/linux/key.h             | 3 +++
+ 3 files changed, 13 insertions(+)
 
-diff --git a/fs/nfs/nfs4idmap.c b/fs/nfs/nfs4idmap.c
-index c444285bb1b1..835c163f61af 100644
---- a/fs/nfs/nfs4idmap.c
-+++ b/fs/nfs/nfs4idmap.c
-@@ -316,7 +316,7 @@ static ssize_t nfs_idmap_get_key(const char *name, size_t namelen,
- 	if (ret < 0)
- 		goto out_up;
+diff --git a/Documentation/security/keys.txt b/Documentation/security/keys.txt
+index 3849814bfe6d..da89a854edd2 100644
+--- a/Documentation/security/keys.txt
++++ b/Documentation/security/keys.txt
+@@ -1152,8 +1152,13 @@ access the data:
+      wrap the RCU calls to this element:
  
--	payload = user_key_payload(rkey);
-+	payload = user_key_payload_rcu(rkey);
- 	if (IS_ERR_OR_NULL(payload)) {
- 		ret = PTR_ERR(payload);
- 		goto out_up;
+ 	rcu_assign_keypointer(struct key *key, void *data);
++
++	/* access payload with semaphore held */
+ 	void *rcu_dereference_key(struct key *key);
+ 
++	/* access payload in RCU read-side section*/
++	void *rcu_read_dereference_key(struct key *key);
++
+ 
+ ===================
+ DEFINING A KEY TYPE
+diff --git a/include/keys/user-type.h b/include/keys/user-type.h
+index c56fef40f53e..521bf3369904 100644
+--- a/include/keys/user-type.h
++++ b/include/keys/user-type.h
+@@ -53,6 +53,11 @@ static inline const struct user_key_payload *user_key_payload(const struct key *
+ 	return (struct user_key_payload *)rcu_dereference_key(key);
+ }
+ 
++static inline const struct user_key_payload *user_key_payload_rcu(const struct key *key)
++{
++	return (struct user_key_payload *)rcu_read_dereference_key(key);
++}
++
+ #endif /* CONFIG_KEYS */
+ 
+ #endif /* _KEYS_USER_TYPE_H */
+diff --git a/include/linux/key.h b/include/linux/key.h
+index 722914798f37..b6a8c5896761 100644
+--- a/include/linux/key.h
++++ b/include/linux/key.h
+@@ -358,6 +358,9 @@ static inline bool key_is_instantiated(const struct key *key)
+ 	(rcu_dereference_protected((KEY)->payload.rcu_data0,		\
+ 				   rwsem_is_locked(&((struct key *)(KEY))->sem)))
+ 
++#define rcu_read_dereference_key(KEY)                                   \
++	(rcu_dereference((KEY)->payload.rcu_data0))
++
+ #define rcu_assign_keypointer(KEY, PAYLOAD)				\
+ do {									\
+ 	rcu_assign_pointer((KEY)->payload.rcu_data0, (PAYLOAD));	\
 -- 
 1.8.3.1
 
