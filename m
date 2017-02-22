@@ -1,119 +1,67 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:40364 "EHLO fieldses.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S934676AbdBVVQi (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 22 Feb 2017 16:16:38 -0500
-Date: Wed, 22 Feb 2017 15:50:47 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] nfsd: Allow enabling NFSv4.x without also requiring
- NFSv4.0
-Message-ID: <20170222205047.GA18508@fieldses.org>
-References: <20170222184822.4658-1-trond.myklebust@primarydata.com>
-MIME-Version: 1.0
+Received: from userp1040.oracle.com ([156.151.31.81]:23908 "EHLO
+        userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S933769AbdBVVb2 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 22 Feb 2017 16:31:28 -0500
+From: Chuck Lever <chuck.lever@oracle.com>
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20170222184822.4658-1-trond.myklebust@primarydata.com>
+Subject: supporting DEVICE_REMOVAL on RPC-over-RDMA transports
+Date: Wed, 22 Feb 2017 16:31:21 -0500
+Message-Id: <9EF7BDF7-35DF-4723-A903-54AEC9A9787A@oracle.com>
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+To: Trond Myklebust <trond.myklebust@primarydata.com>
+Mime-Version: 1.0 (Mac OS X Mail 9.3 \(3124\))
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Feb 22, 2017 at 01:48:22PM -0500, Trond Myklebust wrote:
-> For some setups, we may want to allow clients to fall back to NFSv3, or
-> even to fail, if a specific minor version of NFSv4 is not enabled.
-> For instance, an application that relies on NFSv4.2 CLONE functionality
-> is simply not going to work when it falls back to NFSv4.1 or NFSv4.
+Hey Trond-
 
-I have a patch of Neil's queued up for 4.11 that claims to accomplish
-the same thing:
+To support the ability to unload the underlying RDMA device's kernel
+driver while NFS mounts are active, xprtrdma needs the ability to
+suspend RPC sends temporarily while the transport hands HW resources
+back to the driver. Once the device driver is unloaded, the RDMA
+transport is left disconnected, and RPCs will be suspended normally
+until a connection is possible again (eg, a new device is made
+available).
 
-	http://git.linux-nfs.org/?p=bfields/linux.git;a=commit;h=e35659f1b03c03946cae8abb6b0a9e170b574f1c
+A DEVICE_REMOVAL event is an upcall to xprtrdma that may sleep. Upon
+its return, the device driver unloads itself. Currently my prototype
+frees all HW resources during the upcall, but that doesn't block
+new RPCs from trying to use those resources at the same time.
 
-If it's deficient in some way, could you make an incremental patch?
+Seems like the most natural way to temporarily block sends would be
+to grab the transport's write lock, just like "connect" does, while
+the transport is dealing with DEVICE_REMOVAL, then release it once
+all HW resources have been freed.
 
---b.
+Unfortunately an RPC task is needed to acquire the write lock. But
+disconnect is just an asynchronous event, there is no RPC task
+associated with it, and thus no context that the RPC scheduler
+can put to sleep if there happens to be another RPC sending at the
+moment a device removal event occurs.
 
-> 
-> Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
-> ---
->  fs/nfsd/nfsctl.c | 16 ++++++++--------
->  fs/nfsd/nfssvc.c | 14 ++++++++++++++
->  2 files changed, 22 insertions(+), 8 deletions(-)
-> 
-> diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
-> index f3b2f34b10a3..81b6a0aa4b92 100644
-> --- a/fs/nfsd/nfsctl.c
-> +++ b/fs/nfsd/nfsctl.c
-> @@ -561,6 +561,7 @@ static ssize_t __write_versions(struct file *file, char *buf, size_t size)
->  		len = qword_get(&mesg, vers, size);
->  		if (len <= 0) return -EINVAL;
->  		do {
-> +			enum vers_op cmd;
->  			sign = *vers;
->  			if (sign == '+' || sign == '-')
->  				num = simple_strtol((vers+1), &minorp, 0);
-> @@ -572,21 +573,20 @@ static ssize_t __write_versions(struct file *file, char *buf, size_t size)
->  				minor = simple_strtoul(minorp+1, NULL, 0);
->  				if (minor == 0)
->  					return -EINVAL;
-> -				if (nfsd_minorversion(minor, sign == '-' ?
-> -						     NFSD_CLEAR : NFSD_SET) < 0)
-> -					return -EINVAL;
-> -				goto next;
-> -			}
-> +			} else
-> +				minor = 0;
-> +			cmd = sign == '-' ? NFSD_CLEAR : NFSD_SET;
->  			switch(num) {
->  			case 2:
->  			case 3:
-> -			case 4:
-> -				nfsd_vers(num, sign == '-' ? NFSD_CLEAR : NFSD_SET);
-> +				nfsd_vers(num, cmd);
->  				break;
-> +			case 4:
-> +				if (nfsd_minorversion(minor, cmd) >= 0)
-> +					break;
->  			default:
->  				return -EINVAL;
->  			}
-> -		next:
->  			vers += len + 1;
->  		} while ((len = qword_get(&mesg, vers, size)) > 0);
->  		/* If all get turned off, turn them back on, as
-> diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
-> index e6bfd96734c0..07bf3bd9687b 100644
-> --- a/fs/nfsd/nfssvc.c
-> +++ b/fs/nfsd/nfssvc.c
-> @@ -153,6 +153,18 @@ int nfsd_vers(int vers, enum vers_op change)
->  	return 0;
->  }
->  
-> +static void
-> +nfsd_adjust_nfsd_versions4(void)
-> +{
-> +	unsigned i;
-> +
-> +	for (i = 0; i <= NFSD_SUPPORTED_MINOR_VERSION; i++) {
-> +		if (nfsd_supported_minorversions[i])
-> +			return;
-> +	}
-> +	nfsd_vers(4, NFSD_CLEAR);
-> +}
-> +
->  int nfsd_minorversion(u32 minorversion, enum vers_op change)
->  {
->  	if (minorversion > NFSD_SUPPORTED_MINOR_VERSION)
-> @@ -160,9 +172,11 @@ int nfsd_minorversion(u32 minorversion, enum vers_op change)
->  	switch(change) {
->  	case NFSD_SET:
->  		nfsd_supported_minorversions[minorversion] = true;
-> +		nfsd_vers(4, NFSD_SET);
->  		break;
->  	case NFSD_CLEAR:
->  		nfsd_supported_minorversions[minorversion] = false;
-> +		nfsd_adjust_nfsd_versions4();
->  		break;
->  	case NFSD_TEST:
->  		return nfsd_supported_minorversions[minorversion];
-> -- 
-> 2.9.3
+I was looking at xprt_lock_connect, but that doesn't appear to do
+quite what I need.
+
+Another thought was to have the DEVICE_REMOVAL upcall mark the
+transport disconnected, send an asynchronous NULL RPC, then wait
+on a kernel waitqueue.
+
+The NULL RPC would grab the write lock and kick the transport's
+connect worker. The connect worker would free HW resources, then
+awaken the waiter. Then the upcall could return to the driver.
+
+The problem with this scheme is the same as it was for the
+keepalive work: there's no task or rpc_clnt available to the
+DEVICE_REMOVAL upcall. Sleeping until the write lock is available
+would require a task, and sending a NULL RPC would require an
+rpc_clnt.
+
+Any advice/thoughts about this?
+
+
+--
+Chuck Lever
+
+
+
