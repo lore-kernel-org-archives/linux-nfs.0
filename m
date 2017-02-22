@@ -1,101 +1,95 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:32970 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:60060 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1754433AbdBVN15 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 22 Feb 2017 08:27:57 -0500
+        id S932360AbdBVOK4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 22 Feb 2017 09:10:56 -0500
 From: "Benjamin Coddington" <bcodding@redhat.com>
-To: "Miklos Szeredi" <miklos@szeredi.hu>,
-        "Jeff Layton" <jlayton@redhat.com>
+To: "Jeff Layton" <jlayton@redhat.com>
 Cc: "Trond Myklebust" <trond.myklebust@primarydata.com>,
         "Anna Schumaker" <anna.schumaker@netapp.com>,
-        "Linux NFS list" <linux-nfs@vger.kernel.org>,
-        "linux-fsdevel@vget.kernel.org" <linux-fsdevel@vget.kernel.org>
-Subject: Re: [PATCH 3/4] locks: Set FL_CLOSE when removing flock locks on
- close()
-Date: Wed, 22 Feb 2017 08:27:54 -0500
-Message-ID: <41D6F495-507F-4EA0-B629-BB400E4B1573@redhat.com>
-In-Reply-To: <CAJfpegtArWuOKVS_Qq8E0Fw4pcsYC4sj==BN5=3WQSLDXA5AQg@mail.gmail.com>
+        linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 4/4] NFS: Always send an unlock for FL_CLOSE
+Date: Wed, 22 Feb 2017 09:10:54 -0500
+Message-ID: <09B7C044-3622-4898-BEED-0B516BB54FE2@redhat.com>
+In-Reply-To: <1487769602.2886.15.camel@redhat.com>
 References: <cover.1487691345.git.bcodding@redhat.com>
- <c43ab767372bd73a60a4e1c97b39bb6fc0722590.1487691345.git.bcodding@redhat.com>
- <1487765584.2886.8.camel@redhat.com> <1487766356.2886.11.camel@redhat.com>
- <CAJfpegtArWuOKVS_Qq8E0Fw4pcsYC4sj==BN5=3WQSLDXA5AQg@mail.gmail.com>
+ <72fa3f2a37146d153722d842e9b0d166fe11f1ad.1487691345.git.bcodding@redhat.com>
+ <1487769602.2886.15.camel@redhat.com>
 MIME-Version: 1.0
 Content-Type: text/plain; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 22 Feb 2017, at 8:25, Miklos Szeredi wrote:
+On 22 Feb 2017, at 8:20, Jeff Layton wrote:
 
-> On Wed, Feb 22, 2017 at 1:25 PM, Jeff Layton <jlayton@redhat.com> 
-> wrote:
->> On Wed, 2017-02-22 at 07:13 -0500, Jeff Layton wrote:
->>> On Tue, 2017-02-21 at 10:39 -0500, Benjamin Coddington wrote:
->>>> Set FL_CLOSE in fl_flags as in locks_remove_posix() when clearing 
->>>> locks.
->>>> NFS will check for this flag to ensure an unlock is sent in a 
->>>> following
->>>> patch.
->>>>
->>>> Signed-off-by: Benjamin Coddington <bcodding@redhat.com>
->>>> ---
->>>>  fs/locks.c | 2 +-
->>>>  1 file changed, 1 insertion(+), 1 deletion(-)
->>>>
->>>> diff --git a/fs/locks.c b/fs/locks.c
->>>> index 26811321d39b..af2031a1fcff 100644
->>>> --- a/fs/locks.c
->>>> +++ b/fs/locks.c
->>>> @@ -2504,7 +2504,7 @@ locks_remove_flock(struct file *filp, struct 
->>>> file_lock_context *flctx)
->>>>             .fl_owner = filp,
->>>>             .fl_pid = current->tgid,
->>>>             .fl_file = filp,
->>>> -           .fl_flags = FL_FLOCK,
->>>> +           .fl_flags = FL_FLOCK | FL_CLOSE,
->>>>             .fl_type = F_UNLCK,
->>>>             .fl_end = OFFSET_MAX,
->>>>     };
->>>
->>> Looks good. I'm fine with merging this one via the NFS tree, btw...
->>>
->>> Reviewed-by: Jeff Layton <jlayton@redhat.com>
->>>
+> On Tue, 2017-02-21 at 10:39 -0500, Benjamin Coddington wrote:
+>> NFS attempts to wait for read and write completion before unlocking 
+>> in
+>> order to ensure that the data returned was protected by the lock.  
+>> When
+>> this waiting is interrupted by a signal, the unlock may be skipped, 
+>> and
+>> messages similar to the following are seen in the kernel ring buffer:
 >>
->> (cc'ing linux-fsdevel and Miklos)
+>> [20.167876] Leaked locks on dev=0x0:0x2b ino=0x8dd4c3:
+>> [20.168286] POSIX: fl_owner=ffff880078b06940 fl_flags=0x1 fl_type=0x0 
+>> fl_pid=20183
+>> [20.168727] POSIX: fl_owner=ffff880078b06680 fl_flags=0x1 fl_type=0x0 
+>> fl_pid=20185
 >>
->> Hmm, that said, this potentially may affect other filesystems. If you 
->> do
->> any more postings of this set, please cc linux-fsdevel.
+>> For NFSv3, the missing unlock will cause the server to refuse 
+>> conflicting
+>> locks indefinitely.  For NFSv4, the leftover lock will be removed by 
+>> the
+>> server after the lease timeout.
 >>
->> In particular, I'll note that fuse has this:
+>> This patch fixes this issue by skipping the wait in order to 
+>> immediately send
+>> the unlock if the FL_CLOSE flag is set when signaled.
 >>
->>         /* Unlock on close is handled by the flush method */
->>         if (fl->fl_flags & FL_CLOSE)
->>                 return 0;
+>> Signed-off-by: Benjamin Coddington <bcodding@redhat.com>
+>> ---
+>>  fs/nfs/file.c | 10 +++++-----
+>>  1 file changed, 5 insertions(+), 5 deletions(-)
 >>
->> I don't see any lock handling in fuse_flush (though it does pass down 
->> a
->> lockowner). I guess the expectation is that the userland driver 
->> should
->> close down POSIX locks when the flush method is called.
+>> diff --git a/fs/nfs/file.c b/fs/nfs/file.c
+>> index a490f45df4db..df695f52bb9d 100644
+>> --- a/fs/nfs/file.c
+>> +++ b/fs/nfs/file.c
+>> @@ -697,14 +697,14 @@ do_unlk(struct file *filp, int cmd, struct 
+>> file_lock *fl, int is_local)
+>>  	if (!IS_ERR(l_ctx)) {
+>>  		status = nfs_iocounter_wait(l_ctx);
+>>  		nfs_put_lock_context(l_ctx);
+>> -		if (status < 0)
+>> +		/*  NOTE: special case
+>> +		 * 	If we're signalled while cleaning up locks on process exit, we
+>> +		 * 	still need to complete the unlock.
+>> +		 */
+>> +		if (status < 0 && !(fl->fl_flags & FL_CLOSE))
+>>  			return status;
 >
-> Right.
 >
->>
->> Miklos, does this also apply to flock locks? Would Ben's patch cause 
->> any
->> grief here?
+> Hmm, I don't know if this is safe...
 >
-> Yes, it would make the final close of file not unlock flocks on that 
-> open file.
+> Suppose we have a bunch of buffered writeback going on, and we're
+> sitting here waiting for it so we can do the unlock. The task catches 
+> a
+> signal, and then issues the unlock while writeback is still going on.
+> Another client then grabs the lock, and starts doing reads and writes
+> while this one is still writing back.
 >
-> Simple fix is to change that condition to
->
-> #define FL_CLOSE_POSIX (FL_POSIX | FL_CLOSE)
->
->         if (fl->fl_flags & FL_CLOSE_POSIX == FL_CLOSE_POSIX)
->                 return 0;
+> I think the unlock really needs to wait until writeback is done,
+> regardless of whether you catch a signal or not.
 
-OK, I can that in the next version.  Thanks for that catch Jeff.
+The only other way to do this is as you've sugggested many times -- by
+putting the LOCKU on a rpc_wait_queue.  But that won't work for NFSv3.
+
+For NFSv4, the other thing to do might be to look up the lock state and 
+set
+NFS_LOCK_LOST, then unlock.  That will cause subsequent writes to not
+attempt recovery.
+
+How can this be fixed for NFSv3 without voilating the NLM layers?
 
 Ben
