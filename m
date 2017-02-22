@@ -1,22 +1,38 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mproxygzc3.163.com ([218.107.63.211]:41951 "EHLO
-        mproxygzc3.163.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1753297AbdBVHdX (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 22 Feb 2017 02:33:23 -0500
-Date: Wed, 22 Feb 2017 15:16:48 +0800 (CST)
-From: houlinfei <hou.linfei@h3c.com>
-To: kinglongmee@gmail.com,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Cc: bfields@fieldses.org, neilb@suse.com, SteveD@redhat.com
+Received: from mail-it0-f66.google.com ([209.85.214.66]:34158 "EHLO
+        mail-it0-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1753558AbdBVIB2 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 22 Feb 2017 03:01:28 -0500
+Received: by mail-it0-f66.google.com with SMTP id r141so607118ita.1
+        for <linux-nfs@vger.kernel.org>; Wed, 22 Feb 2017 00:01:22 -0800 (PST)
 Subject: Re: some problems about permission of subdirectory
-Content-Type: text/plain; charset=GBK
+To: houlinfei <hou.linfei@h3c.com>
+References: <24b92a5f.6561.15a64adfe18.Coremail.hou.linfei@h3c.com>
+Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        bfields@fieldses.org, neilb@suse.com, SteveD@redhat.com,
+        Kinglong Mee <kinglongmee@gmail.com>
+From: Kinglong Mee <kinglongmee@gmail.com>
+Message-ID: <39acaddb-d4c0-dbda-3e22-11b865d4b9ec@gmail.com>
+Date: Wed, 22 Feb 2017 16:00:36 +0800
 MIME-Version: 1.0
-Message-ID: <24b92a5f.6561.15a64adfe18.Coremail.hou.linfei@h3c.com>
+In-Reply-To: <24b92a5f.6561.15a64adfe18.Coremail.hou.linfei@h3c.com>
+Content-Type: text/plain; charset=gbk
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-aGkgS2luZ2xvbmc6ClRoYW5rIHlvdSBmb3IgeW91ciBhbnN3ZXIgYWJvdXQgdGhpcyBwaGVub21l
-bm9uLCBpIGp1c3QgdHJ5IHRoZSBtZXRob2QgeW91IHByb3ZpZGUsIGJ1dCBwcm9ibGVtIGFsc28g
-ZXhpc3QuIElmIGkgd2FudCB0byBjaGFuZ2UgdGhlIGNvZGUgYWJvdXQgbmZzZCBhbmQgcnBjLm1v
-dW50ZCwgd2hlcmUgc2hvdWxkIGkgY2hhbmdlPyBJJ20gbm90IGZhbWlsaWFyIHdpdGggdGhpcyBw
-YXJ0IG9mIHRoZSBjb2RlLiAKVGhhbmtzIHZlcnkgbXVjaH4KaG91bGluZmVp
+On 2/22/2017 15:16, houlinfei wrote:
+> hi Kinglong:
+> Thank you for your answer about this phenomenon, i just try the method you provide, but problem also exist. If i want to change the code about nfsd and rpc.mountd, where should i change? I'm not familiar with this part of the code. 
+
+Sorry, I test it with the following sets (with "no_root_squash"),
+/root/hh/hh1    *(rw,no_subtree_check,no_root_squash,insecure)
+
+It's okay for your problem, but all client's process will be treated as root.
+But, it's just a hacker method with many limits,
+I think you'd better change your exports as,
+
+/root/hh/hh1  *(ro,sync,insecure,no_subtree_check)
+/root/hh/hh2  *(rw,sync,insecure,no_subtree_check)
+
+thanks,
+Kinglong Mee
