@@ -1,67 +1,95 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from userp1040.oracle.com ([156.151.31.81]:23908 "EHLO
-        userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S933769AbdBVVb2 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 22 Feb 2017 16:31:28 -0500
-From: Chuck Lever <chuck.lever@oracle.com>
-Content-Type: text/plain; charset=us-ascii
-Subject: supporting DEVICE_REMOVAL on RPC-over-RDMA transports
-Date: Wed, 22 Feb 2017 16:31:21 -0500
-Message-Id: <9EF7BDF7-35DF-4723-A903-54AEC9A9787A@oracle.com>
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-Mime-Version: 1.0 (Mac OS X Mail 9.3 \(3124\))
+Received: from us-smtp-delivery-194.mimecast.com ([216.205.24.194]:24001 "EHLO
+        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S933116AbdBVWSH (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 22 Feb 2017 17:18:07 -0500
+From: Trond Myklebust <trondmy@primarydata.com>
+To: "bfields@fieldses.org" <bfields@fieldses.org>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] nfsd: Allow enabling NFSv4.x without also requiring
+ NFSv4.0
+Date: Wed, 22 Feb 2017 22:15:55 +0000
+Message-ID: <1487801751.4863.8.camel@primarydata.com>
+References: <20170222184822.4658-1-trond.myklebust@primarydata.com>
+         <20170222205047.GA18508@fieldses.org>
+In-Reply-To: <20170222205047.GA18508@fieldses.org>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hey Trond-
-
-To support the ability to unload the underlying RDMA device's kernel
-driver while NFS mounts are active, xprtrdma needs the ability to
-suspend RPC sends temporarily while the transport hands HW resources
-back to the driver. Once the device driver is unloaded, the RDMA
-transport is left disconnected, and RPCs will be suspended normally
-until a connection is possible again (eg, a new device is made
-available).
-
-A DEVICE_REMOVAL event is an upcall to xprtrdma that may sleep. Upon
-its return, the device driver unloads itself. Currently my prototype
-frees all HW resources during the upcall, but that doesn't block
-new RPCs from trying to use those resources at the same time.
-
-Seems like the most natural way to temporarily block sends would be
-to grab the transport's write lock, just like "connect" does, while
-the transport is dealing with DEVICE_REMOVAL, then release it once
-all HW resources have been freed.
-
-Unfortunately an RPC task is needed to acquire the write lock. But
-disconnect is just an asynchronous event, there is no RPC task
-associated with it, and thus no context that the RPC scheduler
-can put to sleep if there happens to be another RPC sending at the
-moment a device removal event occurs.
-
-I was looking at xprt_lock_connect, but that doesn't appear to do
-quite what I need.
-
-Another thought was to have the DEVICE_REMOVAL upcall mark the
-transport disconnected, send an asynchronous NULL RPC, then wait
-on a kernel waitqueue.
-
-The NULL RPC would grab the write lock and kick the transport's
-connect worker. The connect worker would free HW resources, then
-awaken the waiter. Then the upcall could return to the driver.
-
-The problem with this scheme is the same as it was for the
-keepalive work: there's no task or rpc_clnt available to the
-DEVICE_REMOVAL upcall. Sleeping until the write lock is available
-would require a task, and sending a NULL RPC would require an
-rpc_clnt.
-
-Any advice/thoughts about this?
-
-
---
-Chuck Lever
-
-
+T24gV2VkLCAyMDE3LTAyLTIyIGF0IDE1OjUwIC0wNTAwLCBKLiBCcnVjZSBGaWVsZHMgd3JvdGU6
+DQo+IE9uIFdlZCwgRmViIDIyLCAyMDE3IGF0IDAxOjQ4OjIyUE0gLTA1MDAsIFRyb25kIE15a2xl
+YnVzdCB3cm90ZToNCj4gPiBGb3Igc29tZSBzZXR1cHMsIHdlIG1heSB3YW50IHRvIGFsbG93IGNs
+aWVudHMgdG8gZmFsbCBiYWNrIHRvDQo+ID4gTkZTdjMsIG9yDQo+ID4gZXZlbiB0byBmYWlsLCBp
+ZiBhIHNwZWNpZmljIG1pbm9yIHZlcnNpb24gb2YgTkZTdjQgaXMgbm90IGVuYWJsZWQuDQo+ID4g
+Rm9yIGluc3RhbmNlLCBhbiBhcHBsaWNhdGlvbiB0aGF0IHJlbGllcyBvbiBORlN2NC4yIENMT05F
+DQo+ID4gZnVuY3Rpb25hbGl0eQ0KPiA+IGlzIHNpbXBseSBub3QgZ29pbmcgdG8gd29yayB3aGVu
+IGl0IGZhbGxzIGJhY2sgdG8gTkZTdjQuMSBvciBORlN2NC4NCj4gDQo+IEkgaGF2ZSBhIHBhdGNo
+IG9mIE5laWwncyBxdWV1ZWQgdXAgZm9yIDQuMTEgdGhhdCBjbGFpbXMgdG8gYWNjb21wbGlzaA0K
+PiB0aGUgc2FtZSB0aGluZzoNCj4gDQo+IAlodHRwOi8vZ2l0LmxpbnV4LW5mcy5vcmcvP3A9YmZp
+ZWxkcy9saW51eC5naXQ7YT1jb21taXQ7aD1lMzU2NTkNCj4gZjFiMDNjMDM5NDZjYWU4YWJiNmIw
+YTllMTcwYjU3NGYxYw0KPiANCj4gSWYgaXQncyBkZWZpY2llbnQgaW4gc29tZSB3YXksIGNvdWxk
+IHlvdSBtYWtlIGFuIGluY3JlbWVudGFsIHBhdGNoPw0KPiANCg0KVW5sZXNzIEknbSBtaXNzaW5n
+IHNvbWV0aGluZywgaXQgbG9va3MgYXMgaWYgdGhhdCB3aWxsIHN0aWxsIGVuZCB1cA0KcmV0dXJu
+aW5nIG5mc2Vycl9taW5vcl92ZXJzX21pc21hdGNoIHdoZW4geW91IGRpc2FibGUgYWxsIHRoZSBt
+aW5vcg0KdmVyc2lvbnMgaW4gTkZTdjQuDQoNCkluIHRoZSBwYXRjaCBJIHNlbnQsIHdlIGNhbGwg
+bmZzZF92ZXJzKCkgaW4gdGhhdCBjYXNlLCBzbyB0aGF0IGtuZnNkDQpyZXR1cm5zIHRoZSBSUEMg
+bGV2ZWwgZXJyb3IuDQoNCk15IHBhdGNoIGRvZXMgbmVlZCB0byBmaXggdXAgdGhlIGRpc3BsYXkg
+b2YgdGhlIE5GUyBtaW5vciB2ZXJzaW9uIGluZm8uDQpJJ3ZlIGdvdCBhIHNlY29uZCBwYXRjaCB0
+aGF0IGRvZXMgc28uDQoNCldpbGwgZml4IGJvdGggdXAgYW5kIHJlc2VuZCBpbmNyZW1lbnRhbGx5
+IGFnYWluc3QgTmVpbCdzIHBhdGNoLg0KDQo+IC0tYi4NCj4gDQo+ID4gDQo+ID4gU2lnbmVkLW9m
+Zi1ieTogVHJvbmQgTXlrbGVidXN0IDx0cm9uZC5teWtsZWJ1c3RAcHJpbWFyeWRhdGEuY29tPg0K
+PiA+IC0tLQ0KPiA+IMKgZnMvbmZzZC9uZnNjdGwuYyB8IDE2ICsrKysrKysrLS0tLS0tLS0NCj4g
+PiDCoGZzL25mc2QvbmZzc3ZjLmMgfCAxNCArKysrKysrKysrKysrKw0KPiA+IMKgMiBmaWxlcyBj
+aGFuZ2VkLCAyMiBpbnNlcnRpb25zKCspLCA4IGRlbGV0aW9ucygtKQ0KPiA+IA0KPiA+IGRpZmYg
+LS1naXQgYS9mcy9uZnNkL25mc2N0bC5jIGIvZnMvbmZzZC9uZnNjdGwuYw0KPiA+IGluZGV4IGYz
+YjJmMzRiMTBhMy4uODFiNmEwYWE0YjkyIDEwMDY0NA0KPiA+IC0tLSBhL2ZzL25mc2QvbmZzY3Rs
+LmMNCj4gPiArKysgYi9mcy9uZnNkL25mc2N0bC5jDQo+ID4gQEAgLTU2MSw2ICs1NjEsNyBAQCBz
+dGF0aWMgc3NpemVfdCBfX3dyaXRlX3ZlcnNpb25zKHN0cnVjdCBmaWxlDQo+ID4gKmZpbGUsIGNo
+YXIgKmJ1Ziwgc2l6ZV90IHNpemUpDQo+ID4gwqAJCWxlbiA9IHF3b3JkX2dldCgmbWVzZywgdmVy
+cywgc2l6ZSk7DQo+ID4gwqAJCWlmIChsZW4gPD0gMCkgcmV0dXJuIC1FSU5WQUw7DQo+ID4gwqAJ
+CWRvIHsNCj4gPiArCQkJZW51bSB2ZXJzX29wIGNtZDsNCj4gPiDCoAkJCXNpZ24gPSAqdmVyczsN
+Cj4gPiDCoAkJCWlmIChzaWduID09ICcrJyB8fCBzaWduID09ICctJykNCj4gPiDCoAkJCQludW0g
+PSBzaW1wbGVfc3RydG9sKCh2ZXJzKzEpLA0KPiA+ICZtaW5vcnAsIDApOw0KPiA+IEBAIC01NzIs
+MjEgKzU3MywyMCBAQCBzdGF0aWMgc3NpemVfdCBfX3dyaXRlX3ZlcnNpb25zKHN0cnVjdCBmaWxl
+DQo+ID4gKmZpbGUsIGNoYXIgKmJ1Ziwgc2l6ZV90IHNpemUpDQo+ID4gwqAJCQkJbWlub3IgPSBz
+aW1wbGVfc3RydG91bChtaW5vcnArMSwNCj4gPiBOVUxMLCAwKTsNCj4gPiDCoAkJCQlpZiAobWlu
+b3IgPT0gMCkNCj4gPiDCoAkJCQkJcmV0dXJuIC1FSU5WQUw7DQo+ID4gLQkJCQlpZiAobmZzZF9t
+aW5vcnZlcnNpb24obWlub3IsIHNpZ24NCj4gPiA9PSAnLScgPw0KPiA+IC0JCQkJCQnCoMKgwqDC
+oMKgTkZTRF9DTEVBUiA6DQo+ID4gTkZTRF9TRVQpIDwgMCkNCj4gPiAtCQkJCQlyZXR1cm4gLUVJ
+TlZBTDsNCj4gPiAtCQkJCWdvdG8gbmV4dDsNCj4gPiAtCQkJfQ0KPiA+ICsJCQl9IGVsc2UNCj4g
+PiArCQkJCW1pbm9yID0gMDsNCj4gPiArCQkJY21kID0gc2lnbiA9PSAnLScgPyBORlNEX0NMRUFS
+IDogTkZTRF9TRVQ7DQo+ID4gwqAJCQlzd2l0Y2gobnVtKSB7DQo+ID4gwqAJCQljYXNlIDI6DQo+
+ID4gwqAJCQljYXNlIDM6DQo+ID4gLQkJCWNhc2UgNDoNCj4gPiAtCQkJCW5mc2RfdmVycyhudW0s
+IHNpZ24gPT0gJy0nID8NCj4gPiBORlNEX0NMRUFSIDogTkZTRF9TRVQpOw0KPiA+ICsJCQkJbmZz
+ZF92ZXJzKG51bSwgY21kKTsNCj4gPiDCoAkJCQlicmVhazsNCj4gPiArCQkJY2FzZSA0Og0KPiA+
+ICsJCQkJaWYgKG5mc2RfbWlub3J2ZXJzaW9uKG1pbm9yLCBjbWQpDQo+ID4gPj0gMCkNCj4gPiAr
+CQkJCQlicmVhazsNCj4gPiDCoAkJCWRlZmF1bHQ6DQo+ID4gwqAJCQkJcmV0dXJuIC1FSU5WQUw7
+DQo+ID4gwqAJCQl9DQo+ID4gLQkJbmV4dDoNCj4gPiDCoAkJCXZlcnMgKz0gbGVuICsgMTsNCj4g
+PiDCoAkJfSB3aGlsZSAoKGxlbiA9IHF3b3JkX2dldCgmbWVzZywgdmVycywgc2l6ZSkpID4NCj4g
+PiAwKTsNCj4gPiDCoAkJLyogSWYgYWxsIGdldCB0dXJuZWQgb2ZmLCB0dXJuIHRoZW0gYmFjayBv
+biwgYXMNCj4gPiBkaWZmIC0tZ2l0IGEvZnMvbmZzZC9uZnNzdmMuYyBiL2ZzL25mc2QvbmZzc3Zj
+LmMNCj4gPiBpbmRleCBlNmJmZDk2NzM0YzAuLjA3YmYzYmQ5Njg3YiAxMDA2NDQNCj4gPiAtLS0g
+YS9mcy9uZnNkL25mc3N2Yy5jDQo+ID4gKysrIGIvZnMvbmZzZC9uZnNzdmMuYw0KPiA+IEBAIC0x
+NTMsNiArMTUzLDE4IEBAIGludCBuZnNkX3ZlcnMoaW50IHZlcnMsIGVudW0gdmVyc19vcCBjaGFu
+Z2UpDQo+ID4gwqAJcmV0dXJuIDA7DQo+ID4gwqB9DQo+ID4gwqANCj4gPiArc3RhdGljIHZvaWQN
+Cj4gPiArbmZzZF9hZGp1c3RfbmZzZF92ZXJzaW9uczQodm9pZCkNCj4gPiArew0KPiA+ICsJdW5z
+aWduZWQgaTsNCj4gPiArDQo+ID4gKwlmb3IgKGkgPSAwOyBpIDw9IE5GU0RfU1VQUE9SVEVEX01J
+Tk9SX1ZFUlNJT047IGkrKykgew0KPiA+ICsJCWlmIChuZnNkX3N1cHBvcnRlZF9taW5vcnZlcnNp
+b25zW2ldKQ0KPiA+ICsJCQlyZXR1cm47DQo+ID4gKwl9DQo+ID4gKwluZnNkX3ZlcnMoNCwgTkZT
+RF9DTEVBUik7DQo+ID4gK30NCj4gPiArDQo+ID4gwqBpbnQgbmZzZF9taW5vcnZlcnNpb24odTMy
+IG1pbm9ydmVyc2lvbiwgZW51bSB2ZXJzX29wIGNoYW5nZSkNCj4gPiDCoHsNCj4gPiDCoAlpZiAo
+bWlub3J2ZXJzaW9uID4gTkZTRF9TVVBQT1JURURfTUlOT1JfVkVSU0lPTikNCj4gPiBAQCAtMTYw
+LDkgKzE3MiwxMSBAQCBpbnQgbmZzZF9taW5vcnZlcnNpb24odTMyIG1pbm9ydmVyc2lvbiwgZW51
+bQ0KPiA+IHZlcnNfb3AgY2hhbmdlKQ0KPiA+IMKgCXN3aXRjaChjaGFuZ2UpIHsNCj4gPiDCoAlj
+YXNlIE5GU0RfU0VUOg0KPiA+IMKgCQluZnNkX3N1cHBvcnRlZF9taW5vcnZlcnNpb25zW21pbm9y
+dmVyc2lvbl0gPSB0cnVlOw0KPiA+ICsJCW5mc2RfdmVycyg0LCBORlNEX1NFVCk7DQo+ID4gwqAJ
+CWJyZWFrOw0KPiA+IMKgCWNhc2UgTkZTRF9DTEVBUjoNCj4gPiDCoAkJbmZzZF9zdXBwb3J0ZWRf
+bWlub3J2ZXJzaW9uc1ttaW5vcnZlcnNpb25dID0NCj4gPiBmYWxzZTsNCj4gPiArCQluZnNkX2Fk
+anVzdF9uZnNkX3ZlcnNpb25zNCgpOw0KPiA+IMKgCQlicmVhazsNCj4gPiDCoAljYXNlIE5GU0Rf
+VEVTVDoNCj4gPiDCoAkJcmV0dXJuIG5mc2Rfc3VwcG9ydGVkX21pbm9ydmVyc2lvbnNbbWlub3J2
+ZXJzaW9uXTsNCj4gPiAtLcKgDQo+ID4gMi45LjMNCj4gDQo+IA0KLS0gDQpUcm9uZCBNeWtsZWJ1
+c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFpbnRhaW5lciwgUHJpbWFyeURhdGENCnRyb25kLm15a2xl
+YnVzdEBwcmltYXJ5ZGF0YS5jb20NCg==
 
