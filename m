@@ -1,122 +1,151 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from userp1040.oracle.com ([156.151.31.81]:18672 "EHLO
-        userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751070AbdBWUR0 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 23 Feb 2017 15:17:26 -0500
-Content-Type: text/plain;
-        charset=us-ascii
-Mime-Version: 1.0 (1.0)
-Subject: Re: [PATCH 1/4] sunrpc: flag transports as using IETF approved congestion control protocols
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <65056db6-f30a-c44d-b01c-b549887c4895@talpey.com>
-Date: Thu, 23 Feb 2017 15:17:16 -0500
-Cc: Jeff Layton <jlayton@redhat.com>, bfields@fieldses.org,
-        trond.myklebust@primarydata.com, schumaker.anna@gmail.com,
-        linux-nfs@vger.kernel.org, linux-rdma@vger.kernel.org
-Message-Id: <634EC3BA-6A1A-4B8A-B402-C29AC5098756@oracle.com>
-References: <20170223170337.10686-1-jlayton@redhat.com> <20170223170337.10686-2-jlayton@redhat.com> <2152dfdf-f847-2511-1600-6499b6ea9708@talpey.com> <1487880034.3448.8.camel@redhat.com> <65056db6-f30a-c44d-b01c-b549887c4895@talpey.com>
-To: Tom Talpey <tom@talpey.com>
+Received: from mx1.redhat.com ([209.132.183.28]:56266 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1751119AbdBWUU3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 23 Feb 2017 15:20:29 -0500
+Date: Thu, 23 Feb 2017 15:20:26 -0500
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: Andreas Gruenbacher <agruenba@redhat.com>
+Cc: Chuck Lever <chuck.lever@oracle.com>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        Anna Schumaker <schumakeranna@gmail.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        Dros Adamson <dros@primarydata.com>,
+        Weston Andros Adamson <dros@netapp.com>
+Subject: Re: [PATCH 6/6] NFSv4: allow getacl rpc to allocate pages on demand
+Message-ID: <20170223202025.GI9417@parsley.fieldses.org>
+References: <20170220160940.GB12335@parsley.fieldses.org>
+ <4824B968-4ED6-44AA-A935-3D309D76EFFF@oracle.com>
+ <20170220171519.GE12335@parsley.fieldses.org>
+ <CAHc6FU6_bJE--6Da5Df+g+qRj6C1KZUL5PvkXrZ-mKbJqU936w@mail.gmail.com>
+ <E06C6589-2E66-4013-9722-0FEADE596F70@oracle.com>
+ <CAHc6FU6JghZAxiwj0XF0sOj1OufbxvabX+gYO52ROSZXDY1+dA@mail.gmail.com>
+ <20170221213702.GA18645@parsley.fieldses.org>
+ <CAHc6FU5EpChr02-t2ZRZ=oX1kRPO=L8TriLAzCxcoNhJSvxs+g@mail.gmail.com>
+ <20170222015333.GA20019@parsley.fieldses.org>
+ <CAHc6FU5WxqOOvr-qGeO3gjykiyFyZGPf2W5VJiTGkcR0AiyP5g@mail.gmail.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <CAHc6FU5WxqOOvr-qGeO3gjykiyFyZGPf2W5VJiTGkcR0AiyP5g@mail.gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-
---
-Chuck Lever
-
-> On Feb 23, 2017, at 3:06 PM, Tom Talpey <tom@talpey.com> wrote:
+On Thu, Feb 23, 2017 at 11:28:46AM +0100, Andreas Gruenbacher wrote:
+> On Wed, Feb 22, 2017 at 2:53 AM, J. Bruce Fields <bfields@redhat.com> wrote:
+> > On Tue, Feb 21, 2017 at 10:45:35PM +0100, Andreas Gruenbacher wrote:
+> >> On Tue, Feb 21, 2017 at 10:37 PM, J. Bruce Fields <bfields@redhat.com> wrote:
+> >> > On Tue, Feb 21, 2017 at 10:21:05PM +0100, Andreas Gruenbacher wrote:
+> >> >> On Tue, Feb 21, 2017 at 7:46 PM, Chuck Lever <chuck.lever@oracle.com> wrote:
+> >> >> > Hi Andreas-
+> >> >> >
+> >> >> >
+> >> >> >> On Feb 20, 2017, at 4:31 PM, Andreas Gruenbacher <agruenba@redhat.com> wrote:
+> >> >> >>
+> >> >> >> On Mon, Feb 20, 2017 at 6:15 PM, J. Bruce Fields <bfields@redhat.com> wrote:
+> >> >> >>> On Mon, Feb 20, 2017 at 11:42:31AM -0500, Chuck Lever wrote:
+> >> >> >>>>
+> >> >> >>>>> On Feb 20, 2017, at 11:09 AM, J. Bruce Fields <bfields@redhat.com> wrote:
+> >> >> >>>>>
+> >> >> >>>>> On Sun, Feb 19, 2017 at 02:29:03PM -0500, Chuck Lever wrote:
+> >> >> >>>>>>
+> >> >> >>>>>>> On Feb 18, 2017, at 9:07 PM, J. Bruce Fields <bfields@redhat.com> wrote:
+> >> >> >>>>>>>
+> >> >> >>>>>>> From: Weston Andros Adamson <dros@netapp.com>
+> >> >> >>>>>>>
+> >> >> >>>>>>> Instead of preallocating pags, allow xdr_partial_copy_from_skb() to
+> >> >> >>>>>>> allocate whatever pages we need on demand.  This is what the NFSv3 ACL
+> >> >> >>>>>>> code does.
+> >> >> >>>>>>
+> >> >> >>>>>> The patch description does not explain why this change is
+> >> >> >>>>>> being done.
+> >> >> >>>>>
+> >> >> >>>>> The only justification I see is avoiding allocating pages unnecessarily.
+> >> >> >>>>
+> >> >> >>>> That makes sense. Is there a real world workload that has seen
+> >> >> >>>> a negative effect?
+> >> >> >>>>
+> >> >> >>>>
+> >> >> >>>>> Without this patch, for each getacl, we allocate 17 pages (if I'm
+> >> >> >>>>> calculating correctly) and probably rarely use most of them.
+> >> >> >>>>>
+> >> >> >>>>> In the v3 case I think it's 7 pages instead of 17.
+> >> >> >>>>
+> >> >> >>>> I would have guessed 9. Out of curiosity, is there a reason
+> >> >> >>>> documented for these size limits?
+> >> >> >>>
+> >> >> >>>
+> >> >> >>> In the v4 case:
+> >> >> >>>
+> >> >> >>>        #define NFS4ACL_MAXPAGES DIV_ROUND_UP(XATTR_SIZE_MAX, PAGE_SIZE)
+> >> >> >>>
+> >> >> >>> And I believe XATTR_SIZE_MAX is a global maximum on the size of any
+> >> >> >>> extend attribute value.
+> >> >> >>
+> >> >> >> XATTR_SIZE_MAX is the maximum size of an extended attribute. NFSv4
+> >> >> >> ACLs are passed through unchanged in "system.nfs4_acl".
+> >> >> >
+> >> >> > "Extended attribute" means this is a Linux-specific limit?
+> >> >>
+> >> >> Yes.
+> >> >>
+> >> >> > Is there anything that prevents a non-Linux system from constructing
+> >> >> > or returning an ACL that is larger than that?
+> >> >>
+> >> >> No.
+> >> >
+> >> > In the >=v4.1 case there are session limits, but they'll typically be
+> >> > less.  In the 4.0 case I think there's no explicit limit at all.  In
+> >> > practice I bet other systems are similar to Linux in that the assume
+> >> > peers won't send rpc replies or requests larger than about the
+> >> > maximum-sized read or write.  But again that'll usually be a higher
+> >> > limit than our ACL limit.
+> >> >
+> >> >> > What happens on a Linux client when a server returns an ACL that does
+> >> >> > not fit in this allotment?
+> >> >>
+> >> >> I would hope an error, but I haven't tested it.
+> >> >
+> >> > I haven't tested either, but it looks to me like the rpc layer receives
+> >> > a truncated request, the xdr decoding recognizes that it's truncated,
+> >> > and the result is an -ERANGE.
+> >> >
+> >> > Looking now I think that my "NFSv4: simplify getacl decoding" changes
+> >> > that to an -EIO.  More importantly, it makes that an EIO even when the
+> >> > calling application was only asking for the length, not the actual ACL
+> >> > data.  I'll fix that.
+> >>
+> >> Just be careful not to return a length from getxattr(path, name, NULL,
+> >> 0) that will cause getxattr(path, name, buffer, size) to fail with
+> >> ERANGE, please. Otherwise, user space might get very confused.
+> >
+> > Ugh, OK.  So there could be userspace code that does something like
+> >
+> >         while (getxattr(path, name, buf, size) == -ERANGE) {
+> >                 /* oops, must have raced with a size change */
+> >                 size = getxattr(path, name, NULL, 0);
+> >                 buf = realloc(buf, size);
+> >         }
+> >
+> > and you'd consider that a kernel bug not a userspace bug?
 > 
->> On 2/23/2017 3:00 PM, Jeff Layton wrote:
->>> On Thu, 2017-02-23 at 14:42 -0500, Tom Talpey wrote:
->>>> On 2/23/2017 12:03 PM, Jeff Layton wrote:
->>>> Signed-off-by: Jeff Layton <jlayton@redhat.com>
->>>> ---
->>>> include/linux/sunrpc/svc_xprt.h          | 1 +
->>>> net/sunrpc/svcsock.c                     | 1 +
->>>> net/sunrpc/xprtrdma/svc_rdma_transport.c | 2 ++
->>> 
->>> There's a possibly-important detail here. Not all RDMA transports have
->>> "IETF-approved congestion control", for example, RoCEv1. However, iWARP
->>> and (arguably) RoCEv2 do. On the other hand, as a nonroutable protocol,
->>> RoCEv1 may not fall under this restriction.
->>> 
->>> Net-net, inspecting only the RDMA attribute of the transport may be
->>> insufficient here.
->>> 
->>> It could be argued however that the xprtrdma layer, with its rpcrdma
->>> crediting, provides such congestion. But that needs to be made
->>> explicit, and perhaps, discussed in IETF. Initially, I think it would
->>> be important to flag this as a point for the future. For now, it may
->>> be best to flag RoCEv1 as not supporting congestion.
->>> 
->>> Tom.
->>> 
->> 
->> (cc'ing Chuck and the linux-rdma list)
->> 
->> Thanks Tom, that's very interesting.
->> 
->> Not being well versed in the xprtrdma layer, what condition should we
->> use here to set the flag? git grep shows that the string "ROCEV1" only
->> shows up in the bxnt_en driver. Is there some way to determine this
->> generically for any given RDMA driver?
+> It would at least provoke errors if the above loop (with an additional
+> check for size == -1) didn't terminate, so I'd like to avoid that. I
+> see now that there is botched code in fs/xattr.c that tries to prevent
+> that, so I'll try to fix that so that file systems won't have to
+> bother.
+
+Having seen your patch on fs-devel....  OK, so after that point, we can
+choose in NFS to either to return -E2BIG ourselves or to return success
+with the large length and let fs/xattr convert to -E2BIG if necessary.
+Thanks, that makes sense.
+
+> > I suspect that can happen both before and after my changes.
+> >
+> > So what do we want for that case?  Just -EIO?
 > 
-> I would not code RoCEv1 as an exception, I would code iWARP and RoCEv2
-> as the only eligible ones. There are any number of other possibilities,
-> none of which should be automatically flagged as congestion-controlled.
-> 
-> I'm also not sure I'm comfortable with hardcoding such a list into RPC.
-> But it may be the best you can do for now. Chuck, are you aware of a
-> verbs interface to obtain the RDMA transport type?
+> getxattr and listxattr are trying to cast that kind of error to
+> -E2BIG, which seems okay.
 
-Yes, I can have a look when I get to Connectathon.
+Got it, thanks.
 
-
-
-> 
-> Tom.
-> 
->> 
->> 
->>>> 3 files changed, 4 insertions(+)
->>>> 
->>>> diff --git a/include/linux/sunrpc/svc_xprt.h b/include/linux/sunrpc/svc_xprt.h
->>>> index 7440290f64ac..f8aa9452b63c 100644
->>>> --- a/include/linux/sunrpc/svc_xprt.h
->>>> +++ b/include/linux/sunrpc/svc_xprt.h
->>>> @@ -67,6 +67,7 @@ struct svc_xprt {
->>>> #define XPT_CACHE_AUTH    11        /* cache auth info */
->>>> #define XPT_LOCAL    12        /* connection from loopback interface */
->>>> #define XPT_KILL_TEMP   13        /* call xpo_kill_temp_xprt before closing */
->>>> +#define XPT_CONG_CTRL    14        /* IETF approved congestion control protocol */
->>>> 
->>>>    struct svc_serv        *xpt_server;    /* service for transport */
->>>>    atomic_t                xpt_reserved;    /* space on outq that is rsvd */
->>>> diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
->>>> index de066acdb34e..1956b8b96b2d 100644
->>>> --- a/net/sunrpc/svcsock.c
->>>> +++ b/net/sunrpc/svcsock.c
->>>> @@ -1306,6 +1306,7 @@ static void svc_tcp_init(struct svc_sock *svsk, struct svc_serv *serv)
->>>>    svc_xprt_init(sock_net(svsk->sk_sock->sk), &svc_tcp_class,
->>>>              &svsk->sk_xprt, serv);
->>>>    set_bit(XPT_CACHE_AUTH, &svsk->sk_xprt.xpt_flags);
->>>> +    set_bit(XPT_CONG_CTRL, &svsk->sk_xprt.xpt_flags);
->>>>    if (sk->sk_state == TCP_LISTEN) {
->>>>        dprintk("setting up TCP socket for listening\n");
->>>>        set_bit(XPT_LISTENER, &svsk->sk_xprt.xpt_flags);
->>>> diff --git a/net/sunrpc/xprtrdma/svc_rdma_transport.c b/net/sunrpc/xprtrdma/svc_rdma_transport.c
->>>> index 39652d390a9c..96b4797c2c54 100644
->>>> --- a/net/sunrpc/xprtrdma/svc_rdma_transport.c
->>>> +++ b/net/sunrpc/xprtrdma/svc_rdma_transport.c
->>>> @@ -571,6 +571,8 @@ static struct svcxprt_rdma *rdma_create_xprt(struct svc_serv *serv,
->>>>    spin_lock_init(&cma_xprt->sc_ctxt_lock);
->>>>    spin_lock_init(&cma_xprt->sc_map_lock);
->>>> 
->>>> +    set_bit(XPT_CONG_CTRL, &cma_xprt->sc_xprt.xpt_flags);
->>>> +
->>>>    if (listener)
->>>>        set_bit(XPT_LISTENER, &cma_xprt->sc_xprt.xpt_flags);
->>>> 
->>>> 
->> 
-
+--b.
