@@ -1,58 +1,116 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:37376 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1750891AbdBWLY0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 23 Feb 2017 06:24:26 -0500
-From: "Benjamin Coddington" <bcodding@redhat.com>
-To: "Jeff Layton" <jlayton@redhat.com>
-Cc: "Trond Myklebust" <trondmy@primarydata.com>,
-        "anna.schumaker@netapp.com" <anna.schumaker@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 4/4] NFS: Always send an unlock for FL_CLOSE
-Date: Thu, 23 Feb 2017 06:24:22 -0500
-Message-ID: <CAAA038D-9EB0-46B2-8EE3-A655B0353656@redhat.com>
-In-Reply-To: <1487791212.7731.6.camel@redhat.com>
-References: <cover.1487691345.git.bcodding@redhat.com>
- <72fa3f2a37146d153722d842e9b0d166fe11f1ad.1487691345.git.bcodding@redhat.com>
- <1487769602.2886.15.camel@redhat.com>
- <09B7C044-3622-4898-BEED-0B516BB54FE2@redhat.com>
- <1487778136.5497.1.camel@redhat.com>
- <1487780839.4863.4.camel@primarydata.com>
- <3D0E5D1B-CB46-40B3-AE36-2D7D7B4B9AD1@redhat.com>
- <1487791212.7731.6.camel@redhat.com>
-MIME-Version: 1.0
-Content-Type: text/plain; format=flowed
+Received: from aserp1040.oracle.com ([141.146.126.69]:22007 "EHLO
+        aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751344AbdBWOyT (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 23 Feb 2017 09:54:19 -0500
+Content-Type: text/plain; charset=us-ascii
+Mime-Version: 1.0 (Mac OS X Mail 9.3 \(3124\))
+Subject: Re: supporting DEVICE_REMOVAL on RPC-over-RDMA transports
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <1487820335.3577.1.camel@primarydata.com>
+Date: Thu, 23 Feb 2017 09:54:13 -0500
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Message-Id: <2C6ED2EF-F715-4EBB-A36B-A7BCBFB60CBE@oracle.com>
+References: <9EF7BDF7-35DF-4723-A903-54AEC9A9787A@oracle.com> <1487820335.3577.1.camel@primarydata.com>
+To: Trond Myklebust <trondmy@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
-On 22 Feb 2017, at 14:20, Jeff Layton wrote:
-> Well, that's where their immediate pain point is. If they have
-> applications that are relying on NLM locking to serialize access to 
-> the
-> files, then this could potentially corrupt their file data.
->
-> It may be that no one would ever notice, but those sorts of bug 
-> reports
-> can be very difficult to track down. If we can fix this in a way that
-> works across versions, then that's what I'd suggest.
+> On Feb 22, 2017, at 10:25 PM, Trond Myklebust <trondmy@primarydata.com> wrote:
+> 
+> On Wed, 2017-02-22 at 16:31 -0500, Chuck Lever wrote:
+>> Hey Trond-
+>> 
+>> To support the ability to unload the underlying RDMA device's kernel
+>> driver while NFS mounts are active, xprtrdma needs the ability to
+>> suspend RPC sends temporarily while the transport hands HW resources
+>> back to the driver. Once the device driver is unloaded, the RDMA
+>> transport is left disconnected, and RPCs will be suspended normally
+>> until a connection is possible again (eg, a new device is made
+>> available).
+>> 
+>> A DEVICE_REMOVAL event is an upcall to xprtrdma that may sleep. Upon
+>> its return, the device driver unloads itself. Currently my prototype
+>> frees all HW resources during the upcall, but that doesn't block
+>> new RPCs from trying to use those resources at the same time.
+>> 
+>> Seems like the most natural way to temporarily block sends would be
+>> to grab the transport's write lock, just like "connect" does, while
+>> the transport is dealing with DEVICE_REMOVAL, then release it once
+>> all HW resources have been freed.
+>> 
+>> Unfortunately an RPC task is needed to acquire the write lock. But
+>> disconnect is just an asynchronous event, there is no RPC task
+>> associated with it, and thus no context that the RPC scheduler
+>> can put to sleep if there happens to be another RPC sending at the
+>> moment a device removal event occurs.
+>> 
+>> I was looking at xprt_lock_connect, but that doesn't appear to do
+>> quite what I need.
+>> 
+>> Another thought was to have the DEVICE_REMOVAL upcall mark the
+>> transport disconnected, send an asynchronous NULL RPC, then wait
+>> on a kernel waitqueue.
+>> 
+>> The NULL RPC would grab the write lock and kick the transport's
+>> connect worker. The connect worker would free HW resources, then
+>> awaken the waiter. Then the upcall could return to the driver.
+>> 
+>> The problem with this scheme is the same as it was for the
+>> keepalive work: there's no task or rpc_clnt available to the
+>> DEVICE_REMOVAL upcall. Sleeping until the write lock is available
+>> would require a task, and sending a NULL RPC would require an
+>> rpc_clnt.
+>> 
+>> Any advice/thoughts about this?
+>> 
+> 
+> Can you perhaps use XPRT_FORCE_DISCONNECT? That does end up calling the
+> xprt->ops->close() callback as soon as the XPRT_LOCK state has been
+> freed. You still won't have a client, but you will be guaranteed
+> exclusive access to the transport, and you can do things like waking up
+> any sleeping tasks on the transmit and receive queue to help you.
+> However you also have to deal with the case where the transport was
+> idle to start with.
 
-OK, then it occurs to me that we can do this by passing in a new struct
-nlmclnt_operations to nlmclnt_proc().  That can be used to supply a 
-function
-that should be called in rpc_task_prepare to check the iocounter.  Then 
-a
-global FL_CLOSE rpc_wait_queue could be used, but I probably wouldn't 
-want to
-wake it on every iocounter reaching zero - probably only if a lock 
-context
-has a flag.. or maybe there's another way to tell.
+The case where the transport is idle is indeed the most bothersome.
 
-Those operations would also help further abstract NLM from NFS by adding
-functions to extract the rpc_cred from the file, and obtain the file 
-handle and
-owner from the file.  Right now, there's some NFS stuff leaking into the 
-NLM
-client.
+I hadn't realized that ->close guaranteed exclusive access to
+the transport. If ->close guarantees access to the transport, then
+I don't need an RPC task or the NULL RPC because we don't ever have
+to wait for write access.
 
-Ben
+The hardware resources can be torn down immediately in
+xprt_rdma_close.
+
+
+> The big problem that you have here is ultimately that the low level
+> control channel for the transport appears to want to use the RPC upper
+> layer functionality for its communication mechanism. AFAICS you will
+> keep hitting issues as the control channel needs to circumvent all the
+> queueing etc that these upper layers are designed to enforce.
+> Given that these messages you're sending are just null pings with no
+> payload and no special authentication needs or anything else, might it
+> make sense to just generate them in the RDMA layer itself?
+
+(I don't really need a NULL RPC for the DEVICE_REMOVAL case. I
+just need an RPC task).
+
+There seems to be a strong community belief that code duplication
+is bad. Constructing even a NULL RPC without using the existing
+infrastructure would duplicate a large amount of code.
+
+Eventually RPC-over-RDMA should have its own ping mechanism,
+probably. But Version One doesn't.
+
+An alternative to ping here would be to simply force the
+connection to disconnect if an RPC times out. That can be done
+trivially in the timer call out, for example.
+
+
+--
+Chuck Lever
+
+
+
