@@ -1,143 +1,58 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-vk0-f51.google.com ([209.85.213.51]:34228 "EHLO
-        mail-vk0-f51.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751053AbdBWK3d (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 23 Feb 2017 05:29:33 -0500
-Received: by mail-vk0-f51.google.com with SMTP id r136so17345778vke.1
-        for <linux-nfs@vger.kernel.org>; Thu, 23 Feb 2017 02:28:47 -0800 (PST)
+Received: from mx1.redhat.com ([209.132.183.28]:37376 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1750891AbdBWLY0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 23 Feb 2017 06:24:26 -0500
+From: "Benjamin Coddington" <bcodding@redhat.com>
+To: "Jeff Layton" <jlayton@redhat.com>
+Cc: "Trond Myklebust" <trondmy@primarydata.com>,
+        "anna.schumaker@netapp.com" <anna.schumaker@netapp.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 4/4] NFS: Always send an unlock for FL_CLOSE
+Date: Thu, 23 Feb 2017 06:24:22 -0500
+Message-ID: <CAAA038D-9EB0-46B2-8EE3-A655B0353656@redhat.com>
+In-Reply-To: <1487791212.7731.6.camel@redhat.com>
+References: <cover.1487691345.git.bcodding@redhat.com>
+ <72fa3f2a37146d153722d842e9b0d166fe11f1ad.1487691345.git.bcodding@redhat.com>
+ <1487769602.2886.15.camel@redhat.com>
+ <09B7C044-3622-4898-BEED-0B516BB54FE2@redhat.com>
+ <1487778136.5497.1.camel@redhat.com>
+ <1487780839.4863.4.camel@primarydata.com>
+ <3D0E5D1B-CB46-40B3-AE36-2D7D7B4B9AD1@redhat.com>
+ <1487791212.7731.6.camel@redhat.com>
 MIME-Version: 1.0
-In-Reply-To: <20170222015333.GA20019@parsley.fieldses.org>
-References: <1487470070-32358-7-git-send-email-bfields@redhat.com>
- <1D136924-2EC7-4CF3-8250-98799DFBEB3F@oracle.com> <20170220160940.GB12335@parsley.fieldses.org>
- <4824B968-4ED6-44AA-A935-3D309D76EFFF@oracle.com> <20170220171519.GE12335@parsley.fieldses.org>
- <CAHc6FU6_bJE--6Da5Df+g+qRj6C1KZUL5PvkXrZ-mKbJqU936w@mail.gmail.com>
- <E06C6589-2E66-4013-9722-0FEADE596F70@oracle.com> <CAHc6FU6JghZAxiwj0XF0sOj1OufbxvabX+gYO52ROSZXDY1+dA@mail.gmail.com>
- <20170221213702.GA18645@parsley.fieldses.org> <CAHc6FU5EpChr02-t2ZRZ=oX1kRPO=L8TriLAzCxcoNhJSvxs+g@mail.gmail.com>
- <20170222015333.GA20019@parsley.fieldses.org>
-From: Andreas Gruenbacher <agruenba@redhat.com>
-Date: Thu, 23 Feb 2017 11:28:46 +0100
-Message-ID: <CAHc6FU5WxqOOvr-qGeO3gjykiyFyZGPf2W5VJiTGkcR0AiyP5g@mail.gmail.com>
-Subject: Re: [PATCH 6/6] NFSv4: allow getacl rpc to allocate pages on demand
-To: "J. Bruce Fields" <bfields@redhat.com>
-Cc: Chuck Lever <chuck.lever@oracle.com>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        Anna Schumaker <schumakeranna@gmail.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Dros Adamson <dros@primarydata.com>,
-        Weston Andros Adamson <dros@netapp.com>
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Feb 22, 2017 at 2:53 AM, J. Bruce Fields <bfields@redhat.com> wrote:
-> On Tue, Feb 21, 2017 at 10:45:35PM +0100, Andreas Gruenbacher wrote:
->> On Tue, Feb 21, 2017 at 10:37 PM, J. Bruce Fields <bfields@redhat.com> wrote:
->> > On Tue, Feb 21, 2017 at 10:21:05PM +0100, Andreas Gruenbacher wrote:
->> >> On Tue, Feb 21, 2017 at 7:46 PM, Chuck Lever <chuck.lever@oracle.com> wrote:
->> >> > Hi Andreas-
->> >> >
->> >> >
->> >> >> On Feb 20, 2017, at 4:31 PM, Andreas Gruenbacher <agruenba@redhat.com> wrote:
->> >> >>
->> >> >> On Mon, Feb 20, 2017 at 6:15 PM, J. Bruce Fields <bfields@redhat.com> wrote:
->> >> >>> On Mon, Feb 20, 2017 at 11:42:31AM -0500, Chuck Lever wrote:
->> >> >>>>
->> >> >>>>> On Feb 20, 2017, at 11:09 AM, J. Bruce Fields <bfields@redhat.com> wrote:
->> >> >>>>>
->> >> >>>>> On Sun, Feb 19, 2017 at 02:29:03PM -0500, Chuck Lever wrote:
->> >> >>>>>>
->> >> >>>>>>> On Feb 18, 2017, at 9:07 PM, J. Bruce Fields <bfields@redhat.com> wrote:
->> >> >>>>>>>
->> >> >>>>>>> From: Weston Andros Adamson <dros@netapp.com>
->> >> >>>>>>>
->> >> >>>>>>> Instead of preallocating pags, allow xdr_partial_copy_from_skb() to
->> >> >>>>>>> allocate whatever pages we need on demand.  This is what the NFSv3 ACL
->> >> >>>>>>> code does.
->> >> >>>>>>
->> >> >>>>>> The patch description does not explain why this change is
->> >> >>>>>> being done.
->> >> >>>>>
->> >> >>>>> The only justification I see is avoiding allocating pages unnecessarily.
->> >> >>>>
->> >> >>>> That makes sense. Is there a real world workload that has seen
->> >> >>>> a negative effect?
->> >> >>>>
->> >> >>>>
->> >> >>>>> Without this patch, for each getacl, we allocate 17 pages (if I'm
->> >> >>>>> calculating correctly) and probably rarely use most of them.
->> >> >>>>>
->> >> >>>>> In the v3 case I think it's 7 pages instead of 17.
->> >> >>>>
->> >> >>>> I would have guessed 9. Out of curiosity, is there a reason
->> >> >>>> documented for these size limits?
->> >> >>>
->> >> >>>
->> >> >>> In the v4 case:
->> >> >>>
->> >> >>>        #define NFS4ACL_MAXPAGES DIV_ROUND_UP(XATTR_SIZE_MAX, PAGE_SIZE)
->> >> >>>
->> >> >>> And I believe XATTR_SIZE_MAX is a global maximum on the size of any
->> >> >>> extend attribute value.
->> >> >>
->> >> >> XATTR_SIZE_MAX is the maximum size of an extended attribute. NFSv4
->> >> >> ACLs are passed through unchanged in "system.nfs4_acl".
->> >> >
->> >> > "Extended attribute" means this is a Linux-specific limit?
->> >>
->> >> Yes.
->> >>
->> >> > Is there anything that prevents a non-Linux system from constructing
->> >> > or returning an ACL that is larger than that?
->> >>
->> >> No.
->> >
->> > In the >=v4.1 case there are session limits, but they'll typically be
->> > less.  In the 4.0 case I think there's no explicit limit at all.  In
->> > practice I bet other systems are similar to Linux in that the assume
->> > peers won't send rpc replies or requests larger than about the
->> > maximum-sized read or write.  But again that'll usually be a higher
->> > limit than our ACL limit.
->> >
->> >> > What happens on a Linux client when a server returns an ACL that does
->> >> > not fit in this allotment?
->> >>
->> >> I would hope an error, but I haven't tested it.
->> >
->> > I haven't tested either, but it looks to me like the rpc layer receives
->> > a truncated request, the xdr decoding recognizes that it's truncated,
->> > and the result is an -ERANGE.
->> >
->> > Looking now I think that my "NFSv4: simplify getacl decoding" changes
->> > that to an -EIO.  More importantly, it makes that an EIO even when the
->> > calling application was only asking for the length, not the actual ACL
->> > data.  I'll fix that.
->>
->> Just be careful not to return a length from getxattr(path, name, NULL,
->> 0) that will cause getxattr(path, name, buffer, size) to fail with
->> ERANGE, please. Otherwise, user space might get very confused.
->
-> Ugh, OK.  So there could be userspace code that does something like
->
->         while (getxattr(path, name, buf, size) == -ERANGE) {
->                 /* oops, must have raced with a size change */
->                 size = getxattr(path, name, NULL, 0);
->                 buf = realloc(buf, size);
->         }
->
-> and you'd consider that a kernel bug not a userspace bug?
 
-It would at least provoke errors if the above loop (with an additional
-check for size == -1) didn't terminate, so I'd like to avoid that. I
-see now that there is botched code in fs/xattr.c that tries to prevent
-that, so I'll try to fix that so that file systems won't have to
-bother.
-
-> I suspect that can happen both before and after my changes.
+On 22 Feb 2017, at 14:20, Jeff Layton wrote:
+> Well, that's where their immediate pain point is. If they have
+> applications that are relying on NLM locking to serialize access to 
+> the
+> files, then this could potentially corrupt their file data.
 >
-> So what do we want for that case?  Just -EIO?
+> It may be that no one would ever notice, but those sorts of bug 
+> reports
+> can be very difficult to track down. If we can fix this in a way that
+> works across versions, then that's what I'd suggest.
 
-getxattr and listxattr are trying to cast that kind of error to
--E2BIG, which seems okay.
+OK, then it occurs to me that we can do this by passing in a new struct
+nlmclnt_operations to nlmclnt_proc().  That can be used to supply a 
+function
+that should be called in rpc_task_prepare to check the iocounter.  Then 
+a
+global FL_CLOSE rpc_wait_queue could be used, but I probably wouldn't 
+want to
+wake it on every iocounter reaching zero - probably only if a lock 
+context
+has a flag.. or maybe there's another way to tell.
 
-Thanks,
-Andreas
+Those operations would also help further abstract NLM from NFS by adding
+functions to extract the rpc_cred from the file, and obtain the file 
+handle and
+owner from the file.  Right now, there's some NFS stuff leaking into the 
+NLM
+client.
+
+Ben
