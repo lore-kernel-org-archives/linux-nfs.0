@@ -1,68 +1,112 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-it0-f65.google.com ([209.85.214.65]:36048 "EHLO
-        mail-it0-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1750828AbdBWOzi (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 23 Feb 2017 09:55:38 -0500
-Received: by mail-it0-f65.google.com with SMTP id w185so280788ita.3
-        for <linux-nfs@vger.kernel.org>; Thu, 23 Feb 2017 06:55:37 -0800 (PST)
-Subject: Re: [PATCH 2/6] NFSv4: fix getacl ERANGE for some ACL buffer sizes
-To: "J. Bruce Fields" <bfields@redhat.com>,
-        Weston Andros Adamson <dros@primarydata.com>
-References: <1487470070-32358-1-git-send-email-bfields@redhat.com>
- <1487470070-32358-3-git-send-email-bfields@redhat.com>
- <261D4020-D9E4-4F1E-81CF-11EAAEABA684@primarydata.com>
- <20170222223656.GG24122@parsley.fieldses.org>
-Cc: Trond Myklebust <trondmy@primarydata.com>,
-        Anna Schumaker <schumakeranna@gmail.com>,
-        linux-nfs list <linux-nfs@vger.kernel.org>,
-        Andreas Gruenbacher <agruenba@redhat.com>,
-        Weston Andros Adamson <dros@netapp.com>
-From: Anna Schumaker <schumaker.anna@gmail.com>
-Message-ID: <6606b2d5-719f-9e27-6f95-eec8cebfb1a8@gmail.com>
-Date: Thu, 23 Feb 2017 09:55:35 -0500
+Received: from us-smtp-delivery-194.mimecast.com ([216.205.24.194]:51067 "EHLO
+        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1751615AbdBWPas (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 23 Feb 2017 10:30:48 -0500
+From: Trond Myklebust <trondmy@primarydata.com>
+To: "chuck.lever@oracle.com" <chuck.lever@oracle.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: supporting DEVICE_REMOVAL on RPC-over-RDMA transports
+Date: Thu, 23 Feb 2017 15:30:42 +0000
+Message-ID: <1487863839.3145.1.camel@primarydata.com>
+References: <9EF7BDF7-35DF-4723-A903-54AEC9A9787A@oracle.com>
+         <1487820335.3577.1.camel@primarydata.com>
+         <2C6ED2EF-F715-4EBB-A36B-A7BCBFB60CBE@oracle.com>
+In-Reply-To: <2C6ED2EF-F715-4EBB-A36B-A7BCBFB60CBE@oracle.com>
 MIME-Version: 1.0
-In-Reply-To: <20170222223656.GG24122@parsley.fieldses.org>
-Content-Type: text/plain; charset=windows-1252
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+T24gVGh1LCAyMDE3LTAyLTIzIGF0IDA5OjU0IC0wNTAwLCBDaHVjayBMZXZlciB3cm90ZToNCj4g
+PiBPbiBGZWIgMjIsIDIwMTcsIGF0IDEwOjI1IFBNLCBUcm9uZCBNeWtsZWJ1c3QgPHRyb25kbXlA
+cHJpbWFyeWRhdGEuDQo+ID4gY29tPiB3cm90ZToNCj4gPiANCj4gPiBPbiBXZWQsIDIwMTctMDIt
+MjIgYXQgMTY6MzEgLTA1MDAsIENodWNrIExldmVyIHdyb3RlOg0KPiA+ID4gSGV5IFRyb25kLQ0K
+PiA+ID4gDQo+ID4gPiBUbyBzdXBwb3J0IHRoZSBhYmlsaXR5IHRvIHVubG9hZCB0aGUgdW5kZXJs
+eWluZyBSRE1BIGRldmljZSdzDQo+ID4gPiBrZXJuZWwNCj4gPiA+IGRyaXZlciB3aGlsZSBORlMg
+bW91bnRzIGFyZSBhY3RpdmUsIHhwcnRyZG1hIG5lZWRzIHRoZSBhYmlsaXR5IHRvDQo+ID4gPiBz
+dXNwZW5kIFJQQyBzZW5kcyB0ZW1wb3JhcmlseSB3aGlsZSB0aGUgdHJhbnNwb3J0IGhhbmRzIEhX
+DQo+ID4gPiByZXNvdXJjZXMNCj4gPiA+IGJhY2sgdG8gdGhlIGRyaXZlci4gT25jZSB0aGUgZGV2
+aWNlIGRyaXZlciBpcyB1bmxvYWRlZCwgdGhlIFJETUENCj4gPiA+IHRyYW5zcG9ydCBpcyBsZWZ0
+IGRpc2Nvbm5lY3RlZCwgYW5kIFJQQ3Mgd2lsbCBiZSBzdXNwZW5kZWQNCj4gPiA+IG5vcm1hbGx5
+DQo+ID4gPiB1bnRpbCBhIGNvbm5lY3Rpb24gaXMgcG9zc2libGUgYWdhaW4gKGVnLCBhIG5ldyBk
+ZXZpY2UgaXMgbWFkZQ0KPiA+ID4gYXZhaWxhYmxlKS4NCj4gPiA+IA0KPiA+ID4gQSBERVZJQ0Vf
+UkVNT1ZBTCBldmVudCBpcyBhbiB1cGNhbGwgdG8geHBydHJkbWEgdGhhdCBtYXkgc2xlZXAuDQo+
+ID4gPiBVcG9uDQo+ID4gPiBpdHMgcmV0dXJuLCB0aGUgZGV2aWNlIGRyaXZlciB1bmxvYWRzIGl0
+c2VsZi4gQ3VycmVudGx5IG15DQo+ID4gPiBwcm90b3R5cGUNCj4gPiA+IGZyZWVzIGFsbCBIVyBy
+ZXNvdXJjZXMgZHVyaW5nIHRoZSB1cGNhbGwsIGJ1dCB0aGF0IGRvZXNuJ3QgYmxvY2sNCj4gPiA+
+IG5ldyBSUENzIGZyb20gdHJ5aW5nIHRvIHVzZSB0aG9zZSByZXNvdXJjZXMgYXQgdGhlIHNhbWUg
+dGltZS4NCj4gPiA+IA0KPiA+ID4gU2VlbXMgbGlrZSB0aGUgbW9zdCBuYXR1cmFsIHdheSB0byB0
+ZW1wb3JhcmlseSBibG9jayBzZW5kcyB3b3VsZA0KPiA+ID4gYmUNCj4gPiA+IHRvIGdyYWIgdGhl
+IHRyYW5zcG9ydCdzIHdyaXRlIGxvY2ssIGp1c3QgbGlrZSAiY29ubmVjdCIgZG9lcywNCj4gPiA+
+IHdoaWxlDQo+ID4gPiB0aGUgdHJhbnNwb3J0IGlzIGRlYWxpbmcgd2l0aCBERVZJQ0VfUkVNT1ZB
+TCwgdGhlbiByZWxlYXNlIGl0DQo+ID4gPiBvbmNlDQo+ID4gPiBhbGwgSFcgcmVzb3VyY2VzIGhh
+dmUgYmVlbiBmcmVlZC4NCj4gPiA+IA0KPiA+ID4gVW5mb3J0dW5hdGVseSBhbiBSUEMgdGFzayBp
+cyBuZWVkZWQgdG8gYWNxdWlyZSB0aGUgd3JpdGUgbG9jay4NCj4gPiA+IEJ1dA0KPiA+ID4gZGlz
+Y29ubmVjdCBpcyBqdXN0IGFuIGFzeW5jaHJvbm91cyBldmVudCwgdGhlcmUgaXMgbm8gUlBDIHRh
+c2sNCj4gPiA+IGFzc29jaWF0ZWQgd2l0aCBpdCwgYW5kIHRodXMgbm8gY29udGV4dCB0aGF0IHRo
+ZSBSUEMgc2NoZWR1bGVyDQo+ID4gPiBjYW4gcHV0IHRvIHNsZWVwIGlmIHRoZXJlIGhhcHBlbnMg
+dG8gYmUgYW5vdGhlciBSUEMgc2VuZGluZyBhdA0KPiA+ID4gdGhlDQo+ID4gPiBtb21lbnQgYSBk
+ZXZpY2UgcmVtb3ZhbCBldmVudCBvY2N1cnMuDQo+ID4gPiANCj4gPiA+IEkgd2FzIGxvb2tpbmcg
+YXQgeHBydF9sb2NrX2Nvbm5lY3QsIGJ1dCB0aGF0IGRvZXNuJ3QgYXBwZWFyIHRvIGRvDQo+ID4g
+PiBxdWl0ZSB3aGF0IEkgbmVlZC4NCj4gPiA+IA0KPiA+ID4gQW5vdGhlciB0aG91Z2h0IHdhcyB0
+byBoYXZlIHRoZSBERVZJQ0VfUkVNT1ZBTCB1cGNhbGwgbWFyayB0aGUNCj4gPiA+IHRyYW5zcG9y
+dCBkaXNjb25uZWN0ZWQsIHNlbmQgYW4gYXN5bmNocm9ub3VzIE5VTEwgUlBDLCB0aGVuIHdhaXQN
+Cj4gPiA+IG9uIGEga2VybmVsIHdhaXRxdWV1ZS4NCj4gPiA+IA0KPiA+ID4gVGhlIE5VTEwgUlBD
+IHdvdWxkIGdyYWIgdGhlIHdyaXRlIGxvY2sgYW5kIGtpY2sgdGhlIHRyYW5zcG9ydCdzDQo+ID4g
+PiBjb25uZWN0IHdvcmtlci4gVGhlIGNvbm5lY3Qgd29ya2VyIHdvdWxkIGZyZWUgSFcgcmVzb3Vy
+Y2VzLCB0aGVuDQo+ID4gPiBhd2FrZW4gdGhlIHdhaXRlci4gVGhlbiB0aGUgdXBjYWxsIGNvdWxk
+IHJldHVybiB0byB0aGUgZHJpdmVyLg0KPiA+ID4gDQo+ID4gPiBUaGUgcHJvYmxlbSB3aXRoIHRo
+aXMgc2NoZW1lIGlzIHRoZSBzYW1lIGFzIGl0IHdhcyBmb3IgdGhlDQo+ID4gPiBrZWVwYWxpdmUg
+d29yazogdGhlcmUncyBubyB0YXNrIG9yIHJwY19jbG50IGF2YWlsYWJsZSB0byB0aGUNCj4gPiA+
+IERFVklDRV9SRU1PVkFMIHVwY2FsbC4gU2xlZXBpbmcgdW50aWwgdGhlIHdyaXRlIGxvY2sgaXMg
+YXZhaWxhYmxlDQo+ID4gPiB3b3VsZCByZXF1aXJlIGEgdGFzaywgYW5kIHNlbmRpbmcgYSBOVUxM
+IFJQQyB3b3VsZCByZXF1aXJlIGFuDQo+ID4gPiBycGNfY2xudC4NCj4gPiA+IA0KPiA+ID4gQW55
+IGFkdmljZS90aG91Z2h0cyBhYm91dCB0aGlzPw0KPiA+ID4gDQo+ID4gDQo+ID4gQ2FuIHlvdSBw
+ZXJoYXBzIHVzZSBYUFJUX0ZPUkNFX0RJU0NPTk5FQ1Q/IFRoYXQgZG9lcyBlbmQgdXAgY2FsbGlu
+Zw0KPiA+IHRoZQ0KPiA+IHhwcnQtPm9wcy0+Y2xvc2UoKSBjYWxsYmFjayBhcyBzb29uIGFzIHRo
+ZSBYUFJUX0xPQ0sgc3RhdGUgaGFzIGJlZW4NCj4gPiBmcmVlZC4gWW91IHN0aWxsIHdvbid0IGhh
+dmUgYSBjbGllbnQsIGJ1dCB5b3Ugd2lsbCBiZSBndWFyYW50ZWVkDQo+ID4gZXhjbHVzaXZlIGFj
+Y2VzcyB0byB0aGUgdHJhbnNwb3J0LCBhbmQgeW91IGNhbiBkbyB0aGluZ3MgbGlrZQ0KPiA+IHdh
+a2luZyB1cA0KPiA+IGFueSBzbGVlcGluZyB0YXNrcyBvbiB0aGUgdHJhbnNtaXQgYW5kIHJlY2Vp
+dmUgcXVldWUgdG8gaGVscCB5b3UuDQo+ID4gSG93ZXZlciB5b3UgYWxzbyBoYXZlIHRvIGRlYWwg
+d2l0aCB0aGUgY2FzZSB3aGVyZSB0aGUgdHJhbnNwb3J0IHdhcw0KPiA+IGlkbGUgdG8gc3RhcnQg
+d2l0aC4NCj4gDQo+IFRoZSBjYXNlIHdoZXJlIHRoZSB0cmFuc3BvcnQgaXMgaWRsZSBpcyBpbmRl
+ZWQgdGhlIG1vc3QgYm90aGVyc29tZS4NCj4gDQo+IEkgaGFkbid0IHJlYWxpemVkIHRoYXQgLT5j
+bG9zZSBndWFyYW50ZWVkIGV4Y2x1c2l2ZSBhY2Nlc3MgdG8NCj4gdGhlIHRyYW5zcG9ydC4gSWYg
+LT5jbG9zZSBndWFyYW50ZWVzIGFjY2VzcyB0byB0aGUgdHJhbnNwb3J0LCB0aGVuDQo+IEkgZG9u
+J3QgbmVlZCBhbiBSUEMgdGFzayBvciB0aGUgTlVMTCBSUEMgYmVjYXVzZSB3ZSBkb24ndCBldmVy
+IGhhdmUNCj4gdG8gd2FpdCBmb3Igd3JpdGUgYWNjZXNzLg0KPiANCg0KWWVzLCAtPmNsb3NlKCkg
+bXVzdCBhbHdheXMgYmUgdGFrZW4gd2l0aCBYUFJUX0xPQ0sgc2V0LCBhbmQgaXQgaXMNCmd1YXJh
+bnRlZWQgdG8gYmUgY2FsbGVkIHRoZSBpbnN0YW50IHRoYXQgdGhlIGN1cnJlbnQgaG9sZGVyIG9m
+DQpYUFJUX0xPQ0sgcmVsaW5xdWlzaGVzIGl0LiBUaGlzIGlzIHdoeSB3ZSBoYXZlIHRoZSB0ZXN0
+IGZvcg0KWFBSVF9DTE9TRV9XQUlUIGluIHhwcnRfY2xlYXJfbG9ja2VkKCk7IGl0IHNob3J0LWNp
+cmN1aXRzIHRoZSB3YWl0DQpxdWV1ZXMgYW5kIGltbWVkaWF0ZWx5IHN0YXJ0cyBxdWV1ZV93b3Jr
+KHhwcnRpb2Rfd29ya3F1ZXVlLCAmeHBydC0NCj50YXNrX2NsZWFudXApLg0KDQo+IFRoZSBoYXJk
+d2FyZSByZXNvdXJjZXMgY2FuIGJlIHRvcm4gZG93biBpbW1lZGlhdGVseSBpbg0KPiB4cHJ0X3Jk
+bWFfY2xvc2UuDQoNClNvdW5kcyBsaWtlIHRoZSByaWdodCB0aGluZyB0byBkbyB0aGVuLg0KDQo+
+ID4gVGhlIGJpZyBwcm9ibGVtIHRoYXQgeW91IGhhdmUgaGVyZSBpcyB1bHRpbWF0ZWx5IHRoYXQg
+dGhlIGxvdyBsZXZlbA0KPiA+IGNvbnRyb2wgY2hhbm5lbCBmb3IgdGhlIHRyYW5zcG9ydCBhcHBl
+YXJzIHRvIHdhbnQgdG8gdXNlIHRoZSBSUEMNCj4gPiB1cHBlcg0KPiA+IGxheWVyIGZ1bmN0aW9u
+YWxpdHkgZm9yIGl0cyBjb21tdW5pY2F0aW9uIG1lY2hhbmlzbS4gQUZBSUNTIHlvdQ0KPiA+IHdp
+bGwNCj4gPiBrZWVwIGhpdHRpbmcgaXNzdWVzIGFzIHRoZSBjb250cm9sIGNoYW5uZWwgbmVlZHMg
+dG8gY2lyY3VtdmVudCBhbGwNCj4gPiB0aGUNCj4gPiBxdWV1ZWluZyBldGMgdGhhdCB0aGVzZSB1
+cHBlciBsYXllcnMgYXJlIGRlc2lnbmVkIHRvIGVuZm9yY2UuDQo+ID4gR2l2ZW4gdGhhdCB0aGVz
+ZSBtZXNzYWdlcyB5b3UncmUgc2VuZGluZyBhcmUganVzdCBudWxsIHBpbmdzIHdpdGgNCj4gPiBu
+bw0KPiA+IHBheWxvYWQgYW5kIG5vIHNwZWNpYWwgYXV0aGVudGljYXRpb24gbmVlZHMgb3IgYW55
+dGhpbmcgZWxzZSwgbWlnaHQNCj4gPiBpdA0KPiA+IG1ha2Ugc2Vuc2UgdG8ganVzdCBnZW5lcmF0
+ZSB0aGVtIGluIHRoZSBSRE1BIGxheWVyIGl0c2VsZj8NCj4gDQo+IChJIGRvbid0IHJlYWxseSBu
+ZWVkIGEgTlVMTCBSUEMgZm9yIHRoZSBERVZJQ0VfUkVNT1ZBTCBjYXNlLiBJDQo+IGp1c3QgbmVl
+ZCBhbiBSUEMgdGFzaykuDQo+IA0KPiBUaGVyZSBzZWVtcyB0byBiZSBhIHN0cm9uZyBjb21tdW5p
+dHkgYmVsaWVmIHRoYXQgY29kZSBkdXBsaWNhdGlvbg0KPiBpcyBiYWQuIENvbnN0cnVjdGluZyBl
+dmVuIGEgTlVMTCBSUEMgd2l0aG91dCB1c2luZyB0aGUgZXhpc3RpbmcNCj4gaW5mcmFzdHJ1Y3R1
+cmUgd291bGQgZHVwbGljYXRlIGEgbGFyZ2UgYW1vdW50IG9mIGNvZGUuDQo+DQo+IEV2ZW50dWFs
+bHkgUlBDLW92ZXItUkRNQSBzaG91bGQgaGF2ZSBpdHMgb3duIHBpbmcgbWVjaGFuaXNtLA0KPiBw
+cm9iYWJseS4gQnV0IFZlcnNpb24gT25lIGRvZXNuJ3QuDQo+IA0KPiBBbiBhbHRlcm5hdGl2ZSB0
+byBwaW5nIGhlcmUgd291bGQgYmUgdG8gc2ltcGx5IGZvcmNlIHRoZQ0KPiBjb25uZWN0aW9uIHRv
+IGRpc2Nvbm5lY3QgaWYgYW4gUlBDIHRpbWVzIG91dC4gVGhhdCBjYW4gYmUgZG9uZQ0KPiB0cml2
+aWFsbHkgaW4gdGhlIHRpbWVyIGNhbGwgb3V0LCBmb3IgZXhhbXBsZS4NCg0KUmlnaHQuIEkgYWdy
+ZWUgdGhhdCB0aGUgLT50aW1lcigpIGNhbGxiYWNrIHdpbGwgd29yayBqdXN0IGZpbmUgZm9yDQp0
+aGF0Lg0KDQotLSANClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVy
+LCBQcmltYXJ5RGF0YQ0KdHJvbmQubXlrbGVidXN0QHByaW1hcnlkYXRhLmNvbQ0K
 
-
-On 02/22/2017 05:36 PM, J. Bruce Fields wrote:
-> On Tue, Feb 21, 2017 at 07:46:58PM +0000, Weston Andros Adamson wrote:
->>
->>> On Feb 18, 2017, at 9:07 PM, J. Bruce Fields <bfields@redhat.com> wrote:
->>>
->>> From: Weston Andros Adamson <dros@netapp.com>
->>>
->>> We're not taking into account that the space needed for the (variable
->>> length) attr bitmap, with the result that we'd sometimes get a spurious
->>> ERANGE when the ACL data got close to the end of a page.
->>>
->>> Just add in an extra page to make sure.
->>>
->>> Signed-off-by: J. Bruce Fields <bfields@redhat.com>
->>
->> Thanks, you can add:
->>
->> Signed-off-by: Weston Andros Adamson <dros@primarydata.com>
-> 
-> Thanks.
-> 
-> Anna, could we get this one in now?
-> 
-> The rest of it still needs some work to account for the problem Andreas
-> notes (where we can return a length successfully even though we'll never
-> accept an ACL of that length).  But this one is an easy fix for a real
-> bug.
-> 
-> Let me know if you need it resent.
-
-I don't mind taking just the one patch.  Have you made any changes to it since this posting?  If not, then I can take it from the email.
-
-Thanks,
-Anna
-
-> 
-> --b.
-> 
