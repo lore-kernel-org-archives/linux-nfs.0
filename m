@@ -1,84 +1,119 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from cliff.cs.toronto.edu ([128.100.3.120]:32958 "EHLO
-        cliff.cs.toronto.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751421AbdBWQqv (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 23 Feb 2017 11:46:51 -0500
-From: Chris Siebenmann <cks.nfs01@cs.toronto.edu>
-To: NeilBrown <neilb@suse.com>
-cc: Chris Siebenmann <cks.nfs01@cs.toronto.edu>, linux-nfs@vger.kernel.org
-Subject: Re: Manual page bug: two inaccuracies in nfsd(7)
-In-reply-to: neilb's message of Mon, 13 Feb 2017 15:46:10 +1100.
-             <87tw7y4s19.fsf@notabene.neil.brown.name>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Date: Thu, 23 Feb 2017 11:46:44 -0500
-Message-Id: <20170223164644.E40565A0066@apps1.cs.toronto.edu>
+Received: from mx1.redhat.com ([209.132.183.28]:59240 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1751719AbdBWRDp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 23 Feb 2017 12:03:45 -0500
+From: Jeff Layton <jlayton@redhat.com>
+To: bfields@fieldses.org, trond.myklebust@primarydata.com
+Cc: schumaker.anna@gmail.com, linux-nfs@vger.kernel.org
+Subject: [PATCH 2/4] sunrpc: turn bitfield flags in svc_version into bools
+Date: Thu, 23 Feb 2017 12:03:35 -0500
+Message-Id: <20170223170337.10686-3-jlayton@redhat.com>
+In-Reply-To: <20170223170337.10686-1-jlayton@redhat.com>
+References: <20170223170337.10686-1-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-> >  I was recently reading this manual page as part of exploring running
-> > an NFS server on Ubuntu 16.04 (with Ubuntu's kernel '4.4.0') and found
-> > two inaccuracies with the current state of the kernel (or at least how
-> > it looks to me based on both experimentation and code).
-> >
-> >  First, there is no /proc/net/rpc/auth.domain directory and cache any
-> > more. This was removed from the kernel in 2006 (in commit efc36aa5608f),
-> > so I think it should be safe to remove from current versions of the
-> > manpage.
-> 
-> I agree.
-> 
-> >
-> >  Second, the manpage says about the 'flush' files to be found in eg
-> > /proc/net/rpc/auth.unix.ip:
-> >
-> > 	When a number of seconds since epoch (1 Jan 1970) is written to
-> > 	this file, all entries in the cache that were last updated before
-> > 	that file become invalidated and will be flushed out. Writing
-> > 	1 will flush everything. [...]
-> >
-> > The bit about 'writing 1 will flush everything' does not appear to be
-> > accurate.
-> 
-> I was never accurate.  I vaguely remember writing it.  I must have been
-> confused.
-> 
-> Would you be able to create a patch which fixes these issues, and post
-> it, with a signed-off-by ?
+It's just simpler to read this way, IMO. Also, no need to explicitly
+set vs_hidden to false in the nfsacl ones.
 
- Here is a patch that deletes the mention of auth.domain and changes the
-wording around 'flush' files. I'm not attached to the revised wording;
-it's just the best I could manage in something that felt that it was
-within the same style and space as the current wording.
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ fs/nfs/callback_xdr.c      | 4 ++--
+ fs/nfsd/nfs2acl.c          | 1 -
+ fs/nfsd/nfs3acl.c          | 1 -
+ fs/nfsd/nfs4proc.c         | 2 +-
+ include/linux/sunrpc/svc.h | 9 +++++----
+ net/sunrpc/svc.c           | 2 +-
+ 6 files changed, 9 insertions(+), 10 deletions(-)
 
-Signed-off-by: Chris Siebenmann <cks.nfs01@cs.toronto.edu>
-
-diff --git a/utils/exportfs/nfsd.man b/utils/exportfs/nfsd.man
-index 0c516fa..9efa29f 100644
---- a/utils/exportfs/nfsd.man
-+++ b/utils/exportfs/nfsd.man
-@@ -105,11 +105,6 @@ clients have for different filesystems.
- The caches are:
+diff --git a/fs/nfs/callback_xdr.c b/fs/nfs/callback_xdr.c
+index eb094c6011d8..e9836f611d9c 100644
+--- a/fs/nfs/callback_xdr.c
++++ b/fs/nfs/callback_xdr.c
+@@ -1083,7 +1083,7 @@ struct svc_version nfs4_callback_version1 = {
+ 	.vs_proc = nfs4_callback_procedures1,
+ 	.vs_xdrsize = NFS4_CALLBACK_XDRSIZE,
+ 	.vs_dispatch = NULL,
+-	.vs_hidden = 1,
++	.vs_hidden = true,
+ };
  
- .TP
--.B auth.domain
--This cache maps the name of a client (or domain) to an internal data
--structure.  The only access that is possible is to flush the cache.
--
--.TP
- .B auth.unix.ip
- This cache contains a mapping from IP address to the name of the
- authentication domain that the ipaddress should be treated as part of.
-@@ -133,7 +128,8 @@ are:
- .B flush
- When a number of seconds since epoch (1 Jan 1970) is written to this
- file, all entries in the cache that were last updated before that file
--become invalidated and will be flushed out.  Writing 1 will flush
-+become invalidated and will be flushed out.  Writing a time in the
-+future (in seconds since epoch) will flush
- everything.  This is the only file that will always be present.
+ struct svc_version nfs4_callback_version4 = {
+@@ -1092,5 +1092,5 @@ struct svc_version nfs4_callback_version4 = {
+ 	.vs_proc = nfs4_callback_procedures1,
+ 	.vs_xdrsize = NFS4_CALLBACK_XDRSIZE,
+ 	.vs_dispatch = NULL,
+-	.vs_hidden = 1,
++	.vs_hidden = true,
+ };
+diff --git a/fs/nfsd/nfs2acl.c b/fs/nfsd/nfs2acl.c
+index d08cd88155c7..838f90f3f890 100644
+--- a/fs/nfsd/nfs2acl.c
++++ b/fs/nfsd/nfs2acl.c
+@@ -376,5 +376,4 @@ struct svc_version	nfsd_acl_version2 = {
+ 		.vs_proc	= nfsd_acl_procedures2,
+ 		.vs_dispatch	= nfsd_dispatch,
+ 		.vs_xdrsize	= NFS3_SVC_XDRSIZE,
+-		.vs_hidden	= 0,
+ };
+diff --git a/fs/nfsd/nfs3acl.c b/fs/nfsd/nfs3acl.c
+index 0c890347cde3..dcb5f79076c0 100644
+--- a/fs/nfsd/nfs3acl.c
++++ b/fs/nfsd/nfs3acl.c
+@@ -266,6 +266,5 @@ struct svc_version	nfsd_acl_version3 = {
+ 		.vs_proc	= nfsd_acl_procedures3,
+ 		.vs_dispatch	= nfsd_dispatch,
+ 		.vs_xdrsize	= NFS3_SVC_XDRSIZE,
+-		.vs_hidden	= 0,
+ };
  
- .TP
+diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+index 74a6e573e061..2b73b37c2b36 100644
+--- a/fs/nfsd/nfs4proc.c
++++ b/fs/nfsd/nfs4proc.c
+@@ -2481,7 +2481,7 @@ struct svc_version	nfsd_version4 = {
+ 		.vs_proc	= nfsd_procedures4,
+ 		.vs_dispatch	= nfsd_dispatch,
+ 		.vs_xdrsize	= NFS4_SVC_XDRSIZE,
+-		.vs_rpcb_optnl	= 1,
++		.vs_rpcb_optnl	= true,
+ };
+ 
+ /*
+diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
+index 7321ae933867..96467c95f02e 100644
+--- a/include/linux/sunrpc/svc.h
++++ b/include/linux/sunrpc/svc.h
+@@ -400,10 +400,11 @@ struct svc_version {
+ 	struct svc_procedure *	vs_proc;	/* per-procedure info */
+ 	u32			vs_xdrsize;	/* xdrsize needed for this version */
+ 
+-	unsigned int		vs_hidden : 1,	/* Don't register with portmapper.
+-						 * Only used for nfsacl so far. */
+-				vs_rpcb_optnl:1;/* Don't care the result of register.
+-						 * Only used for nfsv4. */
++	/* Don't register with rpcbind */
++	bool			vs_hidden;
++
++	/* Don't care if the rpcbind registration fails */
++	bool			vs_rpcb_optnl;
+ 
+ 	/* Override dispatch function (e.g. when caching replies).
+ 	 * A return value of 0 means drop the request. 
+diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
+index 75f290bddca1..85bcdea67a3f 100644
+--- a/net/sunrpc/svc.c
++++ b/net/sunrpc/svc.c
+@@ -385,7 +385,7 @@ static int svc_uses_rpcbind(struct svc_serv *serv)
+ 		for (i = 0; i < progp->pg_nvers; i++) {
+ 			if (progp->pg_vers[i] == NULL)
+ 				continue;
+-			if (progp->pg_vers[i]->vs_hidden == 0)
++			if (!progp->pg_vers[i]->vs_hidden)
+ 				return 1;
+ 		}
+ 	}
+-- 
+2.9.3
 
-
-	- cks
