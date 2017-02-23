@@ -1,45 +1,79 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from quartz.orcorp.ca ([184.70.90.242]:53872 "EHLO quartz.orcorp.ca"
+Received: from mx141.netapp.com ([216.240.21.12]:6038 "EHLO mx141.netapp.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751259AbdBWUzK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 23 Feb 2017 15:55:10 -0500
-Date: Thu, 23 Feb 2017 13:55:02 -0700
-From: Jason Gunthorpe <jgunthorpe@obsidianresearch.com>
-To: Tom Talpey <tom@talpey.com>
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-        Jeff Layton <jlayton@redhat.com>, trond.myklebust@primarydata.com,
-        schumaker.anna@gmail.com, linux-nfs@vger.kernel.org,
-        Chuck Lever <chuck.lever@oracle.com>, linux-rdma@vger.kernel.org
-Subject: Re: [PATCH 1/4] sunrpc: flag transports as using IETF approved
- congestion control protocols
-Message-ID: <20170223205502.GA29673@obsidianresearch.com>
-References: <20170223170337.10686-1-jlayton@redhat.com>
- <20170223170337.10686-2-jlayton@redhat.com>
- <2152dfdf-f847-2511-1600-6499b6ea9708@talpey.com>
- <1487880034.3448.8.camel@redhat.com>
- <65056db6-f30a-c44d-b01c-b549887c4895@talpey.com>
- <20170223201109.GC11882@fieldses.org>
- <20170223202609.GC26301@obsidianresearch.com>
- <18ef37c3-95db-9a2c-dbcb-f579672065d6@talpey.com>
+        id S1751242AbdBWVzy (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 23 Feb 2017 16:55:54 -0500
+Subject: Re: [PATCH 2/2] NFSv4: fix getacl ERANGE for some ACL buffer sizes
+To: "J. Bruce Fields" <bfields@redhat.com>
+References: <1487470070-32358-1-git-send-email-bfields@redhat.com>
+ <1487470070-32358-3-git-send-email-bfields@redhat.com>
+ <261D4020-D9E4-4F1E-81CF-11EAAEABA684@primarydata.com>
+ <20170222223656.GG24122@parsley.fieldses.org>
+ <6606b2d5-719f-9e27-6f95-eec8cebfb1a8@gmail.com>
+ <20170223194321.GF9417@parsley.fieldses.org>
+ <20170223195338.GG9417@parsley.fieldses.org>
+ <20170223195420.GH9417@parsley.fieldses.org>
+CC: Weston Andros Adamson <dros@primarydata.com>,
+        Trond Myklebust <trondmy@primarydata.com>,
+        Anna Schumaker <schumakeranna@gmail.com>,
+        linux-nfs list <linux-nfs@vger.kernel.org>,
+        Andreas Gruenbacher <agruenba@redhat.com>,
+        Weston Andros Adamson <dros@netapp.com>
+From: Anna Schumaker <Anna.Schumaker@netapp.com>
+Message-ID: <fa063153-9be2-cd82-0756-ec9ad6873d4b@Netapp.com>
+Date: Thu, 23 Feb 2017 16:54:43 -0500
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <18ef37c3-95db-9a2c-dbcb-f579672065d6@talpey.com>
+In-Reply-To: <20170223195420.GH9417@parsley.fieldses.org>
+Content-Type: text/plain; charset="windows-1252"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Feb 23, 2017 at 03:33:53PM -0500, Tom Talpey wrote:
+Thanks, Bruce and Dros!
 
-> The key words are "IETF-approved". Mitigation and Interaction are
-> operational decisions, not protocol design.
+Anna
 
-We are talking about this bit from RFC 3530 ?
-
-   Where an NFS version 4 implementation supports operation over the IP
-   network protocol, the supported transports between NFS and IP MUST be
-   among the IETF-approved congestion control transport protocols, which
-   include TCP and SCTP.
-
-This gives most of RDMA an out as it is not over the IP protocol. The
-only obvious troubled one is RoCEv2..
-
-Jason
+On 02/23/2017 02:54 PM, J. Bruce Fields wrote:
+> From: Weston Andros Adamson <dros@primarydata.com>
+> 
+> We're not taking into account that the space needed for the (variable
+> length) attr bitmap, with the result that we'd sometimes get a spurious
+> ERANGE when the ACL data got close to the end of a page.
+> 
+> Just add in an extra page to make sure.
+> 
+> Signed-off-by: Weston Andros Adamson <dros@primarydata.com>
+> Cc: stable@vger.kernel.org
+> Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+> ---
+>  fs/nfs/nfs4proc.c | 8 ++------
+>  1 file changed, 2 insertions(+), 6 deletions(-)
+> 
+> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+> index 0a0eaecf9676..60501e10625d 100644
+> --- a/fs/nfs/nfs4proc.c
+> +++ b/fs/nfs/nfs4proc.c
+> @@ -5069,7 +5069,7 @@ static void nfs4_write_cached_acl(struct inode *inode, struct page **pages, size
+>   */
+>  static ssize_t __nfs4_get_acl_uncached(struct inode *inode, void *buf, size_t buflen)
+>  {
+> -	struct page *pages[NFS4ACL_MAXPAGES] = {NULL, };
+> +	struct page *pages[NFS4ACL_MAXPAGES + 1] = {NULL, };
+>  	struct nfs_getaclargs args = {
+>  		.fh = NFS_FH(inode),
+>  		.acl_pages = pages,
+> @@ -5083,13 +5083,9 @@ static ssize_t __nfs4_get_acl_uncached(struct inode *inode, void *buf, size_t bu
+>  		.rpc_argp = &args,
+>  		.rpc_resp = &res,
+>  	};
+> -	unsigned int npages = DIV_ROUND_UP(buflen, PAGE_SIZE);
+> +	unsigned int npages = DIV_ROUND_UP(buflen, PAGE_SIZE) + 1;
+>  	int ret = -ENOMEM, i;
+>  
+> -	/* As long as we're doing a round trip to the server anyway,
+> -	 * let's be prepared for a page of acl data. */
+> -	if (npages == 0)
+> -		npages = 1;
+>  	if (npages > ARRAY_SIZE(pages))
+>  		return -ERANGE;
+>  
+> 
