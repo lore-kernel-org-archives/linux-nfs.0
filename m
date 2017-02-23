@@ -1,94 +1,68 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:43424 "EHLO mx2.suse.de"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S934641AbdBWA1A (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 22 Feb 2017 19:27:00 -0500
-From: NeilBrown <neilb@suse.com>
-To: Trond Myklebust <trond.myklebust@primarydata.com>,
-        bfields@fieldses.org
-Date: Thu, 23 Feb 2017 11:13:05 +1100
-Cc: linux-nfs@vger.kernel.org
+Received: from us-smtp-delivery-194.mimecast.com ([216.205.24.194]:60152 "EHLO
+        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S932197AbdBWBJH (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 22 Feb 2017 20:09:07 -0500
+From: Trond Myklebust <trondmy@primarydata.com>
+To: "bfields@fieldses.org" <bfields@fieldses.org>,
+        "neilb@suse.com" <neilb@suse.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
 Subject: Re: [PATCH v2 0/2] Fix up nfsd to enable NFSv4.x without NFSv4.0
-In-Reply-To: <20170222233533.23845-1-trond.myklebust@primarydata.com>
+Date: Thu, 23 Feb 2017 01:00:12 +0000
+Message-ID: <1487811610.4863.10.camel@primarydata.com>
 References: <20170222233533.23845-1-trond.myklebust@primarydata.com>
-Message-ID: <87y3wxrcha.fsf@notabene.neil.brown.name>
+         <87y3wxrcha.fsf@notabene.neil.brown.name>
+In-Reply-To: <87y3wxrcha.fsf@notabene.neil.brown.name>
 MIME-Version: 1.0
-Content-Type: multipart/signed; boundary="=-=-=";
-        micalg=pgp-sha256; protocol="application/pgp-signature"
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---=-=-=
-Content-Type: text/plain
-Content-Transfer-Encoding: quoted-printable
+T24gVGh1LCAyMDE3LTAyLTIzIGF0IDExOjEzICsxMTAwLCBOZWlsQnJvd24gd3JvdGU6DQo+IE9u
+IFdlZCwgRmViIDIyIDIwMTcsIFRyb25kIE15a2xlYnVzdCB3cm90ZToNCj4gDQo+ID4gVGhpcyBw
+YXRjaCBzZXJpZXMgd2FzIGludGVuZGVkIGFzIGEgc3RhbmRhbG9uZSBzZXJpZXMuIEhvd2V2ZXIg
+aXQNCj4gPiBub3cNCj4gPiBhaW1zIHRvIGZpeCB1cCBhIGZldyBpc3N1ZXMgd2l0aCBOZWlsJ3Mg
+aW5pdGlhbCBwYXRjaDoNCj4gPiANCj4gPiAxKSBXaGVuIHRoZSB1c2VyIHR1cm5zIG9mZiBhbGwg
+bWlub3IgdmVyc2lvbnMgb2YgTkZTdjQsIHRoZW4gdGhhdA0KPiA+IHNob3VsZA0KPiA+IMKgwqDC
+oGJlIGVxdWl2YWxlbnQgdG8gdHVybmluZyBvZmYgTkZTdjQgc3VwcG9ydCwgYW5kIHNvIHdoZW4g
+c29tZW9uZQ0KPiA+IHRyaWVzDQo+ID4gwqDCoMKgdG8gbW91bnQsIHdlIHNob3VsZCByZXR1cm4g
+UlBDX1BST0dfTUlTTUFUQ0guDQo+ID4gMikgQWxsb3cgdGhlIHVzZXIgdG8gdXNlIGVpdGhlciAn
+NC4wJyBvciAnNCcgaW4gb3JkZXIgdG8gZW5hYmxlIG9yDQo+ID4gZGlzYWJsZQ0KPiA+IMKgwqDC
+oG1pbm9yIHZlcnNpb24gMC4gT3RoZXIgbWlub3IgdmVyc2lvbnMgcmVtYWluIGVuYWJsZWQvZGlz
+YWJsZWQNCj4gPiB1c2luZyB0aGUNCj4gPiDCoMKgwqAnNC54JyBmb3JtYXQuDQo+IA0KPiBJZiBJ
+IHVuZGVyc3RhbmQgeW91IGFuZCB0aGUgY29kZSBjb3JyZWN0bHksIHRoZW4gdGhpcyBjaGFuZ2Ug
+bWVhbnMNCj4gdGhhdA0KPiBpZiBJIHJ1bg0KPiANCj4gwqDCoMKgcnBjLm5mc2QgLU4gNA0KPiAN
+Cj4gdGhlIG5mcyBzZXJ2ZXIgd2lsbCBjb250aW51ZSB0byBzZXJ2ZXIgdjQuMSBhbmQgdjQuMiBy
+ZXF1ZXN0cywgb25seQ0KPiB2NC4wDQo+IHdpbGwgYmUgZGlzYWJsZWQgKEFzc3VtaW5nIGEga2Vy
+bmVsIHdoaWNoIGRlZmF1bHRzIHRvIHNlcnZpbmcgdjQuMCwNCj4gdjQuMQ0KPiBhbmQgdjQuMCku
+DQoNClVuZm9ydHVuYXRlbHkgbm90Li4uIFRoZSBwcm9ibGVtIGlzIHRoYXQgcnBjLm5mc2QgaGFz
+IGEgYm9ya2VuIHBhcnNlcg0KdGhhdCByZWZ1c2VzIHRoZSAnLU40IC1WNC4yJyBzeW50YXgsIGFu
+ZCB0aGF0IHRocm93cyBoaXNzeSBmaXQgaWYgeW91DQp0cnkgdG8gZmVlZCBpdCAnLU40LjAnIG9y
+ICctVjQuMCcuDQoNClRoZSBrZXJuZWwgY2hhbmdlIG5lZWRzIHRvIGJlIGFjY29tcGFuaWVkIGJ5
+IGEgZml4IHRvIG5mcy11dGlscy4NCg0KPiBJcyB0aGF0IHJlYWxseSB3aGF0IHdlIHdhbnQ/DQo+
+IA0KPiBUaGUgdGV4dCBpbiB0aGUgbWFuIHBhZ2UgZm9yIHJwYy5uZnNkIGNvdWxkIGJlIHJlYWQg
+YXMgYWxsb3dpbmcgdGhpcw0KPiBpbnRlcnByZXRhdGlvbiwgdGhvdWdoIGl0IGlzbid0IGV4cGxp
+Y2l0Lg0KPiBJJ3ZlIGFsd2F5cyB1c2VkICJORlN2NCIgdG8gbWVhbiBhbnkgb3IgYWxsIGZvciA0
+LjAsIDQuMSwgNC4yLCAuLi4NCg0KV2UgX2NvdWxkXyBkbyB0aGF0LiBBcyBJIHNhaWQsIHRoYXQn
+cyBhIHF1ZXN0aW9uIG9mIGZpeGluZyBycGMubmZzZC4NCg0KVGhlIHF1ZXN0aW9uIGhlcmUsIHRo
+b3VnaCwgaXMgd2hhdCBzaG91bGQgdGhlIGtlcm5lbCBkbyB3aGVuIHlvdSBzdGFydA0KcG9raW5n
+IGludG8gL3Byb2MvZnMvbmZzZC92ZXJzaW9ucy4gSSB0aGluayBhZGRpbmcgYSBuZXcgZmllbGQg
+YmV0d2Vlbg0KJzQnIGFuZCAnNC4wJyBtaWdodCBiZSBtb3JlIGRpc3J1cHRpdmUgdGhhbiBjaGFu
+Z2luZyB0aGUgbWVhbmluZyBvZiAnNCcNCnRvIG1lYW4gJzQuMCcgYXMgdGhlcmUgbWlnaHQgYmUg
+b3RoZXIgcGFyc2VycyBvZiB0aGF0IHBzZXVkb2ZpbGUgb3V0DQp0aGVyZSB0b2RheS4NCg0KPiBU
+aGFua3MsDQo+IE5laWxCcm93bg0KPiANCj4gDQo+ID4gMykgRml4IHVwIHRoZSBkaXNwbGF5IG9m
+IHRoZSBtaW5vciB2ZXJzaW9ucyBzbyB0aGF0IHdlIGRvbid0IGFkZA0KPiA+ICc0LjAnLg0KPiA+
+IMKgwqDCoFByZXZpb3VzIGtlcm5lbHMgaGF2ZSBhbHdheXMgYXNzdW1lZCB0aGUgJzQnIG1lYW5z
+ICdtaW5vcg0KPiA+IHZlcnNpb24gMCcsDQo+ID4gwqDCoMKgc28gdGhlcmUgc2hvdWxkIGJlIG5v
+IG5lZWQgdG8gaGF2ZSBib3RoLg0KPiA+IA0KPiA+IHYyOiBNYWtlIGluY3JlbWVudGFsIHRvIE5l
+aWwncyBwYXRjaA0KPiA+IMKgwqDCoMKgRml4IHVwIGRpc3BsYXkgb2YgdGhlIHZlcnNpb24gc3Ry
+aW5nDQo+ID4gDQo+ID4gVHJvbmQgTXlrbGVidXN0ICgyKToNCj4gPiDCoCBuZnNkOiBBbGxvdyBl
+bmFibGluZyBORlN2NC54IHdpdGhvdXQgYWxzbyByZXF1aXJpbmcgTkZTdjQuMA0KPiA+IMKgIG5m
+c2Q6IEZpeCBkaXNwbGF5IG9mIHRoZSB2ZXJzaW9uIHN0cmluZw0KPiA+IA0KPiA+IMKgZnMvbmZz
+ZC9uZnNjdGwuYyB8IDcyICsrKysrKysrKysrKysrKysrKysrKysrKysrLS0tLS0tLS0tLS0tLS0t
+LQ0KPiA+IC0tLS0tLS0tLS0tLS0tDQo+ID4gwqBmcy9uZnNkL25mc3N2Yy5jIHwgMTQgKysrKysr
+KysrKysNCj4gPiDCoDIgZmlsZXMgY2hhbmdlZCwgNDggaW5zZXJ0aW9ucygrKSwgMzggZGVsZXRp
+b25zKC0pDQo+ID4gDQo+ID4gLS3CoA0KPiA+IDIuOS4zDQotLSANClRyb25kIE15a2xlYnVzdA0K
+TGludXggTkZTIGNsaWVudCBtYWludGFpbmVyLCBQcmltYXJ5RGF0YQ0KdHJvbmQubXlrbGVidXN0
+QHByaW1hcnlkYXRhLmNvbQ0K
 
-On Wed, Feb 22 2017, Trond Myklebust wrote:
-
-> This patch series was intended as a standalone series. However it now
-> aims to fix up a few issues with Neil's initial patch:
->
-> 1) When the user turns off all minor versions of NFSv4, then that should
->    be equivalent to turning off NFSv4 support, and so when someone tries
->    to mount, we should return RPC_PROG_MISMATCH.
-> 2) Allow the user to use either '4.0' or '4' in order to enable or disable
->    minor version 0. Other minor versions remain enabled/disabled using the
->    '4.x' format.
-
-If I understand you and the code correctly, then this change means that
-if I run
-
-   rpc.nfsd -N 4
-
-the nfs server will continue to server v4.1 and v4.2 requests, only v4.0
-will be disabled (Assuming a kernel which defaults to serving v4.0, v4.1
-and v4.0).
-
-Is that really what we want?
-
-The text in the man page for rpc.nfsd could be read as allowing this
-interpretation, though it isn't explicit.
-I've always used "NFSv4" to mean any or all for 4.0, 4.1, 4.2, ...
-
-Thanks,
-NeilBrown
-
-
-> 3) Fix up the display of the minor versions so that we don't add '4.0'.
->    Previous kernels have always assumed the '4' means 'minor version 0',
->    so there should be no need to have both.
->
-> v2: Make incremental to Neil's patch
->     Fix up display of the version string
->
-> Trond Myklebust (2):
->   nfsd: Allow enabling NFSv4.x without also requiring NFSv4.0
->   nfsd: Fix display of the version string
->
->  fs/nfsd/nfsctl.c | 72 ++++++++++++++++++++++++++------------------------=
-------
->  fs/nfsd/nfssvc.c | 14 +++++++++++
->  2 files changed, 48 insertions(+), 38 deletions(-)
->
-> --=20
-> 2.9.3
-
---=-=-=
-Content-Type: application/pgp-signature; name="signature.asc"
-
------BEGIN PGP SIGNATURE-----
-
-iQIzBAEBCAAdFiEEG8Yp69OQ2HB7X0l6Oeye3VZigbkFAliuKREACgkQOeye3VZi
-gbl5jw//Qc4QD6XxSJAEl7/BrAXW6c1954+vsil6rKCMoYA1f7mAwB2xISV0E91k
-1/kffci3ULf/JDN2oqQL66ehxklRA5N8pGQPOoQ440xlxpYdw4jT5V+nIMSSZj0+
-5EnSMJaa3k+qyZxXqtjauYNR8tvknJlGNO0G7nAR+gWg3jSkKRkgiZM1p4ELv/Sf
-EX4zB8QLDh0pmD8Hq2fkLGxUVtITQ5AUHT6aTrZ9bU6CHzF/Ycvd1+T1McSVh7Eg
-zSR35xbaNsfNDIH/uaUNUHZkmSGa8Whlk3/ZCRNsNeJov6hSsCceu81wx+gHeog5
-kLXuK1/vRR90ZUOflzE9wGhxEHheIN6m0lmJZk4o293O5mEnVthcJQBMwKXige9Z
-XS8umqZVk7/PTzrZYGBQJDzMFbj38buG76JJ0e6UvnyNTbT7SkQ0v5RYbNVCRmiM
-rPWbimv/6p4YtZ5SJOg9Dpg6ymBAjbekbIuaL8BOHI0TtoS57AXjlx8zgwKHVwu7
-B7dwssg90DJewipiCo0JTE5O8SbHBXRTd3lJnBOSaNnbMZmHTiFu7GTYGOA9b8Ir
-bY2VA4/2pu4TzOw7RuqrT8xcv+5J5Dx5Co14LIhG51Z9Hw4xpge8iYUVeT5E/W5H
-pgF/nEcQL2qunv/IMEqkrBz3hTMC8aBNtGpkvy8OJINEOfanusM=
-=Mfox
------END PGP SIGNATURE-----
---=-=-=--
