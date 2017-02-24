@@ -1,15 +1,15 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx142.netapp.com ([216.240.21.19]:52563 "EHLO mx142.netapp.com"
+Received: from mx143.netapp.com ([216.240.21.24]:5726 "EHLO mx143.netapp.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751442AbdBXWUH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 24 Feb 2017 17:20:07 -0500
+        id S1751447AbdBXWUJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 24 Feb 2017 17:20:09 -0500
 From: <andros@netapp.com>
 To: <bfields@fieldses.org>
 CC: <trond.myklebust@primarydata.com>, <schumaker.anna@gmail.com>,
         <linux-nfs@vger.kernel.org>, Andy Adamson <andros@netapp.com>
-Subject: [PATCH Version 5 06/17] SUNRPC AUTH_GSS gss3 reply verifier
-Date: Fri, 24 Feb 2017 17:19:42 -0500
-Message-ID: <20170224221953.5502-7-andros@netapp.com>
+Subject: [PATCH Version 5 08/17] SUNRPC AUTH_GSS RPCSEC_GSS_CREATE with label payload
+Date: Fri, 24 Feb 2017 17:19:44 -0500
+Message-ID: <20170224221953.5502-9-andros@netapp.com>
 In-Reply-To: <20170224221953.5502-1-andros@netapp.com>
 References: <20170224221953.5502-1-andros@netapp.com>
 MIME-Version: 1.0
@@ -19,122 +19,219 @@ List-ID: <linux-nfs.vger.kernel.org>
 
 From: Andy Adamson <andros@netapp.com>
 
-The new GSS Version 3 reply  verifier is taken over the same data as
-the call verifier, caveat REPLY direction
-
-Verifier Data
-
-   xid          tk_rqstp->rq_xid
-   direction    REPLY (always a 1) RPC_REPLY
-   rpcvers      RPC_VERSION
-   prog         clnt->cl_prog
-   vers         clnt->cl_vers
-   proc         tk_msg.rpc_proc->p_proc
-   credential
-         flavor       RPC_AUTH_GSS
-         length       cred_len is in gss_marshal (new gv_crlen)
-         gss version  ctx->gc_v
-         gss proc     ctx->gv_proc
-         gss seq      tk_rqstp->rq_seqno
-         gss svc      gss_cred->gc_service
-         gss ctx len  ctx->gc_wire_ctx
-         gss ctx data ctx->gc_wire_ctx
-
 Signed-off-by: Andy Adamson <andros@netapp.com>
 ---
- net/sunrpc/auth_gss/auth_gss.c | 59 ++++++++++++++++++++++++++++++++++++++++--
- 1 file changed, 57 insertions(+), 2 deletions(-)
+ net/sunrpc/auth_gss/auth_gss.c | 140 ++++++++++++++++++++++++++++++++++++++++-
+ 1 file changed, 138 insertions(+), 2 deletions(-)
 
 diff --git a/net/sunrpc/auth_gss/auth_gss.c b/net/sunrpc/auth_gss/auth_gss.c
-index 216a78e..499cf99 100644
+index 6ffb16d..98971cf 100644
 --- a/net/sunrpc/auth_gss/auth_gss.c
 +++ b/net/sunrpc/auth_gss/auth_gss.c
-@@ -1624,6 +1624,53 @@ gss_refresh_null(struct rpc_task *task)
- 	return 0;
+@@ -52,9 +52,12 @@
+ #include <linux/sunrpc/gss_api.h>
+ #include <linux/uaccess.h>
+ #include <linux/hashtable.h>
++#include <linux/security.h>
+ 
+ #include "../netns.h"
+ 
++static int gss3_create_label(struct rpc_cred *cred, int gss_vers);
++
+ static const struct rpc_authops authgss_ops;
+ 
+ static const struct rpc_credops gss_credops;
+@@ -128,6 +131,20 @@ gss_put_ctx(struct gss_cl_ctx *ctx)
+ 		gss_free_ctx(ctx);
+ }
+ 
++/* gss3_label_enabled:
++ * Called to determine if Full Mode Mandatory Access Control (MAC)
++ * over a GSS connection is desired.
++ *
++ * Note:
++ * Currently Full Mode MAC is assuemed if SeLinux is enabled and
++ * RPCSEC_GSS version 3 is in use.
++ */
++static inline bool
++gss3_label_assertion_is_enabled(u32 rpcsec_version)
++{
++	return (rpcsec_version == RPC_GSS3_VERSION && selinux_is_enabled());
++}
++
+ /* gss_cred_set_ctx:
+  * called by gss_upcall_callback and gss_create_upcall in order
+  * to set the gss context. The actual exchange of an old context
+@@ -145,6 +162,7 @@ gss_cred_set_ctx(struct rpc_cred *cred, struct gss_cl_ctx *ctx)
+ 	set_bit(RPCAUTH_CRED_UPTODATE, &cred->cr_flags);
+ 	smp_mb__before_atomic();
+ 	clear_bit(RPCAUTH_CRED_NEW, &cred->cr_flags);
++	gss3_create_label(cred, ctx->gc_v);
+ }
+ 
+ static const void *
+@@ -1602,6 +1620,75 @@ static int gss_cred_is_negative_entry(struct rpc_cred *cred)
+ #define GSS3_createres_maxsz   (1 /* cr_hlen */ + \
+ 				XDR_QUADLEN(1024) /* cr_handle*/ + \
+ 				GSS3_createargs_maxsz)
++#define GSS3_labelargs_maxsz	(1 /* la_lfs */ + \
++				 1 /* la_pi */ + \
++				 1 /* la_label.len */ + \
++				 XDR_QUADLEN(1024) /* la_label.data */)
++#define GSS3_labelres_maxsz	GSS3_labelargs_maxsz
++
++static void
++gss3_enc_label(struct rpc_rqst *req, struct xdr_stream *xdr,
++	       const struct gss3_create_args *g3ca)
++{
++	struct gss3_label *gl;
++	__be32 *p;
++
++	gl = &g3ca->ca_assertions[0].u.au_label;
++
++	dprintk("RPC: %5u encoding GSSv3 label %s:%d\n", req->rq_task->tk_pid,
++		(char *)gl->la_label.data, gl->la_label.len);
++
++	p = xdr_reserve_space(xdr, GSS3_labelargs_maxsz << 2);
++	*p++ = cpu_to_be32(0); /* la_lfs */
++	*p++ = cpu_to_be32(0); /* la_pi */
++	p = xdr_encode_netobj(p, &gl->la_label);
++}
++
++static int
++gss3_dec_label(struct rpc_rqst *req, struct xdr_stream *xdr,
++	       struct gss3_create_res *g3cr)
++{
++	struct gss3_label *gl;
++	struct gss3_assertion_u *g3a;
++	__be32 *p;
++
++	/* Used to store assertion in parent gss_cl_ctx */
++	g3a = kzalloc(sizeof(*g3a), GFP_KERNEL);
++	if (!g3a)
++		goto out_err;
++
++	g3a->au_type = GSS3_LABEL;
++	gl = &g3a->u.au_label;
++
++	p = xdr_inline_decode(xdr, 12);
++	if (unlikely(!p))
++		goto out_overflow;
++
++	gl->la_lfs = be32_to_cpup(p++);
++	gl->la_pi = be32_to_cpup(p++);
++	gl->la_label.len = be32_to_cpup(p++);
++
++	p = xdr_inline_decode(xdr, gl->la_label.len);
++	if (unlikely(!p))
++		goto out_overflow;
++
++	gl->la_label.data = kmemdup(p, gl->la_label.len, GFP_KERNEL);
++	if (!gl->la_label.data)
++		goto out_free_assert;
++
++	g3cr->cr_assertions = g3a;
++
++	return 0;
++
++out_free_assert:
++	kfree(g3a);
++out_err:
++	return -EIO;
++out_overflow:
++	pr_warn("RPC    %s End of receive buffer. Remaining len: %tu words.\n",
++		__func__, xdr->end - xdr->p);
++	goto out_free_assert;
++}
+ 
+ static void
+ gss3_enc_create(struct rpc_rqst *req, struct xdr_stream *xdr,
+@@ -1618,6 +1705,8 @@ gss3_enc_create(struct rpc_rqst *req, struct xdr_stream *xdr,
+ 	*p++ = type;
+ 	switch (type) {
+ 	case GSS3_LABEL:
++		gss3_enc_label(req, xdr, g3ca);
++		break;
+ 	case GSS3_PRIVS:
+ 	default:
+ 		/* drop through to return */
+@@ -1673,6 +1762,9 @@ gss3_dec_create(struct rpc_rqst *req, struct xdr_stream *xdr,
+ 	type = be32_to_cpup(p++);
+ 	switch (type) {
+ 	case GSS3_LABEL:
++		if (gss3_dec_label(req, xdr, g3cr) != 0)
++			goto out_free_handle;
++		break;
+ 	case GSS3_PRIVS:
+ 	default:
+ 		pr_warn("RPC    Unsupported gss3 create assertion %d\n", type);
+@@ -1692,13 +1784,16 @@ gss3_dec_create(struct rpc_rqst *req, struct xdr_stream *xdr,
+ 
+ #define RPC_PROC_NULL 0
+ 
++#define GSS3_create_args_max	(GSS3_createargs_maxsz + GSS3_labelargs_maxsz)
++#define GSS3_create_res_max	(GSS3_createres_maxsz + GSS3_labelres_maxsz)
++
+ struct rpc_procinfo gss3_label_assertion[] = {
+ 	[RPC_GSS_PROC_CREATE] = {
+ 		.p_proc		= RPC_PROC_NULL,
+ 		.p_encode	= (kxdreproc_t)gss3_enc_create,
+ 		.p_decode	= (kxdrdproc_t)gss3_dec_create,
+-		.p_arglen	= GSS3_createargs_maxsz,
+-		.p_replen	= GSS3_createres_maxsz,
++		.p_arglen	= GSS3_create_args_max,
++		.p_replen	= GSS3_create_res_max,
+ 		.p_statidx	= RPC_GSS_PROC_CREATE,
+ 		.p_timer	= 0,
+ 		.p_name		= "GSS_PROC_CREATE",
+@@ -1773,6 +1868,47 @@ gss3_proc_create(struct rpc_cred *cred, struct gss3_assertion_u *asserts,
+ 	return ret;
  }
  
 +/**
-+ * gss3_reply_verifier: The new gssv3 verifier uses same data as call
-+ * caveat REPLY direction - see rpc_encode_header
++ * GSS3 Label Assertion
++ *
++ * Support one label assertion
++ *
++ * XXX Return not checked. Should we fail nfs requests if
++ * a label fails to be created? I think the server enforcing
++ * Full Mode MAC will reject an NFS request that does not use
++ * a GSS3 (child) context with the correct label.
 + */
-+static  void *
-+gss3_reply_verifier(struct rpc_cred *cred, struct gss_cl_ctx *ctx,
-+		    struct rpc_task *task, __be32 *seq, struct kvec *iov)
++static int
++gss3_create_label(struct rpc_cred *cred, int gss_vers)
 +{
-+	struct gss_cred *g_cred = container_of(cred, struct gss_cred, gc_base);
-+	void	*gss3_buf = NULL;
-+	__be32 *crlen, *ptr = NULL;
-+	int len;
++	struct gss3_assertion_u *asserts;
++	struct gss3_label *gl;
++	int ret;
 +
-+	/* freed in gss_validate */
-+	len = (13 * 4) + ctx->gc_wire_ctx.len;
-+	gss3_buf = kmalloc(len, GFP_NOFS);
-+	if (!gss3_buf) {
-+		gss3_buf = ERR_PTR(-EIO);
-+		goto out;
-+	}
-+	ptr = (__be32 *)gss3_buf;
++	if (!gss3_label_assertion_is_enabled(gss_vers))
++		return -EINVAL;
 +
-+	*ptr++ = htonl(task->tk_rqstp->rq_xid);
-+	*ptr++ = htonl(RPC_REPLY);
-+	*ptr++ = htonl(RPC_VERSION);
-+	*ptr++ = htonl(task->tk_client->cl_prog);
-+	*ptr++ = htonl(task->tk_client->cl_vers);
-+	*ptr++ = htonl(task->tk_msg.rpc_proc->p_proc);
-+	*ptr++ = htonl(RPC_AUTH_GSS);
++	asserts = kzalloc(sizeof(*asserts), GFP_NOFS);
++	if (!asserts)
++		return -ENOMEM;
 +
-+	/* credential */
-+	crlen = ptr++;
-+	*ptr++ = htonl(ctx->gc_v);
-+	*ptr++ = htonl(ctx->gc_proc);
-+	*ptr++ = *seq;
-+	*ptr++ = htonl(g_cred->gc_service);
-+	ptr = xdr_encode_netobj(ptr, &ctx->gc_wire_ctx);
++	/* NOTE: not setting la_lfs, la_pi. Do we even need them? */
++	asserts->au_type = GSS3_LABEL;
++	gl = &asserts->u.au_label;
 +
-+	/* backfill cred length */
-+	*crlen = htonl((ptr - (crlen + 1)) << 2);
++	ret = -EINVAL;
++	ret = security_current_sid_to_context((char **)&gl->la_label.data,
++					      &gl->la_label.len);
++	if (ret)
++		goto out_free_asserts;
 +
-+	iov->iov_base = gss3_buf;
-+	iov->iov_len = (ptr - (__be32 *)gss3_buf) << 2;
-+out:
-+	return gss3_buf;
++	return gss3_proc_create(cred, asserts, 1);
++
++out_free_asserts:
++	kfree(asserts);
++	return ret;
 +}
 +
- static __be32 *
- gss_validate(struct rpc_task *task, __be32 *p)
- {
-@@ -1633,6 +1680,7 @@ gss_validate(struct rpc_task *task, __be32 *p)
- 	struct kvec	iov;
- 	struct xdr_buf	verf_buf;
- 	struct xdr_netobj mic;
-+	void	*g3_buf = NULL;
- 	u32		flav,len;
- 	u32		maj_stat;
- 	__be32		*ret = ERR_PTR(-EIO);
-@@ -1648,14 +1696,21 @@ gss_validate(struct rpc_task *task, __be32 *p)
- 	if (!seq)
- 		goto out_bad;
- 	*seq = htonl(task->tk_rqstp->rq_seqno);
--	iov.iov_base = seq;
--	iov.iov_len = 4;
-+	if (ctx->gc_v == RPC_GSS_VERSION) {
-+		iov.iov_base = seq;
-+		iov.iov_len = 4;
-+	} else if (ctx->gc_v == RPC_GSS3_VERSION) {
-+		g3_buf = gss3_reply_verifier(cred, ctx, task, seq, &iov);
-+		if (IS_ERR(g3_buf))
-+			goto out_bad;
-+	}
- 	xdr_buf_from_iov(&iov, &verf_buf);
- 	mic.data = (u8 *)p;
- 	mic.len = len;
- 
- 	ret = ERR_PTR(-EACCES);
- 	maj_stat = gss_verify_mic(ctx->gc_gss_ctx, &verf_buf, &mic);
-+	kfree(g3_buf);
- 	if (maj_stat == GSS_S_CONTEXT_EXPIRED)
- 		clear_bit(RPCAUTH_CRED_UPTODATE, &cred->cr_flags);
- 	if (maj_stat) {
+ /*
+ * Refresh credentials. XXX - finish
+ */
 -- 
 2.9.3
 
