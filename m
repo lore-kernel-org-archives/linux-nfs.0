@@ -1,85 +1,62 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:56986 "EHLO mx2.suse.de"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751246AbdBXC2I (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 23 Feb 2017 21:28:08 -0500
-From: NeilBrown <neilb@suse.com>
-To: Trond Myklebust <trondmy@primarydata.com>,
-        "steved\@redhat.com" <steved@redhat.com>,
-        Trond Myklebust <trondmy@primarydata.com>
-Date: Fri, 24 Feb 2017 13:27:57 +1100
-Cc: "bfields\@fieldses.org" <bfields@fieldses.org>,
-        "linux-nfs\@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 2/2] nfsd: Change the default to enable all minor versions unless told otherwise
-In-Reply-To: <1487900531.114433.1.camel@primarydata.com>
-References: <20170224003344.113724-1-trond.myklebust@primarydata.com> <20170224003344.113724-2-trond.myklebust@primarydata.com> <20170224003344.113724-3-trond.myklebust@primarydata.com> <87ino0qtf4.fsf@notabene.neil.brown.name> <1487900531.114433.1.camel@primarydata.com>
-Message-ID: <87fuj4qq4y.fsf@notabene.neil.brown.name>
+Received: from p3plsmtpa11-03.prod.phx3.secureserver.net ([68.178.252.104]:49202
+        "EHLO p3plsmtpa11-03.prod.phx3.secureserver.net" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1751218AbdBXPIp (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 24 Feb 2017 10:08:45 -0500
+Subject: Re: [PATCH 1/4] sunrpc: flag transports as using IETF approved
+ congestion control protocols
+To: Jason Gunthorpe <jgunthorpe@obsidianresearch.com>
+References: <20170223170337.10686-1-jlayton@redhat.com>
+ <20170223170337.10686-2-jlayton@redhat.com>
+ <2152dfdf-f847-2511-1600-6499b6ea9708@talpey.com>
+ <1487880034.3448.8.camel@redhat.com>
+ <65056db6-f30a-c44d-b01c-b549887c4895@talpey.com>
+ <20170223201109.GC11882@fieldses.org>
+ <20170223202609.GC26301@obsidianresearch.com>
+ <18ef37c3-95db-9a2c-dbcb-f579672065d6@talpey.com>
+ <20170223205502.GA29673@obsidianresearch.com>
+Cc: "J. Bruce Fields" <bfields@fieldses.org>,
+        Jeff Layton <jlayton@redhat.com>, trond.myklebust@primarydata.com,
+        schumaker.anna@gmail.com, linux-nfs@vger.kernel.org,
+        Chuck Lever <chuck.lever@oracle.com>, linux-rdma@vger.kernel.org
+From: Tom Talpey <tom@talpey.com>
+Message-ID: <4eb1da3d-2690-7647-2d85-cc574bc1d564@talpey.com>
+Date: Fri, 24 Feb 2017 10:08:12 -0500
 MIME-Version: 1.0
-Content-Type: multipart/signed; boundary="=-=-=";
-        micalg=pgp-sha256; protocol="application/pgp-signature"
+In-Reply-To: <20170223205502.GA29673@obsidianresearch.com>
+Content-Type: text/plain; charset=windows-1252; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---=-=-=
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: quoted-printable
-
-On Fri, Feb 24 2017, Trond Myklebust wrote:
-
-> Hi Neil,
+On 2/23/2017 3:55 PM, Jason Gunthorpe wrote:
+> On Thu, Feb 23, 2017 at 03:33:53PM -0500, Tom Talpey wrote:
 >
-> On Fri, 2017-02-24 at 12:17 +1100, NeilBrown wrote:
->> On Thu, Feb 23 2017, Trond Myklebust wrote:
->>=20
->> > Instead of letting the kernel decide, default to enabling all
->> > versions,
->> > and let the user be more specifc in /etc/nfs.conf or on the command
->> > line.
->>=20
->> What is your rationale for this?
->> I think there is value in allowing the kernel to support a version
->> while
->> disabling it by default.=C2=A0=C2=A0This allows it to be used for
->> experimentation,
->> without much risk of it being used in production until it is deemed
->> to
->> be really ready.
+>> The key words are "IETF-approved". Mitigation and Interaction are
+>> operational decisions, not protocol design.
 >
-> I think we can still do that by having the kernel simply not report
-> that version. You'll note that -V4.x and -N4.x are allowed whether or
-> not the kernel is reporting a version 'x' in /proc/fs/nfsd/versions.
+> We are talking about this bit from RFC 3530 ?
 >
-> IOW: if you want to make the version not appear by default because it
-> is unstable, then you probably don't want it to appear when the user
-> does '+V4' either so you might as well hide it in
-> /proc/fs/nfsd/versions too.
+>    Where an NFS version 4 implementation supports operation over the IP
+>    network protocol, the supported transports between NFS and IP MUST be
+>    among the IETF-approved congestion control transport protocols, which
+>    include TCP and SCTP.
+>
+> This gives most of RDMA an out as it is not over the IP protocol. The
+> only obvious troubled one is RoCEv2..
 
-That seems reasonable - possibly even better than the current approach,
-though it is hard to be sure without actually trying it out for a while.
-I haven't poured over the patches enough for a reviewed-by, but
-  Acked-by: NeilBrown <neilb@suse.com>
+RFC7530 has updated this text somewhat, but it's similar, yes.
 
-thanks!
+https://tools.ietf.org/html/rfc7530#section-3.1
 
-NeilBrown
+The specification language specifically calls out IP-based transports,
+which is why I mentioned that RoCEv1, being non-IP-based and not even
+truly routable, could obtain a bye. But the NFS layer IMO should really
+not be digging down to this level. I think it would be much better if
+each transport could expose a relevant attribute, which NFS could
+optionally inspect.
 
---=-=-=
-Content-Type: application/pgp-signature; name="signature.asc"
+As you mention, RoCEv2 is a bit of a pickle. It's UDP/IP-based, and it
+does have end-to-end congestion control, but technically speaking it
+is not "IETF approved". I'm not sure what call to make there.
 
------BEGIN PGP SIGNATURE-----
-
-iQIzBAEBCAAdFiEEG8Yp69OQ2HB7X0l6Oeye3VZigbkFAlivmi0ACgkQOeye3VZi
-gblYlhAAsIbQ0E74UAQPdb03mDHOKnl6bhEo1+5Z6sLA6wdbBqLCRmvanJnF+bQE
-JDwkxjr8riUV6qhbHR0HoRMI51Te6Kbl7bDa9FYLCdFsoKafJJ014aiMdx5kux/9
-FNLL6cX3psrduurjqyi8xSlytUMiZLABppz/UuLPZOhiEbQ4xBnkYB5k5WF9qBIP
-tztv0Q5quUJF2kCrbvU1pNJCa1yArJNVmUgDwM8BdH88nsWtY4kIhvcS8zfqMXGj
-nmXR700bRwuEunG9DblImKc4j9dMqeOsanXatBc9H0NKVr7o79kVq64k7nMyToL0
-VIewpHCjZT/VAasZEGy75DDEacJyzO4sJep8m0is7TvHDa/h50cTZEwjclyrXTrw
-G2840hZX30OqlBvED/JNqzNZNxPH0F26CtaStlrefsQEngO/lDwdUFczVj0NSpYw
-VyDCvJar7LOJZ3KnnuXQf/GkuZjM2gXvlPeblVTybkqy+prMAn1O5aL5slNoMByO
-aT1SOZJcAmo9DcJqZJUN3jctg5e6iy/zRwkmKSxGgUyzBGmnWKfu5oeG73PSjmk8
-Tf2LKhoOuT2bjZirWtrmyu2amyAsatqBmZ2WOpPL70eRAEaIDd9+8CMG+0wFYgs1
-6thQOvJH4wiZQ47D5/TGkXQ/jFMHbbtYIe0F/3+HNh05phOU8co=
-=7lRy
------END PGP SIGNATURE-----
---=-=-=--
+Tom.
