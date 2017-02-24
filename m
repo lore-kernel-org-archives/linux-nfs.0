@@ -1,123 +1,74 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qt0-f178.google.com ([209.85.216.178]:33890 "EHLO
-        mail-qt0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1750995AbdBXTCz (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 24 Feb 2017 14:02:55 -0500
-Received: by mail-qt0-f178.google.com with SMTP id n21so24280444qta.1
-        for <linux-nfs@vger.kernel.org>; Fri, 24 Feb 2017 11:02:55 -0800 (PST)
-Message-ID: <1487962413.3314.6.camel@redhat.com>
-Subject: Re: [PATCH v2 0/4] nfs/nfsd/sunrpc: enforce NFSv4 transport
- requirements
-From: Jeff Layton <jlayton@redhat.com>
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        Anna Schumaker <schumaker.anna@gmail.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Tom Talpey <tom@talpey.com>, jgunthorpe@obsidianresearch.com
-Date: Fri, 24 Feb 2017 13:53:33 -0500
-In-Reply-To: <E56294C8-2F67-4279-A266-3C1E3B18F80C@oracle.com>
-References: <20170223170337.10686-1-jlayton@redhat.com>
-         <20170224182525.10390-1-jlayton@redhat.com>
-         <E56294C8-2F67-4279-A266-3C1E3B18F80C@oracle.com>
-Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
+Received: from fieldses.org ([173.255.197.46]:42070 "EHLO fieldses.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1750995AbdBXTOn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 24 Feb 2017 14:14:43 -0500
+Date: Fri, 24 Feb 2017 14:14:35 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Kinglong Mee <kinglongmee@gmail.com>
+Cc: houlinfei <hou.linfei@h3c.com>, linux-nfs@vger.kernel.org,
+        NeilBrown <neilb@suse.com>, Steve Dickson <SteveD@redhat.com>
+Subject: Re: some problems about permission of subdirectory
+Message-ID: <20170224191435.GA26378@fieldses.org>
+References: <65bb8731.b190.15a5fdf1b2a.Coremail.hou.linfei@h3c.com>
+ <29ccb0b1-97fd-1b0b-12c4-3bde03dcdad9@gmail.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <29ccb0b1-97fd-1b0b-12c4-3bde03dcdad9@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, 2017-02-24 at 10:38 -0800, Chuck Lever wrote:
-> > On Feb 24, 2017, at 10:25 AM, Jeff Layton <jlayton@redhat.com> wrote:
+On Tue, Feb 21, 2017 at 09:50:01PM +0800, Kinglong Mee wrote:
+> On 2/21/2017 16:52, houlinfei wrote:
 > > 
-> > v2: comment clarifications, and commit log cleanup. No functional changes.
-> > 
-> > RFC5661 says:
-> > 
-> >   NFSv4.1 works over Remote Direct Memory Access (RDMA) and non-RDMA-
-> >   based transports with the following attributes:
-> > 
-> > 
-> >   o  The transport supports reliable delivery of data, which NFSv4.1
-> >      requires but neither NFSv4.1 nor RPC has facilities for ensuring
-> >      [34].
-> > 
-> >   o  The transport delivers data in the order it was sent.  Ordered
-> >      delivery simplifies detection of transmit errors, and simplifies
-> >      the sending of arbitrary sized requests and responses via the
-> >      record marking protocol [3].
-> > 
-> > ...and then some hand-wavy stuff about congestion control. RFC7530
-> > doesn't mention needing reliable and ordered delivery, but it does need
-> > congestion control.
-> > 
-> > In practical terms, that means we should be excluding NFSv4 from UDP
-> > transports. The NFS server has never enforced this requirement,
-> > however, so a user could issue NFSv4 calls against the server via UDP.
+> > hi everyone:
+> > I met a problem about subdirectory permission when client mount this subdirectory using nfs4. For example:
+> > the contents of the /etc/exports file is
+> > /root/hh *(ro,sync,insecure,no_subtree_check)
+> > /root/hh/hh1 *(rw,sync,insecure,no_subtree_check)
+> > and the two directory permission is 777. And the parent directory's export permission is read-only, the subdirectory's export permission is read-write.
+> > Then client mount /root/hh/hh1 on /mnt/yy using nfs4. But the /mnt/yy directory only can read.If client mount /root/hh/hh1 on /mnt/yy using nfs3, the /mnt/yy can write.
 > 
-> RPC-over-RDMA Version One requires the use of RDMA Reliable
-> Connections, which is a layer above the link layer that
-> provides reliable, in-order delivery using connection
-> semantics. This meets all stated transport requirements in
-> RFC 5661.
+> nfs3 gets the filehandle of /root/hh/hh1 from rpc.mountd before really mounting, 
+> so that, nfs3 do the later process with the filehandle of /root/hh/hh1,
+> with the second exports entry.
+>  
+> But, nfs4 get the filehandle by LOOKUP through nfsd step by step, 
+> at first, LOOKUP "/" as the pseudo filesystem with an pseudo exports entry,
+> second, LOOKUP "/root/" also use the pseudo export entry, 
+> next, LOOKUP "/root/hh/" will get a new export entry
+> for "/root/" use a pseudo export entry, but at last LOOKUP "/root/hh/hh1",
+> nfsd uses the export entry for "/root/hh/" that isn't a pseudo entry entry.
 > 
-> The language of RFC 5661 says that UDP by itself must not be
-> used for NFSv4. IMO the use of Reliable Connections with
-> RPC-over-RDMA makes this a non-issue for NFSv4, even for RoCE
-> v2.
+> So that, nfsv3 client can write the directory, but nfsv4 client can't.
 > 
-> rfc5667bis-06 was submitted this morning to address this.
+> > Who know how to solve this problem about nfs4? Thanks very much~
 > 
+> Without change any codes of rpc.mountd and nfsd, there is a hacker method for it.
+> # chmod -x /root/hh/hh1
+> # chmod +t /root/hh/hh1
+> # setfattr -n "trusted.junction.nfs" -v "anything" /root/hh/hh1
+> 
+> Umount the nfs and remount as nfsv4.
+> 
+> Cc Bruce, Neil, Steve,
+> 
+> Is it needed adding an xattr as "junction.nfs" for fixing this problem?
 
-Thanks, I may plagiarize you and update the comment in rdma_create_xprt
-if that's ok:
+Maybe.  Or another trick you can use right now is to create a mountpoint
+there by mounting that directory on top of itself:
 
-+       /*
-+        * RPC-over-RDMA Version One requires the use of RDMA Reliable
-+        * Connections, which is a layer above the link layer that provides
-+        * reliable, in-order delivery using connection semantics.
-+        */
+	mount --bind /root/hh/hh1 /root/hh/hh1
 
-I won't bother to re-post just for that though.
+However, I strongly discourage this kind of setup.
 
-> > This patchset adds a small bit of infrastructure to the sunrpc layer to
-> > enforce this requirement, and has the nfs and nfsd layers set the
-> > appropriate flags for it on their server-side transports. It also has
-> > the rpcbind client skip registering the protocol version on a UDP port
-> > when that flag is set.
-> > 
-> > Lightly tested by hand, but it's fairly straightforward.
-> > 
-> > Jeff Layton (4):
-> >  sunrpc: turn bitfield flags in svc_version into bools
-> >  sunrpc: flag transports as having both reliable and ordered delivery,
-> >    and congestion control
-> >  nfs/nfsd/sunrpc: enforce transport requirements for NFSv4
-> >  sunrpc: don't register UDP port with rpcbind when version needs
-> >    congestion control
-> > 
-> > fs/nfs/callback_xdr.c                    |  6 ++++--
-> > fs/nfsd/nfs2acl.c                        |  1 -
-> > fs/nfsd/nfs3acl.c                        |  1 -
-> > fs/nfsd/nfs4proc.c                       | 13 +++++++------
-> > include/linux/sunrpc/svc.h               | 12 ++++++++----
-> > include/linux/sunrpc/svc_xprt.h          |  1 +
-> > net/sunrpc/svc.c                         | 23 ++++++++++++++++++++++-
-> > net/sunrpc/svcsock.c                     |  1 +
-> > net/sunrpc/xprtrdma/svc_rdma_transport.c |  8 ++++++++
-> > 9 files changed, 51 insertions(+), 15 deletions(-)
-> > 
-> > -- 
-> > 2.9.3
-> > 
-> > --
-> > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> > the body of a message to majordomo@vger.kernel.org
-> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
-> --
-> Chuck Lever
-> 
-> 
-> 
+The problem is that it's very easy for an attacker to fake up a
+filehandle that points to a file under /root/hh while looking like it
+points to a file under /root/hh/hh1, and therefore get rw access to
+something outside /root/hh/hh1.  Turning on "subtree_check" will fix
+that problem, but can cause other problems.
 
--- 
-Jeff Layton <jlayton@redhat.com>
+It's much better, whenever possible, to use entirely different
+filesystems whenever you need to grant different access.
+
+--b.
