@@ -1,70 +1,85 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from us-smtp-delivery-194.mimecast.com ([63.128.21.194]:38921 "EHLO
-        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1751547AbdBXBm1 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 23 Feb 2017 20:42:27 -0500
-From: Trond Myklebust <trondmy@primarydata.com>
-To: "steved@redhat.com" <steved@redhat.com>,
-        Trond Myklebust <trondmy@primarydata.com>,
-        "neilb@suse.com" <neilb@suse.com>
-CC: "bfields@fieldses.org" <bfields@fieldses.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 2/2] nfsd: Change the default to enable all minor versions
- unless told otherwise
-Date: Fri, 24 Feb 2017 01:42:14 +0000
-Message-ID: <1487900531.114433.1.camel@primarydata.com>
-References: <20170224003344.113724-1-trond.myklebust@primarydata.com>
-         <20170224003344.113724-2-trond.myklebust@primarydata.com>
-         <20170224003344.113724-3-trond.myklebust@primarydata.com>
-         <87ino0qtf4.fsf@notabene.neil.brown.name>
-In-Reply-To: <87ino0qtf4.fsf@notabene.neil.brown.name>
+Received: from mx2.suse.de ([195.135.220.15]:56986 "EHLO mx2.suse.de"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1751246AbdBXC2I (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 23 Feb 2017 21:28:08 -0500
+From: NeilBrown <neilb@suse.com>
+To: Trond Myklebust <trondmy@primarydata.com>,
+        "steved\@redhat.com" <steved@redhat.com>,
+        Trond Myklebust <trondmy@primarydata.com>
+Date: Fri, 24 Feb 2017 13:27:57 +1100
+Cc: "bfields\@fieldses.org" <bfields@fieldses.org>,
+        "linux-nfs\@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 2/2] nfsd: Change the default to enable all minor versions unless told otherwise
+In-Reply-To: <1487900531.114433.1.camel@primarydata.com>
+References: <20170224003344.113724-1-trond.myklebust@primarydata.com> <20170224003344.113724-2-trond.myklebust@primarydata.com> <20170224003344.113724-3-trond.myklebust@primarydata.com> <87ino0qtf4.fsf@notabene.neil.brown.name> <1487900531.114433.1.camel@primarydata.com>
+Message-ID: <87fuj4qq4y.fsf@notabene.neil.brown.name>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+Content-Type: multipart/signed; boundary="=-=-=";
+        micalg=pgp-sha256; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-SGkgTmVpbCwNCg0KT24gRnJpLCAyMDE3LTAyLTI0IGF0IDEyOjE3ICsxMTAwLCBOZWlsQnJvd24g
-d3JvdGU6DQo+IE9uIFRodSwgRmViIDIzIDIwMTcsIFRyb25kIE15a2xlYnVzdCB3cm90ZToNCj4g
-DQo+ID4gSW5zdGVhZCBvZiBsZXR0aW5nIHRoZSBrZXJuZWwgZGVjaWRlLCBkZWZhdWx0IHRvIGVu
-YWJsaW5nIGFsbA0KPiA+IHZlcnNpb25zLA0KPiA+IGFuZCBsZXQgdGhlIHVzZXIgYmUgbW9yZSBz
-cGVjaWZjIGluIC9ldGMvbmZzLmNvbmYgb3Igb24gdGhlIGNvbW1hbmQNCj4gPiBsaW5lLg0KPiAN
-Cj4gV2hhdCBpcyB5b3VyIHJhdGlvbmFsZSBmb3IgdGhpcz8NCj4gSSB0aGluayB0aGVyZSBpcyB2
-YWx1ZSBpbiBhbGxvd2luZyB0aGUga2VybmVsIHRvIHN1cHBvcnQgYSB2ZXJzaW9uDQo+IHdoaWxl
-DQo+IGRpc2FibGluZyBpdCBieSBkZWZhdWx0LsKgwqBUaGlzIGFsbG93cyBpdCB0byBiZSB1c2Vk
-IGZvcg0KPiBleHBlcmltZW50YXRpb24sDQo+IHdpdGhvdXQgbXVjaCByaXNrIG9mIGl0IGJlaW5n
-IHVzZWQgaW4gcHJvZHVjdGlvbiB1bnRpbCBpdCBpcyBkZWVtZWQNCj4gdG8NCj4gYmUgcmVhbGx5
-IHJlYWR5Lg0KDQpJIHRoaW5rIHdlIGNhbiBzdGlsbCBkbyB0aGF0IGJ5IGhhdmluZyB0aGUga2Vy
-bmVsIHNpbXBseSBub3QgcmVwb3J0DQp0aGF0IHZlcnNpb24uIFlvdSdsbCBub3RlIHRoYXQgLVY0
-LnggYW5kIC1ONC54IGFyZSBhbGxvd2VkIHdoZXRoZXIgb3INCm5vdCB0aGUga2VybmVsIGlzIHJl
-cG9ydGluZyBhIHZlcnNpb24gJ3gnIGluIC9wcm9jL2ZzL25mc2QvdmVyc2lvbnMuDQoNCklPVzog
-aWYgeW91IHdhbnQgdG8gbWFrZSB0aGUgdmVyc2lvbiBub3QgYXBwZWFyIGJ5IGRlZmF1bHQgYmVj
-YXVzZSBpdA0KaXMgdW5zdGFibGUsIHRoZW4geW91IHByb2JhYmx5IGRvbid0IHdhbnQgaXQgdG8g
-YXBwZWFyIHdoZW4gdGhlIHVzZXINCmRvZXMgJytWNCcgZWl0aGVyIHNvIHlvdSBtaWdodCBhcyB3
-ZWxsIGhpZGUgaXQgaW4NCi9wcm9jL2ZzL25mc2QvdmVyc2lvbnMgdG9vLg0KDQpGb3IgdGhlIHJl
-Y29yZCwgdGhpcyBwYXRjaCBpcyBub3Qgb25lIHRoYXQgSSdtIHRvbyBhdHRhY2hlZCB0bywgc28g
-aXQNCmNhbiBiZSBkcm9wcGVkIGlmIGRlZW1lZCB0b28gY29udHJvdmVyc2lhbC4NCg0KPiBJIGxp
-a2UgdGhlIHJlc3Qgb2YgdGhlIHBhdGNoIHNldCwgYW5kIHdpdGhkcmF3IG15IGNvbW1lbnRzIGFi
-b3V0IHRoZQ0KPiBlYXJsaWVyIHBhdGNoIHNldCB3aGljaCB3ZXJlIGR1ZSB0byBhIGhhc3R5IG1p
-c3VuZGVyc3RhbmRpbmcuDQo+IA0KDQpUaGFua3MhDQoNCj4gPiANCj4gPiBTaWduZWQtb2ZmLWJ5
-OiBUcm9uZCBNeWtsZWJ1c3QgPHRyb25kLm15a2xlYnVzdEBwcmltYXJ5ZGF0YS5jb20+DQo+ID4g
-LS0tDQo+ID4gwqB1dGlscy9uZnNkL25mc2QuYyB8IDExICsrKysrLS0tLS0tDQo+ID4gwqAxIGZp
-bGUgY2hhbmdlZCwgNSBpbnNlcnRpb25zKCspLCA2IGRlbGV0aW9ucygtKQ0KPiA+IA0KPiA+IGRp
-ZmYgLS1naXQgYS91dGlscy9uZnNkL25mc2QuYyBiL3V0aWxzL25mc2QvbmZzZC5jDQo+ID4gaW5k
-ZXggMTcwODUyMWFiMjg2Li45NzM1ZTY1NDY2ZmEgMTAwNjQ0DQo+ID4gLS0tIGEvdXRpbHMvbmZz
-ZC9uZnNkLmMNCj4gPiArKysgYi91dGlscy9uZnNkL25mc2QuYw0KPiA+IEBAIC0xMDcsMTMgKzEw
-NywxMiBAQCBtYWluKGludCBhcmdjLCBjaGFyICoqYXJndikNCj4gPiDCoAl9DQo+ID4gwqANCj4g
-PiDCoAluZnNzdmNfZ2V0X21pbm9ybWFzaygmbWlub3JtYXNrKTsNCj4gPiAtCS8qIFdlIGFzc3Vt
-ZSB0aGUga2VybmVsIHdpbGwgZGVmYXVsdCBhbGwgbWlub3IgdmVyc2lvbnMgdG8NCj4gPiAnb24n
-LA0KPiA+IC0JwqAqIGFuZCBhbGxvdyB0aGUgY29uZmlnIGZpbGUgdG8gZGlzYWJsZSBzb21lLg0K
-PiA+ICsJLyogV2UgZGVmYXVsdCBhbGwgbWlub3IgdmVyc2lvbnMgdG8gJ29uJywgYW5kIGFsbG93
-IHRoZQ0KPiA+IGNvbmZpZw0KPiA+ICsJwqAqIGZpbGUgdG8gZGlzYWJsZSBzb21lLg0KPiA+IMKg
-CcKgKi8NCj4gPiAtCWlmIChORlNDVExfVkVSSVNTRVQodmVyc2JpdHMsIDQpKSB7DQo+ID4gLQkJ
-TkZTQ1RMX01JTk9SU0VUKG1pbm9ydmVyc3NldCwgMCk7DQo+ID4gLQkJTkZTQ1RMX01JTk9SU0VU
-KG1pbm9ydmVycywgMCk7DQo+ID4gLQl9DQo+ID4gKwlpZiAoTkZTQ1RMX1ZFUklTU0VUKHZlcnNi
-aXRzLCA0KSkNCj4gPiArCQltaW5vcnZlcnNzZXQgPSBtaW5vcnZlcnMgPSBtaW5vcm1hc2s7DQo+
-ID4gKw0KPiA+IMKgCWZvciAoaSA9IDE7IGkgPD0gTkZTNF9NQVhNSU5PUjsgaSsrKSB7DQo+ID4g
-wqAJCWNoYXIgdGFnWzIwXTsNCj4gPiDCoAkJc3ByaW50Zih0YWcsICJ2ZXJzNC4lZCIsIGkpOw0K
-PiA+IC0twqANCj4gPiAyLjkuMw0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGll
-bnQgbWFpbnRhaW5lciwgUHJpbWFyeURhdGENCnRyb25kLm15a2xlYnVzdEBwcmltYXJ5ZGF0YS5j
-b20NCg==
+--=-=-=
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: quoted-printable
 
+On Fri, Feb 24 2017, Trond Myklebust wrote:
+
+> Hi Neil,
+>
+> On Fri, 2017-02-24 at 12:17 +1100, NeilBrown wrote:
+>> On Thu, Feb 23 2017, Trond Myklebust wrote:
+>>=20
+>> > Instead of letting the kernel decide, default to enabling all
+>> > versions,
+>> > and let the user be more specifc in /etc/nfs.conf or on the command
+>> > line.
+>>=20
+>> What is your rationale for this?
+>> I think there is value in allowing the kernel to support a version
+>> while
+>> disabling it by default.=C2=A0=C2=A0This allows it to be used for
+>> experimentation,
+>> without much risk of it being used in production until it is deemed
+>> to
+>> be really ready.
+>
+> I think we can still do that by having the kernel simply not report
+> that version. You'll note that -V4.x and -N4.x are allowed whether or
+> not the kernel is reporting a version 'x' in /proc/fs/nfsd/versions.
+>
+> IOW: if you want to make the version not appear by default because it
+> is unstable, then you probably don't want it to appear when the user
+> does '+V4' either so you might as well hide it in
+> /proc/fs/nfsd/versions too.
+
+That seems reasonable - possibly even better than the current approach,
+though it is hard to be sure without actually trying it out for a while.
+I haven't poured over the patches enough for a reviewed-by, but
+  Acked-by: NeilBrown <neilb@suse.com>
+
+thanks!
+
+NeilBrown
+
+--=-=-=
+Content-Type: application/pgp-signature; name="signature.asc"
+
+-----BEGIN PGP SIGNATURE-----
+
+iQIzBAEBCAAdFiEEG8Yp69OQ2HB7X0l6Oeye3VZigbkFAlivmi0ACgkQOeye3VZi
+gblYlhAAsIbQ0E74UAQPdb03mDHOKnl6bhEo1+5Z6sLA6wdbBqLCRmvanJnF+bQE
+JDwkxjr8riUV6qhbHR0HoRMI51Te6Kbl7bDa9FYLCdFsoKafJJ014aiMdx5kux/9
+FNLL6cX3psrduurjqyi8xSlytUMiZLABppz/UuLPZOhiEbQ4xBnkYB5k5WF9qBIP
+tztv0Q5quUJF2kCrbvU1pNJCa1yArJNVmUgDwM8BdH88nsWtY4kIhvcS8zfqMXGj
+nmXR700bRwuEunG9DblImKc4j9dMqeOsanXatBc9H0NKVr7o79kVq64k7nMyToL0
+VIewpHCjZT/VAasZEGy75DDEacJyzO4sJep8m0is7TvHDa/h50cTZEwjclyrXTrw
+G2840hZX30OqlBvED/JNqzNZNxPH0F26CtaStlrefsQEngO/lDwdUFczVj0NSpYw
+VyDCvJar7LOJZ3KnnuXQf/GkuZjM2gXvlPeblVTybkqy+prMAn1O5aL5slNoMByO
+aT1SOZJcAmo9DcJqZJUN3jctg5e6iy/zRwkmKSxGgUyzBGmnWKfu5oeG73PSjmk8
+Tf2LKhoOuT2bjZirWtrmyu2amyAsatqBmZ2WOpPL70eRAEaIDd9+8CMG+0wFYgs1
+6thQOvJH4wiZQ47D5/TGkXQ/jFMHbbtYIe0F/3+HNh05phOU8co=
+=7lRy
+-----END PGP SIGNATURE-----
+--=-=-=--
