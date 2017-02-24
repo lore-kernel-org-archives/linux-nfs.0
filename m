@@ -1,47 +1,122 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from quartz.orcorp.ca ([184.70.90.242]:49985 "EHLO quartz.orcorp.ca"
+Received: from mx1.redhat.com ([209.132.183.28]:59666 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751246AbdBXSXh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 24 Feb 2017 13:23:37 -0500
-Date: Fri, 24 Feb 2017 11:03:23 -0700
-From: Jason Gunthorpe <jgunthorpe@obsidianresearch.com>
-To: Jeff Layton <jlayton@redhat.com>
-Cc: Tom Talpey <tom@talpey.com>, "J. Bruce Fields" <bfields@fieldses.org>,
-        trond.myklebust@primarydata.com, schumaker.anna@gmail.com,
-        linux-nfs@vger.kernel.org, Chuck Lever <chuck.lever@oracle.com>,
-        linux-rdma@vger.kernel.org
-Subject: Re: [PATCH 1/4] sunrpc: flag transports as using IETF approved
- congestion control protocols
-Message-ID: <20170224180323.GA22491@obsidianresearch.com>
-References: <20170223170337.10686-2-jlayton@redhat.com>
- <2152dfdf-f847-2511-1600-6499b6ea9708@talpey.com>
- <1487880034.3448.8.camel@redhat.com>
- <65056db6-f30a-c44d-b01c-b549887c4895@talpey.com>
- <20170223201109.GC11882@fieldses.org>
- <20170223202609.GC26301@obsidianresearch.com>
- <18ef37c3-95db-9a2c-dbcb-f579672065d6@talpey.com>
- <20170223205502.GA29673@obsidianresearch.com>
- <4eb1da3d-2690-7647-2d85-cc574bc1d564@talpey.com>
- <1487956644.3314.4.camel@redhat.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1487956644.3314.4.camel@redhat.com>
+        id S1751294AbdBXSZ3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 24 Feb 2017 13:25:29 -0500
+From: Jeff Layton <jlayton@redhat.com>
+To: bfields@fieldses.org, trond.myklebust@primarydata.com
+Cc: schumaker.anna@gmail.com, linux-nfs@vger.kernel.org,
+        chuck.lever@oracle.com, tom@talpey.com,
+        jgunthorpe@obsidianresearch.com
+Subject: [PATCH v2 1/4] sunrpc: turn bitfield flags in svc_version into bools
+Date: Fri, 24 Feb 2017 13:25:22 -0500
+Message-Id: <20170224182525.10390-2-jlayton@redhat.com>
+In-Reply-To: <20170224182525.10390-1-jlayton@redhat.com>
+References: <20170223170337.10686-1-jlayton@redhat.com>
+ <20170224182525.10390-1-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-> I'd rather rely on those attributes instead of any sort of IETF
-> approval anyway. Do all RDMA transports (RoCEv2, in particular) have
-> those characteristics?
+It's just simpler to read this way, IMO. Also, no need to explicitly
+set vs_hidden to false in the nfsacl ones.
 
-The NFS-RDMA driver only works with RDMA RC transports which are
-defined to provide all those characteristics.
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ fs/nfs/callback_xdr.c      | 4 ++--
+ fs/nfsd/nfs2acl.c          | 1 -
+ fs/nfsd/nfs3acl.c          | 1 -
+ fs/nfsd/nfs4proc.c         | 2 +-
+ include/linux/sunrpc/svc.h | 9 +++++----
+ net/sunrpc/svc.c           | 2 +-
+ 6 files changed, 9 insertions(+), 10 deletions(-)
 
-> In any case, for now I think we should just give all RDMA transports a
-> pass, and clean that up later. I'm mostly interested in excluding UDP
-> over IP for now -- being more strict with RDMA can come later.
+diff --git a/fs/nfs/callback_xdr.c b/fs/nfs/callback_xdr.c
+index eb094c6011d8..e9836f611d9c 100644
+--- a/fs/nfs/callback_xdr.c
++++ b/fs/nfs/callback_xdr.c
+@@ -1083,7 +1083,7 @@ struct svc_version nfs4_callback_version1 = {
+ 	.vs_proc = nfs4_callback_procedures1,
+ 	.vs_xdrsize = NFS4_CALLBACK_XDRSIZE,
+ 	.vs_dispatch = NULL,
+-	.vs_hidden = 1,
++	.vs_hidden = true,
+ };
+ 
+ struct svc_version nfs4_callback_version4 = {
+@@ -1092,5 +1092,5 @@ struct svc_version nfs4_callback_version4 = {
+ 	.vs_proc = nfs4_callback_procedures1,
+ 	.vs_xdrsize = NFS4_CALLBACK_XDRSIZE,
+ 	.vs_dispatch = NULL,
+-	.vs_hidden = 1,
++	.vs_hidden = true,
+ };
+diff --git a/fs/nfsd/nfs2acl.c b/fs/nfsd/nfs2acl.c
+index d08cd88155c7..838f90f3f890 100644
+--- a/fs/nfsd/nfs2acl.c
++++ b/fs/nfsd/nfs2acl.c
+@@ -376,5 +376,4 @@ struct svc_version	nfsd_acl_version2 = {
+ 		.vs_proc	= nfsd_acl_procedures2,
+ 		.vs_dispatch	= nfsd_dispatch,
+ 		.vs_xdrsize	= NFS3_SVC_XDRSIZE,
+-		.vs_hidden	= 0,
+ };
+diff --git a/fs/nfsd/nfs3acl.c b/fs/nfsd/nfs3acl.c
+index 0c890347cde3..dcb5f79076c0 100644
+--- a/fs/nfsd/nfs3acl.c
++++ b/fs/nfsd/nfs3acl.c
+@@ -266,6 +266,5 @@ struct svc_version	nfsd_acl_version3 = {
+ 		.vs_proc	= nfsd_acl_procedures3,
+ 		.vs_dispatch	= nfsd_dispatch,
+ 		.vs_xdrsize	= NFS3_SVC_XDRSIZE,
+-		.vs_hidden	= 0,
+ };
+ 
+diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+index 74a6e573e061..2b73b37c2b36 100644
+--- a/fs/nfsd/nfs4proc.c
++++ b/fs/nfsd/nfs4proc.c
+@@ -2481,7 +2481,7 @@ struct svc_version	nfsd_version4 = {
+ 		.vs_proc	= nfsd_procedures4,
+ 		.vs_dispatch	= nfsd_dispatch,
+ 		.vs_xdrsize	= NFS4_SVC_XDRSIZE,
+-		.vs_rpcb_optnl	= 1,
++		.vs_rpcb_optnl	= true,
+ };
+ 
+ /*
+diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
+index 7321ae933867..96467c95f02e 100644
+--- a/include/linux/sunrpc/svc.h
++++ b/include/linux/sunrpc/svc.h
+@@ -400,10 +400,11 @@ struct svc_version {
+ 	struct svc_procedure *	vs_proc;	/* per-procedure info */
+ 	u32			vs_xdrsize;	/* xdrsize needed for this version */
+ 
+-	unsigned int		vs_hidden : 1,	/* Don't register with portmapper.
+-						 * Only used for nfsacl so far. */
+-				vs_rpcb_optnl:1;/* Don't care the result of register.
+-						 * Only used for nfsv4. */
++	/* Don't register with rpcbind */
++	bool			vs_hidden;
++
++	/* Don't care if the rpcbind registration fails */
++	bool			vs_rpcb_optnl;
+ 
+ 	/* Override dispatch function (e.g. when caching replies).
+ 	 * A return value of 0 means drop the request. 
+diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
+index 75f290bddca1..85bcdea67a3f 100644
+--- a/net/sunrpc/svc.c
++++ b/net/sunrpc/svc.c
+@@ -385,7 +385,7 @@ static int svc_uses_rpcbind(struct svc_serv *serv)
+ 		for (i = 0; i < progp->pg_nvers; i++) {
+ 			if (progp->pg_vers[i] == NULL)
+ 				continue;
+-			if (progp->pg_vers[i]->vs_hidden == 0)
++			if (!progp->pg_vers[i]->vs_hidden)
+ 				return 1;
+ 		}
+ 	}
+-- 
+2.9.3
 
-Makes sense to me. At the end of the day I think everything supported
-by NFS-RDMA should be permitted to use NFSv4, and we should ignore
-sketchy spec language that suggests otherwise.
-
-Jason
