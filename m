@@ -1,69 +1,82 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:42228 "EHLO fieldses.org"
+Received: from fieldses.org ([173.255.197.46]:42246 "EHLO fieldses.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751163AbdBXVX1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 24 Feb 2017 16:23:27 -0500
-Date: Fri, 24 Feb 2017 16:22:01 -0500
+        id S1751277AbdBXV0j (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 24 Feb 2017 16:26:39 -0500
+Date: Fri, 24 Feb 2017 16:25:16 -0500
 From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Tom Talpey <tom@talpey.com>
-Cc: Jeff Layton <jlayton@redhat.com>, trond.myklebust@primarydata.com,
-        schumaker.anna@gmail.com, linux-nfs@vger.kernel.org,
-        chuck.lever@oracle.com, jgunthorpe@obsidianresearch.com
+To: Jeff Layton <jlayton@redhat.com>
+Cc: trond.myklebust@primarydata.com, schumaker.anna@gmail.com,
+        linux-nfs@vger.kernel.org, chuck.lever@oracle.com, tom@talpey.com,
+        jgunthorpe@obsidianresearch.com
 Subject: Re: [PATCH v2 0/4] nfs/nfsd/sunrpc: enforce NFSv4 transport
  requirements
-Message-ID: <20170224212201.GF26378@fieldses.org>
+Message-ID: <20170224212516.GH26378@fieldses.org>
 References: <20170223170337.10686-1-jlayton@redhat.com>
  <20170224182525.10390-1-jlayton@redhat.com>
- <d57e143b-4fbc-a61c-d102-596f2f9166f9@talpey.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <d57e143b-4fbc-a61c-d102-596f2f9166f9@talpey.com>
+In-Reply-To: <20170224182525.10390-1-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Feb 24, 2017 at 01:53:21PM -0500, Tom Talpey wrote:
-> On 2/24/2017 1:25 PM, Jeff Layton wrote:
-> >v2: comment clarifications, and commit log cleanup. No functional changes.
-> >
-> >RFC5661 says:
-> >
-> >   NFSv4.1 works over Remote Direct Memory Access (RDMA) and non-RDMA-
-> >   based transports with the following attributes:
-> >
-> >
-> >   o  The transport supports reliable delivery of data, which NFSv4.1
-> >      requires but neither NFSv4.1 nor RPC has facilities for ensuring
-> >      [34].
-> >
-> >   o  The transport delivers data in the order it was sent.  Ordered
-> >      delivery simplifies detection of transmit errors, and simplifies
-> >      the sending of arbitrary sized requests and responses via the
-> >      record marking protocol [3].
-> >
-> >...and then some hand-wavy stuff about congestion control. RFC7530
-> >doesn't mention needing reliable and ordered delivery, but it does need
-> >congestion control.
-> 
-> Snipping some stuff for a pedantic response :-)
-> 
-> There are several good reasons why RFC7530 does not specify reliable and
-> ordered.
-
-OK, I'm dropping "reliable and ordered" from the comments and applying.
+The one other minor thing we could do is skip adding the UDP listener
+entirely in the v4-only case.  I think that's a job for rpc.nfsd?
 
 --b.
 
-> The most obvious being, it doesn't need them. Because it has
-> a session, it can handle out-of-order messages at its layer. This is in
-> fact critical to supporting trunking and multipathing. And with the
-> session comes the ability to detect replays, so reliability can be
-> obviated there too.
+On Fri, Feb 24, 2017 at 01:25:21PM -0500, Jeff Layton wrote:
+> v2: comment clarifications, and commit log cleanup. No functional changes.
 > 
-> In fact, apart from congestion control, with the proper session support,
-> NFSv4.1 can run very nicely over an unreliable unordered transport.
-> Now, NFS4.0, and NFSv3 and NFSv2 before it, are another matter entirely.
+> RFC5661 says:
 > 
-> Note that RDMA transports provide remote direct placement only in RC
-> (Reliable Connected) endpoints, which is why rpcrdma uses that mode.
+>    NFSv4.1 works over Remote Direct Memory Access (RDMA) and non-RDMA-
+>    based transports with the following attributes:
 > 
-> Tom.
+> 
+>    o  The transport supports reliable delivery of data, which NFSv4.1
+>       requires but neither NFSv4.1 nor RPC has facilities for ensuring
+>       [34].
+> 
+>    o  The transport delivers data in the order it was sent.  Ordered
+>       delivery simplifies detection of transmit errors, and simplifies
+>       the sending of arbitrary sized requests and responses via the
+>       record marking protocol [3].
+> 
+> ...and then some hand-wavy stuff about congestion control. RFC7530
+> doesn't mention needing reliable and ordered delivery, but it does need
+> congestion control.
+> 
+> In practical terms, that means we should be excluding NFSv4 from UDP
+> transports. The NFS server has never enforced this requirement,
+> however, so a user could issue NFSv4 calls against the server via UDP.
+> 
+> This patchset adds a small bit of infrastructure to the sunrpc layer to
+> enforce this requirement, and has the nfs and nfsd layers set the
+> appropriate flags for it on their server-side transports. It also has
+> the rpcbind client skip registering the protocol version on a UDP port
+> when that flag is set.
+> 
+> Lightly tested by hand, but it's fairly straightforward.
+> 
+> Jeff Layton (4):
+>   sunrpc: turn bitfield flags in svc_version into bools
+>   sunrpc: flag transports as having both reliable and ordered delivery,
+>     and congestion control
+>   nfs/nfsd/sunrpc: enforce transport requirements for NFSv4
+>   sunrpc: don't register UDP port with rpcbind when version needs
+>     congestion control
+> 
+>  fs/nfs/callback_xdr.c                    |  6 ++++--
+>  fs/nfsd/nfs2acl.c                        |  1 -
+>  fs/nfsd/nfs3acl.c                        |  1 -
+>  fs/nfsd/nfs4proc.c                       | 13 +++++++------
+>  include/linux/sunrpc/svc.h               | 12 ++++++++----
+>  include/linux/sunrpc/svc_xprt.h          |  1 +
+>  net/sunrpc/svc.c                         | 23 ++++++++++++++++++++++-
+>  net/sunrpc/svcsock.c                     |  1 +
+>  net/sunrpc/xprtrdma/svc_rdma_transport.c |  8 ++++++++
+>  9 files changed, 51 insertions(+), 15 deletions(-)
+> 
+> -- 
+> 2.9.3
