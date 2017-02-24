@@ -1,15 +1,15 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx141.netapp.com ([216.240.21.12]:18075 "EHLO mx141.netapp.com"
+Received: from mx143.netapp.com ([216.240.21.24]:5726 "EHLO mx143.netapp.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751386AbdBXWUN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 24 Feb 2017 17:20:13 -0500
+        id S1751444AbdBXWUK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 24 Feb 2017 17:20:10 -0500
 From: <andros@netapp.com>
 To: <bfields@fieldses.org>
 CC: <trond.myklebust@primarydata.com>, <schumaker.anna@gmail.com>,
         <linux-nfs@vger.kernel.org>, Andy Adamson <andros@netapp.com>
-Subject: [PATCH Version 5 13/17] SUNRPC SVCAUTH_GSS allow RPCSEC_GSS version 1 or 3
-Date: Fri, 24 Feb 2017 17:19:49 -0500
-Message-ID: <20170224221953.5502-14-andros@netapp.com>
+Subject: [PATCH Version 5 09/17] SUNRPC AUTH_GSS store GSS3 assertions in parent gss_cl_ctx
+Date: Fri, 24 Feb 2017 17:19:45 -0500
+Message-ID: <20170224221953.5502-10-andros@netapp.com>
 In-Reply-To: <20170224221953.5502-1-andros@netapp.com>
 References: <20170224221953.5502-1-andros@netapp.com>
 MIME-Version: 1.0
@@ -19,99 +19,129 @@ List-ID: <linux-nfs.vger.kernel.org>
 
 From: Andy Adamson <andros@netapp.com>
 
-Store the version used in the context INIT phase with the context.
-Check the incoming rpcsec gss version against the stored context version.
-
 Signed-off-by: Andy Adamson <andros@netapp.com>
 ---
- include/linux/sunrpc/gss_api.h    |  1 +
- net/sunrpc/auth_gss/svcauth_gss.c | 20 ++++++++++++++------
- 2 files changed, 15 insertions(+), 6 deletions(-)
+ include/linux/sunrpc/auth_gss.h |  6 ++++++
+ include/linux/sunrpc/gss_api.h  | 10 ++++++++++
+ net/sunrpc/auth_gss/auth_gss.c  | 39 +++++++++++++++++++++++++++++++++++++++
+ 3 files changed, 55 insertions(+)
 
+diff --git a/include/linux/sunrpc/auth_gss.h b/include/linux/sunrpc/auth_gss.h
+index b2a5a61..7f7b378 100644
+--- a/include/linux/sunrpc/auth_gss.h
++++ b/include/linux/sunrpc/auth_gss.h
+@@ -63,6 +63,11 @@ struct rpc_gss_init_res {
+ 	struct xdr_netobj	gr_token;	/* token */
+ };
+ 
++struct gss3_assert_list {
++	struct list_head	assert_list;
++	spinlock_t		assert_lock;
++};
++
+ /* The gss_cl_ctx struct holds all the information the rpcsec_gss client
+  * code needs to know about a single security context.  In particular,
+  * gc_gss_ctx is the context handle that is used to do gss-api calls, while
+@@ -80,6 +85,7 @@ struct gss_cl_ctx {
+ 	struct xdr_netobj	gc_acceptor;
+ 	u32			gc_win;
+ 	unsigned long		gc_expiry;
++	struct gss3_assert_list	gc_alist;
+ 	struct rcu_head		gc_rcu;
+ };
+ 
 diff --git a/include/linux/sunrpc/gss_api.h b/include/linux/sunrpc/gss_api.h
-index c2c6354..c0e5058 100644
+index 68ec78c..c2c6354 100644
 --- a/include/linux/sunrpc/gss_api.h
 +++ b/include/linux/sunrpc/gss_api.h
-@@ -30,6 +30,7 @@ struct gss3_assert {
+@@ -17,6 +17,16 @@
+ #include <linux/sunrpc/msg_prot.h>
+ #include <linux/uio.h>
+ 
++/* one gss3 assertion plus associated child context handle
++ * XXX more than one assertion per child context?
++ */
++struct gss3_assert {
++	struct list_head	gss3_list;  /* per context list of assertions */
++	struct xdr_netobj	gss3_handle; /* child handle */
++	u32			gss3_num;  /* always one for now */
++	struct gss3_assertion_u	*gss3_assertion;
++};
++
  /* The mechanism-independent gss-api context: */
  struct gss_ctx {
  	struct gss_api_mech	*mech_type;
-+	u32			 gss_version;
- 	void			*internal_ctx_id;
- };
- 
-diff --git a/net/sunrpc/auth_gss/svcauth_gss.c b/net/sunrpc/auth_gss/svcauth_gss.c
-index aa7cb3b..f7aa8c4 100644
---- a/net/sunrpc/auth_gss/svcauth_gss.c
-+++ b/net/sunrpc/auth_gss/svcauth_gss.c
-@@ -976,8 +976,8 @@ svcauth_gss_set_client(struct svc_rqst *rqstp)
+diff --git a/net/sunrpc/auth_gss/auth_gss.c b/net/sunrpc/auth_gss/auth_gss.c
+index 98971cf..18b97a7 100644
+--- a/net/sunrpc/auth_gss/auth_gss.c
++++ b/net/sunrpc/auth_gss/auth_gss.c
+@@ -219,6 +219,8 @@ gss_alloc_context(void)
+ 		ctx->gc_seq = 1;	/* NetApp 6.4R1 doesn't accept seq. no. 0 */
+ 		spin_lock_init(&ctx->gc_seq_lock);
+ 		atomic_set(&ctx->count,1);
++		INIT_LIST_HEAD(&ctx->gc_alist.assert_list);
++		spin_lock_init(&ctx->gc_alist.assert_lock);
+ 	}
+ 	return ctx;
+ }
+@@ -1610,6 +1612,35 @@ static int gss_cred_is_negative_entry(struct rpc_cred *cred)
  }
  
- static inline int
--gss_write_init_verf(struct cache_detail *cd, struct svc_rqst *rqstp,
--		struct xdr_netobj *out_handle, int *major_status)
-+gss_write_init_verf(struct cache_detail *cd, struct svc_rqst *rqstp, u32 gssv,
-+		    struct xdr_netobj *out_handle, int *major_status)
- {
- 	struct rsc *rsci;
- 	int        rc;
-@@ -989,6 +989,8 @@ gss_write_init_verf(struct cache_detail *cd, struct svc_rqst *rqstp,
- 		*major_status = GSS_S_NO_CONTEXT;
- 		return gss_write_null_verf(rqstp);
+ /**
++ * The gss3_handle and gss3_assertions are allocated in gss3_dec_label
++ */
++static struct gss3_assert *
++gss3_alloc_init_assertion(struct gss3_create_res *cres)
++{
++	struct gss3_assert *ret;
++
++	ret = kzalloc(sizeof(*ret), GFP_NOFS);
++	if (!ret)
++		return ERR_PTR(-ENOMEM);
++
++	INIT_LIST_HEAD(&ret->gss3_list);
++	ret->gss3_handle.len = cres->cr_hlen;
++	ret->gss3_handle.data = cres->cr_handle;
++	ret->gss3_num = cres->cr_num;
++	ret->gss3_assertion = cres->cr_assertions;
++	return ret;
++}
++
++void
++gss3_insert_assertion(struct gss3_assert_list *alist, struct gss3_assert *g3a)
++{
++	spin_lock(&alist->assert_lock);
++	/* list_add_tail_rcu(new,head) inserts new before head */
++	list_add_tail_rcu(&g3a->gss3_list, &alist->assert_list);
++	spin_unlock(&alist->assert_lock);
++}
++
++/**
+  * GSS3_createargs_maxsz and GSS3_createres_maxsz
+  * include no rgss3_assertion_u payload.
+  */
+@@ -1820,6 +1851,7 @@ gss3_proc_create(struct rpc_cred *cred, struct gss3_assertion_u *asserts,
+ 		.cr_mp_auth = 0,
+ 	};
+ 	struct gss3_create_args *cargs = NULL;
++	struct gss3_assert *g3a = NULL;
+ 	int ret = -EINVAL;
+ 
+ 	if (!ctx || !asserts)
+@@ -1857,6 +1889,13 @@ gss3_proc_create(struct rpc_cred *cred, struct gss3_assertion_u *asserts,
  	}
-+	/* set the RPCSEC_GSS version in the context */
-+	rsci->mechctx->gss_version = gssv;
- 	rc = gss_write_verf(rqstp, rsci->mechctx, GSS_SEQ_WIN);
- 	cache_put(&rsci->h, cd);
- 	return rc;
-@@ -1130,7 +1132,7 @@ static int svcauth_gss_legacy_init(struct svc_rqst *rqstp,
+ 	rpc_put_task(task);
  
- 	ret = SVC_CLOSE;
- 	/* Got an answer to the upcall; use it: */
--	if (gss_write_init_verf(sn->rsc_cache, rqstp,
-+	if (gss_write_init_verf(sn->rsc_cache, rqstp, gc->gc_v,
- 				&rsip->out_handle, &rsip->major_status))
- 		goto out;
- 	if (gss_write_resv(resv, PAGE_SIZE,
-@@ -1259,7 +1261,7 @@ static int svcauth_gss_proxy_init(struct svc_rqst *rqstp,
- 	}
- 
- 	/* Got an answer to the upcall; use it: */
--	if (gss_write_init_verf(sn->rsc_cache, rqstp,
-+	if (gss_write_init_verf(sn->rsc_cache, rqstp, gc->gc_v,
- 				&cli_handle, &ud.major_status))
- 		goto out;
- 	if (gss_write_resv(resv, PAGE_SIZE,
-@@ -1435,14 +1437,15 @@ svcauth_gss_accept(struct svc_rqst *rqstp, __be32 *authp)
- 	rpcstart -= 7;
- 
- 	/* credential is:
--	 *   version(==1), proc(0,1,2,3), seq, service (1,2,3), handle
-+	 *   version(==1 or 3), proc(0,1,2,3), seq, service (1,2,3), handle
- 	 * at least 5 u32s, and is preceded by length, so that makes 6.
- 	 */
- 
- 	if (argv->iov_len < 5 * 4)
- 		goto auth_err;
- 	crlen = svc_getnl(argv);
--	if (svc_getnl(argv) != RPC_GSS_VERSION)
-+	gc->gc_v = svc_getnl(argv);
-+	if ((gc->gc_v != RPC_GSS_VERSION) && (gc->gc_v != RPC_GSS3_VERSION))
- 		goto auth_err;
- 	gc->gc_proc = svc_getnl(argv);
- 	gc->gc_seq = svc_getnl(argv);
-@@ -1470,6 +1473,11 @@ svcauth_gss_accept(struct svc_rqst *rqstp, __be32 *authp)
- 		rsci = gss_svc_searchbyctx(sn->rsc_cache, &gc->gc_ctx);
- 		if (!rsci)
- 			goto auth_err;
-+		if (rsci->mechctx->gss_version != gc->gc_v) {
-+			pr_warn("NFSD:  RPCSEC_GSS version mismatch (%u:%u)\n",
-+				rsci->mechctx->gss_version, gc->gc_v);
-+			goto auth_err;
-+		}
- 		switch (gss_verify_header(rqstp, rsci, rpcstart, gc, authp)) {
- 		case SVC_OK:
- 			break;
++	g3a = gss3_alloc_init_assertion(&cres);
++	if (IS_ERR(g3a)) {
++		ret = PTR_ERR(task);
++		goto out_free_assert;
++	}
++	gss3_insert_assertion(&ctx->gc_alist, g3a);
++
+ out_free_assert:
+ 	kfree(cargs->ca_assertions);
+ 	kfree(cargs);
 -- 
 2.9.3
 
