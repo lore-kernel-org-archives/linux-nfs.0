@@ -1,45 +1,69 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:42178 "EHLO fieldses.org"
+Received: from fieldses.org ([173.255.197.46]:42228 "EHLO fieldses.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751219AbdBXUq6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 24 Feb 2017 15:46:58 -0500
-Date: Fri, 24 Feb 2017 15:46:56 -0500
+        id S1751163AbdBXVX1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 24 Feb 2017 16:23:27 -0500
+Date: Fri, 24 Feb 2017 16:22:01 -0500
 From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Rasmus Villemoes <linux@rasmusvillemoes.dk>
-Cc: Jeff Layton <jlayton@poochiereds.net>, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-Subject: Re: [PATCH] fs: nfsd: remove superfluous KERN_INFO
-Message-ID: <20170224204656.GE26378@fieldses.org>
-References: <1487895356-24307-1-git-send-email-linux@rasmusvillemoes.dk>
+To: Tom Talpey <tom@talpey.com>
+Cc: Jeff Layton <jlayton@redhat.com>, trond.myklebust@primarydata.com,
+        schumaker.anna@gmail.com, linux-nfs@vger.kernel.org,
+        chuck.lever@oracle.com, jgunthorpe@obsidianresearch.com
+Subject: Re: [PATCH v2 0/4] nfs/nfsd/sunrpc: enforce NFSv4 transport
+ requirements
+Message-ID: <20170224212201.GF26378@fieldses.org>
+References: <20170223170337.10686-1-jlayton@redhat.com>
+ <20170224182525.10390-1-jlayton@redhat.com>
+ <d57e143b-4fbc-a61c-d102-596f2f9166f9@talpey.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1487895356-24307-1-git-send-email-linux@rasmusvillemoes.dk>
+In-Reply-To: <d57e143b-4fbc-a61c-d102-596f2f9166f9@talpey.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Thanks, applying.--b.
+On Fri, Feb 24, 2017 at 01:53:21PM -0500, Tom Talpey wrote:
+> On 2/24/2017 1:25 PM, Jeff Layton wrote:
+> >v2: comment clarifications, and commit log cleanup. No functional changes.
+> >
+> >RFC5661 says:
+> >
+> >   NFSv4.1 works over Remote Direct Memory Access (RDMA) and non-RDMA-
+> >   based transports with the following attributes:
+> >
+> >
+> >   o  The transport supports reliable delivery of data, which NFSv4.1
+> >      requires but neither NFSv4.1 nor RPC has facilities for ensuring
+> >      [34].
+> >
+> >   o  The transport delivers data in the order it was sent.  Ordered
+> >      delivery simplifies detection of transmit errors, and simplifies
+> >      the sending of arbitrary sized requests and responses via the
+> >      record marking protocol [3].
+> >
+> >...and then some hand-wavy stuff about congestion control. RFC7530
+> >doesn't mention needing reliable and ordered delivery, but it does need
+> >congestion control.
+> 
+> Snipping some stuff for a pedantic response :-)
+> 
+> There are several good reasons why RFC7530 does not specify reliable and
+> ordered.
 
-On Fri, Feb 24, 2017 at 01:15:55AM +0100, Rasmus Villemoes wrote:
-> dprintk already provides a KERN_* prefix; this KERN_INFO just shows up
-> as some odd characters in the output.
+OK, I'm dropping "reliable and ordered" from the comments and applying.
+
+--b.
+
+> The most obvious being, it doesn't need them. Because it has
+> a session, it can handle out-of-order messages at its layer. This is in
+> fact critical to supporting trunking and multipathing. And with the
+> session comes the ability to detect replays, so reliability can be
+> obviated there too.
 > 
-> Signed-off-by: Rasmus Villemoes <linux@rasmusvillemoes.dk>
-> ---
->  fs/nfsd/nfs4state.c | 2 +-
->  1 file changed, 1 insertion(+), 1 deletion(-)
+> In fact, apart from congestion control, with the proper session support,
+> NFSv4.1 can run very nicely over an unreliable unordered transport.
+> Now, NFS4.0, and NFSv3 and NFSv2 before it, are another matter entirely.
 > 
-> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-> index a0dee8ae9f97..df86e888f833 100644
-> --- a/fs/nfsd/nfs4state.c
-> +++ b/fs/nfsd/nfs4state.c
-> @@ -2281,7 +2281,7 @@ gen_callback(struct nfs4_client *clp, struct nfsd4_setclientid *se, struct svc_r
->  out_err:
->  	conn->cb_addr.ss_family = AF_UNSPEC;
->  	conn->cb_addrlen = 0;
-> -	dprintk(KERN_INFO "NFSD: this client (clientid %08x/%08x) "
-> +	dprintk("NFSD: this client (clientid %08x/%08x) "
->  		"will not receive delegations\n",
->  		clp->cl_clientid.cl_boot, clp->cl_clientid.cl_id);
->  
-> -- 
-> 2.1.4
+> Note that RDMA transports provide remote direct placement only in RC
+> (Reliable Connected) endpoints, which is why rpcrdma uses that mode.
+> 
+> Tom.
