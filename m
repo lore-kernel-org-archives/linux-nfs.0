@@ -1,93 +1,70 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:54676 "EHLO mx2.suse.de"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751759AbdBXBRZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 23 Feb 2017 20:17:25 -0500
-From: NeilBrown <neilb@suse.com>
-To: Trond Myklebust <trond.myklebust@primarydata.com>, steved@redhat.com
-Date: Fri, 24 Feb 2017 12:17:03 +1100
-Cc: linux-nfs@vger.kernel.org, bfields@fieldses.org
-Subject: Re: [PATCH 2/2] nfsd: Change the default to enable all minor versions unless told otherwise
-In-Reply-To: <20170224003344.113724-3-trond.myklebust@primarydata.com>
-References: <20170224003344.113724-1-trond.myklebust@primarydata.com> <20170224003344.113724-2-trond.myklebust@primarydata.com> <20170224003344.113724-3-trond.myklebust@primarydata.com>
-Message-ID: <87ino0qtf4.fsf@notabene.neil.brown.name>
+Received: from us-smtp-delivery-194.mimecast.com ([63.128.21.194]:38921 "EHLO
+        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1751547AbdBXBm1 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 23 Feb 2017 20:42:27 -0500
+From: Trond Myklebust <trondmy@primarydata.com>
+To: "steved@redhat.com" <steved@redhat.com>,
+        Trond Myklebust <trondmy@primarydata.com>,
+        "neilb@suse.com" <neilb@suse.com>
+CC: "bfields@fieldses.org" <bfields@fieldses.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 2/2] nfsd: Change the default to enable all minor versions
+ unless told otherwise
+Date: Fri, 24 Feb 2017 01:42:14 +0000
+Message-ID: <1487900531.114433.1.camel@primarydata.com>
+References: <20170224003344.113724-1-trond.myklebust@primarydata.com>
+         <20170224003344.113724-2-trond.myklebust@primarydata.com>
+         <20170224003344.113724-3-trond.myklebust@primarydata.com>
+         <87ino0qtf4.fsf@notabene.neil.brown.name>
+In-Reply-To: <87ino0qtf4.fsf@notabene.neil.brown.name>
 MIME-Version: 1.0
-Content-Type: multipart/signed; boundary="=-=-=";
-        micalg=pgp-sha256; protocol="application/pgp-signature"
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---=-=-=
-Content-Type: text/plain
-Content-Transfer-Encoding: quoted-printable
+SGkgTmVpbCwNCg0KT24gRnJpLCAyMDE3LTAyLTI0IGF0IDEyOjE3ICsxMTAwLCBOZWlsQnJvd24g
+d3JvdGU6DQo+IE9uIFRodSwgRmViIDIzIDIwMTcsIFRyb25kIE15a2xlYnVzdCB3cm90ZToNCj4g
+DQo+ID4gSW5zdGVhZCBvZiBsZXR0aW5nIHRoZSBrZXJuZWwgZGVjaWRlLCBkZWZhdWx0IHRvIGVu
+YWJsaW5nIGFsbA0KPiA+IHZlcnNpb25zLA0KPiA+IGFuZCBsZXQgdGhlIHVzZXIgYmUgbW9yZSBz
+cGVjaWZjIGluIC9ldGMvbmZzLmNvbmYgb3Igb24gdGhlIGNvbW1hbmQNCj4gPiBsaW5lLg0KPiAN
+Cj4gV2hhdCBpcyB5b3VyIHJhdGlvbmFsZSBmb3IgdGhpcz8NCj4gSSB0aGluayB0aGVyZSBpcyB2
+YWx1ZSBpbiBhbGxvd2luZyB0aGUga2VybmVsIHRvIHN1cHBvcnQgYSB2ZXJzaW9uDQo+IHdoaWxl
+DQo+IGRpc2FibGluZyBpdCBieSBkZWZhdWx0LsKgwqBUaGlzIGFsbG93cyBpdCB0byBiZSB1c2Vk
+IGZvcg0KPiBleHBlcmltZW50YXRpb24sDQo+IHdpdGhvdXQgbXVjaCByaXNrIG9mIGl0IGJlaW5n
+IHVzZWQgaW4gcHJvZHVjdGlvbiB1bnRpbCBpdCBpcyBkZWVtZWQNCj4gdG8NCj4gYmUgcmVhbGx5
+IHJlYWR5Lg0KDQpJIHRoaW5rIHdlIGNhbiBzdGlsbCBkbyB0aGF0IGJ5IGhhdmluZyB0aGUga2Vy
+bmVsIHNpbXBseSBub3QgcmVwb3J0DQp0aGF0IHZlcnNpb24uIFlvdSdsbCBub3RlIHRoYXQgLVY0
+LnggYW5kIC1ONC54IGFyZSBhbGxvd2VkIHdoZXRoZXIgb3INCm5vdCB0aGUga2VybmVsIGlzIHJl
+cG9ydGluZyBhIHZlcnNpb24gJ3gnIGluIC9wcm9jL2ZzL25mc2QvdmVyc2lvbnMuDQoNCklPVzog
+aWYgeW91IHdhbnQgdG8gbWFrZSB0aGUgdmVyc2lvbiBub3QgYXBwZWFyIGJ5IGRlZmF1bHQgYmVj
+YXVzZSBpdA0KaXMgdW5zdGFibGUsIHRoZW4geW91IHByb2JhYmx5IGRvbid0IHdhbnQgaXQgdG8g
+YXBwZWFyIHdoZW4gdGhlIHVzZXINCmRvZXMgJytWNCcgZWl0aGVyIHNvIHlvdSBtaWdodCBhcyB3
+ZWxsIGhpZGUgaXQgaW4NCi9wcm9jL2ZzL25mc2QvdmVyc2lvbnMgdG9vLg0KDQpGb3IgdGhlIHJl
+Y29yZCwgdGhpcyBwYXRjaCBpcyBub3Qgb25lIHRoYXQgSSdtIHRvbyBhdHRhY2hlZCB0bywgc28g
+aXQNCmNhbiBiZSBkcm9wcGVkIGlmIGRlZW1lZCB0b28gY29udHJvdmVyc2lhbC4NCg0KPiBJIGxp
+a2UgdGhlIHJlc3Qgb2YgdGhlIHBhdGNoIHNldCwgYW5kIHdpdGhkcmF3IG15IGNvbW1lbnRzIGFi
+b3V0IHRoZQ0KPiBlYXJsaWVyIHBhdGNoIHNldCB3aGljaCB3ZXJlIGR1ZSB0byBhIGhhc3R5IG1p
+c3VuZGVyc3RhbmRpbmcuDQo+IA0KDQpUaGFua3MhDQoNCj4gPiANCj4gPiBTaWduZWQtb2ZmLWJ5
+OiBUcm9uZCBNeWtsZWJ1c3QgPHRyb25kLm15a2xlYnVzdEBwcmltYXJ5ZGF0YS5jb20+DQo+ID4g
+LS0tDQo+ID4gwqB1dGlscy9uZnNkL25mc2QuYyB8IDExICsrKysrLS0tLS0tDQo+ID4gwqAxIGZp
+bGUgY2hhbmdlZCwgNSBpbnNlcnRpb25zKCspLCA2IGRlbGV0aW9ucygtKQ0KPiA+IA0KPiA+IGRp
+ZmYgLS1naXQgYS91dGlscy9uZnNkL25mc2QuYyBiL3V0aWxzL25mc2QvbmZzZC5jDQo+ID4gaW5k
+ZXggMTcwODUyMWFiMjg2Li45NzM1ZTY1NDY2ZmEgMTAwNjQ0DQo+ID4gLS0tIGEvdXRpbHMvbmZz
+ZC9uZnNkLmMNCj4gPiArKysgYi91dGlscy9uZnNkL25mc2QuYw0KPiA+IEBAIC0xMDcsMTMgKzEw
+NywxMiBAQCBtYWluKGludCBhcmdjLCBjaGFyICoqYXJndikNCj4gPiDCoAl9DQo+ID4gwqANCj4g
+PiDCoAluZnNzdmNfZ2V0X21pbm9ybWFzaygmbWlub3JtYXNrKTsNCj4gPiAtCS8qIFdlIGFzc3Vt
+ZSB0aGUga2VybmVsIHdpbGwgZGVmYXVsdCBhbGwgbWlub3IgdmVyc2lvbnMgdG8NCj4gPiAnb24n
+LA0KPiA+IC0JwqAqIGFuZCBhbGxvdyB0aGUgY29uZmlnIGZpbGUgdG8gZGlzYWJsZSBzb21lLg0K
+PiA+ICsJLyogV2UgZGVmYXVsdCBhbGwgbWlub3IgdmVyc2lvbnMgdG8gJ29uJywgYW5kIGFsbG93
+IHRoZQ0KPiA+IGNvbmZpZw0KPiA+ICsJwqAqIGZpbGUgdG8gZGlzYWJsZSBzb21lLg0KPiA+IMKg
+CcKgKi8NCj4gPiAtCWlmIChORlNDVExfVkVSSVNTRVQodmVyc2JpdHMsIDQpKSB7DQo+ID4gLQkJ
+TkZTQ1RMX01JTk9SU0VUKG1pbm9ydmVyc3NldCwgMCk7DQo+ID4gLQkJTkZTQ1RMX01JTk9SU0VU
+KG1pbm9ydmVycywgMCk7DQo+ID4gLQl9DQo+ID4gKwlpZiAoTkZTQ1RMX1ZFUklTU0VUKHZlcnNi
+aXRzLCA0KSkNCj4gPiArCQltaW5vcnZlcnNzZXQgPSBtaW5vcnZlcnMgPSBtaW5vcm1hc2s7DQo+
+ID4gKw0KPiA+IMKgCWZvciAoaSA9IDE7IGkgPD0gTkZTNF9NQVhNSU5PUjsgaSsrKSB7DQo+ID4g
+wqAJCWNoYXIgdGFnWzIwXTsNCj4gPiDCoAkJc3ByaW50Zih0YWcsICJ2ZXJzNC4lZCIsIGkpOw0K
+PiA+IC0twqANCj4gPiAyLjkuMw0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGll
+bnQgbWFpbnRhaW5lciwgUHJpbWFyeURhdGENCnRyb25kLm15a2xlYnVzdEBwcmltYXJ5ZGF0YS5j
+b20NCg==
 
-On Thu, Feb 23 2017, Trond Myklebust wrote:
-
-> Instead of letting the kernel decide, default to enabling all versions,
-> and let the user be more specifc in /etc/nfs.conf or on the command line.
-
-What is your rationale for this?
-I think there is value in allowing the kernel to support a version while
-disabling it by default.  This allows it to be used for experimentation,
-without much risk of it being used in production until it is deemed to
-be really ready.
-
-I like the rest of the patch set, and withdraw my comments about the
-earlier patch set which were due to a hasty misunderstanding.
-
-Thanks,
-NeilBrown
-
-
->
-> Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
-> ---
->  utils/nfsd/nfsd.c | 11 +++++------
->  1 file changed, 5 insertions(+), 6 deletions(-)
->
-> diff --git a/utils/nfsd/nfsd.c b/utils/nfsd/nfsd.c
-> index 1708521ab286..9735e65466fa 100644
-> --- a/utils/nfsd/nfsd.c
-> +++ b/utils/nfsd/nfsd.c
-> @@ -107,13 +107,12 @@ main(int argc, char **argv)
->  	}
->=20=20
->  	nfssvc_get_minormask(&minormask);
-> -	/* We assume the kernel will default all minor versions to 'on',
-> -	 * and allow the config file to disable some.
-> +	/* We default all minor versions to 'on', and allow the config
-> +	 * file to disable some.
->  	 */
-> -	if (NFSCTL_VERISSET(versbits, 4)) {
-> -		NFSCTL_MINORSET(minorversset, 0);
-> -		NFSCTL_MINORSET(minorvers, 0);
-> -	}
-> +	if (NFSCTL_VERISSET(versbits, 4))
-> +		minorversset =3D minorvers =3D minormask;
-> +
->  	for (i =3D 1; i <=3D NFS4_MAXMINOR; i++) {
->  		char tag[20];
->  		sprintf(tag, "vers4.%d", i);
-> --=20
-> 2.9.3
-
---=-=-=
-Content-Type: application/pgp-signature; name="signature.asc"
-
------BEGIN PGP SIGNATURE-----
-
-iQIzBAEBCAAdFiEEG8Yp69OQ2HB7X0l6Oeye3VZigbkFAliviY8ACgkQOeye3VZi
-gbmbug/9Haf5SvmVczap3IY83TvEO+40zAArT9Ft7r4t/d86syXK0BGG5HLmhrof
-4OqXjz560B0lzSWeAXUJRCMK9g8DCHBL71QA6KaV5oPyOjm87c3msq4e6wmpNpfv
-yW1lWvYDoboToIwfsX9Z5apkrgY+3toWhAXwIkPwdFMdQ+wbqB40t9LwfwpdOiWj
-f88ATY6dB+8JlUvVurP7rPtFY5eRSxQnh2f7tx2iRcnwnfL9YT2nbvzVnCODl71B
-BY9DwAylZtZWhe+Nfn/DdNA0scy8Ys2CfM9mTajueFQlQVRz6v6EFo0gsf537QuT
-sCVLImgq3d7Uwq5bNZpJn6s9GsYM9ZHjhFxn/Eex9fz+dr5jXVPWBk3OFYxmUrU0
-/Sy8W296J///0TaU6Bus+nZY0ZMbh72p1GdajbQ0P+I8P4T7NuSnBbpnoIl1IC+g
-+StMuQ7BvzZYIc1gyr4jop5CJN/13sbb+o7p1SSxuwYX3AbuPb/FOglNeGSh1Ttv
-nLFwtjcDVZfaNiDHYQwhhHcqb8DJXM8cBh9jEuywj0q9NJNkPxZlgsCEwQU5vxYT
-4MvxCwAoSA2t7cbCalu9Nu1576RDXP+l2u7d+fydFwgXsXgEA5yrcA3M4QkbpVd4
-In/9+5g+8NrvBTF+XqwNFiitkqgJ5cnzCt992Bijyu2EhJPh3bA=
-=nQaB
------END PGP SIGNATURE-----
---=-=-=--
