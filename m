@@ -1,86 +1,167 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f193.google.com ([209.85.223.193]:35394 "EHLO
-        mail-io0-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751306AbdBYLQz (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sat, 25 Feb 2017 06:16:55 -0500
-Received: by mail-io0-f193.google.com with SMTP id v13so1424439iov.2
-        for <linux-nfs@vger.kernel.org>; Sat, 25 Feb 2017 03:15:43 -0800 (PST)
-From: Kinglong Mee <kinglongmee@gmail.com>
-Subject: Re: some problems about permission of subdirectory
-To: houlinfei <hou.linfei@h3c.com>
-References: <65bb8731.b190.15a5fdf1b2a.Coremail.hou.linfei@h3c.com>
- <29ccb0b1-97fd-1b0b-12c4-3bde03dcdad9@gmail.com>
- <20170224191435.GA26378@fieldses.org>
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-        linux-nfs@vger.kernel.org, NeilBrown <neilb@suse.com>,
-        Steve Dickson <SteveD@redhat.com>,
-        Kinglong Mee <kinglongmee@gmail.com>
-Message-ID: <159b79d2-78f5-17e8-5287-069ed7943975@gmail.com>
-Date: Sat, 25 Feb 2017 18:45:02 +0800
-MIME-Version: 1.0
-In-Reply-To: <20170224191435.GA26378@fieldses.org>
-Content-Type: text/plain; charset=windows-1252
+Received: from mx1.redhat.com ([209.132.183.28]:53462 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1751284AbdBYNU2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Sat, 25 Feb 2017 08:20:28 -0500
+Received: from smtp.corp.redhat.com (int-mx16.intmail.prod.int.phx2.redhat.com [10.5.11.28])
+        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
+        (No client certificate requested)
+        by mx1.redhat.com (Postfix) with ESMTPS id 7149A7F36F
+        for <linux-nfs@vger.kernel.org>; Sat, 25 Feb 2017 13:13:13 +0000 (UTC)
+Received: from ceres.poochiereds.net (unknown [10.10.120.128])
+        by smtp.corp.redhat.com (Postfix) with ESMTP id F30AA2D653
+        for <linux-nfs@vger.kernel.org>; Sat, 25 Feb 2017 13:13:12 +0000 (UTC)
+From: Jeff Layton <jlayton@redhat.com>
+To: linux-nfs@vger.kernel.org
+Subject: [RFC nfs-utils PATCH] nfsd: don't enable a UDP socket by default
+Date: Sat, 25 Feb 2017 08:13:11 -0500
+Message-Id: <20170225131311.14101-1-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 2/25/2017 03:14, J. Bruce Fields wrote:
-> On Tue, Feb 21, 2017 at 09:50:01PM +0800, Kinglong Mee wrote:
->> On 2/21/2017 16:52, houlinfei wrote:
->>>
->>> hi everyone:
->>> I met a problem about subdirectory permission when client mount this subdirectory using nfs4. For example:
->>> the contents of the /etc/exports file is
->>> /root/hh *(ro,sync,insecure,no_subtree_check)
->>> /root/hh/hh1 *(rw,sync,insecure,no_subtree_check)
->>> and the two directory permission is 777. And the parent directory's export permission is read-only, the subdirectory's export permission is read-write.
->>> Then client mount /root/hh/hh1 on /mnt/yy using nfs4. But the /mnt/yy directory only can read.If client mount /root/hh/hh1 on /mnt/yy using nfs3, the /mnt/yy can write.
->>
->> nfs3 gets the filehandle of /root/hh/hh1 from rpc.mountd before really mounting, 
->> so that, nfs3 do the later process with the filehandle of /root/hh/hh1,
->> with the second exports entry.
->>  
->> But, nfs4 get the filehandle by LOOKUP through nfsd step by step, 
->> at first, LOOKUP "/" as the pseudo filesystem with an pseudo exports entry,
->> second, LOOKUP "/root/" also use the pseudo export entry, 
->> next, LOOKUP "/root/hh/" will get a new export entry
->> for "/root/" use a pseudo export entry, but at last LOOKUP "/root/hh/hh1",
->> nfsd uses the export entry for "/root/hh/" that isn't a pseudo entry entry.
->>
->> So that, nfsv3 client can write the directory, but nfsv4 client can't.
->>
->>> Who know how to solve this problem about nfs4? Thanks very much~
->>
->> Without change any codes of rpc.mountd and nfsd, there is a hacker method for it.
->> # chmod -x /root/hh/hh1
->> # chmod +t /root/hh/hh1
->> # setfattr -n "trusted.junction.nfs" -v "anything" /root/hh/hh1
->>
->> Umount the nfs and remount as nfsv4.
->>
->> Cc Bruce, Neil, Steve,
->>
->> Is it needed adding an xattr as "junction.nfs" for fixing this problem?
-> 
-> Maybe.  Or another trick you can use right now is to create a mountpoint
-> there by mounting that directory on top of itself:
-> 
-> 	mount --bind /root/hh/hh1 /root/hh/hh1
-> 
-> However, I strongly discourage this kind of setup.
-> 
-> The problem is that it's very easy for an attacker to fake up a
-> filehandle that points to a file under /root/hh while looking like it
-> points to a file under /root/hh/hh1, and therefore get rw access to
-> something outside /root/hh/hh1.  Turning on "subtree_check" will fix
-> that problem, but can cause other problems.
-> 
-> It's much better, whenever possible, to use entirely different
-> filesystems whenever you need to grant different access.
+Most major NFS clients have supported TCP for at least a decade now,
+and v4-only shops are becoming more prevalent. It seems reasonable that
+serving over UDP should be something that is "opt-in".
 
-Hi linfei,
+I've always hesitated to do this in the past, but now that we have
+nfs.conf, it seems like the time may be right to disable UDP in default
+configurations. In particular, it would be good to try this in the more
+bleeding edge distros (Fedora, Ubuntu, SuSE, etc...) and see how
+problematic it is.
 
-Can the two suggestions resolve your requirements?
-I don't think the hacker method that change the code is sensible.
+Change the default in rpc.nfsd to just open TCP ports by default. Add
+new -u and -t options that allow users to explicitly override what's
+in the config file, and update the usage message and manpage.
 
-thanks,
-Kinglong Mee
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ nfs.conf                  |  2 +-
+ support/include/nfs/nfs.h |  2 +-
+ utils/nfsd/nfsd.c         | 18 +++++++++++++-----
+ utils/nfsd/nfsd.man       | 14 ++++++++------
+ 4 files changed, 23 insertions(+), 13 deletions(-)
+
+diff --git a/nfs.conf b/nfs.conf
+index 81ece0602dba..5d5a23463cff 100644
+--- a/nfs.conf
++++ b/nfs.conf
+@@ -42,7 +42,7 @@
+ # port=0
+ # grace-time=90
+ # lease-time=90
+-# udp=y
++# udp=n
+ # tcp=y
+ # vers2=n
+ # vers3=y
+diff --git a/support/include/nfs/nfs.h b/support/include/nfs/nfs.h
+index 15ecc6bfc485..5b1ef0ce3883 100644
+--- a/support/include/nfs/nfs.h
++++ b/support/include/nfs/nfs.h
+@@ -27,6 +27,7 @@ struct nfs_fh_len {
+ 
+ #define NFSCTL_UDPBIT		      (1 << (17 - 1))
+ #define NFSCTL_TCPBIT		      (1 << (18 - 1))
++#define NFSCTL_PROTODEFAULT	      (NFSCTL_TCPBIT)
+ 
+ #define NFSCTL_VERUNSET(_cltbits, _v) ((_cltbits) &= ~(1 << ((_v) - 1))) 
+ #define NFSCTL_UDPUNSET(_cltbits)     ((_cltbits) &= ~NFSCTL_UDPBIT) 
+@@ -42,6 +43,5 @@ struct nfs_fh_len {
+ #define NFSCTL_TCPSET(_cltbits)       ((_cltbits) |= NFSCTL_TCPBIT)
+ 
+ #define NFSCTL_ANYPROTO(_cltbits)     ((_cltbits) & (NFSCTL_UDPBIT | NFSCTL_TCPBIT))
+-#define NFSCTL_ALLBITS (~0)
+ 
+ #endif /* _NFS_NFS_H */
+diff --git a/utils/nfsd/nfsd.c b/utils/nfsd/nfsd.c
+index 20f4b7952203..5d101f0e98c3 100644
+--- a/utils/nfsd/nfsd.c
++++ b/utils/nfsd/nfsd.c
+@@ -44,7 +44,9 @@ static struct option longopts[] =
+ 	{ "help", 0, 0, 'h' },
+ 	{ "no-nfs-version", 1, 0, 'N' },
+ 	{ "nfs-version", 1, 0, 'V' },
++	{ "tcp", 0, 0, 't' },
+ 	{ "no-tcp", 0, 0, 'T' },
++	{ "udp", 0, 0, 'u' },
+ 	{ "no-udp", 0, 0, 'U' },
+ 	{ "port", 1, 0, 'P' },
+ 	{ "port", 1, 0, 'p' },
+@@ -68,7 +70,7 @@ main(int argc, char **argv)
+ 	unsigned int minorvers = 0;
+ 	unsigned int minorversset = 0;
+ 	unsigned int versbits = NFSCTL_VERDEFAULT;
+-	unsigned int protobits = NFSCTL_ALLBITS;
++	unsigned int protobits = NFSCTL_PROTODEFAULT;
+ 	int grace = -1;
+ 	int lease = -1;
+ 
+@@ -138,7 +140,7 @@ main(int argc, char **argv)
+ 		}
+ 	}
+ 
+-	while ((c = getopt_long(argc, argv, "dH:hN:V:p:P:sTUrG:L:", longopts, NULL)) != EOF) {
++	while ((c = getopt_long(argc, argv, "dH:hN:V:p:P:stTitUrG:L:", longopts, NULL)) != EOF) {
+ 		switch(c) {
+ 		case 'd':
+ 			xlog_config(D_ALL, 1);
+@@ -222,9 +224,15 @@ main(int argc, char **argv)
+ 			xlog_syslog(1);
+ 			xlog_stderr(0);
+ 			break;
++		case 't':
++			NFSCTL_TCPSET(protobits);
++			break;
+ 		case 'T':
+ 			NFSCTL_TCPUNSET(protobits);
+ 			break;
++		case 'u':
++			NFSCTL_UDPSET(protobits);
++			break;
+ 		case 'U':
+ 			NFSCTL_UDPUNSET(protobits);
+ 			break;
+@@ -372,9 +380,9 @@ usage(const char *prog)
+ {
+ 	fprintf(stderr, "Usage:\n"
+ 		"%s [-d|--debug] [-H hostname] [-p|-P|--port port]\n"
+-		"     [-N|--no-nfs-version version] [-V|--nfs-version version]\n"
+-		"     [-s|--syslog] [-T|--no-tcp] [-U|--no-udp] [-r|--rdma=]\n"
+-		"     [-G|--grace-time secs] [-L|--leasetime secs] nrservs\n",
++		"   [-N|--no-nfs-version version] [-V|--nfs-version version]\n"
++		"   [-s|--syslog] [-t|--tcp] [-T|--no-tcp] [-u|--udp] [-U|--no-udp]\n"
++		"   [-r|--rdma=] [-G|--grace-time secs] [-L|--leasetime secs] nrservs\n",
+ 		prog);
+ 	exit(2);
+ }
+diff --git a/utils/nfsd/nfsd.man b/utils/nfsd/nfsd.man
+index 8901fb6c6872..e0c640a64094 100644
+--- a/utils/nfsd/nfsd.man
++++ b/utils/nfsd/nfsd.man
+@@ -67,15 +67,17 @@ logs error messages (and debug messages, if enabled) to stderr. This option make
+ log these messages to syslog instead. Note that errors encountered during
+ option processing will still be logged to stderr regardless of this option.
+ .TP
++.B \-t " or " \-\-tcp
++Instruct the kernel nfs server to open and listen on a TCP socket. This is the default.
++.TP
+ .B \-T " or " \-\-no-tcp
+-Disable 
+-.B rpc.nfsd 
+-from accepting TCP connections from clients.
++Instruct the kernel nfs server not to open and listen on a TCP socket.
++.TP
++.B \-u " or " \-\-udp
++Instruct the kernel nfs server to open and listen on a UDP socket.
+ .TP
+ .B \-U " or " \-\-no-udp
+-Disable
+-.B rpc.nfsd
+-from accepting UDP connections from clients.
++Instruct the kernel nfs server not to open and listen on a UDP socket. This is the default.
+ .TP
+ .B \-V " or " \-\-nfs-version vers
+ This option can be used to request that 
+-- 
+2.9.3
+
