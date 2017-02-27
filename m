@@ -1,370 +1,88 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:41264 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([173.255.197.46]:44788 "EHLO fieldses.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751344AbdB1AZZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 27 Feb 2017 19:25:25 -0500
-From: David Howells <dhowells@redhat.com>
-In-Reply-To: <343033867.485297.1488235638227.JavaMail.zimbra@redhat.com>
-References: <343033867.485297.1488235638227.JavaMail.zimbra@redhat.com> <cover.1487802542.git.jstancek@redhat.com> <9557.1488233061@warthog.procyon.org.uk>
-To: Jan Stancek <jstancek@redhat.com>
-Cc: dhowells@redhat.com, linux-kernel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, bcodding@redhat.com, asavkov@redhat.com
-Subject: Re: [PATCH 0/2] key payload access with just rcu_read_lock()
+        id S1751510AbdB1A5n (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 27 Feb 2017 19:57:43 -0500
+Date: Mon, 27 Feb 2017 18:03:57 -0500
+From: "bfields@fieldses.org" <bfields@fieldses.org>
+To: Trond Myklebust <trondmy@primarydata.com>
+Cc: "neilb@suse.com" <neilb@suse.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH v2 0/2] Fix up nfsd to enable NFSv4.x without NFSv4.0
+Message-ID: <20170227230357.GA11912@fieldses.org>
+References: <20170222233533.23845-1-trond.myklebust@primarydata.com>
+ <87y3wxrcha.fsf@notabene.neil.brown.name>
+ <1487811610.4863.10.camel@primarydata.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Date: Tue, 28 Feb 2017 00:23:24 +0000
-Message-ID: <25524.1488241404@warthog.procyon.org.uk>
+Content-Type: text/plain; charset=utf-8
+In-Reply-To: <1487811610.4863.10.camel@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Jan Stancek <jstancek@redhat.com> wrote:
+On Thu, Feb 23, 2017 at 01:00:12AM +0000, Trond Myklebust wrote:
+> On Thu, 2017-02-23 at 11:13 +1100, NeilBrown wrote:
+> > On Wed, Feb 22 2017, Trond Myklebust wrote:
+> > 
+> > > This patch series was intended as a standalone series. However it
+> > > now
+> > > aims to fix up a few issues with Neil's initial patch:
+> > > 
+> > > 1) When the user turns off all minor versions of NFSv4, then that
+> > > should
+> > >    be equivalent to turning off NFSv4 support, and so when someone
+> > > tries
+> > >    to mount, we should return RPC_PROG_MISMATCH.
+> > > 2) Allow the user to use either '4.0' or '4' in order to enable or
+> > > disable
+> > >    minor version 0. Other minor versions remain enabled/disabled
+> > > using the
+> > >    '4.x' format.
+> > 
+> > If I understand you and the code correctly, then this change means
+> > that
+> > if I run
+> > 
+> >    rpc.nfsd -N 4
+> > 
+> > the nfs server will continue to server v4.1 and v4.2 requests, only
+> > v4.0
+> > will be disabled (Assuming a kernel which defaults to serving v4.0,
+> > v4.1
+> > and v4.0).
+> 
+> Unfortunately not... The problem is that rpc.nfsd has a borken parser
+> that refuses the '-N4 -V4.2' syntax, and that throws hissy fit if you
+> try to feed it '-N4.0' or '-V4.0'.
+> 
+> The kernel change needs to be accompanied by a fix to nfs-utils.
+> 
+> > Is that really what we want?
+> > 
+> > The text in the man page for rpc.nfsd could be read as allowing this
+> > interpretation, though it isn't explicit.
+> > I've always used "NFSv4" to mean any or all for 4.0, 4.1, 4.2, ...
+> 
+> We _could_ do that. As I said, that's a question of fixing rpc.nfsd.
+> 
+> The question here, though, is what should the kernel do when you start
+> poking into /proc/fs/nfsd/versions. I think adding a new field between
+> '4' and '4.0' might be more disruptive than changing the meaning of '4'
+> to mean '4.0' as there might be other parsers of that pseudofile out
+> there today.
 
-> Looks like there are still couple users that need updating,
-> I'm hitting following compilation error:
+I'm OK with that, unless Neil sees a problem.
 
-Aargh - I remembered to grep for rcu_dereference_key() but not
-user_key_payload().
+The changelog on the first patch doesn't seem to describe the v2 version
+very well; using the below cribbed from your cover letter instead.
 
-How about the attached?
+    nfsd: fix configuration of supported minor versions
+    
+    When the user turns off all minor versions of NFSv4, that should be
+    equivalent to turning off NFSv4 support, so a mount attempt using NFSv4
+    should get RPC_PROG_MISMATCH, not NFSERR_MINOR_VERS_MISMATCH.
+    
+    Allow the user to use either '4.0' or '4' to enable or disable minor
+    version 0.  Other minor versions are still enabled or disabled using the
+    '4.x' format.
 
-David
----
-commit f0268360a253f0f86b9ec538ae3755e187229bbb
-Author: David Howells <dhowells@redhat.com>
-Date:   Mon Feb 27 16:47:13 2017 +0000
-
-    KEYS: Differentiate uses of rcu_dereference_key() and user_key_payload()
-    
-    rcu_dereference_key() and user_key_payload() are currently being used in
-    two different, incompatible ways:
-    
-     (1) As a wrapper to rcu_dereference() - when only the RCU read lock used
-         to protect the key.
-    
-     (2) As a wrapper to rcu_dereference_protected() - when the key semaphor is
-         used to protect the key and the may be being modified.
-    
-    Fix this by splitting both of the key wrappers to produce:
-    
-     (1) RCU accessors for keys when caller has the key semaphore locked:
-    
-            dereference_key_locked()
-            user_key_payload_locked()
-    
-     (2) RCU accessors for keys when caller holds the RCU read lock:
-    
-            dereference_key_rcu()
-            user_key_payload_rcu()
-    
-    This should fix following warning in the NFS idmapper
-    
-      ===============================
-      [ INFO: suspicious RCU usage. ]
-      4.10.0 #1 Tainted: G        W
-      -------------------------------
-      ./include/keys/user-type.h:53 suspicious rcu_dereference_protected() usage!
-      other info that might help us debug this:
-      rcu_scheduler_active = 2, debug_locks = 0
-      1 lock held by mount.nfs/5987:
-        #0:  (rcu_read_lock){......}, at: [<d000000002527abc>] nfs_idmap_get_key+0x15c/0x420 [nfsv4]
-      stack backtrace:
-      CPU: 1 PID: 5987 Comm: mount.nfs Tainted: G        W       4.10.0 #1
-      Call Trace:
-        dump_stack+0xe8/0x154 (unreliable)
-        lockdep_rcu_suspicious+0x140/0x190
-        nfs_idmap_get_key+0x380/0x420 [nfsv4]
-        nfs_map_name_to_uid+0x2a0/0x3b0 [nfsv4]
-        decode_getfattr_attrs+0xfac/0x16b0 [nfsv4]
-        decode_getfattr_generic.constprop.106+0xbc/0x150 [nfsv4]
-        nfs4_xdr_dec_lookup_root+0xac/0xb0 [nfsv4]
-        rpcauth_unwrap_resp+0xe8/0x140 [sunrpc]
-        call_decode+0x29c/0x910 [sunrpc]
-        __rpc_execute+0x140/0x8f0 [sunrpc]
-        rpc_run_task+0x170/0x200 [sunrpc]
-        nfs4_call_sync_sequence+0x68/0xa0 [nfsv4]
-        _nfs4_lookup_root.isra.44+0xd0/0xf0 [nfsv4]
-        nfs4_lookup_root+0xe0/0x350 [nfsv4]
-        nfs4_lookup_root_sec+0x70/0xa0 [nfsv4]
-        nfs4_find_root_sec+0xc4/0x100 [nfsv4]
-        nfs4_proc_get_rootfh+0x5c/0xf0 [nfsv4]
-        nfs4_get_rootfh+0x6c/0x190 [nfsv4]
-        nfs4_server_common_setup+0xc4/0x260 [nfsv4]
-        nfs4_create_server+0x278/0x3c0 [nfsv4]
-        nfs4_remote_mount+0x50/0xb0 [nfsv4]
-        mount_fs+0x74/0x210
-        vfs_kern_mount+0x78/0x220
-        nfs_do_root_mount+0xb0/0x140 [nfsv4]
-        nfs4_try_mount+0x60/0x100 [nfsv4]
-        nfs_fs_mount+0x5ec/0xda0 [nfs]
-        mount_fs+0x74/0x210
-        vfs_kern_mount+0x78/0x220
-        do_mount+0x254/0xf70
-        SyS_mount+0x94/0x100
-        system_call+0x38/0xe0
-    
-    Reported-by: Jan Stancek <jstancek@redhat.com>
-    Signed-off-by: David Howells <dhowells@redhat.com>
-
-diff --git a/Documentation/security/keys.txt b/Documentation/security/keys.txt
-index 3849814bfe6d..0e03baf271bd 100644
---- a/Documentation/security/keys.txt
-+++ b/Documentation/security/keys.txt
-@@ -1151,8 +1151,21 @@ access the data:
-      usage.  This is called key->payload.rcu_data0.  The following accessors
-      wrap the RCU calls to this element:
- 
--	rcu_assign_keypointer(struct key *key, void *data);
--	void *rcu_dereference_key(struct key *key);
-+     (a) Set or change the first payload pointer:
-+
-+		rcu_assign_keypointer(struct key *key, void *data);
-+
-+     (b) Read the first payload pointer with the key semaphore held:
-+
-+		[const] void *dereference_key_locked([const] struct key *key);
-+
-+	 Note that the return value will inherit its constness from the key
-+	 parameter.  Static analysis will give an error if it things the lock
-+	 isn't held.
-+
-+     (c) Read the first payload pointer with the RCU read lock held:
-+
-+		const void *dereference_key_rcu(const struct key *key);
- 
- 
- ===================
-diff --git a/drivers/md/dm-crypt.c b/drivers/md/dm-crypt.c
-index 1cb2ca9dfae3..389a3637ffcc 100644
---- a/drivers/md/dm-crypt.c
-+++ b/drivers/md/dm-crypt.c
-@@ -1536,7 +1536,7 @@ static int crypt_set_keyring_key(struct crypt_config *cc, const char *key_string
- 
- 	down_read(&key->sem);
- 
--	ukp = user_key_payload(key);
-+	ukp = user_key_payload_locked(key);
- 	if (!ukp) {
- 		up_read(&key->sem);
- 		key_put(key);
-diff --git a/fs/cifs/connect.c b/fs/cifs/connect.c
-index 777ad9f4fc3c..8a3ecef30d3c 100644
---- a/fs/cifs/connect.c
-+++ b/fs/cifs/connect.c
-@@ -2455,7 +2455,7 @@ cifs_set_cifscreds(struct smb_vol *vol, struct cifs_ses *ses)
- 	}
- 
- 	down_read(&key->sem);
--	upayload = user_key_payload(key);
-+	upayload = user_key_payload_locked(key);
- 	if (IS_ERR_OR_NULL(upayload)) {
- 		rc = upayload ? PTR_ERR(upayload) : -EINVAL;
- 		goto out_key_put;
-diff --git a/fs/crypto/keyinfo.c b/fs/crypto/keyinfo.c
-index 02eb6b9e4438..d5d896fa5a71 100644
---- a/fs/crypto/keyinfo.c
-+++ b/fs/crypto/keyinfo.c
-@@ -103,7 +103,7 @@ static int validate_user_key(struct fscrypt_info *crypt_info,
- 		goto out;
- 	}
- 	down_read(&keyring_key->sem);
--	ukp = user_key_payload(keyring_key);
-+	ukp = user_key_payload_locked(keyring_key);
- 	if (ukp->datalen != sizeof(struct fscrypt_key)) {
- 		res = -EINVAL;
- 		up_read(&keyring_key->sem);
-diff --git a/fs/ecryptfs/ecryptfs_kernel.h b/fs/ecryptfs/ecryptfs_kernel.h
-index 599a29237cfe..95c1c8d34539 100644
---- a/fs/ecryptfs/ecryptfs_kernel.h
-+++ b/fs/ecryptfs/ecryptfs_kernel.h
-@@ -117,7 +117,7 @@ ecryptfs_get_key_payload_data(struct key *key)
- 
- 	auth_tok = ecryptfs_get_encrypted_key_payload_data(key);
- 	if (!auth_tok)
--		return (struct ecryptfs_auth_tok *)user_key_payload(key)->data;
-+		return (struct ecryptfs_auth_tok *)user_key_payload_locked(key)->data;
- 	else
- 		return auth_tok;
- }
-diff --git a/fs/fscache/object-list.c b/fs/fscache/object-list.c
-index 5d5ddaa84b21..67f940892ef8 100644
---- a/fs/fscache/object-list.c
-+++ b/fs/fscache/object-list.c
-@@ -329,7 +329,7 @@ static void fscache_objlist_config(struct fscache_objlist_data *data)
- 	config = 0;
- 	rcu_read_lock();
- 
--	confkey = user_key_payload(key);
-+	confkey = user_key_payload_rcu(key);
- 	buf = confkey->data;
- 
- 	for (len = confkey->datalen - 1; len >= 0; len--) {
-diff --git a/fs/nfs/nfs4idmap.c b/fs/nfs/nfs4idmap.c
-index c444285bb1b1..835c163f61af 100644
---- a/fs/nfs/nfs4idmap.c
-+++ b/fs/nfs/nfs4idmap.c
-@@ -316,7 +316,7 @@ static ssize_t nfs_idmap_get_key(const char *name, size_t namelen,
- 	if (ret < 0)
- 		goto out_up;
- 
--	payload = user_key_payload(rkey);
-+	payload = user_key_payload_rcu(rkey);
- 	if (IS_ERR_OR_NULL(payload)) {
- 		ret = PTR_ERR(payload);
- 		goto out_up;
-diff --git a/include/keys/user-type.h b/include/keys/user-type.h
-index c56fef40f53e..932f85d7a19c 100644
---- a/include/keys/user-type.h
-+++ b/include/keys/user-type.h
-@@ -48,9 +48,14 @@ extern void user_describe(const struct key *user, struct seq_file *m);
- extern long user_read(const struct key *key,
- 		      char __user *buffer, size_t buflen);
- 
--static inline const struct user_key_payload *user_key_payload(const struct key *key)
-+static inline const struct user_key_payload *user_key_payload_rcu(const struct key *key)
- {
--	return (struct user_key_payload *)rcu_dereference_key(key);
-+	return (struct user_key_payload *)dereference_key_rcu(key);
-+}
-+
-+static inline struct user_key_payload *user_key_payload_locked(struct key *key)
-+{
-+	return (struct user_key_payload *)dereference_key_locked(key);
- }
- 
- #endif /* CONFIG_KEYS */
-diff --git a/include/linux/key.h b/include/linux/key.h
-index 722914798f37..e45212f2777e 100644
---- a/include/linux/key.h
-+++ b/include/linux/key.h
-@@ -354,7 +354,10 @@ static inline bool key_is_instantiated(const struct key *key)
- 		!test_bit(KEY_FLAG_NEGATIVE, &key->flags);
- }
- 
--#define rcu_dereference_key(KEY)					\
-+#define dereference_key_rcu(KEY)					\
-+	(rcu_dereference((KEY)->payload.rcu_data0))
-+
-+#define dereference_key_locked(KEY)					\
- 	(rcu_dereference_protected((KEY)->payload.rcu_data0,		\
- 				   rwsem_is_locked(&((struct key *)(KEY))->sem)))
- 
-diff --git a/lib/digsig.c b/lib/digsig.c
-index 55b8b2f41a9e..03d7c63837ae 100644
---- a/lib/digsig.c
-+++ b/lib/digsig.c
-@@ -85,7 +85,7 @@ static int digsig_verify_rsa(struct key *key,
- 	struct pubkey_hdr *pkh;
- 
- 	down_read(&key->sem);
--	ukp = user_key_payload(key);
-+	ukp = user_key_payload_locked(key);
- 
- 	if (ukp->datalen < sizeof(*pkh))
- 		goto err1;
-diff --git a/net/dns_resolver/dns_query.c b/net/dns_resolver/dns_query.c
-index ecc28cff08ab..d502c94b1a82 100644
---- a/net/dns_resolver/dns_query.c
-+++ b/net/dns_resolver/dns_query.c
-@@ -70,7 +70,7 @@ int dns_query(const char *type, const char *name, size_t namelen,
- 	      const char *options, char **_result, time64_t *_expiry)
- {
- 	struct key *rkey;
--	const struct user_key_payload *upayload;
-+	struct user_key_payload *upayload;
- 	const struct cred *saved_cred;
- 	size_t typelen, desclen;
- 	char *desc, *cp;
-@@ -141,7 +141,7 @@ int dns_query(const char *type, const char *name, size_t namelen,
- 	if (ret)
- 		goto put;
- 
--	upayload = user_key_payload(rkey);
-+	upayload = user_key_payload_locked(rkey);
- 	len = upayload->datalen;
- 
- 	ret = -ENOMEM;
-diff --git a/security/keys/dh.c b/security/keys/dh.c
-index 531ed2ec132f..893af4c45038 100644
---- a/security/keys/dh.c
-+++ b/security/keys/dh.c
-@@ -55,7 +55,7 @@ static ssize_t mpi_from_key(key_serial_t keyid, size_t maxlen, MPI *mpi)
- 		if (status == 0) {
- 			const struct user_key_payload *payload;
- 
--			payload = user_key_payload(key);
-+			payload = user_key_payload_locked(key);
- 
- 			if (maxlen == 0) {
- 				*mpi = NULL;
-diff --git a/security/keys/encrypted-keys/encrypted.c b/security/keys/encrypted-keys/encrypted.c
-index 4fb315cddf5b..0010955d7876 100644
---- a/security/keys/encrypted-keys/encrypted.c
-+++ b/security/keys/encrypted-keys/encrypted.c
-@@ -314,7 +314,7 @@ static struct key *request_user_key(const char *master_desc, const u8 **master_k
- 		goto error;
- 
- 	down_read(&ukey->sem);
--	upayload = user_key_payload(ukey);
-+	upayload = user_key_payload_locked(ukey);
- 	*master_key = upayload->data;
- 	*master_keylen = upayload->datalen;
- error:
-@@ -926,7 +926,7 @@ static long encrypted_read(const struct key *key, char __user *buffer,
- 	size_t asciiblob_len;
- 	int ret;
- 
--	epayload = rcu_dereference_key(key);
-+	epayload = dereference_key_locked(key);
- 
- 	/* returns the hex encoded iv, encrypted-data, and hmac as ascii */
- 	asciiblob_len = epayload->datablob_len + ivsize + 1
-diff --git a/security/keys/trusted.c b/security/keys/trusted.c
-index 90d61751ff12..2ae31c5a87de 100644
---- a/security/keys/trusted.c
-+++ b/security/keys/trusted.c
-@@ -1140,12 +1140,12 @@ static int trusted_update(struct key *key, struct key_preparsed_payload *prep)
- static long trusted_read(const struct key *key, char __user *buffer,
- 			 size_t buflen)
- {
--	struct trusted_key_payload *p;
-+	const struct trusted_key_payload *p;
- 	char *ascii_buf;
- 	char *bufp;
- 	int i;
- 
--	p = rcu_dereference_key(key);
-+	p = dereference_key_locked(key);
- 	if (!p)
- 		return -EINVAL;
- 	if (!buffer || buflen <= 0)
-diff --git a/security/keys/user_defined.c b/security/keys/user_defined.c
-index e187c8909d9d..0e911ffcab0c 100644
---- a/security/keys/user_defined.c
-+++ b/security/keys/user_defined.c
-@@ -107,7 +107,7 @@ int user_update(struct key *key, struct key_preparsed_payload *prep)
- 	/* attach the new data, displacing the old */
- 	key->expiry = prep->expiry;
- 	if (!test_bit(KEY_FLAG_NEGATIVE, &key->flags))
--		zap = rcu_dereference_key(key);
-+		zap = dereference_key_locked(key);
- 	rcu_assign_keypointer(key, prep->payload.data[0]);
- 	prep->payload.data[0] = NULL;
- 
-@@ -123,7 +123,7 @@ EXPORT_SYMBOL_GPL(user_update);
-  */
- void user_revoke(struct key *key)
- {
--	struct user_key_payload *upayload = key->payload.data[0];
-+	struct user_key_payload *upayload = user_key_payload_locked(key);
- 
- 	/* clear the quota */
- 	key_payload_reserve(key, 0);
-@@ -169,7 +169,7 @@ long user_read(const struct key *key, char __user *buffer, size_t buflen)
- 	const struct user_key_payload *upayload;
- 	long ret;
- 
--	upayload = user_key_payload(key);
-+	upayload = user_key_payload_rcu(key);
- 	ret = upayload->datalen;
- 
- 	/* we can return the data as is */
+--b.
