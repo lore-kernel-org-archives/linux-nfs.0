@@ -1,41 +1,32 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f193.google.com ([209.85.223.193]:35510 "EHLO
-        mail-io0-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751912AbdBZAZI (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sat, 25 Feb 2017 19:25:08 -0500
-Received: by mail-io0-f193.google.com with SMTP id v13so2592657iov.2
-        for <linux-nfs@vger.kernel.org>; Sat, 25 Feb 2017 16:23:33 -0800 (PST)
-Subject: Re: some problems about permission of subdirectory
-To: houlinfei <hou.linfei@h3c.com>,
-        "bfields@fieldses.org" <bfields@fieldses.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-References: <780a867d.53cc0e.15a75733ad0.Coremail.hou.linfei@h3c.com>
-Cc: neilb@suse.com, SteveD@redhat.com,
-        Kinglong Mee <kinglongmee@gmail.com>
-From: Kinglong Mee <kinglongmee@gmail.com>
-Message-ID: <4ee0f1c3-0f80-6e66-9db3-3c1382cde6d6@gmail.com>
-Date: Sun, 26 Feb 2017 08:23:19 +0800
+Received: from p3plsmtpa12-07.prod.phx3.secureserver.net ([68.178.252.236]:39722
+        "EHLO p3plsmtpa12-07.prod.phx3.secureserver.net" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1751666AbdB0MRy (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 27 Feb 2017 07:17:54 -0500
+Subject: Re: [PATCH v2 0/4] nfs/nfsd/sunrpc: enforce NFSv4 transport
+ requirements
+To: Jeff Layton <jlayton@redhat.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>
+References: <20170223170337.10686-1-jlayton@redhat.com>
+ <20170224182525.10390-1-jlayton@redhat.com>
+ <20170224212516.GH26378@fieldses.org> <1487972064.3314.8.camel@redhat.com>
+ <20170224214442.GI26378@fieldses.org> <1488196763.2876.1.camel@redhat.com>
+Cc: trond.myklebust@primarydata.com, schumaker.anna@gmail.com,
+        linux-nfs@vger.kernel.org, chuck.lever@oracle.com,
+        jgunthorpe@obsidianresearch.com
+From: Tom Talpey <tom@talpey.com>
+Message-ID: <2c8602da-5e1b-a7d1-b03b-2a06442450f9@talpey.com>
+Date: Mon, 27 Feb 2017 07:08:00 -0500
 MIME-Version: 1.0
-In-Reply-To: <780a867d.53cc0e.15a75733ad0.Coremail.hou.linfei@h3c.com>
-Content-Type: text/plain; charset=gbk
+In-Reply-To: <1488196763.2876.1.camel@redhat.com>
+Content-Type: text/plain; charset=utf-8; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 2/25/2017 21:26, houlinfei wrote:
-> hi Kinglong, Bruce,
-> Two suggestions all can resolve the problem,but when i use the way of mount --bind /root/hh/hh1 /root/hh/hh1 , and client has mount this nfs share. When i umount /root/hh/hh1.It will busy. when i umount share on client and stop nfsd on server. Then i can umount /root/hh/hh1. Why?
+On 2/27/2017 6:59 AM, Jeff Layton wrote:
+> What we'd need to make that happen, I think is a [global] stanza in
+> nfs.conf with a single 'nfsd_v3' boolean that defaults to off. If
 
-Yes, that's a old problem.
-
-For each export entry, nfsd has some cache in kernel,each valid cache
-has a reference to the export directory.
-The umount operation finds that and report busy, after stop the service,
-all cache will be dropped(no any reference to export entry), umount success.
-
-I have try to fix the problem at 2015, 
-http://www.spinics.net/lists/linux-nfs/msg52646.html
-
-Ps, if someone think it's really a requirement, I will pick it up?
-
-thanks,
-Kinglong Mee
+Don't forget v2! And maybe even v4.0 if you're encouraging non-legacy
+operation. RFC3530 was published 14 years ago, btw. RFC1813 in 1995,
+and RFC1094 in 1989.
