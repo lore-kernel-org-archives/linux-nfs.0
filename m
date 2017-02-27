@@ -1,299 +1,245 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:57292 "EHLO mx1.redhat.com"
+Received: from mx141.netapp.com ([216.240.21.12]:2918 "EHLO mx141.netapp.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751471AbdB0WFp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 27 Feb 2017 17:05:45 -0500
-From: David Howells <dhowells@redhat.com>
-In-Reply-To: <cover.1487802542.git.jstancek@redhat.com>
-References: <cover.1487802542.git.jstancek@redhat.com>
-To: Jan Stancek <jstancek@redhat.com>
-Cc: dhowells@redhat.com, linux-kernel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, bcodding@redhat.com, asavkov@redhat.com
-Subject: Re: [PATCH 0/2] key payload access with just rcu_read_lock()
+        id S1751515AbdB0W25 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 27 Feb 2017 17:28:57 -0500
+Subject: Re: [PATCH Version 5 08/17] SUNRPC AUTH_GSS RPCSEC_GSS_CREATE with
+ label payload
+To: <andros@netapp.com>, <bfields@fieldses.org>
+References: <20170224221953.5502-1-andros@netapp.com>
+ <20170224221953.5502-9-andros@netapp.com>
+CC: <trond.myklebust@primarydata.com>, <linux-nfs@vger.kernel.org>
+From: Anna Schumaker <Anna.Schumaker@Netapp.com>
+Message-ID: <2b5eea85-4221-eb5d-314d-f18ac137bf5a@Netapp.com>
+Date: Mon, 27 Feb 2017 16:47:01 -0500
 MIME-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Date: Mon, 27 Feb 2017 22:04:21 +0000
-Message-ID: <9557.1488233061@warthog.procyon.org.uk>
+In-Reply-To: <20170224221953.5502-9-andros@netapp.com>
+Content-Type: text/plain; charset="windows-1252"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Jan Stancek <jstancek@redhat.com> wrote:
+Hi Andy,
 
-> this is a follow-up for "suspicious RCU usage" warning described
-> in these 2 linux-nfs threads:
->   http://marc.info/?t=147558830300003&r=1&w=2
->   http://marc.info/?t=148776770500001&r=1&w=2
+On 02/24/2017 05:19 PM, andros@netapp.com wrote:
+> From: Andy Adamson <andros@netapp.com>
 > 
-> Did you have something like in mind?
+> Signed-off-by: Andy Adamson <andros@netapp.com>
+> ---
+>  net/sunrpc/auth_gss/auth_gss.c | 140 ++++++++++++++++++++++++++++++++++++++++-
+>  1 file changed, 138 insertions(+), 2 deletions(-)
+> 
+> diff --git a/net/sunrpc/auth_gss/auth_gss.c b/net/sunrpc/auth_gss/auth_gss.c
+> index 6ffb16d..98971cf 100644
+> --- a/net/sunrpc/auth_gss/auth_gss.c
+> +++ b/net/sunrpc/auth_gss/auth_gss.c
+> @@ -52,9 +52,12 @@
+>  #include <linux/sunrpc/gss_api.h>
+>  #include <linux/uaccess.h>
+>  #include <linux/hashtable.h>
+> +#include <linux/security.h>
+>  
+>  #include "../netns.h"
+>  
+> +static int gss3_create_label(struct rpc_cred *cred, int gss_vers);
+> +
+>  static const struct rpc_authops authgss_ops;
+>  
+>  static const struct rpc_credops gss_credops;
+> @@ -128,6 +131,20 @@ gss_put_ctx(struct gss_cl_ctx *ctx)
+>  		gss_free_ctx(ctx);
+>  }
+>  
+> +/* gss3_label_enabled:
+> + * Called to determine if Full Mode Mandatory Access Control (MAC)
+> + * over a GSS connection is desired.
+> + *
+> + * Note:
+> + * Currently Full Mode MAC is assuemed if SeLinux is enabled and
+> + * RPCSEC_GSS version 3 is in use.
+> + */
+> +static inline bool
+> +gss3_label_assertion_is_enabled(u32 rpcsec_version)
+> +{
+> +	return (rpcsec_version == RPC_GSS3_VERSION && selinux_is_enabled());
+> +}
+> +
+>  /* gss_cred_set_ctx:
+>   * called by gss_upcall_callback and gss_create_upcall in order
+>   * to set the gss context. The actual exchange of an old context
+> @@ -145,6 +162,7 @@ gss_cred_set_ctx(struct rpc_cred *cred, struct gss_cl_ctx *ctx)
+>  	set_bit(RPCAUTH_CRED_UPTODATE, &cred->cr_flags);
+>  	smp_mb__before_atomic();
+>  	clear_bit(RPCAUTH_CRED_NEW, &cred->cr_flags);
+> +	gss3_create_label(cred, ctx->gc_v);
+>  }
+>  
+>  static const void *
+> @@ -1602,6 +1620,75 @@ static int gss_cred_is_negative_entry(struct rpc_cred *cred)
+>  #define GSS3_createres_maxsz   (1 /* cr_hlen */ + \
+>  				XDR_QUADLEN(1024) /* cr_handle*/ + \
+>  				GSS3_createargs_maxsz)
+> +#define GSS3_labelargs_maxsz	(1 /* la_lfs */ + \
+> +				 1 /* la_pi */ + \
+> +				 1 /* la_label.len */ + \
+> +				 XDR_QUADLEN(1024) /* la_label.data */)
+> +#define GSS3_labelres_maxsz	GSS3_labelargs_maxsz
+> +
+> +static void
+> +gss3_enc_label(struct rpc_rqst *req, struct xdr_stream *xdr,
+> +	       const struct gss3_create_args *g3ca)
+> +{
+> +	struct gss3_label *gl;
+> +	__be32 *p;
+> +
+> +	gl = &g3ca->ca_assertions[0].u.au_label;
+> +
+> +	dprintk("RPC: %5u encoding GSSv3 label %s:%d\n", req->rq_task->tk_pid,
+> +		(char *)gl->la_label.data, gl->la_label.len);
+> +
+> +	p = xdr_reserve_space(xdr, GSS3_labelargs_maxsz << 2);
+> +	*p++ = cpu_to_be32(0); /* la_lfs */
+> +	*p++ = cpu_to_be32(0); /* la_pi */
+> +	p = xdr_encode_netobj(p, &gl->la_label);
+> +}
+> +
+> +static int
+> +gss3_dec_label(struct rpc_rqst *req, struct xdr_stream *xdr,
+> +	       struct gss3_create_res *g3cr)
+> +{
+> +	struct gss3_label *gl;
+> +	struct gss3_assertion_u *g3a;
+> +	__be32 *p;
+> +
+> +	/* Used to store assertion in parent gss_cl_ctx */
+> +	g3a = kzalloc(sizeof(*g3a), GFP_KERNEL);
+> +	if (!g3a)
+> +		goto out_err;
+> +
+> +	g3a->au_type = GSS3_LABEL;
+> +	gl = &g3a->u.au_label;
+> +
+> +	p = xdr_inline_decode(xdr, 12);
+> +	if (unlikely(!p))
+> +		goto out_overflow;
+> +
+> +	gl->la_lfs = be32_to_cpup(p++);
+> +	gl->la_pi = be32_to_cpup(p++);
+> +	gl->la_label.len = be32_to_cpup(p++);
+> +
+> +	p = xdr_inline_decode(xdr, gl->la_label.len);
+> +	if (unlikely(!p))
+> +		goto out_overflow;
+> +
+> +	gl->la_label.data = kmemdup(p, gl->la_label.len, GFP_KERNEL);
+> +	if (!gl->la_label.data)
+> +		goto out_free_assert;
+> +
+> +	g3cr->cr_assertions = g3a;
+> +
+> +	return 0;
+> +
+> +out_free_assert:
+> +	kfree(g3a);
+> +out_err:
+> +	return -EIO;
+> +out_overflow:
+> +	pr_warn("RPC    %s End of receive buffer. Remaining len: %tu words.\n",
+> +		__func__, xdr->end - xdr->p);
+> +	goto out_free_assert;
+> +}
+>  
+>  static void
+>  gss3_enc_create(struct rpc_rqst *req, struct xdr_stream *xdr,
+> @@ -1618,6 +1705,8 @@ gss3_enc_create(struct rpc_rqst *req, struct xdr_stream *xdr,
+>  	*p++ = type;
+>  	switch (type) {
+>  	case GSS3_LABEL:
+> +		gss3_enc_label(req, xdr, g3ca);
+> +		break;
+>  	case GSS3_PRIVS:
+>  	default:
+>  		/* drop through to return */
+> @@ -1673,6 +1762,9 @@ gss3_dec_create(struct rpc_rqst *req, struct xdr_stream *xdr,
+>  	type = be32_to_cpup(p++);
+>  	switch (type) {
+>  	case GSS3_LABEL:
+> +		if (gss3_dec_label(req, xdr, g3cr) != 0)
+> +			goto out_free_handle;
+> +		break;
+>  	case GSS3_PRIVS:
+>  	default:
+>  		pr_warn("RPC    Unsupported gss3 create assertion %d\n", type);
+> @@ -1692,13 +1784,16 @@ gss3_dec_create(struct rpc_rqst *req, struct xdr_stream *xdr,
+>  
+>  #define RPC_PROC_NULL 0
+>  
+> +#define GSS3_create_args_max	(GSS3_createargs_maxsz + GSS3_labelargs_maxsz)
+> +#define GSS3_create_res_max	(GSS3_createres_maxsz + GSS3_labelres_maxsz)
+> +
+>  struct rpc_procinfo gss3_label_assertion[] = {
+>  	[RPC_GSS_PROC_CREATE] = {
+>  		.p_proc		= RPC_PROC_NULL,
+>  		.p_encode	= (kxdreproc_t)gss3_enc_create,
+>  		.p_decode	= (kxdrdproc_t)gss3_dec_create,
+> -		.p_arglen	= GSS3_createargs_maxsz,
+> -		.p_replen	= GSS3_createres_maxsz,
+> +		.p_arglen	= GSS3_create_args_max,
+> +		.p_replen	= GSS3_create_res_max,
+>  		.p_statidx	= RPC_GSS_PROC_CREATE,
+>  		.p_timer	= 0,
+>  		.p_name		= "GSS_PROC_CREATE",
+> @@ -1773,6 +1868,47 @@ gss3_proc_create(struct rpc_cred *cred, struct gss3_assertion_u *asserts,
+>  	return ret;
+>  }
+>  
+> +/**
+> + * GSS3 Label Assertion
+> + *
+> + * Support one label assertion
+> + *
+> + * XXX Return not checked. Should we fail nfs requests if
+> + * a label fails to be created? I think the server enforcing
+> + * Full Mode MAC will reject an NFS request that does not use
+> + * a GSS3 (child) context with the correct label.
+> + */
+> +static int
+> +gss3_create_label(struct rpc_cred *cred, int gss_vers)
+> +{
+> +	struct gss3_assertion_u *asserts;
+> +	struct gss3_label *gl;
+> +	int ret;
+> +
+> +	if (!gss3_label_assertion_is_enabled(gss_vers))
+> +		return -EINVAL;
+> +
+> +	asserts = kzalloc(sizeof(*asserts), GFP_NOFS);
+> +	if (!asserts)
+> +		return -ENOMEM;
+> +
+> +	/* NOTE: not setting la_lfs, la_pi. Do we even need them? */
+> +	asserts->au_type = GSS3_LABEL;
+> +	gl = &asserts->u.au_label;
+> +
+> +	ret = -EINVAL;
+> +	ret = security_current_sid_to_context((char **)&gl->la_label.data,
+> +					      &gl->la_label.len);
 
-How about the attached?  It's similar to what you did, but I made the split
-functions different from the original so that all users have to reconsider
-what they actually want.
+I think you only need to assign "ret" once here
 
-David
----
-commit 6b83b77697e1cec537d131f5f84e8e10c78d36e0
-Author: David Howells <dhowells@redhat.com>
-Date:   Mon Feb 27 16:47:13 2017 +0000
+Thanks,
+Anna
 
-    KEYS: Differentiate uses of rcu_dereference_key() and user_key_payload()
-    
-    rcu_dereference_key() and user_key_payload() are currently being used in
-    two different, incompatible ways:
-    
-     (1) As a wrapper to rcu_dereference() - when only the RCU read lock used
-         to protect the key.
-    
-     (2) As a wrapper to rcu_dereference_protected() - when the key semaphor is
-         used to protect the key and the may be being modified.
-    
-    Fix this by splitting both of the key wrappers to produce:
-    
-     (1) RCU accessors for keys when caller has the key semaphore locked:
-    
-            dereference_key_locked()
-            user_key_payload_locked()
-    
-     (2) RCU accessors for keys when caller holds the RCU read lock:
-    
-            dereference_key_rcu()
-            user_key_payload_rcu()
-    
-    This should fix following warning in the NFS idmapper
-    
-      ===============================
-      [ INFO: suspicious RCU usage. ]
-      4.10.0 #1 Tainted: G        W
-      -------------------------------
-      ./include/keys/user-type.h:53 suspicious rcu_dereference_protected() usage!
-      other info that might help us debug this:
-      rcu_scheduler_active = 2, debug_locks = 0
-      1 lock held by mount.nfs/5987:
-        #0:  (rcu_read_lock){......}, at: [<d000000002527abc>] nfs_idmap_get_key+0x15c/0x420 [nfsv4]
-      stack backtrace:
-      CPU: 1 PID: 5987 Comm: mount.nfs Tainted: G        W       4.10.0 #1
-      Call Trace:
-        dump_stack+0xe8/0x154 (unreliable)
-        lockdep_rcu_suspicious+0x140/0x190
-        nfs_idmap_get_key+0x380/0x420 [nfsv4]
-        nfs_map_name_to_uid+0x2a0/0x3b0 [nfsv4]
-        decode_getfattr_attrs+0xfac/0x16b0 [nfsv4]
-        decode_getfattr_generic.constprop.106+0xbc/0x150 [nfsv4]
-        nfs4_xdr_dec_lookup_root+0xac/0xb0 [nfsv4]
-        rpcauth_unwrap_resp+0xe8/0x140 [sunrpc]
-        call_decode+0x29c/0x910 [sunrpc]
-        __rpc_execute+0x140/0x8f0 [sunrpc]
-        rpc_run_task+0x170/0x200 [sunrpc]
-        nfs4_call_sync_sequence+0x68/0xa0 [nfsv4]
-        _nfs4_lookup_root.isra.44+0xd0/0xf0 [nfsv4]
-        nfs4_lookup_root+0xe0/0x350 [nfsv4]
-        nfs4_lookup_root_sec+0x70/0xa0 [nfsv4]
-        nfs4_find_root_sec+0xc4/0x100 [nfsv4]
-        nfs4_proc_get_rootfh+0x5c/0xf0 [nfsv4]
-        nfs4_get_rootfh+0x6c/0x190 [nfsv4]
-        nfs4_server_common_setup+0xc4/0x260 [nfsv4]
-        nfs4_create_server+0x278/0x3c0 [nfsv4]
-        nfs4_remote_mount+0x50/0xb0 [nfsv4]
-        mount_fs+0x74/0x210
-        vfs_kern_mount+0x78/0x220
-        nfs_do_root_mount+0xb0/0x140 [nfsv4]
-        nfs4_try_mount+0x60/0x100 [nfsv4]
-        nfs_fs_mount+0x5ec/0xda0 [nfs]
-        mount_fs+0x74/0x210
-        vfs_kern_mount+0x78/0x220
-        do_mount+0x254/0xf70
-        SyS_mount+0x94/0x100
-        system_call+0x38/0xe0
-    
-    Reported-by: Jan Stancek <jstancek@redhat.com>
-    Signed-off-by: David Howells <dhowells@redhat.com>
-
-diff --git a/Documentation/security/keys.txt b/Documentation/security/keys.txt
-index 3849814bfe6d..0e03baf271bd 100644
---- a/Documentation/security/keys.txt
-+++ b/Documentation/security/keys.txt
-@@ -1151,8 +1151,21 @@ access the data:
-      usage.  This is called key->payload.rcu_data0.  The following accessors
-      wrap the RCU calls to this element:
- 
--	rcu_assign_keypointer(struct key *key, void *data);
--	void *rcu_dereference_key(struct key *key);
-+     (a) Set or change the first payload pointer:
-+
-+		rcu_assign_keypointer(struct key *key, void *data);
-+
-+     (b) Read the first payload pointer with the key semaphore held:
-+
-+		[const] void *dereference_key_locked([const] struct key *key);
-+
-+	 Note that the return value will inherit its constness from the key
-+	 parameter.  Static analysis will give an error if it things the lock
-+	 isn't held.
-+
-+     (c) Read the first payload pointer with the RCU read lock held:
-+
-+		const void *dereference_key_rcu(const struct key *key);
- 
- 
- ===================
-diff --git a/fs/fscache/object-list.c b/fs/fscache/object-list.c
-index 5d5ddaa84b21..67f940892ef8 100644
---- a/fs/fscache/object-list.c
-+++ b/fs/fscache/object-list.c
-@@ -329,7 +329,7 @@ static void fscache_objlist_config(struct fscache_objlist_data *data)
- 	config = 0;
- 	rcu_read_lock();
- 
--	confkey = user_key_payload(key);
-+	confkey = user_key_payload_rcu(key);
- 	buf = confkey->data;
- 
- 	for (len = confkey->datalen - 1; len >= 0; len--) {
-diff --git a/fs/nfs/nfs4idmap.c b/fs/nfs/nfs4idmap.c
-index c444285bb1b1..835c163f61af 100644
---- a/fs/nfs/nfs4idmap.c
-+++ b/fs/nfs/nfs4idmap.c
-@@ -316,7 +316,7 @@ static ssize_t nfs_idmap_get_key(const char *name, size_t namelen,
- 	if (ret < 0)
- 		goto out_up;
- 
--	payload = user_key_payload(rkey);
-+	payload = user_key_payload_rcu(rkey);
- 	if (IS_ERR_OR_NULL(payload)) {
- 		ret = PTR_ERR(payload);
- 		goto out_up;
-diff --git a/include/keys/user-type.h b/include/keys/user-type.h
-index c56fef40f53e..932f85d7a19c 100644
---- a/include/keys/user-type.h
-+++ b/include/keys/user-type.h
-@@ -48,9 +48,14 @@ extern void user_describe(const struct key *user, struct seq_file *m);
- extern long user_read(const struct key *key,
- 		      char __user *buffer, size_t buflen);
- 
--static inline const struct user_key_payload *user_key_payload(const struct key *key)
-+static inline const struct user_key_payload *user_key_payload_rcu(const struct key *key)
- {
--	return (struct user_key_payload *)rcu_dereference_key(key);
-+	return (struct user_key_payload *)dereference_key_rcu(key);
-+}
-+
-+static inline struct user_key_payload *user_key_payload_locked(struct key *key)
-+{
-+	return (struct user_key_payload *)dereference_key_locked(key);
- }
- 
- #endif /* CONFIG_KEYS */
-diff --git a/include/linux/key.h b/include/linux/key.h
-index 722914798f37..e45212f2777e 100644
---- a/include/linux/key.h
-+++ b/include/linux/key.h
-@@ -354,7 +354,10 @@ static inline bool key_is_instantiated(const struct key *key)
- 		!test_bit(KEY_FLAG_NEGATIVE, &key->flags);
- }
- 
--#define rcu_dereference_key(KEY)					\
-+#define dereference_key_rcu(KEY)					\
-+	(rcu_dereference((KEY)->payload.rcu_data0))
-+
-+#define dereference_key_locked(KEY)					\
- 	(rcu_dereference_protected((KEY)->payload.rcu_data0,		\
- 				   rwsem_is_locked(&((struct key *)(KEY))->sem)))
- 
-diff --git a/net/dns_resolver/dns_query.c b/net/dns_resolver/dns_query.c
-index ecc28cff08ab..d502c94b1a82 100644
---- a/net/dns_resolver/dns_query.c
-+++ b/net/dns_resolver/dns_query.c
-@@ -70,7 +70,7 @@ int dns_query(const char *type, const char *name, size_t namelen,
- 	      const char *options, char **_result, time64_t *_expiry)
- {
- 	struct key *rkey;
--	const struct user_key_payload *upayload;
-+	struct user_key_payload *upayload;
- 	const struct cred *saved_cred;
- 	size_t typelen, desclen;
- 	char *desc, *cp;
-@@ -141,7 +141,7 @@ int dns_query(const char *type, const char *name, size_t namelen,
- 	if (ret)
- 		goto put;
- 
--	upayload = user_key_payload(rkey);
-+	upayload = user_key_payload_locked(rkey);
- 	len = upayload->datalen;
- 
- 	ret = -ENOMEM;
-diff --git a/security/keys/dh.c b/security/keys/dh.c
-index 531ed2ec132f..893af4c45038 100644
---- a/security/keys/dh.c
-+++ b/security/keys/dh.c
-@@ -55,7 +55,7 @@ static ssize_t mpi_from_key(key_serial_t keyid, size_t maxlen, MPI *mpi)
- 		if (status == 0) {
- 			const struct user_key_payload *payload;
- 
--			payload = user_key_payload(key);
-+			payload = user_key_payload_locked(key);
- 
- 			if (maxlen == 0) {
- 				*mpi = NULL;
-diff --git a/security/keys/encrypted-keys/encrypted.c b/security/keys/encrypted-keys/encrypted.c
-index 4fb315cddf5b..0010955d7876 100644
---- a/security/keys/encrypted-keys/encrypted.c
-+++ b/security/keys/encrypted-keys/encrypted.c
-@@ -314,7 +314,7 @@ static struct key *request_user_key(const char *master_desc, const u8 **master_k
- 		goto error;
- 
- 	down_read(&ukey->sem);
--	upayload = user_key_payload(ukey);
-+	upayload = user_key_payload_locked(ukey);
- 	*master_key = upayload->data;
- 	*master_keylen = upayload->datalen;
- error:
-@@ -926,7 +926,7 @@ static long encrypted_read(const struct key *key, char __user *buffer,
- 	size_t asciiblob_len;
- 	int ret;
- 
--	epayload = rcu_dereference_key(key);
-+	epayload = dereference_key_locked(key);
- 
- 	/* returns the hex encoded iv, encrypted-data, and hmac as ascii */
- 	asciiblob_len = epayload->datablob_len + ivsize + 1
-diff --git a/security/keys/trusted.c b/security/keys/trusted.c
-index 90d61751ff12..2ae31c5a87de 100644
---- a/security/keys/trusted.c
-+++ b/security/keys/trusted.c
-@@ -1140,12 +1140,12 @@ static int trusted_update(struct key *key, struct key_preparsed_payload *prep)
- static long trusted_read(const struct key *key, char __user *buffer,
- 			 size_t buflen)
- {
--	struct trusted_key_payload *p;
-+	const struct trusted_key_payload *p;
- 	char *ascii_buf;
- 	char *bufp;
- 	int i;
- 
--	p = rcu_dereference_key(key);
-+	p = dereference_key_locked(key);
- 	if (!p)
- 		return -EINVAL;
- 	if (!buffer || buflen <= 0)
-diff --git a/security/keys/user_defined.c b/security/keys/user_defined.c
-index e187c8909d9d..bbee5424ff7c 100644
---- a/security/keys/user_defined.c
-+++ b/security/keys/user_defined.c
-@@ -107,7 +107,7 @@ int user_update(struct key *key, struct key_preparsed_payload *prep)
- 	/* attach the new data, displacing the old */
- 	key->expiry = prep->expiry;
- 	if (!test_bit(KEY_FLAG_NEGATIVE, &key->flags))
--		zap = rcu_dereference_key(key);
-+		zap = dereference_key_locked(key);
- 	rcu_assign_keypointer(key, prep->payload.data[0]);
- 	prep->payload.data[0] = NULL;
- 
-@@ -169,7 +169,7 @@ long user_read(const struct key *key, char __user *buffer, size_t buflen)
- 	const struct user_key_payload *upayload;
- 	long ret;
- 
--	upayload = user_key_payload(key);
-+	upayload = user_key_payload_rcu(key);
- 	ret = upayload->datalen;
- 
- 	/* we can return the data as is */
+> +	if (ret)
+> +		goto out_free_asserts;
+> +
+> +	return gss3_proc_create(cred, asserts, 1);
+> +
+> +out_free_asserts:
+> +	kfree(asserts);
+> +	return ret;
+> +}
+> +
+>  /*
+>  * Refresh credentials. XXX - finish
+>  */
+> 
