@@ -1,245 +1,194 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx141.netapp.com ([216.240.21.12]:2918 "EHLO mx141.netapp.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751515AbdB0W25 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 27 Feb 2017 17:28:57 -0500
-Subject: Re: [PATCH Version 5 08/17] SUNRPC AUTH_GSS RPCSEC_GSS_CREATE with
- label payload
-To: <andros@netapp.com>, <bfields@fieldses.org>
-References: <20170224221953.5502-1-andros@netapp.com>
- <20170224221953.5502-9-andros@netapp.com>
-CC: <trond.myklebust@primarydata.com>, <linux-nfs@vger.kernel.org>
-From: Anna Schumaker <Anna.Schumaker@Netapp.com>
-Message-ID: <2b5eea85-4221-eb5d-314d-f18ac137bf5a@Netapp.com>
-Date: Mon, 27 Feb 2017 16:47:01 -0500
-MIME-Version: 1.0
-In-Reply-To: <20170224221953.5502-9-andros@netapp.com>
-Content-Type: text/plain; charset="windows-1252"
+Received: from mail-qk0-f176.google.com ([209.85.220.176]:35118 "EHLO
+        mail-qk0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751291AbdB0WtO (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 27 Feb 2017 17:49:14 -0500
+Received: by mail-qk0-f176.google.com with SMTP id u188so121725852qkc.2
+        for <linux-nfs@vger.kernel.org>; Mon, 27 Feb 2017 14:47:35 -0800 (PST)
+Message-ID: <1488235650.7627.1.camel@redhat.com>
+Subject: Re: [RFC nfs-utils PATCH] nfsd: don't enable a UDP socket by default
+From: Jeff Layton <jlayton@redhat.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: linux-nfs@vger.kernel.org
+Date: Mon, 27 Feb 2017 17:47:30 -0500
+In-Reply-To: <20170227215309.GA10497@fieldses.org>
+References: <20170225131311.14101-1-jlayton@redhat.com>
+         <20170227215309.GA10497@fieldses.org>
+Content-Type: text/plain; charset="UTF-8"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Andy,
-
-On 02/24/2017 05:19 PM, andros@netapp.com wrote:
-> From: Andy Adamson <andros@netapp.com>
+On Mon, 2017-02-27 at 16:53 -0500, J. Bruce Fields wrote:
+> On Sat, Feb 25, 2017 at 08:13:11AM -0500, Jeff Layton wrote:
+> > Most major NFS clients have supported TCP for at least a decade now,
+> > and v4-only shops are becoming more prevalent. It seems reasonable that
+> > serving over UDP should be something that is "opt-in".
+> > 
+> > I've always hesitated to do this in the past, but now that we have
+> > nfs.conf, it seems like the time may be right to disable UDP in default
+> > configurations. In particular, it would be good to try this in the more
+> > bleeding edge distros (Fedora, Ubuntu, SuSE, etc...) and see how
+> > problematic it is.
+> > 
+> > Change the default in rpc.nfsd to just open TCP ports by default. Add
+> > new -u and -t options that allow users to explicitly override what's
+> > in the config file, and update the usage message and manpage.
 > 
-> Signed-off-by: Andy Adamson <andros@netapp.com>
-> ---
->  net/sunrpc/auth_gss/auth_gss.c | 140 ++++++++++++++++++++++++++++++++++++++++-
->  1 file changed, 138 insertions(+), 2 deletions(-)
+> I guess I'm OK with trying it.
 > 
-> diff --git a/net/sunrpc/auth_gss/auth_gss.c b/net/sunrpc/auth_gss/auth_gss.c
-> index 6ffb16d..98971cf 100644
-> --- a/net/sunrpc/auth_gss/auth_gss.c
-> +++ b/net/sunrpc/auth_gss/auth_gss.c
-> @@ -52,9 +52,12 @@
->  #include <linux/sunrpc/gss_api.h>
->  #include <linux/uaccess.h>
->  #include <linux/hashtable.h>
-> +#include <linux/security.h>
->  
->  #include "../netns.h"
->  
-> +static int gss3_create_label(struct rpc_cred *cred, int gss_vers);
-> +
->  static const struct rpc_authops authgss_ops;
->  
->  static const struct rpc_credops gss_credops;
-> @@ -128,6 +131,20 @@ gss_put_ctx(struct gss_cl_ctx *ctx)
->  		gss_free_ctx(ctx);
->  }
->  
-> +/* gss3_label_enabled:
-> + * Called to determine if Full Mode Mandatory Access Control (MAC)
-> + * over a GSS connection is desired.
-> + *
-> + * Note:
-> + * Currently Full Mode MAC is assuemed if SeLinux is enabled and
-> + * RPCSEC_GSS version 3 is in use.
-> + */
-> +static inline bool
-> +gss3_label_assertion_is_enabled(u32 rpcsec_version)
-> +{
-> +	return (rpcsec_version == RPC_GSS3_VERSION && selinux_is_enabled());
-> +}
-> +
->  /* gss_cred_set_ctx:
->   * called by gss_upcall_callback and gss_create_upcall in order
->   * to set the gss context. The actual exchange of an old context
-> @@ -145,6 +162,7 @@ gss_cred_set_ctx(struct rpc_cred *cred, struct gss_cl_ctx *ctx)
->  	set_bit(RPCAUTH_CRED_UPTODATE, &cred->cr_flags);
->  	smp_mb__before_atomic();
->  	clear_bit(RPCAUTH_CRED_NEW, &cred->cr_flags);
-> +	gss3_create_label(cred, ctx->gc_v);
->  }
->  
->  static const void *
-> @@ -1602,6 +1620,75 @@ static int gss_cred_is_negative_entry(struct rpc_cred *cred)
->  #define GSS3_createres_maxsz   (1 /* cr_hlen */ + \
->  				XDR_QUADLEN(1024) /* cr_handle*/ + \
->  				GSS3_createargs_maxsz)
-> +#define GSS3_labelargs_maxsz	(1 /* la_lfs */ + \
-> +				 1 /* la_pi */ + \
-> +				 1 /* la_label.len */ + \
-> +				 XDR_QUADLEN(1024) /* la_label.data */)
-> +#define GSS3_labelres_maxsz	GSS3_labelargs_maxsz
-> +
-> +static void
-> +gss3_enc_label(struct rpc_rqst *req, struct xdr_stream *xdr,
-> +	       const struct gss3_create_args *g3ca)
-> +{
-> +	struct gss3_label *gl;
-> +	__be32 *p;
-> +
-> +	gl = &g3ca->ca_assertions[0].u.au_label;
-> +
-> +	dprintk("RPC: %5u encoding GSSv3 label %s:%d\n", req->rq_task->tk_pid,
-> +		(char *)gl->la_label.data, gl->la_label.len);
-> +
-> +	p = xdr_reserve_space(xdr, GSS3_labelargs_maxsz << 2);
-> +	*p++ = cpu_to_be32(0); /* la_lfs */
-> +	*p++ = cpu_to_be32(0); /* la_pi */
-> +	p = xdr_encode_netobj(p, &gl->la_label);
-> +}
-> +
-> +static int
-> +gss3_dec_label(struct rpc_rqst *req, struct xdr_stream *xdr,
-> +	       struct gss3_create_res *g3cr)
-> +{
-> +	struct gss3_label *gl;
-> +	struct gss3_assertion_u *g3a;
-> +	__be32 *p;
-> +
-> +	/* Used to store assertion in parent gss_cl_ctx */
-> +	g3a = kzalloc(sizeof(*g3a), GFP_KERNEL);
-> +	if (!g3a)
-> +		goto out_err;
-> +
-> +	g3a->au_type = GSS3_LABEL;
-> +	gl = &g3a->u.au_label;
-> +
-> +	p = xdr_inline_decode(xdr, 12);
-> +	if (unlikely(!p))
-> +		goto out_overflow;
-> +
-> +	gl->la_lfs = be32_to_cpup(p++);
-> +	gl->la_pi = be32_to_cpup(p++);
-> +	gl->la_label.len = be32_to_cpup(p++);
-> +
-> +	p = xdr_inline_decode(xdr, gl->la_label.len);
-> +	if (unlikely(!p))
-> +		goto out_overflow;
-> +
-> +	gl->la_label.data = kmemdup(p, gl->la_label.len, GFP_KERNEL);
-> +	if (!gl->la_label.data)
-> +		goto out_free_assert;
-> +
-> +	g3cr->cr_assertions = g3a;
-> +
-> +	return 0;
-> +
-> +out_free_assert:
-> +	kfree(g3a);
-> +out_err:
-> +	return -EIO;
-> +out_overflow:
-> +	pr_warn("RPC    %s End of receive buffer. Remaining len: %tu words.\n",
-> +		__func__, xdr->end - xdr->p);
-> +	goto out_free_assert;
-> +}
->  
->  static void
->  gss3_enc_create(struct rpc_rqst *req, struct xdr_stream *xdr,
-> @@ -1618,6 +1705,8 @@ gss3_enc_create(struct rpc_rqst *req, struct xdr_stream *xdr,
->  	*p++ = type;
->  	switch (type) {
->  	case GSS3_LABEL:
-> +		gss3_enc_label(req, xdr, g3ca);
-> +		break;
->  	case GSS3_PRIVS:
->  	default:
->  		/* drop through to return */
-> @@ -1673,6 +1762,9 @@ gss3_dec_create(struct rpc_rqst *req, struct xdr_stream *xdr,
->  	type = be32_to_cpup(p++);
->  	switch (type) {
->  	case GSS3_LABEL:
-> +		if (gss3_dec_label(req, xdr, g3cr) != 0)
-> +			goto out_free_handle;
-> +		break;
->  	case GSS3_PRIVS:
->  	default:
->  		pr_warn("RPC    Unsupported gss3 create assertion %d\n", type);
-> @@ -1692,13 +1784,16 @@ gss3_dec_create(struct rpc_rqst *req, struct xdr_stream *xdr,
->  
->  #define RPC_PROC_NULL 0
->  
-> +#define GSS3_create_args_max	(GSS3_createargs_maxsz + GSS3_labelargs_maxsz)
-> +#define GSS3_create_res_max	(GSS3_createres_maxsz + GSS3_labelres_maxsz)
-> +
->  struct rpc_procinfo gss3_label_assertion[] = {
->  	[RPC_GSS_PROC_CREATE] = {
->  		.p_proc		= RPC_PROC_NULL,
->  		.p_encode	= (kxdreproc_t)gss3_enc_create,
->  		.p_decode	= (kxdrdproc_t)gss3_dec_create,
-> -		.p_arglen	= GSS3_createargs_maxsz,
-> -		.p_replen	= GSS3_createres_maxsz,
-> +		.p_arglen	= GSS3_create_args_max,
-> +		.p_replen	= GSS3_create_res_max,
->  		.p_statidx	= RPC_GSS_PROC_CREATE,
->  		.p_timer	= 0,
->  		.p_name		= "GSS_PROC_CREATE",
-> @@ -1773,6 +1868,47 @@ gss3_proc_create(struct rpc_cred *cred, struct gss3_assertion_u *asserts,
->  	return ret;
->  }
->  
-> +/**
-> + * GSS3 Label Assertion
-> + *
-> + * Support one label assertion
-> + *
-> + * XXX Return not checked. Should we fail nfs requests if
-> + * a label fails to be created? I think the server enforcing
-> + * Full Mode MAC will reject an NFS request that does not use
-> + * a GSS3 (child) context with the correct label.
-> + */
-> +static int
-> +gss3_create_label(struct rpc_cred *cred, int gss_vers)
-> +{
-> +	struct gss3_assertion_u *asserts;
-> +	struct gss3_label *gl;
-> +	int ret;
-> +
-> +	if (!gss3_label_assertion_is_enabled(gss_vers))
-> +		return -EINVAL;
-> +
-> +	asserts = kzalloc(sizeof(*asserts), GFP_NOFS);
-> +	if (!asserts)
-> +		return -ENOMEM;
-> +
-> +	/* NOTE: not setting la_lfs, la_pi. Do we even need them? */
-> +	asserts->au_type = GSS3_LABEL;
-> +	gl = &asserts->u.au_label;
-> +
-> +	ret = -EINVAL;
-> +	ret = security_current_sid_to_context((char **)&gl->la_label.data,
-> +					      &gl->la_label.len);
-
-I think you only need to assign "ret" once here
-
-Thanks,
-Anna
-
-> +	if (ret)
-> +		goto out_free_asserts;
-> +
-> +	return gss3_proc_create(cred, asserts, 1);
-> +
-> +out_free_asserts:
-> +	kfree(asserts);
-> +	return ret;
-> +}
-> +
->  /*
->  * Refresh credentials. XXX - finish
->  */
+> What does the failure look like (from the Linux client at least) in the
+> case of a preexisting UDP mount, or a new UDP mount?  (Do they get a
+> useful error, or at least something in sylog if there's a hang?)
 > 
+> --b.
+> 
+
+Just this:
+
+     [  792.075135] nfs: server knfsdsrv not responding, still trying
+
+...basically the kernel stops listening on the socket, so the RPCs just
+get an ICMP Destination unreachable back. I'm not sure what we could do
+to make it more obvious to users, really.
+
+> > 
+> > Signed-off-by: Jeff Layton <jlayton@redhat.com>
+> > ---
+> >  nfs.conf                  |  2 +-
+> >  support/include/nfs/nfs.h |  2 +-
+> >  utils/nfsd/nfsd.c         | 18 +++++++++++++-----
+> >  utils/nfsd/nfsd.man       | 14 ++++++++------
+> >  4 files changed, 23 insertions(+), 13 deletions(-)
+> > 
+> > diff --git a/nfs.conf b/nfs.conf
+> > index 81ece0602dba..5d5a23463cff 100644
+> > --- a/nfs.conf
+> > +++ b/nfs.conf
+> > @@ -42,7 +42,7 @@
+> >  # port=0
+> >  # grace-time=90
+> >  # lease-time=90
+> > -# udp=y
+> > +# udp=n
+> >  # tcp=y
+> >  # vers2=n
+> >  # vers3=y
+> > diff --git a/support/include/nfs/nfs.h b/support/include/nfs/nfs.h
+> > index 15ecc6bfc485..5b1ef0ce3883 100644
+> > --- a/support/include/nfs/nfs.h
+> > +++ b/support/include/nfs/nfs.h
+> > @@ -27,6 +27,7 @@ struct nfs_fh_len {
+> >  
+> >  #define NFSCTL_UDPBIT		      (1 << (17 - 1))
+> >  #define NFSCTL_TCPBIT		      (1 << (18 - 1))
+> > +#define NFSCTL_PROTODEFAULT	      (NFSCTL_TCPBIT)
+> >  
+> >  #define NFSCTL_VERUNSET(_cltbits, _v) ((_cltbits) &= ~(1 << ((_v) - 1))) 
+> >  #define NFSCTL_UDPUNSET(_cltbits)     ((_cltbits) &= ~NFSCTL_UDPBIT) 
+> > @@ -42,6 +43,5 @@ struct nfs_fh_len {
+> >  #define NFSCTL_TCPSET(_cltbits)       ((_cltbits) |= NFSCTL_TCPBIT)
+> >  
+> >  #define NFSCTL_ANYPROTO(_cltbits)     ((_cltbits) & (NFSCTL_UDPBIT | NFSCTL_TCPBIT))
+> > -#define NFSCTL_ALLBITS (~0)
+> >  
+> >  #endif /* _NFS_NFS_H */
+> > diff --git a/utils/nfsd/nfsd.c b/utils/nfsd/nfsd.c
+> > index 20f4b7952203..5d101f0e98c3 100644
+> > --- a/utils/nfsd/nfsd.c
+> > +++ b/utils/nfsd/nfsd.c
+> > @@ -44,7 +44,9 @@ static struct option longopts[] =
+> >  	{ "help", 0, 0, 'h' },
+> >  	{ "no-nfs-version", 1, 0, 'N' },
+> >  	{ "nfs-version", 1, 0, 'V' },
+> > +	{ "tcp", 0, 0, 't' },
+> >  	{ "no-tcp", 0, 0, 'T' },
+> > +	{ "udp", 0, 0, 'u' },
+> >  	{ "no-udp", 0, 0, 'U' },
+> >  	{ "port", 1, 0, 'P' },
+> >  	{ "port", 1, 0, 'p' },
+> > @@ -68,7 +70,7 @@ main(int argc, char **argv)
+> >  	unsigned int minorvers = 0;
+> >  	unsigned int minorversset = 0;
+> >  	unsigned int versbits = NFSCTL_VERDEFAULT;
+> > -	unsigned int protobits = NFSCTL_ALLBITS;
+> > +	unsigned int protobits = NFSCTL_PROTODEFAULT;
+> >  	int grace = -1;
+> >  	int lease = -1;
+> >  
+> > @@ -138,7 +140,7 @@ main(int argc, char **argv)
+> >  		}
+> >  	}
+> >  
+> > -	while ((c = getopt_long(argc, argv, "dH:hN:V:p:P:sTUrG:L:", longopts, NULL)) != EOF) {
+> > +	while ((c = getopt_long(argc, argv, "dH:hN:V:p:P:stTitUrG:L:", longopts, NULL)) != EOF) {
+> >  		switch(c) {
+> >  		case 'd':
+> >  			xlog_config(D_ALL, 1);
+> > @@ -222,9 +224,15 @@ main(int argc, char **argv)
+> >  			xlog_syslog(1);
+> >  			xlog_stderr(0);
+> >  			break;
+> > +		case 't':
+> > +			NFSCTL_TCPSET(protobits);
+> > +			break;
+> >  		case 'T':
+> >  			NFSCTL_TCPUNSET(protobits);
+> >  			break;
+> > +		case 'u':
+> > +			NFSCTL_UDPSET(protobits);
+> > +			break;
+> >  		case 'U':
+> >  			NFSCTL_UDPUNSET(protobits);
+> >  			break;
+> > @@ -372,9 +380,9 @@ usage(const char *prog)
+> >  {
+> >  	fprintf(stderr, "Usage:\n"
+> >  		"%s [-d|--debug] [-H hostname] [-p|-P|--port port]\n"
+> > -		"     [-N|--no-nfs-version version] [-V|--nfs-version version]\n"
+> > -		"     [-s|--syslog] [-T|--no-tcp] [-U|--no-udp] [-r|--rdma=]\n"
+> > -		"     [-G|--grace-time secs] [-L|--leasetime secs] nrservs\n",
+> > +		"   [-N|--no-nfs-version version] [-V|--nfs-version version]\n"
+> > +		"   [-s|--syslog] [-t|--tcp] [-T|--no-tcp] [-u|--udp] [-U|--no-udp]\n"
+> > +		"   [-r|--rdma=] [-G|--grace-time secs] [-L|--leasetime secs] nrservs\n",
+> >  		prog);
+> >  	exit(2);
+> >  }
+> > diff --git a/utils/nfsd/nfsd.man b/utils/nfsd/nfsd.man
+> > index 8901fb6c6872..e0c640a64094 100644
+> > --- a/utils/nfsd/nfsd.man
+> > +++ b/utils/nfsd/nfsd.man
+> > @@ -67,15 +67,17 @@ logs error messages (and debug messages, if enabled) to stderr. This option make
+> >  log these messages to syslog instead. Note that errors encountered during
+> >  option processing will still be logged to stderr regardless of this option.
+> >  .TP
+> > +.B \-t " or " \-\-tcp
+> > +Instruct the kernel nfs server to open and listen on a TCP socket. This is the default.
+> > +.TP
+> >  .B \-T " or " \-\-no-tcp
+> > -Disable 
+> > -.B rpc.nfsd 
+> > -from accepting TCP connections from clients.
+> > +Instruct the kernel nfs server not to open and listen on a TCP socket.
+> > +.TP
+> > +.B \-u " or " \-\-udp
+> > +Instruct the kernel nfs server to open and listen on a UDP socket.
+> >  .TP
+> >  .B \-U " or " \-\-no-udp
+> > -Disable
+> > -.B rpc.nfsd
+> > -from accepting UDP connections from clients.
+> > +Instruct the kernel nfs server not to open and listen on a UDP socket. This is the default.
+> >  .TP
+> >  .B \-V " or " \-\-nfs-version vers
+> >  This option can be used to request that 
+> > -- 
+> > 2.9.3
+> > 
+> > --
+> > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> > the body of a message to majordomo@vger.kernel.org
+> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+-- 
+Jeff Layton <jlayton@redhat.com>
