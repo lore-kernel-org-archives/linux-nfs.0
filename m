@@ -1,71 +1,51 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx141.netapp.com ([216.240.21.12]:14159 "EHLO mx141.netapp.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1753820AbdCBQyc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 2 Mar 2017 11:54:32 -0500
-From: Olga Kornievskaia <kolga@netapp.com>
-To: <bfields@redhat.com>
-CC: <linux-nfs@vger.kernel.org>
-Subject: [RFC v1 10/18] NFSD OFFLOAD_CANCEL xdr
-Date: Thu, 2 Mar 2017 11:01:34 -0500
-Message-ID: <20170302160142.30413-11-kolga@netapp.com>
-In-Reply-To: <20170302160142.30413-1-kolga@netapp.com>
-References: <20170302160142.30413-1-kolga@netapp.com>
+Received: from userp1040.oracle.com ([156.151.31.81]:46652 "EHLO
+        userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1752495AbdCBQ7N (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 2 Mar 2017 11:59:13 -0500
+Date: Thu, 2 Mar 2017 08:58:39 -0800
+From: "Darrick J. Wong" <darrick.wong@oracle.com>
+To: Olga Kornievskaia <kolga@netapp.com>
+Cc: linux-fsdevel@vger.kernel.org, hch@lst.de, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH v1 1/3] fs: Don't copy beyond the end of the file
+Message-ID: <20170302165839.GC5269@birch.djwong.org>
+References: <20170302160211.30451-1-kolga@netapp.com>
+ <20170302160211.30451-2-kolga@netapp.com>
 MIME-Version: 1.0
-Content-Type: text/plain
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20170302160211.30451-2-kolga@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
----
- fs/nfsd/nfs4proc.c | 13 +++++++++++++
- fs/nfsd/nfs4xdr.c  |  2 +-
- 2 files changed, 14 insertions(+), 1 deletion(-)
+On Thu, Mar 02, 2017 at 11:02:09AM -0500, Olga Kornievskaia wrote:
+> From: Anna Schumaker <Anna.Schumaker@Netapp.com>
+> 
+> Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
+> ---
+>  fs/read_write.c | 3 +++
+>  1 file changed, 3 insertions(+)
+> 
+> diff --git a/fs/read_write.c b/fs/read_write.c
+> index 5816d4c..1d9e305 100644
+> --- a/fs/read_write.c
+> +++ b/fs/read_write.c
+> @@ -1526,6 +1526,9 @@ ssize_t vfs_copy_file_range(struct file *file_in, loff_t pos_in,
+>  	if (unlikely(ret))
+>  		return ret;
+>  
+> +	if (pos_in >= i_size_read(inode_in))
+> +		return -EINVAL;
+> +
 
-diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-index f564da1..a3b7954 100644
---- a/fs/nfsd/nfs4proc.c
-+++ b/fs/nfsd/nfs4proc.c
-@@ -1480,6 +1480,14 @@ extern struct file *nfs42_ssc_open(struct vfsmount *ss_mnt,
- }
- 
- static __be32
-+nfsd4_offload_cancel(struct svc_rqst *rqstp,
-+		     struct nfsd4_compound_state *cstate,
-+		     struct nfsd4_offload_status *os)
-+{
-+	return 0;
-+}
-+
-+static __be32
- nfsd4_fallocate(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 		struct nfsd4_fallocate *fallocate, int flags)
- {
-@@ -2892,6 +2900,11 @@ static inline u32 nfsd4_seek_rsize(struct svc_rqst *rqstp, struct nfsd4_op *op)
- 		.op_name = "OP_OFFLOAD_STATUS",
- 		.op_rsize_bop = (nfsd4op_rsize)nfsd4_offload_status_rsize,
- 	},
-+	[OP_OFFLOAD_CANCEL] = {
-+		.op_func = (nfsd4op_func)nfsd4_offload_cancel,
-+		.op_name = "OP_OFFLOAD_CANCEL",
-+		.op_rsize_bop = (nfsd4op_rsize)nfsd4_only_status_rsize,
-+	},
- };
- 
- /**
-diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index 6c08c52..26630ae 100644
---- a/fs/nfsd/nfs4xdr.c
-+++ b/fs/nfsd/nfs4xdr.c
-@@ -1948,7 +1948,7 @@ static __be32 nfsd4_decode_nl4_server(struct nfsd4_compoundargs *argp,
- 	[OP_IO_ADVISE]		= (nfsd4_dec)nfsd4_decode_notsupp,
- 	[OP_LAYOUTERROR]	= (nfsd4_dec)nfsd4_decode_notsupp,
- 	[OP_LAYOUTSTATS]	= (nfsd4_dec)nfsd4_decode_notsupp,
--	[OP_OFFLOAD_CANCEL]	= (nfsd4_dec)nfsd4_decode_notsupp,
-+	[OP_OFFLOAD_CANCEL]	= (nfsd4_dec)nfsd4_decode_offload_status,
- 	[OP_OFFLOAD_STATUS]	= (nfsd4_dec)nfsd4_decode_offload_status,
- 	[OP_READ_PLUS]		= (nfsd4_dec)nfsd4_decode_notsupp,
- 	[OP_SEEK]		= (nfsd4_dec)nfsd4_decode_seek,
--- 
-1.8.3.1
+This ought to go in vfs_clone_file_prep_inodes.
 
+(He says, noticing that btrfs never got updated to use that validator...)
+
+--D
+
+>  	if (!(file_in->f_mode & FMODE_READ) ||
+>  	    !(file_out->f_mode & FMODE_WRITE) ||
+>  	    (file_out->f_flags & O_APPEND))
+> -- 
+> 1.8.3.1
+> 
