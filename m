@@ -1,14 +1,14 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx141.netapp.com ([216.240.21.12]:27405 "EHLO mx141.netapp.com"
+Received: from mx141.netapp.com ([216.240.21.12]:65215 "EHLO mx141.netapp.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1753421AbdCBQu5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 2 Mar 2017 11:50:57 -0500
+        id S1752219AbdCBQvO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 2 Mar 2017 11:51:14 -0500
 From: Olga Kornievskaia <kolga@netapp.com>
 To: <bfields@redhat.com>
 CC: <linux-nfs@vger.kernel.org>
-Subject: [RFC v1 04/18] NFSD: allow inter server COPY to have a STALE source server fh
-Date: Thu, 2 Mar 2017 11:01:28 -0500
-Message-ID: <20170302160142.30413-5-kolga@netapp.com>
+Subject: [RFC v1 09/18] NFSD OFFLOAD_STATUS xdr
+Date: Thu, 2 Mar 2017 11:01:33 -0500
+Message-ID: <20170302160142.30413-10-kolga@netapp.com>
 In-Reply-To: <20170302160142.30413-1-kolga@netapp.com>
 References: <20170302160142.30413-1-kolga@netapp.com>
 MIME-Version: 1.0
@@ -16,235 +16,148 @@ Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Andy Adamson <andros@netapp.com>
-
-The inter server to server COPY source server filehandle
-is guaranteed to be stale as the COPY is sent to the destination
-server.
-
-Signed-off-by: Andy Adamson <andros@netapp.com>
+Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
 ---
- fs/nfsd/nfs4proc.c | 47 ++++++++++++++++++++++++++++++++++++++++++++++-
- fs/nfsd/nfs4xdr.c  | 26 +++++++++++++++++++++++++-
- fs/nfsd/nfsd.h     |  2 ++
- fs/nfsd/xdr4.h     |  4 ++++
- 4 files changed, 77 insertions(+), 2 deletions(-)
+ fs/nfsd/nfs4proc.c | 20 ++++++++++++++++++++
+ fs/nfsd/nfs4xdr.c  | 30 ++++++++++++++++++++++++++++--
+ fs/nfsd/xdr4.h     | 10 ++++++++++
+ 3 files changed, 58 insertions(+), 2 deletions(-)
 
 diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-index a680c8c..733a9aa 100644
+index feea20b..f564da1 100644
 --- a/fs/nfsd/nfs4proc.c
 +++ b/fs/nfsd/nfs4proc.c
-@@ -496,11 +496,19 @@ static __be32 nfsd4_open_omfg(struct svc_rqst *rqstp, struct nfsd4_compound_stat
- nfsd4_putfh(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 	    struct nfsd4_putfh *putfh)
- {
-+	__be32 ret;
+@@ -1471,6 +1471,13 @@ extern struct file *nfs42_ssc_open(struct vfsmount *ss_mnt,
+ out:
+ 	return status;
+ }
++static __be32
++nfsd4_offload_status(struct svc_rqst *rqstp,
++		     struct nfsd4_compound_state *cstate,
++		     struct nfsd4_offload_status *os)
++{
++	return nfserr_notsupp;
++}
+ 
+ static __be32
+ nfsd4_fallocate(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+@@ -2462,6 +2469,14 @@ static inline u32 nfsd4_copy_notify_rsize(struct svc_rqst *rqstp,
+ 		* sizeof(__be32);
+ }
+ 
++static inline u32 nfsd4_offload_status_rsize(struct svc_rqst *rqstp,
++					     struct nfsd4_op *op)
++{
++	return (op_encode_hdr_size +
++		2 /* osr_count */ +
++		1 /* osr_complete<1> optional 0 for now */) * sizeof(__be32);;
++}
 +
- 	fh_put(&cstate->current_fh);
- 	cstate->current_fh.fh_handle.fh_size = putfh->pf_fhlen;
- 	memcpy(&cstate->current_fh.fh_handle.fh_base, putfh->pf_fhval,
- 	       putfh->pf_fhlen);
--	return fh_verify(rqstp, &cstate->current_fh, 0, NFSD_MAY_BYPASS_GSS);
-+	ret = fh_verify(rqstp, &cstate->current_fh, 0, NFSD_MAY_BYPASS_GSS);
-+	if (ret == nfserr_stale && HAS_CSTATE_FLAG(cstate, NO_VERIFY_FH)) {
-+		CLEAR_CSTATE_FLAG(cstate, NO_VERIFY_FH);
-+		SET_CSTATE_FLAG(cstate, IS_STALE_FH);
-+		ret = 0;
-+	}
-+	return ret;
+ #ifdef CONFIG_NFSD_PNFS
+ static inline u32 nfsd4_getdeviceinfo_rsize(struct svc_rqst *rqstp, struct nfsd4_op *op)
+ {
+@@ -2872,6 +2887,11 @@ static inline u32 nfsd4_seek_rsize(struct svc_rqst *rqstp, struct nfsd4_op *op)
+ 		.op_name = "OP_COPY_NOTIFY",
+ 		.op_rsize_bop = (nfsd4op_rsize)nfsd4_copy_notify_rsize,
+ 	},
++	[OP_OFFLOAD_STATUS] = {
++		.op_func = (nfsd4op_func)nfsd4_offload_status,
++		.op_name = "OP_OFFLOAD_STATUS",
++		.op_rsize_bop = (nfsd4op_rsize)nfsd4_offload_status_rsize,
++	},
+ };
+ 
+ /**
+diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+index 3235796..6c08c52 100644
+--- a/fs/nfsd/nfs4xdr.c
++++ b/fs/nfsd/nfs4xdr.c
+@@ -1836,6 +1836,13 @@ static __be32 nfsd4_decode_nl4_server(struct nfsd4_compoundargs *argp,
  }
  
  static __be32
-@@ -533,6 +541,16 @@ static __be32 nfsd4_open_omfg(struct svc_rqst *rqstp, struct nfsd4_compound_stat
- nfsd4_savefh(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 	     void *arg)
- {
-+	/**
-+	* This is either an inter COPY (most likely) or an intra COPY with a
-+	* stale file handle. If the latter, nfsd4_copy will reset the PUTFH to
-+	* return nfserr_stale. No fh_dentry, just copy the file handle
-+	* to use with the inter COPY READ.
-+	*/
-+	if (HAS_CSTATE_FLAG(cstate, IS_STALE_FH)) {
-+		cstate->save_fh = cstate->current_fh;
-+		return nfs_ok;
-+	}
- 	if (!cstate->current_fh.fh_dentry)
- 		return nfserr_nofilehandle;
- 
-@@ -1067,6 +1085,13 @@ static int fill_in_write_vector(struct kvec *vec, struct nfsd4_write *write)
- 	if (status)
- 		goto out;
- 
-+	/* Intra copy source fh is stale. PUTFH will fail with ESTALE */
-+	if (HAS_CSTATE_FLAG(cstate, IS_STALE_FH)) {
-+		CLEAR_CSTATE_FLAG(cstate, IS_STALE_FH);
-+		cstate->status = nfserr_copy_stalefh;
-+		goto out_put;
-+	}
-+
- 	bytes = nfsd_copy_file_range(src, copy->cp_src_pos,
- 			dst, copy->cp_dst_pos, copy->cp_count);
- 
-@@ -1081,6 +1106,7 @@ static int fill_in_write_vector(struct kvec *vec, struct nfsd4_write *write)
- 		status = nfs_ok;
- 	}
- 
-+out_put:
- 	fput(src);
- 	fput(dst);
- out:
-@@ -1776,6 +1802,7 @@ static void svcxdr_init_encode(struct svc_rqst *rqstp,
- 	struct nfsd4_compound_state *cstate = &resp->cstate;
- 	struct svc_fh *current_fh = &cstate->current_fh;
- 	struct svc_fh *save_fh = &cstate->save_fh;
-+	int		i;
- 	__be32		status;
- 
- 	svcxdr_init_encode(rqstp, resp);
-@@ -1808,6 +1835,12 @@ static void svcxdr_init_encode(struct svc_rqst *rqstp,
- 		goto encode_op;
- 	}
- 
-+	/* NFSv4.2 COPY source file handle may be from a different server */
-+	for (i = 0; i < args->opcnt; i++) {
-+		op = &args->ops[i];
-+		if (op->opnum == OP_COPY)
-+			SET_CSTATE_FLAG(cstate, NO_VERIFY_FH);
-+	}
- 	while (!status && resp->opcnt < args->opcnt) {
- 		op = &args->ops[resp->opcnt++];
- 
-@@ -1827,6 +1860,9 @@ static void svcxdr_init_encode(struct svc_rqst *rqstp,
- 
- 		opdesc = OPDESC(op);
- 
-+		if (HAS_CSTATE_FLAG(cstate, IS_STALE_FH))
-+			goto call_op;
-+
- 		if (!current_fh->fh_dentry) {
- 			if (!(opdesc->op_flags & ALLOWED_WITHOUT_FH)) {
- 				op->status = nfserr_nofilehandle;
-@@ -1861,6 +1897,7 @@ static void svcxdr_init_encode(struct svc_rqst *rqstp,
- 
- 		if (opdesc->op_get_currentstateid)
- 			opdesc->op_get_currentstateid(cstate, &op->u);
-+call_op:
- 		op->status = opdesc->op_func(rqstp, cstate, &op->u);
- 
- 		if (!op->status) {
-@@ -1881,6 +1918,14 @@ static void svcxdr_init_encode(struct svc_rqst *rqstp,
- 			status = op->status;
- 			goto out;
- 		}
-+		/* Only from intra COPY */
-+		if (cstate->status == nfserr_copy_stalefh) {
-+			dprintk("%s NFS4.2 intra COPY stale src filehandle\n",
-+				__func__);
-+			status = nfserr_stale;
-+			nfsd4_adjust_encode(resp);
-+			goto out;
-+		}
- 		if (op->status == nfserr_replay_me) {
- 			op->replay = &cstate->replay_owner->so_replay;
- 			nfsd4_encode_replay(&resp->xdr, op);
-diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index c632156..328ff9c 100644
---- a/fs/nfsd/nfs4xdr.c
-+++ b/fs/nfsd/nfs4xdr.c
-@@ -4619,15 +4619,28 @@ __be32 nfsd4_check_resp_size(struct nfsd4_compoundres *resp, u32 respsize)
- 	return nfserr_rep_too_big;
- }
- 
-+/** Rewind the encoding to return nfserr_stale on the PUTFH
-+ * in this failed Intra COPY compound
-+ */
-+void
-+nfsd4_adjust_encode(struct nfsd4_compoundres *resp)
++nfsd4_decode_offload_status(struct nfsd4_compoundargs *argp,
++			    struct nfsd4_offload_status *os)
 +{
-+	__be32 *p;
-+
-+	p = resp->cstate.putfh_errp;
-+	*p++ = nfserr_stale;
++	return nfsd4_decode_stateid(argp, &os->stateid);
 +}
 +
- void
- nfsd4_encode_operation(struct nfsd4_compoundres *resp, struct nfsd4_op *op)
++static __be32
+ nfsd4_decode_seek(struct nfsd4_compoundargs *argp, struct nfsd4_seek *seek)
  {
- 	struct xdr_stream *xdr = &resp->xdr;
- 	struct nfs4_stateowner *so = resp->cstate.replay_owner;
-+	struct nfsd4_compound_state *cstate = &resp->cstate;
- 	struct svc_rqst *rqstp = resp->rqstp;
- 	int post_err_offset;
- 	nfsd4_enc encoder;
--	__be32 *p;
-+	__be32 *p, *statp;
+ 	DECODE_HEAD;
+@@ -1942,7 +1949,7 @@ static __be32 nfsd4_decode_nl4_server(struct nfsd4_compoundargs *argp,
+ 	[OP_LAYOUTERROR]	= (nfsd4_dec)nfsd4_decode_notsupp,
+ 	[OP_LAYOUTSTATS]	= (nfsd4_dec)nfsd4_decode_notsupp,
+ 	[OP_OFFLOAD_CANCEL]	= (nfsd4_dec)nfsd4_decode_notsupp,
+-	[OP_OFFLOAD_STATUS]	= (nfsd4_dec)nfsd4_decode_notsupp,
++	[OP_OFFLOAD_STATUS]	= (nfsd4_dec)nfsd4_decode_offload_status,
+ 	[OP_READ_PLUS]		= (nfsd4_dec)nfsd4_decode_notsupp,
+ 	[OP_SEEK]		= (nfsd4_dec)nfsd4_decode_seek,
+ 	[OP_WRITE_SAME]		= (nfsd4_dec)nfsd4_decode_notsupp,
+@@ -4478,6 +4485,25 @@ static __be32 nfsd4_encode_readv(struct nfsd4_compoundres *resp,
+ }
  
- 	p = xdr_reserve_space(xdr, 8);
- 	if (!p) {
-@@ -4636,9 +4649,20 @@ __be32 nfsd4_check_resp_size(struct nfsd4_compoundres *resp, u32 respsize)
- 	}
- 	*p++ = cpu_to_be32(op->opnum);
- 	post_err_offset = xdr->buf->len;
-+	statp = p;
- 
- 	if (op->opnum == OP_ILLEGAL)
- 		goto status;
+ static __be32
++nfsd4_encode_offload_status(struct nfsd4_compoundres *resp, __be32 nfserr,
++			    struct nfsd4_offload_status *os)
++{
++	struct xdr_stream *xdr = &resp->xdr;
++	__be32 *p;
 +
-+	/** This is a COPY compound with a stale source server file handle.
-+	 * If OP_COPY processing determines that this is an intra server to
-+	 * server COPY, then this PUTFH should return nfserr_ stale so the
-+	 * putfh_errp will be set to nfserr_stale. If this is an inter server
-+	 * to server COPY, ignore the nfserr_stale.
-+	 */
-+	if (op->opnum == OP_PUTFH && HAS_CSTATE_FLAG(cstate, IS_STALE_FH))
-+		cstate->putfh_errp = statp;
++	if (nfserr)
++		return nfserr;
 +
- 	BUG_ON(op->opnum < 0 || op->opnum >= ARRAY_SIZE(nfsd4_enc_ops) ||
- 	       !nfsd4_enc_ops[op->opnum]);
- 	encoder = nfsd4_enc_ops[op->opnum];
-diff --git a/fs/nfsd/nfsd.h b/fs/nfsd/nfsd.h
-index d966068..8d6fb0f 100644
---- a/fs/nfsd/nfsd.h
-+++ b/fs/nfsd/nfsd.h
-@@ -272,6 +272,8 @@ static inline bool nfsd4_spo_must_allow(struct svc_rqst *rqstp)
- #define	nfserr_replay_me	cpu_to_be32(11001)
- /* nfs41 replay detected */
- #define	nfserr_replay_cache	cpu_to_be32(11002)
-+/* nfs42 intra copy failed with nfserr_stale */
-+#define nfserr_copy_stalefh	cpu_to_be32(1103)
- 
- /* Check for dir entries '.' and '..' */
- #define isdotent(n, l)	(l < 3 && n[0] == '.' && (l == 1 || n[1] == '.'))
++	p = xdr_reserve_space(xdr, 8 + 4);
++	if (!p)
++		return nfserr_resource;
++	p = xdr_encode_hyper(p, os->count);
++	*p++ = cpu_to_be32(0);
++
++	return nfserr;
++}
++
++static __be32
+ nfsd4_encode_seek(struct nfsd4_compoundres *resp, __be32 nfserr,
+ 		  struct nfsd4_seek *seek)
+ {
+@@ -4583,7 +4609,7 @@ static __be32 nfsd4_encode_readv(struct nfsd4_compoundres *resp,
+ 	[OP_LAYOUTERROR]	= (nfsd4_enc)nfsd4_encode_noop,
+ 	[OP_LAYOUTSTATS]	= (nfsd4_enc)nfsd4_encode_noop,
+ 	[OP_OFFLOAD_CANCEL]	= (nfsd4_enc)nfsd4_encode_noop,
+-	[OP_OFFLOAD_STATUS]	= (nfsd4_enc)nfsd4_encode_noop,
++	[OP_OFFLOAD_STATUS]	= (nfsd4_enc)nfsd4_encode_offload_status,
+ 	[OP_READ_PLUS]		= (nfsd4_enc)nfsd4_encode_noop,
+ 	[OP_SEEK]		= (nfsd4_enc)nfsd4_encode_seek,
+ 	[OP_WRITE_SAME]		= (nfsd4_enc)nfsd4_encode_noop,
 diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
-index 38fcb4f..aa94295 100644
+index e6fa914..c3e6907 100644
 --- a/fs/nfsd/xdr4.h
 +++ b/fs/nfsd/xdr4.h
-@@ -45,6 +45,8 @@
+@@ -561,6 +561,15 @@ struct nfsd4_copy_notify {
+ 	struct nl4_servers	cpn_src;
+ };
  
- #define CURRENT_STATE_ID_FLAG (1<<0)
- #define SAVED_STATE_ID_FLAG (1<<1)
-+#define NO_VERIFY_FH (1<<2)
-+#define IS_STALE_FH  (1<<3)
- 
- #define SET_CSTATE_FLAG(c, f) ((c)->sid_flags |= (f))
- #define HAS_CSTATE_FLAG(c, f) ((c)->sid_flags & (f))
-@@ -63,6 +65,7 @@ struct nfsd4_compound_state {
- 	size_t			iovlen;
- 	u32			minorversion;
- 	__be32			status;
-+	__be32			*putfh_errp;
- 	stateid_t	current_stateid;
- 	stateid_t	save_stateid;
- 	/* to indicate current and saved state id presents */
-@@ -705,6 +708,7 @@ int nfs4svc_decode_compoundargs(struct svc_rqst *, __be32 *,
- int nfs4svc_encode_compoundres(struct svc_rqst *, __be32 *,
- 		struct nfsd4_compoundres *);
- __be32 nfsd4_check_resp_size(struct nfsd4_compoundres *, u32);
-+void nfsd4_adjust_encode(struct nfsd4_compoundres *);
- void nfsd4_encode_operation(struct nfsd4_compoundres *, struct nfsd4_op *);
- void nfsd4_encode_replay(struct xdr_stream *xdr, struct nfsd4_op *op);
- __be32 nfsd4_encode_fattr_to_buf(__be32 **p, int words,
++struct nfsd4_offload_status {
++	/* request */
++	stateid_t	stateid;
++
++	/* response */
++	u64		count;
++	u32		status;
++};
++
+ struct nfsd4_op {
+ 	int					opnum;
+ 	__be32					status;
+@@ -617,6 +626,7 @@ struct nfsd4_op {
+ 		struct nfsd4_clone		clone;
+ 		struct nfsd4_copy		copy;
+ 		struct nfsd4_copy_notify	copy_notify;
++		struct nfsd4_offload_status	offload_status;
+ 		struct nfsd4_seek		seek;
+ 	} u;
+ 	struct nfs4_replay *			replay;
 -- 
 1.8.3.1
 
