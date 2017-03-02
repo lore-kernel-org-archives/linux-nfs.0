@@ -1,53 +1,93 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx141.netapp.com ([216.240.21.12]:21213 "EHLO mx141.netapp.com"
+Received: from mx141.netapp.com ([216.240.21.12]:30745 "EHLO mx141.netapp.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1753100AbdCBQIf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 2 Mar 2017 11:08:35 -0500
+        id S1752270AbdCBQN2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 2 Mar 2017 11:13:28 -0500
 From: Olga Kornievskaia <kolga@netapp.com>
-To: <linux-fsdevel@vger.kernel.org>
-CC: <hch@lst.de>, <linux-nfs@vger.kernel.org>
-Subject: [PATCH v1 0/3] VFS changes for NFSv4.2 "inter" server-to-server COPY op 
-Date: Thu, 2 Mar 2017 11:02:08 -0500
-Message-ID: <20170302160211.30451-1-kolga@netapp.com>
+To: <Trond.Myklebust@primarydata.com>
+CC: <linux-nfs@vger.kernel.org>
+Subject: [RFC v1 09/19] NFS OFFLOAD_STATUS op
+Date: Thu, 2 Mar 2017 11:01:13 -0500
+Message-ID: <20170302160123.30375-10-kolga@netapp.com>
+In-Reply-To: <20170302160123.30375-1-kolga@netapp.com>
+References: <20170302160123.30375-1-kolga@netapp.com>
 MIME-Version: 1.0
 Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-One patch adds a check for validity of arguments.
+Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
+---
+ fs/nfs/nfs42.h     |  2 ++
+ fs/nfs/nfs42proc.c | 42 ++++++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 44 insertions(+)
 
-In another patch is crucial to the existance of NFSv4.2 inter SSC COPY.
-In order to implement the "inter" SSC COPY that involves two files from
-different superblock, it requires removal of the cross-devices check in VFS.
-Given that in the future the "cp" command will be written to use
-copy_file_range(), it would be important for "inter" SSC COPY to use the
-same interface.
-
-This patch has first been met with an objection from Christoph saying that
-"no other VFS operation is supported between mountpoints" and another objection
-that since been addressed that "no xfstest coverage". We argue that no other
-VFS operation needed such support and now there exists one.
-
-An alternative approach might be to define a new file system function
-(eg., bool allow_cross_device_op() that a filesystem can define and NFS will
-define it and return true. And based on the existence of that function and
-its result the check could be relaxed)?
-
-If that check were to be removed, it would be beneficial to check the
-the superblocks for the clone operation so that it's not called unnecessarily.
-
-Anna Schumaker (1):
-  fs: Don't copy beyond the end of the file
-
-Andy Adamson (1):
-  VFS permit cross device vfs_copy_file_range
-
-Olga Kornievskaia (1):
-  VFS don't try clone if superblocks are different
-
- fs/read_write.c | 12 ++++++------
- 1 file changed, 6 insertions(+), 6 deletions(-)
-
+diff --git a/fs/nfs/nfs42.h b/fs/nfs/nfs42.h
+index 820fd63..47ffbb0 100644
+--- a/fs/nfs/nfs42.h
++++ b/fs/nfs/nfs42.h
+@@ -23,6 +23,8 @@ int nfs42_proc_layoutstats_generic(struct nfs_server *,
+ int nfs42_proc_clone(struct file *, struct file *, loff_t, loff_t, loff_t);
+ int nfs42_proc_copy_notify(struct file *, struct file *,
+ 			   struct nfs42_copy_notify_res *);
++int nfs42_proc_offload_status(struct file *, nfs4_stateid *,
++			      struct nfs42_offload_status_res *);
+ #endif /* CONFIG_NFS_V4_2 */
+ 
+ #endif /* __LINUX_FS_NFS_NFS4_2_H */
+diff --git a/fs/nfs/nfs42proc.c b/fs/nfs/nfs42proc.c
+index ade2938..d6de5ff 100644
+--- a/fs/nfs/nfs42proc.c
++++ b/fs/nfs/nfs42proc.c
+@@ -363,6 +363,48 @@ int nfs42_proc_copy_notify(struct file *src, struct file *dst,
+ 	return status;
+ }
+ 
++int _nfs42_proc_offload_status(struct file *dst, nfs4_stateid *stateid,
++				struct nfs42_offload_status_res *res)
++{
++	struct nfs42_offload_status_args args;
++	struct nfs_server *dst_server = NFS_SERVER(file_inode(dst));
++	struct rpc_message msg = {
++		.rpc_proc = &nfs4_procedures[NFSPROC4_CLNT_OFFLOAD_STATUS],
++		.rpc_resp = res,
++	};
++	int status;
++
++	args.osa_src_fh = NFS_FH(file_inode(dst));
++	memcpy(&args.osa_stateid, stateid, sizeof(args.osa_stateid));
++	msg.rpc_argp = &args;
++	status = nfs4_call_sync(dst_server->client, dst_server, &msg,
++				&args.osa_seq_args, &res->osr_seq_res, 0);
++	if (status == -ENOTSUPP)
++		dst_server->caps &= ~NFS_CAP_OFFLOAD_STATUS;
++
++	return status;
++}
++
++int nfs42_proc_offload_status(struct file *dst, nfs4_stateid *stateid,
++				struct nfs42_offload_status_res *res)
++{
++	struct nfs_server *dst_server = NFS_SERVER(file_inode(dst));
++	struct nfs4_exception exception = { };
++	int status;
++
++	if (!(dst_server->caps & NFS_CAP_OFFLOAD_STATUS))
++		return -EOPNOTSUPP;
++
++	do {
++		status = _nfs42_proc_offload_status(dst, stateid, res);
++		if (status == -ENOTSUPP)
++			return -EOPNOTSUPP;
++		status = nfs4_handle_exception(dst_server, status, &exception);
++	} while (exception.retry);
++
++	return status;
++}
++
+ static loff_t _nfs42_proc_llseek(struct file *filep,
+ 		struct nfs_lock_context *lock, loff_t offset, int whence)
+ {
 -- 
 1.8.3.1
 
