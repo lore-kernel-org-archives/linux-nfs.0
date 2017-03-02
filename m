@@ -1,14 +1,14 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx142.netapp.com ([216.240.21.19]:17279 "EHLO mx142.netapp.com"
+Received: from mx141.netapp.com ([216.240.21.12]:17448 "EHLO mx141.netapp.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1754755AbdCBQDU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        id S1754713AbdCBQDU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
         Thu, 2 Mar 2017 11:03:20 -0500
 From: Olga Kornievskaia <kolga@netapp.com>
 To: <Trond.Myklebust@primarydata.com>
 CC: <linux-nfs@vger.kernel.org>
-Subject: [RFC v1 19/19] NFS if we got partial copy ignore errors
-Date: Thu, 2 Mar 2017 11:01:23 -0500
-Message-ID: <20170302160123.30375-20-kolga@netapp.com>
+Subject: [RFC v1 02/19] VFS permit cross device vfs_copy_file_range
+Date: Thu, 2 Mar 2017 11:01:06 -0500
+Message-ID: <20170302160123.30375-3-kolga@netapp.com>
 In-Reply-To: <20170302160123.30375-1-kolga@netapp.com>
 References: <20170302160123.30375-1-kolga@netapp.com>
 MIME-Version: 1.0
@@ -16,27 +16,46 @@ Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Don't ignore ENOSPC. Otherwise, try next copy chunk
+Allow nfs_copy_file_range to copy across devices.
+NFSv4.2 inter server to server copy always copies across devices, and
+NFSv4.2 intra server to server copy can copy across devices on the same
+server.
 
-Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
+If a file system's fileoperations copy_file_range operation prohibits
+cross-device copies, fall back to do_splice_direct. This is needed for
+nfsd_copy_file_range() which is called by the inter server to server
+destination server acting as an NFS client, and reading the file from
+the source server.
+
+Signed-off-by: Andy Adamson <andros@netapp.com>
 ---
- fs/nfs/nfs42proc.c | 3 ++-
- 1 file changed, 2 insertions(+), 1 deletion(-)
+ fs/read_write.c | 6 +-----
+ 1 file changed, 1 insertion(+), 5 deletions(-)
 
-diff --git a/fs/nfs/nfs42proc.c b/fs/nfs/nfs42proc.c
-index 232447d..7a8f770 100644
---- a/fs/nfs/nfs42proc.c
-+++ b/fs/nfs/nfs42proc.c
-@@ -222,7 +222,8 @@ static int handle_async_copy(struct nfs42_copy_res *res,
+diff --git a/fs/read_write.c b/fs/read_write.c
+index 1d9e305..75084cd 100644
+--- a/fs/read_write.c
++++ b/fs/read_write.c
+@@ -1534,10 +1534,6 @@ ssize_t vfs_copy_file_range(struct file *file_in, loff_t pos_in,
+ 	    (file_out->f_flags & O_APPEND))
+ 		return -EBADF;
+ 
+-	/* this could be relaxed once a method supports cross-fs copies */
+-	if (inode_in->i_sb != inode_out->i_sb)
+-		return -EXDEV;
+-
+ 	if (len == 0)
+ 		return 0;
+ 
+@@ -1559,7 +1555,7 @@ ssize_t vfs_copy_file_range(struct file *file_in, loff_t pos_in,
+ 	if (file_out->f_op->copy_file_range) {
+ 		ret = file_out->f_op->copy_file_range(file_in, pos_in, file_out,
+ 						      pos_out, len, flags);
+-		if (ret != -EOPNOTSUPP)
++		if (ret != -EOPNOTSUPP && ret != -EXDEV)
+ 			goto done;
  	}
- out:
- 	*ret_count = copy->count;
--	status = -copy->error;
-+	if (copy->count < 0 || copy->error == ENOSPC)
-+		status = -copy->error;
- 	if (copy->count && copy->verf.committed != NFS_FILE_SYNC)
- 		status = nfs_commit_file(dst, &copy->verf.verifier);
- 	kfree(copy);
+ 
 -- 
 1.8.3.1
 
