@@ -1,98 +1,353 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:59234 "EHLO mx2.suse.de"
+Received: from mx141.netapp.com ([216.240.21.12]:27730 "EHLO mx141.netapp.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751153AbdCBVZF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 2 Mar 2017 16:25:05 -0500
-Received: from relay2.suse.de (charybdis-ext.suse.de [195.135.220.254])
-        by mx2.suse.de (Postfix) with ESMTP id BB754AB5D
-        for <linux-nfs@vger.kernel.org>; Thu,  2 Mar 2017 21:24:57 +0000 (UTC)
-From: NeilBrown <neilb@suse.com>
-To: linux-nfs@vger.kernel.org
-Date: Fri, 03 Mar 2017 08:24:52 +1100
-Subject: Confused by pnfs LAYOUTRETURN - seeking clarity.
-Message-ID: <87shmvnzh7.fsf@notabene.neil.brown.name>
+        id S1751153AbdCBVfW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 2 Mar 2017 16:35:22 -0500
+From: Olga Kornievskaia <kolga@netapp.com>
+To: <bfields@redhat.com>
+CC: <linux-nfs@vger.kernel.org>
+Subject: [RFC v1 07/18] NFSD Unique stateid_t for inter server to server COPY authentication
+Date: Thu, 2 Mar 2017 11:01:31 -0500
+Message-ID: <20170302160142.30413-8-kolga@netapp.com>
+In-Reply-To: <20170302160142.30413-1-kolga@netapp.com>
+References: <20170302160142.30413-1-kolga@netapp.com>
 MIME-Version: 1.0
-Content-Type: multipart/signed; boundary="=-=-=";
-        micalg=pgp-sha256; protocol="application/pgp-signature"
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---=-=-=
-Content-Type: text/plain
+A per COPY unique stateid_t is required to authenticate the READ from
+the destination server (acting as a client) on the source server.
 
+Multiple concurrent inter server to server copies of the same source file
+are also supported.
 
-I've been trying to understand how LAYOUTRETURN is used in pNFS,
-primarily because our SLE12-SP1 kernel (based on 3.12) appears
-to have a very different opinion than some Netapp filers.
+Signed-off-by: Andy Adamson <andros@netapp.com>
+---
+ fs/nfsd/netns.h     |   8 ++++
+ fs/nfsd/nfs4proc.c  |  29 +++++++++-----
+ fs/nfsd/nfs4state.c | 108 ++++++++++++++++++++++++++++++++++++++++++++++++++++
+ fs/nfsd/nfs4xdr.c   |   2 +-
+ fs/nfsd/nfsctl.c    |   2 +
+ fs/nfsd/state.h     |  18 +++++++++
+ fs/nfsd/xdr4.h      |   2 +-
+ 7 files changed, 158 insertions(+), 11 deletions(-)
 
-My reading of RFC-5661 suggests that the client needs to call
-LAYOUTRETURN for every layout that it received from the server.  A
-single LAYOUTRETURN can cover a whole file or a whole filesystem, so it
-doesn't need to be 1-for-1, but there is no implicit return.
+diff --git a/fs/nfsd/netns.h b/fs/nfsd/netns.h
+index 3714231..2c88a95 100644
+--- a/fs/nfsd/netns.h
++++ b/fs/nfsd/netns.h
+@@ -119,6 +119,14 @@ struct nfsd_net {
+ 	u32 clverifier_counter;
+ 
+ 	struct svc_serv *nfsd_serv;
++
++	/*
++	 * clientid and stateid data for construction of net unique COPY
++	 * stateids.
++	 */
++	u32		s2s_cp_cl_id;
++	struct idr	s2s_cp_stateids;
++	spinlock_t	s2s_cp_lock;
+ };
+ 
+ /* Simple check to find out if a given net was properly initialized */
+diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+index b079904..feea20b 100644
+--- a/fs/nfsd/nfs4proc.c
++++ b/fs/nfsd/nfs4proc.c
+@@ -1416,6 +1416,13 @@ extern struct file *nfs42_ssc_open(struct vfsmount *ss_mnt,
+ 	return 0;
+ }
+ 
++/*
++ * Use a unique stateid_t as the cnr_stateid so that the source server
++ * can authenticate the inter server to server copy READ from the
++ * destination server.
++ *
++ * Set the cnr_leasetime to the nfsd4_lease.
++ */
+ static __be32
+ nfsd4_copy_notify(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 		  struct nfsd4_copy_notify *cn)
+@@ -1424,6 +1431,7 @@ extern struct file *nfs42_ssc_open(struct vfsmount *ss_mnt,
+ 	struct file *src = NULL;
+ 	struct nfsd_net *nn = net_generic(SVC_NET(rqstp), nfsd_net_id);
+ 	struct nfs4_stid *stid;
++	struct nfs4_cp_state *cps;
+ 
+ 	status = nfs4_preprocess_stateid_op(rqstp, cstate, &cstate->current_fh,
+ 					&cn->cpn_src_stateid, RD_STATE, &src,
+@@ -1434,12 +1442,11 @@ extern struct file *nfs42_ssc_open(struct vfsmount *ss_mnt,
+ 	cn->cpn_sec = nn->nfsd4_lease;
+ 	cn->cpn_nsec = 0;
+ 
+-
+-	/** XXX Save cpn_src_statid, cpn_src, and any other returned source
+-	 * server addresses on which the source server is williing to accept
+-	 * connections from the destination e.g. what is returned in cpn_src,
+-	 * to verify READ from dest server.
+-	 */
++	status = nfserrno(-ENOMEM);
++	cps = nfs4_alloc_init_cp_state(nn, nn->nfsd4_lease, stid);
++	if (!cps)
++		goto out;
++	memcpy(&cn->cpn_cnr_stateid, &cps->cp_stateid, sizeof(stateid_t));
+ 
+ 	/**
+ 	 * For now, only return one server address in cpn_src, the
+@@ -1448,15 +1455,19 @@ extern struct file *nfs42_ssc_open(struct vfsmount *ss_mnt,
+ 	cn->cpn_src.nl_nsvr = 1;
+ 
+ 	status = nfsd4_set_src_nl4_netaddr(rqstp, &cn->cpn_src);
+-	if (status != 0)
++	if (status != 0) {
++		nfs4_free_cp_state(cps);
+ 		goto out;
++	}
+ 
+-	dprintk("<-- %s cpn_dst %s:%s nl_nsvr %d nl_svr %s:%s\n", __func__,
++	dprintk("<-- %s cpn_dst %s:%s nl_nsvr %d nl_svr %s:%s so_id %d\n",
++		__func__,
+ 		cn->cpn_dst.u.nl4_addr.na_netid,
+ 		cn->cpn_dst.u.nl4_addr.na_uaddr,
+ 		cn->cpn_src.nl_nsvr,
+ 		cn->cpn_src.nl_svr->u.nl4_addr.na_netid,
+-		cn->cpn_src.nl_svr->u.nl4_addr.na_uaddr);
++		cn->cpn_src.nl_svr->u.nl4_addr.na_uaddr,
++		cn->cpn_cnr_stateid.si_opaque.so_id);
+ out:
+ 	return status;
+ }
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 5ebd992..606009a 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -658,6 +658,7 @@ struct nfs4_stid *nfs4_alloc_stid(struct nfs4_client *cl, struct kmem_cache *sla
+ 	/* Will be incremented before return to client: */
+ 	atomic_set(&stid->sc_count, 1);
+ 	spin_lock_init(&stid->sc_lock);
++	INIT_LIST_HEAD(&stid->sc_cp_list);
+ 
+ 	/*
+ 	 * It shouldn't be a problem to reuse an opaque stateid value.
+@@ -674,6 +675,106 @@ struct nfs4_stid *nfs4_alloc_stid(struct nfs4_client *cl, struct kmem_cache *sla
+ 	return NULL;
+ }
+ 
++/*
++ * Create a unique stateid_t to represent each COPY - returned by
++ * COPY_NOTIFY cnr_stateid and used in the copy READ from the
++ * destination server. Hang the copy stateids off the OPEN/LOCK/DELEG
++ * stateid from the client open of the source file. Bookeep other
++ * copy state such as the cnr_leasetime.
++ */
++struct nfs4_cp_state *nfs4_alloc_init_cp_state(struct nfsd_net *nn,
++						u64 cpn_sec,
++						struct nfs4_stid *p_stid)
++{
++	struct nfs4_cp_state *cps;
++	int new_id;
++
++	cps = kzalloc(sizeof(struct nfs4_cp_state), GFP_KERNEL);
++	if (!cps)
++		return NULL;
++	idr_preload(GFP_KERNEL);
++	spin_lock(&nn->s2s_cp_lock);
++	new_id = idr_alloc_cyclic(&nn->s2s_cp_stateids, cps, 0, 0, GFP_NOWAIT);
++	spin_unlock(&nn->s2s_cp_lock);
++	idr_preload_end();
++	if (new_id < 0)
++		goto out_free;
++	cps->cp_stateid.si_opaque.so_id = new_id;
++	cps->cp_stateid.si_opaque.so_clid.cl_boot = nn->boot_time;
++	cps->cp_stateid.si_opaque.so_clid.cl_id = nn->s2s_cp_cl_id;
++	cps->cp_p_stid = p_stid;
++	cps->cp_active = false;
++	INIT_LIST_HEAD(&cps->cp_list);
++	cps->cp_timeout = jiffies + (cpn_sec * HZ);
++	list_add(&cps->cp_list, &p_stid->sc_cp_list);
++
++	return cps;
++out_free:
++	kfree(cps);
++	return NULL;
++}
++
++void nfs4_free_cp_state(struct nfs4_cp_state *cps)
++{
++	struct nfsd_net *nn;
++
++	dprintk("--> %s freeing cp_state so_id %d\n", __func__,
++		cps->cp_stateid.si_opaque.so_id);
++
++	nn = net_generic(cps->cp_p_stid->sc_client->net, nfsd_net_id);
++	spin_lock(&nn->s2s_cp_lock);
++	idr_remove(&nn->s2s_cp_stateids, cps->cp_stateid.si_opaque.so_id);
++	spin_unlock(&nn->s2s_cp_lock);
++
++	kfree(cps);
++}
++
++static void nfs4_free_cp_statelist(struct nfs4_stid *stid)
++{
++	struct nfs4_cp_state *cps;
++
++	might_sleep();
++
++	while (!list_empty(&stid->sc_cp_list)) {
++		cps = list_first_entry(&stid->sc_cp_list, struct nfs4_cp_state,
++				       cp_list);
++		list_del(&cps->cp_list);
++		nfs4_free_cp_state(cps);
++	}
++}
++
++/*
++ * A READ from an inter server to server COPY will have a
++ * copy stateid. Return the parent nfs4_stid.
++ */
++static __be32 find_cp_state_parent(struct nfsd_net *nn, stateid_t *st,
++				   struct nfs4_stid **stid)
++{
++	struct nfs4_cp_state *cps = NULL;
++
++	if (st->si_opaque.so_clid.cl_id != nn->s2s_cp_cl_id)
++		return nfserr_bad_stateid;
++	spin_lock(&nn->s2s_cp_lock);
++	cps = idr_find(&nn->s2s_cp_stateids, st->si_opaque.so_id);
++	spin_unlock(&nn->s2s_cp_lock);
++	if (!cps) {
++		pr_info("NFSD: find_cp_state cl_id %d so_id %d NOT FOUND\n",
++			st->si_opaque.so_clid.cl_id, st->si_opaque.so_id);
++		return nfserr_bad_stateid;
++	}
++
++	/* Did the inter server to server copy start in time? */
++	if (cps->cp_active == false && !time_after(cps->cp_timeout, jiffies))
++		return nfserr_partner_no_auth;
++	else
++		cps->cp_active = true;
++
++	*stid = cps->cp_p_stid;
++	atomic_inc(&cps->cp_p_stid->sc_count);
++
++	return nfs_ok;
++}
++
+ static struct nfs4_ol_stateid * nfs4_alloc_open_stateid(struct nfs4_client *clp)
+ {
+ 	struct nfs4_stid *stid;
+@@ -819,6 +920,9 @@ static void block_delegations(struct knfsd_fh *fh)
+ 	}
+ 	idr_remove(&clp->cl_stateids, s->sc_stateid.si_opaque.so_id);
+ 	spin_unlock(&clp->cl_lock);
++
++	nfs4_free_cp_statelist(s);
++
+ 	s->sc_free(s);
+ 	if (fp)
+ 		put_nfs4_file(fp);
+@@ -4970,6 +5074,8 @@ static __be32 nfsd4_validate_stateid(struct nfs4_client *cl, stateid_t *stateid)
+ 	status = nfsd4_lookup_stateid(cstate, stateid,
+ 				NFS4_DELEG_STID|NFS4_OPEN_STID|NFS4_LOCK_STID,
+ 				&s, nn);
++	if (status == nfserr_bad_stateid)
++		status = find_cp_state_parent(nn, stateid, &s);
+ 	if (status)
+ 		return status;
+ 	status = check_stateid_generation(stateid, &s->sc_stateid,
+@@ -6943,6 +7049,8 @@ static int nfs4_state_create_net(struct net *net)
+ 	INIT_LIST_HEAD(&nn->close_lru);
+ 	INIT_LIST_HEAD(&nn->del_recall_lru);
+ 	spin_lock_init(&nn->client_lock);
++	spin_lock_init(&nn->s2s_cp_lock);
++	idr_init(&nn->s2s_cp_stateids);
+ 
+ 	spin_lock_init(&nn->blocked_locks_lock);
+ 	INIT_LIST_HEAD(&nn->blocked_locks_lru);
+diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+index 328ff9c..3235796 100644
+--- a/fs/nfsd/nfs4xdr.c
++++ b/fs/nfsd/nfs4xdr.c
+@@ -4453,7 +4453,7 @@ static __be32 nfsd4_encode_readv(struct nfsd4_compoundres *resp,
+ 	*p++ = cpu_to_be32(cn->cpn_nsec);
+ 
+ 	/* cnr_stateid */
+-	nfserr = nfsd4_encode_stateid(xdr, &cn->cpn_src_stateid);
++	nfserr = nfsd4_encode_stateid(xdr, &cn->cpn_cnr_stateid);
+ 	if (nfserr)
+ 		return nfserr;
+ 
+diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
+index 73e75ac..ebe57bb 100644
+--- a/fs/nfsd/nfsctl.c
++++ b/fs/nfsd/nfsctl.c
+@@ -1218,6 +1218,8 @@ static __net_init int nfsd_init_net(struct net *net)
+ 	nn->nfsd4_grace = 90;
+ 	nn->clverifier_counter = prandom_u32();
+ 	nn->clientid_counter = prandom_u32();
++	nn->s2s_cp_cl_id = nn->clientid_counter++;
++	pr_info("%s s2s_cp_cl_id %d\n", __func__, nn->s2s_cp_cl_id);
+ 	return 0;
+ 
+ out_idmap_error:
+diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
+index f5ab89a..c084c57 100644
+--- a/fs/nfsd/state.h
++++ b/fs/nfsd/state.h
+@@ -93,6 +93,7 @@ struct nfs4_stid {
+ #define NFS4_REVOKED_DELEG_STID 16
+ #define NFS4_CLOSED_DELEG_STID 32
+ #define NFS4_LAYOUT_STID 64
++	struct list_head	sc_cp_list;
+ 	unsigned char		sc_type;
+ 	stateid_t		sc_stateid;
+ 	spinlock_t		sc_lock;
+@@ -102,6 +103,20 @@ struct nfs4_stid {
+ };
+ 
+ /*
++ * An inter server to server copy stateid that is unique per nfsd_net.
++ * cp_stateid is returned as the COPY_NOTIFY cnr_stateid and presented
++ * by the destination server to the source server as a COPY authenticator.
++ * Used to lookup the parent COPY_NOTIFY cna_src_stateid nfs4_stid.
++ */
++struct nfs4_cp_state {
++	stateid_t		cp_stateid;
++	struct list_head	cp_list;	/* per parent nfs4_stid */
++	struct nfs4_stid	*cp_p_stid;	/* pointer to parent */
++	bool			cp_active;	/* has the copy started */
++	unsigned long		cp_timeout;	/* copy timeout */
++};
++
++/*
+  * Represents a delegation stateid. The nfs4_client holds references to these
+  * and they are put when it is being destroyed or when the delegation is
+  * returned by the client:
+@@ -606,6 +621,9 @@ __be32 nfsd4_lookup_stateid(struct nfsd4_compound_state *cstate,
+ 		     struct nfs4_stid **s, struct nfsd_net *nn);
+ struct nfs4_stid *nfs4_alloc_stid(struct nfs4_client *cl, struct kmem_cache *slab,
+ 				  void (*sc_free)(struct nfs4_stid *));
++struct nfs4_cp_state *nfs4_alloc_init_cp_state(struct nfsd_net *nn, u64 cpn_sec,
++					       struct nfs4_stid *p_stid);
++void nfs4_free_cp_state(struct nfs4_cp_state *cps);
+ void nfs4_unhash_stid(struct nfs4_stid *s);
+ void nfs4_put_stid(struct nfs4_stid *s);
+ void nfs4_inc_and_copy_stateid(stateid_t *dst, struct nfs4_stid *stid);
+diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
+index aa94295..5b38f0a 100644
+--- a/fs/nfsd/xdr4.h
++++ b/fs/nfsd/xdr4.h
+@@ -549,7 +549,7 @@ struct nfsd4_copy_notify {
+ 	struct nl4_server	cpn_dst;
+ 
+ 	/* response */
+-	/* Note: cpn_src_stateid is used for cnr_stateid */
++	stateid_t		cpn_cnr_stateid;
+ 	u64			cpn_sec;
+ 	u32			cpn_nsec;
+ 	struct nl4_servers	cpn_src;
+-- 
+1.8.3.1
 
-However RFC-5663 contains the text
-
-   A LAYOUTRETURN operation represents an explicit release of resources
-   by the client, usually done for the purpose of avoiding unnecessary
-   CB_LAYOUTRECALL operations in the future.
-
-This seems to imply that LAYOUTRETURN is only an optimisation.  If you
-don't want to avoid CB_LAYOUTRECALL, there is not much call for
-LAYOUTRETURN.  It seems to suggest (without explicitly saying) that the
-CB_LAYOUTRECALL will effect the return of a layout without the client
-explicitly sending LAYOUTRETURN in response.  RFC-5661 says LAYOUTRETURN
-does need to be sent in response.
-
-The code in 3.12 doesn't send LAYOUTRETURN in response to
-CB_LAYOUTRECALL, nor does it send LAYOUTRETURN when it closes a file
-marked as "return layouts on close".  The one place I have seen evidence
-of it returning layouts is when a file is unlinked, though I think there
-are others (chmod, IO error).
-
-The current upstream code seems to call LAYOUTRETURN more correctly, but
-it is hard to be sure because I couldn't find a commit which acknowledged
-the specific problem and corrected it - just commits that claim to be
-making improvements and avoiding races and things like that.
-
-Questions:
- - Am I correct that all layouts need to be explicitly returned by the
-   client, and so the text from RFC-5663 is misleading?
-
- - If so, what is the earliest kernel that is believed to correctly
-   return layouts in response to CB_LAYOUTRECALL, or a 'roc' file being
-   closed?
-
-
-I was advised that Netapp are considering a change (netapp issue
-955835):
-  An enhancement will be added in future versions of Ontap to clear out
-  the corresponding layout states after a file has been closed in the
-  event the client does not return them.
-
-This sounds like a mistake, unless "clear out" means "send
-CB_LAYOUTRECALL for".  Should we advice Netapp against this?
-
-Thanks,
-NeilBrown
-
-
---=-=-=
-Content-Type: application/pgp-signature; name="signature.asc"
-
------BEGIN PGP SIGNATURE-----
-
-iQIzBAEBCAAdFiEEG8Yp69OQ2HB7X0l6Oeye3VZigbkFAli4jaQACgkQOeye3VZi
-gbnVQRAAkswuVZw1eyE1wnYz2cPASxjR5mZ+2EyKHtJ84rQqVpinWpAU3m0/5LU1
-yk0ExWsfuyy9rPEiJCuK2bYaw4/Ja62/wSTH433OwZSWZbnVCP6LYiEHaEj4FECN
-BJ7pQf2n6Yk3Nd2N1RyA58uCfKblWZgVs/drLqZkUMmS5xRHINEEFuomopzYq76I
-KKYuv8paW/Jc0JBou01YkA9Nptc6ZsJsPzFRfF2ys/Agr7ToYil0LZswThzlfJ2N
-CTMYFUaJkrh+8ezE4cnXP1hViqSCk2RAxontnig2IKMjSHv77PK2xC/uCQ4tcfpk
-8qsrzrBTwCF3727arQ8hU5aUlQrg+cKdyKaWpDJ17GuKfp7/fkNnxvM3YiMHw016
-Rxt6QAVtWVDe9qPkO6WT0za0c8AQtA+tujFWxoN/Filjy9mkgJv4KL9xkwOobrdW
-PfR9CMNn9O+8Hf+W3QuAbnHweFFCLbQomoBjx68/HqVPfklo1wxLnnwFmcKiE7dY
-mzDG40vjPVsPqTEAbPeuoF0no1CDlPb1mbu/nG35FGRdpc+ZVAhgp/FEUbKkrIa5
-UwFEGlgJSGu71KB7ex4IcDF+IOFfbg9ouROQiASQ9uaq3dmu1Lm2hp/FZc5X+6xq
-nI8qF9ZP6cfYJVeo5xeiBU9xbnBW5iw0/+xGikUdOw5yCNAE2Eg=
-=CE8Y
------END PGP SIGNATURE-----
---=-=-=--
