@@ -1,17 +1,17 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:40436 "EHLO mx2.suse.de"
+Received: from mx2.suse.de ([195.135.220.15]:45801 "EHLO mx2.suse.de"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751835AbdCBXmr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 2 Mar 2017 18:42:47 -0500
+        id S1751083AbdCCBY1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 2 Mar 2017 20:24:27 -0500
 From: NeilBrown <neilb@suse.com>
-To: Chris Siebenmann <cks.nfs01@cs.toronto.edu>
-Date: Fri, 03 Mar 2017 10:28:13 +1100
-Cc: Chris Siebenmann <cks.nfs01@cs.toronto.edu>, linux-nfs@vger.kernel.org
-Subject: Re: Manual page bug: two inaccuracies in nfsd(7)
-In-Reply-To: <20170223164644.E40565A0066@apps1.cs.toronto.edu>
-References: <20170223164644.E40565A0066@apps1.cs.toronto.edu>
-cc: "steved@redhat.com" <steved@redhat.com>
-Message-ID: <87efyfntrm.fsf@notabene.neil.brown.name>
+To: "bfields\@fieldses.org" <bfields@fieldses.org>,
+        Trond Myklebust <trondmy@primarydata.com>
+Date: Fri, 03 Mar 2017 09:57:32 +1100
+Cc: "linux-nfs\@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH v2 0/2] Fix up nfsd to enable NFSv4.x without NFSv4.0
+In-Reply-To: <20170227230357.GA11912@fieldses.org>
+References: <20170222233533.23845-1-trond.myklebust@primarydata.com> <87y3wxrcha.fsf@notabene.neil.brown.name> <1487811610.4863.10.camel@primarydata.com> <20170227230357.GA11912@fieldses.org>
+Message-ID: <87k287nv6r.fsf@notabene.neil.brown.name>
 MIME-Version: 1.0
 Content-Type: multipart/signed; boundary="=-=-=";
         micalg=pgp-sha256; protocol="application/pgp-signature"
@@ -19,110 +19,151 @@ Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 --=-=-=
-Content-Type: text/plain
+Content-Type: text/plain; charset=utf-8
 Content-Transfer-Encoding: quoted-printable
 
-On Thu, Feb 23 2017, Chris Siebenmann wrote:
+On Mon, Feb 27 2017, bfields@fieldses.org wrote:
 
->> >  I was recently reading this manual page as part of exploring running
->> > an NFS server on Ubuntu 16.04 (with Ubuntu's kernel '4.4.0') and found
->> > two inaccuracies with the current state of the kernel (or at least how
->> > it looks to me based on both experimentation and code).
->> >
->> >  First, there is no /proc/net/rpc/auth.domain directory and cache any
->> > more. This was removed from the kernel in 2006 (in commit efc36aa5608f=
-),
->> > so I think it should be safe to remove from current versions of the
->> > manpage.
+> On Thu, Feb 23, 2017 at 01:00:12AM +0000, Trond Myklebust wrote:
+>> On Thu, 2017-02-23 at 11:13 +1100, NeilBrown wrote:
+>> > On Wed, Feb 22 2017, Trond Myklebust wrote:
+>> >=20
+>> > > This patch series was intended as a standalone series. However it
+>> > > now
+>> > > aims to fix up a few issues with Neil's initial patch:
+>> > >=20
+>> > > 1) When the user turns off all minor versions of NFSv4, then that
+>> > > should
+>> > > =C2=A0=C2=A0=C2=A0be equivalent to turning off NFSv4 support, and so=
+ when someone
+>> > > tries
+>> > > =C2=A0=C2=A0=C2=A0to mount, we should return RPC_PROG_MISMATCH.
+>> > > 2) Allow the user to use either '4.0' or '4' in order to enable or
+>> > > disable
+>> > > =C2=A0=C2=A0=C2=A0minor version 0. Other minor versions remain enabl=
+ed/disabled
+>> > > using the
+>> > > =C2=A0=C2=A0=C2=A0'4.x' format.
+>> >=20
+>> > If I understand you and the code correctly, then this change means
+>> > that
+>> > if I run
+>> >=20
+>> > =C2=A0=C2=A0=C2=A0rpc.nfsd -N 4
+>> >=20
+>> > the nfs server will continue to server v4.1 and v4.2 requests, only
+>> > v4.0
+>> > will be disabled (Assuming a kernel which defaults to serving v4.0,
+>> > v4.1
+>> > and v4.0).
 >>=20
->> I agree.
+>> Unfortunately not... The problem is that rpc.nfsd has a borken parser
+>> that refuses the '-N4 -V4.2' syntax, and that throws hissy fit if you
+>> try to feed it '-N4.0' or '-V4.0'.
 >>=20
->> >
->> >  Second, the manpage says about the 'flush' files to be found in eg
->> > /proc/net/rpc/auth.unix.ip:
->> >
->> > 	When a number of seconds since epoch (1 Jan 1970) is written to
->> > 	this file, all entries in the cache that were last updated before
->> > 	that file become invalidated and will be flushed out. Writing
->> > 	1 will flush everything. [...]
->> >
->> > The bit about 'writing 1 will flush everything' does not appear to be
->> > accurate.
+>> The kernel change needs to be accompanied by a fix to nfs-utils.
 >>=20
->> I was never accurate.  I vaguely remember writing it.  I must have been
->> confused.
+>> > Is that really what we want?
+>> >=20
+>> > The text in the man page for rpc.nfsd could be read as allowing this
+>> > interpretation, though it isn't explicit.
+>> > I've always used "NFSv4" to mean any or all for 4.0, 4.1, 4.2, ...
 >>=20
->> Would you be able to create a patch which fixes these issues, and post
->> it, with a signed-off-by ?
+>> We _could_ do that. As I said, that's a question of fixing rpc.nfsd.
+>>=20
+>> The question here, though, is what should the kernel do when you start
+>> poking into /proc/fs/nfsd/versions. I think adding a new field between
+>> '4' and '4.0' might be more disruptive than changing the meaning of '4'
+>> to mean '4.0' as there might be other parsers of that pseudofile out
+>> there today.
 >
->  Here is a patch that deletes the mention of auth.domain and changes the
-> wording around 'flush' files. I'm not attached to the revised wording;
-> it's just the best I could manage in something that felt that it was
-> within the same style and space as the current wording.
->
-> Signed-off-by: Chris Siebenmann <cks.nfs01@cs.toronto.edu>
+> I'm OK with that, unless Neil sees a problem.
 
-Thanks.
-Acked-by: NeilBrown <neilb@suse.com>
+I don't know ... the more I think about it, the less certain I seem to
+be.
 
-hopefully Steve will pick this up in due course.  He tends to apply
-patches in batches every few weeks.
+Prior to Trond's updates for nfs-utils, "rpc.nfsd -N 4" would write
+ "+3 -4"
+to the 'versions' file, which will currently disable NFSv4 completely.
+With this patch it will disable 4.0, but leave 4.1 active.
+
+This behavior is consistent with the documentation, which says:
+
+   The  current version of rpc.nfsd can support major NFS versions 2,3,4
+   and the minor versions 4.1 and 4.2.
+
+which suggests that "4.1" is a different thing to "4", not part of it.
+And the current nfs-utils doesn't support disabling just 4.0 at all.
+You cannot say "rpc.nfsd -N 4.0".
+So this patch gives more control to the old nfs-utils, by changing the
+semantics of a particular operation.
+
+Technically, it is a regression though.  It does result in a more
+coherent interface, which is a good thing in the long term.
+
+When you read from "versions" you get the major version and minor
+version listed separately, with a special case that "+4.0" is never
+reported.
+So if just 4.1 is enabled, you might get
+   -3 +4 -4.0 +4.1 -4.2
+
+after Trond's change "4" means "4.0" and "4.0" is never displayed,
+so the above case would become
+   -3 -4 +4.1 -4.2
+
+which is very different.  Probably another regression.
+
+I guess I'm not entirely sure what Trond is trying to fix.
+This bit:
+
+1) When the user turns off all minor versions of NFSv4, then that should
+   be equivalent to turning off NFSv4 support, and so when someone tries
+   to mount, we should return RPC_PROG_MISMATCH.
+
+Makes perfect sense.  But I'm not clear on why the format of the
+versions file needs to change.
+Trond - what am I missing?
 
 Thanks,
 NeilBrown
 
+
+
 >
-> diff --git a/utils/exportfs/nfsd.man b/utils/exportfs/nfsd.man
-> index 0c516fa..9efa29f 100644
-> --- a/utils/exportfs/nfsd.man
-> +++ b/utils/exportfs/nfsd.man
-> @@ -105,11 +105,6 @@ clients have for different filesystems.
->  The caches are:
->=20=20
->  .TP
-> -.B auth.domain
-> -This cache maps the name of a client (or domain) to an internal data
-> -structure.  The only access that is possible is to flush the cache.
-> -
-> -.TP
->  .B auth.unix.ip
->  This cache contains a mapping from IP address to the name of the
->  authentication domain that the ipaddress should be treated as part of.
-> @@ -133,7 +128,8 @@ are:
->  .B flush
->  When a number of seconds since epoch (1 Jan 1970) is written to this
->  file, all entries in the cache that were last updated before that file
-> -become invalidated and will be flushed out.  Writing 1 will flush
-> +become invalidated and will be flushed out.  Writing a time in the
-> +future (in seconds since epoch) will flush
->  everything.  This is the only file that will always be present.
->=20=20
->  .TP
+> The changelog on the first patch doesn't seem to describe the v2 version
+> very well; using the below cribbed from your cover letter instead.
 >
+>     nfsd: fix configuration of supported minor versions
+>=20=20=20=20=20
+>     When the user turns off all minor versions of NFSv4, that should be
+>     equivalent to turning off NFSv4 support, so a mount attempt using NFS=
+v4
+>     should get RPC_PROG_MISMATCH, not NFSERR_MINOR_VERS_MISMATCH.
+>=20=20=20=20=20
+>     Allow the user to use either '4.0' or '4' to enable or disable minor
+>     version 0.  Other minor versions are still enabled or disabled using =
+the
+>     '4.x' format.
 >
-> 	- cks
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> --b.
 
 --=-=-=
 Content-Type: application/pgp-signature; name="signature.asc"
 
 -----BEGIN PGP SIGNATURE-----
 
-iQIzBAEBCAAdFiEEG8Yp69OQ2HB7X0l6Oeye3VZigbkFAli4qo0ACgkQOeye3VZi
-gbkfOA/+OKz1AI1FaQaGa3cfaefHcfWs/AQE5tOvGa0/1DmYoF+BIUJt9BJ4knm0
-43npMcsiqg/mX/CDtisMrn8In30Lo37vUu64VSoWUlHcOaWt29yhXc+0TiT6+B+g
-wMmAxOHpncOFyQJ6e9KY6YdHPyEjqOsamklWTxgrO4Jmj4ddxAOk/ibqdQsgRS0y
-FyWP7by3/loBzEy9Ed6v7qUfGkWfxLCQsixBrqU8ANzZHX/1g/1chBM9yBjIS5r1
-NCeWg0z1qmdHgqVt84BD44Rmsnk6hAFG3iHXX7VB4x3vdDVmq8db+HXePfXgER6J
-SM6yqBzC2BKAUXUdjwrTA7LSZ8wem3rXn5cFplDnqjcZypg1qwGCc741dBceyWZp
-LtVEYgxPF6dOH0UizjfNgvXjOuYE+eF5zOfURHL2xKUizGKIRFZPlhPxQBgXz7f+
-l2qdrKdQSjBDiSRAVuAfO1YlSPj+xXvnNmS/OmiaX4r5QYQkpZRPlJlyaQkLSpoR
-mXCG4xVoelxRYA+ZTzqvqrV3T4gGbOZv25V1fUH2sv7HLTk06X9O5ju0s6n58iNd
-f9Gib8+aFHmUYwfyeexlY/6Wnsiko5WgWtYMNbBfv0Ie7Su4IQzLOsehtntgSDp7
-HXX9D51uVnRxC87+ZqkcqHrr32pBDMsaq+GPmz9AdyLQoW+ch70=
-=FcaM
+iQIzBAEBCAAdFiEEG8Yp69OQ2HB7X0l6Oeye3VZigbkFAli4o1wACgkQOeye3VZi
+gbk0dA/6AoO0+TF+Kav9WT2Zxae5odZqnGrHw67kcdFVyYJc6MwjN74gwvDXgjRr
+Rn+2MhWfjrTIX1lkxStNMz79jX7vniczjC3sjLyKsAAcqzHWm41mtDcadkFZ5OUX
+qU8gHecA6GbqxEPLKI0II2imtXpBRA+uerkjB06cCZthVrlZutJd94qVFH93Clbz
+MW0FOoYt9Q4l7tR5CnFhWVL7oWRifBGtJZhXDznepNMypaRCj/9L/xKub/9a0oW9
+W9aA3fwsHeUQGaVh6F1tlYoHbwFHHstMkSFWHO3nsme2QcBrnFIR9TD2ev1lYgjH
+YBYzGX2zVDfDM1bzFmak8ogsmQcerusvUgaLfsp3zrGW7kGjL3sEUQ3k9OXOIVmW
+jL2XYNH1O5JeFipcSmsSCkl9H3f4vkmULzt9uUZqfawY90+dRPbRdT0vk4Xzf70v
+68x0ISrPrG5q97yyOC/rHS5tPNvJcm+2lOjN0w7Gx9WqCm7AWSplmpjbPA/u4sv2
+GnhrEGh8DqGjOMY74l9ZnLJPoNGPDKyRdb8EvVrvSoY9ScOoqQmGy5yBsI4PUwwS
+mico7i7T0D7GTrrJFSRY7vZD0DXu5pBSzKcX6UUZBdFJ51b/nDghp3pSmdG4jMeq
+IFuEbvheAFydHCMl2ZhTEZtIjhfb0W8tsDpCi1vx1T3WJTDmfsM=
+=ImT6
 -----END PGP SIGNATURE-----
 --=-=-=--
