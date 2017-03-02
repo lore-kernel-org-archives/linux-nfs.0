@@ -1,180 +1,371 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx141.netapp.com ([216.240.21.12]:50203 "EHLO mx141.netapp.com"
+Received: from mx144.netapp.com ([216.240.21.25]:6772 "EHLO mx144.netapp.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1752810AbdCBQPB (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        id S1750947AbdCBQPB (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
         Thu, 2 Mar 2017 11:15:01 -0500
 From: Olga Kornievskaia <kolga@netapp.com>
-To: <Trond.Myklebust@primarydata.com>
+To: <bfields@redhat.com>
 CC: <linux-nfs@vger.kernel.org>
-Subject: [RFC v1 18/19] NFS recover from destination server reboot for copies
-Date: Thu, 2 Mar 2017 11:01:22 -0500
-Message-ID: <20170302160123.30375-19-kolga@netapp.com>
-In-Reply-To: <20170302160123.30375-1-kolga@netapp.com>
-References: <20170302160123.30375-1-kolga@netapp.com>
+Subject: [RFC v1 12/18] NFSD first draft of async copy
+Date: Thu, 2 Mar 2017 11:01:36 -0500
+Message-ID: <20170302160142.30413-13-kolga@netapp.com>
+In-Reply-To: <20170302160142.30413-1-kolga@netapp.com>
+References: <20170302160142.30413-1-kolga@netapp.com>
 MIME-Version: 1.0
 Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Mark the destination state to indicate a server-side copy is
-happening. On detecting a reboot and recovering open state check
-if any state is engaged in a server-side copy, if so, find the
-copy and mark it and then signal the waiting thread. Upon wakeup,
-if copy was marked then propage EAGAIN to the nfsd_copy_file_range
-and restart the copy from scratch (no partial state is being
-queried at this point).
+Upong receiving copy request for the inter copy, nfsd will
+establish the mount to the source server.
+
+Asynchronous copies are handled by a single threaded workqueue.
+If we get asynchronous request, make sure to copy the needed
+arguments/state from the stack before starting the copy. Then
+queue work and reply back to the client indicating copy is
+asynchronous.
+
+nfsd_copy_file_range() will copy in 4MBchunk so do a loop over
+the total number of bytes need to copy. In case a failure
+happens in the middle, we can return an error as well as how
+much we copied so far. Once done creating a workitem for the
+callback workqueue and send CB_OFFLOAD with the results.
 
 Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
 ---
- fs/nfs/nfs42proc.c     | 22 +++++++++++++++++-----
- fs/nfs/nfs4_fs.h       |  1 +
- fs/nfs/nfs4file.c      |  3 +++
- fs/nfs/nfs4state.c     | 15 +++++++++++++++
- include/linux/nfs_fs.h |  2 ++
- 5 files changed, 38 insertions(+), 5 deletions(-)
+ fs/nfsd/nfs4proc.c  | 194 +++++++++++++++++++++++++++++++++++++++++++---------
+ fs/nfsd/nfs4state.c |   9 ++-
+ fs/nfsd/state.h     |   2 +
+ fs/nfsd/xdr4.h      |   8 +++
+ 4 files changed, 178 insertions(+), 35 deletions(-)
 
-diff --git a/fs/nfs/nfs42proc.c b/fs/nfs/nfs42proc.c
-index c9d8d7a..232447d 100644
---- a/fs/nfs/nfs42proc.c
-+++ b/fs/nfs/nfs42proc.c
-@@ -181,6 +181,7 @@ static int handle_async_copy(struct nfs42_copy_res *res,
- 	struct nfs4_copy_state *copy;
- 	int status;
- 	bool found_pending = false;
-+	struct nfs_open_context *ctx = nfs_file_open_context(dst);
+diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+index a3b7954..9dfb20b 100644
+--- a/fs/nfsd/nfs4proc.c
++++ b/fs/nfsd/nfs4proc.c
+@@ -77,6 +77,21 @@
+ { }
+ #endif
  
- 	spin_lock(&server->nfs_client->cl_lock);
- 	list_for_each_entry(copy, &server->nfs_client->pending_cb_stateids,
-@@ -204,6 +205,7 @@ static int handle_async_copy(struct nfs42_copy_res *res,
- 	}
- 	memcpy(&copy->stateid, &res->write_res.stateid, NFS4_STATEID_SIZE);
- 	init_completion(&copy->completion);
-+	copy->parent_state = ctx->state;
- 
- 	list_add_tail(&copy->copies, &server->ss_copies);
- 	spin_unlock(&server->nfs_client->cl_lock);
-@@ -213,10 +215,10 @@ static int handle_async_copy(struct nfs42_copy_res *res,
- 	list_del_init(&copy->copies);
- 	spin_unlock(&server->nfs_client->cl_lock);
- 	if (status == -ERESTARTSYS) {
--		nfs42_do_offload_cancel_async(dst, &copy->stateid);
--		nfs42_do_offload_cancel_async(src, src_stateid);
--		kfree(copy);
--		return status;
-+		goto out_cancel;
-+	} else if (copy->flags) {
-+		status = -EAGAIN;
-+		goto out_cancel;
- 	}
- out:
- 	*ret_count = copy->count;
-@@ -225,6 +227,11 @@ static int handle_async_copy(struct nfs42_copy_res *res,
- 		status = nfs_commit_file(dst, &copy->verf.verifier);
- 	kfree(copy);
- 	return status;
-+out_cancel:
-+	nfs42_do_offload_cancel_async(dst, &copy->stateid);
-+	nfs42_do_offload_cancel_async(src, src_stateid);
-+	kfree(copy);
-+	return status;
- }
- 
- static ssize_t _nfs42_proc_copy(struct file *src,
-@@ -273,6 +280,8 @@ static ssize_t _nfs42_proc_copy(struct file *src,
- 	if (status)
- 		return status;
- 
-+	set_bit(NFS_CLNT_DST_SSC_COPY_STATE,
-+		&dst_lock->open_context->state->flags);
- retry:
- 	args->sync = sync;
- 	status = nfs4_call_sync(server->client, server, &msg,
-@@ -363,9 +372,12 @@ ssize_t nfs42_proc_copy(struct file *src, loff_t pos_src,
- 
- 		if (err >= 0)
- 			break;
--		if (err == -ENOTSUPP) {
-+		switch (err) {
-+		case -ENOTSUPP:
- 			err = -EOPNOTSUPP;
- 			break;
-+		case -EAGAIN:
-+			break;
- 		}
- 
- 		err2 = nfs4_handle_exception(server, err, &src_exception);
-diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
-index 07b93fde..8037ec3 100644
---- a/fs/nfs/nfs4_fs.h
-+++ b/fs/nfs/nfs4_fs.h
-@@ -162,6 +162,7 @@ enum {
- 	NFS_STATE_RECOVERY_FAILED,	/* OPEN stateid state recovery failed */
- 	NFS_STATE_MAY_NOTIFY_LOCK,	/* server may CB_NOTIFY_LOCK */
- #ifdef CONFIG_NFS_V4_2
-+	NFS_CLNT_DST_SSC_COPY_STATE,    /* dst server open state on client*/
- 	NFS_SRV_SSC_COPY_STATE,		/* ssc state on the dst server */
- #endif /* CONFIG_NFS_V4_2 */
- };
-diff --git a/fs/nfs/nfs4file.c b/fs/nfs/nfs4file.c
-index f6ccc6f..92822c4 100644
---- a/fs/nfs/nfs4file.c
-+++ b/fs/nfs/nfs4file.c
-@@ -142,6 +142,7 @@ static ssize_t nfs4_copy_file_range(struct file *file_in, loff_t pos_in,
- 	if (file_inode(file_in) == file_inode(file_out))
- 		return -EINVAL;
- 
-+retry:
- 	if (nfs42_intra_ssc(file_in, file_out)) {  /* Intra-ssc */
- 		if (file_in->f_op != file_out->f_op)
- 			return -EXDEV;
-@@ -173,6 +174,8 @@ static ssize_t nfs4_copy_file_range(struct file *file_in, loff_t pos_in,
- 		kfree(cn_resp->cnr_src.nl_svr);
- 		kfree(cn_resp);
- 	}
-+	if (ret == -EAGAIN)
-+		goto retry;
- 	return ret;
- }
- 
-diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
-index af5d8d7..47ece10 100644
---- a/fs/nfs/nfs4state.c
-+++ b/fs/nfs/nfs4state.c
-@@ -1550,6 +1550,21 @@ static int nfs4_reclaim_open_state(struct nfs4_state_owner *sp, const struct nfs
- 					&state->flags);
- 				nfs4_put_open_state(state);
- 				spin_lock(&sp->so_lock);
-+#ifdef CONFIG_NFS_V4_2
-+				if (test_bit(NFS_CLNT_DST_SSC_COPY_STATE, &state->flags)) {
-+					struct nfs4_copy_state *copy;
++static struct workqueue_struct *copy_wq;
 +
-+					spin_lock(&sp->so_server->nfs_client->cl_lock);
-+					list_for_each_entry(copy, &sp->so_server->ss_copies, copies) {
-+						if (memcmp(&state->stateid.other, &copy->parent_state->stateid.other, NFS4_STATEID_SIZE))
-+							continue;
-+						copy->flags = 1;
-+						complete(&copy->completion);
-+						break;
-+					}
-+					spin_unlock(&sp->so_server->nfs_client->cl_lock);
-+				}
-+#endif /* CONFIG_NFS_V4_2 */
- 				goto restart;
- 			}
++int nfsd4_create_copy_queue(void)
++{
++	copy_wq = create_singlethread_workqueue("nfsd4_copy");
++	if (!copy_wq)
++		return -ENOMEM;
++	return 0;
++}
++
++void nfsd4_destroy_copy_queue(void)
++{
++	destroy_workqueue(copy_wq);
++}
++
+ #define NFSDDBG_FACILITY		NFSDDBG_PROC
+ 
+ static u32 nfsd_attrmask[] = {
+@@ -1218,8 +1233,7 @@ extern struct file *nfs42_ssc_open(struct vfsmount *ss_mnt,
+ static struct vfsmount *
+ nfsd4_setup_inter_ssc(struct svc_rqst *rqstp,
+ 			struct nfsd4_compound_state *cstate,
+-			struct nfsd4_copy *copy, struct file **src,
+-			struct file **dst)
++			struct nfsd4_copy *copy)
+ {
+ 	struct svc_fh *s_fh = NULL;
+ 	stateid_t *s_stid = &copy->cp_src_stateid;
+@@ -1232,7 +1246,7 @@ extern struct file *nfs42_ssc_open(struct vfsmount *ss_mnt,
+ 	/* Verify the destination stateid and set dst struct file*/
+ 	status = nfs4_preprocess_stateid_op(rqstp, cstate, &cstate->current_fh,
+ 					&copy->cp_dst_stateid,
+-					WR_STATE, dst, NULL, NULL);
++					WR_STATE, &copy->fh_dst, NULL, NULL);
+ 	if (status) {
+ 		ss_mnt = ERR_PTR(be32_to_cpu(status));
+ 		goto out;
+@@ -1258,7 +1272,7 @@ extern struct file *nfs42_ssc_open(struct vfsmount *ss_mnt,
+ 		nfsd4_interssc_disconnect(ss_mnt);
+ 		return ERR_CAST(filp);
+ 	}
+-	*src = filp;
++	copy->fh_src = filp;
+ out:
+ 	return ss_mnt;
+ }
+@@ -1280,8 +1294,7 @@ extern struct file *nfs42_ssc_open(struct vfsmount *ss_mnt,
+ static struct vfsmount *
+ nfsd4_setup_inter_ssc(struct svc_rqst *rqstp,
+ 			struct nfsd4_compound_state *cstate,
+-			struct nfsd4_copy *copy, struct file **src,
+-			struct file **dst)
++			struct nfsd4_copy *copy)
+ {
+ 	return ERR_PTR(-EINVAL);
+ }
+@@ -1297,13 +1310,13 @@ extern struct file *nfs42_ssc_open(struct vfsmount *ss_mnt,
+ static __be32
+ nfsd4_setup_intra_ssc(struct svc_rqst *rqstp,
+ 		      struct nfsd4_compound_state *cstate,
+-		      struct nfsd4_copy *copy, struct file **src,
+-		      struct file **dst)
++		      struct nfsd4_copy *copy)
+ {
+ 	__be32 status;
+ 
+-	status = nfsd4_verify_copy(rqstp, cstate, &copy->cp_src_stateid, src,
+-				   &copy->cp_dst_stateid, dst);
++	status = nfsd4_verify_copy(rqstp, cstate, &copy->cp_src_stateid,
++				   &copy->fh_src, &copy->cp_dst_stateid,
++				   &copy->fh_dst);
+ 	if (status)
+ 		goto out;
+ 
+@@ -1323,47 +1336,160 @@ extern struct file *nfs42_ssc_open(struct vfsmount *ss_mnt,
+ 	fput(dst);
+ }
+ 
++static void nfsd4_cb_offload_release(struct nfsd4_callback *cb)
++{
++	struct nfsd4_copy *copy = container_of(cb, struct nfsd4_copy, cp_cb);
++
++	kfree(copy);
++}
++
++static int nfsd4_cb_offload_done(struct nfsd4_callback *cb,
++				 struct rpc_task *task)
++{
++	return 1;
++}
++
++static const struct nfsd4_callback_ops nfsd4_cb_offload_ops = {
++	.release = nfsd4_cb_offload_release,
++	.done = nfsd4_cb_offload_done
++};
++
++static int nfsd4_init_copy_res(struct nfsd4_copy *copy, bool sync)
++{
++	memcpy(&copy->cp_res.cb_stateid, &copy->cp_dst_stateid,
++		sizeof(copy->cp_dst_stateid));
++	copy->cp_res.wr_stable_how = NFS_UNSTABLE;
++	copy->cp_consecutive = 1;
++	copy->cp_synchronous = sync;
++	gen_boot_verifier(&copy->cp_res.wr_verifier, copy->net);
++
++	return nfs_ok;
++}
++
++static int _nfsd_copy_file_range(struct nfsd4_copy *copy)
++{
++	ssize_t bytes_copied = 0;
++	size_t bytes_total = copy->cp_count;
++	u64 src_pos = copy->cp_src_pos;
++	u64 dst_pos = copy->cp_dst_pos;
++
++	do {
++		bytes_copied = nfsd_copy_file_range(copy->fh_src, src_pos,
++				copy->fh_dst, dst_pos, bytes_total);
++		if (bytes_copied <= 0)
++			break;
++		bytes_total -= bytes_copied;
++		copy->cp_res.wr_bytes_written += bytes_copied;
++		src_pos += bytes_copied;
++		dst_pos += bytes_copied;
++	} while (bytes_total > 0);
++	return bytes_copied;
++}
++
++static int nfsd4_do_copy(struct nfsd4_copy *copy, bool sync)
++{
++	__be32 status;
++	ssize_t bytes;
++
++	bytes = _nfsd_copy_file_range(copy);
++	if (bytes < 0)
++		status = nfserrno(bytes);
++	else
++		status = nfsd4_init_copy_res(copy, sync);
++
++	if (copy->cp_src.nl_nsvr > 0)   /* Inter server SSC */
++		nfsd4_cleanup_inter_ssc(copy->ss_mnt, copy->fh_src,
++				copy->fh_dst);
++	else
++		nfsd4_cleanup_intra_ssc(copy->fh_src, copy->fh_dst);
++
++	return status;
++}
++
++static void dup_copy_fields(struct nfsd4_copy *src, struct nfsd4_copy *dst)
++{
++	memcpy(&dst->cp_src_stateid, &src->cp_src_stateid, sizeof(stateid_t));
++	memcpy(&dst->cp_dst_stateid, &src->cp_dst_stateid, sizeof(stateid_t));
++	dst->cp_src_pos = src->cp_src_pos;
++	dst->cp_dst_pos = src->cp_dst_pos;
++	dst->cp_count = src->cp_count;
++	memcpy(&dst->cp_src, &src->cp_src, sizeof(struct nl4_servers));
++	dst->cp_consecutive = src->cp_consecutive;
++	dst->cp_synchronous = src->cp_synchronous;
++	memcpy(&dst->cp_res, &src->cp_res, sizeof(src->cp_res));
++	/* skipping nfsd4_callback */
++	memcpy(&dst->fh, &src->fh, sizeof(src->fh));
++	dst->fh = src->fh;
++	dst->cp_clp = src->cp_clp;
++	dst->fh_src = src->fh_src;
++	dst->fh_dst = src->fh_dst;
++	dst->ss_mnt = src->ss_mnt;
++	dst->net = src->net;
++}
++
++static void nfsd4_do_async_copy(struct work_struct *work)
++{
++	struct nfsd4_copy *copy =
++		container_of(work, struct nfsd4_copy, cp_work);
++	struct nfsd4_copy *cb_copy;
++
++	copy->nfserr = nfsd4_do_copy(copy, 0);
++	cb_copy = kzalloc(sizeof(struct nfsd4_copy), GFP_KERNEL);
++	if (!cb_copy)
++		goto out;
++	memcpy(&cb_copy->cp_res, &copy->cp_res, sizeof(copy->cp_res));
++	cb_copy->cp_clp = copy->cp_clp;
++	cb_copy->nfserr = copy->nfserr;
++	memcpy(&cb_copy->fh, &copy->fh, sizeof(copy->fh));
++	nfsd4_init_cb(&cb_copy->cp_cb, cb_copy->cp_clp,
++			&nfsd4_cb_offload_ops, NFSPROC4_CLNT_CB_OFFLOAD);
++	nfsd4_run_cb(&cb_copy->cp_cb);
++out:
++	kfree(copy);
++}
++
+ static __be32
+ nfsd4_copy(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 	struct nfsd4_copy *copy)
+ {
+-	struct vfsmount *ss_mnt = NULL;
+-	struct file *src, *dst;
+ 	__be32 status;
+-	ssize_t bytes;
+ 
+ 	if (copy->cp_src.nl_nsvr > 0) { /* Inter server SSC */
+-		ss_mnt = nfsd4_setup_inter_ssc(rqstp, cstate, copy, &src, &dst);
+-		if (IS_ERR(ss_mnt)) {
+-			status = nfserrno(PTR_ERR(ss_mnt));
++		copy->ss_mnt = nfsd4_setup_inter_ssc(rqstp, cstate, copy);
++		if (IS_ERR(copy->ss_mnt)) {
++			status = nfserrno(PTR_ERR(copy->ss_mnt));
+ 			goto out;
  		}
-diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
-index e174cba..7d60a0a 100644
---- a/include/linux/nfs_fs.h
-+++ b/include/linux/nfs_fs.h
-@@ -189,6 +189,8 @@ struct nfs4_copy_state {
- 	uint64_t		count;
- 	struct nfs_writeverf	verf;
- 	int			error;
-+	int			flags;
-+	struct nfs4_state	*parent_state;
+ 	} else {
+-		status = nfsd4_setup_intra_ssc(rqstp, cstate, copy, &src, &dst);
++		status = nfsd4_setup_intra_ssc(rqstp, cstate, copy);
+ 		if (status)
+ 			goto out;
+ 	}
+ 
+-	bytes = nfsd_copy_file_range(src, copy->cp_src_pos,
+-			dst, copy->cp_dst_pos, copy->cp_count);
+-
+-	if (bytes < 0)
+-		status = nfserrno(bytes);
+-	else {
+-		copy->cp_res.wr_bytes_written = bytes;
+-		copy->cp_res.wr_stable_how = NFS_UNSTABLE;
+-		copy->cp_consecutive = 1;
+-		copy->cp_synchronous = 1;
+-		gen_boot_verifier(&copy->cp_res.wr_verifier, SVC_NET(rqstp));
+-		status = nfs_ok;
++	copy->cp_clp = cstate->clp;
++	memcpy(&copy->fh, &cstate->current_fh.fh_handle,
++		sizeof(struct knfsd_fh));
++	copy->net = SVC_NET(rqstp);
++	if (!copy->cp_synchronous) {
++		struct nfsd4_copy *async_copy;
++
++		status = nfsd4_init_copy_res(copy, 0);
++		async_copy = kzalloc(sizeof(struct nfsd4_copy), GFP_KERNEL);
++		if (!async_copy)
++			goto out_err;
++		dup_copy_fields(copy, async_copy);
++		memcpy(&copy->cp_res.cb_stateid, &copy->cp_dst_stateid,
++			sizeof(copy->cp_dst_stateid));
++		INIT_WORK(&async_copy->cp_work, nfsd4_do_async_copy);
++		queue_work(copy_wq, &async_copy->cp_work);
++	} else {
++		status = nfsd4_do_copy(copy, 1);
+ 	}
+-
+-	if (copy->cp_src.nl_nsvr > 0)   /* Inter server SSC */
+-		nfsd4_cleanup_inter_ssc(ss_mnt, src, dst);
+-	else
+-		nfsd4_cleanup_intra_ssc(src, dst);
+ out:
+ 	return status;
++out_err:
++	status = nfserrno(-ENOMEM);
++	goto out;
+ }
+ 
+ static __be32
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 606009a..ca5e9cd 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -7136,8 +7136,14 @@ static int nfs4_state_create_net(struct net *net)
+ 		goto out_free_laundry;
+ 
+ 	set_max_delegations();
+-	return 0;
+ 
++	ret = nfsd4_create_copy_queue();
++	if (ret)
++		goto out_free_callback;
++
++	return 0;
++out_free_callback:
++	nfsd4_destroy_callback_queue();
+ out_free_laundry:
+ 	destroy_workqueue(laundry_wq);
+ out_cleanup_cred:
+@@ -7200,6 +7206,7 @@ static int nfs4_state_create_net(struct net *net)
+ 	destroy_workqueue(laundry_wq);
+ 	nfsd4_destroy_callback_queue();
+ 	cleanup_callback_cred();
++	nfsd4_destroy_copy_queue();
+ }
+ 
+ static void
+diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
+index 3b0da32..2acea23 100644
+--- a/fs/nfsd/state.h
++++ b/fs/nfsd/state.h
+@@ -649,6 +649,8 @@ extern void nfsd4_init_cb(struct nfsd4_callback *cb, struct nfs4_client *clp,
+ extern struct nfs4_client_reclaim *nfs4_client_to_reclaim(const char *name,
+ 							struct nfsd_net *nn);
+ extern bool nfs4_has_reclaimed_state(const char *name, struct nfsd_net *nn);
++extern int nfsd4_create_copy_queue(void);
++extern void nfsd4_destroy_copy_queue(void);
+ 
+ struct nfs4_file *find_file(struct knfsd_fh *fh);
+ void put_nfs4_file(struct nfs4_file *fi);
+diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
+index c3e6907..d5b6b40 100644
+--- a/fs/nfsd/xdr4.h
++++ b/fs/nfsd/xdr4.h
+@@ -536,6 +536,14 @@ struct nfsd4_copy {
+ 	struct nfsd4_callback	cp_cb;
+ 	__be32			nfserr;
+ 	struct knfsd_fh		fh;
++
++	struct work_struct	cp_work;
++	struct nfs4_client	*cp_clp;
++
++	struct file		*fh_src;
++	struct file		*fh_dst;
++	struct vfsmount		*ss_mnt;
++	struct net		*net;
  };
  
- /*
+ struct nfsd4_seek {
 -- 
 1.8.3.1
 
