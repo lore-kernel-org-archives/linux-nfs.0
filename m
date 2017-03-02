@@ -1,14 +1,14 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx141.netapp.com ([216.240.21.12]:27405 "EHLO mx141.netapp.com"
+Received: from mx141.netapp.com ([216.240.21.12]:14159 "EHLO mx141.netapp.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1752961AbdCBQuj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 2 Mar 2017 11:50:39 -0500
+        id S1753820AbdCBQyc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 2 Mar 2017 11:54:32 -0500
 From: Olga Kornievskaia <kolga@netapp.com>
 To: <bfields@redhat.com>
 CC: <linux-nfs@vger.kernel.org>
-Subject: [RFC v1 05/18] NFSD add nfs4 inter ssc to nfsd4_copy
-Date: Thu, 2 Mar 2017 11:01:29 -0500
-Message-ID: <20170302160142.30413-6-kolga@netapp.com>
+Subject: [RFC v1 10/18] NFSD OFFLOAD_CANCEL xdr
+Date: Thu, 2 Mar 2017 11:01:34 -0500
+Message-ID: <20170302160142.30413-11-kolga@netapp.com>
 In-Reply-To: <20170302160142.30413-1-kolga@netapp.com>
 References: <20170302160142.30413-1-kolga@netapp.com>
 MIME-Version: 1.0
@@ -16,351 +16,56 @@ Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Given a universal address, mount the source server from the destination
-server.  Use an internal mount. Call the NFS client nfs42_ssc_open to
-obtain the NFS struct file suitable for nfsd_copy_range.
-
-Add Kconfig dependencies for inter server to server copy
-
-Signed-off-by: Andy Adamson <andros@netapp.com>
+Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
 ---
- fs/nfsd/Kconfig      |  10 ++
- fs/nfsd/nfs4proc.c   | 270 +++++++++++++++++++++++++++++++++++++++++++++++++--
- include/linux/nfs4.h |   1 +
- 3 files changed, 271 insertions(+), 10 deletions(-)
+ fs/nfsd/nfs4proc.c | 13 +++++++++++++
+ fs/nfsd/nfs4xdr.c  |  2 +-
+ 2 files changed, 14 insertions(+), 1 deletion(-)
 
-diff --git a/fs/nfsd/Kconfig b/fs/nfsd/Kconfig
-index 20b1c17..37ff3d5 100644
---- a/fs/nfsd/Kconfig
-+++ b/fs/nfsd/Kconfig
-@@ -131,6 +131,16 @@ config NFSD_FLEXFILELAYOUT
- 
- 	  If unsure, say N.
- 
-+config NFSD_V4_2_INTER_SSC
-+	bool "NFSv4.2 inter server to server COPY"
-+	depends on NFSD_V4 && NFS_V4_1 && NFS_V4_2
-+	help
-+	  This option enables support for NFSv4.2 inter server to
-+	  server copy where the destination server calls the NFSv4.2
-+	  client to read the data to copy from the source server.
-+
-+	  If unsure, say N.
-+
- config NFSD_V4_SECURITY_LABEL
- 	bool "Provide Security Label support for NFSv4 server"
- 	depends on NFSD_V4 && SECURITY
 diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-index 733a9aa..52a21bc 100644
+index f564da1..a3b7954 100644
 --- a/fs/nfsd/nfs4proc.c
 +++ b/fs/nfsd/nfs4proc.c
-@@ -1072,16 +1072,235 @@ static int fill_in_write_vector(struct kvec *vec, struct nfsd4_write *write)
- 	return status;
+@@ -1480,6 +1480,14 @@ extern struct file *nfs42_ssc_open(struct vfsmount *ss_mnt,
  }
  
-+#ifdef CONFIG_NFSD_V4_2_INTER_SSC
-+
-+extern struct file *nfs42_ssc_open(struct vfsmount *ss_mnt,
-+				   struct nfs_fh *src_fh,
-+				   nfs4_stateid *stateid);
-+extern struct file *nfs42_ssc_close(struct file *filep);
-+
-+extern void nfs_sb_deactive(struct super_block *sb);
-+
-+#define NFSD42_INTERSSC_RAWDATA "minorversion=1,vers=4,addr=%s,clientaddr=%s"
-+
-+/**
-+ * Support one copy source server for now.
-+ */
-+static struct vfsmount *
-+nfsd4_interssc_connect(struct nl4_servers *nss, struct svc_rqst *rqstp)
-+{
-+	struct file_system_type *type;
-+	struct vfsmount *ss_mnt;
-+	struct nfs42_netaddr *naddr;
-+	struct sockaddr_storage tmp_addr;
-+	size_t tmp_addrlen, match_netid_len = 3;
-+	char *startsep = "", *endsep = "", *match_netid = "tcp";
-+	char *ipaddr, *ipaddr2, *raw_data;
-+	int len, raw_len, status = -EINVAL;
-+
-+	/* Currently support for one NL4_NETADDR source server */
-+	if (nss->nl_svr->nl4_type != NL4_NETADDR) {
-+		WARN(nss->nl_svr->nl4_type != NL4_NETADDR,
-+			"nfsd4_copy src server not NL4_NETADDR\n");
-+		goto out_err;
-+	}
-+
-+	naddr = &nss->nl_svr->u.nl4_addr;
-+
-+	tmp_addrlen = rpc_uaddr2sockaddr(SVC_NET(rqstp), naddr->na_uaddr,
-+					naddr->na_uaddr_len,
-+					(struct sockaddr *)&tmp_addr,
-+					sizeof(tmp_addr));
-+	if (tmp_addrlen == 0)
-+		goto out_err;
-+
-+	if (tmp_addr.ss_family == AF_INET6) {
-+		startsep = "[";
-+		endsep = "]";
-+		match_netid = "tcp6";
-+		match_netid_len = 4;
-+	}
-+
-+	if (naddr->na_netid_len != match_netid_len ||
-+	    strncmp(naddr->na_netid, match_netid, naddr->na_netid_len))
-+		goto out_err;
-+
-+	/* Construct the raw data for the vfs_kern_mount call */
-+	len = RPC_MAX_ADDRBUFLEN + 1;
-+	ipaddr = kzalloc(len, GFP_KERNEL);
-+	if (!ipaddr)
-+		goto out_err;
-+
-+	rpc_ntop((struct sockaddr *)&tmp_addr, ipaddr, len);
-+
-+	/* 2 for ipv6 endsep and startsep. 3 for ":/" and trailing '/0'*/
-+	ipaddr2 = kzalloc(len + 5, GFP_KERNEL);
-+	if (!ipaddr2)
-+		goto out_free_ipaddr;
-+
-+	rpc_ntop((struct sockaddr *)&rqstp->rq_daddr, ipaddr2, len + 5);
-+
-+	raw_len = strlen(NFSD42_INTERSSC_RAWDATA) + strlen(ipaddr) +
-+			strlen(ipaddr2);
-+	raw_data = kzalloc(raw_len, GFP_KERNEL);
-+	if (!raw_data)
-+		goto out_free_ipaddr2;
-+
-+	snprintf(raw_data, raw_len, NFSD42_INTERSSC_RAWDATA, ipaddr,
-+		 ipaddr2);
-+
-+	status = -ENODEV;
-+	type = get_fs_type("nfs");
-+	if (!type)
-+		goto out_free_rawdata;
-+
-+	/* Set the server:<export> for the vfs_kerne_mount call */
-+	memset(ipaddr2, 0, len + 5);
-+	snprintf(ipaddr2, len + 5, "%s%s%s:/", startsep, ipaddr, endsep);
-+
-+	dprintk("%s  Raw mount data:  %s server:export %s\n", __func__,
-+		raw_data, ipaddr2);
-+
-+	/* Use an 'internal' mount: MS_KERNMOUNT -> MNT_INTERNAL */
-+	ss_mnt = vfs_kern_mount(type, MS_KERNMOUNT, ipaddr2, raw_data);
-+	if (IS_ERR(ss_mnt)) {
-+		status = PTR_ERR(ss_mnt);
-+		goto out_free_rawdata;
-+	}
-+
-+	kfree(raw_data);
-+	kfree(ipaddr2);
-+	kfree(ipaddr);
-+
-+	return ss_mnt;
-+
-+out_free_rawdata:
-+	kfree(raw_data);
-+out_free_ipaddr2:
-+	kfree(ipaddr2);
-+out_free_ipaddr:
-+	kfree(ipaddr);
-+out_err:
-+	dprintk("--> %s ERROR %d\n", __func__, status);
-+	return ERR_PTR(status);
-+}
-+
-+static void
-+nfsd4_interssc_disconnect(struct vfsmount *ss_mnt)
-+{
-+	struct super_block *sb = ss_mnt->mnt_sb;
-+
-+	if (!list_empty(&sb->s_inodes)) {
-+		dprintk("[%s]: super block=%p has active inodes.\n",
-+			__func__, sb);
-+		return;
-+	}
-+
-+	mntput(ss_mnt);
-+	nfs_sb_deactive(sb);
-+}
-+
-+/**
-+ * nfsd4_setup_inter_ssc
-+ *
-+ * Verify COPY destination stateid.
-+ * Connect to the source server with NFSv4.1.
-+ * Create the source struct file for nfsd_copy_range.
-+ * Called with COPY cstate:
-+ *    SAVED_FH: source filehandle
-+ *    CURRENT_FH: destination filehandle
-+ *
-+ * Returns errno (not nfserrxxx)
-+ */
-+static struct vfsmount *
-+nfsd4_setup_inter_ssc(struct svc_rqst *rqstp,
-+			struct nfsd4_compound_state *cstate,
-+			struct nfsd4_copy *copy, struct file **src,
-+			struct file **dst)
-+{
-+	struct svc_fh *s_fh = NULL;
-+	stateid_t *s_stid = &copy->cp_src_stateid;
-+	struct nfs_fh fh;
-+	nfs4_stateid stateid;
-+	struct file *filp;
-+	struct vfsmount *ss_mnt;
-+	__be32 status;
-+
-+	/* Verify the destination stateid and set dst struct file*/
-+	status = nfs4_preprocess_stateid_op(rqstp, cstate, &cstate->current_fh,
-+					&copy->cp_dst_stateid,
-+					WR_STATE, dst, NULL);
-+	if (status) {
-+		ss_mnt = ERR_PTR(be32_to_cpu(status));
-+		goto out;
-+	}
-+
-+	/* Inter copy source fh is always stale */
-+	CLEAR_CSTATE_FLAG(cstate, IS_STALE_FH);
-+
-+	ss_mnt = nfsd4_interssc_connect(&copy->cp_src, rqstp);
-+	if (IS_ERR(ss_mnt))
-+		goto out;
-+
-+	s_fh = &cstate->save_fh;
-+
-+	fh.size = s_fh->fh_handle.fh_size;
-+	memcpy(fh.data, &s_fh->fh_handle.fh_base, fh.size);
-+	stateid.seqid = s_stid->si_generation;
-+	memcpy(stateid.other, (void *)&s_stid->si_opaque,
-+		sizeof(stateid_opaque_t));
-+
-+	filp =  nfs42_ssc_open(ss_mnt, &fh, &stateid);
-+	if (IS_ERR(filp)) {
-+		nfsd4_interssc_disconnect(ss_mnt);
-+		return ERR_CAST(filp);
-+	}
-+	*src = filp;
-+out:
-+	return ss_mnt;
-+}
-+
-+static void
-+nfsd4_cleanup_inter_ssc(struct vfsmount *ss_mnt, struct file *src,
-+			struct file *dst)
-+{
-+	nfs42_ssc_close(src);
-+	fput(src);
-+	fput(dst);
-+
-+	nfsd4_interssc_disconnect(ss_mnt);
-+
-+}
-+
-+#else /* CONFIG_NFSD_V4_2_INTER_SSC */
-+
-+static struct vfsmount *
-+nfsd4_setup_inter_ssc(struct svc_rqst *rqstp,
-+			struct nfsd4_compound_state *cstate,
-+			struct nfsd4_copy *copy, struct file **src,
-+			struct file **dst)
-+{
-+	return ERR_PTR(-EINVAL);
-+}
-+
-+static void
-+nfsd4_cleanup_inter_ssc(struct vfsmount *ss_mnt, struct file *src,
-+			struct file *dst)
-+{
-+}
-+
-+#endif /* CONFIG_NFSD_V4_2_INTER_SSC */
-+
  static __be32
--nfsd4_copy(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
--		struct nfsd4_copy *copy)
-+nfsd4_setup_intra_ssc(struct svc_rqst *rqstp,
-+		      struct nfsd4_compound_state *cstate,
-+		      struct nfsd4_copy *copy, struct file **src,
-+		      struct file **dst)
- {
--	struct file *src, *dst;
- 	__be32 status;
--	ssize_t bytes;
- 
--	status = nfsd4_verify_copy(rqstp, cstate, &copy->cp_src_stateid, &src,
--				   &copy->cp_dst_stateid, &dst);
-+	status = nfsd4_verify_copy(rqstp, cstate, &copy->cp_src_stateid, src,
-+				   &copy->cp_dst_stateid, dst);
- 	if (status)
- 		goto out;
- 
-@@ -1089,7 +1308,37 @@ static int fill_in_write_vector(struct kvec *vec, struct nfsd4_write *write)
- 	if (HAS_CSTATE_FLAG(cstate, IS_STALE_FH)) {
- 		CLEAR_CSTATE_FLAG(cstate, IS_STALE_FH);
- 		cstate->status = nfserr_copy_stalefh;
--		goto out_put;
-+	}
-+out:
-+	return status;
-+}
-+
-+static void
-+nfsd4_cleanup_intra_ssc(struct file *src, struct file *dst)
++nfsd4_offload_cancel(struct svc_rqst *rqstp,
++		     struct nfsd4_compound_state *cstate,
++		     struct nfsd4_offload_status *os)
 +{
-+	fput(src);
-+	fput(dst);
++	return 0;
 +}
 +
 +static __be32
-+nfsd4_copy(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
-+	struct nfsd4_copy *copy)
-+{
-+	struct vfsmount *ss_mnt = NULL;
-+	struct file *src, *dst;
-+	__be32 status;
-+	ssize_t bytes;
-+
-+	if (copy->cp_src.nl_nsvr > 0) { /* Inter server SSC */
-+		ss_mnt = nfsd4_setup_inter_ssc(rqstp, cstate, copy, &src, &dst);
-+		if (IS_ERR(ss_mnt)) {
-+			status = nfserrno(PTR_ERR(ss_mnt));
-+			goto out;
-+		}
-+	} else {
-+		status = nfsd4_setup_intra_ssc(rqstp, cstate, copy, &src, &dst);
-+		if (status)
-+			goto out;
- 	}
+ nfsd4_fallocate(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 		struct nfsd4_fallocate *fallocate, int flags)
+ {
+@@ -2892,6 +2900,11 @@ static inline u32 nfsd4_seek_rsize(struct svc_rqst *rqstp, struct nfsd4_op *op)
+ 		.op_name = "OP_OFFLOAD_STATUS",
+ 		.op_rsize_bop = (nfsd4op_rsize)nfsd4_offload_status_rsize,
+ 	},
++	[OP_OFFLOAD_CANCEL] = {
++		.op_func = (nfsd4op_func)nfsd4_offload_cancel,
++		.op_name = "OP_OFFLOAD_CANCEL",
++		.op_rsize_bop = (nfsd4op_rsize)nfsd4_only_status_rsize,
++	},
+ };
  
- 	bytes = nfsd_copy_file_range(src, copy->cp_src_pos,
-@@ -1106,9 +1355,10 @@ static int fill_in_write_vector(struct kvec *vec, struct nfsd4_write *write)
- 		status = nfs_ok;
- 	}
- 
--out_put:
--	fput(src);
--	fput(dst);
-+	if (copy->cp_src.nl_nsvr > 0)   /* Inter server SSC */
-+		nfsd4_cleanup_inter_ssc(ss_mnt, src, dst);
-+	else
-+		nfsd4_cleanup_intra_ssc(src, dst);
- out:
- 	return status;
- }
-diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
-index e43c106..c623486 100644
---- a/include/linux/nfs4.h
-+++ b/include/linux/nfs4.h
-@@ -15,6 +15,7 @@
- #include <linux/list.h>
- #include <linux/uidgid.h>
- #include <uapi/linux/nfs4.h>
-+#include <linux/nfs.h>
- #include <linux/sunrpc/msg_prot.h>
- 
- enum nfs4_acl_whotype {
+ /**
+diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+index 6c08c52..26630ae 100644
+--- a/fs/nfsd/nfs4xdr.c
++++ b/fs/nfsd/nfs4xdr.c
+@@ -1948,7 +1948,7 @@ static __be32 nfsd4_decode_nl4_server(struct nfsd4_compoundargs *argp,
+ 	[OP_IO_ADVISE]		= (nfsd4_dec)nfsd4_decode_notsupp,
+ 	[OP_LAYOUTERROR]	= (nfsd4_dec)nfsd4_decode_notsupp,
+ 	[OP_LAYOUTSTATS]	= (nfsd4_dec)nfsd4_decode_notsupp,
+-	[OP_OFFLOAD_CANCEL]	= (nfsd4_dec)nfsd4_decode_notsupp,
++	[OP_OFFLOAD_CANCEL]	= (nfsd4_dec)nfsd4_decode_offload_status,
+ 	[OP_OFFLOAD_STATUS]	= (nfsd4_dec)nfsd4_decode_offload_status,
+ 	[OP_READ_PLUS]		= (nfsd4_dec)nfsd4_decode_notsupp,
+ 	[OP_SEEK]		= (nfsd4_dec)nfsd4_decode_seek,
 -- 
 1.8.3.1
 
