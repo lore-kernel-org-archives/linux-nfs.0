@@ -1,14 +1,14 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx141.netapp.com ([216.240.21.12]:17448 "EHLO mx141.netapp.com"
+Received: from mx141.netapp.com ([216.240.21.12]:23369 "EHLO mx141.netapp.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1754713AbdCBQDU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        id S1754631AbdCBQDU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
         Thu, 2 Mar 2017 11:03:20 -0500
 From: Olga Kornievskaia <kolga@netapp.com>
 To: <Trond.Myklebust@primarydata.com>
 CC: <linux-nfs@vger.kernel.org>
-Subject: [RFC v1 02/19] VFS permit cross device vfs_copy_file_range
-Date: Thu, 2 Mar 2017 11:01:06 -0500
-Message-ID: <20170302160123.30375-3-kolga@netapp.com>
+Subject: [RFC v1 03/19] VFS don't try clone if superblocks are different
+Date: Thu, 2 Mar 2017 11:01:07 -0500
+Message-ID: <20170302160123.30375-4-kolga@netapp.com>
 In-Reply-To: <20170302160123.30375-1-kolga@netapp.com>
 References: <20170302160123.30375-1-kolga@netapp.com>
 MIME-Version: 1.0
@@ -16,46 +16,27 @@ Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Allow nfs_copy_file_range to copy across devices.
-NFSv4.2 inter server to server copy always copies across devices, and
-NFSv4.2 intra server to server copy can copy across devices on the same
-server.
+Only try clone_file_range if superblocks are the same.
 
-If a file system's fileoperations copy_file_range operation prohibits
-cross-device copies, fall back to do_splice_direct. This is needed for
-nfsd_copy_file_range() which is called by the inter server to server
-destination server acting as an NFS client, and reading the file from
-the source server.
-
-Signed-off-by: Andy Adamson <andros@netapp.com>
+Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
 ---
- fs/read_write.c | 6 +-----
- 1 file changed, 1 insertion(+), 5 deletions(-)
+ fs/read_write.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
 
 diff --git a/fs/read_write.c b/fs/read_write.c
-index 1d9e305..75084cd 100644
+index 75084cd..00161bd 100644
 --- a/fs/read_write.c
 +++ b/fs/read_write.c
-@@ -1534,10 +1534,6 @@ ssize_t vfs_copy_file_range(struct file *file_in, loff_t pos_in,
- 	    (file_out->f_flags & O_APPEND))
- 		return -EBADF;
- 
--	/* this could be relaxed once a method supports cross-fs copies */
--	if (inode_in->i_sb != inode_out->i_sb)
--		return -EXDEV;
--
- 	if (len == 0)
- 		return 0;
- 
-@@ -1559,7 +1555,7 @@ ssize_t vfs_copy_file_range(struct file *file_in, loff_t pos_in,
- 	if (file_out->f_op->copy_file_range) {
- 		ret = file_out->f_op->copy_file_range(file_in, pos_in, file_out,
- 						      pos_out, len, flags);
--		if (ret != -EOPNOTSUPP)
-+		if (ret != -EOPNOTSUPP && ret != -EXDEV)
- 			goto done;
- 	}
- 
+@@ -1543,7 +1543,8 @@ ssize_t vfs_copy_file_range(struct file *file_in, loff_t pos_in,
+ 	 * Try cloning first, this is supported by more file systems, and
+ 	 * more efficient if both clone and copy are supported (e.g. NFS).
+ 	 */
+-	if (file_in->f_op->clone_file_range) {
++	if (inode_in->i_sb == inode_out->i_sb &&
++			file_in->f_op->clone_file_range) {
+ 		ret = file_in->f_op->clone_file_range(file_in, pos_in,
+ 				file_out, pos_out, len);
+ 		if (ret == 0) {
 -- 
 1.8.3.1
 
