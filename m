@@ -1,132 +1,199 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:22373 "EHLO
-        aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1752494AbdCCVrP (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 3 Mar 2017 16:47:15 -0500
+Received: from fieldses.org ([173.255.197.46]:50260 "EHLO fieldses.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1751963AbdCCWha (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 3 Mar 2017 17:37:30 -0500
+Date: Fri, 3 Mar 2017 17:36:49 -0500
+To: Jeff Layton <jlayton@redhat.com>
+Cc: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, linux-ext4@vger.kernel.org,
+        linux-btrfs@vger.kernel.org, linux-xfs@vger.kernel.org
+Subject: Re: [RFC PATCH v1 11/30] fs: new API for handling i_version
+Message-ID: <20170303223649.GH13877@fieldses.org>
+References: <1482339827-7882-1-git-send-email-jlayton@redhat.com>
+ <1482339827-7882-12-git-send-email-jlayton@redhat.com>
+MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 9.3 \(3124\))
-Subject: Re: supporting DEVICE_REMOVAL on RPC-over-RDMA transports
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <1487863839.3145.1.camel@primarydata.com>
-Date: Fri, 3 Mar 2017 13:46:49 -0800
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <2B8A92DC-F21A-4881-B4A8-25D97751FA1E@oracle.com>
-References: <9EF7BDF7-35DF-4723-A903-54AEC9A9787A@oracle.com> <1487820335.3577.1.camel@primarydata.com> <2C6ED2EF-F715-4EBB-A36B-A7BCBFB60CBE@oracle.com> <1487863839.3145.1.camel@primarydata.com>
-To: Trond Myklebust <trondmy@primarydata.com>
+In-Reply-To: <1482339827-7882-12-git-send-email-jlayton@redhat.com>
+From: bfields@fieldses.org (J. Bruce Fields)
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+The patch ordering is a little annoying as I'd like to be able to be
+able to verify the implementation at the same time these new interfaces
+are added, but, I don't know, I don't have a better idea.
 
-> On Feb 23, 2017, at 7:30 AM, Trond Myklebust <trondmy@primarydata.com> wrote:
+Anyway, various nits:
+
+On Wed, Dec 21, 2016 at 12:03:28PM -0500, Jeff Layton wrote:
+> We already have inode_inc_iversion. Add inode_set_iversion,
+> inode_get_iversion, inode_cmp_iversion and inode_iversion_need_inc.
 > 
-> On Thu, 2017-02-23 at 09:54 -0500, Chuck Lever wrote:
->>> On Feb 22, 2017, at 10:25 PM, Trond Myklebust <trondmy@primarydata.
->>> com> wrote:
->>> 
->>> On Wed, 2017-02-22 at 16:31 -0500, Chuck Lever wrote:
->>>> Hey Trond-
->>>> 
->>>> To support the ability to unload the underlying RDMA device's
->>>> kernel
->>>> driver while NFS mounts are active, xprtrdma needs the ability to
->>>> suspend RPC sends temporarily while the transport hands HW
->>>> resources
->>>> back to the driver. Once the device driver is unloaded, the RDMA
->>>> transport is left disconnected, and RPCs will be suspended
->>>> normally
->>>> until a connection is possible again (eg, a new device is made
->>>> available).
->>>> 
->>>> A DEVICE_REMOVAL event is an upcall to xprtrdma that may sleep.
->>>> Upon
->>>> its return, the device driver unloads itself. Currently my
->>>> prototype
->>>> frees all HW resources during the upcall, but that doesn't block
->>>> new RPCs from trying to use those resources at the same time.
->>>> 
->>>> Seems like the most natural way to temporarily block sends would
->>>> be
->>>> to grab the transport's write lock, just like "connect" does,
->>>> while
->>>> the transport is dealing with DEVICE_REMOVAL, then release it
->>>> once
->>>> all HW resources have been freed.
->>>> 
->>>> Unfortunately an RPC task is needed to acquire the write lock.
->>>> But
->>>> disconnect is just an asynchronous event, there is no RPC task
->>>> associated with it, and thus no context that the RPC scheduler
->>>> can put to sleep if there happens to be another RPC sending at
->>>> the
->>>> moment a device removal event occurs.
->>>> 
->>>> I was looking at xprt_lock_connect, but that doesn't appear to do
->>>> quite what I need.
->>>> 
->>>> Another thought was to have the DEVICE_REMOVAL upcall mark the
->>>> transport disconnected, send an asynchronous NULL RPC, then wait
->>>> on a kernel waitqueue.
->>>> 
->>>> The NULL RPC would grab the write lock and kick the transport's
->>>> connect worker. The connect worker would free HW resources, then
->>>> awaken the waiter. Then the upcall could return to the driver.
->>>> 
->>>> The problem with this scheme is the same as it was for the
->>>> keepalive work: there's no task or rpc_clnt available to the
->>>> DEVICE_REMOVAL upcall. Sleeping until the write lock is available
->>>> would require a task, and sending a NULL RPC would require an
->>>> rpc_clnt.
->>>> 
->>>> Any advice/thoughts about this?
->>>> 
->>> 
->>> Can you perhaps use XPRT_FORCE_DISCONNECT? That does end up calling
->>> the
->>> xprt->ops->close() callback as soon as the XPRT_LOCK state has been
->>> freed. You still won't have a client, but you will be guaranteed
->>> exclusive access to the transport, and you can do things like
->>> waking up
->>> any sleeping tasks on the transmit and receive queue to help you.
->>> However you also have to deal with the case where the transport was
->>> idle to start with.
->> 
->> The case where the transport is idle is indeed the most bothersome.
->> 
->> I hadn't realized that ->close guaranteed exclusive access to
->> the transport. If ->close guarantees access to the transport, then
->> I don't need an RPC task or the NULL RPC because we don't ever have
->> to wait for write access.
->> 
+> These should encompass how i_version is currently accessed and
+> manipulated so that we can later change the implementation.
 > 
-> Yes, ->close() must always be taken with XPRT_LOCK set, and it is
-> guaranteed to be called the instant that the current holder of
-> XPRT_LOCK relinquishes it. This is why we have the test for
-> XPRT_CLOSE_WAIT in xprt_clear_locked(); it short-circuits the wait
-> queues and immediately starts queue_work(xprtiod_workqueue, &xprt-
->> task_cleanup).
+> Signed-off-by: Jeff Layton <jlayton@redhat.com>
+> ---
+>  include/linux/fs.h | 109 ++++++++++++++++++++++++++++++++++++++++++++++++++---
+>  1 file changed, 104 insertions(+), 5 deletions(-)
 > 
->> The hardware resources can be torn down immediately in
->> xprt_rdma_close.
+> diff --git a/include/linux/fs.h b/include/linux/fs.h
+> index 2ba074328894..075c915fe2b1 100644
+> --- a/include/linux/fs.h
+> +++ b/include/linux/fs.h
+> @@ -1962,18 +1962,117 @@ static inline void inode_dec_link_count(struct inode *inode)
+>  }
+>  
+>  /**
+> + * inode_set_iversion - set i_version to a particular value
+> + * @inode: inode to set
+> + * @new: new i_version value to set
+> + *
+> + * Set the inode's i_version. Should generally be called when initializing
+> + * a new inode.
+> + */
+> +static inline void
+> +inode_set_iversion(struct inode *inode, const u64 new)
+> +{
+> +	inode->i_version = new;
+> +}
+> +
+> +/**
+> + * inode_inc_iversion_locked - increment i_version while protected
+> + * @inode: inode to be updated
+> + *
+> + * Increment the i_version field in the inode. This version is usable
+> + * when there is some other sort of lock in play that would prevent
+> + * concurrent accessors.
+> + */
+> +static inline void
+> +inode_inc_iversion_locked(struct inode *inode)
+> +{
+> +	inode->i_version++;
+> +}
+> +
+> +/**
+> + * inode_set_iversion_read - set i_version to a particular value and flag
+> + * 			     set flag to indicate that it has been viewed
+
+s/flag set flag/set flag/.
+
+> + * @inode: inode to set
+> + * @new: new i_version value to set
+> + *
+> + * Set the inode's i_version, and flag the inode as if it has been viewed.
+> + * Should generally be called when initializinga new inode in memory from
+> + * from disk.
+
+s/from from/from/.
+
+> + */
+> +static inline void
+> +inode_set_iversion_read(struct inode *inode, const u64 new)
+> +{
+> +	inode_set_iversion(inode, new);
+> +}
+> +
+> +/**
+>   * inode_inc_iversion - increments i_version
+>   * @inode: inode that need to be updated
+>   *
+>   * Every time the inode is modified, the i_version field will be incremented.
+> - * The filesystem has to be mounted with i_version flag
+> + * The filesystem has to be mounted with MS_I_VERSION flag.
+
+I'm not sure why that comment's there.  Filesystems can choose to
+increment i_version without requiring the mount option if they want,
+can't they?
+
+> + */
+> +static inline bool
+
+Document what the return value means?
+
+> +inode_inc_iversion(struct inode *inode)
+> +{
+> +	spin_lock(&inode->i_lock);
+> +	inode_inc_iversion_locked(inode);
+> +	spin_unlock(&inode->i_lock);
+> +	return true;
+> +}
+> +
+> +/**
+> + * inode_get_iversion_raw - read i_version without "perturbing" it
+> + * @inode: inode from which i_version should be read
+> + *
+> + * Read the inode i_version counter for an inode without registering it as a
+> + * read. Should typically be used by local filesystems that need to store an
+> + * i_version on disk.
+> + */
+> +static inline u64
+> +inode_get_iversion_raw(const struct inode *inode)
+> +{
+> +	return inode->i_version;
+> +}
+> +
+> +/**
+> + * inode_get_iversion - read i_version for later use
+> + * @inode: inode from which i_version should be read
+> + *
+> + * Read the inode i_version counter. This should be used by callers that wish
+> + * to store the returned i_version for later comparison.
+
+I'm not sure what "for later comparison" means.  This is the "read"
+operation that actually flags the i_version as read, which you'd use
+(for example) to implement NFS getattr?  I wonder if there's a better
+way to say that.
+
+> + */
+> +static inline u64
+> +inode_get_iversion(const struct inode *inode)
+> +{
+> +	return inode_get_iversion_raw(inode);
+> +}
+> +
+> +/**
+> + * inode_cmp_iversion - check whether the i_version counter has changed
+> + * @inode: inode to check
+> + * @old: old value to check against its i_version
+> + *
+> + * Compare an i_version counter with a previous one. Returns 0 if they are
+> + * the same or non-zero if they are different.
+
+Does this flag the i_version as read?  What's it for?  (OK, I guess I'll
+find out after a few more patches...).
+
+--b.
+
+>   */
+> +static inline s64
+> +inode_cmp_iversion(const struct inode *inode, const u64 old)
+> +{
+> +	return (s64)inode->i_version - (s64)old;
+> +}
+>  
+> -static inline void inode_inc_iversion(struct inode *inode)
+> +/**
+> + * inode_iversion_need_inc - is the i_version in need of being incremented?
+> + * @inode: inode to check
+> + *
+> + * Returns whether the inode->i_version counter needs incrementing on the next
+> + * change.
+> + */
+> +static inline bool
+> +inode_iversion_need_inc(struct inode *inode)
+>  {
+> -       spin_lock(&inode->i_lock);
+> -       inode->i_version++;
+> -       spin_unlock(&inode->i_lock);
+> +	return true;
+>  }
+>  
+>  enum file_time_flags {
+> -- 
+> 2.7.4
 > 
-> Sounds like the right thing to do then.
-
-This approach seems to be working well, except for one
-unexpected behavior.
-
-->send_request seems to be called even though
-XPRT_CONNECTED is clear. I expected that after a transport
-has been disconnected, ->send_request would never be
-invoked when that bit is clear.
-
-Occasionally, ->send_request is invoked with
-XPRT_CONNECTING set.
-
-If those are OK, then I will have something to post for
-review next week.
-
-
---
-Chuck Lever
-
-
-
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
