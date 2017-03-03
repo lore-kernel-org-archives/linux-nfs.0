@@ -1,84 +1,160 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ua0-f173.google.com ([209.85.217.173]:36152 "EHLO
-        mail-ua0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751593AbdCCTZv (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 3 Mar 2017 14:25:51 -0500
-Received: by mail-ua0-f173.google.com with SMTP id 72so126577605uaf.3
-        for <linux-nfs@vger.kernel.org>; Fri, 03 Mar 2017 11:25:10 -0800 (PST)
-Message-ID: <1488569105.2997.1.camel@poochiereds.net>
-Subject: Re: Confused by pnfs LAYOUTRETURN - seeking clarity.
-From: Jeff Layton <jlayton@poochiereds.net>
-To: NeilBrown <neilb@suse.com>, linux-nfs@vger.kernel.org
-Date: Fri, 03 Mar 2017 14:25:05 -0500
-In-Reply-To: <87shmvnzh7.fsf@notabene.neil.brown.name>
-References: <87shmvnzh7.fsf@notabene.neil.brown.name>
-Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
+Received: from mail-it0-f65.google.com ([209.85.214.65]:33701 "EHLO
+        mail-it0-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751593AbdCCTkB (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 3 Mar 2017 14:40:01 -0500
+MIME-Version: 1.0
+In-Reply-To: <20170302010409.28DA36610A8@gitolite.kernel.org>
+References: <20170302010409.28DA36610A8@gitolite.kernel.org>
+From: Geert Uytterhoeven <geert@linux-m68k.org>
+Date: Fri, 3 Mar 2017 20:39:21 +0100
+Message-ID: <CAMuHMdWUnm9-A_6y6FEKujQSv=B4r5wD-Fgya7g6w9J=wFCnBQ@mail.gmail.com>
+Subject: Re: SUNRPC: Add generic helpers for xdr_stream encode/decode
+To: Trond Myklebust <trond.myklebust@primarydata.com>
+Cc: Anna Schumaker <Anna.Schumaker@netapp.com>,
+        Chuck Lever <chuck.lever@oracle.com>,
+        "open list:NFS, SUNRPC, AND..." <linux-nfs@vger.kernel.org>,
+        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
+        Arnd Bergmann <arnd@arndb.de>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, 2017-03-03 at 08:24 +1100, NeilBrown wrote:
-> I've been trying to understand how LAYOUTRETURN is used in pNFS,
-> primarily because our SLE12-SP1 kernel (based on 3.12) appears
-> to have a very different opinion than some Netapp filers.
-> 
-> My reading of RFC-5661 suggests that the client needs to call
-> LAYOUTRETURN for every layout that it received from the server.  A
-> single LAYOUTRETURN can cover a whole file or a whole filesystem, so it
-> doesn't need to be 1-for-1, but there is no implicit return.
-> 
-> However RFC-5663 contains the text
-> 
->    A LAYOUTRETURN operation represents an explicit release of resources
->    by the client, usually done for the purpose of avoiding unnecessary
->    CB_LAYOUTRECALL operations in the future.
-> 
-> This seems to imply that LAYOUTRETURN is only an optimisation.  If you
-> don't want to avoid CB_LAYOUTRECALL, there is not much call for
-> LAYOUTRETURN.  It seems to suggest (without explicitly saying) that the
-> CB_LAYOUTRECALL will effect the return of a layout without the client
-> explicitly sending LAYOUTRETURN in response.  RFC-5661 says LAYOUTRETURN
-> does need to be sent in response.
-> 
-> The code in 3.12 doesn't send LAYOUTRETURN in response to
-> CB_LAYOUTRECALL, nor does it send LAYOUTRETURN when it closes a file
-> marked as "return layouts on close".  The one place I have seen evidence
-> of it returning layouts is when a file is unlinked, though I think there
-> are others (chmod, IO error).
-> 
-> The current upstream code seems to call LAYOUTRETURN more correctly, but
-> it is hard to be sure because I couldn't find a commit which acknowledged
-> the specific problem and corrected it - just commits that claim to be
-> making improvements and avoiding races and things like that.
-> 
-> Questions:
->  - Am I correct that all layouts need to be explicitly returned by the
->    client, and so the text from RFC-5663 is misleading?
-> 
+Hi Trond,
 
-There is one special case...
+On Thu, Mar 2, 2017 at 2:04 AM, Linux Kernel Mailing List
+<linux-kernel@vger.kernel.org> wrote:
+> Web:        https://git.kernel.org/torvalds/c/0ae060ca2bdfe11181094699b0f=
+76437ec210b17
+> Commit:     0ae060ca2bdfe11181094699b0f76437ec210b17
+> Parent:     9761a2469dc287c6d75ca148f4fc483becbcad88
+> Refname:    refs/heads/master
+> Author:     Trond Myklebust <trond.myklebust@primarydata.com>
+> AuthorDate: Sun Feb 19 16:08:25 2017 -0500
+> Committer:  Anna Schumaker <Anna.Schumaker@Netapp.com>
+> CommitDate: Tue Feb 21 16:56:16 2017 -0500
+>
+>     SUNRPC: Add generic helpers for xdr_stream encode/decode
+>
+>     Add some generic helpers for encoding/decoding opaque structures and
+>     basic u32/u64.
+>
+>     Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+>     Reviewed-by: Chuck Lever <chuck.lever@oracle.com>
+>     Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
 
-When the server does a CB_LAYOUTRECALL, the client can reply with
-NFS4ERR_NOMATCHING_LAYOUT if it's not actively using the layout at the
-time. With that, the client isn't expected to do a LAYOUTRETURN.
+> --- a/include/linux/sunrpc/xdr.h
+> +++ b/include/linux/sunrpc/xdr.h
 
-Any other status on the CB_LAYOUTRECALL however does require a
-LAYOUTRETURN.
+> +/**
+> + * xdr_stream_decode_u32 - Decode a 32-bit integer
+> + * @xdr: pointer to xdr_stream
+> + * @ptr: location to store integer
+> + *
+> + * Return values:
+> + *   %0 on success
+> + *   %-EBADMSG on XDR buffer overflow
+> + */
+> +static inline ssize_t
 
->  - If so, what is the earliest kernel that is believed to correctly
->    return layouts in response to CB_LAYOUTRECALL, or a 'roc' file being
->    closed?
-> 
-> I was advised that Netapp are considering a change (netapp issue
-> 955835):
->   An enhancement will be added in future versions of Ontap to clear out
->   the corresponding layout states after a file has been closed in the
->   event the client does not return them.
-> 
-> This sounds like a mistake, unless "clear out" means "send
-> CB_LAYOUTRECALL for".  Should we advice Netapp against this?
-> 
-> Thanks,
-> NeilBrown
-> 
+I think you should either change the return type to "int", or return the
+length instead of storing it in *ptr, like all other functions returning
+ssize_t do.
 
+The latter will probably kill the (false positive) compiler warning I'm
+seeing, too.
+
+> +xdr_stream_decode_u32(struct xdr_stream *xdr, __u32 *ptr)
+> +{
+> +       const size_t count =3D sizeof(*ptr);
+> +       __be32 *p =3D xdr_inline_decode(xdr, count);
+> +
+> +       if (unlikely(!p))
+> +               return -EBADMSG;
+> +       *ptr =3D be32_to_cpup(p);
+> +       return 0;
+> +}
+> +
+> +/**
+> + * xdr_stream_decode_opaque_fixed - Decode fixed length opaque xdr data
+> + * @xdr: pointer to xdr_stream
+> + * @ptr: location to store data
+> + * @len: size of buffer pointed to by @ptr
+> + *
+> + * Return values:
+> + *   On success, returns size of object stored in @ptr
+> + *   %-EBADMSG on XDR buffer overflow
+> + */
+> +static inline ssize_t
+> +xdr_stream_decode_opaque_fixed(struct xdr_stream *xdr, void *ptr, size_t=
+ len)
+> +{
+> +       __be32 *p =3D xdr_inline_decode(xdr, len);
+> +
+> +       if (unlikely(!p))
+> +               return -EBADMSG;
+> +       xdr_decode_opaque_fixed(p, ptr, len);
+> +       return len;
+> +}
+> +
+> +/**
+> + * xdr_stream_decode_opaque_inline - Decode variable length opaque xdr d=
+ata
+> + * @xdr: pointer to xdr_stream
+> + * @ptr: location to store pointer to opaque data
+> + * @maxlen: maximum acceptable object size
+> + *
+> + * Note: the pointer stored in @ptr cannot be assumed valid after the XD=
+R
+> + * buffer has been destroyed, or even after calling xdr_inline_decode()
+> + * on @xdr. It is therefore expected that the object it points to should
+> + * be processed immediately.
+> + *
+> + * Return values:
+> + *   On success, returns size of object stored in *@ptr
+> + *   %-EBADMSG on XDR buffer overflow
+> + *   %-EMSGSIZE if the size of the object would exceed @maxlen
+> + */
+> +static inline ssize_t
+> +xdr_stream_decode_opaque_inline(struct xdr_stream *xdr, void **ptr, size=
+_t maxlen)
+> +{
+> +       __be32 *p;
+> +       __u32 len;
+> +
+> +       *ptr =3D NULL;
+> +       if (unlikely(xdr_stream_decode_u32(xdr, &len) < 0))
+> +               return -EBADMSG;
+
+With gcc-4.1.2, which isn't smart enough to derive the relation between
+the initialization of &len and the return value:
+
+    fs/nfs/nfs4xdr.c: In function =E2=80=98decode_opaque_inline=E2=80=99:
+    include/linux/sunrpc/xdr.h:409: warning: =E2=80=98len=E2=80=99 may be u=
+sed
+uninitialized in this function
+
+> +       if (len !=3D 0) {
+> +               p =3D xdr_inline_decode(xdr, len);
+> +               if (unlikely(!p))
+> +                       return -EBADMSG;
+> +               if (unlikely(len > maxlen))
+> +                       return -EMSGSIZE;
+> +               *ptr =3D p;
+> +       }
+> +       return len;
+> +}
+
+Gr{oetje,eeting}s,
+
+                        Geert
+
+--
+Geert Uytterhoeven -- There's lots of Linux beyond ia32 -- geert@linux-m68k=
+.org
+
+In personal conversations with technical people, I call myself a hacker. Bu=
+t
+when I'm talking to journalists I just say "programmer" or something like t=
+hat.
+                                -- Linus Torvalds
