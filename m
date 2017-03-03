@@ -1,140 +1,30 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-it0-f66.google.com ([209.85.214.66]:34770 "EHLO
-        mail-it0-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751769AbdCCQmd (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 3 Mar 2017 11:42:33 -0500
-Received: by mail-it0-f66.google.com with SMTP id r141so2883397ita.1
-        for <linux-nfs@vger.kernel.org>; Fri, 03 Mar 2017 08:42:28 -0800 (PST)
-Subject: Re: [PATCH v2 2/2] NFSv4.x/callback: make sure callback threads are
- interruptible
-To: Trond Myklebust <trond.myklebust@primarydata.com>,
-        linux-nfs@vger.kernel.org
-References: <d8e459af-1efa-dae9-61b6-253e8945831f@gmail.com>
-Cc: Anna Schumaker <Anna.Schumaker@netapp.com>,
-        Kinglong Mee <kinglongmee@gmail.com>
-From: Kinglong Mee <kinglongmee@gmail.com>
-Message-ID: <63cf52a3-d2dc-baf2-8fcd-e49033a08eab@gmail.com>
-Date: Fri, 3 Mar 2017 21:35:45 +0800
+Received: from bombadil.infradead.org ([65.50.211.133]:60520 "EHLO
+        bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751083AbdCCRXE (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 3 Mar 2017 12:23:04 -0500
+Date: Fri, 3 Mar 2017 07:14:10 -0800
+From: Christoph Hellwig <hch@infradead.org>
+To: Sascha Hauer <s.hauer@pengutronix.de>
+Cc: linux-kernel@vger.kernel.org,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        linux-nfs@vger.kernel.org, linux-ima-devel@lists.sourceforge.net,
+        linux-security-module@vger.kernel.org,
+        Mimi Zohar <zohar@linux.vnet.ibm.com>,
+        Dmitry Kasatkin <dmitry.kasatkin@gmail.com>,
+        James Morris <james.l.morris@oracle.com>, kernel@pengutronix.de
+Subject: Re: IMA on NFS deadlocks since a5864c999de670
+Message-ID: <20170303151410.GA7751@infradead.org>
+References: <20170303103838.tnprd3pww4jmippp@pengutronix.de>
 MIME-Version: 1.0
-In-Reply-To: <d8e459af-1efa-dae9-61b6-253e8945831f@gmail.com>
-Content-Type: text/plain; charset=utf-8
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20170303103838.tnprd3pww4jmippp@pengutronix.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Ping ...
+On Fri, Mar 03, 2017 at 11:38:51AM +0100, Sascha Hauer wrote:
+> Right now I have no idea if this commit is breaking things or if IMA
+> is the guilty one and this commit only triggers it.
 
-With the [1/2]??
-
-thanks,
-Kinglong Mee
-
-On 1/19/2017 16:37, Kinglong Mee wrote:
-> 
-> 
-> Commit bb6aeba736ba "NFSv4.x: Switch to using svc_set_num_threads()
->  to manage the callback threads" change nfs start/stop threads
-> through svc_set_num_threads().
-> 
-> It destroy old threads by SIGINT signal, but our nfs4_callback_svc()
-> isn't interruptible. So that, the callback threads will never be killed.
-> 
-> # mount -t nfs -overs=4.2 nfstestnic:/ /mnt/
-> # ps -ajx |grep NFS
->     2  5927     0     0 ?           -1 S        0   0:00 [NFSv4 callback]
-> # umount /mnt
-> # ps -ajx |grep NFS
->     2  5927     0     0 ?           -1 S        0   0:00 [NFSv4 callback]
-> # mount -t nfs -overs=4.2 nfstestnic:/ /mnt/
-> # umount /mnt
-> # ps -ajx |grep NFS
->     2  5927     0     0 ?           -1 S        0   0:00 [NFSv4 callback]
->     2  5963     0     0 ?           -1 S        0   0:00 [NFSv4 callback]
-> 
-> After one mount, there will be one callback thread left that cannot killed,
-> the same time, nfs.ko will never be unplugged.
-> 
-> v2, drop the wrong setting of rqstp->rq_server = NULL
-> 
-> Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
-> ---
->  fs/nfs/callback.c | 39 +++++++++++++++++++++++++++++++++++----
->  1 file changed, 35 insertions(+), 4 deletions(-)
-> 
-> diff --git a/fs/nfs/callback.c b/fs/nfs/callback.c
-> index 0a21150..2a0fffd 100644
-> --- a/fs/nfs/callback.c
-> +++ b/fs/nfs/callback.c
-> @@ -73,6 +73,15 @@ nfs4_callback_svc(void *vrqstp)
->  	int err;
->  	struct svc_rqst *rqstp = vrqstp;
->  
-> +	/*
-> +	 * thread is spawned with all signals set to SIG_IGN, re-enable
-> +	 * the ones that will bring down the thread
-> +	 */
-> +	allow_signal(SIGKILL);
-> +	allow_signal(SIGHUP);
-> +	allow_signal(SIGINT);
-> +	allow_signal(SIGQUIT);
-> +
->  	set_freezable();
->  
->  	while (!kthread_should_stop()) {
-> @@ -80,11 +89,18 @@ nfs4_callback_svc(void *vrqstp)
->  		 * Listen for a request on the socket
->  		 */
->  		err = svc_recv(rqstp, MAX_SCHEDULE_TIMEOUT);
-> -		if (err == -EAGAIN || err == -EINTR)
-> +		if (err == -EAGAIN)
->  			continue;
-> +		else if (err == -EINTR)
-> +			break;
->  		svc_process(rqstp);
->  	}
-> -	return 0;
-> +
-> +	flush_signals(current);
-> +
-> +	/* Release the thread */
-> +	svc_exit_thread(rqstp);
-> +	module_put_and_exit(0);
->  }
->  
->  #if defined(CONFIG_NFS_V4_1)
-> @@ -100,6 +116,15 @@ nfs41_callback_svc(void *vrqstp)
->  	int error;
->  	DEFINE_WAIT(wq);
->  
-> +	/*
-> +	 * thread is spawned with all signals set to SIG_IGN, re-enable
-> +	 * the ones that will bring down the thread
-> +	 */
-> +	allow_signal(SIGKILL);
-> +	allow_signal(SIGHUP);
-> +	allow_signal(SIGINT);
-> +	allow_signal(SIGQUIT);
-> +
->  	set_freezable();
->  
->  	while (!kthread_should_stop()) {
-> @@ -121,11 +146,17 @@ nfs41_callback_svc(void *vrqstp)
->  		} else {
->  			spin_unlock_bh(&serv->sv_cb_lock);
->  			schedule();
-> +			if (signalled())
-> +				break;
->  			finish_wait(&serv->sv_cb_waitq, &wq);
->  		}
-> -		flush_signals(current);
->  	}
-> -	return 0;
-> +
-> +	flush_signals(current);
-> +
-> +	/* Release the thread */
-> +	svc_exit_thread(rqstp);
-> +	module_put_and_exit(0);
->  }
->  
->  static inline void nfs_callback_bc_serv(u32 minorversion, struct rpc_xprt *xprt,
-> 
+IMA is unfortunately completely broken, and it has the same issue
+on XFS and OCFS2 for example.
