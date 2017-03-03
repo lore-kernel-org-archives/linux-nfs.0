@@ -1,75 +1,132 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:50178 "EHLO fieldses.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1752041AbdCCVdV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 3 Mar 2017 16:33:21 -0500
-Date: Fri, 3 Mar 2017 16:32:30 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Olga Kornievskaia <kolga@netapp.com>
-Cc: Christoph Hellwig <hch@infradead.org>, Trond.Myklebust@primarydata.com,
-        linux-nfs@vger.kernel.org
-Subject: Re: [RFC v1 01/19] fs: Don't copy beyond the end of the file
-Message-ID: <20170303213230.GF13877@fieldses.org>
-References: <20170302160123.30375-1-kolga@netapp.com>
- <20170302160123.30375-2-kolga@netapp.com>
- <20170302162221.GA6854@infradead.org>
- <20170303204747.GE13877@fieldses.org>
- <4B2A2E86-AFC8-49EA-9D53-7A53AD824CF1@netapp.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-In-Reply-To: <4B2A2E86-AFC8-49EA-9D53-7A53AD824CF1@netapp.com>
+Received: from aserp1040.oracle.com ([141.146.126.69]:22373 "EHLO
+        aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1752494AbdCCVrP (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 3 Mar 2017 16:47:15 -0500
+Content-Type: text/plain; charset=us-ascii
+Mime-Version: 1.0 (Mac OS X Mail 9.3 \(3124\))
+Subject: Re: supporting DEVICE_REMOVAL on RPC-over-RDMA transports
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <1487863839.3145.1.camel@primarydata.com>
+Date: Fri, 3 Mar 2017 13:46:49 -0800
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Message-Id: <2B8A92DC-F21A-4881-B4A8-25D97751FA1E@oracle.com>
+References: <9EF7BDF7-35DF-4723-A903-54AEC9A9787A@oracle.com> <1487820335.3577.1.camel@primarydata.com> <2C6ED2EF-F715-4EBB-A36B-A7BCBFB60CBE@oracle.com> <1487863839.3145.1.camel@primarydata.com>
+To: Trond Myklebust <trondmy@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Mar 03, 2017 at 04:08:19PM -0500, Olga Kornievskaia wrote:
-> 
-> > On Mar 3, 2017, at 3:47 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
-> > 
-> > On Thu, Mar 02, 2017 at 08:22:21AM -0800, Christoph Hellwig wrote:
-> >> On Thu, Mar 02, 2017 at 11:01:05AM -0500, Olga Kornievskaia wrote:
-> >>> +	if (pos_in >= i_size_read(inode_in))
-> >>> +		return -EINVAL;
-> >> 
-> >> That's not how the syscall is supposed to work, we'd rather do a
-> >> short read^^^^^copy.
-> > 
-> > That's what I think too, but then is COPY(2) wrong?:
-> > 
-> > 	EINVAL Requested  range  extends beyond the end of the source
-> > 	  file; or the flags argument is not 0.
-> > 
-> > Also, copy_file_range can be implemented by ->clone_file_range, where
-> > these kinds of checks make more sense, I think; e.g. from btrfs:
-> > 
-> > 	ret = -EINVAL;
-> > 	if (off + len > src->i_size || off + len < off)
-> > 		goto out_unlock;
-> > 
-> > Well, so the caller just has to be prepared for either behavior, I
-> > guess, but that may make it more complicated to use.
-> > 
-> 
-> I’m still rather very confused again by the comment and what it is proposing.
-> 
-> There are two checks to consider for the validity of the arguments
-> 
-> 1. If the offset of the source file is beyond the end of the source file.
-> 2. If the offset + len is beyond the end of the file.
-> 
-> I read that the man page is talking about #2.  This is actually what the NFSv4.2 spec required for the COPY too but we’ve been discussing that it should be a short read instead.
-> 
-> This patch address is to address case #1. As far as I can tell it applies to all file systems.
-> 
-> Are you suggesting that the checks for the validity of the arguments do not belong in VFS but instead should be in each of the underlying file systems?
-> 
-> Not all vfs_copy_file_range() are implemented via clone_file_range(). At least I hope that “inter” NFSv4.2 COPY will also use vfs_file_copy_range() and it would not be calling clone().
 
-I think it'd be acceptable for copy_file_range() to just return 0 even
-in your case 1.  I believe that's what ordinary read and pread does.
+> On Feb 23, 2017, at 7:30 AM, Trond Myklebust <trondmy@primarydata.com> wrote:
+> 
+> On Thu, 2017-02-23 at 09:54 -0500, Chuck Lever wrote:
+>>> On Feb 22, 2017, at 10:25 PM, Trond Myklebust <trondmy@primarydata.
+>>> com> wrote:
+>>> 
+>>> On Wed, 2017-02-22 at 16:31 -0500, Chuck Lever wrote:
+>>>> Hey Trond-
+>>>> 
+>>>> To support the ability to unload the underlying RDMA device's
+>>>> kernel
+>>>> driver while NFS mounts are active, xprtrdma needs the ability to
+>>>> suspend RPC sends temporarily while the transport hands HW
+>>>> resources
+>>>> back to the driver. Once the device driver is unloaded, the RDMA
+>>>> transport is left disconnected, and RPCs will be suspended
+>>>> normally
+>>>> until a connection is possible again (eg, a new device is made
+>>>> available).
+>>>> 
+>>>> A DEVICE_REMOVAL event is an upcall to xprtrdma that may sleep.
+>>>> Upon
+>>>> its return, the device driver unloads itself. Currently my
+>>>> prototype
+>>>> frees all HW resources during the upcall, but that doesn't block
+>>>> new RPCs from trying to use those resources at the same time.
+>>>> 
+>>>> Seems like the most natural way to temporarily block sends would
+>>>> be
+>>>> to grab the transport's write lock, just like "connect" does,
+>>>> while
+>>>> the transport is dealing with DEVICE_REMOVAL, then release it
+>>>> once
+>>>> all HW resources have been freed.
+>>>> 
+>>>> Unfortunately an RPC task is needed to acquire the write lock.
+>>>> But
+>>>> disconnect is just an asynchronous event, there is no RPC task
+>>>> associated with it, and thus no context that the RPC scheduler
+>>>> can put to sleep if there happens to be another RPC sending at
+>>>> the
+>>>> moment a device removal event occurs.
+>>>> 
+>>>> I was looking at xprt_lock_connect, but that doesn't appear to do
+>>>> quite what I need.
+>>>> 
+>>>> Another thought was to have the DEVICE_REMOVAL upcall mark the
+>>>> transport disconnected, send an asynchronous NULL RPC, then wait
+>>>> on a kernel waitqueue.
+>>>> 
+>>>> The NULL RPC would grab the write lock and kick the transport's
+>>>> connect worker. The connect worker would free HW resources, then
+>>>> awaken the waiter. Then the upcall could return to the driver.
+>>>> 
+>>>> The problem with this scheme is the same as it was for the
+>>>> keepalive work: there's no task or rpc_clnt available to the
+>>>> DEVICE_REMOVAL upcall. Sleeping until the write lock is available
+>>>> would require a task, and sending a NULL RPC would require an
+>>>> rpc_clnt.
+>>>> 
+>>>> Any advice/thoughts about this?
+>>>> 
+>>> 
+>>> Can you perhaps use XPRT_FORCE_DISCONNECT? That does end up calling
+>>> the
+>>> xprt->ops->close() callback as soon as the XPRT_LOCK state has been
+>>> freed. You still won't have a client, but you will be guaranteed
+>>> exclusive access to the transport, and you can do things like
+>>> waking up
+>>> any sleeping tasks on the transmit and receive queue to help you.
+>>> However you also have to deal with the case where the transport was
+>>> idle to start with.
+>> 
+>> The case where the transport is idle is indeed the most bothersome.
+>> 
+>> I hadn't realized that ->close guaranteed exclusive access to
+>> the transport. If ->close guarantees access to the transport, then
+>> I don't need an RPC task or the NULL RPC because we don't ever have
+>> to wait for write access.
+>> 
+> 
+> Yes, ->close() must always be taken with XPRT_LOCK set, and it is
+> guaranteed to be called the instant that the current holder of
+> XPRT_LOCK relinquishes it. This is why we have the test for
+> XPRT_CLOSE_WAIT in xprt_clear_locked(); it short-circuits the wait
+> queues and immediately starts queue_work(xprtiod_workqueue, &xprt-
+>> task_cleanup).
+> 
+>> The hardware resources can be torn down immediately in
+>> xprt_rdma_close.
+> 
+> Sounds like the right thing to do then.
 
-You probably can't perform it atomically with the copy, so it's possible
-that the size will change right after you check it.
+This approach seems to be working well, except for one
+unexpected behavior.
 
-I don't see a benefit to the check.
+->send_request seems to be called even though
+XPRT_CONNECTED is clear. I expected that after a transport
+has been disconnected, ->send_request would never be
+invoked when that bit is clear.
 
---b.
+Occasionally, ->send_request is invoked with
+XPRT_CONNECTING set.
+
+If those are OK, then I will have something to post for
+review next week.
+
+
+--
+Chuck Lever
+
+
+
