@@ -1,60 +1,140 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-it0-f65.google.com ([209.85.214.65]:34295 "EHLO
-        mail-it0-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751459AbdCCQht (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 3 Mar 2017 11:37:49 -0500
-Received: by mail-it0-f65.google.com with SMTP id r141so2868048ita.1
-        for <linux-nfs@vger.kernel.org>; Fri, 03 Mar 2017 08:37:08 -0800 (PST)
-Subject: Re: [PATCH v2 1/2] NFSv4.x/callback: Create the callback service
- through svc_create_pooled
+Received: from mail-it0-f66.google.com ([209.85.214.66]:34770 "EHLO
+        mail-it0-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751769AbdCCQmd (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 3 Mar 2017 11:42:33 -0500
+Received: by mail-it0-f66.google.com with SMTP id r141so2883397ita.1
+        for <linux-nfs@vger.kernel.org>; Fri, 03 Mar 2017 08:42:28 -0800 (PST)
+Subject: Re: [PATCH v2 2/2] NFSv4.x/callback: make sure callback threads are
+ interruptible
 To: Trond Myklebust <trond.myklebust@primarydata.com>,
         linux-nfs@vger.kernel.org
-References: <322d5c7d-d3b4-1e02-de3f-8e1a900cb150@gmail.com>
+References: <d8e459af-1efa-dae9-61b6-253e8945831f@gmail.com>
 Cc: Anna Schumaker <Anna.Schumaker@netapp.com>,
         Kinglong Mee <kinglongmee@gmail.com>
 From: Kinglong Mee <kinglongmee@gmail.com>
-Message-ID: <db71aa4b-5c9f-0280-9e9c-336b28cdf803@gmail.com>
-Date: Fri, 3 Mar 2017 21:34:50 +0800
+Message-ID: <63cf52a3-d2dc-baf2-8fcd-e49033a08eab@gmail.com>
+Date: Fri, 3 Mar 2017 21:35:45 +0800
 MIME-Version: 1.0
-In-Reply-To: <322d5c7d-d3b4-1e02-de3f-8e1a900cb150@gmail.com>
+In-Reply-To: <d8e459af-1efa-dae9-61b6-253e8945831f@gmail.com>
 Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Ping...
+Ping ...
 
-The state? 
+With the [1/2]??
 
 thanks,
 Kinglong Mee
 
-On 1/19/2017 16:36, Kinglong Mee wrote:
-> As the comments for svc_set_num_threads() said, 
-> " Destroying threads relies on the service threads filling in
-> rqstp->rq_task, which only the nfs ones do.  Assumes the serv
-> has been created using svc_create_pooled()."
+On 1/19/2017 16:37, Kinglong Mee wrote:
 > 
-> If creating service through svc_create(), the svc_pool_map_put()
-> will be called in svc_destroy(), but the pool map isn't used.
-> So that, the reference of pool map will be drop, the next using
-> of pool map will get a zero npools. 
+> 
+> Commit bb6aeba736ba "NFSv4.x: Switch to using svc_set_num_threads()
+>  to manage the callback threads" change nfs start/stop threads
+> through svc_set_num_threads().
+> 
+> It destroy old threads by SIGINT signal, but our nfs4_callback_svc()
+> isn't interruptible. So that, the callback threads will never be killed.
+> 
+> # mount -t nfs -overs=4.2 nfstestnic:/ /mnt/
+> # ps -ajx |grep NFS
+>     2  5927     0     0 ?           -1 S        0   0:00 [NFSv4 callback]
+> # umount /mnt
+> # ps -ajx |grep NFS
+>     2  5927     0     0 ?           -1 S        0   0:00 [NFSv4 callback]
+> # mount -t nfs -overs=4.2 nfstestnic:/ /mnt/
+> # umount /mnt
+> # ps -ajx |grep NFS
+>     2  5927     0     0 ?           -1 S        0   0:00 [NFSv4 callback]
+>     2  5963     0     0 ?           -1 S        0   0:00 [NFSv4 callback]
+> 
+> After one mount, there will be one callback thread left that cannot killed,
+> the same time, nfs.ko will never be unplugged.
+> 
+> v2, drop the wrong setting of rqstp->rq_server = NULL
 > 
 > Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
 > ---
->  fs/nfs/callback.c | 2 +-
->  1 file changed, 1 insertion(+), 1 deletion(-)
+>  fs/nfs/callback.c | 39 +++++++++++++++++++++++++++++++++++----
+>  1 file changed, 35 insertions(+), 4 deletions(-)
 > 
 > diff --git a/fs/nfs/callback.c b/fs/nfs/callback.c
-> index 484bebc..0a21150 100644
+> index 0a21150..2a0fffd 100644
 > --- a/fs/nfs/callback.c
 > +++ b/fs/nfs/callback.c
-> @@ -279,7 +279,7 @@ static struct svc_serv *nfs_callback_create_svc(int minorversion)
->  		printk(KERN_WARNING "nfs_callback_create_svc: no kthread, %d users??\n",
->  			cb_info->users);
+> @@ -73,6 +73,15 @@ nfs4_callback_svc(void *vrqstp)
+>  	int err;
+>  	struct svc_rqst *rqstp = vrqstp;
 >  
-> -	serv = svc_create(&nfs4_callback_program, NFS4_CALLBACK_BUFSIZE, sv_ops);
-> +	serv = svc_create_pooled(&nfs4_callback_program, NFS4_CALLBACK_BUFSIZE, sv_ops);
->  	if (!serv) {
->  		printk(KERN_ERR "nfs_callback_create_svc: create service failed\n");
->  		return ERR_PTR(-ENOMEM);
+> +	/*
+> +	 * thread is spawned with all signals set to SIG_IGN, re-enable
+> +	 * the ones that will bring down the thread
+> +	 */
+> +	allow_signal(SIGKILL);
+> +	allow_signal(SIGHUP);
+> +	allow_signal(SIGINT);
+> +	allow_signal(SIGQUIT);
+> +
+>  	set_freezable();
+>  
+>  	while (!kthread_should_stop()) {
+> @@ -80,11 +89,18 @@ nfs4_callback_svc(void *vrqstp)
+>  		 * Listen for a request on the socket
+>  		 */
+>  		err = svc_recv(rqstp, MAX_SCHEDULE_TIMEOUT);
+> -		if (err == -EAGAIN || err == -EINTR)
+> +		if (err == -EAGAIN)
+>  			continue;
+> +		else if (err == -EINTR)
+> +			break;
+>  		svc_process(rqstp);
+>  	}
+> -	return 0;
+> +
+> +	flush_signals(current);
+> +
+> +	/* Release the thread */
+> +	svc_exit_thread(rqstp);
+> +	module_put_and_exit(0);
+>  }
+>  
+>  #if defined(CONFIG_NFS_V4_1)
+> @@ -100,6 +116,15 @@ nfs41_callback_svc(void *vrqstp)
+>  	int error;
+>  	DEFINE_WAIT(wq);
+>  
+> +	/*
+> +	 * thread is spawned with all signals set to SIG_IGN, re-enable
+> +	 * the ones that will bring down the thread
+> +	 */
+> +	allow_signal(SIGKILL);
+> +	allow_signal(SIGHUP);
+> +	allow_signal(SIGINT);
+> +	allow_signal(SIGQUIT);
+> +
+>  	set_freezable();
+>  
+>  	while (!kthread_should_stop()) {
+> @@ -121,11 +146,17 @@ nfs41_callback_svc(void *vrqstp)
+>  		} else {
+>  			spin_unlock_bh(&serv->sv_cb_lock);
+>  			schedule();
+> +			if (signalled())
+> +				break;
+>  			finish_wait(&serv->sv_cb_waitq, &wq);
+>  		}
+> -		flush_signals(current);
+>  	}
+> -	return 0;
+> +
+> +	flush_signals(current);
+> +
+> +	/* Release the thread */
+> +	svc_exit_thread(rqstp);
+> +	module_put_and_exit(0);
+>  }
+>  
+>  static inline void nfs_callback_bc_serv(u32 minorversion, struct rpc_xprt *xprt,
 > 
