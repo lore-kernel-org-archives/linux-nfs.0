@@ -1,95 +1,139 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:50460 "EHLO fieldses.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751083AbdCDCKK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 3 Mar 2017 21:10:10 -0500
-Date: Fri, 3 Mar 2017 21:10:08 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Olga Kornievskaia <kolga@netapp.com>
-Cc: Christoph Hellwig <hch@infradead.org>, Trond.Myklebust@primarydata.com,
-        linux-nfs@vger.kernel.org
-Subject: Re: [RFC v1 01/19] fs: Don't copy beyond the end of the file
-Message-ID: <20170304021008.GB21609@fieldses.org>
-References: <20170302160123.30375-1-kolga@netapp.com>
- <20170302160123.30375-2-kolga@netapp.com>
- <20170302162221.GA6854@infradead.org>
- <20170303204747.GE13877@fieldses.org>
- <4B2A2E86-AFC8-49EA-9D53-7A53AD824CF1@netapp.com>
- <20170303213230.GF13877@fieldses.org>
- <B3F80DA0-B4F8-4628-88C5-E5C047620F17@netapp.com>
+Received: from us-smtp-delivery-194.mimecast.com ([63.128.21.194]:54492 "EHLO
+        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1752411AbdCDS6I (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sat, 4 Mar 2017 13:58:08 -0500
+From: Trond Myklebust <trondmy@primarydata.com>
+To: "bfields@fieldses.org" <bfields@fieldses.org>,
+        "neilb@suse.com" <neilb@suse.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH v2 0/2] Fix up nfsd to enable NFSv4.x without NFSv4.0
+Date: Sat, 4 Mar 2017 18:55:43 +0000
+Message-ID: <1488653739.34957.1.camel@primarydata.com>
+References: <20170222233533.23845-1-trond.myklebust@primarydata.com>
+         <87y3wxrcha.fsf@notabene.neil.brown.name>
+         <1487811610.4863.10.camel@primarydata.com>
+         <20170227230357.GA11912@fieldses.org>
+         <87k287nv6r.fsf@notabene.neil.brown.name>
+In-Reply-To: <87k287nv6r.fsf@notabene.neil.brown.name>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-In-Reply-To: <B3F80DA0-B4F8-4628-88C5-E5C047620F17@netapp.com>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Mar 03, 2017 at 05:46:05PM -0500, Olga Kornievskaia wrote:
-> 
-> > On Mar 3, 2017, at 4:32 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
-> > 
-> > On Fri, Mar 03, 2017 at 04:08:19PM -0500, Olga Kornievskaia wrote:
-> >> 
-> >>> On Mar 3, 2017, at 3:47 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
-> >>> 
-> >>> On Thu, Mar 02, 2017 at 08:22:21AM -0800, Christoph Hellwig wrote:
-> >>>> On Thu, Mar 02, 2017 at 11:01:05AM -0500, Olga Kornievskaia wrote:
-> >>>>> +	if (pos_in >= i_size_read(inode_in))
-> >>>>> +		return -EINVAL;
-> >>>> 
-> >>>> That's not how the syscall is supposed to work, we'd rather do a
-> >>>> short read^^^^^copy.
-> >>> 
-> >>> That's what I think too, but then is COPY(2) wrong?:
-> >>> 
-> >>> 	EINVAL Requested  range  extends beyond the end of the source
-> >>> 	  file; or the flags argument is not 0.
-> >>> 
-> >>> Also, copy_file_range can be implemented by ->clone_file_range, where
-> >>> these kinds of checks make more sense, I think; e.g. from btrfs:
-> >>> 
-> >>> 	ret = -EINVAL;
-> >>> 	if (off + len > src->i_size || off + len < off)
-> >>> 		goto out_unlock;
-> >>> 
-> >>> Well, so the caller just has to be prepared for either behavior, I
-> >>> guess, but that may make it more complicated to use.
-> >>> 
-> >> 
-> >> I’m still rather very confused again by the comment and what it is proposing.
-> >> 
-> >> There are two checks to consider for the validity of the arguments
-> >> 
-> >> 1. If the offset of the source file is beyond the end of the source file.
-> >> 2. If the offset + len is beyond the end of the file.
-> >> 
-> >> I read that the man page is talking about #2.  This is actually what the NFSv4.2 spec required for the COPY too but we’ve been discussing that it should be a short read instead.
-> >> 
-> >> This patch address is to address case #1. As far as I can tell it applies to all file systems.
-> >> 
-> >> Are you suggesting that the checks for the validity of the arguments do not belong in VFS but instead should be in each of the underlying file systems?
-> >> 
-> >> Not all vfs_copy_file_range() are implemented via clone_file_range(). At least I hope that “inter” NFSv4.2 COPY will also use vfs_file_copy_range() and it would not be calling clone().
-> > 
-> > I think it'd be acceptable for copy_file_range() to just return 0 even
-> > in your case 1.  I believe that's what ordinary read and pread does.
-> > 
-> > You probably can't perform it atomically with the copy, so it's possible
-> > that the size will change right after you check it.
-> > 
-> > I don't see a benefit to the check.
-> 
+T24gRnJpLCAyMDE3LTAzLTAzIGF0IDA5OjU3ICsxMTAwLCBOZWlsQnJvd24gd3JvdGU6DQo+IE9u
+IE1vbiwgRmViIDI3IDIwMTcsIGJmaWVsZHNAZmllbGRzZXMub3JnIHdyb3RlOg0KPiANCj4gPiBP
+biBUaHUsIEZlYiAyMywgMjAxNyBhdCAwMTowMDoxMkFNICswMDAwLCBUcm9uZCBNeWtsZWJ1c3Qg
+d3JvdGU6DQo+ID4gPiBPbiBUaHUsIDIwMTctMDItMjMgYXQgMTE6MTMgKzExMDAsIE5laWxCcm93
+biB3cm90ZToNCj4gPiA+ID4gT24gV2VkLCBGZWIgMjIgMjAxNywgVHJvbmQgTXlrbGVidXN0IHdy
+b3RlOg0KPiA+ID4gPiANCj4gPiA+ID4gPiBUaGlzIHBhdGNoIHNlcmllcyB3YXMgaW50ZW5kZWQg
+YXMgYSBzdGFuZGFsb25lIHNlcmllcy4NCj4gPiA+ID4gPiBIb3dldmVyIGl0DQo+ID4gPiA+ID4g
+bm93DQo+ID4gPiA+ID4gYWltcyB0byBmaXggdXAgYSBmZXcgaXNzdWVzIHdpdGggTmVpbCdzIGlu
+aXRpYWwgcGF0Y2g6DQo+ID4gPiA+ID4gDQo+ID4gPiA+ID4gMSkgV2hlbiB0aGUgdXNlciB0dXJu
+cyBvZmYgYWxsIG1pbm9yIHZlcnNpb25zIG9mIE5GU3Y0LCB0aGVuDQo+ID4gPiA+ID4gdGhhdA0K
+PiA+ID4gPiA+IHNob3VsZA0KPiA+ID4gPiA+IMKgwqDCoGJlIGVxdWl2YWxlbnQgdG8gdHVybmlu
+ZyBvZmYgTkZTdjQgc3VwcG9ydCwgYW5kIHNvIHdoZW4NCj4gPiA+ID4gPiBzb21lb25lDQo+ID4g
+PiA+ID4gdHJpZXMNCj4gPiA+ID4gPiDCoMKgwqB0byBtb3VudCwgd2Ugc2hvdWxkIHJldHVybiBS
+UENfUFJPR19NSVNNQVRDSC4NCj4gPiA+ID4gPiAyKSBBbGxvdyB0aGUgdXNlciB0byB1c2UgZWl0
+aGVyICc0LjAnIG9yICc0JyBpbiBvcmRlciB0bw0KPiA+ID4gPiA+IGVuYWJsZSBvcg0KPiA+ID4g
+PiA+IGRpc2FibGUNCj4gPiA+ID4gPiDCoMKgwqBtaW5vciB2ZXJzaW9uIDAuIE90aGVyIG1pbm9y
+IHZlcnNpb25zIHJlbWFpbg0KPiA+ID4gPiA+IGVuYWJsZWQvZGlzYWJsZWQNCj4gPiA+ID4gPiB1
+c2luZyB0aGUNCj4gPiA+ID4gPiDCoMKgwqAnNC54JyBmb3JtYXQuDQo+ID4gPiA+IA0KPiA+ID4g
+PiBJZiBJIHVuZGVyc3RhbmQgeW91IGFuZCB0aGUgY29kZSBjb3JyZWN0bHksIHRoZW4gdGhpcyBj
+aGFuZ2UNCj4gPiA+ID4gbWVhbnMNCj4gPiA+ID4gdGhhdA0KPiA+ID4gPiBpZiBJIHJ1bg0KPiA+
+ID4gPiANCj4gPiA+ID4gwqDCoMKgcnBjLm5mc2QgLU4gNA0KPiA+ID4gPiANCj4gPiA+ID4gdGhl
+IG5mcyBzZXJ2ZXIgd2lsbCBjb250aW51ZSB0byBzZXJ2ZXIgdjQuMSBhbmQgdjQuMiByZXF1ZXN0
+cywNCj4gPiA+ID4gb25seQ0KPiA+ID4gPiB2NC4wDQo+ID4gPiA+IHdpbGwgYmUgZGlzYWJsZWQg
+KEFzc3VtaW5nIGEga2VybmVsIHdoaWNoIGRlZmF1bHRzIHRvIHNlcnZpbmcNCj4gPiA+ID4gdjQu
+MCwNCj4gPiA+ID4gdjQuMQ0KPiA+ID4gPiBhbmQgdjQuMCkuDQo+ID4gPiANCj4gPiA+IFVuZm9y
+dHVuYXRlbHkgbm90Li4uIFRoZSBwcm9ibGVtIGlzIHRoYXQgcnBjLm5mc2QgaGFzIGEgYm9ya2Vu
+DQo+ID4gPiBwYXJzZXINCj4gPiA+IHRoYXQgcmVmdXNlcyB0aGUgJy1ONCAtVjQuMicgc3ludGF4
+LCBhbmQgdGhhdCB0aHJvd3MgaGlzc3kgZml0IGlmDQo+ID4gPiB5b3UNCj4gPiA+IHRyeSB0byBm
+ZWVkIGl0ICctTjQuMCcgb3IgJy1WNC4wJy4NCj4gPiA+IA0KPiA+ID4gVGhlIGtlcm5lbCBjaGFu
+Z2UgbmVlZHMgdG8gYmUgYWNjb21wYW5pZWQgYnkgYSBmaXggdG8gbmZzLXV0aWxzLg0KPiA+ID4g
+DQo+ID4gPiA+IElzIHRoYXQgcmVhbGx5IHdoYXQgd2Ugd2FudD8NCj4gPiA+ID4gDQo+ID4gPiA+
+IFRoZSB0ZXh0IGluIHRoZSBtYW4gcGFnZSBmb3IgcnBjLm5mc2QgY291bGQgYmUgcmVhZCBhcyBh
+bGxvd2luZw0KPiA+ID4gPiB0aGlzDQo+ID4gPiA+IGludGVycHJldGF0aW9uLCB0aG91Z2ggaXQg
+aXNuJ3QgZXhwbGljaXQuDQo+ID4gPiA+IEkndmUgYWx3YXlzIHVzZWQgIk5GU3Y0IiB0byBtZWFu
+IGFueSBvciBhbGwgZm9yIDQuMCwgNC4xLCA0LjIsDQo+ID4gPiA+IC4uLg0KPiA+ID4gDQo+ID4g
+PiBXZSBfY291bGRfIGRvIHRoYXQuIEFzIEkgc2FpZCwgdGhhdCdzIGEgcXVlc3Rpb24gb2YgZml4
+aW5nDQo+ID4gPiBycGMubmZzZC4NCj4gPiA+IA0KPiA+ID4gVGhlIHF1ZXN0aW9uIGhlcmUsIHRo
+b3VnaCwgaXMgd2hhdCBzaG91bGQgdGhlIGtlcm5lbCBkbyB3aGVuIHlvdQ0KPiA+ID4gc3RhcnQN
+Cj4gPiA+IHBva2luZyBpbnRvIC9wcm9jL2ZzL25mc2QvdmVyc2lvbnMuIEkgdGhpbmsgYWRkaW5n
+IGEgbmV3IGZpZWxkDQo+ID4gPiBiZXR3ZWVuDQo+ID4gPiAnNCcgYW5kICc0LjAnIG1pZ2h0IGJl
+IG1vcmUgZGlzcnVwdGl2ZSB0aGFuIGNoYW5naW5nIHRoZSBtZWFuaW5nDQo+ID4gPiBvZiAnNCcN
+Cj4gPiA+IHRvIG1lYW4gJzQuMCcgYXMgdGhlcmUgbWlnaHQgYmUgb3RoZXIgcGFyc2VycyBvZiB0
+aGF0IHBzZXVkb2ZpbGUNCj4gPiA+IG91dA0KPiA+ID4gdGhlcmUgdG9kYXkuDQo+ID4gDQo+ID4g
+SSdtIE9LIHdpdGggdGhhdCwgdW5sZXNzIE5laWwgc2VlcyBhIHByb2JsZW0uDQo+IA0KPiBJIGRv
+bid0IGtub3cgLi4uIHRoZSBtb3JlIEkgdGhpbmsgYWJvdXQgaXQsIHRoZSBsZXNzIGNlcnRhaW4g
+SSBzZWVtDQo+IHRvDQo+IGJlLg0KPiANCj4gUHJpb3IgdG8gVHJvbmQncyB1cGRhdGVzIGZvciBu
+ZnMtdXRpbHMsICJycGMubmZzZCAtTiA0IiB3b3VsZCB3cml0ZQ0KPiDCoCIrMyAtNCINCj4gdG8g
+dGhlICd2ZXJzaW9ucycgZmlsZSwgd2hpY2ggd2lsbCBjdXJyZW50bHkgZGlzYWJsZSBORlN2NA0K
+PiBjb21wbGV0ZWx5Lg0KPiBXaXRoIHRoaXMgcGF0Y2ggaXQgd2lsbCBkaXNhYmxlIDQuMCwgYnV0
+IGxlYXZlIDQuMSBhY3RpdmUuDQo+IA0KPiBUaGlzIGJlaGF2aW9yIGlzIGNvbnNpc3RlbnQgd2l0
+aCB0aGUgZG9jdW1lbnRhdGlvbiwgd2hpY2ggc2F5czoNCj4gDQo+IMKgwqDCoFRoZcKgwqBjdXJy
+ZW50IHZlcnNpb24gb2YgcnBjLm5mc2QgY2FuIHN1cHBvcnQgbWFqb3IgTkZTIHZlcnNpb25zDQo+
+IDIsMyw0DQo+IMKgwqDCoGFuZCB0aGUgbWlub3IgdmVyc2lvbnMgNC4xIGFuZCA0LjIuDQo+IA0K
+PiB3aGljaCBzdWdnZXN0cyB0aGF0ICI0LjEiIGlzIGEgZGlmZmVyZW50IHRoaW5nIHRvICI0Iiwg
+bm90IHBhcnQgb2YNCj4gaXQuDQo+IEFuZCB0aGUgY3VycmVudCBuZnMtdXRpbHMgZG9lc24ndCBz
+dXBwb3J0IGRpc2FibGluZyBqdXN0IDQuMCBhdCBhbGwuDQo+IFlvdSBjYW5ub3Qgc2F5ICJycGMu
+bmZzZCAtTiA0LjAiLg0KPiBTbyB0aGlzIHBhdGNoIGdpdmVzIG1vcmUgY29udHJvbCB0byB0aGUg
+b2xkIG5mcy11dGlscywgYnkgY2hhbmdpbmcNCj4gdGhlDQo+IHNlbWFudGljcyBvZiBhIHBhcnRp
+Y3VsYXIgb3BlcmF0aW9uLg0KPiANCj4gVGVjaG5pY2FsbHksIGl0IGlzIGEgcmVncmVzc2lvbiB0
+aG91Z2guwqDCoEl0IGRvZXMgcmVzdWx0IGluIGEgbW9yZQ0KPiBjb2hlcmVudCBpbnRlcmZhY2Us
+IHdoaWNoIGlzIGEgZ29vZCB0aGluZyBpbiB0aGUgbG9uZyB0ZXJtLg0KPiANCj4gV2hlbiB5b3Ug
+cmVhZCBmcm9tICJ2ZXJzaW9ucyIgeW91IGdldCB0aGUgbWFqb3IgdmVyc2lvbiBhbmQgbWlub3IN
+Cj4gdmVyc2lvbiBsaXN0ZWQgc2VwYXJhdGVseSwgd2l0aCBhIHNwZWNpYWwgY2FzZSB0aGF0ICIr
+NC4wIiBpcyBuZXZlcg0KPiByZXBvcnRlZC4NCj4gU28gaWYganVzdCA0LjEgaXMgZW5hYmxlZCwg
+eW91IG1pZ2h0IGdldA0KPiDCoMKgwqAtMyArNCAtNC4wICs0LjEgLTQuMg0KPiANCj4gYWZ0ZXIg
+VHJvbmQncyBjaGFuZ2UgIjQiIG1lYW5zICI0LjAiIGFuZCAiNC4wIiBpcyBuZXZlciBkaXNwbGF5
+ZWQsDQo+IHNvIHRoZSBhYm92ZSBjYXNlIHdvdWxkIGJlY29tZQ0KPiDCoMKgwqAtMyAtNCArNC4x
+IC00LjINCj4gDQo+IHdoaWNoIGlzIHZlcnkgZGlmZmVyZW50LsKgwqBQcm9iYWJseSBhbm90aGVy
+IHJlZ3Jlc3Npb24uDQo+IA0KPiBJIGd1ZXNzIEknbSBub3QgZW50aXJlbHkgc3VyZSB3aGF0IFRy
+b25kIGlzIHRyeWluZyB0byBmaXguDQo+IFRoaXMgYml0Og0KPiANCj4gMSkgV2hlbiB0aGUgdXNl
+ciB0dXJucyBvZmYgYWxsIG1pbm9yIHZlcnNpb25zIG9mIE5GU3Y0LCB0aGVuIHRoYXQNCj4gc2hv
+dWxkDQo+IMKgwqDCoGJlIGVxdWl2YWxlbnQgdG8gdHVybmluZyBvZmYgTkZTdjQgc3VwcG9ydCwg
+YW5kIHNvIHdoZW4gc29tZW9uZQ0KPiB0cmllcw0KPiDCoMKgwqB0byBtb3VudCwgd2Ugc2hvdWxk
+IHJldHVybiBSUENfUFJPR19NSVNNQVRDSC4NCj4gDQo+IE1ha2VzIHBlcmZlY3Qgc2Vuc2UuwqDC
+oEJ1dCBJJ20gbm90IGNsZWFyIG9uIHdoeSB0aGUgZm9ybWF0IG9mIHRoZQ0KPiB2ZXJzaW9ucyBm
+aWxlIG5lZWRzIHRvIGNoYW5nZS4NCj4gVHJvbmQgLSB3aGF0IGFtIEkgbWlzc2luZz8NCj4gDQoN
+ClRoZSBtYWluIGlzc3VlIHRoYXQgd29ycmllZCBtZSB3YXMgb25lIG9mIHByZWRpY3RhYmlsaXR5
+LiBXaGF0IGlzDQpzdXBwb3NlZCB0byBoYXBwZW4gd2hlbiB5b3UgdHlwZSAiZWNobyArNCI/IE9u
+ZSB0aGluZyB0aGF0IEkgY29uc2lkZXJlZA0KdG8gYmUgYSByZWdyZXNzaW9uLCB3YXMgdGhhdCBw
+cmV2aW91c2x5LCBJIGNvdWxkIGV4cGVjdCB0aGF0ICJlY2hvICs0Ig0Kd291bGQgYXQgdGhlIHZl
+cnkgbGVhc3QgdHVybiBvbiBORlN2NCBtaW5vciB2ZXJzaW9uIDAsIGJ1dCB3aXRoIHRoZQ0KY2hh
+bmdlIHRvIHNlbWFudGljcywgaXQgd291bGQgb25seSBkbyBzbyBpZiBub2JvZHkgaGFkIHR5cGVk
+ICJlY2hvDQotNC4wIi4NCg0KQW4gYW5hbG9neSB3b3VsZCBiZSBwdXR0aW5nIDIgbGlnaHQgc3dp
+dGNoZXMgaW4gZnJvbnQgb2YgYSBsaWdodCBidWxiLA0Kc28gdGhhdCB1bmxlc3MgYm90aCBzd2l0
+Y2hlcyBhcmUgb24sIHRoZSBidWxiIHdpbGwgbm90IHR1cm4gb24uDQpBY3R1YWxseSwgaXQgaXMg
+d29yc2UgdGhhbiB0aGF0LCBiZWNhdXNlIG5vbmUgb2YgdGhlIGJ1bGJzIHR1cm4gb24NCnVudGls
+IHlvdSBzdGFydCB1cCBrbmZzZCAoc28geW91IGNhbiBhcmd1ZSB0aGF0IHRoZXJlIGlzIGEgdGhp
+cmQgc3dpdGNoDQppbiBmcm9udCBvZiB0aGUgb3RoZXIgdHdvKS4NCldoeSBkbyB3ZSBuZWVkIHRo
+aXMgbWFueSBsZXZlbHMgb2Ygc3dpdGNoZXMgaW4gYSBrZXJuZWwgaW50ZXJmYWNlPyBZb3UNCnNo
+b3VsZCBiZSBhYmxlIHRvIGFjaGlldmUgdGhlIHNhbWUgZnVuY3Rpb25hbGl0eSBieSBqdXN0IHR1
+cm5pbmcgb24gYW5kDQpvZmYgdGhlIGluZGl2aWR1YWwgbWlub3IgdmVyc2lvbnMuIFRoZSByaWdo
+dCBwbGFjZSBmb3IgZGVzaWduaW5nIG1vcmUNCmNvbXBsZXggaW50ZXJmYWNlcyB3b3VsZCBiZSB1
+c2Vyc3BhY2UsIGFuZCBpcyBleGFjdGx5IHdoYXQgdGhlIHJwYy5uZnNkDQp1dGlsaXR5IHNob3Vs
+ZCBiZSB0YWtpbmcgY2FyZSBvZi4NCg0KRmluYWxseSwgdGhlcmUgaXMgdGhlIGlzc3VlIHRoYXQg
+dGhlIGludGVyZmFjZSBhbGxvd2VkIHNpdHVhdGlvbnMgd2hlcmUNCmtuZnNkIHdhcyBhZHZlcnRp
+c2luZyBzdXBwb3J0IGZvciBORlN2NCB2aWEgcnBjYmluZCwgYnV0IHRoZXJlIHdlcmUgbm8NCm1p
+bm9yIHZlcnNpb25zIGVuYWJsZWQsIGFuZCBzbyB5b3UnZCBqdXN0IGdldCBhIGNvbmZ1c2luZyBz
+ZXJpZXMgb2YNCk5GUzRFUlJfTUlOT1JfVkVSU0lPTl9NSVNNQVRDSCByZXBsaWVzIHdoZW4gYXR0
+ZW1wdGluZyB0byBtb3VudC4gV2h5DQpldmVuIGFkdmVydGlzZSBzdXBwb3J0IGluIHRoYXQgY2Fz
+ZT8NCg0KPiBUaGFua3MsDQo+IE5laWxCcm93bg0KPiANCj4gDQo+IA0KPiA+IA0KPiA+IFRoZSBj
+aGFuZ2Vsb2cgb24gdGhlIGZpcnN0IHBhdGNoIGRvZXNuJ3Qgc2VlbSB0byBkZXNjcmliZSB0aGUg
+djINCj4gPiB2ZXJzaW9uDQo+ID4gdmVyeSB3ZWxsOyB1c2luZyB0aGUgYmVsb3cgY3JpYmJlZCBm
+cm9tIHlvdXIgY292ZXIgbGV0dGVyIGluc3RlYWQuDQo+ID4gDQo+ID4gwqDCoMKgwqBuZnNkOiBm
+aXggY29uZmlndXJhdGlvbiBvZiBzdXBwb3J0ZWQgbWlub3IgdmVyc2lvbnMNCj4gPiDCoMKgwqDC
+oA0KPiA+IMKgwqDCoMKgV2hlbiB0aGUgdXNlciB0dXJucyBvZmYgYWxsIG1pbm9yIHZlcnNpb25z
+IG9mIE5GU3Y0LCB0aGF0DQo+ID4gc2hvdWxkIGJlDQo+ID4gwqDCoMKgwqBlcXVpdmFsZW50IHRv
+IHR1cm5pbmcgb2ZmIE5GU3Y0IHN1cHBvcnQsIHNvIGEgbW91bnQgYXR0ZW1wdA0KPiA+IHVzaW5n
+IE5GU3Y0DQo+ID4gwqDCoMKgwqBzaG91bGQgZ2V0IFJQQ19QUk9HX01JU01BVENILCBub3QgTkZT
+RVJSX01JTk9SX1ZFUlNfTUlTTUFUQ0guDQo+ID4gwqDCoMKgwqANCj4gPiDCoMKgwqDCoEFsbG93
+IHRoZSB1c2VyIHRvIHVzZSBlaXRoZXIgJzQuMCcgb3IgJzQnIHRvIGVuYWJsZSBvciBkaXNhYmxl
+DQo+ID4gbWlub3INCj4gPiDCoMKgwqDCoHZlcnNpb24gMC7CoMKgT3RoZXIgbWlub3IgdmVyc2lv
+bnMgYXJlIHN0aWxsIGVuYWJsZWQgb3IgZGlzYWJsZWQNCj4gPiB1c2luZyB0aGUNCj4gPiDCoMKg
+wqDCoCc0LngnIGZvcm1hdC4NCj4gPiANCj4gPiAtLWIuDQotLSANClRyb25kIE15a2xlYnVzdA0K
+TGludXggTkZTIGNsaWVudCBtYWludGFpbmVyLCBQcmltYXJ5RGF0YQ0KdHJvbmQubXlrbGVidXN0
+QHByaW1hcnlkYXRhLmNvbQ0K
 
-> In read() you don’t specify the offset from which to read. It is read
-> from the current file descriptor offset. I don’t find the comparison
-> equal. 
-> 
-> It’s it more fair to compare it to lseek() which does return EINVAL if
-> you specify position beyond the end of the file. 
-
-Or pread(), which takes an offset.
-
-But read() can read at an offset at the end of file, or even past that
-(if the file was truncated), and I believe it just returns 0 in those
-cases.
-
---b.
