@@ -1,79 +1,95 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qk0-f176.google.com ([209.85.220.176]:32925 "EHLO
-        mail-qk0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1752056AbdCDB6z (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 3 Mar 2017 20:58:55 -0500
-Received: by mail-qk0-f176.google.com with SMTP id n127so204677959qkf.0
-        for <linux-nfs@vger.kernel.org>; Fri, 03 Mar 2017 17:58:54 -0800 (PST)
-Message-ID: <1488592730.2997.4.camel@redhat.com>
-Subject: Re: [RFC PATCH v1 11/30] fs: new API for handling i_version
-From: Jeff Layton <jlayton@redhat.com>
-To: NeilBrown <neil@brown.name>, linux-fsdevel@vger.kernel.org,
-        "J. Bruce Fields" <bfields@redhat.com>
-Cc: linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-ext4@vger.kernel.org, linux-btrfs@vger.kernel.org,
-        linux-xfs@vger.kernel.org
-Date: Fri, 03 Mar 2017 20:58:50 -0500
-In-Reply-To: <8737etncfb.fsf@notabene.neil.brown.name>
-References: <1482339827-7882-1-git-send-email-jlayton@redhat.com>
-         <1482339827-7882-12-git-send-email-jlayton@redhat.com>
-         <8737etncfb.fsf@notabene.neil.brown.name>
-Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
+Received: from fieldses.org ([173.255.197.46]:50460 "EHLO fieldses.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1751083AbdCDCKK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 3 Mar 2017 21:10:10 -0500
+Date: Fri, 3 Mar 2017 21:10:08 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Olga Kornievskaia <kolga@netapp.com>
+Cc: Christoph Hellwig <hch@infradead.org>, Trond.Myklebust@primarydata.com,
+        linux-nfs@vger.kernel.org
+Subject: Re: [RFC v1 01/19] fs: Don't copy beyond the end of the file
+Message-ID: <20170304021008.GB21609@fieldses.org>
+References: <20170302160123.30375-1-kolga@netapp.com>
+ <20170302160123.30375-2-kolga@netapp.com>
+ <20170302162221.GA6854@infradead.org>
+ <20170303204747.GE13877@fieldses.org>
+ <4B2A2E86-AFC8-49EA-9D53-7A53AD824CF1@netapp.com>
+ <20170303213230.GF13877@fieldses.org>
+ <B3F80DA0-B4F8-4628-88C5-E5C047620F17@netapp.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=utf-8
+In-Reply-To: <B3F80DA0-B4F8-4628-88C5-E5C047620F17@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sat, 2017-03-04 at 10:55 +1100, NeilBrown wrote:
-> On Wed, Dec 21 2016, Jeff Layton wrote:
+On Fri, Mar 03, 2017 at 05:46:05PM -0500, Olga Kornievskaia wrote:
 > 
-> > We already have inode_inc_iversion. Add inode_set_iversion,
-> > inode_get_iversion, inode_cmp_iversion and inode_iversion_need_inc.
+> > On Mar 3, 2017, at 4:32 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
+> > 
+> > On Fri, Mar 03, 2017 at 04:08:19PM -0500, Olga Kornievskaia wrote:
+> >> 
+> >>> On Mar 3, 2017, at 3:47 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
+> >>> 
+> >>> On Thu, Mar 02, 2017 at 08:22:21AM -0800, Christoph Hellwig wrote:
+> >>>> On Thu, Mar 02, 2017 at 11:01:05AM -0500, Olga Kornievskaia wrote:
+> >>>>> +	if (pos_in >= i_size_read(inode_in))
+> >>>>> +		return -EINVAL;
+> >>>> 
+> >>>> That's not how the syscall is supposed to work, we'd rather do a
+> >>>> short read^^^^^copy.
+> >>> 
+> >>> That's what I think too, but then is COPY(2) wrong?:
+> >>> 
+> >>> 	EINVAL Requested  range  extends beyond the end of the source
+> >>> 	  file; or the flags argument is not 0.
+> >>> 
+> >>> Also, copy_file_range can be implemented by ->clone_file_range, where
+> >>> these kinds of checks make more sense, I think; e.g. from btrfs:
+> >>> 
+> >>> 	ret = -EINVAL;
+> >>> 	if (off + len > src->i_size || off + len < off)
+> >>> 		goto out_unlock;
+> >>> 
+> >>> Well, so the caller just has to be prepared for either behavior, I
+> >>> guess, but that may make it more complicated to use.
+> >>> 
+> >> 
+> >> I’m still rather very confused again by the comment and what it is proposing.
+> >> 
+> >> There are two checks to consider for the validity of the arguments
+> >> 
+> >> 1. If the offset of the source file is beyond the end of the source file.
+> >> 2. If the offset + len is beyond the end of the file.
+> >> 
+> >> I read that the man page is talking about #2.  This is actually what the NFSv4.2 spec required for the COPY too but we’ve been discussing that it should be a short read instead.
+> >> 
+> >> This patch address is to address case #1. As far as I can tell it applies to all file systems.
+> >> 
+> >> Are you suggesting that the checks for the validity of the arguments do not belong in VFS but instead should be in each of the underlying file systems?
+> >> 
+> >> Not all vfs_copy_file_range() are implemented via clone_file_range(). At least I hope that “inter” NFSv4.2 COPY will also use vfs_file_copy_range() and it would not be calling clone().
+> > 
+> > I think it'd be acceptable for copy_file_range() to just return 0 even
+> > in your case 1.  I believe that's what ordinary read and pread does.
+> > 
+> > You probably can't perform it atomically with the copy, so it's possible
+> > that the size will change right after you check it.
+> > 
+> > I don't see a benefit to the check.
 > 
-> This list of added interfaces is incomplete.
-> And some of these interfaces could really use some justification up
-> front.
+
+> In read() you don’t specify the offset from which to read. It is read
+> from the current file descriptor offset. I don’t find the comparison
+> equal. 
 > 
-> You later add a "force" parameter to inode_inc_version.
-> Why not do that up front here?
-> 
+> It’s it more fair to compare it to lseek() which does return EINVAL if
+> you specify position beyond the end of the file. 
 
-First, thanks to you and Bruce for having a look.
+Or pread(), which takes an offset.
 
-Yes, it's clear from this and the earlier emails that I didn't do
-enough documentation and explanation. I'll plan to respin this when I
-get a chance, and lay out the justification and discussion a bit more.
+But read() can read at an offset at the end of file, or even past that
+(if the file was truncated), and I believe it just returns 0 in those
+cases.
 
-I'll also make sure the not change the API midstream like this when I
-respin.
-
-> > +
-> > +/**
-> > + * inode_get_iversion - read i_version for later use
-> > + * @inode: inode from which i_version should be read
-> > + *
-> > + * Read the inode i_version counter. This should be used by callers that wish
-> > + * to store the returned i_version for later comparison.
-> > + */
-> > +static inline u64
-> > +inode_get_iversion(const struct inode *inode)
-> > +{
-> > +	return inode_get_iversion_raw(inode);
-> > +}
-> 
-> I don't understand why this can use the _raw version rather than the
-> _read version.
-> Surely you need to know about any changes after this read.
-> 
-
-The approach here was to convert everything to a new API and have it
-work much like the code works today and then to morph it into something
-that only conditionally bumps the counter.
-
-In the later implementation, yes you do need to know about changes
-after the read, but in the initial implementation it doesn't matter
-since the counter is bumped on every change anyway.
-
-I'll try to do a better job laying out this rationale in follow-on
-postings.
--- 
-Jeff Layton <jlayton@redhat.com>
+--b.
