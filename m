@@ -1,8 +1,8 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-wm0-f68.google.com ([74.125.82.68]:34537 "EHLO
-        mail-wm0-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S932090AbdCFNqH (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 6 Mar 2017 08:46:07 -0500
+Received: from mail-wm0-f65.google.com ([74.125.82.65]:35732 "EHLO
+        mail-wm0-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1752779AbdCFNqL (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 6 Mar 2017 08:46:11 -0500
 From: Michal Hocko <mhocko@kernel.org>
 To: Andrew Morton <akpm@linux-foundation.org>,
         <linux-fsdevel@vger.kernel.org>
@@ -10,17 +10,15 @@ Cc: <linux-mm@kvack.org>, Dave Chinner <david@fromorbit.com>,
         djwong@kernel.org, "Theodore Ts'o" <tytso@mit.edu>,
         Chris Mason <clm@fb.com>, David Sterba <dsterba@suse.cz>,
         Jan Kara <jack@suse.cz>, ceph-devel@vger.kernel.org,
-        cluster-devel@redhat.com, linux-nfs@vger.kernel.org,
-        logfs@logfs.org, linux-xfs@vger.kernel.org,
-        linux-ext4@vger.kernel.org, linux-btrfs@vger.kernel.org,
-        linux-mtd@lists.infradead.org, reiserfs-devel@vger.kernel.org,
-        linux-ntfs-dev@lists.sourceforge.net,
-        linux-f2fs-devel@lists.sourceforge.net,
-        linux-afs@lists.infradead.org, LKML <linux-kernel@vger.kernel.org>,
-        Michal Hocko <mhocko@suse.com>
-Subject: [PATCH 7/7] jbd2: make the whole kjournald2 kthread NOFS safe
-Date: Mon,  6 Mar 2017 14:14:08 +0100
-Message-Id: <20170306131408.9828-8-mhocko@kernel.org>
+        cluster-devel@redhat.com, linux-nfs@vger.kernel.org, logfs@logfs.org,
+        linux-xfs@vger.kernel.org, linux-ext4@vger.kernel.org,
+        linux-btrfs@vger.kernel.org, linux-mtd@lists.infradead.org,
+        reiserfs-devel@vger.kernel.org, linux-ntfs-dev@lists.sourceforge.net,
+        linux-f2fs-devel@lists.sourceforge.net, linux-afs@lists.infradead.org,
+        LKML <linux-kernel@vger.kernel.org>, Michal Hocko <mhocko@suse.com>
+Subject: [PATCH 6/7] jbd2: mark the transaction context with the scope GFP_NOFS context
+Date: Mon,  6 Mar 2017 14:14:07 +0100
+Message-Id: <20170306131408.9828-7-mhocko@kernel.org>
 In-Reply-To: <20170306131408.9828-1-mhocko@kernel.org>
 References: <20170306131408.9828-1-mhocko@kernel.org>
 Sender: linux-nfs-owner@vger.kernel.org
@@ -28,43 +26,77 @@ List-ID: <linux-nfs.vger.kernel.org>
 
 From: Michal Hocko <mhocko@suse.com>
 
-kjournald2 is central to the transaction commit processing. As such any
-potential allocation from this kernel thread has to be GFP_NOFS. Make
-sure to mark the whole kernel thread GFP_NOFS by the memalloc_nofs_save.
+now that we have memalloc_nofs_{save,restore} api we can mark the whole
+transaction context as implicitly GFP_NOFS. All allocations will
+automatically inherit GFP_NOFS this way. This means that we do not have
+to mark any of those requests with GFP_NOFS and moreover all the
+ext4_kv[mz]alloc(GFP_NOFS) are also safe now because even the hardcoded
+GFP_KERNEL allocations deep inside the vmalloc will be NOFS now.
 
-Suggested-by: Jan Kara <jack@suse.cz>
 Reviewed-by: Jan Kara <jack@suse.cz>
 Signed-off-by: Michal Hocko <mhocko@suse.com>
 ---
- fs/jbd2/journal.c | 8 ++++++++
- 1 file changed, 8 insertions(+)
+ fs/jbd2/transaction.c | 12 ++++++++++++
+ include/linux/jbd2.h  |  2 ++
+ 2 files changed, 14 insertions(+)
 
-diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
-index a1a359bfcc9c..78433ce1db40 100644
---- a/fs/jbd2/journal.c
-+++ b/fs/jbd2/journal.c
-@@ -43,6 +43,7 @@
+diff --git a/fs/jbd2/transaction.c b/fs/jbd2/transaction.c
+index 5e659ee08d6a..d8f09f34285f 100644
+--- a/fs/jbd2/transaction.c
++++ b/fs/jbd2/transaction.c
+@@ -29,6 +29,7 @@
  #include <linux/backing-dev.h>
- #include <linux/bitops.h>
- #include <linux/ratelimit.h>
+ #include <linux/bug.h>
+ #include <linux/module.h>
 +#include <linux/sched/mm.h>
  
- #define CREATE_TRACE_POINTS
  #include <trace/events/jbd2.h>
-@@ -206,6 +207,13 @@ static int kjournald2(void *arg)
- 	wake_up(&journal->j_wait_done_commit);
  
- 	/*
-+	 * Make sure that no allocations from this kernel thread will ever recurse
-+	 * to the fs layer because we are responsible for the transaction commit
-+	 * and any fs involvement might get stuck waiting for the trasn. commit.
-+	 */
-+	memalloc_nofs_save();
-+
+@@ -388,6 +389,11 @@ static int start_this_handle(journal_t *journal, handle_t *handle,
+ 
+ 	rwsem_acquire_read(&journal->j_trans_commit_map, 0, 0, _THIS_IP_);
+ 	jbd2_journal_free_transaction(new_transaction);
 +	/*
- 	 * And now, wait forever for commit wakeup events.
- 	 */
- 	write_lock(&journal->j_state_lock);
++	 * Make sure that no allocations done while the transaction is
++	 * open is going to recurse back to the fs layer.
++	 */
++	handle->saved_alloc_context = memalloc_nofs_save();
+ 	return 0;
+ }
+ 
+@@ -466,6 +472,7 @@ handle_t *jbd2__journal_start(journal_t *journal, int nblocks, int rsv_blocks,
+ 	trace_jbd2_handle_start(journal->j_fs_dev->bd_dev,
+ 				handle->h_transaction->t_tid, type,
+ 				line_no, nblocks);
++
+ 	return handle;
+ }
+ EXPORT_SYMBOL(jbd2__journal_start);
+@@ -1760,6 +1767,11 @@ int jbd2_journal_stop(handle_t *handle)
+ 	if (handle->h_rsv_handle)
+ 		jbd2_journal_free_reserved(handle->h_rsv_handle);
+ free_and_exit:
++	/*
++	 * scope of th GFP_NOFS context is over here and so we can
++	 * restore the original alloc context.
++	 */
++	memalloc_nofs_restore(handle->saved_alloc_context);
+ 	jbd2_free_handle(handle);
+ 	return err;
+ }
+diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
+index dfaa1f4dcb0c..606b6bce3a5b 100644
+--- a/include/linux/jbd2.h
++++ b/include/linux/jbd2.h
+@@ -491,6 +491,8 @@ struct jbd2_journal_handle
+ 
+ 	unsigned long		h_start_jiffies;
+ 	unsigned int		h_requested_credits;
++
++	unsigned int		saved_alloc_context;
+ };
+ 
+ 
 -- 
 2.11.0
 
