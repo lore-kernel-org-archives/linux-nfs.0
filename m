@@ -1,72 +1,125 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:51343 "EHLO mx2.suse.de"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1753142AbdCFL7i (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 6 Mar 2017 06:59:38 -0500
-Date: Mon, 6 Mar 2017 12:59:15 +0100
+Received: from mail-wm0-f67.google.com ([74.125.82.67]:36014 "EHLO
+        mail-wm0-f67.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1750738AbdCFNXr (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 6 Mar 2017 08:23:47 -0500
 From: Michal Hocko <mhocko@kernel.org>
-To: Theodore Ts'o <tytso@mit.edu>
-Cc: linux-mm@kvack.org, linux-fsdevel@vger.kernel.org,
-        Andrew Morton <akpm@linux-foundation.org>,
-        Dave Chinner <david@fromorbit.com>, djwong@kernel.org,
+To: Andrew Morton <akpm@linux-foundation.org>,
+        <linux-fsdevel@vger.kernel.org>
+Cc: <linux-mm@kvack.org>, Dave Chinner <david@fromorbit.com>,
+        djwong@kernel.org, "Theodore Ts'o" <tytso@mit.edu>,
         Chris Mason <clm@fb.com>, David Sterba <dsterba@suse.cz>,
         Jan Kara <jack@suse.cz>, ceph-devel@vger.kernel.org,
-        cluster-devel@redhat.com, linux-nfs@vger.kernel.org,
-        logfs@logfs.org, linux-xfs@vger.kernel.org,
-        linux-ext4@vger.kernel.org, linux-btrfs@vger.kernel.org,
-        linux-mtd@lists.infradead.org, reiserfs-devel@vger.kernel.org,
-        linux-ntfs-dev@lists.sourceforge.net,
-        linux-f2fs-devel@lists.sourceforge.net,
-        linux-afs@lists.infradead.org, LKML <linux-kernel@vger.kernel.org>
-Subject: Re: [PATCH 7/8] Revert "ext4: avoid deadlocks in the writeback path
- by using sb_getblk_gfp"
-Message-ID: <20170306115915.GB27953@dhcp22.suse.cz>
-References: <20170106141107.23953-1-mhocko@kernel.org>
- <20170106141107.23953-8-mhocko@kernel.org>
- <20170117030118.727jqyamjhojzajb@thunk.org>
- <20170117075450.GC19699@dhcp22.suse.cz>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20170117075450.GC19699@dhcp22.suse.cz>
+        cluster-devel@redhat.com, linux-nfs@vger.kernel.org, logfs@logfs.org,
+        linux-xfs@vger.kernel.org, linux-ext4@vger.kernel.org,
+        linux-btrfs@vger.kernel.org, linux-mtd@lists.infradead.org,
+        reiserfs-devel@vger.kernel.org, linux-ntfs-dev@lists.sourceforge.net,
+        linux-f2fs-devel@lists.sourceforge.net, linux-afs@lists.infradead.org,
+        LKML <linux-kernel@vger.kernel.org>, Michal Hocko <mhocko@suse.com>,
+        Brian Foster <bfoster@redhat.com>,
+        "Darrick J. Wong" <darrick.wong@oracle.com>,
+        Vlastimil Babka <vbabka@suse.cz>
+Subject: [PATCH 5/7] xfs: use memalloc_nofs_{save,restore} instead of memalloc_noio*
+Date: Mon,  6 Mar 2017 14:14:06 +0100
+Message-Id: <20170306131408.9828-6-mhocko@kernel.org>
+In-Reply-To: <20170306131408.9828-1-mhocko@kernel.org>
+References: <20170306131408.9828-1-mhocko@kernel.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue 17-01-17 08:54:50, Michal Hocko wrote:
-> On Mon 16-01-17 22:01:18, Theodore Ts'o wrote:
-> > On Fri, Jan 06, 2017 at 03:11:06PM +0100, Michal Hocko wrote:
-> > > From: Michal Hocko <mhocko@suse.com>
-> > > 
-> > > This reverts commit c45653c341f5c8a0ce19c8f0ad4678640849cb86 because
-> > > sb_getblk_gfp is not really needed as
-> > > sb_getblk
-> > >   __getblk_gfp
-> > >     __getblk_slow
-> > >       grow_buffers
-> > >         grow_dev_page
-> > > 	  gfp_mask = mapping_gfp_constraint(inode->i_mapping, ~__GFP_FS) | gfp
-> > > 
-> > > so __GFP_FS is cleared unconditionally and therefore the above commit
-> > > didn't have any real effect in fact.
-> > > 
-> > > This patch should not introduce any functional change. The main point
-> > > of this change is to reduce explicit GFP_NOFS usage inside ext4 code to
-> > > make the review of the remaining usage easier.
-> > > 
-> > > Signed-off-by: Michal Hocko <mhocko@suse.com>
-> > > Reviewed-by: Jan Kara <jack@suse.cz>
-> > 
-> > If I'm not mistaken, this patch is not dependent on any of the other
-> > patches in this series (and the other patches are not dependent on
-> > this one).  Hence, I could take this patch via the ext4 tree, correct?
-> 
-> Yes, that is correct
+From: Michal Hocko <mhocko@suse.com>
 
-Hi Ted,
-this doesn't seem to be in any of the branches [1]. I plan to resend the
-whole scope nofs series, should I add this to the pile or you are going
-to route it via your tree?
+kmem_zalloc_large and _xfs_buf_map_pages use memalloc_noio_{save,restore}
+API to prevent from reclaim recursion into the fs because vmalloc can
+invoke unconditional GFP_KERNEL allocations and these functions might be
+called from the NOFS contexts. The memalloc_noio_save will enforce
+GFP_NOIO context which is even weaker than GFP_NOFS and that seems to be
+unnecessary. Let's use memalloc_nofs_{save,restore} instead as it should
+provide exactly what we need here - implicit GFP_NOFS context.
 
-[1] git://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git
+Changes since v1
+- s@memalloc_noio_restore@memalloc_nofs_restore@ in _xfs_buf_map_pages
+  as per Brian Foster
+
+Acked-by: Vlastimil Babka <vbabka@suse.cz>
+Reviewed-by: Brian Foster <bfoster@redhat.com>
+Reviewed-by: Darrick J. Wong <darrick.wong@oracle.com>
+Signed-off-by: Michal Hocko <mhocko@suse.com>
+---
+ fs/xfs/kmem.c    | 12 ++++++------
+ fs/xfs/xfs_buf.c |  8 ++++----
+ 2 files changed, 10 insertions(+), 10 deletions(-)
+
+diff --git a/fs/xfs/kmem.c b/fs/xfs/kmem.c
+index e14da724a0b5..6b7b04468aa8 100644
+--- a/fs/xfs/kmem.c
++++ b/fs/xfs/kmem.c
+@@ -66,7 +66,7 @@ kmem_alloc(size_t size, xfs_km_flags_t flags)
+ void *
+ kmem_zalloc_large(size_t size, xfs_km_flags_t flags)
+ {
+-	unsigned noio_flag = 0;
++	unsigned nofs_flag = 0;
+ 	void	*ptr;
+ 	gfp_t	lflags;
+ 
+@@ -78,17 +78,17 @@ kmem_zalloc_large(size_t size, xfs_km_flags_t flags)
+ 	 * __vmalloc() will allocate data pages and auxillary structures (e.g.
+ 	 * pagetables) with GFP_KERNEL, yet we may be under GFP_NOFS context
+ 	 * here. Hence we need to tell memory reclaim that we are in such a
+-	 * context via PF_MEMALLOC_NOIO to prevent memory reclaim re-entering
++	 * context via PF_MEMALLOC_NOFS to prevent memory reclaim re-entering
+ 	 * the filesystem here and potentially deadlocking.
+ 	 */
+-	if ((current->flags & PF_MEMALLOC_NOFS) || (flags & KM_NOFS))
+-		noio_flag = memalloc_noio_save();
++	if (flags & KM_NOFS)
++		nofs_flag = memalloc_nofs_save();
+ 
+ 	lflags = kmem_flags_convert(flags);
+ 	ptr = __vmalloc(size, lflags | __GFP_HIGHMEM | __GFP_ZERO, PAGE_KERNEL);
+ 
+-	if ((current->flags & PF_MEMALLOC_NOFS) || (flags & KM_NOFS))
+-		memalloc_noio_restore(noio_flag);
++	if (flags & KM_NOFS)
++		memalloc_nofs_restore(nofs_flag);
+ 
+ 	return ptr;
+ }
+diff --git a/fs/xfs/xfs_buf.c b/fs/xfs/xfs_buf.c
+index b6208728ba39..ca09061369cb 100644
+--- a/fs/xfs/xfs_buf.c
++++ b/fs/xfs/xfs_buf.c
+@@ -443,17 +443,17 @@ _xfs_buf_map_pages(
+ 		bp->b_addr = NULL;
+ 	} else {
+ 		int retried = 0;
+-		unsigned noio_flag;
++		unsigned nofs_flag;
+ 
+ 		/*
+ 		 * vm_map_ram() will allocate auxillary structures (e.g.
+ 		 * pagetables) with GFP_KERNEL, yet we are likely to be under
+ 		 * GFP_NOFS context here. Hence we need to tell memory reclaim
+-		 * that we are in such a context via PF_MEMALLOC_NOIO to prevent
++		 * that we are in such a context via PF_MEMALLOC_NOFS to prevent
+ 		 * memory reclaim re-entering the filesystem here and
+ 		 * potentially deadlocking.
+ 		 */
+-		noio_flag = memalloc_noio_save();
++		nofs_flag = memalloc_nofs_save();
+ 		do {
+ 			bp->b_addr = vm_map_ram(bp->b_pages, bp->b_page_count,
+ 						-1, PAGE_KERNEL);
+@@ -461,7 +461,7 @@ _xfs_buf_map_pages(
+ 				break;
+ 			vm_unmap_aliases();
+ 		} while (retried++ <= 1);
+-		memalloc_noio_restore(noio_flag);
++		memalloc_nofs_restore(nofs_flag);
+ 
+ 		if (!bp->b_addr)
+ 			return -ENOMEM;
 -- 
-Michal Hocko
-SUSE Labs
+2.11.0
+
