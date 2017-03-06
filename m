@@ -1,64 +1,72 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-it0-f66.google.com ([209.85.214.66]:33964 "EHLO
-        mail-it0-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1752910AbdCFKwB (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 6 Mar 2017 05:52:01 -0500
-Received: by mail-it0-f66.google.com with SMTP id r141so9109768ita.1
-        for <linux-nfs@vger.kernel.org>; Mon, 06 Mar 2017 02:50:26 -0800 (PST)
-To: Trond Myklebust <trond.myklebust@primarydata.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Cc: Anna Schumaker <Anna.Schumaker@netapp.com>,
-        Kinglong Mee <kinglongmee@gmail.com>
-From: Kinglong Mee <kinglongmee@gmail.com>
-Subject: [PATCH] nfs4: fix a typo of NFS_ATTR_FATTR_GROUP_NAME
-Message-ID: <dca17f2f-419d-72fb-a570-6e780f1bb7fd@gmail.com>
-Date: Mon, 6 Mar 2017 17:49:42 +0800
+Received: from mx2.suse.de ([195.135.220.15]:51343 "EHLO mx2.suse.de"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1753142AbdCFL7i (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 6 Mar 2017 06:59:38 -0500
+Date: Mon, 6 Mar 2017 12:59:15 +0100
+From: Michal Hocko <mhocko@kernel.org>
+To: Theodore Ts'o <tytso@mit.edu>
+Cc: linux-mm@kvack.org, linux-fsdevel@vger.kernel.org,
+        Andrew Morton <akpm@linux-foundation.org>,
+        Dave Chinner <david@fromorbit.com>, djwong@kernel.org,
+        Chris Mason <clm@fb.com>, David Sterba <dsterba@suse.cz>,
+        Jan Kara <jack@suse.cz>, ceph-devel@vger.kernel.org,
+        cluster-devel@redhat.com, linux-nfs@vger.kernel.org,
+        logfs@logfs.org, linux-xfs@vger.kernel.org,
+        linux-ext4@vger.kernel.org, linux-btrfs@vger.kernel.org,
+        linux-mtd@lists.infradead.org, reiserfs-devel@vger.kernel.org,
+        linux-ntfs-dev@lists.sourceforge.net,
+        linux-f2fs-devel@lists.sourceforge.net,
+        linux-afs@lists.infradead.org, LKML <linux-kernel@vger.kernel.org>
+Subject: Re: [PATCH 7/8] Revert "ext4: avoid deadlocks in the writeback path
+ by using sb_getblk_gfp"
+Message-ID: <20170306115915.GB27953@dhcp22.suse.cz>
+References: <20170106141107.23953-1-mhocko@kernel.org>
+ <20170106141107.23953-8-mhocko@kernel.org>
+ <20170117030118.727jqyamjhojzajb@thunk.org>
+ <20170117075450.GC19699@dhcp22.suse.cz>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20170117075450.GC19699@dhcp22.suse.cz>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This typo cause a memory leak, and a bad client's group id.
-unreferenced object 0xffff96d8073998d0 (size 8):
-  comm "kworker/0:3", pid 34224, jiffies 4295361338 (age 761.752s)
-  hex dump (first 8 bytes):
-    30 00 39 07 d8 96 ff ff                          0.9.....
-  backtrace:
-    [<ffffffffb883212a>] kmemleak_alloc+0x4a/0xa0
-    [<ffffffffb8237bc0>] __kmalloc+0x140/0x220
-    [<ffffffffc05c921c>] xdr_stream_decode_string_dup+0x7c/0x110 [sunrpc]
-    [<ffffffffc08edcf0>] decode_getfattr_attrs+0x940/0x1630 [nfsv4]
-    [<ffffffffc08eea7b>] decode_getfattr_generic.constprop.108+0x9b/0x100 [nfsv4]
-    [<ffffffffc08eebaf>] nfs4_xdr_dec_open+0xcf/0x100 [nfsv4]
-    [<ffffffffc05bf9c7>] rpcauth_unwrap_resp+0xa7/0xe0 [sunrpc]
-    [<ffffffffc05afc70>] call_decode+0x1e0/0x810 [sunrpc]
-    [<ffffffffc05bc64d>] __rpc_execute+0x8d/0x420 [sunrpc]
-    [<ffffffffc05bc9f2>] rpc_async_schedule+0x12/0x20 [sunrpc]
-    [<ffffffffb80bb077>] process_one_work+0x197/0x430
-    [<ffffffffb80bb35e>] worker_thread+0x4e/0x4a0
-    [<ffffffffb80c1d41>] kthread+0x101/0x140
-    [<ffffffffb8839a5c>] ret_from_fork+0x2c/0x40
-    [<ffffffffffffffff>] 0xffffffffffffffff
+On Tue 17-01-17 08:54:50, Michal Hocko wrote:
+> On Mon 16-01-17 22:01:18, Theodore Ts'o wrote:
+> > On Fri, Jan 06, 2017 at 03:11:06PM +0100, Michal Hocko wrote:
+> > > From: Michal Hocko <mhocko@suse.com>
+> > > 
+> > > This reverts commit c45653c341f5c8a0ce19c8f0ad4678640849cb86 because
+> > > sb_getblk_gfp is not really needed as
+> > > sb_getblk
+> > >   __getblk_gfp
+> > >     __getblk_slow
+> > >       grow_buffers
+> > >         grow_dev_page
+> > > 	  gfp_mask = mapping_gfp_constraint(inode->i_mapping, ~__GFP_FS) | gfp
+> > > 
+> > > so __GFP_FS is cleared unconditionally and therefore the above commit
+> > > didn't have any real effect in fact.
+> > > 
+> > > This patch should not introduce any functional change. The main point
+> > > of this change is to reduce explicit GFP_NOFS usage inside ext4 code to
+> > > make the review of the remaining usage easier.
+> > > 
+> > > Signed-off-by: Michal Hocko <mhocko@suse.com>
+> > > Reviewed-by: Jan Kara <jack@suse.cz>
+> > 
+> > If I'm not mistaken, this patch is not dependent on any of the other
+> > patches in this series (and the other patches are not dependent on
+> > this one).  Hence, I could take this patch via the ext4 tree, correct?
+> 
+> Yes, that is correct
 
-Fixes: 686a816ab6 ("NFSv4: Clean up owner/group attribute decode")
-Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
----
- fs/nfs/nfs4xdr.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+Hi Ted,
+this doesn't seem to be in any of the branches [1]. I plan to resend the
+whole scope nofs series, should I add this to the pile or you are going
+to route it via your tree?
 
-diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index f0369e3..80ce289 100644
---- a/fs/nfs/nfs4xdr.c
-+++ b/fs/nfs/nfs4xdr.c
-@@ -3942,7 +3942,7 @@ static int decode_attr_group(struct xdr_stream *xdr, uint32_t *bitmap,
- 		if (len <= 0)
- 			goto out;
- 		dprintk("%s: name=%s\n", __func__, group_name->data);
--		return NFS_ATTR_FATTR_OWNER_NAME;
-+		return NFS_ATTR_FATTR_GROUP_NAME;
- 	} else {
- 		len = xdr_stream_decode_opaque_inline(xdr, (void **)&p,
- 				XDR_MAX_NETOBJ);
+[1] git://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git
 -- 
-2.9.3
-
+Michal Hocko
+SUSE Labs
