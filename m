@@ -1,16 +1,17 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:49401 "EHLO mx2.suse.de"
+Received: from mx2.suse.de ([195.135.220.15]:51225 "EHLO mx2.suse.de"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1752584AbdCFDy6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Sun, 5 Mar 2017 22:54:58 -0500
+        id S1752792AbdCFE0t (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Sun, 5 Mar 2017 23:26:49 -0500
 From: NeilBrown <neilb@suse.com>
-To: Jeff Layton <jlayton@poochiereds.net>, linux-nfs@vger.kernel.org
-Date: Mon, 06 Mar 2017 14:54:49 +1100
-Cc: Christoph Hellwig <hch@infradead.org>
-Subject: Re: Confused by pnfs LAYOUTRETURN - seeking clarity.
-In-Reply-To: <1488569105.2997.1.camel@poochiereds.net>
-References: <87shmvnzh7.fsf@notabene.neil.brown.name> <1488569105.2997.1.camel@poochiereds.net>
-Message-ID: <87r32bjbzq.fsf@notabene.neil.brown.name>
+To: Trond Myklebust <trondmy@primarydata.com>,
+        "bfields\@fieldses.org" <bfields@fieldses.org>
+Date: Mon, 06 Mar 2017 15:26:40 +1100
+Cc: "linux-nfs\@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH v2 0/2] Fix up nfsd to enable NFSv4.x without NFSv4.0
+In-Reply-To: <1488653739.34957.1.camel@primarydata.com>
+References: <20170222233533.23845-1-trond.myklebust@primarydata.com> <87y3wxrcha.fsf@notabene.neil.brown.name> <1487811610.4863.10.camel@primarydata.com> <20170227230357.GA11912@fieldses.org> <87k287nv6r.fsf@notabene.neil.brown.name> <1488653739.34957.1.camel@primarydata.com>
+Message-ID: <87o9xfjain.fsf@notabene.neil.brown.name>
 MIME-Version: 1.0
 Content-Type: multipart/signed; boundary="=-=-=";
         micalg=pgp-sha256; protocol="application/pgp-signature"
@@ -18,59 +19,84 @@ Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 --=-=-=
-Content-Type: text/plain
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: quoted-printable
 
-On Fri, Mar 03 2017, Jeff Layton wrote:
+On Sat, Mar 04 2017, Trond Myklebust wrote:
+
+> On Fri, 2017-03-03 at 09:57 +1100, NeilBrown wrote:
+>> I guess I'm not entirely sure what Trond is trying to fix.
+>> This bit:
+>>=20
+>> 1) When the user turns off all minor versions of NFSv4, then that
+>> should
+>> =C2=A0=C2=A0=C2=A0be equivalent to turning off NFSv4 support, and so whe=
+n someone
+>> tries
+>> =C2=A0=C2=A0=C2=A0to mount, we should return RPC_PROG_MISMATCH.
+>>=20
+>> Makes perfect sense.=C2=A0=C2=A0But I'm not clear on why the format of t=
+he
+>> versions file needs to change.
+>> Trond - what am I missing?
+>>
+
+Thanks for the details!!
+
 
 >
-> There is one special case...
+> The main issue that worried me was one of predictability. What is
+> supposed to happen when you type "echo +4"? One thing that I considered
+> to be a regression, was that previously, I could expect that "echo +4"
+> would at the very least turn on NFSv4 minor version 0, but with the
+> change to semantics, it would only do so if nobody had typed "echo
+> -4.0".
+
+I don't think I would consider this as a regression.
+Prior to
+
+Commit: e35659f1b03c ("NFSD: correctly range-check v4.x minor version when =
+setting versions.")
+
+"echo -4.0" would result in an error.  After that patch it will result in
+behaviour that you think is inconsistent.  While that might be a poor
+design choice, I don't think it is a regression because it is not
+(holistically) something that worked before and now works differently.
+
+I agree that "echo +4" should do something sensible and predictable.  I
+would like to suggest that it should enable all "supported" NFSv4.x minor
+versions.  That is consistent with how rpc.nfsd uses it, and makes sense
+to me. "echo -4" should disable all minor versions.
+
 >
-> When the server does a CB_LAYOUTRECALL, the client can reply with
-> NFS4ERR_NOMATCHING_LAYOUT if it's not actively using the layout at the
-> time. With that, the client isn't expected to do a LAYOUTRETURN.
+> An analogy would be putting 2 light switches in front of a light bulb,
+> so that unless both switches are on, the bulb will not turn on.
+> Actually, it is worse than that, because none of the bulbs turn on
+> until you start up knfsd (so you can argue that there is a third switch
+> in front of the other two).
+> Why do we need this many levels of switches in a kernel interface? You
+> should be able to achieve the same functionality by just turning on and
+> off the individual minor versions. The right place for designing more
+> complex interfaces would be userspace, and is exactly what the rpc.nfsd
+> utility should be taking care of.
+
+The "no regressions" rule can often lead to clunky interfaces.  It
+certainly isn't ideal, but sometimes we need to live with it.
+The right place to hide that clunkiness is in rpc.nfsd :-)
+
 >
-> Any other status on the CB_LAYOUTRECALL however does require a
-> LAYOUTRETURN.
+> Finally, there is the issue that the interface allowed situations where
+> knfsd was advertising support for NFSv4 via rpcbind, but there were no
+> minor versions enabled, and so you'd just get a confusing series of
+> NFS4ERR_MINOR_VERSION_MISMATCH replies when attempting to mount. Why
+> even advertise support in that case?
 
-Thanks, both to you and Christoph, for this pointer.
-Things are starting to make sense.
+I agree with this.
+If all minor versions are disabled, the major version should be disabled
+as well.  If any minor versions are enabled, the major version must be
+enabled too.
 
-However RFC5661 says under
-   Operation 5: CB_LAYOUTRECALL - Recall Layout from Client
-
-   While the client responds to the CB_LAYOUTRECALL immediately, the
-   operation is not considered complete (i.e., considered pending) until
-   all affected layouts are returned to the server via the LAYOUTRETURN
-   operation.
-
-which seems to strongly imply that a LAYOUTRETURN is expected.  No
-alternative is listed.
-
-Further:
-
-    The NFS4ERR_NOMATCHING_LAYOUT error is only returned when the client
-    does not hold layouts for the file or if the client does not have
-    any overlapping layouts for the specification in the layout recall.
-
-This is an *error* condition.   The client really does still hold
-the layouts if it hasn't sent "LAYOUTRETURN".  The fact that the linux
-client chooses to forget them and won't ever use them again isn't really
-the same thing as "not hold[ing] layouts".
-
-If I were a server author and I got NFS4ERR_NOMATCHING_LAYOUT for a
-CB_LAYOUTRECALL where a I knew for certain that the client really did
-have the layout, then I would probably feel justified in discarding all
-state held by that confused client, and requiring to re-establish
-everything (because I cannot trust anything any more).
-
-So the Netapp filer is clearly doing the wrong thing, as we doesn't send
-CB_LAYOUTRECALL.  But I'm far from convinced that Linux is doing the
-right thing by replying NFS4ERR_NOMATCHING_LAYOUT.
-
-However, I'm not going to try to "fix" anything here.  Hopefully we can
-manage to stumble forward.
-
-Thanks again,
+Thanks,
 NeilBrown
 
 --=-=-=
@@ -78,18 +104,18 @@ Content-Type: application/pgp-signature; name="signature.asc"
 
 -----BEGIN PGP SIGNATURE-----
 
-iQIzBAEBCAAdFiEEG8Yp69OQ2HB7X0l6Oeye3VZigbkFAli83YkACgkQOeye3VZi
-gblLbA//ZcypUGfgu3gZ/6Oq5ChmqhyGLWET9MNswPOUNMmEG0cjq6hd7DEnBTU2
-B/7m2514BPipHAd3sBN+7mhjRUL17OXb4l0bIDo57doB5aRpLlFcAgzdo3WlZ/sJ
-07X93apGlhANurs+drv/9ba+6CVe98XkBA9ausYVMSigUSrXEfjU3IqIRjYabLff
-D1WhYTslCDb96Sw55KMMIAQ70Km9xJQRvV23dBGISv4+dA6NAVjPfXKd3ip3Jmrk
-859sHWZjjt6WYEiQndydeVF+FhWLfpD6mmq3U1AO209Q3/ejCY5isk2emllVY2uV
-J6iXukfr7yYNiWOyJ5uzKF+KvZUDnmi8gEmYk6Cs+PhDQCcTzpAt/xBWAdXFW68F
-PYgom2Q2c9rxt6tUtCnojJcR+NshQQx7fJS9UsHP07/aHSkZOA/RiPO7a1riD5J0
-Y/tfoushG7QTZa5+hmAQPwhFpaHIYjZWrgJ5Ecof8v72j5pzWIRBJ9iPEJrpj0QH
-mZ0zv6Ep3+dZod5bWV9P3twObSLAnzPM53+EZT0FX5ktHBH4DQOrKaq3JG/6+jsk
-gNSn2jz49wRKcA1Tuy45uSjTqDgPTODTzn+qVurqi9BILdJc2QNPmElziiwtgJ0z
-mz9MP0u5E+CRDOdFbqBq5+QfJ0RIQpI/WaP+6eJahIZPHWnXWFw=
-=ZznJ
+iQIzBAEBCAAdFiEEG8Yp69OQ2HB7X0l6Oeye3VZigbkFAli85QAACgkQOeye3VZi
+gbkMQhAAwu4pZStPGa6CXmvRMzwQlufqWLyl2ban6kE6PDiEf4r+cNcrBBIJ6G/9
+VxlAyqvQerEyS83/c4jJ5tWVX+WFsZ8ZrvwvknJI3jmrC/tBlmFQq7SmPeCQfN8z
+q4aqwKvxnbITBy+e8xqj9MH946zAoFrruID8g5G9NMOSoC3MqPysp2S/SEcRaDN0
+DKAmQjjhDf8BFTpfnfCWqjn8u1I29FFnBWvy+bOU2om0mjSgWFiM6fGcrx+fNu8f
+HpetKqb4OOB2oD6aG5OIMjANYaVPv1TpWZ6jki2LspPUU8THkAreJEKGMBPgzpCL
+Y0Kj5LWEXIWUj8v4EcmsoYP5hXtthlzLU4vCEuQOcL38ZFvbYPn0XNA0wbHLnGs5
+N+FRiIZzbrjN8iJJ+dR+iEocYY+QDkFr0ukNupHqg2+Jx/hbODOAGJVWC1aLUTkj
+p6q80Q2IK92/OtGElkiXsyvBCgYPfiMi5XAqW+l6smMJ8NwgfrT2Xu6zW5aLmU/y
+c8+iJg9/saXtP1yOnVrnYEycC3HmYgjYau3khLI76tVepggrcVPbl1F0NFwXTJTF
+oppBbk2arB4hPz3Zvzy/SRpeJuju4tOjSKHuPrFrQcyGQmLj01+zo8u69trvgQTY
+XxEpS1QQ24RgJ+ZjhtOpy7apJCVewru/K5uvaPv2mEIfObdHt/c=
+=SmnE
 -----END PGP SIGNATURE-----
 --=-=-=--
