@@ -1,56 +1,74 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f195.google.com ([209.85.223.195]:36337 "EHLO
-        mail-io0-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1754750AbdCGOW4 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 7 Mar 2017 09:22:56 -0500
+Received: from mx2.suse.de ([195.135.220.15]:42148 "EHLO mx2.suse.de"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1755580AbdCGP3p (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 7 Mar 2017 10:29:45 -0500
+Date: Tue, 7 Mar 2017 16:09:56 +0100
+From: Michal Hocko <mhocko@kernel.org>
+To: Andrew Morton <akpm@linux-foundation.org>
+Cc: linux-fsdevel@vger.kernel.org, linux-mm@kvack.org,
+        Dave Chinner <david@fromorbit.com>, djwong@kernel.org,
+        Theodore Ts'o <tytso@mit.edu>, Chris Mason <clm@fb.com>,
+        David Sterba <dsterba@suse.cz>, Jan Kara <jack@suse.cz>,
+        ceph-devel@vger.kernel.org, cluster-devel@redhat.com,
+        linux-nfs@vger.kernel.org, logfs@logfs.org,
+        linux-xfs@vger.kernel.org, linux-ext4@vger.kernel.org,
+        linux-btrfs@vger.kernel.org, linux-mtd@lists.infradead.org,
+        reiserfs-devel@vger.kernel.org,
+        linux-ntfs-dev@lists.sourceforge.net,
+        linux-f2fs-devel@lists.sourceforge.net,
+        linux-afs@lists.infradead.org, LKML <linux-kernel@vger.kernel.org>,
+        Vlastimil Babka <vbabka@suse.cz>
+Subject: Re: [PATCH 4/7] mm: introduce memalloc_nofs_{save,restore} API
+Message-ID: <20170307150956.GM28642@dhcp22.suse.cz>
+References: <20170306131408.9828-1-mhocko@kernel.org>
+ <20170306131408.9828-5-mhocko@kernel.org>
+ <20170306132214.1769368301d9e671e1bc68be@linux-foundation.org>
 MIME-Version: 1.0
-In-Reply-To: <20170306192301.GB2294@fieldses.org>
-References: <20170302160123.30375-1-kolga@netapp.com> <20170302160123.30375-2-kolga@netapp.com>
- <20170302162221.GA6854@infradead.org> <20170303204747.GE13877@fieldses.org>
- <4B2A2E86-AFC8-49EA-9D53-7A53AD824CF1@netapp.com> <20170303213230.GF13877@fieldses.org>
- <B3F80DA0-B4F8-4628-88C5-E5C047620F17@netapp.com> <20170304021008.GB21609@fieldses.org>
- <924FF7A2-27CD-4848-BD61-748758C2533F@netapp.com> <20170306192301.GB2294@fieldses.org>
-From: Olga Kornievskaia <aglo@umich.edu>
-Date: Tue, 7 Mar 2017 09:18:14 -0500
-Message-ID: <CAN-5tyGvneN1WFgxmcr0Kx13EZRf-EhJb-EaQp_-+O5i+-0OXA@mail.gmail.com>
-Subject: Re: [RFC v1 01/19] Don't copy beyond the end of the file
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: linux-man@vger.kernel.org, Christoph Hellwig <hch@infradead.org>,
-        Trond Myklebust <Trond.Myklebust@primarydata.com>,
-        linux-nfs <linux-nfs@vger.kernel.org>,
-        "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
-        Olga Kornievskaia <kolga@netapp.com>
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20170306132214.1769368301d9e671e1bc68be@linux-foundation.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Mar 6, 2017 at 2:23 PM, J. Bruce Fields <bfields@fieldses.org> wrot=
-e:
-> On Mon, Mar 06, 2017 at 11:27:23AM -0500, Olga Kornievskaia wrote:
->> I don=E2=80=99t see copy_file_range() specifying that 0 means end of the=
- file.
->
-> Is there a reason that copy_file_range shouldn't be like read?  (From
-> read(2): "On  success,  the number of bytes read is returned (zero
-> indicates end of file)".
+On Mon 06-03-17 13:22:14, Andrew Morton wrote:
+> On Mon,  6 Mar 2017 14:14:05 +0100 Michal Hocko <mhocko@kernel.org> wrote:
+[...]
+> > --- a/include/linux/gfp.h
+> > +++ b/include/linux/gfp.h
+> > @@ -210,8 +210,16 @@ struct vm_area_struct;
+> >   *
+> >   * GFP_NOIO will use direct reclaim to discard clean pages or slab pages
+> >   *   that do not require the starting of any physical IO.
+> > + *   Please try to avoid using this flag directly and instead use
+> > + *   memalloc_noio_{save,restore} to mark the whole scope which cannot
+> > + *   perform any IO with a short explanation why. All allocation requests
+> > + *   will inherit GFP_NOIO implicitly.
+> >   *
+> >   * GFP_NOFS will use direct reclaim but will not use any filesystem interfaces.
+> > + *   Please try to avoid using this flag directly and instead use
+> > + *   memalloc_nofs_{save,restore} to mark the whole scope which cannot/shouldn't
+> > + *   recurse into the FS layer with a short explanation why. All allocation
+> > + *   requests will inherit GFP_NOFS implicitly.
+> 
+> I wonder if these are worth a checkpatch rule.
 
-The only thing I can think of is the fact that copy_file_range() does
-write too. And return 0 from the write is not expected/allowed (except
-when input count was 0)?
+I am not really sure, to be honest. This may easilly end up people
+replacing
 
-> I haven't checked, but suspect that's already true of the
-> implementations we have.
->
-> Also, from copy_file_range():
->
->         EINVAL Requested  range  extends beyond the end of the source
->                 file; or the flags argument is not 0.
->
-> Some filesystems do this, some don't; I think the man page should make
-> it clear that this behavior is not required.
->
-> --b.
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+do_alloc(GFP_NOFS)
+
+with
+
+memalloc_nofs_save()
+do_alloc(GFP_KERNEL)
+memalloc_nofs_restore()
+
+which doesn't make any sense of course. From my experience, people tend
+to do stupid things just to silent checkpatch warnings very often.
+Moreover I believe we need to do the transition to the new api first
+before we can push back on the explicit GFP_NOFS usage. Maybe then we
+can think about the a checkpatch warning.
+
+-- 
+Michal Hocko
+SUSE Labs
