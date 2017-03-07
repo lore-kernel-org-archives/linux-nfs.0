@@ -1,103 +1,56 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qk0-f172.google.com ([209.85.220.172]:33483 "EHLO
-        mail-qk0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1752390AbdCGNyr (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 7 Mar 2017 08:54:47 -0500
-Received: by mail-qk0-f172.google.com with SMTP id y76so4649549qkb.0
-        for <linux-nfs@vger.kernel.org>; Tue, 07 Mar 2017 05:54:23 -0800 (PST)
+Received: from mail-io0-f195.google.com ([209.85.223.195]:36337 "EHLO
+        mail-io0-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1754750AbdCGOW4 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 7 Mar 2017 09:22:56 -0500
 MIME-Version: 1.0
-From: Satya Prakash GS <g.satyaprakash@gmail.com>
-Date: Tue, 7 Mar 2017 19:15:57 +0530
-Message-ID: <CAJZK4X7TpU=zk+u1q_aUByyYxQ-EWSSff8hcY+uATZSz+dKhcA@mail.gmail.com>
-Subject: SUNRPC : Permission denied on NFS client with Kerberos enabled
-To: linux-nfs@vger.kernel.org
+In-Reply-To: <20170306192301.GB2294@fieldses.org>
+References: <20170302160123.30375-1-kolga@netapp.com> <20170302160123.30375-2-kolga@netapp.com>
+ <20170302162221.GA6854@infradead.org> <20170303204747.GE13877@fieldses.org>
+ <4B2A2E86-AFC8-49EA-9D53-7A53AD824CF1@netapp.com> <20170303213230.GF13877@fieldses.org>
+ <B3F80DA0-B4F8-4628-88C5-E5C047620F17@netapp.com> <20170304021008.GB21609@fieldses.org>
+ <924FF7A2-27CD-4848-BD61-748758C2533F@netapp.com> <20170306192301.GB2294@fieldses.org>
+From: Olga Kornievskaia <aglo@umich.edu>
+Date: Tue, 7 Mar 2017 09:18:14 -0500
+Message-ID: <CAN-5tyGvneN1WFgxmcr0Kx13EZRf-EhJb-EaQp_-+O5i+-0OXA@mail.gmail.com>
+Subject: Re: [RFC v1 01/19] Don't copy beyond the end of the file
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: linux-man@vger.kernel.org, Christoph Hellwig <hch@infradead.org>,
+        Trond Myklebust <Trond.Myklebust@primarydata.com>,
+        linux-nfs <linux-nfs@vger.kernel.org>,
+        "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
+        Olga Kornievskaia <kolga@netapp.com>
 Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi,
+On Mon, Mar 6, 2017 at 2:23 PM, J. Bruce Fields <bfields@fieldses.org> wrot=
+e:
+> On Mon, Mar 06, 2017 at 11:27:23AM -0500, Olga Kornievskaia wrote:
+>> I don=E2=80=99t see copy_file_range() specifying that 0 means end of the=
+ file.
+>
+> Is there a reason that copy_file_range shouldn't be like read?  (From
+> read(2): "On  success,  the number of bytes read is returned (zero
+> indicates end of file)".
 
-I am running userspace NFS server (NFS Ganesha) with Kerberos enabled.
-Intermittently iozone tests are failing on the nfs client with
-"Permission denied" error. On seeing AUTH_REJECTEDCRED error I
-expected the client to reestablish the context by sending
-RPC_GSS_PROC_DESTROY/RPC_GSS_PROC_INIT.
+The only thing I can think of is the fact that copy_file_range() does
+write too. And return 0 from the write is not expected/allowed (except
+when input count was 0)?
 
-Is destroy done as part of the gss_release_msg (gss_refresh_upcall ->
-gss_setup_upcall -> gss_release_msg). If so, release is not called
-when gss_msg == gss_new in gss_setup_call.
-
-Nfs client logs when the operation fails (don't see destroy
-context/free cred being called) :
-
-Mar  6 01:54:14 atsqa6c71 kernel: RPC: 49547 call_decode (status 20)
-Mar  6 01:54:14 atsqa6c71 kernel: RPC: 49547 rpc_verify_header: retry
-stale creds
-Mar  6 01:54:14 atsqa6c71 kernel: RPC: 49547 invalidating RPCSEC_GSS
-cred ffff88086f634b40
-Mar  6 01:54:14 atsqa6c71 kernel: RPC:       freeing buffer of size
-2496 at ffff88025a56b000
-Mar  6 01:54:14 atsqa6c71 kernel: RPC: 49547 release request ffff8802d98a0e00
-Mar  6 01:54:14 atsqa6c71 kernel: RPC:
-wake_up_first(ffff880872a20320 "xprt_backlog")
-Mar  6 01:54:14 atsqa6c71 kernel: RPC: 49547 call_reserve (status 0)
-Mar  6 01:54:14 atsqa6c71 kernel: RPC: 49547 failed to lock transport
-ffff880872a20000
-Mar  6 01:54:14 atsqa6c71 kernel: RPC: 49547 sleep_on(queue
-"xprt_sending" time 25925270030)
-Mar  6 01:54:14 atsqa6c71 kernel: RPC: 49547 added to queue
-ffff880872a20190 "xprt_sending"
-
-...
-
-Mar  6 01:54:59 atsqa6c71 kernel: RPC: 49547 call_refresh (status 0)
-Mar  6 01:54:59 atsqa6c71 kernel: RPC:       gss_create_cred for uid
-0, flavor 390005
-Mar  6 01:54:59 atsqa6c71 kernel: RPC: 49547 refreshing RPCSEC_GSS
-cred ffff8801c1c98c80
-Mar  6 01:54:59 atsqa6c71 kernel: RPC: 49547 gss_refresh_upcall for uid 0
-Mar  6 01:54:59 atsqa6c71 kernel: RPC:       __gss_find_upcall found nothing
-Mar  6 01:54:59 atsqa6c71 kernel: RPC: 49547 sleep_on(queue
-"RPCSEC_GSS upcall waitq" time 25925315305)
-Mar  6 01:54:59 atsqa6c71 kernel: RPC: 49547 added to queue
-ffff88015a93a058 "RPCSEC_GSS upcall waitq"
-Mar  6 01:54:59 atsqa6c71 kernel: RPC: 49547 gss_refresh_upcall for
-uid 0 result 0
-Mar  6 01:55:01 atsqa6c71 kernel: RPC:       __gss_find_upcall found
-msg ffff88015a93a000
-Mar  6 01:55:01 atsqa6c71 kernel: RPC:       krb5_encrypt returns 0
-Mar  6 01:55:01 atsqa6c71 kernel: RPC:       krb5_encrypt returns 0
-Mar  6 01:55:01 atsqa6c71 kernel: RPC:       krb5_encrypt returns 0
-Mar  6 01:55:01 atsqa6c71 kernel: RPC:
-gss_import_sec_context_kerberos: returning 0
-Mar  6 01:55:01 atsqa6c71 kernel: RPC:       gss_fill_context Success.
-gc_expiry 25955452747 now 25925316747 timeout 30136
-
-In a scenario where the operation succeeds after hitting
-AUTH_REJECTEDCRED error I see gss_free_cred, gss_delete_sec_context
-being called.
-
-I am not quite sure if this is a client bug or server bug. The server
-is expecting RPC_GSS_PROC_INIT message when client refreshes the
-credentials. Is the expectation right or am I missing something.
-
-More details:
-
-Userspace NFS Server is rejecting the operations with
-AUTH_REJECTEDCRED because the credentials couldn't be found in the
-cache. Server has an LRU for the credentials and it recycles them from
-time to time.
-
-Ideally it should throw RPCSEC_GSS_CREDPROBLEM instead of
-AUTH_REJECTEDCRED error on not finding the credentials in the cache
-(section 5.3.3.3 of rfc2203). However this shouldn't matter much as
-both the errors are handled similarly on the client.
-
-Client tolerates 3 errors but all the three calls failed because the
-credentials were recycled for the first time and the credentials which
-came as part of second/third retry weren't inserted in the cache. This
-would happen if the client doesn't send RPC_GSS_PROC_INIT when it
-refreshed the credentials.
-
-Thanks,
-Satya.
+> I haven't checked, but suspect that's already true of the
+> implementations we have.
+>
+> Also, from copy_file_range():
+>
+>         EINVAL Requested  range  extends beyond the end of the source
+>                 file; or the flags argument is not 0.
+>
+> Some filesystems do this, some don't; I think the man page should make
+> it clear that this behavior is not required.
+>
+> --b.
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
