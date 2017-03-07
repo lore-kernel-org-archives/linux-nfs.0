@@ -1,92 +1,51 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from us-smtp-delivery-194.mimecast.com ([216.205.24.194]:22495 "EHLO
-        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1754185AbdCGBbL (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 6 Mar 2017 20:31:11 -0500
-From: Trond Myklebust <trondmy@primarydata.com>
-To: "kinglongmee@gmail.com" <kinglongmee@gmail.com>,
+Received: from mail-it0-f68.google.com ([209.85.214.68]:33100 "EHLO
+        mail-it0-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1753157AbdCGJXP (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 7 Mar 2017 04:23:15 -0500
+Received: by mail-it0-f68.google.com with SMTP id g138so4191356itb.0
+        for <linux-nfs@vger.kernel.org>; Tue, 07 Mar 2017 01:22:56 -0800 (PST)
+To: Trond Myklebust <trond.myklebust@primarydata.com>,
         "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-CC: "Anna.Schumaker@netapp.com" <Anna.Schumaker@netapp.com>
-Subject: Re: [PATCH] NFSv4: fix a reference leak caused WARNING messages
-Date: Tue, 7 Mar 2017 01:21:52 +0000
-Message-ID: <1488849710.2913.5.camel@primarydata.com>
-References: <854569e6-d545-ec2f-ca32-d65b50c1d603@gmail.com>
-         <87885798-493b-0d5a-b64e-f01e927ddeeb@gmail.com>
-In-Reply-To: <87885798-493b-0d5a-b64e-f01e927ddeeb@gmail.com>
+Cc: "J. Bruce Fields" <bfields@fieldses.org>,
+        Kinglong Mee <kinglongmee@gmail.com>,
+        Anna Schumaker <Anna.Schumaker@netapp.com>,
+        Jeff Layton <jlayton@redhat.com>
+From: Kinglong Mee <kinglongmee@gmail.com>
+Subject: [PATCH] SUNRPC/backchanel: set XPT_CONG_CTRL flag for bc xprt
+Message-ID: <b321152e-cbe8-94b3-498c-1d32e7c7be2d@gmail.com>
+Date: Tue, 7 Mar 2017 17:22:43 +0800
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gTW9uLCAyMDE3LTAzLTA2IGF0IDIyOjI5ICswODAwLCBLaW5nbG9uZyBNZWUgd3JvdGU6DQo+
-IEJlY2F1c2UgbmZzNF9vcGVuZGF0YV9hY2Nlc3MoKSBoYXMgY2xvc2UgdGhlIHN0YXRlIHdoZW4g
-YWNjZXNzIGlzDQo+IGRlbmllZCwNCj4gc28gdGhlIHN0YXRlIGlzbid0IGxlYWsuDQo+IFJhdGhl
-ciB0aGFuIHJldmVydCB0aGUgY29tbWl0IGE5NzRkZWVlNDcsIEknZCBsaWtlIGNsZWFuIHRoZSBz
-dHJhbmdlDQo+IHN0YXRlIGNsb3NlLg0KPiANCj4gWyAxNjE1LjA5NDIxOF0gLS0tLS0tLS0tLS0t
-WyBjdXQgaGVyZSBdLS0tLS0tLS0tLS0tDQo+IFsgMTYxNS4wOTQ2MDddIFdBUk5JTkc6IENQVTog
-MCBQSUQ6IDIzNzAyIGF0IGxpYi9saXN0X2RlYnVnLmM6MzENCj4gX19saXN0X2FkZF92YWxpZCsw
-eDhlLzB4YTANCj4gWyAxNjE1LjA5NDkxM10gbGlzdF9hZGQgZG91YmxlIGFkZDogbmV3PWZmZmY5
-ZDc5MDFkOWY2MDgsDQo+IHByZXY9ZmZmZjlkNzkwMWQ5ZjYwOCwgbmV4dD1mZmZmOWQ3OTAxZWU4
-ZGQwLg0KPiBbIDE2MTUuMDk1NDU4XSBNb2R1bGVzIGxpbmtlZCBpbjogbmZzdjQoRSkgbmZzKEUp
-IG5mc2QoRSkgdHVuIGJyaWRnZQ0KPiBzdHAgbGxjIGZ1c2UgaXBfc2V0IG5mbmV0bGluayB2bXdf
-dnNvY2tfdm1jaV90cmFuc3BvcnQgdnNvY2sgZjJmcw0KPiBzbmRfc2VxX21pZGkgc25kX3NlcV9t
-aWRpX2V2ZW50IGZzY3J5cHRvIGNvcmV0ZW1wIHBwZGV2DQo+IGNyY3QxMGRpZl9wY2xtdWwgY3Jj
-MzJfcGNsbXVsIGdoYXNoX2NsbXVsbmlfaW50ZWwgaW50ZWxfcmFwbF9wZXJmDQo+IHZtd19iYWxs
-b29uIHNuZF9lbnMxMzcxIGpveWRldiBnYW1lcG9ydCBzbmRfYWM5N19jb2RlYyBhYzk3X2J1cw0K
-PiBzbmRfc2VxIHNuZF9wY20gc25kX3Jhd21pZGkgc25kX3RpbWVyIHNuZF9zZXFfZGV2aWNlIHNu
-ZCBzb3VuZGNvcmUNCj4gbmZpdCBwYXJwb3J0X3BjIHBhcnBvcnQgYWNwaV9jcHVmcmVxIHRwbV90
-aXMgdHBtX3Rpc19jb3JlIHRwbQ0KPiBpMmNfcGlpeDQgdm13X3ZtY2kgc2hwY2hwIGF1dGhfcnBj
-Z3NzIG5mc19hY2wgbG9ja2QoRSkgZ3JhY2UNCj4gc3VucnBjKEUpIHhmcyBsaWJjcmMzMmMgdm13
-Z2Z4IGRybV9rbXNfaGVscGVyIHR0bSBkcm0gY3JjMzJjX2ludGVsDQo+IG1wdHNwaSBlMTAwMCBz
-ZXJpb19yYXcgc2NzaV90cmFuc3BvcnRfc3BpIG1wdHNjc2loIG1wdGJhc2UNCj4gYXRhX2dlbmVy
-aWMgcGF0YV9hY3BpIGZqZXMgW2xhc3QgdW5sb2FkZWQ6IG5mc10NCj4gWyAxNjE1LjA5NzY2M10g
-Q1BVOiAwIFBJRDogMjM3MDIgQ29tbTogZnN0ZXN0IFRhaW50ZWQ6DQo+IEfCoMKgwqDCoMKgwqDC
-oMKgV8KgwqDCoEXCoMKgwqA0LjExLjAtcmMxKyAjNTE3DQo+IFsgMTYxNS4wOTgwMTVdIEhhcmR3
-YXJlIG5hbWU6IFZNd2FyZSwgSW5jLiBWTXdhcmUgVmlydHVhbA0KPiBQbGF0Zm9ybS80NDBCWCBE
-ZXNrdG9wIFJlZmVyZW5jZSBQbGF0Zm9ybSwgQklPUyA2LjAwIDA3LzAyLzIwMTUNCj4gWyAxNjE1
-LjA5ODgwN10gQ2FsbCBUcmFjZToNCj4gWyAxNjE1LjA5OTE4M13CoMKgZHVtcF9zdGFjaysweDYz
-LzB4ODYNCj4gWyAxNjE1LjA5OTU3OF3CoMKgX193YXJuKzB4Y2IvMHhmMA0KPiBbIDE2MTUuMDk5
-OTY3XcKgwqB3YXJuX3Nsb3dwYXRoX2ZtdCsweDVmLzB4ODANCj4gWyAxNjE1LjEwMDM3MF3CoMKg
-X19saXN0X2FkZF92YWxpZCsweDhlLzB4YTANCj4gWyAxNjE1LjEwMDc2MF3CoMKgbmZzNF9wdXRf
-c3RhdGVfb3duZXIrMHg3NS8weGMwIFtuZnN2NF0NCj4gWyAxNjE1LjEwMTEzNl3CoMKgX19uZnM0
-X2Nsb3NlKzB4MTA5LzB4MTQwIFtuZnN2NF0NCj4gWyAxNjE1LjEwMTUyNF3CoMKgbmZzNF9jbG9z
-ZV9zdGF0ZSsweDE1LzB4MjAgW25mc3Y0XQ0KPiBbIDE2MTUuMTAxOTQ5XcKgwqBuZnM0X2Nsb3Nl
-X2NvbnRleHQrMHgyMS8weDMwIFtuZnN2NF0NCj4gWyAxNjE1LjEwMjY5MV3CoMKgX19wdXRfbmZz
-X29wZW5fY29udGV4dCsweGI4LzB4MTEwIFtuZnNdDQo+IFsgMTYxNS4xMDMxNTVdwqDCoHB1dF9u
-ZnNfb3Blbl9jb250ZXh0KzB4MTAvMHgyMCBbbmZzXQ0KPiBbIDE2MTUuMTAzNTg2XcKgwqBuZnM0
-X2ZpbGVfb3BlbisweDEzYi8weDI2MCBbbmZzdjRdDQo+IFsgMTYxNS4xMDM5NzhdwqDCoGRvX2Rl
-bnRyeV9vcGVuKzB4MjBhLzB4MmYwDQo+IFsgMTYxNS4xMDQzNjldwqDCoD8gbmZzNF9jb3B5X2Zp
-bGVfcmFuZ2UrMHgzMC8weDMwIFtuZnN2NF0NCj4gWyAxNjE1LjEwNDczOV3CoMKgdmZzX29wZW4r
-MHg0Yy8weDcwDQo+IFsgMTYxNS4xMDUxMDZdwqDCoD8gbWF5X29wZW4rMHg1YS8weDEwMA0KPiBb
-IDE2MTUuMTA1NDY5XcKgwqBwYXRoX29wZW5hdCsweDYyMy8weDE0MjANCj4gWyAxNjE1LjEwNTgy
-M13CoMKgZG9fZmlscF9vcGVuKzB4OTEvMHgxMDANCj4gWyAxNjE1LjEwNjE3NF3CoMKgPyBfX2Fs
-bG9jX2ZkKzB4M2YvMHgxNzANCj4gWyAxNjE1LjEwNjU2OF3CoMKgZG9fc3lzX29wZW4rMHgxMzAv
-MHgyMjANCj4gWyAxNjE1LjEwNjkyMF3CoMKgPyBfX3B1dF9jcmVkKzB4M2QvMHg1MA0KPiBbIDE2
-MTUuMTA3MjU2XcKgwqBTeVNfb3BlbisweDFlLzB4MjANCj4gWyAxNjE1LjEwNzU4OF3CoMKgZW50
-cnlfU1lTQ0FMTF82NF9mYXN0cGF0aCsweDFhLzB4YTkNCj4gWyAxNjE1LjEwNzkyMl0gUklQOiAw
-MDMzOjB4N2ZhYjU5OTA2OWIwDQo+IFsgMTYxNS4xMDgyNDddIFJTUDogMDAyYjowMDAwN2ZmY2Yw
-NjAwZDc4IEVGTEFHUzogMDAwMDAyNDYgT1JJR19SQVg6DQo+IDAwMDAwMDAwMDAwMDAwMDINCj4g
-WyAxNjE1LjEwODU3NV0gUkFYOiBmZmZmZmZmZmZmZmZmZmRhIFJCWDogMDAwMDdmYWI1OWJjZmFl
-MCBSQ1g6DQo+IDAwMDA3ZmFiNTk5MDY5YjANCj4gWyAxNjE1LjEwODg5Nl0gUkRYOiAwMDAwMDAw
-MDAwMDAwMjAwIFJTSTogMDAwMDAwMDAwMDAwMDIwMCBSREk6DQo+IDAwMDA3ZmZjZjA2MDI1NWUN
-Cj4gWyAxNjE1LjEwOTIxMV0gUkJQOiAwMDAwMDAwMDAwMDQwMDEwIFIwODogMDAwMDAwMDAwMDAw
-MDAwMCBSMDk6DQo+IDAwMDAwMDAwMDAwMDAwMTYNCj4gWyAxNjE1LjEwOTUxNV0gUjEwOiAwMDAw
-MDAwMDAwMDAwNmExIFIxMTogMDAwMDAwMDAwMDAwMDI0NiBSMTI6DQo+IDAwMDAwMDAwMDAwNDEw
-MDANCj4gWyAxNjE1LjEwOTgwNl0gUjEzOiAwMDAwMDAwMDAwMDQwMDEwIFIxNDogMDAwMDAwMDAw
-MDAwMTAwMCBSMTU6DQo+IDAwMDAwMDAwMDAwMDI3MTANCj4gWyAxNjE1LjExMDE1Ml0gLS0tWyBl
-bmQgdHJhY2UgOTZlZDYzYjEzMDZiZjJmMyBdLS0tDQo+IA0KPiBGaXhlczogYTk3NGRlZWU0NyAo
-Ik5GU3Y0OiBGaXggbWVtb3J5IGFuZCBzdGF0ZSBsZWFrIGluLi4uIikNCj4gU2lnbmVkLW9mZi1i
-eTogS2luZ2xvbmcgTWVlIDxraW5nbG9uZ21lZUBnbWFpbC5jb20+DQo+IC0tLQ0KPiDCoGZzL25m
-cy9uZnM0cHJvYy5jIHwgMiAtLQ0KPiDCoDEgZmlsZSBjaGFuZ2VkLCAyIGRlbGV0aW9ucygtKQ0K
-PiANCj4gZGlmZiAtLWdpdCBhL2ZzL25mcy9uZnM0cHJvYy5jIGIvZnMvbmZzL25mczRwcm9jLmMN
-Cj4gaW5kZXggMWIxODM2OC4uYzFmNTM2OSAxMDA2NDQNCj4gLS0tIGEvZnMvbmZzL25mczRwcm9j
-LmMNCj4gKysrIGIvZnMvbmZzL25mczRwcm9jLmMNCj4gQEAgLTIyNTgsOCArMjI1OCw2IEBAIHN0
-YXRpYyBpbnQgbmZzNF9vcGVuZGF0YV9hY2Nlc3Moc3RydWN0IHJwY19jcmVkDQo+ICpjcmVkLA0K
-PiDCoAlpZiAoKG1hc2sgJiB+Y2FjaGUubWFzayAmIChNQVlfUkVBRCB8IE1BWV9FWEVDKSkgPT0g
-MCkNCj4gwqAJCXJldHVybiAwOw0KPiDCoA0KPiAtCS8qIGV2ZW4gdGhvdWdoIE9QRU4gc3VjY2Vl
-ZGVkLCBhY2Nlc3MgaXMgZGVuaWVkLiBDbG9zZSB0aGUNCj4gZmlsZSAqLw0KPiAtCW5mczRfY2xv
-c2Vfc3RhdGUoc3RhdGUsIGZtb2RlKTsNCj4gwqAJcmV0dXJuIC1FQUNDRVM7DQo+IMKgfQ0KPiDC
-oA0KDQpMb29rcyBnb29kLg0KDQotLSANClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVu
-dCBtYWludGFpbmVyLCBQcmltYXJ5RGF0YQ0KdHJvbmQubXlrbGVidXN0QHByaW1hcnlkYXRhLmNv
-bQ0K
+The xprt for backchannel is created separately, not in TCP/UDP code.
+Because without the flags, the requests from NFSv41 backchannel are
+rejected in svc_process_common(),
+
+1191         if (versp->vs_need_cong_ctrl &&
+1192             !test_bit(XPT_CONG_CTRL, &rqstp->rq_xprt->xpt_flags))
+1193                 goto err_bad_vers;
+
+Fixes: 5283b03ee5 ("nfs/nfsd/sunrpc: enforce transport...")
+Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
+---
+ net/sunrpc/svcsock.c | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
+index 8931e33..2b720fa 100644
+--- a/net/sunrpc/svcsock.c
++++ b/net/sunrpc/svcsock.c
+@@ -1635,6 +1635,7 @@ static struct svc_xprt *svc_bc_create_socket(struct svc_serv *serv,
+ 
+ 	xprt = &svsk->sk_xprt;
+ 	svc_xprt_init(net, &svc_tcp_bc_class, xprt, serv);
++	set_bit(XPT_CONG_CTRL, &svsk->sk_xprt.xpt_flags);
+ 
+ 	serv->sv_bc_xprt = xprt;
+ 
+-- 
+2.9.3
 
