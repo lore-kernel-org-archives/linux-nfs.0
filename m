@@ -1,74 +1,81 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:42148 "EHLO mx2.suse.de"
+Received: from mx2.suse.de ([195.135.220.15]:56554 "EHLO mx2.suse.de"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1755580AbdCGP3p (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 7 Mar 2017 10:29:45 -0500
-Date: Tue, 7 Mar 2017 16:09:56 +0100
-From: Michal Hocko <mhocko@kernel.org>
-To: Andrew Morton <akpm@linux-foundation.org>
-Cc: linux-fsdevel@vger.kernel.org, linux-mm@kvack.org,
-        Dave Chinner <david@fromorbit.com>, djwong@kernel.org,
-        Theodore Ts'o <tytso@mit.edu>, Chris Mason <clm@fb.com>,
-        David Sterba <dsterba@suse.cz>, Jan Kara <jack@suse.cz>,
-        ceph-devel@vger.kernel.org, cluster-devel@redhat.com,
-        linux-nfs@vger.kernel.org, logfs@logfs.org,
-        linux-xfs@vger.kernel.org, linux-ext4@vger.kernel.org,
-        linux-btrfs@vger.kernel.org, linux-mtd@lists.infradead.org,
-        reiserfs-devel@vger.kernel.org,
-        linux-ntfs-dev@lists.sourceforge.net,
-        linux-f2fs-devel@lists.sourceforge.net,
-        linux-afs@lists.infradead.org, LKML <linux-kernel@vger.kernel.org>,
-        Vlastimil Babka <vbabka@suse.cz>
-Subject: Re: [PATCH 4/7] mm: introduce memalloc_nofs_{save,restore} API
-Message-ID: <20170307150956.GM28642@dhcp22.suse.cz>
-References: <20170306131408.9828-1-mhocko@kernel.org>
- <20170306131408.9828-5-mhocko@kernel.org>
- <20170306132214.1769368301d9e671e1bc68be@linux-foundation.org>
+        id S1751088AbdCGUKj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 7 Mar 2017 15:10:39 -0500
+From: NeilBrown <neilb@suse.com>
+To: Trond Myklebust <trondmy@primarydata.com>,
+        "jlayton\@poochiereds.net" <jlayton@poochiereds.net>,
+        "linux-nfs\@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Date: Wed, 08 Mar 2017 07:09:26 +1100
+Cc: "hch\@infradead.org" <hch@infradead.org>
+Subject: Re: Confused by pnfs LAYOUTRETURN - seeking clarity.
+In-Reply-To: <1488847700.2913.1.camel@primarydata.com>
+References: <87shmvnzh7.fsf@notabene.neil.brown.name> <1488569105.2997.1.camel@poochiereds.net> <87r32bjbzq.fsf@notabene.neil.brown.name> <1488847700.2913.1.camel@primarydata.com>
+Message-ID: <87wpc0j1c9.fsf@notabene.neil.brown.name>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20170306132214.1769368301d9e671e1bc68be@linux-foundation.org>
+Content-Type: multipart/signed; boundary="=-=-=";
+        micalg=pgp-sha256; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon 06-03-17 13:22:14, Andrew Morton wrote:
-> On Mon,  6 Mar 2017 14:14:05 +0100 Michal Hocko <mhocko@kernel.org> wrote:
-[...]
-> > --- a/include/linux/gfp.h
-> > +++ b/include/linux/gfp.h
-> > @@ -210,8 +210,16 @@ struct vm_area_struct;
-> >   *
-> >   * GFP_NOIO will use direct reclaim to discard clean pages or slab pages
-> >   *   that do not require the starting of any physical IO.
-> > + *   Please try to avoid using this flag directly and instead use
-> > + *   memalloc_noio_{save,restore} to mark the whole scope which cannot
-> > + *   perform any IO with a short explanation why. All allocation requests
-> > + *   will inherit GFP_NOIO implicitly.
-> >   *
-> >   * GFP_NOFS will use direct reclaim but will not use any filesystem interfaces.
-> > + *   Please try to avoid using this flag directly and instead use
-> > + *   memalloc_nofs_{save,restore} to mark the whole scope which cannot/shouldn't
-> > + *   recurse into the FS layer with a short explanation why. All allocation
-> > + *   requests will inherit GFP_NOFS implicitly.
-> 
-> I wonder if these are worth a checkpatch rule.
+--=-=-=
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: quoted-printable
 
-I am not really sure, to be honest. This may easilly end up people
-replacing
+On Tue, Mar 07 2017, Trond Myklebust wrote:
 
-do_alloc(GFP_NOFS)
+> Hi Neil,
+>
+> On Mon, 2017-03-06 at 14:54 +1100, NeilBrown wrote:
+...
+>>=20
+>> So the Netapp filer is clearly doing the wrong thing, as we doesn't
+>> send
+>> CB_LAYOUTRECALL.=C2=A0=C2=A0But I'm far from convinced that Linux is doi=
+ng the
+>> right thing by replying NFS4ERR_NOMATCHING_LAYOUT.
+>>=20
+>> However, I'm not going to try to "fix" anything here.=C2=A0=C2=A0Hopeful=
+ly we
+>> can
+>> manage to stumble forward.
+>>=20
+>
+> Please see RFC5661, Section 12.5.5.1 https://tools.ietf.org/html/rfc566
+> 1#section-12.5.5.1
+>
+> That section has a full documentation of what the server should
+> interpret NFS4ERR_NOMATCHING_LAYOUT to mean, and should explain why the
+> Linux client behaviour is quite correct w.r.t. the spec.
+> There are a couple of errata to consider too, but they mainly try to
+> nail down the expected behaviour for a couple of corner cases.
 
-with
+Thanks for that.  The last too sentences to suggest that
+NFS4ERR_NOMATCHING_LAYOUT isn't really an error, and the whole
+discusses how the server and client can reasonably have different
+understandings of the current set of layouts.
 
-memalloc_nofs_save()
-do_alloc(GFP_KERNEL)
-memalloc_nofs_restore()
+Thanks,
+NeilBrown
 
-which doesn't make any sense of course. From my experience, people tend
-to do stupid things just to silent checkpatch warnings very often.
-Moreover I believe we need to do the transition to the new api first
-before we can push back on the explicit GFP_NOFS usage. Maybe then we
-can think about the a checkpatch warning.
+--=-=-=
+Content-Type: application/pgp-signature; name="signature.asc"
 
--- 
-Michal Hocko
-SUSE Labs
+-----BEGIN PGP SIGNATURE-----
+
+iQIzBAEBCAAdFiEEG8Yp69OQ2HB7X0l6Oeye3VZigbkFAli/E3YACgkQOeye3VZi
+gbnJEw//Th43YtnehGQXkkfHJLJWkbPkdtw4AuADDagkarEf30Y9aGruexl+9Pk9
+yGeQRyhFH3wRALMzba9NKeXN5neC1KT5L0XKuvkn9DZ1OrzzxGwpIXnTU/nped8m
+4pzllh8KiFDqa0/TojhpCo9oHXMaqIBKWRAVxRpxvat+isMINVQYpy4Y0/EMHjKl
+i4gP4hxkwFwwgipDLiWLuqgXSkGYXyyLuQhoZTFKx79mm5kavPuDAedWvCVWBiQT
+PX+hrlHyy/6I+BFTw5O1TH+7Fu0T41BWTskfGcuwzIchEKYMQJDf3wtNk1BYyFgE
+/lYX9cAM7Ks5J5YfHkCMWIfcfPTsl+m6ZVWiZx29RQBDSXKQlr4uZ9Ikd8tS2mtY
+cHy9yPL0Q2EjMul7pqsPbHbnSCXtunL/WwMHBpHBUUUmal+T1eTMkRswM5uQUMxj
+HReMERcovdDru8i+hE5K+q7FoRvRnWEtcGsjQSVqJLxt/jRI6dbv3paMokSvneeu
+v2kIwPoyhTNG4LMVooVLEFuoWfRrEHSM6N0xu/8pa+5z6//mqThug7NuctebnAx/
+f0RwrzZnxYo4xusSnG8Qv1VcGsLXbKbwwKWPqzlIXHizE6O3AI9rqmbNowGmrR1l
+Xun2iAWPMjJcxRNe74GpKPl7c5v2lLFxZbJlr7VFf+OEZmZ+0T0=
+=xI8o
+-----END PGP SIGNATURE-----
+--=-=-=--
