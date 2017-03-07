@@ -1,54 +1,103 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qk0-f180.google.com ([209.85.220.180]:33708 "EHLO
-        mail-qk0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1752532AbdCGLMO (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 7 Mar 2017 06:12:14 -0500
-Received: by mail-qk0-f180.google.com with SMTP id y76so70093465qkb.0
-        for <linux-nfs@vger.kernel.org>; Tue, 07 Mar 2017 03:11:25 -0800 (PST)
-Message-ID: <1488885081.2788.0.camel@redhat.com>
-Subject: Re: [PATCH] SUNRPC/backchanel: set XPT_CONG_CTRL flag for bc xprt
-From: Jeff Layton <jlayton@redhat.com>
-To: Kinglong Mee <kinglongmee@gmail.com>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-        Anna Schumaker <Anna.Schumaker@netapp.com>
-Date: Tue, 07 Mar 2017 06:11:21 -0500
-In-Reply-To: <b321152e-cbe8-94b3-498c-1d32e7c7be2d@gmail.com>
-References: <b321152e-cbe8-94b3-498c-1d32e7c7be2d@gmail.com>
-Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
+Received: from mail-qk0-f172.google.com ([209.85.220.172]:33483 "EHLO
+        mail-qk0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1752390AbdCGNyr (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 7 Mar 2017 08:54:47 -0500
+Received: by mail-qk0-f172.google.com with SMTP id y76so4649549qkb.0
+        for <linux-nfs@vger.kernel.org>; Tue, 07 Mar 2017 05:54:23 -0800 (PST)
+MIME-Version: 1.0
+From: Satya Prakash GS <g.satyaprakash@gmail.com>
+Date: Tue, 7 Mar 2017 19:15:57 +0530
+Message-ID: <CAJZK4X7TpU=zk+u1q_aUByyYxQ-EWSSff8hcY+uATZSz+dKhcA@mail.gmail.com>
+Subject: SUNRPC : Permission denied on NFS client with Kerberos enabled
+To: linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 2017-03-07 at 17:22 +0800, Kinglong Mee wrote:
-> The xprt for backchannel is created separately, not in TCP/UDP code.
-> Because without the flags, the requests from NFSv41 backchannel are
-> rejected in svc_process_common(),
-> 
-> 1191         if (versp->vs_need_cong_ctrl &&
-> 1192             !test_bit(XPT_CONG_CTRL, &rqstp->rq_xprt->xpt_flags))
-> 1193                 goto err_bad_vers;
-> 
-> Fixes: 5283b03ee5 ("nfs/nfsd/sunrpc: enforce transport...")
-> Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
-> ---
->  net/sunrpc/svcsock.c | 1 +
->  1 file changed, 1 insertion(+)
-> 
-> diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
-> index 8931e33..2b720fa 100644
-> --- a/net/sunrpc/svcsock.c
-> +++ b/net/sunrpc/svcsock.c
-> @@ -1635,6 +1635,7 @@ static struct svc_xprt *svc_bc_create_socket(struct svc_serv *serv,
->  
->  	xprt = &svsk->sk_xprt;
->  	svc_xprt_init(net, &svc_tcp_bc_class, xprt, serv);
-> +	set_bit(XPT_CONG_CTRL, &svsk->sk_xprt.xpt_flags);
->  
->  	serv->sv_bc_xprt = xprt;
->  
+Hi,
 
-Good catch.
+I am running userspace NFS server (NFS Ganesha) with Kerberos enabled.
+Intermittently iozone tests are failing on the nfs client with
+"Permission denied" error. On seeing AUTH_REJECTEDCRED error I
+expected the client to reestablish the context by sending
+RPC_GSS_PROC_DESTROY/RPC_GSS_PROC_INIT.
 
-Reviewed-by: Jeff Layton <jlayton@redhat.com>
+Is destroy done as part of the gss_release_msg (gss_refresh_upcall ->
+gss_setup_upcall -> gss_release_msg). If so, release is not called
+when gss_msg == gss_new in gss_setup_call.
+
+Nfs client logs when the operation fails (don't see destroy
+context/free cred being called) :
+
+Mar  6 01:54:14 atsqa6c71 kernel: RPC: 49547 call_decode (status 20)
+Mar  6 01:54:14 atsqa6c71 kernel: RPC: 49547 rpc_verify_header: retry
+stale creds
+Mar  6 01:54:14 atsqa6c71 kernel: RPC: 49547 invalidating RPCSEC_GSS
+cred ffff88086f634b40
+Mar  6 01:54:14 atsqa6c71 kernel: RPC:       freeing buffer of size
+2496 at ffff88025a56b000
+Mar  6 01:54:14 atsqa6c71 kernel: RPC: 49547 release request ffff8802d98a0e00
+Mar  6 01:54:14 atsqa6c71 kernel: RPC:
+wake_up_first(ffff880872a20320 "xprt_backlog")
+Mar  6 01:54:14 atsqa6c71 kernel: RPC: 49547 call_reserve (status 0)
+Mar  6 01:54:14 atsqa6c71 kernel: RPC: 49547 failed to lock transport
+ffff880872a20000
+Mar  6 01:54:14 atsqa6c71 kernel: RPC: 49547 sleep_on(queue
+"xprt_sending" time 25925270030)
+Mar  6 01:54:14 atsqa6c71 kernel: RPC: 49547 added to queue
+ffff880872a20190 "xprt_sending"
+
+...
+
+Mar  6 01:54:59 atsqa6c71 kernel: RPC: 49547 call_refresh (status 0)
+Mar  6 01:54:59 atsqa6c71 kernel: RPC:       gss_create_cred for uid
+0, flavor 390005
+Mar  6 01:54:59 atsqa6c71 kernel: RPC: 49547 refreshing RPCSEC_GSS
+cred ffff8801c1c98c80
+Mar  6 01:54:59 atsqa6c71 kernel: RPC: 49547 gss_refresh_upcall for uid 0
+Mar  6 01:54:59 atsqa6c71 kernel: RPC:       __gss_find_upcall found nothing
+Mar  6 01:54:59 atsqa6c71 kernel: RPC: 49547 sleep_on(queue
+"RPCSEC_GSS upcall waitq" time 25925315305)
+Mar  6 01:54:59 atsqa6c71 kernel: RPC: 49547 added to queue
+ffff88015a93a058 "RPCSEC_GSS upcall waitq"
+Mar  6 01:54:59 atsqa6c71 kernel: RPC: 49547 gss_refresh_upcall for
+uid 0 result 0
+Mar  6 01:55:01 atsqa6c71 kernel: RPC:       __gss_find_upcall found
+msg ffff88015a93a000
+Mar  6 01:55:01 atsqa6c71 kernel: RPC:       krb5_encrypt returns 0
+Mar  6 01:55:01 atsqa6c71 kernel: RPC:       krb5_encrypt returns 0
+Mar  6 01:55:01 atsqa6c71 kernel: RPC:       krb5_encrypt returns 0
+Mar  6 01:55:01 atsqa6c71 kernel: RPC:
+gss_import_sec_context_kerberos: returning 0
+Mar  6 01:55:01 atsqa6c71 kernel: RPC:       gss_fill_context Success.
+gc_expiry 25955452747 now 25925316747 timeout 30136
+
+In a scenario where the operation succeeds after hitting
+AUTH_REJECTEDCRED error I see gss_free_cred, gss_delete_sec_context
+being called.
+
+I am not quite sure if this is a client bug or server bug. The server
+is expecting RPC_GSS_PROC_INIT message when client refreshes the
+credentials. Is the expectation right or am I missing something.
+
+More details:
+
+Userspace NFS Server is rejecting the operations with
+AUTH_REJECTEDCRED because the credentials couldn't be found in the
+cache. Server has an LRU for the credentials and it recycles them from
+time to time.
+
+Ideally it should throw RPCSEC_GSS_CREDPROBLEM instead of
+AUTH_REJECTEDCRED error on not finding the credentials in the cache
+(section 5.3.3.3 of rfc2203). However this shouldn't matter much as
+both the errors are handled similarly on the client.
+
+Client tolerates 3 errors but all the three calls failed because the
+credentials were recycled for the first time and the credentials which
+came as part of second/third retry weren't inserted in the cache. This
+would happen if the client doesn't send RPC_GSS_PROC_INIT when it
+refreshed the credentials.
+
+Thanks,
+Satya.
