@@ -1,34 +1,40 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from bombadil.infradead.org ([65.50.211.133]:36366 "EHLO
+Received: from bombadil.infradead.org ([65.50.211.133]:50079 "EHLO
         bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1756558AbdCHABx (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 7 Mar 2017 19:01:53 -0500
-Date: Tue, 7 Mar 2017 15:43:45 -0800
+        with ESMTP id S933495AbdCHAgV (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 7 Mar 2017 19:36:21 -0500
+Date: Tue, 7 Mar 2017 15:40:51 -0800
 From: Christoph Hellwig <hch@infradead.org>
-To: "Darrick J. Wong" <darrick.wong@oracle.com>
-Cc: Olga Kornievskaia <kolga@netapp.com>, linux-fsdevel@vger.kernel.org,
-        hch@lst.de, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v1 1/3] fs: Don't copy beyond the end of the file
-Message-ID: <20170307234345.GB29977@infradead.org>
-References: <20170302160211.30451-1-kolga@netapp.com>
- <20170302160211.30451-2-kolga@netapp.com>
- <20170302165839.GC5269@birch.djwong.org>
- <9265113A-877D-4C62-9A3F-65D09D0FC404@netapp.com>
- <20170302184057.GM26319@birch.djwong.org>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: Christoph Hellwig <hch@infradead.org>,
+        Olga Kornievskaia <kolga@netapp.com>, Trond.Myklebust@primarydata.com,
+        linux-nfs@vger.kernel.org
+Subject: Re: [RFC v1 01/19] fs: Don't copy beyond the end of the file
+Message-ID: <20170307234051.GA29977@infradead.org>
+References: <20170302160123.30375-1-kolga@netapp.com>
+ <20170302160123.30375-2-kolga@netapp.com>
+ <20170302162221.GA6854@infradead.org>
+ <20170303204747.GE13877@fieldses.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20170302184057.GM26319@birch.djwong.org>
+In-Reply-To: <20170303204747.GE13877@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Mar 02, 2017 at 10:40:57AM -0800, Darrick J. Wong wrote:
-> Never mind, I misread vfs_copy as vfs_clone and thought you were talking
-> about something else. :(
-> 
-> Sorry about the noise.
+On Fri, Mar 03, 2017 at 03:47:47PM -0500, J. Bruce Fields wrote:
+> That's what I think too, but then is COPY(2) wrong?:
 
-And either way we'll need test coverage for copy_file_range before we
-do any more changes to it.  I'm sick and tired of this doctoring around
-without having any test coverage.  I've asked for it again and again
-and we've made very little progress despite having the code in the tree
-for almost a year and a half.
+Either the current kernel code or the man page is wrong..
+
+> Also, copy_file_range can be implemented by ->clone_file_range, where
+> these kinds of checks make more sense, I think; e.g. from btrfs:
+> 
+> 	ret = -EINVAL;
+> 	if (off + len > src->i_size || off + len < off)
+> 		goto out_unlock;
+> 
+> Well, so the caller just has to be prepared for either behavior, I
+> guess, but that may make it more complicated to use.
+
+We'll need to stick to one behavior.  So between the man page and
+the clone implementation I guess this patch is fine after all.
