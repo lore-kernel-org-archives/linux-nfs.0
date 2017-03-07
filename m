@@ -1,104 +1,72 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.linuxfoundation.org ([140.211.169.12]:46720 "EHLO
-        mail.linuxfoundation.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1752685AbdCFVvk (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 6 Mar 2017 16:51:40 -0500
-Date: Mon, 6 Mar 2017 13:22:14 -0800
-From: Andrew Morton <akpm@linux-foundation.org>
-To: Michal Hocko <mhocko@kernel.org>
-Cc: <linux-fsdevel@vger.kernel.org>, <linux-mm@kvack.org>,
-        Dave Chinner <david@fromorbit.com>, djwong@kernel.org,
-        "Theodore Ts'o" <tytso@mit.edu>, Chris Mason <clm@fb.com>,
-        David Sterba <dsterba@suse.cz>, Jan Kara <jack@suse.cz>,
-        ceph-devel@vger.kernel.org, cluster-devel@redhat.com,
-        linux-nfs@vger.kernel.org, logfs@logfs.org, linux-xfs@vger.kernel.org,
-        linux-ext4@vger.kernel.org, linux-btrfs@vger.kernel.org,
-        linux-mtd@lists.infradead.org, reiserfs-devel@vger.kernel.org,
-        linux-ntfs-dev@lists.sourceforge.net,
-        linux-f2fs-devel@lists.sourceforge.net, linux-afs@lists.infradead.org,
-        LKML <linux-kernel@vger.kernel.org>, Michal Hocko <mhocko@suse.com>,
-        Vlastimil Babka <vbabka@suse.cz>
-Subject: Re: [PATCH 4/7] mm: introduce memalloc_nofs_{save,restore} API
-Message-Id: <20170306132214.1769368301d9e671e1bc68be@linux-foundation.org>
-In-Reply-To: <20170306131408.9828-5-mhocko@kernel.org>
-References: <20170306131408.9828-1-mhocko@kernel.org>
-        <20170306131408.9828-5-mhocko@kernel.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Received: from us-smtp-delivery-194.mimecast.com ([216.205.24.194]:45702 "EHLO
+        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1754083AbdCGAwf (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 6 Mar 2017 19:52:35 -0500
+From: Trond Myklebust <trondmy@primarydata.com>
+To: "jlayton@poochiereds.net" <jlayton@poochiereds.net>,
+        "neilb@suse.com" <neilb@suse.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+CC: "hch@infradead.org" <hch@infradead.org>
+Subject: Re: Confused by pnfs LAYOUTRETURN - seeking clarity.
+Date: Tue, 7 Mar 2017 00:48:22 +0000
+Message-ID: <1488847700.2913.1.camel@primarydata.com>
+References: <87shmvnzh7.fsf@notabene.neil.brown.name>
+         <1488569105.2997.1.camel@poochiereds.net>
+         <87r32bjbzq.fsf@notabene.neil.brown.name>
+In-Reply-To: <87r32bjbzq.fsf@notabene.neil.brown.name>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon,  6 Mar 2017 14:14:05 +0100 Michal Hocko <mhocko@kernel.org> wrote:
-
-> From: Michal Hocko <mhocko@suse.com>
-> 
-> GFP_NOFS context is used for the following 5 reasons currently
-> 	- to prevent from deadlocks when the lock held by the allocation
-> 	  context would be needed during the memory reclaim
-> 	- to prevent from stack overflows during the reclaim because
-> 	  the allocation is performed from a deep context already
-> 	- to prevent lockups when the allocation context depends on
-> 	  other reclaimers to make a forward progress indirectly
-> 	- just in case because this would be safe from the fs POV
-> 	- silence lockdep false positives
-> 
-> Unfortunately overuse of this allocation context brings some problems
-> to the MM. Memory reclaim is much weaker (especially during heavy FS
-> metadata workloads), OOM killer cannot be invoked because the MM layer
-> doesn't have enough information about how much memory is freeable by the
-> FS layer.
-> 
-> In many cases it is far from clear why the weaker context is even used
-> and so it might be used unnecessarily. We would like to get rid of
-> those as much as possible. One way to do that is to use the flag in
-> scopes rather than isolated cases. Such a scope is declared when really
-> necessary, tracked per task and all the allocation requests from within
-> the context will simply inherit the GFP_NOFS semantic.
-> 
-> Not only this is easier to understand and maintain because there are
-> much less problematic contexts than specific allocation requests, this
-> also helps code paths where FS layer interacts with other layers (e.g.
-> crypto, security modules, MM etc...) and there is no easy way to convey
-> the allocation context between the layers.
-> 
-> Introduce memalloc_nofs_{save,restore} API to control the scope
-> of GFP_NOFS allocation context. This is basically copying
-> memalloc_noio_{save,restore} API we have for other restricted allocation
-> context GFP_NOIO. The PF_MEMALLOC_NOFS flag already exists and it is
-> just an alias for PF_FSTRANS which has been xfs specific until recently.
-> There are no more PF_FSTRANS users anymore so let's just drop it.
-> 
-> PF_MEMALLOC_NOFS is now checked in the MM layer and drops __GFP_FS
-> implicitly same as PF_MEMALLOC_NOIO drops __GFP_IO. memalloc_noio_flags
-> is renamed to current_gfp_context because it now cares about both
-> PF_MEMALLOC_NOFS and PF_MEMALLOC_NOIO contexts. Xfs code paths preserve
-> their semantic. kmem_flags_convert() doesn't need to evaluate the flag
-> anymore.
-> 
-> This patch shouldn't introduce any functional changes.
-> 
-> Let's hope that filesystems will drop direct GFP_NOFS (resp. ~__GFP_FS)
-> usage as much as possible and only use a properly documented
-> memalloc_nofs_{save,restore} checkpoints where they are appropriate.
-> 
-> ....
->
-> --- a/include/linux/gfp.h
-> +++ b/include/linux/gfp.h
-> @@ -210,8 +210,16 @@ struct vm_area_struct;
->   *
->   * GFP_NOIO will use direct reclaim to discard clean pages or slab pages
->   *   that do not require the starting of any physical IO.
-> + *   Please try to avoid using this flag directly and instead use
-> + *   memalloc_noio_{save,restore} to mark the whole scope which cannot
-> + *   perform any IO with a short explanation why. All allocation requests
-> + *   will inherit GFP_NOIO implicitly.
->   *
->   * GFP_NOFS will use direct reclaim but will not use any filesystem interfaces.
-> + *   Please try to avoid using this flag directly and instead use
-> + *   memalloc_nofs_{save,restore} to mark the whole scope which cannot/shouldn't
-> + *   recurse into the FS layer with a short explanation why. All allocation
-> + *   requests will inherit GFP_NOFS implicitly.
-
-I wonder if these are worth a checkpatch rule.
+SGkgTmVpbCwNCg0KT24gTW9uLCAyMDE3LTAzLTA2IGF0IDE0OjU0ICsxMTAwLCBOZWlsQnJvd24g
+d3JvdGU6DQo+IE9uIEZyaSwgTWFyIDAzIDIwMTcsIEplZmYgTGF5dG9uIHdyb3RlOg0KPiANCj4g
+PiANCj4gPiBUaGVyZSBpcyBvbmUgc3BlY2lhbCBjYXNlLi4uDQo+ID4gDQo+ID4gV2hlbiB0aGUg
+c2VydmVyIGRvZXMgYSBDQl9MQVlPVVRSRUNBTEwsIHRoZSBjbGllbnQgY2FuIHJlcGx5IHdpdGgN
+Cj4gPiBORlM0RVJSX05PTUFUQ0hJTkdfTEFZT1VUIGlmIGl0J3Mgbm90IGFjdGl2ZWx5IHVzaW5n
+IHRoZSBsYXlvdXQgYXQNCj4gPiB0aGUNCj4gPiB0aW1lLiBXaXRoIHRoYXQsIHRoZSBjbGllbnQg
+aXNuJ3QgZXhwZWN0ZWQgdG8gZG8gYSBMQVlPVVRSRVRVUk4uDQo+ID4gDQo+ID4gQW55IG90aGVy
+IHN0YXR1cyBvbiB0aGUgQ0JfTEFZT1VUUkVDQUxMIGhvd2V2ZXIgZG9lcyByZXF1aXJlIGENCj4g
+PiBMQVlPVVRSRVRVUk4uDQo+IA0KPiBUaGFua3MsIGJvdGggdG8geW91IGFuZCBDaHJpc3RvcGgs
+IGZvciB0aGlzIHBvaW50ZXIuDQo+IFRoaW5ncyBhcmUgc3RhcnRpbmcgdG8gbWFrZSBzZW5zZS4N
+Cj4gDQo+IEhvd2V2ZXIgUkZDNTY2MSBzYXlzIHVuZGVyDQo+IMKgwqDCoE9wZXJhdGlvbiA1OiBD
+Ql9MQVlPVVRSRUNBTEwgLSBSZWNhbGwgTGF5b3V0IGZyb20gQ2xpZW50DQo+IA0KPiDCoMKgwqBX
+aGlsZSB0aGUgY2xpZW50IHJlc3BvbmRzIHRvIHRoZSBDQl9MQVlPVVRSRUNBTEwgaW1tZWRpYXRl
+bHksIHRoZQ0KPiDCoMKgwqBvcGVyYXRpb24gaXMgbm90IGNvbnNpZGVyZWQgY29tcGxldGUgKGku
+ZS4sIGNvbnNpZGVyZWQgcGVuZGluZykNCj4gdW50aWwNCj4gwqDCoMKgYWxsIGFmZmVjdGVkIGxh
+eW91dHMgYXJlIHJldHVybmVkIHRvIHRoZSBzZXJ2ZXIgdmlhIHRoZQ0KPiBMQVlPVVRSRVRVUk4N
+Cj4gwqDCoMKgb3BlcmF0aW9uLg0KPiANCj4gd2hpY2ggc2VlbXMgdG8gc3Ryb25nbHkgaW1wbHkg
+dGhhdCBhIExBWU9VVFJFVFVSTiBpcyBleHBlY3RlZC7CoMKgTm8NCj4gYWx0ZXJuYXRpdmUgaXMg
+bGlzdGVkLg0KPiANCj4gRnVydGhlcjoNCj4gDQo+IMKgwqDCoMKgVGhlIE5GUzRFUlJfTk9NQVRD
+SElOR19MQVlPVVQgZXJyb3IgaXMgb25seSByZXR1cm5lZCB3aGVuIHRoZQ0KPiBjbGllbnQNCj4g
+wqDCoMKgwqBkb2VzIG5vdCBob2xkIGxheW91dHMgZm9yIHRoZSBmaWxlIG9yIGlmIHRoZSBjbGll
+bnQgZG9lcyBub3QgaGF2ZQ0KPiDCoMKgwqDCoGFueSBvdmVybGFwcGluZyBsYXlvdXRzIGZvciB0
+aGUgc3BlY2lmaWNhdGlvbiBpbiB0aGUgbGF5b3V0DQo+IHJlY2FsbC4NCj4gDQo+IFRoaXMgaXMg
+YW4gKmVycm9yKiBjb25kaXRpb24uwqDCoMKgVGhlIGNsaWVudCByZWFsbHkgZG9lcyBzdGlsbCBo
+b2xkDQo+IHRoZSBsYXlvdXRzIGlmIGl0IGhhc24ndCBzZW50ICJMQVlPVVRSRVRVUk4iLsKgwqBU
+aGUgZmFjdCB0aGF0IHRoZQ0KPiBsaW51eA0KPiBjbGllbnQgY2hvb3NlcyB0byBmb3JnZXQgdGhl
+bSBhbmQgd29uJ3QgZXZlciB1c2UgdGhlbSBhZ2FpbiBpc24ndA0KPiByZWFsbHkNCj4gdGhlIHNh
+bWUgdGhpbmcgYXMgIm5vdCBob2xkW2luZ10gbGF5b3V0cyIuDQo+IA0KPiBJZiBJIHdlcmUgYSBz
+ZXJ2ZXIgYXV0aG9yIGFuZCBJIGdvdCBORlM0RVJSX05PTUFUQ0hJTkdfTEFZT1VUIGZvciBhDQo+
+IENCX0xBWU9VVFJFQ0FMTCB3aGVyZSBhIEkga25ldyBmb3IgY2VydGFpbiB0aGF0IHRoZSBjbGll
+bnQgcmVhbGx5IGRpZA0KPiBoYXZlIHRoZSBsYXlvdXQsIHRoZW4gSSB3b3VsZCBwcm9iYWJseSBm
+ZWVsIGp1c3RpZmllZCBpbiBkaXNjYXJkaW5nDQo+IGFsbA0KPiBzdGF0ZSBoZWxkIGJ5IHRoYXQg
+Y29uZnVzZWQgY2xpZW50LCBhbmQgcmVxdWlyaW5nIHRvIHJlLWVzdGFibGlzaA0KPiBldmVyeXRo
+aW5nIChiZWNhdXNlIEkgY2Fubm90IHRydXN0IGFueXRoaW5nIGFueSBtb3JlKS4NCj4gDQo+IFNv
+IHRoZSBOZXRhcHAgZmlsZXIgaXMgY2xlYXJseSBkb2luZyB0aGUgd3JvbmcgdGhpbmcsIGFzIHdl
+IGRvZXNuJ3QNCj4gc2VuZA0KPiBDQl9MQVlPVVRSRUNBTEwuwqDCoEJ1dCBJJ20gZmFyIGZyb20g
+Y29udmluY2VkIHRoYXQgTGludXggaXMgZG9pbmcgdGhlDQo+IHJpZ2h0IHRoaW5nIGJ5IHJlcGx5
+aW5nIE5GUzRFUlJfTk9NQVRDSElOR19MQVlPVVQuDQo+IA0KPiBIb3dldmVyLCBJJ20gbm90IGdv
+aW5nIHRvIHRyeSB0byAiZml4IiBhbnl0aGluZyBoZXJlLsKgwqBIb3BlZnVsbHkgd2UNCj4gY2Fu
+DQo+IG1hbmFnZSB0byBzdHVtYmxlIGZvcndhcmQuDQo+IA0KDQpQbGVhc2Ugc2VlIFJGQzU2NjEs
+IFNlY3Rpb24gMTIuNS41LjEgaHR0cHM6Ly90b29scy5pZXRmLm9yZy9odG1sL3JmYzU2Ng0KMSNz
+ZWN0aW9uLTEyLjUuNS4xDQoNClRoYXQgc2VjdGlvbiBoYXMgYSBmdWxsIGRvY3VtZW50YXRpb24g
+b2Ygd2hhdCB0aGUgc2VydmVyIHNob3VsZA0KaW50ZXJwcmV0IE5GUzRFUlJfTk9NQVRDSElOR19M
+QVlPVVQgdG8gbWVhbiwgYW5kIHNob3VsZCBleHBsYWluIHdoeSB0aGUNCkxpbnV4IGNsaWVudCBi
+ZWhhdmlvdXIgaXMgcXVpdGUgY29ycmVjdCB3LnIudC4gdGhlIHNwZWMuDQpUaGVyZSBhcmUgYSBj
+b3VwbGUgb2YgZXJyYXRhIHRvIGNvbnNpZGVyIHRvbywgYnV0IHRoZXkgbWFpbmx5IHRyeSB0bw0K
+bmFpbCBkb3duIHRoZSBleHBlY3RlZCBiZWhhdmlvdXIgZm9yIGEgY291cGxlIG9mIGNvcm5lciBj
+YXNlcy4NCg0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFpbnRhaW5l
+ciwgUHJpbWFyeURhdGENCnRyb25kLm15a2xlYnVzdEBwcmltYXJ5ZGF0YS5jb20NCg==
 
