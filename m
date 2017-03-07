@@ -1,81 +1,67 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:56554 "EHLO mx2.suse.de"
+Received: from mx143.netapp.com ([216.240.21.24]:49526 "EHLO mx143.netapp.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751088AbdCGUKj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 7 Mar 2017 15:10:39 -0500
-From: NeilBrown <neilb@suse.com>
-To: Trond Myklebust <trondmy@primarydata.com>,
-        "jlayton\@poochiereds.net" <jlayton@poochiereds.net>,
-        "linux-nfs\@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Date: Wed, 08 Mar 2017 07:09:26 +1100
-Cc: "hch\@infradead.org" <hch@infradead.org>
-Subject: Re: Confused by pnfs LAYOUTRETURN - seeking clarity.
-In-Reply-To: <1488847700.2913.1.camel@primarydata.com>
-References: <87shmvnzh7.fsf@notabene.neil.brown.name> <1488569105.2997.1.camel@poochiereds.net> <87r32bjbzq.fsf@notabene.neil.brown.name> <1488847700.2913.1.camel@primarydata.com>
-Message-ID: <87wpc0j1c9.fsf@notabene.neil.brown.name>
-MIME-Version: 1.0
-Content-Type: multipart/signed; boundary="=-=-=";
-        micalg=pgp-sha256; protocol="application/pgp-signature"
+        id S1751955AbdCGWIk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 7 Mar 2017 17:08:40 -0500
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0 (Mac OS X Mail 9.3 \(3124\))
+Subject: Re: [PATCH v1 2/3] VFS permit cross device vfs_copy_file_range
+From: Olga Kornievskaia <kolga@netapp.com>
+In-Reply-To: <0ADCDD29-61BA-46CA-902C-06A6F7D06450@netapp.com>
+Date: Tue, 7 Mar 2017 15:35:40 -0500
+CC: <linux-fsdevel@vger.kernel.org>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        ng-linux-team <ng-linux-team@netapp.com>
+Message-ID: <0AA27980-5FDF-4C15-A583-9A2D22422A4B@netapp.com>
+References: <20170302160211.30451-1-kolga@netapp.com>
+ <20170302160211.30451-3-kolga@netapp.com> <20170302160714.GA4760@lst.de>
+ <0ADCDD29-61BA-46CA-902C-06A6F7D06450@netapp.com>
+To: Christoph Hellwig <hch@lst.de>, <viro@zeniv.linux.org.uk>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---=-=-=
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: quoted-printable
 
-On Tue, Mar 07 2017, Trond Myklebust wrote:
-
-> Hi Neil,
->
-> On Mon, 2017-03-06 at 14:54 +1100, NeilBrown wrote:
-...
+> On Mar 2, 2017, at 11:38 AM, Olga Kornievskaia <kolga@netapp.com> =
+wrote:
+>=20
+>=20
+>> On Mar 2, 2017, at 11:07 AM, Christoph Hellwig <hch@lst.de> wrote:
 >>=20
->> So the Netapp filer is clearly doing the wrong thing, as we doesn't
->> send
->> CB_LAYOUTRECALL.=C2=A0=C2=A0But I'm far from convinced that Linux is doi=
-ng the
->> right thing by replying NFS4ERR_NOMATCHING_LAYOUT.
+>> On Thu, Mar 02, 2017 at 11:02:10AM -0500, Olga Kornievskaia wrote:
+>>> Allow nfs_copy_file_range to copy across devices.
+>>> NFSv4.2 inter server to server copy always copies across devices, =
+and
+>>> NFSv4.2 intra server to server copy can copy across devices on the =
+same
+>>> server.
+>>>=20
+>>> If a file system's fileoperations copy_file_range operation =
+prohibits
+>>> cross-device copies, fall back to do_splice_direct. This is needed =
+for
+>>> nfsd_copy_file_range() which is called by the inter server to server
+>>> destination server acting as an NFS client, and reading the file =
+from
+>>> the source server.
 >>=20
->> However, I'm not going to try to "fix" anything here.=C2=A0=C2=A0Hopeful=
-ly we
->> can
->> manage to stumble forward.
->>=20
->
-> Please see RFC5661, Section 12.5.5.1 https://tools.ietf.org/html/rfc566
-> 1#section-12.5.5.1
->
-> That section has a full documentation of what the server should
-> interpret NFS4ERR_NOMATCHING_LAYOUT to mean, and should explain why the
-> Linux client behaviour is quite correct w.r.t. the spec.
-> There are a couple of errata to consider too, but they mainly try to
-> nail down the expected behaviour for a couple of corner cases.
+>> NAK, we really should not do operations between different =
+superblocks.
+>=20
+> Can you provide some reasoning as to why? What would it break? The =
+reasoning for including one is to allow for a file system to achieve =
+better performance which seems like a feature that would be of great =
+benefit.
 
-Thanks for that.  The last too sentences to suggest that
-NFS4ERR_NOMATCHING_LAYOUT isn't really an error, and the whole
-discusses how the server and client can reasonably have different
-understandings of the current set of layouts.
+Christoph, could you please elaborate on your objection.
 
-Thanks,
-NeilBrown
+Al, could you weigh in with regards to if and what would it take to =
+allow for copy_file_range() to allow for copies between different =
+superblocks.
 
---=-=-=
-Content-Type: application/pgp-signature; name="signature.asc"
+We would appreciate the feedback of how can we enable this performance =
+feature to be useful to users.
 
------BEGIN PGP SIGNATURE-----
+Thank you.
 
-iQIzBAEBCAAdFiEEG8Yp69OQ2HB7X0l6Oeye3VZigbkFAli/E3YACgkQOeye3VZi
-gbnJEw//Th43YtnehGQXkkfHJLJWkbPkdtw4AuADDagkarEf30Y9aGruexl+9Pk9
-yGeQRyhFH3wRALMzba9NKeXN5neC1KT5L0XKuvkn9DZ1OrzzxGwpIXnTU/nped8m
-4pzllh8KiFDqa0/TojhpCo9oHXMaqIBKWRAVxRpxvat+isMINVQYpy4Y0/EMHjKl
-i4gP4hxkwFwwgipDLiWLuqgXSkGYXyyLuQhoZTFKx79mm5kavPuDAedWvCVWBiQT
-PX+hrlHyy/6I+BFTw5O1TH+7Fu0T41BWTskfGcuwzIchEKYMQJDf3wtNk1BYyFgE
-/lYX9cAM7Ks5J5YfHkCMWIfcfPTsl+m6ZVWiZx29RQBDSXKQlr4uZ9Ikd8tS2mtY
-cHy9yPL0Q2EjMul7pqsPbHbnSCXtunL/WwMHBpHBUUUmal+T1eTMkRswM5uQUMxj
-HReMERcovdDru8i+hE5K+q7FoRvRnWEtcGsjQSVqJLxt/jRI6dbv3paMokSvneeu
-v2kIwPoyhTNG4LMVooVLEFuoWfRrEHSM6N0xu/8pa+5z6//mqThug7NuctebnAx/
-f0RwrzZnxYo4xusSnG8Qv1VcGsLXbKbwwKWPqzlIXHizE6O3AI9rqmbNowGmrR1l
-Xun2iAWPMjJcxRNe74GpKPl7c5v2lLFxZbJlr7VFf+OEZmZ+0T0=
-=xI8o
------END PGP SIGNATURE-----
---=-=-=--
+
+
