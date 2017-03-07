@@ -1,67 +1,78 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx143.netapp.com ([216.240.21.24]:49526 "EHLO mx143.netapp.com"
+Received: from mx2.suse.de ([195.135.220.15]:48760 "EHLO mx2.suse.de"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751955AbdCGWIk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 7 Mar 2017 17:08:40 -0500
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0 (Mac OS X Mail 9.3 \(3124\))
-Subject: Re: [PATCH v1 2/3] VFS permit cross device vfs_copy_file_range
-From: Olga Kornievskaia <kolga@netapp.com>
-In-Reply-To: <0ADCDD29-61BA-46CA-902C-06A6F7D06450@netapp.com>
-Date: Tue, 7 Mar 2017 15:35:40 -0500
-CC: <linux-fsdevel@vger.kernel.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        ng-linux-team <ng-linux-team@netapp.com>
-Message-ID: <0AA27980-5FDF-4C15-A583-9A2D22422A4B@netapp.com>
-References: <20170302160211.30451-1-kolga@netapp.com>
- <20170302160211.30451-3-kolga@netapp.com> <20170302160714.GA4760@lst.de>
- <0ADCDD29-61BA-46CA-902C-06A6F7D06450@netapp.com>
-To: Christoph Hellwig <hch@lst.de>, <viro@zeniv.linux.org.uk>
+        id S1756255AbdCGXb4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 7 Mar 2017 18:31:56 -0500
+From: NeilBrown <neilb@suse.com>
+To: gss-proxy@lists.fedorahosted.org,
+        "linux-nfs\@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Date: Wed, 08 Mar 2017 10:14:01 +1100
+Subject: migration from svcgssd to gssproxy results in regression.
+Message-ID: <87lgsgissm.fsf@notabene.neil.brown.name>
+MIME-Version: 1.0
+Content-Type: multipart/signed; boundary="=-=-=";
+        micalg=pgp-sha256; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-> On Mar 2, 2017, at 11:38 AM, Olga Kornievskaia <kolga@netapp.com> =
-wrote:
->=20
->=20
->> On Mar 2, 2017, at 11:07 AM, Christoph Hellwig <hch@lst.de> wrote:
->>=20
->> On Thu, Mar 02, 2017 at 11:02:10AM -0500, Olga Kornievskaia wrote:
->>> Allow nfs_copy_file_range to copy across devices.
->>> NFSv4.2 inter server to server copy always copies across devices, =
-and
->>> NFSv4.2 intra server to server copy can copy across devices on the =
-same
->>> server.
->>>=20
->>> If a file system's fileoperations copy_file_range operation =
-prohibits
->>> cross-device copies, fall back to do_splice_direct. This is needed =
-for
->>> nfsd_copy_file_range() which is called by the inter server to server
->>> destination server acting as an NFS client, and reading the file =
-from
->>> the source server.
->>=20
->> NAK, we really should not do operations between different =
-superblocks.
->=20
-> Can you provide some reasoning as to why? What would it break? The =
-reasoning for including one is to allow for a file system to achieve =
-better performance which seems like a feature that would be of great =
-benefit.
-
-Christoph, could you please elaborate on your objection.
-
-Al, could you weigh in with regards to if and what would it take to =
-allow for copy_file_range() to allow for copies between different =
-superblocks.
-
-We would appreciate the feedback of how can we enable this performance =
-feature to be useful to users.
-
-Thank you.
+--=-=-=
+Content-Type: text/plain
 
 
+Hi,
+ I recently tried using gssproxy for krb5 authentication with nfsd.
+ This was because customer is using an AD kerberos master which uses
+ certificates which are too big for svcgssd to work with (i.e. larger
+ than one page).
 
+ Unfortunately it doesn't work.
+
+ The svcgssd code in nfs-utils calls
+   gss_display_name()
+ to get the name of the principal.  This returns something like
+ "user@domain".
+
+ getpwnam() works perfectly on this (when nsswitch is set to use "winbind")
+ but svcgssd goes further and uses nfs4_gss_princ_to_ids() to perform
+ the lookup.  Presumably this is more general?
+
+ gssproxy does neither of these.
+ It uses gss_localname() to get the user name, which returns something
+ like "user".
+ It then calls getpwnam() on that, which fails ("user@domain" or
+ "domain\user" both succeed).
+
+ I have modified my copy to use gss_display_name() instead of
+ gss_localname() and it now appears to work perfectly ... for this
+ use-case at least.
+
+ What is the right way forward here?
+ Is nfs4_gss_princ_to_ids() really necessary?
+ Should gssproxy use it, at least for requests from the NFS server?
+ Is there are good reason not to use gss_display_name() uniformly?
+ Maybe use gss_local_name(), and it that fails, or getpwnam fails,
+ use gss_display_name()??
+
+Thanks,
+NeilBrown
+
+--=-=-=
+Content-Type: application/pgp-signature; name="signature.asc"
+
+-----BEGIN PGP SIGNATURE-----
+
+iQIzBAEBCAAdFiEEG8Yp69OQ2HB7X0l6Oeye3VZigbkFAli/PrkACgkQOeye3VZi
+gblmChAAhr43eGvc/AdyitFOGI29pXLHV3uYivGDsFtHEXFcNXKUJPLFyHcb4n17
+9ljcpnGdH46tEHIgMg+qYJzw+/MwTC5MoBvBj96Q7Daz+yWCNDHxAn6Dt8SbvPa2
+81Babgcug6McNY74/PQuYbK9UsZTW9602qKkgdT3F+SBoMpqJeqM3nMRr74HafIU
+ZKFVfK4ZogWIvFiHjLgWkEJDvVKgStltYwzJ6e2p8CM1GYYgDzCv4aIjPZxIYH+B
+nWXD3eJ8k3vKiAlTUW6bomv1L5IxBkJXkItmx6yH23fJAs/cuyI/PVEabm7EDHA5
+QMRkHhIk6by4HbZJSMoJvn4BALENtKlAEIVT7y6k1jpAxXtg0/5/7jo+ANgveaSO
+VVRnLdaBv48kKDUFyAZFJ/kMzAiwPFJCgP2Lb45Iv5NITur8yETdCu/Yu/7unIo9
+1JT0nHvV7azIwxDi5RzH3ef1F2I9Nc4xxI/MkHOzu4SBlk3lIVkVjGqSsXOem44a
+MQThIZRXqQDLKBwgNwLEnRNNX9LhKKJWzXMN1fWS6K0J7rf9/U/qmY7dEoW2/lEQ
+xUF+tiIpLl09Vw4DF0pO74ywApLsmk69i6Ppx4LvP4ve5Zrq6mRY5ykUK2XVFFMk
+tDv/Ln/6YQpgKORT1fAuqkVAjKCj7Z4vPiVCNNQT0IgYhpe3hXI=
+=h2cP
+-----END PGP SIGNATURE-----
+--=-=-=--
