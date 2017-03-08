@@ -1,78 +1,54 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:41506 "EHLO mx1.redhat.com"
+Received: from mx141.netapp.com ([216.240.21.12]:26852 "EHLO mx141.netapp.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1750946AbdCHOjr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 8 Mar 2017 09:39:47 -0500
-Date: Wed, 8 Mar 2017 09:30:36 -0500
-From: Scott Mayhew <smayhew@redhat.com>
-To: NeilBrown <neilb@suse.com>
-Cc: gss-proxy@lists.fedorahosted.org,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: migration from svcgssd to gssproxy results in regression.
-Message-ID: <20170308143036.iqczezupqnpqzlh7@tonberry.usersys.redhat.com>
-References: <87lgsgissm.fsf@notabene.neil.brown.name>
- <20170308141500.3swdz3mpccw3hrid@tonberry.usersys.redhat.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20170308141500.3swdz3mpccw3hrid@tonberry.usersys.redhat.com>
+        id S1752998AbdCHPku (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 8 Mar 2017 10:40:50 -0500
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0 (Mac OS X Mail 9.3 \(3124\))
+Subject: Re: [PATCH v1 1/3] fs: Don't copy beyond the end of the file
+From: Olga Kornievskaia <kolga@netapp.com>
+In-Reply-To: <20170307235058.GA9879@infradead.org>
+Date: Wed, 8 Mar 2017 10:39:11 -0500
+CC: "Darrick J. Wong" <darrick.wong@oracle.com>,
+        <linux-fsdevel@vger.kernel.org>, Christoph Hellwig <hch@lst.de>,
+        <linux-nfs@vger.kernel.org>
+Message-ID: <1523DC5D-A162-4EB7-AAD7-F0C1BF8B57A8@netapp.com>
+References: <20170302160211.30451-1-kolga@netapp.com>
+ <20170302160211.30451-2-kolga@netapp.com>
+ <20170302165839.GC5269@birch.djwong.org>
+ <9265113A-877D-4C62-9A3F-65D09D0FC404@netapp.com>
+ <20170302184057.GM26319@birch.djwong.org>
+ <20170307234345.GB29977@infradead.org>
+ <0E27E7C0-50AE-4E48-80BF-A9B6738BA4EC@netapp.com>
+ <20170307235058.GA9879@infradead.org>
+To: Christoph Hellwig <hch@infradead.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, 08 Mar 2017, Scott Mayhew wrote:
 
-> Hi Neil,
-> 
-> On Wed, 08 Mar 2017, NeilBrown wrote:
-> 
-> > 
-> > Hi,
-> >  I recently tried using gssproxy for krb5 authentication with nfsd.
-> >  This was because customer is using an AD kerberos master which uses
-> >  certificates which are too big for svcgssd to work with (i.e. larger
-> >  than one page).
-> > 
-> >  Unfortunately it doesn't work.
-> > 
-> >  The svcgssd code in nfs-utils calls
-> >    gss_display_name()
-> >  to get the name of the principal.  This returns something like
-> >  "user@domain".
-> > 
-> >  getpwnam() works perfectly on this (when nsswitch is set to use "winbind")
-> >  but svcgssd goes further and uses nfs4_gss_princ_to_ids() to perform
-> >  the lookup.  Presumably this is more general?
-> > 
-> >  gssproxy does neither of these.
-> >  It uses gss_localname() to get the user name, which returns something
-> >  like "user".
-> 
-> Are using SSSD by any chance?  I had a similar issue in RHEL maybe a
-> year ago.  If you're using SSSD there's a localauth plugin that needs to
-> be enabled that will cause krb5_aname_to_localname() (which is called by
-> gss_localname()) to return a fully-qualified username instead of the
-> short username.
+> On Mar 7, 2017, at 6:50 PM, Christoph Hellwig <hch@infradead.org> =
+wrote:
+>=20
+> On Tue, Mar 07, 2017 at 06:46:55PM -0500, Olga Kornievskaia wrote:
+>> Anna has added test cases to the xfstest suite. Is there something =
+that=E2=80=99s missing?=20
+>=20
+> No, we still don't have that.  Anna did one attempt (or maybe two) but
+> didn't seem to have time to follow up the review comments.  Maybe you
+> can give it a spin to make sure we at least have basic test coverage,
+> including the cases mentioned in the man page like this.
 
-Err, never mind... I see up above that you said you were using
-Winbind...
+I=E2=80=99m reading some mail archives and I see that Anna submitted =
+patches for xfstests. The comment was to re-work it as a part of xfs_io =
+command. She posted the patches for that. According to the announcement =
+I see here: http://oss.sgi.com/archives/xfs/2016-08/msg00221.html it =
+says it=E2=80=99s including the new copy_file_range command in xfs_io. I =
+don=E2=80=99t run these tests so I don=E2=80=99t know but it look to me =
+that the tests are in.
 
-> 
-> -Scott
-> 
-> >  It then calls getpwnam() on that, which fails ("user@domain" or
-> >  "domain\user" both succeed).
-> > 
-> >  I have modified my copy to use gss_display_name() instead of
-> >  gss_localname() and it now appears to work perfectly ... for this
-> >  use-case at least.
-> > 
-> >  What is the right way forward here?
-> >  Is nfs4_gss_princ_to_ids() really necessary?
-> >  Should gssproxy use it, at least for requests from the NFS server?
-> >  Is there are good reason not to use gss_display_name() uniformly?
-> >  Maybe use gss_local_name(), and it that fails, or getpwnam fails,
-> >  use gss_display_name()??
-> > 
-> > Thanks,
-> > NeilBrown
-> 
-> 
+Can you please what I=E2=80=99m getting wrong?
+
+Thank you.
+
+
+
