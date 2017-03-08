@@ -1,80 +1,66 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:42782 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:38686 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1753096AbdCHRjX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 8 Mar 2017 12:39:23 -0500
-Date: Wed, 8 Mar 2017 12:29:32 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Jeff Layton <jlayton@redhat.com>
-Cc: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, linux-ext4@vger.kernel.org,
-        linux-btrfs@vger.kernel.org, linux-xfs@vger.kernel.org
-Subject: Re: [RFC PATCH v1 00/30] fs: inode->i_version rework and optimization
-Message-ID: <20170308172932.GB1020@fieldses.org>
-References: <1482339827-7882-1-git-send-email-jlayton@redhat.com>
- <20170303230018.GI13877@fieldses.org>
- <1488588837.11672.5.camel@redhat.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1488588837.11672.5.camel@redhat.com>
+        id S1754118AbdCHSOm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 8 Mar 2017 13:14:42 -0500
+Message-ID: <1488989946.25839.3.camel@redhat.com>
+Subject: Re: [gssproxy] migration from svcgssd to gssproxy results in
+ regression.
+From: Simo Sorce <simo@redhat.com>
+To: The GSS-Proxy developers and users mailing list
+        <gss-proxy@lists.fedorahosted.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Date: Wed, 08 Mar 2017 11:19:06 -0500
+In-Reply-To: <87lgsgissm.fsf@notabene.neil.brown.name>
+References: <87lgsgissm.fsf@notabene.neil.brown.name>
+Content-Type: text/plain; charset="UTF-8"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Mar 03, 2017 at 07:53:57PM -0500, Jeff Layton wrote:
-> On Fri, 2017-03-03 at 18:00 -0500, J. Bruce Fields wrote:
-> > On Wed, Dec 21, 2016 at 12:03:17PM -0500, Jeff Layton wrote:
-> > > tl;dr: I think we can greatly reduce the cost of the inode->i_version
-> > > counter, by exploiting the fact that we don't need to increment it
-> > > if no one is looking at it. We can also clean up the code to prepare
-> > > to eventually expose this value via statx().
-> > > 
-> > > The inode->i_version field is supposed to be a value that changes
-> > > whenever there is any data or metadata change to the inode. Some
-> > > filesystems use it internally to detect directory changes during
-> > > readdir. knfsd will use it if the filesystem has MS_I_VERSION
-> > > set. IMA will also use it (though it's not clear to me that that
-> > > works 100% -- no check for MS_I_VERSION there).
-> > 
-> > I'm a little confused about the internal uses for directories.  Is it
-> > necessarily kept on disk?
+On Wed, 2017-03-08 at 10:14 +1100, NeilBrown wrote:
+> Hi,
+>  I recently tried using gssproxy for krb5 authentication with nfsd.
+>  This was because customer is using an AD kerberos master which uses
+>  certificates which are too big for svcgssd to work with (i.e. larger
+>  than one page).
 > 
-> No, they aren't necessarily stored on disk, and in fact they aren't on
-> most (maybe all?) of those filesystems. It's just a convenient place to
-> store a dir change value that is subsequently checked in readdir
-> operations.
+>  Unfortunately it doesn't work.
 > 
-> That's part of the "fun" of untangling this mess. ;)
+>  The svcgssd code in nfs-utils calls
+>    gss_display_name()
+>  to get the name of the principal.  This returns something like
+>  "user@domain".
 > 
-> > In cases it's not, then there's not the same
-> > performance issue, right? 
+>  getpwnam() works perfectly on this (when nsswitch is set to use
+> "winbind")
+>  but svcgssd goes further and uses nfs4_gss_princ_to_ids() to perform
+>  the lookup.  Presumably this is more general?
 > 
-> Right, I don't think it's really a big deal for most of those and I'm
-> not terribly concerned about the i_version counter on directory change
-> operations. An extra atomic op on a directory change seems unlikely to
-> hurt anything.
+>  gssproxy does neither of these.
+>  It uses gss_localname() to get the user name, which returns
+> something
+>  like "user".
+>  It then calls getpwnam() on that, which fails ("user@domain" or
+>  "domain\user" both succeed).
 > 
-> The main purpose of this is to improve the situation with small writes.
-> This should also help pave the way for fs' like NFS and Ceph that
-> implement a version counter but may not necessarily bump it on every
-> change.
+>  I have modified my copy to use gss_display_name() instead of
+>  gss_localname() and it now appears to work perfectly ... for this
+>  use-case at least.
 > 
-> I think once we have things more consistent, we'll be able to consider
-> exposing the i_version counter to userland via statx.
-> 
-> > Is there any risk these patches make
-> > performance slightly worse in that case?
-> > 
-> 
-> Maybe, but I think that risk is pretty low. Note that I haven't measured
-> that specifically here, so I could be completely wrong.
-> 
-> If it is a problem, we could consider unioning this thing with a non-
-> atomic field for the directory change cases, but that would add some
-> complexity and I'm not sure it's worth it. I'd want to measure it first.
+>  What is the right way forward here?
+>  Is nfs4_gss_princ_to_ids() really necessary?
+>  Should gssproxy use it, at least for requests from the NFS server?
+>  Is there are good reason not to use gss_display_name() uniformly?
+>  Maybe use gss_local_name(), and it that fails, or getpwnam fails,
+>  use gss_display_name()??
 
-Makes sense to me.  I agree that it's unlikely to be a problem, just
-wanted to make sure I understood....
+No, you should configure krb5.conf to map to a fully qualified name if
+that is what you normally want.
 
-Anyway, I'm a great fan of the basic idea, I hope we can get this done.
+The default rule allows mapping only for the default realm and does so
+by truncating away the realm name, but you can configure your own.
 
---b.
+see auth_to_local_names directive in krb5.conf
+
+Simo.
