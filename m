@@ -1,80 +1,112 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:43124 "EHLO fieldses.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1754203AbdCHWIA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 8 Mar 2017 17:08:00 -0500
-Date: Wed, 8 Mar 2017 17:07:23 -0500
-To: John Bazik <john_bazik@brown.edu>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: access(2) inaccurately reports execute permissions
-Message-ID: <20170308220723.GA4902@fieldses.org>
-References: <20170308215058.GO27384@cs.brown.edu>
+Received: from us-smtp-delivery-194.mimecast.com ([216.205.24.194]:32624 "EHLO
+        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1751691AbdCHW7F (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 8 Mar 2017 17:59:05 -0500
+From: Trond Myklebust <trondmy@primarydata.com>
+To: "bfields@fieldses.org" <bfields@fieldses.org>
+CC: "hch@infradead.org" <hch@infradead.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "kolga@netapp.com" <kolga@netapp.com>,
+        "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>
+Subject: Re: [RFC v1 01/19] fs: Don't copy beyond the end of the file
+Date: Wed, 8 Mar 2017 20:49:56 +0000
+Message-ID: <1489006194.3098.12.camel@primarydata.com>
+References: <20170302160123.30375-2-kolga@netapp.com>
+         <20170302162221.GA6854@infradead.org> <20170303204747.GE13877@fieldses.org>
+         <20170307234051.GA29977@infradead.org> <20170308170521.GA1020@fieldses.org>
+         <20170308172549.GA32011@infradead.org>
+         <7FDA8E80-3C62-48BB-9E2B-195B4BA340C0@netapp.com>
+         <20170308195327.GA3492@fieldses.org>
+         <85310DA6-7270-49AE-A310-76D73678B1B1@netapp.com>
+         <1489004308.3098.10.camel@primarydata.com>
+         <20170308203236.GC3492@fieldses.org>
+In-Reply-To: <20170308203236.GC3492@fieldses.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20170308215058.GO27384@cs.brown.edu>
-From: bfields@fieldses.org (J. Bruce Fields)
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Mar 08, 2017 at 04:50:58PM -0500, John Bazik wrote:
-> I have evidence that the system call access(2), with mode set to X_OK,
-> does not accurately report execute permissions for a file mounted via
-> NFS4 and with execute provided by an NFS4 acl.
-> 
-> Here's a transcript:
-> 
-> root@radio:/testmnt# nfs4_getfacl acltestjan3017/testacls/f.test301.test261.400.u+test314=5
-> A::OWNER@:rtTcCy
-> A::test314@ad.brown.edu:rxtcy
-> A::GROUP@:tcy
-> A::EVERYONE@:tcy
-> root@radio:/testmnt# ./runas -k test314 ./test_access acltestjan3017/testacls/f.test301.test261.400.u+test314=5
-> USER  999999314 (test314) 999999314 (test314) 999999314 (test314)
-> GROUP 1427981 (user-test314) 1427981 (user-test314) 1427981 (user-test314)
-> KRB5  test314@AD.BROWN.EDU
-> SUPPL GROUPS: user-test314 
-> r-- acltestjan3017/testacls/f.test301.test261.400.u+test314=5
-> root@radio:/testmnt# ./runas -k test314 acltestjan3017/testacls/f.test301.test261.400.u+test314=5
-> 
-> My script "runas" su's and acquires kerberos credentials for the given
-> user, and executes the given command.
-> 
-> My command test_access (a c program) prints all process credentials
-> and then runs access(2) separately with R_OK, W_OK and X_OK modes,
-> and prints the result.
-> 
-> The second line shows that access(2) indicates that user test314 has only
-> read rights, despite the user ACE for test314.  The last line shows that
-> test314 can, in fact, execute the file (which is empty - no error).
-> 
-> My client is a Debian Jessie system with these various versions of things:
-> 
-> Debian            8.6
-> Kernel            3.16.0-4-amd64
+T24gV2VkLCAyMDE3LTAzLTA4IGF0IDE1OjMyIC0wNTAwLCBiZmllbGRzQGZpZWxkc2VzLm9yZyB3
+cm90ZToNCj4gT24gV2VkLCBNYXIgMDgsIDIwMTcgYXQgMDg6MTg6MzFQTSArMDAwMCwgVHJvbmQg
+TXlrbGVidXN0IHdyb3RlOg0KPiA+IE9uIFdlZCwgMjAxNy0wMy0wOCBhdCAxNTowMCAtMDUwMCwg
+T2xnYSBLb3JuaWV2c2thaWEgd3JvdGU6DQo+ID4gPiA+IE9uIE1hciA4LCAyMDE3LCBhdCAyOjUz
+IFBNLCBKLiBCcnVjZSBGaWVsZHMgPGJmaWVsZHNAZmllbGRzZXMubw0KPiA+ID4gPiByZz4NCj4g
+PiA+ID4gd3JvdGU6DQo+ID4gPiA+IA0KPiA+ID4gPiBPbiBXZWQsIE1hciAwOCwgMjAxNyBhdCAx
+MjozMjoxMlBNIC0wNTAwLCBPbGdhIEtvcm5pZXZza2FpYQ0KPiA+ID4gPiB3cm90ZToNCj4gPiA+
+ID4gPiANCj4gPiA+ID4gPiA+IE9uIE1hciA4LCAyMDE3LCBhdCAxMjoyNSBQTSwgQ2hyaXN0b3Bo
+IEhlbGx3aWcgPGhjaEBpbmZyYWRlDQo+ID4gPiA+ID4gPiBhZC5vDQo+ID4gPiA+ID4gPiByZz4N
+Cj4gPiA+ID4gPiA+IHdyb3RlOg0KPiA+ID4gPiA+ID4gDQo+ID4gPiA+ID4gPiBPbiBXZWQsIE1h
+ciAwOCwgMjAxNyBhdCAxMjowNToyMVBNIC0wNTAwLCBKLiBCcnVjZSBGaWVsZHMNCj4gPiA+ID4g
+PiA+IHdyb3RlOg0KPiA+ID4gPiA+ID4gPiBTaW5jZSBjb3B5IGlzbid0IGF0b21pYyB0aGF0IGNo
+ZWNrIGlzIG5ldmVyIGdvaW5nIHRvIGJlDQo+ID4gPiA+ID4gPiA+IHJlbGlhYmxlLg0KPiA+ID4g
+PiA+ID4gDQo+ID4gPiA+ID4gPiBUaGF0J3MgdHJ1ZSBmb3IgZXZlcnl0aGluZyB0aGF0IENPUFkg
+ZG9lcy7CoMKgQnkgdGhhdCBsb2dpYw0KPiA+ID4gPiA+ID4gd2UNCj4gPiA+ID4gPiA+IHNob3Vs
+ZA0KPiA+ID4gPiA+ID4gbm90IGltcGxlbWVudCBpdCBhdCBhbGwgKGEgbG9naWMgdGhhdCBJJ2Qg
+ZnVsbHkgc3VwcG9ydCkNCj4gPiA+ID4gPiANCj4gPiA+ID4gPiBJZiB5b3Ugd2VyZSB0byBvbmx5
+IGtlZXAgQ0xPTkUgdGhlbiB5b3XigJlkIGxvc2UgYSBodWdlDQo+ID4gPiA+ID4gcGVyZm9ybWFu
+Y2UNCj4gPiA+ID4gPiBnYWluDQo+ID4gPiA+ID4geW91IGdldCBmcm9tIHNlcnZlci10by1zZXJ2
+ZXIgQ09QWS7CoA0KPiA+ID4gPiANCj4gPiA+ID4gWWVzLsKgwqBBbHNvLCBJIHRoaW5rIGNvcHkt
+bGlrZSBjb3B5IGltcGxlbWVudGF0aW9ucyBoYXZlDQo+ID4gPiA+IHJlYXNvbmFibGUNCj4gPiA+
+ID4gc2VtYW50aWNzIHRoYXQgYXJlIGJhc2ljYWxseSB0aGUgc2FtZSBhcyByZWFkOg0KPiA+ID4g
+PiANCj4gPiA+ID4gCS0gY29weSBjYW4gcmV0dXJuIHN1Y2Nlc3NmdWxseSB3aXRoIGxlc3MgY29w
+aWVkIHRoYW4NCj4gPiA+ID4gcmVxdWVzdGVkLg0KPiA+ID4gPiAJLSBpdCdzIGZpbmUgZm9yIHRo
+ZSBjb3BpZWQgcmFuZ2UgdG8gc3RhcnQgYW5kL29yIGVuZA0KPiA+ID4gPiBwYXN0IGVuZA0KPiA+
+ID4gPiBvZg0KPiA+ID4gPiAJwqDCoGZpbGUsIGl0J2xsIGp1c3QgcmV0dXJuIGEgc2hvcnQgcmVh
+ZC4NCj4gPiA+ID4gCS0gQSBjb3B5IG9mIG1vcmUgdGhhbiAwIGJ5dGVzIHJldHVybmluZyAwIG1l
+YW5zIHlvdSdyZQ0KPiA+ID4gPiBhdCBlbmQNCj4gPiA+ID4gb2YNCj4gPiA+ID4gCcKgwqBmaWxl
+Lg0KPiA+ID4gPiANCj4gPiA+ID4gVGhlIHBhcnRpY3VsYXIgcHJvYmxlbSBoZXJlIGlzIHRoYXQg
+dGhhdCBkb2Vzbid0IGZpdCBob3cgY2xvbmUNCj4gPiA+ID4gd29ya3MgYXQNCj4gPiA+ID4gYWxs
+Lg0KPiA+ID4gPiANCj4gPiA+ID4gSXQgZmVlbHMgbGlrZSB3aGF0IGhhcHBlbmVkIGlzIHRoYXQg
+Y29weV9maWxlX3JhbmdlKCkgd2FzIG1hZGUNCj4gPiA+ID4gbWFpbmx5DQo+ID4gPiA+IGZvciB0
+aGUgY2xvbmUgY2FzZSwgd2l0aCB0aGUgaWRlYSB0aGF0IGNvcHkgbWlnaHQgYmUNCj4gPiA+ID4g
+cmVsdWN0YW50bHkNCj4gPiA+ID4gYWNjZXB0ZWQgYXMgYSBzZWNvbmQtY2xhc3MgaW1wbGVtZW50
+YXRpb24uDQo+ID4gDQo+ID4gSGlzdG9yaWNhbGx5PyBOby4uLiBDaHJpc3RvcGggYWRkZWQgY2xv
+bmUgYXMgYSB2YWxpZCBpbXBsZW1lbnRhdGlvbg0KPiA+IG9mDQo+ID4gY29weV9maWxlX3Jhbmdl
+KCkgYWxtb3N0IGEgeWVhciBhZnRlciBaYWNoIGFuZCBBbm5hIGRlZmluZWQgdGhlDQo+ID4gc2Vt
+YW50aWNzIG9mIHZmc19jb3B5X2ZpbGVfcmFuZ2UoKS4gZ2l0IGJsYW1lIGlzIHlvdXIgZnJpZW5k
+Li4uDQo+IA0KPiBZZWFoLCBJIGtub3cuwqDCoEl0IHN0aWxsIGZlZWxzIHRvIG1lIGxpa2UgdGhl
+IGludGVyZmFjZSB3YXMgb3JpZ2luYWxseQ0KPiBkZXNpZ25lZCB3aXRoIGNsb25lIGluIG1pbmQs
+IGJ1dCB0aGF0J3MgbXkgdmFndWUgaW1wcmVzc2lvbiBmcm9tIHRoZQ0KPiBtYW4NCj4gcGFnZXMg
+YW5kIGhhbGYtcmVtZW1iZXJlZCBjb252ZXJzYXRpb25zLg0KPiANCj4gVGhvdWdoIHRoZSBsYWNr
+IG9mIGEgImp1c3QgY29weSB0aGUgd2hvbGUgZmlsZSByZWdhcmRsZXNzIG9mIHNpemUiDQo+IGNh
+c2UNCj4gaXMgd2VpcmQgZm9yIGNsb25lLsKgwqBBbGwgeW91IGNhbiBkbyBpcyBzdGF0IHRoZSBm
+aWxlIGFuZCB0aGVuIGhvcGUgaXQNCj4gZG9lc24ndCBjaGFuZ2UgYmVmb3JlIHlvdSBpc3N1ZSB0
+aGUgY29weV9maWxlX3JhbmdlLsKgwqBCdXQgSSdkIHRoaW5rDQo+IGl0J2QNCj4gYmUgZWFzeSBm
+b3IgYW4gYXRvbWljIGNsb25lIGltcGxlbWVudGF0aW9uIHRvIGhhbmRsZSwgc2F5LCBnZXR0aW5n
+IGENCj4gc25hcHNob3Qgb2YgYSBsb2cgZmlsZSB3aGlsZSBpdCdzIGdldHRpbmcgY29udGludW91
+c2x5IGFwcGVuZGVkIHRvLg0KDQpJdCByZWFsbHkgaXNuJ3QgdGhhdCBpbnRlcmVzdGluZyBpbiB0
+aGUgY29udGludW91c2x5IGFwcGVuZGVkIGNhc2UNCih3aGF0IGRpZmZlcmVuY2UgZG9lcyBpdCBt
+YWtlIGlmIHlvdSBvbmx5IGdldCBkYXRhIGZyb20ganVzdCBhIGZldw0KbW9tZW50cyBhZ28pLCBi
+dXQgSSBjYW4gc2VlIGl0IGJlaW5nIGFuIGlzc3VlIGluIHRoZSBjYXNlIG9mIHJhbmRvbQ0Kd3Jp
+dGVzIHdoZXJlIHRoZSBmaWxlIHNpemUgaXMgYmVpbmcgZXh0ZW5kZWQuDQoNClRoZSB0aGluZyBp
+cyB0aGF0IGluIGJvdGggdGhvc2UgY2FzZXMsIHRoZSBjb3B5X2ZpbGVfcmFuZ2UoKSBzZW1hbnRp
+Y3MNCmFyZSB3b3JzZSwgc2luY2UgdGhleSBkb24ndCBldmVuIGd1YXJhbnRlZSBhIHRpbWUtY29u
+c2lzdGVudCBjb3B5Lg0KDQo+ID4gPiA+IEJ1dCB0aGUgcGVyZm9ybWFuY2UgZ2FpbiBvZiBjb3B5
+IG9mZmxvYWQgaXMgdG9vIGJpZyB0byBqdXN0DQo+ID4gPiA+IGlnbm9yZSwNCj4gPiA+ID4gYW5k
+DQo+ID4gPiA+IGluIGZhY3QgaXQncyB3aGF0IGNvcHlfZmlsZV9yYW5nZSBkb2VzIG9uIGV2ZXJ5
+IGZpbGVzeXN0ZW0gYnV0DQo+ID4gPiA+IGJ0cmZzIGFuZA0KPiA+ID4gPiBvY2ZzMiAoYW5kIG1h
+eWJlIGNpZnM/KSwgc28gSSBkb24ndCB0aGluayB3ZSBjYW4ganVzdCBpZ25vcmUNCj4gPiA+ID4g
+aXQuDQo+ID4gPiA+IA0KPiA+ID4gPiBJZiB3ZSBoYWQgc2VwYXJhdGUgY29weV9maWxlX3Jhbmdl
+IGFuZCBjbG9uZV9maWxlX3JhbmdlLCBJDQo+ID4gPiA+ICp0aGluayoNCj4gPiA+ID4gaXQNCj4g
+PiA+ID4gY291bGQgYWxsIGJlIG1hZGUgc2Vuc2libGUuwqDCoEFtIEkgbWlzc2luZyBzb21ldGhp
+bmc/DQo+ID4gPiA+IA0KPiA+ID4gDQo+ID4gPiBIb3cgd291bGQgdGhlIGFwcGxpY2F0aW9uIChj
+cCkga25vdyB3aGVuIHRvIGNhbGwgdGhlDQo+ID4gPiBjbG9uZV9maWxlX3JhbmdlDQo+ID4gPiBh
+bmQgd2hlbiB0byBjYWxsIGNvcHlfZmlsZV9yYW5nZT8NCj4gPiANCj4gPiBjcCBjYW4gcHJvYmFi
+bHkgY2FsbCBjb3B5X2ZpbGVfcmFuZ2UoKSwgYnV0IGFueSBhcHBsaWNhdGlvbiB0aGF0DQo+ID4g
+bmVlZHMNCj4gPiBhdG9taWMgc2VtYW50aWNzIChpLmUuIGEgYmluYXJ5IG9wZXJhdGlvbiBzdWNj
+ZXNzL2ZhaWwpIG11c3QgY2FsbA0KPiA+IGNsb25lX2ZpbGVfcmFuZ2UoKS4NCj4gDQo+IEkgZG9u
+J3QgYmVsaWV2ZSB0aGVyZSdzIGEgY2xvbmVfZmlsZV9yYW5nZSgpLsKgwqBJIHNlZSB0aGUgdmZz
+DQo+IGludGVyZmFjZSwNCj4gYnV0IG5vIHN5c3RlbSBjYWxsLg0KDQpUaGVyZSBpcyBhIHN0YW5k
+YXJkIEZJQ0xPTkVSQU5HRSBpb2N0bCgpIHRoYXQgY2FuIGJlIHVzZWQgb24gYWxsDQpmaWxlc3lz
+dGVtcyB0aGF0IHN1cHBvcnQgdGhlIHZmcyBpbnRlcmZhY2UuDQoNCj4gQW5kIGltcGxlbWVudGlu
+ZyBhIHNpbXBsZSBjcCBpcyBoYXJkZXIgdGhhbiBpdCBzaG91bGQgYmUgd2hlbiB5b3UNCj4gZG9u
+J3QNCj4ga25vdyB3aGV0aGVyIGl0J3MgaW1wbGVtZW50ZWQgYXMgY29weSBvciBjbG9uZS7CoMKg
+WW91IGhhdmUgdG8gc3RhdCBmb3INCj4gdGhlIGZpbGUgc2l6ZSBmaXJzdCwgcmV0cnkgaWYgeW91
+IGdvdCBpdCB3cm9uZywgYW5kIGFsc28gcmV0cnkgaWYgeW91DQo+IGdldCBhIHNob3J0IHJlYWQu
+wqDCoFRoZSBleGFtcGxlIGluIHRoZSBjbG9uZV9maWxlX3JhbmdlKCkgbWFuIHBhZ2UgaXMNCj4g
+aW5jb21wbGV0ZS4NCg0KQXMgSSBzYWlkLCB5b3Ugc2hvdWxkbid0IGJlIHVzaW5nIGNvcHlfZmls
+ZV9yYW5nZSgpIGVpdGhlciBpbiB0aGUgY2FzZQ0Kd2hlcmUgdGhlIGZpbGUgaXMgYmVpbmcgbW9k
+aWZpZWQuDQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50YWlu
+ZXIsIFByaW1hcnlEYXRhDQp0cm9uZC5teWtsZWJ1c3RAcHJpbWFyeWRhdGEuY29tDQo=
 
-I hate to say this, but I think there have been some relevant changes
-since then, is it possible to retry with a more recent kernel?
-
-Other things worth trying:
-
-	- watch the traffic in wireshark, check that the ACCESS calls on
-	  the wire agree with what your test program is seeing.
-	- to verify that your server is mapping to the correct user, try
-	  touching a new file after su'ing and acquiring kerberos
-	  credentials, and check who the new file is owned by.
-
---b.
-
-> acl               2.2.52-2
-> libgssapi-krb5-2  1.12.1+dfsg-19+deb8u2
-> librpcsecgss3     (not installed)
-> nfs-utils         (? don't see it)
-> util-linux        2.25.2-6
-> 
-> The server is an EMC Isilon.
-> 
-> John
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
