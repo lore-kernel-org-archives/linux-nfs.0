@@ -1,75 +1,77 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from us-smtp-delivery-194.mimecast.com ([216.205.24.194]:37495 "EHLO
-        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1753196AbdCINVz (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 9 Mar 2017 08:21:55 -0500
-From: Trond Myklebust <trondmy@primarydata.com>
-To: "neilb@suse.com" <neilb@suse.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: A NFS mount can still write to the server after 'umount' has
- completed.
-Date: Thu, 9 Mar 2017 13:21:48 +0000
-Message-ID: <1489065706.3121.1.camel@primarydata.com>
-References: <871su7i0iw.fsf@notabene.neil.brown.name>
-         <87y3wfgipy.fsf@notabene.neil.brown.name>
-In-Reply-To: <87y3wfgipy.fsf@notabene.neil.brown.name>
+Received: from mail-wr0-f178.google.com ([209.85.128.178]:33274 "EHLO
+        mail-wr0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1754647AbdCIN1b (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 9 Mar 2017 08:27:31 -0500
+Received: by mail-wr0-f178.google.com with SMTP id u48so45042968wrc.0
+        for <linux-nfs@vger.kernel.org>; Thu, 09 Mar 2017 05:27:20 -0800 (PST)
+Received: from [192.168.64.116] (bzq-82-81-101-184.red.bezeqint.net. [82.81.101.184])
+        by smtp.gmail.com with ESMTPSA id w17sm8277019wra.28.2017.03.09.05.27.18
+        for <linux-nfs@vger.kernel.org>
+        (version=TLS1_2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128/128);
+        Thu, 09 Mar 2017 05:27:18 -0800 (PST)
+To: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+From: Sagi Grimberg <sagi@grimberg.me>
+Subject: kmemleak complaint on 4.11-rc1
+Message-ID: <34f7270f-ea05-4246-81db-a606f9d5c4bc@grimberg.me>
+Date: Thu, 9 Mar 2017 15:27:17 +0200
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=utf-8; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVGh1LCAyMDE3LTAzLTA5IGF0IDE1OjQ2ICsxMTAwLCBOZWlsQnJvd24gd3JvdGU6DQo+IE9u
-IFRodSwgTWFyIDA5IDIwMTcsIE5laWxCcm93biB3cm90ZToNCj4gDQo+ID4gSSd2ZSBiZWVuIGNo
-YXNpbmcgZG93biBhIHByb2JsZW0gd2hlcmUgYSBjdXN0b21lciBoYXMgYSBsb2NhbGhvc3QNCj4g
-PiBtb3VudCwNCj4gPiBhbmQgdGhlIHNlcXVlbmNlDQo+ID4gwqAgdW5tb3VudCAtYXQgbmZzLG5m
-czQNCj4gPiDCoCBzdG9wIG5mc3NlcnZlcg0KPiA+IMKgIHN5bmMNCj4gPiANCj4gPiBoYW5ncyBv
-biB0aGUgc3luYy7CoMKgVGhlICdzeW5jJyBpcyB0cnlpbmcgdG8gd3JpdGUgdG8gdGhlIE5GUw0K
-PiA+IGZpbGVzeXN0ZW0NCj4gPiB0aGF0IGhhcyBqdXN0IGJlZW4gdW5tb3VudGVkLg0KDQpTbyB3
-aHkgY2FuJ3QgeW91IG1vdmUgdGhlIHN5bmMgdXAgb25lIGxpbmU/DQoNCj4gPiBJIGhhdmUgZHVw
-bGljYXRlZCB0aGUgcHJvYmxlbSBvbiBhIGN1cnJlbnQgbWFpbmxpbmUga2VybmVsLg0KPiA+IA0K
-PiA+IFRoZXJlIGFyZSB0d28gaW1wb3J0YW50IGZhY3RzIHRoYXQgbGVhZCB0byB0aGUgZXhwbGFu
-YXRpb24gb2YgdGhpcy4NCj4gPiAxLyB3aGVuZXZlciBhICdzdHJ1Y3QgZmlsZScgaXMgb3Blbiwg
-YW4gc19hY3RpdmUgcmVmZXJlbmNlIGlzIGhlbGQNCj4gPiBvbg0KPiA+IMKgwqDCoHRoZSBzdXBl
-cmJsb2NrLCB2aWEgIm9wZW5fY29udGV4dCIgY2FsbGluZyBuZnNfc2JfYWN0aXZlKCkuDQo+ID4g
-wqDCoMKgVGhpcyBkb2Vzbid0IHByZXZlbnQgInVubW91bnQiIGZyb20gc3VjY2VlZGluZyAoaS5l
-LiBFQlVTWSBpc24ndA0KPiA+IMKgwqDCoHJldHVybmVkKSwgYnV0IGRvZXMgcHJldmVudCB0aGUg
-YWN0dWFsIHVubW91bnQgZnJvbSBoYXBwZW5pbmcNCj4gPiDCoMKgwqAoLT5raWxsX3NiKCkgaXNu
-J3QgY2FsbGVkKS4NCj4gPiAyLyBXaGVuIGEgbWVtb3J5IG1hcHBpbmcgb2YgYSBmaWxlIGlzIHRv
-cm4gZG93biwgdGhlIGZpbGUgaXMNCj4gPiDCoMKgwqAicmVsZWFzZWQiLCBjYXVzaW5nIHRoZSBj
-b250ZXh0IHRvIGJlIGRpc2NhcmRlZCBhbmQgdGhlDQo+ID4gc2JfYWN0aXZlDQo+ID4gwqDCoMKg
-cmVmZXJlbmNlIHJlbGVhc2VkLCBidXQgdW5saWtlIGNsb3NlKDIpLCBmaWxlX29wZXJhdGlvbnMt
-DQo+ID4gPmZsdXNoKCkNCj4gPiDCoMKgwqBpcyBub3QgY2FsbGVkLg0KPiANCj4gSSByZWFsaXNl
-ZCB0aGF0IHRoZXJlIGlzIGFub3RoZXIgcGllY2Ugb2YgdGhlIHB1enpsZS4NCj4gV2hlbiBhIHBh
-Z2UgaXMgbWFya2VkIGRpcnR5IChlLmcuIG5mc192bV9wYWdlX21rd3JpdGUpLA0KPiDCoG5mc191
-cGRhdGVwYWdlKCkgLT4gbmZzX3dyaXRlcGFnZV9zZXR1cCgpDQo+IGNyZWF0ZXMgYSAnc3RydWN0
-IG5mc19wYWdlJyByZXF1ZXN0IHdoaWNoIGhvbGRzIGEgcmVmZXJlbmNlIHRvDQo+IHRoZSBvcGVu
-IGNvbnRleHQsIHdoaWNoIGluIHR1cm4gaG9sZHMgYW4gYWN0aXZlIHJlZmVyZW5jZSB0byB0aGUN
-Cj4gc3VwZXJibG9jay4NCj4gU28gYXMgbG9uZyBhcyB0aGVyZSBhcmUgZGlydHkgcGFnZXMsIHRo
-ZSBzdXBlcmJsb2NrIHdpbGwgbm90IGdvDQo+IGluYWN0aXZlLsKgwqBBbGwgdGhlIHJlc3Qgc3Rp
-bGwgaG9sZHMuDQo+IA0KPiBOZWlsQnJvd24NCj4gDQo+IA0KPiA+IA0KPiA+IENvbnNlcXVlbnRs
-eSwgaWYgeW91Og0KPiA+IMKgb3BlbiBhbiBORlMgZmlsZQ0KPiA+IMKgbW1hcCBzb21lIHBhZ2Vz
-IFBST1RfV1JJVEUNCj4gPiDCoGNsb3NlIHRoZSBmaWxlDQo+ID4gwqBtb2RpZnkgdGhlIHBhZ2Vz
-DQo+ID4gwqB1bm1hcCB0aGUgcGFnZXMNCj4gPiDCoHVubW91bnQgdGhlIGZpbGVzeXN0ZW0NCj4g
-PiANCj4gPiB0aGUgZmlsZXN5c3RlbSB3aWxsIHJlbWFpbiBhY3RpdmUsIGFuZCB0aGUgcGFnZXMg
-d2lsbCByZW1haW4gZGlydHkuDQo+ID4gSWYgeW91IHRoZW4gbWFrZSB0aGUgbmZzIHNlcnZlciB1
-bmF2YWlsYWJsZSAtIGUuZy4gc3RvcCBpdCwgb3IgdGVhcg0KPiA+IGRvd24NCj4gPiB0aGUgbmV0
-d29yayBjb25uZWN0aW9uIC0gYW5kIHRoZW4gY2FsbCAnc3luYycsIHRoZSBzeW5jIHdpbGwgaGFu
-Zy4NCj4gPiANCj4gPiBUaGlzIGlzIHN1cnByaXNpbmcsIGF0IHRoZSBsZWFzdCA6LSkNCj4gPiAN
-Cj4gPiBJIGhhdmUgdHdvIGlkZWFzIGhvdyBpdCBtaWdodCBiZSBmaXhlZC4NCj4gPiANCj4gPiBP
-bmUgaXMgdG8gY2FsbCBuZnNfZmlsZV9mbHVzaCgpIGZyb20gd2l0aGluIG5mc19maWxlX3JlbGVh
-c2UoKS4NCj4gPiBUaGlzIGlzIHByb2JhYmx5IHNpbXBsZXN0IChhbmQgYXBwZWFycyB0byB3b3Jr
-KS4NCj4gPiANCj4gPiBUaGUgb3RoZXIgaXMgdG8gYWRkIGEgIi5jbG9zZSIgdG8gbmZzX2ZpbGVf
-dm1fb3BzLsKgwqBUaGlzIGNvdWxkDQo+ID4gdHJpZ2dlciBhDQo+ID4gKHBhcnRpYWwpIGZsdXNo
-IHdoZW5ldmVyIGEgcGFnZSBpcyB1bm1hcHBlZC7CoMKgQXMgY2xvc2luZyBhbiBORlMNCj4gPiBm
-aWxlDQo+ID4gYWx3YXlzIHRyaWdnZXJzIGEgZmx1c2gsIGl0IHNlZW1zIHJlYXNvbmFibGUgdGhh
-dCB1bm1hcHBpbmcgYSBwYWdlDQo+ID4gd291bGQgdHJpZ2dlciBhIGZsdXNoIG9mIHRoYXQgcGFn
-ZS4NCj4gPiANCj4gPiBUaG91Z2h0cz8NCj4gPiANCg0KQWxsIHRoaXMgaXMgd29ya2luZyBhcyBl
-eHBlY3RlZC4gVGhlIG9ubHkgd2F5IHRvIGVuc3VyZSB0aGF0IGRhdGEgaXMNCnN5bmNlZCB0byBk
-aXNrIGJ5IG1tYXAoKSBpcyB0byBleHBsaWNpdGx5IGNhbGwgbXN5bmMoKS4gVGhpcyBpcyB3ZWxs
-DQpkb2N1bWVudGVkLCBhbmQgc2hvdWxkIGJlIHdlbGwgdW5kZXJzdG9vZCBieSBhcHBsaWNhdGlv
-biBkZXZlbG9wZXJzLiBJZg0KdGhvc2UgZGV2ZWxvcGVycyBhcmUgaWdub3JpbmcgdGhlIGRvY3Vt
-ZW50YXRpb24sIHRoZW4gSSBzdWdnZXN0IHZvdG9pbmcNCndpdGggeW91ciBmZWV0IGFuZCBnZXR0
-aW5nIHlvdXIgc29mdHdhcmUgZnJvbSBzb21lb25lIGVsc2UuIA0KDQotLSANClRyb25kIE15a2xl
-YnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyLCBQcmltYXJ5RGF0YQ0KdHJvbmQubXlr
-bGVidXN0QHByaW1hcnlkYXRhLmNvbQ0K
+Hey all,
 
+I get this with nfs mount on my VM (4.11-rc1):
+
+from dmesg:
+[ 1889.676648] kmemleak: 8254 new suspected memory leaks (see 
+/sys/kernel/debug/kmemleak)
+
+$ cat /sys/kernel/debug/kmemleak
+...
+unreferenced object 0xffff96c67a192a80 (size 32):
+   comm "kworker/0:3", pid 266, jiffies 4295080946 (age 6406.600s)
+   hex dump (first 32 bytes):
+     31 30 30 30 00 ff 0f 88 0a fc ff ff 41 83 ff 01  1000........A...
+     0f 8e 75 01 00 00 41 8d 4f fc 83 f9 0b 0f 87 f3  ..u...A.O.......
+   backtrace:
+     [<ffffffffbb847eda>] kmemleak_alloc+0x4a/0xa0
+     [<ffffffffbb205949>] __kmalloc+0x149/0x270
+     [<ffffffffc0526590>] xdr_stream_decode_string_dup+0x80/0x110 [sunrpc]
+     [<ffffffffc0a03168>] decode_getfattr_attrs+0x8b8/0x15a0 [nfsv4]
+     [<ffffffffc0a03edc>] 
+decode_getfattr_generic.constprop.108+0x8c/0xe0 [nfsv4]
+     [<ffffffffc0a03fdd>] nfs4_xdr_dec_open+0xad/0xd0 [nfsv4]
+     [<ffffffffc051cf99>] rpcauth_unwrap_resp+0x89/0xd0 [sunrpc]
+     [<ffffffffc050db73>] call_decode+0x1e3/0x810 [sunrpc]
+     [<ffffffffc0519632>] __rpc_execute+0x82/0x450 [sunrpc]
+     [<ffffffffc0519a12>] rpc_async_schedule+0x12/0x20 [sunrpc]
+     [<ffffffffbb099e3b>] process_one_work+0x16b/0x480
+     [<ffffffffbb09a19b>] worker_thread+0x4b/0x500
+     [<ffffffffbb0a0591>] kthread+0x101/0x140
+     [<ffffffffbb85303c>] ret_from_fork+0x2c/0x40
+     [<ffffffffffffffff>] 0xffffffffffffffff
+unreferenced object 0xffff96c67a192a60 (size 32):
+   comm "kworker/0:3", pid 266, jiffies 4295080947 (age 6406.596s)
+   hex dump (first 32 bytes):
+     31 30 30 30 00 ff ff 41 c6 85 90 00 00 00 00 41  1000...A.......A
+     0f b6 85 91 00 00 00 88 45 bf e9 db fd ff ff 44  ........E......D
+   backtrace:
+     [<ffffffffbb847eda>] kmemleak_alloc+0x4a/0xa0
+     [<ffffffffbb205949>] __kmalloc+0x149/0x270
+     [<ffffffffc0526590>] xdr_stream_decode_string_dup+0x80/0x110 [sunrpc]
+     [<ffffffffc0a03168>] decode_getfattr_attrs+0x8b8/0x15a0 [nfsv4]
+     [<ffffffffc0a03edc>] 
+decode_getfattr_generic.constprop.108+0x8c/0xe0 [nfsv4]
+     [<ffffffffc0a03fdd>] nfs4_xdr_dec_open+0xad/0xd0 [nfsv4]
+     [<ffffffffc051cf99>] rpcauth_unwrap_resp+0x89/0xd0 [sunrpc]
+     [<ffffffffc050db73>] call_decode+0x1e3/0x810 [sunrpc]
+     [<ffffffffc0519632>] __rpc_execute+0x82/0x450 [sunrpc]
+     [<ffffffffc0519a12>] rpc_async_schedule+0x12/0x20 [sunrpc]
+     [<ffffffffbb099e3b>] process_one_work+0x16b/0x480
+     [<ffffffffbb09a19b>] worker_thread+0x4b/0x500
+     [<ffffffffbb0a0591>] kthread+0x101/0x140
+     [<ffffffffbb85303c>] ret_from_fork+0x2c/0x40
+     [<ffffffffffffffff>] 0xffffffffffffffff
+...
