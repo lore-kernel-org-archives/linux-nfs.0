@@ -1,75 +1,75 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:60835 "EHLO mx2.suse.de"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1754137AbdCILpa (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 9 Mar 2017 06:45:30 -0500
-Date: Thu, 9 Mar 2017 12:42:53 +0100
-From: David Sterba <dsterba@suse.cz>
-To: Michal Hocko <mhocko@kernel.org>
-Cc: Andrew Morton <akpm@linux-foundation.org>,
-        linux-fsdevel@vger.kernel.org, linux-mm@kvack.org,
-        Dave Chinner <david@fromorbit.com>, djwong@kernel.org,
-        "Theodore Ts'o" <tytso@mit.edu>, Chris Mason <clm@fb.com>,
-        David Sterba <dsterba@suse.cz>, Jan Kara <jack@suse.cz>,
-        ceph-devel@vger.kernel.org, cluster-devel@redhat.com,
-        linux-nfs@vger.kernel.org, logfs@logfs.org, linux-xfs@vger.kernel.org,
-        linux-ext4@vger.kernel.org, linux-btrfs@vger.kernel.org,
-        linux-mtd@lists.infradead.org, reiserfs-devel@vger.kernel.org,
-        linux-ntfs-dev@lists.sourceforge.net,
-        linux-f2fs-devel@lists.sourceforge.net, linux-afs@lists.infradead.org,
-        LKML <linux-kernel@vger.kernel.org>, Vlastimil Babka <vbabka@suse.cz>
-Subject: Re: [PATCH 4/7] mm: introduce memalloc_nofs_{save,restore} API
-Message-ID: <20170309114253.GA14605@twin.jikos.cz>
-Reply-To: dsterba@suse.cz
-References: <20170306131408.9828-1-mhocko@kernel.org>
- <20170306131408.9828-5-mhocko@kernel.org>
- <20170306132214.1769368301d9e671e1bc68be@linux-foundation.org>
- <20170307150956.GM28642@dhcp22.suse.cz>
+Received: from us-smtp-delivery-194.mimecast.com ([216.205.24.194]:37495 "EHLO
+        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1753196AbdCINVz (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 9 Mar 2017 08:21:55 -0500
+From: Trond Myklebust <trondmy@primarydata.com>
+To: "neilb@suse.com" <neilb@suse.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: A NFS mount can still write to the server after 'umount' has
+ completed.
+Date: Thu, 9 Mar 2017 13:21:48 +0000
+Message-ID: <1489065706.3121.1.camel@primarydata.com>
+References: <871su7i0iw.fsf@notabene.neil.brown.name>
+         <87y3wfgipy.fsf@notabene.neil.brown.name>
+In-Reply-To: <87y3wfgipy.fsf@notabene.neil.brown.name>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20170307150956.GM28642@dhcp22.suse.cz>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Mar 07, 2017 at 04:09:56PM +0100, Michal Hocko wrote:
-> On Mon 06-03-17 13:22:14, Andrew Morton wrote:
-> > On Mon,  6 Mar 2017 14:14:05 +0100 Michal Hocko <mhocko@kernel.org> wrote:
-> [...]
-> > > --- a/include/linux/gfp.h
-> > > +++ b/include/linux/gfp.h
-> > > @@ -210,8 +210,16 @@ struct vm_area_struct;
-> > >   *
-> > >   * GFP_NOIO will use direct reclaim to discard clean pages or slab pages
-> > >   *   that do not require the starting of any physical IO.
-> > > + *   Please try to avoid using this flag directly and instead use
-> > > + *   memalloc_noio_{save,restore} to mark the whole scope which cannot
-> > > + *   perform any IO with a short explanation why. All allocation requests
-> > > + *   will inherit GFP_NOIO implicitly.
-> > >   *
-> > >   * GFP_NOFS will use direct reclaim but will not use any filesystem interfaces.
-> > > + *   Please try to avoid using this flag directly and instead use
-> > > + *   memalloc_nofs_{save,restore} to mark the whole scope which cannot/shouldn't
-> > > + *   recurse into the FS layer with a short explanation why. All allocation
-> > > + *   requests will inherit GFP_NOFS implicitly.
-> > 
-> > I wonder if these are worth a checkpatch rule.
-> 
-> I am not really sure, to be honest. This may easilly end up people
-> replacing
-> 
-> do_alloc(GFP_NOFS)
-> 
-> with
-> 
-> memalloc_nofs_save()
-> do_alloc(GFP_KERNEL)
-> memalloc_nofs_restore()
-> 
-> which doesn't make any sense of course. From my experience, people tend
-> to do stupid things just to silent checkpatch warnings very often.
-> Moreover I believe we need to do the transition to the new api first
-> before we can push back on the explicit GFP_NOFS usage. Maybe then we
-> can think about the a checkpatch warning.
+T24gVGh1LCAyMDE3LTAzLTA5IGF0IDE1OjQ2ICsxMTAwLCBOZWlsQnJvd24gd3JvdGU6DQo+IE9u
+IFRodSwgTWFyIDA5IDIwMTcsIE5laWxCcm93biB3cm90ZToNCj4gDQo+ID4gSSd2ZSBiZWVuIGNo
+YXNpbmcgZG93biBhIHByb2JsZW0gd2hlcmUgYSBjdXN0b21lciBoYXMgYSBsb2NhbGhvc3QNCj4g
+PiBtb3VudCwNCj4gPiBhbmQgdGhlIHNlcXVlbmNlDQo+ID4gwqAgdW5tb3VudCAtYXQgbmZzLG5m
+czQNCj4gPiDCoCBzdG9wIG5mc3NlcnZlcg0KPiA+IMKgIHN5bmMNCj4gPiANCj4gPiBoYW5ncyBv
+biB0aGUgc3luYy7CoMKgVGhlICdzeW5jJyBpcyB0cnlpbmcgdG8gd3JpdGUgdG8gdGhlIE5GUw0K
+PiA+IGZpbGVzeXN0ZW0NCj4gPiB0aGF0IGhhcyBqdXN0IGJlZW4gdW5tb3VudGVkLg0KDQpTbyB3
+aHkgY2FuJ3QgeW91IG1vdmUgdGhlIHN5bmMgdXAgb25lIGxpbmU/DQoNCj4gPiBJIGhhdmUgZHVw
+bGljYXRlZCB0aGUgcHJvYmxlbSBvbiBhIGN1cnJlbnQgbWFpbmxpbmUga2VybmVsLg0KPiA+IA0K
+PiA+IFRoZXJlIGFyZSB0d28gaW1wb3J0YW50IGZhY3RzIHRoYXQgbGVhZCB0byB0aGUgZXhwbGFu
+YXRpb24gb2YgdGhpcy4NCj4gPiAxLyB3aGVuZXZlciBhICdzdHJ1Y3QgZmlsZScgaXMgb3Blbiwg
+YW4gc19hY3RpdmUgcmVmZXJlbmNlIGlzIGhlbGQNCj4gPiBvbg0KPiA+IMKgwqDCoHRoZSBzdXBl
+cmJsb2NrLCB2aWEgIm9wZW5fY29udGV4dCIgY2FsbGluZyBuZnNfc2JfYWN0aXZlKCkuDQo+ID4g
+wqDCoMKgVGhpcyBkb2Vzbid0IHByZXZlbnQgInVubW91bnQiIGZyb20gc3VjY2VlZGluZyAoaS5l
+LiBFQlVTWSBpc24ndA0KPiA+IMKgwqDCoHJldHVybmVkKSwgYnV0IGRvZXMgcHJldmVudCB0aGUg
+YWN0dWFsIHVubW91bnQgZnJvbSBoYXBwZW5pbmcNCj4gPiDCoMKgwqAoLT5raWxsX3NiKCkgaXNu
+J3QgY2FsbGVkKS4NCj4gPiAyLyBXaGVuIGEgbWVtb3J5IG1hcHBpbmcgb2YgYSBmaWxlIGlzIHRv
+cm4gZG93biwgdGhlIGZpbGUgaXMNCj4gPiDCoMKgwqAicmVsZWFzZWQiLCBjYXVzaW5nIHRoZSBj
+b250ZXh0IHRvIGJlIGRpc2NhcmRlZCBhbmQgdGhlDQo+ID4gc2JfYWN0aXZlDQo+ID4gwqDCoMKg
+cmVmZXJlbmNlIHJlbGVhc2VkLCBidXQgdW5saWtlIGNsb3NlKDIpLCBmaWxlX29wZXJhdGlvbnMt
+DQo+ID4gPmZsdXNoKCkNCj4gPiDCoMKgwqBpcyBub3QgY2FsbGVkLg0KPiANCj4gSSByZWFsaXNl
+ZCB0aGF0IHRoZXJlIGlzIGFub3RoZXIgcGllY2Ugb2YgdGhlIHB1enpsZS4NCj4gV2hlbiBhIHBh
+Z2UgaXMgbWFya2VkIGRpcnR5IChlLmcuIG5mc192bV9wYWdlX21rd3JpdGUpLA0KPiDCoG5mc191
+cGRhdGVwYWdlKCkgLT4gbmZzX3dyaXRlcGFnZV9zZXR1cCgpDQo+IGNyZWF0ZXMgYSAnc3RydWN0
+IG5mc19wYWdlJyByZXF1ZXN0IHdoaWNoIGhvbGRzIGEgcmVmZXJlbmNlIHRvDQo+IHRoZSBvcGVu
+IGNvbnRleHQsIHdoaWNoIGluIHR1cm4gaG9sZHMgYW4gYWN0aXZlIHJlZmVyZW5jZSB0byB0aGUN
+Cj4gc3VwZXJibG9jay4NCj4gU28gYXMgbG9uZyBhcyB0aGVyZSBhcmUgZGlydHkgcGFnZXMsIHRo
+ZSBzdXBlcmJsb2NrIHdpbGwgbm90IGdvDQo+IGluYWN0aXZlLsKgwqBBbGwgdGhlIHJlc3Qgc3Rp
+bGwgaG9sZHMuDQo+IA0KPiBOZWlsQnJvd24NCj4gDQo+IA0KPiA+IA0KPiA+IENvbnNlcXVlbnRs
+eSwgaWYgeW91Og0KPiA+IMKgb3BlbiBhbiBORlMgZmlsZQ0KPiA+IMKgbW1hcCBzb21lIHBhZ2Vz
+IFBST1RfV1JJVEUNCj4gPiDCoGNsb3NlIHRoZSBmaWxlDQo+ID4gwqBtb2RpZnkgdGhlIHBhZ2Vz
+DQo+ID4gwqB1bm1hcCB0aGUgcGFnZXMNCj4gPiDCoHVubW91bnQgdGhlIGZpbGVzeXN0ZW0NCj4g
+PiANCj4gPiB0aGUgZmlsZXN5c3RlbSB3aWxsIHJlbWFpbiBhY3RpdmUsIGFuZCB0aGUgcGFnZXMg
+d2lsbCByZW1haW4gZGlydHkuDQo+ID4gSWYgeW91IHRoZW4gbWFrZSB0aGUgbmZzIHNlcnZlciB1
+bmF2YWlsYWJsZSAtIGUuZy4gc3RvcCBpdCwgb3IgdGVhcg0KPiA+IGRvd24NCj4gPiB0aGUgbmV0
+d29yayBjb25uZWN0aW9uIC0gYW5kIHRoZW4gY2FsbCAnc3luYycsIHRoZSBzeW5jIHdpbGwgaGFu
+Zy4NCj4gPiANCj4gPiBUaGlzIGlzIHN1cnByaXNpbmcsIGF0IHRoZSBsZWFzdCA6LSkNCj4gPiAN
+Cj4gPiBJIGhhdmUgdHdvIGlkZWFzIGhvdyBpdCBtaWdodCBiZSBmaXhlZC4NCj4gPiANCj4gPiBP
+bmUgaXMgdG8gY2FsbCBuZnNfZmlsZV9mbHVzaCgpIGZyb20gd2l0aGluIG5mc19maWxlX3JlbGVh
+c2UoKS4NCj4gPiBUaGlzIGlzIHByb2JhYmx5IHNpbXBsZXN0IChhbmQgYXBwZWFycyB0byB3b3Jr
+KS4NCj4gPiANCj4gPiBUaGUgb3RoZXIgaXMgdG8gYWRkIGEgIi5jbG9zZSIgdG8gbmZzX2ZpbGVf
+dm1fb3BzLsKgwqBUaGlzIGNvdWxkDQo+ID4gdHJpZ2dlciBhDQo+ID4gKHBhcnRpYWwpIGZsdXNo
+IHdoZW5ldmVyIGEgcGFnZSBpcyB1bm1hcHBlZC7CoMKgQXMgY2xvc2luZyBhbiBORlMNCj4gPiBm
+aWxlDQo+ID4gYWx3YXlzIHRyaWdnZXJzIGEgZmx1c2gsIGl0IHNlZW1zIHJlYXNvbmFibGUgdGhh
+dCB1bm1hcHBpbmcgYSBwYWdlDQo+ID4gd291bGQgdHJpZ2dlciBhIGZsdXNoIG9mIHRoYXQgcGFn
+ZS4NCj4gPiANCj4gPiBUaG91Z2h0cz8NCj4gPiANCg0KQWxsIHRoaXMgaXMgd29ya2luZyBhcyBl
+eHBlY3RlZC4gVGhlIG9ubHkgd2F5IHRvIGVuc3VyZSB0aGF0IGRhdGEgaXMNCnN5bmNlZCB0byBk
+aXNrIGJ5IG1tYXAoKSBpcyB0byBleHBsaWNpdGx5IGNhbGwgbXN5bmMoKS4gVGhpcyBpcyB3ZWxs
+DQpkb2N1bWVudGVkLCBhbmQgc2hvdWxkIGJlIHdlbGwgdW5kZXJzdG9vZCBieSBhcHBsaWNhdGlv
+biBkZXZlbG9wZXJzLiBJZg0KdGhvc2UgZGV2ZWxvcGVycyBhcmUgaWdub3JpbmcgdGhlIGRvY3Vt
+ZW50YXRpb24sIHRoZW4gSSBzdWdnZXN0IHZvdG9pbmcNCndpdGggeW91ciBmZWV0IGFuZCBnZXR0
+aW5nIHlvdXIgc29mdHdhcmUgZnJvbSBzb21lb25lIGVsc2UuIA0KDQotLSANClRyb25kIE15a2xl
+YnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyLCBQcmltYXJ5RGF0YQ0KdHJvbmQubXlr
+bGVidXN0QHByaW1hcnlkYXRhLmNvbQ0K
 
-I agree will all your objections against adding that to checkpatch, at
-this point it's less harmful to use GFP_NOFS.
