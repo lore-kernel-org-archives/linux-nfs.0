@@ -1,210 +1,206 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:54041 "EHLO mx2.suse.de"
+Received: from fieldses.org ([173.255.197.46]:59116 "EHLO fieldses.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1750803AbdCIVi4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 9 Mar 2017 16:38:56 -0500
-From: NeilBrown <neilb@suse.com>
-To: Trond Myklebust <trondmy@primarydata.com>,
-        "linux-nfs\@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Date: Fri, 10 Mar 2017 08:38:00 +1100
-Subject: Re: A NFS mount can still write to the server after 'umount' has completed.
-In-Reply-To: <1489065706.3121.1.camel@primarydata.com>
-References: <871su7i0iw.fsf@notabene.neil.brown.name> <87y3wfgipy.fsf@notabene.neil.brown.name> <1489065706.3121.1.camel@primarydata.com>
-Message-ID: <87pohqgmh3.fsf@notabene.neil.brown.name>
+        id S1751737AbdCIVrT (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 9 Mar 2017 16:47:19 -0500
+Date: Thu, 9 Mar 2017 16:47:17 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: andros@netapp.com
+Cc: trond.myklebust@primarydata.com, schumaker.anna@gmail.com,
+        linux-nfs@vger.kernel.org
+Subject: Re: [PATCH Version 5 00/17] RPCSEC_GSS3 full mode label kernel patch
+ set
+Message-ID: <20170309214717.GB12553@fieldses.org>
+References: <20170224221953.5502-1-andros@netapp.com>
 MIME-Version: 1.0
-Content-Type: multipart/signed; boundary="=-=-=";
-        micalg=pgp-sha256; protocol="application/pgp-signature"
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20170224221953.5502-1-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---=-=-=
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: quoted-printable
+On Fri, Feb 24, 2017 at 05:19:36PM -0500, andros@netapp.com wrote:
+> From: Andy Adamson <andros@netapp.com>
+> 
+> This patchset implements RFC 7861  RPCSEC_GSS Version 3 RPCSEC_GSS_CREATE
+> operation with rgs3_label payloads to provide  full mode Mandatory Access
+> Control (MAC) when run with NFSv4.2 Labeled NFS using SeLinux.
 
-On Thu, Mar 09 2017, Trond Myklebust wrote:
+Is GSSv3 also still planned to be used for COPY?  I lost track of that
+discussion.
 
-> On Thu, 2017-03-09 at 15:46 +1100, NeilBrown wrote:
->> On Thu, Mar 09 2017, NeilBrown wrote:
->>=20
->> > I've been chasing down a problem where a customer has a localhost
->> > mount,
->> > and the sequence
->> > =C2=A0 unmount -at nfs,nfs4
->> > =C2=A0 stop nfsserver
->> > =C2=A0 sync
->> >=20
->> > hangs on the sync.=C2=A0=C2=A0The 'sync' is trying to write to the NFS
->> > filesystem
->> > that has just been unmounted.
->
-> So why can't you move the sync up one line?
->
->> > I have duplicated the problem on a current mainline kernel.
->> >=20
->> > There are two important facts that lead to the explanation of this.
->> > 1/ whenever a 'struct file' is open, an s_active reference is held
->> > on
->> > =C2=A0=C2=A0=C2=A0the superblock, via "open_context" calling nfs_sb_ac=
-tive().
->> > =C2=A0=C2=A0=C2=A0This doesn't prevent "unmount" from succeeding (i.e.=
- EBUSY isn't
->> > =C2=A0=C2=A0=C2=A0returned), but does prevent the actual unmount from =
-happening
->> > =C2=A0=C2=A0=C2=A0(->kill_sb() isn't called).
->> > 2/ When a memory mapping of a file is torn down, the file is
->> > =C2=A0=C2=A0=C2=A0"released", causing the context to be discarded and =
-the
->> > sb_active
->> > =C2=A0=C2=A0=C2=A0reference released, but unlike close(2), file_operat=
-ions-
->> > >flush()
->> > =C2=A0=C2=A0=C2=A0is not called.
->>=20
->> I realised that there is another piece of the puzzle.
->> When a page is marked dirty (e.g. nfs_vm_page_mkwrite),
->> =C2=A0nfs_updatepage() -> nfs_writepage_setup()
->> creates a 'struct nfs_page' request which holds a reference to
->> the open context, which in turn holds an active reference to the
->> superblock.
->> So as long as there are dirty pages, the superblock will not go
->> inactive.=C2=A0=C2=A0All the rest still holds.
->>=20
->> NeilBrown
->>=20
->>=20
->> >=20
->> > Consequently, if you:
->> > =C2=A0open an NFS file
->> > =C2=A0mmap some pages PROT_WRITE
->> > =C2=A0close the file
->> > =C2=A0modify the pages
->> > =C2=A0unmap the pages
->> > =C2=A0unmount the filesystem
->> >=20
->> > the filesystem will remain active, and the pages will remain dirty.
->> > If you then make the nfs server unavailable - e.g. stop it, or tear
->> > down
->> > the network connection - and then call 'sync', the sync will hang.
->> >=20
->> > This is surprising, at the least :-)
->> >=20
->> > I have two ideas how it might be fixed.
->> >=20
->> > One is to call nfs_file_flush() from within nfs_file_release().
->> > This is probably simplest (and appears to work).
->> >=20
->> > The other is to add a ".close" to nfs_file_vm_ops.=C2=A0=C2=A0This cou=
-ld
->> > trigger a
->> > (partial) flush whenever a page is unmapped.=C2=A0=C2=A0As closing an =
-NFS
->> > file
->> > always triggers a flush, it seems reasonable that unmapping a page
->> > would trigger a flush of that page.
->> >=20
->> > Thoughts?
->> >=20
->
-> All this is working as expected. The only way to ensure that data is
-> synced to disk by mmap() is to explicitly call msync(). This is well
-> documented, and should be well understood by application developers. If
-> those developers are ignoring the documentation, then I suggest votoing
-> with your feet and getting your software from someone else.=20
+--b.
 
-Hi Trond,
- I don't understand how you can see this behaviour as acceptable.
- For any other filesystem, unmount is a synchronisation point.
- Assuming there are not bind mount or similar, and that MNT_DETACH is
- not used, an unmount will flush out any changes.  It doesn't matter whether
- or not the application has called fsync or msync - the flush still
- happens on unmount.
- So with any other filesystem you can unmount and then remove the media
- and be sure that nothing is consistent and that no further writes will
- be attempted.
- With NFS as it currently is, unmount does not act as a synchronisation
- point, and writes can continue after the unmount.  How is that
- acceptable?
-
- The patch below explains the problem and provides a simple fix.
-
-Thanks,
-NeilBrown
-
-From: NeilBrown <neilb@suse.com>
-Date: Fri, 10 Mar 2017 08:19:32 +1100
-Subject: [PATCH] NFS: flush out dirty data on final fput().
-
-Any dirty NFS page holds an s_active reference on the superblock,
-because page_private() references an nfs_page, which references an
-open context, which references the superblock.
-
-So if there are any dirty pages when the filesystem is unmounted, the
-unmount will act like a "lazy" unmount and not call ->kill_sb().
-Background write-back can then write out the pages *after* the filesystem
-unmount has apparently completed.
-
-This contrasts with other filesystems which do not hold extra s_active
-references, so ->kill_sb() is reliably called on unmount, and
-generic_shutdown_super() will call sync_filesystem() to flush
-everything out before the unmount completes.
-
-When open/write/close is used to modify files, the final close causes
-f_op->flush to be called, which flushes all dirty pages.  However if
-open/mmap/close/modify-memory/unmap is used, dirty pages can remain in
-memory after the application has dropped all references to the file.
-
-Fix this by calling vfs_fsync() in nfs_file_release (aka
-f_op->release()).  This means that on the final unmap of a file, all
-changes are flushed, and ensures that when unmount is requested there
-will be no dirty pages to delay the final unmount.
-
-Without this patch, it is not safe to stop or disconnect the NFS
-server after all clients have unmounted.  They need to unmount and
-call "sync".
-
-Signed-off-by: NeilBrown <neilb@suse.com>
-=2D--
- fs/nfs/file.c | 6 ++++++
- 1 file changed, 6 insertions(+)
-
-diff --git a/fs/nfs/file.c b/fs/nfs/file.c
-index 668213984d68..d20cf9b3019b 100644
-=2D-- a/fs/nfs/file.c
-+++ b/fs/nfs/file.c
-@@ -81,6 +81,12 @@ nfs_file_release(struct inode *inode, struct file *filp)
- {
- 	dprintk("NFS: release(%pD2)\n", filp);
-=20
-+	if (filp->f_mode & FMODE_WRITE)
-+		/* Ensure dirty mmapped pages are flushed
-+		 * so there will be no dirty pages to
-+		 * prevent an unmount from completing.
-+		 */
-+		vfs_fsync(filp, 0);
- 	nfs_inc_stats(inode, NFSIOS_VFSRELEASE);
- 	nfs_file_clear_open_context(filp);
- 	return 0;
-=2D-=20
-2.12.0
-
-
---=-=-=
-Content-Type: application/pgp-signature; name="signature.asc"
-
------BEGIN PGP SIGNATURE-----
-
-iQIzBAEBCAAdFiEEG8Yp69OQ2HB7X0l6Oeye3VZigbkFAljByzgACgkQOeye3VZi
-gbkFRA//ckwHme4Cnv4siFfZmtL3wFieoHVYDqDzlBfXJoOhsr43ac2+cRXMr6ss
-aMj6MebZzCT12QFk85RLgLU3Y+3Es1XnPP2b9qMm2pIEBSfyn618HaCYyFTD4Lzv
-eEEkGm65qsE9JUB4E5Nbf2pZCArwD/8y9/wR5w+zU/j0uFzTbwHxewEP8Fu8WHIX
-BRJDZHqEbjzznTNUSFrR4NK2OOlHZjyTBc6fe2po+45XBHIWFx8CbwQdUnzi7VN6
-pX/y4zCvl+lOg2bo8jjPw4XeRdTI51GHvHdP50rknczJ4rMayCmEF9iMgFsiyuRu
-N53cmYBF28hXSofC8y6+huOntmDUdluCctGXszJnDeR9EiWKqY+yffVg5aBZNTVL
-i1nA2KDESwZWZf5KG65QutjUKf9Sim7bzLAm4xuMGOoCIKTzg+gguuqcJKTUWp7l
-dQYYO6iPJF8HcmBLKPHs5me8jeRLmZAQGaW00gChPCLdkiDJrvy4SsYZZF1OQaQN
-r0UQ79hdKg9pFHjHPzERMU3UC7ITkaKTyFO53tqu3pb1RmmefOc6D3VW4K2TmqDq
-Gj9If2l97AED2tc/5GyCUsvUUfEfLhmeaVaKbUuCgMOKUuX1xVFLeLHIw0b8Kg+d
-3TvqArlOWnYL8xHo8r3ot17TGJv/+kdvb1L0MHLZJJVT2GXDbG4=
-=Ofii
------END PGP SIGNATURE-----
---=-=-=--
+> 
+> A lot more testing is needed - and planned :)
+> 
+> Client was built on Trond's testing branch, 4.10.0 kernel.
+> Server was  built on Bruce's nfsd-next branch, 4.10.0-rc7 kernel
+> 
+> nfsd-next branch has these server required patches missing from Tronds
+> testing branch:
+> 
+> 1) svcrpc: free contexts immediately on PROC_DESTROY
+> 2) nfsd: opt in to labeled nfs per export
+> 
+> Version-5.
+> ---------
+> - responded to comments from Anna Schumaker
+> - refactored code to split generice RPCSEC_GSS_CREATE from label payload
+> - nfsd check for NFSEXP_SECURITY_LABEL export flag
+> 
+> Requires on Client:
+> -------------------
+> gssd patches:  "RFC: GSSD changes for RPCSEC_GSS version 3"
+> libtirpc patches "RFC: Libtirpc changes for RPCSEC_GSS version 3"
+> 
+> Implementation Features:
+> ------------------------
+> 
+> GSSv3
+> - Negotiate GSS version - starts with GSSv3 then falls back to GSSv1 if
+>   GSSv3 is not supported.
+> - New GSSv3 reply verifier
+> - RPCSEC_GSS_CREATE operation generic code is separated from the payload code.
+> - rgss3_label assertion payload carries each client SeLinux thread label
+> - Supports one label assertion payload per RPCSEC_GSS_CREATE
+> - Kerberos pseudoflavor support (krb5, krb5i, krb5p)
+> 
+> TODO:
+> ----
+> - Send all RPCSEC_GSS_CREATE calls with integrity or privacy
+> - Ensure SeLinux function exported in patch "SELINUX export
+>   security_current_sid_to_context" is OK with SeLinux experts.
+> - Perhaps add administrative ability on the client to indicate Full Mode
+>   MAC is desired and that NFSv4.2 Labeled NFS (LNFS) is used.
+> 
+> Prototype description:
+> ---------------------
+> Parent GSS context: the normal GSS context
+>  - "Normal" GSSv3 context is the same as a "normal" GSSv1 context except
+>    for the new GSS Version and new reply verifier. For GSSv3 this "normal"
+>    context is called the parent context.
+> 
+> Child GSS3 context: Is returned by a successful RPCSEC_GSS_CREATE operation
+>  - Child context is associated with the parent context on both the client
+>    and the server.
+> 
+> If SeLinux is enabled and GSSv3 is in use, assume LNFS and GSSv3 full mode MAC.
+> 
+> When Full Mode MAC is used:
+> - Each new GSS3 context (parent) kicks off an RPCSEC_GSS_CREATE with the
+> client thread's SeLinux label as a payload.
+>   - Upon success, the RPCSEC_GSS_CREATE call creates a GSSv3 child context
+>     handle that asserts the thread label, and uses the parent context for
+>     encrytion services.
+>   - CLIENT: Child context and assertion is stored in an assertion list
+>     off the struct gss_cl_ctx.
+>   - SERVER: Child context has it's own rsc cache entry, and the child
+>     handle is stored in a list of children handles off the parent rsc entry.
+>   - CLIENT and SERVER: child contexts are destroyed when parent context is
+>     destroyed.
+>   - CLIENT: child context associated with the client NFS request thread
+>     is used for the NFS request.
+>   - SERVER: Using the child context handle looks up the child rsc entry.
+>     Using the parent context handle stored in the child rsc entry looks up
+>     the parent rsc entry to use for MIC creation/verification, integrity
+>     (krb5i)  and/or privacy (krb5p).
+>   - SERVER: the label asserted by the NFS request child handle is imposed
+>     upon the NFSD thread servicing the request just like the UID/GIDs in
+>     the rpc credential.
+> 
+> Each time a call is made, the client makes a check in gss_match to see if
+> the curren thread's SeLinux label has an associated GSS3 child context handle
+> to use. If not, an RPCSEC_GSS_CREATE call is kicked off to establish the
+> child context prior to the NFS request being sent. The NFS request then
+> uses the child context that asserts the client NFS request thread label
+> when sending the NFS request to the server.
+> 
+> Smoke Test;
+> ----------
+> Setup:
+> - Ensure SeLinux is enabled on both client and server
+> - Turn on NFSv4.2 in client and server
+>   - SERVER: in /etc/sysconfig/nfs: RPCNFSDARGS="-V 4.2" (not needed in
+>     Fedora 25 as NFSv4.2 is turned on)
+>   - Fedora 25 SERVER export option "security_label" must be set:
+>     /export *(sec=krb5:sys,rw,no_subtree_check,no_root_squash,security_label)
+>   - CLIENT: mount -o v4.2 <server>:<export> <mntpoint>
+>   - Note: LNFS sends the file label in the OPEN compound GETATTR.
+>   - GSS3 sends the client thread label in the RPCSEC_GSS_CREATE call.
+> - Useful SeLinux commands
+>   - getenforce (setenforce) will let you know if Selinux is enforced
+>   - ls -Z  (shows label and fetches it via GETATTR usin LNFS)
+>   - ls -scontext  (shows just the label)
+> 
+> Note: Server should be Fedora 25 as the nfs-utils-2.1.1.2.rc1.fc25 and
+> kernel 5.9.10-200.fc25 supports the new "security_label" export option
+> which needs to be set on an exported file system that wants to support
+> LNFS and GSS3 labels.
+> 
+> Test: (run with wireshark capture)
+> Note: labels and conext values are from my setup. I restart gssd each test run.
+> Note: my server /etc/export is "/export *(sec=krb5:sys,rw,no_root_squash)"
+> 
+> - # mount -o v4.2,sec=krb5 <server>:<export>  <mntpoint>
+>   # ls <mntpoint>
+>   - This will create a parent GSS context for kb5i (010000000000000 say 01),
+>     and a GSS3 child context for krb5i parent with the client thread
+>     label "system_u:system_r:kernel_t:s0" with handle 02.
+>    - The child handle 02 is used for the EXCHANGE_ID, CREATE_SESSION, and
+>      RECLAIM_COMPLETE calls.
+>   - Then a parent GSS handle is created for krb5 (03) and a GSS3 child
+>     context for the krb5 parent with hanel (04) for the client thread label
+>     "unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023"
+>    - The child handle 04 is used for the PUTROOT_FH, all the mount GETATTRs
+>      and the LOOKUP of "/export"
+>    - A new GSS3 child context (05) is created for krb5 parent with label
+>      "system_u:system_r:kernel_t:s0"
+>      The child handle 05 is used for LOOKUP, ACCESS, READDIR, etc.
+> 
+> 
+> - # umount <mntpoint>
+>    - This will create a new GSS3 child context (06) for krb5i parent with the
+>      client thread label
+>      "unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023"
+>     - The child handle 06 is used for DESTROY_SESSION and DESTROY_CLIENTID.
+>   - RPCSEC_GSS_DESTROY messages are sent for the two parent contexts 01 and 03.
+>   - CHILD: the parent contexts and associated child contexts are destroyed.
+>   - SERVER: the parent context and associated child contexts are destroyed.
+> 
+> -->Andy
+> 
+> 
+> Andy Adamson (17):
+>   SUNRPC handle unsupported RPCSEC_GSS security service
+>   SUNRPC: RPCNULL call with payload for GSSv3
+>   SELINUX export security_current_sid_to_context
+>   SUNRPC GSSv3: base definitions
+>   SUNRPC AUTH_GSS get RPCSEC_GSS version from gssd downcall
+>   SUNRPC AUTH_GSS gss3 reply verifier
+>   SUNRPC AUTH_GSS RPCSEC_GSS_CREATE with no payload
+>   SUNRPC AUTH_GSS RPCSEC_GSS_CREATE with label payload
+>   SUNRPC AUTH_GSS store GSS3 assertions in parent gss_cl_ctx
+>   SUNRPC AUTH_GSS store and use gss3 label assertion
+>   SUNRPC AUTH_GSS free assertions
+>   SUNRPC: AUTH_GSS add RPC_GSS_PROC_CREATE case for wrap and unwrap
+>   SUNRPC SVCAUTH_GSS allow RPCSEC_GSS version 1 or 3
+>   SUNRPC SVCAUTH_GSS gss3 reply verifier
+>   SUNRPC SVCAUTH_GSS gss3 create label
+>   SUNRPC SVCAUTH_GSS set gss3 label on nfsd thread
+>   SUNRPC SVCAUTH_gss store gss3 child handles in parent rsc
+> 
+>  fs/nfsd/auth.c                     |  11 +-
+>  include/linux/selinux.h            |   7 +
+>  include/linux/sunrpc/auth_gss.h    |  76 ++++-
+>  include/linux/sunrpc/clnt.h        |   3 +
+>  include/linux/sunrpc/gss_api.h     |  11 +
+>  include/linux/sunrpc/svcauth.h     |   1 +
+>  include/linux/sunrpc/svcauth_gss.h |   1 +
+>  net/sunrpc/auth_gss/auth_gss.c     | 564 ++++++++++++++++++++++++++++++++++++-
+>  net/sunrpc/auth_gss/svcauth_gss.c  | 549 ++++++++++++++++++++++++++++++++++--
+>  net/sunrpc/clnt.c                  |  20 ++
+>  security/selinux/hooks.c           |  14 +
+>  11 files changed, 1217 insertions(+), 40 deletions(-)
+> 
+> -- 
+> 2.9.3
