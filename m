@@ -1,109 +1,75 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:35456 "EHLO mx2.suse.de"
+Received: from mx2.suse.de ([195.135.220.15]:60835 "EHLO mx2.suse.de"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751355AbdCIHed (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 9 Mar 2017 02:34:33 -0500
-Received: from relay1.suse.de (charybdis-ext.suse.de [195.135.220.254])
-        by mx2.suse.de (Postfix) with ESMTP id A713CAAC7
-        for <linux-nfs@vger.kernel.org>; Thu,  9 Mar 2017 04:46:55 +0000 (UTC)
-From: NeilBrown <neilb@suse.com>
-To: Linux NFS <linux-nfs@vger.kernel.org>
-Date: Thu, 09 Mar 2017 15:46:49 +1100
-Subject: Re: A NFS mount can still write to the server after 'umount' has completed.
-In-Reply-To: <871su7i0iw.fsf@notabene.neil.brown.name>
-References: <871su7i0iw.fsf@notabene.neil.brown.name>
-Message-ID: <87y3wfgipy.fsf@notabene.neil.brown.name>
+        id S1754137AbdCILpa (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 9 Mar 2017 06:45:30 -0500
+Date: Thu, 9 Mar 2017 12:42:53 +0100
+From: David Sterba <dsterba@suse.cz>
+To: Michal Hocko <mhocko@kernel.org>
+Cc: Andrew Morton <akpm@linux-foundation.org>,
+        linux-fsdevel@vger.kernel.org, linux-mm@kvack.org,
+        Dave Chinner <david@fromorbit.com>, djwong@kernel.org,
+        "Theodore Ts'o" <tytso@mit.edu>, Chris Mason <clm@fb.com>,
+        David Sterba <dsterba@suse.cz>, Jan Kara <jack@suse.cz>,
+        ceph-devel@vger.kernel.org, cluster-devel@redhat.com,
+        linux-nfs@vger.kernel.org, logfs@logfs.org, linux-xfs@vger.kernel.org,
+        linux-ext4@vger.kernel.org, linux-btrfs@vger.kernel.org,
+        linux-mtd@lists.infradead.org, reiserfs-devel@vger.kernel.org,
+        linux-ntfs-dev@lists.sourceforge.net,
+        linux-f2fs-devel@lists.sourceforge.net, linux-afs@lists.infradead.org,
+        LKML <linux-kernel@vger.kernel.org>, Vlastimil Babka <vbabka@suse.cz>
+Subject: Re: [PATCH 4/7] mm: introduce memalloc_nofs_{save,restore} API
+Message-ID: <20170309114253.GA14605@twin.jikos.cz>
+Reply-To: dsterba@suse.cz
+References: <20170306131408.9828-1-mhocko@kernel.org>
+ <20170306131408.9828-5-mhocko@kernel.org>
+ <20170306132214.1769368301d9e671e1bc68be@linux-foundation.org>
+ <20170307150956.GM28642@dhcp22.suse.cz>
 MIME-Version: 1.0
-Content-Type: multipart/signed; boundary="=-=-=";
-        micalg=pgp-sha256; protocol="application/pgp-signature"
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20170307150956.GM28642@dhcp22.suse.cz>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---=-=-=
-Content-Type: text/plain
+On Tue, Mar 07, 2017 at 04:09:56PM +0100, Michal Hocko wrote:
+> On Mon 06-03-17 13:22:14, Andrew Morton wrote:
+> > On Mon,  6 Mar 2017 14:14:05 +0100 Michal Hocko <mhocko@kernel.org> wrote:
+> [...]
+> > > --- a/include/linux/gfp.h
+> > > +++ b/include/linux/gfp.h
+> > > @@ -210,8 +210,16 @@ struct vm_area_struct;
+> > >   *
+> > >   * GFP_NOIO will use direct reclaim to discard clean pages or slab pages
+> > >   *   that do not require the starting of any physical IO.
+> > > + *   Please try to avoid using this flag directly and instead use
+> > > + *   memalloc_noio_{save,restore} to mark the whole scope which cannot
+> > > + *   perform any IO with a short explanation why. All allocation requests
+> > > + *   will inherit GFP_NOIO implicitly.
+> > >   *
+> > >   * GFP_NOFS will use direct reclaim but will not use any filesystem interfaces.
+> > > + *   Please try to avoid using this flag directly and instead use
+> > > + *   memalloc_nofs_{save,restore} to mark the whole scope which cannot/shouldn't
+> > > + *   recurse into the FS layer with a short explanation why. All allocation
+> > > + *   requests will inherit GFP_NOFS implicitly.
+> > 
+> > I wonder if these are worth a checkpatch rule.
+> 
+> I am not really sure, to be honest. This may easilly end up people
+> replacing
+> 
+> do_alloc(GFP_NOFS)
+> 
+> with
+> 
+> memalloc_nofs_save()
+> do_alloc(GFP_KERNEL)
+> memalloc_nofs_restore()
+> 
+> which doesn't make any sense of course. From my experience, people tend
+> to do stupid things just to silent checkpatch warnings very often.
+> Moreover I believe we need to do the transition to the new api first
+> before we can push back on the explicit GFP_NOFS usage. Maybe then we
+> can think about the a checkpatch warning.
 
-On Thu, Mar 09 2017, NeilBrown wrote:
-
-> I've been chasing down a problem where a customer has a localhost mount,
-> and the sequence
->   unmount -at nfs,nfs4
->   stop nfsserver
->   sync
->
-> hangs on the sync.  The 'sync' is trying to write to the NFS filesystem
-> that has just been unmounted.
-> I have duplicated the problem on a current mainline kernel.
->
-> There are two important facts that lead to the explanation of this.
-> 1/ whenever a 'struct file' is open, an s_active reference is held on
->    the superblock, via "open_context" calling nfs_sb_active().
->    This doesn't prevent "unmount" from succeeding (i.e. EBUSY isn't
->    returned), but does prevent the actual unmount from happening
->    (->kill_sb() isn't called).
-> 2/ When a memory mapping of a file is torn down, the file is
->    "released", causing the context to be discarded and the sb_active
->    reference released, but unlike close(2), file_operations->flush()
->    is not called.
-
-I realised that there is another piece of the puzzle.
-When a page is marked dirty (e.g. nfs_vm_page_mkwrite),
- nfs_updatepage() -> nfs_writepage_setup()
-creates a 'struct nfs_page' request which holds a reference to
-the open context, which in turn holds an active reference to the
-superblock.
-So as long as there are dirty pages, the superblock will not go
-inactive.  All the rest still holds.
-
-NeilBrown
-
-
->
-> Consequently, if you:
->  open an NFS file
->  mmap some pages PROT_WRITE
->  close the file
->  modify the pages
->  unmap the pages
->  unmount the filesystem
->
-> the filesystem will remain active, and the pages will remain dirty.
-> If you then make the nfs server unavailable - e.g. stop it, or tear down
-> the network connection - and then call 'sync', the sync will hang.
->
-> This is surprising, at the least :-)
->
-> I have two ideas how it might be fixed.
->
-> One is to call nfs_file_flush() from within nfs_file_release().
-> This is probably simplest (and appears to work).
->
-> The other is to add a ".close" to nfs_file_vm_ops.  This could trigger a
-> (partial) flush whenever a page is unmapped.  As closing an NFS file
-> always triggers a flush, it seems reasonable that unmapping a page
-> would trigger a flush of that page.
->
-> Thoughts?
->
-> Thanks,
-> NeilBrown
-
---=-=-=
-Content-Type: application/pgp-signature; name="signature.asc"
-
------BEGIN PGP SIGNATURE-----
-
-iQIzBAEBCAAdFiEEG8Yp69OQ2HB7X0l6Oeye3VZigbkFAljA3jkACgkQOeye3VZi
-gblYEg/+Jx5u48NyGXJxcznJotFhQIiLEplI2KRnbpmA7p+eR8YHMRzKVGomU0FO
-9vlXZL2UDfse61Y7XPsKnQg9PtWu/p3YkmvHTSEg/RwGQsum7nNl2fK5DaE3iQTw
-2EFIGFOwLHY1+P2Huai8I1pQ4tpS7NGhdFvYK8RnLwMMmWtA345SBa2k2mEgo3ey
-4D1gtStOjIs58o9ji3OsVyWhTmGDKcTL+NBVlwLqfsjvCTUn6MZcPS8TS/t7lOfx
-dObgBrsdCELOR9FRp79eW8OB7RjBTFKjM1i2vZNBE4uwgLqsvgTZYoTS7+6EwHaq
-aQjNi+5hmsVdsHhld/Wsd5QRMDBvn/ATjIVbrbH4t8tdK+lyTOFIVIcHmDZzlg9p
-ofhYqdrosuUd0VHDib4EHtUmtVHdOUWmrXxIA4ykrCqMmQujiqN0d2IKZBd5H2BR
-KhcVXS5aVDyF1kERumvG91g7xGIHY+ApIuhcGBjVXgDu0kZCGidqnZ+3LospxpWx
-5UMjnBAWvfkLT6pAmUIWdDot7xvmWy3M+NIqJBoUsbgAYepDKVowjpkQXtS9PyRw
-MGgUWdvJbcguiam5wC/k+tvKxeCOdoIr24AnbgWIvXWGFbS6Vkcd2rDfz/wHkPoe
-zs1hD/6aQV3jseMoLh/v2Yg4MPqZHVVhJ0ANEmIVkW6IqnUZs7k=
-=LOJs
------END PGP SIGNATURE-----
---=-=-=--
+I agree will all your objections against adding that to checkpatch, at
+this point it's less harmful to use GFP_NOFS.
