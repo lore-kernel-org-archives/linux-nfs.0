@@ -1,69 +1,56 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:58882 "EHLO fieldses.org"
+Received: from fieldses.org ([173.255.197.46]:59026 "EHLO fieldses.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1750781AbdCISkL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 9 Mar 2017 13:40:11 -0500
-Date: Thu, 9 Mar 2017 13:40:09 -0500
-From: "bfields@fieldses.org" <bfields@fieldses.org>
-To: Olga Kornievskaia <kolga@netapp.com>
-Cc: "hch@infradead.org" <hch@infradead.org>,
-        Trond Myklebust <trondmy@primarydata.com>,
+        id S1751992AbdCIU0P (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 9 Mar 2017 15:26:15 -0500
+Date: Thu, 9 Mar 2017 15:26:10 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Jeff Layton <jlayton@redhat.com>
+Cc: Kinglong Mee <kinglongmee@gmail.com>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
         "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>
-Subject: Re: [RFC v1 01/19] fs: Don't copy beyond the end of the file
-Message-ID: <20170309184009.GD3929@fieldses.org>
-References: <20170308195327.GA3492@fieldses.org>
- <85310DA6-7270-49AE-A310-76D73678B1B1@netapp.com>
- <1489004308.3098.10.camel@primarydata.com>
- <20170308203236.GC3492@fieldses.org>
- <1489006194.3098.12.camel@primarydata.com>
- <20170309152948.GB3929@fieldses.org>
- <20170309153559.GA20205@infradead.org>
- <20170309161601.GC3929@fieldses.org>
- <20170309161729.GA11655@infradead.org>
- <480EF075-69E6-458D-AA5F-FBE19F68C3C3@netapp.com>
+        Anna Schumaker <Anna.Schumaker@netapp.com>
+Subject: Re: [PATCH] SUNRPC/backchanel: set XPT_CONG_CTRL flag for bc xprt
+Message-ID: <20170309202610.GF3929@fieldses.org>
+References: <b321152e-cbe8-94b3-498c-1d32e7c7be2d@gmail.com>
+ <1488885081.2788.0.camel@redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-In-Reply-To: <480EF075-69E6-458D-AA5F-FBE19F68C3C3@netapp.com>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1488885081.2788.0.camel@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Mar 09, 2017 at 12:28:03PM -0500, Olga Kornievskaia wrote:
-> 
-> > On Mar 9, 2017, at 11:17 AM, hch@infradead.org wrote:
+Thanks!  Applying.--b.
+
+On Tue, Mar 07, 2017 at 06:11:21AM -0500, Jeff Layton wrote:
+> On Tue, 2017-03-07 at 17:22 +0800, Kinglong Mee wrote:
+> > The xprt for backchannel is created separately, not in TCP/UDP code.
+> > Because without the flags, the requests from NFSv41 backchannel are
+> > rejected in svc_process_common(),
 > > 
-> > On Thu, Mar 09, 2017 at 11:16:01AM -0500, bfields@fieldses.org
-> > wrote:
-> >> I guess I'm just hung up on the EINVAL vs. short copy behavior.  It
-> >> seems more annoying and error-prone to be prepared for both, as
-> >> opposed to trying clone and then explicitly falling back to copy if
-> >> that doesn't work.  Maybe it's not that big a deal.
+> > 1191         if (versp->vs_need_cong_ctrl &&
+> > 1192             !test_bit(XPT_CONG_CTRL, &rqstp->rq_xprt->xpt_flags))
+> > 1193                 goto err_bad_vers;
 > > 
-> > We can do short copies^H^H^H^H^Hclones for clone just as easily, at
-> > least for local filesystems (NFS would require some tweaks due to
-> > the protocol).
+> > Fixes: 5283b03ee5 ("nfs/nfsd/sunrpc: enforce transport...")
+> > Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
+> > ---
+> >  net/sunrpc/svcsock.c | 1 +
+> >  1 file changed, 1 insertion(+)
+> > 
+> > diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
+> > index 8931e33..2b720fa 100644
+> > --- a/net/sunrpc/svcsock.c
+> > +++ b/net/sunrpc/svcsock.c
+> > @@ -1635,6 +1635,7 @@ static struct svc_xprt *svc_bc_create_socket(struct svc_serv *serv,
+> >  
+> >  	xprt = &svsk->sk_xprt;
+> >  	svc_xprt_init(net, &svc_tcp_bc_class, xprt, serv);
+> > +	set_bit(XPT_CONG_CTRL, &svsk->sk_xprt.xpt_flags);
+> >  
+> >  	serv->sv_bc_xprt = xprt;
+> >  
 > 
-> I’m confused by the wording of “we can do … easily” . Is “can” = in
-> the future? Currently, testing copy_file_range() on a btfs with
-> argument of offset+len beyond the end of the file fail with EINVAL. Is
-> NFS tweaking = revert the “MUST” in the spec for the check? 
-
-Checking https://tools.ietf.org/html/draft-ietf-nfsv4-minorversion2-41
-... looks like the CLONE result doesn't even have a length.
-
-Most users are probably cloning the whole file, so I guess it only
-matters in the case the file's changing (so that the size returned from
-stat might not be correct by the time you do the clone).
-
-Allowing short copies would be one way to handle that--I think it'd work
-then to just always request a clone to the maximum length.
-
-Alternatively if the linux interface just had a way to say "clone to end
-of file", that'd solve most of the problem and be a nice fit for the
-existing NFS protocol (which special-cases length 0 to mean "to end of
-file").
-
-Maybe we could special-case the maximum size_t to mean that.  (What is
-that, 2^63-1?.)
-
---b.
+> Good catch.
+> 
+> Reviewed-by: Jeff Layton <jlayton@redhat.com>
