@@ -1,77 +1,77 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-wr0-f178.google.com ([209.85.128.178]:33274 "EHLO
-        mail-wr0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1754647AbdCIN1b (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 9 Mar 2017 08:27:31 -0500
-Received: by mail-wr0-f178.google.com with SMTP id u48so45042968wrc.0
-        for <linux-nfs@vger.kernel.org>; Thu, 09 Mar 2017 05:27:20 -0800 (PST)
-Received: from [192.168.64.116] (bzq-82-81-101-184.red.bezeqint.net. [82.81.101.184])
-        by smtp.gmail.com with ESMTPSA id w17sm8277019wra.28.2017.03.09.05.27.18
-        for <linux-nfs@vger.kernel.org>
-        (version=TLS1_2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128/128);
-        Thu, 09 Mar 2017 05:27:18 -0800 (PST)
-To: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-From: Sagi Grimberg <sagi@grimberg.me>
-Subject: kmemleak complaint on 4.11-rc1
-Message-ID: <34f7270f-ea05-4246-81db-a606f9d5c4bc@grimberg.me>
-Date: Thu, 9 Mar 2017 15:27:17 +0200
+Received: from us-smtp-delivery-194.mimecast.com ([216.205.24.194]:20650 "EHLO
+        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1754647AbdCINdG (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 9 Mar 2017 08:33:06 -0500
+From: Trond Myklebust <trondmy@primarydata.com>
+To: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "sagi@grimberg.me" <sagi@grimberg.me>
+Subject: Re: kmemleak complaint on 4.11-rc1
+Date: Thu, 9 Mar 2017 13:30:20 +0000
+Message-ID: <1489066218.3121.3.camel@primarydata.com>
+References: <34f7270f-ea05-4246-81db-a606f9d5c4bc@grimberg.me>
+In-Reply-To: <34f7270f-ea05-4246-81db-a606f9d5c4bc@grimberg.me>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8; format=flowed
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hey all,
+T24gVGh1LCAyMDE3LTAzLTA5IGF0IDE1OjI3ICswMjAwLCBTYWdpIEdyaW1iZXJnIHdyb3RlOg0K
+PiBIZXkgYWxsLA0KPiANCj4gSSBnZXQgdGhpcyB3aXRoIG5mcyBtb3VudCBvbiBteSBWTSAoNC4x
+MS1yYzEpOg0KPiANCj4gZnJvbSBkbWVzZzoNCj4gWyAxODg5LjY3NjY0OF0ga21lbWxlYWs6IDgy
+NTQgbmV3IHN1c3BlY3RlZCBtZW1vcnkgbGVha3MgKHNlZcKgDQo+IC9zeXMva2VybmVsL2RlYnVn
+L2ttZW1sZWFrKQ0KPiANCj4gJCBjYXQgL3N5cy9rZXJuZWwvZGVidWcva21lbWxlYWsNCj4gLi4u
+DQo+IHVucmVmZXJlbmNlZCBvYmplY3QgMHhmZmZmOTZjNjdhMTkyYTgwIChzaXplIDMyKToNCj4g
+wqDCoMKgY29tbSAia3dvcmtlci8wOjMiLCBwaWQgMjY2LCBqaWZmaWVzIDQyOTUwODA5NDYgKGFn
+ZSA2NDA2LjYwMHMpDQo+IMKgwqDCoGhleCBkdW1wIChmaXJzdCAzMiBieXRlcyk6DQo+IMKgwqDC
+oMKgwqAzMSAzMCAzMCAzMCAwMCBmZiAwZiA4OCAwYSBmYyBmZiBmZiA0MSA4MyBmZg0KPiAwMcKg
+wqAxMDAwLi4uLi4uLi5BLi4uDQo+IMKgwqDCoMKgwqAwZiA4ZSA3NSAwMSAwMCAwMCA0MSA4ZCA0
+ZiBmYyA4MyBmOSAwYiAwZiA4Nw0KPiBmM8KgwqAuLnUuLi5BLk8uLi4uLi4uDQo+IMKgwqDCoGJh
+Y2t0cmFjZToNCj4gwqDCoMKgwqDCoFs8ZmZmZmZmZmZiYjg0N2VkYT5dIGttZW1sZWFrX2FsbG9j
+KzB4NGEvMHhhMA0KPiDCoMKgwqDCoMKgWzxmZmZmZmZmZmJiMjA1OTQ5Pl0gX19rbWFsbG9jKzB4
+MTQ5LzB4MjcwDQo+IMKgwqDCoMKgwqBbPGZmZmZmZmZmYzA1MjY1OTA+XSB4ZHJfc3RyZWFtX2Rl
+Y29kZV9zdHJpbmdfZHVwKzB4ODAvMHgxMTANCj4gW3N1bnJwY10NCj4gwqDCoMKgwqDCoFs8ZmZm
+ZmZmZmZjMGEwMzE2OD5dIGRlY29kZV9nZXRmYXR0cl9hdHRycysweDhiOC8weDE1YTAgW25mc3Y0
+XQ0KPiDCoMKgwqDCoMKgWzxmZmZmZmZmZmMwYTAzZWRjPl3CoA0KPiBkZWNvZGVfZ2V0ZmF0dHJf
+Z2VuZXJpYy5jb25zdHByb3AuMTA4KzB4OGMvMHhlMCBbbmZzdjRdDQo+IMKgwqDCoMKgwqBbPGZm
+ZmZmZmZmYzBhMDNmZGQ+XSBuZnM0X3hkcl9kZWNfb3BlbisweGFkLzB4ZDAgW25mc3Y0XQ0KPiDC
+oMKgwqDCoMKgWzxmZmZmZmZmZmMwNTFjZjk5Pl0gcnBjYXV0aF91bndyYXBfcmVzcCsweDg5LzB4
+ZDAgW3N1bnJwY10NCj4gwqDCoMKgwqDCoFs8ZmZmZmZmZmZjMDUwZGI3Mz5dIGNhbGxfZGVjb2Rl
+KzB4MWUzLzB4ODEwIFtzdW5ycGNdDQo+IMKgwqDCoMKgwqBbPGZmZmZmZmZmYzA1MTk2MzI+XSBf
+X3JwY19leGVjdXRlKzB4ODIvMHg0NTAgW3N1bnJwY10NCj4gwqDCoMKgwqDCoFs8ZmZmZmZmZmZj
+MDUxOWExMj5dIHJwY19hc3luY19zY2hlZHVsZSsweDEyLzB4MjAgW3N1bnJwY10NCj4gwqDCoMKg
+wqDCoFs8ZmZmZmZmZmZiYjA5OWUzYj5dIHByb2Nlc3Nfb25lX3dvcmsrMHgxNmIvMHg0ODANCj4g
+wqDCoMKgwqDCoFs8ZmZmZmZmZmZiYjA5YTE5Yj5dIHdvcmtlcl90aHJlYWQrMHg0Yi8weDUwMA0K
+PiDCoMKgwqDCoMKgWzxmZmZmZmZmZmJiMGEwNTkxPl0ga3RocmVhZCsweDEwMS8weDE0MA0KPiDC
+oMKgwqDCoMKgWzxmZmZmZmZmZmJiODUzMDNjPl0gcmV0X2Zyb21fZm9yaysweDJjLzB4NDANCj4g
+wqDCoMKgwqDCoFs8ZmZmZmZmZmZmZmZmZmZmZj5dIDB4ZmZmZmZmZmZmZmZmZmZmZg0KPiB1bnJl
+ZmVyZW5jZWQgb2JqZWN0IDB4ZmZmZjk2YzY3YTE5MmE2MCAoc2l6ZSAzMik6DQo+IMKgwqDCoGNv
+bW0gImt3b3JrZXIvMDozIiwgcGlkIDI2NiwgamlmZmllcyA0Mjk1MDgwOTQ3IChhZ2UgNjQwNi41
+OTZzKQ0KPiDCoMKgwqBoZXggZHVtcCAoZmlyc3QgMzIgYnl0ZXMpOg0KPiDCoMKgwqDCoMKgMzEg
+MzAgMzAgMzAgMDAgZmYgZmYgNDEgYzYgODUgOTAgMDAgMDAgMDAgMDANCj4gNDHCoMKgMTAwMC4u
+LkEuLi4uLi4uQQ0KPiDCoMKgwqDCoMKgMGYgYjYgODUgOTEgMDAgMDAgMDAgODggNDUgYmYgZTkg
+ZGIgZmQgZmYgZmYNCj4gNDTCoMKgLi4uLi4uLi5FLi4uLi4uRA0KPiDCoMKgwqBiYWNrdHJhY2U6
+DQo+IMKgwqDCoMKgwqBbPGZmZmZmZmZmYmI4NDdlZGE+XSBrbWVtbGVha19hbGxvYysweDRhLzB4
+YTANCj4gwqDCoMKgwqDCoFs8ZmZmZmZmZmZiYjIwNTk0OT5dIF9fa21hbGxvYysweDE0OS8weDI3
+MA0KPiDCoMKgwqDCoMKgWzxmZmZmZmZmZmMwNTI2NTkwPl0geGRyX3N0cmVhbV9kZWNvZGVfc3Ry
+aW5nX2R1cCsweDgwLzB4MTEwDQo+IFtzdW5ycGNdDQo+IMKgwqDCoMKgwqBbPGZmZmZmZmZmYzBh
+MDMxNjg+XSBkZWNvZGVfZ2V0ZmF0dHJfYXR0cnMrMHg4YjgvMHgxNWEwIFtuZnN2NF0NCj4gwqDC
+oMKgwqDCoFs8ZmZmZmZmZmZjMGEwM2VkYz5dwqANCj4gZGVjb2RlX2dldGZhdHRyX2dlbmVyaWMu
+Y29uc3Rwcm9wLjEwOCsweDhjLzB4ZTAgW25mc3Y0XQ0KPiDCoMKgwqDCoMKgWzxmZmZmZmZmZmMw
+YTAzZmRkPl0gbmZzNF94ZHJfZGVjX29wZW4rMHhhZC8weGQwIFtuZnN2NF0NCj4gwqDCoMKgwqDC
+oFs8ZmZmZmZmZmZjMDUxY2Y5OT5dIHJwY2F1dGhfdW53cmFwX3Jlc3ArMHg4OS8weGQwIFtzdW5y
+cGNdDQo+IMKgwqDCoMKgwqBbPGZmZmZmZmZmYzA1MGRiNzM+XSBjYWxsX2RlY29kZSsweDFlMy8w
+eDgxMCBbc3VucnBjXQ0KPiDCoMKgwqDCoMKgWzxmZmZmZmZmZmMwNTE5NjMyPl0gX19ycGNfZXhl
+Y3V0ZSsweDgyLzB4NDUwIFtzdW5ycGNdDQo+IMKgwqDCoMKgwqBbPGZmZmZmZmZmYzA1MTlhMTI+
+XSBycGNfYXN5bmNfc2NoZWR1bGUrMHgxMi8weDIwIFtzdW5ycGNdDQo+IMKgwqDCoMKgwqBbPGZm
+ZmZmZmZmYmIwOTllM2I+XSBwcm9jZXNzX29uZV93b3JrKzB4MTZiLzB4NDgwDQo+IMKgwqDCoMKg
+wqBbPGZmZmZmZmZmYmIwOWExOWI+XSB3b3JrZXJfdGhyZWFkKzB4NGIvMHg1MDANCj4gwqDCoMKg
+wqDCoFs8ZmZmZmZmZmZiYjBhMDU5MT5dIGt0aHJlYWQrMHgxMDEvMHgxNDANCj4gwqDCoMKgwqDC
+oFs8ZmZmZmZmZmZiYjg1MzAzYz5dIHJldF9mcm9tX2ZvcmsrMHgyYy8weDQwDQo+IMKgwqDCoMKg
+wqBbPGZmZmZmZmZmZmZmZmZmZmY+XSAweGZmZmZmZmZmZmZmZmZmZmYNCg0KDQpUaGF0J3MgYSBr
+bm93biBpc3N1ZSBkdWUgdG8gYSB0eXBvIGluIHRoZSBnZXRhdHRyIGNsZWFudXBzLiBTZWUgdGhl
+DQpwYXRjaCBwb3N0ZWQgYnkgS2luZ2xvbmcgdG8gdGhpcyBtYWlsaW5nIGxpc3QgYSBjb3VwbGUg
+b2YgZGF5cyBhZ28uIEknbQ0Kc3VyZSBBbm5hIGlzIHBsYW5uaW5nIG9uIG1lcmdpbmcgaXQgc29v
+bi4NCg0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFpbnRhaW5lciwg
+UHJpbWFyeURhdGENCnRyb25kLm15a2xlYnVzdEBwcmltYXJ5ZGF0YS5jb20NCg==
 
-I get this with nfs mount on my VM (4.11-rc1):
-
-from dmesg:
-[ 1889.676648] kmemleak: 8254 new suspected memory leaks (see 
-/sys/kernel/debug/kmemleak)
-
-$ cat /sys/kernel/debug/kmemleak
-...
-unreferenced object 0xffff96c67a192a80 (size 32):
-   comm "kworker/0:3", pid 266, jiffies 4295080946 (age 6406.600s)
-   hex dump (first 32 bytes):
-     31 30 30 30 00 ff 0f 88 0a fc ff ff 41 83 ff 01  1000........A...
-     0f 8e 75 01 00 00 41 8d 4f fc 83 f9 0b 0f 87 f3  ..u...A.O.......
-   backtrace:
-     [<ffffffffbb847eda>] kmemleak_alloc+0x4a/0xa0
-     [<ffffffffbb205949>] __kmalloc+0x149/0x270
-     [<ffffffffc0526590>] xdr_stream_decode_string_dup+0x80/0x110 [sunrpc]
-     [<ffffffffc0a03168>] decode_getfattr_attrs+0x8b8/0x15a0 [nfsv4]
-     [<ffffffffc0a03edc>] 
-decode_getfattr_generic.constprop.108+0x8c/0xe0 [nfsv4]
-     [<ffffffffc0a03fdd>] nfs4_xdr_dec_open+0xad/0xd0 [nfsv4]
-     [<ffffffffc051cf99>] rpcauth_unwrap_resp+0x89/0xd0 [sunrpc]
-     [<ffffffffc050db73>] call_decode+0x1e3/0x810 [sunrpc]
-     [<ffffffffc0519632>] __rpc_execute+0x82/0x450 [sunrpc]
-     [<ffffffffc0519a12>] rpc_async_schedule+0x12/0x20 [sunrpc]
-     [<ffffffffbb099e3b>] process_one_work+0x16b/0x480
-     [<ffffffffbb09a19b>] worker_thread+0x4b/0x500
-     [<ffffffffbb0a0591>] kthread+0x101/0x140
-     [<ffffffffbb85303c>] ret_from_fork+0x2c/0x40
-     [<ffffffffffffffff>] 0xffffffffffffffff
-unreferenced object 0xffff96c67a192a60 (size 32):
-   comm "kworker/0:3", pid 266, jiffies 4295080947 (age 6406.596s)
-   hex dump (first 32 bytes):
-     31 30 30 30 00 ff ff 41 c6 85 90 00 00 00 00 41  1000...A.......A
-     0f b6 85 91 00 00 00 88 45 bf e9 db fd ff ff 44  ........E......D
-   backtrace:
-     [<ffffffffbb847eda>] kmemleak_alloc+0x4a/0xa0
-     [<ffffffffbb205949>] __kmalloc+0x149/0x270
-     [<ffffffffc0526590>] xdr_stream_decode_string_dup+0x80/0x110 [sunrpc]
-     [<ffffffffc0a03168>] decode_getfattr_attrs+0x8b8/0x15a0 [nfsv4]
-     [<ffffffffc0a03edc>] 
-decode_getfattr_generic.constprop.108+0x8c/0xe0 [nfsv4]
-     [<ffffffffc0a03fdd>] nfs4_xdr_dec_open+0xad/0xd0 [nfsv4]
-     [<ffffffffc051cf99>] rpcauth_unwrap_resp+0x89/0xd0 [sunrpc]
-     [<ffffffffc050db73>] call_decode+0x1e3/0x810 [sunrpc]
-     [<ffffffffc0519632>] __rpc_execute+0x82/0x450 [sunrpc]
-     [<ffffffffc0519a12>] rpc_async_schedule+0x12/0x20 [sunrpc]
-     [<ffffffffbb099e3b>] process_one_work+0x16b/0x480
-     [<ffffffffbb09a19b>] worker_thread+0x4b/0x500
-     [<ffffffffbb0a0591>] kthread+0x101/0x140
-     [<ffffffffbb85303c>] ret_from_fork+0x2c/0x40
-     [<ffffffffffffffff>] 0xffffffffffffffff
-...
