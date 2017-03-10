@@ -1,14 +1,14 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f194.google.com ([209.85.223.194]:35084 "EHLO
-        mail-io0-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S932724AbdCJQGs (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 10 Mar 2017 11:06:48 -0500
-Subject: [PATCH v1 07/11] xprtrdma: Use same device when mapping or syncing
- DMA buffers
+Received: from mail-it0-f66.google.com ([209.85.214.66]:34870 "EHLO
+        mail-it0-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S932724AbdCJQG4 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 10 Mar 2017 11:06:56 -0500
+Subject: [PATCH v1 08/11] xprtrdma: Support unplugging an HCA from under an
+ NFS mount
 From: Chuck Lever <chuck.lever@oracle.com>
 To: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Fri, 10 Mar 2017 11:06:45 -0500
-Message-ID: <20170310160645.6314.61659.stgit@manet.1015granger.net>
+Date: Fri, 10 Mar 2017 11:06:53 -0500
+Message-ID: <20170310160653.6314.9258.stgit@manet.1015granger.net>
 In-Reply-To: <20170310154131.6314.35201.stgit@manet.1015granger.net>
 References: <20170310154131.6314.35201.stgit@manet.1015granger.net>
 MIME-Version: 1.0
@@ -16,134 +16,248 @@ Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-When the underlying device driver is reloaded, ia->ri_device will be
-replaced. All cached copies of that device pointer have to be
-updated as well.
+The device driver for the underlying physical device associated
+with an RPC-over-RDMA transport can be removed while RPC-over-RDMA
+transports are still in use (ie, while NFS filesystems are still
+mounted and active). The IB core performs a connection event upcall
+to request that consumers free all RDMA resources associated with
+a transport.
 
-Commit 54cbd6b0c6b9 ("xprtrdma: Delay DMA mapping Send and Receive
-buffers") added the rg_device field to each regbuf. As part of
-handling a device removal, rpcrdma_dma_unmap_regbuf is invoked on
-all regbufs for a transport.
+There may be pending RPCs when this occurs. Care must be taken to
+release associated resources without leaving references that can
+trigger a subsequent crash if a signal or soft timeout occurs. We
+rely on the caller of the transport's ->close method to ensure that
+the previous RPC task has invoked xprt_release but the transport
+remains write-locked.
 
-Simply calling rpcrdma_dma_map_regbuf for each Receive buffer after
-the driver has been reloaded should reinitialize rg_device correctly
-for every case except rpcrdma_wc_receive, which still uses
-rpcrdma_rep::rr_device.
+A DEVICE_REMOVE upcall forces a disconnect then sleeps. When ->close
+is invoked, it destroys the transport's H/W resources, then wakes
+the upcall, which completes and allows the core driver unload to
+continue.
 
-Ensure the same device that was used to map a Receive buffer is also
-used to sync it in rpcrdma_wc_receive by using rg_device there
-instead of rr_device.
-
-This is the only use of rr_device, so it can be removed.
-
-The use of regbufs in the send path is also updated, for
-completeness.
-
-Fixes: 54cbd6b0c6b9 ("xprtrdma: Delay DMA mapping Send and ... ")
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- net/sunrpc/xprtrdma/rpc_rdma.c  |    4 ++--
- net/sunrpc/xprtrdma/verbs.c     |   12 ++++++------
- net/sunrpc/xprtrdma/xprt_rdma.h |    7 ++++++-
- 3 files changed, 14 insertions(+), 9 deletions(-)
+ net/sunrpc/xprtrdma/transport.c |   29 +++++++++++++--
+ net/sunrpc/xprtrdma/verbs.c     |   74 +++++++++++++++++++++++++++++++++++++--
+ net/sunrpc/xprtrdma/xprt_rdma.h |    7 ++++
+ 3 files changed, 101 insertions(+), 9 deletions(-)
 
-diff --git a/net/sunrpc/xprtrdma/rpc_rdma.c b/net/sunrpc/xprtrdma/rpc_rdma.c
-index 103491e..eac38f6 100644
---- a/net/sunrpc/xprtrdma/rpc_rdma.c
-+++ b/net/sunrpc/xprtrdma/rpc_rdma.c
-@@ -494,7 +494,7 @@ static bool rpcrdma_results_inline(struct rpcrdma_xprt *r_xprt,
- 	}
- 	sge->length = len;
+diff --git a/net/sunrpc/xprtrdma/transport.c b/net/sunrpc/xprtrdma/transport.c
+index e27804c..94bb375 100644
+--- a/net/sunrpc/xprtrdma/transport.c
++++ b/net/sunrpc/xprtrdma/transport.c
+@@ -457,19 +457,33 @@
+ 	return ERR_PTR(rc);
+ }
  
--	ib_dma_sync_single_for_device(ia->ri_device, sge->addr,
-+	ib_dma_sync_single_for_device(rdmab_device(rb), sge->addr,
- 				      sge->length, DMA_TO_DEVICE);
- 	req->rl_send_wr.num_sge++;
- 	return true;
-@@ -523,7 +523,7 @@ static bool rpcrdma_results_inline(struct rpcrdma_xprt *r_xprt,
- 	sge[sge_no].addr = rdmab_addr(rb);
- 	sge[sge_no].length = xdr->head[0].iov_len;
- 	sge[sge_no].lkey = rdmab_lkey(rb);
--	ib_dma_sync_single_for_device(device, sge[sge_no].addr,
-+	ib_dma_sync_single_for_device(rdmab_device(rb), sge[sge_no].addr,
- 				      sge[sge_no].length, DMA_TO_DEVICE);
+-/*
+- * Close a connection, during shutdown or timeout/reconnect
++/**
++ * xprt_rdma_close - Close down RDMA connection
++ * @xprt: generic transport to be closed
++ *
++ * Called during transport shutdown reconnect, or device
++ * removal. Caller holds the transport's write lock.
+  */
+ static void
+ xprt_rdma_close(struct rpc_xprt *xprt)
+ {
+ 	struct rpcrdma_xprt *r_xprt = rpcx_to_rdmax(xprt);
++	struct rpcrdma_ep *ep = &r_xprt->rx_ep;
++	struct rpcrdma_ia *ia = &r_xprt->rx_ia;
++
++	dprintk("RPC:       %s: closing xprt %p\n", __func__, xprt);
  
- 	/* If there is a Read chunk, the page list is being handled
+-	dprintk("RPC:       %s: closing\n", __func__);
+-	if (r_xprt->rx_ep.rep_connected > 0)
++	if (test_and_clear_bit(RPCRDMA_IAF_REMOVING, &ia->ri_flags)) {
++		xprt_clear_connected(xprt);
++		rpcrdma_ia_remove(ia);
++		return;
++	}
++	if (ep->rep_connected == -ENODEV)
++		return;
++	if (ep->rep_connected > 0)
+ 		xprt->reestablish_timeout = 0;
+ 	xprt_disconnect_done(xprt);
+-	rpcrdma_ep_disconnect(&r_xprt->rx_ep, &r_xprt->rx_ia);
++	rpcrdma_ep_disconnect(ep, ia);
+ }
+ 
+ static void
+@@ -680,6 +694,8 @@
+  * xprt_rdma_send_request - marshal and send an RPC request
+  * @task: RPC task with an RPC message in rq_snd_buf
+  *
++ * Caller holds the transport's write lock.
++ *
+  * Return values:
+  *        0:	The request has been sent
+  * ENOTCONN:	Caller needs to invoke connect logic then call again
+@@ -706,6 +722,9 @@
+ 	struct rpcrdma_xprt *r_xprt = rpcx_to_rdmax(xprt);
+ 	int rc = 0;
+ 
++	if (!xprt_connected(xprt))
++		goto drop_connection;
++
+ 	/* On retransmit, remove any previously registered chunks */
+ 	if (unlikely(!list_empty(&req->rl_registered)))
+ 		r_xprt->rx_ia.ri_ops->ro_unmap_safe(r_xprt, req, false);
 diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
-index 5e5f004..b68b204 100644
+index b68b204..5bfefee 100644
 --- a/net/sunrpc/xprtrdma/verbs.c
 +++ b/net/sunrpc/xprtrdma/verbs.c
-@@ -180,7 +180,7 @@
- 	rep->rr_wc_flags = wc->wc_flags;
- 	rep->rr_inv_rkey = wc->ex.invalidate_rkey;
+@@ -69,6 +69,8 @@
+ /*
+  * internal functions
+  */
++static void rpcrdma_destroy_mrs(struct rpcrdma_buffer *buf);
++static void rpcrdma_dma_unmap_regbuf(struct rpcrdma_regbuf *rb);
  
--	ib_dma_sync_single_for_cpu(rep->rr_device,
-+	ib_dma_sync_single_for_cpu(rdmab_device(rep->rr_rdmabuf),
- 				   rdmab_addr(rep->rr_rdmabuf),
- 				   rep->rr_len, DMA_FROM_DEVICE);
+ static struct workqueue_struct *rpcrdma_receive_wq __read_mostly;
  
-@@ -877,7 +877,6 @@ struct rpcrdma_rep *
- rpcrdma_create_rep(struct rpcrdma_xprt *r_xprt)
- {
- 	struct rpcrdma_create_data_internal *cdata = &r_xprt->rx_data;
--	struct rpcrdma_ia *ia = &r_xprt->rx_ia;
- 	struct rpcrdma_rep *rep;
+@@ -262,6 +264,21 @@
+ 			__func__, ep);
+ 		complete(&ia->ri_done);
+ 		break;
++	case RDMA_CM_EVENT_DEVICE_REMOVAL:
++#if IS_ENABLED(CONFIG_SUNRPC_DEBUG)
++		pr_info("rpcrdma: removing device for %pIS:%u\n",
++			sap, rpc_get_port(sap));
++#endif
++		set_bit(RPCRDMA_IAF_REMOVING, &ia->ri_flags);
++		ep->rep_connected = -ENODEV;
++		xprt_force_disconnect(&xprt->rx_xprt);
++		wait_for_completion(&ia->ri_remove_done);
++
++		ia->ri_id = NULL;
++		ia->ri_pd = NULL;
++		ia->ri_device = NULL;
++		/* Return 1 to ensure the core destroys the id. */
++		return 1;
+ 	case RDMA_CM_EVENT_ESTABLISHED:
+ 		connstate = 1;
+ 		ib_query_qp(ia->ri_id->qp, attr,
+@@ -291,9 +308,6 @@
+ 		goto connected;
+ 	case RDMA_CM_EVENT_DISCONNECTED:
+ 		connstate = -ECONNABORTED;
+-		goto connected;
+-	case RDMA_CM_EVENT_DEVICE_REMOVAL:
+-		connstate = -ENODEV;
+ connected:
+ 		dprintk("RPC:       %s: %sconnected\n",
+ 					__func__, connstate > 0 ? "" : "dis");
+@@ -346,6 +360,7 @@ static void rpcrdma_destroy_id(struct rdma_cm_id *id)
  	int rc;
  
-@@ -893,7 +892,6 @@ struct rpcrdma_rep *
- 		goto out_free;
- 	}
+ 	init_completion(&ia->ri_done);
++	init_completion(&ia->ri_remove_done);
  
--	rep->rr_device = ia->ri_device;
- 	rep->rr_cqe.done = rpcrdma_wc_receive;
- 	rep->rr_rxprt = r_xprt;
- 	INIT_WORK(&rep->rr_work, rpcrdma_reply_handler);
-@@ -1231,17 +1229,19 @@ struct rpcrdma_regbuf *
- bool
- __rpcrdma_dma_map_regbuf(struct rpcrdma_ia *ia, struct rpcrdma_regbuf *rb)
- {
-+	struct ib_device *device = ia->ri_device;
-+
- 	if (rb->rg_direction == DMA_NONE)
- 		return false;
- 
--	rb->rg_iov.addr = ib_dma_map_single(ia->ri_device,
-+	rb->rg_iov.addr = ib_dma_map_single(device,
- 					    (void *)rb->rg_base,
- 					    rdmab_length(rb),
- 					    rb->rg_direction);
--	if (ib_dma_mapping_error(ia->ri_device, rdmab_addr(rb)))
-+	if (ib_dma_mapping_error(device, rdmab_addr(rb)))
- 		return false;
- 
--	rb->rg_device = ia->ri_device;
-+	rb->rg_device = device;
- 	rb->rg_iov.lkey = ia->ri_pd->local_dma_lkey;
- 	return true;
- }
-diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
-index 775764c..4c0fd4d 100644
---- a/net/sunrpc/xprtrdma/xprt_rdma.h
-+++ b/net/sunrpc/xprtrdma/xprt_rdma.h
-@@ -164,6 +164,12 @@ struct rpcrdma_regbuf {
- 	return (struct rpcrdma_msg *)rb->rg_base;
+ 	id = rdma_create_id(&init_net, rpcrdma_conn_upcall, xprt, RDMA_PS_TCP,
+ 			    IB_QPT_RC);
+@@ -469,6 +484,56 @@ static void rpcrdma_destroy_id(struct rdma_cm_id *id)
  }
  
-+static inline struct ib_device *
-+rdmab_device(struct rpcrdma_regbuf *rb)
+ /**
++ * rpcrdma_ia_remove - Handle device driver unload
++ * @ia: interface adapter being removed
++ *
++ * Divest transport H/W resources associated with this adapter,
++ * but allow it to be restored later.
++ */
++void
++rpcrdma_ia_remove(struct rpcrdma_ia *ia)
 +{
-+	return rb->rg_device;
++	struct rpcrdma_xprt *r_xprt = container_of(ia, struct rpcrdma_xprt,
++						   rx_ia);
++	struct rpcrdma_ep *ep = &r_xprt->rx_ep;
++	struct rpcrdma_buffer *buf = &r_xprt->rx_buf;
++	struct rpcrdma_req *req;
++	struct rpcrdma_rep *rep;
++
++	cancel_delayed_work_sync(&buf->rb_refresh_worker);
++
++	/* This is similar to rpcrdma_ep_destroy, but:
++	 * - Don't cancel the connect worker.
++	 * - Don't call rpcrdma_ep_disconnect, which waits
++	 *   for another conn upcall, which will deadlock.
++	 * - rdma_disconnect is unneeded, the underlying
++	 *   connection is already gone.
++	 */
++	if (ia->ri_id->qp) {
++		ib_drain_qp(ia->ri_id->qp);
++		rdma_destroy_qp(ia->ri_id);
++		ia->ri_id->qp = NULL;
++	}
++	ib_free_cq(ep->rep_attr.recv_cq);
++	ib_free_cq(ep->rep_attr.send_cq);
++
++	/* The ULP is responsible for ensuring all DMA
++	 * mappings and MRs are gone.
++	 */
++	list_for_each_entry(rep, &buf->rb_recv_bufs, rr_list)
++		rpcrdma_dma_unmap_regbuf(rep->rr_rdmabuf);
++	list_for_each_entry(req, &buf->rb_allreqs, rl_all) {
++		rpcrdma_dma_unmap_regbuf(req->rl_rdmabuf);
++		rpcrdma_dma_unmap_regbuf(req->rl_sendbuf);
++		rpcrdma_dma_unmap_regbuf(req->rl_recvbuf);
++	}
++	rpcrdma_destroy_mrs(buf);
++
++	/* Allow waiters to continue */
++	complete(&ia->ri_remove_done);
 +}
 +
- #define RPCRDMA_DEF_GFP		(GFP_NOIO | __GFP_NOWARN)
++/**
+  * rpcrdma_ia_close - Clean up/close an IA.
+  * @ia: interface adapter to close
+  *
+@@ -1079,7 +1144,8 @@ struct rpcrdma_mw *
  
- /* To ensure a transport can always make forward progress,
-@@ -209,7 +215,6 @@ struct rpcrdma_rep {
- 	unsigned int		rr_len;
- 	int			rr_wc_flags;
- 	u32			rr_inv_rkey;
--	struct ib_device	*rr_device;
- 	struct rpcrdma_xprt	*rr_rxprt;
- 	struct work_struct	rr_work;
- 	struct list_head	rr_list;
+ out_nomws:
+ 	dprintk("RPC:       %s: no MWs available\n", __func__);
+-	schedule_delayed_work(&buf->rb_refresh_worker, 0);
++	if (r_xprt->rx_ep.rep_connected != -ENODEV)
++		schedule_delayed_work(&buf->rb_refresh_worker, 0);
+ 
+ 	/* Allow the reply handler and refresh worker to run */
+ 	cond_resched();
+diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
+index 4c0fd4d..7b8701d 100644
+--- a/net/sunrpc/xprtrdma/xprt_rdma.h
++++ b/net/sunrpc/xprtrdma/xprt_rdma.h
+@@ -69,6 +69,7 @@ struct rpcrdma_ia {
+ 	struct rdma_cm_id 	*ri_id;
+ 	struct ib_pd		*ri_pd;
+ 	struct completion	ri_done;
++	struct completion	ri_remove_done;
+ 	int			ri_async_rc;
+ 	unsigned int		ri_max_segs;
+ 	unsigned int		ri_max_frmr_depth;
+@@ -78,10 +79,15 @@ struct rpcrdma_ia {
+ 	bool			ri_reminv_expected;
+ 	bool			ri_implicit_roundup;
+ 	enum ib_mr_type		ri_mrtype;
++	unsigned long		ri_flags;
+ 	struct ib_qp_attr	ri_qp_attr;
+ 	struct ib_qp_init_attr	ri_qp_init_attr;
+ };
+ 
++enum {
++	RPCRDMA_IAF_REMOVING = 0,
++};
++
+ /*
+  * RDMA Endpoint -- one per transport instance
+  */
+@@ -511,6 +517,7 @@ struct rpcrdma_xprt {
+  * Interface Adapter calls - xprtrdma/verbs.c
+  */
+ int rpcrdma_ia_open(struct rpcrdma_xprt *xprt, struct sockaddr *addr);
++void rpcrdma_ia_remove(struct rpcrdma_ia *ia);
+ void rpcrdma_ia_close(struct rpcrdma_ia *);
+ bool frwr_is_supported(struct rpcrdma_ia *);
+ bool fmr_is_supported(struct rpcrdma_ia *);
 
