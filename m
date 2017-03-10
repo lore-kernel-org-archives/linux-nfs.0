@@ -1,316 +1,73 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f194.google.com ([209.85.223.194]:34027 "EHLO
+Received: from mail-io0-f194.google.com ([209.85.223.194]:33443 "EHLO
         mail-io0-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751782AbdCJBkS (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 9 Mar 2017 20:40:18 -0500
-Received: by mail-io0-f194.google.com with SMTP id n76so5687039ioe.1
-        for <linux-nfs@vger.kernel.org>; Thu, 09 Mar 2017 17:39:45 -0800 (PST)
-Subject: Re: [PATCH] SUNRPC: Make sure authorize svc when meeting SVC_CLOSE
-To: "J. Bruce Fields" <bfields@fieldses.org>
-References: <090f6673-1bb3-d626-e27e-6be5afcda782@gmail.com>
- <20170118222028.GB4272@fieldses.org>
- <2a4525db-8ef0-bd33-5119-7d0046345827@gmail.com>
-Cc: linux-nfs@vger.kernel.org, Chuck Lever <chuck.lever@oracle.com>,
-        Kinglong Mee <kinglongmee@gmail.com>
+        with ESMTP id S1753945AbdCJBw2 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 9 Mar 2017 20:52:28 -0500
+Received: by mail-io0-f194.google.com with SMTP id f84so5729799ioj.0
+        for <linux-nfs@vger.kernel.org>; Thu, 09 Mar 2017 17:52:27 -0800 (PST)
 From: Kinglong Mee <kinglongmee@gmail.com>
-Message-ID: <0e5b92ae-8861-42ba-8e58-c9d74083e016@gmail.com>
-Date: Fri, 10 Mar 2017 09:39:38 +0800
+Subject: [PATCH] nfsd: map the ENOKEY to nfserr_perm for avoiding warning
+To: "J. Bruce Fields" <bfields@fieldses.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Cc: Kinglong Mee <kinglongmee@gmail.com>
+Message-ID: <b78ad150-e465-3071-35e3-a25da3444c44@gmail.com>
+Date: Fri, 10 Mar 2017 09:52:20 +0800
 MIME-Version: 1.0
-In-Reply-To: <2a4525db-8ef0-bd33-5119-7d0046345827@gmail.com>
-Content-Type: text/plain; charset=windows-1252
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 3/10/2017 09:37, Kinglong Mee wrote:
-> On 1/19/2017 06:20, J. Bruce Fields wrote:
->> On Mon, Jan 16, 2017 at 08:23:37AM +0800, Kinglong Mee wrote:
->>> Commit 4d712ef1db05 "svcauth_gss: Close connection when
->>>  dropping an incoming message" will close connection,
->>> but forget authorizing the svc when meeting SVC_CLOSE.
->>>
->>> That, there will be an module reference to sunrpc,
->>> and some memory leak.
->>>
->>> When mounting an nfs filesystem, the reference leak increase one.
->>
->> Thanks, applying for 4.10.
->>
->> (I'm not too happy with this function--e.g. it'd be easier to avoid this
->> sort of bug if we had a single unavoidable common exit that always
->> called svc_authenticate.
->>
->> But I'm not sure of the best cleanup on a quick look.  And this is a
->> simple bugfix.  Maybe we could add some cleanup on top for 4.11.)
-> 
-> Hi Bruce, 
-> 
-> I don't see this patch in the latest linux kernel (4.11.0-rc1+),
-> what's your plan about it?
-> 
-> Ps, for the cleanup, I have a draft for it, but it's a good one.
+Ext4 and f2fs filesystems support encrypted directories and files now,
+access those files may return ENOKEY error, so that the following WARNING
+will be showed out.
 
-Sorry, it's not a good one. ^/^
+Maybe maps ENOKEY to nfserr_perm is better than nfserr_io.
 
-> 
-> thanks,
-> Kinglong Mee
-> 
-> -----------------------------------------------------------------------------
-> diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
-> index 44e7d49..a390842 100644
-> --- a/net/sunrpc/svc.c
-> +++ b/net/sunrpc/svc.c
-> @@ -1086,6 +1086,30 @@ void svc_printk(struct svc_rqst *rqstp, const char *fmt, ...)
->  static __printf(2,3) void svc_printk(struct svc_rqst *rqstp, const char *fmt, ...) {}
->  #endif
->  
-> +#define FMT_ERR_ENCODE(rpc_stat) do {					\
-> +	svc_printk(rqstp, "svc: decode error ##rpc_stat (%s:%d)\n",	\
-> +			__FILE__, __LINE__);				\
-> +	serv->sv_stats->rpcbadfmt++;					\
-> +	svc_putnl(resv, (rpc_stat));					\
-> +} while (0)
-> +
-> +#define VERS_ERR_ENCODE(lovers, hivers) do {				\
-> +	FMT_ERR_ENCODE(RPC_PROG_MISMATCH);				\
-> +	svc_putnl(resv, (lovers));					\
-> +	svc_putnl(resv, (hivers));					\
-> +} while (0)
-> +
-> +#define AUTH_ERR_ENCODE(auth_stat) do {					\
-> +	svc_printk(rqstp, "svc: authentication error %d (%s:%d)\n",	\
-> +			ntohl(auth_stat), __FILE__, __LINE__);		\
-> +	serv->sv_stats->rpcbadauth++;					\
-> +	/* Restore write pointer to location of accept status: */	\
-> +	xdr_ressize_check(rqstp, reply_statp);				\
-> +	svc_putnl(resv, 1);	/* REJECT */				\
-> +	svc_putnl(resv, 1);	/* AUTH_ERROR */			\
-> +	svc_putnl(resv, ntohl(auth_stat));	/* status */		\
-> +} while (0)
-> +
->  /*
->   * Common routine for processing the RPC request.
->   */
-> @@ -1099,14 +1123,15 @@ svc_process_common(struct svc_rqst *rqstp, struct kvec *argv, struct kvec *resv)
->  	kxdrproc_t		xdr;
->  	__be32			*statp;
->  	u32			prog, vers, proc;
-> -	__be32			auth_stat, rpc_stat;
-> +	__be32			auth_stat;
->  	int			auth_res;
->  	__be32			*reply_statp;
->  
-> -	rpc_stat = rpc_success;
-> -
-> -	if (argv->iov_len < 6*4)
-> -		goto err_short_len;
-> +	if (argv->iov_len < 6*4) {
-> +		svc_printk(rqstp, "short len %zd, dropping request\n",
-> +				argv->iov_len);
-> +		goto close;
-> +	}
->  
->  	/* Will be turned off only in gss privacy case: */
->  	set_bit(RQ_SPLICE_OK, &rqstp->rq_flags);
-> @@ -1124,8 +1149,14 @@ svc_process_common(struct svc_rqst *rqstp, struct kvec *argv, struct kvec *resv)
->  	/* First words of reply: */
->  	svc_putnl(resv, 1);		/* REPLY */
->  
-> -	if (vers != 2)		/* RPC version number */
-> -		goto err_bad_rpc;
-> +	if (vers != 2) {		/* RPC version number */
-> +		serv->sv_stats->rpcbadfmt++;
-> +		svc_putnl(resv, 1);     /* REJECT */
-> +		svc_putnl(resv, 0);	/* RPC_MISMATCH */
-> +		svc_putnl(resv, 2);	/* Only RPCv2 supported */
-> +		svc_putnl(resv, 2);
-> +		goto sendit;
-> +	}
->  
->  	/* Save position in case we later decide to reject: */
->  	reply_statp = resv->iov_base + resv->iov_len;
-> @@ -1155,12 +1186,14 @@ svc_process_common(struct svc_rqst *rqstp, struct kvec *argv, struct kvec *resv)
->  	case SVC_OK:
->  		break;
->  	case SVC_GARBAGE:
-> -		goto err_garbage;
-> +		FMT_ERR_ENCODE(RPC_GARBAGE_ARGS);
-> +		goto sendit;
->  	case SVC_SYSERR:
-> -		rpc_stat = rpc_system_err;
-> -		goto err_bad;
-> +		FMT_ERR_ENCODE(RPC_SYSTEM_ERR);
-> +		goto sendit;
->  	case SVC_DENIED:
-> -		goto err_bad_auth;
-> +		AUTH_ERR_ENCODE(auth_stat);
-> +		goto sendit;
->  	case SVC_CLOSE:
->  		/*
->  		 * Makesure authorise svc if progp->pg_authenticate fail,
-> @@ -1174,12 +1207,19 @@ svc_process_common(struct svc_rqst *rqstp, struct kvec *argv, struct kvec *resv)
->  		goto sendit;
->  	}
->  
-> -	if (progp == NULL)
-> -		goto err_bad_prog;
-> +	if (progp == NULL) {
-> +		FMT_ERR_ENCODE(RPC_PROG_UNAVAIL);
-> +		svc_printk(rqstp, "svc: unknown program %d\n", prog);
-> +		goto sendit;
-> +	}
->  
->  	if (vers >= progp->pg_nvers ||
-> -	  !(versp = progp->pg_vers[vers]))
-> -		goto err_bad_vers;
-> +	  !(versp = progp->pg_vers[vers])) {
-> +		VERS_ERR_ENCODE(progp->pg_lovers, progp->pg_hivers);
-> +		svc_printk(rqstp, "unknown version (%d for prog %d, %s)\n",
-> +			       vers, prog, progp->pg_name);
-> +		goto sendit;
-> +	}
->  
->  	/*
->  	 * Some protocol versions (namely NFSv4) require some form of
-> @@ -1193,12 +1233,20 @@ svc_process_common(struct svc_rqst *rqstp, struct kvec *argv, struct kvec *resv)
->  	 * fit.
->  	 */
->  	if (versp->vs_need_cong_ctrl &&
-> -	    !test_bit(XPT_CONG_CTRL, &rqstp->rq_xprt->xpt_flags))
-> -		goto err_bad_vers;
-> +	    !test_bit(XPT_CONG_CTRL, &rqstp->rq_xprt->xpt_flags)) {
-> +		VERS_ERR_ENCODE(progp->pg_lovers, progp->pg_hivers);
-> +		svc_printk(rqstp, "congestion control (%d for prog %d, %s)\n",
-> +			       vers, prog, progp->pg_name);
-> +		goto sendit;
-> +	}
->  
->  	procp = versp->vs_proc + proc;
-> -	if (proc >= versp->vs_nproc || !procp->pc_func)
-> -		goto err_bad_proc;
-> +	if (proc >= versp->vs_nproc || !procp->pc_func) {
-> +		FMT_ERR_ENCODE(RPC_PROC_UNAVAIL);
-> +		svc_printk(rqstp, "unknown procedure (%d)\n", proc);
-> +		goto sendit;
-> +	}
-> +
->  	rqstp->rq_procinfo = procp;
->  
->  	/* Syntactic check complete */
-> @@ -1225,8 +1273,10 @@ svc_process_common(struct svc_rqst *rqstp, struct kvec *argv, struct kvec *resv)
->  	if (!versp->vs_dispatch) {
->  		/* Decode arguments */
->  		xdr = procp->pc_decode;
-> -		if (xdr && !xdr(rqstp, argv->iov_base, rqstp->rq_argp))
-> -			goto err_garbage;
-> +		if (xdr && !xdr(rqstp, argv->iov_base, rqstp->rq_argp)) {
-> +			FMT_ERR_ENCODE(RPC_GARBAGE_ARGS);
-> +			goto sendit;
-> +		}
->  
->  		*statp = procp->pc_func(rqstp, rqstp->rq_argp, rqstp->rq_resp);
->  
-> @@ -1240,12 +1290,14 @@ svc_process_common(struct svc_rqst *rqstp, struct kvec *argv, struct kvec *resv)
->  		if (*statp == rpc_autherr_badcred) {
->  			if (procp->pc_release)
->  				procp->pc_release(rqstp, NULL, rqstp->rq_resp);
-> -			goto err_bad_auth;
-> +
-> +			AUTH_ERR_ENCODE(auth_stat);
-> +			goto sendit;
->  		}
->  		if (*statp == rpc_success &&
->  		    (xdr = procp->pc_encode) &&
->  		    !xdr(rqstp, resv->iov_base+resv->iov_len, rqstp->rq_resp)) {
-> -			dprintk("svc: failed to encode reply\n");
-> +			svc_printk(rqstp, "svc: failed to encode reply\n");
->  			/* serv->sv_stats->rpcsystemerr++; */
->  			*statp = rpc_system_err;
->  		}
-> @@ -1269,77 +1321,18 @@ svc_process_common(struct svc_rqst *rqstp, struct kvec *argv, struct kvec *resv)
->  
->  	if (procp->pc_encode == NULL)
->  		goto dropit;
-> -
-> - sendit:
-> -	if (svc_authorise(rqstp))
-> -		goto close;
-> -	return 1;		/* Caller can now send it */
-> -
-> - dropit:
-> -	svc_authorise(rqstp);	/* doesn't hurt to call this twice */
-> -	dprintk("svc: svc_process dropit\n");
-> -	return 0;
-> -
-> - close:
-> +sendit:
-> +	if (!svc_authorise(rqstp))
-> +		return 1;		/* Caller can now send it */
-> +close:
->  	if (test_bit(XPT_TEMP, &rqstp->rq_xprt->xpt_flags))
->  		svc_close_xprt(rqstp->rq_xprt);
->  	dprintk("svc: svc_process close\n");
->  	return 0;
-> -
-> -err_short_len:
-> -	svc_printk(rqstp, "short len %zd, dropping request\n",
-> -			argv->iov_len);
-> -	goto close;
-> -
-> -err_bad_rpc:
-> -	serv->sv_stats->rpcbadfmt++;
-> -	svc_putnl(resv, 1);	/* REJECT */
-> -	svc_putnl(resv, 0);	/* RPC_MISMATCH */
-> -	svc_putnl(resv, 2);	/* Only RPCv2 supported */
-> -	svc_putnl(resv, 2);
-> -	goto sendit;
-> -
-> -err_bad_auth:
-> -	dprintk("svc: authentication failed (%d)\n", ntohl(auth_stat));
-> -	serv->sv_stats->rpcbadauth++;
-> -	/* Restore write pointer to location of accept status: */
-> -	xdr_ressize_check(rqstp, reply_statp);
-> -	svc_putnl(resv, 1);	/* REJECT */
-> -	svc_putnl(resv, 1);	/* AUTH_ERROR */
-> -	svc_putnl(resv, ntohl(auth_stat));	/* status */
-> -	goto sendit;
-> -
-> -err_bad_prog:
-> -	dprintk("svc: unknown program %d\n", prog);
-> -	serv->sv_stats->rpcbadfmt++;
-> -	svc_putnl(resv, RPC_PROG_UNAVAIL);
-> -	goto sendit;
-> -
-> -err_bad_vers:
-> -	svc_printk(rqstp, "unknown version (%d for prog %d, %s)\n",
-> -		       vers, prog, progp->pg_name);
-> -
-> -	serv->sv_stats->rpcbadfmt++;
-> -	svc_putnl(resv, RPC_PROG_MISMATCH);
-> -	svc_putnl(resv, progp->pg_lovers);
-> -	svc_putnl(resv, progp->pg_hivers);
-> -	goto sendit;
-> -
-> -err_bad_proc:
-> -	svc_printk(rqstp, "unknown procedure (%d)\n", proc);
-> -
-> -	serv->sv_stats->rpcbadfmt++;
-> -	svc_putnl(resv, RPC_PROC_UNAVAIL);
-> -	goto sendit;
-> -
-> -err_garbage:
-> -	svc_printk(rqstp, "failed to decode args\n");
-> -
-> -	rpc_stat = rpc_garbage_args;
-> -err_bad:
-> -	serv->sv_stats->rpcbadfmt++;
-> -	svc_putnl(resv, ntohl(rpc_stat));
-> -	goto sendit;
-> +dropit:
-> +	svc_authorise(rqstp);	/* doesn't hurt to call this twice */
-> +	dprintk("svc: svc_process dropit\n");
-> +	return 0;
->  }
->  
->  /*
-> 
+[ 1295.411759] ------------[ cut here ]------------
+[ 1295.411787] WARNING: CPU: 0 PID: 12786 at fs/nfsd/nfsproc.c:796 nfserrno+0x74/0x80 [nfsd]
+[ 1295.411806] nfsd: non-standard errno: -126
+[ 1295.411816] Modules linked in: nfsd nfs_acl auth_rpcgss nfsv4 nfs lockd fscache tun bridge stp llc fuse ip_set nfnetlink vmw_vsock_vmci_transport vsock snd_seq_midi snd_seq_midi_event coretemp crct10dif_pclmul crc32_generic crc32_pclmul snd_ens1371 gameport ghash_clmulni_intel snd_ac97_codec f2fs intel_rapl_perf ac97_bus snd_seq ppdev snd_pcm snd_rawmidi snd_timer vmw_balloon snd_seq_device snd joydev soundcore parport_pc parport nfit acpi_cpufreq tpm_tis vmw_vmci tpm_tis_core tpm shpchp i2c_piix4 grace sunrpc xfs libcrc32c vmwgfx drm_kms_helper ttm drm crc32c_intel e1000 mptspi scsi_transport_spi serio_raw mptscsih mptbase ata_generic pata_acpi fjes [last unloaded: nfs_acl]
+[ 1295.412522] CPU: 0 PID: 12786 Comm: nfsd Tainted: G        W       4.11.0-rc1+ #521
+[ 1295.412959] Hardware name: VMware, Inc. VMware Virtual Platform/440BX Desktop Reference Platform, BIOS 6.00 07/02/2015
+[ 1295.413814] Call Trace:
+[ 1295.414252]  dump_stack+0x63/0x86
+[ 1295.414666]  __warn+0xcb/0xf0
+[ 1295.415087]  warn_slowpath_fmt+0x5f/0x80
+[ 1295.415502]  ? put_filp+0x42/0x50
+[ 1295.415927]  nfserrno+0x74/0x80 [nfsd]
+[ 1295.416339]  nfsd_open+0xd7/0x180 [nfsd]
+[ 1295.416746]  nfs4_get_vfs_file+0x367/0x3c0 [nfsd]
+[ 1295.417182]  ? security_inode_permission+0x41/0x60
+[ 1295.417591]  nfsd4_process_open2+0x9b2/0x1200 [nfsd]
+[ 1295.418007]  nfsd4_open+0x481/0x790 [nfsd]
+[ 1295.418409]  nfsd4_proc_compound+0x395/0x680 [nfsd]
+[ 1295.418812]  nfsd_dispatch+0xb8/0x1f0 [nfsd]
+[ 1295.419233]  svc_process_common+0x4d9/0x830 [sunrpc]
+[ 1295.419631]  svc_process+0xfe/0x1b0 [sunrpc]
+[ 1295.420033]  nfsd+0xe9/0x150 [nfsd]
+[ 1295.420420]  kthread+0x101/0x140
+[ 1295.420802]  ? nfsd_destroy+0x60/0x60 [nfsd]
+[ 1295.421199]  ? kthread_park+0x90/0x90
+[ 1295.421598]  ret_from_fork+0x2c/0x40
+[ 1295.421996] ---[ end trace 0d5a969cd7852e1f ]---
+
+Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
+---
+ fs/nfsd/nfsproc.c | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/fs/nfsd/nfsproc.c b/fs/nfsd/nfsproc.c
+index fa82b77..03a7e9d 100644
+--- a/fs/nfsd/nfsproc.c
++++ b/fs/nfsd/nfsproc.c
+@@ -786,6 +786,7 @@ nfserrno (int errno)
+ 		{ nfserr_serverfault, -ESERVERFAULT },
+ 		{ nfserr_serverfault, -ENFILE },
+ 		{ nfserr_io, -EUCLEAN },
++		{ nfserr_perm, -ENOKEY },
+ 	};
+ 	int	i;
+ 
+-- 
+2.9.3
+
