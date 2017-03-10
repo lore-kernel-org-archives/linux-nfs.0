@@ -1,45 +1,47 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx142.netapp.com ([216.240.21.19]:56761 "EHLO mx142.netapp.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S933908AbdCJTPp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 10 Mar 2017 14:15:45 -0500
-From: Olga Kornievskaia <kolga@netapp.com>
-To: <Trond.Myklebust@primarydata.com>, <anna.schumaker@netapp.com>
-CC: <linux-nfs@vger.kernel.org>
-Subject: [PATCH 1/1] NFS prevent double free in async nfs4_exchange_id
-Date: Fri, 10 Mar 2017 14:15:41 -0500
-Message-ID: <20170310191541.38007-1-kolga@netapp.com>
+Received: from us-smtp-delivery-194.mimecast.com ([216.205.24.194]:21461 "EHLO
+        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1750897AbdCJUvg (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 10 Mar 2017 15:51:36 -0500
+From: Trond Myklebust <trondmy@primarydata.com>
+To: "anna.schumaker@netapp.com" <anna.schumaker@netapp.com>,
+        "kolga@netapp.com" <kolga@netapp.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 1/1] NFS prevent double free in async nfs4_exchange_id
+Date: Fri, 10 Mar 2017 20:51:31 +0000
+Message-ID: <1489179088.3260.2.camel@primarydata.com>
+References: <20170310191541.38007-1-kolga@netapp.com>
+In-Reply-To: <20170310191541.38007-1-kolga@netapp.com>
 MIME-Version: 1.0
-Content-Type: text/plain
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Since rpc_task is async, the release function should be called which
-will free the impl_id, scope, and owner.
-
-Fixes: 8d89bd70bc9 ("NFS setup async exchange_id")
-Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
----
- fs/nfs/nfs4proc.c | 6 ++----
- 1 file changed, 2 insertions(+), 4 deletions(-)
-
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 59be0f7..b77cb6f 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -7537,10 +7537,8 @@ static int _nfs4_proc_exchange_id(struct nfs_client *clp, struct rpc_cred *cred,
- 	task_setup_data.callback_data = calldata;
- 
- 	task = rpc_run_task(&task_setup_data);
--	if (IS_ERR(task)) {
--	status = PTR_ERR(task);
--		goto out_impl_id;
--	}
-+	if (IS_ERR(task))
-+		return PTR_ERR(task);
- 
- 	if (!xprt) {
- 		status = rpc_wait_for_completion_task(task);
--- 
-1.8.3.1
+T24gRnJpLCAyMDE3LTAzLTEwIGF0IDE0OjE1IC0wNTAwLCBPbGdhIEtvcm5pZXZza2FpYSB3cm90
+ZToNCj4gU2luY2UgcnBjX3Rhc2sgaXMgYXN5bmMsIHRoZSByZWxlYXNlIGZ1bmN0aW9uIHNob3Vs
+ZCBiZSBjYWxsZWQgd2hpY2gNCj4gd2lsbCBmcmVlIHRoZSBpbXBsX2lkLCBzY29wZSwgYW5kIG93
+bmVyLg0KPiANCj4gRml4ZXM6IDhkODliZDcwYmM5ICgiTkZTIHNldHVwIGFzeW5jIGV4Y2hhbmdl
+X2lkIikNCj4gU2lnbmVkLW9mZi1ieTogT2xnYSBLb3JuaWV2c2thaWEgPGtvbGdhQG5ldGFwcC5j
+b20+DQo+IC0tLQ0KPiDCoGZzL25mcy9uZnM0cHJvYy5jIHwgNiArKy0tLS0NCj4gwqAxIGZpbGUg
+Y2hhbmdlZCwgMiBpbnNlcnRpb25zKCspLCA0IGRlbGV0aW9ucygtKQ0KPiANCj4gZGlmZiAtLWdp
+dCBhL2ZzL25mcy9uZnM0cHJvYy5jIGIvZnMvbmZzL25mczRwcm9jLmMNCj4gaW5kZXggNTliZTBm
+Ny4uYjc3Y2I2ZiAxMDA2NDQNCj4gLS0tIGEvZnMvbmZzL25mczRwcm9jLmMNCj4gKysrIGIvZnMv
+bmZzL25mczRwcm9jLmMNCj4gQEAgLTc1MzcsMTAgKzc1MzcsOCBAQCBzdGF0aWMgaW50IF9uZnM0
+X3Byb2NfZXhjaGFuZ2VfaWQoc3RydWN0DQo+IG5mc19jbGllbnQgKmNscCwgc3RydWN0IHJwY19j
+cmVkICpjcmVkLA0KPiDCoAl0YXNrX3NldHVwX2RhdGEuY2FsbGJhY2tfZGF0YSA9IGNhbGxkYXRh
+Ow0KPiDCoA0KPiDCoAl0YXNrID0gcnBjX3J1bl90YXNrKCZ0YXNrX3NldHVwX2RhdGEpOw0KPiAt
+CWlmIChJU19FUlIodGFzaykpIHsNCj4gLQlzdGF0dXMgPSBQVFJfRVJSKHRhc2spOw0KPiAtCQln
+b3RvIG91dF9pbXBsX2lkOw0KPiAtCX0NCj4gKwlpZiAoSVNfRVJSKHRhc2spKQ0KPiArCQlyZXR1
+cm4gUFRSX0VSUih0YXNrKTsNCj4gwqANCj4gwqAJaWYgKCF4cHJ0KSB7DQo+IMKgCQlzdGF0dXMg
+PSBycGNfd2FpdF9mb3JfY29tcGxldGlvbl90YXNrKHRhc2spOw0KDQpVcmdoLCB5ZXMuLi4NCg0K
+QXMgZmFyIGFzIEkgY2FuIHNlZSwgdGhlcmUgaXMgYWxzbyBhdCBsZWFzdCBvbmUgbW9yZSB1c2Ut
+YWZ0ZXItZnJlZQ0KaXNzdWUgdGhhdCB3YXMgaW50cm9kdWNlZCBpbiBuZnM0X2V4Y2hhbmdlX2lk
+X3JlbGVhc2UoKSBieSB0aGUgc2FtZQ0KcGF0Y2guIFRoZXJlIGlzIGFsc28gYSBsZWFrIG9mIGNs
+cC0+Y2xfY291bnQgaW4gdGhlIGNhc2VzIHdoZXJlIHdlDQplcnJvciBiZWZvcmUgY2FsbGluZyBy
+cGNfcnVuX3Rhc2soKS4NCg0KLi4uYW5kIGNhbiBzb21lb25lIHBsZWFzZSBleHBsYWluIHRvIG1l
+IHdoYXQgaXMgaW50ZW5kZWQgd2l0aCB0aGUgbGluZQ0KJ3N0YXR1cyA9IGNhbGxkYXRhLT5ycGNf
+c3RhdHVzJyBpbiB0aGUgY2FzZSB3aGVyZSB3ZSdyZSBub3Qgd2FpdGluZyBmb3INCmNvbXBsZXRp
+b24gb2YgdGhlIFJQQyBjYWxsIChpLmUuIHdoZW4geHBydCAhPSBOVUxMKT8NCg0KVGhhbmtzDQog
+IFRyb25kDQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50YWlu
+ZXIsIFByaW1hcnlEYXRhDQp0cm9uZC5teWtsZWJ1c3RAcHJpbWFyeWRhdGEuY29tDQo=
 
