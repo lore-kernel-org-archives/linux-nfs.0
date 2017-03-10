@@ -1,13 +1,14 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-it0-f68.google.com ([209.85.214.68]:36488 "EHLO
-        mail-it0-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1754423AbdCJQGk (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 10 Mar 2017 11:06:40 -0500
-Subject: [PATCH v1 06/11] xprtrdma: Refactor rpcrdma_ia_open()
+Received: from mail-io0-f194.google.com ([209.85.223.194]:35084 "EHLO
+        mail-io0-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S932724AbdCJQGs (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 10 Mar 2017 11:06:48 -0500
+Subject: [PATCH v1 07/11] xprtrdma: Use same device when mapping or syncing
+ DMA buffers
 From: Chuck Lever <chuck.lever@oracle.com>
 To: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Fri, 10 Mar 2017 11:06:37 -0500
-Message-ID: <20170310160637.6314.77968.stgit@manet.1015granger.net>
+Date: Fri, 10 Mar 2017 11:06:45 -0500
+Message-ID: <20170310160645.6314.61659.stgit@manet.1015granger.net>
 In-Reply-To: <20170310154131.6314.35201.stgit@manet.1015granger.net>
 References: <20170310154131.6314.35201.stgit@manet.1015granger.net>
 MIME-Version: 1.0
@@ -15,168 +16,134 @@ Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-In order to unload a device driver and reload it, xprtrdma will need
-to close a transport's interface adapter, and then call
-rpcrdma_ia_open again, possibly finding a different interface
-adapter.
+When the underlying device driver is reloaded, ia->ri_device will be
+replaced. All cached copies of that device pointer have to be
+updated as well.
 
-Make rpcrdma_ia_open safe to call on the same transport multiple
-times.
+Commit 54cbd6b0c6b9 ("xprtrdma: Delay DMA mapping Send and Receive
+buffers") added the rg_device field to each regbuf. As part of
+handling a device removal, rpcrdma_dma_unmap_regbuf is invoked on
+all regbufs for a transport.
 
-This is a refactoring change only.
+Simply calling rpcrdma_dma_map_regbuf for each Receive buffer after
+the driver has been reloaded should reinitialize rg_device correctly
+for every case except rpcrdma_wc_receive, which still uses
+rpcrdma_rep::rr_device.
 
+Ensure the same device that was used to map a Receive buffer is also
+used to sync it in rpcrdma_wc_receive by using rg_device there
+instead of rr_device.
+
+This is the only use of rr_device, so it can be removed.
+
+The use of regbufs in the send path is also updated, for
+completeness.
+
+Fixes: 54cbd6b0c6b9 ("xprtrdma: Delay DMA mapping Send and ... ")
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- net/sunrpc/xprtrdma/transport.c |    6 +++--
- net/sunrpc/xprtrdma/verbs.c     |   46 ++++++++++++++++++++-------------------
- net/sunrpc/xprtrdma/xprt_rdma.h |    7 +++++-
- 3 files changed, 32 insertions(+), 27 deletions(-)
+ net/sunrpc/xprtrdma/rpc_rdma.c  |    4 ++--
+ net/sunrpc/xprtrdma/verbs.c     |   12 ++++++------
+ net/sunrpc/xprtrdma/xprt_rdma.h |    7 ++++++-
+ 3 files changed, 14 insertions(+), 9 deletions(-)
 
-diff --git a/net/sunrpc/xprtrdma/transport.c b/net/sunrpc/xprtrdma/transport.c
-index 240f0da..e27804c 100644
---- a/net/sunrpc/xprtrdma/transport.c
-+++ b/net/sunrpc/xprtrdma/transport.c
-@@ -66,8 +66,8 @@
- unsigned int xprt_rdma_max_inline_read = RPCRDMA_DEF_INLINE;
- static unsigned int xprt_rdma_max_inline_write = RPCRDMA_DEF_INLINE;
- static unsigned int xprt_rdma_inline_write_padding;
--static unsigned int xprt_rdma_memreg_strategy = RPCRDMA_FRMR;
--		int xprt_rdma_pad_optimize = 0;
-+unsigned int xprt_rdma_memreg_strategy		= RPCRDMA_FRMR;
-+int xprt_rdma_pad_optimize;
+diff --git a/net/sunrpc/xprtrdma/rpc_rdma.c b/net/sunrpc/xprtrdma/rpc_rdma.c
+index 103491e..eac38f6 100644
+--- a/net/sunrpc/xprtrdma/rpc_rdma.c
++++ b/net/sunrpc/xprtrdma/rpc_rdma.c
+@@ -494,7 +494,7 @@ static bool rpcrdma_results_inline(struct rpcrdma_xprt *r_xprt,
+ 	}
+ 	sge->length = len;
  
- #if IS_ENABLED(CONFIG_SUNRPC_DEBUG)
+-	ib_dma_sync_single_for_device(ia->ri_device, sge->addr,
++	ib_dma_sync_single_for_device(rdmab_device(rb), sge->addr,
+ 				      sge->length, DMA_TO_DEVICE);
+ 	req->rl_send_wr.num_sge++;
+ 	return true;
+@@ -523,7 +523,7 @@ static bool rpcrdma_results_inline(struct rpcrdma_xprt *r_xprt,
+ 	sge[sge_no].addr = rdmab_addr(rb);
+ 	sge[sge_no].length = xdr->head[0].iov_len;
+ 	sge[sge_no].lkey = rdmab_lkey(rb);
+-	ib_dma_sync_single_for_device(device, sge[sge_no].addr,
++	ib_dma_sync_single_for_device(rdmab_device(rb), sge[sge_no].addr,
+ 				      sge[sge_no].length, DMA_TO_DEVICE);
  
-@@ -396,7 +396,7 @@
- 
- 	new_xprt = rpcx_to_rdmax(xprt);
- 
--	rc = rpcrdma_ia_open(new_xprt, sap, xprt_rdma_memreg_strategy);
-+	rc = rpcrdma_ia_open(new_xprt, sap);
- 	if (rc)
- 		goto out1;
- 
+ 	/* If there is a Read chunk, the page list is being handled
 diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
-index 6c99fc5..5e5f004 100644
+index 5e5f004..b68b204 100644
 --- a/net/sunrpc/xprtrdma/verbs.c
 +++ b/net/sunrpc/xprtrdma/verbs.c
-@@ -413,13 +413,16 @@ static void rpcrdma_destroy_id(struct rdma_cm_id *id)
-  * Exported functions.
-  */
+@@ -180,7 +180,7 @@
+ 	rep->rr_wc_flags = wc->wc_flags;
+ 	rep->rr_inv_rkey = wc->ex.invalidate_rkey;
  
--/*
-- * Open and initialize an Interface Adapter.
-- *  o initializes fields of struct rpcrdma_ia, including
-- *    interface and provider attributes and protection zone.
-+/**
-+ * rpcrdma_ia_open - Open and initialize an Interface Adapter.
-+ * @xprt: controlling transport
-+ * @addr: IP address of remote peer
-+ *
-+ * Returns 0 on success, negative errno if an appropriate
-+ * Interface Adapter could not be found and opened.
-  */
- int
--rpcrdma_ia_open(struct rpcrdma_xprt *xprt, struct sockaddr *addr, int memreg)
-+rpcrdma_ia_open(struct rpcrdma_xprt *xprt, struct sockaddr *addr)
+-	ib_dma_sync_single_for_cpu(rep->rr_device,
++	ib_dma_sync_single_for_cpu(rdmab_device(rep->rr_rdmabuf),
+ 				   rdmab_addr(rep->rr_rdmabuf),
+ 				   rep->rr_len, DMA_FROM_DEVICE);
+ 
+@@ -877,7 +877,6 @@ struct rpcrdma_rep *
+ rpcrdma_create_rep(struct rpcrdma_xprt *r_xprt)
  {
- 	struct rpcrdma_ia *ia = &xprt->rx_ia;
+ 	struct rpcrdma_create_data_internal *cdata = &r_xprt->rx_data;
+-	struct rpcrdma_ia *ia = &r_xprt->rx_ia;
+ 	struct rpcrdma_rep *rep;
  	int rc;
-@@ -427,7 +430,7 @@ static void rpcrdma_destroy_id(struct rdma_cm_id *id)
- 	ia->ri_id = rpcrdma_create_id(xprt, ia, addr);
- 	if (IS_ERR(ia->ri_id)) {
- 		rc = PTR_ERR(ia->ri_id);
--		goto out1;
-+		goto out_err;
- 	}
- 	ia->ri_device = ia->ri_id->device;
  
-@@ -435,10 +438,10 @@ static void rpcrdma_destroy_id(struct rdma_cm_id *id)
- 	if (IS_ERR(ia->ri_pd)) {
- 		rc = PTR_ERR(ia->ri_pd);
- 		pr_err("rpcrdma: ib_alloc_pd() returned %d\n", rc);
--		goto out2;
-+		goto out_err;
+@@ -893,7 +892,6 @@ struct rpcrdma_rep *
+ 		goto out_free;
  	}
  
--	switch (memreg) {
-+	switch (xprt_rdma_memreg_strategy) {
- 	case RPCRDMA_FRMR:
- 		if (frwr_is_supported(ia)) {
- 			ia->ri_ops = &rpcrdma_frwr_memreg_ops;
-@@ -452,28 +455,23 @@ static void rpcrdma_destroy_id(struct rdma_cm_id *id)
- 		}
- 		/*FALLTHROUGH*/
- 	default:
--		pr_err("rpcrdma: Unsupported memory registration mode: %d\n",
--		       memreg);
-+		pr_err("rpcrdma: Device %s does not support memreg mode %d\n",
-+		       ia->ri_device->name, xprt_rdma_memreg_strategy);
- 		rc = -EINVAL;
--		goto out3;
-+		goto out_err;
- 	}
+-	rep->rr_device = ia->ri_device;
+ 	rep->rr_cqe.done = rpcrdma_wc_receive;
+ 	rep->rr_rxprt = r_xprt;
+ 	INIT_WORK(&rep->rr_work, rpcrdma_reply_handler);
+@@ -1231,17 +1229,19 @@ struct rpcrdma_regbuf *
+ bool
+ __rpcrdma_dma_map_regbuf(struct rpcrdma_ia *ia, struct rpcrdma_regbuf *rb)
+ {
++	struct ib_device *device = ia->ri_device;
++
+ 	if (rb->rg_direction == DMA_NONE)
+ 		return false;
  
- 	return 0;
+-	rb->rg_iov.addr = ib_dma_map_single(ia->ri_device,
++	rb->rg_iov.addr = ib_dma_map_single(device,
+ 					    (void *)rb->rg_base,
+ 					    rdmab_length(rb),
+ 					    rb->rg_direction);
+-	if (ib_dma_mapping_error(ia->ri_device, rdmab_addr(rb)))
++	if (ib_dma_mapping_error(device, rdmab_addr(rb)))
+ 		return false;
  
--out3:
--	ib_dealloc_pd(ia->ri_pd);
--	ia->ri_pd = NULL;
--out2:
--	rpcrdma_destroy_id(ia->ri_id);
--	ia->ri_id = NULL;
--out1:
-+out_err:
-+	rpcrdma_ia_close(ia);
- 	return rc;
+-	rb->rg_device = ia->ri_device;
++	rb->rg_device = device;
+ 	rb->rg_iov.lkey = ia->ri_pd->local_dma_lkey;
+ 	return true;
  }
- 
--/*
-- * Clean up/close an IA.
-- *   o if event handles and PD have been initialized, free them.
-- *   o close the IA
-+/**
-+ * rpcrdma_ia_close - Clean up/close an IA.
-+ * @ia: interface adapter to close
-+ *
-  */
- void
- rpcrdma_ia_close(struct rpcrdma_ia *ia)
-@@ -483,12 +481,14 @@ static void rpcrdma_destroy_id(struct rdma_cm_id *id)
- 		if (ia->ri_id->qp)
- 			rdma_destroy_qp(ia->ri_id);
- 		rpcrdma_destroy_id(ia->ri_id);
--		ia->ri_id = NULL;
- 	}
-+	ia->ri_id = NULL;
-+	ia->ri_device = NULL;
- 
- 	/* If the pd is still busy, xprtrdma missed freeing a resource */
- 	if (ia->ri_pd && !IS_ERR(ia->ri_pd))
- 		ib_dealloc_pd(ia->ri_pd);
-+	ia->ri_pd = NULL;
- }
- 
- /*
 diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
-index e6d76a0..775764c 100644
+index 775764c..4c0fd4d 100644
 --- a/net/sunrpc/xprtrdma/xprt_rdma.h
 +++ b/net/sunrpc/xprtrdma/xprt_rdma.h
-@@ -497,10 +497,15 @@ struct rpcrdma_xprt {
-  * Default is 0, see sysctl entry and rpc_rdma.c rpcrdma_convert_iovs() */
- extern int xprt_rdma_pad_optimize;
+@@ -164,6 +164,12 @@ struct rpcrdma_regbuf {
+ 	return (struct rpcrdma_msg *)rb->rg_base;
+ }
  
-+/* This setting controls the hunt for a supported memory
-+ * registration strategy.
-+ */
-+extern unsigned int xprt_rdma_memreg_strategy;
++static inline struct ib_device *
++rdmab_device(struct rpcrdma_regbuf *rb)
++{
++	return rb->rg_device;
++}
 +
- /*
-  * Interface Adapter calls - xprtrdma/verbs.c
-  */
--int rpcrdma_ia_open(struct rpcrdma_xprt *, struct sockaddr *, int);
-+int rpcrdma_ia_open(struct rpcrdma_xprt *xprt, struct sockaddr *addr);
- void rpcrdma_ia_close(struct rpcrdma_ia *);
- bool frwr_is_supported(struct rpcrdma_ia *);
- bool fmr_is_supported(struct rpcrdma_ia *);
+ #define RPCRDMA_DEF_GFP		(GFP_NOIO | __GFP_NOWARN)
+ 
+ /* To ensure a transport can always make forward progress,
+@@ -209,7 +215,6 @@ struct rpcrdma_rep {
+ 	unsigned int		rr_len;
+ 	int			rr_wc_flags;
+ 	u32			rr_inv_rkey;
+-	struct ib_device	*rr_device;
+ 	struct rpcrdma_xprt	*rr_rxprt;
+ 	struct work_struct	rr_work;
+ 	struct list_head	rr_list;
 
