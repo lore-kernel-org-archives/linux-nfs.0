@@ -1,49 +1,77 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from szxga03-in.huawei.com ([45.249.212.189]:3962 "EHLO
-        dggrg03-dlp.huawei.com" rhost-flags-OK-FAIL-OK-FAIL)
-        by vger.kernel.org with ESMTP id S1753729AbdCJCrS (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 9 Mar 2017 21:47:18 -0500
-From: Jason Yan <yanaijie@huawei.com>
-To: <anna.schumaker@netapp.com>, <trond.myklebust@primarydata.com>,
-        <linux-nfs@vger.kernel.org>
-CC: <zhaohongjiang@huawei.com>, Jason Yan <yanaijie@huawei.com>
-Subject: [PATCH] nfs: make nfs4_cb_sv_ops static
-Date: Fri, 10 Mar 2017 10:48:13 +0800
-Message-ID: <1489114093-12631-1-git-send-email-yanaijie@huawei.com>
+Received: from mx3.molgen.mpg.de ([141.14.17.11]:52891 "EHLO mx1.molgen.mpg.de"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S965071AbdCJOCw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 10 Mar 2017 09:02:52 -0500
+To: linux-nfs@vger.kernel.org
+From: Donald Buczek <buczek@molgen.mpg.de>
+Subject: open after unlink tries to open old file
+Message-ID: <ae2f9a9e-65b0-9fe5-a148-4ec698df91d0@molgen.mpg.de>
+Date: Fri, 10 Mar 2017 14:55:09 +0100
 MIME-Version: 1.0
-Content-Type: text/plain
+Content-Type: text/plain; charset=utf-8; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Fixes the following sparse warning:
+I see this code
 
-fs/nfs/callback.c:235:21: warning: symbol 'nfs4_cb_sv_ops' was not
-declared. Should it be static?
+     #include <stdlib.h>
+     #include <stdio.h>
+     #include <sys/types.h>
+     #include <sys/stat.h>
+     #include <fcntl.h>
+     #include <unistd.h>
 
-Signed-off-by: Jason Yan <yanaijie@huawei.com>
----
- fs/nfs/callback.c | 4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
+     #define FILENAME "test.dat"
 
-diff --git a/fs/nfs/callback.c b/fs/nfs/callback.c
-index bb79972..7737745 100644
---- a/fs/nfs/callback.c
-+++ b/fs/nfs/callback.c
-@@ -232,12 +232,12 @@ static struct svc_serv_ops nfs41_cb_sv_ops = {
- 	.svo_module		= THIS_MODULE,
- };
- 
--struct svc_serv_ops *nfs4_cb_sv_ops[] = {
-+static struct svc_serv_ops *nfs4_cb_sv_ops[] = {
- 	[0] = &nfs40_cb_sv_ops,
- 	[1] = &nfs41_cb_sv_ops,
- };
- #else
--struct svc_serv_ops *nfs4_cb_sv_ops[] = {
-+static struct svc_serv_ops *nfs4_cb_sv_ops[] = {
- 	[0] = &nfs40_cb_sv_ops,
- 	[1] = NULL,
- };
+     int main() {
+         int i;
+         int fd;
+         unlink(FILENAME);
+         for  (i=0;i<1000;i++) {
+             printf("%d\n",i);
+             if ((fd=open(FILENAME,O_WRONLY+O_CREAT,0))==-1) {
+                 perror("open");
+                 exit(1);
+             }
+             if (close(fd)==-1) {
+                 perror("close");
+                 exit(1);
+             }
+             if (unlink(FILENAME)==-1) {
+                 perror("unlink");
+                 exit(1);
+             }
+         }
+     }
+
+failing most of the time in NFS-mounted directories:
+
+     buczek@theinternet:~$ uname -a
+     Linux theinternet.molgen.mpg.de 4.4.52.mx64.142 #1 SMP Fri Mar 3 
+21:25:00 CET 2017 x86_64 GNU/Linux
+     buczek@theinternet:~$ nfs_test
+
+     0
+     1
+     2
+     3
+     4
+     open: Permission denied
+     buczek@theinternet:~$
+
+but I fail to find an answer to the question, whether this is supposed 
+to work or not. Is this a bug or a caching feature?
+
+Thanks
+   Donald
+
 -- 
-2.5.0
+Donald Buczek
+buczek@molgen.mpg.de
+Tel: +49 30 8413 1433
+
+
+
+
 
