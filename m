@@ -1,54 +1,49 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f172.google.com ([209.85.223.172]:36749 "EHLO
-        mail-io0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1752426AbdCJCVz (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 9 Mar 2017 21:21:55 -0500
-Received: by mail-io0-f172.google.com with SMTP id l7so40492231ioe.3
-        for <linux-nfs@vger.kernel.org>; Thu, 09 Mar 2017 18:21:54 -0800 (PST)
+Received: from szxga03-in.huawei.com ([45.249.212.189]:3962 "EHLO
+        dggrg03-dlp.huawei.com" rhost-flags-OK-FAIL-OK-FAIL)
+        by vger.kernel.org with ESMTP id S1753729AbdCJCrS (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 9 Mar 2017 21:47:18 -0500
+From: Jason Yan <yanaijie@huawei.com>
+To: <anna.schumaker@netapp.com>, <trond.myklebust@primarydata.com>,
+        <linux-nfs@vger.kernel.org>
+CC: <zhaohongjiang@huawei.com>, Jason Yan <yanaijie@huawei.com>
+Subject: [PATCH] nfs: make nfs4_cb_sv_ops static
+Date: Fri, 10 Mar 2017 10:48:13 +0800
+Message-ID: <1489114093-12631-1-git-send-email-yanaijie@huawei.com>
 MIME-Version: 1.0
-From: Andre Caldas <andre.em.caldas@gmail.com>
-Date: Thu, 9 Mar 2017 23:21:33 -0300
-Message-ID: <CADVh14Xvx5RE_88UYMfpCK9AxL5qQ6Y=gc+TH3SrKuJJgaQDFA@mail.gmail.com>
-Subject: NFS + Kerberos/PKINIT: server identity.
-To: linux-nfs@vger.kernel.org
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Dear hackers,
+Fixes the following sparse warning:
 
-I am trying to set up an NFS + (Kerberos with PKINIT) server. I don't
-know much about NFS and Kerberos. I am sorry if my questions are too
-dumb!
+fs/nfs/callback.c:235:21: warning: symbol 'nfs4_cb_sv_ops' was not
+declared. Should it be static?
 
-I am thinking about the use of the Kerberos keytab file.
+Signed-off-by: Jason Yan <yanaijie@huawei.com>
+---
+ fs/nfs/callback.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
 
-When setting up the Kerberos and Pkinit, server and client agree to
-trust the same Certificate Authority, by setting the pkinit_anchors in
-kdc.conf. Now, as long as the client trusts the CA, I believe the
-client would not need a keytab entry for the nfs/hostname@realm, as
-long as we are able to pass this information (nfs server principal) to
-the mount command. For example:
-$ mount -t nfs4 -o server_principal=3Dnfs/xyz@realm,sec=3Dkrb5p
-server:/exports/directory /mount_point
+diff --git a/fs/nfs/callback.c b/fs/nfs/callback.c
+index bb79972..7737745 100644
+--- a/fs/nfs/callback.c
++++ b/fs/nfs/callback.c
+@@ -232,12 +232,12 @@ static struct svc_serv_ops nfs41_cb_sv_ops = {
+ 	.svo_module		= THIS_MODULE,
+ };
+ 
+-struct svc_serv_ops *nfs4_cb_sv_ops[] = {
++static struct svc_serv_ops *nfs4_cb_sv_ops[] = {
+ 	[0] = &nfs40_cb_sv_ops,
+ 	[1] = &nfs41_cb_sv_ops,
+ };
+ #else
+-struct svc_serv_ops *nfs4_cb_sv_ops[] = {
++static struct svc_serv_ops *nfs4_cb_sv_ops[] = {
+ 	[0] = &nfs40_cb_sv_ops,
+ 	[1] = NULL,
+ };
+-- 
+2.5.0
 
-Is this a bad idea? I understand that with keytab, the filesystem user
-gets to decide if he trusts or not the nfs server credentials. The way
-I am suggesting, the "mounter" gets to decide. However, I do not see a
-reason the user shall not trust root. This could solve the problem of
-determining the canonical hostname of a service server. As far as I
-understood, in this context, the correct DNS configuration and correct
-detection of the canonical hostname are important for this guess on
-the principal name. Reference: section 3.4 at
-https://www.ietf.org/rfc/rfc3530.txt
-
-The same way, the nfs server does not seem to need a keytab if there
-is any mechanism to translate Kerberos principals to user ids. This
-because the certificates already contains the information on the
-principal.
-
-It would be nice to get rid of keytab and dns in this case...
-
-
-Happy hacking,
-Andr=C3=A9 Caldas.
