@@ -1,13 +1,13 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f193.google.com ([209.85.223.193]:36558 "EHLO
-        mail-io0-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S932724AbdCJQHM (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 10 Mar 2017 11:07:12 -0500
-Subject: [PATCH v1 10/11] xprtrdma: Restore transport after device removal
+Received: from mail-it0-f67.google.com ([209.85.214.67]:35000 "EHLO
+        mail-it0-f67.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S933160AbdCJQHU (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 10 Mar 2017 11:07:20 -0500
+Subject: [PATCH v1 11/11] xprtrdma: Revert commit d0f36c46deea
 From: Chuck Lever <chuck.lever@oracle.com>
 To: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Fri, 10 Mar 2017 11:07:09 -0500
-Message-ID: <20170310160709.6314.25670.stgit@manet.1015granger.net>
+Date: Fri, 10 Mar 2017 11:07:18 -0500
+Message-ID: <20170310160717.6314.12909.stgit@manet.1015granger.net>
 In-Reply-To: <20170310154131.6314.35201.stgit@manet.1015granger.net>
 References: <20170310154131.6314.35201.stgit@manet.1015granger.net>
 MIME-Version: 1.0
@@ -15,86 +15,102 @@ Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-After a device removal, enable the transport connect worker to
-restore normal operation if there is another device with
-connectivity to the server.
+Device removal is now adequately supported. Pinning the underlying
+device driver to prevent removal while an NFS mount is active is no
+longer necessary.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- net/sunrpc/xprtrdma/verbs.c |   48 +++++++++++++++++++++++++++++++++++++++++++
- 1 file changed, 48 insertions(+)
+ net/sunrpc/xprtrdma/verbs.c |   33 +++++++--------------------------
+ 1 file changed, 7 insertions(+), 26 deletions(-)
 
 diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
-index 6a12386..ef3ceec 100644
+index ef3ceec..41f00c9 100644
 --- a/net/sunrpc/xprtrdma/verbs.c
 +++ b/net/sunrpc/xprtrdma/verbs.c
-@@ -69,6 +69,7 @@
- /*
-  * internal functions
-  */
-+static void rpcrdma_create_mrs(struct rpcrdma_xprt *r_xprt);
- static void rpcrdma_destroy_mrs(struct rpcrdma_buffer *buf);
- static void rpcrdma_dma_unmap_regbuf(struct rpcrdma_regbuf *rb);
+@@ -53,7 +53,7 @@
+ #include <linux/sunrpc/addr.h>
+ #include <linux/sunrpc/svc_rdma.h>
+ #include <asm/bitops.h>
+-#include <linux/module.h> /* try_module_get()/module_put() */
++
+ #include <rdma/ib_cm.h>
  
-@@ -710,6 +711,48 @@ static void rpcrdma_destroy_id(struct rdma_cm_id *id)
- 	ib_free_cq(ep->rep_attr.send_cq);
+ #include "xprt_rdma.h"
+@@ -344,14 +344,6 @@
+ 	return 0;
  }
  
-+/* Re-establish a connection after a device removal event.
-+ * Unlike a normal reconnection, a fresh PD and a new set
-+ * of MRs and buffers is needed.
-+ */
-+static int
-+rpcrdma_ep_recreate_xprt(struct rpcrdma_xprt *r_xprt,
-+			 struct rpcrdma_ep *ep, struct rpcrdma_ia *ia)
-+{
-+	struct sockaddr *sap = (struct sockaddr *)&r_xprt->rx_data.addr;
-+	int rc, err;
+-static void rpcrdma_destroy_id(struct rdma_cm_id *id)
+-{
+-	if (id) {
+-		module_put(id->device->owner);
+-		rdma_destroy_id(id);
+-	}
+-}
+-
+ static struct rdma_cm_id *
+ rpcrdma_create_id(struct rpcrdma_xprt *xprt,
+ 			struct rpcrdma_ia *ia, struct sockaddr *addr)
+@@ -386,16 +378,6 @@ static void rpcrdma_destroy_id(struct rdma_cm_id *id)
+ 		goto out;
+ 	}
+ 
+-	/* FIXME:
+-	 * Until xprtrdma supports DEVICE_REMOVAL, the provider must
+-	 * be pinned while there are active NFS/RDMA mounts to prevent
+-	 * hangs and crashes at umount time.
+-	 */
+-	if (!ia->ri_async_rc && !try_module_get(id->device->owner)) {
+-		dprintk("RPC:       %s: Failed to get device module\n",
+-			__func__);
+-		ia->ri_async_rc = -ENODEV;
+-	}
+ 	rc = ia->ri_async_rc;
+ 	if (rc)
+ 		goto out;
+@@ -405,21 +387,20 @@ static void rpcrdma_destroy_id(struct rdma_cm_id *id)
+ 	if (rc) {
+ 		dprintk("RPC:       %s: rdma_resolve_route() failed %i\n",
+ 			__func__, rc);
+-		goto put;
++		goto out;
+ 	}
+ 	rc = wait_for_completion_interruptible_timeout(&ia->ri_done, wtimeout);
+ 	if (rc < 0) {
+ 		dprintk("RPC:       %s: wait() exited: %i\n",
+ 			__func__, rc);
+-		goto put;
++		goto out;
+ 	}
+ 	rc = ia->ri_async_rc;
+ 	if (rc)
+-		goto put;
++		goto out;
+ 
+ 	return id;
+-put:
+-	module_put(id->device->owner);
 +
-+	pr_info("%s: r_xprt = %p\n", __func__, r_xprt);
-+
-+	rc = -EHOSTUNREACH;
-+	if (rpcrdma_ia_open(r_xprt, sap))
-+		goto out1;
-+
-+	rc = -ENOMEM;
-+	err = rpcrdma_ep_create(ep, ia, &r_xprt->rx_data);
-+	if (err) {
-+		pr_err("rpcrdma: rpcrdma_ep_create returned %d\n", err);
-+		goto out2;
-+	}
-+
-+	rc = -ENETUNREACH;
-+	err = rdma_create_qp(ia->ri_id, ia->ri_pd, &ep->rep_attr);
-+	if (err) {
-+		pr_err("rpcrdma: rdma_create_qp returned %d\n", err);
-+		goto out3;
-+	}
-+
-+	rpcrdma_create_mrs(r_xprt);
-+	return 0;
-+
-+out3:
-+	rpcrdma_ep_destroy(ep, ia);
-+out2:
-+	rpcrdma_ia_close(ia);
-+out1:
-+	return rc;
-+}
-+
- static int
- rpcrdma_ep_reconnect(struct rpcrdma_xprt *r_xprt, struct rpcrdma_ep *ep,
- 		     struct rpcrdma_ia *ia)
-@@ -784,6 +827,11 @@ static void rpcrdma_destroy_id(struct rdma_cm_id *id)
- 			goto out_noupdate;
- 		}
- 		break;
-+	case -ENODEV:
-+		rc = rpcrdma_ep_recreate_xprt(r_xprt, ep, ia);
-+		if (rc)
-+			goto out_noupdate;
-+		break;
- 	default:
- 		rc = rpcrdma_ep_reconnect(r_xprt, ep, ia);
- 		if (rc)
+ out:
+ 	rdma_destroy_id(id);
+ 	return ERR_PTR(rc);
+@@ -546,7 +527,7 @@ static void rpcrdma_destroy_id(struct rdma_cm_id *id)
+ 	if (ia->ri_id != NULL && !IS_ERR(ia->ri_id)) {
+ 		if (ia->ri_id->qp)
+ 			rdma_destroy_qp(ia->ri_id);
+-		rpcrdma_destroy_id(ia->ri_id);
++		rdma_destroy_id(ia->ri_id);
+ 	}
+ 	ia->ri_id = NULL;
+ 	ia->ri_device = NULL;
+@@ -799,7 +780,7 @@ static void rpcrdma_destroy_id(struct rdma_cm_id *id)
+ 	rdma_destroy_qp(old);
+ 
+ out_destroy:
+-	rpcrdma_destroy_id(old);
++	rdma_destroy_id(old);
+ out:
+ 	return rc;
+ }
 
