@@ -1,61 +1,73 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:56840 "EHLO mx1.redhat.com"
+Received: from mx143.netapp.com ([216.240.21.24]:63818 "EHLO mx143.netapp.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S933813AbdCJV3L (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 10 Mar 2017 16:29:11 -0500
-From: "Benjamin Coddington" <bcodding@redhat.com>
-To: "Kinglong Mee" <kinglongmee@gmail.com>
-Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] SUNRPC/backchanel: set XPT_CONG_CTRL flag for bc xprt
-Date: Fri, 10 Mar 2017 16:29:09 -0500
-Message-ID: <727CB200-3DDD-4BC1-8AC0-62D38C5BFD6D@redhat.com>
-In-Reply-To: <20170309202610.GF3929@fieldses.org>
-References: <b321152e-cbe8-94b3-498c-1d32e7c7be2d@gmail.com>
- <1488885081.2788.0.camel@redhat.com> <20170309202610.GF3929@fieldses.org>
+        id S932595AbdCJVfN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 10 Mar 2017 16:35:13 -0500
+From: Olga Kornievskaia <kolga@netapp.com>
+To: <Trond.Myklebust@primarydata.com>, <anna.schumaker@netapp.com>
+CC: <linux-nfs@vger.kernel.org>
+Subject: [PATCH 1/1] NFS prevent double free in async nfs4_exchange_id
+Date: Fri, 10 Mar 2017 16:35:09 -0500
+Message-ID: <20170310213509.38215-1-kolga@netapp.com>
+In-Reply-To: <1489179088.3260.2.camel@primarydata.com>
+References: <1489179088.3260.2.camel@primarydata.com>
 MIME-Version: 1.0
-Content-Type: text/plain; format=flowed
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 9 Mar 2017, at 15:26, J. Bruce Fields wrote:
+Since rpc_task is async, the release function should be called which
+will free the impl_id, scope, and owner.
 
-> Thanks!  Applying.--b.
->
-> On Tue, Mar 07, 2017 at 06:11:21AM -0500, Jeff Layton wrote:
->> On Tue, 2017-03-07 at 17:22 +0800, Kinglong Mee wrote:
->>> The xprt for backchannel is created separately, not in TCP/UDP code.
->>> Because without the flags, the requests from NFSv41 backchannel are
->>> rejected in svc_process_common(),
->>>
->>> 1191         if (versp->vs_need_cong_ctrl &&
->>> 1192             !test_bit(XPT_CONG_CTRL, 
->>> &rqstp->rq_xprt->xpt_flags))
->>> 1193                 goto err_bad_vers;
->>>
->>> Fixes: 5283b03ee5 ("nfs/nfsd/sunrpc: enforce transport...")
->>> Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
->>> ---
->>>  net/sunrpc/svcsock.c | 1 +
->>>  1 file changed, 1 insertion(+)
->>>
->>> diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
->>> index 8931e33..2b720fa 100644
->>> --- a/net/sunrpc/svcsock.c
->>> +++ b/net/sunrpc/svcsock.c
->>> @@ -1635,6 +1635,7 @@ static struct svc_xprt 
->>> *svc_bc_create_socket(struct svc_serv *serv,
->>>
->>>  	xprt = &svsk->sk_xprt;
->>>  	svc_xprt_init(net, &svc_tcp_bc_class, xprt, serv);
->>> +	set_bit(XPT_CONG_CTRL, &svsk->sk_xprt.xpt_flags);
->>>
->>>  	serv->sv_bc_xprt = xprt;
->>>
->>
->> Good catch.
->>
->> Reviewed-by: Jeff Layton <jlayton@redhat.com>
+Trond pointed at 2 more problems:
+-- use of client pointer after free in the nfs4_exchangeid_release() function
+-- cl_count mismatch if rpc_run_task() isn't run
 
-This one fixes my failing xfstests generic/089.  Thanks, Kinglong Mee.
+Fixes: 8d89bd70bc9 ("NFS setup async exchange_id")
+Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
+---
+ fs/nfs/nfs4proc.c | 10 +++++-----
+ 1 file changed, 5 insertions(+), 5 deletions(-)
 
-Ben
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 59be0f7..3a79d3a 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -7426,11 +7426,11 @@ static void nfs4_exchange_id_release(void *data)
+ 	struct nfs41_exchange_id_data *cdata =
+ 					(struct nfs41_exchange_id_data *)data;
+ 
+-	nfs_put_client(cdata->args.client);
+ 	if (cdata->xprt) {
+ 		xprt_put(cdata->xprt);
+ 		rpc_clnt_xprt_switch_put(cdata->args.client->cl_rpcclient);
+ 	}
++	nfs_put_client(cdata->args.client);
+ 	kfree(cdata->res.impl_id);
+ 	kfree(cdata->res.server_scope);
+ 	kfree(cdata->res.server_owner);
+@@ -7537,10 +7537,8 @@ static int _nfs4_proc_exchange_id(struct nfs_client *clp, struct rpc_cred *cred,
+ 	task_setup_data.callback_data = calldata;
+ 
+ 	task = rpc_run_task(&task_setup_data);
+-	if (IS_ERR(task)) {
+-	status = PTR_ERR(task);
+-		goto out_impl_id;
+-	}
++	if (IS_ERR(task))
++		return PTR_ERR(task);
+ 
+ 	if (!xprt) {
+ 		status = rpc_wait_for_completion_task(task);
+@@ -7558,6 +7556,8 @@ static int _nfs4_proc_exchange_id(struct nfs_client *clp, struct rpc_cred *cred,
+ 			clp->cl_implid->date.seconds,
+ 			clp->cl_implid->date.nseconds);
+ 	dprintk("NFS reply exchange_id: %d\n", status);
++	if (status)
++		nfs_put_client(clp);
+ 	return status;
+ 
+ out_impl_id:
+-- 
+1.8.3.1
+
