@@ -1,13 +1,14 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-it0-f65.google.com ([209.85.214.65]:33622 "EHLO
-        mail-it0-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S933065AbdCJQF6 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 10 Mar 2017 11:05:58 -0500
-Subject: [PATCH v1 01/11] xprtrdma: Annotate receive workqueue
+Received: from mail-io0-f195.google.com ([209.85.223.195]:34736 "EHLO
+        mail-io0-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S932713AbdCJQGH (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 10 Mar 2017 11:06:07 -0500
+Subject: [PATCH v1 02/11] xprtrdma: Cancel refresh worker during buffer
+ shutdown
 From: Chuck Lever <chuck.lever@oracle.com>
 To: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Fri, 10 Mar 2017 11:05:56 -0500
-Message-ID: <20170310160556.6314.89100.stgit@manet.1015granger.net>
+Date: Fri, 10 Mar 2017 11:06:04 -0500
+Message-ID: <20170310160604.6314.90375.stgit@manet.1015granger.net>
 In-Reply-To: <20170310154131.6314.35201.stgit@manet.1015granger.net>
 References: <20170310154131.6314.35201.stgit@manet.1015granger.net>
 MIME-Version: 1.0
@@ -15,25 +16,25 @@ Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Micro-optimize the receive workqueue by marking it's anchor "read-
-mostly."
+Trying to create MRs while the transport is being torn down can
+cause a crash.
 
+Fixes: e2ac236c0b65 ("xprtrdma: Allocate MRs on demand")
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- net/sunrpc/xprtrdma/verbs.c |    2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ net/sunrpc/xprtrdma/verbs.c |    1 +
+ 1 file changed, 1 insertion(+)
 
 diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
-index 81cd31a..8448f89 100644
+index 8448f89..6c99fc5 100644
 --- a/net/sunrpc/xprtrdma/verbs.c
 +++ b/net/sunrpc/xprtrdma/verbs.c
-@@ -70,7 +70,7 @@
-  * internal functions
-  */
+@@ -1036,6 +1036,7 @@ struct rpcrdma_rep *
+ rpcrdma_buffer_destroy(struct rpcrdma_buffer *buf)
+ {
+ 	cancel_delayed_work_sync(&buf->rb_recovery_worker);
++	cancel_delayed_work_sync(&buf->rb_refresh_worker);
  
--static struct workqueue_struct *rpcrdma_receive_wq;
-+static struct workqueue_struct *rpcrdma_receive_wq __read_mostly;
- 
- int
- rpcrdma_alloc_wq(void)
+ 	while (!list_empty(&buf->rb_recv_bufs)) {
+ 		struct rpcrdma_rep *rep;
 
