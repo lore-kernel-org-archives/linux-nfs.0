@@ -1,44 +1,24 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:60504 "EHLO fieldses.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S932908AbdCJQhA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 10 Mar 2017 11:37:00 -0500
-Date: Fri, 10 Mar 2017 11:36:59 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Andy Adamson <androsadamson@gmail.com>
-Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
-        Anna Schumaker <schumaker.anna@gmail.com>,
-        NFS list <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH Version 5 00/17] RPCSEC_GSS3 full mode label kernel patch
- set
-Message-ID: <20170310163659.GB29791@fieldses.org>
-References: <20170224221953.5502-1-andros@netapp.com>
- <20170309214717.GB12553@fieldses.org>
- <CAHVgHyXr-Amc9vHq+YxL__3jv8xNaZFnAg0RCAFvQMW6GKLSDA@mail.gmail.com>
+Received: from proxy225152.mail.163.com ([113.108.225.152]:54730 "EHLO
+        proxy225152.mail.163.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751316AbdCJQmL (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 10 Mar 2017 11:42:11 -0500
+Date: Sat, 11 Mar 2017 00:24:08 +0800 (CST)
+From: houlinfei <hou.linfei@h3c.com>
+To: kinglongmee@gmail.com,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Cc: bfields@fieldses.org, neilb@suse.com, SteveD@redhat.com
+Subject: some problems about nfs mount
+Content-Type: text/plain; charset=GBK
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <CAHVgHyXr-Amc9vHq+YxL__3jv8xNaZFnAg0RCAFvQMW6GKLSDA@mail.gmail.com>
+Message-ID: <4cd2efd6.e025.15ab908d6d0.Coremail.hou.linfei@h3c.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Mar 10, 2017 at 09:48:23AM -0500, Andy Adamson wrote:
-> On Thu, Mar 9, 2017 at 4:47 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
-> > On Fri, Feb 24, 2017 at 05:19:36PM -0500, andros@netapp.com wrote:
-> >> From: Andy Adamson <andros@netapp.com>
-> >>
-> >> This patchset implements RFC 7861  RPCSEC_GSS Version 3 RPCSEC_GSS_CREATE
-> >> operation with rgs3_label payloads to provide  full mode Mandatory Access
-> >> Control (MAC) when run with NFSv4.2 Labeled NFS using SeLinux.
-> >
-> > Is GSSv3 also still planned to be used for COPY?  I lost track of that
-> > discussion.
-> 
-> 
-> Yes. I'm starting on that now.
-
-Great, thanks.
-
-Also:  do you know if there are any other implementations coming?  And
-is wireshark support on the way?
-
---b.
+aGkgS2luZ2xvbmc6ClRoZXJlIGhhcyBhbm90aGVyIHByb2JsZW0gYWJvdXQgY2xpZW50IG1vdW50
+IHVzaW5nIG5mczQuTXkgc2VydmVyIHN5c3RlbSBpcyB1YnVudHUgMTQuMDQuIG5mcy1rZXJuZWwt
+c2VydmVyIHZlcnNpb24gaXMgMS4zLjQuTXkgY2xpZW50IHN5c3RlbSBpcyB1YnVudHUxMi4wNC5u
+ZnMtY29tbW9uIHZlcnNpb24gaXMgMS4yLjUuVGhlbiBpIG1vdW50IHRoZSBkaXJlY3RvcnkgdXNp
+bmcgbmZzNC5CdXQgaXQgcmV0dXJuICJtb3VudC5uZnM6IGFjY2VzcyBkZW5pZWQgYnkgc2VydmVy
+IHdoaWxlIG1vdW50aW5nIKGtIi5XaGVuIGkgbW91bnQgdXNpbmcgbmZzMyxpdCdzIG9rLkRvIHlv
+dSBrbm93IHdoeT8KVGhhbmtzIHZlcnkgbXVjaH4KaG91bGluZmVp
