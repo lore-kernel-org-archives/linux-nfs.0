@@ -1,40 +1,33 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-it0-f46.google.com ([209.85.214.46]:37935 "EHLO
-        mail-it0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1755129AbdCKAMh (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 10 Mar 2017 19:12:37 -0500
-Received: by mail-it0-f46.google.com with SMTP id m27so5831211iti.1
-        for <linux-nfs@vger.kernel.org>; Fri, 10 Mar 2017 16:12:36 -0800 (PST)
-Subject: Re: some problems about nfs mount
-To: houlinfei <hou.linfei@h3c.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-References: <4cd2efd6.e025.15ab908d6d0.Coremail.hou.linfei@h3c.com>
- <6122045b-2c2a-cb0a-1f1c-3a0c21b72c5d@gmail.com>
-Cc: bfields@fieldses.org, neilb@suse.com, SteveD@redhat.com,
-        Kinglong Mee <kinglongmee@gmail.com>
-From: Kinglong Mee <kinglongmee@gmail.com>
-Message-ID: <4b3515b7-81db-4305-4acd-fa53ad99a0af@gmail.com>
-Date: Sat, 11 Mar 2017 08:12:30 +0800
+Received: from us-smtp-delivery-194.mimecast.com ([63.128.21.194]:51109 "EHLO
+        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1753988AbdCKPqY (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sat, 11 Mar 2017 10:46:24 -0500
+From: Trond Myklebust <trondmy@primarydata.com>
+To: "anna.schumaker@netapp.com" <anna.schumaker@netapp.com>,
+        "kolga@netapp.com" <kolga@netapp.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 1/1] PNFS dont retry some error when MDS=DS
+Date: Sat, 11 Mar 2017 15:46:17 +0000
+Message-ID: <1489247175.3260.5.camel@primarydata.com>
+References: <CAN-5tyEe9txY5CmcZLOE4du=modRSaxKm8uLLT44YtKmSgAOgg@mail.gmail.com>
+         <20170310213715.38258-1-kolga@netapp.com>
+In-Reply-To: <20170310213715.38258-1-kolga@netapp.com>
 MIME-Version: 1.0
-In-Reply-To: <6122045b-2c2a-cb0a-1f1c-3a0c21b72c5d@gmail.com>
-Content-Type: text/plain; charset=gbk
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 3/11/2017 08:10, Kinglong Mee wrote:
-> On 3/11/2017 00:24, houlinfei wrote:
->> hi Kinglong:
->> There has another problem about client mount using nfs4.My server system is ubuntu 14.04. nfs-kernel-server version is 1.3.4.My client system is ubuntu12.04.nfs-common version is 1.2.5.Then i mount the directory using nfs4.But it return "mount.nfs: access denied by server while mounting бн".When i mount using nfs3,it's ok.Do you know why?
-> 
-> Can you show me more information about the exports and your mount command line?
+T24gRnJpLCAyMDE3LTAzLTEwIGF0IDE2OjM3IC0wNTAwLCBPbGdhIEtvcm5pZXZza2FpYSB3cm90
+ZToNCj4gSWYgd2Ugc2VudCBhbiBvcGVyYXRpb24gdG8gdGhlICJEUyIgYW5kIGdvdCBhbiBlcnJv
+ciwgdGhlIGNvZGUNCj4gcmVzZW5kcw0KPiB0byAiTURTIiBidXQgd2hlbiB0aGV5IGFyZSB0aGUg
+c2FtZSwgaXQgZ2V0cyB0aGUgc2FtZSBlcnJvciBhbmQgZ29lcw0KPiBpbnRvIHRoZSBpbmZpbml0
+ZSBsb29wLiBFeGFtcGxlIHdhcyBDT01NSVQgZ2V0dGluZyBFQUNDRVMuDQo+IA0KDQpUaGUgY29y
+cmVjdCBiZWhhdmlvdXIgd2hlbiBnZXR0aW5nIEVBQ0NFUyBmcm9tIGEgQ09NTUlUIHRvIHRoZSBN
+RFMNCndvdWxkIGJlIHRvIHJldHJ5IHRoZSBlbnRpcmUgc2VyaWVzIG9mIFdSSVRFIGNhbGxzIHdp
+dGggc3RhYmxlIHdyaXRlcy4NCklmIHRoZSBzZXJ2ZXIgdGhlbiByZXR1cm5zIHdpdGggYW55dGhp
+bmcgb3RoZXIgdGhhbiBGSUxFX1NZTkMsIHRoZW4NCkVJTy4NCg0KV2h5IGlzIHRoZSBzZXJ2ZXIg
+ZmFpbGluZyB0aGUgQ09NTUlUIGhlcmUgaWYgdGhlIGNsaWVudCB0aGlua3MgaXQgc2VudA0KdW5z
+dGFibGUgd3JpdGVzPw0KDQotLSANClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBt
+YWludGFpbmVyLCBQcmltYXJ5RGF0YQ0KdHJvbmQubXlrbGVidXN0QHByaW1hcnlkYXRhLmNvbQ0K
 
-At server, 
-
-# cat /etc/exports
-# cat /proc/fs/nfsd/versions
-
-At client,
-# mount .....
-
-thanks,
-Kinglong Mee
