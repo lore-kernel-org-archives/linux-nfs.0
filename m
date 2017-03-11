@@ -1,81 +1,95 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from us-smtp-delivery-194.mimecast.com ([63.128.21.194]:44662 "EHLO
-        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1753988AbdCKPtn (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sat, 11 Mar 2017 10:49:43 -0500
-From: Trond Myklebust <trondmy@primarydata.com>
-To: "aglo@umich.edu" <aglo@umich.edu>,
-        "kolga@netapp.com" <kolga@netapp.com>
-CC: "anna.schumaker@netapp.com" <anna.schumaker@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 1/1] NFS prevent double free in async nfs4_exchange_id
-Date: Sat, 11 Mar 2017 15:49:21 +0000
-Message-ID: <1489247359.3260.7.camel@primarydata.com>
-References: <1489179088.3260.2.camel@primarydata.com>
-         <20170310213509.38215-1-kolga@netapp.com>
-         <CAN-5tyEpUQB+Tz9p=GKB1XyaOnZO4Zbo+RWod+xUaVut_zkg=w@mail.gmail.com>
-In-Reply-To: <CAN-5tyEpUQB+Tz9p=GKB1XyaOnZO4Zbo+RWod+xUaVut_zkg=w@mail.gmail.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+Received: from userp1040.oracle.com ([156.151.31.81]:48463 "EHLO
+        userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S933156AbdCKQxz (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sat, 11 Mar 2017 11:53:55 -0500
+From: Chuck Lever <chuck.lever@oracle.com>
+Content-Type: text/plain; charset=us-ascii
+Subject: nfsd: delegation conflicts between NFSv3 and NFSv4 accessors
+Date: Sat, 11 Mar 2017 11:53:47 -0500
+Message-Id: <F2A98574-693E-4F72-B7D1-5FCEA851BC7C@oracle.com>
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+To: "J. Bruce Fields" <bfields@redhat.com>,
+        Jeff Layton <jlayton@redhat.com>
+Mime-Version: 1.0 (Mac OS X Mail 9.3 \(3124\))
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gRnJpLCAyMDE3LTAzLTEwIGF0IDE2OjU2IC0wNTAwLCBPbGdhIEtvcm5pZXZza2FpYSB3cm90
-ZToNCj4gT24gRnJpLCBNYXIgMTAsIDIwMTcgYXQgNDozNSBQTSwgT2xnYSBLb3JuaWV2c2thaWEg
-PGtvbGdhQG5ldGFwcC5jb20+DQo+IHdyb3RlOg0KPiA+IFNpbmNlIHJwY190YXNrIGlzIGFzeW5j
-LCB0aGUgcmVsZWFzZSBmdW5jdGlvbiBzaG91bGQgYmUgY2FsbGVkDQo+ID4gd2hpY2gNCj4gPiB3
-aWxsIGZyZWUgdGhlIGltcGxfaWQsIHNjb3BlLCBhbmQgb3duZXIuDQo+ID4gDQo+ID4gVHJvbmQg
-cG9pbnRlZCBhdCAyIG1vcmUgcHJvYmxlbXM6DQo+ID4gLS0gdXNlIG9mIGNsaWVudCBwb2ludGVy
-IGFmdGVyIGZyZWUgaW4gdGhlDQo+ID4gbmZzNF9leGNoYW5nZWlkX3JlbGVhc2UoKSBmdW5jdGlv
-bg0KPiA+IC0tIGNsX2NvdW50IG1pc21hdGNoIGlmIHJwY19ydW5fdGFzaygpIGlzbid0IHJ1bg0K
-PiA+IA0KPiA+IEZpeGVzOiA4ZDg5YmQ3MGJjOSAoIk5GUyBzZXR1cCBhc3luYyBleGNoYW5nZV9p
-ZCIpDQo+ID4gU2lnbmVkLW9mZi1ieTogT2xnYSBLb3JuaWV2c2thaWEgPGtvbGdhQG5ldGFwcC5j
-b20+DQo+ID4gLS0tDQo+ID4gwqBmcy9uZnMvbmZzNHByb2MuYyB8IDEwICsrKysrLS0tLS0NCj4g
-PiDCoDEgZmlsZSBjaGFuZ2VkLCA1IGluc2VydGlvbnMoKyksIDUgZGVsZXRpb25zKC0pDQo+ID4g
-DQo+ID4gZGlmZiAtLWdpdCBhL2ZzL25mcy9uZnM0cHJvYy5jIGIvZnMvbmZzL25mczRwcm9jLmMN
-Cj4gPiBpbmRleCA1OWJlMGY3Li4zYTc5ZDNhIDEwMDY0NA0KPiA+IC0tLSBhL2ZzL25mcy9uZnM0
-cHJvYy5jDQo+ID4gKysrIGIvZnMvbmZzL25mczRwcm9jLmMNCj4gPiBAQCAtNzQyNiwxMSArNzQy
-NiwxMSBAQCBzdGF0aWMgdm9pZCBuZnM0X2V4Y2hhbmdlX2lkX3JlbGVhc2Uodm9pZA0KPiA+ICpk
-YXRhKQ0KPiA+IMKgwqDCoMKgwqDCoMKgwqBzdHJ1Y3QgbmZzNDFfZXhjaGFuZ2VfaWRfZGF0YSAq
-Y2RhdGEgPQ0KPiA+IMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKg
-wqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgKHN0cnVjdA0KPiA+IG5mczQxX2V4
-Y2hhbmdlX2lkX2RhdGEgKilkYXRhOw0KPiA+IA0KPiA+IC3CoMKgwqDCoMKgwqDCoG5mc19wdXRf
-Y2xpZW50KGNkYXRhLT5hcmdzLmNsaWVudCk7DQo+ID4gwqDCoMKgwqDCoMKgwqDCoGlmIChjZGF0
-YS0+eHBydCkgew0KPiA+IMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgeHBydF9wdXQo
-Y2RhdGEtPnhwcnQpOw0KPiA+IMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgcnBjX2Ns
-bnRfeHBydF9zd2l0Y2hfcHV0KGNkYXRhLT5hcmdzLmNsaWVudC0NCj4gPiA+Y2xfcnBjY2xpZW50
-KTsNCj4gPiDCoMKgwqDCoMKgwqDCoMKgfQ0KPiA+ICvCoMKgwqDCoMKgwqDCoG5mc19wdXRfY2xp
-ZW50KGNkYXRhLT5hcmdzLmNsaWVudCk7DQo+ID4gwqDCoMKgwqDCoMKgwqDCoGtmcmVlKGNkYXRh
-LT5yZXMuaW1wbF9pZCk7DQo+ID4gwqDCoMKgwqDCoMKgwqDCoGtmcmVlKGNkYXRhLT5yZXMuc2Vy
-dmVyX3Njb3BlKTsNCj4gPiDCoMKgwqDCoMKgwqDCoMKga2ZyZWUoY2RhdGEtPnJlcy5zZXJ2ZXJf
-b3duZXIpOw0KPiA+IEBAIC03NTM3LDEwICs3NTM3LDggQEAgc3RhdGljIGludCBfbmZzNF9wcm9j
-X2V4Y2hhbmdlX2lkKHN0cnVjdA0KPiA+IG5mc19jbGllbnQgKmNscCwgc3RydWN0IHJwY19jcmVk
-ICpjcmVkLA0KPiA+IMKgwqDCoMKgwqDCoMKgwqB0YXNrX3NldHVwX2RhdGEuY2FsbGJhY2tfZGF0
-YSA9IGNhbGxkYXRhOw0KPiA+IA0KPiA+IMKgwqDCoMKgwqDCoMKgwqB0YXNrID0gcnBjX3J1bl90
-YXNrKCZ0YXNrX3NldHVwX2RhdGEpOw0KPiA+IC3CoMKgwqDCoMKgwqDCoGlmIChJU19FUlIodGFz
-aykpIHsNCj4gPiAtwqDCoMKgwqDCoMKgwqBzdGF0dXMgPSBQVFJfRVJSKHRhc2spOw0KPiA+IC3C
-oMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqBnb3RvIG91dF9pbXBsX2lkOw0KPiA+IC3CoMKg
-wqDCoMKgwqDCoH0NCj4gPiArwqDCoMKgwqDCoMKgwqBpZiAoSVNfRVJSKHRhc2spKQ0KPiA+ICvC
-oMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqByZXR1cm4gUFRSX0VSUih0YXNrKTsNCj4gPiAN
-Cj4gPiDCoMKgwqDCoMKgwqDCoMKgaWYgKCF4cHJ0KSB7DQo+ID4gwqDCoMKgwqDCoMKgwqDCoMKg
-wqDCoMKgwqDCoMKgwqBzdGF0dXMgPSBycGNfd2FpdF9mb3JfY29tcGxldGlvbl90YXNrKHRhc2sp
-Ow0KPiA+IEBAIC03NTU4LDYgKzc1NTYsOCBAQCBzdGF0aWMgaW50IF9uZnM0X3Byb2NfZXhjaGFu
-Z2VfaWQoc3RydWN0DQo+ID4gbmZzX2NsaWVudCAqY2xwLCBzdHJ1Y3QgcnBjX2NyZWQgKmNyZWQs
-DQo+ID4gwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgY2xw
-LT5jbF9pbXBsaWQtPmRhdGUuc2Vjb25kcywNCj4gPiDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDC
-oMKgwqDCoMKgwqDCoMKgwqDCoMKgwqBjbHAtPmNsX2ltcGxpZC0+ZGF0ZS5uc2Vjb25kcyk7DQo+
-ID4gwqDCoMKgwqDCoMKgwqDCoGRwcmludGsoIk5GUyByZXBseSBleGNoYW5nZV9pZDogJWRcbiIs
-IHN0YXR1cyk7DQo+ID4gK8KgwqDCoMKgwqDCoMKgaWYgKHN0YXR1cykNCj4gPiArwqDCoMKgwqDC
-oMKgwqDCoMKgwqDCoMKgwqDCoMKgbmZzX3B1dF9jbGllbnQoY2xwKTsNCg0KVGhpcyBuZWVkcyB0
-byBiZSBpbiB0aGUgIm91dF9jYWxsZGF0YSIgZXJyb3IgcGF0aCBvbmx5LiBJdCBpc24ndCBuZWVk
-ZWQNCm9uY2Ugd2UndmUgY2FsbGVkIHJwY19ydW5fdGFzaygpLiBPdGhlcndpc2UgdGhlIHBhdGNo
-IGxvb2tzIGdvb2QuDQoNCj4gPiDCoMKgwqDCoMKgwqDCoMKgcmV0dXJuIHN0YXR1czsNCj4gPiAN
-Cj4gPiDCoG91dF9pbXBsX2lkOg0KPiANCj4gVXJnaC4gc2NyYXRjaCB0aGlzIG9uZSwgaXQncyBj
-YXVzaW5nIHByb2JsZW1zLiBXaWxsIHRyeSBhZ2Fpbi4NCj4gDQo+IA0KPiA+IC0tDQo+ID4gMS44
-LjMuMQ0KPiA+IA0KPiA+IC0tDQo+ID4gVG8gdW5zdWJzY3JpYmUgZnJvbSB0aGlzIGxpc3Q6IHNl
-bmQgdGhlIGxpbmUgInVuc3Vic2NyaWJlIGxpbnV4LQ0KPiA+IG5mcyIgaW4NCj4gPiB0aGUgYm9k
-eSBvZiBhIG1lc3NhZ2UgdG8gbWFqb3Jkb21vQHZnZXIua2VybmVsLm9yZw0KPiA+IE1vcmUgbWFq
-b3Jkb21vIGluZm8gYXTCoMKgaHR0cDovL3ZnZXIua2VybmVsLm9yZy9tYWpvcmRvbW8taW5mby5o
-dG1sDQo+IA0KPiANCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50
-YWluZXIsIFByaW1hcnlEYXRhDQp0cm9uZC5teWtsZWJ1c3RAcHJpbWFyeWRhdGEuY29tDQo=
+Hi Bruce, Jeff-
+
+I've observed some interesting Linux NFS server behavior (v4.1.12).
+
+We have a single system that has an NFSv4 mount via the kernel NFS
+client, and an NFSv3 mount of the same export via a user space NFS
+client. These two clients are accessing the same set of files.
+
+The following pattern is seen on the wire. I've filtered a recent
+capture on the FH of one of the shared files.
+
+---- cut here ----
+
+18507  19.483085    10.0.2.11 -> 10.0.1.8     NFS 238 V4 Call ACCESS FH: 0xc930444f, [Check: RD MD XT XE]
+18508  19.483827     10.0.1.8 -> 10.0.2.11    NFS 194 V4 Reply (Call In 18507) ACCESS, [Access Denied: XE], [Allowed: RD MD XT]
+18510  19.484676     10.0.1.8 -> 10.0.2.11    NFS 434 V4 Reply (Call In 18509) OPEN StateID: 0x6de3
+
+This OPEN reply offers a read delegation to the kernel NFS client.
+
+18511  19.484806    10.0.2.11 -> 10.0.1.8     NFS 230 V4 Call GETATTR FH: 0xc930444f
+18512  19.485549     10.0.1.8 -> 10.0.2.11    NFS 274 V4 Reply (Call In 18511) GETATTR
+18513  19.485611    10.0.2.11 -> 10.0.1.8     NFS 230 V4 Call GETATTR FH: 0xc930444f
+18514  19.486375     10.0.1.8 -> 10.0.2.11    NFS 186 V4 Reply (Call In 18513) GETATTR
+18515  19.486464    10.0.2.11 -> 10.0.1.8     NFS 254 V4 Call CLOSE StateID: 0x6de3
+18516  19.487201     10.0.1.8 -> 10.0.2.11    NFS 202 V4 Reply (Call In 18515) CLOSE
+18556  19.498617    10.0.2.11 -> 10.0.1.8     NFS 210 V3 READ Call, FH: 0xc930444f Offset: 8192 Len: 8192
+
+This READ call by the user space client does not conflict with the
+read delegation.
+
+18559  19.499396     10.0.1.8 -> 10.0.2.11    NFS 8390 V3 READ Reply (Call In 18556) Len: 8192
+18726  19.568975     10.0.1.8 -> 10.0.2.11    NFS 310 V3 LOOKUP Reply (Call In 18725), FH: 0xc930444f
+18727  19.569170    10.0.2.11 -> 10.0.1.8     NFS 210 V3 READ Call, FH: 0xc930444f Offset: 0 Len: 512
+18728  19.569923     10.0.1.8 -> 10.0.2.11    NFS 710 V3 READ Reply (Call In 18727) Len: 512
+18729  19.570135    10.0.2.11 -> 10.0.1.8     NFS 234 V3 SETATTR Call, FH: 0xc930444f
+18730  19.570901     10.0.1.8 -> 10.0.2.11    NFS 214 V3 SETATTR Reply (Call In 18729) Error: NFS3ERR_JUKEBOX
+
+The user space client has attempted to extend the file. This does
+conflict with the read delegation held by the kernel NFS client,
+so the server returns JUKEBOX, the equivalent of NFS4ERR_DELAY.
+This causes a negative performance impact on the user space NFS
+client.
+
+18731  19.575396    10.0.2.11 -> 10.0.1.8     NFS 250 V4 Call DELEGRETURN StateID: 0x6de3
+18732  19.576132     10.0.1.8 -> 10.0.2.11    NFS 186 V4 Reply (Call In 18731) DELEGRETURN
+
+No CB_RECALL was done to trigger this DELEGRETURN. Apparently
+the application that was accessing this file via the kernel OS
+client decided already that it no longer needed the file before
+the server could send the CB_RECALL. Sign of perhaps a race
+between the applications accessing the file via these two
+mounts.
+
+---- cut here ----
+
+The server is aware of non-NFSv4 accessors of this file in frame
+18556. NFSv3 has no OPEN operation, of course, so it's not
+possible for the server to determine how the NFSv3 client will
+subsequently access this file.
+
+Seems like at frame 18556, it would be a best practice to recall
+the delegation to avoid potential future conflicts, such as the
+SETATTR in frame 18729.
+
+Or, perhaps that READ isn't the first NFSv3 access of that file.
+After all, a LOOKUP would have to be done to retrieve that file's
+FH. The OPEN in frame 18556 perhaps could have avoided offering
+the READ delegation, knowing there is a recent non-NFSv4 accessor
+of that file.
+
+Would these be difficult or inappropriate policies to implement?
+
+
+--
+Chuck Lever
+
+
 
