@@ -1,59 +1,32 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:32778 "EHLO fieldses.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S933740AbdCJW01 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 10 Mar 2017 17:26:27 -0500
-Date: Fri, 10 Mar 2017 17:26:24 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: NeilBrown <neilb@suse.com>
-Cc: Trond Myklebust <trondmy@primarydata.com>, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 2/3] NFSD: fix nfsd_minorversion(.., NFSD_AVAIL)
-Message-ID: <20170310222624.GO29791@fieldses.org>
-References: <148910618557.3032.8265198632788708076.stgit@noble>
- <148910619931.3032.2841124907029105276.stgit@noble>
- <20170310221648.GN29791@fieldses.org>
+Received: from mail-io0-f173.google.com ([209.85.223.173]:35094 "EHLO
+        mail-io0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1755129AbdCKAKX (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 10 Mar 2017 19:10:23 -0500
+Received: by mail-io0-f173.google.com with SMTP id z13so58439019iof.2
+        for <linux-nfs@vger.kernel.org>; Fri, 10 Mar 2017 16:10:22 -0800 (PST)
+Subject: Re: some problems about nfs mount
+To: houlinfei <hou.linfei@h3c.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+References: <4cd2efd6.e025.15ab908d6d0.Coremail.hou.linfei@h3c.com>
+Cc: bfields@fieldses.org, neilb@suse.com, SteveD@redhat.com,
+        Kinglong Mee <kinglongmee@gmail.com>
+From: Kinglong Mee <kinglongmee@gmail.com>
+Message-ID: <6122045b-2c2a-cb0a-1f1c-3a0c21b72c5d@gmail.com>
+Date: Sat, 11 Mar 2017 08:10:13 +0800
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20170310221648.GN29791@fieldses.org>
+In-Reply-To: <4cd2efd6.e025.15ab908d6d0.Coremail.hou.linfei@h3c.com>
+Content-Type: text/plain; charset=gbk
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Mar 10, 2017 at 05:16:48PM -0500, J. Bruce Fields wrote:
-> On Fri, Mar 10, 2017 at 11:36:39AM +1100, NeilBrown wrote:
-> > Current code will return 1 if the version is supported,
-> > and -1 if it isn't.
-> > This is confusing and inconsistent with the one place where this
-> > is used.
-> 
-> It's used?  I don't see it.--b.
+On 3/11/2017 00:24, houlinfei wrote:
+> hi Kinglong:
+> There has another problem about client mount using nfs4.My server system is ubuntu 14.04. nfs-kernel-server version is 1.3.4.My client system is ubuntu12.04.nfs-common version is 1.2.5.Then i mount the directory using nfs4.But it return "mount.nfs: access denied by server while mounting бн".When i mount using nfs3,it's ok.Do you know why?
 
-But, whatever, I'm OK with it.
+Can you show me more information about the exports and your mount command line?
+# cat /etc/exports
+# mount .....
 
-I'll queue all three up for 4.11 absent any objection.
-
---b.
-
-> 
-> > So change to return 1 if it is supported, and zero if not.
-> > i.e. an error is never returned.
-> > 
-> > Signed-off-by: NeilBrown <neilb@suse.com>
-> > ---
-> >  fs/nfsd/nfssvc.c |    3 ++-
-> >  1 file changed, 2 insertions(+), 1 deletion(-)
-> > 
-> > diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
-> > index 786a4a2cb2d7..892137b1e330 100644
-> > --- a/fs/nfsd/nfssvc.c
-> > +++ b/fs/nfsd/nfssvc.c
-> > @@ -167,7 +167,8 @@ nfsd_adjust_nfsd_versions4(void)
-> >  
-> >  int nfsd_minorversion(u32 minorversion, enum vers_op change)
-> >  {
-> > -	if (minorversion > NFSD_SUPPORTED_MINOR_VERSION)
-> > +	if (minorversion > NFSD_SUPPORTED_MINOR_VERSION &&
-> > +	    change != NFSD_AVAIL)
-> >  		return -1;
-> >  	switch(change) {
-> >  	case NFSD_SET:
-> > 
+thanks,
+Kinglong Mee
