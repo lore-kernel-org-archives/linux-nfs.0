@@ -1,58 +1,88 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from us-smtp-delivery-194.mimecast.com ([216.205.24.194]:48719 "EHLO
-        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S934692AbdCLVAh (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sun, 12 Mar 2017 17:00:37 -0400
-From: Trond Myklebust <trondmy@primarydata.com>
-To: "kolga@netapp.com" <kolga@netapp.com>
-CC: "anna.schumaker@netapp.com" <anna.schumaker@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 1/1] PNFS dont retry some error when MDS=DS
-Date: Sun, 12 Mar 2017 21:00:30 +0000
-Message-ID: <1489352427.6645.1.camel@primarydata.com>
-References: <CAN-5tyEe9txY5CmcZLOE4du=modRSaxKm8uLLT44YtKmSgAOgg@mail.gmail.com>
-         <20170310213715.38258-1-kolga@netapp.com>
-         <1489247175.3260.5.camel@primarydata.com>
-         <A6FAD06E-0F4F-405E-871B-751E763BACB9@netapp.com>
-In-Reply-To: <A6FAD06E-0F4F-405E-871B-751E763BACB9@netapp.com>
+Received: from mx2.suse.de ([195.135.220.15]:41836 "EHLO mx2.suse.de"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S935395AbdCLV6a (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Sun, 12 Mar 2017 17:58:30 -0400
+From: NeilBrown <neilb@suse.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Date: Mon, 13 Mar 2017 08:58:22 +1100
+Cc: Trond Myklebust <trondmy@primarydata.com>,
+        linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 2/3] NFSD: fix nfsd_minorversion(.., NFSD_AVAIL)
+In-Reply-To: <20170310221648.GN29791@fieldses.org>
+References: <148910618557.3032.8265198632788708076.stgit@noble> <148910619931.3032.2841124907029105276.stgit@noble> <20170310221648.GN29791@fieldses.org>
+Message-ID: <87innef98h.fsf@notabene.neil.brown.name>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+Content-Type: multipart/signed; boundary="=-=-=";
+        micalg=pgp-sha256; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gU3VuLCAyMDE3LTAzLTEyIGF0IDE0OjQwIC0wNDAwLCBPbGdhIEtvcm5pZXZza2FpYSB3cm90
-ZToNCj4gPiBPbiBNYXIgMTEsIDIwMTcsIGF0IDEwOjQ2IEFNLCBUcm9uZCBNeWtsZWJ1c3QgPHRy
-b25kbXlAcHJpbWFyeWRhdGEuDQo+ID4gY29tPiB3cm90ZToNCj4gPiANCj4gPiBPbiBGcmksIDIw
-MTctMDMtMTAgYXQgMTY6MzcgLTA1MDAsIE9sZ2EgS29ybmlldnNrYWlhIHdyb3RlOg0KPiA+ID4g
-SWYgd2Ugc2VudCBhbiBvcGVyYXRpb24gdG8gdGhlICJEUyIgYW5kIGdvdCBhbiBlcnJvciwgdGhl
-IGNvZGUNCj4gPiA+IHJlc2VuZHMNCj4gPiA+IHRvICJNRFMiIGJ1dCB3aGVuIHRoZXkgYXJlIHRo
-ZSBzYW1lLCBpdCBnZXRzIHRoZSBzYW1lIGVycm9yIGFuZA0KPiA+ID4gZ29lcw0KPiA+ID4gaW50
-byB0aGUgaW5maW5pdGUgbG9vcC4gRXhhbXBsZSB3YXMgQ09NTUlUIGdldHRpbmcgRUFDQ0VTLg0K
-PiA+ID4gDQo+ID4gDQo+ID4gVGhlIGNvcnJlY3QgYmVoYXZpb3VyIHdoZW4gZ2V0dGluZyBFQUND
-RVMgZnJvbSBhIENPTU1JVCB0byB0aGUgTURTDQo+ID4gd291bGQgYmUgdG8gcmV0cnkgdGhlIGVu
-dGlyZSBzZXJpZXMgb2YgV1JJVEUgY2FsbHMgd2l0aCBzdGFibGUNCj4gPiB3cml0ZXMuDQo+ID4g
-SWYgdGhlIHNlcnZlciB0aGVuIHJldHVybnMgd2l0aCBhbnl0aGluZyBvdGhlciB0aGFuIEZJTEVf
-U1lOQywgdGhlbg0KPiA+IEVJTy4NCj4gPiANCj4gPiBXaHkgaXMgdGhlIHNlcnZlciBmYWlsaW5n
-IHRoZSBDT01NSVQgaGVyZSBpZiB0aGUgY2xpZW50IHRoaW5rcyBpdA0KPiA+IHNlbnQNCj4gPiB1
-bnN0YWJsZSB3cml0ZXM/DQo+IA0KPiBUaGlzIGxvb3Bpbmcgd2FzIGRpc2NvdmVyZWQgZHVyaW5n
-IGNvbm5lY3RhdGhvbiB0ZXN0aW5nIGFnYWluc3QgdGhlDQo+IGRlc3kgc2VydmVyLiBXaGlsZSBJ
-IGJlbGlldmUgVGlncmFuIHRoaW5rcyB0aGVyZSBpcyBhbiBlcnJvciBpbiBoaXMNCj4gY29kZSBh
-bmQgRUFDQ0VTIGZyb20gQ09NTUlUIHdhcyB1bmV4cGVjdGVkLCB3ZSB0aG91Z2h0IHRoYXQgaXQg
-d291bGQNCj4gYmUgYmVzdCBpZiB0aGUgY2xpZW50IGRpZG7igJl0IGdvIGludG8gaW5maW5pdGUg
-bG9vcCBpbiB0aGlzIGNvbmRpdGlvbg0KPiBnaXZlbiB0aGF0IEVBQ0NFUyBpcyBhIHZhbGlkIGVy
-cm9yIGZvciBDT01NSVQuIElmIHlvdSB0aGluayB0aGlzDQo+IHNob3VsZG7igJl0IGhhcHBlbiBp
-biByZWFsIGxpZmUsIHRoZW4gSeKAmW0gb2sgd2l0aCBub3QgcHVyc3VpbmcgdGhpcy7CoA0KDQpJ
-dCBpcyBsZWdhbCwgYW5kIEkgY2FuIHNvcnQgb2Ygc2VlIGhvdyBpdCBtaWdodCBiZSBpbnZva2Vk
-IGlmIGEgU0VUQVRUUg0KY2hhbmdlcyB0aGUgbW9kZSBiZXR3ZWVuIHRoZSBXUklURSBhbmQgdGhl
-IENPTU1JVCwgYnV0IGl0IGlzIGEgY29ybmVyDQpjYXNlLg0KDQo+IE9uIGEgZGlmZmVyZW50IGJ1
-dCByZWxhdGVkIG5vdGUsIGluIGNhc2Ugd2hlbiBNRFMgIT0gRFMsIHdoZW4gdGhlDQo+IHdyaXRl
-cyBhcmUgcmV0cmllZCB0aGV5IGFyZSBub3QgcmV0cmllZCBhZ2FpbnN0IHRoZSBNRFMgYnV0IGFn
-YWluIGFyZQ0KPiBzZW50IHRvIHRoZSBEUywgaXMgdGhhdCBhIGJ1Zz8NCg0KSSB3b3VsZCBleHBl
-Y3QgdGhhdCBvbmNlIHlvdSBkZWNpZGUgdG8gZmFsbCBiYWNrIHRvIGRvaW5nIEkvTyB0aHJvdWdo
-DQp0aGUgTURTLCB0aGVuIHlvdSdsbCB3YW50IGFueSByZXNlbmRzIHRvIGFsc28gZ28gdG8gdGhl
-IE1EUy4NCg0KPiA+IA0KPiA+IC0twqANCj4gPiBUcm9uZCBNeWtsZWJ1c3QNCj4gPiBMaW51eCBO
-RlMgY2xpZW50IG1haW50YWluZXIsIFByaW1hcnlEYXRhDQo+ID4gdHJvbmQubXlrbGVidXN0QHBy
-aW1hcnlkYXRhLmNvbQ0KPiANCj4gDQotLSANClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNs
-aWVudCBtYWludGFpbmVyLCBQcmltYXJ5RGF0YQ0KdHJvbmQubXlrbGVidXN0QHByaW1hcnlkYXRh
-LmNvbQ0K
+--=-=-=
+Content-Type: text/plain
+Content-Transfer-Encoding: quoted-printable
 
+On Fri, Mar 10 2017, J. Bruce Fields wrote:
+
+> On Fri, Mar 10, 2017 at 11:36:39AM +1100, NeilBrown wrote:
+>> Current code will return 1 if the version is supported,
+>> and -1 if it isn't.
+>> This is confusing and inconsistent with the one place where this
+>> is used.
+>
+> It's used?  I don't see it.--b.
+
+You are correct of course.  NFSD_AVAIL is used once, but not with
+nfsd_minorversion.
+Would it ever make sense to selectively include different minor
+versions at compile time?  Probably not, but it probably doesn't matter
+anyway.
+
+NeilBrown
+
+
+>
+>> So change to return 1 if it is supported, and zero if not.
+>> i.e. an error is never returned.
+>>=20
+>> Signed-off-by: NeilBrown <neilb@suse.com>
+>> ---
+>>  fs/nfsd/nfssvc.c |    3 ++-
+>>  1 file changed, 2 insertions(+), 1 deletion(-)
+>>=20
+>> diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
+>> index 786a4a2cb2d7..892137b1e330 100644
+>> --- a/fs/nfsd/nfssvc.c
+>> +++ b/fs/nfsd/nfssvc.c
+>> @@ -167,7 +167,8 @@ nfsd_adjust_nfsd_versions4(void)
+>>=20=20
+>>  int nfsd_minorversion(u32 minorversion, enum vers_op change)
+>>  {
+>> -	if (minorversion > NFSD_SUPPORTED_MINOR_VERSION)
+>> +	if (minorversion > NFSD_SUPPORTED_MINOR_VERSION &&
+>> +	    change !=3D NFSD_AVAIL)
+>>  		return -1;
+>>  	switch(change) {
+>>  	case NFSD_SET:
+>>=20
+
+--=-=-=
+Content-Type: application/pgp-signature; name="signature.asc"
+
+-----BEGIN PGP SIGNATURE-----
+
+iQIzBAEBCAAdFiEEG8Yp69OQ2HB7X0l6Oeye3VZigbkFAljFxH4ACgkQOeye3VZi
+gbnRew/9Eae/yGvG6xOM3cL/YJMwRtpsE45Q0k/uh8rrL8A1OfERtPSobT4r98BN
+WxLvQ6CpbtjorilV8xHsK0nQju98PduD2ZnrjQ+EUT+BFPfOl9EX4ZO8GYE/si8+
+aCIve2s75yF5uaoFN+RlPmYHZPd37CeUBb+ZEqhvjzQLdavzpmANOof2C+Y1Rx1w
+k7XIOggOe6MSg9+8qH77EqxhTXtgkGR+LLmn5wuiveNHksUJAi+hl3cOJ3gDTo67
+Y9zu81s9Eh0AMugSTbMW5vnan8mqsVGbsoyQzXNXPKLX0a6wyIdWdVZRvcJ5qflJ
+FDSiMvYRld/em5kZEPIvFKvEweD21ITm9pDamCqRCy5gxh+Jt8gcGbnApmaBn1a+
+RFGmBYBdxw2lNjThpwEdJlKQ4Le9Clf9lFVU+Q4C7mCRnjjRY57N65RjeefmMMfs
+Gi8NL8CdevLSckyH8th0jmpt8FiUzVHzmB4pPhm2XpOP78kWoeCAAQRDujAZZFpj
+08FopbgDikluujRZzOFp27ZKpHsBTxzRDl4G1pJYXs/d2BjTGkadwErq/V/+9SV9
+dumXhGpWytTNdpXVyWGaPwI7aA2ugMwzQBztrlxhuCIfnm7OXHiMTg7xCO1e7kbU
+r/RUhtifI8u5x35WhhpCbPSCETrEqOXPnSlDWpkPJn58Iw+lems=
+=Fky6
+-----END PGP SIGNATURE-----
+--=-=-=--
