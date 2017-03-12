@@ -1,57 +1,58 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx141.netapp.com ([216.240.21.12]:48116 "EHLO mx141.netapp.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1755675AbdCLSky (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Sun, 12 Mar 2017 14:40:54 -0400
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0 (Mac OS X Mail 9.3 \(3124\))
-Subject: Re: [PATCH 1/1] PNFS dont retry some error when MDS=DS
-From: Olga Kornievskaia <kolga@netapp.com>
-In-Reply-To: <1489247175.3260.5.camel@primarydata.com>
-Date: Sun, 12 Mar 2017 14:40:49 -0400
+Received: from us-smtp-delivery-194.mimecast.com ([216.205.24.194]:48719 "EHLO
+        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S934692AbdCLVAh (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sun, 12 Mar 2017 17:00:37 -0400
+From: Trond Myklebust <trondmy@primarydata.com>
+To: "kolga@netapp.com" <kolga@netapp.com>
 CC: "anna.schumaker@netapp.com" <anna.schumaker@netapp.com>,
         "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Message-ID: <A6FAD06E-0F4F-405E-871B-751E763BACB9@netapp.com>
+Subject: Re: [PATCH 1/1] PNFS dont retry some error when MDS=DS
+Date: Sun, 12 Mar 2017 21:00:30 +0000
+Message-ID: <1489352427.6645.1.camel@primarydata.com>
 References: <CAN-5tyEe9txY5CmcZLOE4du=modRSaxKm8uLLT44YtKmSgAOgg@mail.gmail.com>
- <20170310213715.38258-1-kolga@netapp.com>
- <1489247175.3260.5.camel@primarydata.com>
-To: Trond Myklebust <trondmy@primarydata.com>
+         <20170310213715.38258-1-kolga@netapp.com>
+         <1489247175.3260.5.camel@primarydata.com>
+         <A6FAD06E-0F4F-405E-871B-751E763BACB9@netapp.com>
+In-Reply-To: <A6FAD06E-0F4F-405E-871B-751E763BACB9@netapp.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-> On Mar 11, 2017, at 10:46 AM, Trond Myklebust =
-<trondmy@primarydata.com> wrote:
->=20
-> On Fri, 2017-03-10 at 16:37 -0500, Olga Kornievskaia wrote:
->> If we sent an operation to the "DS" and got an error, the code
->> resends
->> to "MDS" but when they are the same, it gets the same error and goes
->> into the infinite loop. Example was COMMIT getting EACCES.
->>=20
->=20
-> The correct behaviour when getting EACCES from a COMMIT to the MDS
-> would be to retry the entire series of WRITE calls with stable writes.
-> If the server then returns with anything other than FILE_SYNC, then
-> EIO.
->=20
-> Why is the server failing the COMMIT here if the client thinks it sent
-> unstable writes?
-
-This looping was discovered during connectathon testing against the desy =
-server. While I believe Tigran thinks there is an error in his code and =
-EACCES from COMMIT was unexpected, we thought that it would be best if =
-the client didn=E2=80=99t go into infinite loop in this condition given =
-that EACCES is a valid error for COMMIT. If you think this shouldn=E2=80=99=
-t happen in real life, then I=E2=80=99m ok with not pursuing this.=20
-
-On a different but related note, in case when MDS !=3D DS, when the =
-writes are retried they are not retried against the MDS but again are =
-sent to the DS, is that a bug?
-
->=20
-> --=20
-> Trond Myklebust
-> Linux NFS client maintainer, PrimaryData
-> trond.myklebust@primarydata.com
+T24gU3VuLCAyMDE3LTAzLTEyIGF0IDE0OjQwIC0wNDAwLCBPbGdhIEtvcm5pZXZza2FpYSB3cm90
+ZToNCj4gPiBPbiBNYXIgMTEsIDIwMTcsIGF0IDEwOjQ2IEFNLCBUcm9uZCBNeWtsZWJ1c3QgPHRy
+b25kbXlAcHJpbWFyeWRhdGEuDQo+ID4gY29tPiB3cm90ZToNCj4gPiANCj4gPiBPbiBGcmksIDIw
+MTctMDMtMTAgYXQgMTY6MzcgLTA1MDAsIE9sZ2EgS29ybmlldnNrYWlhIHdyb3RlOg0KPiA+ID4g
+SWYgd2Ugc2VudCBhbiBvcGVyYXRpb24gdG8gdGhlICJEUyIgYW5kIGdvdCBhbiBlcnJvciwgdGhl
+IGNvZGUNCj4gPiA+IHJlc2VuZHMNCj4gPiA+IHRvICJNRFMiIGJ1dCB3aGVuIHRoZXkgYXJlIHRo
+ZSBzYW1lLCBpdCBnZXRzIHRoZSBzYW1lIGVycm9yIGFuZA0KPiA+ID4gZ29lcw0KPiA+ID4gaW50
+byB0aGUgaW5maW5pdGUgbG9vcC4gRXhhbXBsZSB3YXMgQ09NTUlUIGdldHRpbmcgRUFDQ0VTLg0K
+PiA+ID4gDQo+ID4gDQo+ID4gVGhlIGNvcnJlY3QgYmVoYXZpb3VyIHdoZW4gZ2V0dGluZyBFQUND
+RVMgZnJvbSBhIENPTU1JVCB0byB0aGUgTURTDQo+ID4gd291bGQgYmUgdG8gcmV0cnkgdGhlIGVu
+dGlyZSBzZXJpZXMgb2YgV1JJVEUgY2FsbHMgd2l0aCBzdGFibGUNCj4gPiB3cml0ZXMuDQo+ID4g
+SWYgdGhlIHNlcnZlciB0aGVuIHJldHVybnMgd2l0aCBhbnl0aGluZyBvdGhlciB0aGFuIEZJTEVf
+U1lOQywgdGhlbg0KPiA+IEVJTy4NCj4gPiANCj4gPiBXaHkgaXMgdGhlIHNlcnZlciBmYWlsaW5n
+IHRoZSBDT01NSVQgaGVyZSBpZiB0aGUgY2xpZW50IHRoaW5rcyBpdA0KPiA+IHNlbnQNCj4gPiB1
+bnN0YWJsZSB3cml0ZXM/DQo+IA0KPiBUaGlzIGxvb3Bpbmcgd2FzIGRpc2NvdmVyZWQgZHVyaW5n
+IGNvbm5lY3RhdGhvbiB0ZXN0aW5nIGFnYWluc3QgdGhlDQo+IGRlc3kgc2VydmVyLiBXaGlsZSBJ
+IGJlbGlldmUgVGlncmFuIHRoaW5rcyB0aGVyZSBpcyBhbiBlcnJvciBpbiBoaXMNCj4gY29kZSBh
+bmQgRUFDQ0VTIGZyb20gQ09NTUlUIHdhcyB1bmV4cGVjdGVkLCB3ZSB0aG91Z2h0IHRoYXQgaXQg
+d291bGQNCj4gYmUgYmVzdCBpZiB0aGUgY2xpZW50IGRpZG7igJl0IGdvIGludG8gaW5maW5pdGUg
+bG9vcCBpbiB0aGlzIGNvbmRpdGlvbg0KPiBnaXZlbiB0aGF0IEVBQ0NFUyBpcyBhIHZhbGlkIGVy
+cm9yIGZvciBDT01NSVQuIElmIHlvdSB0aGluayB0aGlzDQo+IHNob3VsZG7igJl0IGhhcHBlbiBp
+biByZWFsIGxpZmUsIHRoZW4gSeKAmW0gb2sgd2l0aCBub3QgcHVyc3VpbmcgdGhpcy7CoA0KDQpJ
+dCBpcyBsZWdhbCwgYW5kIEkgY2FuIHNvcnQgb2Ygc2VlIGhvdyBpdCBtaWdodCBiZSBpbnZva2Vk
+IGlmIGEgU0VUQVRUUg0KY2hhbmdlcyB0aGUgbW9kZSBiZXR3ZWVuIHRoZSBXUklURSBhbmQgdGhl
+IENPTU1JVCwgYnV0IGl0IGlzIGEgY29ybmVyDQpjYXNlLg0KDQo+IE9uIGEgZGlmZmVyZW50IGJ1
+dCByZWxhdGVkIG5vdGUsIGluIGNhc2Ugd2hlbiBNRFMgIT0gRFMsIHdoZW4gdGhlDQo+IHdyaXRl
+cyBhcmUgcmV0cmllZCB0aGV5IGFyZSBub3QgcmV0cmllZCBhZ2FpbnN0IHRoZSBNRFMgYnV0IGFn
+YWluIGFyZQ0KPiBzZW50IHRvIHRoZSBEUywgaXMgdGhhdCBhIGJ1Zz8NCg0KSSB3b3VsZCBleHBl
+Y3QgdGhhdCBvbmNlIHlvdSBkZWNpZGUgdG8gZmFsbCBiYWNrIHRvIGRvaW5nIEkvTyB0aHJvdWdo
+DQp0aGUgTURTLCB0aGVuIHlvdSdsbCB3YW50IGFueSByZXNlbmRzIHRvIGFsc28gZ28gdG8gdGhl
+IE1EUy4NCg0KPiA+IA0KPiA+IC0twqANCj4gPiBUcm9uZCBNeWtsZWJ1c3QNCj4gPiBMaW51eCBO
+RlMgY2xpZW50IG1haW50YWluZXIsIFByaW1hcnlEYXRhDQo+ID4gdHJvbmQubXlrbGVidXN0QHBy
+aW1hcnlkYXRhLmNvbQ0KPiANCj4gDQotLSANClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNs
+aWVudCBtYWludGFpbmVyLCBQcmltYXJ5RGF0YQ0KdHJvbmQubXlrbGVidXN0QHByaW1hcnlkYXRh
+LmNvbQ0K
 
