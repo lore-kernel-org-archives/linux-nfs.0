@@ -1,72 +1,89 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx142.netapp.com ([216.240.21.19]:36008 "EHLO mx142.netapp.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1752332AbdCMOgY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 13 Mar 2017 10:36:24 -0400
-From: Olga Kornievskaia <kolga@netapp.com>
-To: <Trond.Myklebust@primarydata.com>, <anna.schumaker@netapp.com>
-CC: <linux-nfs@vger.kernel.org>
-Subject: [PATCH v2 1/1] NFS prevent double free in async nfs4_exchange_id
-Date: Mon, 13 Mar 2017 10:36:19 -0400
-Message-ID: <20170313143619.39590-1-kolga@netapp.com>
-In-Reply-To: <1489247359.3260.7.camel@primarydata.com>
-References: <1489247359.3260.7.camel@primarydata.com>
+Received: from mail-io0-f174.google.com ([209.85.223.174]:36419 "EHLO
+        mail-io0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1753412AbdCMOmw (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Mar 2017 10:42:52 -0400
+Received: by mail-io0-f174.google.com with SMTP id l7so85021062ioe.3
+        for <linux-nfs@vger.kernel.org>; Mon, 13 Mar 2017 07:42:51 -0700 (PDT)
 MIME-Version: 1.0
-Content-Type: text/plain
+In-Reply-To: <1489352427.6645.1.camel@primarydata.com>
+References: <CAN-5tyEe9txY5CmcZLOE4du=modRSaxKm8uLLT44YtKmSgAOgg@mail.gmail.com>
+ <20170310213715.38258-1-kolga@netapp.com> <1489247175.3260.5.camel@primarydata.com>
+ <A6FAD06E-0F4F-405E-871B-751E763BACB9@netapp.com> <1489352427.6645.1.camel@primarydata.com>
+From: Olga Kornievskaia <aglo@umich.edu>
+Date: Mon, 13 Mar 2017 10:42:50 -0400
+Message-ID: <CAN-5tyF3Ld-8EwbOenLxT-rL0gJTAW3szv-8sq29G3Y1itmsWg@mail.gmail.com>
+Subject: Re: [PATCH 1/1] PNFS dont retry some error when MDS=DS
+To: Trond Myklebust <trondmy@primarydata.com>
+Cc: "kolga@netapp.com" <kolga@netapp.com>,
+        "anna.schumaker@netapp.com" <anna.schumaker@netapp.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Since rpc_task is async, the release function should be called which
-will free the impl_id, scope, and owner.
+On Sun, Mar 12, 2017 at 5:00 PM, Trond Myklebust
+<trondmy@primarydata.com> wrote:
+> On Sun, 2017-03-12 at 14:40 -0400, Olga Kornievskaia wrote:
+>> > On Mar 11, 2017, at 10:46 AM, Trond Myklebust <trondmy@primarydata.
+>> > com> wrote:
+>> >
+>> > On Fri, 2017-03-10 at 16:37 -0500, Olga Kornievskaia wrote:
+>> > > If we sent an operation to the "DS" and got an error, the code
+>> > > resends
+>> > > to "MDS" but when they are the same, it gets the same error and
+>> > > goes
+>> > > into the infinite loop. Example was COMMIT getting EACCES.
+>> > >
+>> >
+>> > The correct behaviour when getting EACCES from a COMMIT to the MDS
+>> > would be to retry the entire series of WRITE calls with stable
+>> > writes.
+>> > If the server then returns with anything other than FILE_SYNC, then
+>> > EIO.
+>> >
 
-Trond pointed at 2 more problems:
--- use of client pointer after free in the nfs4_exchangeid_release() function
--- cl_count mismatch if rpc_run_task() isn't run
+Going back to this comment. Then in non-pnfs (4.1 or 4.0), is the
+expected behavior is to re-send the writes with FILE_SYNC. This is not
+what the code does now.
 
-Fixes: 8d89bd70bc9 ("NFS setup async exchange_id")
-Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
----
- fs/nfs/nfs4proc.c | 9 ++++-----
- 1 file changed, 4 insertions(+), 5 deletions(-)
+>> > Why is the server failing the COMMIT here if the client thinks it
+>> > sent
+>> > unstable writes?
+>>
+>> This looping was discovered during connectathon testing against the
+>> desy server. While I believe Tigran thinks there is an error in his
+>> code and EACCES from COMMIT was unexpected, we thought that it would
+>> be best if the client didn=E2=80=99t go into infinite loop in this condi=
+tion
+>> given that EACCES is a valid error for COMMIT. If you think this
+>> shouldn=E2=80=99t happen in real life, then I=E2=80=99m ok with not purs=
+uing this.
+>
+> It is legal, and I can sort of see how it might be invoked if a SETATTR
+> changes the mode between the WRITE and the COMMIT, but it is a corner
+> case.
+>
+>> On a different but related note, in case when MDS !=3D DS, when the
+>> writes are retried they are not retried against the MDS but again are
+>> sent to the DS, is that a bug?
+>
+> I would expect that once you decide to fall back to doing I/O through
+> the MDS, then you'll want any resends to also go to the MDS.
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 59be0f7..1a65af2 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -7426,11 +7426,11 @@ static void nfs4_exchange_id_release(void *data)
- 	struct nfs41_exchange_id_data *cdata =
- 					(struct nfs41_exchange_id_data *)data;
- 
--	nfs_put_client(cdata->args.client);
- 	if (cdata->xprt) {
- 		xprt_put(cdata->xprt);
- 		rpc_clnt_xprt_switch_put(cdata->args.client->cl_rpcclient);
- 	}
-+	nfs_put_client(cdata->args.client);
- 	kfree(cdata->res.impl_id);
- 	kfree(cdata->res.server_scope);
- 	kfree(cdata->res.server_owner);
-@@ -7537,10 +7537,8 @@ static int _nfs4_proc_exchange_id(struct nfs_client *clp, struct rpc_cred *cred,
- 	task_setup_data.callback_data = calldata;
- 
- 	task = rpc_run_task(&task_setup_data);
--	if (IS_ERR(task)) {
--	status = PTR_ERR(task);
--		goto out_impl_id;
--	}
-+	if (IS_ERR(task))
-+		return PTR_ERR(task);
- 
- 	if (!xprt) {
- 		status = rpc_wait_for_completion_task(task);
-@@ -7568,6 +7566,7 @@ static int _nfs4_proc_exchange_id(struct nfs_client *clp, struct rpc_cred *cred,
- 	kfree(calldata->res.server_owner);
- out_calldata:
- 	kfree(calldata);
-+	nfs_put_client(clp);
- 	goto out;
- }
- 
--- 
-1.8.3.1
+I guess I'm not seeing there is a fallback happening if COMMIT fails.
+I think if writes fail then fallback happens but not the COMMIT.
 
+Again I'm not sure if this is worth pursing as you say it's a corner case.
+
+>> >
+>> > --
+>> > Trond Myklebust
+>> > Linux NFS client maintainer, PrimaryData
+>> > trond.myklebust@primarydata.com
+>>
+>>
+> --
+> Trond Myklebust
+> Linux NFS client maintainer, PrimaryData
+> trond.myklebust@primarydata.com
