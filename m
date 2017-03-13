@@ -1,230 +1,72 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:15946 "EHLO mx1.redhat.com"
+Received: from mx142.netapp.com ([216.240.21.19]:36008 "EHLO mx142.netapp.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1752901AbdCMN15 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 13 Mar 2017 09:27:57 -0400
-Date: Mon, 13 Mar 2017 09:27:49 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: Jeff Layton <jlayton@redhat.com>
-Cc: Chuck Lever <chuck.lever@oracle.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: nfsd: delegation conflicts between NFSv3 and NFSv4 accessors
-Message-ID: <20170313132749.GA11746@parsley.fieldses.org>
-References: <F2A98574-693E-4F72-B7D1-5FCEA851BC7C@oracle.com>
- <1489252126.3367.4.camel@redhat.com>
- <FFE72BE2-6CD5-434D-8DC0-6A5D393BEF4C@oracle.com>
- <1489266274.3367.6.camel@redhat.com>
+        id S1752332AbdCMOgY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 13 Mar 2017 10:36:24 -0400
+From: Olga Kornievskaia <kolga@netapp.com>
+To: <Trond.Myklebust@primarydata.com>, <anna.schumaker@netapp.com>
+CC: <linux-nfs@vger.kernel.org>
+Subject: [PATCH v2 1/1] NFS prevent double free in async nfs4_exchange_id
+Date: Mon, 13 Mar 2017 10:36:19 -0400
+Message-ID: <20170313143619.39590-1-kolga@netapp.com>
+In-Reply-To: <1489247359.3260.7.camel@primarydata.com>
+References: <1489247359.3260.7.camel@primarydata.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1489266274.3367.6.camel@redhat.com>
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sat, Mar 11, 2017 at 04:04:34PM -0500, Jeff Layton wrote:
-> On Sat, 2017-03-11 at 15:46 -0500, Chuck Lever wrote:
-> > > On Mar 11, 2017, at 12:08 PM, Jeff Layton <jlayton@redhat.com> wrote:
-> > > 
-> > > On Sat, 2017-03-11 at 11:53 -0500, Chuck Lever wrote:
-> > > > Hi Bruce, Jeff-
-> > > > 
-> > > > I've observed some interesting Linux NFS server behavior (v4.1.12).
-> > > > 
-> > > > We have a single system that has an NFSv4 mount via the kernel NFS
-> > > > client, and an NFSv3 mount of the same export via a user space NFS
-> > > > client. These two clients are accessing the same set of files.
-> > > > 
-> > > > The following pattern is seen on the wire. I've filtered a recent
-> > > > capture on the FH of one of the shared files.
-> > > > 
-> > > > ---- cut here ----
-> > > > 
-> > > > 18507  19.483085    10.0.2.11 -> 10.0.1.8     NFS 238 V4 Call ACCESS FH: 0xc930444f, [Check: RD MD XT XE]
-> > > > 18508  19.483827     10.0.1.8 -> 10.0.2.11    NFS 194 V4 Reply (Call In 18507) ACCESS, [Access Denied: XE], [Allowed: RD MD XT]
-> > > > 18510  19.484676     10.0.1.8 -> 10.0.2.11    NFS 434 V4 Reply (Call In 18509) OPEN StateID: 0x6de3
-> > > > 
-> > > > This OPEN reply offers a read delegation to the kernel NFS client.
-> > > > 
-> > > > 18511  19.484806    10.0.2.11 -> 10.0.1.8     NFS 230 V4 Call GETATTR FH: 0xc930444f
-> > > > 18512  19.485549     10.0.1.8 -> 10.0.2.11    NFS 274 V4 Reply (Call In 18511) GETATTR
-> > > > 18513  19.485611    10.0.2.11 -> 10.0.1.8     NFS 230 V4 Call GETATTR FH: 0xc930444f
-> > > > 18514  19.486375     10.0.1.8 -> 10.0.2.11    NFS 186 V4 Reply (Call In 18513) GETATTR
-> > > > 18515  19.486464    10.0.2.11 -> 10.0.1.8     NFS 254 V4 Call CLOSE StateID: 0x6de3
-> > > > 18516  19.487201     10.0.1.8 -> 10.0.2.11    NFS 202 V4 Reply (Call In 18515) CLOSE
-> > > > 18556  19.498617    10.0.2.11 -> 10.0.1.8     NFS 210 V3 READ Call, FH: 0xc930444f Offset: 8192 Len: 8192
-> > > > 
-> > > > This READ call by the user space client does not conflict with the
-> > > > read delegation.
-> > > > 
-> > > > 18559  19.499396     10.0.1.8 -> 10.0.2.11    NFS 8390 V3 READ Reply (Call In 18556) Len: 8192
-> > > > 18726  19.568975     10.0.1.8 -> 10.0.2.11    NFS 310 V3 LOOKUP Reply (Call In 18725), FH: 0xc930444f
-> > > > 18727  19.569170    10.0.2.11 -> 10.0.1.8     NFS 210 V3 READ Call, FH: 0xc930444f Offset: 0 Len: 512
-> > > > 18728  19.569923     10.0.1.8 -> 10.0.2.11    NFS 710 V3 READ Reply (Call In 18727) Len: 512
-> > > > 18729  19.570135    10.0.2.11 -> 10.0.1.8     NFS 234 V3 SETATTR Call, FH: 0xc930444f
-> > > > 18730  19.570901     10.0.1.8 -> 10.0.2.11    NFS 214 V3 SETATTR Reply (Call In 18729) Error: NFS3ERR_JUKEBOX
-> > > > 
-> > > > The user space client has attempted to extend the file. This does
-> > > > conflict with the read delegation held by the kernel NFS client,
-> > > > so the server returns JUKEBOX, the equivalent of NFS4ERR_DELAY.
-> > > > This causes a negative performance impact on the user space NFS
-> > > > client.
-> > > > 
-> > > > 18731  19.575396    10.0.2.11 -> 10.0.1.8     NFS 250 V4 Call DELEGRETURN StateID: 0x6de3
-> > > > 18732  19.576132     10.0.1.8 -> 10.0.2.11    NFS 186 V4 Reply (Call In 18731) DELEGRETURN
-> > > > 
-> > > > No CB_RECALL was done to trigger this DELEGRETURN. Apparently
-> > > > the application that was accessing this file via the kernel OS
-> > > > client decided already that it no longer needed the file before
-> > > > the server could send the CB_RECALL. Sign of perhaps a race
-> > > > between the applications accessing the file via these two
-> > > > mounts.
-> > > > 
-> > > > ---- cut here ----
-> > > > 
-> > > > The server is aware of non-NFSv4 accessors of this file in frame
-> > > > 18556. NFSv3 has no OPEN operation, of course, so it's not
-> > > > possible for the server to determine how the NFSv3 client will
-> > > > subsequently access this file.
-> > > > 
-> > > 
-> > > Right. Why should we assume that the v3 client will do anything other
-> > > than read there? If we recall the delegation just for reads, then we
-> > > potentially negatively affect the performance of the v4 client.
-> > > 
-> > > > Seems like at frame 18556, it would be a best practice to recall
-> > > > the delegation to avoid potential future conflicts, such as the
-> > > > SETATTR in frame 18729.
-> > > > 
-> > > > Or, perhaps that READ isn't the first NFSv3 access of that file.
-> > > > After all, a LOOKUP would have to be done to retrieve that file's
-> > > > FH. The OPEN in frame 18556 perhaps could have avoided offering
-> > > > the READ delegation, knowing there is a recent non-NFSv4 accessor
-> > > > of that file.
-> > > > 
-> > > > Would these be difficult or inappropriate policies to implement?
-> > > > 
-> > > > 
-> > > 
-> > > Reads are not currently considered to be conflicting access vs. a read
-> > > delegation.
-> > 
-> > Strictly speaking, a single NFSv3 READ does not violate the guarantee
-> > made by the read delegation. And, strictly speaking, there can be no
-> > OPEN conflict because NFSv3 does not have an OPEN operation.
-> > 
-> > The question is whether the server has an adequate mechanism for
-> > delaying NFSv3 accessors when an NFSv4 delegation must be recalled.
-> > 
-> > NFS3ERR_JUKEBOX and NFS4ERR_DELAY share the same numeric value, but
-> > imply different semantics.
-> > 
-> > RFC1813 says:
-> >  
-> > NFS3ERR_JUKEBOX
-> >     The server initiated the request, but was not able to
-> >     complete it in a timely fashion. The client should wait
-> >     and then try the request with a new RPC transaction ID.
-> >     For example, this error should be returned from a server
-> >     that supports hierarchical storage and receives a request
-> >     to process a file that has been migrated. In this case,
-> >     the server should start the immigration process and
-> >     respond to client with this error.
-> > 
-> > Some clients respond to NFS3ERR_JUKEBOX by waiting quite some time
-> > before retrying.
-> > 
-> > RFC7530 says:
-> > 
-> > 13.1.1.3.  NFS4ERR_DELAY (Error Code 10008)
-> > 
-> >    For any of a number of reasons, the replier could not process this
-> >    operation in what was deemed a reasonable time.  The client should
-> >    wait and then try the request with a new RPC transaction ID.
-> > 
-> >    The following are two examples of what might lead to this situation:
-> > 
-> >    o  A server that supports hierarchical storage receives a request to
-> >       process a file that had been migrated.
-> > 
-> >    o  An operation requires a delegation recall to proceed, and waiting
-> >       for this delegation recall makes processing this request in a
-> >       timely fashion impossible.
-> > 
-> > An NFSv4 client is prepared to retry this error almost immediately
-> > because most of the time it is due to the second bullet.
-> > 
-> > I agree that not recalling after an NFSv3 READ is reasonable in some
-> > cases. However, I demonstrated a case where the current policy does
-> > not serve one of these clients well at all. In fact, the NFSv3
-> > accessor in this case is the performance-sensitive one.
-> > 
-> > To put it another way, the NFSv4 protocol does not forbid the
-> > current Linux server policy, but interoperating well with existing
-> > NFSv3 clients suggests it's not an optimal policy choice.
-> > 
-> 
-> I think that is entirely dependent on the workload. If we proactively
-> recall delegations because we think the v3 client _might_ do some
-> conflicting access, and then it doesn't, then that's also a non-optimal
-> choice.
-> 
-> > 
-> > > I think that's the correct thing to do. Until we have some
-> > > sort of conflicting behavior I don't see why you'd want to prematurely
-> > > recall the delegation.
-> > 
-> > The reason to recall a delegation is to avoid returning
-> > NFS3ERR_JUKEBOX if at all possible, because doing so is a drastic
-> > remedy that results in a performance regression.
-> > 
-> > The negative impact of not having a delegation is small. The negative
-> > impact of returning NFS3ERR_JUKEBOX to a SETATTR or WRITE can be as
-> > much as a 5 minute wait. (This is intolerably long for, say, online
-> > transaction processing workloads).
-> > 
-> 
-> That sounds like a deficient v3 client, IMO. There's nothing in the v3
-> spec that I know of that advocates a delay that long before
-> reattempting. I'm pretty sure the Linux client treats NFSERR3_JUKEBOX
-> and NFS4ERR_DELAY more or less equivalently.
+Since rpc_task is async, the release function should be called which
+will free the impl_id, scope, and owner.
 
-The v3 client uses a 5 second delay (see NFS_JUKEBOX_RETRY_TIME).
+Trond pointed at 2 more problems:
+-- use of client pointer after free in the nfs4_exchangeid_release() function
+-- cl_count mismatch if rpc_run_task() isn't run
 
-The v4 client, at least in the case of operations that could break a
-deleg, does exponential backoff starting with a tenth of a second--see
-nfs4_delay.
+Fixes: 8d89bd70bc9 ("NFS setup async exchange_id")
+Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
+---
+ fs/nfs/nfs4proc.c | 9 ++++-----
+ 1 file changed, 4 insertions(+), 5 deletions(-)
 
-So Trond's been taking the spec at its word here.
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 59be0f7..1a65af2 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -7426,11 +7426,11 @@ static void nfs4_exchange_id_release(void *data)
+ 	struct nfs41_exchange_id_data *cdata =
+ 					(struct nfs41_exchange_id_data *)data;
+ 
+-	nfs_put_client(cdata->args.client);
+ 	if (cdata->xprt) {
+ 		xprt_put(cdata->xprt);
+ 		rpc_clnt_xprt_switch_put(cdata->args.client->cl_rpcclient);
+ 	}
++	nfs_put_client(cdata->args.client);
+ 	kfree(cdata->res.impl_id);
+ 	kfree(cdata->res.server_scope);
+ 	kfree(cdata->res.server_owner);
+@@ -7537,10 +7537,8 @@ static int _nfs4_proc_exchange_id(struct nfs_client *clp, struct rpc_cred *cred,
+ 	task_setup_data.callback_data = calldata;
+ 
+ 	task = rpc_run_task(&task_setup_data);
+-	if (IS_ERR(task)) {
+-	status = PTR_ERR(task);
+-		goto out_impl_id;
+-	}
++	if (IS_ERR(task))
++		return PTR_ERR(task);
+ 
+ 	if (!xprt) {
+ 		status = rpc_wait_for_completion_task(task);
+@@ -7568,6 +7566,7 @@ static int _nfs4_proc_exchange_id(struct nfs_client *clp, struct rpc_cred *cred,
+ 	kfree(calldata->res.server_owner);
+ out_calldata:
+ 	kfree(calldata);
++	nfs_put_client(clp);
+ 	goto out;
+ }
+ 
+-- 
+1.8.3.1
 
-Like Jeff I'm pretty unhappy at the idea of revoking delegations
-preemptively on v3 read and lookup.  And a 5 minute wait does sound like
-a client problem.
-
-> > The server can detect there are other accessors that do not provide
-> > OPEN/CLOSE semantics. In addition, the server cannot predict when one
-> > of these accessors may use a WRITE or SETATTR. And finally it does
-> > not have a reasonably performant mechanism for delaying those
-> > accessors when a delegation must be recalled.
-> > 
-> 
-> Interoperability is hard (and sometimes it doesn't work well :). We
-> simply don't have enough info to reliably guess what the v3 client will
-> do in this situation.
-> 
-> That said, I wouldn't have a huge objection to a server side tunable
-> (module parameter?) that says "Recall read delegations on v2/3 READ
-> calls". Make it default to off, and then people in your situation could
-> set it if they thought it a better policy for their workload.
-
-I also wonder if in v3 case we should try a small synchronous wait
-before returning JUKEBOX.  Read delegations shouldn't require the client
-to do very much, so it could be they're typically returned in a
-fraction of a second.
-
-Since we have a fixed number of threads, I don't think we'd want to keep
-one waiting much longer than that.  Also, it'd be nice if we could get
-woken up early when the delegation return comes in before our wait's
-over, but I haven't thought about how to do that.
-
-And I don't know if that actually helps.
-
---b.
