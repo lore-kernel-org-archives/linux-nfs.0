@@ -1,66 +1,23 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-yw0-f180.google.com ([209.85.161.180]:35099 "EHLO
-        mail-yw0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S932760AbdCMBoJ (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sun, 12 Mar 2017 21:44:09 -0400
+Received: from m13-101.163.com ([220.181.13.101]:19366 "EHLO m13-101.163.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1750714AbdCMDmi (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Sun, 12 Mar 2017 23:42:38 -0400
+Date: Mon, 13 Mar 2017 11:42:19 +0800 (CST)
+From: houlinfei <hou.linfei@h3c.com>
+To: kinglongmee@gmail.com,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Cc: bfields@fieldses.org, neilb@suse.com, SteveD@redhat.com
+Subject: Re: some problems about nfs mount
+Content-Type: text/plain; charset=GBK
 MIME-Version: 1.0
-From: Matt Turner <mattst88@gmail.com>
-Date: Sun, 12 Mar 2017 18:43:47 -0700
-Message-ID: <CAEdQ38HcOgAT6wJWWKY3P0hzYwkBGSQkRSQ2a=eaGmD6c6rwXA@mail.gmail.com>
-Subject: NFS corruption, fixed by echo 1 > /proc/sys/vm/drop_caches -- next
- debugging steps?
-To: "linux-mips@linux-mips.org" <linux-mips@linux-mips.org>,
-        linux-nfs@vger.kernel.org
-Cc: Manuel Lauss <manuel.lauss@gmail.com>,
-        LKML <linux-kernel@vger.kernel.org>
-Content-Type: text/plain; charset=UTF-8
+Message-ID: <4898582f.561c.15ac5c271ea.Coremail.hou.linfei@h3c.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On a Broadcom BCM91250a MIPS system I can reliably trigger NFS
-corruption on the first file read.
-
-To demonstrate, I downloaded five identical copies of the gcc-5.4.0
-source tarball. On the NFS server, they hash to the same value:
-
-server distfiles # md5sum gcc-5.4.0.tar.bz2*
-4c626ac2a83ef30dfb9260e6f59c2b30  gcc-5.4.0.tar.bz2
-4c626ac2a83ef30dfb9260e6f59c2b30  gcc-5.4.0.tar.bz2.1
-4c626ac2a83ef30dfb9260e6f59c2b30  gcc-5.4.0.tar.bz2.2
-4c626ac2a83ef30dfb9260e6f59c2b30  gcc-5.4.0.tar.bz2.3
-4c626ac2a83ef30dfb9260e6f59c2b30  gcc-5.4.0.tar.bz2.4
-
-On the MIPS system (the NFS client):
-
-bcm91250a-le distfiles # md5sum gcc-5.4.0.tar.bz2.2
-35346975989954df8a8db2b034da610d  gcc-5.4.0.tar.bz2.2
-bcm91250a-le distfiles # md5sum gcc-5.4.0.tar.bz2*
-4c626ac2a83ef30dfb9260e6f59c2b30  gcc-5.4.0.tar.bz2
-4c626ac2a83ef30dfb9260e6f59c2b30  gcc-5.4.0.tar.bz2.1
-35346975989954df8a8db2b034da610d  gcc-5.4.0.tar.bz2.2
-4c626ac2a83ef30dfb9260e6f59c2b30  gcc-5.4.0.tar.bz2.3
-4c626ac2a83ef30dfb9260e6f59c2b30  gcc-5.4.0.tar.bz2.4
-
-The first file read will contain some corruption, and it is persistent until...
-
-bcm91250a-le distfiles # echo 1 > /proc/sys/vm/drop_caches
-bcm91250a-le distfiles # md5sum gcc-5.4.0.tar.bz2*
-4c626ac2a83ef30dfb9260e6f59c2b30  gcc-5.4.0.tar.bz2
-4c626ac2a83ef30dfb9260e6f59c2b30  gcc-5.4.0.tar.bz2.1
-4c626ac2a83ef30dfb9260e6f59c2b30  gcc-5.4.0.tar.bz2.2
-4c626ac2a83ef30dfb9260e6f59c2b30  gcc-5.4.0.tar.bz2.3
-4c626ac2a83ef30dfb9260e6f59c2b30  gcc-5.4.0.tar.bz2.4
-
-the caches are dropped, at which point it reads back properly.
-
-Note that the corruption is different across reboots, both in the size
-of the corruption and the location. I saw 1900~ and 1400~ byte
-sequences corrupted on separate occasions, which don't correspond to
-the system's 16kB page size.
-
-I've tested kernels from v3.19 to 4.11-rc1+ (master branch from
-today). All exhibit this behavior with differing frequencies. Earlier
-kernels seem to reproduce the issue less often, while more recent
-kernels reliably exhibit the problem every boot.
-
-How can I further debug this?
+aGkgS2luZ2xvbmc6CgpBdCBzZXJ2ZXIsCiNjYXQgL2V0Yy9leHBvcnRzCi9yb290L2hoICoocncs
+c3luYyxpbnNlY3VyZSxzdWJ0cmVlX2NoZWNrLG5vX3Jvb3Rfc3F1YXNoKQojY2F0IC9wcm9jL2Zz
+L25mc2QvdmVyc2lvbnMKLTIgKzMgKzQgKzQuMSArNC4yCgpBdCBjbGllbnQsCiNtb3VudCAtdCBu
+ZnMgMTkzLjE2OC43MC4yNjovcm9vdC9oaCAvbW50L3V1Cm1vdW50Lm5mczogYWNjZXNzIGRlbmll
+ZCBieSBzZXJ2ZXIgd2hpbGUgbW91bnRpbmcgMTkyLjE2OC43MC4yNjovcm9vdC9oaAoKVGhhbmtz
+IHZlcnkgbXVjaH4KaG91bGluZmVp
