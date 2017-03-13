@@ -1,88 +1,66 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:41836 "EHLO mx2.suse.de"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S935395AbdCLV6a (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Sun, 12 Mar 2017 17:58:30 -0400
-From: NeilBrown <neilb@suse.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Date: Mon, 13 Mar 2017 08:58:22 +1100
-Cc: Trond Myklebust <trondmy@primarydata.com>,
-        linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 2/3] NFSD: fix nfsd_minorversion(.., NFSD_AVAIL)
-In-Reply-To: <20170310221648.GN29791@fieldses.org>
-References: <148910618557.3032.8265198632788708076.stgit@noble> <148910619931.3032.2841124907029105276.stgit@noble> <20170310221648.GN29791@fieldses.org>
-Message-ID: <87innef98h.fsf@notabene.neil.brown.name>
+Received: from mail-yw0-f180.google.com ([209.85.161.180]:35099 "EHLO
+        mail-yw0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S932760AbdCMBoJ (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sun, 12 Mar 2017 21:44:09 -0400
 MIME-Version: 1.0
-Content-Type: multipart/signed; boundary="=-=-=";
-        micalg=pgp-sha256; protocol="application/pgp-signature"
+From: Matt Turner <mattst88@gmail.com>
+Date: Sun, 12 Mar 2017 18:43:47 -0700
+Message-ID: <CAEdQ38HcOgAT6wJWWKY3P0hzYwkBGSQkRSQ2a=eaGmD6c6rwXA@mail.gmail.com>
+Subject: NFS corruption, fixed by echo 1 > /proc/sys/vm/drop_caches -- next
+ debugging steps?
+To: "linux-mips@linux-mips.org" <linux-mips@linux-mips.org>,
+        linux-nfs@vger.kernel.org
+Cc: Manuel Lauss <manuel.lauss@gmail.com>,
+        LKML <linux-kernel@vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---=-=-=
-Content-Type: text/plain
-Content-Transfer-Encoding: quoted-printable
+On a Broadcom BCM91250a MIPS system I can reliably trigger NFS
+corruption on the first file read.
 
-On Fri, Mar 10 2017, J. Bruce Fields wrote:
+To demonstrate, I downloaded five identical copies of the gcc-5.4.0
+source tarball. On the NFS server, they hash to the same value:
 
-> On Fri, Mar 10, 2017 at 11:36:39AM +1100, NeilBrown wrote:
->> Current code will return 1 if the version is supported,
->> and -1 if it isn't.
->> This is confusing and inconsistent with the one place where this
->> is used.
->
-> It's used?  I don't see it.--b.
+server distfiles # md5sum gcc-5.4.0.tar.bz2*
+4c626ac2a83ef30dfb9260e6f59c2b30  gcc-5.4.0.tar.bz2
+4c626ac2a83ef30dfb9260e6f59c2b30  gcc-5.4.0.tar.bz2.1
+4c626ac2a83ef30dfb9260e6f59c2b30  gcc-5.4.0.tar.bz2.2
+4c626ac2a83ef30dfb9260e6f59c2b30  gcc-5.4.0.tar.bz2.3
+4c626ac2a83ef30dfb9260e6f59c2b30  gcc-5.4.0.tar.bz2.4
 
-You are correct of course.  NFSD_AVAIL is used once, but not with
-nfsd_minorversion.
-Would it ever make sense to selectively include different minor
-versions at compile time?  Probably not, but it probably doesn't matter
-anyway.
+On the MIPS system (the NFS client):
 
-NeilBrown
+bcm91250a-le distfiles # md5sum gcc-5.4.0.tar.bz2.2
+35346975989954df8a8db2b034da610d  gcc-5.4.0.tar.bz2.2
+bcm91250a-le distfiles # md5sum gcc-5.4.0.tar.bz2*
+4c626ac2a83ef30dfb9260e6f59c2b30  gcc-5.4.0.tar.bz2
+4c626ac2a83ef30dfb9260e6f59c2b30  gcc-5.4.0.tar.bz2.1
+35346975989954df8a8db2b034da610d  gcc-5.4.0.tar.bz2.2
+4c626ac2a83ef30dfb9260e6f59c2b30  gcc-5.4.0.tar.bz2.3
+4c626ac2a83ef30dfb9260e6f59c2b30  gcc-5.4.0.tar.bz2.4
 
+The first file read will contain some corruption, and it is persistent until...
 
->
->> So change to return 1 if it is supported, and zero if not.
->> i.e. an error is never returned.
->>=20
->> Signed-off-by: NeilBrown <neilb@suse.com>
->> ---
->>  fs/nfsd/nfssvc.c |    3 ++-
->>  1 file changed, 2 insertions(+), 1 deletion(-)
->>=20
->> diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
->> index 786a4a2cb2d7..892137b1e330 100644
->> --- a/fs/nfsd/nfssvc.c
->> +++ b/fs/nfsd/nfssvc.c
->> @@ -167,7 +167,8 @@ nfsd_adjust_nfsd_versions4(void)
->>=20=20
->>  int nfsd_minorversion(u32 minorversion, enum vers_op change)
->>  {
->> -	if (minorversion > NFSD_SUPPORTED_MINOR_VERSION)
->> +	if (minorversion > NFSD_SUPPORTED_MINOR_VERSION &&
->> +	    change !=3D NFSD_AVAIL)
->>  		return -1;
->>  	switch(change) {
->>  	case NFSD_SET:
->>=20
+bcm91250a-le distfiles # echo 1 > /proc/sys/vm/drop_caches
+bcm91250a-le distfiles # md5sum gcc-5.4.0.tar.bz2*
+4c626ac2a83ef30dfb9260e6f59c2b30  gcc-5.4.0.tar.bz2
+4c626ac2a83ef30dfb9260e6f59c2b30  gcc-5.4.0.tar.bz2.1
+4c626ac2a83ef30dfb9260e6f59c2b30  gcc-5.4.0.tar.bz2.2
+4c626ac2a83ef30dfb9260e6f59c2b30  gcc-5.4.0.tar.bz2.3
+4c626ac2a83ef30dfb9260e6f59c2b30  gcc-5.4.0.tar.bz2.4
 
---=-=-=
-Content-Type: application/pgp-signature; name="signature.asc"
+the caches are dropped, at which point it reads back properly.
 
------BEGIN PGP SIGNATURE-----
+Note that the corruption is different across reboots, both in the size
+of the corruption and the location. I saw 1900~ and 1400~ byte
+sequences corrupted on separate occasions, which don't correspond to
+the system's 16kB page size.
 
-iQIzBAEBCAAdFiEEG8Yp69OQ2HB7X0l6Oeye3VZigbkFAljFxH4ACgkQOeye3VZi
-gbnRew/9Eae/yGvG6xOM3cL/YJMwRtpsE45Q0k/uh8rrL8A1OfERtPSobT4r98BN
-WxLvQ6CpbtjorilV8xHsK0nQju98PduD2ZnrjQ+EUT+BFPfOl9EX4ZO8GYE/si8+
-aCIve2s75yF5uaoFN+RlPmYHZPd37CeUBb+ZEqhvjzQLdavzpmANOof2C+Y1Rx1w
-k7XIOggOe6MSg9+8qH77EqxhTXtgkGR+LLmn5wuiveNHksUJAi+hl3cOJ3gDTo67
-Y9zu81s9Eh0AMugSTbMW5vnan8mqsVGbsoyQzXNXPKLX0a6wyIdWdVZRvcJ5qflJ
-FDSiMvYRld/em5kZEPIvFKvEweD21ITm9pDamCqRCy5gxh+Jt8gcGbnApmaBn1a+
-RFGmBYBdxw2lNjThpwEdJlKQ4Le9Clf9lFVU+Q4C7mCRnjjRY57N65RjeefmMMfs
-Gi8NL8CdevLSckyH8th0jmpt8FiUzVHzmB4pPhm2XpOP78kWoeCAAQRDujAZZFpj
-08FopbgDikluujRZzOFp27ZKpHsBTxzRDl4G1pJYXs/d2BjTGkadwErq/V/+9SV9
-dumXhGpWytTNdpXVyWGaPwI7aA2ugMwzQBztrlxhuCIfnm7OXHiMTg7xCO1e7kbU
-r/RUhtifI8u5x35WhhpCbPSCETrEqOXPnSlDWpkPJn58Iw+lems=
-=Fky6
------END PGP SIGNATURE-----
---=-=-=--
+I've tested kernels from v3.19 to 4.11-rc1+ (master branch from
+today). All exhibit this behavior with differing frequencies. Earlier
+kernels seem to reproduce the issue less often, while more recent
+kernels reliably exhibit the problem every boot.
+
+How can I further debug this?
