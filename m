@@ -1,23 +1,41 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from m13-101.163.com ([220.181.13.101]:19366 "EHLO m13-101.163.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1750714AbdCMDmi (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Sun, 12 Mar 2017 23:42:38 -0400
-Date: Mon, 13 Mar 2017 11:42:19 +0800 (CST)
-From: houlinfei <hou.linfei@h3c.com>
-To: kinglongmee@gmail.com,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Cc: bfields@fieldses.org, neilb@suse.com, SteveD@redhat.com
+Received: from mail-it0-f68.google.com ([209.85.214.68]:36848 "EHLO
+        mail-it0-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1750740AbdCMECX (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Mar 2017 00:02:23 -0400
+Received: by mail-it0-f68.google.com with SMTP id w185so4925561ita.3
+        for <linux-nfs@vger.kernel.org>; Sun, 12 Mar 2017 21:02:23 -0700 (PDT)
 Subject: Re: some problems about nfs mount
-Content-Type: text/plain; charset=GBK
+To: houlinfei <hou.linfei@h3c.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+References: <4898582f.561c.15ac5c271ea.Coremail.hou.linfei@h3c.com>
+Cc: bfields@fieldses.org, neilb@suse.com, SteveD@redhat.com,
+        Kinglong Mee <kinglongmee@gmail.com>
+From: Kinglong Mee <kinglongmee@gmail.com>
+Message-ID: <0c613918-4e92-fee8-2c39-35280578ece3@gmail.com>
+Date: Mon, 13 Mar 2017 12:02:10 +0800
 MIME-Version: 1.0
-Message-ID: <4898582f.561c.15ac5c271ea.Coremail.hou.linfei@h3c.com>
+In-Reply-To: <4898582f.561c.15ac5c271ea.Coremail.hou.linfei@h3c.com>
+Content-Type: text/plain; charset=gbk
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-aGkgS2luZ2xvbmc6CgpBdCBzZXJ2ZXIsCiNjYXQgL2V0Yy9leHBvcnRzCi9yb290L2hoICoocncs
-c3luYyxpbnNlY3VyZSxzdWJ0cmVlX2NoZWNrLG5vX3Jvb3Rfc3F1YXNoKQojY2F0IC9wcm9jL2Zz
-L25mc2QvdmVyc2lvbnMKLTIgKzMgKzQgKzQuMSArNC4yCgpBdCBjbGllbnQsCiNtb3VudCAtdCBu
-ZnMgMTkzLjE2OC43MC4yNjovcm9vdC9oaCAvbW50L3V1Cm1vdW50Lm5mczogYWNjZXNzIGRlbmll
-ZCBieSBzZXJ2ZXIgd2hpbGUgbW91bnRpbmcgMTkyLjE2OC43MC4yNjovcm9vdC9oaAoKVGhhbmtz
-IHZlcnkgbXVjaH4KaG91bGluZmVp
+On 3/13/2017 11:42, houlinfei wrote:
+> hi Kinglong:
+> 
+> At server,
+> #cat /etc/exports
+> /root/hh *(rw,sync,insecure,subtree_check,no_root_squash)
+> #cat /proc/fs/nfsd/versions
+> -2 +3 +4 +4.1 +4.2
+> 
+> At client,
+> #mount -t nfs 193.168.70.26:/root/hh /mnt/uu
+> mount.nfs: access denied by server while mounting 192.168.70.26:/root/hh
+
+Everything is okay on my test machine.
+Is it failed every client? or only one client?
+What't the state of filewalld ? Can you try again with filewalld turndown?
+
+thanks,
+Kinglong Mee
