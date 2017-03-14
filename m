@@ -1,8 +1,8 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mga11.intel.com ([192.55.52.93]:47136 "EHLO mga11.intel.com"
+Received: from mga11.intel.com ([192.55.52.93]:21290 "EHLO mga11.intel.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751129AbdCNHHy (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 14 Mar 2017 03:07:54 -0400
+        id S1751100AbdCNHHu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 14 Mar 2017 03:07:50 -0400
 From: Elena Reshetova <elena.reshetova@intel.com>
 To: trond.myklebust@primarydata.com
 Cc: linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org,
@@ -10,9 +10,9 @@ Cc: linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org,
         Elena Reshetova <elena.reshetova@intel.com>,
         Hans Liljestrand <ishkamiel@gmail.com>,
         David Windsor <dwindsor@gmail.com>
-Subject: [PATCH 10/12] fs, nfs: convert nfs_lock_context.count from atomic_t to refcount_t
-Date: Tue, 14 Mar 2017 09:07:18 +0200
-Message-Id: <1489475240-6594-11-git-send-email-elena.reshetova@intel.com>
+Subject: [PATCH 07/12] fs, nfs: convert nfs4_ff_layout_mirror.ref from atomic_t to refcount_t
+Date: Tue, 14 Mar 2017 09:07:15 +0200
+Message-Id: <1489475240-6594-8-git-send-email-elena.reshetova@intel.com>
 In-Reply-To: <1489475240-6594-1-git-send-email-elena.reshetova@intel.com>
 References: <1489475240-6594-1-git-send-email-elena.reshetova@intel.com>
 Sender: linux-nfs-owner@vger.kernel.org
@@ -29,85 +29,71 @@ Signed-off-by: Hans Liljestrand <ishkamiel@gmail.com>
 Signed-off-by: Kees Cook <keescook@chromium.org>
 Signed-off-by: David Windsor <dwindsor@gmail.com>
 ---
- fs/nfs/inode.c         | 12 ++++++------
- include/linux/nfs_fs.h |  3 ++-
- 2 files changed, 8 insertions(+), 7 deletions(-)
+ fs/nfs/flexfilelayout/flexfilelayout.c | 8 ++++----
+ fs/nfs/flexfilelayout/flexfilelayout.h | 3 ++-
+ 2 files changed, 6 insertions(+), 5 deletions(-)
 
-diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
-index b542531..c88c784 100644
---- a/fs/nfs/inode.c
-+++ b/fs/nfs/inode.c
-@@ -752,7 +752,7 @@ EXPORT_SYMBOL_GPL(nfs_getattr);
- 
- static void nfs_init_lock_context(struct nfs_lock_context *l_ctx)
- {
--	atomic_set(&l_ctx->count, 1);
-+	refcount_set(&l_ctx->count, 1);
- 	l_ctx->lockowner = current->files;
- 	INIT_LIST_HEAD(&l_ctx->list);
- 	atomic_set(&l_ctx->io_count, 0);
-@@ -766,7 +766,7 @@ static struct nfs_lock_context *__nfs_find_lock_context(struct nfs_open_context
- 	do {
- 		if (pos->lockowner != current->files)
+diff --git a/fs/nfs/flexfilelayout/flexfilelayout.c b/fs/nfs/flexfilelayout/flexfilelayout.c
+index d6acc68..18d4c5a 100644
+--- a/fs/nfs/flexfilelayout/flexfilelayout.c
++++ b/fs/nfs/flexfilelayout/flexfilelayout.c
+@@ -187,7 +187,7 @@ ff_layout_add_mirror(struct pnfs_layout_hdr *lo,
  			continue;
--		atomic_inc(&pos->count);
-+		refcount_inc(&pos->count);
- 		return pos;
- 	} while ((pos = list_entry(pos->list.next, typeof(*pos), list)) != head);
- 	return NULL;
-@@ -805,7 +805,7 @@ void nfs_put_lock_context(struct nfs_lock_context *l_ctx)
- 	struct nfs_open_context *ctx = l_ctx->open_context;
- 	struct inode *inode = d_inode(ctx->dentry);
+ 		if (!ff_mirror_match_fh(mirror, pos))
+ 			continue;
+-		if (atomic_inc_not_zero(&pos->ref)) {
++		if (refcount_inc_not_zero(&pos->ref)) {
+ 			spin_unlock(&inode->i_lock);
+ 			return pos;
+ 		}
+@@ -218,7 +218,7 @@ static struct nfs4_ff_layout_mirror *ff_layout_alloc_mirror(gfp_t gfp_flags)
+ 	mirror = kzalloc(sizeof(*mirror), gfp_flags);
+ 	if (mirror != NULL) {
+ 		spin_lock_init(&mirror->lock);
+-		atomic_set(&mirror->ref, 1);
++		refcount_set(&mirror->ref, 1);
+ 		INIT_LIST_HEAD(&mirror->mirrors);
+ 	}
+ 	return mirror;
+@@ -242,7 +242,7 @@ static void ff_layout_free_mirror(struct nfs4_ff_layout_mirror *mirror)
  
--	if (!atomic_dec_and_lock(&l_ctx->count, &inode->i_lock))
-+	if (!refcount_dec_and_lock(&l_ctx->count, &inode->i_lock))
- 		return;
- 	list_del(&l_ctx->list);
- 	spin_unlock(&inode->i_lock);
-@@ -882,7 +882,7 @@ EXPORT_SYMBOL_GPL(alloc_nfs_open_context);
- struct nfs_open_context *get_nfs_open_context(struct nfs_open_context *ctx)
+ static void ff_layout_put_mirror(struct nfs4_ff_layout_mirror *mirror)
  {
- 	if (ctx != NULL)
--		atomic_inc(&ctx->lock_context.count);
-+		refcount_inc(&ctx->lock_context.count);
- 	return ctx;
+-	if (mirror != NULL && atomic_dec_and_test(&mirror->ref))
++	if (mirror != NULL && refcount_dec_and_test(&mirror->ref))
+ 		ff_layout_free_mirror(mirror);
  }
- EXPORT_SYMBOL_GPL(get_nfs_open_context);
-@@ -893,11 +893,11 @@ static void __put_nfs_open_context(struct nfs_open_context *ctx, int is_sync)
- 	struct super_block *sb = ctx->dentry->d_sb;
  
- 	if (!list_empty(&ctx->list)) {
--		if (!atomic_dec_and_lock(&ctx->lock_context.count, &inode->i_lock))
-+		if (!refcount_dec_and_lock(&ctx->lock_context.count, &inode->i_lock))
- 			return;
- 		list_del(&ctx->list);
- 		spin_unlock(&inode->i_lock);
--	} else if (!atomic_dec_and_test(&ctx->lock_context.count))
-+	} else if (!refcount_dec_and_test(&ctx->lock_context.count))
- 		return;
- 	if (inode != NULL)
- 		NFS_PROTO(inode)->close_context(ctx, is_sync);
-diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
-index 287f341..0c5b89a 100644
---- a/include/linux/nfs_fs.h
-+++ b/include/linux/nfs_fs.h
-@@ -22,6 +22,7 @@
- #include <linux/mm.h>
- #include <linux/pagemap.h>
- #include <linux/rbtree.h>
+@@ -2325,7 +2325,7 @@ ff_layout_mirror_prepare_stats(struct pnfs_layout_hdr *lo,
+ 		if (!test_and_clear_bit(NFS4_FF_MIRROR_STAT_AVAIL, &mirror->flags))
+ 			continue;
+ 		/* mirror refcount put in cleanup_layoutstats */
+-		if (!atomic_inc_not_zero(&mirror->ref))
++		if (!refcount_inc_not_zero(&mirror->ref))
+ 			continue;
+ 		dev = &mirror->mirror_ds->id_node; 
+ 		memcpy(&devinfo->dev_id, &dev->deviceid, NFS4_DEVICEID4_SIZE);
+diff --git a/fs/nfs/flexfilelayout/flexfilelayout.h b/fs/nfs/flexfilelayout/flexfilelayout.h
+index f4f39b0..1b5d60b 100644
+--- a/fs/nfs/flexfilelayout/flexfilelayout.h
++++ b/fs/nfs/flexfilelayout/flexfilelayout.h
+@@ -13,6 +13,7 @@
+ #define FF_FLAGS_NO_IO_THRU_MDS  2
+ #define FF_FLAGS_NO_READ_IO      4
+ 
 +#include <linux/refcount.h>
- #include <linux/rwsem.h>
- #include <linux/wait.h>
+ #include "../pnfs.h"
  
-@@ -56,7 +57,7 @@ struct nfs_access_entry {
- };
- 
- struct nfs_lock_context {
--	atomic_t count;
-+	refcount_t count;
- 	struct list_head list;
- 	struct nfs_open_context *open_context;
- 	fl_owner_t lockowner;
+ /* XXX: Let's filter out insanely large mirror count for now to avoid oom
+@@ -81,7 +82,7 @@ struct nfs4_ff_layout_mirror {
+ 	nfs4_stateid			stateid;
+ 	struct rpc_cred	__rcu		*ro_cred;
+ 	struct rpc_cred	__rcu		*rw_cred;
+-	atomic_t			ref;
++	refcount_t			ref;
+ 	spinlock_t			lock;
+ 	unsigned long			flags;
+ 	struct nfs4_ff_layoutstat	read_stat;
 -- 
 2.7.4
 
