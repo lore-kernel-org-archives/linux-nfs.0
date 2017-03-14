@@ -1,86 +1,112 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f194.google.com ([209.85.223.194]:33662 "EHLO
-        mail-io0-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751798AbdCNOpt (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 14 Mar 2017 10:45:49 -0400
-Received: by mail-io0-f194.google.com with SMTP id f84so115202ioj.0
-        for <linux-nfs@vger.kernel.org>; Tue, 14 Mar 2017 07:45:44 -0700 (PDT)
-Subject: Re: some problems about nfs mount
-To: Houlinfei <hou.linfei@h3c.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-References: <3858597F7658604DB90E3F60F716249C4696C326@H3CMLB12-EX.srv.huawei-3com.com>
-Cc: "bfields@fieldses.org" <bfields@fieldses.org>,
-        "neilb@suse.com" <neilb@suse.com>,
-        "SteveD@redhat.com" <SteveD@redhat.com>,
-        Kinglong Mee <kinglongmee@gmail.com>
-From: Kinglong Mee <kinglongmee@gmail.com>
-Message-ID: <9eae7982-7c7c-163f-5af7-df84b74ec3a2@gmail.com>
-Date: Tue, 14 Mar 2017 22:45:14 +0800
+Received: from mx1.redhat.com ([209.132.183.28]:11080 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1751084AbdCNOmg (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 14 Mar 2017 10:42:36 -0400
+Subject: Re: Manual page bug: two inaccuracies in nfsd(7)
+To: NeilBrown <neilb@suse.com>,
+        Chris Siebenmann <cks.nfs01@cs.toronto.edu>
+References: <20170223164644.E40565A0066@apps1.cs.toronto.edu>
+ <87efyfntrm.fsf@notabene.neil.brown.name>
+Cc: linux-nfs@vger.kernel.org
+From: Steve Dickson <SteveD@redhat.com>
+Message-ID: <94bcced9-7e14-08bd-0590-2ad6d13dab85@RedHat.com>
+Date: Tue, 14 Mar 2017 10:42:35 -0400
 MIME-Version: 1.0
-In-Reply-To: <3858597F7658604DB90E3F60F716249C4696C326@H3CMLB12-EX.srv.huawei-3com.com>
-Content-Type: text/plain; charset=utf-8
+In-Reply-To: <87efyfntrm.fsf@notabene.neil.brown.name>
+Content-Type: text/plain; charset=windows-1252
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-I get an Ubuntu 12.04.5 source (linux-source-3.13.0) and have a check on centos7,
-(for I don't known how to build and install kernel on ubuntu).
 
-I found the problem maybe fix by the following patch (Ubuntu 14.04 includes),
 
-"NFSv4: test SECINFO RPC_AUTH_GSS pseudoflavors for support",
-https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/patch/?id=66b0686049
-
-the following two patch needs apply with the above,
-https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/patch/?id=8445cd3528b
-https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/patch/?id=57bbe3d7c11
-
-thanks,
-Kinglong Mee
-
-On 3/14/2017 16:47, Houlinfei wrote:
-> hi Kinglong:
-> At client,
+On 03/02/2017 06:28 PM, NeilBrown wrote:
+> On Thu, Feb 23 2017, Chris Siebenmann wrote:
 > 
-> # cat /proc/version
-> Linux version 3.13.0-32-generic (buildd@phianna) (gcc version 4.6.3 (Ubuntu/Linaro 4.6.3-1ubuntu5) ) #57~precise1-Ubuntu SMP Tue Jul 15 03:51:20 UTC 2014
-> # cat /etc/issue
-> Ubuntu 12.04.5 LTS \n \l
-> 
-> thanks,
-> houlinfei
-> 
-> On 3/14/2017 13:41, Kinglong Mee wrote:
->> On 3/14/2017 11:52, Houlinfei wrote:
->>> hi Kinglong:
->>> There has no firewall. While my client system is Ubuntu 14.04, it's ok.
->>> There has problem on ubuntu12.04 system. But if I add a parameter sec=sys, it is also ok. Such as, #mount -t nfs -o sec=sys 193.168.70.26:/root/hh /mnt/uu
->>> But when my mount command line t is #mount -t nfs 193.168.70.26:/root/hh /mnt/uu   it fail.
->>> There is some client fail log:
+>>>>  I was recently reading this manual page as part of exploring running
+>>>> an NFS server on Ubuntu 16.04 (with Ubuntu's kernel '4.4.0') and found
+>>>> two inaccuracies with the current state of the kernel (or at least how
+>>>> it looks to me based on both experimentation and code).
+>>>>
+>>>>  First, there is no /proc/net/rpc/auth.domain directory and cache any
+>>>> more. This was removed from the kernel in 2006 (in commit efc36aa5608f),
+>>>> so I think it should be safe to remove from current versions of the
+>>>> manpage.
+>>>
+>>> I agree.
+>>>
+>>>>
+>>>>  Second, the manpage says about the 'flush' files to be found in eg
+>>>> /proc/net/rpc/auth.unix.ip:
+>>>>
+>>>> 	When a number of seconds since epoch (1 Jan 1970) is written to
+>>>> 	this file, all entries in the cache that were last updated before
+>>>> 	that file become invalidated and will be flushed out. Writing
+>>>> 	1 will flush everything. [...]
+>>>>
+>>>> The bit about 'writing 1 will flush everything' does not appear to be
+>>>> accurate.
+>>>
+>>> I was never accurate.  I vaguely remember writing it.  I must have been
+>>> confused.
+>>>
+>>> Would you be able to create a patch which fixes these issues, and post
+>>> it, with a signed-off-by ?
 >>
->> The ubuntu12.04 system contains an old kernel, the problem should be a bug in that kernel.
->> I don't have an old kernel as ubuntu12.04 system, so I don't check the code.
+>>  Here is a patch that deletes the mention of auth.domain and changes the
+>> wording around 'flush' files. I'm not attached to the revised wording;
+>> it's just the best I could manage in something that felt that it was
+>> within the same style and space as the current wording.
 >>
->> Can you have a try with the following patch ?
->> Your can get more information from the comments in the patch.
+>> Signed-off-by: Chris Siebenmann <cks.nfs01@cs.toronto.edu>
+> 
+> Thanks.
+> Acked-by: NeilBrown <neilb@suse.com>
+> 
+> hopefully Steve will pick this up in due course.  He tends to apply
+> patches in batches every few weeks.
+Sorry for the delay... I just saw this... inline patches like
+this sometime simple through my patch filters... ;-)
+
+Committed!
+
+steved.
+
+> 
+> Thanks,
+> NeilBrown
+> 
 >>
->> Commit 4580a92d4 ("NFS: Use server-recommended security flavor by default"),
->> https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/commit/?id=4580a92d4
+>> diff --git a/utils/exportfs/nfsd.man b/utils/exportfs/nfsd.man
+>> index 0c516fa..9efa29f 100644
+>> --- a/utils/exportfs/nfsd.man
+>> +++ b/utils/exportfs/nfsd.man
+>> @@ -105,11 +105,6 @@ clients have for different filesystems.
+>>  The caches are:
+>>  
+>>  .TP
+>> -.B auth.domain
+>> -This cache maps the name of a client (or domain) to an internal data
+>> -structure.  The only access that is possible is to flush the cache.
+>> -
+>> -.TP
+>>  .B auth.unix.ip
+>>  This cache contains a mapping from IP address to the name of the
+>>  authentication domain that the ipaddress should be treated as part of.
+>> @@ -133,7 +128,8 @@ are:
+>>  .B flush
+>>  When a number of seconds since epoch (1 Jan 1970) is written to this
+>>  file, all entries in the cache that were last updated before that file
+>> -become invalidated and will be flushed out.  Writing 1 will flush
+>> +become invalidated and will be flushed out.  Writing a time in the
+>> +future (in seconds since epoch) will flush
+>>  everything.  This is the only file that will always be present.
+>>  
+>>  .TP
 >>
-> 
-> Sorry, please ignore the above comments.
-> I don't think it's useful, I will find an ubuntu12.04 and have a check.
-> 
-> thanks,
-> Kinglong Mee
-> -------------------------------------------------------------------------------------------------------------------------------------
-> 本邮件及其附件含有杭州华三通信技术有限公司的保密信息，仅限于发送给上面地址中列出
-> 的个人或群组。禁止任何其他人以任何形式使用（包括但不限于全部或部分地泄露、复制、
-> 或散发）本邮件中的信息。如果您错收了本邮件，请您立即电话或邮件通知发件人并删除本
-> 邮件！
-> This e-mail and its attachments contain confidential information from H3C, which is
-> intended only for the person or entity whose address is listed above. Any use of the
-> information contained herein in any way (including, but not limited to, total or partial
-> disclosure, reproduction, or dissemination) by persons other than the intended
-> recipient(s) is prohibited. If you receive this e-mail in error, please notify the sender
-> by phone or email immediately and delete it!
-> 
+>>
+>> 	- cks
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
