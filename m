@@ -1,119 +1,44 @@
-Return-Path: <chuck.lever@oracle.com>
-From: Chuck Lever <chuck.lever@oracle.com>
+Return-Path: <linux-nfs-owner@vger.kernel.org>
+Received: from fieldses.org ([173.255.197.46]:40184 "EHLO fieldses.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1751062AbdCNVDq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 14 Mar 2017 17:03:46 -0400
+Date: Tue, 14 Mar 2017 17:03:44 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Scott Mayhew <smayhew@redhat.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [RFC nfs-utils PATCH] nfsdcltrack: cluster mode
+Message-ID: <20170314210344.GA5690@fieldses.org>
+References: <20170310214612.12583-1-smayhew@redhat.com>
+ <20170313212029.GB15183@fieldses.org>
+ <20170314141157.tjyhyostquyazpyl@tonberry.usersys.redhat.com>
+MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Subject: git "make test" fails in t9200-git-cvsexportcommit.sh
-Date: Tue, 14 Mar 2017 11:07:43 -0400
-Message-Id: <12A85CA0-A715-4379-81D5-58A9CB001266@oracle.com>
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-To: Benjamin Coddington <bcodding@redhat.com>
-Mime-Version: 1.0 (Mac OS X Mail 9.3 \(3124\))
+In-Reply-To: <20170314141157.tjyhyostquyazpyl@tonberry.usersys.redhat.com>
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Ben!
+On Tue, Mar 14, 2017 at 10:11:57AM -0400, Scott Mayhew wrote:
+> On Mon, 13 Mar 2017, J. Bruce Fields wrote:
+> > On Fri, Mar 10, 2017 at 04:46:12PM -0500, Scott Mayhew wrote:
+> > > 3. During nfsdcltrack's startup, we stat the etab file.  If the inode
+> > >    number is different than what we have in the db, then we know that
+> > >    the exportfs program has modified the file.  We read in the exported
+> > >    path names and compare them to what we have stored in the exports
+> > >    table.  If any new exports has been added, we merge the client
+> > >    records from db's on those exports into the clients table of the
+> > >    local db.  Then we update the exports table in the local db.
+> > 
+> > How does the merging work?  What happens when some of the clients from
+> > an export's .nfsdcltrack/ database are the same as known clients?
+> 
+> The known clients are left as-is.  That's what the 'OR IGNORE' in the
+> INSERT statement in the merge function is for (the id is the primary
+> key of the clients table -- the 'OR IGNORE' tells sqlite what to do in
+> the event that it were to violate that constraint).
 
-After addressing some IB stack issues that arose in v4.11-rc1,
-I was finally able to run my standard suite of NFS tests with
-v4.11-rc2. I found that part of the git regression suite fails
-with this kernel.
+I wonder about the other fields--the merged entry should probably have
+the latest of the times on the two entries, and it should probably be a
+sign of a problem if has_session doesn't agree, I think?
 
-Initially I start simply with NFSv3 and a tmpfs export. To
-prepare for the test, my script does something like this:
-
-$ cd /mnt/server
-$ tar zxf ~/Downloads/git-2.3.7.tgz
-$ cd git
-$ make clean
-$ make
-$ cd t
-
-Then, by hand:
-
-    [cel@manet t]$ ./t9200-git-cvsexportcommit.sh
-    ok 1 - New file
-    ok 2 - Remove two files, add two and update two
-    ok 3 - Fail to change binary more than one generation old
-    ok 4 - Remove only binary files
-    ok 5 - Remove only a text file
-    ok 6 - New file with spaces in file name
-    ok 7 - Update file with spaces in file name
-    ok 8 - File with non-ascii file name
-    ok 9 - Mismatching patch should fail
-    ok 10 - Retain execute bit
-    ok 11 - -w option should work with relative GIT_DIR
-    ok 12 - check files before directories
-    not ok 13 - re-commit a removed filename which remains in CVS attic
-    #
-    #
-    #       (cd "$CVSWORK" &&
-    #        echo >attic_gremlin &&
-    #        cvs -Q add attic_gremlin &&
-    #        cvs -Q ci -m "added attic_gremlin" &&
-    #        rm attic_gremlin &&
-    #        cvs -Q rm attic_gremlin &&
-    #        cvs -Q ci -m "removed attic_gremlin") &&
-    #
-    #       echo > attic_gremlin &&
-    #       git add attic_gremlin &&
-    #       git commit -m "Added attic_gremlin" &&
-    #           git cvsexportcommit -w "$CVSWORK" -c HEAD &&
-    #       (cd "$CVSWORK"; cvs -Q update -d) &&
-    #       test -f "$CVSWORK/attic_gremlin"
-    #
-    not ok 14 - commit a file with leading spaces in the name
-    #
-    #
-    #           echo space > " space" &&
-    #           git add " space" &&
-    #           git commit -m "Add a file with a leading space" &&
-    #           id=3D$(git rev-parse HEAD) &&
-    #           git cvsexportcommit -w "$CVSWORK" -c $id &&
-    #           check_entries "$CVSWORK" " =
-space/1.1/|DS/1.1/|attic_gremlin/1.3/|release-notes/1.2/" &&
-    #           test_cmp "$CVSWORK/ space" " space"
-    #
-    #
-    ok 15 - use the same checkout for Git and CVS
-    # failed 2 among 15 test(s)
-    1..15
-    [cel@manet t]$
-
-A wire capture shows that some GETATTR operations receive
-an NFS3ERR_STALE response from the server. I looked at one
-of these, and it's against a renamed file "index.lock".
-
-So I reverted:
-
-commit 920b4530fb80430ff30ef83efe21ba1fa5623731
-Author:     Benjamin Coddington <bcodding@redhat.com>
-Date: Wed Feb 1 00:00:07 2017 -0500
-
-NFS: nfs_rename() handle -ERESTARTSYS dentry left behind
-
-And t9200 now passes:
-
-    [cel@manet t]$ ./t9200-git-cvsexportcommit.sh=20
-    ok 1 - New file
-    ok 2 - Remove two files, add two and update two
-    ok 3 - Fail to change binary more than one generation old
-    ok 4 - Remove only binary files
-    ok 5 - Remove only a text file
-    ok 6 - New file with spaces in file name
-    ok 7 - Update file with spaces in file name
-    ok 8 - File with non-ascii file name
-    ok 9 - Mismatching patch should fail
-    ok 10 - Retain execute bit
-    ok 11 - -w option should work with relative GIT_DIR
-    ok 12 - check files before directories
-    ok 13 - re-commit a removed filename which remains in CVS attic
-    ok 14 - commit a file with leading spaces in the name
-    ok 15 - use the same checkout for Git and CVS
-    # passed all 15 test(s)
-    1..15
-    [cel@manet t]$
-
-Wire capture shows no NFS3ERR_STALE results on the wire
-during the successful test run.
-
-
---
-Chuck Lever
+--b.
