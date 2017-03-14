@@ -1,8 +1,8 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mga11.intel.com ([192.55.52.93]:9169 "EHLO mga11.intel.com"
+Received: from mga11.intel.com ([192.55.52.93]:34832 "EHLO mga11.intel.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751028AbdCNHHm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 14 Mar 2017 03:07:42 -0400
+        id S1750961AbdCNHHf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 14 Mar 2017 03:07:35 -0400
 From: Elena Reshetova <elena.reshetova@intel.com>
 To: trond.myklebust@primarydata.com
 Cc: linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org,
@@ -10,9 +10,9 @@ Cc: linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org,
         Elena Reshetova <elena.reshetova@intel.com>,
         Hans Liljestrand <ishkamiel@gmail.com>,
         David Windsor <dwindsor@gmail.com>
-Subject: [PATCH 05/12] fs, nfs: convert pnfs_layout_segment.pls_refcount from atomic_t to refcount_t
-Date: Tue, 14 Mar 2017 09:07:13 +0200
-Message-Id: <1489475240-6594-6-git-send-email-elena.reshetova@intel.com>
+Subject: [PATCH 03/12] fs, nfsd: convert nfs4_file.fi_ref from atomic_t to refcount_t
+Date: Tue, 14 Mar 2017 09:07:11 +0200
+Message-Id: <1489475240-6594-4-git-send-email-elena.reshetova@intel.com>
 In-Reply-To: <1489475240-6594-1-git-send-email-elena.reshetova@intel.com>
 References: <1489475240-6594-1-git-send-email-elena.reshetova@intel.com>
 Sender: linux-nfs-owner@vger.kernel.org
@@ -29,100 +29,63 @@ Signed-off-by: Hans Liljestrand <ishkamiel@gmail.com>
 Signed-off-by: Kees Cook <keescook@chromium.org>
 Signed-off-by: David Windsor <dwindsor@gmail.com>
 ---
- fs/nfs/pnfs.c | 16 ++++++++--------
- fs/nfs/pnfs.h |  4 ++--
- 2 files changed, 10 insertions(+), 10 deletions(-)
+ fs/nfsd/nfs4state.c | 6 +++---
+ fs/nfsd/state.h     | 4 ++--
+ 2 files changed, 5 insertions(+), 5 deletions(-)
 
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index dd04249..155781c 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -444,7 +444,7 @@ pnfs_init_lseg(struct pnfs_layout_hdr *lo, struct pnfs_layout_segment *lseg,
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 253fc93..a19f56c 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -359,7 +359,7 @@ put_nfs4_file(struct nfs4_file *fi)
  {
- 	INIT_LIST_HEAD(&lseg->pls_list);
- 	INIT_LIST_HEAD(&lseg->pls_lc_list);
--	atomic_set(&lseg->pls_refcount, 1);
-+	refcount_set(&lseg->pls_refcount, 1);
- 	set_bit(NFS_LSEG_VALID, &lseg->pls_flags);
- 	lseg->pls_layout = lo;
- 	lseg->pls_range = *range;
-@@ -501,13 +501,13 @@ pnfs_put_lseg(struct pnfs_layout_segment *lseg)
- 		return;
+ 	might_lock(&state_lock);
  
- 	dprintk("%s: lseg %p ref %d valid %d\n", __func__, lseg,
--		atomic_read(&lseg->pls_refcount),
-+		refcount_read(&lseg->pls_refcount),
- 		test_bit(NFS_LSEG_VALID, &lseg->pls_flags));
- 
- 	lo = lseg->pls_layout;
- 	inode = lo->plh_inode;
- 
--	if (atomic_dec_and_lock(&lseg->pls_refcount, &inode->i_lock)) {
-+	if (refcount_dec_and_lock(&lseg->pls_refcount, &inode->i_lock)) {
- 		if (test_bit(NFS_LSEG_VALID, &lseg->pls_flags)) {
- 			spin_unlock(&inode->i_lock);
- 			return;
-@@ -550,9 +550,9 @@ pnfs_put_lseg_locked(struct pnfs_layout_segment *lseg)
- 	assert_spin_locked(&lseg->pls_layout->plh_inode->i_lock);
- 
- 	dprintk("%s: lseg %p ref %d valid %d\n", __func__, lseg,
--		atomic_read(&lseg->pls_refcount),
-+		refcount_read(&lseg->pls_refcount),
- 		test_bit(NFS_LSEG_VALID, &lseg->pls_flags));
--	if (atomic_dec_and_test(&lseg->pls_refcount)) {
-+	if (refcount_dec_and_test(&lseg->pls_refcount)) {
- 		struct pnfs_layout_hdr *lo = lseg->pls_layout;
- 		if (test_bit(NFS_LSEG_VALID, &lseg->pls_flags))
- 			return;
-@@ -587,7 +587,7 @@ pnfs_lseg_range_contained(const struct pnfs_layout_range *l1,
- static bool pnfs_lseg_dec_and_remove_zero(struct pnfs_layout_segment *lseg,
- 		struct list_head *tmp_list)
+-	if (atomic_dec_and_lock(&fi->fi_ref, &state_lock)) {
++	if (refcount_dec_and_lock(&fi->fi_ref, &state_lock)) {
+ 		hlist_del_rcu(&fi->fi_hash);
+ 		spin_unlock(&state_lock);
+ 		WARN_ON_ONCE(!list_empty(&fi->fi_clnt_odstate));
+@@ -3352,7 +3352,7 @@ static void nfsd4_init_file(struct knfsd_fh *fh, unsigned int hashval,
  {
--	if (!atomic_dec_and_test(&lseg->pls_refcount))
-+	if (!refcount_dec_and_test(&lseg->pls_refcount))
- 		return false;
- 	pnfs_layout_remove_lseg(lseg->pls_layout, lseg);
- 	list_add(&lseg->pls_list, tmp_list);
-@@ -606,7 +606,7 @@ static int mark_lseg_invalid(struct pnfs_layout_segment *lseg,
- 		 * outstanding io is finished.
- 		 */
- 		dprintk("%s: lseg %p ref %d\n", __func__, lseg,
--			atomic_read(&lseg->pls_refcount));
-+			refcount_read(&lseg->pls_refcount));
- 		if (pnfs_lseg_dec_and_remove_zero(lseg, tmp_list))
- 			rv = 1;
- 	}
-@@ -1582,7 +1582,7 @@ pnfs_find_lseg(struct pnfs_layout_hdr *lo,
- 	}
+ 	lockdep_assert_held(&state_lock);
  
- 	dprintk("%s:Return lseg %p ref %d\n",
--		__func__, ret, ret ? atomic_read(&ret->pls_refcount) : 0);
-+		__func__, ret, ret ? refcount_read(&ret->pls_refcount) : 0);
- 	return ret;
+-	atomic_set(&fp->fi_ref, 1);
++	refcount_set(&fp->fi_ref, 1);
+ 	spin_lock_init(&fp->fi_lock);
+ 	INIT_LIST_HEAD(&fp->fi_stateids);
+ 	INIT_LIST_HEAD(&fp->fi_delegations);
+@@ -3648,7 +3648,7 @@ find_file_locked(struct knfsd_fh *fh, unsigned int hashval)
+ 
+ 	hlist_for_each_entry_rcu(fp, &file_hashtbl[hashval], fi_hash) {
+ 		if (fh_match(&fp->fi_fhandle, fh)) {
+-			if (atomic_inc_not_zero(&fp->fi_ref))
++			if (refcount_inc_not_zero(&fp->fi_ref))
+ 				return fp;
+ 		}
+ 	}
+diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
+index 58eb5f4..4797429 100644
+--- a/fs/nfsd/state.h
++++ b/fs/nfsd/state.h
+@@ -482,7 +482,7 @@ struct nfs4_clnt_odstate {
+  * the global state_lock spinlock.
+  */
+ struct nfs4_file {
+-	atomic_t		fi_ref;
++	refcount_t		fi_ref;
+ 	spinlock_t		fi_lock;
+ 	struct hlist_node       fi_hash;	/* hash on fi_fhandle */
+ 	struct list_head        fi_stateids;
+@@ -635,7 +635,7 @@ struct nfs4_file *find_file(struct knfsd_fh *fh);
+ void put_nfs4_file(struct nfs4_file *fi);
+ static inline void get_nfs4_file(struct nfs4_file *fi)
+ {
+-	atomic_inc(&fi->fi_ref);
++	refcount_inc(&fi->fi_ref);
  }
+ struct file *find_any_file(struct nfs4_file *f);
  
-diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
-index 0411bb0..75698fa 100644
---- a/fs/nfs/pnfs.h
-+++ b/fs/nfs/pnfs.h
-@@ -64,7 +64,7 @@ struct pnfs_layout_segment {
- 	struct list_head pls_list;
- 	struct list_head pls_lc_list;
- 	struct pnfs_layout_range pls_range;
--	atomic_t pls_refcount;
-+	refcount_t pls_refcount;
- 	u32 pls_seq;
- 	unsigned long pls_flags;
- 	struct pnfs_layout_hdr *pls_layout;
-@@ -400,7 +400,7 @@ static inline struct pnfs_layout_segment *
- pnfs_get_lseg(struct pnfs_layout_segment *lseg)
- {
- 	if (lseg) {
--		atomic_inc(&lseg->pls_refcount);
-+		refcount_inc(&lseg->pls_refcount);
- 		smp_mb__after_atomic();
- 	}
- 	return lseg;
 -- 
 2.7.4
 
